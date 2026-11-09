@@ -53,17 +53,17 @@ test('R234 (2), (3), R235 (2) : les colonnes — l’icône en premier, noms, ca
     { id: '7', cle: 'elfe', n: '3', libelle: 'Elfe', synonymes: '["Elfes","Sylvain"]', categories: '[3,6]', definition: ELFE.description, url: '/races/elfe/', couleur: 'race:pure' });
 });
 
-test('R234 (2), R233 (8), (9), R235 (2) : les noms — le libellé seul, puis « Aussi appelé : » ses synonymes ; l’icône seule dans sa colonne ; les catégories nommées dans l’ordre de leur id', () => {
+test('R234 (2), R233 (8), (9), R235 (2) : les noms — le libellé seul, puis ses synonymes sans étiquette ; l’icône seule dans sa colonne ; les catégories nommées dans l’ordre de leur id', () => {
   const noms = ligne(ELFE).querySelector('.glossaire-mot__noms');
   assert.equal(noms.querySelector('.glossaire-mot__nom').textContent, 'Elfe');
-  assert.equal(noms.querySelector('.glossaire-mot__synonymes').textContent, 'Aussi appelé : Elfes, Sylvain');
+  assert.equal(noms.querySelector('.glossaire-mot__synonymes').textContent, 'Elfes, Sylvain');
   assert.equal(ligne({ ...ELFE, synonymes: [] }).querySelector('.glossaire-mot__synonymes'), null, 'sans synonyme : rien');
   const ro = ligne({ id: 8, cle: 'ricken-dor', libelle: 'Ricken d’or', monnaie_id: 'ro', icone: 'monnaie:ro', synonymes: ['RO'] });
   const piece = el('div');
   piece.innerHTML = htmlDePiece('RO');
   assert.equal(ro.querySelector('.glossaire-mot__icone').innerHTML, piece.innerHTML, 'l’icône seule, dans la première colonne (R235 (2))');
   assert.equal(ro.querySelector('.glossaire-mot__nom').innerHTML, 'Ricken d’or', 'le nom : le libellé seul');
-  assert.equal(ro.querySelector('.glossaire-mot__synonymes'), null, 'l’abréviation de sa monnaie n’est pas un « Aussi appelé » (R234 (8), R235 (4))');
+  assert.equal(ro.querySelector('.glossaire-mot__synonymes'), null, 'l’abréviation de sa monnaie n’est pas un synonyme affiché (R234 (8), R235 (4))');
   assert.equal(ligne(ELFE).querySelector('.glossaire-mot__icone').innerHTML, '', 'sans icône : la case vide');
   assert.equal(ligne(ELFE).querySelector('.glossaire-mot__categories').textContent, 'Race, Classe', 'R232 (5) : dans l’ordre de leur id');
   assert.deepEqual(libellesDesCategories([6, 3, 99], new Map([[3, 'Race'], [6, 'Classe']])), ['Race', 'Classe'], 'une catégorie inconnue : rien');

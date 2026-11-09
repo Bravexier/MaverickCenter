@@ -55,6 +55,6 @@ main.page-coloree {
 }
 :where(main.page-coloree) > * { --couleur: initial; --couleur-texte: initial; }
 main.page-coloree h1 { padding-bottom: 0.2rem; border-bottom: 3px solid var(--mag); }
-/* les synonymes d'un mot-clé sous le titre de sa bulle, « Aussi appelé : … » (décision R233 (8) ; lib/mots-cles-balises.mjs#htmlDeLaBulle) : la casse
+/* les synonymes d'un mot-clé sous le titre de sa bulle, sans étiquette (décision R233 (8) ; lib/mots-cles-balises.mjs#htmlDeLaBulle) : la casse
    telle qu'écrite (pas de petites capitales) */
 .bulle__aussi { display: block; margin-top: 0.1rem; color: var(--muted); font-size: var(--fs-sm); font-style: italic; }

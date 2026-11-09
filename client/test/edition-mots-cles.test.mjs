@@ -158,7 +158,7 @@ test('au chargement : le tableau relu dans la base vivante (ordre, mentions, cat
   attendue.innerHTML = htmlDeLaLigneDuGlossaire(VIVANT[1], { base: '/', categories: CATEGORIES });
   assert.equal(feu.outerHTML, attendue.children[0].outerHTML);
   assert.equal(feu.querySelector('.glossaire-mot__categories').textContent, 'Magie', 'ses catégories, nommées');
-  assert.equal(feu.querySelector('.glossaire-mot__synonymes').textContent, 'Aussi appelé : Flamme', 'R233 (8)');
+  assert.equal(feu.querySelector('.glossaire-mot__synonymes').textContent, 'Flamme', 'R233 (8)');
   assert.equal(feu.querySelector('.glossaire-mot__definition').textContent, 'Ce qui brûle.', 'la définition dans sa ligne');
   assert.equal(feu.dataset.definition, 'Ce qui brûle.');
   assert.equal(ligne(p.liste, 'aide').dataset.definition, undefined);
@@ -696,20 +696,20 @@ test('service : un mot-clé qui reçoit une fusion n’est pas supprimé dans le
   assert.deepEqual(s.motCle(X.id), { id: X.id, libelle: X.libelle });
 });
 
-test('R233 (8), R235 : les synonymes en « Aussi appelé » dans la ligne et en data-synonymes ; l’icône seule en première colonne (le RO, sans son abréviation en « Aussi appelé ») ; la définition en icônes ; au crayon, le choix de l’icône, désactivé sur un verrouillé', async () => {
+test('R233 (8), R235 : les synonymes sans étiquette dans la ligne et en data-synonymes ; l’icône seule en première colonne (le RO, sans son abréviation en synonyme) ; la définition en icônes ; au crayon, le choix de l’icône, désactivé sur un verrouillé', async () => {
   const avecSynonymes = [...VIVANT.slice(0, 3), v(20, 'Armure magique', 0, 0, 'Protège des sorts.', { synonymes: ['AM', 'Bouclier de mana'] }),
     v(21, 'Ricken d’or', 0, 1, '1 RO = 100 RF.', { monnaie_id: 'ro', icone: 'monnaie:ro', synonymes: ['RO'] })];
   const p = await monter({ vocabulaire: avecSynonymes });
   await p.motsCles.surcouche(p.ed, []);
   const am = ligne(p.liste, 'armure-magique');
   assert.equal(am.querySelector('.glossaire-mot__nom').textContent, 'Armure magique', 'le libellé seul (R233 (9))');
-  assert.equal(am.querySelector('.glossaire-mot__synonymes').textContent, 'Aussi appelé : AM, Bouclier de mana');
+  assert.equal(am.querySelector('.glossaire-mot__synonymes').textContent, 'AM, Bouclier de mana');
   assert.equal(am.dataset.synonymes, '["AM","Bouclier de mana"]', 'la page les lit (filtre)');
   assert.equal(am.querySelector('.glossaire-mot__icone').innerHTML, '', 'sans icône : la case vide');
   assert.equal(ligne(p.liste, 'aide').querySelector('.glossaire-mot__synonymes'), null, 'sans synonyme : rien');
   const ro = ligne(p.liste, 'ricken-dor');
   assert.equal(ro.querySelector('.glossaire-mot__nom').textContent, 'Ricken d’or', 'le nom : le libellé seul (l’icône a sa colonne)');
-  assert.equal(ro.querySelector('.glossaire-mot__synonymes'), null, 'l’abréviation de sa monnaie n’est pas un « Aussi appelé » (R234 (8), R235 (4))');
+  assert.equal(ro.querySelector('.glossaire-mot__synonymes'), null, 'l’abréviation de sa monnaie n’est pas un synonyme affiché (R234 (8), R235 (4))');
   const piece = el('div');
   piece.innerHTML = htmlDePiece('RO'); // relu comme le navigateur (les entités réécrites)
   assert.equal(ro.children[0].children[0].className, 'glossaire-mot__icone', 'la première colonne');
