@@ -155,14 +155,40 @@ function etatDesLignes() {
     fusion.disabled = supprime;
     for (const saisie of t.querySelectorAll('.ed-saisie, .ed-mot-cle__synonymes-saisie, .ed-mot-cle__categorie input')) saisie.disabled = supprime || Boolean(cible);
   }
+  const portees = categoriesPortees();
   for (const li of document.querySelectorAll('li.ed-categorie-mot-cle')) {
     const supprimer = li.querySelector('.ed-categorie-mot-cle__supprimer');
     if (!supprimer) continue;
-    const enFile = categoriesSupprimees.has(Number(li.dataset.id));
+    const id = Number(li.dataset.id);
+    const c = categories.find((x) => x.id === id);
+    const n = portees ? (portees.get(id) ?? 0) : Number(c?.mots_cles ?? 0);
+    const offerte = suppressionDeCategorieOfferte({ mots_cles: n });
+    if (!offerte) categoriesSupprimees.delete(id); // cochée de nouveau : la suppression en file tombe
+    const enFile = categoriesSupprimees.has(id);
+    li.querySelector('.ed-categorie-mot-cle__compte').textContent = `${n} mot${n > 1 ? 's' : ''}-clé${n > 1 ? 's' : ''}`;
     li.classList.toggle('ed-supprime', enFile);
+    supprimer.disabled = !offerte;
+    supprimer.title = offerte ? 'Aucun mot-clé ne la porte : la retirer (à l’enregistrement)'
+      : `Portée par ${n} mot${n > 1 ? 's' : ''}-clé${n > 1 ? 's' : ''} : décochez-la d’abord (une catégorie ne se supprime que vide, décision R232 (5))`;
     supprimer.setAttribute('aria-pressed', String(enFile));
     supprimer.textContent = enFile ? 'Sera supprimée — annuler' : 'Supprimer';
   }
+}
+
+/**
+ * Le nombre de mots-clés qui portent chaque catégorie d'après les cases cochées du tableau de gestion (Map(id → n)), sans les mots-clés qui
+ * disparaissent (supprimés, fusionnés) : une catégorie décochée partout devient supprimable dans le même lot (les catégories des mots-clés partent
+ * avant les catégories supprimées, `operationsDuVocabulaire`). null hors du tableau de gestion : le compte lu dans la base sert.
+ */
+function categoriesPortees() {
+  if (!tableau()?.hasAttribute('data-gestion')) return null;
+  const sortants = retires();
+  const portees = new Map();
+  for (const [id, s] of saisiesDesListes()) {
+    if (sortants.has(id)) continue;
+    for (const c of s.categories ?? []) portees.set(c, (portees.get(c) ?? 0) + 1);
+  }
+  return portees;
 }
 
 /** La petite boîte « Fusionner « X » dans… » : une saisie avec les autres mots-clés en suggestions ; `choisir(cible)` à la validation. */
@@ -278,7 +304,10 @@ function caseDeCategorie(ed, c, cochee) {
   caseACocher.type = 'checkbox';
   caseACocher.value = String(c.id);
   caseACocher.checked = cochee;
-  caseACocher.addEventListener('change', () => ed.marquerModifie());
+  caseACocher.addEventListener('change', () => {
+    ed.marquerModifie();
+    etatDesLignes(); // le compte des catégories et leur « Supprimer »
+  });
   label.append(caseACocher, ` ${c.libelle}`);
   return label;
 }
@@ -414,8 +443,9 @@ function dessinerLaGestion(ed) {
 
 /**
  * La gestion des catégories des mots-clés (décision R232 (5) : « une catégorie s'ajoute, se renomme, et se supprime si elle est vide »), au-dessus du
- * tableau : chacune en saisie commune (son libellé : categorie_mot_cle.libelle), le nombre de mots-clés qui la portent, « Supprimer » pour une
- * catégorie vide (mis en file) ; « + Ajouter une catégorie » la crée tout de suite.
+ * tableau : chacune en saisie commune (son libellé : categorie_mot_cle.libelle), le nombre de mots-clés qui la portent (d'après les cases cochées),
+ * « Supprimer » permis quand elle est vide (mis en file), désactivé avec sa raison sinon ; « + Ajouter une catégorie », visible à côté de
+ * « + Ajouter un mot-clé », la crée tout de suite.
  */
 function dessinerLesCategories(ed) {
   const bloc = document.querySelector('.ed-categories-mots-cles');
@@ -433,19 +463,18 @@ function ligneDeCategorie(ed, c) {
   nom.dataset.ed = attributEd('categorie_mot_cle', { id: c.id }, 'libelle');
   const n = Number(c.mots_cles ?? 0);
   li.append(nom, element('span', 'ed-categorie-mot-cle__compte', `${n} mot${n > 1 ? 's' : ''}-clé${n > 1 ? 's' : ''}`));
-  if (suppressionDeCategorieOfferte(c)) {
-    const supprimer = bouton('Supprimer', 'ed-outil ed-outil--danger ed-categorie-mot-cle__supprimer');
-    supprimer.setAttribute('aria-pressed', 'false');
-    supprimer.title = 'Aucun mot-clé ne la porte : la retirer (à l’enregistrement)';
-    supprimer.addEventListener('click', () => {
-      if (!categoriesSupprimees.delete(c.id)) {
-        categoriesSupprimees.add(c.id);
-        ed.marquerModifie();
-      }
-      etatDesLignes();
-    });
-    li.append(supprimer);
-  }
+  // « Supprimer » sur chaque catégorie, permis seulement quand aucun mot-clé ne la porte plus (R232 (5)) : état et raison posés par etatDesLignes
+  const supprimer = bouton('Supprimer', 'ed-outil ed-outil--danger ed-categorie-mot-cle__supprimer');
+  supprimer.setAttribute('aria-pressed', 'false');
+  supprimer.disabled = !suppressionDeCategorieOfferte(c);
+  supprimer.addEventListener('click', () => {
+    if (!categoriesSupprimees.delete(c.id)) {
+      categoriesSupprimees.add(c.id);
+      ed.marquerModifie();
+    }
+    etatDesLignes();
+  });
+  li.append(supprimer);
   return li;
 }
 
@@ -463,6 +492,7 @@ function ajouterLaCategorie(ed, ligne) {
     document.querySelector('.ed-categories-mots-cles summary').textContent = `Catégories des mots-clés (${categories.length})`;
   }
   for (const f of document.querySelectorAll('.ed-mot-cle__categories-choix')) f.append(caseDeCategorie(ed, c, false));
+  etatDesLignes();
   annoncerLeTableau(Boolean(tableau()?.hasAttribute('data-gestion')));
 }
 
@@ -543,7 +573,7 @@ export const motsCles = {
         },
       }),
     );
-    // la gestion des catégories (R232 (5)) : repliée, au-dessus du tableau
+    // la gestion des catégories (R232 (5)) : « + Ajouter une catégorie » à côté de « + Ajouter un mot-clé », la liste repliée dessous
     const blocCategories = element('details', 'ed-categories-mots-cles');
     blocCategories.append(element('summary', '', 'Catégories des mots-clés'), element('ul', 'ed-categories-mots-cles__liste'));
     const nouvelle = bouton('+ Ajouter une catégorie', 'ed-outil');
@@ -561,8 +591,7 @@ export const motsCles = {
         },
       }),
     );
-    blocCategories.append(nouvelle);
-    outils.append(nouveau, blocCategories);
+    outils.append(nouveau, nouvelle, blocCategories);
     tableau()?.closest('.tableau')?.before(outils);
     // le vocabulaire relu au crayon : les saisies partent de la base vivante telle qu'elle est maintenant
     relire(ed).then((lu) => {
