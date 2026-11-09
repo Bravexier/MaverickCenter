@@ -42,7 +42,7 @@ test('au chargement : les balises de la page rendues avec le vocabulaire vivant,
     'dans une bulle : ni bulle ni focus');
   assert.match(html('lien'), /data-bulle="mot-cle-mordhau" aria-describedby="mot-cle-mordhau" data-balise="\{\{mordhau\|la prise\}\}">la prise<\/strong><\/a>/, 'dans un lien : sans tabindex');
   assert.ok(document.getElementById('mot-cle-non-mort'), 'la bulle de « Non-mort »');
-  assert.equal(document.getElementById('mot-cle-non-mort').querySelector('.bulle__aussi').textContent, 'Aussi appelé : Mort-vivant', 'ses synonymes (R233 (8))');
+  assert.equal(document.getElementById('mot-cle-non-mort').querySelector('.bulle__aussi').textContent, 'Mort-vivant', 'ses synonymes (R233 (8))');
   assert.ok(document.getElementById('mot-cle-mordhau'), 'la bulle de « Mordhau »');
   assert.equal(document.getElementById('mot-cle-recharge-longue'), null, 'pas de bulle sans définition');
   // déjà rendus au build : refaits d'après le vocabulaire vivant

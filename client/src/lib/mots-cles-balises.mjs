@@ -718,7 +718,7 @@ function avecLIcone(html, valeur) {
 
 /**
  * Le nom d'un mot-clé en HTML, là où le glossaire le nomme (titre de sa bulle, nom du mode complet ; pastille et vue de /recherche/) : son libellé seul
- * (décision R233 (9) : « Libellé seul », plus de « Libellé (ABR) » ; ses synonymes vont dans « Aussi appelé »), suivi de son icône quand il en a une
+ * (décision R233 (9) : « Libellé seul », plus de « Libellé (ABR) » ; ses synonymes vont dessous), suivi de son icône quand il en a une
  * (`icone`, migration 0116, décision R235 (3) : « comme les monnaies » ; le RF, le RO, la PP l'ont reçue, R63 : plus d'abréviation de monnaie visible).
  */
 export function htmlDuNomDuMotCle({ libelle, icone = null }) {
@@ -740,7 +740,7 @@ const abreviationDeLaMonnaie = (monnaieId) => (monnaieId ? Object.entries(MONNAI
 export const htmlDeLaPastille = ({ libelle, icone = null, n }) => `<span class="recherche-nom">${htmlDuNomDuMotCle({ libelle, icone })}</span>${n > 0 ? ` · ${n}` : ''}`;
 
 /**
- * Les synonymes d'un mot-clé tels qu'ils s'affichent en « Aussi appelé : … » (décision R233 (8), (9) : tous, l'ancienne abréviation comprise, « IC »),
+ * Les synonymes d'un mot-clé tels qu'ils s'affichent sous son nom (décision R233 (8), (9) : tous, l'ancienne abréviation comprise, « IC »),
  * dans leur ordre : ses `synonymes` ([écriture] ou [{ libelle }]), sauf, pour le mot-clé d'une monnaie (`monnaie_id`), l'abréviation de cette monnaie
  * (« RO » : décision R63, plus d'abréviation de monnaie visible ; son nom porte déjà l'icône de la monnaie, htmlDuNomDuMotCle).
  */
@@ -750,10 +750,11 @@ export function synonymesAffiches(m) {
     .filter((x) => !monnaie || x.trim().toUpperCase() !== monnaie);
 }
 
-/** « Aussi appelé : A, B » en HTML (décision R233 (8)) dans un `<span>` de la classe `classe` ; '' sans synonyme affiché (synonymesAffiches). */
+/** Les synonymes affichés, « A, B », en HTML (décision R233 (8)), sans étiquette (demande du propriétaire du 2026-11-09 : plus de « Aussi appelé : »),
+ * dans un `<span>` de la classe `classe` ; '' sans synonyme affiché (synonymesAffiches). */
 export function htmlAussiAppele(m, classe) {
   const synonymes = synonymesAffiches(m);
-  return synonymes.length ? `<span class="${classe}">Aussi appelé : ${synonymes.map((x) => echapper(x)).join(', ')}</span>` : '';
+  return synonymes.length ? `<span class="${classe}">${synonymes.map((x) => echapper(x)).join(', ')}</span>` : '';
 }
 
 /**
@@ -792,7 +793,7 @@ export function libellesDesCategories(ids, categories) {
  * tableaux, skill ui-tableaux), un `<tbody>` de deux lignes :
  *   - la ligne du mot-clé (`tr.glossaire-mot__ligne`) : son icône seule, dans une colonne étroite, en premier (décision R235 (2) ; vide sans icône),
  *     ses noms (R234 (2) : le libellé principal, seul, R233 (9) ; puis
- *     « Aussi appelé : … », ses synonymes, R233 (8)), ses catégories (leurs libellés, R232), son lien (R234 (2), réponse T5 : le titre de la page où il
+ *     ses synonymes, R233 (8)), ses catégories (leurs libellés, R232), son lien (R234 (2), réponse T5 : le titre de la page où il
  *     mène, en lien, sinon l'adresse brute ; `m.lien` = { page, titre } | null, lib/mots-cles-db.mjs#pagesDesLiens), puis le menu déroulant des pages
  *     qui le mentionnent (R234 (3), réponse T2 : ses mentions au sens de R196, étiquettes et balises, une ligne par page, sans doublon : pagesDesMentions ;
  *     « Seulement les pages » : une mention qu'aucune page ne montre n'y est pas, et le total au résumé ne compte que les pages ; il remplace l'ancien
@@ -858,7 +859,7 @@ export const htmlDeLaDefinition = (description) => htmlAvecMonnaies(description 
 
 /**
  * La bulle d'un mot-clé décrit (posée une fois par page, hors de toute zone modifiable) ; '' pour un mot-clé inconnu ou sans définition. Son titre est
- * son nom (htmlDuNomDuMotCle : le libellé seul, R233 (9), suivi de son icône, R235 (3)), puis « Aussi appelé : … » quand il a des synonymes (R233 (8) :
+ * son nom (htmlDuNomDuMotCle : le libellé seul, R233 (9), suivi de son icône, R235 (3)), puis ses synonymes quand il en a (R233 (8) :
  * la balise `{{AM}}` montre « AM », sa bulle dit ce qu'elle abrège) et sa définition. `id` : l'id du mot-clé ; la bulle a pour id `mot-cle-<clé>`
  * (idDeBulle).
  */
@@ -871,7 +872,7 @@ export function htmlDeLaBulle(id, vocabulaire) {
   // les monnaies de la définition en icônes, comme dans tout texte courant (décision R63 : « Monnaies : le Ricken de fer (RF)… », migration 0090)
   // un mot-clé coloré habille sa bulle de sa couleur (filet, titre : styles/global/mots-cles.css), comme une page colorée les siennes
   const classe = classeDuMotCle(m);
-  // ses synonymes sous le titre, « Aussi appelé : … » (décision R233 (8), (9) ; sauf l'abréviation de sa propre monnaie, exclue partout : R234 (8),
+  // ses synonymes sous le titre, sans étiquette (décision R233 (8), (9) ; sauf l'abréviation de sa propre monnaie, exclue partout : R234 (8),
   // R235 (4) — synonymesAffiches)
   return `<span class="${classe ? `bulle ${classe}` : 'bulle'}" role="tooltip" id="${idDeBulle(m.cle)}" hidden><strong class="bulle__titre">${htmlDuNomDuMotCle(m)}</strong>`
     + `${htmlAussiAppele(m, 'bulle__aussi')}<span class="bulle__texte">${htmlAvecMonnaies(definition)}</span></span>`;

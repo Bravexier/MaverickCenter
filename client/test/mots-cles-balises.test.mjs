@@ -245,15 +245,15 @@ test('une bulle par mot-clé employé et par page, avant </body> (hors de toute 
   assert.equal(htmlDeLaBalise(lireUneBalise('{{perdu:}}'), V).html, 'perdu', 'mode complet d’un mot-clé inconnu : sa ref');
 });
 
-test('R233 (8), (9) : le titre de la bulle est le libellé seul, ses synonymes (l’ancienne abréviation comprise) en « Aussi appelé » ; sans synonyme, rien de plus', () => {
+test('R233 (8), (9) : le titre de la bulle est le libellé seul, ses synonymes (l’ancienne abréviation comprise) sans étiquette ; sans synonyme, rien de plus', () => {
   const vocabulaire = [...VOCABULAIRE, { id: 20, cle: 'armure-magique', libelle: 'Armure magique', description: 'Protège des sorts.', synonymes: ['AM', 'Bouclier de mana'] }];
   assert.equal(htmlDeLaBulle(20, vocabulaire),
     '<span class="bulle" role="tooltip" id="mot-cle-armure-magique" hidden><strong class="bulle__titre">Armure magique</strong>'
-    + '<span class="bulle__aussi">Aussi appelé : AM, Bouclier de mana</span><span class="bulle__texte">Protège des sorts.</span></span>');
+    + '<span class="bulle__aussi">AM, Bouclier de mana</span><span class="bulle__texte">Protège des sorts.</span></span>');
   assert.doesNotMatch(htmlDeLaBulle(ID['non-mort'], vocabulaire), /bulle__aussi/, 'sans synonyme : le titre et la définition');
   assert.match(htmlDeLaBulle(ID['non-mort'], vocabulaire), /<strong class="bulle__titre">Non-mort<\/strong><span class="bulle__texte">/);
   assert.equal(synonymesAffiches({ synonymes: ['A & <b>'] })[0], 'A & <b>');
-  assert.match(htmlAussiAppele({ synonymes: ['A & <b>', 'c'] }, 'x'), /^<span class="x">Aussi appelé : A &amp; &lt;b&gt;, c<\/span>$/, 'échappé');
+  assert.match(htmlAussiAppele({ synonymes: ['A & <b>', 'c'] }, 'x'), /^<span class="x">A &amp; &lt;b&gt;, c<\/span>$/, 'échappé');
   // la balise « {{AM}} » montre le synonyme écrit ; sa bulle, ce qu'il désigne
   const page = pageAvecMotsCles('<html><body><p>{{AM}} et {{armure-magique}}</p></body></html>', vocabulaireDesMotsCles(vocabulaire));
   assert.match(page, /<strong class="mot-cle" data-mot-cle="armure-magique"[^>]*>AM<\/strong> et <strong class="mot-cle" data-mot-cle="armure-magique"[^>]*>Armure magique<\/strong>/);
@@ -276,9 +276,9 @@ test('R233 (9), R235 (3) : le nom d’un mot-clé est son libellé seul, suivi d
   assert.equal(htmlDeLaPastille({ libelle: 'Armure magique', n: 3 }), '<span class="recherche-nom">Armure magique</span> · 3');
   assert.equal(htmlDeLaPastille({ libelle: 'Armure magique', n: 0 }), '<span class="recherche-nom">Armure magique</span>', 'sans page : pas de nombre');
   assert.equal(htmlDeLaPastille({ libelle: 'Ricken d’or', icone: 'monnaie:ro', n: 1 }), `<span class="recherche-nom">Ricken d’or ${htmlDePiece('RO')}</span> · 1`);
-  // la bulle : le même nom en titre ; l'abréviation de sa propre monnaie n'est pas un « Aussi appelé » (R63 : son icône est déjà là)
+  // la bulle : le même nom en titre ; l'abréviation de sa propre monnaie n'est pas un synonyme affiché (R63 : son icône est déjà là)
   const bulle = htmlDeLaBulle(30, [{ id: 30, cle: 'ricken-dor', libelle: 'Ricken d’or', monnaie_id: 'ro', icone: 'monnaie:ro', synonymes: ['RO', 'Ro d’or'], description: '1 RO = 100 RF.' }]);
-  assert.ok(bulle.includes(`<strong class="bulle__titre">Ricken d’or ${htmlDePiece('RO')}</strong><span class="bulle__aussi">Aussi appelé : Ro d’or</span>`), bulle);
+  assert.ok(bulle.includes(`<strong class="bulle__titre">Ricken d’or ${htmlDePiece('RO')}</strong><span class="bulle__aussi">Ro d’or</span>`), bulle);
   assert.deepEqual(synonymesAffiches({ monnaie_id: 'ro', synonymes: ['ro'] }), []);
   // la définition de la vue : monnaies en icônes, balises gardées (le middleware les rend ensuite)
   assert.equal(htmlDeLaDefinition('Voir {{non-mort}} : 10 RO.'), htmlAvecMonnaies('Voir {{non-mort}} : 10 RO.'));
