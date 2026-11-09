@@ -384,7 +384,7 @@ test('R233, R232 (5), réponse T6 : les synonymes (liste ordonnée, un par ligne
   ], 'suppressions, catégories (verrouillé compris, R232 (11)), puis synonymes ; rien pour « aide », supprimé');
 });
 
-test('R232 (5) : la gestion des catégories — chacune renommable (saisie commune), « Supprimer » pour une catégorie vide (en file, à la fin du lot), « + Ajouter une catégorie » la crée tout de suite et l’ajoute aux cases de chaque mot-clé', async () => {
+test('R232 (5) : la gestion des catégories — chacune renommable (saisie commune), « Supprimer » permis pour une catégorie vide (en file, à la fin du lot), désactivé sinon, « + Ajouter une catégorie » visible la crée tout de suite et l’ajoute aux cases de chaque mot-clé', async () => {
   const p = await monter();
   await p.motsCles.surcouche(p.ed, []);
   p.ed.enEdition = true;
@@ -399,7 +399,9 @@ test('R232 (5) : la gestion des catégories — chacune renommable (saisie commu
   assert.deepEqual(lireAttributEd(items[1].querySelector('[data-ed]').dataset.ed), lireAttributEd(JSON.stringify(['categorie_mot_cle', { id: 2 }, 'libelle'])));
   assert.equal(items[1].querySelector('.ed-categorie-mot-cle__compte').textContent, '1 mot-clé');
   assert.ok(items[0].querySelector('.ed-categorie-mot-cle__supprimer'), 'vide : « Supprimer »');
-  assert.equal(items[1].querySelector('.ed-categorie-mot-cle__supprimer'), null, 'non vide : pas de « Supprimer »');
+  assert.equal(items[0].querySelector('.ed-categorie-mot-cle__supprimer').disabled, false);
+  const supprimer2 = items[1].querySelector('.ed-categorie-mot-cle__supprimer');
+  assert.ok(supprimer2.disabled && /R232 \(5\)/.test(supprimer2.title), 'non vide : « Supprimer » désactivé, avec sa raison');
   cliquer(items[0].querySelector('.ed-categorie-mot-cle__supprimer'));
   assert.ok(items[0].classList.contains('ed-supprime'));
   assert.equal(items[0].querySelector('.ed-categorie-mot-cle__supprimer').textContent, 'Sera supprimée — annuler');
@@ -407,9 +409,21 @@ test('R232 (5) : la gestion des catégories — chacune renommable (saisie commu
   assert.deepEqual(p.motsCles.operations(p.ed, [renommage]), [renommage, { op: 'supprimer', entite: 'categorie_mot_cle', cle: { id: 1 } }]);
   cliquer(items[0].querySelector('.ed-categorie-mot-cle__supprimer'));
   assert.deepEqual(p.motsCles.operations(p.ed, []), [], 'annulée');
+  // décochée sur le seul mot-clé qui la porte : supprimable dans le même lot, après le changement des catégories ; recochée : la suppression tombe
+  cocher(ligne(p.liste, 'feu'), 2, false);
+  assert.equal(items[1].querySelector('.ed-categorie-mot-cle__compte').textContent, '0 mot-clé');
+  assert.equal(supprimer2.disabled, false);
+  cliquer(supprimer2);
+  const ops = p.motsCles.operations(p.ed, []);
+  assert.deepEqual(ops.map((o) => o.op), ['categories_mot_cle', 'supprimer']);
+  assert.deepEqual(ops[1], { op: 'supprimer', entite: 'categorie_mot_cle', cle: { id: 2 } });
+  cocher(ligne(p.liste, 'feu'), 2, true);
+  assert.ok(supprimer2.disabled && !items[1].classList.contains('ed-supprime'));
+  assert.deepEqual(p.motsCles.operations(p.ed, []), [], 'recochée : rien en file');
   // une catégorie créée : tout de suite, dans la liste et dans les cases de chaque mot-clé (rien n'est redessiné : les saisies en cours restent)
   synonymes(ligne(p.liste, 'feu')).value = 'Saisie en cours';
-  const ajouter = bloc.querySelectorAll('button').find((b) => b.textContent === '+ Ajouter une catégorie');
+  const ajouter = p.document.querySelector('.ed-outils-mots-cles').querySelectorAll('button').find((b) => b.textContent === '+ Ajouter une catégorie');
+  assert.ok(ajouter && !bloc.querySelectorAll('button').includes(ajouter), 'hors de la liste repliée, à côté de « + Ajouter un mot-clé »');
   cliquer(ajouter);
   const f = p.formulaires.at(-1);
   assert.deepEqual(f.champs.map((c) => [c.nom, c.type, c.requis]), [['libelle', 'ligne', true]]);
@@ -627,8 +641,7 @@ test('service, R233 : les synonymes saisis sur le Glossaire sont enregistrés da
 test('service, R232 (5) : une catégorie créée, renommée, puis supprimée vide depuis le Glossaire ; une catégorie posée sur un mot-clé, et retirée', async () => {
   const s = await surLeService({ A: 'Essai catégorie' });
   const { A } = s.mots;
-  const bloc = s.document.querySelector('.ed-categories-mots-cles');
-  cliquer(bloc.querySelectorAll('button').find((b) => b.textContent === '+ Ajouter une catégorie'));
+  cliquer(s.document.querySelector('.ed-outils-mots-cles').querySelectorAll('button').find((b) => b.textContent === '+ Ajouter une catégorie'));
   const libelle = `Essai catégorie ${process.pid}`;
   await s.formulaires.at(-1).valider({ libelle });
   const c = s.db.prepare('SELECT id FROM categorie_mot_cle WHERE libelle = ?').get(libelle)?.id;
@@ -638,7 +651,7 @@ test('service, R232 (5) : une catégorie créée, renommée, puis supprimée vid
   assert.equal(r.refus, undefined, r.refus?.message);
   assert.deepEqual(s.db.prepare('SELECT categorie_id FROM mot_cle_categorie WHERE mot_cle_id = ?').all(A.id).map((x) => x.categorie_id), [c]);
   await s.relire();
-  assert.equal(s.document.querySelector(`li.ed-categorie-mot-cle[data-id="${c}"] .ed-categorie-mot-cle__supprimer`), null, 'non vide : pas de « Supprimer »');
+  assert.equal(s.document.querySelector(`li.ed-categorie-mot-cle[data-id="${c}"] .ed-categorie-mot-cle__supprimer`).disabled, true, 'non vide : « Supprimer » désactivé');
   s.categorie(c).controle.value = `${libelle} bis`;
   cocher(ligne(s.liste, A.id), c, false);
   r = await s.enregistrer();
