@@ -2,7 +2,7 @@
 
 Ne lis jamais `docs/decisions-regles.md` en entier : trouve ici le numéro de la décision, puis cherche sa ligne avec Grep (motif `^\| R41 \|`) et ne lis qu'elle.
 
-Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 246 décisions, de R1 à R246, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
+Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 248 décisions, de R1 à R248, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
 
 | Réf. | Sujet | Décision |
 | --- | --- | --- |
@@ -252,3 +252,5 @@ Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas mo
 | R244 | Coûts des sorts que le classeur de Décembre écrit sans les répartir (R237… | (1) Même lecture que R106 avec le nouveau chiffre : Ru… |
 | R245 | Affichage des pages de magie V10 (R236 (1)) : la règle « CHOSES A SAVOIR »… | (1) Les phrases de « CHOSES A SAVOIR » sur la Super-ma… |
 | R246 | Nom affiché par la capacité « sort supplémentaire » de la Poupée fulgurant… | La capacité affiche « Boules plasmiques », le nouveau… |
+| R247 | Affichage des pages de magie V10, suite de R245 (1) et (2) : le point d'at… | (1) L'infobulle se pose sur le titre de chacune des de… |
+| R248 | Projectile arcanique : coût et fiche, suite de R244 (3) : la réponse « Var… | (1) La progression fait foi : 1 projectile coûte 4, ch… |

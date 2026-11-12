@@ -1,7 +1,7 @@
 # Ce qu'il reste à valider sur la base de données
 
 Deux listes : les **choix de forme** du schéma (ce que tu peux relire dans [`apercu.md`](apercu.md)) et les **questions de contenu** que les sources ne tranchent pas.
-Les décisions déjà prises sont dans [`../decisions-regles.md`](../decisions-regles.md) (R1 à R246, liste à jour) ; la conception complète est dans [`conception.md`](conception.md) (§2 conventions, §12 points ouverts).
+Les décisions déjà prises sont dans [`../decisions-regles.md`](../decisions-regles.md) (R1 à R248, liste à jour) ; la conception complète est dans [`conception.md`](conception.md) (§2 conventions, §12 points ouverts).
 
 ## 1. Choix de forme du schéma
 
@@ -418,9 +418,11 @@ Demande du propriétaire du 2026-11-12 : intégrer « MISE À JOUR - DÉCEMBRE.d
 | --- | --- | --- | --- |
 | MAJ-G1 | Initiative groupée (R240) | Son texte : qui lance, combien de jets, quand, dans quel ordre on joue (aucune source ne le donne) | Initiative individuelle seule |
 | MAJ-R2 | Races Fongoïde et Gémidien (R239) | Vitesse au sol et vitesse de nage (les onglets n'en écrivent pas) | Races absentes (lot 4) |
-| MAJ-K7 | Projectile arcanique (R244 (3) : 4, puis chaque projectile supplémentaire 1 de plus, sans limite, réduction sur le total seulement) | (1) Le texte affiché : coût « 4 » et, en coût secondaire, (a) « +1 par projectile supplémentaire, réduction sur le total » ; (b) « Le coût de chaque projectile supplémentaire augmente » ; autre (à écrire). (2) La fiche : (a) affiche 4, réduit (R102), comme le total d'un seul projectile ; (b) affiche 4 sans réduction, le texte disant la règle ; autre | Coût écrit, sans valeur typée |
-| MAJ-K8 | Projectile arcanique, réponse à MAJ-K3 : « 10 projectiles : 4 + 5 + 6 +7 + 8 + 9 + 10 + 11 + 12 + 13 + 14 » compte onze termes | La ligne se lit-elle 4 + … + 13 (dix projectiles) ? Oui / non (dire laquelle). Ne bloque rien : aucun total n'est écrit sur le site | Ligne non reprise |
-| MAJ-A5 | Infobulle des phrases « Super-magie » et « choix de chemin des bi-magie » (R245 (1)) | Où se pose-t-elle sur chaque page de magie : (a) sur le titre de chaque spécialisation ; (b) sur le titre de la section « Sorts » ; autre | Non affichée |
-| MAJ-A6 | Les autres phrases de « CHOSES A SAVOIR » (version en test ; « débloquables dès le niveau 3 de puissance magique » ; bêta et retours) | (a) aucune affichée ; (b) la phrase du niveau 3 aussi dans l'infobulle, les autres non ; autre | Non affichées |
+| MAJ-K7 | Projectile arcanique (R244 (3) : 4, puis chaque projectile supplémentaire 1 de plus, sans limite, réduction sur le total seulement) | (1) Le texte affiché : coût « 4 » et, en coût secondaire, (a) « +1 par projectile supplémentaire, réduction sur le total » ; (b) « Le coût de chaque projectile supplémentaire augmente » ; autre (à écrire). (2) décidé (R248). Reste (1) : la progression étant retenue (R248), le texte de coût secondaire à afficher, à écrire par le propriétaire (« Autre ») | Coût écrit, sans valeur typée |
+| MAJ-K8 | Projectile arcanique, ligne « 10 projectiles » | Décidé (R248) : 4 + … + 13 = 85 | — |
+| MAJ-A5 | Infobulle « Super-magie » et « bi-magie » | Décidé (R247) : titre de chaque spécialisation | — |
+| MAJ-A6 | Autres phrases de « CHOSES A SAVOIR » | Décidé (R247) : aucune autre | — |
+| MAJ-A7 | Onglets du Potentiel Illimité : R245 et R247 visent la page d'une magie | Les onglets du PI suivent-ils aussi les deux spécialisations côte à côte, la zone élargie et l'infobulle sur le titre de chaque spécialisation ? (a) Oui, comme la page de chaque magie ; (b) Non, les onglets restent comme aujourd'hui | Onglets comme aujourd'hui |
+| MAJ-G9 | L'Ombre a deux altérations liées (`etat_magie`) : la Peur et, depuis Décembre, la Somnolence (classeur, « Altération d'états » E58 ; spécialisation SONGE). Les dons qui donnent un cran « à la magie innée et son altération d'état » (Clerc ; ethnies des races hybrides ; Anansi d'Arcane, sur la magie tirée) écrivent une seule altération. (Les deux dons du Flagelleur n'en dépendent pas : R163 lit les listes de résistances et de faiblesses de la magie.) | Pour un personnage d'Ombre, le cran va : (a) à la Peur seule, comme avant Décembre ; (b) à la Peur et à la Somnolence ; (c) à la Peur, et à la Somnolence en plus pour un personnage de la spécialisation SONGE | La Peur seule |
 
-**Décidé le 2026-11-12** : MAJ-X1 à X7, F6, M13, G7 et la lecture des originaux (R237) ; F1, F3, F3b et F3c, F8, M7, M8 (R236) ; C1, C7, C9, C10, C11 (R238) ; R3, R5, R6, R7 (R239) ; G2 (R240) ; O1, O2 (R241) ; B1 (1), B1 (2), B2 (R242) ; S2, S3 (R243) ; K1 à K6 (R244) ; A1 à A4 (R245) ; B3 (R246).
+**Décidé le 2026-11-12** : MAJ-X1 à X7, F6, M13, G7 et la lecture des originaux (R237) ; F1, F3, F3b et F3c, F8, M7, M8 (R236) ; C1, C7, C9, C10, C11 (R238) ; R3, R5, R6, R7 (R239) ; G2 (R240) ; O1, O2 (R241) ; B1 (1), B1 (2), B2 (R242) ; S2, S3 (R243) ; K1 à K6 (R244) ; A1 à A4 (R245) ; B3 (R246) ; A5, A6 et la largeur des deux spécialisations (R247) ; K7 (2), K8 et la progression de Projectile arcanique (R248).
