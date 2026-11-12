@@ -324,3 +324,23 @@ test('les tolérances du rapprochement, sur un classeur synthétique : première
   assert.ok(sansAutre.aRelire.some((x) => x.ligne === 'chose {"id":"e"}'), 'sans l’instantané de l’autre classeur, la ligne est à relire');
   base.close();
 });
+
+test('une valeur de la base qui porte des balises du glossaire (R233) se lit dans la cellule qui n’en a pas : on compare le texte que la balise montre', () => {
+  const base = new DatabaseSync(':memory:');
+  base.exec(`
+    CREATE TABLE correction (classeur TEXT, onglet TEXT, cellule TEXT, champ TEXT, avant TEXT, apres TEXT);
+    CREATE TABLE page_entite (entite_table TEXT, entite_id TEXT, page_id TEXT);
+    CREATE TABLE note_cellule (entite_table TEXT, entite_id TEXT, rang INTEGER, texte TEXT, nature TEXT, source_ref TEXT, PRIMARY KEY (entite_table, entite_id, rang));
+    CREATE TABLE commentaire_orphelin (id TEXT PRIMARY KEY, occurrence INTEGER, texte TEXT, source_ref TEXT);
+    CREATE TABLE chose (id TEXT PRIMARY KEY, nom TEXT, source_ref TEXT);
+  `);
+  const ajouter = base.prepare('INSERT INTO chose (id, nom, source_ref) VALUES (?, ?, ?)');
+  ajouter.run('a', 'Si {{corruption|CR}} : inflige 4 {{corruption|corruption}}.', 'Essai › Texte › A1');
+  const dump = (texte) => ({ sheets: [{ name: 'Texte', cells: [{ r: 1, c: 1, v: texte }] }] });
+  const lu = rapprocher(base, { classeur: 'Essai', dump: dump('Si CR : inflige 4 corruption.') });
+  assert.equal(nombreDEcarts(lu), 0, rapport(lu, { exemples: 20 }));
+  // Seul le texte montré par la balise compte : une cellule qui dit autre chose reste un écart.
+  const change = rapprocher(base, { classeur: 'Essai', dump: dump('Si CR : inflige 5 corruption.') });
+  assert.ok(change.ecarts.length, 'un texte changé derrière les balises reste un écart');
+  base.close();
+});

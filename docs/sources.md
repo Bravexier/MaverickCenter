@@ -216,7 +216,8 @@ retirera alors (`docs/feuille-de-route.md`, réponses du 2026-10-16) ; d'ici là
      corrections d'orthographe des migrations (tout `data/migrations/*.json` qui a une liste `corrections` ; celles de la ligne, et celles des lignes dont
      elle a été tirée : ligne visée par une clé étrangère, entité d'une note, page de l'entité) et appliqué `tools/sheets/corrections.json`. Une ligne qui
      cite aussi un autre classeur se lit dans les deux instantanés ; si l'autre source n'en a pas (un Google Doc), ce qui ne se lit pas est « à relire »
-     (listé, pas compté). Une colonne typée qui a sa `*_brut` se contrôle par elle ; une énumération (`CHECK … IN (…)`) n'est pas comparée ;
+     (listé, pas compté). Une valeur qui porte des balises du glossaire (« {{corruption|CR}} », R233) se lit sans elles (`texteSansBalises` : le texte
+     écrit, sinon la ref). Une colonne typée qui a sa `*_brut` se contrôle par elle ; une énumération (`CHECK … IN (…)`) n'est pas comparée ;
    - **classeur → base** : chaque cellule non vide est citée par au moins une ligne ou rangée dans le registre (`regles`) ; et **chaque mot d'une cellule
      citée** se lit dans les valeurs des lignes qui la citent (libellés des lignes visées par leurs clés étrangères compris, jamais leurs identifiants ni
      leur provenance) : sinon le classeur dit quelque chose que la base n'a pas ;
