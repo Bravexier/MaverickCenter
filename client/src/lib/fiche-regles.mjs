@@ -312,10 +312,13 @@ function reglesDeLaBase(db) {
   const resistancesDeMagie = parCle(lignes(db, `SELECT magie_id, sens, cible_type, COALESCE(cible_magie_id, cible_etat_id, cible_physique) AS cible_id
                                                  FROM magie_resistance ORDER BY magie_id, sens, cible_type, rang`), 'magie_id',
     (r) => ({ type: r.cible_type, id: r.cible_id, crans: r.sens === 'resistance' ? 1 : -1 }));
-  // Une magie peut avoir deux altérations liées depuis la 0117 (l'Ombre : Peur, et Somnolence pour la spécialisation SONGE). La fiche n'en garde
-  // qu'une, la première dans l'ordre des altérations (Peur, comme avant la 0117) : laquelle reçoit le cran d'un don est une question ouverte à game-design.
+  // Une magie peut avoir deux altérations liées depuis la 0117 (l'Ombre : Peur, et Somnolence pour la spécialisation SONGE). Le cran d'un don « … à la
+  // magie innée et son altération d'état » va à celle qui a une résistance : la Peur, jamais la Somnolence, qui n'en a pas « comme les altérations
+  // physiques » (décision R250, MAJ-G9). Elle se reconnaît en base, sans dépendre de l'ordre des altérations : une altération que visent les listes
+  // `magie_resistance` (cible_type « etat », en résistance ou en vulnérabilité) ; aucune ligne de la fiche ne porte donc la Somnolence.
   const etatDeMagie = new Map();
-  for (const r of lignes(db, 'SELECT em.magie_id, em.etat_id FROM etat_magie em JOIN etat e ON e.id = em.etat_id ORDER BY e.ordre')) {
+  for (const r of lignes(db, `SELECT em.magie_id, em.etat_id FROM etat_magie em JOIN etat e ON e.id = em.etat_id
+                              WHERE em.etat_id IN (SELECT cible_etat_id FROM magie_resistance WHERE cible_type = 'etat') ORDER BY e.ordre`)) {
     if (!etatDeMagie.has(r.magie_id)) etatDeMagie.set(r.magie_id, r.etat_id);
   }
   // plafond de NPM des sorts d'un personnage de cette magie innée (magie_npm_plafond : décision R188, migration 0097 ; le Potentiel Illimité)

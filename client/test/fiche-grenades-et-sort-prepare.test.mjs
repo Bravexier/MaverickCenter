@@ -46,7 +46,11 @@ test('R114 : « Sort grenade » étiquette les 14 sorts « Grenade… » (sort_m
   // les sorts « Fer… » portent une autre étiquette, « Sort fer » (décision R164, migration 0079 : test/sorts-fer.test.mjs)
   assert.deepEqual(regles.sorts.filter((s) => s.mots_cles?.includes('sort-grenade')).map((s) => s.id).sort(), etiquetes);
   for (const id of etiquetes) assert.deepEqual(sortDe(id).mots_cles, ['sort-grenade'], id);
-  assert.deepEqual(regles.sorts.filter((s) => s.mots_cles && !s.mots_cles.includes('sort-grenade')).map((s) => s.mots_cles), Array(13).fill(['sort-fer']));
+  // (R164, R237 (2) : Fer brillant de l'Arcane compris ; comptés par l'étiquette, sans effectif figé)
+  const fers = regles.sorts.filter((s) => s.mots_cles && !s.mots_cles.includes('sort-grenade'));
+  assert.ok(fers.length > 0);
+  for (const s of fers) assert.deepEqual(s.mots_cles, ['sort-fer'], s.id);
+  assert.deepEqual(fers.map((s) => s.id).sort(), regles.sorts.filter((s) => s.mots_cles?.includes('sort-fer')).map((s) => s.id).sort());
   // chaque id lu par la fiche (lib/sort-bonus-texte.mjs) est celui d'un mot-clé protégé de la base (lib/mots-cles.mjs, qui ne l'importe pas) : « Sort
   // grenade » (R114), puis « Sort fer » (décision R164 : test/fiche-sorts-fer.test.mjs), et aucun autre
   const LIBELLES = { 'sort-grenade': 'Sort grenade', 'sort-fer': 'Sort fer' };

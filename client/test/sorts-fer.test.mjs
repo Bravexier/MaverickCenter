@@ -22,6 +22,11 @@ const lignesDImport = (sql, ...p) => baseDImport().prepare(sql).all(...p).map((l
 // l'état d'après les migrations 0079 à 0093 : les balises posées par le service du site de dev (lots rapatriés avant la 0090, la même liste qu'avant
 // la 0093) y sont ; seuls les lots rapatriés depuis sont défaits
 const APRES_0079 = { garder: lotsAvant('0093') };
+/** Fer brillant (Arcane), écrit par le classeur de Décembre (migration 0117) : R237 (1)-(2). Il porte l'étiquette comme les autres sorts Fer (R164 : le type
+ *  « amplification qui s'applique sur une arme » ; « sauf l'Arcane » décrivait la Magie V8, non une décision). */
+const FER_BRILLANT = 'magies/magie-de-larcane#sort:fer-brillant';
+/** Fer corrompu : sa phrase est celle du classeur (R237 (1)), plus celle de Q56 ; la règle de R164 reste, une étiquette et jamais un type de dégâts de corruption. */
+const FER_CORROMPU = 'magies/magie-de-la-corruption#sort:fer-corrompu';
 
 /** Les 13 effets de R164, tels que validés (Q54 : « Valider tels quels » ; Fer corrompu : Q56), apostrophe droite. */
 const EFFETS = {
@@ -69,7 +74,7 @@ const valeur = ({ table, cle, colonne }) => {
   return l.v;
 };
 
-test('R164 : « Sort fer » étiquette les 13 sorts « Fer… » (sort_mot_cle, migration 0079), Fer corrompu compris, et aucun autre sort', () => {
+test('R164, R237 (2) : « Sort fer » étiquette chaque sort « Fer… » (sort_mot_cle), Fer corrompu et Fer brillant (Arcane) compris, et aucun autre sort', () => {
   // le mot-clé (id figé) ; son libellé et sa définition à l'import
   // son id entier (migration 0113 : lib/mots-cles-proteges.mjs)
   const fer = IDS_DES_MOTS_CLES_PROTEGES['sort-fer'];
@@ -77,21 +82,28 @@ test('R164 : « Sort fer » étiquette les 13 sorts « Fer… » (sort_mot_cle, 
   assert.deepEqual(lignesDImport('SELECT id, libelle, cle, description FROM mot_cle WHERE id = ?', fer),
     [{ id: fer, libelle: 'Sort fer', cle: 'sort-fer', description: "Type de sort d'amélioration qui s'applique sur une arme." }]);
   const etiquetes = lignes('SELECT sort_id FROM sort_mot_cle WHERE mot_cle_id = ? ORDER BY sort_id', fer).map((l) => l.sort_id);
-  assert.deepEqual(etiquetes, Object.keys(EFFETS).sort());
-  // les sorts « Fer… » de la base à l'import (leurs noms sont modifiables), un par magie sauf l'Arcane et le Potentiel Illimité
+  // les sorts de R164 et Fer brillant (R237 (2)) : comptés par l'étiquette, sans effectif figé
+  assert.deepEqual(etiquetes, [...Object.keys(EFFETS), FER_BRILLANT].sort());
+  // les sorts « Fer… » de la base à l'import (leurs noms sont modifiables) sont ceux de l'étiquette
   assert.deepEqual(lignesDImport("SELECT id FROM sort WHERE nom LIKE 'Fer %' ORDER BY id").map((l) => l.id), etiquetes);
-  const magies = lignes('SELECT DISTINCT s.magie_id FROM sort_mot_cle e JOIN sort s ON s.id = e.sort_id WHERE e.mot_cle_id = ?', fer).map((l) => l.magie_id);
-  assert.equal(magies.length, 13, 'un par magie');
-  assert.ok(!magies.includes('magies/magie-de-larcane') && !magies.includes('magies/potentiel-illimite'));
+  // un par magie, l'Arcane comprise, jamais le Potentiel Illimité
+  const magies = lignes('SELECT s.magie_id FROM sort_mot_cle e JOIN sort s ON s.id = e.sort_id WHERE e.mot_cle_id = ?', fer).map((l) => l.magie_id);
+  assert.equal(new Set(magies).size, magies.length, 'un par magie');
+  assert.ok(magies.includes('magies/magie-de-larcane'));
+  assert.ok(!magies.includes('magies/potentiel-illimite'));
 });
 
-test('R164 : les 13 effets valent les textes validés ; le D/S/B « +8 dégâts » ne change pas, et l’effet ne donne ni bonus de maîtrise ni altération d’état', () => {
+test('R164, R237 (1) : les effets des sorts Fer valent les textes validés (sauf Fer corrompu, dont la phrase est celle du classeur) ; le D/S/B « +8 dégâts » ne change pas, et l’effet ne donne ni bonus de maîtrise ni altération d’état', () => {
   // à l'import : l'effet, le D/S/B, le type, le coût et la portée sont modifiables sur le site de dev (une valeur changée là est une règle changée)
+  const effetDImport = (id) => lignesDImport('SELECT effets FROM sort WHERE id = ?', id)[0].effets;
   for (const [id, effets] of Object.entries(EFFETS)) {
     const s = lignesDImport('SELECT effets, dsb_brut, type_brut, cout_brut, portee_brut FROM sort WHERE id = ?', id)[0];
-    assert.equal(s.effets, effets, id);
+    // la phrase de Fer corrompu n'est plus épinglée : seule sa règle l'est (étiquette ci-dessus, aucun type de dégâts de corruption ci-dessous)
+    if (id !== FER_CORROMPU) assert.equal(s.effets, effets, id);
     assert.deepEqual([s.dsb_brut, s.type_brut, s.cout_brut, s.portee_brut], ['+8 dégâts', 'Amplification (IC pour 3 NM)', '5', '1'], id);
   }
+  // Fer corrompu : une amplification d'arme, sans type de dégâts de corruption (R164, R237 (1))
+  assert.deepEqual(lignesDImport('SELECT type FROM sort_type WHERE sort_id = ? ORDER BY rang', FER_CORROMPU).map((l) => l.type), ['amplification']);
   const ids = Object.keys(EFFETS);
   const marques = ids.map(() => '?').join(', ');
   // les tables tirées des effets, à l'import (aujourd'hui, elles suivent le texte courant : test/orthographe-magies.test.mjs)
@@ -106,7 +118,7 @@ test('R164 : les 13 effets valent les textes validés ; le D/S/B « +8 dégâts 
     const lignesDuTableau = valeur({ table: 'page', cle: { id: magie }, colonne: 'corps_md' }).split('\n').filter((l) => l.includes(`| ${nom} | `));
     assert.ok(lignesDuTableau.some((l) => l.endsWith(` | ${echappe(effets)} |`)), id);
     assert.ok(texteDImport('page', { id: magie }, 'corps_md')
-      .includes(`| ${texteDImport('sort', { id }, 'nom')} | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | ${echappe(EFFETS[id])} |`), `${id} (à l’import)`);
+      .includes(`| ${texteDImport('sort', { id }, 'nom')} | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | ${echappe(id === FER_CORROMPU ? effetDImport(id) : EFFETS[id])} |`), `${id} (à l’import)`);
   }
 });
 
@@ -134,7 +146,7 @@ test('R164 : la balise « Sort fer » est posée dans les huit textes qui parlen
     }
   }
   assert.deepEqual(ailleurs, []);
-  // les noms des 13 sorts ne sont jamais balisés
-  const ids = Object.keys(EFFETS);
+  // les noms des sorts Fer ne sont jamais balisés
+  const ids = [...Object.keys(EFFETS), FER_BRILLANT];
   assert.equal(db.prepare(`SELECT count(*) AS n FROM sort WHERE id IN (${ids.map(() => '?').join(', ')}) AND instr(nom, '{{') > 0`).get(...ids).n, 0);
 });

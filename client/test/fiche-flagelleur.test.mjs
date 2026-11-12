@@ -9,11 +9,14 @@
 //     seulement (le PI n'hérite pas de ses listes : R139, R160).
 // Les textes des dons sont épinglés dans leur état d'import (lib/historique-site.mjs, test/resistance-texte.test.mjs) ; ici, les règles de la base.
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { copyFileSync, readFileSync } from 'node:fs';
+import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
 import * as M from '../src/lib/fiche-moteur.mjs';
-import { baseDImport, reglesDImport } from './aide-base-d-import.mjs';
+import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
+import { baseDImport, cheminDImport, reglesDImport } from './aide-base-d-import.mjs';
+import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
 
 // les règles (textes et valeurs que le site de dev modifie librement) : épinglées sur leur état d'import (test/aide-base-d-import.mjs)
 const db = baseDImport();
@@ -51,15 +54,20 @@ const magie = (id) => `magie:${id}`;
 const ecarts = (avant, apres) => Object.fromEntries([...new Set([...Object.keys(avant), ...Object.keys(apres)])]
   .filter((k) => avant[k] !== apres[k]).map((k) => [k, [avant[k], apres[k]]]));
 
-test('la base (décision R163) : pour chaque magie, ses altérations sont l’image par etat_magie de ses magies, en résistance comme en vulnérabilité, et aucune altération n’est à la fois l’une et l’autre', () => {
-  const etatDe = new Map(db.prepare('SELECT magie_id, etat_id FROM etat_magie').all().map((r) => [r.magie_id, r.etat_id]));
+test('la base (décisions R163, R250) : pour chaque magie, ses altérations sont l’image par etat_magie de ses magies (celles qui ont une résistance), en résistance comme en vulnérabilité, et aucune altération n’est à la fois l’une et l’autre', () => {
+  // une magie peut avoir plusieurs altérations liées (l'Ombre : Peur et, depuis la 0117, Somnolence) ; une altération sans résistance (Somnolence, R250) n'est
+  // dans aucune liste : l'image se limite aux altérations que visent les listes (V8 : une seule par magie, ce n'était qu'un constat)
+  const avecResistance = new Set(db.prepare("SELECT DISTINCT cible_etat_id AS id FROM magie_resistance WHERE cible_type = 'etat'").all().map((r) => r.id));
+  const etatsDe = new Map();
+  for (const r of db.prepare('SELECT magie_id, etat_id FROM etat_magie').all()) etatsDe.set(r.magie_id, [...(etatsDe.get(r.magie_id) ?? []), r.etat_id]);
+  const imageDe = (magie) => (etatsDe.get(magie) ?? []).filter((e) => avecResistance.has(e));
   const listes = db.prepare('SELECT magie_id, sens, cible_type, COALESCE(cible_magie_id, cible_etat_id, cible_physique) AS cible FROM magie_resistance').all();
   const magies = db.prepare("SELECT id FROM magie WHERE id <> 'magies/potentiel-illimite'").all().map((m) => m.id);
   assert.equal(magies.length, 14);
   for (const m of magies) {
     for (const sens of ['resistance', 'vulnerabilite']) {
       const de = (type) => [...new Set(listes.filter((l) => l.magie_id === m && l.sens === sens && l.cible_type === type).map((l) => l.cible))].sort();
-      assert.deepEqual(de('etat'), [...new Set(de('magie').map((x) => etatDe.get(x)))].sort(), `${m} : ${sens}`);
+      assert.deepEqual(de('etat'), [...new Set(de('magie').flatMap((x) => imageDe(x)))].sort(), `${m} : ${sens}`);
     }
     const resistees = new Set(listes.filter((l) => l.magie_id === m && l.sens === 'resistance' && l.cible_type === 'etat').map((l) => l.cible));
     assert.deepEqual(listes.filter((l) => l.magie_id === m && l.sens === 'vulnerabilite' && l.cible_type === 'etat' && resistees.has(l.cible)), [], m);
@@ -68,6 +76,52 @@ test('la base (décision R163) : pour chaque magie, ses altérations sont l’im
   // (décision R174, cible_type « physique » : estoc, taille, frappe), qu'aucun don du Flagelleur ne lit
   assert.deepEqual(listes.filter((l) => l.magie_id === PI && l.cible_type !== 'physique'), []);
   assert.deepEqual(listes.filter((l) => l.magie_id === PI).map((l) => `${l.sens}:${l.cible_type}`), Array(3).fill('vulnerabilite:physique'));
+});
+
+// ------------------------------------------------------------------ R250 : l'altération d'une magie qui en a deux
+const SOMNOLENCE = ETAT('somnolence');
+const PEUR = ETAT('peur');
+const OMBRE = 'magies/magie-de-lombre';
+const CLERC_PROCHE = 'capacites/clerc-proche';
+
+test('décision R250 : l’altération qu’un don « à la magie innée et son altération d’état » vise est celle qui a une résistance (la Peur de l’Ombre), jamais la Somnolence, qui n’en a pas', () => {
+  const avecResistance = new Set(db.prepare("SELECT DISTINCT cible_etat_id AS id FROM magie_resistance WHERE cible_type = 'etat'").all().map((r) => r.id));
+  // le cas existe : l'Ombre a deux altérations liées, la Somnolence n'est dans aucune liste de résistance ni de faiblesse
+  const liees = db.prepare('SELECT etat_id FROM etat_magie WHERE magie_id = ?').all(OMBRE).map((r) => r.etat_id);
+  assert.ok(liees.includes(PEUR) && liees.includes(SOMNOLENCE));
+  assert.ok(avecResistance.has(PEUR) && !avecResistance.has(SOMNOLENCE));
+  // pour chaque magie : l'altération des règles est l'unique altération liée qui a une résistance (ou aucune)
+  for (const m of regles.magies) {
+    const attendues = db.prepare('SELECT etat_id FROM etat_magie WHERE magie_id = ?').all(m.id).map((r) => r.etat_id).filter((e) => avecResistance.has(e));
+    assert.ok(attendues.length <= 1, `${m.id} : une seule altération avec résistance`);
+    assert.equal(m.etat_id, attendues[0] ?? null, m.id);
+  }
+  assert.equal(regles.magies.find((m) => m.id === OMBRE).etat_id, PEUR);
+  // sur la fiche : « Proche » (Clerc, +1 à la magie innée et à son altération) donne son cran à la Peur et ne crée aucune ligne Somnolence
+  const don = regles.classes.find((c) => c.id === 'classes/clerc').dons.find((d) => d.id === CLERC_PROCHE);
+  assert.ok(don.resistances.effets.some((e) => e.type === 'etat_magie_innee'));
+  const f = { ...fiche(OMBRE, null), classes: [{ rang: 1, classe_id: 'classes/clerc', specialite_id: null }], capacites: [{ capacite_id: CLERC_PROCHE }] };
+  const cibles = M.resistancesDe(regles, f).paliers.flatMap((p) => p.cibles);
+  assert.ok(cibles.some((c) => c.id === PEUR), 'la Peur reçoit le cran');
+  assert.ok(!cibles.some((c) => c.id === SOMNOLENCE), 'aucune ligne Somnolence');
+  // le Flagelleur (R163) lit les listes de la magie : aucune Somnolence non plus
+  assert.ok(!M.resistancesDe(regles, fiche(OMBRE, PUNIS)).paliers.flatMap((p) => p.cibles).some((c) => c.id === SOMNOLENCE));
+});
+
+test('décision R250 : le choix ne dépend pas de l’ordre des altérations (Somnolence placée avant la Peur, la Peur reste la liée de l’Ombre)', (t) => {
+  const copie = fichierTemporaire('maverick.db', 'alteration-de-la-magie', { t });
+  copyFileSync(cheminDImport(), copie);
+  const base = new DatabaseSync(copie);
+  t.after(() => base.close());
+  const ordreSomnolence = base.prepare('SELECT ordre FROM etat WHERE id = ?').get(SOMNOLENCE).ordre;
+  const ordrePeur = base.prepare('SELECT ordre FROM etat WHERE id = ?').get(PEUR).ordre;
+  // `ordre` est unique : l'échange passe par une valeur libre
+  const libre = base.prepare('SELECT max(ordre) + 1 AS n FROM etat').get().n;
+  base.prepare('UPDATE etat SET ordre = ? WHERE id = ?').run(libre, PEUR);
+  base.prepare('UPDATE etat SET ordre = ? WHERE id = ?').run(ordrePeur, SOMNOLENCE);
+  base.prepare('UPDATE etat SET ordre = ? WHERE id = ?').run(ordreSomnolence, PEUR);
+  assert.ok(base.prepare('SELECT ordre FROM etat WHERE id = ?').get(SOMNOLENCE).ordre < base.prepare('SELECT ordre FROM etat WHERE id = ?').get(PEUR).ordre);
+  assert.equal(chargerReglesDeFiche(base).magies.find((m) => m.id === OMBRE).etat_id, PEUR);
 });
 
 test('décision R163 : les règles des deux dons — ce que leur texte donne, et la magie tirée du Potentiel Illimité parmi les 14 magies (Arcane et Corruption comprises)', () => {
