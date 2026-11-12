@@ -25,6 +25,8 @@ import {
   morceauxAvecEtats,
   morceauxAvecLiens,
   nombre,
+  phrasesDesSpecialisations,
+  ID_CHOSES_A_SAVOIR,
   segments,
   sortsParNpm,
   sortsParSpecialisation,
@@ -242,6 +244,34 @@ test('sortsParSpecialisation : les sorts communs par NPM, puis chaque spécialis
   assert.deepEqual(noms(sortsParSpecialisation(sorts.filter((x) => !x.specialisationId), []).communs), [[1, ['a', 'b']], [2, ['c']]]);
   assert.deepEqual(sortsParSpecialisation(sorts.filter((x) => x.niveau <= 2), [{ id: 'sp1' }, { id: 'sp2' }]).specialisations, []);
   assert.deepEqual(sortsParSpecialisation([], []), { communs: [], specialisations: [] });
+});
+
+// R245 (1) (MAJ-A5, MAJ-A6) : de « CHOSES A SAVOIR », seules les puces sur la Super-magie et sur le choix des bi-magie, découpées sans être réécrites.
+test('phrasesDesSpecialisations : seules les puces de la Super-magie et des bi-magie, telles qu’écrites ; rien quand la règle est absente ou n’a plus de telle puce', () => {
+  const regle = (texte) => ({ id: ID_CHOSES_A_SAVOIR, titre: 'Titre', niveau_sort: null, texte });
+  const texte = 'Titre\n\nIntroduction qui parle de bi-magie.\n\n- Premier point.\n\n- Seuls les bi-magie choisissent.\n\n- Etat de "Super-magie" ensuite.\n\n- Dernier point.';
+  assert.deepEqual(phrasesDesSpecialisations([regle(texte)]), { titre: 'Titre', texte: 'Seuls les bi-magie choisissent. Etat de "Super-magie" ensuite.' });
+  assert.equal(phrasesDesSpecialisations([regle('Titre\n\n- Premier point.\n\n- Dernier point.')]), null);
+  assert.equal(phrasesDesSpecialisations([{ id: 'magies#regle:autre', titre: 'x', niveau_sort: 5, texte: '- bi-magie' }]), null);
+  assert.equal(phrasesDesSpecialisations([]), null);
+  // la règle d'un niveau (« sort niveau 5 ») n'est pas touchée : seule la règle sans niveau est lue
+  assert.ok(m.regles.some((r) => r.id === ID_CHOSES_A_SAVOIR && r.niveau_sort === null), 'la règle sans niveau est en base');
+  // sur la base courante (le site de dev peut modifier la cellule) : le titre de la règle, et pas plus de texte que la cellule
+  const courante = phrasesDesSpecialisations(m.regles);
+  if (courante) {
+    const regleCourante = m.regles.find((r) => r.id === ID_CHOSES_A_SAVOIR);
+    assert.equal(courante.titre, regleCourante.titre);
+    assert.ok(courante.texte.length < regleCourante.texte.length);
+  }
+  // à l'import : deux puces sur quatre (version en test, déblocage au NPM 3 et bêta exclus), chacune mot pour mot dans la cellule
+  const dImport = chargerMagies(baseDImport()).regles;
+  const cellule = dImport.find((r) => r.id === ID_CHOSES_A_SAVOIR).texte;
+  const puces = cellule.split(/\r?\n/).filter((l) => /^\s*-\s/.test(l)).map((l) => l.replace(/^\s*-\s+/, '').trim());
+  const phrases = puces.filter((p) => /super-magie|bi-magie/i.test(p));
+  assert.equal(puces.length, 4);
+  assert.deepEqual(phrases.length, 2);
+  assert.equal(phrasesDesSpecialisations(dImport).texte, phrases.join(' '));
+  assert.ok(phrases.every((p) => cellule.includes(p)));
 });
 
 test('15 magies : 14 ont des sorts, rangés en tableau commun (aucune spécialisation) puis en deux spécialisations de leur magie ; le Potentiel Illimité n’en a pas (R236)', () => {

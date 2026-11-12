@@ -469,6 +469,10 @@ Mise en page (pure forme, jamais de règle ajoutée ; `lib/sort-format.mjs`, tes
   « Sorts communs » (les sorts sans spécialisation, `specialisationId` nul : NPM 1 et 2), puis la section de chacune des deux spécialisations de la magie, dans l'ordre 1, 2 :
   son nom **tel que la base l'écrit, en capitales** (aucun `text-transform`, comme les spécialités des classes), sa description et sa remarque (`magie_specialisation`, modifiables sur le site de dev ;
   un cadre vide est caché en lecture), puis ses sorts, un tableau par NPM (les deux spécialisations ont chacune leur NPM 3 : identifiants `#npm-<spécialisation>-<NPM>`, `#specialisation-<spécialisation>`).
+  Les deux spécialisations sont **côte à côte** (R245 (2), classeur : une colonne chacune, `div.specialisations` ; l'une sous l'autre sous 72rem, chaque tableau défile dans son cadre, jamais la page).
+  **Infobulle sur le titre de chacune** (R245 (1), MAJ-A5, MAJ-A6) : les deux phrases de la règle « CHOSES A SAVOIR » (`regle_magie` `magies#regle:choses-a-savoir`) sur la Super-magie et sur le choix
+  des bi-magie, découpées dans la cellule (`lib/sort-format.mjs#phrasesDesSpecialisations` : les puces qui parlent de « super-magie » ou de « bi-magie », mot pour mot), avec le mécanisme de la règle du
+  NPM 5 (`Info.astro`) ; les autres phrases ne s'affichent pas. Sur la page d'une magie seulement (pas dans les onglets du Potentiel Illimité).
   Le nombre de sorts n'est écrit nulle part dans le code : il vient de la base. Le Potentiel Illimité n'a pas de spécialisation à lui.
 - **Un tableau par niveau de puissance magique (NPM)** : Nom, Type, Coût (le coût secondaire dessous), Portée, Zone, D/S/B, une ligne par sort ; **pas de colonne Maîtrise**. Un seul gabarit pour tous les tableaux de sorts du site,
   `components/magie/TableauNpm.astro` (une magie, un NPM ; une ligne : `LigneDeSort.astro` ; le comportement au clic : `SortsInteractifs.astro`, une fois par page). Le bonus de niveau de maîtrise (NM, `sort_bonus_maitrise`, voir « Niveaux de maîtrise »

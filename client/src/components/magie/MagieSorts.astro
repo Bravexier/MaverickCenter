@@ -1,12 +1,14 @@
 ---
 import type { Magies, MagieDb, SortDb } from '../../lib/magies';
+import { phrasesDesSpecialisations } from '../../lib/sort-format.mjs';
 import SortsDeSpecialisation from './SortsDeSpecialisation.astro';
 import SortsInteractifs from './SortsInteractifs.astro';
 import TableauNpm from './TableauNpm.astro';
 
 // Sorts d'une magie, rangés comme le classeur de Décembre (R236 (1)) : d'abord le tableau commun, un tableau par niveau de puissance magique (NPM) du plus
 // faible au plus fort (TableauNpm.astro, le gabarit commun à toutes les pages qui montrent des sorts), puis ses deux spécialisations
-// (SortsDeSpecialisation.astro), chacune avec les siens. Sélectionner une ligne ouvre juste en dessous ses détails (SortDetail.astro) : effets (avec la
+// (SortsDeSpecialisation.astro), chacune avec les siens, les deux côte à côte comme dans le classeur (R245 (2) : une colonne par spécialisation, elles
+// s'empilent sur écran étroit : styles/magie/sorts.css). Sélectionner une ligne ouvre juste en dessous ses détails (SortDetail.astro) : effets (avec la
 // remarque du classeur et le texte du sort), règles propres. Le nombre de sorts ne s'écrit nulle part : il vient de la base.
 interface Props {
   communs: { niveau: number; sorts: SortDb[] }[];
@@ -17,6 +19,8 @@ const { communs, specialisations, magies } = Astro.props;
 const total = communs.reduce((n, g) => n + g.sorts.length, 0) + specialisations.reduce((n, s) => n + s.total, 0);
 // sans spécialisation, les tableaux se suivent directement sous le titre de la section
 const avecSpecialisations = specialisations.length > 0;
+// R245 (1) : les phrases de « CHOSES A SAVOIR » sur la Super-magie et les bi-magie, en infobulle sur le titre de chaque spécialisation
+const infoDesSpecialisations = phrasesDesSpecialisations(magies.regles);
 ---
 
 <section class="magie-section" id="sorts" aria-labelledby="sorts-titre">
@@ -36,7 +40,15 @@ const avecSpecialisations = specialisations.length > 0;
       communs.map((g) => <TableauNpm niveau={g.niveau} sorts={g.sorts} magies={magies} />)
     )
   }
-  {specialisations.map((s) => <SortsDeSpecialisation specialisation={s.specialisation} groupes={s.groupes} magies={magies} />)}
+  {
+    avecSpecialisations && (
+      <div class="specialisations">
+        {specialisations.map((s) => (
+          <SortsDeSpecialisation specialisation={s.specialisation} groupes={s.groupes} magies={magies} info={infoDesSpecialisations} />
+        ))}
+      </div>
+    )
+  }
 </section>
 
 <SortsInteractifs />

@@ -1,6 +1,7 @@
 ---
 import { attributEd } from '../../lib/edition-modele.mjs';
 import type { Magies, MagieDb, SortDb } from '../../lib/magies';
+import Info from './Info.astro';
 import TableauNpm from './TableauNpm.astro';
 import Texte from './Texte.astro';
 
@@ -9,24 +10,28 @@ import Texte from './Texte.astro';
 // TableauNpm.astro). Sur la page d'une magie comme dans un onglet du Potentiel Illimité (SortsDuPotentiel.astro) ; `prefixe` (« feu- ») rend uniques les
 // identifiants HTML des sorts quand une page montre plusieurs magies, et le nom court de la spécialisation s'y ajoute pour ceux des tableaux (le NPM 3
 // existe dans les deux spécialisations d'une magie). `titre` : niveau du titre du nom ; les tableaux sont un niveau en dessous.
+// `info` : les phrases de « CHOSES A SAVOIR » sur la Super-magie et le choix des bi-magie (lib/sort-format.mjs#phrasesDesSpecialisations, R245 (1)), en
+// infobulle « i » après le nom, comme la règle du NPM 5 (Info.astro) ; absente, aucune infobulle. La section est nommée par le nom seul (`-nom`), sans le « i ».
 interface Props {
   specialisation: MagieDb['specialisations'][number];
   groupes: { niveau: number; sorts: SortDb[] }[];
   magies: Magies;
   prefixe?: string;
   titre?: 'h3' | 'h4';
+  info?: { titre: string; texte: string } | null;
 }
-const { specialisation, groupes, magies, prefixe = '', titre: Titre = 'h3' } = Astro.props;
+const { specialisation, groupes, magies, prefixe = '', titre: Titre = 'h3', info = null } = Astro.props;
 
 const id = `specialisation-${prefixe}${specialisation.cle}`;
 const TitreDesTableaux = Titre === 'h3' ? 'h4' : 'h5';
 const ed = (colonne: string) => attributEd('magie_specialisation', { id: specialisation.id }, colonne);
 ---
 
-<section class="specialisation" id={id} aria-labelledby={`${id}-titre`}>
+<section class="specialisation" id={id} aria-labelledby={`${id}-nom`}>
   <Titre class="sorts-groupe__titre specialisation__titre" id={`${id}-titre`}>
     <span class="sorts-groupe__surtitre">Spécialisation</span>
-    <span class="specialisation__nom" data-ed={ed('nom')}>{specialisation.nom}</span>
+    <span class="specialisation__nom" id={`${id}-nom`} data-ed={ed('nom')}>{specialisation.nom}</span>
+    {info && <Info titre={info.titre} texte={info.texte} />}
   </Titre>
   <div class="specialisation__texte magie-prose" data-ed-cadre hidden={specialisation.description.length === 0}>
     <div data-ed={ed('description')} data-ed-rendu="blocs"><Texte blocs={specialisation.description} /></div>

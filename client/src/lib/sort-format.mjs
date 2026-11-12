@@ -220,6 +220,28 @@ export function sortsParSpecialisation(sorts, specialisations) {
   return { communs, specialisations: parSpecialisation.filter((s) => s.total > 0) };
 }
 
+/** Id de la règle « CHOSES A SAVOIR » de la V10 (`regle_magie`, Sommaire AP1) : figé, c'est sa clé. */
+export const ID_CHOSES_A_SAVOIR = 'magies#regle:choses-a-savoir';
+
+/**
+ * Les phrases de « CHOSES A SAVOIR » que les pages de magie montrent en infobulle sur le titre de chaque spécialisation (R245 (1), réponses du propriétaire
+ * MAJ-A5 : le titre de chaque spécialisation ; MAJ-A6 : aucune autre) : celles de la Super-magie et du choix de chemin des bi-magie. La cellule est une
+ * introduction suivie d'une liste à puces (`- phrase`, séparées par une ligne vide) : on ne garde que les puces qui parlent de la « super-magie » ou des
+ * « bi-magie ». Le texte n'est jamais réécrit, seulement découpé ; les autres puces (déblocage au niveau 3, bêta) et l'introduction ne sont pas montrées.
+ * @param {{ id: string, titre: string, texte: string }[]} regles  `magies.regles` de lib/magies-db.mjs#chargerMagies
+ * @returns {{ titre: string, texte: string } | null}  null quand la règle est absente ou n'a plus de phrase visée (le site de dev l'a modifiée)
+ */
+export function phrasesDesSpecialisations(regles) {
+  const regle = regles.find((r) => r.id === ID_CHOSES_A_SAVOIR);
+  if (!regle) return null;
+  const puces = regle.texte
+    .split(/\r?\n/)
+    .map((ligne) => ligne.match(/^\s*[-•*]\s+(.+?)\s*$/)?.[1])
+    .filter(Boolean);
+  const phrases = puces.filter((p) => /super-magie|bi-magie/i.test(p));
+  return phrases.length > 0 ? { titre: regle.titre, texte: phrases.join(' ') } : null;
+}
+
 /** Ancre d'un titre `## Titre` rendu par Astro (github-slugger : minuscules, accents conservés, espaces → tirets). */
 export const ancreDeTitre = (titre) =>
   String(titre)

@@ -19,6 +19,13 @@
 .specialisation__remarque-titre { margin: 0 0 0.2rem; font-size: var(--fs-xs); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); }
 .specialisation__remarque .magie-prose > :last-child { margin-bottom: 0; }
 .sorts-communs > .npm:first-of-type, .specialisation > .npm:first-of-type { margin-top: 1rem; }
+/* Les deux spécialisations côte à côte (R245 (2), l'onglet du classeur : une colonne chacune, sa description puis ses tableaux du NPM 3 à 5) ; l'une sous
+   l'autre sous 72rem. `minmax(0, 1fr)` : une colonne peut rétrécir sous la largeur de son tableau, qui défile dans son cadre (.tableau--defile), jamais la page. */
+.specialisations { display: grid; grid-template-columns: minmax(0, 1fr); gap: 2rem 1.6rem; margin: 2rem 0 0; }
+.specialisations > .specialisation { margin: 0; min-width: 0; }
+@media (min-width: 72rem) {
+  .specialisations { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
+}
 .sort__main { cursor: pointer; }
 .sort__main:hover { background: var(--mag-soft); }
 .sort.is-selected > .sort__main { background: var(--mag-soft); box-shadow: inset 4px 0 0 var(--mag); }

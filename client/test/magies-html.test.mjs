@@ -13,7 +13,7 @@ import { chargerMagies } from '../src/lib/magies-db.mjs';
 import { classeDeMagie, cssDeLaPalette } from '../src/lib/palette-css.mjs';
 import { ENCOMBREMENT, liaisonsEntreMagies, POINTES, segmentCoupe } from '../src/lib/magie-fleches.mjs';
 import { npmMaxDuPotentiel, POTENTIEL_ILLIMITE } from '../src/lib/potentiel-illimite.mjs';
-import { sortsParSpecialisation } from '../src/lib/sort-format.mjs';
+import { phrasesDesSpecialisations, sortsParSpecialisation } from '../src/lib/sort-format.mjs';
 import { sansBonus } from '../src/lib/sort-maitrise.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
 import { tuilesDeCapacites } from './aide-bestiaire.mjs';
@@ -271,7 +271,9 @@ test('règle spéciale du NPM 5 : une pastille « i » dans le titre de chaque t
       assert.ok(intitule.includes('class="npm__nom"') && intitule.includes('class="info"'), `${slug} : texte du titre et pastille dans le même bloc`);
     }
     assert.ok(tableauxAvecRegle > 0, `${slug} : au moins un tableau du NPM 5`);
-    assert.equal([...html.matchAll(/class="info"/g)].length, infos, `${slug} : aucune pastille hors des tableaux`);
+    // hors des tableaux : seulement celles des titres de spécialisation (R245 (1), test « spécialisations » plus bas)
+    const dansLesTitres = [...html.matchAll(/<h3 class="sorts-groupe__titre specialisation__titre"/g)].reduce((n, m) => n + [...contenu(html, m.index, 'h3').matchAll(/class="info"/g)].length, 0);
+    assert.equal([...html.matchAll(/class="info"/g)].length, infos + dansLesTitres, `${slug} : aucune pastille hors des tableaux et des titres de spécialisation`);
     assert.ok(!html.includes('magie-regle'), `${slug} : plus d'encart de règle sous le tableau`);
   }
 });
@@ -448,7 +450,8 @@ test('pages de magie : la liste des rôles n’est affichée que pour une magie 
 // Spécialisations (R236 (1), components/magie/MagieSorts.astro, SortsDeSpecialisation.astro) : sous « Sorts », le tableau commun puis les deux spécialisations,
 // chacune avec son nom tel que la base l'écrit, sa description et sa remarque (modifiables), puis ses sorts, un tableau par NPM.
 test('pages de magie : « Sorts communs » puis les deux spécialisations, chacune avec son nom tel quel, ses textes modifiables et les sorts que la base lui rattache', options, () => {
-  const { magies: toutes } = chargerMagies(ouvrirBase());
+  const { magies: toutes, regles } = chargerMagies(ouvrirBase());
+  const phrases = phrasesDesSpecialisations(regles);
   const echapper = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   const lignesDe = (html) => [...html.matchAll(/<tbody class="sort" id="sort-([^"]+)"/g)].map((m) => m[1]);
   for (const { slug, html } of avecSorts) {
@@ -462,20 +465,33 @@ test('pages de magie : « Sorts communs » puis les deux spécialisations, chacu
     const commun = contenu(sorts, iCommuns, 'section');
     assert.deepEqual([...commun.matchAll(/<section class="npm" id="npm-([^"]+)"/g)].map((m) => m[1]), communs.map((g) => String(g.niveau)), `${slug} : NPM du tableau commun`);
     assert.deepEqual(lignesDe(commun), communs.flatMap((g) => g.sorts.map((s) => s.slug)), `${slug} : sorts communs`);
-    // puis chaque spécialisation, dans l'ordre 1, 2
-    let depuis = iCommuns + commun.length;
+    // puis chaque spécialisation, dans l'ordre 1, 2, côte à côte (R245 (2)) : dans un seul conteneur de deux colonnes, après le tableau commun
+    const iColonnes = sorts.indexOf('<div class="specialisations">');
+    assert.ok(iColonnes > iCommuns + commun.length - 1, `${slug} : les deux colonnes après le tableau commun`);
+    const colonnes = contenu(sorts, iColonnes, 'div');
+    assert.deepEqual([...colonnes.matchAll(/<section class="specialisation" id="specialisation-([^"]+)"/g)].map((m) => m[1]), specialisations.map((x) => x.specialisation.cle), `${slug} : une colonne par spécialisation, dans l'ordre`);
+    assert.ok(!commun.includes('class="specialisation"'), `${slug} : aucune spécialisation dans le tableau commun`);
+    let depuis = iColonnes;
     for (const { specialisation: sp, groupes } of specialisations) {
       const debut = sorts.indexOf(`<section class="specialisation" id="specialisation-${sp.cle}"`, depuis);
       assert.ok(debut >= depuis, `${slug} : ${sp.id}, après la précédente`);
       const section = contenu(sorts, debut, 'section');
       depuis = debut + section.length;
       // le nom tel que la base l'écrit (jamais mis en capitales par la feuille de style), modifiable
-      assert.ok(section.includes(`<span class="specialisation__nom" data-ed="${echapper(JSON.stringify(['magie_specialisation', { id: sp.id }, 'nom']))}">${echapper(sp.nom)}</span>`), `${slug} : nom de ${sp.id} tel quel`);
+      assert.ok(section.includes(`<span class="specialisation__nom" id="specialisation-${sp.cle}-nom" data-ed="${echapper(JSON.stringify(['magie_specialisation', { id: sp.id }, 'nom']))}">${echapper(sp.nom)}</span>`), `${slug} : nom de ${sp.id} tel quel`);
+      // R245 (1) : l'infobulle des phrases de « CHOSES A SAVOIR » est sur le titre de chaque spécialisation, après le nom, avec ces phrases et elles seules ; sinon aucune
+      const titre = contenu(section, section.indexOf('<h3 class="sorts-groupe__titre specialisation__titre"'), 'h3');
+      assert.ok(titre.indexOf('class="specialisation__nom"') < titre.indexOf('class="bulle-zone"') || !phrases, `${slug} : ${sp.id}, infobulle après le nom`);
+      assert.equal([...titre.matchAll(/class="info"/g)].length, phrases ? 1 : 0, `${slug} : ${sp.id}, une infobulle sur le titre`);
+      if (phrases) assert.ok(titre.includes(`<span class="bulle__texte">${echapper(phrases.texte)}</span>`), `${slug} : ${sp.id}, les phrases de la règle`);
+      assert.ok(!phrases || section.indexOf('class="info"') < section.indexOf('<section class="npm"'),`${slug} : ${sp.id}, l'infobulle du titre avant le premier tableau`);
       // description et remarque : le champ de la base, le cadre caché si et seulement si le texte est vide
       for (const colonne of ['description', 'remarque']) {
         const champ = `data-ed="${echapper(JSON.stringify(['magie_specialisation', { id: sp.id }, colonne]))}" data-ed-rendu="blocs"`;
         const iChamp = section.indexOf(champ);
         assert.ok(iChamp > 0, `${slug} : ${sp.id}, ${colonne} modifiable`);
+        // R245 (3) : la description et la remarque viennent avant le tableau du NPM 3 (comme les spécialités d'une classe)
+        assert.ok(iChamp < section.indexOf('<section class="npm"'), `${slug} : ${sp.id}, ${colonne} avant le premier tableau`);
         const cadre = section.slice(section.lastIndexOf('data-ed-cadre', iChamp), iChamp);
         assert.equal(/hidden/.test(cadre), sp[colonne].length === 0, `${slug} : ${sp.id}, cadre de ${colonne} caché si et seulement si vide`);
       }
@@ -493,6 +509,9 @@ test('pages de magie : « Sorts communs » puis les deux spécialisations, chacu
   // le nom ne passe pas en capitales par la feuille de style (même convention que les spécialités des classes) ; tout est écrit dans la base
   const css = readFileSync(new URL('../src/styles/magie/sorts.css', import.meta.url), 'utf8');
   assert.doesNotMatch(css.match(/\.specialisation__nom \{[^}]*\}/)?.[0] ?? '', /text-transform/);
+  // R245 (2) : une colonne sur écran étroit (elles s'empilent), deux colonnes à partir d'une largeur ; chacune peut rétrécir (minmax(0, 1fr)), sans défilement de la page
+  assert.match(css.match(/\.specialisations \{[^}]*\}/)?.[0] ?? '', /grid-template-columns: minmax\(0, 1fr\);/);
+  assert.match(css.match(/@media \(min-width: [\d.]+rem\) \{\s*\.specialisations \{[^}]*\}/)?.[0] ?? '', /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   // le Potentiel Illimité n'a pas de spécialisation à lui (R236 (1))
   assert.equal(toutes.get(POTENTIEL_ILLIMITE).specialisations.length, 0);
 });
