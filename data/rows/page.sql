@@ -8605,6 +8605,8 @@ Chacune de ces quatre conditions donne un emplacement de sort :
 3. avoir une classe magique ;
 4. avoir une seconde classe magique.
 
+À partir du niveau global 8 (NPM 3), un personnage mono-magie, sans magie acquise, compte une condition de plus, comme une magie acquise (la Super-magie) : il reste mono-magie, sans magie de plus. Pour le Potentiel Illimité, elle ne s’ajoute pas au don « Grimoire » : les deux sont la même condition.
+
 Le nombre de conditions remplies est ensuite **multiplié par la puissance magique**. Elle vaut 1 au niveau 1 du personnage, puis augmente avec les niveaux ({{la-montee-de-niveau}}). Il n’y a jamais d’emplacement en plus.
 
 *Exemples : une magie innée et une magie acquise, sans classe magique, en puissance magique 1 : 2 emplacements. Une magie innée et deux classes magiques, en puissance magique 3 : 3 × 3 = 9 emplacements.*
