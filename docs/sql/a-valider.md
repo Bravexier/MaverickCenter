@@ -419,5 +419,15 @@ Demande du propriétaire du 2026-11-12 : intégrer « MISE À JOUR - DÉCEMBRE.d
 | MAJ-G1 | Initiative groupée (R240) | Son texte : qui lance, combien de jets, quand, dans quel ordre on joue (aucune source ne le donne) | Initiative individuelle seule |
 | MAJ-R2 | Races Fongoïde et Gémidien (R239) | Vitesse au sol et vitesse de nage (les onglets n'en écrivent pas) | Races absentes (lot 4) |
 | MAJ-B3 | Poupée fulgurante, « Boule de foudre » (R242 (3)) | Sa capacité est désormais rattachée au sort Boules plasmiques. Le nom qu'elle affiche devient-il « Boules plasmiques », ou reste-t-il « Boule de foudre » tel qu'écrit ? (MAJ-B1 (1) ne visait que les noms des sorts listés) | « Boule de foudre », avec le lien vers Boules plasmiques |
+| MAJ-K1 | Coûts de Rune arcane multiple « 8xN/tour », Peau nacrée « 12xN/tour », Lien mental « 4/perso » (V8 : « 10xN/tour », « 13xN/tour », « 3/perso », lus par S4, S5, S17) | Même lecture qu'avant avec le nouveau chiffre (8 et 12 « Par tour et par cible », 4 « Par personne ») ? Oui / non, coût laissé tel qu'écrit | Coût écrit, sans valeur typée |
+| MAJ-K2 | Coût de Pâte de la trame « 12xN/tour » (sort nouveau) | 12 « Par tour et par cible » (comme S4, S5) ; 12 « Par tour » ; tel qu'écrit | Idem |
+| MAJ-K3 | Coût de Projectile arcanique « *4 / projectile » (sort nouveau) | 4 « Par projectile » ; tel qu'écrit | Idem |
+| MAJ-K4 | Coût de Boules plasmiques « 5/boule » (la base avait 16) | 5 « Par boule » ; tel qu'écrit | Idem |
+| MAJ-K5 | Coût des deux Contre-sort (Arcane, Corruption) « Variable selon le sort bloqué » | Pas de coût fixe : le texte seul, en coût secondaire ; tel qu'écrit dans la case du coût | Idem |
+| MAJ-K6 | Coût de Nova finale « 30 + 50% santé max » (sort nouveau) | 30, avec « 50 % de la santé max » en coût secondaire ; tel qu'écrit | Idem |
+| MAJ-A1 | Règle « CHOSES A SAVOIR » (Sommaire AP1, R236), ligne `regle_magie` ; son texte, tel quel, parle aussi d'une bêta et des retours attendus | Où l'afficher : page `/magies/` ; chaque page de magie ; nulle part (donnée seule) | Non affichée |
+| MAJ-A2 | Page de magie : la description et la remarque d'une spécialisation | Sous son nom, avant ses tableaux ; après ses tableaux | Avant |
+| MAJ-A3 | Page de magie : titre du tableau commun (le classeur n'a que la bannière « MAGIE » / nom de la magie) | « Sorts communs » ; le nom de la magie ; pas de titre | « Sorts communs » |
+| MAJ-A4 | Page de magie : la règle du niveau 5, affichée deux fois | Une seule fois par page ; sous chaque tableau qui a des sorts de niveau 5 | Deux fois |
 
 **Décidé le 2026-11-12** : MAJ-X1 à X7, F6, M13, G7 et la lecture des originaux (R237) ; F1, F3, F3b et F3c, F8, M7, M8 (R236) ; C1, C7, C9, C10, C11 (R238) ; R3, R5, R6, R7 (R239) ; G2 (R240) ; O1, O2 (R241) ; B1 (1), B1 (2), B2 (R242) ; S2, S3 (R243).
