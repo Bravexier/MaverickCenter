@@ -171,9 +171,19 @@ test('décision R181 : le don obtenu d’un don « Variable » — l’entrée e
   assert.ok(retraitsDesNotes(ligneDeRetrait(d, jour)).length === 1, 'une ligne de retrait, comptée par la page');
 });
 
+test('décision R236 : la spécialisation magique choisie qu’une livraison retire — son nom et sa magie ; juste après la spécialité de classe', () => {
+  const jour = '2026-11-12T12:00:00Z';
+  const d = { nature: 'specialisation_magie', id: 'magies/x#specialisation:y', nom: 'LICHE', magie: 'Nécromancie' };
+  assert.equal(descriptionDuRetrait(d), 'la spécialisation magique « LICHE » (magie Nécromancie)');
+  assert.equal(ligneDeRetrait(d, jour), `[12/11/2026] ${PREFIXE_DE_RETRAIT}la spécialisation magique « LICHE » (magie Nécromancie) n’existe plus dans les règles. Choisissez autre chose ou adaptez la fiche à la nouvelle règle.`);
+  // les noms inconnus : l'identifiant, rien d'autre
+  assert.equal(descriptionDuRetrait({ nature: 'specialisation_magie', id: d.id, nom: null, magie: null }), `la spécialisation magique « ${d.id} »`);
+  assert.ok(retraitsDesNotes(ligneDeRetrait(d, jour)).length === 1, 'une ligne de retrait, comptée par la page');
+});
+
 test('ordreDesRetraits : métier, spécialité, don, don obtenu (R181), sort, puis par nom ; l’arme élémentaire de R167 après les armes de R52 ; l’armure de R165 après les pièces d’armure de R95 ; les maîtrises d’armes d’avant la refonte en dernier (R153)', () => {
   assert.deepEqual([...ORDRE_DES_NATURES], [
-    'metier', 'specialite', 'capacite', 'don_obtenu', 'sort', 'arme', 'arme_elementaire', 'objet', 'piece_armure', 'armure_transformee', 'armure_familier', 'armure_magie_absente',
+    'metier', 'specialite', 'specialisation_magie', 'capacite', 'don_obtenu', 'sort', 'arme', 'arme_elementaire', 'objet', 'piece_armure', 'armure_transformee', 'armure_familier', 'armure_magie_absente',
     'armure_trop_lourde', 'materiau_bouclier', 'accessoire', 'acquis', 'maitrises_armes',
   ]);
   const elements = [

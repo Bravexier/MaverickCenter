@@ -71,13 +71,18 @@ export function analyserType(typeBrut) {
   };
 }
 
+// Un coût « par » une unité, écrit « N/<unité> » (« 4/projectile » : Projectile arcanique, décision R251) : un seul mot après la barre, jamais « NM »
+// (« 5/NM » est un bonus de maîtrise, pas une unité).
+const PAR_UNITE = /^(\d+)\s*\/\s*(?!NM(?![\p{L}-]))[\p{L}-]+$/u;
+
 /**
- * Colonnes « Coût » et « Coût secondaire » (décision R105) : la consommation de chakra quand le coût est « N » ou « N (k/NM) » ; la ressource de la
- * 4ème barre quand le coût secondaire est « M Sang » ou « M âme(s) », et sa quantité (NULL pour « X »).
+ * Colonnes « Coût » et « Coût secondaire » (décision R105) : la consommation de chakra quand le coût est « N », « N (k/NM) » ou « N/<unité> »
+ * (« 4/projectile », R251 : N est le coût d'une unité) ; la ressource de la 4ème barre quand le coût secondaire est « M Sang » ou « M âme(s) », et sa
+ * quantité (NULL pour « X »).
  */
 export function analyserCout(coutBrut, coutSecondaire = null) {
   const base = sansExpressionsNM(texteSansBalises(coutBrut));
-  const seul = /^(\d+)$/.exec(base);
+  const seul = /^(\d+)$/.exec(base) ?? PAR_UNITE.exec(base);
   const second = /^(\d+|X)\s+(Sang|âmes?)$/.exec(String(texteSansBalises(coutSecondaire ?? '')).trim());
   return {
     cout_chakra: seul ? Number(seul[1]) : null,

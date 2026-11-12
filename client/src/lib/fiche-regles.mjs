@@ -323,6 +323,10 @@ function reglesDeLaBase(db) {
   }
   // plafond de NPM des sorts d'un personnage de cette magie innée (magie_npm_plafond : décision R188, migration 0097 ; le Potentiel Illimité)
   const npmPlafondDesMagies = new Map(lignes(db, 'SELECT magie_id, npm FROM magie_npm_plafond').map((r) => [r.magie_id, r.npm]));
+  // les deux spécialisations de chaque magie, hors le Potentiel Illimité (magie_specialisation : décision R236, migration 0117), dans l'ordre du tableau
+  // de la page (`ordre`, 1 puis 2) : { id, nom, ordre }, le nom tel qu'écrit ; la fiche en tire le choix du bi-magie (personnage_specialisation_magie)
+  const specialisationsDesMagies = parCle(lignes(db, 'SELECT id, magie_id, nom, ordre FROM magie_specialisation ORDER BY magie_id, ordre'), 'magie_id',
+    (x) => ({ id: x.id, nom: x.nom, ordre: x.ordre }));
   const magies = lignes(db, `
     SELECT id, nom, caracteristique_id, caracteristique_brut, sante_offerte, chakra_offert, mono_magie, barre4_ressource, barre4_max, explication FROM magie ORDER BY ordre`)
     .map((m) => ({
@@ -340,6 +344,8 @@ function reglesDeLaBase(db) {
       // le plafond de NPM des sorts qu'il choisit quand c'est sa magie innée (magie_npm_plafond, décision R188) : NPM des sorts = min(puissance magique du
       // niveau, max(ce plafond, `npm_plafond` des dons acquis)) ; il ne borne que le choix des sorts (R188 (2)) ; null sans plafond
       npm_plafond: npmPlafondDesMagies.get(m.id) ?? null,
+      // ses spécialisations magiques (R236 (1)) : deux, aucune pour le Potentiel Illimité
+      specialisations: specialisationsDesMagies.get(m.id) ?? [],
     }));
 
   const dieux = lignes(db, 'SELECT id, nom FROM dieu ORDER BY ordre_choix IS NULL, ordre_choix, nom');
@@ -579,9 +585,12 @@ function reglesDeLaBase(db) {
   // (lib/sort-bonus-texte.mjs#ETIQUETTES_DES_SORTS)
   const etiquettesDesSorts = parCle(lignes(db, `SELECT e.sort_id, e.mot_cle_id AS id, m.cle FROM sort_mot_cle e JOIN mot_cle m ON m.id = e.mot_cle_id
     ORDER BY e.sort_id, m.cle, e.mot_cle_id`), 'sort_id', (e) => nomDuProtege(e) ?? e.id);
-  const sorts = lignes(db, 'SELECT id, magie_id, nom, niveau, type_brut, cout_brut, cout_secondaire, portee_brut, zone_brut, dsb_brut, effets, remarque FROM sort ORDER BY magie_id, niveau, ordre')
+  const sorts = lignes(db, 'SELECT id, magie_id, nom, niveau, specialisation_id, type_brut, cout_brut, cout_secondaire, portee_brut, zone_brut, dsb_brut, effets, remarque FROM sort ORDER BY magie_id, niveau, ordre')
     .map((s) => ({
-      id: s.id, magie_id: s.magie_id, nom: s.nom, niveau: s.niveau, type: s.type_brut, cout: s.cout_brut, portee: s.portee_brut, zone: s.zone_brut, dsb: s.dsb_brut, effets: s.effets, remarque: s.remarque,
+      id: s.id, magie_id: s.magie_id, nom: s.nom, niveau: s.niveau,
+      // la spécialisation magique dont le tableau porte le sort (R236 (1), sort.specialisation_id : NPM 3 à 5) ; null pour un sort commun (NPM 1 et 2)
+      specialisation_id: s.specialisation_id ?? null,
+      type: s.type_brut, cout: s.cout_brut, portee: s.portee_brut, zone: s.zone_brut, dsb: s.dsb_brut, effets: s.effets, remarque: s.remarque,
       // les noms qu'il a portés avant un renommage sur le site de dev (comme les dons) ; absent pour un sort jamais renommé
       ...nomsDAvant(nomsDAvantDesSorts, s),
       // le second coût (âmes, Sang… : décision R105) ou sa précision (« Par tour » : R106), sans expression de NM ; absent quand le sort n'en a pas

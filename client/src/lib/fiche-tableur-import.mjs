@@ -76,7 +76,7 @@ import {
 import {
   ARMURE_COMPLETE, FLECHE, NON, OUI, SEPARATEUR_D_ACCESSOIRE, SEPARATEUR_D_ARMURE, SUITE_DE_LA_CASE, apAmDuBouclier, enChiffres, lireAccessoire, lireChoixDuMetier, lireEffetDAmelioration,
   lireChoixDeMaitrise, lireEffetDArme, lireGains, lireLigneDArmure, lireLigneDeNote, lireListe, lireNiveauDAmelioration, lireNmOfferts, lireObjet, lireSortEnSuite,
-  lireModeHyper, lireSortPrepare, partiesDeLArme, lireCompteurDAction, lireDonObtenu,
+  lireModeHyper, lireSortPrepare, partiesDeLArme, lireCompteurDAction, lireDonObtenu, lireSpecialisation,
 } from './fiche-tableur-export.mjs';
 
 /** Message d'un onglet qui ne suit aucune des deux dispositions (dispositionDe). */
@@ -200,7 +200,7 @@ export function lireLaNote(texte) {
     } else if (lue.nom === 'accessoire') {
       if ((valeurs.accessoires ??= []).some((a) => a.emplacement === lue.emplacement)) doubles.push(ligne);
       else valeurs.accessoires.push({ emplacement: lue.emplacement, valeur: lue.valeur });
-    } else if (['evenement', 'entrainementTexte', 'maitriseChoix', 'donObtenu', 'acquisChoix', 'resistanceChoix', 'sortPrepare', 'compteurAction'].includes(lue.nom)) (valeurs[lue.nom] ??= []).push(lue.valeur);
+    } else if (['evenement', 'entrainementTexte', 'maitriseChoix', 'donObtenu', 'specialisationMagique', 'acquisChoix', 'resistanceChoix', 'sortPrepare', 'compteurAction'].includes(lue.nom)) (valeurs[lue.nom] ??= []).push(lue.valeur);
     else if (valeurs[lue.nom]) doubles.push(ligne);
     else valeurs[lue.nom] = [lue.valeur];
   }
@@ -877,6 +877,22 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
     else if (f.dons_obtenus.some((o) => o.source === don.id)) perdu(`${quoi} : ce don a déjà son entrée`);
     else if (f.dons_obtenus.some((o) => o.entree_id === entree.id)) perdu(`${quoi} : entrée déjà obtenue par un autre don (une seule fois, décision R181)`);
     else f.dons_obtenus.push({ source: don.id, entree_id: entree.id });
+  }
+
+  // ---- les spécialisations magiques (décision R236), lignes « Spécialisation magique » de la note : « <magie> : <spécialisation> » (lireSpecialisation) ; la
+  // magie par son nom parmi les règles, la spécialisation par son nom parmi les deux de cette magie, jamais rapprochées ; une par magie. Le choix d'une magie
+  // que la fiche n'a pas, ou d'un mono-magie, est repris tel quel (gardé sans effet, signalé par la base, comme sur la page)
+  f.specialisations_magie = [];
+  for (const ligne of notee('specialisationMagique')) {
+    const quoi = `Spécialisation magique « ${ligne} »`;
+    const lu = lireSpecialisation(ligne);
+    const magie = lu && (regles.magies ?? []).find((m) => cle(m.nom) === cle(lu.magie));
+    const specialisation = magie && (magie.specialisations ?? []).find((x) => cle(x.nom) === cle(lu.specialisation));
+    if (!lu) perdu(`${quoi} : illisible (une magie, puis une de ses spécialisations)`);
+    else if (!magie) perdu(`${quoi} : aucune magie de ce nom dans les règles`);
+    else if (!specialisation) perdu(`${quoi} : « ${lu.specialisation} » introuvable parmi les spécialisations de ${magie.nom}`);
+    else if (f.specialisations_magie.some((x) => x.magie_id === magie.id)) perdu(`${quoi} : cette magie a déjà sa spécialisation (une par magie, décision R236)`);
+    else f.specialisations_magie.push({ magie_id: magie.id, specialisation_id: specialisation.id });
   }
 
   // ---- l'entraînement (décision R104) : ses compétences dans la case L42 (« Magie 2 | Concentration 10 », bonusDEntrainement) ; la case est lue ligne

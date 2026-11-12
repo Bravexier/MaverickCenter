@@ -87,6 +87,9 @@ export const CLES_DE_LA_NOTE = Object.freeze({
   // l'entrée qu'obtient un don « Variable » du Mage Bleu (décision R181, personnage_don_obtenu) : « <don> (<classe>) : <entrée> (<magie>) »
   // (texteDuDonObtenu, lireDonObtenu), un par choix, gardés sans effet compris ; avant les acquis au choix
   donObtenu: 'Don obtenu',
+  // la spécialisation magique choisie pour une magie (décision R236, personnage_specialisation_magie) : « <magie> : <spécialisation> » (texteDeLaSpecialisation,
+  // lireSpecialisation), une par magie choisie ; le modèle n'a pas de case pour elle (il date d'avant la Magie V10)
+  specialisationMagique: 'Spécialisation magique',
   // un choix d'acquis d'un don (décision R104) : « <don> : <compétence> » (« X ou Y »), « <don> : Arc 6, Calme 4 » (« à répartir au choix »),
   // « <don> : <compétence> (<famille d'armes>) » (l'arme choisie, décision R119 : « Flétrisseur (Tueur) : Arme Légère (DAGUES) » ; la famille est celle
   // de la maîtrise au choix de la classe du don, calculée, décision R152 : l'import ne la relit pas)
@@ -502,6 +505,33 @@ export function lireDonObtenu(texte) {
   const apres = parenthese(t.slice(i + SEPARATEUR_DE_CLE.length));
   return avant && apres ? { don: avant[0], classe: avant[1], entree: apres[0], magie: apres[1] } : null;
 }
+
+/**
+ * La ligne « Spécialisation magique » d'une magie dont la spécialisation est choisie (décision R236) : « <magie> : <spécialisation> » — « Nécromancie :
+ * LICHE » ; les noms tels que les règles les écrivent, relus par lireSpecialisation (la magie, puis la spécialisation parmi les siennes).
+ */
+export const texteDeLaSpecialisation = ({ magie, specialisation }) => `${magie}${SEPARATEUR_DE_CLE}${specialisation}`;
+
+/** { magie, specialisation } d'un texte de texteDeLaSpecialisation ; null s'il ne se lit pas (un nom de chaque côté du premier « : »). */
+export function lireSpecialisation(texte) {
+  const t = String(texte ?? '').trim();
+  const i = t.indexOf(SEPARATEUR_DE_CLE);
+  if (i <= 0) return null;
+  const magie = t.slice(0, i).trim();
+  const specialisation = t.slice(i + SEPARATEUR_DE_CLE.length).trim();
+  return magie && specialisation ? { magie, specialisation } : null;
+}
+
+/**
+ * Les spécialisations magiques choisies de la fiche (`specialisations_magie`) en noms : { magie, specialisation }, dans l'ordre des magies des règles,
+ * une par magie. Un choix dont la magie ou la spécialisation n'est plus dans les règles n'est pas écrit. Celui d'un mono-magie ou d'un Potentiel Illimité
+ * (sans effet, R236) est écrit comme les autres : la note garde ce que la fiche garde.
+ */
+export const specialisationsChoisies = (regles, f) => (regles.magies ?? []).flatMap((m) => {
+  const choix = (f.specialisations_magie ?? []).find((x) => x?.magie_id === m.id);
+  const s = choix && (m.specialisations ?? []).find((x) => x.id === choix.specialisation_id);
+  return s ? [{ magie: m.nom, specialisation: s.nom }] : [];
+});
 
 /** Un point d'une source de maîtrise pas encore choisi, dans la ligne « Maîtrise d'arme au choix » (comme « → ? » d'un accessoire). */
 export const POINT_A_CHOISIR = '?';
@@ -1338,6 +1368,8 @@ export function cellulesDeLaFiche(regles, fiche, { date = 'JJ/MM/AAAA', zones = 
   for (const p of variables.perdus) {
     if (p.don && p.classe && p.entree) noter(K.donObtenu, texteDuDonObtenu({ don: p.don.nom, classe: p.classe.nom, entree: p.entree.nom, magie: nomDeMagie(p.entree) }));
   }
+  // les spécialisations magiques choisies (décision R236), une par magie dans l'ordre des règles : le tableur de la V15.2.2 n'a pas de case pour elles
+  for (const x of specialisationsChoisies(regles, f)) noter(K.specialisationMagique, texteDeLaSpecialisation(x));
   // ceux d'une armure cassée compris (décisions R157, R158) : gardés comme à l'enregistrement (acquisChoixGardes)
   for (const c of acquisChoixGardes(regles, f)) {
     const choisi = c.repartition ? c.parts.map((x) => `${nomDe(regles.competences, x.competence_id)} ${x.valeur}`).join(', ') : c.choisi && nomDe(regles.competences, c.choisi);

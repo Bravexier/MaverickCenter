@@ -1,5 +1,5 @@
 // Fiches de personnage et règles supprimées (décision R42 ; docs/serveur.md, « Fiches de personnage (R42) ») : un don, une spécialité (avec les dons
-// choisis qui en dépendent), un sort (avec son livre, décision R169), un métier, une arme (décision R52) ou le don obtenu d'un don « Variable » du Mage
+// choisis qui en dépendent), la spécialisation d'une magie choisie par une fiche (décision R236, migration 0118), un sort (avec son livre, décision R169), un métier, une arme (décision R52) ou le don obtenu d'un don « Variable » du Mage
 // Bleu (décision R181 : l'entrée du tableau, ou le don « Variable », supprimés ; le don qui n'est plus « Variable » ou qui vise l'autre magie, réponses
 // du propriétaire « Retirés avec une note », R192 : retirerLesChoixDesDonsChanges) que les règles suppriment est RETIRÉ des fiches qui l'utilisent — la
 // fiche reste, seul l'élément part — et une ligne datée par élément s'ajoute à la fin de ses notes (« NOTE », cellule BA53 ; texte :
@@ -32,6 +32,12 @@ export const RETRAITS = Object.freeze([
   Object.freeze({
     table: 'personnage_classe', colonnes: Object.freeze(['specialite_id', 'classe_id']), vise: 'specialite', action: 'vider', colonne: 'specialite_id',
     cle: Object.freeze(['personnage_id', 'rang']),
+  }),
+  // la spécialisation magique choisie (décision R236, migration 0118 ; la clé étrangère est composée : spécialisation, magie, sans ON DELETE) : la ligne
+  // part, la magie de la fiche redevient « à choisir » (aucune ligne = choix en attente)
+  Object.freeze({
+    table: 'personnage_specialisation_magie', colonnes: Object.freeze(['specialisation_id', 'magie_id']), vise: 'magie_specialisation', action: 'supprimer',
+    cle: Object.freeze(['personnage_id', 'magie_id']),
   }),
   Object.freeze({ table: 'personnage_capacite', colonnes: Object.freeze(['capacite_id']), vise: 'capacite', action: 'supprimer', cle: Object.freeze(['personnage_id', 'capacite_id']) }),
   // le don obtenu d'un don « Variable » (décision R181, migration 0088 ; les deux clés sont sans ON DELETE) : il part avec l'entrée du tableau qu'il
@@ -104,6 +110,9 @@ const descripteurDuSort = (s) => ({
   nature: 'sort', id: s.id, nom: s.nom ?? null, magie: s.magie ?? null, npm: s.npm ?? null, nm: s.choisi ? s.niveau_maitrise ?? null : null,
   livre: Boolean(s.livre), choisi: Boolean(s.choisi),
 });
+
+/** Le descripteur du retrait d'une spécialisation magique choisie (décision R236 ; fiche-format.mjs#descriptionDuRetrait) : la spécialisation et sa magie. */
+const descripteurDeLaSpecialisation = (x) => ({ nature: 'specialisation_magie', id: x.id, nom: x.nom ?? null, magie: x.magie ?? null });
 
 /**
  * Le descripteur du retrait d'un don obtenu (décision R181 ; fiche-format.mjs#descriptionDuRetrait, nature « don_obtenu ») : l'entrée (`id`, `nom`), le
@@ -216,7 +225,7 @@ function appliquer(db, aRetirer, acc) {
  * @param {{ metiers?: string[], specialites?: string[], capacites?: string[], sorts?: string[] }} cibles
  * @param {Map} acc nouveauxRetraitsDeFiches()
  */
-export function retirerDesFiches(db, { metiers = [], specialites = [], capacites = [], sorts = [], armes = [] } = {}, acc = nouveauxRetraitsDeFiches()) {
+export function retirerDesFiches(db, { metiers = [], specialites = [], specialisations = [], capacites = [], sorts = [], armes = [] } = {}, acc = nouveauxRetraitsDeFiches()) {
   const aRetirer = [];
   const capacitesDonnees = new Set(capacites);
   const regroupes = new Set(); // `${fiche}\u0000${don}` : dons nommés sur la ligne de leur spécialité
@@ -230,6 +239,17 @@ export function retirerDesFiches(db, { metiers = [], specialites = [], capacites
       for (const k of dons) regroupes.add(`${f.personnage}\u0000${k.id}`);
       aRetirer.push({ ...f, vise: 'specialite', cle: [f.personnage, f.rang],
         descripteur: { nature: 'specialite', id: s.id, nom: s.nom, classe: s.classe ?? null, dons: dons.map((k) => k.nom).sort(parNom) } });
+    }
+  }
+  // la spécialisation d'une magie supprimée (décision R236) : le choix des fiches part (aucun site ne la supprime aujourd'hui : migration seulement)
+  if (specialisations.length && aLaTable(db, 'personnage_specialisation_magie')) {
+    for (const id of specialisations) {
+      const m = db.prepare('SELECT s.id, s.nom, s.magie_id, g.nom AS magie FROM main.magie_specialisation s LEFT JOIN main.magie g ON g.id = s.magie_id WHERE s.id = ?').get(id);
+      if (!m) continue;
+      for (const f of db.prepare(`SELECT ${champsDeFiche} FROM main.personnage_specialisation_magie x JOIN main.personnage p ON p.id = x.personnage_id
+        WHERE x.specialisation_id = ? AND x.magie_id = ? ORDER BY p.id`).all(m.id, m.magie_id)) {
+        aRetirer.push({ ...f, vise: 'magie_specialisation', cle: [f.personnage, m.magie_id], descripteur: descripteurDeLaSpecialisation(m) });
+      }
     }
   }
   for (const id of capacites) {
@@ -336,6 +356,22 @@ export function retirerLesManquants(db, acc = nouveauxRetraitsDeFiches()) {
     WHERE pc.specialite_id IS NOT NULL AND EXISTS (SELECT 1 FROM main.classe c WHERE c.id = pc.classe_id)
       AND NOT EXISTS (SELECT 1 FROM main.specialite s WHERE s.id = pc.specialite_id AND s.classe_id = pc.classe_id)
     ORDER BY p.id, pc.rang`).all();
+  // spécialisations magiques choisies (décision R236) : la magie existe encore, le couple (spécialisation, magie) n'existe plus ; noms lus dans l'ancienne base
+  const ancienneTable = (t) => !!db.prepare("SELECT 1 FROM ancienne.sqlite_master WHERE type = 'table' AND name = ?").get(t);
+  if (aLaTable(db, 'personnage_specialisation_magie') && ancienneTable('personnage_specialisation_magie')) {
+    const nomAncien = ancienneTable('magie_specialisation') ? 'a.nom' : 'NULL';
+    const jointure = ancienneTable('magie_specialisation') ? 'LEFT JOIN ancienne.magie_specialisation a ON a.id = x.specialisation_id' : '';
+    for (const x of db.prepare(`SELECT ${champsDeFiche}, x.magie_id, x.specialisation_id AS id, ${nomAncien} AS nom, coalesce(mm.nom, am.nom) AS magie
+      FROM main.personnage_specialisation_magie x JOIN main.personnage p ON p.id = x.personnage_id
+      ${jointure}
+      LEFT JOIN main.magie mm ON mm.id = x.magie_id
+      LEFT JOIN ancienne.magie am ON am.id = x.magie_id
+      WHERE EXISTS (SELECT 1 FROM main.magie m WHERE m.id = x.magie_id)
+        AND NOT EXISTS (SELECT 1 FROM main.magie_specialisation s WHERE s.id = x.specialisation_id AND s.magie_id = x.magie_id)
+      ORDER BY p.id, x.magie_id`).all()) {
+      aRetirer.push({ ...x, vise: 'magie_specialisation', cle: [x.personnage, x.magie_id], descripteur: descripteurDeLaSpecialisation(x) });
+    }
+  }
   // dons : absents des nouvelles règles, leur classe présente
   const dons = db.prepare(`SELECT ${champsDeFiche}, pc.capacite_id AS id, a.nom AS nom, a.niveau AS niveau, a.specialite_id AS specialite_id, coalesce(mc.nom, ac.nom) AS classe,
       coalesce(ms.nom, asp.nom) AS specialite

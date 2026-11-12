@@ -77,3 +77,27 @@ test('une case modifiée : nouvelles expressions reconnues ; la colonne « Bonus
   assert.equal(texteDeBonus(lignes), 'Coût : -3/NM');
   assert.deepEqual(ORDRE_CHAMPS_NM, Object.keys(COLONNES_NM));
 });
+
+test('coût (R251) : « N/<unité> » donne la valeur N (« 4/projectile ») ; les formes d’avant et ce qui n’est pas une unité ne changent pas', () => {
+  const chakra = (cout, secondaire = null) => analyserCout(cout, secondaire).cout_chakra;
+  // le coût d'une unité, avec ou sans espaces autour de la barre, balises du glossaire comprises
+  assert.equal(chakra('4/projectile'), 4);
+  assert.equal(chakra('4 / projectile'), 4);
+  assert.equal(chakra('12/tour'), 12);
+  assert.equal(chakra('{{1|4}}/projectile'), 4);
+  // le coût secondaire n'y change rien (la précision est dite en mots, R251) ; une ressource se lit toujours à part
+  assert.deepEqual(analyserCout('4/projectile', '+1 au coût de chaque projectile supplémentaire.'), { cout_chakra: 4, cout_ressource: null, cout_ressource_valeur: null });
+  assert.deepEqual(analyserCout('4/projectile', '2 Sang'), { cout_chakra: 4, cout_ressource: 'sang', cout_ressource_valeur: 2 });
+  // les formes d'avant : « N », « N (k/NM) », « X », « N/A », une étoile devant le nombre
+  assert.equal(chakra('5'), 5);
+  assert.equal(chakra('55 (-5/NM)'), 55);
+  assert.equal(chakra('55 (–5/NM)'), 55);
+  assert.equal(chakra('X'), null);
+  assert.equal(chakra('N/A'), null);
+  assert.equal(chakra('*4 / projectile'), null);
+  // ce qui n'est pas « N/<un mot> » reste sans valeur : un bonus de maîtrise sans parenthèses, une barre sans unité, une unité chiffrée, plusieurs mots
+  assert.equal(chakra('5/NM'), null);
+  assert.equal(chakra('4/'), null);
+  assert.equal(chakra('4/2'), null);
+  assert.equal(chakra('4/projectile supplémentaire'), null);
+});

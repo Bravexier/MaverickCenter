@@ -176,6 +176,10 @@ service (qui accepte les deux formes).
 **Une fiche en JSON** (`fiche-format.mjs`) : les colonnes de `personnage` à la racine, sous leur nom ; une liste par table de détail
 (`classes`, `caracteristiques`, `competences`, `entrainements`, `acquis_choix`, `resistance_choix`, `metier_bonus`, `capacites`, `dons_obtenus`, `sorts`, `livres_sorts`, `maitrise_choix`, `armes`,
 `armure_parties`, `accessoires`, `inventaire`, `ceinture`, `actions_usage`), chaque ligne avec les colonnes de sa table sans `personnage_id` ; et `version`.
+`specialisations_magie` (`[{ magie_id, specialisation_id }]`, décision R236, migration 0118) : la spécialisation magique choisie pour chaque magie de la fiche ; une
+seule par magie (`400` « une seule spécialisation par magie de la fiche »), de cette magie (clé étrangère composée : `400` « n’existe pas dans les règles » sinon) ;
+une ligne = un choix fait, aucune ligne = choix en attente ; celle d'un mono-magie ou d'un Potentiel Illimité s'enregistre, sans effet. Les contrôles
+`sort_hors_specialisation` et `specialisation_hors_magie` du bi-magie sont ceux de `v_personnage_controle`.
 `dons_obtenus` (`[{ source, entree_id }]`, décision R181, migration 0088) : l'entrée du tableau du Mage Bleu (`classe_annexe_entree`) qu'obtient chaque
 don « Variable » (`source`) ; un choix par don (`400` « un don « Variable » n’obtient qu’une entrée ») et une entrée une seule fois par fiche (`400`
 « … chaque entrée ne se prend qu’une fois (décision R181) ») ; une entrée hors de la liste du don, ou d'un don qui n'est plus acquis, s'enregistre et
@@ -250,7 +254,7 @@ n'est pas un champ inconnu : elle est ignorée (fichier exporté avant).
   (`personnage_armure_partie`, 0055 ; `personnage_entrainement` et `personnage_acquis_choix`, 0062 ; `personnage_resistance_choix`, 0069, la
   résistance au choix du Drakos orange, liste `resistance_choix` ; `personnage_maitrise_choix`, 0076, liste `maitrise_choix`, les anciens dés laissés
   intacts pour la reconstruction suivante ; `personnage_livre_sort`, 0082, liste `livres_sorts` : un livre ne s'enregistre pas sur cette base ; `personnage_action_usage`, 0085, liste
-  `actions_usage` ; `personnage_don_obtenu`, 0088, liste `dons_obtenus`) se lit vide, et une liste non vide pour elle est
+  `actions_usage` ; `personnage_don_obtenu`, 0088, liste `dons_obtenus` ; `personnage_specialisation_magie`, 0118, liste `specialisations_magie`, la spécialisation magique choisie par magie, R236) se lit vide, et une liste non vide pour elle est
   refusée (« pas encore dans cette base, ses lignes seraient perdues ») ; une colonne retirée qu'une base d'avant exige encore (`statut`,
   `competences[].acquis`) y prend sa valeur de départ.
 - **Contrôles** : les règles de `v_personnage_controle` enfreintes sont rendues avec chaque fiche ; toute fiche est contrôlée, même inachevée, et
@@ -443,7 +447,11 @@ fiches », « Il en va de même pour les sorts ou métiers supprimés » ; une a
 une spécialité, un métier ou une arme qu'une fiche utilise le **retire de la fiche**, qui reste : la ligne `personnage_capacite` (ou `personnage_arme`, avec
 la composition et l'amélioration de cet emplacement ; une arme élémentaire, qui ne se supprime pas, n'est jamais visée) part, `personnage_classe.specialite_id`
 passe à `NULL` (la classe reste) avec les dons choisis de la spécialité, `personnage.metier_id` passe à `NULL` avec les bonus « A OU B » que la fiche
-y avait choisis (`personnage_metier_bonus`) (un sort, que le site ne supprime pas
+y avait choisis (`personnage_metier_bonus`) (la spécialisation magique choisie par une fiche, `personnage_specialisation_magie`, partie `specialisations_magie`
+(R236, migration 0118 ; la clé étrangère est composée, spécialisation et magie, sans `ON DELETE`), part de même, la magie redevient « à choisir » : le
+site ne supprime pas les spécialisations (28, par migration), le retrait se fait donc à la reconstruction, quand le couple n'existe plus dans les nouvelles
+règles, avec sa ligne « la spécialisation magique « LICHE » (magie Nécromancie) n’existe plus dans les règles… » ; `retirerDesFiches` sait aussi la retirer
+d'une liste `specialisations`) (un sort, que le site ne supprime pas
 encore, partirait de `personnage_sort` avec son livre, `personnage_livre_sort`, même sur une fiche qui n'a que le livre : décision R169, la clé n'a pas
 d'`ON DELETE` ; la ligne de note le dit, « 2 NM sur cette fiche dont 1 de livre », « livre de sort en attente, sort hors de la liste » ;
 à la reconstruction, les quatre sont retirés, sauf un don, une spécialité ou un sort dont la classe ou la

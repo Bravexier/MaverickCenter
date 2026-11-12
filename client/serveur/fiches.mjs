@@ -35,7 +35,7 @@ const DEPART_DES_COLONNES_RETIREES_DE_DETAIL = Object.freeze({ personnage_compet
  * inconnu » (ce qu'elle porte serait perdu). De même une table de la fiche que la base n'a pas encore (personnage_armure_partie, 0055 ;
  * personnage_entrainement et personnage_acquis_choix, 0062 ; personnage_resistance_choix, 0069, la résistance au choix du Drakos orange, R124 ;
  * personnage_maitrise_choix, 0076, les choix de maîtrise d'armes, R148 ; personnage_livre_sort, 0082, les livres de sort, R169 ; personnage_action_usage, 0085, les compteurs d'actions, R173 ; personnage_don_obtenu, 0088,
- * les dons obtenus des dons « Variable » du Mage Bleu, R181 : partiesDeLaBase) se lit vide, et une liste non vide pour elle est refusée.
+ * les dons obtenus des dons « Variable » du Mage Bleu, R181 ; personnage_specialisation_magie, 0118, la spécialisation magique choisie par magie, R236 : partiesDeLaBase) se lit vide, et une liste non vide pour elle est refusée.
  */
 export const DEPART_DES_COLONNES_AJOUTEES = Object.freeze({
   personnage: Object.freeze({
@@ -262,6 +262,7 @@ function valeurDeCellule(v, ou, problemes) {
  */
 const UNIQUES_DE_LA_FICHE = Object.freeze({
   'personnage_sort.personnage_id': 'un seul sort préparé par fiche (décision R115)',
+  'personnage_specialisation_magie.personnage_id, personnage_specialisation_magie.magie_id': 'une seule spécialisation par magie de la fiche (décision R236)',
   'personnage_don_obtenu.personnage_id, personnage_don_obtenu.source': 'un don « Variable » n’obtient qu’une entrée (décision R181)',
   'personnage_don_obtenu.personnage_id, personnage_don_obtenu.entree_id':
     'cette entrée du tableau du Mage Bleu est déjà obtenue par un autre don « Variable » de la fiche : chaque entrée ne se prend qu’une fois (décision R181)',

@@ -467,6 +467,7 @@ export const HORS_RESSOURCE = {
   personnage: `Fiche de personnage (prétiré ou fiche de joueur, ses choix seulement) : ${FICHES}.`,
   personnage_partage: `Partage d’une fiche de joueur avec des utilisateurs désignés (hors du JSON d’une fiche) : ${FICHES}.`,
   personnage_classe: `Classes d’une fiche (partie de la fiche) : ${FICHES}.`,
+  personnage_specialisation_magie: `Spécialisation magique choisie par magie d’une fiche, une par magie ; aucune ligne = choix en attente, celle d’un mono-magie ou d’un Potentiel Illimité est sans effet (partie de la fiche, R236) : ${FICHES}.`,
   personnage_caracteristique: `Caractéristiques de base et croix d’une fiche (partie de la fiche, R19) : ${FICHES}.`,
   personnage_competence: `Points de compétences d’une fiche, le naturel (partie de la fiche ; l’acquis se calcule, R104) : ${FICHES}.`,
   personnage_entrainement: `Lignes de l’entraînement d’une fiche, une compétence et ses points ou un texte libre (partie de la fiche, R104) : ${FICHES}.`,
