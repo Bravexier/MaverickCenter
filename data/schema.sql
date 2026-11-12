@@ -23,7 +23,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 116;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 117;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -646,7 +646,8 @@ CREATE TABLE magie (
   nom                   TEXT    NOT NULL UNIQUE CHECK (length(nom) > 0),    -- nom court tel qu'écrit dans les listes de résistances et d'incompatibilités :
                                                     -- 'Sang', 'Espace/Temps', 'Potentiel Illimité' (onglet « Magie » de la fiche)
   nom_cle               TEXT    NOT NULL UNIQUE CHECK (nom_cle NOT GLOB '*[^a-z0-9-]*' AND nom_cle NOT GLOB '*--*' AND nom_cle NOT GLOB '-*' AND nom_cle NOT GLOB '*-'),    -- normalize(nom) comme text.mjs : 'sang', 'espace-temps', 'potentiel-illimite'
-  onglet                TEXT    NOT NULL,           -- nom exact de l'onglet du classeur V8 (le dump tronque 'Potentiel illimité (magie diffi')
+  onglet                TEXT    NOT NULL,           -- nom exact de l'onglet du classeur de la magie (V8, puis le classeur de Décembre depuis la migration 0117 :
+                                                    -- « EspaceTemps » ; le dump tronque 'Potentiel illimité (magie diffi')
   ordre                 INTEGER NOT NULL UNIQUE CHECK (ordre >= 1),   -- rang de l'onglet dans le classeur (1 = Potentiel illimité)
   banniere              TEXT,                       -- texte d'avertissement de la bannière d'en-tête (Potentiel : « MAGIE DIFFICILE A JOUER !! »)
   description           TEXT,                       -- texte d'introduction (A4), paragraphes séparés par des lignes vides
@@ -780,24 +781,31 @@ CREATE TABLE magie_dieu (
 
 CREATE INDEX magie_dieu_dieu ON magie_dieu (dieu_id);
 
--- Tableau « AMELIORATION CADAVERIQUE » de la Nécromancie (13 lignes : nom, effet). Le nom est celui d'une amélioration
--- d'invocation ; le lien avec le bestiaire (invocations « Zombi », « Momie »…) n'est pas dans la source : non modélisé.
-CREATE TABLE amelioration_cadaverique (
-  id         TEXT    NOT NULL PRIMARY KEY,          -- '<magie.id>#amelioration:<slug du nom>'
-  magie_id   TEXT    NOT NULL REFERENCES magie(id),
-  rang       INTEGER NOT NULL CHECK (rang >= 1),    -- ordre du tableau : colonne de gauche (D) puis de droite (T), de haut en bas
-  nom        TEXT    NOT NULL CHECK (length(nom) > 0),
-  effet      TEXT    NOT NULL,
-  origine    TEXT    NOT NULL REFERENCES famille(id)
-    CHECK (origine = 'magies'),
-  source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0),
+-- Le tableau « AMELIORATION CADAVERIQUE » de la Nécromancie (table amelioration_cadaverique, 13 lignes) est supprimé par la migration 0117
+-- (décision R237 (7) : « Supprimés du site : les améliorations cadavériques »), avec le sort « Amélioration Cadavérique ».
+
+-- SPÉCIALISATIONS MAGIQUES (décision R236 (1), migration 0117, classeur de Décembre « Nouveauté mise à jour Décembre », onglets 03 à 16) : deux par
+-- magie, sauf le Potentiel Illimité (28). Chacune porte les sorts de NPM 3, 4 et 5 d'un des deux tableaux « SPÉCIALISATION <nom> » de l'onglet
+-- (sort.specialisation_id) ; les sorts de NPM 1 et 2 restent communs à la magie. Qui y a accès (mono-magie : les deux ; bi-magie : une par magie,
+-- R236 (2), (3)) est une règle de la fiche, pas une donnée de cette table.
+CREATE TABLE magie_specialisation (
+  id          TEXT    NOT NULL PRIMARY KEY,          -- '<magie.id>#specialisation:<nom_cle à la création>' ; figé : un renommage change nom et nom_cle, jamais l'id
+  magie_id    TEXT    NOT NULL REFERENCES magie(id),
+  ordre       INTEGER NOT NULL CHECK (ordre IN (1, 2)),   -- 1 = tableau de gauche de l'onglet, 2 = tableau de droite
+  nom         TEXT    NOT NULL CHECK (length(nom) > 0),   -- tel qu'écrit dans le bandeau, en capitales (« SANGUILONANT », « DÉFERLANTE »)
+  nom_cle     TEXT    NOT NULL CHECK (nom_cle NOT GLOB '*[^a-z0-9-]*' AND nom_cle NOT GLOB '*--*' AND nom_cle NOT GLOB '-*' AND nom_cle NOT GLOB '*-'),   -- normalize(nom)
+  description TEXT,                                  -- texte sous le bandeau, tel qu'écrit ; NULL = aucun
+  origine     TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'magies'),
+  source_ref  TEXT    NOT NULL CHECK (length(source_ref) > 0),   -- « Nouveauté mise à jour Décembre › Sang › M70:AK73 » (bandeau et description)
   remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
-  UNIQUE (magie_id, rang),
-  UNIQUE (magie_id, nom)
+  UNIQUE (magie_id, ordre),
+  UNIQUE (magie_id, nom_cle),
+  CHECK (substr(id, 1, length(magie_id) + 16) = magie_id || '#specialisation:')
 ) STRICT;
 
--- SORT : une ligne par sort de la table des sorts (14 magies x 23 sorts = 322 ; Potentiel Illimité n'a pas de table propre :
--- il pioche dans les 14 autres, règle de la fiche, hors de ce domaine)
+-- SORT : une ligne par sort des tables de sorts du classeur de Décembre (migration 0117, R237 : 14 magies x 30 sorts = 420 ; ils étaient 23 par
+-- magie dans le classeur V8). Par magie : 10 sorts communs (NPM 1 et 2), puis 10 par spécialisation (NPM 3 à 5). Potentiel Illimité n'a pas de table
+-- propre : il pioche dans les 14 autres, règle de la fiche, hors de ce domaine.
 CREATE TABLE sort (
   id                    TEXT    NOT NULL PRIMARY KEY,   -- '<magie.id>#sort:<clé du nom à l'import>' ; gelé : un renommage change nom et nom_cle, jamais l'id (0006)
   magie_id              TEXT    NOT NULL REFERENCES magie(id),
@@ -805,7 +813,8 @@ CREATE TABLE sort (
   nom_cle               TEXT    NOT NULL CHECK (nom_cle NOT GLOB '*[^a-z0-9-]*' AND nom_cle NOT GLOB '*--*' AND nom_cle NOT GLOB '-*' AND nom_cle NOT GLOB '*-'),               -- normalize(nom) comme text.mjs : 'boule-de-sang' ; recherche d'un sort par son nom
   niveau                INTEGER NOT NULL CHECK (niveau BETWEEN 1 AND 5),   -- colonne « Niveau » : niveau de PUISSANCE du sort
                                                         -- (palier 1 à 5), à ne pas confondre avec le niveau de maîtrise (NM, 0 à 3)
-  ordre                 INTEGER NOT NULL CHECK (ordre >= 1),   -- rang dans la table de l'onglet (1 à 23) ; l'ordre de lecture
+  ordre                 INTEGER NOT NULL CHECK (ordre >= 1),   -- rang dans la magie, l'ordre de lecture (migration 0117) : 1 à 10 le tableau commun,
+                                                               -- 11 à 20 la spécialisation de gauche (ordre 1), 21 à 30 celle de droite (ordre 2)
   -- Type ------------------------------------------------------------------------------------------------------------
   type_brut             TEXT    NOT NULL,               -- « Amplification (IC pour 3 NM) », « Attaque\n(Imparable) »… tel qu'écrit
   ic_direct             INTEGER NOT NULL CHECK (ic_direct IN (0, 1)),   -- 1 = le type contient « (IC) » (Instant Cast, voir legende_sort)
@@ -819,7 +828,9 @@ CREATE TABLE sort (
   -- « 5% santé par tour »…) ou une précision du coût (décision R106, migration 0065 : la canalisation, « Par tour », « Par tour et par cible », « Par
   -- jour » ; « Pour 1 barrière », « Par taille créée », « Par NPM de la créature invoquée »…). Le classeur les écrivait dans une seule case (« 3 + 1 Sang »,
   -- « 3xN/tour ») : lib/sort-cout.mjs#repartirLeCout, puis les réponses du propriétaire (registre 0065-couts-des-sorts-tranches.json).
-  cout_brut             TEXT    NOT NULL,               -- « 3 », « 55 (-5/NM) », « 0 », « X », « N/A »
+  cout_brut             TEXT    NOT NULL,               -- « 3 », « 55 (-5/NM) », « 0 », « X », « N/A » ; un coût du classeur de Décembre que
+                                                        -- repartirLeCout ne sait pas lire (« 8xN/tour », « 5/boule ») reste écrit tel quel, rien de typé
+                                                        -- (migration 0117 : jamais deviné, question au propriétaire)
   cout_chakra           INTEGER CHECK (cout_chakra >= 0),   -- la consommation de chakra quand la forme est « N » ou « N (-k/NM) » ; sinon NULL
   cout_ressource        TEXT    CHECK (cout_ressource IN ('sang', 'ame')),   -- ressource de la 4ème barre quand le coût secondaire est « M Sang » ou « M âme(s) »
   cout_ressource_valeur INTEGER CHECK (cout_ressource_valeur >= 0),          -- sa quantité ; NULL si « X » ou absente
@@ -838,9 +849,11 @@ CREATE TABLE sort (
   -- D/S/B : D = Dégâts, S = Soin (R205), B non défini (colonne « D/S/B »)
   dsb_brut              TEXT,                           -- NULL quand la cellule vaut « / » (la fiche la traite comme vide)
   -- Effets
-  effets                TEXT,                           -- colonne « Effets secondaires » (jamais vide dans les 322 sorts)
+  effets                TEXT,                           -- colonne « Effets secondaires »
   texte_niveau5         TEXT,                           -- texte du pied d'onglet (« Textes des sorts de niveau 5 ») titré du nom de ce sort ;
-                                                        -- NULL quand l'onglet n'en porte pas (ou quand le titre est sans texte)
+                                                        -- NULL quand l'onglet n'en porte pas (ou quand le titre est sans texte). Classeur de Décembre : un
+                                                        -- titre qui n'est plus un sort est rattaché au sort de niveau 5 de sa spécialisation (R237 (9)) ; les six
+                                                        -- textes de Glace et de Terre, absents de ce classeur, restent (R243 (1)) et citent le V8 dans source_ref
   origine               TEXT    NOT NULL REFERENCES famille(id)
     CHECK (origine = 'magies'),
   source_ref            TEXT    NOT NULL CHECK (length(source_ref) > 0), -- « Magie Maverick V8 › Sang › AL4:BR6 »
@@ -854,6 +867,11 @@ CREATE TABLE sort (
   -- Colonne ajoutée par la migration 0063 (décision R105) : la colonne « Coût secondaire » des tables de sorts. Elle n'écrit pas d'expression de NM (le
   -- bonus de NM du coût est dans « Coût » : sort_bonus_maitrise n'a pas de champ pour elle, le service et db:check refusent un NM ici)
   cout_secondaire       TEXT    CHECK (cout_secondaire IS NULL OR (length(cout_secondaire) > 0 AND cout_secondaire = trim(cout_secondaire))),   -- « 1 Sang », « 2 âmes », « X Sang », « 20% PV », « Par tour et par cible », « Pour 1 barrière » ; NULL = pas de second coût
+  -- Colonne ajoutée par la migration 0117 (décision R236 (1)) : la spécialisation dont le tableau porte le sort ; NULL = sort commun (NPM 1 et 2).
+  -- Le CHECK garde qu'elle est de la magie du sort (préfixe de son id figé) et qu'elle ne porte que des sorts de NPM 3 à 5. Que chaque sort de
+  -- NPM 3 à 5 en ait une n'est pas un CHECK (le contrôle est à db:check).
+  specialisation_id     TEXT    REFERENCES magie_specialisation(id)
+    CHECK (specialisation_id IS NULL OR (niveau >= 3 AND substr(specialisation_id, 1, length(magie_id) + 16) = magie_id || '#specialisation:')),
   UNIQUE (magie_id, ordre),
   UNIQUE (magie_id, nom),
   -- le typé suit toujours le brut (la valeur typée n'est jamais une valeur saisie : le service la recalcule avec lib/sort-analyse.mjs, que
@@ -885,6 +903,8 @@ CREATE INDEX sort_cout_chakra  ON sort (cout_chakra) WHERE cout_chakra IS NOT NU
 CREATE INDEX sort_zone_forme   ON sort (zone_forme);                                  -- « sorts de zone »
 
 CREATE INDEX sort_portee       ON sort (portee_nature, portee_valeur);
+
+CREATE INDEX sort_specialisation ON sort (specialisation_id) WHERE specialisation_id IS NOT NULL;   -- « les sorts d'une spécialisation » ; clé étrangère
 
 -- Types d'un sort : « Attaque/ Entrave (Imparable) » = deux types. Les parenthèses sont retirées avant de couper sur « / ».
 -- `libelle` garde l'écriture d'origine (« Entave » pour deux sorts : faute de frappe de la source, rapprochée de 'entrave').
@@ -1031,7 +1051,8 @@ CREATE TABLE legende_sort (
   source_ref  TEXT NOT NULL CHECK (length(source_ref) > 0)
 ) STRICT;
 
--- Règles de magie qui valent pour toutes les magies (Sommaire!A31 : « Règle spéciale pour sort niveau 5 »).
+-- Règles de magie qui valent pour toutes les magies (Sommaire!A31 du classeur V8 : « Règle spéciale pour sort niveau 5 », gardée par R237 (7) ;
+-- Sommaire!AP1 du classeur de Décembre : « CHOSES A SAVOIR », les spécialisations, R236, migration 0117, titre = sa première ligne).
 CREATE TABLE regle_magie (
   id           TEXT    NOT NULL PRIMARY KEY,         -- 'magies#regle:<slug du titre>' ('magies#regle:regle-speciale-pour-sort-niveau-5')
   titre        TEXT    NOT NULL,                     -- début du texte jusqu'à « : »
@@ -1096,8 +1117,8 @@ CREATE TABLE etat (
 
 CREATE INDEX etat_type ON etat (type);
 
--- Magie(s) liée(s) d'une altération : 13 altérations sur 20 en ont (Surcharge Magique : deux, Arcane et Corruption).
--- Les 7 autres ont « / » dans la source et aucune ligne ici.
+-- Magie(s) liée(s) d'une altération : 14 altérations sur 21 en ont (Surcharge Magique : deux, Arcane et Corruption ; Somnolence, « Ombre (Songe) » :
+-- l'Ombre, la spécialisation SONGE restant dans magie_liee_brut, migration 0117). Les 7 autres ont « / » dans la source et aucune ligne ici.
 CREATE TABLE etat_magie (
   etat_id    TEXT    NOT NULL REFERENCES etat(id),
   magie_id   TEXT    NOT NULL REFERENCES magie(id),
@@ -2092,9 +2113,9 @@ CREATE TABLE invocation (
                                             -- les effets des sorts (« voir invocation ») et par le texte de l'onglet (« le sort
                                             -- « Appel aux golems » »). NULL = rapprochement non établi.
   texte_general TEXT,                       -- texte général de l'onglet (AJ3, AP3, Z3), tel qu'écrit, paragraphes séparés par une ligne vide
-  tableau_titre TEXT,                       -- titre du tableau posé à droite des cartes (AP40 de « Animation des morts » : « TABLEAU "AMELIORATION CADAVERIQUE" »),
-                                            -- NULL = aucun. Le CONTENU de ce tableau (13 lignes) est la table amelioration_cadaverique du domaine magies : le même
-                                            -- tableau figure dans les deux classeurs (identité vérifiée à l'import) ; une seule copie, pas de doublon ici.
+  tableau_titre TEXT,                       -- titre d'un tableau posé à droite des cartes ; NULL = aucun. Le seul (AP40 de « Animation des morts » :
+                                            -- « TABLEAU "AMELIORATION CADAVERIQUE" », contenu dans la table amelioration_cadaverique) est retiré avec
+                                            -- cette table par la migration 0117 (décision R237 (7) : les améliorations cadavériques sont supprimées du site).
   origine       TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'bestiaire'),
   source_ref    TEXT    NOT NULL CHECK (length(source_ref) > 0),
   remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
@@ -2103,6 +2124,7 @@ CREATE TABLE invocation (
                                             -- Nécromancie, qui sacrifie l'invocation), par son id figé : un renommage du sort sur le site de dev ne coupe
                                             -- pas le lien. Rempli par la migration 0099 depuis le nom entre guillemets de tableau_titre, cherché par nom_cle
                                             -- dans la magie du sort de l'invocation ; NULL = aucun tableau, ou nom non résolu. Le site ne l'écrit pas.
+                                            -- Aucune ligne depuis la migration 0117 (R237 (7) : le sort « Amélioration cadavérique » est supprimé).
 ) STRICT;
 
 CREATE INDEX invocation_sort ON invocation (sort_id) WHERE sort_id IS NOT NULL;

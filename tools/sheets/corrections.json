@@ -48,6 +48,70 @@
           "apres": "altération",
           "nature": "frappe",
           "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : palier « Grande résistance » de la Peur, écrit « altération » dans « Magie Maverick V8 » (même cellule) ; un « z » en trop (R10)."
+        },
+        {
+          "onglet": "Eau",
+          "cellule": "G94",
+          "avant": "Torrant",
+          "apres": "Torrent",
+          "nature": "orthographe",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : nom du sort Torrent colérique (« torrent ») ; coquille (R10), le docx « MISE À JOUR - DÉCEMBRE » écrit « Torrent colérique » (réponse de game-design à la question 1 de tech-sources, 2026-11-12). Le sort est nouveau : son id suit le nom corrigé (`magies/magie-de-leau#sort:torrent-colerique`), figé dès sa création."
+        },
+        {
+          "onglet": "Sommaire",
+          "cellule": "AP1",
+          "avant": "appeller",
+          "apres": "appeler",
+          "nature": "orthographe",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : cellule « CHOSES A SAVOIR », règle de magie `magies#regle:choses-a-savoir` (R236) ; « appeler » ne prend qu’un « l » (R10 : l'orthographe se corrige, jamais un chiffre ni le sens)."
+        },
+        {
+          "onglet": "Sommaire",
+          "cellule": "AP1",
+          "avant": "dans une état de",
+          "apres": "dans un état de",
+          "nature": "grammaire",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : cellule « CHOSES A SAVOIR », règle de magie `magies#regle:choses-a-savoir` (R236) ; « état » est masculin (R10 : l'orthographe se corrige, jamais un chiffre ni le sens)."
+        },
+        {
+          "onglet": "Sommaire",
+          "cellule": "AP1",
+          "avant": "les emplacement de sort",
+          "apres": "les emplacements de sort",
+          "nature": "grammaire",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : cellule « CHOSES A SAVOIR », règle de magie `magies#regle:choses-a-savoir` (R236) ; pluriel après « les » (R10 : l'orthographe se corrige, jamais un chiffre ni le sens)."
+        },
+        {
+          "onglet": "Sommaire",
+          "cellule": "AP1",
+          "avant": "niveau 8 globale",
+          "apres": "niveau 8 global",
+          "nature": "grammaire",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : cellule « CHOSES A SAVOIR », règle de magie `magies#regle:choses-a-savoir` (R236) ; « niveau global », comme la correction « niveau globale » → « niveau global » de la migration 0003 (0003-orthographe-magies.json) (R10 : l'orthographe se corrige, jamais un chiffre ni le sens)."
+        },
+        {
+          "onglet": "Sommaire",
+          "cellule": "AP1",
+          "avant": "sont déblocable dès",
+          "apres": "sont débloquables dès",
+          "nature": "orthographe",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : cellule « CHOSES A SAVOIR », règle de magie `magies#regle:choses-a-savoir` (R236) ; « débloquable » (de « débloquer »), accordé au sujet pluriel « Les spécialisations magiques » (R10 : l'orthographe se corrige, jamais un chiffre ni le sens)."
+        },
+        {
+          "onglet": "Sommaire",
+          "cellule": "AP1",
+          "avant": "trucs trop fort, pas assez clair, trop faible",
+          "apres": "trucs trop forts, pas assez clairs, trop faibles",
+          "nature": "grammaire",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : cellule « CHOSES A SAVOIR », règle de magie `magies#regle:choses-a-savoir` (R236) ; adjectifs accordés au nom pluriel « trucs » (R10 : l'orthographe se corrige, jamais un chiffre ni le sens)."
+        },
+        {
+          "onglet": "Sommaire",
+          "cellule": "AP1",
+          "avant": "une béta",
+          "apres": "une bêta",
+          "nature": "accent",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : cellule « CHOSES A SAVOIR », règle de magie `magies#regle:choses-a-savoir` (R236) ; « bêta » prend un accent circonflexe (R10 : l'orthographe se corrige, jamais un chiffre ni le sens)."
         }
       ]
     }

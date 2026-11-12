@@ -1,11 +1,66 @@
 {
-  "$comment": "Registre du classeur « Invocation » pour tools/sources/rapprocher.mjs (docs/sources.md, « Rapprochement d'un classeur ») : `regles`, les cellules qu'aucune ligne ne cite et pourquoi ; `libelles`, les intitulés de mise en page des cellules citées ; `derivees`, les colonnes que l'import calcule au lieu de les recopier (« table.colonne » -> raison et test qui les garantit). Chaque entrée a sa raison écrite.",
-  "regles": [],
+  "$comment": "Registre du classeur « Invocation » pour tools/sources/rapprocher.mjs (docs/sources.md, « Rapprochement d'un classeur ») : `regles`, les cellules qu'aucune ligne ne cite et pourquoi ; `libelles`, les intitulés de mise en page des cellules citées ; `derivees`, les colonnes que l'import calcule au lieu de les recopier (« table.colonne » -> raison et test qui les garantit). Chaque entrée a sa raison écrite ; `voulus`, les écarts voulus par décision (table, clé, colonne, avant, apres, raison).",
+  "regles": [
+    {
+      "onglets": [
+        "Animation des morts"
+      ],
+      "plages": [
+        "AP40:BU47"
+      ],
+      "raison": "Tableau « AMÉLIORATION CADAVÉRIQUE » (titre AP40, contenu AP41:BU47, recopie de « Magie Maverick V8 › Nécromancie › D64:Y70 ») : les améliorations cadavériques sont supprimées du site (décision R237 (7), migration 0117 : table amelioration_cadaverique retirée, `invocation.tableau_titre` et `tableau_sort_id` de bestiaire/animation-des-morts à NULL)."
+    }
+  ],
   "libelles": [
-    {"valeurs": "^(Santé|Chakra|Barrière|Dégâts|Défense|Vitesse|FPVSIA|Capacité\\(s\\))$", "raison": "Intitulés de la carte d'une créature invoquée (répétés sur chaque carte des trois onglets) : la valeur est dans la case voisine, que cite la même ligne (`creature` : santé, chakra, barrière, dégâts, défense, vitesse, FPVSIA ; `creature_capacite` sous « Capacité(s) »)."}
+    {
+      "valeurs": "^(Santé|Chakra|Barrière|Dégâts|Défense|Vitesse|FPVSIA|Capacité\\(s\\))$",
+      "raison": "Intitulés de la carte d'une créature invoquée (répétés sur chaque carte des trois onglets) : la valeur est dans la case voisine, que cite la même ligne (`creature` : santé, chakra, barrière, dégâts, défense, vitesse, FPVSIA ; `creature_capacite` sous « Capacité(s) »)."
+    }
   ],
-  "copies": [
-    {"onglet": "Animation des morts", "plage": "AP41:BU47", "de": {"classeur": "Magie Maverick V8", "onglet": "Nécromancie", "plage": "D64:Y70"}, "raison": "Tableau « AMÉLIORATION CADAVÉRIQUE » : le même que dans l'onglet Nécromancie de « Magie Maverick V8 », gardé en une seule copie par le schéma (`invocation.tableau_titre`) et cité par `amelioration_cadaverique`."}
-  ],
-  "derivees": {}
+  "copies": [],
+  "derivees": {},
+  "voulus": [
+    {
+      "table": "creature_capacite",
+      "cle": {
+        "id": "bestiaire/momie#capacite:sort-supplementaire:npm5"
+      },
+      "colonne": "texte",
+      "avant": "Frappe temporelle",
+      "apres": "Main de la momie",
+      "raison": "Décision R242 (1) (migration 0117) : la carte prend le nouveau nom du sort renommé par R237 (11) (« Frappe temporelle » devenu « Main de la momie », « Rayon négatif » devenu « Rayon lunatique ») ; le classeur Invocation écrit l'ancien nom, le lien vers le sort (même id) est gardé."
+    },
+    {
+      "table": "creature_capacite",
+      "cle": {
+        "id": "bestiaire/poupee-maudite#capacite:sort-supplementaire:npm5"
+      },
+      "colonne": "texte",
+      "avant": "Rayon négatif",
+      "apres": "Rayon lunatique",
+      "raison": "Décision R242 (1) (migration 0117) : la carte prend le nouveau nom du sort renommé par R237 (11) (« Frappe temporelle » devenu « Main de la momie », « Rayon négatif » devenu « Rayon lunatique ») ; le classeur Invocation écrit l'ancien nom, le lien vers le sort (même id) est gardé."
+    },
+    {
+      "table": "creature_capacite_sort",
+      "cle": {
+        "capacite_id": "bestiaire/momie#capacite:sort-supplementaire:npm5",
+        "rang": 1
+      },
+      "colonne": "sort_nom_brut",
+      "avant": "Frappe temporelle",
+      "apres": "Main de la momie",
+      "raison": "Décision R242 (1) (migration 0117) : la carte prend le nouveau nom du sort renommé par R237 (11) (« Frappe temporelle » devenu « Main de la momie », « Rayon négatif » devenu « Rayon lunatique ») ; le classeur Invocation écrit l'ancien nom, le lien vers le sort (même id) est gardé."
+    },
+    {
+      "table": "creature_capacite_sort",
+      "cle": {
+        "capacite_id": "bestiaire/poupee-maudite#capacite:sort-supplementaire:npm5",
+        "rang": 1
+      },
+      "colonne": "sort_nom_brut",
+      "avant": "Rayon négatif",
+      "apres": "Rayon lunatique",
+      "raison": "Décision R242 (1) (migration 0117) : la carte prend le nouveau nom du sort renommé par R237 (11) (« Frappe temporelle » devenu « Main de la momie », « Rayon négatif » devenu « Rayon lunatique ») ; le classeur Invocation écrit l'ancien nom, le lien vers le sort (même id) est gardé."
+    }
+  ]
 }

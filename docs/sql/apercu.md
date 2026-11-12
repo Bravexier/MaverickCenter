@@ -61,7 +61,7 @@
 
 ## 3. MAGIES ET SORTS (famille « magies »)
 
-**Relations dans cette section** : `amelioration_cadaverique→magie`, `magie_dieu→magie`, `magie_ethnie_secondaire→magie`, `magie_incompatibilite→magie`, `magie_npm_plafond→magie`, `magie_resistance→magie`, `magie_role→magie`, `sort_bonus_maitrise→sort`, `sort_etat→sort`, `sort_mode→sort`, `sort_mot_cle→sort`, `sort_type→sort`, `sort→magie`
+**Relations dans cette section** : `magie_dieu→magie`, `magie_ethnie_secondaire→magie`, `magie_incompatibilite→magie`, `magie_npm_plafond→magie`, `magie_resistance→magie`, `magie_role→magie`, `magie_specialisation→magie`, `sort_bonus_maitrise→sort`, `sort_etat→sort`, `sort_mode→sort`, `sort_mot_cle→sort`, `sort_type→sort`, `sort→magie`, `sort→magie_specialisation`
 
 **Vers d'autres sections** : `magie_dieu→dieu (§5)`, `magie_ethnie_secondaire→ethnie (§7)`, `magie_resistance→etat (§4)`, `magie→caracteristique (§2)`, `magie→page (§1)`, `sort_etat→etat (§4)`, `sort_mot_cle→mot_cle (§1)`
 
@@ -73,8 +73,8 @@
 | `magie_incompatibilite` | Magies qu'on ne peut pas combiner. | **magie_id**→magie, **autre_magie_id**→magie, +provenance |
 | `magie_ethnie_secondaire` | Ethnies pour lesquelles une magie secondaire reste possible malgré les incompatibilités (fiche `Magie!U5`, colonne « Magie secondaire si Race » : « Elfe Noir Charbon, Elfe Noir Salé, Felfe Noir » pour Corruption). | **magie_id**→magie, **rang**, ethnie_id→ethnie, ethnie_brut, +provenance |
 | `magie_dieu` |  | **magie_id**→magie, **dieu_id**→dieu, rang, +provenance |
-| `amelioration_cadaverique` | Tableau « AMELIORATION CADAVERIQUE » de la Nécromancie (13 lignes : nom, effet). | **id**, magie_id→magie, rang, nom, effet, remarque?, +provenance |
-| `sort` | SORT : une ligne par sort de la table des sorts (14 magies x 23 sorts = 322 ; Potentiel Illimité n'a pas de table propre : il pioche dans les 14 autres, règle de la fiche, hors de ce domaine) | **id**, magie_id→magie, nom, nom_cle, niveau, ordre, type_brut, ic_direct, ic_nm_min?, imparable, inesquivable, cout_brut, cout_chakra?, cout_ressource?, cout_ressource_valeur?, portee_brut, portee_nature, portee_valeur?, zone_brut, zone_forme, zone_taille?, dsb_brut?, effets?, texte_niveau5?, remarque?, mode_brut?, bonus_maitrise?, cout_secondaire?, +provenance |
+| `magie_specialisation` | SPÉCIALISATIONS MAGIQUES (décision R236 (1), migration 0117, classeur de Décembre « Nouveauté mise à jour Décembre », onglets 03 à 16) : deux par magie, sauf le Potentiel Illimité (28). | **id**, magie_id→magie, ordre, nom, nom_cle, description?, remarque?, +provenance |
+| `sort` | SORT : une ligne par sort des tables de sorts du classeur de Décembre (migration 0117, R237 : 14 magies x 30 sorts = 420 ; ils étaient 23 par magie dans le classeur V8). | **id**, magie_id→magie, nom, nom_cle, niveau, ordre, type_brut, ic_direct, ic_nm_min?, imparable, inesquivable, cout_brut, cout_chakra?, cout_ressource?, cout_ressource_valeur?, portee_brut, portee_nature, portee_valeur?, zone_brut, zone_forme, zone_taille?, dsb_brut?, effets?, texte_niveau5?, remarque?, mode_brut?, bonus_maitrise?, cout_secondaire?, specialisation_id→magie_specialisation?, +provenance |
 | `sort_type` | Types d'un sort : « Attaque/ Entrave (Imparable) » = deux types. | **sort_id**→sort, **rang**, type, libelle, +provenance |
 | `sort_mode` | Mode d'un sort : ce que la colonne « Type » écrit entre parenthèses (« Amplification (IC) », « Attaque\n(Imparable) »), séparé du TYPE (sort_type : attaque, entrave…). | **sort_id**→sort, **rang**, mode, libelle, fois?, +provenance |
 | `sort_bonus_maitrise` | Bonus de niveau de maîtrise (NM) d'un sort : chaque renforcement que les cellules du classeur écrivent, quelle que soit la colonne. | **sort_id**→sort, **champ**, **rang**, nature, texte_brut, contexte, increment_brut?, increment_entier?, pas_nm?, seuil_nm?, +provenance |
@@ -82,7 +82,7 @@
 | `sort_mot_cle` | Étiquettes d'un sort : un mot-clé du glossaire (mot_cle) posé sur un sort (décision R114 du propriétaire, migration 0067 : « Il faudra d'ailleurs redéfinir ce qu'est un sort "grenade" autrement que pa | **sort_id**→sort, **mot_cle_id**→mot_cle |
 | `commentaire_orphelin` | Fils de commentaires du Sommaire ancrés en A1 : commentaires de cellules supprimées, sans sort identifiable (certains portent des textes de règle). | **id**, empreinte, occurrence, onglet, cellule, resolu, texte, +provenance |
 | `legende_sort` | Légende commune des 14 tables de sorts (identique dans chaque onglet) : « IC = Instant Cast » et les trois modes d'obtention d'un niveau de maîtrise (N, L, C). | **code**, groupe, libelle, description?, +provenance |
-| `regle_magie` | Règles de magie qui valent pour toutes les magies (Sommaire!A31 : « Règle spéciale pour sort niveau 5 »). | **id**, titre, niveau_sort?, texte, +provenance |
+| `regle_magie` | Règles de magie qui valent pour toutes les magies (Sommaire!A31 du classeur V8 : « Règle spéciale pour sort niveau 5 », gardée par R237 (7) ; Sommaire!AP1 du classeur de Décembre : « CHOSES A SAVOIR » | **id**, titre, niveau_sort?, texte, +provenance |
 | `magie_npm_plafond` | Plafond de puissance magique (NPM) des sorts d'un personnage de cette magie innée (décision R188, migration 0097) : le Potentiel Illimité, 3 (son bloc « Explication » : « ne pouvoir atteindre que le n | **magie_id**→magie, npm |
 
 ## 4. ANNEXES DES MAGIES : états, résistances, météo, modes hyper et super (famille « annexes »)
@@ -95,7 +95,7 @@
 | --- | --- | --- |
 | `resistance_palier` | Les 6 paliers de la fiche (Personnage!BA2:BA12) : une valeur de résistance V (somme des crans) donne un palier. | **id**, libelle, valeur_min?, valeur_max?, multiplicateur, effet_brut, ordre, +provenance |
 | `etat` | ▸ ALTÉRATIONS D'ÉTAT (classeur V8, onglet « Altération détats » : 20 blocs de 5 lignes) | **id**, nom, ordre, type, type_brut, magie_liee_brut?, remarque?, +provenance |
-| `etat_magie` | Magie(s) liée(s) d'une altération : 13 altérations sur 20 en ont (Surcharge Magique : deux, Arcane et Corruption). | **etat_id**→etat, **magie_id**→magie, rang, +provenance |
+| `etat_magie` | Magie(s) liée(s) d'une altération : 14 altérations sur 21 en ont (Surcharge Magique : deux, Arcane et Corruption ; Somnolence, « Ombre (Songe) » : l'Ombre, la spécialisation SONGE restant dans magie_l | **etat_id**→etat, **magie_id**→magie, rang, +provenance |
 | `etat_stade` | Effet d'une altération par stade (colonnes « Stade 1 », « Stade 2 », « Stade 3 »). | **etat_id**→etat, **rang**, stade?, effet, +provenance |
 | `etat_palier` | Effet d'une altération selon la résistance ou la vulnérabilité de la cible (colonnes AQ / AV : une paire « libellé / effet » par ligne du bloc). | **etat_id**→etat, **palier_id**→resistance_palier, libelle_brut, effet, +provenance |
 | `meteo` | ▸ MÉTÉO (classeur V8, onglet « Météo » : une entrée de 7 lignes par météo) | **id**, nom, ordre, description, remarque?, +provenance |

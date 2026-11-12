@@ -1,0 +1,726 @@
+{
+ "$comment": "Registre de la migration 0117-magies-v10-specialisations.sql (générée par script) : ce qu'elle change, par décision. Les ids ne changent jamais (identifiants figés) ; un sort supprimé n'est pas réutilisé.",
+ "decisions": [
+  "R10",
+  "R236",
+  "R237",
+  "R242",
+  "R243"
+ ],
+ "creature_capacite_sort_sans_lien": [
+  {
+   "capacite_id": "bestiaire/poupee-temporelle#capacite:sort-supplementaire:npm5",
+   "rang": 1,
+   "sort_nom_brut": "Double action"
+  },
+  {
+   "capacite_id": "bestiaire/poupee-maudite#capacite:sort-supplementaire:npm3",
+   "rang": 2,
+   "sort_nom_brut": "Javelot sombre"
+  },
+  {
+   "capacite_id": "bestiaire/poupee-sanglante#capacite:sort-supplementaire:npm5",
+   "rang": 2,
+   "sort_nom_brut": "Autel sanglant"
+  }
+ ],
+ "classeur": {
+  "titre": "Nouveauté mise à jour Décembre",
+  "fichier": "sources/raw/classeurs/magie-maverick-v10.json",
+  "sha256_xlsx": "e89fc4be757f53700444d89964804551232bf63d76bfd354f5599258d37d5353"
+ },
+ "specialisations": [
+  "magies/magie-du-sang#specialisation:puissance",
+  "magies/magie-du-sang#specialisation:sanguilonant",
+  "magies/magie-de-larcane#specialisation:construction",
+  "magies/magie-de-larcane#specialisation:destruction",
+  "magies/magie-de-la-corruption#specialisation:petrole",
+  "magies/magie-de-la-corruption#specialisation:bloqueur",
+  "magies/magie-de-lespace-temps#specialisation:spacio",
+  "magies/magie-de-lespace-temps#specialisation:temporelle",
+  "magies/magie-du-vide#specialisation:esprit",
+  "magies/magie-du-vide#specialisation:contestation",
+  "magies/magie-de-la-necromancie#specialisation:liche",
+  "magies/magie-de-la-necromancie#specialisation:poison",
+  "magies/magie-du-feu#specialisation:volcan",
+  "magies/magie-du-feu#specialisation:cendre",
+  "magies/magie-de-leau#specialisation:deferlante",
+  "magies/magie-de-leau#specialisation:source",
+  "magies/magie-de-la-glace#specialisation:neige",
+  "magies/magie-de-la-glace#specialisation:cristal",
+  "magies/magie-de-la-terre#specialisation:vegetal",
+  "magies/magie-de-la-terre#specialisation:mineral",
+  "magies/magie-du-vent#specialisation:tempete",
+  "magies/magie-du-vent#specialisation:son",
+  "magies/magie-de-la-foudre#specialisation:plasma",
+  "magies/magie-de-la-foudre#specialisation:magnetisme",
+  "magies/magie-de-la-lumiere#specialisation:solaire",
+  "magies/magie-de-la-lumiere#specialisation:benediction",
+  "magies/magie-de-lombre#specialisation:lune",
+  "magies/magie-de-lombre#specialisation:songe"
+ ],
+ "sorts": {
+  "supprimes": [
+   "magies/magie-de-la-foudre#sort:manteau-de-volt",
+   "magies/magie-de-la-lumiere#sort:croisade-lumineuse",
+   "magies/magie-de-la-lumiere#sort:vitamine",
+   "magies/magie-de-la-necromancie#sort:amelioration-cadaverique",
+   "magies/magie-de-la-terre#sort:anti-mythril",
+   "magies/magie-de-larcane#sort:vision-magique",
+   "magies/magie-de-larcane#sort:voile-chakratique",
+   "magies/magie-de-lespace-temps#sort:double-action",
+   "magies/magie-de-lespace-temps#sort:faille-temporelle",
+   "magies/magie-de-lombre#sort:javelot-sombre",
+   "magies/magie-du-feu#sort:bouclier-de-feu",
+   "magies/magie-du-feu#sort:meteore-cramoisi",
+   "magies/magie-du-feu#sort:pluie-chaude",
+   "magies/magie-du-feu#sort:rai-solaire",
+   "magies/magie-du-sang#sort:autel-sanglant",
+   "magies/magie-du-sang#sort:sang-magie",
+   "magies/magie-du-vent#sort:grande-vitesse",
+   "magies/magie-du-vide#sort:anti-magie",
+   "magies/magie-du-vide#sort:esprit-solide",
+   "magies/magie-du-vide#sort:metronome",
+   "magies/magie-du-vide#sort:saccage-temporel"
+  ],
+  "renommes_r237_4": [
+   {
+    "id": "magies/magie-de-larcane#sort:foudre-argente",
+    "avant": "Foudre argentée",
+    "apres": "Foudre argenté"
+   },
+   {
+    "id": "magies/magie-de-la-corruption#sort:verrouille-visible",
+    "avant": "Verrouillage Visible",
+    "apres": "Verrouille Visible"
+   },
+   {
+    "id": "magies/magie-du-vide#sort:touche-du-vide",
+    "avant": "Toucher du Vide",
+    "apres": "Touché du vide"
+   },
+   {
+    "id": "magies/magie-de-la-necromancie#sort:vague-de-cadavre",
+    "avant": "Vague de cadavres",
+    "apres": "Vague de cadavre"
+   },
+   {
+    "id": "magies/magie-de-la-necromancie#sort:repar-os",
+    "avant": "Répar'Os",
+    "apres": "Répar Os"
+   },
+   {
+    "id": "magies/magie-de-leau#sort:onde-confusion",
+    "avant": "Onde de Confusion",
+    "apres": "Onde confusion"
+   },
+   {
+    "id": "magies/magie-du-vent#sort:estoc-hurlante",
+    "avant": "Estoc hurlant",
+    "apres": "Estoc hurlante"
+   },
+   {
+    "id": "magies/magie-de-lombre#sort:brume-mental",
+    "avant": "Brume mentale",
+    "apres": "Brume mental"
+   }
+  ],
+  "renommes_r237_11": [
+   {
+    "id": "magies/magie-de-larcane#sort:peau-de-chakra",
+    "avant": "Peau de Chakra",
+    "apres": "Peau nacrée"
+   },
+   {
+    "id": "magies/magie-de-larcane#sort:pluie-de-chakra",
+    "avant": "Pluie de Chakra",
+    "apres": "Pluie blanche"
+   },
+   {
+    "id": "magies/magie-de-larcane#sort:miroir-magique",
+    "avant": "Miroir Magique",
+    "apres": "Miroir des arcanes"
+   },
+   {
+    "id": "magies/magie-de-la-corruption#sort:mine-noire",
+    "avant": "Mine noire",
+    "apres": "Mine poisseuse"
+   },
+   {
+    "id": "magies/magie-de-lespace-temps#sort:frappe-temporelle",
+    "avant": "Frappe Temporelle",
+    "apres": "Main de la momie"
+   },
+   {
+    "id": "magies/magie-du-vide#sort:poing-du-vide",
+    "avant": "Poing du vide",
+    "apres": "Poing implosif"
+   },
+   {
+    "id": "magies/magie-de-la-necromancie#sort:armure-dos",
+    "avant": "Armure d'os",
+    "apres": "Armure osseuse"
+   },
+   {
+    "id": "magies/magie-de-la-necromancie#sort:dechirure",
+    "avant": "Déchirure",
+    "apres": "Déchirure verte"
+   },
+   {
+    "id": "magies/magie-de-la-glace#sort:lance-de-givre",
+    "avant": "Lance de givre",
+    "apres": "Lance cristalline"
+   },
+   {
+    "id": "magies/magie-de-la-glace#sort:pergelisol",
+    "avant": "Pergélisol",
+    "apres": "Étage nival"
+   },
+   {
+    "id": "magies/magie-de-la-glace#sort:frappe-de-celsius",
+    "avant": "Frappe de Celsius",
+    "apres": "Comète de Celsius"
+   },
+   {
+    "id": "magies/magie-de-la-foudre#sort:boules-de-foudre",
+    "avant": "Boules de foudre",
+    "apres": "Boules plasmiques"
+   },
+   {
+    "id": "magies/magie-de-la-foudre#sort:plaque-miroir",
+    "avant": "Plaque Miroir",
+    "apres": "Plaques polarisées"
+   },
+   {
+    "id": "magies/magie-de-la-foudre#sort:armure-conductrice",
+    "avant": "Armure conductrice",
+    "apres": "Armure magnétique"
+   },
+   {
+    "id": "magies/magie-de-lombre#sort:rayon-negatif",
+    "avant": "Rayon Négatif",
+    "apres": "Rayon lunatique"
+   },
+   {
+    "id": "magies/magie-de-lombre#sort:goudron",
+    "avant": "Goudron",
+    "apres": "Régolithe"
+   }
+  ],
+  "nouveaux": [
+   "magies/magie-de-la-corruption#sort:blessure-poisseuse",
+   "magies/magie-de-la-corruption#sort:choc-pretrolier",
+   "magies/magie-de-la-corruption#sort:contre-sort",
+   "magies/magie-de-la-corruption#sort:crachat-pollue",
+   "magies/magie-de-la-corruption#sort:desintegration",
+   "magies/magie-de-la-corruption#sort:pression-noire",
+   "magies/magie-de-la-corruption#sort:saturation",
+   "magies/magie-de-la-foudre#sort:magnerance",
+   "magies/magie-de-la-foudre#sort:magnetosphere",
+   "magies/magie-de-la-foudre#sort:mur-hertz",
+   "magies/magie-de-la-foudre#sort:rayonnement",
+   "magies/magie-de-la-foudre#sort:reflexion-de-volt",
+   "magies/magie-de-la-foudre#sort:repulsion-reflexe",
+   "magies/magie-de-la-foudre#sort:surcharge",
+   "magies/magie-de-la-foudre#sort:turbine",
+   "magies/magie-de-la-glace#sort:blancheur-aveuglante",
+   "magies/magie-de-la-glace#sort:cristal-absorbant",
+   "magies/magie-de-la-glace#sort:flomentation",
+   "magies/magie-de-la-glace#sort:froid-gemellaire",
+   "magies/magie-de-la-glace#sort:pole-absolu",
+   "magies/magie-de-la-glace#sort:prisme-protecteur",
+   "magies/magie-de-la-glace#sort:sublimation",
+   "magies/magie-de-la-lumiere#sort:condamnation-solaire",
+   "magies/magie-de-la-lumiere#sort:juvabien",
+   "magies/magie-de-la-lumiere#sort:lame-prismatique",
+   "magies/magie-de-la-lumiere#sort:marque-du-champion",
+   "magies/magie-de-la-lumiere#sort:mur-gamma",
+   "magies/magie-de-la-lumiere#sort:nova-finale",
+   "magies/magie-de-la-lumiere#sort:rai-solaire",
+   "magies/magie-de-la-lumiere#sort:revelation",
+   "magies/magie-de-la-lumiere#sort:sanctuaire-protecteur",
+   "magies/magie-de-la-necromancie#sort:ame-sacrifice",
+   "magies/magie-de-la-necromancie#sort:eclatement-mortuaire",
+   "magies/magie-de-la-necromancie#sort:pandemie",
+   "magies/magie-de-la-necromancie#sort:pestilance",
+   "magies/magie-de-la-necromancie#sort:plaie-toxique",
+   "magies/magie-de-la-necromancie#sort:purge",
+   "magies/magie-de-la-necromancie#sort:seigneur-des-morts",
+   "magies/magie-de-la-necromancie#sort:venin-corrosif",
+   "magies/magie-de-la-terre#sort:anti-alliage",
+   "magies/magie-de-la-terre#sort:epine-perforante",
+   "magies/magie-de-la-terre#sort:floraison-carnivore",
+   "magies/magie-de-la-terre#sort:floraison-parasitaire",
+   "magies/magie-de-la-terre#sort:gemmification",
+   "magies/magie-de-la-terre#sort:petale-bouclier",
+   "magies/magie-de-la-terre#sort:pollen-entravante",
+   "magies/magie-de-la-terre#sort:rayon-geode",
+   "magies/magie-de-larcane#sort:cassage-gris",
+   "magies/magie-de-larcane#sort:contre-sort",
+   "magies/magie-de-larcane#sort:effondrement-terne",
+   "magies/magie-de-larcane#sort:fer-brillant",
+   "magies/magie-de-larcane#sort:lance-dether",
+   "magies/magie-de-larcane#sort:pate-de-la-trame",
+   "magies/magie-de-larcane#sort:projectile-arcanique",
+   "magies/magie-de-larcane#sort:rupture-darmure",
+   "magies/magie-de-larcane#sort:surdechirure",
+   "magies/magie-de-leau#sort:dorsale-protectrice",
+   "magies/magie-de-leau#sort:geyser",
+   "magies/magie-de-leau#sort:riviere-douce",
+   "magies/magie-de-leau#sort:siphon-vital",
+   "magies/magie-de-leau#sort:torrent-colerique",
+   "magies/magie-de-leau#sort:vortex",
+   "magies/magie-de-leau#sort:zone-abyssal",
+   "magies/magie-de-lespace-temps#sort:ancrage-dimensionnel",
+   "magies/magie-de-lespace-temps#sort:convergence",
+   "magies/magie-de-lespace-temps#sort:erreur-ulterieur",
+   "magies/magie-de-lespace-temps#sort:espace-relatif",
+   "magies/magie-de-lespace-temps#sort:faille-chronique",
+   "magies/magie-de-lespace-temps#sort:principe-dincertitude",
+   "magies/magie-de-lespace-temps#sort:spayon",
+   "magies/magie-de-lespace-temps#sort:vision-dephase",
+   "magies/magie-de-lespace-temps#sort:vitesse-relative",
+   "magies/magie-de-lombre#sort:cauchemar",
+   "magies/magie-de-lombre#sort:croire-aux-reves",
+   "magies/magie-de-lombre#sort:grand-bailleur",
+   "magies/magie-de-lombre#sort:javelot-lunaire",
+   "magies/magie-de-lombre#sort:marchand-de-sable",
+   "magies/magie-de-lombre#sort:mauvaise-nuit",
+   "magies/magie-de-lombre#sort:prophetie",
+   "magies/magie-de-lombre#sort:trait-somnoleur",
+   "magies/magie-du-feu#sort:aspect-cendreuse",
+   "magies/magie-du-feu#sort:bombe-de-cancer",
+   "magies/magie-du-feu#sort:eruption-grise",
+   "magies/magie-du-feu#sort:forteresse-escarbille",
+   "magies/magie-du-feu#sort:fumerolle",
+   "magies/magie-du-feu#sort:jet-de-cendre",
+   "magies/magie-du-feu#sort:meteore-eruptif",
+   "magies/magie-du-feu#sort:rayon-de-fusion",
+   "magies/magie-du-feu#sort:ruee-cendreuse",
+   "magies/magie-du-feu#sort:suie-concentree",
+   "magies/magie-du-feu#sort:tas-de-cendre",
+   "magies/magie-du-sang#sort:congestion",
+   "magies/magie-du-sang#sort:crachat-bordeaux",
+   "magies/magie-du-sang#sort:fleau-sanglant",
+   "magies/magie-du-sang#sort:marquage-dechirant",
+   "magies/magie-du-sang#sort:marquage-surcharge",
+   "magies/magie-du-sang#sort:prise-de-sang",
+   "magies/magie-du-sang#sort:rage-de-guerre",
+   "magies/magie-du-sang#sort:super-hemoglobine",
+   "magies/magie-du-sang#sort:surtension-sanguine",
+   "magies/magie-du-vent#sort:catapulte-aerienne",
+   "magies/magie-du-vent#sort:courant-ecrasant",
+   "magies/magie-du-vent#sort:echo",
+   "magies/magie-du-vent#sort:grande-inspiration",
+   "magies/magie-du-vent#sort:infrason",
+   "magies/magie-du-vent#sort:onde-de-choc",
+   "magies/magie-du-vent#sort:silence-absolu",
+   "magies/magie-du-vent#sort:sonar",
+   "magies/magie-du-vide#sort:cadence-defensive",
+   "magies/magie-du-vide#sort:decret-de-represailles",
+   "magies/magie-du-vide#sort:deni-de-classe",
+   "magies/magie-du-vide#sort:etat-zero",
+   "magies/magie-du-vide#sort:extinction",
+   "magies/magie-du-vide#sort:fissure-de-faiblesse",
+   "magies/magie-du-vide#sort:fleche-du-rien",
+   "magies/magie-du-vide#sort:interieur-solide",
+   "magies/magie-du-vide#sort:leurre-de-rage",
+   "magies/magie-du-vide#sort:regard-de-mora",
+   "magies/magie-du-vide#sort:suppression"
+  ],
+  "mis_a_jour": 166,
+  "inchanges": 135,
+  "couts_non_repartis": [
+   {
+    "id": "magies/magie-de-larcane#sort:projectile-arcanique",
+    "cout_brut": "*4 / projectile",
+    "decision": "question au propriétaire (rien de typé, jamais deviné)"
+   },
+   {
+    "id": "magies/magie-de-larcane#sort:rune-arcane-multiple",
+    "cout_brut": "8xN/tour",
+    "decision": "question au propriétaire (rien de typé, jamais deviné)"
+   },
+   {
+    "id": "magies/magie-de-larcane#sort:peau-de-chakra",
+    "cout_brut": "12xN/tour",
+    "decision": "question au propriétaire (rien de typé, jamais deviné)"
+   },
+   {
+    "id": "magies/magie-de-larcane#sort:pate-de-la-trame",
+    "cout_brut": "12xN/tour",
+    "decision": "question au propriétaire (rien de typé, jamais deviné)"
+   },
+   {
+    "id": "magies/magie-de-larcane#sort:contre-sort",
+    "cout_brut": "Variable selon le sort bloqué",
+    "decision": "question au propriétaire (rien de typé, jamais deviné)"
+   },
+   {
+    "id": "magies/magie-de-la-corruption#sort:contre-sort",
+    "cout_brut": "Variable selon le sort bloqué",
+    "decision": "question au propriétaire (rien de typé, jamais deviné)"
+   },
+   {
+    "id": "magies/magie-du-vide#sort:lien-mental",
+    "cout_brut": "4/perso",
+    "decision": "question au propriétaire (rien de typé, jamais deviné)"
+   },
+   {
+    "id": "magies/magie-de-la-foudre#sort:boules-de-foudre",
+    "cout_brut": "5/boule",
+    "decision": "question au propriétaire (rien de typé, jamais deviné)"
+   },
+   {
+    "id": "magies/magie-de-la-lumiere#sort:nova-finale",
+    "cout_brut": "30 + 50% santé max",
+    "decision": "question au propriétaire (rien de typé, jamais deviné)"
+   }
+  ],
+  "r243_textes_gardes": [
+   "magies/magie-de-la-glace#sort:execution-froide",
+   "magies/magie-de-la-glace#sort:frappe-de-celsius",
+   "magies/magie-de-la-glace#sort:rayon-polaire",
+   "magies/magie-de-la-terre#sort:corps-de-maverium",
+   "magies/magie-de-la-terre#sort:morsure-terrestre",
+   "magies/magie-de-la-terre#sort:terre-maudite"
+  ],
+  "titres_d_incantation_sans_sort_de_ce_nom": [
+   "Feu L113:AB114 « Météore Cramoisi » (texte de Météore éruptif)",
+   "Eau L100:AB101 « Laser Hydraulique » (texte de Torrent colérique)"
+  ],
+  "torrent": {
+   "id": "magies/magie-de-leau#sort:torrent-colerique",
+   "nom_dans_le_classeur": "Torrant colérique",
+   "decision": "R10 (corrections.json, magie-v10, Eau G94)"
+  }
+ },
+ "remarques": {
+  "fils_v8_retires": [
+   {
+    "id": "magies/magie-de-la-foudre#sort:chargeur",
+    "rang": 1,
+    "cellule": "AT28"
+   },
+   {
+    "id": "magies/magie-de-la-foudre#sort:dysfonctionnement",
+    "rang": 2,
+    "cellule": "BJ43"
+   },
+   {
+    "id": "magies/magie-de-la-lumiere#sort:croisade-lumineuse",
+    "rang": 2,
+    "cellule": "BJ43"
+   },
+   {
+    "id": "magies/magie-de-la-lumiere#sort:flash",
+    "rang": 1,
+    "cellule": "BG31"
+   },
+   {
+    "id": "magies/magie-de-la-lumiere#sort:louange-daurora",
+    "rang": 1,
+    "cellule": "BJ70"
+   },
+   {
+    "id": "magies/magie-de-la-necromancie#sort:animation-de-mort",
+    "rang": 1,
+    "cellule": "AX7"
+   },
+   {
+    "id": "magies/magie-de-la-necromancie#sort:animation-de-mort",
+    "rang": 3,
+    "cellule": "BJ7"
+   },
+   {
+    "id": "magies/magie-de-la-necromancie#sort:forge-de-ses-morts",
+    "rang": 2,
+    "cellule": "BJ43"
+   },
+   {
+    "id": "magies/magie-de-la-necromancie#sort:resurrection-noir",
+    "rang": 2,
+    "cellule": "BJ70"
+   },
+   {
+    "id": "magies/magie-de-la-terre#sort:alourdissement",
+    "rang": 1,
+    "cellule": "BJ37"
+   },
+   {
+    "id": "magies/magie-de-la-terre#sort:appel-aux-golems",
+    "rang": 1,
+    "cellule": "BJ13"
+   },
+   {
+    "id": "magies/magie-de-la-terre#sort:arbre-fertilisant",
+    "rang": 1,
+    "cellule": "BJ25"
+   },
+   {
+    "id": "magies/magie-de-la-terre#sort:barriere-rocheuse",
+    "rang": 2,
+    "cellule": "BJ34"
+   },
+   {
+    "id": "magies/magie-de-la-terre#sort:corps-de-maverium",
+    "rang": 2,
+    "cellule": "BJ70"
+   },
+   {
+    "id": "magies/magie-de-la-terre#sort:corps-de-maverium",
+    "rang": 3,
+    "cellule": "BJ70"
+   },
+   {
+    "id": "magies/magie-de-la-terre#sort:cuirasse-de-roche",
+    "rang": 1,
+    "cellule": "BJ31"
+   },
+   {
+    "id": "magies/magie-de-la-terre#sort:infection",
+    "rang": 1,
+    "cellule": "BJ28"
+   },
+   {
+    "id": "magies/magie-de-la-terre#sort:peau-de-pierre",
+    "rang": 1,
+    "cellule": "BJ10"
+   },
+   {
+    "id": "magies/magie-de-leau#sort:dissolution",
+    "rang": 1,
+    "cellule": "BJ55"
+   },
+   {
+    "id": "magies/magie-de-lespace-temps#sort:celerite",
+    "rang": 2,
+    "cellule": "BJ49"
+   },
+   {
+    "id": "magies/magie-de-lespace-temps#sort:frappe-temporelle",
+    "rang": 2,
+    "cellule": "BJ31"
+   },
+   {
+    "id": "magies/magie-de-lespace-temps#sort:teleport-parfait",
+    "rang": 1,
+    "cellule": "BJ58"
+   },
+   {
+    "id": "magies/magie-du-feu#sort:fer-brulant",
+    "rang": 2,
+    "cellule": "BJ19"
+   },
+   {
+    "id": "magies/magie-du-sang#sort:annulation",
+    "rang": 2,
+    "cellule": "BJ13"
+   },
+   {
+    "id": "magies/magie-du-sang#sort:coagulation",
+    "rang": 2,
+    "cellule": "BJ40"
+   },
+   {
+    "id": "magies/magie-du-sang#sort:proportion-demesuree",
+    "rang": 2,
+    "cellule": "BJ67"
+   },
+   {
+    "id": "magies/magie-du-sang#sort:sang-garde",
+    "rang": 1,
+    "cellule": "BJ25"
+   },
+   {
+    "id": "magies/magie-du-vide#sort:aspect-vide",
+    "rang": 2,
+    "cellule": "BJ43"
+   },
+   {
+    "id": "magies/magie-du-vide#sort:dissipation",
+    "rang": 2,
+    "cellule": "BJ31"
+   },
+   {
+    "id": "magies/magie-du-vide#sort:metronome",
+    "rang": 2,
+    "cellule": "BJ67"
+   },
+   {
+    "id": "magies/magie-du-vide#sort:telekinesie",
+    "rang": 2,
+    "cellule": "BJ7"
+   }
+  ],
+  "remarques_du_site_gardees": [
+   {
+    "id": "magies/magie-de-la-lumiere#sort:champ-de-force",
+    "fils": 0
+   },
+   {
+    "id": "magies/magie-de-la-necromancie#sort:animation-de-mort",
+    "fils": 2
+   },
+   {
+    "id": "magies/magie-de-larcane#sort:charge-denergie",
+    "fils": 0
+   },
+   {
+    "id": "magies/magie-de-larcane#sort:pillage-defensif",
+    "fils": 0
+   },
+   {
+    "id": "magies/magie-de-lespace-temps#sort:horloge-aspirante",
+    "fils": 0
+   },
+   {
+    "id": "magies/magie-de-lespace-temps#sort:portail",
+    "fils": 0
+   },
+   {
+    "id": "magies/magie-du-sang#sort:morsure-aspirante",
+    "fils": 0
+   },
+   {
+    "id": "magies/magie-du-vide#sort:touche-du-vide",
+    "fils": 0
+   }
+  ],
+  "notes_v10": 110
+ },
+ "bestiaire": {
+  "monstre_capacite": [
+   {
+    "monstre_id": "monstres/momie#carte:momie",
+    "rang": 5,
+    "avant": "Téléportation, Faille temporelle, Frappe temporelle, Vieillissement.",
+    "apres": "Téléportation, Faille temporelle, Main de la momie, Vieillissement."
+   },
+   {
+    "monstre_id": "monstres/momie#carte:momie-royale",
+    "rang": 5,
+    "avant": "Téléportation, Faille temporelle, Frappe temporelle, Vieillissement, Horloge aspirante, Inversion.",
+    "apres": "Téléportation, Faille temporelle, Main de la momie, Vieillissement, Horloge aspirante, Inversion."
+   },
+   {
+    "monstre_id": "monstres/momie#carte:momie-surveillante",
+    "rang": 5,
+    "avant": "Téléportation, Faille temporelle, Frappe temporelle, Vieillissement, Horloge aspirante.",
+    "apres": "Téléportation, Faille temporelle, Main de la momie, Vieillissement, Horloge aspirante."
+   },
+   {
+    "monstre_id": "monstres/mordor#carte:mordor-chasseur",
+    "rang": 6,
+    "avant": "Éclair en chaîne, Anti-Mythril, Rayon négatif, Poison de masse.",
+    "apres": "Éclair en chaîne, Anti-Mythril, Rayon lunatique, Poison de masse."
+   },
+   {
+    "monstre_id": "monstres/mordor#carte:mordor-pilleur",
+    "rang": 5,
+    "avant": "Éclair en chaîne, Anti-Mythril, Rayon négatif, Poison de masse.",
+    "apres": "Éclair en chaîne, Anti-Mythril, Rayon lunatique, Poison de masse."
+   },
+   {
+    "monstre_id": "monstres/squelette-venin#carte:squelette-poison",
+    "rang": 5,
+    "avant": "Pieu d’os, Armure d’os.",
+    "apres": "Pieu d’os, Armure osseuse."
+   },
+   {
+    "monstre_id": "monstres/squelette-venin#carte:squelette-toxique",
+    "rang": 5,
+    "avant": "Pieu d’os, Armure d’os.",
+    "apres": "Pieu d’os, Armure osseuse."
+   },
+   {
+    "monstre_id": "monstres/squelette-venin#carte:squelette-venin",
+    "rang": 5,
+    "avant": "Pieu d’os, Armure d’os.",
+    "apres": "Pieu d’os, Armure osseuse."
+   }
+  ],
+  "creature_capacite": [
+   {
+    "id": "bestiaire/momie#capacite:sort-supplementaire:npm5",
+    "avant": "Cette créature obtient de nouveaux sorts en plus des autres : Frappe temporelle, Vieillissement",
+    "apres": "Cette créature obtient de nouveaux sorts en plus des autres : Main de la momie, Vieillissement"
+   },
+   {
+    "id": "bestiaire/poupee-maudite#capacite:sort-supplementaire:npm5",
+    "avant": "Cette créature obtient de nouveaux sorts en plus des autres : Rayon négatif.",
+    "apres": "Cette créature obtient de nouveaux sorts en plus des autres : Rayon lunatique."
+   }
+  ],
+  "creature_capacite_sort": [
+   {
+    "capacite_id": "bestiaire/momie#capacite:sort-supplementaire:npm5",
+    "rang": 1,
+    "avant": "Frappe temporelle",
+    "apres": "Main de la momie",
+    "sort_id": "magies/magie-de-lespace-temps#sort:frappe-temporelle"
+   },
+   {
+    "capacite_id": "bestiaire/poupee-maudite#capacite:sort-supplementaire:npm5",
+    "rang": 1,
+    "avant": "Rayon négatif",
+    "apres": "Rayon lunatique",
+    "sort_id": "magies/magie-de-lombre#sort:rayon-negatif"
+   }
+  ]
+ },
+ "regle_magie": {
+  "id": "magies#regle:choses-a-savoir",
+  "corrections": [
+   {
+    "avant": "appeller",
+    "apres": "appeler"
+   },
+   {
+    "avant": "sont déblocable dès",
+    "apres": "sont débloquables dès"
+   },
+   {
+    "avant": "niveau 8 globale",
+    "apres": "niveau 8 global"
+   },
+   {
+    "avant": "dans une état de",
+    "apres": "dans un état de"
+   },
+   {
+    "avant": "les emplacement de sort",
+    "apres": "les emplacements de sort"
+   },
+   {
+    "avant": "une béta",
+    "apres": "une bêta"
+   },
+   {
+    "avant": "trucs trop fort, pas assez clair, trop faible",
+    "apres": "trucs trop forts, pas assez clairs, trop faibles"
+   }
+  ]
+ },
+ "annexes": {
+  "etat_nouveau": "guide/liste-des-alterations-d-etat#etat:somnolence",
+  "stades": [
+   "guide/liste-des-alterations-d-etat#etat:paralysie stade 3",
+   "guide/liste-des-alterations-d-etat#etat:surdite stade 3"
+  ],
+  "meteos_supprimees": [
+   "guide/meteo#meteo:saccage-temporel",
+   "guide/meteo#meteo:zone-vide"
+  ]
+ },
+ "ecarts_a_la_chaine_du_plan": [
+  "magies/magie-de-la-foudre#sort:boules-de-foudre : bonus_maitrise \"Effets : 1 boule (+1/NM)\" (plan \"Effets : 1 boule (+1/NM) vont apparaître et vont s'approcher de l'ennemi le plus proche de 2 cases par tour\")",
+  "magies/magie-de-la-foudre#sort:dysfonctionnement : bonus_maitrise \"Type : IC pour 3 NM\\nEffets : agit de manière incohérente pendant 1 tour (+1 tour/NM)\" (plan \"Type : IC pour 3 NM\\nEffets : Une créature dite mécanique agit de manière incohérente pendant 1 tour (+1 tour/NM)\")",
+  "magies/magie-de-la-lumiere#sort:grenade-flash : bonus_maitrise \"Effets : 3NM = oblige un jet de vigueur pour ne pas être aveuglé au stade 1\" (plan \"Effets : 3NM = oblige un jet de vigueur pour ne pas être aveugler au stade 1\")",
+  "magies/magie-de-la-terre#sort:redemption-de-dimitri : bonus_maitrise \"Effets : Invoque la météo \\\"tempête de sable\\\" pendant 3 tours (+1/NM)\" (plan \"Effets : Invoque la météo \\\"tempête sable\\\" pendant 3 tours (+1/NM)\")",
+  "magies/magie-du-feu#sort:etincelle : bonus_maitrise \"D/S/B : +1d6/NM\\nEffets : Inflige 2d6 de contrecoup (-1d6 au Niveau 3 de Maîtrise)\" (plan \"D/S/B : +1d6/NM\\nEffets : Inflige 2d6 de contre coup (-1d6 au Niveau 3 de Maîtrise)\")",
+  "magies/magie-du-sang#sort:proportion-demesuree : bonus_maitrise \"Effets : Augmente la taille d'un cran, +1 Force, +20 (+5/NM) aux dégâts physiques, +1 portée pour 3 tours\" (plan \"Effets : Augmente la taille d'un cran, +1 Force, +20 (+5/NM) aux dégâts physique, +1 portée pour 3 tours\")",
+  "magies/magie-du-vent#sort:recul-force : bonus_maitrise \"Effets : Fait reculer la cible de 1 case (+1/NM)\\nRemarque : Sans NM dedans, le sort ne peut pas reculé une cible grande\" (plan \"Effets : Fait reculé la cible de 1 case (+1/NM)\\nRemarque : Sans NM dedans, le sort ne peut pas reculé une cible grande\")"
+ ],
+ "amelioration_cadaverique": "table supprimée (R237 (7)) ; invocation bestiaire/animation-des-morts : tableau_titre et tableau_sort_id à NULL"
+}

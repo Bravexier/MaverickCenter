@@ -108,8 +108,8 @@ vierge (Python et Node). Les 131 tables de base sont **toutes non vides** une fo
 | 0 | Registre des importeurs | 1 | 10 | `famille` |
 | 1 | Pages, liens, mots-clés, sources | 8 | 9 684 | `type_page`, `page` (991), `alias`, `mot_cle`, `page_tag`, `source`, `page_source`, `page_entite` |
 | 2 | Règles de la fiche (`fiche`) | 11 | 202 | `caracteristique`, `competence` (30), `niveau_global`, `seuil_niveau`, `regle_constante`, `posture`, `posture_effet` |
-| 3 | Magies et sorts (`magies`) | 14 | 1 276 | `magie` (15), `sort` (322), `sort_type`, `sort_etat`, `magie_resistance`, `magie_incompatibilite`, `amelioration_cadaverique`, `regle_magie` |
-| 4 | Annexes des magies (`annexes`) | 14 | 1 257 | `etat` (20), `etat_stade`, `resistance_magie`, `resistance_duo`, `meteo`, `mode_super_objet`, `mode_hyper_effet` (246, cinq lectures fusionnées) |
+| 3 | Magies et sorts (`magies`) | 14 | 1 276 | `magie` (15), `magie_specialisation` (28, migration 0117), `sort` (420 depuis la migration 0117, 322 avant), `sort_type`, `sort_etat`, `magie_resistance`, `magie_incompatibilite`, `regle_magie` (`amelioration_cadaverique` retirée par la migration 0117, R237 (7)) |
+| 4 | Annexes des magies (`annexes`) | 14 | 1 257 | `etat` (21 depuis la migration 0117), `etat_stade`, `resistance_magie`, `resistance_duo`, `meteo`, `mode_super_objet`, `mode_hyper_effet` (246, cinq lectures fusionnées) |
 | 5 | Dieux | 1 | 28 | `dieu` |
 | 6 | Classes (`classes`) | 7 | 1 050 | `classe` (39), `specialite` (78), `capacite` (**660 : une ligne par page `capacites/*`**), `objet_depart`, `classe_objet_depart` |
 | 7 | Races (`races`) | 9 | 6 514 | `race` (27), `ethnie` (96), `race_classe` (1 053), `race_magie` (405), `peuple` (69), `relation_peuple` (4 761), `echelle_relation` |
