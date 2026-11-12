@@ -2,7 +2,7 @@
 
 Ne lis jamais `docs/decisions-regles.md` en entier : trouve ici le numéro de la décision, puis cherche sa ligne avec Grep (motif `^\| R41 \|`) et ne lis qu'elle.
 
-Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 243 décisions, de R1 à R243, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
+Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 246 décisions, de R1 à R246, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
 
 | Réf. | Sujet | Décision |
 | --- | --- | --- |
@@ -249,3 +249,6 @@ Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas mo
 | R241 | Effets secondaires des matériaux d'armes (docx, rubrique « Armes » : « Les… | (1) Les effets secondaires des 13 matériaux cités sont… |
 | R242 | Le bestiaire et les sorts renommés ou supprimés par la mise à jour de Déce… | (1) Les cartes du bestiaire prennent le nouveau nom du… |
 | R243 | Textes d'incantation et remarques des sorts absents du classeur de Décembr… | (1) Les six textes d'incantation de Glace et de Terre… |
+| R244 | Coûts des sorts que le classeur de Décembre écrit sans les répartir (R237… | (1) Même lecture que R106 avec le nouveau chiffre : Ru… |
+| R245 | Affichage des pages de magie V10 (R236 (1)) : la règle « CHOSES A SAVOIR »… | (1) Les phrases de « CHOSES A SAVOIR » sur la Super-ma… |
+| R246 | Nom affiché par la capacité « sort supplémentaire » de la Poupée fulgurant… | La capacité affiche « Boules plasmiques », le nouveau… |
