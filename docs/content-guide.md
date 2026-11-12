@@ -471,8 +471,10 @@ Mise en page (pure forme, jamais de règle ajoutée ; `lib/sort-format.mjs`, tes
   un cadre vide est caché en lecture), puis ses sorts, un tableau par NPM (les deux spécialisations ont chacune leur NPM 3 : identifiants `#npm-<spécialisation>-<NPM>`, `#specialisation-<spécialisation>`) ; `<spécialisation>` est **l'ancre figée** : le segment de l'identifiant après `#specialisation:`
   (`lib/sort-format.mjs#ancreDeSpecialisation`), jamais le nom ni `nom_cle`, que le service recalcule au renommage (« Identifiants figés »).
   Les deux spécialisations sont **côte à côte** (R245 (2), classeur : une colonne chacune, `div.specialisations` ; l'une sous l'autre sous 72rem, chaque tableau défile dans son cadre, jamais la page).
-  **Zone élargie** (R247 (3)) : à partir de 72rem, la zone déborde de la colonne de texte vers la marge libre de droite, jusqu'à 1rem du bord de la fenêtre (`styles/magie/sorts.css`, `--marge-libre`) ;
-  pas à gauche, où le panneau latéral des magies resterait recouvert. Sous 72rem et à l'impression : une colonne, aucun débordement.
+  **Zone élargie** (R247 (3), « Elargir la zone sur les cotés pour remplir les espace vides ») : à partir de 72rem, une page qui a des spécialisations (page d'une magie, Potentiel Illimité)
+  occupe toute la largeur de la fenêtre, panneau latéral compris, au lieu de rester centrée (`.magie-cadre--large`, posée par `MagiePage.astro` ; `main` jusqu'à `--max-magie-large`, 120rem) ;
+  le panneau reste à gauche, non recouvert. Les autres pages ne changent pas. Dans ce mode, les tableaux sont resserrés (marges des cellules, largeurs minimales du nom et des dégâts levées),
+  aucune colonne retirée, police inchangée ; le défilement du cadre reste le dernier recours (fenêtre étroite). Sous 72rem et à l'impression : une colonne, mise en page d'avant.
   **Infobulle sur le titre de chacune** (R245 (1), MAJ-A5, MAJ-A6) : les deux phrases de la règle « CHOSES A SAVOIR » (`regle_magie` `magies#regle:choses-a-savoir`) sur la Super-magie et sur le choix
   des bi-magie, découpées dans la cellule (`lib/sort-format.mjs#phrasesDesSpecialisations` : les puces qui parlent de « super-magie » ou de « bi-magie », mot pour mot), avec le mécanisme de la règle du
   NPM 5 (`Info.astro`) ; les autres phrases ne s'affichent pas. **Chaque onglet du Potentiel Illimité** reprend la même disposition (R249) : deux spécialisations côte à côte dans

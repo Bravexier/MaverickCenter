@@ -512,15 +512,24 @@ test('pages de magie : « Sorts communs » puis les deux spécialisations, chacu
   // R245 (2) : une colonne sur écran étroit (elles s'empilent), deux colonnes à partir d'une largeur ; chacune peut rétrécir (minmax(0, 1fr)), sans défilement de la page
   assert.match(css.match(/\.specialisations \{[^}]*\}/)?.[0] ?? '', /grid-template-columns: minmax\(0, 1fr\);/);
   assert.match(css.match(/@media \(min-width: [\d.]+rem\) \{\s*\.specialisations \{[^}]*\}/)?.[0] ?? '', /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
-  // R247 (3) : la zone des deux colonnes s'élargit vers la marge libre de droite (jamais à gauche : le panneau latéral y est), seulement à l'écran à partir
-  // de la même largeur que les deux colonnes ; sous cette largeur, aucun débordement
+  // R247 (3) : « Elargir la zone sur les cotés pour remplir les espace vides » : une page qui a des spécialisations (ou le Potentiel Illimité, R249) occupe toute la
+  // largeur de la fenêtre, panneau latéral compris, à partir de la largeur des deux colonnes ; les autres pages ne changent pas ; sous cette largeur, rien ne change
   const largeur = css.match(/@media \(min-width: ([\d.]+rem)\) \{\s*\.specialisations \{/)?.[1];
   assert.ok(largeur, 'seuil des deux colonnes');
-  const elargie = css.match(new RegExp(`@media screen and \\(min-width: ${largeur.replace('.', '\\.')}\\) \\{\\s*\\.specialisations \\{([^}]*)\\}`))?.[1] ?? '';
-  assert.match(elargie, /margin-right: calc\(-1 \* var\(--marge-libre\)\)/, 'la zone déborde vers la marge de droite');
-  assert.match(elargie, /--marge-libre: max\(0px, /, 'jamais de marge négative en trop sur une fenêtre étroite');
-  assert.doesNotMatch(elargie, /margin-left|margin:|transform|position/, 'rien à gauche : le panneau latéral ne doit pas être recouvert');
-  assert.doesNotMatch(css.match(/\.specialisations \{[^}]*\}/)?.[0] ?? '', /margin-right/, 'la colonne unique ne déborde pas');
+  const bloc = (selecteur) => css.match(new RegExp(`@media screen and \\(min-width: ${largeur.replace('.', '\\.')}\\) \\{\\s*${selecteur} \\{([^}]*)\\}`))?.[1] ?? '';
+  assert.match(bloc('main:has\\(> \\.magie-cadre--large\\)'), /max-width: var\(--max-magie-large, [\d.]+rem\)/, 'la page large dépasse la colonne centrée');
+  assert.doesNotMatch(css, /margin-right: calc\(-1/, 'plus de débordement hors de la page : la page elle-même est large');
+  // tableaux resserrés dans le mode à deux colonnes seulement : marges et largeurs minimales, aucune colonne retirée (pas de display: none)
+  const serre = css.match(new RegExp(`@media screen and \\(min-width: ${largeur.replace('.', '\\.')}\\) \\{(?:(?!\\n\\}).)*?\\.specialisations \\.table-donnees(?:(?!\\n\\}).)*`, 's'))?.[0] ?? '';
+  assert.match(serre, /\.specialisations \.table-donnees > tbody > tr > \* \{ padding-inline:/);
+  assert.match(serre, /\.specialisations \.sort__dsb \{ min-width: 0; \}/);
+  assert.doesNotMatch(serre, /display: none|font-size/, 'aucune colonne retirée, police inchangée');
+  // le gabarit pose la classe sur les seules pages qui ont des spécialisations (le Potentiel Illimité : ses onglets en ont)
+  for (const { slug, html } of pages) {
+    const large = html.includes('<div class="magie-cadre magie-cadre--large">');
+    assert.equal(large, html.includes('<div class="specialisations">'), `${slug} : page large si et seulement si elle a des spécialisations`);
+    if (slug === 'potentiel-illimite') assert.ok(large, 'le Potentiel Illimité est large (R249)');
+  }
   // le panneau latéral reste dans sa colonne, collé en haut, à gauche de la page
   const pageCss = readFileSync(new URL('../src/styles/magie/page.css', import.meta.url), 'utf8');
   assert.match(pageCss.match(/\.magie-cadre \{[^}]*\}/)?.[0] ?? '', /grid-template-columns: minmax\(10rem, 12rem\) minmax\(0, 1fr\)/);

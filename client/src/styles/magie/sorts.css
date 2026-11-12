@@ -26,12 +26,19 @@
 @media (min-width: 72rem) {
   .specialisations { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
 }
-/* Zone élargie (R247 (3), R249 : page d'une magie et chaque onglet du Potentiel Illimité) : elle déborde de la colonne de texte vers la marge libre de droite,
-   jusqu'à 1rem du bord de la fenêtre ; les deux tableaux restent côte à côte. Le panneau latéral est à gauche, collé en haut de l'écran : on n'élargit pas de ce
-   côté, il serait recouvert. `main` mesure `--max` + 14rem (page.css) et est centré : la marge libre à droite est la moitié de ce que la fenêtre a en plus, moins
-   le remplissage de `main` (1rem) et 1rem de sûreté (la barre de défilement est comprise dans 100vw). Sous 72rem, ou à l'impression, rien ne déborde. */
+/* Zone élargie (R247 (3), R249 : page d'une magie et chaque onglet du Potentiel Illimité). Le propriétaire veut remplir les espaces vides « sur les côtés » : une
+   page qui a des spécialisations (`.magie-cadre--large`, posé par MagiePage.astro) occupe toute la largeur de la fenêtre (limite : --max-magie-large), panneau latéral
+   compris, au lieu de rester centrée ; le panneau reste à gauche dans sa colonne, non recouvert. Les autres pages du site, et les magies sans spécialisation, ne
+   changent pas. Sous 72rem, ou à l'impression : la mise en page d'avant (une colonne). */
 @media screen and (min-width: 72rem) {
-  .specialisations { --marge-libre: max(0px, (100vw - var(--max) - 14rem) / 2 - 2rem); margin-right: calc(-1 * var(--marge-libre)); }
+  main:has(> .magie-cadre--large) { max-width: var(--max-magie-large, 120rem); }
+}
+/* Deux colonnes : tableaux resserrés (marges des cellules, largeurs minimales du nom et des dégâts levées : ils passent à la ligne), aucune colonne retirée ; le défilement du cadre reste le dernier recours */
+@media screen and (min-width: 72rem) {
+  .specialisations .table-donnees > thead th { padding-inline: 0.5rem; }
+  .specialisations .table-donnees > tbody > tr > * { padding-inline: 0.5rem; }
+  .specialisations .sort__nom { min-width: 0; }
+  .specialisations .sort__dsb { min-width: 0; }
 }
 .sort__main { cursor: pointer; }
 .sort__main:hover { background: var(--mag-soft); }

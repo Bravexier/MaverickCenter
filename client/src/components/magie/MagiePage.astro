@@ -98,7 +98,7 @@ const panneau = [...magies.magies.values()]
 
 <style is:inline set:html={creatures.length ? `${magieCss}\n${carteCss}` : magieCss}></style>
 <style is:inline set:html={cssDesFamilles(['genre'])}></style>
-<div class="magie-cadre">
+<div class={`magie-cadre${specialisations.length > 0 || autresMagies.length > 0 ? ' magie-cadre--large' : ''}`}>
 <nav class="magies-panneau no-print" aria-label="Magies">
   <details class="magies-panneau__repli" open data-magies-repli>
     <summary class="magies-panneau__resume">
