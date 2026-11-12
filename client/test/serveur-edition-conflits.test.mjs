@@ -139,7 +139,9 @@ before(() => {
   assert.deepEqual(regles.prepare('PRAGMA foreign_key_check').all(), [], 'les règles livrées sont saines');
   regles.close();
   S.regles = r1;
-  const { rejeu } = preparerBaseVivante({ regles: r1, dossier: S.dossier });
+  // une base vivante d'avant la fusion à trois voies (garderLeSite faux : un lot en conflit est annulé en entier) : la résolution de ces lots, encore
+  // possibles sur le site de dev, est ce que ce fichier éprouve ; la fusion et les lots gardés : serveur-edition-fusion.test.mjs
+  const { rejeu } = preparerBaseVivante({ regles: r1, dossier: S.dossier, garderLeSite: false });
   assert.equal(rejeu.lots, 8);
   assert.equal(rejeu.appliquees, 0, 'tous les lots du scénario sont en conflit');
 });
@@ -440,7 +442,8 @@ test('les lots de résolution se rejouent sans conflit à la livraison suivante 
   const regles = new DatabaseSync(r2);
   regles.prepare("UPDATE metier SET remarque = 'Livraison suivante (essai des conflits).' WHERE id <> ? AND id = (SELECT min(id) FROM metier WHERE id <> ?)").run(FORGERON, FORGERON);
   regles.close();
-  const { rejeu } = preparerBaseVivante({ regles: r2, dossier });
+  // garderLeSite faux, comme le scénario (sinon les lots pas encore résolus sont réévalués et recomptés : serveur-edition-fusion.test.mjs)
+  const { rejeu } = preparerBaseVivante({ regles: r2, dossier, garderLeSite: false });
   assert.equal(rejeu.conflits, 0, 'aucun conflit nouveau : seules les traces (et les lots pas encore résolus) restent « conflit »');
   assert.ok(rejeu.appliquees > 0);
   const vivante = ouvrirBaseVivante(join(dossier, FICHIER_BASE));

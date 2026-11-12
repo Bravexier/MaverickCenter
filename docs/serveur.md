@@ -485,17 +485,20 @@ depuis, `409` et rien n'est écrit. Les pages étant statiques, chacune demande 
 créée a sa page provisoire sur la page 404 du site de dev, jusqu'à la livraison suivante.
 
 **Quand une livraison change les règles**, la base vivante est refaite (ci-dessus) et le journal y est **rejoué**, lot par lot : une modification
-déjà présente dans les nouvelles règles passe « intégrée », un lot qui contredit les nouvelles règles passe « conflit » en entier (rien n'en est
-réappliqué) ; `/api/etat/` compte les modifications `en_attente` et `conflit` (celles des lots à résoudre seulement, et `lots_en_conflit` :
-un lot résolu garde ses lignes `conflit` comme trace), affichées à côté du crayon. Un lot en conflit se résout sur la page « Mise à jour »
-(« Lots du journal en conflit », plus bas). L'ordre de rejeu (`ORDRE_DE_REJEU` :
+déjà présente dans les nouvelles règles passe « intégrée » ; un champ que les règles ont changé depuis se **fusionne à trois voies** (« Fusion à trois
+voies », dans « Mise à jour », plus bas) ; un lot dont le seul souci est une fusion ambiguë est **gardé** (la valeur du site écrite et en place,
+le lot « conflit », à résoudre), un lot qui contredit autrement les nouvelles règles (ligne supprimée, référence rompue, contrainte, forme ancienne)
+passe « conflit » en entier (rien n'en est réappliqué) ; `/api/etat/` compte les modifications `en_attente` et `conflit` (celles des lots à résoudre
+seulement, et `lots_en_conflit` : un lot résolu garde ses lignes `conflit` comme trace), affichées à côté du crayon. Un lot en conflit se résout sur
+la page « Mise à jour » (« Lots du journal en conflit », plus bas). L'ordre de rejeu (`ORDRE_DE_REJEU` :
 instant du lot, puis son identifiant, puis le rang) est le même pour le service, `db:appliquer-edition` et la mise à jour des règles ; l'instant
 est à la seconde, l'identifiant d'un lot commence par l'instant à la milliseconde et un compteur (`nouveauLot`) : deux lots de la même seconde
 se rejouent dans l'ordre où ils ont été enregistrés. Une colonne qui vaut déjà ce qu'une modification plus récente de la même ligne y écrit est
 « déjà là » (deux lots sur la même colonne, une ligne créée puis modifiée) — sauf si elle vaut encore ce que la modification avait trouvé (`avant`) :
 elle n'est alors pas faite et se fait (A → B → A : un lot suivant peut compter sur B, un nom de catégorie ou de mot-clé libéré, une date intermédiaire ;
-les lots déjà livrés, eux, ne sont jamais rejoués). **Point fixe** : un lot en conflit le reste — la reconstruction suivante ne le relit pas, le
-journal exporté (mise à jour, `db:appliquer-edition`) ne l'emporte pas. Le rejeu se fait donc par passes : chaque lot tombé en conflit est écarté et
+les lots déjà livrés, eux, ne sont jamais rejoués). **Point fixe** : dans un rejeu, un lot en conflit le reste — le journal exporté (mise à jour,
+`db:appliquer-edition`) ne l'emporte pas ; la reconstruction suivante de la base vivante le réévalue (un lot pas encore résolu ; un lot résolu
+jamais, sa résolution est un lot à elle). Le rejeu se fait donc par passes : chaque lot tombé en conflit est écarté et
 la passe recommence sans lui (ni parmi les modifications « plus récentes » d'une ligne, ni parmi les lignes fantômes), jusqu'à ce qu'une passe n'en
 écarte plus. Le résultat est celui des seuls lots qui passent : la reconstruction suivante et le rejeu du journal exporté le redonnent, sans conflit
 nouveau (`test/serveur-edition-rejeu-fantomes.test.mjs`, dont les scénarios des revues adverses). Une ligne créée puis supprimée par le journal en
@@ -862,12 +865,75 @@ git checkout -- ../data/rows                                                    
 `tools/db/races_onglet.py --verifier` ignore une race créée depuis le site (son onglet cite « Site de dev › … », pas le classeur). Une migration
 qui renomme une colonne doit aussi renommer ses clés dans `avant` / `apres` de `historique_modification`.
 
+**Fusion à trois voies** (demande du propriétaire : « j'aimerai que les modification apporté sur le site prime sur celle qui peuvent être faites
+"sous le radar" par le code et le dev. Si n'importe quel élément est modifiée à la fois par une modification manuelle et par une modification par le
+code et la livraison d'un build, je site essaye de faire un merge automatique entre les deux. Quand un conflit est trop ambigüe seulement là il est
+listé dans l'onglet mise à jour avec à gauche "modification sur site" et à droite "modification du code". » ; réponses : « Pendant qu'un conflit ambigu
+attend son choix, la page du site affiche LA MODIFICATION DU SITE », « Une valeur courte non fusionnable (nombre, case à cocher, nom, choix dans une
+liste) modifiée des deux côtés : LISTÉE EN CONFLIT (la valeur du site reste affichée en attendant) »). Au rejeu (`edition-journal.mjs#evaluerUne`), une
+colonne que les règles ont changée depuis (elle ne vaut ni l'`avant` de la modification, ni déjà sa valeur) se fusionne : base = `avant`, site =
+`apres`, code = la valeur des règles (`lib/fusion-trois-voies.mjs#fusionner`, module pur).
+- **Texte long** : une colonne de `TABLES` de type `texte` ou `markdown`, et le corps d'une page (`lib/edition-modele.mjs#colonneFusionnable`,
+  `TYPES_FUSIONNABLES` : lu dans le modèle, pas une liste de colonnes). Fusion ligne par ligne, puis mot à mot dans un passage que les deux côtés ont
+  touché (une balise du glossaire compte pour un mot) ; deux changements séparés par au moins une ligne, ou un mot qui n'est pas un blanc, inchangé
+  se gardent tous les deux ; deux changements qui se recouvrent ou se touchent, différents, sont **ambigus** (comme `git merge` : l'ordre de deux ajouts
+  au même endroit ne se devine pas ; une page réécrite et un paragraphe ajouté au bout aussi). Fins de ligne lues « \n » ; au-delà de 1,5 million de
+  cases de comparaison, ambigu. **Toute autre valeur est courte** (nombre, case, nom, choix d'une liste) : jamais fusionnée.
+- **Sans recouvrement** : la valeur fusionnée est écrite, le lot reste en attente, sans conflit. Le site qui ne change rien de plus que le code :
+  la valeur des règles reste. Le même `evaluerUne` sert la base vivante, `db:appliquer-edition` et la mise à jour des règles : le journal exporté
+  se rejoue sur `data/rows` avec la même fusion.
+- **Ambigu** (base vivante du site de dev seulement : `rejouerLeJournal(…, { garderLeSite })`, posé par `base-vivante.mjs#transferer`) : si c'est
+  le seul souci du lot, il est **gardé** — la valeur du site est écrite et reste (la page la montre : `lignesEnAttente` compte ses lignes) ; pour un
+  texte, c'est la fusion où **les passages en conflit prennent le côté du site et le reste est fusionné** : les changements du code ailleurs sont gardés
+  (`fusionner(…).siteGagne` ; réponse du propriétaire du 12 novembre : « Les garder (Recommandé) » — le choix 1 ne tranche que les passages en
+  conflit) ; une valeur courte : la valeur du site. Le lot
+  passe « conflit » (listé sur la page, pas exporté), et la trace de chacune de ses lignes (`detail` : la phrase « … autrement, la valeur du site
+  reste en place », puis, après un saut de ligne, `{"reprise": …}`, `edition-journal.mjs#MARQUE_DE_REPRISE`, `lireLaTrace`) garde ce que le rejeu a
+  écrit et, pour chaque champ gardé, `{ base, site, code, passages, siteGagne, codeGagne, provenance }` : la valeur du code n'est plus dans la base. Les lots suivants du
+  même champ se rejouent sur la valeur du site, sans cascade ; ils restent en attente mais ne partent qu'après la résolution du lot gardé
+  (`edition-journal.mjs#lotsRetenus`, de proche en proche ; `journalExporte` les laisse et les liste dans `retenus`). Le bilan du rejeu compte les
+  lignes d'un lot gardé dans `conflits`, et dans `gardees` (clé présente seulement s'il y en a). Les autres conflits (ligne supprimée, insertion
+  qui existe déjà, référence rompue, contrainte, forme ancienne, refus communs au rejeu) annulent leur lot comme avant ; un lot qui a aussi l'un
+  d'eux est annulé en entier, ses champs ambigus en conflit « colonnes » ordinaire.
+- **Réévaluation** : avec `garderLeSite`, les lots en conflit pas encore résolus sont rejoués avec les autres à chaque reconstruction (un lot annulé
+  d'une base vivante d'avant cette règle devient gardé, fusionné ou sain : rien ne reste perdu) ; un lot résolu ne l'est jamais. `preparerBaseVivante(…,
+  { garderLeSite: false })` refait une base d'avant (réservé aux tests de la résolution des lots annulés).
+
 **Lots du journal en conflit** (demande du propriétaire du 2026-10-22 : « Après les listes de modifications, montrer les lignes en conflits.
 1. Pour chaque conflit, montrer les deux versions 2. Laisser le choix entre 1, 2, ou 3 pour saisir à la main ce qui remplace les deux. » ;
-`serveur/edition-conflits.mjs`, site de dev seulement). Un lot passe « conflit » au rejeu (ci-dessus, « Édition des règles ») en entier, avec un
-seul message, et n'est plus rejoué : il ne part jamais avec une mise à jour (`figerLot` → `journalExporte` : en attente et intégrées seulement),
-reste sur le site de dev sans rien bloquer (la note en préparation le compte : `en_conflit`, `{ lots, modifications }`) et se résout contre les
-règles d'aujourd'hui, même après une livraison.
+`serveur/edition-conflits.mjs`, site de dev seulement). Un lot passe « conflit » au rejeu (ci-dessus, « Édition des règles »), gardé (la valeur du
+site en place, ci-dessus) ou annulé en entier, avec un seul message : il ne part jamais avec une mise à jour (`figerLot` → `journalExporte` : en
+attente et intégrées seulement, hors lots retenus), reste sur le site de dev sans rien bloquer (la note en préparation le compte : `en_conflit`,
+`{ lots, modifications }`) et se résout contre les règles d'aujourd'hui, même après une livraison. **La note en préparation** ne montre que ce qui
+partira (réponse du propriétaire du 12 novembre : « Les retirer (Recommandé) ») : ses lignes sont calculées sur la base vivante dont les lots gardés
+pas encore résolus et les lots retenus derrière eux sont défaits, dans un savepoint toujours annulé (`serveur/notes-de-version.mjs#tablesQuiPartiront`,
+`edition-journal.mjs#defaireLesLotsEnSuspens`), et `en_attente` ne compte pas les lots retenus ; ils y apparaissent après la résolution.
+
+- **Un lot gardé** (`garde: true`, `edition-conflits.mjs#examinerUnLotGarde`, `resoudreUnLotGarde`) : un conflit par champ gardé (genre `champ`,
+  ou `hors_modele`), **version 1 = la modification du site** (ce lot, en place), **version 2 = la modification du code** (la valeur gardée dans
+  la trace), `avant` = ce que le site avait trouvé, `passages` (les passages en conflit d'un texte : `{ base, site, code }`), `provenance_1`
+  (`{ genre: 'site', lot, fait_le, resume }`), `provenance_2` (`{ genre: 'regles' }` les règles livrées, ou `{ genre: 'regles_et_site', lot, … }`
+  quand un lot plus ancien du même rejeu avait déjà écrit ce champ, fusionné avec le code), `actuelle` (null, ou la valeur de la base quand un lot
+  plus récent l'a changée depuis, avec sa `provenance`), `lots_suivants` (`{ lot, fait_le, resume }`), `valeur_1` et `valeur_2` (`{ genre:
+  'valeur', valeur }` : la valeur que laisse chaque choix ; `valeur_2` null si le choix 2 est refusé). Choix 1 : garder la valeur en place (les
+  passages en conflit côté site, le reste fusionné ; rien n'est écrit) ; 2, symétrique : les passages en conflit côté code, les changements du site
+  hors conflit gardés (`codeGagne` ; une valeur courte : celle du code), les lots suivants du même champ refaits dessus par la même fusion (`refus_2` si l'un ne s'y fusionne pas —
+  avec `refus_2_lot` : `{ lot, fait_le, resume }` de ce lot —, ou si l'éditeur la refuse aujourd'hui : une ancre figée retirée…, sans `refus_2_lot`) ; 3 : une valeur saisie (pas sur une ligne gelée, une image ni une colonne hors
+  du modèle). Les autres lignes du lot sont ses saines (`fusionnees`, `fusionnees_libelles` : ses colonnes fusionnées sans conflit). La résolution
+  écrit, dans une transaction, **la reprise du lot** (`<lot>-reprise`, « Reprise du lot X (conflit résolu) : … ») : un lot normal du journal à la place
+  du lot gardé dans l'ordre du rejeu (même `fait_le`, son id le suit), qui note ce que le rejeu avait écrit à partir des règles (`avant` = la valeur
+  du code) ; rejoué sur `data/rows`, il redonne la base vivante, et les lots suivants passent après lui. Puis, pour les choix 2 et 3, un lot écrit
+  par l'éditeur sur la base telle qu'elle est (« Résolution du conflit du lot X : … », `nouveau_lot`). Le lot gardé est marqué résolu (`resolu_par` =
+  la reprise), ses lignes restent `conflit` comme trace. Réponse : `reprise` en plus.
+- **Ordre des résolutions** (bug du lot de 03:17 résolu avant celui de 03:16) : un conflit qu'un lot plus ancien, en conflit et pas résolu, touche
+  aussi (même table, même clé, même colonne, ou la ligne entière) est bloqué : `bloque` (`{ lot, fait_le, resume, raison }`, null sinon ; le lot :
+  `bloque` vrai si l'un l'est), et la résolution répond `409` (`details.bloque`). Un choix 1 d'un lot annulé qui écraserait la valeur d'un lot plus
+  récent du site de dev (la provenance de la version 2, une résolution comptant à la place du lot qu'elle résout) est retiré (`refus_1`, avec
+  `refus_1_lot` : `{ lot, fait_le, resume }` ; un refus de l'éditeur n'en a pas). Les phrases (`refus_1`, `refus_2`, `bloque.raison`, le message du
+  `409`) gardent leur forme « Le lot du <fait_le> (« <résumé> »)… » ; les champs structurés servent la page. Tout résumé du diagnostic (`resume` d'un
+  lot, des provenances, des lots suivants, des blocages, des lots résolus et retenus) est sans les marqueurs du rejeu ni l'id du lot qu'une résolution
+  reprend (« Résolution du conflit du lot <id> : » et « Reprise du lot <id> (conflit résolu) : » retirés : `edition-conflits.mjs#resumeVu` ; `resout`
+  d'une provenance donne ce lot).
 
 - **Le diagnostic** (`GET /api/mise-a-jour/conflits/`) est recalculé à chaque demande sur la base vivante (règles livrées + lots rejoués depuis),
   dans un savepoint **toujours annulé** — exception assumée à « lecture seule quand rien n'est écrit » : même connexion, `traiter` synchrone. Le lot
@@ -876,9 +942,16 @@ règles d'aujourd'hui, même après une livraison.
   `deja_la`, `derivee`, `sans_effet`, avec ses colonnes si une autre colonne de la même ligne est en conflit), ainsi qu'une règle en données d'un don
   que le lot supprime aussi (`suit_le_don`, avec `don` : le libellé du don ; sans choix, elle suit celui du don, voir « Édition des règles », dons). Chaque conflit porte la
   **version 1** (ce que le site de dev avait écrit : la valeur du lot, et l'aperçu HTML d'une page du guide), la **version 2** (ce que disent les
-  règles livrées : la valeur de la base vivante, ou « ligne supprimée »), ce que le site avait trouvé (`avant`) et les choix permis. La page
-  (`lib/conflits-rendu.mjs#titreDeLaVersion`) les titre « modifiée sur le site de dev (ce lot, du …) » et « la valeur actuelle, venue de la dernière
-  livraison du site » ; de deux textes, elle ne montre que les différences mot à mot, les passages identiques repliés autour d'une ligne de contexte
+  règles livrées : la valeur de la base vivante, ou « ligne supprimée »), ce que le site avait trouvé (`avant`) et les choix permis, et (lot annulé)
+  `garde: false`, `provenance_1`, `provenance_2` (d'où vient la valeur actuelle : `regles`, `site` — un lot en attente plus récent ou plus ancien —
+  ou `resolution`, avec `lot`, `fait_le`, `resume`, et `resout` pour une résolution : `edition-conflits.mjs#provenanceActuelle`), `passages` (deux
+  textes : les passages en conflit de leur fusion), `valeur_1` et `valeur_2` (la valeur que laisse chaque choix) et `bloque`. Un texte long ambigu
+  d'un lot annulé se résout comme celui d'un lot gardé (décision du leader-technique, la réponse du propriétaire « Les garder » valant pour eux) :
+  choix 1, les passages en conflit côté site et le reste fusionné ; choix 2, côté code, les changements du site hors conflit gardés (écrits par
+  l'éditeur) ; une valeur courte : version 1, ou la valeur actuelle. La page (`lib/conflits-rendu.mjs#titreDeLaVersion`) les titre « modifiée sur le site
+  de dev (ce lot, du …) » et d'après `provenance_2` ; un lot gardé (`garde` vrai), « modification sur le site » à gauche (la version 1 ; la page du
+  site affiche en attendant le choix `valeur_1` : les passages en conflit côté site, le reste fusionné) et « modification du code » à droite (la
+  version 2), deux textes réduits à leurs passages en conflit (`passages`) ; de deux textes, elle ne montre que les différences mot à mot, les passages identiques repliés autour d'une ligne de contexte
   (`lib/diff-replie.mjs`, demande du propriétaire du 2026-11-07), les deux versions entières dans un bloc fermé. Genres : `champ`
   (une colonne de `TABLES`, id « rang:colonne » ; choix 1, 2, 3 — une image : 1, 2 — ; `saisie` = le champ de `TABLES`, qui fixe le type de la
   valeur saisie), `hors_modele` (une colonne hors du modèle : valeurs brutes, 1 ou 2), `insertion` (la ligne existe déjà, autrement : 1 ou 2),
@@ -948,7 +1021,11 @@ règles d'aujourd'hui, même après une livraison.
   = les choix : migration `0072`), jamais effacé : ses lignes restent `conflit`, avec leur `detail`, comme trace ; tout au choix 2 sans rien de
   sain : aucun lot écrit, `resolu_par` reste NULL. Un second appel répond `409`. Le nouveau lot se rejoue sans conflit sur `data/rows` (son
   `avant` est la base vivante) ; une résolution faite pendant un lancement part avec la mise à jour suivante.
-- **Limites** : un conflit sur une colonne qu'un lot plus récent a aussi écrite se résout contre la base vivante (qui porte le lot plus récent) ;
+- **Limites** : un conflit d'un lot annulé sur une colonne qu'un lot plus récent a aussi écrite se résout contre la base vivante (qui porte le lot
+  plus récent ; son choix 1 est retiré ; il devient gardé à la reconstruction suivante) ;
+  la note en préparation défait les lots en suspens colonne par colonne (une colonne dérivée revient à sa valeur notée) ; une page du guide dont le
+  corps a été fusionné, ou gardé avec un changement du code ailleurs, n'a plus d'aperçu HTML (il ne décrit plus le texte en place : la modification
+  réécrite au rejeu perd son `apercu`, `lignesEnAttente` ne le rend pas pour un lot gardé), elle montre son nouveau texte à la livraison suivante ;
   une création résolue ne rend pas aux fiches ce que R42 leur a retiré à sa suppression ; le corps d'une page typée gardé au choix 2 est celui des
   règles (refait depuis les tables, jamais depuis la version 1).
 
@@ -961,8 +1038,8 @@ règles d'aujourd'hui, même après une livraison.
 | `POST /api/mise-a-jour/liberer/` | Annule un lancement qui n'est pas parti, a échoué ou se lance à la main : le texte redevient modifiable (annulé pendant l'envoi : le run parti quand même est annulé sur GitHub) |
 | `GET /api/mise-a-jour/lancement/` | L'état du lancement (le run GitHub est relu au plus toutes les 20 s) |
 | `GET /api/mise-a-jour/lots/<lot>/` | Le lot figé, octet pour octet (le workflow le télécharge et vérifie son empreinte) |
-| `GET /api/mise-a-jour/conflits/` | `{ lots: [{ lot, fait_le, page_id, resume, detail, detail_lisible, empreinte, saines: [{ rang, table, cle, operation, libelle, issue, colonnes?, colonnes_libelles? }], conflits: [{ id, rang, table, cle, operation, libelle, colonne, colonne_libelle, genre, raison, raison_lisible, version_1, version_2, avant, apercu, choix_possibles, refus_1?, refus_2?, saisie, refus_3? }] }], resolus: [{ lot, fait_le, resume, resolu_le, resolu_par, resolution }] }` (une version : `{ genre: 'valeur' \| 'ligne' \| 'valeurs' \| 'suppression' \| 'absente', valeur }`, images résumées) |
-| `POST /api/mise-a-jour/conflits/` | `{ lot, empreinte, choix: { "<id>": { choix: 1 \| 2 \| 3, valeur? } } }` → `{ lot, nouveau_lot, modifications, lignes, fiches, resolution }` ; `400`, `404`, `409` (`lot` : le diagnostic à jour), `422` |
+| `GET /api/mise-a-jour/conflits/` | `{ lots: [{ lot, fait_le, page_id, resume, garde, bloque, detail, detail_lisible, empreinte, saines: [{ rang, table, cle, operation, libelle, issue, colonnes?, colonnes_libelles?, fusionnees?, fusionnees_libelles? }], conflits: [{ id, rang, table, cle, operation, libelle, colonne, colonne_libelle, genre, garde, raison, raison_lisible, version_1, version_2, avant, provenance_1, provenance_2, actuelle?, passages, lots_suivants?, valeur_1?, valeur_2?, apercu, choix_possibles, refus_1?, refus_1_lot?, refus_2?, refus_2_lot?, saisie, refus_3?, bloque }] }], resolus: [{ lot, fait_le, resume, resolu_le, resolu_par, resolution }], retenus: [{ lot, fait_le, resume, derriere }] }` (une version : `{ genre: 'valeur' \| 'ligne' \| 'valeurs' \| 'suppression' \| 'absente', valeur }`, images résumées) |
+| `POST /api/mise-a-jour/conflits/` | `{ lot, empreinte, choix: { "<id>": { choix: 1 \| 2 \| 3, valeur? } } }` → `{ lot, nouveau_lot, reprise?, modifications, lignes, fiches, resolution }` ; `400`, `404`, `409` (`lot` : le diagnostic à jour ; `bloque` : un lot plus ancien à résoudre d'abord), `422` |
 
 **Mise en place** (une fois) : le secret `MISE_A_JOUR_TOKEN` du dépôt (jeton fine-grained d'un administrateur, ce dépôt seulement : *Contents*,
 *Pull requests* et *Workflows* en écriture ; le jeton d'un workflow ne déclenche ni la CI ni `livraison.yml` ; seul le job `livrer` le reçoit)
@@ -1316,7 +1393,7 @@ Les tests (`npm test`) : `serveur-base-vivante` (création, reprise des fiches, 
 refus, conflit de versions, serveur HTTP réel et sa surveillance), `serveur-armure-elementaire` et `serveur-poids-portable` (l'armure de R165 :
 textes contre la migration 0080, reconstruction et enregistrement ; le poids portable lu dans la base comparé au moteur de la fiche sur toute la
 base, l'armure trop lourde retirée à la reconstruction, joueurs compris, et à l'enregistrement, idempotence), `serveur-edition*` et `serveur-edition-journal` (édition : chaque domaine,
-journal, rejeu), `serveur-tipeee` et `tipeee` (la partie « Bienvenue » de Tipeee : extraction du texte, réponse d'exemple, cache, une requête pour des appels simultanés, Tipeee injoignable, repère absent, réponse trop grosse, redémarrage, repli, route, livraison de l'instantané), `serveur-edition-conflits` (lots en conflit : diagnostic, choix 1, 2 et 3, nouveau lot, ancien marqué résolu, rejeu suivant sans conflit), `serveur-notes-de-version` (page Mise à jour : routes, lot figé, faux GitHub), `notes-de-version` et `notes-de-version-sens`
+journal, rejeu), `serveur-tipeee` et `tipeee` (la partie « Bienvenue » de Tipeee : extraction du texte, réponse d'exemple, cache, une requête pour des appels simultanés, Tipeee injoignable, repère absent, réponse trop grosse, redémarrage, repli, route, livraison de l'instantané), `serveur-edition-conflits` (lots en conflit : diagnostic, choix 1, 2 et 3, nouveau lot, ancien marqué résolu, rejeu suivant sans conflit), `serveur-edition-fusion` (fusion à trois voies au rejeu, lots gardés, pas de cascade, lots retenus, réévaluation, résolution d'un lot gardé, ordre des résolutions, fixture `conflits-diagnostic-garde.json`), `fusion-trois-voies` (le module pur), `serveur-notes-de-version` (page Mise à jour : routes, lot figé, faux GitHub), `notes-de-version` et `notes-de-version-sens`
 (liste et couleurs), `mise-a-jour-regles` (lot appliqué à data/rows : conflit, liste blanche), `mise-a-jour-github` (le workflow),
 `mise-a-jour-simulation` (le lot synthétique de la CI, l'état « note en attente », le job `simulation-de-mise-a-jour`), `serveur-maintenance`
 (annonce, deux serveurs qui rouvrent chacun à sa version, fin sans livraison, levée, plafond, minuterie, adresse de retour), `db-appliquer-edition` (rapatriement dans data/rows, versé dans l’historique), `historique-site` (ce que le site a changé, état d’import), `serveur-livraison` (modules livrés, service livré démarré tel quel,

@@ -1627,7 +1627,8 @@ test('les archives et la mise à jour : aucune famille de la palette ; leurs cou
   const script = lire('src/scripts/mise-a-jour.mjs');
   const boutons = [...script.matchAll(/<button type="(?:button|submit)" class="nv-principal"[^>]*>([^<]+)<\/button>/g)].map((m) => m[1]);
   assert.deepEqual(boutons, ['Effectuer la mise à jour', 'Passer en version majeure', 'Lancer la simulation', 'Effectuer la mise à jour']);
-  assert.ok(lire('src/lib/conflits-rendu.mjs').includes('<div class="nv-dev__actions"><button type="submit" class="nv-principal">Résoudre ce lot</button></div>'));
+  // « Résoudre ce lot » : grisé (`disabled`) quand le lot attend un lot plus ancien (`bloque`), la classe du bouton principal dans les deux cas
+  assert.match(lire('src/lib/conflits-rendu.mjs'), /<div class="nv-dev__actions"><button type="submit" class="nv-principal"(?:\$\{bloque \? ' disabled' : ''\})?>Résoudre ce lot<\/button><\/div>/);
   assert.equal((script.match(/dialogue\.className = 'nv-dialogue';/g) ?? []).length, 2);
   assert.equal((script.match(/racine\.append\(dialogue\);/g) ?? []).length, 2);
   assert.ok(script.includes("const racine = document.querySelector('[data-mise-a-jour]');") && script.includes("const zone = racine.querySelector('[data-nv-dev]');")

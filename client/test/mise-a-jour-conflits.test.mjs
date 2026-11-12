@@ -17,6 +17,24 @@ const FORGERON = DIAG.lots.find((l) => l.resume === 'Métier Forgeron : Bonus');
 const HYPER = DIAG.lots.find((l) => l.resume.startsWith('Page Le Mode Hyper'));
 
 const ALIAS = DIAG.lots.find((l) => l.resume === 'Alias d’essai');
+// un lot gardé (la valeur du site en place), un lot retenu derrière lui (test/fixtures/conflits-diagnostic-garde.json, tech-back) : structure seulement
+const GARDE = JSON.parse(readFileSync(new URL('./fixtures/conflits-diagnostic-garde.json', import.meta.url), 'utf8'));
+const LOT_GARDE = GARDE.lots.find((l) => l.garde);
+/** Un instant ISO 8601 resté brut dans un texte de la page. */
+const ISO = /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/;
+/** Le lot gardé qui attend un lot plus ancien, en conflit sur le même champ (`bloque` du service). */
+const BLOCAGE = { lot: 'L-ancien', fait_le: '2026-11-01T09:00:00Z', resume: 'Résumé d’essai', raison: 'Le lot du 2026-11-01T09:00:00Z (« Résumé d’essai »), plus ancien, touche aussi ce champ et n’est pas résolu : résolvez-le d’abord.' };
+const lotBloque = () => {
+  const l = structuredClone(LOT_GARDE);
+  l.bloque = true;
+  l.conflits[0].bloque = BLOCAGE;
+  return l;
+};
+const routesGardees = (extra = {}) => routesDeBase({
+  'GET mise-a-jour/': { ...NOTE, en_conflit: { lots: GARDE.lots.length, modifications: 2 } },
+  'GET mise-a-jour/conflits/': GARDE,
+  ...extra,
+});
 
 /** Les tables et colonnes du schéma (data/schema.sql) à « _ » : aucune ne doit se lire dans la section (demande du 2026-10-23 : « Un vrai nom serai mieux »). */
 const NOMS_DU_SCHEMA = (() => {
@@ -290,4 +308,102 @@ test('avec la case « Version majeure » (PR #224) : la case à côté du titre 
   assert.equal(dev.children.at(-1), s, 'toujours après les listes');
   const radio = [...page.conflit(page.lot(FORGERON.lot), FORGERON.conflits[0].id).querySelectorAll('[data-nv-choix]')].find((r) => r.getAttribute('value') === '1');
   assert.equal(radio.checked, true, 'le choix en cours reste');
+});
+
+// Demande du propriétaire du 2026-11-12 : « Quand un conflit est trop ambigüe seulement là il est listé dans l'onglet mise à jour avec à gauche
+// "modification sur site" et à droite "modification du code". C'est là que tu peux choisir entre 1, 2, ou 3 modification manuelle » ; réponse : en
+// attendant le choix, la page affiche la modification du site.
+test('un lot gardé posé : à gauche la modification sur le site, à droite celle du code ; ce que la page affiche ; les lots retenus', async () => {
+  const page = await monter(routesGardees());
+  const form = page.lot(LOT_GARDE.lot);
+  assert.ok(form && form.classList.contains('nv-conflit-lot--garde'));
+  for (const c of LOT_GARDE.conflits) {
+    const f = page.conflit(form, c.id);
+    const colonnes = f.querySelector('.nv-conflit__versions--garde');
+    assert.ok(colonnes, `${c.id} : les deux colonnes`);
+    const [gauche, droite] = colonnes.querySelectorAll(':scope > .nv-version');
+    assert.ok(gauche.classList.contains('nv-version--1') && droite.classList.contains('nv-version--2'), `${c.id} : la version 1 à gauche, la 2 à droite`);
+    assert.match(gauche.querySelector('.nv-version__titre').textContent, /^Version 1 : modification sur le site/);
+    assert.match(droite.querySelector('.nv-version__titre').textContent, /^Version 2 : modification du code/);
+    // ce que la page affiche en attendant le choix : le résultat du choix 1 (`valeur_1`), dont la saisie du 3 part
+    assert.equal(f.querySelector('[data-nv-affichee]').dataset.nvAffichee, '1', c.id);
+    const champ = f.querySelector('[data-nv-valeur]');
+    assert.equal(champ.tagName === 'TEXTAREA' ? champ.textContent : champ.getAttribute('value'), c.valeur_1.valeur, c.id);
+    // le résultat de chaque choix, quand il diffère des modifications entières
+    if (c.passages.length) assert.equal(f.querySelectorAll('[data-nv-resultat]').length, 2, c.id);
+    assert.equal(Boolean(f.querySelector('[data-nv-suivants]')), c.lots_suivants.length > 0, c.id);
+  }
+  // les lots retenus : un par entrée, liés au formulaire du lot qu'ils attendent
+  const retenus = page.section().querySelector('[data-nv-retenus]');
+  assert.ok(retenus);
+  assert.equal(retenus.querySelectorAll('li').length, GARDE.retenus.length);
+  assert.equal(retenus.querySelector('a').getAttribute('href'), `#${form.id}`);
+  // ni identifiant de lot, ni instant ISO, ni nom du schéma
+  const t = page.section().textContent;
+  for (const id of [...GARDE.lots.map((l) => l.lot), ...GARDE.retenus.map((r) => r.lot)]) assert.ok(!t.includes(id), id);
+  assert.doesNotMatch(t, ISO);
+  assert.deepEqual(nomsDuSchemaDans(t), []);
+  // le bouton d'un lot qui n'attend rien reste actif
+  assert.equal(form.querySelector('[type="submit"]').hasAttribute('disabled'), false);
+});
+
+test('un lot gardé se résout : 1 garder le site, 2 prendre le code ; le message dit la reprise', async () => {
+  let reste = GARDE.lots;
+  const page = await monter(routesGardees({
+    'GET mise-a-jour/': () => ({ ...NOTE, en_conflit: { lots: reste.length, modifications: reste.length } }),
+    'GET mise-a-jour/conflits/': () => ({ lots: reste, resolus: [], retenus: [] }),
+    'POST mise-a-jour/conflits/': (corps) => {
+      reste = reste.filter((l) => l.lot !== corps.lot);
+      return { lot: corps.lot, reprise: `${corps.lot}-reprise`, nouveau_lot: 'L-NOUVEAU', modifications: 5, lignes: [], fiches: [], resolution: [] };
+    },
+  }));
+  const form = page.lot(LOT_GARDE.lot);
+  const [premier, second] = LOT_GARDE.conflits;
+  page.choisir(page.conflit(form, premier.id), 1);
+  page.choisir(page.conflit(form, second.id), 2);
+  page.envoyer(form);
+  await fini();
+  const [, corps] = page.envois.find(([k]) => k === 'POST mise-a-jour/conflits/');
+  assert.deepEqual(corps, { lot: LOT_GARDE.lot, empreinte: LOT_GARDE.empreinte, choix: { [premier.id]: { choix: 1 }, [second.id]: { choix: 2 } } });
+  assert.match(page.section().querySelector('.nv-conflits__message').textContent, /^Conflit résolu : la modification du site est reprise/);
+  assert.equal(page.lot(LOT_GARDE.lot), undefined);
+});
+
+test('bug 1 : un lot qui attend un lot plus ancien (bloque) a son bouton grisé et sa raison ; rien ne part', async () => {
+  const page = await monter(routesGardees({ 'GET mise-a-jour/conflits/': { ...GARDE, lots: [lotBloque()] } }));
+  const form = page.lot(LOT_GARDE.lot);
+  assert.ok(form.hasAttribute('data-nv-bloque'));
+  assert.equal(form.querySelector('[type="submit"]').hasAttribute('disabled'), true);
+  // la raison : sous le conflit et près du bouton, par la date lisible et le résumé du lot à résoudre d'abord
+  const sousLeConflit = page.conflit(form, LOT_GARDE.conflits[0].id).querySelector('[data-nv-bloque]');
+  const presDuBouton = form.querySelector('[data-nv-lot-bloque]');
+  for (const p of [sousLeConflit, presDuBouton]) {
+    assert.ok(p && p.textContent.includes(BLOCAGE.resume));
+    assert.doesNotMatch(p.textContent, ISO);
+    assert.ok(!p.textContent.includes(BLOCAGE.lot));
+  }
+  // même avec chaque choix fait, un envoi (touche Entrée) ne part pas : le message le dit
+  for (const c of LOT_GARDE.conflits) page.choisir(page.conflit(form, c.id), 1);
+  page.envoyer(form);
+  await fini();
+  assert.equal(page.envois.filter(([k]) => k.startsWith('POST')).length, 0);
+  assert.equal(form.querySelector('[data-nv-lot-message]').hidden, false);
+});
+
+test('bug 1 : un 409 de blocage reçu repose le lot à jour (bouton grisé) et affiche le message du service, sa date lisible', async () => {
+  const erreur = `Métier « Forgeron » (Description) : ${BLOCAGE.raison}`;
+  const page = await monter(routesGardees({ 'POST mise-a-jour/conflits/': [409, { erreur, lot: lotBloque(), bloque: BLOCAGE }] }));
+  let form = page.lot(LOT_GARDE.lot);
+  for (const c of LOT_GARDE.conflits) page.choisir(page.conflit(form, c.id), 1);
+  page.envoyer(form);
+  await fini();
+  form = page.lot(LOT_GARDE.lot);
+  assert.equal(form.querySelector('[type="submit"]').hasAttribute('disabled'), true);
+  const message = form.querySelector('[data-nv-lot-message]');
+  assert.equal(message.hidden, false);
+  assert.ok(message.textContent.includes(BLOCAGE.resume), message.textContent);
+  assert.doesNotMatch(message.textContent, ISO);
+  // les choix faits restent
+  const radio = [...page.conflit(form, LOT_GARDE.conflits[0].id).querySelectorAll('[data-nv-choix]')].find((r) => r.getAttribute('value') === '1');
+  assert.equal(radio.checked, true);
 });

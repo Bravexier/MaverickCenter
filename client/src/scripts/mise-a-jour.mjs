@@ -10,14 +10,15 @@
 // Après les listes de modifications, les lignes en conflit (demande du propriétaire du 2026-10-22 : « Après les listes de modifications, montrer les
 // lignes en conflits. 1. Pour chaque conflit, montrer les deux versions 2. Laisser le choix entre 1, 2, ou 3 pour saisir à la main ce qui remplace les
 // deux. ») : les lots du journal que le rejeu d'une livraison a mis en conflit (GET /api/mise-a-jour/conflits/, serveur/edition-conflits.mjs), chacun
-// avec ses modifications saines et, pour chaque conflit, la version 1 (le site de dev), la version 2 (les règles livrées) et les choix 1, 2, 3 ;
-// « Résoudre ce lot » l'envoie (POST, une fois chaque choix fait) : le service écrit une nouvelle modification du site de dev et marque l'ancien lot
-// résolu. Rendu : lib/conflits-rendu.mjs. La section reste la même d'un rendu de la note à l'autre (le suivi d'un lancement la refait toutes les 15 s) :
+// avec ses modifications saines et, pour chaque conflit, ses deux versions (un lot gardé : à gauche la modification sur le site, à droite celle du
+// code ; un lot annulé : la version 1 du site de dev, la version 2 la valeur actuelle) et les choix 1, 2, 3 ; « Résoudre ce lot » l'envoie (POST, une
+// fois chaque choix fait ; jamais pour un lot qui attend un lot plus ancien : `bloque`) : le service écrit une nouvelle modification du site de dev et
+// marque l'ancien lot résolu. Rendu : lib/conflits-rendu.mjs. La section reste la même d'un rendu de la note à l'autre (le suivi d'un lancement la refait toutes les 15 s) :
 // les choix en cours ne se perdent pas.
 // Ce script n'importe que le rendu commun et celui des conflits (aucun autre script de page ne les importe : la version portable refuse un module
 // partagé).
 import { compter, echapper, htmlDeLaListe, htmlDuTexteLibre, lancementAffiche } from '../lib/notes-de-version-rendu.mjs';
-import { corpsDeLaResolution, htmlDesConflits, messageDeResolution } from '../lib/conflits-rendu.mjs';
+import { avecDateLisible, corpsDeLaResolution, htmlDesConflits, messageDeResolution } from '../lib/conflits-rendu.mjs';
 
 const racine = document.querySelector('[data-mise-a-jour]');
 const api = racine?.dataset.api ?? '/api/';
@@ -218,6 +219,8 @@ async function chargerLesConflits() {
 async function resoudre(form) {
   const lot = conflits.reponse?.lots?.find((l) => l.lot === form.dataset.nvLot);
   if (!lot) return;
+  // un lot qui attend un lot plus ancien, en conflit sur le même champ (`bloque`) : son bouton est grisé, la raison dite ; rien ne part
+  if (form.hasAttribute('data-nv-bloque')) return montrerMessage(form, 'Ce lot attend la résolution d’un lot plus ancien : voyez la raison ci-dessous.', true);
   const choisis = new Map();
   for (const fieldset of form.querySelectorAll('[data-nv-conflit]')) {
     const choisi = conflits.choisis.get(cleDuChoix(fieldset));
@@ -245,20 +248,23 @@ async function resoudre(form) {
     await charger(); // la note en préparation compte la nouvelle modification ; les conflits sont relus
   } catch (e) {
     if (bouton) bouton.disabled = false;
-    // 409 : le diagnostic a changé (règles livrées, autre onglet) : le lot à jour est reposé, les choix qui y valent encore restent
+    // un 409 de blocage cite le lot plus ancien par son instant (`details.bloque`) : sa date lisible
+    const message = avecDateLisible(e.message, e.corps?.bloque);
+    // 409 : le diagnostic a changé (règles livrées, autre onglet), ou un lot plus ancien touche le même champ (`details.bloque`) : le lot à jour est
+    // reposé (son bouton grisé s'il attend), avec le message du service ; les choix qui y valent encore restent
     if (e.statut === 409 && e.corps?.lot && typeof e.corps.lot === 'object') {
       conflits.reponse = { ...conflits.reponse, lots: conflits.reponse.lots.map((l) => (l.lot === lot.lot ? e.corps.lot : l)) };
       rendreLesConflits();
       const neuf = [...conflits.section.querySelectorAll('[data-nv-lot]')].find((f) => f.dataset.nvLot === lot.lot);
-      if (neuf) montrerMessage(neuf, `${e.message} Les conflits affichés sont à jour.`, true);
+      if (neuf) montrerMessage(neuf, e.corps.bloque ? message : `${message} Les conflits affichés sont à jour.`, true);
       return;
     }
     if (e.statut === 409) {
-      conflits.message = e.message;
+      conflits.message = message;
       await charger();
       return;
     }
-    montrerMessage(form, e.message, true);
+    montrerMessage(form, message, true);
   }
 }
 

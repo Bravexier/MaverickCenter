@@ -17,7 +17,7 @@ import { bilan, comparerBases, TABLES_LUES, versionDeLivraison } from '../src/li
 import { chargerPlanDesRegles } from '../src/lib/plan-des-regles-db.mjs';
 import { signature } from './base-vivante.mjs';
 import { ErreurHttp, sha256 } from './partage.mjs';
-import { journalExporte } from './edition-journal.mjs';
+import { defaireLesLotsEnSuspens, journalExporte, lotGardeEnSuspens, lotsRetenus } from './edition-journal.mjs';
 import { compterLesConflits } from './edition-conflits.mjs';
 
 const DOSSIER_LOTS = 'mise-a-jour';
@@ -117,8 +117,12 @@ export function noteEnPreparation(db, { reference, versionDev }) {
   const brouillon = lireBrouillon(db);
   const versionMineure = versionDeLivraison(versionDev, ref.version);
   const versionMajeure = versionDeLivraison(versionDev, ref.version, { majeure: true });
-  // modifications du site en attente : ce que le lot emporterait
-  const enAttente = db.prepare("SELECT count(*) AS n FROM modification WHERE etat = 'en_attente'").get().n;
+  // modifications du site en attente : ce que le lot emporterait (sans les lots retenus derrière un lot gardé : ils partent après sa résolution) ;
+  // sans lot gardé en suspens (le cas courant : la note est relue toutes les 15 s), rien n'est relu du journal entier
+  const enSuspens = lotGardeEnSuspens(db);
+  const retenus = enSuspens ? lotsRetenus(db) : new Map();
+  const enAttente = db.prepare(`SELECT count(*) AS n FROM modification WHERE etat = 'en_attente' AND lot_id NOT IN (SELECT value FROM json_each(?))`)
+    .get(JSON.stringify([...retenus.keys()])).n;
   // les lots en conflit à résoudre ne partent pas avec la mise à jour (figerLot → journalExporte : en attente et intégrées seulement) ; ils restent sur le
   // site de dev, non bloquants, et se résolvent sur la page (GET /api/mise-a-jour/conflits/) ; le compte est celui de /api/etat, écrit une seule fois
   const enConflit = compterLesConflits(db);
@@ -130,8 +134,26 @@ export function noteEnPreparation(db, { reference, versionDev }) {
   // les pages du guide se rangent par le plan des onglets des Règles de la base vivante (R184, R185 ; lib/livres.mjs#placeDansLeGuide), relu à chaque
   // calcul : une livraison refait la base vivante, et son plan avec elle
   installerLePlan(chargerPlanDesRegles(db));
-  const lignes = comparerBases(tablesDeReference(ref.chemin), lireTables(db));
+  const lignes = comparerBases(tablesDeReference(ref.chemin), enSuspens ? tablesQuiPartiront(db, retenus) : lireTables(db));
   return { ...commun, lignes, bilan: bilan(lignes) };
+}
+
+/**
+ * Les tables de la base vivante telles que la mise à jour les livrerait : sans ce qu'ont écrit les lots gardés pas encore résolus ni les lots retenus
+ * derrière eux (edition-journal.mjs#defaireLesLotsEnSuspens), défaits dans un savepoint toujours annulé (exception assumée à la lecture seule, comme le
+ * diagnostic des conflits). Réponse du propriétaire (note en préparation) : « Les retirer » — la note ne montre que ce qui partira vraiment ; ces
+ * modifications y apparaissent après la résolution du conflit.
+ */
+function tablesQuiPartiront(db, retenus) {
+  db.exec('SAVEPOINT note_sans_les_lots_en_suspens');
+  try {
+    db.exec('PRAGMA defer_foreign_keys = ON');
+    defaireLesLotsEnSuspens(db, retenus);
+    return lireTables(db);
+  } finally {
+    db.exec('ROLLBACK TO note_sans_les_lots_en_suspens');
+    db.exec('RELEASE note_sans_les_lots_en_suspens');
+  }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
