@@ -842,7 +842,7 @@ function reglesDeLaBase(db) {
   // Les invocations (décision R130 : « avoir la liste des invocations possibles pour les sorts qui invoquent des créatures », « adapter le monstre invoqué en
   // fonction de ses NPM ») : par sort qui invoque, ses créatures dans l'ordre du classeur, leurs magies de marge (la première est celle du sort), le NPM d'une
   // marionnette, ce qui change avec le NPM (lib/creature-npm.mjs, `donneesNpm`), leurs capacités (« (NPM n) » : `npm`) et les effets d'un sacrifice
-  // (« Effet "Manteau noir" » : `sort_id` du sort qui sacrifie) ; et les tableaux qu'un sort désigne par son nom (« Amélioration cadavérique »).
+  // (« Effet "Manteau noir" » : `sort_id` du sort qui sacrifie). Le tableau « Amélioration cadavérique » est retiré (R237 (7), migration 0117).
   const { tableaux: tableauxDInvocation } = chargerInvocations(db);
   const invocations = tableauxDInvocation.filter((t) => t.invocation.sortId).map((t) => ({
     id: t.invocation.id,
