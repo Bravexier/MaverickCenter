@@ -118,10 +118,14 @@ CATEGORY = "guide"
 NOTE_LABEL = "Note de la cellule « %s »"
 
 # Les 15 onglets de magie du classeur V8 : leurs notes sont rendues par tools/sheets/magies.py, pas par ce script.
+# « EspaceTemps » : le nom de « TempsEspace » dans Magie V10 (classeur de Décembre, R237), qui remplace la V8 comme instantané.
 MAGIES_TABS = (
-    "Potentiel illimité (magie diffi", "Sang", "Arcane", "Corruption", "TempsEspace", "Vide", "Nécromancie", "Feu",
+    "Potentiel illimité (magie diffi", "Sang", "Arcane", "Corruption", "TempsEspace", "EspaceTemps", "Vide", "Nécromancie", "Feu",
     "Eau", "Glace", "Terre", "Vent", "Foudre", "Lumière", "Ombre",
 )
+# Onglets ajoutés par Magie V10 (R236, R238) : leurs notes relèvent d'un autre extracteur (« Cuirassé V2 » : le bestiaire, lot 3 de R238), elles
+# sont annoncées ici, comme celles des onglets de magie, et n'arrêtent rien.
+ONGLETS_D_UN_AUTRE_EXTRACTEUR = ("Fongoïde", "Gémidien", "Porte-étendard", "Boxeur", "Cuirassé V2")
 
 # Onglets ignorés par décision du propriétaire, par classeur : rien n'en est lu ; leurs notes et leurs fils de commentaires n'arrêtent rien, ils sont
 # comptés et annoncés. « Statistiques » (décision R86) : des compteurs et le tableau « Résistance Faiblesse » des couples de magies, écrits à la main il
@@ -661,7 +665,7 @@ def refuse_unpublished_notes(sheets, wb):
         found = {**sh.empty_notes, **sh.notes}
         if name in published or not found:
             continue
-        if (wb["key"] == "magie-v8" and name in MAGIES_TABS) or name in ignored:
+        if (wb["key"] == "magie-v8" and (name in MAGIES_TABS or name in ONGLETS_D_UN_AUTRE_EXTRACTEUR)) or name in ignored:
             elsewhere.append((name, len(found)))
             continue
         cells = ", ".join("%s (« %s »)" % (a1(r, c), shorten(t)) for (r, c), t in sorted(found.items())[:5])
@@ -796,7 +800,7 @@ def threads_report(sheets, wb):
     ignored = IGNORED_TABS.get(wb["key"], ())
     lines = []
     for name, sh in sheets.items():
-        if not sh.threads or (wb["key"] == "magie-v8" and name in MAGIES_TABS):
+        if not sh.threads or (wb["key"] == "magie-v8" and (name in MAGIES_TABS or name in ONGLETS_D_UN_AUTRE_EXTRACTEUR)):
             continue
         for (r, c), n in sorted(sh.threads.items()):
             if name in ignored:

@@ -60,6 +60,7 @@ test('pages réelles : le périmètre annexes-magie ne porte aucune note de cell
 
 test('R184 (9) : rejoué sur les instantanés des classeurs, l’importeur n’écrit plus guide/mode-hyper-magie ni de renvoi vers elle ; le fil M43 de l’onglet est annoncé, onglet ignoré', { skip: sansPython }, (t) => {
   const out = dossierTemporaire('annexes-r184-', { t });
+  // le fil M43 est celui du classeur V8 : le classeur de Décembre (V10) n'en porte plus aucun (R243 (2))
   const dumps = ['magie-maverick-v8.json', 'mode-hyper-et-co.json'].flatMap((d) => ['--dump', join(classeurs, d)]);
   const r = spawnSync('python3', ['-I', script, ...dumps, '--out', out], { encoding: 'utf8' });
   assert.equal(r.status, 0, r.stderr);
@@ -72,7 +73,7 @@ test('R184 (9) : rejoué sur les instantanés des classeurs, l’importeur n’�
 
 test('R187 : rejoué sur les instantanés des classeurs, l’importeur n’écrit plus guide/liste-des-effets-mode-hyper, ni sa note de fin, ni de renvoi vers elle', { skip: sansPython }, (t) => {
   const out = dossierTemporaire('annexes-r187-', { t });
-  const dumps = ['magie-maverick-v8.json', 'mode-hyper-et-co.json'].flatMap((d) => ['--dump', join(classeurs, d)]);
+  const dumps = ['magie-maverick-v10.json', 'mode-hyper-et-co.json'].flatMap((d) => ['--dump', join(classeurs, d)]);
   const r = spawnSync('python3', ['-I', script, ...dumps, '--out', out], { encoding: 'utf8' });
   assert.equal(r.status, 0, r.stderr);
   assert.ok(!existsSync(join(out, 'guide', 'liste-des-effets-mode-hyper.md')), 'page supprimée (R187 (1))');
@@ -94,7 +95,7 @@ test('ancres figées : rejoué sur l’instantané, chaque intertitre d’état 
   // n'est pas modifiable sur le site (lib/edition-modele.mjs) et ses ids sont figés : l'égalité des deux ensembles est un invariant de l'état courant.
   // La base partagée d'ouvrirBase n'est pas fermée ici (le test R187 plus bas la ferme, en dernier).
   const out = dossierTemporaire('annexes-ancres-', { t });
-  const dumps = ['magie-maverick-v8.json', 'mode-hyper-et-co.json'].flatMap((d) => ['--dump', join(classeurs, d)]);
+  const dumps = ['magie-maverick-v10.json', 'mode-hyper-et-co.json'].flatMap((d) => ['--dump', join(classeurs, d)]);
   const r = spawnSync('python3', ['-I', script, ...dumps, '--out', out], { encoding: 'utf8' });
   assert.equal(r.status, 0, r.stderr);
   const titres = lire(join(out, 'guide'), 'liste-des-alterations-d-etat').split('\n').filter((l) => /^#{1,6} /.test(l));
