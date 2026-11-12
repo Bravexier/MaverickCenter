@@ -163,6 +163,19 @@ export function typeDeTexte(table, colonne) {
   return TABLES[table]?.colonnes[colonne]?.type === 'markdown' ? 'markdown' : 'texte';
 }
 
+/**
+ * Types de champ d'un texte long, que le rejeu du journal fusionne à trois voies avec les règles livrées (lib/fusion-trois-voies.mjs ; demande du
+ * propriétaire : « je site essaye de faire un merge automatique entre les deux ») : paragraphes et lignes. Une `ligne` (un nom, un libellé), un nombre,
+ * un choix… est une valeur courte, jamais fusionnée.
+ */
+export const TYPES_FUSIONNABLES = Object.freeze(['texte', 'markdown']);
+
+/** La colonne est-elle un texte long fusionnable : un champ de TABLES d'un type de TYPES_FUSIONNABLES, ou le corps d'une page (typeDeTexte) ? */
+export function colonneFusionnable(table, colonne) {
+  if (table === 'page' && colonne === 'corps_md') return true;
+  return TYPES_FUSIONNABLES.includes(TABLES[table]?.colonnes[colonne]?.type);
+}
+
 export const TABLES = {
   metier: {
     libelle: 'Métier',

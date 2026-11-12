@@ -41,7 +41,7 @@
 // Node seulement (node:sqlite), sans dépendance.
 import { existsSync, readFileSync } from 'node:fs';
 import {
-  CHAMPS_DE_TEXTE, CHAMPS_HORS_COLONNES, colonnesImage, contrainteR160, ENTITES, ErreurValeur, ligneSansImage, MAGIES_D_UN_DON_VARIABLE, MOT_CLE_RACE_HYBRIDE, OBJETS_PAR_MAGIE,
+  CHAMPS_DE_TEXTE, CHAMPS_HORS_COLONNES, colonneFusionnable, colonnesImage, contrainteR160, ENTITES, ErreurValeur, ligneSansImage, MAGIES_D_UN_DON_VARIABLE, MOT_CLE_RACE_HYBRIDE, OBJETS_PAR_MAGIE,
   REFUS_R160, TABLES, TABLES_FIGEES, texteDePageModifiable, typeDeTexte, valeurDuChamp,
 } from '../src/lib/edition-modele.mjs';
 import {
@@ -2635,11 +2635,14 @@ export const OUTILS_DE_RESOLUTION = Object.freeze({
  * règle des métiers, page_tag des pages d'exemple, mot_cle d'un lot d'avant 0043, textes qui citaient un mot-clé retiré et les pages qu'ils refont,
  * sources de maîtrise d'arme d'un lot qui touche une classe ou un don ; scripts/mise-a-jour-github.mjs#tablesDuLot en suit la règle).
  * `horsControleParLot` : passé à rejouer (les fiches, que base-vivante.mjs#transferer contrôle après le rejeu).
+ * Un texte long (lib/edition-modele.mjs#colonneFusionnable) que les règles ont changé ailleurs se fusionne à trois voies (lib/fusion-trois-voies.mjs),
+ * partout : base vivante, db:appliquer-edition, mise à jour. `garderLeSite` (la base vivante du site de dev seulement, base-vivante.mjs#transferer) :
+ * une fusion ambiguë garde la valeur du site, son lot en conflit à résoudre, et les lots en conflit non résolus sont réévalués (rejouer, `garder`).
  */
-export function rejouerLeJournal(db, sortie = {}, { horsControleParLot = [] } = {}) {
+export function rejouerLeJournal(db, sortie = {}, { horsControleParLot = [], garderLeSite = false } = {}) {
   const appliquees = [];
   const bilan = rejouer(db, {
-    derivee: colonneDerivee, applique: (m) => appliquees.push(m), horsControleParLot,
+    derivee: colonneDerivee, applique: (m) => appliquees.push(m), horsControleParLot, fusionnable: colonneFusionnable, garder: garderLeSite,
     // le dictionnaire des sources n'est vidé que de ses orphelins (supprimerPage) : une source encore citée au rejeu reste
     siOrphelines: ['source'],
     // les formes d'avant les migrations 0043 (mots-clés), 0044 (capacités de monstre communes), 0056 (glossaire), 0063 (coût secondaire des sorts) et

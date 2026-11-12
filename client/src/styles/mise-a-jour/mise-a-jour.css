@@ -115,3 +115,16 @@
 .nv-conflit__aide { color: var(--muted); font-size: var(--fs-sm); }
 .nv-conflits__message { padding: 0.5rem 0.8rem; border-left: 4px solid var(--good); background: var(--surface); border-radius: 0 var(--radius) var(--radius) 0; }
 .nv-conflits__resolus > summary { cursor: pointer; }
+/* Un lot gardé (la modification du site en place, lib/conflits-rendu.mjs#htmlDesVersionsGardees) : à gauche la modification sur le site, à droite celle du
+   code, chacune réduite aux passages en conflit ; ce que la page affiche en attendant le choix ; un lot qui attend un lot plus ancien (bouton grisé). */
+.nv-conflit-lot__garde, .nv-conflit__affichee, .nv-conflit__suivants { font-size: var(--fs-md); }
+.nv-conflit__affichee { margin: 0.4rem 0; padding: 0.3rem 0.6rem; border-left: 4px solid var(--accent); background: var(--surface); border-radius: 0 var(--radius) var(--radius) 0; }
+.nv-conflit__affichee > p { margin: 0; }
+.nv-conflit__affichee > details > summary { cursor: pointer; }
+.nv-conflit__suivants, .nv-conflit__fusion { color: var(--muted); }
+.nv-conflit__versions--garde { margin: 0.3rem 0 0.5rem; }
+.nv-passages { display: flex; flex-direction: column; gap: 0.4rem; }
+.nv-passage { margin: 0; max-height: 18rem; }
+.nv-conflit__bloque, .nv-conflit-lot__bloque { margin: 0.4rem 0; padding: 0.3rem 0.6rem; border-left: 4px solid var(--danger); background: var(--surface); border-radius: 0 var(--radius) var(--radius) 0; font-size: var(--fs-md); }
+.nv-conflits__retenus { margin: 1rem 0; padding: 0.5rem 0.9rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.nv-conflits__retenus > summary { cursor: pointer; font-weight: bold; }

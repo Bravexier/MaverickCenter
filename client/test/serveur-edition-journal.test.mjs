@@ -1,6 +1,7 @@
 // Journal des modifications du site de dev (client/serveur/edition-journal.mjs, section 14 de data/schema.sql) : chaque ligne touchée est notée avec
 // ses valeurs avant et après ; quand une livraison refait la base vivante, les modifications en attente sont rejouées sur les nouvelles règles, celles
-// que les règles contiennent déjà passent « integree », celles que les règles contredisent passent « conflit » (le lot entier est alors annulé).
+// que les règles contiennent déjà passent « integree », celles que les règles contredisent passent « conflit » : le lot entier est gardé (la valeur du
+// site en place) si ce n'est qu'une fusion ambiguë, annulé sinon (serveur-edition-fusion.test.mjs : la fusion à trois voies et les lots gardés).
 import assert from 'node:assert/strict';
 import { copyFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -139,7 +140,7 @@ test('livraison qui contient déjà la modification (revenue par git) : « integ
   db.close();
 });
 
-test('livraison qui contredit une modification : le lot entier passe « conflit » et rien n’en est réappliqué', () => {
+test('livraison qui contredit une modification : le lot entier est gardé, la valeur du site en place, et passe « conflit » (à résoudre)', () => {
   const { dossier, chemin } = vivante();
   lot(chemin, 'L1', (w) => {
     w.modifier('metier', { id: 'metiers/acrobate' }, { equipement_brut: 'Corde' });
@@ -147,13 +148,26 @@ test('livraison qui contredit une modification : le lot entier passe « conflit 
   });
   lot(chemin, 'L2', (w) => w.modifier('metier', { id: 'metiers/agriculteur' }, { equipement_brut: 'Faux' }), '2026-10-10T12:05:00Z');
   const r = preparerBaseVivante({ regles: regles("UPDATE metier SET description = 'Autre version, venue de git.' WHERE id = 'metiers/forgeron'"), dossier });
-  assert.deepEqual(r.rejeu, { appliquees: 1, integrees: 0, conflits: 2, lots: 2 });
-  assert.equal(lire(chemin, 'SELECT description FROM metier WHERE id = ?', FORGERON.id)[0].description, 'Autre version, venue de git.');
-  assert.notEqual(lire(chemin, 'SELECT equipement_brut FROM metier WHERE id = ?', 'metiers/acrobate')[0].equipement_brut, 'Corde', 'lot annulé en entier');
+  // demande du propriétaire : « la page du site affiche LA MODIFICATION DU SITE » (fusion ambiguë : serveur/edition-journal.mjs#rejouer, `garder`)
+  assert.deepEqual(r.rejeu, { appliquees: 1, integrees: 0, conflits: 2, lots: 2, gardees: 2 });
+  assert.equal(lire(chemin, 'SELECT description FROM metier WHERE id = ?', FORGERON.id)[0].description, 'Version du site de dev.');
+  assert.equal(lire(chemin, 'SELECT equipement_brut FROM metier WHERE id = ?', 'metiers/acrobate')[0].equipement_brut, 'Corde', 'le lot entier reste en place');
   assert.equal(lire(chemin, 'SELECT equipement_brut FROM metier WHERE id = ?', 'metiers/agriculteur')[0].equipement_brut, 'Faux', 'l’autre lot passe');
   const conflits = lire(chemin, "SELECT detail FROM modification WHERE etat = 'conflit'");
   assert.equal(conflits.length, 2);
-  assert.match(conflits[0].detail, /metiers\/forgeron.*description/);
+  assert.match(conflits[0].detail, /metiers\/forgeron.*description autrement, la valeur du site reste en place/);
+});
+
+test('livraison qui contredit une modification, base vivante d’avant la fusion (garderLeSite faux) : le lot entier est annulé', () => {
+  const { dossier, chemin } = vivante();
+  lot(chemin, 'L1', (w) => {
+    w.modifier('metier', { id: 'metiers/acrobate' }, { equipement_brut: 'Corde' });
+    w.modifier('metier', FORGERON, { description: 'Version du site de dev.' });
+  });
+  const r = preparerBaseVivante({ regles: regles("UPDATE metier SET description = 'Autre version, venue de git.' WHERE id = 'metiers/forgeron'"), dossier, garderLeSite: false });
+  assert.deepEqual(r.rejeu, { appliquees: 0, integrees: 0, conflits: 2, lots: 1 });
+  assert.equal(lire(chemin, 'SELECT description FROM metier WHERE id = ?', FORGERON.id)[0].description, 'Autre version, venue de git.');
+  assert.notEqual(lire(chemin, 'SELECT equipement_brut FROM metier WHERE id = ?', 'metiers/acrobate')[0].equipement_brut, 'Corde', 'lot annulé en entier');
 });
 
 test('journal rejoué sur des règles qui le contiennent déjà : deux lots sur la même colonne, une ligne créée, modifiée puis supprimée, une autre supprimée puis recréée : « intégré »', () => {

@@ -452,7 +452,7 @@ function verifierRegles(db) {
  * @param {string} instant ISO 8601 UTC à la seconde
  * @param {(type: string, o: { duree_ms?: number, detail?: object }) => void} [evenement] métriques : durée du rejeu et des retraits
  */
-function transferer(db, ancienne, instant, evenement = null, poidsPortable = undefined) {
+function transferer(db, ancienne, instant, evenement = null, poidsPortable = undefined, garderLeSite = true) {
   let rejeu = null;
   let fiches = [];
   const problemes = [];
@@ -497,7 +497,8 @@ function transferer(db, ancienne, instant, evenement = null, poidsPortable = und
       // le corps des pages typées que le journal touche est refait depuis les tables rejouées (serveur/edition.mjs#rejouerLeJournal)
       if (!problemes.length) {
         const t0 = performance.now();
-        rejeu = rejouerLeJournal(db, {}, { horsControleParLot: TABLES_FICHES });
+        // la valeur du site prime : une fusion ambiguë avec les nouvelles règles la garde, son lot à résoudre (serveur/edition-journal.mjs#rejouer)
+        rejeu = rejouerLeJournal(db, {}, { horsControleParLot: TABLES_FICHES, garderLeSite });
         evenement?.('rejeu', { duree_ms: performance.now() - t0, detail: { lots: rejeu?.lots ?? 0, appliquees: rejeu?.appliquees ?? 0, integrees: rejeu?.integrees ?? 0, conflits: rejeu?.conflits ?? 0 } });
       }
       // le brouillon de la note de version d'un lot que les nouvelles règles ont livré est vidé (son texte est dans note_version)
@@ -589,9 +590,11 @@ function archiver(dossier, chemin, instant) {
  * service (durées du rejeu, des retraits des fiches et de l'archivage). Une armure trop lourde pour le poids portable d'une fiche (décision R165 (6),
  * (7) : serveur/fiches-retraits.mjs#retirerLesArmuresHorsRegle, étape 4) est retirée et notée : le calcul du moteur de la fiche, lu dans la base
  * refaite (lib/poids-portable-db.mjs#poidsPortableDeLaBase). `poidsPortable` (facultatif, (db, id) => 0 à 3 ou null) remplace ce calcul (tests) ;
- * null : pas d'étape du poids.
+ * null : pas d'étape du poids. `garderLeSite` (vrai par défaut) : au rejeu, une fusion ambiguë avec les nouvelles règles garde la valeur du site de dev
+ * (son lot à résoudre sur la page Mise à jour) et les lots en conflit non résolus sont réévalués (serveur/edition-journal.mjs#rejouer, `garder`) ; faux
+ * est réservé aux tests qui refont une base vivante d'avant cette règle (lots annulés en entier au moindre conflit).
  */
-export function preparerBaseVivante({ regles, dossier, instant = new Date(), evenement = null, poidsPortable = undefined }) {
+export function preparerBaseVivante({ regles, dossier, instant = new Date(), evenement = null, poidsPortable = undefined, garderLeSite = true }) {
   if (!existsSync(regles)) throw new ErreurBaseVivante(`base des règles introuvable : ${regles} (le site est-il installé ?)`);
   mkdirSync(dossier, { recursive: true });
   const chemin = join(dossier, FICHIER_BASE);
@@ -613,7 +616,7 @@ export function preparerBaseVivante({ regles, dossier, instant = new Date(), eve
     const db = new DatabaseSync(neuve);
     try {
       verifierRegles(db);
-      if (existsSync(chemin)) ({ rejeu, fiches } = transferer(db, chemin, iso, evenement, poidsPortable));
+      if (existsSync(chemin)) ({ rejeu, fiches } = transferer(db, chemin, iso, evenement, poidsPortable, garderLeSite));
       schema = db.prepare('PRAGMA user_version').get().user_version;
     } finally {
       db.close();
