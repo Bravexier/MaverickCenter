@@ -1894,7 +1894,7 @@ INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/premiers-sort
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/premiers-sorts', 14, 'ref:google-doc-regle-du-jeu-guide-pour-mj-maverick');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/premiers-sorts', 15, 'google-doc:17VxGUwjzEZWElwIYVaXvaaumqFM4yKnO1C7uhVyc9iM');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/premiers-sorts', 16, 'ref:personnages-pre-tires-choisis-par-le-proprietaire-du-projet');
-INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/premiers-sorts', 17, 'ref:decisions-du-proprietaire-r1-r2-r3-r4-r8-r13-r14-r15-r16-r18-r20-r23-r25-r27-r28-r32-r35-r41-r44-r49-r73-r81-r82-r85-r88-r89-r90-r93-r95-r97-r104-et-r105-docs-decisions-regles-md');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/premiers-sorts', 17, 'ref:decisions-du-proprietaire-r1-r2-r3-r4-r8-r13-r14-r15-r16-r18-r20-r23-r25-r27-r28-r32-r35-r41-r44-r49-r73-r81-r82-r85-r88-r89-r90-r93-r95-r97-r104-r105-et-r236-docs-decisions-regles-md');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/prise-en-tenaille-et-zone-d-influence', 0, 'ref:google-doc-regle-du-jeu-guide-pour-mj-maverick');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/prise-en-tenaille-et-zone-d-influence', 1, 'google-doc:17VxGUwjzEZWElwIYVaXvaaumqFM4yKnO1C7uhVyc9iM');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/prise-en-tenaille-et-zone-d-influence', 2, 'ref:decisions-du-proprietaire-r180-et-r184-docs-decisions-regles-md');

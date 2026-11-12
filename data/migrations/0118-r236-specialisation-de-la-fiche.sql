@@ -4,7 +4,9 @@
 --     l'index unique magie_specialisation_id_magie est la cible (comme specialite (id, classe_id) pour personnage_classe).
 --   - v_personnage_controle recréée : règles sort_hors_specialisation et specialisation_hors_magie (bi-magie seul ; mono-magie et Potentiel Illimité
 --     jamais signalés).
---   - Projectile arcanique (R251) : son coût secondaire « +1 au coût de chaque projectile supplémentaire. » ; cout_brut gardé tel qu'écrit.
+--   - Projectile arcanique (R251) : « Coût » « 4/projectile » (cout_chakra 4, lu par lib/sort-analyse.mjs#analyserCout) et « Coût secondaire » « +1 au
+--     coût de chaque projectile supplémentaire. » ; chaque colonne gardée par sa valeur d'avant (une valeur écrite par le site de dev reste) ; la case « Coût » du
+--     tableau du corps de magies/magie-de-larcane suit (lib/corps-magies.mjs#coutEnUneCase, comme corpsDeMagieApres).
 -- Registre : 0118-r236-specialisation-de-la-fiche.json.
 
 CREATE UNIQUE INDEX magie_specialisation_id_magie ON magie_specialisation (id, magie_id);
@@ -476,5 +478,13 @@ CREATE VIEW v_personnage_controle AS
   WHERE (ae.bonus_min IS NULL) <> (pa.valeur IS NULL)
      OR pa.valeur < ae.bonus_min OR pa.valeur > ae.bonus_max;
 
+UPDATE sort SET cout_brut = '4/projectile', cout_chakra = 4
+  WHERE id = 'magies/magie-de-larcane#sort:projectile-arcanique' AND cout_brut = '*4 / projectile' AND cout_chakra IS NULL;
+
 UPDATE sort SET cout_secondaire = '+1 au coût de chaque projectile supplémentaire.'
   WHERE id = 'magies/magie-de-larcane#sort:projectile-arcanique' AND cout_secondaire IS NULL;
+
+UPDATE page SET corps_md = replace(corps_md, '| \*4 / projectile |', '| 4/projectile +1 au coût de chaque projectile supplémentaire. |')
+  WHERE id = 'magies/magie-de-larcane' AND instr(corps_md, '| \*4 / projectile |') > 0
+    AND (SELECT cout_brut || '|' || cout_secondaire FROM sort WHERE id = 'magies/magie-de-larcane#sort:projectile-arcanique')
+        = '4/projectile|+1 au coût de chaque projectile supplémentaire.';

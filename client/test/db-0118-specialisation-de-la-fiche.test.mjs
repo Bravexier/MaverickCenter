@@ -2,13 +2,14 @@
 // magie, (6) le choix reste modifiable, (2) le mono-magie a les deux, (7) le Potentiel Illimité celles de chaque magie), les règles
 // sort_hors_specialisation et specialisation_hors_magie de v_personnage_controle, et le coût secondaire de Projectile arcanique (décision R251).
 // La vue s'essaie sur une COPIE de la base d'import (test/aide-base-d-import.mjs) ; magies, spécialisations et sorts se choisissent par id dans la
-// copie, jamais par nom. La phrase de R251 se lit dans le registre de la migration et dans docs/decisions-regles.md, jamais en dur.
+// copie, jamais par nom. Les écritures de R251 se lisent dans le registre de la migration et dans docs/decisions-regles.md, jamais en dur.
 //   node --test test/db-0118-specialisation-de-la-fiche.test.mjs
 import assert from 'node:assert/strict';
 import { copyFileSync, readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { after, test } from 'node:test';
 import { POTENTIEL_ILLIMITE } from '../src/lib/potentiel-illimite.mjs';
+import { analyserCout } from '../src/lib/sort-analyse.mjs';
 import { cheminDImport } from './aide-base-d-import.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
 
@@ -29,18 +30,24 @@ function inserer(table, ligne) {
   db.prepare(`INSERT INTO ${table} (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`).run(...Object.values(ligne));
 }
 
-test('R251 : Projectile arcanique porte le coût secondaire de la décision (état d’import, phrase lue dans le registre et la décision)', () => {
+test('R251 : Projectile arcanique porte le coût, sa valeur et le coût secondaire de la décision (état d’import, écritures lues dans le registre et la décision)', () => {
   assert.deepEqual(REGISTRE.decisions, ['R236', 'R251']);
-  const [valeur] = REGISTRE.valeurs;
-  assert.deepEqual([valeur.table, valeur.cle.id, valeur.col, valeur.decision], ['sort', PROJECTILE_ARCANIQUE, 'cout_secondaire', 'R251']);
+  const valeurs = Object.fromEntries(REGISTRE.valeurs.map((v) => [v.col, v]));
+  assert.deepEqual(Object.keys(valeurs).sort(), ['cout_brut', 'cout_chakra', 'cout_secondaire']);
+  for (const v of REGISTRE.valeurs) assert.deepEqual([v.table, v.cle.id, v.decision], ['sort', PROJECTILE_ARCANIQUE, 'R251'], v.col);
   const decision = readFileSync(new URL('../../docs/decisions-regles.md', import.meta.url), 'utf8').split('\n').find((l) => l.startsWith('| R251 |'));
-  assert.ok(decision?.includes(`« ${valeur.apres} »`), 'la phrase du registre est celle de R251');
-  const sort = un('SELECT cout_secondaire, cout_brut, cout_chakra FROM sort WHERE id = ?', PROJECTILE_ARCANIQUE);
+  // « Coût : « 4/projectile » (valeur 4) ; coût secondaire : « … » » : les écritures et la valeur du registre sont celles de la décision
+  assert.ok(decision?.split('**').join('').includes(`« ${valeurs.cout_brut.apres} » (valeur ${valeurs.cout_chakra.apres})`), 'le coût et sa valeur sont ceux de R251');
+  assert.ok(decision.includes(`« ${valeurs.cout_secondaire.apres} »`), 'le coût secondaire est celui de R251');
+  const sort = un('SELECT cout_secondaire, cout_brut, cout_chakra, cout_ressource, cout_ressource_valeur FROM sort WHERE id = ?', PROJECTILE_ARCANIQUE);
   assert.ok(sort, 'le sort existe (id figé)');
-  assert.equal(sort.cout_secondaire, valeur.apres);
-  // R251 donne la valeur 4, mais cout_brut reste tel qu'écrit (R244, R251) : le CHECK de sort et lib/sort-analyse.mjs#analyserCout ne lisent pas de
-  // nombre dans « *4 / projectile », cout_chakra reste NULL (question ouverte au chef) ; le calcul est celui de la fiche (R248)
-  assert.equal(sort.cout_chakra, null);
+  assert.deepEqual([sort.cout_brut, sort.cout_chakra, sort.cout_secondaire], [valeurs.cout_brut.apres, valeurs.cout_chakra.apres, valeurs.cout_secondaire.apres]);
+  // la valeur typée est celle que lit le service (le calcul par projectile est celui de la fiche, R248)
+  assert.deepEqual({ cout_chakra: sort.cout_chakra, cout_ressource: sort.cout_ressource, cout_ressource_valeur: sort.cout_ressource_valeur },
+    analyserCout(sort.cout_brut, sort.cout_secondaire));
+  // la case « Coût » du corps de la page de l'Arcane suit (registre `textes`)
+  const corps = un("SELECT corps_md FROM page WHERE id = 'magies/magie-de-larcane'").corps_md;
+  for (const t of REGISTRE.textes) assert.ok(corps.includes(t.apres) && !corps.includes(t.avant), `${t.cle.id} : case « Coût »`);
 });
 
 // --- fiches d'essai -------------------------------------------------------------------------------------------------------------------------------------

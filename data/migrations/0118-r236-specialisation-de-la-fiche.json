@@ -1,19 +1,63 @@
 {
-  "$comment": "Registre de la migration 0118-r236-specialisation-de-la-fiche.sql : la spécialisation magique choisie sur la fiche (R236), deux règles de v_personnage_controle, le coût secondaire de Projectile arcanique (R251). N'écrit rien dans historique_modification.",
+  "$comment": "Registre de la migration 0118-r236-specialisation-de-la-fiche.sql : la spécialisation magique choisie sur la fiche (R236), deux règles de v_personnage_controle, le coût et le coût secondaire de Projectile arcanique (R251). N'écrit rien dans historique_modification.",
   "migration": "0118-r236-specialisation-de-la-fiche",
-  "decisions": ["R236", "R251"],
-  "tables_creees": ["personnage_specialisation_magie"],
-  "index_crees": ["magie_specialisation_id_magie", "personnage_specialisation_magie_specialisation"],
-  "regles_de_controle": ["sort_hors_specialisation", "specialisation_hors_magie"],
+  "decisions": [
+    "R236",
+    "R251"
+  ],
+  "tables_creees": [
+    "personnage_specialisation_magie"
+  ],
+  "index_crees": [
+    "magie_specialisation_id_magie",
+    "personnage_specialisation_magie_specialisation"
+  ],
+  "regles_de_controle": [
+    "sort_hors_specialisation",
+    "specialisation_hors_magie"
+  ],
   "valeurs": [
     {
       "table": "sort",
-      "cle": { "id": "magies/magie-de-larcane#sort:projectile-arcanique" },
+      "cle": {
+        "id": "magies/magie-de-larcane#sort:projectile-arcanique"
+      },
+      "col": "cout_brut",
+      "decision": "R251",
+      "avant": "*4 / projectile",
+      "apres": "4/projectile"
+    },
+    {
+      "table": "sort",
+      "cle": {
+        "id": "magies/magie-de-larcane#sort:projectile-arcanique"
+      },
+      "col": "cout_chakra",
+      "decision": "R251",
+      "avant": null,
+      "apres": 4
+    },
+    {
+      "table": "sort",
+      "cle": {
+        "id": "magies/magie-de-larcane#sort:projectile-arcanique"
+      },
       "col": "cout_secondaire",
       "decision": "R251",
       "avant": null,
       "apres": "+1 au coût de chaque projectile supplémentaire."
     }
   ],
-  "en_attente": "Projectile arcanique : cout_chakra reste NULL, son cout_brut « *4 / projectile » ne commence pas par le chiffre (CHECK de sort, lib/sort-analyse.mjs#analyserCout)."
+  "textes": [
+    {
+      "table": "page",
+      "cle": {
+        "id": "magies/magie-de-larcane"
+      },
+      "col": "corps_md",
+      "decision": "R251",
+      "avant": "| \\*4 / projectile |",
+      "apres": "| 4/projectile +1 au coût de chaque projectile supplémentaire. |"
+    }
+  ]
 }
