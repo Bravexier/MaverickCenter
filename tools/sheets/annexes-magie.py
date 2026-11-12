@@ -455,6 +455,9 @@ ANCRES_DES_ETATS = {
     "Etourdi": "etourdi",
     "Folle de Guerre": "folle-de-guerre",
     "Sans Défense": "sans-defense",
+    # Magie V10 (classeur de Décembre, R237 (10)) : l'altération nouvelle ; sa ligne `etat` porte l'id
+    # « guide/liste-des-alterations-d-etat#etat:somnolence » (migration du lot « Magies V10, données »).
+    "Somnolence": "somnolence",
 }
 ANCRE_FIGEE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")  # même forme que lib/ancres-figees.mjs#ANCRE_FIGEE
 

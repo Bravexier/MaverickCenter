@@ -13,6 +13,43 @@
           "note": "Cartouche de spécialité : la bannière du même onglet (AA17) dit « CHASSEUR DE PRIMES » ; le propriétaire du projet confirme la coquille."
         }
       ]
+    },
+    "magie-v10": {
+      "classeur": "Nouveauté mise à jour Décembre",
+      "corrections": [
+        {
+          "onglet": "Vide",
+          "cellule": "AU71",
+          "avant": "spécialisatino",
+          "apres": "spécialisation",
+          "nature": "frappe",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : description de la spécialisation CONTESTATION ; lettres interverties (décision R10 : l'orthographe se corrige, jamais un chiffre ni le sens)."
+        },
+        {
+          "onglet": "Nécromancie",
+          "cellule": "M77",
+          "avant": "Amplfication",
+          "apres": "Amplification",
+          "nature": "frappe",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : type du sort Seigneur des morts ; « Amplification » est un type de sort (sort_type), le « i » manque (R10)."
+        },
+        {
+          "onglet": "Nécromancie",
+          "cellule": "M77",
+          "avant": "pour3 NM",
+          "apres": "pour 3 NM",
+          "nature": "espace",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : type du sort Seigneur des morts : « IC pour 3 NM », l'écriture des autres types de sorts (l'espace manque ; sans elle, ic_nm_min ne se lit pas : data/schema.sql, CHECK de sort.ic_nm_min) (R10)."
+        },
+        {
+          "onglet": "Altération détats",
+          "cellule": "AV42",
+          "avant": "altérzation",
+          "apres": "altération",
+          "nature": "frappe",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : palier « Grande résistance » de la Peur, écrit « altération » dans « Magie Maverick V8 » (même cellule) ; un « z » en trop (R10)."
+        }
+      ]
     }
   }
 }

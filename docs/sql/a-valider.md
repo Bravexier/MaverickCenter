@@ -1,7 +1,7 @@
 # Ce qu'il reste à valider sur la base de données
 
 Deux listes : les **choix de forme** du schéma (ce que tu peux relire dans [`apercu.md`](apercu.md)) et les **questions de contenu** que les sources ne tranchent pas.
-Les décisions déjà prises sont dans [`../decisions-regles.md`](../decisions-regles.md) (R1 à R230, liste à jour) ; la conception complète est dans [`conception.md`](conception.md) (§2 conventions, §12 points ouverts).
+Les décisions déjà prises sont dans [`../decisions-regles.md`](../decisions-regles.md) (R1 à R241, liste à jour) ; la conception complète est dans [`conception.md`](conception.md) (§2 conventions, §12 points ouverts).
 
 ## 1. Choix de forme du schéma
 
@@ -409,3 +409,16 @@ Relecture de toutes les pages de la rubrique Règles hors Glossaire (Découvrir,
 **Décidé le 2026-11-08** : V1 à V4 (R224), V5 et V5 bis (R225 : « Non, le dé en plus »), V6 à V9 (R226), V10 à V12 (R227), V2 bis (R229) ; à appliquer par la migration `0111-relecture-des-regles-contre-les-decisions`. La colonne de droite ci-dessus dit l'état d'avant les réponses.
 
 Les deux listes de kits d'alchimie (`ressources/alchimie` contre « Équipement inventaire ») restent la question du §2 (ligne « Équipement »), ouverte par R207.
+
+## 11. Mise à jour de Décembre : questions ouvertes (2026-11-12)
+
+Demande du propriétaire du 2026-11-12 : intégrer « MISE À JOUR - DÉCEMBRE.docx » (la liste des modifications) et « Nouveauté mise à jour Décembre.xlsx » (le détail). Les questions déjà tranchées sont dans R236 à R240. Celles-ci restent ouvertes : rien n'est appliqué en attendant.
+
+| # | Sujet | Question | Ce que le site fait en attendant |
+| --- | --- | --- | --- |
+| MAJ-G1 | Initiative groupée (R240) | Son texte : qui lance, combien de jets, quand, dans quel ordre on joue (aucune source ne le donne) | Initiative individuelle seule |
+| MAJ-R2 | Races Fongoïde et Gémidien (R239) | Vitesse au sol et vitesse de nage (les onglets n'en écrivent pas) | Races absentes (lot 4) |
+| MAJ-B1 | Bestiaire et sorts de la mise à jour (R237) | Le bestiaire nomme des sorts supprimés ou renommés : `monstre_capacite.sorts` (Anti-Mythril et Rayon négatif sur deux cartes Mordor ; Faille temporelle et Frappe temporelle sur trois cartes de momie ; Armure d'os sur trois cartes de squelette venin), les capacités « sort supplémentaire » de trois poupées invoquées (Double action, Javelot sombre, Autel sanglant, supprimés ; Rayon négatif, Frappe temporelle, renommés), la météo Saccage temporel des capacités communes « Forme météo ». (a) les renommés prennent leur nouveau nom, et le propriétaire dit par quoi remplacer les supprimés ; (b) le bestiaire reste tel qu'écrit, avec les anciens noms (sans lien) ; autre | Tel qu'écrit ; lien `sort_id` vide pour les supprimés |
+| MAJ-B2 | Poupée fulgurante, « Boule de foudre » (sort supplémentaire, NPM 3) | Jamais rattachée au sort Boules de foudre, devenu Boules plasmiques (R237 (11)) : la rattacher ? Oui / non | Non rattachée |
+
+**Décidé le 2026-11-12** : MAJ-X1 à X7, F6, M13, G7 et la lecture des originaux (R237) ; F1, F3, F3b et F3c, F8, M7, M8 (R236) ; C1, C7, C9, C10, C11 (R238) ; R3, R5, R6, R7 (R239) ; G2 (R240) ; O1, O2 (R241).

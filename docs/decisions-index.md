@@ -2,7 +2,7 @@
 
 Ne lis jamais `docs/decisions-regles.md` en entier : trouve ici le numéro de la décision, puis cherche sa ligne avec Grep (motif `^\| R41 \|`) et ne lis qu'elle.
 
-Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 235 décisions, de R1 à R235, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
+Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 240 décisions, de R1 à R240, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
 
 | Réf. | Sujet | Décision |
 | --- | --- | --- |
@@ -241,3 +241,8 @@ Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas mo
 | R233 | Les synonymes d'un mot-clé (libellés secondaires), suite de R232 (demande… | (1) Un mot-clé peut avoir des synonymes (libellés seco… |
 | R234 | Le tableau des mots-clés du Glossaire, suite de R232 et R233 (demande du p… | (1) Le tableau des mots-clés du Glossaire (`/regles/gl… |
 | R235 | L'icône d'un mot-clé, suite de R234 (8) (demande du propriétaire, 2026-11-… | (1) Une colonne `icone` du mot-clé, modifiable sur le… |
+| R236 | Spécialisations magiques (Magie V10, mise à jour de Décembre) (demande du… | (1) Deux spécialisations par magie à partir du NPM 3 (… |
+| R237 | Intégration des magies du classeur de Décembre (Magie V10) à la base (dema… | (1) Le classeur fait foi (le docx est la liste des mod… |
+| R238 | Classes de la mise à jour de Décembre (demande du propriétaire, 2026-11-12… | (1) Boxeur et Porte-étendard : « Classe Physique Corps… |
+| R239 | Races Fongoïde et Gémidien (docx : « Nouvelle race : Fongoïde », « Nouvell… | (1) Deux races de plus, pures : le site en compte 29 (… |
+| R240 | Initiative groupée et initiative individuelle (docx, rubrique « Gameplay »… | Les deux coexistent, au choix du MJ. L'initiative indi… |
