@@ -61,6 +61,27 @@
       "avant": "Rayon négatif",
       "apres": "Rayon lunatique",
       "raison": "Décision R242 (1) (migration 0117) : la carte prend le nouveau nom du sort renommé par R237 (11) (« Frappe temporelle » devenu « Main de la momie », « Rayon négatif » devenu « Rayon lunatique ») ; le classeur Invocation écrit l'ancien nom, le lien vers le sort (même id) est gardé."
+    },
+    {
+      "table": "creature_capacite",
+      "cle": {
+        "id": "bestiaire/poupee-fulgurante#capacite:sort-supplementaire:npm3"
+      },
+      "colonne": "texte",
+      "avant": "Boule de foudre",
+      "apres": "Boules plasmiques",
+      "raison": "Décision R246 (migration 0117) : la capacité de la Poupée fulgurante, rattachée au sort Boules plasmiques par R242 (3), affiche son nouveau nom (« Boule de foudre » devenu « Boules plasmiques »), comme les cartes de R242 (1) ; le classeur Invocation écrit l'ancien nom."
+    },
+    {
+      "table": "creature_capacite_sort",
+      "cle": {
+        "capacite_id": "bestiaire/poupee-fulgurante#capacite:sort-supplementaire:npm3",
+        "rang": 2
+      },
+      "colonne": "sort_nom_brut",
+      "avant": "Boule de foudre",
+      "apres": "Boules plasmiques",
+      "raison": "Décision R246 (migration 0117) : la capacité de la Poupée fulgurante, rattachée au sort Boules plasmiques par R242 (3), affiche son nouveau nom (« Boule de foudre » devenu « Boules plasmiques »), comme les cartes de R242 (1) ; le classeur Invocation écrit l'ancien nom."
     }
   ]
 }

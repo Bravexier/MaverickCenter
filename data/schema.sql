@@ -828,9 +828,10 @@ CREATE TABLE sort (
   -- « 5% santé par tour »…) ou une précision du coût (décision R106, migration 0065 : la canalisation, « Par tour », « Par tour et par cible », « Par
   -- jour » ; « Pour 1 barrière », « Par taille créée », « Par NPM de la créature invoquée »…). Le classeur les écrivait dans une seule case (« 3 + 1 Sang »,
   -- « 3xN/tour ») : lib/sort-cout.mjs#repartirLeCout, puis les réponses du propriétaire (registre 0065-couts-des-sorts-tranches.json).
-  cout_brut             TEXT    NOT NULL,               -- « 3 », « 55 (-5/NM) », « 0 », « X », « N/A » ; un coût du classeur de Décembre que
-                                                        -- repartirLeCout ne sait pas lire (« 8xN/tour », « 5/boule ») reste écrit tel quel, rien de typé
-                                                        -- (migration 0117 : jamais deviné, question au propriétaire)
+  cout_brut             TEXT    NOT NULL,               -- « 3 », « 55 (-5/NM) », « 0 », « X », « N/A » ; les coûts du classeur de Décembre que
+                                                        -- repartirLeCout ne sait pas lire (« 8xN/tour », « 5/boule ») sont répartis par la décision R244
+                                                        -- (migration 0117) ; Projectile arcanique (« *4 / projectile ») reste écrit tel quel, rien de
+                                                        -- typé, tant que MAJ-K7 est ouverte
   cout_chakra           INTEGER CHECK (cout_chakra >= 0),   -- la consommation de chakra quand la forme est « N » ou « N (-k/NM) » ; sinon NULL
   cout_ressource        TEXT    CHECK (cout_ressource IN ('sang', 'ame')),   -- ressource de la 4ème barre quand le coût secondaire est « M Sang » ou « M âme(s) »
   cout_ressource_valeur INTEGER CHECK (cout_ressource_valeur >= 0),          -- sa quantité ; NULL si « X » ou absente

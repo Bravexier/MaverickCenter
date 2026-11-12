@@ -1,5 +1,5 @@
 // Migration data/migrations/0117-magies-v10-specialisations.sql (lot 1 « Magies V10, données », mise à jour de Décembre) : décisions R236, R237,
-// R242, R243 (et R10 pour les coquilles). Spécialisations magiques (table magie_specialisation, colonne sort.specialisation_id), sorts du classeur
+// R242, R243, R244 (coûts), R246 (Poupée fulgurante) et R10 (coquilles). Spécialisations magiques (table magie_specialisation, colonne sort.specialisation_id), sorts du classeur
 // de Décembre (supprimés, renommés, nouveaux, ordre 1 à 30), bestiaire (R242), textes d'incantation et remarques des sorts (R243).
 // Le site de dev est la source de ce qu'il modifie : les comptes, les liens posés par la migration et les remarques se lisent à l'import
 // (test/aide-base-d-import.mjs) ; l'état courant ne porte que les invariants (CHECK, aucun sort supprimé cité). Les CHECK se vérifient sur une base
@@ -11,6 +11,8 @@ import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { analyserCout } from '../src/lib/sort-analyse.mjs';
+import { coutEnUneCase } from '../src/lib/sort-cout.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
 
@@ -20,6 +22,11 @@ const REGISTRE = JSON.parse(lire('../../data/migrations/0117-magies-v10-speciali
 const CORRECTIONS = JSON.parse(lire('../../tools/sheets/corrections.json'));
 const CAPACITES = JSON.parse(lire('../../tools/bestiaire/capacites.json'));
 const IGNORER_INVOCATION = JSON.parse(lire('../../tools/sources/ignorer/invocation.json'));
+const DECISIONS = lire('../../docs/decisions-regles.md');
+/** La ligne d'une décision du registre docs/decisions-regles.md (« | R244 | … | »). */
+const decision = (numero) => DECISIONS.split('\n').find((l) => l.startsWith(`| ${numero} |`)) ?? '';
+/** Un texte où `avant` ne figure plus hors de `apres` (« dégâts sonore » reste dans « dégâts sonores »). */
+const sansAvant = (texte, avant, apres) => !String(texte ?? '').split(apres).join('\u0000').includes(avant);
 const V10 = 'Nouveauté mise à jour Décembre';
 const PREFIXE = '#specialisation:';
 const db = ouvrirBase({ sansExemples: false });
@@ -213,4 +220,88 @@ test('R243 (2) : les fils de commentaires du V8 sont retirés ; une remarque est
     const notes = b.prepare("SELECT texte FROM note_cellule WHERE entite_table = 'sort' AND entite_id = ? ORDER BY rang").all(s.id).map((n) => n.texte.trim());
     assert.equal(s.remarque ?? null, notes.length ? notes.join('\n\n') : null, s.id);
   }
+});
+
+test('R10 : les coquilles candidates retenues sont au registre des dumps (magie-v10) et corrigées à l’import ; celles écartées n’y sont pas', () => {
+  const sec = CORRECTIONS.dumps['magie-v10'].corrections;
+  const b = dImport();
+  assert.ok(REGISTRE.coquilles_r10.length > 0);
+  for (const c of REGISTRE.coquilles_r10) {
+    const ou = `${c.onglet} ${c.cellule} (${c.id}, ${c.colonne})`;
+    const e = sec.find((x) => x.onglet === c.onglet && x.cellule === c.cellule && (x.champ ?? 'v') === c.champ && x.avant === c.avant);
+    assert.ok(e, `${ou} : absente de corrections.json`);
+    assert.equal(e.apres, c.apres, ou);
+    assert.equal(e.occurrences ?? 1, c.occurrences, ou);
+    assert.match(e.note, /R10/, ou);
+    // la colonne du sort (ou ses notes de cellule pour une note) est lue corrigée : « apres » y est, « avant » n'y est plus qu'à l'intérieur de « apres »
+    const sort = b.prepare('SELECT * FROM sort WHERE id = ?').get(c.id);
+    assert.ok(sort, `${ou} : sort absent à l'import`);
+    const textes = c.champ === 'note'
+      ? [sort.remarque, ...b.prepare("SELECT texte FROM note_cellule WHERE entite_table = 'sort' AND entite_id = ?").all(c.id).map((n) => n.texte)]
+      : [sort[c.colonne]];
+    assert.ok(textes.some((t) => String(t ?? '').includes(c.apres)), `${ou} : « ${c.apres} » absent`);
+    for (const t of textes) assert.ok(sansAvant(t, c.avant, c.apres), `${ou} : « ${c.avant} » encore écrit`);
+  }
+  for (const c of REGISTRE.coquilles_ecartees) {
+    assert.ok(!sec.some((x) => x.avant === c.avant && x.apres === c.apres), `${c.id} : candidate écartée présente dans corrections.json`);
+  }
+});
+
+test('R244 : les coûts du classeur de Décembre non répartis par le service suivent la décision (chakra dans « Coût », précision dans « Coût secondaire ») ; Projectile arcanique reste tel qu’écrit (MAJ-K7)', () => {
+  const ligne = decision('R244');
+  assert.ok(ligne, 'R244 au registre des décisions');
+  const b = dImport();
+  assert.ok(REGISTRE.sorts.couts_r244.length > 0);
+  for (const c of REGISTRE.sorts.couts_r244) {
+    const [, alinea] = /^R244 \((\d)\)$/.exec(c.decision) ?? [];
+    assert.ok(alinea && ligne.includes(`(${alinea})`), `${c.id} : ${c.decision}`);
+    // le coût secondaire est écrit comme la décision le dit
+    assert.ok(ligne.includes(c.cout_secondaire), `${c.id} : « ${c.cout_secondaire} » n'est pas dans R244`);
+    if (c.cout_brut === 'N/A') {
+      // (5) pas de coût chiffré : la case n'affiche que le coût secondaire
+      assert.equal(coutEnUneCase(c.cout_brut, c.cout_secondaire), c.cout_secondaire, c.id);
+    } else {
+      // le chiffre est celui de la décision et celui de la cellule du classeur
+      assert.match(c.cout_brut, /^\d+$/, c.id);
+      assert.ok(new RegExp(`(?<!\\d)${c.cout_brut}(?!\\d)`).test(ligne), `${c.id} : ${c.cout_brut} n'est pas dans R244`);
+      assert.ok(c.cellule.startsWith(c.cout_brut) && !/^\d/.test(c.cellule.slice(c.cout_brut.length)), `${c.id} : cellule « ${c.cellule} »`);
+    }
+    const s = b.prepare('SELECT cout_brut, cout_secondaire, cout_chakra, cout_ressource, cout_ressource_valeur FROM sort WHERE id = ?').get(c.id);
+    assert.ok(s, c.id);
+    assert.deepEqual([s.cout_brut, s.cout_secondaire], [c.cout_brut, c.cout_secondaire], c.id);
+    const lu = analyserCout(c.cout_brut, c.cout_secondaire);
+    assert.deepEqual({ cout_chakra: s.cout_chakra, cout_ressource: s.cout_ressource, cout_ressource_valeur: s.cout_ressource_valeur }, lu, c.id);
+    assert.equal(s.cout_chakra, c.cout_brut === 'N/A' ? null : Number(c.cout_brut), c.id);
+  }
+  // les autres coûts non répartis (Projectile arcanique, MAJ-K7) : la cellule telle qu'écrite, rien de typé
+  assert.ok(REGISTRE.sorts.couts_non_repartis.every((c) => /MAJ-K7/.test(c.decision)));
+  for (const c of REGISTRE.sorts.couts_non_repartis) {
+    const s = b.prepare('SELECT cout_brut, cout_secondaire, cout_chakra FROM sort WHERE id = ?').get(c.id);
+    assert.deepEqual([s.cout_brut, s.cout_secondaire, s.cout_chakra], [c.cout_brut, null, null], c.id);
+  }
+});
+
+test('R246 : la capacité de la Poupée fulgurante affiche le nom (à l’import) du sort Boules plasmiques, lien gardé (R242 (3)) ; l’écart au classeur Invocation cite R246', () => {
+  assert.ok(decision('R246'), 'R246 au registre des décisions');
+  const b = dImport();
+  const capacites = REGISTRE.bestiaire.creature_capacite.filter((c) => c.decision === 'R246');
+  const sorts = REGISTRE.bestiaire.creature_capacite_sort.filter((c) => /R246/.test(c.decision ?? ''));
+  assert.equal(capacites.length, 1);
+  assert.equal(sorts.length, 1);
+  const [l] = sorts;
+  assert.equal(l.capacite_id, capacites[0].id);
+  const nom = b.prepare('SELECT nom FROM sort WHERE id = ?').get(l.sort_id)?.nom;
+  assert.ok(nom, l.sort_id);
+  const ligne = b.prepare('SELECT sort_nom_brut, sort_id FROM creature_capacite_sort WHERE capacite_id = ? AND rang = ?').get(l.capacite_id, l.rang);
+  assert.deepEqual([ligne.sort_nom_brut, ligne.sort_id], [nom, l.sort_id]);
+  const texte = b.prepare('SELECT texte FROM creature_capacite WHERE id = ?').get(l.capacite_id).texte;
+  assert.equal(texte, capacites[0].apres);
+  assert.ok(texte.includes(nom) && !texte.includes(l.avant), texte);
+  // le corps de la page de la créature (recherche) écrit le même texte
+  const corps = b.prepare('SELECT corps_md FROM page WHERE id = ?').get(l.capacite_id.split('#')[0]).corps_md;
+  assert.ok(corps.includes(capacites[0].apres) && !corps.includes(capacites[0].avant));
+  // les écarts voulus au classeur Invocation : texte et nom de la ligne, chacun cite R246
+  const voulus = IGNORER_INVOCATION.voulus.filter((v) => /R246/.test(v.raison));
+  assert.deepEqual(voulus.map((v) => `${v.table}.${v.colonne}`).sort(), ['creature_capacite.texte', 'creature_capacite_sort.sort_nom_brut']);
+  for (const v of voulus) assert.deepEqual([v.avant, v.apres], [l.avant, l.apres]);
 });

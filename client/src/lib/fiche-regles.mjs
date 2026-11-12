@@ -312,7 +312,12 @@ function reglesDeLaBase(db) {
   const resistancesDeMagie = parCle(lignes(db, `SELECT magie_id, sens, cible_type, COALESCE(cible_magie_id, cible_etat_id, cible_physique) AS cible_id
                                                  FROM magie_resistance ORDER BY magie_id, sens, cible_type, rang`), 'magie_id',
     (r) => ({ type: r.cible_type, id: r.cible_id, crans: r.sens === 'resistance' ? 1 : -1 }));
-  const etatDeMagie = new Map(lignes(db, 'SELECT magie_id, etat_id FROM etat_magie').map((r) => [r.magie_id, r.etat_id]));
+  // Une magie peut avoir deux altérations liées depuis la 0117 (l'Ombre : Peur, et Somnolence pour la spécialisation SONGE). La fiche n'en garde
+  // qu'une, la première dans l'ordre des altérations (Peur, comme avant la 0117) : laquelle reçoit le cran d'un don est une question ouverte à game-design.
+  const etatDeMagie = new Map();
+  for (const r of lignes(db, 'SELECT em.magie_id, em.etat_id FROM etat_magie em JOIN etat e ON e.id = em.etat_id ORDER BY e.ordre')) {
+    if (!etatDeMagie.has(r.magie_id)) etatDeMagie.set(r.magie_id, r.etat_id);
+  }
   // plafond de NPM des sorts d'un personnage de cette magie innée (magie_npm_plafond : décision R188, migration 0097 ; le Potentiel Illimité)
   const npmPlafondDesMagies = new Map(lignes(db, 'SELECT magie_id, npm FROM magie_npm_plafond').map((r) => [r.magie_id, r.npm]));
   const magies = lignes(db, `

@@ -5,7 +5,9 @@
   "R236",
   "R237",
   "R242",
-  "R243"
+  "R243",
+  "R244",
+  "R246"
  ],
  "creature_capacite_sort_sans_lien": [
   {
@@ -334,47 +336,65 @@
    {
     "id": "magies/magie-de-larcane#sort:projectile-arcanique",
     "cout_brut": "*4 / projectile",
-    "decision": "question au propriétaire (rien de typé, jamais deviné)"
-   },
+    "decision": "R244 (3) : coût croissant par projectile ; texte affiché et calcul de la fiche non tranchés (MAJ-K7) : écrit tel quel, rien de typé"
+   }
+  ],
+  "couts_r244": [
    {
     "id": "magies/magie-de-larcane#sort:rune-arcane-multiple",
-    "cout_brut": "8xN/tour",
-    "decision": "question au propriétaire (rien de typé, jamais deviné)"
+    "cellule": "8xN/tour",
+    "cout_brut": "8",
+    "cout_secondaire": "Par tour et par cible",
+    "decision": "R244 (1)"
    },
    {
     "id": "magies/magie-de-larcane#sort:peau-de-chakra",
-    "cout_brut": "12xN/tour",
-    "decision": "question au propriétaire (rien de typé, jamais deviné)"
+    "cellule": "12xN/tour",
+    "cout_brut": "12",
+    "cout_secondaire": "Par tour et par cible",
+    "decision": "R244 (1)"
    },
    {
     "id": "magies/magie-de-larcane#sort:pate-de-la-trame",
-    "cout_brut": "12xN/tour",
-    "decision": "question au propriétaire (rien de typé, jamais deviné)"
+    "cellule": "12xN/tour",
+    "cout_brut": "12",
+    "cout_secondaire": "Par effet et par tour",
+    "decision": "R244 (2)"
    },
    {
     "id": "magies/magie-de-larcane#sort:contre-sort",
-    "cout_brut": "Variable selon le sort bloqué",
-    "decision": "question au propriétaire (rien de typé, jamais deviné)"
+    "cellule": "Variable selon le sort bloqué",
+    "cout_brut": "N/A",
+    "cout_secondaire": "Variable selon le sort bloqué",
+    "decision": "R244 (5)"
    },
    {
     "id": "magies/magie-de-la-corruption#sort:contre-sort",
-    "cout_brut": "Variable selon le sort bloqué",
-    "decision": "question au propriétaire (rien de typé, jamais deviné)"
+    "cellule": "Variable selon le sort bloqué",
+    "cout_brut": "N/A",
+    "cout_secondaire": "Variable selon le sort bloqué",
+    "decision": "R244 (5)"
    },
    {
     "id": "magies/magie-du-vide#sort:lien-mental",
-    "cout_brut": "4/perso",
-    "decision": "question au propriétaire (rien de typé, jamais deviné)"
+    "cellule": "4/perso",
+    "cout_brut": "4",
+    "cout_secondaire": "Par personne",
+    "decision": "R244 (1)"
    },
    {
     "id": "magies/magie-de-la-foudre#sort:boules-de-foudre",
-    "cout_brut": "5/boule",
-    "decision": "question au propriétaire (rien de typé, jamais deviné)"
+    "cellule": "5/boule",
+    "cout_brut": "5",
+    "cout_secondaire": "Par boule",
+    "decision": "R244 (4)"
    },
    {
     "id": "magies/magie-de-la-lumiere#sort:nova-finale",
-    "cout_brut": "30 + 50% santé max",
-    "decision": "question au propriétaire (rien de typé, jamais deviné)"
+    "cellule": "30 + 50% santé max",
+    "cout_brut": "30",
+    "cout_secondaire": "50 % de la santé max",
+    "decision": "R244 (6)"
    }
   ],
   "r243_textes_gardes": [
@@ -650,6 +670,12 @@
     "id": "bestiaire/poupee-maudite#capacite:sort-supplementaire:npm5",
     "avant": "Cette créature obtient de nouveaux sorts en plus des autres : Rayon négatif.",
     "apres": "Cette créature obtient de nouveaux sorts en plus des autres : Rayon lunatique."
+   },
+   {
+    "id": "bestiaire/poupee-fulgurante#capacite:sort-supplementaire:npm3",
+    "avant": "Cette créature obtient de nouveaux sorts en plus des autres : Réflexe éclair, Boule de foudre.",
+    "apres": "Cette créature obtient de nouveaux sorts en plus des autres : Réflexe éclair, Boules plasmiques.",
+    "decision": "R246"
    }
   ],
   "creature_capacite_sort": [
@@ -666,9 +692,370 @@
     "avant": "Rayon négatif",
     "apres": "Rayon lunatique",
     "sort_id": "magies/magie-de-lombre#sort:rayon-negatif"
+   },
+   {
+    "capacite_id": "bestiaire/poupee-fulgurante#capacite:sort-supplementaire:npm3",
+    "rang": 2,
+    "avant": "Boule de foudre",
+    "apres": "Boules plasmiques",
+    "sort_id": "magies/magie-de-la-foudre#sort:boules-de-foudre",
+    "decision": "R242 (3) (lien), R246 (nom)"
    }
   ]
  },
+ "coquilles_r10": [
+  {
+   "id": "magies/magie-du-sang#sort:surtension-sanguine",
+   "colonne": "effets",
+   "onglet": "Sang",
+   "cellule": "AC102",
+   "champ": "v",
+   "avant": "de terrible dégâts",
+   "apres": "de terribles dégâts",
+   "occurrences": 1,
+   "comme": [
+    "0003-orthographe-magies.json (magies/magie-de-la-terre#sort:morsure-terrestre)",
+    "0003-orthographe-magies.json (magies/magie-de-la-lumiere#sort:lance-sacree)"
+   ]
+  },
+  {
+   "id": "magies/magie-de-larcane#sort:fer-brillant",
+   "colonne": "effets",
+   "onglet": "Arcane",
+   "cellule": "AT69",
+   "champ": "v",
+   "avant": "Imprégne l'arme",
+   "apres": "Imprègne l'arme",
+   "occurrences": 1,
+   "comme": [
+    "0003-orthographe-magies.json (magies/magie-de-la-corruption#sort:fer-corrompu)"
+   ]
+  },
+  {
+   "id": "magies/magie-de-larcane#sort:cassage-gris",
+   "colonne": "effets",
+   "onglet": "Arcane",
+   "cellule": "BK107",
+   "champ": "v",
+   "avant": "de terrible dégâts",
+   "apres": "de terribles dégâts",
+   "occurrences": 1,
+   "comme": [
+    "0003-orthographe-magies.json (magies/magie-de-la-terre#sort:morsure-terrestre)",
+    "0003-orthographe-magies.json (magies/magie-de-la-lumiere#sort:lance-sacree)"
+   ]
+  },
+  {
+   "id": "magies/magie-du-vide#sort:interieur-solide",
+   "colonne": "effets",
+   "onglet": "Vide",
+   "cellule": "AC92",
+   "champ": "v",
+   "avant": "à tout agression",
+   "apres": "à toute agression",
+   "occurrences": 1,
+   "comme": [
+    "0003-orthographe-magies.json (magies/magie-du-vide#sort:esprit-solide)"
+   ]
+  },
+  {
+   "id": "magies/magie-du-feu#sort:meteore-eruptif",
+   "colonne": "effets",
+   "onglet": "Feu",
+   "cellule": "AC98",
+   "champ": "v",
+   "avant": "de terrible dégâts",
+   "apres": "de terribles dégâts",
+   "occurrences": 1,
+   "comme": [
+    "0003-orthographe-magies.json (magies/magie-de-la-terre#sort:morsure-terrestre)",
+    "0003-orthographe-magies.json (magies/magie-de-la-lumiere#sort:lance-sacree)"
+   ]
+  },
+  {
+   "id": "magies/magie-de-leau#sort:torrent-colerique",
+   "colonne": "effets",
+   "onglet": "Eau",
+   "cellule": "AC94",
+   "champ": "v",
+   "avant": "reflèxe",
+   "apres": "réflexe",
+   "occurrences": 1,
+   "comme": [
+    "0003-orthographe-magies.json (magies/magie-de-leau#sort:laser-hydraulique)"
+   ]
+  },
+  {
+   "id": "magies/magie-de-la-glace#sort:prisme-protecteur",
+   "colonne": "remarque",
+   "onglet": "Glace",
+   "cellule": "BK86",
+   "champ": "note",
+   "avant": "disparait",
+   "apres": "disparaît",
+   "occurrences": 2,
+   "comme": [
+    "0003-orthographe-magies.json (magies/magie-de-la-lumiere#sort:champ-de-force)"
+   ]
+  },
+  {
+   "id": "magies/magie-de-la-terre#sort:pollen-entravante",
+   "colonne": "effets",
+   "onglet": "Terre",
+   "cellule": "AC77",
+   "champ": "v",
+   "avant": "si ils ratent",
+   "apres": "s'ils ratent",
+   "occurrences": 1,
+   "comme": [
+    "0003-orthographe-magies.json (magies/magie-du-feu#sort:aura-chaude)"
+   ]
+  },
+  {
+   "id": "magies/magie-de-la-terre#sort:petale-bouclier",
+   "colonne": "remarque",
+   "onglet": "Terre",
+   "cellule": "AC89",
+   "champ": "note",
+   "avant": "disparait",
+   "apres": "disparaît",
+   "occurrences": 2,
+   "comme": [
+    "0003-orthographe-magies.json (magies/magie-de-la-lumiere#sort:champ-de-force)"
+   ]
+  },
+  {
+   "id": "magies/magie-du-vent#sort:courant-ecrasant",
+   "colonne": "effets",
+   "onglet": "Vent",
+   "cellule": "AC83",
+   "champ": "v",
+   "avant": "réfléxe",
+   "apres": "réflexe",
+   "occurrences": 1,
+   "comme": [
+    "0003-orthographe-magies.json (magies/magie-du-sang#sort:damocles)"
+   ]
+  },
+  {
+   "id": "magies/magie-du-vent#sort:onde-de-choc",
+   "colonne": "dsb_brut",
+   "onglet": "Vent",
+   "cellule": "BH74",
+   "champ": "v",
+   "avant": "dégâts sonore",
+   "apres": "dégâts sonores",
+   "occurrences": 1,
+   "comme": [
+    "0003-orthographe-magies.json (magies/magie-de-lombre#sort:cri-ebranleur)"
+   ]
+  },
+  {
+   "id": "magies/magie-du-vent#sort:grande-inspiration",
+   "colonne": "effets",
+   "onglet": "Vent",
+   "cellule": "BK77",
+   "champ": "v",
+   "avant": "dégâts sonore",
+   "apres": "dégâts sonores",
+   "occurrences": 1,
+   "comme": [
+    "0003-orthographe-magies.json (magies/magie-de-lombre#sort:cri-ebranleur)"
+   ]
+  },
+  {
+   "id": "magies/magie-du-vent#sort:echo",
+   "colonne": "effets",
+   "onglet": "Vent",
+   "cellule": "BK92",
+   "champ": "v",
+   "avant": "dégâts sonore",
+   "apres": "dégâts sonores",
+   "occurrences": 1,
+   "comme": [
+    "0003-orthographe-magies.json (magies/magie-de-lombre#sort:cri-ebranleur)"
+   ]
+  },
+  {
+   "id": "magies/magie-de-la-foudre#sort:mur-hertz",
+   "colonne": "effets",
+   "onglet": "Foudre",
+   "cellule": "AC80",
+   "champ": "v",
+   "avant": "qui ne possède pas",
+   "apres": "qui ne possèdent pas",
+   "occurrences": 1,
+   "comme": [
+    "0003-orthographe-magies.json (magies/magie-du-feu#sort:mur-de-flammes)"
+   ]
+  },
+  {
+   "id": "magies/magie-de-la-lumiere#sort:mur-gamma",
+   "colonne": "effets",
+   "onglet": "Lumière",
+   "cellule": "AC80",
+   "champ": "v",
+   "avant": "qui ne possède pas",
+   "apres": "qui ne possèdent pas",
+   "occurrences": 1,
+   "comme": [
+    "0003-orthographe-magies.json (magies/magie-du-feu#sort:mur-de-flammes)"
+   ]
+  },
+  {
+   "id": "magies/magie-de-la-lumiere#sort:sanctuaire-protecteur",
+   "colonne": "effets",
+   "onglet": "Lumière",
+   "cellule": "BK71",
+   "champ": "v",
+   "avant": "altérations d'états",
+   "apres": "altérations d'état",
+   "occurrences": 1,
+   "comme": [
+    "0003-orthographe-magies.json (magies/magie-de-la-lumiere#sort:recouvrer)"
+   ]
+  },
+  {
+   "id": "magies/magie-de-lombre#sort:grand-bailleur",
+   "colonne": "dsb_brut",
+   "onglet": "Ombre",
+   "cellule": "BH71",
+   "champ": "v",
+   "avant": "dégâts sonore",
+   "apres": "dégâts sonores",
+   "occurrences": 1,
+   "comme": [
+    "0003-orthographe-magies.json (magies/magie-de-lombre#sort:cri-ebranleur)"
+   ]
+  },
+  {
+   "id": "magies/magie-de-lombre#sort:prophetie",
+   "colonne": "effets",
+   "onglet": "Ombre",
+   "cellule": "BK98",
+   "champ": "v",
+   "avant": "tout les jets",
+   "apres": "tous les jets",
+   "occurrences": 1,
+   "comme": [
+    "0003-orthographe-magies.json (magies/magie-de-lombre#sort:grenade-fumigene)"
+   ]
+  },
+  {
+   "id": "magies/magie-du-sang#sort:proportion-demesuree",
+   "colonne": "bonus_maitrise",
+   "onglet": "Sang",
+   "cellule": "BK99",
+   "champ": "v",
+   "avant": "dégâts physique,",
+   "apres": "dégâts physiques,",
+   "occurrences": 1,
+   "comme": [
+    "0003-orthographe-magies.json (magies/magie-du-sang#sort:proportion-demesuree)"
+   ]
+  },
+  {
+   "id": "magies/magie-de-lespace-temps#sort:distorsion",
+   "colonne": "effets",
+   "onglet": "EspaceTemps",
+   "cellule": "AC101",
+   "champ": "v",
+   "avant": "jet de Fermeté",
+   "apres": "jet de fermeté",
+   "occurrences": 2,
+   "comme": [
+    "0003-orthographe-magies.json (magies/magie-de-larcane#sort:claquement)",
+    "0003-orthographe-magies.json (magies/magie-de-lombre#sort:brume-mental)"
+   ]
+  },
+  {
+   "id": "magies/magie-du-feu#sort:etincelle",
+   "colonne": "bonus_maitrise",
+   "onglet": "Feu",
+   "cellule": "AT54",
+   "champ": "v",
+   "avant": "de contre coup",
+   "apres": "de contrecoup",
+   "occurrences": 1,
+   "comme": [
+    "0003-orthographe-magies.json (magies/magie-du-feu#sort:etincelle)"
+   ]
+  },
+  {
+   "id": "magies/magie-de-la-glace#sort:cape-hivernale",
+   "colonne": "effets",
+   "onglet": "Glace",
+   "cellule": "BK89",
+   "champ": "v",
+   "avant": "dégâts magique",
+   "apres": "dégâts magiques",
+   "occurrences": 1,
+   "comme": [
+    "0003-orthographe-magies.json (magies/magie-de-la-glace#sort:cape-hivernale)"
+   ]
+  },
+  {
+   "id": "magies/magie-de-la-terre#sort:redemption-de-dimitri",
+   "colonne": "bonus_maitrise",
+   "onglet": "Terre",
+   "cellule": "BK89",
+   "champ": "v",
+   "avant": "tempête sable",
+   "apres": "tempête de sable",
+   "occurrences": 1,
+   "comme": [
+    "0006-orthographe-noms.json (magies/magie-de-la-terre#sort:redemption-de-dimitri)"
+   ]
+  },
+  {
+   "id": "magies/magie-du-vent#sort:recul-force",
+   "colonne": "bonus_maitrise",
+   "onglet": "Vent",
+   "cellule": "AT63",
+   "champ": "v",
+   "avant": "Fait reculé la",
+   "apres": "Fait reculer la",
+   "occurrences": 1,
+   "comme": [
+    "0003-orthographe-magies.json (magies/magie-du-vent#sort:recul-force)"
+   ]
+  },
+  {
+   "id": "magies/magie-de-la-lumiere#sort:grenade-flash",
+   "colonne": "bonus_maitrise",
+   "onglet": "Lumière",
+   "cellule": "AC89",
+   "champ": "v",
+   "avant": "être aveugler au",
+   "apres": "être aveuglé au",
+   "occurrences": 1,
+   "comme": [
+    "0003-orthographe-magies.json (magies/magie-de-la-lumiere#sort:grenade-flash)"
+   ]
+  },
+  {
+   "id": "magies/magie-de-lombre#sort:armee-de-lombre",
+   "colonne": "effets",
+   "onglet": "Ombre",
+   "cellule": "BK95",
+   "champ": "v",
+   "avant": "qui souffre de",
+   "apres": "qui souffrent de",
+   "occurrences": 1,
+   "comme": [
+    "0003-orthographe-magies.json (magies/magie-du-feu#sort:diffusion)"
+   ]
+  }
+ ],
+ "coquilles_ecartees": [
+  {
+   "id": "magies/magie-de-leau#sort:dissolution",
+   "colonne": "effets",
+   "avant": "totalement insensible aux",
+   "apres": "Totalement insensible aux",
+   "comme": "0003-orthographe-magies.json (magies/magie-de-leau#sort:dissolution)"
+  }
+ ],
  "regle_magie": {
   "id": "magies#regle:choses-a-savoir",
   "corrections": [
@@ -715,12 +1102,7 @@
  },
  "ecarts_a_la_chaine_du_plan": [
   "magies/magie-de-la-foudre#sort:boules-de-foudre : bonus_maitrise \"Effets : 1 boule (+1/NM)\" (plan \"Effets : 1 boule (+1/NM) vont apparaître et vont s'approcher de l'ennemi le plus proche de 2 cases par tour\")",
-  "magies/magie-de-la-foudre#sort:dysfonctionnement : bonus_maitrise \"Type : IC pour 3 NM\\nEffets : agit de manière incohérente pendant 1 tour (+1 tour/NM)\" (plan \"Type : IC pour 3 NM\\nEffets : Une créature dite mécanique agit de manière incohérente pendant 1 tour (+1 tour/NM)\")",
-  "magies/magie-de-la-lumiere#sort:grenade-flash : bonus_maitrise \"Effets : 3NM = oblige un jet de vigueur pour ne pas être aveuglé au stade 1\" (plan \"Effets : 3NM = oblige un jet de vigueur pour ne pas être aveugler au stade 1\")",
-  "magies/magie-de-la-terre#sort:redemption-de-dimitri : bonus_maitrise \"Effets : Invoque la météo \\\"tempête de sable\\\" pendant 3 tours (+1/NM)\" (plan \"Effets : Invoque la météo \\\"tempête sable\\\" pendant 3 tours (+1/NM)\")",
-  "magies/magie-du-feu#sort:etincelle : bonus_maitrise \"D/S/B : +1d6/NM\\nEffets : Inflige 2d6 de contrecoup (-1d6 au Niveau 3 de Maîtrise)\" (plan \"D/S/B : +1d6/NM\\nEffets : Inflige 2d6 de contre coup (-1d6 au Niveau 3 de Maîtrise)\")",
-  "magies/magie-du-sang#sort:proportion-demesuree : bonus_maitrise \"Effets : Augmente la taille d'un cran, +1 Force, +20 (+5/NM) aux dégâts physiques, +1 portée pour 3 tours\" (plan \"Effets : Augmente la taille d'un cran, +1 Force, +20 (+5/NM) aux dégâts physique, +1 portée pour 3 tours\")",
-  "magies/magie-du-vent#sort:recul-force : bonus_maitrise \"Effets : Fait reculer la cible de 1 case (+1/NM)\\nRemarque : Sans NM dedans, le sort ne peut pas reculé une cible grande\" (plan \"Effets : Fait reculé la cible de 1 case (+1/NM)\\nRemarque : Sans NM dedans, le sort ne peut pas reculé une cible grande\")"
+  "magies/magie-de-la-foudre#sort:dysfonctionnement : bonus_maitrise \"Type : IC pour 3 NM\\nEffets : agit de manière incohérente pendant 1 tour (+1 tour/NM)\" (plan \"Type : IC pour 3 NM\\nEffets : Une créature dite mécanique agit de manière incohérente pendant 1 tour (+1 tour/NM)\")"
  ],
  "amelioration_cadaverique": "table supprimée (R237 (7)) ; invocation bestiaire/animation-des-morts : tableau_titre et tableau_sort_id à NULL"
 }

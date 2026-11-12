@@ -26,8 +26,9 @@ export function sortsReecritsParLa0117(colonnes) {
 }
 
 /**
- * Les sorts dont la 0117 écrit le coût tel que le classeur de Décembre le donne, sans le répartir (« 8xN/tour », « Variable selon le sort bloqué » : question
- * ouverte au propriétaire, registre 0117-magies-v10-specialisations.json, `sorts.couts_non_repartis`) : leur « Coût » n'a pas la forme d'un coût réparti.
+ * Les sorts dont la 0117 écrit le coût tel que le classeur de Décembre le donne, sans le répartir (Projectile arcanique, « *4 / projectile » : MAJ-K7
+ * ouverte, registre 0117-magies-v10-specialisations.json, `sorts.couts_non_repartis` ; les autres sont répartis par R244, `sorts.couts_r244`) : leur
+ * « Coût » n'a pas la forme d'un coût réparti.
  */
 export const coutsNonRepartisDeLa0117 = () => new Set(
   JSON.parse(readFileSync(CHEMIN.replace(/\.sql$/, '.json'), 'utf8')).sorts.couts_non_repartis.map((c) => c.id),

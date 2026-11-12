@@ -142,7 +142,8 @@ for (const c of corrections.filter((x) => x.champ === 'v')) {
     for (const r of db.prepare(`SELECT * FROM "${t.name}" WHERE source_ref LIKE ? || ' › ' || ? || ' › %'`).all(c.classeur.replace(/[%_]/g, ''), c.onglet.replace(/[%_]/g, ''))) {
       if (!couvre(r.source_ref, c.classeur, c.onglet, c.cellule)) continue;
       couvertes += 1;
-      if (txt.some((k) => typeof r[k] === 'string' && r[k].includes(c.avant))) problemes.push(`correction ${c.dump}!${c.onglet}!${c.cellule} : « ${c.avant} » figure encore dans ${t.name}`);
+      // « avant » hors de « apres » : une correction qui ajoute une lettre en fin de cellule (« dégâts sonore » → « dégâts sonores ») garde « avant » dans « apres »
+      if (txt.some((k) => typeof r[k] === 'string' && r[k].split(c.apres).join('\u0000').includes(c.avant))) problemes.push(`correction ${c.dump}!${c.onglet}!${c.cellule} : « ${c.avant} » figure encore dans ${t.name}`);
       if (txt.some((k) => typeof r[k] === 'string' && r[k].includes(c.apres))) avecApres += 1;
     }
   }
