@@ -31,6 +31,7 @@ user-invocable: false
 - Un nom corrigé l'est partout (titres, noms typés, textes, cibles des `[[liens]]`) et sa clé `X_cle` est recalculée.
 - Son identifiant ne change jamais. Depuis 0006, aucune table ne dérive plus l'id du nom : sort, classe, invocation, créature et leurs attaques et capacités
   gardent la clé du nom d'origine ; une page renommée garde son adresse.
+- `client/scripts/db-check.mjs` (vers l. 145) vérifie les corrections de `tools/sheets/corrections.json` : il cherche `avant` hors de `apres`. Un `avant` qui n'est qu'un morceau de `apres` (« dégâts sonore » dans « dégâts sonores ») n'est plus signalé.
 - Le rapprochement des classeurs défait ces corrections avant de comparer (tout `data/migrations/*.json` qui a une liste `corrections` :
   skill `sources-rapprochement`). Un registre garde donc sa forme.
 
