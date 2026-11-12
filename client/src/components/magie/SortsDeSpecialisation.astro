@@ -1,0 +1,43 @@
+---
+import { attributEd } from '../../lib/edition-modele.mjs';
+import type { Magies, MagieDb, SortDb } from '../../lib/magies';
+import TableauNpm from './TableauNpm.astro';
+import Texte from './Texte.astro';
+
+// Une spécialisation magique (R236 (1)) : son nom, tel que la base l'écrit (en capitales : aucun `text-transform`, comme les spécialités des classes), sa
+// description et sa remarque (modifiables sur le site de dev : table magie_specialisation), puis ses sorts, un tableau par NPM (le gabarit commun,
+// TableauNpm.astro). Sur la page d'une magie comme dans un onglet du Potentiel Illimité (SortsDuPotentiel.astro) ; `prefixe` (« feu- ») rend uniques les
+// identifiants HTML des sorts quand une page montre plusieurs magies, et le nom court de la spécialisation s'y ajoute pour ceux des tableaux (le NPM 3
+// existe dans les deux spécialisations d'une magie). `titre` : niveau du titre du nom ; les tableaux sont un niveau en dessous.
+interface Props {
+  specialisation: MagieDb['specialisations'][number];
+  groupes: { niveau: number; sorts: SortDb[] }[];
+  magies: Magies;
+  prefixe?: string;
+  titre?: 'h3' | 'h4';
+}
+const { specialisation, groupes, magies, prefixe = '', titre: Titre = 'h3' } = Astro.props;
+
+const id = `specialisation-${prefixe}${specialisation.cle}`;
+const TitreDesTableaux = Titre === 'h3' ? 'h4' : 'h5';
+const ed = (colonne: string) => attributEd('magie_specialisation', { id: specialisation.id }, colonne);
+---
+
+<section class="specialisation" id={id} aria-labelledby={`${id}-titre`}>
+  <Titre class="sorts-groupe__titre specialisation__titre" id={`${id}-titre`}>
+    <span class="sorts-groupe__surtitre">Spécialisation</span>
+    <span class="specialisation__nom" data-ed={ed('nom')}>{specialisation.nom}</span>
+  </Titre>
+  <div class="specialisation__texte magie-prose" data-ed-cadre hidden={specialisation.description.length === 0}>
+    <div data-ed={ed('description')} data-ed-rendu="blocs"><Texte blocs={specialisation.description} /></div>
+  </div>
+  <div class="specialisation__remarque" data-ed-cadre hidden={specialisation.remarque.length === 0}>
+    <p class="specialisation__remarque-titre">Remarque</p>
+    <div class="magie-prose" data-ed={ed('remarque')} data-ed-rendu="blocs"><Texte blocs={specialisation.remarque} /></div>
+  </div>
+  {
+    groupes.map((g) => (
+      <TableauNpm niveau={g.niveau} sorts={g.sorts} magies={magies} prefixe={prefixe} prefixeNpm={`${prefixe}${specialisation.cle}-`} titre={TitreDesTableaux} />
+    ))
+  }
+</section>

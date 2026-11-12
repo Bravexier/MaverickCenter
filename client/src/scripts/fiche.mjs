@@ -1107,8 +1107,8 @@ function carteDInvocation(c, npm) {
  * Sous un sort qui invoque (décision R130 : « avoir la liste des invocations possibles », « Toutes, les miennes d'abord ») : ses créatures, celles à la
  * portée du personnage d'abord (creaturesDuSort), et la carte de la créature choisie au NPM du sort, le « × N » de son coût (décision R129 : borné au
  * NPM accessible) ; une marionnette est la créature d'un NPM : la choisir règle le « × N », le changer la change. Sous un sort qui sacrifie une
- * invocation (sacrificeDuSort) : l'effet de la marionnette sacrifiée au NPM du sort (« Manteau noir »), ou toutes les améliorations (« Amélioration
- * cadavérique » : « avoir toutes les améliorations visibles en fonction de l'invocation sacrifiée »). Repliée au départ ; null pour un autre sort.
+ * invocation (sacrificeDuSort) : l'effet de la marionnette sacrifiée au NPM du sort (« Manteau noir » ; le tableau « Amélioration cadavérique » est
+ * retiré, R237 (7)). Repliée au départ ; null pour un autre sort.
  */
 function ligneDInvocation(l) {
   const sort = l.sort;
@@ -1138,7 +1138,7 @@ function ligneDInvocation(l) {
   };
   // la créature montrée : celle choisie (une marionnette, tant que le « × N » n'a pas changé depuis), sinon la marionnette du NPM du sort, sinon la
   // première à la portée du personnage
-  const creatures = invoque ? invoque.invocation.creatures : sacrifice.type === 'effets' ? sacrifice.lignes.map((x) => x.creature) : [];
+  const creatures = invoque ? invoque.invocation.creatures : sacrifice.lignes.map((x) => x.creature);
   const montree = (npm) => {
     const choix = creaturesChoisies.get(sort.id);
     const choisie = choix && creatures.find((c) => c.id === choix.id);
@@ -1164,12 +1164,9 @@ function ligneDInvocation(l) {
         ? 'La carte suit le NPM de la créature, le « × N » du coût.' : 'Une créature par NPM : le « × N » du coût.'),
       zone,
     ];
-  } else if (sacrifice.type === 'effets') {
+  } else {
     resume = `Selon l’invocation sacrifiée (${sacrifice.lignes.length})`;
     contenu = [groupe('Invocation sacrifiée', creatures), el('p', { class: 'invocations__aide muted' }, 'Le NPM de l’invocation sacrifiée : le « × N » du coût.'), zone];
-  } else {
-    resume = `Améliorations selon l’invocation sacrifiée (${sacrifice.lignes.length})`;
-    contenu = [el('dl', { class: 'invocations__tableau' }, sacrifice.lignes.map((a) => el('div', {}, el('dt', {}, a.nom), el('dd', {}, a.effet))))];
   }
   if (boutons.length) {
     synchro(() => {

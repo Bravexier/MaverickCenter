@@ -442,7 +442,7 @@ le changement passe par une migration `data/migrations/NNNN-<nom>.sql` appliqué
 
 Mise en page (pure forme, jamais de règle ajoutée ; `lib/sort-format.mjs`, testé dans `test/magies-page.test.mjs`) :
 
-- **Bannière** : nom, rôles, santé et chakra offerts, caractéristique bonus, 4ᵉ barre ; la couleur de chaque magie (`COULEURS`) est un repère visuel sans valeur de règle.
+- **Bannière** : nom, rôles (supprimés à la 0117, R237 (7) : la liste n’est affichée que si la magie en a), santé et chakra offerts, caractéristique bonus, 4ᵉ barre ; la couleur de chaque magie (`COULEURS`) est un repère visuel sans valeur de règle.
 - **Altération d'état liée** (demande du propriétaire) : après la présentation (et l'Explication), avant les résistances, un encart montre l'altération d'état de la magie
   (colonne « Magie Liée » de la « Liste des altérations d'état » : `etat_magie`) : son nom (lien vers sa section), son type et l'effet de chaque stade ; une altération partagée
   (Surcharge Magique : Arcane et Corruption) nomme l'autre magie. Pas d'encart sans altération liée (Potentiel Illimité). `components/magie/MagieEtats.astro`.
@@ -465,6 +465,11 @@ Mise en page (pure forme, jamais de règle ajoutée ; `lib/sort-format.mjs`, tes
   registre `.json`) ; le corps Markdown de la page, la fiche en tableur et le coût d'invocation d'une créature du bestiaire les gardent en une case (`coutEnUneCase` : « 3 + 1 Sang »,
   « 3 par tour et par cible », le coût secondaire seul pour un coût « 0 » ou « N/A »). Sur le site de dev, les deux se modifient, chacun dans sa saisie (celle du coût secondaire
   même vide) ; le service refuse un second coût dans « Coût » (il dit où l'écrire) et une expression de NM dans « Coût secondaire » (`sort_bonus_maitrise` n'a pas de champ pour elle).
+- **Sorts communs, puis deux spécialisations** (R236 (1), `components/magie/MagieSorts.astro`, `SortsDeSpecialisation.astro`, `lib/sort-format.mjs#sortsParSpecialisation`) : sous « Sorts », d'abord
+  « Sorts communs » (les sorts sans spécialisation, `specialisationId` nul : NPM 1 et 2), puis la section de chacune des deux spécialisations de la magie, dans l'ordre 1, 2 :
+  son nom **tel que la base l'écrit, en capitales** (aucun `text-transform`, comme les spécialités des classes), sa description et sa remarque (`magie_specialisation`, modifiables sur le site de dev ;
+  un cadre vide est caché en lecture), puis ses sorts, un tableau par NPM (les deux spécialisations ont chacune leur NPM 3 : identifiants `#npm-<spécialisation>-<NPM>`, `#specialisation-<spécialisation>`).
+  Le nombre de sorts n'est écrit nulle part dans le code : il vient de la base. Le Potentiel Illimité n'a pas de spécialisation à lui.
 - **Un tableau par niveau de puissance magique (NPM)** : Nom, Type, Coût (le coût secondaire dessous), Portée, Zone, D/S/B, une ligne par sort ; **pas de colonne Maîtrise**. Un seul gabarit pour tous les tableaux de sorts du site,
   `components/magie/TableauNpm.astro` (une magie, un NPM ; une ligne : `LigneDeSort.astro` ; le comportement au clic : `SortsInteractifs.astro`, une fois par page). Le bonus de niveau de maîtrise (NM, `sort_bonus_maitrise`, voir « Niveaux de maîtrise »
   ci-dessous) qu'une cellule de Coût, Portée, Zone ou D/S/B écrit entre parenthèses est une **pastille à sa place, à côté de la valeur** (« 55 » puis la pastille « -5/NM », « 5d6 [+3/NM] dégâts sonores » ;
@@ -475,8 +480,7 @@ Mise en page (pure forme, jamais de règle ajoutée ; `lib/sort-format.mjs`, tes
   la note de cellule) et le texte du sort de niveau 5 (`sort.texte_niveau5`) sans intitulé propre. Les **altérations d'état** repérées dans le texte (`sort_etat`, un index dérivé du texte, non exhaustif) sont des **pastilles placées dans le texte**,
   sur le mot de la source, pas une liste à part ; chacune renvoie à sa section de `/regles/liste-des-alterations-d-etat/` et a une **infobulle** (type, magie liée, effet de chaque stade ; le stade cité est mis en avant : `etat`, `etat_magie`, `etat_stade`).
   Les mêmes infobulles servent aux altérations d'état des résistances et vulnérabilités de la magie. Pas de source citée, pas de liste des créatures qui lancent le sort.
-  Quand le sort a **ses propres règles**, un bloc dédié : pour une invocation (Animation de mort, Appel aux Golems, Marionnette de l'ombre) les règles de l'onglet de l'invocation (**repliées** par défaut, dans un `<details>`), pour Animation de mort le tableau
-  « AMELIORATION CADAVERIQUE » (replié aussi) et la liste des créatures invoquées par bloc. **La carte du bestiaire d'une créature est son infobulle** (demande du propriétaire : « La carte sera à garder et servirait de tooltip
+  Quand le sort a **ses propres règles**, un bloc dédié : pour une invocation (Animation de mort, Appel aux Golems, Marionnette de l'ombre) les règles de l'onglet de l'invocation (**repliées** par défaut, dans un `<details>`), la liste des créatures invoquées par bloc. **La carte du bestiaire d'une créature est son infobulle** (demande du propriétaire : « La carte sera à garder et servirait de tooltip
   dans leur correspondance dans les tableaux des magies et leurs sorts associés ») : au survol, au focus clavier ou au toucher de son nom (un bouton, dans la liste des créatures et dans les effets « Manteau noir » de la Marionnette de l'ombre),
   la carte entière (`components/bestiaire/CarteInvoquee.astro` en mode `bulle` : sans lien ni bouton ni identifiant, CSS commun `styles/bestiaire/carte.css`) s'ouvre à côté du nom (`data-placement="cote"`), sinon dessous ou dessus comme les autres bulles,
   sa hauteur bornée à l'espace qui reste pour ne pas cacher le nom ; plus haute que sa place, elle défile (molette, ou au clavier les flèches, pages, début et fin tant que le nom a le focus) ; un clic dedans ne la ferme pas.
@@ -499,11 +503,11 @@ Mise en page (pure forme, jamais de règle ajoutée ; `lib/sort-format.mjs`, tes
   aussitôt déplacé dans `data-infobulle` et s'affiche dans la bulle habillée (voir le skill `ui-infobulles`).
 - **Potentiel Illimité** : il n'a pas de sorts à lui (« cette magie pioche ses sorts dans toutes les magies existantes », bloc « Explication » de son onglet). À la place de la
   section des sorts, sa page montre **« Sorts des autres magies » : 14 onglets, un par autre magie**, dans l'ordre du classeur et dans sa couleur (`components/magie/SortsDuPotentiel.astro`,
-  `lib/potentiel-illimite.mjs`, CSS `styles/magie/potentiel.css` inséré en `?raw` sur cette page seulement). Chaque onglet reprend **les tableaux de cette magie du NPM 1 au NPM 4** (demande
+  `lib/potentiel-illimite.mjs`, CSS `styles/magie/potentiel.css` inséré en `?raw` sur cette page seulement). Chaque onglet reprend **les sorts de cette magie du NPM 1 au NPM 4**, rangés comme sur sa page : « Sorts communs » puis ses deux spécialisations, dont le Potentiel Illimité peut prendre n'importe quel sort dans la limite de son NPM (R236 (7)) (demande
   du propriétaire ; décision R188 : le plafond est en données, `npmMaxDuPotentiel`, lu dans `chargerMagies` (`npmPlafondAvecDon`) : celui de sa magie,
   `magie_npm_plafond`, 3 d'après l'Explication, relevé par le don de niveau 20 de l'Archimage, sa classe unique, « Semi-complet », `capacite_npm_plafond`, 4 ;
-  la fiche applique le même plafond, `npmDesSorts`) avec le gabarit `TableauNpm` : mêmes lignes et mêmes panneaux que sur la page de la magie, dont le titre de l'onglet est le lien. Les identifiants y sont
-  préfixés du nom court de la magie (`magie.nom_cle`) : `#sort-feu-boule-de-feu`, `#npm-feu-1`, `#sorts-feu` (l'onglet), car deux magies peuvent avoir un sort du même nom ; une adresse vers un sort
+  la fiche applique le même plafond, `npmDesSorts`) avec le gabarit `TableauNpm` (le nombre de sorts par NPM vient de la base : une spécialisation que la limite de NPM vide n'est pas montrée) : mêmes lignes et mêmes panneaux que sur la page de la magie, dont le titre de l'onglet est le lien. Les identifiants y sont
+  préfixés du nom court de la magie (`magie.nom_cle`) : `#sort-feu-boule-de-feu`, `#npm-feu-1`, `#npm-feu-volcan-3`, `#sorts-feu` (l'onglet), car deux magies peuvent avoir un sort du même nom ; une adresse vers un sort
   ouvre son onglet puis le sort ; pas de texte d'aide au-dessus des onglets. Les onglets (script commun avec les spécialités des pages de classe : `components/Onglets.astro`) suivent le motif « tabs » de l'ARIA ; sans JavaScript et à
   l'impression, les 14 magies se suivent, chacune sous son titre. `test/potentiel-illimite.test.mjs` et `test/magies-html.test.mjs` (site construit) le vérifient.
 - **Sources** : ni « Source : … » dans le panneau d'un sort, ni section « Sources » en pied de page des pages de magie (`sources:` reste dans le front matter pour la traçabilité).
@@ -1563,7 +1567,7 @@ en chakra qui baisse, portée, zone, dégâts / soins / barrière, effet seconda
   son écriture est sans ambiguïté. Un sort qui n'écrit aucun NM n'a aucune ligne.
 - **`sort.bonus_maitrise`** : la colonne « Bonus Maîtrise » de la table des sorts, la recopie lisible de ces lignes (une ligne « Coût : -5/NM » par bonus), accord contrôlé par `test/maitrise-sorts.test.mjs`.
 - **`v_sort_bonus_au_nm`** et `lib/sort-maitrise.mjs` (`applications`, `bonusAuNm`) : ce qui s'applique à un niveau de maîtrise donné (0 à 3), pour que la fiche de personnage détermine un sort d'après ses NM : `par_nm` = NM / `pas_nm`
-  fois, `palier` = 1 à partir de `seuil_nm`. La vue SQL et la fonction JavaScript disent la même chose (test d'accord sur les 322 sorts).
+  fois, `palier` = 1 à partir de `seuil_nm`. La vue SQL et la fonction JavaScript disent la même chose (test d'accord sur tous les sorts).
 - **Valeur à N NM** (`lib/sort-maitrise.mjs#valeurAuNm`, tableau des sorts de la fiche de personnage ; demande du propriétaire : la valeur calculée plutôt que
   « (+1/NM) ») : un bonus par NM entre parenthèses s'ajoute au terme qui le précède dans sa phrase quand ce n'est qu'un calcul (« 45 (-5/NM) » à 2 NM → 35 ;
   « 2d6 dégâts (+1d6/NM) » → 4d6 ; « 5d6 dégâts (+3/NM) » → 5d6 + 6 ; « 10d6 + 80 (+10/NM) » → 10d6 + 100) ; sinon il est écrit appliqué à la place de son

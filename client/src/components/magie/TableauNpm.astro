@@ -9,18 +9,20 @@ import LigneDeSort from './LigneDeSort.astro';
 // La règle spéciale d'un niveau (« sort niveau 5 ») est dans l'infobulle « i » du titre, juste après le texte du titre : texte et « i »
 // forment un seul bloc (`npm__intitule`) qui passe à la ligne d'un tenant sur un téléphone étroit, sans que le « i » se retrouve seul sous le badge.
 // Sans JavaScript (et à l'impression), le bloc s'efface (`display: contents`) et la règle est écrite en entier sur sa propre ligne sous le titre.
-// `prefixe` (« feu- ») rend uniques les identifiants HTML quand une page montre plusieurs magies ; `titre` : niveau du titre du tableau.
+// `prefixe` (« feu- ») rend uniques les identifiants HTML quand une page montre plusieurs magies ; `prefixeNpm` (« feu-volcan- »), l'identifiant du seul
+// tableau, quand une même magie en montre un par spécialisation au même NPM (R236 : NPM 3 à 5 de chaque spécialisation) ; `titre` : niveau du titre du tableau.
 interface Props {
   niveau: number;
   sorts: SortDb[];
   magies: Magies;
   prefixe?: string;
-  titre?: 'h3' | 'h4';
+  prefixeNpm?: string;
+  titre?: 'h3' | 'h4' | 'h5';
 }
-const { niveau, sorts, magies, prefixe = '', titre: Titre = 'h3' } = Astro.props;
+const { niveau, sorts, magies, prefixe = '', prefixeNpm = prefixe, titre: Titre = 'h3' } = Astro.props;
 
 const COLONNES = ['Nom', 'Type', 'Coût', 'Portée', 'Zone', 'D/S/B'];
-const id = `npm-${prefixe}${niveau}`;
+const id = `npm-${prefixeNpm}${niveau}`;
 const regles = magies.regles.filter((r) => r.niveau_sort === niveau);
 const texteDeRegle = (r: { titre: string; texte: string }) => (r.texte.startsWith(`${r.titre} : `) ? r.texte.slice(r.titre.length + 3) : r.texte);
 ---

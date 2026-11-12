@@ -203,6 +203,23 @@ export function sortsParNpm(sorts) {
   return niveaux.map((niveau) => ({ niveau, sorts: sorts.filter((s) => s.niveau === niveau) }));
 }
 
+/**
+ * Les sorts d'une magie rangés comme sa page les montre (R236 (1)) : d'abord les sorts communs (ceux sans spécialisation : `specialisationId` nul),
+ * regroupés par NPM, puis chacune de ses spécialisations, dans leur ordre, avec ses sorts regroupés par NPM. Les sorts restent dans l'ordre reçu à
+ * l'intérieur d'un NPM. Une spécialisation sans sort n'est pas rendue (le Potentiel Illimité n'en a pas ; une borne de NPM peut en vider une).
+ * @param {{ niveau: number, specialisationId?: string | null }[]} sorts  `magie.sorts` de lib/magies-db.mjs#chargerMagies
+ * @param {{ id: string }[]} specialisations  `magie.specialisations` (dans l'ordre 1, 2)
+ * @returns {{ communs: { niveau: number, sorts: object[] }[], specialisations: { specialisation: object, groupes: { niveau: number, sorts: object[] }[], total: number }[] }}
+ */
+export function sortsParSpecialisation(sorts, specialisations) {
+  const communs = sortsParNpm(sorts.filter((s) => !s.specialisationId));
+  const parSpecialisation = specialisations.map((specialisation) => {
+    const siens = sorts.filter((s) => s.specialisationId === specialisation.id);
+    return { specialisation, groupes: sortsParNpm(siens), total: siens.length };
+  });
+  return { communs, specialisations: parSpecialisation.filter((s) => s.total > 0) };
+}
+
 /** Ancre d'un titre `## Titre` rendu par Astro (github-slugger : minuscules, accents conservés, espaces → tirets). */
 export const ancreDeTitre = (titre) =>
   String(titre)

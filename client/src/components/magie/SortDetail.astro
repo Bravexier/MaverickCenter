@@ -16,7 +16,6 @@ import Texte from './Texte.astro';
 // Les cartes des golems et des non-morts suivent le NPM choisi au curseur de la liste (décision R130 : « adapter le monstre invoqué en fonction de ses NPM de la
 // même façon que la fiche des monstres est adaptable par l'échelle de puissance ») : `data-npm` sur chaque carte de la page qui change avec lui
 // (CarteInvoquee.astro), posé par le script de SortsInteractifs.astro ; tous les curseurs de la page vont ensemble (une bulle par créature et par page).
-// Le sort qui désigne un tableau d'invocation par son nom (« Amélioration cadavérique », décision R130) montre ses améliorations, selon l'invocation sacrifiée.
 // `prefixe` (« feu- ») rend uniques les identifiants HTML quand une page montre plusieurs magies (TableauNpm.astro).
 interface Props {
   sort: SortDb;
@@ -76,24 +75,6 @@ const ed = (colonne: string) => attributEd('sort', { id: sort.id }, colonne);
             {i.remarque.length > 0 && <Texte blocs={i.remarque} />}
           </details>
         )}
-        {i.tableau && i.tableau.lignes.length > 0 && (
-          <details class="regles-texte">
-            <summary>{i.tableau.titre}</summary>
-            <div class="sorts-wrap tableau tableau--defile">
-              <table class="annexe table-donnees table-donnees--serree">
-                <thead><tr><th scope="col">Amélioration</th><th scope="col">Effet</th></tr></thead>
-                <tbody>
-                  {i.tableau.lignes.map((a) => (
-                    <tr>
-                      <th scope="row">{a.nom}</th>
-                      <td>{a.effets.length > 1 ? <ul>{a.effets.map((e: string) => <li>{e}</li>)}</ul> : a.effets[0]}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </details>
-        )}
         <h6 class="texte-titre">Créatures invoquées ({i.creatures.length})</h6>
         {changeAvecLeNpm(i.creatures) && (
           <p class="invoque__npm" data-npm-page-bloc hidden>
@@ -136,34 +117,6 @@ const ed = (colonne: string) => attributEd('sort', { id: sort.id }, colonne);
         <Texte blocs={e.blocs} />
       </section>
     ))
-  }
-
-  {
-    sort.ameliorations && (
-      <section class="sort-detail__regles">
-        <h5>Règles propres : selon l’invocation sacrifiée</h5>
-        <p class="muted">Le tableau de l’invocation « {sort.ameliorations.invocation} » : l’amélioration dépend de l’invocation sacrifiée.</p>
-        <div class="sorts-wrap tableau tableau--defile">
-          <table class="annexe table-donnees table-donnees--serree">
-            <thead><tr><th scope="col">Invocation sacrifiée</th><th scope="col">Amélioration</th></tr></thead>
-            <tbody>
-              {sort.ameliorations.lignes.map((a) => (
-                <tr>
-                  <th scope="row">
-                    {a.creature ? (
-                      <span class="creature"><button type="button" class={classeDuBouton(a.creature.magies)} {...bulle(a.creature.id)}>{a.nom}</button></span>
-                    ) : (
-                      a.nom
-                    )}
-                  </th>
-                  <td>{a.effets.length > 1 ? <ul>{a.effets.map((e: string) => <li>{e}</li>)}</ul> : a.effets[0]}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-    )
   }
 
   {

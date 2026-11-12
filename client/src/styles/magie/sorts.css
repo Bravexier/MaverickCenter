@@ -8,6 +8,17 @@
 .npm__pips { display: inline-flex; gap: 0.2rem; margin-left: auto; }
 .npm__pips i { width: 0.6rem; height: 0.6rem; border-radius: 50%; border: 1px solid var(--mag-line); background: transparent; }
 .npm__pips i.on { background: var(--mag); border-color: var(--mag); }
+/* Sorts communs et spécialisations (R236) : un titre à la couleur de la magie par groupe. Le nom d'une spécialisation s'affiche tel que la base l'écrit (en
+   capitales) : aucun text-transform, comme les spécialités des classes (styles/classe/dons.css) */
+.sorts-communs, .specialisation { margin: 2rem 0 0; scroll-margin-top: 1rem; }
+.sorts-groupe__titre { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.1rem 0.6rem; margin: 0 0 0.6rem; padding-bottom: 0.4rem; font-size: 1.3rem; border-bottom: 3px solid var(--mag); }
+.sorts-groupe__surtitre { width: 100%; font-size: 0.65rem; font-weight: normal; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+.specialisation__nom { font-weight: 700; letter-spacing: 0.1em; line-height: 1.25; }
+.specialisation__texte { margin: 0 0 0.6rem; }
+.specialisation__remarque { margin: 0 0 0.6rem; padding: 0.4rem 0.8rem; border-left: 3px solid var(--mag-line); background: var(--mag-soft); border-radius: 0 var(--radius-xs) var(--radius-xs) 0; }
+.specialisation__remarque-titre { margin: 0 0 0.2rem; font-size: var(--fs-xs); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); }
+.specialisation__remarque .magie-prose > :last-child { margin-bottom: 0; }
+.sorts-communs > .npm:first-of-type, .specialisation > .npm:first-of-type { margin-top: 1rem; }
 .sort__main { cursor: pointer; }
 .sort__main:hover { background: var(--mag-soft); }
 .sort.is-selected > .sort__main { background: var(--mag-soft); box-shadow: inset 4px 0 0 var(--mag); }
