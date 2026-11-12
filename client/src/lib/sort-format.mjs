@@ -220,6 +220,20 @@ export function sortsParSpecialisation(sorts, specialisations) {
   return { communs, specialisations: parSpecialisation.filter((s) => s.total > 0) };
 }
 
+/**
+ * Ancre figée d'une spécialisation magique : le segment de son identifiant qui suit `#specialisation:` (`magies/magie-du-feu#specialisation:volcan` →
+ * `volcan`), jamais `nom` ni `nom_cle`, que le service recalcule au renommage (R236 (1) ; « Identifiants figés »). Le titre (`#specialisation-<ancre>`), les
+ * tableaux (`#npm-<ancre>-N`) et la navigation de la page la tirent tous d'ici.
+ * @param {string} id  `magie_specialisation.id`
+ * @returns {string}
+ */
+export function ancreDeSpecialisation(id) {
+  const marque = '#specialisation:';
+  const texte = String(id);
+  const i = texte.indexOf(marque);
+  return i < 0 ? texte : texte.slice(i + marque.length);
+}
+
 /** Id de la règle « CHOSES A SAVOIR » de la V10 (`regle_magie`, Sommaire AP1) : figé, c'est sa clé. */
 export const ID_CHOSES_A_SAVOIR = 'magies#regle:choses-a-savoir';
 

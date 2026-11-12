@@ -26,6 +26,13 @@
 @media (min-width: 72rem) {
   .specialisations { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; }
 }
+/* Zone élargie (R247 (3), R249 : page d'une magie et chaque onglet du Potentiel Illimité) : elle déborde de la colonne de texte vers la marge libre de droite,
+   jusqu'à 1rem du bord de la fenêtre ; les deux tableaux restent côte à côte. Le panneau latéral est à gauche, collé en haut de l'écran : on n'élargit pas de ce
+   côté, il serait recouvert. `main` mesure `--max` + 14rem (page.css) et est centré : la marge libre à droite est la moitié de ce que la fenêtre a en plus, moins
+   le remplissage de `main` (1rem) et 1rem de sûreté (la barre de défilement est comprise dans 100vw). Sous 72rem, ou à l'impression, rien ne déborde. */
+@media screen and (min-width: 72rem) {
+  .specialisations { --marge-libre: max(0px, (100vw - var(--max) - 14rem) / 2 - 2rem); margin-right: calc(-1 * var(--marge-libre)); }
+}
 .sort__main { cursor: pointer; }
 .sort__main:hover { background: var(--mag-soft); }
 .sort.is-selected > .sort__main { background: var(--mag-soft); box-shadow: inset 4px 0 0 var(--mag); }

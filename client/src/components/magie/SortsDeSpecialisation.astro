@@ -1,6 +1,7 @@
 ---
 import { attributEd } from '../../lib/edition-modele.mjs';
 import type { Magies, MagieDb, SortDb } from '../../lib/magies';
+import { ancreDeSpecialisation } from '../../lib/sort-format.mjs';
 import Info from './Info.astro';
 import TableauNpm from './TableauNpm.astro';
 import Texte from './Texte.astro';
@@ -22,7 +23,9 @@ interface Props {
 }
 const { specialisation, groupes, magies, prefixe = '', titre: Titre = 'h3', info = null } = Astro.props;
 
-const id = `specialisation-${prefixe}${specialisation.cle}`;
+// ancre figée : le segment de l'identifiant (lib/sort-format.mjs#ancreDeSpecialisation), jamais le nom ni `nom_cle`, que le renommage du site de dev change
+const ancre = ancreDeSpecialisation(specialisation.id);
+const id = `specialisation-${prefixe}${ancre}`;
 const TitreDesTableaux = Titre === 'h3' ? 'h4' : 'h5';
 const ed = (colonne: string) => attributEd('magie_specialisation', { id: specialisation.id }, colonne);
 ---
@@ -42,7 +45,7 @@ const ed = (colonne: string) => attributEd('magie_specialisation', { id: special
   </div>
   {
     groupes.map((g) => (
-      <TableauNpm niveau={g.niveau} sorts={g.sorts} magies={magies} prefixe={prefixe} prefixeNpm={`${prefixe}${specialisation.cle}-`} titre={TitreDesTableaux} />
+      <TableauNpm niveau={g.niveau} sorts={g.sorts} magies={magies} prefixe={prefixe} prefixeNpm={`${prefixe}${ancre}-`} titre={TitreDesTableaux} />
     ))
   }
 </section>

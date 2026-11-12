@@ -1,5 +1,5 @@
 ---
-import { nombre, sortsParSpecialisation } from '../../lib/sort-format.mjs';
+import { ancreDeSpecialisation, nombre, sortsParSpecialisation } from '../../lib/sort-format.mjs';
 import { classeDeMagie, cssDesFamilles } from '../../lib/palette-css.mjs';
 import { classeDeLaPageDuSite } from '../../lib/couleur-de-la-page.mjs';
 import magieBaseCss from '../../styles/magie/base.css?raw';
@@ -167,7 +167,7 @@ const panneau = [...magies.magies.values()]
         )}
         {specialisations.length > 0 && (
           <span class="magie-nav__npm" role="group" aria-label="Spécialisations">
-            {specialisations.map((s) => <a href={`#specialisation-${s.specialisation.cle}`}>{s.specialisation.nom}</a>)}
+            {specialisations.map((s) => <a href={`#specialisation-${ancreDeSpecialisation(s.specialisation.id)}`}>{s.specialisation.nom}</a>)}
           </span>
         )}
       </nav>

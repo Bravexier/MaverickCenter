@@ -13,7 +13,7 @@ import { chargerMagies } from '../src/lib/magies-db.mjs';
 import { classeDeMagie, cssDeLaPalette } from '../src/lib/palette-css.mjs';
 import { ENCOMBREMENT, liaisonsEntreMagies, POINTES, segmentCoupe } from '../src/lib/magie-fleches.mjs';
 import { npmMaxDuPotentiel, POTENTIEL_ILLIMITE } from '../src/lib/potentiel-illimite.mjs';
-import { phrasesDesSpecialisations, sortsParSpecialisation } from '../src/lib/sort-format.mjs';
+import { ancreDeSpecialisation, phrasesDesSpecialisations, sortsParSpecialisation } from '../src/lib/sort-format.mjs';
 import { sansBonus } from '../src/lib/sort-maitrise.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
 import { tuilesDeCapacites } from './aide-bestiaire.mjs';
@@ -469,16 +469,16 @@ test('pages de magie : « Sorts communs » puis les deux spécialisations, chacu
     const iColonnes = sorts.indexOf('<div class="specialisations">');
     assert.ok(iColonnes > iCommuns + commun.length - 1, `${slug} : les deux colonnes après le tableau commun`);
     const colonnes = contenu(sorts, iColonnes, 'div');
-    assert.deepEqual([...colonnes.matchAll(/<section class="specialisation" id="specialisation-([^"]+)"/g)].map((m) => m[1]), specialisations.map((x) => x.specialisation.cle), `${slug} : une colonne par spécialisation, dans l'ordre`);
+    assert.deepEqual([...colonnes.matchAll(/<section class="specialisation" id="specialisation-([^"]+)"/g)].map((m) => m[1]), specialisations.map((x) => ancreDeSpecialisation(x.specialisation.id)), `${slug} : une colonne par spécialisation, dans l'ordre`);
     assert.ok(!commun.includes('class="specialisation"'), `${slug} : aucune spécialisation dans le tableau commun`);
     let depuis = iColonnes;
     for (const { specialisation: sp, groupes } of specialisations) {
-      const debut = sorts.indexOf(`<section class="specialisation" id="specialisation-${sp.cle}"`, depuis);
+      const debut = sorts.indexOf(`<section class="specialisation" id="specialisation-${ancreDeSpecialisation(sp.id)}"`, depuis);
       assert.ok(debut >= depuis, `${slug} : ${sp.id}, après la précédente`);
       const section = contenu(sorts, debut, 'section');
       depuis = debut + section.length;
       // le nom tel que la base l'écrit (jamais mis en capitales par la feuille de style), modifiable
-      assert.ok(section.includes(`<span class="specialisation__nom" id="specialisation-${sp.cle}-nom" data-ed="${echapper(JSON.stringify(['magie_specialisation', { id: sp.id }, 'nom']))}">${echapper(sp.nom)}</span>`), `${slug} : nom de ${sp.id} tel quel`);
+      assert.ok(section.includes(`<span class="specialisation__nom" id="specialisation-${ancreDeSpecialisation(sp.id)}-nom" data-ed="${echapper(JSON.stringify(['magie_specialisation', { id: sp.id }, 'nom']))}">${echapper(sp.nom)}</span>`), `${slug} : nom de ${sp.id} tel quel`);
       // R245 (1) : l'infobulle des phrases de « CHOSES A SAVOIR » est sur le titre de chaque spécialisation, après le nom, avec ces phrases et elles seules ; sinon aucune
       const titre = contenu(section, section.indexOf('<h3 class="sorts-groupe__titre specialisation__titre"'), 'h3');
       assert.ok(titre.indexOf('class="specialisation__nom"') < titre.indexOf('class="bulle-zone"') || !phrases, `${slug} : ${sp.id}, infobulle après le nom`);
@@ -496,7 +496,7 @@ test('pages de magie : « Sorts communs » puis les deux spécialisations, chacu
         assert.equal(/hidden/.test(cadre), sp[colonne].length === 0, `${slug} : ${sp.id}, cadre de ${colonne} caché si et seulement si vide`);
       }
       // ses tableaux, un par NPM, avec les sorts que la base lui rattache ; les identifiants du tableau portent la spécialisation (le NPM 3 existe dans les deux)
-      assert.deepEqual([...section.matchAll(/<section class="npm" id="npm-([^"]+)"/g)].map((m) => m[1]), groupes.map((g) => `${sp.cle}-${g.niveau}`), `${slug} : tableaux de ${sp.id}`);
+      assert.deepEqual([...section.matchAll(/<section class="npm" id="npm-([^"]+)"/g)].map((m) => m[1]), groupes.map((g) => `${ancreDeSpecialisation(sp.id)}-${g.niveau}`), `${slug} : tableaux de ${sp.id}`);
       assert.deepEqual(lignesDe(section), groupes.flatMap((g) => g.sorts.map((s) => s.slug)), `${slug} : sorts de ${sp.id}`);
     }
     // aucun identifiant de tableau ni de spécialisation en double
@@ -504,7 +504,7 @@ test('pages de magie : « Sorts communs » puis les deux spécialisations, chacu
     assert.equal(new Set(idsDuTableau).size, idsDuTableau.length, `${slug} : identifiants uniques`);
     // la navigation de la page mène aux tableaux communs et aux spécialisations
     for (const g of communs) assert.ok(html.includes(`href="#npm-${g.niveau}"`), `${slug} : NPM ${g.niveau}`);
-    for (const { specialisation: sp } of specialisations) assert.ok(html.includes(`href="#specialisation-${sp.cle}"`), `${slug} : ${sp.id}`);
+    for (const { specialisation: sp } of specialisations) assert.ok(html.includes(`href="#specialisation-${ancreDeSpecialisation(sp.id)}"`), `${slug} : ${sp.id}`);
   }
   // le nom ne passe pas en capitales par la feuille de style (même convention que les spécialités des classes) ; tout est écrit dans la base
   const css = readFileSync(new URL('../src/styles/magie/sorts.css', import.meta.url), 'utf8');
@@ -512,6 +512,19 @@ test('pages de magie : « Sorts communs » puis les deux spécialisations, chacu
   // R245 (2) : une colonne sur écran étroit (elles s'empilent), deux colonnes à partir d'une largeur ; chacune peut rétrécir (minmax(0, 1fr)), sans défilement de la page
   assert.match(css.match(/\.specialisations \{[^}]*\}/)?.[0] ?? '', /grid-template-columns: minmax\(0, 1fr\);/);
   assert.match(css.match(/@media \(min-width: [\d.]+rem\) \{\s*\.specialisations \{[^}]*\}/)?.[0] ?? '', /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+  // R247 (3) : la zone des deux colonnes s'élargit vers la marge libre de droite (jamais à gauche : le panneau latéral y est), seulement à l'écran à partir
+  // de la même largeur que les deux colonnes ; sous cette largeur, aucun débordement
+  const largeur = css.match(/@media \(min-width: ([\d.]+rem)\) \{\s*\.specialisations \{/)?.[1];
+  assert.ok(largeur, 'seuil des deux colonnes');
+  const elargie = css.match(new RegExp(`@media screen and \\(min-width: ${largeur.replace('.', '\\.')}\\) \\{\\s*\\.specialisations \\{([^}]*)\\}`))?.[1] ?? '';
+  assert.match(elargie, /margin-right: calc\(-1 \* var\(--marge-libre\)\)/, 'la zone déborde vers la marge de droite');
+  assert.match(elargie, /--marge-libre: max\(0px, /, 'jamais de marge négative en trop sur une fenêtre étroite');
+  assert.doesNotMatch(elargie, /margin-left|margin:|transform|position/, 'rien à gauche : le panneau latéral ne doit pas être recouvert');
+  assert.doesNotMatch(css.match(/\.specialisations \{[^}]*\}/)?.[0] ?? '', /margin-right/, 'la colonne unique ne déborde pas');
+  // le panneau latéral reste dans sa colonne, collé en haut, à gauche de la page
+  const pageCss = readFileSync(new URL('../src/styles/magie/page.css', import.meta.url), 'utf8');
+  assert.match(pageCss.match(/\.magie-cadre \{[^}]*\}/)?.[0] ?? '', /grid-template-columns: minmax\(10rem, 12rem\) minmax\(0, 1fr\)/);
+  assert.match(pageCss.match(/\.magies-panneau \{[^}]*\}/)?.[0] ?? '', /position: sticky/);
   // le Potentiel Illimité n'a pas de spécialisation à lui (R236 (1))
   assert.equal(toutes.get(POTENTIEL_ILLIMITE).specialisations.length, 0);
 });
@@ -602,8 +615,8 @@ test('Potentiel Illimité : chaque onglet reprend, du NPM 1 à son plafond (R188
     const { communs, specialisations } = sortsParSpecialisation(attendus, magie.specialisations);
     // les tableaux : ceux du tableau commun (NPM 1 et 2), puis ceux de chaque spécialisation qui garde des sorts sous le plafond, aucun au-dessus
     assert.deepEqual([...panneau.html.matchAll(/<section class="npm" id="npm-([^"]+)"/g)].map((m) => m[1]),
-      [...communs.map((g) => `${cle}-${g.niveau}`), ...specialisations.flatMap((x) => x.groupes.map((g) => `${cle}-${x.specialisation.cle}-${g.niveau}`))], `${cle} : NPM ${plafond} au plus`);
-    assert.deepEqual([...panneau.html.matchAll(/<section class="specialisation" id="specialisation-([^"]+)"/g)].map((m) => m[1]), specialisations.map((x) => `${cle}-${x.specialisation.cle}`), `${cle} : ses spécialisations`);
+      [...communs.map((g) => `${cle}-${g.niveau}`), ...specialisations.flatMap((x) => x.groupes.map((g) => `${cle}-${ancreDeSpecialisation(x.specialisation.id)}-${g.niveau}`))], `${cle} : NPM ${plafond} au plus`);
+    assert.deepEqual([...panneau.html.matchAll(/<section class="specialisation" id="specialisation-([^"]+)"/g)].map((m) => m[1]), specialisations.map((x) => `${cle}-${ancreDeSpecialisation(x.specialisation.id)}`), `${cle} : ses spécialisations`);
     assert.equal(panneau.html.includes(`id="sorts-${cle}-communs"`), specialisations.length > 0 && communs.length > 0, `${cle} : « Sorts communs »`);
     assert.match(panneau.html, /<h4 class="npm__titre">|<h5 class="npm__titre">/, `${cle} : titres des tableaux sous le titre de la magie`);
     // même gabarit : à l'identifiant près (préfixé du nom court de la magie) et au numéro des infobulles, chaque ligne est celle de la page de la magie
@@ -617,7 +630,32 @@ test('Potentiel Illimité : chaque onglet reprend, du NPM 1 à son plafond (R188
   }
   assert.equal(total, [...toutes.values()].filter((x) => x.id !== POTENTIEL_ILLIMITE).flatMap((x) => x.sorts.filter((s) => s.niveau <= plafond)).length);
   assert.ok(total > 0);
-  assert.ok(!potentiel.includes('class="info"'), 'pas de règle du NPM 5 sur cette page');
+  // R249 (R245, R247) : chaque onglet se présente comme la page d'une magie : les deux spécialisations côte à côte dans `div.specialisations` (la zone
+  // élargie de sorts.css, après « Sorts communs »), l'infobulle des phrases de « CHOSES A SAVOIR » sur le titre de chacune, description et remarque avant le
+  // premier tableau ; la règle du niveau 5 n'apparaît qu'avec un tableau de niveau 5 (le plafond de la base peut n'en avoir aucun)
+  const reglesDeLaBase = chargerMagies(ouvrirBase()).regles;
+  const phrases = phrasesDesSpecialisations(reglesDeLaBase);
+  const reglesNiveau5 = reglesDeLaBase.filter((r) => r.niveau_sort === 5).length;
+  for (const panneau of panneauxDuPotentiel()) {
+    const cle = panneau.id.slice('sorts-'.length);
+    const sections = [...panneau.html.matchAll(/<section class="specialisation" id="specialisation-[^"]+"/g)];
+    const iColonnes = panneau.html.indexOf('<div class="specialisations">');
+    assert.equal(iColonnes >= 0, sections.length > 0, `${cle} : un conteneur de colonnes si et seulement s'il y a des spécialisations`);
+    if (sections.length === 0) continue;
+    const colonnes = contenu(panneau.html, iColonnes, 'div');
+    assert.equal([...colonnes.matchAll(/<section class="specialisation" id=/g)].length, sections.length, `${cle} : toutes les spécialisations dans le conteneur`);
+    assert.ok(iColonnes > panneau.html.indexOf('<section class="npm"') || !panneau.html.includes('class="sorts-communs"'), `${cle} : après les sorts communs`);
+    for (const debut of sections.map((x) => x.index)) {
+      const section = contenu(panneau.html, debut, 'section');
+      const titre = contenu(section, section.indexOf('<h4 class="sorts-groupe__titre specialisation__titre"'), 'h4');
+      assert.equal([...titre.matchAll(/class="info"/g)].length, phrases ? 1 : 0, `${cle} : une infobulle sur le titre de chaque spécialisation`);
+      if (phrases) assert.ok(titre.indexOf('class="specialisation__nom"') < titre.indexOf('class="bulle-zone"'), `${cle} : infobulle après le nom`);
+      assert.ok(section.indexOf('data-ed-rendu="blocs"') < section.indexOf('<section class="npm"'), `${cle} : description avant le premier tableau`);
+    }
+    // aucune autre infobulle que celles des titres, sauf la règle du niveau 5 sur un tableau de niveau 5 (aucun sous le plafond actuel de la base)
+    const tableauxNiveau5 = [...panneau.html.matchAll(/<section class="npm" id="npm-(?:[a-z0-9-]+-)?5"/g)].length;
+    assert.equal([...panneau.html.matchAll(/class="info"/g)].length, (phrases ? sections.length : 0) + tableauxNiveau5 * reglesNiveau5, `${cle} : infobulles des titres, et du niveau 5 s'il y a un tel tableau`);
+  }
   assert.match(potentiel, /<tbody class="sort" id="sort-feu-boule-de-feu"[ >]/, 'lien profond vers un sort : #sort-<magie>-<sort>');
 });
 

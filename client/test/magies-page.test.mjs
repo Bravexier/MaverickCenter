@@ -15,6 +15,7 @@ import { DEGATS_PHYSIQUES } from '../src/lib/fiche-moteur.mjs';
 import { entriesAvecRelationsDeLaBase, relationMatrix } from '../src/lib/magie-relations.mjs';
 import { splitFrontmatter } from '../src/lib/wikilinks.mjs';
 import {
+  ancreDeSpecialisation,
   ancreDeTitre,
   blocsDeTexte,
   coutDeSort,
@@ -244,6 +245,55 @@ test('sortsParSpecialisation : les sorts communs par NPM, puis chaque spécialis
   assert.deepEqual(noms(sortsParSpecialisation(sorts.filter((x) => !x.specialisationId), []).communs), [[1, ['a', 'b']], [2, ['c']]]);
   assert.deepEqual(sortsParSpecialisation(sorts.filter((x) => x.niveau <= 2), [{ id: 'sp1' }, { id: 'sp2' }]).specialisations, []);
   assert.deepEqual(sortsParSpecialisation([], []), { communs: [], specialisations: [] });
+});
+
+// Ancre figée d'une spécialisation (« Identifiants figés ») : le segment de l'id après `#specialisation:`, jamais `nom` ni `nom_cle`, que le service recalcule au renommage.
+test('ancreDeSpecialisation : le segment de l’identifiant après « #specialisation: » ; elle ne change ni avec le nom ni avec nom_cle', () => {
+  assert.equal(ancreDeSpecialisation('magies/magie-du-feu#specialisation:volcan'), 'volcan');
+  assert.equal(ancreDeSpecialisation('magies/magie-de-la-foudre#specialisation:magnetisme'), 'magnetisme');
+  // une id sans la marque est rendue telle quelle (jamais vide)
+  assert.equal(ancreDeSpecialisation('autre'), 'autre');
+  // sur la base courante : une ancre non vide par spécialisation, unique dans sa magie, égale au segment de l'id (le CHECK du schéma impose le préfixe)
+  const parMagie = new Map();
+  for (const magie of m.magies.values()) {
+    for (const sp of magie.specialisations) {
+      assert.ok(sp.id.startsWith(`${magie.id}#specialisation:`), sp.id);
+      assert.equal(ancreDeSpecialisation(sp.id), sp.id.slice(`${magie.id}#specialisation:`.length));
+      assert.ok(ancreDeSpecialisation(sp.id).length > 0, sp.id);
+      parMagie.set(magie.id, [...(parMagie.get(magie.id) ?? []), ancreDeSpecialisation(sp.id)]);
+    }
+  }
+  for (const [id, ancres] of parMagie) assert.equal(new Set(ancres).size, ancres.length, `${id} : ancres uniques`);
+  assert.ok(parMagie.size > 0);
+});
+
+test('ancre d’une spécialisation : un renommage (nom et nom_cle recalculés) ne la change pas, et les composants la tirent de l’id', () => {
+  const avant = new Map([...m.magies.values()].flatMap((x) => x.specialisations.map((sp) => [sp.id, ancreDeSpecialisation(sp.id)])));
+  const dossier = dossierTemporaire('magies');
+  try {
+    const copie = join(dossier, 'renommage.db');
+    copyFileSync(cheminBase({ sansExemples: false }), copie);
+    const w = new DatabaseSync(copie);
+    // ce que fait le service au renommage (serveur-edition-magies.test.mjs) : le nom et sa clé changent, jamais l'id
+    w.exec("UPDATE magie_specialisation SET nom = 'NOM RENOMME ' || id, nom_cle = 'renomme-' || ordre");
+    w.close();
+    const apres = chargerMagies(new DatabaseSync(copie, { readOnly: true }));
+    const specs = [...apres.magies.values()].flatMap((x) => x.specialisations);
+    assert.equal(specs.length, avant.size);
+    for (const sp of specs) {
+      assert.ok(sp.cle.startsWith('renomme-'), 'la clé a bien changé');
+      assert.ok(sp.nom.startsWith('NOM RENOMME'), 'le nom a bien changé');
+      assert.equal(ancreDeSpecialisation(sp.id), avant.get(sp.id), `${sp.id} : même ancre après renommage`);
+    }
+  } finally {
+    rmSync(dossier, { recursive: true, force: true });
+  }
+  // aucun composant ne bâtit l'ancre sur la clé ni sur le nom
+  for (const f of ['SortsDeSpecialisation', 'MagiePage']) {
+    const source = readFileSync(new URL(`../src/components/magie/${f}.astro`, import.meta.url), 'utf8');
+    assert.match(source, /ancreDeSpecialisation\(/, `${f} : ancre par ancreDeSpecialisation`);
+    assert.doesNotMatch(source, /specialisation\.cle|\bsp\.cle|\bs\.specialisation\.nom_cle/, `${f} : jamais la clé du nom`);
+  }
 });
 
 // R245 (1) (MAJ-A5, MAJ-A6) : de « CHOSES A SAVOIR », seules les puces sur la Super-magie et sur le choix des bi-magie, découpées sans être réécrites.

@@ -2,6 +2,7 @@
 import potentielCss from '../../styles/magie/potentiel.css?raw';
 import { classeDeMagie } from '../../lib/palette-css.mjs';
 import { pageHref, type Magies, type MagieDb, type SortDb } from '../../lib/magies';
+import { phrasesDesSpecialisations } from '../../lib/sort-format.mjs';
 import type { WikiEntry } from '../../lib/wiki';
 import Onglets from '../Onglets.astro';
 import SortsDeSpecialisation from './SortsDeSpecialisation.astro';
@@ -29,6 +30,9 @@ const total = autres.reduce((n, a) => n + a.total, 0);
 const titreDe = (m: MagieDb) => entries.find((e) => e.id === m.id)?.data.title ?? m.nom;
 // la couleur d'un onglet et de son panneau : la classe de sa magie (lib/palette-css.mjs ; styles/magie/potentiel.css, base.css)
 const classe = (m: MagieDb) => classeDeMagie(m.nom);
+// R249 : chaque onglet se présente comme la page d'une magie (R245, R247) : les deux spécialisations côte à côte (`div.specialisations`, zone élargie) et la
+// même infobulle sur le titre de chacune (lib/sort-format.mjs#phrasesDesSpecialisations)
+const infoDesSpecialisations = phrasesDesSpecialisations(magies.regles);
 ---
 
 <Onglets />
@@ -64,7 +68,15 @@ const classe = (m: MagieDb) => classeDeMagie(m.nom);
           ) : (
             communs.map((g) => <TableauNpm niveau={g.niveau} sorts={g.sorts} magies={magies} prefixe={`${magie.cle}-`} titre="h4" />)
           )}
-          {specialisations.map((s) => <SortsDeSpecialisation specialisation={s.specialisation} groupes={s.groupes} magies={magies} prefixe={`${magie.cle}-`} titre="h4" />)}
+          {
+            specialisations.length > 0 && (
+              <div class="specialisations">
+                {specialisations.map((s) => (
+                  <SortsDeSpecialisation specialisation={s.specialisation} groupes={s.groupes} magies={magies} prefixe={`${magie.cle}-`} titre="h4" info={infoDesSpecialisations} />
+                ))}
+              </div>
+            )
+          }
         </section>
       ))
     }
