@@ -31,6 +31,7 @@ import {
 } from './palette-css.mjs';
 import { normalize } from './text.mjs';
 import { valeursDAvant } from './historique-site.mjs';
+import { nomsDAvantDesMigrations } from './noms-d-avant-des-migrations.mjs';
 import { chargerVocabulaire } from './mots-cles-db.mjs';
 import { nomDuProtege } from './mots-cles-proteges.mjs';
 import { motsClesDesPages } from './pages-db.mjs';
@@ -399,7 +400,13 @@ function reglesDeLaBase(db) {
   const alternatives = parCle(lignes(db, 'SELECT capacite_id, autre_id FROM v_capacite_exclusive'), 'capacite_id', (r) => r.autre_id);
   // les noms d'avant un renommage sur le site de dev (lib/historique-site.mjs#valeursDAvant), des dons et des sorts, par id (clé primaire `id` des deux
   // tables) ; `nomsDAvant` rend { noms_d_avant } sans le nom actuel, ou rien
-  const parId = (table) => new Map([...valeursDAvant(db, table, 'nom')].map(([cle, noms]) => [JSON.parse(cle).id, noms]));
+  // plus ceux que des migrations ont changés en gardant l'identifiant (registres de data/migrations : R237 (4) et (11), lib/noms-d-avant-des-migrations.mjs)
+  const deMigrations = nomsDAvantDesMigrations();
+  const parId = (table) => {
+    const noms = new Map([...valeursDAvant(db, table, 'nom')].map(([cle, n]) => [JSON.parse(cle).id, n]));
+    for (const [id, anciens] of deMigrations.get(table) ?? []) noms.set(id, [...new Set([...(noms.get(id) ?? []), ...anciens])]);
+    return noms;
+  };
   const nomsDAvantDesDons = parId('capacite');
   const nomsDAvantDesSorts = parId('sort');
   const nomsDAvant = (noms, x) => {
