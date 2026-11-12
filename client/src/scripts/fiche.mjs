@@ -50,6 +50,7 @@ import {
   finDuModeHyperCent, modeHyperApres, modeHyperValable, SANTE_PAR_CHAKRA_MANQUANT, semaineDuModeHyperApres, tourDeModeHyper,
   actionsDeLaFiche, actionsUsageSansObjetRetire, actionsUsageValables, consommerLAction, finDeCombat, finDeCombatMontree, passifsDeLaFiche, REMONTEES, remonterLAction,
   donsObtenusApresChoix, donsObtenusValables, donsVariables, infobulleDEntree, refusDuDon, texteDuDonVariable,
+  specialisationsAChoisir, specialisationsApresChoix, specialisationsValables,
 } from '../lib/fiche-moteur.mjs';
 import { creatureAuNpm, FPVSIA, vautAuNpm } from '../lib/creature-npm.mjs';
 import { listeDeChoix } from './liste-choix.mjs';
@@ -875,7 +876,7 @@ function construireSorts() {
   // « sorts jusqu'au NPM » : le NPM des sorts (décision R188 : plafonné pour le Potentiel Illimité) ; « × puissance » reste celle du niveau (R188 (2))
   const max = npmDesSorts(regles, fiche);
   $('emplacements-detail').textContent = emplacements.total
-    ? `${emplacements.total} emplacement${emplacements.total > 1 ? 's' : ''} (${emplacements.conditions} condition${emplacements.conditions > 1 ? 's' : ''} × puissance ${emplacements.puissance}), sorts jusqu’au NPM ${max}, ${nm.plafond} NM au plus par sort (dont ${Math.min(nm.plafond, nm.maxParSort)} de niveau).`
+    ? `${emplacements.total} emplacement${emplacements.total > 1 ? 's' : ''} (${emplacements.conditions} condition${emplacements.conditions > 1 ? 's' : ''}${emplacements.superMagie ? ', dont la Super-magie' : ''} × puissance ${emplacements.puissance}), sorts jusqu’au NPM ${max}, ${nm.plafond} NM au plus par sort (dont ${Math.min(nm.plafond, nm.maxParSort)} de niveau).`
     : 'Pas encore d’emplacement de sort : choisissez une magie.';
   etatBudget($('budget-sorts'), (fiche.sorts ?? []).length, emplacements.total, 'Sorts', false);
   // le décompte des NM (décision R118) : ceux des sorts sans leurs livres, sur les NM gagnés plus ceux du MJ, notés juste à côté (la limite affichée est
@@ -891,7 +892,8 @@ function construireSorts() {
     + `plus ceux du MJ, notés à côté pour toute la fiche${nm.mj ? ` (${nm.disponibles} + ${nm.mj} = ${nm.limite})` : ''} ; ${nm.plafond} NM au plus sur un sort`);
 
   const lignes = lignesDeSorts(regles, fiche);
-  const cle = JSON.stringify([lignes.length, (fiche.sorts ?? []).map((x) => x.sort_id), fiche.magie_innee_id, fiche.magie_acquise_id, max]);
+  // (les spécialisations choisies changent les sorts proposés : décision R236)
+  const cle = JSON.stringify([lignes.length, (fiche.sorts ?? []).map((x) => x.sort_id), fiche.magie_innee_id, fiche.magie_acquise_id, max, specialisationsValables(regles, fiche)]);
   reconstruire($('sorts'), cle, () => [
     el('thead', {}, el('tr', {}, el('th', { class: 'nombre' }, '#'), el('th', {}, 'Sort'),
       el('th', { title: 'Instant Cast (IC), imparable, inesquivable, au NM du sort ; en grisé : pas encore atteint' }, 'IC'),
@@ -997,7 +999,11 @@ function construireSorts() {
           // puis réduit (décision R129)
           const calcule = m?.cout.calcule;
           const parUnite = m?.cout.fois;
-          const ecrit = parUnite && parUnite.n > 1
+          // (un coût qui monte à chaque unité, décision R248 : « 4 + 5 + 6 », le premier au coût écrit, chacun des suivants plus cher du pas)
+          const suite = (u) => Array.from({ length: u.n }, (_, i) => u.base + u.progressif.pas * i).join(' + ');
+          const ecrit = parUnite && parUnite.n > 1 && parUnite.progressif
+            ? `Coût écrit : ${suite(parUnite)} (${parUnite.unite}) = ${parUnite.progressif.total}${m.cout.detail.length ? ', réduit ensuite' : ''}`
+            : parUnite && parUnite.n > 1
             ? `Coût écrit : ${parUnite.base} × ${parUnite.n} (${parUnite.unite}) = ${parUnite.base * parUnite.n}${m.cout.detail.length ? ', réduit ensuite' : ''}${parUnite.economeAuNpm ? ` ; Économe : le NPM de la créature (${parUnite.n})` : ''}`
             : `Coût écrit : ${auNm(l.sort?.cout, 'cout')}`;
           poserValeur(cout, m ? (m.cout.corruption ? `${m.cout.texte} (ou ${m.cout.corruption.valeur} corruption)` : m.cout.texte) : '',
@@ -1976,6 +1982,32 @@ function construireChoixSpecialites() {
     })));
     cadre.dataset.choixCle = cleDeChoix.specialite(c.rang);
     synchro(() => cadre.toggleAttribute('data-a-choisir', aChoisir('specialite', c.rang)));
+    return cadre;
+  }));
+}
+
+/**
+ * La spécialisation de chaque magie d'un bi-magie (décision R236 (3)), dès que le NPM de ses sorts atteint le seuil des spécialisations : les mêmes
+ * pastilles que la spécialité d'une classe, une par spécialisation de la magie (la couleur de la magie), surlignées tant que la magie n'a pas son choix.
+ * Un clic choisit, un second retire ; modifiable à tout moment (R236 (6), comme la spécialité de classe) : les sorts de l'ancienne passent en rouge dans
+ * la liste des sorts, à remplacer (R27). Le mono-magie n'a rien à choisir (R236 (2)) : le bloc reste caché.
+ */
+function construireChoixSpecialisationsMagie() {
+  const choix = specialisationsAChoisir(regles, fiche);
+  const bloc = $('choix-specialisations-magie');
+  bloc.hidden = choix.length === 0;
+  reconstruire(bloc, JSON.stringify(choix.map((c) => [c.magie.id, c.specialisations.map((s) => s.id)])), () => choix.map((c) => {
+    const cle = cleDeChoix.specialisationMagie(c.magie.id);
+    const cadre = groupe(`Spécialisation magique · ${c.magie.nom}`, c.magie, c.specialisations.map((s) => pastille({
+      texte: s.nom, teinte: c.magie,
+      choisie: () => specialisationsValables(regles, fiche).some((x) => x.magie_id === c.magie.id && x.specialisation_id === s.id),
+      surClic: () => {
+        fiche.specialisations_magie = specialisationsApresChoix(regles, fiche, c.magie.id, s.id);
+        changer();
+      },
+    })));
+    cadre.dataset.choixCle = cle;
+    synchro(() => cadre.toggleAttribute('data-a-choisir', (calcul?.attente ?? []).some((x) => x.cle === cle)));
     return cadre;
   }));
 }
@@ -3904,6 +3936,7 @@ function rafraichir() {
   construireResistances();
   construireClasses();
   construireChoixSpecialites();
+  construireChoixSpecialisationsMagie();
   construireCaracteristiques();
   construireMaitrises();
   construireSorts();
@@ -3968,6 +4001,8 @@ function aEnvoyer() {
   delete f.maitrises_armes;
   // les dons obtenus des dons « Variable » du Mage Bleu (décision R181) : un par don, une entrée une seule fois ; les choix gardés sans effet restent
   f.dons_obtenus = donsObtenusValables(regles, f);
+  // la spécialisation de chaque magie (décision R236) : une par magie de la fiche, d'une spécialisation de cette magie
+  f.specialisations_magie = specialisationsValables(regles, f);
   // solidité du moment de chaque arme bornée à son maximum (décision R74 : à son maximum ou au-delà, rien d'enregistré) ; gains de niveau jamais négatifs (R73)
   f.armes = armesValables(regles, f);
   // de même celle des parties de l'armure (décision R95 : une ligne par partie abîmée, rien sans armure)

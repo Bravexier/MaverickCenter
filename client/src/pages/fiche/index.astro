@@ -383,6 +383,9 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
             <div class="parametres__pile">
               {/* la spécialité de chaque classe qui y a droit, aussi choisie ici (demande du propriétaire : « le doubler dans le menu de choix ») */}
               <div id="choix-specialites" class="choix-specialites" hidden></div>
+              {/* la spécialisation de chaque magie d'un bi-magie (décision R236 (3)), dès que le NPM des sorts atteint le seuil ; remplie par
+                  src/scripts/fiche.mjs#construireChoixSpecialisationsMagie */}
+              <div id="choix-specialisations-magie" class="choix-specialites" hidden></div>
               <div><h4 class="fiche-sous-titre">Dons de classe à choisir</h4><div id="dons" class="fiche-etape__dons"></div></div>
               {/* l'entrée qu'obtient chaque don « Variable » du Mage Bleu (décision R181) : une entrée du tableau du bas de la classe, de la magie innée (ou
                   acquise pour Secondaire), chacune une seule fois ; remplis par src/scripts/fiche.mjs#construireDonsObtenus */}

@@ -217,7 +217,7 @@ test('/fiche/ : chaque champ dans son bloc (demandes du propriétaire)', options
   assert.ok(progression.indexOf('id="progression-aide"') < progression.indexOf('id="progression"'), 'l’aide au-dessus des deux champs');
   assert.equal([...html.matchAll(/data-champ="gains_(sante|chakra)"/g)].length, 2, 'un champ chacun, pas un par niveau');
   const choix = bloc('choix');
-  for (const id of ['choix-tete', 'choix-attente', 'choix-aller', 'choix-reduire', 'metier-bloc', 'bloc-carac-magie', 'choix-specialites', 'dons']) {
+  for (const id of ['choix-tete', 'choix-attente', 'choix-aller', 'choix-reduire', 'metier-bloc', 'bloc-carac-magie', 'choix-specialites', 'choix-specialisations-magie', 'dons']) {
     assert.match(choix, new RegExp(`id="${id}"`), `choix : ${id}`);
   }
   // l'inventaire, juste sous les accessoires (zone III) : le sac puis la bourse
