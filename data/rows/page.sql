@@ -18206,8 +18206,6 @@ Une plaque bloque qu''UN seul sort et disparaissent.
 
 ### Fulguration
 
-### Manteau de Volt
-
 ## Légende
 
 IC = Instant Cast  
@@ -18293,14 +18291,14 @@ Le lien gel touche la cible et lui bloque les mains pendant 1 tour, le tour suiv
 
 **Remarque du sort « Sublimation »** : Un état de gel est comme retirer "gel 1". Donc par extension, "gel 2" correspond à 2 états de gel, etc.
 
-**Note de la cellule « Effets secondaires » du sort « Gel profond »** : L''allié sera aussi dispensé de jet de survie pendant cet état.
-
-**Note de la cellule « Effets secondaires » du sort « Mur de glace »** : Invoque un mur.
-
 **Note de la cellule « Effets secondaires » du sort « Exécution froide »**
 
 La victime ne peut rien faire dans cet état, il faut à tout prix que le lanceur rate un jet de concentration ou bien qu''il soit interrompu.  
 Dans le cas d''un boss qui se fait enfermer, il peut lutter contre avec des jets d''athlétisme, concentration, vigueur, etc... le mj a le choix. Le lanceur devra faire un meilleur jet que la cible pour ne pas qu''il sorte du cercueil.
+
+**Note de la cellule « Effets secondaires » du sort « Gel profond »** : L''allié sera aussi dispensé de jet de survie pendant cet état.
+
+**Note de la cellule « Effets secondaires » du sort « Mur de glace »** : Invoque un mur.
 
 **Remarque du sort « Prisme protecteur »**
 
@@ -18551,12 +18549,12 @@ Attention un simple mur empêche de voir à travers ce dernier.
 - +2 Vitesse
 - 20% de chance de forcer un jet de vigueur/fermeté pour ne pas prendre l''altération d''état de l''élément lié niveau 1 à chaque attaque de l''invocation.
 
-**Note de la cellule « Effets secondaires » du sort « Prison d''os »** : La prison d''os est Invulnérable à l''estoc, Résistant à la taille mais vulnérable à la frappe.
-
 **Remarque du sort « Forge de ses morts »**
 
 Cette arme est considérée comme Spectrale.  
 Arme Spectrale = Peut toucher l''immatériel et ignore 50% des AP.
+
+**Note de la cellule « Effets secondaires » du sort « Prison d''os »** : La prison d''os est Invulnérable à l''estoc, Résistant à la taille mais vulnérable à la frappe.
 
 **Note de la cellule « Effets secondaires » du sort « Résurrection noire »** : Est considérée comme morte tant que la cible n''a pas bu 1 super fiole de soin par jour sur 1 mois. Ou alors qu''une résurrection est appliquée sur lui.
 
@@ -18642,11 +18640,15 @@ Les utilisateurs de la Terre sont des personnes qui ont des tailles et une muscu
 
 **Note de la cellule « Effets secondaires » du sort « Fer Raffiné »** : Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas être pétrifié au stade 1
 
+**Note de la cellule « Effets secondaires » du sort « Frappe racine »** : Demande un sol, un mur, un plafond ou toute autre surface où la racine peut sortir, sous l''eau ça marche mais pas dans le ciel.
+
 **Remarque du sort « Pétale-bouclier »**
 
 \*Met à 1 de santé et +20AP pendant 2 tours pour le bénéficiaire puis la protection disparait.
 
 Si au bout de 2 tours, la protection n''a pas protégée, elle disparait.
+
+**Note de la cellule « Effets secondaires » du sort « Terre Maudite »** : La Nécrose ne disparaît que quand le lanceur est hors combat ou mort.
 
 **Remarque du sort « Floraison carnivore »** : Prend 2 fois plus de dégâts des sorts de feu ou de sang.
 
@@ -18661,10 +18663,6 @@ Si elle fait plus, la protection est brisée et l''intégralité du coup est enc
 Les AP ne sont pas comptées quand les dégâts sont faits à la protection.
 
 **Note de la cellule « Effets secondaires » du sort « Sable changeant »** : Le Terrain sable divise par 2 le déplacement, empêche le sprint et fait perdre un tour si jamais on saute.
-
-**Note de la cellule « Effets secondaires » du sort « Frappe racine »** : Demande un sol, un mur, un plafond ou toute autre surface où la racine peut sortir, sous l''eau ça marche mais pas dans le ciel.
-
-**Note de la cellule « Effets secondaires » du sort « Terre Maudite »** : La Nécrose ne disparaît que quand le lanceur est hors combat ou mort.
 
 **Note de la cellule « Effets secondaires » du sort « Corps de Maverium »** : Corps de Maverium : Tous les dégâts reçus sont réduits à 0 et les effets négatifs sur les protections ne fonctionnent pas.
 
@@ -18805,6 +18803,8 @@ L''AM est pris en compte pour chaque projectile.
 
 \*Le coût augmente de 1 à chaque projectile envoyé sur l''action (le premier coute 4, le second coute 5, etc)
 
+**Note de la cellule « Effets secondaires » du sort « Rune arcane multiple »** : Ne se cumule avec "Rune Arcane"
+
 **Remarque du sort « Pâte de la trame »**
 
 \*
@@ -18816,8 +18816,6 @@ L''AM est pris en compte pour chaque projectile.
 **Note de la cellule « Effets secondaires » du sort « Laser de chakra »** : Peut prendre un tour de concentration pour donner un bonus de +10 dégâts.
 
 **Remarque du sort « Pillage défensif »** : Le regain ne peut être effectif que si c''est la {{barriere|barrière}} ennemie qui est touchée.
-
-**Note de la cellule « Effets secondaires » du sort « Rune arcane multiple »** : Ne se cumule avec "Rune Arcane"
 
 ## Légende
 
@@ -19048,15 +19046,6 @@ Possible de le faire sur un allié, l''allié ne prendra pas les dégâts.
 
 Si la case d''arrivée est occupée par une autre créature, le lanceur échange immédiatement sa position avec celle-ci (si elle est de la même taille approximativement que lui)
 
-**Note de la cellule « Effets secondaires » du sort « État antérieur »** : Pour les armures, il faut faire le sort sur CHAQUE morceau.
-
-**Remarque du sort « Horloge aspirante »**
-
-Si c''est la {{barriere|barrière}}, la {{barriere|barrière}} est vampirisée.  
-Si c''est les points de vie, c''est les points de vie qui sont vampirisés
-
-**Note de la cellule « Effets secondaires » du sort « Célérité »** : Un boss qui a naturellement 2 tours, n''aura qu''un seul tour avec deux actions.
-
 **Note de la cellule « Effets secondaires » du sort « Grenade distordue »** : Si le lanceur est dans la zone d''action de la grenade, il peut décider de ne pas être téléporté.
 
 **Note de la cellule « Effets secondaires » du sort « Image diffuse »**
@@ -19066,6 +19055,15 @@ Si jamais une attaque risque d''arriver sur le lanceur, cette attaque a 50% de c
 Si un clone prend un coup, il disparait.
 
 **Note de la cellule « Effets secondaires » du sort « Distorsion »** : Perdre le tour ne signifie pas perdre sa posture.
+
+**Note de la cellule « Effets secondaires » du sort « État antérieur »** : Pour les armures, il faut faire le sort sur CHAQUE morceau.
+
+**Remarque du sort « Horloge aspirante »**
+
+Si c''est la {{barriere|barrière}}, la {{barriere|barrière}} est vampirisée.  
+Si c''est les points de vie, c''est les points de vie qui sont vampirisés
+
+**Note de la cellule « Effets secondaires » du sort « Célérité »** : Un boss qui a naturellement 2 tours, n''aura qu''un seul tour avec deux actions.
 
 ## Légende
 
@@ -19156,15 +19154,7 @@ IG : Initiative groupée
 
 **Note de la cellule « Effets secondaires » du sort « Amplification sombre »** : EC = Échec critique
 
-**Note de la cellule « Effets secondaires » du sort « Ombre Menaçante »**
-
-L''ombre reste 3 tours.
-
-Le jet de fermeté se relance tous les débuts de tour.
-
 **Note de la cellule « Effets secondaires » du sort « Défaite annoncée »** : Les sorts Défaite annoncée et Explosion glorifique s''annulent mutuellement.
-
-**Note de la cellule « Effets secondaires » du sort « Pire ami »** : Pire ami possède les caractéristiques et compétences de la cible et possède 1/4 de sa santé totale.
 
 **Note de la cellule « Effets secondaires » du sort « Chaîne de l''entrave »**
 
@@ -19189,6 +19179,14 @@ Santé à 60% = Inflige Couardise
 Santé à 40% = Ignore 50% des AM
 
 Santé à 20% = Le sort inflige + 40 dégâts
+
+**Note de la cellule « Effets secondaires » du sort « Ombre Menaçante »**
+
+L''ombre reste 3 tours.
+
+Le jet de fermeté se relance tous les débuts de tour.
+
+**Note de la cellule « Effets secondaires » du sort « Pire ami »** : Pire ami possède les caractéristiques et compétences de la cible et possède 1/4 de sa santé totale.
 
 ## Légende
 
@@ -19604,6 +19602,13 @@ Magie 5 = taille 5 (5 kg maxi)
 - Inutile contre les infirmités, la fatigue physique, les croix.
 - Soigne d''un cran les altérations d''états.
 
+**Note de la cellule « Effets secondaires » du sort « Aspect vide »** : L''équipement le devient aussi, les sorts et les attaques ne touchent pas, SEULES les armes spectrales fonctionnent dans cet état.
+
+**Remarque du sort « Touché du vide »**
+
+Si c''est la {{barriere|barrière}}, la {{barriere|barrière}} est vampirisée.  
+Si c''est les points de vie, c''est les points de vie qui sont vampirisés
+
 **Remarque du sort « Regard de Mora »**
 
 - Les alliés infligent +5 dégâts et les ennemis -10.
@@ -19615,13 +19620,6 @@ Magie 5 = taille 5 (5 kg maxi)
 - Une fois pendant le Regard, si un allié fait des 1 dans les dés de dégâts, il peut les relancer.
 
 **Note de la cellule « Effets secondaires » du sort « Sablier du vide »** : Les ennemis peuvent se défendre contre le coup du sablier.
-
-**Note de la cellule « Effets secondaires » du sort « Aspect vide »** : L''équipement le devient aussi, les sorts et les attaques ne touchent pas, SEULES les armes spectrales fonctionnent dans cet état.
-
-**Remarque du sort « Touché du vide »**
-
-Si c''est la {{barriere|barrière}}, la {{barriere|barrière}} est vampirisée.  
-Si c''est les points de vie, c''est les points de vie qui sont vampirisés
 
 **Note de la cellule « Effets secondaires » du sort « Aléa négatif »**
 
