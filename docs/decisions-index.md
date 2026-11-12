@@ -2,7 +2,7 @@
 
 Ne lis jamais `docs/decisions-regles.md` en entier : trouve ici le numéro de la décision, puis cherche sa ligne avec Grep (motif `^\| R41 \|`) et ne lis qu'elle.
 
-Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 240 décisions, de R1 à R240, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
+Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 243 décisions, de R1 à R243, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
 
 | Réf. | Sujet | Décision |
 | --- | --- | --- |
@@ -246,3 +246,6 @@ Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas mo
 | R238 | Classes de la mise à jour de Décembre (demande du propriétaire, 2026-11-12… | (1) Boxeur et Porte-étendard : « Classe Physique Corps… |
 | R239 | Races Fongoïde et Gémidien (docx : « Nouvelle race : Fongoïde », « Nouvell… | (1) Deux races de plus, pures : le site en compte 29 (… |
 | R240 | Initiative groupée et initiative individuelle (docx, rubrique « Gameplay »… | Les deux coexistent, au choix du MJ. L'initiative indi… |
+| R241 | Effets secondaires des matériaux d'armes (docx, rubrique « Armes » : « Les… | (1) Les effets secondaires des 13 matériaux cités sont… |
+| R242 | Le bestiaire et les sorts renommés ou supprimés par la mise à jour de Déce… | (1) Les cartes du bestiaire prennent le nouveau nom du… |
+| R243 | Textes d'incantation et remarques des sorts absents du classeur de Décembr… | (1) Les six textes d'incantation de Glace et de Terre… |
