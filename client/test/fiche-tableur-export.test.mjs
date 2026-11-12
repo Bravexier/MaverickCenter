@@ -171,6 +171,9 @@ function ficheRiche() {
   f.gains_sante = attendus.points - f.gains_chakra + 3 * attendus.des.length;
   // 25 sorts des deux magies, des NM dont certains d'un livre, plus un livre d'un sort non choisi (en attente, décision R169) ; les NM du MJ, pour
   // toute la fiche (décision R118)
+  // une spécialisation choisie par magie (décision R236 (8)) : sans elle, le bi-magie n'a que les sorts communs et aucun livre en attente
+  f.specialisations_magie = [f.magie_innee_id, f.magie_acquise_id].map((id) => regles.magies.find((m) => m.id === id))
+    .filter((m) => m?.specialisations?.length).map((m) => ({ magie_id: m.id, specialisation_id: m.specialisations[0].id }));
   f.sorts = M.sortsPossibles(regles, f).slice(0, 25).map((s, i) => ({ sort_id: s.id, rang: i + 1, niveau_maitrise: i % 4 }));
   const enAttente = M.sortsDesLivres(regles, f).find((s) => !f.sorts.some((x) => x.sort_id === s.id));
   f.livres_sorts = [...f.sorts.filter((x, i) => x.niveau_maitrise >= 1 && i % 3 === 0).map((x) => x.sort_id), enAttente.id].map((sort_id, i) => ({ sort_id, rang: i + 1 }));

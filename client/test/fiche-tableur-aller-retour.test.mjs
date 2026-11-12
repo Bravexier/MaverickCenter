@@ -251,6 +251,9 @@ function ficheRiche() {
   // les gains de niveau, deux totaux (décision R73)
   f.gains_sante = 37;
   f.gains_chakra = 54;
+  // une spécialisation choisie par magie (décision R236 (8)) : sans elle, le bi-magie n'a que les sorts communs et aucun livre en attente
+  f.specialisations_magie = [f.magie_innee_id, f.magie_acquise_id].map((id) => regles.magies.find((m) => m.id === id))
+    .filter((m) => m?.specialisations?.length).map((m) => ({ magie_id: m.id, specialisation_id: m.specialisations[0].id }));
   f.sorts = M.sortsPossibles(regles, f).slice(0, 26).map((s, i) => ({ sort_id: s.id, rang: i + 1, niveau_maitrise: i % 4 }));
   // des livres, dont un d'un sort qui n'est pas choisi (en attente, décision R169)
   const enAttente = M.sortsDesLivres(regles, f).find((s) => !f.sorts.some((x) => x.sort_id === s.id));
