@@ -45,13 +45,14 @@ const lignesChangees = (a, b) => {
 const FEU = 'magies/magie-du-feu';
 const PI = 'magies/potentiel-illimite';
 
-test('15 magies, 42 rôles, 29 variantes Mode Hyper (onglet de magie), 322 sorts : chaque ligne a sa page', () => {
-  // effectifs de l'import, que le site ne change pas : il ne crée ni ne supprime de magie, de rôle, de variante ni de sort (edition-modele#ENTITES)
+test('15 magies, aucun rôle (R237 (7)), 29 variantes Mode Hyper (onglet de magie), les sorts : chaque ligne a sa page', () => {
+  // effectifs que le site ne change pas : il ne crée ni ne supprime de magie, de rôle, de variante ni de sort (edition-modele#ENTITES)
   for (const t of Object.keys(PAGE_DE_LA_LIGNE)) assert.ok(!Object.values(ENTITES).some((e) => e.table === t), `${t} : créé par le site`);
   assert.equal(magies.length, 15);
-  assert.equal(roles.length, 42);
+  // les rôles des magies sont supprimés (R237 (7), migration 0117) : la table reste, vide, et son traitement du corps reste inerte (test « rôles » ci-dessous)
+  assert.equal(roles.length, 0);
   assert.equal(hypers.length, 29);
-  assert.equal(sorts.length, 322);
+  assert.ok(sorts.length > 0);
   for (const [table, l] of lignesDeTable()) assert.ok(pages.has(PAGE_DE_LA_LIGNE[table](l)), `${table} ${JSON.stringify(l.id ?? l.rang)}`);
 });
 
@@ -81,7 +82,7 @@ test('invariant (toute la base) : remplacer avec les mêmes valeurs redonne le c
     assert.equal(corpsDeMagieApres(corpsDe(id), table, null, l), corpsDe(id), `${table} ${l.id ?? l.rang} (sans avant)`);
     n++;
   }
-  assert.equal(n, 15 + 42 + 29 + 322);
+  assert.equal(n, magies.length + roles.length + hypers.length + sorts.length);
 });
 
 test('lecture (toute la base) : chaque morceau du corps redit sa ligne', () => {
@@ -154,7 +155,6 @@ test('aller-retour : textes de magie, rôles, effets Mode Hyper', () => {
     // un texte de plusieurs paragraphes avec une liste
     assert.equal(allerRetour('magie', m, 'description', `${TEMOIN}.\nLigne 2\n\n- un\n- deux`), corpsDe(m.id), `${m.id} description`);
   }
-  for (const r of roles) assert.equal(allerRetour('magie_role', r, 'role_brut'), corpsDe(r.magie_id), `${r.magie_id} ${r.rang}`);
   for (const h of hypers) assert.equal(allerRetour('mode_hyper_effet', h, 'effet', `${TEMOIN}\n(IC) seconde ligne`), corpsDe(h.magie_id), h.id);
 });
 
@@ -286,11 +286,29 @@ test('magie : santé, chakra, caractéristique et 4ème barre dans « Données �
   assert.ok(!barre.includes(sang.barre4_texte));
 });
 
-test('rôles et capacité Mode Hyper (tableau et liste)', () => {
-  const role = roles.find((r) => r.magie_id === FEU && r.rang === 1);
-  const apres = modifier(corpsDe(FEU), 'magie_role', role, { role_brut: 'SOIN TÉMOIN' });
-  assert.deepEqual(lignesChangees(corpsDe(FEU), apres), [[`- ${echapperLigne(role.role_brut)}`, '- SOIN TÉMOIN']]);
+/**
+ * Le corps de Feu avec une section « ## Rôles » à deux puces (la forme de l'importeur avant la 0117) et ses deux lignes de rôle : les rôles n'ont plus de
+ * données (R237 (7)), le traitement du corps reste inerte et se prouve sur ce corps de fabrication.
+ */
+function corpsAvecRoles() {
+  const corps = corpsDe(FEU);
+  assert.ok(!corps.includes(SECTIONS.roles), 'la page réelle n’a plus de section des rôles');
+  const avecRoles = corps.replace(SECTIONS.sorts, `${SECTIONS.roles}\n\n- DÉGÂTS\n- ENTRAVE\n\n${SECTIONS.sorts}`);
+  assert.notEqual(avecRoles, corps);
+  return { corps: avecRoles, roles: [1, 2].map((rang) => ({ magie_id: FEU, rang, role_brut: ['DÉGÂTS', 'ENTRAVE'][rang - 1], role: ['degats', 'entrave'][rang - 1] })) };
+}
 
+test('rôles (table vide depuis R237 (7), traitement inerte gardé) : le rang écrit sa puce ; sans section « Rôles », refus', () => {
+  const { corps, roles: lignes } = corpsAvecRoles();
+  const role = lignes[0];
+  assert.equal(corpsDeMagieApres(corps, 'magie_role', role, role), corps);
+  const apres = corpsDeMagieApres(corps, 'magie_role', role, { ...role, role_brut: 'SOIN TÉMOIN' });
+  assert.deepEqual(lignesChangees(corps, apres), [[`- ${echapperLigne(role.role_brut)}`, '- SOIN TÉMOIN']]);
+  assert.equal(corpsDeMagieApres(apres, 'magie_role', { ...role, role_brut: 'SOIN TÉMOIN' }, role), corps, 'aller-retour');
+  assert.throws(() => corpsDeMagieApres(corpsDe(FEU), 'magie_role', role, { ...role, role_brut: 'SOIN' }), ErreurCorpsMagie);
+});
+
+test('capacité Mode Hyper (tableau et liste)', () => {
   const mono = hypers.find((h) => h.id === `onglet_magie:${FEU}:mono`);
   const hyper = modifier(corpsDe(FEU), 'mode_hyper_effet', mono, { effet: 'Nouvel effet | avec barre\nsur deux lignes' });
   assert.deepEqual(lignesChangees(corpsDe(FEU), hyper), [[`| Mono-Magie | ${celluleDeTableau(mono.effet)} |`, '| Mono-Magie | Nouvel effet \\| avec barre<br>sur deux lignes |']]);
@@ -360,7 +378,8 @@ test('sort renommé : la case, les libellés de ses notes et le titre de son tex
   assert.equal(lignesChangees(corps, apres).length, 1 + siennes.length);
 
   // Pluie chaude (à l'import : titre « Pluie Chaude » de son texte de niveau 5, casse du classeur)
-  const pluie = sort(`${FEU}#sort:pluie-chaude`);
+  const pluie = sorts.find((s) => s.magie_id === FEU && s.niveau === 5 && s.texte_niveau5);
+  assert.ok(pluie, 'un sort de niveau 5 avec son texte');
   const titre = niveau5De(corps).find((b) => nomPlie(b.titre) === nomPlie(pluie.nom));
   const renomme = modifier(corps, 'sort', pluie, { nom: 'Pluie témoin' });
   assert.equal(morceauxDuCorpsDeMagie(renomme).sorts[pluie.ordre - 1][1], 'Pluie témoin');
@@ -421,7 +440,7 @@ test('sort : texte de niveau 5 modifié, retiré, ajouté (bloc titré seul, sec
   const avecTexte = sorts.filter((s) => s.magie_id === FEU && s.texte_niveau5);
   assert.ok(avecTexte.length >= 2);
   // modifié (Pluie chaude à l'import) : le titre reste tel qu'il est écrit, la citation est remplacée, les autres blocs ne bougent pas
-  const pluie = sort(`${FEU}#sort:pluie-chaude`).texte_niveau5 ? sort(`${FEU}#sort:pluie-chaude`) : avecTexte[0];
+  const pluie = avecTexte[0];
   const modifie = modifier(corps, 'sort', pluie, { texte_niveau5: 'Ô flammes,\nvenez…\n\nPLUIE !' });
   const apres = niveau5De(modifie);
   const k = blocs.findIndex((b) => nomPlie(b.titre) === nomPlie(pluie.nom));
@@ -454,12 +473,9 @@ test('sort : texte de niveau 5 modifié, retiré, ajouté (bloc titré seul, sec
 test('modifications enchaînées puis annulées : le corps d’origine revient (textes)', () => {
   const feu = magie(FEU);
   const fer = sort(`${FEU}#sort:fer-brulant`);
-  const role = roles.find((r) => r.magie_id === FEU && r.rang === 2);
   let c = corpsDe(FEU);
   c = modifier(c, 'magie', feu, { description: 'Autre.', explication: 'Ajoutée.' });
   c = modifier(c, 'sort', fer, { nom: 'Fer neuf', effets: 'Chauffe.' });
-  c = modifier(c, 'magie_role', role, { role_brut: 'PLACEMENT' });
-  c = modifier(c, 'magie_role', { ...role, role_brut: 'PLACEMENT' }, role);
   c = corpsDeMagieApres(c, 'sort', { ...fer, nom: 'Fer neuf', effets: 'Chauffe.' }, fer);
   c = corpsDeMagieApres(c, 'magie', { ...feu, description: 'Autre.', explication: 'Ajoutée.' }, feu);
   assert.equal(c, corpsDe(FEU));
@@ -472,7 +488,9 @@ test('erreurs : morceau introuvable, version Mode Hyper d’une race, table sans
   const course = { ...hypers[0], version: 'onglet_race' };
   assert.throws(() => corpsDeMagieApres(corpsDe(FEU), 'mode_hyper_effet', course, course), /onglet_race/);
   assert.throws(() => corpsDeMagieApres(corpsDe(FEU), 'race', {}, {}), ErreurCorpsMagie);
-  assert.throws(() => corpsDeMagieApres(corpsDe(FEU), 'magie_role', roles[0], { ...roles[0], magie_id: FEU, rang: 3 + 2 }), ErreurCorpsMagie);
+  assert.throws(() => corpsDeMagieApres(corpsDe(FEU), 'magie_role', null, { magie_id: FEU, rang: 5, role_brut: 'SOIN' }), ErreurCorpsMagie);
+  const { corps, roles: lignes } = corpsAvecRoles();
+  assert.throws(() => corpsDeMagieApres(corps, 'magie_role', null, { ...lignes[0], rang: 5 }), ErreurCorpsMagie, 'un rang au-delà des puces + 1');
 });
 
 test('pages qui citent un sort : le titre « ## Effet "Nom" » du bestiaire suit le renommage', () => {

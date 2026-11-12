@@ -4419,8 +4419,7 @@ export function bornesDuMultiplicateur(regles, fiche, sort) {
 
 // ------------------------------------------------------------------------------------------------------------------------------------------------
 // Invocations (décision R130, demandes du propriétaire du 2026-10-18 : « avoir la liste des invocations possibles pour les sorts qui invoquent des
-// créatures », « Toutes, les miennes d'abord » ; « avoir toutes les améliorations visibles en fonction de l'invocation sacrifiée » pour « Amélioration
-// cadavérique ») : regles.invocations et regles.tableaux_de_sacrifice (lib/fiche-regles.mjs) ; les valeurs d'une créature à son NPM : lib/creature-npm.mjs.
+// créatures », « Toutes, les miennes d'abord ») : regles.invocations (lib/fiche-regles.mjs) ; les valeurs d'une créature à son NPM : lib/creature-npm.mjs.
 // ------------------------------------------------------------------------------------------------------------------------------------------------
 
 /**
@@ -4446,15 +4445,13 @@ export function creaturesDuSort(regles, fiche, sort) {
 
 /**
  * Ce que donne un sort qui sacrifie une invocation, selon l'invocation sacrifiée : { type: 'effets', lignes: [{ creature, libelle, texte }] } pour un effet
- * écrit sur la carte de la créature (« Effet "Manteau noir" » des marionnettes : creature_effet.sort_id) ; { type: 'tableau', lignes: [{ nom, effet }] } pour
- * le tableau d'invocation que le sort désigne par son nom (« Amélioration cadavérique ») ; null pour un autre sort.
+ * écrit sur la carte de la créature (« Effet "Manteau noir" » des marionnettes : creature_effet.sort_id) ; null pour un autre sort. Le tableau « Amélioration
+ * cadavérique » (type 'tableau') est retiré avec sa table (R237 (7), migration 0117).
  */
 export function sacrificeDuSort(regles, sortId) {
   const effets = (regles.invocations ?? []).flatMap((i) => i.creatures.flatMap((c) => c.effets.filter((e) => e.sort_id === sortId)
     .map((e) => ({ creature: c, libelle: e.libelle, texte: e.texte }))));
-  if (effets.length) return { type: 'effets', lignes: effets };
-  const tableau = (regles.tableaux_de_sacrifice ?? []).find((t) => t.sort_id === sortId);
-  return tableau ? { type: 'tableau', lignes: tableau.lignes } : null;
+  return effets.length ? { type: 'effets', lignes: effets } : null;
 }
 
 /**

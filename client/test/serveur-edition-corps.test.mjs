@@ -66,7 +66,6 @@ const HERBORISTE = lire("SELECT id FROM metier ORDER BY id = 'metiers/herboriste
 // valeurs d'avant (l'ancienne valeur ne doit plus être écrite)
 const avant = {
   feu: { ...lire('SELECT description, description_physique FROM magie WHERE id = ?', FEU) },
-  roleFeu: lire("SELECT rang, role_brut FROM magie_role WHERE magie_id = ? AND role = 'entrave'", FEU),
   hyperFeu: lire("SELECT id, effet FROM mode_hyper_effet WHERE version = 'onglet_magie' AND magie_id = ? AND variante_brut = 'Mono-Magie'", FEU),
   boule: { ...lire('SELECT nom, cout_brut, dsb_brut, ordre FROM sort WHERE id = ?', BOULE) },
   drakos: { ...lire('SELECT histoire, sante_depart, avantages, don_base FROM race_onglet WHERE race_id = ?', DRAKOS) },
@@ -83,7 +82,6 @@ const avant = {
 const nouveau = {
   presentation: 'La magie zorglubpresentation brûle sans fin. Elle éclaire aussi.',
   physique: 'Les mages zorglubphysique ont des cheveux de braise.',
-  role: 'PLACEMENT',
   hyperFeu: 'Effet zorglubhyper du feu en mono-magie.',
   boule: { nom: 'Boule de zorglubfeu', cout_brut: '5', dsb_brut: '3d6 dégâts (+1d6/NM)' },
   manteau: 'Manteau zorglubnoir',
@@ -107,7 +105,6 @@ const noms = { race: nomLibre('race', 'Race zorglub'), classe: nomLibre('classe'
 
 lot([
   { op: 'modifier', table: 'magie', cle: { id: FEU }, valeurs: { description: nouveau.presentation, description_physique: nouveau.physique } },
-  { op: 'modifier', table: 'magie_role', cle: { magie_id: FEU, rang: avant.roleFeu.rang }, valeurs: { role_brut: nouveau.role } },
   { op: 'modifier', table: 'mode_hyper_effet', cle: { id: avant.hyperFeu.id }, valeurs: { effet: nouveau.hyperFeu } },
   { op: 'modifier', table: 'sort', cle: { id: BOULE }, valeurs: nouveau.boule },
 ], `${FEU}/`);
@@ -233,7 +230,7 @@ test('rejoué une seconde fois (règles livrées qui le contiennent) : tout est 
   assert.deepEqual(lireRows(), rowsAppliquees);
 });
 
-test('magie : présentation (et résumé), description physique, rôle, Mode Hyper, ligne du sort (nom, coût, D/S/B) ; sort renommé dans les pages du bestiaire', () => {
+test('magie : présentation (et résumé), description physique, Mode Hyper, ligne du sort (nom, coût, D/S/B) ; sort renommé dans les pages du bestiaire', () => {
   const c = corps(FEU);
   const m = morceauxDuCorpsDeMagie(c);
   assert.ok(c.includes(nouveau.presentation));
@@ -242,8 +239,7 @@ test('magie : présentation (et résumé), description physique, rôle, Mode Hyp
   assert.equal(ligne('SELECT resume FROM page WHERE id = ?', FEU).resume, 'La magie zorglubpresentation brûle sans fin.');
   assert.ok(section(c, 'Description physique').includes(nouveau.physique));
   assert.ok(!section(c, 'Description physique').includes(debut(avant.feu.description_physique)), 'ancienne description physique');
-  assert.equal(m.roles[avant.roleFeu.rang - 1], nouveau.role);
-  assert.ok(!m.roles.includes(avant.roleFeu.role_brut));
+  assert.deepEqual(m.roles, [], 'plus de rôles (R237 (7), migration 0117)');
   assert.equal(m.hyper.find((h) => h.variante === 'Mono-Magie').effet, nouveau.hyperFeu);
   const cases = m.sorts[avant.boule.ordre - 1];
   assert.deepEqual([cases[1], cases[3], cases[6]], [nouveau.boule.nom, nouveau.boule.cout_brut, nouveau.boule.dsb_brut]);

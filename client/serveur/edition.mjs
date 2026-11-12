@@ -835,7 +835,7 @@ function deriverBonusDuSort(ctx, sort, champs) {
 }
 
 /**
- * sort_etat est un index tiré du texte (data/schema.sql ; règle de l'importeur : lib/sort-etats.mjs, rejouée sur les 322 sorts par
+ * sort_etat est un index tiré du texte (data/schema.sql ; règle de l'importeur : lib/sort-etats.mjs, rejouée sur tous les sorts par
  * test/sort-etats.test.mjs) : les cases modifiées sont relues, les lignes des autres cases restent telles quelles (deux sorts ont un extrait que les
  * corrections d'espaces insécables de leur texte n'ont pas suivi), puis le rang de chaque altération (état, relation) est recompté dans l'ordre des
  * cases.

@@ -20,7 +20,7 @@ import { bonusDeDegatsEcrit } from './degats-texte.mjs';
 import { bonusDeSortsEcrits, preparationEcrite } from './sort-bonus-texte.mjs';
 import { lecteurDAcquis } from './acquis-texte.mjs';
 import { critiqueDeLAccessoire, critiqueDuDon, critiqueDuPremierCoup } from './critique-texte.mjs';
-import { chargerInvocations, tableauxDesSorts } from './bestiaire-db.mjs';
+import { chargerInvocations } from './bestiaire-db.mjs';
 import { FAMILLES_DES_SAUF, desSelonLaForce, famillesAuChoix, idDeSourceDeClasse } from './maitrise-arme.mjs';
 import { ORDRE_DES_RACES, raceKind } from './race-kinds.mjs';
 import { lecteurDeResistances } from './resistance-texte.mjs';
@@ -861,7 +861,6 @@ function reglesDeLaBase(db) {
       effets: c.effets.map((e) => ({ libelle: e.libelle, sort_id: e.sort_id, texte: e.texte })),
     })),
   }));
-  const tableaux_de_sacrifice = [...tableauxDesSorts(db)].map(([sortId, t]) => ({ sort_id: sortId, invocation_id: t.invocationId, lignes: t.lignes }));
 
   // couleur de la pastille de l'alignement (demande du propriétaire : celle de son titre dans le guide pour MJ, lib/caracteristiques-postures.mjs) : sa
   // classe de la palette (famille d'une zone, émise par pages/fiche/index.astro), par nom ; `alignement_par_defaut` : celle d'un alignement inconnu
@@ -874,7 +873,7 @@ function reglesDeLaBase(db) {
 
   return {
     constantes, am_classe_magique: amMagique, niveaux, caracteristiques, caracteristique_par_defaut, competences, initiative, races, ethnies, magies, dieux, metiers, classes, sorts, postures,
-    ordre_postures, mode_hyper, ambidextrie, resistance_paliers, etats, alignements, alignement_par_defaut, race_par_nature, neutre, invocations, tableaux_de_sacrifice, ...equipement,
+    ordre_postures, mode_hyper, ambidextrie, resistance_paliers, etats, alignements, alignement_par_defaut, race_par_nature, neutre, invocations, ...equipement,
   };
 }
 

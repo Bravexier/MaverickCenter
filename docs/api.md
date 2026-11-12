@@ -234,7 +234,7 @@ la ressource ne prend que les lignes de la table qui passent sa condition.
 | --- | --- | --- | --- | --- |
 | `magies/` | Magies | `magie` | modifier | `roles` (modifier), `resistances`, `incompatibilites`, `ethnies-secondaires`, `dieux` |
 | `sorts/` | Sorts | `sort` | modifier | `mots-cles` |
-| `ameliorations-cadaveriques/` | Améliorations cadavériques | `amelioration_cadaverique` | lecture seule | — |
+| `specialisations-de-magie/` | Spécialisations magiques | `magie_specialisation` | modifier | — |
 | `regles-de-magie/` | Règles de magie | `regle_magie` | lecture seule | — |
 | `codes-de-la-legende-des-sorts/` | Codes de la légende des sorts | `legende_sort` | lecture seule | — |
 | `invocations/` | Invocations | `invocation` | lecture seule | — |

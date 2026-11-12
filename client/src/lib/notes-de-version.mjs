@@ -76,7 +76,7 @@ export { TABLES_DES_NOTES };
 
 /** Tables que les appelants doivent lire dans chaque base (celles qui manquent dans une base sont simplement absentes). */
 export const TABLES_LUES = [
-  'sort', 'magie', 'magie_role', 'mode_hyper_effet', 'classe', 'categorie_classe', 'specialite', 'capacite', 'race', 'race_onglet', 'race_don',
+  'sort', 'magie', 'magie_role', 'magie_specialisation', 'mode_hyper_effet', 'classe', 'categorie_classe', 'specialite', 'capacite', 'race', 'race_onglet', 'race_don',
   'race_don_tableau_colonne', 'race_don_tableau_cellule', 'race_magie', 'race_magie_onglet', 'peuple', 'relation_peuple', 'echelle_relation',
   'metier', 'caracteristique', 'page', 'monstre_groupe', 'monstre_espece', 'monstre', 'monstre_rubrique', 'monstre_espece_bloc', 'monstre_butin',
   'monstre_capacite_commune', 'monstre_capacite', 'monstre_capacite_valeur',
@@ -139,6 +139,11 @@ const DEFINITIONS = [
   {
     table: 'magie_role', domaine: 'magies', cle: ['magie_id', 'rang'], colonnes: [{ colonne: 'role_brut', libelle: 'Rôle' }], genre: 'Rôle',
     groupe: (r, x) => x.nom('magie', r.magie_id), entite: (r) => `Rôle ${r.rang}`, ordre: (r, x) => [x.ordre('magie', r.magie_id), r.rang],
+  },
+  {
+    // R236 (1) : les deux spécialisations d'une magie (nom, description, remarque), listées sous leur magie
+    table: 'magie_specialisation', domaine: 'magies', cle: ['id'], colonnes: colonnesDe('magie_specialisation'), genre: 'Spécialisation',
+    groupe: (r, x) => x.nom('magie', r.magie_id), entite: (r) => r.nom, ordre: (r, x) => [x.ordre('magie', r.magie_id), r.ordre ?? 0],
   },
   {
     // capacité Mode Hyper : seules les versions affichées par les pages (onglet de la magie, onglet de la race) se modifient

@@ -2,10 +2,9 @@
 // les notes de cellule du classeur sont dans la colonne `remarque` de la ligne qu'elles commentent (la table note_cellule n'est qu'une trace).
 // le gabarit des pages de magie (components/MagiePage.astro) n'interprète aucun Markdown, il affiche ces lignes.
 // Node seulement (la base est ouverte par lib/donnees.mjs au build). Une requête par table, puis assemblage en mémoire.
-import { libelleDuBloc, tableauxDesSorts } from './bestiaire-db.mjs';
-import { blocsDeTexte, elementsDeTexte } from './sort-format.mjs';
+import { libelleDuBloc } from './bestiaire-db.mjs';
+import { blocsDeTexte } from './sort-format.mjs';
 import { ORDRE_CHAMPS_NM } from './sort-maitrise.mjs';
-import { normalize } from './text.mjs';
 
 const apres = (id, separateur) => id.slice(id.indexOf(separateur) + separateur.length);
 
@@ -79,7 +78,8 @@ export function chargerMagies(db) {
     all(`SELECT id, magie_id, variante, variante_brut, effet FROM mode_hyper_effet WHERE version = 'onglet_magie' ORDER BY magie_id`),
     'magie_id',
   );
-  const ameliorations = regrouper(all('SELECT magie_id, rang, nom, effet FROM amelioration_cadaverique ORDER BY magie_id, rang'), 'magie_id');
+  // les deux spécialisations de la magie (R236 (1) ; migration 0117), dans l'ordre 1, 2 ; aucune pour le Potentiel Illimité
+  const specialisations = regrouper(all('SELECT id, magie_id, ordre, nom, nom_cle, description, remarque FROM magie_specialisation ORDER BY magie_id, ordre'), 'magie_id');
   const ethnies = regrouper(
     all(`SELECT s.magie_id, s.rang, s.ethnie_brut, s.ethnie_id FROM magie_ethnie_secondaire s ORDER BY s.magie_id, s.rang`),
     'magie_id',
@@ -137,7 +137,13 @@ export function chargerMagies(db) {
       modeHyper: (modesHyper.get(m.id) ?? [])
         .map((r) => ({ id: r.id, variante: r.variante, libelle: r.variante_brut ?? r.variante, blocs: blocsDeTexte(r.effet) }))
         .sort((a, b) => ORDRE_VARIANTES.indexOf(a.variante) - ORDRE_VARIANTES.indexOf(b.variante)),
-      ameliorations: (ameliorations.get(m.id) ?? []).map((a) => ({ nom: a.nom, effets: elementsDeTexte(a.effet) })),
+      // R236 (1) : [{ id, ordre (1 ou 2), nom (tel qu'écrit : « VOLCAN »), cle, description: blocs, remarque: blocs }] ; vide pour le Potentiel Illimité. Un sort
+      // de NPM 3 à 5 y est rattaché par `specialisationId` (sort.specialisation_id) ; les sorts de NPM 1 et 2 sont communs (null)
+      specialisations: (specialisations.get(m.id) ?? []).map((sp) => ({
+        id: sp.id, ordre: sp.ordre, nom: sp.nom, cle: sp.nom_cle, description: blocsDeTexte(sp.description), remarque: blocsDeTexte(sp.remarque),
+        // valeurs brutes (mode modification du site de dev : un champ vide reste affiché pour être rempli)
+        descriptionBrute: sp.description, remarqueBrute: sp.remarque,
+      })),
       ethniesSecondaires: (ethnies.get(m.id) ?? []).map((e) => ({ nom: e.ethnie_brut, pageId: e.ethnie_id.slice(0, e.ethnie_id.indexOf('#')) })),
       // altérations d'état liées à la magie (colonne « Magie Liée » de la Liste des altérations d'état : table etat_magie), dans l'ordre de l'onglet
       etats: [...etats.values()].filter((e) => e.magiesLiees.some((l) => l.id === m.id)).map((e) => e.id),
@@ -165,7 +171,7 @@ export function chargerMagies(db) {
     'sort_id',
   );
   const invocations = regrouper(
-    all('SELECT id, nom, sort_id, texte_general, tableau_titre, remarque FROM invocation WHERE sort_id IS NOT NULL ORDER BY ordre'),
+    all('SELECT id, nom, sort_id, texte_general, remarque FROM invocation WHERE sort_id IS NOT NULL ORDER BY ordre'),
     'sort_id',
   );
   // Créatures invoquées par bloc, sous son libellé (combinaison de magies ou NPM d'une marionnette, décision R53 : bestiaire-db.mjs#libelleDuBloc) ; le nom
@@ -202,20 +208,6 @@ export function chargerMagies(db) {
        WHERE e.sort_id IS NOT NULL ORDER BY e.sort_id, b.rang, c.rang, e.rang`,
     ),
     'sort_id',
-  );
-
-  // Le tableau d'invocation rattaché à un sort par son id (invocation.tableau_sort_id, « Amélioration cadavérique », décision R130 : bestiaire-db.mjs#tableauxDesSorts) : une amélioration
-  // qui porte exactement le nom d'une créature de l'invocation (normalize) montre sa carte en infobulle ; une autre (« S. de pierre », « S. rayonnant »,
-  // « Zombi obscur ») reste un nom : la rapprocher d'une créature serait deviner.
-  const tableauxParSort = new Map(
-    [...tableauxDesSorts(db)].map(([sortId, t]) => {
-      const creatures = new Map((creaturesDeInvocation.get(t.invocationId) ?? []).map((c) => [normalize(c.nom), c]));
-      const lignes = t.lignes.map((a) => {
-        const c = creatures.get(normalize(a.nom));
-        return { nom: a.nom, effets: elementsDeTexte(a.effet), creature: c ? { id: c.id, nom: c.nom, magies: magiesDeCreature(c.id) } : null };
-      });
-      return [sortId, { titre: t.titre, nom: t.nom, invocation: t.invocation, lignes }];
-    }),
   );
 
   const sorts = new Map();
@@ -257,19 +249,18 @@ export function chargerMagies(db) {
       remarque: blocsDeTexte(s.remarque),
       // altérations d'état repérées dans le texte du sort : la pastille se place dans le texte, sur `forme` (lib/sort-format.mjs#morceauxAvecEtats)
       etats: (etatsDuSort.get(s.id) ?? []).map((e) => ({ etatId: e.etat_id, stade: e.stade, champ: e.champ, forme: e.forme_trouvee, extrait: e.extrait })),
-      // Règles propres du sort quand il invoque des créatures : texte de l'onglet de l'invocation, créatures par bloc, et le tableau
-      // des améliorations cadavériques (Animation de mort) puisque la source le porte avec cette invocation.
+      // Règles propres du sort quand il invoque des créatures : texte de l'onglet de l'invocation, créatures par bloc (le tableau des améliorations
+      // cadavériques est retiré : R237 (7), migration 0117).
       invoque: (invocations.get(s.id) ?? []).map((i) => ({
         id: i.id,
         nom: i.nom,
         texte: blocsDeTexte(i.texte_general),
         remarque: blocsDeTexte(i.remarque),
-        tableau: i.tableau_titre ? { titre: i.tableau_titre, lignes: magie.ameliorations } : null,
         creatures: (creaturesDeInvocation.get(i.id) ?? []).map((c) => ({ id: c.id, nom: c.nom, bloc: libelleDuBloc(c), magies: magiesDeCreature(c.id) })),
       })),
       effetsDeCarte: (effetsDeCarte.get(s.id) ?? []).map((e) => ({ id: e.creature_id, nom: e.creature, magies: magiesDeCreature(e.creature_id), libelle: e.libelle, blocs: blocsDeTexte(e.texte) })),
-      // le tableau d'invocation que ce sort désigne par son nom (« Amélioration cadavérique », décision R130) ; null pour tout autre sort
-      ameliorations: tableauxParSort.get(s.id) ?? null,
+      // R236 (1) : la spécialisation du sort (id de magie_specialisation) ; null pour un sort commun (NPM 1 et 2), jamais pour un sort de NPM 3 à 5 hors Potentiel Illimité
+      specialisationId: s.specialisation_id,
       memeNom: (memeNom.get(s.nom_cle) ?? []).filter((o) => o.id !== s.id).map((o) => o.id),
     };
     sorts.set(s.id, modele);

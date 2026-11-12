@@ -486,11 +486,10 @@ Mise en page (pure forme, jamais de règle ajoutée ; `lib/sort-format.mjs`, tes
   **NPM des cartes** (décision R130) : au-dessus de la liste des créatures d'un sort d'invocation dont une carte change avec le NPM (golems, non-morts), un
   curseur « Cartes au NPM » (caché sans JavaScript) pose `data-npm` sur toutes les cartes de la page qui changent avec lui (une bulle par créature et par
   page : tous les curseurs de la page vont ensemble, script de `SortsInteractifs.astro`) ; la carte montre alors ses valeurs à ce NPM (voir `docs/bestiaire.md`).
-  **Amélioration cadavérique** (décision R130 : « avoir tous les améliorations visible en fonction de l'invocation sacrifié ») : le sort désigné par
-  `invocation.tableau_sort_id` (identifiant figé, migration 0099 ; plus par le nom écrit dans le titre du tableau `invocation.tableau_titre`, qui se renomme sans
-  couper le lien : `lib/bestiaire-db.mjs#tableauxDesSorts`) montre ce tableau dans son bloc « Règles propres :
-  selon l'invocation sacrifiée », une ligne par amélioration ; une amélioration qui porte exactement le nom d'une créature de l'invocation montre sa carte en
-  infobulle sur le nom de la créature (« S. de pierre », « S. rayonnant », « Zombi obscur » restent des noms, à trancher).
+  **Amélioration cadavérique** : le tableau des améliorations, la table `amelioration_cadaverique` et la branche « tableau » du sacrifice sont retirés (R237 (7),
+  migration 0117) ; `invocation.tableau_titre` et `tableau_sort_id` sont vidés et ne sont plus lus. Reste l'effet « Manteau noir » (`creature_effet.sort_id`).
+  **Spécialisations** (R236 (1), migration 0117) : `chargerMagies` donne à chaque magie `specialisations` (`magie_specialisation`, ordre 1 puis 2, `nom` tel qu'écrit,
+  `description` et `remarque` en blocs, `descriptionBrute`, `remarqueBrute` ; vide pour le Potentiel Illimité) et à chaque sort `specialisationId` (NPM 3 à 5, sinon `null`).
 - **Infobulles** (`components/Infobulles.astro`, commun à tout le site, `Info.astro`, `EtatPastille.astro` ; habillage `styles/global/infobulles.css`) : au survol (la bulle reste ouverte quand le pointeur passe dessus), au focus clavier (Échap ferme la bulle seule, pas le panneau du sort) ou au toucher (un premier appui ouvre la bulle,
   un second suit le lien d'une pastille d'état), en position fixe près du déclencheur, bornée à l'écran (le tableau défile et couperait une bulle absolue) ; sans JavaScript l'attribut `title` du déclencheur donne le même contenu en texte simple. La bulle n'est faite que
   d'éléments « en ligne » (`<span>`) : une pastille est posée dans un paragraphe, où un bloc fermerait le `<p>` et ferait fuir le contenu de la bulle (`test/magies-html.test.mjs` le vérifie sur le site construit, ainsi que le câblage `aria-*`) ;

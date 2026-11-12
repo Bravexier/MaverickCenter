@@ -1,6 +1,6 @@
 // Analyse des cases d'un sort (tables sort, sort_type, sort_mode, sort_bonus_maitrise ; data/schema.sql, section 3) : ce que la base tire du texte
 // d'une case (colonnes typées, types et modes, bonus de niveau de maîtrise). Les mêmes lectures que l'importeur des magies, réécrites pour l'édition
-// depuis le site de dev (client/serveur/edition.mjs) ; test/sort-analyse.test.mjs les rejoue sur les 322 sorts de la base.
+// depuis le site de dev (client/serveur/edition.mjs) ; test/sort-analyse.test.mjs les rejoue sur tous les sorts de la base.
 // Rien n'est inventé : une forme qui n'est pas reconnue laisse la colonne typée vide (NULL) et le brut fait foi.
 // Une case s'analyse sans les balises du glossaire des mots-clés (lib/mots-cles-balises.mjs : « {{id|texte}} » se lit « texte »).
 // Fonctions pures, sans dépendance (sauf text.mjs et mots-cles-balises.mjs) : partagées par le service et par les pages (affichage d'une case modifiée).

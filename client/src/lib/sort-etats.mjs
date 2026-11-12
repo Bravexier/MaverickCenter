@@ -1,6 +1,6 @@
 // Altérations d'état repérées dans le texte d'un sort (table sort_etat, data/schema.sql section 3) : la règle documentée de l'importeur des magies,
 // réécrite pour l'édition depuis le site de dev (client/serveur/edition.mjs : une case modifiée refait les lignes de son sort). test/sort-etats.test.mjs
-// la rejoue sur les 322 sorts de la base : elle redonne les lignes de sort_etat.
+// la rejoue sur tous les sorts de la base : elle redonne les lignes de sort_etat.
 //
 // Seules les tournures explicites sont retenues (« Non exhaustif » : une mention libre comme « Coma. », « lien de gel » ou « Peur 3 pour la cible »
 // n'en est pas une) ; `relation` redit la tournure, pas une règle :

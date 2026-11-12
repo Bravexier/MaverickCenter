@@ -88,10 +88,10 @@ export const RESSOURCES = [
     nom: 'Sort',
     noms: 'Sorts',
     description:
-      'Les sorts des 14 magies (23 par onglet du classeur « Magie Maverick V8 », du NPM 1 au NPM 5 ; le Potentiel Illimité n’a pas de sorts à lui) : ' +
+      'Les sorts des 14 magies (30 par magie dans le classeur « Nouveauté mise à jour Décembre » : 10 communs de NPM 1 et 2, puis 10 par spécialisation de NPM 3 à 5 ; le Potentiel Illimité n’a pas de sorts à lui) : ' +
       'nom, type, coût, portée, zone, D/S/B, effets secondaires, remarque et texte du sort de niveau 5 se modifient ; les valeurs typées (IC, imparable, ' +
       'coût en chakra, portée, zone…), les types, les modes, les bonus de niveau de maîtrise et les altérations d’état citées en sont refaits à chaque ' +
-      'modification, comme la ligne du sort dans la page de sa magie ; magie, NPM et ordre ne se modifient pas, l’identifiant ne suit pas un renommage ' +
+      'modification, comme la ligne du sort dans la page de sa magie ; magie, NPM, ordre et spécialisation ne se modifient pas, l’identifiant ne suit pas un renommage ' +
       '(migration 0006) ; ni création ni suppression.',
     table: 'sort',
     enfants: [
@@ -117,22 +117,22 @@ export const RESSOURCES = [
       { table: 'sort_bonus_maitrise', parent: { sort_id: 'id' } },
       { table: 'sort_etat', parent: { sort_id: 'id' } },
     ],
-    liste: ['id', 'nom', 'magie_id', 'niveau', 'ordre', 'type_brut', 'cout_brut', 'cout_secondaire', 'portee_brut'],
+    liste: ['id', 'nom', 'magie_id', 'niveau', 'specialisation_id', 'ordre', 'type_brut', 'cout_brut', 'cout_secondaire', 'portee_brut'],
     recherche: ['nom'],
     tri: 'magie_id',
   },
   {
-    cle: 'ameliorations-cadaveriques',
-    nom: 'Amélioration cadavérique',
-    noms: 'Améliorations cadavériques',
+    cle: 'specialisations-de-magie',
+    nom: 'Spécialisation magique',
+    noms: 'Spécialisations magiques',
     description:
-      'Le tableau « AMELIORATION CADAVERIQUE » de l’onglet de la Nécromancie (nom et effet, colonne de gauche puis de droite, de haut en bas), affiché ' +
-      'sous le sort qui invoque les non-morts (le sort « Animation de mort », dont l’invocation s’appelle « Animation des morts ») ; son lien avec les ' +
-      'créatures invoquées n’est pas dans la source ; en lecture seule.',
-    table: 'amelioration_cadaverique',
-    liste: ['id', 'nom', 'magie_id', 'rang', 'effet'],
-    recherche: ['nom', 'effet'],
-    tri: 'rang',
+      'Les 28 spécialisations des magies (décision R236 (1), classeur « Nouveauté mise à jour Décembre » : deux par magie, sauf le Potentiel Illimité), ' +
+      'dont les sorts de NPM 3 à 5 portent l’identifiant (`specialisation_id` d’un sort) ; les sorts de NPM 1 et 2 sont communs à la magie. Le nom, la ' +
+      'description et la remarque se modifient ; la magie, l’ordre (1 ou 2) et le rattachement des sorts ne se modifient pas ; ni création ni suppression.',
+    table: 'magie_specialisation',
+    liste: ['id', 'nom', 'magie_id', 'ordre'],
+    recherche: ['nom'],
+    tri: 'magie_id',
   },
   {
     cle: 'regles-de-magie',
