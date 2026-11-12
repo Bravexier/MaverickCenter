@@ -4,7 +4,7 @@
 // écrit par l'importeur (tools/sheets/magies.py#render) puis retouché par les migrations d'orthographe. Il ne peut pas être refait en entier depuis les
 // tables : il porte des choses qu'elles n'ont pas (libellés du bloc « Données » tels qu'écrits, « Santé offert » ici et « Santé offerte » là ; nombres
 // en cache du classeur, « 4.0 » pour le coût 4 ; titres des textes de niveau 5, « Pluie Chaude » pour le sort « Pluie chaude » ; libellés des notes ;
-// légende ; tableau cadavérique ; relations). Stratégie : REMPLACEMENT DE MORCEAUX. Chaque colonne modifiable a sa place dans le corps (ci-dessous) ;
+// légende ; relations). Stratégie : REMPLACEMENT DE MORCEAUX. Chaque colonne modifiable a sa place dans le corps (ci-dessous) ;
 // une fonction reçoit le corps, la ligne avant et la ligne après, et ne réécrit que les morceaux qui dérivent de cette ligne et qui ne disent plus ce
 // que dit la ligne après (rendu de l'importeur, porté ici à l'identique). Un morceau déjà d'accord avec la ligne après est laissé tel quel, octet
 // pour octet : rejoué avec les mêmes valeurs sur toutes les pages de la base, le corps revient inchangé (test/corps-magies.test.mjs).
@@ -29,7 +29,10 @@
 //   sort.remarque                      entrées du sort dans « ## Notes et commentaires des sorts » (la remarque = leurs textes, séparés par une ligne
 //                                      vide) ; une remarque modifiée remplace ces entrées par une seule, « **Remarque du sort « Nom »** »
 //   sort.texte_niveau5                 citation « > … » sous « ### Titre » dans « ## Textes des sorts de niveau 5 »
-// Le niveau d'un sort, son ordre, les relations entre magies, la légende et le tableau cadavérique ne se modifient pas depuis le site : intacts.
+// Le niveau d'un sort, son ordre, sa spécialisation, les relations entre magies et la légende ne se modifient pas depuis le site : intacts. Le corps ne dit
+// pas les spécialisations (magie_specialisation, R236 (1)) : leurs noms et descriptions sont dans la table, indexée à part (entite_fts) ; le tableau
+// « ## Sorts » les range toutes dans l'ordre du sort (ordre 1 à 30 : 10 communs, puis 10 par spécialisation). Le tableau des améliorations cadavériques et
+// « ## Rôles » n'existent plus (R237 (7), migration 0117).
 //
 // Module pur, sans dépendance (ni base, ni Node, ni navigateur) : il reçoit les lignes des tables, le service (serveur/edition.mjs) lit et écrit.
 
@@ -190,10 +193,9 @@ export const SECTIONS = {
   legende: '## Légende',
   remarque: '## Remarque',
 };
-// ordre des sections dans la page (render) : une section ajoutée se place avant la première qui la suit ; « ## TABLEAU … » (Nécromancie) suit les rôles
-const ORDRE_DES_SECTIONS = ['physique', 'explication', 'donnees', 'hyper', 'roles', 'tableau', 'sorts', 'notes', 'niveau5', 'legende', 'remarque'];
+// ordre des sections dans la page (render) : une section ajoutée se place avant la première qui la suit
+const ORDRE_DES_SECTIONS = ['physique', 'explication', 'donnees', 'hyper', 'roles', 'sorts', 'notes', 'niveau5', 'legende', 'remarque'];
 const rangDeSection = (titre) => {
-  if (titre.startsWith('## TABLEAU')) return ORDRE_DES_SECTIONS.indexOf('tableau');
   const cle = Object.keys(SECTIONS).find((k) => SECTIONS[k] === titre);
   return cle ? ORDRE_DES_SECTIONS.indexOf(cle) : ORDRE_DES_SECTIONS.length;
 };

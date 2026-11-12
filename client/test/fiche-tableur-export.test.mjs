@@ -562,7 +562,11 @@ test('une rangée par sort : type et effets écrits sur plusieurs lignes dans le
     const sort = M.trouver(regles.sorts, l.sort_id);
     const r = ORDINATEUR.sorts.lignes[i];
     const auNm = (ch) => valeurAuNm(sort[ch] ?? null, sort.bonus, ch, 1) ?? '';
-    for (const ch of ['type', 'cout', 'portee', 'zone']) assert.equal(String(v[`${col[ch]}${r}`] ?? ''), uneLigne(auNm(ch)), `${sort.nom} : ${ch}`);
+    for (const ch of ['type', 'cout', 'portee', 'zone']) {
+      // le coût porte aussi le coût secondaire, dans l'écriture du classeur (R244)
+      const attendu = ch === 'cout' ? coutEnUneCase(auNm(ch), sort.cout_secondaire ?? null) : auNm(ch);
+      assert.equal(String(v[`${col[ch]}${r}`] ?? ''), uneLigne(attendu), `${sort.nom} : ${ch}`);
+    }
     const description = String(v[`${col.description}${r}`] ?? '');
     assert.ok(!description.includes('\n'), sort.nom);
     // chaque ligne du D/S/B et des effets, dans l'ordre, séparée de la suivante par « · »

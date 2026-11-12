@@ -20,7 +20,7 @@ import { bonusDeDegatsEcrit } from './degats-texte.mjs';
 import { bonusDeSortsEcrits, preparationEcrite } from './sort-bonus-texte.mjs';
 import { lecteurDAcquis } from './acquis-texte.mjs';
 import { critiqueDeLAccessoire, critiqueDuDon, critiqueDuPremierCoup } from './critique-texte.mjs';
-import { chargerInvocations, tableauxDesSorts } from './bestiaire-db.mjs';
+import { chargerInvocations } from './bestiaire-db.mjs';
 import { FAMILLES_DES_SAUF, desSelonLaForce, famillesAuChoix, idDeSourceDeClasse } from './maitrise-arme.mjs';
 import { ORDRE_DES_RACES, raceKind } from './race-kinds.mjs';
 import { lecteurDeResistances } from './resistance-texte.mjs';
@@ -31,6 +31,7 @@ import {
 } from './palette-css.mjs';
 import { normalize } from './text.mjs';
 import { valeursDAvant } from './historique-site.mjs';
+import { nomsDAvantDesMigrations } from './noms-d-avant-des-migrations.mjs';
 import { chargerVocabulaire } from './mots-cles-db.mjs';
 import { nomDuProtege } from './mots-cles-proteges.mjs';
 import { motsClesDesPages } from './pages-db.mjs';
@@ -311,7 +312,15 @@ function reglesDeLaBase(db) {
   const resistancesDeMagie = parCle(lignes(db, `SELECT magie_id, sens, cible_type, COALESCE(cible_magie_id, cible_etat_id, cible_physique) AS cible_id
                                                  FROM magie_resistance ORDER BY magie_id, sens, cible_type, rang`), 'magie_id',
     (r) => ({ type: r.cible_type, id: r.cible_id, crans: r.sens === 'resistance' ? 1 : -1 }));
-  const etatDeMagie = new Map(lignes(db, 'SELECT magie_id, etat_id FROM etat_magie').map((r) => [r.magie_id, r.etat_id]));
+  // Une magie peut avoir deux altérations liées depuis la 0117 (l'Ombre : Peur, et Somnolence pour la spécialisation SONGE). Le cran d'un don « … à la
+  // magie innée et son altération d'état » va à celle qui a une résistance : la Peur, jamais la Somnolence, qui n'en a pas « comme les altérations
+  // physiques » (décision R250, MAJ-G9). Elle se reconnaît en base, sans dépendre de l'ordre des altérations : une altération que visent les listes
+  // `magie_resistance` (cible_type « etat », en résistance ou en vulnérabilité) ; aucune ligne de la fiche ne porte donc la Somnolence.
+  const etatDeMagie = new Map();
+  for (const r of lignes(db, `SELECT em.magie_id, em.etat_id FROM etat_magie em JOIN etat e ON e.id = em.etat_id
+                              WHERE em.etat_id IN (SELECT cible_etat_id FROM magie_resistance WHERE cible_type = 'etat') ORDER BY e.ordre`)) {
+    if (!etatDeMagie.has(r.magie_id)) etatDeMagie.set(r.magie_id, r.etat_id);
+  }
   // plafond de NPM des sorts d'un personnage de cette magie innée (magie_npm_plafond : décision R188, migration 0097 ; le Potentiel Illimité)
   const npmPlafondDesMagies = new Map(lignes(db, 'SELECT magie_id, npm FROM magie_npm_plafond').map((r) => [r.magie_id, r.npm]));
   const magies = lignes(db, `
@@ -399,7 +408,13 @@ function reglesDeLaBase(db) {
   const alternatives = parCle(lignes(db, 'SELECT capacite_id, autre_id FROM v_capacite_exclusive'), 'capacite_id', (r) => r.autre_id);
   // les noms d'avant un renommage sur le site de dev (lib/historique-site.mjs#valeursDAvant), des dons et des sorts, par id (clé primaire `id` des deux
   // tables) ; `nomsDAvant` rend { noms_d_avant } sans le nom actuel, ou rien
-  const parId = (table) => new Map([...valeursDAvant(db, table, 'nom')].map(([cle, noms]) => [JSON.parse(cle).id, noms]));
+  // plus ceux que des migrations ont changés en gardant l'identifiant (registres de data/migrations : R237 (4) et (11), lib/noms-d-avant-des-migrations.mjs)
+  const deMigrations = nomsDAvantDesMigrations();
+  const parId = (table) => {
+    const noms = new Map([...valeursDAvant(db, table, 'nom')].map(([cle, n]) => [JSON.parse(cle).id, n]));
+    for (const [id, anciens] of deMigrations.get(table) ?? []) noms.set(id, [...new Set([...(noms.get(id) ?? []), ...anciens])]);
+    return noms;
+  };
   const nomsDAvantDesDons = parId('capacite');
   const nomsDAvantDesSorts = parId('sort');
   const nomsDAvant = (noms, x) => {
@@ -842,7 +857,7 @@ function reglesDeLaBase(db) {
   // Les invocations (décision R130 : « avoir la liste des invocations possibles pour les sorts qui invoquent des créatures », « adapter le monstre invoqué en
   // fonction de ses NPM ») : par sort qui invoque, ses créatures dans l'ordre du classeur, leurs magies de marge (la première est celle du sort), le NPM d'une
   // marionnette, ce qui change avec le NPM (lib/creature-npm.mjs, `donneesNpm`), leurs capacités (« (NPM n) » : `npm`) et les effets d'un sacrifice
-  // (« Effet "Manteau noir" » : `sort_id` du sort qui sacrifie) ; et les tableaux qu'un sort désigne par son nom (« Amélioration cadavérique »).
+  // (« Effet "Manteau noir" » : `sort_id` du sort qui sacrifie). Le tableau « Amélioration cadavérique » est retiré (R237 (7), migration 0117).
   const { tableaux: tableauxDInvocation } = chargerInvocations(db);
   const invocations = tableauxDInvocation.filter((t) => t.invocation.sortId).map((t) => ({
     id: t.invocation.id,
@@ -861,7 +876,6 @@ function reglesDeLaBase(db) {
       effets: c.effets.map((e) => ({ libelle: e.libelle, sort_id: e.sort_id, texte: e.texte })),
     })),
   }));
-  const tableaux_de_sacrifice = [...tableauxDesSorts(db)].map(([sortId, t]) => ({ sort_id: sortId, invocation_id: t.invocationId, lignes: t.lignes }));
 
   // couleur de la pastille de l'alignement (demande du propriétaire : celle de son titre dans le guide pour MJ, lib/caracteristiques-postures.mjs) : sa
   // classe de la palette (famille d'une zone, émise par pages/fiche/index.astro), par nom ; `alignement_par_defaut` : celle d'un alignement inconnu
@@ -874,7 +888,7 @@ function reglesDeLaBase(db) {
 
   return {
     constantes, am_classe_magique: amMagique, niveaux, caracteristiques, caracteristique_par_defaut, competences, initiative, races, ethnies, magies, dieux, metiers, classes, sorts, postures,
-    ordre_postures, mode_hyper, ambidextrie, resistance_paliers, etats, alignements, alignement_par_defaut, race_par_nature, neutre, invocations, tableaux_de_sacrifice, ...equipement,
+    ordre_postures, mode_hyper, ambidextrie, resistance_paliers, etats, alignements, alignement_par_defaut, race_par_nature, neutre, invocations, ...equipement,
   };
 }
 

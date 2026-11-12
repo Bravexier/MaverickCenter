@@ -1304,10 +1304,10 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .invocations__aide { margin: 0.3rem 0 0; font-size: var(--fs-xs); }
 .invocation-carte { margin-top: 0.35rem; padding: 0.4rem 0.6rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); }
 .invocation-carte__titre { margin: 0 0 0.3rem; }
-.invocation-carte dl, .invocations__tableau { display: grid; gap: 0.2rem; margin: 0; }
-.invocation-carte__rubrique, .invocations__tableau > div { display: grid; grid-template-columns: minmax(6rem, max-content) 1fr; gap: 0.6rem; }
-.invocation-carte dt, .invocations__tableau dt { font-weight: 600; color: var(--muted); }
-.invocation-carte dd, .invocations__tableau dd { margin: 0; }
+.invocation-carte dl { display: grid; gap: 0.2rem; margin: 0; }
+.invocation-carte__rubrique { display: grid; grid-template-columns: minmax(6rem, max-content) 1fr; gap: 0.6rem; }
+.invocation-carte dt { font-weight: 600; color: var(--muted); }
+.invocation-carte dd { margin: 0; }
 .invocation-carte ul { margin: 0; padding-left: 1rem; }
 .invocation-carte__caracs { display: inline-flex; flex-wrap: wrap; gap: 0.2rem; }
 .invocation-carte__carac { padding: 0 0.35rem; border-radius: var(--radius-xxs); background: var(--c); color: var(--c-texte); font-variant-numeric: tabular-nums; font-weight: 600; }

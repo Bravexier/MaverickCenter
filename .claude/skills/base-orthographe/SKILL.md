@@ -31,6 +31,7 @@ user-invocable: false
 - Un nom corrigé l'est partout (titres, noms typés, textes, cibles des `[[liens]]`) et sa clé `X_cle` est recalculée.
 - Son identifiant ne change jamais. Depuis 0006, aucune table ne dérive plus l'id du nom : sort, classe, invocation, créature et leurs attaques et capacités
   gardent la clé du nom d'origine ; une page renommée garde son adresse.
+- `client/scripts/db-check.mjs` (vers l. 145) vérifie les corrections de `tools/sheets/corrections.json` : il cherche `avant` hors de `apres`. Un `avant` qui n'est qu'un morceau de `apres` (« dégâts sonore » dans « dégâts sonores ») n'est plus signalé.
 - Le rapprochement des classeurs défait ces corrections avant de comparer (tout `data/migrations/*.json` qui a une liste `corrections` :
   skill `sources-rapprochement`). Un registre garde donc sa forme.
 
@@ -41,5 +42,6 @@ user-invocable: false
 - `client/test/orthographe-magies.test.mjs`, `orthographe-base.test.mjs`, `orthographe-noms.test.mjs`.
 - `client/test/corrections.test.mjs` : `tools/sheets/corriger-dump.py` et son registre (une ligne par cellule ; refus de ce qui changerait un chiffre, un signe ou plus qu'un mot).
 - `orthographe-base.test.mjs` : la liste `INSEREES` recense les corrections où une décision du propriétaire a ensuite inséré des mots dans le texte corrigé (R180, Lumière : « une protection ou une amplification est »). La graphie corrigée doit rester, dans l'ordre, dans la nouvelle phrase ; toute autre insertion y est ajoutée.
+- Une correction de la 0005 ou de la 0006 qu'une décision ultérieure a défaite est admise par le registre ou le SQL de la migration concernée, jamais par une liste de lignes écrite à la main : renommages R237 (4) (registre de la 0117, `orthographe-noms.test.mjs`), suppressions R237 (7) et cellules réécrites R237 (1) (`DELETE` et `UPDATE` de son SQL, `orthographe-base.test.mjs`).
 - Les tests qui citent un texte de la base (notes de cellule « texte intégral ») suivent ces corrections ; leurs entrées synthétiques (qui imitent le
   classeur) gardent le texte d'origine.

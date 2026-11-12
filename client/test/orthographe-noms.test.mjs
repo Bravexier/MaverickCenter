@@ -11,6 +11,7 @@ import { normalize } from '../src/lib/text.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { TABLES_DES_NOTES } from '../src/lib/notes-de-version.mjs';
 import { texteDImport } from './aide-base-d-import.mjs';
+import { pagesReecritesParLa0117, sortsReecritsParLa0117 } from './aide-migration-0117.mjs';
 
 const racine = trouverRacine();
 const dossier = join(racine, 'data', 'migrations');
@@ -23,6 +24,17 @@ const db = ouvrirBase({ sansExemples: false });
 const historique = historiqueSite(db);
 const presente = (c) => !historique.supprimee(c.table, c.cle);
 const intacte = (c) => presente(c) && !historique.modifiee(c.table, c.cle, c.col);
+// Décision R237 (4) (MAJ-X5, noms presque identiques : « le même sort, qui garde son identifiant, reste sur les fiches et prend le nom du classeur »),
+// migration 0117 : huit sorts prennent le nom du classeur de Décembre, parfois la graphie que 0006 avait corrigée (« Verrouille Visible »). Lus dans le
+// registre de la 0117 (`sorts.renommes_r237_4` : id, avant, après), sans liste écrite à la main.
+const RENOMMES_R237_4 = JSON.parse(readFileSync(join(dossier, '0117-magies-v10-specialisations.json'), 'utf8')).sorts.renommes_r237_4;
+// R237 (1) et (2) (« le classeur fait foi » ; un sort présent des deux côtés « prend les valeurs du classeur »), migration 0117 : une cellule qu'elle
+// réécrit (colonne d'un sort, corps entier d'une page) dit ce que le classeur de Décembre écrit (« Résurrection noire ») ; ses coquilles relèvent de R10
+// (registre de la 0117, `coquilles_r10`)
+const pagesDeLa0117 = pagesReecritesParLa0117();
+const reecriteParLa0117 = (c) => (c.table === 'sort' && sortsReecritsParLa0117([c.col]).has(c.cle.id)) || (c.table === 'page' && c.col === 'corps_md' && pagesDeLa0117.has(c.cle.id));
+/** Le renommage R237 (4) qui défait un renommage de 0006 : le nom que 0006 a écrit est celui que la 0117 remplace (casse comprise : « vague de cadavres »). */
+const renommeR237 = (c) => RENOMMES_R237_4.find((r) => r.avant.toLowerCase() === c.apres.toLowerCase());
 
 const NATURES = ['accent', 'casse', 'frappe', 'grammaire', 'harmonisation', 'orthographe', 'ponctuation', 'phrase'];
 // tables de trace ou de clés : jamais réécrites (mêmes que pour 0005)
@@ -57,9 +69,12 @@ test('registre : renommages décrits, de nature connue, hors des tables de trace
 
 test('base : chaque renommage est fait (le nom corrigé est dans sa cellule)', () => {
   for (const c of corrections.filter(intacte)) {
+    if (reecriteParLa0117(c)) continue;
     const l = ligne(c.table, c.cle);
     assert.ok(l, `${c.table} ${JSON.stringify(c.cle)} : ligne absente`);
-    assert.ok(l[c.col].includes(c.apres), `${c.table} ${JSON.stringify(c.cle)} ${c.col} : « ${c.apres} » absent`);
+    const r = renommeR237(c);
+    assert.ok(l[c.col].includes(c.apres) || (r && l[c.col].toLowerCase().includes(r.apres.toLowerCase())),
+      `${c.table} ${JSON.stringify(c.cle)} ${c.col} : « ${c.apres} » absent${r ? ` (ni « ${r.apres} », R237 (4))` : ''}`);
   }
 });
 
@@ -71,7 +86,9 @@ test('clés de nom : recalculées (normalize du nom corrigé), identifiants inch
     const source = c.col.slice(0, -'_cle'.length);
     // la clé suit le nom courant ; la valeur du registre, tant que le site de dev n'a renommé ni le nom ni sa clé (il est la source de ce qu'il modifie)
     assert.equal(normalize(l[source]), l[c.col], `${c.table} ${JSON.stringify(c.cle)} : clé désaccordée de « ${l[source]} »`);
-    if (!historique.modifiee(c.table, c.cle, source) && !historique.modifiee(c.table, c.cle, c.col)) assert.equal(l[c.col], c.apres);
+    // une clé dont la 0117 a renommé le sort (R237 (4)) suit le nom du classeur
+    const r = c.table === 'sort' && RENOMMES_R237_4.find((x) => x.id === c.cle.id);
+    if (!historique.modifiee(c.table, c.cle, source) && !historique.modifiee(c.table, c.cle, c.col)) assert.equal(l[c.col], r ? normalize(r.apres) : c.apres);
     assert.notEqual(c.avant, c.apres);
     // l'identifiant d'une table qui le dérivait du nom garde la clé d'origine
     if (IDS_GELES[c.table] && c.col === 'nom_cle') assert.ok(c.cle.id.includes(`${IDS_GELES[c.table]}${c.avant}`), `${c.cle.id} : l'id ne garde pas la clé d'origine « ${c.avant} »`);
@@ -104,7 +121,10 @@ test('anciennes graphies disparues des textes (hors traces de la source et citat
   const fautes = [/Supprémaciste/, /Marcass Ubain/, /\bOccultomancien/, /Sihouetteur/, /Marionette de lombre/, /MARIONETTE/, /Foudre argenté(?!\p{L})/u, /Touché du Vide/,
     /Verrouille Visible/, /Résurrection Noir\b/, /Brume mental\b/, /Estoc hurlante/, /[Vv]ague de cadavre\b/, /Onde Confusion/, /Colonne tesla/, /\bPavoi\b/, /\bOnix\b/,
     /\bDiament\b/, /\bEmmeraude\b/, /\bGyspe\b/, /\b[Bb]revage\b/, /cyante/, /\bSouffre\b/, /\bJacklope\b/, /\bFrappeud\b/, /\bMithril\b/, /\bowlmans?\b/, /Drassah'Thac/,
-    /\bkistunes?\b/, /\b[Pp]anacée (mineur|majeur|parfait)\b/, /\bArmure [^|\n<]{0,30} complet\b/, /[Pp]ara-tonnerre/, /\bVeilliessement\b/, /[Pp]urée de poix/, /\bRocks?\b/];
+    /\bkistunes?\b/, /\b[Pp]anacée (mineur|majeur|parfait)\b/, /\bArmure [^|\n<]{0,30} complet\b/, /[Pp]ara-tonnerre/, /\bVeilliessement\b/, /[Pp]urée de poix/, /\bRocks?\b/]
+    // une graphie redevenue le nom d'un sort par R237 (4) (« Verrouille Visible », « Foudre argenté »…) n'est plus une faute
+    .filter((f) => !RENOMMES_R237_4.some((r) => f.test(r.apres)));
+  assert.ok(RENOMMES_R237_4.length > 0, 'registre de la 0117 : renommages R237 (4)');
   // section 15 (notes de version, historique des modifications du site) sautée : des traces, qui citent la production d'avant la livraison (master
   // peut précéder cette migration : « Foudre argenté ») et les valeurs au moment de chaque modification (lib/notes-de-version.mjs#TABLES_DES_NOTES) ;
   // le texte des règles qu'elles citent est contrôlé ici dans sa propre table

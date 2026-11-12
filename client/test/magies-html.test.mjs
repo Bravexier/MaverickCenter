@@ -12,7 +12,8 @@ import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { chargerMagies } from '../src/lib/magies-db.mjs';
 import { classeDeMagie, cssDeLaPalette } from '../src/lib/palette-css.mjs';
 import { ENCOMBREMENT, liaisonsEntreMagies, POINTES, segmentCoupe } from '../src/lib/magie-fleches.mjs';
-import { npmMaxDuPotentiel } from '../src/lib/potentiel-illimite.mjs';
+import { npmMaxDuPotentiel, POTENTIEL_ILLIMITE } from '../src/lib/potentiel-illimite.mjs';
+import { ancreDeSpecialisation, phrasesDesSpecialisations, sortsParSpecialisation } from '../src/lib/sort-format.mjs';
 import { sansBonus } from '../src/lib/sort-maitrise.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
 import { tuilesDeCapacites } from './aide-bestiaire.mjs';
@@ -246,17 +247,33 @@ test('infobulles : un déclencheur par bulle, un texte de repli (title), une bul
   assert.ok(bulles > 100, `infobulles posées : ${bulles}`);
 });
 
-test('règle spéciale du NPM 5 : une seule pastille « i », dans le titre du tableau du NPM 5 juste après son texte, et plus d’encart sous le tableau', options, () => {
+test('règle spéciale du NPM 5 : une pastille « i » dans le titre de chaque tableau du NPM 5 (un par spécialisation), juste après son texte, aucune ailleurs, et plus d’encart sous le tableau', options, () => {
+  const { regles } = chargerMagies(ouvrirBase());
+  const niveauxAvecRegle = regles.map((r) => r.niveau_sort).filter(Boolean);
+  assert.ok(niveauxAvecRegle.includes(5));
   for (const { slug, html } of avecSorts) {
-    const infos = [...html.matchAll(/class="info"/g)].length;
-    assert.equal(infos, 1, `${slug} : une pastille « i »`);
-    const npm5 = html.slice(html.indexOf('id="npm-5"'));
-    assert.ok(npm5.indexOf('class="info"') > 0 && npm5.indexOf('class="info"') < npm5.indexOf('class="sorts-wrap'), `${slug} : la pastille est dans le titre du tableau 5`);
-    // à gauche, après le texte du titre, avant les pastilles de niveau (demande du propriétaire)
-    assert.ok(npm5.indexOf('class="npm__nom"') < npm5.indexOf('class="info"') && npm5.indexOf('class="info"') < npm5.indexOf('class="npm__pips"'), `${slug} : la pastille suit le texte du titre`);
-    // dans le même bloc que le texte : sur un téléphone étroit, le « i » passe à la ligne avec lui, jamais seul sous le badge
-    const intitule = contenu(npm5, npm5.indexOf('<span class="npm__intitule">'), 'span');
-    assert.ok(intitule.includes('class="npm__nom"') && intitule.includes('class="info"'), `${slug} : texte du titre et pastille dans le même bloc`);
+    let infos = 0;
+    let tableauxAvecRegle = 0;
+    for (const m of html.matchAll(/<section class="npm" id="npm-[^"]+"/g)) {
+      const tableau = contenu(html, m.index, 'section');
+      const niveau = Number(tableau.match(/<span class="npm__badge">NPM (\d)<\/span>/)[1]);
+      const aLaPastille = tableau.includes('class="info"');
+      assert.equal(aLaPastille, niveauxAvecRegle.includes(niveau), `${slug} : NPM ${niveau}, pastille si et seulement si une règle vise ce niveau`);
+      if (!aLaPastille) continue;
+      tableauxAvecRegle += 1;
+      infos += [...tableau.matchAll(/class="info"/g)].length;
+      const titre = tableau.slice(0, tableau.indexOf('class="sorts-wrap'));
+      assert.ok(titre.includes('class="info"'), `${slug} : la pastille est dans le titre du tableau`);
+      // à gauche, après le texte du titre, avant les pastilles de niveau (demande du propriétaire)
+      assert.ok(tableau.indexOf('class="npm__nom"') < tableau.indexOf('class="info"') && tableau.indexOf('class="info"') < tableau.indexOf('class="npm__pips"'), `${slug} : la pastille suit le texte du titre`);
+      // dans le même bloc que le texte : sur un téléphone étroit, le « i » passe à la ligne avec lui, jamais seul sous le badge
+      const intitule = contenu(tableau, tableau.indexOf('<span class="npm__intitule">'), 'span');
+      assert.ok(intitule.includes('class="npm__nom"') && intitule.includes('class="info"'), `${slug} : texte du titre et pastille dans le même bloc`);
+    }
+    assert.ok(tableauxAvecRegle > 0, `${slug} : au moins un tableau du NPM 5`);
+    // hors des tableaux : seulement celles des titres de spécialisation (R245 (1), test « spécialisations » plus bas)
+    const dansLesTitres = [...html.matchAll(/<h3 class="sorts-groupe__titre specialisation__titre"/g)].reduce((n, m) => n + [...contenu(html, m.index, 'h3').matchAll(/class="info"/g)].length, 0);
+    assert.equal([...html.matchAll(/class="info"/g)].length, infos + dansLesTitres, `${slug} : aucune pastille hors des tableaux et des titres de spécialisation`);
     assert.ok(!html.includes('magie-regle'), `${slug} : plus d'encart de règle sous le tableau`);
   }
 });
@@ -279,11 +296,11 @@ test('niveaux de maîtrise : plus de colonne « Maîtrise » ; chaque bonus du t
       pastilles += 1;
     }
   }
-  // une pastille par bonus de la base (sort_bonus_maitrise, que le site de dev dérive des cellules qu'il réécrit) ; à l'import, 72 bonus de la colonne
-  // Type + 190 des cellules Coût, Portée, Zone, D/S/B (test/maitrise-sorts.test.mjs)
+  // une pastille par bonus de la base (sort_bonus_maitrise, que le site de dev dérive des cellules qu'il réécrit) ; à l'import (classeur de Décembre, R237), 320 bonus
+  // des colonnes Type, Coût, Portée, Zone et D/S/B (test/maitrise-sorts.test.mjs)
   const compter = (db) => db.prepare("SELECT count(*) AS n FROM sort_bonus_maitrise WHERE champ IN ('type', 'cout', 'portee', 'zone', 'dsb')").get().n;
   assert.equal(pastilles, compter(ouvrirBase()));
-  assert.equal(compter(baseDImport()), 262, 'à l’import');
+  assert.equal(compter(baseDImport()), 320, 'à l’import');
   // Boule de feu : sa valeur de base, puis chacun de ses bonus en pastille (ceux de la base courante)
   const feu = pages.find((p) => p.slug === 'magie-du-feu').html;
   const bdf = contenu(feu, feu.indexOf('<tbody class="sort" id="sort-boule-de-feu"'), 'tbody');
@@ -299,7 +316,10 @@ test('coût (décisions R105, R106) : pas de colonne « Coût secondaire » ; le
     const id = `magies/${p.slug}`;
     const siens = sorts.filter((s) => s.magie_id === id);
     const tableaux = [...p.html.matchAll(/<table class="sorts\b[^"]*">\s*<thead>([\s\S]*?)<\/thead>/g)];
-    assert.ok(tableaux.length >= 5, `${p.slug} : un tableau par NPM`);
+    // un tableau par NPM du tableau commun, puis un par NPM de chaque spécialisation (R236)
+    const magie = chargerMagies(ouvrirBase()).magies.get(id);
+    const { communs, specialisations } = sortsParSpecialisation(magie.sorts, magie.specialisations);
+    assert.equal(tableaux.length, communs.length + specialisations.reduce((n, x) => n + x.groupes.length, 0), `${p.slug} : un tableau par NPM, commun puis par spécialisation`);
     for (const m of tableaux) {
       const colonnes = [...m[1].matchAll(/<th[^>]*>([^<]*)<\/th>/g)].map((t) => t[1]);
       assert.deepEqual(colonnes, ['Nom', 'Type', 'Coût', 'Portée', 'Zone', 'D/S/B'], p.slug);
@@ -323,37 +343,43 @@ test('coût (décisions R105, R106) : pas de colonne « Coût secondaire » ; le
   // des coûts secondaires que la migration 0063 a répartis (R105) : dans l'état d'import (test/aide-base-d-import.mjs) ; la page rend ceux de la base
   // courante (ci-dessus)
   const dImport = baseDImport().prepare('SELECT magie_id, cout_secondaire FROM sort WHERE cout_secondaire IS NOT NULL').all();
-  for (const [magie, texte] of [['magie-du-sang', '1 Sang'], ['magie-du-feu', '20% PV'], ['magie-de-larcane', 'Par tour et par cible']]) {
+  for (const [magie, texte] of [['magie-du-sang', '1 Sang'], ['magie-de-larcane', 'Par tour et par cible']]) {
     assert.ok(dImport.some((x) => x.magie_id === `magies/${magie}` && x.cout_secondaire.includes(texte)), `${magie} : « ${texte} » à l’import`);
   }
 });
 
 test('panneau d’un sort : un seul cadre « Effets » par sort, les règles d’invocation et l’annexe sont repliées par défaut', options, () => {
   for (const { slug, html } of avecSorts) {
-    assert.equal([...html.matchAll(/<h5>Effets<\/h5>/g)].length, 23, `${slug} : 23 cadres « Effets »`);
+    // un cadre « Effets » par sort de la magie (le nombre de sorts vient de la base)
+    assert.equal([...html.matchAll(/<h5>Effets<\/h5>/g)].length, chargerMagies(ouvrirBase()).magies.get(`magies/${slug}`).sorts.length, `${slug} : un cadre « Effets » par sort`);
     // (hors le panneau latéral des magies, ouvert sans JavaScript : test plus bas)
     assert.doesNotMatch(html, /<details(?![^>]*data-magies-repli)[^>]*\sopen\b/, `${slug} : un <details> est ouvert par défaut`);
   }
   const necro = pages.find((p) => p.slug === 'magie-de-la-necromancie').html;
   assert.match(necro, /<summary>Règles de l’invocation<\/summary>/);
-  assert.match(necro, /<summary>TABLEAU &quot;AMÉLIORATION CADAVÉRIQUE&quot;<\/summary>/);
+  // R237 (7) : le tableau « Amélioration cadavérique » et la section « selon l'invocation sacrifiée » sont retirés
+  assert.doesNotMatch(necro, /<summary>TABLEAU|Règles propres : selon l’invocation sacrifiée/);
 });
 
 test('créatures invoquées (et celles de « Manteau noir ») : un bouton par créature, sur la couleur de sa ou ses magies, sans lien « Bestiaire » ni lien à bulle ; sa carte du bestiaire en infobulle (demande du propriétaire), une par créature et par page', options, () => {
   const db = ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' });
   const { lignes } = chargerInvocations(db);
   const parSlug = new Map(lignes.map((l) => [l.id.slice(l.id.indexOf('/') + 1), l]));
-  // les améliorations d'« Amélioration cadavérique » qui portent le nom d'une créature (décision R130 : sa carte en infobulle)
-  // (le tableau se rattache au sort, et l'amélioration à la créature, par leur nom, que le site de dev réécrit : décision R130, code de lib/bestiaire-db.mjs ;
-  // il y en a dans l'état d'import, test/aide-base-d-import.mjs)
-  const ameliorationsDe = (base) => [...chargerMagies(base).sorts.values()].flatMap((s) => s.ameliorations?.lignes ?? []).filter((a) => a.creature).length;
-  const ameliorees = ameliorationsDe(db);
-  assert.ok(ameliorationsDe(baseDImport()) > 0, 'à l’import');
-  // les créatures citées par page : les sorts d'invocation (Terre, Nécromancie, Ombre), « Manteau noir » (Ombre), « Amélioration cadavérique »
-  // (Nécromancie), et tout cela dans le Potentiel Illimité
-  const attendu = { 'magie-de-la-necromancie': [28, 28 + ameliorees], 'magie-de-la-terre': [30, 30], 'magie-de-lombre': [5, 10], 'potentiel-illimite': [63, 68 + ameliorees] };
+  // les créatures citées par page : les sorts d'invocation (Terre, Nécromancie, Ombre) et « Manteau noir » (Ombre), tout cela dans le Potentiel Illimité, dans la limite de
+  // son NPM. Un déclencheur par créature citée, une carte par créature et par page ; les nombres viennent des sorts de la base, pas d'un effectif écrit
+  // (le tableau « Amélioration cadavérique » est retiré : R237 (7))
+  const existe = new Set(lignes.map((l) => l.id));
+  const { magies: toutes } = chargerMagies(db);
+  const plafond = npmMaxDuPotentiel(toutes);
+  const attendu = (slug) => {
+    const sorts = slug === 'potentiel-illimite'
+      ? [...toutes.values()].filter((x) => x.id !== POTENTIEL_ILLIMITE).flatMap((x) => x.sorts.filter((s) => s.niveau <= plafond))
+      : toutes.get(`magies/${slug}`).sorts;
+    const citees = sorts.flatMap((s) => [...s.invoque.flatMap((i) => i.creatures.map((c) => c.id)), ...s.effetsDeCarte.map((e) => e.id)]).filter((id) => existe.has(id));
+    return [new Set(citees).size, citees.length];
+  };
   for (const { slug, html } of pages) {
-    const [cartes, declencheurs] = attendu[slug] ?? [0, 0];
+    const [cartes, declencheurs] = attendu(slug);
     // la couleur : la classe de la première magie et la classe de second rang de la seconde, ou de la même (lib/palette-css.mjs), jamais un style
     const boutons = [...html.matchAll(/<button type="button" class="chip creature__bouton creature__bouton--magie couleur-magie-([\w-]+) couleur-2-magie-([\w-]+)" data-bulle="bulle-creature-([^"]+)" aria-describedby="bulle-creature-\3" title="[^"]+">([^<]+)<\/button>/g)]
       .map(([tout, c1, c2, s, nom]) => [tout, s, c1, c2, nom]);
@@ -369,7 +395,6 @@ test('créatures invoquées (et celles de « Manteau noir ») : un bouton par cr
       assert.ok(boutons.some(([, , c1, c2]) => c1 === c2), `${slug} : créatures d'une seule magie`);
       assert.ok(boutons.some(([, , c1, c2]) => c1 !== c2), `${slug} : créatures de deux magies en dégradé`);
     }
-    // (une amélioration d'« Amélioration cadavérique » garde l'écriture de son tableau, « Os Froid », rattachée au nom exact à la casse près : R130)
     for (const [, s, , , nom] of boutons) assert.equal(nom.replace(/&#39;/g, "'").toLocaleLowerCase('fr'), parSlug.get(s)?.nom.toLocaleLowerCase('fr'), `${slug} : ${s}`);
     // plus de fiche minimale sous les blocs
     assert.doesNotMatch(html, /creature__fiche|creature__rangee/, `${slug} : fiche minimale retirée`);
@@ -398,11 +423,9 @@ test('créatures invoquées (et celles de « Manteau noir ») : un bouton par cr
 });
 
 // Décision R130 : sur une page de magie, les cartes des golems et des non-morts suivent le NPM choisi au curseur de la liste des créatures (une bulle par
-// créature et par page : tous les curseurs vont ensemble, posés par le script de SortsInteractifs.astro, cachés sans JavaScript) ; « Amélioration
-// cadavérique » montre ses améliorations selon l'invocation sacrifiée (le tableau de l'invocation qui porte son nom).
-test('pages de magie : curseur du NPM des cartes, améliorations d’« Amélioration cadavérique » selon l’invocation sacrifiée (décision R130)', options, () => {
-  const db = ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' });
-  const { sorts } = chargerMagies(db);
+// créature et par page : tous les curseurs vont ensemble, posés par le script de SortsInteractifs.astro, cachés sans JavaScript). Le tableau
+// d'« Amélioration cadavérique » est retiré (R237 (7)) : aucune section « selon l'invocation sacrifiée » ni tableau d'invocation.
+test('pages de magie : curseur du NPM des cartes ; plus de tableau d’« Amélioration cadavérique » (R237 (7))', options, () => {
   const page = (slug) => pages.find((p) => p.slug === slug)?.html ?? '';
   for (const slug of ['magie-de-la-terre', 'magie-de-la-necromancie']) {
     const curseurs = [...page(slug).matchAll(/<p class="invoque__npm" data-npm-page-bloc hidden>/g)];
@@ -411,29 +434,108 @@ test('pages de magie : curseur du NPM des cartes, améliorations d’« Amélior
   }
   // les marionnettes (une créature par NPM) : pas de curseur
   assert.doesNotMatch(page('magie-de-lombre'), /<input[^>]* data-npm-page/);
-  // le tableau d'une invocation se rattache au sort que désigne invocation.tableau_sort_id (id figé, lib/bestiaire-db.mjs#tableauxDesSorts) : à l'import,
-  // un sort le désigne (test/aide-base-d-import.mjs) ; la page rend le rattachement de la base courante
-  assert.ok([...chargerMagies(baseDImport()).sorts.values()].some((s) => s.ameliorations), 'à l’import, un sort désigne le tableau de son invocation');
-  // sur les pages qui ont leurs propres sorts, autant de sections que de sorts qui ont un tableau rattaché dans la base courante (aucune si le site de
-  // dev a défait tous les rattachements), puis chacune, dans le détail de son sort, vérifiée
-  const SECTION = 'Règles propres : selon l’invocation sacrifiée';
-  const rattaches = [...sorts.values()].filter((s) => s.ameliorations);
-  const sections = avecSorts.reduce((n, p) => n + p.html.split(SECTION).length - 1, 0);
-  assert.equal(sections, rattaches.length, 'une section par sort qui a un tableau rattaché dans la base, aucune sans');
-  for (const amelioration of rattaches) {
-    const html = page(amelioration.magieId.slice(amelioration.magieId.indexOf('/') + 1));
-    const detail = html.indexOf(`id="detail-${amelioration.slug}-titre"`);
-    assert.ok(detail > 0, `${amelioration.id} : le détail du sort`);
-    const suivant = html.indexOf('<div class="sort-detail" role="region"', detail);
-    const debut = html.indexOf(SECTION, detail);
-    assert.ok(debut > 0 && (suivant < 0 || debut < suivant), `${amelioration.id} : la section, dans le détail du sort`);
-    const tableau = html.slice(debut, html.indexOf('</table>', debut));
-    assert.equal([...tableau.matchAll(/<tr><th scope="row">/g)].length, amelioration.ameliorations.lignes.length, `${amelioration.id} : une ligne par amélioration`);
-    // une amélioration au nom d'une créature : sa carte en infobulle, sous le nom de la créature
-    for (const a of amelioration.ameliorations.lignes.filter((x) => x.creature)) {
-      assert.ok(tableau.includes(`data-bulle="bulle-creature-${a.creature.id.slice(a.creature.id.indexOf('/') + 1)}"`), `${amelioration.id} : ${a.nom}`);
-    }
+  for (const { slug, html } of pages) {
+    assert.doesNotMatch(html, /Règles propres : selon l’invocation sacrifiée|<summary>TABLEAU/, `${slug} : plus de tableau d'améliorations cadavériques`);
   }
+});
+
+// R237 (7) : les rôles des magies sont supprimés ; la liste des rôles de la bannière ne s'affiche que si la magie en a (la base, modifiable sur le site de dev)
+test('pages de magie : la liste des rôles n’est affichée que pour une magie qui en a', options, () => {
+  const { magies: toutes } = chargerMagies(ouvrirBase());
+  for (const { slug, html } of pages) {
+    assert.equal(html.includes('class="magie-hero__roles"'), toutes.get(`magies/${slug}`).roles.length > 0, slug);
+  }
+});
+
+// Spécialisations (R236 (1), components/magie/MagieSorts.astro, SortsDeSpecialisation.astro) : sous « Sorts », le tableau commun puis les deux spécialisations,
+// chacune avec son nom tel que la base l'écrit, sa description et sa remarque (modifiables), puis ses sorts, un tableau par NPM.
+test('pages de magie : « Sorts communs » puis les deux spécialisations, chacune avec son nom tel quel, ses textes modifiables et les sorts que la base lui rattache', options, () => {
+  const { magies: toutes, regles } = chargerMagies(ouvrirBase());
+  const phrases = phrasesDesSpecialisations(regles);
+  const echapper = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  const lignesDe = (html) => [...html.matchAll(/<tbody class="sort" id="sort-([^"]+)"/g)].map((m) => m[1]);
+  for (const { slug, html } of avecSorts) {
+    const magie = toutes.get(`magies/${slug}`);
+    const { communs, specialisations } = sortsParSpecialisation(magie.sorts, magie.specialisations);
+    assert.ok(specialisations.length > 0, `${slug} : des spécialisations`);
+    const sorts = contenu(html, html.indexOf('<section class="magie-section" id="sorts"'), 'section');
+    // le tableau commun d'abord : ses NPM, ses sorts, dans l'ordre
+    const iCommuns = sorts.indexOf('<section class="sorts-communs" id="sorts-communs"');
+    assert.ok(iCommuns > 0, `${slug} : « Sorts communs »`);
+    const commun = contenu(sorts, iCommuns, 'section');
+    assert.deepEqual([...commun.matchAll(/<section class="npm" id="npm-([^"]+)"/g)].map((m) => m[1]), communs.map((g) => String(g.niveau)), `${slug} : NPM du tableau commun`);
+    assert.deepEqual(lignesDe(commun), communs.flatMap((g) => g.sorts.map((s) => s.slug)), `${slug} : sorts communs`);
+    // puis chaque spécialisation, dans l'ordre 1, 2, côte à côte (R245 (2)) : dans un seul conteneur de deux colonnes, après le tableau commun
+    const iColonnes = sorts.indexOf('<div class="specialisations">');
+    assert.ok(iColonnes > iCommuns + commun.length - 1, `${slug} : les deux colonnes après le tableau commun`);
+    const colonnes = contenu(sorts, iColonnes, 'div');
+    assert.deepEqual([...colonnes.matchAll(/<section class="specialisation" id="specialisation-([^"]+)"/g)].map((m) => m[1]), specialisations.map((x) => ancreDeSpecialisation(x.specialisation.id)), `${slug} : une colonne par spécialisation, dans l'ordre`);
+    assert.ok(!commun.includes('class="specialisation"'), `${slug} : aucune spécialisation dans le tableau commun`);
+    let depuis = iColonnes;
+    for (const { specialisation: sp, groupes } of specialisations) {
+      const debut = sorts.indexOf(`<section class="specialisation" id="specialisation-${ancreDeSpecialisation(sp.id)}"`, depuis);
+      assert.ok(debut >= depuis, `${slug} : ${sp.id}, après la précédente`);
+      const section = contenu(sorts, debut, 'section');
+      depuis = debut + section.length;
+      // le nom tel que la base l'écrit (jamais mis en capitales par la feuille de style), modifiable
+      assert.ok(section.includes(`<span class="specialisation__nom" id="specialisation-${ancreDeSpecialisation(sp.id)}-nom" data-ed="${echapper(JSON.stringify(['magie_specialisation', { id: sp.id }, 'nom']))}">${echapper(sp.nom)}</span>`), `${slug} : nom de ${sp.id} tel quel`);
+      // R245 (1) : l'infobulle des phrases de « CHOSES A SAVOIR » est sur le titre de chaque spécialisation, après le nom, avec ces phrases et elles seules ; sinon aucune
+      const titre = contenu(section, section.indexOf('<h3 class="sorts-groupe__titre specialisation__titre"'), 'h3');
+      assert.ok(titre.indexOf('class="specialisation__nom"') < titre.indexOf('class="bulle-zone"') || !phrases, `${slug} : ${sp.id}, infobulle après le nom`);
+      assert.equal([...titre.matchAll(/class="info"/g)].length, phrases ? 1 : 0, `${slug} : ${sp.id}, une infobulle sur le titre`);
+      if (phrases) assert.ok(titre.includes(`<span class="bulle__texte">${echapper(phrases.texte)}</span>`), `${slug} : ${sp.id}, les phrases de la règle`);
+      assert.ok(!phrases || section.indexOf('class="info"') < section.indexOf('<section class="npm"'),`${slug} : ${sp.id}, l'infobulle du titre avant le premier tableau`);
+      // description et remarque : le champ de la base, le cadre caché si et seulement si le texte est vide
+      for (const colonne of ['description', 'remarque']) {
+        const champ = `data-ed="${echapper(JSON.stringify(['magie_specialisation', { id: sp.id }, colonne]))}" data-ed-rendu="blocs"`;
+        const iChamp = section.indexOf(champ);
+        assert.ok(iChamp > 0, `${slug} : ${sp.id}, ${colonne} modifiable`);
+        // R245 (3) : la description et la remarque viennent avant le tableau du NPM 3 (comme les spécialités d'une classe)
+        assert.ok(iChamp < section.indexOf('<section class="npm"'), `${slug} : ${sp.id}, ${colonne} avant le premier tableau`);
+        const cadre = section.slice(section.lastIndexOf('data-ed-cadre', iChamp), iChamp);
+        assert.equal(/hidden/.test(cadre), sp[colonne].length === 0, `${slug} : ${sp.id}, cadre de ${colonne} caché si et seulement si vide`);
+      }
+      // ses tableaux, un par NPM, avec les sorts que la base lui rattache ; les identifiants du tableau portent la spécialisation (le NPM 3 existe dans les deux)
+      assert.deepEqual([...section.matchAll(/<section class="npm" id="npm-([^"]+)"/g)].map((m) => m[1]), groupes.map((g) => `${ancreDeSpecialisation(sp.id)}-${g.niveau}`), `${slug} : tableaux de ${sp.id}`);
+      assert.deepEqual(lignesDe(section), groupes.flatMap((g) => g.sorts.map((s) => s.slug)), `${slug} : sorts de ${sp.id}`);
+    }
+    // aucun identifiant de tableau ni de spécialisation en double
+    const idsDuTableau = ids(sorts).filter((i) => /^(npm-|specialisation-|sorts-)/.test(i));
+    assert.equal(new Set(idsDuTableau).size, idsDuTableau.length, `${slug} : identifiants uniques`);
+    // la navigation de la page mène aux tableaux communs et aux spécialisations
+    for (const g of communs) assert.ok(html.includes(`href="#npm-${g.niveau}"`), `${slug} : NPM ${g.niveau}`);
+    for (const { specialisation: sp } of specialisations) assert.ok(html.includes(`href="#specialisation-${ancreDeSpecialisation(sp.id)}"`), `${slug} : ${sp.id}`);
+  }
+  // le nom ne passe pas en capitales par la feuille de style (même convention que les spécialités des classes) ; tout est écrit dans la base
+  const css = readFileSync(new URL('../src/styles/magie/sorts.css', import.meta.url), 'utf8');
+  assert.doesNotMatch(css.match(/\.specialisation__nom \{[^}]*\}/)?.[0] ?? '', /text-transform/);
+  // R245 (2) : une colonne sur écran étroit (elles s'empilent), deux colonnes à partir d'une largeur ; chacune peut rétrécir (minmax(0, 1fr)), sans défilement de la page
+  assert.match(css.match(/\.specialisations \{[^}]*\}/)?.[0] ?? '', /grid-template-columns: minmax\(0, 1fr\);/);
+  assert.match(css.match(/@media \(min-width: [\d.]+rem\) \{\s*\.specialisations \{[^}]*\}/)?.[0] ?? '', /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+  // R247 (3) : « Elargir la zone sur les cotés pour remplir les espace vides » : une page qui a des spécialisations (ou le Potentiel Illimité, R249) occupe toute la
+  // largeur de la fenêtre, panneau latéral compris, à partir de la largeur des deux colonnes ; les autres pages ne changent pas ; sous cette largeur, rien ne change
+  const largeur = css.match(/@media \(min-width: ([\d.]+rem)\) \{\s*\.specialisations \{/)?.[1];
+  assert.ok(largeur, 'seuil des deux colonnes');
+  const bloc = (selecteur) => css.match(new RegExp(`@media screen and \\(min-width: ${largeur.replace('.', '\\.')}\\) \\{\\s*${selecteur} \\{([^}]*)\\}`))?.[1] ?? '';
+  assert.match(bloc('main:has\\(> \\.magie-cadre--large\\)'), /max-width: var\(--max-magie-large, [\d.]+rem\)/, 'la page large dépasse la colonne centrée');
+  assert.doesNotMatch(css, /margin-right: calc\(-1/, 'plus de débordement hors de la page : la page elle-même est large');
+  // tableaux resserrés dans le mode à deux colonnes seulement : marges et largeurs minimales, aucune colonne retirée (pas de display: none)
+  const serre = css.match(new RegExp(`@media screen and \\(min-width: ${largeur.replace('.', '\\.')}\\) \\{(?:(?!\\n\\}).)*?\\.specialisations \\.table-donnees(?:(?!\\n\\}).)*`, 's'))?.[0] ?? '';
+  assert.match(serre, /\.specialisations \.table-donnees > tbody > tr > \* \{ padding-inline:/);
+  assert.match(serre, /\.specialisations \.sort__dsb \{ min-width: 0; \}/);
+  assert.doesNotMatch(serre, /display: none|font-size/, 'aucune colonne retirée, police inchangée');
+  // le gabarit pose la classe sur les seules pages qui ont des spécialisations (le Potentiel Illimité : ses onglets en ont)
+  for (const { slug, html } of pages) {
+    const large = html.includes('<div class="magie-cadre magie-cadre--large">');
+    assert.equal(large, html.includes('<div class="specialisations">'), `${slug} : page large si et seulement si elle a des spécialisations`);
+    if (slug === 'potentiel-illimite') assert.ok(large, 'le Potentiel Illimité est large (R249)');
+  }
+  // le panneau latéral reste dans sa colonne, collé en haut, à gauche de la page
+  const pageCss = readFileSync(new URL('../src/styles/magie/page.css', import.meta.url), 'utf8');
+  assert.match(pageCss.match(/\.magie-cadre \{[^}]*\}/)?.[0] ?? '', /grid-template-columns: minmax\(10rem, 12rem\) minmax\(0, 1fr\)/);
+  assert.match(pageCss.match(/\.magies-panneau \{[^}]*\}/)?.[0] ?? '', /position: sticky/);
+  // le Potentiel Illimité n'a pas de spécialisation à lui (R236 (1))
+  assert.equal(toutes.get(POTENTIEL_ILLIMITE).specialisations.length, 0);
 });
 
 // Tableau des relations entre magies, sous la carte de /magies/ (components/magie/TableauRelationsMagies.astro) : il remplace /wiki/races-et-magies/.
@@ -466,8 +568,9 @@ test('/races-et-magies/ n’existe plus et aucune page de magie n’y renvoie', 
 });
 
 // Page du Potentiel Illimité (components/magie/SortsDuPotentiel.astro) : il pioche ses sorts dans les autres magies. Une magie par onglet, dans l'ordre
-// du classeur ; chaque onglet reprend les tableaux de cette magie du NPM 1 à son plafond (demande du propriétaire ; décision R188 : la donnée,
-// lib/potentiel-illimite.mjs#npmMaxDuPotentiel, 4 à l'import), avec le gabarit de sa page (TableauNpm.astro).
+// du classeur ; chaque onglet reprend les sorts de cette magie du NPM 1 à son plafond (demande du propriétaire ; décision R188 : la donnée,
+// lib/potentiel-illimite.mjs#npmMaxDuPotentiel, 4 à l'import), rangés comme sur sa page : le tableau commun puis ses deux spécialisations, dont il peut
+// prendre n'importe quel sort dans la limite de son NPM (R236 (7)), avec le gabarit de sa page (TableauNpm.astro).
 const ongletsDuPotentiel = () =>
   [...potentiel.matchAll(/<a class="onglet autre-magie__onglet (couleur-magie-[\w-]+)( is-active)?" id="onglet-([^"]+)" href="#(sorts-[^"]+)">\s*([^<]+?)\s*<\/a>/g)].map(
     (m) => ({ actif: Boolean(m[2]), cle: m[3], panneau: m[4], couleur: m[1], nom: m[5] }),
@@ -496,36 +599,72 @@ test('Potentiel Illimité : 14 onglets, un par autre magie, dans l’ordre du cl
   assert.deepEqual(panneaux.map((p) => p.actif), onglets.map((o) => o.actif));
   // dans la section « Sorts » de la page, que la navigation de la page désigne ; les rôles d'onglet sont posés par le script (sans JavaScript : des liens)
   const sorts = contenu(potentiel, potentiel.indexOf('<section class="magie-section" id="sorts"'), 'section');
-  assert.match(sorts, /<h2 id="sorts-titre">Sorts des autres magies <span class="count">280<\/span><\/h2>/);
+  // le total des onglets : les sorts des 14 autres magies que le plafond de la base laisse (R188), jamais « 5 × plafond » depuis les spécialisations (R236)
+  const { magies: toutes } = chargerMagies(ouvrirBase());
+  const plafondDeLaBase = npmMaxDuPotentiel(toutes);
+  const attendus = [...toutes.values()].filter((x) => x.id !== POTENTIEL_ILLIMITE).flatMap((x) => x.sorts.filter((s) => s.niveau <= plafondDeLaBase)).length;
+  assert.ok(sorts.includes(`<h2 id="sorts-titre">Sorts des autres magies <span class="count">${attendus}</span></h2>`));
   assert.ok(sorts.includes('<div class="autres-magies" data-onglets="Magies">'));
   assert.match(potentiel, /<a href="#sorts">Sorts<\/a>/);
   assert.doesNotMatch(potentiel, /role="tab(list|panel)?"/);
 });
 
-test('Potentiel Illimité : chaque onglet reprend, du NPM 1 à son plafond (R188), les tableaux de sa magie tels que sur sa page (mêmes lignes, mêmes détails)', options, () => {
+test('Potentiel Illimité : chaque onglet reprend, du NPM 1 à son plafond (R188), les sorts de sa magie tels que sur sa page (mêmes lignes, mêmes détails), en tableau commun puis par spécialisation (R236 (7))', options, () => {
   let total = 0;
-  const plafond = npmMaxDuPotentiel(chargerMagies(ouvrirBase()).magies);
+  const { magies: toutes } = chargerMagies(ouvrirBase());
+  const plafond = npmMaxDuPotentiel(toutes);
   assert.ok(Number.isInteger(plafond), 'R188 : le plafond du Potentiel Illimité est en base');
   for (const panneau of panneauxDuPotentiel()) {
     const cle = panneau.id.slice('sorts-'.length);
     const slug = panneau.html.match(/<h3 class="autre-magie__titre" id="[^"]+"><a href="[^"]*\/magies\/([^/"]+)\/">/)?.[1];
     const page = pages.find((p) => p.slug === slug)?.html;
     assert.ok(page, `${cle} : le titre du panneau mène à la page de sa magie`);
-    const niveaux = [...panneau.html.matchAll(/<section class="npm" id="npm-([^"]+)"/g)].map((m) => m[1]);
-    assert.deepEqual(niveaux, Array.from({ length: plafond }, (_, i) => `${cle}-${i + 1}`), `${cle} : NPM 1 à ${plafond}, aucun au-dessus`);
-    assert.match(panneau.html, /<h4 class="npm__titre">/, `${cle} : titres des tableaux sous le titre de la magie`);
+    const magie = toutes.get(`magies/${slug}`);
+    const attendus = magie.sorts.filter((s) => s.niveau <= plafond);
+    const { communs, specialisations } = sortsParSpecialisation(attendus, magie.specialisations);
+    // les tableaux : ceux du tableau commun (NPM 1 et 2), puis ceux de chaque spécialisation qui garde des sorts sous le plafond, aucun au-dessus
+    assert.deepEqual([...panneau.html.matchAll(/<section class="npm" id="npm-([^"]+)"/g)].map((m) => m[1]),
+      [...communs.map((g) => `${cle}-${g.niveau}`), ...specialisations.flatMap((x) => x.groupes.map((g) => `${cle}-${ancreDeSpecialisation(x.specialisation.id)}-${g.niveau}`))], `${cle} : NPM ${plafond} au plus`);
+    assert.deepEqual([...panneau.html.matchAll(/<section class="specialisation" id="specialisation-([^"]+)"/g)].map((m) => m[1]), specialisations.map((x) => `${cle}-${ancreDeSpecialisation(x.specialisation.id)}`), `${cle} : ses spécialisations`);
+    assert.equal(panneau.html.includes(`id="sorts-${cle}-communs"`), specialisations.length > 0 && communs.length > 0, `${cle} : « Sorts communs »`);
+    assert.match(panneau.html, /<h4 class="npm__titre">|<h5 class="npm__titre">/, `${cle} : titres des tableaux sous le titre de la magie`);
     // même gabarit : à l'identifiant près (préfixé du nom court de la magie) et au numéro des infobulles, chaque ligne est celle de la page de la magie
-    const fin = page.indexOf(`id="npm-${plafond + 1}"`);
-    const surSaPage = lignesDeSort(page.slice(page.indexOf('id="npm-1"'), fin < 0 ? undefined : fin));
+    const surSaPage = new Map(lignesDeSort(page).map((l) => [l.id, l.html]));
     const ici = lignesDeSort(panneau.html);
-    assert.equal(ici.length, 5 * plafond, `${cle} : 5 sorts par NPM`);
+    assert.deepEqual(ici.map((l) => l.id.replace(`sort-${cle}-`, 'sort-')).sort(), attendus.map((s) => `sort-${s.slug}`).sort(), `${cle} : un sort pour chaque sort de la magie sous le plafond`);
     const bulles = (html) => html.replace(/"etat-\d+"/g, '"etat-n"');
     const sansPrefixe = (html) => html.replace(new RegExp(`(id|aria-controls|aria-labelledby)="(sort|detail|fiche)-${cle}-`, 'g'), '$1="$2-');
-    assert.deepEqual(ici.map((l) => bulles(sansPrefixe(l.html))), surSaPage.map((l) => bulles(l.html)), `${cle} : lignes reprises de sa page`);
+    for (const l of ici) assert.equal(bulles(sansPrefixe(l.html)), bulles(surSaPage.get(l.id.replace(`sort-${cle}-`, 'sort-'))), `${cle} : ${l.id} repris de sa page`);
     total += ici.length;
   }
-  assert.equal(total, 14 * 5 * plafond);
-  assert.ok(!potentiel.includes('class="info"'), 'pas de règle du NPM 5 sur cette page');
+  assert.equal(total, [...toutes.values()].filter((x) => x.id !== POTENTIEL_ILLIMITE).flatMap((x) => x.sorts.filter((s) => s.niveau <= plafond)).length);
+  assert.ok(total > 0);
+  // R249 (R245, R247) : chaque onglet se présente comme la page d'une magie : les deux spécialisations côte à côte dans `div.specialisations` (la zone
+  // élargie de sorts.css, après « Sorts communs »), l'infobulle des phrases de « CHOSES A SAVOIR » sur le titre de chacune, description et remarque avant le
+  // premier tableau ; la règle du niveau 5 n'apparaît qu'avec un tableau de niveau 5 (le plafond de la base peut n'en avoir aucun)
+  const reglesDeLaBase = chargerMagies(ouvrirBase()).regles;
+  const phrases = phrasesDesSpecialisations(reglesDeLaBase);
+  const reglesNiveau5 = reglesDeLaBase.filter((r) => r.niveau_sort === 5).length;
+  for (const panneau of panneauxDuPotentiel()) {
+    const cle = panneau.id.slice('sorts-'.length);
+    const sections = [...panneau.html.matchAll(/<section class="specialisation" id="specialisation-[^"]+"/g)];
+    const iColonnes = panneau.html.indexOf('<div class="specialisations">');
+    assert.equal(iColonnes >= 0, sections.length > 0, `${cle} : un conteneur de colonnes si et seulement s'il y a des spécialisations`);
+    if (sections.length === 0) continue;
+    const colonnes = contenu(panneau.html, iColonnes, 'div');
+    assert.equal([...colonnes.matchAll(/<section class="specialisation" id=/g)].length, sections.length, `${cle} : toutes les spécialisations dans le conteneur`);
+    assert.ok(iColonnes > panneau.html.indexOf('<section class="npm"') || !panneau.html.includes('class="sorts-communs"'), `${cle} : après les sorts communs`);
+    for (const debut of sections.map((x) => x.index)) {
+      const section = contenu(panneau.html, debut, 'section');
+      const titre = contenu(section, section.indexOf('<h4 class="sorts-groupe__titre specialisation__titre"'), 'h4');
+      assert.equal([...titre.matchAll(/class="info"/g)].length, phrases ? 1 : 0, `${cle} : une infobulle sur le titre de chaque spécialisation`);
+      if (phrases) assert.ok(titre.indexOf('class="specialisation__nom"') < titre.indexOf('class="bulle-zone"'), `${cle} : infobulle après le nom`);
+      assert.ok(section.indexOf('data-ed-rendu="blocs"') < section.indexOf('<section class="npm"'), `${cle} : description avant le premier tableau`);
+    }
+    // aucune autre infobulle que celles des titres, sauf la règle du niveau 5 sur un tableau de niveau 5 (aucun sous le plafond actuel de la base)
+    const tableauxNiveau5 = [...panneau.html.matchAll(/<section class="npm" id="npm-(?:[a-z0-9-]+-)?5"/g)].length;
+    assert.equal([...panneau.html.matchAll(/class="info"/g)].length, (phrases ? sections.length : 0) + tableauxNiveau5 * reglesNiveau5, `${cle} : infobulles des titres, et du niveau 5 s'il y a un tel tableau`);
+  }
   assert.match(potentiel, /<tbody class="sort" id="sort-feu-boule-de-feu"[ >]/, 'lien profond vers un sort : #sort-<magie>-<sort>');
 });
 
@@ -600,9 +739,13 @@ test('altération d’état liée : un encart après la présentation (et l’ex
     assert.ok(debut > html.indexOf('id="presentation"') && debut > html.indexOf('id="explication"'), `${slug} : après la présentation`);
     assert.ok(debut < html.indexOf('id="affinites"'), `${slug} : avant les résistances`);
     const encart = contenu(html, debut, 'section');
-    assert.equal([...encart.matchAll(/<article class="etat-lie">/g)].length, 1, slug);
+    // une altération liée de la base par article (l'Ombre en a deux depuis le classeur de Décembre : Peur et Somnolence)
+    assert.equal([...encart.matchAll(/<article class="etat-lie">/g)].length, chargerMagies(ouvrirBase()).magies.get(`magies/${slug}`).etats.length, slug);
     assert.match(encart, /<a href="[^"]*\/regles\/liste-des-alterations-d-etat\/#[^"]+">[^<]+<\/a> <span class="etat-lie__type">(Physique|Mental)<\/span>/, `${slug} : lien vers sa section, type`);
-    assert.deepEqual([...encart.matchAll(/<span class="etat-lie__stade-nom">([^<]+)<\/span>/g)].map((m) => m[1]), ['Stade 1', 'Stade 2', 'Stade 3'], slug);
+    for (const article of encart.split('<article class="etat-lie">').slice(1)) {
+      const stades = [...article.matchAll(/<span class="etat-lie__stade-nom">([^<]+)<\/span>/g)].map((m) => m[1]);
+      assert.ok(stades.length >= 1 && stades.every((nom, i) => nom === `Stade ${i + 1}`), `${slug} : stades numérotés à partir de 1`);
+    }
     assert.ok(html.indexOf('href="#alteration"') < html.indexOf('href="#affinites"'), `${slug} : entrée de navigation`);
   }
   const feu = contenu(page('magie-du-feu'), page('magie-du-feu').indexOf('<section class="magie-section" id="alteration"'), 'section');

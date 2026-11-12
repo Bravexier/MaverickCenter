@@ -98,7 +98,6 @@ export const NOMS_DES_TABLES = Object.freeze({
   // les tables qui citent une table écrite par l'édition (jamais écrites par elle : une suppression du lot peut y rompre une référence)
   accessoire_effet_gemme: 'Gemme de l’effet d’accessoire',
   accessoire_monture: 'Monture d’accessoire',
-  amelioration_cadaverique: 'Amélioration cadavérique',
   arme_elementaire: 'Arme élémentaire',
   armure_elementaire: 'Armure élémentaire',
   baton_magique: 'Bâton magique',
@@ -337,7 +336,7 @@ export const NOMS_DES_COLONNES = geler({
     ic_direct: 'IC', ic_nm_min: 'IC à partir du NM', imparable: 'Imparable', inesquivable: 'Inesquivable', cout_chakra: 'Coût en chakra',
     cout_ressource: 'Ressource du coût secondaire', cout_ressource_valeur: 'Quantité du coût secondaire', portee_nature: 'Nature de la portée',
     portee_valeur: 'Portée (nombre)', zone_forme: 'Forme de la zone', zone_taille: 'Taille de la zone', mode_brut: 'Mode (tel qu’écrit)',
-    bonus_maitrise: 'Bonus de maîtrise',
+    bonus_maitrise: 'Bonus de maîtrise', specialisation_id: 'Spécialisation (NPM 3 à 5)',
   },
   sort_bonus_maitrise: {
     champ: 'Colonne de la source', texte_brut: 'Expression (telle qu’écrite)', contexte: 'Contexte', increment_brut: 'Incrément (tel qu’écrit)',

@@ -28,6 +28,8 @@ const sortDe = (id) => {
 const BRUTALE = 'capacites/mage-vert-brutale';
 const NOM = '... Brutale (Mage Vert)';
 const FER_BRULANT = 'magies/magie-du-feu#sort:fer-brulant';
+/** Fer brillant (Arcane, migration 0117) : « +10 dégâts », donc +12 en Focus avec « ... Brutale » (R164, R237 (2)). */
+const FER_BRILLANT = 'magies/magie-de-larcane#sort:fer-brillant';
 const LECTURE = [{ cible: 'degats', valeur: 2, vises: { mots_cles: ['sort-fer'] }, posture: 'focus' }];
 
 /**
@@ -46,9 +48,12 @@ test('R164 : « ... Brutale » se lit +2 aux dégâts des sorts étiquetés « S
   assert.deepEqual([don.niveau, don.nature, don.type, don.specialite_id], [10, 'choix', 'passif', 'classes/mage-vert#specialite:mage-emeraude']);
   assert.deepEqual(bonusDeSortsEcrits(don.effet), LECTURE);
   assert.deepEqual(don.sorts, LECTURE);
-  // l'étiquette lue est celle de la base, posée sur les 13 sorts « Fer… » (le nom du sort ne compte pas : voir le test du moteur)
+  // l'étiquette lue est celle de la base, posée sur les sorts « Fer… » (le nom du sort ne compte pas : voir le test du moteur) ; comptés par l'étiquette,
+  // Fer brillant de l'Arcane compris (R164, R237 (2)), sans effectif figé
   assert.ok(ETIQUETTES_DES_SORTS.some(([id]) => id === 'sort-fer'));
-  assert.equal(regles.sorts.filter((s) => s.mots_cles?.includes('sort-fer')).length, 13);
+  const etiquetes = regles.sorts.filter((s) => s.mots_cles?.includes('sort-fer')).map((s) => s.id).sort();
+  assert.deepEqual(etiquetes, regles.sorts.filter((s) => /^Fer /.test(s.nom)).map((s) => s.id).sort());
+  assert.ok(etiquetes.includes(FER_BRILLANT));
   // les écritures que la décision donne aux sorts fer (la note de Brutale, « Jongleur Magique ») visent aussi l'étiquette
   assert.deepEqual(bonusDeSortsEcrits('Les sorts "fer" font +3 dégâts.'), [{ cible: 'degats', valeur: 3, vises: { mots_cles: ['sort-fer'] } }]);
   assert.deepEqual(bonusDeSortsEcrits('Les sorts de Fer Élémentaire font +3 dégâts.'), [{ cible: 'degats', valeur: 3, vises: { mots_cles: ['sort-fer'] } }]);
@@ -93,12 +98,17 @@ test('R164 : un Mage Émeraude de niveau de classe 10 en Focus fait « +10 dég�
   assert.deepEqual(focus.dsb.detail, [{ nom: NOM, valeur: 2 }]);
   assert.ok(focus.dsb.lu);
   assert.deepEqual(focus.nonComptes, []);
-  // les 13 sorts fer, Fer corrompu compris : +10 en Focus (ses « 5 points de corruption » restent du texte)
-  for (const s of regles.sorts.filter((x) => x.mots_cles?.includes('sort-fer'))) {
+  // tous les sorts fer, Fer corrompu et Fer brillant compris : +2 en Focus sur leur « +N dégâts » (ses « 5 points de corruption » restent du texte)
+  const fers = regles.sorts.filter((x) => x.mots_cles?.includes('sort-fer'));
+  assert.ok(fers.some((x) => x.id === FER_BRILLANT));
+  for (const s of fers) {
     const m = M.sortDuMoment(regles, mageEmeraude(10, 'focus'), s, auNm(s));
-    assert.equal(m.dsb.texte, '+10 dégâts', s.id);
+    const base = Number(/\+(\d+) dégâts/.exec(auNm(s).dsb)[1]);
+    assert.equal(m.dsb.texte, `+${base + 2} dégâts`, s.id);
     assert.equal(m.effets.texte, auNm(s).effets, `${s.id} : l'effet tel qu'écrit`);
   }
+  // Fer brillant : « +10 dégâts » d'import, +12 en Focus
+  assert.equal(M.sortDuMoment(regles, mageEmeraude(10, 'focus'), sortDe(FER_BRILLANT), auNm(sortDe(FER_BRILLANT))).dsb.texte, '+12 dégâts');
   // hors Focus : « +8 », le bonus dit non compté dans une autre posture, comme tout bonus d'une posture (décision R100)
   for (const posture of [null, 'offensif', 'defensif', 'vigilance', 'symbiose']) {
     const m = M.sortDuMoment(regles, mageEmeraude(10, posture), fer, auNm(fer));

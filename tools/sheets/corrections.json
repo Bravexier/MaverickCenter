@@ -13,6 +13,379 @@
           "note": "Cartouche de spécialité : la bannière du même onglet (AA17) dit « CHASSEUR DE PRIMES » ; le propriétaire du projet confirme la coquille."
         }
       ]
+    },
+    "magie-v10": {
+      "classeur": "Nouveauté mise à jour Décembre",
+      "corrections": [
+        {
+          "onglet": "Vide",
+          "cellule": "AU71",
+          "avant": "spécialisatino",
+          "apres": "spécialisation",
+          "nature": "frappe",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : description de la spécialisation CONTESTATION ; lettres interverties (décision R10 : l'orthographe se corrige, jamais un chiffre ni le sens)."
+        },
+        {
+          "onglet": "Nécromancie",
+          "cellule": "M77",
+          "avant": "Amplfication",
+          "apres": "Amplification",
+          "nature": "frappe",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : type du sort Seigneur des morts ; « Amplification » est un type de sort (sort_type), le « i » manque (R10)."
+        },
+        {
+          "onglet": "Nécromancie",
+          "cellule": "M77",
+          "avant": "pour3 NM",
+          "apres": "pour 3 NM",
+          "nature": "espace",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : type du sort Seigneur des morts : « IC pour 3 NM », l'écriture des autres types de sorts (l'espace manque ; sans elle, ic_nm_min ne se lit pas : data/schema.sql, CHECK de sort.ic_nm_min) (R10)."
+        },
+        {
+          "onglet": "Altération détats",
+          "cellule": "AV42",
+          "avant": "altérzation",
+          "apres": "altération",
+          "nature": "frappe",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : palier « Grande résistance » de la Peur, écrit « altération » dans « Magie Maverick V8 » (même cellule) ; un « z » en trop (R10)."
+        },
+        {
+          "onglet": "Eau",
+          "cellule": "G94",
+          "avant": "Torrant",
+          "apres": "Torrent",
+          "nature": "orthographe",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : nom du sort Torrent colérique (« torrent ») ; coquille (R10), le docx « MISE À JOUR - DÉCEMBRE » écrit « Torrent colérique » (réponse de game-design à la question 1 de tech-sources, 2026-11-12). Le sort est nouveau : son id suit le nom corrigé (`magies/magie-de-leau#sort:torrent-colerique`), figé dès sa création."
+        },
+        {
+          "onglet": "Sommaire",
+          "cellule": "AP1",
+          "avant": "appeller",
+          "apres": "appeler",
+          "nature": "orthographe",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : cellule « CHOSES A SAVOIR », règle de magie `magies#regle:choses-a-savoir` (R236) ; « appeler » ne prend qu’un « l » (R10 : l'orthographe se corrige, jamais un chiffre ni le sens)."
+        },
+        {
+          "onglet": "Sommaire",
+          "cellule": "AP1",
+          "avant": "dans une état de",
+          "apres": "dans un état de",
+          "nature": "grammaire",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : cellule « CHOSES A SAVOIR », règle de magie `magies#regle:choses-a-savoir` (R236) ; « état » est masculin (R10 : l'orthographe se corrige, jamais un chiffre ni le sens)."
+        },
+        {
+          "onglet": "Sommaire",
+          "cellule": "AP1",
+          "avant": "les emplacement de sort",
+          "apres": "les emplacements de sort",
+          "nature": "grammaire",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : cellule « CHOSES A SAVOIR », règle de magie `magies#regle:choses-a-savoir` (R236) ; pluriel après « les » (R10 : l'orthographe se corrige, jamais un chiffre ni le sens)."
+        },
+        {
+          "onglet": "Sommaire",
+          "cellule": "AP1",
+          "avant": "niveau 8 globale",
+          "apres": "niveau 8 global",
+          "nature": "grammaire",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : cellule « CHOSES A SAVOIR », règle de magie `magies#regle:choses-a-savoir` (R236) ; « niveau global », comme la correction « niveau globale » → « niveau global » de la migration 0003 (0003-orthographe-magies.json) (R10 : l'orthographe se corrige, jamais un chiffre ni le sens)."
+        },
+        {
+          "onglet": "Sommaire",
+          "cellule": "AP1",
+          "avant": "sont déblocable dès",
+          "apres": "sont débloquables dès",
+          "nature": "orthographe",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : cellule « CHOSES A SAVOIR », règle de magie `magies#regle:choses-a-savoir` (R236) ; « débloquable » (de « débloquer »), accordé au sujet pluriel « Les spécialisations magiques » (R10 : l'orthographe se corrige, jamais un chiffre ni le sens)."
+        },
+        {
+          "onglet": "Sommaire",
+          "cellule": "AP1",
+          "avant": "trucs trop fort, pas assez clair, trop faible",
+          "apres": "trucs trop forts, pas assez clairs, trop faibles",
+          "nature": "grammaire",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : cellule « CHOSES A SAVOIR », règle de magie `magies#regle:choses-a-savoir` (R236) ; adjectifs accordés au nom pluriel « trucs » (R10 : l'orthographe se corrige, jamais un chiffre ni le sens)."
+        },
+        {
+          "onglet": "Sommaire",
+          "cellule": "AP1",
+          "avant": "une béta",
+          "apres": "une bêta",
+          "nature": "accent",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : cellule « CHOSES A SAVOIR », règle de magie `magies#regle:choses-a-savoir` (R236) ; « bêta » prend un accent circonflexe (R10 : l'orthographe se corrige, jamais un chiffre ni le sens)."
+        },
+        {
+          "onglet": "Sang",
+          "cellule": "AC102",
+          "avant": "de terrible dégâts",
+          "apres": "de terribles dégâts",
+          "nature": "grammaire",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : effets du sort Surtension sanguine ; accord de « terribles » avec « dégâts », la correction que la migration 0003 a faite sur le même texte du classeur V8 (registre 0117-magies-v10-specialisations.json, `coquilles_r10`) (R10 : l'orthographe se corrige, jamais un chiffre ni le sens ; coquille candidate du plan, retenue par game-design le 2026-11-12)."
+        },
+        {
+          "onglet": "Arcane",
+          "cellule": "AT69",
+          "avant": "Imprégne l'arme",
+          "apres": "Imprègne l'arme",
+          "nature": "accent",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : effets du sort Fer brillant ; accent grave de « imprègne », la correction que la migration 0003 a faite sur le même texte du classeur V8 (registre 0117-magies-v10-specialisations.json, `coquilles_r10`) (R10 : l'orthographe se corrige, jamais un chiffre ni le sens ; coquille candidate du plan, retenue par game-design le 2026-11-12)."
+        },
+        {
+          "onglet": "Arcane",
+          "cellule": "BK107",
+          "avant": "de terrible dégâts",
+          "apres": "de terribles dégâts",
+          "nature": "grammaire",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : effets du sort Cassage gris ; accord de « terribles » avec « dégâts », la correction que la migration 0003 a faite sur le même texte du classeur V8 (registre 0117-magies-v10-specialisations.json, `coquilles_r10`) (R10 : l'orthographe se corrige, jamais un chiffre ni le sens ; coquille candidate du plan, retenue par game-design le 2026-11-12)."
+        },
+        {
+          "onglet": "Vide",
+          "cellule": "AC92",
+          "avant": "à tout agression",
+          "apres": "à toute agression",
+          "nature": "grammaire",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : effets du sort Intérieur solide ; accord de « toute » avec « agression », la correction que la migration 0003 a faite sur le même texte du classeur V8 (registre 0117-magies-v10-specialisations.json, `coquilles_r10`) (R10 : l'orthographe se corrige, jamais un chiffre ni le sens ; coquille candidate du plan, retenue par game-design le 2026-11-12)."
+        },
+        {
+          "onglet": "Feu",
+          "cellule": "AC98",
+          "avant": "de terrible dégâts",
+          "apres": "de terribles dégâts",
+          "nature": "grammaire",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : effets du sort Météore éruptif ; accord de « terribles » avec « dégâts », la correction que la migration 0003 a faite sur le même texte du classeur V8 (registre 0117-magies-v10-specialisations.json, `coquilles_r10`) (R10 : l'orthographe se corrige, jamais un chiffre ni le sens ; coquille candidate du plan, retenue par game-design le 2026-11-12)."
+        },
+        {
+          "onglet": "Eau",
+          "cellule": "AC94",
+          "avant": "reflèxe",
+          "apres": "réflexe",
+          "nature": "accent",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : effets du sort Torrent colérique ; accents de « réflexe », la correction que la migration 0003 a faite sur le même texte du classeur V8 (registre 0117-magies-v10-specialisations.json, `coquilles_r10`) (R10 : l'orthographe se corrige, jamais un chiffre ni le sens ; coquille candidate du plan, retenue par game-design le 2026-11-12)."
+        },
+        {
+          "onglet": "Glace",
+          "cellule": "BK86",
+          "avant": "disparait",
+          "apres": "disparaît",
+          "nature": "accent",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : note de cellule (remarque) du sort Prisme protecteur ; accent circonflexe de « disparaît », la correction que la migration 0003 a faite sur le même texte du classeur V8 (registre 0117-magies-v10-specialisations.json, `coquilles_r10`) (R10 : l'orthographe se corrige, jamais un chiffre ni le sens ; coquille candidate du plan, retenue par game-design le 2026-11-12).",
+          "champ": "note",
+          "occurrences": 2
+        },
+        {
+          "onglet": "Terre",
+          "cellule": "AC77",
+          "avant": "si ils ratent",
+          "apres": "s'ils ratent",
+          "nature": "orthographe",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : effets du sort Pollen entravante ; élision de « si » devant « ils », la correction que la migration 0003 a faite sur le même texte du classeur V8 (registre 0117-magies-v10-specialisations.json, `coquilles_r10`) (R10 : l'orthographe se corrige, jamais un chiffre ni le sens ; coquille candidate du plan, retenue par game-design le 2026-11-12)."
+        },
+        {
+          "onglet": "Terre",
+          "cellule": "AC89",
+          "avant": "disparait",
+          "apres": "disparaît",
+          "nature": "accent",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : note de cellule (remarque) du sort Pétale-bouclier ; accent circonflexe de « disparaît », la correction que la migration 0003 a faite sur le même texte du classeur V8 (registre 0117-magies-v10-specialisations.json, `coquilles_r10`) (R10 : l'orthographe se corrige, jamais un chiffre ni le sens ; coquille candidate du plan, retenue par game-design le 2026-11-12).",
+          "champ": "note",
+          "occurrences": 2
+        },
+        {
+          "onglet": "Vent",
+          "cellule": "AC83",
+          "avant": "réfléxe",
+          "apres": "réflexe",
+          "nature": "accent",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : effets du sort Courant écrasant ; accents de « réflexe », la correction que la migration 0003 a faite sur le même texte du classeur V8 (registre 0117-magies-v10-specialisations.json, `coquilles_r10`) (R10 : l'orthographe se corrige, jamais un chiffre ni le sens ; coquille candidate du plan, retenue par game-design le 2026-11-12)."
+        },
+        {
+          "onglet": "Vent",
+          "cellule": "BH74",
+          "avant": "dégâts sonore",
+          "apres": "dégâts sonores",
+          "nature": "grammaire",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : dégâts, soins ou bonus du sort Onde de choc ; accord de « sonores » avec « dégâts », la correction que la migration 0003 a faite sur le même texte du classeur V8 (registre 0117-magies-v10-specialisations.json, `coquilles_r10`) (R10 : l'orthographe se corrige, jamais un chiffre ni le sens ; coquille candidate du plan, retenue par game-design le 2026-11-12)."
+        },
+        {
+          "onglet": "Vent",
+          "cellule": "BK77",
+          "avant": "dégâts sonore",
+          "apres": "dégâts sonores",
+          "nature": "grammaire",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : effets du sort Grande inspiration ; accord de « sonores » avec « dégâts », la correction que la migration 0003 a faite sur le même texte du classeur V8 (registre 0117-magies-v10-specialisations.json, `coquilles_r10`) (R10 : l'orthographe se corrige, jamais un chiffre ni le sens ; coquille candidate du plan, retenue par game-design le 2026-11-12)."
+        },
+        {
+          "onglet": "Vent",
+          "cellule": "BK92",
+          "avant": "dégâts sonore",
+          "apres": "dégâts sonores",
+          "nature": "grammaire",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : effets du sort Écho ; accord de « sonores » avec « dégâts », la correction que la migration 0003 a faite sur le même texte du classeur V8 (registre 0117-magies-v10-specialisations.json, `coquilles_r10`) (R10 : l'orthographe se corrige, jamais un chiffre ni le sens ; coquille candidate du plan, retenue par game-design le 2026-11-12)."
+        },
+        {
+          "onglet": "Foudre",
+          "cellule": "AC80",
+          "avant": "qui ne possède pas",
+          "apres": "qui ne possèdent pas",
+          "nature": "grammaire",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : effets du sort Mur hertz ; accord du verbe avec « Ceux », la correction que la migration 0003 a faite sur le même texte du classeur V8 (registre 0117-magies-v10-specialisations.json, `coquilles_r10`) (R10 : l'orthographe se corrige, jamais un chiffre ni le sens ; coquille candidate du plan, retenue par game-design le 2026-11-12)."
+        },
+        {
+          "onglet": "Lumière",
+          "cellule": "AC80",
+          "avant": "qui ne possède pas",
+          "apres": "qui ne possèdent pas",
+          "nature": "grammaire",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : effets du sort Mur gamma ; accord du verbe avec « Ceux », la correction que la migration 0003 a faite sur le même texte du classeur V8 (registre 0117-magies-v10-specialisations.json, `coquilles_r10`) (R10 : l'orthographe se corrige, jamais un chiffre ni le sens ; coquille candidate du plan, retenue par game-design le 2026-11-12)."
+        },
+        {
+          "onglet": "Lumière",
+          "cellule": "BK71",
+          "avant": "altérations d'états",
+          "apres": "altérations d'état",
+          "nature": "grammaire",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : effets du sort Sanctuaire protecteur ; « altérations d'état », l'écriture des règles, la correction que la migration 0003 a faite sur le même texte du classeur V8 (registre 0117-magies-v10-specialisations.json, `coquilles_r10`) (R10 : l'orthographe se corrige, jamais un chiffre ni le sens ; coquille candidate du plan, retenue par game-design le 2026-11-12)."
+        },
+        {
+          "onglet": "Ombre",
+          "cellule": "BH71",
+          "avant": "dégâts sonore",
+          "apres": "dégâts sonores",
+          "nature": "grammaire",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : dégâts, soins ou bonus du sort Grand bailleur ; accord de « sonores » avec « dégâts », la correction que la migration 0003 a faite sur le même texte du classeur V8 (registre 0117-magies-v10-specialisations.json, `coquilles_r10`) (R10 : l'orthographe se corrige, jamais un chiffre ni le sens ; coquille candidate du plan, retenue par game-design le 2026-11-12)."
+        },
+        {
+          "onglet": "Ombre",
+          "cellule": "BK98",
+          "avant": "tout les jets",
+          "apres": "tous les jets",
+          "nature": "grammaire",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : effets du sort Prophétie ; accord de « tous » avec « les jets », la correction que la migration 0003 a faite sur le même texte du classeur V8 (registre 0117-magies-v10-specialisations.json, `coquilles_r10`) (R10 : l'orthographe se corrige, jamais un chiffre ni le sens ; coquille candidate du plan, retenue par game-design le 2026-11-12)."
+        },
+        {
+          "onglet": "Sang",
+          "cellule": "BK99",
+          "avant": "dégâts physique,",
+          "apres": "dégâts physiques,",
+          "nature": "grammaire",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : effets du sort Proportion démesurée ; accord de « physiques » avec « dégâts », la correction que la migration 0003 a faite sur le même texte du classeur V8 (registre 0117-magies-v10-specialisations.json, `coquilles_r10`) (R10 : l'orthographe se corrige, jamais un chiffre ni le sens ; coquille candidate du plan, retenue par game-design le 2026-11-12)."
+        },
+        {
+          "onglet": "EspaceTemps",
+          "cellule": "AC101",
+          "avant": "jet de Fermeté",
+          "apres": "jet de fermeté",
+          "nature": "casse",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : effets du sort Distorsion ; « fermeté » en minuscule dans « jet de fermeté », l'écriture des autres sorts, la correction que la migration 0003 a faite sur le même texte du classeur V8 (registre 0117-magies-v10-specialisations.json, `coquilles_r10`) (R10 : l'orthographe se corrige, jamais un chiffre ni le sens ; coquille candidate du plan, retenue par game-design le 2026-11-12).",
+          "occurrences": 2
+        },
+        {
+          "onglet": "Feu",
+          "cellule": "AT54",
+          "avant": "de contre coup",
+          "apres": "de contrecoup",
+          "nature": "orthographe",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : effets du sort Étincelle ; « contrecoup » en un mot, la correction que la migration 0003 a faite sur le même texte du classeur V8 (registre 0117-magies-v10-specialisations.json, `coquilles_r10`) (R10 : l'orthographe se corrige, jamais un chiffre ni le sens ; coquille candidate du plan, retenue par game-design le 2026-11-12)."
+        },
+        {
+          "onglet": "Glace",
+          "cellule": "BK89",
+          "avant": "dégâts magique",
+          "apres": "dégâts magiques",
+          "nature": "grammaire",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : effets du sort Cape hivernale ; accord de « magiques » avec « dégâts », la correction que la migration 0003 a faite sur le même texte du classeur V8 (registre 0117-magies-v10-specialisations.json, `coquilles_r10`) (R10 : l'orthographe se corrige, jamais un chiffre ni le sens ; coquille candidate du plan, retenue par game-design le 2026-11-12)."
+        },
+        {
+          "onglet": "Terre",
+          "cellule": "BK89",
+          "avant": "tempête sable",
+          "apres": "tempête de sable",
+          "nature": "grammaire",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : effets du sort Rédemption de Dimitri ; nom de la météo « Tempête de sable », la correction que la migration 0006 a faite sur le même texte du classeur V8 (registre 0117-magies-v10-specialisations.json, `coquilles_r10`) (R10 : l'orthographe se corrige, jamais un chiffre ni le sens ; coquille candidate du plan, retenue par game-design le 2026-11-12)."
+        },
+        {
+          "onglet": "Vent",
+          "cellule": "AT63",
+          "avant": "Fait reculé la",
+          "apres": "Fait reculer la",
+          "nature": "grammaire",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : effets du sort Recul Forcé ; infinitif après « fait », la correction que la migration 0003 a faite sur le même texte du classeur V8 (registre 0117-magies-v10-specialisations.json, `coquilles_r10`) (R10 : l'orthographe se corrige, jamais un chiffre ni le sens ; coquille candidate du plan, retenue par game-design le 2026-11-12)."
+        },
+        {
+          "onglet": "Lumière",
+          "cellule": "AC89",
+          "avant": "être aveugler au",
+          "apres": "être aveuglé au",
+          "nature": "grammaire",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : effets du sort Grenade Flash ; participe passé après « être », la correction que la migration 0003 a faite sur le même texte du classeur V8 (registre 0117-magies-v10-specialisations.json, `coquilles_r10`) (R10 : l'orthographe se corrige, jamais un chiffre ni le sens ; coquille candidate du plan, retenue par game-design le 2026-11-12)."
+        },
+        {
+          "onglet": "Ombre",
+          "cellule": "BK95",
+          "avant": "qui souffre de",
+          "apres": "qui souffrent de",
+          "nature": "grammaire",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : effets du sort Armée de l'Ombre ; accord du verbe avec « Les ennemis », la correction que la migration 0003 a faite sur le même texte du classeur V8 (registre 0117-magies-v10-specialisations.json, `coquilles_r10`) (R10 : l'orthographe se corrige, jamais un chiffre ni le sens ; coquille candidate du plan, retenue par game-design le 2026-11-12)."
+        },
+        {
+          "onglet": "Arcane",
+          "cellule": "AC104",
+          "avant": "sorts parmis une",
+          "apres": "sorts parmi une",
+          "nature": "orthographe",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : effets du sort Pâte de la trame ; pas de « s » à « parmi », la correction que la migration 0005 a faite sur d’autres textes (registre 0117-magies-v10-specialisations.json, `coquilles_r10`) (R10 : l'orthographe se corrige, jamais un chiffre ni le sens ; relevée par tech-qualite, retenue par game-design le 2026-11-12)."
+        },
+        {
+          "onglet": "Vide",
+          "cellule": "AC98",
+          "avant": "bataille parmis une",
+          "apres": "bataille parmi une",
+          "nature": "orthographe",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : effets du sort Regard de Mora ; pas de « s » à « parmi », la correction que la migration 0005 a faite sur d’autres textes (registre 0117-magies-v10-specialisations.json, `coquilles_r10`) (R10 : l'orthographe se corrige, jamais un chiffre ni le sens ; relevée par tech-qualite, retenue par game-design le 2026-11-12)."
+        },
+        {
+          "onglet": "Nécromancie",
+          "cellule": "AC77",
+          "avant": "alliés parmis une",
+          "apres": "alliés parmi une",
+          "nature": "orthographe",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : effets du sort Seigneur des morts ; pas de « s » à « parmi », la correction que la migration 0005 a faite sur d’autres textes (registre 0117-magies-v10-specialisations.json, `coquilles_r10`) (R10 : l'orthographe se corrige, jamais un chiffre ni le sens ; relevée par tech-qualite, retenue par game-design le 2026-11-12)."
+        },
+        {
+          "onglet": "Vent",
+          "cellule": "AT63",
+          "avant": "ne peut pas reculé",
+          "apres": "ne peut pas reculer",
+          "nature": "grammaire",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : note de cellule (remarque) du sort Recul forcé ; infinitif après « peut », comme la correction que la migration 0003 a faite sur les effets du même sort (« Fait reculé la ») (R10 : l'orthographe se corrige, jamais un chiffre ni le sens ; relevée par tech-qualite, retenue par game-design le 2026-11-12).",
+          "champ": "note"
+        },
+        {
+          "onglet": "Glace",
+          "cellule": "BK86",
+          "avant": "n'a pas protégée",
+          "apres": "n'a pas protégé",
+          "nature": "grammaire",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : note de cellule (remarque) du sort Prisme protecteur ; participe passé avec « avoir », sans complément placé avant : invariable (R10 : l'orthographe se corrige, jamais un chiffre ni le sens ; relevée par tech-qualite, retenue par game-design le 2026-11-12).",
+          "champ": "note"
+        },
+        {
+          "onglet": "Terre",
+          "cellule": "AC89",
+          "avant": "n'a pas protégée",
+          "apres": "n'a pas protégé",
+          "nature": "grammaire",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : note de cellule (remarque) du sort Pétale bouclier ; participe passé avec « avoir », sans complément placé avant : invariable (R10 : l'orthographe se corrige, jamais un chiffre ni le sens ; relevée par tech-qualite, retenue par game-design le 2026-11-12).",
+          "champ": "note"
+        },
+        {
+          "onglet": "Altération détats",
+          "cellule": "AG68",
+          "avant": "Reflexe",
+          "apres": "Réflexe",
+          "nature": "accent",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : stade 3 de l’altération Surdité ; nom de la compétence « Réflexe », la correction que la migration 0005 a faite sur le même texte (registre 0005-orthographe-base.json, stades 1 et 2 de la Surdité) (R10 : l'orthographe se corrige, jamais un chiffre ni le sens ; relevée par tech-db au lot 1, 2026-11-12)."
+        }
+      ]
     }
   }
 }

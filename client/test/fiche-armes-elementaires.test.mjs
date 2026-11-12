@@ -165,7 +165,10 @@ test('R167 : Symbiose — l’arme élémentaire de sa magie reste utilisable av
 
 test('R167 : un sort « Fer » d’un autre élément que l’arme élémentaire portée est signalé (rien de compté) ; du même élément, ou sur une arme du catalogue, rien', () => {
   const fers = regles.sorts.filter((s) => s.fer);
-  assert.equal(fers.length, 13);
+  // les sorts Fer se comptent par leur étiquette (R164), Fer brillant de l'Arcane compris (R237 (2)) : un par magie, jamais le Potentiel Illimité
+  assert.equal(fers.length, regles.sorts.filter((s) => s.mots_cles?.includes('sort-fer')).length);
+  assert.equal(new Set(fers.map((s) => s.magie_id)).size, fers.length, 'un par magie');
+  assert.ok(fers.some((s) => s.magie_id === 'magies/magie-de-larcane'));
   const ferSanglant = fers.find((s) => s.magie_id === SANG);
   const ferBrulant = fers.find((s) => s.magie_id === FEU);
   const sorts = [{ sort_id: ferSanglant.id, rang: 1, niveau_maitrise: 0 }, { sort_id: ferBrulant.id, rang: 2, niveau_maitrise: 0 }];

@@ -1,5 +1,5 @@
 // Analyse des cases d'un sort (lib/sort-analyse.mjs) : ce que l'édition du site de dev recalcule quand une case change doit redonner, sur les
-// 322 sorts de la base, exactement les colonnes typées, les types, les modes et les bonus de niveau de maîtrise en place.
+// sorts de la base, exactement les colonnes typées, les types, les modes et les bonus de niveau de maîtrise en place.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
@@ -22,7 +22,7 @@ const types = parSort('SELECT sort_id, type, libelle FROM sort_type ORDER BY sor
 const modes = parSort('SELECT sort_id, mode, libelle, fois FROM sort_mode ORDER BY sort_id, rang');
 const bonus = parSort('SELECT sort_id, champ, rang, nature, texte_brut, contexte, increment_brut, increment_entier, pas_nm, seuil_nm FROM sort_bonus_maitrise ORDER BY sort_id, champ, rang');
 
-test('322 sorts relus', () => assert.equal(sorts.length, 322));
+test('les sorts de la base sont relus (aucun nombre figé : la mise à jour de Décembre et le site de dev changent leur compte)', () => assert.ok(sorts.length > 0));
 
 test('type : types, mode, IC, imparable, inesquivable redonnent sort, sort_type et sort_mode', () => {
   for (const s of sorts) {

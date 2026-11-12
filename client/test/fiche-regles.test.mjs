@@ -542,7 +542,8 @@ test('résistances (tableau « Résistance / Faiblesse » de la fiche) : les six
   const connus = { magie: regles.magies.map((x) => x.id), etat: regles.etats.map((x) => x.id), physique: DEGATS_PHYSIQUES.map(([id]) => id) };
   for (const m of regles.magies) {
     for (const r of m.resistances) assert.ok([1, -1].includes(r.crans) && (connus[r.type] ?? []).includes(r.id), `${m.nom} : ${r.type} ${r.id}`);
-    const lie = db.prepare('SELECT etat_id FROM etat_magie WHERE magie_id = ?').get(m.id)?.etat_id ?? null;
+    // deux altérations liées (l'Ombre depuis la 0117) : la première dans l'ordre des altérations
+    const lie = db.prepare('SELECT em.etat_id FROM etat_magie em JOIN etat e ON e.id = em.etat_id WHERE em.magie_id = ? ORDER BY e.ordre LIMIT 1').get(m.id)?.etat_id ?? null;
     assert.equal(m.etat_id, lie, m.nom);
   }
   // un don qui n'écrit rien de tel n'a pas de champ (regles.json reste léger)

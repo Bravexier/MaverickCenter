@@ -2,17 +2,26 @@
 import potentielCss from '../../styles/magie/potentiel.css?raw';
 import { classeDeMagie } from '../../lib/palette-css.mjs';
 import { pageHref, type Magies, type MagieDb, type SortDb } from '../../lib/magies';
+import { phrasesDesSpecialisations } from '../../lib/sort-format.mjs';
 import type { WikiEntry } from '../../lib/wiki';
 import Onglets from '../Onglets.astro';
+import SortsDeSpecialisation from './SortsDeSpecialisation.astro';
 import SortsInteractifs from './SortsInteractifs.astro';
 import TableauNpm from './TableauNpm.astro';
 
 // Sorts du Potentiel Illimité : il pioche ses sorts dans les autres magies (lib/potentiel-illimite.mjs#magiesDuPotentiel). Une magie par onglet, dans
-// l'ordre du classeur et dans sa couleur ; chaque onglet reprend les tableaux de cette magie du NPM 1 au plus haut NPM qu'il peut choisir (décision
-// R188 : le plafond de la base, lib/potentiel-illimite.mjs#npmMaxDuPotentiel), avec le même gabarit que sur sa page (TableauNpm.astro). Les identifiants HTML y sont préfixés du nom court de la magie (`#sort-feu-boule-de-feu`, `#npm-feu-1`) : deux magies peuvent
-// avoir un sort du même nom. Onglets : components/Onglets.astro, comme les spécialités d'une classe ; une adresse `#sort-…` ouvre l'onglet et le sort.
+// l'ordre du classeur et dans sa couleur ; chaque onglet reprend les sorts de cette magie du NPM 1 au plus haut NPM qu'il peut choisir (décision
+// R188 : le plafond de la base, lib/potentiel-illimite.mjs#npmMaxDuPotentiel), rangés comme sur sa page : le tableau commun, puis ses deux
+// spécialisations, dont il peut prendre n'importe quel sort dans la limite de son NPM (R236 (7)), avec le même gabarit (TableauNpm.astro,
+// SortsDeSpecialisation.astro). Les identifiants HTML y sont préfixés du nom court de la magie (`#sort-feu-boule-de-feu`, `#npm-feu-1`,
+// `#npm-feu-volcan-3`) : deux magies peuvent avoir un sort du même nom. Onglets : components/Onglets.astro, comme les spécialités d'une classe ; une adresse `#sort-…` ouvre l'onglet et le sort.
 interface Props {
-  autres: { magie: MagieDb; groupes: { niveau: number; sorts: SortDb[] }[]; total: number }[];
+  autres: {
+    magie: MagieDb;
+    communs: { niveau: number; sorts: SortDb[] }[];
+    specialisations: { specialisation: MagieDb['specialisations'][number]; groupes: { niveau: number; sorts: SortDb[] }[]; total: number }[];
+    total: number;
+  }[];
   magies: Magies;
   entries: WikiEntry[];
 }
@@ -21,6 +30,9 @@ const total = autres.reduce((n, a) => n + a.total, 0);
 const titreDe = (m: MagieDb) => entries.find((e) => e.id === m.id)?.data.title ?? m.nom;
 // la couleur d'un onglet et de son panneau : la classe de sa magie (lib/palette-css.mjs ; styles/magie/potentiel.css, base.css)
 const classe = (m: MagieDb) => classeDeMagie(m.nom);
+// R249 : chaque onglet se présente comme la page d'une magie (R245, R247) : les deux spécialisations côte à côte (`div.specialisations`, zone élargie) et la
+// même infobulle sur le titre de chacune (lib/sort-format.mjs#phrasesDesSpecialisations)
+const infoDesSpecialisations = phrasesDesSpecialisations(magies.regles);
 ---
 
 <Onglets />
@@ -39,7 +51,7 @@ const classe = (m: MagieDb) => classeDeMagie(m.nom);
       }
     </div>
     {
-      autres.map(({ magie, groupes, total }, i) => (
+      autres.map(({ magie, communs, specialisations, total }, i) => (
         <section
           class={`autre-magie magie-teinte ${classe(magie)}${i === 0 ? ' is-active' : ''}`}
           id={`sorts-${magie.cle}`}
@@ -48,7 +60,23 @@ const classe = (m: MagieDb) => classeDeMagie(m.nom);
           <h3 class="autre-magie__titre" id={`sorts-${magie.cle}-titre`}>
             <a href={pageHref(magie.id)}>{titreDe(magie)}</a> <span class="count">{total}</span>
           </h3>
-          {groupes.map((g) => <TableauNpm niveau={g.niveau} sorts={g.sorts} magies={magies} prefixe={`${magie.cle}-`} titre="h4" />)}
+          {specialisations.length > 0 && communs.length > 0 ? (
+            <section class="sorts-communs" id={`sorts-${magie.cle}-communs`} aria-labelledby={`sorts-${magie.cle}-communs-titre`}>
+              <h4 class="sorts-groupe__titre" id={`sorts-${magie.cle}-communs-titre`}>Sorts communs</h4>
+              {communs.map((g) => <TableauNpm niveau={g.niveau} sorts={g.sorts} magies={magies} prefixe={`${magie.cle}-`} titre="h5" />)}
+            </section>
+          ) : (
+            communs.map((g) => <TableauNpm niveau={g.niveau} sorts={g.sorts} magies={magies} prefixe={`${magie.cle}-`} titre="h4" />)
+          )}
+          {
+            specialisations.length > 0 && (
+              <div class="specialisations">
+                {specialisations.map((s) => (
+                  <SortsDeSpecialisation specialisation={s.specialisation} groupes={s.groupes} magies={magies} prefixe={`${magie.cle}-`} titre="h4" info={infoDesSpecialisations} />
+                ))}
+              </div>
+            )
+          }
         </section>
       ))
     }

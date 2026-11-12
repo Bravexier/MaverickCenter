@@ -476,21 +476,23 @@ test('R164 : « Sort fer » (migration 0079) est verrouillé (R219 (2)) : ni sup
   assert.ok(fer, 'le mot-clé de la migration 0079');
   assert.match(MOTS_CLES_PROTEGES.get(fer.id), /^étiquette les sorts fer, que la fiche de personnage reconnaît par lui \(décision R164/);
   const etiquetes = () => ligne(`SELECT count(*) AS n FROM sort_mot_cle WHERE mot_cle_id = ${ID['sort-fer']}`).n;
-  assert.equal(etiquetes(), 13, 'les 13 sorts « Fer… » (R164)');
+  // les sorts Fer se comptent par l'étiquette, Fer brillant de l'Arcane compris (R164, R237 (2)) : un effectif lu, jamais figé
+  const nEtiquetes = etiquetes();
+  assert.ok(nEtiquetes >= 13, 'les sorts « Fer… » (R164)');
   const libre = creerMotCle(motLibre('Essai sans sort fer'));
   const vocabulaireAvant = lignes('SELECT * FROM mot_cle ORDER BY id');
   for (const [operation, motif] of [
     [{ op: 'supprimer', entite: 'mot_cle', cle: { id: fer.id } }, /est verrouillé.*\(décisions R218, R219\)/],
     [{ op: 'fusionner_mots_cles', mot_cle: fer.id, dans: libre }, /est verrouillé : il ne se fusionne pas dans un autre/],
     // la cible verrouillée reçoit une fusion (R219 (4)), mais une étiquette de sort, jamais (R164)
-    [{ op: 'fusionner_mots_cles', mot_cle: libre, dans: fer.id }, / ne se fusionne pas depuis le site : il étiquette 13 sorts/],
+    [{ op: 'fusionner_mots_cles', mot_cle: libre, dans: fer.id }, new RegExp(` ne se fusionne pas depuis le site : il étiquette ${nEtiquetes} sorts`)],
   ]) {
     const r = enregistrer([operation]);
     assert.equal(r.statut, 409, JSON.stringify(r.corps));
     assert.ok(r.corps.erreur.startsWith(`operations[0] : Le mot-clé « ${fer.libelle} » `), r.corps.erreur);
     assert.match(r.corps.erreur, motif);
     assert.deepEqual(lignes('SELECT * FROM mot_cle ORDER BY id'), vocabulaireAvant, `${JSON.stringify(operation)} : rien n’est écrit`);
-    assert.equal(etiquetes(), 13, 'les étiquettes restent');
+    assert.equal(etiquetes(), nEtiquetes, 'les étiquettes restent');
   }
   // GET /api/edition/mots-cles/ : son verrou
   const v = appel('GET', '/api/edition/mots-cles/');

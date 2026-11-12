@@ -142,7 +142,8 @@ for (const c of corrections.filter((x) => x.champ === 'v')) {
     for (const r of db.prepare(`SELECT * FROM "${t.name}" WHERE source_ref LIKE ? || ' › ' || ? || ' › %'`).all(c.classeur.replace(/[%_]/g, ''), c.onglet.replace(/[%_]/g, ''))) {
       if (!couvre(r.source_ref, c.classeur, c.onglet, c.cellule)) continue;
       couvertes += 1;
-      if (txt.some((k) => typeof r[k] === 'string' && r[k].includes(c.avant))) problemes.push(`correction ${c.dump}!${c.onglet}!${c.cellule} : « ${c.avant} » figure encore dans ${t.name}`);
+      // « avant » hors de « apres » : une correction qui ajoute une lettre en fin de cellule (« dégâts sonore » → « dégâts sonores ») garde « avant » dans « apres »
+      if (txt.some((k) => typeof r[k] === 'string' && r[k].split(c.apres).join('\u0000').includes(c.avant))) problemes.push(`correction ${c.dump}!${c.onglet}!${c.cellule} : « ${c.avant} » figure encore dans ${t.name}`);
       if (txt.some((k) => typeof r[k] === 'string' && r[k].includes(c.apres))) avecApres += 1;
     }
   }
@@ -210,6 +211,25 @@ if (correctionsLignesSupprimees) bilan.corrections_lignes_supprimees = correctio
     }
   }
   bilan.sorts_avec_bonus_maitrise = bonus.size;
+}
+
+// Spécialisations magiques (R236 (1), migration 0117) : le CHECK de `sort` dit un sens (un sort de NPM 1 ou 2 n'a pas de spécialisation, celle d'un sort est
+// une spécialisation de sa magie) ; l'autre sens ne s'écrit pas en CHECK (il dépend de la magie) : un sort de NPM 3 à 5 en a une, sauf pour le Potentiel
+// Illimité (qui n'a ni spécialisations ni sorts à lui), et chaque autre magie a exactement ses deux spécialisations (ordre 1 et 2).
+if (noms.has('magie_specialisation') && colonnes('sort').some((c) => c.name === 'specialisation_id')) {
+  const { POTENTIEL_ILLIMITE } = await import(pathToFileURL(`${LIB}/potentiel-illimite.mjs`).href);
+  for (const s of db.prepare('SELECT id, niveau FROM sort WHERE niveau >= 3 AND specialisation_id IS NULL AND magie_id <> ?').all(POTENTIEL_ILLIMITE)) {
+    problemes.push(`sort ${s.id} : un sort de NPM ${s.niveau} doit avoir une spécialisation, il n'en a pas (R236 (1))`);
+  }
+  for (const s of db.prepare('SELECT id, niveau FROM sort WHERE specialisation_id IS NOT NULL AND niveau < 3').all()) {
+    problemes.push(`sort ${s.id} : un sort de NPM ${s.niveau} ne doit pas avoir de spécialisation, il en a une (R236 (1))`);
+  }
+  const parMagie = new Map(db.prepare('SELECT magie_id, COUNT(*) AS n FROM magie_specialisation GROUP BY magie_id').all().map((r) => [r.magie_id, r.n]));
+  for (const m of db.prepare('SELECT id FROM magie').all()) {
+    const attendu = m.id === POTENTIEL_ILLIMITE ? 0 : 2;
+    if ((parMagie.get(m.id) ?? 0) !== attendu) problemes.push(`magie ${m.id} : ${parMagie.get(m.id) ?? 0} spécialisation(s) au lieu de ${attendu} (R236 (1))`);
+  }
+  bilan.specialisations = [...parMagie.values()].reduce((a, n) => a + n, 0);
 }
 
 // Types de page : la table type_page est le miroir de client/src/lib/types.mjs (le site garde ce fichier : libellés, salons Discord, ordre des rubriques).

@@ -437,8 +437,8 @@ test('sortDuMoment (R102) : le coût réduit par les dons (Économe, « réduits
     assert.deepEqual([z.texte, z.corruption], ['0', null], s.id);
   }
   // un coût qui n'est pas un nombre ne change pas (la réduction est dite non comptée) : « X » (au choix), « N/A » d'un coût qui n'est pas un pourcentage
-  // du chakra maximum (« Aléatoire » : décision R106)
-  const nonChiffres = [regles.sorts.find((s) => s.cout === 'X'), regles.sorts.find((s) => s.cout === 'N/A' && s.cout_secondaire === 'Aléatoire')];
+  // du chakra maximum (décision R106 ; coût secondaire sans « % »)
+  const nonChiffres = [regles.sorts.find((s) => s.cout === 'X'), regles.sorts.find((s) => s.cout === 'N/A' && s.cout_secondaire && !/%/.test(s.cout_secondaire))];
   for (const choix of nonChiffres) {
     assert.ok(choix, 'un sort au coût non chiffré');
     const v = M.sortDuMoment(regles, fiche(ceinture('Bâton magique Arcane, niveau 1')), choix, auNm(choix));
@@ -570,9 +570,10 @@ test('sortDuMoment (R102) : soins (Focus, bâton de Lumière, accessoire +1d), p
   // amplifications (réponse « Compter où c'est chiffré ») : « +8 dégâts » + Sang 3, « +5AP, +10AM » + Glace 3 (AM) ou Terre 3 (AP)
   const fer = regles.sorts.find((s) => s.types.includes('amplification') && s.dsb === '+8 dégâts');
   assert.equal(M.sortDuMoment(regles, fiche(ceinture('Bâton magique Sang, niveau 3')), fer, auNm(fer)).dsb.texte, '+11 dégâts');
-  const armure = regles.sorts.find((s) => s.types.includes('amplification') && s.dsb === '+5AP, +10AM');
-  assert.equal(M.sortDuMoment(regles, fiche(ceinture('Bâton magique Glace, niveau 3')), armure, auNm(armure)).dsb.texte, '+5AP, +13AM');
-  assert.equal(M.sortDuMoment(regles, fiche(ceinture('Bâton magique Terre, niveau 3')), armure, auNm(armure)).dsb.texte, '+8AP, +10AM');
+  const armure = regles.sorts.find((s) => s.types.includes('amplification') && /^\+\d+AP, \+\d+AM$/.test(s.dsb));
+  const [, ap, am] = armure.dsb.match(/^\+(\d+)AP, \+(\d+)AM$/).map(Number);
+  assert.equal(M.sortDuMoment(regles, fiche(ceinture('Bâton magique Glace, niveau 3')), armure, auNm(armure)).dsb.texte, `+${ap}AP, +${am + 3}AM`);
+  assert.equal(M.sortDuMoment(regles, fiche(ceinture('Bâton magique Terre, niveau 3')), armure, auNm(armure)).dsb.texte, `+${ap + 3}AP, +${am}AM`);
   // ce que les bâtons ne chiffrent pas : rappelé
   const necro = M.sortDuMoment(regles, fiche(ceinture('Bâton magique Nécromancie, niveau 1')), fer, auNm(fer));
   assert.deepEqual(necro.rappels, [{ nom: 'Bâton magique Nécromancie, niveau 1', texte: 'Invocation +5 santé' }]);

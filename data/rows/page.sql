@@ -39,24 +39,6 @@ Pour pouvoir invoquer un non-mort double-magie, il faut posséder une seconde ma
 - Nécromancie + Foudre : Réanimé, Fulgurâme
 - Nécromancie + Lumière : Solécorché, Lumiphage
 - Nécromancie + Ombre : Zombre, Noctèbre
-
-## TABLEAU "AMÉLIORATION CADAVÉRIQUE"
-
-| Nom | Amélioration |
-| --- | --- |
-| Zombi | +6 AP, +8 dégâts, Rés Nécromancie |
-| Zombinox | 30 PV qui prendront les coups avant la barrière. |
-| Goule | Chaque coup physique sera répondu par 5 de C sur l''agresseur |
-| Momie | Res Temps/Espace, 50% de chance d''infliger Malédiction à la cible. |
-| Fantôme | Res Vide, 25% de chance d''ignorer une attaque. |
-| Embrasé | Res Feu, 25% de chance que la cible se brûle. |
-| Noyé | Res Eau, Double la vitesse dans l''eau |
-| Os Froid | Res Glace, Dégâts magiques divisés par 2 |
-| S. de pierre | Res Terre, Dégâts physiques divisés par 2 |
-| Zompi | Res Vent, "Crache spore" chaque tour |
-| Réanimé | Res Foudre, +3 INI et +1 Vitesse |
-| S. rayonnant | Res Lumière, Peut sacrifier l''amélioration pour "Sacrifice lumineux" |
-| Zombi obscur | Res Ombre, "Mantelet des ténèbres" passif |
 ', 'draft', 'bestiaire', 'Google Sheet « Invocation », onglet « Animation des morts »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('bestiaire/appel-aux-golems', 'bestiaire', 'appel-aux-golems', 'Appel aux golems', 'appel-aux-golems', 'Il n''est possible d’avoir qu’une seule invocation à la fois en combat et par personnage (sauf le mode hyper de la nécromancie qui permet d''en avoir un deuxième).', NULL, '**En-tête de l''onglet** : INVOCATION GOLEM
 
@@ -1019,7 +1001,7 @@ Lanceur de sorts. Cette créature peut lancer les sorts, avec les niveaux de ma�
 
 (NPM 3) Attaque maudite. L''attaque de cette créature a l''effet du sort de l''ombre "malédiction" et l''applique automatiquement.
 
-(NPM 5) Sort supplémentaire. Cette créature obtient de nouveaux sorts en plus des autres : Frappe temporelle, Vieillissement
+(NPM 5) Sort supplémentaire. Cette créature obtient de nouveaux sorts en plus des autres : Main de la momie, Vieillissement
 ', 'draft', 'bestiaire', 'Google Sheet « Invocation », onglet « Animation des morts »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('bestiaire/noctebre', 'bestiaire', 'noctebre', 'Noctèbre', 'noctebre', 'Le Noctèbre est le squelette d’un ancien assassin ou espion, relevé par la volonté d’Umbro pour servir à nouveau dans les ténèbres.', NULL, '**Invocation** : Animation des morts (onglet du classeur « Invocation »)
 
@@ -1368,7 +1350,7 @@ La poupée fulgurante est entièrement métallique, avec des articulations visib
 
 Lanceur de sorts. Cette créature peut lancer les sorts, avec les niveaux de maîtrise maximum : Éclair, Nerveux.
 
-(NPM 3) Sort supplémentaire. Cette créature obtient de nouveaux sorts en plus des autres : Réflexe éclair, Boule de foudre.
+(NPM 3) Sort supplémentaire. Cette créature obtient de nouveaux sorts en plus des autres : Réflexe éclair, Boules plasmiques.
 
 (NPM 5) Sort supplémentaire. Cette créature obtient de nouveaux sorts en plus des autres : Éclair en chaîne.
 ', 'draft', 'bestiaire', 'Google Sheet « Invocation », onglet « Appel aux golems »');
@@ -1402,7 +1384,7 @@ Lanceur de sorts. Cette créature peut lancer les sorts, avec les niveaux de ma�
 
 (NPM 3) Sort supplémentaire. Cette créature obtient de nouveaux sorts en plus des autres : Malédiction, Javelot sombre.
 
-(NPM 5) Sort supplémentaire. Cette créature obtient de nouveaux sorts en plus des autres : Rayon négatif.
+(NPM 5) Sort supplémentaire. Cette créature obtient de nouveaux sorts en plus des autres : Rayon lunatique.
 ', 'draft', 'bestiaire', 'Google Sheet « Invocation », onglet « Appel aux golems »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('bestiaire/poupee-necrotique', 'bestiaire', 'poupee-necrotique', 'Poupée nécrotique', 'poupee-necrotique', 'La poupée nécrotique est une petite sculpture articulée, entièrement façonnée dans des os finement taillés et polis.', NULL, '**Invocation** : Appel aux golems (onglet du classeur « Invocation »)
 
@@ -8171,7 +8153,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 | Stade 1 | Stade 2 | Stade 3 |
 | --- | --- | --- |
-| - Un jet de Vigueur est nécessaire<br>pour ne pas perdre 1 Tour.<br><br>Dure 2 Tours. | - Un jet de Vigueur est nécessaire<br>pour ne pas perdre 1 Tour.<br>- Vitesse divisée par 2.<br><br>Dure 3 Tours. | - Un jet de Vigueur est nécessaire pour ne pas perdre 1 Tour.<br>-  Vitesse divisée par 2.<br>- Le résultat d''initiative sera toujours 01.<br>Dure 4 Tours. |
+| - Un jet de Vigueur est nécessaire<br>pour ne pas perdre 1 Tour.<br><br>Dure 2 Tours. | - Un jet de Vigueur est nécessaire<br>pour ne pas perdre 1 Tour.<br>- Vitesse divisée par 2.<br><br>Dure 3 Tours. | - Un jet de Vigueur est nécessaire pour ne pas perdre 1 Tour.<br>-  Vitesse divisée par 2.<br>- Force à jouer en dernier le tour<br>Dure 4 Tours. |
 
 **Résistances/Vulnérabilités**
 
@@ -8249,6 +8231,15 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 - **Résistances** : Dégâts divisés par 2.
 - **Grande résistance** : Dure que 3 Tours.
 
+## Somnolence {#somnolence}
+
+- **Magie Liée** : Ombre (Songe)
+- **Type** : Mental
+
+| Stade 1 | Stade 2 | Stade 3 |
+| --- | --- | --- |
+| - Malus de 5 à tout les dégâts<br>- Malus de 5% au jet de Force et Agilité<br>- Bonus de 5% aux jets de Volonté<br><br>Dure 3 tours | - Malus de 7 à tout les dégâts<br>- Malus de 10% au jet de Force et Agilité<br>- Bonus de 10% aux jets de Volonté<br><br>Dure 3 tours | - Malus de 10 à tout les dégâts<br>- Malus de 15% au jet de Force et Agilité<br>- Bonus de 15% aux jets de Volonté<br><br>Dure 3 tours |
+
 ## Surcharge Magique {#surcharge-magique}
 
 - **Magie Liée** : Arcane/<br>Corruption
@@ -8273,7 +8264,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 | Stade 1 | Stade 2 | Stade 3 |
 | --- | --- | --- |
-| - Malus de 15% aux compétences : Athlétisme, Équilibre, Stabilité, Réflexe, Distinction, Orientation.<br>- Dure 3 Tours. | - Malus de 20% aux compétences : Athlétisme, Équilibre, Stabilité, Réflexe, Distinction, Orientation.<br>- Dure 3 Tours. | - Malus de 30% aux compétences : Athlétisme, Équilibre, Stabilité, Réflexe, Distinction, Orientation.<br>- Dure 3 Tours.<br>Les dégâts sonores ne fonctionnent plus sur la victime |
+| - Malus de 15% aux compétences : Athlétisme, Équilibre, Stabilité, Réflexe, Distinction, Orientation.<br>- Dure 3 Tours. | - Malus de 20% aux compétences : Athlétisme, Équilibre, Stabilité, Réflexe, Distinction, Orientation.<br>- Dure 3 Tours. | - Malus de 30% aux compétences : Athlétisme, Équilibre, Stabilité, Réflexe, Distinction, Orientation.<br>- Un placement sur la victime fait qu''elle tombera toujours par terre juste après.<br>- Dure 3 Tours. |
 
 **Résistances/Vulnérabilités**
 
@@ -8596,29 +8587,6 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 - Toutes les autres magies = -3 dégâts
 - Lors du premier tour de la météo uniquement = -25% de {{chakra|chakra}} pour tous ceux qui ne sont pas de la Corruption
 - +2 {{corruption}} par tour
-
-## Saccage temporel
-
-**Description** : Un saccage temporel déchire le tissu de la réalité, distordant le temps et créant des décalages où passé, présent et futur s’entrelacent de façon chaotique. Les logiques de vitesse, portée et même initiative sont inversées dans ce chaos.
-
-**Effet(s)**
-
-- Élément Vide = +10 dégâts
-- La magie de l''Espace/Temps ne fonctionne pas (soutien/attaque)
-- La portée maximale des armes distance devient la minimale
-- La vitesse sol et nage s''inverse (minimum 1 pour ceux qui ont un 0 quelque part)
-- C''est l''initiative la plus basse qui commence à jouer et non la plus haute
-
-## Zone vide
-
-**Description** : Une zone vide s’étend, dénuée de toute énergie magique, où l’air semble étrangement calme et figé. Aucune magie ne fonctionne dans cette zone.
-
-**Effet(s)**
-
-- La Magie ne fonctionne pas.
-- La Météo ne peut pas être modifiée le temps de cette météo.
-- Les armes aux dégâts magiques ne fonctionnent pas (effets et dégâts)
-- Les armures magiques ne fonctionnent pas (effets, AP et AM)
 ', 'draft', 'annexes', 'Google Sheet « Magie Maverick V8 », onglet « Météo »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/mordhau-ou-demi-epee', 'guide', 'mordhau-ou-demi-epee', 'Mordhau ou Demi-épée', 'mordhau-ou-demi-epee', 'C''est un terme utilisé pour désigner une méthode de combat avec certaines armes de corps à corps (notamment les épées), qui consiste à prendre son arme par la lame et à taper avec le manche comme un sourd.', NULL, 'C''est un terme utilisé pour désigner une méthode de combat avec certaines armes de corps à corps (notamment les épées), qui consiste à prendre son arme par la lame et à taper avec le manche comme un sourd. Cela permet à certaines armes de pouvoir faire des dégâts de frappe alors qu''elles en sont incapables.
 
@@ -18024,7 +17992,7 @@ Hokeep accueille une garnison permanente, composée de cavaliers légers, de pis
 ', 'draft', 'docs', 'Google Doc « CODEX Maverick »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('magies/exemple-magie', 'magies', 'exemple-magie', 'Magie d''exemple', 'magie-dexemple', 'Page de démonstration pour une école de magie.', NULL, 'Contenu **fictif**. Une [[Créature d''exemple]] peut être sensible à cette magie.
 ', 'example', 'exemple', NULL);
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('magies/magie-de-la-corruption', 'magies', 'magie-de-la-corruption', 'Magie de la Corruption', 'magie-de-la-corruption', 'La magie de la Corruption est l''antithèse de l’Arcane, une énergie négative qui ne connaît ni faiblesse ni résistance.', '{"nom_court": "Corruption", "resiste_a": ["Arcane"], "vulnerable_a": []}', 'La magie de la Corruption est l''antithèse de l’Arcane, une énergie négative qui ne connaît ni faiblesse ni résistance. Semblable à l''Arcane, elle se manifeste sous une forme brute et malléable, mais son essence est pervertie par une volonté malveillante qui cherche à affaiblir, entraver et tuer. Contrairement aux autres formes de magie, la Corruption ne se mélange à aucune autre : elle est une entité à part entière qui refuse toute fusion, sauf entre les mains des Elfes Charbons et des Felfes Noirs, qui possèdent un lien et une histoire avec elle.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('magies/magie-de-la-corruption', 'magies', 'magie-de-la-corruption', 'Magie de la Corruption', 'magie-de-la-corruption', 'La magie de la Corruption est l''ombre de l’Arcane, une énergie négative qui ne connaît ni faiblesse ni résistance.', '{"nom_court": "Corruption", "resiste_a": ["Arcane"], "vulnerable_a": []}', 'La magie de la Corruption est l''ombre de l’Arcane, une énergie négative qui ne connaît ni faiblesse ni résistance. Semblable à l''Arcane, elle se manifeste sous une forme brute et malléable, mais son essence est pervertie par une volonté malveillante qui cherche à affaiblir, entraver et tuer. Contrairement aux autres formes de magie, la Corruption ne se mélange à aucune autre : elle est une entité à part entière qui refuse toute fusion, sauf entre les mains des Elfes Charbons et des Felfes Noirs, qui possèdent un lien et une histoire avec elle.
 
 Tout comme la magie de l’Arcane, la Corruption offre une grande polyvalence, permettant à ses utilisateurs de s’adapter à toutes les situations. Mais là où l’Arcane façonne et construit, la Corruption érode et consume. Ses adeptes sont craints non pas pour leur force brute, mais pour leur capacité à manipuler l’affaiblissement et le désespoir. Ils sont perçus comme des combattants impitoyables et méthodiques, préférant saper leurs ennemis de l’intérieur plutôt que d’engager un combat frontal.
 
@@ -18058,39 +18026,40 @@ Attention, si le {{chakra|chakra}} permet d''obtenir de la {{corruption|corrupti
 | Mono-Magie | Le {{chakra\|chakra}} active directement les effets secondaires |
 | Bi-magie | Divise par 2 le coût en {{corruption\|corruption}} des sorts. |
 
-## Rôles
-
-- ENTRAVE
-- DÉGÂTS
-- RENFORCEMENT
-
 ## Sorts
 
 | Niveau | Nom | Type | Coût | Portée | Zone | D/S/B | Effets secondaires |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | 1.0 | Boule sombre | Attaque | 4.0 | 6.0 | 1.0 | 2d6 dégâts (+1d6/NM) | Si {{corruption\|CR}} : +1d de dégâts. |
-| 1.0 | Tir d''huile | Attaque | 4.0 | 9 (+2/NM) | 1.0 | 2d6 dégâts | Si {{corruption\|CR}} : Inflige 3 {{corruption\|corruption}}. |
+| 1.0 | Tir d''huile | Attaque | 4.0 | 9 (+2/NM) | 1.0 | 2d6 dégâts | Si {{corruption\|CR}} : Inflige 4 {{corruption\|corruption}}. |
 | 1.0 | Verrouillage Simple | Entrave | 4.0 | 6.0 | 1.0 | Bloque la posture Neutre | Dure 2 tours (+1/NM)<br>Si {{corruption\|CR}} : Le changement de posture est aléatoire. |
-| 1.0 | Verrouillage Visible | Entrave | 4.0 | 6.0 | 1.0 | Bloque la posture Vigilance | Dure 2 tours (+1/NM)<br>Si {{corruption\|CR}} : Le changement de posture est aléatoire. |
+| 1.0 | Verrouille Visible | Entrave | 4.0 | 6.0 | 1.0 | Bloque la posture Vigilance | Dure 2 tours (+1/NM)<br>Si {{corruption\|CR}} : Le changement de posture est aléatoire. |
 | 1.0 | Retrait | Soin (IC) | 5.0 | 1.0 | 1.0 | 2d6 {{corruption\|CR}} (+1d/NM) | Retire de la {{corruption\|corruption}} d''une cible pour la mettre dans la réserve. |
 | 2.0 | Aiguisage magique | Amplification (IC pour 3 NM) | 6.0 | 1.0 | 1.0 | / | Permet d''augmenter la réussite critique de 2% au prochain sort.<br>Si {{corruption\|CR}} : Bonus de +5 dégâts en plus. |
-| 2.0 | Fer corrompu | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | Imprègne l''arme d''une énergie mauvaise : pendant 3 tours, chacune de ses attaques inflige 5 points de {{corruption\|corruption}} à la cible. |
-| 2.0 | Souffle noir | Entrave | 7.0 | 2 (+1/NM) | Cône | Retire du 2d10 de {{chakra\|chakra}} à la cible | Si {{corruption\|CR}} : Inflige 2d6 de {{corruption\|corruption}} en plus. |
+| 2.0 | Fer corrompu | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | Imprègne l''arme d''une énergie mauvaise. Inflige 5 points de {{corruption\|corruption}} par coup qui touche. Dure 3 tours. |
+| 2.0 | Souffle noir | Entrave | 7.0 | 2 (+1/NM) | Cône | Retire du 2d10 de {{chakra\|chakra}} à la cible | Si {{corruption\|CR}} : Inflige 10 de {{corruption\|corruption}} en plus. |
 | 2.0 | Pétrole | Entrave (IC pour 3 NM) | 8.0 | 5.0 | 5x3 | Divise par 2 la vitesse et le bonus initiative | Pose une zone qui ralentit ceux qui sont dedans. Capable de brûler.<br>Si {{corruption\|CR}} : Bloque entièrement les cibles. |
-| 2.0 | Vague déferlante | Attaque | 9.0 | 5.0 | 1.0 | 5d6 dégâts (+5/NM) | Peut être surchargé (15 {{chakra\|chakra}} en + = 1 dé en +) (maximum 75 {{chakra\|chakra}} en surcharge)<br>Si {{corruption\|CR}} = Ignore 50% de l''AM. |
-| 3.0 | Mine noire | Attaque/Construction<br>(Inesquivable) | 14.0 | 6.0 | 1.0 | 7d6 dégâts (+3/NM) | Pose une mine qui explose quand une cible touche la zone. Ne se voit pas.<br>Si {{corruption\|CR}} : Inflige 10 {{corruption\|corruption}} |
-| 3.0 | Laser noir | Attaque | 12.0 | 7.0 | 1.0 | 23 dégâts | Ignore totalement les AM et la {{barriere\|barrière}}. Augmente la réussite critique de 1%/NM.<br>Si {{corruption\|CR}} : La cible a -20% pour le jet de défense |
-| 3.0 | Fouet ténébreux | Attaque/Entrave | 13.0 | 5.0 | 1.0 | 7d6 dégâts | Si jet de fermeté raté : Inflige 3 (+2/NM) {{corruption\|corruption}}.<br>Si {{corruption\|CR}} : Fait reculer la cible de 1 case. |
-| 3.0 | Plaie suintante | Entrave (IC pour 3NM) | 12.0 | 3.0 | 1.0 | Bloque la {{barriere\|barrière}} | Si jet de fermeté raté : Empêche la régénération de la {{barriere\|barrière}} pour 3 tours.<br>Si {{corruption\|CR}} : L''inflige automatiquement. |
-| 3.0 | Aura de frayeur | Entrave (IC pour 3 NM) | 14.0 | Soi-même | Cercle de 2 | / | Dure 3 tours. Si jet de Calme raté = Impossibilité pour la cible d''approcher. Si {{corruption\|CR}} : Ceux qui ratent le jet fuient. |
-| 4.0 | Pour moi ! | Attaque | 19.0 | 1.0 | 1.0 | 5d6 + 25 dégâts | Si {{corruption\|CR}} : Retire un effet positif de la cible et le transforme en 1d10 {{barriere\|barrière}} pour le lanceur. |
-| 4.0 | Grenade Collante | Attaque | 23.0 | 6.0 | Cercle de 3 | 8d6 + 35 dégâts | Explose dans 1 tour, inflige d''énormes dégâts de zone. (3NM = La grenade colle la cible)<br>Si {{corruption\|CR}} : Le sort est inesquivable. |
-| 4.0 | Verrouillage Magique | Entrave | 20.0 | 6.0 | 1.0 | Bloque la posture Focus et Symbiose | Dure 2 tours (+1/NM)<br>Si {{corruption\|CR}} : Le changement de posture est aléatoire. |
-| 4.0 | Verrouillage Physique | Entrave | 20.0 | 6.0 | 1.0 | Bloque la posture Offensif et Défensif | Dure 2 tours (+1/NM)<br>Si {{corruption\|CR}} : Le changement de posture est aléatoire. |
+| 2.0 | Vague déferlante | Attaque | 9.0 | 5.0 | 1.0 | 5d6 dégâts (+5/NM) | Peut être surchargé (15 {{chakra\|chakra}} en + = 1 dé en +) (maximum 45 {{chakra\|chakra}} en surcharge)<br>Si {{corruption\|CR}} :  Ignore 50% de l''AM. |
+| 3.0 | Mine poisseuse | Attaque/ Construction<br>(Inesquivable) | 14.0 | 6.0 | 1.0 | 7d6 dégâts (+3/NM) | Pose une mine qui explose quand une cible touche la zone. Ne se voit pas.<br>Si {{corruption\|CR}} : Inflige 10 {{corruption\|corruption}} |
+| 3.0 | Laser noir | Attaque | 12.0 | 7.0 | 1.0 | 23 dégâts | Tire un rayon qui ignore l''AM.. Augmente la réussite critique de 1%/NM.<br>Si {{corruption\|CR}} : La cible a -20% pour le jet de défense |
+| 3.0 | Fouet ténébreux | Attaque/Entrave | 13.0 | 5.0 | 1.0 | 7d6 dégâts | Si jet de fermeté raté : Inflige 7 (+2/NM) {{corruption\|corruption}}.<br>Si {{corruption\|CR}} : Fait reculer la cible de 1 case. |
+| 3.0 | Saturation | Amplification  (IC pour 3NM) | 10 | 3 | 1 | +1 dégât/ 5 CR | La cible augmente ses dégâts selon son taux de corruption, 1 dégât par 5 corruption. Dure 3 tours. |
+| 4.0 | Pression noire | Amplification  (IC pour 3NM) | 20 | 1 | 1 | +3 dégâts/10% de corruption | Le bénéficiaire aura un bonus de dégâts si sa cible a de la corruption en elle. Dure 3 tours.<br>Si CR : Le bonus est de +5 dégâts |
+| 4.0 | Grenade collante | Attaque | 23.0 | 6.0 | Cercle de 3 | 8d6 + 35 dégâts | Explose dans 1 tour, inflige d''énormes dégâts de zone. (3NM = La grenade colle la cible)<br>Si {{corruption\|CR}} : Le sort est inesquivable. |
+| 4.0 | Désintégration | Attaque | 20 | 7 | 1 | 40 dégâts | Double les dégâts contre les sorts "Construction" et les éléments du décor.<br>SI CR : +15 dégâts |
 | 4.0 | Pluie huileuse | Météo | 50% corruption | Soi-même | Terrain | / | Pose la météo "Pluie pétrole" pendant 2 tours (+1/NM). |
 | 5.0 | Une tu meurs | Attaque | 55 (-5/NM) | 1.0 | 1.0 | 30 dégâts perce AM/tour | Inflige une blessure qui va infliger des dégâts pendant 3 tours.<br>Si {{corruption\|CR}} : Ignore la {{barriere\|barrière}}. |
+| 5.0 | Choc prétrolier | Attaque | 55 (-5/NM) | 7 | 1 | 10d6 + 70 dégâts | Inflige une terrible frappe de corruption sur la cible.<br>Si CR : Inflige +30 dégâts. |
+| 3.0 | Crachat pollué | Attaque | 14 | 6 | 1 | 6d6 + 12 dégâts (+3/NM) | Si CR : Inflige 10 Corruption |
+| 3.0 | Blessure poisseuse | Attaque/ Entrave | 13 | 4 | 1 | 6d6 + 15 dégâts | Si CR : Empêche la cible de perdre de la corruption pendant 2 tours. |
+| 3.0 | Plaie suintante | Entrave (IC pour 3NM) | 12.0 | 3.0 | 1.0 | Bloque la {{barriere\|barrière}} | Si jet de fermeté raté : Empêche la régénération de la {{barriere\|barrière}} pour 3 tours.<br>Si {{corruption\|CR}} : L''inflige automatiquement. |
+| 3.0 | Aura de frayeur | Entrave (IC pour 3 NM) | 14.0 | Soi-même | Cercle de 2 | / | Dure 3 tours. Si jet de Calme raté = Impossibilité pour la cible d''approcher. Si {{corruption\|CR}} : Ceux qui ratent le jet fuient. |
+| 4.0 | Contre-sort | Entrave<br>(Réaction) | Variable selon le sort bloqué | 6 (+2/NM) | 1 | / | La lanceur bloque un sort ennemi lvl 1-4 le faisant passer de réussite à échec. Le coût correspond au sort qui a été bloqué. (1 fois par tour) |
+| 4.0 | Pour moi ! | Attaque | 19.0 | 1.0 | 1.0 | 6d6 + 25 dégâts | Si {{corruption\|CR}} : Retire un effet positif de la cible et le transforme en 2d8 {{barriere\|barrière}} pour le lanceur. |
+| 4.0 | Verrouillage Magique | Entrave | 20.0 | 6.0 | 1.0 | Bloque la posture Focus et Symbiose | Dure 2 tours (+1/NM)<br>Si {{corruption\|CR}} : Le changement de posture est aléatoire. |
+| 4.0 | Verrouillage Physique | Entrave | 20.0 | 6.0 | 1.0 | Bloque la posture Offensif et Défensif | Dure 2 tours (+1/NM)<br>Si {{corruption\|CR}} : Le changement de posture est aléatoire. |
 | 5.0 | Sapeur | Entrave | X Corruption | 3 (+1/NM) | 1.0 | / | Donne autant de {{corruption\|corruption}} à la cible que la réserve actuelle de {{corruption\|corruption}}. |
-| 5.0 | Eau noire | Entrave | 45 (-5/NM) | Vue | Terrain | Retire les résistances magiques | Baisse d''un cran les résistances magiques pendant 3 tours.<br>Si {{corruption\|CR}} : Les retire complètement |
+| 5.0 | Eau noire | Entrave | 55 (-5/NM) | Vue | Terrain | Retire les résistances magiques | Baisse d''un cran les résistances magiques pendant 3 tours.<br>Si {{corruption\|CR}} : Les retire complètement et agrave les vulnérabilités d''un cran. |
 
 ## Notes et commentaires des sorts
 
@@ -18100,7 +18069,7 @@ Si la cible est dans la posture indiquée à ce moment-là, il doit changer de p
 
 Les verrouillages ne se cumulent pas.
 
-**Note de la cellule « Effets secondaires » du sort « Verrouillage Visible »**
+**Note de la cellule « Effets secondaires » du sort « Verrouille Visible »**
 
 Si la cible est dans la posture indiquée à ce moment-là, il doit changer de posture de suite.
 
@@ -18108,7 +18077,7 @@ Les verrouillages ne se cumulent pas.
 
 **Note de la cellule « Effets secondaires » du sort « Pétrole »** : Bien entendu on est pas bloqué à vie, il est possible d''en sortir avec un jet d''athlétisme/équilibre, s''il est raté, il faut attendre le prochain tour pour réessayer. C''est juste le mouvement qui est bloqué, pas l''action évidemment.
 
-**Note de la cellule « Effets secondaires » du sort « Mine noire »** : Elle peut se voir mais seulement avec un jet d''observation/distinction réussi en posture vigilance et seulement à portée de vue (Score de perception)
+**Note de la cellule « Effets secondaires » du sort « Mine poisseuse »** : Elle peut se voir mais seulement avec un jet d''observation/distinction réussi en posture vigilance et seulement à portée de vue (Score de perception)
 
 **Note de la cellule « Effets secondaires » du sort « Laser noir »** : Peut prendre un tour de concentration pour donner un bonus de +10 dégâts.
 
@@ -18163,12 +18132,6 @@ Les utilisateurs de la foudre ont les mèches jaunes, les yeux jaunes lors de l'
 | Mono-Magie | Toutes les attaques physiques de contact sont enchaînées d''un éclair blanc qui inflige 1d8/NPM de dégâts qui va ignorer les AM et AP. Dégâts non élémentaires. |
 | Bi-magie | Toutes les attaques physiques de contact sont enchaînées d''un éclair blanc qui inflige 1d8/NPM de dégâts. Dégâts non élémentaires. |
 
-## Rôles
-
-- DÉGÂTS
-- RENFORCEMENT
-- ENTRAVE
-
 ## Sorts
 
 | Niveau | Nom | Type | Coût | Portée | Zone | D/S/B | Effets secondaires |
@@ -18176,48 +18139,72 @@ Les utilisateurs de la foudre ont les mèches jaunes, les yeux jaunes lors de l'
 | 1.0 | Éclair | Attaque | 4.0 | 6.0 | 1.0 | 2d6 dégâts (+1d6/NM) | Une simple attaque de Foudre. 3NM = Sur un coup critique, force le jet de vigueur pour ne pas prendre paralysie 1. |
 | 1.0 | Contact de Volt | Attaque<br>(Imparable) | 4.0 | 5.0 | 1.0 | 1d8 dégâts (+2/NM) | Un sort qui se propage aux adversaires au contact de la cible et inflige +2 dégâts par cible touchée. |
 | 1.0 | Affûtage | Amplification<br>(IC) | 4.0 | 1.0 | 1.0 | / | Permet d''augmenter la réussite critique de 2% (+1/NM) à la prochaine attaque avec une arme. |
-| 1.0 | Nerveux | Amplification (IC pour 3 NM) | 3.0 | 1.0 | 1.0 | +2 INI (+1/NM) | Augmente l''initiative au prochain tour. |
+| 1.0 | Nerveux | Amplification (IC pour 3 NM) | 3.0 | 1.0 | 1.0 | +2 INI (+1/NM) | II : Augmente l''initiative au prochain tour.<br>IG : Augmente l''initiative passivement du premier jet d''initiative. |
 | 1.0 | Tazeur | Attaque/ Entrave | 5.0 | 1.0 | 1.0 | 2d4 dégâts (+2/NM) | Si jet de fermeté raté = Inflige "Couardise" |
-| 2.0 | Fer Foudroyant | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | Charge l''arme en électricité : pendant 3 tours, ses attaques infligent des dégâts de foudre. |
-| 2.0 | Réflexe Éclair | Amplification (IC pour 3 NM) | 8.0 | 1.0 | 1.0 | +5% Agilité | Augmente de 5% l''agilité pendant 2 tours. |
+| 2.0 | Fer foudroyant | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | Charge l''arme en électricité : pendant 3 tours, ses attaques infligent des dégâts de foudre. |
+| 2.0 | Réflexe éclair | Amplification (IC pour 3 NM) | 8.0 | 1.0 | 1.0 | +5% Agilité | Augmente de 5% l''agilité pendant 2 tours. |
 | 2.0 | Colonne Tesla | Amplification/ Entrave (IC pour 3 NM) | 7.0 | 4.0 | 1.0 | / | Donne la propriété « paratonnerre » à une cible. |
-| 2.0 | Chargeur | Amplification (IC x 3) | 9 (-1/NM) | Soi-même | 1.0 | +4 dégâts | +4 dégâts de foudre (cumulable 3 fois) pour la prochaine action. |
+| 2.0 | Chargeur | Amplification (IC x 3) | 9 (-1/NM) | Soi-même | 1.0 | +4 dégâts | +4 dégâts (cumulable 3 fois) pour le prochain sort d''attaque. |
 | 2.0 | Souffle électrique | Attaque<br>(Imparable) | 8.0 | 3.0 | Cône | 5d6 dégâts (+3/NM) | Si jet de vigueur raté = Inflige paralysie 1. |
-| 3.0 | Boules de foudre | Attaque | 16.0 | 2.0 | 1.0 | 3d6 + 10 dégâts | 1 boule (+1/NM) vont apparaître et vont s''approcher de l''ennemi le plus proche de 2 cases par tour. |
-| 3.0 | Foudre Rouge | Attaque/ Entrave | 19.0 | 4 (+1/NM) | 1.0 | 5d10 dégâts | Si jet de vigueur raté = Inflige Brûlure 1.<br>Si jet de vigueur 2 raté = Inflige Paralysie 1. |
-| 3.0 | Plaque Miroir | Amplification (IC pour 3 NM) | 13.0 | 1.0 | 1.0 | / | Invoque 3 plaques miroir qui vont absorber 3 sorts qui le visent (sort de niveau 3 maximum) |
+| 3.0 | Boules plasmiques | Attaque | 5 par boule | 2.0 | 1.0 | 3d6 + 10 dégâts | 1 boule (+1/NM) vont apparaître et vont s''approcher de l''ennemi le plus proche de 2 cases par tour. |
+| 3.0 | Foudre rouge | Attaque/ Entrave | 17 | 4 (+1/NM) | 1.0 | 5d10 dégâts | Si jet de vigueur raté = Inflige Brûlure 1.<br>Si jet de vigueur 2 raté = Inflige Paralysie 1. |
+| 3.0 | Surcharge | Amplification  (IC pour 3 NM) | 12 | Soi même | 1 | / | Le prochain sort d''attaque de Foudre coûtera 50% plus chère mais fera 25% de dégâts finaux en plus. |
+| 3.0 | Mur hertz | Construction | 12 | 3 (+1/NM) | Ligne 9 cases | 15 - 30 - 15 | Ceux qui ne possèdent pas de résistance à la Foudre doivent faire un jet d''Athlétisme/Équilibre pour tenter de traverser. Dure 4 tours. |
+| 4.0 | Éclair en chaîne | Attaque (Inesquivable) | 22.0 | 6 (+1/NM) | 1.0 | 8d6 + 25 dégâts | Inflige de gros dégâts et passe à la cible la plus proche suivante, ses dégâts se divisent par 2 à chaque nouvelle cible (5 maxi) |
+| 4.0 | Colère de Volt | Météo | 21.0 | Soi-même | Terrain | / | Invoque la météo "orage" pendant 3 tours (+1/NM). |
+| 4.0 | Grenade paralysante | Attaque | 23.0 | 6.0 | Croix diagonale de 3 cases | 8d6 + 35 dégâts | Inflige des dégâts de zone de Foudre. (3NM = Si jet de vigueur raté = Inflige paralysie 1). |
+| 4.0 | Turbine | Attaque/ Amplification (IC) | 20 | Soi même | 1 | 10 dégâts/CE\|<br>+10 CK/CE | Gagne 1 CE à chaque sort de Foudre lancé. À 1 charge ou +, choix : récupère du CK, en donne à un allié ou inflige une attaque de 6PO ignorant l''AM. |
+| 5.0 | Orage violet | Attaque/ Entrave | 55 (-5/NM) | 5.0 | Carré de 3 | 10d6 + 60 dégâts | Une attaque surpuissante de foudre qui tape en zone. 15% des dégâts se répercutent dans le {{chakra\|chakra}}. |
+| 5.0 | Rayonnement | Amplification/ Entrave | 55 (-5/NM) | Soi même | Cercle de 3 | 30 dégâts | Invoque une zone électrifié qui inflige des dégâts perce BA aux ennemis. Les alliés sont sous l''effet du sort "Chargeur" trois fois. Dure 3 tours. |
+| 3.0 | Magnérance | Attaque/ Placement | 14 | 7 | 1 | 5d6 + 15 dégâts | Une attaque qui force le jet de stabilite/réflexe à la cible pour ne pas être déplacer de 1 case (+1/NM). |
+| 3.0 | Plaques polarisées | Amplification (IC pour 3 NM) | 13.0 | 1.0 | 1.0 | / | Invoque 2 plaques qui vont attirés les sorts qui sont à 2 cases du lanceur et les dévier pour les annulés (sort de niveau 3 maximum) |
 | 3.0 | Dysfonctionnement | Entrave (IC pour 3 NM) | 11.0 | 4.0 | 1.0 | / | Une créature dite mécanique agit de manière incohérente pendant 1 tour (+1 tour/NM). |
-| 3.0 | Vitesse Ampère | Amplification (IC pour 3 NM) | 12.0 | 1.0 | 1.0 | +2 Vitesse | Permet d''augmenter la vitesse pendant 3 tours. |
-| 4.0 | Éclair en chaîne | Attaque (Inesquivable) | 22.0 | 4 (+1/NM) | 1.0 | 8d6 + 12 dégâts | Inflige de gros dégâts et passe à la cible la plus proche suivante, ses dégâts se divisent par 2 à chaque nouvelle cible (5 maxi) |
-| 4.0 | Colère de Volt | Météo | 21.0 | Soi-même | Terrain | / | Invoque l''orage pendant 3 tours (+1/NM). |
-| 4.0 | Grenade paralysante | Attaque | 23.0 | 6.0 | Cercle de 2 | 8d6 + 35 dégâts | Inflige des dégâts de zone de Foudre. (3NM = Si jet de vigueur raté = Inflige paralysie 1). |
-| 4.0 | Armure conductrice | Amplification (IC pour 3 NM) | 20.0 | 1.0 | 1.0 | +5AP, +10AM | Augmente la résistance à la Foudre et permet de guider la foudre à sa guise pendant 3 tours. |
-| 4.0 | Cercle électrique | Attaque | 21.0 | Soi-même | Cercle de 5 | 6d6 dégâts (+7/NM) | Frappe au sol pour invoquer un cercle qui va électriser les ennemis. |
-| 5.0 | Orage Violet | Attaque/ Entrave | 55 (-5/NM) | 5.0 | Carré de 3 | 10d6 + 60 dégâts | Une attaque surpuissante de foudre qui tape en zone. 15% des dégâts se répercutent dans le {{chakra\|chakra}}. |
+| 3.0 | Vitesse ampère | Amplification (IC pour 3 NM) | 12.0 | 3 | 1.0 | +1 Vitesse | Augmente la vitesse de la cible. Si il porte une armure lourde, il n''est plus ralenti. Dure 3 tours. |
+| 4.0 | Réflexion de Volt | Météo | 20 | Soi même | Terrain | / | Invoque la météo "champ magnétique" pendant 3 tours (+1/NM). |
+| 4.0 | Répulsion réflexe | Amplification/ Placement (IC) | 20 | 4 | 1 | +1 attaque d''opportunité/tour | Lorsqu''une attaque touche la cible, celle-ci repousse automatiquement son attaquant de 2 cases (1 case si la créature est grande). Dure 3 tours. |
+| 4.0 | Armure magnétique | Amplification (IC pour 3 NM) | 20.0 | 1.0 | 1.0 | +5AP, +5AM | Utilisable uniquement si la cible porte une armure avec du métal., la refonce et impose un malus de 15% à l''ennemi pour toucher. Dure 3 tours. |
+| 4.0 | Cercle électrique | Attaque | 23 | Soi-même | Cercle de 5 | 7d6 dégâts (+8/NM) | Frappe au sol pour invoquer un cercle qui va électriser les ennemis. |
 | 5.0 | Fulguration | Attaque | 55 (-5/NM) | 8.0 | Carré de 3 | 10d6 + 60 dégâts | Une attaque surpuissante de foudre qui tape en zone. Si jet de vigueur raté = Inflige paralysie 3. |
-| 5.0 | Manteau de Volt | Amplification | 45 (-2/NM) | 3.0 | 1.0 | +20 dégâts | La cible devient immunisée à la Foudre et tape dans l''élément foudre avec un bonus de +20 aux attaques. Dure 3 tours |
+| 5.0 | Magnétosphère | Entrave | 50 (-5/NM) | Soi même | Cercle de 9 | / | Désarme automatiquement les ennemis dans la zone. Leurs armes tombent au sol et ne peuvent être ramassées qu''à leur prochain tour. |
 
 ## Notes et commentaires des sorts
 
-**Note de la cellule « Effets secondaires » du sort « Fer Foudroyant »** : Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas être paralysé au stade 1
+**Remarque du sort « Nerveux »**
+
+II : Initiative individuelle  
+IG : Initiative groupée
+
+**Note de la cellule « Effets secondaires » du sort « Fer foudroyant »** : Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas être paralysé au stade 1
 
 **Note de la cellule « Effets secondaires » du sort « Colonne Tesla »** : Paratonnerre : Attire les sorts de la foudre ou bien la foudre naturelle sur la cible (objet ou créature)
 
-**Commentaire résolu de la cellule « Type » du sort « Chargeur »** : Peut être lancé 3 fois dans le même tour.
+**Remarque du sort « Turbine »**
+
+CE = Charge électrique  
+CK = Chakra
+
+1 seule charge par tour.  
+3 charges maximum cumulable
+
+Une fois la ou les charges libérées, il faut relancer le sort pour recommencer
+
+**Remarque du sort « Rayonnement »** : BA = Barrière
+
+**Remarque du sort « Plaques polarisées »**
+
+Une plaque bloque qu''UN seul sort et disparaissent.
+
+2 plaques à la fois maximum.
 
 **Note de la cellule « Effets secondaires » du sort « Dysfonctionnement »** : C''est un équivalent de "Confusion 3" pour les créatures mécaniques.
 
-**Commentaire résolu de la cellule « Effets secondaires » du sort « Dysfonctionnement »** : C''est un équivalent de "Confus" pour les créatures mécaniques.
-
-**Note de la cellule « Effets secondaires » du sort « Manteau de Volt »** : Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas être paralysé au stade 1
+**Remarque du sort « Répulsion réflexe »** : Ne déclenche pas d''attaque d''opportunité sauf pour le bénéficiaire du sort.
 
 ## Textes des sorts de niveau 5
 
 ### Orage violet
 
 ### Fulguration
-
-### Manteau de Volt
 
 ## Légende
 
@@ -18257,12 +18244,6 @@ Les utilisateurs de la glace ont les mèches bleu cyan, des cheveux assez courts
 | Mono-Magie | L''armure magique (AM) de base augmente de 25. |
 | Bi-magie | L''armure magique (AM) de base augmente de 10. |
 
-## Rôles
-
-- RENFORCEMENT
-- ENTRAVE
-- DÉGÂTS
-
 ## Sorts
 
 | Niveau | Nom | Type | Coût | Portée | Zone | D/S/B | Effets secondaires |
@@ -18277,19 +18258,26 @@ Les utilisateurs de la glace ont les mèches bleu cyan, des cheveux assez courts
 | 2.0 | Cerveau gelé | Entrave (IC pour 3 NM) | 9.0 | 4.0 | 1.0 | => | Jet de fermeté raté = Croix en I.<br>Jet de fermeté réussi = -10% à tout test d''I / Dure 3 tours pour les deux résultats. |
 | 2.0 | Lien de gel | Entrave | 7.0 | 4.0 | 1.0 | / | Bloque les mains de l''adversaire, au prochain tour, propage le lien de gel aux autres à 2 cases autour. |
 | 2.0 | Cuirasse arctique | Amplification (IC) | 7.0 | 1.0 | 1.0 | +4AM (+2AM/NM) | Augmente l''armure magique pendant 3 tours. Peut se cumuler avec Peau Verglacée. |
-| 3.0 | Avalanche | Attaque | 15.0 | 7.0 | Carré de 5 | 5d6 dégâts (+3/NM) | Inflige des dégâts de glace en zone. |
-| 3.0 | Stalactite | Attaque | 15.0 | 5.0 | 1.0 | 7d6 +15 dégâts | Envoie un gros pic de glace, +4 (+2/NM) dégâts quand il neige. |
-| 3.0 | Prison boréale | Attaque/ Entrave | 15 (-2/NM) | 1.0 | 1.0 | 6d6 dégâts | Si jet de vigueur raté = Inflige gel 3. |
-| 3.0 | Gel profond | Construction | 18.0 | 3 (+1/NM) | 1.0 | Isole la cible pour 1 tour | Bloque entièrement une cible mais elle ne subit plus aucun effet extérieur ou des altérations d''états. Peut être fait sur ennemis comme alliés |
-| 3.0 | Mur de glace | Invocation | 14.0 | 3.0 | Rectangle 5x2 | / | Encaisse un total de 40 points de dégâts (+10/NM). |
-| 4.0 | Lance de givre | Attaque (Inesquivable) | 22 (-2/NM) | 20.0 | Ligne | 6d6 + 35 dégâts | Envoie une lance magique qui est si rapide qu''il est impossible de lui échapper. |
+| 3.0 | Avalanche | Attaque | 15.0 | 7.0 | Carré de 5 | 5d6 dégâts (+3/NM) | Si bonne météo = Inflige 2d dégâts en plus. |
+| 3.0 | Flomentation | Attaque | 16 | 3 (+2/NM) | 1 | 7d6 + 7 dégâts | Si bonne météo = À l''impact, le projectile se fragmente en plusieurs projectiles qui vont à gauche et droite de la cible. Leur dégâts est divisé par 2. |
+| 3.0 | Prison boréale | Attaque/ Entrave | 15 (-2/NM) | 1.0 | 1.0 | 6d6 dégâts | Si jet de vigueur raté = Inflige gel 3.<br>Si bonne météo = Inflige +8 dégâts |
+| 3.0 | Sublimation | Amplification (IC pour 3NM) | 18 | 1 | Illimité | +2 dégâts/état de gel retiré | Les cibles doit souffrir d''un gel = Retire les états de gel des ennemis pour augmenter les dégâts pendant 4 tours.<br>Si bonne météo = +1 dégât en plus |
+| 4.0 | Froid gémellaire | Attaque | 22 | 5 | 1 | 4d6 dégâts (+4/NM) = à faire deux fois | Une attaque en deux temps qui oblige la cible à faire deux jets de défense.<br>Si bonne météo = Malus de 15% aux jets de défnese |
 | 4.0 | Grenade cryogénique | Attaque/ Entrave | 23.0 | 6.0 | Cercle de 2 | 8d6 + 35 dégâts | Inflige des dégâts de zone de Glace. (Si jet de vigueur raté = Inflige gel 1/3NM) |
 | 4.0 | Danse de Celsius | Météo | 20.0 | Soi-même | Terrain | / | Invoque la météo "Neige" ou "Tempête de Neige" pour 3 tours (+1/NM). |
-| 4.0 | Cape hivernale | Amplification (IC pour 3 NM) | 20.0 | 3.0 | 1.0 | -50% dégâts magiques | Réduit les dégâts magiques subis pendant 2 tours. |
-| 4.0 | Pergélisol | Amplification (IC pour 3 NM) | 20.0 | 1.0 | 1.0 | +2 crans de résistance | Augmente la résistance au Feu et au Vent de 1 cran. 3 tours. |
-| 5.0 | Frappe de Celsius | Attaque/ Entrave | 50 (-5/NM) | 6.0 | Carré de 4 | 10d6 + 60 dégâts | Une attaque surpuissante de glace qui tape en zone. Si jet de vigueur raté = Inflige gel 2. |
-| 5.0 | Exécution froide | Entrave | 20 par tour | 3 (+1/NM) | 1.0 | 20 dégâts perce AM/tour | Sort à maintenir pendant 4 tours, au bout du 5ème tour, la victime meurt. |
-| 5.0 | Rayon polaire | Attaque | 50.0 | 11.0 | 1.0 | 10d6 + 80 (+10/NM) dégâts | Si jet de vigueur raté = Inflige gel 3. |
+| 4.0 | Blancheur aveuglante | Amplification (IC pour 3NM) | 20 | 1 | 1 | -15% de malus pour les ennemis | Entoure la cible d''une brume qui permet d''imposer un malus pour le toucher. Dure 3 tours.<br>Si bonne météo = Le malus est doublé. |
+| 5.0 | Exécution froide | Entrave | 20 par tour | 3 (+1/NM) | 1.0 | 20 dégâts perce AM/tour | Sort à maintenir pendant 4 tours, au bout du 5ème tour, la victime meurt.<br>Si bonne météo = -1 tour |
+| 5.0 | Rayon polaire | Attaque | 50.0 | 11.0 | 1.0 | 90 dégâts (+10/NM) | Si jet de vigueur raté = Inflige gel 3.<br>Si bonne météo = Malus de 20% à la cible pour ne pas prendre l''altération d''état. |
+| 3.0 | Cristal absorbant | Amplification (IC pour 3NM) | 16 | 3 | 1 | / | Quand un sort est encaisser, le quart de son coüt en chakra est donner au receveur. Dure 4 tours. |
+| 3.0 | Stalactite | Attaque | 15.0 | 5.0 | 1.0 | 7d6 + 15 dégâts (+3/NM) | Envoie un gros pic de glace. |
+| 3.0 | Gel profond | Construction | 18.0 | 3 (+1/NM) | 1.0 | Isole la cible pour 1 tour | Bloque entièrement une cible mais elle ne subit plus aucun effet extérieur ou des altérations d''états. Peut être fait sur ennemis comme alliés |
+| 3.0 | Mur de glace | Construction | 14.0 | 3.0 | Rectangle 5x2 | / | Encaisse un total de 40 points de dégâts (+10/NM). |
+| 4.0 | Lance cristalline | Attaque (Inesquivable) | 24 (-2/NM) | 20.0 | 1 | 6d6 + 35 dégâts | Envoie une lance magique qui est si rapide qu''il est impossible de lui échapper. |
+| 4.0 | Prisme protecteur | Protection | 26 (-2/NM) | 3 | 1 | / | Protége un allié pendant 2 tours maximum d''un coup magique qui peut mettre dans le coma. Si protége d''un coup fatal = Voir remarque\* |
+| 4.0 | Cape hivernale | Amplification | 20.0 | 3.0 | 1.0 | -25% dégâts finaux magique | Réduit les dégâts magiques subis pendant 2 tours.<br>3NM = réduit les dégâts de 50% au lieu de 25%. |
+| 4.0 | Étage nival | Amplification (IC pour 3 NM) | 20.0 | 1.0 | 1.0 | +2 crans de résistance | Augmente la résistance au Feu et au Vent de 1 cran. 3 tours. |
+| 5.0 | Comète de Celsius | Attaque/ Entrave | 50 (-5/NM) | 6.0 | Carré de 4 | 10d6 + 60 dégâts | Une attaque surpuissante de glace qui tape en zone. Si jet de vigueur raté = Inflige gel 2. |
+| 5.0 | Pôle absolu | Protection | 55 (-5/NM) | Soi même | 1 | / | Une fois lancé, tout sort entrant dans un cercle de 3 autour du lanceur est automatiquement attiré vers ce dernier et devient ciblé sur lui. Dure 3 tours. |
 
 ## Notes et commentaires des sorts
 
@@ -18301,18 +18289,26 @@ Les utilisateurs de la glace ont les mèches bleu cyan, des cheveux assez courts
 
 Le lien gel touche la cible et lui bloque les mains pendant 1 tour, le tour suivant le lien de gel se propage vers autant d''adversaires disponibles. La cible est ainsi libérée mais peut se reprendre le lien de gel si jamais il est à côté d''un autre qui a le lien de gel et ainsi de suite...
 
-**Note de la cellule « Effets secondaires » du sort « Gel profond »** : L''allié sera aussi dispensé de jet de survie pendant cet état.
-
-**Note de la cellule « Effets secondaires » du sort « Mur de glace »** : Invoque un mur.
+**Remarque du sort « Sublimation »** : Un état de gel est comme retirer "gel 1". Donc par extension, "gel 2" correspond à 2 états de gel, etc.
 
 **Note de la cellule « Effets secondaires » du sort « Exécution froide »**
 
 La victime ne peut rien faire dans cet état, il faut à tout prix que le lanceur rate un jet de concentration ou bien qu''il soit interrompu.  
 Dans le cas d''un boss qui se fait enfermer, il peut lutter contre avec des jets d''athlétisme, concentration, vigueur, etc... le mj a le choix. Le lanceur devra faire un meilleur jet que la cible pour ne pas qu''il sorte du cercueil.
 
+**Note de la cellule « Effets secondaires » du sort « Gel profond »** : L''allié sera aussi dispensé de jet de survie pendant cet état.
+
+**Note de la cellule « Effets secondaires » du sort « Mur de glace »** : Invoque un mur.
+
+**Remarque du sort « Prisme protecteur »**
+
+\*Met à 1 de santé et +20AM pendant 2 tours pour le bénéficiaire puis la protection disparaît.
+
+Si au bout de 2 tours, la protection n''a pas protégé, elle disparaît.
+
 ## Textes des sorts de niveau 5
 
-### Frappe de Celsius
+### Comète de Celsius
 
 > Que la discipline glacée de Celsius guide mon mouvement,  
 > Que son art martial sculpte l’air d’un froid parfait,  
@@ -18381,75 +18377,76 @@ Les utilisateurs de la Lumière ont des cheveux avec les mèches beiges, les yeu
 | Mono-Magie | Les soins, les protections et les amplifications deviennent des IC le temps du mode hyper (sauf les sorts niveau de puissance 5). |
 | Bi-magie | Chaque tour, un soin, une protection ou une amplification est un IC (seulement le premier IC). (sauf les sorts niveau de puissance 5). |
 
-## Rôles
-
-- SOIN
-- RENFORCEMENT
-- DÉGÂTS
-
 ## Sorts
 
 | Niveau | Nom | Type | Coût | Portée | Zone | D/S/B | Effets secondaires |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | 1.0 | Frappe lumineuse | Attaque | 4.0 | 6.0 | 1.0 | 2d6 dégâts (+1d6/NM) | Une simple attaque de lumière. 3NM = Sur un coup critique, force le jet de vigueur pour ne pas prendre aveuglement 1. |
-| 1.0 | Inspiration Céleste | Protection (IC pour 3 NM) | 4.0 | 3.0 | 1.0 | / | Permet de résister à une altération d''état niveau 1. |
-| 1.0 | Champ de Force | Protection | 5.0 | 1.0 | 1.0 | / | Bloque 10 dégâts (+5/NM) (peut être surchargé en {{chakra\|chakra}} +2 dégâts/{{chakra\|chakra}}). |
-| 1.0 | Vitaminé | Amplification (IC) | 4.0 | 3.0 | 1.0 | / | Permet d''infliger un bonus de +2 (+1/NM) dégâts pendant 2 tours. |
+| 1.0 | Inspiration céleste | Protection (IC pour 3 NM) | 4.0 | 3.0 | 1.0 | / | Permet de résister à une altération d''état niveau 1. |
+| 1.0 | Champ de force | Protection | 5.0 | 1.0 | 1.0 | / | Bloque 10 dégâts (+5/NM) (peut être surchargé en {{chakra\|chakra}} +2 dégâts/{{chakra\|chakra}}). |
+| 1.0 | Juvabien | Amplification (IC) | 5 | 3 | 1 | / | Permet d''infliger un bonus de +2 (+2/NM) dégâts pendant 2 tours. |
 | 1.0 | Premier soin | Soin | 4.0 | 1.0 | 1.0 | 2d6 soin (+1d6/NM) | Redonne des PV, ne soigne pas l''infirmité. |
-| 2.0 | Fer Lumineux | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | Rend l''arme parfaitement lumineuse : pendant 3 tours, ses attaques infligent des dégâts de lumière. |
-| 2.0 | Bénédiction | Amplification (IC) | 7.0 | 3.0 | 1.0 | +1d (+1d/3NM) de dégâts | Augmente les dégâts pendant 3 tours. |
-| 2.0 | Énergie Solaire | Soin | 8.0 | Soi-même | 1 (3NM = Croix 1x1) | / | Permet de récupérer \*10% de {{barriere\|barrière}} lors des météos de soleil. |
-| 2.0 | Panneau Solaire | Soin (IC) | 7.0 | 1.0 | 1.0 | +5PV/Tour | Régénère des PV pendant 3 tours. (3NM permet de le faire sur 2 alliés) |
-| 2.0 | Flash | Attaque/ Entrave | 6.0 | 6 (+1/NM) | Cône | 5d6 dégâts (+5/NM) | Si jet de vigueur raté = Inflige Aveuglement stade 1. Ce sort ne marche pas sur des créatures aveugles. |
+| 2.0 | Fer lumineux | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | Rend l''arme parfaitement lumineuse : pendant 3 tours, ses attaques infligent des dégâts de lumière. |
+| 2.0 | Bénédiction | Amplification (IC) | 7.0 | 3.0 | 1.0 | +1d de dégâts | Augmente les dégâts pendant 2 tours (+1/NM). |
+| 2.0 | Énergie solaire | Soin | 8.0 | Soi-même | 1 (3NM = Croix 1x1) | / | Permet de récupérer \*10% de {{barriere\|barrière}} pendant 3 tours lors des météos de soleil. |
+| 2.0 | Panneau solaire | Soin (IC) | 7.0 | 1.0 | 1.0 | +5 santé/tour | Régénère des PV pendant 3 tours. (3NM permet de le faire sur 2 alliés) |
+| 2.0 | Flash | Attaque/ Entrave | 6.0 | 4 | Cône | 5d6 dégâts (+5/NM) | Si jet de vigueur raté = Inflige Aveuglement stade 1. Ce sort ne marche pas sur des créatures aveugles. |
 | 3.0 | Photon | Attaque | 15 (-1/NM) | 7.0 | 1.0 | 7d6 + 15 dégâts | Une puissante attaque de lumière. |
-| 3.0 | Recouvrer | Soin | 12.0 | 1 (+1/NM) | 1.0 | / | Permet de soigner totalement les altérations d''état. |
+| 3.0 | Lame prismatique | Construction (IC pour 3 NM) | 12 | Soi même | 1 | / | Permet de concentrer la puissance de la lumière pour créer une arme qui frappera avec un bonus de +10 dégâts. 1 seule utilisation (+1 par NM). |
 | 3.0 | Rayon d''Aurora | Météo | 12.0 | Illimité | Terrain | / | Invoque le grand soleil pendant 3 tours (+1/NM). |
-| 3.0 | Croisade lumineuse | Amplification | 15.0 | Soi-même | Cercle de 2 | / | Donne un boost parmi une liste définie (2 boosts si 3 niveaux de maîtrise) |
-| 3.0 | Opération | Soin | 15.0 | 1.0 | 1.0 | 15 soin (+10/NM) | Peut soigner temporairement les infirmités. (3 NM = Soigne une croix en carac) |
+| 3.0 | Mur gamma | Construction | 12 | 3 (+1/NM) | Ligne 9 cases | 15 - 30 - 15 | Ceux qui ne possèdent pas de résistance à la Lumière doivent faire un jet d''Athlétisme/Équilibre pour tenter de traverser. Dure 4 tours. |
+| 4.0 | Révélation | Construction | 20 | 5 | Cercle de 8 | Dévoile l''invisible | Invoque une boule de lumière qui emet une lumière capable de dévoiler les ennemis discrets, camouflés ou invisibles. Possède 30 santé. |
+| 4.0 | Condamnation solaire | Entrave (IC pour 3NM) | 22 | 6 | 1 | / | Applique une marque sur la cible qui fait qu''elle prendra plus de dégâts des attaques proportionnellement à son état de santé. Voir remarque\*. |
+| 4.0 | Grenade Flash | Attaque | 23.0 | 6.0 | Cercle de 2 | 8d6 + 35 dégâts | Inflige des dégâts de zone de Lumière. (3NM = oblige un jet de vigueur pour ne pas être aveuglé au stade 1) |
+| 4.0 | Rai solaire | Attaque | 28 (-2/NM) | 14 | 1 | 40 dégâts | Tire un rayon qui ignore l''AM. |
+| 5.0 | Lance sacrée | Attaque | 55 (-5/NM) | 15.0 | 1.0 | 10d6 + 80 dégâts | Inflige de terribles dégâts de lumière. Si jet de vigueur raté = Inflige aveuglement 1 |
+| 5.0 | Nova finale | Attaque (Inesquivable) | 30 + 50 % de la santé max | Soi même | Cercle de 5 | 10d6 + 60 dégâts | Le lanceur se concentre et devient le centre d''une explosion de lumière. 3NM = Les alliés ne prennent que la moitié des dégâts. |
+| 3.0 | Sanctuaire protecteur | Protection | 14 | 1 (+1/NM) | 1 | / | Pendant 3 tours, la cible bénéficie d''un avantage contre les altérations d''état. |
+| 3.0 | Recouvrer | Soin | 12.0 | 1 (+1/NM) | 1.0 | / | Permet de soigner totalement les altérations d''état. |
+| 3.0 | Marque du champion | Amplification | 14 | 1 | 1 | +3d6 dégâts | Donne des dégâts qui feront des dégâts neutres\* pour 3 tours. 50% des dégâts infligés de ce bonus se convertissent en santé (100% si 3NM). |
+| 3.0 | Opération | Soin | 15.0 | 1.0 | 1.0 | 15 soin (+10/NM) | Peut soigner temporairement les infirmités.(3NM = Soigne une croix en carac) |
 | 4.0 | Explosion glorifique | Amplification (IC pour 3 NM) | 25.0 | Soi-même | Cercle de 10 | +8 dégâts, +2AM, +5% à tous les jets | Motive les alliés et donne des amplificateurs pendant 1 tour. Les sorts Défaite annoncée et Explosion glorifique s''annulent mutuellement. |
 | 4.0 | Régénération | Soin | 24.0 | 1.0 | 1.0 | 5d6 + 10 soin/tour | Dure 3 tours (+1/NM). Vu que c''est une régénération, la santé récupérée par tour se détermine au premier jet. |
-| 4.0 | Grenade Flash | Attaque | 23.0 | 6.0 | Cercle de 2 | 8d6 + 35 dégâts | Inflige des dégâts de zone de Lumière. (3 NM = oblige un jet de vigueur pour ne pas être aveuglé au stade 1) |
 | 4.0 | Poussière d''étoile | Attaque/ Entrave<br>(Imparable) | 21.0 | 2 (+1/NM) | Cône | 4d6 + 25 dégâts | Si jet de vigueur raté = aveuglement 2 et leur met un malus de 15% aux jets de défense pendant 1 tour. |
 | 4.0 | Cercle de soin | Soin | 26.0 | Soi-même | Cercle de 2 (+1/NM) | 6d6 + 30 soin | Redonne des PV en cercle autour du lanceur, ne soigne pas l''infirmité. |
 | 5.0 | Résurrection | Soin | 60.0 | 1.0 | 1.0 | Remet les PV à 1 (+12/NM) | Ressuscite un allié mort depuis max 3 tours. Sinon demande un rituel long. |
-| 5.0 | Lance sacrée | Attaque | 55 (-5/NM) | 15.0 | 1.0 | 10d6 + 80 dégâts | Inflige de terribles dégâts de lumière. Si jet de vigueur raté = Inflige aveuglement 1 |
-| 5.0 | Louange d''Aurora | Soin | 55 (-5/NM) | 2.0 | 1.0 | Sort la cible du coma. | Permet de ranimer un allié dans le coma en lui redonnant 100% de ses points de vie. Le sort peut être utilisé sur un allié qui n''est pas dans le coma. |
+| 5.0 | Louange d''Aurora | Soin | 55 (-5/NM) | 2.0 | 1.0 | Sort la cible du coma. | Permet de ranimer un allié dans le coma en lui redonnant 100% de sa santé. Le sort peut être utilisé sur un allié qui n''est pas dans le coma. |
 
 ## Notes et commentaires des sorts
 
-**Remarque du sort « Champ de Force »**
+**Remarque du sort « Champ de force »**
 
 Le champ de force reste tant qu''aucun coup n''a été pris. Il disparaît après l''attaque ennemie. Il va réduire les dégâts AVANT l''armure.
 
 La surcharge peut être amplifiée avec 20 {{chakra|chakra}} maximum
 
-**Note de la cellule « Effets secondaires » du sort « Fer Lumineux »** : Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas être aveuglé au stade 1
+**Note de la cellule « Effets secondaires » du sort « Fer lumineux »** : Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas être aveuglé au stade 1
 
-**Note de la cellule « Effets secondaires » du sort « Énergie Solaire »**
+**Note de la cellule « Effets secondaires » du sort « Énergie solaire »**
 
 10% lors de neutre  
 20% lors de grand soleil.  
 25% lors de canicule.
 
-**Commentaire résolu de la cellule « D/S/B » du sort « Flash »** : Ce sort repose sur une existence des yeux, les créatures aveugles ne sont pas affectées par ce sort.
+**Remarque du sort « Mur gamma »** : Les non-morts prennent 2 fois plus de dégâts.
 
-**Note de la cellule « Effets secondaires » du sort « Croisade lumineuse »**
+**Remarque du sort « Révélation »**
 
-Liste des amplifications :
-- Permet d''encaisser le prochain sort d''ombre (sauf niveau 5)
-- Immunise à la peur pendant 3 tours.
-- Immunise aux effets négatifs pour le tour.
-- Immunise contre les altérations d''état niveau 1 pour 2 tours
+Il se comporte comme un soleil vis à vis des créatures sensible à la lumière.
 
-**Commentaire résolu de la cellule « Effets secondaires » du sort « Croisade lumineuse »**
+Le brouillard obscur bloque son effet.
 
-Liste des amplifications :
-- Permet d''encaisser le prochain sort d''ombre (sauf niveau 5)
-- Immunise à la peur pendant 3 tours.
-- Immunise aux effets négatifs pour le tour.
-- Immunise contre les altérations d''état niveau 1 pour 2 tours
+**Remarque du sort « Condamnation solaire »**
 
-**Commentaire résolu de la cellule « Effets secondaires » du sort « Louange d''Aurora »** : Le sort peut être utilisé sur un allié qui n''est pas dans le coma.
+\*Dure 2 tours  
+80% de santé restante : +3 dégâts  
+60% de santé restante : +6 dégâts  
+40% de santé restante : +9 dégâts  
+20%  de santé restante : +12 dégâts
+
+**Remarque du sort « Rai solaire »** : Peut prendre un tour de concentration pour donner un bonus de +10 dégâts.
+
+**Remarque du sort « Marque du champion »** : \*Prend en compte l''AM
 
 ## Légende
 
@@ -18492,30 +18489,6 @@ Les nécromanciens sont généralement plus minces que la moyenne, voire maigres
 | Mono-Magie | Permet d''avoir deux invocations au lieu d''une seule. Passe le sort animation de mort en IC (ICx2 si jamais il est déjà en IC) |
 | Bi-magie | Permet d''avoir deux invocations au lieu d''une seule. |
 
-## Rôles
-
-- INVOCATION
-- ENTRAVE
-- RENFORCEMENT
-
-## TABLEAU "AMÉLIORATION CADAVÉRIQUE"
-
-| Amélioration | Effet |
-| --- | --- |
-| Zombi | +6 AP, +8 dégâts, Rés Nécromancie |
-| Zombinox | 30 PV qui prendront les coups avant la barrière. |
-| Goule | Chaque coup physique sera répondu par 5 de C sur l''agresseur |
-| Momie | Res Temps/Espace, 50% de chance d''infliger Malédiction à la cible. |
-| Fantôme | Res Vide, 25% de chance d''ignorer une attaque. |
-| Embrasé | Res Feu, 25% de chance que la cible se brûle. |
-| Noyé | Res Eau, Double la vitesse dans l''eau |
-| Os Froid | Res Glace, Dégâts magiques divisés par 2 |
-| S. de pierre | Res Terre, Dégâts physiques divisés par 2 |
-| Zompi | Res Vent, "Crache spore" chaque tour |
-| Réanimé | Res Foudre, +3 INI et +1 Vitesse |
-| S. rayonnant | Res Lumière, Peut sacrifier l''amélioration pour "Sacrifice lumineux" |
-| Zombi obscur | Res Ombre, "Mantelet des ténèbres" passif |
-
 ## Sorts
 
 | Niveau | Nom | Type | Coût | Portée | Zone | D/S/B | Effets secondaires |
@@ -18525,24 +18498,31 @@ Les nécromanciens sont généralement plus minces que la moyenne, voire maigres
 | 1.0 | Mur d''os | Construction | 4 + 1 âme | 2.0 | 3 cases (+1/NM) | / | Invoque des murs d''os qui possèdent 10 PV chacun. |
 | 1.0 | Corruption d''âme | Attaque/ Entrave | 2 âmes | 1 (+1/NM) | 1.0 | 2d6 dégâts | Si jet de vigueur raté = Inflige "poison 1" |
 | 1.0 | Détection de vie | Amplification | 7 (–1/NM) + 1 âme | Soi-même | 100 mètres | / | Permet de voir distinctement les formes de vie (animaux et végétaux, ces derniers étant plus sombres) |
-| 2.0 | Forces des âmes | Amplification (IC pour 3 NM) | 1 à 5 âmes | 0 (+1/NM) | 1.0 | 3 dégâts/1 âme | Permet d''augmenter sa puissance grâce à deux âmes pour le prochain coup. (Maxi 5 âmes d''un coup) |
-| 2.0 | Pieu d''os | Attaque | 7 + 2 âmes | 6 (+1/NM) | Cercle de 2 | 3d8 + 4 dégâts. | Invoque de pieu depuis le sol. Si jet de vigueur raté = Inflige poison 1 |
-| 2.0 | Armure d''os | Amplification (IC pour 3 NM) | 5 + 2 âmes | 4.0 | 1.0 | +2AP (+1/NM) | Augmente les AP ainsi que la résistance aux attaques de taille. Dure 3 tours |
-| 2.0 | Détection de la mort | Amplification | 10 (–1/NM) + 2 âmes | Soi-même | 100 mètres | / | Permet de détecter distinctement les non-morts et les utilisateurs de la nécromancie. |
-| 2.0 | Fer Toxique | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | L''arme suinte une matière toxique : pendant 3 tours, ses attaques infligent des dégâts de nécromancie. |
-| 3.0 | Festin des âmes | Attaque | 12 + 6 âmes | Soi-même | 4 cibles | 3d6 dégâts par tour | Des âmes affamées attaquent les 4 ennemis les plus proches. Dure 2 tours (+1/NM). |
-| 3.0 | Poison de masse | Entrave | 13 (-1/NM) | Soi-même | Cercle de 6 | Inflige poison stade 1 | Si jet de vigueur raté = Inflige Empoisonné stade 1 à tous les ennemis dans la zone. |
-| 3.0 | Prison d''os | Construction | 12 + 3 âmes | 6 (+1/NM) | Carré 3x3 | / | Emprisonne chair comme âme. 20 santé. |
-| 3.0 | Forge de ses morts | Amplification (IC pour 3 NM) | 9 + 2 âmes | Soi-même | 1.0 | / | Utilise des âmes pour créer des armes simples, 1 seule utilisation (+1 par NM). |
-| 3.0 | Câlin putréfié | Attaque | 13 + 3 âmes | 3 (+1/NM) | 1.0 | 7d6 + 15 dégâts | Invoque un zombie qui va tomber sur l''adversaire. Si jet de vigueur raté = Inflige Empoisonné stade 1. |
-| 4.0 | Amélioration<br>Cadavérique | Amplification | 20 + 4 âmes | 0 (+1/NM) | 1.0 | Variable | Sacrifie l''invocation pour des amplifications pendant 3 tours (voir invocations) |
-| 4.0 | Vague de cadavres | Attaque | 20 + 4 âmes | 4 (+1/NM) | Ligne de 5 cases | 6d6 + 6 dégâts | Invoque une vague de cadavres qui va s’écraser sur l''ennemi. Si jet de vigueur raté = Inflige Empoisonné stade 1. |
-| 4.0 | Grenade caustique | Attaque | 25 + 4 âmes | 6.0 | Cercle de 3 | 6d6 + 35 dégâts | Si jet de vigueur raté = Inflige Empoisonné stade 2 à toutes les cibles (3NM = Sauf alliés). |
+| 2.0 | Forces des âmes | Amplification (IC pour 3 NM) | 1 à 5 âmes | 0 (+1/NM) | 1.0 | 3 dégâts/1 âme | Permet d''augmenter sa puissance grâce aux âmes pour le prochain coup. (Maxi 5 âmes d''un coup) |
+| 2.0 | Pieu d''os | Attaque | 5 + 2 âmes | 6 (+1/NM) | Cercle de 2 | 3d8 + 4 dégâts. | Invoque de pieu depuis le sol. Si jet de vigueur raté = Inflige poison 1 |
+| 2.0 | Armure osseuse | Amplification (IC pour 3 NM) | 5 + 2 âmes | 4.0 | 1.0 | +2AP (+1/NM) | Augmente les AP ainsi que la résistance aux attaques de taille. Dure 3 tours |
+| 2.0 | Détection de la mort | Amplification | 9 (–1/NM) + 2 âmes | Soi-même | 100 mètres | / | Permet de détecter distinctement les non-morts et les utilisateurs de la nécromancie. |
+| 2.0 | Fer toxique | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | L''arme suinte une matière toxique : pendant 3 tours, ses attaques infligent des dégâts de nécromancie. |
+| 3.0 | Seigneur des morts | Amplification   (IC pour 3 NM) | 10 + 3 âmes | 5 | 1 | / | Donne une amplification aux invocations alliés parmi une liste\*. Dure 3 tours. |
+| 3.0 | Forge de ses morts | Construction<br>(IC pour 3 NM) | 9 + 2 âmes | Soi-même | 1.0 | / | Utilise des âmes pour créer des armes simples, 1 seule utilisation (+1 par NM). |
+| 3.0 | Prison d''os | Construction | 9 + 3 âmes | 6 (+1/NM) | Carré 3x3 | / | Emprisonne chair comme âme. 20 santé. |
+| 3.0 | Câlin putréfié | Attaque | 10 + 3 âmes | 3 (+1/NM) | 1.0 | 7d6 + 15 dégâts | Si jet de vigueur raté = Inflige Poison 1. |
+| 4.0 | Âme sacrifice | Amplification | 20 + 4 âmes | 10 | 1 | +4 dégâts +2AP et AM/NPM invocation | Sacrifie l''invocation pour augmenter la puissance et défense d''un allié. Dure 3 tours. |
+| 4.0 | Vague de cadavre | Attaque | 20 + 4 âmes | 4 (+1/NM) | Ligne de 5 cases | 6d6 + 10 dégâts | Si jet de vigueur raté = Inflige Empoisonné stade 1. |
+| 4.0 | Éclatement mortuaire | Attaque/ Amplification<br>(Imparable) | 20 + 4 âmes | 6 | 1 | 6d6 + 20 dégâts | Cible un ennemi, le sort fait une éruption de 2 cases autour de lui, les invocations dans la zone ont un bonus de +5 dégâts à leur prochaine attaque. |
+| 4.0 | Répar Os | Soin | 20 + 4 âmes | 1.0 | 1.0 | Soigne 6d6 (+7/NM) | Permet de soigner les os et chair. |
+| 5.0 | Réanimation | Invocation | 45 (-3/NM) + 8 âmes | 1.0 | 1.0 | / | Permet de réanimer un corps mort et d’en garder le contrôle pendant 1h. |
+| 5.0 | Résurrection noire | Soin | 35 (-2/NM) + 8 âmes | 5.0 | 1.0 | / | Revient sans PV, le {{chakra\|chakra}} est utilisé comme énergie. |
+| 3.0 | Festin des âmes | Attaque | 10 + 4 âmes | Soi-même | 4 cibles | 3d6 dégâts par tour | Des âmes affamées attaquent les 4 ennemis les plus proches. Dure 2 tours (+1/NM). |
+| 3.0 | Poison de masse | Entrave | 13 (-1/NM) | Soi-même | Cercle de 6 | Inflige poison stade 1 | Si jet de vigueur raté = Inflige Poison 1 à tous les ennemis dans la zone. |
+| 3.0 | Plaie toxique | Attaque | 10 + 3 âmes | 6 | 1 | 6d6 + 12 dégâts | Si la cible souffre de poison : +8 dégâts et +1 tour de poison. |
+| 3.0 | Venin corrosif | Amplification | 9 + 3 âmes | 1 | 1 | / | Le prochain sort de Nécromancie fera des dégâts considérés comme acide. |
+| 4.0 | Purge | Attaque | 20 + 4 âmes | 5 (+1/NM) | 1 | 6d6 + 10 dégâts | Si la cible souffre de poison : +12 dégâts/stade de poison. Retire le poison après le sort. |
+| 4.0 | Grenade caustique | Attaque | 20 + 4 âmes | 6.0 | Cercle de 3 | 6d6 + 35 dégâts | Si jet de vigueur raté = Inflige Poison 2 à toutes les cibles (3NM = Sauf alliés). |
 | 4.0 | Cimetière ouvert | Météo | 18 + 4 âmes | Soi-même | Terrain | / | Invoque la météo "Purée de pois" pendant 3 tours (+1/NM). |
-| 4.0 | Répar''Os | Soin | 20 + 5 âmes | 1.0 | 1.0 | Soigne 6d6 (+7/NM) | Permet de soigner les os et chair. |
-| 5.0 | Déchirure | Attaque | 65 (-5/NM) | 5.0 | 1.0 | 10d6 + 50 dégâts (+10/NM) | Une terrible attaque qui inflige de gros dégâts, Si jet de vigueur raté = Inflige poison 2. |
-| 5.0 | Réanimation | Invocation | 45 (-2/NM) + 10 âmes | 1.0 | 1.0 | / | Permet de réanimer un corps mort et d’en garder le contrôle pendant 1h. |
-| 5.0 | Résurrection Noire | Soin | 35 (-2/NM) + 10 âmes | 5.0 | 1.0 | / | Revient sans PV, le {{chakra\|chakra}} est utilisé comme énergie. |
+| 4.0 | Pestilance | Entrave | 20 + 4 âmes | Vue | 1 | / | La cible doit souffrir de poison : La cible emet une aura de 2 cases, ses alliés doivent faire un jet de vigueur sous peine de souffrir du même poison. |
+| 5.0 | Déchirure verte | Attaque | 45 (-3/NM) + 8 âmes | 5.0 | 1.0 | 10d6 + 50 dégâts (+10/NM) | Une terrible attaque qui inflige de gros dégâts, Si jet de vigueur raté = Inflige poison 2. |
+| 5.0 | Pandémie | Entrave | 40 + 8 âmes | Soi même | Cercle de 3 | 15 dégâts perce AM | Contamine toutes les créatures dans la zone avec Poison 1. À chaque tour, les créatures déjà empoisonnées augmentent leur stade de Poison. |
 
 ## Notes et commentaires des sorts
 
@@ -18558,23 +18538,27 @@ Ce sort permet de changer de vision et de voir la vie grouiller autour de soi, l
 
 Attention un simple mur empêche de voir à travers ce dernier.
 
-**Note de la cellule « Effets secondaires » du sort « Fer Toxique »** : Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas être empoisonné au stade 1
+**Note de la cellule « Effets secondaires » du sort « Fer toxique »** : Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas être empoisonné au stade 1
+
+**Remarque du sort « Seigneur des morts »**
+
+- +10 dégâts
+- +6 AP
+- +6 AM
+- +10% de réussite aux jets
+- +2 Vitesse
+- 20% de chance de forcer un jet de vigueur/fermeté pour ne pas prendre l''altération d''état de l''élément lié niveau 1 à chaque attaque de l''invocation.
+
+**Remarque du sort « Forge de ses morts »**
+
+Cette arme est considérée comme Spectrale.  
+Arme Spectrale = Peut toucher l''immatériel et ignore 50% des AP.
 
 **Note de la cellule « Effets secondaires » du sort « Prison d''os »** : La prison d''os est Invulnérable à l''estoc, Résistant à la taille mais vulnérable à la frappe.
 
-**Note de la cellule « Effets secondaires » du sort « Forge de ses morts »**
+**Note de la cellule « Effets secondaires » du sort « Résurrection noire »** : Est considérée comme morte tant que la cible n''a pas bu 1 super fiole de soin par jour sur 1 mois. Ou alors qu''une résurrection est appliquée sur lui.
 
-Cette arme est considérée comme Spectrale.  
-Arme Spectrale = Peut toucher l''immatériel et ignore les AP.
-
-**Commentaire résolu de la cellule « Effets secondaires » du sort « Forge de ses morts »**
-
-Cette arme est considérée comme Spectrale.  
-Arme Spectrale = Peut toucher l''immatériel et ignore les PA.
-
-**Note de la cellule « Effets secondaires » du sort « Résurrection Noire »** : Est considérée comme morte tant que la cible n''a pas bu 1 super fiole de soin par jour sur 1 mois. Ou alors qu''une résurrection est appliquée sur lui.
-
-**Commentaire résolu de la cellule « Effets secondaires » du sort « Résurrection Noire »** : Est considéré comme mort tant que la cible n''a pas bu 1 fiole par jour sur 5 jours. Ou alors qu''une résurrection est appliquée sur lui.
+**Remarque du sort « Venin corrosif »** : L''attaque en question ne détruira pas les armures ou arme comme pourrai le faire l''eau ou la terre.
 
 ## Légende
 
@@ -18615,12 +18599,6 @@ Les utilisateurs de la Terre sont des personnes qui ont des tailles et une muscu
 | Mono-Magie | L''armure physique (AP) de base augmente de 25. |
 | Bi-magie | L''armure physique (AP) de base augmente de 10. |
 
-## Rôles
-
-- RENFORCEMENT
-- DÉGÂTS
-- SOIN
-
 ## Sorts
 
 | Niveau | Nom | Type | Coût | Portée | Zone | D/S/B | Effets secondaires |
@@ -18635,44 +18613,48 @@ Les utilisateurs de la Terre sont des personnes qui ont des tailles et une muscu
 | 2.0 | Arbre fertilisant | Invocation | 8.0 | 3.0 | Cercle de 3 | Soigne 2d6 (+2/NM) | Pose un arbre, soigne les alliés à 3 cases autour de lui. Possède 20 PV. Un seul à la fois. |
 | 2.0 | Infection | Soin/Entrave (IC pour 3 NM) | 8.0 | 6.0 | 1.0 | 4 dégâts (+1/NM) / tour | Lance une graine qui va aspirer la santé de la cible et la donner au lanceur pendant 3 tours. Les dégâts de l''infection ne sont pas élémentaires. |
 | 2.0 | Cuirasse de roche | Amplification (IC) | 7.0 | 1.0 | 1.0 | +4AP (+2AP/NM) | Augmente l''armure physique pendant 3 tours. Peut se cumuler avec Peau de Pierre. |
-| 3.0 | Barrière rocheuse | Protection | 16.0 | 1.0 | 1.0 | Donne une protection | Confère une protection par-dessus la {{barriere\|barrière}} qui encaisse les coups inférieurs à 20 dégâts (+7/NM) |
-| 3.0 | Alourdissement | Amplification/ Entrave (IC pour 3 NM) | 15.0 | 5.0 | 1.0 | -20% Réussite / +1D dégâts | Rend l''arme plus lourde et augmente ses dégâts pendant 3 tours. |
-| 3.0 | Sable changeant | Construction | 10 par zone de 3x3 | 2 (+2/NM) | Variable | / | Permet de créer un terrain sur lequel il est difficile de bouger. |
+| 3.0 | Floraison parasitaire | Entrave | 13 | 5 | 1 | -3d8 chakra / tour | Retire du chakra à la cible pendant 4 tours. 3NM permet à la plante de retirer la barrière en même temps. |
 | 3.0 | Frappe racine | Attaque | 14.0 | 6 (+1/NM) | 1.0 | 7d6 + 25 dégâts | Si jet de vigueur raté = -1 vitesse pour la cible pour 1 tour. |
+| 3.0 | Pollen entravante | Entrave | 12 | Soi même | Croix de 1 (Cercle de 2 si 3NM) | / | Créer une zone autour du lanceur qui oblige ceux qui approche à faire un jet de vigueur, s''ils ratent, ils sont étourdi tant qu''ils sont dans la zone. |
 | 3.0 | Enracinement | Soin/Entrave | 13.0 | Soi-même | Cercle de 2 (+1/NM) | 4d6 de soin/tour | Les ennemis dans la zone prennent 5 dégâts et perdent 2INI et 1 Vitesse tant qu''ils sont dans la zone. Le sort reste tant que le lanceur ne bouge pas. |
-| 4.0 | Rouille | Attaque | 20.0 | 4 (+1/NM) | 1.0 | 8d6 dégâts d''acide | 50% de chance de retirer un cran solidité à un morceau d’armure ou une arme. |
+| 4.0 | Épine perforante | Attaque | 20 | 6 | 1 | 8d6 + 30 dégâts | Ignore 5AM. |
 | 4.0 | Grenade Pétrifiante | Attaque | 23.0 | 7.0 | Cercle de 3 | 6d6 + 35 dégâts | Inflige des dégâts de zone de Terre. (3NM = Si jet de vigueur raté = Inflige pétrifié 1). |
-| 4.0 | Anti-Mythril | Amplification (IC pour 3 NM) | 23.0 | 2.0 | 1.0 | / | L''effet du Mythril est annulé pendant 3 tours. |
-| 4.0 | Rédemption de Dimitri | Météo | 20.0 | Soi-même | Terrain | / | Invoque la météo "tempête de sable" ou "champ magnétique" pendant 3 tours (+1/NM). |
+| 4.0 | Pétale-bouclier | Protection | 26 (-2/NM) | 3 | 1 | / | Protége un allié pendant 2 tours maximum d''un coup physique qui peut mettre dans le coma. Si protége d''un coup fatal = Voir remarque\* |
 | 4.0 | Floraison salvatrice | Soin | 20.0 | 4.0 | 1.0 | 4d6 (+1d/NM) soin/tour | Pose une fleur sur la cible qui va la soigner pendant 3 tours. Vu que c''est une régénération, la santé récupérée par tour se détermine au premier jet. |
-| 5.0 | Terre Maudite | Attaque | 55 (-5/NM) | 7.0 | 1.0 | 10d6 + 60 dégâts | La cible qui rate son jet de vigueur encaisse une charge de Nécrose, au bout de 4 charges, la cible meurt. |
-| 5.0 | Morsure terrestre | Attaque (Inesquivable) | 55 (-5/NM) | 6.0 | 4x4 | 10d6 + 60 dégâts | Inflige de terribles dégâts perforants. |
+| 5.0 | Terre Maudite | Attaque | 55 (-5/NM) | 7.0 | 1.0 | 10d6 + 80 dégâts | La cible qui rate son jet de vigueur encaisse une charge de Nécrose, au bout de 4 charges, la cible meurt. |
+| 5.0 | Floraison carnivore | Invocation | 55 (-5/NM) | 4 | Cercle de 6 cases | 50 dégâts / tour | Invoque une plante géante qui attaque les ennemis sur son chemin, il reste 4 tours maximum et possède 70 santé. |
+| 3.0 | Barrière rocheuse | Protection | 16.0 | 1.0 | 1.0 | Donne une protection | Confère une protection par-dessus la {{barriere\|barrière}} qui encaisse les coups inférieurs à 20 dégâts (+7/NM) |
+| 3.0 | Alourdissement | Amplification/ Entrave (IC pour 3 NM) | 15.0 | 5.0 | 1.0 | -20% Réussite / +1D dégâts | Rend l''arme plus lourde et augmente ses dégâts. |
+| 3.0 | Sable changeant | Construction | 10 par zone de 3x3 | 2 (+2/NM) | Variable | / | Permet de créer un terrain sur lequel il est difficile de bouger. |
+| 3.0 | Rayon géode | Attaque | 12 | 7 | 1 | 20 dégâts (+3/NM) | Tire un rayon qui ignore l''AM. |
+| 4.0 | Rouille | Attaque | 20.0 | 4 (+1/NM) | 1.0 | 8d6 dégâts d''acide | 50% de chance de retirer un cran solidité à un morceau d’armure ou une arme. |
+| 4.0 | Gemmification | Amplification | 20 | 3 | 1 | -25% dégâts finaux physique | Réduit les dégâts physique subis pendant 2 tours.<br>3NM = réduit les dégâts de 50% au lieu de 25%. |
+| 4.0 | Rédemption de Dimitri | Météo | 20.0 | Soi-même | Terrain | / | Invoque la météo "tempête de sable" pendant 3 tours (+1/NM). |
+| 4.0 | Anti-Alliage | Amplification (IC pour 3 NM) | 23 | 2 | 1 | / | Reforce la peau et bloque l''effet secondaire des matériaux pendant 3 tours. Ne bloque leur bonus de dégâts. |
 | 5.0 | Corps de Maverium | Amplification | 70 (-5/NM) | Soi-même | 1.0 | Invincible | Confère l''état « Corps de Maverium » pour 3 tours. |
+| 5.0 | Morsure terrestre | Attaque (Inesquivable) | 55 (-5/NM) | 6.0 | 4x4 | 10d6 + 60 dégâts | Inflige de terribles dégâts perforants. |
 
 ## Notes et commentaires des sorts
-
-**Commentaire résolu de la cellule « Effets secondaires » du sort « Peau de pierre »** : Peut se cumuler avec Armure de Roche.
-
-**Commentaire résolu de la cellule « Effets secondaires » du sort « Appel aux Golems »**
-
-Pour voir les golems possibles 
-
-
-Chaque niveau de puissance de la créature invoquée double de le coût précédent pour l''invoquer.
 
 **Note de la cellule « Effets secondaires » du sort « Racine soignante »** : L''environnement doit être majoritairement de Montagne, Forêt, Plaine, Caverne.
 
 **Note de la cellule « Effets secondaires » du sort « Fer Raffiné »** : Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas être pétrifié au stade 1
 
-**Commentaire résolu de la cellule « Effets secondaires » du sort « Arbre fertilisant »** : La cible doit être vivante.
+**Note de la cellule « Effets secondaires » du sort « Frappe racine »** : Demande un sol, un mur, un plafond ou toute autre surface où la racine peut sortir, sous l''eau ça marche mais pas dans le ciel.
 
-**Commentaire résolu de la cellule « Effets secondaires » du sort « Infection »** : Les dégâts de l''infection ne sont pas élémentaires
+**Remarque du sort « Pétale-bouclier »**
 
-**Commentaire résolu de la cellule « Effets secondaires » du sort « Cuirasse de roche »** : Peut se cumuler avec Peau de Pierre.
+\*Met à 1 de santé et +20AP pendant 2 tours pour le bénéficiaire puis la protection disparaît.
 
-**Note de la cellule « Effets secondaires » du sort « Barrière rocheuse »**
+Si au bout de 2 tours, la protection n''a pas protégé, elle disparaît.
 
-Si jamais un coup physique ou magique est encaissé par la protection, elle doit faire plus que la tolérance de cette dernière pour la briser.
+**Note de la cellule « Effets secondaires » du sort « Terre Maudite »** : La Nécrose ne disparaît que quand le lanceur est hors combat ou mort.
+
+**Remarque du sort « Floraison carnivore »** : Prend 2 fois plus de dégâts des sorts de feu ou de sang.
+
+**Remarque du sort « Barrière rocheuse »**
+
+Si jamais un coup physiques ou magiques est encaisser par la protection, elle doit faire plus que la tolérance de cette dernière pour la briser.
 
 Si elle fait moins, le coup est annulé et la protection se recharge pour le prochain coup
 
@@ -18680,24 +18662,9 @@ Si elle fait plus, la protection est brisée et l''intégralité du coup est enc
 
 Les AP ne sont pas comptées quand les dégâts sont faits à la protection.
 
-**Commentaire résolu de la cellule « Effets secondaires » du sort « Barrière rocheuse »**
-
-Corps de pierre : Double les PA, diminue la vitesse de 1 et les adversaires ont +15% de chance avec un jet de défense.  
-Compatible avec Armure de roche et peau de pierre mais ils doivent avoir été lancés avant.
-
-**Commentaire résolu de la cellule « Effets secondaires » du sort « Alourdissement »** : Équivalent à pétrifié 3 mais la victime ne peut pas prendre de dégâts sous le magma.
-
 **Note de la cellule « Effets secondaires » du sort « Sable changeant »** : Le Terrain sable divise par 2 le déplacement, empêche le sprint et fait perdre un tour si jamais on saute.
 
-**Note de la cellule « Effets secondaires » du sort « Frappe racine »** : Demande un sol, un mur, un plafond ou toute autre surface où la racine peut sortir, sous l''eau ça marche mais pas dans le ciel.
-
-**Note de la cellule « Effets secondaires » du sort « Terre Maudite »** : La Nécrose ne disparaît que quand le lanceur est hors combat ou mort.
-
 **Note de la cellule « Effets secondaires » du sort « Corps de Maverium »** : Corps de Maverium : Tous les dégâts reçus sont réduits à 0 et les effets négatifs sur les protections ne fonctionnent pas.
-
-**Commentaire résolu de la cellule « Effets secondaires » du sort « Corps de Maverium »** : Corps de Maverium permet d''ignorer tous les dégâts possibles quelle que soit leur puissance. Comme corps de pierre, tous les organes internes sont solidifiés et ne fonctionnent pas temporairement (comme un golem, pas besoin)
-
-**Commentaire résolu de la cellule « Effets secondaires » du sort « Corps de Maverium »** : Corps de Maverium : Invincible temporairement, diminue la vitesse de 1 et les adversaires ont +15% de chance avec un jet de défense.
 
 ## Textes des sorts de niveau 5
 
@@ -18780,45 +18747,46 @@ Exemple : J''ai posé sur 3 personnes différentes un sort qui coûte 3. Donc en
 | Mono-Magie | Les sorts amplifications deviennent des IC le temps du mode hyper (sauf les sorts niveau de puissance 5). |
 | Bi-magie | Chaque tour, une amplification est un IC (seulement le premier IC). (sauf les sorts niveau de puissance 5). |
 
-## Rôles
-
-- RENFORCEMENT
-- DÉGÂTS
-- ENTRAVE
-
 ## Sorts
 
 | Niveau | Nom | Type | Coût | Portée | Zone | D/S/B | Effets secondaires |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1.0 | Boule de Chakra | Attaque | 4.0 | 6.0 | 1.0 | 2d6 dégâts (+1d6/NM) | Une simple attaque de Chakra. 3NM = Sur un coup critique, force le jet de fermeté pour ne pas prendre surcharge magique 1. |
+| 1.0 | Boule de chakra | Attaque | 4.0 | 6.0 | 1.0 | 2d6 dégâts (+1d6/NM) | Une simple attaque de Chakra. 3NM = Sur un coup critique, force le jet de fermeté pour ne pas prendre surcharge magique 1. |
 | 1.0 | Charge d''énergie | Amplification (IC pour 3 NM) | 2 pour 1 dégât supplémentaire | Soi-même | 1.0 | +X dégâts magiques | Dégâts magiques supplémentaires pour la prochaine attaque magique. |
-| 1.0 | Rune Arcane | Amplification<br>(IC x 1/NM) | 3 par tour et par cible | 3.0 | 1.0 | +1 cran de résistance | Augmente la résistance d''une magie au choix. On ne peut pas cumuler la même résistance sur la même cible. |
+| 1.0 | Rune arcane | Amplification<br>(IC x 1/NM) | 3 par tour et par cible | 3.0 | 1.0 | +1 cran de résistance | Augmente la résistance d''une magie au choix. On ne peut pas cumuler la même résistance sur la même cible. |
 | 1.0 | Claquement | Entrave (IC pour 3 NM) | 4.0 | 5.0 | 1.0 | 1d6 dégâts (+1/NM) | Si jet de fermeté raté = La cible ne peut utiliser de sorts pendant son tour. Ne peut être fait 2 fois de suite sur la même cible. |
-| 1.0 | Forge-Magie | Amplification (IC) | 2 par taille de l''arme créée | Soi-même | 1.0 | / | Permet de créer une catégorie d''arme à usage unique à l''aide de chakra pur. (+1 utilisation/NM) |
+| 1.0 | Forge-Magie | Construction (IC) | 2 par taille de l''arme créée | Soi-même | 1.0 | / | Permet de créer une catégorie d''arme à usage unique à l''aide de chakra pur. (+1 utilisation/NM) |
 | 2.0 | Inhalation magique | Amplification | 5% santé par tour | Soi-même | 1.0 | +5% de {{chakra\|chakra}} | Aspire le chakra ambiant pour régénérer la réserve personnelle. |
 | 2.0 | Souffle magique | Amplification | X | 2 (+1/NM) | Cône | Donne X {{chakra\|Chakra}} | Souffle du {{chakra\|chakra}} pour en donner une quantité au choix à la ou aux cibles. S''il y a plusieurs cibles, le {{chakra\|chakra}} donné est divisé. |
 | 2.0 | Échange | Soin | 2 pour 1 barrière | 1 (+1/NM) | 1.0 | / | Permet d''échanger son {{chakra\|chakra}} en {{barriere\|barrière}}. 2CK = 1BA (3CK = 2BA/3NM) |
-| 2.0 | Vision magique | Amplification (IC) | 8 par jour | Soi-même | 1.0 | / | Permet de voir les auras magiques à travers les obstacles. |
-| 2.0 | Vague déferlante | Attaque | 9.0 | 5.0 | 1.0 | 5d6 dégâts (+5/NM) | Peut être surchargé (15 {{chakra\|chakra}} en + = 1 dé en +) (maximum 75 {{chakra\|chakra}} en surcharge) |
-| 3.0 | Mur de chakra | Entrave | 13.0 | 3.0 | 8x2 | / | Bloque 40 (+10/NM) dégâts par tour pendant 3 tours, est détruit s''il prend plus en 1 tour. |
-| 3.0 | Laser de chakra | Attaque | 12.0 | 7.0 | 1.0 | 20 dégâts (+3/NM) | Ignore totalement les AP, AM et la {{barriere\|barrière}}. |
+| 2.0 | Fer brillant | Amplification (IC pour 3 NM) | 5 | 1 | 1 | +10 dégâts | Imprègne l''arme d''une énergie brillante. Dure 3 tours. |
+| 2.0 | Vague déferlante | Attaque | 9.0 | 5.0 | 1.0 | 5d6 dégâts (+5/NM) | Peut être surchargé (15 {{chakra\|chakra}} en + = 1 dé en +) (maximum 45 {{chakra\|chakra}} en surcharge) |
+| 3.0 | Mur de chakra | Construction | 13.0 | 3.0 | 8x2 | / | Bloque 40 (+10/NM) dégâts par tour pendant 3 tours, est détruit s''il prend plus en 1 tour. |
+| 3.0 | Projectile arcanique | Attaque | \*4 / projectile | 10 | 1 | 2d6 dégâts/ projectile | Peut cibler une ou plusieurs cibles. Le bonus de dégâts du lanceur ne s''applique qu''une fois par cible touchée.  3NM = Ignore 50% de AM. |
+| 3.0 | Rune arcane multiple | Amplification<br>(IC x 1/NM) | 8 par tour et par cible | Tous les alliés | 1.0 | +1 cran de résistance | Augmente la résistance d''une magie au choix. On ne peut pas cumuler la même résistance sur la même cible. |
+| 3.0 | Champ gardien | Attaque/Soin | 12.0 | Soi-même | Cercle de 2 | Donne 2d6 + 3 {{barriere\|Barrière}} et 12 dégâts | Invoque un cercle qui va rendre de la {{barriere\|barrière}} aux alliés et infliger des dégâts aux ennemis (3 NM = les dégâts ignorent les AM). |
+| 4.0 | Peau nacrée | Amplification<br>(IC x 1/NM) | 12 par tour et par cible | 3.0 | 1.0 | -20% dégâts magiques | Réduit les dégâts magiques finaux subis. |
+| 4.0 | Pluie blanche | Amplification | 25% Chakra maximum | 3 (+1/NM) | Carré 4x4 | / | Fait pleuvoir une pluie blanche brillante au-dessus des alliés, leur redonnant ainsi autant de {{chakra\|chakra}} que dépensé. |
+| 4.0 | Miroir des arcanes | Amplification | 20.0 | Soi-même | 1.0 | / | Permet de renvoyer le sortilège de l''agresseur, 3 utilisations. (3NM = Ne prend plus l''effet en question). |
+| 4.0 | Lance d''éther | Attaque | 24 (-2/NM) | 20 | 1 | 7d6 + 35 dégâts | Une grosse attaque d''arcane. |
+| 5.0 | Pâte de la trame | Amplification<br>(+1 utilisation/NM) | 12 par effet et par tour | 1 | 1 | / | Le lanceur donne un boost pour les sorts parmi une liste\*. Chaque boost maintenu augmente la consommation de chakra. |
+| 5.0 | Planète chakratique | Attaque | 0.0 | Illimité | Carré 6x6 | X dégâts | Les dégâts correspondent aux CK donnés par le lanceur et alliés. 2CK (1CK/3NM) = 1 dégâts |
+| 3.0 | Rupture d''armure | Entrave | 13 | 5 | 1 | / | Divise par 2 les AM de base de la cible pendant 3 tours. 3NM = Divise par 2 les AM de l''armure en plus. |
+| 3.0 | Laser de chakra | Attaque | 12.0 | 7.0 | 1.0 | 20 dégâts (+3/NM) | Tire un rayon qui ignore l''AM. |
 | 3.0 | Pillage défensif | Attaque | 16 (-2/NM) | 1.0 | 1.0 | 7d6 + 15 dégâts | Inflige des dégâts et permet de récupérer 25% des dégâts en {{barriere\|barrière}}. |
-| 3.0 | Rune Arcane multiple | Amplification<br>(IC x 1/NM) | 10 par tour et par cible | Tous les alliés | 1.0 | +1 cran de résistance | Augmente la résistance d''une magie au choix. On ne peut pas cumuler la même résistance sur la même cible. |
-| 3.0 | Champ Gardien | Attaque/Soin | 12.0 | Soi-même | Cercle de 2 | Donne 2d6 + 3 {{barriere\|Barrière}} et 12 dégâts | Invoque un cercle qui va rendre de la {{barriere\|barrière}} aux alliés et infliger des dégâts aux ennemis (3 NM = les dégâts ignorent les AM). |
-| 4.0 | Peau de Chakra | Amplification<br>(IC x 1/NM) | 13 par tour et par cible | 3.0 | 1.0 | -20% dégâts magiques | Réduit les dégâts magiques subis. |
-| 4.0 | Pluie de Chakra | Amplification | 25% Chakra maximum | 3 (+1/NM) | Carré 4x4 | / | Fait pleuvoir une pluie blanche brillante au-dessus des alliés, leur redonnant ainsi 25% de leur {{chakra\|chakra}}. |
-| 4.0 | Grenade de Chakra | Attaque | 23.0 | 6 (+1/NM) | Cercle de 2 | 8d6 + 30 dégâts | Inflige des dégâts en Zone. |
-| 4.0 | Miroir Magique | Amplification (IC pour 3 NM) | 20.0 | Soi-même | 1.0 | / | Permet de renvoyer le sortilège de l''agresseur, 3 utilisations. (3 NM = Ne prend plus l''effet en question). |
-| 4.0 | Foudre argentée | Attaque/Entrave | 21.0 | 6.0 | 1.0 | 4d10 dégâts (+10/NM) | Inflige de lourds dégâts.<br>Si jet de fermeté raté = Perd une résistance aléatoire pendant 1 tour. |
-| 5.0 | Drain d''énergie | Entrave | 50.0 | Vue | 1.0 | Vole 4d10 (+1d/3NM) {{chakra\|chakra}} | Vole du {{chakra\|chakra}} aux ennemis visibles. Le {{chakra\|chakra}} récupéré est redistribué aux alliés |
-| 5.0 | Voile Chakratique | Amplification | 15% santé par tour | Soi-même | 1.0 | / | Permet au {{chakra\|Chakra}} de prendre le rôle de la Santé. Le coût en santé passe à 10% si 3NM. |
-| 5.0 | Planète Chakratique | Attaque | 0.0 | Illimité | Carré 6x6 | X dégâts | Les dégâts correspondent aux CK donnés par le lanceur et alliés. 2CK (1CK/3NM) = 1 dégâts |
+| 3.0 | Surdéchirure | Attaque/Entrave | 15 | 6 | 1 | 7d6 + 15 dégâts | Si jet de fermeté raté = Inflige surcharge magique .1 |
+| 4.0 | Contre-sort | Entrave<br>(Réaction) | Variable selon le sort bloqué | 6 (+2/NM) | 1 | / | La lanceur bloque un sort ennemi lvl 1-4 le faisant passer de réussite à échec. Le coût correspond au sort qui a été bloqué. (1 fois par tour) |
+| 4.0 | Effondrement terne | Attaque | 24 | 6 | 1 | 5d6 + 40 dégâts | Si jet de fermeté raté = Inflige surcharge magique 1. |
+| 4.0 | Grenade de chakra | Attaque | 23.0 | 6 (+1/NM) | Cercle de 2 | 8d6 + 30 dégâts | Inflige des dégâts en Zone. |
+| 4.0 | Foudre argenté | Attaque/Entrave | 20 | 6.0 | 1.0 | 3d10 dégâts (+10/NM) | Inflige de lourds dégâts.<br>Si jet de fermeté raté = Perd une résistance aléatoire pendant 1 tour. |
+| 5.0 | Drain d''énergie | Entrave | 50.0 | Vue | 1.0 | Vole 5d10 (+1d/3NM) {{chakra\|chakra}} | Vole du {{chakra\|chakra}} aux ennemis visibles. Le {{chakra\|chakra}} récupéré est redistribué aux alliés |
+| 5.0 | Cassage gris | Attaque | 55 (-5/NM) | 8 | 1 | 10d6 + 70 dégâts | Inflige de terribles dégâts d''arcane. Si jet de fermeté raté = Inflige surcharge magique 2. |
 
 ## Notes et commentaires des sorts
 
 **Remarque du sort « Charge d''énergie »** : 30 {{chakra|chakra}} maximum en 1 fois
 
-**Note de la cellule « Effets secondaires » du sort « Rune Arcane »** : Ne se cumule avec "Rune Arcane multiple"
+**Note de la cellule « Effets secondaires » du sort « Rune arcane »** : Ne se cumule avec "Rune Arcane multiple"
 
 **Note de la cellule « Effets secondaires » du sort « Forge-Magie »**
 
@@ -18829,11 +18797,25 @@ Une dague c''est taille 2
 
 Les bombes ne font pas les dégâts de zone.
 
+**Remarque du sort « Projectile arcanique »**
+
+L''AM est pris en compte pour chaque projectile.
+
+\*Le coût augmente de 1 à chaque projectile envoyé sur l''action (le premier coute 4, le second coute 5, etc)
+
+**Note de la cellule « Effets secondaires » du sort « Rune arcane multiple »** : Ne se cumule avec "Rune Arcane"
+
+**Remarque du sort « Pâte de la trame »**
+
+\*
+- +15 dégâts magiques
+- +3 portée avec les sorts
+- +1 portée d''une zone
+- Le CC d''une attaque oblige le jet de vigueur/fermeté pour ne pas prendre l''altération d''état lié au niveau 1
+
 **Note de la cellule « Effets secondaires » du sort « Laser de chakra »** : Peut prendre un tour de concentration pour donner un bonus de +10 dégâts.
 
 **Remarque du sort « Pillage défensif »** : Le regain ne peut être effectif que si c''est la {{barriere|barrière}} ennemie qui est touchée.
-
-**Note de la cellule « Effets secondaires » du sort « Rune Arcane multiple »** : Ne se cumule avec "Rune Arcane"
 
 ## Légende
 
@@ -18876,12 +18858,6 @@ Les spécialistes de l''eau ont les mèches bleutées, très longues et mouillé
 | Mono-Magie | L''utilisateur du mode hyper est considéré comme une source d''eau pour lui et ses alliés.<br>La première attaque subie réduit ses dégâts finaux de 20%. |
 | Bi-magie | L''utilisateur du mode hyper est considéré comme une source d''eau QUE pour lui.<br>La première attaque subie réduit ses dégâts finaux de 20%. |
 
-## Rôles
-
-- SOIN
-- DÉGÂTS
-- ENTRAVE
-
 ## Sorts
 
 | Niveau | Nom | Type | Coût | Portée | Zone | D/S/B | Effets secondaires |
@@ -18889,30 +18865,37 @@ Les spécialistes de l''eau ont les mèches bleutées, très longues et mouillé
 | 1.0 | Bulle d''eau | Attaque | 4.0 | 6.0 | 1.0 | 2d6 dégâts (+1d6/NM) | Une simple attaque d''Eau. 3NM = Sur un coup critique, force le jet de fermeté pour ne pas prendre confusion 1. |
 | 1.0 | Tir de flotte | Attaque | 4.0 | 11.0 | 1.0 | 2d4 dégâts (+2/NM) | Une attaque d''eau qui se tire en ligne uniquement. Bonus de +1D dégâts si utilisé à 4 cases de l''eau. |
 | 1.0 | Mucus protecteur | Protection (IC) | 4.0 | 1.0 | 1.0 | -6 dégâts magiques (-2/NM) | Ignore des dégâts magiques. L''effet augmente de +4 si utilisé à 4 cases de l''eau. |
-| 1.0 | Eau purifiante | Soin (IC pour 3 NM) | 3.0 | 1.0 | 1.0 | Soigne une altération d''état | Permet de soigner "Poison 1", "Brûlure 1", "Paralysie 1". |
-| 1.0 | Eau soignante | Soin | 4.0 | 1.0 | 1.0 | 2d6 (+5/NM) de soin | Une eau qui soigne les blessures, si un point d''eau est à 4 cases les Dés passent à 8 au lieu de 6. |
-| 2.0 | Fer Humide | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | L''arme transpire de l''eau : pendant 3 tours, ses attaques infligent des dégâts d''eau. |
-| 2.0 | Souffle Hydraulique | Attaque/ Entrave (Imparable) | 7.0 | 3.0 | Cône | 5d6 dégâts (+3/NM) | Si jet de fermeté raté = Inflige confus. |
-| 2.0 | Onde de Confusion | Entrave (IC pour 3 NM) | 9.0 | 4.0 | 1.0 | => | Jet de fermeté raté = Inflige "Confusion 1"<br>Jet de fermeté réussi = Inflige 4 dégâts perce AM |
+| 1.0 | Eau purifiante | Soin (IC pour 3 NM) | 3.0 | 1.0 | 1.0 | Soigne une altération d''état | Permet de soigner "Poison 1", "Brûlure 1", "Paralysie 1".<br>Soigne 4 santé si utilisé à 4 cases de l''eau. |
+| 1.0 | Eau soignante | Soin | 4.0 | 1.0 | 1.0 | 2d6 (+4/NM) de soin | Une eau qui soigne les blessures, si un point d''eau est à 4 cases les Dés passent à 8 au lieu de 6. |
+| 2.0 | Fer humide | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | L''arme transpire de l''eau : pendant 3 tours, ses attaques infligent des dégâts d''eau. |
+| 2.0 | Souffle hydraulique | Attaque/ Entrave (Imparable) | 7.0 | 3.0 | Cône | 5d6 dégâts (+3/NM) | Si jet de fermeté raté = Inflige confus. |
+| 2.0 | Onde confusion | Entrave (IC pour 3 NM) | 9.0 | 4.0 | 1.0 | => | Jet de fermeté raté = Inflige "Confusion 1"<br>Jet de fermeté réussi = Inflige 4 dégâts perce AM |
 | 2.0 | Barrière d''eau | Soin | 10.0 | Soi-même | 1.0 | / | Régénère 10% de la {{barriere\|barrière}} (+5% par Niveau de Maîtrise), +10 {{barriere\|barrière}} bonus si jamais fait à 4 cases de l''eau. |
-| 2.0 | Ruisseau conciliant | Soin | 10.0 | Soi-même | Croix de 1 | 3d6 (+6/NM) de soin | Des petits courants d''eau qui viennent soigner. La zone devient un cercle si un point d''eau est à 4 cases. |
+| 2.0 | Ruisseau conciliant | Soin | 10.0 | Soi-même | Croix de 1 | 3d6 (+4/NM) de soin | Des petits courants d''eau qui viennent soigner. La zone devient un cercle si un point d''eau est à 4 cases. |
 | 3.0 | Trombe d''eau | Attaque | 16 (-2/NM) | 5.0 | Carré de 3x3 | 7d6 + 15 dégâts | Une urne remplie d''eau se déverse sur la zone. Bonus de +15 dégâts si un point d''eau est à 2 cases. |
-| 3.0 | Lame sous pression | Attaque | 16.0 | 1.0 | 3 cases horizontales devant (ou verticales/3NM) | 7d6 dégâts | Une lame faite d''eau sous pression tranche les adversaires. Ignore les AM quand un point d''eau est à 4 cases. |
+| 3.0 | Lame sous pression | Attaque | 16.0 | 1.0 | 3 cases horizontales devant (ou verticales/3NM) | 7d6 + 5 dégâts | Une lame faite d''eau sous pression tranche les adversaires. Ignore les AM quand un point d''eau est à 4 cases. |
 | 3.0 | Crachat Acide | Attaque/ Entrave | 16.0 | 5.0 | 1.0 | 5d6 dégâts (+3/NM) d''acide | 50% de chance de retirer un cran solidité à un morceau d’armure ou une arme. |
 | 3.0 | Courant salvateur | Placement | 16.0 | 6.0 | Ligne de 5 | Déplace la/les cible(s) | Place un un courant d''eau qui va déplacer les cibles dessus de 1(+1/NM) cases dans la direction décidée par le lanceur. |
-| 3.0 | Eau Parfaite | Soin (IC pour 3 NM) | 14.0 | 1.0 | 1.0 | Soigne une altération d''état, +5d6 soin | Soigne toutes les altérations d''état liées à des éléments. |
-| 4.0 | Fouet d''eau | Attaque | 20.0 | 2 (+2/NM) | 1.0 | 8d6 + 10 dégâts | Un fouet qui inflige de gros dégâts au adversaire. Augmente de 5% la RC si à 4 cases d''un point d''eau. |
+| 4.0 | Fouet d''eau | Attaque | 20.0 | 4 (+2/NM) | 1.0 | 8d6 + 10 dégâts | Augmente de 5% la RC si à 4 cases d''un point d''eau. |
 | 4.0 | Grenade Incapacitante | Attaque/ Entrave | 26.0 | 8.0 | Cercle de 3 | 8d6 + 35 dégâts | Inflige des dégâts de zone d''Eau.<br>(3NM = Si jet de fermeté raté = Inflige confus 1). |
+| 4.0 | Geyser | Attaque | 24 | 6 | 1 | 8d6 + 35 dégâts | Si jet de stabilité/réflexe raté = Tombe au sol |
+| 4.0 | Vortex | Placement | 20 (-2/NM) | 10 | Cercle de 4 | / | Attire les cibles en son centre. Inflige 10 dégâts perce AM si à 4 cases d''un point d''eau. |
+| 5.0 | Torrent colérique | Attaque/ Entrave | 55 (-5/NM) | 20 | Ligne | 10d6 + 60 dégâts | Une attaque d''Eau en ligne qui touche tout sur son chemin. Si jet de stabilité/réflexe raté = Tombe au sol |
+| 5.0 | Zone abyssal | Construction | 50 | Soi même | Terrain | / | Rempli le terrain d''eau, ce qui pousse à utiliser la vitesse de nage. Dure 3 tours (+1/NM) |
+| 3.0 | Dorsale protectrice | Protection | 18 (-2/NM) | 1 | 1 | / | L''armure obtient une résistance à la frappe, avantage pour résister aux sorts de placement, réduit les dégâts de 10. Dure 3 tours. |
+| 3.0 | Siphon vital | Attaque/Soin | 14 | 6 | 1 | 5d6 + 15 dégâts | Vampirise 25% des dégâts infligés à la santé. (50% au niveau 3 de maîtrise). |
+| 3.0 | Rivière douce | Soin | 14 | 1 | 1 | 3d6 de soin (+8/NM) | Un sort de soin de l''eau. +3 portée si à 4 cases d''un point d''eau. |
+| 3.0 | Eau Parfaite | Soin (IC pour 3 NM) | 14.0 | 1.0 | 1.0 | Soigne une altération d''état, +4d6 soin | Soigne toutes les altérations d''état liées à des éléments. |
+| 4.0 | Laser hydraulique | Attaque | 26 (-2/NM) | 14 | 1 | 35 dégâts | Tire un rayon qui ignore l''AM. +10 dégâts si à 4 cases d''un point d''eau. |
 | 4.0 | Dissolution | Amplification (IC pour 3 NM) | 20.0 | Soi-même | 1.0 | / | S''il est fait dans l''eau : totalement insensible aux dégâts physiques et magiques qui ne sont pas une vulnérabilité. Réduit de 10 les dégâts encaissés quand il est fait en dehors de l’eau. Dure 3 tours. |
 | 4.0 | Crachin | Météo | 20.0 | Soi-même | Terrain | / | Invoque la météo "pluie" ou "pluie diluvienne" pour 3 tours (+1/NM). |
 | 4.0 | Cascade apaisante | Soin | 26 (-2/NM) | 4.0 | 1.0 | 7d6 soin/tour | Régénération pendant 3 tours. +1 tour si utilisé à 4 cases de l''eau. Vu que c''est une régénération, la santé récupérée par tour se détermine au premier jet. |
-| 5.0 | Laser Hydraulique | Attaque/ Entrave | 55 (-5/NM) | 20.0 | Ligne | 10d6 + 60 dégâts | Une attaque d''Eau en ligne qui touche tout sur son chemin. Si jet de stabilité/réflexe raté = Tombe au sol |
-| 5.0 | Larmes d''Océane | Entrave | 60 (-5/NM) | Soi-même | Terrain | / | (S''ajoute avec la météo pluie ou +) Empêche les Sorts Feu et Foudre d''être utilisés le temps de la météo. |
+| 5.0 | Larmes d''Océane | Entrave | 55 (-5/NM) | Soi-même | Terrain | / | (S''ajoute avec la météo pluie ou +) Empêche les Sorts Feu et Foudre d''être utilisés le temps de la météo. |
 | 5.0 | Pitié d''Océane | Soin | 55 (-5/NM) | 2.0 | 1.0 | Sort la cible du coma. | Permet de ranimer un allié dans le coma en lui redonnant 1PV et 100% de sa {{barriere\|barrière}}. Donne 10PV près d''un point d''eau. |
 
 ## Notes et commentaires des sorts
 
-**Note de la cellule « Effets secondaires » du sort « Fer Humide »** : Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas être confus au stade 1
+**Note de la cellule « Effets secondaires » du sort « Fer humide »** : Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas être confus au stade 1
 
 **Note de la cellule « Effets secondaires » du sort « Courant salvateur »**
 
@@ -18920,7 +18903,7 @@ Ne déclenche pas d''attaques d''opportunités
 
 Soigne les alliés de 2d6 si un point d''eau est à 4 cases.
 
-**Commentaire résolu de la cellule « Effets secondaires » du sort « Dissolution »** : Totalement insensible aux dégâts physiques et magiques qui ne sont pas une vulnérabilité. Permet de bénéficier d''une invisibilité quand vous êtes dans l''eau.
+**Remarque du sort « Laser hydraulique »** : Peut prendre un tour de concentration pour donner un bonus de +10 dégâts.
 
 **Note de la cellule « Effets secondaires » du sort « Larmes d''Océane »**
 
@@ -18930,7 +18913,7 @@ Cet effet dure maximum 5 tours.
 
 ## Textes des sorts de niveau 5
 
-### Laser Hydraulique
+### Torrent colérique
 
 > Que l’eau cesse d’être douce et devienne une lame,  
 > Que la pression des mers s’aligne dans mon bras,  
@@ -19000,39 +18983,40 @@ Les utilisateurs de l''Espace/Temps possèdent d''étranges bandages de momies c
 | Mono-Magie | Lorsqu''il subit une attaque/effet qui le bouge, il peut décider de bouger ou non.<br>(IC) Peut utiliser un sort de l''espace/temps capable de placement juste après une action, qui ne fera rien d''autre qu''un placement (1 fois/mode hyper). |
 | Bi-magie | Il ne peut pas être bougé de sa position.<br>(IC) Peut utiliser un sort de l''espace/temps capable de placement juste après une action, qui ne fera rien d''autre qu''un placement (1 fois/mode hyper). |
 
-## Rôles
-
-- PLACEMENT
-- RENFORCEMENT
-- ENTRAVE
-
 ## Sorts
 
 | Niveau | Nom | Type | Coût | Portée | Zone | D/S/B | Effets secondaires |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1.0 | Coup du Sablier | Attaque | 4.0 | 6.0 | 1.0 | 2d6 dégâts (+1d6/NM) | Une simple attaque de Temps. 3NM = Sur un coup critique, force le jet de vigueur pour ne pas prendre fatigue 1. |
+| 1.0 | Coup du sablier | Attaque | 4.0 | 6.0 | 1.0 | 2d6 dégâts (+1d6/NM) | Une simple attaque de Temps. 3NM = Sur un coup critique, force le jet de vigueur pour ne pas prendre fatigue 1. |
 | 1.0 | Téléportation | Placement (IC) | 5.0 | 5 (+1/NM) | 1.0 | / | Se téléporte symétriquement par rapport à la cible. |
 | 1.0 | Portail | Placement (IC x 2) | 2.0 | 5 (+2/NM) | 1.0 | / | Invoque un portail. La liaison se fait selon l''ordre d''apparition des portails. |
 | 1.0 | Substitution | Placement | 6.0 | 6 (+1/NM) | 1.0 | / | Permet d''échanger sa place par rapport à un objet de taille à peu près égale et qui n''est pas "indéplaçable" |
 | 1.0 | Chute | Attaque | 5.0 | 6.0 | Carré 2x2 | 2d4 (+3/NM) dégâts | Invoque un mini portail en dessous d''un objet TP ou P et le fait tomber sur la cible. |
-| 2.0 | Fer Temporel | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | Rend l''arme rose et noire : pendant 3 tours, ses attaques infligent des dégâts d''espace-temps. |
-| 2.0 | Faille Temporelle | Placement | 8 (-1/NM) | Vue | 1.0 | / | \[Se combine avec une attaque distance\] Envoie le projectile dans une faille qui va aller sur une cible aléatoire |
-| 2.0 | Ralentissement | Entrave (IC) | 5.0 | 4 (+1/NM) | 1.0 | / | Si jet de Fermeté raté = -2 à la vitesse de la cible pour 3 tours. |
+| 2.0 | Fer temporel | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | Rend l''arme rose et noire : pendant 3 tours, ses attaques infligent des dégâts d''espace-temps. |
+| 2.0 | Faille chronique | Placement | 8 (-1/NM) | Vue | 1 | / | \[Se combine avec une attaque distance\] Envoie le projectile dans une faille qui va aller sur une cible aléatoire |
+| 2.0 | Ralentissement | Entrave (IC) | 6 | 4 (+1/NM) | 1.0 | / | Si jet de Fermeté raté = -2 à la vitesse de la cible pour 3 tours. |
 | 2.0 | Inversion | Placement (IC) | 10.0 | 8 (+2/NM) | 1.0 | / | Échange sa place avec celle de la cible |
-| 2.0 | Frappe Temporelle | Attaque/ Placement | 10 (-1/NM) | 6.0 | 1.0 | 5d6 dégâts (+3/NM) | Invoque une main géante en bandelette, téléporte la cible symétriquement par rapport au lanceur. (choix possible) |
-| 3.0 | État antérieur | Amplification/ Entrave (IC) | 16 (-1/NM) | 4.0 | 1.0 | / | Remet l''objet à un état antérieur il y a 10 secondes, 1 minute, 1 heure. |
-| 3.0 | Tranche Temps | Attaque<br>(Imparable/ Inesquivable) | 14.0 | 1.0 | 1.0 | 5d6 dégâts (+3/NM) | Inflige une blessure dans le passé à l''adversaire. |
-| 3.0 | Vieillissement | Entrave | 13 (-1/NM) | 6.0 | 1.0 | / | Si jet de Fermeté raté = 1 croix sur la FORCE, PERCEPTION, AGILITÉ mais donne un bonus de 10% pour les tests d''intelligence et de volonté pendant 3 tours. |
+| 2.0 | Main de la momie | Attaque/ Placement | 10 (-1/NM) | 6.0 | 1.0 | 5d6 dégâts (+3/NM) | Invoque une main géante en bandelette, téléporte la cible symétriquement par rapport au lanceur. (choix possible) |
+| 3.0 | Spayon | Attaque | 15 | 4 (+2/NM) | 1 | 7d6 + 15 dégâts | Sur un coup critique, force le jet de vigueur pour ne pas prendre fatigue 1. |
+| 3.0 | Espace relatif | Entrave (IC pour 3NM) | 15 | Soi même | Cercle de 2 | Malus de 25% | Ceux qui sont dans la zone impose un malus pour toucher à ceux qui tente de les attaquer à plus de 3 cases de distance. Dure 3 tours. |
 | 3.0 | Portail Piégé | Placement/ Attaque | 15.0 | 6.0 | 1.0 | 7d6 + 15 dégâts | Permet d''invoquer un portail piégé qui est relié aux autres portails. (3NM = Pas de dégâts alliés) |
-| 3.0 | Horloge aspirante | Attaque/Soin | 14.0 | 6.0 | 1.0 | 7d6 dégâts | Vampirise 25% des dégâts infligés. (50% au niveau 3 de maîtrise), marche que sur les créatures vivantes. |
-| 4.0 | Célérité | Amplification (IC pour 3 NM) | 23.0 | 4.0 | 1.0 | +1 tour | Permet d''avoir une deuxième action pendant le tour, dure 3 tours. |
-| 4.0 | Grenade Distordue | Attaque/ Placement | 23.0 | 7.0 | Cercle de 2 (+1/3NM) | 8d6 + 20 dégâts | Téléporte symétriquement par rapport à la grenade toutes les cibles dans son rayon d''action. |
-| 4.0 | Double Action | Amplification (IC pour 3 NM) | 22.0 | 1.0 | 1.0 | / | Invoque un clone qui va reproduire la prochaine action à hauteur de 50% des effets. |
-| 4.0 | Téléport parfait | Placement | 20.0 | 20Km (+20/NM) | 1.0 | / | Permet de voyager sur de grandes distances. Les autres doivent toucher le lanceur pour être téléportés. |
+| 3.0 | Principe d''incertitude | Amplification | 15 | 4 | 1 | / | Donne une seule réaction qui permet de se téléporter de 2 cases après qu''une attaque hostile a touchée. Reste 3 tours tant qu''il n''est pas utilisé. |
+| 4.0 | Vitesse relative | Entrave (IC pour 3 NM) | 23 | Soi même | Cercle de 6 | / | Créer une zone où les alliés ont +1 vitesse et +1IC. Les ennemis ont -1 vitesse et -2IC. Dure 3 tours. |
+| 4.0 | Grenade distordue | Attaque/ Placement | 23.0 | 7.0 | Cercle de 2 (+1/3NM) | 8d6 + 20 dégâts | Téléporte symétriquement par rapport à la grenade toutes les cibles dans son rayon d''action. |
+| 4.0 | Ancrage dimensionnel | Entrave (IC) | 22 (-2/NM) | 7 | 1 | / | Empêche la cible d''exploiter l''effet de placement de ses sorts pendant 2 tours. |
 | 4.0 | Image diffuse | Amplification (IC pour 3 NM) | 10 par clone | Soi-même | Carré 4x4 | / | Invoque 1 ou 2 clones (+1/NM) passifs du lanceur. |
-| 5.0 | Trou Noir | Attaque | 50 (-5/NM) | 9.0 | Cercle de 3 | 10d6 + 60 dégâts | Une puissante attaque de Temps/Espace. Attire les cibles vers le centre de l''attaque, impossible de lutter contre. |
+| 5.0 | Trou noir | Attaque | 55 (-5/NM) | 9.0 | Cercle de 3 | 10d6 + 60 dégâts | Attire les cibles vers le centre de l''attaque, impossible de lutter contre. |
+| 5.0 | Distorsion | Entrave | 50 (-5/NM) | Vue | Terrain | / | Si jet de fermeté raté = Perd le tour.<br>Si jet de fermeté réussi = Étourdi pour 1 tour. |
+| 3.0 | État antérieur | Amplification/ Entrave (IC) | 16 (-1/NM) | 4.0 | 1.0 | / | Remet l''objet à un état antérieur il y a 10 secondes ou 1 minute. |
+| 3.0 | Tranche temps | Attaque<br>(Imparable/ Inesquivable) | 14.0 | 1.0 | 1.0 | 5d6 dégâts (+3/NM) | Inflige une blessure dans le passé à l''adversaire. |
+| 3.0 | Vieillissement | Entrave | 13 (-1/NM) | 6.0 | 1.0 | / | Si jet de Fermeté raté = 1 croix sur la FORCE, PERCEPTION, AGILITÉ mais donne un bonus de 10% pour les tests d''intelligence et de volonté pendant 3 tours. |
+| 3.0 | Horloge aspirante | Attaque/Soin | 14.0 | 6.0 | 1.0 | 7d6 dégâts | Vampirise 25% des dégâts infligés. (50% au niveau 3 de maîtrise), marche que sur les créatures vivantes. |
+| 4.0 | Célérité | Amplification (IC pour 3 NM) | 23.0 | 4.0 | 1.0 | +1 action | Permet d''avoir une deuxième action pendant le tour, dure 3 tours. |
+| 4.0 | Erreur ultérieur | Amplification (IC pour 3 NM) | 20 | 1 | 1 | / | Donne une seule réaction qui permet de relancer un jet d''attaque raté pour un allié/réussi pour un ennemi. Reste 3 tours tant qu''il n''est pas utilisé. |
+| 4.0 | Téléport parfait | Placement | 20.0 | 20Km (+20/NM) | 1.0 | / | Permet de voyager sur de grandes distances. Les autres doivent toucher le lanceur pour être téléportés. |
+| 4.0 | Vision déphasé | Attaque/Entrave | 21 | 14 | 1 | 3 x 2d6 dégâts | Tire un rayon qui ignore l''AM.<br>Si jet de fermeté raté = Impose un malus de 25% à ses jets d''attaque et de défense pendant 1 tour. |
 | 5.0 | Prémonition | Attaque<br>(Imparable/ Inesquivable) | 50 (-5/NM) | Soi-même | 1.0 | 10d6 + 40 dégâts | Puissante attaque de temps arrivant avec une latence de deux tours, va frapper un adversaire au hasard. |
-| 5.0 | Distorsion | Entrave | 50 (-5/NM) | Vue | Terrain | / | Si jet de Fermeté raté = Perd le tour.<br>Si jet de Fermeté réussi = Réduit l''initiative de 5 immédiatement. |
+| 5.0 | Convergence | Amplification | 40 | 4 | 1 | / | Invoque un clone qui va reproduire les deux prochaines actions réussi à hauteur de 50% (100%/3NM) des effets. |
 
 ## Notes et commentaires des sorts
 
@@ -19046,7 +19030,7 @@ Si la case d''arrivée est occupée par une autre créature, le lanceur échange
 
 **Remarque du sort « Portail »** : Maximum 4 portails reliés entre eux à la fois, pour retirer un portail, pas de jet est nécessaire mais il faut consommer la moitié du {{chakra|chakra}}.
 
-**Note de la cellule « Effets secondaires » du sort « Fer Temporel »** : Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas être fatigué au stade 1
+**Note de la cellule « Effets secondaires » du sort « Fer temporel »** : Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas être fatigué au stade 1
 
 **Note de la cellule « Effets secondaires » du sort « Inversion »**
 
@@ -19056,13 +19040,21 @@ Il n’est pas possible d’échanger sa place avec une cible trop grosse.
 
 Peut être contré par "Téléportation"
 
-**Note de la cellule « Effets secondaires » du sort « Frappe Temporelle »**
+**Note de la cellule « Effets secondaires » du sort « Main de la momie »**
 
 Possible de le faire sur un allié, l''allié ne prendra pas les dégâts.
 
 Si la case d''arrivée est occupée par une autre créature, le lanceur échange immédiatement sa position avec celle-ci (si elle est de la même taille approximativement que lui)
 
-**Commentaire résolu de la cellule « Effets secondaires » du sort « Frappe Temporelle »** : Possible de le faire sur un allié, l''allié ne prendra pas les dégâts.
+**Note de la cellule « Effets secondaires » du sort « Grenade distordue »** : Si le lanceur est dans la zone d''action de la grenade, il peut décider de ne pas être téléporté.
+
+**Note de la cellule « Effets secondaires » du sort « Image diffuse »**
+
+Ces clones imitent le lanceur dans ses actions mais sans pour autant faire des dégâts ou des effets sur les autres.  
+Si jamais une attaque risque d''arriver sur le lanceur, cette attaque a 50% de chance d''atterrir sur un des clones.  
+Si un clone prend un coup, il disparait.
+
+**Note de la cellule « Effets secondaires » du sort « Distorsion »** : Perdre le tour ne signifie pas perdre sa posture.
 
 **Note de la cellule « Effets secondaires » du sort « État antérieur »** : Pour les armures, il faut faire le sort sur CHAQUE morceau.
 
@@ -19072,20 +19064,6 @@ Si c''est la {{barriere|barrière}}, la {{barriere|barrière}} est vampirisée.
 Si c''est les points de vie, c''est les points de vie qui sont vampirisés
 
 **Note de la cellule « Effets secondaires » du sort « Célérité »** : Un boss qui a naturellement 2 tours, n''aura qu''un seul tour avec deux actions.
-
-**Commentaire résolu de la cellule « Effets secondaires » du sort « Célérité »** : Permet d''avoir 2 tours en 1, ça implique d''avoir 2 initiatives donc de jeter 2 fois un dé d''initiative.
-
-**Note de la cellule « Effets secondaires » du sort « Grenade Distordue »** : Si le lanceur est dans la zone d''action de la grenade, il peut décider de ne pas être téléporté.
-
-**Commentaire résolu de la cellule « Effets secondaires » du sort « Téléport parfait »** : Sert uniquement hors combat !
-
-**Note de la cellule « Effets secondaires » du sort « Image diffuse »**
-
-Ces clones imitent le lanceur dans ses actions mais sans pour autant faire des dégâts ou des effets sur les autres.  
-Si jamais une attaque risque d''arriver sur le lanceur, cette attaque a 50% de chance d''atterrir sur un des clones.  
-Si un clone prend un coup, il disparait.
-
-**Note de la cellule « Effets secondaires » du sort « Distorsion »** : Perdre le tour ne signifie pas perdre sa posture.
 
 ## Légende
 
@@ -19126,12 +19104,6 @@ Les utilisateurs de l''ombre ont des cheveux généralement plus courts et des m
 | Mono-Magie | Les sorts entraves deviennent des IC le temps du mode hyper (sauf les sorts niveau de puissance 5). |
 | Bi-magie | Chaque tour, une entrave est un IC (seulement le premier IC). (sauf les sorts niveau de puissance 5). |
 
-## Rôles
-
-- ENTRAVE
-- DÉGÂTS
-- RENFORCEMENT
-
 ## Sorts
 
 | Niveau | Nom | Type | Coût | Portée | Zone | D/S/B | Effets secondaires |
@@ -19139,46 +19111,50 @@ Les utilisateurs de l''ombre ont des cheveux généralement plus courts et des m
 | 1.0 | Sphère Obscure | Attaque | 4.0 | 6.0 | 1.0 | 2d6 dégâts (+1d6/NM) | Une simple attaque d''Ombre. 3NM = Sur un coup critique, force le jet de fermeté pour ne pas prendre peur 1. |
 | 1.0 | Perturbation | Attaque/ Entrave<br>(Imparable) | 3.0 | 6.0 | 1.0 | 2d4 dégâts | Si jet de fermeté raté = -10% (-10%/NM) à sa prochaine action |
 | 1.0 | Marionnette de l''ombre | Invocation (IC pour 3 NM) | 5 par NPM de la créature invoquée. +10% Barrière | 3.0 | 1.0 | / | Permet d''animer sa propre ombre (voir invocation) |
-| 1.0 | Brume mentale | Entrave (IC pour 3 NM) | 4.0 | 6.0 | 1.0 | / | Si jet de fermeté raté = Met une croix dans 1 une caractéristique au choix de l’adversaire pendant 1 tour. |
-| 1.0 | Pichenette | Entrave (IC) | 4.0 | 6.0 | 1.0 | / | Réduit de 5 l''initiative de l’adversaire pour le prochain tour. (+2/NM) |
+| 1.0 | Brume mental | Entrave (IC pour 3 NM) | 4.0 | 6.0 | 1.0 | / | Si jet de fermeté raté = Met une croix dans 1 une caractéristique au choix de l’adversaire pendant 1 tour. |
+| 1.0 | Pichenette | Entrave (IC) | 4.0 | 6.0 | 1.0 | -5 INI (-2/NM) | II : Diminue l''initiative de la cible à son prochain tour.<br>IG : Diminue l''initiative passivement du premier jet d''initiative ennemi. |
 | 2.0 | Cri ébranleur | Attaque/ Entrave (Imparable) | 8.0 | 6.0 | Cône | 5d6 dégâts sonores (+3/NM) | Une attaque aux dégâts sonores qui inflige un malus de 10% au prochain test de la victime. |
 | 2.0 | Manteau noir | Amplification (IC pour 3 NM) | 7 par NPM de la créature sacrifiée | Soi-même | 1.0 | Variable | Permet de sacrifier l''invocation de l''ombre pour avoir des bonus pendant 3 tours (voir invocation) |
 | 2.0 | Lame d’ombre | Attaque/ Amplification | 9.0 | Soi-même | 1.0 | 3d6 dégâts | Créer 1 (+1/NM) lame(s) autour du lanceur, chaque lame va taper après une attaque du lanceur réussie. |
-| 2.0 | Malédiction | Entrave (IC) | 7.0 | 3.0 | 1.0 | -1d (-1d/3NM) de dégâts | Diminue les dégâts pendant 3 tours. |
-| 2.0 | Fer Obscur | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | L''arme se charge d''une énergie sombre : pendant 3 tours, ses attaques infligent des dégâts d''ombre. |
+| 2.0 | Malédiction | Entrave (IC) | 7.0 | 3.0 | 1.0 | -1d de dégâts | Diminue les dégâts pendant 2 tours (+1/NM). |
+| 2.0 | Fer obscur | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | L''arme se charge d''une énergie sombre : pendant 3 tours, ses attaques infligent des dégâts d''ombre. |
 | 3.0 | Brouillard Obscur | Météo | 12.0 | Soi-même | Terrain | / | Invoque le brouillard obscur pour 3 tours (+1/NM). |
-| 3.0 | Javelot sombre | Attaque | 16 (-1/NM) | 12.0 | Ligne | 7d6 + 15 dégâts | Une puissante attaque d''ombre en zone. |
-| 3.0 | Amplification sombre | Amplification (IC) (IC x 2 si 3NM) | 5 + 10% santé | 1.0 | 1.0 | +12 dégâts, +5% EC | Augmente dangereusement les dégâts pour 2 tours. |
+| 3.0 | Javelot lunaire | Attaque | 16 (-1/NM) | 12 | Ligne | 7d6 +15 dégâts | Une puissante attaque d''ombre. |
+| 3.0 | Amplification sombre | Amplification (IC) (IC x 2 si 3NM) | 5 + 10% santé | 1.0 | 1.0 | +12 dégâts, +5% EC | Augmente dangereusement les dégâts pour 2 tours. (cumulable 2 fois) |
 | 3.0 | Marque suintante | Entrave (IC pour 3 NM) | 12.0 | 3.0 | 1.0 | / | Empêche la cible de récupérer de la santé avec des sorts, dure 3 tours. |
-| 3.0 | Ombre Menaçante | Entrave (IC pour 3 NM) | 14.0 | Soi-même | Aux ennemis qui peuvent voir | / | L''ombre du lanceur grandit et prend une apparence cauchemardesque. Si jet de fermeté raté = Inflige Peur 1. |
-| 4.0 | Rayon Négatif | Attaque | 20 (-2/NM) | 8.0 | 1.0 | 5d6 dégâts (+4/NM) | Fermeté réussi = État « Couardise »<br>Fermeté raté = État « Peur 2 » |
-| 4.0 | Grenade Fumigène | Attaque/ Entrave | 23.0 | 6.0 | Cercle de 3 | 6d6 + 35 dégâts | Inflige des dégâts de zone d''Ombre.<br>Si jet de vigueur raté = Malus de 25% pour tous les jets pour 1 tour (-10%/NM) |
+| 4.0 | Rayon lunatique | Attaque/ Entrave | 22 (-2/NM) | 7 | 1.0 | 5d6 dégâts (+4/NM) | Fermeté raté = Inflige Peur 1 |
+| 4.0 | Grenade fumigène | Attaque/ Entrave | 23.0 | 6.0 | Cercle de 3 | 6d6 + 35 dégâts | Inflige des dégâts de zone d''Ombre.<br>Si jet de vigueur raté = Malus de 25% pour tous les jets pour 1 tour (-10%/NM) |
 | 4.0 | Défaite annoncée | Entrave (IC pour 3 NM) | 25.0 | Soi-même | Cercle de 10 | / | Malus de 8 dégâts, +5 à l''échec critique et augmente la consommation de CK de 5 aux ennemis. Dure 1 tour. |
-| 4.0 | Goudron | Entrave | 22 (-2/NM) | 3.0 | 1.0 | / | Peur 3 pour la cible pendant 3 tours. |
-| 4.0 | Pire ami | Entrave (IC pour 3 NM) | 22.0 | Vue | 1.0 | / | Donne vie à l''ombre de la cible pour 6 tours et va attaquer qu''elle. Peut être décimée par une attaque de Lumière. |
+| 4.0 | Régolithe | Entrave | 20 (-2/NM) | 5 | 1.0 | / | Fermeté réussi = Inflige Peur 2<br>Fermeté raté = Inflige Peur 3 |
 | 5.0 | Chaîne de l''entrave | Entrave | 55 (-5/NM) | 6.0 | 1.0 | 20 dégâts perce AM/échec | Bloque totalement une cible. Chaque échec pour sortir de l''entrave du sort inflige des dégâts. Voir remarque |
-| 5.0 | Armée de l''Ombre | Attaque | 55 (-5/NM) | Illimité | Ligne de 3 | 4d10 + 60 dégâts | Invoque une armée qui va charger sur l''ennemi. (Ignore l''esquive/parade partielle au niveau 3 de maîtrise) |
-| 5.0 | Frappe Négative | Attaque/ Entrave | 55 (-5/NM) | 8.0 | 1.0 | 10d6 + 80 dégâts | Lance un rayon différent des autres, plus la santé du lanceur est basse, plus les effets sont puissants (voir la liste en commentaire) |
+| 5.0 | Frappe négative | Attaque/ Entrave | 55 (-5/NM) | 8.0 | 1.0 | 10d6 + 70 dégâts | Lance un rayon différent des autres, plus la santé est basse, plus les effets sont puissants (voir la liste en commentaire) |
+| 3.0 | Grand bailleur | Attaque/ Entrave (Inesquivable) | 12 | 4 | Cône | 5d6 dégâts sonores (+6/NM) | Si jet de fermeté raté = Inflige somnolence 1 |
+| 3.0 | Marchand de sable | Entrave<br>(IC) (IC x 2 si 3NM) | 10 | 6 | Cercle de 2 | / | Si jet de fermeté raté = Inflige somnolence 1 à ceux dans le cercle. |
+| 3.0 | Cauchemar | Attaque | 14 | Vue | Illimité | 3d6 dégâts / niveau somnolence | Inflige des dégâts aux cilbes qui ont un niveau de somnolence. Ne touche pas les alliés avec 3NM. |
+| 3.0 | Ombre Menaçante | Entrave (IC pour 3 NM) | 14.0 | Soi-même | Aux ennemis qui peuvent voir | / | L''ombre du lanceur grandit et prend une apparence cauchemardesque. Si jet de fermeté raté = Inflige Peur 1. |
+| 4.0 | Trait somnoleur | Attaque | 20 (-2/NM) | 14 | 1 | 25 dégâts | Inflige +7 dégâts bonus par niveau de somnolence de la cible. Ignore l''AM. |
+| 4.0 | Mauvaise nuit | Entrave | 22 (-2/NM) | 5 | 1 | +5 dégâts/niv somnolence encaissé | La cible doit souffrir de somnolence : Applique une marque qui fait qu''il prendra plus de dégâts des attaques tant qu''il souffre de l''altération d''état. |
+| 4.0 | Croire aux rêves | Amplification (IC) | 20 | 3 | 1 | +10% à la réussite | Dure 1 tour (+1/NM). |
+| 4.0 | Pire ami | Entrave (IC pour 3 NM) | 22.0 | Vue | 1.0 | / | Donne vie à l''ombre de la cible pour 6 tours et va attaquer qu''elle. Peut être décimé par une attaque de Lumière. |
+| 5.0 | Armée de l''ombre | Attaque | 55 (-5/NM) | Illimité | Sur 4 ligne devant le lanceur | 4d10 + 60 dégâts | Ignore la défense partielle à 3NM. Les ennemis qui souffrent de somnolence prennent 10 dégâts/niveau de somnolence. |
+| 5.0 | Prophétie | Amplification | 55 | 3 | 1 | / | Donne un avantage à tous les jets pendant 2 tours. Encaisse somnolence 2 à la fin. |
 
 ## Notes et commentaires des sorts
 
 **Note de la cellule « Effets secondaires » du sort « Marionnette de l''ombre »** : Sort interdit aux familiers et aux invocations.
 
+**Remarque du sort « Pichenette »**
+
+II : Initiative individuelle  
+IG : Initiative groupée
+
 **Note de la cellule « Effets secondaires » du sort « Lame d’ombre »** : La lame fait partie de l''attaque qu''elle accompagne, l''adversaire n''a pas à faire une autre défense pour juste la lame. Les lames partent une par une
 
-**Note de la cellule « Effets secondaires » du sort « Fer Obscur »** : Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas prendre Peur au stade 1
+**Note de la cellule « Effets secondaires » du sort « Fer obscur »** : Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas prendre Peur au stade 1
 
 **Note de la cellule « Effets secondaires » du sort « Amplification sombre »** : EC = Échec critique
 
-**Note de la cellule « Effets secondaires » du sort « Ombre Menaçante »**
-
-L''ombre reste 3 tours.
-
-Le jet de fermeté se relance tous les débuts de tour.
-
 **Note de la cellule « Effets secondaires » du sort « Défaite annoncée »** : Les sorts Défaite annoncée et Explosion glorifique s''annulent mutuellement.
-
-**Note de la cellule « Effets secondaires » du sort « Pire ami »** : Pire ami possède les caractéristiques et compétences de la cible et possède 1/4 de sa santé totale.
 
 **Note de la cellule « Effets secondaires » du sort « Chaîne de l''entrave »**
 
@@ -19190,7 +19166,7 @@ La victime ne peut rien faire si ce n''est tenter un jet d''athlétisme/concentr
 
 Un échec met fin au tour, une réussite libère la victime qui peut jouer normalement.
 
-**Note de la cellule « Effets secondaires » du sort « Frappe Négative »**
+**Note de la cellule « Effets secondaires » du sort « Frappe négative »**
 
 Donne un effet négatif selon la santé restante parmi les suivants (les effets sont cumulatifs) :
 
@@ -19203,6 +19179,14 @@ Santé à 60% = Inflige Couardise
 Santé à 40% = Ignore 50% des AM
 
 Santé à 20% = Le sort inflige + 40 dégâts
+
+**Note de la cellule « Effets secondaires » du sort « Ombre Menaçante »**
+
+L''ombre reste 3 tours.
+
+Le jet de fermeté se relance tous les débuts de tour.
+
+**Note de la cellule « Effets secondaires » du sort « Pire ami »** : Pire ami possède les caractéristiques et compétences de la cible et possède 1/4 de sa santé totale.
 
 ## Légende
 
@@ -19243,69 +19227,52 @@ Les utilisateurs du feu ont certaines mèches rouges vif, les yeux rouges lors d
 | Mono-Magie | (Réaction) Lors d''une agression, permet de répondre par une contre-attaque magique de l''élément feu qui infligera 2d6/NPM dégâts. (1 fois/tour) |
 | Bi-magie | (Réaction) Lors d''une agression, permet de répondre par une contre-attaque magique de l''élément feu qui infligera 2d6/NPM dégâts. (1 fois/3 tours) |
 
-## Rôles
-
-- DÉGÂTS
-- ENTRAVE
-- RENFORCEMENT
-
 ## Sorts
 
 | Niveau | Nom | Type | Coût | Portée | Zone | D/S/B | Effets secondaires |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | 1.0 | Boule de feu | Attaque | 4.0 | 6.0 | 1.0 | 2d6 dégâts (+1d6/NM) | Une simple attaque de Feu. 3NM = Sur un coup critique, force le jet de vigueur pour ne pas prendre brûlure 1. |
 | 1.0 | Cautérisation | Soin (IC pour 3 NM) | 3.0 | 1.0 | 1.0 | 2d6 soin | Permet de soigner un état de gel, confusion et saignement. |
-| 1.0 | Aura Chaude | Entrave (IC pour 3 NM) | 4.0 | Soi-même | Cercle de 3 | / | Inflige fatigue 1 aux ennemis dans la zone s''ils ratent leur jet de vigueur |
-| 1.0 | Détection du Feu | Amplification | 5 (-1/NM) | Variable | 100 mètres | / | Permet de détecter des sources de chaleur comme le feu ou bien un groupe d''êtres vivants. |
+| 1.0 | Aura chaude | Entrave (IC pour 3 NM) | 4.0 | Soi-même | Cercle de 3 | / | Inflige fatigue 1 aux ennemis dans la zone s''ils ratent leur jet de vigueur |
+| 1.0 | Détection du feu | Amplification | 5 (-1/NM) | Variable | 100 mètres | / | Permet de détecter des sources de chaleur comme le feu ou bien un groupe d''êtres vivants. |
 | 1.0 | Braise magique | Attaque/ Entrave<br>(Imparable) | 3.0 | 20.0 | Tous les ennemis visibles | 4 dégâts (+2/NM) | Permet de toucher tous les ennemis avec une braise faible, Coup critique = inflige brûlure 1. |
 | 2.0 | Fer brûlant | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | Chauffe le métal à blanc : pendant 3 tours, ses attaques infligent des dégâts de feu. |
-| 2.0 | Étincelle | Attaque/ Entrave | 7.0 | Soi-même | Cercle de 2 | 3d6 dégâts (+1d4/NM) | Inflige 2d6 de contrecoup (-1d6 au Niveau 3 de Maîtrise). |
+| 2.0 | Étincelle | Attaque/ Entrave | 7.0 | Soi-même | Cercle de 2 | 3d6 dégâts (+1d6/NM) | Inflige 2d6 de contrecoup (-1d6 au Niveau 3 de Maîtrise). |
 | 2.0 | Regard ardent | Entrave | 7.0 | 4.0 | 1.0 | / | Si jet de vigueur raté = Inflige brûlure 1. Peut brûler des objets à portée. (3 NM = Inflige brûlure stade 2) |
 | 2.0 | Fournaise | Attaque | 7.0 | 10.0 | Ligne | 4d6 dégâts (+3/NM) | Faire surgir des flammes du sol pour attaquer les ennemis sur la ligne d''attaque. Ne peut être fait que sur un sol. |
 | 2.0 | Souffle chaud | Attaque<br>(Imparable) | 8.0 | 3.0 | Cône | 5d6 dégâts (+3/NM) | Si jet de vigueur raté = Inflige brûlure 1. |
-| 3.0 | Mur de flammes | Attaque<br>(Imparable) | 12.0 | 3 (+1/NM) | Ligne 9 cases | 15 - 30 - 15 | Ceux qui ne possèdent pas de résistance au Feu doivent faire un jet d''Athlétisme ou Équilibre pour tenter de traverser. Dure 4 tours. |
+| 3.0 | Frappe rageuse | Attaque | 14.0 | 4 (+1/NM) | 1.0 | 7d6 + 15 dégâts | Envoie une violente vague de flamme. |
 | 3.0 | Diffusion | Entrave | 12.0 | Soi-même | Cercle de 6 (+1/NM) | / | Augmente la température ambiante pendant 4 tours. Inflige 20 dégâts fixes à tous ceux qui souffrent d''une brûlure (1 fois). |
 | 3.0 | Marcheur exalté | Amplification | 12 (-2/NM) | 1.0 | 1.0 | / | Permet de marcher sur du feu ou de la lave. Les jambes possèdent 6AP/6AM mais impossible de porter une armure à cet endroit temporairement |
-| 3.0 | Frappe rageuse | Attaque | 14.0 | 4 (+1/NM) | 1.0 | 7d6 + 15 dégâts | Envoie une violente vague de flamme. |
-| 3.0 | Bouclier de feu | Amplification | 12.0 | Soi-même | 1.0 | 3d12 dégâts (+3/NM) | Invoque une protection qui va infliger des dégâts à toute attaque au corps à corps. Dure 1 tour |
+| 3.0 | Mur de flammes | Construction | 12.0 | 3 (+1/NM) | Ligne 9 cases | 15 - 30 - 15 | Ceux qui ne possèdent pas de résistance au Feu doivent faire un jet d''Athlétisme/Équilibre pour tenter de traverser. Dure 4 tours. |
 | 4.0 | Bouffée infernale | Attaque<br>(Imparable) | 20.0 | 7.0 | Cône | 5d6 + 25 dégâts (+6/NM) | Un vrai lance-flamme craché par la gueule. , 10% de chance d''infliger brûlure 1. |
 | 4.0 | Grenade incendiaire | Attaque/ Entrave | 23.0 | 6.0 | Cercle de 2 | 8d6 + 35 dégâts | Inflige des dégâts de zone de Feu. (Oblige le jet de vigueur pour ne pas prendre brûlure 2 à 3NM) |
 | 4.0 | Zénith | Météo | 26 (-2/NM) | Soi-même | Terrain | / | Change la météo en Grand Soleil ou Canicule pendant 5 tours. |
-| 4.0 | Rai solaire | Attaque | 28 (-2/NM) | Ligne | 1.0 | 40 dégâts | Ignore AM, AP et BA. |
-| 4.0 | Combustion forte | Entrave | 26 (-2/NM) | 1.0 | 1.0 | / | Permet d''infliger brûlure 3 aux immunisés et de brûler ce qui ne peut l''être. |
-| 5.0 | Pluie chaude | Attaque | 40 (-2/NM) | Soi-même | Terrain | 5d6 dégâts + 10 /tour | Transforme la pluie, grêle ou neige en une pluie de feu qui inflige des dégâts à chaque tour pendant 5 tours. |
-| 5.0 | Météore cramoisi | Attaque | 55 (-5/NM) | 8.0 | Cercle de 3 | 10d6 + 60 dégâts | Inflige de terribles dégâts de feu. Si jet de vigueur raté = Inflige brûlure 1 |
-| 5.0 | Bûcher purifiant | Attaque | 50 + 20% PV | 0.0 | Croix de 3 | 10d6 + 80 dégâts (+10/NM) | Inflige de terribles dégâts de feu en zone. Si jet de vigueur raté = Inflige brûlure 2. |
+| 4.0 | Rayon de fusion | Attaque | 28 (-2/NM) | 14 | 1 | 40 dégâts | Tire un rayon qui ignore l''AM. |
+| 5.0 | Bûcher purifiant | Attaque | 50 + 25% PV | 0.0 | Croix de 3 | 10d6 + 90 dégâts (+10/NM) | Inflige de terribles dégâts de feu en zone. Si jet de vigueur raté = Inflige brûlure 2. |
+| 5.0 | Météore éruptif | Attaque | 55 (-5/NM) | 8 | Cercle de 3 | 10d6 + 60 dégâts | Inflige de terribles dégâts de feu. Si jet de vigueur raté = Inflige brûlure 1 |
+| 3.0 | Jet de cendre | Attaque/ Entrave | 14 | 4 | Cône | 7d6 dégâts (+4/NM) | Inflige un malus de -15% à l''adversaire pour sa prochaine attaque. +5% le malus si un tas de cendre est à côté des cibles. |
+| 3.0 | Ruée cendreuse | Placement (IC) | 17 (-2/NM) | 5 | 1 | / | Permet de se téléporter à un endroit. La portée est doublé si un tas de cendre est ciblé. |
+| 3.0 | Aspect cendreuse | Amplification | 12 | Soi même | 1 | / | Rend le lanceur insensible pour 2 tours (+1/NM). |
+| 3.0 | Tas de cendre | Construction<br>(IC x1/NM) | 9 | 9 | 1 | / | Place un tas de cendre sur le terrain, possède 20 santé. Il peut être utile pour d''autres sorts. Maximum 4 à la fois sur le terrain. |
+| 4.0 | Éruption grise | Attaque/ Placement | 22 | Vue | Cercle de 2 | 5d6 + 12 dégâts | Peut être fait que sur un tas de cendre = Inflige des dégâts sur une zone et repousse de 2 cases les cibles. 3NM = Ne touche pas les alliés. |
+| 4.0 | Fumerolle | Attaque | 23 | 6 | 1 | 6d6 + 20 dégâts | Inflige un bonus de +10 dégâts par tas de cendre présent sur le terrain. |
+| 4.0 | Suie concentrée | Amplification  (IC pour 3 NM) | 20 | 1 | 1 | +1 portée/tas de cendre | Augmente la portée des sorts du feu par tas de cendre présent sur le terrain. Dure 3 tours. |
+| 4.0 | Combustion forte | Entrave | 25 (-2/NM) | 1.0 | 1.0 | / | Permet d''infliger brûlure 3 aux immunisés et de brûler ce qui ne peut l''être. Les petits objets brûlés deviennent des tas de cendre. |
+| 5.0 | Bombe de cancer | Attaque | 55 (-5/NM) | 8 | Cercle de 3 | 10d6 + 60 dégâts | Ignore à 50% des AM des cibles qui sont à côté d''un tas de cendre. |
+| 5.0 | Forteresse escarbille | Amplification | 40 (-5/NM) | Vue | Terrain | / | Les tas de cendre deviennent des colonnes infranchissable avec le double de santé, leur bonus sont doublés et riposte contre des assauts\*. |
 
 ## Notes et commentaires des sorts
 
 **Note de la cellule « Effets secondaires » du sort « Fer brûlant »** : Si coup critique avec une arme sous ce sort, inflige brûlure au stade 1
 
-**Commentaire résolu de la cellule « Effets secondaires » du sort « Fer brûlant »** : Si 5 ou moins avec une arme sous ce sort, inflige brûlure au stade 1
+**Remarque du sort « Rayon de fusion »** : Peut prendre un tour de concentration pour donner un bonus de +10 dégâts.
 
-**Note de la cellule « Effets secondaires » du sort « Rai solaire »** : Peut prendre un tour de concentration pour donner un bonus de +10 dégâts.
+**Remarque du sort « Aspect cendreuse »** : L''insensibilité est un état où AUCUN sortilèges (positif ou négatif) ne peux toucher le lanceur. Prendre un coup physique annule cet état.
+
+**Remarque du sort « Forteresse escarbille »** : \*Force le jet de vigueur à un agresseur pour ne pas qu''il prenne "brûlure 2"
 
 ## Textes des sorts de niveau 5
-
-### Pluie Chaude
-
-> Ô cieux, que votre froideur cède à la fournaise,  
-> Que les nuages se fissurent sous mon souffle brûlant,  
-> Que chaque goutte devienne une braise affamée,  
-> Que la pluie elle-même se courbe devant le feu,  
-> Et que le monde s’embrase sous mon appel…
->
-> PLUIE CHAUDE !
-
-### Météore Cramoisi
-
-> Que le ciel s’ouvre au courroux des flammes,  
-> Que la voûte céleste s’embrase sous ma volonté,  
-> Que la braise se condense en un cœur incandescent,  
-> Qu’il chute comme un jugement ardent sur les vivants,  
-> Et que nul ne puisse fuir l’ombre de sa chute…
->
-> MÉTÉORE CRAMOISI !
 
 ### Bûcher purifiant
 
@@ -19316,6 +19283,16 @@ Les utilisateurs du feu ont certaines mèches rouges vif, les yeux rouges lors d
 > Et que mon sacrifice réveille le feu absolu…
 >
 > BÛCHER PURIFIANT !
+
+### Météore éruptif
+
+> Que le ciel s’ouvre au courroux des flammes,  
+> Que la voûte céleste s’embrase sous ma volonté,  
+> Que la braise se condense en un cœur incandescent,  
+> Qu’il chute comme un jugement ardent sur les vivants,  
+> Et que nul ne puisse fuir l’ombre de sa chute…
+>
+> MÉTÉORE CRAMOISI !
 
 ## Légende
 
@@ -19358,39 +19335,40 @@ La magie du Sang marque beaucoup sur la taille et la musculature qui est plus é
 | Mono-Magie | Permet de récupérer 10 sang par tour au lieu de 1. |
 | Bi-magie | Divise par 2 le coût en sang pour les sorts. |
 
-## Rôles
-
-- DÉGÂTS
-- RENFORCEMENT
-- SOIN
-
 ## Sorts
 
 | Niveau | Nom | Type | Coût | Portée | Zone | D/S/B | Effets secondaires |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | 1.0 | Boule de sang | Attaque | 3 + 1 Sang | 6.0 | 1.0 | 2d6 dégâts (+1d6/NM) | Une simple attaque de Sang. 3NM = Sur un coup critique, force le jet de vigueur pour ne pas prendre saignement 1. |
-| 1.0 | Clou | Attaque | 3 + 2 Sang | 4.0 | 3x1 | 1d6 dégâts (+2/NM) | Si jet de vigueur raté = Inflige Saignement 1. |
-| 1.0 | Marquage | Entrave (IC) | 2 Sang | 1.0 | 1.0 | +1d de dégâts reçus (+1d/3NM) | Si jet de vigueur/fermeté raté = Augmente les dégâts reçus par la cible en ajoutant un dé de dégâts supplémentaire pendant 1 tour. |
+| 1.0 | Clou | Attaque | 2 + 2 Sang | 4.0 | 3x1 | 1d6 dégâts (+3/NM) | Si jet de vigueur raté = Inflige Saignement 1. |
+| 1.0 | Marquage | Entrave (IC) | 2 Sang | 1 (+1/NM) | 1.0 | +1d de dégâts reçu | Si jet de vigueur/fermeté raté = Augmente les dégâts reçus par la cible en ajoutant un dé de dégâts supplémentaire pendant 1 tour. |
 | 1.0 | Annulation | Entrave/ Soin | 2 Sang | 7.0 | 1.0 | / | Retire TOUS les effets négatifs et positifs sur la cible (3NM = que négatif pour allié, que positif pour ennemi) |
 | 1.0 | Attirance | Placement (IC) (IC x 2 si 3NM) | 2 + 1 Sang | 10.0 | 1.0 | / | La cible est attirée de 3 cases vers le lanceur ne fonctionne qu''en ligne. |
-| 2.0 | Sang Durci | Amplification (IC pour 3 NM) | 2 + 3 Sang | Soi-même | 1.0 | / | +6AP. Dure 3 tours. |
-| 2.0 | Fer Sanglant | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | Le sang sur la lame ne sèche pas : pendant 3 tours, ses attaques infligent des dégâts de sang. |
-| 2.0 | Sang Garde | Amplification (IC pour 3 NM) | 2 + 3 Sang | Soi-même | 1.0 | / | +15% aux jets de défense. Dure 3 tours. |
-| 2.0 | Sang Magie | Amplification (IC pour 3 NM) | 2 + 3 Sang | Soi-même | 1.0 | / | +6AM. Dure 3 tours. |
-| 2.0 | Sang Gain | Amplification (IC pour 3 NM) | 2 + 3 Sang | Soi-même | 1.0 | / | +2 Vitesse, +2INI. Dure 3 tours. |
-| 3.0 | Saignée forcée | Attaque/ Entrave | 9 + 4 Sang | 3.0 | 1.0 | 7d6 + 15 dégâts (+3/NM) | Si jet de vigueur raté = Inflige un saignement particulier pendant 4 tours. |
+| 2.0 | Sang durci | Amplification (IC pour 3 NM) | 2 + 3 Sang | Soi-même | 1.0 | / | +3AP/AM.  Dure 3 tours. |
+| 2.0 | Fer sanglant | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | Le sang sur la lame ne sèche pas : pendant 3 tours, ses attaques infligent des dégâts de sang. |
+| 2.0 | Sang garde | Amplification (IC pour 3 NM) | 2 + 3 Sang | Soi-même | 1.0 | / | +10% aux jets de défense. Dure 3 tours. |
+| 2.0 | Crachat bordeaux | Attaque | 4 + 3 Sang | 7 | 1 | 5d6 dégâts (+3/NM) | La cible doit souffrir d''un saignement = Oblige un jet de vigueur, si elle rate elle subit une fois les effets de l''altération d''état. |
+| 2.0 | Sang gain | Amplification (IC pour 3 NM) | 2 + 3 Sang | Soi-même | 1.0 | / | +2 Vitesse. Dure 3 tours. |
+| 3.0 | Saignée forcée | Attaque/ Entrave | 9 + 3 Sang | 3.0 | 1.0 | 7d6 + 15 dégâts (+3/NM) | Si jet de vigueur raté = Inflige un saignement particulier pendant 4 tours. |
+| 3.0 | Marquage surchargé | Entrave (IC) | 11 + 3 Sang | 1 (+1/NM) | 1 | Variable | Inflige 4 dégâts neutre à la santé de la cible à chaque IC, action ou case de déplacement entrepris par cette dernière. Dure 1 tour. |
+| 3.0 | Super hémoglobine | Amplification | 13 + 1 Sang | Soi même | 1 | / | Permet de récupérer 2 (3/3NM) de sang par tour au lieu de 1 pendant 3 tours. |
+| 3.0 | Déflagration sanguine | Attaque | X Sang | Soi-même | Cercle de 5 | X sang x3 dégâts (x4/3NM) | Une explosion qui inflige des dégâts selon le nombre de Sang utilisé. Ne touche pas les alliés. |
+| 4.0 | Damoclès | Attaque | 18 + 4 Sang | 8.0 | Ligne de 3 | 8d6 + 30 dégâts | Si jet de stabilité/réflexe raté = La cible tombe par terre, inflige 4d6 de contrecoup. (pas de contrecoup au niveau 3 de maîtrise) |
+| 4.0 | Grenade à clous | Attaque | 23.0 | 6.0 | Cercle de 2 | 8d6 + 40 dégâts | Inflige des dégâts de zone de Sang. (3NM = Si jet de vigueur raté = Inflige saignement stade 2) |
+| 4.0 | Fléau sanglant | Attaque<br>(Imparable) | 19 + 5 Sang | 5 | 1 | 8d6 + 20 dégâts | Si 3NM = Divise par 2 le malus pour viser une partie du corps. |
+| 4.0 | Marquage déchirant | Entrave (IC pour 3NM) | 16 + 4 Sang | 4 | 1 | / | La cible doit souffrir d''un saignement = Applique une marque qui oblige un double soin pour stopper le saignement. Dure tout le combat. |
+| 5.0 | Sang perfection | Amplification | 40 + 8 Sang | Soi-même | 1.0 | / | +15 dégâts, +5AP, +5AM, +2 Vitesse dure 2 tours (+1/NM). |
+| 5.0 | Surtension sanguine | Attaque | 45 + 8 Sang | 8 | 1 | 10d6 + 90 dégâts | Inflige de terribles dégâts.<br>3NM = Oblige un jet de vigueur pour ne pas prendre Saignement 2. |
+| 3.0 | Congestion | Amplification (IC pour 3 NM) | 8 + X Sang | 1 | 1 | +X dégâts | Augmente les dégâts infligés pendant 3 tours. 1 Sang = +1 dégât. |
 | 3.0 | Morsure aspirante | Attaque/Soin | 12.0 | 1.0 | 1.0 | 5d6 dégâts | Aspire 25% des PV infligés et les convertit en PV. Ne marche que sur les créatures vivantes (50% au niveau 3 de maîtrise) |
-| 3.0 | Coagulation | Amplification | 10 + X Sang | 5 (+1/NM) | 3x1 | / | Permet de solidifier son sang pour en faire un obstacle capable de prendre X sang x10 dégâts maxi |
-| 3.0 | Renfermement | Soin | 10 + 4 Sang | 4.0 | 1.0 | 3d6 de soin (+4/NM) / tour | Donne une régénération à un allié pendant 3 tours. Le lanceur doit réussir un jet de vigueur pour ne pas prendre saignement 1. |
-| 3.0 | Déflagration sanguine | Attaque | X Sang | Soi-même | Cercle de 5 | X sang x3 dégâts (x4/3NM) | Une explosion qui inflige le nombre de Sang utilisé. Ne touche pas les alliés. |
-| 4.0 | Damoclès | Attaque | 18 + 5 Sang | 8.0 | Ligne de 3 | 8d6 + 30 dégâts | Si jet de stabilité/réflexe raté = La cible tombe par terre, inflige 4d6 de contrecoup. (pas de contrecoup au niveau 3 de maîtrise) |
-| 4.0 | Douleur partagée | Amplification (IC pour 3 NM) | 20 + 5 Sang | 3.0 | 1.0 | / | Prend la moitié des dégâts d''un allié ciblé pendant 3 tours. |
-| 4.0 | Grenade à Clous | Attaque | 23.0 | 6.0 | Cercle de 2 | 8d6 + 40 dégâts | Inflige des dégâts de zone de Sang. (3NM = Si jet de vigueur raté = Inflige saignement stade 2) |
-| 4.0 | Autel Sanglant | Attaque<br>(Imparable) | 18 + 6 Sang | 5.0 | 1.0 | 8d6 + 10 (+5/NM) | Empale une cible, les dégâts sont répartis vers les ennemis qui sont à 3 de portée maximum |
+| 3.0 | Coagulation | Construction | 10 + X Sang | 5 (+1/NM) | 3x1 | / | Permet de solidifier son sang pour en faire un obstacle capable de prendre X sang x10 dégâts maxi |
+| 3.0 | Renfermement | Soin | 10 + 3 Sang | 4.0 | 1.0 | 3d6 de soin (+4/NM) / tour | Donne une régénération à un allié pendant 3 tours. Le lanceur doit réussir un jet de vigueur pour ne pas prendre saignement 1. |
+| 4.0 | Prise de sang | Attaque/Soin | 20 + 5 Sang | 3 | 1 | 5d6 + 50 dégâts | Ce sort ne peut être fait que le lanceur est en dessous de 25% (50%/3NM) de santé. 25% des dégâts sont converti en santé. |
+| 4.0 | Douleur partagée | Amplification (IC pour 3 NM) | 19 + 5 Sang | 4 | 1.0 | / | Prend la moitié des dégâts d''un allié ciblé pendant 3 tours. Redonne 1 sang tous les 15 dégâts encaissé. |
+| 4.0 | Rage de guerre | Amplification | 21 (-2/NM) + 5 Sang | 4 | 1 | +10 dégâts infligés et reçu, +1 vitesse | Inflige également l''état "Folle de guerre"  à la cible. Dure 2 tours. |
 | 4.0 | Perfusion | Soin (IC) | X Sang | 4.0 | 1.0 | 4 (+1/NM) soin pour 1 sang | Utilise du sang pour récupérer de la santé. L''inverse est possible aussi de sacrifier de la santé pour récupérer du sang. |
-| 5.0 | Sang Perfection | Amplification | 40 + 10 Sang | Soi-même | 1.0 | / | +10 dégâts, +6AP, +6AM, +2 Vitesse, +2INI dure 2 tours (+1/NM). |
-| 5.0 | Proportion démesurée | Amplification | 60 + 10 Sang | 5.0 | 1.0 | / | Augmente la taille d''un cran, +1 Force, +15 (+5/NM) aux dégâts physiques, +1 portée pour 3 tours, inflige fatigue à la fin. |
-| 5.0 | Sacrifice | Soin | 40.0 | Soi-même | Cercle de 5 | / | Donne toute sa santé à 4 cibles alliées. Coma. (Garde 1 santé à 3NM) |
+| 5.0 | Proportion démesurée | Amplification | 50 + 8 Sang | 5.0 | 1.0 | / | Augmente la taille d''un cran, +1 Force, +20 (+5/NM) aux dégâts physiques, +1 portée pour 3 tours. Jet de vigueur à la fin pour ne pas prendre fatigue 1. |
+| 5.0 | Sacrifice | Soin | 45 | Soi-même | Cercle de 5 | / | Donne et réparti toute sa santé aux alliés dans la zone. Coma. (Garde 1 santé à 3NM) |
 
 ## Notes et commentaires des sorts
 
@@ -19400,30 +19378,23 @@ La magie du Sang marque beaucoup sur la taille et la musculature qui est plus é
 - Ne marche pas sur les effets magie niveau 3 ou plus
 - Soigne d''un cran les altérations d''états.
 
-**Commentaire résolu de la cellule « Effets secondaires » du sort « Annulation »**
-
-Inutile contre les infirmités, la fatigue, les croix, les altérations d''états.  
-Ne marche pas sur les effets magie niveau 3 ou plus
-
 **Note de la cellule « Effets secondaires » du sort « Attirance »** : Si la cible possède le don "grande créature" ou est logiquement trop grosse ou lourde : C''est le lanceur qui est attiré.
 
-**Note de la cellule « Effets secondaires » du sort « Fer Sanglant »** : Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas prendre Saignement au stade 1
-
-**Commentaire résolu de la cellule « Effets secondaires » du sort « Sang Garde »** : NB : Jet de défense désigne les jets d''Esquive ET de Parade
+**Note de la cellule « Effets secondaires » du sort « Fer sanglant »** : Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas prendre Saignement au stade 1
 
 **Note de la cellule « Effets secondaires » du sort « Saignée forcée »** : Saignement particulier = Saignement de stade 1 qui ne se soigne pas et qui se cumule pas avec le Saignement classique. N''augmente pas en intensité mais redémarre le nombre si répété.
+
+**Remarque du sort « Marquage surchargé »** : Ignore les défenses.
+
+**Remarque du sort « Marquage déchirant »** : 2 remède ou deux sorts de soin d''altération d''état sont nécessaire pour arrêter un saignement.
 
 **Remarque du sort « Morsure aspirante »** : Ne marche pas si c''est la {{barriere|barrière}} qui encaisse le coup
 
 **Note de la cellule « Effets secondaires » du sort « Coagulation »** : Le mur est fixé au sol.
 
-**Commentaire résolu de la cellule « Effets secondaires » du sort « Coagulation »** : La cible doit saigner. La carapace est fixée au sol.
-
 **Note de la cellule « Effets secondaires » du sort « Renfermement »** : Vu que c''est une régénération, la santé récupérée par tour se détermine au premier jet.
 
 **Note de la cellule « Effets secondaires » du sort « Proportion démesurée »** : Le bonus en force casse les limites de la carac (oui oui, on peut monter à 6 de force temporairement)
-
-**Commentaire résolu de la cellule « Effets secondaires » du sort « Proportion démesurée »** : Le bonus en force casse les limites de la carac (oui oui, on peut monter à 7 de force temporairement)
 
 ## Textes des sorts de niveau 5
 
@@ -19488,39 +19459,40 @@ Les spécialistes du Vent ont les cheveux mi-longs, mèches vert clair, les yeux
 | Mono-Magie | Chaque attaque physique libère une lame de vent blanche qui inflige 1d6/NPM de dégâts qui va ignorer les AP et AM sur 8 cases de distance. Dégâts non élémentaires. |
 | Bi-magie | Chaque attaque physique libère une lame de vent blanche qui inflige 1d6/NPM de dégâts sur 6 cases de distance. Dégâts non élémentaires. |
 
-## Rôles
-
-- PLACEMENT
-- DÉGÂTS
-- RENFORCEMENT
-
 ## Sorts
 
 | Niveau | Nom | Type | Coût | Portée | Zone | D/S/B | Effets secondaires |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | 1.0 | Lame d''air | Attaque | 4.0 | 6.0 | 1.0 | 2d6 dégâts (+1d6/NM) | Une simple attaque de Vent. 3NM = Sur un coup critique, force le jet de vigueur pour ne pas prendre surdité 1. |
 | 1.0 | Vent couteau | Attaque<br>(Imparable) | 5.0 | 15.0 | Ligne | 2d4 dégâts (+3/NM) | Inflige des dégâts de vent sur toute la ligne. |
-| 1.0 | Vents Murmures | Invocation | 5.0 | 10km | 1.0 | / | Envoie un court message de 8 mots (+2/NM) maximum. |
-| 1.0 | Force Agile | Amplification (IC) | 5.0 | Soi-même | 1.0 | / | Permet d''ajouter son score d''Agilité en bonus de dégâts pour la prochaine attaque. 1NM = +3 dégâts |
+| 1.0 | Vents murmures | Invocation | 5.0 | 10km | 1.0 | / | Envoie un court message de 8 mots (+2/NM) maximum. |
+| 1.0 | Force agile | Amplification (IC) | 5.0 | Soi-même | 1.0 | / | Permet d''ajouter son score d''Agilité en bonus de dégâts pour la prochaine attaque. 1NM = +3 dégâts |
 | 1.0 | Propulsion | Placement (IC) | 6.0 | 10 (+2 / NM) | 1.0 | / | Fait un grand saut, inflige 1 dégât frappe pour 20kg. |
 | 2.0 | Cri faible | Attaque<br>(Imparable) | 8.0 | 6.0 | Cône | 5d6 (+3/NM) dégâts sonores | Si jet de vigueur raté = Inflige surdité 1. |
 | 2.0 | Éternuement | Attaque/ Placement | 7.0 | 1.0 | 1.0 | 5d6 dégâts | Éternue fort sur l''adversaire, permet de le faire reculer d''une case (+1/NM) en arrière. |
 | 2.0 | Fer éolien | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | L''arme crache du vent : pendant 3 tours, ses attaques infligent des dégâts de vent. |
-| 2.0 | Feuille morte | Placement (IC) | 6.0 | 8 (+2/NM) | 1.0 | / | Permet de ralentir la chute d''une cible. |
-| 2.0 | Recul Forcé | Placement (IC) | 6.0 | 4.0 | 1.0 | / | Fait reculer la cible de 1 case (+1/NM) |
-| 3.0 | Estoc hurlant | Attaque/ Placement | 14.0 | 3 (+1/NM) | 1.0 | 7d6 + 15 dégâts | Le lanceur se déplace jusqu''à sa cible. |
+| 2.0 | Feuille morte | Protection (IC) | 6.0 | 8 (+2/NM) | 1.0 | / | Permet de ralentir la chute d''une cible. |
+| 2.0 | Recul forcé | Placement (IC) | 6.0 | 4.0 | 1.0 | / | Fait reculer la cible de 1 case (+1/NM). -1 case si la cible est grande. |
+| 3.0 | Tornade | Attaque (Inesquivable) | 14.0 | 5 (+1/NM) | Cercle de 4 | 5d6 + 15 dégâts | Inflige des dégâts en zone. |
 | 3.0 | Bourrasque | Attaque | 14.0 | 4.0 | Ligne horizontale de 9 devant le lanceur | 5d6 (+5/NM) dégâts | Permet d''infliger un bonus de 2d6 dégâts en intérieur. |
-| 3.0 | Désarmer | Entrave | 14.0 | 3 (+1/NM) | 1.0 | / | Si jet de réflexe/stabilité raté = Désarme la cible |
-| 3.0 | Tornade | Attaque (Inesquivable/ Imparable) | 14.0 | 5 (+1/NM) | Cercle de 4 | 5d6 dégâts/tour | Invoque une tornade qui va bloquer les ennemis et leur mettre des dégâts pendant 3 tours. Jet d''athlétisme nécessaire pour sortir. |
+| 3.0 | Désarmer | Entrave | 12 | 3 (+1/NM) | 1.0 | / | Si jet de réflexe/stabilité raté = Désarme la cible |
 | 3.0 | Vent changeant | Placement (IC pour 3 NM) | 14.0 | 12.0 | Rectangle de 2x6 | / | Les cibles dans la zone sont attirées ou poussées de 3 cases. |
-| 4.0 | Grenade Explosive | Attaque | 23.0 | 7.0 | Cercle de 4 | 5d6 + 35 dégâts | Inflige des dégâts de zone de Vent. Inflige 2d6 dégâts (+1d6/NM) supplémentaires en intérieur. |
-| 4.0 | Vibration | Attaque/ Entrave (Imparable) | 25 (-2/NM) | Soi-même | Cercle de 3 | 5d6 + 25 dégâts sonores | Incanche une vibration insupportable, Si jet de vigueur raté = Inflige surdité 2, Si jet de stabilité/réflexe raté = Tombe par terre. |
-| 4.0 | Allègement | Amplification (IC pour 3 NM) | 26.0 | 1.0 | 1.0 | 6 Initiative et +2 Vitesse | Augmente la Vitesse et l''Initiative pour le prochain tour. Divise par deux le poids de la cible. |
-| 4.0 | Grande Vitesse | Amplification | 20 (-2/NM) | 1.0 | 1.0 | Vitesse x2 | Double la vitesse de la cible pour 3 tours. |
+| 4.0 | Courant écrasant | Attaque | 23 | 7 | Carré de 9 | 6d6 + 25 dégâts | Si jet de stabilité/réflexe raté = Divise par 2 la vitesse des cibles et clou au sol les créatures volante. Dure 2 tours. |
+| 4.0 | Catapulte aérienne | Placement | 23 (-3/NM) | 12 | 1 | / | La cible est catapultée dans une direction et atterri sans encombre. |
+| 4.0 | Allègement | Amplification (IC pour 3 NM) | 21 | 1.0 | 1.0 | +2 Vitesse | Augmente la vitesse pour 3 tours. Divise par deux le poids de la cible. |
 | 4.0 | Tempête | Météo | 24 (-2/NM) | Soi-même | Terrain | / | Invoque la météo "Vent Violent" pendant 3 tours. |
 | 5.0 | Danse de l''air | Amplification | 55 (-5/NM) | Soi-même | 1.0 | / | Permet au lanceur de voler pour le combat entier. Les jambes deviennent vaporeuses donc insensibles aux attaques |
-| 5.0 | Explosif | Attaque<br>(Inesquivable) | 55 (-5/NM) | Soi-même | Cercle de 5 | 10d6 + 40 dégâts | Utilise son corps pour invoquer une puissante explosion. Diminue d''un cran la résistance au Vent. |
-| 5.0 | Mégaphone | Attaque<br>(Imparable) | 55 (-5/NM) | 10.0 | Cône | 10d6 + 40 dégâts sonores | Si jet de vigueur raté = Inflige surdité niveau 3. |
+| 5.0 | Explosif | Attaque<br>(Inesquivable) | 55 (-5/NM) | Soi-même | Cercle de 5 | 10d6 + 60 dégâts | Utilise son corps pour invoquer une puissante explosion. Diminue d''un cran la résistance au Vent. |
+| 3.0 | Estoc hurlante | Attaque/ Placement | 12 | 3 (+1/NM) | 1.0 | 7d6 + 15 dégâts | Le lanceur se déplace jusqu''à sa cible. |
+| 3.0 | Onde de choc | Attaque | 14 | 7 | La ligne entière | 5d6 + 15 dégâts sonores | Envoi une attaque qui fait une ligne entière et touche toutes les cibles à l''intérieur. |
+| 3.0 | Grande inspiration | Amplification  (IC pour 3NM) | 14 | Soi même | 1 | +10 dégâts | Augmente les dégâts sonores pendant 3 tours. |
+| 3.0 | Infrason | Entrave (IC pour 3NM) | 12 | 3 | 1 | / | La cible se retrouve dans l''incapacité de faire des réactions ou des attaques d''opportunité pendant 2 tours. |
+| 4.0 | Grenade Explosive | Attaque | 23.0 | 7.0 | Cercle de 4 | 5d6 + 35 dégâts | Inflige des dégâts de zone de Vent. Inflige 2d6 dégâts (+1d6/NM) supplémentaires en intérieur. |
+| 4.0 | Vibration | Attaque/ Entrave (Imparable) | 25 (-2/NM) | Soi-même | Cercle de 3 | 6d6 + 25 dégâts sonores | Incante une vibration insupportable, Si jet de vigueur raté = Inflige surdité 2, Si jet de stabilité/réflexe raté = Tombe par terre. |
+| 4.0 | Sonar | Amplification  (IC pour 3NM) | 20 | 1 | 1 | Insensible aux attaques discrète/<br>sournoise | Le bénéficiaire est capable de repérer des cibles à 20m même si elles sont cachés ou discrètes. Dure 3 tours. Annule les lignes de vue des sorts\*. |
+| 4.0 | Écho | Placement (IC) | 22 (-2/NM) | Variable | 1 | / | Le lanceur peut se téléporter selon le point le plus loin de la dernière attaque qui a fait des dégâts sonores. |
+| 5.0 | Silence absolu | Entrave | 55 (-5/NM) | 8 | 1 | / | Place la cible dans un silence absolu pendant 24h. Elle ne peut plus lancer de sort niveau 5 et communiquer. |
+| 5.0 | Mégaphone | Attaque<br>(Imparable) | 55 (-5/NM) | 8 | Cône | 10d6 + 60 dégâts sonores | Si jet de vigueur raté = Inflige surdité niveau 3. |
 
 ## Notes et commentaires des sorts
 
@@ -19530,7 +19502,9 @@ Les spécialistes du Vent ont les cheveux mi-longs, mèches vert clair, les yeux
 
 **Note de la cellule « Effets secondaires » du sort « Feuille morte »** : Maximum 30m
 
-**Note de la cellule « Effets secondaires » du sort « Tornade »** : Réussir à sortir vous fait prendre quand même 5d6 dégâts. Ne pas réussir à sortir vous fait voler et tomber par terre.
+**Remarque du sort « Recul forcé »** : Sans NM dedans, le sort ne peut pas reculer une cible grande. Et c''est maximum 1 pour cette même cible.
+
+**Remarque du sort « Sonar »** : Ligne de vue : C''est le besoin de voir la cible pour la toucher dans la portée du sort. Ce sort permet d''attendre la cible malgré un obstacle. SAUF si cet obstacle ne possède pas de possibilité de faire passer le sort comme un mur sans trou.
 
 ## Légende
 
@@ -19572,12 +19546,6 @@ Les utilisateurs du vide ont une pilosité blanche et possèdent une inversion a
 | Mono-Magie | Impose un désavantage (jette 2d100, garde le moins bon) aux ennemis qui tentent des attaques contre lui. |
 | Bi-magie | Impose un désavantage (jette 2d100, garde le moins bon) à la première attaque tentée contre lui. |
 
-## Rôles
-
-- ENTRAVE
-- DÉGÂTS
-- RENFORCEMENT
-
 ## Sorts
 
 | Niveau | Nom | Type | Coût | Portée | Zone | D/S/B | Effets secondaires |
@@ -19585,26 +19553,33 @@ Les utilisateurs du vide ont une pilosité blanche et possèdent une inversion a
 | 1.0 | Bulle de vide | Attaque | 4.0 | 6.0 | 1.0 | 2d6 dégâts (+1d6/NM) | Une simple attaque de Vide. 3NM = Sur un coup critique, force le jet de fermeté pour ne pas prendre enragé 1. |
 | 1.0 | Télékinésie | Amplification (IC pour 3NM) | 4 par taille créée | Vue | 1.0 | Variable | Permet au niveau 3 de maîtrise de soulever un objet et l''envoyer dans le même tour. |
 | 1.0 | Silence | Entrave | 5.0 | 5 (+1/NM) | 1.0 | / | La cible ne peut utiliser de sorts pendant 2 tours. Malus de 60% si jamais il est fait sur une cible qui a déjà subi le sort. |
-| 1.0 | Pression | Attaque/ Entrave<br>(Imparable) | 5.0 | 6.0 | Carré 4x4 | 2d4 dégâts (+2/NM) | Si jet d''athlétisme/équilibre raté = Les cibles s’affaissent et sont incapables de bouger pour leur prochain tour. |
-| 1.0 | Injonction du vide | Placement (IC pour 3 NM) | 3.0 | 6.0 | Croix | / | Force un jet de Stabilité/Réflexe ; si les cibles le ratent, elles sont repoussées ou attirées d''une case. |
-| 2.0 | Fer Vide | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | Rend l''arme transparente : pendant 3 tours, ses attaques infligent des dégâts de vide. |
-| 2.0 | Bisou du Vide | Entrave | 6 (-1/NM) | 6.0 | 1.0 | / | Rend la cible « Enragé » |
-| 2.0 | Poing du vide | Attaque/ Placement | 8.0 | 4.0 | 1.0 | 5d6 dégâts (+3/NM) | Frappe du poing vers la cible qui est attirée d''une case, inflige 1d6 dégâts en plus si la cible est déjà au corps à corps du lanceur. |
-| 2.0 | Lien mental | Amplification (IC pour 3 NM) | 3 par personne | 50 m | Vue | / | Permet de communiquer par la pensée. |
+| 1.0 | Pression | Attaque/ Entrave<br>(Imparable) | 5.0 | 6.0 | Carré 4x4 | 2d4 dégâts (+2/NM) | Si jet d''athlétisme/équilibre raté =Les cibles perdent leur vitesse au prochain tour. |
+| 1.0 | Injonction du vide | Placement (IC pour 3 NM) | 4 | 6.0 | Croix | / | Force un jet de Stabilité/Réflexe ; si les cibles le ratent, elles sont repoussées ou attirées d''une case. |
+| 2.0 | Fer vide | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | Rend l''arme transparente : pendant 3 tours, ses attaques infligent des dégâts de vide. |
+| 2.0 | Bisou du vide | Entrave | 6 (-1/NM) | 6.0 | 1.0 | / | Inflige "enragé 1" à la cible. |
+| 2.0 | Poing implosif | Attaque/ Placement | 8.0 | 4.0 | 1.0 | 5d6 dégâts (+3/NM) | Frappe du poing vers la cible qui est attirée d''une case, inflige 1d6 dégâts en plus si la cible est déjà au corps à corps du lanceur. |
+| 2.0 | Lien mental | Amplification (IC pour 3 NM) | 4 par personne | 50 m | Vue | / | Permet de communiquer par la pensée. |
 | 2.0 | Dissipation | Entrave/ Soin | 8.0 | 8.0 | 1.0 | / | Annule les effets positif et négatif d''une cible. (Un allié perd le négatif et un ennemi le positif pour 3NM) |
-| 3.0 | Sablier du Vide | Invocation | 12.0 | 1.0 | Cercle de 5 | 4d6 dégâts (+6/NM) | Invoque un sablier qui aspire la santé des adversaires autour de lui et la retransmet au tour suivant aux alliés. Possède 20 PV. |
-| 3.0 | Invisibilité | Amplification | 13.0 | 1 (+1/NM) | 1.0 | / | Rend la cible invisible pendant 3 tours. |
-| 3.0 | Lame du vide | Attaque | 13.0 | 20.0 | 4 cibles | 10 dégâts | Inflige des dégâts fixes à 4 ennemis visibles. (Ignore les AM et BA pour 3NM) |
 | 3.0 | Aspect vide | Amplification | 12.0 | Soi-même | 1.0 | / | Rend le lanceur intangible pour une attaque (+1/NM) |
-| 3.0 | Toucher du Vide | Attaque/Soin | 14.0 | 1.0 | 1.0 | 7d6 dégâts (+6/NM) | Vampirise 25% des dégâts, marche que sur les créatures vivantes. |
+| 3.0 | Invisibilité | Amplification | 13.0 | 1 (+1/NM) | 2 | / | Rend la cible invisible pendant 3 tours. |
+| 3.0 | Lame du vide | Attaque | 13.0 | 20.0 | 4 cibles | 20 dégâts | Inflige des dégâts fixes à 4 ennemis visibles. (Ignore la BA pour 3NM) |
+| 3.0 | Touché du vide | Attaque/Soin | 14.0 | 1.0 | 1.0 | 7d6 dégâts (+6/NM) | Vampirise 25% des dégâts, marche que sur les créatures vivantes. |
+| 4.0 | Cadence défensive | Amplification  (IC pour 3NM) | 23 | 1 | 1 | / | Permet d''avoir +1 jet de défense pour les postures Neutre, Symbiose et Vigilence. Augmente le coup critique de la posture Défense de 5. Dure 4 tours. |
+| 4.0 | Grenade implosive | Attaque/ Placement | 27.0 | 3.0 | Croix infini | 8d6 + 15 dégâts | Inflige de gros dégâts de Vide en zone, attire de 1 case (+1/NM) les victimes. |
+| 4.0 | Intérieur solide | Amplification (IC) | 20 | Vue | 1 | / | Permet de résister à toute agression mentale. (3NM = Immunité au contrôle mental passif) |
+| 4.0 | Leurre de rage | Attaque | 23 | 6 | 1 | 7d6 + 20 dégâts (+7/NM) | Inflige une frappe couplé à une moquerie.<br>Si jet fermeté raté = Inflige "Enragé 2" |
+| 5.0 | Regard de Mora | Amplification /Entrave | 42 | Soi même | Terrain | / | Permet d''imposer une règle au sein du champ de bataille parmi une liste\* pendant 2 tours (+1/NM). |
+| 5.0 | Marteau du vide | Attaque | 55 (-5/NM) | 1.0 | Croix de 2 | 10d6 + 70 dégâts | Inflige de terribles dégâts de vide sur une zone. |
+| 3.0 | Sablier du vide | Invocation | 12.0 | 1.0 | Cercle de 5 | 4d6 dégâts (+6/NM) | Invoque un sablier qui aspire la santé des adversaires autour de lui et la retransmet au tour suivant aux alliés. Possède 20 PV. |
+| 3.0 | Suppression | Entrave (IC pour 3NM) | 15 | 6 | 1 | / | Retire toutes les amplifcation de la cible et elle ne peut pas bénéficier d''amplification pendant 2 tours. |
+| 3.0 | Flèche du rien | Attaque | 14 | 4 (+1/NM) | 1 | 7d6 + 15 dégâts | Une lourde attaque du vide. |
+| 3.0 | Décret de représailles | Entrave | 15 | 3 (+1/NM) | 1 | / | Si la cible fait un sort durant son tour, il prend 15 dégâts non élémentaire. Dure 3 tours. |
 | 4.0 | Aléa négatif | Entrave | 20.0 | Vue | 1.0 | / | Lance 1d20 : Inflige un effet aléatoire parmi une liste de 20 effets |
-| 4.0 | Grenade Implosive | Attaque | 27.0 | 3.0 | Croix infini | 8d6 + 15 dégâts | Inflige de gros dégâts de Vide en zone, attire de 1 case (+1/NM) les victimes. |
-| 4.0 | Esprit Solide | Amplification (IC) | 20.0 | Vue | 1.0 | / | Permet de résister à toute agression mentale. (3NM = Immunité au contrôle mental passif) |
-| 4.0 | Saccage Temporel | Météo | 20 (-2/NM) | Soi-même | Terrain | / | Invoque la météo "Saccage temporel" pendant 3 tours. |
+| 4.0 | Déni de classe | Entrave (IC pour 3NM) | 20 | 6 | 1 | / | La cible ne peut pas bénéficier de ses dons de classes pendant 2 tours. |
+| 4.0 | Fissure de faiblesse | Attaque | 23 | 6 | 1 | 8d6 + 15 dégâts | Si jet fermeté raté = Annule les AM de base pendant 1 tour. |
 | 4.0 | Mot du vide | Amplification | 23.0 | 1 (+1/NM) | 1.0 | / | La cible sera partiellement immatérielle. Impose un désavantage aux jets d''attaques des agresseurs. Dure 2 tours. |
-| 5.0 | Anti-magie | Météo | 42.0 | 1.0 | Terrain | / | Pose la météo Zone Vide pendant 2 tours (+1/NM). |
-| 5.0 | Métronome | Aléatoire | Aléatoire | Variable | Variable | Variable | Lance un sort aléatoire (1d12 pour la magie => 1d4 le niveau => 1d6 le sort)<br>Les NM sont utiles pour le sort aléatoire |
-| 5.0 | Marteau du Vide | Attaque | 55 (-5/NM) | 1.0 | Croix de 2 | 10d6 + 60 dégâts | Inflige de terribles dégâts de vide sur une zone. |
+| 5.0 | État zéro | Attaque/ Entrave | 42 | Soi-même | Terrain | 10d6 + 20 dégâts (+10/NM) | Indépendant de la défense : Supprime toutes les amplifications, entrave, protections, effets de sorts et constructions magiques dans la zone. |
+| 5.0 | Extinction | Attaque/ Entrave | 55 (-5/NM) | 6 | 1 | 10d6 + 70 dégâts | Si jet fermeté raté = Sous l''effet du sort "Silence" |
 
 ## Notes et commentaires des sorts
 
@@ -19617,18 +19592,9 @@ Magie 3 = taille 3 (3 kg maxi)
 Magie 4 = taille 4 (4 kg maxi)  
 Magie 5 = taille 5 (5 kg maxi)
 
-**Commentaire résolu de la cellule « Effets secondaires » du sort « Télékinésie »**
+**Note de la cellule « Effets secondaires » du sort « Fer vide »** : Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas prendre Rage au stade 1
 
-La taille de l''objet n''est pas infinie, il faut un certain niveau de magie pour certains objets  
-Magie 1 = TP  
-Magie 2 = P  
-Magie 3 = N  
-Magie 4 = G  
-Magie 5 = TG
-
-**Note de la cellule « Effets secondaires » du sort « Fer Vide »** : Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas prendre Rage au stade 1
-
-**Note de la cellule « Effets secondaires » du sort « Poing du vide »** : La cible est attirée d''une case seulement si elle rate totalement son jet de défense ou si elle est dans l''incapacité de se défendre.
+**Note de la cellule « Effets secondaires » du sort « Poing implosif »** : La cible est attirée d''une case seulement si elle rate totalement son jet de défense ou si elle est dans l''incapacité de se défendre.
 
 **Note de la cellule « Effets secondaires » du sort « Dissipation »**
 
@@ -19636,18 +19602,24 @@ Magie 5 = TG
 - Inutile contre les infirmités, la fatigue physique, les croix.
 - Soigne d''un cran les altérations d''états.
 
-**Commentaire résolu de la cellule « Effets secondaires » du sort « Dissipation »** : Les buff niveau 5 ne peuvent pas être annulés par ce sort.
-
-**Note de la cellule « Effets secondaires » du sort « Sablier du Vide »** : Les ennemis peuvent se défendre contre le coup du sablier.
-
 **Note de la cellule « Effets secondaires » du sort « Aspect vide »** : L''équipement le devient aussi, les sorts et les attaques ne touchent pas, SEULES les armes spectrales fonctionnent dans cet état.
 
-**Commentaire résolu de la cellule « Effets secondaires » du sort « Aspect vide »** : L''équipement le devient aussi donc les attaques et sorts ne fonctionnent pas, SEULES les armes spectrales fonctionnent dans cet état.
-
-**Remarque du sort « Toucher du Vide »**
+**Remarque du sort « Touché du vide »**
 
 Si c''est la {{barriere|barrière}}, la {{barriere|barrière}} est vampirisée.  
 Si c''est les points de vie, c''est les points de vie qui sont vampirisés
+
+**Remarque du sort « Regard de Mora »**
+
+- Les alliés infligent +5 dégâts et les ennemis -10.
+- Les alliés ont +10% chances de réussir, les ennemis -20%
+- Les ennemis ne peuvent plus sortir des zones d''influences d''eux mêmes
+- Les ennemis perdent un niveau de puissance magique
+- Banni les invocations et empêches les sorts d''invocations
+- Détruit les sorts "Construction" sur le terrain et empêche ces sorts d''être utilisé
+- Une fois pendant le Regard, si un allié fait des 1 dans les dés de dégâts, il peut les relancer.
+
+**Note de la cellule « Effets secondaires » du sort « Sablier du vide »** : Les ennemis peuvent se défendre contre le coup du sablier.
 
 **Note de la cellule « Effets secondaires » du sort « Aléa négatif »**
 
@@ -19676,34 +19648,9 @@ RIEN N''EST ESQUIVABLE
 19 : Retire tous les effets positifs de la cible  
 20 : Inflige couardise
 
-**Note de la cellule « Effets secondaires » du sort « Métronome »**
-
-Ne peut pas être relancé.  
-Le mage noir et blanc peuvent le faire mais ça dépendra de la nature du premier sort.
-
-**Commentaire résolu de la cellule « Effets secondaires » du sort « Métronome »** : Ne peut pas être relancé.
+**Remarque du sort « Déni de classe »** : Ne retire pas le premier don niveau 10 des spécialisations
 
 ## Textes des sorts de niveau 5
-
-### Anti-magie
-
-> Que l’air lui-même se retire et que chaque souffle s’éteigne,  
-> Que toute force s’évanouisse dans un néant sans fond,  
-> Que les chants et incantations se brisent en silence,  
-> Que la puissance des mages ne soit plus rien,  
-> Et puisse l’univers se vider, jusqu’au dernier écho…
->
-> ANTI-MAGIE !
-
-### Métronome
-
-> Que le souffle de Mora ouvre ses portes incertaines,  
-> Que les lois s’inclinent devant le hasard absolu,  
-> Que chaque énergie converge ici,  
-> Que le choix échappe à ma volonté et suive son destin,  
-> Et puisse le sort surgir, imprévisible et irrévocable…
->
-> MÉTRONOME !
 
 ### Marteau du Vide
 
@@ -19714,6 +19661,16 @@ Le mage noir et blanc peuvent le faire mais ça dépendra de la nature du premie
 > Et puisse le Vide se déchaîner dans un fracas sans fin…
 >
 > MARTEAU DU VIDE !
+
+### État zéro
+
+> Que l’air lui-même se retire et que chaque souffle s’éteigne,  
+> Que toute force s’évanouisse dans un néant sans fond,  
+> Que les chants et incantations se brisent en silence,  
+> Que la puissance des mages ne soit plus rien,  
+> Et puisse l’univers se vider, jusqu’au dernier écho…
+>
+> ÉTAT ZÉRO !
 
 ## Légende
 
@@ -19746,7 +19703,7 @@ Le principal intérêt repose sur sa versatilité, en effet cette magie pioche s
 - Humain, Nain, Elfe argenté, Forestier, Noir, Doré, Farfadet, Felfe, Hujin et Drakos sont les seuls qui peuvent l''avoir.
 - Mono-magie uniquement.
 - Classe unique = Archimage.
-- Surtension corporelle (Vulnérabilité contre les dégâts physiques, ne peut mettre plus de 5 Santé lors de la répartition des points lors du passage de niveau global.
+- Surtension corporelle (Vulnérabilité contre les dégâts physiques, ne peut mettre plus de 5 Santé lors de la répartition des points lors du passage de niveau global).
 - État fatigue 1 en permanence (sans le malus aux dégâts).
 - Impossible de porter des armures lourdes ou boucliers lourds même si la classe vous le permet.
 

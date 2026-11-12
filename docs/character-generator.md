@@ -789,7 +789,7 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   Potentiel Illimité ; une marionnette jusqu'au NPM du niveau, `npmMax`, jamais le plafond des sorts du Potentiel Illimité : R188 (2)), puis celles qui demandent un allié (ou au-delà du NPM), un bouton chacune sur la couleur
   de ses magies ; la carte resserrée de la créature choisie au NPM du sort, le « × N » de son coût (R129 ; `lib/creature-npm.mjs#creatureAuNpm`) ; une
   marionnette est la créature d'un NPM : la choisir règle le « × N ». Sous un sort qui sacrifie une invocation (`sacrificeDuSort`) : l'effet « Manteau noir »
-  de la marionnette du NPM du sort, ou toutes les améliorations d'« Amélioration cadavérique » (`regles.tableaux_de_sacrifice`). Le choix d'une créature
+  de la marionnette du NPM du sort (le tableau d'« Amélioration cadavérique » est retiré : R237 (7)). Le choix d'une créature
   est un réglage du moment, non enregistré.
 - **Sorts du moment** (décision R102) : `sortDuMoment` refait le coût (dons « réduits de 4 », Économe, bâton ; jamais moins de 1 ; Corruption :
   « ou 2 × le coût − bâton » en corruption ; un coût par unité — « Par NPM de la créature invoquée », « Pour 1 dégât supplémentaire », « Par taille

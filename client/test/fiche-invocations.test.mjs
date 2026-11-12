@@ -1,16 +1,13 @@
 // Les invocations sur la fiche (décision R130) : les créatures d'un sort qui invoque, celles à la portée du personnage d'abord, et ce que donne un sort qui
 // sacrifie une invocation. Les invocations se lisent dans la base ; les tests suivent ses invariants (le site de dev peut modifier les créatures).
 import assert from 'node:assert/strict';
-import { copyFileSync } from 'node:fs';
-import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
-import { tableauxDesSorts } from '../src/lib/bestiaire-db.mjs';
+import * as bestiaire from '../src/lib/bestiaire-db.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
 import * as M from '../src/lib/fiche-moteur.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
-import { baseDImport, cheminDImport, reglesDImport } from './aide-base-d-import.mjs';
-import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
+import { baseDImport, reglesDImport } from './aide-base-d-import.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(db))); // tel que la page le reçoit
@@ -79,7 +76,7 @@ test('creaturesDuSort : une marionnette (une créature par NPM) est à la porté
   assert.equal(M.creaturesDuSort(regles, fiche(), regles.sorts.find((s) => !regles.invocations.some((i) => i.sort_id === s.id))), null);
 });
 
-test('sacrificeDuSort : l’effet de la carte sacrifiée (« Manteau noir »), le tableau entier (« Amélioration cadavérique »), rien pour un autre sort', () => {
+test('sacrificeDuSort : l’effet de la carte sacrifiée (« Manteau noir »), rien pour un autre sort ; le tableau « Amélioration cadavérique » est retiré (R237 (7), migration 0117)', () => {
   const effets = db.prepare('SELECT sort_id, count(*) AS n FROM creature_effet WHERE sort_id IS NOT NULL GROUP BY sort_id').all();
   assert.ok(effets.length > 0);
   for (const e of effets) {
@@ -88,48 +85,16 @@ test('sacrificeDuSort : l’effet de la carte sacrifiée (« Manteau noir »), l
     assert.equal(r.lignes.length, e.n);
     for (const x of r.lignes) assert.ok(x.creature.id && x.texte);
   }
-  // le tableau d'une invocation se rattache au sort que désigne invocation.tableau_sort_id (id figé, migration 0099 ; lib/bestiaire-db.mjs#tableauxDesSorts) :
-  // un renommage du sort ou un titre réécrit sur le site de dev ne coupe pas le lien. Le titre écrit le nom du sort à l'import seulement
-  // (test/aide-base-d-import.mjs) ; sur la base courante, le lien est celui de la colonne
+  // plus de branche « tableau » : ni dans les règles de la fiche, ni dans le bestiaire (G1 de game-design), ni dans la base
   for (const [r0, base, quand] of [[reglesDImport(), baseDImport(), 'import'], [regles, db, 'aujourd’hui']]) {
-    const lies = base.prepare('SELECT id, tableau_sort_id FROM invocation WHERE tableau_sort_id IS NOT NULL ORDER BY id').all();
-    assert.ok(lies.length > 0, `${quand} : Amélioration cadavérique`);
-    assert.deepEqual(r0.tableaux_de_sacrifice.map((t) => [t.invocation_id, t.sort_id]).sort(), lies.map((l) => [l.id, l.tableau_sort_id]), quand);
-    for (const t of r0.tableaux_de_sacrifice) {
-      const r = M.sacrificeDuSort(r0, t.sort_id);
-      assert.equal(r.type, 'tableau', quand);
-      assert.equal(r.lignes.length, base.prepare('SELECT count(*) AS n FROM amelioration_cadaverique a JOIN sort s ON s.magie_id = a.magie_id WHERE s.id = ?').get(t.sort_id).n, quand);
-      if (quand !== 'import') continue;
-      // à l'import, le sort porte le nom écrit dans le titre du tableau de son invocation (décision R130)
-      const titre = base.prepare('SELECT tableau_titre FROM invocation WHERE id = ?').get(t.invocation_id).tableau_titre;
-      const nom = base.prepare('SELECT nom FROM sort WHERE id = ?').get(t.sort_id).nom;
-      assert.equal(titre.toLocaleLowerCase('fr').includes(nom.toLocaleLowerCase('fr')), true, `${quand} : ${titre} / ${nom}`);
-    }
+    assert.equal('tableaux_de_sacrifice' in r0, false, quand);
+    assert.equal(base.prepare("SELECT count(*) AS n FROM sqlite_master WHERE name = 'amelioration_cadaverique'").get().n, 0, quand);
+    assert.equal(base.prepare('SELECT count(*) AS n FROM invocation WHERE tableau_sort_id IS NOT NULL OR tableau_titre IS NOT NULL').get().n, 0, quand);
     // un sort qui invoque sans rien donner au sacrifice
-    const sacrifie = (id) => r0.tableaux_de_sacrifice.some((t) => t.sort_id === id) || r0.invocations.some((i) => i.creatures.some((c) => c.effets.some((e) => e.sort_id === id)));
-    assert.equal(M.sacrificeDuSort(r0, r0.invocations.find((i) => !sacrifie(i.sort_id)).sort_id), null, quand);
+    const sacrifie = (id) => r0.invocations.some((i) => i.creatures.some((c) => c.effets.some((e) => e.sort_id === id)));
+    const sansSacrifice = r0.invocations.find((i) => !sacrifie(i.sort_id));
+    assert.ok(sansSacrifice, quand);
+    assert.equal(M.sacrificeDuSort(r0, sansSacrifice.sort_id), null, quand);
   }
-});
-
-test('tableauxDesSorts : renommer le sort et réécrire le titre du tableau sur le site de dev ne coupe pas le lien (id figé, migration 0099)', (t) => {
-  const chemin = fichierTemporaire('maverick.db', 'fiche-invocations', { t });
-  copyFileSync(cheminDImport(), chemin);
-  const base = new DatabaseSync(chemin);
-  t.after(() => base.close());
-  base.exec('PRAGMA foreign_keys = ON');
-  const avant = tableauxDesSorts(base);
-  assert.ok(avant.size > 0, 'un tableau de sacrifice à l’import');
-  for (const [sortId, tableau] of avant) {
-    base.prepare("UPDATE sort SET nom = nom || ' (essai)', nom_cle = nom_cle || '-essai' WHERE id = ?").run(sortId);
-    base.prepare("UPDATE invocation SET tableau_titre = 'Tableau d’essai' WHERE id = ?").run(tableau.invocationId);
-  }
-  const apres = tableauxDesSorts(base);
-  assert.deepEqual([...apres.keys()], [...avant.keys()]);
-  for (const [sortId, tableau] of apres) {
-    assert.equal(tableau.invocationId, avant.get(sortId).invocationId, sortId);
-    assert.deepEqual(tableau.lignes, avant.get(sortId).lignes, sortId);
-    // le nom et le titre courants, lus par id
-    assert.equal(tableau.nom, base.prepare('SELECT nom FROM sort WHERE id = ?').get(sortId).nom, sortId);
-    assert.equal(tableau.titre, base.prepare('SELECT tableau_titre FROM invocation WHERE id = ?').get(tableau.invocationId).tableau_titre, sortId);
-  }
+  assert.equal(bestiaire.tableauxDesSorts, undefined, 'tableauxDesSorts est retiré');
 });

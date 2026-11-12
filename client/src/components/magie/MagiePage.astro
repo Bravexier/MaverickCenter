@@ -1,5 +1,5 @@
 ---
-import { nombre, sortsParNpm } from '../../lib/sort-format.mjs';
+import { ancreDeSpecialisation, nombre, sortsParSpecialisation } from '../../lib/sort-format.mjs';
 import { classeDeMagie, cssDesFamilles } from '../../lib/palette-css.mjs';
 import { classeDeLaPageDuSite } from '../../lib/couleur-de-la-page.mjs';
 import magieBaseCss from '../../styles/magie/base.css?raw';
@@ -26,9 +26,9 @@ import Texte from './Texte.astro';
 
 const magieCss = [magieBaseCss, magiePageCss, magieSortsCss, magieDetailCss, magieTooltipsCss, magieCreaturesCss, magieResponsiveCss, magiePrintCss].join('\n');
 
-// Gabarit commun des pages de magie : bannière (nom, rôles, ressources offertes), présentation, altération d'état liée, résistances, Mode Hyper, sorts par niveau de
-// puissance magique (le Potentiel Illimité, qui n'en a pas à lui, montre à leur place ceux des autres magies, en onglets : SortsDuPotentiel.astro),
-// races. Il affiche les lignes de la base (tables magie, sort… ; lib/magies-db.mjs) : pour changer une magie ou un sort, on change la base. Seuls le titre, les alias et le statut (pages du wiki) et la section « Disponibilité par race » (`magies_innees` des pages de
+// Gabarit commun des pages de magie : bannière (nom, rôles s'il y en a, ressources offertes), présentation, altération d'état liée, résistances, Mode Hyper,
+// sorts par niveau de puissance magique : le tableau commun, puis les deux spécialisations (R236 ; le Potentiel Illimité, qui n'a ni sorts ni spécialisation à
+// lui, montre à leur place ceux des autres magies, en onglets : SortsDuPotentiel.astro), races. Il affiche les lignes de la base (tables magie, sort… ; lib/magies-db.mjs) : pour changer une magie ou un sort, on change la base. Seuls le titre, les alias et le statut (pages du wiki) et la section « Disponibilité par race » (`magies_innees` des pages de
 // race, avec l'exception du Nain : lib/magie-relations.mjs) viennent encore du front matter.
 interface Props {
   entry: WikiEntry;
@@ -50,17 +50,21 @@ const ressources = [
   { label: 'Chakra offert', valeur: String(magie.chakra ?? ''), colonne: 'chakra_offert' },
   { label: 'Caractéristique bonus', valeur: magie.caracteristique ? magie.caracteristique.brut : '', colonne: 'caracteristique_brut' },
 ].map((r) => ({ ...r, vide: r.valeur === '', valeur: nombre(r.valeur), nul: r.valeur === '0', texte: !/^-?\d+$/.test(r.valeur) }));
-const groupes = sortsParNpm(magie.sorts);
+// les sorts communs (NPM 1 et 2) en groupes par NPM, puis chaque spécialisation avec les siens (lib/sort-format.mjs#sortsParSpecialisation)
+const { communs: groupes, specialisations } = sortsParSpecialisation(magie.sorts, magie.specialisations);
 const autresMagies = magie.id === POTENTIEL_ILLIMITE ? magiesDuPotentiel(magies.magies) : [];
 // Les créatures citées par les sorts de la page (invocations, effets de carte comme « Manteau noir ») : leur carte du bestiaire en infobulle (demande du
 // propriétaire), une bulle par créature, posée hors des onglets et des détails de sort (components/Infobulles.astro ne montre pas une bulle dont un parent est caché)
-const sortsDeLaPage = [...groupes, ...autresMagies.flatMap((a) => a.groupes)].flatMap((g) => g.sorts);
+const sortsDeLaPage = [
+  ...groupes.flatMap((g) => g.sorts),
+  ...specialisations.flatMap((x) => x.groupes.flatMap((g) => g.sorts)),
+  ...autresMagies.flatMap((a) => [...a.communs.flatMap((g) => g.sorts), ...a.specialisations.flatMap((x) => x.groupes.flatMap((g) => g.sorts))]),
+];
 const creatures = [
   ...new Set(
     sortsDeLaPage.flatMap((s) => [
       ...s.invoque.flatMap((i) => i.creatures.map((c) => c.id)),
       ...s.effetsDeCarte.map((e) => e.id),
-      ...(s.ameliorations?.lignes ?? []).flatMap((a) => (a.creature ? [a.creature.id] : [])),
     ]),
   ),
 ]
@@ -78,7 +82,7 @@ const nav = [
   { href: '#alteration', label: 'Altération d’état', show: magie.etats.length > 0 },
   { href: '#affinites', label: 'Résistances', show: true },
   { href: '#mode-hyper', label: 'Mode Hyper', show: magie.modeHyper.length > 0 },
-  { href: '#sorts', label: 'Sorts', show: groupes.length > 0 || autresMagies.length > 0 },
+  { href: '#sorts', label: 'Sorts', show: groupes.length > 0 || specialisations.length > 0 || autresMagies.length > 0 },
   { href: '#races-disponibles', label: 'Races', show: aDesRaces },
 ].filter((n) => n.show);
 // Panneau latéral (demande du propriétaire du 2026-11-05 : « un panneau latéral qui liste toutes les magies et un bouton "toutes" qui ramène au menu
@@ -94,7 +98,7 @@ const panneau = [...magies.magies.values()]
 
 <style is:inline set:html={creatures.length ? `${magieCss}\n${carteCss}` : magieCss}></style>
 <style is:inline set:html={cssDesFamilles(['genre'])}></style>
-<div class="magie-cadre">
+<div class={`magie-cadre${specialisations.length > 0 || autresMagies.length > 0 ? ' magie-cadre--large' : ''}`}>
 <nav class="magies-panneau no-print" aria-label="Magies">
   <details class="magies-panneau__repli" open data-magies-repli>
     <summary class="magies-panneau__resume">
@@ -157,8 +161,13 @@ const panneau = [...magies.magies.values()]
       <nav class="magie-nav no-print" aria-label="Sections de la page">
         {nav.map((n) => <a href={n.href}>{n.label}</a>)}
         {groupes.length > 0 && (
-          <span class="magie-nav__npm" role="group" aria-label="Niveaux de puissance magique">
+          <span class="magie-nav__npm" role="group" aria-label="Niveaux de puissance magique communs">
             {groupes.map((g) => <a href={`#npm-${g.niveau}`} title={`Niveau de Puissance Magique ${g.niveau}`}>NPM {g.niveau}</a>)}
+          </span>
+        )}
+        {specialisations.length > 0 && (
+          <span class="magie-nav__npm" role="group" aria-label="Spécialisations">
+            {specialisations.map((s) => <a href={`#specialisation-${ancreDeSpecialisation(s.specialisation.id)}`}>{s.specialisation.nom}</a>)}
           </span>
         )}
       </nav>
@@ -206,7 +215,7 @@ const panneau = [...magies.magies.values()]
     )
   }
 
-  {groupes.length > 0 && <MagieSorts groupes={groupes} magies={magies} />}
+  {(groupes.length > 0 || specialisations.length > 0) && <MagieSorts communs={groupes} specialisations={specialisations} magies={magies} />}
   {autresMagies.length > 0 && <SortsDuPotentiel autres={autresMagies} magies={magies} entries={entries} />}
 
   {

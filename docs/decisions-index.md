@@ -2,7 +2,7 @@
 
 Ne lis jamais `docs/decisions-regles.md` en entier : trouve ici le numéro de la décision, puis cherche sa ligne avec Grep (motif `^\| R41 \|`) et ne lis qu'elle.
 
-Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 235 décisions, de R1 à R235, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
+Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 251 décisions, de R1 à R251, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
 
 | Réf. | Sujet | Décision |
 | --- | --- | --- |
@@ -241,3 +241,19 @@ Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas mo
 | R233 | Les synonymes d'un mot-clé (libellés secondaires), suite de R232 (demande… | (1) Un mot-clé peut avoir des synonymes (libellés seco… |
 | R234 | Le tableau des mots-clés du Glossaire, suite de R232 et R233 (demande du p… | (1) Le tableau des mots-clés du Glossaire (`/regles/gl… |
 | R235 | L'icône d'un mot-clé, suite de R234 (8) (demande du propriétaire, 2026-11-… | (1) Une colonne `icone` du mot-clé, modifiable sur le… |
+| R236 | Spécialisations magiques (Magie V10, mise à jour de Décembre) (demande du… | (1) Deux spécialisations par magie à partir du NPM 3 (… |
+| R237 | Intégration des magies du classeur de Décembre (Magie V10) à la base (dema… | (1) Le classeur fait foi (le docx est la liste des mod… |
+| R238 | Classes de la mise à jour de Décembre (demande du propriétaire, 2026-11-12… | (1) Boxeur et Porte-étendard : « Classe Physique Corps… |
+| R239 | Races Fongoïde et Gémidien (docx : « Nouvelle race : Fongoïde », « Nouvell… | (1) Deux races de plus, pures : le site en compte 29 (… |
+| R240 | Initiative groupée et initiative individuelle (docx, rubrique « Gameplay »… | Les deux coexistent, au choix du MJ. L'initiative indi… |
+| R241 | Effets secondaires des matériaux d'armes (docx, rubrique « Armes » : « Les… | (1) Les effets secondaires des 13 matériaux cités sont… |
+| R242 | Le bestiaire et les sorts renommés ou supprimés par la mise à jour de Déce… | (1) Les cartes du bestiaire prennent le nouveau nom du… |
+| R243 | Textes d'incantation et remarques des sorts absents du classeur de Décembr… | (1) Les six textes d'incantation de Glace et de Terre… |
+| R244 | Coûts des sorts que le classeur de Décembre écrit sans les répartir (R237… | (1) Même lecture que R106 avec le nouveau chiffre : Ru… |
+| R245 | Affichage des pages de magie V10 (R236 (1)) : la règle « CHOSES A SAVOIR »… | (1) Les phrases de « CHOSES A SAVOIR » sur la Super-ma… |
+| R246 | Nom affiché par la capacité « sort supplémentaire » de la Poupée fulgurant… | La capacité affiche « Boules plasmiques », le nouveau… |
+| R247 | Affichage des pages de magie V10, suite de R245 (1) et (2) : le point d'at… | (1) L'infobulle se pose sur le titre de chacune des de… |
+| R248 | Projectile arcanique : coût et fiche, suite de R244 (3) : la réponse « Var… | (1) La progression fait foi : 1 projectile coûte 4, ch… |
+| R249 | Onglets du Potentiel Illimité : R245 et R247 visent la page d'une magie ;… | Chaque onglet du Potentiel Illimité suit R245 et R247… |
+| R250 | Altération de l'Ombre visée par un don « à la magie innée et son altératio… | Le cran va à la Peur seule. La Somnolence n'a pas de r… |
+| R251 | Texte du coût de Projectile arcanique (suite de R248 ; MAJ-K7 (1)) | Coût : « 4/projectile » (valeur 4) ; coût secondaire :… |

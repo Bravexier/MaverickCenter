@@ -14,6 +14,7 @@ import { texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
 import { coutEnUneCase, repartirLeCout } from '../src/lib/sort-cout.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
+import { sortsNouveauxDeLa0117, sortsReecritsParLa0117 } from './aide-migration-0117.mjs';
 
 const racine = trouverRacine();
 const dossier = join(racine, 'data', 'migrations');
@@ -33,6 +34,17 @@ const CLE = {
   creature_effet: (id) => ({ creature_id: id.slice(0, id.lastIndexOf('#')), rang: Number(id.slice(id.lastIndexOf('#') + 1)) }),
 };
 const regle = (s) => (s.match(REGLE) ?? []).join('');
+// R237 (1), migration 0117 : le classeur de Décembre fait foi. Elle supprime les rôles de magie et le tableau cadavérique (R237 (7)), supprime des sorts et
+// réécrit ou crée les autres depuis le classeur : une correction de la 0003 ne se relit pas dans un texte que la 0117 a réécrit (les coquilles qu'il
+// porte encore, « Soi même »… sont la question ouverte au propriétaire sur les coquilles du classeur, pas des fautes revenues).
+const TABLES_RETIREES_PAR_0117 = new Set(['magie_role', 'amelioration_cadaverique']);
+const COLONNES_DE_TEXTE = ['nom', 'effets', 'remarque', 'texte_niveau5', 'portee_brut', 'dsb_brut', 'type_brut', 'zone_brut', 'cout_brut', 'cout_secondaire'];
+const colonnesReecrites = new Map();
+const reecritePar0117 = (col, id) => {
+  if (!colonnesReecrites.has(col)) colonnesReecrites.set(col, sortsReecritsParLa0117([col]));
+  return colonnesReecrites.get(col).has(id) || sortsNouveauxDeLa0117().has(id);
+};
+const sortsDe0117 = () => new Set([...sortsReecritsParLa0117(COLONNES_DE_TEXTE), ...sortsNouveauxDeLa0117()]);
 
 test('registre : 500 corrections, toutes décrites, de nature connue, qui changent bien le texte', () => {
   assert.equal(registre.migration, '0003-orthographe-magies');
@@ -72,6 +84,7 @@ test('base : chaque correction est faite (le texte corrigé est dans la colonne)
   assert.equal(reecrits0079.size, 13, 'les 13 effets réécrits par 0079');
   const lire = new Map();
   for (const c of corrections) {
+    if (TABLES_RETIREES_PAR_0117.has(c.table) || (c.table === 'sort' && reecritePar0117(c.col, c.id))) continue;
     if (c.table === 'sort' && c.col === 'cout_brut' && tranches.has(c.id)) {
       assert.ok(tranches.get(c.id).avant.includes(c.apres), `${c.id} : « ${c.apres} » absent de l'écriture que 0065 remplace`);
       continue;
@@ -103,7 +116,7 @@ test('migration SQL : une ligne de commentaire par correction, et seule la versi
   assert.doesNotMatch(sql, /\b(BEGIN|COMMIT|PRAGMA)\b/i, 'le migrateur gère la transaction');
 });
 
-test('identifiants stables : chaque sort a toujours pour clé normalize(nom), les 322 sorts sont là et aucun nom n’a été changé sauf deux corrections déclarées (puis les noms de 0006, qui gardent leur identifiant)', () => {
+test('identifiants stables : chaque sort a toujours pour clé normalize(nom), tous les sorts sont là et aucun nom n’a été changé sauf deux corrections déclarées (puis les noms de 0006 et les renommages de 0117, qui gardent leur identifiant)', () => {
   // 0006 (noms à trancher) a renommé des sorts sans changer leur identifiant : l'id garde la clé du nom d'origine
   const clesAvant0006 = new Map(JSON.parse(readFileSync(join(dossier, '0006-orthographe-noms.json'), 'utf8')).cles
     .filter((c) => c.table === 'sort' && c.col === 'nom_cle').map((c) => [c.cle.id, c.avant]));
@@ -112,10 +125,16 @@ test('identifiants stables : chaque sort a toujours pour clé normalize(nom), le
   for (const s of db.prepare('SELECT id, magie_id, nom, nom_cle FROM sort').all()) {
     assert.equal(normalize(s.nom), s.nom_cle, `${s.id} : le nom « ${s.nom} » ne donne plus la clé « ${s.nom_cle} »`);
   }
-  // à l'import : 322 sorts, chacun identifié par la clé de son nom d'origine
+  // à l'import : chaque sort est identifié par la clé de son nom d'origine ; la 0117 renomme 24 sorts en gardant leur identifiant (R237 (4) et (11)) et en
+  // crée 119 dont l'identifiant est tiré de leur nom (sauf « Torrent colérique » : le classeur écrit « Torrant colérique », l'identifiant est la correction)
+  const registre0117 = JSON.parse(readFileSync(join(dossier, '0117-magies-v10-specialisations.json'), 'utf8')).sorts;
+  const renommes = new Set([...registre0117.renommes_r237_4, ...registre0117.renommes_r237_11].map((r) => r.id));
   const sortsImport = historique.lignesDImport('sort');
-  assert.equal(sortsImport.length, 322);
-  for (const s of sortsImport) assert.equal(s.id, `${s.magie_id}#sort:${clesAvant0006.get(s.id) ?? s.nom_cle}`);
+  assert.ok(sortsImport.length > 0);
+  for (const s of sortsImport) {
+    if (renommes.has(s.id) || s.id === registre0117.torrent.id) continue;
+    assert.equal(s.id, `${s.magie_id}#sort:${clesAvant0006.get(s.id) ?? s.nom_cle}`);
+  }
   // un effet de créature qui cite un sort porte son nom
   for (const e of db.prepare('SELECT e.creature_id, e.rang, e.nom, s.nom AS sort FROM creature_effet e JOIN sort s ON s.id = e.sort_id').all()) {
     assert.equal(e.nom, e.sort, `${e.creature_id} #${e.rang} : l’effet ne porte plus le nom du sort`);
@@ -125,9 +144,11 @@ test('identifiants stables : chaque sort a toujours pour clé normalize(nom), le
   for (const c of noms) assert.equal(normalize(c.apres), normalize(c.avant), `${c.id} : la correction du nom changerait l'identifiant`);
 });
 
-test('fautes connues disparues des textes des magies et des sorts (rien n’est revenu)', () => {
+test('fautes connues disparues des textes des magies et des sorts (rien n’est revenu), hors les sorts que la 0117 écrit depuis le classeur de Décembre', () => {
+  const ecritsPar0117 = sortsDe0117();
   const textes = [
-    ...db.prepare('SELECT effets, remarque, texte_niveau5, portee_brut, dsb_brut, type_brut, zone_brut, cout_brut, cout_secondaire FROM sort').all().flatMap((r) => Object.values(r)),
+    ...db.prepare('SELECT id, effets, remarque, texte_niveau5, portee_brut, dsb_brut, type_brut, zone_brut, cout_brut, cout_secondaire FROM sort').all()
+      .filter((r) => !ecritsPar0117.has(r.id)).flatMap(({ id: _id, ...r }) => Object.values(r)),
     ...db.prepare('SELECT description, description_physique, explication, banniere, incompatibilite_note FROM magie').all().flatMap((r) => Object.values(r)),
   ].filter(Boolean);
   const fautes = [/Soi même/, /\bEntave\b(?! de)/, /tout les\b/, /dégats/i, /excepetion/i];
@@ -169,13 +190,19 @@ test('pages Markdown de la base (page.corps_md) : plus de forme fautive là où 
   // les pages des magies telles que les migrations les ont laissées (test/aide-base-d-import.mjs) : le site de dev, source de ce qu'il modifie, réécrit
   // les cases des sorts, et la page en est refaite ; une forme « fautive » peut y revenir légitimement (« totalement insensible aux » des effets de
   // Dissolution, quand sa remarque, corrigée en « Totalement… », est réécrite)
-  const pages = new Map(baseDImport().prepare("SELECT id, corps_md FROM page WHERE id LIKE 'magies/%'").all().map((p) => [p.id, p.corps_md ?? '']));
+  const importe = baseDImport();
+  const pages = new Map(importe.prepare("SELECT id, corps_md FROM page WHERE id LIKE 'magies/%'").all().map((p) => [p.id, p.corps_md ?? '']));
+  const reecrits = sortsDe0117();
+  const textesDe0117 = (magieId) => importe.prepare('SELECT id, nom, effets, remarque, texte_niveau5, portee_brut, dsb_brut, type_brut, zone_brut, cout_brut, cout_secondaire FROM sort WHERE magie_id = ?')
+    .all(magieId).filter((r) => reecrits.has(r.id)).flatMap(({ id: _id, ...r }) => Object.values(r)).filter(Boolean);
   let verifiees = 0;
   for (const c of corrections) {
     if (c.table !== 'magie' && c.table !== 'sort') continue;
     const idPage = c.id.split('#')[0];
     const corps = pages.get(idPage);
     if (!corps || c.avant.length < 12) continue; // les très courtes corrections peuvent exister ailleurs, légitimement
+    // la forme fautive peut revenir par un sort que la 0117 écrit depuis le classeur de Décembre (coquille du classeur, question ouverte au propriétaire)
+    if (textesDe0117(idPage).some((t) => t.includes(c.avant))) continue;
     assert.ok(!corps.includes(c.avant) || corps.includes(c.apres), `${idPage} : « ${c.avant} » reste dans le Markdown de la page`);
     verifiees += 1;
   }

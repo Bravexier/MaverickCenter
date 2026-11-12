@@ -213,6 +213,16 @@ export const TABLES = {
     libelle: 'Rôle de magie',
     colonnes: { role_brut: { type: 'ligne', libelle: 'Rôle', requis: true } },
   },
+  // Spécialisations d'une magie (R236 (1), migration 0117) : nom, description et remarque, comme une spécialité de classe. Le rattachement d'un sort
+  // (sort.specialisation_id), comme son niveau, ne se modifie pas ; l'ordre (1 ou 2) et l'identifiant non plus ; ni création ni suppression (28, par migration).
+  magie_specialisation: {
+    libelle: 'Spécialisation magique',
+    colonnes: {
+      nom: { type: 'ligne', libelle: 'Nom', requis: true },
+      description: { type: 'texte', libelle: 'Description' },
+      remarque: { type: 'texte', libelle: 'Remarque' },
+    },
+  },
   mode_hyper_effet: {
     libelle: 'Capacité Mode Hyper',
     colonnes: {

@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 116 : 216 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 117 : 216 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -10,7 +10,7 @@
 - [0. FAMILLES D'IMPORT](#0-familles-dimport) : `famille`
 - [1. PAGES, LIENS, MOTS-CLÉS, SOURCES (couche générique)](#1-pages-liens-mots-clés-sources-couche-générique) : `type_page`, `page`, `alias`, `mot_cle`, `categorie_mot_cle`, `mot_cle_categorie`, `mot_cle_ancienne_cle`, `mot_cle_synonyme`, `page_tag`, `source`, `page_source`, `page_entite`, `panneau_regles`, `panneau_regles_bloc`, `composant_onglet`, `annonce`, `regles_onglet`, `regles_onglet_entree`
 - [2. RÈGLES DE LA FICHE : caractéristiques, compétences, niveaux, constantes, postures (famille « fiche »)](#2-règles-de-la-fiche--caractéristiques-compétences-niveaux-constantes-postures-famille--fiche) : `caracteristique`, `competence`, `niveau_global`, `niveau_deblocage`, `seuil_niveau`, `regle_constante`, `entrainement_palier`, `initiative_agilite`, `type_don`, `posture`, `posture_effet`, `posture_critique`
-- [3. MAGIES ET SORTS (famille « magies »)](#3-magies-et-sorts-famille--magies) : `magie`, `magie_role`, `magie_resistance`, `magie_incompatibilite`, `magie_ethnie_secondaire`, `magie_dieu`, `amelioration_cadaverique`, `sort`, `sort_type`, `sort_mode`, `sort_bonus_maitrise`, `sort_etat`, `sort_mot_cle`, `commentaire_orphelin`, `legende_sort`, `regle_magie`, `magie_npm_plafond`
+- [3. MAGIES ET SORTS (famille « magies »)](#3-magies-et-sorts-famille--magies) : `magie`, `magie_role`, `magie_resistance`, `magie_incompatibilite`, `magie_ethnie_secondaire`, `magie_dieu`, `magie_specialisation`, `sort`, `sort_type`, `sort_mode`, `sort_bonus_maitrise`, `sort_etat`, `sort_mot_cle`, `commentaire_orphelin`, `legende_sort`, `regle_magie`, `magie_npm_plafond`
 - [4. ANNEXES DES MAGIES : états, résistances, météo, modes hyper et super (famille « annexes »)](#4-annexes-des-magies--états-résistances-météo-modes-hyper-et-super-famille--annexes) : `resistance_palier`, `etat`, `etat_magie`, `etat_stade`, `etat_palier`, `meteo`, `meteo_effet`, `mode_texte`, `mode_hyper_depassement`, `mode_super_objet`, `mode_hyper_effet`
 - [5. DIEUX](#5-dieux) : `dieu`
 - [5 bis. CHRONOLOGIE : les événements datés du Codex et des races (famille « chronologie » ; migration 0035, docs/chronologie.md)](#5-bis-chronologie--les-événements-datés-du-codex-et-des-races-famille--chronologie---migration-0035-docschronologiemd) : `evenement`, `evenement_extrait`, `categorie_chronologie`, `evenement_categorie`
@@ -441,7 +441,7 @@ MAGIE : une ligne par onglet de magie (15 : Potentiel Illimité + 14 magies)
 | `id` | TEXT | oui | PK, → page.id | = id de la page (entité typée qui a SA page) |
 | `nom` | TEXT | oui | unique | nom court tel qu'écrit dans les listes de résistances et d'incompatibilités : 'Sang', 'Espace/Temps', 'Potentiel Illimité' (onglet « Magie » de la fiche) |
 | `nom_cle` | TEXT | oui | unique | normalize(nom) comme text.mjs : 'sang', 'espace-temps', 'potentiel-illimite' |
-| `onglet` | TEXT | oui |  | nom exact de l'onglet du classeur V8 (le dump tronque 'Potentiel illimité (magie diffi') |
+| `onglet` | TEXT | oui |  | nom exact de l'onglet du classeur de la magie (V8, puis le classeur de Décembre depuis la migration 0117 : « EspaceTemps » ; le dump tronque 'Potentiel illimité (magie diffi') |
 | `ordre` | INTEGER | oui | unique | rang de l'onglet dans le classeur (1 = Potentiel illimité) |
 | `banniere` | TEXT | non |  | texte d'avertissement de la bannière d'en-tête (Potentiel : « MAGIE DIFFICILE A JOUER !! ») |
 | `description` | TEXT | non |  | texte d'introduction (A4), paragraphes séparés par des lignes vides |
@@ -525,24 +525,25 @@ Ethnies pour lesquelles une magie secondaire reste possible malgré les incompat
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
 
-### `amelioration_cadaverique`
+### `magie_specialisation`
 
-Tableau « AMELIORATION CADAVERIQUE » de la Nécromancie (13 lignes : nom, effet). Le nom est celui d'une amélioration d'invocation ; le lien avec le bestiaire (invocations « Zombi », « Momie »…) n'est pas dans la source : non modélisé.
+SPÉCIALISATIONS MAGIQUES (décision R236 (1), migration 0117, classeur de Décembre « Nouveauté mise à jour Décembre », onglets 03 à 16) : deux par magie, sauf le Potentiel Illimité (28). Chacune porte les sorts de NPM 3, 4 et 5 d'un des deux tableaux « SPÉCIALISATION <nom> » de l'onglet (sort.specialisation_id) ; les sorts de NPM 1 et 2 restent communs à la magie. Qui y a accès (mono-magie : les deux ; bi-magie : une par magie, R236 (2), (3)) est une règle de la fiche, pas une donnée de cette table.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
-| `id` | TEXT | oui | PK | '<magie.id>#amelioration:<slug du nom>' |
+| `id` | TEXT | oui | PK | '<magie.id>#specialisation:<nom_cle à la création>' ; figé : un renommage change nom et nom_cle, jamais l'id |
 | `magie_id` | TEXT | oui | → magie.id |  |
-| `rang` | INTEGER | oui |  | ordre du tableau : colonne de gauche (D) puis de droite (T), de haut en bas |
-| `nom` | TEXT | oui |  |  |
-| `effet` | TEXT | oui |  |  |
+| `ordre` | INTEGER | oui |  | 1 = tableau de gauche de l'onglet, 2 = tableau de droite |
+| `nom` | TEXT | oui |  | tel qu'écrit dans le bandeau, en capitales (« SANGUILONANT », « DÉFERLANTE ») |
+| `nom_cle` | TEXT | oui |  | normalize(nom) |
+| `description` | TEXT | non |  | texte sous le bandeau, tel qu'écrit ; NULL = aucun |
 | `origine` | TEXT | oui | → famille.id |  |
-| `source_ref` | TEXT | oui |  |  |
+| `source_ref` | TEXT | oui |  | « Nouveauté mise à jour Décembre › Sang › M70:AK73 » (bandeau et description) |
 | `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 
 ### `sort`
 
-SORT : une ligne par sort de la table des sorts (14 magies x 23 sorts = 322 ; Potentiel Illimité n'a pas de table propre : il pioche dans les 14 autres, règle de la fiche, hors de ce domaine)
+SORT : une ligne par sort des tables de sorts du classeur de Décembre (migration 0117, R237 : 14 magies x 30 sorts = 420 ; ils étaient 23 par magie dans le classeur V8). Par magie : 10 sorts communs (NPM 1 et 2), puis 10 par spécialisation (NPM 3 à 5). Potentiel Illimité n'a pas de table propre : il pioche dans les 14 autres, règle de la fiche, hors de ce domaine.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -551,13 +552,13 @@ SORT : une ligne par sort de la table des sorts (14 magies x 23 sorts = 322 ; Po
 | `nom` | TEXT | oui |  | espaces insécables remplacés par des espaces (identifiant) |
 | `nom_cle` | TEXT | oui |  | normalize(nom) comme text.mjs : 'boule-de-sang' ; recherche d'un sort par son nom |
 | `niveau` | INTEGER | oui |  | colonne « Niveau » : niveau de PUISSANCE du sort (palier 1 à 5), à ne pas confondre avec le niveau de maîtrise (NM, 0 à 3) |
-| `ordre` | INTEGER | oui |  | rang dans la table de l'onglet (1 à 23) ; l'ordre de lecture |
+| `ordre` | INTEGER | oui |  | rang dans la magie, l'ordre de lecture (migration 0117) : 1 à 10 le tableau commun, 11 à 20 la spécialisation de gauche (ordre 1), 21 à 30 celle de droite (ordre 2) |
 | `type_brut` | TEXT | oui |  | « Amplification (IC pour 3 NM) », « Attaque\n(Imparable) »… tel qu'écrit |
 | `ic_direct` | INTEGER | oui |  | 1 = le type contient « (IC) » (Instant Cast, voir legende_sort) |
 | `ic_nm_min` | INTEGER | non |  | N de « IC pour N NM » : niveau de maîtrise qui rend le sort IC |
 | `imparable` | INTEGER | oui |  | le type contient « imparable » (insensible à la casse) |
 | `inesquivable` | INTEGER | oui |  | le type contient « inesquivable » |
-| `cout_brut` | TEXT | oui |  | « 3 », « 55 (-5/NM) », « 0 », « X », « N/A » |
+| `cout_brut` | TEXT | oui |  | « 3 », « 55 (-5/NM) », « 0 », « X », « N/A » ; les coûts du classeur de Décembre que repartirLeCout ne sait pas lire (« 8xN/tour », « 5/boule ») sont répartis par la décision R244 (migration 0117) ; Projectile arcanique (« *4 / projectile ») reste écrit tel quel, rien de typé, tant que MAJ-K7 est ouverte |
 | `cout_chakra` | INTEGER | non |  | la consommation de chakra quand la forme est « N » ou « N (-k/NM) » ; sinon NULL |
 | `cout_ressource` | TEXT | non |  | ressource de la 4ème barre quand le coût secondaire est « M Sang » ou « M âme(s) » |
 | `cout_ressource_valeur` | INTEGER | non |  | sa quantité ; NULL si « X » ou absente |
@@ -568,14 +569,15 @@ SORT : une ligne par sort de la table des sorts (14 magies x 23 sorts = 322 ; Po
 | `zone_forme` | TEXT | oui |  |  |
 | `zone_taille` | INTEGER | non |  | premier nombre de « Cercle de N », « Ligne de N », « Carré … N », « Croix de N », « N cibles » |
 | `dsb_brut` | TEXT | non |  | NULL quand la cellule vaut « / » (la fiche la traite comme vide) |
-| `effets` | TEXT | non |  | colonne « Effets secondaires » (jamais vide dans les 322 sorts) |
-| `texte_niveau5` | TEXT | non |  | texte du pied d'onglet (« Textes des sorts de niveau 5 ») titré du nom de ce sort ; NULL quand l'onglet n'en porte pas (ou quand le titre est sans texte) |
+| `effets` | TEXT | non |  | colonne « Effets secondaires » |
+| `texte_niveau5` | TEXT | non |  | texte du pied d'onglet (« Textes des sorts de niveau 5 ») titré du nom de ce sort ; NULL quand l'onglet n'en porte pas (ou quand le titre est sans texte). Classeur de Décembre : un titre qui n'est plus un sort est rattaché au sort de niveau 5 de sa spécialisation (R237 (9)) ; les six textes de Glace et de Terre, absents de ce classeur, restent (R243 (1)) et citent le V8 dans source_ref |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  | « Magie Maverick V8 › Sang › AL4:BR6 » |
 | `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 | `mode_brut` | TEXT | non |  | le MODE du sort : ce qui est entre parenthèses dans la colonne « Type » (« IC pour 3 NM », « Imparable », « IC » puis « IC x 2 si 3NM » à la ligne) ; NULL quand le type n'a pas de parenthèses. Le TYPE (attaque, entrave…) est dans sort_type, le mode dans sort_mode (valeur de base) et sort_bonus_maitrise (condition de NM) |
 | `bonus_maitrise` | TEXT | non |  | les bonus de NM du sort, une ligne par bonus, « <Colonne> : <passage de la cellule> » (« Coût : -5/NM », « Effets : Dure 2 tours (+1/NM) »), dans l'ordre de lecture ; NULL quand le sort n'écrit aucun NM. Recopie lisible de sort_bonus_maitrise (db:check et les tests contrôlent l'accord) |
 | `cout_secondaire` | TEXT | non |  | « 1 Sang », « 2 âmes », « X Sang », « 20% PV », « Par tour et par cible », « Pour 1 barrière » ; NULL = pas de second coût |
+| `specialisation_id` | TEXT | non | → magie_specialisation.id |  |
 
 ### `sort_type`
 
@@ -680,7 +682,7 @@ Légende commune des 14 tables de sorts (identique dans chaque onglet) : « IC =
 
 ### `regle_magie`
 
-Règles de magie qui valent pour toutes les magies (Sommaire!A31 : « Règle spéciale pour sort niveau 5 »).
+Règles de magie qui valent pour toutes les magies (Sommaire!A31 du classeur V8 : « Règle spéciale pour sort niveau 5 », gardée par R237 (7) ; Sommaire!AP1 du classeur de Décembre : « CHOSES A SAVOIR », les spécialisations, R236, migration 0117, titre = sa première ligne).
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -736,7 +738,7 @@ Les 6 paliers de la fiche (Personnage!BA2:BA12) : une valeur de résistance V (s
 
 ### `etat_magie`
 
-Magie(s) liée(s) d'une altération : 13 altérations sur 20 en ont (Surcharge Magique : deux, Arcane et Corruption). Les 7 autres ont « / » dans la source et aucune ligne ici.
+Magie(s) liée(s) d'une altération : 14 altérations sur 21 en ont (Surcharge Magique : deux, Arcane et Corruption ; Somnolence, « Ombre (Songe) » : l'Ombre, la spécialisation SONGE restant dans magie_liee_brut, migration 0117). Les 7 autres ont « / » dans la source et aucune ligne ici.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -1448,7 +1450,7 @@ INVOCATION : une ligne par onglet du classeur (3) Une « invocation » est un TY
 | `genre` | TEXT | oui |  |  |
 | `sort_id` | TEXT | non | → sort.id |  |
 | `texte_general` | TEXT | non |  | texte général de l'onglet (AJ3, AP3, Z3), tel qu'écrit, paragraphes séparés par une ligne vide |
-| `tableau_titre` | TEXT | non |  | titre du tableau posé à droite des cartes (AP40 de « Animation des morts » : « TABLEAU "AMELIORATION CADAVERIQUE" »), NULL = aucun. Le CONTENU de ce tableau (13 lignes) est la table amelioration_cadaverique du domaine magies : le même tableau figure dans les deux classeurs (identité vérifiée à l'import) ; une seule copie, pas de doublon ici. |
+| `tableau_titre` | TEXT | non |  | titre d'un tableau posé à droite des cartes ; NULL = aucun. Le seul (AP40 de « Animation des morts » : « TABLEAU "AMELIORATION CADAVERIQUE" », contenu dans la table amelioration_cadaverique) est retiré avec cette table par la migration 0117 (décision R237 (7) : les améliorations cadavériques sont supprimées du site). |
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  |  |
 | `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |

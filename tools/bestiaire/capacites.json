@@ -5039,10 +5039,10 @@
    "placements": [
     {
      "capacite": "lanceur-de-sorts",
-     "sorts": "Éclair en chaîne, Anti-Mythril, Rayon négatif, Poison de masse."
+     "sorts": "Éclair en chaîne, Anti-Mythril, Rayon lunatique, Poison de masse."
     }
    ],
-   "decision": "R66 : description commune, fautes corrigées"
+   "decision": "R66 : description commune, fautes corrigées ; R242 (1) : la carte prend le nouveau nom du sort renommé par R237 (11) (« Rayon négatif » devenu « Rayon lunatique »), le doc écrit l’ancien"
   },
   {
    "nom": "Lanceur de sorts",
@@ -5127,10 +5127,10 @@
    "placements": [
     {
      "capacite": "lanceur-de-sorts",
-     "sorts": "Pieu d’os, Armure d’os."
+     "sorts": "Pieu d’os, Armure osseuse."
     }
    ],
-   "decision": "R66 : description commune, fautes corrigées"
+   "decision": "R66 : description commune, fautes corrigées ; R242 (1) : la carte prend le nouveau nom du sort renommé par R237 (11) (« Armure d’os » devenu « Armure osseuse »), le doc écrit l’ancien"
   },
   {
    "nom": "Lanceur de sorts",
@@ -5138,10 +5138,10 @@
    "placements": [
     {
      "capacite": "lanceur-de-sorts",
-     "sorts": "Téléportation, Faille temporelle, Frappe temporelle, Vieillissement, Horloge aspirante, Inversion."
+     "sorts": "Téléportation, Faille temporelle, Main de la momie, Vieillissement, Horloge aspirante, Inversion."
     }
    ],
-   "decision": "R66 : description commune, fautes corrigées"
+   "decision": "R66 : description commune, fautes corrigées ; R242 (1) : la carte prend le nouveau nom du sort renommé par R237 (11) (« Frappe temporelle » devenu « Main de la momie »), le doc écrit l’ancien"
   },
   {
    "nom": "Lanceur de sorts",
@@ -5149,10 +5149,10 @@
    "placements": [
     {
      "capacite": "lanceur-de-sorts",
-     "sorts": "Téléportation, Faille temporelle, Frappe temporelle, Vieillissement, Horloge aspirante."
+     "sorts": "Téléportation, Faille temporelle, Main de la momie, Vieillissement, Horloge aspirante."
     }
    ],
-   "decision": "R66 : description commune, fautes corrigées"
+   "decision": "R66 : description commune, fautes corrigées ; R242 (1) : la carte prend le nouveau nom du sort renommé par R237 (11) (« Frappe temporelle » devenu « Main de la momie »), le doc écrit l’ancien"
   },
   {
    "nom": "Lanceur de sorts",
@@ -5160,10 +5160,10 @@
    "placements": [
     {
      "capacite": "lanceur-de-sorts",
-     "sorts": "Téléportation, Faille temporelle, Frappe temporelle, Vieillissement."
+     "sorts": "Téléportation, Faille temporelle, Main de la momie, Vieillissement."
     }
    ],
-   "decision": "R66 : description commune, fautes corrigées"
+   "decision": "R66 : description commune, fautes corrigées ; R242 (1) : la carte prend le nouveau nom du sort renommé par R237 (11) (« Frappe temporelle » devenu « Main de la momie »), le doc écrit l’ancien"
   },
   {
    "nom": "Larmes du paria",

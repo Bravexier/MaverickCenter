@@ -7,7 +7,7 @@
 // seuls les invariants (une ancre au plus une fois par page) ; l'ancre de chaque état sur la base courante est dans test/etat-ancre.test.mjs.
 //   node --test test/db-0100-ancres-figees-des-intertitres.test.mjs
 import assert from 'node:assert/strict';
-import { copyFileSync } from 'node:fs';
+import { copyFileSync, readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { ANCRE_FIGEE, ancresDuCorps } from '../src/lib/ancres-figees.mjs';
@@ -27,8 +27,13 @@ const ETATS = "SELECT id, substr(id, 1, instr(id, '#') - 1) AS page_id FROM etat
 const voulues = (db) => [...db.prepare(ETATS).all().map((e) => [e.page_id, ancreDeLEtat(e.id)]), ...CEINTURE];
 const corpsDe = (db, id) => db.prepare('SELECT corps_md FROM page WHERE id = ?').get(id)?.corps_md;
 const ancres = (corps) => ancresDuCorps(corps).map((a) => a.ancre);
-/** Le corps sans les marques de ses intertitres : le texte d'avant la migration (elle n'ajoute que ` {#ancre}` au bout de la ligne). */
-const sansMarques = (corps) => corps.split('\n').map((l) => (ancresDuCorps(l).length ? l.replace(/ \{#[a-z0-9-]+\}$/, '') : l)).join('\n');
+/** Les ancres que le SQL de la migration écrit : une marque posée par une migration postérieure (0117 : `{#somnolence}`, état créé par elle) n'en est pas. */
+const ANCRES_DE_LA_MIGRATION = new Set(
+  [...readFileSync(new URL(`../../data/migrations/${MIGRATION}`, import.meta.url), 'utf8').matchAll(/\{#([a-z0-9-]+)\}/g)].map((m) => m[1]),
+);
+/** Le corps sans les marques de ses intertitres que la migration pose : le texte d'avant elle (elle n'ajoute que ` {#ancre}` au bout de la ligne). */
+const sansMarques = (corps) =>
+  corps.split('\n').map((l) => (ancresDuCorps(l).some((a) => ANCRES_DE_LA_MIGRATION.has(a.ancre)) ? l.replace(/ \{#[a-z0-9-]+\}$/, '') : l)).join('\n');
 
 /** Une copie de `chemin` où rejouer la migration. */
 function copie(t, chemin) {

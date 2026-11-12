@@ -17,6 +17,7 @@
 // 2. Classeur -> base : chaque cellule non vide est citée par au moins une ligne, ou rangée dans le registre (`regles`, `copies`) avec sa raison ; et
 //    chaque mot d'une cellule citée se lit dans les valeurs des lignes qui la citent (sinon le classeur dit quelque chose que la base n'a pas), sauf les
 //    libellés de mise en page déclarés (`libelles`).
+// Une valeur de la base qui porte des balises du glossaire (« {{corruption|CR}} », R233) se lit sans elles (`texteSansBalises` : le texte écrit, sinon la ref).
 // LIMITES (le contrôle est par ligne, pas par colonne : `source_ref` cite les cellules d'une ligne, pas celle de chaque colonne) : un nombre de la ligne est
 // accepté s'il se lit dans N'IMPORTE LAQUELLE de ses cellules, un morceau de texte s'il est contenu dans ses cellules, un mot d'une cellule s'il est
 // dans N'IMPORTE LAQUELLE de ses colonnes. Ne se voient donc pas : une valeur changée en une autre que la même ligne écrit déjà ailleurs (une barrière
@@ -50,6 +51,7 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { historiqueSite } from '../../client/src/lib/historique-site.mjs';
+import { texteSansBalises } from '../../client/src/lib/mots-cles-balises.mjs';
 
 const RACINE = resolve(fileURLToPath(new URL('../../', import.meta.url)));
 const REGISTRE_DES_CLASSEURS = resolve(RACINE, 'sources', 'raw', 'classeurs', 'registre.json');
@@ -532,7 +534,10 @@ export function rapprocher(db, {
         else ecart();
       };
       for (const c of textes) {
-        verifier(c, (attendue) => {
+        verifier(c, (ecrite) => {
+          // La base peut porter des balises du glossaire (« {{corruption|CR}} », migration 0117, R233) que le classeur n'a pas : on compare le texte
+          // qu'elles montrent (`texteSansBalises` sans vocabulaire : le texte écrit, sinon la ref), comme les découpages des importeurs.
+          const attendue = texteSansBalises(ecrite);
           const propres = corrections.get(cleK(t.name, cleLigne, c.name)) ?? [];
           // Une valeur d'un caractère (« 0 », « x ») : égale à l'une des cellules (corrections et écarts voulus défaits).
           if (comparable(attendue).length < 2) {

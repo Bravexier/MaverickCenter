@@ -36,6 +36,7 @@ user-invocable: false
   - Le libellé d'une ligne visée par une clé étrangère (« Évitée » pour `echelle_id`) se lit à l'import quand la colonne visée est sa clé primaire (`rapprocher.mjs`, `libellesDe`).
 - Dans les deux sens : chaque ligne typée se lit dans ses cellules (orthographe des migrations défaite) ; chaque cellule non vide est citée ou ignorée avec sa
   raison, et chacun de ses mots se lit dans la base ; notes de cellule et fils de commentaires comparés à `note_cellule` (et `commentaire_orphelin`).
+  Une valeur de la base à balises du glossaire se lit sans elles (R233, `texteSansBalises`) ; un texte changé derrière ses balises reste un écart.
 - Le registre d'un classeur ne contient que des entrées justifiées (une `raison` chacune), dans les sections `regles`, `libelles`, `copies`, `derivees`,
   `voulus`, `commentaires`, `conflits`. Une section inconnue est une erreur.
 - Le test exige 0 écart pour un classeur `rapproche`.

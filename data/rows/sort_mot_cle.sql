@@ -11,6 +11,7 @@ INSERT INTO sort_mot_cle (sort_id, mot_cle_id) VALUES ('magies/magie-de-la-necro
 INSERT INTO sort_mot_cle (sort_id, mot_cle_id) VALUES ('magies/magie-de-la-necromancie#sort:grenade-caustique', 333);
 INSERT INTO sort_mot_cle (sort_id, mot_cle_id) VALUES ('magies/magie-de-la-terre#sort:fer-raffine', 332);
 INSERT INTO sort_mot_cle (sort_id, mot_cle_id) VALUES ('magies/magie-de-la-terre#sort:grenade-petrifiante', 333);
+INSERT INTO sort_mot_cle (sort_id, mot_cle_id) VALUES ('magies/magie-de-larcane#sort:fer-brillant', 332);
 INSERT INTO sort_mot_cle (sort_id, mot_cle_id) VALUES ('magies/magie-de-larcane#sort:grenade-de-chakra', 333);
 INSERT INTO sort_mot_cle (sort_id, mot_cle_id) VALUES ('magies/magie-de-leau#sort:fer-humide', 332);
 INSERT INTO sort_mot_cle (sort_id, mot_cle_id) VALUES ('magies/magie-de-leau#sort:grenade-incapacitante', 333);

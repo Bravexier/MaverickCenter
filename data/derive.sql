@@ -14,7 +14,8 @@ INSERT INTO entite_fts (entite_table, entite_id, nom, contexte, texte)
   SELECT 'sort', s.id, s.nom, m.nom, trim(s.type_brut || ' ' || COALESCE(s.effets, '') || ' ' || COALESCE(s.dsb_brut, '') || ' ' || COALESCE(s.remarque, ''))
     FROM sort s JOIN magie m ON m.id = s.magie_id
   UNION ALL
-  SELECT 'amelioration_cadaverique', a.id, a.nom, 'amélioration cadavérique', a.effet FROM amelioration_cadaverique a
+  SELECT 'magie_specialisation', ms.id, ms.nom, m.nom, COALESCE(ms.description, '')
+    FROM magie_specialisation ms JOIN magie m ON m.id = ms.magie_id
   UNION ALL
   SELECT 'regle_magie', r.id, r.titre, 'règle de magie', r.texte FROM regle_magie r
   -- classes

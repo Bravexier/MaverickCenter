@@ -17,9 +17,8 @@ const dons = db.prepare('SELECT id, nom, type_brut FROM capacite ORDER BY id').a
 const importe = baseDImport();
 const sortsDImport = importe.prepare('SELECT * FROM sort ORDER BY id').all();
 const donsDImport = importe.prepare('SELECT id, nom, type_brut FROM capacite ORDER BY id').all();
-const JAVELOT_SOMBRE = 'magies/magie-de-lombre#sort:javelot-sombre';
-const REGENERATION = 'magies/magie-de-la-lumiere#sort:regeneration';
 const FLASH = 'magies/magie-de-la-lumiere#sort:flash';
+const REGENERATION = 'magies/magie-de-la-lumiere#sort:regeneration';
 const CONTESTE = 'capacites/mage-bleu-conteste';
 const sort = (id) => sortsDImport.find((s) => s.id === id);
 const sens = (table, colonne, avant, apres) => sensDuChangement(table, colonne, avant, apres).sens;
@@ -29,8 +28,8 @@ const COLONNES_DE_SORT = ['nom', 'type_brut', 'cout_brut', 'cout_secondaire', 'p
 // --- Lectures ----------------------------------------------------------------------------------------------------------------------------------
 
 test('analyserDegats : sommes de dés et de nombres suivies d’un seul effet', () => {
-  assert.equal(sort(JAVELOT_SOMBRE).dsb_brut, '7d6 + 15 dégâts');
-  assert.deepEqual(analyserDegats(sort(JAVELOT_SOMBRE).dsb_brut), {
+  // (la case est celle qu'écrivait « Javelot sombre », sort supprimé par la 0117 : R237 (2) ; la lecture se prouve sur l'écriture, pas sur une ligne de la base)
+  assert.deepEqual(analyserDegats('7d6 + 15 dégâts'), {
     lisible: true, des: [{ nombre: 7, faces: 6 }], fixe: 15, pourcent: false, signe: 1, queue: 'dégâts', moyenne: 39.5,
   });
   assert.deepEqual(analyserDegats('3D6 dégâts'), { lisible: true, des: [{ nombre: 3, faces: 6 }], fixe: 0, pourcent: false, signe: 1, queue: 'dégâts', moyenne: 10.5 });
@@ -56,7 +55,7 @@ test('analyserDegats : illisible plutôt que deviné', () => {
   }
 });
 
-test('analyserDegats sur les 322 sorts : 178 cases D/S/B lisibles sur 218 écrites, chacune d’un seul effet', () => {
+test('analyserDegats sur tous les sorts : des cases D/S/B lisibles parmi celles écrites, chacune d’un seul effet', () => {
   const lire = (liste) => liste.filter((s) => s.dsb_brut !== null).map((s) => ({ s, a: analyserDegats(s.dsb_brut) }));
   // aujourd'hui : chaque case lisible est d'un seul effet, avec une quantité
   for (const { s, a } of [...lire(sorts), ...lire(sortsDImport)].filter(({ a }) => a.lisible)) {
@@ -66,7 +65,7 @@ test('analyserDegats sur les 322 sorts : 178 cases D/S/B lisibles sur 218 écrit
   }
   // à l'import (seuils et non égalités : un recul net dirait qu'une lecture s'est perdue)
   const ecrites = lire(sortsDImport);
-  assert.equal(sortsDImport.length, 322);
+  assert.ok(sortsDImport.length > 0);
   assert.ok(ecrites.length >= 200, `${ecrites.length} cases écrites`);
   assert.ok(ecrites.filter(({ a }) => a.lisible).length >= 170, 'cases lisibles');
 });
@@ -99,7 +98,7 @@ test('Flash : coût « 6 » → « 8 (-1/NM) » = valeur affaiblie et NM ajouté
 });
 
 test('Flash : portée « 6 (+1/NM) » → « 6 » = NM retiré, affaiblissement (valeur égale : aucune partie)', () => {
-  assert.equal(sort(FLASH).portee_brut, '6 (+1/NM)');
+  // (l'écriture de « Flash » avant la 0117 : la lecture se prouve sur l'écriture, la portée de ce sort a changé avec le classeur de Décembre)
   assert.deepEqual(sensDuChangement('sort', 'portee_brut', '6 (+1/NM)', '6'), {
     sens: 'affaiblissement',
     parties: [{ partie: 'nm', avant: '+1/NM', apres: null, sens: 'affaiblissement' }],
@@ -376,7 +375,7 @@ const formeValide = (r, message) => {
   }
 };
 
-test('322 sorts : une valeur réelle inchangée est neutre ; chaque case comparée à celle du sort suivant ne lève rien, et l’inverse inverse le sens', () => {
+test('tous les sorts : une valeur réelle inchangée est neutre ; chaque case comparée à celle du sort suivant ne lève rien, et l’inverse inverse le sens', () => {
   /** Le balayage d'une liste de sorts (invariants) ; rend le compte des sens. */
   const balayer = (liste) => {
     const compte = Object.fromEntries(SENS.map((s) => [s, 0]));
@@ -400,8 +399,8 @@ test('322 sorts : une valeur réelle inchangée est neutre ; chaque case compar�
     return compte;
   };
   balayer(sorts);
-  // à l'import : les 322 sorts, et les colonnes lues donnent des couleurs
-  assert.equal(sortsDImport.length, 322);
+  // à l'import : tous les sorts, et les colonnes lues donnent des couleurs
+  assert.ok(sortsDImport.length > 0);
   const compte = balayer(sortsDImport);
   assert.ok(compte.amelioration > 100 && compte.affaiblissement > 100, JSON.stringify(compte));
 });

@@ -53,7 +53,7 @@ test('la base contient les domaines : pages, magies et sorts, classes et capacit
   assert.equal(n('type_page'), 10);
   // effectifs de l'import : le site de dev, source des données qu'il modifie, peut créer des races, des classes… (lib/historique-site.mjs)
   const historique = historiqueSite(db);
-  for (const [table, effectif] of [['magie', 15], ['sort', 322], ['classe', 39], ['capacite', 660], ['race', 27], ['invocation', 3], ['creature', 63]]) {
+  for (const [table, effectif] of [['magie', 15], ['sort', 420], ['magie_specialisation', 28], ['classe', 39], ['capacite', 660], ['race', 27], ['invocation', 3], ['creature', 63]]) {
     assert.equal(historique.effectifDImport(table), effectif, `${table} : effectif de l'import`);
   }
   // cohérence de l'état courant
@@ -67,7 +67,10 @@ test('la base contient les domaines : pages, magies et sorts, classes et capacit
   const races = new Set(db.prepare('SELECT id FROM race').all().map((r) => r.id));
   for (const id of ORDRE_DES_RACES) assert.ok(races.has(id), `décision R1 : ${id}`);
   for (const t of ['ressource', 'recette', 'arme', 'armure', 'metier', 'etat', 'peuple', 'note_cellule', 'ecart_source']) assert.ok(n(t) > 0, `${t} est rempli`);
-  assert.equal(n('correction'), 1, 'la correction du Mercenaire est tracée');
+  // la correction du Mercenaire est tracée (classeur de classes) ; les corrections du classeur de Décembre (dump `magie-v10`, R10, migration 0117) ont la leur
+  assert.equal(db.prepare("SELECT count(*) AS n FROM correction WHERE dump = 'classes-v7'").get().n, 1, 'la correction du Mercenaire est tracée');
+  assert.ok(db.prepare("SELECT count(*) AS n FROM correction WHERE dump = 'magie-v10'").get().n > 0, 'les corrections du classeur de Décembre sont tracées');
+  assert.equal(n('correction'), db.prepare("SELECT count(*) AS n FROM correction WHERE dump IN ('classes-v7', 'magie-v10')").get().n, 'aucune autre source de correction');
   // la correction orthographique est bien dans les lignes typées, l'ancien texte n'y est plus (sauf si le site de dev a supprimé le don qui la portait :
   // D11, db:check l'ignore alors)
   if (!historique.supprimee('capacite', { id: 'capacites/mercenaire-chasseur-de-primes' })) assert.ok(db.prepare("SELECT 1 FROM classe WHERE nom LIKE '%Chasseur de primes%' OR id LIKE '%chasseur-de-primes%' LIMIT 1").get() || db.prepare("SELECT 1 FROM capacite WHERE id LIKE '%chasseur-de-primes%' LIMIT 1").get());
