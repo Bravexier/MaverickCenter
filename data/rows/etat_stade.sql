@@ -180,6 +180,6 @@ INSERT INTO etat_stade (etat_id, rang, stade, effet, origine, source_ref) VALUES
 - Dure 3 Tours.', 'annexes', 'Nouveauté mise à jour Décembre › Altération détats › M68:V72');
 INSERT INTO etat_stade (etat_id, rang, stade, effet, origine, source_ref) VALUES ('guide/liste-des-alterations-d-etat#etat:surdite', 2, 2, '- Malus de 20% aux compétences : Athlétisme, Équilibre, Stabilité, Réflexe, Distinction, Orientation.
 - Dure 3 Tours.', 'annexes', 'Nouveauté mise à jour Décembre › Altération détats › W68:AF72');
-INSERT INTO etat_stade (etat_id, rang, stade, effet, origine, source_ref) VALUES ('guide/liste-des-alterations-d-etat#etat:surdite', 3, 3, '- Malus de 30% aux compétences : Athlétisme, Équilibre, Stabilité, Reflexe, Distinction, Orientation.
+INSERT INTO etat_stade (etat_id, rang, stade, effet, origine, source_ref) VALUES ('guide/liste-des-alterations-d-etat#etat:surdite', 3, 3, '- Malus de 30% aux compétences : Athlétisme, Équilibre, Stabilité, Réflexe, Distinction, Orientation.
 - Un placement sur la victime fait qu''elle tombera toujours par terre juste après.
 - Dure 3 Tours.', 'annexes', 'Nouveauté mise à jour Décembre › Altération détats › AG68:AP72');

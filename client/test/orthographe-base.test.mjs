@@ -97,8 +97,38 @@ const RETIREES = [
   // décision R231 (« J'aimerai ré écrire les deux pages »), migration 0112 : le corps de « Se défendre » (guide/attaque-et-defense) est réécrit en entier
   ...['deux conditions doivent', 'être réunies pour', 'Esquive a un', 'case parcourue pour'].map((apres) => (
     { migration: '0112-r231-attaquer-et-se-defendre.sql', table: 'page', cle: { id: 'guide/attaque-et-defense' }, col: 'corps_md', apres })),
+  // décision R237 (7) (MAJ-X3 : « Améliorations cadavériques » supprimées du site), migration 0117 : le corps de « Animation des morts » est réécrit en
+  // entier (UPDATE page SET corps_md = '…' WHERE id = '…'), sans le tableau des améliorations cadavériques : son titre et ses lignes, où étaient toutes
+  // les corrections de la page (chacune est vérifiée absente du corps réécrit)
+  { migration: '0117-magies-v10-specialisations.sql', table: 'page', cle: { id: 'bestiaire/animation-des-morts' }, col: 'corps_md', celluleReecrite: true },
+  // décision R237 (1) (MAJ-X1 : « tous ses changements s'appliquent », dont les stades 3 de la Paralysie et de la Surdité), migration 0117 : l'effet du
+  // stade 3 de la Paralysie est réécrit en entier par le classeur de Décembre, sans la phrase corrigée
+  { migration: '0117-magies-v10-specialisations.sql', table: 'etat_stade', cle: { etat_id: 'guide/liste-des-alterations-d-etat#etat:paralysie', rang: 3 }, col: 'effet',
+    apres: 'Le résultat d', celluleReecrite: true },
 ];
-const retiree = (c) => RETIREES.find((r) => r.table === c.table && r.col === c.col && JSON.stringify(r.cle) === JSON.stringify(c.cle) && r.apres === c.apres);
+/** La migration réécrit la cellule entière : « UPDATE <table> SET <col> = '…' WHERE <clé> = … [AND …]; » (les ids n'ont aucun caractère spécial d'expression). */
+const celluleReecritePar = (migration, { table, col, cle }) => new RegExp(`^UPDATE ${table} SET ${col} = '(?:[^']|'')*' WHERE ${Object.entries(cle)
+  .map(([k, v]) => `${k} = ${typeof v === 'number' ? v : `'${v}'`}`).join(' AND ')};$`, 'm')
+  .test(readFileSync(join(dossier, migration), 'utf8'));
+// Corrections d'une cellule vidée depuis par une migration, sur décision du propriétaire : R237 (7) (« Améliorations cadavériques » supprimées du site),
+// migration 0117, qui met à NULL le titre du tableau de l'invocation « Animation des morts » (UPDATE invocation SET … tableau_titre = NULL … WHERE id = '…')
+const VIDEES = [{ migration: '0117-magies-v10-specialisations.sql', table: 'invocation', cle: { id: 'bestiaire/animation-des-morts' }, col: 'tableau_titre' }];
+const videe = (c) => VIDEES.find((r) => r.table === c.table && r.col === c.col && JSON.stringify(r.cle) === JSON.stringify(c.cle));
+const videePar = ({ migration, table, col, cle }) => new RegExp(`^UPDATE ${table} SET (?:[^\n]*?, )?${col} = NULL(?:, [^\n]*?)? WHERE id = '${cle.id}';$`, 'm')
+  .test(readFileSync(join(dossier, migration), 'utf8'));
+// Corrections d'une ligne supprimée depuis par une migration, sur décision du propriétaire : R237 (7) (« les météos Saccage temporel et Zone vide »
+// supprimées du site), migration 0117 (« DELETE FROM <table> WHERE <colonne> IN ('…', …); ») : la ligne n'est plus dans la base
+const SUPPRESSIONS = [
+  { migration: '0117-magies-v10-specialisations.sql', table: 'meteo', colonne: 'id' },
+  { migration: '0117-magies-v10-specialisations.sql', table: 'meteo_effet', colonne: 'meteo_id' },
+];
+/** Les valeurs de `colonne` des lignes que la migration supprime de `table`. */
+const supprimeesDe = ({ migration, table, colonne }) => {
+  const m = new RegExp(`^DELETE FROM ${table} WHERE ${colonne} (?:= ('[^']*')|IN \\(([^)]*)\\));$`, 'm').exec(readFileSync(join(dossier, migration), 'utf8'));
+  return new Set([...(m?.[1] ?? m?.[2] ?? '').matchAll(/'([^']*)'/g)].map((x) => x[1]));
+};
+const supprimee = (c) => SUPPRESSIONS.find((r) => r.table === c.table && supprimeesDe(r).has(c.cle[r.colonne]));
+const retiree = (c) => RETIREES.find((r) => r.table === c.table && r.col === c.col && JSON.stringify(r.cle) === JSON.stringify(c.cle) && ((r.celluleReecrite && !r.apres) || r.apres === c.apres));
 // Corrections dont la valeur a changé depuis par une migration de données, sur décision du propriétaire : décision R155 (« Grande faiblesse :
 // multiplier par 3 (pas 4) Sensibilité : multiplier par 4 (pas 8) »), migration 0074. La graphie corrigée (« subis ») reste : la migration part du
 // texte corrigé (la garde de son UPDATE) et écrit la nouvelle valeur.
@@ -156,7 +186,9 @@ const doublonR184 = (c) => DOUBLONS_R184.find((r) => r.table === c.table && r.co
 const dansLOrdre = (mots, phrase) => { let i = 0; for (const m of phrase.split(' ')) if (m === mots[i]) i++; return i === mots.length; };
 
 test('base : chaque correction est faite (le texte corrigé est dans sa cellule, aux noms corrigés par 0006 près)', () => {
-  for (const r of RETIREES) assert.ok(corrections.some((c) => retiree(c) === r), `${r.apres} : une correction du registre`);
+  for (const r of SUPPRESSIONS) assert.ok(corrections.some((c) => supprimee(c) === r), `${r.table} : une correction du registre sur une ligne supprimée`);
+  for (const r of VIDEES) assert.ok(corrections.some((c) => videe(c) === r), `${r.table} ${r.col} : une correction du registre`);
+  for (const r of RETIREES) assert.ok(corrections.some((c) => retiree(c) === r), `${r.apres ?? r.cle.id} : une correction du registre`);
   for (const r of CHANGEES) assert.ok(corrections.some((c) => changee(c) === r), `${r.apres} : une correction du registre`);
   for (const f of FONDUES) assert.match(readFileSync(join(dossier, f.migration), 'utf8'), /WHERE a\.cible <> 'arme_elementaire';/, `${f.migration} : fond la ligne`);
   for (const r of INSEREES) {
@@ -175,11 +207,23 @@ test('base : chaque correction est faite (le texte corrigé est dans sa cellule,
     if (pageRetiree(c0)) continue;
     const f = fondue(c0);
     const c = f ? { ...c0, cle: f.dans } : c0;
+    const sp = supprimee(c);
+    if (sp) {
+      assert.equal(valeur(c), undefined, `${c.table} ${JSON.stringify(c.cle)} : supprimée par ${sp.migration}`);
+      continue;
+    }
+    const vd = videe(c);
+    if (vd) {
+      assert.ok(videePar(vd), `${c.table} ${JSON.stringify(c.cle)} ${c.col} : vidée par ${vd.migration}`);
+      assert.equal(valeur(c), undefined, `${c.table} ${JSON.stringify(c.cle)} ${c.col} : vide à l'import`);
+      continue;
+    }
     const v = valeur(c);
     assert.ok(typeof v === 'string', `${c.table} ${JSON.stringify(c.cle)} : ligne absente de la base`);
     const r = retiree(c);
     if (r) {
-      assert.ok(readFileSync(join(dossier, r.migration), 'utf8').includes(c.apres), `${c.apres} : dans le texte que ${r.migration} retire`);
+      if (r.celluleReecrite) assert.ok(celluleReecritePar(r.migration, c), `${c.table} ${JSON.stringify(c.cle)} : cellule réécrite en entier par ${r.migration}`);
+      else assert.ok(readFileSync(join(dossier, r.migration), 'utf8').includes(c.apres), `${c.apres} : dans le texte que ${r.migration} retire`);
       assert.ok(!v.includes(c.apres), `${c.apres} : retiré de la base`);
       continue;
     }

@@ -914,7 +914,7 @@ test('anciennes graphies : retrouvées par le dernier segment de l’identifiant
   const vagueDeCadavres = regles.sorts.find((s) => s.id.endsWith(':vague-de-cadavre'));
   const pavois = regles.boucliers.find((b) => b.id === 'pavoi');
   const athee = regles.dieux.find((d) => d.id === 'atheiste');
-  for (const [nom, ancien] of [[bordeaux.nom, 'Drakos Bordeau'], [contrecoup.nom, 'Contre coup'], [vagueDeCadavres.nom, 'Vague de cadavre'], [pavois.nom, 'Pavoi'], [athee.nom, 'Athéiste']]) {
+  for (const [nom, ancien] of [[bordeaux.nom, 'Drakos Bordeau'], [contrecoup.nom, 'Contre coup'], [pavois.nom, 'Pavoi'], [athee.nom, 'Athéiste']]) {
     assert.notEqual(cle(nom), cle(ancien), `${ancien} n’est plus le nom de la base`);
   }
   const guerrier = classe('Guerrier');
@@ -926,6 +926,7 @@ test('anciennes graphies : retrouvées par le dernier segment de l’identifiant
   assert.deepEqual([f.ethnie_id, f.dieu_choisi_id, f.bouclier_classe_id], [bordeaux.id, athee.id, pavois.id]);
   assert.deepEqual(f.capacites, [{ capacite_id: contrecoup.id }]);
   assert.deepEqual(r.nonRepris, []);
+  // « Vague de cadavre » : un sort trouvé par le dernier segment de son identifiant, quel que soit son nom actuel
   r = ficheDuClasseur(regles, ordinateur({ I2: 'Humain', S2: magie('Nécromancie').nom, AA55: 'Vague de cadavre', AY55: 1 }));
   assert.deepEqual(r.fiche.sorts.map((s) => s.sort_id), [vagueDeCadavres.id]);
   assert.deepEqual(r.nonRepris, []);
@@ -957,7 +958,8 @@ test('homonymes : un don cherché dans sa classe, « Vague déferlante » dépar
   // coupée avant ce qui les distingue, plus rien ne le fait
   const corruption = vagues.find((s) => s.id.includes('corruption'));
   const d = description(corruption, 1);
-  assert.match(d.split('\n').at(-1), /^Si CR = /);
+  const arcane = vagues.find((s) => s !== corruption);
+  assert.ok(!description(arcane, 1).includes(d.split('\n').at(-1)), 'la dernière ligne de la Corruption distingue les deux sorts');
   r = ficheDuClasseur(regles, ordinateur({ ...pi, AA55: corruption.nom, AY55: 1, AM55: `${d.slice(0, d.lastIndexOf('\n') + 6)}…` }));
   assert.deepEqual(r.fiche.sorts.map((x) => x.sort_id), [corruption.id], '« Si CR… »');
   r = ficheDuClasseur(regles, ordinateur({ ...pi, AA55: corruption.nom, AY55: 1, AM55: `${d.slice(0, d.indexOf('\n') + 12)} …` }));

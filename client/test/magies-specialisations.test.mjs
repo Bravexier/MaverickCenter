@@ -115,7 +115,7 @@ test('db:check : un sort de NPM 3 à 5 sans spécialisation est signalé (le CHE
     base.prepare('DELETE FROM magie_specialisation WHERE id = ?').run(sp.id);
   });
   assert.equal(r.ok, false);
-  assert.ok(r.specialisations.some((p) => p.includes(`sort ${sort.id}`) && p.includes(`NPM ${sort.niveau} a une spécialisation`)), JSON.stringify(r.specialisations));
+  assert.ok(r.specialisations.some((p) => p.includes(`sort ${sort.id}`) && p.includes(`NPM ${sort.niveau} doit avoir une spécialisation`)), JSON.stringify(r.specialisations));
   assert.ok(r.specialisations.some((p) => p.includes(`magie ${magie} : 1 spécialisation(s) au lieu de 2`)), JSON.stringify(r.specialisations));
 });
 

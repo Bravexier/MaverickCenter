@@ -8264,7 +8264,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 | Stade 1 | Stade 2 | Stade 3 |
 | --- | --- | --- |
-| - Malus de 15% aux compétences : Athlétisme, Équilibre, Stabilité, Réflexe, Distinction, Orientation.<br>- Dure 3 Tours. | - Malus de 20% aux compétences : Athlétisme, Équilibre, Stabilité, Réflexe, Distinction, Orientation.<br>- Dure 3 Tours. | - Malus de 30% aux compétences : Athlétisme, Équilibre, Stabilité, Reflexe, Distinction, Orientation.<br>- Un placement sur la victime fait qu''elle tombera toujours par terre juste après.<br>- Dure 3 Tours. |
+| - Malus de 15% aux compétences : Athlétisme, Équilibre, Stabilité, Réflexe, Distinction, Orientation.<br>- Dure 3 Tours. | - Malus de 20% aux compétences : Athlétisme, Équilibre, Stabilité, Réflexe, Distinction, Orientation.<br>- Dure 3 Tours. | - Malus de 30% aux compétences : Athlétisme, Équilibre, Stabilité, Réflexe, Distinction, Orientation.<br>- Un placement sur la victime fait qu''elle tombera toujours par terre juste après.<br>- Dure 3 Tours. |
 
 **Résistances/Vulnérabilités**
 
@@ -18304,7 +18304,7 @@ Dans le cas d''un boss qui se fait enfermer, il peut lutter contre avec des jets
 
 \*Met à 1 de santé et +20AM pendant 2 tours pour le bénéficiaire puis la protection disparaît.
 
-Si au bout de 2 tours, la protection n''a pas protégée, elle disparaît.
+Si au bout de 2 tours, la protection n''a pas protégé, elle disparaît.
 
 ## Textes des sorts de niveau 5
 
@@ -18503,7 +18503,7 @@ Les nécromanciens sont généralement plus minces que la moyenne, voire maigres
 | 2.0 | Armure osseuse | Amplification (IC pour 3 NM) | 5 + 2 âmes | 4.0 | 1.0 | +2AP (+1/NM) | Augmente les AP ainsi que la résistance aux attaques de taille. Dure 3 tours |
 | 2.0 | Détection de la mort | Amplification | 9 (–1/NM) + 2 âmes | Soi-même | 100 mètres | / | Permet de détecter distinctement les non-morts et les utilisateurs de la nécromancie. |
 | 2.0 | Fer toxique | Amplification (IC pour 3 NM) | 5.0 | 1.0 | 1.0 | +8 dégâts | L''arme suinte une matière toxique : pendant 3 tours, ses attaques infligent des dégâts de nécromancie. |
-| 3.0 | Seigneur des morts | Amplification   (IC pour 3 NM) | 10 + 3 âmes | 5 | 1 | / | Donne une amplification aux invocations alliés parmis une liste\*. Dure 3 tours. |
+| 3.0 | Seigneur des morts | Amplification   (IC pour 3 NM) | 10 + 3 âmes | 5 | 1 | / | Donne une amplification aux invocations alliés parmi une liste\*. Dure 3 tours. |
 | 3.0 | Forge de ses morts | Construction<br>(IC pour 3 NM) | 9 + 2 âmes | Soi-même | 1.0 | / | Utilise des âmes pour créer des armes simples, 1 seule utilisation (+1 par NM). |
 | 3.0 | Prison d''os | Construction | 9 + 3 âmes | 6 (+1/NM) | Carré 3x3 | / | Emprisonne chair comme âme. 20 santé. |
 | 3.0 | Câlin putréfié | Attaque | 10 + 3 âmes | 3 (+1/NM) | 1.0 | 7d6 + 15 dégâts | Si jet de vigueur raté = Inflige Poison 1. |
@@ -18646,7 +18646,7 @@ Les utilisateurs de la Terre sont des personnes qui ont des tailles et une muscu
 
 \*Met à 1 de santé et +20AP pendant 2 tours pour le bénéficiaire puis la protection disparaît.
 
-Si au bout de 2 tours, la protection n''a pas protégée, elle disparaît.
+Si au bout de 2 tours, la protection n''a pas protégé, elle disparaît.
 
 **Note de la cellule « Effets secondaires » du sort « Terre Maudite »** : La Nécrose ne disparaît que quand le lanceur est hors combat ou mort.
 
@@ -18769,7 +18769,7 @@ Exemple : J''ai posé sur 3 personnes différentes un sort qui coûte 3. Donc en
 | 4.0 | Pluie blanche | Amplification | 25% Chakra maximum | 3 (+1/NM) | Carré 4x4 | / | Fait pleuvoir une pluie blanche brillante au-dessus des alliés, leur redonnant ainsi autant de {{chakra\|chakra}} que dépensé. |
 | 4.0 | Miroir des arcanes | Amplification | 20.0 | Soi-même | 1.0 | / | Permet de renvoyer le sortilège de l''agresseur, 3 utilisations. (3NM = Ne prend plus l''effet en question). |
 | 4.0 | Lance d''éther | Attaque | 24 (-2/NM) | 20 | 1 | 7d6 + 35 dégâts | Une grosse attaque d''arcane. |
-| 5.0 | Pâte de la trame | Amplification<br>(+1 utilisation/NM) | 12 par effet et par tour | 1 | 1 | / | Le lanceur donne un boost pour les sorts parmis une liste\*. Chaque boost maintenu augmente la consommation de chakra. |
+| 5.0 | Pâte de la trame | Amplification<br>(+1 utilisation/NM) | 12 par effet et par tour | 1 | 1 | / | Le lanceur donne un boost pour les sorts parmi une liste\*. Chaque boost maintenu augmente la consommation de chakra. |
 | 5.0 | Planète chakratique | Attaque | 0.0 | Illimité | Carré 6x6 | X dégâts | Les dégâts correspondent aux CK donnés par le lanceur et alliés. 2CK (1CK/3NM) = 1 dégâts |
 | 3.0 | Rupture d''armure | Entrave | 13 | 5 | 1 | / | Divise par 2 les AM de base de la cible pendant 3 tours. 3NM = Divise par 2 les AM de l''armure en plus. |
 | 3.0 | Laser de chakra | Attaque | 12.0 | 7.0 | 1.0 | 20 dégâts (+3/NM) | Tire un rayon qui ignore l''AM. |
@@ -19502,7 +19502,7 @@ Les spécialistes du Vent ont les cheveux mi-longs, mèches vert clair, les yeux
 
 **Note de la cellule « Effets secondaires » du sort « Feuille morte »** : Maximum 30m
 
-**Remarque du sort « Recul forcé »** : Sans NM dedans, le sort ne peut pas reculé une cible grande. Et c''est maximum 1 pour cette même cible.
+**Remarque du sort « Recul forcé »** : Sans NM dedans, le sort ne peut pas reculer une cible grande. Et c''est maximum 1 pour cette même cible.
 
 **Remarque du sort « Sonar »** : Ligne de vue : C''est le besoin de voir la cible pour la toucher dans la portée du sort. Ce sort permet d''attendre la cible malgré un obstacle. SAUF si cet obstacle ne possède pas de possibilité de faire passer le sort comme un mur sans trou.
 
@@ -19568,7 +19568,7 @@ Les utilisateurs du vide ont une pilosité blanche et possèdent une inversion a
 | 4.0 | Grenade implosive | Attaque/ Placement | 27.0 | 3.0 | Croix infini | 8d6 + 15 dégâts | Inflige de gros dégâts de Vide en zone, attire de 1 case (+1/NM) les victimes. |
 | 4.0 | Intérieur solide | Amplification (IC) | 20 | Vue | 1 | / | Permet de résister à toute agression mentale. (3NM = Immunité au contrôle mental passif) |
 | 4.0 | Leurre de rage | Attaque | 23 | 6 | 1 | 7d6 + 20 dégâts (+7/NM) | Inflige une frappe couplé à une moquerie.<br>Si jet fermeté raté = Inflige "Enragé 2" |
-| 5.0 | Regard de Mora | Amplification /Entrave | 42 | Soi même | Terrain | / | Permet d''imposer une règle au sein du champ de bataille parmis une liste\* pendant 2 tours (+1/NM). |
+| 5.0 | Regard de Mora | Amplification /Entrave | 42 | Soi même | Terrain | / | Permet d''imposer une règle au sein du champ de bataille parmi une liste\* pendant 2 tours (+1/NM). |
 | 5.0 | Marteau du vide | Attaque | 55 (-5/NM) | 1.0 | Croix de 2 | 10d6 + 70 dégâts | Inflige de terribles dégâts de vide sur une zone. |
 | 3.0 | Sablier du vide | Invocation | 12.0 | 1.0 | Cercle de 5 | 4d6 dégâts (+6/NM) | Invoque un sablier qui aspire la santé des adversaires autour de lui et la retransmet au tour suivant aux alliés. Possède 20 PV. |
 | 3.0 | Suppression | Entrave (IC pour 3NM) | 15 | 6 | 1 | / | Retire toutes les amplifcation de la cible et elle ne peut pas bénéficier d''amplification pendant 2 tours. |

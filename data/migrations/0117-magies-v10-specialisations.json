@@ -1045,6 +1045,80 @@
    "comme": [
     "0003-orthographe-magies.json (magies/magie-du-feu#sort:diffusion)"
    ]
+  },
+  {
+   "id": "magies/magie-de-larcane#sort:pate-de-la-trame",
+   "colonne": "effets",
+   "onglet": "Arcane",
+   "cellule": "AC104",
+   "champ": "v",
+   "avant": "sorts parmis une",
+   "apres": "sorts parmi une",
+   "occurrences": 1,
+   "comme": [
+    "0005-orthographe-base.json (ressources/armes)"
+   ]
+  },
+  {
+   "id": "magies/magie-du-vide#sort:regard-de-mora",
+   "colonne": "effets",
+   "onglet": "Vide",
+   "cellule": "AC98",
+   "champ": "v",
+   "avant": "bataille parmis une",
+   "apres": "bataille parmi une",
+   "occurrences": 1,
+   "comme": [
+    "0005-orthographe-base.json (ressources/armes)"
+   ]
+  },
+  {
+   "id": "magies/magie-de-la-necromancie#sort:seigneur-des-morts",
+   "colonne": "effets",
+   "onglet": "Nécromancie",
+   "cellule": "AC77",
+   "champ": "v",
+   "avant": "alliés parmis une",
+   "apres": "alliés parmi une",
+   "occurrences": 1,
+   "comme": [
+    "0005-orthographe-base.json (ressources/armes)"
+   ]
+  },
+  {
+   "id": "magies/magie-du-vent#sort:recul-force",
+   "colonne": "remarque",
+   "onglet": "Vent",
+   "cellule": "AT63",
+   "champ": "note",
+   "avant": "ne peut pas reculé",
+   "apres": "ne peut pas reculer",
+   "occurrences": 1,
+   "comme": [
+    "0003-orthographe-magies.json (magies/magie-du-vent#sort:recul-force)"
+   ]
+  },
+  {
+   "id": "magies/magie-de-la-glace#sort:prisme-protecteur",
+   "colonne": "remarque",
+   "onglet": "Glace",
+   "cellule": "BK86",
+   "champ": "note",
+   "avant": "n'a pas protégée",
+   "apres": "n'a pas protégé",
+   "occurrences": 1,
+   "comme": []
+  },
+  {
+   "id": "magies/magie-de-la-terre#sort:petale-bouclier",
+   "colonne": "remarque",
+   "onglet": "Terre",
+   "cellule": "AC89",
+   "champ": "note",
+   "avant": "n'a pas protégée",
+   "apres": "n'a pas protégé",
+   "occurrences": 1,
+   "comme": []
   }
  ],
  "coquilles_ecartees": [
@@ -1102,7 +1176,8 @@
  },
  "ecarts_a_la_chaine_du_plan": [
   "magies/magie-de-la-foudre#sort:boules-de-foudre : bonus_maitrise \"Effets : 1 boule (+1/NM)\" (plan \"Effets : 1 boule (+1/NM) vont apparaître et vont s'approcher de l'ennemi le plus proche de 2 cases par tour\")",
-  "magies/magie-de-la-foudre#sort:dysfonctionnement : bonus_maitrise \"Type : IC pour 3 NM\\nEffets : agit de manière incohérente pendant 1 tour (+1 tour/NM)\" (plan \"Type : IC pour 3 NM\\nEffets : Une créature dite mécanique agit de manière incohérente pendant 1 tour (+1 tour/NM)\")"
+  "magies/magie-de-la-foudre#sort:dysfonctionnement : bonus_maitrise \"Type : IC pour 3 NM\\nEffets : agit de manière incohérente pendant 1 tour (+1 tour/NM)\" (plan \"Type : IC pour 3 NM\\nEffets : Une créature dite mécanique agit de manière incohérente pendant 1 tour (+1 tour/NM)\")",
+  "magies/magie-du-vent#sort:recul-force : bonus_maitrise \"Effets : Fait reculer la cible de 1 case (+1/NM)\\nRemarque : Sans NM dedans, le sort ne peut pas reculer une cible grande\" (plan \"Effets : Fait reculer la cible de 1 case (+1/NM)\\nRemarque : Sans NM dedans, le sort ne peut pas reculé une cible grande\")"
  ],
  "amelioration_cadaverique": "table supprimée (R237 (7)) ; invocation bestiaire/animation-des-morts : tableau_titre et tableau_sort_id à NULL"
 }

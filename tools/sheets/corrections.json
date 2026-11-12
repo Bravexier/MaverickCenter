@@ -325,6 +325,65 @@
           "apres": "qui souffrent de",
           "nature": "grammaire",
           "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : effets du sort Armée de l'Ombre ; accord du verbe avec « Les ennemis », la correction que la migration 0003 a faite sur le même texte du classeur V8 (registre 0117-magies-v10-specialisations.json, `coquilles_r10`) (R10 : l'orthographe se corrige, jamais un chiffre ni le sens ; coquille candidate du plan, retenue par game-design le 2026-11-12)."
+        },
+        {
+          "onglet": "Arcane",
+          "cellule": "AC104",
+          "avant": "sorts parmis une",
+          "apres": "sorts parmi une",
+          "nature": "orthographe",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : effets du sort Pâte de la trame ; pas de « s » à « parmi », la correction que la migration 0005 a faite sur d’autres textes (registre 0117-magies-v10-specialisations.json, `coquilles_r10`) (R10 : l'orthographe se corrige, jamais un chiffre ni le sens ; relevée par tech-qualite, retenue par game-design le 2026-11-12)."
+        },
+        {
+          "onglet": "Vide",
+          "cellule": "AC98",
+          "avant": "bataille parmis une",
+          "apres": "bataille parmi une",
+          "nature": "orthographe",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : effets du sort Regard de Mora ; pas de « s » à « parmi », la correction que la migration 0005 a faite sur d’autres textes (registre 0117-magies-v10-specialisations.json, `coquilles_r10`) (R10 : l'orthographe se corrige, jamais un chiffre ni le sens ; relevée par tech-qualite, retenue par game-design le 2026-11-12)."
+        },
+        {
+          "onglet": "Nécromancie",
+          "cellule": "AC77",
+          "avant": "alliés parmis une",
+          "apres": "alliés parmi une",
+          "nature": "orthographe",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : effets du sort Seigneur des morts ; pas de « s » à « parmi », la correction que la migration 0005 a faite sur d’autres textes (registre 0117-magies-v10-specialisations.json, `coquilles_r10`) (R10 : l'orthographe se corrige, jamais un chiffre ni le sens ; relevée par tech-qualite, retenue par game-design le 2026-11-12)."
+        },
+        {
+          "onglet": "Vent",
+          "cellule": "AT63",
+          "avant": "ne peut pas reculé",
+          "apres": "ne peut pas reculer",
+          "nature": "grammaire",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : note de cellule (remarque) du sort Recul forcé ; infinitif après « peut », comme la correction que la migration 0003 a faite sur les effets du même sort (« Fait reculé la ») (R10 : l'orthographe se corrige, jamais un chiffre ni le sens ; relevée par tech-qualite, retenue par game-design le 2026-11-12).",
+          "champ": "note"
+        },
+        {
+          "onglet": "Glace",
+          "cellule": "BK86",
+          "avant": "n'a pas protégée",
+          "apres": "n'a pas protégé",
+          "nature": "grammaire",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : note de cellule (remarque) du sort Prisme protecteur ; participe passé avec « avoir », sans complément placé avant : invariable (R10 : l'orthographe se corrige, jamais un chiffre ni le sens ; relevée par tech-qualite, retenue par game-design le 2026-11-12).",
+          "champ": "note"
+        },
+        {
+          "onglet": "Terre",
+          "cellule": "AC89",
+          "avant": "n'a pas protégée",
+          "apres": "n'a pas protégé",
+          "nature": "grammaire",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : note de cellule (remarque) du sort Pétale bouclier ; participe passé avec « avoir », sans complément placé avant : invariable (R10 : l'orthographe se corrige, jamais un chiffre ni le sens ; relevée par tech-qualite, retenue par game-design le 2026-11-12).",
+          "champ": "note"
+        },
+        {
+          "onglet": "Altération détats",
+          "cellule": "AG68",
+          "avant": "Reflexe",
+          "apres": "Réflexe",
+          "nature": "accent",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : stade 3 de l’altération Surdité ; nom de la compétence « Réflexe », la correction que la migration 0005 a faite sur le même texte (registre 0005-orthographe-base.json, stades 1 et 2 de la Surdité) (R10 : l'orthographe se corrige, jamais un chiffre ni le sens ; relevée par tech-db au lot 1, 2026-11-12)."
         }
       ]
     }

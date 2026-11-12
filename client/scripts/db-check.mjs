@@ -219,10 +219,10 @@ if (correctionsLignesSupprimees) bilan.corrections_lignes_supprimees = correctio
 if (noms.has('magie_specialisation') && colonnes('sort').some((c) => c.name === 'specialisation_id')) {
   const { POTENTIEL_ILLIMITE } = await import(pathToFileURL(`${LIB}/potentiel-illimite.mjs`).href);
   for (const s of db.prepare('SELECT id, niveau FROM sort WHERE niveau >= 3 AND specialisation_id IS NULL AND magie_id <> ?').all(POTENTIEL_ILLIMITE)) {
-    problemes.push(`sort ${s.id} : un sort de NPM ${s.niveau} a une spécialisation (R236 (1))`);
+    problemes.push(`sort ${s.id} : un sort de NPM ${s.niveau} doit avoir une spécialisation, il n'en a pas (R236 (1))`);
   }
   for (const s of db.prepare('SELECT id, niveau FROM sort WHERE specialisation_id IS NOT NULL AND niveau < 3').all()) {
-    problemes.push(`sort ${s.id} : un sort de NPM ${s.niveau} n'a pas de spécialisation (R236 (1))`);
+    problemes.push(`sort ${s.id} : un sort de NPM ${s.niveau} ne doit pas avoir de spécialisation, il en a une (R236 (1))`);
   }
   const parMagie = new Map(db.prepare('SELECT magie_id, COUNT(*) AS n FROM magie_specialisation GROUP BY magie_id').all().map((r) => [r.magie_id, r.n]));
   for (const m of db.prepare('SELECT id FROM magie').all()) {

@@ -36,3 +36,22 @@ export const coutsNonRepartisDeLa0117 = () => new Set(
 
 /** Les identifiants des 119 sorts que la 0117 crée (registre 0117-magies-v10-specialisations.json, `sorts.nouveaux`) : aucun registre antérieur ne les décrit. */
 export const sortsNouveauxDeLa0117 = () => new Set(JSON.parse(readFileSync(CHEMIN.replace(/\.sql$/, '.json'), 'utf8')).sorts.nouveaux);
+
+/**
+ * Les identifiants des sorts dont la 0117 réécrit les lignes de `table` (`sort_bonus_maitrise`, `sort_mode`… : DELETE puis INSERT, ou INSERT d'un sort
+ * nouveau), plus les sorts supprimés : le registre d'une migration antérieure (0004) ne décrit plus leurs lignes. Une mise à jour de la seule
+ * `source_ref` (classeur de Décembre) ne compte pas.
+ */
+export function sortsDontLa0117ReecritLes(table) {
+  const ids = sortsSupprimesParLa0117();
+  for (const m of sql().matchAll(new RegExp(`^DELETE FROM ${table} WHERE sort_id (?:= '([^']+)'|IN \\((.+)\\));$`, 'gm'))) {
+    if (m[1]) ids.add(m[1]);
+    else for (const x of m[2].matchAll(/'([^']+)'/g)) ids.add(x[1]);
+  }
+  for (const m of sql().matchAll(new RegExp(`^INSERT INTO ${table} \\([^)]*\\) VALUES \\('([^']+)'`, 'gm'))) ids.add(m[1]);
+  return ids;
+}
+
+/** Les pages dont la 0117 réécrit le corps entier (« UPDATE page SET corps_md = '…' WHERE id = '…'; » : pages de magie, bestiaire, altérations, météo). */
+export const pagesReecritesParLa0117 = () =>
+  new Set([...sql().matchAll(/^UPDATE page SET corps_md = '(?:[^']|'')*' WHERE id = '([^']+)';$/gm)].map((m) => m[1]));
