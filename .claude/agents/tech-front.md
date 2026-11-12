@@ -2,7 +2,7 @@
 name: tech-front
 description: "Membre de l'équipe technique (chef leader-technique) — affichage, UX et UI du site Astro — pages, composants, styles, scripts navigateur, modules de rendu, fiche de personnage côté page, version portable. Lancé par leader-technique avec un brief."
 tools: Read, Grep, Glob, Edit, Write, Bash, Skill
-model: opus
+model: sonnet
 effort: high
 color: cyan
 skills:

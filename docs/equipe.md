@@ -1,6 +1,6 @@
 # L'équipe d'agents
 
-L'organisation est voulue par le propriétaire le 2026-10-22. La session principale ne délègue qu'à **trois chefs**, et chaque chef dirige une équipe de membres spécialisés.
+L'organisation est voulue par le propriétaire le 2026-10-22. La session principale ne délègue qu'à **trois chefs**, et chaque chef dirige une équipe de membres spécialisés. Depuis le 2026-11-12, elle traite elle-même les petits lots (circuit direct), pour économiser les jetons.
 
 - **Les agents** sont dans `.claude/agents/`.
 - **Les procédures et les connaissances par zone** sont des skills (`.claude/skills/`), chargés seulement par l'agent qui en a besoin.
@@ -23,10 +23,10 @@ Les instructions générales (`CLAUDE.md`, fiches d'agents, ce document hors sa 
 
 | Équipe | Agent | Domaine | Écrit | Modèle, effort |
 | --- | --- | --- | --- | --- |
-| Technique | `tech-front` | Affichage, UX et UI : pages, composants, styles, scripts navigateur, modules de rendu, fiche côté page, version portable | `client/src/` sauf les modules du back, `client/public/`, `astro.config.mjs`, `client/package.json`, `tools/build-artifact.mjs`, docs des pages, ses tests | opus, high |
-| Technique | `tech-back` | Service, API, édition et mise à jour du site de dev, modules qui lisent ou écrivent la base, performance, hébergement, CI | `client/serveur/`, `client/scripts/`, les modules de base de `src/lib` (liste fermée dans `leader-technique`), `deploy/`, `.github/`, `tools/flux-git/`, `.gitignore`, `.nvmrc`, `api/` (sur demande), `docs/serveur.md`, `api.md`, `flux-git.md`, ses tests | opus, high |
+| Technique | `tech-front` | Affichage, UX et UI : pages, composants, styles, scripts navigateur, modules de rendu, fiche côté page, version portable | `client/src/` sauf les modules du back, `client/public/`, `astro.config.mjs`, `client/package.json`, `tools/build-artifact.mjs`, docs des pages, ses tests | sonnet, high |
+| Technique | `tech-back` | Service, API, édition et mise à jour du site de dev, modules qui lisent ou écrivent la base, performance, hébergement, CI | `client/serveur/`, `client/scripts/`, les modules de base de `src/lib` (liste fermée dans `leader-technique`), `deploy/`, `.github/`, `tools/flux-git/`, `.gitignore`, `.nvmrc`, `api/` (sur demande), `docs/serveur.md`, `api.md`, `flux-git.md`, ses tests | sonnet, high |
 | Technique | `tech-db` | La base : schéma, migrations, `data/rows` par les outils, pages du wiki (`db:sync-pages`), vues, index, intégrité, optimisation | `data/`, `tools/db/`, `docs/sql/` (hors questions des chefs et rapprochement), ses tests | opus, high |
-| Technique | `tech-sources` | Import des sources : originaux Google (R83), exports bruts, importeurs et extracteurs, rapprochement des classeurs | `sources/`, `tools/` (hors `db/`, `flux-git/`, `build-artifact.mjs`), `docs/sources.md`, `codex.md`, `fiche-auto.md`, `sql/rapprochement-classeurs.md`, ses tests | opus, high |
+| Technique | `tech-sources` | Import des sources : originaux Google (R83), exports bruts, importeurs et extracteurs, rapprochement des classeurs | `sources/`, `tools/` (hors `db/`, `flux-git/`, `build-artifact.mjs`), `docs/sources.md`, `codex.md`, `fiche-auto.md`, `sql/rapprochement-classeurs.md`, ses tests | sonnet, high |
 | Technique | `tech-qualite` | Tests et qualité : seul à lancer les tests et contrôles d'un lot, une fois en fin de lot ; relecture indépendante de chaque lot et des instructions, couverture, diagnostic de la CI | `client/test/` : aides, tests transverses (`site-html`, `defilement`, `tableaux`, `infobulles`), tests manquants | opus, high (sonnet pour un lot sans migration, SQL, instructions ni plus de 300 lignes) |
 | Technique | `tech-skills` | Les skills : seul habilité à les créer, modifier, resserrer ou éclater ; décide s'il faut éclater (`eclater-un-skill`) ; tient la section « Les skills » de ce document | `.claude/skills/**`, la section « Les skills » de ce document | sonnet, high (opus pour éclater un skill de plus de 20 Ko) |
 | Technique | `tech-publication` | Git : branche, commits, rebase automatique juste après le dernier commit et résolution des conflits, push | git, et la résolution des conflits mécaniques | haiku, medium |
@@ -35,7 +35,7 @@ Les instructions générales (`CLAUDE.md`, fiches d'agents, ce document hors sa 
 | Game Design | `gd-races` | Races, ethnies, peuples, magies innées ; combinaisons race × classe × magie | rien (rapport) | sonnet, high |
 | Game Design | `gd-objets` | Armes, armures, boucliers, accessoires, consommables, bâtons, composants, artisanat, monnaies | rien (rapport) | sonnet, high |
 | Game Design | `gd-mecaniques` | Combat, dégâts, postures, Mode Hyper et Super, altérations d'état, résistances, maladies, glossaire des règles | rien (rapport) | sonnet, high |
-| Game Design | `gd-fiche` | Fiche de personnage et ses règles : création, compétences, acquis, niveaux, métiers, équipement porté, contrôles | rien (rapport) | opus, high |
+| Game Design | `gd-fiche` | Fiche de personnage et ses règles : création, compétences, acquis, niveaux, métiers, équipement porté, contrôles | rien (rapport) | sonnet, high |
 | WorldBuilding | `wb-chronologie` | Chronologie : événements datés, Impacts, ordre, catégories | rien (rapport) | sonnet, medium |
 | WorldBuilding | `wb-nations` | Continents, nations, régions, guildes et ordres, peuples et leurs relations | rien (rapport) | sonnet, medium |
 | WorldBuilding | `wb-divinites` | Dieux, primordiaux, cosmologie, temples et cultes, races non jouables, objets légendaires | rien (rapport) | sonnet, medium |
@@ -55,13 +55,9 @@ Chaque agent n'a que les outils de son rôle :
 ## Choix des modèles
 
 Le critère est le rapport qualité / jetons :
-- **Opus, effort high** pour ce qui exige un raisonnement long sur une matière très liée :
-  - le chef Game Design ;
-  - tout membre qui écrit du code ou des données dans ce dépôt aux invariants nombreux ;
-  - la relecture d'un lot à risque (migration, SQL, instructions, plus de 300 lignes) ;
-  - la fiche de personnage, qui intègre toutes les règles.
-- **Opus, effort medium** pour le chef Technique : son rôle est de cadrer, de répartir et de faire les petits lots lui-même ; le raisonnement long est dans les membres.
-- **Sonnet** pour l'analyse d'un domaine borné : membres Game Design et WorldBuilding (high, ou medium pour le lore), le chef WorldBuilding (high), `tech-skills` (high), et la relecture d'un petit lot.
+- **Opus, effort high** pour ce qui ne se rattrape pas en aval : le chef Game Design, `tech-db` (schéma, migrations, données) et `tech-qualite` (relecture indépendante d'un lot à risque : migration, SQL, instructions, plus de 300 lignes).
+- **Opus, effort medium** pour le chef Technique : son rôle est de cadrer et de répartir ; le raisonnement long est dans les membres.
+- **Sonnet** pour tout le reste (décision du propriétaire du 2026-11-12, pour réduire la consommation de jetons) : les auteurs de code `tech-front`, `tech-back` et `tech-sources`, `gd-fiche`, les membres Game Design et WorldBuilding (high, ou medium pour le lore), le chef WorldBuilding (high), `tech-skills` (high), et la relecture d'un petit lot.
 - **Haiku** pour la publication git, qui suit un script (`tools/flux-git/etat-branche.mjs` classe l'état de la branche) ; devant un cas que le script ne classe pas, elle s'arrête et le dit (« bloqué ») plutôt que de deviner.
 - **L'évaluation** s'appuie sur la « ligne de suivi » que le `leader-technique` ajoute à chaque synthèse (agents lancés, relances, échecs de CI). Un modèle se change quand cette ligne montre des reprises répétées.
 
@@ -69,7 +65,8 @@ Le critère est le rapport qualité / jetons :
 
 Le détail est dans le skill `circuit-des-demandes`.
 
-1. **Le routage.** La session principale confie la demande, mot pour mot, au chef du domaine :
+0. **Le circuit direct** (décision du propriétaire du 2026-11-12). Une question, une analyse en lecture, un petit lot ou un correctif du site : la session principale le fait elle-même, sans lancer d'agent (critères et conduite dans `CLAUDE.md`).
+1. **Le routage.** Au-delà, la session principale confie la demande, mot pour mot, au chef du domaine :
    - une règle à `game-design` ;
    - le lore à `worldbuilding` ;
    - le site et les événements des PR à `leader-technique`.

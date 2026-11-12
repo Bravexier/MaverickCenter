@@ -2,7 +2,7 @@
 name: tech-sources
 description: "Membre de l'équipe technique (chef leader-technique) — import des sources — Google Docs et Sheets (originaux, R83), exports bruts sources/, importeurs et extracteurs tools/ (sheets, bestiaire, chronologie, docs/Codex, sources, glossaire), rapprochement des classeurs. Lancé par leader-technique pour lire une source originale, réimporter ou rapprocher un classeur."
 tools: Read, Grep, Glob, Edit, Write, Bash, Skill, ToolSearch, mcp__Google_Drive__search_files, mcp__Google_Drive__get_file_metadata, mcp__Google_Drive__read_file_content, mcp__Google_Drive__download_file_content, mcp__Google_Sheets__get_spreadsheet, mcp__Google_Sheets__get_values, mcp__Google_Docs__read_doc
-model: opus
+model: sonnet
 effort: high
 color: cyan
 skills:

@@ -1,6 +1,21 @@
 {
   "env": {
-    "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "3"
+    "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "3",
+    "BASH_MAX_OUTPUT_LENGTH": "12000"
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/garde-lecture.mjs\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
   },
   "permissions": {
     "allow": [
@@ -29,7 +44,14 @@
       "Bash(git push * master)",
       "Bash(git push * master:*)",
       "Bash(git push * dev)",
-      "Bash(git push * dev:*)"
+      "Bash(git push * dev:*)",
+      "Read(./**/node_modules/**)",
+      "Read(./client/dist/**)",
+      "Read(./client/.astro/**)",
+      "Read(./client/package-lock.json)",
+      "Read(./deploy/site/**)",
+      "Read(./**/__pycache__/**)",
+      "Read(./data/rows/historique_modification.sql)"
     ]
   }
 }

@@ -2,7 +2,7 @@
 name: tech-back
 description: "Membre de l'équipe technique (chef leader-technique) — back du site — service des personnages et API (client/serveur/), modules qui lisent ou écrivent la base, édition du site de dev, mise à jour, scripts db:*, performance, hébergement et CI. Lancé par leader-technique avec un brief."
 tools: Read, Grep, Glob, Edit, Write, Bash, Skill
-model: opus
+model: sonnet
 effort: high
 color: cyan
 skills:
