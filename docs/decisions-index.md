@@ -2,7 +2,7 @@
 
 Ne lis jamais `docs/decisions-regles.md` en entier : trouve ici le numéro de la décision, puis cherche sa ligne avec Grep (motif `^\| R41 \|`) et ne lis qu'elle.
 
-Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 248 décisions, de R1 à R248, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
+Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 251 décisions, de R1 à R251, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
 
 | Réf. | Sujet | Décision |
 | --- | --- | --- |
@@ -254,3 +254,6 @@ Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas mo
 | R246 | Nom affiché par la capacité « sort supplémentaire » de la Poupée fulgurant… | La capacité affiche « Boules plasmiques », le nouveau… |
 | R247 | Affichage des pages de magie V10, suite de R245 (1) et (2) : le point d'at… | (1) L'infobulle se pose sur le titre de chacune des de… |
 | R248 | Projectile arcanique : coût et fiche, suite de R244 (3) : la réponse « Var… | (1) La progression fait foi : 1 projectile coûte 4, ch… |
+| R249 | Onglets du Potentiel Illimité : R245 et R247 visent la page d'une magie ;… | Chaque onglet du Potentiel Illimité suit R245 et R247… |
+| R250 | Altération de l'Ombre visée par un don « à la magie innée et son altératio… | Le cran va à la Peur seule. La Somnolence n'a pas de r… |
+| R251 | Texte du coût de Projectile arcanique (suite de R248 ; MAJ-K7 (1)) | Coût : « 4/projectile » (valeur 4) ; coût secondaire :… |
