@@ -1278,5 +1278,5 @@ Relevé de `worldbuilding` (2026-11-12). Les textes des onglets 21 et 22 du clas
 
 ## Mise à jour de Décembre : suites (migration 0121, 2026-11-13)
 
-- `0121-maj-decembre-suites` : R255 (7) (« Posture inébranlable », id inchangé, clés recalculées ; « l'AP », « d'AP+AM », « altérations d'état » dans les dons du Boxeur), R10 (« (armes), » d'Immatériel, 5 cellules) et R266 (« Dieu de la Terre », « Super Gemme(s) », « Mort Fertile » : 31 occurrences dans 24 cellules, Codex, onglets 21 et 22, bestiaire et Mode Super compris, hors `historique_modification` et `note_version_ligne`) ; ids, clés et adresses inchangés ; registre `data/migrations/0121-maj-decembre-suites.json`, liste `corrections`.
+- `0121-maj-decembre-suites` : R255 (7) (« Posture inébranlable », id inchangé, clés recalculées ; « l'AP », « d'AP+AM », « altérations d'état » dans les dons du Boxeur), R10 (« (armes), » d'Immatériel, 5 cellules) et R266 (« Dieu de la Terre », « Super Gemme(s) », « Mort Fertile » : 31 occurrences dans 19 cellules (24 entrées du registre), Codex, onglets 21 et 22, bestiaire et Mode Super compris, hors `historique_modification` et `note_version_ligne`) ; ids, clés et adresses inchangés ; registre `data/migrations/0121-maj-decembre-suites.json`, liste `corrections`.
 
