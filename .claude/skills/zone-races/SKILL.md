@@ -45,4 +45,4 @@ user-invocable: false
 
 ## Tests
 - `client/test/races-html.test.mjs` : site construit (CI après le build), dont le menu latéral.
-- `races-onglet.test.mjs` (`races_onglet.py --verifier`), `race-relations.test.mjs`, `race-kinds.test.mjs`, `races-magies-content.test.mjs`, `races-magies-innees-liste.test.mjs`, `races-detail-content.test.mjs`, `corps-races.test.mjs`, `db-0119-races-fongoide-gemidien.test.mjs` (R239, R256 ; aide `aide-races-0119.mjs`).
+- `races-onglet.test.mjs` (`races_onglet.py --verifier`), `race-relations.test.mjs`, `race-kinds.test.mjs`, `races-magies-content.test.mjs`, `races-magies-innees-liste.test.mjs`, `races-detail-content.test.mjs`, `corps-races.test.mjs`, `db-0120-races-fongoide-gemidien.test.mjs` (R239, R256 ; aide `aide-races-0120.mjs`).
