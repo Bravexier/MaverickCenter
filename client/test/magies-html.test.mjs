@@ -686,9 +686,9 @@ test('disponibilité par race : une seule liste, dans l’ordre figé ORDRE_DES_
     assert.ok(races.length > 0, slug);
     assert.deepEqual(races, ORDRE_DES_RACES.filter((r) => races.includes(r)), `${slug} : ordre figé ORDRE_DES_RACES`);
   }
-  // le Feu : races pures et hybrides mêlées, dans l'ordre de la liste
+  // le Feu : races pures et hybrides mêlées, dans l'ordre de la liste (Fongoïde et Gémidien à la fin des pures : R239)
   const feu = page('magie-du-feu');
-  assert.match(texteDe(contenu(feu, feu.indexOf('<section class="relations" id="races-disponibles"'), 'section')), /Lamia Mort-vivant Drassah&#39;thac Kitsune Satyre Marcass$/);
+  assert.match(texteDe(contenu(feu, feu.indexOf('<section class="relations" id="races-disponibles"'), 'section')), /Lamia Mort-vivant Fongoïde Gémidien Drassah&#39;thac Kitsune Satyre Marcass$/);
 });
 
 test('« Magie non compatible » : le Potentiel Illimité n’est cité nulle part ; « Mono-magie uniquement » pour lui et pour la Corruption (excepté Elfe Noir Charbon et Felfe Noir)', options, () => {

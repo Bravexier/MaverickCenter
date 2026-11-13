@@ -13,9 +13,11 @@ import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { journalExporte } from '../serveur/edition-journal.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
+import { corpsDeRace, etatDeRace } from '../src/lib/corps-races.mjs';
 import { cheminDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { remettreLesCorpsDeLa0119 } from './aide-migration-0119.mjs';
+import { TEXTES_DE_LA_0120 } from './aide-races-0120.mjs';
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
 const sansPython = spawnSync('python3', ['--version']).error ? 'python3 absent' : false;
@@ -58,12 +60,18 @@ test('R31 : liste changée sans la phrase, phrase réécrite sans la liste (mêm
   // liste de chaque race, une race « non touchée » ne se suppose pas dans data/rows.
   // La migration 0119 a réécrit les pages de race (« Classes accessibles », R238 (1)) après le site : leur corps garde, dans la base d'import, les
   // modifications du site que race_onglet et race_don n'ont plus. Ils sont remis à « import + 0119 » dans une copie (aide-migration-0119.mjs).
+  // Le corps d'une race que la 0120 a réécrit après le site (Modes Hyper de l'Elfe argenté et du Felfe, R237 (12)) est ensuite recalculé depuis
+  // ses tables (lib/corps-races.mjs, comme le service le fait à chaque modification).
   const baseImport = join(tmp, 'import.db');
   copyFileSync(cheminDImport(), baseImport);
   const ecriture = new DatabaseSync(baseImport);
   const courante = new DatabaseSync(cheminBase({ sansExemples: false }), { readOnly: true });
   try {
     remettreLesCorpsDeLa0119(ecriture, courante, { prefixe: 'races/' });
+    for (const raceId of new Set(TEXTES_DE_LA_0120.filter((t) => t.table === 'mode_hyper_effet').map((t) => t.cle.id.replace(/^onglet_race:/, '')))) {
+      const { corps_md: corps } = ecriture.prepare('SELECT corps_md FROM page WHERE id = ?').get(raceId);
+      ecriture.prepare('UPDATE page SET corps_md = ? WHERE id = ?').run(corpsDeRace(corps, etatDeRace((q, ...p) => ecriture.prepare(q).all(...p), raceId)), raceId);
+    }
   } finally {
     ecriture.close();
     courante.close();

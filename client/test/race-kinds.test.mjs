@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { groupRaces, HYBRIDES_SANS_CLASSE_RACIALE, ORDRE_DES_RACES, RACE_COLORS, raceKind, racialClassOf, raceOfClass, TAG_RACE_HYBRIDE } from '../src/lib/race-kinds.mjs';
 
 // les mots-clés d'une page par leur id (`data.mots_cles` : lib/wiki.ts), jamais par leur écriture (décision R195)
@@ -90,10 +92,20 @@ test('R195 : la classe raciale et la race créée hybride se lisent par l’id d
   assert.equal(racialClassOf([cls('Orios', 'hybride-animal')], orios)?.id, 'classes/orios');
 });
 
-test('ORDRE_DES_RACES : 27 races, chacune une seule fois', () => {
-  assert.equal(ORDRE_DES_RACES.length, 27);
-  assert.equal(new Set(ORDRE_DES_RACES).size, 27);
+test('ORDRE_DES_RACES : les races de l’import (R1, R239 : 29 avec Fongoïde et Gémidien), chacune une seule fois', () => {
+  // l'effectif se lit à l'import (le site de dev crée des races, qui viennent après la liste, par titre)
+  const db = ouvrirBase();
+  try {
+    const importees = historiqueSite(db).lignesDImport('race').map((r) => r.id);
+    assert.deepEqual([...ORDRE_DES_RACES].sort(), [...importees].sort());
+  } finally {
+    db.close();
+  }
+  assert.equal(new Set(ORDRE_DES_RACES).size, ORDRE_DES_RACES.length);
   assert.ok(ORDRE_DES_RACES.every((id) => /^races\/[a-z-]+$/.test(id)));
+  // R239 (1) : Fongoïde et Gémidien, races pures, à la fin des pures (avant le Drassah'thac, première hybride)
+  const i = ORDRE_DES_RACES.indexOf('races/drassahthac');
+  assert.deepEqual(ORDRE_DES_RACES.slice(i - 2, i), ['races/fongoide', 'races/gemidien']);
 });
 
 test('un groupe vide est omis ; aucune race : aucun groupe', () => {

@@ -15,6 +15,7 @@ import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { TABLES_HORS_REGLES } from '../src/lib/tables-de-la-base.mjs';
 import { ecrituresReecrites } from './aide-textes-reecrits.mjs';
+import { MOTS_CLES_DE_LA_0120 } from './aide-races-0120.mjs';
 
 const outils = fileURLToPath(new URL('../../tools/db/', import.meta.url));
 const sansPython = spawnSync('python3', ['--version']).error ? 'python3 absent' : false;
@@ -77,7 +78,9 @@ test('import : les catégories des mots-clés sont celles du registre, plus Clas
     ...REGISTRE.assignations.flatMap((e) => e.categories.map((c) => `${e.id}:${c.id}`)),
     ...REGISTRE_0113.motsCles.filter((e) => e.libelleAvant).map((e) => `${e.id}:${classe}`),
   ].sort();
-  const aLImport = h.lignesDImport('mot_cle_categorie').map((l) => `${l.mot_cle_id}:${l.categorie_id}`).sort();
+  // les mots-clés d'une migration postérieure (0120 : Fongoïde et Gémidien, épinglés par test/db-0120-races-fongoide-gemidien.test.mjs) mis à part
+  const posterieurs = new Set(Object.values(MOTS_CLES_DE_LA_0120));
+  const aLImport = h.lignesDImport('mot_cle_categorie').filter((l) => !posterieurs.has(l.mot_cle_id)).map((l) => `${l.mot_cle_id}:${l.categorie_id}`).sort();
   assert.deepEqual(aLImport, attendu);
 });
 

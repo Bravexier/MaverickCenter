@@ -58,7 +58,8 @@ test('R187 (2) : le Potentiel Illimité, une seule cellule « Forme Complète »
 
 test('R187 (2) : races — lecture onglet_race, ordre de la source, nom de la table race, capacité = nom, effet tel quel', () => {
   const lignes = effets('onglet_race');
-  assert.equal(lignes.length, 27);
+  // une capacité par race : les 27 du classeur « Les races » et les deux de la mise à jour de Décembre (R239, migration 0120 : rangs 28 et 29)
+  assert.equal(lignes.length, db.prepare('SELECT count(*) AS n FROM race').get().n);
   assert.deepEqual(tableau.races.lignes, lignes.map((e) => ({
     id: e.race_id, nom: db.prepare('SELECT nom FROM race WHERE id = ?').get(e.race_id).nom, libelle: e.libelle, capacite: e.nom, effet: e.effet, effet_id: e.id,
   })));

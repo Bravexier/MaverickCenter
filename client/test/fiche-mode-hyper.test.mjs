@@ -40,6 +40,9 @@ const BOULE_DE_FEU = sort('magies/magie-du-feu#sort:boule-de-feu');      // « 2
 const FRAPPE_LUMINEUSE = sort('magies/magie-de-la-lumiere#sort:frappe-lumineuse'); // Lumière, « 2d6 dégâts »
 const PREMIER_SOIN = sort('magies/magie-de-la-lumiere#sort:premier-soin');  // « 2d6 soin »
 const moment = (f, s, dsb) => M.sortDuMoment(regles, f, s, auNm(s, dsb));
+// Felfe : les dés de son Mode Hyper, lus dans son texte d'import (« augmentés de 1d » depuis le docx de la mise à jour de Décembre, R237 (12), migration
+// 0120 ; « 2d » avant) : les attendus en suivent le nombre, jamais écrit à la main
+const DES_FELFE = effetsDuModeHyper(regles.mode_hyper.races['races/felfe'].effet).find((e) => e.cible === 'des_sorts').valeur;
 /** Les lignes du tableau des résistances : `type:id` → palier. */
 const paliers = (r) => Object.fromEntries(r.paliers.flatMap((p) => p.cibles.map((c) => [`${c.type}:${c.id}`, p.id])));
 const crans = (r) => Object.fromEntries(r.paliers.flatMap((p) => p.cibles.map((c) => [`${c.type}:${c.id}`, c.crans])));
@@ -62,7 +65,10 @@ test('R172 : effets de magie et de race lus dans leur texte (onglets, R13) — l
     [`${TERRE}:mono`]: [{ cible: 'ap_base', valeur: 25 }], [`${TERRE}:bi`]: [{ cible: 'ap_base', valeur: 10 }],
     'races/humain': [{ cible: 'des_attaques', valeur: 1 }, { cible: 'vitesse', valeur: 2 }],
     'races/nain': [{ cible: 'des_armes', valeur: 2 }],
-    'races/felfe': [{ cible: 'des_sorts', valeur: 2, soins: true }],
+    // docx de Décembre (R237 (12), migration 0120) : « les dégâts et soins magiques sont augmentés de 1d » (2d avant)
+    'races/felfe': [{ cible: 'des_sorts', valeur: 1, soins: true }],
+    // Gémidien, « Surcharge élémentaire » (R239) : un bonus choisi parmi quatre à chaque début de tour, rien n'est compté (son « +1 vitesse » n'est
+    // pas un bonus acquis) : aucune entrée
     'races/jackalope': [{ cible: 'vitesse', valeur: 3 }],
     'races/marcass': [{ cible: 'armure_naturelle' }],
   });
@@ -213,15 +219,15 @@ test('R172 (C2) : Humain — +1 dé à toutes les attaques (armes et sorts, du t
   assert.deepEqual([v.vitesseModeHyper, v.vitesseSol], [2, M.attributsDe(regles, fiche(humain)).vitesseSol], 'la vitesse de la fiche ne change pas (tableur)');
 });
 
-test('R172 (C2) : Nain +2 dés aux armes (pas aux sorts), Felfe +2 dés aux dégâts et soins des sorts (pas aux armes), Jackalope +3 en Vitesse', () => {
+test('R172 (C2) : Nain +2 dés aux armes (pas aux sorts), Felfe +N dés aux dégâts et soins des sorts (pas aux armes ; 1 depuis R237 (12)), Jackalope +3 en Vitesse', () => {
   const nain = { race_id: 'races/nain', ethnie_id: 'races/nain#ethnie:nain-ouest' };
   const felfe = { race_id: 'races/felfe', ethnie_id: 'races/felfe#ethnie:felfe-forestier' };
   const base = M.degatsDArme(regles, fiche(avecArme()), 1);
   assert.equal(M.degatsDArmeDuMoment(regles, enHyper({ ...nain, ...avecArme() }), 1).texte, `${M.notationDesDes(base.de, base.nombre + 2)}+15`);
   assert.equal(moment(enHyper(nain), BOULE_DE_FEU).dsb.texte, '2d6 + 15 dégâts');
   assert.equal(M.degatsDArmeDuMoment(regles, enHyper({ ...felfe, ...avecArme() }), 1).texte, `${base.notation}+15`);
-  assert.equal(moment(enHyper(felfe), BOULE_DE_FEU).dsb.texte, '4d6 + 15 dégâts');
-  assert.equal(moment(enHyper(felfe), PREMIER_SOIN).dsb.texte, '4d6 + 15 soin');
+  assert.equal(moment(enHyper(felfe), BOULE_DE_FEU).dsb.texte, `${2 + DES_FELFE}d6 + 15 dégâts`);
+  assert.equal(moment(enHyper(felfe), PREMIER_SOIN).dsb.texte, `${2 + DES_FELFE}d6 + 15 soin`);
   const jackalope = { race_id: 'races/jackalope', ethnie_id: 'races/jackalope#ethnie:jackalope-terre', magie_innee_id: TERRE };
   assert.equal(M.attributsDe(regles, enHyper(jackalope)).vitesseModeHyper, 3);
   assert.equal(M.attributsDe(regles, fiche(jackalope)).vitesseModeHyper, 0);
@@ -471,17 +477,17 @@ test('R172 (Q84) : préparé au Mode Hyper 100 %, il garde le dé de race du Mod
   assert.equal(lance(fini, '2d6 soin').dsb.texte, `2d8 + ${15 + symbiose} soin`);
 });
 
-test('R172 (Q84) : Felfe préparé au Mode Hyper 100 % — +2 dés aux dégâts et aux soins magiques gardés après la sortie du Mode Hyper', () => {
+test('R172 (Q84) : Felfe préparé au Mode Hyper 100 % — ses dés de plus aux dégâts et aux soins magiques gardés après la sortie du Mode Hyper', () => {
   const felfe = { race_id: 'races/felfe', ethnie_id: 'races/felfe#ethnie:felfe-forestier' };
   const lance = (f, dsb) => M.sortDuMoment(regles, f, BOULE_DE_FEU, auNm(BOULE_DE_FEU, dsb));
   const fini = preparePuis({ ...felfe, mode_hyper: 1, mode_hyper_100: 1 }, HORS);
   const symbiose = M.postureDuMoment(regles, { ...fini, mode_hyper: 1, mode_hyper_100: 1 }).symbiose.degats;
-  // 4D8 au maximum (32) + 5 + 15 + 10 + la Symbiose
-  assert.equal(lance(fini, '2d6 + 5 dégâts').dsb.texte, `${32 + 30 + symbiose} dégâts`);
-  assert.equal(lance(fini, '2d6 soin').dsb.texte, `4d8 + ${15 + symbiose} soin`);
+  // (2 + N)D8 au maximum (4D8, 32, avec les 2 dés d'avant R237 (12)) + 5 + 15 + 10 + la Symbiose
+  assert.equal(lance(fini, '2d6 + 5 dégâts').dsb.texte, `${(2 + DES_FELFE) * 8 + 30 + symbiose} dégâts`);
+  assert.equal(lance(fini, '2d6 soin').dsb.texte, `${2 + DES_FELFE}d8 + ${15 + symbiose} soin`);
 });
 
-test('R172, R179 (Q85, Q87) : le dé de race du Mode Hyper suit le sort préparé — préparé en Mode Hyper : Humain 3d6+20, Felfe 4d6+20 après la fin ; préparé hors Mode Hyper : aucun', () => {
+test('R172, R179 (Q85, Q87) : le dé de race du Mode Hyper suit le sort préparé — préparé en Mode Hyper : Humain 3d6+20, Felfe (2 + N)d6+20 après la fin ; préparé hors Mode Hyper : aucun', () => {
   const humain = { race_id: 'races/humain', ethnie_id: 'races/humain#ethnie:humain-central' };
   const felfe = { race_id: 'races/felfe', ethnie_id: 'races/felfe#ethnie:felfe-forestier' };
   const lance = (f, dsb = '2d6 + 5 dégâts') => M.sortDuMoment(regles, f, BOULE_DE_FEU, auNm(BOULE_DE_FEU, dsb)).dsb.texte;
@@ -490,8 +496,8 @@ test('R172, R179 (Q85, Q87) : le dé de race du Mode Hyper suit le sort prépar�
   assert.equal(lance(preparePuis({ ...humain, mode_hyper: 1 })), '3d6 + 20 dégâts', 'pendant le Mode Hyper : une fois');
   // R179, « Non : reste figé comme préparé » : préparé en Mode Hyper normal, lancé au 100 % — ni +10, ni cran de Focus, ni maximum d'Offensif
   assert.equal(lance(preparePuis({ ...humain, mode_hyper: 1 }, { mode_hyper_100: 1 })), '3d6 + 20 dégâts');
-  assert.equal(lance(preparePuis({ ...felfe, mode_hyper: 1 }, HORS)), '4d6 + 20 dégâts');
-  assert.equal(lance(preparePuis({ ...felfe, mode_hyper: 1 }, HORS), '2d6 soin'), '4d6 + 15 soin');
+  assert.equal(lance(preparePuis({ ...felfe, mode_hyper: 1 }, HORS)), `${2 + DES_FELFE}d6 + 20 dégâts`);
+  assert.equal(lance(preparePuis({ ...felfe, mode_hyper: 1 }, HORS), '2d6 soin'), `${2 + DES_FELFE}d6 + 15 soin`);
   // Q85 : préparé hors Mode Hyper, lancé en Mode Hyper : ni le +15, ni le dé de race
   assert.equal(lance(preparePuis(humain, { mode_hyper: 1 })), '2d6 + 5 dégâts');
   assert.equal(lance(preparePuis(felfe, { mode_hyper: 1 }), '2d6 soin'), '2d6 soin');

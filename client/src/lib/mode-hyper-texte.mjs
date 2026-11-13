@@ -10,7 +10,7 @@
  * - `am_base`, `ap_base` : « L'armure magique (AM) de base augmente de 25. » (Glace), « L'armure physique (AP) de base augmente de 10. » (Terre) ;
  * - `des_attaques` : « 1d de dégâts en plus pour toutes les attaques produites » (Humain : armes et sorts) ;
  * - `des_armes` : « 2d de dégâts physiques en plus » (Nain : les armes) ;
- * - `des_sorts` : « les dégâts et soins magiques sont augmentés de 2d » (Felfe : les sorts, `soins` : leurs soins aussi) ;
+ * - `des_sorts` : « les dégâts et soins magiques sont augmentés de 1d » (Felfe, 2d avant R237 (12) : les sorts, `soins` : leurs soins aussi) ;
  * - `vitesse` : « +2 à la Vitesse » (Humain), « +3 Vitesse » (Jackalope) ;
  * - `armure_naturelle` : « Les AP et AM naturels s'ajoutent à toute réduction de dégâts » (Marcass : son AP et son AM naturelles ajoutées à la réduction de tout coup, décision R178 : fiche-moteur.mjs#degatsRecus).
  */
@@ -24,10 +24,17 @@ const LECTURES = [
   [/\bLes AP et AM naturels s['’]ajoutent à toute réduction de dégâts\b/i, () => ({ cible: 'armure_naturelle' })],
 ];
 
+/**
+ * Un effet où l'on choisit un bonus parmi plusieurs (Gémidien, « Surcharge élémentaire » : « choisir un bonus parmi : … | +1 vitesse … ») n'en donne
+ * aucun d'office : rien n'est compté, il reste affiché (R239 ; aucun calcul nouveau sans décision).
+ */
+const BONUS_AU_CHOIX = /\bchoisir un bonus parmi\b/i;
+
 /** Ce que change l'effet de Mode Hyper écrit `texte` (une magie, une race) : [{ cible, valeur?, soins? }], vide pour un effet seulement affiché. */
 export function effetsDuModeHyper(texte) {
   const t = String(texte ?? '').replace(/\s+/g, ' ').trim();
   const lus = [];
+  if (BONUS_AU_CHOIX.test(t)) return lus;
   for (const [re, lire] of LECTURES) {
     const m = re.exec(t);
     if (m) lus.push(lire(m));

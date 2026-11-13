@@ -4,6 +4,8 @@
 // la page affiche l'onglet et liste dans « Écarts avec la fiche de personnage V15.2.2 » ce que la fiche dit de différent.
 // Le site de dev est la source des races qu'il modifie ou crée (décision du propriétaire) : ce que l'importeur a écrit se lit dans les pages telles que
 // l'import les a laissées (historique_modification, lib/historique-site.mjs) ; le corps de toute page de race doit redire ses tables (onglet de la race).
+// Fongoïde et Gémidien (décision R239, migration 0120) ne viennent pas du classeur « Les races » mais de la mise à jour de Décembre : comme une race créée
+// depuis le site, leur corps est le rendu de leurs seules tables (lib/corps-races.mjs#corpsDeRaceCreee), sans section ni colonne de la fiche V15.2.2.
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
@@ -12,6 +14,7 @@ import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { mdTexte } from '../src/lib/corps-races.mjs';
 import { splitFrontmatter } from '../src/lib/wikilinks.mjs';
+import { RACES_DE_LA_0120 } from './aide-races-0120.mjs';
 
 const dir = fileURLToPath(new URL('../src/content/wiki/races', import.meta.url));
 // toutes les pages de race d'aujourd'hui (créées depuis le site comprises)
@@ -22,8 +25,9 @@ const toutes = readdirSync(dir)
 const db = ouvrirBase({ sansExemples: false });
 const historique = historiqueSite(db);
 const creee = (r) => historique.creee('page', { id: `races/${r.slug}` });
-// les pages de l'import, telles que l'importeur les a écrites (corps, champs structurés)
-const races = toutes.filter((r) => !creee(r)).map((r) => {
+const deLa0120 = (r) => RACES_DE_LA_0120.has(`races/${r.slug}`);
+// les pages de l'import du classeur « Les races », telles que l'importeur les a écrites (corps, champs structurés)
+const races = toutes.filter((r) => !creee(r) && !deLa0120(r)).map((r) => {
   const id = `races/${r.slug}`;
   if (!historique.touchee('page', { id })) return r;
   return { ...r, body: historique.valeurDImport('page', { id }, 'corps_md'), data: { ...r.data, ...JSON.parse(historique.valeurDImport('page', { id }, 'donnees') ?? '{}') } };
@@ -41,7 +45,7 @@ const ORDRE = ['Présentation', 'Histoire', 'Description', 'Caractéristiques de
 
 test('les 27 races portent les sections de leur onglet, dans l’ordre, puis les matrices de la fiche', () => {
   assert.equal(races.length, 27);
-  assert.equal(historique.effectifDImport('race'), 27);
+  assert.equal(historique.effectifDImport('race'), 27 + RACES_DE_LA_0120.size, 'R1 : 27 races du classeur ; R239 : Fongoïde et Gémidien');
   for (const r of races) {
     const t = titles(r.body);
     const at = ORDRE.map((s) => t.indexOf(s));
@@ -58,6 +62,8 @@ test('chaque page cite l’onglet de sa race dans `sources`, et le Nain n’a pl
     assert.equal(onglet.length, 1, `${r.slug} : une entrée d'onglet attendue`);
   }
   for (const r of toutes.filter(creee)) assert.ok((r.data.sources ?? []).some((s) => /^Site de dev › /.test(s)), `${r.slug} : provenance « Site de dev › … » attendue`);
+  // R239 : l'onglet de la mise à jour de Décembre
+  for (const r of toutes.filter(deLa0120)) assert.equal(r.data.sources.filter((s) => /^Nouveauté mise à jour Décembre, onglet « /.test(s)).length, 1, r.slug);
   assert.ok(race('nain').data.sources.includes('Google Sheet « Les races », onglet « Nain »'));
   assert.ok(race('namazu').data.sources.includes('Google Sheet « Les races », onglet « Namazus »'), 'l’onglet « Namazus » est la race Namazu');
   assert.doesNotMatch(race('nain').data.sources.join(' '), /capture/i);
@@ -75,7 +81,8 @@ test('les valeurs de départ sont celles de l’onglet (Santé, Chakra, Barrièr
     assert.deepEqual(entetes.slice(0, 4), ['Santé de départ', 'Chakra de départ', 'Barrière bonus', 'Vitesse Sol/Nage'], r.slug);
     const o = onglet(r.slug);
     assert.deepEqual(ligne.slice(0, 4), valeurs((c) => o[c]), r.slug);
-    assert.deepEqual(entetes.slice(4), ['AP (fiche)', 'AM (fiche)'], r.slug);
+    // une race hors du classeur (créée sur le site, ou R239) : ni AP ni AM de la fiche V15.2.2 (corpsDeRaceCreee)
+    assert.deepEqual(entetes.slice(4), creee(r) || deLa0120(r) ? [] : ['AP (fiche)', 'AM (fiche)'], r.slug);
   }
 });
 

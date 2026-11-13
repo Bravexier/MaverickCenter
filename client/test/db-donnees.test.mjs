@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { ORDRE_DES_RACES } from '../src/lib/race-kinds.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { horsDeLa0120, RACES_DE_LA_0120 } from './aide-races-0120.mjs';
 
 const racine = fileURLToPath(new URL('../../', import.meta.url));
 const client = fileURLToPath(new URL('../', import.meta.url));
@@ -56,7 +57,7 @@ test('la base contient les domaines : pages, magies et sorts, classes et capacit
   // classes et dons : les comptes du registre de la migration 0119 (R238 : Boxeur et Porte-étendard, Cuirassé V2), qui les a écrits
   const comptes0119 = JSON.parse(readFileSync(join(racine, 'data', 'migrations', '0119-classes-materiaux-d12.json'), 'utf8')).comptes;
   for (const [table, effectif] of [['magie', 15], ['sort', 420], ['magie_specialisation', 28], ['classe', comptes0119.classe], ['capacite', comptes0119.capacite],
-    ['race', 27], ['invocation', 3], ['creature', 63]]) {
+    ['race', 27 + RACES_DE_LA_0120.size], ['invocation', 3], ['creature', 63]]) {
     assert.equal(historique.effectifDImport(table), effectif, `${table} : effectif de l'import`);
   }
   // cohérence de l'état courant
@@ -65,8 +66,10 @@ test('la base contient les domaines : pages, magies et sorts, classes et capacit
   assert.equal(n('race'), pagesDuType('races'), 'une ligne race par page de race');
   assert.equal(n('race_onglet'), n('race'), 'chaque race a son onglet');
   assert.equal(n('magie'), pagesDuType('magies'), 'une ligne magie par page de magie');
-  // décision R1 (27 races et non 23) : les 27 races de la liste du propriétaire sont là ; une race créée depuis le site ne la contredit pas
-  assert.equal(historique.effectifDImport('race'), 27, 'décision R1 : 27 races à l’import');
+  // décision R1 (27 races et non 23) : les 27 races de la liste du propriétaire sont là, plus Fongoïde et Gémidien (décision R239, migration 0120) ; une
+  // race créée depuis le site ne la contredit pas
+  assert.equal(historique.lignesDImport('race').filter((r) => horsDeLa0120(r.id)).length, 27, 'décision R1 : 27 races à l’import du classeur');
+  assert.equal(historique.effectifDImport('race'), 29, 'décision R239 : 29 races');
   const races = new Set(db.prepare('SELECT id FROM race').all().map((r) => r.id));
   for (const id of ORDRE_DES_RACES) assert.ok(races.has(id), `décision R1 : ${id}`);
   for (const t of ['ressource', 'recette', 'arme', 'armure', 'metier', 'etat', 'peuple', 'note_cellule', 'ecart_source']) assert.ok(n(t) > 0, `${t} est rempli`);
