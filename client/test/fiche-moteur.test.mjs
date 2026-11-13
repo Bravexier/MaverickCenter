@@ -9,7 +9,7 @@ import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.
 import { enregistrerFiche } from '../serveur/fiches.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
 import {
-  ajusterValeurDuMoment, alignementDe, artisanatDe, attributsDe, bonusDuMetier, borner, choisirObjetDeMetier, choixDeMetierValables, inventaireSelonLeMetier,
+  ajusterValeurDuMoment, alignementDe, cransDAlignement, artisanatDe, attributsDe, bonusDuMetier, borner, choisirObjetDeMetier, choixDeMetierValables, inventaireSelonLeMetier,
   objetChoisi, objetDInventaire, objetsDuMetier, deDeLaFamille, donsAcquis, donsDeRace, compteurDeMaitrise, famillesMaitrisables, maitriseChoixValables, maitrisesParFamille, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe, lignesDeSorts, magieAcquiseValable, nmDuSort,
   bornesDuNm, livreAuPlafond, livresAEnregistrer, livresApresAjout, livresApresChangement, livresApresRetrait, livresDe, sortAuNm, sortAvecLivre, sortPourUnLivre,
   sortsApresChoixDEmplacement, sortsDesLivres, infobulleDeClasse, infobulleDeSpecialite, infobulleDuDonAChoisir, texteDuDon, TYPES_DE_DON,
@@ -765,6 +765,19 @@ test('alignement (demande du propriétaire, guide « Alignement ») : 5 points d
   assert.equal(nom(0, 6, 1, 7), 'Chaotique Mauvais');
   assert.equal(nom(12, 1, 20, 2), 'Loyal Bon');
   assert.deepEqual(alignementDe(regles, { alignement_loyal: '', alignement_chaotique: null }), { loi: 'Neutre', bien: 'Neutre', nom: 'Neutre' }, 'cases vides : 0');
+  // les jauges à cinq crans (demande du propriétaire) : calées sur la pastille — le cran du bout ⇔ la tendance, le milieu ⇔ l'écart nul
+  const ecartAxe = regles.constantes['alignement.ecart_axe'];
+  const crans = (loyal, chaotique, bon, mauvais) => cransDAlignement(regles, { ...ficheVide(), alignement_loyal: loyal, alignement_chaotique: chaotique, alignement_bon: bon, alignement_mauvais: mauvais });
+  for (let l = 0; l <= 2 * ecartAxe; l++) for (let c = 0; c <= 2 * ecartAxe; c++) {
+    const { loi, bien } = crans(l, c, c, l);
+    const a = alignementDe(regles, { ...ficheVide(), alignement_loyal: l, alignement_chaotique: c, alignement_bon: c, alignement_mauvais: l });
+    assert.equal(loi === 0, a.loi === 'Loyal', `${l}/${c}`);
+    assert.equal(loi === 4, a.loi === 'Chaotique', `${l}/${c}`);
+    assert.equal(loi === 2, l === c, `${l}/${c}`);
+    assert.equal(bien, 4 - loi, 'les deux axes se lisent de même');
+  }
+  assert.deepEqual(crans(ecartAxe - 1, 0, 0, 1), { loi: 1, bien: 3 }, 'un penchant reste Neutre');
+  assert.deepEqual(cransDAlignement(regles, {}), { loi: 2, bien: 2 }, 'cases vides : le milieu');
   // les neuf combinaisons sont les titres de la page « Les neuf alignements »
   const titres = [...historique.valeurDImport('page', { id: 'guide/les-neuf-alignements' }, 'corps_md').matchAll(/^## (.+)$/gm)].map((m) => m[1].trim());
   const combinaisons = new Set();

@@ -72,6 +72,20 @@ export function alignementDe(regles, fiche) {
 }
 
 /**
+ * Cran de chaque jauge d'alignement (demande du propriétaire, 2026-11-13 : une jauge à deux bornes et cinq crans par axe, calée sur la pastille) :
+ * 0 = tendance de la première borne (Loyal, Bon : écart ≥ alignement.ecart_axe), 1 = penchant vers elle (écart de 1 à ecart − 1, encore Neutre),
+ * 2 = écart nul, 3 et 4 = de même vers la seconde borne (Chaotique, Mauvais). Le nom de l'alignement reste celui d'alignementDe.
+ */
+export function cransDAlignement(regles, fiche) {
+  const ecart = constante(regles, 'alignement.ecart_axe');
+  const cran = (a, b) => {
+    const d = entier(fiche[a]) - entier(fiche[b]);
+    return d >= ecart ? 0 : d > 0 ? 1 : d === 0 ? 2 : -d >= ecart ? 4 : 3;
+  };
+  return { loi: cran('alignement_loyal', 'alignement_chaotique'), bien: cran('alignement_bon', 'alignement_mauvais') };
+}
+
+/**
  * Niveaux de classe (décision R2, v_personnage_niveau) : mono-classe, la classe 1 gagne 2 niveaux par niveau global jusqu'à 20 et l'excédent va
  * à la classe 2 (prise au niveau global 11) ; bi-classe, chacune = niveau global.
  */
