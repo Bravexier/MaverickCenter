@@ -25,6 +25,7 @@ import { FUSIONS_DANS_L_EXISTANT, MOTS_CLES_EXISTANTS_REPRIS } from '../scripts/
 import { baseDImport, lotsAvant } from './aide-base-d-import.mjs';
 import { FAMILLES_DE_LA_PALETTE, classeDeMagie, idDeCouleur } from '../src/lib/palette-css.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { fonduParLa0122, retireeParLa0122 } from './aide-migration-0122.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const REGISTRE = JSON.parse(readFileSync(new URL('../../data/migrations/0098-liens-en-mots-cles.json', import.meta.url), 'utf8'));
@@ -50,11 +51,12 @@ const texteApres0098 = (table, colonne, id) => apres0098().prepare(`SELECT "${co
 // {{armes|Équipement}}. La 0112 (R231) réécrit les pages « Attaquer » et « Se défendre » en entier et les renvois des autres pages vers elles.
 // La 0113 et la 0115 réécrivent les balises d'un ancien id qui n'est plus une clé (R232, R233 (5)) ; la 0114 (R232 (7)), celles des 13 races
 // devenues « x-race » (« {{orios}} » de guide/bienvenue). La 0121 (R239) réécrit « {{race|27 races}} » de guide/choisir-sa-race en « 29 races ».
-// `intacte` ne voit que les lots du site.
+// La 0122 retire la page « La montée de niveau » et fond son mot-clé dans « Fiche de personnage : Expérience/Niveau global », ses balises reciblées
+// (aide-migration-0122.mjs). `intacte` ne voit que les lots du site.
 const textesDe = (...noms) => noms.flatMap((nom) => JSON.parse(readFileSync(new URL(`../../data/migrations/${nom}.json`, import.meta.url), 'utf8')).textes);
 const REECRITURES_R198 = textesDe('0104-r198-r208-textes-du-guide', '0107-r198-r200-posture-et-mode-hyper');
 const REECRITURES_APRES_0098 = [...REECRITURES_R198, ...textesDe('0111-relecture-des-regles-contre-les-decisions', '0112-r231-attaquer-et-se-defendre',
-  '0113-mots-cles-id-entier', '0114-mots-cles-categories-assignees', '0115-mots-cles-synonymes', '0121-maj-decembre-suites')];
+  '0113-mots-cles-id-entier', '0114-mots-cles-categories-assignees', '0115-mots-cles-synonymes', '0121-maj-decembre-suites', '0122-retrait-la-montee-de-niveau')];
 /** Les réécritures postérieures (de `parmi`) qui retirent la balise `r.balise` de sa cellule (leur `avant` la contient, pas leur `apres`). */
 const retiresPar = (r, parmi = REECRITURES_APRES_0098) => parmi.filter((t) => t.table === r.table && t.col === r.colonne
   && JSON.stringify(t.cle) === JSON.stringify(r.cle) && t.avant.includes(r.balise) && !t.apres.includes(r.balise));
@@ -64,7 +66,7 @@ const ecritOuReecrit = (r, fragment, v, vues = new Set()) => v.includes(fragment
   || retiresPar({ ...r, balise: fragment }).filter((t) => !vues.has(t)).some((t) => ecritOuReecrit(r, t.apres, v, new Set([...vues, t])));
 /** `fragment` où chaque balise que la 0113, la 0114 ou la 0115 a réécrite dans la cellule de `r` (un ancien id devenu clé quittée, R232, R233 (5)) cite
  * la clé : ces migrations réécrivent des balises, pas la valeur entière qu'une migration antérieure (la 0112) avait écrite. */
-const BALISES_REECRITES = textesDe('0113-mots-cles-id-entier', '0114-mots-cles-categories-assignees', '0115-mots-cles-synonymes');
+const BALISES_REECRITES = textesDe('0113-mots-cles-id-entier', '0114-mots-cles-categories-assignees', '0115-mots-cles-synonymes', '0122-retrait-la-montee-de-niveau');
 const selonLesClesDe0113 = (r, fragment) => BALISES_REECRITES.filter((t) => t.table === r.table && t.col === r.colonne && JSON.stringify(t.cle) === JSON.stringify(r.cle))
   .reduce((f, t) => f.split(t.avant).join(t.apres), fragment);
 /** La balise de la 0098 est dans `v`, ou une migration postérieure l'a retirée et son `apres` est dans `v` : l'une ou l'autre écriture. */
@@ -115,6 +117,8 @@ test('0098 : les mots-clés du registre (Q1, Q8, Q10) — comptes, libellés, ad
     // raciales, que la 0113 a renommées « X »)
     const entree = REGISTRE_0113.get(r.id);
     assert.ok(entree, `${r.id} : dans la correspondance de la 0113`);
+    // le mot-clé de « La montée de niveau », fondu depuis par la migration 0122 (test db-0122-retrait-la-montee-de-niveau.test.mjs)
+    if (fonduParLa0122(r.id)) { assert.equal(motCle(entree.id), undefined, r.id); continue; }
     if (!intacte('mot_cle', { id: entree.id })) continue;
     const m = motCle(entree.id);
     assert.ok(m, r.id);
@@ -269,6 +273,8 @@ test('0098 : plus aucun lien interne hors pages d’exemple, codes et section 15
   assert.deepEqual(REGISTRE.remplacements.filter((r) => retiresPar(r, textesDe('0114-mots-cles-categories-assignees')).length).map((r) => r.cle.id), ['guide/bienvenue']);
   for (const r of REGISTRE.remplacements) {
     if (!intacte(r.table, r.cle)) continue;
+    // la page « La montée de niveau », retirée par la migration 0122
+    if (r.table === 'page' && retireeParLa0122(r.cle.id)) { assert.equal(texte(r.table, r.colonne, r.cle.id), undefined); continue; }
     const v = texte(r.table, r.colonne, r.cle.id);
     assert.ok(baliseOuReecriture(r, v), `${r.table} ${r.cle.id} : ${r.balise} (ou le fragment qu'une migration postérieure a réécrit, R198)`);
     assert.deepEqual(formesNonCanoniques(v, vocabulaire, { markdown: r.table === 'page' && r.colonne === 'corps_md' }), [], `${r.table} ${r.cle.id}`);

@@ -8,6 +8,7 @@ INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('fenrir', 133);
 INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('goleois', 150);
 INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('jackalope', 165);
 INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('kitsune', 167);
+INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('la-montee-de-niveau', 138);
 INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('marcass', 231);
 INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('medusain', 236);
 INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('minotaure', 242);

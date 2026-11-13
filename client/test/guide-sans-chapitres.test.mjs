@@ -17,6 +17,7 @@ import {
 } from '../src/lib/livres.mjs';
 import { chargerPlanDesRegles } from '../src/lib/plan-des-regles-db.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
+import { PAGE_RETIREE_PAR_LA_0122, retireeParLa0122 } from './aide-migration-0122.mjs';
 
 const racine = (chemin) => fileURLToPath(new URL(`../../${chemin}`, import.meta.url));
 const lire = (chemin) => readFileSync(racine(chemin), 'utf8');
@@ -43,9 +44,12 @@ test('registre de la migration 0064 : les 24 chapitres de l’ancien guide, num�
   }
   // chaque page du registre existe toujours (son identifiant ne change jamais), sauf celles fusionnées depuis dans une autre, qui existe, le Lexique,
   // retiré le 2026-11-05 (migration 0090, demande du propriétaire : « Supprime la page lexique ») : ses entrées sont des mots-clés
-  // (lib/livres.mjs#PAGES_RETIREES : ses adresses mènent à /recherche/), et les pages supprimées par R184 (9) (l'Aide-mémoire, Les documents des règles)
+  // (lib/livres.mjs#PAGES_RETIREES : ses adresses mènent à /recherche/), les pages supprimées par R184 (9) (l'Aide-mémoire, Les documents des règles)
+  // et celle que la migration 0122 retire (« La montée de niveau », lue dans son registre : aide-migration-0122.mjs)
   const RETIREES = new Set([...Object.keys(PAGES_RETIREES), ...PAGES_SUPPRIMEES]);
-  assert.deepEqual(registre.pages.filter((p) => RETIREES.has(p.id)).map((p) => p.id), ['guide/aide-memoire', 'guide/lexique', 'guide/les-documents-des-regles']);
+  assert.ok(RETIREES.has(PAGE_RETIREE_PAR_LA_0122), `${PAGE_RETIREE_PAR_LA_0122} : dans lib/livres.mjs#PAGES_SUPPRIMEES`);
+  assert.deepEqual(registre.pages.filter((p) => RETIREES.has(p.id)).map((p) => p.id).sort(),
+    ['guide/aide-memoire', 'guide/lexique', 'guide/les-documents-des-regles', PAGE_RETIREE_PAR_LA_0122].sort());
   for (const p of registre.pages) {
     if (RETIREES.has(p.id)) {
       assert.equal(db.prepare('SELECT count(*) AS n FROM page WHERE id = ?').get(p.id).n, 0, `${p.id} : retirée de la base`);
@@ -116,9 +120,11 @@ test('plus rien ne les déclare (content.config.ts) ni ne les lit (site, service
 test('le plan garde l’ordre de lecture de l’ancien guide dans Découvrir, et chaque ancien chapitre y a sa place (Découvrir, un onglet des Règles, Guide du MJ), ou celle de la page qui l’absorbe ; une page retirée ou supprimée n’en a plus', () => {
   const placeDe = (id) => (Object.hasOwn(PAGES_ABSORBEES, id) ? PAGES_ABSORBEES[id] : id);
   // le Lexique (chapitre 23), retiré le 2026-11-05 (migration 0090), et l'Aide-mémoire (22) et Les documents des règles (24), supprimés (R184 (9)) : ni
-  // dans le plan, ni dans la base
+  // dans le plan, ni dans la base ; de même « La montée de niveau », retirée par la migration 0122 (son registre : aide-migration-0122.mjs)
   const sansPlace = (id) => Object.hasOwn(PAGES_RETIREES, id) || PAGES_SUPPRIMEES.includes(id);
-  assert.deepEqual(registre.pages.filter((p) => sansPlace(p.id)).map((p) => [p.chapitre, p.id]),
+  assert.deepEqual(registre.pages.filter((p) => sansPlace(p.id)).map((p) => p.id),
+    [PAGE_RETIREE_PAR_LA_0122, 'guide/aide-memoire', 'guide/lexique', 'guide/les-documents-des-regles'].filter((id) => parId.has(id)).sort((a, b) => parId.get(a).chapitre - parId.get(b).chapitre));
+  assert.deepEqual(registre.pages.filter((p) => sansPlace(p.id) && !retireeParLa0122(p.id)).map((p) => [p.chapitre, p.id]),
     [[22, 'guide/aide-memoire'], [23, 'guide/lexique'], [24, 'guide/les-documents-des-regles']]);
   for (const p of registre.pages.filter((x) => sansPlace(x.id))) assert.equal(ongletDe(p.id), null, p.id);
   const numeros = pagesDeLaRubrique(DECOUVRIR).map((p) => parId.get(p.id)?.chapitre).filter((n) => n !== undefined);

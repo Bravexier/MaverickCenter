@@ -23,6 +23,7 @@ import { avecLesClesDe, idDuMotCleNomme } from './aide-mots-cles.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
 import { casDeSantePotentiel, CONSTANTE_SANTE_POTENTIEL, MAGIE_POTENTIEL, plafondDeSantePotentiel } from './aide-sante-potentiel.mjs';
 import { textesReecrits } from './aide-textes-reecrits.mjs';
+import { retireeParLa0122 } from './aide-migration-0122.mjs';
 
 const NOM = '0111-relecture-des-regles-contre-les-decisions';
 const registre = JSON.parse(readFileSync(new URL(`../../data/migrations/${NOM}.json`, import.meta.url), 'utf8'));
@@ -84,6 +85,8 @@ test('0111 : chaque remplacement est en place dans l’état de la migration (le
   const imp = apresLa0111();
   assert.equal(imp.prepare('PRAGMA user_version').get().user_version >= 111, true);
   for (const t of registre.textes) {
+    // la page « La montée de niveau », retirée depuis par la migration 0122 (son registre : aide-migration-0122.mjs)
+    if (t.table === 'page' && retireeParLa0122(t.cle.id)) { assert.equal(valeur(imp, t), undefined, t.cle.id); continue; }
     const v = valeur(imp, t);
     assert.equal(typeof v, 'string', `${t.cle.id} présent`);
     // R231 (migration 0112) réécrit en entier « Attaquer » et « Se défendre » : le fragment est admis remplacé par son `avant`, l'`apres` en place

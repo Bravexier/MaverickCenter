@@ -6273,7 +6273,7 @@ Autour d’une vraie table comme sur le Discord, une partie avance comme une con
 4. Si l’issue est incertaine, on lance les dés.
 5. Le MJ interprète l’action et le jet, puis décrit ce qui en découle.
 
-Et l’on recommence, jusqu’au bout de l’aventure. D’une partie à l’autre, les personnages gagnent de l’expérience et montent de niveau ({{la-montee-de-niveau}}).
+Et l’on recommence, jusqu’au bout de l’aventure. D’une partie à l’autre, les personnages gagnent de l’expérience et montent de niveau ({{fiche-de-personnage-experience-niveau-global|La montée de niveau}}).
 
 Voici à quoi cela ressemble :
 
@@ -7064,7 +7064,7 @@ Les attributs se calculent à partir de la race, de la ou des classes et des mag
 
 <!-- guide:initiative -->
 
-Certaines ethnies ajoutent un bonus de santé, de {{chakra|chakra}}, de {{barriere|barrière}}, d’armure ou de vitesse. À partir du niveau 2, chaque niveau donne aussi des points à répartir entre la santé et le {{chakra|chakra}} ({{la-montee-de-niveau}}).
+Certaines ethnies ajoutent un bonus de santé, de {{chakra|chakra}}, de {{barriere|barrière}}, d’armure ou de vitesse. À partir du niveau 2, chaque niveau donne aussi des points à répartir entre la santé et le {{chakra|chakra}} ({{fiche-de-personnage-experience-niveau-global|La montée de niveau}}).
 
 <!-- guide:fil-rouge-attributs -->
 
@@ -7555,69 +7555,8 @@ Chaque magie résiste à certaines magies et craint certaines autres, et la plup
 
 Certains sorts invoquent des créatures : les morts de l’Animation de mort (Nécromancie), les golems de l’Appel aux Golems (Terre), les marionnettes de la Marionnette de l’ombre (Ombre). Leurs cartes sont dans l’onglet des créatures invoquées du {{bestiaire|bestiaire}}. Elles n’ont pas d’échelle de puissance (EP) comme les monstres : celles qui ont un rang l’ont en niveau de puissance magique, de NPM 1 à NPM 5.
 
-Pour aller plus loin : {{rater-ses-sortileges}} et {{la-montee-de-niveau}}.
+Pour aller plus loin : {{rater-ses-sortileges}} et {{fiche-de-personnage-experience-niveau-global|La montée de niveau}}.
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/la-montee-de-niveau', 'guide', 'la-montee-de-niveau', 'La montée de niveau', 'la-montee-de-niveau', 'Du niveau 1 au niveau 20 : l’expérience qu’il faut pour chaque niveau, et ce que chacun apporte en compétences, caractéristiques, santé et chakra, niveaux de classe, magie et Mode Hyper.', NULL, 'Au fil de ses aventures, le personnage accumule de l’**expérience** (XP). Son total d’expérience fixe son **niveau global**, de 1 à 20 : dès qu’il atteint l’expérience demandée pour un niveau, il y passe. Le niveau global règle à son tour le niveau de ses classes et sa puissance magique, et dit ce que le personnage a à répartir. L’expérience que rapporte une aventure n’a pas de valeur prédéfinie : c’est le MJ qui la décide.
-
-Sur la {{fiche-de-personnage|fiche de personnage}} du site, il suffit de noter l’expérience : le niveau suit, et la jauge d’XP montre le chemin parcouru jusqu’au niveau suivant.
-
-## Le tableau de progression
-
-Chaque ligne donne l’expérience nécessaire pour atteindre le niveau, et tout ce que ce niveau apporte.
-
-<!-- guide:niveaux -->
-
-## Ce que chaque niveau apporte
-
-Le tableau donne les chiffres, niveau par niveau ; voici ce qu’ils veulent dire et comment s’en servir.
-
-### Des points de compétences
-
-Chaque niveau apporte de nouveaux points de compétences (colonne « Points de compétences »), qui s’ajoutent à ceux de la création. Ils vont dans la case **Nat.** (naturel) des compétences, et se répartissent exactement : aucun ne se garde pour plus tard.
-
-Une compétence ne reçoit pas plus de **20 points naturels**. Ce **maximum naturel** augmente aux niveaux où la colonne « Et aussi » l’indique.
-
-### Un point de caractéristique de plus
-
-Aux niveaux où la colonne « Et aussi » indique une caractéristique à répartir, le personnage gagne un point de caractéristique de plus, à répartir dans les limites habituelles des caractéristiques (voir {{etape-4-repartir-caracteristiques-et-competences}}). Le total de ses caractéristiques, 14 à la création, augmente d’autant ; le point offert par la magie innée n’y est pas compté. Comme à la création, ce total doit tomber juste.
-
-### De la santé et du chakra
-
-Chaque nouveau niveau donne des **points d’attributs** (colonne « Points d’attributs »), à répartir comme vous le voulez entre la **santé** et le **{{chakra|chakra}}** (avec le {{potentiel-illimite|Potentiel Illimité}} en magie innée, 5 santé au plus par niveau sur ces points, le dé bonus en plus). À certains niveaux s’y ajoute un **dé d’attributs bonus**, que la colonne « Et aussi » décrit.
-
-Sur la fiche du site, ces gains se notent en **deux totaux** : la santé gagnée et le {{chakra|chakra}} gagné depuis le niveau 1. À côté, la fiche rappelle le **total à saisir** : la somme des points d’attributs des niveaux atteints, et, dès qu’un dé bonus a été atteint, la plage de ce que les dés peuvent donner en plus. Un total qui n’y correspond pas est signalé.
-
-### Des niveaux de classe
-
-Chaque classe a son propre niveau, qui suit le niveau global. Tout dépend du choix fait à la création (section « Une ou deux classes : le biclassage » de {{etape-3-choisir-sa-classe}}) :
-
-- **Une seule classe** : elle commence au niveau 2 et gagne **2 niveaux** à chaque niveau global. Elle atteint donc le niveau 20 au niveau global 10 et s’y arrête. Au niveau global 11, le personnage prend automatiquement une **seconde classe**, qui reçoit la suite : elle commence au niveau 2 et gagne à son tour 2 niveaux à chaque niveau global.
-- **Deux classes** : elles commencent chacune au niveau 1, et gagnent chacune **1 niveau** à chaque niveau global.
-
-Au niveau global 20, tout personnage a donc deux classes au niveau 20 : seul le chemin pour y arriver change.
-
-Les dons d’une classe se gagnent aux niveaux **1, 5, 10, 15 et 20 de cette classe** (certains sont à choisir), et sa **spécialité**, l’embranchement de la classe, se choisit quand elle atteint le **niveau 10**. Chaque page de {{classe|classe}} dit lesquels.
-
-*Exemple : un personnage d’une seule classe est au niveau de classe 10 dès son niveau global 5 : il y choisit sa spécialité. Avec deux classes, il faut attendre le niveau global 10 pour que chacune y arrive.*
-
-### Des progrès en magie
-
-- **Des niveaux de maîtrise (NM)**, aux niveaux qu’indique la colonne « Niveau de maîtrise d’un sort » : chacun se place sur l’un de ses sorts pour le renforcer (ce qu’apporte un NM est écrit sur chaque sort). Un sort n’a jamais plus de **3 NM**, quelle que soit leur origine : les livres de sort et le MJ peuvent aussi en donner (voir {{la-magie-en-jeu}}).
-- **La puissance magique**, qui augmente aux niveaux qu’indique la colonne « Et aussi ». Elle dit jusqu’à quel niveau de sort (NPM) le personnage peut lancer, et elle multiplie ses emplacements de sorts : chaque condition remplie (avoir une magie innée, une magie acquise ou le don « Grimoire » de l’Archimage, une classe magique, une seconde classe magique) donne autant d’emplacements que la puissance magique.
-- **Avec une magie acquise**, les sorts de NPM 5 restent fermés ; les emplacements de ce palier, eux, s’ouvrent quand même.
-- **Avec le {{potentiel-illimite|Potentiel Illimité}}** en magie innée, le choix des sorts a de plus son propre plafond, donné sur la page de sa magie et relevé par le don « Semi-complet » de l’Archimage, jamais avant le niveau où la puissance magique l’ouvre ; ce plafond ne change pas le nombre d’emplacements.
-
-*Exemple : avec une magie innée et une classe magique, deux conditions sont remplies : le personnage a deux fois autant d’emplacements de sorts que sa puissance magique, soit 6 emplacements à la puissance magique 3. Il n’y a jamais d’emplacement en plus.*
-
-### Le Mode Hyper, la Méditation et le Repos
-
-La colonne « Et aussi » dit encore quand s’ouvrent le **Mode Hyper** et le **Mode Hyper 100 %** (voir {{mode-hyper|Le Mode Hyper}}), et quand le don de base, **Méditation** ou **Repos**, rend davantage, avec ses dés.
-
-## Pour aller plus loin
-
-- Gagner des points d’acquis sans attendre le niveau suivant : {{sentrainer}}.
-- Le tableau tel que l’écrit le document des règles : {{fiche-de-personnage-experience-niveau-global}}.
-', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/le-mode-hyper', 'guide', 'le-mode-hyper', 'Le Mode Hyper', 'le-mode-hyper', 'L’état de surpuissance qui s’ouvre au niveau 2 : ce qu’il donne, ce qu’il coûte, et ce qui arrive quand on le pousse au-delà de ses limites.', NULL, '> « Ne plus faire qu’un avec soi-même. »
 
 Le **Mode Hyper** est un état de surpuissance, qui s’ouvre au **niveau 2** du personnage. Le personnage libère alors la puissance cachée en lui : sa magie ne fait plus qu’un avec lui, son aura magique déferle, et son apparence change profondément sous l’effet de la magie qui l’envahit.
@@ -8789,7 +8728,7 @@ Chacune de ces quatre conditions donne un emplacement de sort :
 
 À partir du niveau global 8 (NPM 3), un personnage mono-magie, sans magie acquise, compte une condition de plus, comme une magie acquise (la Super-magie) : il reste mono-magie, sans magie de plus. Pour le Potentiel Illimité, elle ne s’ajoute pas au don « Grimoire » : les deux sont la même condition.
 
-Le nombre de conditions remplies est ensuite **multiplié par la puissance magique**. Elle vaut 1 au niveau 1 du personnage, puis augmente avec les niveaux ({{la-montee-de-niveau}}). Il n’y a jamais d’emplacement en plus.
+Le nombre de conditions remplies est ensuite **multiplié par la puissance magique**. Elle vaut 1 au niveau 1 du personnage, puis augmente avec les niveaux ({{fiche-de-personnage-experience-niveau-global|La montée de niveau}}). Il n’y a jamais d’emplacement en plus.
 
 *Exemples : une magie innée et une magie acquise, sans classe magique, en puissance magique 1 : 2 emplacements. Une magie innée et deux classes magiques, en puissance magique 3 : 3 × 3 = 9 emplacements.*
 
@@ -8863,7 +8802,7 @@ Chaque compétence a un **score**, en pourcentage, noté sur la fiche de personn
 > **Score = 10 × la caractéristique + les points naturels + les points acquis**
 
 - **La caractéristique.** Chaque compétence dépend de l’une des six caractéristiques : Force, Volonté, Intelligence, Perception, Social ou Agilité. Une caractéristique vaut de 1 à 4 en règle générale ; le point offert par la magie innée s’y ajoute et permet d’atteindre 5.
-- **Les points naturels.** Ce sont ceux que vous répartissez vous-même entre les compétences, à la création du personnage puis à chaque niveau (voir {{etape-4-repartir-caracteristiques-et-competences}} et {{la-montee-de-niveau}}).
+- **Les points naturels.** Ce sont ceux que vous répartissez vous-même entre les compétences, à la création du personnage puis à chaque niveau (voir {{etape-4-repartir-caracteristiques-et-competences}} et {{fiche-de-personnage-experience-niveau-global|La montée de niveau}}).
 - **Les points acquis.** Ils ne se répartissent pas, ils se gagnent : par l’entraînement, par les dons de la race, de l’ethnie et de la classe, par l’armure portée, le métier et les accessoires (voir {{sentrainer}}). La {{fiche-de-personnage|fiche de personnage}} du site les additionne pour vous. En règle générale, ils ne dépassent pas **5 par point de la caractéristique**, le point de la magie innée compris : avec 5 en Volonté, pas plus de 25 points acquis dans une compétence de Volonté. Un don peut relever ce plafond.
 
 *Exemple : un personnage a 3 en Perception, 15 points naturels et 5 points acquis en Observation. Son score d’Observation est de 3 × 10 + 15 + 5 = 50 % : il réussit sur un résultat de 50 ou moins.*

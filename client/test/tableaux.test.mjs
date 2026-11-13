@@ -181,7 +181,7 @@ const PAGES = [
   ['ressources', 'composants'], ['metiers'], ['bestiaire'], ['magies', 'magie-de-la-corruption'], ['races', 'elfe-noir'],
   // les étapes de la création et les onglets des Règles (R184 : pages à plat sous /regles/, plus de /decouvrir/creer-son-personnage/ ni de
   // /regles/avancees/) : les blocs tirés de la base (magie bonus, attributs, niveaux), le tableau des relations entre magies (R185 (4)), le Mode Hyper
-  ['regles', 'choisir-ses-magies'], ['regles', 'finaliser-son-personnage'], ['regles', 'la-montee-de-niveau'], ['regles', 'resistances-et-faiblesses'],
+  ['regles', 'choisir-ses-magies'], ['regles', 'finaliser-son-personnage'], ['regles', 'resistances-et-faiblesses'],
   ['regles', 'le-mode-hyper'], ['magies'], ['races'], ['lore', 'academie-de-larcane'],
 ];
 const construit = existsSync(join(dist, 'ressources', 'armes', 'index.html'));

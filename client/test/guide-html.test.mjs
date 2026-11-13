@@ -233,9 +233,13 @@ test('R184 : chaque onglet des Règles, à gauche le menu latéral de ses entré
 
 test('les tableaux viennent de la base : progression, postures, compétences, magies, personnages fil rouge (la page qui appelle le bloc)', options, () => {
   const lireBloc = (bloc) => lire(cheminDePage(pageDuBloc(bloc).id)).main;
-  const niveaux = lireBloc('niveaux');
-  assert.equal((niveaux.match(/<tr>\s*<th scope="row">\d+<\/th>/g) ?? []).length, 20);
-  assert.match(niveaux, /460\s250/, 'XP du niveau 20 (espace fine insécable de toLocaleString)');
+  // le bloc « niveaux » peut n'être appelé par aucune page : celle qui l'appelait (La montée de niveau) est retirée par la migration 0122, et le
+  // propriétaire le rappelle dans « Fiche de personnage : Expérience/Niveau global » (test/guide.test.mjs#NON_APPELES)
+  if (pageDuBloc('niveaux')) {
+    const niveaux = lireBloc('niveaux');
+    assert.equal((niveaux.match(/<tr>\s*<th scope="row">\d+<\/th>/g) ?? []).length, 20);
+    assert.match(niveaux, /460\s250/, 'XP du niveau 20 (espace fine insécable de toLocaleString)');
+  }
   const postures = lireBloc('postures');
   assert.equal((postures.match(/class="guide-posture__nom"/g) ?? []).length, 6);
   // chacune dans sa couleur (demande du propriétaire, lib/caracteristiques-postures.mjs) : la classe de sa posture (lib/palette-css.mjs), émise par le

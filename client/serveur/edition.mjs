@@ -2516,6 +2516,9 @@ export const FUSIONS_DE_MIGRATION = Object.freeze([
   // sont devenus les synonymes ; nommés par leur ancien id texte, comme un lot d'avant la 0113 les écrit
   Object.freeze({ source: 'action-bonus', cible: 'instant-cast', texte: 'Action bonus', migration: '0115' }),
   Object.freeze({ source: 'action-rapide', cible: 'instant-cast', texte: 'Action rapide', migration: '0115' }),
+  // migration 0122 (demande du propriétaire du 2026-11-13, « Le fondre dans l'autre ») : « La montée de niveau » (id 172), dont la page est retirée,
+  // dans « Fiche de personnage : Expérience/Niveau global » (138), qui mène à la page gardée
+  Object.freeze({ source: 'la-montee-de-niveau', cible: 'fiche-de-personnage-experience-niveau-global', texte: 'La montée de niveau', migration: '0122' }),
 ]);
 
 /**

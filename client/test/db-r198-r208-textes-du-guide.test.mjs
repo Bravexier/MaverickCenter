@@ -12,6 +12,7 @@ import { test } from 'node:test';
 import { cheminDePage } from '../src/lib/metiers.mjs';
 import { baseDImport, lotsAvant } from './aide-base-d-import.mjs';
 import { textesReecrits } from './aide-textes-reecrits.mjs';
+import { retireeParLa0122 } from './aide-migration-0122.mjs';
 
 const registre = JSON.parse(readFileSync(new URL('../../data/migrations/0104-r198-r208-textes-du-guide.json', import.meta.url), 'utf8'));
 const apresLa0104 = () => baseDImport({ garder: lotsAvant('0104') });
@@ -63,6 +64,8 @@ test('0104 : le registre ne touche que des corps de pages et des définitions de
 test('0104 : chaque remplacement est en place dans l’état de la migration (le fragment écrit présent, l’ancien absent)', () => {
   const imp = apresLa0104();
   for (const t of registre.textes) {
+    // la page « La montée de niveau », retirée depuis par la migration 0122 (son registre : aide-migration-0122.mjs)
+    if (t.table === 'page' && retireeParLa0122(t.cle.id)) { assert.equal(valeur(imp, t), undefined, t.cle.id); continue; }
     const v = valeur(imp, t);
     assert.equal(typeof v, 'string', `${t.cle.id} présent`);
     if (t.apres) assert.ok(apresOuReecrit(t, v), `${t.cle.id} (${t.decision}) : « ${t.apres.slice(0, 60)}… » (ou la réécriture de la 0111 ou de la 0112)`);

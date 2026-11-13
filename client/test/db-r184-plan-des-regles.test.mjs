@@ -54,8 +54,10 @@ const PLAN = {
 // Trois pages des combats retirées depuis (2026-11-06, migration 0094, demande du propriétaire : « Postures », « Les boss et leurs postures »,
 // « Mode Super ») : le plan et les pages nouvelles de la migration 0091 se lisent sans elles (db-retrait-pages-doublons-des-combats.test.mjs) ;
 // de même la « Liste des effets mode hyper » (2026-11-06, migration 0095 : db-retrait-liste-des-effets-mode-hyper.test.mjs) et « Altérations d'états
-// et Mode Hyper » (2026-11-06, migration 0096 : db-retrait-alterations-d-etats-et-mode-hyper.test.mjs)
-const RETIREES_DEPUIS = g(['postures', 'les-boss-et-leurs-postures', 'le-mode-super', 'liste-des-effets-mode-hyper', 'alterations-d-etats-et-mode-hyper']);
+// et Mode Hyper » (2026-11-06, migration 0096 : db-retrait-alterations-d-etats-et-mode-hyper.test.mjs) ; « La montée de niveau », première entrée
+// d'Exploration, en doublon de la fiche « Expérience/Niveau global » (2026-11-13, migration 0122 : db-0122-retrait-la-montee-de-niveau.test.mjs)
+const RETIREES_DEPUIS = g(['postures', 'les-boss-et-leurs-postures', 'le-mode-super', 'liste-des-effets-mode-hyper', 'alterations-d-etats-et-mode-hyper',
+  'la-montee-de-niveau']);
 const sansLesRetireesDepuis = (ids) => ids.filter((id) => !RETIREES_DEPUIS.includes(id));
 const RETIREES = g(['les-documents-des-regles', 'en-resume-deroulement-d-un-tour', 'mode-hyper-magie', 'aide-memoire', 'resistance-faiblesse-magie',
   'situations-avancees']);
@@ -89,7 +91,8 @@ const ONGLETS = [
   { id: 'fiche-de-personnage', titre: 'Fiche de personnage', ordre: 1, ouverture_page_id: 'guide/creer-son-personnage' },
   { id: 'mecaniques-generales', titre: 'Mécaniques générales', ordre: 2, ouverture_page_id: 'guide/reussir-une-action' },
   { id: 'combats', titre: 'Les combats', ordre: 3, ouverture_page_id: 'guide/le-tour-de-jeu' },
-  { id: 'exploration', titre: 'Exploration', ordre: 4, ouverture_page_id: 'guide/la-montee-de-niveau' },
+  // la 0091 l'ouvrait sur « La montée de niveau » ; depuis la migration 0122 (réponse du propriétaire du 2026-11-13), sur « Équipement et butin »
+  { id: 'exploration', titre: 'Exploration', ordre: 4, ouverture_page_id: 'guide/equipement-et-butin' },
 ];
 
 test('R184, R185 : quatre onglets, dans l’ordre de la ligne 2 de la rubrique Règles, chacun avec sa page d’ouverture ; l’édition n’y touche pas', () => {
@@ -104,7 +107,9 @@ test('R184, R185 : à l’import, chaque menu latéral suit la spécification, u
   for (const [onglet, attendu] of Object.entries(PLAN)) {
     assert.deepEqual(menuDImport(onglet), sansLesRetireesDepuis(attendu), onglet);
     const rangs = ENTREES_D_IMPORT.filter((e) => e.onglet_id === onglet).map((e) => e.rang).sort((a, b) => a - b);
-    assert.deepEqual(rangs, rangs.map((_, i) => i + 1), `${onglet} : rangs 1 à ${rangs.length}`);
+    // la migration 0122 retire la première entrée d'Exploration sans renuméroter les suivantes (rang n'est ni UNIQUE ni continu) : rangs 2 à n + 1
+    const premier = onglet === 'exploration' ? 2 : 1;
+    assert.deepEqual(rangs, rangs.map((_, i) => i + premier), `${onglet} : rangs ${premier} à ${rangs.length + premier - 1}`);
   }
   assert.equal(ENTREES_D_IMPORT.length, sansLesRetireesDepuis(Object.values(PLAN).flat()).length);
   assert.deepEqual(ENTREES_D_IMPORT.filter((e) => e.page_id === null),
@@ -186,7 +191,7 @@ test('regles_onglet : la page d’ouverture est une page de l’onglet ; la reti
   // retirer une page : ses lignes qui la citent d'abord (liens, sources, mots-clés, alias), la page ensuite
   const retirer = (id) => ['lien WHERE page_id = ? OR cible_page_id = ?', 'page_source WHERE page_id = ?', 'page_tag WHERE page_id = ?',
     'alias WHERE page_id = ?', 'page WHERE id = ?'].map((d) => `DELETE FROM ${d.replaceAll('?', `'${id}'`)};`).join('\n');
-  assert.throws(transaction(retirer('guide/la-montee-de-niveau')), /FOREIGN KEY constraint failed/);
+  assert.throws(transaction(retirer(ONGLETS.find((o) => o.id === 'exploration').ouverture_page_id)), /FOREIGN KEY constraint failed/);
   // une autre page du même onglet peut l'ouvrir, dans la même transaction que le déplacement de l'ancienne
   transaction(`UPDATE regles_onglet SET ouverture_page_id = '${autreDeLaFiche}' WHERE id = 'fiche-de-personnage';
     UPDATE regles_onglet_entree SET onglet_id = 'exploration' WHERE page_id = 'guide/creer-son-personnage'`)();

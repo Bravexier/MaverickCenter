@@ -168,7 +168,6 @@ INSERT INTO mot_cle (id, libelle, cle, description, couleur, url, verrou, monnai
 INSERT INTO mot_cle (id, libelle, cle, description, couleur, url, verrou, monnaie_id, icone) VALUES (169, 'La Confrérie des Brandes Sacrilèges', 'la-confrerie-des-brandes-sacrileges', NULL, NULL, '/lore/la-confrerie-des-brandes-sacrileges/', 1, NULL, NULL);
 INSERT INTO mot_cle (id, libelle, cle, description, couleur, url, verrou, monnaie_id, icone) VALUES (170, 'La magie en jeu', 'la-magie-en-jeu', NULL, NULL, '/regles/la-magie-en-jeu/', 1, NULL, NULL);
 INSERT INTO mot_cle (id, libelle, cle, description, couleur, url, verrou, monnaie_id, icone) VALUES (171, 'La main sanglante', 'la-main-sanglante', NULL, NULL, '/lore/la-main-sanglante/', 1, NULL, NULL);
-INSERT INTO mot_cle (id, libelle, cle, description, couleur, url, verrou, monnaie_id, icone) VALUES (172, 'La montée de niveau', 'la-montee-de-niveau', NULL, NULL, '/regles/la-montee-de-niveau/', 1, NULL, NULL);
 INSERT INTO mot_cle (id, libelle, cle, description, couleur, url, verrou, monnaie_id, icone) VALUES (173, 'La pointe de sang', 'la-pointe-de-sang', NULL, NULL, '/lore/la-pointe-de-sang/', 1, NULL, NULL);
 INSERT INTO mot_cle (id, libelle, cle, description, couleur, url, verrou, monnaie_id, icone) VALUES (174, 'La Vitesse et la Portée', 'la-vitesse-et-la-portee', NULL, NULL, '/regles/vitesse-et-portee/', 1, NULL, NULL);
 INSERT INTO mot_cle (id, libelle, cle, description, couleur, url, verrou, monnaie_id, icone) VALUES (175, 'Lame-Seuil', 'lame-seuil', NULL, NULL, '/lore/lame-seuil/', 1, NULL, NULL);
