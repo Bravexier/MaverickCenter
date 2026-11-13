@@ -10,7 +10,7 @@ const keys = (groups) => groups.map((g) => g.key);
 
 const sample = [
   page('Mage', 'magique'),
-  page('Parleur', 'speciale'), // « Classe spéciale » en base (R238 (3), migration 0118)
+  page('Parleur', 'speciale'), // « Classe spéciale » en base (R238 (3), migration 0119)
   page('Guerrier', 'cac'),
   page('Archer', 'distance'),
   page('Kitsune', 'hybride-animal'),

@@ -23,7 +23,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 118;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 119;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -1407,7 +1407,7 @@ CREATE TABLE categorie_classe (
   CHECK (am_base IS NULL OR note IS NOT NULL)
 ) STRICT;
 
--- CLASSE : une ligne par onglet de classe (41 : les 39 du classeur V7, le Boxeur et le Porte-étendard de la migration 0118, décision R238 (1))
+-- CLASSE : une ligne par onglet de classe (41 : les 39 du classeur V7, le Boxeur et le Porte-étendard de la migration 0119, décision R238 (1))
 CREATE TABLE classe (
   id                 TEXT    NOT NULL PRIMARY KEY REFERENCES page(id),   -- = id de la page (entité typée qui a SA page)
   nom                TEXT    NOT NULL UNIQUE CHECK (length(nom) > 0),    -- nom de l'onglet = nom dans le Sommaire (« Cuirassé », « Orios ») = titre de la page.
@@ -1438,7 +1438,7 @@ CREATE TABLE classe (
   source_ref         TEXT    NOT NULL CHECK (length(source_ref) > 0), -- onglet + zones lues (départ, à savoir, description) + cellule du Sommaire
   remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   magie_innee_id     TEXT    REFERENCES magie(id),  -- magie innée qui RÉSERVE la classe : sans elle on ne prend pas la classe (elle ne l'impose plus, décision
-                                                 -- R238 (5), migration 0118). Archimage : Potentiel Illimité (« CHOSE A SAVOIR » de son onglet, décision R23, migration 0015) ;
+                                                 -- R238 (5), migration 0119). Archimage : Potentiel Illimité (« CHOSE A SAVOIR » de son onglet, décision R23, migration 0015) ;
                                                  -- NULL pour les autres classes. Contrôlé par v_personnage_controle (classe_reservee)
   magie_innee_exclue_id TEXT  REFERENCES magie(id)   -- magie innée qui FERME la classe, à tous les rangs. Mage Bleu : Potentiel Illimité (« CHOSE A SAVOIR » de son
                                                  -- onglet : « Un potentiel illimité ne peut pas avoir cette classe. », décision R25, migration 0020) ; NULL pour les autres.
@@ -1472,7 +1472,7 @@ CREATE TABLE specialite (
   CHECK (substr(id, 1, length(classe_id) + 12) = classe_id || '#specialite:')
 ) STRICT;
 
--- CAPACITÉ (aptitude) : une ligne par page `capacites/<slug>` (694 depuis la migration 0118, 660 avant). Une aptitude du classeur = cellule « Lvl N » + nom + bloc d'effet + cellule de type.
+-- CAPACITÉ (aptitude) : une ligne par page `capacites/<slug>` (694 depuis la migration 0119, 660 avant). Une aptitude du classeur = cellule « Lvl N » + nom + bloc d'effet + cellule de type.
 -- Les choix « l'un OU l'autre » ne sont pas un attribut : ils se lisent dans la mise en page (view v_capacite_exclusive) :
 --   nature = 'classe'     : colonne P de l'onglet (Lvl 1, Lvl 5, Lvl 20) ; specialite_id NULL ; reçue sans choix.
 --   nature = 'specialite' : le cartouche « Lvl 10 » qui porte le nom de la spécialité ; les DEUX cartouches sont sur la même ligne et s'excluent.
@@ -1909,7 +1909,7 @@ CREATE INDEX ethnie_resistance_magie  ON ethnie_resistance (cible_magie_id, vale
 CREATE INDEX ethnie_resistance_etat   ON ethnie_resistance (cible_etat_id, valeur)  WHERE cible_etat_id  IS NOT NULL;
 
 -- RACE_CLASSE : matrice « Accessibilité de Classe » : 27 races x 39 classes = 1 053 lignes (712 à 1, 341 à 0) ; plus les colonnes 40 (Boxeur) et 41
--- (Porte-étendard), absentes de la fiche, ouvertes aux 27 races (décision R238 (1), migration 0118) : 1 107 lignes.
+-- (Porte-étendard), absentes de la fiche, ouvertes aux 27 races (décision R238 (1), migration 0119) : 1 107 lignes.
 -- 26 classes générales (colonnes B à AA) + 13 classes raciales (AB à AN). La légende 0/1 n'est pas écrite dans le classeur :
 -- 1 = accessible est la lecture de la source (le « 1 » d'Orios sur la classe Orios et le « Classe possible : Orios » de Race!G14 la confirment).
 -- AUCUNE formule du classeur ne lit cet onglet (donnée d'information) ; voir design.md §12 pour ses contradictions avec la fiche.

@@ -183,14 +183,14 @@ test('R238 (2), MAJ-C7, R42 : Appui (même id, passé de Vindicatif à Protecteu
   const dossier = dossierTemporaire('retraits-cuirasse');
   const { chemin: vivante } = preparerBaseVivante({ regles, dossier: join(dossier, 'db') });
 
-  // la base « d'avant » (la migration 0118 n'est pas encore passée) : Appui chez les Vindicatifs, Large chez les Protecteurs ; quatre prétirés
+  // la base « d'avant » (la migration 0119 n'est pas encore passée) : Appui chez les Vindicatifs, Large chez les Protecteurs ; quatre prétirés
   const avant = new DatabaseSync(vivante);
   avant.exec('PRAGMA foreign_keys = ON');
   const un = (sql, ...p) => ({ ...avant.prepare(sql).get(...p) });
   const appui = un('SELECT * FROM capacite WHERE id = ?', APPUI);
   const pageAppui = un('SELECT * FROM page WHERE id = ?', APPUI);
-  assert.equal(appui.specialite_id, PROTECTEUR, 'à l’import, Appui est chez les Protecteurs (migration 0118)');
-  assert.equal(avant.prepare('SELECT count(*) AS n FROM capacite WHERE id = ?').get(LARGE).n, 0, 'Large n’existe plus (migration 0118)');
+  assert.equal(appui.specialite_id, PROTECTEUR, 'à l’import, Appui est chez les Protecteurs (migration 0119)');
+  assert.equal(avant.prepare('SELECT count(*) AS n FROM capacite WHERE id = ?').get(LARGE).n, 0, 'Large n’existe plus (migration 0119)');
   const ins = (t, l) => avant.prepare(`INSERT INTO ${t} (${Object.keys(l).join(', ')}) VALUES (${Object.keys(l).map(() => '?').join(', ')})`).run(...Object.values(l));
   // Large : la ligne d'avant, à la place qu'Appui a prise (Protecteur, niveau 20, ligne 43, rang 2) ; Appui, à une place libre chez les Vindicatifs
   avant.prepare('UPDATE capacite SET specialite_id = ?, niveau = 15, ligne = 36, rang = 9 WHERE id = ?').run(VINDICATIF, APPUI);
@@ -269,7 +269,7 @@ test('R238 (4), MAJ-C10, R148 : le point de maîtrise imposé de l’Archimage d
   const avant = new DatabaseSync(vivante);
   avant.exec('PRAGMA foreign_keys = ON');
   const part = { ...avant.prepare('SELECT * FROM maitrise_arme_part WHERE source_id = ?').get(SOURCE) };
-  assert.equal(part.genre, 'choix', 'à l’import, la ligne 2 de l’Archimage est à choisir (migration 0118)');
+  assert.equal(part.genre, 'choix', 'à l’import, la ligne 2 de l’Archimage est à choisir (migration 0119)');
   avant.prepare('DELETE FROM maitrise_arme_part_famille WHERE source_id = ? AND rang = ?').run(SOURCE, part.rang);
   avant.prepare("UPDATE maitrise_arme_part SET genre = 'imposee', arme_famille_id = 'baton-de-combat' WHERE source_id = ? AND rang = ?").run(SOURCE, part.rang);
   const ins = (t, l) => avant.prepare(`INSERT INTO ${t} (${Object.keys(l).join(', ')}) VALUES (${Object.keys(l).map(() => '?').join(', ')})`).run(...Object.values(l));

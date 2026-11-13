@@ -1,10 +1,10 @@
--- Migration 0118 : Classes, matériaux d'armes et limite D12 de la mise à jour de Décembre (lot 3) : décisions R238, R241, R252 (et R10 pour les coquilles,
+-- Migration 0119 : Classes, matériaux d'armes et limite D12 de la mise à jour de Décembre (lot 3) : décisions R238, R241, R252 (et R10 pour les coquilles,
 -- R237 (1) : le classeur fait foi ; R224 (1) : dans une copie de source, seule la phrase fausse se corrige). Migration de DONNÉES et d'une VUE (sections 1,
--- 2, 3, 6, 7, 9, 10 et 13 ; PRAGMA user_version 117 -> 118) ; rien ne va dans historique_modification. Registre : 0118-classes-materiaux-d12.json.
+-- 2, 3, 6, 7, 9, 10 et 13 ; PRAGMA user_version 118 -> 119) ; rien ne va dans historique_modification. Registre : 0119-classes-materiaux-d12.json.
 -- Source des classes : la pièce jointe du propriétaire « Nouveauté mise à jour Décembre.xlsx » (sha256 e89fc4be…), instantané
 -- sources/raw/classeurs/magie-maverick-v10.json, onglets 23 « Porte-étendard », 24 « Boxeur », 25 « Cuirassé V2 », cités « Nouveauté mise à jour Décembre ›
 -- <onglet> › <plage> » ; lignes du plan de tech-sources (textes après les coquilles R10 de tools/sheets/corrections.json, section magie-v10). Générée par un
--- script du lot (hors dépôt) depuis ce plan et la base à la version 117 : corps et résumés des pages par lib/corps-classes.mjs, lib/corps-races.mjs,
+-- script du lot (hors dépôt) depuis ce plan et la base à la version 118 : corps et résumés des pages par lib/corps-classes.mjs, lib/corps-races.mjs,
 -- lib/corps-magies.mjs et lib/corps-armes.mjs, page.donnees des dons par lib/dons-edition.mjs#donneesDeDon, découpages par lib/classe-champs.mjs, sources
 -- de maîtrise par lib/maitrise-arme.mjs (serveur/edition-maitrises.mjs), effets des matériaux relus par lib/arme-champs.mjs#analyserEffetDeMateriau.
 --   - R238 (1) : Boxeur et Porte-étendard (« Classe Physique Corps à Corps », en fin de colonne : ordre 13 et 14, les suivants +2) ; 34 dons, 4 spécialités ;
@@ -21,16 +21,16 @@
 -- La garde : chaque UPDATE ou DELETE doit toucher le nombre de lignes attendu ; un texte ne se remplace que par un fragment présent une seule fois. Une
 -- valeur que le site de dev aurait réécrite arrête la migration.
 
-CREATE TEMP TABLE garde_0118 (quoi TEXT NOT NULL, lignes INTEGER NOT NULL, attendu INTEGER NOT NULL DEFAULT 1, CHECK (lignes = attendu));
+CREATE TEMP TABLE garde_0119 (quoi TEXT NOT NULL, lignes INTEGER NOT NULL, attendu INTEGER NOT NULL DEFAULT 1, CHECK (lignes = attendu));
 
 -- --------------------------------------------------------------------------------------------------------------------------------------------
 -- 1. classe.ordre : le Boxeur (13) et le Porte-étendard (14) en fin de colonne « Classe Physique Corps à Corps », après le Bimane (12) (R238 (1)) ;
 --    les classes d'ordre 13 et plus (Archer … Archimage) avancent de 2, leur ordre relatif ne change pas (UNIQUE : en deux temps). Le Parleur garde le 11.
 -- --------------------------------------------------------------------------------------------------------------------------------------------
 UPDATE classe SET ordre = ordre + 1000 WHERE ordre >= 13;
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('classe.ordre : décalage (1)', changes(), 27);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('classe.ordre : décalage (1)', changes(), 27);
 UPDATE classe SET ordre = ordre - 998 WHERE ordre >= 1013;
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('classe.ordre : décalage (2)', changes(), 27);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('classe.ordre : décalage (2)', changes(), 27);
 
 -- --------------------------------------------------------------------------------------------------------------------------------------------
 -- 2. Nouvelles classes (R238 (1)) : Boxeur (onglet 24) et Porte-étendard (onglet 23), « Classe Physique Corps à Corps » ; pages, mots-clés de page
@@ -498,54 +498,54 @@ INSERT INTO race_classe (race_id, classe_id, ordre, accessible, valeur_brut, ori
 --    armure de départ (25!G11) ; choix exclusifs des fiches de dons (page.donnees) et page de la classe.
 -- --------------------------------------------------------------------------------------------------------------------------------------------
 DELETE FROM page_tag WHERE page_id = 'capacites/cuirasse-large';
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('Large : page_tag', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('Large : page_tag', changes(), 1);
 DELETE FROM page_entite WHERE page_id = 'capacites/cuirasse-large';
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('Large : page_entite', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('Large : page_entite', changes(), 1);
 DELETE FROM page_source WHERE page_id = 'capacites/cuirasse-large';
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('Large : page_source', changes(), 2);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('Large : page_source', changes(), 2);
 DELETE FROM capacite WHERE id = 'capacites/cuirasse-large' AND specialite_id = 'classes/cuirasse#specialite:protecteur' AND niveau = 20 AND ligne = 43 AND rang = 2;
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('Large : capacite', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('Large : capacite', changes(), 1);
 DELETE FROM page WHERE id = 'capacites/cuirasse-large';
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('Large : page', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('Large : page', changes(), 1);
 UPDATE capacite SET specialite_id = 'classes/cuirasse#specialite:protecteur', niveau = 20, ligne = 43, rang = 2, source_ref = 'Nouveauté mise à jour Décembre › Cuirassé V2 › AE43:AJ48'
   WHERE id = 'capacites/cuirasse-appui' AND specialite_id = 'classes/cuirasse#specialite:vindicatif' AND niveau = 15 AND ligne = 36 AND rang = 1;
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('Appui : Protecteur niveau 20', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('Appui : Protecteur niveau 20', changes(), 1);
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/cuirasse-ecrasant', 'capacites', 'cuirasse-ecrasant', 'Écrasant (Cuirassé)', 'ecrasant-cuirasse', 'Inflige +5 dégâts si la cible de l''attaque a moins d''AP total.', '{"classe": "classes/cuirasse", "specialite": "VINDICATIF", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/cuirasse-aucune-fuite"]}', 'Inflige +5 dégâts si la cible de l''attaque a moins d''AP total.
 ', 'draft', 'classes', 'Classeur « Nouveauté mise à jour Décembre », onglet « Cuirassé V2 »');
 INSERT INTO page_tag (page_id, ordre, tag_id) VALUES ('capacites/cuirasse-ecrasant', 0, 54);
 INSERT INTO capacite (id, classe_id, specialite_id, niveau, nature, ligne, rang, nom, nom_cle, type, type_brut, limite_nombre, limite_periode, effet, origine, source_ref, remarque) VALUES ('capacites/cuirasse-ecrasant', 'classes/cuirasse', 'classes/cuirasse#specialite:vindicatif', 15, 'choix', 36, 1, 'Écrasant', 'ecrasant', 'passif', 'Passif', NULL, NULL, 'Inflige +5 dégâts si la cible de l''attaque a moins d''AP total.', 'classes', 'Nouveauté mise à jour Décembre › Cuirassé V2 › A36:F41', NULL);
 INSERT INTO page_entite (entite_table, entite_id, page_id, principale, origine) VALUES ('capacite', 'capacites/cuirasse-ecrasant', 'capacites/cuirasse-ecrasant', 1, 'classes');
 UPDATE capacite SET effet = 'Chaque attaque ennemie bloquée complètement permet de récupérer 1d8 barrière.', source_ref = 'Nouveauté mise à jour Décembre › Cuirassé V2 › X29:AC34' WHERE id = 'capacites/cuirasse-nanochakra' AND effet = 'Chaque attaque ennemie bloquée complètement permet de récupérer 1d8 santé.';
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('Nanochakra : barrière', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('Nanochakra : barrière', changes(), 1);
 UPDATE classe SET armure_depart = 'Armure de Cellulose/Argent, Écu de bois' WHERE id = 'classes/cuirasse' AND armure_depart = 'Armure de Fer/Bronze, Bouclier Rond Corail';
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('Cuirassé : armure de départ', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('Cuirassé : armure de départ', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, 'Chaque attaque ennemie bloquée complètement permet de récupérer 1d8 santé.', 'Chaque attaque ennemie bloquée complètement permet de récupérer 1d8 barrière.')
   WHERE id = 'capacites/cuirasse-nanochakra' AND length(corps_md) - length(replace(corps_md, 'Chaque attaque ennemie bloquée complètement permet de récupérer 1d8 santé.', '')) = length('Chaque attaque ennemie bloquée complètement permet de récupérer 1d8 santé.');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('capacites/cuirasse-nanochakra : corps_md', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('capacites/cuirasse-nanochakra : corps_md', changes(), 1);
 UPDATE page SET resume = replace(resume, 'Chaque attaque ennemie bloquée complètement permet de récupérer 1d8 santé.', 'Chaque attaque ennemie bloquée complètement permet de récupérer 1d8 barrière.')
   WHERE id = 'capacites/cuirasse-nanochakra' AND length(resume) - length(replace(resume, 'Chaque attaque ennemie bloquée complètement permet de récupérer 1d8 santé.', '')) = length('Chaque attaque ennemie bloquée complètement permet de récupérer 1d8 santé.');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('capacites/cuirasse-nanochakra : resume', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('capacites/cuirasse-nanochakra : resume', changes(), 1);
 UPDATE page SET donnees = '{"classe": "classes/cuirasse", "specialite": "VINDICATIF", "niveau": 15, "nature": "choix", "rang": 2, "ligne": 36, "type_capacite": "Réaction (1 fois/combat)", "choix_exclusif_avec": ["capacites/cuirasse-ecrasant"]}' WHERE id = 'capacites/cuirasse-aucune-fuite' AND donnees = '{"classe": "classes/cuirasse", "specialite": "VINDICATIF", "niveau": 15, "nature": "choix", "rang": 2, "ligne": 36, "type_capacite": "Réaction (1 fois/combat)", "choix_exclusif_avec": ["capacites/cuirasse-appui"]}';
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('capacites/cuirasse-aucune-fuite : choix exclusif', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('capacites/cuirasse-aucune-fuite : choix exclusif', changes(), 1);
 UPDATE page SET donnees = '{"classe": "classes/cuirasse", "specialite": "PROTECTEUR", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Réaction (1 fois/combat)", "choix_exclusif_avec": ["capacites/cuirasse-appui"]}' WHERE id = 'capacites/cuirasse-muraille' AND donnees = '{"classe": "classes/cuirasse", "specialite": "PROTECTEUR", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Réaction (1 fois/combat)", "choix_exclusif_avec": ["capacites/cuirasse-large"]}';
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('capacites/cuirasse-muraille : choix exclusif', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('capacites/cuirasse-muraille : choix exclusif', changes(), 1);
 UPDATE page SET donnees = '{"classe": "classes/cuirasse", "specialite": "PROTECTEUR", "niveau": 20, "nature": "choix", "rang": 2, "ligne": 43, "type_capacite": "Réaction", "choix_exclusif_avec": ["capacites/cuirasse-muraille"]}' WHERE id = 'capacites/cuirasse-appui' AND donnees = '{"classe": "classes/cuirasse", "specialite": "VINDICATIF", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Réaction", "choix_exclusif_avec": ["capacites/cuirasse-aucune-fuite"]}';
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('capacites/cuirasse-appui : choix exclusif', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('capacites/cuirasse-appui : choix exclusif', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, 'Armure de Fer/Bronze, Bouclier Rond Corail', 'Armure de Cellulose/Argent, Écu de bois')
   WHERE id = 'classes/cuirasse' AND length(corps_md) - length(replace(corps_md, 'Armure de Fer/Bronze, Bouclier Rond Corail', '')) = length('Armure de Fer/Bronze, Bouclier Rond Corail');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('page classes/cuirasse : armure de départ', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('page classes/cuirasse : armure de départ', changes(), 1);
 
 -- --------------------------------------------------------------------------------------------------------------------------------------------
 -- 4. Parleur (R238 (3)) : catégorie « Classe spéciale » (comme l'Archimage) ; son ordre (11) ne change pas ; mot-clé de catégorie de sa page (càc -> spéciale,
 --    lib/classe-champs.mjs#MOT_CLE_DE_CATEGORIE) ; la ligne « Catégorie » du corps de sa page.
 -- --------------------------------------------------------------------------------------------------------------------------------------------
 UPDATE classe SET categorie_id = 'classe-speciale' WHERE id = 'classes/parleur' AND categorie_id = 'classe-physique-corps-a-corps';
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('Parleur : catégorie', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('Parleur : catégorie', changes(), 1);
 UPDATE page_tag SET tag_id = 334 WHERE page_id = 'classes/parleur' AND tag_id = 51;
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('Parleur : mot-clé de catégorie', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('Parleur : mot-clé de catégorie', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, '**Catégorie** : Classe Physique Corps à Corps', '**Catégorie** : Classe spéciale')
   WHERE id = 'classes/parleur' AND length(corps_md) - length(replace(corps_md, '**Catégorie** : Classe Physique Corps à Corps', '')) = length('**Catégorie** : Classe Physique Corps à Corps');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('page classes/parleur : catégorie', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('page classes/parleur : catégorie', changes(), 1);
 
 -- --------------------------------------------------------------------------------------------------------------------------------------------
 -- 5. Archimage (R238 (4)) : « 1 maîtrise de Bâton » devient « 1 maîtrise arme de contact au choix » (forme au_choix, catégorie contact, sans « sauf ») ;
@@ -553,12 +553,12 @@ INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('page classes/parleur : c
 -- --------------------------------------------------------------------------------------------------------------------------------------------
 UPDATE classe SET maitrise_arme = replace(maitrise_arme, '- 1 maîtrise de Bâton', '- 1 maîtrise arme de contact au choix')
   WHERE id = 'classes/archimage' AND length(maitrise_arme) - length(replace(maitrise_arme, '- 1 maîtrise de Bâton', '')) = length('- 1 maîtrise de Bâton');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('Archimage : cellule Maîtrise Arme', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('Archimage : cellule Maîtrise Arme', changes(), 1);
 UPDATE classe_maitrise_arme SET brut = '1 maîtrise arme de contact au choix', forme = 'au_choix', nombre = 1, arme = NULL, arme_cle = NULL, categorie = 'contact', sauf = NULL, sauf_cle = NULL
   WHERE classe_id = 'classes/archimage' AND rang = 2 AND forme = 'nommee' AND arme_cle = 'baton';
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('Archimage : ligne de maîtrise 2', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('Archimage : ligne de maîtrise 2', changes(), 1);
 UPDATE maitrise_arme_part SET genre = 'choix', arme_famille_id = NULL WHERE source_id = 'classes/archimage#maitrise-arme:2' AND rang = 1 AND genre = 'imposee' AND arme_famille_id = 'baton-de-combat';
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('Archimage : part à choisir', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('Archimage : part à choisir', changes(), 1);
 INSERT INTO maitrise_arme_part_famille (source_id, rang, arme_famille_id) VALUES ('classes/archimage#maitrise-arme:2', 1, 'epees');
 INSERT INTO maitrise_arme_part_famille (source_id, rang, arme_famille_id) VALUES ('classes/archimage#maitrise-arme:2', 1, 'dagues');
 INSERT INTO maitrise_arme_part_famille (source_id, rang, arme_famille_id) VALUES ('classes/archimage#maitrise-arme:2', 1, 'masse-marteau');
@@ -568,7 +568,7 @@ INSERT INTO maitrise_arme_part_famille (source_id, rang, arme_famille_id) VALUES
 INSERT INTO maitrise_arme_part_famille (source_id, rang, arme_famille_id) VALUES ('classes/archimage#maitrise-arme:2', 1, 'baton-de-combat');
 UPDATE page SET corps_md = replace(corps_md, '- 1 maîtrise de Bâton', '- 1 maîtrise arme de contact au choix')
   WHERE id = 'classes/archimage' AND length(corps_md) - length(replace(corps_md, '- 1 maîtrise de Bâton', '')) = length('- 1 maîtrise de Bâton');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('page classes/archimage : maîtrise d''arme', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('page classes/archimage : maîtrise d''arme', changes(), 1);
 
 -- --------------------------------------------------------------------------------------------------------------------------------------------
 -- 6. Potentiel Illimité (R238 (5)) : l'Archimage n'est plus imposée. Règle classe_imposee retirée de v_personnage_controle (vue recréée, copiée de
@@ -773,6 +773,24 @@ CREATE VIEW v_personnage_controle AS
   FROM personnage_sort ps JOIN sort s ON s.id = ps.sort_id JOIN personnage p ON p.id = ps.personnage_id
   WHERE s.magie_id <> COALESCE(p.magie_innee_id, '') AND s.magie_id <> COALESCE(p.magie_acquise_id, '')
     AND COALESCE(p.magie_innee_id, '') <> 'magies/potentiel-illimite'
+  UNION ALL
+  -- Spécialisations magiques (décision R236, migration 0118) : seul le bi-magie (une magie acquise, une magie innée autre que le Potentiel Illimité)
+  -- choisit, une spécialisation par magie (R236 (3), personnage_specialisation_magie). Un sort d'une de ses magies qui a une spécialisation (NPM 3 à 5)
+  -- hors de celle choisie pour cette magie, ou sans choix, est signalé (sort_hors_specialisation) ; une spécialisation choisie pour une magie qui n'est
+  -- ni son innée ni son acquise aussi (specialisation_hors_magie). Mono-magie (R236 (2) : les deux spécialisations) et Potentiel Illimité (R236 (7) :
+  -- celles de chaque magie) : jamais signalés, leurs lignes gardées sans effet. Le choix reste modifiable (R236 (6)) : signalé, jamais refusé
+  SELECT ps.personnage_id, 'sort_hors_specialisation', ps.sort_id
+  FROM personnage_sort ps JOIN sort s ON s.id = ps.sort_id JOIN personnage p ON p.id = ps.personnage_id
+  WHERE s.specialisation_id IS NOT NULL
+    AND p.magie_acquise_id IS NOT NULL AND COALESCE(p.magie_innee_id, '') <> 'magies/potentiel-illimite'
+    AND s.magie_id IN (COALESCE(p.magie_innee_id, ''), p.magie_acquise_id)
+    AND NOT EXISTS (SELECT 1 FROM personnage_specialisation_magie m
+                    WHERE m.personnage_id = ps.personnage_id AND m.magie_id = s.magie_id AND m.specialisation_id = s.specialisation_id)
+  UNION ALL
+  SELECT m.personnage_id, 'specialisation_hors_magie', m.specialisation_id
+  FROM personnage_specialisation_magie m JOIN personnage p ON p.id = m.personnage_id
+  WHERE p.magie_acquise_id IS NOT NULL AND COALESCE(p.magie_innee_id, '') <> 'magies/potentiel-illimite'
+    AND m.magie_id <> COALESCE(p.magie_innee_id, '') AND m.magie_id <> p.magie_acquise_id
   UNION ALL
   SELECT ps.personnage_id, 'sort_puissance', ps.sort_id || ' : NPM ' || s.niveau
   FROM personnage_sort ps
@@ -1015,13 +1033,13 @@ UPDATE magie SET explication = replace(explication, '
 ', '')) = length('
 - Classe unique = Archimage.
 ');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('Potentiel Illimité : explication', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('Potentiel Illimité : explication', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, '- Classe unique = Archimage.
 - Surtension corporelle (Vulnérabilité contre les dégâts physiques, ne peut mettre plus de 5 Santé lors de la répartition des points lors du passage de niveau global).', '- Surtension corporelle (Vulnérabilité contre les dégâts physiques, ne peut mettre plus de 5 Santé lors de la répartition des points lors du passage de niveau global).')
   WHERE id = 'magies/potentiel-illimite' AND length(corps_md) - length(replace(corps_md, '- Classe unique = Archimage.
 - Surtension corporelle (Vulnérabilité contre les dégâts physiques, ne peut mettre plus de 5 Santé lors de la répartition des points lors du passage de niveau global).', '')) = length('- Classe unique = Archimage.
 - Surtension corporelle (Vulnérabilité contre les dégâts physiques, ne peut mettre plus de 5 Santé lors de la répartition des points lors du passage de niveau global).');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('page magies/potentiel-illimite : Classe unique', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('page magies/potentiel-illimite : Classe unique', changes(), 1);
 
 -- --------------------------------------------------------------------------------------------------------------------------------------------
 -- 7. Textes écrits par le site (R238) : guide/l-univers (41 classes, 82 spécialités), guide/choisir-sa-classe (l'Archimage n'est plus imposée) ;
@@ -1029,10 +1047,10 @@ INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('page magies/potentiel-il
 -- --------------------------------------------------------------------------------------------------------------------------------------------
 UPDATE page SET corps_md = replace(corps_md, '**39 classes** et **78 spécialités**', '**41 classes** et **82 spécialités**')
   WHERE id = 'guide/l-univers' AND length(corps_md) - length(replace(corps_md, '**39 classes** et **78 spécialités**', '')) = length('**39 classes** et **78 spécialités**');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('guide/l-univers : nombre de classes', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('guide/l-univers : nombre de classes', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, 'en magie innée, il impose l’Archimage comme première classe (une classe réservée à lui seul), et il ne peut jamais prendre le Mage Bleu.', 'en magie innée, il peut prendre l’Archimage (une classe réservée à lui seul) sans y être obligé, et il ne peut jamais prendre le Mage Bleu.')
   WHERE id = 'guide/choisir-sa-classe' AND length(corps_md) - length(replace(corps_md, 'en magie innée, il impose l’Archimage comme première classe (une classe réservée à lui seul), et il ne peut jamais prendre le Mage Bleu.', '')) = length('en magie innée, il impose l’Archimage comme première classe (une classe réservée à lui seul), et il ne peut jamais prendre le Mage Bleu.');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('guide/choisir-sa-classe : Archimage non imposée', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('guide/choisir-sa-classe : Archimage non imposée', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, 'Nombre : 27 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Anansi', 'Nombre : 29 sur 41.
@@ -1043,7 +1061,7 @@ Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenai
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Anansi', '')) = length('Nombre : 27 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Anansi');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('page races/anansi : classes accessibles', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('page races/anansi : classes accessibles', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, 'Nombre : 26 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur', 'Nombre : 28 sur 41.
@@ -1054,7 +1072,7 @@ Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenai
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur', '')) = length('Nombre : 26 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('page races/drakos : classes accessibles', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('page races/drakos : classes accessibles', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, 'Nombre : 26 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur', 'Nombre : 28 sur 41.
@@ -1065,7 +1083,7 @@ Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenai
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur', '')) = length('Nombre : 26 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('page races/drassahthac : classes accessibles', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('page races/drassahthac : classes accessibles', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, 'Nombre : 26 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur', 'Nombre : 28 sur 41.
@@ -1076,7 +1094,7 @@ Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenai
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur', '')) = length('Nombre : 26 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('page races/elfe-argente : classes accessibles', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('page races/elfe-argente : classes accessibles', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, 'Nombre : 26 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur', 'Nombre : 28 sur 41.
@@ -1087,7 +1105,7 @@ Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenai
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur', '')) = length('Nombre : 26 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('page races/elfe-dore : classes accessibles', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('page races/elfe-dore : classes accessibles', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, 'Nombre : 26 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur', 'Nombre : 28 sur 41.
@@ -1098,7 +1116,7 @@ Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenai
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur', '')) = length('Nombre : 26 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('page races/elfe-forestier : classes accessibles', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('page races/elfe-forestier : classes accessibles', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, 'Nombre : 26 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur', 'Nombre : 28 sur 41.
@@ -1109,7 +1127,7 @@ Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenai
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur', '')) = length('Nombre : 26 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('page races/elfe-noir : classes accessibles', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('page races/elfe-noir : classes accessibles', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, 'Nombre : 26 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur', 'Nombre : 28 sur 41.
@@ -1120,7 +1138,7 @@ Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenai
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur', '')) = length('Nombre : 26 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('page races/farfadet : classes accessibles', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('page races/farfadet : classes accessibles', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, 'Nombre : 26 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur', 'Nombre : 28 sur 41.
@@ -1131,7 +1149,7 @@ Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenai
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur', '')) = length('Nombre : 26 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('page races/felfe : classes accessibles', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('page races/felfe : classes accessibles', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, 'Nombre : 27 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Fenrir', 'Nombre : 29 sur 41.
@@ -1142,7 +1160,7 @@ Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenai
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Fenrir', '')) = length('Nombre : 27 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Fenrir');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('page races/fenrir : classes accessibles', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('page races/fenrir : classes accessibles', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, 'Nombre : 27 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Goleois', 'Nombre : 29 sur 41.
@@ -1153,7 +1171,7 @@ Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenai
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Goleois', '')) = length('Nombre : 27 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Goleois');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('page races/goleois : classes accessibles', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('page races/goleois : classes accessibles', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, 'Nombre : 26 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur', 'Nombre : 28 sur 41.
@@ -1164,7 +1182,7 @@ Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenai
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur', '')) = length('Nombre : 26 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('page races/hujin : classes accessibles', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('page races/hujin : classes accessibles', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, 'Nombre : 26 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur', 'Nombre : 28 sur 41.
@@ -1175,7 +1193,7 @@ Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenai
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur', '')) = length('Nombre : 26 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('page races/humain : classes accessibles', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('page races/humain : classes accessibles', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, 'Nombre : 27 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Jackalope', 'Nombre : 29 sur 41.
@@ -1186,7 +1204,7 @@ Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenai
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Jackalope', '')) = length('Nombre : 27 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Jackalope');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('page races/jackalope : classes accessibles', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('page races/jackalope : classes accessibles', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, 'Nombre : 27 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Kitsune', 'Nombre : 29 sur 41.
@@ -1197,7 +1215,7 @@ Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenai
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Kitsune', '')) = length('Nombre : 27 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Kitsune');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('page races/kitsune : classes accessibles', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('page races/kitsune : classes accessibles', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, 'Nombre : 26 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur', 'Nombre : 28 sur 41.
@@ -1208,7 +1226,7 @@ Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenai
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur', '')) = length('Nombre : 26 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('page races/lamia : classes accessibles', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('page races/lamia : classes accessibles', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, 'Nombre : 26 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur', 'Nombre : 28 sur 41.
@@ -1219,7 +1237,7 @@ Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenai
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur', '')) = length('Nombre : 26 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('page races/majin : classes accessibles', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('page races/majin : classes accessibles', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, 'Nombre : 27 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Marcass', 'Nombre : 29 sur 41.
@@ -1230,7 +1248,7 @@ Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenai
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Marcass', '')) = length('Nombre : 27 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Marcass');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('page races/marcass : classes accessibles', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('page races/marcass : classes accessibles', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, 'Nombre : 24 sur 39.
 
 Lancier, Martiale, Moine, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Médusain', 'Nombre : 26 sur 41.
@@ -1241,7 +1259,7 @@ Lancier, Martiale, Moine, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane,
 Lancier, Martiale, Moine, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Médusain', '')) = length('Nombre : 24 sur 39.
 
 Lancier, Martiale, Moine, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Médusain');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('page races/medusain : classes accessibles', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('page races/medusain : classes accessibles', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, 'Nombre : 27 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Minotaure', 'Nombre : 29 sur 41.
@@ -1252,7 +1270,7 @@ Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenai
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Minotaure', '')) = length('Nombre : 27 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Minotaure');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('page races/minotaure : classes accessibles', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('page races/minotaure : classes accessibles', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, 'Nombre : 26 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur', 'Nombre : 28 sur 41.
@@ -1263,7 +1281,7 @@ Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenai
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur', '')) = length('Nombre : 26 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('page races/mort-vivant : classes accessibles', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('page races/mort-vivant : classes accessibles', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, 'Nombre : 26 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur', 'Nombre : 28 sur 41.
@@ -1274,7 +1292,7 @@ Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenai
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur', '')) = length('Nombre : 26 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('page races/nain : classes accessibles', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('page races/nain : classes accessibles', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, 'Nombre : 27 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Namazu', 'Nombre : 29 sur 41.
@@ -1285,7 +1303,7 @@ Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenai
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Namazu', '')) = length('Nombre : 27 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Namazu');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('page races/namazu : classes accessibles', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('page races/namazu : classes accessibles', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, 'Nombre : 27 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Olwman', 'Nombre : 29 sur 41.
@@ -1296,7 +1314,7 @@ Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenai
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Olwman', '')) = length('Nombre : 27 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Olwman');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('page races/olwman : classes accessibles', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('page races/olwman : classes accessibles', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, 'Nombre : 27 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Orios', 'Nombre : 29 sur 41.
@@ -1307,7 +1325,7 @@ Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenai
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Orios', '')) = length('Nombre : 27 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Orios');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('page races/orios : classes accessibles', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('page races/orios : classes accessibles', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, 'Nombre : 27 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Rokh', 'Nombre : 29 sur 41.
@@ -1318,7 +1336,7 @@ Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenai
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Rokh', '')) = length('Nombre : 27 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Rokh');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('page races/rokh : classes accessibles', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('page races/rokh : classes accessibles', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, 'Nombre : 27 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Satyre', 'Nombre : 29 sur 41.
@@ -1329,7 +1347,7 @@ Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenai
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Satyre', '')) = length('Nombre : 27 sur 39.
 
 Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Satyre');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('page races/satyre : classes accessibles', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('page races/satyre : classes accessibles', changes(), 1);
 
 -- --------------------------------------------------------------------------------------------------------------------------------------------
 -- 8. Matériaux d'armes (R241) : effets secondaires du docx, tels quels (balises vers les mots-clés existants, comme la table : corruption,
@@ -1340,109 +1358,109 @@ INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('page races/satyre : clas
 UPDATE materiau_arme SET effet_brut = 'Dégâts +2 pour l''arme
 Une fois par combat, permet de relancer les dés de dégâts, mais le second résultat doit être conservé.', cran_solidite = NULL, effet_secondaire = 'Une fois par combat, permet de relancer les dés de dégâts, mais le second résultat doit être conservé.'
   WHERE ressource_id = 'ressources/armures#materiau:acier' AND effet_brut = 'Dégâts +2 pour l''arme' AND bonus_degats = 2;
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('materiau_arme acier', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('materiau_arme acier', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, '| Acier | 200 RF / 20 RO | Dégâts +2 pour l''arme |', '| Acier | 200 RF / 20 RO | Dégâts +2 pour l''arme<br>Une fois par combat, permet de relancer les dés de dégâts, mais le second résultat doit être conservé. |')
   WHERE id = 'ressources/armes' AND length(corps_md) - length(replace(corps_md, '| Acier | 200 RF / 20 RO | Dégâts +2 pour l''arme |', '')) = length('| Acier | 200 RF / 20 RO | Dégâts +2 pour l''arme |');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('ressources/armes : matériau acier', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('ressources/armes : matériau acier', changes(), 1);
 UPDATE materiau_arme SET effet_brut = 'Dégâts +3 pour l''arme
 Si la cible ne possède pas de {{corruption|corruption}}, lui inflige 4 points de {{corruption|corruption}}. Si elle possède déjà de la {{corruption|corruption}}, inflige +2 dégâts et 2 de {{corruption|corruption}}.', cran_solidite = NULL, effet_secondaire = 'Si la cible ne possède pas de {{corruption|corruption}}, lui inflige 4 points de {{corruption|corruption}}. Si elle possède déjà de la {{corruption|corruption}}, inflige +2 dégâts et 2 de {{corruption|corruption}}.'
   WHERE ressource_id = 'ressources/armures#materiau:fer-noir' AND effet_brut = 'Dégâts +3 pour l''arme
 1d4 de {{corruption|corruption}} à chaque coup qui touche' AND bonus_degats = 3;
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('materiau_arme fer-noir', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('materiau_arme fer-noir', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, '| Fer noir | 350 RF / 35 RO | Dégâts +3 pour l''arme<br>1d4 de {{corruption\|corruption}} à chaque coup qui touche |', '| Fer noir | 350 RF / 35 RO | Dégâts +3 pour l''arme<br>Si la cible ne possède pas de {{corruption\|corruption}}, lui inflige 4 points de {{corruption\|corruption}}. Si elle possède déjà de la {{corruption\|corruption}}, inflige +2 dégâts et 2 de {{corruption\|corruption}}. |')
   WHERE id = 'ressources/armes' AND length(corps_md) - length(replace(corps_md, '| Fer noir | 350 RF / 35 RO | Dégâts +3 pour l''arme<br>1d4 de {{corruption\|corruption}} à chaque coup qui touche |', '')) = length('| Fer noir | 350 RF / 35 RO | Dégâts +3 pour l''arme<br>1d4 de {{corruption\|corruption}} à chaque coup qui touche |');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('ressources/armes : matériau fer-noir', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('ressources/armes : matériau fer-noir', changes(), 1);
 UPDATE materiau_arme SET effet_brut = 'Dégâts +4 pour l''arme
 +1 dé de dégâts contre les non-morts.', cran_solidite = NULL, effet_secondaire = '+1 dé de dégâts contre les non-morts.'
   WHERE ressource_id = 'ressources/armures#materiau:argent' AND effet_brut = 'Dégâts +4 pour l''arme
 +1d de dégâts contre les non-morts' AND bonus_degats = 4;
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('materiau_arme argent', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('materiau_arme argent', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, '| Argent | 350 RF / 35 RO | Dégâts +4 pour l''arme<br>+1d de dégâts contre les non-morts |', '| Argent | 350 RF / 35 RO | Dégâts +4 pour l''arme<br>+1 dé de dégâts contre les non-morts. |')
   WHERE id = 'ressources/armes' AND length(corps_md) - length(replace(corps_md, '| Argent | 350 RF / 35 RO | Dégâts +4 pour l''arme<br>+1d de dégâts contre les non-morts |', '')) = length('| Argent | 350 RF / 35 RO | Dégâts +4 pour l''arme<br>+1d de dégâts contre les non-morts |');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('ressources/armes : matériau argent', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('ressources/armes : matériau argent', changes(), 1);
 UPDATE materiau_arme SET effet_brut = 'Dégâts +5 pour l''arme
 Les {{sort-fer|sorts de type « Fer »}} appliqués à l''arme durent un tour supplémentaire, soit 4 tours au lieu de 3.', cran_solidite = NULL, effet_secondaire = 'Les {{sort-fer|sorts de type « Fer »}} appliqués à l''arme durent un tour supplémentaire, soit 4 tours au lieu de 3.'
   WHERE ressource_id = 'ressources/armures#materiau:cuivre' AND effet_brut = 'Dégâts +5 pour l''arme' AND bonus_degats = 5;
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('materiau_arme cuivre', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('materiau_arme cuivre', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, '| Cuivre | 400 RF / 40 RO | Dégâts +5 pour l''arme |', '| Cuivre | 400 RF / 40 RO | Dégâts +5 pour l''arme<br>Les {{sort-fer\|sorts de type « Fer »}} appliqués à l''arme durent un tour supplémentaire, soit 4 tours au lieu de 3. |')
   WHERE id = 'ressources/armes' AND length(corps_md) - length(replace(corps_md, '| Cuivre | 400 RF / 40 RO | Dégâts +5 pour l''arme |', '')) = length('| Cuivre | 400 RF / 40 RO | Dégâts +5 pour l''arme |');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('ressources/armes : matériau cuivre', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('ressources/armes : matériau cuivre', changes(), 1);
 UPDATE materiau_arme SET effet_brut = 'Dégâts +6 pour l''arme
 +1 dé de dégâts contre les bêtes.', cran_solidite = NULL, effet_secondaire = '+1 dé de dégâts contre les bêtes.'
   WHERE ressource_id = 'ressources/armes#materiau:os' AND effet_brut = 'Dégâts +6 pour l''arme' AND bonus_degats = 6;
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('materiau_arme os', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('materiau_arme os', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, '| Os | 800 RF / 80 RO | Dégâts +6 pour l''arme |', '| Os | 800 RF / 80 RO | Dégâts +6 pour l''arme<br>+1 dé de dégâts contre les bêtes. |')
   WHERE id = 'ressources/armes' AND length(corps_md) - length(replace(corps_md, '| Os | 800 RF / 80 RO | Dégâts +6 pour l''arme |', '')) = length('| Os | 800 RF / 80 RO | Dégâts +6 pour l''arme |');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('ressources/armes : matériau os', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('ressources/armes : matériau os', changes(), 1);
 UPDATE materiau_arme SET effet_brut = 'Dégâts +7 pour l''arme
 +1 dé de dégâts contre les créatures mécaniques ou inertes.', cran_solidite = NULL, effet_secondaire = '+1 dé de dégâts contre les créatures mécaniques ou inertes.'
   WHERE ressource_id = 'ressources/armures#materiau:laiton' AND effet_brut = 'Dégâts +7 pour l''arme
 dégâts doublés contre la {{barriere|barrière}}' AND bonus_degats = 7;
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('materiau_arme laiton', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('materiau_arme laiton', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, '| Laiton | 900 RF / 90 RO | Dégâts +7 pour l''arme<br>dégâts doublés contre la {{barriere\|barrière}} |', '| Laiton | 900 RF / 90 RO | Dégâts +7 pour l''arme<br>+1 dé de dégâts contre les créatures mécaniques ou inertes. |')
   WHERE id = 'ressources/armes' AND length(corps_md) - length(replace(corps_md, '| Laiton | 900 RF / 90 RO | Dégâts +7 pour l''arme<br>dégâts doublés contre la {{barriere\|barrière}} |', '')) = length('| Laiton | 900 RF / 90 RO | Dégâts +7 pour l''arme<br>dégâts doublés contre la {{barriere\|barrière}} |');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('ressources/armes : matériau laiton', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('ressources/armes : matériau laiton', changes(), 1);
 UPDATE materiau_arme SET effet_brut = 'Dégâts +8 pour l''arme
 +1 dé de dégâts contre les démons.', cran_solidite = NULL, effet_secondaire = '+1 dé de dégâts contre les démons.'
   WHERE ressource_id = 'ressources/armures#materiau:or' AND effet_brut = 'Dégâts +8 pour l''arme
 +1d de dégâts contre les démons' AND bonus_degats = 8;
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('materiau_arme or', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('materiau_arme or', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, '| Or | 100 RO | Dégâts +8 pour l''arme<br>+1d de dégâts contre les démons |', '| Or | 100 RO | Dégâts +8 pour l''arme<br>+1 dé de dégâts contre les démons. |')
   WHERE id = 'ressources/armes' AND length(corps_md) - length(replace(corps_md, '| Or | 100 RO | Dégâts +8 pour l''arme<br>+1d de dégâts contre les démons |', '')) = length('| Or | 100 RO | Dégâts +8 pour l''arme<br>+1d de dégâts contre les démons |');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('ressources/armes : matériau or', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('ressources/armes : matériau or', changes(), 1);
 UPDATE materiau_arme SET effet_brut = 'Dégâts +6 pour l''arme
 Permet de toucher les êtres immatériels.', cran_solidite = NULL, effet_secondaire = 'Permet de toucher les êtres immatériels.'
   WHERE ressource_id = 'ressources/armures#materiau:vif-argent' AND effet_brut = 'Dégâts +6 pour l''arme
 Touche l''immatériel' AND bonus_degats = 6;
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('materiau_arme vif-argent', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('materiau_arme vif-argent', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, '| Vif argent | 300 RO | Dégâts +6 pour l''arme<br>Touche l''immatériel |', '| Vif argent | 300 RO | Dégâts +6 pour l''arme<br>Permet de toucher les êtres immatériels. |')
   WHERE id = 'ressources/armes' AND length(corps_md) - length(replace(corps_md, '| Vif argent | 300 RO | Dégâts +6 pour l''arme<br>Touche l''immatériel |', '')) = length('| Vif argent | 300 RO | Dégâts +6 pour l''arme<br>Touche l''immatériel |');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('ressources/armes : matériau vif-argent', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('ressources/armes : matériau vif-argent', changes(), 1);
 UPDATE materiau_arme SET effet_brut = 'Dégâts +8 pour l''arme
 Si l''arme touche une {{barriere|barrière}}, elle inflige +1 dé de dégâts.', cran_solidite = NULL, effet_secondaire = 'Si l''arme touche une {{barriere|barrière}}, elle inflige +1 dé de dégâts.'
   WHERE ressource_id = 'ressources/armures#materiau:mythril' AND effet_brut = 'Dégâts +8 pour l''arme
 Passe {{barriere|barrière}}' AND bonus_degats = 8;
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('materiau_arme mythril', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('materiau_arme mythril', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, '| Mythril | 200 RO | Dégâts +8 pour l''arme<br>Passe {{barriere\|barrière}} |', '| Mythril | 200 RO | Dégâts +8 pour l''arme<br>Si l''arme touche une {{barriere\|barrière}}, elle inflige +1 dé de dégâts. |')
   WHERE id = 'ressources/armes' AND length(corps_md) - length(replace(corps_md, '| Mythril | 200 RO | Dégâts +8 pour l''arme<br>Passe {{barriere\|barrière}} |', '')) = length('| Mythril | 200 RO | Dégâts +8 pour l''arme<br>Passe {{barriere\|barrière}} |');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('ressources/armes : matériau mythril', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('ressources/armes : matériau mythril', changes(), 1);
 UPDATE materiau_arme SET effet_brut = 'Dégâts +9 pour l''arme
 Avantage contre les effets de désarmement.', cran_solidite = NULL, effet_secondaire = 'Avantage contre les effets de désarmement.'
   WHERE ressource_id = 'ressources/armures#materiau:titane' AND effet_brut = 'Dégâts +9 pour l''arme
 +1 cran de solidité' AND bonus_degats = 9;
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('materiau_arme titane', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('materiau_arme titane', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, '| Titane | 200 RO | Dégâts +9 pour l''arme<br>+1 cran de solidité |', '| Titane | 200 RO | Dégâts +9 pour l''arme<br>Avantage contre les effets de désarmement. |')
   WHERE id = 'ressources/armes' AND length(corps_md) - length(replace(corps_md, '| Titane | 200 RO | Dégâts +9 pour l''arme<br>+1 cran de solidité |', '')) = length('| Titane | 200 RO | Dégâts +9 pour l''arme<br>+1 cran de solidité |');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('ressources/armes : matériau titane', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('ressources/armes : matériau titane', changes(), 1);
 UPDATE materiau_arme SET effet_brut = 'Dégâts +10 pour l''arme
 Si la créature ne possède pas ou plus de {{barriere|barrière}}, l''arme inflige +1 dé de dégâts.', cran_solidite = NULL, effet_secondaire = 'Si la créature ne possède pas ou plus de {{barriere|barrière}}, l''arme inflige +1 dé de dégâts.'
   WHERE ressource_id = 'ressources/armures#materiau:maverium' AND effet_brut = 'Dégâts +10 pour l''arme
 Casse {{barriere|barrière}}' AND bonus_degats = 10;
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('materiau_arme maverium', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('materiau_arme maverium', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, '| Maverium | 400 RO | Dégâts +10 pour l''arme<br>Casse {{barriere\|barrière}} |', '| Maverium | 400 RO | Dégâts +10 pour l''arme<br>Si la créature ne possède pas ou plus de {{barriere\|barrière}}, l''arme inflige +1 dé de dégâts. |')
   WHERE id = 'ressources/armes' AND length(corps_md) - length(replace(corps_md, '| Maverium | 400 RO | Dégâts +10 pour l''arme<br>Casse {{barriere\|barrière}} |', '')) = length('| Maverium | 400 RO | Dégâts +10 pour l''arme<br>Casse {{barriere\|barrière}} |');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('ressources/armes : matériau maverium', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('ressources/armes : matériau maverium', changes(), 1);
 
 -- Barrière (R241 (3)) : les anciens effets du Mythril, du Maverium et du Laiton sont supprimés ; la phrase qui les cite est retirée ou remplacée par l'effet du
 -- docx (R224 (1) dans une copie : seule la phrase fausse). Le bestiaire (« Anti-barrière ») et le carreau « Pré-mythril » restent tels quels.
 UPDATE mot_cle SET description = replace(description, ' Certains matériaux d’arme la contrent : le Mythril passe à travers, le Maverium la brise à son contact.', '')
   WHERE id = 37 AND length(description) - length(replace(description, ' Certains matériaux d’arme la contrent : le Mythril passe à travers, le Maverium la brise à son contact.', '')) = length(' Certains matériaux d’arme la contrent : le Mythril passe à travers, le Maverium la brise à son contact.');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('mot-clé barriere : matériaux', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('mot-clé barriere : matériaux', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, ' Le mythril la traverse, et le maverium la brise à son contact.', '')
   WHERE id = 'guide/finaliser-son-personnage' AND length(corps_md) - length(replace(corps_md, ' Le mythril la traverse, et le maverium la brise à son contact.', '')) = length(' Le mythril la traverse, et le maverium la brise à son contact.');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('guide/finaliser-son-personnage : matériaux', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('guide/finaliser-son-personnage : matériaux', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, ' colossales MAIS ... il existe des matériaux pour les armes qui sont capables de contrer cette peau magique comme le Mythril qui est capable de passer à travers la {{barriere|barrière}}, mais aussi le Maverium, qui lui, casse la {{barriere|barrière}} à son contact (donc un simple coup d''une arme de Maverium est capable de détruire instantanément la plus colossale des {{barriere|barrières}})', ' colossales.')
   WHERE id = 'guide/fiche-attributs' AND length(corps_md) - length(replace(corps_md, ' colossales MAIS ... il existe des matériaux pour les armes qui sont capables de contrer cette peau magique comme le Mythril qui est capable de passer à travers la {{barriere|barrière}}, mais aussi le Maverium, qui lui, casse la {{barriere|barrière}} à son contact (donc un simple coup d''une arme de Maverium est capable de détruire instantanément la plus colossale des {{barriere|barrières}})', '')) = length(' colossales MAIS ... il existe des matériaux pour les armes qui sont capables de contrer cette peau magique comme le Mythril qui est capable de passer à travers la {{barriere|barrière}}, mais aussi le Maverium, qui lui, casse la {{barriere|barrière}} à son contact (donc un simple coup d''une arme de Maverium est capable de détruire instantanément la plus colossale des {{barriere|barrières}})');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('guide/fiche-attributs : matériaux', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('guide/fiche-attributs : matériaux', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, ' ; mais certains matériaux d’arme la contrent, comme le **Mythril**, qui passe à travers, ou le **Maverium**, qui la brise à son contact, si colossale soit-elle. Une arme de **Laiton**, elle, fait des dégâts doublés contre la {{barriere|barrière}} (voir l’onglet {{composants|Matériaux}} des composants).', '. Une arme de **Mythril** inflige +1 dé de dégâts si elle touche une barrière ; une arme de **Maverium**, +1 dé de dégâts si la créature ne possède pas ou plus de barrière (voir l’onglet {{composants|Matériaux}} des composants).')
   WHERE id = 'guide/les-degats' AND length(corps_md) - length(replace(corps_md, ' ; mais certains matériaux d’arme la contrent, comme le **Mythril**, qui passe à travers, ou le **Maverium**, qui la brise à son contact, si colossale soit-elle. Une arme de **Laiton**, elle, fait des dégâts doublés contre la {{barriere|barrière}} (voir l’onglet {{composants|Matériaux}} des composants).', '')) = length(' ; mais certains matériaux d’arme la contrent, comme le **Mythril**, qui passe à travers, ou le **Maverium**, qui la brise à son contact, si colossale soit-elle. Une arme de **Laiton**, elle, fait des dégâts doublés contre la {{barriere|barrière}} (voir l’onglet {{composants|Matériaux}} des composants).');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('guide/les-degats : matériaux (1)', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('guide/les-degats : matériaux (1)', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, ' Contre une arme de Laiton, ces deux effets se compensent ; une arme de Maverium, elle, casse la barrière sans tenir compte du Médusain.', '')
   WHERE id = 'guide/les-degats' AND length(corps_md) - length(replace(corps_md, ' Contre une arme de Laiton, ces deux effets se compensent ; une arme de Maverium, elle, casse la barrière sans tenir compte du Médusain.', '')) = length(' Contre une arme de Laiton, ces deux effets se compensent ; une arme de Maverium, elle, casse la barrière sans tenir compte du Médusain.');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('guide/les-degats : matériaux (2)', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('guide/les-degats : matériaux (2)', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, '« Passe la barrière » (Mythril, sorts qui l’ignorent), « Casse la barrière » (Maverium), « Dégâts doublés contre la barrière » (Laiton),', '« Passe la barrière » (sorts qui l’ignorent), « Casse la barrière », « Dégâts doublés contre la barrière »,')
   WHERE id = 'guide/les-degats' AND length(corps_md) - length(replace(corps_md, '« Passe la barrière » (Mythril, sorts qui l’ignorent), « Casse la barrière » (Maverium), « Dégâts doublés contre la barrière » (Laiton),', '')) = length('« Passe la barrière » (Mythril, sorts qui l’ignorent), « Casse la barrière » (Maverium), « Dégâts doublés contre la barrière » (Laiton),');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('guide/les-degats : cases de la barrière', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('guide/les-degats : cases de la barrière', changes(), 1);
 
 -- --------------------------------------------------------------------------------------------------------------------------------------------
 -- 9. Limite D12 (R252) : la copie « pas plus haut que le D20 » devient « D12 » (R252 (4), R224 (1)) dans posture_effet (Focus, versions guide_fiche et
@@ -1450,19 +1468,19 @@ INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('guide/les-degats : cases
 -- --------------------------------------------------------------------------------------------------------------------------------------------
 UPDATE posture_effet SET texte = replace(texte, 'plus haut que le D20)', 'plus haut que le D12)')
   WHERE posture_id = 'guide/postures#posture:focus' AND version = 'guide_fiche' AND rang = 3 AND length(texte) - length(replace(texte, 'plus haut que le D20)', '')) = length('plus haut que le D20)');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('posture_effet focus guide_fiche : D12', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('posture_effet focus guide_fiche : D12', changes(), 1);
 UPDATE posture_effet SET texte = replace(texte, 'plus haut que le D20)', 'plus haut que le D12)')
   WHERE posture_id = 'guide/postures#posture:focus' AND version = 'guide_mj' AND rang = 3 AND length(texte) - length(replace(texte, 'plus haut que le D20)', '')) = length('plus haut que le D20)');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('posture_effet focus guide_mj : D12', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('posture_effet focus guide_mj : D12', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, 'plus haut que le D20)', 'plus haut que le D12)')
   WHERE id = 'guide/fiche-tableau-posture' AND length(corps_md) - length(replace(corps_md, 'plus haut que le D20)', '')) = length('plus haut que le D20)');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('guide/fiche-tableau-posture : D12', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('guide/fiche-tableau-posture : D12', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, 'D4, D6, D8, D10, D12, puis D20, jamais au-delà.', 'D4, D6, D8, D10, puis D12, jamais au-delà.')
   WHERE id = 'guide/les-postures' AND length(corps_md) - length(replace(corps_md, 'D4, D6, D8, D10, D12, puis D20, jamais au-delà.', '')) = length('D4, D6, D8, D10, D12, puis D20, jamais au-delà.');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('guide/les-postures : D12', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('guide/les-postures : D12', changes(), 1);
 UPDATE page SET corps_md = replace(corps_md, 'D4, D6, D8, D10, D12, puis D20, jamais au-delà.', 'D4, D6, D8, D10, puis D12, jamais au-delà.')
   WHERE id = 'guide/les-degats' AND length(corps_md) - length(replace(corps_md, 'D4, D6, D8, D10, D12, puis D20, jamais au-delà.', '')) = length('D4, D6, D8, D10, D12, puis D20, jamais au-delà.');
-INSERT INTO garde_0118 (quoi, lignes, attendu) VALUES ('guide/les-degats : D12', changes(), 1);
+INSERT INTO garde_0119 (quoi, lignes, attendu) VALUES ('guide/les-degats : D12', changes(), 1);
 
 -- --------------------------------------------------------------------------------------------------------------------------------------------
 -- 10. Table correction : les 26 coquilles R10 des onglets Boxeur, Porte-étendard et Cuirassé V2 (tools/sheets/corrections.json, section magie-v10).
@@ -1494,4 +1512,4 @@ INSERT INTO correction (dump, classeur, onglet, cellule, champ, avant, apres, oc
 INSERT INTO correction (dump, classeur, onglet, cellule, champ, avant, apres, occurrences, nature, note, origine, source_ref) VALUES ('magie-v10', 'Nouveauté mise à jour Décembre', 'Porte-étendard', 'Z36', 'v', 'Réagir ! ', 'Réagir !', 1, 'espace', 'Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12), lot 3 « Classes » (R238) : nom du don de niveau 15 : espace finale (R10 : l''orthographe se corrige, jamais un chiffre ni le sens).', 'classes', 'Nouveauté mise à jour Décembre › Porte-étendard › Z36');
 INSERT INTO correction (dump, classeur, onglet, cellule, champ, avant, apres, occurrences, nature, note, origine, source_ref) VALUES ('magie-v10', 'Nouveauté mise à jour Décembre', 'Cuirassé V2', 'A37', 'v', 'attaque à moins', 'attaque a moins', 1, 'grammaire', 'Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12), lot 3 « Classes » (R238) : don Écrasant : verbe « a » (« la cible a moins d''AP total »), pas la préposition « à » (R10 : l''orthographe se corrige, jamais un chiffre ni le sens).', 'classes', 'Nouveauté mise à jour Décembre › Cuirassé V2 › A37');
 
-DROP TABLE garde_0118;
+DROP TABLE garde_0119;

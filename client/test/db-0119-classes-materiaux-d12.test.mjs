@@ -1,9 +1,9 @@
-// Migration data/migrations/0118-classes-materiaux-d12.sql (lot 3 de la mise à jour de Décembre) : classes (R238), effets secondaires des matériaux
+// Migration data/migrations/0119-classes-materiaux-d12.sql (lot 3 de la mise à jour de Décembre) : classes (R238), effets secondaires des matériaux
 // d'armes (R241), limite D12 des montées de dé (R252), coquilles des onglets de classe (R10).
 // Le site de dev est la source de ce qu'il modifie : les valeurs précises (ordre, catégorie, textes, effets) se lisent à l'import
 // (test/aide-base-d-import.mjs), où une cellule que la migration a réécrite garde sa valeur ; l'état courant ne porte que des invariants (la vue sans
-// classe_imposee, les colonnes d'un matériau relues de son effet). Les ids et les textes viennent du registre de la migration (0118-…json), jamais d'un nom.
-//   node --test test/db-0118-classes-materiaux-d12.test.mjs
+// classe_imposee, les colonnes d'un matériau relues de son effet). Les ids et les textes viennent du registre de la migration (0119-…json), jamais d'un nom.
+//   node --test test/db-0119-classes-materiaux-d12.test.mjs
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
@@ -17,7 +17,7 @@ import { sourcesDeLaClasse, sourcesDuDon, famillesDuLecteur } from '../serveur/e
 import { baseDImport } from './aide-base-d-import.mjs';
 import { avecLesClesDe, idDuMotCleNomme } from './aide-mots-cles.mjs';
 
-const NOM = '0118-classes-materiaux-d12';
+const NOM = '0119-classes-materiaux-d12';
 const lire = (chemin) => readFileSync(new URL(chemin, import.meta.url), 'utf8');
 const REGISTRE = JSON.parse(lire(`../../data/migrations/${NOM}.json`));
 const MIGRATION = lire(`../../data/migrations/${NOM}.sql`);
@@ -30,12 +30,12 @@ const PI = 'magies/potentiel-illimite';
 const ARCHIMAGE = 'classes/archimage';
 const tri = (lignes) => lignes.map((l) => JSON.stringify(Object.fromEntries(Object.keys(l).sort().map((k) => [k, l[k]])))).sort();
 
-test('0118 : schéma 118, aucun mot-clé créé, une garde par instruction qui modifie ou supprime', () => {
-  assert.ok(db.prepare('PRAGMA user_version').get().user_version >= 118);
+test('0119 : schéma 119, aucun mot-clé créé, une garde par instruction qui modifie ou supprime', () => {
+  assert.ok(db.prepare('PRAGMA user_version').get().user_version >= 119);
   assert.match(SCHEMA, /PRAGMA user_version = 1(1[89]|[2-9]\d);/);
   assert.doesNotMatch(MIGRATION, /INSERT INTO mot_cle\b/, 'aucun mot-clé créé (demande du lot)');
   const modifs = MIGRATION.match(/^(UPDATE|DELETE) /gm).length;
-  assert.equal(MIGRATION.match(/^INSERT INTO garde_0118 /gm).length, modifs);
+  assert.equal(MIGRATION.match(/^INSERT INTO garde_0119 /gm).length, modifs);
   assert.equal(REGISTRE.migration, NOM);
 });
 

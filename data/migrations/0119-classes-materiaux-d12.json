@@ -1,6 +1,6 @@
 {
- "$comment": "Registre de la migration 0118-classes-materiaux-d12 (lot 3 de la mise à jour de Décembre). `textes` : chaque remplacement d'un fragment (avant -> après), avec sa décision ; `materiaux` : les colonnes de materiau_arme réécrites ; pas de clé `corrections` (tools/sources/rapprocher.mjs la lit comme de l'orthographe) : les 26 coquilles R10 sont dans tools/sheets/corrections.json, section magie-v10 (miroir : table correction).",
- "migration": "0118-classes-materiaux-d12",
+ "$comment": "Registre de la migration 0119-classes-materiaux-d12 (lot 3 de la mise à jour de Décembre). `textes` : chaque remplacement d'un fragment (avant -> après), avec sa décision ; `materiaux` : les colonnes de materiau_arme réécrites ; pas de clé `corrections` (tools/sources/rapprocher.mjs la lit comme de l'orthographe) : les 26 coquilles R10 sont dans tools/sheets/corrections.json, section magie-v10 (miroir : table correction).",
+ "migration": "0119-classes-materiaux-d12",
  "decisions": [
   "R10",
   "R23",

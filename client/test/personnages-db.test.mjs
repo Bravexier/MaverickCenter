@@ -747,7 +747,7 @@ test('décisions R23, R238 (5) : l’Archimage est réservée au Potentiel Illim
   assert.deepEqual(db.prepare('SELECT id, magie_innee_id FROM classe WHERE magie_innee_id IS NOT NULL').all().map((r) => ({ ...r })),
     [{ id: 'classes/archimage', magie_innee_id: 'magies/potentiel-illimite' }]);
   assert.match(texteDImport('classe', { id: 'classes/archimage' }, 'chose_a_savoir'), /vous ne pouvez pas la prendre si vous n'êtes pas du potentiel illimité/);
-  // la règle « classe 1 imposée » n'existe plus dans la vue (R238 (5), migration 0118)
+  // la règle « classe 1 imposée » n'existe plus dans la vue (R238 (5), migration 0119)
   assert.equal(db.prepare("SELECT COUNT(*) AS n FROM sqlite_schema WHERE name = 'v_personnage_controle' AND sql LIKE '%classe_imposee%'").get().n, 0);
   assert.throws(() => db.prepare("UPDATE classe SET magie_innee_id = 'magies/potentiel-illimite' WHERE id = 'classes/mage'").run(), /UNIQUE/,
     'une magie innée impose au plus une classe');
