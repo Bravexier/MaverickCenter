@@ -275,7 +275,7 @@ export function competencesDe(regles, fiche) {
   const { parCompetence } = bonusDuMetier(regles, fiche);
   const posture = postureDuMoment(regles, fiche);
   const entrainement = entrainementDe(regles, fiche).parCompetence;
-  const { parCompetence: dons, plafonds, jets } = acquisDesDons(regles, fiche);
+  const { parCompetence: dons, plafonds, jets, jetsParCompetence } = acquisDesDons(regles, fiche);
   const sourcesCritique = sourcesDuCritique(regles, fiche);
   return regles.competences.map((k) => {
     const saisie = parId.get(k.id);
@@ -307,7 +307,8 @@ export function competencesDe(regles, fiche) {
     const acquis = entrainementCompte + donsComptes + metier + accessoire;
     // le bonus au jet d'un don (décision R122 : « +5% à tout jet impliquant la Perception » du Fenrir, « +5% à tout test d'Agilité » de l'Elfe forestier) :
     // « il s'ajoute au score sans passer par le plafond d'acquis », comme une posture ; toujours effectif (un don passif), il est dans `score`
-    const jetDetail = jets.get(k.caracteristique_id) ?? [];
+    // (par caractéristique, R122 ; par compétence nommée, R267 (2) : « Chef résiliant » et ses trois pareils du Porte-étendard)
+    const jetDetail = [...(jets.get(k.caracteristique_id) ?? []), ...(jetsParCompetence.get(k.id) ?? [])];
     const jet = jetDetail.reduce((t, d) => t + d.valeur, 0);
     const score = utilisable ? carac.valeur * constante(regles, 'competence.base_par_point_caracteristique') + naturel + acquis + malus + jet : null;
     // la posture du moment (décision R100) : un bonus au jet, pas un Acquis — `score` reste celui de la fiche (tableur), `scoreDuMoment` le compte
@@ -464,7 +465,9 @@ export function entrainementsAEnregistrer(fiche) {
  * à 0 n'en donne plus aucun : décisions R157, R158, armureCassee, raison 'armure_cassee') :
  * { parCompetence: Map(competence_id → [{ nom, valeur }]), plafonds: Map(caracteristique_id → [{ nom, valeur }])
  * (« Son acquis max en Social est augmenté de +20 »), jets: Map(caracteristique_id → [{ nom, valeur }]) (« +5% à tout jet impliquant la Perception » :
- * un bonus au jet de chaque compétence de la caractéristique, hors acquis et hors plafond, décision R122 : competencesDe), artisanat: [{ nom, valeur }]
+ * un bonus au jet de chaque compétence de la caractéristique, hors acquis et hors plafond, décision R122 : competencesDe), jetsParCompetence:
+ * Map(competence_id → [{ nom, valeur }]) (« les alliés ont un bonus de 5% à tous les jets de calme, vigueur et fermeté », décision R267 (2) : le même bonus
+ * au jet, d'une compétence nommée), artisanat: [{ nom, valeur }]
  * (« +10% à tous les tests d'artisanat » : la compétence d'artisanat du métier, décision R123 : artisanatDe), choix, nonComptes: [{ nom, valeur, raison,
  * texte }] }. Un bonus « X ou Y » ou « pour les compétences d'arme » (R120) est un choix (personnage_acquis_choix : source = le don, rang = le rang du
  * choix dans son texte) : { source, rang, nom, valeur, options, choisi, fait } ; « choisir 2 sur les 3 » (R121), autant de choix que le texte le dit, à
@@ -492,6 +495,7 @@ export function acquisDesDons(regles, fiche) {
   };
   const plafonds = new Map();
   const jets = new Map();
+  const jetsParCompetence = new Map();
   const artisanat = [];
   const competences = new Set(regles.competences.map((k) => k.id));
   const sansArtisanat = !trouver(regles.metiers ?? [], fiche.metier_id)?.artisanat;
@@ -519,6 +523,11 @@ export function acquisDesDons(regles, fiche) {
         // au jet, ajouté au score de chaque compétence de la caractéristique (competencesDe), pas un acquis
         if (!jets.has(b.jet)) jets.set(b.jet, []);
         jets.get(b.jet).push({ nom: source.nom, valeur: b.valeur });
+      } else if (b.jet_competence) {
+        // décision R267 (2) : « Tant qu'il est debout, les alliés ont un bonus de 5% à tous les jets de … » (Chef résiliant, agile, fort, malin du Porte-étendard,
+        // qui compte parmi ses alliés, R254 (2)) : un bonus au jet de cette compétence, hors acquis, comme un bonus qui joue tout le temps
+        if (!jetsParCompetence.has(b.jet_competence)) jetsParCompetence.set(b.jet_competence, []);
+        jetsParCompetence.get(b.jet_competence).push({ nom: source.nom, valeur: b.valeur });
       } else if (b.artisanat) {
         // décision R123 : « +5% à chaque test lié à l'artisanat » (Nain, Londolor ouest), « +10% à tous les tests d'artisanat » (Elfe noir, Sang purifié) :
         // « Les test d'artisanat dépendent du métier » : la compétence d'artisanat du métier (artisanatDe) ; sans elle, rien
@@ -581,7 +590,7 @@ export function acquisDesDons(regles, fiche) {
       } else ajouter(b.competence_id, source.nom, b.valeur);
     }
   }
-  return { parCompetence, plafonds, jets, artisanat, choix, nonComptes };
+  return { parCompetence, plafonds, jets, jetsParCompetence, artisanat, choix, nonComptes };
 }
 
 /**
@@ -2431,13 +2440,15 @@ export const infobulleDeMetier = (metier) => infobulleDesLignes(lignesDeChamps((
 
 /**
  * L'infobulle d'un sort (listes des emplacements, du sort préparé et des livres) : sa magie et son NPM (« Feu, NPM 2 », comme l'infobulle du sort choisi),
- * puis Type, Coût, Coût secondaire, Portée, Zone, D/S/B, Effets et Remarque tels qu'écrits, « (+1/NM) » compris (valeurs au NM 0 : la ligne du
- * tableau donne celles du NM choisi). `magie` : l'entrée de regles.magies (facultative).
+ * suivis du nom de sa spécialisation s'il en a une (« Arcane, NPM 3 · Construction », initiale seule en majuscule : décisions R260 (1), R270 ; `sort.specialisation_id`, une
+ * spécialisation de la magie), puis Type, Coût, Coût secondaire, Portée, Zone, D/S/B, Effets et Remarque tels qu'écrits, « (+1/NM) » compris (valeurs au NM 0 :
+ * la ligne du tableau donne celles du NM choisi). `magie` : l'entrée de regles.magies (facultative).
  */
 export function infobulleDeSort(sort, magie = null) {
   if (!sort) return null;
+  const specialisation = sort.specialisation_id ? (magie?.specialisations ?? []).find((x) => x.id === sort.specialisation_id) : null;
   return infobulleDesLignes([
-    ...(magie ? [`${magie.nom}, NPM ${sort.niveau}`] : []),
+    ...(magie ? [`${magie.nom}, NPM ${sort.niveau}${specialisation ? ` · ${nomDeSpecialisation(specialisation.nom)}` : ''}`] : []),
     ...lignesDeChamps([['Type', sort.type], ['Coût', sort.cout], ['Coût secondaire', sort.cout_secondaire], ['Portée', sort.portee], ['Zone', sort.zone],
       ['D/S/B', sort.dsb], ['Effets', sort.effets], ['Remarque', sort.remarque]]),
   ]);
@@ -3287,6 +3298,63 @@ export function bouclierDe(regles, fiche) {
   };
 }
 
+/**
+ * Le poids d'un bouclier en nombre (décisions R255 (2), R92) : Léger 1, Moyen 2, Lourd 3, Très lourd 4 (`regles.poids_bouclier[].id`, figés). Bouragé
+ * compte +2 dégâts par poids.
+ */
+export const POIDS_DU_BOUCLIER = Object.freeze({ leger: 1, moyen: 2, lourd: 3, 'tres-lourd': 4 });
+
+/**
+ * « Bouclier d'attaque » (décisions R255 (3), R269 (2)) : (AP + AM du bouclier) ÷ `diviseur`, toujours arrondi à l'inférieur (R175, ÷ 4 comme ÷ 3), au moins
+ * `minimum` (÷ 4 : 5 → 1 ; 6 → 1 ; 7 → 1 ; 10 → 2 ; 8 → 2). Les +2 de Mur restent dans la somme (R255 (4)) : l'appelant les y met.
+ */
+export function extensionDeDegats(ap, am, { diviseur, minimum }) {
+  const somme = Math.max(0, Math.round(ap) + Math.round(am));
+  return Math.max(minimum, Math.floor(somme / diviseur));
+}
+
+/**
+ * Le diviseur de « Bouclier d'attaque » pour ces effets (`effetsDeBouclierDesDons`) : celui du don, sauf si un don écrit « La division […] est de N au lieu de M »
+ * pour ce diviseur M (« Égide d'assaut », 3 au lieu de 4 : R269 (1)). Lu dans les textes, jamais une constante.
+ */
+export function diviseurDeLExtension(extension, effets) {
+  return effets.filter((e) => e.cle === 'extension_diviseur' && e.au_lieu_de === extension.diviseur).reduce((d, e) => e.diviseur, extension.diviseur);
+}
+
+/**
+ * Le nom d'une spécialisation magique à l'affichage (décision R270) : l'initiale seule en majuscule (« CONSTRUCTION » → « Construction »). La base garde ses
+ * capitales ; la fiche ne transforme qu'à l'affichage (infobulle d'un sort, pastilles).
+ */
+export const nomDeSpecialisation = (nom) => {
+  const t = String(nom ?? '');
+  return t.charAt(0).toLocaleUpperCase('fr') + t.slice(1).toLocaleLowerCase('fr');
+};
+
+/**
+ * Ce que les dons passifs débloqués font du bouclier porté (lib/bouclier-texte.mjs : Bouclier d'attaque, Bouragé, Mur du Boxeur ; décisions R255, R267),
+ * lus au build dans leur texte, jamais par le nom : [{ nom, cle: 'extension_de_degats' | 'degats_par_poids' | 'defense', … }].
+ */
+export function effetsDeBouclierDesDons(regles, fiche) {
+  return donsAcquis(regles, fiche).flatMap((c) => c.dons.filter((d) => d.bouclier).map((d) => ({ ...d.bouclier, nom: `${d.nom} (${c.classe.nom})` })));
+}
+
+/**
+ * Le bouclier tel que les dons le font jouer (décisions R255, R267) : null sans bouclier de la liste (forme et matière) ; sinon { bouclier (bouclierDe), cassee,
+ * poids (le nombre, POIDS_DU_BOUCLIER), mur: [{ nom, ap, am }] (les dons « defense » : « Les boucliers donnent +2AP et AM »), ap, am (AP et AM du bouclier,
+ * les +2 de Mur compris : « le bouclier gagne +2 AP et +2 AM »), effets }. Cassé (solidité 0), ses AP et AM ne comptent plus (R108) : `ap` et `am` à 0.
+ */
+export function bouclierDesDons(regles, fiche) {
+  const b = bouclierDe(regles, fiche);
+  if (!b?.bouclier) return null;
+  const effets = effetsDeBouclierDesDons(regles, fiche);
+  const mur = effets.filter((e) => e.cle === 'defense').map((e) => ({ nom: e.nom, ap: e.ap, am: e.am }));
+  const cassee = Boolean(b.solidite?.cassee);
+  return {
+    bouclier: b, cassee, poids: POIDS_DU_BOUCLIER[b.poids?.id] ?? 0, mur, effets,
+    ap: cassee ? 0 : b.ap + mur.reduce((s, m) => s + m.ap, 0), am: cassee ? 0 : b.am + mur.reduce((s, m) => s + m.am, 0),
+  };
+}
+
 /** Ce qui s'enregistre comme solidité du moment du bouclier (personnage.bouclier_solidite) : null à son maximum (ou au-delà), sans valeur ou sans matière. */
 export function soliditeDuBouclierAEcrire(regles, fiche, valeur) {
   const max = bouclierDe(regles, fiche)?.solidite?.max ?? null;
@@ -3380,7 +3448,8 @@ export const typeDeDegatsDuCoup = (coup) => (!coup ? null : coup.type.physique ?
  * L'armure physique (AP) et l'armure magique (AM) du personnage (décision R98), sur la partie du corps `partie` (décision R108 ; un id de partiesDuCorps,
  * le torse par défaut : « Une attaque "non ciblée" touche par défaut le torse ») : { ap: { total, armure, detail }, am: { total, armure, detail }, element
  * (l'armure élémentaire portée, ou null), partie ({ id, nom, cassee }), cassees (les parties cassées : [{ id, nom }]), bouclier ({ nom, ap, am, cassee }
- * du bouclier, comptés seulement en parade partielle et plus du tout cassé ; null sans bouclier de la liste) }.
+ * du bouclier, comptés seulement en parade partielle et plus du tout cassé ; `mur` : le Boxeur qui a « Mur » les compte toujours, +2 de Mur compris, dans le
+ * total et dans `ap.bouclier` / `am.bouclier`, R267 (1) ; null sans bouclier de la liste) }.
  * Le total : l'armure de base (race, ethnie, classes magiques, accessoires : attributsDe, guide « Fiche de personnage : Armure/Défense/Bouclier »), la
  * posture du moment (R100) et l'armure portée — la sienne et celle de son amélioration au niveau choisi (R77), de base ou élémentaire (R99, R165 :
  * armurePortee) —, sur une partie cassée 0 (R108 : « Seul l'AP et l'AM de l'armure tombe à zéro.
@@ -3424,14 +3493,23 @@ export function defenseDe(regles, fiche, attributs = attributsDe(regles, fiche),
   for (const l of hyper?.apBase ?? []) ajouter(ap, l.nom, l.valeur);
   for (const l of hyper?.amBase ?? []) ajouter(am, l.nom, l.valeur);
   const b = bouclierDe(regles, fiche);
+  // « Mur » (décisions R255 (1), R267 (1)) : toute l'AP et l'AM du bouclier, les +2 de Mur compris, s'ajoutent à la défense à chaque attaque subie, même sans
+  // parade partielle (exception à R96) ; cassé, plus du tout (R108). Le total les compte une fois : degatsRecus n'ajoute plus le bouclier en parade partielle
+  const dons = bouclierDesDons(regles, fiche);
+  const mur = dons?.mur.length && !dons.cassee ? dons : null;
+  if (mur) {
+    const nom = `Bouclier ${dons.bouclier.nom} : ${mur.mur.map((m) => m.nom).join(', ')}`;
+    ajouter(ap, nom, mur.ap);
+    ajouter(am, nom, mur.am);
+  }
   const total = (x) => x.detail.reduce((s, d) => s + d.valeur, 0);
   return {
-    ap: { total: total(ap), armure: ap.armure, detail: ap.detail },
-    am: { total: total(am), armure: am.armure, detail: am.detail },
+    ap: { total: total(ap), armure: ap.armure, bouclier: mur?.ap ?? 0, detail: ap.detail },
+    am: { total: total(am), armure: am.armure, bouclier: mur?.am ?? 0, detail: am.detail },
     element: portee?.element ?? null,
     partie: touchee ? { ...touchee, cassee: Boolean(etat?.cassee) } : null,
     cassees: (parPartie ?? []).filter((p) => p.cassee).map((p) => ({ id: p.id, nom: p.nom })),
-    bouclier: b?.bouclier ? { nom: b.nom, ap: b.ap, am: b.am, cassee: Boolean(b.solidite?.cassee) } : null,
+    bouclier: b?.bouclier ? { nom: b.nom, ap: b.ap, am: b.am, cassee: Boolean(b.solidite?.cassee), mur: Boolean(mur) } : null,
   };
 }
 
@@ -3513,15 +3591,16 @@ export function degatsRecus(regles, fiche, options = {}) {
       facteur *= r.sens === 'resistance' ? f : 1 / f;
     }
   }
-  const auBouclier = reduits && parade && d.bouclier;
-  const bouclier = auBouclier && !d.bouclier.cassee ? (t.physique ? d.bouclier.ap : d.bouclier.am) : 0;
+  // le bouclier de « Mur » est déjà dans la défense, à chaque attaque (R267 (1)) : la parade partielle ne l'ajoute pas une seconde fois
+  const auBouclier = reduits && parade && d.bouclier && !d.bouclier.mur;
+  const bouclier = (auBouclier && !d.bouclier.cassee ? (t.physique ? d.bouclier.ap : d.bouclier.am) : 0) + x.bouclier;
   // la part de l'armure portée (sa résistance ou sa faiblesse au type comprise) et le bouclier
   const portee = x.armure * facteur + bouclier;
   const nomArmure = t.physique ? 'AP' : 'AM';
   const precisions = [
     facteur !== 1 ? `armure ${facteur > 1 ? `× ${facteur}` : `÷ ${1 / facteur}`} contre ${t.nom.toLowerCase()}` : null,
     d.partie?.cassee ? `partie ${d.partie.nom} cassée : l’armure n’y compte pas` : null,
-    bouclier ? `bouclier +${bouclier}` : null,
+    bouclier ? `bouclier +${bouclier}${x.bouclier ? ' (Mur : à chaque attaque)' : ''}` : null,
     auBouclier && d.bouclier.cassee ? 'bouclier cassé : il ne compte plus' : null,
   ].filter(Boolean);
   const entre = (liste) => liste.map((p) => ` (${p})`).join('');
@@ -3533,14 +3612,14 @@ export function degatsRecus(regles, fiche, options = {}) {
     armure = 0;
     etapes.push({ texte: `− ${nomArmure} (l’attaque ignore l’armure : aucune réduction)`, valeur: 0 });
   } else if (marcass) {
-    const apNaturelle = d.ap.total - d.ap.armure;
-    const amNaturelle = d.am.total - d.am.armure;
+    const apNaturelle = d.ap.total - d.ap.armure - d.ap.bouclier;
+    const amNaturelle = d.am.total - d.am.armure - d.am.bouclier;
     armure = apNaturelle + amNaturelle + portee;
     etapes.push({ texte: '− AP naturelle (Mode Hyper, Marcass)', valeur: -apNaturelle });
     etapes.push({ texte: '− AM naturelle (Mode Hyper, Marcass)', valeur: -amNaturelle });
     etapes.push({ texte: `− ${nomArmure} de l’armure portée${entre(precisions)}`, valeur: -portee });
   } else {
-    armure = x.total - x.armure + portee;
+    armure = x.total - x.armure - x.bouclier + portee;
     etapes.push({ texte: `− ${nomArmure}${entre(precisions)}`, valeur: -armure });
   }
   let reste = Math.max(0, brut - armure);
@@ -3751,6 +3830,18 @@ export function degatsDArme(regles, fiche, rang) {
       if (vise && b.parCranPerdu) ajouter(`${nom} : ${cransPerdus} cran${cransPerdus > 1 ? 's' : ''} perdu${cransPerdus > 1 ? 's' : ''}`, valeur * cransPerdus);
       else if (vise) ajouter(nom, valeur);
       else if ((p.familles ?? []).includes(arme.famille_id) && p.mains && !arme.mains) nonComptes.push({ nom, valeur, raison: 'mains' });
+    }
+  }
+  // le bouclier porté (décisions R255 (2), (3), R267 (3), R269) : dès qu'un bouclier est porté, « Bouclier d'attaque » ajoute (AP + AM du bouclier) ÷ 4 (÷ 3 avec
+  // « Égide d'assaut »), à l'inférieur, minimum 1, et « Bouragé » +2 par poids du bouclier aux dégâts de pugilat ; cassé, le bouclier ne compte plus (R108)
+  const duBouclier = arme.famille_id === 'pugilat' ? bouclierDesDons(regles, fiche) : null;
+  if (duBouclier && !duBouclier.cassee) {
+    for (const e of duBouclier.effets) {
+      if (e.cle === 'extension_de_degats') {
+        const diviseur = diviseurDeLExtension(e, duBouclier.effets);
+        ajouter(`${e.nom} : (AP + AM du bouclier) ÷ ${diviseur}`, extensionDeDegats(duBouclier.ap, duBouclier.am, { ...e, diviseur }));
+      }
+      else if (e.cle === 'degats_par_poids') ajouter(`${e.nom} : poids ${duBouclier.poids}`, e.valeur * duBouclier.poids);
     }
   }
   // accessoires (décision R54) : « Dégâts physiques +N » sur toutes les armes, « +5 dégâts avec une catégorie d'arme » sur la famille choisie ; « Augmente

@@ -180,6 +180,13 @@ export function bonusDeSortsEcrits(texte) {
       ajouter('degats', { base: Number(progression[1]), pas: Number(progression[2]), niveaux: Number(progression[3]), ...(progression[4] ? { niveauGlobal: true } : {}) }, vises);
       continue;
     }
+    // « Inflige un bonus +3 dégâts (+2/5 niveau global) de l'élément de la magie innée » (Gemmoïde du Gémidien, décision R253 (2)) : +2 tous les 5 niveaux
+    // globaux, soit 3 + 2 × ⌊niveau global ÷ 5⌋ (R110) ; les sorts visés sont ceux de la magie innée seule (R253 (3) : ni arme, ni autre dégât de l'élément)
+    const entreParentheses = /\+(\d+)\s*d[ée]g[âa]ts?\s*\(\+(\d+)\/(\d+) niveaux? global(?:aux)?\)/.exec(phrase);
+    if (entreParentheses) {
+      ajouter('degats', { base: Number(entreParentheses[1]), pas: Number(entreParentheses[2]), niveaux: Number(entreParentheses[3]), niveauGlobal: true }, vises);
+      continue;
+    }
     // toute autre progression « qui augmente de +N tous les M niveaux » (une écriture que la lecture R110 ne prend pas : « +2 aux dégâts des sorts, qui
     // augmente… », « La magie innée inflige +2 dégâts, qui augmente… ») : rendue avec sa raison, jamais comptée, pas même sa base (rien n'est lu par
     // vraisemblance : la lecture d'une nouvelle écriture s'ajoute ci-dessus, avec son test)

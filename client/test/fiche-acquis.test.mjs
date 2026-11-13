@@ -102,6 +102,8 @@ test('lecture des dons sur toute la base : chaque bonus lu est bien formé, la p
         assert.ok(Number.isInteger(b.nombre) && b.nombre >= 1 && b.nombre < b.choix.length, d.id);
       } else if (b.plafond) assert.ok(Number.isInteger(b.plafond) && regles.caracteristiques.some((k) => k.id === b.caracteristique_id), d.id);
       else if (b.jet) assert.ok(regles.caracteristiques.some((k) => k.id === b.jet), d.id);
+      // R267 (2) : le bonus au jet d'une compétence nommée (Chef résiliant, agile, fort, malin du Porte-étendard)
+      else if (b.jet_competence) assert.ok(competences.has(b.jet_competence), d.id);
       // « l'arme choisie » (R119) : le moteur en fait un choix d'arme ; « parmi les autres » (R124) n'arrive jamais jusqu'aux règles : un choix ou une raison
       else if (b.arme) assert.ok(d.id.startsWith('capacites/') && b.texte, `${d.id} : ${JSON.stringify(b)}`);
       else if (!b.repartir && !b.artisanat) assert.ok(RAISONS.includes(b.raison) && b.texte && !b.autres, `${d.id} : ${JSON.stringify(b)}`);
@@ -110,26 +112,86 @@ test('lecture des dons sur toute la base : chaque bonus lu est bien formé, la p
   assert.ok(comptes > 100, `${comptes} bonus d’acquis comptés`);
 });
 
-test('MAJ-C4, MAJ-C6 (règles non tranchées) : un don de DONS_SANS_ACQUIS n’exporte aucun acquis, quel que soit son type ; les autres dons des deux classes sont lus comme avant', () => {
+test('R255 (5), R267 (2) : seul « Posture inébranlable » (un texte seul) est dans DONS_SANS_ACQUIS ; les quatre Chef du Porte-étendard ne le sont plus ; les autres dons des deux classes sont lus comme avant', () => {
   const dons = new Map(regles.classes.flatMap((c) => (c.dons ?? []).map((d) => [d.id, d])));
-  assert.ok(DONS_SANS_ACQUIS.length > 0 && new Set(DONS_SANS_ACQUIS).size === DONS_SANS_ACQUIS.length);
+  assert.deepEqual([...DONS_SANS_ACQUIS], ['capacites/boxeur-posture-inebran']);
   for (const id of DONS_SANS_ACQUIS) {
     assert.ok(dons.has(id), `${id} : un don de l’import`);
     assert.equal(dons.get(id).acquis, undefined, `${id} : aucun acquis exporté, donc rien de compté ni de mentionné`);
     // le texte, lui, se lit comme un acquis : c'est pourquoi la liste existe (le texte d'import, que le site de dev peut réécrire)
     assert.ok(lire(texteDImport('capacite', { id }, 'effet')).length > 0, `${id} : le lecteur y verrait un bonus`);
   }
-  // (le moteur ne lit que dons[].acquis : sans lui, le don ne compte pas, passif ou réaction)
-  // la liste est celle des deux questions ouvertes : Posture inébran (MAJ-C6) et les dons d'alliés du Porte-étendard (MAJ-C4), aucun autre don
-  assert.ok(DONS_SANS_ACQUIS.every((id) => id.startsWith('capacites/boxeur-') || id.startsWith('capacites/porte-etendard-')));
+  // le nom « Posture inébranlable » est tranché (R255 (7)) : le don reste un texte seul, de type Réaction (R255 (5)), jamais une question ouverte
+  assert.equal(dons.get('capacites/boxeur-posture-inebran').type, 'reaction');
   // les autres dons des deux classes gardent leur lecture (Carcasse rouillée, Percuteur, Chef de guerre, Stratège de bataille)
   for (const id of ['capacites/boxeur-carcasse-rouillee', 'capacites/boxeur-percuteur', 'capacites/porte-etendard-chef-de-guerre', 'capacites/porte-etendard-stratege-de-bataille']) {
     assert.ok(!DONS_SANS_ACQUIS.includes(id) && dons.get(id).acquis?.length, `${id} : acquis lus`);
   }
-  // aucun bonus « selon la situation » n'est exporté pour les deux classes : tout ce qui reste est un acquis qui compte ou un choix
+  // aucun bonus « selon la situation » n'est exporté pour les deux classes : tout ce qui reste est un acquis qui compte, un choix ou un bonus au jet
   for (const id of ['classes/boxeur', 'classes/porte-etendard']) {
     for (const d of regles.classes.find((c) => c.id === id).dons) assert.ok((d.acquis ?? []).every((b) => !b.raison), `${d.id} : aucun bonus de situation affiché`);
   }
+});
+
+/** Les quatre dons passifs « Chef… » du Porte-étendard et les compétences que chacun vise (R267 (2)). */
+const DONS_CHEF = {
+  'capacites/porte-etendard-chef-resiliant': ['calme', 'vigueur', 'fermete'],
+  'capacites/porte-etendard-chef-agile': ['esquive', 'arme-legere', 'reflexe'],
+  'capacites/porte-etendard-chef-fort': ['parade', 'arme-lourde', 'arc'],
+  'capacites/porte-etendard-chef-malin': ['magie', 'medecine', 'connaissance'],
+};
+
+test('R267 (2) : « Tant qu’il est debout, les alliés ont un bonus de 5% à tous les jets de … » se lit comme un bonus au jet de chaque compétence nommée, hors acquis', () => {
+  // la lecture (des écritures d'exemple, pas les textes de la base)
+  assert.deepEqual(lire('Tant qu’il est debout, les alliés ont un bonus de 5% à tous les jets de calme, vigueur et fermeté'),
+    [{ valeur: 5, jet_competence: 'calme' }, { valeur: 5, jet_competence: 'vigueur' }, { valeur: 5, jet_competence: 'fermete' }]);
+  assert.deepEqual(lire('Tant qu\'il est debout, les alliés ont un bonus de 5% à tous les jets d\'esquive, arme légère et réflexe.'),
+    [{ valeur: 5, jet_competence: 'esquive' }, { valeur: 5, jet_competence: 'arme-legere' }, { valeur: 5, jet_competence: 'reflexe' }]);
+  // une compétence inconnue : rien n'est deviné
+  assert.deepEqual(lire('Tant qu’il est debout, les alliés ont un bonus de 5% à tous les jets de calme et vol').map((b) => b.raison), ['inconnue']);
+  // « Motivation » (Action, « Dure 3 tours ») reste une situation, jamais un bonus au jet (R128)
+  assert.ok(lire('Donne un bonus de 5% à tous les jets des alliés. Dure 3 tours.').every((b) => !b.jet_competence));
+  // les quatre dons de l'import : exportés ainsi, chacun avec ses trois compétences
+  const dons = new Map(regles.classes.flatMap((c) => (c.dons ?? []).map((d) => [d.id, d])));
+  for (const [id, visees] of Object.entries(DONS_CHEF)) {
+    assert.equal(dons.get(id).type, 'passif', id);
+    assert.deepEqual(dons.get(id).acquis, visees.map((jet_competence) => ({ valeur: 5, jet_competence })), id);
+  }
+  // Motivation : une action, rien d'exporté qui compte
+  assert.ok((dons.get('capacites/porte-etendard-motivation').acquis ?? []).every((b) => b.raison), 'Motivation : seulement mentionnée');
+});
+
+test('R267 (2) : le Porte-étendard reçoit les 5 % de ses dons « Chef… » sur les compétences visées, comme un bonus qui joue tout le temps, hors acquis et hors plafond', () => {
+  const porte = 'classes/porte-etendard';
+  const f = (niveau, x = {}) => fiche({
+    classes: [{ rang: 1, classe_id: porte, specialite_id: null }], xp: regles.niveaux.find((l) => l.niveau === niveau).xp_min, ...x,
+  });
+  // les règles sans les bonus « Chef… » : la comparaison donne ce que ces dons ajoutent
+  const sans = { ...regles, classes: regles.classes.map((c) => (c.id !== porte ? c : { ...c, dons: c.dons.map((d) => (d.id in DONS_CHEF ? { ...d, acquis: undefined } : d)) })) };
+  let vu = 0;
+  for (let niveau = 1; niveau <= 20; niveau += 1) {
+    const fiche_ = f(niveau);
+    const acquis = new Set(M.donsAcquis(regles, fiche_).flatMap((c) => c.dons.map((d) => d.id)));
+    const avant = new Map(M.competencesDe(sans, fiche_).map((k) => [k.id, k]));
+    for (const k of M.competencesDe(regles, fiche_)) {
+      const attendu = Object.entries(DONS_CHEF).filter(([id, visees]) => acquis.has(id) && visees.includes(k.id));
+      assert.equal(k.jet - avant.get(k.id).jet, attendu.length * 5, `niveau ${niveau}, ${k.id}`);
+      assert.equal(k.score - avant.get(k.id).score, attendu.length * 5, `niveau ${niveau}, ${k.id} : dans le score`);
+      assert.equal(k.acquis, avant.get(k.id).acquis, `niveau ${niveau}, ${k.id} : hors acquis, hors plafond`);
+      assert.equal(k.scoreDuMoment - avant.get(k.id).scoreDuMoment, attendu.length * 5);
+      assert.equal(k.jetDetail.length - avant.get(k.id).jetDetail.length, attendu.length);
+      vu += attendu.length;
+    }
+  }
+  assert.ok(vu >= 12, 'les douze compétences visées comptent au niveau 20');
+  // sans la classe, rien
+  const autre = M.competencesDe(regles, fiche({ xp: regles.niveaux.find((l) => l.niveau === 20).xp_min }));
+  assert.ok(autre.every((k) => k.jet === 0));
+  // le détail dit d'où vient le bonus (le don et sa classe)
+  const calme = M.competencesDe(regles, f(20)).find((k) => k.id === 'calme');
+  assert.deepEqual(calme.jetDetail.map((d) => d.valeur), [5]);
+  const don = regles.classes.find((c) => c.id === porte).dons.find((d) => d.id === 'capacites/porte-etendard-chef-resiliant');
+  assert.equal(calme.jetDetail[0].nom, `${don.nom} (${regles.classes.find((c) => c.id === porte).nom})`);
 });
 
 /** Humain central, Feu inné, sans classe ; un don de race d'essai qui écrit un bonus, un choix, une répartition et un bonus de situation. */

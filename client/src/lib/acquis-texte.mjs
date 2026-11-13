@@ -63,17 +63,22 @@ export const COMPETENCES_D_ARME = Object.freeze(['Arc', 'Arbalète', 'Arme lég�
 
 /**
  * Les dons de classe dont le texte se lit comme un bonus d'acquis et dont la fiche ne compte pourtant ni ne mentionne rien : liste d'exclusion par
- * identifiant (figé), jamais par le nom. Ce sont des règles que le propriétaire n'a pas encore tranchées (mise à jour de Décembre, spécification : « aucune règle
- * nouvelle sur la fiche pour ces dons ») ; ces dons restent un passif écrit, sans chiffre :
- *   - « Posture inébran » du Boxeur (« 5% stabilité, bénéficie d'un avantage… », MAJ-C6 : le bonus joue en posture et son type est en question) ;
- *   - « Chef résiliant », « Chef agile », « Chef fort » et « Chef malin » du Porte-étendard (« les alliés ont un bonus de 5% à tous les jets de… », MAJ-C4 :
- *     le Porte-étendard profite-t-il de ses propres bonus d'alliés ?), qui sortiraient sinon en acquis « selon la situation ».
- * `lib/fiche-regles.mjs` n'exporte aucun `acquis` pour ces dons : ils n'en comptent ni n'en montrent jamais, quel que soit leur type (décision R128).
+ * identifiant (figé), jamais par le nom. Ce don est un texte seulement, sans calcul (décision R255 (5), R267) ; il reste un passif écrit, sans chiffre :
+ *   - « Posture inébranlable » du Boxeur (« 5% stabilité, bénéficie d'un avantage… » ; une Réaction (2 fois/combat), qui ne joue pas en permanence).
+ * `lib/fiche-regles.mjs` n'exporte aucun `acquis` pour ce don : il n'en compte ni n'en montre jamais, quel que soit son type (décision R128).
+ * (Les quatre dons « Chef… » du Porte-étendard n'y sont plus : décision R267 (2), `ALLIES_DEBOUT` ci-dessous.)
  */
 export const DONS_SANS_ACQUIS = Object.freeze([
   'capacites/boxeur-posture-inebran',
-  'capacites/porte-etendard-chef-resiliant', 'capacites/porte-etendard-chef-agile', 'capacites/porte-etendard-chef-fort', 'capacites/porte-etendard-chef-malin',
 ]);
+
+/**
+ * « Tant qu'il est debout, les alliés ont un bonus de 5% à tous les jets de calme, vigueur et fermeté » (Porte-étendard, « Chef résiliant », « Chef agile »,
+ * « Chef fort » et « Chef malin ») : le Porte-étendard compte parmi ses alliés et reçoit ces bonus, comme un bonus qui joue tout le temps (décisions R254
+ * (2), R267 (2)). Un bonus au jet de chaque compétence nommée, hors acquis et hors plafond (`jet_competence`, comme le `jet` de R122, mais par compétence).
+ * L'écriture entière seulement : « Motivation » (Action, « à tous les jets des alliés. Dure 3 tours ») reste mentionnée (R128).
+ */
+const ALLIES_DEBOUT = /^tant qu'il est debout, les allies ont un bonus de (\d+)\s*% a tous les jets (?:de |d')(.+)$/;
 
 /**
  * Lecteur des bonus d'acquis : `competences` = [{ id, nom, caracteristique_id }] de la base. Rend `lire(texte)` → [{ valeur, competence_id }] (un bonus acquis),
@@ -81,7 +86,8 @@ export const DONS_SANS_ACQUIS = Object.freeze([
  * sur les 3 » (R121) : `nombre` compétences différentes, le bonus à chacune), [{ valeur, repartir: true }] (« à répartir au choix » : les points dans les
  * compétences que le joueur veut), [{ plafond, caracteristique_id }] (« Son acquis max en Social est augmenté de +20 » : le plafond de chaque compétence
  * de cette caractéristique, décision R41), [{ valeur, jet: caracteristique_id }] (un bonus au jet de chaque compétence de la caractéristique, hors acquis :
- * R122), [{ valeur, artisanat: true }] (la compétence d'artisanat du métier : R123), [{ valeur, arme: true, texte }] (« de la compétence de l'arme
+ * R122), [{ valeur, jet_competence: competence_id }] (« Tant qu'il est debout, les alliés ont un bonus de 5% à tous les jets de … » : le bonus au jet de
+ * chaque compétence nommée, hors acquis, R267 (2)), [{ valeur, artisanat: true }] (la compétence d'artisanat du métier : R123), [{ valeur, arme: true, texte }] (« de la compétence de l'arme
  * choisie » : la compétence de l'arme de la maîtrise au choix de la classe, R119 ; lib/fiche-moteur.mjs#acquisDesDons en fait un choix), [{ valeur,
  * autres: true, texte }] (« 5% parmi les autres » : une compétence des autres lignes du tableau, R124 ; lib/fiche-regles.mjs en fait un choix, ou une
  * raison 'inconnue' hors d'un tableau) ou [{ valeur, raison, texte }] (non compté : 'situation' (R128), 'mj' (« la falsification de documents » : au MJ,
@@ -134,6 +140,14 @@ export function lecteurDAcquis(competences) {
       const plafond = PLAFOND.exec(t);
       if (plafond) pousser({ plafond: Number(plafond[2]), caracteristique_id: plafond[1] });
       if (!/%/.test(t)) continue;
+      const alliesDebout = ALLIES_DEBOUT.exec(t);
+      if (alliesDebout) {
+        const valeur = Number(alliesDebout[1]);
+        const ids = alliesDebout[2].split(/\s*,\s*|\s+et\s+/).map(trouver);
+        if (ids.every(Boolean)) for (const id of ids) pousser({ valeur, jet_competence: id }, t);
+        else pousser({ valeur, raison: 'inconnue', texte: t }, t);
+        continue;
+      }
       // « Magie, Concentration, Survie = 5% d'acquis », « Distinction, Observation et Réflexe = 5% en acquis »
       const egal = /^(.+?)\s*=\s*(\d+)\s*%\s*(?:d'|en )acquis$/.exec(t);
       if (egal) {

@@ -110,24 +110,28 @@ test('rien n’est inventé : chaque ligne de texte gardée (rubriques, capacit�
   for (const r of b.regles) assert.ok(doc.has(`* ${r.texte}`), r.texte);
 });
 
-test('corrections : seulement les graphies que la base a déjà corrigées partout, les multiplicateurs de R155, l’état « Gel » (R205) et les anciens noms de l’AP et de l’AM (R209), chacune présente dans le doc', () => {
+test('corrections : seulement les graphies que la base a déjà corrigées partout, les multiplicateurs de R155, l’état « Gel » (R205), les anciens noms de l’AP et de l’AM (R209) et « Dieu de la Terre » (R266), chacune présente dans le doc', () => {
   assert.deepEqual(CORRECTIONS.map(([, , origine]) => origine.match(/\d{4}-[a-z0-9-]+/)[0]), [
     '0012-eaunoire', '0006-orthographe-noms', '0006-orthographe-noms', '0005-orthographe-base',
     ...Array(4).fill('0039-bestiaire-reponses'),
     ...Array(4).fill('0075-r155-titres-du-bestiaire'),
     ...Array(2).fill('0103-r205-etat-gel'),
     '0106-r209-bestiaire',
+    '0121-maj-decembre-suites',
   ]);
   // décision R57 : les fautes du butin, à leur seule place dans le doc (une case, une ligne de trois cases, un nom du glossaire) ; le nom corrigé du
   // glossaire garde son identifiant. Décision R155 : les lignes entières des titres (Grande résistance ÷4 : 15 ; Grande vulnérabilité x4 : 22 ; Double
   // résistance ÷4 : 10) et la sensibilité x8 des golems de verre I à III (3) ; les motifs sont ancrés sur la ligne (drapeau m ici). Décision R205 :
   // « Gelé » dans 83 listes de cibles et « gelé 1 » dans les capacités Élément Glace ; décision R209 (5) : les lignes de défense à l'ancienne (export
   // brut ici, blancs non réduits : le test suivant compte les lignes compactées).
-  assert.deepEqual(CORRECTIONS.slice(4).map(([motif]) => texte.match(new RegExp(motif.source, 'gm')).length), [1, 1, 1, 3, 15, 22, 10, 3, 83, 6, 112]);
+  assert.deepEqual(CORRECTIONS.slice(4).map(([motif]) => texte.match(new RegExp(motif.source, 'gm')).length), [1, 1, 1, 3, 15, 22, 10, 3, 83, 6, 112, 1]);
   assert.deepEqual(b.glossaire.filter((g) => g.id === 'peau-du-radrak').map((g) => g.nom), ['Peau de radrak']);
   for (const [motif] of CORRECTIONS) assert.match(texte, new RegExp(motif.source, motif.flags.replace('g', '') + 'm'), `${motif} : écrit dans le doc`);
   assert.ok(b.especes.some((e) => /Eaunoire a sauvé les exilés/.test(e.description ?? '')), 'la déesse de la Corruption s’appelle Eaunoire (R21)');
   assert.equal(compacter('Brouillard,  ect'), 'Brouillard, etc');
+  // R266 (3), exception limitée à trois graphies : « dieu de la terre » du doc devient « Dieu de la Terre » (l'Élémentaire de la terre), rien d'autre
+  assert.equal(compacter('rappelant la figure du dieu de la terre Dimitri'), 'rappelant la figure du Dieu de la Terre Dimitri');
+  assert.equal(compacter('la terre et le dieu du feu'), 'la terre et le dieu du feu');
 });
 
 test('R155 : les titres des cartes en ÷3 / x3, la Double résistance rangée en Grande résistance, la sensibilité des golems de verre en x4', () => {

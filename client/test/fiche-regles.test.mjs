@@ -658,15 +658,16 @@ test('décision R181 : les 54 entrées du tableau du Mage Bleu (classes[].entree
   });
 });
 
-test('R236 : chaque magie porte ses spécialisations { id, nom, ordre } (deux, aucune pour le Potentiel Illimité) et chaque sort sa spécialisation (null pour un sort commun), comme la base', () => {
+test('R236 : chaque magie porte ses spécialisations { id, nom, ordre, description } (deux, aucune pour le Potentiel Illimité) et chaque sort sa spécialisation (null pour un sort commun), comme la base', () => {
+  // (R260 (3) : `description`, le texte de la page de la magie sous le bandeau, sans balise du glossaire — test/fiche-listes-infobulles.test.mjs)
   const enBase = db.prepare('SELECT id, magie_id, nom, ordre FROM magie_specialisation ORDER BY magie_id, ordre').all();
   assert.ok(enBase.length > 0, 'la base a des spécialisations');
-  const dansLesRegles = regles.magies.flatMap((m) => m.specialisations.map((x) => ({ ...x, magie_id: m.id })))
+  const dansLesRegles = regles.magies.flatMap((m) => m.specialisations.map(({ description, ...x }) => ({ ...x, magie_id: m.id })))
     .sort((a, b) => (a.magie_id < b.magie_id ? -1 : a.magie_id > b.magie_id ? 1 : a.ordre - b.ordre));
   assert.deepEqual(dansLesRegles.map((x) => ({ ...x })), enBase.map((x) => ({ ...x })));
   for (const m of regles.magies) {
     assert.ok(Array.isArray(m.specialisations), m.id);
-    assert.deepEqual(m.specialisations.map((x) => Object.keys(x).sort()), m.specialisations.map(() => ['id', 'nom', 'ordre']), m.id);
+    assert.deepEqual(m.specialisations.map((x) => Object.keys(x).sort()), m.specialisations.map(() => ['description', 'id', 'nom', 'ordre']), m.id);
     assert.deepEqual(m.specialisations.map((x) => x.ordre), m.specialisations.map((_, i) => i + 1), `${m.id} : dans l'ordre du tableau (1, 2)`);
   }
   const aucune = regles.magies.filter((m) => !m.specialisations.length).map((m) => m.id);

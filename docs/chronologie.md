@@ -74,7 +74,7 @@ les range.
   (texte tel qu'écrit) et l'expression de date à surligner.
 - **L'outil** `tools/chronologie/chronologie.mjs` résout le registre contre le texte des pages de la base : un extrait est le texte de la page **copié** de
   son début à sa fin (`page.corps_md`, Markdown compris), jamais réécrit ; `--sql` a écrit les INSERT de la migration 0035, `--verifier` compare le registre
-  aux pages et aux lignes **telles que l'import les a laissées**. Depuis la migration 0043, le site de dev est la source de la chronologie : le registre
+  aux pages et aux lignes **telles que l'import les a laissées**, hors les deux événements de la migration 0121 (R264, Gémidiens et Fongoïdes), lus dans son registre. Depuis la migration 0043, le site de dev est la source de la chronologie : le registre
   n'est plus que la trace de l'import, on ne s'en sert plus pour la réécrire.
 - **Les contrôles** (`test/chronologie.test.mjs`) rejouent la résolution sur les pages **telles que l'import les a laissées** (`lib/historique-site.mjs`) et
   la comparent aux lignes ; la liste « Les Impacts mineur et majeur » doit être reprise en entier (un événement par ligne, titre, année, portée et lieu tels

@@ -2,6 +2,9 @@
 // des couleurs du dégradé de la frise (lib/chronologie-couleurs.mjs) et les tables `evenement` / `evenement_extrait` de la base, rejouées depuis le registre tools/chronologie/evenements.json sur les pages
 // telles que l'import les a laissées (le site de dev peut réécrire une page du Codex ou d'une race : l'extrait, lui, reste celui de l'import).
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 import {
   adresseDEvenement, dateCourte, dateDansLeTexte, erreurDeDate, extraitsParPage, libelleDeDate, marquerLaDate, ordonner, operationsDesCategories,
@@ -12,7 +15,7 @@ import { chargerChronologie } from '../src/lib/chronologie-db.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { normalize } from '../src/lib/text.mjs';
-import { lireRegistre, pagesDeLaBase, resoudre, sectionA } from '../../tools/chronologie/chronologie.mjs';
+import { evenementsDeLaMigration0121, lireRegistre, pagesDeLaBase, resoudre, sectionA } from '../../tools/chronologie/chronologie.mjs';
 
 const ev = (rang, epoque, annee = null, extra = {}) => ({ id: `e${rang}`, rang, titre: `E${rang}`, epoque, annee, annee_fin: null, portee: null, lieu: null, ...extra });
 
@@ -189,6 +192,17 @@ const evenementsDImport = ordonner(historique.lignesDImport('evenement').map((e)
 /** Le site de dev a réécrit le texte de cette page (une page du Codex, ou l'onglet d'une race dont la page est tirée) : son extrait n'est plus comparable. */
 const sourceRetouchee = (pageId) =>
   historique.touchee('page', { id: pageId }) || (pageId.startsWith('races/') && historique.touchee('race_onglet', { race_id: pageId }));
+// Les événements qu'une migration postérieure ajoute (0121, R264 : Gémidiens et Fongoïdes, au rang suivant, règle du site) ne viennent pas du registre
+// de l'import, qui donne le rang par la place : ils sont lus dans le registre de la migration et mis à part (test db-0121-maj-decembre-suites).
+const DE_LA_0121 = new Set(JSON.parse(readFileSync(new URL('../../data/migrations/0121-maj-decembre-suites.json', import.meta.url), 'utf8')).evenements.map((e) => e.id));
+
+test('le vérificateur (chronologie.mjs --verifier) met à part les événements de la 0121 (R264), lus dans le registre de la migration', () => {
+  assert.deepEqual([...evenementsDeLaMigration0121()].sort(), [...DE_LA_0121].sort());
+  assert.ok(DE_LA_0121.size > 0);
+  const r = spawnSync(process.execPath, ['--no-warnings', fileURLToPath(new URL('../../tools/chronologie/chronologie.mjs', import.meta.url)), '--verifier'], { encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /^ok : \d+ événements, \d+ extraits$/m);
+});
 
 test('la base : le registre résolu sur les pages telles que l’import les a laissées redonne les lignes de la migration 0035', () => {
   // titre et texte de la page, onglet de la race : tels que l'import les a laissés (le site de dev peut les réécrire)
@@ -201,9 +215,9 @@ test('la base : le registre résolu sur les pages telles que l’import les a la
   assert.deepEqual(resolu.erreurs.filter((e) => ![...pages.keys()].some((id) => sourceRetouchee(id) && e.includes(`(${id})`))), []);
   const sansNull = (l) => ({ ...l });
   const parRang = (a, b) => a.rang - b.rang;
-  assert.deepEqual(historique.lignesDImport('evenement').map(sansNull).sort(parRang), resolu.evenements);
+  assert.deepEqual(historique.lignesDImport('evenement').filter((e) => !DE_LA_0121.has(e.id)).map(sansNull).sort(parRang), resolu.evenements);
   const cle = (x) => `${x.evenement_id}#${x.rang}`;
-  const garder = (x) => !sourceRetouchee(x.page_id);
+  const garder = (x) => !sourceRetouchee(x.page_id) && !DE_LA_0121.has(x.evenement_id);
   assert.deepEqual(
     historique.lignesDImport('evenement_extrait').map(sansNull).filter(garder).sort((a, b) => cle(a).localeCompare(cle(b))),
     resolu.extraits.filter(garder).sort((a, b) => cle(a).localeCompare(cle(b))),

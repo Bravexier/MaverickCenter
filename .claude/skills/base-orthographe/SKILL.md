@@ -1,7 +1,7 @@
 ---
 name: base-orthographe
-description: "Orthographe corrigée dans la base par migrations de données (0003, 0005, 0006) et leurs registres .json : ce qui n'est jamais corrigé, clés X_cle recalculées, identifiant jamais changé. À charger avant de lire, modifier ou relire une correction d'orthographe, un nom ou leurs tests."
-paths: ["data/migrations/0003-orthographe-magies.*", "data/migrations/0005-orthographe-base.*", "data/migrations/0006-orthographe-noms.*", "client/test/orthographe-*.test.mjs", "docs/sql/orthographe-a-valider.md", "tools/sheets/corrections.json", "tools/sheets/corriger-dump.py", "client/test/corrections.test.mjs"]
+description: "Orthographe corrigée dans la base par migrations de données (0003, 0005, 0006, 0121) et leurs registres .json : ce qui n'est jamais corrigé (et l'exception R266), clés X_cle recalculées, identifiant jamais changé. À charger avant de lire, modifier ou relire une correction d'orthographe, un nom ou leurs tests."
+paths: ["data/migrations/0003-orthographe-magies.*", "data/migrations/0121-maj-decembre-suites.*", "data/migrations/0005-orthographe-base.*", "data/migrations/0006-orthographe-noms.*", "client/test/orthographe-*.test.mjs", "docs/sql/orthographe-a-valider.md", "tools/sheets/corrections.json", "tools/sheets/corriger-dump.py", "client/test/corrections.test.mjs"]
 user-invocable: false
 ---
 # Orthographe de la base
@@ -11,6 +11,7 @@ user-invocable: false
 - `data/migrations/0005-orthographe-base.sql` + `.json` : toute la base (pages, classes, capacités, races, bestiaire, équipement, guides, lore et tables
   typées ; 2 247 corrections relues deux fois, 56 noms à clé inchangée).
 - `data/migrations/0006-orthographe-noms.sql` + `.json` : les noms (741 occurrences, 147 clés recalculées).
+- `data/migrations/0121-maj-decembre-suites.sql` + `.json` (liste `corrections`) : les graphies de R255 (7), R10 et R266.
 - `docs/sql/orthographe-a-valider.md` : les points en attente du propriétaire.
 
 ## À lire
@@ -28,6 +29,7 @@ user-invocable: false
 - Jamais corrigé : les citations « telles quelles » de la fiche V15.2.2 (tableaux des écarts des races), `source`, `ecart_source`, `alias`, `page_tag`,
   `commentaire_orphelin` (empreinte de son texte), une adresse ou un lien.
 - L'écriture de la source gardée comme trace n'est pas corrigée : `gemmes_brut`, `nom_source`, `race_brut`.
+- Seule exception, R266 (migration 0121, liste `corrections` de `0121-maj-decembre-suites.json`, test `db-0121-maj-decembre-suites.test.mjs`) : « Super Gemme », « Mort Fertile » et « Dieu de la Terre » sont corrigés partout, Codex et onglets des races compris (sauf `historique_modification` et `note_version_ligne`). Elle ne vaut pour aucune autre graphie ni aucun autre mot ; ids, clés et adresses ne changent pas. Un outil qui relit ces textes les suit : `codex-corrections.json` (skill `sources-codex`), `bestiaire/extraire.mjs#CORRECTIONS` (skill `zone-bestiaire`).
 - Un nom corrigé l'est partout (titres, noms typés, textes, cibles des `[[liens]]`) et sa clé `X_cle` est recalculée.
 - Son identifiant ne change jamais. Depuis 0006, aucune table ne dérive plus l'id du nom : sort, classe, invocation, créature et leurs attaques et capacités
   gardent la clé du nom d'origine ; une page renommée garde son adresse.

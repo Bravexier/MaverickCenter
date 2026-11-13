@@ -2,7 +2,7 @@
 
 Ne lis jamais `docs/decisions-regles.md` en entier : trouve ici le numéro de la décision, puis cherche sa ligne avec Grep (motif `^\| R41 \|`) et ne lis qu'elle.
 
-Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 253 décisions, de R1 à R256, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
+Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 270 décisions, de R1 à R270, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
 
 | Réf. | Sujet | Décision |
 | --- | --- | --- |
@@ -258,4 +258,21 @@ Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas mo
 | R250 | Altération de l'Ombre visée par un don « à la magie innée et son altératio… | Le cran va à la Peur seule. La Somnolence n'a pas de r… |
 | R251 | Texte du coût de Projectile arcanique (suite de R248 ; MAJ-K7 (1)) | Coût : « 4/projectile » (valeur 4) ; coût secondaire :… |
 | R252 | Limite D12 de la montée de la nature des dés (docx « MISE À JOUR - DÉCEMBR… | (1) Aucune montée de la nature d'un dé ne dépasse le D… |
+| R253 | Fongoïde et Gémidien, suite de R239 : rang dans les listes de races et don… | (1) Les deux races vont à la fin des races pures, Fong… |
+| R254 | Classes de Décembre, suite de R238 : Porte-étendard et Archimage. Spéciali… | (1) « EdG » et « BdC » sont les armes « Étendard de gu… |
+| R255 | Boxeur (onglet 24 du classeur de Décembre, R238) : lectures de règles et g… | (1) Exception voulue à R96 : « Bouclier d'attaque », «… |
 | R256 | Vitesses du Fongoïde et du Gémidien (R239) : leurs onglets (21 et 22 du cl… | Fongoïde : vitesse 4 au sol, 4 à la nage. Gémidien : v… |
+| R257 | Limite D12, suite de R252 : montée et baisse mêlées (posture Focus ou acce… | Les crans s'additionnent avant le plafond : la montée… |
+| R258 | Effets secondaires des matériaux d'armes, suite de R241 : lectures (docx,… | (1) « +1 dé de dégâts » : un dé de plus, du même type… |
+| R259 | Capacité de monstre « Anti-barrière » et don « Pré-mythril » de l'Arbalétr… | (1) « Anti-barrière » prend le nouvel effet du Maveriu… |
+| R260 | Fiche, sorts des spécialisations (R236) : trois choix d'affichage : l'info… | (1) L'infobulle d'un sort ajoute le nom de sa spéciali… |
+| R261 | Initiative groupée, suite de R240 : la page `regles/initiative` du site de… | L'initiative groupée est hors de cette mise à jour : l… |
+| R262 | Lore du Fongoïde (onglet 21, AK3, R239) : la Mort Fertile et le retour de… | (1) Le Codex fait foi : la Mort Fertile existe toujour… |
+| R263 | Lore du Gémidien (onglet 22, AK3, R239) : les Super Gemmes : l'onglet dit… | (1) Les Super Gemmes sont actives aujourd'hui, comme l… |
+| R264 | Chronologie : l'apparition des Gémidiens et celle des Fongoïdes : l'onglet… | Deux événements s'ajoutent à la chronologie : l'appari… |
+| R265 | Page du Fongoïde (onglet 21) : le « Premier Champignon » et le « Dieu de l… | (1) Le « Premier Champignon » et le Mycoralis Vitalis… |
+| R266 | Trois graphies du lore de Décembre (`docs/sql/orthographe-a-valider.md`, «… | (1) « Super Gemme » : deux majuscules, sans trait d'un… |
+| R267 | Fiche du Boxeur et du Porte-étendard, suite de R254 et R255 : ce que Mur a… | (1) Mur : toute l'AP et l'AM du bouclier, les +2 de Mu… |
+| R268 | Infobulles des sept mots-clés des matériaux, suite de R258 (7) : aucune so… | Avantage : « On lance deux fois le même jet et on igno… |
+| R269 | Boxeur, suite de R255 et R267 : Égide d'assaut, arrondi de Bouclier d'atta… | (1) Avec Égide d'assaut, Bouclier d'attaque divise (AP… |
+| R270 | Fiche, suite de R260 : casse du nom d'une spécialisation. Le nom est en ca… | Sur la fiche, le nom d'une spécialisation s'écrit avec… |
