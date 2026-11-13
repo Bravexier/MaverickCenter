@@ -37,6 +37,9 @@ import { TAG_RACE_HYBRIDE } from '../src/lib/race-kinds.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { baseDImport, cheminDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { horsDeLa0119, MOTS_CLES_DE_LA_0119 } from './aide-races-0119.mjs';
+
+const POSTERIEURS = new Set(Object.values(MOTS_CLES_DE_LA_0119));
 
 const dossier = dossierTemporaire('edition-verrou');
 let n = 0;
@@ -87,7 +90,8 @@ test('R219 (1), (2), état d’import : verrou = 1 exactement pour les mots-clé
     // un mot-clé de monnaie : par sa monnaie (monnaie_id, migration 0113), jamais par son id
     const lus = db.prepare('SELECT id, url, verrou, monnaie_id FROM mot_cle').all();
     const attendu = (m) => (m.url !== null || monnaies.has(m.monnaie_id) || MOTS_CLES_PROTEGES.has(m.id) ? 1 : 0);
-    for (const m of lus) assert.equal(m.verrou, attendu(m), m.id);
+    // les mots-clés de race d'une migration postérieure (0119 : Fongoïde et Gémidien) sont libres, R219 (5) : épinglés par test/db-0119-races-fongoide-gemidien.test.mjs
+    for (const m of lus) if (!POSTERIEURS.has(m.id)) assert.equal(m.verrou, attendu(m), m.id);
     // le nombre se lit (il n'est pas figé) : des verrouillés et des libres, chaque monnaie et chaque protégé présent
     const verrouilles = lus.filter((m) => m.verrou === 1).length;
     assert.ok(verrouilles > 0 && verrouilles < lus.length, `${verrouilles} sur ${lus.length}`);
@@ -426,7 +430,8 @@ test('R218, R219 (1) : chaque race, magie et classe a son mot-clé (adresse « /
   const courante = new DatabaseSync(cheminBase({ sansExemples: false }), { readOnly: true });
   try {
     // les lignes de l'import (le site ne supprime ni race, ni magie, ni classe ; une créée depuis a un mot-clé libre : R219 (5))
-    const lignes = ['race', 'magie', 'classe'].flatMap((t) => dImport.prepare(`SELECT id FROM "${t}" ORDER BY id`).all().map((l) => [t, l.id]));
+    // les races d'une migration postérieure (0119) ont un mot-clé libre, R219 (5) : test/db-0119-races-fongoide-gemidien.test.mjs
+    const lignes = ['race', 'magie', 'classe'].flatMap((t) => dImport.prepare(`SELECT id FROM "${t}" ORDER BY id`).all().map((l) => [t, l.id])).filter(([t, id]) => t !== 'race' || horsDeLa0119(id));
     assert.ok(lignes.length > 0);
     // les mots-clés se lisent à l'import, par l'adresse ; sur l'état courant, on les suit par leur id : un mot-clé créé depuis sur la même adresse
     // reste libre (R219 (5)), et un mot-clé verrouillé ne change ni d'adresse ni de verrou par le site

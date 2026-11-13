@@ -154,7 +154,10 @@ test('liste des races : l’accroche de chaque race en infobulle ; ni magies ni 
     const html = colonne(id);
     for (const p of pastillesDe(html)) {
       const bulle = p.attributs.match(/data-bulle="([^"]+)" aria-describedby="\1" title="([^"]+)"/);
-      assert.ok(bulle, `${p.slug} : infobulle`);
+      // une race sans présentation (Fongoïde et Gémidien, R239 ; une race créée sur le site) n'a pas d'infobulle : bulle présente ⇔ présentation présente
+      const presentation = base.prepare('SELECT presentation FROM race WHERE id = ?').get(`races/${p.slug}`)?.presentation;
+      assert.equal(Boolean(bulle), Boolean(presentation?.trim()), `${p.slug} : infobulle si et seulement si la race a une présentation`);
+      if (!bulle) continue;
       assert.match(html, new RegExp(`<span class="bulle" role="tooltip" id="${bulle[1]}" hidden>`), `${p.slug} : bulle cachée`);
     }
     assert.ok(!html.includes('Magies innées'), `${id} : pas de magies innées`);
