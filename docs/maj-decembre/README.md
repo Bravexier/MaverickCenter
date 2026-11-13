@@ -18,6 +18,6 @@ Ce dossier sert aux sessions qui intègrent la mise à jour de décembre du prop
 | --- | --- |
 | Magies V10 et spécialisations | fusionné (PR #334) |
 | Fiche : spécialisations magiques | en cours, branche `feature/fiche-specialisations-magiques` (migration 0118) |
-| Classes, matériaux d'armes, limite D12 | à faire (R238, R241 ; la limite D12 reste à consigner) |
+| Classes, matériaux d'armes, limite D12 | branche poussée `feature/classes-materiaux-d12` (migration 0119 ; R238, R241, R252), PR à ouvrir |
 | Races : Fongoïde, Gémidien, Mode Hyper | à faire (R239) ; attend les vitesses des deux races (MAJ-R2) |
 | Initiative groupée | à faire (R240) ; attend son texte (MAJ-G1) |

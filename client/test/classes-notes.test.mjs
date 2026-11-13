@@ -70,7 +70,10 @@ const remarqueDImport = (slug) => historique.valeurDImport('capacite', { id: `ca
 const REGISTRE_0119 = JSON.parse(readFileSync(fileURLToPath(new URL('../../data/migrations/0119-classes-materiaux-d12.json', import.meta.url)), 'utf8'));
 const supprimee = (slug) => historique.supprimee('page', { id: `capacites/${slug}` });
 const donneesDImport = (slug) => JSON.parse(historique.valeurDImport('page', { id: `capacites/${slug}` }, 'donnees') ?? 'null');
-const supprimeesDImport = historique.lignesDImport('page').filter((p) => p.type === 'capacites' && supprimee(p.slug)).map((p) => p.slug);
+// les dons créés par la migration 0119 (Boxeur, Porte-étendard, Écrasant) ne viennent pas du classeur V7 : une suppression sur le site ne les compte pas ici
+const CREES_PAR_LA_0119 = new Set([...Object.values(REGISTRE_0119.classes.nouvelles).flatMap((c) => c.dons), REGISTRE_0119.cuirasse.cree]);
+const supprimeesDImport = historique.lignesDImport('page')
+  .filter((p) => p.type === 'capacites' && !CREES_PAR_LA_0119.has(`capacites/${p.slug}`) && supprimee(p.slug)).map((p) => p.slug);
 const page = (slug) => {
   const trouvee = capacites.find((p) => p.slug === slug);
   assert.ok(trouvee, `page capacites/${slug} absente`);
