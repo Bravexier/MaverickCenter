@@ -10,3 +10,7 @@ INSERT INTO categorie_mot_cle (id, libelle, libelle_cle) VALUES (8, 'Événement
 INSERT INTO categorie_mot_cle (id, libelle, libelle_cle) VALUES (9, 'Objet légendaire', 'objet-legendaire');
 INSERT INTO categorie_mot_cle (id, libelle, libelle_cle) VALUES (10, 'Métier', 'metier');
 INSERT INTO categorie_mot_cle (id, libelle, libelle_cle) VALUES (11, 'Bestiaire', 'bestiaire');
+INSERT INTO categorie_mot_cle (id, libelle, libelle_cle) VALUES (12, 'Lieu', 'lieu');
+INSERT INTO categorie_mot_cle (id, libelle, libelle_cle) VALUES (13, 'Divinité', 'divinite');
+INSERT INTO categorie_mot_cle (id, libelle, libelle_cle) VALUES (14, 'Faction', 'faction');
+INSERT INTO categorie_mot_cle (id, libelle, libelle_cle) VALUES (15, 'Lien', 'lien');
