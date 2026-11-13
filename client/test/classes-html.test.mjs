@@ -235,7 +235,10 @@ test('/classes/ : une colonne par catégorie dans sa couleur, une pastille par c
   const bulles = [...html.matchAll(/<a class="classe-pastille" href="[^"]*" data-bulle="([^"]+)" aria-describedby="\1" title="([^"]+)">/g)];
   assert.ok(bulles.length >= 30, `${bulles.length} infobulles`);
   for (const [, id] of bulles) assert.match(html, new RegExp(`<span class="bulle" role="tooltip" id="${id}" hidden>`));
-  assert.ok(html.includes('class="classes-groupe__compte">11<'), 'nombre de classes de la colonne');
+  // le nombre de classes de chaque colonne : leur somme est celle des pastilles (aucun nombre figé : le site et les migrations ajoutent des classes)
+  const comptes = [...html.matchAll(/class="classes-groupe__compte">(\d+)</g)].map((m) => Number(m[1]));
+  assert.ok(comptes.length >= 5 && comptes.every((n) => n > 0), 'une colonne par catégorie, chacune avec son nombre');
+  assert.equal(comptes.reduce((a, n) => a + n, 0), liens.length, 'nombre de classes de la colonne');
   assert.ok(!/<table\b/.test(html) && !html.includes('classes-colonne'), 'plus de tableau');
 });
 

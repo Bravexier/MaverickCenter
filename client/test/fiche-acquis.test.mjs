@@ -110,19 +110,25 @@ test('lecture des dons sur toute la base : chaque bonus lu est bien formé, la p
   assert.ok(comptes > 100, `${comptes} bonus d’acquis comptés`);
 });
 
-test('MAJ-C6 (Boxeur, « Posture inébran ») : un don de DONS_SANS_ACQUIS n’exporte aucun acquis, quel que soit son type ; les autres dons des deux classes sont lus comme avant', () => {
-  assert.deepEqual([...DONS_SANS_ACQUIS], ['capacites/boxeur-posture-inebran']);
+test('MAJ-C4, MAJ-C6 (règles non tranchées) : un don de DONS_SANS_ACQUIS n’exporte aucun acquis, quel que soit son type ; les autres dons des deux classes sont lus comme avant', () => {
   const dons = new Map(regles.classes.flatMap((c) => (c.dons ?? []).map((d) => [d.id, d])));
+  assert.ok(DONS_SANS_ACQUIS.length > 0 && new Set(DONS_SANS_ACQUIS).size === DONS_SANS_ACQUIS.length);
   for (const id of DONS_SANS_ACQUIS) {
     assert.ok(dons.has(id), `${id} : un don de l’import`);
-    assert.equal(dons.get(id).acquis, undefined, `${id} : aucun acquis exporté`);
+    assert.equal(dons.get(id).acquis, undefined, `${id} : aucun acquis exporté, donc rien de compté ni de mentionné`);
     // le texte, lui, se lit comme un acquis : c'est pourquoi la liste existe (le texte d'import, que le site de dev peut réécrire)
-    assert.ok(lire(texteDImport('capacite', { id }, 'effet')).some((b) => b.competence_id), `${id} : le lecteur y verrait un bonus`);
+    assert.ok(lire(texteDImport('capacite', { id }, 'effet')).length > 0, `${id} : le lecteur y verrait un bonus`);
   }
-  // (le moteur ne lit que dons[].acquis : sans lui, le don ne compte pas, quel que soit son type — passif ou réaction, question ouverte MAJ-C6)
+  // (le moteur ne lit que dons[].acquis : sans lui, le don ne compte pas, passif ou réaction)
+  // la liste est celle des deux questions ouvertes : Posture inébran (MAJ-C6) et les dons d'alliés du Porte-étendard (MAJ-C4), aucun autre don
+  assert.ok(DONS_SANS_ACQUIS.every((id) => id.startsWith('capacites/boxeur-') || id.startsWith('capacites/porte-etendard-')));
   // les autres dons des deux classes gardent leur lecture (Carcasse rouillée, Percuteur, Chef de guerre, Stratège de bataille)
   for (const id of ['capacites/boxeur-carcasse-rouillee', 'capacites/boxeur-percuteur', 'capacites/porte-etendard-chef-de-guerre', 'capacites/porte-etendard-stratege-de-bataille']) {
-    assert.ok(dons.get(id).acquis?.length, `${id} : acquis lus`);
+    assert.ok(!DONS_SANS_ACQUIS.includes(id) && dons.get(id).acquis?.length, `${id} : acquis lus`);
+  }
+  // aucun bonus « selon la situation » n'est exporté pour les deux classes : tout ce qui reste est un acquis qui compte ou un choix
+  for (const id of ['classes/boxeur', 'classes/porte-etendard']) {
+    for (const d of regles.classes.find((c) => c.id === id).dons) assert.ok((d.acquis ?? []).every((b) => !b.raison), `${d.id} : aucun bonus de situation affiché`);
   }
 });
 

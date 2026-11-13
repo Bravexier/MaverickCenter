@@ -16,7 +16,7 @@ import { CLASS_GROUPS, classCategory } from './class-groups.mjs';
 import { competencesDArme, durabiliteDeLArme, porteeDeLArme } from './arme-champs.mjs';
 import { DURABILITE_MIN, MATERIAU_PAR_DEFAUT } from './arme-forge.mjs';
 import { BATON_A_REGLER, contenanceEcrite, effetsDeBaton, exemplairesDeCeintureEcrits, nomDeBaton, sacSansForceEcrit } from './ceinture-texte.mjs';
-import { bonusDeDegatsEcrit } from './degats-texte.mjs';
+import { bonusDeDegatsEcrit, DONS_SANS_DEGATS } from './degats-texte.mjs';
 import { bonusDeSortsEcrits, preparationEcrite } from './sort-bonus-texte.mjs';
 import { DONS_SANS_ACQUIS, lecteurDAcquis } from './acquis-texte.mjs';
 import { critiqueDeLAccessoire, critiqueDuDon, critiqueDuPremierCoup } from './critique-texte.mjs';
@@ -379,10 +379,10 @@ function reglesDeLaBase(db) {
   // leur source et leurs parts : décisions R148 à R151) ; ses dons, pour le rappel des dons débloqués (demande du propriétaire), avec les parts de
   // maîtrise d'arme que donne chacun (`maitrise`, maitrise_arme_part : ses points, R32, R148), ses NM de sorts gagnés (`nm_gagnes`, R154), le plafond de
   // NPM qu'il relève (`npm_plafond`, R188) et s'il compte comme une condition d'emplacements de sorts (`condition_emplacements`, R189).
-  // bonus de dégâts d'arme qu'écrit un don passif (lib/degats-texte.mjs : pastille des dégâts des armes, demande du propriétaire) ; rien sinon
+  // bonus de dégâts d'arme qu'écrit un don passif (lib/degats-texte.mjs : pastille des dégâts des armes, demande du propriétaire), sauf DONS_SANS_DEGATS ; rien sinon
   // et ses bonus de sorts (coût, dégâts, soin, portée : lib/sort-bonus-texte.mjs, décision R102)
   const degatsEcrits = (d) => {
-    const b = d.type === 'passif' ? bonusDeDegatsEcrit(d.effet) : null;
+    const b = d.type === 'passif' && !DONS_SANS_DEGATS.includes(d.id) ? bonusDeDegatsEcrit(d.effet) : null;
     const sorts = d.type === 'passif' ? bonusDeSortsEcrits(d.effet) : [];
     return { ...(b ? { degats: b } : {}), ...(sorts.length ? { sorts } : {}) };
   };
@@ -553,7 +553,7 @@ function reglesDeLaBase(db) {
           ...(exemplairesDeCeintureEcrits(d.effet) ? { exemplaires_ceinture: exemplairesDeCeintureEcrits(d.effet) } : {}),
           ...(sacSansForceEcrit(d.effet) ? { sac_sans_force: true } : {}),
           // ses bonus d'acquis (« +7% Magie, +7% Médecine », « +7% Arme légères OU lourdes » : un choix ; décision R104)
-          // (sauf les dons de DONS_SANS_ACQUIS : « Posture inébran » du Boxeur, un bonus de posture qui n'est pas un acquis)
+          // (sauf les dons de DONS_SANS_ACQUIS : règles non tranchées, MAJ-C4 et MAJ-C6 ; ces dons restent un passif écrit)
           ...(() => { const acquis = DONS_SANS_ACQUIS.includes(d.id) ? [] : horsDuTableau(lireAcquis(d.effet)); return acquis.length ? { acquis } : {}; })(),
           // le sort qu'il permet de préparer (« Préparation », « Chargement » : décision R115, lib/sort-bonus-texte.mjs#preparationEcrite)
           ...(() => { const preparation = preparationEcrite(d.effet); return preparation ? { preparation } : {}; })(),

@@ -65,6 +65,10 @@ const COPIES = [
   { table: 'page', cle: { id: 'capacites/lanceur-jongleur-magique' }, colonne: 'resume' },
   { table: 'page', cle: { id: 'bestiaire/fantome' }, colonne: 'corps_md' },
   { table: 'page', cle: { id: 'bestiaire/golem-darcane' }, colonne: 'corps_md' },
+  // l'effet du Cuivre (migration 0119, R241 : « sous sort fer ») et la page des armes qui le recopie : la balise y est gardée (décision de game-design)
+  { table: 'materiau_arme', cle: { ressource_id: 'ressources/armures#materiau:cuivre' }, colonne: 'effet_brut' },
+  { table: 'materiau_arme', cle: { ressource_id: 'ressources/armures#materiau:cuivre' }, colonne: 'effet_secondaire' },
+  { table: 'page', cle: { id: 'ressources/armes' }, colonne: 'corps_md' },
 ];
 const cleDe = ({ table, cle, colonne }) => `${table}|${JSON.stringify(cle)}|${colonne}`;
 const valeur = ({ table, cle, colonne }) => {

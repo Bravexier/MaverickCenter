@@ -3,9 +3,9 @@
 // soit rendu avec sa raison ; « Pour chaque cran de solidité perdu » de Vieille Branche : compté sur toutes les armes, par cran perdu, décision R107).
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { bonusDeDegatsEcrit, degatsDeMagieEcrits, RAISONS, valeurAuNiveau } from '../src/lib/degats-texte.mjs';
+import { bonusDeDegatsEcrit, degatsDeMagieEcrits, DONS_SANS_DEGATS, RAISONS, valeurAuNiveau } from '../src/lib/degats-texte.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
-import { baseDImport } from './aide-base-d-import.mjs';
+import { baseDImport, reglesDImport } from './aide-base-d-import.mjs';
 
 test('comptés : la valeur et les armes visées écrites', () => {
   assert.deepEqual(bonusDeDegatsEcrit('+8 dégâts avec les arcs'), { valeur: 8, portee: { familles: ['arc'] } });
@@ -100,4 +100,18 @@ test('décision R167 : « Les dégâts de X, Y et Z augmentent de +N » (Tissiè
   assert.equal(fil.effet, 'Les dégâts d\'Eau et de Foudre augmentent de 5 quand ils sont faits dans l\'eau.');
   assert.equal(degatsDeMagieEcrits(fil.effet), null);
   assert.equal(bonusDeDegatsEcrit(fil.effet), null);
+});
+
+test('MAJ-C5, MAJ-C6 (règles non tranchées) : un don de DONS_SANS_DEGATS n’exporte aucun bonus de dégâts, quel que soit son type ; il reste un passif écrit', () => {
+  const regles = reglesDImport();
+  const dons = new Map(regles.classes.flatMap((c) => (c.dons ?? []).map((d) => [d.id, d])));
+  assert.ok(DONS_SANS_DEGATS.length > 0);
+  for (const id of DONS_SANS_DEGATS) {
+    const d = dons.get(id);
+    assert.ok(d, `${id} : un don de l’import`);
+    assert.equal(d.degats, undefined, `${id} : aucun bonus de dégâts exporté`);
+    assert.ok(d.effet?.trim(), `${id} : son texte reste lisible (passif écrit)`);
+  }
+  // la liste est l'exception : les autres dons de dégâts du Boxeur et du Cuirassé gardent leur lecture (Protecteur : bouclier)
+  assert.ok(dons.get('capacites/cuirasse-protecteur').degats, 'un autre don à bonus de dégâts garde sa lecture');
 });

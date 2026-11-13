@@ -101,9 +101,9 @@ test('R165 (6) : poidsPortableDesTextes — l’ordre (classes, dons, +1 du Nain
   assert.equal(M.poidsEcritDuDon('+3% pour les compétences d\'arme, peut porter les armures lourdes, +5 points'), 3);
 });
 
-test('R165 (6) : le relevé des dons qui écrivent un poids, sur toute la base — les 20 de gd-fiche, tous de spécialité au niveau de classe 10 ; Cuirassé et Lancier exclus', () => {
+test('R165 (6) : le relevé des dons qui écrivent un poids, sur toute la base — les 20 de gd-fiche et « Carcasse rouillée » du Boxeur (« Maîtrise les armures lourdes », migration 0119), tous de spécialité au niveau de classe 10 ; Cuirassé et Lancier exclus', () => {
   const lus = Object.fromEntries(regles.classes.flatMap((c) => c.dons).map((d) => [d.id, M.poidsEcritDuDon(d.effet)]).filter(([, v]) => v !== null));
-  const a3 = ['clerc-zelote', 'guerrier-maitre-darme', 'lancier-maitre-dhast', 'mercenaire-combattant-libre', 'moine-templier'];
+  const a3 = ['boxeur-carcasse-rouillee', 'clerc-zelote', 'guerrier-maitre-darme', 'lancier-maitre-dhast', 'mercenaire-combattant-libre', 'moine-templier'];
   const a2 = ['fenrir-belliciste', 'goleois-irreductible', 'mage-rouge-mage-grenat', 'marcass-canaille', 'medusain-hoplite', 'minotaure-gladiateur', 'minotaure-medium',
     'namazu-batailleur', 'namazu-devin', 'orios-chaman', 'orios-va-t-en-guerre', 'satyre-galopin', 'satyre-oracle', 'lanceur-fantassin', 'martiale-heros'];
   assert.deepEqual(Object.keys(lus).sort(), [...a3, ...a2].map((x) => `capacites/${x}`).sort());

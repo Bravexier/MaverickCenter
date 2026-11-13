@@ -62,12 +62,18 @@ const ARTISANAT = /^(?:chaque|tout|tous les) tests? (?:lies? a l'|d')artisanat$/
 export const COMPETENCES_D_ARME = Object.freeze(['Arc', 'Arbalète', 'Arme légère', 'Arme lourde']);
 
 /**
- * Les dons de classe dont le texte se lit comme un bonus d'acquis et qui n'en donnent pourtant pas : liste d'exclusion par identifiant (figé), jamais par
- * le nom. « Posture inébran » du Boxeur écrit « 5% stabilité, bénéficie d'un avantage lors des jets de cette compétence » : le bonus joue en posture, il n'est
- * pas un acquis permanent (décision R128 ; question ouverte MAJ-C6, le propriétaire n'a pas dit si ce don vaut 5 % d'acquis en Stabilité). `lib/fiche-regles.mjs`
- * n'exporte aucun `acquis` pour ces dons : ils n'en comptent jamais, quel que soit leur type.
+ * Les dons de classe dont le texte se lit comme un bonus d'acquis et dont la fiche ne compte pourtant ni ne mentionne rien : liste d'exclusion par
+ * identifiant (figé), jamais par le nom. Ce sont des règles que le propriétaire n'a pas encore tranchées (mise à jour de Décembre, spécification : « aucune règle
+ * nouvelle sur la fiche pour ces dons ») ; ces dons restent un passif écrit, sans chiffre :
+ *   - « Posture inébran » du Boxeur (« 5% stabilité, bénéficie d'un avantage… », MAJ-C6 : le bonus joue en posture et son type est en question) ;
+ *   - « Chef résiliant », « Chef agile », « Chef fort » et « Chef malin » du Porte-étendard (« les alliés ont un bonus de 5% à tous les jets de… », MAJ-C4 :
+ *     le Porte-étendard profite-t-il de ses propres bonus d'alliés ?), qui sortiraient sinon en acquis « selon la situation ».
+ * `lib/fiche-regles.mjs` n'exporte aucun `acquis` pour ces dons : ils n'en comptent ni n'en montrent jamais, quel que soit leur type (décision R128).
  */
-export const DONS_SANS_ACQUIS = Object.freeze(['capacites/boxeur-posture-inebran']);
+export const DONS_SANS_ACQUIS = Object.freeze([
+  'capacites/boxeur-posture-inebran',
+  'capacites/porte-etendard-chef-resiliant', 'capacites/porte-etendard-chef-agile', 'capacites/porte-etendard-chef-fort', 'capacites/porte-etendard-chef-malin',
+]);
 
 /**
  * Lecteur des bonus d'acquis : `competences` = [{ id, nom, caracteristique_id }] de la base. Rend `lire(texte)` → [{ valeur, competence_id }] (un bonus acquis),
