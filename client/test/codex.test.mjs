@@ -42,6 +42,12 @@ const sqlDe = (v) => (v === null || v === undefined ? 'NULL' : typeof v === 'num
 const vocabulaireDEssai = (lignes) => `INSERT INTO mot_cle (id, libelle, cle, description, url) VALUES ${lignes
   .map((m) => `(${[m.id, m.libelle, m.cle, m.description ?? null, m.url ?? null].map(sqlDe).join(', ')})`).join(', ')};\n`;
 const MOT_CLE_CODEX = { id: CODEX, libelle: 'codex', cle: 'codex' };
+// Une page du site de dev que la migration 0121 (R266 : trois graphies, Codex compris) a réécrite après le site garde, dans baseDImport(), le texte
+// du site avec la correction : son texte d'import n'existe plus (aide-base-d-import.mjs), et il peut citer un mot-clé que le site a créé. Le
+// vérificateur (codex.py --verifier) la contrôle, lui, dans son état d'import (historique) ; ici elle est mise à part des lectures de l'import.
+const PAGES_REECRITES_PAR_LA_0121 = new Set(JSON.parse(readFileSync(join(racine, 'data', 'migrations', '0121-maj-decembre-suites.json'), 'utf8')).corrections
+  .filter((c) => c.table === 'page' && c.col === 'corps_md').map((c) => c.cle.id));
+const texteDImportPerdu = (id) => PAGES_REECRITES_PAR_LA_0121.has(id) && historique.modifiee('page', { id }, 'corps_md');
 const codexPy = (...args) => spawnSync('python3', ['-I', join(racine, 'tools', 'docs', 'codex.py'), ...args], { encoding: 'utf8', cwd: racine });
 
 test('chaque ligne du document est dans une page, et les pages sont celles du découpage (tools/docs/codex.py --verifier)', () => {
@@ -234,6 +240,7 @@ test('les renvois du Codex mènent tous à une page (les sommaires ne citent que
   const codex = base.prepare('SELECT p.id, p.corps_md FROM page p JOIN page_source ps ON ps.page_id = p.id AND ps.ordre = 0 JOIN source s ON s.id = ps.source_id WHERE s.texte = ? ORDER BY p.id').all(SOURCE);
   assert.equal(codex.length, 116);
   for (const p of codex) {
+    if (texteDImportPerdu(p.id)) continue;
     for (const [, cible] of p.corps_md.matchAll(/\[\[([^\]|]+)(?:\|[^\]]*)?\]\]/g)) {
       assert.ok(resolve(index, cible), `${p.id} : [[${cible}]] ne mène à aucune page`);
     }
@@ -255,6 +262,7 @@ test('les renvois du Codex : des balises de mots-clés qui mènent chacun à une
     const corps = base.prepare('SELECT corps_md FROM page WHERE id = ?');
     let renvois = 0;
     for (const p of pagesDuCodex) {
+      if (base !== db && texteDImportPerdu(p.id)) continue;   // à l'import : voir PAGES_REECRITES_PAR_LA_0121
       const texte = corps.get(p.id)?.corps_md ?? '';
       assert.doesNotMatch(texte, /\[\[|\]\(\//, `${p.id} : un lien est resté`);
       for (const [, cle] of texte.matchAll(/\{\{([a-z0-9-]+)(?:\\?\|[^{}]*)?\}\}/g)) {

@@ -360,6 +360,8 @@ capacités Élément Glace devient « gel 1 » / « Gel 1 » (8 lignes ; le regi
 anciens noms de l'AP et de l'AM de la décision R209 (5) (migration `0106-r209-bestiaire`) : la ligne de défense entière « N points d'armure / N
 résistance magique » devient « N armure physique / N armure magique » (115 lignes, 93 cartes ; motif partagé avec la migration,
 `lib/monstre-champs.mjs#LIGNE_DE_DEFENSE_ANCIENNE`).
+La décision R266 (3) (migration `0121-maj-decembre-suites`, « Dieu de la Terre », exception limitée à trois graphies) change « dieu de la terre » en « Dieu de la
+Terre » dans la description de l'Élémentaire de la terre (une seule ligne du doc). La Poupée terrestre n'est pas extraite de ce doc (classeur Invocation).
 Deux corrections ne valent que pour une espèce (`CORRECTIONS_D_ESPECE`, décision R209, migration `0106-r209-bestiaire`), le doc écrivant ailleurs la
 même chose : l'immunité « Poison, Maladie, Enragé, Peur, Fatigue » des trois Momies devient « Poison, Maladie, Peur, Fatigue » (R209 (3) : « Enragé »
 est leur vulnérabilité ; les autres cartes qui l'écrivent ne changent pas) ; la carte « CUIRASSE ABÎMÉ » de la Hallebarde amochée s'appelle

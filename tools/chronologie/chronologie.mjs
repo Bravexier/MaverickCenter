@@ -6,7 +6,8 @@
 //
 //   node tools/chronologie/chronologie.mjs --sql         -> les INSERT de la migration 0035 (sortie standard), résolus contre la base de data/rows
 //   node tools/chronologie/chronologie.mjs --verifier    -> le registre relu contre les pages et les lignes telles que l'import les a laissées (historique
-//                                                            du site : client/src/lib/historique-site.mjs) : extraits introuvables, lignes différentes
+//                                                            du site : client/src/lib/historique-site.mjs) : extraits introuvables, lignes différentes ;
+//                                                            les événements de la migration 0121 (R264) sont mis à part
 //
 // Fonctions pures (resoudre, lignesSql) ; seul le lancement en ligne de commande ouvre la base (client/src/lib/donnees.mjs). Le test
 // client/test/chronologie.test.mjs rejoue la résolution sur les pages telles que l'import les a laissées et la compare aux lignes de la base.
@@ -19,6 +20,14 @@ const FICHIER_REGISTRE = fileURLToPath(new URL('./evenements.json', import.meta.
 
 /** Le registre (evenements.json) lu. */
 export const lireRegistre = () => JSON.parse(readFileSync(FICHIER_REGISTRE, 'utf8'));
+
+// Les événements qu'une migration postérieure à l'import ajoute (0121, R264 : Gémidiens et Fongoïdes, au rang suivant, règle du site) ne viennent pas du
+// registre de l'import, qui donne le rang par la place : ils sont lus dans le registre de la migration (clé `evenements`) et mis à part par --verifier,
+// comme le fait client/test/chronologie.test.mjs.
+const REGISTRE_DE_LA_0121 = fileURLToPath(new URL('../../data/migrations/0121-maj-decembre-suites.json', import.meta.url));
+
+/** Les identifiants des événements que la migration 0121 ajoute, lus dans son registre. */
+export const evenementsDeLaMigration0121 = () => new Set(JSON.parse(readFileSync(REGISTRE_DE_LA_0121, 'utf8')).evenements.map((e) => e.id));
 
 const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const TITRE = /^#{1,6}\s+(.*?)\s*#*\s*$/;
@@ -184,8 +193,9 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
       console.log(`registre résolu : ${resultat.evenements.length} événements, ${resultat.extraits.length} extraits (la base n'a pas encore la table evenement)`);
     } else {
       const texte = (lignes) => lignes.map((l) => JSON.stringify(l)).sort();
+      const deLaMigration = evenementsDeLaMigration0121();
       const comparer = (table, attendues) => {
-        const base = new Set(texte(historique.lignesDImport(table).map((l) => ({ ...l }))));
+        const base = new Set(texte(historique.lignesDImport(table).map((l) => ({ ...l })).filter((l) => !deLaMigration.has(l.id ?? l.evenement_id))));
         const registreTxt = new Set(texte(attendues));
         const manque = [...registreTxt].filter((l) => !base.has(l));
         const enTrop = [...base].filter((l) => !registreTxt.has(l));

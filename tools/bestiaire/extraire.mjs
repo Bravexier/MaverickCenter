@@ -105,6 +105,9 @@ export const CORRECTIONS = [
   [/\b([Gg])elé(?= \d)/g, '$1el', 'décision R205, migration 0103-r205-etat-gel'],
   // la ligne de défense écrite avec les anciens noms de l'AP et de l'AM (lib/monstre-champs.mjs#LIGNE_DE_DEFENSE_ANCIENNE, ancré sur la ligne entière)
   [LIGNE_DE_DEFENSE_ANCIENNE, '$1$2 armure physique / $3 armure magique$4', 'décision R209 (5), migration 0106-r209-bestiaire'],
+  // la description de l'Élémentaire de la terre : « dieu de la terre Dimitri » -> « Dieu de la Terre » (R266 (3), exception limitée à trois graphies :
+  // la seule écriture du doc ; « Mort Fertile » et « Super Gemme » n'y figurent pas)
+  [/\bdieu de la terre\b/g, 'Dieu de la Terre', 'décision R266 (3), migration 0121-maj-decembre-suites'],
 ];
 
 /**

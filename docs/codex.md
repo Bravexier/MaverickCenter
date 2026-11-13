@@ -89,6 +89,10 @@ L'export reste tel quel ; le script corrige, avant le découpage, **seulement** 
 - **Décision R21** : « le Démon d'Eau Noire » (2 fois) et « Eaunoir » (18 fois) deviennent « Eaunoire » ; le document écrit lui-même 3 fois « Eaunoire ».
   La page s'appelle « Eaunoire », alias « Eaunoir ».
 - « ect » → « etc. » (comme la migration `0005`), « purée de poix » → « purée de pois » (comme `0006`).
+- **Décision R266** (migration `0121-maj-decembre-suites`, exception explicite à « un texte copié n'est pas réécrit », limitée à trois graphies) : « dieu de la
+  Terre » (9 fois) et « Dieu de la terre » (1 fois, le titre de Dimitri) → « Dieu de la Terre » ; « Mort fertile » (1) → « Mort Fertile » ; « super gemme » (2)
+  → « Super Gemme ». Ces quatre entrées portent la clé `migration` : `--verifier` les applique aussi à l'état d'import d'une page que le site de dev avait
+  modifiée avant la migration (son texte d'import garde l'ancienne graphie : `graphies_de_migration`, comme `liens_en_balises` pour la 0098).
 
 La relecture orthographique du Codex (décision R10) reste à faire, par une migration de données avec son registre, comme `0005` pour le reste de la base.
 

@@ -775,6 +775,19 @@ def liens_en_balises(texte, codex):
     return WIKILIEN.sub(lambda m: codex.lien(m.group(1).strip(), (m.group(2) or m.group(1)).strip()), texte)
 
 
+def graphies_de_migration(texte, corrections=CORRECTIONS):
+    """Le texte d'import d'une page que le site de dev a modifiée avant une migration de données (la `valeur d'import` est celle d'avant le site),
+    avec les corrections du registre que cette migration a faites en base (entrées `migration` : R266, 0121) : la page de la base les a reçues,
+    le document les reçoit par `lire_lignes`. Sans effet sur un texte déjà corrigé."""
+    with open(corrections, encoding='utf-8') as f:
+        registre = json.load(f)
+    for c in registre['corrections']:
+        if c.get('migration'):
+            motif = (r'(?<![^\W\d_])' + re.escape(c['avant']) + r'(?![^\W\d_])') if c.get('mot') else re.escape(c['avant'])
+            texte = re.sub(motif, c['apres'].replace('\\', r'\\'), texte)
+    return texte
+
+
 def verifier(lignes, out, site, vocabulaire=None):
     """Contrôles indépendants du découpage (voir l'en-tête), les pages modifiées par le site de dev dans leur état d'import, leurs mots-clés ceux du
     vocabulaire (Codex(…, vocabulaire)). -> (erreurs, nombre de pages, nombre de pages modifiées par le site, renvois sans mot-clé)."""
@@ -783,7 +796,9 @@ def verifier(lignes, out, site, vocabulaire=None):
     a_l_import = {}
     for slug, t in pages.items():
         data, corps = etat_d_import(t, site.get(slug))
-        a_l_import[slug] = (data, liens_en_balises(corps, attendu) if 'corps' in site.get(slug, {}) else corps)
+        if 'corps' in site.get(slug, {}):
+            corps = graphies_de_migration(liens_en_balises(corps, attendu))
+        a_l_import[slug] = (data, corps)
     libelle_de = vocabulaire.libelle_de if vocabulaire else None
     erreurs = []
     tout = '\n'.join(normaliser(corps, libelle_de) for _, corps in a_l_import.values())
