@@ -50,7 +50,7 @@ import {
   finDuModeHyperCent, modeHyperApres, modeHyperValable, SANTE_PAR_CHAKRA_MANQUANT, semaineDuModeHyperApres, tourDeModeHyper,
   actionsDeLaFiche, actionsUsageSansObjetRetire, actionsUsageValables, consommerLAction, finDeCombat, finDeCombatMontree, passifsDeLaFiche, REMONTEES, remonterLAction,
   donsObtenusApresChoix, donsObtenusValables, donsVariables, infobulleDEntree, refusDuDon, texteDuDonVariable,
-  nomDeSpecialisation, specialisationsAChoisir, specialisationsApresChoix, specialisationsValables,
+  estBiMagie, nomDeSpecialisation, seuilDesSpecialisations, specialisationsAChoisir, specialisationsApresChoix, specialisationsValables,
 } from '../lib/fiche-moteur.mjs';
 import { creatureAuNpm, FPVSIA, vautAuNpm } from '../lib/creature-npm.mjs';
 import { listeDeChoix } from './liste-choix.mjs';
@@ -2016,6 +2016,34 @@ function construireChoixSpecialisationsMagie() {
 }
 
 /**
+ * Dans l'identité, la spécialisation de chaque magie à côté d'elle (demande du propriétaire du 2026-11-13), pour un bi-magie seul (R236 (3) : estBiMagie)
+ * et une magie qui en a : les mêmes pastilles que le cadre « Choix », fermées tant que le NPM des sorts n'atteint pas le seuil (seuilDesSpecialisations,
+ * lu dans les données), surlignées tant que la magie n'a pas son choix. Le mono-magie n'a rien à choisir (R236 (2)) : les menus restent cachés.
+ */
+function construireSpecialisationsDeLIdentite() {
+  const seuil = seuilDesSpecialisations(regles);
+  const ouvert = () => seuil !== null && npmDesSorts(regles, fiche) >= seuil;
+  for (const [cote, id] of [['innee', fiche.magie_innee_id], ['acquise', fiche.magie_acquise_id]]) {
+    const magie = trouver(regles.magies, id);
+    const menu = $(`choix-specialisation-${cote}`);
+    menu.hidden = !estBiMagie(fiche) || !magie?.specialisations?.length || seuil === null;
+    if (menu.hidden) continue;
+    const choisie = magie.specialisations.find((s) => specialisationsValables(regles, fiche).some((x) => x.magie_id === magie.id && x.specialisation_id === s.id));
+    afficherChoix(`specialisation-${cote}`, [choisie && { nom: nomDeSpecialisation(choisie.nom), teinte: magie }], ouvert() ? 'À choisir' : `Au NPM ${seuil}`);
+    menu.toggleAttribute('data-a-choisir', (calcul?.attente ?? []).some((x) => x.cle === cleDeChoix.specialisationMagie(magie.id)));
+    reconstruire($(`specialisation-${cote}`), magie.id, () => magie.specialisations.map((s) => pastille({
+      texte: nomDeSpecialisation(s.nom), teinte: magie, description: s.description,
+      choisie: () => specialisationsValables(regles, fiche).some((x) => x.magie_id === magie.id && x.specialisation_id === s.id),
+      refus: () => (ouvert() ? null : `au NPM ${seuil}`),
+      surClic: () => {
+        fiche.specialisations_magie = specialisationsApresChoix(regles, fiche, magie.id, s.id);
+        changer();
+      },
+    })));
+  }
+}
+
+/**
  * Tant qu'il reste des choix à faire (choixEnAttente), le panneau « Choix » de la zone IV sort en tiroir en bas de l'écran, par-dessus la fiche, avec la
  * liste de ce qui manque ; il ne se range que quand la zone IV est à l'écran (son onglet « Choix » compte alors ce qui manque). « Réduire » le replie sur sa
  * poignée (le survol le rouvre), « Aller aux choix » descend à la zone IV, ouvre l'onglet et lui donne le focus (allerAuxChoix). Réduit, son corps est en
@@ -3941,6 +3969,7 @@ function rafraichir() {
   construireClasses();
   construireChoixSpecialites();
   construireChoixSpecialisationsMagie();
+  construireSpecialisationsDeLIdentite();
   construireCaracteristiques();
   construireMaitrises();
   construireSorts();

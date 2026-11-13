@@ -124,7 +124,18 @@ test('/fiche/ : chaque champ dans son bloc (demandes du propriétaire)', options
   for (const champ of ['nom', 'surnom', 'lieu_origine', 'metier_id', 'alignement_loyal', 'alignement_chaotique', 'alignement_bon', 'alignement_mauvais']) {
     assert.match(identite, new RegExp(`data-champ="${champ}"`), `identité : ${champ}`);
   }
-  assert.ok(identite.indexOf('id="metiers"') > identite.indexOf('id="choix-ethnie"'), 'le métier, facultatif, sous l’ethnie');
+  // la mise en page du 2026-11-13 (demande du propriétaire) : le métier à droite du lieu d'origine, l'alignement sous le portrait, chaque classe avec sa
+  // spécialité à côté, chaque magie avec sa spécialisation à côté (montrée pour un bi-magie seul, R236 (3))
+  const ligne = identite.slice(identite.indexOf('class="identite__ligne"'), identite.indexOf('class="identite__choix"'));
+  assert.ok(ligne.indexOf('id="metiers"') > ligne.indexOf('data-champ="lieu_origine"'), 'le métier, facultatif, à droite du lieu d’origine');
+  const gauche = identite.slice(identite.indexOf('class="identite__gauche"'), identite.indexOf('class="identite__corps"'));
+  assert.ok(gauche.indexOf('<fieldset class="alignement">') > gauche.indexOf('id="portrait"'), 'l’alignement sous le portrait');
+  // chaque paire : de son début à celui de la suivante (ses menus contiennent des <div>)
+  const paires = identite.split('<div class="identite__paire">').slice(1);
+  for (const [menu, voisin] of [['magie-innee', 'specialisation-innee'], ['magie-acquise', 'specialisation-acquise'], ['classe-1', 'specialite-1'], ['classe-2', 'specialite-2']]) {
+    assert.ok(paires.some((p) => p.includes(`id="choix-${menu}"`) && p.includes(`id="choix-${voisin}"`)), `${voisin} à côté de ${menu}`);
+  }
+  assert.match(identite, /<details class="choix" id="choix-specialisation-innee" hidden>/, 'cachée hors bi-magie');
   assert.match(identite, /<option value="">Sans métier \(facultatif\)<\/option>/);
   // portrait (le logo en attendant une image), niveau seul (l'XP est dans la zone IV), case « Bi-classé »
   assert.match(identite, /<img class="portrait__image" id="portrait-image" src="\/logo\.webp" data-defaut="\/logo\.webp"/);
@@ -248,7 +259,7 @@ test('/fiche/ compacte (demandes du propriétaire) : pas de lien vers le guide, 
   const fiche = html.slice(html.indexOf('<div class="fiche" id="fiche"'));
   assert.ok(!/Le guide</.test(fiche) && !/href="\/guide\//.test(fiche), 'aucun lien vers le guide dans la fiche (le menu du site garde le sien)');
   const menus = [...html.matchAll(/<details class="choix" id="choix-([a-z0-9-]+)"( hidden)?>/g)].map((m) => m[1]);
-  assert.deepEqual(menus, ['race', 'ethnie', 'magie-innee', 'magie-acquise', 'classe-1', 'specialite-1', 'classe-2', 'specialite-2']);
+  assert.deepEqual(menus, ['race', 'ethnie', 'magie-innee', 'specialisation-innee', 'magie-acquise', 'specialisation-acquise', 'classe-1', 'specialite-1', 'classe-2', 'specialite-2']);
   for (const conteneur of ['races', 'ethnies', 'magies-innees', 'magies-acquises', 'classe-1', 'classe-2', 'specialite-1', 'specialite-2']) {
     assert.match(html, new RegExp(`<div class="choix__panneau"><(div|ul) id="${conteneur}"`), `${conteneur} dans un menu`);
   }
