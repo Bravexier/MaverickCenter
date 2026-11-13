@@ -17,6 +17,7 @@ import { competencesDArme, durabiliteDeLArme, porteeDeLArme } from './arme-champ
 import { DURABILITE_MIN, MATERIAU_PAR_DEFAUT } from './arme-forge.mjs';
 import { BATON_A_REGLER, contenanceEcrite, effetsDeBaton, exemplairesDeCeintureEcrits, nomDeBaton, sacSansForceEcrit } from './ceinture-texte.mjs';
 import { bonusDeDegatsEcrit, DONS_SANS_DEGATS } from './degats-texte.mjs';
+import { effetDeBouclierEcrit } from './bouclier-texte.mjs';
 import { bonusDeSortsEcrits, preparationEcrite } from './sort-bonus-texte.mjs';
 import { DONS_SANS_ACQUIS, lecteurDAcquis } from './acquis-texte.mjs';
 import { critiqueDeLAccessoire, critiqueDuDon, critiqueDuPremierCoup } from './critique-texte.mjs';
@@ -324,9 +325,10 @@ function reglesDeLaBase(db) {
   // plafond de NPM des sorts d'un personnage de cette magie innée (magie_npm_plafond : décision R188, migration 0097 ; le Potentiel Illimité)
   const npmPlafondDesMagies = new Map(lignes(db, 'SELECT magie_id, npm FROM magie_npm_plafond').map((r) => [r.magie_id, r.npm]));
   // les deux spécialisations de chaque magie, hors le Potentiel Illimité (magie_specialisation : décision R236, migration 0117), dans l'ordre du tableau
-  // de la page (`ordre`, 1 puis 2) : { id, nom, ordre }, le nom tel qu'écrit ; la fiche en tire le choix du bi-magie (personnage_specialisation_magie)
-  const specialisationsDesMagies = parCle(lignes(db, 'SELECT id, magie_id, nom, ordre FROM magie_specialisation ORDER BY magie_id, ordre'), 'magie_id',
-    (x) => ({ id: x.id, nom: x.nom, ordre: x.ordre }));
+  // de la page (`ordre`, 1 puis 2) : { id, nom, ordre, description }, le nom tel qu'écrit ; la fiche en tire le choix du bi-magie
+  // (personnage_specialisation_magie) ; `description` (magie_specialisation.description, null sans texte) : l'infobulle de sa pastille (décision R260 (3))
+  const specialisationsDesMagies = parCle(lignes(db, 'SELECT id, magie_id, nom, ordre, description FROM magie_specialisation ORDER BY magie_id, ordre'), 'magie_id',
+    (x) => ({ id: x.id, nom: x.nom, ordre: x.ordre, description: x.description ?? null }));
   const magies = lignes(db, `
     SELECT id, nom, caracteristique_id, caracteristique_brut, sante_offerte, chakra_offert, mono_magie, barre4_ressource, barre4_max, explication FROM magie ORDER BY ordre`)
     .map((m) => ({
@@ -384,7 +386,9 @@ function reglesDeLaBase(db) {
   const degatsEcrits = (d) => {
     const b = d.type === 'passif' && !DONS_SANS_DEGATS.includes(d.id) ? bonusDeDegatsEcrit(d.effet) : null;
     const sorts = d.type === 'passif' ? bonusDeSortsEcrits(d.effet) : [];
-    return { ...(b ? { degats: b } : {}), ...(sorts.length ? { sorts } : {}) };
+    // ce qu'il fait du bouclier porté (Bouclier d'attaque, Bouragé, Mur du Boxeur : lib/bouclier-texte.mjs, décisions R255, R267)
+    const bouclier = d.type === 'passif' ? effetDeBouclierEcrit(d.effet) : null;
+    return { ...(b ? { degats: b } : {}), ...(sorts.length ? { sorts } : {}), ...(bouclier ? { bouclier } : {}) };
   };
   // Familles d'armes : dé, paliers selon la Force (Pugilat), si une maîtrise peut s'y mettre (décision R45), contact ou distance (arme_famille.categorie,
   // décision R127 : « Arc / arbalète / arme de jet ou Bombe sont bien les 4 types d'armes à distance »), et les compétences que donnent ses armes (R48 :
@@ -553,7 +557,7 @@ function reglesDeLaBase(db) {
           ...(exemplairesDeCeintureEcrits(d.effet) ? { exemplaires_ceinture: exemplairesDeCeintureEcrits(d.effet) } : {}),
           ...(sacSansForceEcrit(d.effet) ? { sac_sans_force: true } : {}),
           // ses bonus d'acquis (« +7% Magie, +7% Médecine », « +7% Arme légères OU lourdes » : un choix ; décision R104)
-          // (sauf les dons de DONS_SANS_ACQUIS : règles non tranchées, MAJ-C4 et MAJ-C6 ; ces dons restent un passif écrit)
+          // (sauf les dons de DONS_SANS_ACQUIS : « Posture inébranlable », un texte seul, R255 (5) ; ces dons restent un passif écrit)
           ...(() => { const acquis = DONS_SANS_ACQUIS.includes(d.id) ? [] : horsDuTableau(lireAcquis(d.effet)); return acquis.length ? { acquis } : {}; })(),
           // le sort qu'il permet de préparer (« Préparation », « Chargement » : décision R115, lib/sort-bonus-texte.mjs#preparationEcrite)
           ...(() => { const preparation = preparationEcrite(d.effet); return preparation ? { preparation } : {}; })(),

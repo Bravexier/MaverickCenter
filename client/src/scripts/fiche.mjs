@@ -1994,6 +1994,8 @@ function construireChoixSpecialisationsMagie() {
     const cle = cleDeChoix.specialisationMagie(c.magie.id);
     const cadre = groupe(`Spécialisation magique · ${c.magie.nom}`, c.magie, c.specialisations.map((s) => pastille({
       texte: s.nom, teinte: c.magie,
+      // survoler la pastille montre la description de la spécialisation, celle de la page de la magie (R260 (3))
+      description: s.description,
       choisie: () => specialisationsValables(regles, fiche).some((x) => x.magie_id === c.magie.id && x.specialisation_id === s.id),
       surClic: () => {
         fiche.specialisations_magie = specialisationsApresChoix(regles, fiche, c.magie.id, s.id);
@@ -3551,6 +3553,7 @@ function construireDefense() {
       parade.disabled = !degatsEnCours.reduits;
       infobulle(paradeLabel, !d.bouclier ? ''
         : d.bouclier.cassee ? `Bouclier ${d.bouclier.nom} cassé : ses AP et AM ne comptent plus, même en parade partielle (décision R108).`
+          : d.bouclier.mur ? `Le bouclier ${d.bouclier.nom} compte déjà à chaque attaque (Mur : ${d.ap.bouclier} AP, ${d.am.bouclier} AM, bonus de Mur compris) : la parade partielle ne l’ajoute pas une seconde fois.`
           : `La parade partielle se fait au bouclier : ses AP et AM s’ajoutent à l’armure (${d.bouclier.nom} : +${d.bouclier.ap} AP, +${d.bouclier.am} AM).`);
       const coup = { ...degatsEnCours, element: degatsEnCours.element || null };
       const r = degatsEnCours.entrants === '' || !coupDeDegats(regles, coup) ? null : degatsRecus(regles, fiche, coup);

@@ -680,8 +680,8 @@ test('sort-bonus-texte (R102) : les bonus de sorts des dons de classe et de race
     'races/elfe-dore#don:sang-dore': 'degats:3 soin:3',
     'races/farfadet#don:farfadet-maritime-forets-proches-de-leau': 'cran:1',
     'races/felfe#don:felfe-argente': 'degats:1+1/5 global',
-    // Gémidien, « Gemmoïde » (R239, migration 0120) : +3 lu, sans « (+2/5 niveau global) » que R110 n'écrit pas ainsi — lecture d'attente, question MAJ-R12
-    'races/gemidien#don:gemmoide': 'degats:3',
+    // Gémidien, « Gemmoïde » (R239, migration 0120) : « +3 dégâts (+2/5 niveau global) », lu comme R110 : 3 + 2 × ⌊niveau global ÷ 5⌋ (R253 (2) ; test/r253-gemmoide-ordre-des-races.test.mjs)
+    'races/gemidien#don:gemmoide': 'degats:3+2/5 global',
   });
   // chaque armure élémentaire nomme sa magie (« +4 dégâts avec les sorts de l'Eau ») : elle seule ; et deux autres effets chiffrés
   for (const e of regles.armures_elementaires) {

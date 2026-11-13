@@ -133,9 +133,9 @@ export function bonusDeDegatsEcrit(texte) {
 
 /**
  * Les dons de classe dont le texte se lit comme un bonus de dégâts d'arme et dont la fiche ne compte ni ne mentionne rien : liste d'exclusion par identifiant
- * (figé), jamais par le nom (même principe que `acquis-texte.mjs#DONS_SANS_ACQUIS` : la spécification de la mise à jour de Décembre ne crée « aucune règle nouvelle
- * sur la fiche pour ces dons », qui restent un passif écrit, sans chiffre) :
- *   - « Bouragé » du Boxeur (MAJ-C6 : « +2 par poids du bouclier », lecture non tranchée ; le texte se lisait « +2 dégâts avec un bouclier ») ;
+ * (figé), jamais par le nom ; ils restent un passif écrit, sans chiffre de ce lecteur :
+ *   - « Bouragé » du Boxeur : son bonus (« +2 par poids du bouclier », aux dégâts de pugilat dès qu'un bouclier est porté) est lu par `lib/bouclier-texte.mjs`
+ *     (décisions R255 (2), R267 (3)), pas par ce lecteur, qui le rendrait « avec un bouclier » (raison `bouclier`) ;
  *   - « Armure vivante » du Boxeur (« Réduit les dégâts de 3 » : une réduction des dégâts subis, pas un bonus de dégâts ; le lecteur n'apprend pas à lire « subit »).
  * `lib/fiche-regles.mjs` n'exporte aucun `degats` pour ces dons.
  */
