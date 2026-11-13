@@ -99,7 +99,7 @@ test('R267 (3), R255 (2), R269 : dès qu’un bouclier est porté, Bouclier d’
         const poids = M.POIDS_DU_BOUCLIER[porte.poids.id];
         const dg = degats(regles, f);
         const murEnPlus = acquis.has(DONS.mur) ? 2 : 0;
-        // Bouclier d'attaque : (AP + AM du bouclier, +2 et +2 de Mur s'il l'a) ÷ 4, au plus proche, ,5 au supérieur, au moins 1
+        // Bouclier d'attaque : (AP + AM du bouclier, +2 et +2 de Mur s'il l'a) ÷ 4 (÷ 3 avec Égide d'assaut), arrondi à l'inférieur, au moins 1 (R269)
         const diviseur = acquis.has(DONS.egide) ? 3 : 4;
         const attendu = acquis.has(DONS.attaque) ? Math.max(1, Math.floor((porte.ap + porte.am + 2 * murEnPlus) / diviseur)) : null;
         const ou = `niveau ${niveau}, ${b.id}`;
@@ -164,7 +164,7 @@ test('R267 (1), R255 (1) et (4) : Mur ajoute toute l’AP et l’AM du bouclier,
     // sans Mur, la parade partielle ajoute l'AP du bouclier (R96, inchangé)
     assert.equal(M.degatsRecus(sans, f, parade).armure - M.degatsRecus(sans, fiche(20), { ...physique, reduits: true }).armure, porte.ap, `${b.id} : R96`);
   }
-  // avant le niveau de Mur : rien
+  // à un niveau où Mur n'est pas acquis (le premier trouvé en partant du niveau 1) : rien
   let niveau = 1;
   while (M.donsAcquis(regles, fiche(niveau)).some((c) => c.dons.some((d) => d.id === DONS.mur)) && niveau < 20) niveau += 1;
   const tot = M.defenseDe(regles, fiche(niveau, { bouclier: boucliers[0] }));
