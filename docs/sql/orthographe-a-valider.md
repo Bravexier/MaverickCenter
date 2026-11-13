@@ -1254,18 +1254,18 @@ Chaque entrée : endroit — passage — pourquoi on n'a pas corrigé — correc
 
 ## Mise à jour de Décembre : classes (migration 0119, 2026-11-13)
 
-Classeur « Nouveauté mise à jour Décembre », onglets 23 « Porte-étendard » et 24 « Boxeur » (R238). Les coquilles sûres sont corrigées par la migration (R10, registre `tools/sheets/corrections.json`) ; ce qui suit est laissé tel qu'écrit.
+Classeur « Nouveauté mise à jour Décembre », onglets 23 « Porte-étendard » et 24 « Boxeur » (R238). Les coquilles sûres sont corrigées par la migration (R10, registre `tools/sheets/corrections.json`) ; ce qui suit était laissé tel qu'écrit. **Tout est tranché (R255 (7), 2026-11-13).**
 
 ### capacites/boxeur-* (noms)
 
-- **Spécialité Percuteur** — « Bouragé » (Z29), « Bouquilibre » (AG29), « Boupact » (Z36), « Bousée » (AG36), « Boucassant » (Z43), « Bouvasteur » (AG43) — Série de noms en « Bou… », sans doute des jeux de mots sur « bouclier » (Bou + ragé, équilibre, impact, poussée, cassant, dévastateur). → Laisser tels quels si ce sont des jeux de mots voulus ; sinon donner la graphie.
-- **« Posture inébran »** (C43) — Mot peut-être tronqué. → « Posture inébranlable », ou laisser.
-- **« Endurouille »** (J36) — Mot-valise probable (endurance + rouille, spécialité Carcasse rouillée). → Laisser, ou donner la graphie.
+- **Spécialité Percuteur** — « Bouragé » (Z29), « Bouquilibre » (AG29), « Boupact » (Z36), « Bousée » (AG36), « Boucassant » (Z43), « Bouvasteur » (AG43) — Série de noms en « Bou… ». Décidé (R255 (7)) : jeux de mots voulus, tels quels.
+- **« Posture inébran »** (C43) — Décidé (R255 (7)) : « Posture inébranlable » (identifiant inchangé).
+- **« Endurouille »** (J36) — Décidé (R255 (7)) : voulu, tel quel.
 
 ### capacites/boxeur-* (phrases)
 
-- **X37** — « divise par 2 donné par l'armure » — Il manque un ou plusieurs mots ; la correction toucherait au sens. → Donner la phrase voulue.
-- **Élisions** — « de AP+AM » (« d'AP+AM ») ; « altérations d'états » (« altérations d'état ») — Laissées telles quelles par la migration. → « oui » pour corriger, « non » pour garder.
+- **X37** — « divise par 2 donné par l'armure » — Décidé (R255 (7)) : « divise par 2 l'AP donné par l'armure ».
+- **Élisions** — « de AP+AM » ; « altérations d'états » — Décidé (R255 (7)) : « d'AP+AM » et « altérations d'état », dans les dons du Boxeur seulement.
 
 ## Races Fongoïde et Gémidien (mise à jour de Décembre, R239)
 
