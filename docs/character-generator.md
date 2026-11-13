@@ -175,19 +175,19 @@ bouton (au-dessus quand la place manque), bornée à l'écran, téléphone compr
   « Ignore 4 AP » de l'arbalète, la mention de l'arme de jet et de la bombe, en texte (`effetDeLArmeElementaire`). **Sorts « Fer »** (`regles.sorts[].fer`) :
   sous une arme élémentaire, un rappel en rouge pour chaque sort « Fer » de la fiche d'un autre élément que l'arme (« Fer brûlant : sort « Fer » d'un autre
   élément que cette arme », la phrase de la page « Pièces élémentaires » en infobulle ; `sortsFerDAutreElement`) ; rien n'est compté.
-- **Mise à jour de Décembre, suites** (décisions R253, R255, R257, R259, R260, R267 ; tests `fiche-maj-decembre-suites`, `boxeur-bouclier`, `fiche-acquis`, `fiche-listes-infobulles`).
+- **Mise à jour de Décembre, suites** (décisions R253, R255, R257, R259, R260, R267, R269, R270 ; tests `fiche-maj-decembre-suites`, `boxeur-bouclier`, `fiche-acquis`, `fiche-listes-infobulles`).
   **Gemmoïde** (Gémidien) : « +3 dégâts (+2/5 niveau global) » se lit comme R110, 3 + 2 × ⌊niveau global ÷ 5⌋ (+3 au niveau 4, +5 au 5, +11 au 20), sur les dégâts des
   sorts de la magie innée seulement (`lib/sort-bonus-texte.mjs`, `vises: { innee }`), jamais sur une arme. **Chef résiliant, agile, fort et malin** (Porte-étendard,
   R267 (2)) : « Tant qu'il est debout, les alliés ont un bonus de 5% à tous les jets de … » est, pour le Porte-étendard lui-même (R254 (2)), un **bonus au jet** de
   chaque compétence nommée (`lib/acquis-texte.mjs`, `jet_competence` ; `acquisDesDons().jetsParCompetence`, ajouté à `jetDetail` de `competencesDe`) : dans le score,
   hors acquis et hors plafond, comme R122 ; « Motivation » (action) reste mentionnée. **Boxeur qui porte un bouclier** (R255, R267 ; `lib/bouclier-texte.mjs`, `bouclierDesDons`) :
-  dès qu'un bouclier de la liste est porté, « Bouclier d'attaque » ajoute aux dégâts de pugilat (AP + AM du bouclier) ÷ 4 arrondi au plus proche (un ,5 au supérieur), au
-  moins 1 (`extensionDeDegats`), et « Bouragé » +2 par poids du bouclier (Léger 1, Moyen 2, Lourd 3, Très lourd 4 : `POIDS_DU_BOUCLIER`) ; « Mur » (+2 AP et +2 AM du
+  dès qu'un bouclier de la liste est porté, « Bouclier d'attaque » ajoute aux dégâts de pugilat (AP + AM du bouclier, +2 et +2 de Mur compris) ÷ 4, **toujours arrondi à
+  l'inférieur** (R269 (2), R175), au moins 1 (`extensionDeDegats`) ; avec « Égide d'assaut » le diviseur est 3 (R269 (1), lu dans son texte : `diviseurDeLExtension`), et « Bouragé » +2 par poids du bouclier (Léger 1, Moyen 2, Lourd 3, Très lourd 4 : `POIDS_DU_BOUCLIER`) ; « Mur » (+2 AP et +2 AM du
   bouclier) ajoute toute l'AP et l'AM du bouclier, ses +2 compris, à la défense **à chaque attaque subie**, même sans parade partielle (exception à R96 : `defenseDe`,
-  `ap.bouclier` ; `degatsRecus` n'ajoute plus le bouclier en parade partielle pour ce Boxeur) ; un bouclier cassé n'ajoute rien (R108). « Boucassant », « Posture
+  `ap.bouclier` ; `degatsRecus` n'ajoute plus le bouclier en parade partielle pour ce Boxeur) ; un bouclier cassé n'ajoute rien, ni Mur, ni Bouragé, ni Bouclier d'attaque (R108, R269 (3)). « Boucassant », « Posture
   inébranlable » (Réaction) et « Posture d'urgence » restent un texte. **Dés** (R257) : une montée et une baisse s'additionnent avant le plafond D12 (`deMonte`). **Barrière**
   (R259) : les cases « Passe » et « Casse la barrière » ne citent ni Anti-barrière ni Pré-mythril. **Spécialisations** (R260) : l'infobulle d'un sort ajoute le nom de sa
-  spécialisation (« Arcane, NPM 3 · CONSTRUCTION », `infobulleDeSort`), le groupe « Hors des magies ou du niveau » garde son nom, et la pastille d'une spécialisation montre sa
+  spécialisation (« Arcane, NPM 3 · Construction », `infobulleDeSort`, initiale seule en majuscule à l'affichage : R270, `nomDeSpecialisation` ; la base garde ses capitales), le groupe « Hors des magies ou du niveau » garde son nom, et la pastille d'une spécialisation (même nom) montre sa
   description (`regles.magies[].specialisations[].description`).
 - **Dégâts des armes** (`degatsDArme`) : une pastille « XDY+Z » par arme — les dés de la maîtrise de sa famille, le dé de l'arme (son effet, sinon son type ;
   le Pugilat selon la Force), plus les bonus qui se cumulent (page « Armes ») : l'arme, sa composition et son amélioration (une arme élémentaire : son

@@ -50,7 +50,7 @@ import {
   finDuModeHyperCent, modeHyperApres, modeHyperValable, SANTE_PAR_CHAKRA_MANQUANT, semaineDuModeHyperApres, tourDeModeHyper,
   actionsDeLaFiche, actionsUsageSansObjetRetire, actionsUsageValables, consommerLAction, finDeCombat, finDeCombatMontree, passifsDeLaFiche, REMONTEES, remonterLAction,
   donsObtenusApresChoix, donsObtenusValables, donsVariables, infobulleDEntree, refusDuDon, texteDuDonVariable,
-  specialisationsAChoisir, specialisationsApresChoix, specialisationsValables,
+  nomDeSpecialisation, specialisationsAChoisir, specialisationsApresChoix, specialisationsValables,
 } from '../lib/fiche-moteur.mjs';
 import { creatureAuNpm, FPVSIA, vautAuNpm } from '../lib/creature-npm.mjs';
 import { listeDeChoix } from './liste-choix.mjs';
@@ -1993,7 +1993,7 @@ function construireChoixSpecialisationsMagie() {
   reconstruire(bloc, JSON.stringify(choix.map((c) => [c.magie.id, c.specialisations.map((s) => s.id)])), () => choix.map((c) => {
     const cle = cleDeChoix.specialisationMagie(c.magie.id);
     const cadre = groupe(`Spécialisation magique · ${c.magie.nom}`, c.magie, c.specialisations.map((s) => pastille({
-      texte: s.nom, teinte: c.magie,
+      texte: nomDeSpecialisation(s.nom), teinte: c.magie,
       // survoler la pastille montre la description de la spécialisation, celle de la page de la magie (R260 (3))
       description: s.description,
       choisie: () => specialisationsValables(regles, fiche).some((x) => x.magie_id === c.magie.id && x.specialisation_id === s.id),

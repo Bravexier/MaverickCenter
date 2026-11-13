@@ -2440,7 +2440,7 @@ export const infobulleDeMetier = (metier) => infobulleDesLignes(lignesDeChamps((
 
 /**
  * L'infobulle d'un sort (listes des emplacements, du sort préparé et des livres) : sa magie et son NPM (« Feu, NPM 2 », comme l'infobulle du sort choisi),
- * suivis du nom de sa spécialisation s'il en a une (« Arcane, NPM 3 · CONSTRUCTION », le nom tel qu'écrit : décision R260 (1) ; `sort.specialisation_id`, une
+ * suivis du nom de sa spécialisation s'il en a une (« Arcane, NPM 3 · Construction », initiale seule en majuscule : décisions R260 (1), R270 ; `sort.specialisation_id`, une
  * spécialisation de la magie), puis Type, Coût, Coût secondaire, Portée, Zone, D/S/B, Effets et Remarque tels qu'écrits, « (+1/NM) » compris (valeurs au NM 0 :
  * la ligne du tableau donne celles du NM choisi). `magie` : l'entrée de regles.magies (facultative).
  */
@@ -2448,7 +2448,7 @@ export function infobulleDeSort(sort, magie = null) {
   if (!sort) return null;
   const specialisation = sort.specialisation_id ? (magie?.specialisations ?? []).find((x) => x.id === sort.specialisation_id) : null;
   return infobulleDesLignes([
-    ...(magie ? [`${magie.nom}, NPM ${sort.niveau}${specialisation ? ` · ${specialisation.nom}` : ''}`] : []),
+    ...(magie ? [`${magie.nom}, NPM ${sort.niveau}${specialisation ? ` · ${nomDeSpecialisation(specialisation.nom)}` : ''}`] : []),
     ...lignesDeChamps([['Type', sort.type], ['Coût', sort.cout], ['Coût secondaire', sort.cout_secondaire], ['Portée', sort.portee], ['Zone', sort.zone],
       ['D/S/B', sort.dsb], ['Effets', sort.effets], ['Remarque', sort.remarque]]),
   ]);
@@ -3305,13 +3305,30 @@ export function bouclierDe(regles, fiche) {
 export const POIDS_DU_BOUCLIER = Object.freeze({ leger: 1, moyen: 2, lourd: 3, 'tres-lourd': 4 });
 
 /**
- * « Bouclier d'attaque » (décision R255 (3)) : (AP + AM du bouclier) ÷ `diviseur`, arrondi au plus proche, un résultat en ,5 arrondi au supérieur, au moins
- * `minimum` (5 ÷ 4 → 1 ; 6 ÷ 4 → 2 ; 7 ÷ 4 → 2 ; 10 ÷ 4 → 3). Entiers : (2 × somme + diviseur) ÷ (2 × diviseur), à l'inférieur, sans flottant.
+ * « Bouclier d'attaque » (décisions R255 (3), R269 (2)) : (AP + AM du bouclier) ÷ `diviseur`, toujours arrondi à l'inférieur (R175, ÷ 4 comme ÷ 3), au moins
+ * `minimum` (÷ 4 : 5 → 1 ; 6 → 1 ; 7 → 1 ; 10 → 2 ; 8 → 2). Les +2 de Mur restent dans la somme (R255 (4)) : l'appelant les y met.
  */
 export function extensionDeDegats(ap, am, { diviseur, minimum }) {
   const somme = Math.max(0, Math.round(ap) + Math.round(am));
-  return Math.max(minimum, Math.floor((2 * somme + diviseur) / (2 * diviseur)));
+  return Math.max(minimum, Math.floor(somme / diviseur));
 }
+
+/**
+ * Le diviseur de « Bouclier d'attaque » pour ces effets (`effetsDeBouclierDesDons`) : celui du don, sauf si un don écrit « La division […] est de N au lieu de M »
+ * pour ce diviseur M (« Égide d'assaut », 3 au lieu de 4 : R269 (1)). Lu dans les textes, jamais une constante.
+ */
+export function diviseurDeLExtension(extension, effets) {
+  return effets.filter((e) => e.cle === 'extension_diviseur' && e.au_lieu_de === extension.diviseur).reduce((d, e) => e.diviseur, extension.diviseur);
+}
+
+/**
+ * Le nom d'une spécialisation magique à l'affichage (décision R270) : l'initiale seule en majuscule (« CONSTRUCTION » → « Construction »). La base garde ses
+ * capitales ; la fiche ne transforme qu'à l'affichage (infobulle d'un sort, pastilles).
+ */
+export const nomDeSpecialisation = (nom) => {
+  const t = String(nom ?? '');
+  return t.charAt(0).toLocaleUpperCase('fr') + t.slice(1).toLocaleLowerCase('fr');
+};
 
 /**
  * Ce que les dons passifs débloqués font du bouclier porté (lib/bouclier-texte.mjs : Bouclier d'attaque, Bouragé, Mur du Boxeur ; décisions R255, R267),
@@ -3815,12 +3832,15 @@ export function degatsDArme(regles, fiche, rang) {
       else if ((p.familles ?? []).includes(arme.famille_id) && p.mains && !arme.mains) nonComptes.push({ nom, valeur, raison: 'mains' });
     }
   }
-  // le bouclier porté (décisions R255 (2), (3), R267 (3)) : dès qu'un bouclier est porté, « Bouclier d'attaque » ajoute (AP + AM du bouclier) ÷ 4 (au plus
-  // proche, ,5 au supérieur, minimum 1) et « Bouragé » +2 par poids du bouclier aux dégâts de pugilat ; cassé, le bouclier ne compte plus (R108)
+  // le bouclier porté (décisions R255 (2), (3), R267 (3), R269) : dès qu'un bouclier est porté, « Bouclier d'attaque » ajoute (AP + AM du bouclier) ÷ 4 (÷ 3 avec
+  // « Égide d'assaut »), à l'inférieur, minimum 1, et « Bouragé » +2 par poids du bouclier aux dégâts de pugilat ; cassé, le bouclier ne compte plus (R108)
   const duBouclier = arme.famille_id === 'pugilat' ? bouclierDesDons(regles, fiche) : null;
   if (duBouclier && !duBouclier.cassee) {
     for (const e of duBouclier.effets) {
-      if (e.cle === 'extension_de_degats') ajouter(`${e.nom} : (AP + AM du bouclier) ÷ ${e.diviseur}`, extensionDeDegats(duBouclier.ap, duBouclier.am, e));
+      if (e.cle === 'extension_de_degats') {
+        const diviseur = diviseurDeLExtension(e, duBouclier.effets);
+        ajouter(`${e.nom} : (AP + AM du bouclier) ÷ ${diviseur}`, extensionDeDegats(duBouclier.ap, duBouclier.am, { ...e, diviseur }));
+      }
       else if (e.cle === 'degats_par_poids') ajouter(`${e.nom} : poids ${duBouclier.poids}`, e.valeur * duBouclier.poids);
     }
   }

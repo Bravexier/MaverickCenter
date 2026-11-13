@@ -1,4 +1,4 @@
-// Le Boxeur qui porte un bouclier (décisions R255 (1) à (3), R267 (1) et (3)) : « Bouclier d'attaque » et « Bouragé » s'ajoutent aux dégâts de pugilat dès qu'un
+// Le Boxeur qui porte un bouclier (décisions R255 (1) à (4), R267 (1) et (3), R269 : « Égide d'assaut » divise par 3, arrondi toujours à l'inférieur, bouclier cassé : rien) : « Bouclier d'attaque » et « Bouragé » s'ajoutent aux dégâts de pugilat dès qu'un
 // bouclier est porté, « Mur » ajoute toute l'AP et l'AM du bouclier (ses +2 compris) à la défense à chaque attaque subie, même sans parade partielle (exception
 // à R96). « Boucassant », « Posture inébranlable » et « Posture d'urgence » restent un texte seul. Le lecteur des textes : lib/bouclier-texte.mjs.
 // Les règles (textes et valeurs que le site de dev modifie) sont épinglées sur leur état d'import (test/aide-base-d-import.mjs) ; les écritures lues par le
@@ -13,7 +13,7 @@ import { reglesDImport } from './aide-base-d-import.mjs';
 
 const regles = reglesDImport(); // tel que la page le reçoit
 const BOXEUR = 'classes/boxeur';
-const DONS = { attaque: 'capacites/boxeur-bouclier-dattaque', mur: 'capacites/boxeur-mur', bourage: 'capacites/boxeur-bourage' };
+const DONS = { attaque: 'capacites/boxeur-bouclier-dattaque', mur: 'capacites/boxeur-mur', bourage: 'capacites/boxeur-bourage', egide: 'capacites/boxeur-egide-dassaut' };
 const SANS_CALCUL = ['capacites/boxeur-boucassant', 'capacites/boxeur-posture-inebran', 'capacites/boxeur-posture-durgence'];
 const dons = new Map(regles.classes.find((c) => c.id === BOXEUR).dons.map((d) => [d.id, d]));
 const pugilat = regles.armes.find((a) => a.famille_id === 'pugilat');
@@ -42,13 +42,16 @@ test('lecture (lib/bouclier-texte.mjs) : Bouclier d’attaque, Bouragé et Mur s
   assert.deepEqual(effetDeBouclierEcrit('Inflige un bonus de 2 dégâts aux attaques de pugilat avec les boucliers par poids du bouclier.'), { cle: 'degats_par_poids', valeur: 2 });
   assert.deepEqual(effetDeBouclierEcrit('Les boucliers donnent +2AP et AM.'), { cle: 'defense', ap: 2, am: 2 });
   for (const autre of ['Les attaques de pugilats avec un bouclier ignorent 1AP par poids du bouclier.', '5% stabilité, bénéficie d’un avantage lors des jets de cette compétence.',
-    'Si tombe à terre : se met automatiquement en défense', 'La division pour « bouclier d’attaque » est de 3 au lieu de 4.', '', null]) {
+    'Si tombe à terre : se met automatiquement en défense', '', null]) {
     assert.equal(effetDeBouclierEcrit(autre), null, String(autre));
   }
   // les dons de l'import : les trois sont lus ; Boucassant, Posture inébranlable et Posture d'urgence ne le sont pas (R255 (2), (5), (6) : texte seulement)
   assert.deepEqual(dons.get(DONS.attaque).bouclier, { cle: 'extension_de_degats', diviseur: 4, minimum: 1 });
   assert.deepEqual(dons.get(DONS.bourage).bouclier, { cle: 'degats_par_poids', valeur: 2 });
   assert.deepEqual(dons.get(DONS.mur).bouclier, { cle: 'defense', ap: 2, am: 2 });
+  // R269 (1) : « Égide d'assaut » donne un autre diviseur à Bouclier d'attaque, lu dans son texte (celui qu'il remplace compris)
+  assert.deepEqual(effetDeBouclierEcrit('La division pour « bouclier d’attaque » est de 3 au lieu de 4.'), { cle: 'extension_diviseur', diviseur: 3, au_lieu_de: 4 });
+  assert.deepEqual(dons.get(DONS.egide).bouclier, { cle: 'extension_diviseur', diviseur: 3, au_lieu_de: dons.get(DONS.attaque).bouclier.diviseur });
   for (const id of SANS_CALCUL) {
     assert.ok(dons.get(id), id);
     assert.deepEqual([dons.get(id).bouclier, dons.get(id).degats, dons.get(id).sorts], [undefined, undefined, undefined], `${id} : aucun calcul`);
@@ -56,14 +59,20 @@ test('lecture (lib/bouclier-texte.mjs) : Bouclier d’attaque, Bouragé et Mur s
   // aucun autre don de classe ne se lit comme un effet de bouclier
   const lus = regles.classes.flatMap((c) => c.dons.filter((d) => d.bouclier).map((d) => d.id)).sort();
   assert.deepEqual(lus, Object.values(DONS).sort());
+  // un diviseur qui ne remplace pas celui de Bouclier d'attaque n'est pas appliqué
+  const attaque = dons.get(DONS.attaque).bouclier;
+  assert.equal(M.diviseurDeLExtension(attaque, [{ cle: 'extension_diviseur', diviseur: 3, au_lieu_de: attaque.diviseur }]), 3);
+  assert.equal(M.diviseurDeLExtension(attaque, [{ cle: 'extension_diviseur', diviseur: 3, au_lieu_de: attaque.diviseur + 1 }]), attaque.diviseur);
+  assert.equal(M.diviseurDeLExtension(attaque, []), attaque.diviseur);
 });
 
-test('R255 (3) : Bouclier d’attaque, (AP + AM) ÷ 4 arrondi au plus proche, ,5 au supérieur, minimum 1 (5 → 1, 6 → 2, 7 → 2, 10 → 3)', () => {
-  const regle = { diviseur: 4, minimum: 1 };
-  assert.deepEqual([[5, 0], [6, 0], [7, 0], [10, 0], [3, 3], [2, 3]].map(([ap, am]) => M.extensionDeDegats(ap, am, regle)), [1, 2, 2, 3, 2, 1]);
-  // 1,5 → 2 ; 2,5 → 3 ; 1,25 → 1 ; 1,75 → 2 ; le minimum 1 de 0 à 5 (0,25 → 0 → 1)
-  assert.deepEqual([6, 10, 5, 7].map((somme) => M.extensionDeDegats(somme, 0, regle)), [2, 3, 1, 2]);
-  assert.deepEqual([0, 1, 2, 3].map((somme) => M.extensionDeDegats(somme, 0, regle)), [1, 1, 1, 1], 'minimum 1');
+test('R269 (2) : Bouclier d’attaque, (AP + AM) ÷ 4 (ou ÷ 3), toujours arrondi à l’inférieur (R175), minimum 1 (÷ 4 : 5 → 1, 6 → 1, 7 → 1, 10 → 2)', () => {
+  const quatre = { diviseur: 4, minimum: 1 };
+  assert.deepEqual([[5, 0], [6, 0], [7, 0], [10, 0], [3, 3], [2, 3], [4, 4], [8, 8]].map(([ap, am]) => M.extensionDeDegats(ap, am, quatre)), [1, 1, 1, 2, 1, 1, 2, 4]);
+  // le minimum 1 de 0 à 7
+  assert.deepEqual([0, 1, 2, 3, 4, 7].map((somme) => M.extensionDeDegats(somme, 0, quatre)), [1, 1, 1, 1, 1, 1]);
+  // ÷ 3 (Égide d'assaut) : 5 → 1, 6 → 2, 8 → 2, 9 → 3
+  assert.deepEqual([5, 6, 8, 9].map((somme) => M.extensionDeDegats(somme, 0, { diviseur: 3, minimum: 1 })), [1, 2, 2, 3]);
 });
 
 test('R255 (2) : le poids du bouclier vaut Léger 1, Moyen 2, Lourd 3, Très lourd 4 (R92)', () => {
@@ -73,17 +82,17 @@ test('R255 (2) : le poids du bouclier vaut Léger 1, Moyen 2, Lourd 3, Très lou
   for (const p of regles.poids_bouclier) assert.equal(M.POIDS_DU_BOUCLIER[p.id], p.force_min, p.id);
 });
 
-test('R267 (3), R255 (2) et (3) : dès qu’un bouclier est porté, Bouclier d’attaque et Bouragé s’ajoutent aux dégâts de pugilat', () => {
+test('R267 (3), R255 (2), R269 : dès qu’un bouclier est porté, Bouclier d’attaque (÷ 4, ÷ 3 avec Égide d’assaut, à l’inférieur) et Bouragé s’ajoutent aux dégâts de pugilat', () => {
   assert.ok(boucliers.every(Boolean), 'un bouclier de chaque poids');
   // les états du Boxeur : de ses dons acquis (Bouclier d'attaque, puis Mur, puis Bouragé, un don à choisir au niveau 10 de la classe), sans fixer de niveau
   const etats = new Set();
   for (let niveau = 1; niveau <= 20; niveau += 1) {
     for (const choisi of [false, true]) {
-      // (Bouragé est un don à choisir de la spécialité de sa classe)
+      // (Bouragé est un don à choisir de la spécialité de sa classe ; Égide d'assaut est un don de classe du niveau 20)
       const reste = choisi ? { classes: [{ rang: 1, classe_id: BOXEUR, specialite_id: dons.get(DONS.bourage).specialite_id }], capacites: [{ capacite_id: DONS.bourage }] } : {};
       const sans = fiche(niveau, reste);
       const acquis = new Set(M.donsAcquis(regles, sans).flatMap((c) => c.dons.map((d) => d.id)));
-      etats.add([DONS.attaque, DONS.mur, DONS.bourage].map((id) => acquis.has(id)).join());
+      etats.add([DONS.attaque, DONS.mur, DONS.bourage, DONS.egide].map((id) => acquis.has(id)).join());
       for (const b of boucliers) {
         const f = fiche(niveau, { bouclier: b, ...reste });
         const porte = M.bouclierDe(regles, f);
@@ -91,7 +100,8 @@ test('R267 (3), R255 (2) et (3) : dès qu’un bouclier est porté, Bouclier d�
         const dg = degats(regles, f);
         const murEnPlus = acquis.has(DONS.mur) ? 2 : 0;
         // Bouclier d'attaque : (AP + AM du bouclier, +2 et +2 de Mur s'il l'a) ÷ 4, au plus proche, ,5 au supérieur, au moins 1
-        const attendu = acquis.has(DONS.attaque) ? Math.max(1, Math.floor((porte.ap + porte.am + 2 * murEnPlus) / 4 + 0.5)) : null;
+        const diviseur = acquis.has(DONS.egide) ? 3 : 4;
+        const attendu = acquis.has(DONS.attaque) ? Math.max(1, Math.floor((porte.ap + porte.am + 2 * murEnPlus) / diviseur)) : null;
         const ou = `niveau ${niveau}, ${b.id}`;
         assert.deepEqual(lignes(dg, DONS.attaque).map((l) => l.valeur), attendu === null ? [] : [attendu], `${ou} : Bouclier d’attaque`);
         // Bouragé : +2 par poids du bouclier
@@ -102,7 +112,7 @@ test('R267 (3), R255 (2) et (3) : dès qu’un bouclier est porté, Bouclier d�
       }
     }
   }
-  assert.equal(etats.size, 3, 'les trois états de dons de la classe sont éprouvés');
+  assert.equal(etats.size, 5, 'les états de dons de la classe sont éprouvés : Bouclier d’attaque seul, avec Mur, avec Bouragé, avec Égide d’assaut, avec ou sans Bouragé');
   // l'AP et l'AM d'un bouclier amélioré comptent aussi (Bouclier d'attaque lit l'AP et l'AM du bouclier porté)
   const amelioration = regles.ameliorations.find((a) => a.cible === 'bouclier' && a.bonus_ap > 0);
   const b = boucliers[0];
@@ -110,10 +120,10 @@ test('R267 (3), R255 (2) et (3) : dès qu’un bouclier est porté, Bouclier d�
   const porte = M.bouclierDe(regles, ameliore);
   assert.equal(porte.ap, (b.ap ?? 0) + amelioration.bonus_ap);
   const murEnPlus = M.donsAcquis(regles, ameliore).some((c) => c.dons.some((d) => d.id === DONS.mur)) ? 4 : 0;
-  assert.deepEqual(lignes(degats(regles, ameliore), DONS.attaque).map((l) => l.valeur), [Math.max(1, Math.floor((porte.ap + porte.am + murEnPlus) / 4 + 0.5))]);
+  assert.deepEqual(lignes(degats(regles, ameliore), DONS.attaque).map((l) => l.valeur), [Math.max(1, Math.floor((porte.ap + porte.am + murEnPlus) / (M.donsAcquis(regles, ameliore).some((c) => c.dons.some((d) => d.id === DONS.egide)) ? 3 : 4)))]);
 });
 
-test('R267 (3) : sans bouclier porté, ou avec une arme qui n’est pas du pugilat, ou le bouclier cassé, rien n’est ajouté', () => {
+test('R269 (3), R267 (3) : sans bouclier porté, avec une arme qui n’est pas du pugilat, ou le bouclier cassé (rien pour Bouragé, Bouclier d’attaque ni Mur : R108), rien n’est ajouté', () => {
   const b = boucliers[3];
   // sans bouclier (la forme seule, sans matière, n'est pas un bouclier de la liste)
   assert.deepEqual(lignes(degats(regles, fiche(20)), DONS.attaque), []);
