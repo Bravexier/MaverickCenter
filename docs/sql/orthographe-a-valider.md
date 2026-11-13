@@ -1276,3 +1276,7 @@ Relevé de `worldbuilding` (2026-11-12). Les textes des onglets 21 et 22 du clas
 - **Dieu de la Terre** — « Dieu de la Terre » (onglet 21, A4) et « dieu de la Terre ». Laquelle retenir ? → Décidé (R266 (3)) : « Dieu de la Terre ». Corrigé partout, Codex compris (R266 (4)).
 - **Tempe/Espace** (onglet 21, A58, tableau des magies innées du Fongoïde) — Coquille pour la magie « Espace/Temps ». Notée sans correction : la case ne sert qu'à la liste des magies innées.
 
+## Mise à jour de Décembre : suites (migration 0121, 2026-11-13)
+
+- `0121-maj-decembre-suites` : R255 (7) (« Posture inébranlable », id inchangé, clés recalculées ; « l'AP », « d'AP+AM », « altérations d'état » dans les dons du Boxeur), R10 (« (armes), » d'Immatériel, 5 cellules) et R266 (« Dieu de la Terre », « Super Gemme(s) », « Mort Fertile » : 31 occurrences dans 24 cellules, Codex, onglets 21 et 22, bestiaire et Mode Super compris, hors `historique_modification` et `note_version_ligne`) ; ids, clés et adresses inchangés ; registre `data/migrations/0121-maj-decembre-suites.json`, liste `corrections`.
+
