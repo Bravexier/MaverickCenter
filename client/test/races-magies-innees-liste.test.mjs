@@ -3,8 +3,9 @@
 // plus faire échouer tools/db/races_onglet.py --verifier (donc la mise à jour) ; une race que le site n'a pas touchée reste contrôlée comme à l'import.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { cpSync, readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, cpSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { appliquerJournal } from '../scripts/db-appliquer-edition.mjs';
@@ -14,6 +15,7 @@ import { journalExporte } from '../serveur/edition-journal.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { cheminDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { remettreLesCorpsDeLa0119 } from './aide-migration-0119.mjs';
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
 const sansPython = spawnSync('python3', ['--version']).error ? 'python3 absent' : false;
@@ -54,9 +56,21 @@ test('R31 : liste changée sans la phrase, phrase réécrite sans la liste (mêm
   // une race que le site n'a pas touchée reste contrôlée comme à l'import : sa liste modifiée hors du site est un écart. Sur les lignes de la base
   // dans son état d'import (aide-base-d-import.mjs, exportées par tools/db/maverick.py#exporter) : le site de dev peut avoir touché la phrase ou la
   // liste de chaque race, une race « non touchée » ne se suppose pas dans data/rows.
+  // La migration 0119 a réécrit les pages de race (« Classes accessibles », R238 (1)) après le site : leur corps garde, dans la base d'import, les
+  // modifications du site que race_onglet et race_don n'ont plus. Ils sont remis à « import + 0119 » dans une copie (aide-migration-0119.mjs).
+  const baseImport = join(tmp, 'import.db');
+  copyFileSync(cheminDImport(), baseImport);
+  const ecriture = new DatabaseSync(baseImport);
+  const courante = new DatabaseSync(cheminBase({ sansExemples: false }), { readOnly: true });
+  try {
+    remettreLesCorpsDeLa0119(ecriture, courante, { prefixe: 'races/' });
+  } finally {
+    ecriture.close();
+    courante.close();
+  }
   const rowsDImport = join(tmp, 'rows-import');
   const exporter = spawnSync('python3', ['-I', '-c', 'import sqlite3, sys; sys.path.insert(0, sys.argv[1]); import maverick as T; T.exporter(sqlite3.connect(sys.argv[2]), sys.argv[3])',
-    join(RACINE, 'tools', 'db'), cheminDImport(), rowsDImport], { encoding: 'utf8' });
+    join(RACINE, 'tools', 'db'), baseImport, rowsDImport], { encoding: 'utf8' });
   assert.equal(exporter.status, 0, exporter.stderr);
   const temoin = verifier(rowsDImport);
   assert.equal(temoin.status, 0, temoin.stdout + temoin.stderr);
