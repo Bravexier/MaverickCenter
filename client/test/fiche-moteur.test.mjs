@@ -246,7 +246,9 @@ test('classe magique : catégorie et Archimage (R6), spécialité « considéré
   assert.equal(classeMagique(regles, { classe_id: 'classes/archimage', specialite_id: null }, 1), true);
   assert.equal(classeMagique(regles, { classe_id: 'classes/guerrier', specialite_id: null }, 20), false);
   const fiche = { ...ficheVide(), race_id: 'races/orios', xp: 11450, magie_innee_id: 'magies/magie-du-sang', classes: [{ rang: 1, classe_id: orios.id, specialite_id: chaman.id }] };
-  assert.equal(emplacementsDeSorts(regles, fiche).conditions, 2);
+  // niveau global 10 (puissance magique 3, au seuil des spécialisations) : mono-magie, la Super-magie est une condition de plus (R236 (4), test/r236-fiche-specialisations.test.mjs)
+  assert.deepEqual(emplacementsDeSorts(regles, fiche), { conditions: 3, puissance: 3, total: 9, superMagie: true });
+  assert.equal(emplacementsDeSorts(regles, { ...fiche, xp: 0 }).conditions, 1, 'niveau 1 : la classe n’est pas magique (spécialité au niveau 10), pas de Super-magie');
 });
 
 test('race : classes et magies innées permises (R8, R11), ethnies de la race et de sa magie', () => {
@@ -572,8 +574,9 @@ test('décision R169 : la liste des sorts d’un livre (sortsDesLivres) : magie 
   assert.deepEqual(sortsDesLivres(regles, mono).map((s) => s.id), de(feu));
   assert.ok(sortsDesLivres(regles, mono).some((s) => s.niveau > npmMax(regles, mono)), 'quel que soit le NPM');
   assert.ok(sortsDesLivres(regles, mono).length > sortsPossibles(regles, mono).length);
-  // magie innée et magie acquise
-  assert.deepEqual(sortsDesLivres(regles, { ...mono, magie_acquise_id: eau }).map((s) => s.id), [...de(feu), ...de(eau)]);
+  // magie innée et magie acquise (bi-magie : les sorts communs, sans spécialisation choisie ; décision R236 (8), test/r236-fiche-specialisations.test.mjs)
+  const communs = (m) => regles.sorts.filter((s) => s.magie_id === m && !s.specialisation_id).map((s) => s.id);
+  assert.deepEqual(sortsDesLivres(regles, { ...mono, magie_acquise_id: eau }).map((s) => s.id), [...communs(feu), ...communs(eau)]);
   // le Potentiel Illimité : les sorts de toutes les magies
   const pi = { ...ficheVide(), magie_innee_id: 'magies/potentiel-illimite' };
   assert.equal(sortsDesLivres(regles, pi).length, regles.sorts.length);
@@ -581,7 +584,7 @@ test('décision R169 : la liste des sorts d’un livre (sortsDesLivres) : magie 
   // décision R176 : le Potentiel Illimité est toujours la magie innée ; une fiche qui le met en magie acquise (signalée par mono_magie) n'ouvre
   // pas toutes les magies : la liste reste celle de ses magies, et un livre d'une autre magie y est horsDesMagies, en attente, jamais refusé
   const piAcquis = { ...mono, magie_acquise_id: 'magies/potentiel-illimite' };
-  assert.deepEqual(sortsDesLivres(regles, piAcquis).map((s) => s.id), [...de(feu), ...de('magies/potentiel-illimite')]);
+  assert.deepEqual(sortsDesLivres(regles, piAcquis).map((s) => s.id), [...communs(feu), ...de('magies/potentiel-illimite')]);
   assert.ok(sortsDesLivres(regles, piAcquis).length < regles.sorts.length);
   const livreEau = de(eau)[0];
   const [l] = livresDe(regles, { ...piAcquis, livres_sorts: [{ sort_id: livreEau, rang: 1 }] });

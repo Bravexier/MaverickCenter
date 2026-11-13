@@ -36,6 +36,9 @@ export const LIBELLES_DES_CONTROLES = Object.freeze({
   capacite_hors_classe: 'Don d’une autre classe ou d’une autre spécialité',
   capacites_exclusives: 'Deux dons qui s’excluent',
   sort_hors_magie: 'Sort d’une autre magie',
+  // spécialisations magiques (décision R236 (3), migration 0118) : seul le bi-magie choisit, une par magie ; le détail nomme le sort, ou la spécialisation
+  sort_hors_specialisation: 'Sort d’une spécialisation que le bi-magie n’a pas choisie (une par magie)',
+  specialisation_hors_magie: 'Spécialisation d’une magie que le personnage n’a ni en innée ni en acquise',
   sort_puissance: 'Sort au-dessus de la puissance magique',
   sort_nm_plafond: 'Plus de 3 NM sur un sort',
   sort_nm_max: 'NM au-dessus du maximum sur un sort (niveau − 1, plus les NM du MJ ; le NM d’un livre ne compte pas)',

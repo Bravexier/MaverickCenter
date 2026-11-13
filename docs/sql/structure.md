@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 117 : 216 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 118 : 217 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -22,7 +22,7 @@
 - [10. TRANSVERSAL : notes de cellule et écarts entre sources](#10-transversal--notes-de-cellule-et-écarts-entre-sources) : `note_cellule`, `ecart_source`, `correction`
 - [11. TABLES DÉRIVÉES (jamais exportées dans data/rows/, recalculées par `npm run db:build`)](#11-tables-dérivées-jamais-exportées-dans-datarows-recalculées-par-npm-run-dbbuild) : `lien`, `lien_candidat`, `page_fts`, `entite_fts`
 - [12. VUES (toujours à jour : rien à recalculer)](#12-vues-toujours-à-jour--rien-à-recalculer) : `cle_page`, `lien_page`, `lien_a_creer`, `v_mot_cle`, `v_magie_incompatible`, `v_sort_bonus_au_nm`, `v_race_carac_borne`, `v_race_classe_accessible`, `v_race_magie_accessible`, `v_regard_peuple`, `v_creature_magie`, `v_creature_resistance`, `v_creature_sort`, `v_creature_cout_invocation`, `v_creature_meme_bloc`, `v_arme`, `v_ingredient_possible`, `v_ressource_recette`, `v_metier_recette`, `v_potion`, `v_objet_ceinture`, `v_arme_composee`, `v_armure_piece`, `v_niveau`, `v_competence`, `v_resistance_combinaison`, `v_mode_hyper_lectures`, `v_classe_capacite`, `v_capacite_exclusive`, `v_capacite_partagee`
-- [13. PERSONNAGES : les vraies fiches (joueurs et prétirés), les groupes de jeu et la visibilité (saisie, jamais importée ; migration 0011)](#13-personnages--les-vraies-fiches-joueurs-et-prétirés-les-groupes-de-jeu-et-la-visibilité-saisie-jamais-importée--migration-0011) : `utilisateur`, `utilisateur_role`, `personnage`, `personnage_partage`, `personnage_classe`, `personnage_caracteristique`, `personnage_competence`, `personnage_entrainement`, `personnage_acquis_choix`, `personnage_resistance_choix`, `personnage_metier_bonus`, `personnage_capacite`, `personnage_don_obtenu`, `personnage_sort`, `personnage_livre_sort`, `personnage_maitrise_choix`, `personnage_arme`, `personnage_armure_partie`, `personnage_accessoire`, `personnage_inventaire`, `personnage_ceinture`, `personnage_action_usage`, `groupe`, `groupe_membre`, `v_personnage_niveau`, `v_personnage_metier_bonus`, `v_personnage_don_acquis`, `v_personnage_maitrise_part`, `v_personnage_maitrise_arme`, `v_personnage_visible`, `v_groupe_controle`, `v_personnage_controle`
+- [13. PERSONNAGES : les vraies fiches (joueurs et prétirés), les groupes de jeu et la visibilité (saisie, jamais importée ; migration 0011)](#13-personnages--les-vraies-fiches-joueurs-et-prétirés-les-groupes-de-jeu-et-la-visibilité-saisie-jamais-importée--migration-0011) : `utilisateur`, `utilisateur_role`, `personnage`, `personnage_partage`, `personnage_classe`, `personnage_specialisation_magie`, `personnage_caracteristique`, `personnage_competence`, `personnage_entrainement`, `personnage_acquis_choix`, `personnage_resistance_choix`, `personnage_metier_bonus`, `personnage_capacite`, `personnage_don_obtenu`, `personnage_sort`, `personnage_livre_sort`, `personnage_maitrise_choix`, `personnage_arme`, `personnage_armure_partie`, `personnage_accessoire`, `personnage_inventaire`, `personnage_ceinture`, `personnage_action_usage`, `groupe`, `groupe_membre`, `v_personnage_niveau`, `v_personnage_metier_bonus`, `v_personnage_don_acquis`, `v_personnage_maitrise_part`, `v_personnage_maitrise_arme`, `v_personnage_visible`, `v_groupe_controle`, `v_personnage_controle`
 - [14. ÉDITION : le journal des modifications faites depuis le site de dev (saisie, jamais importée ; migration 0017)](#14-édition--le-journal-des-modifications-faites-depuis-le-site-de-dev-saisie-jamais-importée--migration-0017) : `modification_lot`, `modification`, `note_version_brouillon`
 - [15. NOTES DE VERSION : ce que chaque version a changé dans les règles, et l'historique des modifications faites sur le site de dev](#15-notes-de-version--ce-que-chaque-version-a-changé-dans-les-règles-et-lhistorique-des-modifications-faites-sur-le-site-de-dev) : `note_version`, `note_version_ligne`, `historique_modification`
 
@@ -558,7 +558,7 @@ SORT : une ligne par sort des tables de sorts du classeur de Décembre (migratio
 | `ic_nm_min` | INTEGER | non |  | N de « IC pour N NM » : niveau de maîtrise qui rend le sort IC |
 | `imparable` | INTEGER | oui |  | le type contient « imparable » (insensible à la casse) |
 | `inesquivable` | INTEGER | oui |  | le type contient « inesquivable » |
-| `cout_brut` | TEXT | oui |  | « 3 », « 55 (-5/NM) », « 0 », « X », « N/A » ; les coûts du classeur de Décembre que repartirLeCout ne sait pas lire (« 8xN/tour », « 5/boule ») sont répartis par la décision R244 (migration 0117) ; Projectile arcanique (« *4 / projectile ») reste écrit tel quel, rien de typé, tant que MAJ-K7 est ouverte |
+| `cout_brut` | TEXT | oui |  | « 3 », « 55 (-5/NM) », « 0 », « X », « N/A » ; les coûts du classeur de Décembre que repartirLeCout ne sait pas lire (« 8xN/tour », « 5/boule ») sont répartis par la décision R244 (migration 0117) ; Projectile arcanique (« *4 / projectile ») : « 4/projectile » et son coût secondaire, décision R251 (migration 0118 ; le calcul par projectile est celui de la fiche, R248) |
 | `cout_chakra` | INTEGER | non |  | la consommation de chakra quand la forme est « N » ou « N (-k/NM) » ; sinon NULL |
 | `cout_ressource` | TEXT | non |  | ressource de la 4ème barre quand le coût secondaire est « M Sang » ou « M âme(s) » |
 | `cout_ressource_valeur` | INTEGER | non |  | sa quantité ; NULL si « X » ou absente |
@@ -3583,6 +3583,16 @@ Classes du personnage : « CLASSE » 1 (A9) et 2 (A11), chacune avec sa spécial
 | `classe_id` | TEXT | oui | → classe.id |  |
 | `specialite_id` | TEXT | non | → specialite.id | NULL tant qu'elle n'est pas choisie |
 
+### `personnage_specialisation_magie`
+
+Spécialisation magique choisie (décision R236, migration 0118) : une ligne par magie de la fiche dont la spécialisation est choisie ; aucune ligne = pas encore choisie. Seul le bi-magie choisit (R236 (3) : une par magie) ; le mono-magie a les deux (R236 (2)) et le Potentiel Illimité les sorts des deux spécialisations de chaque magie (R236 (7)) : une ligne de leur fiche est gardée, sans effet. Le choix reste modifiable (R236 (6), comme personnage_classe.specialite_id). Contrôlé par v_personnage_controle (sort_hors_specialisation, specialisation_hors_magie).
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `personnage_id` | TEXT | oui | PK 1, → personnage.id |  |
+| `magie_id` | TEXT | oui | PK 2, → magie.id |  |
+| `specialisation_id` | TEXT | oui | → magie_specialisation.id |  |
+
 ### `personnage_caracteristique`
 
 Valeur de base de chaque caractéristique (E18, M18, U18, E19, M19, U19), choisie dans les bornes de la race (v_race_carac_borne) ; le total suit seuil_niveau 'caracteristiques_total' (décision R3 : exactement). Le point de la magie innée (G18…) et les bonus d'accessoires se calculent.
@@ -3907,7 +3917,7 @@ Contrôle des inscriptions dans les groupes : une ligne par anomalie (vide = con
 
 *vue*
 
-Contrôle d'une fiche : une ligne par règle enfreinte (vide = fiche conforme pour ces règles). `regle` est une clé stable ; `detail` dit quoi. Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, guide, décisions R2, R3, R8, R11, R15, R16, R20, R23, R24, R25, R26, R33, R45, R73, R95, R96, R100, R104, R118, les maîtrises d'armes de R148 à R151, R154, l'armure de R165, les armes élémentaires de R167, les dons « Variable » de R181, le plafond de NPM de R188 et la santé du Potentiel Illimité de R225) ; ce qui demande le moteur (bonus de classe, d'équipement, nombre de sorts, poids d'armure portable de R165) n'est pas ici. Toute fiche est contrôlée, même inachevée : il n'y a plus de statut (demande du propriétaire, migration 0038) ; une ligne signale, elle n'empêche pas d'enregistrer.
+Contrôle d'une fiche : une ligne par règle enfreinte (vide = fiche conforme pour ces règles). `regle` est une clé stable ; `detail` dit quoi. Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, guide, décisions R2, R3, R8, R11, R15, R16, R20, R23, R24, R25, R26, R33, R45, R73, R95, R96, R100, R104, R118, les maîtrises d'armes de R148 à R151, R154, l'armure de R165, les armes élémentaires de R167, les dons « Variable » de R181, le plafond de NPM de R188, la santé du Potentiel Illimité de R225 et les spécialisations magiques de R236) ; ce qui demande le moteur (bonus de classe, d'équipement, nombre de sorts, poids d'armure portable de R165) n'est pas ici. Toute fiche est contrôlée, même inachevée : il n'y a plus de statut (demande du propriétaire, migration 0038) ; une ligne signale, elle n'empêche pas d'enregistrer.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |

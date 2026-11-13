@@ -126,7 +126,8 @@ bouton (au-dessus quand la place manque), bornée à l'écran, téléphone compr
   `v_personnage_controle` : la page les signale seule.
 - **Choix à faire** (`choixEnAttente`) : l'ethnie d'une race choisie, la spécialité d'une classe au niveau de son don de spécialité, chaque groupe de dons à
   choisir, chaque bonus ou objet de départ du métier à choisir, le +1 d'une magie qui le laisse au choix, chaque point de maîtrise d'arme à choisir (et
-  l'acquis, l'accessoire, la résistance au choix), l'entrée qu'obtient chaque don « Variable » du Mage Bleu (nature `don_obtenu`, ci-dessous). Leur champ est **surligné** (ambre, `data-a-choisir`),
+  l'acquis, l'accessoire, la résistance au choix), l'entrée qu'obtient chaque don « Variable » du Mage Bleu (nature `don_obtenu`, ci-dessous), la **spécialisation magique** de chaque magie d'un bi-magie (nature
+  `specialisation_magie`, « Sorts » ci-dessous). Leur champ est **surligné** (ambre, `data-a-choisir`),
   et tant qu'il en reste le panneau « Choix » sort en **tiroir** en bas de l'écran, par-dessus la fiche, avec la liste de ce qui manque ; il ne se range que
   quand la zone 4 est à l'écran ; « Réduire » le replie sur sa poignée (le survol le rouvre), « Aller aux choix » y descend. Replié, son contenu est caché
   (`display: none`) : le focus clavier n'y entre pas. Au clavier, on le rouvre par « Déplier », ou l'on passe par « Aller aux choix », qui met le focus sur
@@ -461,10 +462,28 @@ bouton (au-dessus quand la place manque), bornée à l'écran, téléphone compr
 - **Sorts** : un tableau d'une ligne par emplacement, sans emplacement en plus (décision R27), chacune avec la liste des sorts possibles moins ceux des autres
   lignes (`lignesDeSorts`). Les **emplacements** (`emplacementsDeSorts`) : conditions remplies (magie innée, magie acquise, chaque classe magique, et
   chaque don acquis marqué `capacite_condition_emplacements` : « Grimoire » de l'Archimage, qui compte **exactement comme une magie acquise** sans en
-  donner une, décision R189) × la puissance magique du niveau (`puissanceMagique`). Les **sorts possibles** (`sortsPossibles`) vont jusqu'au **NPM des
+  donner une, décision R189) × la puissance magique du niveau (`puissanceMagique`). **Super-magie** (décision R236 (4), (5)) : dès que la puissance
+  magique du niveau atteint le seuil des spécialisations (le plus petit NPM d'un sort qui en a une, lu dans les règles : `seuilDesSpecialisations`, 3,
+  niveau global 8), une fiche **sans magie acquise** (mono-magie, Corruption innée et Potentiel Illimité compris) compte une condition de plus, comme
+  une magie acquise, sans seconde magie ni changement de NPM ; « Grimoire » et la Super-magie sont **la même condition** : avec un don
+  `condition_emplacements` acquis elle ne s'ajoute pas (un Archimage du Potentiel Illimité de niveau 8 reste à 9 emplacements avec sa classe magique, un
+  Potentiel Illimité sans Grimoire en gagne une). Le bi-magie ne gagne rien. `emplacementsDeSorts` rend alors `superMagie: true`, et la page dit « dont la
+  Super-magie » dans le détail des conditions. Les **sorts possibles** (`sortsPossibles`) vont jusqu'au **NPM des
   sorts** (`npmDesSorts`, décision R188) : la puissance du niveau (`npmMax`), bornée pour une magie innée qui a un plafond (`magie_npm_plafond` : le
   Potentiel Illimité, 3) relevé par un don acquis (`capacite_npm_plafond` : « Semi-complet », 4), soit min(NPM du niveau, plafond) : le don n'ouvre jamais
-  le NPM 4 avant le niveau global 12. Seul le choix des sorts est plafonné (la mention « sorts jusqu'au NPM » au-dessus du tableau, « NPM … au plus » de la
+  le NPM 4 avant le niveau global 12. **Spécialisations magiques** (décision R236) : deux par magie à partir du NPM 3, sauf le Potentiel Illimité
+  (`regles.magies[].specialisations`, `regles.sorts[].specialisation_id`, `null` pour un sort commun). Le **mono-magie** (sans magie acquise) et le
+  **Potentiel Illimité** gardent tous les sorts de leurs magies, sous `npmDesSorts` ; le **bi-magie** (`estBiMagie` : une magie acquise, une innée autre
+  que le Potentiel Illimité) choisit **une spécialisation par magie** et n'a que les sorts communs et ceux de la spécialisation choisie de chaque magie
+  (`sortsPossibles` ; sans choix, aucun sort à spécialisation de cette magie). Le choix, `fiche.specialisations_magie` ([{ `magie_id`,
+  `specialisation_id` }], une par magie, table `personnage_specialisation_magie`), est dans le panneau « Choix » (`#choix-specialisations-magie`, des
+  pastilles par magie, comme la spécialité d'une classe) dès que le NPM des sorts atteint le seuil, **à faire** tant qu'une magie n'a pas le sien
+  (`specialisationsAChoisir`, `choixEnAttente`, nature `specialisation_magie`, clé `cleDeChoix.specialisationMagie` ; une fiche d'avant y tombe, rien n'est
+  choisi à la place du joueur) et **modifiable à tout moment** (R236 (6)) : le sort d'une spécialisation non choisie, ou changée depuis, passe en rouge
+  dans sa ligne, à remplacer (`lignesDeSorts.horsDesRegles`, comme R27 ; le contrôle `sort_hors_specialisation` de la base le signale, comme
+  `specialisation_hors_magie` un choix pour une magie que le personnage n'a pas). `aEnvoyer` n'envoie que les choix valables
+  (`specialisationsValables`). Les **livres de sort** du bi-magie ne portent que sur un sort commun ou d'une spécialisation choisie (R236 (8) :
+  `sortsDesLivres`). Seul le choix des sorts est plafonné (la mention « sorts jusqu'au NPM » au-dessus du tableau, « NPM … au plus » de la
   liste de sorts du tableur) ; la Symbiose, les invocations et le multiplicateur des emplacements gardent la puissance du niveau (R188 (2)). La liste est groupée par NPM, le nom seul, chaque sort sur la couleur de sa magie comme sur les pages de magie, la liste fermée dans celle du
   sort choisi (`sortsParNpm`, demande du propriétaire), ce que chaque sort apporte en infobulle (« Listes avec infobulles », plus haut) ; le **NM** d'un sort se règle à **un seul curseur, de 0 à 3** (décision R118, qui précise
   R26 : plus de cases « livre » ni « MJ » ; `bornesDuNm`, `sortAuNm`), **de 1 à 3** quand l'entraînement note un livre de ce sort (« livre » à côté du
@@ -596,7 +615,7 @@ bouton (au-dessus quand la place manque), bornée à l'écran, téléphone compr
   dans l'acquis ; 15 compétences au plus : règles `entrainement_valeur`, `entrainement_competences` de la vue, qui signalent sans bloquer ; deux lignes de
   la même compétence n'en font qu'une à l'enregistrement, points additionnés : `entrainementsAEnregistrer`), un **livre de sort** (décision R169 : un
   livre par sort, `livres_sorts` de la fiche, table `personnage_livre_sort` ; le sort se choisit parmi **tous ceux de la magie innée et de la magie
-  acquise, quel que soit le NPM, choisis ou non**, ceux de **toutes les magies** pour le Potentiel Illimité, toujours la magie innée (R176) — `sortsDesLivres`, la seule liste —, groupés
+  acquise, quel que soit le NPM, choisis ou non**, ceux de **toutes les magies** pour le Potentiel Illimité, toujours la magie innée (R176) — `sortsDesLivres`, la seule liste ; pour un bi-magie, seulement les sorts communs et ceux d'une spécialisation choisie : R236 (8) —, groupés
   par magie sur leur couleur, sans ceux qui ont déjà leur livre ; « + Livre de sort » prend le premier sort choisi sans livre sous le plafond, sinon le
   premier sort possible sans livre, `sortPourUnLivre` ; sur un sort choisi, noter le livre ajoute son NM, au plus 3, le retirer le lui reprend, le
   déplacer d'un sort à l'autre ne fait perdre aucun NM : `sortAvecLivre`, `livresApresAjout`, `livresApresRetrait`, `livresApresChangement`, R118 ; sur
@@ -795,7 +814,11 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   « ou 2 × le coût − bâton » en corruption ; un coût par unité — « Par NPM de la créature invoquée », « Pour 1 dégât supplémentaire », « Par taille
   créée »… : `multiplicateurDuCout`, sans la canalisation ni Échange — se multiplie d'abord par le « × N » de sa case, puis se réduit, Économe
   comptant le NPM de la créature d'une invocation surchargée (pas d'une créature sacrifiée) : décision R129 ; « × N » est un réglage du moment, non
-  enregistré, borné par `bornesDuMultiplicateur` : le NPM accessible pour une créature, 30 chakra pour Charge d'énergie, sinon 99), la portée (accessoires, dons, bâton) et les dégâts ou soins d'une écriture sans ambiguïté
+  enregistré, borné par `bornesDuMultiplicateur` : le NPM accessible pour une créature, 30 chakra pour Charge d'énergie, sinon 99 ; **Projectile arcanique**
+  (décisions R248, R251) : le « × N » est le nombre de projectiles ; le coût écrit « 4/projectile » et le coût secondaire « +1 au coût de chaque projectile
+  supplémentaire » sont lus dans les données (`multiplicateurDuCout`, `progressif: { pas }` ; la même unité des deux, sinon rien n'est deviné), jamais
+  par l'id du sort ; N projectiles coûtent 4 + 5 + … + (N + 3), soit 4, 9, 15… et 85 pour dix (`coutProgressifDe`, `cout.fois.progressif`), puis les
+  réductions s'appliquent au total), la portée (accessoires, dons, bâton) et les dégâts ou soins d'une écriture sans ambiguïté
   (`lireDegatsDeSort` : crans de dé (Focus, accessoire, « Augmente d'un cran les dés des soins magiques » du Farfadet maritime), un dé au maximum, bonus des dons, accessoires, bâton, armure élémentaire, Symbiose ; Offensif, Défensif) ;
   une valeur **par tour** (« 3d6 dégâts par tour », « 5d6 + 10 soin/tour ») se compte comme une autre, ses bonus **à chaque tour** (décision R113 :
   « 3d6 dégâts par tour » avec +5 → « 3d6 + 5 dégâts par tour », la période écrite après la valeur) ;
@@ -935,7 +958,10 @@ disant), plus de bouton « Imprimer » (Ctrl+P reste possible : la mise en page 
   garde sa famille dans sa case, « → ÉPÉES »), chaque entrée qu'obtient un don « Variable » du Mage Bleu (R181) une ligne « Don obtenu : <don> (<classe>) :
   <entrée> (<magie>) » avant les acquis au choix (« Mimétisme (Mage Bleu) : Moteur thermique (Feu) », `texteDuDonObtenu`, `lireDonObtenu` ; les choix
   gardés sans effet compris ; relue par les noms du don parmi les dons « Variable » de la classe nommée et de l'entrée sur la ligne de la magie nommée,
-  jamais rapprochés : un nom introuvable, un don déjà servi ou une entrée déjà obtenue sont perdus et dits), et chaque résistance au choix une
+  jamais rapprochés : un nom introuvable, un don déjà servi ou une entrée déjà obtenue sont perdus et dits), chaque spécialisation magique choisie (R236) une ligne
+  « Spécialisation magique : <magie> : <spécialisation> » (une par magie, dans l'ordre des magies des règles ; `texteDeLaSpecialisation`, `lireSpecialisation` ;
+  relue par les noms de la magie et de la spécialisation, jamais rapprochés : un nom introuvable ou un doublon par magie est perdu et dit ; sans case dans
+  la fiche auto, comme « Don obtenu »), et chaque résistance au choix une
   ligne « Résistance au choix : <ligne ou don> : <altération ou magie> » (d'une ligne du tableau de la race : « Écaille draconique : Poison », R124 ; d'un
   don qui laisse une magie au choix ou tirée : « Anansi d'Arcane : Feu », « Résilience (Ocultomancien) : Glace », R137 ; la magie tirée d'un don du
   Flagelleur d'un personnage du Potentiel Illimité : « Punis-moi ... (Flagelleur) : Feu », R163 ; relue si c'est une option du choix de la fiche) ; le nom et le type du modèle restent. Les dés de maîtrise
@@ -1177,6 +1203,7 @@ pas, et la note datée est le seul signal.
 | `personnage_metier_bonus` | Pour chaque rang de bonus du métier qui propose plusieurs compétences, celle que le joueur retient (décision R33) |
 | `personnage_capacite` | Dons de classe **à choix** (options d'une ligne, paliers de l'Archimage) ; les autres se déduisent |
 | `personnage_sort` | Sorts de la liste (AA55:AY74) et leur NM (toutes origines comprises), dont celui d'un livre quand le sort en a un (`personnage_livre_sort` ; décisions R118, R169 : la colonne `nm_livre` est retirée par la migration 0082) ; les NM du MJ, notés sort par sort jusqu'à la migration 0066 (`nm_cadeau`), sont ceux de la fiche ; le sort préparé (décision R115, migration 0067 : `prepare`, un seul par fiche), son jet de magie (`prepare_jet`, D100) et la posture du moment de sa préparation (`prepare_posture_id`), et s'il a été préparé en Mode Hyper ou au Mode Hyper 100 % (`prepare_hyper`, `prepare_cent`, 0/1, décision R172, migration 0086 : `prepare_hyper` exige `prepare`, `prepare_cent` exige `prepare_hyper`), que les autres sorts n'ont pas ; pas de case dans la fiche auto |
+| `personnage_specialisation_magie` | La spécialisation magique choisie par magie (décision R236, migration 0118) : `magie_id` et `specialisation_id` (clé étrangère composée vers `magie_specialisation`), une ligne par magie (clé `personnage_id`, `magie_id`) ; aucune ligne = pas encore choisie (choix à faire du bi-magie) ; la ligne d'un mono-magie ou du Potentiel Illimité est sans effet ; modifiable (R236 (6)) ; règles `sort_hors_specialisation` et `specialisation_hors_magie` de `v_personnage_controle` ; clé `specialisations_magie` du JSON ; « Spécialisation magique » de la note du tableur ; pas de case dans la fiche auto |
 | `personnage_livre_sort` | Les livres de sort de l'entraînement (décision R169, migration 0082) : un par sort (clé `personnage_id`, `sort_id`), sur un sort de la liste ou non, rangés (`rang`, unique par fiche) ; le NM d'un livre ne compte (hors du décompte) que si son sort est choisi avec au moins 1 NM ; clé `livres_sorts` du JSON ; « NM offerts » de la note du tableur |
 | `personnage_maitrise_choix` | Maîtrises d'armes (AA2:AV7) : plus rien ne se saisit par famille (décision R148, migration 0076, qui retire `personnage_maitrise_arme` et ses dés par famille) ; une ligne par point à choisir d'une source acquise : la source (`source` : l'id du don, ou `<classe>#maitrise-arme:<rang>` pour une ligne de `classe_maitrise_arme`, sans clé étrangère), le numéro du point dans sa part à choisir (`rang`) et la famille choisie, parmi les options de la part (`maitrise_arme_part_famille`) ; la même famille peut revenir sauf limite écrite (R150) ; jamais ARME DE MONSTRES (R45) ; la famille de la ligne `au_choix` d'une classe est aussi celle des dons qui la suivent (R151) et l'arme du bonus « de l'arme choisie » (R152). L'accessoire « Un point de maîtrise d'arme » garde sa famille dans `personnage_accessoire.arme_famille_id` (R151). Les points et les dés se calculent (`v_personnage_maitrise_arme`) |
 | `personnage_arme`, `personnage_armure_partie`, `personnage_accessoire`, `personnage_inventaire` | Équipement : catalogue de la base (armes, matériaux, améliorations, pièces élémentaires, effets d'accessoire et valeur tirée, case « Malédiction » : six emplacements, R97) et sac ; deux armes (`personnage_arme`, rangs 1 et 2), chacune **un seul modèle** (décision R167, migration 0081) : soit une arme du catalogue (`arme_id`) avec sa composition (`materiau_id`), soit une arme élémentaire (`arme_elementaire_id`, sans matériau : une pièce élémentaire transforme l'arme, qui perd tout), et un seul niveau d'amélioration (`amelioration_id`, une ligne du tableau fondu des armes, cible `arme`), qui ne sert qu'aux dégâts et à la solidité ; plus d'élément posé sur une arme du catalogue ni d'amélioration de l'élément (`amelioration_elementaire_id`, retirée ; la base vivante convertit ses fiches) ; le bouclier dans `personnage` (forme, matière, amélioration, solidité du moment : décision R96, migration 0060, qui remplace `personnage_bouclier_materiau`) ; durabilité du moment d'une arme (`personnage_arme.durabilite`, « Solidité » AK17, AX17 : NULL = à son maximum, 0 = cassée ; décision R74, migration 0045) ; l'armure portée dans `personnage` (une armure complète, son amélioration, son élément et l'amélioration de l'élément) et la solidité du moment de chacune de ses parties abîmées (`personnage_armure_partie` ; décision R95, migration 0055, qui remplace `personnage_armure`, une armure par emplacement) |

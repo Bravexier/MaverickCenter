@@ -411,7 +411,7 @@ sur un don déjà « Variable », `magie` seule change la magie visée. Écrites
 de NPM des sorts que relève un don, R188) et `capacite_condition_emplacements` (les dons qui comptent comme une condition d'emplacements de sorts, R189),
 dérivées de `dons-de-classe/`, et `magie_npm_plafond` (le plafond de NPM des sorts d'une magie innée, R188), dérivée de `magies/`. Un don supprimé emporte
 ces trois lignes, notées au journal avant lui (réponse du propriétaire : « Autoriser et journaliser »). Les entrées du tableau du Mage Bleu (`classe_annexe_entree`) sont la sous-ressource `entrees-du-tableau` de `classes/`, en
-lecture seule ; les dons obtenus d'une fiche (`personnage_don_obtenu`) sont une partie de la fiche, hors ressource.
+lecture seule ; les dons obtenus d'une fiche (`personnage_don_obtenu`) et la spécialisation magique choisie par magie (`personnage_specialisation_magie`, R236) sont des parties de la fiche, hors ressource.
 
 Chaque opération du lot du service est joignable par une ressource (`test/ressources-registre.test.mjs` lit `OPERATIONS` dans
 `serveur/edition.mjs`) ; seuls les lots à plusieurs opérations atomiques (références « @i » : créer une spécialité puis son don dans la même

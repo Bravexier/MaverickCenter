@@ -23,7 +23,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 117;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 118;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -803,6 +803,9 @@ CREATE TABLE magie_specialisation (
   CHECK (substr(id, 1, length(magie_id) + 16) = magie_id || '#specialisation:')
 ) STRICT;
 
+-- Cible de la clé étrangère composée de personnage_specialisation_magie (migration 0118) : une spécialisation de CETTE magie, comme specialite (id, classe_id)
+CREATE UNIQUE INDEX magie_specialisation_id_magie ON magie_specialisation (id, magie_id);
+
 -- SORT : une ligne par sort des tables de sorts du classeur de Décembre (migration 0117, R237 : 14 magies x 30 sorts = 420 ; ils étaient 23 par
 -- magie dans le classeur V8). Par magie : 10 sorts communs (NPM 1 et 2), puis 10 par spécialisation (NPM 3 à 5). Potentiel Illimité n'a pas de table
 -- propre : il pioche dans les 14 autres, règle de la fiche, hors de ce domaine.
@@ -830,8 +833,8 @@ CREATE TABLE sort (
   -- « 3xN/tour ») : lib/sort-cout.mjs#repartirLeCout, puis les réponses du propriétaire (registre 0065-couts-des-sorts-tranches.json).
   cout_brut             TEXT    NOT NULL,               -- « 3 », « 55 (-5/NM) », « 0 », « X », « N/A » ; les coûts du classeur de Décembre que
                                                         -- repartirLeCout ne sait pas lire (« 8xN/tour », « 5/boule ») sont répartis par la décision R244
-                                                        -- (migration 0117) ; Projectile arcanique (« *4 / projectile ») reste écrit tel quel, rien de
-                                                        -- typé, tant que MAJ-K7 est ouverte
+                                                        -- (migration 0117) ; Projectile arcanique (« *4 / projectile ») : « 4/projectile » et son coût
+                                                        -- secondaire, décision R251 (migration 0118 ; le calcul par projectile est celui de la fiche, R248)
   cout_chakra           INTEGER CHECK (cout_chakra >= 0),   -- la consommation de chakra quand la forme est « N » ou « N (-k/NM) » ; sinon NULL
   cout_ressource        TEXT    CHECK (cout_ressource IN ('sang', 'ame')),   -- ressource de la 4ème barre quand le coût secondaire est « M Sang » ou « M âme(s) »
   cout_ressource_valeur INTEGER CHECK (cout_ressource_valeur >= 0),          -- sa quantité ; NULL si « X » ou absente
@@ -4540,6 +4543,20 @@ CREATE TABLE personnage_classe (
 
 CREATE INDEX personnage_classe_classe ON personnage_classe (classe_id);
 
+-- Spécialisation magique choisie (décision R236, migration 0118) : une ligne par magie de la fiche dont la spécialisation est choisie ; aucune ligne =
+-- pas encore choisie. Seul le bi-magie choisit (R236 (3) : une par magie) ; le mono-magie a les deux (R236 (2)) et le Potentiel Illimité les sorts des
+-- deux spécialisations de chaque magie (R236 (7)) : une ligne de leur fiche est gardée, sans effet. Le choix reste modifiable (R236 (6), comme
+-- personnage_classe.specialite_id). Contrôlé par v_personnage_controle (sort_hors_specialisation, specialisation_hors_magie).
+CREATE TABLE personnage_specialisation_magie (
+  personnage_id      TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
+  magie_id           TEXT    NOT NULL REFERENCES magie(id),
+  specialisation_id  TEXT    NOT NULL,
+  PRIMARY KEY (personnage_id, magie_id),
+  FOREIGN KEY (specialisation_id, magie_id) REFERENCES magie_specialisation (id, magie_id)   -- une spécialisation de CETTE magie
+) STRICT, WITHOUT ROWID;
+
+CREATE INDEX personnage_specialisation_magie_specialisation ON personnage_specialisation_magie (specialisation_id);
+
 -- Valeur de base de chaque caractéristique (E18, M18, U18, E19, M19, U19), choisie dans les bornes de la race (v_race_carac_borne) ; le total suit
 -- seuil_niveau 'caracteristiques_total' (décision R3 : exactement). Le point de la magie innée (G18…) et les bonus d'accessoires se calculent.
 CREATE TABLE personnage_caracteristique (
@@ -5022,7 +5039,7 @@ CREATE VIEW v_groupe_controle AS
 -- Contrôle d'une fiche : une ligne par règle enfreinte (vide = fiche conforme pour ces règles). `regle` est une clé stable ; `detail` dit quoi.
 -- Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, guide, décisions R2, R3, R8, R11, R15, R16, R20, R23, R24, R25, R26, R33, R45, R73, R95, R96,
 -- R100, R104, R118, les maîtrises d'armes de R148 à R151, R154, l'armure de R165, les armes élémentaires de R167, les dons « Variable » de R181, le plafond
--- de NPM de R188 et la santé du Potentiel Illimité de R225) ; ce qui demande le moteur (bonus de classe, d'équipement, nombre de sorts, poids d'armure portable de R165) n'est pas ici. Toute fiche est
+-- de NPM de R188, la santé du Potentiel Illimité de R225 et les spécialisations magiques de R236) ; ce qui demande le moteur (bonus de classe, d'équipement, nombre de sorts, poids d'armure portable de R165) n'est pas ici. Toute fiche est
 -- contrôlée, même inachevée : il n'y a plus de statut (demande du propriétaire, migration 0038) ; une ligne signale, elle n'empêche pas d'enregistrer.
 CREATE VIEW v_personnage_controle AS
   -- Race : classe accessible (matrice « Accessibilité de Classe », décision R8)
@@ -5227,6 +5244,24 @@ CREATE VIEW v_personnage_controle AS
   FROM personnage_sort ps JOIN sort s ON s.id = ps.sort_id JOIN personnage p ON p.id = ps.personnage_id
   WHERE s.magie_id <> COALESCE(p.magie_innee_id, '') AND s.magie_id <> COALESCE(p.magie_acquise_id, '')
     AND COALESCE(p.magie_innee_id, '') <> 'magies/potentiel-illimite'
+  UNION ALL
+  -- Spécialisations magiques (décision R236, migration 0118) : seul le bi-magie (une magie acquise, une magie innée autre que le Potentiel Illimité)
+  -- choisit, une spécialisation par magie (R236 (3), personnage_specialisation_magie). Un sort d'une de ses magies qui a une spécialisation (NPM 3 à 5)
+  -- hors de celle choisie pour cette magie, ou sans choix, est signalé (sort_hors_specialisation) ; une spécialisation choisie pour une magie qui n'est
+  -- ni son innée ni son acquise aussi (specialisation_hors_magie). Mono-magie (R236 (2) : les deux spécialisations) et Potentiel Illimité (R236 (7) :
+  -- celles de chaque magie) : jamais signalés, leurs lignes gardées sans effet. Le choix reste modifiable (R236 (6)) : signalé, jamais refusé
+  SELECT ps.personnage_id, 'sort_hors_specialisation', ps.sort_id
+  FROM personnage_sort ps JOIN sort s ON s.id = ps.sort_id JOIN personnage p ON p.id = ps.personnage_id
+  WHERE s.specialisation_id IS NOT NULL
+    AND p.magie_acquise_id IS NOT NULL AND COALESCE(p.magie_innee_id, '') <> 'magies/potentiel-illimite'
+    AND s.magie_id IN (COALESCE(p.magie_innee_id, ''), p.magie_acquise_id)
+    AND NOT EXISTS (SELECT 1 FROM personnage_specialisation_magie m
+                    WHERE m.personnage_id = ps.personnage_id AND m.magie_id = s.magie_id AND m.specialisation_id = s.specialisation_id)
+  UNION ALL
+  SELECT m.personnage_id, 'specialisation_hors_magie', m.specialisation_id
+  FROM personnage_specialisation_magie m JOIN personnage p ON p.id = m.personnage_id
+  WHERE p.magie_acquise_id IS NOT NULL AND COALESCE(p.magie_innee_id, '') <> 'magies/potentiel-illimite'
+    AND m.magie_id <> COALESCE(p.magie_innee_id, '') AND m.magie_id <> p.magie_acquise_id
   UNION ALL
   SELECT ps.personnage_id, 'sort_puissance', ps.sort_id || ' : NPM ' || s.niveau
   FROM personnage_sort ps

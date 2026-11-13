@@ -126,7 +126,9 @@ test('R189 : « Grimoire » acquis compte comme une magie acquise dans les empla
       if (acquis(regles, GRIMOIRE, niveau, mode)) {
         // exactement comme une magie acquise : le même personnage avec une magie acquise, sans le marqueur
         assert.deepEqual(e, M.emplacementsDeSorts(sansGrimoire, { ...f, magie_acquise_id: acquise }), ici);
-        assert.equal(e.conditions, M.emplacementsDeSorts(sansGrimoire, f).conditions + 1, ici);
+        // (Grimoire et la Super-magie sont la même condition, R236 (5) : à partir du seuil des spécialisations, le don ne s'ajoute pas à la Super-magie)
+        const superMagie = Boolean(M.emplacementsDeSorts(sansGrimoire, f).superMagie);
+        assert.equal(e.conditions, M.emplacementsDeSorts(sansGrimoire, f).conditions + (superMagie ? 0 : 1), ici);
       } else {
         assert.deepEqual(e, M.emplacementsDeSorts(sansGrimoire, f), `${ici} : sans le don, inchangé`);
       }

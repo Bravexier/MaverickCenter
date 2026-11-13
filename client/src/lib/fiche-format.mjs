@@ -11,7 +11,7 @@
  * serveur/base-vivante.mjs (qui la réexporte) : serveur/edition-journal.mjs en tire ses tables interdites sans cycle d'imports.
  */
 export const TABLES_FICHES = Object.freeze([
-  'utilisateur', 'utilisateur_role', 'personnage', 'personnage_partage', 'personnage_classe', 'personnage_caracteristique', 'personnage_competence',
+  'utilisateur', 'utilisateur_role', 'personnage', 'personnage_partage', 'personnage_classe', 'personnage_specialisation_magie', 'personnage_caracteristique', 'personnage_competence',
   'personnage_entrainement', 'personnage_acquis_choix', 'personnage_resistance_choix', 'personnage_metier_bonus', 'personnage_capacite',
   'personnage_don_obtenu', 'personnage_sort', 'personnage_livre_sort', 'personnage_maitrise_choix', 'personnage_arme', 'personnage_armure_partie', 'personnage_accessoire', 'personnage_inventaire', 'personnage_ceinture', 'personnage_action_usage', 'groupe',
   'groupe_membre',
@@ -20,6 +20,9 @@ export const TABLES_FICHES = Object.freeze([
 /** Clé du JSON → table de détail. Toute table de la section 13 qui cite `personnage` en fait partie, sauf HORS_FICHE (test serveur-fiches). */
 export const PARTIES_DE_FICHE = Object.freeze({
   classes: 'personnage_classe',
+  // la spécialisation magique choisie par magie (décision R236, migration 0118) : { magie_id, specialisation_id } ; une ligne = un choix fait, aucune
+  // ligne = choix en attente ; celle d'un mono-magie ou d'un Potentiel Illimité est gardée, sans effet
+  specialisations_magie: 'personnage_specialisation_magie',
   caracteristiques: 'personnage_caracteristique',
   competences: 'personnage_competence',
   metier_bonus: 'personnage_metier_bonus',
@@ -697,7 +700,8 @@ export function ficheVide(nom = '') {
 export const PREFIXE_DE_RETRAIT = 'Retrait (règles modifiées) : ';
 
 /**
- * Natures d'un élément retiré, dans l'ordre des lignes d'une fiche : métier, spécialité, don, don obtenu (R181 : l'entrée du tableau du Mage Bleu
+ * Natures d'un élément retiré, dans l'ordre des lignes d'une fiche : métier, spécialité, spécialisation magique (R236 : le choix d'une spécialisation
+ * de magie que les règles n'ont plus), don, don obtenu (R181 : l'entrée du tableau du Mage Bleu
  * qu'obtenait un don « Variable », l'entrée ou le don supprimés), sort, arme (décision R52 : une arme supprimée, comme R42),
  * arme élémentaire (R167 : un élément posé sur une arme d'avant la migration 0081, qui la transforme ou part ; l'amélioration de l'élément), objet (R60), pièce d'armure (R95 : une fiche ne porte plus qu'une armure complète), matériau de bouclier (R96 : un bouclier n'a plus qu'une forme et une
  * matière), accessoire (R97 : plus d'emplacement Ceinture ni Autre, ni de nom, ni d'effet hors table), acquis saisi (R104), maîtrises d'armes d'avant la
@@ -710,7 +714,7 @@ export const PREFIXE_DE_RETRAIT = 'Retrait (règles modifiées) : ';
  */
 export const NATURES_DE_L_ARMURE = Object.freeze(['armure_transformee', 'armure_familier', 'armure_magie_absente', 'armure_trop_lourde']);
 export const ORDRE_DES_NATURES = Object.freeze([
-  'metier', 'specialite', 'capacite', 'don_obtenu', 'sort', 'arme', 'arme_elementaire', 'objet', 'piece_armure', ...NATURES_DE_L_ARMURE, 'materiau_bouclier', 'accessoire', 'acquis',
+  'metier', 'specialite', 'specialisation_magie', 'capacite', 'don_obtenu', 'sort', 'arme', 'arme_elementaire', 'objet', 'piece_armure', ...NATURES_DE_L_ARMURE, 'materiau_bouclier', 'accessoire', 'acquis',
   'maitrises_armes',
 ]);
 
@@ -741,6 +745,8 @@ const positif = (n) => typeof n === 'number' && n > 0;
  *                'entree' (l'entrée supprimée des règles) ou 'don' (le don « Variable » supprimé : l'entrée existe encore, la fiche ne l'obtient plus),
  *                'type' (le don n'est plus « Variable ») ou 'magie' (il vise l'autre magie du personnage, `magie_visee` : 'innee' ou 'acquise') : réponses du
  *                propriétaire « Retirés avec une note », R192, comme un don supprimé (R42) ;
+ *   spécialisation magique : « la spécialisation magique « LICHE » (magie Nécromancie) » (décision R236, personnage_specialisation_magie : le choix de la
+ *                fiche pour cette magie, dont la spécialisation n'est plus dans les règles ; la magie redevient « à choisir ») ;
  *   métier     : « le métier « Forgeron » » ;
  *   arme       : « l'arme « Katana » (ÉPÉES, arme 1) » (décision R52) ;
  *   arme élém. : une arme d'avant la migration 0081 (décision R167, armeDAvant ; `cas`) : devenue l'arme élémentaire, « l'arme « Arc long » (ARC, arme 1,
@@ -761,7 +767,7 @@ const positif = (n) => typeof n === 'number' && n > 0;
  *                `amelioration` : le niveau ; `parties` : partiesEnTexte. « armure_transformee » : `devenue` (le nom de l'armure élémentaire) et
  *                `amelioration_devenue` ; « armure_magie_absente » : `magie` ; « armure_trop_lourde » : `poids` (celui de l'armure) et `portable` (le poids
  *                portable du personnage), en mots (POIDS_DES_ARMURES).
- * @param {{ nature: 'metier' | 'specialite' | 'capacite' | 'don_obtenu' | 'sort' | 'arme' | 'objet' | 'arme_elementaire' | 'piece_armure' | 'armure_transformee' | 'armure_familier' | 'armure_magie_absente' | 'armure_trop_lourde' | 'materiau_bouclier' | 'accessoire' | 'acquis' | 'maitrises_armes', id: string, emplacement?: string | null, famille?: string | null, rang?: number | null, nom?: string | null, classe?: string | null, specialite?: string | null,
+ * @param {{ nature: 'metier' | 'specialite' | 'specialisation_magie' | 'capacite' | 'don_obtenu' | 'sort' | 'arme' | 'objet' | 'arme_elementaire' | 'piece_armure' | 'armure_transformee' | 'armure_familier' | 'armure_magie_absente' | 'armure_trop_lourde' | 'materiau_bouclier' | 'accessoire' | 'acquis' | 'maitrises_armes', id: string, emplacement?: string | null, famille?: string | null, rang?: number | null, nom?: string | null, classe?: string | null, specialite?: string | null,
  *   niveau?: number | null, magie?: string | null, npm?: number | null, nm?: number | null, livre?: boolean, choisi?: boolean,
  *   dons?: string[], devenue?: boolean | string, armureGardee?: boolean, quantite?: number | null, matiere?: string | null, effet?: string | null, texte?: string | null,
  *   ecarte?: boolean, valeur?: number, amelioration?: number | string | null, parties?: string | null, amelioration_devenue?: number | string | null,
@@ -783,6 +789,9 @@ export function descriptionDuRetrait(d) {
     if (d.classe) parties.push(`classe ${d.classe}`);
     const dons = d.dons ?? [];
     if (dons.length) parties.push(`${dons.length > 1 ? 'avec les dons choisis' : 'avec le don choisi'} ${enumeration(dons)}`);
+  } else if (d.nature === 'specialisation_magie') {
+    tete = `la spécialisation magique « ${nom} »`;
+    if (d.magie) parties.push(`magie ${d.magie}`);
   } else if (d.nature === 'sort') {
     tete = `le sort « ${nom} »`;
     if (d.magie) parties.push(`magie ${d.magie}`);

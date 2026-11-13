@@ -34,8 +34,8 @@ const nomLibre = (nom, table, type) => {
 };
 const lot = (operations) => enregistrer(db, { page: 'essai', operations });
 
-test('RETRAITS : exactement les clés étrangères des fiches vers metier, specialite, capacite, sort, arme et classe_annexe_entree (colonnes dans l’ordre)', () => {
-  const vers = new Set(['metier', 'specialite', 'capacite', 'sort', 'arme', 'classe_annexe_entree']);
+test('RETRAITS : exactement les clés étrangères des fiches vers metier, specialite, magie_specialisation, capacite, sort, arme et classe_annexe_entree (colonnes dans l’ordre)', () => {
+  const vers = new Set(['metier', 'specialite', 'magie_specialisation', 'capacite', 'sort', 'arme', 'classe_annexe_entree']);
   const cles = [];
   for (const t of TABLES_FICHES) {
     const parId = new Map();
@@ -47,8 +47,8 @@ test('RETRAITS : exactement les clés étrangères des fiches vers metier, speci
     cles.push(...parId.values());
   }
   // un sort est cité par la liste des sorts et par les livres (décision R169) : deux clés vers `sort` ; un don obtenu (décision R181) cite son don
-  // « Variable » (capacite) et son entrée (classe_annexe_entree)
-  assert.equal(cles.length, 8);
+  // « Variable » (capacite) et son entrée (classe_annexe_entree) ; le choix de spécialisation magique (décision R236) cite le couple (spécialisation, magie)
+  assert.equal(cles.length, 9);
   assert.deepEqual(RETRAITS.map((r) => ({ table: r.table, vise: r.vise, colonnes: [...r.colonnes] })), cles);
   for (const r of RETRAITS) {
     assert.ok(['vider', 'supprimer'].includes(r.action), r.table);

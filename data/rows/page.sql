@@ -8605,6 +8605,8 @@ Chacune de ces quatre conditions donne un emplacement de sort :
 3. avoir une classe magique ;
 4. avoir une seconde classe magique.
 
+À partir du niveau global 8 (NPM 3), un personnage mono-magie, sans magie acquise, compte une condition de plus, comme une magie acquise (la Super-magie) : il reste mono-magie, sans magie de plus. Pour le Potentiel Illimité, elle ne s’ajoute pas au don « Grimoire » : les deux sont la même condition.
+
 Le nombre de conditions remplies est ensuite **multiplié par la puissance magique**. Elle vaut 1 au niveau 1 du personnage, puis augmente avec les niveaux ({{la-montee-de-niveau}}). Il n’y a jamais d’emplacement en plus.
 
 *Exemples : une magie innée et une magie acquise, sans classe magique, en puissance magique 1 : 2 emplacements. Une magie innée et deux classes magiques, en puissance magique 3 : 3 × 3 = 9 emplacements.*
@@ -18762,7 +18764,7 @@ Exemple : J''ai posé sur 3 personnes différentes un sort qui coûte 3. Donc en
 | 2.0 | Fer brillant | Amplification (IC pour 3 NM) | 5 | 1 | 1 | +10 dégâts | Imprègne l''arme d''une énergie brillante. Dure 3 tours. |
 | 2.0 | Vague déferlante | Attaque | 9.0 | 5.0 | 1.0 | 5d6 dégâts (+5/NM) | Peut être surchargé (15 {{chakra\|chakra}} en + = 1 dé en +) (maximum 45 {{chakra\|chakra}} en surcharge) |
 | 3.0 | Mur de chakra | Construction | 13.0 | 3.0 | 8x2 | / | Bloque 40 (+10/NM) dégâts par tour pendant 3 tours, est détruit s''il prend plus en 1 tour. |
-| 3.0 | Projectile arcanique | Attaque | \*4 / projectile | 10 | 1 | 2d6 dégâts/ projectile | Peut cibler une ou plusieurs cibles. Le bonus de dégâts du lanceur ne s''applique qu''une fois par cible touchée.  3NM = Ignore 50% de AM. |
+| 3.0 | Projectile arcanique | Attaque | 4/projectile +1 au coût de chaque projectile supplémentaire. | 10 | 1 | 2d6 dégâts/ projectile | Peut cibler une ou plusieurs cibles. Le bonus de dégâts du lanceur ne s''applique qu''une fois par cible touchée.  3NM = Ignore 50% de AM. |
 | 3.0 | Rune arcane multiple | Amplification<br>(IC x 1/NM) | 8 par tour et par cible | Tous les alliés | 1.0 | +1 cran de résistance | Augmente la résistance d''une magie au choix. On ne peut pas cumuler la même résistance sur la même cible. |
 | 3.0 | Champ gardien | Attaque/Soin | 12.0 | Soi-même | Cercle de 2 | Donne 2d6 + 3 {{barriere\|Barrière}} et 12 dégâts | Invoque un cercle qui va rendre de la {{barriere\|barrière}} aux alliés et infliger des dégâts aux ennemis (3 NM = les dégâts ignorent les AM). |
 | 4.0 | Peau nacrée | Amplification<br>(IC x 1/NM) | 12 par tour et par cible | 3.0 | 1.0 | -20% dégâts magiques | Réduit les dégâts magiques finaux subis. |

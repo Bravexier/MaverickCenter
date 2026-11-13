@@ -273,11 +273,18 @@ test('R244 : les coûts du classeur de Décembre non répartis par le service su
     assert.deepEqual({ cout_chakra: s.cout_chakra, cout_ressource: s.cout_ressource, cout_ressource_valeur: s.cout_ressource_valeur }, lu, c.id);
     assert.equal(s.cout_chakra, c.cout_brut === 'N/A' ? null : Number(c.cout_brut), c.id);
   }
-  // les autres coûts non répartis (Projectile arcanique, MAJ-K7) : la cellule telle qu'écrite, rien de typé
+  // les autres coûts non répartis (Projectile arcanique, MAJ-K7) : la 0117 garde la cellule telle qu'écrite, rien de typé ; la 0118 (R251) les
+  // réécrit ensuite, chaque colonne de son registre partant de la valeur que la 0117 a laissée
   assert.ok(REGISTRE.sorts.couts_non_repartis.every((c) => /MAJ-K7/.test(c.decision)));
+  const par0118 = JSON.parse(lire('../../data/migrations/0118-r236-specialisation-de-la-fiche.json')).valeurs;
   for (const c of REGISTRE.sorts.couts_non_repartis) {
     const s = b.prepare('SELECT cout_brut, cout_secondaire, cout_chakra FROM sort WHERE id = ?').get(c.id);
-    assert.deepEqual([s.cout_brut, s.cout_secondaire, s.cout_chakra], [c.cout_brut, null, null], c.id);
+    const laissees = { cout_brut: c.cout_brut, cout_secondaire: null, cout_chakra: null };
+    for (const v of par0118.filter((x) => x.table === 'sort' && x.cle.id === c.id)) {
+      assert.equal(v.avant, laissees[v.col], `${c.id} : ${v.col} d'avant la 0118`);
+      laissees[v.col] = v.apres;
+    }
+    assert.deepEqual([s.cout_brut, s.cout_secondaire, s.cout_chakra], [laissees.cout_brut, laissees.cout_secondaire, laissees.cout_chakra], c.id);
   }
 });
 

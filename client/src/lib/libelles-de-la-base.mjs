@@ -144,6 +144,7 @@ export const NOMS_DES_TABLES = Object.freeze({
   personnage_maitrise_choix: 'Maîtrise d’arme choisie du personnage',
   personnage_resistance_choix: 'Résistance choisie du personnage',
   personnage_sort: 'Sort du personnage',
+  personnage_specialisation_magie: 'Spécialisation magique du personnage',
 });
 
 /** Le nom d'une colonne qui garde le même sens dans toutes les tables (une clé étrangère : la table citée). */
@@ -319,6 +320,7 @@ export const NOMS_DES_COLONNES = geler({
   page: { type: 'Rubrique du wiki', slug: 'Adresse', donnees: 'Données', statut: 'Statut' },
   page_entite: { principale: 'Page principale' },
   personnage_don_obtenu: { source: 'Don « Variable »', entree_id: 'Entrée obtenue' },
+  personnage_specialisation_magie: { specialisation_id: 'Spécialisation magique' },
   panneau_regles_bloc: { tuile: 'Genre du bloc' },
   potion_etat: { action: 'Action' },
   race: {

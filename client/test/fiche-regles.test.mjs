@@ -657,3 +657,28 @@ test('décision R181 : les 54 entrées du tableau du Mage Bleu (classes[].entree
     'capacites/mage-bleu-secondaire': 'acquise', 'capacites/mage-bleu-ultime-raison': 'innee',
   });
 });
+
+test('R236 : chaque magie porte ses spécialisations { id, nom, ordre } (deux, aucune pour le Potentiel Illimité) et chaque sort sa spécialisation (null pour un sort commun), comme la base', () => {
+  const enBase = db.prepare('SELECT id, magie_id, nom, ordre FROM magie_specialisation ORDER BY magie_id, ordre').all();
+  assert.ok(enBase.length > 0, 'la base a des spécialisations');
+  const dansLesRegles = regles.magies.flatMap((m) => m.specialisations.map((x) => ({ ...x, magie_id: m.id })))
+    .sort((a, b) => (a.magie_id < b.magie_id ? -1 : a.magie_id > b.magie_id ? 1 : a.ordre - b.ordre));
+  assert.deepEqual(dansLesRegles.map((x) => ({ ...x })), enBase.map((x) => ({ ...x })));
+  for (const m of regles.magies) {
+    assert.ok(Array.isArray(m.specialisations), m.id);
+    assert.deepEqual(m.specialisations.map((x) => Object.keys(x).sort()), m.specialisations.map(() => ['id', 'nom', 'ordre']), m.id);
+    assert.deepEqual(m.specialisations.map((x) => x.ordre), m.specialisations.map((_, i) => i + 1), `${m.id} : dans l'ordre du tableau (1, 2)`);
+  }
+  const aucune = regles.magies.filter((m) => !m.specialisations.length).map((m) => m.id);
+  assert.deepEqual(aucune, ['magies/potentiel-illimite'], 'le Potentiel Illimité (identifiant figé) est le seul sans spécialisation');
+  // les sorts : la colonne de la base, toujours présente ; une spécialisation est de la magie du sort
+  const enBaseDesSorts = new Map(db.prepare('SELECT id, specialisation_id FROM sort').all().map((s) => [s.id, s.specialisation_id]));
+  for (const s of regles.sorts) {
+    assert.ok(Object.hasOwn(s, 'specialisation_id'), `${s.id} : specialisation_id présent`);
+    assert.equal(s.specialisation_id, enBaseDesSorts.get(s.id), s.id);
+    if (s.specialisation_id !== null) {
+      assert.ok(regles.magies.find((m) => m.id === s.magie_id).specialisations.some((x) => x.id === s.specialisation_id), `${s.id} : une spécialisation de sa magie`);
+    }
+  }
+  assert.ok(regles.sorts.some((s) => s.specialisation_id !== null) && regles.sorts.some((s) => s.specialisation_id === null), 'des sorts communs et des sorts de spécialisation');
+});

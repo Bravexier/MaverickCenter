@@ -2000,28 +2000,114 @@ export function npmDesSorts(regles, fiche) {
   return Math.min(max, Math.max(plafond, ...releves));
 }
 
+// ------------------------------------------------------------------------------------------------------------------------------------------------
+// Spécialisations magiques (décision R236, Magie V10) : deux par magie (sauf le Potentiel Illimité), leurs sorts aux NPM 3 à 5 (`regles.sorts[]
+// .specialisation_id`, `regles.magies[].specialisations`). Le mono-magie (sans magie acquise : Lamia, Corruption innée et Potentiel Illimité compris)
+// a les deux de sa magie, le Potentiel Illimité celles de toutes (R236 (2), (7)) ; seul le bi-magie choisit une spécialisation par magie (R236 (3)),
+// modifiable à tout moment (R236 (6), comme la spécialité de classe). Pendant de la base : personnage_specialisation_magie et les règles
+// sort_hors_specialisation, specialisation_hors_magie de v_personnage_controle (migration 0118).
+// ------------------------------------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Le NPM où s'ouvrent les spécialisations : le plus petit NPM d'un sort qui en a une (`specialisation_id` des règles ; 3 à l'import), jamais écrit en
+ * dur ; null quand aucun sort n'en a.
+ */
+export function seuilDesSpecialisations(regles) {
+  const niveaux = (regles.sorts ?? []).filter((s) => s.specialisation_id).map((s) => s.niveau);
+  return niveaux.length ? Math.min(...niveaux) : null;
+}
+
+/**
+ * Le bi-magie, seul à choisir ses spécialisations (R236 (3)) : une magie acquise et une magie innée autre que le Potentiel Illimité (comme la règle
+ * sort_hors_specialisation de la vue). Le mono-magie, sans magie acquise (Lamia, Corruption innée et Potentiel Illimité compris), a les deux
+ * spécialisations de sa magie (R236 (2)).
+ */
+export const estBiMagie = (fiche) => Boolean(fiche?.magie_acquise_id) && fiche.magie_innee_id !== POTENTIEL_ILLIMITE;
+
+/**
+ * Les choix de spécialisation à garder (R236 (3), `fiche.specialisations_magie` : [{ magie_id, specialisation_id }], personnage_specialisation_magie) :
+ * au plus un par magie de la fiche (innée ou acquise), d'une spécialisation de cette magie des règles (`magies[].specialisations`) ; le premier de chaque
+ * magie, les autres (magie perdue, spécialisation d'une autre magie ou inconnue) partent. Dans l'ordre de la fiche. Le choix d'un mono-magie est gardé
+ * sans effet (la base le tolère).
+ */
+export function specialisationsValables(regles, fiche) {
+  const magies = new Set([fiche?.magie_innee_id, fiche?.magie_acquise_id].filter(Boolean));
+  const vues = new Set();
+  return (fiche?.specialisations_magie ?? []).flatMap((c) => {
+    const magie = magies.has(c?.magie_id) ? trouver(regles.magies ?? [], c.magie_id) : null;
+    if (!magie || vues.has(c.magie_id) || !(magie.specialisations ?? []).some((s) => s.id === c.specialisation_id)) return [];
+    vues.add(c.magie_id);
+    return [{ magie_id: c.magie_id, specialisation_id: c.specialisation_id }];
+  });
+}
+
+/**
+ * fiche.specialisations_magie après le choix de la spécialisation `specialisationId` pour la magie `magieId` (null : plus de choix) : sa ligne remplacée.
+ * Choisir celle qui est déjà choisie la retire (bascule, comme la spécialité de classe). Une spécialisation qui n'est pas de cette magie ne change rien.
+ */
+export function specialisationsApresChoix(regles, fiche, magieId, specialisationId) {
+  const actuelles = fiche?.specialisations_magie ?? [];
+  const autres = actuelles.filter((c) => c?.magie_id !== magieId);
+  if (!specialisationId) return autres;
+  if (!(trouver(regles.magies ?? [], magieId)?.specialisations ?? []).some((s) => s.id === specialisationId)) return actuelles;
+  if (actuelles.some((c) => c?.magie_id === magieId && c.specialisation_id === specialisationId)) return autres;
+  return [...autres, { magie_id: magieId, specialisation_id: specialisationId }];
+}
+
+/**
+ * Les spécialisations que la fiche choisit : pour un bi-magie, une par magie (innée puis acquise) qui en a, quand le NPM de ses sorts (npmDesSorts) atteint
+ * le seuil. [{ magie, specialisations, choix (l'id de la spécialisation choisie valable, ou null) }] ; vide pour un mono-magie ou avant le seuil.
+ */
+export function specialisationsAChoisir(regles, fiche) {
+  const seuil = seuilDesSpecialisations(regles);
+  if (!estBiMagie(fiche) || seuil === null || npmDesSorts(regles, fiche) < seuil) return [];
+  const valables = specialisationsValables(regles, fiche);
+  return [fiche.magie_innee_id, fiche.magie_acquise_id].filter(Boolean)
+    .map((id) => trouver(regles.magies ?? [], id))
+    .filter((m) => m?.specialisations?.length)
+    .map((magie) => ({ magie, specialisations: magie.specialisations, choix: valables.find((c) => c.magie_id === magie.id)?.specialisation_id ?? null }));
+}
+
+/**
+ * Les spécialisations dont les sorts sont ouverts à la fiche (R236) : pour un bi-magie, seulement celles qu'il a choisies ; null pour tous les autres
+ * (mono-magie, Potentiel Illimité : tous les sorts de leurs magies). Un bi-magie sans choix pour une magie n'a aucun sort à spécialisation de cette magie.
+ */
+const specialisationsOuvertes = (regles, fiche) => (estBiMagie(fiche) ? new Set(specialisationsValables(regles, fiche).map((c) => c.specialisation_id)) : null);
+
+/** Vrai si la fiche peut prendre ce sort au regard des spécialisations (sort commun, ou spécialisation ouverte : specialisationsOuvertes). */
+const sortOuvert = (ouvertes, sort) => !ouvertes || !sort.specialisation_id || ouvertes.has(sort.specialisation_id);
+
 /**
  * Emplacements de sorts (guide, étape 5 ; Doc « Créer sa fiche » › Tableau magie) : conditions remplies (magie innée, magie acquise, chaque classe
  * magique, chaque don acquis qui compte comme une magie acquise : « Grimoire » de l'Archimage, décision R189, `condition_emplacements` des règles,
  * capacite_condition_emplacements ; il ne donne pas de seconde magie) × puissance magique du niveau (puissanceMagique, jamais le plafond de R188).
  * Avec deux magies, les emplacements du palier 5 s'ouvrent quand même (correction 29 de la fiche).
+ * Super-magie (décision R236 (4), (5)) : une condition de plus quand la puissance magique du niveau atteint le seuil des spécialisations
+ * (seuilDesSpecialisations : le NPM 3, niveau global 8), que la fiche a une magie innée et pas de magie acquise (mono-magie, Potentiel Illimité compris),
+ * comme une magie acquise, sans seconde magie. « Grimoire » et la Super-magie sont la même condition (R236 (5), MAJ-F3c : un Archimage du Potentiel
+ * Illimité de niveau 8 reste à 9 emplacements avec une classe magique) : avec un don `condition_emplacements` acquis, elle ne s'ajoute pas. Rendue à part
+ * (`superMagie: true`) seulement quand elle compte.
  */
 export function emplacementsDeSorts(regles, fiche) {
   const dons = donsAcquis(regles, fiche).reduce((n, c) => n + c.dons.filter((d) => d.condition_emplacements).length, 0);
-  const conditions = (fiche.magie_innee_id ? 1 : 0) + (fiche.magie_acquise_id ? 1 : 0) + classesDe(regles, fiche).filter((c) => c.magique).length + dons;
   const puissance = puissanceMagique(regles, niveauGlobal(regles, fiche.xp));
-  return { conditions, puissance, total: conditions * puissance };
+  const seuil = seuilDesSpecialisations(regles);
+  const superMagie = seuil !== null && puissance >= seuil && Boolean(fiche.magie_innee_id) && !fiche.magie_acquise_id && dons === 0;
+  const conditions = (fiche.magie_innee_id ? 1 : 0) + (fiche.magie_acquise_id ? 1 : 0) + classesDe(regles, fiche).filter((c) => c.magique).length + dons + (superMagie ? 1 : 0);
+  return { conditions, puissance, total: conditions * puissance, ...(superMagie ? { superMagie: true } : {}) };
 }
 
 /**
  * Sorts que la fiche peut prendre : de sa magie innée ou acquise (toutes pour le Potentiel Illimité), jusqu'au NPM des sorts (npmDesSorts : la
- * puissance du niveau sous le plafond de R188).
+ * puissance du niveau sous le plafond de R188). Le bi-magie n'a que les sorts communs de ses magies et ceux de la spécialisation choisie pour chacune
+ * (R236 (3)) ; le mono-magie et le Potentiel Illimité gardent tous ceux de leurs magies (R236 (2), (7)).
  */
 export function sortsPossibles(regles, fiche) {
   const toutes = fiche.magie_innee_id === POTENTIEL_ILLIMITE;
   const magies = new Set([fiche.magie_innee_id, fiche.magie_acquise_id].filter(Boolean));
   const max = npmDesSorts(regles, fiche);
-  return regles.sorts.filter((s) => (toutes || magies.has(s.magie_id)) && s.niveau <= max);
+  const ouvertes = specialisationsOuvertes(regles, fiche);
+  return regles.sorts.filter((s) => (toutes || magies.has(s.magie_id)) && s.niveau <= max && sortOuvert(ouvertes, s));
 }
 
 /**
@@ -2031,11 +2117,14 @@ export function sortsPossibles(regles, fiche) {
  * la magie innée (R176 : une fiche qui le met en magie acquise est signalée par la règle mono_magie, la liste n'y ouvre que ses magies), ceux de
  * toutes les magies, comme sortsPossibles. La seule liste des livres (la ligne « Livre de sort » de la page, l'import du tableur la préfère pour un nom
  * ambigu) ; aucun contrôle ne refuse un livre hors d'elle (un livre d'une magie perdue reste, en attente : livresDe). Dans l'ordre des règles.
+ * Pour un bi-magie, seulement les sorts communs et ceux d'une spécialisation qu'il a choisie (décision R236 (8) : « Un livre ne peut porter que sur
+ * un sort commun ou un sort de la spécialisation choisie »).
  */
 export function sortsDesLivres(regles, fiche) {
   const magies = [fiche?.magie_innee_id, fiche?.magie_acquise_id].filter(Boolean);
+  const ouvertes = fiche ? specialisationsOuvertes(regles, fiche) : null;
   if (fiche?.magie_innee_id === POTENTIEL_ILLIMITE) return [...(regles.sorts ?? [])];
-  return magies.flatMap((m) => (regles.sorts ?? []).filter((s) => s.magie_id === m));
+  return magies.flatMap((m) => (regles.sorts ?? []).filter((s) => s.magie_id === m && sortOuvert(ouvertes, s)));
 }
 
 /** Vrai si l'entraînement de la fiche note un livre du sort `sortId` (fiche.livres_sorts, décision R169 ; un seul par sort, R26). */
@@ -2222,7 +2311,8 @@ export function livresApresChangement(regles, fiche, ancien, nouveau, { rendre =
  * Tableau des sorts de la page (demande du propriétaire) : une ligne par emplacement. Chaque ligne propose les sorts possibles (sortsPossibles : magies du
  * personnage, NPM des sorts) moins ceux déjà pris sur les autres lignes ; le sort de la ligne y reste, même s'il n'est plus possible (`horsDesRegles`),
  * pour qu'on le voie et qu'on le change. Il n'y a pas d'emplacement en plus (décision R27) : un sort au-delà des emplacements (XP baissée, magie retirée)
- * a sa ligne `enTrop`, à retirer.
+ * a sa ligne `enTrop`, à retirer. Le sort d'une spécialisation que le bi-magie n'a pas choisie (ou changée depuis) est aussi `horsDesRegles` (R236 (3),
+ * (6) : comme R27, il reste en rouge, à remplacer ; pendant de la règle sort_hors_specialisation).
  */
 export function lignesDeSorts(regles, fiche) {
   const choisis = fiche.sorts ?? [];
@@ -2417,6 +2507,8 @@ export const cleDeChoix = {
   resistance: (source, rang) => `resistance:${source}:${rang}`,
   // l'entrée qu'obtient un don « Variable » du Mage Bleu (décision R181) : un choix par don, sa source
   donObtenu: (source) => `don_obtenu:${source}`,
+  // la spécialisation d'une magie d'un bi-magie (décision R236 (3)) : un choix par magie
+  specialisationMagie: (magieId) => `specialisation_magie:${magieId}`,
 };
 
 /**
@@ -2438,7 +2530,9 @@ export function accessoiresDesSorts(regles, fiche) {
  * décisions R148, R151 : nature `maitrise`, sur le premier point à choisir de la source, ou sur la maîtrise au choix suivie ; l'accessoire sans famille
  * reste de nature `accessoire`), les choix d'acquis des dons (acquisDesDons ; « l'arme choisie » attend la maîtrise au choix de sa classe, R152) et les
  * résistances au choix (resistancesDe : d'une ligne du tableau de la race, décision R124 ; à une magie, décision R137), l'entrée qu'obtient un don « Variable » du Mage Bleu
- * (donsVariables, décision R181 : nature `don_obtenu`, une entrée libre de sa liste, ou un choix hors de la liste à refaire). [{ nature, libelle, cle, rang? }] ; vide quand tout est choisi. `cle` désigne le choix (la page
+ * (donsVariables, décision R181 : nature `don_obtenu`, une entrée libre de sa liste, ou un choix hors de la liste à refaire) et, pour un bi-magie dont le
+ * NPM des sorts atteint le seuil des spécialisations, la spécialisation de chaque magie sans choix valable (specialisationsAChoisir, décision R236 (3) :
+ * nature `specialisation_magie`, une par magie). [{ nature, libelle, cle, rang? }] ; vide quand tout est choisi. `cle` désigne le choix (la page
  * y accroche sa tuile, montrée dans l'infobulle de l'élément du tiroir : demande du propriétaire).
  */
 export function choixEnAttente(regles, fiche) {
@@ -2448,6 +2542,11 @@ export function choixEnAttente(regles, fiche) {
   for (const c of classesDe(regles, fiche)) {
     if (!c.classe || !c.classe.specialites.length) continue;
     if (c.niveau >= niveauDeSpecialite(c.classe) && !c.choix?.specialite_id) attente.push({ nature: 'specialite', rang: c.rang, cle: cleDeChoix.specialite(c.rang), libelle: `Spécialité : ${c.classe.nom}` });
+  }
+  // la spécialisation de chaque magie d'un bi-magie dont le NPM des sorts atteint le seuil (décision R236 (3)) : un choix par magie sans choix valable ;
+  // une fiche d'avant y tombe, rien n'est choisi à la place du joueur
+  for (const s of specialisationsAChoisir(regles, fiche)) {
+    if (!s.choix) attente.push({ nature: 'specialisation_magie', cle: cleDeChoix.specialisationMagie(s.magie.id), libelle: `Spécialisation magique : ${s.magie.nom}` });
   }
   const choisis = new Set((fiche.capacites ?? []).map((d) => d.capacite_id));
   for (const d of donsAChoisir(regles, fiche)) {
@@ -4386,14 +4485,37 @@ const TAUX_SELON_LE_NM = new Set(['magies/magie-de-larcane#sort:echange']);
  * pas une durée (« Par tour », « Par tour et par cible », « Par jour » : la canalisation, payée à chaque tour) ni un taux qui change avec le NM
  * (TAUX_SELON_LE_NM). Rend { unite (le texte écrit, jusqu'au premier point), creature (le NPM d'une créature, invoquée ou sacrifiée), npm (une
  * créature invoquée : le sort est surchargé à ce NPM, qui est alors son niveau de puissance pour Économe ; pas une créature sacrifiée, dont le
- * sort garde le sien) } ou null.
+ * sort garde le sien) } ou null. Un coût qui monte à chaque unité (coutProgressif, décision R248 : Projectile arcanique, « 4/projectile » et « +1 au
+ * coût de chaque projectile supplémentaire ») rend en plus `progressif` : { pas }.
  */
 export function multiplicateurDuCout(sort) {
   const m = /^(?:par|pour 1)\s+([^.]+)/i.exec(String(sort?.cout_secondaire ?? '').trim());
-  if (!m || /^(?:tour|jour)\b/i.test(m[1]) || TAUX_SELON_LE_NM.has(sort.id)) return null;
+  if (!m) return coutProgressif(sort);
+  if (/^(?:tour|jour)\b/i.test(m[1]) || TAUX_SELON_LE_NM.has(sort.id)) return null;
   const creature = /^NPM de la créature\b/i.test(m[1]);
   return { unite: m[0].trim(), creature, npm: creature && /^NPM de la créature invoquée\b/i.test(m[1]) };
 }
+
+/**
+ * Un coût qui monte à chaque unité (décision R248, Projectile arcanique ; texte de R251) : le coût écrit « N/<unité> » (« 4/projectile ») et le coût
+ * secondaire « +K au coût de chaque <unité> supplémentaire » (« +1 au coût de chaque projectile supplémentaire. »), de la même unité ; lus dans les
+ * règles, jamais par l'identifiant du sort. Rend { unite (l'unité écrite), creature: false, npm: false, progressif: { pas (K) } } ou null (une autre
+ * unité dans le coût secondaire : rien n'est deviné).
+ */
+const COUT_PAR_UNITE = /^(\d+)\s*\/\s*([^\s+()\d][^\s+()]*)/;
+const COUT_QUI_MONTE = /^\+\s*(\d+)\s+au coût de chaque\s+(.+?)\s+supplémentaires?\s*\.?$/i;
+function coutProgressif(sort) {
+  const coutEcrit = COUT_PAR_UNITE.exec(String(sort?.cout ?? '').trim());
+  const monte = COUT_QUI_MONTE.exec(String(sort?.cout_secondaire ?? '').trim());
+  if (!coutEcrit || !monte || coutEcrit[2].toLowerCase() !== monte[2].toLowerCase()) return null;
+  return { unite: coutEcrit[2], creature: false, npm: false, progressif: { pas: Number(monte[1]) } };
+}
+
+/**
+ * Le coût de `n` unités quand le coût monte à chaque unité (décision R248) : `base` pour la première, puis `base + pas`, `base + 2 × pas`…, soit
+ * n × base + pas × n × (n − 1) / 2 (4 + 5 + … : 4, 9, 15… ; dix projectiles : 85).
+ */
+export const coutProgressifDe = (base, pas, n) => base * n + (pas * n * (n - 1)) / 2;
 
 /** « 30 chakra maximum en 1 fois » (remarque de Charge d'énergie ; une balise du glossaire tolérée sur « chakra ») : le chakra maximum, ou null. */
 const CHAKRA_MAX_EN_UNE_FOIS = /(\d+)\s*(?:\{\{chakra(?:\|[^}]*)?\}\}|chakra)\s+maximum en 1 fois/i;
@@ -4474,7 +4596,9 @@ export function sacrificeDuSort(regles, sortId) {
  *   par unité (multiplicateurDuCout, borné : bornesDuMultiplicateur) est multiplié d'abord, puis réduit (décision R129 : les réductions de chakra
  *   s'appliquent après la multiplication du prix) ; surchargé au NPM d'une créature invoquée, le sort a ce niveau de puissance pour Économe
  *   (exemple du propriétaire : 20 − 3 pour le bâton − 4 pour Économe = 13 au NPM 4), sinon le sien (Charge d'énergie chargée à 30 : 30 − 3 − 1) :
- *   `cout.fois` { n, unite, base, npm, economeAuNpm (Économe a compté le NPM de la créature), max } ;
+ *   `cout.fois` { n, unite, base, npm, economeAuNpm (Économe a compté le NPM de la créature), max } ; un coût qui monte à chaque unité (décision R248,
+ *   Projectile arcanique : « 4/projectile », « +1 au coût de chaque projectile supplémentaire ») vaut 4 + 5 + 6… pour n unités (coutProgressifDe : 4, 9,
+ *   15…, 85 pour dix), puis les réductions s'appliquent au total ; `cout.fois.progressif` { pas, total } (le total avant réductions) ;
  * - Portée, seulement un nombre : accessoires, dons, bâton ;
  * - Dégâts (lireDegatsDeSort ; une valeur « par tour » comme une autre, ses bonus à chaque tour : décision R113, « 3d6 dégâts par tour » avec +5 →
  *   « 3d6 + 5 dégâts par tour », la période écrite après la valeur) : les dés montés d'un cran par la posture Focus et l'accessoire « Augmente le dé
@@ -4547,16 +4671,23 @@ export function sortDuMoment(regles, fiche, sort, auNm, contexte = contexteDesSo
     const p = Number(pourcent[1]);
     cout.calcule = { pourcent: p, chakra: contexte.chakraMax, valeur: Math.floor((contexte.chakraMax * p) / 100) };
   }
-  const brut = cout.calcule ? [null, String(cout.calcule.valeur)] : /^(\d+)(\s*\+\s*.+)?$/.exec(String(auNm.cout ?? '').trim());
+  // un coût qui monte à chaque unité s'écrit « N/<unité> » (décision R248, R251) : son premier terme N, l'unité n'est plus lue
+  const coutParUnite = multiplicateur?.progressif ? COUT_PAR_UNITE.exec(String(auNm.cout ?? '').trim()) : null;
+  const coutEcrit = coutParUnite ? [null, coutParUnite[1]] : null;
+  const brut = cout.calcule ? [null, String(cout.calcule.valeur)] : coutEcrit ?? /^(\d+)(\s*\+\s*.+)?$/.exec(String(auNm.cout ?? '').trim());
   const reductions = [...ecritsPour('cout', multiplicateur?.npm ? n : sort.niveau), ...duBaton('cout')];
   if (brut && Number(brut[1]) === 0 && !cout.calcule) {
     // un sort qui ne consomme pas de chakra (« 0 » : son coût est le coût secondaire, âmes, Sang, santé, corruption ; décision R106) : rien à réduire
     pasCompte(reductions, 'sans_chakra', 'cout');
     cout.texte = `0${brut[2] ?? ''}`;
   } else if (brut) {
-    const base = Number(brut[1]) * n;
+    // (coût qui monte : 4 + 5 + 6 ; décision R248) ; les réductions s'appliquent au total
+    const base = multiplicateur?.progressif && coutEcrit ? coutProgressifDe(Number(brut[1]), multiplicateur.progressif.pas, n) : Number(brut[1]) * n;
     if (multiplicateur && !cout.calcule) {
-      cout.fois = { n, unite: multiplicateur.unite, base: Number(brut[1]), npm: multiplicateur.npm, economeAuNpm: multiplicateur.npm && parNpmCompte, max: bornes.max };
+      cout.fois = {
+        n, unite: multiplicateur.unite, base: Number(brut[1]), npm: multiplicateur.npm, economeAuNpm: multiplicateur.npm && parNpmCompte, max: bornes.max,
+        ...(multiplicateur.progressif && coutEcrit ? { progressif: { pas: multiplicateur.progressif.pas, total: base } } : {}),
+      };
     }
     // réduit, jamais moins de 1 (un pourcentage du chakra calculé à 0 le reste)
     const reduit = reductions.length ? Math.max(Math.min(base, 1), base + somme(reductions)) : base;

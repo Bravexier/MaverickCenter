@@ -115,6 +115,7 @@ function canonique(fiche) {
     capacites: (a, b) => a.capacite_id.localeCompare(b.capacite_id),
     maitrise_choix: (a, b) => a.source.localeCompare(b.source) || a.rang - b.rang,
     dons_obtenus: (a, b) => a.source.localeCompare(b.source),
+    specialisations_magie: (a, b) => a.magie_id.localeCompare(b.magie_id),
     armes: (a, b) => a.rang - b.rang,
     armure_parties: parCle('emplacement_id', emplacementsArmure),
     accessoires: parCle('emplacement', emplacementsAccessoire),
@@ -250,6 +251,9 @@ function ficheRiche() {
   // les gains de niveau, deux totaux (décision R73)
   f.gains_sante = 37;
   f.gains_chakra = 54;
+  // une spécialisation choisie par magie (décision R236 (8)) : sans elle, le bi-magie n'a que les sorts communs et aucun livre en attente
+  f.specialisations_magie = [f.magie_innee_id, f.magie_acquise_id].map((id) => regles.magies.find((m) => m.id === id))
+    .filter((m) => m?.specialisations?.length).map((m) => ({ magie_id: m.id, specialisation_id: m.specialisations[0].id }));
   f.sorts = M.sortsPossibles(regles, f).slice(0, 26).map((s, i) => ({ sort_id: s.id, rang: i + 1, niveau_maitrise: i % 4 }));
   // des livres, dont un d'un sort qui n'est pas choisi (en attente, décision R169)
   const enAttente = M.sortsDesLivres(regles, f).find((s) => !f.sorts.some((x) => x.sort_id === s.id));
@@ -533,6 +537,49 @@ test('dons « Variable » du Mage Bleu (décision R181) : une ligne « Don obten
     'Don obtenu « Mimétisme (Mage Rouge) : Peau froide (Glace) » : aucun don « Variable » de ce nom dans les classes des règles',
   ]);
   assert.deepEqual(canonique(relu.fiche).dons_obtenus, canonique(f).dons_obtenus);
+});
+
+test('spécialisations magiques (décision R236) : une ligne « Spécialisation magique » par magie choisie, relue ; une magie sans choix n’en a pas ; un nom introuvable ou un doublon est dit', async () => {
+  // deux magies qui ont leurs deux spécialisations (jamais le Potentiel Illimité) ; magies et spécialisations par id, leurs noms lus dans les règles
+  // (une paire compatible : la magie acquise ne doit pas être refusée par l'innée)
+  const avecDeux = regles.magies.filter((m) => m.specialisations.length === 2 && !m.mono_magie);
+  const A = avecDeux[0];
+  const B = avecDeux.find((m) => m !== A && !A.incompatibles.includes(m.id) && !m.incompatibles.includes(A.id));
+  assert.ok(A && B, 'deux magies compatibles');
+  const f = commeLaPage({
+    ...ficheVide('Bi-magie R236'), race_id: 'races/humain', ethnie_id: 'races/humain#ethnie:humain-toundra', magie_innee_id: A.id, magie_acquise_id: B.id,
+    specialisations_magie: [{ magie_id: B.id, specialisation_id: B.specialisations[1].id }, { magie_id: A.id, specialisation_id: A.specialisations[0].id }],
+  });
+  const r = await verifier(f, 'spécialisations magiques');
+  const lues = lignesDeLaNote(r.cellules);
+  // dans l'ordre des magies des règles, une ligne par choix : « <magie> : <spécialisation> » telle que les règles l'écrivent
+  const dansLOrdre = regles.magies.filter((m) => m === A || m === B).map((m) => `${m.nom} : ${(m === A ? A : B).specialisations[m === A ? 0 : 1].nom}`);
+  assert.deepEqual(lues.filter((l) => l.nom === 'specialisationMagique').map((l) => l.valeur), dansLOrdre);
+  assert.deepEqual(canonique(r.fiche).specialisations_magie, canonique(f).specialisations_magie);
+  // aucun choix (en attente) : aucune ligne ; le choix d'un mono-magie est écrit et relu comme les autres (sans effet, R236 (2))
+  const attente = await verifier(commeLaPage({ ...f, specialisations_magie: [] }), 'choix en attente');
+  assert.equal(lignesDeLaNote(attente.cellules).filter((l) => l.nom === 'specialisationMagique').length, 0);
+  const mono = await verifier(commeLaPage({ ...f, magie_acquise_id: null, specialisations_magie: [{ magie_id: A.id, specialisation_id: A.specialisations[1].id }] }), 'mono-magie');
+  assert.equal(lignesDeLaNote(mono.cellules).filter((l) => l.nom === 'specialisationMagique').length, 1);
+  // un nom introuvable, une spécialisation d'une autre magie, un second choix pour la même magie : dits (nonRepris), jamais rapprochés
+  const lireAvec = async (lignes) => {
+    const cellules = { ...r.cellules, [ORDINATEUR.note]: `${r.cellules[ORDINATEUR.note]}\n${lignes.join('\n')}` };
+    const classeur = await lireClasseur(await ecrireXlsx(MODELE, { cellules, remplis: r.remplis, alignements: r.alignements, descriptionImage: 'logo', titre: f.nom }), { nom: 'essai.xlsx' });
+    return ficheDuClasseur(regles, classeur.feuille('Personnage'), { nomFichier: 'essai.xlsx', date: DATE, logo: LOGO, empreintePortrait: null });
+  };
+  const relu = await lireAvec([
+    `Spécialisation magique : Magie inconnue ${A.nom} : ${A.specialisations[0].nom}`,
+    `Spécialisation magique : ${A.nom} : ${B.specialisations[0].nom}`,
+    `Spécialisation magique : ${A.nom} : ${A.specialisations[1].nom}`,
+    'Spécialisation magique : sans séparateur',
+  ]);
+  assert.deepEqual(relu.nonRepris, [
+    `Spécialisation magique « Magie inconnue ${A.nom} : ${A.specialisations[0].nom} » : aucune magie de ce nom dans les règles`,
+    `Spécialisation magique « ${A.nom} : ${B.specialisations[0].nom} » : « ${B.specialisations[0].nom} » introuvable parmi les spécialisations de ${A.nom}`,
+    `Spécialisation magique « ${A.nom} : ${A.specialisations[1].nom} » : cette magie a déjà sa spécialisation (une par magie, décision R236)`,
+    'Spécialisation magique « sans séparateur » : illisible (une magie, puis une de ses spécialisations)',
+  ]);
+  assert.deepEqual(canonique(relu.fiche).specialisations_magie, canonique(f).specialisations_magie, 'les choix lus d’abord sont gardés');
 });
 
 test('armes élémentaires (décision R167) : nom, niveau, solidité et type physique choisi de la bombe reviennent tels quels, point fixe', async () => {

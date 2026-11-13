@@ -458,7 +458,10 @@ test('sortDuMoment (R129) : le coût d’un sort qui augmente avec l’utilisati
   assert.deepEqual(M.multiplicateurDuCout(animation), { unite: 'Par NPM de la créature invoquée', creature: true, npm: true });
   assert.deepEqual(M.multiplicateurDuCout(manteau), { unite: 'Par NPM de la créature sacrifiée', creature: true, npm: false }, 'sacrifiée : Économe garde le NPM du sort');
   assert.deepEqual(M.multiplicateurDuCout(charge), { unite: 'Pour 1 dégât supplémentaire', creature: false, npm: false });
-  for (const s of regles.sorts.filter((x) => M.multiplicateurDuCout(x))) assert.match(s.cout_secondaire, /^(Par (?!tour|jour)|Pour 1 )/i, s.nom);
+  // (un coût qui monte à chaque unité, « +K au coût de chaque <unité> supplémentaire » : R248, test/r236-fiche-specialisations.test.mjs)
+  for (const s of regles.sorts.filter((x) => M.multiplicateurDuCout(x))) {
+    assert.match(s.cout_secondaire, M.multiplicateurDuCout(s).progressif ? /^\+\s*\d+ au coût de chaque /i : /^(Par (?!tour|jour)|Pour 1 )/i, s.nom);
+  }
   for (const s of regles.sorts.filter((x) => /^Par (tour|jour)/i.test(x.cout_secondaire ?? ''))) assert.equal(M.multiplicateurDuCout(s), null, s.nom);
   assert.equal(M.multiplicateurDuCout(sortNomme('magies/magie-de-larcane', 'Échange')), null, 'Échange : « 3CK = 2BA/3NM », en attente du propriétaire');
   // l'exemple du propriétaire : un Ocultomancien (Économe) avec un bâton d'Arcane de rang 3, ici au niveau 12 (puissance magique 4)
