@@ -2,7 +2,7 @@
 
 Ne lis jamais `docs/decisions-regles.md` en entier : trouve ici le numéro de la décision, puis cherche sa ligne avec Grep (motif `^\| R41 \|`) et ne lis qu'elle.
 
-Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 261 décisions, de R1 à R261, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
+Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 266 décisions, de R1 à R266, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
 
 | Réf. | Sujet | Décision |
 | --- | --- | --- |
@@ -267,3 +267,8 @@ Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas mo
 | R259 | Capacité de monstre « Anti-barrière » et don « Pré-mythril » de l'Arbalétr… | (1) « Anti-barrière » prend le nouvel effet du Maveriu… |
 | R260 | Fiche, sorts des spécialisations (R236) : trois choix d'affichage : l'info… | (1) L'infobulle d'un sort ajoute le nom de sa spéciali… |
 | R261 | Initiative groupée, suite de R240 : la page `regles/initiative` du site de… | L'initiative groupée est hors de cette mise à jour : l… |
+| R262 | Lore du Fongoïde (onglet 21, AK3, R239) : la Mort Fertile et le retour de… | (1) Le Codex fait foi : la Mort Fertile existe toujour… |
+| R263 | Lore du Gémidien (onglet 22, AK3, R239) : les Super Gemmes : l'onglet dit… | (1) Les Super Gemmes sont actives aujourd'hui, comme l… |
+| R264 | Chronologie : l'apparition des Gémidiens et celle des Fongoïdes : l'onglet… | Deux événements s'ajoutent à la chronologie : l'appari… |
+| R265 | Page du Fongoïde (onglet 21) : le « Premier Champignon » et le « Dieu de l… | (1) Le « Premier Champignon » et le Mycoralis Vitalis… |
+| R266 | Trois graphies du lore de Décembre (`docs/sql/orthographe-a-valider.md`, «… | (1) « Super Gemme » : deux majuscules, sans trait d'un… |

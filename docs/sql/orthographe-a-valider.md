@@ -1271,8 +1271,8 @@ Classeur « Nouveauté mise à jour Décembre », onglets 23 « Porte-étendard 
 
 Relevé de `worldbuilding` (2026-11-12). Les textes des onglets 21 et 22 du classeur de Décembre sont copiés tels quels ; rien n'est corrigé en attendant ta réponse.
 
-- **Super Gemme(s)** — Quatre graphies en circulation : « Super Gemmes » et « supers-gemmes » (onglets 21 et 22), « Super Gemme » (titre du Codex, page `lore/super-gemme`), « super gemme » (guide). Laquelle retenir ? → À trancher par le propriétaire.
-- **Mort Fertile** — « Mort Fertile » (onglet 21, Codex) et « Mort fertile » (une occurrence du Codex, source des lieux, ligne 6605). Laquelle retenir ? → À trancher par le propriétaire.
-- **Dieu de la Terre** — « Dieu de la Terre » (onglet 21, A4) et « dieu de la Terre ». Laquelle retenir ? → À trancher par le propriétaire.
+- **Super Gemme(s)** — Quatre graphies en circulation : « Super Gemmes » et « supers-gemmes » (onglets 21 et 22), « Super Gemme » (titre du Codex, page `lore/super-gemme`), « super gemme » (guide). Laquelle retenir ? → Décidé (R266 (1)) : « Super Gemme ». Les textes copiés (Codex, onglets 21 et 22) restent tels quels.
+- **Mort Fertile** — « Mort Fertile » (onglet 21, Codex) et « Mort fertile » (une occurrence du Codex, source des lieux, ligne 6605). Laquelle retenir ? → Décidé (R266 (2)) : « Mort Fertile ». L'occurrence du Codex reste telle quelle (texte copié).
+- **Dieu de la Terre** — « Dieu de la Terre » (onglet 21, A4) et « dieu de la Terre ». Laquelle retenir ? → Décidé (R266 (3)) : « Dieu de la Terre ». Les occurrences du Codex restent telles quelles (texte copié) ; les autres sont à corriger.
 - **Tempe/Espace** (onglet 21, A58, tableau des magies innées du Fongoïde) — Coquille pour la magie « Espace/Temps ». Notée sans correction : la case ne sert qu'à la liste des magies innées.
 
