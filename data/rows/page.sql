@@ -5697,7 +5697,7 @@ Lance en acier
 
 ### Armure de départ
 
-Armure de fer complet
+Armure de fer complète
 
 ## Sous-classes
 

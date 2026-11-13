@@ -99,7 +99,19 @@
    "apres": "Armure de Cellulose/Argent, Écu de bois",
    "case": "25!G11"
   },
-  "aucune_fuite": "Casse « +1 Vitesse » gardée (entrée optionnelle du plan écartée : la base est gardée) ; seul son choix exclusif (page.donnees) suit Écrasant."
+  "aucune_fuite": "Casse « +1 Vitesse » gardée (entrée optionnelle du plan écartée : la base est gardée) ; seul son choix exclusif (page.donnees) suit Écrasant.",
+  "page_source_supprimees": [
+   {
+    "page_id": "capacites/cuirasse-large",
+    "ordre": 0,
+    "source_id": "ref:google-sheet-classe-maverick-v7-onglet-cuirasse"
+   },
+   {
+    "page_id": "capacites/cuirasse-large",
+    "ordre": 1,
+    "source_id": "google-sheet:1Pyg4GSUlFrvNaTg3bi6uXlehg1MuRHmkyfPO6s5K72I"
+   }
+  ]
  },
  "parleur": {
   "categorie_id": {
@@ -1062,6 +1074,12 @@
    "cellule": "A37",
    "avant": "attaque à moins",
    "apres": "attaque a moins"
+  },
+  {
+   "onglet": "Porte-étendard",
+   "cellule": "G11",
+   "avant": "Armure de fer complet",
+   "apres": "Armure de fer complète"
   }
  ],
  "comptes": {
@@ -1070,7 +1088,7 @@
   "capacite": 694,
   "race_classe": 1107,
   "gardes": 87,
-  "correction_magie_v10": 71
+  "correction_magie_v10": 72
  },
  "ecarts_au_plan": [
   "classes/boxeur : corps_md de lib/corps-classes.mjs",

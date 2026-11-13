@@ -407,9 +407,14 @@ export function marqueursDeConflit(git, fichiers) {
   return lignes(r.stdout);
 }
 
-/** Les espaces fautifs (`git diff --check <base> -- fichiers`) : la sortie, vide si tout va bien. */
+/** Les données fabriquées, où deux espaces finales sont un saut de ligne Markdown voulu (`corps_md`). */
+export const SANS_CONTROLE_D_ESPACES = /^data\/(rows|migrations)\//;
+
+/** Les espaces fautifs (`git diff --check <base> -- fichiers`) : la sortie, vide si tout va bien. Les données
+ *  (`SANS_CONTROLE_D_ESPACES`) ne sont pas contrôlées : leurs espaces finales sont des sauts de ligne Markdown. */
 export function espacesFautifs(git, base, fichiers) {
-  if (!fichiers.length) return '';
-  const r = git(['diff', '--check', base, '--', ...fichiers]);
+  const controles = fichiers.filter((f) => !SANS_CONTROLE_D_ESPACES.test(f));
+  if (!controles.length) return '';
+  const r = git(['diff', '--check', base, '--', ...controles]);
   return r.code === 0 ? '' : (r.stdout || r.stderr || '').trim();
 }

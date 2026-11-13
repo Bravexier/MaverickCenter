@@ -586,6 +586,14 @@
           "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12), lot 3 « Classes » (R238) : nom du don de niveau 15 : espace finale (R10 : l'orthographe se corrige, jamais un chiffre ni le sens)."
         },
         {
+          "onglet": "Porte-étendard",
+          "cellule": "G11",
+          "avant": "Armure de fer complet",
+          "apres": "Armure de fer complète",
+          "nature": "grammaire",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12), lot 3 « Classes » (R238) : armure de départ : accord de « complète » avec « Armure », comme les 11 autres classes qui l'écrivent (R10 : l'orthographe se corrige, jamais un chiffre ni le sens)."
+        },
+        {
           "onglet": "Cuirassé V2",
           "cellule": "A37",
           "avant": "attaque à moins",

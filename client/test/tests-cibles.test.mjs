@@ -274,6 +274,9 @@ describe('recouvrement d\'un rebase', () => {
     ecrire('a.txt', lignes10({ 8: 'ligne 8 du lot   ' }));
     assert.deepEqual(marqueursDeConflit(git, ['d.txt']), ['d.txt:2:<<<<<<< HEAD', 'd.txt:6:>>>>>>> autre']);
     assert.match(espacesFautifs(git, 'dev', ['a.txt']), /a\.txt:9: trailing whitespace/);
+    // Les données (sauts de ligne Markdown de corps_md) ne sont pas contrôlées : git n'est même pas appelé.
+    const sansGit = () => { throw new Error('git ne doit pas être appelé'); };
+    assert.equal(espacesFautifs(sansGit, 'dev', ['data/rows/page.sql', 'data/migrations/0119-x.sql']), '');
     assert.deepEqual(fichiersDeLArbre(git).sort(), ['a.txt', 'd.txt']);
 
     // Recouvrement vide : la base ne touche que ce que le lot ne touche pas.

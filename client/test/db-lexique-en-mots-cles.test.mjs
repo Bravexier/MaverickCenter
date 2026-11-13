@@ -23,6 +23,7 @@ import { fautesDuSynonyme, formesNonCanoniques, lireBalises, vocabulaireDesMotsC
 import { MOTS_CLES_PROTEGES } from '../src/lib/mots-cles.mjs';
 import { motsClesDeLaBase, textesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { textesReecrits } from './aide-textes-reecrits.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 // Depuis la migration 0113, un mot-clé a un id entier : ce test nomme les mots-clés de la 0090 par leur ancien id texte, traduit par la correspondance de
@@ -160,7 +161,11 @@ test('0090 : les définitions venues du Lexique sont des textes de case — ni l
   // la phrase qui suit (le renvoi au Glossaire du Codex devenu texte) est retirée depuis par la 0104 (R201 (1) : la règle est dite comme règle du jeu,
   // plus attribuée au Codex) : migration postérieure, l'une ou l'autre écriture
   const barriere = dImport('barriere', 'description');
-  assert.ok(barriere.includes('le Maverium la brise à son contact.'));
+  // la phrase des matériaux est retirée depuis par la 0119 (R241 (3) : les anciens effets de barrière du Mythril et du Maverium sont supprimés) :
+  // migration postérieure, l'une ou l'autre écriture (son registre `textes`)
+  const retireeParLa0119 = textesReecrits('0119-classes-materiaux-d12')
+    .some((t) => t.table === 'mot_cle' && t.col === 'description' && t.avant.includes('le Maverium la brise à son contact.') && !barriere.includes(t.avant));
+  assert.ok(barriere.includes('le Maverium la brise à son contact.') || retireeParLa0119);
   assert.ok(barriere.includes('le Maverium la brise à son contact. Le Glossaire du Codex précise qu’elle prend les coups avant la santé') || !barriere.includes('Codex'));
   assert.ok(dImport('campagne', 'description').includes('Voir aussi {{one-shot|One shot}}'));
 });

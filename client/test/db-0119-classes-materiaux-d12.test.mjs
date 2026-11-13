@@ -213,9 +213,11 @@ test('R238, R241 (3), R252 : chaque fragment du registre est remplacé (à l’i
   }
 });
 
-test('R10 : les 26 coquilles des onglets de classe de corrections.json (section magie-v10) sont dans la table correction', () => {
+test('R10 : les coquilles des onglets de classe de corrections.json (section magie-v10) sont dans la table correction', () => {
   const section = CORRECTIONS.dumps['magie-v10'].corrections;
-  assert.equal(REGISTRE.coquilles_r10.length, 26);
+  // le registre de la migration et la section du registre des corrections citent les mêmes coquilles des trois onglets de classe
+  const onglets = new Set(['Boxeur', 'Porte-étendard', 'Cuirassé V2']);
+  assert.equal(REGISTRE.coquilles_r10.length, section.filter((x) => onglets.has(x.onglet)).length);
   for (const c of REGISTRE.coquilles_r10) {
     assert.ok(section.some((x) => x.onglet === c.onglet && x.cellule === c.cellule && x.avant === c.avant && x.apres === c.apres), `${c.onglet} ${c.cellule}`);
     assert.ok(db.prepare("SELECT 1 FROM correction WHERE dump = 'magie-v10' AND onglet = ? AND cellule = ? AND avant = ? AND apres = ? AND origine = 'classes'")
