@@ -234,11 +234,11 @@ D''une manière globale, les deux sexes n’ont quasiment aucun écart de taille
 Les 3 couleurs principales de yeux pour les Fenrir sont : Turquoise, Jaune, Mauve.
 
 Culture : Viking', 13, 7, 0, 5, 4, 'La Perception est obligatoirement à 2 minimum, Classe possible : Fenrir.', 'Magie Glace, Ombre et Foudre en innée.', 'Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et {{chakra|chakra}} (jet de calme en stress)).', 'Magie innée', NULL, 'Don', NULL, 'races', 'Les races › Fenrir › A4 (présentation), HISTOIRE, DESCRIPTION, DONNÉES, Avantage(s), Inconvénient(s), Don B (Base)');
-INSERT INTO race_onglet (race_id, onglet, description_generale, histoire, description, sante_depart, chakra_depart, barriere_bonus, vitesse_sol, vitesse_nage, avantages, inconvenients, don_base, dons_rubrique, dons_rubrique_nom, dons_rubrique_don, dons_tableau_titre, origine, source_ref) VALUES ('races/fongoide', 'Fongoïde', 'Une race entièrement fait de champignons dont l''origine remonte le jour où le Dieu de la Terre s''est donné la mort.
+INSERT INTO race_onglet (race_id, onglet, description_generale, histoire, description, sante_depart, chakra_depart, barriere_bonus, vitesse_sol, vitesse_nage, avantages, inconvenients, don_base, dons_rubrique, dons_rubrique_nom, dons_rubrique_don, dons_tableau_titre, origine, source_ref) VALUES ('races/fongoide', 'Fongoïde', 'Une race entièrement fait de champignons dont l''origine remonte le jour où le {{dimitri|Dieu de la Terre}} s''est donné la mort.
 
 Ils ont une forme humanoïde car avec le temps, ils sont adaptés aux autres races intelligente et ont pris cette forme car plus pratique ? moins intimidante ? Personne ne le sait.
 
-Selon la lignée première, cette race est apparu sous la forme humanoïde la première fois en l''an 80.', 'L''origine des Fongoïdes remonte à une époque aujourd''hui révolue : l''époque du Premier Champignon.
+Selon la lignée première, cette race est apparu sous la forme humanoïde la première fois en l''an 80.', 'L''origine des Fongoïdes remonte à une époque aujourd''hui révolue : l''époque du {{champicer|Premier Champignon}}.
 
 À cette époque, la Mort Fertile apparut dans la Forêt Colossale. Ce lieu, profondément marqué par l''énergie de la Terre, permit à un champignon qui passait par là d''assimilé une quantité folle d''énergie divine.
 
@@ -269,7 +269,7 @@ Leur apparence humanoïde est le résultat de leur longue évolution. Leurs anc�
 Ils possèdent des organes permettant une apparence proche de celle des autres races, mais leur nature fongique reste évidente : leur peau, leur tête, leurs excroissances et leur morphologie peuvent présenter différentes formes de chapeaux, de filaments, de spores ou de structures propres aux champignons. Ils possède deux jambes, deux bras, des mains, une tête, des yeux et un tronc comme les humonoïdes.
 
 Ils ne possèdent pas de véritable capacité à parler à cause de l''absence totale de bouche, mais leur communication repose sur une autre forme de communication, par la pensée et les parfums.', 5, 10, 5, 4, 4, 'Accès à toutes les magies.', 'Ne possède pas la parole, Classe barde et parleur interdite.', 'Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 {{chakra|chakra}} (jet de calme en stress)).', NULL, NULL, NULL, NULL, 'races', 'Nouveauté mise à jour Décembre › Fongoïde › A4, AK3, AK30, H13, U13, AG13, H16, H19 ; don de base : décision R239 (2) ; vitesses : décision R256');
-INSERT INTO race_onglet (race_id, onglet, description_generale, histoire, description, sante_depart, chakra_depart, barriere_bonus, vitesse_sol, vitesse_nage, avantages, inconvenients, don_base, dons_rubrique, dons_rubrique_nom, dons_rubrique_don, dons_tableau_titre, origine, source_ref) VALUES ('races/gemidien', 'Gémidien', 'Race mélant humain et corps en partie en gemme, leur origine sont profondément relié au super-gemme élémentaire.
+INSERT INTO race_onglet (race_id, onglet, description_generale, histoire, description, sante_depart, chakra_depart, barriere_bonus, vitesse_sol, vitesse_nage, avantages, inconvenients, don_base, dons_rubrique, dons_rubrique_nom, dons_rubrique_don, dons_tableau_titre, origine, source_ref) VALUES ('races/gemidien', 'Gémidien', 'Race mélant humain et corps en partie en gemme, leur origine sont profondément relié au Super Gemme élémentaire.
 
 Ils possèdent une grande polyvalence comme les humain mais n''ont pas accès au potentiel illimité.
 
@@ -289,7 +289,7 @@ Malgré leur origine extraordinaire, les Gémidiens ne forment pas nécessaireme
 
 Beaucoup considèrent simplement les Gémidiens comme des humains ayant autrefois subi une étrange transformation, mais la vérité reste encore voilée de mystères.
 
-Bien entendu, certains ont essayer de produire la première génération de gémidien en cherchant quelque chose dans les supers-gemmes mais rien n''a été trouvé, les supers-gemmes aujourd''hui sont des objets inerte permettant beaucoup de choses (cf. Codex|Outils légendaires|Super gemme)', 'Les Gémidiens possèdent une apparence globalement humanoïde, leur ascendance humaine restant particulièrement visible. Leur peau est tout de fois un peu plus grise, comme pour rappeler l''origine en partie minérale.
+Bien entendu, certains ont essayer de produire la première génération de gémidien en cherchant quelque chose dans les Super Gemmes mais rien n''a été trouvé, les Super Gemmes aujourd''hui sont des objets inerte permettant beaucoup de choses (cf. Codex|Outils légendaires|Super Gemme)', 'Les Gémidiens possèdent une apparence globalement humanoïde, leur ascendance humaine restant particulièrement visible. Leur peau est tout de fois un peu plus grise, comme pour rappeler l''origine en partie minérale.
 
 Environ la moitié de leur corps est cependant constituée de gemme, répartie de manière irrégulière à travers leur anatomie. Il ne s''agit donc pas d''une partie précise du corps transformée : un Gémidien peut posséder un bras presque entièrement cristallin, quelques doigts, une partie du visage, des côtes visibles sous la peau ou encore des portions visibles de la colonne vertébrale constituées de gemme.
 

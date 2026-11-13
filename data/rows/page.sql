@@ -342,7 +342,7 @@ Des âmes errantes emplies de rancoeur et de rancune hantent les lieux qui furen
 
 ## Capacité(s)
 
-Immatériel. Cette créature est naturellement immunisée aux dégâts physiques (armes) , seules la magie, une arme spectrale ou une arme sous l’effet d’un {{sort-fer|sort “fer”}} peuvent la toucher. En plus de ça, son arme naturelle passe à travers les AP.
+Immatériel. Cette créature est naturellement immunisée aux dégâts physiques (armes), seules la magie, une arme spectrale ou une arme sous l’effet d’un {{sort-fer|sort “fer”}} peuvent la toucher. En plus de ça, son arme naturelle passe à travers les AP.
 
 (NPM 3) Renfermement. Cette créature est capable de renfermer ses blessures au début de son tour. (Regagne toute sa santé)
 
@@ -407,7 +407,7 @@ Le Golem d''Arcane est un être que l''on peut considérer comme fantomatique. S
 
 ## Capacité(s)
 
-Immatériel. Cette créature est naturellement immunisée aux dégâts physiques (armes) , seules la magie, une arme spectrale ou une arme sous l’effet d’un {{sort-fer|sort “fer”}} peuvent la toucher.
+Immatériel. Cette créature est naturellement immunisée aux dégâts physiques (armes), seules la magie, une arme spectrale ou une arme sous l’effet d’un {{sort-fer|sort “fer”}} peuvent la toucher.
 
 (NPM 3) Rune immédiate. Cette créature obtient une résistance à l’élément du dernier sort subi et cela plusieurs fois dans un tour (une résistance à la fois).
 
@@ -1580,7 +1580,7 @@ Lanceur de sorts. Cette créature peut lancer les sorts, avec les niveaux de ma�
 
 (NPM 5) Sort supplémentaire. Cette créature obtient de nouveaux sorts en plus des autres : Double action
 ', 'draft', 'bestiaire', 'Google Sheet « Invocation », onglet « Appel aux golems »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('bestiaire/poupee-terrestre', 'bestiaire', 'poupee-terrestre', 'Poupée terrestre', 'poupee-terrestre', 'La poupée terrestre est un mini-hommage au dieu de la Terre.', NULL, '**Invocation** : Appel aux golems (onglet du classeur « Invocation »)
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('bestiaire/poupee-terrestre', 'bestiaire', 'poupee-terrestre', 'Poupée terrestre', 'poupee-terrestre', 'La poupée terrestre est un mini-hommage au Dieu de la Terre.', NULL, '**Invocation** : Appel aux golems (onglet du classeur « Invocation »)
 
 **Magie(s)** : Terre + Terre
 
@@ -1588,7 +1588,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 ## Description
 
-La poupée terrestre est un mini-hommage au dieu de la Terre. Son corps est façonné dans la pierre, les pièces reliées entre elles par des racines et des lianes, tandis que des plantes et herbes forment sa chevelure. Une grosse fleur émerge de son dos, et un bras est plus massif que l’autre, rappelant la force brute du dieu. Malgré son apparence imposante et robuste, elle reste une lanceuse de sort.
+La poupée terrestre est un mini-hommage au Dieu de la Terre. Son corps est façonné dans la pierre, les pièces reliées entre elles par des racines et des lianes, tandis que des plantes et herbes forment sa chevelure. Une grosse fleur émerge de son dos, et un bras est plus massif que l’autre, rappelant la force brute du dieu. Malgré son apparence imposante et robuste, elle reste une lanceuse de sort.
 
 ## Statistiques
 
@@ -2242,7 +2242,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Arbalètrier »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/arbaletrier-ou-pas', 'capacites', 'arbaletrier-ou-pas', '... ou pas ? (Arbalétrier)', 'ou-pas-arbaletrier', 'Les dégâts au torse font +4 dégâts.', '{"classe": "classes/arbaletrier", "specialite": "GRAND ARBALÉTRIER", "niveau": 15, "nature": "choix", "rang": 2, "ligne": 36, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/arbaletrier-choix"]}', 'Les dégâts au torse font +4 dégâts.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Arbalètrier »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/arbaletrier-pre-mythril', 'capacites', 'arbaletrier-pre-mythril', 'Pré-mythril (Arbalétrier)', 'pre-mythril-arbaletrier', 'Un carreau spécial qui ignore complètement la {{barriere|barrière}} de la cible.', '{"classe": "classes/arbaletrier", "specialite": "BALISTE", "niveau": 20, "nature": "choix", "rang": 2, "ligne": 43, "type_capacite": "Action (1 fois/combat)", "choix_exclusif_avec": ["capacites/arbaletrier-anti-blindage"]}', 'Un carreau spécial qui ignore complètement la {{barriere|barrière}} de la cible.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/arbaletrier-pre-mythril', 'capacites', 'arbaletrier-pre-mythril', 'Pré-mythril (Arbalétrier)', 'pre-mythril-arbaletrier', 'Le carreau a la nouvelle propriété du Mythril : +1 dé de dégâts s''il touche une {{barriere|barrière}}.', '{"classe": "classes/arbaletrier", "specialite": "BALISTE", "niveau": 20, "nature": "choix", "rang": 2, "ligne": 43, "type_capacite": "Action (1 fois/combat)", "choix_exclusif_avec": ["capacites/arbaletrier-anti-blindage"]}', 'Le carreau a la nouvelle propriété du Mythril : +1 dé de dégâts s''il touche une {{barriere|barrière}}.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Arbalètrier »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/arbaletrier-tir-renforce', 'capacites', 'arbaletrier-tir-renforce', 'Tir renforcé (Arbalétrier)', 'tir-renforce-arbaletrier', 'Donne +5% à la Compétence « Arbalète » et augmente les dégâts de 3.', '{"classe": "classes/arbaletrier", "niveau": 1, "nature": "classe", "rang": 1, "ligne": 4, "type_capacite": "Passif"}', 'Donne +5% à la Compétence « Arbalète » et augmente les dégâts de 3.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Arbalètrier »');
@@ -2394,9 +2394,9 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ', 'draft', 'classes', 'Classeur « Nouveauté mise à jour Décembre », onglet « Boxeur »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/boxeur-boucassant', 'capacites', 'boxeur-boucassant', 'Boucassant (Boxeur)', 'boucassant-boxeur', 'Les attaques de pugilats avec un bouclier ignorent 1AP par poids du bouclier.', '{"classe": "classes/boxeur", "specialite": "PERCUTEUR", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/boxeur-bouvasteur"]}', 'Les attaques de pugilats avec un bouclier ignorent 1AP par poids du bouclier.
 ', 'draft', 'classes', 'Classeur « Nouveauté mise à jour Décembre », onglet « Boxeur »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/boxeur-bouclier-dattaque', 'capacites', 'boxeur-bouclier-dattaque', 'Bouclier d''attaque (Boxeur)', 'bouclier-dattaque-boxeur', 'Permet d''utiliser son bouclier comme une extension de dégâts pour les pugilats pour infliger un dégât bonus de AP+AM du bouclier divisé par 4 (minimum 1).', '{"classe": "classes/boxeur", "niveau": 1, "nature": "classe", "rang": 1, "ligne": 4, "type_capacite": "Passif"}', 'Permet d''utiliser son bouclier comme une extension de dégâts pour les pugilats pour infliger un dégât bonus de AP+AM du bouclier divisé par 4 (minimum 1).
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/boxeur-bouclier-dattaque', 'capacites', 'boxeur-bouclier-dattaque', 'Bouclier d''attaque (Boxeur)', 'bouclier-dattaque-boxeur', 'Permet d''utiliser son bouclier comme une extension de dégâts pour les pugilats pour infliger un dégât bonus d''AP+AM du bouclier divisé par 4 (minimum 1).', '{"classe": "classes/boxeur", "niveau": 1, "nature": "classe", "rang": 1, "ligne": 4, "type_capacite": "Passif"}', 'Permet d''utiliser son bouclier comme une extension de dégâts pour les pugilats pour infliger un dégât bonus d''AP+AM du bouclier divisé par 4 (minimum 1).
 ', 'draft', 'classes', 'Classeur « Nouveauté mise à jour Décembre », onglet « Boxeur »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/boxeur-boupact', 'capacites', 'boxeur-boupact', 'Boupact (Boxeur)', 'boupact-boxeur', 'Attaque en ciblant une partie du corps, si l''attaque réussit : divise par 2 donné par l''armure lors de la prochaine attaque subit.', '{"classe": "classes/boxeur", "specialite": "PERCUTEUR", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Action (1 fois/combat)", "choix_exclusif_avec": ["capacites/boxeur-bousee"]}', 'Attaque en ciblant une partie du corps, si l''attaque réussit : divise par 2 donné par l''armure lors de la prochaine attaque subit.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/boxeur-boupact', 'capacites', 'boxeur-boupact', 'Boupact (Boxeur)', 'boupact-boxeur', 'Attaque en ciblant une partie du corps, si l''attaque réussit : divise par 2 l''AP donné par l''armure lors de la prochaine attaque subit.', '{"classe": "classes/boxeur", "specialite": "PERCUTEUR", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Action (1 fois/combat)", "choix_exclusif_avec": ["capacites/boxeur-bousee"]}', 'Attaque en ciblant une partie du corps, si l''attaque réussit : divise par 2 l''AP donné par l''armure lors de la prochaine attaque subit.
 ', 'draft', 'classes', 'Classeur « Nouveauté mise à jour Décembre », onglet « Boxeur »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/boxeur-bouquilibre', 'capacites', 'boxeur-bouquilibre', 'Bouquilibre (Boxeur)', 'bouquilibre-boxeur', 'Une attaque réussie impose à l''ennemi un désavantage à son prochain jet de stabilité/réflexe', '{"classe": "classes/boxeur", "specialite": "PERCUTEUR", "niveau": 10, "nature": "choix", "rang": 2, "ligne": 29, "type_capacite": "Actif (2 fois/combat)", "choix_exclusif_avec": ["capacites/boxeur-bourage"]}', 'Une attaque réussie impose à l''ennemi un désavantage à son prochain jet de stabilité/réflexe
 ', 'draft', 'classes', 'Classeur « Nouveauté mise à jour Décembre », onglet « Boxeur »');
@@ -2410,7 +2410,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ', 'draft', 'classes', 'Classeur « Nouveauté mise à jour Décembre », onglet « Boxeur »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/boxeur-egide-dassaut', 'capacites', 'boxeur-egide-dassaut', 'Égide d''assaut (Boxeur)', 'egide-dassaut-boxeur', 'La division pour « bouclier d''attaque » est de 3 au lieu de 4.', '{"classe": "classes/boxeur", "niveau": 20, "nature": "classe", "rang": 3, "ligne": 49, "type_capacite": "Passif"}', 'La division pour « bouclier d''attaque » est de 3 au lieu de 4.
 ', 'draft', 'classes', 'Classeur « Nouveauté mise à jour Décembre », onglet « Boxeur »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/boxeur-endurouille', 'capacites', 'boxeur-endurouille', 'Endurouille (Boxeur)', 'endurouille-boxeur', 'Tant qu''il porte une armure lourde, réduit d''un tour les altérations d''états infligés.', '{"classe": "classes/boxeur", "specialite": "CARCASSE ROUILLÉE", "niveau": 15, "nature": "choix", "rang": 2, "ligne": 36, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/boxeur-etourdissement"]}', 'Tant qu''il porte une armure lourde, réduit d''un tour les altérations d''états infligés.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/boxeur-endurouille', 'capacites', 'boxeur-endurouille', 'Endurouille (Boxeur)', 'endurouille-boxeur', 'Tant qu''il porte une armure lourde, réduit d''un tour les altérations d''état infligés.', '{"classe": "classes/boxeur", "specialite": "CARCASSE ROUILLÉE", "niveau": 15, "nature": "choix", "rang": 2, "ligne": 36, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/boxeur-etourdissement"]}', 'Tant qu''il porte une armure lourde, réduit d''un tour les altérations d''état infligés.
 ', 'draft', 'classes', 'Classeur « Nouveauté mise à jour Décembre », onglet « Boxeur »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/boxeur-etourdissement', 'capacites', 'boxeur-etourdissement', 'Étourdissement (Boxeur)', 'etourdissement-boxeur', 'Les coups avec des armes de pugilats avec un bouclier ont 5% de chance d''étourdir l''ennemi.', '{"classe": "classes/boxeur", "specialite": "CARCASSE ROUILLÉE", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/boxeur-endurouille"]}', 'Les coups avec des armes de pugilats avec un bouclier ont 5% de chance d''étourdir l''ennemi.
 ', 'draft', 'classes', 'Classeur « Nouveauté mise à jour Décembre », onglet « Boxeur »');
@@ -2422,7 +2422,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ', 'draft', 'classes', 'Classeur « Nouveauté mise à jour Décembre », onglet « Boxeur »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/boxeur-posture-durgence', 'capacites', 'boxeur-posture-durgence', 'Posture d''urgence (Boxeur)', 'posture-durgence-boxeur', 'Si tombe à terre : se met automatiquement en défense', '{"classe": "classes/boxeur", "specialite": "CARCASSE ROUILLÉE", "niveau": 20, "nature": "choix", "rang": 2, "ligne": 43, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/boxeur-posture-inebran"]}', 'Si tombe à terre : se met automatiquement en défense
 ', 'draft', 'classes', 'Classeur « Nouveauté mise à jour Décembre », onglet « Boxeur »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/boxeur-posture-inebran', 'capacites', 'boxeur-posture-inebran', 'Posture inébran (Boxeur)', 'posture-inebran-boxeur', '5% stabilité, bénéficie d''un avantage lors des jets de cette compétence.', '{"classe": "classes/boxeur", "specialite": "CARCASSE ROUILLÉE", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Réaction (2 fois/combat)", "choix_exclusif_avec": ["capacites/boxeur-posture-durgence"]}', '5% stabilité, bénéficie d''un avantage lors des jets de cette compétence.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/boxeur-posture-inebran', 'capacites', 'boxeur-posture-inebran', 'Posture inébranlable (Boxeur)', 'posture-inebranlable-boxeur', '5% stabilité, bénéficie d''un avantage lors des jets de cette compétence.', '{"classe": "classes/boxeur", "specialite": "CARCASSE ROUILLÉE", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Réaction (2 fois/combat)", "choix_exclusif_avec": ["capacites/boxeur-posture-durgence"]}', '5% stabilité, bénéficie d''un avantage lors des jets de cette compétence.
 ', 'draft', 'classes', 'Classeur « Nouveauté mise à jour Décembre », onglet « Boxeur »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/clerc-ange-beige', 'capacites', 'clerc-ange-beige', 'Ange Beige (Clerc)', 'ange-beige-clerc', '(Posture Symbiose) Invoque un Ange qui va soigner à hauteur de 25% de PV lorsque ceux-ci tombent à 0.', '{"classe": "classes/clerc", "specialite": "SAINT COMBATTANT", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Actif  (1 fois/24h)", "choix_exclusif_avec": ["capacites/clerc-ange-pourpre"]}', '(Posture Symbiose)  
 Invoque un Ange qui va soigner à hauteur de 25% de PV lorsque ceux-ci tombent à 0. Sur soi uniquement.
@@ -3925,7 +3925,7 @@ L’Archimage est la quintessence du pouvoir arcanique, un être qui transcende 
 
 ## CHOSE À SAVOIR
 
-Cette classe est unique au potentiel illimité, vous ne pouvez pas la prendre si vous n''êtes pas du potentiel illimité et est imposée quand vous êtes du potentiel illimité.
+Cette classe est unique au potentiel illimité, vous ne pouvez pas la prendre si vous n''êtes pas du potentiel illimité.
 
 ## Don de départ
 
@@ -7416,7 +7416,7 @@ Le Codex raconte que tout commença avec deux forces, la Création et la Destruc
 
 Un personnage est la rencontre d’une race, d’une magie et d’une classe.
 
-- **27 races** ({{humain|des humains}} aux plus exotiques), les unes *pures*, les autres *hybrides*. Une race hybride a sa propre classe, la *classe raciale*, qui porte son nom ; seul le Drassah’thac, hybride lui aussi, n’en a pas. La plupart des races se divisent encore en **ethnies**, comme le Felfe Forestier. Chacune a son histoire, ses dons, ses avantages et ses inconvénients, sa façon de voir les autres peuples ({{relations-entre-les-races|les relations entre les peuples}}) et ses magies possibles. Voir les {{race|races}}.
+- **29 races** ({{humain|des humains}} aux plus exotiques), les unes *pures*, les autres *hybrides*. Une race hybride a sa propre classe, la *classe raciale*, qui porte son nom ; seul le Drassah’thac, hybride lui aussi, n’en a pas. La plupart des races se divisent encore en **ethnies**, comme le Felfe Forestier. Chacune a son histoire, ses dons, ses avantages et ses inconvénients, sa façon de voir les autres peuples ({{relations-entre-les-races|les relations entre les peuples}}) et ses magies possibles. Voir les {{race|races}}.
 - **41 classes** et **82 spécialités** : deux par classe, à choisir au niveau 10 de la classe. Il y a des classes physiques, au corps à corps ou à distance, des classes magiques, les classes raciales, et des classes spéciales. On peut commencer avec une classe ou deux. Voir les {{classe|classes}}.
 - **15 magies**, dont l’une innée et, si la race le permet, une autre acquise. Voir les {{magies|magies}}.
 
@@ -8551,7 +8551,7 @@ Le mode super donne des bonus non négligeables au combat, il donne un bonus de 
 | Lance du Bourreau déchiré | Effet passif =<br>Effet actif = |  |
 | Selcalibur | Effet passif = +3AP base et +3AM base<br>Effet actif = Permet de lancer du sel sur l''adversaire, ce qui va réduire sa résistance à la Terre et à l''Eau de 1 cran pendant 2 tours. (2 fois/combat) | Le porteur de Selcalibur voit son corps se recouvrir de plaque de sel solide ce qui augmente ses défenses, il est aussi capable de lancer du sel sur l''adversaire. |
 | Soir-matin | Effet passif =<br>Effet actif = |  |
-| Super gemme | Effet passif = Les dégâts de l''élément de la gemme augmentent de +10 au lieu de +7.<br>Effet actif = Permet de lancer un sort un cran au-dessus de la puissance magique actuelle pour un coût 50% plus cher (sort lvl 5 limité au mono magie) (1 fois/24h) | Le porteur fusionne avec la gemme temporairement pour exploiter sa pleine puissance. La super gemme sortira légèrement du dos de l''utilisateur. Les attributs physiques vont énormément changer et la chair va être temporairement de la même matière que la gemme à certains endroits. |
+| Super Gemme | Effet passif = Les dégâts de l''élément de la gemme augmentent de +10 au lieu de +7.<br>Effet actif = Permet de lancer un sort un cran au-dessus de la puissance magique actuelle pour un coût 50% plus cher (sort lvl 5 limité au mono magie) (1 fois/24h) | Le porteur fusionne avec la gemme temporairement pour exploiter sa pleine puissance. La Super Gemme sortira légèrement du dos de l''utilisateur. Les attributs physiques vont énormément changer et la chair va être temporairement de la même matière que la gemme à certains endroits. |
 ', 'draft', 'annexes', 'Google Sheet « Mode hyper et co », onglet « Mode Super »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/meteo', 'guide', 'meteo', 'Météo', 'meteo', NULL, NULL, '## Normal
 
@@ -9919,7 +9919,7 @@ La nation ne possède qu’une seule véritable cité, la capitale éponyme, dre
 
 Cette abondance engendra l’excès.
 
-Année après année, la population préleva toujours davantage, convaincue que la forêt ne pouvait être épuisée. Les principes du dieu de la Terre, qui prônaient de ne prendre que le strict nécessaire, furent progressivement ignorés ou réinterprétés. La forêt devint un simple outil de prospérité.
+Année après année, la population préleva toujours davantage, convaincue que la forêt ne pouvait être épuisée. Les principes du Dieu de la Terre, qui prônaient de ne prendre que le strict nécessaire, furent progressivement ignorés ou réinterprétés. La forêt devint un simple outil de prospérité.
 
 Puis, sans avertissement, elle répondit.
 
@@ -9927,7 +9927,7 @@ La réplique fut brutale et totale. Des non-morts se relevèrent de leurs tombes
 
 Face à ce carnage, les survivants virent un signe divin.
 
-La cité décréta l’arrêt total de toute exploitation forestière. Cette décision radicale provoqua une fracture interne immédiate. Certains refusaient d’abandonner la forêt, d’autres prônaient une obéissance absolue, tandis qu’un troisième groupe tentait de revenir aux principes originels du dieu de la Terre : prélever juste le nécessaire, sans excès. Le conflit dégénéra rapidement.
+La cité décréta l’arrêt total de toute exploitation forestière. Cette décision radicale provoqua une fracture interne immédiate. Certains refusaient d’abandonner la forêt, d’autres prônaient une obéissance absolue, tandis qu’un troisième groupe tentait de revenir aux principes originels du Dieu de la Terre : prélever juste le nécessaire, sans excès. Le conflit dégénéra rapidement.
 
 Ce ne fut plus la forêt qui tua, mais les Camnaviens eux-mêmes.
 
@@ -9961,7 +9961,7 @@ Les décisions majeures sont prises par un conseil où siègent stratèges, ing�
 
 ## Religion
 
-Le dieu de la Terre occupe une place centrale dans la spiritualité camnavienne. Son dogme est cependant interprété avec prudence, voire avec crainte. Les habitants respectent ses principes, mais savent que même la modération n’a pas suffi à apaiser la forêt. Beaucoup d’autres prient les autres dieux mais tout est fait discrètement à cause de la peur de mettre en colère la forêt. Mais au fond, rien ne semble empêcher la forêt d''exercer sa colère.
+Le Dieu de la Terre occupe une place centrale dans la spiritualité camnavienne. Son dogme est cependant interprété avec prudence, voire avec crainte. Les habitants respectent ses principes, mais savent que même la modération n’a pas suffi à apaiser la forêt. Beaucoup d’autres prient les autres dieux mais tout est fait discrètement à cause de la peur de mettre en colère la forêt. Mais au fond, rien ne semble empêcher la forêt d''exercer sa colère.
 
 La proximité de la Forêt Colossale renforce ce rapport ambigu : vénération, peur et culpabilité se mêlent dans les pratiques religieuses locales.
 
@@ -11066,7 +11066,7 @@ L''arme apparaît ainsi de manière occasionnelle dans l''histoire de Maverick, 
 
 On raconte d''ailleurs que ses veines deviennent particulièrement brillantes lorsque son porteur protège quelqu''un qui lui est cher. Cela reste difficile à vérifier, mais une chose est certaine : le Croc du volcan n''a jamais choisi son porteur pour sa puissance seule.
 ', 'draft', 'docs', 'Google Doc « CODEX Maverick »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('lore/dimitri', 'lore', 'dimitri', 'Dimitri', 'dimitri', 'Dieu de la terre', NULL, '*Dieu de la terre*
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('lore/dimitri', 'lore', 'dimitri', 'Dimitri', 'dimitri', 'Dieu de la Terre', NULL, '*Dieu de la Terre*
 
 ## Présentation générale
 
@@ -11954,7 +11954,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 Au commencement du monde, des tempêtes sans fin balayaient les terres, empêchant toute vie de s’enraciner. Des éclairs zébraient les cieux, les ouragans hurlaient, et les montagnes s’effritaient sous la fureur du vent. C’est alors qu’apparut Éoline, une elfe dorée (plus tard forestière) née au milieu de toute cette rage. Elle détruisit les élémentaires du vent et calma le vent.
 
-Elle entretient un lien unique avec Dimitri, dieu de la Terre. Elle le considère comme son grand frère, leurs éléments ont beau être en opposition, l’un a besoin de l’autre.
+Elle entretient un lien unique avec Dimitri, Dieu de la Terre. Elle le considère comme son grand frère, leurs éléments ont beau être en opposition, l’un a besoin de l’autre.
 
 Mais autrefois, Dimitri, alors consumé par la rage et la brutalité, tua Éoline dans un accès de folie. Par amour pour lui, elle accepta sa mort sans haine, convaincue que son sacrifice le ramènerait à la raison. Son esprit se reforma dans le vent, immortalisant leur lien. Depuis, elle veille sur lui en silence, portée par le souffle du monde.
 
@@ -12293,9 +12293,9 @@ La Forêt Colossale est la plus vaste forêt connue du monde de Maverick. Elle n
 
 ## Histoire
 
-La Forêt Colossale est née d’un drame divin. En son cœur se trouve la Mort Fertile, lieu où, dans une frénésie incontrôlée, le dieu de la Terre tua de sang-froid la déesse du Vent. Elle ne chercha ni à se défendre ni à fuir. Elle mourut avec le sourire, convaincue que sa mort apaiserait les colères de Dimitri.
+La Forêt Colossale est née d’un drame divin. En son cœur se trouve la Mort Fertile, lieu où, dans une frénésie incontrôlée, le Dieu de la Terre tua de sang-froid la déesse du Vent. Elle ne chercha ni à se défendre ni à fuir. Elle mourut avec le sourire, convaincue que sa mort apaiserait les colères de Dimitri.
 
-Ce fut une erreur dont le dieu de la Terre ne se remit jamais.
+Ce fut une erreur dont le Dieu de la Terre ne se remit jamais.
 
 Submergé par le remords, Dimitri se retira du monde et entra dans une méditation profonde. Il laissa alors s’échapper son énergie divine, sans retenue, jusqu’à sa propre mort. Cette énergie pure fut absorbée par la nature environnante, qui se transforma progressivement en une forêt gigantesque, nourrie par une puissance divine brute.
 
@@ -12305,7 +12305,7 @@ Les deux dieux finirent par revenir, comme tous les dieux finissent par le faire
 
 La démesure de la Forêt Colossale s’explique par cette saturation d’énergie divine. Arbres, plantes, champignons et racines ont grandi au-delà de toute norme naturelle. Une espèce identique, poussant ailleurs dans le monde, sera toujours plus petite, plus fragile et moins épanouie que son équivalent dans la forêt.
 
-La forêt n’est pas un lieu passif. Elle **protège la Mort Fertile**. Les arbres eux-mêmes font office de gardiens, déplaçant leurs racines, fermant des passages, brisant des routes ou écrasant ceux qui tenteraient d’entrer sans autorisation. Nul ne peut pénétrer le cœur sacré sans y être invité par le dieu de la Terre en personne.
+La forêt n’est pas un lieu passif. Elle **protège la Mort Fertile**. Les arbres eux-mêmes font office de gardiens, déplaçant leurs racines, fermant des passages, brisant des routes ou écrasant ceux qui tenteraient d’entrer sans autorisation. Nul ne peut pénétrer le cœur sacré sans y être invité par le Dieu de la Terre en personne.
 
 ## Organisation et contrôle
 
@@ -12327,7 +12327,7 @@ Entrer dans la Forêt Colossale pour la souiller ou la détruire n’est pas une
 
 ## Zones et Sites notables
 
-A part la Mort fertile et le Temple de la Terre, difficile de mettre sur carte un lieu si grand …
+A part la Mort Fertile et le Temple de la Terre, difficile de mettre sur carte un lieu si grand …
 ', 'draft', 'docs', 'Google Doc « CODEX Maverick »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('lore/foret-de-lete', 'lore', 'foret-de-lete', 'Forêt de l’été', 'foret-de-lete', 'La Forêt de l’Été est une vaste étendue boisée située à la lisière du Marais Vert.', NULL, '## Présentation générale
 
@@ -13063,7 +13063,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 - {{seraphin}} — Dieu du feu
 - {{oceane}} — Déesse de l''eau
 - {{celsius}} — Déesse de la glace
-- {{dimitri}} — Dieu de la terre
+- {{dimitri}} — Dieu de la Terre
 - {{eoline}} — Déesse du vent
 - {{volt}} — Dieu de la foudre
 - {{aurora}} — Déesse de la lumière
@@ -13480,7 +13480,7 @@ La religion naine se distingue par sa sobriété et son pragmatisme. Les nains n
 
 **Mirada, déesse de l’Arcane**, est connue parmi les nains sous le nom de Dame Bâtisseuse. Elle incarne la fertilité, la magie constructive, la créativité et l’ingéniosité féminine. Les architectes, ingénieurs, inventeurs et maîtres des runes voient en elle la source de leur inspiration.
 
-**Dimitri, dieu de la Terre**, est honoré comme le Père des Montagnes. Il symbolise la stabilité, la force, la résilience et la protection du sol. Les nains reconnaissent en lui celui qui a permis l’existence des forêts souterraines et qui bénit leurs mines.
+**Dimitri, Dieu de la Terre**, est honoré comme le Père des Montagnes. Il symbolise la stabilité, la force, la résilience et la protection du sol. Les nains reconnaissent en lui celui qui a permis l’existence des forêts souterraines et qui bénit leurs mines.
 
 Cette quadrilogie divine structure toute la spiritualité naine. Bien que les nains ne se tournent vers les dieux que dans les moments importants ou rituels, leur respect pour ces quatre forces est indiscutable et profondément enraciné dans leurs traditions.
 
@@ -16039,7 +16039,7 @@ Les Super Gemmes sont des nœuds de pouvoir pur. Quiconque ose les toucher trop 
 
 Les rares survivants de ce contact subissent une transformation indélébile : des marques mystiques apparaissent sur leur bras, retraçant les motifs de la gemme et de l’élément lié.  Ces marques témoignent d’un lien à la fois mystique et vital — une union partielle entre mortel et essence élémentaire. Bien entendu, ces gens qui possèdent ces marques possédait de base la magie en question.
 
-Certains témoignages mentionnent que, dans de très rares cas, la Super Gemme offre la magie correspondante à un individu qui n’en possède pas, pour peu que son corps ne rejette pas la puissance. On dit que celui qui touche une super gemme possède la même magie et de manière innée, les risques de mort sont bien plus faibles.
+Certains témoignages mentionnent que, dans de très rares cas, la Super Gemme offre la magie correspondante à un individu qui n’en possède pas, pour peu que son corps ne rejette pas la puissance. On dit que celui qui touche une Super Gemme possède la même magie et de manière innée, les risques de mort sont bien plus faibles.
 
 Effet universel :
 
@@ -16051,7 +16051,7 @@ Effet universel :
 
 Une ancienne légende murmure que réunir toutes les Super Gemmes permettrait d’invoquer l''ambassadeur de l''absolu, une entité divine capable d’exaucer un unique vœu. Cependant, ce vœu serait à double tranchant, et nul ne sait quel prix pourrait être exigé en retour.
 
-Beaucoup considèrent cette quête comme impossible, car les gemmes sont dispersées dans des lieux de dangers extrêmes, farouchement protégées par des forces naturelles ou surnaturelles, très souvent, là où se trouve une super gemme se trouve les Élémentaires, les créatures chaotiques de l’ancien monde.
+Beaucoup considèrent cette quête comme impossible, car les gemmes sont dispersées dans des lieux de dangers extrêmes, farouchement protégées par des forces naturelles ou surnaturelles, très souvent, là où se trouve une Super Gemme se trouve les Élémentaires, les créatures chaotiques de l’ancien monde.
 
 ## Rôle et Symbolique
 
@@ -16436,7 +16436,7 @@ L’air y est empli d’odeurs d’humus, de sève et de pierre humide. Les visi
 
 ## Divinité et culte
 
-Le temple rend hommage à Dimitri, dieu de la Terre, symbole de force, de stabilité et de croissance.
+Le temple rend hommage à Dimitri, Dieu de la Terre, symbole de force, de stabilité et de croissance.
 
 Les rituels sont sobres mais important :
 
@@ -22426,7 +22426,7 @@ Cette page suit l''onglet « Fenrir » du Google Sheet « Les races », qui prim
 ', 'draft', 'races', 'Google Sheet « Les races », onglet « première feuille »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('races/fongoide', 'races', 'fongoide', 'Fongoïde', 'fongoide', NULL, '{"magies_innees": ["Sang", "Arcane", "Corruption", "Espace/Temps", "Vide", "Nécromancie", "Feu", "Eau", "Glace", "Terre", "Vent", "Foudre", "Lumière", "Ombre"]}', '## Présentation
 
-Une race entièrement fait de champignons dont l''origine remonte le jour où le Dieu de la Terre s''est donné la mort.
+Une race entièrement fait de champignons dont l''origine remonte le jour où le {{dimitri|Dieu de la Terre}} s''est donné la mort.
 
 Ils ont une forme humanoïde car avec le temps, ils sont adaptés aux autres races intelligente et ont pris cette forme car plus pratique ? moins intimidante ? Personne ne le sait.
 
@@ -22434,7 +22434,7 @@ Selon la lignée première, cette race est apparu sous la forme humanoïde la pr
 
 ## Histoire
 
-L''origine des Fongoïdes remonte à une époque aujourd''hui révolue : l''époque du Premier Champignon.
+L''origine des Fongoïdes remonte à une époque aujourd''hui révolue : l''époque du {{champicer|Premier Champignon}}.
 
 À cette époque, la Mort Fertile apparut dans la Forêt Colossale. Ce lieu, profondément marqué par l''énergie de la Terre, permit à un champignon qui passait par là d''assimilé une quantité folle d''énergie divine.
 
@@ -22512,7 +22512,7 @@ Sang, Arcane, Corruption, Espace/Temps, Vide, Nécromancie, Feu, Eau, Glace, Ter
 ', 'draft', 'races', 'Nouveauté mise à jour Décembre, onglet « Fongoïde »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('races/gemidien', 'races', 'gemidien', 'Gémidien', 'gemidien', NULL, '{"magies_innees": ["Sang", "Arcane", "Espace/Temps", "Vide", "Nécromancie", "Feu", "Eau", "Glace", "Terre", "Vent", "Foudre", "Lumière", "Ombre"]}', '## Présentation
 
-Race mélant humain et corps en partie en gemme, leur origine sont profondément relié au super-gemme élémentaire.
+Race mélant humain et corps en partie en gemme, leur origine sont profondément relié au Super Gemme élémentaire.
 
 Ils possèdent une grande polyvalence comme les humain mais n''ont pas accès au potentiel illimité.
 
@@ -22536,7 +22536,7 @@ Malgré leur origine extraordinaire, les Gémidiens ne forment pas nécessaireme
 
 Beaucoup considèrent simplement les Gémidiens comme des humains ayant autrefois subi une étrange transformation, mais la vérité reste encore voilée de mystères.
 
-Bien entendu, certains ont essayer de produire la première génération de gémidien en cherchant quelque chose dans les supers-gemmes mais rien n''a été trouvé, les supers-gemmes aujourd''hui sont des objets inerte permettant beaucoup de choses (cf. Codex|Outils légendaires|Super gemme)
+Bien entendu, certains ont essayer de produire la première génération de gémidien en cherchant quelque chose dans les Super Gemmes mais rien n''a été trouvé, les Super Gemmes aujourd''hui sont des objets inerte permettant beaucoup de choses (cf. Codex|Outils légendaires|Super Gemme)
 
 ## Description
 
@@ -25965,16 +25965,16 @@ Note de mise en page : la règle ci-dessus (« Les armes en bleu sont les armes 
 | Fer | 100 RF / 10 RO | rien de particulier |
 | Acier | 200 RF / 20 RO | Dégâts +2 pour l''arme<br>Une fois par combat, permet de relancer les dés de dégâts, mais le second résultat doit être conservé. |
 | Fer noir | 350 RF / 35 RO | Dégâts +3 pour l''arme<br>Si la cible ne possède pas de {{corruption\|corruption}}, lui inflige 4 points de {{corruption\|corruption}}. Si elle possède déjà de la {{corruption\|corruption}}, inflige +2 dégâts et 2 de {{corruption\|corruption}}. |
-| Argent | 350 RF / 35 RO | Dégâts +4 pour l''arme<br>+1 dé de dégâts contre les non-morts. |
+| Argent | 350 RF / 35 RO | Dégâts +4 pour l''arme<br>+1 dé de dégâts contre les {{non-mort\|non-morts}}. |
 | Fonte | 400 RF / 40 RO | Dégâts +7 pour l''arme<br>-1 cran de solidité |
 | Cuivre | 400 RF / 40 RO | Dégâts +5 pour l''arme<br>Les {{sort-fer\|sorts de type « Fer »}} appliqués à l''arme durent un tour supplémentaire, soit 4 tours au lieu de 3. |
 | Bronze | 850 RF / 85 RO | Dégâts +5 pour l''arme<br>+1 cran de solidité |
-| Os | 800 RF / 80 RO | Dégâts +6 pour l''arme<br>+1 dé de dégâts contre les bêtes. |
-| Laiton | 900 RF / 90 RO | Dégâts +7 pour l''arme<br>+1 dé de dégâts contre les créatures mécaniques ou inertes. |
-| Or | 100 RO | Dégâts +8 pour l''arme<br>+1 dé de dégâts contre les démons. |
-| Vif argent | 300 RO | Dégâts +6 pour l''arme<br>Permet de toucher les êtres immatériels. |
+| Os | 800 RF / 80 RO | Dégâts +6 pour l''arme<br>+1 dé de dégâts contre les {{bete\|bêtes}}. |
+| Laiton | 900 RF / 90 RO | Dégâts +7 pour l''arme<br>+1 dé de dégâts contre les créatures {{mecanique\|mécaniques}} ou inertes. |
+| Or | 100 RO | Dégâts +8 pour l''arme<br>+1 dé de dégâts contre les {{demon\|démons}}. |
+| Vif argent | 300 RO | Dégâts +6 pour l''arme<br>Permet de toucher les êtres {{immateriel\|immatériels}}. |
 | Mythril | 200 RO | Dégâts +8 pour l''arme<br>Si l''arme touche une {{barriere\|barrière}}, elle inflige +1 dé de dégâts. |
-| Titane | 200 RO | Dégâts +9 pour l''arme<br>Avantage contre les effets de désarmement. |
+| Titane | 200 RO | Dégâts +9 pour l''arme<br>{{avantage\|Avantage}} contre les {{desarmement\|effets de désarmement}}. |
 | Maverium | 400 RO | Dégâts +10 pour l''arme<br>Si la créature ne possède pas ou plus de {{barriere\|barrière}}, l''arme inflige +1 dé de dégâts. |
 
 ## AMÉLIORATION
