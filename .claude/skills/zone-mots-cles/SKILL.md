@@ -19,7 +19,7 @@ user-invocable: false
 - `docs/content-guide.md`, « Mots-clés (glossaire) » : « Le Glossaire » (noms, homonymes, monnaies), « Gérer le vocabulaire », ce qui n'est pas un mot-clé.
 - `docs/serveur.md`, « Édition des règles (site de dev) », paragraphe des balises (forme canonique par la clé, saisie, casse).
 
-## Les tables (migrations 0043, 0056, 0090, 0098, 0110, 0113 à 0116 ; schéma : skill `base-sqlite`)
+## Les tables (migrations 0043, 0056, 0090, 0098, 0110, 0113 à 0116 ; schéma : skills `base-sqlite` et `base-sqlite-migrations`)
 - `mot_cle` : `id` entier attribué à la création, figé, jamais réutilisé (R232 (1)) ; `libelle`, pas unique ; `cle` calculée ; `description` (NULL tant qu'elle n'est pas écrite, lue `?? ''`) ; `couleur`, `url` ; `verrou` ; `monnaie_id` (sa monnaie, `ON DELETE SET NULL`) ; `icone` (`<famille>:<id>`, 0116). Aucune route n'écrit `cle`, `verrou` ni `monnaie_id`.
 - `categorie_mot_cle` (libellé unique, 11 au départ), `mot_cle_categorie`, `mot_cle_ancienne_cle` (une clé quittée → le mot-clé), `mot_cle_synonyme` (dans l'ordre ; écriture normalisée unique).
 - La clé (R232 (2), (9), (10)) : sans homonyme, `normalize(libelle)` ; des homonymes (même `normalize`) prennent ensuite, chacune après un tiret, les catégories qui ne sont pas communes à tous, dans l'ordre de leur id (`namazu-race`, `namazu-classe`). Refusés : un homonyme sans catégorie propre face à chacun des autres (aucune, ou incluses dans celles d'un autre) ; une clé déjà prise.

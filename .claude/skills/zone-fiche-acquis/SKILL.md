@@ -19,7 +19,8 @@ Noyau (fichiers, invariants communs) : skill `zone-fiche`. Détail : `docs/chara
 - Les « tests d'artisanat » s'ajoutent à `artisanatDe` (R123), rien sans métier.
 - Drakos orange, « parmi les autres » : une compétence et une altération d'état au choix parmi celles des autres lignes du tableau, indépendantes (R124, `personnage_resistance_choix`, `resistanceChoixValables`).
 - `acquis-texte.mjs` écarte toujours « réussite crit » (jamais un acquis) : `lib/critique-texte.mjs` la lit (R180), un seul compte (skill `zone-fiche-situation`).
-- `acquis-texte.mjs#DONS_SANS_ACQUIS` (appliquée par `fiche-regles.mjs`) : liste d'exclusion par identifiant des dons dont le texte ne produit jamais d'acquis, parce que leur règle n'est pas tranchée : Posture inébran du Boxeur (MAJ-C6) et les quatre Chef du Porte-étendard (MAJ-C4). Ils restent un passif écrit. Leur retrait de la liste attend le propriétaire : n'y rien déduire. Pendant pour les dégâts : `DONS_SANS_DEGATS` (skill `zone-fiche-equipement`).
+- Dons « Chef résiliant », « Chef agile », « Chef fort », « Chef malin » du Porte-étendard (« les alliés ont un bonus de 5% à tous les jets de … »), lus dans leur texte entier : le Porte-étendard en profite lui-même (R267 (2)). Le bonus s'ajoute au jet de chaque compétence nommée, hors acquis et hors plafond (`jet_competence`, `jetsParCompetence`, comme R122 mais par compétence). Choix du lot, soumis à la conformité de `game-design` : le texte dit « bonus à tous les jets » et R267 (2) « comme un bonus qui joue tout le temps », pas « acquis ». « Motivation » (Action) reste mentionné (R128).
+- `acquis-texte.mjs#DONS_SANS_ACQUIS` (appliquée par `fiche-regles.mjs`) : liste d'exclusion par identifiant des dons dont le texte ne produit jamais d'acquis : « Posture inébranlable » du Boxeur, une Réaction (2 fois/combat) qui ne joue pas en permanence : texte seul, sans calcul (R255 (5), R128). Il reste un passif écrit. Pendant pour les dégâts : `DONS_SANS_DEGATS` (skill `zone-fiche-equipement`).
 - Ne rien compter d'autre : un bonus d'un cas particulier (situation, condition, falsification de documents au MJ) est seulement mentionné (R128, R123), dans le bloc « Bonus d'acquis non comptés » (`nonComptes`, `RAISONS_DE_L_ACQUIS` de la page).
 
 ## Bonus « de l'arme choisie » (R119, R152)
@@ -42,4 +43,4 @@ Noyau (fichiers, invariants communs) : skill `zone-fiche`. Détail : `docs/chara
 - Ses objets de départ entrent dans l'inventaire au choix du métier (`inventaireSelonLeMetier`, `choisirObjetDeMetier`). Page `/metiers/` : skill `zone-metiers`.
 
 ## Tests
-`test/fiche-acquis.test.mjs`, `fiche-arme-choisie`, et `fiche-moteur` (skill `zone-fiche`).
+`test/fiche-acquis.test.mjs` (dont les dons « Chef… », R267 (2)), `fiche-arme-choisie`, et `fiche-moteur` (skill `zone-fiche`).

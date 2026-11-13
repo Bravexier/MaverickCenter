@@ -119,7 +119,7 @@ Les skills :
 - `zone-menu`, `zone-accueil`, `zone-archives` ;
 - `zone-service` (et `zone-service-sorties`, le classeur en ligne et Tipeee), `zone-edition` (et `zone-edition-maitrises`, les sources de maîtrise d'arme ; `zone-edition-menus`, les menus latéraux et les pages des Règles ; `zone-edition-rejeu`, le rejeu du journal et ses conflits), `zone-mise-a-jour` (et ses sous-skills `zone-mise-a-jour-conflits`, `zone-maintenance`), `zone-api-rest`, `zone-debug-metriques`, `zone-hebergement` ;
 - l'interface commune : `ui-tableaux`, `ui-infobulles`, `ui-defilement`, `ui-monnaies`, `ui-couleurs` (et `ui-couleurs-theme`, jetons du thème et dérogations), `ui-onglets` ;
-- le socle et les données : `site-wiki-liens`, `site-version-portable`, `base-sqlite` (préchargé par `tech-db`, toujours proposé), `base-orthographe`, `sources-codex`, `sources-rapprochement`.
+- le socle et les données : `site-wiki-liens`, `site-version-portable`, `base-sqlite` (préchargé par `tech-db`, toujours proposé) et son sous-skill `base-sqlite-migrations` (ce que chaque migration a fixé, proposé à la lecture d'une migration), `base-orthographe`, `sources-codex`, `sources-rapprochement`.
 
 Chacun garde les invariants (« pièges ») et les choix du propriétaire de sa zone, et renvoie à la section de `docs/` qui la décrit.
 

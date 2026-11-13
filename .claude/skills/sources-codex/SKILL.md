@@ -27,6 +27,7 @@ user-invocable: false
 - Le texte est copié, jamais réécrit (coquilles, majuscules, formulations du document ; seule la forme Markdown change). Seules exceptions : les corrections
   du registre `codex-corrections.json`, limitées à ce qu'impose une décision ou une correction déjà faite dans toute la base (décision R21 « Eaunoire » ;
   « ect » → « etc. » comme 0005, « purée de poix » → « purée de pois » comme 0006). Chaque entrée a son nombre d'occurrences attendu.
+- Exception R266 : « Super Gemme », « Mort Fertile » et « Dieu de la Terre » sont corrigés dans le Codex, limités à ces trois graphies (skill `base-orthographe`). La migration 0121 a réécrit les pages en base ; leurs entrées du registre portent `migration`, et `--verifier` les applique aussi à l'état d'import des pages que le site avait modifiées avant elle (`graphies_de_migration`). `codex.test.mjs` met à part ces pages dans ses lectures de `baseDImport()`.
 - L'export dans `sources/raw/` reste tel quel ; les corrections se font dans le script, avant le découpage.
 - `--verifier` relit l'export ligne par ligne, par un code qui ne partage pas le découpage.
 - Le site de dev est la source de ce qu'il modifie. Les pages du Codex se modifient sur le site de dev comme celles du guide (titre, texte ;
