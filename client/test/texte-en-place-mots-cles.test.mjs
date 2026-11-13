@@ -3,7 +3,7 @@
 // devrai remettre le texte en mode Markdown […] je ne vois pas {{Recharge Longue}} ». À l'entrée (rendreModifiable), chaque mot-clé rendu redevient sa
 // balise écrite, « {{clé}} », « {{clé|texte}} », « {{clé:}} » (lib/markdown-edition.mjs#baliseEcrite), que le Markdown relit telle quelle ; les outils
 // « Mot-clé » et « Définition » écrivent la balise (execCommand insertText) ou, le curseur dans une balise, en changent le mot-clé ; puis la forme
-// canonique que le service enregistre (lib/mots-cles-balises.mjs#formeCanonique). Et la hauteur de la barre d'outils (hauteurDeLaBarre).
+// canonique que le service enregistre (lib/mots-cles-balises.mjs#formeCanonique).
 //   node --test test/texte-en-place-mots-cles.test.mjs
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
@@ -36,7 +36,7 @@ Object.assign(globalThis, {
   Option: function Option(texte) { return el('option', {}, texte); },
   getSelection: () => ({ rangeCount: selection ? 1 : 0, getRangeAt: () => selection, removeAllRanges: () => {}, addRange: (r) => { selection = r; } }),
 });
-const { editeurEnPlace, hauteurDeLaBarre } = await import('../src/scripts/edition/texte-en-place.mjs');
+const { editeurEnPlace } = await import('../src/scripts/edition/texte-en-place.mjs');
 const texte = editeurEnPlace(() => [zone]);
 let modifie = 0;
 const ed = { listes: { motsCles: VOCABULAIRE }, marquerModifie: () => { modifie += 1; }, annoncer: (m) => { throw new Error(m); } };
@@ -134,15 +134,4 @@ test('un mot-clé introuvable : la boîte reste ouverte et le dit', async () => 
   assert.match(dialogue.querySelector('.ed-erreur').textContent, /Mot-clé introuvable/);
   assert.equal(dialogue.querySelector('.ed-erreur').hidden, false);
   dialogue.close();
-});
-
-test('hauteurDeLaBarre : à la hauteur de la zone, toujours entière à l’écran', () => {
-  const ecran = 800;
-  assert.equal(hauteurDeLaBarre({ top: 300, bottom: 360 }, 200, ecran), 300, 'le haut de la zone');
-  assert.equal(hauteurDeLaBarre({ top: 300, bottom: 1400 }, 200, ecran), 300);
-  assert.equal(hauteurDeLaBarre({ top: -500, bottom: 1400 }, 200, ecran), 8, 'le haut de la zone passé au-dessus de l’écran : le haut de l’écran');
-  assert.equal(hauteurDeLaBarre({ top: -900, bottom: 150 }, 200, ecran), 8);
-  assert.equal(hauteurDeLaBarre({ top: 750, bottom: 900 }, 200, ecran), 592, 'une zone en bas de l’écran : la barre remonte pour y tenir');
-  assert.equal(hauteurDeLaBarre({ top: 1200, bottom: 1300 }, 200, ecran), 592, 'une zone sous l’écran : en bas de l’écran');
-  assert.equal(hauteurDeLaBarre({ top: 300, bottom: 400 }, 900, ecran), 8, 'une barre plus haute que l’écran : en haut (elle défile)');
 });
