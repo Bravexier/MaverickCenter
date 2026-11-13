@@ -2390,6 +2390,40 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Bimane »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/bimane-vivacite', 'capacites', 'bimane-vivacite', 'Vivacité (Bimane)', 'vivacite-bimane', '+2 INI +5 dégâts sur chaque arme pendant 2 Tours. Inflige l''état Fatigue 1 si répété.', '{"classe": "classes/bimane", "specialite": "FAUSSE PATTE", "niveau": 20, "nature": "choix", "rang": 2, "ligne": 43, "type_capacite": "Actif (2 fois/combat)", "choix_exclusif_avec": ["capacites/bimane-science-de-lanatomie"]}', '+2 INI +5 dégâts sur chaque arme pendant 2 Tours. Inflige l''état Fatigue 1 si répété.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Bimane »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/boxeur-armure-vivante', 'capacites', 'boxeur-armure-vivante', 'Armure vivante (Boxeur)', 'armure-vivante-boxeur', 'La première fois qu''il subit des dégâts pendant le tour : Réduit les dégâts de 3 après l''armure.', '{"classe": "classes/boxeur", "specialite": "CARCASSE ROUILLÉE", "niveau": 10, "nature": "choix", "rang": 1, "ligne": 29, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/boxeur-poids-mort"]}', 'La première fois qu''il subit des dégâts pendant le tour : Réduit les dégâts de 3 après l''armure. Doit porter une armure lourde.
+', 'draft', 'classes', 'Classeur « Nouveauté mise à jour Décembre », onglet « Boxeur »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/boxeur-boucassant', 'capacites', 'boxeur-boucassant', 'Boucassant (Boxeur)', 'boucassant-boxeur', 'Les attaques de pugilats avec un bouclier ignorent 1AP par poids du bouclier.', '{"classe": "classes/boxeur", "specialite": "PERCUTEUR", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/boxeur-bouvasteur"]}', 'Les attaques de pugilats avec un bouclier ignorent 1AP par poids du bouclier.
+', 'draft', 'classes', 'Classeur « Nouveauté mise à jour Décembre », onglet « Boxeur »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/boxeur-bouclier-dattaque', 'capacites', 'boxeur-bouclier-dattaque', 'Bouclier d''attaque (Boxeur)', 'bouclier-dattaque-boxeur', 'Permet d''utiliser son bouclier comme une extension de dégâts pour les pugilats pour infliger un dégât bonus de AP+AM du bouclier divisé par 4 (minimum 1).', '{"classe": "classes/boxeur", "niveau": 1, "nature": "classe", "rang": 1, "ligne": 4, "type_capacite": "Passif"}', 'Permet d''utiliser son bouclier comme une extension de dégâts pour les pugilats pour infliger un dégât bonus de AP+AM du bouclier divisé par 4 (minimum 1).
+', 'draft', 'classes', 'Classeur « Nouveauté mise à jour Décembre », onglet « Boxeur »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/boxeur-boupact', 'capacites', 'boxeur-boupact', 'Boupact (Boxeur)', 'boupact-boxeur', 'Attaque en ciblant une partie du corps, si l''attaque réussit : divise par 2 donné par l''armure lors de la prochaine attaque subit.', '{"classe": "classes/boxeur", "specialite": "PERCUTEUR", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Action (1 fois/combat)", "choix_exclusif_avec": ["capacites/boxeur-bousee"]}', 'Attaque en ciblant une partie du corps, si l''attaque réussit : divise par 2 donné par l''armure lors de la prochaine attaque subit.
+', 'draft', 'classes', 'Classeur « Nouveauté mise à jour Décembre », onglet « Boxeur »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/boxeur-bouquilibre', 'capacites', 'boxeur-bouquilibre', 'Bouquilibre (Boxeur)', 'bouquilibre-boxeur', 'Une attaque réussie impose à l''ennemi un désavantage à son prochain jet de stabilité/réflexe', '{"classe": "classes/boxeur", "specialite": "PERCUTEUR", "niveau": 10, "nature": "choix", "rang": 2, "ligne": 29, "type_capacite": "Actif (2 fois/combat)", "choix_exclusif_avec": ["capacites/boxeur-bourage"]}', 'Une attaque réussie impose à l''ennemi un désavantage à son prochain jet de stabilité/réflexe
+', 'draft', 'classes', 'Classeur « Nouveauté mise à jour Décembre », onglet « Boxeur »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/boxeur-bourage', 'capacites', 'boxeur-bourage', 'Bouragé (Boxeur)', 'bourage-boxeur', 'Inflige un bonus de 2 dégâts aux attaques de pugilat avec les boucliers par poids du bouclier.', '{"classe": "classes/boxeur", "specialite": "PERCUTEUR", "niveau": 10, "nature": "choix", "rang": 1, "ligne": 29, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/boxeur-bouquilibre"]}', 'Inflige un bonus de 2 dégâts aux attaques de pugilat avec les boucliers par poids du bouclier.
+', 'draft', 'classes', 'Classeur « Nouveauté mise à jour Décembre », onglet « Boxeur »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/boxeur-bousee', 'capacites', 'boxeur-bousee', 'Bousée (Boxeur)', 'bousee-boxeur', 'Une attaque réussie impose un malus au jet d''attaque de l''ennemi de 10% pour son tour.', '{"classe": "classes/boxeur", "specialite": "PERCUTEUR", "niveau": 15, "nature": "choix", "rang": 2, "ligne": 36, "type_capacite": "Actif (2 fois/combat)", "choix_exclusif_avec": ["capacites/boxeur-boupact"]}', 'Une attaque réussie impose un malus au jet d''attaque de l''ennemi de 10% pour son tour.
+', 'draft', 'classes', 'Classeur « Nouveauté mise à jour Décembre », onglet « Boxeur »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/boxeur-bouvasteur', 'capacites', 'boxeur-bouvasteur', 'Bouvasteur (Boxeur)', 'bouvasteur-boxeur', 'Une attaque réussie impose à l''ennemi un jet de stabilité/réflexe pour ne pas tomber à terre.', '{"classe": "classes/boxeur", "specialite": "PERCUTEUR", "niveau": 20, "nature": "choix", "rang": 2, "ligne": 43, "type_capacite": "Actif (2 fois/combat)", "choix_exclusif_avec": ["capacites/boxeur-boucassant"]}', 'Une attaque réussie impose à l''ennemi un jet de stabilité/réflexe pour ne pas tomber à terre.
+', 'draft', 'classes', 'Classeur « Nouveauté mise à jour Décembre », onglet « Boxeur »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/boxeur-carcasse-rouillee', 'capacites', 'boxeur-carcasse-rouillee', 'Carcasse rouillée (Boxeur)', 'carcasse-rouillee-boxeur', '+2 points de maîtrise à répartir, +5% Arme lourde, +10% Parade, Maîtrise les armures lourdes.', '{"classe": "classes/boxeur", "specialite": "CARCASSE ROUILLÉE", "niveau": 10, "nature": "specialite", "rang": 1, "ligne": 22, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/boxeur-percuteur"]}', '+2 points de maîtrise à répartir, +5% Arme lourde, +10% Parade, Maîtrise les armures lourdes.
+', 'draft', 'classes', 'Classeur « Nouveauté mise à jour Décembre », onglet « Boxeur »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/boxeur-egide-dassaut', 'capacites', 'boxeur-egide-dassaut', 'Égide d''assaut (Boxeur)', 'egide-dassaut-boxeur', 'La division pour « bouclier d''attaque » est de 3 au lieu de 4.', '{"classe": "classes/boxeur", "niveau": 20, "nature": "classe", "rang": 3, "ligne": 49, "type_capacite": "Passif"}', 'La division pour « bouclier d''attaque » est de 3 au lieu de 4.
+', 'draft', 'classes', 'Classeur « Nouveauté mise à jour Décembre », onglet « Boxeur »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/boxeur-endurouille', 'capacites', 'boxeur-endurouille', 'Endurouille (Boxeur)', 'endurouille-boxeur', 'Tant qu''il porte une armure lourde, réduit d''un tour les altérations d''états infligés.', '{"classe": "classes/boxeur", "specialite": "CARCASSE ROUILLÉE", "niveau": 15, "nature": "choix", "rang": 2, "ligne": 36, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/boxeur-etourdissement"]}', 'Tant qu''il porte une armure lourde, réduit d''un tour les altérations d''états infligés.
+', 'draft', 'classes', 'Classeur « Nouveauté mise à jour Décembre », onglet « Boxeur »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/boxeur-etourdissement', 'capacites', 'boxeur-etourdissement', 'Étourdissement (Boxeur)', 'etourdissement-boxeur', 'Les coups avec des armes de pugilats avec un bouclier ont 5% de chance d''étourdir l''ennemi.', '{"classe": "classes/boxeur", "specialite": "CARCASSE ROUILLÉE", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/boxeur-endurouille"]}', 'Les coups avec des armes de pugilats avec un bouclier ont 5% de chance d''étourdir l''ennemi.
+', 'draft', 'classes', 'Classeur « Nouveauté mise à jour Décembre », onglet « Boxeur »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/boxeur-mur', 'capacites', 'boxeur-mur', 'Mur (Boxeur)', 'mur-boxeur', 'Les boucliers donnent +2AP et AM.', '{"classe": "classes/boxeur", "niveau": 5, "nature": "classe", "rang": 2, "ligne": 11, "type_capacite": "Passif"}', 'Les boucliers donnent +2AP et AM.
+', 'draft', 'classes', 'Classeur « Nouveauté mise à jour Décembre », onglet « Boxeur »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/boxeur-percuteur', 'capacites', 'boxeur-percuteur', 'Percuteur (Boxeur)', 'percuteur-boxeur', '+2 points de maîtrise à répartir, +5% Arme lourde, +10% Parade', '{"classe": "classes/boxeur", "specialite": "PERCUTEUR", "niveau": 10, "nature": "specialite", "rang": 2, "ligne": 22, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/boxeur-carcasse-rouillee"]}', '+2 points de maîtrise à répartir, +5% Arme lourde, +10% Parade
+', 'draft', 'classes', 'Classeur « Nouveauté mise à jour Décembre », onglet « Boxeur »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/boxeur-poids-mort', 'capacites', 'boxeur-poids-mort', 'Poids mort (Boxeur)', 'poids-mort-boxeur', 'Tant qu''il porte une armure lourde, ne peut pas être déplacé physiquement sauf par un monstre de plus grande taille.', '{"classe": "classes/boxeur", "specialite": "CARCASSE ROUILLÉE", "niveau": 10, "nature": "choix", "rang": 2, "ligne": 29, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/boxeur-armure-vivante"]}', 'Tant qu''il porte une armure lourde, ne peut pas être déplacé physiquement sauf par un monstre de plus grande taille.
+', 'draft', 'classes', 'Classeur « Nouveauté mise à jour Décembre », onglet « Boxeur »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/boxeur-posture-durgence', 'capacites', 'boxeur-posture-durgence', 'Posture d''urgence (Boxeur)', 'posture-durgence-boxeur', 'Si tombe à terre : se met automatiquement en défense', '{"classe": "classes/boxeur", "specialite": "CARCASSE ROUILLÉE", "niveau": 20, "nature": "choix", "rang": 2, "ligne": 43, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/boxeur-posture-inebran"]}', 'Si tombe à terre : se met automatiquement en défense
+', 'draft', 'classes', 'Classeur « Nouveauté mise à jour Décembre », onglet « Boxeur »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/boxeur-posture-inebran', 'capacites', 'boxeur-posture-inebran', 'Posture inébran (Boxeur)', 'posture-inebran-boxeur', '5% stabilité, bénéficie d''un avantage lors des jets de cette compétence.', '{"classe": "classes/boxeur", "specialite": "CARCASSE ROUILLÉE", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Réaction (2 fois/combat)", "choix_exclusif_avec": ["capacites/boxeur-posture-durgence"]}', '5% stabilité, bénéficie d''un avantage lors des jets de cette compétence.
+', 'draft', 'classes', 'Classeur « Nouveauté mise à jour Décembre », onglet « Boxeur »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/clerc-ange-beige', 'capacites', 'clerc-ange-beige', 'Ange Beige (Clerc)', 'ange-beige-clerc', '(Posture Symbiose) Invoque un Ange qui va soigner à hauteur de 25% de PV lorsque ceux-ci tombent à 0.', '{"classe": "classes/clerc", "specialite": "SAINT COMBATTANT", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Actif  (1 fois/24h)", "choix_exclusif_avec": ["capacites/clerc-ange-pourpre"]}', '(Posture Symbiose)  
 Invoque un Ange qui va soigner à hauteur de 25% de PV lorsque ceux-ci tombent à 0. Sur soi uniquement.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Clerc »');
@@ -2435,9 +2469,9 @@ x = Niveau cuirassé divisé par 2.
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/cuirasse-anti-loi', 'capacites', 'cuirasse-anti-loi', 'Anti-Loi (Cuirassé)', 'anti-loi-cuirasse', 'Inflige un bonus de X dégâts contre les créatures d''alignement Loyal.', '{"classe": "classes/cuirasse", "specialite": "VINDICATIF", "niveau": 10, "nature": "choix", "rang": 1, "ligne": 29, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/cuirasse-anti-chaos"]}', 'Inflige un bonus de X dégâts contre les créatures d''alignement Loyal.  
 x = Niveau cuirassé divisé par 2.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Cuirassé »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/cuirasse-appui', 'capacites', 'cuirasse-appui', 'Appui (Cuirassé)', 'appui-cuirasse', 'Permet d''intervenir quand un allié à 3 cases se prend un coup.', '{"classe": "classes/cuirasse", "specialite": "VINDICATIF", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Réaction", "choix_exclusif_avec": ["capacites/cuirasse-aucune-fuite"]}', 'Permet d''intervenir quand un allié à 3 cases se prend un coup.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/cuirasse-appui', 'capacites', 'cuirasse-appui', 'Appui (Cuirassé)', 'appui-cuirasse', 'Permet d''intervenir quand un allié à 3 cases se prend un coup.', '{"classe": "classes/cuirasse", "specialite": "PROTECTEUR", "niveau": 20, "nature": "choix", "rang": 2, "ligne": 43, "type_capacite": "Réaction", "choix_exclusif_avec": ["capacites/cuirasse-muraille"]}', 'Permet d''intervenir quand un allié à 3 cases se prend un coup.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Cuirassé »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/cuirasse-aucune-fuite', 'capacites', 'cuirasse-aucune-fuite', 'Aucune fuite (Cuirassé)', 'aucune-fuite-cuirasse', 'Si jamais il y a impossibilité de fuir ou qu''un état de peur est encaissé = +6 dégâts, +1 Vitesse le temps que la situation se débloque.', '{"classe": "classes/cuirasse", "specialite": "VINDICATIF", "niveau": 15, "nature": "choix", "rang": 2, "ligne": 36, "type_capacite": "Réaction (1 fois/combat)", "choix_exclusif_avec": ["capacites/cuirasse-appui"]}', 'Si jamais il y a impossibilité de fuir ou qu''un état de peur est encaissé = +6 dégâts, +1 Vitesse le temps que la situation se débloque.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/cuirasse-aucune-fuite', 'capacites', 'cuirasse-aucune-fuite', 'Aucune fuite (Cuirassé)', 'aucune-fuite-cuirasse', 'Si jamais il y a impossibilité de fuir ou qu''un état de peur est encaissé = +6 dégâts, +1 Vitesse le temps que la situation se débloque.', '{"classe": "classes/cuirasse", "specialite": "VINDICATIF", "niveau": 15, "nature": "choix", "rang": 2, "ligne": 36, "type_capacite": "Réaction (1 fois/combat)", "choix_exclusif_avec": ["capacites/cuirasse-ecrasant"]}', 'Si jamais il y a impossibilité de fuir ou qu''un état de peur est encaissé = +6 dégâts, +1 Vitesse le temps que la situation se débloque.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Cuirassé »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/cuirasse-defensif', 'capacites', 'cuirasse-defensif', 'Défensif (Cuirassé)', 'defensif-cuirasse', '+2 AP lors d''une agression si une armure est équipée', '{"classe": "classes/cuirasse", "niveau": 1, "nature": "classe", "rang": 1, "ligne": 4, "type_capacite": "Passif"}', '+2 AP lors d''une agression si une armure est équipée
 
@@ -2445,13 +2479,13 @@ Note de cellule : Ne marche pas si l''ennemi contre-attaque.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Cuirassé »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/cuirasse-dernier-souffle', 'capacites', 'cuirasse-dernier-souffle', 'Dernier souffle (Cuirassé)', 'dernier-souffle-cuirasse', 'Quand un adversaire fait tomber les pv entre 0 et 5, contre-attaque possible avec +10 aux dégâts.', '{"classe": "classes/cuirasse", "specialite": "VINDICATIF", "niveau": 20, "nature": "choix", "rang": 2, "ligne": 43, "type_capacite": "Réaction", "choix_exclusif_avec": ["capacites/cuirasse-vendetta"]}', 'Quand un adversaire fait tomber les pv entre 0 et 5, contre-attaque possible avec +10 aux dégâts.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Cuirassé »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/cuirasse-ecrasant', 'capacites', 'cuirasse-ecrasant', 'Écrasant (Cuirassé)', 'ecrasant-cuirasse', 'Inflige +5 dégâts si la cible de l''attaque a moins d''AP total.', '{"classe": "classes/cuirasse", "specialite": "VINDICATIF", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/cuirasse-aucune-fuite"]}', 'Inflige +5 dégâts si la cible de l''attaque a moins d''AP total.
+', 'draft', 'classes', 'Classeur « Nouveauté mise à jour Décembre », onglet « Cuirassé V2 »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/cuirasse-egide', 'capacites', 'cuirasse-egide', 'Égide (Cuirassé)', 'egide-cuirasse', 'Permet de survivre à 1 santé contre une attaque qui est censée vous mettre dans le coma.', '{"classe": "classes/cuirasse", "niveau": 20, "nature": "classe", "rang": 3, "ligne": 49, "type_capacite": "Réaction (1 fois/combat)"}', 'Permet de survivre à 1 santé contre une attaque qui est censée vous mettre dans le coma.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Cuirassé »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/cuirasse-large', 'capacites', 'cuirasse-large', 'Large (Cuirassé)', 'large-cuirasse', 'Les diagonales sont comptées dans la zone d''influence.', '{"classe": "classes/cuirasse", "specialite": "PROTECTEUR", "niveau": 20, "nature": "choix", "rang": 2, "ligne": 43, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/cuirasse-muraille"]}', 'Les diagonales sont comptées dans la zone d''influence.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/cuirasse-muraille', 'capacites', 'cuirasse-muraille', 'Muraille (Cuirassé)', 'muraille-cuirasse', 'Permet de bloquer complètement une attaque physique ou magique.', '{"classe": "classes/cuirasse", "specialite": "PROTECTEUR", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Réaction (1 fois/combat)", "choix_exclusif_avec": ["capacites/cuirasse-appui"]}', 'Permet de bloquer complètement une attaque physique ou magique. Peut être utilisé dans le cas d''un jet raté (critique aussi)
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Cuirassé »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/cuirasse-muraille', 'capacites', 'cuirasse-muraille', 'Muraille (Cuirassé)', 'muraille-cuirasse', 'Permet de bloquer complètement une attaque physique ou magique.', '{"classe": "classes/cuirasse", "specialite": "PROTECTEUR", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Réaction (1 fois/combat)", "choix_exclusif_avec": ["capacites/cuirasse-large"]}', 'Permet de bloquer complètement une attaque physique ou magique. Peut être utilisé dans le cas d''un jet raté (critique aussi)
-', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Cuirassé »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/cuirasse-nanochakra', 'capacites', 'cuirasse-nanochakra', 'Nanochakra (Cuirassé)', 'nanochakra-cuirasse', 'Chaque attaque ennemie bloquée complètement permet de récupérer 1d8 santé.', '{"classe": "classes/cuirasse", "specialite": "PROTECTEUR", "niveau": 10, "nature": "choix", "rang": 1, "ligne": 29, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/cuirasse-nope"]}', 'Chaque attaque ennemie bloquée complètement permet de récupérer 1d8 santé.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/cuirasse-nanochakra', 'capacites', 'cuirasse-nanochakra', 'Nanochakra (Cuirassé)', 'nanochakra-cuirasse', 'Chaque attaque ennemie bloquée complètement permet de récupérer 1d8 barrière.', '{"classe": "classes/cuirasse", "specialite": "PROTECTEUR", "niveau": 10, "nature": "choix", "rang": 1, "ligne": 29, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/cuirasse-nope"]}', 'Chaque attaque ennemie bloquée complètement permet de récupérer 1d8 barrière.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Cuirassé »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/cuirasse-nope', 'capacites', 'cuirasse-nope', 'NOPE ! (Cuirassé)', 'nope-cuirasse', 'Permet de faire un jet d''athlétisme pour empêcher à une cible de lancer un sort alors qu''il est dans la zone d''influence.', '{"classe": "classes/cuirasse", "specialite": "PROTECTEUR", "niveau": 10, "nature": "choix", "rang": 2, "ligne": 29, "type_capacite": "Réaction (1 fois/tour)", "choix_exclusif_avec": ["capacites/cuirasse-nanochakra"]}', 'Permet de faire un jet d''athlétisme pour empêcher à une cible de lancer un sort alors qu''il est dans la zone d''influence.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Cuirassé »');
@@ -3532,6 +3566,46 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Parleur »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/parleur-recrutement', 'capacites', 'parleur-recrutement', 'Recrutement (Parleur)', 'recrutement-parleur', 'Permet d''utiliser un jet de diplomatie pour convaincre un pnj de vous accompagner le temps d''un combat.', '{"classe": "classes/parleur", "specialite": "ÉLOQUENT", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Action", "choix_exclusif_avec": ["capacites/parleur-patibulaire"]}', 'Permet d''utiliser un jet de diplomatie pour convaincre un pnj de vous accompagner le temps d''un combat. Doit être du même alignement.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Parleur »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/porte-etendard-au-dela-des-limites', 'capacites', 'porte-etendard-au-dela-des-limites', 'Au delà des limites (Porte-étendard)', 'au-dela-des-limites-porte-etendard', 'Dure 3 tours, si les alliés sont en dessous de 20% de santé = +10 dégâts, +1 Vitesse', '{"classe": "classes/porte-etendard", "niveau": 20, "nature": "classe", "rang": 3, "ligne": 49, "type_capacite": "Action (1 fois/combat)"}', 'Dure 3 tours, si les alliés sont en dessous de 20% de santé = +10 dégâts, +1 Vitesse
+', 'draft', 'classes', 'Classeur « Nouveauté mise à jour Décembre », onglet « Porte-étendard »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/porte-etendard-avantage', 'capacites', 'porte-etendard-avantage', 'Avantage (Porte-étendard)', 'avantage-porte-etendard', '(Posture Symbiose) Désigne un allié visible : Le bonus de dégâts et d''AM est compté comme un cran au-dessus.', '{"classe": "classes/porte-etendard", "specialite": "STRATÈGE DE BATAILLE", "niveau": 10, "nature": "choix", "rang": 1, "ligne": 29, "type_capacite": "Action (2 fois/combat)", "choix_exclusif_avec": ["capacites/porte-etendard-faille"]}', '(Posture Symbiose)  
+Désigne un allié visible : Le bonus de dégâts et d''AM est compté comme un cran au-dessus. Dure 1 tour
+', 'draft', 'classes', 'Classeur « Nouveauté mise à jour Décembre », onglet « Porte-étendard »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/porte-etendard-chef-agile', 'capacites', 'porte-etendard-chef-agile', 'Chef agile (Porte-étendard)', 'chef-agile-porte-etendard', 'Tant qu''il est debout, les alliés ont un bonus de 5% à tous les jets d''esquive, arme légère et réflexe.', '{"classe": "classes/porte-etendard", "specialite": "CHEF DE GUERRE", "niveau": 10, "nature": "choix", "rang": 2, "ligne": 29, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/porte-etendard-provoc-du-porteur"]}', 'Tant qu''il est debout, les alliés ont un bonus de 5% à tous les jets d''esquive, arme légère et réflexe.
+', 'draft', 'classes', 'Classeur « Nouveauté mise à jour Décembre », onglet « Porte-étendard »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/porte-etendard-chef-de-guerre', 'capacites', 'porte-etendard-chef-de-guerre', 'Chef de guerre (Porte-étendard)', 'chef-de-guerre-porte-etendard', '+2 points de maîtrise à répartir, le bonus donné par l’EdG ou la BdC dure un tour de plus.', '{"classe": "classes/porte-etendard", "specialite": "CHEF DE GUERRE", "niveau": 10, "nature": "specialite", "rang": 1, "ligne": 22, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/porte-etendard-stratege-de-bataille"]}', '+2 points de maîtrise à répartir, le bonus donné par l’EdG ou la BdC dure un tour de plus. +5% Arme lourde, +10% Diplomatie OU Intimidation
+', 'draft', 'classes', 'Classeur « Nouveauté mise à jour Décembre », onglet « Porte-étendard »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/porte-etendard-chef-fort', 'capacites', 'porte-etendard-chef-fort', 'Chef fort (Porte-étendard)', 'chef-fort-porte-etendard', 'Tant qu''il est debout, les alliés ont un bonus de 5% à tous les jets de parade, arme lourde et arc.', '{"classe": "classes/porte-etendard", "specialite": "CHEF DE GUERRE", "niveau": 15, "nature": "choix", "rang": 2, "ligne": 36, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/porte-etendard-repli"]}', 'Tant qu''il est debout, les alliés ont un bonus de 5% à tous les jets de parade, arme lourde et arc.
+', 'draft', 'classes', 'Classeur « Nouveauté mise à jour Décembre », onglet « Porte-étendard »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/porte-etendard-chef-malin', 'capacites', 'porte-etendard-chef-malin', 'Chef malin (Porte-étendard)', 'chef-malin-porte-etendard', 'Tant qu''il est debout, les alliés ont un bonus de 5% à tous les jets de magie, médecine et connaissance.', '{"classe": "classes/porte-etendard", "specialite": "CHEF DE GUERRE", "niveau": 20, "nature": "choix", "rang": 2, "ligne": 43, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/porte-etendard-contre-les-laches"]}', 'Tant qu''il est debout, les alliés ont un bonus de 5% à tous les jets de magie, médecine et connaissance.
+', 'draft', 'classes', 'Classeur « Nouveauté mise à jour Décembre », onglet « Porte-étendard »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/porte-etendard-chef-resiliant', 'capacites', 'porte-etendard-chef-resiliant', 'Chef résiliant (Porte-étendard)', 'chef-resiliant-porte-etendard', 'Tant qu''il est debout, les alliés ont un bonus de 5% à tous les jets de calme, vigueur et fermeté', '{"classe": "classes/porte-etendard", "niveau": 5, "nature": "classe", "rang": 2, "ligne": 11, "type_capacite": "Passif"}', 'Tant qu''il est debout, les alliés ont un bonus de 5% à tous les jets de calme, vigueur et fermeté
+', 'draft', 'classes', 'Classeur « Nouveauté mise à jour Décembre », onglet « Porte-étendard »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/porte-etendard-contre-les-laches', 'capacites', 'porte-etendard-contre-les-laches', 'Contre les lâches (Porte-étendard)', 'contre-les-laches-porte-etendard', 'Impose un malus de 20% aux ennemis qui utilisent des armes à distance ou des sorts qui ont plus de 2 de portée.', '{"classe": "classes/porte-etendard", "specialite": "CHEF DE GUERRE", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Action (2 fois/combat)", "choix_exclusif_avec": ["capacites/porte-etendard-chef-malin"]}', 'Impose un malus de 20% aux ennemis qui utilisent des armes à distance ou des sorts qui ont plus de 2 de portée. Dure 2 tours.
+', 'draft', 'classes', 'Classeur « Nouveauté mise à jour Décembre », onglet « Porte-étendard »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/porte-etendard-coordination', 'capacites', 'porte-etendard-coordination', 'Coordination (Porte-étendard)', 'coordination-porte-etendard', '(Posture Offensif) Désigne un ennemi visible : Le malus de l''offensif ne s''applique plus quand on l''attaque.', '{"classe": "classes/porte-etendard", "specialite": "STRATÈGE DE BATAILLE", "niveau": 20, "nature": "choix", "rang": 2, "ligne": 43, "type_capacite": "Action (2 fois/combat)", "choix_exclusif_avec": ["capacites/porte-etendard-premiere-ligne"]}', '(Posture Offensif)  
+Désigne un ennemi visible : Le malus de l''offensif ne s''applique plus quand on l''attaque. Dure 1 tour.
+', 'draft', 'classes', 'Classeur « Nouveauté mise à jour Décembre », onglet « Porte-étendard »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/porte-etendard-decontenance', 'capacites', 'porte-etendard-decontenance', 'Décontenance (Porte-étendard)', 'decontenance-porte-etendard', '(Posture Focus) Désigne un ennemi visible : Inflige un malus de 10% à tous ses jets.', '{"classe": "classes/porte-etendard", "specialite": "STRATÈGE DE BATAILLE", "niveau": 15, "nature": "choix", "rang": 2, "ligne": 36, "type_capacite": "Action (2 fois/combat)", "choix_exclusif_avec": ["capacites/porte-etendard-reagir"]}', '(Posture Focus)  
+Désigne un ennemi visible : Inflige un malus de 10% à tous ses jets. Dure 1 tour.
+', 'draft', 'classes', 'Classeur « Nouveauté mise à jour Décembre », onglet « Porte-étendard »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/porte-etendard-faille', 'capacites', 'porte-etendard-faille', 'Faille (Porte-étendard)', 'faille-porte-etendard', '(Posture Vigilance) Désigne un ennemi visible : Divise par 2 les malus pour viser une partie de son corps.', '{"classe": "classes/porte-etendard", "specialite": "STRATÈGE DE BATAILLE", "niveau": 10, "nature": "choix", "rang": 2, "ligne": 29, "type_capacite": "Action (2 fois/combat)", "choix_exclusif_avec": ["capacites/porte-etendard-avantage"]}', '(Posture Vigilance)  
+Désigne un ennemi visible : Divise par 2 les malus pour viser une partie de son corps. Dure 1 tour.
+', 'draft', 'classes', 'Classeur « Nouveauté mise à jour Décembre », onglet « Porte-étendard »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/porte-etendard-motivation', 'capacites', 'porte-etendard-motivation', 'Motivation (Porte-étendard)', 'motivation-porte-etendard', 'Donne un bonus de 5% à tous les jets des alliés. Dure 3 tours.', '{"classe": "classes/porte-etendard", "niveau": 1, "nature": "classe", "rang": 1, "ligne": 4, "type_capacite": "Action (2 fois/combat)"}', 'Donne un bonus de 5% à tous les jets des alliés. Dure 3 tours.
+', 'draft', 'classes', 'Classeur « Nouveauté mise à jour Décembre », onglet « Porte-étendard »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/porte-etendard-premiere-ligne', 'capacites', 'porte-etendard-premiere-ligne', 'Première ligne (Porte-étendard)', 'premiere-ligne-porte-etendard', '(Posture Défensif) Désigne un allié visible : Ses parades partielles sont toujours parfaites.', '{"classe": "classes/porte-etendard", "specialite": "STRATÈGE DE BATAILLE", "niveau": 20, "nature": "choix", "rang": 1, "ligne": 43, "type_capacite": "Action (2 fois/combat)", "choix_exclusif_avec": ["capacites/porte-etendard-coordination"]}', '(Posture Défensif)  
+Désigne un allié visible : Ses parades partielles sont toujours parfaites. Dure 1 tour.
+', 'draft', 'classes', 'Classeur « Nouveauté mise à jour Décembre », onglet « Porte-étendard »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/porte-etendard-provoc-du-porteur', 'capacites', 'porte-etendard-provoc-du-porteur', 'Provoc du porteur (Porte-étendard)', 'provoc-du-porteur-porte-etendard', 'Si un allié à côté de lui est ciblé par une attaque à distance, il peut rediriger l''attaque vers lui (dans la mesure du possible)', '{"classe": "classes/porte-etendard", "specialite": "CHEF DE GUERRE", "niveau": 10, "nature": "choix", "rang": 1, "ligne": 29, "type_capacite": "Réaction (2 fois/combat)", "choix_exclusif_avec": ["capacites/porte-etendard-chef-agile"]}', 'Si un allié à côté de lui est ciblé par une attaque à distance, il peut rediriger l''attaque vers lui (dans la mesure du possible)
+', 'draft', 'classes', 'Classeur « Nouveauté mise à jour Décembre », onglet « Porte-étendard »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/porte-etendard-reagir', 'capacites', 'porte-etendard-reagir', 'Réagir ! (Porte-étendard)', 'reagir-porte-etendard', '(Posture Neutre) Désigne un allié visible : Lui autorise à changer de posture immédiatement.', '{"classe": "classes/porte-etendard", "specialite": "STRATÈGE DE BATAILLE", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Action (2 fois/combat)", "choix_exclusif_avec": ["capacites/porte-etendard-decontenance"]}', '(Posture Neutre)  
+Désigne un allié visible : Lui autorise à changer de posture immédiatement.
+', 'draft', 'classes', 'Classeur « Nouveauté mise à jour Décembre », onglet « Porte-étendard »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/porte-etendard-repli', 'capacites', 'porte-etendard-repli', 'Repli ! (Porte-étendard)', 'repli-porte-etendard', 'Permet à un allié désigné de se déplacer d''une case sans prendre d''attaque d''opportunité (dans la mesure du possible)', '{"classe": "classes/porte-etendard", "specialite": "CHEF DE GUERRE", "niveau": 15, "nature": "choix", "rang": 1, "ligne": 36, "type_capacite": "Réaction (2 fois/combat)", "choix_exclusif_avec": ["capacites/porte-etendard-chef-fort"]}', 'Permet à un allié désigné de se déplacer d''une case sans prendre d''attaque d''opportunité (dans la mesure du possible)
+', 'draft', 'classes', 'Classeur « Nouveauté mise à jour Décembre », onglet « Porte-étendard »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/porte-etendard-stratege-de-bataille', 'capacites', 'porte-etendard-stratege-de-bataille', 'Stratège de bataille (Porte-étendard)', 'stratege-de-bataille-porte-etendard', '+2 points de maîtrise à répartir, +5% Arme lourde et légère, +10% Observation OU Distinction', '{"classe": "classes/porte-etendard", "specialite": "STRATÈGE DE BATAILLE", "niveau": 10, "nature": "specialite", "rang": 2, "ligne": 22, "type_capacite": "Passif", "choix_exclusif_avec": ["capacites/porte-etendard-chef-de-guerre"]}', '+2 points de maîtrise à répartir, +5% Arme lourde et légère, +10% Observation OU Distinction
+', 'draft', 'classes', 'Classeur « Nouveauté mise à jour Décembre », onglet « Porte-étendard »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('capacites/pugiliste-a-deux-main', 'capacites', 'pugiliste-a-deux-main', 'À deux Mains (Pugiliste)', 'a-deux-mains-pugiliste', 'Gagne 5% arme lourde et +2 dégâts, et perd 5% parade et -2 AP.', '{"classe": "classes/pugiliste", "niveau": 5, "nature": "classe", "rang": 2, "ligne": 11, "type_capacite": "Actif (3 fois/combat)"}', 'Gagne 5% arme lourde et +2 dégâts, et perd 5% parade et -2 AP.  
 OU l''inverse, dure 1 tour.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Pugiliste »');
@@ -3862,7 +3936,7 @@ Cette classe est unique au potentiel illimité, vous ne pouvez pas la prendre si
 ### Maîtrise Arme
 
 - 1 maîtrise arme à distance au choix
-- 1 maîtrise de Bâton
+- 1 maîtrise arme de contact au choix
 
 ### Maîtrise Armures
 
@@ -3990,6 +4064,59 @@ La Fausse Patte est un combattant agile et précis, spécialisé dans l’utilis
 
 Grâce à son équilibre et sa maîtrise du combat ambidextre, il réduit les pénalités et exploite chaque ouverture avec une efficacité redoutable. Il joue plutôt sur la technique plutôt que de virevolter ses armes au hasard. Chaque coup doit avoir un but.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Bimane »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('classes/boxeur', 'classes', 'boxeur', 'Boxeur', 'boxeur', 'Le Boxeur est un combattant spécialisé dans le pugilat, qui transforme ses poings et son bouclier en véritables armes.', NULL, '**Catégorie** : Classe Physique Corps à Corps
+
+## Description Boxeur
+
+Le Boxeur est un combattant spécialisé dans le pugilat, qui transforme ses poings et son bouclier en véritables armes. Robuste et tenace, il privilégie le combat rapproché et sait encaisser les coups tout en maintenant la pression sur ses adversaires.
+
+Grâce à sa maîtrise du bouclier, il renforce ses frappes et sa résistance au combat. Son rôle est de tenir la ligne, repousser ses ennemis et leur faire comprendre que même un bouclier peut devenir une arme redoutable quand il est entre ses mains d''expert.
+
+## Don de départ
+
+| Santé | Chakra | Barrière |
+| --- | --- | --- |
+| 8.0 | 2.0 | 0.0 |
+
+### Maîtrise Arme
+
+- 1 maîtrise Pugilat
+
+### Maîtrise Armures
+
+- Légère
+- Bouclier classe 1 à 4
+
+## Inventaire de départ
+
+P fiole rouge, KDR Armure, briquet, bandage (x2), corde (x5)
+
+### Arme de départ
+
+Gants en Acier
+
+### Armure de départ
+
+Écu de bois
+
+## Sous-classes
+
+### CARCASSE ROUILLÉE
+
+#### Description Carcasse rouillée
+
+La Carcasse Rouillée est un combattant lourdement cuirassé, capable d''encaisser les assauts les plus violents sans fléchir. Peu mobile et difficile à déplacer, il privilégie la résistance brute et l''endurance plutôt que l''agilité.
+
+Son armure absorbe une partie des dégâts et le protège des altérations d''état. Même à terre, il reste au sommet de sa défense. Son rôle est d''être un rempart presque inébranlable, capable d''épuiser ses adversaires à force d''encaisser leurs assauts.
+
+### PERCUTEUR
+
+#### Description Percuteur
+
+Le Percuteur est un combattant brutal spécialisé dans les attaques au bouclier et les frappes de pugilat. Il mise sur sa force et son impact pour déstabiliser ses adversaires plutôt que de chercher à les blesser directement.
+
+Ses coups peuvent déséquilibrer, affaiblir et repousser ses ennemis, ouvrant ainsi des opportunités pour ses alliés. Son rôle est de briser les formations adverses, perturber leurs mouvements et maintenir la pression au cœur de la mêlée.
+', 'draft', 'classes', 'Classeur « Nouveauté mise à jour Décembre », onglet « Boxeur »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('classes/clerc', 'classes', 'clerc', 'Clerc', 'clerc', 'Dévoué à sa divinité, le Clerc canalise sa foi pour se protéger et guider ses alliés.', NULL, '**Catégorie** : Classe Magique
 
 **Note du Sommaire** : Octroie 4 AM de base par classe magique
@@ -4084,7 +4211,7 @@ Arme en fer selon la maîtrise
 
 ### Armure de départ
 
-Armure de Fer/Bronze, Bouclier Rond Corail
+Armure de Cellulose/Argent, Écu de bois
 
 ## Sous-classes
 
@@ -5478,7 +5605,7 @@ Le Chaman est un orios mystique, en harmonie avec les forces qui constituent les
 
 Capable de canaliser les éléments, il manipule les forces du Sang, de l’Eau ou de la Terre pour amplifier ses sorts ou accroître la puissance de ses compagnons. Son lien profond avec les plus bas instincts des orios lui confère des avantages uniques, faisant de lui un maître du terrain et un catalyseur de force pure.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Orios »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('classes/parleur', 'classes', 'parleur', 'Parleur', 'parleur', 'Le Parleur est un combattant dont l''arme est le verbe, utilisant son charisme pour manipuler ses adversaires plutôt que de les affronter directement.', NULL, '**Catégorie** : Classe Physique Corps à Corps
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('classes/parleur', 'classes', 'parleur', 'Parleur', 'parleur', 'Le Parleur est un combattant dont l''arme est le verbe, utilisant son charisme pour manipuler ses adversaires plutôt que de les affronter directement.', NULL, '**Catégorie** : Classe spéciale
 
 ## Description Parleur
 
@@ -5535,6 +5662,61 @@ L’Éloquent est un orateur hors pair, capable d’influencer son entourage par
 
 Qu’il pousse ses ennemis à l’attaquer, les contraigne à obéir ou les plonge dans le doute, son charisme impose le respect… ou la crainte. Son apparence et son autorité naturelle renforcent son impact.. Moins de muscle, plus de parole.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Parleur »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('classes/porte-etendard', 'classes', 'porte-etendard', 'Porte-étendard', 'porte-etendard', 'Le Porte-Étendard est un meneur de guerre qui galvanise ses compagnons par sa présence et sa détermination.', NULL, '**Catégorie** : Classe Physique Corps à Corps
+
+## Description Porte-Étendard
+
+Le Porte-Étendard est un meneur de guerre qui galvanise ses compagnons par sa présence et sa détermination. Équipé d''une lance et d''une armure robuste, il sait tenir sa position tout en incarnant un symbole de courage et de cohésion pour ceux qui combattent à ses côtés.
+
+Sa force réside dans sa capacité à motiver ses alliés, renforçant temporairement leurs performances et leur détermination. Tant qu''il reste debout, sa présence inspire confiance et résilience à ses compagnons, leur permettant de garder leur sang-froid face à l''adversité.
+
+Son rôle est de maintenir le moral des troupes, fédérer ses alliés et transformer une simple troupe en une véritable force de combat.
+
+## Don de départ
+
+| Santé | Chakra | Barrière |
+| --- | --- | --- |
+| 5.0 | 0.0 | 5.0 |
+
+### Maîtrise Arme
+
+- 1 maîtrise Hast
+- 1 maîtrise dans une arme contact au choix (sauf Hast)
+
+### Maîtrise Armures
+
+- Légère à Intermédiaire
+
+## Inventaire de départ
+
+P fiole rouge, KDR Arme, KDR Armure, briquet, lanterne
+
+### Arme de départ
+
+Lance en acier
+
+### Armure de départ
+
+Armure de fer complet
+
+## Sous-classes
+
+### CHEF DE GUERRE
+
+#### Description Chef de guerre
+
+Le Chef de Guerre est un meneur tactique qui dirige ses compagnons au cœur de la bataille. Commandant, il sait exploiter les forces de chacun pour transformer son groupe en une unité redoutable. Sa présence impose le respect et inspire confiance à ceux qui combattent sous ses ordres.
+
+Son aura renforce les capacités de ses alliés, qu''ils soient combattants ou utilisateurs de magie. Attentif au danger, il sait protéger ses compagnons, coordonner leurs mouvements et désorganiser les rangs ennemis. Son rôle est de diriger le combat et faire de la cohésion du groupe sa plus grande arme.
+
+### STRATÈGE DE BATAILLE
+
+#### Description Stratège de bataille
+
+Le Stratège de Bataille est un combattant analytique qui observe le champ de bataille et exploite chaque opportunité. Maître de l''adaptation, il sait ajuster sa posture selon la situation pour prendre l''avantage sur ses adversaires.
+
+Grâce à son sens tactique, il renforce les actions de ses alliés, exploite les faiblesses ennemies et adapte sa défense ou son offensive à chaque instant. Son rôle est de contrôler le rythme du combat et faire pencher la balance en faveur de son groupe.
+', 'draft', 'classes', 'Classeur « Nouveauté mise à jour Décembre », onglet « Porte-étendard »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('classes/pugiliste', 'classes', 'pugiliste', 'Pugiliste', 'pugiliste', 'Le Pugiliste est un guerrier dont le corps est sa seule arme, perfectionnée par l’entraînement et l’endurance.', NULL, '**Catégorie** : Classe Physique Corps à Corps
 
 ## Description Pugiliste
@@ -6281,7 +6463,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 Chaque **classe magique** donne en plus 4 points d’armure magique (AM) : deux classes magiques en donnent 8. La seconde spécialité des classes raciales et du {{flagelleur}} en donne aussi 4, une fois atteint le niveau 10 de la classe : son don de ce niveau la fait considérer comme une classe magique. La page de chaque classe dit tout le reste.
 
-Le Potentiel Illimité a ses propres règles : en magie innée, il impose l’Archimage comme première classe (une classe réservée à lui seul), et il ne peut jamais prendre le Mage Bleu.
+Le Potentiel Illimité a ses propres règles : en magie innée, il peut prendre l’Archimage (une classe réservée à lui seul) sans y être obligé, et il ne peut jamais prendre le Mage Bleu.
 
 ## Une ou deux classes : le biclassage
 
@@ -6552,7 +6734,7 @@ Pour résumer : Vous avez par exemple 25 de {{chakra|chakra}} maximum, si jamais
 
 ***PS : Seuls ceux qui ont la corruption en magie innée ou acquise ne meurent pas au seuil maximum, mais la corruption prend aussi la place de leur chakra. Le Potentiel Illimité, même s''il peut l''utiliser, peut en mourir s''il en cumule trop.***
 
-**{{barriere}}** : Il s''agit d''une seconde peau magique qui permet de protéger la chair. La {{barriere|barrière}} est en quelque sorte de la santé magique, son taux est déterminé par le total de {{chakra|chakra}} : [{{chakra}} total divisé par 2, arrondi à l’inférieur = {{barriere}} totale] (exemple : 20 {{chakra}} = 10 {{barriere}}). Il existe certaines classes/races qui offrent de la {{barriere|barrière}}. Par logique, plus vous avez de {{chakra|chakra}}, plus vous aurez de {{barriere|barrière}}. Ce qui fait que les mages ont des {{barriere|barrières}} colossales MAIS ... il existe des matériaux pour les armes qui sont capables de contrer cette peau magique comme le Mythril qui est capable de passer à travers la {{barriere|barrière}}, mais aussi le Maverium, qui lui, casse la {{barriere|barrière}} à son contact (donc un simple coup d''une arme de Maverium est capable de détruire instantanément la plus colossale des {{barriere|barrières}})
+**{{barriere}}** : Il s''agit d''une seconde peau magique qui permet de protéger la chair. La {{barriere|barrière}} est en quelque sorte de la santé magique, son taux est déterminé par le total de {{chakra|chakra}} : [{{chakra}} total divisé par 2, arrondi à l’inférieur = {{barriere}} totale] (exemple : 20 {{chakra}} = 10 {{barriere}}). Il existe certaines classes/races qui offrent de la {{barriere|barrière}}. Par logique, plus vous avez de {{chakra|chakra}}, plus vous aurez de {{barriere|barrière}}. Ce qui fait que les mages ont des {{barriere|barrières}} colossales.
 
 **Vitesse** : Il s''agit de l''attribut qui détermine le nombre de cases qu''un personnage peut parcourir le tour où il joue (plus détail [ici](https://maverick-jdr.fandom.com/fr/wiki/Combat))
 
@@ -6832,7 +7014,7 @@ Cette posture permet de rester concentré et permet une meilleure efficacité av
 
 - **+10% à la réussite :** Peu importe le type de jet, il bénéficie d’un bonus de 10% à la réussite.
 - **-1 tour de charge :** Permet de retirer le tour de charge des sorts de niveau 5 de puissance et de retirer le tour de charge lors de certaines actions. Casse le tour de charge de la capacité "Préparation" du Mage Rouge et Vert.
-- **Augmente le cran de dé de dégâts/soin :** Permet d’augmenter d’un cran la nature des dés qui seront lancés pour le sortilège (le D6 devient D8, etc… en sachant qu’il n’y pas plus haut que le D20)
+- **Augmente le cran de dé de dégâts/soin :** Permet d’augmenter d’un cran la nature des dés qui seront lancés pour le sortilège (le D6 devient D8, etc… en sachant qu’il n’y pas plus haut que le D12)
 - **Esquive/Parade impossible :** Pas besoin d''expliquer, la posture vous empêche d''esquiver ou de parer une agression ennemie.
 
 ## Vigilance
@@ -6873,7 +7055,7 @@ Les attributs se calculent à partir de la race, de la ou des classes et des mag
 
 - **Santé** (les points de vie) : celle de la race, de la ou des classes et des magies qui en offrent. À 0 ou moins, le personnage tombe dans le coma et doit faire des jets de survie : un seul réussi le stabilise, trois ratés et il meurt.
 - **{{chakra}}** (les points de magie, que dépensent les sorts) : celui de la race, de la ou des classes et des magies. À court de {{chakra|chakra}}, on peut quand même en dépenser : chaque point qui manque coûte 3 points de santé.
-- **{{barriere}}** : une seconde peau magique, qui protège la chair. Elle vaut la moitié du {{chakra|chakra}}, arrondie à l’inférieur, plus les bonus de la race et de la classe. Le mythril la traverse, et le maverium la brise à son contact.
+- **{{barriere}}** : une seconde peau magique, qui protège la chair. Elle vaut la moitié du {{chakra|chakra}}, arrondie à l’inférieur, plus les bonus de la race et de la classe.
 - **{{corruption}}** : son maximum est celui du {{chakra|chakra}}. La {{corruption|corruption}} est un poison du {{chakra|chakra}} : chaque point de {{corruption|corruption}} prend la place d’un point de {{chakra|chakra}}. Si elle atteint son maximum, le personnage a deux semaines, dans le jeu, pour en retirer au moins un point ; sinon il meurt et devient une abomination. Seuls ceux qui ont la Corruption en magie innée ou acquise ne risquent pas cette mort, mais la {{corruption|corruption}} prend aussi la place de leur {{chakra|chakra}}. Le Potentiel Illimité, même s’il peut s’en servir, peut en mourir s’il en cumule trop.
 - **Âme** ou **Sang**, la « 4ᵉ barre » : seulement pour la Nécromancie et la magie du Sang. C’est une réserve de 10 points que demandent certains sorts, et qui se recharge de 1 point par tour en combat.
 - **Vitesse** : celle de la race, sur terre et à la nage, en cases par tour. Une armure de la catégorie « Lourd » retire 1 point de vitesse et rend la vitesse de nage nulle (0).
@@ -7235,7 +7417,7 @@ Le Codex raconte que tout commença avec deux forces, la Création et la Destruc
 Un personnage est la rencontre d’une race, d’une magie et d’une classe.
 
 - **27 races** ({{humain|des humains}} aux plus exotiques), les unes *pures*, les autres *hybrides*. Une race hybride a sa propre classe, la *classe raciale*, qui porte son nom ; seul le Drassah’thac, hybride lui aussi, n’en a pas. La plupart des races se divisent encore en **ethnies**, comme le Felfe Forestier. Chacune a son histoire, ses dons, ses avantages et ses inconvénients, sa façon de voir les autres peuples ({{relations-entre-les-races|les relations entre les peuples}}) et ses magies possibles. Voir les {{race|races}}.
-- **39 classes** et **78 spécialités** : deux par classe, à choisir au niveau 10 de la classe. Il y a des classes physiques, au corps à corps ou à distance, des classes magiques, les classes raciales, et des classes spéciales. On peut commencer avec une classe ou deux. Voir les {{classe|classes}}.
+- **41 classes** et **82 spécialités** : deux par classe, à choisir au niveau 10 de la classe. Il y a des classes physiques, au corps à corps ou à distance, des classes magiques, les classes raciales, et des classes spéciales. On peut commencer avec une classe ou deux. Voir les {{classe|classes}}.
 - **15 magies**, dont l’une innée et, si la race le permet, une autre acquise. Voir les {{magies|magies}}.
 
 Rien qu’en comptant la race, la magie innée et la première classe, les règles du site permettent **plus de 5 000 combinaisons**, sans compter la seconde classe, la magie acquise, l’ethnie ni les spécialités. Toutes les combinaisons ne sont pas permises : une classe raciale n’est ouverte qu’à sa race, certaines races ferment certaines magies. À vous de trouver celle qui vous ressemble.
@@ -7627,7 +7809,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 ## Le calcul, étape par étape
 
-1. **La posture de l’attaquant règle les dés.** En posture offensive, les dégâts sont au maximum et l’on ne lance pas les dés : 2d6+2 font 14, 6d6+4 font 40. En posture focus, les dés de dégâts des sorts montent d’un cran : D4, D6, D8, D10, D12, puis D20, jamais au-delà.
+1. **La posture de l’attaquant règle les dés.** En posture offensive, les dégâts sont au maximum et l’on ne lance pas les dés : 2d6+2 font 14, 6d6+4 font 40. En posture focus, les dés de dégâts des sorts montent d’un cran : D4, D6, D8, D10, puis D12, jamais au-delà.
 2. **On lance les dés** de l’arme ou du sort, et l’on ajoute leurs bonus, ainsi que les bonus fixes de dégâts : viser la tête (+10), la tenaille (+4), le +8 d’un échec critique en défense, le Mode Hyper… Ils comptent avec les dégâts de base.
 3. **Réussite critique de l’attaquant** : les dégâts sont multipliés par 2.
 4. **Attaquant en posture défensive** : ses dégâts sont divisés par 2, avant de retirer l’armure. Cette posture divise les dégâts que l’on inflige, pas ceux que l’on reçoit.
@@ -7683,13 +7865,13 @@ Le détail est dans {{attaquer}}, {{mode-hyper|Le Mode Hyper}} et {{posture|Les 
 
 ## Et la barrière ?
 
-La {{barriere|barrière}} est une seconde peau magique qui protège la chair : une sorte de santé magique, qui vaut la moitié du {{chakra|chakra}} total, arrondie à l’inférieur (plus ce qu’offrent certaines races et classes). Plus un personnage a de {{chakra|chakra}}, plus sa {{barriere|barrière}} est grande ; mais certains matériaux d’arme la contrent, comme le **Mythril**, qui passe à travers, ou le **Maverium**, qui la brise à son contact, si colossale soit-elle. Une arme de **Laiton**, elle, fait des dégâts doublés contre la {{barriere|barrière}} (voir l’onglet {{composants|Matériaux}} des composants).
+La {{barriere|barrière}} est une seconde peau magique qui protège la chair : une sorte de santé magique, qui vaut la moitié du {{chakra|chakra}} total, arrondie à l’inférieur (plus ce qu’offrent certaines races et classes). Plus un personnage a de {{chakra|chakra}}, plus sa {{barriere|barrière}} est grande. Une arme de **Mythril** inflige +1 dé de dégâts si elle touche une barrière ; une arme de **Maverium**, +1 dé de dégâts si la créature ne possède pas ou plus de barrière (voir l’onglet {{composants|Matériaux}} des composants).
 
-Elle prend les coups avant la santé, sauf contre-indication : une fois qu’elle est vide, ce qui reste des dégâts baisse la santé, qui peut alors devenir négative (voir {{blessure-et-mort}}). Un coût payé en santé ({{chakra|chakra}} manquant, coût d’un sort ou d’un don) ne passe pas par elle, sauf si un texte le précise. Deux dons du Médusain la rendent moins touchée : « La barrière prend deux fois moins de dégâts physiques » (Barrière résistante) et « … magiques » (Barrière isolante). Contre une arme de Laiton, ces deux effets se compensent ; une arme de Maverium, elle, casse la barrière sans tenir compte du Médusain.
+Elle prend les coups avant la santé, sauf contre-indication : une fois qu’elle est vide, ce qui reste des dégâts baisse la santé, qui peut alors devenir négative (voir {{blessure-et-mort}}). Un coût payé en santé ({{chakra|chakra}} manquant, coût d’un sort ou d’un don) ne passe pas par elle, sauf si un texte le précise. Deux dons du Médusain la rendent moins touchée : « La barrière prend deux fois moins de dégâts physiques » (Barrière résistante) et « … magiques » (Barrière isolante).
 
 ## La fiche fait le calcul
 
-Sur la {{fiche-de-personnage|fiche de personnage}}, la deuxième ligne de la tuile des attributs donne l’AP et l’AM totaux du personnage et calcule les dégâts qu’il reçoit. Saisissez les dégâts du coup (critique compris), son type (Estoc, Taille, Frappe, ou Magique pour un sort) et son élément : il est obligatoire pour un coup magique, et une arme élémentaire a les deux. Cochez « Dégâts réduits » pour une défense partielle, et « Au bouclier » ou « Don ÷ 2 » s’il y a lieu. Le bouton « Appliquer » retire ensuite le résultat de la barrière, puis de la santé quand la barrière est vide. Des cases règlent les coups contre lesquels la barrière ne joue pas normalement : « Passe la barrière » (Mythril, sorts qui l’ignorent), « Casse la barrière » (Maverium), « Dégâts doublés contre la barrière » (Laiton), et « Deux fois moins » (dons du Médusain), cochée d’office quand le personnage a le don qui correspond au coup.
+Sur la {{fiche-de-personnage|fiche de personnage}}, la deuxième ligne de la tuile des attributs donne l’AP et l’AM totaux du personnage et calcule les dégâts qu’il reçoit. Saisissez les dégâts du coup (critique compris), son type (Estoc, Taille, Frappe, ou Magique pour un sort) et son élément : il est obligatoire pour un coup magique, et une arme élémentaire a les deux. Cochez « Dégâts réduits » pour une défense partielle, et « Au bouclier » ou « Don ÷ 2 » s’il y a lieu. Le bouton « Appliquer » retire ensuite le résultat de la barrière, puis de la santé quand la barrière est vide. Des cases règlent les coups contre lesquels la barrière ne joue pas normalement : « Passe la barrière » (sorts qui l’ignorent), « Casse la barrière », « Dégâts doublés contre la barrière », et « Deux fois moins » (dons du Médusain), cochée d’office quand le personnage a le don qui correspond au coup.
 
 Le texte d’origine de la formule et de ses exemples : {{formule-des-degats}}.
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
@@ -8003,7 +8185,7 @@ La concentration : pour une magie plus efficace.
 
 - **+10 % à la réussite**, quel que soit le jet.
 - **Plus de tour de charge** : les sorts de niveau 5 se lancent sans tour de charge (voir {{la-magie-en-jeu}}), comme certaines actions. La posture casse aussi le tour de charge des capacités *Préparation* (Mage Rouge) et *Chargement* (Mage Vert).
-- **Des dés plus forts** pour les dégâts et les soins des sorts : chaque dé monte d’un cran, D4, D6, D8, D10, D12, puis D20, jamais au-delà.
+- **Des dés plus forts** pour les dégâts et les soins des sorts : chaque dé monte d’un cran, D4, D6, D8, D10, puis D12, jamais au-delà.
 - *Inconvénient* : **ni parade ni esquive**.
 
 ### Vigilance
@@ -19704,7 +19886,6 @@ Le principal intérêt repose sur sa versatilité, en effet cette magie pioche s
 
 - Humain, Nain, Elfe argenté, Forestier, Noir, Doré, Farfadet, Felfe, Hujin et Drakos sont les seuls qui peuvent l''avoir.
 - Mono-magie uniquement.
-- Classe unique = Archimage.
 - Surtension corporelle (Vulnérabilité contre les dégâts physiques, ne peut mettre plus de 5 Santé lors de la répartition des points lors du passage de niveau global).
 - État fatigue 1 en permanence (sans le malus aux dégâts).
 - Impossible de porter des armures lourdes ou boucliers lourds même si la classe vous le permet.
@@ -20618,9 +20799,9 @@ Nombre : 3.
 
 Section issue de la fiche de personnage V15.2.2 (onglet « Accessibilité de Classe »), pas de l''onglet de la race.
 
-Nombre : 27 sur 39.
+Nombre : 29 sur 41.
 
-Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Anansi
+Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Anansi, Boxeur, Porte-étendard
 
 ## Magies accessibles
 
@@ -20945,9 +21126,9 @@ Nombre : 15.
 
 Section issue de la fiche de personnage V15.2.2 (onglet « Accessibilité de Classe »), pas de l''onglet de la race.
 
-Nombre : 26 sur 39.
+Nombre : 28 sur 41.
 
-Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur
+Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Boxeur, Porte-étendard
 
 ## Magies accessibles
 
@@ -21176,9 +21357,9 @@ Nombre : 5.
 
 Section issue de la fiche de personnage V15.2.2 (onglet « Accessibilité de Classe »), pas de l''onglet de la race.
 
-Nombre : 26 sur 39.
+Nombre : 28 sur 41.
 
-Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur
+Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Boxeur, Porte-étendard
 
 ## Magies accessibles
 
@@ -21341,9 +21522,9 @@ Colonne « Race » de l''onglet « Bonus Race » : Elfe Argenté.
 
 Section issue de la fiche de personnage V15.2.2 (onglet « Accessibilité de Classe »), pas de l''onglet de la race.
 
-Nombre : 26 sur 39.
+Nombre : 28 sur 41.
 
-Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur
+Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Boxeur, Porte-étendard
 
 ## Magies accessibles
 
@@ -21436,9 +21617,9 @@ Colonne « Race » de l''onglet « Bonus Race » : Elfe Doré.
 
 Section issue de la fiche de personnage V15.2.2 (onglet « Accessibilité de Classe »), pas de l''onglet de la race.
 
-Nombre : 26 sur 39.
+Nombre : 28 sur 41.
 
-Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur
+Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Boxeur, Porte-étendard
 
 ## Magies accessibles
 
@@ -21580,9 +21761,9 @@ Colonne « Race » de l''onglet « Bonus Race » : Elfe Forestier.
 
 Section issue de la fiche de personnage V15.2.2 (onglet « Accessibilité de Classe »), pas de l''onglet de la race.
 
-Nombre : 26 sur 39.
+Nombre : 28 sur 41.
 
-Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur
+Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Boxeur, Porte-étendard
 
 ## Magies accessibles
 
@@ -21721,9 +21902,9 @@ Colonne « Race » de l''onglet « Bonus Race » : Elfe Noir.
 
 Section issue de la fiche de personnage V15.2.2 (onglet « Accessibilité de Classe »), pas de l''onglet de la race.
 
-Nombre : 26 sur 39.
+Nombre : 28 sur 41.
 
-Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur
+Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Boxeur, Porte-étendard
 
 ## Magies accessibles
 
@@ -21898,9 +22079,9 @@ Nombre : 4.
 
 Section issue de la fiche de personnage V15.2.2 (onglet « Accessibilité de Classe »), pas de l''onglet de la race.
 
-Nombre : 26 sur 39.
+Nombre : 28 sur 41.
 
-Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur
+Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Boxeur, Porte-étendard
 
 ## Magies accessibles
 
@@ -22050,9 +22231,9 @@ Colonne « Race » de l''onglet « Bonus Race » : Felfle.
 
 Section issue de la fiche de personnage V15.2.2 (onglet « Accessibilité de Classe »), pas de l''onglet de la race.
 
-Nombre : 26 sur 39.
+Nombre : 28 sur 41.
 
-Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur
+Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Boxeur, Porte-étendard
 
 ## Magies accessibles
 
@@ -22223,9 +22404,9 @@ Nombre : 3.
 
 Section issue de la fiche de personnage V15.2.2 (onglet « Accessibilité de Classe »), pas de l''onglet de la race.
 
-Nombre : 27 sur 39.
+Nombre : 29 sur 41.
 
-Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Fenrir
+Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Fenrir, Boxeur, Porte-étendard
 
 ## Magies accessibles
 
@@ -22389,9 +22570,9 @@ Nombre : 3.
 
 Section issue de la fiche de personnage V15.2.2 (onglet « Accessibilité de Classe »), pas de l''onglet de la race.
 
-Nombre : 27 sur 39.
+Nombre : 29 sur 41.
 
-Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Goleois
+Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Goleois, Boxeur, Porte-étendard
 
 ## Magies accessibles
 
@@ -22482,9 +22663,9 @@ Nombre : 1.
 
 Section issue de la fiche de personnage V15.2.2 (onglet « Accessibilité de Classe »), pas de l''onglet de la race.
 
-Nombre : 26 sur 39.
+Nombre : 28 sur 41.
 
-Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur
+Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Boxeur, Porte-étendard
 
 ## Magies accessibles
 
@@ -22658,9 +22839,9 @@ Nombre : 4.
 
 Section issue de la fiche de personnage V15.2.2 (onglet « Accessibilité de Classe »), pas de l''onglet de la race.
 
-Nombre : 26 sur 39.
+Nombre : 28 sur 41.
 
-Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur
+Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Boxeur, Porte-étendard
 
 ## Magies accessibles
 
@@ -22825,9 +23006,9 @@ Nombre : 3.
 
 Section issue de la fiche de personnage V15.2.2 (onglet « Accessibilité de Classe »), pas de l''onglet de la race.
 
-Nombre : 27 sur 39.
+Nombre : 29 sur 41.
 
-Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Jackalope
+Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Jackalope, Boxeur, Porte-étendard
 
 ## Magies accessibles
 
@@ -22996,9 +23177,9 @@ Nombre : 3.
 
 Section issue de la fiche de personnage V15.2.2 (onglet « Accessibilité de Classe »), pas de l''onglet de la race.
 
-Nombre : 27 sur 39.
+Nombre : 29 sur 41.
 
-Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Kitsune
+Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Kitsune, Boxeur, Porte-étendard
 
 ## Magies accessibles
 
@@ -23102,9 +23283,9 @@ Nombre : 1.
 
 Section issue de la fiche de personnage V15.2.2 (onglet « Accessibilité de Classe »), pas de l''onglet de la race.
 
-Nombre : 26 sur 39.
+Nombre : 28 sur 41.
 
-Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur
+Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Boxeur, Porte-étendard
 
 ## Magies accessibles
 
@@ -23213,9 +23394,9 @@ Nombre : 1.
 
 Section issue de la fiche de personnage V15.2.2 (onglet « Accessibilité de Classe »), pas de l''onglet de la race.
 
-Nombre : 26 sur 39.
+Nombre : 28 sur 41.
 
-Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur
+Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Boxeur, Porte-étendard
 
 ## Magies accessibles
 
@@ -23390,9 +23571,9 @@ Nombre : 3.
 
 Section issue de la fiche de personnage V15.2.2 (onglet « Accessibilité de Classe »), pas de l''onglet de la race.
 
-Nombre : 27 sur 39.
+Nombre : 29 sur 41.
 
-Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Marcass
+Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Marcass, Boxeur, Porte-étendard
 
 ## Magies accessibles
 
@@ -23564,9 +23745,9 @@ Nombre : 3.
 
 Section issue de la fiche de personnage V15.2.2 (onglet « Accessibilité de Classe »), pas de l''onglet de la race.
 
-Nombre : 24 sur 39.
+Nombre : 26 sur 41.
 
-Lancier, Martiale, Moine, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Médusain
+Lancier, Martiale, Moine, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Médusain, Boxeur, Porte-étendard
 
 ## Magies accessibles
 
@@ -23728,9 +23909,9 @@ Nombre : 3.
 
 Section issue de la fiche de personnage V15.2.2 (onglet « Accessibilité de Classe »), pas de l''onglet de la race.
 
-Nombre : 27 sur 39.
+Nombre : 29 sur 41.
 
-Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Minotaure
+Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Minotaure, Boxeur, Porte-étendard
 
 ## Magies accessibles
 
@@ -24046,9 +24227,9 @@ Colonne « Race » de l''onglet « Bonus Race » : Mort-Vivant.
 
 Section issue de la fiche de personnage V15.2.2 (onglet « Accessibilité de Classe »), pas de l''onglet de la race.
 
-Nombre : 26 sur 39.
+Nombre : 28 sur 41.
 
-Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur
+Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Boxeur, Porte-étendard
 
 ## Magies accessibles
 
@@ -24202,9 +24383,9 @@ Nombre : 3.
 
 Section issue de la fiche de personnage V15.2.2 (onglet « Accessibilité de Classe »), pas de l''onglet de la race.
 
-Nombre : 26 sur 39.
+Nombre : 28 sur 41.
 
-Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur
+Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Boxeur, Porte-étendard
 
 ## Magies accessibles
 
@@ -24366,9 +24547,9 @@ Nombre : 3.
 
 Section issue de la fiche de personnage V15.2.2 (onglet « Accessibilité de Classe »), pas de l''onglet de la race.
 
-Nombre : 27 sur 39.
+Nombre : 29 sur 41.
 
-Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Namazu
+Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Namazu, Boxeur, Porte-étendard
 
 ## Magies accessibles
 
@@ -24522,9 +24703,9 @@ Nombre : 3.
 
 Section issue de la fiche de personnage V15.2.2 (onglet « Accessibilité de Classe »), pas de l''onglet de la race.
 
-Nombre : 27 sur 39.
+Nombre : 29 sur 41.
 
-Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Olwman
+Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Olwman, Boxeur, Porte-étendard
 
 ## Magies accessibles
 
@@ -24695,9 +24876,9 @@ Nombre : 3.
 
 Section issue de la fiche de personnage V15.2.2 (onglet « Accessibilité de Classe »), pas de l''onglet de la race.
 
-Nombre : 27 sur 39.
+Nombre : 29 sur 41.
 
-Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Orios
+Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Orios, Boxeur, Porte-étendard
 
 ## Magies accessibles
 
@@ -24857,9 +25038,9 @@ Nombre : 3.
 
 Section issue de la fiche de personnage V15.2.2 (onglet « Accessibilité de Classe »), pas de l''onglet de la race.
 
-Nombre : 27 sur 39.
+Nombre : 29 sur 41.
 
-Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Rokh
+Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Rokh, Boxeur, Porte-étendard
 
 ## Magies accessibles
 
@@ -25015,9 +25196,9 @@ Nombre : 3.
 
 Section issue de la fiche de personnage V15.2.2 (onglet « Accessibilité de Classe »), pas de l''onglet de la race.
 
-Nombre : 27 sur 39.
+Nombre : 29 sur 41.
 
-Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Satyre
+Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Satyre, Boxeur, Porte-étendard
 
 ## Magies accessibles
 
@@ -25614,19 +25795,19 @@ Note de mise en page : la règle ci-dessus (« Les armes en bleu sont les armes 
 | Matière | Prix matériaux | Effets |
 | --- | --- | --- |
 | Fer | 100 RF / 10 RO | rien de particulier |
-| Acier | 200 RF / 20 RO | Dégâts +2 pour l''arme |
-| Fer noir | 350 RF / 35 RO | Dégâts +3 pour l''arme<br>1d4 de {{corruption\|corruption}} à chaque coup qui touche |
-| Argent | 350 RF / 35 RO | Dégâts +4 pour l''arme<br>+1d de dégâts contre les non-morts |
+| Acier | 200 RF / 20 RO | Dégâts +2 pour l''arme<br>Une fois par combat, permet de relancer les dés de dégâts, mais le second résultat doit être conservé. |
+| Fer noir | 350 RF / 35 RO | Dégâts +3 pour l''arme<br>Si la cible ne possède pas de {{corruption\|corruption}}, lui inflige 4 points de {{corruption\|corruption}}. Si elle possède déjà de la {{corruption\|corruption}}, inflige +2 dégâts et 2 de {{corruption\|corruption}}. |
+| Argent | 350 RF / 35 RO | Dégâts +4 pour l''arme<br>+1 dé de dégâts contre les non-morts. |
 | Fonte | 400 RF / 40 RO | Dégâts +7 pour l''arme<br>-1 cran de solidité |
-| Cuivre | 400 RF / 40 RO | Dégâts +5 pour l''arme |
+| Cuivre | 400 RF / 40 RO | Dégâts +5 pour l''arme<br>Les {{sort-fer\|sorts de type « Fer »}} appliqués à l''arme durent un tour supplémentaire, soit 4 tours au lieu de 3. |
 | Bronze | 850 RF / 85 RO | Dégâts +5 pour l''arme<br>+1 cran de solidité |
-| Os | 800 RF / 80 RO | Dégâts +6 pour l''arme |
-| Laiton | 900 RF / 90 RO | Dégâts +7 pour l''arme<br>dégâts doublés contre la {{barriere\|barrière}} |
-| Or | 100 RO | Dégâts +8 pour l''arme<br>+1d de dégâts contre les démons |
-| Vif argent | 300 RO | Dégâts +6 pour l''arme<br>Touche l''immatériel |
-| Mythril | 200 RO | Dégâts +8 pour l''arme<br>Passe {{barriere\|barrière}} |
-| Titane | 200 RO | Dégâts +9 pour l''arme<br>+1 cran de solidité |
-| Maverium | 400 RO | Dégâts +10 pour l''arme<br>Casse {{barriere\|barrière}} |
+| Os | 800 RF / 80 RO | Dégâts +6 pour l''arme<br>+1 dé de dégâts contre les bêtes. |
+| Laiton | 900 RF / 90 RO | Dégâts +7 pour l''arme<br>+1 dé de dégâts contre les créatures mécaniques ou inertes. |
+| Or | 100 RO | Dégâts +8 pour l''arme<br>+1 dé de dégâts contre les démons. |
+| Vif argent | 300 RO | Dégâts +6 pour l''arme<br>Permet de toucher les êtres immatériels. |
+| Mythril | 200 RO | Dégâts +8 pour l''arme<br>Si l''arme touche une {{barriere\|barrière}}, elle inflige +1 dé de dégâts. |
+| Titane | 200 RO | Dégâts +9 pour l''arme<br>Avantage contre les effets de désarmement. |
+| Maverium | 400 RO | Dégâts +10 pour l''arme<br>Si la créature ne possède pas ou plus de {{barriere\|barrière}}, l''arme inflige +1 dé de dégâts. |
 
 ## AMÉLIORATION
 

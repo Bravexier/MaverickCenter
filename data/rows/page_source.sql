@@ -379,8 +379,6 @@ INSERT INTO page_source (page_id, ordre, source_id) VALUES ('capacites/cuirasse-
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('capacites/cuirasse-dernier-souffle', 1, 'google-sheet:1Pyg4GSUlFrvNaTg3bi6uXlehg1MuRHmkyfPO6s5K72I');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('capacites/cuirasse-egide', 0, 'ref:google-sheet-classe-maverick-v7-onglet-cuirasse');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('capacites/cuirasse-egide', 1, 'google-sheet:1Pyg4GSUlFrvNaTg3bi6uXlehg1MuRHmkyfPO6s5K72I');
-INSERT INTO page_source (page_id, ordre, source_id) VALUES ('capacites/cuirasse-large', 0, 'ref:google-sheet-classe-maverick-v7-onglet-cuirasse');
-INSERT INTO page_source (page_id, ordre, source_id) VALUES ('capacites/cuirasse-large', 1, 'google-sheet:1Pyg4GSUlFrvNaTg3bi6uXlehg1MuRHmkyfPO6s5K72I');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('capacites/cuirasse-muraille', 0, 'ref:google-sheet-classe-maverick-v7-onglet-cuirasse');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('capacites/cuirasse-muraille', 1, 'google-sheet:1Pyg4GSUlFrvNaTg3bi6uXlehg1MuRHmkyfPO6s5K72I');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('capacites/cuirasse-nanochakra', 0, 'ref:google-sheet-classe-maverick-v7-onglet-cuirasse');

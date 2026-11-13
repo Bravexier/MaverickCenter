@@ -384,6 +384,214 @@
           "apres": "Réflexe",
           "nature": "accent",
           "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12) : stade 3 de l’altération Surdité ; nom de la compétence « Réflexe », la correction que la migration 0005 a faite sur le même texte (registre 0005-orthographe-base.json, stades 1 et 2 de la Surdité) (R10 : l'orthographe se corrige, jamais un chiffre ni le sens ; relevée par tech-db au lot 1, 2026-11-12)."
+        },
+        {
+          "onglet": "Boxeur",
+          "cellule": "AM17",
+          "avant": "Description Carcasse rouillé",
+          "apres": "Description Carcasse rouillée",
+          "nature": "grammaire",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12), lot 3 « Classes » (R238) : titre de la description de la spécialité CARCASSE ROUILLÉE (bannière A17, cartouche F22 : « rouillée »), accord au féminin (R10 : l'orthographe se corrige, jamais un chiffre ni le sens)."
+        },
+        {
+          "onglet": "Boxeur",
+          "cellule": "P5",
+          "avant": "un dégâts bonus",
+          "apres": "un dégât bonus",
+          "nature": "grammaire",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12), lot 3 « Classes » (R238) : don Bouclier d'attaque : « dégâts » au pluriel derrière « un » (singulier, comme « divisé par 4 » qui suit) (R10 : l'orthographe se corrige, jamais un chiffre ni le sens)."
+        },
+        {
+          "onglet": "Boxeur",
+          "cellule": "P12",
+          "avant": "Les boucliers donne +2AP",
+          "apres": "Les boucliers donnent +2AP",
+          "nature": "grammaire",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12), lot 3 « Classes » (R238) : don Mur : verbe accordé au sujet pluriel « Les boucliers » (R10 : l'orthographe se corrige, jamais un chiffre ni le sens)."
+        },
+        {
+          "onglet": "Boxeur",
+          "cellule": "A30",
+          "avant": "Réduit le dégâts",
+          "apres": "Réduit les dégâts",
+          "nature": "grammaire",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12), lot 3 « Classes » (R238) : don Armure vivante : « dégâts » est pluriel (R10 : l'orthographe se corrige, jamais un chiffre ni le sens)."
+        },
+        {
+          "onglet": "Boxeur",
+          "cellule": "H30",
+          "avant": "être déplacer",
+          "apres": "être déplacé",
+          "nature": "grammaire",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12), lot 3 « Classes » (R238) : don Poids mort : participe passé après « être » (R10 : l'orthographe se corrige, jamais un chiffre ni le sens)."
+        },
+        {
+          "onglet": "Boxeur",
+          "cellule": "X30",
+          "avant": "avec les bouclier par",
+          "apres": "avec les boucliers par",
+          "nature": "grammaire",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12), lot 3 « Classes » (R238) : don Bouragé : pluriel de « les bouclier » (lecture la plus probable ; « le bouclier » donnerait le même sens) (R10 : l'orthographe se corrige, jamais un chiffre ni le sens)."
+        },
+        {
+          "onglet": "Boxeur",
+          "cellule": "AE30",
+          "avant": "Une attaque réussi",
+          "apres": "Une attaque réussie",
+          "nature": "grammaire",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12), lot 3 « Classes » (R238) : don Bouquilibre : accord au féminin avec « attaque » (R10 : l'orthographe se corrige, jamais un chiffre ni le sens)."
+        },
+        {
+          "onglet": "Boxeur",
+          "cellule": "AE30",
+          "avant": "désaventage",
+          "apres": "désavantage",
+          "nature": "frappe",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12), lot 3 « Classes » (R238) : don Bouquilibre : « désavantage » (lettre fautive) (R10 : l'orthographe se corrige, jamais un chiffre ni le sens)."
+        },
+        {
+          "onglet": "Boxeur",
+          "cellule": "X37",
+          "avant": "l'attaque réussi :",
+          "apres": "l'attaque réussit :",
+          "nature": "grammaire",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12), lot 3 « Classes » (R238) : don Boupact : verbe « réussit » (3e personne) (R10 : l'orthographe se corrige, jamais un chiffre ni le sens)."
+        },
+        {
+          "onglet": "Boxeur",
+          "cellule": "AE37",
+          "avant": "Une attaque réussi",
+          "apres": "Une attaque réussie",
+          "nature": "grammaire",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12), lot 3 « Classes » (R238) : don Bousée : accord au féminin avec « attaque » (R10 : l'orthographe se corrige, jamais un chiffre ni le sens)."
+        },
+        {
+          "onglet": "Boxeur",
+          "cellule": "AE37",
+          "avant": "une malus",
+          "apres": "un malus",
+          "nature": "grammaire",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12), lot 3 « Classes » (R238) : don Bousée : « malus » est masculin (R10 : l'orthographe se corrige, jamais un chiffre ni le sens)."
+        },
+        {
+          "onglet": "Boxeur",
+          "cellule": "X44",
+          "avant": "ignore 1AP",
+          "apres": "ignorent 1AP",
+          "nature": "grammaire",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12), lot 3 « Classes » (R238) : don Boucassant : verbe accordé au sujet pluriel « Les attaques » (R10 : l'orthographe se corrige, jamais un chiffre ni le sens)."
+        },
+        {
+          "onglet": "Boxeur",
+          "cellule": "AE44",
+          "avant": "Une attaque réussi",
+          "apres": "Une attaque réussie",
+          "nature": "grammaire",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12), lot 3 « Classes » (R238) : don Bouvasteur : accord au féminin avec « attaque » (R10 : l'orthographe se corrige, jamais un chiffre ni le sens)."
+        },
+        {
+          "onglet": "Boxeur",
+          "cellule": "G11",
+          "avant": "Écu bois",
+          "apres": "Écu de bois",
+          "nature": "orthographe",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12), lot 3 « Classes » (R238) : armure de départ : « de » manquant (l'onglet « Cuirassé V2 », G11, écrit « Écu de bois ») (R10 : l'orthographe se corrige, jamais un chiffre ni le sens)."
+        },
+        {
+          "onglet": "Porte-étendard",
+          "cellule": "A7",
+          "avant": "  (sauf",
+          "apres": " (sauf",
+          "nature": "espace",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12), lot 3 « Classes » (R238) : maîtrise d'arme : deux espaces avant « (sauf » (R10 : l'orthographe se corrige, jamais un chiffre ni le sens)."
+        },
+        {
+          "onglet": "Porte-étendard",
+          "cellule": "A7",
+          "avant": "sauf hast)",
+          "apres": "sauf Hast)",
+          "nature": "casse",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12), lot 3 « Classes » (R238) : maîtrise d'arme : « Hast » est le nom de l'arme, écrit « Hast » deux lignes plus haut dans la même cellule et dans la ligne du Cuirassé (R10 : l'orthographe se corrige, jamais un chiffre ni le sens)."
+        },
+        {
+          "onglet": "Porte-étendard",
+          "cellule": "D23",
+          "avant": "+2 point de maîtrise",
+          "apres": "+2 points de maîtrise",
+          "nature": "grammaire",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12), lot 3 « Classes » (R238) : cartouche CHEF DE GUERRE : « points » au pluriel après « +2 » (R10 : l'orthographe se corrige, jamais un chiffre ni le sens)."
+        },
+        {
+          "onglet": "Porte-étendard",
+          "cellule": "AA23",
+          "avant": "+2 point de maîtrise",
+          "apres": "+2 points de maîtrise",
+          "nature": "grammaire",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12), lot 3 « Classes » (R238) : cartouche STRATEGE DE BATAILLE : « points » au pluriel après « +2 » (R10 : l'orthographe se corrige, jamais un chiffre ni le sens)."
+        },
+        {
+          "onglet": "Porte-étendard",
+          "cellule": "X17",
+          "avant": "STRATEGE",
+          "apres": "STRATÈGE",
+          "nature": "accent",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12), lot 3 « Classes » (R238) : bannière de la seconde spécialité (le cartouche AA22 du même onglet écrit « Stratège de bataille ») ; les majuscules gardent leurs accents, comme « GRAND ARBALÉTRIER » (R10 : l'orthographe se corrige, jamais un chiffre ni le sens)."
+        },
+        {
+          "onglet": "Porte-étendard",
+          "cellule": "P5",
+          "avant": "tout les jets",
+          "apres": "tous les jets",
+          "nature": "grammaire",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12), lot 3 « Classes » (R238) : don Motivation : « tous les jets » (R10 : l'orthographe se corrige, jamais un chiffre ni le sens)."
+        },
+        {
+          "onglet": "Porte-étendard",
+          "cellule": "A30",
+          "avant": "à côté lui",
+          "apres": "à côté de lui",
+          "nature": "orthographe",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12), lot 3 « Classes » (R238) : don Provoc du porteur : « de » manquant dans « à côté de lui » (R10 : l'orthographe se corrige, jamais un chiffre ni le sens)."
+        },
+        {
+          "onglet": "Porte-étendard",
+          "cellule": "X30",
+          "avant": "au dessus",
+          "apres": "au-dessus",
+          "nature": "orthographe",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12), lot 3 « Classes » (R238) : don Avantage : « au-dessus » prend un trait d'union (R10 : l'orthographe se corrige, jamais un chiffre ni le sens)."
+        },
+        {
+          "onglet": "Porte-étendard",
+          "cellule": "A44",
+          "avant": "armes à distances",
+          "apres": "armes à distance",
+          "nature": "grammaire",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12), lot 3 « Classes » (R238) : don Contre les lâches : « arme à distance » (la catégorie d'armes, R127) reste au singulier (R10 : l'orthographe se corrige, jamais un chiffre ni le sens)."
+        },
+        {
+          "onglet": "Porte-étendard",
+          "cellule": "C36",
+          "avant": "Repli ! ",
+          "apres": "Repli !",
+          "nature": "espace",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12), lot 3 « Classes » (R238) : nom du don de niveau 15 : espace finale (R10 : l'orthographe se corrige, jamais un chiffre ni le sens)."
+        },
+        {
+          "onglet": "Porte-étendard",
+          "cellule": "Z36",
+          "avant": "Réagir ! ",
+          "apres": "Réagir !",
+          "nature": "espace",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12), lot 3 « Classes » (R238) : nom du don de niveau 15 : espace finale (R10 : l'orthographe se corrige, jamais un chiffre ni le sens)."
+        },
+        {
+          "onglet": "Cuirassé V2",
+          "cellule": "A37",
+          "avant": "attaque à moins",
+          "apres": "attaque a moins",
+          "nature": "grammaire",
+          "note": "Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12), lot 3 « Classes » (R238) : don Écrasant : verbe « a » (« la cible a moins d'AP total »), pas la préposition « à » (R10 : l'orthographe se corrige, jamais un chiffre ni le sens)."
         }
       ]
     }

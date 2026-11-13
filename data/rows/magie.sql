@@ -80,7 +80,6 @@ Cependant, un tel pouvoir a un prix. Contrairement aux autres magies qui façonn
 Le Potentiel Illimité est à la fois une bénédiction et une malédiction, offrant une puissance absolue mais incomplète, un pouvoir sans égal mais limité par la fragilité du corps humain.', 'Des yeux dorés/orange, ainsi que des mèches dorées. Le corps est parsemé de tatouages couleur orange qui deviennent dorés quand un sort est utilisé, plus il y a de puissance, plus les cicatrices brillent. Ils ont des physiques moins charnus que la plupart des gens et ils semblent tout le temps épuisés.', 'Le principal intérêt repose sur sa versatilité, en effet cette magie pioche ses sorts dans toutes les magies existantes. Cette versatilité a un prix qui est de ne pouvoir atteindre que le niveau 3 de puissance magique maximum en plus d''être limité à peu de races.
 - Humain, Nain, Elfe argenté, Forestier, Noir, Doré, Farfadet, Felfe, Hujin et Drakos sont les seuls qui peuvent l''avoir.
 - Mono-magie uniquement.
-- Classe unique = Archimage.
 - Surtension corporelle (Vulnérabilité contre les dégâts physiques, ne peut mettre plus de 5 Santé lors de la répartition des points lors du passage de niveau global).
 - État fatigue 1 en permanence (sans le malus aux dégâts).
 - Impossible de porter des armures lourdes ou boucliers lourds même si la classe vous le permet.', 0, 15, NULL, 'AU CHOIX ou ALÉATOIRE', NULL, NULL, NULL, NULL, NULL, 'magies', 'Nouveauté mise à jour Décembre › Potentiel illimité (magie diffi › A4:AJ12, A17:AJ21, A25, A26:AJ34, H39:K40, R39:U40, AC39:AJ40, Y1:AH2', NULL, 1);

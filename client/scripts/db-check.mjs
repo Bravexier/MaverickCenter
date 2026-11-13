@@ -119,7 +119,7 @@ function couvre(sourceRef, classeur, onglet, cellule) {
   const [c, o, plage] = sourceRef.split('›').map((x) => x.trim());
   if (c !== classeur || o !== onglet || !plage) return false;
   const [r, k] = rc(cellule);
-  return plage.split(';').some((seg) => {
+  return plage.split(/[;,]/).some((seg) => {   // plages séparées par « ; » ou « , » (classes : « A2:L13, AM1:BA12 »)
     const [d, f] = seg.trim().split(':');
     const a = rc(d), b = rc(f ?? d);
     return a && b && Math.min(a[0], b[0]) <= r && r <= Math.max(a[0], b[0]) && Math.min(a[1], b[1]) <= k && k <= Math.max(a[1], b[1]);
