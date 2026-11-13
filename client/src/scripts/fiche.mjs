@@ -31,7 +31,7 @@ import { lireZip } from '../lib/zip.mjs';
 import { dessinerVignette, ouvrirRecadrage, reduireImage } from './portrait.mjs';
 import {
   actionsDeLEmplacement, effetsDesAccessoires, EMPLACEMENTS_ACCESSOIRES, exemplairesParEmplacement, inventaireDe,
-  mettreALaCeinture, objetChoisiDansLaListe, quantiteDuSac, rangerLEmplacement, remplirLEmplacement, suggestionsDeCeinture, utiliserLObjet, ajusterValeurDuMoment, alignementDe, armesApresChoix, armesApresReglage, armesValables, artisanatDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, choixEnAttente, cleDeChoix, modeHyperDe, niveauDeSpecialite, borner, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe,
+  mettreALaCeinture, objetChoisiDansLaListe, quantiteDuSac, rangerLEmplacement, remplirLEmplacement, suggestionsDeCeinture, utiliserLObjet, ajusterValeurDuMoment, alignementDe, cransDAlignement, armesApresChoix, armesApresReglage, armesValables, artisanatDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, choixEnAttente, cleDeChoix, modeHyperDe, niveauDeSpecialite, borner, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe,
   choisirObjetDeMetier, choixDeMetierValables, classesDe, classesSelonLaMagieInnee, competencesDe, donsAChoisir, donsValables,
   durabiliteAEcrire, durabiliteDArme, emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, famillesMaitrisables, inventaireSelonLeMetier, lignesDeSorts, magieAcquiseValable,
   magiesInneesPermises, maitriseDArme, maitriseDesSorts, gainsDeNiveau, niveauGlobal, bornesDuNm, nmDuSort, npmDesSorts, objetChoisi, objetsDuMetier, progressionXp,
@@ -353,6 +353,13 @@ function construireAlignement() {
   // inconnu, regles.alignement_par_defaut), jamais un style
   poserTeinte(sortie, teinteDe(regles.alignements?.[a.nom] ?? regles.alignement_par_defaut));
   sortie.title = `Loi/Chaos : ${a.loi} ; Bien/Mal : ${a.bien} (5 points d’écart sur un axe pour qu’une tendance l’emporte)`;
+  // les deux jauges à cinq crans (demande du propriétaire) : le cran du personnage marqué, du côté de sa tendance
+  const crans = cransDAlignement(regles, fiche);
+  for (const [id, cran] of [['alignement-jauge-loi', crans.loi], ['alignement-jauge-bien', crans.bien]]) {
+    const jauge = $(id);
+    jauge.dataset.cran = String(cran);
+    [...jauge.children].forEach((c, i) => c.classList.toggle('alignement__cran--actif', i === cran));
+  }
 }
 
 // ------------------------------------------------------------------ magies et dieux

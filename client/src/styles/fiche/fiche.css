@@ -693,14 +693,22 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .maitrise-alerte { display: block; margin-top: 0.1rem; padding-left: 0.4rem; border-left: 3px solid var(--border); }
 .maitrise-alerte[data-ton='avertissement'] { border-color: var(--warn-text); color: var(--warn-text); font-weight: 600; }
 
-/* alignement (demande du propriétaire) : les quatre scores serrés, l'alignement qui en résulte à côté */
-.alignement { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.7rem; margin: 0; padding: 0.25rem 0.55rem 0.4rem; border: 1px solid var(--etape-ligne); border-radius: var(--radius); }
+/* alignement (demande du propriétaire) : une jauge à deux bornes par axe (score modifiable à chaque borne, cinq crans entre elles), l'alignement
+   qui en résulte à côté */
+.alignement { display: grid; grid-template-columns: auto auto auto minmax(0, 1fr); align-items: center; gap: 0.3rem 0.7rem; margin: 0; padding: 0.25rem 0.55rem 0.4rem; border: 1px solid var(--etape-ligne); border-radius: var(--radius); }
 .alignement legend { padding: 0 0.3rem; color: var(--muted); font-size: var(--fs-xs); }
-.alignement__axe { display: inline-flex; gap: 0.25rem; }
-.alignement__axe label { display: inline-flex; align-items: center; gap: 0.15rem; color: var(--muted); font-size: var(--fs-xs); font-weight: 700; }
+.alignement__axe { display: contents; }
+.alignement__axe label { display: inline-flex; align-items: center; gap: 0.25rem; color: var(--muted); font-size: var(--fs-xs); font-weight: 700; }
+.alignement__axe label:first-child { justify-self: end; }
 .fiche .alignement input { width: 3.3rem; padding-inline: 0.3rem; text-align: right; font-variant-numeric: tabular-nums; }
+.alignement__jauge { display: inline-flex; gap: 0.2rem; }
+.alignement__jauge i { width: 0.85rem; height: 0.85rem; border: 1px solid var(--etape-ligne); border-radius: 50%; }
+.alignement__jauge i:nth-child(3) { border-radius: 2px; }
+.alignement__jauge i.alignement__cran--actif { background: var(--etape); border-color: var(--etape); }
 .alignement__resultat {
-  margin-left: auto;
+  grid-column: 4;
+  grid-row: 1 / span 2;
+  justify-self: end;
   padding: 0.05rem 0.7rem;
   border-radius: var(--radius-pill);
   background: var(--c, var(--etape));
@@ -708,6 +716,11 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
   font-size: var(--fs-md);
   font-weight: 700;
   white-space: nowrap;
+}
+@media (max-width: 30rem) {
+  .alignement { grid-template-columns: repeat(3, auto); gap: 0.3rem 0.4rem; }
+  .fiche .alignement input { width: 2.8rem; }
+  .alignement__resultat { grid-column: 1 / -1; grid-row: auto; justify-self: start; }
 }
 
 /* ----------------------------------------------------------------- tableaux de saisie */

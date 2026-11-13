@@ -104,16 +104,19 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
           <div class="identite__ligne">
             <label class="fiche-champ"><span>Surnom</span><input data-champ="surnom" maxlength="120" autocomplete="off" /></label>
             <label class="fiche-champ"><span>Lieu d’origine</span><input data-champ="lieu_origine" maxlength="120" autocomplete="off" /></label>
-            {/* alignement (demande du propriétaire) : les quatre scores serrés, axe Loi/Chaos puis axe Bien/Mal, et l'alignement qui en résulte à côté */}
+            {/* alignement (demande du propriétaire) : une jauge à deux bornes par axe, Loi/Chaos puis Bien/Mal, chaque borne avec son score modifiable,
+                cinq crans entre elles (cransDAlignement : calés sur la pastille), et l'alignement qui en résulte à côté */}
             <fieldset class="alignement">
               <legend>Alignement</legend>
               <span class="alignement__axe">
-                <label title="Loyal"><span aria-hidden="true">L</span><input type="number" min="0" step="1" data-champ="alignement_loyal" data-entier aria-label="Loyal" /></label>
-                <label title="Chaotique"><span aria-hidden="true">C</span><input type="number" min="0" step="1" data-champ="alignement_chaotique" data-entier aria-label="Chaotique" /></label>
+                <label><span>Loyal</span><input type="number" min="0" step="1" data-champ="alignement_loyal" data-entier aria-label="Loyal" /></label>
+                <span class="alignement__jauge" id="alignement-jauge-loi" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+                <label><input type="number" min="0" step="1" data-champ="alignement_chaotique" data-entier aria-label="Chaotique" /><span>Chaotique</span></label>
               </span>
               <span class="alignement__axe">
-                <label title="Bon"><span aria-hidden="true">B</span><input type="number" min="0" step="1" data-champ="alignement_bon" data-entier aria-label="Bon" /></label>
-                <label title="Mauvais"><span aria-hidden="true">M</span><input type="number" min="0" step="1" data-champ="alignement_mauvais" data-entier aria-label="Mauvais" /></label>
+                <label><span>Bon</span><input type="number" min="0" step="1" data-champ="alignement_bon" data-entier aria-label="Bon" /></label>
+                <span class="alignement__jauge" id="alignement-jauge-bien" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+                <label><input type="number" min="0" step="1" data-champ="alignement_mauvais" data-entier aria-label="Mauvais" /><span>Mauvais</span></label>
               </span>
               <output class={`alignement__resultat teinte-palette ${classeDAlignement('Neutre')}`} id="alignement-resultat" aria-live="polite">Neutre</output>
             </fieldset>
