@@ -20,7 +20,7 @@ Noyau : skill `zone-fiche`. Résistances de l'armure élémentaire : skill `zone
 ## Bouclier
 - Bouclier forme + matière (R96 : `bouclierDe`, `bouclierApresChoix`, calcul de `lib/armure-forge.mjs#forgerBouclier` recopié).
 - Exception voulue à R96 (R255 (1)) : trois dons du Boxeur, lus dans leur texte entier (`lib/bouclier-texte.mjs`, jamais par le nom), emploient l'AP et l'AM du bouclier hors parade. « Mur » (+2 AP et +2 AM au bouclier, R255 (4)) : toute l'AP et l'AM du bouclier, ces +2 compris, s'ajoutent à la défense à chaque attaque (R267 (1)) ; `defenseDe` les compte une fois, `degatsRecus` ne les rajoute pas en parade partielle. Bouclier d'attaque et Bouragé : skill `zone-fiche-equipement`.
-- Choix du lot, soumis à la conformité de `game-design` (pas des décisions du propriétaire) : un bouclier cassé n'ajoute rien, ni à la défense ni aux dégâts (R108) ; les +2 de Mur entrent dans la somme ÷ 4 de Bouclier d'attaque. « Égide d'assaut » (÷ 3) n'a pas de décision : non calculé.
+- Un bouclier cassé n'ajoute rien à Mur, à Bouragé ni à Bouclier d'attaque (R269, R108).
 - Poids (R92) : `regles.json` donne `classe` de chaque poids (`poids_bouclier[].classe`, `couleur-poids-<id>`, ni couleur ni texte), posée avec `teinte-palette` sur la tuile du poids (`poserTeinte(tuilePoids.li, teinteDe(b.poids))`).
 
 ## Défense et dégâts reçus
