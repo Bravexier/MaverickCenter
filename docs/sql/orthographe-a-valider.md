@@ -1267,3 +1267,12 @@ Classeur « Nouveauté mise à jour Décembre », onglets 23 « Porte-étendard 
 - **X37** — « divise par 2 donné par l'armure » — Il manque un ou plusieurs mots ; la correction toucherait au sens. → Donner la phrase voulue.
 - **Élisions** — « de AP+AM » (« d'AP+AM ») ; « altérations d'états » (« altérations d'état ») — Laissées telles quelles par la migration. → « oui » pour corriger, « non » pour garder.
 
+## Races Fongoïde et Gémidien (mise à jour de Décembre, R239)
+
+Relevé de `worldbuilding` (2026-11-12). Les textes des onglets 21 et 22 du classeur de Décembre sont copiés tels quels ; rien n'est corrigé en attendant ta réponse.
+
+- **Super Gemme(s)** — Quatre graphies en circulation : « Super Gemmes » et « supers-gemmes » (onglets 21 et 22), « Super Gemme » (titre du Codex, page `lore/super-gemme`), « super gemme » (guide). Laquelle retenir ? → À trancher par le propriétaire.
+- **Mort Fertile** — « Mort Fertile » (onglet 21, Codex) et « Mort fertile » (une occurrence du Codex, source des lieux, ligne 6605). Laquelle retenir ? → À trancher par le propriétaire.
+- **Dieu de la Terre** — « Dieu de la Terre » (onglet 21, A4) et « dieu de la Terre ». Laquelle retenir ? → À trancher par le propriétaire.
+- **Tempe/Espace** (onglet 21, A58, tableau des magies innées du Fongoïde) — Coquille pour la magie « Espace/Temps ». Notée sans correction : la case ne sert qu'à la liste des magies innées.
+

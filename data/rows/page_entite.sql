@@ -2212,6 +2212,8 @@ INSERT INTO page_entite (entite_table, entite_id, page_id, principale, origine) 
 INSERT INTO page_entite (entite_table, entite_id, page_id, principale, origine) VALUES ('ethnie', 'races/fenrir#ethnie:fenrir-de-foudre', 'races/fenrir', 0, 'races');
 INSERT INTO page_entite (entite_table, entite_id, page_id, principale, origine) VALUES ('ethnie', 'races/fenrir#ethnie:fenrir-de-glace', 'races/fenrir', 0, 'races');
 INSERT INTO page_entite (entite_table, entite_id, page_id, principale, origine) VALUES ('ethnie', 'races/fenrir#ethnie:fenrir-dombre', 'races/fenrir', 0, 'races');
+INSERT INTO page_entite (entite_table, entite_id, page_id, principale, origine) VALUES ('ethnie', 'races/fongoide#ethnie:fongoide', 'races/fongoide', 0, 'races');
+INSERT INTO page_entite (entite_table, entite_id, page_id, principale, origine) VALUES ('ethnie', 'races/gemidien#ethnie:gemidien', 'races/gemidien', 0, 'races');
 INSERT INTO page_entite (entite_table, entite_id, page_id, principale, origine) VALUES ('ethnie', 'races/goleois#ethnie:goleois-de-glace', 'races/goleois', 0, 'races');
 INSERT INTO page_entite (entite_table, entite_id, page_id, principale, origine) VALUES ('ethnie', 'races/goleois#ethnie:goleois-de-lumiere', 'races/goleois', 0, 'races');
 INSERT INTO page_entite (entite_table, entite_id, page_id, principale, origine) VALUES ('ethnie', 'races/goleois#ethnie:goleois-de-sang', 'races/goleois', 0, 'races');
@@ -2680,6 +2682,8 @@ INSERT INTO page_entite (entite_table, entite_id, page_id, principale, origine) 
 INSERT INTO page_entite (entite_table, entite_id, page_id, principale, origine) VALUES ('race', 'races/farfadet', 'races/farfadet', 1, 'races');
 INSERT INTO page_entite (entite_table, entite_id, page_id, principale, origine) VALUES ('race', 'races/felfe', 'races/felfe', 1, 'races');
 INSERT INTO page_entite (entite_table, entite_id, page_id, principale, origine) VALUES ('race', 'races/fenrir', 'races/fenrir', 1, 'races');
+INSERT INTO page_entite (entite_table, entite_id, page_id, principale, origine) VALUES ('race', 'races/fongoide', 'races/fongoide', 1, 'races');
+INSERT INTO page_entite (entite_table, entite_id, page_id, principale, origine) VALUES ('race', 'races/gemidien', 'races/gemidien', 1, 'races');
 INSERT INTO page_entite (entite_table, entite_id, page_id, principale, origine) VALUES ('race', 'races/goleois', 'races/goleois', 1, 'races');
 INSERT INTO page_entite (entite_table, entite_id, page_id, principale, origine) VALUES ('race', 'races/hujin', 'races/hujin', 1, 'races');
 INSERT INTO page_entite (entite_table, entite_id, page_id, principale, origine) VALUES ('race', 'races/humain', 'races/humain', 1, 'races');
@@ -2723,6 +2727,8 @@ INSERT INTO page_entite (entite_table, entite_id, page_id, principale, origine) 
 INSERT INTO page_entite (entite_table, entite_id, page_id, principale, origine) VALUES ('race_don', 'races/fenrir#don:foudre-en-innee', 'races/fenrir', 0, 'races');
 INSERT INTO page_entite (entite_table, entite_id, page_id, principale, origine) VALUES ('race_don', 'races/fenrir#don:glace-en-innee', 'races/fenrir', 0, 'races');
 INSERT INTO page_entite (entite_table, entite_id, page_id, principale, origine) VALUES ('race_don', 'races/fenrir#don:ombre-en-innee', 'races/fenrir', 0, 'races');
+INSERT INTO page_entite (entite_table, entite_id, page_id, principale, origine) VALUES ('race_don', 'races/fongoide#don:conscience-collective', 'races/fongoide', 0, 'races');
+INSERT INTO page_entite (entite_table, entite_id, page_id, principale, origine) VALUES ('race_don', 'races/gemidien#don:gemmoide', 'races/gemidien', 0, 'races');
 INSERT INTO page_entite (entite_table, entite_id, page_id, principale, origine) VALUES ('race_don', 'races/goleois#don:glace-en-innee', 'races/goleois', 0, 'races');
 INSERT INTO page_entite (entite_table, entite_id, page_id, principale, origine) VALUES ('race_don', 'races/goleois#don:lumiere-en-innee', 'races/goleois', 0, 'races');
 INSERT INTO page_entite (entite_table, entite_id, page_id, principale, origine) VALUES ('race_don', 'races/goleois#don:sang-en-innee', 'races/goleois', 0, 'races');

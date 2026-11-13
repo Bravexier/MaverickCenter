@@ -2,7 +2,7 @@
 // (magies_innees, nom_court, resiste_a, vulnerable_a, incompatible_avec) doivent
 //   - nommer des magies qui existent,
 //   - concorder avec le texte de la même page (section « Magies accessibles », bloc « Données »),
-//   - respecter les effectifs connus (27 races ; races hybrides = 13 races à 3 magies et à classe raciale, et le Drassah'thac : décision R14).
+//   - respecter les effectifs connus (27 races du classeur « Les races », plus Fongoïde et Gémidien de la migration 0120, décision R239 ; races hybrides = 13 races à 3 magies et à classe raciale, et le Drassah'thac : décision R14).
 // Les listes attendues viennent de l'onglet « Accessibilité Magie » du classeur (voir sources: des pages), sauf le Nain :
 // l'onglet « Nain » de « Les races » limite sa magie innée à 5 magies (décision du propriétaire du projet, capture de l'onglet).
 // Le site de dev est la source des races et des magies innées qu'il modifie ou crée (décision du propriétaire) : les listes et effectifs ci-dessus se
@@ -20,6 +20,7 @@ import { avecLesMotsCles, motsClesDesPages } from '../src/lib/pages-db.mjs';
 import { groupRaces, ORDRE_DES_RACES, raceKind, racialClassOf } from '../src/lib/race-kinds.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { splitFrontmatter } from '../src/lib/wikilinks.mjs';
+import { RACES_DE_LA_0120 } from './aide-races-0120.mjs';
 
 const dir = fileURLToPath(new URL('../src/content/wiki', import.meta.url));
 const db = ouvrirBase({ sansExemples: false });
@@ -75,10 +76,10 @@ test('les 15 magies ont un nom court unique, dans l’orthographe des en-têtes 
   assert.deepEqual([...magieIndex(all).values()].map((m) => m.data.nom_court).sort(), [...NOMS].sort());
 });
 
-test('les 27 races portent la liste de leurs magies innées, et tous les noms désignent une magie existante', () => {
+test('les 29 races (R1 : 27 ; R239 : Fongoïde et Gémidien) portent la liste de leurs magies innées, et tous les noms désignent une magie existante', () => {
   assert.equal(races.length, db.prepare('SELECT count(*) AS n FROM race').get().n);
-  assert.equal(racesImport.length, 27);
-  assert.equal(historique.effectifDImport('race'), 27);
+  assert.equal(racesImport.length, 27 + RACES_DE_LA_0120.size);
+  assert.equal(historique.effectifDImport('race'), 27 + RACES_DE_LA_0120.size);
   for (const r of races) assert.ok(Array.isArray(r.data.magies_innees), `${r.id} : magies_innees absent`);
   assert.deepEqual(unresolvedNames(all), []);
 });
@@ -136,7 +137,7 @@ test('races hybrides = les 13 races qui ont leur classe raciale, avec exactement
   }
 });
 
-test('liste des races : 13 races pures et 14 races hybrides, dans l’ordre du propriétaire', () => {
+test('liste des races : 15 races pures (R239 : Fongoïde et Gémidien à la fin) et 14 races hybrides, dans l’ordre du propriétaire', () => {
   // aujourd'hui : dans chaque groupe, les races de la liste du propriétaire dans son ordre, puis les races créées depuis le site, par titre
   for (const g of groupRaces(all)) {
     const ids = g.entries.map((r) => r.id);
@@ -148,7 +149,10 @@ test('liste des races : 13 races pures et 14 races hybrides, dans l’ordre du p
   // à l'import
   const groups = groupRaces(allImport);
   assert.deepEqual(groups.map((g) => [g.key, g.entries.map((r) => r.data.title)]), [
-    ['pures', ['Humain', 'Nain', 'Elfe forestier', 'Elfe doré', 'Elfe argenté', 'Elfe noir', 'Farfadet', 'Felfe', 'Majin', 'Hujin', 'Drakos', 'Lamia', 'Mort-vivant']],
+    [
+      'pures',
+      ['Humain', 'Nain', 'Elfe forestier', 'Elfe doré', 'Elfe argenté', 'Elfe noir', 'Farfadet', 'Felfe', 'Majin', 'Hujin', 'Drakos', 'Lamia', 'Mort-vivant', 'Fongoïde', 'Gémidien'],
+    ],
     [
       'hybrides',
       ["Drassah'thac", 'Orios', 'Fenrir', 'Kitsune', 'Olwman', 'Rokh', 'Namazu', 'Minotaure', 'Satyre', 'Médusain', 'Jackalope', 'Marcass', 'Anansi', 'Goleois'],

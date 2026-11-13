@@ -30,6 +30,10 @@ Une race créée depuis le site de dev (provenance « Site de dev › … », qu
 dans le classeur : ni source « onglet » dans ses sources, ni rang dans l'index, ni capacité Mode Hyper. Elle n'est ni extraite ni comparée ici ; son corps
 est le rendu de ses seules tables (client/src/lib/corps-races.mjs#corpsDeRaceCreee), contrôlé par client/test/serveur-edition-corps.test.mjs. Les races
 importées restent contrôlées en entier, et une race du classeur ne peut pas passer pour créée : sa provenance n'est pas modifiable depuis le site.
+
+De même, Fongoïde et Gémidien (décision R239) viennent des onglets 21 et 22 de la mise à jour de Décembre, pas du classeur « Les races » : la migration
+0120 écrit leurs tables, et leur corps est le rendu de ces seules tables (corpsDeRaceCreee), contrôlé par client/test/db-0120-races-fongoide-gemidien.test.mjs
+(provenance « Nouveauté mise à jour Décembre › … » ; PROVENANCES_HORS_CLASSEUR).
 """
 import importlib.util
 import json
@@ -55,6 +59,9 @@ _spec.loader.exec_module(R)
 CLASSEUR = 'Les races'
 ORIGINE = 'races'
 PROVENANCE_DU_SITE = 'Site de dev › '   # race.source_ref d'une race créée depuis le site de dev (voir l'en-tête)
+# race.source_ref d'une race hors du classeur « Les races » : créée depuis le site de dev, ou par la migration 0120 (Fongoïde et Gémidien, onglets de la
+# mise à jour de Décembre, décision R239) ; voir l'en-tête
+PROVENANCES_HORS_CLASSEUR = (PROVENANCE_DU_SITE, 'Nouveauté mise à jour Décembre › ')
 STAT_LABELS = R.STAT_LABELS            # Santé de départ, Chakra de départ, Barrière bonus, Vitesse Sol/Nage
 FICHE_LABEL = 'Fiche de personnage V15.2.2'
 # Notes de cellule de l'onglet (les seules : tools/sheets/races.py, « NOTES DE CELLULE ») : (race, rang du don) -> cellule. Les trois dons du Médusain
@@ -432,7 +439,7 @@ def listes_du_site(db):
 
 def extraire(db):
     races = [r for r in db.execute("SELECT r.id, r.nom, r.source_ref, p.corps_md FROM race r JOIN page p ON p.id = r.id ORDER BY r.id")
-             if not r[2].startswith(PROVENANCE_DU_SITE)]
+             if not r[2].startswith(PROVENANCES_HORS_CLASSEUR)]
     onglets = {}
     for page_id, texte in db.execute(
             "SELECT ps.page_id, s.texte FROM page_source ps JOIN source s ON s.id = ps.source_id WHERE ps.page_id LIKE 'races/%'"):
@@ -669,7 +676,7 @@ def verifier(db, t):
     """Les tables de la base (déjà migrée) contiennent exactement les lignes de l'extraction (hors races créées depuis le site : voir l'en-tête)."""
     ecarts = []
     filtres = {'mode_hyper_effet': "version = 'onglet_race'", 'page_entite': "entite_table = 'race_don'", 'note_cellule': "entite_table = 'race_don'"}
-    creees = {rid for rid, ref in db.execute('SELECT id, source_ref FROM race') if ref.startswith(PROVENANCE_DU_SITE)}
+    creees = {rid for rid, ref in db.execute('SELECT id, source_ref FROM race') if ref.startswith(PROVENANCES_HORS_CLASSEUR)}
     du_site = listes_du_site(db)                     # R31 : leur liste de magies innées fait foi
     # la race d'une ligne : race_id, ou la page (page_entite), ou l'entité « races/<slug>#don:… » (note_cellule)
     race_de = {'page_entite': 'page_id', 'note_cellule': 'entite_id'}

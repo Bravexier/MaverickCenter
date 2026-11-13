@@ -32,9 +32,11 @@ const echapper = (t) => String(t).replace(/&/g, '&amp;').replace(/"/g, '&quot;')
 const slugsDe = (groupe) => groupesDeLaBase[groupe].map((r) => r.id.slice('races/'.length));
 const ids = (html) => [...html.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]);
 const main = (html) => html.slice(html.indexOf('<main'), html.indexOf('</main>'));
+// le nombre de races de la base (R1 : 27 ; R239 : 29 avec Fongoïde et Gémidien ; le site de dev en crée) : jamais écrit ici
+const NOMBRE_DE_RACES = base.prepare('SELECT count(*) AS n FROM race').get().n;
 
-test('27 pages de race rendues par le gabarit', options, () => {
-  assert.equal(pages.length, 27);
+test('une page de race rendue par le gabarit pour chaque race de la base', options, () => {
+  assert.equal(pages.length, NOMBRE_DE_RACES);
 });
 
 test('chaque identifiant est unique ; les liens de la navigation mènent à une section de la page', options, () => {
@@ -129,7 +131,7 @@ test('liste des races : deux groupes de pastilles, pures puis hybrides, chacun d
   assert.ok(liste.indexOf('id="pures"') < liste.indexOf('id="hybrides"'));
   assert.deepEqual(pastillesDe(colonne('pures')).map((p) => p.slug), slugsDe('pures'));
   assert.deepEqual(pastillesDe(colonne('hybrides')).map((p) => p.slug), slugsDe('hybrides'));
-  assert.equal(slugsDe('pures').length + slugsDe('hybrides').length, 27);
+  assert.equal(slugsDe('pures').length + slugsDe('hybrides').length, NOMBRE_DE_RACES);
 });
 
 test('liste des races : chaque groupe dans la couleur du bandeau des pages de race, avec le nombre de ses races', options, () => {
@@ -152,7 +154,10 @@ test('liste des races : l’accroche de chaque race en infobulle ; ni magies ni 
     const html = colonne(id);
     for (const p of pastillesDe(html)) {
       const bulle = p.attributs.match(/data-bulle="([^"]+)" aria-describedby="\1" title="([^"]+)"/);
-      assert.ok(bulle, `${p.slug} : infobulle`);
+      // une race sans présentation (Fongoïde et Gémidien, R239 ; une race créée sur le site) n'a pas d'infobulle : bulle présente ⇔ présentation présente
+      const presentation = base.prepare('SELECT presentation FROM race WHERE id = ?').get(`races/${p.slug}`)?.presentation;
+      assert.equal(Boolean(bulle), Boolean(presentation?.trim()), `${p.slug} : infobulle si et seulement si la race a une présentation`);
+      if (!bulle) continue;
       assert.match(html, new RegExp(`<span class="bulle" role="tooltip" id="${bulle[1]}" hidden>`), `${p.slug} : bulle cachée`);
     }
     assert.ok(!html.includes('Magies innées'), `${id} : pas de magies innées`);
@@ -248,7 +253,7 @@ test('pages de race : le menu latéral porte l’id, le rang (race.rang_liste) e
     const nav = main(html).match(/<nav class="lateral-menu" aria-label="Races">([\s\S]*?)<\/nav>/)[1];
     assert.match(nav, /<ol class="lateral-menu__liste" data-ed-menu="races">/, `${slug} : le menu`);
     const lignes = [...nav.matchAll(/<li([^>]*)><a class="lateral-menu__lien" href="[^"]*\/races\/([^/"]+)\/"/g)].filter((m) => m[2] !== 'exemple-race');
-    assert.equal(lignes.length, 27, slug);
+    assert.equal(lignes.length, NOMBRE_DE_RACES, slug);
     for (const [, attributs, race] of lignes) {
       const id = `races/${race}`;
       const attribut = (nom) => attributs.match(new RegExp(` ${nom}="([^"]*)"`))?.[1];

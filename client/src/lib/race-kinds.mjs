@@ -27,11 +27,12 @@ export const HYBRIDES_SANS_CLASSE_RACIALE = new Set(['races/drassahthac']);
  * /magies/ (lib/magie-relations.mjs#racesOfMagie), qui ne bougent pas (réponse du propriétaire « /races/ suit, le reste figé »). Ce n'est ni l'ordre de
  * l'onglet « Race » de la fiche (race.ordre dans la base) ni celui de la liste des races, qui se réordonne sur le site de dev (race.rang_liste,
  * migration 0092 : menu latéral des races, /races/, tableau des magies innées ; lib/races-db.mjs#comparerRangsDeListe, passé à groupRaces). Une race
- * absente de la liste vient après, par titre.
+ * absente de la liste vient après, par titre. Fongoïde et Gémidien (décision R239, migration 0120) : à la fin des races pures.
  */
 export const ORDRE_DES_RACES = [
   // pures
   'humain', 'nain', 'elfe-forestier', 'elfe-dore', 'elfe-argente', 'elfe-noir', 'farfadet', 'felfe', 'majin', 'hujin', 'drakos', 'lamia', 'mort-vivant',
+  'fongoide', 'gemidien',
   // hybrides
   'drassahthac', 'orios', 'fenrir', 'kitsune', 'olwman', 'rokh', 'namazu', 'minotaure', 'satyre', 'medusain', 'jackalope', 'marcass', 'anansi', 'goleois',
 ].map((slug) => `races/${slug}`);

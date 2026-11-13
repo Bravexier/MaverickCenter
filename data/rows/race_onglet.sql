@@ -234,6 +234,72 @@ D''une manière globale, les deux sexes n’ont quasiment aucun écart de taille
 Les 3 couleurs principales de yeux pour les Fenrir sont : Turquoise, Jaune, Mauve.
 
 Culture : Viking', 13, 7, 0, 5, 4, 'La Perception est obligatoirement à 2 minimum, Classe possible : Fenrir.', 'Magie Glace, Ombre et Foudre en innée.', 'Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et {{chakra|chakra}} (jet de calme en stress)).', 'Magie innée', NULL, 'Don', NULL, 'races', 'Les races › Fenrir › A4 (présentation), HISTOIRE, DESCRIPTION, DONNÉES, Avantage(s), Inconvénient(s), Don B (Base)');
+INSERT INTO race_onglet (race_id, onglet, description_generale, histoire, description, sante_depart, chakra_depart, barriere_bonus, vitesse_sol, vitesse_nage, avantages, inconvenients, don_base, dons_rubrique, dons_rubrique_nom, dons_rubrique_don, dons_tableau_titre, origine, source_ref) VALUES ('races/fongoide', 'Fongoïde', 'Une race entièrement fait de champignons dont l''origine remonte le jour où le Dieu de la Terre s''est donné la mort.
+
+Ils ont une forme humanoïde car avec le temps, ils sont adaptés aux autres races intelligente et ont pris cette forme car plus pratique ? moins intimidante ? Personne ne le sait.
+
+Selon la lignée première, cette race est apparu sous la forme humanoïde la première fois en l''an 80.', 'L''origine des Fongoïdes remonte à une époque aujourd''hui révolue : l''époque du Premier Champignon.
+
+À cette époque, la Mort Fertile apparut dans la Forêt Colossale. Ce lieu, profondément marqué par l''énergie de la Terre, permit à un champignon qui passait par là d''assimilé une quantité folle d''énergie divine.
+
+Le Premier Champignon fut le premier de son genre à développer une conscience dépassant celle d''un simple organisme. Sa croissance au sein de la Mort Fertile lui permit progressivement d''assimiler son énergie et de développer une intelligence collective.
+
+Cette évolution attira l''attention de plusieurs dieux. Intrigués par cette forme de vie qui semble commencer à naître mais semble manquer de beaucoup de choses pour pouvoir évolué, certains dieux décidèrent d''intervenir en donnant au Premier plusieurs capacités. On ne connait pas les dieux qui ont influencés directement mais dans tout les cas, ça a fonctionné.
+
+Les premières colonies commencèrent alors à développer des formes de plus en plus complexes. Au fil des générations, elles s''adaptèrent à leur environnement et aux autres peuples qu''elles côtoyaient. Leur corps finit progressivement par adopter une forme humanoïde.
+
+La Mort Fertile n''existe cependant plus. Les Fongoïdes modernes ne dépendent donc pas de ce lieu pour exister : la Mort Fertile est leur berceau, pas leur habitat obligatoire.
+
+Les Fongoïdes se reproduisent par spores. Une nouvelle génération commence son existence sous une forme primitive avant de se développer progressivement au sein même d''un autre fongoïde, une fois assez développé, ce dernier va l''enterrer dans un sol assez fertile et ainsi naîtra un ou plusieurs nouveaux fongoïdes qui auront une magie selon la ou les magie(s) dominante de l''environnement. Leur croissance est donc différente de celle des races humanoïdes classiques : un Fongoïde ne naît pas véritablement, il pousse.
+
+Avec le temps, ils développèrent une conscience individuelle tout en conservant l''héritage de leur nature collective.
+
+Les Fongoïdes sont incapables de communiquer par la parole. Ils possèdent néanmoins une forme de communication mentale leur permettant d''échanger directement avec les autres êtres vivants.
+
+Choses assez singulière mais ils ont développé culturellement une manière de parler à eux : Ils ne disent pas "Quel age avez vous ?", ils disent "Depuis combien de saisons poussez vous ?" mais il possède un sens du deuil très fort, avec des rites funéraires qui varie selon leur magie innée.', 'Les Fongoïdes possèdent une silhouette humanoïde recouverte de caractéristiques fongiques. Avec une taille variable entre 1m50 et 1m80.
+
+Ils n''ont pas de genre masculin ou féminin, ce concept est absent chez eux vu que leur reproduction ne repose pas sur deux individus.
+
+Leur corps est fait de chair, de tissus fongiques et de différentes structures rappelant les champignons. Leur apparence varie fortement selon leur environnement et leur magie.
+
+Leur couleur est notamment déterminée par la magie dominante assimilée durant leur croissance. Deux Fongoïdes issus de régions différentes peuvent ainsi présenter des couleurs et des caractéristiques radicalement différentes. Très influencé par la magie même dans la psyché, ils peuvent faire prevue d''hostilité envers ceux qui porte des magies opposés ou efficace contre eux.
+
+Leur apparence humanoïde est le résultat de leur longue évolution. Leurs ancêtres ont progressivement adopté cette forme en s''adaptant aux créatures humanoïdes avec lesquelles ils entraient en contact. Ce cumule de connaissance fait qu''ils sont parfaitement capable d''utiliser des armes et leur magie comme les autres.
+
+Ils possèdent des organes permettant une apparence proche de celle des autres races, mais leur nature fongique reste évidente : leur peau, leur tête, leurs excroissances et leur morphologie peuvent présenter différentes formes de chapeaux, de filaments, de spores ou de structures propres aux champignons. Ils possède deux jambes, deux bras, des mains, une tête, des yeux et un tronc comme les humonoïdes.
+
+Ils ne possèdent pas de véritable capacité à parler à cause de l''absence totale de bouche, mais leur communication repose sur une autre forme de communication, par la pensée et les parfums.', 5, 10, 5, 4, 4, 'Accès à toutes les magies.', 'Ne possède pas la parole, Classe barde et parleur interdite.', 'Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 {{chakra|chakra}} (jet de calme en stress)).', NULL, NULL, NULL, NULL, 'races', 'Nouveauté mise à jour Décembre › Fongoïde › A4, AK3, AK30, H13, U13, AG13, H16, H19 ; don de base : décision R239 (2) ; vitesses : décision R256');
+INSERT INTO race_onglet (race_id, onglet, description_generale, histoire, description, sante_depart, chakra_depart, barriere_bonus, vitesse_sol, vitesse_nage, avantages, inconvenients, don_base, dons_rubrique, dons_rubrique_nom, dons_rubrique_don, dons_tableau_titre, origine, source_ref) VALUES ('races/gemidien', 'Gémidien', 'Race mélant humain et corps en partie en gemme, leur origine sont profondément relié au super-gemme élémentaire.
+
+Ils possèdent une grande polyvalence comme les humain mais n''ont pas accès au potentiel illimité.
+
+Cette race est apparu la première fois en 70.', 'Les Gémidiens sont une race née d''un événement unique remontant à plusieurs générations.
+
+Leur origine est liée aux Super Gemmes, des grosses gemmes parfaites qui concentre l''essence magique la plus pure.
+
+Le premier Gémidien était autrefois un humain. En entrant en contact avec une Super Gemme, il chercha à établir un lien avec elle. L''expérience provoqua cependant un phénomène inattendu : une conscience naquit dans son esprit au contact de l''essence contenue dans la gemme. Cette conscience et l''humain finirent par fusionner, transformant progressivement son corps.
+
+Une partie de son corps devint alors entièrement constituée de gemme, tandis que le reste demeura charnel. Cette transformation ne fut pas une simple altération physique : elle donna naissance à une nouvelle lignée.
+
+Au fil des générations, cette particularité se transmit aux descendants du premier Gémidien. La transformation devint alors naturelle et héréditaire, faisant des Gémidiens une véritable race.
+
+Chaque Gémidien est lié à une seule magie, correspondant à l''essence élémentaire héritée de la Super Gemme à l''origine de sa lignée. Cette essence demeure profondément inscrite dans leur organisme.
+
+Malgré leur origine extraordinaire, les Gémidiens ne forment pas nécessairement un peuple isolé. Leur ascendance humaine leur permet de s''intégrer facilement aux différentes sociétés de Maverick et ils peuvent être rencontrés aux côtés des autres races à travers le monde.
+
+Beaucoup considèrent simplement les Gémidiens comme des humains ayant autrefois subi une étrange transformation, mais la vérité reste encore voilée de mystères.
+
+Bien entendu, certains ont essayer de produire la première génération de gémidien en cherchant quelque chose dans les supers-gemmes mais rien n''a été trouvé, les supers-gemmes aujourd''hui sont des objets inerte permettant beaucoup de choses (cf. Codex|Outils légendaires|Super gemme)', 'Les Gémidiens possèdent une apparence globalement humanoïde, leur ascendance humaine restant particulièrement visible. Leur peau est tout de fois un peu plus grise, comme pour rappeler l''origine en partie minérale.
+
+Environ la moitié de leur corps est cependant constituée de gemme, répartie de manière irrégulière à travers leur anatomie. Il ne s''agit donc pas d''une partie précise du corps transformée : un Gémidien peut posséder un bras presque entièrement cristallin, quelques doigts, une partie du visage, des côtes visibles sous la peau ou encore des portions visibles de la colonne vertébrale constituées de gemme.
+
+La disposition des parties cristallines varie considérablement d''un individu à l''autre.
+
+La gemme présente sur leur corps correspond à leur magie et en reprend les couleurs et les caractéristiques. Un Gémidien lié au Feu arbora des partie en rubis, tandis qu''un Gémidien de Foudre pourra présenter des topazes parcourues de lueurs électriques.
+
+Le reste de leur corps conserve une apparence organique humaine normale avec de la pilosité, des cheveux, etc...
+
+Évidemment leur corps ne peux pas être utile pour être des ressources, si leur gemmes sont retiré de leur corps, ils dépérissent et deviennent de la caillasse inutile.', 10, 10, 0, 4, 4, 'Accès à toutes les classes', 'Mono-magie uniquement, Magie potentiel illimité et corruption interdite', 'Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 {{chakra|chakra}} (jet de calme en stress)).', NULL, NULL, NULL, NULL, 'races', 'Nouveauté mise à jour Décembre › Gémidien › A4, AK3, AK30, H13, U13, AG13, H16, H19 ; don de base : décision R239 (2) ; vitesses : décision R256');
 INSERT INTO race_onglet (race_id, onglet, description_generale, histoire, description, sante_depart, chakra_depart, barriere_bonus, vitesse_sol, vitesse_nage, avantages, inconvenients, don_base, dons_rubrique, dons_rubrique_nom, dons_rubrique_don, dons_tableau_titre, origine, source_ref) VALUES ('races/goleois', 'Goleois', 'Race hybride entre humain et poulet.
 
 C''est une race physiquement avantagée par rapport aux autres. Les Goleois sont reliés à la magie de la Glace, du Sang et de la Lumière.

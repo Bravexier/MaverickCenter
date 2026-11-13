@@ -988,6 +988,8 @@ INSERT INTO page_tag (page_id, ordre, tag_id) VALUES ('races/elfe-noir', 0, 298)
 INSERT INTO page_tag (page_id, ordre, tag_id) VALUES ('races/farfadet', 0, 298);
 INSERT INTO page_tag (page_id, ordre, tag_id) VALUES ('races/felfe', 0, 298);
 INSERT INTO page_tag (page_id, ordre, tag_id) VALUES ('races/fenrir', 0, 298);
+INSERT INTO page_tag (page_id, ordre, tag_id) VALUES ('races/fongoide', 0, 298);
+INSERT INTO page_tag (page_id, ordre, tag_id) VALUES ('races/gemidien', 0, 298);
 INSERT INTO page_tag (page_id, ordre, tag_id) VALUES ('races/goleois', 0, 298);
 INSERT INTO page_tag (page_id, ordre, tag_id) VALUES ('races/hujin', 0, 298);
 INSERT INTO page_tag (page_id, ordre, tag_id) VALUES ('races/humain', 0, 298);

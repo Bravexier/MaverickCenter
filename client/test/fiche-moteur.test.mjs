@@ -22,6 +22,7 @@ import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { horsDeLa0120 } from './aide-races-0120.mjs';
 import { baseDImport, cheminDImport, lotsAvant, reglesDImport } from './aide-base-d-import.mjs';
 
 // les règles (textes et valeurs que le site de dev modifie librement) : épinglées sur leur état d'import (test/aide-base-d-import.mjs)
@@ -394,7 +395,8 @@ test('magie acquise : même magie, incompatibles, mono-magie (R15) sauf Corrupti
 });
 
 test('décision R28 : la Lamia n’a qu’une magie ; toute magie acquise est refusée, et la base dit la même chose', () => {
-  assert.deepEqual(regles.races.filter((r) => r.mono_magie).map((r) => r.id), ['races/lamia']);
+  // le Gémidien, mono-magie aussi (R239, migration 0120), est épinglé par test/db-0120-races-fongoide-gemidien.test.mjs
+  assert.deepEqual(regles.races.filter((r) => r.mono_magie && horsDeLa0120(r.id)).map((r) => r.id), ['races/lamia']);
   const lamia = ficheConforme({ race_id: 'races/lamia', ethnie_id: 'races/lamia#ethnie:lamia' });
   const refus = regles.magies.filter((m) => m.id !== lamia.magie_innee_id).map((m) => refusMagieAcquise(regles, lamia, m.id));
   assert.ok(refus.length === 14 && refus.every((r) => r === 'Lamia : une seule magie'), refus.join());
@@ -422,7 +424,8 @@ test('ethnie sans choix (demande du propriétaire) : la seule de la race, ou la 
   assert.equal(ethnieImposee(regles, fiche('races/goleois', 'magies/magie-de-la-glace')), 'races/goleois#ethnie:goleois-de-glace');
   assert.equal(ethnieImposee(regles, fiche('races/drakos', 'magies/magie-du-feu')), 'races/drakos#ethnie:drakos-rouge');
   assert.equal(ethnieImposee(regles, fiche(null)), null);
-  const seules = regles.races.filter((r) => ethniesDeLaRace(regles, r.id).length === 1).map((r) => r.id).sort();
+  // Fongoïde et Gémidien (une seule ethnie, R239 (3), migration 0120) : épinglés par test/db-0120-races-fongoide-gemidien.test.mjs
+  const seules = regles.races.filter((r) => horsDeLa0120(r.id) && ethniesDeLaRace(regles, r.id).length === 1).map((r) => r.id).sort();
   assert.deepEqual(seules, ['races/elfe-dore', 'races/hujin', 'races/lamia', 'races/majin']);
   // toute race, toute magie innée permise : l'ethnie posée est de la race, va avec la magie, et la base n'y trouve rien à redire
   for (const r of regles.races) {

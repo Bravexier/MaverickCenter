@@ -2456,6 +2456,8 @@ INSERT INTO page_source (page_id, ordre, source_id) VALUES ('races/fenrir', 1, '
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('races/fenrir', 2, 'ref:google-sheet-les-races-onglet-fenrir');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('races/fenrir', 3, 'ref:google-sheet-fiche-personnage-maverick-auto-v15-2-2-onglets-race-bonus-race-accessibilite-de-classe-accessibilite-magie');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('races/fenrir', 4, 'google-sheet:1tDuJpoVVqMtRXBi0WKgH6lwzdQXVdNWPZVLFbdbFqY0');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('races/fongoide', 0, 'ref:nouveaute-mise-a-jour-decembre-onglet-fongoide');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('races/gemidien', 0, 'ref:nouveaute-mise-a-jour-decembre-onglet-gemidien');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('races/goleois', 0, 'ref:google-sheet-les-races-onglet-premiere-feuille');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('races/goleois', 1, 'google-sheet:150Q6SJi4ft0oROtwT6snMAZUdWMVtkblxwYY9TqxV4Q');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('races/goleois', 2, 'ref:google-sheet-les-races-onglet-goleois');

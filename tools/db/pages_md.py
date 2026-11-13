@@ -113,6 +113,9 @@ FAMILLE_DES_PAGES_DU_SITE = {'metiers': 'docs', 'races': 'races', 'classes': 'cl
 # Porte-étendard, Écrasant du Cuirassé) : provenance « Classeur « Nouveauté mise à jour Décembre », onglet « … » », famille des pages de leur type.
 CLASSEUR_DE_DECEMBRE = 'Classeur « Nouveauté mise à jour Décembre »'
 FAMILLE_DES_PAGES_DE_DECEMBRE = {'classes': 'classes', 'capacites': 'classes'}
+# Pages créées par une migration de la mise à jour de Décembre (0120 : les races Fongoïde et Gémidien, décision R239), tirées de la pièce jointe du
+# propriétaire : provenance « Nouveauté mise à jour Décembre, onglet « … » », famille des pages de leur type, comme une page créée sur le site.
+MISE_A_JOUR_DE_DECEMBRE = 'Nouveauté mise à jour Décembre, '
 
 
 def origine_migration(type_, slug, statut, sources):
@@ -122,7 +125,7 @@ def origine_migration(type_, slug, statut, sources):
     libelles = [s for s in sources if not s.startswith('http')]
     premier = libelles[0] if libelles else ''
     fichier = (T.decouper_source(premier)['fichier'] if premier else None) or ''
-    if premier.startswith(SITE_DE_DEV) and type_ in FAMILLE_DES_PAGES_DU_SITE:
+    if premier.startswith((SITE_DE_DEV, MISE_A_JOUR_DE_DECEMBRE)) and type_ in FAMILLE_DES_PAGES_DU_SITE:
         return FAMILLE_DES_PAGES_DU_SITE[type_]
     if premier.startswith('Google Doc'):
         return 'docs'

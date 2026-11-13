@@ -12,6 +12,7 @@ import { test } from 'node:test';
 import { trouverRacine } from '../src/lib/donnees.mjs';
 import { cheminDImport, texteDImport } from './aide-base-d-import.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
+import { horsDeLa0120 } from './aide-races-0120.mjs';
 
 const racine = trouverRacine();
 const copie = fichierTemporaire('maverick.db', 'personnages');
@@ -810,7 +811,8 @@ test('décision R25 : le Mage Bleu est fermé au Potentiel Illimité, à tous le
 });
 
 test('décision R28 : la Lamia n’a qu’une magie, pas de magie acquise (« Une seule magie autorisé », onglet de la race)', () => {
-  assert.deepEqual(db.prepare('SELECT id FROM race WHERE mono_magie = 1').all().map((r) => r.id), ['races/lamia']);
+  // le Gémidien, mono-magie aussi (R239, migration 0120), est épinglé par test/db-0120-races-fongoide-gemidien.test.mjs
+  assert.deepEqual(db.prepare('SELECT id FROM race WHERE mono_magie = 1').all().map((r) => r.id).filter(horsDeLa0120), ['races/lamia']);
   // la phrase de l'onglet, dans son état d'import (le site de dev la réécrit : test/aide-base-d-import.mjs)
   assert.match(texteDImport('race_onglet', { race_id: 'races/lamia' }, 'inconvenients'), /Une seule magie autorisé/);
   const lamia = { race_id: 'races/lamia', ethnie_id: 'races/lamia#ethnie:lamia' };

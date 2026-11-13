@@ -16,6 +16,7 @@ import { avecLesMotsCles, motsClesDesPages } from '../src/lib/pages-db.mjs';
 import { chargerRaces } from '../src/lib/races-db.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { splitFrontmatter } from '../src/lib/wikilinks.mjs';
+import { horsDeLa0120, RACES_DE_LA_0120 } from './aide-races-0120.mjs';
 
 const racine = trouverRacine();
 const db = ouvrirBase({ sansExemples: false });
@@ -45,9 +46,10 @@ test('migration 0007 : les tables de l’onglet se relisent depuis les pages, à
 test('effectifs : 27 onglets, 70 dons, 2 tableaux en panneaux (Drakos 15 x 4, Mort-vivant 12 x 2), 27 capacités Mode Hyper nommées', () => {
   // aujourd'hui : chaque race a son onglet (créée depuis le site : « à compléter »)
   assert.equal(n('SELECT count(*) AS n FROM race_onglet'), n('SELECT count(*) AS n FROM race'));
-  // tels que la migration les a écrits
-  const de = (table, filtre = () => true) => dImport(table).filter(filtre).length;
-  assert.equal(historique.effectifDImport('race_onglet'), 27);
+  // tels que la migration 0007 les a écrits (les deux races de la migration 0120, R239, ont chacune leur onglet, un don unique et un Mode Hyper nommé)
+  const de = (table, filtre = () => true) => dImport(table).filter((l) => horsDeLa0120(l.race_id) && filtre(l)).length;
+  assert.equal(de('race_onglet'), 27);
+  assert.equal(historique.effectifDImport('race_onglet'), 27 + RACES_DE_LA_0120.size);
   assert.equal(de('race_don'), 70);
   assert.equal(de('race_don', (d) => d.forme === 'unique'), 5);
   assert.equal(de('race_don_tableau_ligne', (l) => l.race_id === 'races/drakos'), 15);
@@ -78,7 +80,7 @@ test('dons raciaux : ethnies de l’onglet rapprochées des sous-races de la fic
   const dons = (slug) => dImport('race_don').filter((d) => d.race_id === `races/${slug}`).sort((a, b) => a.rang - b.rang);
   assert.deepEqual(dons('elfe-noir').map((d) => [d.etiquette, d.nom]), [['Elfe Charbon', 'Sang corrompu'], ['Elfe Salé', 'Sang purifié']]);
   assert.equal(dons('elfe-noir').filter((d) => d.ethnie_id?.startsWith('races/elfe-noir#ethnie:elfe-noir-')).length, 2);
-  assert.equal(dImport('race_don').filter((d) => d.ethnie_id === null).length, 1, 'seul « Trompe-mort » n’a pas de sous-race dans la fiche');
+  assert.equal(dImport('race_don').filter((d) => horsDeLa0120(d.race_id) && d.ethnie_id === null).length, 1, 'seul « Trompe-mort » n’a pas de sous-race dans la fiche');
   assert.ok(dons('medusain').every((d) => d.remarque === "Jet de vigueur pour esquiver l'altération d'état"));
   assert.equal(n("SELECT count(*) AS n FROM note_cellule WHERE entite_table = 'race_don'"), 3);
   assert.equal(ongletDImport('drakos', 'dons_tableau_titre'), 'Écaille draconique');

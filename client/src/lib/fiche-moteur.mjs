@@ -3992,7 +3992,7 @@ function bonusDuModeHyperSurLesSorts(regles, fiche, { cent = false } = {}) {
  * lancé plus tard » ; réponses aux questions Q82 « Oui : 2d6+20 », Q84 « Oui : 3D8 au maximum + 30 = 54 », Q85 « Non : 2d6+5 », Q87 « Oui : 3d6+20 »),
  * ou null pour un sort préparé hors Mode Hyper, qui n'en reçoit rien, même lancé en Mode Hyper ou au Mode Hyper 100 % : préparé en Mode Hyper
  * (personnage_sort.prepare_hyper, migration 0086), son +15 (+7 avec deux magies ; tous les sorts du Potentiel Illimité) aux dégâts et aux soins et le
- * dé de race du Mode Hyper (`des` : Humain +1 dé à toutes les attaques, Felfe +2 dés aux dégâts et aux soins magiques, lus dans le texte de la race) ;
+ * dé de race du Mode Hyper (`des` : Humain +1 dé à toutes les attaques, Felfe +1 dé aux dégâts et aux soins magiques depuis R237 (12), lus dans le texte de la race) ;
  * préparé au Mode Hyper 100 % (prepare_cent), en plus le +10 du 100 % (et le cumul des postures : contexteDesSorts) ; jusqu'au lancer, à « Lâcher le
  * sort », à une nouvelle préparation ou à « Fin de combat » (R179), même après la fin du Mode Hyper. Le coût et les résistances, qui ne sont pas des
  * valeurs du sort préparé, restent ceux du moment. `prepare` : sortPrepare. { cent, sorts, soins, attaques (bonusDuModeHyperSurLesSorts), des:

@@ -58,7 +58,11 @@ test('R187 (2) : le Potentiel Illimité, une seule cellule « Forme Complète »
 
 test('R187 (2) : races — lecture onglet_race, ordre de la source, nom de la table race, capacité = nom, effet tel quel', () => {
   const lignes = effets('onglet_race');
-  assert.equal(lignes.length, 27);
+  // une capacité par race de l'import : les 27 du classeur « Les races » et les deux de la mise à jour de Décembre (R239, migration 0120 : rangs 28 et 29) ;
+  // une race créée sur le site n'a pas de Mode Hyper (serveur/edition.mjs) : l'effectif se lit à l'import, chaque race de l'import a la sienne
+  const racesDImport = baseDImport().prepare('SELECT id FROM race ORDER BY id').all().map((r) => r.id);
+  assert.deepEqual([...new Set(lignes.map((e) => e.race_id))].filter((id) => racesDImport.includes(id)).sort(), racesDImport);
+  assert.equal(lignes.length, new Set(lignes.map((e) => e.race_id)).size, 'une capacité par race');
   assert.deepEqual(tableau.races.lignes, lignes.map((e) => ({
     id: e.race_id, nom: db.prepare('SELECT nom FROM race WHERE id = ?').get(e.race_id).nom, libelle: e.libelle, capacite: e.nom, effet: e.effet, effet_id: e.id,
   })));

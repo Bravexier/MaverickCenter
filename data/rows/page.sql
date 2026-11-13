@@ -21469,7 +21469,7 @@ Nombre : 3.
 
 ## Capacité Mode Hyper
 
-**Sang argenté** : Tous les sortilèges d''attaques sont imparables.
+**Sang argenté** : Les sorts d''attaques imposent un désavantage sur les jets de défenses.
 
 ## Sous-races et origines
 
@@ -21541,7 +21541,7 @@ Cette page suit l''onglet « Elfe Argenté » du Google Sheet « Les races », q
 | Élément | Onglet « Elfe Argenté » (retenu) | Fiche V15.2.2 (citée telle quelle) |
 | --- | --- | --- |
 | Don de base<br>(fiche : colonne « Don base ») | Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 {{chakra\|chakra}} (jet de calme en stress)). | Méditation/Action/Permet de récupérer 2d6 chakra (jet de calme en stress). |
-| Capacité Mode Hyper<br>(fiche : colonne « Capacité Hyper », sans nom de capacité) | Sang argenté<br>Tous les sortilèges d''attaques sont imparables. | Toutes les sortilèges d''attaques sont imparable. |
+| Capacité Mode Hyper<br>(fiche : colonne « Capacité Hyper », sans nom de capacité) | Sang argenté<br>Les sorts d''attaques imposent un désavantage sur les jets de défenses. | Toutes les sortilèges d''attaques sont imparable. |
 ', 'draft', 'races', 'Google Sheet « Les races », onglet « première feuille »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('races/elfe-dore', 'races', 'elfe-dore', 'Elfe doré', 'elfe-dore', 'Une race éteinte (race à conditions)', '{"magies_innees": ["Potentiel Illimité", "Sang", "Arcane", "Corruption", "Espace/Temps", "Vide", "Nécromancie", "Feu", "Eau", "Glace", "Terre", "Vent", "Foudre", "Lumière", "Ombre"]}', 'Une race éteinte (race à conditions)
 
@@ -22193,7 +22193,7 @@ Nombre : 3.
 
 ## Capacité Mode Hyper
 
-**Surpuissance magique** : Peut voler, les dégâts et soins magiques sont augmentés de 2d, ceux qui doivent faire des jets pour esquiver les effets secondaires des sorts ont leur score divisé par 2.
+**Surpuissance magique** : Peut voler, les dégâts et soins magiques sont augmentés de 1d, ceux qui doivent faire des jets pour esquiver les effets secondaires des sorts ont leur score divisé par 2.
 
 ## Sous-races et origines
 
@@ -22424,6 +22424,174 @@ Cette page suit l''onglet « Fenrir » du Google Sheet « Les races », qui prim
 | --- | --- | --- |
 | Don de base<br>(fiche : colonne « Don base ») | Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et {{chakra\|chakra}} (jet de calme en stress)). | Repos/Action/Permet de récupérer 1d6 santé et chakra (jet de calme en stress). |
 ', 'draft', 'races', 'Google Sheet « Les races », onglet « première feuille »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('races/fongoide', 'races', 'fongoide', 'Fongoïde', 'fongoide', NULL, '{"magies_innees": ["Sang", "Arcane", "Corruption", "Espace/Temps", "Vide", "Nécromancie", "Feu", "Eau", "Glace", "Terre", "Vent", "Foudre", "Lumière", "Ombre"]}', '## Présentation
+
+Une race entièrement fait de champignons dont l''origine remonte le jour où le Dieu de la Terre s''est donné la mort.
+
+Ils ont une forme humanoïde car avec le temps, ils sont adaptés aux autres races intelligente et ont pris cette forme car plus pratique ? moins intimidante ? Personne ne le sait.
+
+Selon la lignée première, cette race est apparu sous la forme humanoïde la première fois en l''an 80.
+
+## Histoire
+
+L''origine des Fongoïdes remonte à une époque aujourd''hui révolue : l''époque du Premier Champignon.
+
+À cette époque, la Mort Fertile apparut dans la Forêt Colossale. Ce lieu, profondément marqué par l''énergie de la Terre, permit à un champignon qui passait par là d''assimilé une quantité folle d''énergie divine.
+
+Le Premier Champignon fut le premier de son genre à développer une conscience dépassant celle d''un simple organisme. Sa croissance au sein de la Mort Fertile lui permit progressivement d''assimiler son énergie et de développer une intelligence collective.
+
+Cette évolution attira l''attention de plusieurs dieux. Intrigués par cette forme de vie qui semble commencer à naître mais semble manquer de beaucoup de choses pour pouvoir évolué, certains dieux décidèrent d''intervenir en donnant au Premier plusieurs capacités. On ne connait pas les dieux qui ont influencés directement mais dans tout les cas, ça a fonctionné.
+
+Les premières colonies commencèrent alors à développer des formes de plus en plus complexes. Au fil des générations, elles s''adaptèrent à leur environnement et aux autres peuples qu''elles côtoyaient. Leur corps finit progressivement par adopter une forme humanoïde.
+
+La Mort Fertile n''existe cependant plus. Les Fongoïdes modernes ne dépendent donc pas de ce lieu pour exister : la Mort Fertile est leur berceau, pas leur habitat obligatoire.
+
+Les Fongoïdes se reproduisent par spores. Une nouvelle génération commence son existence sous une forme primitive avant de se développer progressivement au sein même d''un autre fongoïde, une fois assez développé, ce dernier va l''enterrer dans un sol assez fertile et ainsi naîtra un ou plusieurs nouveaux fongoïdes qui auront une magie selon la ou les magie(s) dominante de l''environnement. Leur croissance est donc différente de celle des races humanoïdes classiques : un Fongoïde ne naît pas véritablement, il pousse.
+
+Avec le temps, ils développèrent une conscience individuelle tout en conservant l''héritage de leur nature collective.
+
+Les Fongoïdes sont incapables de communiquer par la parole. Ils possèdent néanmoins une forme de communication mentale leur permettant d''échanger directement avec les autres êtres vivants.
+
+Choses assez singulière mais ils ont développé culturellement une manière de parler à eux : Ils ne disent pas "Quel age avez vous ?", ils disent "Depuis combien de saisons poussez vous ?" mais il possède un sens du deuil très fort, avec des rites funéraires qui varie selon leur magie innée.
+
+## Description
+
+Les Fongoïdes possèdent une silhouette humanoïde recouverte de caractéristiques fongiques. Avec une taille variable entre 1m50 et 1m80.
+
+Ils n''ont pas de genre masculin ou féminin, ce concept est absent chez eux vu que leur reproduction ne repose pas sur deux individus.
+
+Leur corps est fait de chair, de tissus fongiques et de différentes structures rappelant les champignons. Leur apparence varie fortement selon leur environnement et leur magie.
+
+Leur couleur est notamment déterminée par la magie dominante assimilée durant leur croissance. Deux Fongoïdes issus de régions différentes peuvent ainsi présenter des couleurs et des caractéristiques radicalement différentes. Très influencé par la magie même dans la psyché, ils peuvent faire prevue d''hostilité envers ceux qui porte des magies opposés ou efficace contre eux.
+
+Leur apparence humanoïde est le résultat de leur longue évolution. Leurs ancêtres ont progressivement adopté cette forme en s''adaptant aux créatures humanoïdes avec lesquelles ils entraient en contact. Ce cumule de connaissance fait qu''ils sont parfaitement capable d''utiliser des armes et leur magie comme les autres.
+
+Ils possèdent des organes permettant une apparence proche de celle des autres races, mais leur nature fongique reste évidente : leur peau, leur tête, leurs excroissances et leur morphologie peuvent présenter différentes formes de chapeaux, de filaments, de spores ou de structures propres aux champignons. Ils possède deux jambes, deux bras, des mains, une tête, des yeux et un tronc comme les humonoïdes.
+
+Ils ne possèdent pas de véritable capacité à parler à cause de l''absence totale de bouche, mais leur communication repose sur une autre forme de communication, par la pensée et les parfums.
+
+## Caractéristiques de départ
+
+| Santé de départ | Chakra de départ | Barrière bonus | Vitesse Sol/Nage |
+| --- | --- | --- | --- |
+| 5 | 10 | 5 | 4 / 4 |
+
+## Avantage(s) et inconvénient(s)
+
+**Avantage(s)** : Accès à toutes les magies.
+
+**Inconvénient(s)** : Ne possède pas la parole, Classe barde et parleur interdite.
+
+## Don de base
+
+Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 {{chakra|chakra}} (jet de calme en stress)).
+
+## Ethnies et dons raciaux
+
+### Conscience collective
+
+Permet de faire un lien avec un allié et lui permettre de partager les perceptions avec lui. (une fois par scène)
+
+**Fiche de personnage V15.2.2** : aucune sous-race correspondante.
+
+## Capacité Mode Hyper
+
+**Unité** : Ne peut pas subir de croix, les soigne si il en possède, les parties du corps ne peuvent plus être ciblés et récupère 10% de barrière par tour de mode hyper.
+
+## Classes accessibles
+
+Nombre : 26 sur 41.
+
+Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Boxeur, Porte-étendard
+
+## Magies accessibles
+
+Nombre : 14 sur 15.
+
+Sang, Arcane, Corruption, Espace/Temps, Vide, Nécromancie, Feu, Eau, Glace, Terre, Vent, Foudre, Lumière, Ombre
+', 'draft', 'races', 'Nouveauté mise à jour Décembre, onglet « Fongoïde »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('races/gemidien', 'races', 'gemidien', 'Gémidien', 'gemidien', NULL, '{"magies_innees": ["Sang", "Arcane", "Espace/Temps", "Vide", "Nécromancie", "Feu", "Eau", "Glace", "Terre", "Vent", "Foudre", "Lumière", "Ombre"]}', '## Présentation
+
+Race mélant humain et corps en partie en gemme, leur origine sont profondément relié au super-gemme élémentaire.
+
+Ils possèdent une grande polyvalence comme les humain mais n''ont pas accès au potentiel illimité.
+
+Cette race est apparu la première fois en 70.
+
+## Histoire
+
+Les Gémidiens sont une race née d''un événement unique remontant à plusieurs générations.
+
+Leur origine est liée aux Super Gemmes, des grosses gemmes parfaites qui concentre l''essence magique la plus pure.
+
+Le premier Gémidien était autrefois un humain. En entrant en contact avec une Super Gemme, il chercha à établir un lien avec elle. L''expérience provoqua cependant un phénomène inattendu : une conscience naquit dans son esprit au contact de l''essence contenue dans la gemme. Cette conscience et l''humain finirent par fusionner, transformant progressivement son corps.
+
+Une partie de son corps devint alors entièrement constituée de gemme, tandis que le reste demeura charnel. Cette transformation ne fut pas une simple altération physique : elle donna naissance à une nouvelle lignée.
+
+Au fil des générations, cette particularité se transmit aux descendants du premier Gémidien. La transformation devint alors naturelle et héréditaire, faisant des Gémidiens une véritable race.
+
+Chaque Gémidien est lié à une seule magie, correspondant à l''essence élémentaire héritée de la Super Gemme à l''origine de sa lignée. Cette essence demeure profondément inscrite dans leur organisme.
+
+Malgré leur origine extraordinaire, les Gémidiens ne forment pas nécessairement un peuple isolé. Leur ascendance humaine leur permet de s''intégrer facilement aux différentes sociétés de Maverick et ils peuvent être rencontrés aux côtés des autres races à travers le monde.
+
+Beaucoup considèrent simplement les Gémidiens comme des humains ayant autrefois subi une étrange transformation, mais la vérité reste encore voilée de mystères.
+
+Bien entendu, certains ont essayer de produire la première génération de gémidien en cherchant quelque chose dans les supers-gemmes mais rien n''a été trouvé, les supers-gemmes aujourd''hui sont des objets inerte permettant beaucoup de choses (cf. Codex|Outils légendaires|Super gemme)
+
+## Description
+
+Les Gémidiens possèdent une apparence globalement humanoïde, leur ascendance humaine restant particulièrement visible. Leur peau est tout de fois un peu plus grise, comme pour rappeler l''origine en partie minérale.
+
+Environ la moitié de leur corps est cependant constituée de gemme, répartie de manière irrégulière à travers leur anatomie. Il ne s''agit donc pas d''une partie précise du corps transformée : un Gémidien peut posséder un bras presque entièrement cristallin, quelques doigts, une partie du visage, des côtes visibles sous la peau ou encore des portions visibles de la colonne vertébrale constituées de gemme.
+
+La disposition des parties cristallines varie considérablement d''un individu à l''autre.
+
+La gemme présente sur leur corps correspond à leur magie et en reprend les couleurs et les caractéristiques. Un Gémidien lié au Feu arbora des partie en rubis, tandis qu''un Gémidien de Foudre pourra présenter des topazes parcourues de lueurs électriques.
+
+Le reste de leur corps conserve une apparence organique humaine normale avec de la pilosité, des cheveux, etc...
+
+Évidemment leur corps ne peux pas être utile pour être des ressources, si leur gemmes sont retiré de leur corps, ils dépérissent et deviennent de la caillasse inutile.
+
+## Caractéristiques de départ
+
+| Santé de départ | Chakra de départ | Barrière bonus | Vitesse Sol/Nage |
+| --- | --- | --- | --- |
+| 10 | 10 | 0 | 4 / 4 |
+
+## Avantage(s) et inconvénient(s)
+
+**Avantage(s)** : Accès à toutes les classes
+
+**Inconvénient(s)** : Mono-magie uniquement, Magie potentiel illimité et corruption interdite
+
+## Don de base
+
+Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 {{chakra|chakra}} (jet de calme en stress)).
+
+## Ethnies et dons raciaux
+
+### Gemmoïde
+
+Inflige un bonus +3 dégâts (+2/5 niveau global) de l''élément de la magie innée.
+
+**Fiche de personnage V15.2.2** : aucune sous-race correspondante.
+
+## Capacité Mode Hyper
+
+**Surcharge élémentaire** : Chaque début de tour de mode hyper, le lanceur peut choisir un bonus parmi : +1D dégâts (+1D au niveau 10 global) | +1 vitesse (+1 au niveau 10 global) | avantages sur les jets contre les altérations d''états | +10 AM (+5 au niveau 10 global)
+
+## Classes accessibles
+
+Nombre : 28 sur 41.
+
+Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Boxeur, Porte-étendard
+
+## Magies accessibles
+
+Nombre : 13 sur 15.
+
+Sang, Arcane, Espace/Temps, Vide, Nécromancie, Feu, Eau, Glace, Terre, Vent, Foudre, Lumière, Ombre
+', 'draft', 'races', 'Nouveauté mise à jour Décembre, onglet « Gémidien »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('races/goleois', 'races', 'goleois', 'Goleois', 'goleois', 'Les semi-poulets, LA FRAAAAAAAANCE !!!', '{"magies_innees": ["Sang", "Glace", "Lumière"]}', 'Les semi-poulets, LA FRAAAAAAAANCE !!!
 
 ## Présentation
