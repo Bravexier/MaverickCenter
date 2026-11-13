@@ -644,6 +644,11 @@ main ; un lot déjà dans l'historique n'est pas repris), puis les tables du jou
 « intégrées » sur le site de dev. Le site est la source des données qu'il modifie (ci-dessous, « Mise à jour ») : les tests ne s'arrêtent plus sur
 une valeur que le site a changée.
 
+Un lot noté par un site de dev d'avant la migration 0113 nomme ses mots-clés par leur ancien id texte : le rejeu le lit en id entier
+(`ancienneEcritureDesIds`), et la trace versée aussi (`traceDAujourdhui`, serveur/edition.mjs : registre de la 0113, puis clé, puis clé quittée ;
+`libelle_cle` devient `cle` ; id inconnu laissé tel quel). `npm run db:appliquer-edition -- --reparer-traces` refait cette mise à jour sur les traces
+déjà versées (idempotent ; seul `historique_modification.sql` change).
+
 | Requête | Réponse |
 | --- | --- |
 | `GET /api/edition/en-attente/` | Lignes modifiées depuis la construction des pages (`{ lignes: [{ table, cle, creee, ligne, apercu? }] }`) |

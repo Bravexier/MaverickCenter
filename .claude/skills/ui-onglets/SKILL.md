@@ -10,7 +10,7 @@ Un seul composant d'onglets pour tout le site. Son en-tête décrit le HTML atte
 
 ## Fichiers
 - `client/src/components/Onglets.astro` : la classe `js` posée sur `<html>` et le script des onglets.
-- Il est posé par : `classes/ClasseDons.astro` (spécialités d'une classe), `magie/SortsDuPotentiel.astro` (magies du Potentiel Illimité), `bestiaire/Bestiaire.astro`, `equipement/EquipementPage.astro`, qui le pose sur chacune des cinq pages de l'équipement (plus de barre d'onglets de page ni de groupe « Équipement ») avec, selon la page, les sous-onglets de la Ceinture et, dans Consommables, les onglets des familles (`ceinture/CeinturePanneau.astro`), les tableaux d'effets des Accessoires (`accessoires/AccessoiresPage.astro`), `composants/ComposantsPage.astro`, `pages/fiche/index.astro` (zone IV).
+- Il est posé par : `classes/ClasseDons.astro` (spécialités d'une classe), `magie/SortsDuPotentiel.astro` (magies du Potentiel Illimité), `bestiaire/Bestiaire.astro`, `equipement/EquipementPage.astro`, qui le pose sur chacune des cinq pages de l'équipement (plus de barre d'onglets de page ni de groupe « Équipement ») avec, selon la page, les sous-onglets de la Ceinture et, dans Consommables, les onglets des familles (`ceinture/CeinturePanneau.astro`), les tableaux d'effets des Accessoires (`accessoires/AccessoiresPage.astro`), `composants/ComposantsPage.astro`, `pages/fiche/index.astro` (zone IV), `guide/PageDuGuide.astro` (les neuf alignements de la page « Alignement » : skill `zone-guide`).
 - L'apparence des onglets est dans la feuille de chaque page.
 
 ## HTML attendu
@@ -33,4 +33,4 @@ Un seul composant d'onglets pour tout le site. Son en-tête décrit le HTML atte
 ## Tests
 - `test/equipement-html.test.mjs` : le script posé une fois sur chacune des cinq pages de l'équipement, la liste des groupes de chaque page (aucun sur Armes, Armures et Boucliers).
 - `test/onglets-script.test.mjs` : le script tel que le build l'écrit, dans un faux navigateur (clic et flèche qui écrivent l'ancre, option sans adresse, chargement par `#famille-…` sur une page d'essai à deux niveaux, onglet caché sauté, `detail.dans`, re-branchement d'un groupe ; site construit).
-- Les tests du site construit des pages qui en ont (`classes-html`, `magies-html`, `equipement-html`, `composants-html`, `fiche-html`, `accessoires-html`, `ceinture-html`, `bestiaire-html`) contrôlent leurs onglets.
+- Les tests du site construit des pages qui en ont (`classes-html`, `magies-html`, `equipement-html`, `composants-html`, `fiche-html`, `accessoires-html`, `ceinture-html`, `bestiaire-html`, `guide-html`) contrôlent leurs onglets.

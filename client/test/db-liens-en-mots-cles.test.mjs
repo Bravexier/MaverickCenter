@@ -32,6 +32,10 @@ const REGISTRE = JSON.parse(readFileSync(new URL('../../data/migrations/0098-lie
 /** La correspondance de la migration 0113 (ancien id texte → { id entier, clé et libellé à la migration, `libelleAvant` des 13 classes raciales }). */
 const REGISTRE_0113 = new Map(JSON.parse(readFileSync(new URL('../../data/migrations/0113-mots-cles-id-entier.json', import.meta.url), 'utf8')).motsCles.map((m) => [m.ancienId, m]));
 const MIGRATION = readFileSync(new URL('../../data/migrations/0098-liens-en-mots-cles.sql', import.meta.url), 'utf8');
+/** Les adresses de mots-clés qu'une migration postérieure à la 0098 a changées (registre `mots_cles_modifies` : id entier, avant, après). */
+const URLS_APRES_0098 = ['0123-fusion-pages-alignement']
+  .flatMap((nom) => JSON.parse(readFileSync(new URL(`../../data/migrations/${nom}.json`, import.meta.url), 'utf8')).mots_cles_modifies ?? [])
+  .filter((u) => u.col === 'url');
 const SCHEMA = readFileSync(new URL('../../data/schema.sql', import.meta.url), 'utf8');
 const LOTS_AVANT_0098 = new Set(JSON.parse(readFileSync(new URL('./fixtures/lots-avant-0098.json', import.meta.url), 'utf8')).lots);
 // les lignes retouchées par un lot rapatrié après la 0098 : « table|clé JSON »
@@ -122,7 +126,10 @@ test('0098 : les mots-clés du registre (Q1, Q8, Q10) — comptes, libellés, ad
     if (!intacte('mot_cle', { id: entree.id })) continue;
     const m = motCle(entree.id);
     assert.ok(m, r.id);
-    assert.equal(m.url, r.url, r.id);
+    // l'adresse de la 0098, ou celle qu'une migration postérieure a fixée (0123 : « Les neuf alignements » fondue dans « Alignement », registre
+    // `mots_cles_modifies`)
+    const urls = [r.url, ...URLS_APRES_0098.filter((u) => u.id === entree.id && u.avant === r.url).map((u) => u.apres)];
+    assert.ok(urls.includes(m.url), `${r.id} : ${m.url} (attendu : ${urls.join(' ou ')})`);
     assert.equal(m.couleur, r.couleur, r.id);
     if (r.origine !== 'existant') {
       // le libellé de la 0098, ou celui qu'une migration postérieure a écrit (R231, 0112 : le mot-clé d'une page retitrée suit son titre), tel que la

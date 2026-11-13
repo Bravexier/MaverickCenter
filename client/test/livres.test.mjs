@@ -10,6 +10,7 @@ import { test } from 'node:test';
 import GithubSlugger from 'github-slugger';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { ancresDuCorps } from '../src/lib/ancres-figees.mjs';
 import {
   ACCUEIL_DU_GUIDE, ADRESSES_DU_PLAN_PRECEDENT, ADRESSES_RENOMMEES_DU_GUIDE, adresseDeLaPageAbsorbee, adresseDeLaPageRetiree, ANCRES_DES_PAGES_ABSORBEES, ARTISANAT, adresseDuGuide, CHEMIN_DES_REGLES,
   DECOUVRIR, entreesDuMenuLateral, estDansDecouvrir, estDesOnglets, estDuGuideDuMj, filDAriane, GUIDE_DU_MJ, installerLePlan, LIENS_ET_RENCONTRE, menuLateralDe,
@@ -135,11 +136,12 @@ test('installerLePlan contrôle la forme du plan : onglet vide ou nommé deux fo
   }
 });
 
-test('les pages fusionnées dans une autre : Le jeu de rôle dans Bienvenue, Résistance/Faiblesse Magie et Les situations avancées (R184, R185) ; plus dans la base', () => {
+test('les pages fusionnées dans une autre : Le jeu de rôle dans Bienvenue, Résistance/Faiblesse Magie, Les situations avancées (R184, R185) et Les neuf alignements dans Alignement (migration 0123) ; plus dans la base', () => {
   assert.deepEqual(PAGES_ABSORBEES, {
     'guide/le-jeu-de-role': 'guide/bienvenue',
     'guide/resistance-faiblesse-magie': 'guide/resistances-et-faiblesses',
     'guide/situations-avancees': 'guide/prise-en-tenaille-et-zone-d-influence',
+    'guide/les-neuf-alignements': 'guide/alignement',
   });
   for (const [ancienne, nouvelle] of Object.entries(PAGES_ABSORBEES)) {
     assert.ok(!ids.includes(ancienne), `${ancienne} : retirée de la base`);
@@ -148,13 +150,16 @@ test('les pages fusionnées dans une autre : Le jeu de rôle dans Bienvenue, Ré
   // les six étapes de la création (fusionnées du 2026-10-18 à R184) sont redevenues des pages, sous leur id : plus absorbées
   for (const id of PAGES_DE_LA_CREATION.pages.slice(1)) assert.ok(ids.includes(id) && !Object.hasOwn(PAGES_ABSORBEES, id), id);
   // une page fusionnée mène à l'intertitre où se lit son contenu, s'il est nommé (github-slugger, comme le rendu Markdown), sinon à la page entière
-  assert.deepEqual(ANCRES_DES_PAGES_ABSORBEES, { 'guide/le-jeu-de-role': 'le-jeu-de-rôle-comment-ça-marche-' });
+  assert.deepEqual(ANCRES_DES_PAGES_ABSORBEES, { 'guide/le-jeu-de-role': 'le-jeu-de-rôle-comment-ça-marche-', 'guide/les-neuf-alignements': 'les-neuf-alignements' });
   for (const [ancienne, ancre] of Object.entries(ANCRES_DES_PAGES_ABSORBEES)) {
-    assert.ok(intertitres(corpsDe(PAGES_ABSORBEES[ancienne])).includes(ancre), `${ancienne} : #${ancre} absent`);
+    // l'intertitre visé : son id de github-slugger, ou son ancre figée (`{#ancre}`, lib/ancres-figees.mjs : elle ne change pas quand l'intertitre est renommé)
+    const corps = corpsDe(PAGES_ABSORBEES[ancienne]);
+    assert.ok(intertitres(corps).includes(ancre) || ancresDuCorps(corps).some((a) => a.ancre === ancre), `${ancienne} : #${ancre} absent`);
   }
   assert.equal(adresseDeLaPageAbsorbee('guide/le-jeu-de-role', cheminDePage), 'decouvrir/#le-jeu-de-rôle-comment-ça-marche-');
   assert.equal(adresseDeLaPageAbsorbee('guide/resistance-faiblesse-magie', cheminDePage), 'regles/resistances-et-faiblesses/');
   assert.equal(adresseDeLaPageAbsorbee('guide/situations-avancees', cheminDePage), 'regles/prise-en-tenaille-et-zone-d-influence/');
+  assert.equal(adresseDeLaPageAbsorbee('guide/les-neuf-alignements', cheminDePage), 'regles/alignement/#les-neuf-alignements');
 });
 
 /** Vrai si l'adresse `adresse` (relative à la racine, ancre et requête comprises) a `slug` pour un de ses segments (« regles/les-postures/ » n'a pas « postures »). */
@@ -184,7 +189,8 @@ test('R184 (9) : les pages supprimées ne sont ni dans la base, ni dans le plan,
 });
 
 test('chaque page `guide/…` de la base a une adresse à elle, jamais sous /guide/ ; à plat sous /regles/ pour les onglets ; une seule place dans le plan (sauf la fixture)', () => {
-  assert.ok(ids.length >= 66, `${ids.length} pages du guide`);
+  // 67 avant la migration 0122 (La montée de niveau retirée), 66 avant la 0123 (Les neuf alignements fondue dans Alignement)
+  assert.ok(ids.length >= 65, `${ids.length} pages du guide`);
   const chemins = ids.map(cheminDePage);
   assert.equal(new Set(chemins).size, chemins.length, 'deux pages à la même adresse');
   for (const [i, id] of ids.entries()) {
@@ -439,6 +445,40 @@ const renvoi = (adresse, { search = '', hash = '', base = '/' } = {}) => adresse
   base, renvois: renvoisDuGuide(ids), eclatees: { ...RENVOIS_DES_PAGES_ECLATEES, ...PAGES_ECLATEES_DU_GUIDE }, search, hash,
 });
 
+// Migration 0123, demande du propriétaire : « Les pages … /regles/alignement/ et /regles/les-neuf-alignements/ font doublon. Réunis toutes les
+// informations dans la page /regles/alignement/ » : « Les neuf alignements » est fondue dans « Alignement », sous l'intertitre à ancre figée
+// #les-neuf-alignements. Toute ancienne adresse de la page mène à Alignement, l'ancre écrite gardée (celle d'une section, #loyal-bon), sinon à l'intertitre.
+test('Les neuf alignements fondue dans Alignement (migration 0123) : /regles/les-neuf-alignements/, /guide/…, /regles/avancees/… mènent à /regles/alignement/, ancre et requête gardées', () => {
+  const absorbee = 'guide/les-neuf-alignements';
+  assert.equal(PAGES_ABSORBEES[absorbee], 'guide/alignement');
+  assert.ok(ids.includes('guide/alignement') && !ids.includes(absorbee), 'Alignement reste dans la base, la page absorbée n’y est plus');
+  assert.equal(cheminDePage('guide/alignement'), 'regles/alignement/');
+  const options = { cheminDe: cheminDePage, existe: (id) => ids.includes(id), accueil: ACCUEIL_DU_GUIDE };
+  const anciennes = ['regles/les-neuf-alignements/', 'guide/les-neuf-alignements/', 'regles/avancees/les-neuf-alignements/'];
+  assert.ok(Object.keys(ADRESSES_DU_PLAN_PRECEDENT).includes(anciennes[0]), 'l’adresse à plat d’avant, ajoutée aux renvois figés');
+  const renvois = renvoisDuGuide(ids);
+  for (const adresse of anciennes) {
+    assert.equal(renvois[adresse], 'regles/alignement/#les-neuf-alignements', `${adresse} : la page 404 mène à l’intertitre des neuf alignements`);
+    assert.equal(renvoi(`/${adresse}`), '/regles/alignement/#les-neuf-alignements', adresse);
+    // une ancienne ancre de section mène à la même ancre de la page qui l'absorbe : l'ancre écrite l'emporte, la requête reste avant elle
+    assert.equal(renvoi(`/${adresse}`, { hash: '#loyal-bon' }), '/regles/alignement/#loyal-bon', `${adresse}#loyal-bon`);
+    assert.equal(renvoi(`/${adresse}`, { search: '?q=1', hash: '#chaotique-mauvais' }), '/regles/alignement/?q=1#chaotique-mauvais', `${adresse} : requête et ancre`);
+    assert.equal(renvoi(`/${adresse.replace(/\/$/, '')}`, { hash: '#neutre' }), '/regles/alignement/#neutre', `${adresse} sans barre de fin`);
+    assert.equal(renvoi(`/MaverickCenter/${adresse}`, { base: '/MaverickCenter/', hash: '#neutre-bon' }), '/MaverickCenter/regles/alignement/#neutre-bon', `${adresse} sous un sous-chemin`);
+    // un lien Markdown écrit vers l'ancienne adresse (lib/guide.mjs#adresseDesAnciensLiens, rendu du guide) : la même destination que la page 404
+    assert.equal(Guide.adresseDesAnciensLiens(`${adresse}#loyal-bon`, options), 'regles/alignement/#loyal-bon', `${adresse} : lien écrit, ancre gardée`);
+    assert.equal(Guide.adresseDesAnciensLiens(adresse, options), 'regles/alignement/#les-neuf-alignements', `${adresse} : lien écrit sans ancre`);
+  }
+  // la page absorbante supprimée sur le site de dev : plus de renvoi, la 404
+  const sans = ids.filter((id) => id !== 'guide/alignement');
+  assert.equal(renvoisDuGuide(sans)['regles/les-neuf-alignements/'], undefined);
+  assert.equal(Guide.adresseDesAnciensLiens('regles/les-neuf-alignements/#loyal-bon', { ...options, existe: (id) => sans.includes(id) }), 'regles/les-neuf-alignements/#loyal-bon');
+  // l'ancienne adresse n'est plus celle d'une page, et l'id reste réservé (une page créée sur le site ne le reprend pas)
+  assert.ok(!ids.some((id) => cheminDePage(id) === anciennes[0]));
+  // l'intertitre visé existe à l'import : l'ancre figée de la section
+  assert.ok(ancresDuCorps(corpsDe('guide/alignement')).some((a) => a.ancre === 'les-neuf-alignements'));
+});
+
 // Migration 0094, demande du propriétaire du 2026-11-06 : « Il y a 4 pages à supprimer car inutile ou doublon. * Postures * Les boss et leurs postures
 // * Le mode hyper * Mode super » (« Le mode hyper » reste, a-t-il précisé). Convention R185 (6) (« Page 404 ») : PAGES_SUPPRIMEES, sans renvoi.
 test('0094 (2026-11-06) : « Postures », « Les boss et leurs postures » et « Le Mode Super » supprimées sans renvoi ; « Le Mode Hyper » reste', () => {
@@ -555,7 +595,8 @@ test('R184, R185 : les anciennes adresses figées mènent à la nouvelle adresse
       assert.equal(renvoi(`/${cheminDePage(id)}`), null, `${cheminDePage(id)} : sa dernière adresse aussi`);
       continue;
     }
-    const attendue = Object.hasOwn(PAGES_ABSORBEES, id) ? adresseDeLaPageAbsorbee(id, cheminDePage) : cheminDePage(id);
+    // la page absorbée : sa page, à l'ancre où se lit son contenu ; l'ancre écrite (ici « #a ») l'emporte, la requête reste avant elle
+    const attendue = (Object.hasOwn(PAGES_ABSORBEES, id) ? adresseDeLaPageAbsorbee(id, cheminDePage) : cheminDePage(id)).split('#')[0];
     assert.equal(renvoi(`/${adresse}`, { search: '?q=1', hash: '#a' }), `/${attendue}?q=1#a`, adresse);
     assert.ok(ids.includes(id) || Object.hasOwn(PAGES_ABSORBEES, id), `${id} : une page de la base, ou absorbée`);
   }

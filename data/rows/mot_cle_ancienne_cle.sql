@@ -4,11 +4,14 @@ INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('action-rapide', 163)
 INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('anansi', 14);
 INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('attaque-et-defense', 28);
 INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('attaquer-et-se-defendre', 30);
+INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('caracteristiques', 56);
 INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('fenrir', 133);
 INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('goleois', 150);
+INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('hybride', 160);
 INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('jackalope', 165);
 INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('kitsune', 167);
 INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('la-montee-de-niveau', 138);
+INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('magie-competence', 389);
 INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('marcass', 231);
 INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('medusain', 236);
 INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('minotaure', 242);

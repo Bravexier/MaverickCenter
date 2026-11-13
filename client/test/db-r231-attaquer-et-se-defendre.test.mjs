@@ -20,6 +20,7 @@ import { lireBalises } from '../src/lib/mots-cles-balises.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { baseDImport, lotsAvant } from './aide-base-d-import.mjs';
 import { avecLesClesDe, idDuMotCleNomme } from './aide-mots-cles.mjs';
+import { fragmentRetireParLeSite } from './aide-fragments-du-site.mjs';
 
 const NOM = '0112-r231-attaquer-et-se-defendre';
 const registre = JSON.parse(readFileSync(new URL(`../../data/migrations/${NOM}.json`, import.meta.url), 'utf8'));
@@ -37,6 +38,18 @@ const idDe = (table, id) => (table === 'mot_cle' ? idDuMotCleNomme(id) : id);
 const cellule = (db, t) => db.prepare(`SELECT "${t.col}" AS v FROM "${t.table}" WHERE id = ?`).get(idDe(t.table, t.cle.id))?.v;
 const motCle = (db, ancienId) => db.prepare('SELECT * FROM mot_cle WHERE id = ?').get(idDuMotCleNomme(ancienId));
 const cleDe = (db, ancienId) => motCle(db, ancienId)?.cle;
+/**
+ * Le fragment `fragment` est dans `texte`, ses balises écrites avec la clé d'aujourd'hui (avecLesClesDe) ou telles que la migration les a écrites : une
+ * cellule que le site de dev a réécrite depuis reprend, dans la base d'import, l'« avant » de son lot, que le site écrivait avec ses anciennes clés.
+ */
+const contientLeFragment = (db, texte, fragment) => texte.includes(avecLesClesDe(db, fragment)) || texte.includes(fragment);
+let baseCourante;
+/** Le fragment de `t`, écrit par la 0112, retiré depuis par un lot du site (test/aide-fragments-du-site.mjs ; balises aussi à la clé d'aujourd'hui). */
+const retireParLeSite = (t, fragment) => {
+  baseCourante ??= ouvrirBase();
+  return fragmentRetireParLeSite(baseCourante, { table: t.table, cle: { id: idDe(t.table, t.cle.id) }, col: t.col }, fragment,
+    { lotsAvant: lotsAvant('0112'), ecritures: [fragment, avecLesClesDe(baseCourante, fragment)] });
+};
 const sansSynonyme = (db, m) => db.prepare('SELECT count(*) AS n FROM mot_cle_synonyme WHERE mot_cle_id = ?').get(m.id).n === 0;
 
 test('R231 (4) : chaque compétence de la fiche a son mot-clé, de la couleur de sa caractéristique, sans adresse, abréviation ni verrou ; sa définition reprend sa phrase et cite sa caractéristique', () => {
@@ -113,7 +126,8 @@ test('R231 (4) : les mots-clés créés et modifiés — ceux du registre, verro
     assert.notEqual(t.avant, t.apres, t.cle.id);
     const v = cellule(db, t);
     assert.equal(typeof v, 'string', `${t.table} ${t.cle.id}.${t.col}`);
-    assert.ok(v.includes(avecLesClesDe(db, t.apres)), `${t.table} ${t.cle.id}.${t.col} (${t.decision})`);
+    if (!contientLeFragment(db, v, t.apres) && retireParLeSite(t, t.apres)) continue; // le site l'a retiré depuis : sa cellule est au site
+    assert.ok(contientLeFragment(db, v, t.apres), `${t.table} ${t.cle.id}.${t.col} (${t.decision})`);
   }
   // la copie du Doc « Guide pour MJ » (sommaire) n'est pas réécrite
   assert.ok(!registre.textes.some((t) => t.cle.id === 'guide/guide-pour-mj-maverick'));
@@ -140,7 +154,8 @@ test('R231 : les renvois des autres pages visent la page qui porte maintenant le
   assert.ok(registre.renvois.length > 0);
   for (const r of registre.renvois) {
     assert.ok(registre.textes.some((t) => t.table === r.table && t.cle.id === r.cle.id && t.col === r.col && t.apres === r.apres), `${r.cle.id} : dans textes`);
-    assert.ok(cellule(db, r).includes(avecLesClesDe(db, r.apres)), r.cle.id);
+    if (!contientLeFragment(db, cellule(db, r), r.apres) && retireParLeSite(r, r.apres)) continue; // le site l'a retiré depuis
+    assert.ok(contientLeFragment(db, cellule(db, r), r.apres), r.cle.id);
     // les balises du renvoi qui mènent à l'une des deux pages mènent à celle qu'il vise
     const vers = cites(r.apres, true).map((ref) => motCle(db, ref)?.url).filter((u) => [ATTAQUE, DEFENSE].map(adresse).includes(u));
     assert.deepEqual([...new Set(vers)], [adresse(r.vers)], `${r.cle.id} : ${r.apres}`);

@@ -18,7 +18,7 @@ import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { mentionsDesMotsCles } from '../src/lib/mentions-des-mots-cles.mjs';
 import { htmlDeLIcone, pagesDesMentions } from '../src/lib/mots-cles-balises.mjs';
 import { categoriesDesMotsCles, chargerVocabulaire, pagesDesLiens } from '../src/lib/mots-cles-db.mjs';
-import { classeDuMotCle } from '../src/lib/mots-cles-liens.mjs';
+import { classeDuMotCle, motCleDeLaPage } from '../src/lib/mots-cles-liens.mjs';
 import { FAMILLES_DE_LA_PALETTE } from '../src/lib/palette-css.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
 
@@ -134,6 +134,18 @@ test('« rendu identique » : les pages colorées gardent leur classe (magie, ca
   // une page des onglets (« Les dégâts », que le site de dev peut supprimer : cas admis, vérifié) : l'accent du site
   if (existsSync(join(dist, 'regles', 'les-degats', 'index.html'))) assert.match(lire(join('regles', 'les-degats')), /<div class="guide-reference">/, 'une page des onglets : l’accent du site');
   else assert.ok(historiqueSite(ouvrirBase()).supprimee('page', { id: 'guide/les-degats' }), 'guide/les-degats non construite sans que le site de dev l’ait supprimée');
-  // aucune page n'a de couleur sur son <main> au départ (aucun mot-clé coloré ne mène à une page sans gabarit coloré)
-  for (const rel of pages()) assert.doesNotMatch(readFileSync(join(dist, rel), 'utf8'), /<main class=/, relative('.', rel));
+  // aucune page n'a de couleur sur son <main> au départ (aucun mot-clé coloré de l'import ne mène à une page sans gabarit coloré). Le site de dev,
+  // source de ce qu'il modifie, colore des mots-clés ou change leur adresse (les personnages du Lore, 2026-11) : la page où mène un mot-clé qu'il a
+  // créé, coloré ou redirigé prend sa couleur (Q5, lib/mots-cles-liens.mjs#motCleDeLaPage), et seulement elle.
+  const db = ouvrirBase();
+  const h = historiqueSite(db);
+  const vocabulaire = chargerVocabulaire(db);
+  const parLeSite = (m) => h.creee('mot_cle', { id: m.id }) || h.modifiee('mot_cle', { id: m.id }, 'couleur') || h.modifiee('mot_cle', { id: m.id }, 'url');
+  for (const rel of pages()) {
+    const main = /<main class="([^"]*)"/.exec(readFileSync(join(dist, rel), 'utf8'));
+    if (!main) continue;
+    const m = motCleDeLaPage(vocabulaire, `/${rel.split(sep).join('/').replace(/index\.html$/, '')}`);
+    assert.ok(m && parLeSite(m), `${relative('.', rel)} : couleur sur <main> sans mot-clé coloré par le site de dev`);
+    assert.equal(main[1], `page-coloree ${classeDuMotCle(m)}`, `${relative('.', rel)} : la couleur du mot-clé ${m.id}`);
+  }
 });

@@ -7,6 +7,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { enregistrerFiche } from '../serveur/fiches.mjs';
+import { ancresDuCorps, sectionParAncre } from '../src/lib/ancres-figees.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
 import {
   ajusterValeurDuMoment, alignementDe, cransDAlignement, artisanatDe, attributsDe, bonusDuMetier, borner, choisirObjetDeMetier, choixDeMetierValables, inventaireSelonLeMetier,
@@ -778,8 +779,9 @@ test('alignement (demande du propriétaire, guide « Alignement ») : 5 points d
   }
   assert.deepEqual(crans(ecartAxe - 1, 0, 0, 1), { loi: 1, bien: 3 }, 'un penchant reste Neutre');
   assert.deepEqual(cransDAlignement(regles, {}), { loi: 2, bien: 2 }, 'cases vides : le milieu');
-  // les neuf combinaisons sont les titres de la page « Les neuf alignements »
-  const titres = [...historique.valeurDImport('page', { id: 'guide/les-neuf-alignements' }, 'corps_md').matchAll(/^## (.+)$/gm)].map((m) => m[1].trim());
+  // les neuf combinaisons sont les titres de la section « Les neuf alignements » d'« Alignement » (la page « Les neuf alignements » y est fondue
+  // depuis la migration 0123 : ses titres sont les intertitres à ancre figée de la section #les-neuf-alignements)
+  const titres = ancresDuCorps(sectionParAncre(historique.valeurDImport('page', { id: 'guide/alignement' }, 'corps_md'), 'les-neuf-alignements') ?? '').map((a) => a.texte.trim());
   const combinaisons = new Set();
   for (const [l, c] of [[5, 0], [0, 0], [0, 5]]) for (const [b, m] of [[5, 0], [0, 0], [0, 5]]) combinaisons.add(nom(l, c, b, m));
   assert.deepEqual([...combinaisons].sort(), [...titres].sort());

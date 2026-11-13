@@ -15,6 +15,7 @@ import { test } from 'node:test';
 import { indexDesAdresses, pageDeLAdresse } from '../src/lib/adresses-db.mjs';
 import { adresseDuGuide } from '../src/lib/livres.mjs';
 import { corpsDeMetier } from '../src/lib/corps-metiers.mjs';
+import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { decouperArtisanat } from '../src/lib/metier-champs.mjs';
 import { formeCanonique, formesNonCanoniques, lireBalises } from '../src/lib/mots-cles-balises.mjs';
 import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
@@ -24,11 +25,14 @@ import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
 import { casDeSantePotentiel, CONSTANTE_SANTE_POTENTIEL, MAGIE_POTENTIEL, plafondDeSantePotentiel } from './aide-sante-potentiel.mjs';
 import { textesReecrits } from './aide-textes-reecrits.mjs';
 import { retireeParLa0122 } from './aide-migration-0122.mjs';
+import { fragmentRetireParLeSite } from './aide-fragments-du-site.mjs';
 
 const NOM = '0111-relecture-des-regles-contre-les-decisions';
 const registre = JSON.parse(readFileSync(new URL(`../../data/migrations/${NOM}.json`, import.meta.url), 'utf8'));
 const migration = readFileSync(new URL(`../../data/migrations/${NOM}.sql`, import.meta.url), 'utf8');
 const apresLa0111 = () => baseDImport({ garder: lotsAvant('0111') });
+let baseCourante;
+const courante = () => (baseCourante ??= ouvrirBase());
 const valeur = (db, t) => db.prepare(`SELECT "${t.col}" AS v FROM "${t.table}" WHERE id = ?`).get(t.cle.id)?.v;
 // les copies de source (R224 (1) : liste V1 du §10 de docs/sql/a-valider.md, et les copies du Doc « Guide pour MJ » que V2 et V3 citent) : la 0111 ne
 // les touche que par C18 et C19, chaque fois sous une décision
@@ -92,6 +96,9 @@ test('0111 : chaque remplacement est en place dans l’état de la migration (le
     // R231 (migration 0112) réécrit en entier « Attaquer » et « Se défendre » : le fragment est admis remplacé par son `avant`, l'`apres` en place
     if (textesReecrits('0112-r231-attaquer-et-se-defendre').some((r) => r.table === t.table && r.col === t.col && JSON.stringify(r.cle) === JSON.stringify(t.cle)
       && r.avant.includes(t.apres) && !r.apres.includes(t.apres) && v.includes(avecLesClesDe(imp, r.apres)))) continue;
+    // un fragment que le site de dev a retiré depuis (C5 : « Altérations d’états » réécrit par le site le 2026-11-08) : admis, sa cellule est au site
+    if (!v.includes(avecLesClesDe(imp, t.apres))
+      && fragmentRetireParLeSite(courante(), t, t.apres, { lotsAvant: lotsAvant('0111'), ecritures: [t.apres, avecLesClesDe(courante(), t.apres)] })) continue;
     assert.ok(v.includes(avecLesClesDe(imp, t.apres)), `${t.correction} ${t.cle.id} : « ${t.apres.slice(0, 60)}… »`);
     if (!t.apres.includes(t.avant)) assert.ok(!v.includes(avecLesClesDe(imp, t.avant)), `${t.correction} ${t.cle.id} : l’ancien fragment reste`);
   }

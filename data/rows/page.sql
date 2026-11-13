@@ -5989,6 +5989,26 @@ Le Saboteur est un maître des pièges et des explosifs, transformant le champ d
 
 Adaptable, il peut improviser avec les ressources à sa disposition. Même ses bombes peuvent être mises à contribution, forçant l’ennemi à jouer la vigilance. Attention où vous marchez ! Un saboteur est peut-être déjà passé sans que vous le sachiez.
 ', 'draft', 'classes', 'Google Sheet « Classe Maverick V7 », onglet « Voleur »');
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/action-rapides-ic', 'guide', 'action-rapides-ic', 'Action Rapides (IC)', 'action-rapides-ic', 'Les actions courts et secondaire à effectuer avant l''action principale.', NULL, 'Certains sorts et certaines actions portent la mention IC (Instant Cast) ou « action rapide » : ce n’est pas une action à part entière, cela ne casse pas le tour. Un sort IC, par exemple, ne consomme pas le tour du joueur, sauf sur un échec critique.
+
+On en fait trois par tour au plus, et jamais deux fois la même, sauf mention contraire.
+
+Elles se font toujours avant l’action.
+
+L’action du tour peut servir à en faire une quatrième.
+
+Ce sont souvent les objets qui coûtent du temps, et la ceinture en fait gagner (voir {{lequipement}}) :
+
+boire quelque chose : toute l’action, ou une action rapide si la fiole est à la ceinture ;
+
+allumer quelque chose, soigner un personnage : toute l’action, ou deux actions rapides si le nécessaire est à la ceinture ;
+
+sortir un objet du sac : toute l’action ;
+
+mettre des objets à la ceinture : l’action, plus une action rapide.
+
+D’autres choses se font en actions rapides : passer en mode discret pour une attaque discrète en coûte trois (deux pour un voleur), et la posture de vigilance fait une action rapide d’estimer la position d’un ennemi invisible ou discret.
+', 'draft', 'docs', 'Site de dev › édition du 2026-11-08');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/actions-et-mouvements', 'guide', 'actions-et-mouvements', 'Les Actions et mouvements', 'les-actions-et-mouvements', 'En combat, le joueur peut faire un déplacement d''un nombre de cases qui dépend de la vitesse de son personnage (race et armure vont influencer l''attribut en question) et faire son action.', NULL, 'En combat, le joueur peut faire un déplacement d''un nombre de cases qui dépend de {{la-vitesse-et-la-portee|la vitesse}} de son personnage (race et armure vont influencer l''attribut en question) et faire son action.
 
 Remarquez que l''inverse est également possible mais aussi de faire un déplacement léger suivi de l''action, pour terminer le tour en utilisant le reste de ses points de mouvement. Une case parcourue compte pour 1, la première diagonale aussi alors que les diagonales suivantes valent 2.
@@ -6119,6 +6139,164 @@ Les plus extrêmes peuvent au contraire prendre plaisir à la souffrance, à la 
 Le Mal ne signifie donc pas nécessairement être violent ou cruel en permanence. Il se manifeste avant tout par la valeur que le personnage accorde aux autres lorsque leurs intérêts entrent en conflit avec les siens.
 
 Bien, maintenant que nous avons vu les 4 tendances, les 9 combinaisons possibles sont expliquées dans {{les-neuf-alignements}}.
+
+## Les neuf alignements {#les-neuf-alignements}
+
+Les neuf alignements sont formés par la combinaison des deux axes d’alignement. Ils ne constituent pas des personnalités prédéfinies : deux personnages partageant le même alignement peuvent avoir des caractères, des valeurs et des façons d’agir très différentes.
+
+L’alignement représente avant tout la philosophie qui ressort des choix du personnage.
+
+### Loyal Bon {#loyal-bon}
+
+Le Loyal Bon cherche à faire le bien tout en accordant une grande importance à l’ordre, au devoir et au collectif. Il considère généralement que les règles et les institutions peuvent protéger les plus faibles et permettre à une société juste de fonctionner.
+
+Il respecte ses engagements, accorde de l’importance à la confiance et accepte volontiers de faire des sacrifices personnels pour le bien des autres. Il peut combattre l’injustice avec détermination, tout en cherchant à préserver la vie et la dignité de ceux qu’il affronte lorsque cela est possible.
+
+Il possède un fort sens de la moralité et un fort attachement aux règles.
+
+Un Loyal Bon n’est pas obligé d’obéir à une loi qu’il considère profondément injuste. Il peut au contraire chercher à la modifier ou à la combattre, mais il cherchera généralement à le faire selon des principes qu’il considère justes.
+
+Dans ses formes extrêmes, le Loyal Bon peut devenir intransigeant, considérant sa conception du Bien et de la justice comme supérieure à celle des autres.
+
+***Exemple :***
+
+| Façon de se comporter possible | Réflexion/Question possible |
+| :---: | :---: |
+| Défend les innocents, respecte son serment et considère son devoir comme un moyen de protéger ceux qui ne peuvent pas se défendre eux-mêmes. <br><br>Suit une discipline stricte et un code de conduite qu’il s’impose afin de maîtriser ses propres instincts et de pouvoir consacrer sa vie aux autres. <br><br>Cherche à faire respecter une justice équitable, mais refuse d’appliquer aveuglément une loi lorsqu’elle condamnerait injustement un innocent. | *« Cette loi est injuste, mais je ne vais pas simplement la bafouer. Je vais trouver un moyen de la faire changer. »* <br>*<br>« Il a commis un crime, mais il n’est pas nécessaire de le tuer. S’il peut être neutralisé autrement, épargnons sa vie. »* <br>*<br>« J’ai promis de protéger ces gens. Même si personne ne vient m’aider, je resterai jusqu’au bout. »* |
+
+### Loyal Neutre {#loyal-neutre}
+
+Le Loyal Neutre accorde la priorité à l’ordre, au devoir et au fonctionnement du collectif, sans que le Bien ou le Mal ne constitue nécessairement sa principale préoccupation.
+
+Il respecte les règles, les traditions, les engagements et la hiérarchie lorsqu’il les considère légitimes. Il peut accepter des contraintes personnelles importantes au nom de son devoir et attend généralement la même discipline des autres.
+
+Il n’est cependant pas forcément attaché à une loi particulière : il peut soutenir ou combattre une règle selon la place qu’elle occupe dans l’ordre qu’il défend.
+
+Dans ses formes extrêmes, le Loyal Neutre peut devenir rigide, accordant tellement d’importance à l’ordre qu’il en vient à négliger les individus au nom du système.
+
+***Exemple :***
+
+| Façon de se comporter possible | Réflexion/Question possible |
+| :---: | :---: |
+| La discipline, la chaîne de commandement et le devoir passent avant ses préférences personnelles. <br><br>Préserve les coutumes de son peuple, convaincu qu’elles sont essentielles à son identité et à sa cohésion. <br><br>Applique les règles avec sérieux et impartialité, considérant que le système ne peut fonctionner si chacun décide individuellement quelles règles respecter. | *« Je n’approuve peut-être pas cet ordre, mais c’est mon supérieur et j’ai accepté de servir sous ses ordres. »* <br>*<br>« Si chacun décide quelles lois il respecte, nous n’avons plus de société. »* <br>*<br>« Je dois tenir ma parole. Que cela m’arrange ou non n’a aucune importance. »* |
+
+### Loyal Mauvais {#loyal-mauvais}
+
+Le Loyal Mauvais cherche à satisfaire ses propres intérêts tout en s’appuyant sur l’ordre, la hiérarchie et les règles.
+
+Il peut être discipliné, fiable et respecter scrupuleusement sa parole. Il ne voit cependant pas nécessairement ces qualités comme des moyens de protéger les autres, mais comme des principes utiles pour maintenir une structure dont il peut tirer profit.
+
+Il peut accepter de faire souffrir ou de sacrifier certaines personnes lorsque cela sert ses objectifs, particulièrement lorsqu’il considère que leur sacrifice est nécessaire au maintien de l’ordre ou à la réussite de son groupe.
+
+Un Loyal Mauvais n’est pas nécessairement cruel ou violent. Il peut préférer une solution légale, organisée et efficace à une démonstration de force.
+
+Dans ses formes extrêmes, il peut considérer que la domination et la hiérarchie sont naturelles, et que certains individus ou groupes ont davantage de valeur ou de droits que d’autres.
+
+***Exemple :***
+
+| Façon de se comporter possible | Réflexion/Question possible |
+| :---: | :---: |
+| Maintient une société extrêmement hiérarchisée et considère que la peur et l’autorité sont nécessaires pour empêcher le chaos. <br><br>Respecte scrupuleusement les procédures, mais utilise sa position et les lois pour favoriser ses propres intérêts. <br><br>Est profondément loyal envers son royaume et sa hiérarchie, mais considère que les individus peuvent être sacrifiés lorsque les intérêts du collectif l’exigent. | *« La loi est la même pour tout le monde. S’il doit être exécuté, alors il sera exécuté. »* <br>*<br>« Je pourrais trahir mon supérieur, mais si je commence à le faire, pourquoi mes hommes resteraient-ils loyaux envers moi ? »* <br>*<br>« Je préfère gouverner par la peur que de laisser le chaos s’installer. Au moins, tout le monde connaît sa place. »* |
+
+### Neutre Bon {#neutre-bon}
+
+Le Neutre Bon cherche avant tout à faire le bien et à protéger les autres, sans accorder une importance particulière à l’ordre ou à la liberté.
+
+Il peut respecter les lois lorsqu’elles lui permettent d’aider les autres, mais n’hésitera pas à les contourner lorsqu’elles deviennent un obstacle. Il peut également accepter certaines contraintes lorsqu’elles sont utiles, sans pour autant considérer qu’elles doivent être respectées par principe.
+
+Il accorde généralement une grande importance à la compassion, au pardon, à la générosité et à la seconde chance.
+
+Dans ses formes extrêmes, le Neutre Bon peut devenir excessivement conciliant, au point de vouloir sauver ou pardonner quelqu’un alors que cela représente un danger important pour les autres.
+
+***Exemple :***
+
+| Façon de se comporter possible | Réflexion/Question possible |
+| :---: | :---: |
+| Aide toute personne qui en a besoin, sans se soucier de son statut, de ses origines ou de son appartenance à une faction. <br><br>Intervient lorsqu’il voit quelqu’un en danger, même si aucune loi ne lui impose de le faire. <br><br>Cherche avant tout à résoudre les conflits et à éviter les souffrances inutiles, quitte à contourner certaines règles pour y parvenir. | *« Cette règle existe pour protéger les gens, alors je la respecterai. Mais si elle les met en danger, je passerai outre. »* <br>*<br>« Je ne sais pas s’il mérite une seconde chance, mais tant que je peux lui en donner une sans mettre les autres en danger, je le ferai. »* <br>*<br>« Peu importe qui a raison ou qui a l’autorité. Il y a quelqu’un qui souffre et je peux l’aider. »* |
+
+### Neutre {#neutre}
+
+Le Neutre ne place aucune des quatre tendances au-dessus des autres.
+
+Il agit principalement en fonction des circonstances, de ses objectifs et de ses propres priorités. Il peut respecter une règle lorsqu’elle lui semble utile, la contourner lorsqu’elle devient gênante, aider quelqu’un lorsqu’il en ressent le besoin ou privilégier ses propres intérêts lorsque le coût du sacrifice lui paraît trop important.
+
+Le Neutre n’est pas nécessairement indifférent, égoïste ou dépourvu de convictions. Il peut simplement refuser de faire d’une philosophie particulière une règle absolue de son existence.
+
+Dans ses formes extrêmes, il peut devenir opportuniste ou indécis, changeant régulièrement de position selon ce qui lui semble le plus avantageux.
+
+***Exemple :***
+
+| Façon de se comporter possible | Réflexion/Question possible |
+| :---: | :---: |
+| Accepte les contrats qui lui conviennent et aide ses employeurs tant que le risque reste acceptable. <br><br>Ne cherche ni la gloire ni la justice : il fait principalement ce qui lui permet de rester en vie.<br><br>Peut se montrer généreux, égoïste, loyal ou opportuniste selon les circonstances et les personnes impliquées. | *« Pourquoi risquer ma vie pour eux ? … Bon, d’accord, mais vous me devrez une faveur. »* <br>*<br>« Cette règle m’est utile aujourd’hui, alors je vais la respecter. Demain, on verra. »* <br>*<br>« Je ne cherche ni à sauver le monde ni à le détruire. Je veux simplement arriver vivant au bout de cette aventure. »* |
+
+### Neutre Mauvais {#neutre-mauvais}
+
+Le Neutre Mauvais place ses propres intérêts au-dessus de ceux des autres, sans attachement particulier à l’ordre ou au chaos.
+
+Il peut respecter les règles lorsqu’elles lui sont utiles et les enfreindre lorsqu’elles représentent un obstacle. De la même manière, il peut coopérer avec les autres lorsque cela lui profite, sans ressentir d’obligation particulière envers eux.
+
+Il n’a généralement aucun problème à mentir, manipuler, voler ou blesser autrui si cela lui permet d’obtenir ce qu’il désire.
+
+Contrairement au Chaotique Mauvais, il n’a pas besoin de provoquer le désordre ou de suivre ses émotions. Il privilégie souvent l’efficacité et son propre intérêt.
+
+Dans ses formes extrêmes, il peut devenir profondément égoïste et considérer les autres uniquement comme des outils permettant de satisfaire ses objectifs.
+
+***Exemple :***
+
+| Façon de se comporter possible | Réflexion/Question possible |
+| :---: | :---: |
+| Vole, ment et manipule lorsqu’il y trouve son intérêt, sans chercher particulièrement à provoquer le chaos. <br><br>Exploite les besoins des autres et profite de leur faiblesse pour maximiser ses bénéfices. <br><br>Tue pour obtenir de l’argent ou atteindre un objectif, sans ressentir le besoin de faire souffrir ses victimes ou de provoquer davantage de désordre. | *« Je pourrais l’aider, mais qu’est-ce que j’y gagne ? »* <br>*<br>« S’il faut sacrifier quelqu’un pour réussir, ce sera lui. Je ne vais certainement pas me sacrifier à sa place. »* <br>*<br>« Je me fiche que ce soit légal. Si personne ne peut m’arrêter et que j’y gagne quelque chose, pourquoi m’en priver ? »* |
+
+### Chaotique Bon {#chaotique-bon}
+
+Le Chaotique Bon cherche à faire le bien tout en accordant une grande importance à la liberté et au libre arbitre.
+
+Il n’accepte pas qu’une loi, une tradition ou une autorité soit une raison suffisante pour empêcher quelqu’un d’être aidé. Il peut donc désobéir ouvertement lorsqu’il estime qu’une règle nuit aux personnes qu’il cherche à protéger.
+
+Il suit souvent ses convictions, ses émotions ou son instinct et peut prendre des décisions spontanées lorsqu’une personne est en danger. Il accepte plus facilement que les Loyaux de prendre des risques ou de sortir des méthodes établies pour faire ce qu’il considère comme juste.
+
+Dans ses formes extrêmes, le Chaotique Bon peut devenir téméraire, convaincu que ses bonnes intentions justifient de prendre des décisions sans suffisamment considérer leurs conséquences.
+
+***Exemple :***
+
+| Façon de se comporter possible | Réflexion/Question possible |
+| :---: | :---: |
+| Combat les autorités qu’il considère oppressives et libère ceux qu’elles maintiennent sous leur contrôle. <br><br>Enfreint régulièrement les lois pour aider les personnes qu’il estime victimes d’un système injuste. <br><br>Suit son instinct et intervient spontanément lorsqu’il voit quelqu’un en danger, même si cela ruine les plans du groupe. | *« Ils disent que c’est interdit ? Alors qu’ils viennent m’arrêter après que j’ai sauvé ces gens. »* <br>*<br>« Je sais que ce n’était pas le plan, mais cette personne avait besoin de moi. Je n’allais quand même pas la laisser mourir. »* <br>*<br>« Je préfère désobéir et faire ce que je pense juste plutôt que regarder quelqu’un souffrir parce que personne n’ose enfreindre les règles. »* |
+
+### Chaotique Neutre {#chaotique-neutre}
+
+Le Chaotique Neutre place la liberté individuelle au-dessus de l’ordre et des contraintes imposées par le collectif.
+
+Il refuse généralement qu’une autorité décide de la manière dont il doit vivre et préfère tracer sa propre route. Il peut suivre ses émotions, ses convictions ou simplement ses envies, et s’adapter rapidement lorsque les circonstances changent.
+
+Il n’est pas nécessairement hostile aux autres et peut être profondément attaché à certaines personnes. Il considère cependant que chacun doit rester libre de faire ses propres choix.
+
+Dans ses formes extrêmes, le Chaotique Neutre peut devenir irresponsable ou individualiste, refusant toute contrainte même lorsqu’elle serait nécessaire au bien du groupe ou de ses proches.
+
+***Exemple :***
+
+| Façon de se comporter possible | Réflexion/Question possible |
+| :---: | :---: |
+| Refuse de s’attacher à une société ou à une institution et voyage constamment pour rester libre. <br><br>Déteste recevoir des ordres et préfère toujours trouver sa propre manière de résoudre un problème. <br><br>Suit ses propres convictions et son propre mode de vie, sans se soucier de savoir si celui-ci correspond aux attentes de la société. | *« Pourquoi devrais-je vivre comme ils l’ont décidé ? Je choisirai moi-même ce que je veux devenir. »* <br>*<br>« Ce n’est pas parce que j’ai accepté de les accompagner que je leur appartiens. Si je veux partir, je partirai. »* <br>*<br>« Cette règle ne me convient pas. Je peux soit la contourner, soit partir. Dans tous les cas, personne ne décidera pour moi. »* |
+
+### Chaotique Mauvais {#chaotique-mauvais}
+
+Le Chaotique Mauvais place sa liberté et ses propres désirs au-dessus de toute considération pour les autres.
+
+Il rejette les règles et les autorités qui limitent sa volonté et n’hésite pas à faire souffrir autrui pour obtenir ce qu’il souhaite. Il peut agir sous l’influence de ses émotions, de sa colère ou de ses instincts et accepte plus facilement de prendre des risques importants pour satisfaire ses objectifs.
+
+Contrairement au Neutre Mauvais, il peut rejeter une solution efficace simplement parce qu’elle implique de se soumettre à quelqu’un ou à une règle.
+
+Dans ses formes extrêmes, le Chaotique Mauvais peut devenir destructeur et sadique, allant jusqu’à faire souffrir ou détruire sans bénéfice réel, simplement parce qu’il en a le pouvoir ou qu’il y trouve du plaisir.
+
+***Exemple :***
+
+| Façon de se comporter possible | Réflexion/Question possible |
+| :---: | :---: |
+| Prend ce qu’il veut par la force et refuse toute autorité susceptible de limiter ses désirs. <br><br>Sème la violence et le chaos parce qu’il considère que personne ne devrait pouvoir lui imposer de limites. <br><br>Utilise sa liberté pour satisfaire ses pulsions et fait volontairement souffrir les autres lorsqu’il en retire du plaisir. | *« Pourquoi devrais-je respecter cette loi ? Qui va m’en empêcher ? »* <br>*<br>« Je pourrais simplement négocier avec lui… mais j’ai envie de lui faire payer. »* <br>*<br>« Je préfère tout perdre plutôt que de laisser quelqu’un m’imposer ce que je dois faire. »* |
+
+**L’alignement n’impose pas au personnage sa manière d’agir. Il permet de représenter les tendances qui se dégagent de ses choix.**
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/alterations-d-etats', 'guide', 'alterations-d-etats', 'Altérations d’états', 'alterations-detats', 'Une altération d’état change la condition d’un personnage : poison, brûlure, peur, paralysie…', NULL, 'Une **altération d’état** change la condition d’un personnage : poison, brûlure, peur, paralysie… Elle lui inflige des malus, et il a tout intérêt à s’en débarrasser vite.
 
@@ -6137,16 +6315,16 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 Attaquée, la cible peut tenter :
 
-- une {{parade|parade}}, avec son arme ou son {{bouclier|bouclier}} : {{competence|compétence}} *Parade* ({{force}}) ;
-- une {{esquive|esquive}} : compétence *Esquive* ({{agilite}}).
+- une {{parade|parade}}, avec son arme, sa magie ou son {{bouclier|bouclier}}.
+- une {{esquive|esquive}}.
 
-C’est son {{jet-de-defense|jet de défense}}, un {{des|D100}}. Pour bloquer entièrement le coup, deux conditions : **réussir son jet** (faire son {{score|score}} ou moins), **et faire un résultat égal ou inférieur à celui de l’attaquant.** Au D100, un {{meilleur-resultat|meilleur résultat}} est un résultat plus bas.
+Peu importe le choix entre les deux, il s''agit de son {{jet-de-defense|jet de défense}}, sur un {{des|D100}}. Le résultat du dés est ensuite comparé avec la compétence mais aussi au jet de l''attaque.<br><br>Attention : Certaines attaques peuvent être imparable, inésquivable ou les deux.
 
-| Résultat de la défense | Ce qui se passe |
-| --- | --- |
-| Réussie, avec un résultat égal ou inférieur à celui de l’attaque | Le coup est entièrement bloqué. |
-| Réussie, mais avec un résultat supérieur à celui de l’attaque | **{{defense-partielle}}** : les dégâts finaux sont divisés par 2 (voir {{degats\|Les dégâts}}). Si c’est une parade au bouclier, ses {{armure-physique\|AP}} ou son {{armure-magique\|AM}} comptent à ce moment-là. |
-| Ratée, même avec un résultat inférieur à celui de l’attaque | La défense échoue : les dégâts sont entiers. |
+| Résultat du jet | Resultat de la défense | Effet sur l''Attaque |
+| --- | --- | --- |
+| Résultat <= Compétence<br>Résultat <= Attaque | {{parade\|parade}} / {{esquive\|esquive}} totale. | L''attaque n''a aucun effet. Aucun calcul de dégâts. |
+| Résultat <= Compétence<br>Résultat > Attaque | {{parade\|parade}} / {{esquive\|esquive}} {{defense-partielle\|partielle}} | Les {{degats\|Les dégâts finaux}} sont divisés par 2.<br>En cas de parade partielle avec un {{bouclier\|bouclier}} ses AP et AM sont pris en compte. |
+| Résultat > Compétence | Échec de la {{parade\|parade}} / {{esquive\|esquive}} | L''attaque fait son effet total. |
 
 *Exemple : l’attaque touche avec un résultat de 42, et la cible a 60 % en Esquive. Sur 42 ou moins, esquive totale ; de 43 à 60, esquive partielle ; sur 61 et plus, l’esquive échoue.*
 
@@ -6155,7 +6333,9 @@ C’est son {{jet-de-defense|jet de défense}}, un {{des|D100}}. Pour bloquer en
 - **Contre une {{reussite-critique|réussite critique}} de l’attaquant**, seule une réussite critique de la défense compte : un résultat critique égal ou inférieur à celui de l’attaquant bloque entièrement le coup ; un résultat critique supérieur à celui de l’attaquant donne une {{defense-partielle|défense partielle}} ; tout autre résultat est un échec, avec des dégâts entiers, même si le jet est réussi.
 
   *Exemple : l’attaquant fait une réussite critique sur 3, et la plage de réussite critique de la défense va de 1 à 5. Sur 1, 2 ou 3, le coup est entièrement bloqué ; sur 4 ou 5 (ou plus si sa plage de critique est plus large), défense partielle ; au-delà, la défense échoue.*
+
 - **Réussite critique en défense** : une contre-attaque est possible (dans la mesure du possible), ou désarmer l’adversaire ; le {{maitre-du-jeu|MJ}} peut aussi imaginer autre chose. La {{posture|posture défensive}} l’élargit, jamais au-delà de 1 à 15 (voir {{posture|Les postures}} et {{reussites-echecs-critiques}}).
+
 - **{{echec-critique}} en défense** : l’{{armure-physique|AP}} et l’{{armure-magique|AM}} de la cible ne comptent pas, et l’attaquant ajoute +8 à ses dégâts (ou autre chose, au choix du MJ).
 
 ## Combien de défenses par tour ? {#defenses-par-tour}
@@ -6182,10 +6362,10 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 ## Le jet d’attaque {#jet-d-attaque}
 
-L’attaquant lance un {{des|D100}} et doit faire son {{score|score}} ou moins dans la {{competence|compétence}} qui sert à l’attaque : c’est son {{jet-dattaque|jet d’attaque}}. Entre parenthèses, la {{caracteristiques|caractéristique}} dont dépend la compétence.
+L’attaquant lance un {{des|D100}} et doit faire son {{score|score}} ou moins dans la {{competence|compétence}} qui sert à l’attaque : c’est son {{jet-dattaque|jet d’attaque}}. Entre parenthèses, la {{caracteristique|caractéristique}} dont dépend la compétence.
 
 - **avec une arme**, la compétence de l’arme, que donne la colonne *Compétence* de la page des {{armes|armes}} : {{arme-legere}} ({{agilite}}), {{arme-lourde}} ({{force}}), {{arc}} ({{force}}) ou {{arbalete}} ({{perception}}) ; certaines armes en écrivent deux (Lourde / Légère, Arc / Légère) : le joueur choisit alors celle des deux qui sert ;
-- **avec un sort**, la compétence {{magie-competence|Magie}} ({{intelligence}}) ; les {{mage-rouge|mages rouge}}, {{mage-bleu|bleu}} et {{mage-vert|vert}} lancent les leurs avec {{concentration}} ({{volonte}}).
+- **avec un sort**, la compétence {{magie|Magie}} ({{intelligence}}) ; les {{mage-rouge|mages rouge}}, {{mage-bleu|bleu}} et {{mage-vert|vert}} lancent les leurs avec {{concentration}} ({{volonte}}).
 
 La posture de l’attaquant joue aussi sur son jet et sur ses dégâts (voir {{posture|Les postures}}).
 
@@ -6239,65 +6419,49 @@ Le détail de chacune est dans {{tenaille|La prise en tenaille et zone d’influ
 - **L’attaque discrète.** Frapper une cible qui ne vous voit pas venir ajoute un dé aux dégâts (2d6 à la dague deviennent 3d6). Il faut passer en mode discret (trois {{instant-cast|actions rapides}}, deux pour un {{voleur|voleur}}), réussir un jet de {{ruse}}, et qu’aucun ennemi ne vous voie clairement. La cible tente alors un jet d’{{observation}} ou de {{distinction}} : si elle fait mieux que votre jet de discrétion, la discrétion est perdue, et le dé en plus avec elle. À ne pas confondre avec l’attaque sournoise, qui vient d’une classe.
 - **L’embuscade.** Vous consommez l’{{action|action}} de votre tour pour attendre un ennemi, et lui porter une attaque d’opportunité dès qu’il entre dans la zone voulue : à une distance égale à la {{vitesse|vitesse}} divisée par 2 avec une arme de corps à corps (on fonce alors sur lui), à la {{portee|portée}} de l’arme avec une arme à distance, à la portée du sort avec la magie. Posture, déplacement et actions rapides restent possibles pendant ce tour. Ce que peut faire la victime est dans {{se-defendre}}.
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/bienvenue', 'guide', 'bienvenue', 'Bienvenue dans Maverick', 'bienvenue-dans-maverick', 'MaverickJDR en quelques mots, puis le jeu de rôle pour qui le découvre : qui fait quoi, comment avance une partie, comment lire les dés.', NULL, '## MaverickJDR ?
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/bienvenue', 'guide', 'bienvenue', 'Bienvenue dans Maverick JDR!', 'bienvenue-dans-maverick-jdr', 'Présentation générale', NULL, '## Maverick JDR ?
 
-C’est un univers médiéval-fantasy où la magie est omniprésente. On y retrouve des figures familières comme les {{humain|humains}}, les elfes ou les {{nain|nains}}… mais aussi des peuples plus exotiques tels que les {{orios-race}}, les {{drassahthac|Drassah’thac}} ou encore les {{drakos}}.
+Maverick JDR est un jeu de rôle complet, prenant place au cœur d''un {{lunivers|univers}} de médiéval fantasy où la magie. Imprégnée dans chaque être vivant, de l''humain du quotidien à l''animal domestique, et même jusqu''au moindre aliment.<br><br>Conçu pour être à la fois accessible au plus grand nombre tout en donnant un vaste choix de possibilités, Maverick JDR conviendra à la fois aux novices, qu''au rôlistes les plus aguerris.
 
-Vous incarnez les personnages centraux de fabuleuses histoires, et surtout, vos actions ont un véritable impact sur le monde qui vous entoure. Les dangers seront nombreux, mais vous aurez les moyens et le courage de les affronter !
+Bienvenu à vous, futur héros… ou grand antagoniste , ou un survivant entre les deux. Votre nouvelle histoire s''inscrit ici!
 
-MaverickJDR est un jeu de rôle complet, mais pensé pour rester simple et accessible. Peu importe votre expérience : que vous soyez vétéran du jeu de rôle ou que vous n’y ayez jamais joué, vous pouvez plonger sans difficulté dans Maverick.
+## Un instant… Le jeu de rôle, comment ça marche ?
 
-Ses races, ses magies et ses classes vous attendent dans {{lunivers}}.
-
-L’activité JDR se fait principalement sur le Discord officiel : <https://discord.gg/GMGBnjzfMk>.
-
-Le Discord, la page Tipeee du jeu et l’annonce de notre prochaine rencontre IRL sont réunis [sur la page d’accueil](/#lien-discord).
-
-## Le jeu de rôle, comment ça marche ?
-
-Un jeu de rôle, c’est une histoire que l’on raconte ensemble, en parlant. Le maître du jeu en est le metteur en scène et les joueurs en sont les premiers rôles : ils font partie de l’écriture de l’histoire, ils ont leur mot à dire.
+Un jeu de rôle, c''est un mélange entre les jeux de plateaux et un théâtre d''improvisation entre potes. C’est une histoire que l’on raconte ensemble, en parlant, encadré par des règles et jets de dés tout aussi vénérés que craints.
 
 ### Qui fait quoi ?
 
-- **Le maître du jeu (MJ)** raconte l’histoire. Il pose le monde, décrit ce que vivent les personnages et joue tous ceux qu’ils croisent, les personnages non joueurs (PNJ), ainsi que les monstres. Il est aussi le juge de la partie : il décide de ce qui est possible, improbable ou impossible, en restant impartial.
-- **Chaque joueur** incarne son personnage : il dit ce que celui-ci fait, ce qu’il dit, ce qu’il tente.
-- **La fiche de personnage** réunit tout ce que le personnage sait faire : ses caractéristiques et ses compétences, ses dons, sa magie, son équipement. {{creer-son-personnage}} explique comment la remplir.
+- **Le maître du jeu (MJ)** raconte l’histoire. Il pose le monde, décrit ce que vivent les personnages et joue tous ceux qu’ils croisent, les {{personnage-non-joueur|personnages non joueurs}} (PNJ), ainsi que les monstres. Il est aussi le juge de la partie : il décide de ce qui est possible, improbable ou impossible, en restant impartial. Il est aussi le gardien des nombreuses règles communes conçues pour structurer une cohérence commune.
+- **Chaque joueur** incarne son propre {{personnage-joueur}} (PJ). Il aurai soit choisit un {{pretire}} directement fourni par le jeu ou le MJ, soit il l''aurai créé de lui même. Il dit ce que celui-ci fait, ce qu’il dit, ce qu’il tente. Ils son les acteurs et scénaristes de leur propre histoire au travers des situations qu''ils traversent... volontairement ou non. Chaque personnage est représenté par sa {{fiche-de-personnage}}
 
-### Comment avance une partie ?
+### Comment on joue alors ?
 
-Autour d’une vraie table comme sur le Discord, une partie avance comme une conversation :
+Autour d’une vraie table comme sur le Discord, une partie avance en répétant une boucle.
 
 1. Le MJ décrit la situation.
-2. Les joueurs posent leurs questions.
-3. Chacun annonce comment réagit son personnage.
-4. Si l’issue est incertaine, on lance les dés.
-5. Le MJ interprète l’action et le jet, puis décrit ce qui en découle.
+2. Un ou plusieurs joueurs demande ce que son personnage peut percevoir comme information complémentaire et / décider comment réagir.
+3. Si l’issue est incertaine, on effectue un {{des|jet de dés}}
+4. Le MJ interprète l’action et le résultat des dés, puis décrit ce qui en découle.
 
-Et l’on recommence, jusqu’au bout de l’aventure. D’une partie à l’autre, les personnages gagnent de l’expérience et montent de niveau ({{fiche-de-personnage-experience-niveau-global|La montée de niveau}}).
+Et l’on recommence, jusqu’au bout de l’aventure. D’une partie à l’autre, les personnages gagnent de l’expérience et montent de niveau ({{fiche-de-personnage-experience-niveau-global|La montée de niveau}}), symbolisant la progression des personnages en terme de maîtrise de leur capacité et de leur puissance.
 
-Voici à quoi cela ressemble :
+Voici un exemple quoi cela ressemble avec un échange entre Marc, en tant que MJ, et Julie, joueuse qui incarne Rasha, une barde.
 
-> **MJ** : La nuit tombe quand vous arrivez aux portes de la ville. Un garde vous arrête : plus personne n’entre à cette heure.
+> **Marc**: La nuit tombe quand vous arrivez aux portes de la ville. Un garde vous arrête : plus personne n’entre à cette heure.
 >
-> **Joueuse de la barde** : Ma barde lui propose de lui jouer un air pour égayer sa garde, s’il nous laisse passer.
+> **Julie** : Je regarde le garde dans les yeux et je lui dit : "Oh, je vous prie. Laissez nous passer. Nous n''avons nulle part ailleurs où nous aller." Et je sort mon instrument commençant une petite chanson pour l''amadouer.
 >
-> **MJ** : Il hésite… Fais un jet de Diplomatie.
+> **Marc: **Il te regarde, intrigué. Fait un moi un jet en Diplomatie.
 >
-> **Joueuse de la barde** : J’ai 50 en Diplomatie, et le dé fait 34 : c’est réussi !
+> **Julie ** : Alors j''ai 65 en Diplomatie, donc ça fait 65 ou moins...
 >
-> **MJ** : Le garde écoute la chanson jusqu’au bout, puis vous ouvre la petite porte.
+> **Marc**: Vu que tu chante en même temps, je te donne un avantage. Tu lance deux dés et tu garde le meilleurs résultat.
+>
+> **Julie **: *\*Lance deux dés 100 et obtiens 83 et 32\* *32! C''est une réussite.
+>
+> **Marc**: Le garde écoute la chanson jusqu’au bout, puis vous ouvre la petite porte.
 
-Demander son chemin à un passant ne demande aucun jet : l’issue est certaine. Convaincre un garde d’ouvrir une porte fermée, si.
-
-### Lire les dés
-
-Un dé s’écrit avec un **D** (ou un **d**) suivi de son nombre de faces ; le nombre écrit devant dit combien de dés lancer :
-
-- **D100** : un nombre de 1 à 100, le dé de presque toutes les actions. Il faut faire son score ou moins pour réussir. Le score d’une compétence vaut dix fois sa caractéristique, plus ses points naturels et acquis : avec 3 en Social et 20 points en Diplomatie, la barde de l’exemple a 50. De 1 à 5, c’est une réussite critique ; de 96 à 100, un échec critique ({{reussir-une-action}}).
-- **1D20** : un dé à 20 faces. On le lance par exemple pour l’initiative, qui dit qui joue en premier pendant un combat.
-- **2d6+2** : deux dés à 6 faces, additionnés, plus 2. Les dégâts et les soins s’écrivent ainsi, avec des dés de 4 à 20 faces.
-
-Selon la table, chacun lance ses propres dés, ou le MJ les lance tous ; quand chacun lance les siens, ceux des joueurs se font toujours à découvert. Le MJ, lui, peut garder les siens secrets.
+Ici, demander son chemin à un passant ne demande aucun jet : l’issue est certaine. Convaincre un garde d’ouvrir une porte fermée, si.<br> C''est quoi le but du jeu. Qui gagne à la fin?  Il n''y pas de notion de "gagner" ou de "perdre". Le Maître du jeu n''est pas l''antagoniste des Joueurs qui joue pour leur mettre des bâtons dans les roues. Il est le narrateur dans l''histoire dont ils sont les personnages principaux. <br><br>Certes, vos personnages peuvent tomber, victimes d''une série de jets de dés cruellement défavorable ou d''une décision imprudente. Mais la vraie victoire est ailleurs : écrire une histoire dont on parlera encore hors des sessions de jeu. Et comme dans toute grande fiction, la « défaite » des protagonistes n''est souvent qu''une étape, le prélude d''un retour en force qui se grave dans la mémoire de chaque participant.
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/blessures-et-etats', 'guide', 'blessures-et-etats', 'Blessure et mort', 'blessure-et-mort', 'Le coma et les jets de survie, la corruption, et comment récupérer santé, chakra et barrière.', NULL, 'Un personnage peut perdre sa santé, sa {{barriere|barrière}} et son {{chakra|chakra}}, tomber dans le coma, ou subir une altération d’état qui le gêne pendant plusieurs tours. Voici ce qui lui arrive alors, et comment s’en remettre.
 
@@ -6540,7 +6704,7 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 - **Le personnage** : son nom, son surnom, sa race, son origine, son alignement, ses magies, ses dieux et sa bourse.
 - **La classe et l’expérience** : sa ou ses classes, son niveau et l’expérience qu’il a accumulée.
-- **Les attributs** : santé, {{chakra|chakra}}, {{barriere|barrière}}, vitesse, initiative…
+- **Les attributs** : {{sante}}, {{chakra}}, {{barriere}}, {{vitesse}}, {{initiative}}…
 - **Les caractéristiques et les compétences** : les scores de tous ses jets de dés.
 - **Les dons** : ce que lui apportent sa race, sa classe, son métier, ses entraînements.
 - **L’équipement** : ses armes, son armure, son bouclier, ses accessoires, sa ceinture et son inventaire.
@@ -6674,7 +6838,7 @@ Le document des métiers accompagne ses métiers de repères sur leurs bonus, qu
 
 Et, quoi qu’il arrive, le MJ a toujours raison. Les règles complètes : {{regles-des-metiers}}.
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-accessoires-et-ceinture', 'guide', 'fiche-accessoires-et-ceinture', 'Fiche de personnage : Accessoires et Ceinture', 'fiche-de-personnage-accessoires-et-ceinture', '6 emplacements pour y mettre des accessoires aux effets variés.', NULL, '## Accessoires
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-accessoires-et-ceinture', 'guide', 'fiche-accessoires-et-ceinture', 'Accessoires et Ceinture', 'accessoires-et-ceinture', '6 emplacements pour y mettre des accessoires aux effets variés.', NULL, '## Accessoires
 
 6 emplacements pour y mettre des accessoires aux effets variés. Plus d’info dans “[Ressources et craft](https://docs.google.com/spreadsheets/u/0/d/1KkOG6FYjIf62Y_xLQxIE8aQTZFLlKPXmCB9e7XU3-vw/edit)” et l’onglet “Accessoires”.
 
@@ -6697,7 +6861,7 @@ Les objets sont dans la ceinture ne peuvent pas dépasser 3 exemplaires du même
 
 Les carquois, sac de bombe ou sac de pierre DOIVENT être mis dans la ceinture pour être utilisés, vous pouvez mettre le nombre de flèches que peut contenir le carquois maximum
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-armure-defense-bouclier', 'guide', 'fiche-armure-defense-bouclier', 'Fiche de personnage : Armure/Défense/Bouclier', 'fiche-de-personnage-armure-defense-bouclier', 'C’est ici qu’on retrouve toutes les informations sur la défense du personnage.', NULL, 'C’est ici qu’on retrouve toutes les informations sur la défense du personnage.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-armure-defense-bouclier', 'guide', 'fiche-armure-defense-bouclier', 'Armure/Défense/Bouclier', 'armure-defense-bouclier', 'C’est ici qu’on retrouve toutes les informations sur la défense du personnage.', NULL, 'C’est ici qu’on retrouve toutes les informations sur la défense du personnage.
 
 **AP base** : Il s’agit de l’armure physique que possède naturellement un personnage, elle est déterminée si une race possède un bonus d’armure physique (exemple : Certains Drakos, Namazu, etc…) ou alors par un objet.
 
@@ -6718,11 +6882,11 @@ Chaque partie possède sa {{solidite|solidité}} (comme pour les armes), sauf un
 
 Le Bouclier permet d’avoir des AP et AM en plus de votre armure mais pour qu’ils soient comptés, ça implique une “Parade partielle”. Il est fait d’une forme et d’une matière, allez [ici](https://docs.google.com/spreadsheets/u/0/d/1KkOG6FYjIf62Y_xLQxIE8aQTZFLlKPXmCB9e7XU3-vw/edit) pour plus d''informations.
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-attributs', 'guide', 'fiche-attributs', 'Fiche de personnage : Attributs', 'fiche-de-personnage-attributs', 'Santé : Il s''agit du nombre de points de vie que possède le personnage.', NULL, '**Santé** : Il s''agit du nombre de points de vie que possède le personnage, si ce score atteint 0 ou moins le personnage est considéré comme dans le coma et doit faire des jets de survie. Si jamais 3 jets de survie échouent, le personnage meurt. Un seul jet de survie réussi suffit à stabiliser le personnage. La santé est déterminée par plusieurs choses => La Race, la ou les Classes ainsi que de la Magie du Sang ou de la Nécromancie (si jamais vous avez l''une de ces magies)
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-attributs', 'guide', 'fiche-attributs', 'Attributs', 'attributs', 'Ressources individuelles du personnages, représentant sa vitalité et son ennergie.', NULL, '**{{sante}} **: Il s’agit du nombre de points de vie que possède le personnage, si ce score atteint 0 ou moins le personnage est considéré comme dans le coma et doit faire des jets de survie. Si jamais 3 jets de survie échouent, le personnage meurt. Un seul jet de survie réussi suffit à stabiliser le personnage. La santé est déterminée par plusieurs choses => La Race, la ou les Classes ainsi que de la Magie du Sang (si jamais vous avez cette magie)
 
-**Âme/Sang** : Appelée aussi la 4ème barre, il s''agit d''un attribut qui ne concerne que les utilisateurs de la Nécromancie et de la Magie du Sang . Il s''agit d''une réserve qui doit être utilisée lors de l''utilisation de certains sortilèges. Cet attribut se recharge de 1 point par tour dans les combats. Il est fixé à 10 pour les deux.
+**{{ame}}/{{sang}}** : Appelée aussi la 4ème barre, il s’agit d’un attribut qui ne concerne que les utilisateurs de la Nécromancie et de la Magie du Sang . Il s’agit d’une réserve qui doit être utilisée lors de l’utilisation de certains sortilèges. Cet attribut se recharge de 1 point par tour dans les combats. Il est fixé à 10 pour les deux.
 
-**{{chakra}}** : C''est le nombre de points de magie que possède le personnage, c''est ce qui permet de lancer des sortilèges, pas de {{chakra|chakra}} = pas de sortilèges. Le {{chakra|chakra}} est déterminé par plusieurs choses => La Race, la ou les Classes ainsi que les différentes magies.
+**{{chakra}}** : C’est le nombre de points de magie que possède le personnage, c’est ce qui permet de lancer des sortilèges, pas de {{chakra|chakra}} = pas de sortilèges. Le {{chakra|chakra}} est déterminé par plusieurs choses => La Race, la ou les Classes ainsi que les différentes magies.
 
 La consommation de {{chakra|chakra}} est indiquée sur les sorts mais il y a des cas particuliers : L’Échec critique avec un sort consomme le double du coût, l’échec au jet pour utiliser un sort fait consommer la moitié du coût de base.
 
@@ -6732,19 +6896,21 @@ Chaque point de {{corruption|corruption}} va empêcher l’utilisation du {{chak
 
 Pour résumer : Vous avez par exemple 25 de {{chakra|chakra}} maximum, si jamais vous avez 2 points de {{corruption|corruption}}, vous ne pourrez pas monter au-delà de 23/25 car la {{corruption|corruption}} prend la place.
 
-***PS : Seuls ceux qui ont la corruption en magie innée ou acquise ne meurent pas au seuil maximum, mais la corruption prend aussi la place de leur chakra. Le Potentiel Illimité, même s''il peut l''utiliser, peut en mourir s''il en cumule trop.***
+***PS : Seuls ceux qui ont la {{magie-de-la-corruption|Corruption}} en magie innée ou acquise ne meurent pas au seuil maximum, mais la {{corruption|corruption}} prend aussi la place de leur chakra. Le {{potentiel-illimite}}, même s’il peut l’utiliser, peut en mourir s’il en cumule trop.***
 
-**{{barriere}}** : Il s''agit d''une seconde peau magique qui permet de protéger la chair. La {{barriere|barrière}} est en quelque sorte de la santé magique, son taux est déterminé par le total de {{chakra|chakra}} : [{{chakra}} total divisé par 2, arrondi à l’inférieur = {{barriere}} totale] (exemple : 20 {{chakra}} = 10 {{barriere}}). Il existe certaines classes/races qui offrent de la {{barriere|barrière}}. Par logique, plus vous avez de {{chakra|chakra}}, plus vous aurez de {{barriere|barrière}}. Ce qui fait que les mages ont des {{barriere|barrières}} colossales.
+**{{barriere}}** : Il s’agit d’une seconde peau magique qui permet de protéger la chair. La {{barriere|barrière}} est en quelque sorte de la santé magique, son taux est déterminé par le total de {{chakra|chakra}} : \[{{chakra}} total divisé par 2 = {{barriere}} totale\] (exemple : 20 {{chakra}} = 10 {{barriere}}). Il existe certaines classes/races qui offrent de la {{barriere|barrière}}. Par logique, plus vous avez de {{chakra|chakra}}, plus vous aurez de {{barriere|barrière}}. Ce qui fait que les mages ont des {{barriere|barrières}} colossales.
 
-**Vitesse** : Il s''agit de l''attribut qui détermine le nombre de cases qu''un personnage peut parcourir le tour où il joue (plus détail [ici](https://maverick-jdr.fandom.com/fr/wiki/Combat))
+**{{vitesse}}** : Il s’agit de l’attribut qui détermine le nombre de cases qu’un personnage peut parcourir le tour où il joue
 
-**INI ou Initiative** : C''est la valeur qui détermine à quel moment vous allez commencer à jouer lors d''un combat. D20 car on lance ce dé pour l''initiative et le + ... est déterminé par l''Agilité
+{{initiative}} : C’est la valeur qui détermine à quel moment vous allez commencer à jouer lors d’un combat. D20 car on lance ce dé pour l’initiative et le + … est déterminé par l’Agilité
 
-| **1 Agilité** | **2 Agilité** | **3 Agilité** | **4 Agilité** | **5 Agilité** (Atteignable uniquement avec la magie du Vent ou de la Foudre/Vent |
-| :-: | :-: | :-: | :-: | :-: |
+| **1 Agilité** | **2 Agilité** | **3 Agilité** | **4 Agilité** | **5 Agilité\*** |
+| :---: | :---: | :---: | :---: | :---: |
 | -2 initiative | +0 initiative | +2 initiative | +4 initiative | +6 initiative |
+
+\*Seul les personnage avec les magies du {{magie-du-vent|Vent}} ou de la {{magie-de-la-foudre|Foudre}} peuvent atteindre 5 d''agilité.
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-capacites-dons', 'guide', 'fiche-capacites-dons', 'Fiche de personnage : Capacités/Dons', 'fiche-de-personnage-capacites-dons', 'Il s''agit du tableau où se trouvent toutes les capacités spéciales de votre personnage, il se divise en 4 catégories.', NULL, 'Il s''agit du tableau où se trouvent toutes les capacités spéciales de votre personnage, il se divise en 4 catégories :
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-capacites-dons', 'guide', 'fiche-capacites-dons', 'Capacités/Dons', 'capacites-dons', 'Il s''agit du tableau où se trouvent toutes les capacités spéciales de votre personnage, il se divise en 4 catégories.', NULL, 'Il s''agit du tableau où se trouvent toutes les capacités spéciales de votre personnage, il se divise en 4 catégories :
 
 - **BASE** : Cet emplacement unique est ici pour y inscrire soit méditation ou soit repos. Le don est trouvable dans la race.
 - **RACE** : Cet emplacement unique est ici pour y inscrire le don racial de votre race, voir [ici](https://docs.google.com/spreadsheets/u/0/d/150Q6SJi4ft0oROtwT6snMAZUdWMVtkblxwYY9TqxV4Q/edit) pour avoir la liste des races.
@@ -6774,7 +6940,7 @@ Les Dons possèdent 4 types :
 - Action : Le joueur déclare ce don comme étant l’action de son tour.
 - Réaction : Le joueur joue ces dons en dehors de son tour.
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-caracteristiques', 'guide', 'fiche-caracteristiques', 'Fiche de personnage : Caractéristiques', 'fiche-de-personnage-caracteristiques', 'Les Caractéristiques sont le cœur des jets de dés dans Maverick, les valeurs pour n''importe quelle action dans ce jeu de rôle dépendent des caractéristiques des personnages ainsi que de la situation dans laquelle on est confronté !', NULL, 'Il s''agit de l''endroit où on note les caractéristiques.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-caracteristiques', 'guide', 'fiche-caracteristiques', 'Caractéristiques', 'caracteristiques', 'Les Caractéristiques sont le cœur des jets de dés dans Maverick, les valeurs pour n''importe quelle action dans ce jeu de rôle dépendent des caractéristiques des personnages ainsi que de la situation dans laquelle on est confronté !', NULL, 'Il s''agit de l''endroit où on note les caractéristiques.
 
 Les Caractéristiques sont le cœur des jets de dés dans Maverick, les valeurs pour n''importe quelle action dans ce jeu de rôle dépendent des caractéristiques des personnages ainsi que de la situation dans laquelle on est confronté !
 
@@ -6806,22 +6972,23 @@ Il existe des situations ou bien des altérations d''état qui sont capables de 
 - 1 croix, malus de 20% pour tout test en rapport avec cette caractéristique.
 - 2 croix, impossibilité d''utiliser les compétences liées à cette caractéristique.
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-classe', 'guide', 'fiche-classe', 'Fiche de personnage : Classe', 'fiche-de-personnage-classe', 'La Classe d''un personnage représente sa façon de se battre sur le champ de bataille, chaque classe possède son lot d''avantages qui lui permet d''être utile dans des situations bien précises ou bien de manière générale.', NULL, 'C''est là où sont notées les différentes classes de votre personnage, plus d''infos sur les classes en elles-mêmes [ici](https://docs.google.com/spreadsheets/u/0/d/1Pyg4GSUlFrvNaTg3bi6uXlehg1MuRHmkyfPO6s5K72I/edit).
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-classe', 'guide', 'fiche-classe', 'Classe', 'classe', 'La ou les classe(s) du personnage, ce qui détermine l''étendu de ses capacités et de ses dons.', NULL, 'La {{classe}} représente ce que votre personnage est capable de faire.<br><br>Il existe un vaste choix de classes se répartissant entre plusieurs catégories :
 
-La Classe d''un personnage représente sa façon de se battre sur le champ de bataille, chaque classe possède son lot d''avantages qui lui permet d''être utile dans des situations bien précises ou bien de manière générale.
+- Les classes de mêlées spécialisées dans le combat rapproché au corps à corps.
+- Les classes à distances spécialistes de toute armes à distance.
+- Les classes magiques doté d''un plus grand potentiel dans la magie et d''une résistance accrue à cette dernière.
+- Les classes raciales, exclusives aux différentes races dites {{hybride-animal}}
+- Les classes spéciales, dont le fonctionnent différent des autres et fonctionnent avec leur propres règles et leur contraintes.
 
-Les classes dites magiques donnent 4AM chacune (donc si vous avez 2 classes magiques sur le personnage, vous en avez 8 juste avec ces classes)
-
-Une classe possède un niveau qui lui est propre, qui augmente selon le niveau du personnage.
-
-La Spécialité est un embranchement qui va être pris quand une classe atteint le niveau 10, plus de détails dans le documents des classes.
-
-Quand on crée son personnage on peut :
+Chacune des classes peuvent bénéficier d''une Spécialité au niveau 10 de cette classe, permettant de choisir une voie plus personnalisée de cette classe donnant accès à des {{don|Dons}} de classes spécifiques.<br>Au moyen du {{biclassage}} il est possible d''avoir une seconde classe dès la création du personnage.
 
 - Soit commencer avec 1 seule classe, dans ce cas la classe montera de 2 niveaux à chaque fois que le joueur gagne un niveau de personnage. La seule classe commence au niveau 2.
 - Soit commencer avec 2 classes, dans ce cas les classes évoluent en même temps de 1 niveau chacune à chaque montée de niveau du personnage. Les deux classes commencent au niveau 1.
+- Un personnage sans {{biclassage}} devra choisir sa seconde classe dès le niveau 11.
+
+Il n''y a donc aucune différence en un personnage {{biclassage|biclassé}} une fois niveau maximum, le niveau 20.
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-competences', 'guide', 'fiche-competences', 'Fiche de personnage : Compétences', 'fiche-de-personnage-competences', 'Les compétences sont des bonus aux caractéristiques qui viennent s''ajouter au score de jet de dés quand la situation lui permet d''agir.', NULL, 'Il s''agit du tableau des compétences de votre personnage.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-competences', 'guide', 'fiche-competences', 'Compétences', 'competences', 'Les compétences sont des bonus aux caractéristiques qui viennent s''ajouter au score de jet de dés quand la situation lui permet d''agir.', NULL, 'Il s''agit du tableau des compétences de votre personnage.
 
 Les compétences sont des bonus aux caractéristiques qui viennent s''ajouter au score de {{des|jet de dés}} quand la situation lui permet d''agir. Ces compétences ont un rapport direct avec le personnage et comment il agit selon les situations.
 
@@ -6891,40 +7058,74 @@ Voici les compétences qui existent avec leurs caractéristiques associées :
 
 *Vigueur (Volonté) :* Mieux résister aux {{alteration-detat|altérations d''états}} physiques comme le poison, les maladies ou les brûlures
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-experience-niveau-global', 'guide', 'fiche-experience-niveau-global', 'Fiche de personnage : Expérience/Niveau global', 'fiche-de-personnage-experience-niveau-global', 'Il s''agit de là où on note le total d''expérience accumulé par le personnage ainsi que son niveau global.', NULL, 'Il s''agit de là où on note le total d''expérience accumulé par le personnage ainsi que son niveau global, nous allons voir ici en détail l’expérience nécessaire pour chaque niveau et ce que ces derniers apportent :
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-experience-niveau-global', 'guide', 'fiche-experience-niveau-global', 'Expérience/Niveau global', 'experience-niveau-global', 'Il s''agit de là où on note le total d''expérience accumulé par le personnage ainsi que son niveau global.', NULL, 'Au fil de ses aventures, le personnage accumule de l’expérience (XP). Son total d’expérience fixe son niveau global, de 1 à 20 : dès qu’il atteint l’expérience demandée pour un niveau, il y passe. Le niveau global règle à son tour le niveau de ses classes et sa puissance magique, et dit ce que le personnage a à répartir. L’expérience que rapporte une aventure n’a pas de valeur prédéfinie et reste au choix du MJ
+
+## Ce que donne une montée de niveau :
+
+### Des point {{attributs|d''attributs}}
+
+> Ces points doivent être répartis entre la {{sante}} et le {{chakra}} pour en augmenter la valeur maximale. La {{barriere}} et la {{corruption}} changent automatiquement en fonction du {{chakra}}.
+
+### Des points de compétences
+
+> Les points de {{competence}} s''ajoute dans la case {{naturel}}. Cette valeur ne peut pas dépasser 20 avant le niveau 5, 30 avant niveau 10, et 40 au niveau 10 et au delà.
+
+### Deux niveaux de classe
+
+> Un personnage {{biclassage|biclassé}} augmente le niveau de chacune de ses classes de 1. Les autre augmente le niveau de classe de 2. Au niveau 11, un personnage qui n''est pas {{biclassage|biclassé}} a donc déjà sa classe au niveau maximal (20), et choisi donc une classe secondaire au niveau 2.
+
+### Un niveau de maîtrise d’un sort
+
+> Le personnage dispose d''un niveau de maîtrise de sort qu''il peut réattribuer à un sort préparé de son choix à chaque fois qu''il peut changer de sort, c''est à dire généralement pendant un repos.
+
+### Un point de {{caracteristique||caractéristique}}
+
+> Disponible aux niveaux 5, 10 et 15, permet de rajouter un point dans l''une des 6 {{caracteristique||caractéristique}} principale. Cependant il ne peut pas dépasser les limites imposées par sa race. Le bonus lié à la sa {{magie-innee|magie innée}} reste en dehors de ce calcul.
+
+### Autres
+
+- Le niveau 2 débloque le {{mode-hyper}}.
+- Le niveau 10 débloque le {{mode-hyper-100}}.
+- Le niveau 10 améliore l''effet de Repos ou de Méditiation.
+- Les niveau 4, 8, 12 et 16 augmentent le {{niveau-de-puissance-magique}} du personnage de 1.
+- Les niveau 5, 10, 15 et 20 donne un bonus supplémentaire au choix :
+
+> - {{des|1D8}} de {{sante}}
+> - {{des|1D8}} de {{chakra}}
+> - {{des|1D4}} de {{sante}} et de {{chakra}}
+
+>
 
 | **Niveau** | **Xp nécessaire** | **Dons** |
-| :-: | :-: | :-: |
+| :---: | :---: | :---: |
 | Niveau 1 | **0** | - 100 points de compétences<br>- Puissance magique niveau 1<br>- +2 Niveaux de classe |
-| Niveau 2 | **200** | - 15 points d''attributs à répartir<br>- 20 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort<br>- Mode Hyper débloqué ! |
-| Niveau 3 | **550** | - 15 points d''attributs à répartir<br>- 20 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort |
-| Niveau 4 | **950** | - 15 points d''attributs à répartir<br>- 20 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort<br>- Puissance magique niveau 2 |
-| Niveau 5 | **1650** | - 15 points d''attributs à répartir<br>- +1 Caractéristique à répartir<br>- 40 points de compétences<br>- +10 maximum naturel<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort<br>- Dé d''attributs bonus (1d8 santé OU 1d8 {{chakra\|chakra}} OU 1d4 pour les deux) |
-| Niveau 6 | **2450** | - 15 points d''attributs à répartir<br>- 20 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort |
-| Niveau 7 | **3850** | - 15 points d''attributs à répartir<br>- 20 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort |
-| Niveau 8 | **5450** | - 15 points d''attributs à répartir<br>- 20 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort<br>- Puissance magique niveau 3 |
-| Niveau 9 | **8250** | - 15 points d''attributs à répartir<br>- 20 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort |
-| Niveau 10 | **11450** | - 15 points d''attributs à répartir<br>- +1 Caractéristique à répartir<br>- +10 maximum naturel<br>- 40 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort<br>- Dé d''attributs bonus (1d8 santé OU 1d8 {{chakra\|chakra}} OU 1d4 pour les deux)<br>- Mode Hyper 100% débloqué !<br>- Méditation redonne 6d6 + 12 {{chakra\|chakra}}/Repos redonne 6d4 + 12 santé et {{chakra\|chakra}} |
-| Niveau 11 | **17050** | - 15 points d''attributs à répartir<br>- 20 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort |
-| Niveau 12 | **23450** | - 15 points d''attributs à répartir<br>- 20 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort<br>- Puissance magique niveau 4 |
-| Niveau 13 | **34650** | - 15 points d''attributs à répartir<br>- 20 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort |
-| Niveau 14 | **47450** | - 15 points d''attributs à répartir<br>- 20 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort |
-| Niveau 15 | **69850** | - 15 points d''attributs à répartir<br>- +1 Caractéristique à répartir<br>- 40 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort<br>- Dé d''attributs bonus (1d8 santé OU 1d8 {{chakra\|chakra}} OU 1d4 pour les deux) |
-| Niveau 16 | **95450** | - 15 points d''attributs à répartir<br>- 20 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort<br>- Puissance magique niveau 5 (non disponible pour les personnages avec une magie acquise) |
-| Niveau 17 | **140250** | - 15 points d''attributs à répartir<br>- 20 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort |
-| Niveau 18 | **191450** | - 15 points d''attributs à répartir<br>- 20 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort |
-| Niveau 19 | **281050** | - 15 points d''attributs à répartir<br>- 20 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort |
-| Niveau 20 | **460250** | - 15 points d''attributs à répartir<br>- 40 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort<br>- Dé d''attributs bonus (1d8 santé OU 1d8 {{chakra\|chakra}} OU 1d4 pour les deux) |
-
-*Rappel : Le Niveau global détermine le(s) niveau(x) de classe(s) (plus de détails dans* [*classe*](https://maverick-jdr.fandom.com/fr/wiki/Classe)*) ainsi que le Niveau de Magie (plus de détails dans* [*Magie*](https://maverick-jdr.fandom.com/fr/wiki/Magie)*)*
+| Niveau 2 | **200** | - 15 points d’attributs à répartir<br>- 20 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort<br>- Mode Hyper débloqué ! |
+| Niveau 3 | **550** | - 15 points d’attributs à répartir<br>- 20 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort |
+| Niveau 4 | **950** | - 15 points d’attributs à répartir<br>- 20 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort<br>- Puissance magique niveau 2 |
+| Niveau 5 | **1650** | - 15 points d’attributs à répartir<br>- +1 Caractéristique à répartir<br>- 40 points de compétences<br>- +10 maximum naturel<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort<br>- Dé d’attributs bonus (1d8 santé OU 1d8 {{chakra\|chakra}} OU 1d4 pour les deux) |
+| Niveau 6 | **2450** | - 15 points d’attributs à répartir<br>- 20 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort |
+| Niveau 7 | **3850** | - 15 points d’attributs à répartir<br>- 20 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort |
+| Niveau 8 | **5450** | - 15 points d’attributs à répartir<br>- 20 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort<br>- Puissance magique niveau 3 |
+| Niveau 9 | **8250** | - 15 points d’attributs à répartir<br>- 20 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort |
+| Niveau 10 | **11450** | - 15 points d’attributs à répartir<br>- +1 Caractéristique à répartir<br>- +10 maximum naturel<br>- 40 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort<br>- Dé d’attributs bonus (1d8 santé OU 1d8 {{chakra\|chakra}} OU 1d4 pour les deux)<br>- Mode Hyper 100% débloqué !<br>- Méditation redonne 6d6 + 12 {{chakra\|chakra}}/Repos redonne 6d4 + 12 santé et {{chakra\|chakra}} |
+| Niveau 11 | **17050** | - 15 points d’attributs à répartir<br>- 20 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort |
+| Niveau 12 | **23450** | - 15 points d’attributs à répartir<br>- 20 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort<br>- Puissance magique niveau 4 |
+| Niveau 13 | **34650** | - 15 points d’attributs à répartir<br>- 20 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort |
+| Niveau 14 | **47450** | - 15 points d’attributs à répartir<br>- 20 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort |
+| Niveau 15 | **69850** | - 15 points d’attributs à répartir<br>- +1 Caractéristique à répartir<br>- 40 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort<br>- Dé d’attributs bonus (1d8 santé OU 1d8 {{chakra\|chakra}} OU 1d4 pour les deux) |
+| Niveau 16 | **95450** | - 15 points d’attributs à répartir<br>- 20 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort<br>- Puissance magique niveau 5 (non disponible pour les personnages avec une magie acquise) |
+| Niveau 17 | **140250** | - 15 points d’attributs à répartir<br>- 20 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort |
+| Niveau 18 | **191450** | - 15 points d’attributs à répartir<br>- 20 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort |
+| Niveau 19 | **281050** | - 15 points d’attributs à répartir<br>- 20 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort |
+| Niveau 20 | **460250** | - 15 points d’attributs à répartir<br>- 40 points de compétences<br>- +2 Niveaux de classe<br>- 1 Niveau de maîtrise pour un sort<br>- Dé d’attributs bonus (1d8 santé OU 1d8 {{chakra\|chakra}} OU 1d4 pour les deux) |
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-inventaire-sac-a-dos', 'guide', 'fiche-inventaire-sac-a-dos', 'Fiche de personnage : Inventaire/Sac à dos', 'fiche-de-personnage-inventaire-sac-a-dos', 'L''inventaire est un peu votre sac à dos, le nombre d''emplacements est déterminé par la Force de votre personnage.', NULL, 'L''inventaire est un peu votre sac à dos, le nombre d''emplacements est déterminé par la Force de votre personnage.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-inventaire-sac-a-dos', 'guide', 'fiche-inventaire-sac-a-dos', 'Inventaire/Sac à dos', 'inventaire-sac-a-dos', 'L''inventaire est un peu votre sac à dos, le nombre d''emplacements est déterminé par la Force de votre personnage.', NULL, 'L''inventaire est un peu votre sac à dos, le nombre d''emplacements est déterminé par la Force de votre personnage.
 
 La place de l’inventaire est donnée par la Force de votre personnage, sans sac à dos à choisir ; un sac à dos reste un objet possible de l’inventaire.
 
 L''inventaire de départ est déterminé par la Classe, allez voir directement les classes pour connaître votre inventaire de départ. Si jamais vous commencez avec 2 classes, prenez 5 objets parmi les 10 disponibles.
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-maitrise-darme-et-armes', 'guide', 'fiche-maitrise-darme-et-armes', 'Fiche de personnage : Maîtrise d’arme et Armes', 'fiche-de-personnage-maitrise-darme-et-armes', 'Ce tableau correspond à ce que votre personnage maîtrise comme armes, plus il maîtrise une arme, plus il va infliger de dégâts.', NULL, '## Maîtrise d’arme
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-maitrise-darme-et-armes', 'guide', 'fiche-maitrise-darme-et-armes', 'Maîtrise d’arme et Armes', 'maitrise-darme-et-armes', 'Ce tableau correspond à ce que votre personnage maîtrise comme armes, plus il maîtrise une arme, plus il va infliger de dégâts.', NULL, '## Maîtrise d’arme
 
 Ce tableau correspond à ce que votre personnage maîtrise comme armes, plus il maîtrise une arme, plus il va infliger de dégâts.
 
@@ -6942,24 +7143,20 @@ C''est ici qu''on trouve là on peut noter les différentes armes équipées, 2 
 - **Effet(s) en plus** : C’est ici qu’on indique quand l’arme possède une particularité. Comme par exemple des dégâts supplémentaires selon la créature.
 - **Solidité** : C’est le nombre de mauvais coups que peut encaisser l’arme avant de se briser.
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-personnage', 'guide', 'fiche-personnage', 'Fiche de personnage : Personnage', 'fiche-de-personnage-personnage', 'Le sommet de la fiche contient le carré "Personnage" il s''agit, ni plus ni moins, des informations générales de votre personnage.', NULL, 'Dans ce document, nous allons voir étape par étape comment créer sa fiche de personnage.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-personnage', 'guide', 'fiche-personnage', 'Identité', 'identite', 'Présentation globale de votre personnage.', NULL, 'Le sommet de la fiche contient le carré “Identité”. Il s’agit, ni plus ni moins, des informations générales de votre personnage, il se décompose comme ceci :
 
-## Personnage
-
-Le sommet de la fiche contient le carré "Personnage" il s''agit, ni plus ni moins, des informations générales de votre personnage, il se décompose comme ceci :
-
-- **Nom** : Le nom complet de votre personnage.
-- **Race** : La race de votre personnage parmi les 27 disponibles. Il faut également préciser l''ethnie de votre [race](https://docs.google.com/spreadsheets/u/0/d/150Q6SJi4ft0oROtwT6snMAZUdWMVtkblxwYY9TqxV4Q/edit) (s''il y en a)
-- **Origine** : Le lieu de naissance du personnage.
-- **{{alignement}}** : C''est ici qu''on note l''alignement ainsi que les quatre scores d''alignement : Loyal (L), Chaos (C), Bon (B) et Mauvais (M). Vous pouvez retrouver plus d''informations [ici](https://docs.google.com/document/u/0/d/17VxGUwjzEZWElwIYVaXvaaumqFM4yKnO1C7uhVyc9iM/edit).
-- **Surnom** : Le surnom de votre personnage, souvent utilisé pour les noms de scène.
-- **Magie innée** : C’est ici qu’on indique la magie innée du personnage, tout le monde en possède une. Certaines races possèdent des interdits au niveau des magies, donc prudence.
-- **Magie acquise** : C’est ici qu’on note la seconde magie que possède le personnage, avoir une magie acquise n’est pas obligatoire contrairement à la magie innée. Attention, certaines magies ne peuvent pas se mélanger entre elles, aller [ici](https://docs.google.com/spreadsheets/u/0/d/1fF2buZjbCm3xdQ-Qa8vRecxj03do3hsE8_k_cfYnIR0/edit) pour plus d’info.
-- **Dieu inné** : Il s’agit de la divinité qui est reliée à la magie innée. Retrouvez les différents dieux [ici](https://maverick-jdr.fandom.com/fr/wiki/Divinit%C3%A9s).
-- **Dieu choisi** : Il s’agit du dieu que le personnage a décidé de prier qui n’est pas l’inné. Cet emplacement peut très bien être vide.
-- **Bourse** : Il existe 3 types de monnaies, quand un personnage est créé, lancer 1D20 et le score va correspondre à votre or de départ.
+- Nom : Le nom complet de votre personnage.
+- Surnom : Le surnom de votre personnage, souvent utilisé pour les noms de scène.
+- Origine : Le lieu de naissance du personnage.
+- {{race:}} Il faut également préciser l''{{ethnie}} de votre race (s’il y en a).
+- {{alignement:}}
+- {{magie-innee:}}
+- {{magie-acquise:}}
+- {{dieu-inne:}}
+- {{dieu-choisi:}}
+- {{classe:}}
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-tableau-magie', 'guide', 'fiche-tableau-magie', 'Fiche de personnage : Tableau magie', 'fiche-de-personnage-tableau-magie', 'Plutôt simple, vous multipliez le nombre de conditions remplies par votre niveau de puissance magique de votre personnage et vous avez le nombre d’emplacements de sorts que votre personnage possède.', NULL, 'Et voici là où vous inscrivez votre (vos) magie(s), cet espace semble vide d’indication mais laissez-moi vous expliquer comment ça marche - Pour avoir des sorts il faut remplir certaines conditions qui sont au nombre de 4 :
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-tableau-magie', 'guide', 'fiche-tableau-magie', 'Tableau magie', 'tableau-magie', 'Plutôt simple, vous multipliez le nombre de conditions remplies par votre niveau de puissance magique de votre personnage et vous avez le nombre d’emplacements de sorts que votre personnage possède.', NULL, 'Et voici là où vous inscrivez votre (vos) magie(s), cet espace semble vide d’indication mais laissez-moi vous expliquer comment ça marche - Pour avoir des sorts il faut remplir certaines conditions qui sont au nombre de 4 :
 
 - Avoir une magie innée. (condition par défaut remplie car vous en avez forcément une)
 - Avoir une magie acquise, ou le don « Grimoire » de l’Archimage, qui compte comme elle sans donner de seconde magie.
@@ -6979,7 +7176,7 @@ Plutôt simple, vous multipliez le nombre de conditions remplies par votre nivea
 
 - Le reste correspond aux statistiques des sortilèges, voir [ici](https://docs.google.com/spreadsheets/u/0/d/1fF2buZjbCm3xdQ-Qa8vRecxj03do3hsE8_k_cfYnIR0/edit) pour plus de détails.
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-tableau-posture', 'guide', 'fiche-tableau-posture', 'Fiche de personnage : Tableau Posture', 'fiche-de-personnage-tableau-posture', 'Ce sont des états où se trouve votre personnage ce qui implique des bonus et malus pendant le combat.', NULL, 'Voici les postures de combats ! Ce sont des états où se trouve votre personnage ce qui implique des bonus et malus pendant le combat.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-tableau-posture', 'guide', 'fiche-tableau-posture', 'Tableau Posture', 'tableau-posture', 'Ce sont des états où se trouve votre personnage ce qui implique des bonus et malus pendant le combat.', NULL, 'Voici les postures de combats ! Ce sont des états où se trouve votre personnage ce qui implique des bonus et malus pendant le combat.
 
 ## Offensif
 
@@ -7043,7 +7240,7 @@ Cette posture étrange permet d''être en parfaite fusion avec sa magie, dans ce
 
 Voici le tableau où on rassemble les informations sur le {{mode-hyper|mode hyper}} du personnage, allez [ici](https://docs.google.com/spreadsheets/u/0/d/1AjQyT-IZMULq6FlgnmVmn2QiQ9AWhhbOgjr-COgMyMo/edit) pour en savoir davantage.
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-tableau-resistances-faiblesses', 'guide', 'fiche-tableau-resistances-faiblesses', 'Fiche de personnage : Tableau Résistances/Faiblesses', 'fiche-de-personnage-tableau-resistances-faiblesses', 'Ceci est le tableau où on va inscrire les résistances et faiblesses de votre personnage, tout est lié avec vos magies.', NULL, 'Ceci est le tableau où on va inscrire les résistances et faiblesses de votre personnage, tout est lié avec vos magies et tout est indiqué {{resistances-et-faiblesses|ici}}.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-tableau-resistances-faiblesses', 'guide', 'fiche-tableau-resistances-faiblesses', 'Tableau Résistances/Faiblesses', 'tableau-resistances-faiblesses', 'Ceci est le tableau où on va inscrire les résistances et faiblesses de votre personnage, tout est lié avec vos magies.', NULL, 'Ceci est le tableau où on va inscrire les résistances et faiblesses de votre personnage, tout est lié avec vos magies et tout est indiqué {{resistances-et-faiblesses|ici}}.
 
 Certains objets ou équipements peuvent faire modifier ces valeurs, soyez toujours à jour car les résistances et faiblesses pourraient être l’élément qui fait que votre personnage va survivre … ou pas.
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
@@ -7165,7 +7362,59 @@ Le MJ peut déployer la carte mais il peut ne pas la déployer si jamais il juge
 - *{{donjon-pas-bon|Donjon pas bon}}*
 - *{{alignement}}*
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/initiative', 'guide', 'initiative', 'Initiative', 'initiative', 'Quelques effets changent l’initiative : la posture de vigilance donne un bonus d’initiative au début de chaque tour (voir Les postures), et un coup reçu à la jambe gauche en fait perdre au tour suivant (voir le tableau « Localisation des dégâts » de Attaquer).', NULL, 'Quelques effets changent l’initiative : la posture de vigilance donne un bonus d’initiative au début de chaque tour (voir {{posture|Les postures}}), et un coup reçu à la jambe gauche en fait perdre au tour suivant (voir le tableau « Localisation des dégâts » de {{attaquer}}). Les boss, eux, ont deux initiatives par tour : on lance deux D20 pour eux.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/initiative', 'guide', 'initiative', 'Initiative', 'initiative', 'Quelques effets changent l’initiative : la posture de vigilance donne un bonus d’initiative au début de chaque tour (voir Les postures), et un coup reçu à la jambe gauche en fait perdre au tour suivant (voir le tableau « Localisation des dégâts » de Attaquer).', NULL, 'L''initiative correspond à quand un personnage va jouer durant le tour. Il existe deux méthodes de gérer l''initiative dans Maverick.
+
+## Initiative individuelle
+
+C''est plutôt simple, chaque début de tour, on lance 1d20 + un éventuel bonus et on tri l''ordre du tour du plus grand au plus petit. Plus le score est élevé, plus on a de chance de commencer en premier.
+
+L''initiative se réinitialise à chaque début de tour.
+
+## Initiative groupé
+
+Maverick propose une méthode alternative de gestion de l''initiative afin de rendre les combats plus fluides. Cette variante évite de relancer l''initiative à chaque tour et limite les interruptions de rythme. Elle est particulièrement recommandée pour les groupes de 4 ou 6 joueurs.
+
+### Détermination de l''ordre des groupes
+
+Au début du combat, tous les participants lancent leur initiative normalement.
+
+Additionnez ensuite les résultats de chaque camp afin d''obtenir une initiative de groupe pour les alliés et une pour les ennemis. Le camp ayant le total le plus élevé obtient l''avantage.
+
+Les deux camps sont ensuite divisés en deux sous-groupes qui agiront en alternance.
+
+### Exemple avec 4 joueurs et 4 ennemis
+
+2 alliés
+
+2 ennemis
+
+2 alliés
+
+2 ennemis
+
+Si les alliés remportent l''initiative, l''ordre d''action sera le suivant :
+
+**Alliés (groupe 1) → Ennemis (groupe 1) → Alliés (groupe 2) → Ennemis (groupe 2)**
+
+Si les ennemis remportent l''initiative, l''ordre est simplement inversé :
+
+**Ennemis (groupe 1) → Alliés (groupe 1) → Ennemis (groupe 2) → Alliés (groupe 2)**
+
+**<br>**
+
+Cet ordre est déterminé une seule fois au début du combat et reste identique jusqu''à sa fin. Les joueurs à chaque début de tour déterminent qui va être dans quel groupe, ils peuvent très bien alterner les groupes selon les besoins.
+
+Dans le cas de 6 joueurs, vous pouvez faire 2 groupes de 3, ou alors faire 3 groupes de 2.
+
+### Cas des boss
+
+Lorsqu''un boss possède deux initiative par tour, chacune de ses activations est considérée comme un sous-groupe à part entière.
+
+L''ordre devient alors :
+
+**Alliés → Boss → Alliés → Boss**
+
+ou l''inverse si le boss remporte l''initiative.
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/jet-de-des', 'guide', 'jet-de-des', 'Jet de dés', 'jet-de-des', 'Le jeu de rôle et notamment celui-ci c''est beaucoup de jets de dés, il existe plusieurs façons de procéder à ça.', NULL, 'Le jeu de rôle et notamment celui-ci c''est beaucoup de jets de dés, il existe plusieurs façons de procéder à ça :
 
@@ -7406,41 +7655,23 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 
 ## Une magie dans chaque être vivant
 
-Chaque être vivant naît avec l’une des 15 formes de magie. Cette magie, dite *innée*, se lit jusque dans le corps du personnage : elle lui donne un point de caractéristique en plus (voir {{etape-2-choisir-ses-magies|la création du personnage}}). Chaque magie est liée à une divinité (deux pour l’Espace/Temps) : le **dieu inné** d’un personnage est celui que sa magie innée détermine, une « divinité naturellement liée au personnage dès sa naissance » selon le Codex. Les {{les-divinites|divinités}} sont présentées dans le {{codex|Codex}}, et la {{magies|carte des magies}} montre les forces et les faiblesses de chaque magie face aux autres.
+Il existe pas moins des 15 formes de {{magies|magie}} au travers de **Maverick**. Tout être vivant hérite de l’une d’elles, devenant sa magie {{magie-innee|innée}}. De plus au cours de sa vie, une créature peut se livrer à une seconde forme de magie, la faisant {{magie-acquise|acquise}}.<br><br>Ces magies se logent au plus profonds de chaque corps, le marquant durablement. Des doigts constamment incandescents aux veines de sang gorgeant les muscles d’une force extraordinaire en passant par une brise de vent constante autour des cheveux sont d’autant de signe visible de ce don issu des {{les-divinites|dieux}} qui veillent sur le monde.
 
-Si sa race le permet, un personnage peut aussi posséder une seconde magie, dite *acquise* (le Potentiel Illimité est toujours inné, et la Lamia n’en a pas). Elle n’a rien d’obligatoire, et toutes les magies ne se mélangent pas. Toutes les races n’ont pas non plus accès à toutes les magies innées.
-
-Le Codex raconte que tout commença avec deux forces, la Création et la Destruction, dont l’union donna naissance à un monde chaotique : {{origine-du-monde|l’ère des Élémentaires}}, des créatures « incarnant les différentes formes de magie dans leur état le plus sauvage et le plus instable ». Les premiers dieux les réduisirent au silence, puis vinrent les premiers mortels. Même le chakra, disent les textes sur {{mirada}}, était contrôlé par les élémentaires avant qu’elle ne le façonne en une forme exploitable.
+Une fois pleinement harmonisé avec leurs magies innées et acquise, chacun peut puiser dans le {{chakra|chakra}}, l’énergie magique qui permet de courber sa ou ses magies à sa volonté au moyen de multiples sorts. Ce pouvoir a également la capacité de se cristalliser au dessus de la peau, formant une {{barriere|barrière}} protectice.
 
 ## Des possibilités presque sans fin
 
-Un personnage est la rencontre d’une race, d’une magie et d’une classe.
+Un personnage est caractérisé par sa {{race}}, sa ou ses {{magies|magies}} et une ou deux {{classe|classe}}. Le choix se réparti alors entre :
 
-- **29 races** ({{humain|des humains}} aux plus exotiques), les unes *pures*, les autres *hybrides*. Une race hybride a sa propre classe, la *classe raciale*, qui porte son nom ; seul le Drassah’thac, hybride lui aussi, n’en a pas. La plupart des races se divisent encore en **ethnies**, comme le Felfe Forestier. Chacune a son histoire, ses dons, ses avantages et ses inconvénients, sa façon de voir les autres peuples ({{relations-entre-les-races|les relations entre les peuples}}) et ses magies possibles. Voir les {{race|races}}.
-- **41 classes** et **82 spécialités** : deux par classe, à choisir au niveau 10 de la classe. Il y a des classes physiques, au corps à corps ou à distance, des classes magiques, les classes raciales, et des classes spéciales. On peut commencer avec une classe ou deux. Voir les {{classe|classes}}.
-- **15 magies**, dont l’une innée et, si la race le permet, une autre acquise. Voir les {{magies|magies}}.
+- **29 {{race|races}}**, réparties entre {{race-pure}} et {{hybride-animal|hybride animal}}.
+- **41 {{classe|classes}}** pouvant chacune se décliner en deux **{{specialite|spécialités}}** à choisir au niveau 10 de la classe.
+- **14 {{magies|magies}}**, dont l’une innée et, si la race le permet, une autre acquise, chacune pouvant se spécialiser en deux branches.
 
-Rien qu’en comptant la race, la magie innée et la première classe, les règles du site permettent **plus de 5 000 combinaisons**, sans compter la seconde classe, la magie acquise, l’ethnie ni les spécialités. Toutes les combinaisons ne sont pas permises : une classe raciale n’est ouverte qu’à sa race, certaines races ferment certaines magies. À vous de trouver celle qui vous ressemble.
+Rien qu’en comptant la race, la magie innée et la première classe, \*\*plus de 5 000 combinaisons \*\*s’offrent à vous; sans compter la seconde classe, la magie acquise, l’ethnie ni les spécialités. Bien qu’il existe des restrictions vous pouvez créer un héros unique.
 
-## Plusieurs siècles d’histoire
+## Vous, les héros, parmi les âges
 
-L’{{empire-humain|Empire humain}}, né avec le calendrier selon le Codex, était « la plus vaste et la plus puissante entité politique du monde connu ». Il finit par s’effondrer, et cette chute serait liée à un vaste complot : c’est l’un des **Impacts** qui ont changé le monde, parmi lesquels la Guerre des Temples, l’armée des non-morts, la Grande Croisade ou la prolifération des vampires. La {{chronologie|chronologie}} en retrace les événements, date après date ({{les-impacts-mineur-et-majeur|les Impacts, majeurs et mineurs}}).
-
-Ce passé laisse un monde de royaumes, de temples et de guildes. {{erisia}} est un « continent central de Maverick » ; {{mrode}}, au sud-ouest, a un climat plutôt tropical et « un des plus gros volcans du monde ». Les {{les-civilisations|civilisations}} y ont leurs rancœurs : la {{republique-noire|République noire}} est, avec les nains, dans une « guerre permanente pour le contrôle des souterrains ». Les {{temples-cultes-guildes|temples, cultes et guildes}} y sont des puissances à part entière : aujourd’hui, selon le Codex, « les temples élémentaires fonctionnent comme des cités-états ».
-
-## Vous, les héros
-
-« Les menaces dans le monde grossissent », dit le Codex, et dans l’ombre « des groupes cherchent à détruire des nations, détruire des temples, assassiner des gens », voire « faire réapparaître d’anciennes menaces chaotiques comme les élémentaires » ({{situation-actuelle|la situation actuelle}}). Au milieu de tout cela, les personnages joueurs sont des héros prêts à accomplir une destinée qui changera leur environnement, localement ou à l’échelle du monde.
-
-Ils arpenteront un monde qui garde ses secrets :
-
-- Le {{temple-de-lespace-temps}} est « l’un des plus grands mystères du monde de Maverick » : « il n’existe plus dans notre réalité », et les légendes le disent figé entre les dimensions. {{lame-seuil}}, sa clé, a une naissance qui reste « un mystère encore irrésolu ».
-- « Les origines exactes de la Terre Grise restent inconnues » ({{terre-grise|la Terre grise}}), et les quatre tours du {{marais-vert}}, d’une civilisation oubliée, n’ont livré aucune théorie confirmée.
-- Pour les érudits, l’{{ordre-des-abeilles}} est un ordre disparu ; pour certains mages, ses membres sont « encore vivants, mais sous une autre forme ». Les {{ruines-rouges|ruines de Noname}} ont été scellées « après des évènements encore sombres ».
-
-Les périls et les intrigues ne manquent pas non plus : sectes dissidentes comme l’{{ordre-du-brai}}, scission du Temple noir, mercenaires comme {{la-main-sanglante}} (« La majorité des autorités sont leurs ennemis »), ou {{la-pointe-de-sang}}, « l’une des organisations les plus haïes de tout Maverick ». Le Codex présente aussi des {{les-races-non-jouable|races qu’on ne joue pas}} mais qui comptent dans le monde, comme les dragons ou les vampires primordiaux, et des {{les-outils-legendaires-uniques|armes et objets légendaires}} ; le {{bestiaire|bestiaire}} présente les monstres que l’on peut y croiser.
-
-Reste à créer votre héros : voir {{creer-son-personnage}}, et le {{glossaire|glossaire}} pour les termes du jeu.
+La {{chronologie}} de Maverick s’étendant sur plusieurs siècles, et chaque époque a ses royaumes et ses mythes. Que vous choisissiez une aventure à l’aube des races mortelles, à l’apogée d’empire elfiques, ou après l’effondrement de royaumes entiers vos exploits laisserons leurs empreintes parmi les évènements les plus impactant de cet univers vaste et enchanté.<br><br>Allez rencontrer votre maître du jeu, donnez naissance à votre légende, ou pour les plus dévoués, venez concevoir vos propres campagnes.
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/la-magie-en-jeu', 'guide', 'la-magie-en-jeu', 'La magie en jeu', 'la-magie-en-jeu', 'Lancer un sort et ce qu’il coûte, même raté ; payer sans chakra ; les sorts IC, les sorts de niveau 5 qui se chargent, les niveaux de maîtrise (NM) et ce qui renforce vos sorts.', NULL, 'Tout personnage a au moins une magie, et donc au moins un sort : comment les choisir est expliqué dans {{etape-5-choisir-ses-premiers-sorts}}. Cette page explique comment s’en servir en partie.
 
@@ -7628,7 +7859,7 @@ Cet état ne dure que **3 tours**. Le personnage revient ensuite au Mode Hyper n
 
 *Exemple : avec 80 de {{chakra|chakra}} au maximum, sortir du Mode Hyper 100 % en coûte 60. S’il ne lui en reste que 40, les 20 qui manquent lui coûtent 60 points de santé.*
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/le-tour-de-jeu', 'guide', 'le-tour-de-jeu', 'Le tour de jeu', 'le-tour-de-jeu', 'Comment se déroule un combat : l’initiative, puis, à son tour, la posture, le déplacement, les actions rapides (IC) et l’action, et ce qu’on peut faire hors de son tour.', NULL, 'En combat, le temps se découpe en **tours** : chacun agit à son tour, dans l’ordre de l’initiative, puis un nouveau tour commence. Ce qu’on fait pendant le sien tient en quelques étapes, toujours les mêmes.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/le-tour-de-jeu', 'guide', 'le-tour-de-jeu', 'Le tour de jeu', 'le-tour-de-jeu', 'Comment se déroule un combat et dans quel ordre résoudre un tour.', NULL, 'En combat, le temps se découpe en **tours** : chacun agit à son tour, dans l’ordre de l’initiative, puis un nouveau tour commence. Ce qu’on fait pendant le sien tient en quelques étapes, toujours les mêmes.
 
 Pour suivre le combat, le MJ peut déployer une **carte de combat** (*battlemap*) : une carte quadrillée vue de haut, où il dessine les obstacles et où l’on compte les distances en cases. Chaque personnage y a son pion (un dé du joueur, par exemple). Si le MJ juge que le combat sera rapide, il peut s’en passer.
 
@@ -7638,11 +7869,11 @@ Au début du combat, le MJ prépare de quoi noter les initiatives de tous, joueu
 
 ### 1. L’initiative
 
-Le MJ annonce le début du tour. Chaque joueur lance 1D20 et ajoute le bonus d’initiative de son personnage, qui vient de son Agilité (le tableau est dans {{etape-6-finaliser-son-personnage}}) ; le MJ fait de même pour les PNJ et les ennemis. On joue du plus haut résultat au plus bas. Les initiatives se relancent **à chaque tour**.
+Le MJ annonce le début du tour. Chaque joueur lance 1D20 et ajoute le bonus d’initiative de son personnage, qui vient de son Agilité ; le MJ fait de même pour les PNJ et les ennemis. On joue du plus haut résultat au plus bas. Les initiatives se relancent **à chaque tour**.
 
 ### 2. Les effets de début de tour
 
-Avant de faire quoi que ce soit, le personnage dont c’est le tour subit ce qui le frappe en début de tour : poison, brûlure… (voir {{alteration-detat|Altérations d’états}}).
+Avant de faire quoi que ce soit, le personnage dont c’est le tour subit ce qui le frappe en début de tour : poison, brûlure… (voir {{alteration-detat|Blessures et états}}).
 
 ### 3. La posture
 
@@ -7672,29 +7903,12 @@ On passe au suivant.
 
 Ce n’est pas parce que ce n’est pas son tour qu’un personnage ne peut rien faire. Il peut :
 
-- se défendre contre les attaques, autant de fois que sa posture le lui permet (voir {{se-defendre}}) ;
+- se défendre contre les attaques, autant de fois que sa posture le lui permet (voir {{attaquer}}) ;
 - utiliser un don de type *Réaction*, un don qui se joue justement en dehors de son tour ;
 - profiter d’une attaque d’opportunité, quand l’occasion se présente ;
 - ou réagir autrement, si la situation le permet.
 
 Le MJ juge de ce qui est valable selon la situation.
-
-## Les actions rapides (IC)
-
-Certains sorts et certaines actions portent la mention **IC** (*Instant Cast*) ou « action rapide » : ce n’est pas une action à part entière, cela ne casse pas le tour. Un sort IC, par exemple, ne consomme pas le tour du joueur, sauf sur un échec critique.
-
-- On en fait **trois par tour au plus**, et jamais deux fois la même, sauf mention contraire.
-- Elles se font **toujours avant l’action**.
-- L’action du tour peut servir à en faire une quatrième.
-
-Ce sont souvent les objets qui coûtent du temps, et la ceinture en fait gagner (voir {{lequipement}}) :
-
-- **boire** quelque chose : toute l’action, ou une action rapide si la fiole est à la ceinture ;
-- **allumer** quelque chose, **soigner** un personnage : toute l’action, ou deux actions rapides si le nécessaire est à la ceinture ;
-- **sortir un objet du sac** : toute l’action ;
-- **mettre des objets à la ceinture** : l’action, plus une action rapide.
-
-D’autres choses se font en actions rapides : passer en mode discret pour une attaque discrète en coûte trois (deux pour un voleur), et la posture de vigilance fait une action rapide d’estimer la position d’un ennemi invisible ou discret.
 
 ## Cinq façons d’enchaîner un tour
 
@@ -7708,15 +7922,15 @@ Le Doc « Guide pour MJ » compte cinq façons d’enchaîner un tour ; les acti
 
 Le Doc « Guide pour MJ » détaille tout cela dans {{les-actions-et-mouvements|Les actions et mouvements}} et {{la-vitesse-et-la-portee|La vitesse et la portée}} ; sa page d’accueil, {{guide-pour-mj-maverick}}, en donne le sommaire.
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/les-attaques-d-opportunite', 'guide', 'les-attaques-d-opportunite', 'Les attaques d''opportunité', 'les-attaques-dopportunite', 'Au-delà des attaques classiques, il est possible d''avoir des occasions d''attaquer de manière plus gratuitement un adversaire, ces situations là correspondent à :', NULL, 'Au-delà des attaques classiques, il est possible d''avoir des occasions d''attaquer de manière plus gratuitement un adversaire, ces situations là correspondent à :
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/les-attaques-d-opportunite', 'guide', 'les-attaques-d-opportunite', 'Les attaques d''opportunité', 'les-attaques-dopportunite', 'Au-delà des attaques classiques, il est possible d''avoir des occasions d''attaquer de manière plus gratuitement un adversaire, ces situations là correspondent à :', NULL, 'Au-delà des attaques classiques, il est possible d’avoir des occasions d’attaquer de manière plus gratuitement un adversaire, ces situations là correspondent à :
 
-- Quand l''adversaire fait un échec critique à son attaque contre vous.
-- Quand l''adversaire sort de votre zone d''influence (sauf quand c’est vous qui le forcez à sortir de votre zone).
-- Quand une capacité d''une classe vous le permet.
+- Quand l’adversaire fait un échec critique à son attaque contre vous.
+- Quand l’adversaire sort volontairement de votre zone d’influence.
+- Quand une capacité d’une classe vous le permet.
 
-Il n''est possible de prodiguer qu''une seule attaque d''opportunité par tour ET par joueur (sauf si vous avez un don qui permet d''en faire plus), ça veut donc dire qu''il est tout à fait possible que 2 joueurs ou plus qui sont sur le même ennemi puissent très bien utiliser leur attaque d''opportunité sur lui si jamais il est possible de lui mettre un coup.
+Il n’est possible de prodiguer qu’une seule attaque d’opportunité par tour et par joueur (sauf si vous avez un don qui permet d’en faire plus), ça veut donc dire qu’il est tout à fait possible que 2 joueurs ou plus qui sont sur le même ennemi puissent très bien utiliser leur attaque d’opportunité sur lui si jamais il est possible de lui mettre un coup.
 
-Lors d''une attaque d''opportunité, une action simple doit être faite, il n''est pas possible de faire des actions compliquées ou en dehors de l''attaque comme :
+Lors d’une attaque d’opportunité, une action simple doit être faite, il n’est pas possible de faire des actions compliquées ou en dehors de l’attaque comme :
 
 - Un sort non offensif
 - Un sort niveau 5
@@ -7727,12 +7941,12 @@ Lors d''une attaque d''opportunité, une action simple doit être faite, il n''e
 
 etc …
 
-Ce qui est possible dans l''attaque d''opportunité est :
+Ce qui est possible dans l’attaque d’opportunité est :
 
-- Une attaque classique avec une arme (déjà dégainée et en respectant {{la-vitesse-et-la-portee|la portée}} de l''arme)
-- Un sort d''attaque
+- Une attaque classique avec une arme (déjà dégainée et en respectant {{la-vitesse-et-la-portee|la portée}} de l’arme)
+- Un sort d’attaque
 
-En clair, les attaques d''opportunités sont des occasions rares mais qui peuvent faire pencher la balance lors d''un affrontement, si bien entendu l''attaque d''opportunité est réussie.
+En clair, les attaques d’opportunités sont des occasions rares mais qui peuvent faire pencher la balance lors d’un affrontement, si bien entendu l’attaque d’opportunité est réussie.
 
 La victime de l’attaque d’opportunité ne peut pas parer ou esquiver, **à moins d’être en posture défensive**.
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
@@ -7813,162 +8027,6 @@ Elle prend les coups avant la santé, sauf contre-indication : une fois qu’ell
 Sur la {{fiche-de-personnage|fiche de personnage}}, la deuxième ligne de la tuile des attributs donne l’AP et l’AM totaux du personnage et calcule les dégâts qu’il reçoit. Saisissez les dégâts du coup (critique compris), son type (Estoc, Taille, Frappe, ou Magique pour un sort) et son élément : il est obligatoire pour un coup magique, et une arme élémentaire a les deux. Cochez « Dégâts réduits » pour une défense partielle, et « Au bouclier » ou « Don ÷ 2 » s’il y a lieu. Le bouton « Appliquer » retire ensuite le résultat de la barrière, puis de la santé quand la barrière est vide. Des cases règlent les coups contre lesquels la barrière ne joue pas normalement : « Passe la barrière » (sorts qui l’ignorent), « Casse la barrière », « Dégâts doublés contre la barrière », et « Deux fois moins » (dons du Médusain), cochée d’office quand le personnage a le don qui correspond au coup.
 
 Le texte d’origine de la formule et de ses exemples : {{formule-des-degats}}.
-', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/les-neuf-alignements', 'guide', 'les-neuf-alignements', 'Les neuf alignements', 'les-neuf-alignements', 'Les neuf alignements sont formés par la combinaison des deux axes d''alignement.', NULL, 'Les neuf alignements sont formés par la combinaison des deux axes d''alignement. Ils ne constituent pas des personnalités prédéfinies : deux personnages partageant le même alignement peuvent avoir des caractères, des valeurs et des façons d''agir très différentes.
-
-L''alignement représente avant tout la philosophie qui ressort des choix du personnage.
-
-## Loyal Bon
-
-Le Loyal Bon cherche à faire le bien tout en accordant une grande importance à l''ordre, au devoir et au collectif. Il considère généralement que les règles et les institutions peuvent protéger les plus faibles et permettre à une société juste de fonctionner.
-
-Il respecte ses engagements, accorde de l''importance à la confiance et accepte volontiers de faire des sacrifices personnels pour le bien des autres. Il peut combattre l''injustice avec détermination, tout en cherchant à préserver la vie et la dignité de ceux qu''il affronte lorsque cela est possible.
-
-Il possède un fort sens de la moralité et un fort attachement aux règles.
-
-Un Loyal Bon n''est pas obligé d''obéir à une loi qu''il considère profondément injuste. Il peut au contraire chercher à la modifier ou à la combattre, mais il cherchera généralement à le faire selon des principes qu''il considère justes.
-
-Dans ses formes extrêmes, le Loyal Bon peut devenir intransigeant, considérant sa conception du Bien et de la justice comme supérieure à celle des autres.
-
-***Exemple :***
-
-| Façon de se comporter possible | Réflexion/Question possible |
-| :-: | :-: |
-| Défend les innocents, respecte son serment et considère son devoir comme un moyen de protéger ceux qui ne peuvent pas se défendre eux-mêmes. Suit une discipline stricte et un code de conduite qu''il s''impose afin de maîtriser ses propres instincts et de pouvoir consacrer sa vie aux autres. Cherche à faire respecter une justice équitable, mais refuse d''appliquer aveuglément une loi lorsqu''elle condamnerait injustement un innocent. | *« Cette loi est injuste, mais je ne vais pas simplement la bafouer. Je vais trouver un moyen de la faire changer. »* *« Il a commis un crime, mais il n''est pas nécessaire de le tuer. S''il peut être neutralisé autrement, épargnons sa vie. »* *« J''ai promis de protéger ces gens. Même si personne ne vient m''aider, je resterai jusqu''au bout. »* |
-
-## Loyal Neutre
-
-Le Loyal Neutre accorde la priorité à l''ordre, au devoir et au fonctionnement du collectif, sans que le Bien ou le Mal ne constitue nécessairement sa principale préoccupation.
-
-Il respecte les règles, les traditions, les engagements et la hiérarchie lorsqu''il les considère légitimes. Il peut accepter des contraintes personnelles importantes au nom de son devoir et attend généralement la même discipline des autres.
-
-Il n''est cependant pas forcément attaché à une loi particulière : il peut soutenir ou combattre une règle selon la place qu''elle occupe dans l''ordre qu''il défend.
-
-Dans ses formes extrêmes, le Loyal Neutre peut devenir rigide, accordant tellement d''importance à l''ordre qu''il en vient à négliger les individus au nom du système.
-
-***Exemple :***
-
-| Façon de se comporter possible | Réflexion/Question possible |
-| :-: | :-: |
-| La discipline, la chaîne de commandement et le devoir passent avant ses préférences personnelles. Préserve les coutumes de son peuple, convaincu qu''elles sont essentielles à son identité et à sa cohésion. Applique les règles avec sérieux et impartialité, considérant que le système ne peut fonctionner si chacun décide individuellement quelles règles respecter. | *« Je n''approuve peut-être pas cet ordre, mais c''est mon supérieur et j''ai accepté de servir sous ses ordres. »* *« Si chacun décide quelles lois il respecte, nous n''avons plus de société. »* *« Je dois tenir ma parole. Que cela m''arrange ou non n''a aucune importance. »* |
-
-## Loyal Mauvais
-
-Le Loyal Mauvais cherche à satisfaire ses propres intérêts tout en s''appuyant sur l''ordre, la hiérarchie et les règles.
-
-Il peut être discipliné, fiable et respecter scrupuleusement sa parole. Il ne voit cependant pas nécessairement ces qualités comme des moyens de protéger les autres, mais comme des principes utiles pour maintenir une structure dont il peut tirer profit.
-
-Il peut accepter de faire souffrir ou de sacrifier certaines personnes lorsque cela sert ses objectifs, particulièrement lorsqu''il considère que leur sacrifice est nécessaire au maintien de l''ordre ou à la réussite de son groupe.
-
-Un Loyal Mauvais n''est pas nécessairement cruel ou violent. Il peut préférer une solution légale, organisée et efficace à une démonstration de force.
-
-Dans ses formes extrêmes, il peut considérer que la domination et la hiérarchie sont naturelles, et que certains individus ou groupes ont davantage de valeur ou de droits que d''autres.
-
-***Exemple :***
-
-| Façon de se comporter possible | Réflexion/Question possible |
-| :-: | :-: |
-| Maintient une société extrêmement hiérarchisée et considère que la peur et l''autorité sont nécessaires pour empêcher le chaos. Respecte scrupuleusement les procédures, mais utilise sa position et les lois pour favoriser ses propres intérêts. Est profondément loyal envers son royaume et sa hiérarchie, mais considère que les individus peuvent être sacrifiés lorsque les intérêts du collectif l''exigent. | *« La loi est la même pour tout le monde. S''il doit être exécuté, alors il sera exécuté. »* *« Je pourrais trahir mon supérieur, mais si je commence à le faire, pourquoi mes hommes resteraient-ils loyaux envers moi ? »* *« Je préfère gouverner par la peur que de laisser le chaos s''installer. Au moins, tout le monde connaît sa place. »* |
-
-## Neutre Bon
-
-Le Neutre Bon cherche avant tout à faire le bien et à protéger les autres, sans accorder une importance particulière à l''ordre ou à la liberté.
-
-Il peut respecter les lois lorsqu''elles lui permettent d''aider les autres, mais n''hésitera pas à les contourner lorsqu''elles deviennent un obstacle. Il peut également accepter certaines contraintes lorsqu''elles sont utiles, sans pour autant considérer qu''elles doivent être respectées par principe.
-
-Il accorde généralement une grande importance à la compassion, au pardon, à la générosité et à la seconde chance.
-
-Dans ses formes extrêmes, le Neutre Bon peut devenir excessivement conciliant, au point de vouloir sauver ou pardonner quelqu''un alors que cela représente un danger important pour les autres.
-
-***Exemple :***
-
-| Façon de se comporter possible | Réflexion/Question possible |
-| :-: | :-: |
-| Aide toute personne qui en a besoin, sans se soucier de son statut, de ses origines ou de son appartenance à une faction. Intervient lorsqu''il voit quelqu''un en danger, même si aucune loi ne lui impose de le faire. Cherche avant tout à résoudre les conflits et à éviter les souffrances inutiles, quitte à contourner certaines règles pour y parvenir. | *« Cette règle existe pour protéger les gens, alors je la respecterai. Mais si elle les met en danger, je passerai outre. »* *« Je ne sais pas s''il mérite une seconde chance, mais tant que je peux lui en donner une sans mettre les autres en danger, je le ferai. »* *« Peu importe qui a raison ou qui a l''autorité. Il y a quelqu''un qui souffre et je peux l''aider. »* |
-
-## Neutre
-
-Le Neutre ne place aucune des quatre tendances au-dessus des autres.
-
-Il agit principalement en fonction des circonstances, de ses objectifs et de ses propres priorités. Il peut respecter une règle lorsqu''elle lui semble utile, la contourner lorsqu''elle devient gênante, aider quelqu''un lorsqu''il en ressent le besoin ou privilégier ses propres intérêts lorsque le coût du sacrifice lui paraît trop important.
-
-Le Neutre n''est pas nécessairement indifférent, égoïste ou dépourvu de convictions. Il peut simplement refuser de faire d''une philosophie particulière une règle absolue de son existence.
-
-Dans ses formes extrêmes, il peut devenir opportuniste ou indécis, changeant régulièrement de position selon ce qui lui semble le plus avantageux.
-
-***Exemple :***
-
-| Façon de se comporter possible | Réflexion/Question possible |
-| :-: | :-: |
-| Accepte les contrats qui lui conviennent et aide ses employeurs tant que le risque reste acceptable. Ne cherche ni la gloire ni la justice : il fait principalement ce qui lui permet de rester en vie. Peut se montrer généreux, égoïste, loyal ou opportuniste selon les circonstances et les personnes impliquées. | *« Pourquoi risquer ma vie pour eux ? ... Bon, d''accord, mais vous me devrez une faveur. »* *« Cette règle m''est utile aujourd''hui, alors je vais la respecter. Demain, on verra. »* *« Je ne cherche ni à sauver le monde ni à le détruire. Je veux simplement arriver vivant au bout de cette aventure. »* |
-
-## Neutre Mauvais
-
-Le Neutre Mauvais place ses propres intérêts au-dessus de ceux des autres, sans attachement particulier à l''ordre ou au chaos.
-
-Il peut respecter les règles lorsqu''elles lui sont utiles et les enfreindre lorsqu''elles représentent un obstacle. De la même manière, il peut coopérer avec les autres lorsque cela lui profite, sans ressentir d''obligation particulière envers eux.
-
-Il n''a généralement aucun problème à mentir, manipuler, voler ou blesser autrui si cela lui permet d''obtenir ce qu''il désire.
-
-Contrairement au Chaotique Mauvais, il n''a pas besoin de provoquer le désordre ou de suivre ses émotions. Il privilégie souvent l''efficacité et son propre intérêt.
-
-Dans ses formes extrêmes, il peut devenir profondément égoïste et considérer les autres uniquement comme des outils permettant de satisfaire ses objectifs.
-
-***Exemple :***
-
-| Façon de se comporter possible | Réflexion/Question possible |
-| :-: | :-: |
-| Vole, ment et manipule lorsqu''il y trouve son intérêt, sans chercher particulièrement à provoquer le chaos. Exploite les besoins des autres et profite de leur faiblesse pour maximiser ses bénéfices. Tue pour obtenir de l''argent ou atteindre un objectif, sans ressentir le besoin de faire souffrir ses victimes ou de provoquer davantage de désordre. | *« Je pourrais l''aider, mais qu''est-ce que j''y gagne ? »* *« S''il faut sacrifier quelqu''un pour réussir, ce sera lui. Je ne vais certainement pas me sacrifier à sa place. »* *« Je me fiche que ce soit légal. Si personne ne peut m''arrêter et que j''y gagne quelque chose, pourquoi m''en priver ? »* |
-
-## Chaotique Bon
-
-Le Chaotique Bon cherche à faire le bien tout en accordant une grande importance à la liberté et au libre arbitre.
-
-Il n''accepte pas qu''une loi, une tradition ou une autorité soit une raison suffisante pour empêcher quelqu''un d''être aidé. Il peut donc désobéir ouvertement lorsqu''il estime qu''une règle nuit aux personnes qu''il cherche à protéger.
-
-Il suit souvent ses convictions, ses émotions ou son instinct et peut prendre des décisions spontanées lorsqu''une personne est en danger. Il accepte plus facilement que les Loyaux de prendre des risques ou de sortir des méthodes établies pour faire ce qu''il considère comme juste.
-
-Dans ses formes extrêmes, le Chaotique Bon peut devenir téméraire, convaincu que ses bonnes intentions justifient de prendre des décisions sans suffisamment considérer leurs conséquences.
-
-***Exemple :***
-
-| Façon de se comporter possible | Réflexion/Question possible |
-| :-: | :-: |
-| Combat les autorités qu''il considère oppressives et libère ceux qu''elles maintiennent sous leur contrôle. Enfreint régulièrement les lois pour aider les personnes qu''il estime victimes d''un système injuste. Suit son instinct et intervient spontanément lorsqu''il voit quelqu''un en danger, même si cela ruine les plans du groupe. | *« Ils disent que c''est interdit ? Alors qu''ils viennent m''arrêter après que j''ai sauvé ces gens. »* *« Je sais que ce n''était pas le plan, mais cette personne avait besoin de moi. Je n''allais quand même pas la laisser mourir. »* *« Je préfère désobéir et faire ce que je pense juste plutôt que regarder quelqu''un souffrir parce que personne n''ose enfreindre les règles. »* |
-
-## Chaotique Neutre
-
-Le Chaotique Neutre place la liberté individuelle au-dessus de l''ordre et des contraintes imposées par le collectif.
-
-Il refuse généralement qu''une autorité décide de la manière dont il doit vivre et préfère tracer sa propre route. Il peut suivre ses émotions, ses convictions ou simplement ses envies, et s''adapter rapidement lorsque les circonstances changent.
-
-Il n''est pas nécessairement hostile aux autres et peut être profondément attaché à certaines personnes. Il considère cependant que chacun doit rester libre de faire ses propres choix.
-
-Dans ses formes extrêmes, le Chaotique Neutre peut devenir irresponsable ou individualiste, refusant toute contrainte même lorsqu''elle serait nécessaire au bien du groupe ou de ses proches.
-
-***Exemple :***
-
-| Façon de se comporter possible | Réflexion/Question possible |
-| :-: | :-: |
-| Refuse de s''attacher à une société ou à une institution et voyage constamment pour rester libre. Déteste recevoir des ordres et préfère toujours trouver sa propre manière de résoudre un problème. Suit ses propres convictions et son propre mode de vie, sans se soucier de savoir si celui-ci correspond aux attentes de la société. | *« Pourquoi devrais-je vivre comme ils l''ont décidé ? Je choisirai moi-même ce que je veux devenir. »* *« Ce n''est pas parce que j''ai accepté de les accompagner que je leur appartiens. Si je veux partir, je partirai. »* *« Cette règle ne me convient pas. Je peux soit la contourner, soit partir. Dans tous les cas, personne ne décidera pour moi. »* |
-
-## Chaotique Mauvais
-
-Le Chaotique Mauvais place sa liberté et ses propres désirs au-dessus de toute considération pour les autres.
-
-Il rejette les règles et les autorités qui limitent sa volonté et n''hésite pas à faire souffrir autrui pour obtenir ce qu''il souhaite. Il peut agir sous l''influence de ses émotions, de sa colère ou de ses instincts et accepte plus facilement de prendre des risques importants pour satisfaire ses objectifs.
-
-Contrairement au Neutre Mauvais, il peut rejeter une solution efficace simplement parce qu''elle implique de se soumettre à quelqu''un ou à une règle.
-
-Dans ses formes extrêmes, le Chaotique Mauvais peut devenir destructeur et sadique, allant jusqu''à faire souffrir ou détruire sans bénéfice réel, simplement parce qu''il en a le pouvoir ou qu''il y trouve du plaisir.
-
-***Exemple :***
-
-| Façon de se comporter possible | Réflexion/Question possible |
-| :-: | :-: |
-| Prend ce qu''il veut par la force et refuse toute autorité susceptible de limiter ses désirs. Sème la violence et le chaos parce qu''il considère que personne ne devrait pouvoir lui imposer de limites. Utilise sa liberté pour satisfaire ses pulsions et fait volontairement souffrir les autres lorsqu''il en retire du plaisir. | *« Pourquoi devrais-je respecter cette loi ? Qui va m''en empêcher ? »* *« Je pourrais simplement négocier avec lui... mais j''ai envie de lui faire payer. »* *« Je préfère tout perdre plutôt que de laisser quelqu''un m''imposer ce que je dois faire. »* |
-
-**L''alignement n''impose pas au personnage sa manière d''agir. Il permet de représenter les tendances qui se dégagent de ses choix.**
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/les-pieges', 'guide', 'les-pieges', 'Les pièges', 'les-pieges', 'Les pièges sont un danger plus ou moins répandu dans les donjons ou ailleurs.', NULL, 'Les pièges sont un danger plus ou moins répandu dans les donjons ou ailleurs. Ils ont pour objectif de protéger les objets de valeur ou arrêter les intrus.
 
@@ -8758,7 +8816,7 @@ La réussite critique ne dépasse jamais 1 à 15, toutes sources ensemble, tenai
 
 Les cases devant un adversaire, derrière lui, à sa gauche et à sa droite forment sa **zone d’influence**. Entrer dans la zone d’influence d’un adversaire puis la traverser lui permet une attaque d’opportunité ; la quitter aussi, avec les limites de toute attaque d’opportunité (voir {{attaque-dopportunite|Les attaques d''opportunité}}).
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/rater-ses-sortileges', 'guide', 'rater-ses-sortileges', 'Rater ses sortilèges', 'rater-ses-sortileges', 'Cela arrive à tout le monde de rater des sorts, lors d’un échec d’un sort, la moitié du coût en chakra est quand même consommé.', NULL, 'Cela arrive à tout le monde de rater des sorts, lors d’un échec d’un sort, la moitié du coût en {{chakra|chakra}} est quand même consommé. Si le nombre est impair, la règle de Maverick dit “toujours arrondi à l’inférieur”
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/rater-ses-sortileges', 'guide', 'rater-ses-sortileges', 'Rater ses sorts', 'rater-ses-sorts', 'Cela arrive à tout le monde de rater des sorts, lors d’un échec d’un sort, la moitié du coût en chakra est quand même consommé.', NULL, 'Cela arrive à tout le monde de rater des sorts, lors d’un échec d’un sort, la moitié du coût en {{chakra|chakra}} est quand même consommé. Si le nombre est impair, la règle de Maverick dit “toujours arrondi à l’inférieur”
 
 **Cas particuliers :**
 
@@ -22363,7 +22421,7 @@ Cette page suit l''onglet « Fenrir » du Google Sheet « Les races », qui prim
 | --- | --- | --- |
 | Don de base<br>(fiche : colonne « Don base ») | Repos (Action 3 fois/jour) (Permet de récupérer 2d4 + 4 santé et {{chakra\|chakra}} (jet de calme en stress)). | Repos/Action/Permet de récupérer 1d6 santé et chakra (jet de calme en stress). |
 ', 'draft', 'races', 'Google Sheet « Les races », onglet « première feuille »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('races/fongoide', 'races', 'fongoide', 'Fongoïde', 'fongoide', NULL, '{"magies_innees": ["Sang", "Arcane", "Corruption", "Espace/Temps", "Vide", "Nécromancie", "Feu", "Eau", "Glace", "Terre", "Vent", "Foudre", "Lumière", "Ombre"]}', '## Présentation
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('races/fongoide', 'races', 'fongoide', 'Fongoïde', 'fongoide', NULL, '{"magies_innees": ["Potentiel Illimité", "Sang", "Arcane", "Corruption", "Espace/Temps", "Vide", "Nécromancie", "Feu", "Eau", "Glace", "Terre", "Vent", "Foudre", "Lumière", "Ombre"]}', '## Présentation
 
 Une race entièrement fait de champignons dont l''origine remonte le jour où le {{dimitri|Dieu de la Terre}} s''est donné la mort.
 
@@ -22419,7 +22477,7 @@ Ils ne possèdent pas de véritable capacité à parler à cause de l''absence t
 
 **Avantage(s)** : Accès à toutes les magies.
 
-**Inconvénient(s)** : Ne possède pas la parole, Classe barde et parleur interdite.
+**Inconvénient(s)** : Ne possède pas la parole, Classe {{barde|Barde}} et {{parleur|Parleur}} interdite.
 
 ## Don de base
 
@@ -22445,9 +22503,9 @@ Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenai
 
 ## Magies accessibles
 
-Nombre : 14 sur 15.
+Nombre : 15 sur 15.
 
-Sang, Arcane, Corruption, Espace/Temps, Vide, Nécromancie, Feu, Eau, Glace, Terre, Vent, Foudre, Lumière, Ombre
+Potentiel Illimité, Sang, Arcane, Corruption, Espace/Temps, Vide, Nécromancie, Feu, Eau, Glace, Terre, Vent, Foudre, Lumière, Ombre
 ', 'draft', 'races', 'Nouveauté mise à jour Décembre, onglet « Fongoïde »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('races/gemidien', 'races', 'gemidien', 'Gémidien', 'gemidien', NULL, '{"magies_innees": ["Sang", "Arcane", "Espace/Temps", "Vide", "Nécromancie", "Feu", "Eau", "Glace", "Terre", "Vent", "Foudre", "Lumière", "Ombre"]}', '## Présentation
 
@@ -25556,7 +25614,7 @@ Puis lancer 1d20 pour déterminer le bonus d''acquis
 | Eau | Saphir | Avec son bleu profond, le saphir est la pierre de l''eau, elle peut se trouver dans les profondeurs et dans les grottes sous la mer. | 7 Ro | 17 Ro | 37 Ro |
 | Glace | Turquoise | C''est une pierre qui semble assez simple mais qui pourtant concentre la puissance de la glace, elle est émet une petite brume froide quand elle se réchauffe. | 10 Ro | 22 Ro | 47 Ro |
 | Terre | Ambre | L''ambre est la gemme qui provient du vivant, il s''agit d''une résine ancienne qui concentre la puissance de la terre. On le trouve près de très vieux arbres. | 12 Ro | 27 Ro | 57 Ro |
-| Vent | Émeraude | Avec son vert sexy, cette gemme concentre la puissance du vent, elle est très légère et se retrouve dans les plus hauts sommets. | 7 Ro | 17 Ro | 37 Ro |
+| Vent | Émeraude | Avec son vert vibrant, cette gemme concentre la puissance du vent, elle est très légère et se retrouve dans les plus hauts sommets. | 7 Ro | 17 Ro | 37 Ro |
 | Foudre | Topaze | Avec un beau jaune, la topaze est le témoin de la colère de la foudre qui s''est acharnée sur une terre. | 7 Ro | 17 Ro | 37 Ro |
 | Ombre | Améthyste | Dans les plus obscures grottes, il existe une magnifique pierre d''un somptueux violet qui concentre la puissance de l''obscurité. | 15 Ro | 32 Ro | 67 Ro |
 | Lumière | Opale | Cette pierre représente la puissance du soleil avec son beige mat, cette pierre est présente dans les zones où le soleil brille le plus fort. | 15 Ro | 32 Ro | 67 Ro |
@@ -26636,7 +26694,7 @@ Morceau du bon bois + La bonne gemme + Test de Perception + Volonté = Bâton é
 | Eau | Saphir | Avec son bleu profond, le saphir est la pierre de l''eau, elle peut se trouver dans les profondeurs et dans les grottes sous la mer. | 3 000 RF / 30 RO | 70 RO | 150 RO | Palétuvier | Un arbre parfaitement adapté à l''environnement marécageux, ses racines sont visibles à la surface contrairement aux autres arbres. | 1 200 RF / 12 RO |
 | Glace | Turquoise | C''est une pierre qui semble assez simple mais qui pourtant concentre la puissance de la glace, elle est émet une petite brume froide quand elle se réchauffe. | 4 000 RF / 40 RO | 90 RO | 190 RO | Sapin | Le sapin est un très grand arbre qui est parfaitement adapté aux températures très basses, il fabrique des couches de glace quand son écorce est percée. | 2 400 RF / 24 RO |
 | Terre | Ambre | L''ambre est la gemme qui provient du vivant, il s''agit d''une résine ancienne qui concentre la puissance de la terre. On le trouve près de très vieux arbres. | 5 000 RF / 50 RO | 110 RO | 230 RO | Orme | Ce gigantesque arbre majestueux est assez rare, il peut mesurer jusqu''à 50 mètres de haut. | 3 000 RF / 30 RO |
-| Vent | Émeraude | Avec son vert sexy, cette gemme concentre la puissance du vent, elle est très légère et se retrouve dans les plus hauts sommets. | 3 000 RF / 30 RO | 70 RO | 150 RO | Bambou | C''est une herbe qui monte très haut et qui est très légère. | 1 800 RF / 18 RO |
+| Vent | Émeraude | Avec son vert vibrant, cette gemme concentre la puissance du vent, elle est très légère et se retrouve dans les plus hauts sommets. | 3 000 RF / 30 RO | 70 RO | 150 RO | Bambou | C''est une herbe qui monte très haut et qui est très légère. | 1 800 RF / 18 RO |
 | Foudre | Topaze | Avec un beau jaune, la topaze est le témoin de la colère de la foudre qui s''est acharnée sur une terre. | 3 000 RF / 30 RO | 70 RO | 150 RO | Frêne | Un arbre très grand qui est capable de résister à l''impact d''un éclair un et semble pouvoir garder la foudre en lui pour se protéger. | 1 800 RF / 18 RO |
 | Ombre | Améthyste | Dans les plus obscures grottes, il existe une magnifique pierre d''un somptueux violet qui concentre la puissance de l''obscurité. | 6 000 RF / 60 RO | 130 RO | 270 RO | Saule | Cet arbre protège parfaitement bien du soleil et cache tout ce qu''il y a en dessous de ses feuilles et à son pied ... prudence  ... | 3 600 RF / 36 RO |
 | Lumière | Opale | Cette pierre représente la puissance du soleil avec son beige mat, cette pierre est présente dans les zones où le soleil brille le plus fort. | 6 000  RF / 60 RO | 130 RO | 270 RO | Palmier | Cet arbre tordu des places aime beaucoup le soleil et peut parfois en émettre quand la nuit arrive, comme des lampadaires. | 3 600 RF / 36 RO |

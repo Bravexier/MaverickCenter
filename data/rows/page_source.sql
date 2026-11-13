@@ -1564,6 +1564,7 @@ INSERT INTO page_source (page_id, ordre, source_id) VALUES ('classes/tueur', 0, 
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('classes/tueur', 1, 'google-sheet:1Pyg4GSUlFrvNaTg3bi6uXlehg1MuRHmkyfPO6s5K72I');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('classes/voleur', 0, 'ref:google-sheet-classe-maverick-v7-onglet-voleur');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('classes/voleur', 1, 'google-sheet:1Pyg4GSUlFrvNaTg3bi6uXlehg1MuRHmkyfPO6s5K72I');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/action-rapides-ic', 0, 'ref:site-de-dev-edition-du-2026-11-08');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/actions-et-mouvements', 0, 'ref:google-doc-regle-du-jeu-guide-pour-mj-maverick');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/actions-et-mouvements', 1, 'google-doc:17VxGUwjzEZWElwIYVaXvaaumqFM4yKnO1C7uhVyc9iM');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/alignement', 0, 'ref:google-doc-regle-du-jeu-guide-pour-mj-maverick');
@@ -1883,8 +1884,6 @@ INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/les-degats', 
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/les-degats', 10, 'ref:google-sheet-mode-hyper-et-co-onglet-mode-hyper');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/les-degats', 11, 'google-sheet:1AjQyT-IZMULq6FlgnmVmn2QiQ9AWhhbOgjr-COgMyMo');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/les-degats', 12, 'ref:decisions-du-proprietaire-r5-r17-r85-r90-r96-r98-r99-r100-r165-et-r166-docs-decisions-regles-md');
-INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/les-neuf-alignements', 0, 'ref:google-doc-regle-du-jeu-guide-pour-mj-maverick');
-INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/les-neuf-alignements', 1, 'google-doc:17VxGUwjzEZWElwIYVaXvaaumqFM4yKnO1C7uhVyc9iM');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/les-pieges', 0, 'ref:google-doc-regle-du-jeu-guide-pour-mj-maverick');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/les-pieges', 1, 'google-doc:17VxGUwjzEZWElwIYVaXvaaumqFM4yKnO1C7uhVyc9iM');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/les-portes', 0, 'ref:google-doc-regle-du-jeu-guide-pour-mj-maverick');

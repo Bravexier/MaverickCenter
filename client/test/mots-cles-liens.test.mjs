@@ -135,20 +135,37 @@ test('feuille des mots-clés : une règle par couleur écrite (lisible, texte li
   assert.ok(FAMILLES_DES_ZONES.includes('race') && FAMILLES_DE_CHAQUE_PAGE.includes('magie'));
 });
 
-test('mot-clé d’une page (Q5) : les mots-clés colorés qui y mènent, ancre et requête ignorées, le premier par libellé ; préfixe de déploiement', () => {
+test('mot-clé d’une page (Q5) : les mots-clés colorés qui y mènent, requête ignorée, le premier par libellé ; préfixe de déploiement', () => {
   const vocabulaire = [
     { id: 'z', libelle: 'Zèbre', couleur: 'race:pure', url: '/races/nain/' },
-    { id: 'b', libelle: 'bœuf', couleur: '#123456', url: '/races/nain/#peuples' },
     { id: 'a', libelle: 'Âne', couleur: null, url: '/races/nain/' },
     { id: 'c', libelle: 'Chat', couleur: 'race:pure', url: '/races/drakos/' },
     { id: 'd', libelle: 'Dé', couleur: 'race:pure', url: null },
+    { id: 'r', libelle: 'Requin', couleur: '#123456', url: '/races/nain/?x=1' },
   ];
-  assert.equal(motCleDeLaPage(vocabulaire, '/races/nain/')?.id, 'b', 'non coloré écarté, ancre ignorée, ordre du libellé sans accent ni casse');
-  assert.equal(motCleDeLaPage(vocabulaire, '/races/nain/?x=1#y')?.id, 'b');
+  assert.equal(motCleDeLaPage(vocabulaire, '/races/nain/')?.id, 'r', 'non coloré écarté, requête ignorée, ordre du libellé sans accent ni casse');
+  assert.equal(motCleDeLaPage(vocabulaire, '/races/nain/?x=1#y')?.id, 'r');
   assert.equal(motCleDeLaPage(vocabulaire, '/MaverickCenter/races/drakos/', { base: '/MaverickCenter/' })?.id, 'c');
   assert.equal(motCleDeLaPage(vocabulaire, '/races/inconnue/'), null);
   assert.equal(motCleDeLaPage({ liste: vocabulaire }, '/races/drakos/')?.id, 'c', 'un vocabulaire prêt');
   assert.equal(motCleDeLaPage([], '/'), null);
+});
+
+test('mot-clé d’une page (Q5, « Ancre = pas de couleur ») : un mot-clé dont l’adresse a une ancre ne colore pas la page, ni même quand il est le premier par libellé', () => {
+  const vocabulaire = [
+    { id: 'ancre-1', libelle: 'Aigle', couleur: 'alignement:loyal-bon', url: '/regles/alignement/#loyal-bon' },
+    { id: 'ancre-2', libelle: 'Bison', couleur: '#123456', url: '/regles/alignement/?x=1#neutre' },
+    { id: 'page', libelle: 'Zèbre', couleur: 'race:pure', url: '/regles/alignement/' },
+    { id: 'autre', libelle: 'Chat', couleur: 'race:pure', url: '/regles/autre/#section' },
+  ];
+  assert.equal(motCleDeLaPage(vocabulaire, '/regles/alignement/')?.id, 'page', 'le mot-clé sans ancre, malgré un libellé qui vient après');
+  assert.equal(motCleDeLaPage(vocabulaire, '/regles/alignement/#loyal-bon')?.id, 'page', 'l’ancre de la page demandée est ignorée');
+  assert.equal(motCleDeLaPage(vocabulaire, '/regles/autre/'), null, 'seuls des mots-clés à ancre : la page garde sa couleur d’avant');
+  assert.equal(motCleDeLaPage(vocabulaire.slice(0, 2), '/regles/alignement/'), null);
+  // une ancre vide (« # » seul) n'en est pas une
+  assert.equal(motCleDeLaPage([{ id: 'v', libelle: 'V', couleur: 'race:pure', url: '/regles/vide/#' }], '/regles/vide/')?.id, 'v');
+  // la couleur du mot-clé à ancre reste celle de son texte : sa classe se lit toujours
+  assert.equal(classeDuMotCle(vocabulaire[0]), 'couleur-alignement-loyal-bon');
 });
 
 test('mots-clés d’une adresse : même adresse (ancre comprise), sinon le chemin sans ancre ; un lien gardé', () => {

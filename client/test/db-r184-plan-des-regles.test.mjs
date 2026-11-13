@@ -55,9 +55,10 @@ const PLAN = {
 // « Mode Super ») : le plan et les pages nouvelles de la migration 0091 se lisent sans elles (db-retrait-pages-doublons-des-combats.test.mjs) ;
 // de même la « Liste des effets mode hyper » (2026-11-06, migration 0095 : db-retrait-liste-des-effets-mode-hyper.test.mjs) et « Altérations d'états
 // et Mode Hyper » (2026-11-06, migration 0096 : db-retrait-alterations-d-etats-et-mode-hyper.test.mjs) ; « La montée de niveau », première entrée
-// d'Exploration, en doublon de la fiche « Expérience/Niveau global » (2026-11-13, migration 0122 : db-0122-retrait-la-montee-de-niveau.test.mjs)
+// d'Exploration, en doublon de la fiche « Expérience/Niveau global » (2026-11-13, migration 0122 : db-0122-retrait-la-montee-de-niveau.test.mjs) ;
+// « Les neuf alignements », fondue dans « Alignement » (2026-11-13, migration 0123 : db-0123-fusion-pages-alignement.test.mjs)
 const RETIREES_DEPUIS = g(['postures', 'les-boss-et-leurs-postures', 'le-mode-super', 'liste-des-effets-mode-hyper', 'alterations-d-etats-et-mode-hyper',
-  'la-montee-de-niveau']);
+  'la-montee-de-niveau', 'les-neuf-alignements']);
 const sansLesRetireesDepuis = (ids) => ids.filter((id) => !RETIREES_DEPUIS.includes(id));
 const RETIREES = g(['les-documents-des-regles', 'en-resume-deroulement-d-un-tour', 'mode-hyper-magie', 'aide-memoire', 'resistance-faiblesse-magie',
   'situations-avancees']);
@@ -306,7 +307,9 @@ test('R184 (5) : les retouches E1 à E12 ; plus aucune phrase ne renvoie « plus
   assert.ok(contient('guide/le-tour-de-jeu', '[[guide/actions-et-mouvements|Les actions et mouvements]] et [[guide/vitesse-et-portee|La vitesse et la portée]] ; sa page')); // E5
   // E6 : phrase retirée depuis par la 0104 (R200 (5), P9) : l'une ou l'autre écriture
   assert.ok(corps('guide/le-mode-hyper').includes('aux valeurs différentes : cette liste ne compte pas') || !corps('guide/le-mode-hyper').includes('onglet masqué')); // E6
-  assert.ok(contient('guide/alignement', '(voir [[guide/les-neuf-alignements|Les neuf alignements]])'));                       // E9
+  // E9 : la page visée est fondue dans « Alignement » depuis la 0123 ; son mot-clé mène alors à l'intertitre de cette page (même balise)
+  assert.ok(contient('guide/alignement', '(voir [[guide/les-neuf-alignements|Les neuf alignements]])')
+    || contient('guide/alignement', '(voir [[guide/alignement|Les neuf alignements]])'));                                         // E9
   assert.ok(contient('guide/choisir-ses-magies', '## Résistances et faiblesses\n\nVoir [[guide/resistances-et-faiblesses|Résistances et faiblesses]].\n')); // E10
   assert.ok(contient('guide/la-magie-en-jeu', 'leur page le dit. Voir [[guide/resistances-et-faiblesses|Résistances et faiblesses]].\n')); // E11
   const fiche = corps('guide/fiche-tableau-resistances-faiblesses');                                                                 // E12

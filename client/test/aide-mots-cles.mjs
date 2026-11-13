@@ -54,7 +54,21 @@ const sql = (v) => `'${String(v).replace(/'/g, "''")}'`;
  * sort_mot_cle.sql, triés comme l'exporteur.
  */
 export function ajouterLesMotsClesDEssai(rows) {
-  const lire = (table) => readFileSync(join(rows, `${table}.sql`), 'utf8').split('\n');
+  // une instruction par élément : une valeur peut tenir sur plusieurs lignes (une définition écrite sur le site de dev avec un retour à la ligne,
+  // que l'export garde telle quelle) ; une ligne continue l'instruction tant que ses apostrophes ne sont pas appariées
+  const lire = (table) => {
+    const instructions = [];
+    let enCours = null;
+    for (const ligne of readFileSync(join(rows, `${table}.sql`), 'utf8').split('\n')) {
+      enCours = enCours === null ? ligne : `${enCours}\n${ligne}`;
+      if ((enCours.match(/'/g) ?? []).length % 2 === 0) {
+        instructions.push(enCours);
+        enCours = null;
+      }
+    }
+    if (enCours !== null) instructions.push(enCours);
+    return instructions;
+  };
   const ecrire = (table, lignes, cle) => {
     const [tete, ...corps] = lignes.filter(Boolean);
     corps.sort((a, b) => {

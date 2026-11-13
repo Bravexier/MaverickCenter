@@ -10,7 +10,7 @@ import vm from 'node:vm';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { morceauxDuChapitre } from '../src/lib/guide.mjs';
-import { htmlAvecMotsCles, htmlDeLIcone, pageAvecMotsCles } from '../src/lib/mots-cles-balises.mjs';
+import { htmlAvecMotsCles, htmlDeLIcone, lireBalises, pageAvecMotsCles } from '../src/lib/mots-cles-balises.mjs';
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 import { classeDuMotCle } from '../src/lib/mots-cles-liens.mjs';
 import { cssDesMotsClesDuSite } from '../src/lib/couleur-de-la-page.mjs';
@@ -24,6 +24,7 @@ import { cssDesAttributs } from '../src/lib/attributs-couleurs.mjs';
 import { htmlDeLaNote } from '../src/lib/notes-de-version-rendu.mjs';
 import { htmlAvecMonnaies, MONNAIES_DU_JEU } from '../src/lib/monnaies.mjs';
 import { rendreCommeLeGuide } from './aide-rendu-du-site.mjs';
+import { idDuMotCleNomme } from './aide-mots-cles.mjs';
 
 const dist =fileURLToPath(new URL('../dist/', import.meta.url));
 const present = existsSync(join(dist, 'index.html'));
@@ -679,11 +680,19 @@ test('couleurs des magies : jamais en style sur une page construite, toujours pa
     'ressources/accessoires/index.html': /<span class="acc-gemme couleur-magie-[\w-]+" data-bulle=[\s\S]*<span class="bulle bulle--gemme couleur-magie-[\w-]+"/,
   };
   for (const [rel, attendu] of Object.entries(zones)) assert.match(avecMagie.get(rel) ?? '', attendu, rel);
-  // « L’univers » ne liste plus les quinze magies (le bloc `guide:magies` a quitté la page) : son texte renvoie à la carte des magies
+  // « L’univers » ne liste plus les quinze magies (le bloc `guide:magies` a quitté la page) : son texte renvoie aux magies par la balise de leur mot-clé
+  // (un lien du texte est la balise d'un mot-clé à adresse depuis la migration 0098 : `a.mot-cle`). Le texte est au site de dev (il a réécrit la phrase
+  // de la « carte des magies ») : le mot-clé se lit par son id figé, et chaque balise qui le cite dans le texte courant est un lien vers son adresse.
   const univers = readFileSync(join(dist, 'decouvrir/l-univers/index.html'), 'utf8');
-  // (un lien du texte est la balise d'un mot-clé à adresse depuis la migration 0098 : `a.mot-cle`)
-  assert.match(univers, /<a class="mot-cle" href="[^"]*\/magies\/" data-mot-cle="magies"[^>]*>carte des magies<\/a>/, 'L’univers : le lien vers la carte des magies');
-  assert.doesNotMatch(univers, /<ul class="guide-magies"/, 'L’univers : plus de liste des magies');
+  const base = ouvrirBase();
+  const corpsUnivers = base.prepare("SELECT corps_md FROM page WHERE id = 'guide/l-univers'").get()?.corps_md ?? '';
+  const motCleMagies = base.prepare('SELECT cle, url FROM mot_cle WHERE id = ?').get(idDuMotCleNomme('magies'));
+  if (motCleMagies?.url && lireBalises(corpsUnivers, { markdown: true }).some((b) => b.ref === motCleMagies.cle)) {
+    const echappe = (v) => v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    assert.match(univers, new RegExp(`<a class="mot-cle[^"]*" href="[^"]*${echappe(motCleMagies.url)}" data-mot-cle="${echappe(motCleMagies.cle)}"`),
+      'L’univers : la balise des magies est un lien vers leur page');
+  }
+  if (!corpsUnivers.includes('guide:magies')) assert.doesNotMatch(univers, /<ul class="guide-magies"/, 'L’univers : plus de liste des magies');
   assert.ok([...avecMagie.values()].some((html) => /<tr class="couleur-magie-[\w-]+">\s*<th scope="row">\s*<a class="guide-magie guide-magie--ligne"/.test(html)), 'le tableau de ce que donne chaque magie (guide)');
   // la fiche et les personnages posent leurs classes au navigateur : leurs noms viennent de la page ou de regles.json (test/fiche-html.test.mjs)
   const regles = JSON.parse(lire('fiche/regles.json'));

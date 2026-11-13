@@ -17,8 +17,12 @@ import { fileURLToPath } from 'node:url';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { morceauxDuChapitre } from '../src/lib/guide.mjs';
-import { decouperCorps } from '../src/lib/markdown-edition.mjs';
-import { classeDePartie, cssDesFamilles } from '../src/lib/palette-css.mjs';
+import { decouperEnOnglets } from '../src/lib/guide-onglets.mjs';
+import { COULEURS_ALIGNEMENTS } from '../src/lib/caracteristiques-postures.mjs';
+import { classeDuMotCle, motCleDeLaPage } from '../src/lib/mots-cles-liens.mjs';
+import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
+import { decouperCorps, versMarkdown } from '../src/lib/markdown-edition.mjs';
+import { classeDAlignement, classeDePartie, cssDesAlignements, cssDesFamilles, idDeCouleur } from '../src/lib/palette-css.mjs';
 import {
   ARTISANAT, DECOUVRIR, entreesDuMenuLateral, estDuGuideDuMj, GUIDE_DU_MJ, installerLePlan, ongletsDesRegles, PAGES_ABSORBEES, PAGES_DE_LA_CREATION,
   PAGES_SUPPRIMEES, pagesDeLaRubrique, partieDeLaPage,
@@ -28,7 +32,8 @@ import { cheminDePage } from '../src/lib/metiers.mjs';
 import { chargerModeHyper } from '../src/lib/guide-db.mjs';
 import { chargerFilRouge } from '../src/lib/guide-fil-rouge.mjs';
 import { baseDImport, texteDImport } from './aide-base-d-import.mjs';
-import { htmlParLignes, premiersMotsAffiches, texteAffiche } from './aide-texte-affiche.mjs';
+import { avecLesMotsCles, htmlParLignes, premiersMotsAffiches, texteAffiche } from './aide-texte-affiche.mjs';
+import { enfantsDuHtml, rendreCommeLeGuide } from './aide-rendu-du-site.mjs';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
 const present = existsSync(join(dist, 'decouvrir', 'index.html'));
@@ -38,6 +43,12 @@ const lire = (chemin) => {
   return { html, main: html.slice(html.indexOf('<main'), html.indexOf('</main>')), ids: [...html.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]) };
 };
 const sansStyles = (main) => main.replace(/<style[\s\S]*?<\/style>|<script[\s\S]*?<\/script>/g, '');
+/**
+ * Le HTML sans le script partagé des onglets (components/Onglets.astro, skill ui-onglets), qu'une page à sections en onglets pose une fois, en ligne : il lit les
+ * flèches gauche et droite du clavier (motif « tabs » de l'ARIA), ce que les contrôles « plus de livre » (flèches, glissement) et « aucun script de page
+ * importé » ne visent pas.
+ */
+const sansLeScriptDesOnglets = (html) => html.replace(/<script type="module">(?:(?!<\/script>)[\s\S])*onglets:brancher[\s\S]*?<\/script>/g, '');
 const db = ouvrirBase({ sansExemples: false });
 installerLePlan(chargerPlanDesRegles(db));
 const pagesConstruites = db.prepare("SELECT id, titre, resume, corps_md, statut FROM page WHERE type = 'guide'").all()
@@ -78,7 +89,7 @@ test('chaque page du guide est une page simple : ni flèches, ni pagination, ni 
   assert.ok(pagesConstruites.length > 0, `${pagesConstruites.length} pages construites`);
   assert.deepEqual(duGuide.map((p) => p.id).filter((id) => !pageDe(id)), [], 'les pages du guide de la base qui ne sont pas construites');
   for (const p of pagesConstruites) {
-    const { main } = lire(cheminDePage(p.id));
+    const main = sansLeScriptDesOnglets(lire(cheminDePage(p.id)).main);
     assert.doesNotMatch(main, /guide-fleche|guide-pagination|guide-voisin|guide-page|data-guide-(?:suivant|precedent|suite)/, `${p.id} : le chrome du livre`);
     assert.doesNotMatch(main, /touchstart|touchmove|touchend|ArrowLeft|overflow-x: clip/, `${p.id} : ni geste, ni clavier, ni réglage de défilement du livre`);
     assert.match(main, /<h1 id="guide-titre">/, p.id);
@@ -186,7 +197,7 @@ const verifierLeMenuLateral = (chemin, page, rubrique, attendues) => {
   }
   // le menu se lit sans JavaScript : ouvert dans le HTML construit (le script ne le replie que sur petit écran)
   assert.match(menu, /<details class="lateral-menu__repli" open data-lateral-repli>/, `${chemin} : ouvert sans JavaScript`);
-  assert.doesNotMatch(main, /<script[^>]*\bsrc=|<script type="module"/, `${chemin} : aucun script de page importé (un script en ligne)`);
+  assert.doesNotMatch(sansLeScriptDesOnglets(main), /<script[^>]*\bsrc=|<script type="module"/, `${chemin} : aucun script de page importé (un script en ligne)`);
   // l'entrée de l'onglet du menu du site, marquée sur chacune de ces pages, elle seule dans la rubrique Règles
   assert.match(html, new RegExp(`<a href="/${rubrique.chemin}" aria-current="(?:page|true)">${rubrique.titre}</a>`), `${chemin} : l’entrée « ${rubrique.titre} » du menu du site`);
   const enTete = html.slice(html.indexOf('<header'), html.indexOf('</header>'));
@@ -455,4 +466,92 @@ test('Plus aucune page du site n’a de rétroliens (« Cette page mentionne » 
     const tags = db.prepare('SELECT COUNT(*) AS n FROM page_tag WHERE page_id = ?').get(id).n;
     if (tags > 0) assert.match(lire(cheminDePage(id)).main, /<ul class="tags" aria-label="Mots-clés">/, id);
   }
+});
+
+// Migration 0123, demande du propriétaire : « Réunis toutes les informations dans la page /regles/alignement/ Liste les 9 allignements sous forme de
+// tableau (ou de tuile) à onglet ou chaque onglet a la couleur de l'alignement. » : les neuf sections `###` à ancre figée de « Alignement » sont les
+// onglets d'une barre (components/guide/PageDuGuide.astro, lib/guide-onglets.mjs, components/Onglets.astro), chacun dans la classe de couleur de son
+// alignement (palette, famille `alignement`). Le déclencheur est l'ancre figée, jamais le texte de l'intertitre.
+test('« Alignement » : les neuf alignements en onglets colorés, un panneau par section au texte entier, l’adresse #<ancre> y mène ; script des onglets posé une fois', options, async () => {
+  const classes = new Map(Object.keys(COULEURS_ALIGNEMENTS).map((nom) => [idDeCouleur(nom), classeDAlignement(nom)]));
+  const ancres = new Set(classes.keys());
+  const decoupe = (corps) => morceauxDuChapitre(corps).filter((m) => 'markdown' in m).map((m) => decouperEnOnglets(m.markdown, ancres)).find(Boolean) ?? null;
+  const id = 'guide/alignement';
+
+  // à l'import : neuf sections, une par alignement de la palette, dans l'ordre de la grille (LB, LN, LM, NB, N, NM, CB, CN, CM) ; la phrase de clôture sort du dernier
+  const dImport = decoupe(texteDImport('page', { id }, 'corps_md'));
+  assert.ok(dImport, 'l’import découpe la page en onglets');
+  assert.equal(dImport.panneaux.length, 9);
+  assert.deepEqual(dImport.panneaux.map((p) => p.ancre), [...classes.keys()]);
+  assert.ok(dImport.etiquette && dImport.avant.includes(`{#${dImport.etiquette}}`), 'la barre est nommée par le dernier intertitre à ancre de l’introduction');
+  assert.ok(dImport.apres.trim() && !dImport.panneaux.at(-1).markdown.includes(dImport.apres), 'la phrase finale en gras suit les onglets, hors du dernier panneau');
+
+  // la page construite suit la base courante : ses sections, dans l'ordre du texte
+  const page = pageDe(id);
+  assert.ok(page, 'Alignement est construite (page protégée : elle absorbe Les neuf alignements)');
+  const attendu = decoupe(page.corps_md);
+  const { html, main } = lire(cheminDePage(id));
+  const onglets = [...main.matchAll(/<a class="([^"]*)" id="onglet-([^"]+)" href="#([^"]+)"[^>]*>([\s\S]*?)<\/a>/g)];
+  const panneaux = [...main.matchAll(/<section class="onglets-guide__panneau ([^"]*)" id="([^"]+)">([\s\S]*?)<\/section>/g)];
+  assert.equal((html.match(/onglets:brancher/g) ?? []).length, attendu ? 1 : 0, 'le script d’Onglets.astro, posé une fois');
+  assert.equal((main.match(/data-onglets(?=[\s>=])/g) ?? []).length, attendu ? 1 : 0, 'un seul groupe d’onglets');
+  if (!attendu) return assert.equal(onglets.length + panneaux.length, 0, 'sans section à ancre d’alignement, pas d’onglets');
+  assert.equal(onglets.length, attendu.panneaux.length);
+  assert.equal(panneaux.length, attendu.panneaux.length);
+  assert.deepEqual(onglets.map((o) => o[2]), attendu.panneaux.map((p) => p.ancre), 'un onglet par section, dans l’ordre du texte');
+  for (const [i, p] of attendu.panneaux.entries()) {
+    const [, classe, ancre, href, titre] = onglets[i];
+    const couleur = classes.get(p.ancre);
+    // l'onglet : la classe de couleur de la palette (jamais un style), il mène à son panneau ; le premier est ouvert, lui seul
+    assert.deepEqual(classe.split(/\s+/).filter((c) => c.startsWith('couleur-')), [couleur], `${p.ancre} : la classe de couleur de l’alignement`);
+    assert.ok(classe.split(/\s+/).includes('onglet'), `${p.ancre} : la classe que le script des onglets prend`);
+    assert.equal(classe.split(/\s+/).includes('is-active'), i === 0, `${p.ancre} : onglet ouvert au départ`);
+    assert.equal(href, p.ancre);
+    assert.equal(ancre, p.ancre);
+    // le panneau : l'id de l'ancre (une adresse `#<ancre>` ou un mot-clé y mène), la même classe de couleur, son texte entier
+    const [, classePanneau, idPanneau, interieur] = panneaux[i];
+    assert.equal(idPanneau, p.ancre);
+    assert.equal(html.split(`id="${p.ancre}"`).length - 1, 1, `${p.ancre} : l’id n’est qu’une fois dans la page (l’intertitre du panneau ne le double pas)`);
+    assert.deepEqual(classePanneau.split(/\s+/).filter((c) => c.startsWith('couleur-')), [couleur], `${p.ancre} : le panneau reprend la couleur`);
+    assert.equal(classePanneau.split(/\s+/).includes('is-active'), i === 0, `${p.ancre} : panneau ouvert au départ`);
+    assert.match(interieur, new RegExp(`<h3[^>]*\\sdata-ancre-figee="${p.ancre}"`), `${p.ancre} : l’intertitre garde son ancre figée (l’éditeur la réécrit)`);
+    const rendu = avecLesMotsCles(await rendreCommeLeGuide(p.markdown), db);
+    assert.equal(texteAffiche(interieur).trim(), texteAffiche(rendu).trim(), `${p.ancre} : tout le texte de la section`);
+    assert.equal((interieur.match(/<table/g) ?? []).length, (rendu.match(/<table/g) ?? []).length, `${p.ancre} : ses tableaux`);
+    // l'onglet porte le nom de l'intertitre tel qu'il est maintenant (il se renomme sur le site de dev)
+    assert.equal(texteAffiche(titre).trim(), texteAffiche(interieur.match(/<h3[^>]*>([\s\S]*?)<\/h3>/)[1]).trim(), `${p.ancre} : le nom de l’onglet`);
+  }
+  // l'introduction reste au-dessus de la barre, la phrase de clôture et la suite après les panneaux ; la barre est nommée par l'intertitre qui la précède
+  const barre = main.indexOf('<div class="onglets-guide"');
+  assert.ok(barre > 0 && main.indexOf('<nav class="onglets-guide__liste"') > barre);
+  if (attendu.etiquette) {
+    assert.ok(main.indexOf(`id="${attendu.etiquette}"`) > 0 && main.indexOf(`id="${attendu.etiquette}"`) < barre, 'l’intertitre qui nomme la barre est au-dessus');
+    assert.match(main, new RegExp(`<nav class="onglets-guide__liste" aria-labelledby="${attendu.etiquette}"`));
+  }
+  const apres = main.slice(main.lastIndexOf('</section>'));
+  if (attendu.apres.trim()) assert.ok(texteAffiche(apres).includes(texteAffiche(avecLesMotsCles(await rendreCommeLeGuide(attendu.apres), db)).trim()), 'la phrase finale, après le dernier panneau');
+  // la feuille des alignements (famille de zone de la palette) : posée avec les classes, une seule fois (hors la feuille des mots-clés colorés)
+  assert.equal(main.split(`<style>${cssDesAlignements()}</style>`).length - 1, 1, 'la feuille des alignements, une fois');
+  assert.doesNotMatch(main, /style="[^"]*(?:color|couleur|background)/, 'aucune couleur écrite en style');
+  // Q5 « Ancre = pas de couleur » : les mots-clés des alignements mènent à une section (adresse à ancre), ils ne colorent pas la page entière ; la page prend
+  // la couleur d'un mot-clé coloré qui mène à elle, sans ancre, s'il y en a un, sinon l'accent du site
+  const motCle = motCleDeLaPage(chargerVocabulaire(db), `/${cheminDePage(id)}`);
+  const classeDeLaPage = classeDuMotCle(motCle);
+  assert.ok(!classeDeLaPage || !classeDeLaPage.startsWith('couleur-alignement-') || !motCle.url.includes('#'), 'jamais la couleur d’un mot-clé à ancre');
+  assert.ok(main.includes(classeDeLaPage ? `<div class="guide-reference guide-reference--couleur ${classeDeLaPage}">` : '<div class="guide-reference">'), 'la couleur de la page');
+
+  // le mode modification : la barre est ignorée de l'éditeur (data-ed-ignorer), le groupe et les panneaux sont transparents — le Markdown relu du morceau
+  // est celui qu'on relit du rendu à plat (aucune perte à l'enregistrement : lib/markdown-edition.mjs#versMarkdown)
+  const trouver = (noeuds) => noeuds.flatMap((n) => {
+    if (n.type !== 'element') return [];
+    const contient = (e) => e.enfants?.some((c) => c.type === 'element' && ((c.attributs.class ?? '').split(/\s+/).includes('onglets-guide') || contient(c)));
+    return n.attributs['data-ed-morceau'] !== undefined && contient(n) ? [n] : trouver(n.enfants ?? []);
+  });
+  const [morceau] = trouver(enfantsDuHtml(html));
+  assert.ok(morceau, 'le morceau de texte modifiable qui porte les onglets');
+  const barreIgnoree = (noeuds) => noeuds.some((n) => n.type === 'element' && (((n.attributs.class ?? '').split(/\s+/).includes('onglets-guide__liste') && n.attributs['data-ed-ignorer'] !== undefined) || barreIgnoree(n.enfants ?? [])));
+  assert.ok(barreIgnoree([morceau]), 'la barre d’onglets est ignorée de l’éditeur');
+  const morceauSource = morceauxDuChapitre(page.corps_md).find((m) => 'markdown' in m && decouperEnOnglets(m.markdown, ancres)).markdown;
+  const aPlat = versMarkdown(enfantsDuHtml(avecLesMotsCles(await rendreCommeLeGuide(morceauSource), db)));
+  assert.equal(versMarkdown(morceau.enfants), aPlat, 'le Markdown relu du morceau en onglets est celui du rendu à plat');
 });

@@ -21,3 +21,6 @@ INSERT INTO mot_cle_synonyme (id, mot_cle_id, libelle, libelle_cle, ordre) VALUE
 INSERT INTO mot_cle_synonyme (id, mot_cle_id, libelle, libelle_cle, ordre) VALUES (20, 313, 'RO', 'ro', 0);
 INSERT INTO mot_cle_synonyme (id, mot_cle_id, libelle, libelle_cle, ordre) VALUES (21, 163, 'Action bonus', 'action-bonus', 1);
 INSERT INTO mot_cle_synonyme (id, mot_cle_id, libelle, libelle_cle, ordre) VALUES (22, 163, 'Action rapide', 'action-rapide', 2);
+INSERT INTO mot_cle_synonyme (id, mot_cle_id, libelle, libelle_cle, ordre) VALUES (23, 39, 'Baguette magique', 'baguette-magique', 0);
+INSERT INTO mot_cle_synonyme (id, mot_cle_id, libelle, libelle_cle, ordre) VALUES (24, 79, 'Ressource secondaire', 'ressource-secondaire', 0);
+INSERT INTO mot_cle_synonyme (id, mot_cle_id, libelle, libelle_cle, ordre) VALUES (25, 43, 'Bi-classe', 'bi-classe', 0);

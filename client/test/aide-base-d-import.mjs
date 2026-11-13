@@ -8,7 +8,9 @@
 //                            seule, dont chaque modification rapatriée du site (historique_modification, client/src/lib/historique-site.mjs) est
 //                            défaite, de la dernière à la première : une ligne insérée par le site est retirée, une ligne supprimée remise, une
 //                            cellule modifiée reprend sa valeur « avant ». Une cellule qu'une migration a réécrite après le site (sa valeur n'est plus
-//                            celle que le site a laissée) est gardée telle que la migration l'a écrite : sa valeur d'import n'existe plus. Les lots
+//                            celle que le site a laissée) est gardée telle que la migration l'a écrite : sa valeur d'import n'existe plus ; sauf si
+//                            la migration n'y a remplacé que des fragments de son registre `textes` (data/migrations/NNNN.json, comme la 0122 qui
+//                            recible une balise) présents aussi dans la valeur « avant » : celle-ci est remise, avec le même remplacement. Les lots
 //                            défaits quittent l'historique de la copie (historiqueSite y voit l'état d'import comme courant). `base.ecarts` : ce
 //                            qui n'a pas pu être défait (vide d'ordinaire). Une copie par processus et par options, supprimée à sa sortie.
 //     { garder: lotsAvant('0093') }
@@ -26,7 +28,7 @@
 // lien que portait une balise d'un mot-clé que le site a supprimé (ou une page qu'il a supprimée) y revient avec elle.
 // Les noms aussi reviennent à l'import : un test cherche toujours par identifiant (figé), et bâtit un message attendu avec le nom lu par identifiant.
 import { spawnSync } from 'node:child_process';
-import { copyFileSync, readFileSync } from 'node:fs';
+import { copyFileSync, readdirSync, readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 import { cheminBase } from '../src/lib/donnees.mjs';
@@ -42,6 +44,40 @@ function colonnesDe(db, table) {
 }
 
 const memes = (a, b) => (a === null || a === undefined ? b === null || b === undefined : b !== null && b !== undefined && String(a) === String(b));
+
+const cleTriee = (cle) => JSON.stringify(Object.fromEntries(Object.entries(cle).sort(([x], [y]) => x.localeCompare(y))));
+
+/** Les remplacements par fragments des registres `textes` des migrations (data/migrations/*.json), par cellule « table|clé triée|colonne ». */
+const REECRITURES_DES_MIGRATIONS = (() => {
+  const dossier = new URL('../../data/migrations/', import.meta.url);
+  const parCellule = new Map();
+  for (const nom of readdirSync(dossier).filter((f) => f.endsWith('.json')).sort()) {
+    const textes = JSON.parse(readFileSync(new URL(nom, dossier), 'utf8')).textes;
+    if (!Array.isArray(textes)) continue;
+    for (const t of textes) {
+      if (!t?.table || !t.col || !t.cle || typeof t.avant !== 'string' || typeof t.apres !== 'string' || !t.avant) continue;
+      const k = `${t.table}|${cleTriee(t.cle)}|${t.col}`;
+      parCellule.set(k, [...(parCellule.get(k) ?? []), t]);
+    }
+  }
+  return parCellule;
+})();
+
+/**
+ * La valeur « avant » d'un lot du site, réécrite comme une migration passée depuis a réécrit la cellule : si les remplacements par fragments des
+ * registres `textes` pour cette cellule, appliqués à l'« après » du lot (SQL replace : toutes les occurrences), donnent la valeur actuelle, et que
+ * chacun de ceux qui ont changé l'« après » s'applique aussi à l'« avant », rend l'« avant » ainsi réécrit ; sinon undefined (la migration a le
+ * dernier mot : la cellule est gardée). Ex. : la 0122 recible {{la-montee-de-niveau}} dans le corps de guide/bienvenue, que le site avait modifié.
+ */
+function avantReecrit(table, cle, col, avant, apres, actuelle) {
+  if (typeof avant !== 'string' || typeof apres !== 'string' || typeof actuelle !== 'string') return undefined;
+  const textes = REECRITURES_DES_MIGRATIONS.get(`${table}|${cleTriee(cle)}|${col}`);
+  if (!textes) return undefined;
+  const appliquees = textes.filter((t) => apres.includes(t.avant));
+  if (!appliquees.length || appliquees.some((t) => !avant.includes(t.avant))) return undefined;
+  const reecrire = (v) => appliquees.reduce((s, t) => s.split(t.avant).join(t.apres), v);
+  return reecrire(apres) === actuelle ? reecrire(avant) : undefined;
+}
 
 /**
  * Défait dans `db` (ouverte en écriture) les modifications du site, de la dernière à la première, sauf celles des lots `garder`, puis retire de
@@ -72,8 +108,13 @@ export function defaireLeSite(db, { garder = new Set() } = {}) {
           const valeurs = Object.entries(e.avant ?? {}).filter(([c]) => colonnes.has(c));
           db.prepare(`INSERT INTO "${e.table}" (${valeurs.map(([c]) => `"${c}"`).join(', ')}) VALUES (${valeurs.map(() => '?').join(', ')})`).run(...valeurs.map(([, v]) => v));
         } else if (actuelle) {
-          // seule une cellule qui garde la valeur que ce lot a écrite est défaite : une migration (ou un lot gardé) passée depuis a le dernier mot
-          const valeurs = Object.entries(e.avant ?? {}).filter(([c]) => colonnes.has(c) && memes(actuelle[c], e.apres?.[c]));
+          // seule une cellule qui garde la valeur que ce lot a écrite est défaite : une migration (ou un lot gardé) passée depuis a le dernier mot,
+          // sauf si elle n'y a remplacé que des fragments de son registre `textes` qui se lisent aussi dans l'« avant » : il reprend alors ce remplacement
+          const valeurs = Object.entries(e.avant ?? {}).filter(([c]) => colonnes.has(c)).flatMap(([c, v]) => {
+            if (memes(actuelle[c], e.apres?.[c])) return [[c, v]];
+            const reecrit = avantReecrit(e.table, cle, c, v, e.apres?.[c], actuelle[c]);
+            return reecrit === undefined ? [] : [[c, reecrit]];
+          });
           if (valeurs.length) db.prepare(`UPDATE "${e.table}" SET ${valeurs.map(([c]) => `"${c}" = ?`).join(', ')} WHERE ${ou}`).run(...valeurs.map(([, v]) => v), ...Object.values(cle));
         }
       } catch (err) {
