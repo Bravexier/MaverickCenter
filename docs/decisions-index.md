@@ -2,7 +2,7 @@
 
 Ne lis jamais `docs/decisions-regles.md` en entier : trouve ici le numéro de la décision, puis cherche sa ligne avec Grep (motif `^\| R41 \|`) et ne lis qu'elle.
 
-Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 268 décisions, de R1 à R268, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
+Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 270 décisions, de R1 à R270, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
 
 | Réf. | Sujet | Décision |
 | --- | --- | --- |
@@ -274,3 +274,5 @@ Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas mo
 | R266 | Trois graphies du lore de Décembre (`docs/sql/orthographe-a-valider.md`, «… | (1) « Super Gemme » : deux majuscules, sans trait d'un… |
 | R267 | Fiche du Boxeur et du Porte-étendard, suite de R254 et R255 : ce que Mur a… | (1) Mur : toute l'AP et l'AM du bouclier, les +2 de Mu… |
 | R268 | Infobulles des sept mots-clés des matériaux, suite de R258 (7) : aucune so… | Avantage : « On lance deux fois le même jet et on igno… |
+| R269 | Boxeur, suite de R255 et R267 : Égide d'assaut, arrondi de Bouclier d'atta… | (1) Avec Égide d'assaut, Bouclier d'attaque divise (AP… |
+| R270 | Fiche, suite de R260 : casse du nom d'une spécialisation. Le nom est en ca… | Sur la fiche, le nom d'une spécialisation s'écrit avec… |
