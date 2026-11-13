@@ -6,19 +6,21 @@
 // gras, italique, barré), les liens (vers une page du wiki : [[cible|texte]], ou une adresse web ; retirer un lien) et les tableaux (insérer, ajouter
 // ou supprimer une ligne ou une colonne, couleur des cases), les mots-clés du glossaire (texte-en-place.mjs#outilsDesMotsCles). À l'enregistrement,
 // le HTML de chaque morceau modifié est réécrit en Markdown (lib/markdown-edition.mjs) et remis à sa place dans le corps de la page, autour des blocs ;
-// son HTML assaini part avec, comme aperçu montré tant que la page construite ne l'a pas (surcouche).
+// son HTML assaini part avec, comme aperçu montré tant que la page construite ne l'a pas (surcouche). Quand l'aperçu manque (texte fusionné au rejeu, conflit
+// résolu : le service l'a mis à NULL), la page rend elle-même le texte actuel de la base comme au build (lib/markdown-rendu.mjs) : demande du propriétaire.
 // Le résumé d'une page du guide (une ligne : sommaires, recherche ; demandé à la création d'une page des Règles, lot de l'édition des menus) se modifie
 // juste sous le titre, en mode modification seulement (`page.resume` de lib/edition-modele.mjs#TABLES ; pas celui d'une page du Codex, que le service
 // refuse) ; la liste « Onglet » et « Supprimer » d'une page des Règles viennent dessous (src/scripts/edition/menus.mjs).
 import { attributEd, cleDeLigne } from '../../lib/edition-modele.mjs';
-import { arbreDuDom, classeDeCouleurDeCase, COULEURS_DE_CASE, decouperCorps, etatDeLApercu, htmlSur, recomposerCorps, versMarkdown } from '../../lib/markdown-edition.mjs';
-import { editeurEnPlace, outilsDesMotsCles } from './texte-en-place.mjs';
+import { arbreDuDom, classeDeCouleurDeCase, COULEURS_DE_CASE, decouperCorps, etatDuTexte, htmlSur, recomposerCorps, versMarkdown } from '../../lib/markdown-edition.mjs';
+import { creerLeRendu } from '../../lib/markdown-rendu.mjs';
+import { editeurEnPlace, outilsDesMotsCles, pagesDuWiki } from './texte-en-place.mjs';
 
 const ETIQUETTES_COULEUR = { rouge: 'Rouge', orange: 'Orange', jaune: 'Jaune', vert: 'Vert', bleu: 'Bleu', violet: 'Violet', gris: 'Gris' };
 
 const etat = {
   actif: false, // les morceaux sont modifiables
-  perime: false, // la base a un texte plus récent que la page, sans aperçu : on ne peut pas le modifier ici
+  perime: false, // la base a un texte plus récent que la page, que ni l'aperçu ni le rendu dans le navigateur ne montrent : on ne peut pas le modifier ici
   morceaux: [],
   original: [], // HTML des morceaux au passage en mode modification (rendu si l'on abandonne)
   initial: [], // leur Markdown à ce moment : un morceau qui le redonne n'a pas changé
@@ -28,6 +30,8 @@ const etat = {
   resume: null, // le champ du résumé, posé sous le titre le temps du mode modification
 };
 
+const MESSAGE_PERIME = 'Le texte de cette page a changé depuis la construction du site : il s’affichera à la prochaine mise à jour du site.';
+
 const corpsId = () => document.querySelector('[data-ed-corps]')?.dataset.edCorps ?? null;
 const morceauxDeLaPage = () => [...document.querySelectorAll('[data-ed-morceau]')];
 const enfantsDe = (el) => [...el.childNodes].map(arbreDuDom).filter(Boolean);
@@ -36,6 +40,16 @@ const enfantsDe = (el) => [...el.childNodes].map(arbreDuDom).filter(Boolean);
 function assainir(html) {
   const doc = new DOMParser().parseFromString(`<body>${html}</body>`, 'text/html');
   return htmlSur(enfantsDe(doc.body));
+}
+
+/**
+ * Le texte actuel de la base (`corps_md`) rendu comme au build (lib/markdown-rendu.mjs : les [[liens]] sur les pages de la base vivante, les couleurs de case,
+ * les monnaies, les ancres figées), un HTML assaini par morceau de texte visible du corps ; une page du guide comme lib/guide-rendu.ts, les autres comme le Codex.
+ */
+async function htmlDuTexteActuel(ed, corps, id) {
+  const rendu = creerLeRendu({ pages: await pagesDuWiki(ed), base: ed.base || '/' });
+  const rendre = id.startsWith('guide/') ? rendu.guide : rendu.codex;
+  return decouperCorps(corps).filter((m) => m.visible).map((m) => assainir(rendre(m.texte)));
 }
 
 /**
@@ -212,18 +226,30 @@ export const guide = {
 
   lignesACharger: () => (corpsId() ? [{ table: 'page', cle: { id: corpsId() } }] : []),
 
-  /** Le texte modifié depuis la construction de la page : son aperçu à la place du texte construit (ou un avertissement s'il n'en a pas). */
-  surcouche(ed, lignes) {
+  /**
+   * Le texte modifié depuis la construction de la page : son aperçu à la place du texte construit ; sans aperçu (texte fusionné au rejeu, conflit résolu), le
+   * texte actuel de la base rendu ici comme au build (htmlDuTexteActuel) ; un avertissement seulement si ce rendu est impossible.
+   */
+  async surcouche(ed, lignes) {
     const id = corpsId();
     const enAttente = lignes.find((l) => l.table === 'page' && l.cle?.id === id && 'apercu' in l);
     const morceaux = morceauxDeLaPage();
-    // une page créée sur le site de dev, sans aperçu : edition/nouvelles.mjs l'a dessinée depuis son texte actuel, qui se modifie en place
-    const quoi = etatDeLApercu(enAttente, morceaux.length);
+    // une page créée sur le site de dev, sans aperçu : edition/nouvelles.mjs l'a dessinée en paragraphes bruts, le rendu ci-dessous la refait (son texte se modifie en place)
+    const quoi = etatDuTexte(enAttente, morceaux.length);
     if (quoi === 'apercu') {
       morceaux.forEach((m, i) => (m.innerHTML = assainir(enAttente.apercu[i])));
+    } else if (quoi === 'vivant') {
+      try {
+        const html = await htmlDuTexteActuel(ed, enAttente.ligne.corps_md, id);
+        morceaux.forEach((m, i) => (m.innerHTML = html[i]));
+      } catch {
+        if (enAttente.creee) return; // la page créée garde ses paragraphes
+        etat.perime = true;
+        ed.annoncer(MESSAGE_PERIME);
+      }
     } else if (quoi === 'perime') {
       etat.perime = true;
-      ed.annoncer('Le texte de cette page a changé depuis la construction du site : il s’affichera à la prochaine mise à jour du site.');
+      ed.annoncer(MESSAGE_PERIME);
     }
   },
 
