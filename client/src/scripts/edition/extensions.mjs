@@ -18,6 +18,7 @@ import { motsCles } from './mots-cles.mjs';
 import { nouvelles } from './nouvelles.mjs';
 import { panneaux } from './panneaux.mjs';
 import { races } from './races.mjs';
+import { saisies } from './saisies.mjs';
 
 // `nouvelles` d'abord : sur la page d'une entité créée, elle dessine la page que les autres extensions complètent (`classes` : ses spécialités et ses dons).
 // `panneaux` (les panneaux de règles) après `armes` et `armures`, qui ouvrent les tableaux de leurs onglets et laissent les panneaux à `panneaux`.
@@ -25,4 +26,6 @@ import { races } from './races.mjs';
 // aurait les deux (chacun sa barre d'outils : texte-en-place.mjs n'en montre qu'une, celle des zones où est le curseur).
 // `menus` (les menus latéraux des Règles et des races, les pages des Règles créées ou supprimées) après `guide`, qui pose le résumé sous le titre : la
 // liste « Onglet » et « Supprimer » viennent dessous ; après `nouvelles` aussi, qui dessine sur la 404 la page des Règles créée et son menu.
-export const EXTENSIONS = [nouvelles, classes, metiers, magies, races, guide, menus, bestiaire, armes, armures, panneaux, composants, chronologie, motsCles, annonces];
+// `saisies` (la barre d'outils des saisies de texte, sur toute page) en dernier : la barre d'un éditeur en place, posée avant
+// elle, se montre d'abord, tant que le curseur n'est entré dans aucune saisie (texte-en-place.mjs#choisirLaBarre).
+export const EXTENSIONS = [nouvelles, classes, metiers, magies, races, guide, menus, bestiaire, armes, armures, panneaux, composants, chronologie, motsCles, annonces, saisies];
