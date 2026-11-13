@@ -7,7 +7,7 @@ user-invocable: false
 # Classes et dons de classe
 
 ## Fichiers
-- Liste `/classes/` : `client/src/lib/class-groups.mjs` (`CLASS_GROUPS`, `CLASS_OVERRIDES`, `CLASS_COLORS`, `groupeDeCouleur`, `classColor`), `components/classes/ClassesPastilles.astro`, CSS `styles/classe/liste.css` (`?raw`).
+- Liste `/classes/` : `client/src/lib/class-groups.mjs` (`CLASS_GROUPS`, `CLASS_COLORS`, `groupeDeCouleur`, `classColor`), `components/classes/ClassesPastilles.astro`, CSS `styles/classe/liste.css` (`?raw`).
 - Page d'une classe : `lib/classes-db.mjs` (lecture des tables), `components/classes/ClassePage.astro` (avec `ClasseDons`, `ChoixDeDons`, `DonCarte`), CSS `client/src/styles/classe/` inséré par `ClassePage.astro` (`?raw`).
 - Menu latéral : rendu par `ClassePage.astro` (prop `groupes` = `groupClasses(entriesOfType(entries, 'classes'))`, passée par `pages/[type]/[slug].astro`), CSS `styles/classe/menu.css`.
 - Disposition des dons : `lib/classe-dons.mjs#plateauDeDons` ; rendu pur partagé avec le mode modification : `lib/classe-dons-rendu.mjs` sur `lib/classe-assemblage.mjs`.
@@ -36,7 +36,10 @@ user-invocable: false
 
 ## Choix du propriétaire
 - `/classes/` : 5 colonnes côte à côte, une par catégorie, dans cet ordre : Physiques Mêlée, Physiques Distance, Magiques, Raciales, Spéciales, d'après les tags posés par l'import (catégorie du Sommaire du classeur). Chaque classe est une pastille sur le modèle de la carte des magies, pas de tableau.
-- « Raciales » = « Classe Hybride Animal » ; « Spéciales » = « Classe Hybride » + « Classe spéciale ». Le Parleur (classé mêlée dans le classeur) est volontairement sous « Spéciales » (`CLASS_OVERRIDES`, décision du propriétaire).
+- « Raciales » = « Classe Hybride Animal » ; « Spéciales » = « Classe Hybride » + « Classe spéciale ». Le Parleur (mêlée dans le classeur) est en `classe-speciale` dans la base, donc sous « Spéciales » ; aucune exception par identifiant (R238 (3), `class-groups.test.mjs`).
+- Boxeur et Porte-étendard : « Classe Physique Corps à Corps », en fin de colonne, ouvertes à toutes les races (R238 (1)).
+- Cuirassé V2 (R238 (2)) : Écrasant au niveau 15 Vindicatif, Appui au niveau 20 Protecteur (même id), Large supprimé.
+- Archimage : deux lignes `au_choix` de maîtrise d'arme (rang 1 à distance, rang 2 en contact), donc `ligneAuChoixDeLaClasse` rend NULL (R238 (4) ; skill `zone-fiche-equipement`).
 - Chaque colonne a la couleur de sa catégorie ; le résumé de la page est en infobulle (`Infobulles.astro`, skill `ui-infobulles`).
 - « (classe) » est supprimé de partout, base comprise (migration `0009-classes-sans-suffixe`) ; le mot-clé d'une classe raciale s'appelle aussi comme sa race, avec la catégorie Classe (R232 (4), qui remplace R191 ; clé `x-classe`) ; seules les notes de version publiées gardent « Orios (classe) » (R232 (12) ; tests `classes-html`, `classes-sans-suffixe`) : une classe raciale porte le nom de sa race (titre « Orios », page `classes/orios`). `tools/sheets/classes.py` n'ajoute plus de suffixe. `[[classes/orios]]` / `[[races/orios]]` lèvent l'ambiguïté d'un lien.
 - Couleur de la page d'après la catégorie de `/classes/` (`classColor`) : rouge mêlée, vert distance, bleu magiques, violet raciales, jaune spéciales. Repère visuel sans valeur de règle. La valeur reste dans `CLASS_COLORS` ; la colonne de `/classes/`, la page d'une classe (en repli du mot-clé coloré qui y mène, `classeDeLaPageDuSite` : skill `zone-mots-cles-liens`), la fiche et la page d'une classe créée posent la classe de la catégorie (`couleur-classe-<clé>`, `palette-css.mjs#classeDeCategorie`, `classeDUneClasse` par `groupeDeCouleur` ; famille d'une zone `classe`, émise par `ClassesPastilles.astro` et `ClassePage.astro`), que `styles/classe/base.css` et `liste.css` lisent en `--cla` (`var(--couleur)`) et `--cla-texte` (`var(--couleur-texte)`), jamais un style (skill `ui-couleurs`). Le texte blanc de la bannière et des onglets de spécialité est le jeton `--texte-sur-fonce`, le noir de ses dérivées `--fond-banniere` (`styles/global/base.css`).

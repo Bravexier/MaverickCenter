@@ -19,6 +19,7 @@ Noyau (fichiers, invariants communs) : skill `zone-fiche`. Détail : `docs/chara
 - Les « tests d'artisanat » s'ajoutent à `artisanatDe` (R123), rien sans métier.
 - Drakos orange, « parmi les autres » : une compétence et une altération d'état au choix parmi celles des autres lignes du tableau, indépendantes (R124, `personnage_resistance_choix`, `resistanceChoixValables`).
 - `acquis-texte.mjs` écarte toujours « réussite crit » (jamais un acquis) : `lib/critique-texte.mjs` la lit (R180), un seul compte (skill `zone-fiche-situation`).
+- `acquis-texte.mjs#DONS_SANS_ACQUIS` (appliquée par `fiche-regles.mjs`) : liste d'exclusion par identifiant des dons dont le texte ne produit jamais d'acquis. Elle ne contient que `capacites/boxeur-posture-inebran` (bonus de posture ; question ouverte MAJ-C6 : n'y rien déduire).
 - Ne rien compter d'autre : un bonus d'un cas particulier (situation, condition, falsification de documents au MJ) est seulement mentionné (R128, R123), dans le bloc « Bonus d'acquis non comptés » (`nonComptes`, `RAISONS_DE_L_ACQUIS` de la page).
 
 ## Bonus « de l'arme choisie » (R119, R152)
