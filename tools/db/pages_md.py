@@ -113,7 +113,7 @@ FAMILLE_DES_PAGES_DU_SITE = {'metiers': 'docs', 'races': 'races', 'classes': 'cl
 # Porte-étendard, Écrasant du Cuirassé) : provenance « Classeur « Nouveauté mise à jour Décembre », onglet « … » », famille des pages de leur type.
 CLASSEUR_DE_DECEMBRE = 'Classeur « Nouveauté mise à jour Décembre »'
 FAMILLE_DES_PAGES_DE_DECEMBRE = {'classes': 'classes', 'capacites': 'classes'}
-# Pages créées par une migration de la mise à jour de Décembre (0119 : les races Fongoïde et Gémidien, décision R239), tirées de la pièce jointe du
+# Pages créées par une migration de la mise à jour de Décembre (0120 : les races Fongoïde et Gémidien, décision R239), tirées de la pièce jointe du
 # propriétaire : provenance « Nouveauté mise à jour Décembre, onglet « … » », famille des pages de leur type, comme une page créée sur le site.
 MISE_A_JOUR_DE_DECEMBRE = 'Nouveauté mise à jour Décembre, '
 

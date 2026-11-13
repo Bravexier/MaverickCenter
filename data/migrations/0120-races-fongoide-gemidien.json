@@ -1,5 +1,5 @@
 {
-  "migration": "0119-races-fongoide-gemidien",
+  "migration": "0120-races-fongoide-gemidien",
   "decisions": [
     "R239",
     "R256",
@@ -50,13 +50,13 @@
   "comptes": {
     "races/fongoide": {
       "race_magie_accessibles": 14,
-      "race_classe_accessibles": 24,
-      "race_classe": 39
+      "race_classe_accessibles": 26,
+      "race_classe": 41
     },
     "races/gemidien": {
       "race_magie_accessibles": 13,
-      "race_classe_accessibles": 26,
-      "race_classe": 39
+      "race_classe_accessibles": 28,
+      "race_classe": 41
     }
   },
   "formes_enregistrees": [

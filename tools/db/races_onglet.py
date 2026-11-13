@@ -32,7 +32,7 @@ est le rendu de ses seules tables (client/src/lib/corps-races.mjs#corpsDeRaceCre
 importées restent contrôlées en entier, et une race du classeur ne peut pas passer pour créée : sa provenance n'est pas modifiable depuis le site.
 
 De même, Fongoïde et Gémidien (décision R239) viennent des onglets 21 et 22 de la mise à jour de Décembre, pas du classeur « Les races » : la migration
-0119 écrit leurs tables, et leur corps est le rendu de ces seules tables (corpsDeRaceCreee), contrôlé par client/test/db-0119-races-fongoide-gemidien.test.mjs
+0120 écrit leurs tables, et leur corps est le rendu de ces seules tables (corpsDeRaceCreee), contrôlé par client/test/db-0120-races-fongoide-gemidien.test.mjs
 (provenance « Nouveauté mise à jour Décembre › … » ; PROVENANCES_HORS_CLASSEUR).
 """
 import importlib.util
@@ -59,7 +59,7 @@ _spec.loader.exec_module(R)
 CLASSEUR = 'Les races'
 ORIGINE = 'races'
 PROVENANCE_DU_SITE = 'Site de dev › '   # race.source_ref d'une race créée depuis le site de dev (voir l'en-tête)
-# race.source_ref d'une race hors du classeur « Les races » : créée depuis le site de dev, ou par la migration 0119 (Fongoïde et Gémidien, onglets de la
+# race.source_ref d'une race hors du classeur « Les races » : créée depuis le site de dev, ou par la migration 0120 (Fongoïde et Gémidien, onglets de la
 # mise à jour de Décembre, décision R239) ; voir l'en-tête
 PROVENANCES_HORS_CLASSEUR = (PROVENANCE_DU_SITE, 'Nouveauté mise à jour Décembre › ')
 STAT_LABELS = R.STAT_LABELS            # Santé de départ, Chakra de départ, Barrière bonus, Vitesse Sol/Nage

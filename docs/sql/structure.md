@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 119 : 217 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 120 : 217 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -854,7 +854,7 @@ Mode super : objets légendaires ou enchantés (Mode Super!A3:T59). Cellule « E
 
 ### `mode_hyper_effet`
 
-Effets du mode hyper. Plusieurs lectures du même sujet coexistent et ne disent pas toujours la même chose ; elles sont TOUTES conservées, une ligne par (version, cible), et la requête choisit sa version (aucune source ne dit laquelle prévaut, voir ecart_source) : version 'classeur_modes' : classeur « Mode hyper et co », onglet Mode Hyper (général, 15 magies mono / bi, 27 races) ; version 'magie_masque' : classeur V8, onglet masqué « Mode Hyper (Magie) » (14 magies seules + 73 couples + « Avantages de base ») ; version 'onglet_magie' : classeur V8, bloc « Capacité Mode Hyper » de chaque onglet de magie (15 magies : mono, bi ou forme complète) ; version 'fiche' : fiche auto V15.2.2 : Magie!V2:W16 (15 magies mono / bi), Personnage!BI32 (« Effets de base »), Race!W (races) ; version 'onglet_race' : classeur « Les races », bloc « Capacité Mode Hyper » de l'onglet de chaque race (décision du propriétaire : PRIME sur 'fiche' pour les races ; migration 0007, `nom` = nom de la capacité, `libelle` = nom de l'onglet). portee 'general' : effet commun (libelle = « Général » ou le titre de l'encadré) ; 'magie' : une magie ; 'duo' : un couple de magies (version 'magie_masque') ; 'race' : une race (variante NULL : la source n'en distingue pas). variante 'mono' / 'bi' : colonnes « Mono magie » / « Bi magie » ; 'mono_et_bi' : cellule fusionnée sur les deux ; 'forme_complete' : Potentiel Illimité (« Forme Complète ») ; le couple d'une version 'magie_masque' est une variante 'bi'. `variante_brut` : libellé de colonne écrit.
+Effets du mode hyper. Plusieurs lectures du même sujet coexistent et ne disent pas toujours la même chose ; elles sont TOUTES conservées, une ligne par (version, cible), et la requête choisit sa version (aucune source ne dit laquelle prévaut, voir ecart_source) : version 'classeur_modes' : classeur « Mode hyper et co », onglet Mode Hyper (général, 15 magies mono / bi, 27 races) ; version 'magie_masque' : classeur V8, onglet masqué « Mode Hyper (Magie) » (14 magies seules + 73 couples + « Avantages de base ») ; version 'onglet_magie' : classeur V8, bloc « Capacité Mode Hyper » de chaque onglet de magie (15 magies : mono, bi ou forme complète) ; version 'fiche' : fiche auto V15.2.2 : Magie!V2:W16 (15 magies mono / bi), Personnage!BI32 (« Effets de base »), Race!W (races) ; version 'onglet_race' : classeur « Les races », bloc « Capacité Mode Hyper » de l'onglet de chaque race (décision du propriétaire : PRIME sur 'fiche' pour les races ; migration 0007, `nom` = nom de la capacité, `libelle` = nom de l'onglet) ; Fongoïde et Gémidien : onglets 21 et 22 de la mise à jour de Décembre (migration 0120, R239 ; rang 28 et 29, après l'index du classeur). portee 'general' : effet commun (libelle = « Général » ou le titre de l'encadré) ; 'magie' : une magie ; 'duo' : un couple de magies (version 'magie_masque') ; 'race' : une race (variante NULL : la source n'en distingue pas). variante 'mono' / 'bi' : colonnes « Mono magie » / « Bi magie » ; 'mono_et_bi' : cellule fusionnée sur les deux ; 'forme_complete' : Potentiel Illimité (« Forme Complète ») ; le couple d'une version 'magie_masque' est une variante 'bi'. `variante_brut` : libellé de colonne écrit.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -1197,13 +1197,13 @@ Dons acquis qui comptent comme une condition de plus dans le nombre d'emplacemen
 
 ### `race`
 
-RACE : une ligne par race (27 dans les cinq onglets du classeur ; le guide dit « 23 disponibles », voir design.md §12)
+RACE : une ligne par race (29 : les 27 des cinq onglets du classeur, plus Fongoïde et Gémidien, races pures de la mise à jour de Décembre, décision R239, migration 0120 ; le guide dit « 23 disponibles », voir design.md §12). La fiche V15.2.2 n'a pas ces deux races : leurs colonnes de la fiche sont NULL.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
 | `id` | TEXT | oui | PK, → page.id | = id de la page 'races/<slug>' |
 | `nom` | TEXT | oui | unique | « Race » col. A, identique dans les 5 onglets, l'index et le titre de la page : 'Elfe noir', « Drassah'thac » |
-| `ordre` | INTEGER | oui | unique | rang dans l'onglet « Race » (1 = Humain) : c'est l'ordre d'affichage de la fiche |
+| `ordre` | INTEGER | oui | unique | rang dans l'onglet « Race » (1 = Humain) : c'est l'ordre d'affichage de la fiche ; Fongoïde 13 et Gémidien 14, à la fin des races pures, les suivantes décalées de 2 (migration 0120) |
 | `presentation` | TEXT | non |  | phrase de présentation du classeur « Les races » (première feuille, col. B) ; NULL si absente |
 | `sante` | INTEGER | non |  | « Santé » : PV de départ apportés par la race |
 | `chakra_depart` | INTEGER | non |  | « Chakra départ » |
@@ -1221,7 +1221,7 @@ RACE : une ligne par race (27 dans les cinq onglets du classeur ; le guide dit �
 | `source_ref` | TEXT | oui |  | « Fiche auto V15.2.2 › Race › A3:W3 ; Les races › première feuille › A2:B2 » |
 | `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 | `mono_magie` | INTEGER | oui |  | 1 = « Une seule magie autorisé » (inconvénients de l'onglet de la race) : pas de magie acquise, quelle que soit l'innée (décision R28 du propriétaire : la Lamia ; migration 0022) |
-| `rang_liste` | INTEGER | non |  | ordre du menu latéral des races, de la liste /races/ et du tableau des magies innées en bas de /races/ (migration 0092 ; réponse du propriétaire) ; distinct de `ordre`. La fiche et /magies/ gardent l'ordre du code (client/src/lib/race-kinds.mjs#ORDRE_DES_RACES). NULL : pas encore rangée, en fin de liste, par nom. Pas UNIQUE : un réordonnancement renumérote plusieurs races dans un même lot (à égalité, le nom). Valeur d'import : celle de ORDRE_DES_RACES, pures puis hybrides, de 1 à 27. |
+| `rang_liste` | INTEGER | non |  | ordre du menu latéral des races, de la liste /races/ et du tableau des magies innées en bas de /races/ (migration 0092 ; réponse du propriétaire) ; distinct de `ordre`. La fiche et /magies/ gardent l'ordre du code (client/src/lib/race-kinds.mjs#ORDRE_DES_RACES). NULL : pas encore rangée, en fin de liste, par nom. Pas UNIQUE : un réordonnancement renumérote plusieurs races dans un même lot (à égalité, le nom). Valeur d'import : celle de ORDRE_DES_RACES, pures puis hybrides, de 1 à 27 ; la migration 0120 range Fongoïde (14) et Gémidien (15) à la fin des pures et décale les hybrides de 2 (1 à 29). |
 
 ### `race_restriction_carac`
 
@@ -1238,7 +1238,7 @@ RACE_RESTRICTION_CARAC : restrictions de caractéristique d'une race (onglet « 
 
 ### `ethnie`
 
-ETHNIE : une ligne par ligne de l'onglet « Bonus Race » (96) : sous-race, origine ou variété d'une race (« Elfe Noir Charbon », « Drakos Rouge », « Mort-Vivant Eau », « Orios de Terre »…). La clé de la source est le nom (col. B).
+ETHNIE : une ligne par ligne de l'onglet « Bonus Race » (96) : sous-race, origine ou variété d'une race ; plus les ethnies uniques « Fongoïde » et « Gémidien » (décision R239 (3), migration 0120 : sans don d'ethnie, descriptif NULL, race_brut = le nom de la race) (« Elfe Noir Charbon », « Drakos Rouge », « Mort-Vivant Eau », « Orios de Terre »…). La clé de la source est le nom (col. B).
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -1279,7 +1279,7 @@ Résistances d'une ethnie (col. E/F = résistance 1, G/H = résistance 2 : un no
 
 ### `race_classe`
 
-RACE_CLASSE : matrice « Accessibilité de Classe » : 27 races x 39 classes = 1 053 lignes (712 à 1, 341 à 0) ; plus les colonnes 40 (Boxeur) et 41 (Porte-étendard), absentes de la fiche, ouvertes aux 27 races (décision R238 (1), migration 0119) : 1 107 lignes. 26 classes générales (colonnes B à AA) + 13 classes raciales (AB à AN). La légende 0/1 n'est pas écrite dans le classeur : 1 = accessible est la lecture de la source (le « 1 » d'Orios sur la classe Orios et le « Classe possible : Orios » de Race!G14 la confirment). AUCUNE formule du classeur ne lit cet onglet (donnée d'information) ; voir design.md §12 pour ses contradictions avec la fiche.
+RACE_CLASSE : matrice « Accessibilité de Classe » : 27 races x 39 classes = 1 053 lignes (712 à 1, 341 à 0) ; plus les colonnes 40 (Boxeur) et 41 (Porte-étendard), absentes de la fiche, ouvertes à toutes les races (décision R238 (1), migration 0119) ; plus Fongoïde et Gémidien (décision R239 (4), migration 0120 : comme les races pures, le Fongoïde sans Barde ni Parleur ; Boxeur et Porte-étendard ouverts) : 29 x 41 = 1 189 lignes (820 à 1, 369 à 0). 26 classes générales (colonnes B à AA) + 13 classes raciales (AB à AN). La légende 0/1 n'est pas écrite dans le classeur : 1 = accessible est la lecture de la source (le « 1 » d'Orios sur la classe Orios et le « Classe possible : Orios » de Race!G14 la confirment). AUCUNE formule du classeur ne lit cet onglet (donnée d'information) ; voir design.md §12 pour ses contradictions avec la fiche.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -1293,7 +1293,7 @@ RACE_CLASSE : matrice « Accessibilité de Classe » : 27 races x 39 classes = 1
 
 ### `race_magie`
 
-RACE_MAGIE : matrice « Accessibilité Magie » : 27 races x 15 magies = 405 lignes (245 à 1, 160 à 0). Une case corrigée par le propriétaire : Lamia × Corruption, à 0 dans la fiche (E24), vaut 1 (décision R22, migration 0013 ; source_ref le dit). Selon les formules de la fiche, elle ne restreint que la magie INNÉE (BDD!D2 -> liste de Personnage!S2) ; la liste des magies acquises ne la lit pas. Elle remplace le champ de frontmatter `magies_innees` des pages de race.
+RACE_MAGIE : matrice « Accessibilité Magie » : 27 races x 15 magies = 405 lignes (245 à 1, 160 à 0), plus Fongoïde (14 à 1, sans le Potentiel Illimité) et Gémidien (13 à 1, ni Potentiel Illimité ni Corruption) de la migration 0120 (décision R239) : 435 lignes (272 à 1). Une case corrigée par le propriétaire : Lamia × Corruption, à 0 dans la fiche (E24), vaut 1 (décision R22, migration 0013 ; source_ref le dit). Selon les formules de la fiche, elle ne restreint que la magie INNÉE (BDD!D2 -> liste de Personnage!S2) ; la liste des magies acquises ne la lit pas. Elle remplace le champ de frontmatter `magies_innees` des pages de race.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -1307,7 +1307,7 @@ RACE_MAGIE : matrice « Accessibilité Magie » : 27 races x 15 magies = 405 lig
 
 ### `race_onglet`
 
-▸ CONTENU DE L'ONGLET DE LA RACE : classeur « Les races », un onglet par race (migration 0007). Décision R13 du propriétaire : l'onglet est la SOURCE ; la fiche V15.2.2 (tables race, ethnie, race_restriction_carac…) en est un dérivé fait à la main, pas toujours à jour, dont les écarts ne sont plus affichés. Les pages de race du site sont rendues depuis ces tables (lib/races-db.mjs). Textes tels qu'écrits : paragraphes séparés par une ligne vide, retours à la ligne et puces « - » conservés ; un nombre n'est typé que s'il est écrit en chiffres. Lignes tirées des pages races/<slug> par tools/db/races_onglet.py (preuve : chaque section se réécrit à l'identique avec le code de tools/sheets/races.py, l'importeur qui a lu les onglets). RACE_ONGLET : une ligne par race.
+▸ CONTENU DE L'ONGLET DE LA RACE : classeur « Les races », un onglet par race (migration 0007). Décision R13 du propriétaire : l'onglet est la SOURCE ; la fiche V15.2.2 (tables race, ethnie, race_restriction_carac…) en est un dérivé fait à la main, pas toujours à jour, dont les écarts ne sont plus affichés. Les pages de race du site sont rendues depuis ces tables (lib/races-db.mjs). Textes tels qu'écrits : paragraphes séparés par une ligne vide, retours à la ligne et puces « - » conservés ; un nombre n'est typé que s'il est écrit en chiffres. Lignes tirées des pages races/<slug> par tools/db/races_onglet.py (preuve : chaque section se réécrit à l'identique avec le code de tools/sheets/races.py, l'importeur qui a lu les onglets) ; Fongoïde et Gémidien : onglets 21 et 22 de la mise à jour de Décembre, écrits par la migration 0120 (leur page est le rendu de leurs seules tables, lib/corps-races.mjs#corpsDeRaceCreee). RACE_ONGLET : une ligne par race.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -3096,7 +3096,7 @@ Les bonus de maîtrise d'un sort À UN NIVEAU DE MAÎTRISE DONNÉ (nm = 0, 1, 2,
 
 *vue*
 
-Bornes de saisie d'une caractéristique selon la race, telles que la fiche les calcule (BDD!K2:K24) : '>' est strict (« > 2 » = au moins 3), '<' est strict (« < 4 » = au plus 3), '=' fixe la valeur ; le minimum ne descend jamais sous 1 et le maximum ne monte jamais au-dessus de 4 (« minimum de 1 et maximum de 4 de manière générale », guide/fiche-caracteristiques) ; sans restriction : 1 à 4. La vue produit une ligne par (race, caracteristique) : 27 x 6 = 162. Les bornes portent sur la BASE saisie, avant le bonus de la magie innée (règle de la fiche, hors de ce domaine). operateur/valeur sont NULL quand la race n'a pas de restriction.
+Bornes de saisie d'une caractéristique selon la race, telles que la fiche les calcule (BDD!K2:K24) : '>' est strict (« > 2 » = au moins 3), '<' est strict (« < 4 » = au plus 3), '=' fixe la valeur ; le minimum ne descend jamais sous 1 et le maximum ne monte jamais au-dessus de 4 (« minimum de 1 et maximum de 4 de manière générale », guide/fiche-caracteristiques) ; sans restriction : 1 à 4. La vue produit une ligne par (race, caracteristique) : 29 x 6 = 174. Les bornes portent sur la BASE saisie, avant le bonus de la magie innée (règle de la fiche, hors de ce domaine). operateur/valeur sont NULL quand la race n'a pas de restriction.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |

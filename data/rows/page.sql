@@ -22500,9 +22500,9 @@ Permet de faire un lien avec un allié et lui permettre de partager les percepti
 
 ## Classes accessibles
 
-Nombre : 24 sur 39.
+Nombre : 26 sur 41.
 
-Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur
+Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Boxeur, Porte-étendard
 
 ## Magies accessibles
 
@@ -22582,9 +22582,9 @@ Inflige un bonus +3 dégâts (+2/5 niveau global) de l''élément de la magie in
 
 ## Classes accessibles
 
-Nombre : 26 sur 39.
+Nombre : 28 sur 41.
 
-Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur
+Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Boxeur, Porte-étendard
 
 ## Magies accessibles
 

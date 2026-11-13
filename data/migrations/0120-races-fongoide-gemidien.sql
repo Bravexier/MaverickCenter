@@ -1,11 +1,12 @@
--- Migration 0119 : races Fongoïde et Gémidien (lot 4 « Races » de la mise à jour de Décembre) : décisions R239, R256 ; Modes Hyper changés (R237 (12)).
+-- Migration 0120 : races Fongoïde et Gémidien (lot 4 « Races » de la mise à jour de Décembre) : décisions R239, R256 ; Modes Hyper changés (R237 (12)).
 -- Source : la pièce jointe du propriétaire « Nouveauté mise à jour Décembre.xlsx » (instantané sources/raw/classeurs/magie-maverick-v10.json), onglets
 -- 21 « Fongoïde » et 22 « Gémidien », cités « Nouveauté mise à jour Décembre › <onglet> › <case> » ; le docx de la même mise à jour pour les deux Modes Hyper changés ;
 -- R237 (12) : pas de lecture des originaux Google. Textes copiés tels qu'écrits (fautes comprises), sous la forme que la base enregistre
 -- (lib/corps-races.mjs#valeurCanonique : paragraphes séparés par une ligne vide, sans espace en fin de ligne).
--- Générée par un script du lot (hors dépôt) depuis le plan de tech-sources (plan-races.json) et la base à la version 118 ; corps des pages par
+-- Générée par un script du lot (hors dépôt) depuis le plan de tech-sources (plan-races.json) et la base à la version 118 (renumérotée 0120 après la 0119 des classes : lignes croisées
+-- Boxeur et Porte-étendard, R238 (1), et « Classes accessibles » des pages ajoutés ensuite) ; corps des pages par
 -- lib/corps-races.mjs (corpsDeRaceCreee pour les deux races : aucune section de la fiche V15.2.2, qui ne les a pas ; corpsDeRace pour les deux Modes Hyper).
--- Registre : 0119-races-fongoide-gemidien.json (ids créés, textes réécrits).
+-- Registre : 0120-races-fongoide-gemidien.json (ids créés, textes réécrits).
 --   - R239 (1) : deux races pures, races/fongoide et races/gemidien (29 races) ; race.ordre et race.rang_liste à la fin des races pures, les suivantes
 --     reculent de deux (ORDRE_DES_RACES de lib/race-kinds.mjs suit). Colonnes de la fiche V15.2.2 de race à NULL (la fiche n'a pas ces races).
 --   - R13 : race_onglet (A4, AK3, AK30, H13, U13, AG13, H16, H19), don de race (A27, H27, forme « unique »), Mode Hyper (A32, H32, version onglet_race,
@@ -17,7 +18,8 @@
 --   - Magies innées (race_magie) : Fongoïde 14 (tableau A52:W65, sans le Potentiel Illimité ; R14, R22 ; la Corruption innée reste mono-magie, R15) ;
 --     Gémidien mono-magie (race.mono_magie = 1, R28), 13 (ni Potentiel Illimité ni Corruption, H19). Pas de race_magie_onglet.
 --   - R239 (4) : race_classe comme les races pures (les 26 classes générales, Archimage compris comme pour les autres pures, R23 restant appliquée par
---     classe.magie_innee_id ; aucune classe raciale) ; Fongoïde × Barde et × Parleur fermées (H19).
+--     classe.magie_innee_id ; aucune classe raciale) ; Fongoïde × Barde et × Parleur fermées (H19). Boxeur et Porte-étendard (colonnes 40 et 41,
+--     migration 0119) ouverts aux deux races comme à toutes les autres (R238 (1)).
 --   - Absents : relations entre peuples (aucun peuple), race.presentation, matrices de la fiche V15.2.2.
 --   - Mot-clé de chaque race (demande de game-design, lot 4), sur le modèle des mots-clés des races pures : libellé = nom de la race, adresse
 --     /races/<slug>/, couleur race:pure, catégorie « Race » ; ids 408 et 409 (les suivants : serveur/edition-mots-cles.mjs#idSuivant) ; verrou 0
@@ -109,9 +111,9 @@ Permet de faire un lien avec un allié et lui permettre de partager les percepti
 
 ## Classes accessibles
 
-Nombre : 24 sur 39.
+Nombre : 26 sur 41.
 
-Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur
+Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Boxeur, Porte-étendard
 
 ## Magies accessibles
 
@@ -217,6 +219,8 @@ INSERT INTO race_classe (race_id, classe_id, ordre, accessible, valeur_brut, ori
 INSERT INTO race_classe (race_id, classe_id, ordre, accessible, valeur_brut, origine, source_ref) VALUES ('races/fongoide', 'classes/marcass', 37, 0, '0', 'races', 'Décision R239 (4) : comme les races pures');
 INSERT INTO race_classe (race_id, classe_id, ordre, accessible, valeur_brut, origine, source_ref) VALUES ('races/fongoide', 'classes/anansi', 38, 0, '0', 'races', 'Décision R239 (4) : comme les races pures');
 INSERT INTO race_classe (race_id, classe_id, ordre, accessible, valeur_brut, origine, source_ref) VALUES ('races/fongoide', 'classes/goleois', 39, 0, '0', 'races', 'Décision R239 (4) : comme les races pures');
+INSERT INTO race_classe (race_id, classe_id, ordre, accessible, valeur_brut, origine, source_ref) VALUES ('races/fongoide', 'classes/boxeur', 40, 1, '1', 'races', 'Décision R238 (1) › Boxeur (ouverte à toutes les races ; aucune case de la fiche)');
+INSERT INTO race_classe (race_id, classe_id, ordre, accessible, valeur_brut, origine, source_ref) VALUES ('races/fongoide', 'classes/porte-etendard', 41, 1, '1', 'races', 'Décision R238 (1) › Porte-étendard (ouverte à toutes les races ; aucune case de la fiche)');
 
 -- 2. Gémidien (onglet 22 « Gémidien » de la pièce jointe ; titre N1 « GÉMIDIEN »)
 INSERT INTO source (id, nature, texte, url, genre, google_id, fichier, onglets) VALUES ('ref:nouveaute-mise-a-jour-decembre-onglet-gemidien', 'libelle', 'Nouveauté mise à jour Décembre, onglet « Gémidien »', NULL, NULL, NULL, NULL, NULL);
@@ -292,9 +296,9 @@ Inflige un bonus +3 dégâts (+2/5 niveau global) de l''élément de la magie in
 
 ## Classes accessibles
 
-Nombre : 26 sur 39.
+Nombre : 28 sur 41.
 
-Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur
+Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Boxeur, Porte-étendard
 
 ## Magies accessibles
 
@@ -396,6 +400,8 @@ INSERT INTO race_classe (race_id, classe_id, ordre, accessible, valeur_brut, ori
 INSERT INTO race_classe (race_id, classe_id, ordre, accessible, valeur_brut, origine, source_ref) VALUES ('races/gemidien', 'classes/marcass', 37, 0, '0', 'races', 'Décision R239 (4) : comme les races pures');
 INSERT INTO race_classe (race_id, classe_id, ordre, accessible, valeur_brut, origine, source_ref) VALUES ('races/gemidien', 'classes/anansi', 38, 0, '0', 'races', 'Décision R239 (4) : comme les races pures');
 INSERT INTO race_classe (race_id, classe_id, ordre, accessible, valeur_brut, origine, source_ref) VALUES ('races/gemidien', 'classes/goleois', 39, 0, '0', 'races', 'Décision R239 (4) : comme les races pures');
+INSERT INTO race_classe (race_id, classe_id, ordre, accessible, valeur_brut, origine, source_ref) VALUES ('races/gemidien', 'classes/boxeur', 40, 1, '1', 'races', 'Décision R238 (1) › Boxeur (ouverte à toutes les races ; aucune case de la fiche)');
+INSERT INTO race_classe (race_id, classe_id, ordre, accessible, valeur_brut, origine, source_ref) VALUES ('races/gemidien', 'classes/porte-etendard', 41, 1, '1', 'races', 'Décision R238 (1) › Porte-étendard (ouverte à toutes les races ; aucune case de la fiche)');
 
 -- 3. Modes Hyper de l’Elfe argenté et du Felfe (docx de la mise à jour de Décembre, R237 (12)) : version onglet_race, noms inchangés ;
 --    corps des deux pages recalculés par lib/corps-races.mjs#corpsDeRace (section « Capacité Mode Hyper », colonne « Onglet (retenu) » des écarts).
@@ -540,9 +546,9 @@ Colonne « Race » de l''onglet « Bonus Race » : Elfe Argenté.
 
 Section issue de la fiche de personnage V15.2.2 (onglet « Accessibilité de Classe »), pas de l''onglet de la race.
 
-Nombre : 26 sur 39.
+Nombre : 28 sur 41.
 
-Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur
+Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Boxeur, Porte-étendard
 
 ## Magies accessibles
 
@@ -694,9 +700,9 @@ Colonne « Race » de l''onglet « Bonus Race » : Felfle.
 
 Section issue de la fiche de personnage V15.2.2 (onglet « Accessibilité de Classe »), pas de l''onglet de la race.
 
-Nombre : 26 sur 39.
+Nombre : 28 sur 41.
 
-Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur
+Guerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Boxeur, Porte-étendard
 
 ## Magies accessibles
 

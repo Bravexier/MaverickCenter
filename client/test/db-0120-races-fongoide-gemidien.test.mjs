@@ -126,6 +126,8 @@ test('R239 (4) : les classes des races pures, le Fongoïde sans Barde ni Parleur
   for (const [classe, a] of acces(GEMIDIEN)) assert.equal(a, humain.get(classe), `Gémidien × ${classe}`);
   for (const [classe, a] of acces(FONGOIDE)) assert.equal(a, fermees.includes(classe) ? 0 : humain.get(classe), `Fongoïde × ${classe}`);
   for (const c of fermees) assert.equal(humain.get(c), 1, `${c} : ouverte aux races pures`);
+  // R238 (1) : Boxeur et Porte-étendard (migration 0119) ouverts à toutes les races, ces deux-là comprises
+  for (const id of RACES_DE_LA_0120) for (const c of ['classes/boxeur', 'classes/porte-etendard']) assert.equal(acces(id).get(c), 1, `${id} × ${c}`);
 });
 
 test('page de chaque race : le rendu de ses seules tables (lib/corps-races.mjs#corpsDeRaceCreee), sans section de la fiche V15.2.2', () => {
