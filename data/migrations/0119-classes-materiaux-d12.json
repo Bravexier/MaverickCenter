@@ -1075,5 +1075,20 @@
  "ecarts_au_plan": [
   "classes/boxeur : corps_md de lib/corps-classes.mjs",
   "classes/porte-etendard : corps_md de lib/corps-classes.mjs"
+ ],
+ "provenance": "Les 37 pages créées (2 classes, 34 dons, Écrasant) ont une ligne page_source vers une source par onglet (« Classeur « Nouveauté mise à jour Décembre », onglet « … » », = page.source_ref) : tools/db/pages_md.py#origine_migration en tire leur famille (classes) ; sans elle, db:pages-check et db:sync-pages échouent.",
+ "espaces_r10": [
+  {
+   "table": "classe",
+   "cle": {
+    "id": "classes/porte-etendard"
+   },
+   "col": "description",
+   "cellule": "Porte-étendard AM2",
+   "avant": "l'adversité. \n",
+   "apres": "l'adversité.\n",
+   "nature": "espace",
+   "note": "Espace de fin de ligne de la cellule, retirée (R10) ; pas encore dans tools/sheets/corrections.json."
+  }
  ]
 }

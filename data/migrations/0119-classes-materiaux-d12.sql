@@ -342,7 +342,7 @@ INSERT INTO page_tag (page_id, ordre, tag_id) VALUES ('capacites/porte-etendard-
 INSERT INTO classe (id, nom, nom_cle, categorie_id, ordre, sante_depart, chakra_depart, barriere_depart, maitrise_arme, maitrise_armure, bouclier_classe_max, inventaire_depart, arme_depart, armure_depart, chose_a_savoir, chose_a_savoir_lien, description_titre, description, origine, source_ref, remarque, magie_innee_id, magie_innee_exclue_id) VALUES ('classes/porte-etendard', 'Porte-étendard', 'porte-etendard', 'classe-physique-corps-a-corps', 14, 5, 0, 5, '- 1 maîtrise Hast
 - 1 maîtrise dans une arme contact au choix (sauf Hast)', '- Légère à Intermédiaire', NULL, 'P fiole rouge, KDR Arme, KDR Armure, briquet, lanterne', 'Lance en acier', 'Armure de fer complet', NULL, NULL, 'Description Porte-Étendard', 'Le Porte-Étendard est un meneur de guerre qui galvanise ses compagnons par sa présence et sa détermination. Équipé d''une lance et d''une armure robuste, il sait tenir sa position tout en incarnant un symbole de courage et de cohésion pour ceux qui combattent à ses côtés.
 
-Sa force réside dans sa capacité à motiver ses alliés, renforçant temporairement leurs performances et leur détermination. Tant qu''il reste debout, sa présence inspire confiance et résilience à ses compagnons, leur permettant de garder leur sang-froid face à l''adversité. 
+Sa force réside dans sa capacité à motiver ses alliés, renforçant temporairement leurs performances et leur détermination. Tant qu''il reste debout, sa présence inspire confiance et résilience à ses compagnons, leur permettant de garder leur sang-froid face à l''adversité.
 
 Son rôle est de maintenir le moral des troupes, fédérer ses alliés et transformer une simple troupe en une véritable force de combat.', 'classes', 'Nouveauté mise à jour Décembre › Porte-étendard › A2:L13, AM1:BA12', NULL, NULL, NULL);
 INSERT INTO specialite (id, classe_id, rang, nom, nom_cle, description_titre, description, origine, source_ref, remarque) VALUES ('classes/porte-etendard#specialite:chef-de-guerre', 'classes/porte-etendard', 1, 'CHEF DE GUERRE', 'chef-de-guerre', 'Description Chef de guerre', 'Le Chef de Guerre est un meneur tactique qui dirige ses compagnons au cœur de la bataille. Commandant, il sait exploiter les forces de chacun pour transformer son groupe en une unité redoutable. Sa présence impose le respect et inspire confiance à ceux qui combattent sous ses ordres.
@@ -1511,5 +1511,50 @@ INSERT INTO correction (dump, classeur, onglet, cellule, champ, avant, apres, oc
 INSERT INTO correction (dump, classeur, onglet, cellule, champ, avant, apres, occurrences, nature, note, origine, source_ref) VALUES ('magie-v10', 'Nouveauté mise à jour Décembre', 'Porte-étendard', 'C36', 'v', 'Repli ! ', 'Repli !', 1, 'espace', 'Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12), lot 3 « Classes » (R238) : nom du don de niveau 15 : espace finale (R10 : l''orthographe se corrige, jamais un chiffre ni le sens).', 'classes', 'Nouveauté mise à jour Décembre › Porte-étendard › C36');
 INSERT INTO correction (dump, classeur, onglet, cellule, champ, avant, apres, occurrences, nature, note, origine, source_ref) VALUES ('magie-v10', 'Nouveauté mise à jour Décembre', 'Porte-étendard', 'Z36', 'v', 'Réagir ! ', 'Réagir !', 1, 'espace', 'Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12), lot 3 « Classes » (R238) : nom du don de niveau 15 : espace finale (R10 : l''orthographe se corrige, jamais un chiffre ni le sens).', 'classes', 'Nouveauté mise à jour Décembre › Porte-étendard › Z36');
 INSERT INTO correction (dump, classeur, onglet, cellule, champ, avant, apres, occurrences, nature, note, origine, source_ref) VALUES ('magie-v10', 'Nouveauté mise à jour Décembre', 'Cuirassé V2', 'A37', 'v', 'attaque à moins', 'attaque a moins', 1, 'grammaire', 'Classeur « Nouveauté mise à jour Décembre » (Magie V10, pièce jointe du propriétaire du 2026-11-12), lot 3 « Classes » (R238) : don Écrasant : verbe « a » (« la cible a moins d''AP total »), pas la préposition « à » (R10 : l''orthographe se corrige, jamais un chiffre ni le sens).', 'classes', 'Nouveauté mise à jour Décembre › Cuirassé V2 › A37');
+
+-- --------------------------------------------------------------------------------------------------------------------------------------------
+-- 11. Provenance des pages créées (lot 3) : une ligne `source` par onglet du classeur de Décembre (libellé = page.source_ref, extraits mécaniques de
+--     tools/db/maverick.py#decouper_source) et une ligne page_source par page, que tools/db/pages_md.py lit pour rattacher la page à sa famille (classes).
+-- --------------------------------------------------------------------------------------------------------------------------------------------
+INSERT INTO source (id, nature, texte, url, genre, google_id, fichier, onglets) VALUES ('ref:classeur-nouveaute-mise-a-jour-decembre-onglet-boxeur', 'libelle', 'Classeur « Nouveauté mise à jour Décembre », onglet « Boxeur »', NULL, NULL, NULL, NULL, NULL);
+INSERT INTO source (id, nature, texte, url, genre, google_id, fichier, onglets) VALUES ('ref:classeur-nouveaute-mise-a-jour-decembre-onglet-cuirasse-v2', 'libelle', 'Classeur « Nouveauté mise à jour Décembre », onglet « Cuirassé V2 »', NULL, NULL, NULL, NULL, NULL);
+INSERT INTO source (id, nature, texte, url, genre, google_id, fichier, onglets) VALUES ('ref:classeur-nouveaute-mise-a-jour-decembre-onglet-porte-etendard', 'libelle', 'Classeur « Nouveauté mise à jour Décembre », onglet « Porte-étendard »', NULL, NULL, NULL, NULL, NULL);
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('capacites/boxeur-armure-vivante', 0, 'ref:classeur-nouveaute-mise-a-jour-decembre-onglet-boxeur');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('capacites/boxeur-boucassant', 0, 'ref:classeur-nouveaute-mise-a-jour-decembre-onglet-boxeur');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('capacites/boxeur-bouclier-dattaque', 0, 'ref:classeur-nouveaute-mise-a-jour-decembre-onglet-boxeur');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('capacites/boxeur-boupact', 0, 'ref:classeur-nouveaute-mise-a-jour-decembre-onglet-boxeur');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('capacites/boxeur-bouquilibre', 0, 'ref:classeur-nouveaute-mise-a-jour-decembre-onglet-boxeur');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('capacites/boxeur-bourage', 0, 'ref:classeur-nouveaute-mise-a-jour-decembre-onglet-boxeur');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('capacites/boxeur-bousee', 0, 'ref:classeur-nouveaute-mise-a-jour-decembre-onglet-boxeur');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('capacites/boxeur-bouvasteur', 0, 'ref:classeur-nouveaute-mise-a-jour-decembre-onglet-boxeur');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('capacites/boxeur-carcasse-rouillee', 0, 'ref:classeur-nouveaute-mise-a-jour-decembre-onglet-boxeur');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('capacites/boxeur-egide-dassaut', 0, 'ref:classeur-nouveaute-mise-a-jour-decembre-onglet-boxeur');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('capacites/boxeur-endurouille', 0, 'ref:classeur-nouveaute-mise-a-jour-decembre-onglet-boxeur');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('capacites/boxeur-etourdissement', 0, 'ref:classeur-nouveaute-mise-a-jour-decembre-onglet-boxeur');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('capacites/boxeur-mur', 0, 'ref:classeur-nouveaute-mise-a-jour-decembre-onglet-boxeur');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('capacites/boxeur-percuteur', 0, 'ref:classeur-nouveaute-mise-a-jour-decembre-onglet-boxeur');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('capacites/boxeur-poids-mort', 0, 'ref:classeur-nouveaute-mise-a-jour-decembre-onglet-boxeur');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('capacites/boxeur-posture-durgence', 0, 'ref:classeur-nouveaute-mise-a-jour-decembre-onglet-boxeur');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('capacites/boxeur-posture-inebran', 0, 'ref:classeur-nouveaute-mise-a-jour-decembre-onglet-boxeur');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('capacites/cuirasse-ecrasant', 0, 'ref:classeur-nouveaute-mise-a-jour-decembre-onglet-cuirasse-v2');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('capacites/porte-etendard-au-dela-des-limites', 0, 'ref:classeur-nouveaute-mise-a-jour-decembre-onglet-porte-etendard');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('capacites/porte-etendard-avantage', 0, 'ref:classeur-nouveaute-mise-a-jour-decembre-onglet-porte-etendard');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('capacites/porte-etendard-chef-agile', 0, 'ref:classeur-nouveaute-mise-a-jour-decembre-onglet-porte-etendard');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('capacites/porte-etendard-chef-de-guerre', 0, 'ref:classeur-nouveaute-mise-a-jour-decembre-onglet-porte-etendard');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('capacites/porte-etendard-chef-fort', 0, 'ref:classeur-nouveaute-mise-a-jour-decembre-onglet-porte-etendard');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('capacites/porte-etendard-chef-malin', 0, 'ref:classeur-nouveaute-mise-a-jour-decembre-onglet-porte-etendard');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('capacites/porte-etendard-chef-resiliant', 0, 'ref:classeur-nouveaute-mise-a-jour-decembre-onglet-porte-etendard');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('capacites/porte-etendard-contre-les-laches', 0, 'ref:classeur-nouveaute-mise-a-jour-decembre-onglet-porte-etendard');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('capacites/porte-etendard-coordination', 0, 'ref:classeur-nouveaute-mise-a-jour-decembre-onglet-porte-etendard');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('capacites/porte-etendard-decontenance', 0, 'ref:classeur-nouveaute-mise-a-jour-decembre-onglet-porte-etendard');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('capacites/porte-etendard-faille', 0, 'ref:classeur-nouveaute-mise-a-jour-decembre-onglet-porte-etendard');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('capacites/porte-etendard-motivation', 0, 'ref:classeur-nouveaute-mise-a-jour-decembre-onglet-porte-etendard');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('capacites/porte-etendard-premiere-ligne', 0, 'ref:classeur-nouveaute-mise-a-jour-decembre-onglet-porte-etendard');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('capacites/porte-etendard-provoc-du-porteur', 0, 'ref:classeur-nouveaute-mise-a-jour-decembre-onglet-porte-etendard');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('capacites/porte-etendard-reagir', 0, 'ref:classeur-nouveaute-mise-a-jour-decembre-onglet-porte-etendard');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('capacites/porte-etendard-repli', 0, 'ref:classeur-nouveaute-mise-a-jour-decembre-onglet-porte-etendard');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('capacites/porte-etendard-stratege-de-bataille', 0, 'ref:classeur-nouveaute-mise-a-jour-decembre-onglet-porte-etendard');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('classes/boxeur', 0, 'ref:classeur-nouveaute-mise-a-jour-decembre-onglet-boxeur');
+INSERT INTO page_source (page_id, ordre, source_id) VALUES ('classes/porte-etendard', 0, 'ref:classeur-nouveaute-mise-a-jour-decembre-onglet-porte-etendard');
 
 DROP TABLE garde_0119;
