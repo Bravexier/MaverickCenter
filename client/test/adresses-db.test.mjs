@@ -12,6 +12,7 @@ import { cheminDeLAdresse, fauteDeLUrl, REGISTRE_DES_LIENS } from '../src/lib/mo
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { baseDImport, lotsAvant } from './aide-base-d-import.mjs';
 import { TYPES } from '../src/lib/types.mjs';
+import { fonduParLa0122, retireeParLa0122 } from './aide-migration-0122.mjs';
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
 const PAGES = fileURLToPath(new URL('../src/pages/', import.meta.url));
@@ -76,6 +77,8 @@ test('migration 0098 : chaque adresse du registre est permise, et mène à la pa
   const index = indexDesAdresses(db);
   assert.ok(REGISTRE.motsCles.length >= 273);
   for (const m of REGISTRE.motsCles) {
+    // la page « La montée de niveau » et son mot-clé, retirés et fondu depuis par la migration 0122 (son registre : aide-migration-0122.mjs)
+    if (retireeParLa0122(m.page) || fonduParLa0122(m.id)) continue;
     assert.equal(fauteDeLUrl(m.url, adresses), null, `${m.id} : ${m.url}`);
     if (m.page) assert.equal(pageDeLAdresse(index, m.url), m.page, `${m.id} : ${m.url}`);
   }

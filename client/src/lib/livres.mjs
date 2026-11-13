@@ -208,12 +208,14 @@ export const adresseDeLaPageAbsorbee = (ancienne, cheminDe) => {
  *     maintenant le tableau des effets des magies et des races (bloc mode-hyper, lib/guide.mjs#BLOCS) ;
  *   - migration 0096 (même jour : « L'onglet suivant est à retirer …/regles/alterations-d-etats-et-mode-hyper/ ») : « Altérations d'états et Mode
  *     Hyper », un aiguillage vers deux classeurs, doublon de guide/alterations-d-etats, guide/liste-des-alterations-d-etat et guide/le-mode-hyper, que
- *     ses cinq liens visent maintenant.
+ *     ses cinq liens visent maintenant ;
+ *   - 2026-11-13, migration 0122 (demande du propriétaire : « Supprime juste le doublon ») : « La montée de niveau », doublon de la page des règles
+ *     /regles/fiche-experience-niveau-global/, dont le mot-clé (172) est fondu dans celui de la page gardée (138) ; Exploration s'ouvre sur guide/equipement-et-butin.
  */
 export const PAGES_SUPPRIMEES = Object.freeze([
   'guide/les-documents-des-regles', 'guide/en-resume-deroulement-d-un-tour', 'guide/aide-memoire', 'guide/mode-hyper-magie',
   'guide/postures', 'guide/les-boss-et-leurs-postures', 'guide/le-mode-super', 'guide/liste-des-effets-mode-hyper',
-  'guide/alterations-d-etats-et-mode-hyper',
+  'guide/alterations-d-etats-et-mode-hyper', 'guide/la-montee-de-niveau',
 ]);
 
 /**

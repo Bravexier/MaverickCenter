@@ -151,7 +151,6 @@ INSERT INTO mot_cle_categorie (mot_cle_id, categorie_id) VALUES (166, 6);
 INSERT INTO mot_cle_categorie (mot_cle_id, categorie_id) VALUES (167, 3);
 INSERT INTO mot_cle_categorie (mot_cle_id, categorie_id) VALUES (168, 6);
 INSERT INTO mot_cle_categorie (mot_cle_id, categorie_id) VALUES (170, 2);
-INSERT INTO mot_cle_categorie (mot_cle_id, categorie_id) VALUES (172, 5);
 INSERT INTO mot_cle_categorie (mot_cle_id, categorie_id) VALUES (174, 4);
 INSERT INTO mot_cle_categorie (mot_cle_id, categorie_id) VALUES (175, 9);
 INSERT INTO mot_cle_categorie (mot_cle_id, categorie_id) VALUES (176, 3);

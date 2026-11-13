@@ -89,7 +89,7 @@ test('R184 : le plan des onglets vient de la base, installé ; sans lui, une fon
     ['fiche-de-personnage', 'Fiche de personnage', 'regles/fiche-de-personnage/', 'guide/creer-son-personnage', 1],
     ['mecaniques-generales', 'Mécaniques générales', 'regles/mecaniques-generales/', 'guide/reussir-une-action', 2],
     ['combats', 'Les combats', 'regles/combats/', 'guide/le-tour-de-jeu', 3],
-    ['exploration', 'Exploration', 'regles/exploration/', 'guide/la-montee-de-niveau', 4],
+    ['exploration', 'Exploration', 'regles/exploration/', 'guide/equipement-et-butin', 4],
   ]);
   assert.ok(ongletsDesRegles().every((o) => Object.isFrozen(o) && Object.isFrozen(o.entrees)));
   // l'Artisanat : une entrée lien d'Exploration (R184 (11)), juste après « Exercer un métier » ; aucune entrée « bientôt » aujourd'hui
@@ -162,10 +162,10 @@ const aPourSegment = (adresse, slug) => adresse.split(/[/?#]/).includes(slug);
 
 test('R184 (9) : les pages supprimées ne sont ni dans la base, ni dans le plan, ni dans aucun renvoi (page 404, R185 (6))', () => {
   // R184 (9) ; puis, le 2026-11-06, les trois pages retirées par la migration 0094, la « Liste des effets mode hyper » (R187 (1), migration 0095) et
-  // « Altérations d'états et Mode Hyper » (migration 0096) (tests « 0094 », « R187 » et « 0096 » plus bas)
+  // « Altérations d'états et Mode Hyper » (migration 0096), « La montée de niveau » (migration 0122) (tests « 0094 », « R187 », « 0096 » et « 0122 » plus bas)
   assert.deepEqual(PAGES_SUPPRIMEES, ['guide/les-documents-des-regles', 'guide/en-resume-deroulement-d-un-tour', 'guide/aide-memoire', 'guide/mode-hyper-magie',
     'guide/postures', 'guide/les-boss-et-leurs-postures', 'guide/le-mode-super', 'guide/liste-des-effets-mode-hyper',
-    'guide/alterations-d-etats-et-mode-hyper']);
+    'guide/alterations-d-etats-et-mode-hyper', 'guide/la-montee-de-niveau']);
   const renvois = renvoisDuGuide(ids);
   const eclatees = { ...RENVOIS_DES_PAGES_ECLATEES, ...PAGES_ECLATEES_DU_GUIDE };
   for (const id of PAGES_SUPPRIMEES) {
@@ -184,7 +184,7 @@ test('R184 (9) : les pages supprimées ne sont ni dans la base, ni dans le plan,
 });
 
 test('chaque page `guide/…` de la base a une adresse à elle, jamais sous /guide/ ; à plat sous /regles/ pour les onglets ; une seule place dans le plan (sauf la fixture)', () => {
-  assert.ok(ids.length >= 67, `${ids.length} pages du guide`);
+  assert.ok(ids.length >= 66, `${ids.length} pages du guide`);
   const chemins = ids.map(cheminDePage);
   assert.equal(new Set(chemins).size, chemins.length, 'deux pages à la même adresse');
   for (const [i, id] of ids.entries()) {
@@ -364,7 +364,7 @@ test('placeDansLeGuide : la rubrique et l’ordre d’une page (notes de version
   assert.deepEqual(placeDansLeGuide('guide/fiche-personnage'), { rubrique: 'Fiche de personnage', rang: 1, ordre: 0 });
   assert.deepEqual(placeDansLeGuide('guide/reussir-une-action'), { rubrique: 'Mécaniques générales', rang: 2, ordre: 0 });
   assert.deepEqual(placeDansLeGuide('guide/le-tour-de-jeu'), { rubrique: 'Les combats', rang: 3, ordre: 0 });
-  assert.deepEqual(placeDansLeGuide('guide/s-entrainer-et-exercer-un-metier'), { rubrique: 'Exploration', rang: 4, ordre: 1 });
+  assert.deepEqual(placeDansLeGuide('guide/s-entrainer-et-exercer-un-metier'), { rubrique: 'Exploration', rang: 4, ordre: 0 }, 'première entrée d’Exploration depuis la 0122 (« La montée de niveau » supprimée)');
   // l'Artisanat compte dans l'ordre du menu : les-pieges vient après lui
   assert.equal(placeDansLeGuide('guide/les-pieges').ordre, PLAN.find((o) => o.id === 'exploration').entrees.findIndex((e) => e.page === 'guide/les-pieges'));
   assert.deepEqual(placeDansLeGuide('guide/un-maitre-du-jeu'), { rubrique: 'Guide du MJ', rang: 5, ordre: null });
@@ -501,6 +501,23 @@ test('0096 (2026-11-06) : « Altérations d’états et Mode Hyper » supprimée
   for (const gardee of ['guide/alterations-d-etats', 'guide/liste-des-alterations-d-etat', 'guide/le-mode-hyper']) {
     assert.ok(ids.includes(gardee) && !PAGES_SUPPRIMEES.includes(gardee), `${gardee} : gardée`);
   }
+});
+
+// Migration 0122, demande du propriétaire du 2026-11-13 : « Supprime juste le doublon ». Convention R185 (6) (« Page 404 ») : PAGES_SUPPRIMEES, sans renvoi ;
+// la page des règles dont elle était le doublon reste. Exploration s'ouvre sur « Équipement et butin ».
+test('0122 (2026-11-13) : « La montée de niveau » supprimée sans renvoi ; la page des règles du niveau global reste ; Exploration s’ouvre sur l’équipement et le butin', () => {
+  const id = 'guide/la-montee-de-niveau';
+  assert.ok(PAGES_SUPPRIMEES.includes(id), 'dans PAGES_SUPPRIMEES (son id reste réservé, serveur/edition-plan.mjs#idPris)');
+  assert.ok(!ids.includes(id), 'plus dans la base');
+  assert.equal(ongletDe(id), null);
+  for (const adresse of ['/regles/la-montee-de-niveau/', '/guide/la-montee-de-niveau/', '/regles/avancees/la-montee-de-niveau/']) {
+    assert.equal(renvoi(adresse), null, `${adresse} : la page 404`);
+  }
+  assert.equal(Object.hasOwn(ADRESSES_DU_PLAN_PRECEDENT, 'regles/avancees/la-montee-de-niveau/'), false);
+  const options = { cheminDe: cheminDePage, existe: (page) => ids.includes(page), accueil: ACCUEIL_DU_GUIDE };
+  assert.equal(Guide.adresseDesAnciensLiens('regles/la-montee-de-niveau/', options), 'regles/la-montee-de-niveau/', 'un lien écrit : tel qu’écrit (la 404)');
+  assert.ok(ids.includes('guide/fiche-experience-niveau-global') && !PAGES_SUPPRIMEES.includes('guide/fiche-experience-niveau-global'), 'la page du doublon reste');
+  assert.equal(ongletsDesRegles().find((o) => o.id === 'exploration').ouverture, 'guide/equipement-et-butin');
 });
 
 test('R184, R185 : les anciennes adresses figées mènent à la nouvelle adresse de chaque page (page 404, liens écrits), requête et ancre gardées', () => {

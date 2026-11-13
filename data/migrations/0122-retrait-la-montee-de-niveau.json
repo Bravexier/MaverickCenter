@@ -1,0 +1,126 @@
+{
+  "$comment": "Migration 0122 : la page « La montée de niveau » retirée au profit de « Fiche de personnage : Expérience/Niveau global » (demande du propriétaire du 2026-11-13 : « Supprime juste le doublon. » ; mot-clé : « Le fondre dans l'autre »). `valeurs` : les valeurs reportées sur la page gardée ou sur l'onglet, avant et après ; `fusion` : le mot-clé fondu, comme serveur/edition.mjs#FUSIONS_DE_MIGRATION le nomme ; `textes` : les balises reciblées ; `page_source_supprimees` et `sources_supprimees` : les lignes d'import retirées avec la page (lues par test/sources-copies.test.mjs).",
+  "migration": "0122-retrait-la-montee-de-niveau",
+  "demande": "Supprime juste le doublon.",
+  "demande_mot_cle": "Le fondre dans l'autre",
+  "page_retiree": "guide/la-montee-de-niveau",
+  "page_gardee": "guide/fiche-experience-niveau-global",
+  "valeurs": [
+    {
+      "table": "regles_onglet",
+      "cle": {
+        "id": "exploration"
+      },
+      "colonne": "ouverture_page_id",
+      "avant": "guide/la-montee-de-niveau",
+      "apres": "guide/equipement-et-butin"
+    },
+    {
+      "table": "regle_constante",
+      "cle": {
+        "id": "potentiel_illimite.sante_max_par_niveau"
+      },
+      "colonne": "page_id",
+      "avant": "guide/la-montee-de-niveau",
+      "apres": "guide/fiche-experience-niveau-global",
+      "decision": "R225"
+    }
+  ],
+  "fusion": {
+    "source": "la-montee-de-niveau",
+    "source_id": 172,
+    "cible": "fiche-de-personnage-experience-niveau-global",
+    "cible_id": 138,
+    "texte": "La montée de niveau",
+    "categories_retirees": [
+      5
+    ]
+  },
+  "textes": [
+    {
+      "table": "page",
+      "cle": {
+        "id": "guide/bienvenue"
+      },
+      "col": "corps_md",
+      "avant": "{{la-montee-de-niveau}}",
+      "apres": "{{fiche-de-personnage-experience-niveau-global|La montée de niveau}}",
+      "compte": 1
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "guide/finaliser-son-personnage"
+      },
+      "col": "corps_md",
+      "avant": "{{la-montee-de-niveau}}",
+      "apres": "{{fiche-de-personnage-experience-niveau-global|La montée de niveau}}",
+      "compte": 1
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "guide/la-magie-en-jeu"
+      },
+      "col": "corps_md",
+      "avant": "{{la-montee-de-niveau}}",
+      "apres": "{{fiche-de-personnage-experience-niveau-global|La montée de niveau}}",
+      "compte": 1
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "guide/premiers-sorts"
+      },
+      "col": "corps_md",
+      "avant": "{{la-montee-de-niveau}}",
+      "apres": "{{fiche-de-personnage-experience-niveau-global|La montée de niveau}}",
+      "compte": 1
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "guide/reussir-une-action"
+      },
+      "col": "corps_md",
+      "avant": "{{la-montee-de-niveau}}",
+      "apres": "{{fiche-de-personnage-experience-niveau-global|La montée de niveau}}",
+      "compte": 1
+    }
+  ],
+  "entree_supprimee": {
+    "id": "page:guide/la-montee-de-niveau",
+    "onglet_id": "exploration",
+    "rang": 1
+  },
+  "page_source_supprimees": [
+    {
+      "page_id": "guide/la-montee-de-niveau",
+      "ordre": 0,
+      "source_id": "ref:google-doc-creer-sa-fiche-de-personnage"
+    },
+    {
+      "page_id": "guide/la-montee-de-niveau",
+      "ordre": 1,
+      "source_id": "google-doc:1PMmFVmKZspSTXJp-y_on5LoprFu_KHxCp34a9kSTFgA"
+    },
+    {
+      "page_id": "guide/la-montee-de-niveau",
+      "ordre": 2,
+      "source_id": "ref:google-sheet-fiche-personnage-maverick-auto-v15-2-2-onglet-bdd"
+    },
+    {
+      "page_id": "guide/la-montee-de-niveau",
+      "ordre": 3,
+      "source_id": "google-sheet:1tDuJpoVVqMtRXBi0WKgH6lwzdQXVdNWPZVLFbdbFqY0"
+    },
+    {
+      "page_id": "guide/la-montee-de-niveau",
+      "ordre": 4,
+      "source_id": "ref:decisions-du-proprietaire-r2-r3-r16-r26-r27-r44-et-r73-docs-decisions-regles-md"
+    }
+  ],
+  "sources_supprimees": [
+    "ref:decisions-du-proprietaire-r2-r3-r16-r26-r27-r44-et-r73-docs-decisions-regles-md"
+  ]
+}

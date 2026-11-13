@@ -1828,11 +1828,6 @@ INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/la-magie-en-j
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/la-magie-en-jeu', 8, 'ref:google-sheet-mode-hyper-et-co-onglet-mode-hyper');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/la-magie-en-jeu', 9, 'google-sheet:1AjQyT-IZMULq6FlgnmVmn2QiQ9AWhhbOgjr-COgMyMo');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/la-magie-en-jeu', 10, 'ref:decisions-du-proprietaire-r18-r24-r26-r53-r100-r101-r102-r103-r104-r105-r115-r179-et-r182-docs-decisions-regles-md');
-INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/la-montee-de-niveau', 0, 'ref:google-doc-creer-sa-fiche-de-personnage');
-INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/la-montee-de-niveau', 1, 'google-doc:1PMmFVmKZspSTXJp-y_on5LoprFu_KHxCp34a9kSTFgA');
-INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/la-montee-de-niveau', 2, 'ref:google-sheet-fiche-personnage-maverick-auto-v15-2-2-onglet-bdd');
-INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/la-montee-de-niveau', 3, 'google-sheet:1tDuJpoVVqMtRXBi0WKgH6lwzdQXVdNWPZVLFbdbFqY0');
-INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/la-montee-de-niveau', 4, 'ref:decisions-du-proprietaire-r2-r3-r16-r26-r27-r44-et-r73-docs-decisions-regles-md');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/le-mode-hyper', 0, 'ref:google-doc-creer-sa-fiche-de-personnage');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/le-mode-hyper', 1, 'google-doc:1PMmFVmKZspSTXJp-y_on5LoprFu_KHxCp34a9kSTFgA');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/le-mode-hyper', 2, 'ref:google-sheet-mode-hyper-et-co-onglet-mode-hyper');

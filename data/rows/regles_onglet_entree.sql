@@ -37,7 +37,6 @@ INSERT INTO regles_onglet_entree (id, onglet_id, rang, page_id, libelle, adresse
 INSERT INTO regles_onglet_entree (id, onglet_id, rang, page_id, libelle, adresse) VALUES ('page:guide/l-embuscade', 'combats', 7, 'guide/l-embuscade', NULL, NULL);
 INSERT INTO regles_onglet_entree (id, onglet_id, rang, page_id, libelle, adresse) VALUES ('page:guide/l-equipement', 'exploration', 4, 'guide/l-equipement', NULL, NULL);
 INSERT INTO regles_onglet_entree (id, onglet_id, rang, page_id, libelle, adresse) VALUES ('page:guide/la-magie-en-jeu', 'mecaniques-generales', 4, 'guide/la-magie-en-jeu', NULL, NULL);
-INSERT INTO regles_onglet_entree (id, onglet_id, rang, page_id, libelle, adresse) VALUES ('page:guide/la-montee-de-niveau', 'exploration', 1, 'guide/la-montee-de-niveau', NULL, NULL);
 INSERT INTO regles_onglet_entree (id, onglet_id, rang, page_id, libelle, adresse) VALUES ('page:guide/le-mode-hyper', 'combats', 16, 'guide/le-mode-hyper', NULL, NULL);
 INSERT INTO regles_onglet_entree (id, onglet_id, rang, page_id, libelle, adresse) VALUES ('page:guide/le-mode-hyper-100', 'combats', 17, 'guide/le-mode-hyper-100', NULL, NULL);
 INSERT INTO regles_onglet_entree (id, onglet_id, rang, page_id, libelle, adresse) VALUES ('page:guide/le-tour-de-jeu', 'combats', 1, 'guide/le-tour-de-jeu', NULL, NULL);

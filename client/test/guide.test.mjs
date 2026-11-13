@@ -118,7 +118,12 @@ test('le guide du site : chaque page de Découvrir, de la création du personnag
   // 0093 ; test/aide-base-d-import.mjs, fixtures/lots-avant-0093.json)
   const corpsDesMigrations = baseDImport({ garder: lotsAvant('0093') }).prepare("SELECT id, corps_md AS body FROM page WHERE type = 'guide' AND corps_md IS NOT NULL").all();
   const blocsDesMigrations = corpsDesMigrations.flatMap((p) => morceauxDuChapitre(p.body).filter((m) => m.bloc).map((m) => m.bloc));
-  assert.deepEqual([...blocsDesMigrations].sort(), [...BLOCS].sort(), 'chaque bloc déclaré est utilisé, une fois (état des migrations)');
+  // Blocs déclarés mais appelés par aucune page : `niveaux`, dont la seule page (guide/la-montee-de-niveau) est supprimée par la migration 0122 (demande du
+  // propriétaire du 2026-11-13 : « Supprime juste le doublon »). Il refait le tableau à la main sur le dev : le bloc reste déclaré dans BLOCS, ni retiré ni réécrit.
+  const NON_APPELES = ['niveaux'];
+  assert.ok(NON_APPELES.every((b) => BLOCS.includes(b)), 'un bloc non appelé reste déclaré (lib/guide.mjs#BLOCS)');
+  assert.deepEqual([...blocsDesMigrations].sort(), BLOCS.filter((b) => !NON_APPELES.includes(b)).sort(),
+    'chaque bloc déclaré est utilisé, une fois, sauf ceux de NON_APPELES (état des migrations)');
   // plus de sommaire dans Bienvenue (demande du propriétaire du 2026-10-18 : « Dans la page de bienvenue, retire le sommaire ») : plus de bloc « sommaire »
   assert.equal(BLOCS.includes('sommaire'), false);
   assert.throws(() => morceauxDuChapitre('<!-- guide:sommaire -->\n'), /bloc inconnu « sommaire »/);

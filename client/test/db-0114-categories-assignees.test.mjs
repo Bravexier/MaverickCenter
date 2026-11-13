@@ -16,6 +16,7 @@ import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { TABLES_HORS_REGLES } from '../src/lib/tables-de-la-base.mjs';
 import { ecrituresReecrites } from './aide-textes-reecrits.mjs';
 import { MOTS_CLES_DE_LA_0120 } from './aide-races-0120.mjs';
+import { fonduParLa0122 } from './aide-migration-0122.mjs';
 
 const outils = fileURLToPath(new URL('../../tools/db/', import.meta.url));
 const sansPython = spawnSync('python3', ['--version']).error ? 'python3 absent' : false;
@@ -75,7 +76,8 @@ test('import : les catégories des mots-clés sont celles du registre, plus Clas
   }
   const classe = h.lignesDImport('categorie_mot_cle').find((c) => c.libelle_cle === 'classe').id;
   const attendu = [
-    ...REGISTRE.assignations.flatMap((e) => e.categories.map((c) => `${e.id}:${c.id}`)),
+    // le mot-clé que la 0122 fond dans un autre (« La montée de niveau », registre 0122) a perdu ses catégories avec lui
+    ...REGISTRE.assignations.filter((e) => !fonduParLa0122(e.id)).flatMap((e) => e.categories.map((c) => `${e.id}:${c.id}`)),
     ...REGISTRE_0113.motsCles.filter((e) => e.libelleAvant).map((e) => `${e.id}:${classe}`),
   ].sort();
   // les mots-clés d'une migration postérieure (0120 : Fongoïde et Gémidien, épinglés par test/db-0120-races-fongoide-gemidien.test.mjs) mis à part ;
