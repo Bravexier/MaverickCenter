@@ -343,6 +343,20 @@ export function etatDeLApercu(enAttente, morceaux) {
 }
 
 /**
+ * Ce que la page du guide montre du texte d'une ligne `page` en attente (`ligne.corps_md` : le texte actuel de la base) : 'apercu' (celui que le navigateur a
+ * envoyé, etatDeLApercu), 'vivant' (le texte actuel, rendu dans le navigateur comme au build — lib/markdown-rendu.mjs — quand l'aperçu manque : texte fusionné
+ * au rejeu, conflit résolu, lot ancien ; ou qu'il ne correspond plus aux morceaux de la page ; ou page créée sur le site de dev), 'perime' (aucun rendu
+ * possible : le texte actuel ne se découpe pas comme la page, il s'affichera à la prochaine mise à jour) ou null (rien à faire : aucun texte changé).
+ */
+export function etatDuTexte(enAttente, morceaux) {
+  const quoi = etatDeLApercu(enAttente, morceaux);
+  if (quoi === 'apercu' || !enAttente || !('apercu' in enAttente)) return quoi;
+  const corps = enAttente.ligne?.corps_md;
+  const aligne = typeof corps === 'string' && decouperCorps(corps).filter((m) => m.visible).length === morceaux;
+  return aligne ? 'vivant' : quoi;
+}
+
+/**
  * Le corps d'une page coupé en morceaux de texte et marqueurs de bloc, SANS rien perdre (contrairement à lib/guide.mjs#morceauxDuChapitre) :
  * [{ texte } | { marqueur, bloc }] ; leur concaténation redonne le corps. `visible` : un morceau de texte que la page affiche (non vide).
  */

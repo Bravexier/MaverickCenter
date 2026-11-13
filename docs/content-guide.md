@@ -294,7 +294,7 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
   `-bleu`, `-violet`, `-gris`, `classeDeCase` ; pas de `par-defaut` : une case sans couleur connue n'a pas de classe). Aucune source ne donne ces
   couleurs : ce sont les valeurs que le site écrivait dans `global/wiki.css` (« Si le site n'a pas de règle il ajoute une nouvelle couleur au site »),
   inchangées. Le Markdown (`{couleur:x}`) et l'attribut `data-couleur` (le nom, que relit l'aller-retour) ne changent pas : le plugin remark
-  (`lib/markdown-couleurs.mjs`, déclaré dans `astro.config.mjs` et `lib/guide-rendu.ts`) pose en plus la classe sur la case, l'aperçu assaini
+  (`lib/markdown-couleurs.mjs`, déclaré dans `astro.config.mjs`, `lib/guide-rendu.ts` et, pour le texte que le navigateur du site de dev rend lui-même, `lib/markdown-rendu.mjs#remarkPluginsDuWiki`) pose en plus la classe sur la case, l'aperçu assaini
   (`htmlSur`) la recalcule depuis le nom (jamais celle reçue), et l'éditeur du guide (`scripts/edition/guide.mjs`) la pose et la retire par `classList`
   avec le nom, ainsi que sur chaque pastille de sa barre ; le nom de la classe vient de `markdown-edition.mjs#classeDeCouleurDeCase` (sans couleur, le
   même nom que `classeDeCase`, testé), car ni le plugin ni le script n'importent la palette. `global/wiki.css` ne lit que la classe,

@@ -40,7 +40,7 @@ Demande du propriétaire : « les modifications apportées sur le site priment �
 - La trace `{"reprise": …}` d'un lot gardé est rangée dans `modification.detail` (choix du `leader-technique`, pas de colonne dédiée) : `lireLaTrace`, `gardees[col]` = `{ base, site, code, passages, siteGagne, codeGagne }`.
 - Pas de cascade : les lots suivants se rejouent sur la valeur en place. `lotsRetenus` liste ceux qui suivent un lot gardé ; `journalExporte` laisse de côté lots gardés et retenus (`retenus`) ; `defaireLesLotsEnSuspens` les défait (note en préparation : skill `zone-mise-a-jour`).
 - Les lots en conflit non résolus sont réévalués à chaque rejeu (un lot résolu jamais). Un lot fusionné proprement est réécrit au journal (`avant` = valeur des règles, `apres` = valeur fusionnée).
-- Un `page.corps_md` fusionné perd son `apercu` (requête `rebaser`) ; d'un lot gardé, `lignesEnAttente` ne rend pas un aperçu qui ne décrit plus le corps en place (la page montre la valeur en base).
+- Un `page.corps_md` fusionné perd son `apercu` (requête `rebaser`) ; d'un lot gardé, `lignesEnAttente` ne rend pas un aperçu qui ne décrit plus le corps en place (la page la rend elle-même dans le navigateur).
 - `lotGardeEnSuspens` est la sortie rapide de `lotsRetenus` ; `noteEnPreparation` ne relit le journal qu'une fois, et seulement s'il y a un lot en suspens.
 
 ## Tests

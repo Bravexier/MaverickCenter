@@ -489,7 +489,7 @@ règle sans rendre l'élément à la fiche ; la date de la note est le jour UTC 
 **Le journal** (section 14 de `data/schema.sql` : `modification_lot`, `modification`) : le service écrit chaque ligne touchée (avant, après) dans la
 même transaction que la modification (`serveur/edition-journal.mjs`). Une saisie envoie la valeur qu'elle a lue (`avant`) : si la base a changé
 depuis, `409` et rien n'est écrit. Les pages étant statiques, chacune demande au chargement les lignes modifiées depuis sa construction
-(`GET /api/edition/en-attente/`) et les réaffiche (pour une page du guide : l'aperçu HTML noté avec le texte, assaini) ; une race ou une classe
+(`GET /api/edition/en-attente/`) et les réaffiche (pour une page du guide : l'aperçu HTML noté avec le texte, assaini ; sans aperçu, le texte actuel rendu dans le navigateur, ci-dessous « Limites ») ; une race ou une classe
 créée a sa page provisoire sur la page 404 du site de dev, jusqu'à la livraison suivante.
 
 **Quand une livraison change les règles**, la base vivante est refaite (ci-dessus) et le journal y est **rejoué**, lot par lot : une modification
@@ -1033,7 +1033,12 @@ pas encore résolus et les lots retenus derrière eux sont défaits, dans un sav
   plus récent ; son choix 1 est retiré ; il devient gardé à la reconstruction suivante) ;
   la note en préparation défait les lots en suspens colonne par colonne (une colonne dérivée revient à sa valeur notée) ; une page du guide dont le
   corps a été fusionné, ou gardé avec un changement du code ailleurs, n'a plus d'aperçu HTML (il ne décrit plus le texte en place : la modification
-  réécrite au rejeu perd son `apercu`, `lignesEnAttente` ne le rend pas pour un lot gardé), elle montre son nouveau texte à la livraison suivante ;
+  réécrite au rejeu perd son `apercu`, `lignesEnAttente` ne le rend pas pour un lot gardé) ; la page du site de dev (`edition/guide.mjs`, mode
+  modification) rend alors elle-même le texte actuel de la base dans le navigateur (`lib/markdown-rendu.mjs`, même chaîne que le build : [[liens]] sur
+  les pages de la base vivante `GET /api/edition/pages/`, couleurs de case, monnaies, ancres figées, anciennes adresses du guide ; `etatDuTexte`),
+  assaini comme un aperçu (`htmlSur`), et le corps redevient modifiable en place. Écarts voulus : un `[[alias]]` qui n'est ni un titre ni un slug ne
+  mène à rien (la route ne donne pas les alias), pas de coloration du code. Le message « il s'affichera à la prochaine mise à jour du site » ne
+  reste que si le rendu échoue (service injoignable) ou si le texte actuel ne se découpe pas comme la page (blocs `<!-- guide:… -->`) ;
   une création résolue ne rend pas aux fiches ce que R42 leur a retiré à sa suppression ; le corps d'une page typée gardé au choix 2 est celui des
   règles (refait depuis les tables, jamais depuis la version 1).
 

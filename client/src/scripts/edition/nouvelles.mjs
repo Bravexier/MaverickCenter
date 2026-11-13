@@ -122,7 +122,10 @@ function pageDeClasse(lignes, id, vocabulaire) {
 }
 
 // --- Page des Règles créée --------------------------------------------------------------------------------------------------------------------
-/** Le texte d'une page créée, avant la construction : ses paragraphes, en texte (« À compléter. » ; l'éditeur du guide pose l'aperçu d'un texte modifié). */
+/**
+ * Le texte d'une page créée, avant la construction : ses paragraphes, en texte brut, le temps que l'extension `guide` (qui suit) le remplace par son aperçu
+ * ou, sans aperçu, par le texte rendu comme au build (guide.mjs#surcouche, lib/markdown-rendu.mjs) ; il reste tel quel si ce rendu échoue (« À compléter. »).
+ */
 const paragraphes = (corps) => String(corps ?? '').split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean).map((p) => `<p>${echapperHtml(p)}</p>`).join('') || '<p></p>';
 
 /** Une page des Règles créée (`guide/<slug>`, adresse regles/<slug>/), à côté du menu de son onglet ; null si le plan vivant ne la range pas. */
