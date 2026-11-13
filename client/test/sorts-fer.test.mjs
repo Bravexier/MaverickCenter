@@ -3,12 +3,13 @@
 // les dégâts de l'arme restent physiques, et Q56, « Chaque attaque, 3 tours ») ; le mot-clé est balisé dans
 // les huit textes qui parlent de ces sorts (« Oui, tous ») — cinq par le service du site de dev (client/scripts/baliser-mot-cle.mjs, entrée
 // tools/glossaire/sort-fer.json), trois par la migration (textes que le site ne modifie pas) — et nulle part ailleurs, sauf les pages qui recopient ces
-// textes. La fiche (« ... Brutale » : +2 dégâts en posture Focus) et le mot-clé protégé suivent dans le code du site (test/fiche-sorts-fer.test.mjs).
+// textes (et la description du mot-clé Immatériel, copie de la capacité de monstre par la 0121, R268). La fiche (« ... Brutale » : +2 dégâts en posture Focus) et le mot-clé protégé suivent dans le code du site (test/fiche-sorts-fer.test.mjs).
 // Les noms, les effets, les définitions et les textes balisés sont modifiables sur le site de dev, source de ce qu'il modifie : ce que la décision a
 // écrit se lit dans l'état d'import ou d'après la migration (test/aide-base-d-import.mjs), comme le D/S/B, le type, le coût et la portée des 13 sorts
 // (modifiables aussi) ; l'état courant garde l'étiquette (sort_mot_cle, que le site ne modifie pas) et l'accord de la page de chaque magie avec ses lignes.
 import { IDS_DES_MOTS_CLES_PROTEGES } from '../src/lib/mots-cles-proteges.mjs';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
@@ -17,7 +18,8 @@ import { textesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { baseDImport, lotsAvant, texteDImport } from './aide-base-d-import.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
-const lignes = (sql, ...p) => db.prepare(sql).all(...p).map((l) => ({ ...l }));
+const REGISTRE_0121 = JSON.parse(readFileSync(new URL('../../data/migrations/0121-maj-decembre-suites.json', import.meta.url), 'utf8'));
+const lignes =(sql, ...p) => db.prepare(sql).all(...p).map((l) => ({ ...l }));
 const lignesDImport = (sql, ...p) => baseDImport().prepare(sql).all(...p).map((l) => ({ ...l }));
 // l'état d'après les migrations 0079 à 0093 : les balises posées par le service du site de dev (lots rapatriés avant la 0090, la même liste qu'avant
 // la 0093) y sont ; seuls les lots rapatriés depuis sont défaits
@@ -69,6 +71,12 @@ const COPIES = [
   { table: 'materiau_arme', cle: { ressource_id: 'ressources/armures#materiau:cuivre' }, colonne: 'effet_brut' },
   { table: 'materiau_arme', cle: { ressource_id: 'ressources/armures#materiau:cuivre' }, colonne: 'effet_secondaire' },
   { table: 'page', cle: { id: 'ressources/armes' }, colonne: 'corps_md' },
+  // la description d'un mot-clé de la 0121 qui copie l'un des huit textes (R268 : Immatériel, « le texte de la capacité de monstre du même nom »,
+  // balise comprise), lue dans son registre (`mots_cles[].description_de`), jamais écrite à la main
+  ...REGISTRE_0121.mots_cles
+    .filter((m) => m.description_de && BALISES.some((b) => b.table === m.description_de.table && b.colonne === m.description_de.col
+      && JSON.stringify(b.cle) === JSON.stringify({ id: m.description_de.id })))
+    .map((m) => ({ table: 'mot_cle', cle: { id: m.id }, colonne: 'description' })),
 ];
 const cleDe = ({ table, cle, colonne }) => `${table}|${JSON.stringify(cle)}|${colonne}`;
 const valeur = ({ table, cle, colonne }) => {

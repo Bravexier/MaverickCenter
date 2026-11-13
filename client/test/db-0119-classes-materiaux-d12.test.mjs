@@ -16,6 +16,7 @@ import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { sourcesDeLaClasse, sourcesDuDon, famillesDuLecteur } from '../serveur/edition-maitrises.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
 import { avecLesClesDe, idDuMotCleNomme } from './aide-mots-cles.mjs';
+import { ecrituresReecrites } from './aide-textes-reecrits.mjs';
 
 const NOM = '0119-classes-materiaux-d12';
 const lire = (chemin) => readFileSync(new URL(chemin, import.meta.url), 'utf8');
@@ -29,6 +30,13 @@ const NOUVELLES = Object.keys(REGISTRE.classes.nouvelles);
 const PI = 'magies/potentiel-illimite';
 const ARCHIMAGE = 'classes/archimage';
 const tri = (lignes) => lignes.map((l) => JSON.stringify(Object.fromEntries(Object.keys(l).sort().map((k) => [k, l[k]])))).sort();
+// La 0121 balise des fragments que la 0119 a écrits (R258 (7) : « contre les {{non-mort|non-morts}} »…), lus dans son registre `textes` : à l'import,
+// une cellule intacte porte la réécriture ; une cellule touchée par le site garde la valeur d'avant la 0121 (son `avant` d'historique), l'une ou l'autre.
+const ECRITURES_0121 = ecrituresReecrites('0121-maj-decembre-suites');
+function ecrituresAdmises(table, cle, col, texte) {
+  const [tel, reecrit] = ECRITURES_0121(table, cle, col, texte);
+  return historiqueSite(db).touchee(table, cle, col) ? [tel, reecrit] : [reecrit];
+}
 
 test('0119 : schéma 119, aucun mot-clé créé, une garde par instruction qui modifie ou supprime', () => {
   assert.ok(db.prepare('PRAGMA user_version').get().user_version >= 119);
@@ -166,7 +174,8 @@ test('R241 : effets secondaires des matériaux d’armes du registre ; bonus de 
   const b = imp();
   for (const m of REGISTRE.materiaux) {
     const l = b.prepare('SELECT * FROM materiau_arme WHERE ressource_id = ?').get(m.ressource_id);
-    assert.equal(l.effet_brut, avecLesClesDe(b, m.effet_brut.apres), m.ressource_id);
+    const admises = ecrituresAdmises('materiau_arme', { ressource_id: m.ressource_id }, 'effet_brut', avecLesClesDe(b, m.effet_brut.apres));
+    assert.ok(admises.includes(l.effet_brut), `${m.ressource_id} : « ${l.effet_brut} » parmi ${JSON.stringify(admises)}`);
     const lu = analyserEffetDeMateriau(l.effet_brut);
     assert.deepEqual([l.effet_secondaire, l.cran_solidite], [lu.effet_secondaire, lu.cran_solidite], m.ressource_id);
     assert.equal(l.bonus_degats, analyserEffetDeMateriau(m.effet_brut.avant).bonus_degats, `${m.ressource_id} : bonus de dégâts inchangé`);
@@ -199,7 +208,7 @@ test('R238, R241 (3), R252 : chaque fragment du registre est remplacé (à l’i
     // une ligne que le site de dev a créée (le mot-clé « Barrière ») n'existe pas à l'import : la migration l'a réécrite dans la base courante
     if (v === undefined && historiqueSite(db).creee(t.table, t.cle)) continue;
     assert.equal(typeof v, 'string', JSON.stringify(t.cle));
-    assert.ok(v.includes(avecLesClesDe(b, t.apres)), `${JSON.stringify(t.cle)} ${t.col} : « ${t.apres.slice(0, 60)}… »`);
+    assert.ok(ecrituresAdmises(t.table, t.cle, t.col, avecLesClesDe(b, t.apres)).some((f) => v.includes(f)), `${JSON.stringify(t.cle)} ${t.col} : « ${t.apres.slice(0, 60)}… »`);
     if (!t.apres.includes(t.avant)) assert.ok(!v.includes(avecLesClesDe(b, t.avant)), `${JSON.stringify(t.cle)} ${t.col} : l’ancien fragment reste`);
     assert.ok(MIGRATION.includes(`UPDATE ${t.table} SET ${t.col} = replace(${t.col}, `), `${t.table}.${t.col}`);
   }

@@ -49,11 +49,12 @@ const texteApres0098 = (table, colonne, id) => apres0098().prepare(`SELECT "${co
 // décisions) donne à des liens le titre de leur page (R184 (2), (5), (11), R187 (1)) et renvoie aux pages de la rubrique Équipement au lieu de
 // {{armes|Équipement}}. La 0112 (R231) réécrit les pages « Attaquer » et « Se défendre » en entier et les renvois des autres pages vers elles.
 // La 0113 et la 0115 réécrivent les balises d'un ancien id qui n'est plus une clé (R232, R233 (5)) ; la 0114 (R232 (7)), celles des 13 races
-// devenues « x-race » (« {{orios}} » de guide/bienvenue). `intacte` ne voit que les lots du site.
+// devenues « x-race » (« {{orios}} » de guide/bienvenue). La 0121 (R239) réécrit « {{race|27 races}} » de guide/choisir-sa-race en « 29 races ».
+// `intacte` ne voit que les lots du site.
 const textesDe = (...noms) => noms.flatMap((nom) => JSON.parse(readFileSync(new URL(`../../data/migrations/${nom}.json`, import.meta.url), 'utf8')).textes);
 const REECRITURES_R198 = textesDe('0104-r198-r208-textes-du-guide', '0107-r198-r200-posture-et-mode-hyper');
 const REECRITURES_APRES_0098 = [...REECRITURES_R198, ...textesDe('0111-relecture-des-regles-contre-les-decisions', '0112-r231-attaquer-et-se-defendre',
-  '0113-mots-cles-id-entier', '0114-mots-cles-categories-assignees', '0115-mots-cles-synonymes')];
+  '0113-mots-cles-id-entier', '0114-mots-cles-categories-assignees', '0115-mots-cles-synonymes', '0121-maj-decembre-suites')];
 /** Les réécritures postérieures (de `parmi`) qui retirent la balise `r.balise` de sa cellule (leur `avant` la contient, pas leur `apres`). */
 const retiresPar = (r, parmi = REECRITURES_APRES_0098) => parmi.filter((t) => t.table === r.table && t.col === r.colonne
   && JSON.stringify(t.cle) === JSON.stringify(r.cle) && t.avant.includes(r.balise) && !t.apres.includes(r.balise));

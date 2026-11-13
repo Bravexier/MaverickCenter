@@ -26,8 +26,9 @@ const historique = historiqueSite(db);
 // 0006 (noms à trancher) a corrigé ensuite des noms dans certaines de ces cellules : on y lit le texte de 0005 en défaisant ces renommages
 const noms0006 = JSON.parse(readFileSync(join(dossier, '0006-orthographe-noms.json'), 'utf8')).corrections;
 // Une migration postérieure qui réécrit par fragments une phrase que 0005 a corrigée (registre `textes` de la 0111, R224 (1) : les copies corrigées là où
-// elles contredisent une décision) : la correction est admise retirée quand le fragment réécrit la contenait et que la réécriture est en place
-const REECRITURES_POSTERIEURES = textesReecrits('0111-relecture-des-regles-contre-les-decisions');
+// elles contredisent une décision ; de la 0121, R254 (3) : la fin « et est imposée quand… » de l'Archimage retirée) : la correction est admise retirée
+// quand le fragment réécrit la contenait et que la réécriture est en place
+const REECRITURES_POSTERIEURES = textesReecrits('0111-relecture-des-regles-contre-les-decisions', '0121-maj-decembre-suites');
 const reecriteApres = (c, v) => REECRITURES_POSTERIEURES.some((t) => t.table === c.table && t.col === c.col && JSON.stringify(t.cle) === JSON.stringify(c.cle)
   && t.avant.includes(c.apres) && !t.apres.includes(c.apres) && v.includes(t.apres));
 const avant0006 = (c, texte) => noms0006.filter((n) => n.table === c.table && n.col === c.col && JSON.stringify(n.cle) === JSON.stringify(c.cle))
