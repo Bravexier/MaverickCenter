@@ -62,6 +62,14 @@ const ARTISANAT = /^(?:chaque|tout|tous les) tests? (?:lies? a l'|d')artisanat$/
 export const COMPETENCES_D_ARME = Object.freeze(['Arc', 'Arbalète', 'Arme légère', 'Arme lourde']);
 
 /**
+ * Les dons de classe dont le texte se lit comme un bonus d'acquis et qui n'en donnent pourtant pas : liste d'exclusion par identifiant (figé), jamais par
+ * le nom. « Posture inébran » du Boxeur écrit « 5% stabilité, bénéficie d'un avantage lors des jets de cette compétence » : le bonus joue en posture, il n'est
+ * pas un acquis permanent (décision R128 ; question ouverte MAJ-C6, le propriétaire n'a pas dit si ce don vaut 5 % d'acquis en Stabilité). `lib/fiche-regles.mjs`
+ * n'exporte aucun `acquis` pour ces dons : ils n'en comptent jamais, quel que soit leur type.
+ */
+export const DONS_SANS_ACQUIS = Object.freeze(['capacites/boxeur-posture-inebran']);
+
+/**
  * Lecteur des bonus d'acquis : `competences` = [{ id, nom, caracteristique_id }] de la base. Rend `lire(texte)` → [{ valeur, competence_id }] (un bonus acquis),
  * [{ valeur, choix: [competence_id], nombre }] (« X ou Y », « pour les compétences d'arme » (R120) : une compétence à choisir, `nombre` 1 ; « choisir 2
  * sur les 3 » (R121) : `nombre` compétences différentes, le bonus à chacune), [{ valeur, repartir: true }] (« à répartir au choix » : les points dans les

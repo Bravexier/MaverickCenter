@@ -368,8 +368,12 @@ test('lireDegatsDeSort / ecrireDegatsDeSort : les écritures sans ambiguïté, e
     assert.equal(M.ecrireDegatsDeSort(l), espaces(v).replace(/^soigne/i, 'Soigne'), `${s.id} : ${v}`);
   }
   assert.ok(lus > 120, `${lus} D/S/B lus`);
-  assert.deepEqual([4, 6, 8, 10, 12, 20, 7].map((f) => M.deMonte(f, 1)), [6, 8, 10, 12, 20, 20, 7]);
+  // R252 : aucune montée ne dépasse le D12 ; un D20 de nature reste D20 (monté ou non) ; les baisses ne changent pas (D20 − 1 cran → D12)
+  assert.deepEqual([4, 6, 8, 10, 12, 20, 7].map((f) => M.deMonte(f, 1)), [6, 8, 10, 12, 12, 20, 7]);
   assert.deepEqual([M.deMonte(6, 2), M.deMonte(4, -1), M.deMonte(8, -1)], [10, 4, 6]);
+  assert.deepEqual([M.deMonte(10, 1), M.deMonte(12, 1), M.deMonte(10, 2), M.deMonte(8, 5), M.deMonte(6, 2)], [12, 12, 12, 12, 10], 'R252 (1) : D10 + 1, D12 + 1, D10 + 2');
+  assert.deepEqual([M.deMonte(20, 0), M.deMonte(20, 1), M.deMonte(20, 2)], [20, 20, 20], 'R252 (2) : un D20 de nature reste D20, une montée ne le change pas');
+  assert.deepEqual([M.deMonte(20, -1), M.deMonte(20, -2), M.deMonte(12, -1), M.deMonte(4, -3)], [12, 10, 10, 4], 'R252 (3) : les baisses partent de l’échelle entière');
 });
 
 test('sortDuMoment (R102) : Focus monte le dé d’un cran, Offensif prend le maximum, Défensif divise par 2 ; les bonus fixes des dons, accessoires, bâtons et armure élémentaire', () => {
@@ -382,6 +386,16 @@ test('sortDuMoment (R102) : Focus monte le dé d’un cran, Offensif prend le ma
   const cran = regles.accessoires.find((a) => a.effets?.some((e) => e.cible === 'cran_des_sorts'));
   const avecCran = fiche({ posture_id: POSTURE('focus'), accessoires: [{ emplacement: 'chef', accessoire_effet_id: cran.id, valeur: null, maudit: 0 }] });
   assert.equal(M.sortDuMoment(regles, avecCran, boule, auNm(boule)).dsb.texte, '2d10 dégâts');
+  // R252 : le D12 est le plafond d'une montée, cumulée ou non (un sort aux dés d10 : Focus + accessoire = deux crans = d12 ; un sort aux dés d12 ne bouge pas)
+  // un sort aux dés d10 de l'import, et le même écrit en d12 (aucun sort d'import n'est en d12 : sort d'essai)
+  const d10 = regles.sorts.find((s) => { const l = M.lireDegatsDeSort(auNm(s).dsb); return l?.nature === 'degats' && l.faces === 10 && l.nombre; });
+  assert.ok(d10, 'un sort aux dés d10 existe à l’import');
+  const d12 = { ...d10, dsb: '2d12 dégâts' };
+  const facesDuSort = (f, s) => M.lireDegatsDeSort(M.sortDuMoment(regles, f, s, auNm(s)).dsb.texte)?.faces;
+  const focus = fiche({ posture_id: POSTURE('focus') });
+  assert.deepEqual([facesDuSort(fiche(), d10), facesDuSort(focus, d10), facesDuSort(avecCran, d10)], [10, 12, 12], 'D10 : Focus → D12, Focus + accessoire → D12 aussi');
+  assert.deepEqual([facesDuSort(focus, d12), facesDuSort(avecCran, d12)], [12, 12], 'D12 : une montée ne le change pas');
+  assert.deepEqual([facesDuSort(fiche(), boule), facesDuSort(avecCran, boule)], [6, 10], 'D6 : Focus + accessoire → D10');
   // un dé au maximum (« 3D6+4 » → « 2D6+6+4 ») ; sans effet en Offensif
   const max = regles.accessoires.find((a) => a.effets?.some((e) => e.cible === 'de_maximum'));
   const deMax = (x = {}) => fiche({ ...x, accessoires: [{ emplacement: 'chef', accessoire_effet_id: max.id, valeur: null, maudit: 0 }] });

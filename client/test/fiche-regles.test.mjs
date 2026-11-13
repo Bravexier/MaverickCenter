@@ -251,8 +251,8 @@ test('classes : couleurs de /classes/ ; magiques = catégorie Magique et Archima
   for (const c of regles.classes) assert.equal(c.classe, classeDeCategorie(c.groupe.key), c.id);
   const feuille = cssDesFamilles(FAMILLES_DE_LA_FICHE);
   for (const c of regles.classes) assert.ok(feuille.includes(`.${c.classe}{`), `${c.id} : dans la feuille de la fiche`);
-  // la même règle que la page de la classe (class-groups.mjs#groupeDeCouleur : le Parleur, une classe sans catégorie reconnue sous « Spéciales »)
-  assert.equal(classeDUneClasse({ id: 'classes/parleur', data: { mots_cles: ['cac'] } }), 'couleur-classe-speciales');
+  // la même règle que la page de la classe (class-groups.mjs#groupeDeCouleur : le Parleur, « Classe spéciale » en base (R238 (3)), et une classe sans catégorie reconnue sous « Spéciales »)
+  assert.equal(classeDUneClasse({ id: 'classes/parleur', data: { mots_cles: ['speciale'] } }), 'couleur-classe-speciales');
   assert.equal(classeDUneClasse({ id: 'classes/inconnue', data: { mots_cles: [] } }), 'couleur-classe-speciales');
   // R6 : magiques = catégorie Magique (la seule qui donne de l'AM) et Archimage ; à l'import, ces neuf classes
   assert.deepEqual(db.prepare('SELECT id FROM categorie_classe WHERE am_base > 0').all().map((k) => k.id), ['classe-magique']);

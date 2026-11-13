@@ -181,10 +181,10 @@ test('décision R236 : la spécialisation magique choisie qu’une livraison ret
   assert.ok(retraitsDesNotes(ligneDeRetrait(d, jour)).length === 1, 'une ligne de retrait, comptée par la page');
 });
 
-test('ordreDesRetraits : métier, spécialité, don, don obtenu (R181), sort, puis par nom ; l’arme élémentaire de R167 après les armes de R52 ; l’armure de R165 après les pièces d’armure de R95 ; les maîtrises d’armes d’avant la refonte en dernier (R153)', () => {
+test('ordreDesRetraits : métier, spécialité, don, don obtenu (R181), sort, puis par nom ; l’arme élémentaire de R167 après les armes de R52 ; l’armure de R165 après les pièces d’armure de R95 ; un point de maîtrise devenu à choisir (R238 (4)), puis les maîtrises d’armes d’avant la refonte en dernier (R153)', () => {
   assert.deepEqual([...ORDRE_DES_NATURES], [
     'metier', 'specialite', 'specialisation_magie', 'capacite', 'don_obtenu', 'sort', 'arme', 'arme_elementaire', 'objet', 'piece_armure', 'armure_transformee', 'armure_familier', 'armure_magie_absente',
-    'armure_trop_lourde', 'materiau_bouclier', 'accessoire', 'acquis', 'maitrises_armes',
+    'armure_trop_lourde', 'materiau_bouclier', 'accessoire', 'acquis', 'maitrise_imposee', 'maitrises_armes',
   ]);
   const elements = [
     { nature: 'sort', id: 's2', nom: 'Zéphyr' }, { nature: 'sort', id: 's1', nom: 'Aura' }, { nature: 'capacite', id: 'k2', nom: 'Don 10' },

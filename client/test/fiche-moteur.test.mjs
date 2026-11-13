@@ -10,7 +10,7 @@ import { enregistrerFiche } from '../serveur/fiches.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
 import {
   ajusterValeurDuMoment, alignementDe, artisanatDe, attributsDe, bonusDuMetier, borner, choisirObjetDeMetier, choixDeMetierValables, inventaireSelonLeMetier,
-  objetChoisi, objetDInventaire, objetsDuMetier, deDeLaFamille, donsAcquis, donsDeRace, compteurDeMaitrise, famillesMaitrisables, maitriseChoixValables, maitrisesParFamille, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe, classeImposee, lignesDeSorts, magieAcquiseValable, nmDuSort,
+  objetChoisi, objetDInventaire, objetsDuMetier, deDeLaFamille, donsAcquis, donsDeRace, compteurDeMaitrise, famillesMaitrisables, maitriseChoixValables, maitrisesParFamille, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe, lignesDeSorts, magieAcquiseValable, nmDuSort,
   bornesDuNm, livreAuPlafond, livresAEnregistrer, livresApresAjout, livresApresChangement, livresApresRetrait, livresDe, sortAuNm, sortAvecLivre, sortPourUnLivre,
   sortsApresChoixDEmplacement, sortsDesLivres, infobulleDeClasse, infobulleDeSpecialite, infobulleDuDonAChoisir, texteDuDon, TYPES_DE_DON,
   progressionXp, classeMagique, classesPermises, classesSelonLaMagieInnee,
@@ -264,21 +264,19 @@ test('race : classes et magies innées permises (R8, R11), ethnies de la race et
   assert.equal(ethnieCompatible(deSang, 'magies/magie-du-feu'), false);
 });
 
-test('décision R23 : l’Archimage seulement avec le Potentiel Illimité inné, qui l’impose en classe 1 ; mêmes refus que la base', () => {
+test('décision R23 (partie réservée) et R238 (5) : l’Archimage seulement avec le Potentiel Illimité inné, qui ne l’impose plus ; mêmes refus que la base', () => {
   assert.deepEqual(regles.classes.filter((c) => c.magie_innee_id).map((c) => [c.id, c.magie_innee_id]), [['classes/archimage', 'magies/potentiel-illimite']]);
   const archimage = [{ rang: 1, classe_id: 'classes/archimage', specialite_id: null }];
   const feu = ficheConforme();
   const pi = ficheConforme({ magie_innee_id: 'magies/potentiel-illimite', caracteristique_magie_id: 'force' });
-  assert.equal(classeImposee(regles, feu), null);
-  assert.equal(classeImposee(regles, { ...feu, magie_innee_id: null }), null);
-  assert.equal(classeImposee(regles, pi).id, 'classes/archimage');
 
   assert.equal(refusClasse(regles, feu, 'classes/archimage', 1), 'réservée à la magie innée Potentiel Illimité');
   assert.equal(refusClasse(regles, feu, 'classes/archimage', 2), 'réservée à la magie innée Potentiel Illimité', 'ni en seconde classe');
   assert.equal(refusClasse(regles, { ...feu, magie_innee_id: null }, 'classes/archimage', 1), 'réservée à la magie innée Potentiel Illimité');
   assert.equal(refusClasse(regles, feu, 'classes/guerrier', 1), null);
   assert.equal(refusClasse(regles, pi, 'classes/archimage', 1), null);
-  assert.equal(refusClasse(regles, pi, 'classes/guerrier', 1), 'la magie innée Potentiel Illimité impose Archimage');
+  assert.equal(refusClasse(regles, pi, 'classes/archimage', 2), null, 'ni obligatoire en classe 1, ni fermée en classe 2');
+  assert.equal(refusClasse(regles, pi, 'classes/guerrier', 1), null, 'R238 (5) : un autre choix en classe 1 reste permis');
   assert.equal(refusClasse(regles, { ...pi, classes: archimage }, 'classes/guerrier', 2), null, 'la seconde classe reste libre');
   assert.equal(refusClasse(regles, { ...pi, classes: archimage }, 'classes/archimage', 2), 'déjà l’autre classe');
   assert.equal(refusClasse(regles, { ...feu, race_id: 'races/medusain' }, 'classes/guerrier', 1), 'classe que la race ne permet pas');
@@ -289,11 +287,13 @@ test('décision R23 : l’Archimage seulement avec le Potentiel Illimité inné,
   assert.deepEqual(enBase(feu), []);
   assert.deepEqual(enBase({ ...feu, classes: archimage }), ['classe_reservee classes/archimage']);
   assert.deepEqual(enBase({ ...feu, mode_classe: 'bi', classes: [...feu.classes, { rang: 2, classe_id: 'classes/archimage', specialite_id: null }] }), ['classe_reservee classes/archimage']);
-  assert.deepEqual(enBase(pi), ['classe_imposee classes/archimage']);
-  assert.deepEqual(enBase({ ...pi, classes: archimage }), []);
+  // R238 (5) : un Potentiel Illimité sans Archimage en classe 1 (ni du tout) n'enfreint plus rien
+  assert.deepEqual(enBase(pi), [], 'Guerrier en classe 1 : aucune erreur de contrôle');
+  assert.deepEqual(enBase({ ...pi, classes: archimage }), [], 'Archimage en classe 1');
   assert.deepEqual(enBase({ ...pi, mode_classe: 'bi', classes: [...archimage, { rang: 2, classe_id: 'classes/guerrier', specialite_id: null }] }), []);
-  assert.deepEqual(enBase({ ...pi, mode_classe: 'bi', classes: [{ ...feu.classes[0] }, { rang: 2, classe_id: 'classes/archimage', specialite_id: null }] }),
-    ['classe_imposee classes/archimage'], 'en classe 1, pas en classe 2');
+  assert.deepEqual(enBase({ ...pi, mode_classe: 'bi', classes: [{ ...feu.classes[0] }, { rang: 2, classe_id: 'classes/archimage', specialite_id: null }] }), [],
+    'Archimage en classe 2');
+  assert.deepEqual(enBase({ ...pi, classes: [] }), ['classe_1_manquante null'], 'sans classe : seulement la classe 1 à choisir, pas d’Archimage exigée');
 });
 
 test('décision R25 : le Mage Bleu est fermé au Potentiel Illimité, à tous les rangs ; toute autre seconde classe reste permise', () => {
@@ -308,19 +308,20 @@ test('décision R25 : le Mage Bleu est fermé au Potentiel Illimité, à tous le
   assert.deepEqual(enregistrerFiche(vivante, avecMageBleu).controles.filter((c) => c.regle.startsWith('classe_')).map((c) => `${c.regle} ${c.detail}`), ['classe_exclue classes/mage-bleu']);
   assert.deepEqual(enregistrerFiche(vivante, { ...pi, classes: [...pi.classes, { rang: 2, classe_id: 'classes/mage', specialite_id: null }] }).controles.filter((c) => c.regle.startsWith('classe_')), []);
   const feu = ficheConforme({ mode_classe: 'bi', classes: [{ rang: 1, classe_id: 'classes/guerrier', specialite_id: null }, { rang: 2, classe_id: 'classes/mage-bleu', specialite_id: null }] });
-  assert.deepEqual(classesSelonLaMagieInnee(regles, { ...feu, magie_innee_id: 'magies/potentiel-illimite' }).map((c) => [c.rang, c.classe_id]), [[1, 'classes/archimage']]);
+  assert.deepEqual(classesSelonLaMagieInnee(regles, { ...feu, magie_innee_id: 'magies/potentiel-illimite' }).map((c) => [c.rang, c.classe_id]), [[1, 'classes/guerrier']],
+    'R238 (5) : le Mage Bleu part, la classe 1 n’est pas remplacée par l’Archimage');
 });
 
-test('décision R23 : choisir le Potentiel Illimité met l’Archimage en classe 1, le quitter la retire ; les dons d’une classe partie s’en vont avec elle', () => {
-  const imposee = { rang: 1, classe_id: 'classes/archimage', specialite_id: null };
+test('décisions R23, R238 (5) : choisir le Potentiel Illimité n’ajoute ni ne remplace aucune classe, le quitter retire l’Archimage ; les dons d’une classe partie s’en vont avec elle', () => {
+  const archimage = { rang: 1, classe_id: 'classes/archimage', specialite_id: null };
   const mage = { rang: 1, classe_id: 'classes/mage', specialite_id: null };
   const guerrier2 = { rang: 2, classe_id: 'classes/guerrier', specialite_id: null };
   const fiche = (magie, classes) => ({ ...ficheVide(), magie_innee_id: magie, mode_classe: 'bi', classes });
   const pi = 'magies/potentiel-illimite';
-  assert.deepEqual(classesSelonLaMagieInnee(regles, fiche(pi, [])), [imposee]);
-  assert.deepEqual(classesSelonLaMagieInnee(regles, fiche(pi, [mage, guerrier2])), [imposee, guerrier2], 'à la place de la classe 1, la seconde reste');
-  assert.deepEqual(classesSelonLaMagieInnee(regles, fiche(pi, [mage, { ...imposee, rang: 2 }])), [imposee], 'déjà en seconde classe (fiche importée) : passe en classe 1');
-  const enPlace = [{ ...imposee, specialite_id: 'classes/archimage#specialite:x' }, guerrier2];
+  assert.deepEqual(classesSelonLaMagieInnee(regles, fiche(pi, [])), [], 'rien n’est imposé');
+  assert.deepEqual(classesSelonLaMagieInnee(regles, fiche(pi, [mage, guerrier2])), [mage, guerrier2], 'la classe 1 choisie reste');
+  assert.deepEqual(classesSelonLaMagieInnee(regles, fiche(pi, [mage, { ...archimage, rang: 2 }])), [mage, { ...archimage, rang: 2 }], 'Archimage en classe 2 : gardée à son rang');
+  const enPlace = [{ ...archimage, specialite_id: 'classes/archimage#specialite:x' }, guerrier2];
   assert.deepEqual(classesSelonLaMagieInnee(regles, fiche(pi, enPlace)), enPlace, 'déjà en classe 1 : rien ne change (spécialité gardée)');
   assert.deepEqual(classesSelonLaMagieInnee(regles, fiche('magies/magie-du-feu', enPlace)), [guerrier2], 'une autre magie innée : l’Archimage part');
   assert.deepEqual(classesSelonLaMagieInnee(regles, fiche(null, enPlace)), [guerrier2], 'sans magie innée non plus');
@@ -334,11 +335,16 @@ test('décision R23 : choisir le Potentiel Illimité met l’Archimage en classe
   assert.deepEqual(donsValables(regles, { ...avecDon, capacites: [don, { capacite_id: 'capacites/hors-des-choix' }] }), [don],
     'un don que les règles ne rangent dans aucun choix (supprimé depuis le site de dev, ou devenu reçu d’office : D11) est écarté');
   const sansSpecialite = { ...avecDon, classes: [mage] };
-  const remplace = { ...avecDon, magie_innee_id: pi, caracteristique_magie_id: 'force' };
+  // l'Archimage (Potentiel Illimité) part quand la magie innée change : son don à choix part avec elle
+  const donArchimage = { capacite_id: regles.classes.find((c) => c.id === 'classes/archimage').choix[0].options[0].id };
+  const avecArchimage = ficheConforme({ xp: 11450, magie_innee_id: pi, caracteristique_magie_id: 'force', classes: [archimage], capacites: [donArchimage] });
+  assert.deepEqual(donsValables(regles, avecArchimage), [donArchimage]);
+  const remplace = { ...avecArchimage, magie_innee_id: 'magies/magie-du-feu', caracteristique_magie_id: null };
   remplace.classes = classesSelonLaMagieInnee(regles, remplace);
-  for (const f of [sansSpecialite, remplace]) {
+  assert.deepEqual(remplace.classes, []);
+  for (const [f, id] of [[sansSpecialite, don.capacite_id], [remplace, donArchimage.capacite_id]]) {
     assert.deepEqual(donsValables(regles, f), []);
-    assert.ok(enregistrerFiche(vivante, f).controles.some((c) => c.regle === 'capacite_hors_classe' && c.detail === don.capacite_id), 'la base refuse le don gardé');
+    assert.ok(enregistrerFiche(vivante, f).controles.some((c) => c.regle === 'capacite_hors_classe' && c.detail === id), 'la base refuse le don gardé');
     assert.ok(!enregistrerFiche(vivante, { ...f, capacites: donsValables(regles, f) }).controles.some((c) => c.regle === 'capacite_hors_classe'));
   }
 });

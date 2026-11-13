@@ -471,3 +471,47 @@ test('décision R148 : les contrôles maitrise_* de la page nomment leurs source
   const f = fiche([['guerrier', 'epeiste']], { niveau: 10, accessoires: [accessoire('bague-1', null)] });
   assert.deepEqual(M.sourcesDeMaitrise(regles, f).map((s) => s.titre), ['Guerrier (maîtrise 1)', 'Guerrier (maîtrise 2)', 'Épéiste (Guerrier)', 'Accessoire : Bague 1']);
 });
+
+test('décisions R238 (4), R148, R149 : l’Archimage a deux maîtrises au choix (distance, contact), le point Bâton n’est plus imposé ; aucun don ne dépend de sa ligne au choix', () => {
+  const archimage = regles.classes.find((c) => c.id === 'classes/archimage');
+  const lignes = archimage.maitrises.filter((m) => m.au_choix);
+  const categorieDe = (m) => new Set(m.au_choix.familles.map((id) => regles.familles_armes.find((f) => f.id === id).categorie));
+  assert.deepEqual(lignes.map((m) => [m.source, [...categorieDe(m)]]), [[ligne('archimage', 1), ['distance']], [ligne('archimage', 2), ['contact']]]);
+  assert.equal(M.ligneAuChoixDeLaClasse(archimage), null, 'deux lignes au choix : « laquelle ? »');
+  assert.equal(M.armeAuChoixDeLaClasse(archimage), null);
+  // les sept familles de contact (R127, catégorie lue dans la table) ; Bâton de combat comprise, sans point imposé
+  const contact = regles.familles_armes.filter((f) => f.maitrisable && f.categorie === 'contact').map((f) => f.id).sort();
+  assert.equal(contact.length, 7);
+  const deux = lignes[1];
+  assert.deepEqual(deux.parts.map((p) => [p.genre, [...(p.options ?? [])].sort()]), [['choix', contact]]);
+  assert.ok(deux.parts.every((p) => p.genre !== 'imposee'), 'plus de point Bâton imposé');
+  // aucun don de l'Archimage ne lit sa ligne au choix : ni part qui suit la maîtrise au choix, ni bonus « de l'arme choisie »
+  assert.ok(archimage.dons.every((d) => (d.maitrise?.parts ?? []).every((p) => p.genre !== 'suit')), 'aucune part « suit »');
+  assert.ok(archimage.dons.every((d) => (d.acquis ?? []).every((b) => !b.arme)), 'aucun acquis « de l’arme choisie »');
+
+  // une fiche d'avant (seul le choix de la ligne 1) : le choix de la ligne 2 est en attente, sans point Bâton
+  const avant = fiche([['archimage']], { niveau: 1, magie_innee_id: 'magies/potentiel-illimite', caracteristique_magie_id: 'force', maitrise_choix: [choix(ligne('archimage', 1), 1, 'arc')] });
+  assert.deepEqual(points(avant), { arc: 1 });
+  assert.equal(famille(avant, 'baton-de-combat').points, 0);
+  assert.deepEqual(M.sourcesDeMaitrise(regles, avant).map((s) => [s.source, s.etat]), [[ligne('archimage', 1), 'complete'], [ligne('archimage', 2), 'a_choisir']]);
+  assert.deepEqual(M.compteurDeMaitrise(regles, avant), { points: 2, aChoisir: 1, refus: 0 }, '« 2 points · 1 à choisir »');
+  assert.deepEqual(M.choixEnAttente(regles, avant).filter((c) => c.nature === 'maitrise').map((c) => c.cle), [M.cleDeChoix.maitrise(ligne('archimage', 2), 1)],
+    'le choix en attente s’ouvre dans le tiroir');
+  assert.deepEqual(accordAvecLaBase(avant, 'Archimage d’avant'), [`maitrise_a_choisir ${ligne('archimage', 2)} = 1`]);
+
+  // le joueur choisit : une des sept familles de contact, pas une famille à distance ni ARME DE MONSTRES
+  const bâton = { ...avant, ...M.maitriseApresChoix(avant, ligne('archimage', 2), 1, 'baton-de-combat') };
+  assert.deepEqual(points(bâton), { arc: 1, 'baton-de-combat': 1 });
+  assert.deepEqual(M.maitriseChoixValables(regles, bâton).map((c) => c.source), [ligne('archimage', 1), ligne('archimage', 2)]);
+  assert.deepEqual(accordAvecLaBase(bâton, 'Archimage, Bâton choisi'), []);
+  const horsOptions = { ...avant, ...M.maitriseApresChoix(avant, ligne('archimage', 2), 1, 'arbalete') };
+  assert.deepEqual(M.maitriseChoixValables(regles, horsOptions).map((c) => c.source), [ligne('archimage', 1)], 'une famille à distance n’est pas une option de la ligne 2');
+
+  // R149 : plafond inchangé, 4 points comptés au plus ; l'excédent est signalé sans être refusé (l'Élémentaliste ajoute un point de contact)
+  const e = fiche([['archimage']], {
+    niveau: 10, maitrise_choix: [choix(ligne('archimage', 2), 1, 'epees'), choix('capacites/archimage-elementaliste', 1, 'epees')],
+    capacites: [{ capacite_id: 'capacites/archimage-elementaliste' }],
+  });
+  assert.equal(famille(e, 'epees').comptes, Math.min(famille(e, 'epees').points, 4));
+  assert.equal(M.maitriseDArme(regles).pointsMax, 4);
+});

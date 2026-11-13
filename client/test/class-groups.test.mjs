@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import * as groupes from '../src/lib/class-groups.mjs';
 import { CLASS_COLORS, CLASS_GROUPS, classCategory, classColor, groupClasses, groupeDeCouleur } from '../src/lib/class-groups.mjs';
 
 // les mots-clés d'une page par leur id (`data.mots_cles` : lib/wiki.ts) ; ses libellés (`tags`), eux, peuvent être n'importe quoi (décision R195)
@@ -9,7 +10,7 @@ const keys = (groups) => groups.map((g) => g.key);
 
 const sample = [
   page('Mage', 'magique'),
-  page('Parleur', 'cac'),
+  page('Parleur', 'speciale'), // « Classe spéciale » en base (R238 (3), migration 0118)
   page('Guerrier', 'cac'),
   page('Archer', 'distance'),
   page('Kitsune', 'hybride-animal'),
@@ -35,7 +36,7 @@ test('chaque catégorie est triée par nom, en ignorant la casse et les accents'
   assert.deepEqual(titles(raciales.sections[0]), ['Anansi', 'Kitsune']);
 });
 
-test('« Spéciales » réunit l’Archimage (spéciale), le Flagelleur (hybride) et le Parleur, sorti de la mêlée à la demande du propriétaire', () => {
+test('« Spéciales » réunit l’Archimage (spéciale), le Flagelleur (hybride) et le Parleur (« Classe spéciale » en base, R238 (3))', () => {
   const groups = groupClasses(sample);
   const speciales = groups.find((g) => g.key === 'speciales');
   assert.deepEqual(speciales.sections.map((s) => [s.key, s.label, titles(s)]), [['speciales', null, ['Archimage', 'Flagelleur', 'Parleur']]]);
@@ -102,8 +103,10 @@ test('classCategory donne la catégorie d’une classe, ou rien pour une autre p
   assert.equal(classCategory(page('Mystère', 'autre')), null);
 });
 
-test('l’exception du Parleur suit l’identifiant de la page, pas son titre ni ses tags', () => {
-  assert.equal(classCategory({ id: 'classes/parleur', data: { title: 'Autre titre', mots_cles: ['classe', 'cac'] } }).key, 'speciales');
+test('R238 (3) : plus d’exception pour le Parleur — sa catégorie ne vient que de son mot-clé, jamais de son identifiant ni de son titre', () => {
+  assert.ok(!('CLASS_OVERRIDES' in groupes), 'plus d’exception par identifiant de page');
+  assert.equal(classCategory({ id: 'classes/parleur', data: { title: 'Autre titre', mots_cles: ['classe', 'speciale'] } }).key, 'speciales');
+  assert.equal(classCategory({ id: 'classes/parleur', data: { title: 'Parleur', mots_cles: ['classe', 'cac'] } }).key, 'melee', 'le mot-clé « corps à corps » le range en mêlée');
   assert.equal(classCategory({ id: 'classes/autre-page', data: { title: 'Parleur', mots_cles: ['classe', 'cac'] } }).key, 'melee');
 });
 
@@ -115,7 +118,7 @@ test('couleur d’une classe d’après sa catégorie : rouge (mêlée), vert (d
   assert.equal(couleur('Kitsune'), CLASS_COLORS.raciales);
   assert.equal(couleur('Archimage'), CLASS_COLORS.speciales);
   assert.equal(couleur('Flagelleur'), CLASS_COLORS.speciales);
-  assert.equal(couleur('Parleur'), CLASS_COLORS.speciales, 'exception du propriétaire : le Parleur est rangé sous « Spéciales »');
+  assert.equal(couleur('Parleur'), CLASS_COLORS.speciales, 'le Parleur (classe spéciale) est rangé sous « Spéciales »');
   assert.equal(classColor(page('Inconnue', 'autre-chose')), CLASS_COLORS.speciales, 'une classe non classée va sous « Spéciales »');
   assert.deepEqual(Object.keys(CLASS_COLORS), keys(CLASS_GROUPS), 'une couleur par catégorie');
   assert.equal(new Set(Object.values(CLASS_COLORS)).size, 5);

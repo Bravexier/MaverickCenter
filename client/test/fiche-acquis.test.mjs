@@ -5,11 +5,11 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { COMPETENCES_D_ARME, lecteurDAcquis } from '../src/lib/acquis-texte.mjs';
+import { COMPETENCES_D_ARME, DONS_SANS_ACQUIS, lecteurDAcquis } from '../src/lib/acquis-texte.mjs';
 import { COMPETENCES_D_ARME as COMPETENCES_DES_ARMES } from '../src/lib/arme-champs.mjs';
 import { acquisRetires, descriptionDuRetrait, entrainementEnLignes, ficheVide, ligneDeRetrait, sansPartiesRetirees } from '../src/lib/fiche-format.mjs';
 import * as M from '../src/lib/fiche-moteur.mjs';
-import { reglesDImport } from './aide-base-d-import.mjs';
+import { reglesDImport, texteDImport } from './aide-base-d-import.mjs';
 
 // les règles (textes et valeurs que le site de dev modifie librement) : épinglées sur leur état d'import (test/aide-base-d-import.mjs)
 const regles = reglesDImport(); // tel que la page le reçoit
@@ -108,6 +108,22 @@ test('lecture des dons sur toute la base : chaque bonus lu est bien formé, la p
     }
   }
   assert.ok(comptes > 100, `${comptes} bonus d’acquis comptés`);
+});
+
+test('MAJ-C6 (Boxeur, « Posture inébran ») : un don de DONS_SANS_ACQUIS n’exporte aucun acquis, quel que soit son type ; les autres dons des deux classes sont lus comme avant', () => {
+  assert.deepEqual([...DONS_SANS_ACQUIS], ['capacites/boxeur-posture-inebran']);
+  const dons = new Map(regles.classes.flatMap((c) => (c.dons ?? []).map((d) => [d.id, d])));
+  for (const id of DONS_SANS_ACQUIS) {
+    assert.ok(dons.has(id), `${id} : un don de l’import`);
+    assert.equal(dons.get(id).acquis, undefined, `${id} : aucun acquis exporté`);
+    // le texte, lui, se lit comme un acquis : c'est pourquoi la liste existe (le texte d'import, que le site de dev peut réécrire)
+    assert.ok(lire(texteDImport('capacite', { id }, 'effet')).some((b) => b.competence_id), `${id} : le lecteur y verrait un bonus`);
+  }
+  // (le moteur ne lit que dons[].acquis : sans lui, le don ne compte pas, quel que soit son type — passif ou réaction, question ouverte MAJ-C6)
+  // les autres dons des deux classes gardent leur lecture (Carcasse rouillée, Percuteur, Chef de guerre, Stratège de bataille)
+  for (const id of ['capacites/boxeur-carcasse-rouillee', 'capacites/boxeur-percuteur', 'capacites/porte-etendard-chef-de-guerre', 'capacites/porte-etendard-stratege-de-bataille']) {
+    assert.ok(dons.get(id).acquis?.length, `${id} : acquis lus`);
+  }
 });
 
 /** Humain central, Feu inné, sans classe ; un don de race d'essai qui écrit un bonus, un choix, une répartition et un bonus de situation. */

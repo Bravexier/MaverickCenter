@@ -934,6 +934,23 @@ test('anciennes graphies : retrouvées par le dernier segment de l’identifiant
   assert.equal(ficheDuClasseur(regles, ordinateur({ S2: 'Magie de la Nécromancie' })).fiche.magie_innee_id, magie('Nécromancie').id);
 });
 
+test('R238 (5), R23, R25 : un Potentiel Illimité du classeur garde sa classe 1 (plus d’Archimage imposée) ; l’Archimage d’un autre est écartée, le Mage Bleu du Potentiel Illimité aussi', () => {
+  const [guerrier, archimage, mageBleu] = [classe('Guerrier'), classe('Archimage'), classe('Mage Bleu')];
+  const pi = { I2: 'Humain', S2: magie('Potentiel Illimité').nom, W8: 10, G9: 1 };
+  let r = ficheDuClasseur(regles, ordinateur({ ...pi, A9: guerrier.nom }));
+  assert.deepEqual(r.fiche.classes.map((c) => [c.rang, c.classe_id]), [[1, guerrier.id]], 'la classe 1 du classeur reste, aucune Archimage imposée');
+  assert.ok(!r.nonRepris.some((x) => /Classe 1/.test(x)), 'rien de perdu');
+  r = ficheDuClasseur(regles, ordinateur({ ...pi, A9: archimage.nom }));
+  assert.deepEqual(r.fiche.classes.map((c) => [c.rang, c.classe_id]), [[1, archimage.id]], 'l’Archimage en classe 1 reste');
+  // l'Archimage d'un personnage qui n'est pas du Potentiel Illimité (réservée, R23) et le Mage Bleu d'un Potentiel Illimité (fermé, R25) sont écartés et dits
+  r = ficheDuClasseur(regles, ordinateur({ I2: 'Humain', S2: 'Feu', A9: archimage.nom, G9: 1 }));
+  assert.deepEqual(r.fiche.classes, []);
+  assert.ok(r.nonRepris.some((x) => /Classe 1/.test(x) && /fermée par la magie innée/.test(x)), r.nonRepris.join(' | '));
+  r = ficheDuClasseur(regles, ordinateur({ ...pi, A9: mageBleu.nom }));
+  assert.deepEqual(r.fiche.classes, []);
+  assert.ok(r.nonRepris.some((x) => /Classe 1/.test(x) && /fermée par la magie innée/.test(x)), r.nonRepris.join(' | '));
+});
+
 test('homonymes : un don cherché dans sa classe, « Vague déferlante » départagée par ce qu’écrit sa ligne, deux armes du même nom', () => {
   // « Contre-attaque » : un don du Guerrier (Épéiste) et du Pugiliste (Cogneur) ; la classe de la ligne décide, et donne la spécialité
   const [guerrier, pugiliste] = [classe('Guerrier'), classe('Pugiliste')];

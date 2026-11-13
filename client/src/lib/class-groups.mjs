@@ -11,10 +11,9 @@
 //   Physiques Distance  = « Classe Physique Distance »
 //   Magiques            = « Classe Magique »
 //   Raciales            = « Classe Hybride Animal » (ces classes portent le nom d'une race)
-//   Spéciales           = « Classe Hybride » (Flagelleur) et « Classe spéciale » (Archimage)
-// Exception décidée par le propriétaire : le Parleur, rangé « Physique Corps à Corps » par le classeur, est présenté
-// sous « Spéciales » (voir CLASS_OVERRIDES). Une classe sans catégorie reconnue n'est jamais perdue : elle va dans
-// « Non classées », sous « Spéciales ».
+//   Spéciales           = « Classe Hybride » (Flagelleur) et « Classe spéciale » (Archimage, Parleur)
+// Le Parleur est en « Classe spéciale » dans la base (décision R238 (3)) : plus d'exception ici. Une classe sans catégorie
+// reconnue n'est jamais perdue : elle va dans « Non classées », sous « Spéciales ».
 /**
  * key = ancre HTML ; motsCles = ids des mots-clés que l'import pose (page_tag.tag_id : « càc », « distance », « magique », « hybride animal »,
  * « hybride », « spéciale » à l'import), lus dans `data.mots_cles` d'une page (lib/wiki.ts, lib/pages-db.mjs#motsClesDesPages).
@@ -27,22 +26,17 @@ export const CLASS_GROUPS = [
   { key: 'speciales', label: 'Spéciales', motsCles: ['hybride', 'speciale'] },
 ];
 
-/** Pages présentées ailleurs que dans la catégorie de leur tag : id de page -> clé de catégorie. */
-export const CLASS_OVERRIDES = { 'classes/parleur': 'speciales' };
-
 const LAST = CLASS_GROUPS.at(-1);
 const UNCLASSIFIED = { key: 'non-classees', label: 'Non classées' };
 
 const byLabel = (a, b) => a.data.title.localeCompare(b.data.title, 'fr');
 
-// Catégorie d'une page : l'exception éventuelle, sinon la première catégorie (dans l'ordre d'affichage) dont un mot-clé (son id) figure sur la page.
+// Catégorie d'une page : la première catégorie (dans l'ordre d'affichage) dont un mot-clé (son id) figure sur la page.
 function findGroup(entry) {
-  const forced = CLASS_GROUPS.find((g) => g.key === CLASS_OVERRIDES[entry.id]);
-  if (forced) return forced;
   return groupeDesMotsCles(entry.data?.mots_cles ?? []);
 }
 
-/** La catégorie de /classes/ que donnent des mots-clés (leurs ids, page_tag.tag_id), sans l'exception du Parleur : la première dans l'ordre d'affichage ; null sinon. */
+/** La catégorie de /classes/ que donnent des mots-clés (leurs ids, page_tag.tag_id): la première dans l'ordre d'affichage ; null sinon. */
 export function groupeDesMotsCles(ids) {
   const poses = new Set(ids);
   return CLASS_GROUPS.find((group) => group.motsCles.some((id) => poses.has(id))) ?? null;
@@ -75,13 +69,13 @@ export function groupClasses(entries) {
 /**
  * Couleur d'une classe, d'après sa catégorie (demande du propriétaire) : rouge pour les physiques de mêlée, vert pour les physiques à distance,
  * bleu pour les magiques, violet pour les raciales (hybrides), jaune pour les spéciales (et les non classées). Repère visuel sans valeur de règle,
- * comme la couleur d'une magie ; elle suit la catégorie de /classes/, exception du Parleur comprise. La valeur est ici (la règle) ; une page n'en pose
+ * comme la couleur d'une magie ; elle suit la catégorie de /classes/. La valeur est ici (la règle) ; une page n'en pose
  * que la classe (lib/palette-css.mjs, famille `classe` : `couleur-classe-melee`… ; choix du propriétaire du 2026-10-22, « Module JS → classe »).
  */
 export const CLASS_COLORS = { melee: '#c62828', distance: '#2e7d32', magiques: '#1e5bb8', raciales: '#7b3fa6', speciales: '#e3b104' };
 
 /**
- * La catégorie dont une classe prend la couleur (clé de CLASS_COLORS) : celle de /classes/, exception du Parleur comprise ; « Spéciales » pour une classe
+ * La catégorie dont une classe prend la couleur (clé de CLASS_COLORS) : celle de /classes/ ; « Spéciales » pour une classe
  * non classée. Une page pose la classe de cette couleur (lib/palette-css.mjs#classeDUneClasse, famille `classe`), jamais la couleur.
  */
 export const groupeDeCouleur = (entry) => findGroup(entry)?.key ?? LAST.key;

@@ -43,7 +43,7 @@ const LECTURES = [
   [/^Dégâts maximum$/i, () => ({ cible: 'degats_maximum' })],
   // « Divise par 2 les dégâts infligés (division AVANT l'armure) » (Défensif)
   [/^Divise par (\d+) les dégâts infligés/i, (m) => ({ cible: 'degats_diviseur', valeur: Number(m[1]) })],
-  // « Augmente la valeur des dés de dégâts/soin des sortilèges » (Focus : « augmenter d'un cran la nature des dés […] il n'y a pas plus haut que le D20 »)
+  // « Augmente la valeur des dés de dégâts/soin des sortilèges » (Focus : « augmenter d'un cran la nature des dés […] » ; une montée s'arrête au D12, décision R252, lib/fiche-moteur.mjs#deMonte)
   [/^Augmente la valeur des dés de dégâts\/soin des sortilèges$/i, () => ({ cible: 'cran_des_sorts', valeur: 1 })],
   // « +5 (+2/NPM) dégâts/soin avec une magie » (Symbiose : « Cela augmente de +2 tous les niveaux de puissance magique (le premier niveau ne compte pas) »)
   [/^\+(\d+) \(\+(\d+)\/NPM\) dégâts\/soin avec une magie$/i, (m) => ({ cible: 'symbiose_sorts', base: Number(m[1]), pas: Number(m[2]) })],

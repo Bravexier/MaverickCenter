@@ -71,9 +71,9 @@ function attendu(classe) {
   };
 }
 
-test('une page de classe rendue par le gabarit par classe de la base (39 à l’import)', options, () => {
+test('une page de classe rendue par le gabarit par classe de la base (41 à l’import)', options, () => {
   assert.equal(pages.length, classes.size);
-  assert.equal(historique.effectifDImport('classe'), 39);
+  assert.equal(historique.effectifDImport('classe'), 41);
   for (const id of classes.keys()) assert.ok(page(id.slice('classes/'.length)), `${id} : page`);
 });
 

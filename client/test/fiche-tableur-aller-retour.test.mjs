@@ -265,7 +265,7 @@ function ficheRiche() {
   return f;
 }
 
-/** Bi-classe au Potentiel Illimité (l'Archimage imposé en classe 1, R23), la caractéristique de la magie au choix, sorts de plusieurs magies. */
+/** Bi-classe au Potentiel Illimité (l'Archimage en classe 1 : R238 (5), plus imposé mais permis), la caractéristique de la magie au choix, sorts de plusieurs magies. */
 function ficheBiPotentiel() {
   const f = {
     ...ficheVide('Ysolde'), race_id: 'races/humain', ethnie_id: 'races/humain#ethnie:humain-toundra', magie_innee_id: 'magies/potentiel-illimite',

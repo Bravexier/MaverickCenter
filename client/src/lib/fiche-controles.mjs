@@ -7,7 +7,6 @@ export const LIBELLES_DES_CONTROLES = Object.freeze({
   magie_innee_manquante: 'Magie innée à choisir',
   classe_inaccessible: 'Classe que la race ne permet pas',
   classe_reservee: 'Classe réservée à une autre magie innée',
-  classe_imposee: 'Classe 1 imposée par la magie innée',
   classe_exclue: 'Classe fermée à la magie innée',
   magie_innee_inaccessible: 'Magie innée que la race ne permet pas',
   magies_incompatibles: 'Magie innée et magie acquise incompatibles',

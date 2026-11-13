@@ -32,7 +32,7 @@ import { dessinerVignette, ouvrirRecadrage, reduireImage } from './portrait.mjs'
 import {
   actionsDeLEmplacement, effetsDesAccessoires, EMPLACEMENTS_ACCESSOIRES, exemplairesParEmplacement, inventaireDe,
   mettreALaCeinture, objetChoisiDansLaListe, quantiteDuSac, rangerLEmplacement, remplirLEmplacement, suggestionsDeCeinture, utiliserLObjet, ajusterValeurDuMoment, alignementDe, armesApresChoix, armesApresReglage, armesValables, artisanatDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, choixEnAttente, cleDeChoix, modeHyperDe, niveauDeSpecialite, borner, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe,
-  choisirObjetDeMetier, choixDeMetierValables, classeImposee, classesDe, classesSelonLaMagieInnee, competencesDe, donsAChoisir, donsValables,
+  choisirObjetDeMetier, choixDeMetierValables, classesDe, classesSelonLaMagieInnee, competencesDe, donsAChoisir, donsValables,
   durabiliteAEcrire, durabiliteDArme, emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, famillesMaitrisables, inventaireSelonLeMetier, lignesDeSorts, magieAcquiseValable,
   magiesInneesPermises, maitriseDArme, maitriseDesSorts, gainsDeNiveau, niveauGlobal, bornesDuNm, nmDuSort, npmDesSorts, objetChoisi, objetsDuMetier, progressionXp,
   bornesDuMultiplicateur, livreAuPlafond, livresAEnregistrer, livresApresAjout, livresApresChangement, livresApresRetrait, livresDe, multiplicateurDuCout, sortAuNm, sortPourUnLivre, sortsDesLivres, donDePreparation, jetDuSortPrepare, rappelsDuSortPrepare, sortPrepare, sortsAEnregistrer, texteDuCritiquePrepare, sortsAPreparer, sortsApresLeJet,
@@ -365,7 +365,7 @@ function construireMagies() {
       fiche.ethnie_id = ethnieImposee(regles, fiche) ?? fiche.ethnie_id;   // l'ethnie d'une race hybride suit sa magie innée
       fiche.magie_acquise_id = magieAcquiseValable(regles, fiche);   // une acquise devenue incompatible disparaît (demande du propriétaire)
       if (!fiche.magie_innee_id || trouver(regles.magies, fiche.magie_innee_id).caracteristique_id) fiche.caracteristique_magie_id = null;
-      // le Potentiel Illimité impose l'Archimage en classe 1, que nulle autre magie innée n'ouvre (décision R23)
+      // une classe réservée à une autre magie innée, ou que celle-ci ferme, part (décisions R23, R25) ; plus aucune classe imposée (R238 (5))
       fiche.classes = classesSelonLaMagieInnee(regles, fiche);
       fiche.capacites = donsValables(regles, fiche);
       changer();
@@ -469,10 +469,6 @@ function construireClasses() {
     g.classes.push(k);
   }
   groupes.sort((a, b) => a.ordre - b.ordre);
-  const imposee = classeImposee(regles, fiche);
-  const magieImposante = imposee && trouver(regles.magies, imposee.magie_innee_id);
-  // l'explication d'une classe imposée : en infobulle sur sa pastille « · imposée » (demande du propriétaire), pas en texte sous les classes
-  const pourquoiImposee = (classe) => `Classe imposée par la magie innée ${trouver(regles.magies, classe.magie_innee_id)?.nom ?? ''} : ${classe.nom}, qui lui est réservée.`;
   for (const c of calcul.classes) {
     const rang = c.rang;
     $(`choix-classe-${rang}`).hidden = rang === 2 && c.niveau === 0 && !c.choix;
@@ -481,7 +477,6 @@ function construireClasses() {
     const choixDe = (r) => calcul.classes.find((x) => x.rang === r)?.choix ?? null;
     afficherChoix(`classe-${rang}`, [c.classe && {
       nom: c.classe.nom, teinte: c.classe, refus: refusClasse(regles, fiche, c.classe.id, rang),
-      verrou: rang === 1 && imposee?.id === c.classe.id && magieImposante ? pourquoiImposee(imposee) : null,
     }]);
     const specialite = c.classe?.specialites.find((s) => s.id === c.choix?.specialite_id);
     $(`choix-specialite-${rang}`).hidden = !c.classe?.specialites.length || $(`choix-classe-${rang}`).hidden;
@@ -493,7 +488,6 @@ function construireClasses() {
     reconstruire($(`classe-${rang}`), 'fixe', () => groupes.map((g) => groupe(g.label, g, g.classes.map((k) => pastille({
       texte: k.nom, teinte: k, choisie: () => choixDe(rang)?.classe_id === k.id, description: infobulleDeClasse(k),
       refus: () => refusClasse(regles, fiche, k.id, rang),
-      verrou: () => (rang === 1 && classeImposee(regles, fiche)?.id === k.id ? pourquoiImposee(k) : null),
       surClic: () => {
         const deja = choixDe(rang)?.classe_id === k.id;
         retirer('classes', (l) => l.rang === rang);

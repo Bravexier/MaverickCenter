@@ -89,18 +89,10 @@ export function classesPermises(regles, raceId) {
 }
 
 /**
- * Classe qu'impose la magie innée de la fiche, en classe 1 (classe.magie_innee_id : le Potentiel Illimité impose l'Archimage, « Chose à savoir » de
- * l'Archimage, décision R23), ou null.
- */
-export function classeImposee(regles, fiche) {
-  return fiche.magie_innee_id ? regles.classes.find((c) => c.magie_innee_id === fiche.magie_innee_id) ?? null : null;
-}
-
-/**
  * Pourquoi une classe ne peut pas être la classe `rang` de cette fiche (null : elle le peut) : classe que la race ne permet pas (R8), classe réservée à
- * une autre magie innée, classe que ferme la magie innée (décision R25 : pas de Mage Bleu pour un Potentiel Illimité), autre classe que celle qu'impose la
- * magie innée en classe 1 (décision R23 : l'Archimage n'est ouverte qu'au Potentiel Illimité, qui l'impose), classe déjà prise à l'autre rang. Mêmes
- * règles que v_personnage_controle (classe_inaccessible, classe_reservee, classe_exclue, classe_imposee).
+ * une autre magie innée (décision R23 : l'Archimage n'est ouverte qu'au Potentiel Illimité, qui ne l'impose plus, R238 (5)), classe que ferme la magie
+ * innée (décision R25 : pas de Mage Bleu pour un Potentiel Illimité), classe déjà prise à l'autre rang. Mêmes règles que v_personnage_controle
+ * (classe_inaccessible, classe_reservee, classe_exclue).
  */
 export function refusClasse(regles, fiche, classeId, rang) {
   const classe = trouver(regles.classes, classeId);
@@ -112,26 +104,21 @@ export function refusClasse(regles, fiche, classeId, rang) {
   if (classe.magie_innee_exclue_id && classe.magie_innee_exclue_id === fiche.magie_innee_id) {
     return `fermée à la magie innée ${trouver(regles.magies, fiche.magie_innee_id)?.nom ?? fiche.magie_innee_id}`;
   }
-  const imposee = classeImposee(regles, fiche);
-  if (rang === 1 && imposee && imposee.id !== classe.id) return `la magie innée ${trouver(regles.magies, fiche.magie_innee_id)?.nom} impose ${imposee.nom}`;
   if ((fiche.classes ?? []).some((c) => c.rang !== rang && c.classe_id === classe.id)) return 'déjà l’autre classe';
   return null;
 }
 
 /**
- * Classes de la fiche une fois la magie innée choisie (décisions R23, R25) : une classe réservée à une autre magie innée, ou que la magie innée ferme,
- * est retirée, et la classe qu'impose la magie innée devient la classe 1, à la place de celle qui y était (spécialité à choisir). Rend une nouvelle
- * liste ; la fiche n'est pas modifiée.
+ * Classes de la fiche une fois la magie innée choisie (décisions R23, R25) : une classe réservée à une autre magie innée (l'Archimage hors Potentiel
+ * Illimité), ou que la magie innée ferme (le Mage Bleu au Potentiel Illimité), est retirée. Rien n'est ajouté : le Potentiel Illimité n'impose plus
+ * l'Archimage (R238 (5)), qu'il prend en classe 1, en classe 2 ou pas du tout. Rend une nouvelle liste ; la fiche n'est pas modifiée.
  */
 export function classesSelonLaMagieInnee(regles, fiche) {
-  const classes = (fiche.classes ?? []).filter((c) => {
+  return (fiche.classes ?? []).filter((c) => {
     const classe = trouver(regles.classes, c.classe_id);
     if (classe?.magie_innee_exclue_id && classe.magie_innee_exclue_id === fiche.magie_innee_id) return false;
     return !classe?.magie_innee_id || classe.magie_innee_id === fiche.magie_innee_id;
   });
-  const imposee = classeImposee(regles, fiche);
-  if (!imposee || classes.some((c) => c.rang === 1 && c.classe_id === imposee.id)) return classes;
-  return [{ rang: 1, classe_id: imposee.id, specialite_id: null }, ...classes.filter((c) => c.rang !== 1 && c.classe_id !== imposee.id)];
 }
 
 /** Magies innées que la race permet (liste de l'onglet de la race quand elle existe, R11 ; sinon la matrice, R8) ; sans race, toutes. */
@@ -3600,13 +3587,15 @@ export function degatsRecus(regles, fiche, options = {}) {
 // ------------------------------------------------------------------------------------------------------------------------------------------------
 
 /**
- * Les cases de la barrière (décision R171) : `passe` « Passe la barrière » (Mythril, sorts qui ignorent la barrière), `casse` « Casse la barrière »
- * (Maverium), `laiton` « Dégâts doublés contre la barrière » (Laiton), `medusain` « Deux fois moins » (dons du Médusain). [{ id, nom, aide }]
+ * Les cases de la barrière (décision R171) : `passe` « Passe la barrière » (un sort ou une capacité de monstre qui ignore la barrière), `casse` « Casse la
+ * barrière » (qui la brise), `laiton` « Dégâts doublés contre la barrière » (qui la frappe double ; l'identifiant garde l'ancien nom), `medusain` « Deux
+ * fois moins » (dons du Médusain). Décision R241 (3) : une arme en Mythril, Maverium ou Laiton ne les déclenche plus (leurs effets de matériau sont des
+ * passifs écrits, R128, rien ne les calcule) ; les cases restent pour les sorts et les capacités de monstre. [{ id, nom, aide }]
  */
 export const CASES_DE_LA_BARRIERE = Object.freeze([
-  Object.freeze({ id: 'passe', nom: 'Passe la barrière', aide: 'Mythril, sorts qui ignorent la barrière : la barrière ne bouge pas, tout baisse la santé' }),
-  Object.freeze({ id: 'casse', nom: 'Casse la barrière', aide: 'Maverium : la barrière tombe à 0 sans rien absorber, tout baisse la santé' }),
-  Object.freeze({ id: 'laiton', nom: 'Dégâts doublés contre la barrière', aide: 'Laiton : chaque point retire 2 de barrière' }),
+  Object.freeze({ id: 'passe', nom: 'Passe la barrière', aide: 'Sorts et capacités de monstre qui ignorent la barrière : la barrière ne bouge pas, tout baisse la santé' }),
+  Object.freeze({ id: 'casse', nom: 'Casse la barrière', aide: 'Capacités de monstre qui brisent la barrière : la barrière tombe à 0 sans rien absorber, tout baisse la santé' }),
+  Object.freeze({ id: 'laiton', nom: 'Dégâts doublés contre la barrière', aide: 'Sorts et capacités de monstre qui frappent la barrière double : chaque point retire 2 de barrière' }),
   Object.freeze({ id: 'medusain', nom: 'Deux fois moins', aide: 'Médusain (« Barrière résistante », « Barrière isolante ») : chaque point retire 0,5 de barrière, arrondi à l’inférieur' }),
 ]);
 
@@ -3633,7 +3622,7 @@ export function casesDeLaBarriereApres(cases, cle, coche) {
  * Ce que perdent la barrière et la santé (décision R171) : `recus` (les dégâts reçus, entier ≥ 0), `barriere` et `sante` (leurs valeurs du moment),
  * `cases` ({ passe, casse, laiton, medusain }). Le résultat baisse la barrière ; si elle passe à 0, ou y est déjà, le reste baisse la santé (sans
  * plancher). « Passe » : la barrière ne bouge pas, tout baisse la santé. « Casse » : la barrière tombe à 0 sans rien absorber, tout baisse la santé ; elle
- * ignore le Médusain (« Casse barrière ignore l'effet du Medusain »). Sinon chaque point retire c de barrière : 1 ; 2 avec le Laiton ; 0,5 avec le
+ * ignore le Médusain (« Casse barrière ignore l'effet du Medusain »). Sinon chaque point retire c de barrière : 1 ; 2 avec les dégâts doublés (`laiton`) ; 0,5 avec le
  * Médusain ; 1 avec les deux (« Ils se compensent », × 2 puis ÷ 2). La barrière absorbe ⌈B ÷ c⌉ points au plus (le dernier point du Laiton peut ne
  * retirer qu'1), et perd ⌊reçus × c⌋ sans être vidée (Médusain : « chaque point retire 0,5 de barrière, arrondi à l'inférieur », R175). Les exemples
  * de R171 (20 reçus, barrière 12, santé 40) : sans case, barrière 0 et santé 32 ; Passe, santé 20 ; Casse, barrière 0 et santé 20 ; Laiton, 6 points la
@@ -3650,8 +3639,8 @@ export function degatsALaBarriere(recus, { barriere, sante }, cases = {}) {
   if (cases.passe) return { barriere: b, sante: s - r, absorbes: 0, etapes: ['La barrière est passée : tout baisse la santé'] };
   if (cases.casse) return { barriere: 0, sante: s - r, absorbes: 0, etapes: ['La barrière est cassée : elle tombe à 0, tout baisse la santé'] };
   // c = num ÷ den : ce qu'un point retire de barrière (en entiers, pour des arrondis exacts)
-  const [num, den, texte] = cases.laiton && cases.medusain ? [1, 1, 'Laiton et Médusain se compensent : chaque point retire 1 de barrière']
-    : cases.laiton ? [2, 1, 'Laiton : chaque point retire 2 de barrière']
+  const [num, den, texte] = cases.laiton && cases.medusain ? [1, 1, 'Dégâts doublés et Médusain se compensent : chaque point retire 1 de barrière']
+    : cases.laiton ? [2, 1, 'Dégâts doublés contre la barrière : chaque point retire 2 de barrière']
       : cases.medusain ? [1, 2, 'Médusain : chaque point retire 0,5 de barrière']
         : [1, 1, null];
   const pourVider = Math.ceil((b * den) / num);
@@ -4363,14 +4352,29 @@ export function sortsAEnregistrer(regles, fiche) {
 // le calcul des dégâts de chaque sort (s'ils en font) à jour avec différents passifs de classe, d'équipement, d'accessoire etc. et de posture choisie »).
 // ------------------------------------------------------------------------------------------------------------------------------------------------
 
-/** Les dés dans l'ordre des crans (posture Focus : « augmenter d'un cran la nature des dés […] il n'y a pas plus haut que le D20 »). */
+/**
+ * Les dés dans l'ordre des crans. Une montée s'arrête au D12 (décision R252 : « La limite d'augmentation de la nature des dé est de maximum D12 »), quelle
+ * que soit la source (posture Focus, accessoire, don, capacité) ; le D20 reste dans l'échelle pour les baisses seules (un D20 moins un cran est un D12,
+ * décision R252 (3) : les baisses ne changent pas) et parce qu'un dé écrit D20 reste D20.
+ */
 export const CRANS_DES_DES = Object.freeze([4, 6, 8, 10, 12, 20]);
 
-/** Le dé `faces` monté (ou descendu) de `crans` crans, sans dépasser le D20 ni descendre sous le D4 ; un dé hors de la liste ne change pas. */
+/** Le plus grand dé qu'une montée atteint (décision R252) : le D12. */
+export const DE_MAXIMUM_D_UNE_MONTEE = 12;
+
+/**
+ * Le dé `faces` monté (`crans` > 0) ou descendu (`crans` < 0) de `crans` crans. Une montée s'arrête au D12 (R252 (1) : un D12 monté reste D12, un D10
+ * monté de deux crans devient D12) ; un dé qui est déjà D20 de nature reste D20 qu'on le monte ou non (R252 (2) : la limite porte sur l'augmentation, pas
+ * sur les dés écrits). Une baisse part de l'échelle entière (D20 → D12, R252 (3)) et ne descend pas sous le D4. Un dé hors de l'échelle ne change pas.
+ */
 export function deMonte(faces, crans) {
   const i = CRANS_DES_DES.indexOf(entier(faces));
   if (i < 0 || !crans) return faces;
-  return CRANS_DES_DES[Math.min(CRANS_DES_DES.length - 1, Math.max(0, i + crans))];
+  if (crans > 0) {
+    const plafond = CRANS_DES_DES.indexOf(DE_MAXIMUM_D_UNE_MONTEE);
+    return i >= plafond ? faces : CRANS_DES_DES[Math.min(i + crans, plafond)];
+  }
+  return CRANS_DES_DES[Math.max(0, i + crans)];
 }
 
 const ECRITURE_DES_DEGATS = /^(soigne\s+)?(?:(\d+)\s*d\s*(\d+))?\s*(?:\+\s*(\d+)|(\d+))?\s*((?:de\s+)?(?:d[ée]g[âa]ts?|soins?))?(\s+(?:d['’]acide|sonores?))?(\s*(?:\/\s*tour|par tour))?\s*\.?$/i;

@@ -41,7 +41,7 @@ La page prend plus de largeur que les autres (100rem au plus) ; sur un écran é
 s'étend sur toute sa rangée de menus. **Compacte** (demandes du propriétaire) : pas de lien vers le guide ;
 race, ethnie, magies innée et acquise, classes et spécialités sont des **menus déroulants** (`<details class="choix">` : fermé, le choix fait ; ouvert, les
 **pastilles** dans les couleurs de `/races/`, `/magies/`, `/classes/` (leurs classes de la palette, ci-dessous), celles que les règles ferment grisées ; un choix, un clic ailleurs ou Échap le
-referme ; l'explication d'une classe imposée est en infobulle sur sa pastille « · imposée ») ; les **tuiles de choix ont une infobulle** avec leur
+referme) ; les **tuiles de choix ont une infobulle** avec leur
 description (demande du propriétaire du 2026-10-29 : « les tuiles de choix de classe / dons […] devraient avoir une infobulle avec leur description »),
 au survol et au focus du clavier, le texte de la base tel qu'écrit, sans lien : une classe, sa `description` (`infobulleDeClasse`) ; une spécialité, dans le
 menu de l'identité et dans l'onglet « Choix », sa `description`, sinon l'effet de son cartouche (choix du propriétaire ; sans l'un ni l'autre, aucune :
@@ -668,9 +668,9 @@ poids d'un bouclier (R92) : `regles.json` donne `classe` de chaque poids (`poids
 script pose avec `teinte-palette` sur la tuile du poids. Les classes des postures, alignements, catégories de classe, races, paliers, du Mode Hyper, le
 neutre et les poids des boucliers sont émises par la page (`pages/fiche/index.astro`, `cssDesFamilles(FAMILLES_DE_LA_FICHE)`), celles des caractéristiques sont sur chaque page. Les couleurs d'interface de la fiche (l'action principale,
 un choix à faire, l'étoile d'une remarque, le texte blanc des boutons pleins) sont des jetons du thème (`styles/global/base.css` : `--vert-action`,
-`--a-choisir`, `--a-choisir-plein`, `--etoile`, `--texte-sur-fonce`). Le **Potentiel Illimité** en magie innée met l'Archimage en classe 1
-et l'y **verrouille** (les autres classes 1 sont grisées, la pastille de l'Archimage ne se retire pas) ; sans lui, l'Archimage est grisée à tous les rangs,
-et quitter le Potentiel Illimité la retire (décision R23) ; le Mage Bleu lui est fermé, à tous les rangs (décision R25), toute autre seconde classe reste permise. Les dons à choix d'une classe ou d'une spécialité retirée partent avec elle, comme un don qu'aucun choix des règles ne range (supprimé ou devenu reçu d'office sur le site de dev, D11) ; un don, une spécialité, un sort, un métier ou une arme que les règles suppriment est retiré de la fiche par le service, avec sa note datée (R42, R52, ci-dessous « Quand les règles changent »). Tout ce que la base
+`--a-choisir`, `--a-choisir-plein`, `--etoile`, `--texte-sur-fonce`). Le **Potentiel Illimité** en magie innée n'impose plus l'Archimage
+(R238 (5)) : il peut la prendre en classe 1, en classe 2, en seconde classe au niveau 11, ou pas du tout ; sans lui, l'Archimage est grisée à tous les rangs,
+et quitter le Potentiel Illimité la retire (décision R23, partie « réservée ») ; le Mage Bleu lui est fermé, à tous les rangs (décision R25), toute autre seconde classe reste permise. Les dons à choix d'une classe ou d'une spécialité retirée partent avec elle, comme un don qu'aucun choix des règles ne range (supprimé ou devenu reçu d'office sur le site de dev, D11) ; un don, une spécialité, un sort, un métier ou une arme que les règles suppriment est retiré de la fiche par le service, avec sa note datée (R42, R52, ci-dessous « Quand les règles changent »). Tout ce que la base
 garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
 
 - **Règles** : `/fiche/regles.json`, tiré de la base au build par `lib/fiche-regles.mjs` (races et leurs bornes, ethnies, magies, dieux, métiers, classes,
@@ -691,7 +691,7 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   case porte toujours, sinon le libellé ; jamais la définition, même pour le mode complet), ni gras ni infobulle.
 - **Calculs pendant la saisie** : `lib/fiche-moteur.mjs`, fonctions pures (testées par `test/fiche-moteur.test.mjs`, contre les vues de la base et les
   personnages fil rouge du guide) : niveau global et niveaux de classe (R2) ; classes et magies innées que la race permet (R8, R11), classe réservée à une
-  magie innée et imposée par elle (`classe.magie_innee_id` : l'Archimage et le Potentiel Illimité, R23), ethnies et ethnie sans choix posée d'office
+  magie innée (`classe.magie_innee_id` : l'Archimage et le Potentiel Illimité, R23 ; elle n'est plus imposée, R238 (5)), ethnies et ethnie sans choix posée d'office
   (`ethnieImposee` : la seule de la race — Lamia, Majin, Hujin, Elfe doré — ou la seule de la magie innée — races hybrides, Drakos ; demande du propriétaire),
   magie acquise refusée et pourquoi (race à une seule magie R28, incompatibilité, mono-magie R15, exceptions R20) et retirée d'office quand un changement de race
   ou de magie innée la ferme (`magieAcquiseValable`, demande du propriétaire) ; caractéristiques (+1 de la magie innée, bornes de la race) et budget exact (R3) ;
@@ -763,17 +763,19 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   la partie touchée, ni le coup).
 - **« Appliquer »** (décision R171, `appliquerDegatsRecus`, `degatsALaBarriere`) : le résultat baisse d'abord la **barrière du moment** ; si elle passe
   à 0, ou y est déjà, **le reste baisse la santé**, qui peut devenir négative (la barrière reste ≥ 0). Les **cases de la barrière**
-  (`CASES_DE_LA_BARRIERE`), pour les coups contre lesquels elle ne joue pas normalement : « Passe la barrière » (Mythril, sorts qui ignorent la
-  barrière : elle ne bouge pas, tout baisse la santé) ; « Casse la barrière » (Maverium : elle tombe à 0 sans rien absorber, tout baisse la santé ; elle
-  ignore le Médusain) ; « Dégâts doublés contre la barrière » (Laiton : chaque point retire 2 de barrière, ⌈B ÷ 2⌉ points la vident) ; « Deux fois
-  moins » (Médusain : chaque point retire 0,5 de barrière, arrondi à l'inférieur, R175). Laiton et Médusain cochés ensemble se compensent (1 de barrière
-  par point) ; ce sont les seuls qui se neutralisent. **Passe, Casse et Laiton : une seule à la fois**, à titre provisoire (question Q74 ouverte ; le
+  (`CASES_DE_LA_BARRIERE`), pour les coups contre lesquels elle ne joue pas normalement : « Passe la barrière » (un sort ou une capacité de monstre
+  qui ignore la barrière : elle ne bouge pas, tout baisse la santé) ; « Casse la barrière » (qui la brise : elle tombe à 0 sans rien absorber, tout baisse
+  la santé ; elle ignore le Médusain) ; « Dégâts doublés contre la barrière » (chaque point retire 2 de barrière, ⌈B ÷ 2⌉ points la vident ; identifiant
+  `laiton`, l'ancien nom) ; « Deux fois moins » (Médusain : chaque point retire 0,5 de barrière, arrondi à l'inférieur, R175). **Une arme en Mythril, Maverium ou
+  Laiton ne les déclenche plus** (décision R241 (3) : leurs effets de matériau sont des passifs écrits, jamais calculés, R128 ; les cases restent pour les sorts
+  et les capacités de monstre). Dégâts doublés et Médusain cochés ensemble se compensent (1 de barrière par point) ; ce sont les seuls qui se neutralisent.
+  **Passe, Casse et Dégâts doublés : une seule à la fois**, à titre provisoire (question Q74 ouverte ; le
   choix tient dans `CASES_EXCLUSIVES_DE_LA_BARRIERE`, appliqué par `casesDeLaBarriereApres`). « Deux fois moins » se **coche d'office**
   (`medusainDOffice`) quand le personnage a un don dont le texte écrit « La barrière prend deux fois moins de dégâts physiques » (« Barrière
   résistante ») et que le coup a un type physique, ou « … magiques » (« Barrière isolante ») et que le coup a un élément (`barriereMoinsToucheeEcrite`,
   lu dans le texte, jamais par le nom) ; elle se décoche à la main, et suit de nouveau le don quand le coup change. À côté du bouton, ce que deviendront
   la barrière et la santé (« Barrière 12 → 2 · Santé 40 → 40 ») ; le coup appliqué, le champ des dégâts entrants se vide. Exemple de R171 (20 reçus,
-  barrière 12, santé 40) : sans case, barrière 0 et santé 32 ; Passe, santé 20 ; Casse, barrière 0 et santé 20 ; Laiton, santé 26 ; Médusain,
+  barrière 12, santé 40) : sans case, barrière 0 et santé 32 ; Passe, santé 20 ; Casse, barrière 0 et santé 20 ; Dégâts doublés, santé 26 ; Médusain,
   barrière 2 et santé 40 (30 reçus : santé 34).
 - **Arme à pièce élémentaire** : le volet arme de la décision R99 est remplacé par R167 (l'arme transformée est une arme élémentaire, voir plus haut) ;
   son volet armure ne change pas.
@@ -819,7 +821,7 @@ garde d'une fiche se saisit (section 13 de `data/schema.sql`, ci-dessous).
   supplémentaire » sont lus dans les données (`multiplicateurDuCout`, `progressif: { pas }` ; la même unité des deux, sinon rien n'est deviné), jamais
   par l'id du sort ; N projectiles coûtent 4 + 5 + … + (N + 3), soit 4, 9, 15… et 85 pour dix (`coutProgressifDe`, `cout.fois.progressif`), puis les
   réductions s'appliquent au total), la portée (accessoires, dons, bâton) et les dégâts ou soins d'une écriture sans ambiguïté
-  (`lireDegatsDeSort` : crans de dé (Focus, accessoire, « Augmente d'un cran les dés des soins magiques » du Farfadet maritime), un dé au maximum, bonus des dons, accessoires, bâton, armure élémentaire, Symbiose ; Offensif, Défensif) ;
+  (`lireDegatsDeSort` : crans de dé (Focus, accessoire, « Augmente d'un cran les dés des soins magiques » du Farfadet maritime ; une montée s'arrête au D12, `deMonte`, décision R252 : un D12 monté reste D12, un D20 de nature reste D20, une baisse part de l'échelle entière, D20 − 1 cran = D12), un dé au maximum, bonus des dons, accessoires, bâton, armure élémentaire, Symbiose ; Offensif, Défensif) ;
   une valeur **par tour** (« 3d6 dégâts par tour », « 5d6 + 10 soin/tour ») se compte comme une autre, ses bonus **à chaque tour** (décision R113 :
   « 3d6 dégâts par tour » avec +5 → « 3d6 + 5 dégâts par tour », la période écrite après la valeur) ;
   chaque valeur changée en gras souligné, le détail, ce qui n'est pas compté et les rappels des bâtons en infobulle. Les bonus de sorts des dons et
@@ -1229,7 +1231,7 @@ pas, et la note datée est le seul signal.
   au moins 0 ; `points_comptes` au plus 4 (`maitrise_arme.des_max` − `maitrise_arme.des_sans_maitrise`), `des` = 1 + `points_comptes`. Le pendant SQL du
   calcul de la page.
 - `v_personnage_controle` : une ligne par règle enfreinte (`regle`, `detail`) : classe ou magie innée hors de la matrice de la race (R8, R11), classe réservée
-  à une autre magie innée et classe 1 imposée par la magie innée (l'Archimage et le Potentiel Illimité, R23), classe fermée à la magie innée (le Mage Bleu
+  à une autre magie innée (l'Archimage et le Potentiel Illimité, R23 ; la règle « classe 1 imposée » est retirée, R238 (5)), classe fermée à la magie innée (le Mage Bleu
   et le Potentiel Illimité, R25), magie acquise d'une race à une seule magie (la Lamia, R28), magies incompatibles,
   mono-magie (R15 ; l'Elfe Noir Charbon et le Felfe Noir peuvent aussi acquérir la Corruption, R20), ethnie (de la race, liée à la magie innée quand elle en porte
   une), bornes et total exact des caractéristiques (R3), plafonds et total exact des compétences (R3 ; l'Acquis compte le bonus du métier, R33), bonus de métier choisi
