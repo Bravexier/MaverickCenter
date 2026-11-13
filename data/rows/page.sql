@@ -6139,6 +6139,164 @@ Les plus extrêmes peuvent au contraire prendre plaisir à la souffrance, à la 
 Le Mal ne signifie donc pas nécessairement être violent ou cruel en permanence. Il se manifeste avant tout par la valeur que le personnage accorde aux autres lorsque leurs intérêts entrent en conflit avec les siens.
 
 Bien, maintenant que nous avons vu les 4 tendances, les 9 combinaisons possibles sont expliquées dans {{les-neuf-alignements}}.
+
+## Les neuf alignements {#les-neuf-alignements}
+
+Les neuf alignements sont formés par la combinaison des deux axes d’alignement. Ils ne constituent pas des personnalités prédéfinies : deux personnages partageant le même alignement peuvent avoir des caractères, des valeurs et des façons d’agir très différentes.
+
+L’alignement représente avant tout la philosophie qui ressort des choix du personnage.
+
+### Loyal Bon {#loyal-bon}
+
+Le Loyal Bon cherche à faire le bien tout en accordant une grande importance à l’ordre, au devoir et au collectif. Il considère généralement que les règles et les institutions peuvent protéger les plus faibles et permettre à une société juste de fonctionner.
+
+Il respecte ses engagements, accorde de l’importance à la confiance et accepte volontiers de faire des sacrifices personnels pour le bien des autres. Il peut combattre l’injustice avec détermination, tout en cherchant à préserver la vie et la dignité de ceux qu’il affronte lorsque cela est possible.
+
+Il possède un fort sens de la moralité et un fort attachement aux règles.
+
+Un Loyal Bon n’est pas obligé d’obéir à une loi qu’il considère profondément injuste. Il peut au contraire chercher à la modifier ou à la combattre, mais il cherchera généralement à le faire selon des principes qu’il considère justes.
+
+Dans ses formes extrêmes, le Loyal Bon peut devenir intransigeant, considérant sa conception du Bien et de la justice comme supérieure à celle des autres.
+
+***Exemple :***
+
+| Façon de se comporter possible | Réflexion/Question possible |
+| :---: | :---: |
+| Défend les innocents, respecte son serment et considère son devoir comme un moyen de protéger ceux qui ne peuvent pas se défendre eux-mêmes. <br><br>Suit une discipline stricte et un code de conduite qu’il s’impose afin de maîtriser ses propres instincts et de pouvoir consacrer sa vie aux autres. <br><br>Cherche à faire respecter une justice équitable, mais refuse d’appliquer aveuglément une loi lorsqu’elle condamnerait injustement un innocent. | *« Cette loi est injuste, mais je ne vais pas simplement la bafouer. Je vais trouver un moyen de la faire changer. »* <br>*<br>« Il a commis un crime, mais il n’est pas nécessaire de le tuer. S’il peut être neutralisé autrement, épargnons sa vie. »* <br>*<br>« J’ai promis de protéger ces gens. Même si personne ne vient m’aider, je resterai jusqu’au bout. »* |
+
+### Loyal Neutre {#loyal-neutre}
+
+Le Loyal Neutre accorde la priorité à l’ordre, au devoir et au fonctionnement du collectif, sans que le Bien ou le Mal ne constitue nécessairement sa principale préoccupation.
+
+Il respecte les règles, les traditions, les engagements et la hiérarchie lorsqu’il les considère légitimes. Il peut accepter des contraintes personnelles importantes au nom de son devoir et attend généralement la même discipline des autres.
+
+Il n’est cependant pas forcément attaché à une loi particulière : il peut soutenir ou combattre une règle selon la place qu’elle occupe dans l’ordre qu’il défend.
+
+Dans ses formes extrêmes, le Loyal Neutre peut devenir rigide, accordant tellement d’importance à l’ordre qu’il en vient à négliger les individus au nom du système.
+
+***Exemple :***
+
+| Façon de se comporter possible | Réflexion/Question possible |
+| :---: | :---: |
+| La discipline, la chaîne de commandement et le devoir passent avant ses préférences personnelles. <br><br>Préserve les coutumes de son peuple, convaincu qu’elles sont essentielles à son identité et à sa cohésion. <br><br>Applique les règles avec sérieux et impartialité, considérant que le système ne peut fonctionner si chacun décide individuellement quelles règles respecter. | *« Je n’approuve peut-être pas cet ordre, mais c’est mon supérieur et j’ai accepté de servir sous ses ordres. »* <br>*<br>« Si chacun décide quelles lois il respecte, nous n’avons plus de société. »* <br>*<br>« Je dois tenir ma parole. Que cela m’arrange ou non n’a aucune importance. »* |
+
+### Loyal Mauvais {#loyal-mauvais}
+
+Le Loyal Mauvais cherche à satisfaire ses propres intérêts tout en s’appuyant sur l’ordre, la hiérarchie et les règles.
+
+Il peut être discipliné, fiable et respecter scrupuleusement sa parole. Il ne voit cependant pas nécessairement ces qualités comme des moyens de protéger les autres, mais comme des principes utiles pour maintenir une structure dont il peut tirer profit.
+
+Il peut accepter de faire souffrir ou de sacrifier certaines personnes lorsque cela sert ses objectifs, particulièrement lorsqu’il considère que leur sacrifice est nécessaire au maintien de l’ordre ou à la réussite de son groupe.
+
+Un Loyal Mauvais n’est pas nécessairement cruel ou violent. Il peut préférer une solution légale, organisée et efficace à une démonstration de force.
+
+Dans ses formes extrêmes, il peut considérer que la domination et la hiérarchie sont naturelles, et que certains individus ou groupes ont davantage de valeur ou de droits que d’autres.
+
+***Exemple :***
+
+| Façon de se comporter possible | Réflexion/Question possible |
+| :---: | :---: |
+| Maintient une société extrêmement hiérarchisée et considère que la peur et l’autorité sont nécessaires pour empêcher le chaos. <br><br>Respecte scrupuleusement les procédures, mais utilise sa position et les lois pour favoriser ses propres intérêts. <br><br>Est profondément loyal envers son royaume et sa hiérarchie, mais considère que les individus peuvent être sacrifiés lorsque les intérêts du collectif l’exigent. | *« La loi est la même pour tout le monde. S’il doit être exécuté, alors il sera exécuté. »* <br>*<br>« Je pourrais trahir mon supérieur, mais si je commence à le faire, pourquoi mes hommes resteraient-ils loyaux envers moi ? »* <br>*<br>« Je préfère gouverner par la peur que de laisser le chaos s’installer. Au moins, tout le monde connaît sa place. »* |
+
+### Neutre Bon {#neutre-bon}
+
+Le Neutre Bon cherche avant tout à faire le bien et à protéger les autres, sans accorder une importance particulière à l’ordre ou à la liberté.
+
+Il peut respecter les lois lorsqu’elles lui permettent d’aider les autres, mais n’hésitera pas à les contourner lorsqu’elles deviennent un obstacle. Il peut également accepter certaines contraintes lorsqu’elles sont utiles, sans pour autant considérer qu’elles doivent être respectées par principe.
+
+Il accorde généralement une grande importance à la compassion, au pardon, à la générosité et à la seconde chance.
+
+Dans ses formes extrêmes, le Neutre Bon peut devenir excessivement conciliant, au point de vouloir sauver ou pardonner quelqu’un alors que cela représente un danger important pour les autres.
+
+***Exemple :***
+
+| Façon de se comporter possible | Réflexion/Question possible |
+| :---: | :---: |
+| Aide toute personne qui en a besoin, sans se soucier de son statut, de ses origines ou de son appartenance à une faction. <br><br>Intervient lorsqu’il voit quelqu’un en danger, même si aucune loi ne lui impose de le faire. <br><br>Cherche avant tout à résoudre les conflits et à éviter les souffrances inutiles, quitte à contourner certaines règles pour y parvenir. | *« Cette règle existe pour protéger les gens, alors je la respecterai. Mais si elle les met en danger, je passerai outre. »* <br>*<br>« Je ne sais pas s’il mérite une seconde chance, mais tant que je peux lui en donner une sans mettre les autres en danger, je le ferai. »* <br>*<br>« Peu importe qui a raison ou qui a l’autorité. Il y a quelqu’un qui souffre et je peux l’aider. »* |
+
+### Neutre {#neutre}
+
+Le Neutre ne place aucune des quatre tendances au-dessus des autres.
+
+Il agit principalement en fonction des circonstances, de ses objectifs et de ses propres priorités. Il peut respecter une règle lorsqu’elle lui semble utile, la contourner lorsqu’elle devient gênante, aider quelqu’un lorsqu’il en ressent le besoin ou privilégier ses propres intérêts lorsque le coût du sacrifice lui paraît trop important.
+
+Le Neutre n’est pas nécessairement indifférent, égoïste ou dépourvu de convictions. Il peut simplement refuser de faire d’une philosophie particulière une règle absolue de son existence.
+
+Dans ses formes extrêmes, il peut devenir opportuniste ou indécis, changeant régulièrement de position selon ce qui lui semble le plus avantageux.
+
+***Exemple :***
+
+| Façon de se comporter possible | Réflexion/Question possible |
+| :---: | :---: |
+| Accepte les contrats qui lui conviennent et aide ses employeurs tant que le risque reste acceptable. <br><br>Ne cherche ni la gloire ni la justice : il fait principalement ce qui lui permet de rester en vie.<br><br>Peut se montrer généreux, égoïste, loyal ou opportuniste selon les circonstances et les personnes impliquées. | *« Pourquoi risquer ma vie pour eux ? … Bon, d’accord, mais vous me devrez une faveur. »* <br>*<br>« Cette règle m’est utile aujourd’hui, alors je vais la respecter. Demain, on verra. »* <br>*<br>« Je ne cherche ni à sauver le monde ni à le détruire. Je veux simplement arriver vivant au bout de cette aventure. »* |
+
+### Neutre Mauvais {#neutre-mauvais}
+
+Le Neutre Mauvais place ses propres intérêts au-dessus de ceux des autres, sans attachement particulier à l’ordre ou au chaos.
+
+Il peut respecter les règles lorsqu’elles lui sont utiles et les enfreindre lorsqu’elles représentent un obstacle. De la même manière, il peut coopérer avec les autres lorsque cela lui profite, sans ressentir d’obligation particulière envers eux.
+
+Il n’a généralement aucun problème à mentir, manipuler, voler ou blesser autrui si cela lui permet d’obtenir ce qu’il désire.
+
+Contrairement au Chaotique Mauvais, il n’a pas besoin de provoquer le désordre ou de suivre ses émotions. Il privilégie souvent l’efficacité et son propre intérêt.
+
+Dans ses formes extrêmes, il peut devenir profondément égoïste et considérer les autres uniquement comme des outils permettant de satisfaire ses objectifs.
+
+***Exemple :***
+
+| Façon de se comporter possible | Réflexion/Question possible |
+| :---: | :---: |
+| Vole, ment et manipule lorsqu’il y trouve son intérêt, sans chercher particulièrement à provoquer le chaos. <br><br>Exploite les besoins des autres et profite de leur faiblesse pour maximiser ses bénéfices. <br><br>Tue pour obtenir de l’argent ou atteindre un objectif, sans ressentir le besoin de faire souffrir ses victimes ou de provoquer davantage de désordre. | *« Je pourrais l’aider, mais qu’est-ce que j’y gagne ? »* <br>*<br>« S’il faut sacrifier quelqu’un pour réussir, ce sera lui. Je ne vais certainement pas me sacrifier à sa place. »* <br>*<br>« Je me fiche que ce soit légal. Si personne ne peut m’arrêter et que j’y gagne quelque chose, pourquoi m’en priver ? »* |
+
+### Chaotique Bon {#chaotique-bon}
+
+Le Chaotique Bon cherche à faire le bien tout en accordant une grande importance à la liberté et au libre arbitre.
+
+Il n’accepte pas qu’une loi, une tradition ou une autorité soit une raison suffisante pour empêcher quelqu’un d’être aidé. Il peut donc désobéir ouvertement lorsqu’il estime qu’une règle nuit aux personnes qu’il cherche à protéger.
+
+Il suit souvent ses convictions, ses émotions ou son instinct et peut prendre des décisions spontanées lorsqu’une personne est en danger. Il accepte plus facilement que les Loyaux de prendre des risques ou de sortir des méthodes établies pour faire ce qu’il considère comme juste.
+
+Dans ses formes extrêmes, le Chaotique Bon peut devenir téméraire, convaincu que ses bonnes intentions justifient de prendre des décisions sans suffisamment considérer leurs conséquences.
+
+***Exemple :***
+
+| Façon de se comporter possible | Réflexion/Question possible |
+| :---: | :---: |
+| Combat les autorités qu’il considère oppressives et libère ceux qu’elles maintiennent sous leur contrôle. <br><br>Enfreint régulièrement les lois pour aider les personnes qu’il estime victimes d’un système injuste. <br><br>Suit son instinct et intervient spontanément lorsqu’il voit quelqu’un en danger, même si cela ruine les plans du groupe. | *« Ils disent que c’est interdit ? Alors qu’ils viennent m’arrêter après que j’ai sauvé ces gens. »* <br>*<br>« Je sais que ce n’était pas le plan, mais cette personne avait besoin de moi. Je n’allais quand même pas la laisser mourir. »* <br>*<br>« Je préfère désobéir et faire ce que je pense juste plutôt que regarder quelqu’un souffrir parce que personne n’ose enfreindre les règles. »* |
+
+### Chaotique Neutre {#chaotique-neutre}
+
+Le Chaotique Neutre place la liberté individuelle au-dessus de l’ordre et des contraintes imposées par le collectif.
+
+Il refuse généralement qu’une autorité décide de la manière dont il doit vivre et préfère tracer sa propre route. Il peut suivre ses émotions, ses convictions ou simplement ses envies, et s’adapter rapidement lorsque les circonstances changent.
+
+Il n’est pas nécessairement hostile aux autres et peut être profondément attaché à certaines personnes. Il considère cependant que chacun doit rester libre de faire ses propres choix.
+
+Dans ses formes extrêmes, le Chaotique Neutre peut devenir irresponsable ou individualiste, refusant toute contrainte même lorsqu’elle serait nécessaire au bien du groupe ou de ses proches.
+
+***Exemple :***
+
+| Façon de se comporter possible | Réflexion/Question possible |
+| :---: | :---: |
+| Refuse de s’attacher à une société ou à une institution et voyage constamment pour rester libre. <br><br>Déteste recevoir des ordres et préfère toujours trouver sa propre manière de résoudre un problème. <br><br>Suit ses propres convictions et son propre mode de vie, sans se soucier de savoir si celui-ci correspond aux attentes de la société. | *« Pourquoi devrais-je vivre comme ils l’ont décidé ? Je choisirai moi-même ce que je veux devenir. »* <br>*<br>« Ce n’est pas parce que j’ai accepté de les accompagner que je leur appartiens. Si je veux partir, je partirai. »* <br>*<br>« Cette règle ne me convient pas. Je peux soit la contourner, soit partir. Dans tous les cas, personne ne décidera pour moi. »* |
+
+### Chaotique Mauvais {#chaotique-mauvais}
+
+Le Chaotique Mauvais place sa liberté et ses propres désirs au-dessus de toute considération pour les autres.
+
+Il rejette les règles et les autorités qui limitent sa volonté et n’hésite pas à faire souffrir autrui pour obtenir ce qu’il souhaite. Il peut agir sous l’influence de ses émotions, de sa colère ou de ses instincts et accepte plus facilement de prendre des risques importants pour satisfaire ses objectifs.
+
+Contrairement au Neutre Mauvais, il peut rejeter une solution efficace simplement parce qu’elle implique de se soumettre à quelqu’un ou à une règle.
+
+Dans ses formes extrêmes, le Chaotique Mauvais peut devenir destructeur et sadique, allant jusqu’à faire souffrir ou détruire sans bénéfice réel, simplement parce qu’il en a le pouvoir ou qu’il y trouve du plaisir.
+
+***Exemple :***
+
+| Façon de se comporter possible | Réflexion/Question possible |
+| :---: | :---: |
+| Prend ce qu’il veut par la force et refuse toute autorité susceptible de limiter ses désirs. <br><br>Sème la violence et le chaos parce qu’il considère que personne ne devrait pouvoir lui imposer de limites. <br><br>Utilise sa liberté pour satisfaire ses pulsions et fait volontairement souffrir les autres lorsqu’il en retire du plaisir. | *« Pourquoi devrais-je respecter cette loi ? Qui va m’en empêcher ? »* <br>*<br>« Je pourrais simplement négocier avec lui… mais j’ai envie de lui faire payer. »* <br>*<br>« Je préfère tout perdre plutôt que de laisser quelqu’un m’imposer ce que je dois faire. »* |
+
+**L’alignement n’impose pas au personnage sa manière d’agir. Il permet de représenter les tendances qui se dégagent de ses choix.**
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/alterations-d-etats', 'guide', 'alterations-d-etats', 'Altérations d’états', 'alterations-detats', 'Une altération d’état change la condition d’un personnage : poison, brûlure, peur, paralysie…', NULL, 'Une **altération d’état** change la condition d’un personnage : poison, brûlure, peur, paralysie… Elle lui inflige des malus, et il a tout intérêt à s’en débarrasser vite.
 
@@ -7869,162 +8027,6 @@ Elle prend les coups avant la santé, sauf contre-indication : une fois qu’ell
 Sur la {{fiche-de-personnage|fiche de personnage}}, la deuxième ligne de la tuile des attributs donne l’AP et l’AM totaux du personnage et calcule les dégâts qu’il reçoit. Saisissez les dégâts du coup (critique compris), son type (Estoc, Taille, Frappe, ou Magique pour un sort) et son élément : il est obligatoire pour un coup magique, et une arme élémentaire a les deux. Cochez « Dégâts réduits » pour une défense partielle, et « Au bouclier » ou « Don ÷ 2 » s’il y a lieu. Le bouton « Appliquer » retire ensuite le résultat de la barrière, puis de la santé quand la barrière est vide. Des cases règlent les coups contre lesquels la barrière ne joue pas normalement : « Passe la barrière » (sorts qui l’ignorent), « Casse la barrière », « Dégâts doublés contre la barrière », et « Deux fois moins » (dons du Médusain), cochée d’office quand le personnage a le don qui correspond au coup.
 
 Le texte d’origine de la formule et de ses exemples : {{formule-des-degats}}.
-', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/les-neuf-alignements', 'guide', 'les-neuf-alignements', 'Les neuf alignements', 'les-neuf-alignements', 'Les neuf alignements sont formés par la combinaison des deux axes d''alignement.', NULL, 'Les neuf alignements sont formés par la combinaison des deux axes d’alignement. Ils ne constituent pas des personnalités prédéfinies : deux personnages partageant le même alignement peuvent avoir des caractères, des valeurs et des façons d’agir très différentes.
-
-L’alignement représente avant tout la philosophie qui ressort des choix du personnage.
-
-## Loyal Bon
-
-Le Loyal Bon cherche à faire le bien tout en accordant une grande importance à l’ordre, au devoir et au collectif. Il considère généralement que les règles et les institutions peuvent protéger les plus faibles et permettre à une société juste de fonctionner.
-
-Il respecte ses engagements, accorde de l’importance à la confiance et accepte volontiers de faire des sacrifices personnels pour le bien des autres. Il peut combattre l’injustice avec détermination, tout en cherchant à préserver la vie et la dignité de ceux qu’il affronte lorsque cela est possible.
-
-Il possède un fort sens de la moralité et un fort attachement aux règles.
-
-Un Loyal Bon n’est pas obligé d’obéir à une loi qu’il considère profondément injuste. Il peut au contraire chercher à la modifier ou à la combattre, mais il cherchera généralement à le faire selon des principes qu’il considère justes.
-
-Dans ses formes extrêmes, le Loyal Bon peut devenir intransigeant, considérant sa conception du Bien et de la justice comme supérieure à celle des autres.
-
-***Exemple :***
-
-| Façon de se comporter possible | Réflexion/Question possible |
-| :---: | :---: |
-| Défend les innocents, respecte son serment et considère son devoir comme un moyen de protéger ceux qui ne peuvent pas se défendre eux-mêmes. <br><br>Suit une discipline stricte et un code de conduite qu’il s’impose afin de maîtriser ses propres instincts et de pouvoir consacrer sa vie aux autres. <br><br>Cherche à faire respecter une justice équitable, mais refuse d’appliquer aveuglément une loi lorsqu’elle condamnerait injustement un innocent. | *« Cette loi est injuste, mais je ne vais pas simplement la bafouer. Je vais trouver un moyen de la faire changer. »* <br>*<br>« Il a commis un crime, mais il n’est pas nécessaire de le tuer. S’il peut être neutralisé autrement, épargnons sa vie. »* <br>*<br>« J’ai promis de protéger ces gens. Même si personne ne vient m’aider, je resterai jusqu’au bout. »* |
-
-## Loyal Neutre
-
-Le Loyal Neutre accorde la priorité à l’ordre, au devoir et au fonctionnement du collectif, sans que le Bien ou le Mal ne constitue nécessairement sa principale préoccupation.
-
-Il respecte les règles, les traditions, les engagements et la hiérarchie lorsqu’il les considère légitimes. Il peut accepter des contraintes personnelles importantes au nom de son devoir et attend généralement la même discipline des autres.
-
-Il n’est cependant pas forcément attaché à une loi particulière : il peut soutenir ou combattre une règle selon la place qu’elle occupe dans l’ordre qu’il défend.
-
-Dans ses formes extrêmes, le Loyal Neutre peut devenir rigide, accordant tellement d’importance à l’ordre qu’il en vient à négliger les individus au nom du système.
-
-***Exemple :***
-
-| Façon de se comporter possible | Réflexion/Question possible |
-| :---: | :---: |
-| La discipline, la chaîne de commandement et le devoir passent avant ses préférences personnelles. <br><br>Préserve les coutumes de son peuple, convaincu qu’elles sont essentielles à son identité et à sa cohésion. <br><br>Applique les règles avec sérieux et impartialité, considérant que le système ne peut fonctionner si chacun décide individuellement quelles règles respecter. | *« Je n’approuve peut-être pas cet ordre, mais c’est mon supérieur et j’ai accepté de servir sous ses ordres. »* <br>*<br>« Si chacun décide quelles lois il respecte, nous n’avons plus de société. »* <br>*<br>« Je dois tenir ma parole. Que cela m’arrange ou non n’a aucune importance. »* |
-
-## Loyal Mauvais
-
-Le Loyal Mauvais cherche à satisfaire ses propres intérêts tout en s’appuyant sur l’ordre, la hiérarchie et les règles.
-
-Il peut être discipliné, fiable et respecter scrupuleusement sa parole. Il ne voit cependant pas nécessairement ces qualités comme des moyens de protéger les autres, mais comme des principes utiles pour maintenir une structure dont il peut tirer profit.
-
-Il peut accepter de faire souffrir ou de sacrifier certaines personnes lorsque cela sert ses objectifs, particulièrement lorsqu’il considère que leur sacrifice est nécessaire au maintien de l’ordre ou à la réussite de son groupe.
-
-Un Loyal Mauvais n’est pas nécessairement cruel ou violent. Il peut préférer une solution légale, organisée et efficace à une démonstration de force.
-
-Dans ses formes extrêmes, il peut considérer que la domination et la hiérarchie sont naturelles, et que certains individus ou groupes ont davantage de valeur ou de droits que d’autres.
-
-***Exemple :***
-
-| Façon de se comporter possible | Réflexion/Question possible |
-| :---: | :---: |
-| Maintient une société extrêmement hiérarchisée et considère que la peur et l’autorité sont nécessaires pour empêcher le chaos. <br><br>Respecte scrupuleusement les procédures, mais utilise sa position et les lois pour favoriser ses propres intérêts. <br><br>Est profondément loyal envers son royaume et sa hiérarchie, mais considère que les individus peuvent être sacrifiés lorsque les intérêts du collectif l’exigent. | *« La loi est la même pour tout le monde. S’il doit être exécuté, alors il sera exécuté. »* <br>*<br>« Je pourrais trahir mon supérieur, mais si je commence à le faire, pourquoi mes hommes resteraient-ils loyaux envers moi ? »* <br>*<br>« Je préfère gouverner par la peur que de laisser le chaos s’installer. Au moins, tout le monde connaît sa place. »* |
-
-## Neutre Bon
-
-Le Neutre Bon cherche avant tout à faire le bien et à protéger les autres, sans accorder une importance particulière à l’ordre ou à la liberté.
-
-Il peut respecter les lois lorsqu’elles lui permettent d’aider les autres, mais n’hésitera pas à les contourner lorsqu’elles deviennent un obstacle. Il peut également accepter certaines contraintes lorsqu’elles sont utiles, sans pour autant considérer qu’elles doivent être respectées par principe.
-
-Il accorde généralement une grande importance à la compassion, au pardon, à la générosité et à la seconde chance.
-
-Dans ses formes extrêmes, le Neutre Bon peut devenir excessivement conciliant, au point de vouloir sauver ou pardonner quelqu’un alors que cela représente un danger important pour les autres.
-
-***Exemple :***
-
-| Façon de se comporter possible | Réflexion/Question possible |
-| :---: | :---: |
-| Aide toute personne qui en a besoin, sans se soucier de son statut, de ses origines ou de son appartenance à une faction. <br><br>Intervient lorsqu’il voit quelqu’un en danger, même si aucune loi ne lui impose de le faire. <br><br>Cherche avant tout à résoudre les conflits et à éviter les souffrances inutiles, quitte à contourner certaines règles pour y parvenir. | *« Cette règle existe pour protéger les gens, alors je la respecterai. Mais si elle les met en danger, je passerai outre. »* <br>*<br>« Je ne sais pas s’il mérite une seconde chance, mais tant que je peux lui en donner une sans mettre les autres en danger, je le ferai. »* <br>*<br>« Peu importe qui a raison ou qui a l’autorité. Il y a quelqu’un qui souffre et je peux l’aider. »* |
-
-## Neutre
-
-Le Neutre ne place aucune des quatre tendances au-dessus des autres.
-
-Il agit principalement en fonction des circonstances, de ses objectifs et de ses propres priorités. Il peut respecter une règle lorsqu’elle lui semble utile, la contourner lorsqu’elle devient gênante, aider quelqu’un lorsqu’il en ressent le besoin ou privilégier ses propres intérêts lorsque le coût du sacrifice lui paraît trop important.
-
-Le Neutre n’est pas nécessairement indifférent, égoïste ou dépourvu de convictions. Il peut simplement refuser de faire d’une philosophie particulière une règle absolue de son existence.
-
-Dans ses formes extrêmes, il peut devenir opportuniste ou indécis, changeant régulièrement de position selon ce qui lui semble le plus avantageux.
-
-***Exemple :***
-
-| Façon de se comporter possible | Réflexion/Question possible |
-| :---: | :---: |
-| Accepte les contrats qui lui conviennent et aide ses employeurs tant que le risque reste acceptable. <br><br>Ne cherche ni la gloire ni la justice : il fait principalement ce qui lui permet de rester en vie.<br><br>Peut se montrer généreux, égoïste, loyal ou opportuniste selon les circonstances et les personnes impliquées. | *« Pourquoi risquer ma vie pour eux ? … Bon, d’accord, mais vous me devrez une faveur. »* <br>*<br>« Cette règle m’est utile aujourd’hui, alors je vais la respecter. Demain, on verra. »* <br>*<br>« Je ne cherche ni à sauver le monde ni à le détruire. Je veux simplement arriver vivant au bout de cette aventure. »* |
-
-## Neutre Mauvais
-
-Le Neutre Mauvais place ses propres intérêts au-dessus de ceux des autres, sans attachement particulier à l’ordre ou au chaos.
-
-Il peut respecter les règles lorsqu’elles lui sont utiles et les enfreindre lorsqu’elles représentent un obstacle. De la même manière, il peut coopérer avec les autres lorsque cela lui profite, sans ressentir d’obligation particulière envers eux.
-
-Il n’a généralement aucun problème à mentir, manipuler, voler ou blesser autrui si cela lui permet d’obtenir ce qu’il désire.
-
-Contrairement au Chaotique Mauvais, il n’a pas besoin de provoquer le désordre ou de suivre ses émotions. Il privilégie souvent l’efficacité et son propre intérêt.
-
-Dans ses formes extrêmes, il peut devenir profondément égoïste et considérer les autres uniquement comme des outils permettant de satisfaire ses objectifs.
-
-***Exemple :***
-
-| Façon de se comporter possible | Réflexion/Question possible |
-| :---: | :---: |
-| Vole, ment et manipule lorsqu’il y trouve son intérêt, sans chercher particulièrement à provoquer le chaos. <br><br>Exploite les besoins des autres et profite de leur faiblesse pour maximiser ses bénéfices. <br><br>Tue pour obtenir de l’argent ou atteindre un objectif, sans ressentir le besoin de faire souffrir ses victimes ou de provoquer davantage de désordre. | *« Je pourrais l’aider, mais qu’est-ce que j’y gagne ? »* <br>*<br>« S’il faut sacrifier quelqu’un pour réussir, ce sera lui. Je ne vais certainement pas me sacrifier à sa place. »* <br>*<br>« Je me fiche que ce soit légal. Si personne ne peut m’arrêter et que j’y gagne quelque chose, pourquoi m’en priver ? »* |
-
-## Chaotique Bon
-
-Le Chaotique Bon cherche à faire le bien tout en accordant une grande importance à la liberté et au libre arbitre.
-
-Il n’accepte pas qu’une loi, une tradition ou une autorité soit une raison suffisante pour empêcher quelqu’un d’être aidé. Il peut donc désobéir ouvertement lorsqu’il estime qu’une règle nuit aux personnes qu’il cherche à protéger.
-
-Il suit souvent ses convictions, ses émotions ou son instinct et peut prendre des décisions spontanées lorsqu’une personne est en danger. Il accepte plus facilement que les Loyaux de prendre des risques ou de sortir des méthodes établies pour faire ce qu’il considère comme juste.
-
-Dans ses formes extrêmes, le Chaotique Bon peut devenir téméraire, convaincu que ses bonnes intentions justifient de prendre des décisions sans suffisamment considérer leurs conséquences.
-
-***Exemple :***
-
-| Façon de se comporter possible | Réflexion/Question possible |
-| :---: | :---: |
-| Combat les autorités qu’il considère oppressives et libère ceux qu’elles maintiennent sous leur contrôle. <br><br>Enfreint régulièrement les lois pour aider les personnes qu’il estime victimes d’un système injuste. <br><br>Suit son instinct et intervient spontanément lorsqu’il voit quelqu’un en danger, même si cela ruine les plans du groupe. | *« Ils disent que c’est interdit ? Alors qu’ils viennent m’arrêter après que j’ai sauvé ces gens. »* <br>*<br>« Je sais que ce n’était pas le plan, mais cette personne avait besoin de moi. Je n’allais quand même pas la laisser mourir. »* <br>*<br>« Je préfère désobéir et faire ce que je pense juste plutôt que regarder quelqu’un souffrir parce que personne n’ose enfreindre les règles. »* |
-
-## Chaotique Neutre
-
-Le Chaotique Neutre place la liberté individuelle au-dessus de l’ordre et des contraintes imposées par le collectif.
-
-Il refuse généralement qu’une autorité décide de la manière dont il doit vivre et préfère tracer sa propre route. Il peut suivre ses émotions, ses convictions ou simplement ses envies, et s’adapter rapidement lorsque les circonstances changent.
-
-Il n’est pas nécessairement hostile aux autres et peut être profondément attaché à certaines personnes. Il considère cependant que chacun doit rester libre de faire ses propres choix.
-
-Dans ses formes extrêmes, le Chaotique Neutre peut devenir irresponsable ou individualiste, refusant toute contrainte même lorsqu’elle serait nécessaire au bien du groupe ou de ses proches.
-
-***Exemple :***
-
-| Façon de se comporter possible | Réflexion/Question possible |
-| :---: | :---: |
-| Refuse de s’attacher à une société ou à une institution et voyage constamment pour rester libre. <br><br>Déteste recevoir des ordres et préfère toujours trouver sa propre manière de résoudre un problème. <br><br>Suit ses propres convictions et son propre mode de vie, sans se soucier de savoir si celui-ci correspond aux attentes de la société. | *« Pourquoi devrais-je vivre comme ils l’ont décidé ? Je choisirai moi-même ce que je veux devenir. »* <br>*<br>« Ce n’est pas parce que j’ai accepté de les accompagner que je leur appartiens. Si je veux partir, je partirai. »* <br>*<br>« Cette règle ne me convient pas. Je peux soit la contourner, soit partir. Dans tous les cas, personne ne décidera pour moi. »* |
-
-## Chaotique Mauvais
-
-Le Chaotique Mauvais place sa liberté et ses propres désirs au-dessus de toute considération pour les autres.
-
-Il rejette les règles et les autorités qui limitent sa volonté et n’hésite pas à faire souffrir autrui pour obtenir ce qu’il souhaite. Il peut agir sous l’influence de ses émotions, de sa colère ou de ses instincts et accepte plus facilement de prendre des risques importants pour satisfaire ses objectifs.
-
-Contrairement au Neutre Mauvais, il peut rejeter une solution efficace simplement parce qu’elle implique de se soumettre à quelqu’un ou à une règle.
-
-Dans ses formes extrêmes, le Chaotique Mauvais peut devenir destructeur et sadique, allant jusqu’à faire souffrir ou détruire sans bénéfice réel, simplement parce qu’il en a le pouvoir ou qu’il y trouve du plaisir.
-
-***Exemple :***
-
-| Façon de se comporter possible | Réflexion/Question possible |
-| :---: | :---: |
-| Prend ce qu’il veut par la force et refuse toute autorité susceptible de limiter ses désirs. <br><br>Sème la violence et le chaos parce qu’il considère que personne ne devrait pouvoir lui imposer de limites. <br><br>Utilise sa liberté pour satisfaire ses pulsions et fait volontairement souffrir les autres lorsqu’il en retire du plaisir. | *« Pourquoi devrais-je respecter cette loi ? Qui va m’en empêcher ? »* <br>*<br>« Je pourrais simplement négocier avec lui… mais j’ai envie de lui faire payer. »* <br>*<br>« Je préfère tout perdre plutôt que de laisser quelqu’un m’imposer ce que je dois faire. »* |
-
-**L’alignement n’impose pas au personnage sa manière d’agir. Il permet de représenter les tendances qui se dégagent de ses choix.**
 ', 'draft', 'docs', 'Google Doc « Règle du jeu/Guide pour MJ - Maverick »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/les-pieges', 'guide', 'les-pieges', 'Les pièges', 'les-pieges', 'Les pièges sont un danger plus ou moins répandu dans les donjons ou ailleurs.', NULL, 'Les pièges sont un danger plus ou moins répandu dans les donjons ou ailleurs. Ils ont pour objectif de protéger les objets de valeur ou arrêter les intrus.
 

@@ -83,9 +83,11 @@ test('import : les catégories des mots-clés sont celles du registre, plus Clas
   // les mots-clés d'une migration postérieure (0120 : Fongoïde et Gémidien, épinglés par test/db-0120-races-fongoide-gemidien.test.mjs) mis à part ;
   // de la 0121 (R258 (7), R268), seule la catégorie que son registre `mots_cles` leur donne (épinglée par test/db-0121-maj-decembre-suites.test.mjs)
   const posterieurs = new Set(Object.values(MOTS_CLES_DE_LA_0120));
-  const deLa0121 = new Set(lireRegistre('0121-maj-decembre-suites').mots_cles.map((m) => `${m.id}:${m.categorie_id}`));
+  // de même la 0123 (les neuf alignements, épinglés par test/db-0123-fusion-pages-alignement.test.mjs : registre `mots_cles_crees`)
+  const deLa0121EtLa0123 = new Set([...lireRegistre('0121-maj-decembre-suites').mots_cles, ...lireRegistre('0123-fusion-pages-alignement').mots_cles_crees]
+    .map((m) => `${m.id}:${m.categorie_id}`));
   const aLImport = h.lignesDImport('mot_cle_categorie').filter((l) => !posterieurs.has(l.mot_cle_id)).map((l) => `${l.mot_cle_id}:${l.categorie_id}`)
-    .filter((l) => !deLa0121.has(l)).sort();
+    .filter((l) => !deLa0121EtLa0123.has(l)).sort();
   assert.deepEqual(aLImport, attendu);
 });
 

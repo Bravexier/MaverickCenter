@@ -1,0 +1,46 @@
+/* Sections d'une page du guide en onglets (lib/guide-onglets.mjs, components/guide/PageDuGuide.astro, onglets partagés : components/Onglets.astro), insérée
+   en ?raw sur la page qui en a seulement. Aujourd'hui les neuf alignements de « Alignement » : la barre en trois colonnes, comme la grille des alignements
+   (Loyal, Neutre, Chaotique en colonnes ; Bon, Neutre, Mauvais en lignes), chaque onglet avec la pastille de sa couleur ; l'onglet ouvert prend sa couleur
+   (la classe de l'alignement : --couleur, --couleur-texte, lib/palette-css.mjs, texte choisi par texteSurCouleur) et le panneau la reprend au filet, aux
+   tableaux et aux infobulles. Sans JavaScript (et à l'impression), les sections se suivent, chacune sous son intertitre. */
+.onglets-guide { margin: 1.2rem 0; }
+.onglets-guide__liste { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.35rem; margin: 0 0 1rem; }
+.onglets-guide__onglet {
+  display: flex; align-items: center; gap: 0.45rem; min-width: 0; padding: 0.45rem 0.6rem;
+  border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); color: var(--text);
+  font-size: var(--fs-md); font-weight: 600; line-height: 1.2; text-decoration: none; overflow-wrap: break-word;
+}
+.onglets-guide__onglet::before {
+  content: ''; flex: none; width: 0.75rem; height: 0.75rem; border-radius: 50%;
+  background: var(--couleur); box-shadow: 0 0 0 1px color-mix(in srgb, var(--text) 30%, transparent);
+}
+.onglets-guide__onglet:hover { border-color: color-mix(in srgb, var(--couleur) 60%, var(--border)); background: color-mix(in srgb, var(--couleur) 10%, var(--surface)); }
+.onglets-guide__onglet:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* onglet ouvert : fond de sa couleur et anneau mêlé au texte, visible même pour une couleur proche du fond */
+html.js .onglets-guide__onglet.is-active {
+  background: var(--couleur); color: var(--couleur-texte);
+  border-color: transparent; box-shadow: 0 0 0 2px color-mix(in srgb, var(--couleur) 50%, var(--text));
+}
+html.js .onglets-guide__onglet.is-active::before { box-shadow: 0 0 0 2px var(--couleur-texte); }
+
+.onglets-guide__panneau {
+  margin-top: 1rem; scroll-margin-top: 1rem; border-top: 4px solid var(--couleur);
+  /* le panneau porte la classe de sa couleur : tableaux et infobulles la prennent (gabarit commun styles/global/tableaux.css, styles/magie/tooltips.css) */
+  --tab: var(--couleur); --tab-soft: color-mix(in srgb, var(--couleur) 12%, var(--surface)); --tab-line: color-mix(in srgb, var(--couleur) 40%, var(--border));
+  --mag: var(--couleur); --mag-soft: var(--tab-soft); --mag-line: var(--tab-line);
+}
+.onglets-guide__panneau > h3 { margin-top: 0.8rem; padding-bottom: 0.3rem; border-bottom: 1px solid var(--tab-line); }
+html.js .onglets-guide__panneau:not(.is-active) { display: none; }
+
+@media (max-width: 44rem) {
+  .onglets-guide__liste { gap: 0.3rem; }
+  .onglets-guide__onglet { gap: 0.35rem; padding: 0.4rem 0.45rem; font-size: var(--fs-sm); }
+  .onglets-guide__onglet::before { width: 0.6rem; height: 0.6rem; }
+}
+@media (max-width: 30rem) {
+  .onglets-guide__liste { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media print {
+  .onglets-guide__liste { display: none; }
+  html.js .onglets-guide__panneau:not(.is-active) { display: block; }
+}

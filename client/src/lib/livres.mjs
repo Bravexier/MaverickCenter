@@ -171,12 +171,16 @@ export const NOMS_RESERVES = Object.freeze(['artisanat', 'avancees', 'glossaire'
  *   - « Résistance/Faiblesse Magie » dans « Résistances et faiblesses » (R184, § 1 B 5).
  *   - « Les situations avancées » dans « La prise en tenaille et zone d'influence » (R185 (3), P11) : chacune de ses sections est devenue une page, où
  *     mène son ancienne ancre (PAGES_ECLATEES_DU_GUIDE).
+ *   - « Les neuf alignements » dans « Alignement » (migration 0123, demande du propriétaire : « Les pages … /regles/alignement/ et
+ *     /regles/les-neuf-alignements/ font doublon. Réunis toutes les informations dans la page /regles/alignement/ »), sous l'intertitre
+ *     `{#les-neuf-alignements}` ; ses neuf sections, `{#loyal-bon}`…, y sont les onglets de la page (lib/guide-onglets.mjs).
  * Les six étapes de la création, fusionnées dans « Créer son personnage » du 2026-10-18 à R184, sont redevenues des pages, sous leur id.
  */
 export const PAGES_ABSORBEES = Object.freeze({
   'guide/le-jeu-de-role': 'guide/bienvenue',
   'guide/resistance-faiblesse-magie': 'guide/resistances-et-faiblesses',
   'guide/situations-avancees': 'guide/prise-en-tenaille-et-zone-d-influence',
+  'guide/les-neuf-alignements': 'guide/alignement',
 });
 
 /**
@@ -187,6 +191,7 @@ export const PAGES_ABSORBEES = Object.freeze({
  */
 export const ANCRES_DES_PAGES_ABSORBEES = Object.freeze({
   'guide/le-jeu-de-role': 'le-jeu-de-rôle-comment-ça-marche-',
+  'guide/les-neuf-alignements': 'les-neuf-alignements', // ancre figée (lib/ancres-figees.mjs) : l'intertitre garde son id quand il est renommé
 });
 
 /** L'adresse où mène une page fusionnée (`ancienne`, une clé de PAGES_ABSORBEES) : la page qui l'absorbe (`cheminDe` : lib/metiers.mjs#cheminDePage), à son ancre s'il y en a une. */
@@ -293,6 +298,13 @@ const ANCIENNES_REGLES_AVANCEES = Object.freeze([
   'meteo', 'resistance-faiblesse-magie', 'situations-avancees', 'utiliser-ce-wiki', 'vitesse-et-portee',
 ]);
 
+/**
+ * Les pages des onglets des Règles qui avaient leur adresse à plat (/regles/<slug>/, `adresseDuGuide`) avant d'être fusionnées dans une autre
+ * (PAGES_ABSORBEES) : leur ancienne adresse y mène, à l'ancre de la section (ou à celle que l'ancienne adresse écrit : « /regles/les-neuf-alignements/#loyal-bon »
+ * mène à « /regles/alignement/#loyal-bon »). Les pages fusionnées plus tôt n'en ont pas : elles étaient encore sous /regles/avancees/ ou /decouvrir/.
+ */
+const PAGES_DES_REGLES_ABSORBEES = Object.freeze(['guide/les-neuf-alignements']);
+
 /** Les six étapes de la création : pages du 2026-10-16 au 2026-10-18 (/decouvrir/<slug>/), puis fusionnées, de nouveau des pages depuis R184. */
 const ETAPES_DE_LA_CREATION = PAGES_DE_LA_CREATION.pages.slice(1);
 
@@ -305,7 +317,8 @@ const ETAPES_DE_LA_CREATION = PAGES_DE_LA_CREATION.pages.slice(1);
  *   - les Règles avancées (R184 : plus de rubrique) : /regles/avancees/ mène au Mode Hyper, sa page d'ouverture, et chacune de ses pages
  *     (ANCIENNES_REGLES_AVANCEES) à sa nouvelle adresse ;
  *   - une page dont l'adresse a changé sans son identifiant (ADRESSES_RENOMMEES_DU_GUIDE) : son adresse tirée de l'identifiant, /regles/<slug>/ (R228 :
- *     /regles/liste-des-effets-mode-super/ mène à /regles/mode-super/).
+ *     /regles/liste-des-effets-mode-super/ mène à /regles/mode-super/) ;
+ *   - une page des Règles fusionnée depuis dans une autre (PAGES_DES_REGLES_ABSORBEES : /regles/les-neuf-alignements/, migration 0123).
  * « Créer son personnage » (/decouvrir/creer-son-personnage/), découpée, et « Les situations avancées » sont dans PAGES_ECLATEES_DU_GUIDE. La page
  * « Liens » (/decouvrir/liens/), supprimée le 2026-10-22, n'est plus renvoyée nulle part (réponse du propriétaire du 2026-10-23 : « supprimer ce lien »).
  */
@@ -316,6 +329,7 @@ export const ADRESSES_DU_PLAN_PRECEDENT = Object.freeze({
   'regles/avancees/': 'guide/le-mode-hyper',
   ...Object.fromEntries(ANCIENNES_REGLES_AVANCEES.filter((slug) => slug !== 'situations-avancees').map((slug) => [`regles/avancees/${slug}/`, `guide/${slug}`])),
   ...Object.fromEntries(Object.keys(ADRESSES_RENOMMEES_DU_GUIDE).map((id) => [`${CHEMIN_DES_REGLES}${slugDe(id)}/`, id])),
+  ...Object.fromEntries(PAGES_DES_REGLES_ABSORBEES.map((id) => [`${CHEMIN_DES_REGLES}${slugDe(id)}/`, id])),
 });
 
 /**

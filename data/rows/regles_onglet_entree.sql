@@ -44,7 +44,6 @@ INSERT INTO regles_onglet_entree (id, onglet_id, rang, page_id, libelle, adresse
 INSERT INTO regles_onglet_entree (id, onglet_id, rang, page_id, libelle, adresse) VALUES ('page:guide/les-attaques-d-opportunite', 'combats', 6, 'guide/les-attaques-d-opportunite', NULL, NULL);
 INSERT INTO regles_onglet_entree (id, onglet_id, rang, page_id, libelle, adresse) VALUES ('page:guide/les-attaques-discretes', 'combats', 7, 'guide/les-attaques-discretes', NULL, NULL);
 INSERT INTO regles_onglet_entree (id, onglet_id, rang, page_id, libelle, adresse) VALUES ('page:guide/les-degats', 'combats', 14, 'guide/les-degats', NULL, NULL);
-INSERT INTO regles_onglet_entree (id, onglet_id, rang, page_id, libelle, adresse) VALUES ('page:guide/les-neuf-alignements', 'fiche-de-personnage', 23, 'guide/les-neuf-alignements', NULL, NULL);
 INSERT INTO regles_onglet_entree (id, onglet_id, rang, page_id, libelle, adresse) VALUES ('page:guide/les-pieges', 'exploration', 8, 'guide/les-pieges', NULL, NULL);
 INSERT INTO regles_onglet_entree (id, onglet_id, rang, page_id, libelle, adresse) VALUES ('page:guide/les-portes', 'exploration', 10, 'guide/les-portes', NULL, NULL);
 INSERT INTO regles_onglet_entree (id, onglet_id, rang, page_id, libelle, adresse) VALUES ('page:guide/les-postures', 'combats', 16, 'guide/les-postures', NULL, NULL);

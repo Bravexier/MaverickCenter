@@ -324,7 +324,9 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
   la tuile (quand on a la définition complète {{X:}} ) et l'habillage de l'infobulle ») : sa balise (le texte, la couleur mêlée de 60 % de noir en
   clair, de 45 % de blanc en sombre, la formule de `--mag-readable`), la tuile du mode complet (filet et fond pâle), l'habillage de sa bulle (filet,
   fond, titre : `--bulle-teinte`), et **la page vers laquelle mène son adresse** (réponse Q5, `lib/couleur-de-la-page.mjs#classeDeLaPage` : le mot-clé
-  coloré qui y mène, ancre ignorée, le premier par libellé ; à défaut, la couleur que la page avait). Les gabarits des magies, des classes, des races
+  coloré qui y mène, sans ancre, le premier par libellé ; à défaut, la couleur que la page avait ; un mot-clé dont l'adresse a une ancre, comme les
+  neuf alignements de `/regles/alignement/#loyal-bon`, ne colore pas la page : réponse du propriétaire du 2026-11-13, « Ancre = pas de couleur », R271
+  ; il garde sa couleur dans le texte). Les gabarits des magies, des classes, des races
   et du guide posent cette classe à la place de la leur ; toute autre page la reçoit sur son `<main>` (`main.page-coloree` : infobulles, tableaux,
   filet du titre), seulement quand un mot-clé coloré y mène. Les 90 mots-clés colorés de la migration reprennent chacun la couleur de sa page : le rendu
   ne change pas (« il ne faut pas de changement par rapport à avant en terme de résultat » ; `test/palette-css.test.mjs`, `test/glossaire-html.test.mjs`).
@@ -1463,6 +1465,20 @@ dev (un commit la change) ni cherchée par la recherche.
   contenu quand il est nommé (`ANCRES_DES_PAGES_ABSORBEES` : `#le-jeu-de-rôle-comment-ça-marche-` ; un intertitre renommé change l'ancre,
   `test/livres.test.mjs` et `test/site-html.test.mjs` le vérifient), requête et ancre écrite gardées. Les six étapes de la création, fusionnées dans
   « Créer son personnage » du 2026-10-18 à R184, sont redevenues des pages sous leur id (`/regles/<étape>/`).
+  « Les neuf alignements » est fondue dans « Alignement » (migration `0123`, demande du propriétaire : « font doublon. Réunis toutes les informations
+  dans la page /regles/alignement/ ») : `/regles/les-neuf-alignements/` (son adresse à plat, ajoutée aux renvois figés : `PAGES_DES_REGLES_ABSORBEES`),
+  `/guide/les-neuf-alignements/` et `/regles/avancees/les-neuf-alignements/` mènent à `/regles/alignement/#les-neuf-alignements` (ancre figée), l'ancre
+  écrite l'emportant (`/regles/les-neuf-alignements/#loyal-bon` → `/regles/alignement/#loyal-bon`).
+- **Des sections en onglets** (`lib/guide-onglets.mjs`, `components/guide/PageDuGuide.astro`, `styles/guide/onglets.css`, `test/guide-onglets.test.mjs`,
+  `test/guide-html.test.mjs`) : sur « Alignement », les neuf sections `### Loyal Bon {#loyal-bon}`… sont les onglets d'une barre posée sous
+  l'introduction (demande du propriétaire : « Liste les 9 allignements sous forme de tableau (ou de tuile) à onglet ou chaque onglet a la couleur de
+  l'alignement »). Le déclencheur est l'**ancre figée** d'un intertitre `###` qui est celle d'un alignement de la palette (`COULEURS_ALIGNEMENTS`,
+  `idDeCouleur`), jamais son texte, qui se renomme sur le site de dev. Chaque onglet porte la classe `couleur-alignement-<id>` (famille `alignement`,
+  feuille `cssDesAlignements()`), son panneau (`section#<ancre>`, qui garde tout son Markdown rendu) la même ; l'intertitre du panneau perd son `id`
+  (l'ancre est celle du panneau : une adresse `#loyal-bon` ou un mot-clé ouvre l'onglet) mais garde `data-ancre-figee`. Le nom de l'onglet est celui de
+  l'intertitre. Le dernier paragraphe du dernier onglet, d'une ligne et entièrement en gras, sort des panneaux et suit la barre (il parle de
+  l'ensemble). Le script est celui du composant `Onglets.astro`, posé une fois ; sans JavaScript, les sections se suivent. Mode modification : la barre
+  porte `data-ed-ignorer`, le groupe et les panneaux sont transparents pour `versMarkdown` (aucune perte).
 - **Pages supprimées sans renvoi** (`PAGES_SUPPRIMEES`, R184 (9), R185 (6)) : « Les documents des règles », « En résumé : déroulement d'un tour »,
   « Aide-mémoire », « Mode Hyper (Magie) » ; puis « Postures », « Les boss et leurs postures » et « Le Mode Super » (migration `0094`, demande du
   propriétaire du 2026-11-06 : « inutile ou doublon » ; « Le Mode Hyper » reste), et la « Liste des effets mode hyper » (R187 (1), migration `0095`,

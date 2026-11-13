@@ -310,6 +310,13 @@ export const cssDeLaPalette = () => cssDesFamilles(FAMILLES_DE_CHAQUE_PAGE) + cs
  */
 export const cssDesParties = () => cssDesFamilles([FAMILLE_DES_PARTIES]);
 
+/**
+ * La feuille des alignements (famille `alignement`, d'une zone) : celle qu'émet la page du guide dont les neuf alignements sont en onglets
+ * (components/guide/PageDuGuide.astro, lib/guide-onglets.mjs), comme la fiche (FAMILLES_DE_LA_FICHE) ; la feuille des mots-clés colorés l'a aussi quand
+ * un mot-clé la nomme, mais la page ne s'y fie pas.
+ */
+export const cssDesAlignements = () => cssDesFamilles(['alignement']);
+
 /** Les classes que la palette pose sur chaque page (familles de chaque page et seconds rangs des magies). */
 export const classesDeLaPalette = () =>
   new Set([...couleursDeLaPalette(FAMILLES_DE_CHAQUE_PAGE), ...secondsRangsDesMagies()].map((c) => c.classe));

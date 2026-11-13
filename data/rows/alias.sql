@@ -49,14 +49,6 @@ INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/l-embuscade', 0, '
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/le-mode-hyper', 0, 'Le Mode Hyper et le Mode Super', 'le-mode-hyper-et-le-mode-super');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/les-attaques-d-opportunite', 0, 'Les attaques d''opportunité', 'les-attaques-dopportunite');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/les-attaques-discretes', 0, 'Les attaques discrètes', 'les-attaques-discretes');
-INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/les-neuf-alignements', 0, 'Loyal Bon', 'loyal-bon');
-INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/les-neuf-alignements', 1, 'Loyal Neutre', 'loyal-neutre');
-INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/les-neuf-alignements', 2, 'Loyal Mauvais', 'loyal-mauvais');
-INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/les-neuf-alignements', 3, 'Neutre Bon', 'neutre-bon');
-INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/les-neuf-alignements', 4, 'Neutre Mauvais', 'neutre-mauvais');
-INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/les-neuf-alignements', 5, 'Chaotique Bon', 'chaotique-bon');
-INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/les-neuf-alignements', 6, 'Chaotique Neutre', 'chaotique-neutre');
-INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/les-neuf-alignements', 7, 'Chaotique Mauvais', 'chaotique-mauvais');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/les-pieges', 0, 'Types de pièges possible', 'types-de-pieges-possible');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/les-pieges', 1, 'Déclencheur', 'declencheur');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/les-portes', 0, 'Les herses', 'les-herses');

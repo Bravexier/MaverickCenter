@@ -2160,6 +2160,7 @@ test('mots-clés colorés (migration 0098) : la feuille de chaque page, d’un p
 
 test('mots-clés colorés (migration 0098) : « rendu identique » — chaque page vers laquelle mène un mot-clé coloré garde la classe qu’elle avait (magie, catégorie de classe, nature de race, partie du guide)', async () => {
   const { classeDeLaPage } = await import('../src/lib/couleur-de-la-page.mjs');
+  const { decouperLAdresse, motCleDeLaPage } = await import('../src/lib/mots-cles-liens.mjs');
   const { chargerVocabulaire } = await import('../src/lib/mots-cles-db.mjs');
   const { racesParNature } = await import('../src/lib/races-db.mjs');
   const { cheminDePage } = await import('../src/lib/metiers.mjs');
@@ -2194,5 +2195,18 @@ test('mots-clés colorés (migration 0098) : « rendu identique » — chaque pa
   const coloresDImport = chargerVocabulaire(baseDImport()).filter((m) => m.couleur).length;
   assert.ok(coloresDImport >= 90, `${coloresDImport} mots-clés colorés à l’import`);
   assert.ok(parUnMotCle >= Math.min(1, colores.length), `${colores.length} mots-clés colorés, ${parUnMotCle} pages`);
-  assert.deepEqual(colores.filter((m) => m.url !== null && !pages.has(m.url)).map((m) => m.id), []);
+  // (un mot-clé dont l'adresse a une ancre mène à une section, il ne colore pas la page : réponse du propriétaire, « Ancre = pas de couleur », R271 ;
+  // lib/mots-cles-liens.mjs#motCleDeLaPage)
+  const sansAncre = (m) => !decouperLAdresse(m.url).ancre;
+  // un mot-clé que le site de dev a créé, coloré ou redirigé (source de ce qu'il modifie : les personnages du Lore, 2026-11) peut mener ailleurs ; sa
+  // page prend alors sa couleur (test/glossaire-html.test.mjs, « rendu identique »)
+  const { historiqueSite } = await import('../src/lib/historique-site.mjs');
+  const h = historiqueSite(db);
+  const parLeSite = (m) => h.creee('mot_cle', { id: m.id }) || h.modifiee('mot_cle', { id: m.id }, 'couleur') || h.modifiee('mot_cle', { id: m.id }, 'url');
+  assert.deepEqual(colores.filter((m) => m.url !== null && sansAncre(m) && !pages.has(m.url) && !parLeSite(m)).map((m) => m.id), []);
+  for (const m of colores.filter((x) => x.url !== null && !sansAncre(x))) {
+    const page = m.url.slice(0, m.url.indexOf('#'));
+    const choisi = motCleDeLaPage(vocabulaire, page);
+    assert.ok(!choisi || !decouperLAdresse(choisi.url).ancre, `${m.id} : le mot-clé qui colore ${page} n’a pas d’ancre`);
+  }
 });

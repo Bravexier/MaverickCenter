@@ -91,9 +91,10 @@ test('le middleware passe la base du site aux liens des mots-clés', async () =>
   assert.match(await sansBase.text(), /href="\/races\/elfe\/"/, 'sans base : la racine');
 });
 
-test('Q5 : la couleur d’une page est celle du mot-clé coloré qui y mène (ancre ignorée, base retirée), sinon la sienne d’avant ; sans mot-clé ni couleur d’avant, aucune', () => {
+test('Q5 et R271 : la couleur d’une page est celle du mot-clé coloré qui y mène sans ancre (base retirée), sinon la sienne d’avant ; sans mot-clé ni couleur d’avant, aucune', () => {
   assert.equal(classeDeLaPage(VOCABULAIRE, '/races/elfe/', 'couleur-race-hybride'), 'couleur-race-pure', 'le mot-clé l’emporte');
-  assert.equal(classeDeLaPage(VOCABULAIRE, '/MaverickCenter/magies/magie-du-feu/', 'couleur-magie-feu', { base: '/MaverickCenter/' }), `couleur-mot-cle-${ID.feu}`);
+  assert.equal(classeDeLaPage(VOCABULAIRE, '/MaverickCenter/magies/magie-du-feu/', 'couleur-magie-feu', { base: '/MaverickCenter/' }), 'couleur-magie-feu', 'R271 : un mot-clé qui mène à une section (#sorts) ne colore pas la page');
+  assert.equal(classeDeLaPage(VOCABULAIRE, '/MaverickCenter/races/elfe/', 'couleur-race-hybride', { base: '/MaverickCenter/' }), 'couleur-race-pure', 'la base retirée');
   assert.equal(classeDeLaPage(VOCABULAIRE, '/races/nain/', 'couleur-race-pure'), 'couleur-race-pure', 'un mot-clé sans couleur : la couleur d’avant');
   assert.equal(classeDeLaPage(VOCABULAIRE, '/regles/les-degats/'), null, 'ni l’un ni l’autre : l’accent du site');
   assert.equal(classeDeLaPage(null, '/races/elfe/', 'x'), 'x');

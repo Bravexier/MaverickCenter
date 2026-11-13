@@ -17,6 +17,12 @@ import { fonduParLa0122, retireeParLa0122 } from './aide-migration-0122.mjs';
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
 const PAGES = fileURLToPath(new URL('../src/pages/', import.meta.url));
 const REGISTRE = JSON.parse(readFileSync(join(RACINE, REGISTRE_DES_LIENS), 'utf8'));
+/** Les pages retirées par une migration postérieure à la 0098 et l'adresse que cette migration donne au mot-clé qui y menait (lues dans son registre). */
+const REPRISES_APRES_0098 = ['0123-fusion-pages-alignement'].flatMap((nom) => {
+  const r = JSON.parse(readFileSync(join(RACINE, 'data', 'migrations', `${nom}.json`), 'utf8'));
+  return r.pages_retirees.flatMap((p) => r.mots_cles_modifies.filter((u) => u.col === 'url' && cheminDeLAdresse(u.avant) === `/regles/${p.id.slice('guide/'.length)}/`)
+    .map((u) => ({ id: p.id, contenu_dans: p.contenu_dans, avant: u.avant, apres: u.apres })));
+});
 
 /** Les pages du site de dev seulement (et la page 404) : aucun mot-clé n'y mène. */
 const HORS_DES_ADRESSES = ['/404/', '/debug/', '/maintenance/', '/mise-a-jour/'];
@@ -79,8 +85,12 @@ test('migration 0098 : chaque adresse du registre est permise, et mène à la pa
   for (const m of REGISTRE.motsCles) {
     // la page « La montée de niveau » et son mot-clé, retirés et fondu depuis par la migration 0122 (son registre : aide-migration-0122.mjs)
     if (retireeParLa0122(m.page) || fonduParLa0122(m.id)) continue;
-    assert.equal(fauteDeLUrl(m.url, adresses), null, `${m.id} : ${m.url}`);
-    if (m.page) assert.equal(pageDeLAdresse(index, m.url), m.page, `${m.id} : ${m.url}`);
+    // une page du registre retirée depuis par une migration (0123 : « Les neuf alignements », fondue dans « Alignement ») : son mot-clé prend
+    // l'adresse que cette migration fixe (registre `mots_cles_modifies`, ancienne adresse = celle du registre), qui mène à la page qui l'accueille
+    const reprise = REPRISES_APRES_0098.find((r) => r.id === m.page && r.avant === m.url);
+    const url = reprise?.apres ?? m.url;
+    assert.equal(fauteDeLUrl(url, adresses), null, `${m.id} : ${url}`);
+    if (m.page) assert.equal(pageDeLAdresse(index, url), reprise?.contenu_dans ?? m.page, `${m.id} : ${url}`);
   }
 });
 

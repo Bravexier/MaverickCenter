@@ -9,8 +9,9 @@
 //     classe, lib/palette-css.mjs#idDeCouleur) ou « #rrggbb » (minuscules). La classe du mot-clé : celle de la palette pour une référence
 //     (« couleur-classe-melee »), « couleur-mot-cle-<id> » pour une couleur écrite (sa règle : lib/palette-css.mjs#cssDesMotsCles). Qu'une référence
 //     nomme une couleur de la palette se lit dans la palette (lib/palette-css.mjs#fauteDeLaCouleur) : ce module ne la lit pas.
-//   - La page d'un mot-clé (motCleDeLaPage, réponse Q5 du propriétaire) : parmi les mots-clés COLORÉS dont l'adresse mène au chemin de la page, ancre
-//     ignorée, le premier par ordre alphabétique du libellé.
+//   - La page d'un mot-clé (motCleDeLaPage, réponse Q5 du propriétaire) : parmi les mots-clés COLORÉS dont l'adresse mène au chemin de la page, le
+//     premier par ordre alphabétique du libellé. Un mot-clé dont l'adresse a une ancre (« /regles/alignement/#loyal-bon ») n'en fait pas partie : il
+//     mène à une section, pas à la page (nouvelle lecture de Q5 : R271).
 // Sans aucune dépendance (ni la palette, ni les balises) : importable par un script de page (skill ui-couleurs : un script de page n'importe jamais
 // lib/palette-css.mjs), par le service, les scripts db-* et les tests.
 
@@ -122,14 +123,16 @@ const motsClesDe = (vocabulaire) => (Array.isArray(vocabulaire) ? vocabulaire : 
 const parLibelle = (a, b) => String(a.libelle).localeCompare(String(b.libelle), 'fr', { sensitivity: 'base' }) || String(a.id).localeCompare(String(b.id));
 
 /**
- * Le mot-clé d'une page (réponse Q5 du propriétaire) : parmi les mots-clés COLORÉS (`couleur` non vide) dont l'adresse mène au chemin `chemin` (ancres
- * et requêtes ignorées des deux côtés ; `base` : le préfixe de déploiement à retirer de `chemin`), le premier par ordre alphabétique du libellé ; null
- * s'il n'y en a aucun. `vocabulaire` : [{ id, libelle, couleur, url }] (GET /api/edition/mots-cles/, lib/mots-cles-db.mjs#motsClesDeLaBase).
+ * Le mot-clé d'une page (réponse Q5 du propriétaire) : parmi les mots-clés COLORÉS (`couleur` non vide) dont l'adresse mène au chemin `chemin` (requêtes
+ * ignorées des deux côtés ; `base` : le préfixe de déploiement à retirer de `chemin`), le premier par ordre alphabétique du libellé ; null s'il n'y en a
+ * aucun. Un mot-clé dont l'adresse a une ancre n'est pas celui de la page : il mène à une section, sa couleur reste celle de son texte (réponse du
+ * propriétaire, 2026-11-13 : « Ancre = pas de couleur (Recommandé) » ; nouvelle lecture de Q5, R271). `vocabulaire` : [{ id, libelle, couleur,
+ * url }] (GET /api/edition/mots-cles/, lib/mots-cles-db.mjs#motsClesDeLaBase).
  */
 export function motCleDeLaPage(vocabulaire, chemin, { base = '/' } = {}) {
   const voulu = cheminDeLAdresse(chemin, { base });
   if (!voulu) return null;
-  const candidats = motsClesDe(vocabulaire).filter((m) => m?.couleur && typeof m.url === 'string' && cheminDeLAdresse(m.url) === voulu);
+  const candidats = motsClesDe(vocabulaire).filter((m) => m?.couleur && typeof m.url === 'string' && !decouperLAdresse(m.url).ancre && cheminDeLAdresse(m.url) === voulu);
   return candidats.sort(parLibelle)[0] ?? null;
 }
 

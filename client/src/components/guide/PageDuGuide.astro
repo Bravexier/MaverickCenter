@@ -1,11 +1,15 @@
 ---
 import blocsCss from '../../styles/guide/blocs.css?raw';
+import ongletsCss from '../../styles/guide/onglets.css?raw';
 import magieTooltipsCss from '../../styles/magie/tooltips.css?raw';
+import Onglets from '../Onglets.astro';
 import PiedDePage from '../PiedDePage.astro';
 import GuideBloc from './GuideBloc.astro';
 import { morceauxDuChapitre } from '../../lib/guide.mjs';
+import { decouperEnOnglets, panneauRendu } from '../../lib/guide-onglets.mjs';
+import { COULEURS_ALIGNEMENTS } from '../../lib/caracteristiques-postures.mjs';
 import { estDuGuideDuMj, filDAriane, partieDeLaPage, RUBRIQUES_SOUS_LA_PAGE } from '../../lib/livres.mjs';
-import { classeDePartie, cssDesParties } from '../../lib/palette-css.mjs';
+import { classeDAlignement, classeDePartie, cssDesAlignements, cssDesParties, idDeCouleur } from '../../lib/palette-css.mjs';
 import { classeDeLaPageDuSite } from '../../lib/couleur-de-la-page.mjs';
 import { rendreMarkdown } from '../../lib/guide-rendu';
 import { attributEd } from '../../lib/edition-modele.mjs';
@@ -40,19 +44,36 @@ const couleur = classeDeLaPageDuSite(url(ici), classeDePartie(partieDeLaPage(ent
 // du 2026-11-05 : « Retirer, comme Les bases » ; « Les deux rubriques ont la même présentation : le titre, puis le texte, sans badge « Guide » ni ligne
 // « Aussi appelé ». »).
 const reference = estDuGuideDuMj(entry.id);
-const morceaux = await Promise.all(
-  morceauxDuChapitre(entry.body ?? '').map(async (m) => ('bloc' in m ? m : { html: await rendreMarkdown(m.markdown, entry.id, entry.data.status) })),
+// Les neuf alignements de « Alignement » en onglets, un par intertitre `###` dont l'ancre figée est celle d'un alignement de la palette (lib/guide-onglets.mjs :
+// jamais son texte, qui se renomme sur le site de dev), chacun dans la classe de sa couleur (`couleur-alignement-<id>`, lib/palette-css.mjs) : demande du
+// propriétaire, « Liste les 9 allignements sous forme de tableau (ou de tuile) à onglet ou chaque onglet a la couleur de l'alignement ».
+const classesDesOnglets = new Map(Object.keys(COULEURS_ALIGNEMENTS).map((nom) => [idDeCouleur(nom), classeDAlignement(nom)]));
+const rendre = async (markdown: string) => (markdown.trim() ? rendreMarkdown(markdown, entry.id, entry.data.status) : '');
+const morceaux: any[] = await Promise.all(
+  morceauxDuChapitre(entry.body ?? '').map(async (m: any) => {
+    if ('bloc' in m) return m;
+    const decoupe = decouperEnOnglets(m.markdown, new Set(classesDesOnglets.keys()));
+    if (!decoupe) return { html: await rendre(m.markdown) };
+    const panneaux = await Promise.all(
+      decoupe.panneaux.map(async (p: any, i: number) => ({ ...panneauRendu(await rendre(p.markdown), p.ancre), ancre: p.ancre, classe: classesDesOnglets.get(p.ancre), actif: i === 0 })),
+    );
+    return { onglets: { avant: await rendre(decoupe.avant), panneaux, apres: await rendre(decoupe.apres), etiquette: decoupe.etiquette } };
+  }),
 );
+const avecOnglets = morceaux.some((m) => 'onglets' in m);
 const rubriques = (RUBRIQUES_SOUS_LA_PAGE as Record<string, readonly string[]>)[entry.id] ?? [];
 // Seules les pages d'exemple ont un bandeau (comme pages/[type]/[slug].astro).
 const statusNote = entry.data.status === 'example' ? 'Contenu d’exemple : à remplacer par le contenu réel du codex.' : '';
-const css = [blocsCss, magieTooltipsCss].join('\n');
+const css = [blocsCss, magieTooltipsCss, ...(avecOnglets ? [ongletsCss] : [])].join('\n');
 ---
 
 <style is:inline set:html={css}></style>
 {/* la feuille des parties du guide (une famille d'une zone de la palette) : seulement sur une page qui en pose la classe (une autre couleur, celle d'un
     mot-clé : dans la feuille des mots-clés colorés, layouts/Base.astro) */}
 {couleur?.startsWith('couleur-partie-') && <style is:inline set:html={cssDesParties()}></style>}
+{/* les onglets : le script partagé, posé une fois (skill ui-onglets), et la feuille des alignements (une famille d'une zone de la palette) */}
+{avecOnglets && <Onglets />}
+{avecOnglets && <style is:inline set:html={cssDesAlignements()}></style>}
 <div class:list={['guide-reference', couleur && ['guide-reference--couleur', couleur]]}>
   <p class="muted guide-fil">
     <a href={url()}>Accueil</a>{
@@ -74,7 +95,28 @@ const css = [blocsCss, magieTooltipsCss].join('\n');
   <div class="guide-corps" data-ed-corps={modifiable ? entry.id : undefined}>
     {
       morceaux.map((m) =>
-        'bloc' in m ? <GuideBloc bloc={m.bloc} entry={entry} entries={entries} /> : <div class="prose" data-ed-morceau={modifiable ? '' : undefined} set:html={m.html} />,
+        'bloc' in m ? (
+          <GuideBloc bloc={m.bloc} entry={entry} entries={entries} />
+        ) : 'onglets' in m ? (
+          // un morceau de texte, avec sa barre d'onglets au milieu : la barre est ignorée de l'éditeur (data-ed-ignorer), le groupe et les panneaux sont
+          // transparents (lib/markdown-edition.mjs#versMarkdown) — le Markdown relu est celui de la page
+          <div class="prose" data-ed-morceau={modifiable ? '' : undefined}>
+            <Fragment set:html={m.onglets.avant} />
+            <div class="onglets-guide" data-onglets>
+              <nav class="onglets-guide__liste" aria-labelledby={m.onglets.etiquette ?? undefined} data-ed-ignorer contenteditable="false">
+                {m.onglets.panneaux.map((p: any) => (
+                  <a class:list={['onglet', 'onglets-guide__onglet', p.classe, p.actif && 'is-active']} id={`onglet-${p.ancre}`} href={`#${p.ancre}`} set:html={p.titre} />
+                ))}
+              </nav>
+              {m.onglets.panneaux.map((p: any) => (
+                <section class:list={['onglets-guide__panneau', p.classe, p.actif && 'is-active']} id={p.ancre} set:html={p.html} />
+              ))}
+            </div>
+            <Fragment set:html={m.onglets.apres} />
+          </div>
+        ) : (
+          <div class="prose" data-ed-morceau={modifiable ? '' : undefined} set:html={m.html} />
+        ),
       )
     }
   </div>

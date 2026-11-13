@@ -3,7 +3,7 @@
 // sur une même cellule), une cellule réécrite depuis par une migration gardée, des lots gardés (l'état d'après une migration) ; puis, sur la base
 // construite (quels que soient ses textes), l'accord avec historiqueSite#valeurDImport et le cache par processus.
 import assert from 'node:assert/strict';
-import { copyFileSync } from 'node:fs';
+import { copyFileSync, readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { cheminBase } from '../src/lib/donnees.mjs';
@@ -62,6 +62,33 @@ test('defaireLeSite : chaque opération est défaite, de la dernière à la prem
   assert.deepEqual(ligne(db, 'SELECT * FROM alias WHERE page_id = ? AND ordre = ?', alias.page_id, alias.ordre), alias, 'la ligne supprimée est remise');
   assert.equal(db.prepare('SELECT count(*) AS n FROM historique_modification').get().n, 0, 'les lots défaits quittent l’historique');
   assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
+});
+
+test('defaireLeSite : une cellule dont une migration n’a remplacé, après le site, que des fragments de son registre `textes` est défaite, le remplacement repris', (t) => {
+  const db = copieDImport(t);
+  // une entrée réelle d'un registre `textes` (0122 : la balise reciblée) ; la cellule d'essai est la sienne, prise dans l'état courant de la copie
+  const [r] = JSON.parse(readFileSync(new URL('../../data/migrations/0122-retrait-la-montee-de-niveau.json', import.meta.url), 'utf8')).textes;
+  const ou = Object.keys(r.cle).map((k) => `"${k}" = ?`).join(' AND ');
+  const lire = () => db.prepare(`SELECT "${r.col}" AS v FROM "${r.table}" WHERE ${ou}`).get(...Object.values(r.cle))?.v;
+  assert.equal(typeof lire(), 'string', `${r.table} ${JSON.stringify(r.cle)} : présente`);
+  const IMPORT = `Avant ${r.avant} ; la phrase d’import.`;
+  const SITE1 = `Avant ${r.avant} ; la phrase du site.`;
+  const SITE2 = `Plus tard ${r.avant} ; la phrase du site.`;
+  db.prepare(`UPDATE "${r.table}" SET "${r.col}" = ? WHERE ${ou}`).run(IMPORT, ...Object.values(r.cle));
+  noter(db, { lot: '2026-11-01T10:00:00.000Z-essai-r1', rang: 1, faitLe: '2026-11-01T10:00:00Z', table: r.table, cle: r.cle, operation: 'modifier', avant: { [r.col]: IMPORT }, apres: { [r.col]: SITE1 } });
+  noter(db, { lot: '2026-11-02T10:00:00.000Z-essai-r2', rang: 1, faitLe: '2026-11-02T10:00:00Z', table: r.table, cle: r.cle, operation: 'modifier', avant: { [r.col]: SITE1 }, apres: { [r.col]: SITE2 } });
+  // la migration passée depuis : son remplacement, sur la valeur que le site a laissée
+  db.prepare(`UPDATE "${r.table}" SET "${r.col}" = ? WHERE ${ou}`).run(SITE2.split(r.avant).join(r.apres), ...Object.values(r.cle));
+  assert.deepEqual(defaireLeSite(db), []);
+  assert.equal(lire(), IMPORT.split(r.avant).join(r.apres), 'les deux lots défaits, le remplacement de la migration gardé');
+
+  // une réécriture hors du registre (ou un fragment absent de l'« avant ») : la migration a le dernier mot, la cellule est gardée
+  const SANS = 'Une phrase sans le fragment.';
+  db.prepare(`UPDATE "${r.table}" SET "${r.col}" = ? WHERE ${ou}`).run(SANS, ...Object.values(r.cle));
+  noter(db, { lot: '2026-11-03T10:00:00.000Z-essai-r3', rang: 1, faitLe: '2026-11-03T10:00:00Z', table: r.table, cle: r.cle, operation: 'modifier', avant: { [r.col]: SANS }, apres: { [r.col]: SITE2 } });
+  db.prepare(`UPDATE "${r.table}" SET "${r.col}" = ? WHERE ${ou}`).run(SITE2.split(r.avant).join(r.apres), ...Object.values(r.cle));
+  assert.deepEqual(defaireLeSite(db), []);
+  assert.equal(lire(), SITE2.split(r.avant).join(r.apres), 'le fragment n’est pas dans l’« avant » : gardée');
 });
 
 test('defaireLeSite { garder } : l’état d’après une migration — les lots gardés restent, avec leur historique ; les suivants sont défaits', (t) => {

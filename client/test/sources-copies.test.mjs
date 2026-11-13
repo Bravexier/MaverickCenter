@@ -94,10 +94,12 @@ test('sources : une ligne par document cité, id dérivé du nouvel identifiant,
   // « Mode hyper et co » ; 1 161 depuis le retrait de « Altérations d'états et Mode Hyper » (2026-11-06, migration 0096, demande du propriétaire) : son
   // renvoi vers « Règle du jeu/Guide pour MJ - Maverick ». Les renvois que retire une migration postérieure se lisent dans son registre : la 0119
   // supprime le don Large du Cuirassé (R238 (2)) et ses lignes page_source ; la 0122 (2026-11-13, demande du propriétaire), la page « La montée de
-  // niveau » et ses cinq lignes page_source
+  // niveau » et ses cinq lignes page_source ; la 0123 retire « Les neuf alignements », fondue dans « Alignement » (2026-11-13, demande du
+  // propriétaire), et ses lignes page_source
   const registreDe = (nom) => JSON.parse(readFileSync(new URL(`../../data/migrations/${nom}.json`, import.meta.url), 'utf8'));
   const retiresDepuis = [...registreDe('0119-classes-materiaux-d12').cuirasse.page_source_supprimees,
-    ...registreDe('0122-retrait-la-montee-de-niveau').page_source_supprimees];
+    ...registreDe('0122-retrait-la-montee-de-niveau').page_source_supprimees,
+    ...registreDe('0123-fusion-pages-alignement').pages_retirees.flatMap((p) => p.page_source_supprimees)];
   assert.equal(historiqueSite(db).lignesDImport('page_source').filter((r) => ids.has(r.source_id)).length + retiresDepuis.filter((r) => ids.has(r.source_id)).length, 1161);
   // aujourd'hui : tout renvoi vers un document Google cite une copie du registre, l'un des deux documents non copiés par la migration ou la copie que
   // le propriétaire en a faite depuis (manifeste : entrée dont `original` cite l'identifiant d'origine ; CODEX Maverick et Bestiaire 2.0, 2026-10-11)
