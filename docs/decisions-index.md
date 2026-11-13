@@ -2,7 +2,7 @@
 
 Ne lis jamais `docs/decisions-regles.md` en entier : trouve ici le numéro de la décision, puis cherche sa ligne avec Grep (motif `^\| R41 \|`) et ne lis qu'elle.
 
-Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 266 décisions, de R1 à R266, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
+Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 268 décisions, de R1 à R268, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
 
 | Réf. | Sujet | Décision |
 | --- | --- | --- |
@@ -272,3 +272,5 @@ Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas mo
 | R264 | Chronologie : l'apparition des Gémidiens et celle des Fongoïdes : l'onglet… | Deux événements s'ajoutent à la chronologie : l'appari… |
 | R265 | Page du Fongoïde (onglet 21) : le « Premier Champignon » et le « Dieu de l… | (1) Le « Premier Champignon » et le Mycoralis Vitalis… |
 | R266 | Trois graphies du lore de Décembre (`docs/sql/orthographe-a-valider.md`, «… | (1) « Super Gemme » : deux majuscules, sans trait d'un… |
+| R267 | Fiche du Boxeur et du Porte-étendard, suite de R254 et R255 : ce que Mur a… | (1) Mur : toute l'AP et l'AM du bouclier, les +2 de Mu… |
+| R268 | Infobulles des sept mots-clés des matériaux, suite de R258 (7) : aucune so… | Avantage : « On lance deux fois le même jet et on igno… |
