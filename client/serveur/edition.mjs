@@ -3296,6 +3296,51 @@ export function ancienneEcritureDesIds(db) {
   };
 }
 
+/** Les colonnes qui nomment un mot-clé dans la clé, `avant` et `apres` d'une trace, par table (migration 0113, section 7). */
+const COLONNES_DES_MOTS_CLES_DES_TRACES = Object.freeze({ mot_cle: 'id', page_tag: 'tag_id', sort_mot_cle: 'mot_cle_id' });
+
+/**
+ * La trace d'une modification (ligne de `modification`, avant son versement dans historique_modification : scripts/db-appliquer-edition.mjs#historiser,
+ * scripts/mise-a-jour-regles.mjs) dans la forme d'aujourd'hui des mots-clés : un lot noté avant la migration 0113 nomme le mot-clé par son ancien id
+ * texte et `libelle_cle` ; la trace, elle, doit le nommer par son id entier (décision R232 (1)) et dire `cle`, comme la migration l'a fait pour les
+ * traces d'alors, sans quoi la ligne ne se retrouve plus (lib/historique-site.mjs). L'adaptateur du rejeu (ancienneEcritureDesIds) ne réécrit pas la
+ * ligne notée : il ne lit le lot que pour le rejouer. Un ancien id se traduit comme `trouver_mot_cle` : par la correspondance de la 0113 (registre figé,
+ * seul juge d'un ancien id), sinon par la clé d'un mot-clé que le lot a créé, sinon par une clé quittée ; un id inconnu (« cr », fondu par la 0090,
+ * ou un mot-clé que le lot a supprimé) reste tel quel, comme la migration. Appelé après le rejeu : les mots-clés créés par le lot sont dans `db`.
+ * Seules les trois tables de mots-clés sont touchées ; une trace d'après la 0113 (id entier) passe telle quelle. Rend `(m) => m`, `m` portant au
+ * moins `table_nom`, `cle`, `avant`, `apres` (JSON texte ou null) ; une trace inchangée est rendue telle quelle.
+ */
+export function traceDAujourdhui(db) {
+  if (!tableExiste(db, 'mot_cle') || !structure(db, 'mot_cle').colonnes.includes('cle')) return (m) => m;
+  const registre = registreDes0113();
+  const parCle = db.prepare('SELECT id FROM mot_cle WHERE cle = ?');
+  const quittee = tableExiste(db, 'mot_cle_ancienne_cle') ? db.prepare('SELECT mot_cle_id AS id FROM mot_cle_ancienne_cle WHERE cle = ?') : null;
+  const idDe = (x) => {
+    if (typeof x !== 'string') return x;
+    return registre?.get(x) ?? parCle.get(x)?.id ?? quittee?.get(x)?.id ?? x;
+  };
+  const ligne = (table, valeur) => {
+    const o = jsonOuNull(valeur);
+    if (!o || typeof o !== 'object') return valeur;
+    const champ = COLONNES_DES_MOTS_CLES_DES_TRACES[table];
+    const sortie = {};
+    for (const [c, v] of Object.entries(o)) {
+      if (c === champ) sortie[c] = idDe(v);
+      else if (table === 'mot_cle' && c === 'libelle_cle') {
+        if (!('cle' in o)) sortie.cle = v;
+      }
+      else sortie[c] = v;
+    }
+    const texte = JSON.stringify(sortie);
+    return texte === JSON.stringify(o) ? valeur : texte;
+  };
+  return (m) => {
+    if (!(m.table_nom in COLONNES_DES_MOTS_CLES_DES_TRACES)) return m;
+    const adapte = { ...m, cle: ligne(m.table_nom, m.cle), avant: ligne(m.table_nom, m.avant), apres: ligne(m.table_nom, m.apres) };
+    return adapte.cle === m.cle && adapte.avant === m.avant && adapte.apres === m.apres ? m : adapte;
+  };
+}
+
 /** Les écritures normalisées des synonymes du mot-clé `id` (vide sans la table, migration 0115). */
 const synonymesDuMotCleNormalises = (db, id) => (tableExiste(db, 'mot_cle_synonyme')
   ? db.prepare('SELECT libelle_cle FROM mot_cle_synonyme WHERE mot_cle_id = ?').all(id).map((s) => s.libelle_cle) : []);

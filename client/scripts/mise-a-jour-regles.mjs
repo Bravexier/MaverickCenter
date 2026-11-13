@@ -20,7 +20,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 import { construireReference } from './db-reference.mjs';
 import { TABLES_FICHES } from '../serveur/base-vivante.mjs';
-import { rejouerLeJournal } from '../serveur/edition.mjs';
+import { rejouerLeJournal, traceDAujourdhui } from '../serveur/edition.mjs';
 import { chargerJournal, ORDRE_DE_REJEU, TABLES_INTERDITES } from '../serveur/edition-journal.mjs';
 import { lireTables } from '../serveur/notes-de-version.mjs';
 import { journalSansImage } from '../src/lib/edition-modele.mjs';
@@ -264,8 +264,11 @@ export function appliquerMiseAJour(lot, { rows = join(RACINE, 'data', 'rows'), r
       }
       const insererHistorique = db.prepare(`INSERT INTO historique_modification (lot_id, rang, fait_le, resume, version, table_nom, cle, operation, avant, apres)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+      // un lot noté avant la 0113 nomme ses mots-clés par leur ancien id texte : la trace les nomme par leur id entier (serveur/edition.mjs#traceDAujourdhui)
+      const enTrace = traceDAujourdhui(db);
       // une image (portrait) n'y est que résumée : la ligne de sa table la garde
-      for (const m of historique) {
+      for (const brute of historique) {
+        const m = enTrace(brute);
         insererHistorique.run(m.lot_id, m.rang, m.fait_le, m.resume, version, m.table_nom, m.cle, m.operation, journalSansImage(m.table_nom, m.avant),
           journalSansImage(m.table_nom, m.apres));
       }

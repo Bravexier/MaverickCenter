@@ -12,6 +12,7 @@
 //      déjà présentes, « intégrées ») sont versées dans historique_modification, version NULL (rapatriées à la main ; un lot qui y est déjà n'est pas
 //      repris), les tables du journal sont vidées (elles restent vides dans data/rows) et data/rows est réécrit par l'exporteur des importeurs
 //      (tools/db/exporter.py : même format, octet pour octet).
+// Mode `-- --reparer-traces` : met à l'id entier les traces de mots-clés d'historique_modification qu'un journal d'avant la 0113 y a laissées sous l'ancien id texte.
 // Ensuite : `npm run db:build && npm run db:check`, puis `npm test` et un commit de data/rows. Le site est la source des données qu'il modifie
 // (décision du propriétaire) : les tests qui épinglent l'import (effectifs, textes cités) le lisent dans historique_modification
 // (src/lib/historique-site.mjs) et contrôlent la cohérence de l'état courant. Le service, lui, verra ces modifications « intégrées ».
@@ -22,7 +23,7 @@ import { join, resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 import { integrerLivrees } from '../serveur/base-vivante.mjs';
-import { rejouerLeJournal } from '../serveur/edition.mjs';
+import { rejouerLeJournal, traceDAujourdhui } from '../serveur/edition.mjs';
 import { chargerJournal } from '../serveur/edition-journal.mjs';
 import { journalSansImage } from '../src/lib/edition-modele.mjs';
 import { messageDeRefus } from '../src/lib/markdown-sur.mjs';
@@ -45,8 +46,11 @@ export function historiser(db) {
     .all();
   const inserer = db.prepare(`INSERT INTO historique_modification (lot_id, rang, fait_le, resume, version, table_nom, cle, operation, avant, apres)
     VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?, ?)`);
+  // un lot noté avant la 0113 nomme ses mots-clés par leur ancien id texte : la trace les nomme par leur id entier (serveur/edition.mjs#traceDAujourdhui)
+  const enTrace = traceDAujourdhui(db);
   // une image (portrait) n'y est que résumée : la ligne de sa table la garde
-  for (const m of modifications) {
+  for (const brute of modifications) {
+    const m = enTrace(brute);
     inserer.run(m.lot_id, m.rang, m.fait_le, m.resume, m.table_nom, m.cle, m.operation, journalSansImage(m.table_nom, m.avant), journalSansImage(m.table_nom, m.apres));
   }
   return modifications.length;
@@ -108,11 +112,66 @@ export function appliquerJournal(journal, { rows = join(RACINE, 'data', 'rows'),
   }
 }
 
+/**
+ * Met en forme d'aujourd'hui les traces de mots-clés déjà dans historique_modification (serveur/edition.mjs#traceDAujourdhui : ids entiers, `cle` à
+ * la place de `libelle_cle`) : celles d'un lot noté avant la 0113 que la mise à jour ou db:appliquer-edition a versé tel quel, avant que `historiser`
+ * ne les traduise. Idempotent. Rend le nombre de lignes réécrites.
+ */
+export function reparerLesTraces(db) {
+  const enTrace = traceDAujourdhui(db);
+  const modifier = db.prepare('UPDATE historique_modification SET cle = ?, avant = ?, apres = ? WHERE lot_id = ? AND rang = ?');
+  let n = 0;
+  for (const h of db.prepare("SELECT lot_id, rang, table_nom, cle, avant, apres FROM historique_modification WHERE table_nom IN ('mot_cle', 'page_tag', 'sort_mot_cle')").all()) {
+    const m = enTrace(h);
+    if (m === h) continue;
+    modifier.run(m.cle, m.avant, m.apres, h.lot_id, h.rang);
+    n += 1;
+  }
+  return n;
+}
+
+/**
+ * Mode `--reparer-traces` : reconstruit une base depuis data/rows, y fait reparerLesTraces et réécrit data/rows par l'exporteur (seul historique_modification.sql
+ * change). Rend { reparees, ecrit }.
+ */
+export function reparerLesTracesDeLaBase({ rows = join(RACINE, 'data', 'rows') } = {}) {
+  const tmp = mkdtempSync(join(tmpdir(), 'maverick-traces-'));
+  try {
+    const chemin = join(tmp, 'base.db');
+    const construction = spawnSync(process.execPath, ['--no-warnings', join(CLIENT, 'scripts', 'db-build.mjs'), '--out', chemin, '--rows', rows], { encoding: 'utf8' });
+    if (construction.status !== 0) throw new Error(`data/rows ne se reconstruit pas : ${construction.stderr || construction.stdout}`);
+    const db = new DatabaseSync(chemin);
+    let reparees;
+    try {
+      reparees = reparerLesTraces(db);
+    } finally {
+      db.close();
+    }
+    if (!reparees) return { reparees, ecrit: false };
+    const exp = spawnSync('python3', ['-I', join(RACINE, 'tools', 'db', 'exporter.py'), chemin, '--rows', rows], { encoding: 'utf8' });
+    if (exp.status !== 0) throw new Error(`export refusé : ${exp.stderr || exp.stdout}`);
+    return { reparees, ecrit: true };
+  } finally {
+    rmSync(tmp, { recursive: true, force: true });
+  }
+}
+
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
+  if (args.includes('--reparer-traces')) {
+    try {
+      const rows = args.includes('--rows') ? resolve(args[args.indexOf('--rows') + 1]) : undefined;
+      const { reparees } = reparerLesTracesDeLaBase({ rows });
+      console.log(`${reparees} trace(s) de mot-clé mise(s) à l’id entier dans historique_modification.`);
+    } catch (e) {
+      console.error(e.message);
+      process.exit(1);
+    }
+    process.exit(0);
+  }
   const fichier = args.find((a) => !a.startsWith('--') && args[args.indexOf(a) - 1] !== '--rows');
   if (!fichier) {
-    console.error('usage : npm run db:appliquer-edition -- <journal.json> [--ignorer-conflits] [--rows <dossier>]');
+    console.error('usage : npm run db:appliquer-edition -- <journal.json> [--ignorer-conflits] [--rows <dossier>]  |  -- --reparer-traces [--rows <dossier>]');
     process.exit(2);
   }
   const rows = args.includes('--rows') ? resolve(args[args.indexOf('--rows') + 1]) : undefined;

@@ -133,10 +133,16 @@ test('R232 (5) : une catégorie renommée recalcule la clé des homonymes qui la
 test('R232 (11) : les catégories d’un mot-clé verrouillé se posent ; sa clé suit l’homonyme créé et les textes qui le citent sont réécrits', () => {
   const { db, lot, motCle } = base();
   const [c1, c2] = deuxCategories(db);
-  // un mot-clé verrouillé sans homonyme, cité par une balise quelque part (choisi dans la base)
+  // un mot-clé verrouillé sans homonyme, cité par une balise quelque part (choisi dans la base). Le site de dev, source de ce qu'il modifie, a pu poser
+  // des catégories à tous les verrouillés (2026-11) : le test retire alors, dans sa copie, celles du premier qui convient (skill tests-conventions :
+  // un test remet ce dont il a besoin)
+  const convient = (m) => textesQuiCitent(db, m.cle).length && motsClesDeLaBase(db).filter((x) => normalize(x.libelle) === normalize(m.libelle)).length === 1;
+  if (!motsClesDeLaBase(db).some((m) => m.verrou === 1 && !m.categories.length)) {
+    const pris = motsClesDeLaBase(db).find((m) => m.verrou === 1 && convient(m)) ?? motsClesDeLaBase(db).find((m) => m.verrou === 1);
+    if (pris) db.prepare('DELETE FROM mot_cle_categorie WHERE mot_cle_id = ?').run(pris.id);
+  }
   const verrouilles = motsClesDeLaBase(db).filter((m) => m.verrou === 1 && !m.categories.length);
-  const cible = verrouilles.find((m) => textesQuiCitent(db, m.cle).length && motsClesDeLaBase(db).filter((x) => normalize(x.libelle) === normalize(m.libelle)).length === 1)
-    ?? verrouilles[0];
+  const cible = verrouilles.find(convient) ?? verrouilles[0];
   assert.ok(cible, 'un mot-clé verrouillé sans catégorie');
   ok(lot([{ op: 'categories_mot_cle', mot_cle: cible.id, categories: [c1] }]));
   assert.deepEqual(motsClesDeLaBase(db).find((m) => m.id === cible.id).categories, [c1]);
