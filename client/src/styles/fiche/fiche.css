@@ -179,12 +179,13 @@ main:has(> .fiche) { max-width: 100rem; }
 .fiche-aide { margin: 0; color: var(--muted); font-size: var(--fs-sm); }
 .fiche-aide a { color: inherit; }
 
-/* ----------------------------------------------------------------- I. identité : le portrait à gauche, le nom en grand et le niveau à droite,
-   surnom, origine et alignement, puis race, magies et classes en trois colonnes de menus */
+/* ----------------------------------------------------------------- I. identité : le portrait à gauche et l'alignement dessous, le nom en grand et le
+   niveau à droite, surnom, origine et métier, puis race, magies et classes en trois colonnes de menus (demande du propriétaire du 2026-11-13) */
 .identite { display: grid; gap: 0.9rem; padding: 0.8rem; grid-template-columns: minmax(0, 1fr); }
 @media (min-width: 48rem) {
-  .identite { grid-template-columns: 11rem minmax(0, 1fr); align-items: start; }
+  .identite { grid-template-columns: 15rem minmax(0, 1fr); align-items: start; }
 }
+.identite__gauche { display: grid; gap: 0.6rem; align-content: start; min-width: 0; }
 .identite__corps { display: grid; gap: 0.6rem; min-width: 0; }
 .identite__tete { display: flex; align-items: center; gap: 0.75rem; }
 .identite__nom { flex: 1; min-width: 0; }
@@ -222,11 +223,16 @@ main:has(> .fiche) { max-width: 100rem; }
 .identite__niveau small { color: var(--muted); font-size: 0.62rem; letter-spacing: var(--ls-caps); text-transform: uppercase; }
 .identite__niveau strong { font-size: 1.75rem; font-variant-numeric: tabular-nums; }
 .identite__ligne { display: grid; gap: 0.5rem 0.75rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr)); align-items: end; }
-.identite__ligne .alignement { grid-column: span 2; }
-@media (max-width: 40rem) {
-  .identite__ligne .alignement { grid-column: auto; }
-}
 .identite__choix { position: relative; display: grid; gap: 0.5rem 0.75rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); align-items: start; }
+@media (min-width: 64rem) {
+  /* la race seule à gauche, plus étroite : les magies et les classes portent chacune leur spécialisation ou spécialité à côté */
+  .identite__choix { grid-template-columns: minmax(0, 0.75fr) minmax(0, 1.2fr) minmax(0, 1.5fr); }
+}
+/* un menu et sa spécialité (ou spécialisation) côte à côte ; seul, il prend la ligne ; trop étroit, la spécialité passe dessous */
+.identite__paire { display: flex; flex-wrap: wrap; gap: 0.35rem; min-width: 0; }
+.identite__paire > * { flex: 1 1 10rem; min-width: 0; }
+.identite__paire:not(:has(> :not([hidden]))) { display: none; }
+.identite__paire .choix > summary { flex-wrap: wrap; row-gap: 0.15rem; }
 .identite__colonne { display: grid; gap: 0.35rem; align-content: start; min-width: 0; }
 .identite__dieux { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.75rem; align-items: start; }
 .identite__dieux p { margin: 0; }
@@ -489,7 +495,7 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .choix[open] > summary::after { content: '▴'; }
 .choix > summary:hover, .choix > summary:focus-visible { border-color: var(--etape); outline: none; }
 .choix__etiquette { flex: none; color: var(--muted); font-size: var(--fs-xs); }
-/* une liste simple présentée comme les menus des choix (le métier, facultatif, sous l'ethnie : demande du propriétaire) */
+/* une liste simple présentée comme les menus des choix (le métier, facultatif, à droite du lieu d'origine : demande du propriétaire) */
 .choix-liste {
   display: flex;
   align-items: center;
@@ -717,6 +723,13 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
   font-weight: 700;
   white-space: nowrap;
 }
+/* sous le portrait (demande du propriétaire du 2026-11-13) : chaque borne a son nom au-dessus de son score, l'alignement qui en résulte dessous */
+.identite__gauche .alignement { grid-template-columns: auto minmax(0, 1fr) auto; justify-items: center; gap: 0.35rem 0.4rem; }
+.identite__gauche .alignement__axe label { flex-direction: column; gap: 0.1rem; }
+.identite__gauche .alignement__axe label:last-child { flex-direction: column-reverse; }
+.identite__gauche .alignement__axe label:first-child { justify-self: center; }
+.fiche .identite__gauche .alignement input { width: 3rem; }
+.identite__gauche .alignement__resultat { grid-column: 1 / -1; grid-row: auto; justify-self: center; }
 @media (max-width: 30rem) {
   .alignement { grid-template-columns: repeat(3, auto); gap: 0.3rem 0.4rem; }
   .fiche .alignement input { width: 2.8rem; }

@@ -83,17 +83,36 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
     <section class:list={['fiche-zone fiche-zone--identite', classeDeZone('identite')]} id="zone-identite" aria-labelledby="titre-zone-identite">
       <h2 class="fiche-zone__titre" id="titre-zone-identite"><span class="fiche-zone__numero" aria-hidden="true">I</span>Identité</h2>
       <div class="fiche-etape identite" id="etape-identite">
-        {/* portrait (demande du propriétaire) : le logo en attendant une image ; une image choisie se recadre (src/scripts/fiche.mjs#construirePortrait) */}
-        <figure class="portrait" id="portrait">
-          <div class="portrait__cadre">
-            <img class="portrait__image" id="portrait-image" src={url('logo.webp')} data-defaut={url('logo.webp')} alt="Portrait du personnage (logo en attendant une image)" width="512" height="512" />
-          </div>
-          <figcaption class="portrait__actions">
-            <label class="fiche-bouton-fichier"><input type="file" id="portrait-fichier" accept="image/*" hidden /><span role="button" tabindex="0" id="portrait-choisir">Choisir une image</span></label>
-            <button type="button" id="portrait-recadrer" hidden>Recadrer</button>
-            <button type="button" class="retirer" id="portrait-retirer" hidden aria-label="Retirer le portrait" title="Retirer le portrait">✕</button>
-          </figcaption>
-        </figure>
+        {/* à gauche, le portrait puis l'alignement dessous (demande du propriétaire du 2026-11-13) */}
+        <div class="identite__gauche">
+          {/* portrait (demande du propriétaire) : le logo en attendant une image ; une image choisie se recadre (src/scripts/fiche.mjs#construirePortrait) */}
+          <figure class="portrait" id="portrait">
+            <div class="portrait__cadre">
+              <img class="portrait__image" id="portrait-image" src={url('logo.webp')} data-defaut={url('logo.webp')} alt="Portrait du personnage (logo en attendant une image)" width="512" height="512" />
+            </div>
+            <figcaption class="portrait__actions">
+              <label class="fiche-bouton-fichier"><input type="file" id="portrait-fichier" accept="image/*" hidden /><span role="button" tabindex="0" id="portrait-choisir">Choisir une image</span></label>
+              <button type="button" id="portrait-recadrer" hidden>Recadrer</button>
+              <button type="button" class="retirer" id="portrait-retirer" hidden aria-label="Retirer le portrait" title="Retirer le portrait">✕</button>
+            </figcaption>
+          </figure>
+          {/* alignement (demande du propriétaire) : une jauge à deux bornes par axe, Loi/Chaos puis Bien/Mal, chaque borne avec son score modifiable,
+              cinq crans entre elles (cransDAlignement : calés sur la pastille), et l'alignement qui en résulte dessous */}
+          <fieldset class="alignement">
+            <legend>Alignement</legend>
+            <span class="alignement__axe">
+              <label><span>Loyal</span><input type="number" min="0" step="1" data-champ="alignement_loyal" data-entier aria-label="Loyal" /></label>
+              <span class="alignement__jauge" id="alignement-jauge-loi" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+              <label><input type="number" min="0" step="1" data-champ="alignement_chaotique" data-entier aria-label="Chaotique" /><span>Chaotique</span></label>
+            </span>
+            <span class="alignement__axe">
+              <label><span>Bon</span><input type="number" min="0" step="1" data-champ="alignement_bon" data-entier aria-label="Bon" /></label>
+              <span class="alignement__jauge" id="alignement-jauge-bien" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+              <label><input type="number" min="0" step="1" data-champ="alignement_mauvais" data-entier aria-label="Mauvais" /><span>Mauvais</span></label>
+            </span>
+            <output class={`alignement__resultat teinte-palette ${classeDAlignement('Neutre')}`} id="alignement-resultat" aria-live="polite">Neutre</output>
+          </fieldset>
+        </div>
 
         <div class="identite__corps">
           <div class="identite__tete">
@@ -104,22 +123,9 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
           <div class="identite__ligne">
             <label class="fiche-champ"><span>Surnom</span><input data-champ="surnom" maxlength="120" autocomplete="off" /></label>
             <label class="fiche-champ"><span>Lieu d’origine</span><input data-champ="lieu_origine" maxlength="120" autocomplete="off" /></label>
-            {/* alignement (demande du propriétaire) : une jauge à deux bornes par axe, Loi/Chaos puis Bien/Mal, chaque borne avec son score modifiable,
-                cinq crans entre elles (cransDAlignement : calés sur la pastille), et l'alignement qui en résulte à côté */}
-            <fieldset class="alignement">
-              <legend>Alignement</legend>
-              <span class="alignement__axe">
-                <label><span>Loyal</span><input type="number" min="0" step="1" data-champ="alignement_loyal" data-entier aria-label="Loyal" /></label>
-                <span class="alignement__jauge" id="alignement-jauge-loi" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
-                <label><input type="number" min="0" step="1" data-champ="alignement_chaotique" data-entier aria-label="Chaotique" /><span>Chaotique</span></label>
-              </span>
-              <span class="alignement__axe">
-                <label><span>Bon</span><input type="number" min="0" step="1" data-champ="alignement_bon" data-entier aria-label="Bon" /></label>
-                <span class="alignement__jauge" id="alignement-jauge-bien" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
-                <label><input type="number" min="0" step="1" data-champ="alignement_mauvais" data-entier aria-label="Mauvais" /><span>Mauvais</span></label>
-              </span>
-              <output class={`alignement__resultat teinte-palette ${classeDAlignement('Neutre')}`} id="alignement-resultat" aria-live="polite">Neutre</output>
-            </fieldset>
+            {/* le métier, facultatif, à droite du lieu d'origine (demande du propriétaire du 2026-11-13) ; ce qu'il donne et ses choix sont dans le cadre
+                « Choix » */}
+            <label class="choix-liste"><span class="choix__etiquette">Métier</span><select data-champ="metier_id" id="metiers"><option value="">Sans métier (facultatif)</option></select></label>
           </div>
 
           {/* race, magies, classes : trois colonnes de menus déroulants ; le panneau d'un menu s'étend sur les trois */}
@@ -127,12 +133,18 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
             <div class="identite__colonne" aria-label="Race">
               <details class="choix" id="choix-race"><summary><span class="choix__etiquette">Race</span><span class="choix__valeur" id="valeur-race"></span></summary><div class="choix__panneau"><div id="races" class="groupes-pastilles"></div></div></details>
               <details class="choix" id="choix-ethnie" hidden><summary><span class="choix__etiquette">Ethnie</span><span class="choix__valeur" id="valeur-ethnie"></span></summary><div class="choix__panneau"><ul id="ethnies" class="pastilles"></ul></div></details>
-              {/* le métier, facultatif, sous l'ethnie (demande du propriétaire) ; ce qu'il donne et ses choix sont dans le cadre « Choix » */}
-              <label class="choix-liste"><span class="choix__etiquette">Métier</span><select data-champ="metier_id" id="metiers"><option value="">Sans métier (facultatif)</option></select></label>
             </div>
             <div class="identite__colonne" aria-label="Magies">
-              <details class="choix" id="choix-magie-innee"><summary><span class="choix__etiquette">Magie innée</span><span class="choix__valeur" id="valeur-magie-innee"></span></summary><div class="choix__panneau"><ul id="magies-innees" class="pastilles"></ul></div></details>
-              <details class="choix" id="choix-magie-acquise"><summary><span class="choix__etiquette">Magie acquise</span><span class="choix__valeur" id="valeur-magie-acquise"></span></summary><div class="choix__panneau"><ul id="magies-acquises" class="pastilles"></ul></div></details>
+              {/* chaque magie, sa spécialisation à côté, montrée pour un bi-magie seul (décision R236 (3) ; demande du propriétaire du 2026-11-13) ;
+                  remplie par src/scripts/fiche.mjs#construireSpecialisationsDeLIdentite */}
+              <div class="identite__paire">
+                <details class="choix" id="choix-magie-innee"><summary><span class="choix__etiquette">Magie innée</span><span class="choix__valeur" id="valeur-magie-innee"></span></summary><div class="choix__panneau"><ul id="magies-innees" class="pastilles"></ul></div></details>
+                <details class="choix" id="choix-specialisation-innee" hidden><summary><span class="choix__etiquette">Spécialisation</span><span class="choix__valeur" id="valeur-specialisation-innee"></span></summary><div class="choix__panneau"><ul id="specialisation-innee" class="pastilles"></ul></div></details>
+              </div>
+              <div class="identite__paire">
+                <details class="choix" id="choix-magie-acquise"><summary><span class="choix__etiquette">Magie acquise</span><span class="choix__valeur" id="valeur-magie-acquise"></span></summary><div class="choix__panneau"><ul id="magies-acquises" class="pastilles"></ul></div></details>
+                <details class="choix" id="choix-specialisation-acquise" hidden><summary><span class="choix__etiquette">Spécialisation</span><span class="choix__valeur" id="valeur-specialisation-acquise"></span></summary><div class="choix__panneau"><ul id="specialisation-acquise" class="pastilles"></ul></div></details>
+              </div>
               <div class="identite__dieux">
                 <p class="fiche-champ"><span>Dieu inné</span><strong id="dieu-inne">—</strong></p>
                 <label class="fiche-champ"><span>Dieu choisi</span><select data-champ="dieu_choisi_id" id="dieux"><option value="">—</option></select></label>
@@ -141,10 +153,15 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
             <div class="identite__colonne" aria-label="Classes">
               {/* une case « Bi-classé » (demande du propriétaire) : décochée, mono-classe (la seconde classe vient au niveau 11, décision R2) */}
               <label class="fiche-coche identite__bi"><input type="checkbox" id="bi-classe" /> Bi-classé</label>
-              <details class="choix" id="choix-classe-1"><summary><span class="choix__etiquette" id="titre-classe-1">Classe</span><span class="choix__valeur" id="valeur-classe-1"></span></summary><div class="choix__panneau"><div id="classe-1" class="groupes-pastilles groupes-pastilles--classes"></div></div></details>
-              <details class="choix" id="choix-specialite-1" hidden><summary><span class="choix__etiquette" id="titre-specialite-1">Spécialité</span><span class="choix__valeur" id="valeur-specialite-1"></span></summary><div class="choix__panneau"><ul id="specialite-1" class="pastilles"></ul></div></details>
-              <details class="choix" id="choix-classe-2" hidden><summary><span class="choix__etiquette" id="titre-classe-2">Seconde classe</span><span class="choix__valeur" id="valeur-classe-2"></span></summary><div class="choix__panneau"><div id="classe-2" class="groupes-pastilles groupes-pastilles--classes"></div></div></details>
-              <details class="choix" id="choix-specialite-2" hidden><summary><span class="choix__etiquette" id="titre-specialite-2">Spécialité</span><span class="choix__valeur" id="valeur-specialite-2"></span></summary><div class="choix__panneau"><ul id="specialite-2" class="pastilles"></ul></div></details>
+              {/* chaque classe, sa spécialité à côté (demande du propriétaire du 2026-11-13) */}
+              <div class="identite__paire">
+                <details class="choix" id="choix-classe-1"><summary><span class="choix__etiquette" id="titre-classe-1">Classe</span><span class="choix__valeur" id="valeur-classe-1"></span></summary><div class="choix__panneau"><div id="classe-1" class="groupes-pastilles groupes-pastilles--classes"></div></div></details>
+                <details class="choix" id="choix-specialite-1" hidden><summary><span class="choix__etiquette" id="titre-specialite-1">Spécialité</span><span class="choix__valeur" id="valeur-specialite-1"></span></summary><div class="choix__panneau"><ul id="specialite-1" class="pastilles"></ul></div></details>
+              </div>
+              <div class="identite__paire">
+                <details class="choix" id="choix-classe-2" hidden><summary><span class="choix__etiquette" id="titre-classe-2">Seconde classe</span><span class="choix__valeur" id="valeur-classe-2"></span></summary><div class="choix__panneau"><div id="classe-2" class="groupes-pastilles groupes-pastilles--classes"></div></div></details>
+                <details class="choix" id="choix-specialite-2" hidden><summary><span class="choix__etiquette" id="titre-specialite-2">Spécialité</span><span class="choix__valeur" id="valeur-specialite-2"></span></summary><div class="choix__panneau"><ul id="specialite-2" class="pastilles"></ul></div></details>
+              </div>
             </div>
           </div>
         </div>
