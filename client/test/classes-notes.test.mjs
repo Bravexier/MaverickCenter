@@ -67,9 +67,13 @@ const historique = historiqueSite(ouvrirBase({ sansExemples: false }));
 const remarques = new Map(ouvrirBase({ sansExemples: false }).prepare('SELECT id, remarque FROM capacite').all().map((k) => [k.id.replace(/^capacites\//, ''), k.remarque]));
 const noteRendue = (remarque) => (remarque ? corpsDeDon({ effet: null, remarque }).replace(/\n$/, '') : null);
 const remarqueDImport = (slug) => historique.valeurDImport('capacite', { id: `capacites/${slug}` }, 'remarque');
+const REGISTRE_0119 = JSON.parse(readFileSync(fileURLToPath(new URL('../../data/migrations/0119-classes-materiaux-d12.json', import.meta.url)), 'utf8'));
 const supprimee = (slug) => historique.supprimee('page', { id: `capacites/${slug}` });
 const donneesDImport = (slug) => JSON.parse(historique.valeurDImport('page', { id: `capacites/${slug}` }, 'donnees') ?? 'null');
-const supprimeesDImport = historique.lignesDImport('page').filter((p) => p.type === 'capacites' && supprimee(p.slug)).map((p) => p.slug);
+// les dons créés par la migration 0119 (Boxeur, Porte-étendard, Écrasant) ne viennent pas du classeur V7 : une suppression sur le site ne les compte pas ici
+const CREES_PAR_LA_0119 = new Set([...Object.values(REGISTRE_0119.classes.nouvelles).flatMap((c) => c.dons), REGISTRE_0119.cuirasse.cree]);
+const supprimeesDImport = historique.lignesDImport('page')
+  .filter((p) => p.type === 'capacites' && !CREES_PAR_LA_0119.has(`capacites/${p.slug}`) && supprimee(p.slug)).map((p) => p.slug);
 const page = (slug) => {
   const trouvee = capacites.find((p) => p.slug === slug);
   assert.ok(trouvee, `page capacites/${slug} absente`);
@@ -224,8 +228,10 @@ const NOTES = [
 ];
 
 test('pages réelles : 660 fiches de capacités du classeur, 43 notes rendues au total, une par fiche, aucune ailleurs', () => {
-  // à l'import : 660 fiches et 43 notes ; aujourd'hui, sans les fiches que le site a supprimées
-  assert.equal(capacites.length + supprimeesDImport.length, 660);
+  // à l'import : 660 fiches et 43 notes ; aujourd'hui, sans les fiches que le site a supprimées ni « Large » du Cuirassé, que la migration 0119 a supprimé (R238 (2) ;
+  // les dons qu'elle crée ne portent pas la source du classeur)
+  const supprimeesParLaMigration = [REGISTRE_0119.cuirasse.supprime].filter((id) => !supprimeesDImport.includes(id.slice('capacites/'.length)));
+  assert.equal(capacites.length + supprimeesDImport.length + supprimeesParLaMigration.length, 660);
   assert.equal(NOTES.length, 43);
   // à l'import, les 43 fiches des notes, et elles seules, ont une remarque ; aujourd'hui, une note par fiche dont le don a une remarque (le site de dev
   // peut en écrire, en vider ou en réécrire une : la page suit la remarque courante)

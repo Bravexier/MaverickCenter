@@ -181,10 +181,10 @@ function ficheRiche() {
   return f;
 }
 
-/** Humain au Potentiel Illimité (l'Archimage imposé, décision R23), +1 à l'Intelligence au choix, niveau 5. */
+/** Humain au Potentiel Illimité (l'Archimage en classe 1, choisie : elle n'est plus imposée, R238 (5)), +1 à l'Intelligence au choix, niveau 5. */
 function fichePotentiel() {
   const f = { ...ficheVide('Ysolde'), race_id: 'races/humain', ethnie_id: 'races/humain#ethnie:humain-toundra', magie_innee_id: 'magies/potentiel-illimite', caracteristique_magie_id: 'intelligence', xp: xpDuNiveau(5) };
-  f.classes = M.classesSelonLaMagieInnee(regles, f);
+  f.classes = M.classesSelonLaMagieInnee(regles, { ...f, classes: [{ rang: 1, classe_id: 'classes/archimage', specialite_id: null }] });
   f.sorts = M.sortsPossibles(regles, f).slice(0, 3).map((s, i) => ({ sort_id: s.id, rang: i + 1, niveau_maitrise: 1 }));
   return f;
 }
@@ -969,7 +969,7 @@ test('fiche vide : rien d’inventé, les libellés du modèle restent', () => {
   assert.deepEqual(note.lues.map((l) => l.nom), ['export', 'biClasse']);
 });
 
-test('Potentiel Illimité : l’Archimage imposé, la caractéristique au choix dans la note, pas de 4ᵉ barre', () => {
+test('Potentiel Illimité : l’Archimage choisie (plus imposée, R238 (5)), la caractéristique au choix dans la note, pas de 4ᵉ barre', () => {
   const pi = fichePotentiel();
   const e = cellulesDeLaFiche(regles, pi, { date: DATE });
   verifierLesAdresses(e);

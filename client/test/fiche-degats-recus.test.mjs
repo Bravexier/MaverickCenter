@@ -335,3 +335,18 @@ test('R171, la page (src/scripts/fiche.mjs, lue comme un texte) : type et élém
   assert.doesNotMatch(corps, /typesDeDegats\(/, 'plus un seul type parmi dix-sept');
   assert.doesNotMatch(corps, /parfaite/i, 'pas de case « défense parfaite »');
 });
+
+test('R241 (3) : les cases de la barrière (Passe, Casse, dégâts doublés) ne citent plus les matériaux d’armes ; elles restent, cochées à la main, pour les sorts et les capacités de monstre', () => {
+  const materiaux = /mythril|mithril|maverium|laiton/i;
+  for (const c of M.CASES_DE_LA_BARRIERE) {
+    assert.ok(!materiaux.test(`${c.nom} ${c.aide}`), `${c.id} : libellé et aide sans matériau`);
+  }
+  // les étapes que le calcul écrit ne citent pas non plus de matériau
+  for (const cases of [{ passe: true }, { casse: true }, { laiton: true }, { medusain: true }, { laiton: true, medusain: true }]) {
+    for (const e of M.degatsALaBarriere(20, { barriere: 12, sante: 40 }, cases).etapes) assert.ok(!materiaux.test(e), e);
+  }
+  // le calcul est inchangé : les cases agissent comme avant (R171), cochées à la main
+  assert.deepEqual(M.CASES_DE_LA_BARRIERE.map((c) => c.id), ['passe', 'casse', 'laiton', 'medusain']);
+  const apres = (cases) => { const r = M.degatsALaBarriere(20, { barriere: 12, sante: 40 }, cases); return [r.barriere, r.sante]; };
+  assert.deepEqual([apres({}), apres({ passe: true }), apres({ casse: true }), apres({ laiton: true })], [[0, 32], [12, 20], [0, 20], [0, 26]]);
+});

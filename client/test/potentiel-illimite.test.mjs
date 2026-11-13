@@ -97,7 +97,7 @@ test('R188 : le plafond de la page est celui de la base (magie_npm_plafond relev
   // (test/aide-base-d-import.mjs, lib/historique-site.mjs), pour la source des valeurs de R188 (jamais relues de ces textes).
   const explication = texteDImport('magie', { id: POTENTIEL_ILLIMITE }, 'explication');
   assert.match(explication, /niveau 3 de puissance magique maximum/);
-  assert.match(explication, /Classe unique = Archimage/);
+  assert.doesNotMatch(explication, /Classe unique = Archimage/, 'R238 (5) : la phrase est retirée de la magie (migration 0119)');
   // le don « Semi-complet » de l'Archimage à l'import (le site de dev a pu le modifier ou le supprimer : D11)
   const historique = historiqueSite(db);
   const cle = { id: 'capacites/archimage-semi-complet' };

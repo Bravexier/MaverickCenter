@@ -1252,3 +1252,18 @@ Chaque entrée : endroit — passage — pourquoi on n'a pas corrigé — correc
 - **mode hyper (forme_complete)** (`effet`) — « Résistance à la magie et dégâts physiques neutre. » — « neutre » peut s'accorder avec « Résistance » (singulier) ou avec « dégâts physiques » (pluriel : « neutres »). Sens incertain. → Laisser, ou « neutres » si l'adjectif porte sur les dégâts physiques.
 - **page** (`titre`) — « Potentiel illimité » — Casse différente du nom de la magie dans les descriptions (« Potentiel Illimité », forme majoritaire). Peut être voulu pour un titre de page. → Potentiel Illimité
 
+## Mise à jour de Décembre : classes (migration 0119, 2026-11-13)
+
+Classeur « Nouveauté mise à jour Décembre », onglets 23 « Porte-étendard » et 24 « Boxeur » (R238). Les coquilles sûres sont corrigées par la migration (R10, registre `tools/sheets/corrections.json`) ; ce qui suit est laissé tel qu'écrit.
+
+### capacites/boxeur-* (noms)
+
+- **Spécialité Percuteur** — « Bouragé » (Z29), « Bouquilibre » (AG29), « Boupact » (Z36), « Bousée » (AG36), « Boucassant » (Z43), « Bouvasteur » (AG43) — Série de noms en « Bou… », sans doute des jeux de mots sur « bouclier » (Bou + ragé, équilibre, impact, poussée, cassant, dévastateur). → Laisser tels quels si ce sont des jeux de mots voulus ; sinon donner la graphie.
+- **« Posture inébran »** (C43) — Mot peut-être tronqué. → « Posture inébranlable », ou laisser.
+- **« Endurouille »** (J36) — Mot-valise probable (endurance + rouille, spécialité Carcasse rouillée). → Laisser, ou donner la graphie.
+
+### capacites/boxeur-* (phrases)
+
+- **X37** — « divise par 2 donné par l'armure » — Il manque un ou plusieurs mots ; la correction toucherait au sens. → Donner la phrase voulue.
+- **Élisions** — « de AP+AM » (« d'AP+AM ») ; « altérations d'états » (« altérations d'état ») — Laissées telles quelles par la migration. → « oui » pour corriger, « non » pour garder.
+

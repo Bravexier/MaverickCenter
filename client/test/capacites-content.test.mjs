@@ -61,20 +61,24 @@ const classesRemaniees = new Set([
   ...historique.lignesRemaniees('specialite').map((l) => classeDeLaLigne('specialite', l)),
 ].filter(Boolean));
 const pageCreee = (id) => historique.creee('page', { id });
+// les dons que la migration 0119 a créés (Boxeur, Porte-étendard, Écrasant du Cuirassé : registre de la migration) : leur page n'a qu'une ligne `page_source`,
+// le libellé de l'onglet du classeur de Décembre (pièce jointe, sans URL : registre, `provenance`), pas les deux sources d'un import de Google Sheet
+const registre0119 = JSON.parse(readFileSync(fileURLToPath(new URL('../../data/migrations/0119-classes-materiaux-d12.json', import.meta.url)), 'utf8'));
+const creeeParLaMigration0119 = new Set([...Object.values(registre0119.classes.nouvelles).flatMap((k) => k.dons), registre0119.cuirasse.cree]);
 const classesImport = allImport.filter((e) => e.id.startsWith('classes/'));
 const capacitesImport = allImport.filter((e) => e.id.startsWith('capacites/'));
 
-test('660 capacités, une page chacune, toutes rattachées à une classe qui existe', () => {
+test('694 capacités, une page chacune, toutes rattachées à une classe qui existe', () => {
   assert.equal(capacites.length, db.prepare('SELECT count(*) AS n FROM capacite').get().n);
-  assert.equal(historique.effectifDImport('capacite'), 660, 'à l’import');
+  assert.equal(historique.effectifDImport('capacite'), 694, 'à l’import');
   assert.deepEqual(unresolvedCapacites(all), []);
   const perClass = new Map();
   for (const c of capacites) perClass.set(c.data.classe, (perClass.get(c.data.classe) ?? 0) + 1);
   for (const c of classes) assert.ok(perClass.has(c.id) || historique.creee('classe', { id: c.id }) || classesRemaniees.has(c.id), `${c.id} : une classe importée a ses capacités`);
-  // à l'import : les 39 classes ont des capacités, 17 pour le Barde, 14 pour l'Archimage
+  // à l'import : les 41 classes ont des capacités, 17 pour le Barde, 14 pour l'Archimage
   const parClasseImport = new Map();
   for (const k of historique.lignesDImport('capacite')) parClasseImport.set(k.classe_id, (parClasseImport.get(k.classe_id) ?? 0) + 1);
-  assert.equal(parClasseImport.size, 39, 'les 39 classes ont des capacités');
+  assert.equal(parClasseImport.size, 41, 'les 41 classes ont des capacités');
   assert.equal(parClasseImport.get('classes/barde'), 17);
   assert.equal(parClasseImport.get('classes/archimage'), 14);
 });
@@ -94,6 +98,8 @@ test('contrat du frontmatter : niveau entier, nature connue, titre « Nom (Class
     assert.equal(d.status, 'draft', c.id);
     // importée : le libellé de l'onglet et l'URL du classeur ; créée par le site (D11) : sa seule provenance « Site de dev › … »
     if (pageCreee(c.id)) assert.ok(d.sources.length === 1 && d.sources[0].startsWith('Site de dev › '), `${c.id} : sources`);
+    // créée par la migration 0119 : le seul libellé de l'onglet du classeur de Décembre (pièce jointe, sans URL), que tools/db/pages_md.py lit pour sa famille
+    else if (creeeParLaMigration0119.has(c.id)) assert.ok(d.sources.length === 1 && d.sources[0].startsWith('Classeur « Nouveauté mise à jour Décembre », onglet « '), `${c.id} : sources`);
     else assert.ok(d.sources.length >= 2, `${c.id} : sources`);
     if (d.nature === 'classe') assert.ok(!d.specialite, `${c.id} : une capacité de classe n'a pas de spécialité`);
     if (d.nature === 'specialite') assert.ok(d.specialite, `${c.id} : cartouche sans spécialité`);

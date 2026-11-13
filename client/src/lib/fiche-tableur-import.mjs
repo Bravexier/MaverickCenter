@@ -816,8 +816,7 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
   f.classes = classesSelonLaMagieInnee(regles, f);
   for (const c of classesLues) {
     if (!f.classes.some((x) => x.rang === c.rang && x.classe_id === c.classe_id)) {
-      const imposee = f.classes.find((x) => x.rang === c.rang);
-      perdu(`Classe ${c.rang} « ${nomDe(regles.classes, c.classe_id)} » : ${imposee ? `remplacée par ${nomDe(regles.classes, imposee.classe_id)}, imposée` : 'fermée'} par la magie innée ${innee?.nom}`);
+      perdu(`Classe ${c.rang} « ${nomDe(regles.classes, c.classe_id)} » : fermée par la magie innée ${innee?.nom}`);
     }
   }
   const nomDuDon = (id) => regles.classes.flatMap((c) => c.dons.map((x) => [x, c])).find(([x]) => x.id === id) ?? [];

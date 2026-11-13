@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 118 : 217 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 119 : 217 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -963,7 +963,7 @@ CATÉGORIES DU SOMMAIRE Les six en-têtes de colonne du Sommaire (A1, C1, E1, G1
 
 ### `classe`
 
-CLASSE : une ligne par onglet de classe (39)
+CLASSE : une ligne par onglet de classe (41 : les 39 du classeur V7, le Boxeur et le Porte-étendard de la migration 0119, décision R238 (1))
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -988,7 +988,7 @@ CLASSE : une ligne par onglet de classe (39)
 | `origine` | TEXT | oui | → famille.id |  |
 | `source_ref` | TEXT | oui |  | onglet + zones lues (départ, à savoir, description) + cellule du Sommaire |
 | `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
-| `magie_innee_id` | TEXT | non | → magie.id, unique | magie innée qui RÉSERVE et IMPOSE la classe : sans elle on ne prend pas la classe, avec elle la classe est la classe 1. Archimage : Potentiel Illimité (« CHOSE A SAVOIR » de son onglet, décision R23, migration 0015) ; NULL pour les autres classes. Contrôlé par v_personnage_controle (classe_reservee, classe_imposee) |
+| `magie_innee_id` | TEXT | non | → magie.id, unique | magie innée qui RÉSERVE la classe : sans elle on ne prend pas la classe (elle ne l'impose plus, décision R238 (5), migration 0119). Archimage : Potentiel Illimité (« CHOSE A SAVOIR » de son onglet, décision R23, migration 0015) ; NULL pour les autres classes. Contrôlé par v_personnage_controle (classe_reservee) |
 | `magie_innee_exclue_id` | TEXT | non | → magie.id | magie innée qui FERME la classe, à tous les rangs. Mage Bleu : Potentiel Illimité (« CHOSE A SAVOIR » de son onglet : « Un potentiel illimité ne peut pas avoir cette classe. », décision R25, migration 0020) ; NULL pour les autres. Contrôlé par v_personnage_controle (classe_exclue) |
 
 ### `specialite`
@@ -1010,7 +1010,7 @@ SPÉCIALITÉ : deux par classe, choisies au niveau de classe 10 Onglet normal : 
 
 ### `capacite`
 
-CAPACITÉ (aptitude) : une ligne par page `capacites/<slug>` (660). Une aptitude du classeur = cellule « Lvl N » + nom + bloc d'effet + cellule de type. Les choix « l'un OU l'autre » ne sont pas un attribut : ils se lisent dans la mise en page (view v_capacite_exclusive) : nature = 'classe' : colonne P de l'onglet (Lvl 1, Lvl 5, Lvl 20) ; specialite_id NULL ; reçue sans choix. nature = 'specialite' : le cartouche « Lvl 10 » qui porte le nom de la spécialité ; les DEUX cartouches sont sur la même ligne et s'excluent. nature = 'choix' : les colonnes d'aptitudes (Lvl 10, 15, 20). Onglet normal : deux colonnes sous chaque bannière (specialite_id renseignée), côte à côte sur la même ligne : l'une OU l'autre. Archimage : groupes de 2 ou 3 colonnes sans spécialité (specialite_id NULL), y compris les deux cartouches « Lvl 10 » (Élémentaliste, Occultiste : règle du site, capacites.mjs ; la fiche V15.2.2 les lit comme des spécialités, d'où les deux lignes `specialite` de l'Archimage, sans capacité rattachée). ligne = ligne de la cellule « Lvl N » dans l'onglet (ordre de haut en bas) ; rang = position de gauche à droite sur la ligne, parmi les capacités du même groupe (même specialite_id ; NULL = sans spécialité). « Niveau de classe >= N » est la lecture de la fiche, le classeur ne l'écrit pas. Cinq capacités sont écrites mot pour mot dans deux classes (Contre-attaque, Rage, Gigantisme, Glissade, Sang contrôlé) : deux lignes, deux pages ; la vue v_capacite_partagee les retrouve.
+CAPACITÉ (aptitude) : une ligne par page `capacites/<slug>` (694 depuis la migration 0119, 660 avant). Une aptitude du classeur = cellule « Lvl N » + nom + bloc d'effet + cellule de type. Les choix « l'un OU l'autre » ne sont pas un attribut : ils se lisent dans la mise en page (view v_capacite_exclusive) : nature = 'classe' : colonne P de l'onglet (Lvl 1, Lvl 5, Lvl 20) ; specialite_id NULL ; reçue sans choix. nature = 'specialite' : le cartouche « Lvl 10 » qui porte le nom de la spécialité ; les DEUX cartouches sont sur la même ligne et s'excluent. nature = 'choix' : les colonnes d'aptitudes (Lvl 10, 15, 20). Onglet normal : deux colonnes sous chaque bannière (specialite_id renseignée), côte à côte sur la même ligne : l'une OU l'autre. Archimage : groupes de 2 ou 3 colonnes sans spécialité (specialite_id NULL), y compris les deux cartouches « Lvl 10 » (Élémentaliste, Occultiste : règle du site, capacites.mjs ; la fiche V15.2.2 les lit comme des spécialités, d'où les deux lignes `specialite` de l'Archimage, sans capacité rattachée). ligne = ligne de la cellule « Lvl N » dans l'onglet (ordre de haut en bas) ; rang = position de gauche à droite sur la ligne, parmi les capacités du même groupe (même specialite_id ; NULL = sans spécialité). « Niveau de classe >= N » est la lecture de la fiche, le classeur ne l'écrit pas. Cinq capacités sont écrites mot pour mot dans deux classes (Contre-attaque, Rage, Gigantisme, Glissade, Sang contrôlé) : deux lignes, deux pages ; la vue v_capacite_partagee les retrouve.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -1279,7 +1279,7 @@ Résistances d'une ethnie (col. E/F = résistance 1, G/H = résistance 2 : un no
 
 ### `race_classe`
 
-RACE_CLASSE : matrice « Accessibilité de Classe » : 27 races x 39 classes = 1 053 lignes (712 à 1, 341 à 0). 26 classes générales (colonnes B à AA) + 13 classes raciales (AB à AN). La légende 0/1 n'est pas écrite dans le classeur : 1 = accessible est la lecture de la source (le « 1 » d'Orios sur la classe Orios et le « Classe possible : Orios » de Race!G14 la confirment). AUCUNE formule du classeur ne lit cet onglet (donnée d'information) ; voir design.md §12 pour ses contradictions avec la fiche.
+RACE_CLASSE : matrice « Accessibilité de Classe » : 27 races x 39 classes = 1 053 lignes (712 à 1, 341 à 0) ; plus les colonnes 40 (Boxeur) et 41 (Porte-étendard), absentes de la fiche, ouvertes aux 27 races (décision R238 (1), migration 0119) : 1 107 lignes. 26 classes générales (colonnes B à AA) + 13 classes raciales (AB à AN). La légende 0/1 n'est pas écrite dans le classeur : 1 = accessible est la lecture de la source (le « 1 » d'Orios sur la classe Orios et le « Classe possible : Orios » de Race!G14 la confirment). AUCUNE formule du classeur ne lit cet onglet (donnée d'information) ; voir design.md §12 pour ses contradictions avec la fiche.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |

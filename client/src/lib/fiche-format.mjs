@@ -715,7 +715,7 @@ export const PREFIXE_DE_RETRAIT = 'Retrait (règles modifiées) : ';
 export const NATURES_DE_L_ARMURE = Object.freeze(['armure_transformee', 'armure_familier', 'armure_magie_absente', 'armure_trop_lourde']);
 export const ORDRE_DES_NATURES = Object.freeze([
   'metier', 'specialite', 'specialisation_magie', 'capacite', 'don_obtenu', 'sort', 'arme', 'arme_elementaire', 'objet', 'piece_armure', ...NATURES_DE_L_ARMURE, 'materiau_bouclier', 'accessoire', 'acquis',
-  'maitrises_armes',
+  'maitrise_imposee', 'maitrises_armes',
 ]);
 
 /** Le jour (UTC) d'un instant au format des colonnes `*_le` (« 2026-10-11T08:30:00Z » → « 11/10/2026 ») ; lève une Error sur un instant mal formé. */
@@ -735,6 +735,8 @@ const positif = (n) => typeof n === 'number' && n > 0;
 /**
  * L'élément retiré, en mots : sa nature, son nom (l'id quand le nom manque), puis entre parenthèses ce qui le situe (les parties absentes sont omises) :
  *   don        : « le don « Botte secrète » (classe Bretteur des dunes, spécialité LAME COURBE, niveau 20) » ;
+ *                avec `cas: 'deplace'` (décision R238 (2) : le don change de spécialité, même id ; `vers` : la nouvelle, « Protecteur, niveau 20 »), la spécialité et le
+ *                niveau sont ceux d'avant : « …a changé de spécialité dans les règles (maintenant Protecteur, niveau 20) : … » ;
  *   spécialité : « la spécialité « LAME COURBE » (classe X, avec les dons choisis « A » et « B ») » (`dons` : ceux de la fiche qui partent avec elle) ;
  *   sort       : « le sort « Boule de feu » (magie Feu, NPM 2, 2 NM sur cette fiche dont 1 de livre) » (des faits, rien sur ce qu'ils deviennent ; les NM
  *                du MJ sont ceux de la fiche, décision R118 : ils restent quand le sort part). Son livre (décision R169, `livre`) part avec lui : « dont
@@ -760,6 +762,8 @@ const positif = (n) => typeof n === 'number' && n > 0;
  *   accessoire : « l'accessoire « Bague » (Ceinture, effet « Dégâts magie +2 », effet hors table « Brille la nuit ») » ou, sans nom, « l'accessoire de
  *                l'emplacement Chef (…) » (décision R97) ; avec `ecarte`, l'accessoire n'est plus porté ; sinon il ne perd que son nom et son effet hors table ;
  *   acquis     : « l'acquis saisi en Arc (7) » : les points d'acquis saisis d'une compétence, l'Acquis se calculant (décision R104 ; `valeur`) ;
+ *   point imposé : « le point de maîtrise d’arme imposé « BÂTON DE COMBAT » (classe Archimage, maîtrise 2) » : un point qu'une ligne de classe imposait et qui est
+ *                maintenant à choisir (décision R238 (4), MAJ-C10 : `nom` la famille, `classe`, `rang` de la ligne) ;
  *   maîtrises  : « les maîtrises d'armes d'avant la refonte (ÉPÉES 3D10, ARC 2D8 ; arme choisie : Flétrisseur (Tueur) ÉPÉES) » (décision R153 :
  *                maitrisesDAvant ; `familles`, `armes`) ;
  *   armure     : (décision R165, NATURES_DE_L_ARMURE) « l'armure « Armure Cuir/Peau » (amélioration +2, solidité Casque 1, Torse 0) », ou « l'armure
@@ -767,12 +771,12 @@ const positif = (n) => typeof n === 'number' && n > 0;
  *                `amelioration` : le niveau ; `parties` : partiesEnTexte. « armure_transformee » : `devenue` (le nom de l'armure élémentaire) et
  *                `amelioration_devenue` ; « armure_magie_absente » : `magie` ; « armure_trop_lourde » : `poids` (celui de l'armure) et `portable` (le poids
  *                portable du personnage), en mots (POIDS_DES_ARMURES).
- * @param {{ nature: 'metier' | 'specialite' | 'specialisation_magie' | 'capacite' | 'don_obtenu' | 'sort' | 'arme' | 'objet' | 'arme_elementaire' | 'piece_armure' | 'armure_transformee' | 'armure_familier' | 'armure_magie_absente' | 'armure_trop_lourde' | 'materiau_bouclier' | 'accessoire' | 'acquis' | 'maitrises_armes', id: string, emplacement?: string | null, famille?: string | null, rang?: number | null, nom?: string | null, classe?: string | null, specialite?: string | null,
+ * @param {{ nature: 'metier' | 'specialite' | 'specialisation_magie' | 'capacite' | 'don_obtenu' | 'sort' | 'arme' | 'objet' | 'arme_elementaire' | 'piece_armure' | 'armure_transformee' | 'armure_familier' | 'armure_magie_absente' | 'armure_trop_lourde' | 'materiau_bouclier' | 'accessoire' | 'acquis' | 'maitrise_imposee' | 'maitrises_armes', id: string, emplacement?: string | null, famille?: string | null, rang?: number | null, nom?: string | null, classe?: string | null, specialite?: string | null,
  *   niveau?: number | null, magie?: string | null, npm?: number | null, nm?: number | null, livre?: boolean, choisi?: boolean,
  *   dons?: string[], devenue?: boolean | string, armureGardee?: boolean, quantite?: number | null, matiere?: string | null, effet?: string | null, texte?: string | null,
  *   ecarte?: boolean, valeur?: number, amelioration?: number | string | null, parties?: string | null, amelioration_devenue?: number | string | null,
- *   elementaire?: boolean, poids?: string, portable?: string, cas?: 'devenue' | 'autre_type' | 'amelioration_seule' | 'entree' | 'don' | 'type' | 'magie', element?: string,
- *   don?: string | null, magie_visee?: 'innee' | 'acquise' | null,
+ *   elementaire?: boolean, poids?: string, portable?: string, cas?: 'devenue' | 'autre_type' | 'amelioration_seule' | 'entree' | 'don' | 'type' | 'magie' | 'deplace', element?: string,
+ *   don?: string | null, magie_visee?: 'innee' | 'acquise' | null, vers?: string | null,
  *   niveau_element?: number | null, niveau_garde?: boolean, materiau?: string | null }} d
  */
 export function descriptionDuRetrait(d) {
@@ -841,6 +845,10 @@ export function descriptionDuRetrait(d) {
   } else if (d.nature === 'acquis') {
     tete = `l’acquis saisi en ${nom}`;
     if (positif(d.valeur)) parties.push(`${d.valeur}`);
+  } else if (d.nature === 'maitrise_imposee') {
+    // décision R238 (4), MAJ-C10 : un point de maîtrise d'une ligne de classe qui était imposé (l'Archimage : « 1 maîtrise de Bâton ») devient à choisir
+    tete = `le point de maîtrise d’arme imposé « ${nom} »`;
+    if (d.classe) parties.push(`classe ${d.classe}${positif(d.rang) ? `, maîtrise ${d.rang}` : ''}`);
   } else if (d.nature === 'maitrises_armes') {
     tete = 'les maîtrises d’armes d’avant la refonte';
     const texte = texteDesMaitrisesDAvant(d);
@@ -927,6 +935,12 @@ export const ligneDeRetrait = (d, instant) => (d.nature === 'maitrises_armes'
                 : d.nature === 'don_obtenu' && d.cas === 'magie'
                   // décision R181, réponse du propriétaire « Retirés avec une note », R192 : le don vise l'autre magie, sa liste n'est plus la même
                   ? `n’est plus obtenu : le don qui le donnait vise maintenant la magie ${d.magie_visee === 'acquise' ? 'acquise' : 'innée'} du personnage. Choisissez autre chose si la fiche le permet, ou adaptez la fiche à la nouvelle règle.`
+              : d.nature === 'maitrise_imposee'
+                // décision R238 (4), MAJ-C10 : « le joueur rechoisit » ; le point n'est plus compté d'office, le choix est à faire dans le bloc Maîtrises
+                ? 'n’est plus imposé : la classe donne maintenant ce point à choisir. Il est remis à votre choix, dans le bloc Maîtrises de la fiche.'
+              : d.nature === 'capacite' && d.cas === 'deplace'
+                // décision R238 (2), MAJ-C7 : le don garde son identifiant mais change de spécialité (« Appui » du Cuirassé : de Vindicatif à Protecteur)
+                ? `a changé de spécialité dans les règles${d.vers ? ` (maintenant ${d.vers})` : ''} : il ne fait plus partie des choix de la spécialité de la fiche. Choisissez autre chose ou adaptez la fiche à la nouvelle règle.`
               : 'n’existe plus dans les règles. Choisissez autre chose ou adaptez la fiche à la nouvelle règle.'}`);
 
 /** Ordre des retraits d'une fiche : par nature (ORDRE_DES_NATURES), puis par nom ; le même sur le site de dev et à la reconstruction. */

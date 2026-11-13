@@ -566,8 +566,8 @@ typées lues par `client/src/lib/races-db.mjs`, jamais le Markdown. **Aucun tabl
 (`lib/class-groups.mjs`, testé ; `components/classes/ClassesPastilles.astro`, CSS `styles/classe/liste.css`). Chaque classe est une **pastille sur le modèle de la carte des magies**
 (demande du propriétaire : plus de tableau) : pilule bordée et teintée de la couleur de sa catégorie, point de couleur, nom en gras, légère élévation au survol ; les titres des
 colonnes partagent une même rangée (sous-grille), si bien que leurs soulignements restent alignés quand un titre passe à la ligne. La catégorie vient du tag posé par l'import (intitulé du Sommaire du classeur) :
-« Classe Physique Corps à Corps », « Classe Physique Distance », « Classe Magique », « Classe Hybride Animal » (raciales), « Classe Hybride » et « Classe spéciale » (spéciales : Flagelleur, Archimage).
-Le Parleur, « corps à corps » dans le Sommaire, est sous « Spéciales » (décision du propriétaire, `CLASS_OVERRIDES`) ; une classe sans catégorie reconnue va dans « Non classées », sous « Spéciales ».
+« Classe Physique Corps à Corps », « Classe Physique Distance », « Classe Magique », « Classe Hybride Animal » (raciales), « Classe Hybride » et « Classe spéciale » (spéciales : Flagelleur, Archimage, Parleur).
+Le Parleur est en « Classe spéciale » dans la base (décision R238 (3), migration 0119 : plus d'exception dans `class-groups.mjs`) ; une classe sans catégorie reconnue va dans « Non classées », sous « Spéciales ».
 Chaque colonne prend la couleur de sa catégorie (celle des pages de classe), par la classe de la catégorie (`couleur-classe-<clé>`, famille `classe` de la palette, émise par la page), jamais un style ; le nom d'une classe est son titre : **« (classe) » est supprimé de partout, base comprise** (demande du propriétaire, migration `0009-classes-sans-suffixe`),
 une classe raciale porte le nom de sa race (« Kitsune », page `classes/kitsune`) ; le mot-clé d'une classe raciale homonyme de sa race s'écrit lui
 aussi « Kitsune », avec la catégorie Classe (décision R232 (4), qui remplace R191 : plus de « Kitsune (classe) », sur aucune page) ; leurs clés,

@@ -16,6 +16,7 @@
 // Aucun texte modifiable n'est figé : les lignes se choisissent par id ou par leur verrou, les essais créent leurs mots-clés sous des noms libres.
 //   node --test test/serveur-edition-verrou.test.mjs
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
@@ -430,8 +431,10 @@ test('R218, R219 (1) : chaque race, magie et classe a son mot-clé (adresse « /
     // les mots-clés se lisent à l'import, par l'adresse ; sur l'état courant, on les suit par leur id : un mot-clé créé depuis sur la même adresse
     // reste libre (R219 (5)), et un mot-clé verrouillé ne change ni d'adresse ni de verrou par le site
     const motsClesDImport = lignes.map(([table, id]) => [table, id, dImport.prepare('SELECT id, verrou FROM mot_cle WHERE url = ?').all(`/${id}/`)]);
+    // une classe créée par la migration 0119 (Boxeur, Porte-étendard) n'a pas de mot-clé de nom : le lot n'en crée aucun (R219 (5)) ; s'il existe un jour, il est verrouillé
+    const sansMotCle = new Set(Object.keys(JSON.parse(readFileSync(new URL('../../data/migrations/0119-classes-materiaux-d12.json', import.meta.url), 'utf8')).classes.nouvelles));
     for (const [table, id, motsCles] of motsClesDImport) {
-      assert.ok(motsCles.length > 0, `import : ${table} ${id} sans mot-clé`);
+      assert.ok(motsCles.length > 0 || (table === 'classe' && sansMotCle.has(id)), `import : ${table} ${id} sans mot-clé`);
       for (const m of motsCles) {
         assert.equal(m.verrou, 1, `import : ${table} ${id} → ${m.id}`);
         const courant = courante.prepare('SELECT verrou, url FROM mot_cle WHERE id = ?').get(m.id);

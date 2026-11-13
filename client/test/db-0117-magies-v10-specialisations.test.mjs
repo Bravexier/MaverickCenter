@@ -149,9 +149,10 @@ test('R10 : « Torrant colérique » corrigé ; le sort nouveau a l’id du nom 
   assert.ok(db.prepare("SELECT 1 FROM correction WHERE dump = 'magie-v10' AND onglet = ? AND cellule = ? AND avant = ?").get(onglet, cellule, c.avant));
   assert.ok(!s.nom.includes(c.avant) && s.nom.includes(c.apres));
   // la table correction est le miroir de la section magie-v10 du registre
-  const lignes = db.prepare("SELECT onglet, cellule, avant, apres FROM correction WHERE dump = 'magie-v10' ORDER BY onglet, cellule, avant").all().map((r) => ({ ...r }));
-  const registre = CORRECTIONS.dumps['magie-v10'].corrections.map(({ onglet: o, cellule: k, avant, apres }) => ({ onglet: o, cellule: k, avant, apres }))
-    .sort((x, y) => x.onglet.localeCompare(y.onglet) || x.cellule.localeCompare(y.cellule) || x.avant.localeCompare(y.avant));
+  // un même ordre des deux côtés (une cellule peut porter deux corrections : Boxeur AE30)
+  const ordre = (x, y) => x.onglet.localeCompare(y.onglet) || x.cellule.localeCompare(y.cellule) || x.avant.localeCompare(y.avant);
+  const lignes = db.prepare("SELECT onglet, cellule, avant, apres FROM correction WHERE dump = 'magie-v10'").all().map((r) => ({ ...r })).sort(ordre);
+  const registre = CORRECTIONS.dumps['magie-v10'].corrections.map(({ onglet: o, cellule: k, avant, apres }) => ({ onglet: o, cellule: k, avant, apres })).sort(ordre);
   assert.deepEqual(lignes, registre);
 });
 

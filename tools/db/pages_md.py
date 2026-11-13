@@ -109,6 +109,10 @@ CRAFT = {'familiers', 'maison', 'machine-de-guerresiege', 'fievre-des-marais', '
 # famille (la provenance sera retirée à la 1.0).
 SITE_DE_DEV = 'Site de dev › '
 FAMILLE_DES_PAGES_DU_SITE = {'metiers': 'docs', 'races': 'races', 'classes': 'classes', 'capacites': 'classes', 'guide': 'docs'}
+# Pages créées par une migration depuis le classeur de la mise à jour de Décembre (pièce jointe, pas un Google Sheet : migration 0119, Boxeur,
+# Porte-étendard, Écrasant du Cuirassé) : provenance « Classeur « Nouveauté mise à jour Décembre », onglet « … » », famille des pages de leur type.
+CLASSEUR_DE_DECEMBRE = 'Classeur « Nouveauté mise à jour Décembre »'
+FAMILLE_DES_PAGES_DE_DECEMBRE = {'classes': 'classes', 'capacites': 'classes'}
 
 
 def origine_migration(type_, slug, statut, sources):
@@ -122,6 +126,8 @@ def origine_migration(type_, slug, statut, sources):
         return FAMILLE_DES_PAGES_DU_SITE[type_]
     if premier.startswith('Google Doc'):
         return 'docs'
+    if premier.startswith(CLASSEUR_DE_DECEMBRE) and type_ in FAMILLE_DES_PAGES_DE_DECEMBRE:
+        return FAMILLE_DES_PAGES_DE_DECEMBRE[type_]
     if fichier == 'Invocation':
         return 'bestiaire'
     if fichier == 'Classe Maverick V7':

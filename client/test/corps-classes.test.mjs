@@ -77,9 +77,9 @@ test('spécialités de la page : les bannières ; les deux de l’Archimage (san
   }
 });
 
-test('dons : corps_md et resume des 660 fiches redonnés à l’octet près (effet, puis « Note de cellule : » et la remarque)', () => {
+test('dons : corps_md et resume des 694 fiches redonnés à l’octet près (effet, puis « Note de cellule : » et la remarque)', () => {
   // 660 à l'import ; le site en crée et en supprime (D11) : une fiche par ligne de capacite, toujours
-  assert.equal(historique.effectifDImport('capacite'), 660);
+  assert.equal(historique.effectifDImport('capacite'), 694);
   assert.equal(dons.length, db.prepare('SELECT count(*) AS n FROM capacite').get().n);
   const ecarts = [];
   for (const d of dons) {
@@ -269,7 +269,7 @@ test('spécialité de l’Archimage renommée : la page ne change pas (pas une b
   assert.deepEqual(changementsDePageDeClasse(p, archimage, apres), {});
 });
 
-test('don : effet et remarque modifiés remplacent les anciens, sur les 660 fiches', () => {
+test('don : effet et remarque modifiés remplacent les anciens, sur les 694 fiches', () => {
   for (const d of dons) {
     const effet = corpsDeDon({ ...d, effet: MARQUE });
     assert.ok(effet.startsWith(blocDe(MARQUE)), d.id);

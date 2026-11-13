@@ -144,7 +144,9 @@ test('le nom d’une classe : « couleur-<famille>-<id> », l’id = la clé du 
   assert.equal(classeDeCategorie('non-classees'), null, 'pas une catégorie de couleur : une section des Spéciales');
   // les mots-clés d'une classe par leur id (`data.mots_cles` : décision R195)
   assert.equal(classeDUneClasse({ id: 'classes/guerrier', data: { mots_cles: ['classe', 'cac'] } }), 'couleur-classe-melee');
-  assert.equal(classeDUneClasse({ id: 'classes/parleur', data: { mots_cles: ['classe', 'cac'] } }), 'couleur-classe-speciales', 'exception du Parleur');
+  // R238 (3) : plus d'exception pour le Parleur, « Classe spéciale » en base ; la catégorie ne vient que du mot-clé
+  assert.equal(classeDUneClasse({ id: 'classes/parleur', data: { mots_cles: ['classe', 'speciale'] } }), 'couleur-classe-speciales');
+  assert.equal(classeDUneClasse({ id: 'classes/parleur', data: { mots_cles: ['classe', 'cac'] } }), 'couleur-classe-melee', 'aucune exception par identifiant');
   assert.equal(classeDUneClasse({ id: 'classes/x', data: { mots_cles: [] } }), 'couleur-classe-speciales', 'non classée : sous « Spéciales », comme classColor');
   for (const ids of [['cac'], ['distance'], ['magique'], ['hybride-animal'], ['hybride'], []]) {
     const entree = { id: 'classes/x', data: { mots_cles: ids } };

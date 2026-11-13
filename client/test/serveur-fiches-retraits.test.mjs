@@ -3,6 +3,7 @@
 // l'édition (serveur/edition-journal.mjs). Base vivante temporaire ; les données d'essai (classe, spécialité, dons, métier) sont créées ici sous des noms
 // absents de la base, le sort est lu dans la base.
 import assert from 'node:assert/strict';
+import { copyFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
@@ -13,8 +14,9 @@ import {
   libelleDeFiche, noterLesRetraits, nouveauxRetraitsDeFiches, numerosDesFichesDeJoueur, ordreDesLibelles, RETRAITS, retirerDesFiches,
 } from '../serveur/fiches-retraits.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
-import { jourDuRetrait, TABLES_FICHES } from '../src/lib/fiche-format.mjs';
+import { jourDuRetrait, ligneDeRetrait, TABLES_FICHES } from '../src/lib/fiche-format.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { cheminDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const racine = dossierTemporaire('fiches-retraits');
@@ -169,4 +171,157 @@ test('numerosDesFichesDeJoueur : toutes les fiches de joueur par date de créati
     m.close();
   }
   assert.deepEqual(['fiche de joueur n° 10', 'Zora', 'fiche de joueur n° 2', 'aldric'].sort(ordreDesLibelles), ['aldric', 'Zora', 'fiche de joueur n° 2', 'fiche de joueur n° 10']);
+});
+
+test('R238 (2), MAJ-C7, R42 : Appui (même id, passé de Vindicatif à Protecteur) est retiré des Vindicatifs qui l’avaient, Large supprimé des Protecteurs, avec une note datée ; les autres fiches ne bougent pas', () => {
+  const APPUI = 'capacites/cuirasse-appui';
+  const LARGE = 'capacites/cuirasse-large';
+  const VINDICATIF = 'classes/cuirasse#specialite:vindicatif';
+  const PROTECTEUR = 'classes/cuirasse#specialite:protecteur';
+  const MURAILLE = 'capacites/cuirasse-muraille';
+  const regles = cheminDImport();
+  const dossier = dossierTemporaire('retraits-cuirasse');
+  const { chemin: vivante } = preparerBaseVivante({ regles, dossier: join(dossier, 'db') });
+
+  // la base « d'avant » (la migration 0119 n'est pas encore passée) : Appui chez les Vindicatifs, Large chez les Protecteurs ; quatre prétirés
+  const avant = new DatabaseSync(vivante);
+  avant.exec('PRAGMA foreign_keys = ON');
+  const un = (sql, ...p) => ({ ...avant.prepare(sql).get(...p) });
+  const appui = un('SELECT * FROM capacite WHERE id = ?', APPUI);
+  const pageAppui = un('SELECT * FROM page WHERE id = ?', APPUI);
+  assert.equal(appui.specialite_id, PROTECTEUR, 'à l’import, Appui est chez les Protecteurs (migration 0119)');
+  assert.equal(avant.prepare('SELECT count(*) AS n FROM capacite WHERE id = ?').get(LARGE).n, 0, 'Large n’existe plus (migration 0119)');
+  const ins = (t, l) => avant.prepare(`INSERT INTO ${t} (${Object.keys(l).join(', ')}) VALUES (${Object.keys(l).map(() => '?').join(', ')})`).run(...Object.values(l));
+  // Large : la ligne d'avant, à la place qu'Appui a prise (Protecteur, niveau 20, ligne 43, rang 2) ; Appui, à une place libre chez les Vindicatifs
+  avant.prepare('UPDATE capacite SET specialite_id = ?, niveau = 15, ligne = 36, rang = 9 WHERE id = ?').run(VINDICATIF, APPUI);
+  ins('page', { ...pageAppui, id: LARGE, slug: 'cuirasse-large', titre: 'Large (Cuirassé)', titre_cle: 'large-cuirasse' });
+  ins('capacite', { ...appui, id: LARGE, specialite_id: PROTECTEUR, niveau: 20, ligne: 43, rang: 2, nom: 'Large', nom_cle: 'large' });
+  const FICHE_COMMUNE = { visibilite: 'tous', mode_classe: 'mono', xp: 0, alignement_loyal: 0, alignement_chaotique: 0, alignement_bon: 0, alignement_mauvais: 0,
+    bourse_pp: 0, bourse_ro: 0, bourse_rf: 0, ambidextrie: 0, cree_le: '2026-10-10T12:00:00Z', modifie_le: '2026-10-10T12:00:00Z', nature: 'pretire' };
+  const fiche = (id, specialite, dons) => {
+    ins('personnage', { ...FICHE_COMMUNE, id, nom: `Prétiré ${id}`, notes: 'Note du joueur.' });
+    ins('personnage_classe', { personnage_id: id, rang: 1, classe_id: 'classes/cuirasse', specialite_id: specialite });
+    for (const d of dons) ins('personnage_capacite', { personnage_id: id, capacite_id: d });
+  };
+  fiche('c-vindicatif', VINDICATIF, [APPUI]);
+  fiche('c-protecteur-large', PROTECTEUR, [LARGE]);
+  fiche('c-protecteur-muraille', PROTECTEUR, [MURAILLE]);
+  fiche('c-vindicatif-autre', VINDICATIF, ['capacites/cuirasse-aucune-fuite']);
+  avant.close();
+
+  // la livraison : les règles d'import (Appui chez les Protecteurs, Large supprimé), une modification sans rapport pour que la base soit refaite
+  const livraison = join(dossier, 'livraison.db');
+  copyFileSync(regles, livraison);
+  const l = new DatabaseSync(livraison, { enableForeignKeyConstraints: false });
+  l.exec("UPDATE race SET nom = 'Humain (livraison)' WHERE id = 'races/humain'");
+  l.close();
+  const instant = new Date('2026-11-12T09:00:00Z');
+  const iso = '2026-11-12T09:00:00Z';
+  const r = preparerBaseVivante({ regles: livraison, dossier: join(dossier, 'db'), instant });
+  assert.equal(r.refaite, true);
+
+  const apres = new DatabaseSync(vivante, { readOnly: true });
+  try {
+    const dons = (id) => apres.prepare('SELECT capacite_id FROM personnage_capacite WHERE personnage_id = ?').all(id).map((x) => x.capacite_id);
+    assert.deepEqual(dons('c-vindicatif'), [], 'Appui retiré du Vindicatif : le joueur rechoisit');
+    assert.deepEqual(dons('c-protecteur-large'), [], 'Large supprimé du Protecteur');
+    assert.deepEqual(dons('c-protecteur-muraille'), [MURAILLE], 'une autre fiche de Protecteur ne bouge pas');
+    assert.deepEqual(dons('c-vindicatif-autre'), ['capacites/cuirasse-aucune-fuite'], 'un autre choix du Vindicatif ne bouge pas');
+    assert.deepEqual(apres.prepare("SELECT personnage_id, specialite_id FROM personnage_classe WHERE personnage_id LIKE 'c-%' ORDER BY personnage_id").all().map((x) => ({ ...x })), [
+      { personnage_id: 'c-protecteur-large', specialite_id: PROTECTEUR }, { personnage_id: 'c-protecteur-muraille', specialite_id: PROTECTEUR },
+      { personnage_id: 'c-vindicatif', specialite_id: VINDICATIF }, { personnage_id: 'c-vindicatif-autre', specialite_id: VINDICATIF }], 'la classe et la spécialité de la fiche restent');
+    const noms = (id) => apres.prepare('SELECT nom FROM capacite WHERE id = ?').get(id)?.nom;
+    const niveau = (id) => apres.prepare('SELECT niveau FROM capacite WHERE id = ?').get(id)?.niveau;
+    const cuirasse = apres.prepare("SELECT nom FROM classe WHERE id = 'classes/cuirasse'").get().nom;
+    const nomDe = (id) => apres.prepare('SELECT nom FROM specialite WHERE id = ?').get(id).nom;
+    const notes = (id) => apres.prepare('SELECT notes FROM personnage WHERE id = ?').get(id).notes;
+    const jour = jourDuRetrait(iso);
+    // la note d'Appui : datée, avec la place d'avant (Vindicatif, niveau 15) et la nouvelle (Protecteur, niveau 20)
+    const noteAppui = ligneDeRetrait({ nature: 'capacite', cas: 'deplace', id: APPUI, nom: noms(APPUI), classe: cuirasse, specialite: nomDe(VINDICATIF), niveau: 15,
+      vers: `${nomDe(PROTECTEUR)}, niveau ${niveau(APPUI)}` }, iso);
+    assert.equal(notes('c-vindicatif'), `Note du joueur.\n${noteAppui}`);
+    assert.ok(noteAppui.startsWith(`[${jour}] Retrait (règles modifiées) : le don « ${noms(APPUI)} »`));
+    assert.match(noteAppui, /spécialité .+, niveau 15\) a changé de spécialité dans les règles \(maintenant .+, niveau 20\)/);
+    // la note de Large : celle d'un don supprimé (R42), avec sa place d'avant lue dans l'ancienne base
+    const noteLarge = ligneDeRetrait({ nature: 'capacite', id: LARGE, nom: 'Large', classe: cuirasse, specialite: nomDe(PROTECTEUR), niveau: 20 }, iso);
+    assert.equal(notes('c-protecteur-large'), `Note du joueur.\n${noteLarge}`);
+    assert.match(noteLarge, /n’existe plus dans les règles/);
+    assert.equal(notes('c-protecteur-muraille'), 'Note du joueur.');
+    assert.equal(notes('c-vindicatif-autre'), 'Note du joueur.');
+    // le bilan de la reconstruction (/api/etat) liste les deux fiches
+    assert.deepEqual(r.fiches.map((f) => f.fiche).sort(), ['Prétiré c-protecteur-large', 'Prétiré c-vindicatif']);
+    assert.deepEqual(apres.prepare('PRAGMA foreign_key_check').all(), []);
+  } finally {
+    apres.close();
+  }
+  // idempotence : la même livraison relue ne retire ni ne note rien de plus
+  const encore = preparerBaseVivante({ regles: livraison, dossier: join(dossier, 'db'), instant });
+  assert.equal(encore.refaite, false);
+});
+
+test('R238 (4), MAJ-C10, R148 : le point de maîtrise imposé de l’Archimage devient à choisir ; la fiche garde ses choix, une note datée le dit, une seule fois ; une autre classe ne bouge pas', () => {
+  const SOURCE = 'classes/archimage#maitrise-arme:2';
+  const regles = cheminDImport();
+  const dossier = dossierTemporaire('retraits-archimage');
+  const { chemin: vivante } = preparerBaseVivante({ regles, dossier: join(dossier, 'db') });
+
+  // la base « d'avant » : la ligne 2 de l'Archimage imposait le Bâton (part `imposee`, sans options)
+  const avant = new DatabaseSync(vivante);
+  avant.exec('PRAGMA foreign_keys = ON');
+  const part = { ...avant.prepare('SELECT * FROM maitrise_arme_part WHERE source_id = ?').get(SOURCE) };
+  assert.equal(part.genre, 'choix', 'à l’import, la ligne 2 de l’Archimage est à choisir (migration 0119)');
+  avant.prepare('DELETE FROM maitrise_arme_part_famille WHERE source_id = ? AND rang = ?').run(SOURCE, part.rang);
+  avant.prepare("UPDATE maitrise_arme_part SET genre = 'imposee', arme_famille_id = 'baton-de-combat' WHERE source_id = ? AND rang = ?").run(SOURCE, part.rang);
+  const ins = (t, l) => avant.prepare(`INSERT INTO ${t} (${Object.keys(l).join(', ')}) VALUES (${Object.keys(l).map(() => '?').join(', ')})`).run(...Object.values(l));
+  const COMMUNE = { visibilite: 'tous', mode_classe: 'mono', xp: 0, alignement_loyal: 0, alignement_chaotique: 0, alignement_bon: 0, alignement_mauvais: 0,
+    bourse_pp: 0, bourse_ro: 0, bourse_rf: 0, ambidextrie: 0, cree_le: '2026-10-10T12:00:00Z', modifie_le: '2026-10-10T12:00:00Z', nature: 'pretire' };
+  for (const [id, classe] of [['m-archimage', 'classes/archimage'], ['m-guerrier', 'classes/guerrier']]) {
+    ins('personnage', { ...COMMUNE, id, nom: `Prétiré ${id}`, notes: 'Note du joueur.' });
+    ins('personnage_classe', { personnage_id: id, rang: 1, classe_id: classe });
+  }
+  ins('personnage_maitrise_choix', { personnage_id: 'm-archimage', source: 'classes/archimage#maitrise-arme:1', rang: 1, arme_famille_id: 'arc' });
+  avant.close();
+
+  const livraison = join(dossier, 'livraison.db');
+  copyFileSync(regles, livraison);
+  const l = new DatabaseSync(livraison, { enableForeignKeyConstraints: false });
+  l.exec("UPDATE race SET nom = 'Humain (livraison)' WHERE id = 'races/humain'");
+  l.close();
+  const iso = '2026-11-12T09:00:00Z';
+  const r = preparerBaseVivante({ regles: livraison, dossier: join(dossier, 'db'), instant: new Date(iso) });
+  assert.equal(r.refaite, true);
+
+  const apres = new DatabaseSync(vivante, { readOnly: true });
+  try {
+    const notes = (id) => apres.prepare('SELECT notes FROM personnage WHERE id = ?').get(id).notes;
+    const famille = apres.prepare("SELECT nom FROM arme_famille WHERE id = 'baton-de-combat'").get().nom;
+    const classe = apres.prepare("SELECT nom FROM classe WHERE id = 'classes/archimage'").get().nom;
+    const ligne = ligneDeRetrait({ nature: 'maitrise_imposee', id: `${SOURCE}:${part.rang}`, nom: famille, classe, rang: 2 }, iso);
+    assert.equal(notes('m-archimage'), `Note du joueur.\n${ligne}`);
+    assert.match(ligne, /^\[12\/11\/2026\] Retrait \(règles modifiées\) : le point de maîtrise d’arme imposé « .+ » \(classe .+, maîtrise 2\) n’est plus imposé/);
+    assert.equal(notes('m-guerrier'), 'Note du joueur.', 'une autre classe : aucune note');
+    // rien d'autre ne change : le choix de la ligne 1 est gardé, aucun choix n'est inventé pour la ligne 2 (elle reste « à choisir », R148)
+    assert.deepEqual(apres.prepare("SELECT source, rang, arme_famille_id FROM personnage_maitrise_choix WHERE personnage_id = 'm-archimage'").all().map((x) => ({ ...x })),
+      [{ source: 'classes/archimage#maitrise-arme:1', rang: 1, arme_famille_id: 'arc' }]);
+    assert.deepEqual(apres.prepare("SELECT genre FROM maitrise_arme_part WHERE source_id = ?").all(SOURCE).map((x) => x.genre), ['choix']);
+    assert.deepEqual(r.fiches.map((f) => f.fiche), ['Prétiré m-archimage']);
+  } finally {
+    apres.close();
+  }
+  // une seconde livraison : l'ancienne base est celle de la première, aucune seconde note
+  const suivante = join(dossier, 'livraison2.db');
+  copyFileSync(regles, suivante);
+  const s2 = new DatabaseSync(suivante, { enableForeignKeyConstraints: false });
+  s2.exec("UPDATE race SET nom = 'Humain (livraison 2)' WHERE id = 'races/humain'");
+  s2.close();
+  const r2 = preparerBaseVivante({ regles: suivante, dossier: join(dossier, 'db'), instant: new Date('2026-11-13T09:00:00Z') });
+  assert.equal(r2.refaite, true);
+  assert.deepEqual(r2.fiches, []);
+  const fin = new DatabaseSync(vivante, { readOnly: true });
+  try {
+    assert.equal(fin.prepare("SELECT count(*) AS n FROM personnage WHERE id = 'm-archimage' AND notes LIKE '%Retrait%'").get().n, 1);
+    assert.equal(fin.prepare("SELECT length(notes) - length(replace(notes, 'Retrait (règles modifiées)', '')) AS n FROM personnage WHERE id = 'm-archimage'").get().n, 'Retrait (règles modifiées)'.length);
+  } finally {
+    fin.close();
+  }
 });

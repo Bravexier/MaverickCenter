@@ -92,8 +92,10 @@ test('sources : une ligne par document cité, id dérivé du nouvel identifiant,
   // migration 0094, demande du propriétaire : « Postures », « Les boss et leurs postures », « Mode Super ») : leurs huit renvois vers des documents Google ;
   // 1 162 depuis le retrait de la « Liste des effets mode hyper » (2026-11-06, migration 0095, demande du propriétaire) : son renvoi vers le classeur
   // « Mode hyper et co » ; 1 161 depuis le retrait de « Altérations d'états et Mode Hyper » (2026-11-06, migration 0096, demande du propriétaire) : son
-  // renvoi vers « Règle du jeu/Guide pour MJ - Maverick »
-  assert.equal(historiqueSite(db).lignesDImport('page_source').filter((r) => ids.has(r.source_id)).length, 1161);
+  // renvoi vers « Règle du jeu/Guide pour MJ - Maverick ». Les renvois que retire une migration postérieure se lisent dans son registre : la 0119
+  // supprime le don Large du Cuirassé (R238 (2)) et ses lignes page_source
+  const retiresDepuis = JSON.parse(readFileSync(new URL('../../data/migrations/0119-classes-materiaux-d12.json', import.meta.url), 'utf8')).cuirasse.page_source_supprimees;
+  assert.equal(historiqueSite(db).lignesDImport('page_source').filter((r) => ids.has(r.source_id)).length + retiresDepuis.filter((r) => ids.has(r.source_id)).length, 1161);
   // aujourd'hui : tout renvoi vers un document Google cite une copie du registre, l'un des deux documents non copiés par la migration ou la copie que
   // le propriétaire en a faite depuis (manifeste : entrée dont `original` cite l'identifiant d'origine ; CODEX Maverick et Bestiaire 2.0, 2026-10-11)
   const copiesUlterieures = manifeste.google.filter((g) => registre.non_copies.some((n) => g.id !== n.id && g.original?.includes(`/d/${n.id}/`))).map((g) => g.id);

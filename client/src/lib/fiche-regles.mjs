@@ -16,9 +16,9 @@ import { CLASS_GROUPS, classCategory } from './class-groups.mjs';
 import { competencesDArme, durabiliteDeLArme, porteeDeLArme } from './arme-champs.mjs';
 import { DURABILITE_MIN, MATERIAU_PAR_DEFAUT } from './arme-forge.mjs';
 import { BATON_A_REGLER, contenanceEcrite, effetsDeBaton, exemplairesDeCeintureEcrits, nomDeBaton, sacSansForceEcrit } from './ceinture-texte.mjs';
-import { bonusDeDegatsEcrit } from './degats-texte.mjs';
+import { bonusDeDegatsEcrit, DONS_SANS_DEGATS } from './degats-texte.mjs';
 import { bonusDeSortsEcrits, preparationEcrite } from './sort-bonus-texte.mjs';
-import { lecteurDAcquis } from './acquis-texte.mjs';
+import { DONS_SANS_ACQUIS, lecteurDAcquis } from './acquis-texte.mjs';
 import { critiqueDeLAccessoire, critiqueDuDon, critiqueDuPremierCoup } from './critique-texte.mjs';
 import { chargerInvocations } from './bestiaire-db.mjs';
 import { FAMILLES_DES_SAUF, desSelonLaForce, famillesAuChoix, idDeSourceDeClasse } from './maitrise-arme.mjs';
@@ -374,15 +374,15 @@ function reglesDeLaBase(db) {
 
   // Classes : apport de départ, catégorie et couleur de /classes/ ; classe magique par sa catégorie ou l'Archimage (R6), spécialité magique quand
   // son don de niveau 10 dit « considérer comme classe magique » (R7) ; dons à choix rangés en groupes (v_capacite_exclusive, comme la page de la classe) ;
-  // magie innée qui réserve et impose la classe (classe.magie_innee_id : l'Archimage et le Potentiel Illimité, décision R23), ou qui la ferme
+  // magie innée qui réserve la classe (classe.magie_innee_id : l'Archimage et le Potentiel Illimité, décision R23 ; plus imposée, R238 (5)), ou qui la ferme
   // (classe.magie_innee_exclue_id : le Mage Bleu et le Potentiel Illimité, décision R25) ; maîtrises d'armes de la classe (classe_maitrise_arme, avec
   // leur source et leurs parts : décisions R148 à R151) ; ses dons, pour le rappel des dons débloqués (demande du propriétaire), avec les parts de
   // maîtrise d'arme que donne chacun (`maitrise`, maitrise_arme_part : ses points, R32, R148), ses NM de sorts gagnés (`nm_gagnes`, R154), le plafond de
   // NPM qu'il relève (`npm_plafond`, R188) et s'il compte comme une condition d'emplacements de sorts (`condition_emplacements`, R189).
-  // bonus de dégâts d'arme qu'écrit un don passif (lib/degats-texte.mjs : pastille des dégâts des armes, demande du propriétaire) ; rien sinon
+  // bonus de dégâts d'arme qu'écrit un don passif (lib/degats-texte.mjs : pastille des dégâts des armes, demande du propriétaire), sauf DONS_SANS_DEGATS ; rien sinon
   // et ses bonus de sorts (coût, dégâts, soin, portée : lib/sort-bonus-texte.mjs, décision R102)
   const degatsEcrits = (d) => {
-    const b = d.type === 'passif' ? bonusDeDegatsEcrit(d.effet) : null;
+    const b = d.type === 'passif' && !DONS_SANS_DEGATS.includes(d.id) ? bonusDeDegatsEcrit(d.effet) : null;
     const sorts = d.type === 'passif' ? bonusDeSortsEcrits(d.effet) : [];
     return { ...(b ? { degats: b } : {}), ...(sorts.length ? { sorts } : {}) };
   };
@@ -553,7 +553,8 @@ function reglesDeLaBase(db) {
           ...(exemplairesDeCeintureEcrits(d.effet) ? { exemplaires_ceinture: exemplairesDeCeintureEcrits(d.effet) } : {}),
           ...(sacSansForceEcrit(d.effet) ? { sac_sans_force: true } : {}),
           // ses bonus d'acquis (« +7% Magie, +7% Médecine », « +7% Arme légères OU lourdes » : un choix ; décision R104)
-          ...(() => { const acquis = horsDuTableau(lireAcquis(d.effet)); return acquis.length ? { acquis } : {}; })(),
+          // (sauf les dons de DONS_SANS_ACQUIS : règles non tranchées, MAJ-C4 et MAJ-C6 ; ces dons restent un passif écrit)
+          ...(() => { const acquis = DONS_SANS_ACQUIS.includes(d.id) ? [] : horsDuTableau(lireAcquis(d.effet)); return acquis.length ? { acquis } : {}; })(),
           // le sort qu'il permet de préparer (« Préparation », « Chargement » : décision R115, lib/sort-bonus-texte.mjs#preparationEcrite)
           ...(() => { const preparation = preparationEcrite(d.effet); return preparation ? { preparation } : {}; })(),
           // son bonus de réussite critique dans une posture, s'il est passif (« (Posture Offensif) Augmente la réussite critique de +5% », Sci du Crit :

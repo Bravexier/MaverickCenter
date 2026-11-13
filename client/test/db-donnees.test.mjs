@@ -53,7 +53,10 @@ test('la base contient les domaines : pages, magies et sorts, classes et capacit
   assert.equal(n('type_page'), 10);
   // effectifs de l'import : le site de dev, source des données qu'il modifie, peut créer des races, des classes… (lib/historique-site.mjs)
   const historique = historiqueSite(db);
-  for (const [table, effectif] of [['magie', 15], ['sort', 420], ['magie_specialisation', 28], ['classe', 39], ['capacite', 660], ['race', 27], ['invocation', 3], ['creature', 63]]) {
+  // classes et dons : les comptes du registre de la migration 0119 (R238 : Boxeur et Porte-étendard, Cuirassé V2), qui les a écrits
+  const comptes0119 = JSON.parse(readFileSync(join(racine, 'data', 'migrations', '0119-classes-materiaux-d12.json'), 'utf8')).comptes;
+  for (const [table, effectif] of [['magie', 15], ['sort', 420], ['magie_specialisation', 28], ['classe', comptes0119.classe], ['capacite', comptes0119.capacite],
+    ['race', 27], ['invocation', 3], ['creature', 63]]) {
     assert.equal(historique.effectifDImport(table), effectif, `${table} : effectif de l'import`);
   }
   // cohérence de l'état courant

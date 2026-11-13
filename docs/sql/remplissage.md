@@ -78,7 +78,7 @@ la Lamia a la Corruption en magie innée, case E24 de la matrice `race_magie` et
 (données : les documents Google cités pointent sur leurs copies du Drive du propriétaire, registre `0014-sources-copies-drive.json` ; la table `source`, dont l'id dérive de
 l'identifiant Google, est réécrite avec ses renvois `page_source`, ainsi que les liens du corps des pages, du Mage Bleu et des ressources d'Alchimie ; voir `docs/sources.md`),
 `0015-archimage-potentiel-illimite.sql` (structure et données, décision R23 : colonne `classe.magie_innee_id` en dernier par `ADD COLUMN`, avec son index partiel unique, Potentiel Illimité
-pour l'Archimage d'après son « CHOSE A SAVOIR » ; règles `classe_reservee` et `classe_imposee` de `v_personnage_controle`), `0016-maitrise-arme.sql`
+pour l'Archimage d'après son « CHOSE A SAVOIR » ; règles `classe_reservee` et `classe_imposee` de `v_personnage_controle`, la seconde retirée par la migration 0119, décision R238 (5)), `0016-maitrise-arme.sql`
 (données : constantes `maitrise_arme.des_sans_maitrise` (1 dé, guide) et `maitrise_arme.des_max` (5 dés, liste « 1d » à « 5d » de la fiche auto) : 4 points de maîtrise au plus),
 `0017-edition.sql` (structure : journal des modifications faites depuis le site de dev, section 14, tables vides dans `data/rows`), `0018-nm-excedentaires.sql`
 (structure, décision R24 : la règle `sorts_nm_total` quitte `v_personnage_controle`, plus de NM que ceux gagnés est permis),

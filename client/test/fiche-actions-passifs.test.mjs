@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
 import * as M from '../src/lib/fiche-moteur.mjs';
-import { reglesDImport } from './aide-base-d-import.mjs';
+import { baseDImport, reglesDImport } from './aide-base-d-import.mjs';
 
 // les règles (textes et valeurs que le site de dev modifie librement) : épinglées sur leur état d'import (test/aide-base-d-import.mjs)
 const regles = reglesDImport(); // tel que la page le reçoit
@@ -256,7 +256,10 @@ test('réponse du propriétaire à Q80 (« Non, grisée ») : la capacité d’u
 });
 
 test('passifs d’équipement (« Oui, dans ce lot D ») : l’effet secondaire écrit du matériau des armes portées et le texte des améliorations portées, tels qu’écrits', () => {
-  assert.equal(regles.materiaux_armes.filter((m) => m.effet_secondaire).length, 7);
+  // autant de matériaux ont un effet secondaire dans les règles que dans la table à l'import (R241 : l'effectif change avec les migrations, il n'est pas écrit ici)
+  const enBase = baseDImport().prepare("SELECT count(*) AS n FROM materiau_arme WHERE effet_secondaire IS NOT NULL AND effet_secondaire <> ''").get().n;
+  assert.ok(enBase > 0);
+  assert.equal(regles.materiaux_armes.filter((m) => m.effet_secondaire).length, enBase);
   const argent = regles.materiaux_armes.find((m) => m.id === 'ressources/armures#materiau:argent');
   const fer = regles.materiaux_armes.find((m) => m.id === 'ressources/armures#materiau:fer');
   assert.equal(fer.effet_secondaire, undefined, 'sans effet secondaire, rien');

@@ -320,7 +320,7 @@ test('/fiche/modele.xlsx : le modèle V15.2.2 ordinateur assemblé au build (lib
   assert.deepEqual(feuille.images.map((i) => [i.de, i.a, i.type]), [['A1', 'E5', 'image/png']], 'le logo, en haut à gauche');
 });
 
-test('/fiche/regles.json : les règles de la base que lit la page (races et classes : celles de la base, 27 et 39 à l’import)', options, () => {
+test('/fiche/regles.json : les règles de la base que lit la page (races et classes : celles de la base, 27 et 41 à l’import)', options, () => {
   const regles = JSON.parse(lire('fiche/regles.json'));
   // le site de dev crée des races et des classes : la page a celles de la base, l'effectif d'import se lit dans l'historique (R1 : 27 races)
   const db = ouvrirBase({ sansExemples: false });
@@ -329,7 +329,7 @@ test('/fiche/regles.json : les règles de la base que lit la page (races et clas
     assert.equal(regles.races.length, db.prepare('SELECT count(*) AS n FROM race').get().n);
     assert.equal(historique.effectifDImport('race'), 27);
     assert.equal(regles.classes.length, db.prepare('SELECT count(*) AS n FROM classe').get().n);
-    assert.equal(historique.effectifDImport('classe'), 39);
+    assert.equal(historique.effectifDImport('classe'), 41);
   } finally {
     db.close();
   }
