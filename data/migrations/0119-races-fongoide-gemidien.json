@@ -1,0 +1,97 @@
+{
+  "migration": "0119-races-fongoide-gemidien",
+  "decisions": [
+    "R239",
+    "R256",
+    "R13",
+    "R14",
+    "R15",
+    "R22",
+    "R23",
+    "R28",
+    "R237 (12)",
+    "R218 (5)",
+    "R219 (5)"
+  ],
+  "races": [
+    "races/fongoide",
+    "races/gemidien"
+  ],
+  "don_de_base": {
+    "texte": "Méditation (Action 3 fois/jour) (Permet de récupérer 3d6 + 6 {{chakra|chakra}} (jet de calme en stress)).",
+    "repris_de": [
+      "races/drakos",
+      "races/drassahthac",
+      "races/elfe-argente",
+      "races/elfe-dore",
+      "races/elfe-forestier",
+      "races/elfe-noir",
+      "races/farfadet",
+      "races/felfe",
+      "races/hujin",
+      "races/humain",
+      "races/lamia",
+      "races/majin",
+      "races/mort-vivant",
+      "races/nain"
+    ]
+  },
+  "ordre": {
+    "races/fongoide": {
+      "ordre": 13,
+      "rang_liste": 14
+    },
+    "races/gemidien": {
+      "ordre": 14,
+      "rang_liste": 15
+    },
+    "decalage": 2
+  },
+  "comptes": {
+    "races/fongoide": {
+      "race_magie_accessibles": 14,
+      "race_classe_accessibles": 24,
+      "race_classe": 39
+    },
+    "races/gemidien": {
+      "race_magie_accessibles": 13,
+      "race_classe_accessibles": 26,
+      "race_classe": 39
+    }
+  },
+  "formes_enregistrees": [
+    {
+      "table": "race_onglet",
+      "colonne": "description_generale",
+      "ref": "Nouveauté mise à jour Décembre › Fongoïde › A4",
+      "ecrit": "Une race entièrement fait de champignons dont l'origine remonte le jour où le Dieu de la Terre s'est donné la mort. \n\nIls ont une forme humanoïde car avec le temps, ils sont adaptés aux autres races intelligente et ont pris cette forme car plus pratique ? moins intimidante ? Personne ne le sait.\n\nSelon la lignée première, cette race est apparu sous la forme humanoïde la première fois en l'an 80.",
+      "enregistre": "Une race entièrement fait de champignons dont l'origine remonte le jour où le Dieu de la Terre s'est donné la mort.\n\nIls ont une forme humanoïde car avec le temps, ils sont adaptés aux autres races intelligente et ont pris cette forme car plus pratique ? moins intimidante ? Personne ne le sait.\n\nSelon la lignée première, cette race est apparu sous la forme humanoïde la première fois en l'an 80."
+    }
+  ],
+  "textes": [
+    {
+      "table": "mode_hyper_effet",
+      "cle": {
+        "id": "onglet_race:races/elfe-argente"
+      },
+      "col": "effet",
+      "avant": "Tous les sortilèges d'attaques sont imparables.",
+      "apres": "Les sorts d'attaques imposent un désavantage sur les jets de défenses.",
+      "source": "docx « Nouveauté mise à jour Décembre », R237 (12)"
+    },
+    {
+      "table": "mode_hyper_effet",
+      "cle": {
+        "id": "onglet_race:races/felfe"
+      },
+      "col": "effet",
+      "avant": "Peut voler, les dégâts et soins magiques sont augmentés de 2d, ceux qui doivent faire des jets pour esquiver les effets secondaires des sorts ont leur score divisé par 2.",
+      "apres": "Peut voler, les dégâts et soins magiques sont augmentés de 1d, ceux qui doivent faire des jets pour esquiver les effets secondaires des sorts ont leur score divisé par 2.",
+      "source": "docx « Nouveauté mise à jour Décembre », R237 (12)"
+    }
+  ],
+  "mots_cles": {
+    "races/fongoide": 408,
+    "races/gemidien": 409
+  }
+}

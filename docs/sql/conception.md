@@ -112,7 +112,7 @@ vierge (Python et Node). Les 131 tables de base sont **toutes non vides** une fo
 | 4 | Annexes des magies (`annexes`) | 14 | 1 257 | `etat` (21 depuis la migration 0117), `etat_stade`, `resistance_magie`, `resistance_duo`, `meteo`, `mode_super_objet`, `mode_hyper_effet` (246, cinq lectures fusionnées) |
 | 5 | Dieux | 1 | 28 | `dieu` |
 | 6 | Classes (`classes`) | 7 | 1 050 | `classe` (41 depuis la migration 0119, 39 avant), `specialite` (82), `capacite` (**694 depuis la migration 0119, 660 avant : une ligne par page `capacites/*`**), `objet_depart`, `classe_objet_depart` |
-| 7 | Races (`races`) | 9 | 6 514 | `race` (27), `ethnie` (96), `race_classe` (1 107 depuis la migration 0119, 1 053 avant), `race_magie` (405), `peuple` (69), `relation_peuple` (4 761), `echelle_relation` |
+| 7 | Races (`races`) | 9 | 6 684 | `race` (29 depuis la migration 0120, 27 avant), `ethnie` (98, 96 avant), `race_classe` (1 189 depuis les migrations 0119 et 0120, 1 053 avant), `race_magie` (435, 405 avant), `peuple` (69), `relation_peuple` (4 761), `echelle_relation` |
 | 8 | Bestiaire (`bestiaire`) | 15 | 1 124 | `invocation`, `creature` (63), `creature_attaque`, `creature_capacite`, `creature_capacite_sort` (liens vers `sort`) |
 | 9 | Équipement, ressources, craft, métiers (`equipement`, `craft`, `docs`) | 49 | 4 460 | `ressource` (553), `recette`, `potion`, `arme` (161), `armure` (242), `bouclier`, `accessoire_*`, `familier`, `metier` (72), `maladie` |
 | 10 | Transversal | 3 | 283 | `note_cellule` (171), `ecart_source` (111), `correction` (1) |
