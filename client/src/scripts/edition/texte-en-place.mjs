@@ -83,6 +83,42 @@ const motCleChoisi = (vocabulaire, saisie) =>
   vocabulaire.liste.find((m) => libelleDeMotCle(m) === saisie) ?? motCleDeLaRef(vocabulaire, saisie.replace(/\s+—\s+[a-z0-9-]+$/, '')) ?? null;
 
 /**
+ * Le mot-clé du glossaire à choisir (petite boîte, suggestions du vocabulaire vivant ; `filtre` : ceux qui sont proposés et acceptés), puis
+ * `poser(mot-clé)`.
+ */
+export async function choisirUnMotCle(ed, { titre, aide, valeur = '', bouton, poser, filtre = () => true }) {
+  let vocabulaire;
+  try {
+    vocabulaire = await vocabulaireVivant(ed);
+  } catch (e) {
+    return ed.annoncer(`Glossaire indisponible : ${e.message}`, 'erreur');
+  }
+  demander(ed, {
+    titre, aide, libelle: 'Mot-clé', valeur, bouton, suggestions: vocabulaire.liste.filter(filtre).map(libelleDeMotCle),
+    valider(saisie) {
+      const m = motCleChoisi(vocabulaire, saisie);
+      if (!m || !filtre(m)) throw new Error('Mot-clé introuvable : choisissez-le dans la liste (un mot-clé se crée sur la page Glossaire, en mode modification).');
+      return () => poser(m);
+    },
+  });
+}
+
+/**
+ * La balise écrite (lireBalises) autour du texte choisi [debut, fin[ de `texte`, ou du curseur (debut === fin) ; null sinon. Le curseur juste avant
+ * « {{ » ou juste après « }} » n'y est pas : il insère à côté.
+ */
+export function baliseAuCurseur(texte, debut, fin = debut) {
+  const vide = debut === fin;
+  return lireBalises(texte).find((x) => (vide ? x.debut < debut && debut < x.fin : x.debut <= debut && fin <= x.fin)) ?? null;
+}
+
+/** Le texte choisi tel qu'une balise peut le porter (ni accolades ni retours à la ligne) ; null s'il est vide. */
+export const texteDeLaBalise = (choisi) => String(choisi ?? '').replace(/[{}\n]+/g, ' ').replace(/\s+/g, ' ').trim() || null;
+
+/** La balise du mot-clé `m` pour le texte écrit `ecrit` : « {{clé}} » (aucun texte, ou son libellé), « {{clé|texte}} » sinon. */
+export const baliseDuMotCle = (m, ecrit) => (ecrit === null || ecrit === m.libelle ? `{{${m.cle}}}` : `{{${m.cle}|${ecrit}}}`);
+
+/**
  * Les barres d'outils de la page, une par éditeur en place (`{ el, aLeCurseur }`) : quand une page en a plusieurs (le texte de Bienvenue,
  * edition/guide.mjs, et l'annonce de l'encart « Notre prochaine rencontre IRL » sous lui, edition/annonces.mjs), une seule se montre — celle de l'éditeur
  * où est le curseur, sinon la dernière qui l'a eu, sinon la première posée — : les autres sont cachées (`hidden`), sans quoi elles s'empileraient
@@ -102,9 +138,9 @@ export function choisirLaBarre(barres = BARRES) {
 /**
  * Un éditeur en place sur les zones que rend `zones()` (éléments contenteditable) : la sélection n'est prise en compte que dans une zone. Rend les outils
  * de mise en forme et de lien, et `barre(ed, groupes, etiquette)` qui dessine une barre d'outils (groupes : [[nom, [[etiquette, titre, action(ed),
- * classe?]]]]).
+ * classe?]]]]). `aLeCurseur()` : où la barre se dit avoir le curseur, à la place des zones (la barre des saisies, edition/saisies.mjs).
  */
-export function editeurEnPlace(zones) {
+export function editeurEnPlace(zones, { aLeCurseur = null } = {}) {
   const dansUneZone = (noeud) => {
     const el = noeud?.nodeType === 1 ? noeud : noeud?.parentElement;
     return el ? zones().find((m) => m.contains(el)) ?? null : null;
@@ -169,8 +205,7 @@ export function editeurEnPlace(zones) {
       bouton: 'Lier',
       filtre: (m) => Boolean(m.url),
       poser(m) {
-        const ecrit = autour ? (autour.balise.complet ? null : autour.balise.texte) : r.toString().replace(/[{}\n]+/g, ' ').replace(/\s+/g, ' ').trim() || null;
-        const ecriture = ecrit === null || ecrit === m.libelle ? `{{${m.cle}}}` : `{{${m.cle}|${ecrit}}}`;
+        const ecriture = baliseDuMotCle(m, autour ? (autour.balise.complet ? null : autour.balise.texte) : texteDeLaBalise(r.toString()));
         if (autour) remplacerLaBalise(ed, autour, ecriture);
         else insererLaBalise(ed, r, ecriture);
       },
@@ -231,8 +266,7 @@ export function editeurEnPlace(zones) {
   function baliseAutour(r) {
     const n = r.startContainer;
     if (n?.nodeType !== 3 || r.endContainer !== n || !dansUneZone(n)) return null;
-    const vide = r.collapsed ?? r.startOffset === r.endOffset;
-    const b = lireBalises(n.nodeValue).find((x) => (vide ? x.debut < r.startOffset && r.startOffset < x.fin : x.debut <= r.startOffset && r.endOffset <= x.fin));
+    const b = baliseAuCurseur(n.nodeValue, r.startOffset, r.collapsed ? r.startOffset : r.endOffset);
     return b ? { noeud: n, balise: b } : null;
   }
 
@@ -250,27 +284,6 @@ export function editeurEnPlace(zones) {
   }
 
   /**
-   * Le mot-clé du glossaire à choisir (petite boîte, suggestions du vocabulaire vivant ; `filtre` : ceux qui sont proposés et acceptés), puis
-   * `poser(mot-clé)`.
-   */
-  async function choisirUnMotCle(ed, { titre, aide, valeur = '', bouton, poser, filtre = () => true }) {
-    let vocabulaire;
-    try {
-      vocabulaire = await vocabulaireVivant(ed);
-    } catch (e) {
-      return ed.annoncer(`Glossaire indisponible : ${e.message}`, 'erreur');
-    }
-    demander(ed, {
-      titre, aide, libelle: 'Mot-clé', valeur, bouton, suggestions: vocabulaire.liste.filter(filtre).map(libelleDeMotCle),
-      valider(saisie) {
-        const m = motCleChoisi(vocabulaire, saisie);
-        if (!m || !filtre(m)) throw new Error('Mot-clé introuvable : choisissez-le dans la liste (un mot-clé se crée sur la page Glossaire, en mode modification).');
-        return () => poser(m);
-      },
-    });
-  }
-
-  /**
    * Le texte choisi devient la balise d'un mot-clé du glossaire, par sa clé : « {{clé}} » (son libellé : le texte affiché le suivra), « {{clé|texte}} » (un autre
    * texte) ; le curseur dans une balise, change son mot-clé et garde son texte écrit (le mode complet devient « {{clé}} »).
    */
@@ -284,8 +297,7 @@ export function editeurEnPlace(zones) {
       valeur: autour?.balise.ref ?? '',
       bouton: 'Poser',
       poser(m) {
-        const ecrit = autour ? (autour.balise.complet ? null : autour.balise.texte) : r.toString().replace(/[{}\n]+/g, ' ').replace(/\s+/g, ' ').trim() || null;
-        const ecriture = ecrit === null || ecrit === m.libelle ? `{{${m.cle}}}` : `{{${m.cle}|${ecrit}}}`;
+        const ecriture = baliseDuMotCle(m, autour ? (autour.balise.complet ? null : autour.balise.texte) : texteDeLaBalise(r.toString()));
         if (autour) remplacerLaBalise(ed, autour, ecriture);
         else insererLaBalise(ed, r, ecriture);
       },
@@ -350,10 +362,10 @@ export function editeurEnPlace(zones) {
     const arret = new AbortController();
     let posee = false; // la barre a été dans la page : sortie (fin du mode modification), elle ne suit plus rien
     let prevue = false;
-    const inscrite = { el, aLeCurseur: () => {
+    const inscrite = { el, aLeCurseur: aLeCurseur ?? (() => {
       const sel = getSelection();
       return Boolean(sel?.rangeCount && dansUneZone(sel.getRangeAt(0).startContainer));
-    } };
+    }) };
     BARRES.add(inscrite);
     const placer = () => {
       prevue = false;
@@ -376,6 +388,7 @@ export function editeurEnPlace(zones) {
       requestAnimationFrame(placer);
     };
     document.addEventListener('selectionchange', planifier, { signal: arret.signal });
+    document.addEventListener('focusin', planifier, { signal: arret.signal }); // le curseur entré dans une saisie (edition/saisies.mjs)
     planifier();
   }
 
