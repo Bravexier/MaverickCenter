@@ -7,7 +7,8 @@
 // redevient « {{clé}} », « {{clé|texte}} » ou « {{clé:}} » (lib/markdown-edition.mjs#baliseEcrite), que l'on peut aussi taper ; les outils (outilsDesMotsCles ;
 // demande du 2026-10-16) écrivent la balise du mot-clé choisi : le texte choisi devient « {{clé}} » s'il est son libellé, « {{clé|texte}} » sinon, la
 // définition « {{clé:}} » ; le curseur dans une balise, ils en changent le mot-clé. Le texte d'une zone n'est rendu (gras, infobulle) qu'une fois enregistré.
-// La barre d'outils se tient à gauche de l'écran, à la hauteur de la zone où est le curseur (demande du 2026-10-17 : hauteurDeLaBarre).
+// La barre d'outils se range dans le bloc flottant du crayon (`.ed-cote`, edition/editeur.mjs), juste au-dessus de lui, partout où elle sert (demande du
+// propriétaire du 2026-11-13 : « Le menu d'édition devrait être présent directement au dessus du bouton d'édition partout où il est utilisé »).
 // Le HTML d'une zone est réécrit en Markdown par lib/markdown-edition.mjs (versMarkdown) ; ce module ne touche qu'au DOM.
 import { arbreDuDom, baliseEcrite } from '../../lib/markdown-edition.mjs';
 import { lireBalises, motCleDeLaRef } from '../../lib/mots-cles-balises.mjs';
@@ -17,8 +18,6 @@ import { vocabulaireVivant } from './mots-cles-vivants.mjs';
 const echapper = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 /** Les mots-clés rendus (lib/mots-cles-balises.mjs#htmlDeLaBalise) qu'une zone montre en balises écrites en mode modification. */
 const MOTS_CLES_RENDUS = 'strong.mot-cle[data-mot-cle], b.mot-cle[data-mot-cle], a.mot-cle[data-mot-cle], span.mot-cle-definition[data-mot-cle]';
-/** L'écran assez large pour la barre d'outils à gauche (styles/edition/edition.css, même seuil) ; plus étroit, elle reste en haut. */
-const BARRE_A_GAUCHE = '(min-width: 48rem)';
 const libelleDePage = (p) => `${p.titre} — ${p.id}`;
 
 /**
@@ -86,8 +85,8 @@ const motCleChoisi = (vocabulaire, saisie) =>
 /**
  * Les barres d'outils de la page, une par éditeur en place (`{ el, aLeCurseur }`) : quand une page en a plusieurs (le texte de Bienvenue,
  * edition/guide.mjs, et l'annonce de l'encart « Notre prochaine rencontre IRL » sous lui, edition/annonces.mjs), une seule se montre — celle de l'éditeur
- * où est le curseur, sinon la dernière qui l'a eu, sinon la première posée — : les autres sont cachées (`hidden`), sans quoi elles se poseraient
- * l'une sur l'autre à gauche de l'écran.
+ * où est le curseur, sinon la dernière qui l'a eu, sinon la première posée — : les autres sont cachées (`hidden`), sans quoi elles s'empileraient
+ * au-dessus du crayon.
  */
 const BARRES = new Set();
 let barreMontree = null;
@@ -341,28 +340,13 @@ export function editeurEnPlace(zones) {
     return { element: el, ajouter };
   }
 
-  /** La zone où est le curseur, sinon la dernière qui l'a eu, sinon la première à l'écran (ou la première tout court) ; null s'il n'y en a pas. */
-  let derniere = null;
-  function zoneSuivie() {
-    const sel = getSelection();
-    const ici = sel?.rangeCount ? dansUneZone(sel.getRangeAt(0).startContainer) : null;
-    const toutes = zones();
-    if (ici) derniere = ici;
-    else if (!toutes.includes(derniere)) derniere = null;
-    return derniere ?? toutes.find((z) => {
-      const r = z.getBoundingClientRect();
-      return r.bottom > 0 && r.top < innerHeight;
-    }) ?? toutes[0] ?? null;
-  }
-
   /**
-   * Place la barre `el` à la hauteur de la zone suivie (zoneSuivie, hauteurDeLaBarre) à chaque mouvement du curseur, saisie, défilement (d'un panneau
-   * aussi) ou redimensionnement, une fois par image, tant qu'elle est dans la page ; sous 48rem (BARRE_A_GAUCHE), la feuille de style la garde en haut de
-   * l'écran. Hors d'un navigateur (tests), rien.
+   * Range la barre `el` au-dessus du crayon : une fois dans la page (l'extension l'ajoute au `body`), elle passe en tête du bloc flottant `.ed-cote`
+   * (edition.css l'y dessine) ; puis, à chaque mouvement du curseur, la barre à montrer est choisie (choisirLaBarre), une fois par image, tant qu'elle
+   * est dans la page. Hors d'un navigateur (tests), rien.
    */
   function suivreLaZone(el) {
-    if (typeof window === 'undefined' || typeof matchMedia !== 'function') return;
-    const large = matchMedia(BARRE_A_GAUCHE);
+    if (typeof window === 'undefined' || typeof requestAnimationFrame !== 'function') return;
     const arret = new AbortController();
     let posee = false; // la barre a été dans la page : sortie (fin du mode modification), elle ne suit plus rien
     let prevue = false;
@@ -382,23 +366,16 @@ export function editeurEnPlace(zones) {
         return;
       }
       posee = true;
+      const cote = document.querySelector('.ed-cote');
+      if (cote && el.parentElement !== cote) cote.prepend(el);
       choisirLaBarre();
-      if (el.hidden) return; // une autre barre se montre : celle-ci attend le curseur dans ses zones
-      const zone = large.matches ? zoneSuivie() : null;
-      if (!zone) el.style.removeProperty('top');
-      else el.style.top = `${Math.round(hauteurDeLaBarre(zone.getBoundingClientRect(), el.offsetHeight, innerHeight))}px`;
     };
     const planifier = () => {
       if (prevue) return;
       prevue = true;
       requestAnimationFrame(placer);
     };
-    const { signal } = arret;
-    document.addEventListener('selectionchange', planifier, { signal });
-    document.addEventListener('input', planifier, { signal });
-    addEventListener('scroll', planifier, { capture: true, passive: true, signal });
-    addEventListener('resize', planifier, { signal });
-    large.addEventListener('change', planifier, { signal });
+    document.addEventListener('selectionchange', planifier, { signal: arret.signal });
     planifier();
   }
 
@@ -433,12 +410,3 @@ export const outilsDesMotsCles = (texte) => ['Mots-clés', [
   ['Mot-clé', 'Mettre le texte choisi en mot-clé du glossaire : sa balise s’écrit dans le texte (gras, définition en infobulle une fois enregistré)', texte.motCle],
   ['Définition', 'Insérer la balise de la définition d’un mot-clé du glossaire (« Libellé : définition » une fois enregistré)', texte.definition],
 ]];
-
-/**
- * Le haut de la barre d'outils, en px depuis le haut de l'écran, pour la zone `{ top }` (getBoundingClientRect), une barre haute de `hauteur` et un
- * écran haut de `ecran` : le haut de la zone, ramené dans l'écran (le haut de la zone passé au-dessus : en haut de l'écran ; trop bas : la barre remonte
- * pour y tenir entière), à `marge` de ses bords ; une barre plus haute que l'écran se tient en haut et défile (edition.css).
- */
-export function hauteurDeLaBarre(zone, hauteur, ecran, marge = 8) {
-  return Math.max(marge, Math.min(zone.top, ecran - hauteur - marge));
-}
