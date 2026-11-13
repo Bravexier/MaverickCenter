@@ -295,10 +295,13 @@ UPDATE page SET corps_md = replace(corps_md, 'l''époque du Premier Champignon.'
 INSERT INTO garde_0121 (quoi, lignes, attendu) VALUES ('page.corps_md {"id": "races/fongoide"} : l''époque du Premier Champignon. -> l''époque du {{champicer|Premier Champignon}}.', changes(), 1);
 
 -- --------------------------------------------------------------------------------------------------------------------------------------------
--- 10. Suite de R239 : guide/l-univers compte les races (29 depuis la migration 0120).
+-- 10. Suite de R239 (1) : guide/l-univers et guide/choisir-sa-race comptent les races (29 depuis la migration 0120) ; seul le nombre change.
 -- --------------------------------------------------------------------------------------------------------------------------------------------
 UPDATE page SET corps_md = replace(corps_md, '**27 races**', '**29 races**')
   WHERE id = 'guide/l-univers' AND length(corps_md) - length(replace(corps_md, '**27 races**', '')) = 1 * length('**27 races**');
 INSERT INTO garde_0121 (quoi, lignes, attendu) VALUES ('page.corps_md {"id": "guide/l-univers"} : **27 races** -> **29 races**', changes(), 1);
+UPDATE page SET corps_md = replace(corps_md, '{{race|27 races}}', '{{race|29 races}}')
+  WHERE id = 'guide/choisir-sa-race' AND length(corps_md) - length(replace(corps_md, '{{race|27 races}}', '')) = 1 * length('{{race|27 races}}');
+INSERT INTO garde_0121 (quoi, lignes, attendu) VALUES ('page.corps_md {"id": "guide/choisir-sa-race"} : {{race|27 races}} -> {{race|29 races}}', changes(), 1);
 
 DROP TABLE garde_0121;

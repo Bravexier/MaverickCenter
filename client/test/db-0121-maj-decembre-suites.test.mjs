@@ -1,7 +1,7 @@
 // Migration data/migrations/0121-maj-decembre-suites.sql (suites de la mise à jour de Décembre) : décisions R254 (3) (Archimage), R255 (7) (graphies du
 // Boxeur), R258 (4) et (7) et R268 (sept mots-clés des matériaux d'armes, leurs infobulles et leurs balises), R259 (Anti-barrière, Pré-mythril), R264
 // (deux événements de la chronologie), R265 (liens de la page du Fongoïde), R266 (trois graphies du lore, partout, Codex compris), R10 (coquille
-// d'« Immatériel ») et la suite de R239 (le nombre de races de guide/l-univers).
+// d'« Immatériel ») et la suite de R239 (le nombre de races de guide/l-univers et de guide/choisir-sa-race).
 // Le site de dev est la source de ce qu'il modifie : ce que la migration écrit se lit dans la base d'import (test/aide-base-d-import.mjs ; une cellule
 // que la migration a réécrite après un lot du site n'est plus défaite). Aucun texte n'est écrit ici : avant, après et ids viennent du registre
 // de la migration ; les invariants comparent des tables entre elles.
@@ -217,8 +217,15 @@ test('R265 : la page du Fongoïde mène à Dimitri et au Champicer par des balis
   }
 });
 
-test('suite de R239 : guide/l-univers compte les races de la base', () => {
-  const [e] = parDecision('textes', 'R239');
-  const n = Number(cellule(e.table, e.cle, e.col).match(/\*\*(\d+) races\*\*/)?.[1]);
-  assert.equal(n, un('SELECT count(*) AS n FROM race').n);
+test('suite de R239 : guide/l-univers et guide/choisir-sa-race comptent les races de la base', () => {
+  const textes = parDecision('textes', 'R239');
+  assert.equal(textes.length, 2);
+  const races = un('SELECT count(*) AS n FROM race').n;
+  for (const e of textes) {
+    // le nombre écrit à la place de celui du registre (« **N races** », « {{race|N races}} ») : seul le nombre change
+    assert.equal(e.apres.replace(/\d+/, ''), e.avant.replace(/\d+/, ''), `${e.cle.id} : seul le nombre change`);
+    const motif = new RegExp(e.apres.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\d+/, '(\\d+)'));
+    const n = Number(cellule(e.table, e.cle, e.col).match(motif)?.[1]);
+    assert.equal(n, races, e.cle.id);
+  }
 });

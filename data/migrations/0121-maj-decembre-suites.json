@@ -915,6 +915,18 @@
       "n": 1,
       "decision": "R239",
       "raison": "Le nombre de races de la base (29 avec le Fongoïde et le Gémidien)."
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "guide/choisir-sa-race"
+      },
+      "col": "corps_md",
+      "avant": "{{race|27 races}}",
+      "apres": "{{race|29 races}}",
+      "n": 1,
+      "decision": "R239",
+      "raison": "Le nombre de races de la base (29 avec le Fongoïde et le Gémidien), seul le nombre change (demande du leader-technique)."
     }
   ],
   "mots_cles": [

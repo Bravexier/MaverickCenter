@@ -6489,7 +6489,7 @@ Avant les chiffres, une idée. D’où vient votre personnage, que cherche-t-il,
 
 ## Sa race
 
-Maverick compte {{race|27 races}}, pures ou hybrides, et la plupart se divisent en **ethnies** : précisez celle de votre personnage s’il y en a. La race fixe son point de départ :
+Maverick compte {{race|29 races}}, pures ou hybrides, et la plupart se divisent en **ethnies** : précisez celle de votre personnage s’il y en a. La race fixe son point de départ :
 
 - sa **santé** et son **{{chakra|chakra}}** de départ, et parfois un bonus de **{{barriere|barrière}}** ;
 - sa **vitesse**, sur terre et à la nage ;
