@@ -344,14 +344,18 @@ test('/recherche/ : la recherche et le glossaire des mots-clés (tous, liens ?mo
   const comptes = new Map();
   for (const e of index) for (const id of new Set(e.motsCles)) comptes.set(id, (comptes.get(id) ?? 0) + 1);
   // la liste : le glossaire, tout le vocabulaire (même un mot-clé qu'aucune page visible ne porte), chaque mot-clé décrit avec sa définition en infobulle ;
-  // un mot-clé : son id entier, sa clé (celle de l'adresse et de sa bulle, décision R232 (3)), ses synonymes et ses clés quittées en JSON (R233 (1))
+  // un mot-clé : son id entier, sa clé (celle de l'adresse et de sa bulle, décision R232 (3)), ses synonymes et ses clés quittées en JSON (R233 (1)) ;
+  // son nom peut porter l’icône que le propriétaire lui a donnée (R235, lib/icones.mjs) : toute famille admise ici, le dessin exact est vérifié plus bas
   const vocabulaire = new Map(chargerVocabulaire(base).map((m) => [m.id, m]));
   const liste = html.slice(html.indexOf('<ul class="tags" id="liste-mots-cles">'), html.indexOf('id="aucun-mot-cle"'));
-  const motsCles = [...liste.matchAll(/<li data-id="(\d+)" data-cle="([^"]+)" data-n="(\d+)" data-libelle="[^"]*"( data-synonymes="[^"]*")?( data-anciennes-cles="[^"]*")?( data-definition="[^"]*")?>\s*<a class="badge" href="\/recherche\/\?mot-cle=([^"]+)"( data-bulle="mot-cle-[^"]+" aria-describedby="mot-cle-[^"]+")?>(<span class="recherche-nom">(?:[^<]|<span class="piece [^>]*><\/span>)*<\/span>(?: · \d+)?)<\/a>\s*<\/li>/g)];
+  const motsCles = [...liste.matchAll(/<li data-id="(\d+)" data-cle="([^"]+)" data-n="(\d+)" data-libelle="[^"]*"( data-synonymes="[^"]*")?( data-anciennes-cles="[^"]*")?( data-definition="[^"]*")?>\s*<a class="badge" href="\/recherche\/\?mot-cle=([^"]+)"( data-bulle="mot-cle-[^"]+" aria-describedby="mot-cle-[^"]+")?>(<span class="recherche-nom">(?:[^<]|<span class="[^"]+"[^>]*><\/span>)*<\/span>(?: · \d+)?)<\/a>\s*<\/li>/g)];
   assert.equal(motsCles.length, (liste.match(/<li /g) ?? []).length, 'chaque mot-clé a la forme attendue');
   assert.ok(motsCles.length > 0, `${motsCles.length} mots-clés`);
   const echappe = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-  const attribut = (nom, liste) => (liste?.length ? ` ${nom}="${echappe(JSON.stringify(liste))}"` : undefined);
+  // dans un attribut entre guillemets doubles, Astro écrit l'apostrophe telle quelle ou en &#39; selon le chemin de rendu : même valeur pour le
+  // navigateur, on compare donc l'attribut sans tenir compte de cette écriture (« Faiblesse d'Armure », lot de mise à jour du 2026-11-14)
+  const apostrophes = (t) => t?.replace(/&#39;/g, '\'');
+  const attribut = (nom, liste) => (liste?.length ? apostrophes(` ${nom}="${echappe(JSON.stringify(liste))}"`) : undefined);
   for (const [, idTexte, cle, n, synonymes, anciennes, definition, lien, bulle, texte] of motsCles) {
     const id = Number(idTexte);
     const m = vocabulaire.get(id);
@@ -359,8 +363,8 @@ test('/recherche/ : la recherche et le glossaire des mots-clés (tous, liens ?mo
     assert.equal(m?.cle, cle, `${id} : sa clé`);
     assert.equal(Number(n), comptes.get(id) ?? 0, `${id} : nombre de pages de l’index`);
     assert.ok(Number(n) > 0 ? texte.endsWith(` · ${n}`) : !/ · \d+$/.test(texte), texte);
-    assert.equal(synonymes, attribut('data-synonymes', m.synonymes), `${id} : ses synonymes (la recherche les lit)`);
-    assert.equal(anciennes, attribut('data-anciennes-cles', m.anciennes_cles), `${id} : ses clés quittées`);
+    assert.equal(apostrophes(synonymes), attribut('data-synonymes', m.synonymes), `${id} : ses synonymes (la recherche les lit)`);
+    assert.equal(apostrophes(anciennes), attribut('data-anciennes-cles', m.anciennes_cles), `${id} : ses clés quittées`);
     // la pastille : le libellé seul (R233 (9)), suivi de son icône quand il en a une (R235 (3) : le RF, le RO, la PP ; R63)
     const nom = m.icone ? `${echappe(m.libelle)} ${htmlDeLIcone(m.icone)}` : echappe(m.libelle);
     assert.equal(texte, `<span class="recherche-nom">${nom}</span>${Number(n) > 0 ? ` · ${n}` : ''}`, `${id} : sa pastille`);
