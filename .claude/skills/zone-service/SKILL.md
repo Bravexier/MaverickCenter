@@ -39,7 +39,7 @@ user-invocable: false
 - Toute route nouvelle se classe dans `acces-routes.mjs` : ouverte, lecture (clé ou mot de passe) ou écriture (mot de passe) ; une route inconnue est fermée comme une écriture, et `serveur-acces-routes.test.mjs` échoue sinon.
 - Réglage absent : tout est ouvert comme avant. La production n'est jamais concernée. Fiches de joueur, comptes et groupes ne sont jamais ouverts une fois le mot de passe posé.
 - `/api/etat` sans droit de lecture est masqué : jamais `retraits` ni `base.erreur` détaillée.
-- La clé passe par l'en-tête `X-Maverick-Cle` (Caddy et nginx effacent `Authorization`), le navigateur par le cookie `maverick_acces`. Aucun secret dans le journal, les métriques ni la page Debug.
+- La clé passe par `X-Maverick-Cle` ou `X-Maverick-Key` (le formulaire de clé des sessions Claude exige un nom finissant par `key`), seulement ces deux (`ENTETES_CLE`, `serveur-acces.test.mjs`) : tout nouveau nom passe par là. Caddy et nginx effacent `Authorization`. Navigateur : cookie `maverick_acces`. Aucun secret dans le journal, les métriques ni la page Debug.
 
 ## Reconstruction
 - La base vivante n'est refaite que si `serveur/empreintes.mjs#empreinteLogique` change (SQL de tout `sqlite_master`, tables de fiches comprises ; `user_version` ; lignes de toutes les tables hors `TABLES_VIVANTES`) ou si `VERSION_DE_LA_RECONSTRUCTION` (`base-vivante.mjs`) change. Dans le doute (empreinte absente, calcul en échec), elle est refaite.

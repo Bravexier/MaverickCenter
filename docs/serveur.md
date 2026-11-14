@@ -1232,7 +1232,9 @@ sans aucun secret ajouté côté GitHub ; l'adresse est à capacité (uuid aléa
 clé d'écriture n'est donnée à GitHub ni aux sessions.
 
 **Où passent les secrets** : le service ne voit jamais l'en-tête `Authorization` (Caddy y met le mot de passe interne de nginx, nginx l'efface). La clé de
-lecture voyage donc dans **`X-Maverick-Cle`** (jamais dans l'adresse, que le journal note), la session du navigateur dans le cookie **`maverick_acces`**.
+lecture voyage donc dans **`X-Maverick-Cle`**, ou son second nom **`X-Maverick-Key`** (le formulaire sûr qui remet la clé aux sessions de Claude n'accepte
+qu'un nom d'en-tête finissant par `key`, `token`…) ; aucun autre en-tête, jamais l'adresse (que le journal note). Caddy et nginx transmettent ces deux
+en-têtes tels quels. La session du navigateur voyage dans le cookie **`maverick_acces`**.
 Aucun des deux n'est dans le journal, les métriques (seuls `Referer`, `Host` et `User-Agent` sont lus), l'état ou la page Debug.
 
 **Connexion** (`/api/acces/`, toujours ouverte, mêmes refus que les écritures : JSON, requête d'une page de ce site) :

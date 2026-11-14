@@ -5,7 +5,7 @@
 #
 # Sans option : demande un mot de passe (deux fois, sans écho) et le pose. Le site de dev le demande alors pour modifier une page, enregistrer un
 # prétiré, lancer une mise à jour ou sa simulation, lever la maintenance ; la lecture des pages reste libre. La première fois, la commande fabrique aussi
-# une clé de lecture, affichée UNE SEULE FOIS à l'écran : c'est ce que reçoivent les sessions de Claude (en-tête X-Maverick-Cle) pour lire le journal
+# une clé de lecture, affichée UNE SEULE FOIS à l'écran : c'est ce que reçoivent les sessions de Claude (en-tête X-Maverick-Key ou X-Maverick-Cle) pour lire le journal
 # d'édition, la page Debug et l'API /api/v1/. Elle ne permet jamais d'écrire. Changer le mot de passe ferme toutes les sessions ouvertes et garde la clé.
 #   --cle                  refait la clé de lecture et l'affiche une seule fois ; l'ancienne ne marche plus
 #   --portee ecriture|tout « ecriture » (par défaut) : le mot de passe protège les écritures ; « tout » : un seul mot de passe pour tout le site (le
@@ -100,7 +100,7 @@ ecrire_le_reglage() { # le contenu du fichier : posé atomiquement, root seul
 afficher_la_cle() { # clé
   echo "=============================================================================================="
   echo "  CLÉ DE LECTURE DU SITE DE DEV (affichée une seule fois) : donnez-la aux sessions de Claude"
-  echo "  (en-tête X-Maverick-Cle). Elle permet de LIRE (journal d'édition, page Debug, API /api/v1/),"
+  echo "  (en-tête X-Maverick-Key ou X-Maverick-Cle). Elle permet de LIRE (journal d'édition, page Debug, API /api/v1/),"
   echo "  jamais d'écrire. Le serveur n'en garde que l'empreinte : pour en avoir une autre,"
   echo "  sudo sh $0 --cle  (l'ancienne cesse de marcher)."
   echo

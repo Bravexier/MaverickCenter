@@ -388,6 +388,10 @@ test('service réel : sans réglage rien ne change ; le fichier posé protège s
     assert.equal((await appel('GET', '/api/etat/')).status, 200, 'la lecture des pages reste libre');
     assert.equal((await appel('GET', '/api/v1/', { entetes: { [ENTETE_CLE]: cle } })).status, 200);
     assert.equal((await appel('POST', '/api/edition/', { entetes: { [ENTETE_CLE]: cle }, corps: {} })).status, 401);
+    // le second nom X-Maverick-Key (formulaire sûr des sessions), quelle que soit sa casse sur le réseau : lecture oui, écriture non
+    assert.equal((await appel('GET', '/api/v1/', { entetes: { 'X-Maverick-Key': cle } })).status, 200);
+    assert.equal((await appel('POST', '/api/edition/', { entetes: { 'X-Maverick-Key': cle }, corps: {} })).status, 401);
+    assert.equal((await appel('GET', '/api/v1/', { entetes: { 'X-Api-Key': cle } })).status, 401, 'un autre nom d’en-tête n’ouvre rien');
     // Authorization n'arrive jamais au service (Caddy puis nginx l'écrasent) : il ne sert à rien d'y mettre la clé
     assert.equal((await appel('GET', '/api/v1/', { entetes: { authorization: `Bearer ${cle}` } })).status, 401);
 
