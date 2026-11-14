@@ -1736,8 +1736,14 @@ propriétaire ; « durabilité » n'est plus écrit nulle part sur le site (sauf
   armes (pastilles Taille, Estoc, Frappe, et la magie d'une arme élémentaire), des armures (résistance et faiblesse), cibles écrites et magies d'une créature
   invoquée (carte et tableau du Bestiaire), résistances physiques, magies citées et « même nom dans une autre magie » des pages de magie. Jamais un texte libre
   (effets, descriptions, `*_brut`). Sur la pastille pleine d'une magie (`.arme-dgt--magie`, `.bmagie`) et dans une pastille `.chip`, le mot-clé garde le texte de
-  la pastille, pas sa teinte. Non liés : les boutons de choix de la fiche (listes, `<select>`, pastilles de choix : une balise ne s'y rend pas), la carte d'un
-  monstre (ses cibles sont lues d'un texte), la carte d'une créature dans une infobulle de page de magie, les matrices de magies, les pages de race.
+  la pastille, pas sa teinte. **Pages de race** : les magies innées (pastilles « disponibles » et « non disponibles » de `RacePage.astro`, de `MagiesDeRace.astro`,
+  en-têtes du tableau de `/races/` : `TableauMagiesInnees.astro`) sont liées à leur magie par son nom court, la pastille gardant son lien vers la page de la magie
+  (la bulle du mot-clé remplace l'infobulle du nom de page) ; les `liens` sont ceux de `loadMagies()` (`lib/magies.ts`). `classe.magie_innee_id` n'est affiché que par
+  la fiche. **Fiche** : le type de dégâts choisi d'une arme élémentaire (la bombe) est en gras avec l'infobulle de son mot-clé dans le résumé « Arme » (voir
+  `docs/character-generator.md`) ; les commandes de la fiche (listes, `<select>`, pastilles de choix, `<optgroup>`, `title`) restent sans lien (réponse du
+  propriétaire : une balise ne s'y rend pas). Non liés : la carte d'un monstre (ses cibles sont lues d'un texte), la carte d'une créature dans une infobulle de
+  page de magie, les matrices de magies, les champs des éditeurs du mode modification (la section des magies innées d'une race, redessinée après une
+  modification, garde ses liens aussitôt : `scripts/edition/races.mjs#htmlMagies` lit `ed.listes.liens`).
 - **Forme canonique** (celle que le service du site de dev enregistre) : la ref est toujours la clé, et selon la colonne :
   - un **texte mis en forme** (Markdown : corps des pages du guide et du Codex, descriptions de la chronologie, blocs des panneaux de règles) garde
     `{{clé}}` (le texte affiché suit le libellé : un renommage se voit partout), écrit `{{clé|texte}}` si un autre texte que le libellé est écrit (le

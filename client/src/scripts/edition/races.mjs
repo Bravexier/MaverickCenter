@@ -9,6 +9,9 @@ import { echapperHtml } from '../../lib/edition-rendu.mjs';
 import { nomCourtDePeuple, relationsDeRace, tonalite } from '../../lib/race-relations.mjs';
 // la couleur d'une magie : sa classe (lib/palette-css.mjs, déjà dans l'éditeur par lib/edition-rendu.mjs ; hors version portable)
 import { classeDeMagie } from '../../lib/palette-css.mjs';
+// la magie liée à son mot-clé du glossaire (migration 0125) : sa balise `{{clé|nom court}}`, rendue ensuite par mots-cles-vivants.mjs comme au build ;
+// pur, déjà dans la chaîne de l'éditeur par lib/edition-rendu.mjs (armes-rendu.mjs) : aucun module nouveau, aucun import partagé entre deux scripts de page
+import { htmlDeLaMagie } from '../../lib/valeurs-fermees-rendu.mjs';
 
 const TABLES_SUIVIES = new Set(['race_magie', 'race_magie_onglet', 'relation_peuple', 'peuple']);
 const sectionMagies = () => document.querySelector('[data-ed-magies-innees]');
@@ -32,8 +35,9 @@ function htmlMagies(ed, ids) {
   const magies = ed.listes.magies ?? [];
   const avec = magies.filter((m) => ids.includes(m.id));
   const sans = magies.filter((m) => !ids.includes(m.id));
+  // comme components/race/RacePage.astro : le nom court de la magie, lié à son mot-clé quand elle en a un (`ed.listes.liens`, serveur/edition.mjs#listes)
   const puce = (m, couleur) =>
-    `<li data-magie="${echapperHtml(m.id)}"><a class="chip${couleur ? ` race-magie ${classeDeMagie(m.nom)}` : ''}" href="${echapperHtml(lien(ed, m.id))}">${echapperHtml(m.nom)}</a></li>`;
+    `<li data-magie="${echapperHtml(m.id)}"><a class="chip${couleur ? ` race-magie ${classeDeMagie(m.nom)}` : ''}" href="${echapperHtml(lien(ed, m.id))}">${htmlDeLaMagie(ed.listes.liens, m.id, m.nom)}</a></li>`;
   return `<h2 id="magies-innees-titre">Magies innées <span class="count">${avec.length} sur ${magies.length}</span></h2>
     ${avec.length ? `<ul class="chips race-magies">${avec.map((m) => puce(m, true)).join('')}</ul>` : '<p class="muted">Aucune magie innée.</p>'}
     ${sans.length ? `<details><summary>Magies innées non disponibles (${sans.length})</summary><ul class="chips">${sans.map((m) => puce(m, false)).join('')}</ul></details>` : ''}

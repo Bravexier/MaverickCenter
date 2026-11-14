@@ -3426,6 +3426,22 @@ export function typesDeDegats(regles) {
   ];
 }
 
+/**
+ * Le type de dégâts `id` (un type de typesDeDegats : un physique, ou l'id d'une magie) tel que le résumé d'une arme l'affiche, comme une balise du glossaire
+ * (migration 0125, demande du propriétaire : « Tous les liens communs, j'aimerais que tu les lies aux mots clés (ceux du glossaire) », « si ils existent » ;
+ * recommandation acceptée : les commandes de la fiche restent sans lien, le texte affiché porte le gras et l'infobulle) : `regles.liens` (le mot-clé de chaque
+ * type de dégâts et de chaque magie, lib/mots-cles-des-valeurs.mjs) donne `texte` (le nom court d'une magie, sinon `nom`), `classe` (sa couleur de la palette,
+ * null sans) et `infobulle` (le libellé du mot-clé, puis sa définition, '' sans définition : un mot-clé non décrit est en gras sans bulle). Sans mot-clé
+ * (physique, sonore) ou sans `liens` : { texte: nom, motCle: false }, rien n'est deviné.
+ * @returns {{ texte: string, motCle: boolean, classe: string | null, infobulle: string }}
+ */
+export function typeDeDegatsAffiche(regles, id, nom = id) {
+  const lien = regles?.liens?.degats?.[id] ?? regles?.liens?.magies?.[id] ?? null;
+  if (!lien) return { texte: nom, motCle: false, classe: null, infobulle: '' };
+  const definition = String(lien.description ?? '').trim();
+  return { texte: lien.texte ?? nom, motCle: true, classe: lien.classe ?? null, infobulle: definition ? `${lien.libelle}\n${definition}` : '' };
+}
+
 /** Le type « Magique » d'un coup (décision R171 : « ni Estoc, ni Taille, ni Frappe », les sorts). */
 export const TYPE_MAGIQUE = 'magique';
 /** Les types d'un coup (décision R171) : Estoc, Taille, Frappe, puis Magique. [{ id, nom, physique }] */

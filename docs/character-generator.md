@@ -164,7 +164,13 @@ bouton (au-dessus quand la place manque), bornée à l'écran, téléphone compr
   estoc —, puis le type de sa magie, l'identifiant de la magie ; ils comptent partout où la fiche lit un type de dégâts d'arme). **La bombe
   élémentaire** : « Estoc, Frappe ou Taille au choix » (`type_degats_au_choix`) : un champ « Type de dégâts » sous la composition, qui s'enregistre
   (`personnage_arme.type_degats_choisi`, `typeDegatsChoisi`) ; tant qu'il n'est pas choisi, seul le type de la magie compte ; il part quand l'arme
-  devient une arme qui ne se choisit pas (`armesApresChoix`) ; un choix hors de ceux de l'arme est signalé (`arme_type_degats_choisi`). **Ses dégâts de
+  devient une arme qui ne se choisit pas (`armesApresChoix`) ; un choix hors de ceux de l'arme est signalé (`arme_type_degats_choisi`). Dans le résumé replié de l'arme (« type choisi · amélioration… »), le type
+  choisi est en gras avec l'infobulle de son mot-clé du glossaire (migration 0125, « Tous les liens communs… si ils existent », réponse « ok reco » : le gras
+  et l'infobulle dans le texte affiché, jamais dans les commandes) : `regles.liens` (le mot-clé de chaque type de dégâts et de chaque magie, `lib/mots-cles-des-valeurs.mjs`),
+  `typeDeDegatsAffiche` (`lib/fiche-moteur.mjs` : le libellé de la page, ou le nom court d'une magie pour feu, eau, glace, cas que la page n'atteint pas aujourd'hui, seuls les types physiques s'y choisissant, R167 ; sa classe de couleur ; « libellé » puis définition en infobulle,
+  rien sans définition), dessiné par `motCleAffiche` (`scripts/fiche.mjs` : `strong.mot-cle` et sa classe de la palette, la définition en `title`, l'infobulle du site ;
+  ni lien ni `tabindex`, le résumé a déjà le focus). Les balises `{{…}}` ne se rendent pas dans le navigateur (il n'a pas le vocabulaire) ; une valeur sans mot-clé
+  reste nue, et le menu « Type de dégâts » reste sans lien. **Ses dégâts de
   magie comptent comme des dégâts de cette magie** : « Tissière » (Anansi : « Les dégâts d'Arcane, Nécromancie et Ombre augmentent de +10. ») compte +10
   sur une arme élémentaire d'Arcane, de Nécromancie ou d'Ombre (« Tissière (Anansi) » dans le détail), et de même les onze autres dons de cette
   écriture, « Les dégâts de X, Y et Z augmentent de +N » (R167 : « Oui, tous » ; Orios « Au poil », Fenrir « Magicien », Kitsune « Aisance », Namazu

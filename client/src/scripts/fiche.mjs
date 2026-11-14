@@ -46,7 +46,7 @@ import {
   creaturesDuSort, sacrificeDuSort, lignesDuCritique,
   carteDeMaitrise, compteurDeMaitrise, infobulleDeClasse, infobulleDeSpecialite, infobulleDuDonAChoisir,
   infobulleDArme, infobulleDArmeElementaire, infobulleDArmure, infobulleDArmureElementaire, infobulleDeMetier, infobulleDeSort, TYPES_DE_DON, groupesDArmesParMaitrise, ligneDeMaitrise, maitriseApresChoix, maitriseChoixValables, maitrisesParFamille, presentationDuCompteurDeMaitrise, sourcesDeMaitrise,
-  armeDeLaLigne, armesElementairesProposees, effetDeLArmeElementaire, sortsFerDAutreElement,
+  armeDeLaLigne, armesElementairesProposees, effetDeLArmeElementaire, sortsFerDAutreElement, typeDeDegatsAffiche,
   finDuModeHyperCent, modeHyperApres, modeHyperValable, SANTE_PAR_CHAKRA_MANQUANT, semaineDuModeHyperApres, tourDeModeHyper,
   actionsDeLaFiche, actionsUsageSansObjetRetire, actionsUsageValables, consommerLAction, finDeCombat, finDeCombatMontree, passifsDeLaFiche, REMONTEES, remonterLAction,
   donsObtenusApresChoix, donsObtenusValables, donsVariables, infobulleDEntree, refusDuDon, texteDuDonVariable,
@@ -3063,9 +3063,16 @@ function construireEquipement() {
         etoile.title = `${texte} (main ${main.main}${pourquoi.length ? ` ; moitié : ${pourquoi.join(', ')}` : ''})${deux.aPreciser.length ? `\nÀ appliquer à la main : ${deux.aPreciser.join(', ')}` : ''}`;
         etoile.setAttribute('aria-label', texte);
       }
-      const choisis = [!element && trouver(regles.materiaux_armes, x?.materiau_id)?.nom, arme?.type_degats_au_choix && nomsDesTypes.get(x?.type_degats_choisi),
-        x?.amelioration_id && 'amélioration', x?.effet_en_plus && 'effet en plus'].filter(Boolean);
-      resume.textContent = choisis.length ? choisis.join(' · ') : element ? 'amélioration, effet en plus…' : 'composition, amélioration…';
+      // le type choisi est en gras avec l'infobulle de son mot-clé du glossaire (typeDeDegatsAffiche ; les commandes, elles, restent sans lien) ; le résumé n'est
+      // refait que s'il change (une bulle ouverte ne se referme pas à chaque rafraîchissement)
+      const typeChoisi = arme?.type_degats_au_choix && nomsDesTypes.has(x?.type_degats_choisi) ? typeDeDegatsAffiche(regles, x.type_degats_choisi, nomsDesTypes.get(x.type_degats_choisi)) : null;
+      const choisis = [!element && trouver(regles.materiaux_armes, x?.materiau_id)?.nom, typeChoisi, x?.amelioration_id && 'amélioration', x?.effet_en_plus && 'effet en plus'].filter(Boolean);
+      const cleDuResume = JSON.stringify(choisis.length ? choisis : element ? 'amélioration, effet en plus…' : 'composition, amélioration…');
+      if (resume.dataset.cle !== cleDuResume) {
+        resume.dataset.cle = cleDuResume;
+        if (!choisis.length) resume.textContent = element ? 'amélioration, effet en plus…' : 'composition, amélioration…';
+        else resume.replaceChildren(...choisis.flatMap((c, i) => [...(i ? [' · '] : []), typeof c === 'string' ? c : c.motCle ? motCleAffiche(c) : c.texte]));
+      }
     });
     // à portée de main (demande du propriétaire) : l'arme et ses dés ; composition (grisée pour une arme élémentaire), amélioration et effet en plus
     // repliés (décision R167 : plus de champ « Élément » ni « Amélioration de l'élément », un seul niveau d'amélioration)
@@ -3992,6 +3999,17 @@ function rafraichir() {
   construireChoixEnAttente();
   etatDesBoutons();
   if (modifie) message(serviceJoignable ? 'Modifications non enregistrées.' : 'Service indisponible : téléchargez la fiche pour ne rien perdre.', 'attente');
+}
+
+/**
+ * Un mot-clé du glossaire dans un texte que la fiche dessine (typeDeDegatsAffiche) : en gras, sur la couleur de son mot-clé (classe de la palette), sa définition
+ * en infobulle du site (`title`, que components/Infobulles.astro déplace) ; sans lien ni tabindex (il est dans un résumé, qui a déjà le focus). Le middleware
+ * (lib/mots-cles-balises.mjs#htmlDeLaBalise) poserait ici un gras sans bulle ; la bulle est voulue (réponse « ok reco » du propriétaire), d'où le `title`. Les balises `{{…}}` ne se rendent pas ici : le navigateur n'a pas le vocabulaire.
+ */
+function motCleAffiche({ texte, classe, infobulle }) {
+  const e = el('strong', { class: classe ? `mot-cle ${classe}` : 'mot-cle' }, texte);
+  if (infobulle) e.title = infobulle;
+  return e;
 }
 
 /** Pose l'infobulle d'un élément (son `title`, que components/Infobulles.astro déplace dans data-infobulle) seulement si elle change. */
