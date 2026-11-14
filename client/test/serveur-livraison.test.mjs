@@ -108,11 +108,11 @@ test('docker-compose.yml du NAS et des installateurs : un conteneur Â« serveur Â
     const edition = installateur
       ? { MAVERICK_EDITION: '${MAVERICK_EDITION:-0}', MAVERICK_ADRESSE_PUBLIQUE: '${MAVERICK_ADRESSE_PUBLIQUE:-}', MAVERICK_GITHUB_JETON_FICHIER: '/secrets/github-actions-token',
         MAVERICK_MAINTENANCE: '/maintenance', MAVERICK_DOSSIER_METRIQUES: '/metriques', MAVERICK_INSTANCE: '${MAVERICK_INSTANCE:-}',
-        MAVERICK_METRIQUES_BRUTES: '${MAVERICK_METRIQUES_BRUTES:-0}', MAVERICK_METRIQUES_PAGES: '${MAVERICK_METRIQUES_PAGES:-1}' }
+        MAVERICK_METRIQUES_BRUTES: '${MAVERICK_METRIQUES_BRUTES:-0}', MAVERICK_METRIQUES_PAGES: '${MAVERICK_METRIQUES_PAGES:-1}', MAVERICK_PRODUCTION: '/production' }
       : {};
     assert.deepEqual(serveur.environment, { HOST: '0.0.0.0', PORT: '8787', MAVERICK_REGLES: '/site/donnees/maverick.db', MAVERICK_DB: '/db', ...edition }, fichier);
     assert.deepEqual(serveur.volumes, ['./site:/site:ro', './db:/db',
-      ...(installateur ? ['./secrets:/secrets:ro', '${MAVERICK_DOSSIER_MAINTENANCE:-./maintenance}:/maintenance', '${MAVERICK_DOSSIER_METRIQUES:-./metriques}:/metriques'] : [])], fichier);
+      ...(installateur ? ['./secrets:/secrets:ro', '${MAVERICK_DOSSIER_MAINTENANCE:-./maintenance}:/maintenance', '${MAVERICK_DOSSIER_METRIQUES:-./metriques}:/metriques', '${MAVERICK_DOSSIER_PRODUCTION:-../maverick-center/site}:/production:ro'] : [])], fichier);
     assert.ok(compose.services['maverick-center'].volumes.includes('./site:/usr/share/nginx/html:ro'), fichier);
   }
   assert.match(YAML.parse(lire('deploy/installateur/docker-compose.yml')).services.serveur.container_name, /^\$\{MAVERICK_CONTENEUR:-maverick-center\}-serveur$/,
