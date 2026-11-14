@@ -12,11 +12,11 @@
 // juste sous le titre, en mode modification seulement (`page.resume` de lib/edition-modele.mjs#TABLES ; pas celui d'une page du Codex, que le service
 // refuse) ; la liste « Onglet » et « Supprimer » d'une page des Règles viennent dessous (src/scripts/edition/menus.mjs).
 import { attributEd, cleDeLigne } from '../../lib/edition-modele.mjs';
-import { arbreDuDom, classeDeCouleurDeCase, COULEURS_DE_CASE, decouperCorps, etatDuTexte, htmlSur, recomposerCorps, versMarkdown } from '../../lib/markdown-edition.mjs';
+import { arbreDuDom, decouperCorps, etatDuTexte, htmlSur, recomposerCorps, versMarkdown } from '../../lib/markdown-edition.mjs';
 import { creerLeRendu } from '../../lib/markdown-rendu.mjs';
+import { brancherLesOnglets, outilsDesOnglets } from './onglets.mjs';
+import { outilsDesTableaux } from './tableaux.mjs';
 import { editeurEnPlace, outilsDesMotsCles, pagesDuWiki } from './texte-en-place.mjs';
-
-const ETIQUETTES_COULEUR = { rouge: 'Rouge', orange: 'Orange', jaune: 'Jaune', vert: 'Vert', bleu: 'Bleu', violet: 'Violet', gris: 'Gris' };
 
 const etat = {
   actif: false, // les morceaux sont modifiables
@@ -31,6 +31,12 @@ const etat = {
 };
 
 const MESSAGE_PERIME = 'Le texte de cette page a changé depuis la construction du site : il s’affichera à la prochaine mise à jour du site.';
+
+/** Pose le HTML d'un morceau, puis donne ses groupes d'onglets au script des onglets (components/Onglets.astro, s'il est sur la page : `onglets:brancher`). */
+function poserLeHtml(morceau, html) {
+  morceau.innerHTML = html;
+  morceau.dispatchEvent(new CustomEvent('onglets:brancher', { bubbles: true }));
+}
 
 const corpsId = () => document.querySelector('[data-ed-corps]')?.dataset.edCorps ?? null;
 const morceauxDeLaPage = () => [...document.querySelectorAll('[data-ed-morceau]')];
@@ -65,92 +71,9 @@ const markdownDe = (ed, el) => versMarkdown(enfantsDe(el), { lienRelatif: lienRe
 
 // --- Sélection, commandes, liens : l'éditeur en place partagé (texte-en-place.mjs), sur les morceaux du corps -----------------------------------
 const texte = editeurEnPlace(() => etat.morceaux);
-const { plage, proche, commande, bloc, lienMotCle, lienWeb, retirerLien } = texte;
-
-// --- Tableaux ---------------------------------------------------------------------------------------------------------------------------------
-const caseCourante = (r) => proche(r, 'td, th');
-const nouvelleCase = (balise) => {
-  const c = document.createElement(balise);
-  c.append(document.createElement('br'));
-  return c;
-};
-
-function insererTableau(ed) {
-  const r = plage();
-  if (!r) return ed.annoncer('Placez d’abord le curseur là où le tableau doit aller.');
-  if (caseCourante(r)) return ed.annoncer('Un tableau ne se met pas dans un autre.');
-  document.execCommand('insertHTML', false, '<table><thead><tr><th>Titre</th><th>Titre</th></tr></thead><tbody><tr><td>Case</td><td>Case</td></tr></tbody></table><p><br></p>');
-  ed.marquerModifie();
-}
-
-function surLaCase(ed, faire) {
-  const c = caseCourante(plage());
-  if (!c) return ed.annoncer('Placez d’abord le curseur dans une case du tableau.');
-  const ligne = c.parentElement;
-  const table = c.closest('table');
-  faire({ c, ligne, table, index: [...ligne.children].indexOf(c), lignes: [...table.querySelectorAll('tr')] });
-  ed.marquerModifie();
-}
-
-const ajouterLigne = (ed) =>
-  surLaCase(ed, ({ ligne, table, lignes }) => {
-    const largeur = Math.max(...lignes.map((l) => l.children.length));
-    const tr = document.createElement('tr');
-    for (let i = 0; i < largeur; i++) tr.append(nouvelleCase('td'));
-    if (ligne.parentElement.tagName === 'THEAD') {
-      let corps = table.querySelector('tbody');
-      if (!corps) table.append((corps = document.createElement('tbody')));
-      corps.prepend(tr);
-    } else ligne.after(tr);
-  });
-
-const ajouterColonne = (ed) =>
-  surLaCase(ed, ({ index, lignes }) => {
-    for (const l of lignes) {
-      const c = nouvelleCase(l.parentElement.tagName === 'THEAD' || [...l.children].every((x) => x.tagName === 'TH') ? 'th' : 'td');
-      const voisine = l.children[index];
-      if (voisine) voisine.after(c);
-      else l.append(c);
-    }
-  });
-
-const supprimerLigne = (ed) =>
-  surLaCase(ed, ({ ligne }) => {
-    if (ligne.parentElement.tagName === 'THEAD') {
-      ed.annoncer('La ligne d’en-tête d’un tableau reste (videz ses cases si besoin).');
-      return;
-    }
-    ligne.remove();
-  });
-
-const supprimerColonne = (ed) =>
-  surLaCase(ed, ({ index, lignes, table }) => {
-    for (const l of lignes) l.children[index]?.remove();
-    if (lignes.every((l) => !l.children.length)) table.remove();
-  });
-
-/** Couleur des cases choisies (ou de la case du curseur) ; null : sans couleur. */
-function couleur(ed, nom) {
-  const r = plage();
-  if (!r) return ed.annoncer('Placez d’abord le curseur dans une case du tableau.');
-  const cases = new Set();
-  const courante = caseCourante(r);
-  if (courante) cases.add(courante);
-  for (const m of etat.morceaux) for (const c of m.querySelectorAll('td, th')) if (r.intersectsNode(c)) cases.add(c);
-  if (!cases.size) return ed.annoncer('Placez d’abord le curseur dans une case du tableau.');
-  // le nom (que relit le Markdown) et la classe de la palette (la couleur, styles/global/wiki.css) : jamais une couleur ni un style
-  for (const c of cases) {
-    for (const k of [...c.classList]) if (k.startsWith('couleur-case-')) c.classList.remove(k);
-    if (nom) {
-      c.dataset.couleur = nom;
-      c.classList.add(classeDeCouleurDeCase(nom));
-    } else {
-      delete c.dataset.couleur;
-      if (!c.classList.length) c.removeAttribute('class');
-    }
-  }
-  ed.marquerModifie();
-}
+const { commande, bloc, lienMotCle, lienWeb, retirerLien } = texte;
+const tableaux = outilsDesTableaux(texte, () => etat.morceaux);
+const onglets = outilsDesOnglets(texte, () => etat.morceaux);
 
 // --- Barre d'outils ---------------------------------------------------------------------------------------------------------------------------
 const OUTILS = [
@@ -174,31 +97,15 @@ const OUTILS = [
     ['Sans lien', 'Retirer le lien (le texte reste)', retirerLien],
   ]],
   outilsDesMotsCles(texte),
-  ['Tableau', [
-    ['Tableau', 'Insérer un tableau', insererTableau],
-    ['+ ligne', 'Ajouter une ligne sous la case', ajouterLigne],
-    ['+ colonne', 'Ajouter une colonne à droite de la case', ajouterColonne],
-    ['− ligne', 'Supprimer la ligne de la case', supprimerLigne],
-    ['− colonne', 'Supprimer la colonne de la case', supprimerColonne],
-  ]],
+  tableaux.groupe,
+  onglets.groupe,
 ];
 
-function barreDOutils(ed) {
-  const { element: barre, ajouter } = texte.barre(ed, OUTILS, 'Mise en forme du texte du guide');
-  const couleurs = document.createElement('div');
-  couleurs.className = 'ed-barre-guide__groupe';
-  couleurs.setAttribute('role', 'group');
-  couleurs.setAttribute('aria-label', 'Couleur des cases');
-  const titre = document.createElement('span');
-  titre.className = 'ed-barre-guide__titre';
-  titre.textContent = 'Case :';
-  couleurs.append(titre);
-  for (const nom of COULEURS_DE_CASE) {
-    const b = ajouter(couleurs, '', `Case ${ETIQUETTES_COULEUR[nom].toLowerCase()}`, (e) => couleur(e, nom), 'ed-couleur');
-    b.classList.add(classeDeCouleurDeCase(nom)); // sa couleur : la classe de la palette (styles/edition/edition.css)
-  }
-  ajouter(couleurs, '∅', 'Case sans couleur', (e) => couleur(e, null), 'ed-couleur');
-  barre.append(couleurs);
+function barreDOutils(ed, signal) {
+  const { element: barre } = texte.barre(ed, OUTILS, 'Mise en forme du texte du guide');
+  // la couleur d'un onglet et celle d'une case : le choix de couleur du glossaire (edition/couleurs.mjs), à la suite de leur groupe
+  onglets.ajouterLaCouleur(ed, barre, signal);
+  tableaux.ajouterLaCouleur(ed, barre, signal);
   return barre;
 }
 
@@ -236,12 +143,14 @@ export const guide = {
     const morceaux = morceauxDeLaPage();
     // une page créée sur le site de dev, sans aperçu : edition/nouvelles.mjs l'a dessinée en paragraphes bruts, le rendu ci-dessous la refait (son texte se modifie en place)
     const quoi = etatDuTexte(enAttente, morceaux.length);
+    // un texte en attente montre ses onglets (aperçu assaini : lib/markdown-edition.mjs#htmlSur ; texte rendu ici : lib/markdown-onglets.mjs), et ils s'ouvrent au clic
+    brancherLesOnglets();
     if (quoi === 'apercu') {
-      morceaux.forEach((m, i) => (m.innerHTML = assainir(enAttente.apercu[i])));
+      morceaux.forEach((m, i) => poserLeHtml(m, assainir(enAttente.apercu[i])));
     } else if (quoi === 'vivant') {
       try {
         const html = await htmlDuTexteActuel(ed, enAttente.ligne.corps_md, id);
-        morceaux.forEach((m, i) => (m.innerHTML = html[i]));
+        morceaux.forEach((m, i) => poserLeHtml(m, html[i]));
       } catch {
         if (enAttente.creee) return; // la page créée garde ses paragraphes
         etat.perime = true;
@@ -270,17 +179,12 @@ export const guide = {
     for (const m of morceaux) {
       // modifiable en place (texte-en-place.mjs : saisie suivie, collage en texte seul, lien qui ne s'ouvre pas au clic)
       texte.rendreModifiable(ed, m, signal);
-      m.addEventListener('keydown', (e) => {
-        // dans une case de tableau, Entrée passe à la ligne dans la case (un tableau Markdown n'a pas de paragraphe dans une case)
-        if (e.key === 'Enter' && caseCourante(plage())) {
-          e.preventDefault();
-          document.execCommand('insertLineBreak');
-        }
-      }, { signal });
+      tableaux.brancher(m, signal); // dans une case de tableau, Entrée passe à la ligne dans la case
+      m.dispatchEvent(new CustomEvent('onglets:brancher', { bubbles: true })); // les onglets d'un groupe rendu depuis le chargement
     }
     // le Markdown relu à l'entrée, une fois les mots-clés en balises écrites (rendreModifiable) : un morceau qu'on ne retouche pas n'est pas envoyé
     etat.initial = morceaux.map((m) => markdownDe(ed, m));
-    etat.barre = barreDOutils(ed);
+    etat.barre = barreDOutils(ed, signal);
     document.body.append(etat.barre);
   },
 
@@ -316,7 +220,7 @@ export const guide = {
 
   fin() {
     // abandon : le texte d'avant revient ; enregistrement : apresEnregistrement pose ensuite le texte enregistré
-    if (etat.actif) etat.morceaux.forEach((m, i) => (m.innerHTML = etat.original[i]));
+    if (etat.actif) etat.morceaux.forEach((m, i) => poserLeHtml(m, etat.original[i]));
     for (const m of etat.morceaux) {
       m.removeAttribute('contenteditable');
       m.classList.remove('ed-texte-guide');
@@ -330,7 +234,7 @@ export const guide = {
   apresEnregistrement(ed, resultat) {
     const id = corpsId();
     if (!etat.envoye || !resultat.lignes?.some((l) => l.table === 'page' && l.cle?.id === id)) return;
-    etat.morceaux.forEach((m, i) => (m.innerHTML = etat.envoye[i]));
+    etat.morceaux.forEach((m, i) => poserLeHtml(m, etat.envoye[i]));
     etat.envoye = null;
   },
 };

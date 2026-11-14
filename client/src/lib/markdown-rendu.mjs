@@ -26,6 +26,7 @@ import { adresseDesAnciensLiens, avecPrefixe, remarkAnciensLiensDuGuide } from '
 import { ACCUEIL_DU_GUIDE, pagesEclateesDuGuide } from './livres.mjs';
 import { remarkCouleursDeCase } from './markdown-couleurs.mjs';
 import { remarkMonnaies } from './markdown-monnaies.mjs';
+import { remarkOnglets } from './markdown-onglets.mjs';
 import { cheminDePage } from './metiers.mjs';
 import { cheminVersUnePageEclatee } from './nav.mjs';
 import { remarkWikilinks } from './wikilinks-remark.mjs';
@@ -116,6 +117,7 @@ export function remarkPluginsDuWiki({ index, base = '/', adresse = null, avertir
     remarkCouleursDeCase,
     remarkMonnaies,
     remarkAncresFigees,
+    remarkOnglets,
     ...(adresse ? [[remarkAnciensLiensDuGuide, { base, adresse }]] : []),
   ];
 }

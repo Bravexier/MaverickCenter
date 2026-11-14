@@ -5,6 +5,7 @@ import { buildIndex, remarkWikilinks, scanContent } from './src/lib/wikilinks.mj
 import { remarkCouleursDeCase } from './src/lib/markdown-couleurs.mjs';
 import { remarkMonnaies } from './src/lib/markdown-monnaies.mjs';
 import { remarkAncresFigees } from './src/lib/ancres-figees.mjs';
+import { remarkOnglets } from './src/lib/markdown-onglets.mjs';
 import { integrationServeur } from './serveur/livraison.mjs';
 import { integrationReference } from './scripts/db-reference.mjs';
 
@@ -46,6 +47,6 @@ export default defineConfig({
     // Sätteri est le processeur par défaut d'Astro 7 mais n'exécute pas les plugins remark :
     // on garde unified pour le plugin des [[liens]] (et ceux de la couleur des cases de tableau, lib/markdown-couleurs.mjs, des monnaies en icônes, lib/markdown-monnaies.mjs,
     // et des ancres figées des intertitres, lib/ancres-figees.mjs).
-    processor: unified({ remarkPlugins: [[remarkWikilinks, { index, base }], remarkCouleursDeCase, remarkMonnaies, remarkAncresFigees] }),
+    processor: unified({ remarkPlugins: [[remarkWikilinks, { index, base }], remarkCouleursDeCase, remarkMonnaies, remarkAncresFigees, remarkOnglets] }),
   },
 });

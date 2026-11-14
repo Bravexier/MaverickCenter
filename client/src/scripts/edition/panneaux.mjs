@@ -26,6 +26,8 @@ import { arbreDuDom, versMarkdown } from '../../lib/markdown-edition.mjs';
 import { cheminDePage } from '../../lib/metiers.mjs';
 import { ordresApresDeplacement } from '../../lib/panneaux-regles-db.mjs';
 import { empreinteDuTexte, htmlDuBloc } from '../../lib/panneaux-regles-rendu.mjs';
+import { brancherLesOnglets, outilsDesOnglets } from './onglets.mjs';
+import { outilsDesTableaux } from './tableaux.mjs';
 import { editeurEnPlace, outilsDesMotsCles, pageChoisie, pagesDuWiki } from './texte-en-place.mjs';
 
 /** Ce que le build fait au HTML d'un bloc, par panneau (lib/equipement-rendu.ts, src/pages/ressources/armes.astro…), refait ici pour un bloc rendu dans le navigateur. */
@@ -95,6 +97,8 @@ async function appliquerAuPanneau(ed, details, cle, ligne) {
 // --- Mode modification ----------------------------------------------------------------------------------------------------------------------------
 
 const texte = editeurEnPlace(() => etat.panneaux.flatMap((p) => p.blocs.filter((b) => !b.retire).map((b) => b.zone)));
+const tableaux = outilsDesTableaux(texte, () => etat.panneaux.flatMap((p) => p.blocs.filter((b) => !b.retire).map((b) => b.zone)));
+const onglets = outilsDesOnglets(texte, () => etat.panneaux.flatMap((p) => p.blocs.filter((b) => !b.retire).map((b) => b.zone)));
 const OUTILS = [
   ['Texte', [
     ['G', 'Gras (Ctrl+B)', (ed) => texte.commande(ed, 'bold'), 'ed-gras'],
@@ -104,6 +108,7 @@ const OUTILS = [
   ]],
   ['Mise en page', [
     ['¶', 'Paragraphe', (ed) => texte.bloc(ed, 'p')],
+    ['Sous-titre', 'Sous-titre (les onglets en font un groupe)', (ed) => texte.bloc(ed, 'h3')],
     ['• Liste', 'Liste à puces', (ed) => texte.commande(ed, 'insertUnorderedList')],
     ['1. Liste', 'Liste numérotée', (ed) => texte.commande(ed, 'insertOrderedList')],
   ]],
@@ -112,6 +117,8 @@ const OUTILS = [
     ['Lien web', 'Lien vers une adresse web', texte.lienWeb],
     ['Sans lien', 'Retirer le lien (le texte reste)', texte.retirerLien],
   ]],
+  tableaux.groupe,
+  onglets.groupe,
   outilsDesMotsCles(texte),
 ];
 
@@ -227,6 +234,7 @@ function monterLeBloc(ed, p, el) {
   if (!ligne || !zone) return null;
   const b = { el, zone, rang, ligne, sauvegarde: zone.innerHTML, retire: false, initial: '', outils: null };
   texte.rendreModifiable(ed, zone, etat.abandon.signal);
+  tableaux.brancher(zone, etat.abandon.signal);
   b.initial = markdownDe(ed, zone);
   b.outils = outilsDuBloc(ed, p, b);
   el.append(b.outils);
@@ -261,6 +269,7 @@ export const panneaux = {
   /** Une ligne d'un bloc changée depuis la construction (au chargement) ou par un enregistrement : son bloc suit (hors mode modification). */
   ligne(ed, table, cle, ligne) {
     if (table !== 'panneau_regles_bloc' || ed.enEdition) return;
+    brancherLesOnglets(); // un texte refait ici peut avoir des onglets : ils s'ouvrent au clic
     etat.differees.delete(cleDeLigne(table, cle)); // celle-ci est plus récente qu'une ligne remise à plus tard
     const details = lesPanneaux().find((d) => d.dataset.panneauRegles === cle?.panneau_id);
     if (details) appliquerAuPanneau(ed, details, cle, ligne).catch((e) => ed.annoncer(`Un panneau de règles n’a pas pu être refait : ${e.message}`, 'erreur'));
@@ -282,6 +291,9 @@ export const panneaux = {
     if (!etat.panneaux.length) return;
     document.execCommand('defaultParagraphSeparator', false, 'p');
     etat.barre = texte.barre(ed, OUTILS, 'Mise en forme des règles').element;
+    onglets.ajouterLaCouleur(ed, etat.barre, etat.abandon.signal);
+    tableaux.ajouterLaCouleur(ed, etat.barre, etat.abandon.signal);
+    brancherLesOnglets();
     document.body.append(etat.barre);
   },
 

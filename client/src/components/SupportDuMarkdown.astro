@@ -1,0 +1,28 @@
+---
+import ongletsCss from '../styles/guide/onglets.css?raw';
+import Onglets from './Onglets.astro';
+import { MARQUE_DE_COULEUR } from '../lib/couleurs-ecrites.mjs';
+import { MARQUE_D_OUVERTURE } from '../lib/onglets-groupe.mjs';
+import { cssDesCouleursEcrites } from '../lib/palette-css.mjs';
+import { poserUneFois } from '../lib/pose-unique.mjs';
+
+// Ce qu'un texte Markdown demande à sa page : la chaîne Markdown du site (astro.config.mjs, lib/guide-rendu.ts) rend les groupes d'onglets (`::: onglets`,
+// lib/markdown-onglets.mjs) et les couleurs écrites des cases et des onglets (`{couleur:x}`, lib/couleurs-ecrites.mjs), mais la page doit en poser le script, la
+// feuille et les classes de couleur qu'elle n'a pas déjà (demande du propriétaire : des tableaux et des onglets qui se font à la main dans tous les textes
+// de la page). `textes` : les Markdown que la page rend (corps d'une page du guide ou du Codex, descriptions d'un événement, blocs d'un panneau de règles,
+// annonce). Un groupe d'onglets : le script partagé (components/Onglets.astro, posé une fois par page : skill ui-onglets) et styles/guide/onglets.css ; une
+// couleur d'une famille d'une zone ou une couleur écrite : la règle de sa classe (lib/palette-css.mjs#cssDesCouleursEcrites) ; rien d'autre sur une page sans
+// onglet ni couleur. Une page qui a déjà ses onglets (l'équipement, les pages de classe) ne reçoit ni un second script ni une seconde feuille : `Onglets.astro`
+// et ce composant se partagent `poserUneFois` (lib/pose-unique.mjs).
+interface Props {
+  textes: (string | null | undefined)[];
+}
+const texte = Astro.props.textes.filter(Boolean).join('\n\n');
+const avecOnglets = new RegExp(`^${MARQUE_D_OUVERTURE.replace(' ', '[ \\t]+')}[ \\t]*$`, 'm').test(texte);
+const couleurs = [...texte.matchAll(MARQUE_DE_COULEUR)].map((m) => m[1]);
+const feuille = cssDesCouleursEcrites(couleurs);
+---
+
+{avecOnglets && <Onglets />}
+{avecOnglets && poserUneFois(Astro.locals, 'feuille-des-onglets') && <style is:inline data-onglets-feuille set:html={ongletsCss}></style>}
+{feuille && <style is:inline data-couleurs-texte set:html={feuille}></style>}

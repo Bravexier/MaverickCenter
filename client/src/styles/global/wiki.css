@@ -7,7 +7,7 @@
 .class-nav { display: flex; flex-wrap: wrap; gap: 0.5rem; margin: 1rem 0; }
 main a { overflow-wrap: anywhere; } /* les URLs de la section « Sources » ne doivent pas élargir la page */
 /* Couleur d'une case de tableau (« {couleur:vert} » en tête de case : lib/markdown-couleurs.mjs, modifiable depuis le site de dev) : la case porte la classe
-   de sa couleur (`.couleur-case-…`, lib/palette-css.mjs#classeDeCase, famille `case` émise sur chaque page par layouts/Base.astro) ; la feuille ne lit que
+   de sa couleur (`.couleur-case-…` pour les sept noms d'avant, lib/palette-css.mjs#classeDeCase, famille `case` émise sur chaque page par layouts/Base.astro ; `.couleur-<famille>-<id>` ou `.couleur-ecrite-<rrggbb>` pour une couleur du glossaire : lib/couleurs-ecrites.mjs, feuille de components/SupportDuMarkdown.astro) ; la feuille ne lit que
    `--couleur`, mêlée à 26 % à la surface sous le texte du site : lisible en clair comme en sombre (test/palette-css.test.mjs). Attribut doublé : passe
    devant le fond des en-têtes de tableau des gabarits (guide). */
-:is(td, th)[class*='couleur-case-'][class*='couleur-case-'] { background: color-mix(in srgb, var(--couleur) 26%, var(--surface)); }
+:is(td, th).case-coloree.case-coloree { background: color-mix(in srgb, var(--couleur) 26%, var(--surface)); }

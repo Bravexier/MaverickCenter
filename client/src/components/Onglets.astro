@@ -21,11 +21,17 @@
 // la propriété choisie), sans toucher à l'adresse ni faire défiler la page ; avec `detail.dans` (un élément), seuls les groupes dont les panneaux sont
 // dans cet élément s'ouvrent, pas ceux qui le contiennent (option sans usage depuis le 2026-11-05 : src/scripts/armes.mjs s'en servait pour l'onglet
 // de la famille d'une arme).
+import { poserUneFois } from '../lib/pose-unique.mjs';
+
+// Le composant peut être demandé deux fois par une page (une page qui a ses onglets, et un texte qui écrit un groupe `::: onglets` : components/SupportDuMarkdown.astro) :
+// le script en ligne de la classe `js` n'est écrit qu'une fois (lib/pose-unique.mjs) ; le script des onglets, lui, est déjà un seul par page (Astro n'écrit pas deux fois
+// le script d'un même composant).
+const premiere = poserUneFois(Astro.locals, 'onglets');
 ---
 
-<script is:inline>
+{premiere && <script is:inline>
   document.documentElement.classList.add('js');
-</script>
+</script>}
 
 <script>
   interface Groupe {

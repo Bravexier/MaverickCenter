@@ -331,9 +331,10 @@ body.ed-glisse-en-cours, body.ed-glisse-en-cours * { cursor: grabbing !important
 .ed-barre-guide .ed-gras { font-weight: 800; }
 .ed-barre-guide .ed-italique { font-style: italic; font-family: Georgia, serif; }
 .ed-barre-guide .ed-barre { text-decoration: line-through; }
-.ed-barre-guide .ed-couleur { min-width: 1.4rem; height: 1.4rem; padding: 0; border-radius: 50%; }
-/* une pastille porte la classe de sa couleur de case (`.couleur-case-…`, la palette de chaque page : scripts/edition/guide.mjs) */
-.ed-barre-guide .ed-couleur[class*='couleur-case-'] { background: color-mix(in srgb, var(--couleur) 60%, var(--surface)); }
+/* le choix d'une couleur d'une case ou d'un onglet : celui des mots-clés du glossaire (liste des couleurs du site et cercle : editeur.mjs#controleDeCouleur), en plus petit */
+.ed-barre-guide .ed-couleur-choix { flex-wrap: nowrap; gap: 0.25rem; }
+.ed-barre-guide .ed-couleur-choix__liste { max-width: 9rem; padding: 0.15rem 0.2rem; font-size: var(--fs-sm); }
+.ed-barre-guide .ed-couleur-choix__cercle { inline-size: 1.5rem; block-size: 1.5rem; }
 
 /* Panneaux de règles (src/scripts/edition/panneaux.mjs) : le panneau reste ouvert, son titre est une saisie dans le summary ; sous chaque bloc, ses outils
    (↑ ↓, Supprimer, + Texte, + Tuile), jamais coupés et jamais séparés de la fin du bloc (break-before: avoid) : un bloc de texte se coupe entre deux

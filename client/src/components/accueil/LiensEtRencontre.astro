@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { LIENS_ET_RENCONTRE } from '../../lib/livres.mjs';
 import { chargerAnnonce, contenuDeLAnnonce, empreinteDeLAnnonce } from '../../lib/annonces.mjs';
 import { ouvrirBase, trouverRacine } from '../../lib/donnees.mjs';
+import SupportDuMarkdown from '../SupportDuMarkdown.astro';
 import { rendreMarkdown } from '../../lib/guide-rendu';
 import { CHEMIN_INSTANTANE, instantaneValide, URL_PAGE } from '../../lib/tipeee.mjs';
 import { url } from '../../lib/wiki';
@@ -38,6 +39,7 @@ const contenu = contenuDeLAnnonce(texte, texte ? await rendreMarkdown(texte, CON
 ---
 
 <style is:inline set:html={liensCss}></style>
+<SupportDuMarkdown textes={[texte, ...LIENS_ET_RENCONTRE.liens.map((l) => l.presentation)]} />
 <div class="accueil-liens">
   {
     liens.map((l) => (

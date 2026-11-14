@@ -1,4 +1,5 @@
 ---
+import SupportDuMarkdown from '../SupportDuMarkdown.astro';
 import { attributEd } from '../../lib/edition-modele.mjs';
 import { ancreDuPanneau, htmlDesBlocs } from '../../lib/panneaux-regles-rendu.mjs';
 
@@ -36,6 +37,7 @@ interface Props {
 const { panneau, ouvert = false } = Astro.props;
 ---
 
+{panneau && <SupportDuMarkdown textes={panneau.blocs.map((b) => b.texte)} />}
 {
   panneau && (
     <details class="preg" id={ancreDuPanneau(panneau.id)} data-panneau-regles={panneau.id} open={ouvert}>

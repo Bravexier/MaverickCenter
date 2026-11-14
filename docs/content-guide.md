@@ -295,13 +295,13 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
   de `lib/markdown-edition.mjs#COULEURS_DE_CASE`, que l'éditeur écrit et relit, dans le même ordre : `couleur-case-rouge`, `-orange`, `-jaune`, `-vert`,
   `-bleu`, `-violet`, `-gris`, `classeDeCase` ; pas de `par-defaut` : une case sans couleur connue n'a pas de classe). Aucune source ne donne ces
   couleurs : ce sont les valeurs que le site écrivait dans `global/wiki.css` (« Si le site n'a pas de règle il ajoute une nouvelle couleur au site »),
-  inchangées. Le Markdown (`{couleur:x}`) et l'attribut `data-couleur` (le nom, que relit l'aller-retour) ne changent pas : le plugin remark
+  inchangées. Le Markdown (`{couleur:x}`) et l'attribut `data-couleur` (le nom, que relit l'aller-retour) ne changent pas (la marque accepte depuis toute couleur du glossaire, et la case porte aussi la classe `case-coloree` : « Des onglets et des couleurs dans un texte ») : le plugin remark
   (`lib/markdown-couleurs.mjs`, déclaré dans `astro.config.mjs`, `lib/guide-rendu.ts` et, pour le texte que le navigateur du site de dev rend lui-même, `lib/markdown-rendu.mjs#remarkPluginsDuWiki`) pose en plus la classe sur la case, l'aperçu assaini
-  (`htmlSur`) la recalcule depuis le nom (jamais celle reçue), et l'éditeur du guide (`scripts/edition/guide.mjs`) la pose et la retire par `classList`
-  avec le nom, ainsi que sur chaque pastille de sa barre ; le nom de la classe vient de `markdown-edition.mjs#classeDeCouleurDeCase` (sans couleur, le
-  même nom que `classeDeCase`, testé), car ni le plugin ni le script n'importent la palette. `global/wiki.css` ne lit que la classe,
-  `:is(td, th)[class*='couleur-case-'][class*='couleur-case-']` (le poids qui passe devant les en-têtes des gabarits du guide), avec `var(--couleur)`
-  mêlée à 26 % à `--surface` ; les pastilles de l'éditeur (`edition/edition.css`) la mêlent à 60 %. Choix appliqués au nom de la réponse permanente
+  (`htmlSur`) la recalcule depuis le nom (jamais celle reçue), et l'éditeur (`scripts/edition/tableaux.mjs`, partagé par toutes les barres) la pose et la retire par `classList`
+  avec la valeur écrite ; le nom de la classe vient de `lib/couleurs-ecrites.mjs#classeDeLaCouleurEcrite` (sans couleur ; `markdown-edition.mjs#classeDeCouleurDeCase`
+  en est un alias, et son nom pour les sept noms d'avant est celui de `classeDeCase`, testé), car ni le plugin ni le script n'importent la palette pour le nom.
+  `global/wiki.css` ne lit que la classe, `:is(td, th).case-coloree.case-coloree` (le poids qui passe devant les en-têtes des gabarits du guide), avec
+  `var(--couleur)` mêlée à 26 % à `--surface` ; les sept pastilles de l'éditeur sont retirées : le choix de couleur est celui du glossaire (R277). Choix appliqués au nom de la réponse permanente
   du propriétaire du 2026-10-23 (« Pour toutes tes prochaines questions sur le thème et les palette, considère que je réponds "rcommandé" à chaque
   fois. ») ; ce ne sont pas des choix qu'il a faits sur ce cas :
   - question « Les couleurs des cases de tableau ({couleur:x}) n'ont aucune source (ni Docs, ni Sheets, ni Discord) : ce sont celles que le site
@@ -385,7 +385,7 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
   style. Les scripts du navigateur posent des classes (`classList`), jamais une couleur : ils reçoivent leurs noms de la page (`data-couleurs` de
   `/personnages/`) ou de `regles.json` (`classe` et `classe_2` de chaque magie, `classe` de chaque caractéristique, posture, alignement, race, classe
   et palier, de `mode_hyper` et `mode_hyper.cent`, `race_par_nature`, `neutre` : skill `zone-fiche`), ou d'un module sans couleur qu'ils importent
-  déjà (l'éditeur du guide : `markdown-edition.mjs#classeDeCouleurDeCase`, le nom de la classe d'une case), car un script de page n'importe pas
+  déjà (l'éditeur : `lib/couleurs-ecrites.mjs#classeDeLaCouleurEcrite`, le nom de la classe d'une case ou d'un onglet), car un script de page n'importe pas
   `palette-css.mjs`. La carte de `/magies/` : les règles du survol (écrites par le composant) font lire au trait `--couleur` ou `--couleur-2` de ses
   classes selon la magie survolée ; seule la part de la couleur dans le trait se calcule encore depuis la valeur (luminance, au build).
   La page Debug et l'impression ne changent pas (`debug/debug.css`, `debug/schema.css`,
@@ -1475,16 +1475,9 @@ dev (un commit la change) ni cherchée par la recherche.
   quelles à la fin de l'inventaire, que lit l'onglet Ceinture, `lib/ceinture-db.mjs#PAGE_DE_REFERENCE`) : `/regles/fiche-accessoires-et-ceinture/`,
   `/guide/fiche-accessoires-et-ceinture/` et `/regles/avancees/fiche-accessoires-et-ceinture/` mènent à `/regles/inventaire-sac-a-dos/#accessoires` (ancre figée), l'ancre
   écrite l'emportant ; `/regles/fiche-inventaire-sac-a-dos/` et `/regles/avancees/fiche-inventaire-sac-a-dos/` mènent à `/regles/inventaire-sac-a-dos/`.
-- **Des sections en onglets** (`lib/guide-onglets.mjs`, `components/guide/PageDuGuide.astro`, `styles/guide/onglets.css`, `test/guide-onglets.test.mjs`,
-  `test/guide-html.test.mjs`) : sur « Alignement », les neuf sections `### Loyal Bon {#loyal-bon}`… sont les onglets d'une barre posée sous
-  l'introduction (demande du propriétaire : « Liste les 9 allignements sous forme de tableau (ou de tuile) à onglet ou chaque onglet a la couleur de
-  l'alignement »). Le déclencheur est l'**ancre figée** d'un intertitre `###` qui est celle d'un alignement de la palette (`COULEURS_ALIGNEMENTS`,
-  `idDeCouleur`), jamais son texte, qui se renomme sur le site de dev. Chaque onglet porte la classe `couleur-alignement-<id>` (famille `alignement`,
-  feuille `cssDesAlignements()`), son panneau (`section#<ancre>`, qui garde tout son Markdown rendu) la même ; l'intertitre du panneau perd son `id`
-  (l'ancre est celle du panneau : une adresse `#loyal-bon` ou un mot-clé ouvre l'onglet) mais garde `data-ancre-figee`. Le nom de l'onglet est celui de
-  l'intertitre. Le dernier paragraphe du dernier onglet, d'une ligne et entièrement en gras, sort des panneaux et suit la barre (il parle de
-  l'ensemble). Le script est celui du composant `Onglets.astro`, posé une fois ; sans JavaScript, les sections se suivent. Mode modification : la barre
-  porte `data-ed-ignorer`, le groupe et les panneaux sont transparents pour `versMarkdown` (aucune perte).
+- **Des sections en onglets** : un groupe `::: onglets` écrit dans le texte, plus un déclenchement par l'ancre d'un intertitre (« Des onglets et des
+  couleurs dans un texte », plus bas). Sur « Alignement », la base écrit deux groupes (les quatre tendances, après « Les Quatre Tendances », puis les neuf
+  alignements, `### {couleur:alignement:loyal-bon} {{loyal-bon}} {#loyal-bon}`…) : demande du propriétaire, « Cette fois tu auras 2 tableaux ».
 - **Pages supprimées sans renvoi** (`PAGES_SUPPRIMEES`, R184 (9), R185 (6)) : « Les documents des règles », « En résumé : déroulement d'un tour »,
   « Aide-mémoire », « Mode Hyper (Magie) » ; puis « Postures », « Les boss et leurs postures » et « Le Mode Super » (migration `0094`, demande du
   propriétaire du 2026-11-06 : « inutile ou doublon » ; « Le Mode Hyper » reste), et la « Liste des effets mode hyper » (R187 (1), migration `0095`,
@@ -1968,6 +1961,63 @@ ou le lien tient (`lib/ancres-figees.mjs`).
   ajoutée, ou l'intertitre renommé qui garde la sienne, passent ; au rejeu, un lot plus ancien qui en romprait une est en conflit (`docs/serveur.md`).
 - **Lecture par le code.** `sectionParAncre(corps, ancre)` donne la section (jusqu'à l'intertitre suivant de même niveau ou plus haut), sans lire le
   texte de l'intertitre (`lib/ceinture-db.mjs` : `ANCRE_DES_REGLES`, `ANCRE_DE_LA_REFERENCE`).
+
+## Des onglets et des couleurs dans un texte
+
+Décision R277 (`docs/decisions-regles.md`). Le script et la feuille des onglets ne sont posés qu'une fois par page, même si la page a déjà ses onglets (`lib/pose-unique.mjs#poserUneFois`,
+`components/Onglets.astro`, `components/SupportDuMarkdown.astro` : `test/pose-unique.test.mjs`).
+
+Demande du propriétaire : « La page des alignements a perdu le tableau et les onglets […] Cette fois tu auras 2 tableaux. Un après les "Les Quatre Tendances"
+qui est un tableau à 4 onglets : Loyal, Chaotique, Bon, Mauvais. Le 2em tableau avec les 9 onglets pour les alignements », « retravaille le contenu de tous les
+menu d'édition : de manière à pouvoir faire manuellement ce genre de tableau et d'onglet », « Pour les couleurs il faudra reprendre la liste des couleurs de
+l'édition des mots clés du glossaire ». Réponses : les quatre tendances en 4 onglets sans couleur (« Je les choisirai ») sur une rangée de 4, les neuf alignements en
+grille 3×3 ; onglets dans la barre du guide, « Cases : liste du glossaire » (les sept pastilles remplacées), tableaux et onglets aussi dans les barres de la
+chronologie, des annonces et des panneaux de règles.
+
+```
+::: onglets
+
+Texte facultatif, au-dessus de la barre.
+
+### {couleur:alignement:loyal-bon} {{loyal-bon}} {#loyal-bon}
+
+Le texte du premier onglet (tableaux, listes… tout le Markdown).
+
+### Loyal
+
+Le texte du deuxième.
+
+:::
+```
+
+- **Le groupe.** Une ligne `::: onglets`, une ligne `:::` (chacune seule, des lignes vides autour), au premier niveau du texte (ni dans une liste ni dans une
+  citation, ni dans un bloc de code) ; chaque `###` du groupe ouvre un onglet, qui court jusqu'au `###` suivant ou à `:::` (un `####` est un sous-titre du
+  panneau). Un groupe sans `###` ou sans ligne de fin reste du texte, ses lignes de marque affichées : rien n'est perdu. Il se pose dans toute chaîne Markdown du site
+  (plugin remark `remarkOnglets`, `lib/markdown-onglets.mjs`, déclaré après `remarkAncresFigees` dans `astro.config.mjs`, `lib/guide-rendu.ts`,
+  `lib/markdown-rendu.mjs#remarkPluginsDuWiki`, `lib/chronologie-rendu.mjs` et l'aide des tests : `test/onglets-markdown.test.mjs` le vérifie) : pages du guide et
+  du Codex, descriptions de la chronologie, blocs des panneaux de règles, annonce de l'accueil.
+- **L'onglet.** Son nom est le texte de son intertitre (sans la marque de couleur ni l'ancre, qui s'écrit `{#…}` comme toute ancre figée). L'ancre figée est
+  l'`id` de son panneau (`section#loyal-bon` : l'adresse `#loyal-bon` ou un mot-clé ouvre l'onglet) ; sans ancre, `onglet-<slug du texte>`. L'intertitre du
+  panneau garde `data-ancre-figee` (l'éditeur la réécrit) et prend l'id `titre-<id>`. Le premier onglet est ouvert, sans JavaScript les sections se suivent.
+  Le texte avant le premier `###` reste au-dessus de la barre.
+- **La barre** (`lib/onglets-groupe.mjs`) : une colonne par onglet jusqu'à 4 (les quatre tendances : une rangée de 4) ; au-delà, 3 colonnes si leur nombre est un
+  multiple de 3 (neuf : 3×3), sinon 4 ; 2 colonnes sous 30 rem. L'ordre de la barre est celui du texte.
+- **La couleur** (`lib/couleurs-ecrites.mjs`). Facultative : la marque `{couleur:<valeur>}` en tête du texte de l'intertitre. `<valeur>` est ce que rend le choix de
+  couleur d'un mot-clé du glossaire : `famille:id` d'une couleur du site (`alignement:loyal-bon`, `magie:feu` ; `lib/glossaire-couleurs.mjs`) ou `#rrggbb`. Les sept
+  noms d'avant (`rouge`, `orange`, `jaune`, `vert`, `bleu`, `violet`, `gris`) restent lus (cases des données existantes). Le texte de l'onglet ne montre jamais la
+  marque ; sans couleur, l'onglet est neutre (l'accent du site). Le rendu pose la classe de la palette, jamais un style : `couleur-case-<nom>`,
+  `couleur-<famille>-<id>`, `couleur-ecrite-<rrggbb>` (la feuille d'une famille d'une zone ou d'une couleur écrite : `palette-css.mjs#cssDesCouleursEcrites`,
+  émise par `components/SupportDuMarkdown.astro` sur la page qui en a besoin, avec le script et la feuille des onglets).
+- **Les cases de tableau** prennent la même marque en tête de case (`| {couleur:magie:feu} Feu |`) : `data-couleur` (la valeur écrite) et les classes
+  `case-coloree` et celle de la couleur (`styles/global/wiki.css`).
+- **Le texte lu par le code.** `ancreDuTitre` rend le texte de l'intertitre sans la marque de couleur ; `sansAncresFigees` (recherche) aussi, et
+  `sansMarquesDOnglets` retire les lignes `::: onglets` et `:::` ; `fiche-regles.mjs` et les notes de version ignorent la marque.
+- **L'éditeur** (site de dev). `versMarkdown` réécrit un groupe en `::: onglets` (un `###` par panneau, la marque de couleur lue sur `data-couleur`, l'ancre figée,
+  un `###` du contenu écrit `####`) : l'aller-retour est testé, aperçu assaini compris (`htmlSur` refait la barre d'après les panneaux : un texte en attente garde
+  ses onglets, qui s'ouvrent au clic). Barre d'outils (guide, chronologie, annonces, panneaux de règles : `scripts/edition/onglets.mjs`, `tableaux.mjs`,
+  `couleurs.mjs`) : groupe « Onglets » (« Onglets » : les sous-titres choisis deviennent un groupe ; « + onglet » ; « − onglet » ; « Sortir des onglets » ; « Couleur : »),
+  groupe « Tableau » (insérer, lignes, colonnes) et « Case : » ; le choix de couleur est celui du glossaire (liste du site groupée par famille et cercle,
+  « Aucune » pour retirer), sa liste lue sur `/couleurs-du-site.json` (`pages/couleurs-du-site.json.ts`).
 
 ## Statuts
 
