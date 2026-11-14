@@ -77,7 +77,7 @@ const materiauxDesComposants = `${url('ressources/composants/')}#materiaux`;
 const legende = (
   TYPES_DE_LA_GRILLE.map((t) => `<span class="ptype ${classeDuTypeDArmure(t)}">${t}</span>`).join(' ')
 );
-const couleurs = cssDesFamilles(['armure', 'poids']);
+const couleurs = cssDesFamilles(['armure', 'poids', 'degats']);
 // Armures élémentaires (décision R165 (4)) : sous les deux tableaux de matériaux, le double choix « Élément » (les 14 magies des colonnes de l'onglet,
 // dans leur ordre, jamais le Potentiel Illimité) et « Poids » (Vêtement, Léger, Intermédiaire, Lourd ; jamais Familier) ; les 56 armures, cachées, que
 // le script lit (src/scripts/armures.mjs) ; leur tableau d'amélioration (+1 à +5), à la place de celui des armures une fois les deux choisis.

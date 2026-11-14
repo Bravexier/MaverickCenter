@@ -11,15 +11,16 @@ import { attributEd } from './edition-modele.mjs';
 import { htmlAvecMonnaies, htmlDeMontant } from './monnaies.mjs';
 import { cleDeMateriau } from './materiaux-couleurs.mjs';
 import { RENDUS_DES_ARMES } from './armes-rendu.mjs';
-import { classeDuPoids, classeDuTypeDArmure } from './palette-css.mjs';
+import { classeDeDegats, classeDuPoids, classeDuTypeDArmure } from './palette-css.mjs';
 
 const ENTITES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 const e = (texte) => String(texte ?? '').replace(/[&<>"']/g, (c) => ENTITES[c]);
 const VIDE = '<span class="vide" aria-label="aucun">—</span>';
 const attribut = (nom, valeur) => (valeur === null || valeur === undefined ? '' : ` data-${nom}="${e(valeur)}"`);
 
-// Les couleurs des types d'armure (et de matière) et des poids de bouclier sont dans lib/equipement-couleurs.mjs (la règle) ; ce rendu ne pose que leur
-// classe (lib/palette-css.mjs : classeDuTypeDArmure, classeDuPoids ; familles `armure` et `poids`, émises par components/armures/ArmuresPage.astro),
+// Les couleurs des types d'armure (et de matière), des poids de bouclier et des types de dégâts sont dans lib/equipement-couleurs.mjs (la règle) ; ce rendu ne
+// pose que leur classe (lib/palette-css.mjs : classeDuTypeDArmure, classeDuPoids, classeDeDegats ; familles `armure`, `poids` et `degats`, émises par
+// components/armures/ArmuresPage.astro),
 // jamais une couleur ni un style : le même HTML pour la page construite et le mode modification (choix du propriétaire, « Module JS → classe »).
 
 /** Libellés des types de dégâts (comme ceux des armes). */
@@ -82,7 +83,7 @@ export function htmlDesDegats(valeur, sens) {
   const lignes = sens === 'faiblesse' ? degatsDeLArmure(null, valeur) : degatsDeLArmure(valeur, null);
   if (!lignes.length) return String(valeur ?? '').trim() ? `<span class="pdgt-texte">${e(valeur)}</span>` : VIDE;
   return lignes
-    .map((l) => `<span class="pdgt pdgt--${l.type_degats}"${l.multiplicateur ? ` title="${e(`${LIBELLES_DES_DEGATS[l.type_degats]} ×${l.multiplicateur} (« x${l.multiplicateur} » de la source)`)}"` : ''}>${l.multiplicateur ? `<b>×${l.multiplicateur}</b> ` : ''}${LIBELLES_DES_DEGATS[l.type_degats]}</span>`)
+    .map((l) => `<span class="pdgt pdgt--${l.type_degats} ${classeDeDegats(l.type_degats)}"${l.multiplicateur ? ` title="${e(`${LIBELLES_DES_DEGATS[l.type_degats]} ×${l.multiplicateur} (« x${l.multiplicateur} » de la source)`)}"` : ''}>${l.multiplicateur ? `<b>×${l.multiplicateur}</b> ` : ''}${LIBELLES_DES_DEGATS[l.type_degats]}</span>`)
     .join(' ');
 }
 

@@ -19,9 +19,6 @@
   --a-choisir: #b45309;           /* un choix qui reste à faire (fiche : champ surligné, tiroir des choix) */
   --a-choisir-plein: #b45309;     /* le même, en aplat sous un texte clair, dans les deux thèmes (compte des choix en attente) */
   --etoile: #c99a06;              /* l'étoile d'une remarque (sort, arme de la fiche) */
-  --degats-taille: #c0392b;       /* les types de dégâts Taille, Estoc et Frappe : le liseré de leurs pastilles (armes, armures : equipement.css, armes.css, armures.css) */
-  --degats-estoc: #2471a3;
-  --degats-frappe: #7d6608;
   --defense-ap: #7d6608;          /* l'armure physique : la pastille « AP » des armures et des boucliers (styles/armures/armures.css) */
   --defense-am: #2471a3;          /* l'armure magique : la pastille « AM » */
   --maudit: #8e44ad;              /* un accessoire maudit, la référence (les deux thèmes) : le cadre de l'encart maudit, et le calcul du violet sur un fond de niveau (styles/accessoires/accessoires.css) */

@@ -5,8 +5,9 @@
 // (`data-couleurs`) : le navigateur n'importe jamais la palette (skill ui-couleurs). Chaque couleur : sa référence « famille:id » (ce que
 // mot_cle.couleur enregistre ; id = celui de sa classe, lib/palette-css.mjs#idDeCouleur), son libellé, sa classe et son fond (pour le cercle).
 // Les libellés viennent de la base quand elle nomme l'élément (magies, caractéristiques, postures, affinités et attributs, paliers de résistance, genres
-// de sort, types de don, matériaux), des modules du site sinon (catégories de classe, parties du guide) ; à défaut, la clé du module mise en forme.
+// de sort, types de don, matériaux), des modules du site sinon (catégories de classe, parties du guide, types de dégâts : lib/arme-champs.mjs#LIBELLES_DES_DEGATS) ; à défaut, la clé du module mise en forme.
 // Lu au build ; sans dépendance navigateur ni Astro.
+import { LIBELLES_DES_DEGATS } from './arme-champs.mjs';
 import { CLASS_GROUPS } from './class-groups.mjs';
 import { PARTIES } from './livres.mjs';
 import { couleursDeLaPalette, FAMILLES_DE_LA_PALETTE, idDeCouleur, PAR_DEFAUT } from './palette-css.mjs';
@@ -29,6 +30,7 @@ export const NOMS_DES_FAMILLES = Object.freeze({
   arme: 'Armes',
   armure: 'Types d’armure',
   poids: 'Poids des boucliers',
+  degats: 'Types de dégâts',
   niveau: 'Niveaux des accessoires',
   partie: 'Parties du guide',
   genre: 'Genres de sort',
@@ -42,6 +44,7 @@ const LIBELLES_ECRITS = Object.freeze({
   mode: { hyper: 'Mode Hyper', cent: 'Mode Hyper 100 %' },
   arme: { depart: 'Armes de départ' },
   poids: { leger: 'Léger', moyen: 'Moyen', lourd: 'Lourd', 'tres-lourd': 'Très lourd' },
+  degats: LIBELLES_DES_DEGATS,
 });
 
 /** Une clé de module mise en forme (« fer-noir » → « Fer noir ») ; « par-defaut » → « Par défaut ». */

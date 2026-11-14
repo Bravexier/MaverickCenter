@@ -13,7 +13,7 @@ import {
 } from './arme-champs.mjs';
 import { attributEd } from './edition-modele.mjs';
 import { htmlAvecMonnaies, htmlDeMontant } from './monnaies.mjs';
-import { classeDeMagie, classesDeDeuxCaracteristiques } from './palette-css.mjs';
+import { classeDeDegats, classeDeMagie, classesDeDeuxCaracteristiques } from './palette-css.mjs';
 
 const ENTITES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 const e = (texte) => String(texte ?? '').replace(/[&<>"']/g, (c) => ENTITES[c]);
@@ -90,7 +90,7 @@ export function htmlDuFiltreDeCompetence(id, ctx = {}) {
 /** Les types de dégâts en pastilles (Taille, Estoc, Frappe), d'après l'effet. */
 function htmlDesTypesDeDegats(effet) {
   const types = analyserEffetDArme(effet).degats;
-  return types.length ? types.map((t) => `<span class="arme-dgt arme-dgt--${t}">${LIBELLES_DES_DEGATS[t]}</span>`).join(' ') : VIDE;
+  return types.length ? types.map((t) => `<span class="arme-dgt arme-dgt--${t} ${classeDeDegats(t)}">${LIBELLES_DES_DEGATS[t]}</span>`).join(' ') : VIDE;
 }
 
 /** Les effets supplémentaires, une ligne par ligne de l'effet (les modes « Une main = … » gardés). */
@@ -238,10 +238,11 @@ export function htmlDeLigneDArme(a, ctx = {}) {
  * (`type.types_degats` ; vide ou absente : aucun, rien n'est deviné) — tous (la dague : Estoc et Taille), ou, quand le porteur en choisit un
  * (`type.type_degats_au_choix`, la bombe : « Estoc, Frappe ou Taille au choix »), « Estoc, Frappe ou Taille (au choix) » —, puis « + » et le type de
  * sa magie (son élément : `ae.magie_id`, libellé du nom de la magie, `arme-dgt--magie` : la pastille dans la couleur pleine de la magie, celle de la classe que porte la ligne, styles/armes/armes.css). Les
- * pastilles physiques gardent les jetons du thème (`arme-dgt--<type>` : --degats-*).
+ * pastilles physiques portent la classe de leur type (`couleur-degats-<type>` : famille `degats` de la palette), leur liseré tiré de la leur ; la pastille de la
+ * magie, sans classe de dégâts, lit celle de la ligne.
  */
 export function htmlDesTypesDeDegatsElementaires(ae, type) {
-  const physiques = (type?.types_degats ?? []).filter((t) => LIBELLES_DES_DEGATS[t]).map((t) => `<span class="arme-dgt arme-dgt--${t}">${LIBELLES_DES_DEGATS[t]}</span>`);
+  const physiques = (type?.types_degats ?? []).filter((t) => LIBELLES_DES_DEGATS[t]).map((t) => `<span class="arme-dgt arme-dgt--${t} ${classeDeDegats(t)}">${LIBELLES_DES_DEGATS[t]}</span>`);
   const auChoix = Boolean(type?.type_degats_au_choix) && physiques.length > 1;
   const physique = auChoix
     ? `<span class="arme-dgt-choix" title="Un seul type, au choix du porteur">${physiques.slice(0, -1).join(', ')} ou ${physiques.at(-1)} <small>(au choix)</small></span>`

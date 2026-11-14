@@ -1,5 +1,5 @@
 // Couleurs des pages Armes, Armures et Boucliers : la valeur de chaque couleur est ici (la règle) ; une page n'en pose que
-// la classe (lib/palette-css.mjs, familles `armure`, `poids` et `arme` ; choix du propriétaire du 2026-10-22, « Module JS → classe », et sa réponse :
+// la classe (lib/palette-css.mjs, familles `armure`, `poids`, `arme` et `degats` ; choix du propriétaire du 2026-10-22, « Module JS → classe », et sa réponse :
 // « La classe CSS du site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas, créer une classe CSS avec la couleur du
 // classeur. »). Repères visuels sans valeur de règle, relevés dans le classeur « Ressources et Craft ». Sans import (le module de la palette l'importe :
 // lib/armures-rendu.mjs, qui importe la palette, ne peut pas être importé par elle).
@@ -39,4 +39,16 @@ export const COULEUR_SANS_TYPE = '#eeeeee';
  */
 export const COULEURS_DES_ARMES = {
   depart: '#3c78d8',
+};
+
+/**
+ * Couleur de chaque type de dégâts physiques (Taille, Estoc, Frappe) : le liseré des pastilles de type des armes, des résistances et des faiblesses des
+ * armures (styles/equipement/equipement.css), reprise telle quelle des jetons du thème que ces pastilles lisaient (famille `degats` de la palette ;
+ * choix du propriétaire : ces couleurs sont proposées pour un mot-clé). Clé = l'id d'un type (lib/arme-champs.mjs#LIBELLES_DES_DEGATS). Aucun texte n'est
+ * posé sur ces couleurs : un liseré seulement (famille sans texte).
+ */
+export const COULEURS_DES_DEGATS = {
+  taille: '#c0392b',
+  estoc: '#2471a3',
+  frappe: '#7d6608',
 };

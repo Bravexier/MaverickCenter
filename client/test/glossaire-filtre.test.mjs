@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { categorieChoisie, compteDuFiltre, correspond, motCleDeLaLigne, normaliser, SANS_CATEGORIE, sansBalises, texteDuMotCle } from '../src/lib/glossaire-filtre.mjs';
+import { LIBELLES_DES_DEGATS } from '../src/lib/arme-champs.mjs';
 import { choixDesCouleurs, libelleDeCle, NOMS_DES_FAMILLES } from '../src/lib/glossaire-couleurs.mjs';
 import { couleurDuCercle, optionsDeCouleur, valeurDeCouleur } from '../src/lib/mots-cles-edition.mjs';
 import { lireLaCouleur } from '../src/lib/mots-cles-liens.mjs';
@@ -165,6 +166,22 @@ test('Q3, Q4 : les couleurs proposées — toutes les familles de la palette (te
   assert.equal(libelleDeCle('fer-noir'), 'Fer noir');
   // sans base : les clés mises en forme, les mêmes couleurs
   assert.equal(choixDesCouleurs().flatMap((g) => g.couleurs).length, toutes.length);
+});
+
+test('Q3, Q4 : les types de dégâts Taille, Estoc et Frappe sont proposés (famille `degats`), nommés comme les pastilles, et le service accepte leur référence', () => {
+  for (const base of [ouvrirBase(), null]) {
+    const groupe = choixDesCouleurs(base).find((g) => g.famille === 'degats');
+    assert.ok(groupe, 'la famille est proposée');
+    assert.equal(groupe.libelle, NOMS_DES_FAMILLES.degats);
+    assert.deepEqual(groupe.couleurs.map((c) => c.valeur), Object.keys(LIBELLES_DES_DEGATS).map((t) => `degats:${t}`));
+    assert.deepEqual(groupe.couleurs.map((c) => c.libelle), Object.values(LIBELLES_DES_DEGATS), 'le libellé des pastilles (lib/arme-champs.mjs)');
+    for (const c of groupe.couleurs) {
+      assert.equal(fauteDeLaCouleur(c.valeur), null, c.valeur);
+      assert.equal(c.classe, `couleur-degats-${c.valeur.slice('degats:'.length)}`);
+      assert.equal(c.fond, FAMILLES_DE_LA_PALETTE.degats[c.valeur.slice('degats:'.length)], `${c.valeur} : la couleur de sa règle`);
+    }
+  }
+  assert.notEqual(fauteDeLaCouleur('degats:inconnu'), null, 'un type que la famille ne connaît pas est refusé');
 });
 
 test('Q3, Q4 : les options de la liste (aucune, puis les familles) ; une couleur écrite ou inconnue gardée ; le cercle ; la valeur enregistrée', () => {

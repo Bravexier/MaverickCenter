@@ -134,7 +134,7 @@ test('R167 : les mains d’une arme élémentaire, celles d’une arme `une_ou_d
 });
 
 test('R167, type de dégâts : la colonne d’une arme élémentaire dit ses types physiques (tous, ou l’un au choix pour la bombe), puis « + » et sa magie', () => {
-  const span = (t, nom) => `<span class="arme-dgt arme-dgt--${t}">${nom}</span>`;
+  const span = (t, nom) => `<span class="arme-dgt arme-dgt--${t} couleur-degats-${t}">${nom}</span>`;
   for (const f of avecType) {
     const t = f.type_elementaire;
     for (const ae of f.armes_elementaires) {

@@ -33,6 +33,8 @@
 //   - materiau : lib/materiaux-couleurs.mjs#COULEURS_DES_MATERIAUX (fin de ressource.id : fer, fer-noir…), plus `par-defaut` (COULEUR_NEUTRE : un
 //     matériau sans couleur dans l'onglet) ; la ligne d'un matériau de l'onglet Armes, sa pastille dans la fiche de l'arme et sur la page Composants ;
 //   - arme : lib/equipement-couleurs.mjs#COULEURS_DES_ARMES (depart : le bleu des armes de départ, sans texte : une nuance et un filet) ;
+//   - degats : lib/equipement-couleurs.mjs#COULEURS_DES_DEGATS (taille, estoc, frappe : les types de dégâts physiques), sans texte : le liseré des
+//     pastilles de type des armes, des résistances et des faiblesses des armures ;
 //   - armure : lib/equipement-couleurs.mjs#COULEURS_DES_TYPES (le type d'une armure ou d'une matière : « Léger » → leger), plus `par-defaut`
 //     (COULEUR_SANS_TYPE) ;
 //   - poids : lib/equipement-couleurs.mjs#COULEURS_DES_POIDS (bouclier_poids.id, décision R92), plus `par-defaut` (COULEUR_SANS_TYPE) ; la pastille du
@@ -54,7 +56,7 @@
 // Où la feuille est émise (le poids de chaque page) : les familles que beaucoup de pages posent (FAMILLES_DE_CHAQUE_PAGE : magies, attributs,
 // caractéristiques, affinités, cases de tableau : toute page qui rend du Markdown, et l'éditeur en place) et les seconds rangs des magies sont posés sur chaque page par layouts/Base.astro (cssDeLaPalette) ; les familles d'une
 // zone (FAMILLES_DES_ZONES : postures, alignements, catégories de classe, races, paliers, Mode Hyper, neutre, matériaux, armes de départ, types
-// d'armure, poids des boucliers, niveaux des accessoires, parties du guide) et les seconds rangs des caractéristiques ne le sont que par le composant des
+// d'armure, poids des boucliers, types de dégâts, niveaux des accessoires, parties du guide) et les seconds rangs des caractéristiques ne le sont que par le composant des
 // pages qui les posent (cssDesFamilles, cssDesSecondsRangs : le bloc « postures » du guide, la fiche (FAMILLES_DE_LA_FICHE), l'onglet Armes, les onglets
 // Armures et Boucliers, l'onglet Accessoires, la page Composants, /classes/ et les pages de classe, /races/ et les pages de race, le mode modification
 // qui dessine une race ou une classe créée, une page de Découvrir, l'accueil), comme les combinaisons des potions
@@ -83,7 +85,7 @@ import { CLASS_COLORS, groupeDeCouleur } from './class-groups.mjs';
 import { RACE_COLORS } from './race-kinds.mjs';
 import { COULEURS_DES_PALIERS, COULEURS_DU_MODE_HYPER } from './fiche-couleurs.mjs';
 import { COULEURS_DES_MATERIAUX, cleDeMateriau } from './materiaux-couleurs.mjs';
-import { COULEUR_SANS_TYPE, COULEURS_DES_ARMES, COULEURS_DES_POIDS, COULEURS_DES_TYPES } from './equipement-couleurs.mjs';
+import { COULEUR_SANS_TYPE, COULEURS_DES_ARMES, COULEURS_DES_DEGATS, COULEURS_DES_POIDS, COULEURS_DES_TYPES } from './equipement-couleurs.mjs';
 import { COULEURS_DES_NIVEAUX } from './accessoires-couleurs.mjs';
 import { COULEURS_DES_PARTIES } from './parties-couleurs.mjs';
 import { COULEURS_DES_GENRES, COULEURS_DES_TYPES_DE_DON } from './genres-couleurs.mjs';
@@ -112,6 +114,7 @@ export const FAMILLES_DE_LA_PALETTE = Object.freeze({
   arme: COULEURS_DES_ARMES,
   armure: Object.freeze({ ...COULEURS_DES_TYPES, [PAR_DEFAUT]: COULEUR_SANS_TYPE }),
   poids: Object.freeze({ ...COULEURS_DES_POIDS, [PAR_DEFAUT]: COULEUR_SANS_TYPE }),
+  degats: COULEURS_DES_DEGATS,
   niveau: COULEURS_DES_NIVEAUX,
   partie: COULEURS_DES_PARTIES,
   genre: COULEURS_DES_GENRES,
@@ -128,10 +131,10 @@ export const FAMILLES_DE_CHAQUE_PAGE = Object.freeze(['magie', 'attribut', 'cara
  * Les familles d'une zone, émises par le composant des pages qui les posent (cssDesFamilles) : `posture` (le bloc « postures » du guide, la fiche),
  * `alignement`, `palier`, `mode`, `neutre` (la fiche), `classe` (/classes/, les pages de classe, la fiche, la page d'une classe créée sur le site de
  * dev), `race` (/races/, les pages de race, la fiche, la page d'une race créée), `materiau` (l'onglet Armes, la page Composants), `arme` (l'onglet
- * Armes), `armure` (les onglets Armures et Boucliers), `poids` (l'onglet Boucliers, la fiche), `niveau` (l'onglet Accessoires), `partie` (une page de
+ * Armes), `armure` (les onglets Armures et Boucliers), `poids` (l'onglet Boucliers, la fiche), `degats` (les onglets Armes, Armures et Boucliers), `niveau` (l'onglet Accessoires), `partie` (une page de
  * Découvrir, l'accueil, la fiche), `genre` (les pages des magies), `don` (les pages de classe).
  */
-export const FAMILLES_DES_ZONES = Object.freeze(['posture', 'alignement', 'classe', 'race', 'palier', 'mode', 'neutre', 'materiau', 'arme', 'armure', 'poids', 'niveau', 'partie', 'genre', 'don']);
+export const FAMILLES_DES_ZONES = Object.freeze(['posture', 'alignement', 'classe', 'race', 'palier', 'mode', 'neutre', 'materiau', 'arme', 'armure', 'poids', 'degats', 'niveau', 'partie', 'genre', 'don']);
 
 /**
  * Les familles d'une zone que la fiche de personnage pose (pages/fiche/index.astro) : toutes, sauf celles des onglets de l'équipement hors le poids (ni
@@ -141,13 +144,14 @@ export const FAMILLES_DE_LA_FICHE = Object.freeze(['posture', 'alignement', 'cla
 
 /**
  * Les familles sur la couleur desquelles aucun texte n'est posé en fond : `palier` (le trait de 3 px d'une ligne de résistance de la fiche), `arme` (le
- * bleu des armes de départ : une nuance sur la surface, un filet et, mêlé au texte du site, la couleur de la phrase des règles ; styles/armes/armes.css). Le seuil de lisibilité de 4,5:1 vaut pour un texte : leur fond reste la
+ * bleu des armes de départ : une nuance sur la surface, un filet et, mêlé au texte du site, la couleur de la phrase des règles ; styles/armes/armes.css),
+ * `degats` (le liseré des pastilles Taille, Estoc et Frappe ; styles/equipement/equipement.css). Le seuil de lisibilité de 4,5:1 vaut pour un texte : leur fond reste la
  * couleur de leur règle, sans correction (test/palette-css.test.mjs ne mesure le contraste que des familles qui portent un texte). `genre` et `don`
  * (étiquettes des genres de sort et des types de don) : un fond pâle et un texte calculés depuis la couleur (styles/magie/sorts.css,
  * styles/classe/dons.css), mesurés à part ; jamais un texte sur la couleur pure. `case` (les cases de tableau du Markdown) : la couleur mêlée à 26 % à
  * la surface, sous le texte du site (styles/global/wiki.css), mesurée à part dans les deux thèmes.
  */
-export const FAMILLES_SANS_TEXTE = Object.freeze(['palier', 'arme', 'genre', 'don', 'case']);
+export const FAMILLES_SANS_TEXTE = Object.freeze(['palier', 'arme', 'degats', 'genre', 'don', 'case']);
 
 /**
  * Le fond d'une classe : la couleur de sa règle, rendue lisible (alchimie-couleurs.mjs#lisible) quand sa famille porte un texte : inchangée quand son
@@ -235,6 +239,9 @@ export const classeDuTypeDArmure = (type) => classeOuParDefaut('armure', type);
 
 /** La classe d'un poids de bouclier (bouclier_poids.id : « tres-lourd » → « couleur-poids-tres-lourd ») ; `par-defaut` pour un poids sans couleur. */
 export const classeDuPoids = (id) => classeOuParDefaut('poids', id);
+
+/** La classe d'un type de dégâts physiques (« taille » → « couleur-degats-taille ») ; null pour un type inconnu (aucune couleur : le liseré de la pastille). */
+export const classeDeDegats = (type) => classeDeCouleur('degats', type);
 
 /** La classe du niveau d'un effet ou d'une monture de l'onglet Accessoires (1 → « couleur-niveau-1 ») ; null pour un niveau absent ou inconnu (aucune couleur). */
 export const classeDeNiveau = (niveau) => classeDeCouleur('niveau', String(niveau ?? ''));
