@@ -45,14 +45,33 @@ ne l'emporte pas.
 | Fichier | Contenu |
 | --- | --- |
 | `db/vivante.db` | Copie de la base des règles publiée par le site (`site/donnees/maverick.db`), plus ce que le service écrit (section 13 : utilisateurs, fiches, groupes) |
-| `db/vivante.json` | Empreinte SHA-256 des règles dont elle est faite, version du schéma, date |
-| `db/archives/` | Les 5 dernières bases remplacées qui avaient des lignes de la section 13 |
+| `db/vivante.json` | Empreinte SHA-256 du fichier des règles dont elle est faite (`regles`), leur empreinte logique (`logique`), la version de la logique de reconstruction (`reconstruction`), la version du service qui la fait tourner (`version`), version du schéma, date |
+| `db/archives/` | Les 5 dernières bases remplacées qui avaient des lignes de la section 13, `vivante-<horodatage>-v<version>.db` (la version du service qui faisait tourner la base ; `-inconnue` si on ne la sait pas ; les anciennes `vivante-<horodatage>.db` se comptent et se purgent avec elles) |
 | `db/metriques/` | Seulement sans dossier des métriques réglé (NAS, `npm run serveur`) : la base des métriques de l'instance (« Métriques et volume », plus bas) ; l'installateur de test ne la copie ni ne l'efface |
 
 Pourquoi une copie des règles : les fiches citent les règles (race, classe, sorts…) par clés étrangères, et les contrôles (`v_personnage_controle`,
 `v_personnage_niveau`) les joignent ; tout doit être dans la même base SQLite.
 
-**Quand une livraison change les règles**, le service le voit (empreinte différente) et refait la base vivante : nouvelle copie des règles, puis
+**Quand refait-on la base vivante ?** Quand ce que le fichier des règles apporte change, pas quand ses octets changent (lot 5 du chantier de la base de dev, R274).
+- Comparaison rapide d'abord : le SHA-256 du fichier est celui de `vivante.json` (`regles`) et la version de la logique de reconstruction est la même : rien n'est
+  calculé de plus, rien n'est refait.
+- Sinon, le service copie le fichier et en calcule l'**empreinte logique** (`serveur/empreintes.mjs#empreinteLogique`) : le SQL de tout le schéma (tables de fiches et du
+  journal comprises : une colonne de plus à `personnage` fait refaire la base), `user_version`, et les lignes de toutes les tables hors fiches et journal — contenu, notes,
+  historique **et tables calculées** (une table calculée qui change fait refaire la base, sinon la production garderait des liens périmés ; le plein texte est lu par ses colonnes,
+  pas par ses tables d'ombre). Même empreinte que `vivante.json` (`logique`) : la base est déjà faite de ce contenu, elle est **gardée telle quelle** (fiches intactes, ni archive ni
+  rejeu) et seul `regles` est mis à jour ; le service le note (`base vivante gardée : …`) et l'évènement `empreinte_logique` donne la durée du calcul (≈ 0,3 s).
+- **Dans le doute, elle est refaite** : pas d'empreinte gardée (`vivante.json` d'avant ce réglage, ou calcul en échec), schéma, ligne ou version différents. Un `vivante.json` sans
+  `reconstruction` (écrit avant ce réglage) garde l'ancienne règle, sur les octets du fichier seulement, puis reçoit les deux champs à la reconstruction suivante.
+- `VERSION_DE_LA_RECONSTRUCTION` (`serveur/base-vivante.mjs`) est à **augmenter de 1** quand ce que `preparerBaseVivante` fait d'une base d'avant change sans que les règles changent
+  (conversion, retrait R42, armure R165, ligne écartée, table ou colonne retirée, rejeu, contrôle des fiches) ; sinon ce changement ne s'appliquerait qu'à la livraison suivante des règles.
+  Augmentée, la base est refaite même si le fichier est le même.
+- `db:build` est déterministe octet pour octet (deux constructions de la même arborescence, avec la même version de Node : même SHA-256) ; le fichier change donc de contenu quand
+  `data/rows`, le schéma ou `data/derive.sql` changent. Il ne changeait d'octets sans changer de contenu que par une version de Node ou de SQLite : c'est ce cas, seul, que ce réglage
+  épargne à la production.
+- L'archive d'une reconstruction (avant toute reconstruction qui remplace une base qui avait des fiches ou un journal, comme avant) porte la version que `vivante.json` gardait pour
+  la base remplacée (`version` : celle du service qui l'a faite, tenue à jour à chaque démarrage).
+
+**Quand une livraison change les règles**, le service le voit (empreinte logique différente) et refait la base vivante : nouvelle copie des règles, puis
 toutes les lignes de la section 13 y sont recopiées colonne par colonne (une colonne ajoutée prend sa valeur par défaut), et le journal de l'édition
 est rejoué (site de dev, ci-dessous). Un **don, une spécialité (avec les dons choisis qui en dépendent), un sort, un métier ou une arme** que les nouvelles
 règles n'ont plus est alors **retiré des fiches** qui l'utilisent, avec une note datée dans chacune (décisions R42, R52, « Fiches de personnage (R42) »
@@ -698,7 +717,7 @@ empreinte globale). Les fiches, comptes, groupes et le journal n'y sont pas : un
 
 Il est **refait une fois par changement**, pas à chaque téléchargement : rangé dans `db/extrait/` (`extrait.db` et `extrait.json`, le méta qui fait foi : date,
 version du site, schéma, empreinte globale et de chaque table, lignes des tables calculées, taille et SHA-256 du fichier), réutilisé tant que la **clé de
-changement** (`extrait.mjs#cleDeChangement`) ne bouge pas. Elle bouge avec la base vivante refaite (`vivante.json` : règles, schéma, `refaite_le`) et avec le
+changement** (`extrait.mjs#cleDeChangement`) ne bouge pas. Elle bouge avec la base vivante refaite (`vivante.json` : empreinte logique des règles, schéma, `refaite_le`) et avec le
 journal de l'édition — un lot de plus, une modification qui change d'état (en attente, intégrée, en conflit), un lot résolu, abandonné — parce que tout écrit de
 contenu passe par lui (`enregistrer`, résolution d'un conflit) ; jamais avec une fiche, un compte ou un groupe. Quelques requêtes sur le journal, jamais le contenu.
 Le premier téléchargement qui suit un changement fabrique l'extrait **dans un fil à part** (`Worker` du même module : le service reste libre), une seule fabrication à

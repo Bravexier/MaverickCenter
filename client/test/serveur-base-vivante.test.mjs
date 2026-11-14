@@ -11,7 +11,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { beforeEach, test } from 'node:test';
 import {
   ARCHIVES_GARDEES, DOSSIER_ARCHIVES, ErreurBaseVivante, FICHIER_BASE, FICHIER_ETAT, TABLES_EDITION, TABLES_FICHES, TABLES_VIVANTES, clesRompues, empreinteFichier, lireEtat,
-  ouvrirBaseVivante, preparerBaseVivante,
+  ouvrirBaseVivante, preparerBaseVivante, VERSION_DE_LA_RECONSTRUCTION,
 } from '../serveur/base-vivante.mjs';
 import { enregistrer } from '../serveur/edition.mjs';
 import { lireFiche, listerFiches } from '../serveur/fiches.mjs';
@@ -115,7 +115,9 @@ test('première préparation : copie des règles, empreinte et schéma notés, s
   assert.equal(r.chemin, join(dossier, FICHIER_BASE));
   assert.equal(r.empreinte, empreinteFichier(REGLES));
   assert.equal(r.schema, valeur(REGLES, 'PRAGMA user_version').user_version);
-  assert.deepEqual(lireEtat(dossier), { regles: r.empreinte, schema: r.schema, refaite_le: lireEtat(dossier).refaite_le });
+  // l'empreinte logique des règles et la version de la logique de reconstruction y sont aussi (docs/serveur.md, « La base vivante »), la version du service « inconnue » sans elle
+  assert.deepEqual(lireEtat(dossier), { regles: r.empreinte, logique: lireEtat(dossier).logique, reconstruction: VERSION_DE_LA_RECONSTRUCTION, schema: r.schema, refaite_le: lireEtat(dossier).refaite_le, version: 'inconnue' });
+  assert.match(lireEtat(dossier).logique, /^[0-9a-f]{64}$/);
   assert.match(lireEtat(dossier).refaite_le, /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/);
   assert.equal(valeur(r.chemin, 'SELECT count(*) AS n FROM race').n, valeur(REGLES, 'SELECT count(*) AS n FROM race').n);
   for (const t of TABLES_VIVANTES) assert.equal(valeur(r.chemin, `SELECT count(*) AS n FROM "${t}"`).n, 0, t);
@@ -140,7 +142,7 @@ test('nouvelles règles : la base est refaite, toutes les lignes de la section 1
   assert.equal(r.empreinte, empreinteFichier(livraison));
   assert.deepEqual(lignesVivantes(chemin), avant, 'fiches, utilisateurs, rôles, groupes et inscriptions repris à l’identique');
   assert.equal(valeur(chemin, "SELECT nom FROM race WHERE id = 'races/humain'").nom, 'Humain (nouvelles règles)', 'règles de la nouvelle livraison');
-  assert.equal(r.archive, join(dossier, DOSSIER_ARCHIVES, 'vivante-2026-10-11T08-30-00-000Z.db'));
+  assert.equal(r.archive, join(dossier, DOSSIER_ARCHIVES, 'vivante-2026-10-11T08-30-00-000Z-inconnue.db'), 'sans version connue : « inconnue »');
   assert.deepEqual(lignesVivantes(r.archive), avant, 'l’archive est la base d’avant');
   assert.equal(valeur(r.archive, "SELECT nom FROM race WHERE id = 'races/humain'").nom, 'Humain');
   assert.equal(lireEtat(dossier).regles, r.empreinte);
@@ -1271,8 +1273,8 @@ test('archives : seulement quand la base avait des lignes, les dernières gardé
   }
   const archives = readdirSync(join(dossier, DOSSIER_ARCHIVES)).sort();
   assert.equal(archives.length, ARCHIVES_GARDEES);
-  assert.equal(archives.at(-1), 'vivante-2026-10-12T00-00-06-000Z.db');
-  assert.equal(archives[0], 'vivante-2026-10-12T00-00-02-000Z.db', 'les plus anciennes sont supprimées');
+  assert.equal(archives.at(-1), 'vivante-2026-10-12T00-00-06-000Z-inconnue.db');
+  assert.equal(archives[0], 'vivante-2026-10-12T00-00-02-000Z-inconnue.db', 'les plus anciennes sont supprimées');
 
   assert.throws(() => preparerBaseVivante({ regles: regles(`INSERT INTO utilisateur (id, nom_affichage, cree_le) VALUES ('x', 'X', '${INSTANT}')`), dossier }),
     /base des règles inattendue : table utilisateur non vide/);

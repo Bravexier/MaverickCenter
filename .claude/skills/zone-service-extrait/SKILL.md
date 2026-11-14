@@ -7,7 +7,7 @@ user-invocable: false
 # Extrait du contenu et attestation de la production
 
 ## Fichiers
-- `serveur/extrait.mjs` (fabrique l'extrait, `cleDeChangement`), `serveur/attestation.mjs` (écriture par la production, `etatDeLaProduction` pour le site de dev), `serveur/empreintes.mjs` (le calcul commun aux deux et au client), `serveur/historique.mjs` (`historiser`, partagé avec `scripts/db-appliquer-edition.mjs` : `scripts/` n'est pas livré).
+- `serveur/extrait.mjs` (fabrique l'extrait, `cleDeChangement`), `serveur/attestation.mjs` (écriture par la production, `etatDeLaProduction` pour le site de dev), `serveur/empreintes.mjs` (le calcul commun aux deux et au client ; `empreinteLogique`, celle que la reconstruction de la base vivante compare : skill `zone-service`), `serveur/historique.mjs` (`historiser`, partagé avec `scripts/db-appliquer-edition.mjs` : `scripts/` n'est pas livré).
 - `scripts/db-extrait.mjs` (`npm run db:extrait`) : le client que les sessions de Claude lancent (skill `interroger-la-base`).
 - Le service y branche l'option `attestation` de `demarrerService`, `service.extrait` (null hors site de dev) et `service.attestations` (le dossier lu par la page « Mise à jour » : skill `zone-mise-a-jour`).
 
@@ -20,7 +20,7 @@ user-invocable: false
 - L'extrait est un fichier neuf (jamais la base vivante copiée puis vidée), fabriqué dans un Worker, un seul à la fois, puis posé par rename (`extrait.json` en dernier : il fait foi). Un contrôle refuse le fichier si une table propre au site a une ligne.
 - Les tables calculées sont recopiées telles que la base vivante les porte (elles peuvent retarder sur une édition ; le contenu, jamais).
 - Les modifications du journal en attente sont versées dans `historique_modification`, version NULL (sinon un test prendrait une saisie récente pour le texte d'origine).
-- L'extrait n'est refait que si `cleDeChangement` bouge : elle lit l'état de la base vivante, `modification`, `modification_lot` et les comptes de l'historique et des notes, jamais une fiche. Toute voie qui écrit du contenu hors journal passe par le journal ou fait bouger la clé.
+- L'extrait n'est refait que si `cleDeChangement` bouge : elle lit l'état de la base vivante (`vivante.json.logique`, à défaut `regles`), `modification`, `modification_lot` et les comptes de l'historique et des notes, jamais une fiche. Toute voie qui écrit du contenu hors journal passe par le journal ou fait bouger la clé.
 - L'attestation est écrite par la production seule (`attestation.publier`, vrai sans l'édition), par rename, dans `<dossier des métriques>/attestation-prod.json` (le dossier que les deux instances se partagent : rien dans `deploy/`), au démarrage et après chaque préparation de la base vivante. Elle ne porte que des nombres, des empreintes et des identifiants de règles (le nombre de fiches qui citent chacun), jamais le texte d'un problème. Son échec n'empêche jamais le démarrage : journal et évènement.
 - Évènements de métriques `extrait` et `attestation` : skill `zone-debug-metriques`.
 
