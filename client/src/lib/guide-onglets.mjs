@@ -90,6 +90,16 @@ export function decouperEnOnglets(markdown, ancres, { niveau = 3 } = {}) {
   };
 }
 
+/**
+ * Les onglets de la barre dans l'ordre voulu (`ordre` : les ancres, dans l'ordre d'affichage), les panneaux restant dans l'ordre du texte. Une ancre absente
+ * de `ordre` suit les autres, dans l'ordre du texte. Rend une copie.
+ */
+export function dansLOrdre(panneaux, ordre) {
+  const rang = new Map([...ordre].map((ancre, i) => [ancre, i]));
+  const de = (p) => rang.get(p.ancre) ?? Infinity;
+  return [...panneaux].map((p, i) => ({ p, i })).sort((a, b) => de(a.p) - de(b.p) || a.i - b.i).map(({ p }) => p);
+}
+
 /** Le texte d'un morceau de HTML sans ses balises (les entités restent écrites : le résultat se pose tel quel en HTML). */
 const sansBalises = (html) => html.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
 
