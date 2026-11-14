@@ -71,7 +71,9 @@
       "entree_du_menu": {
         "id": "page:guide/fiche-accessoires-et-ceinture",
         "onglet_id": "fiche-de-personnage",
-        "rang": 11
+        "rang": 10,
+        "rang_a_la_migration": 11,
+        "$comment": "rang : celui de l'import ; le site de dev l'a déplacé au rang 11 (lot du 2026-11-08, « Ordre du menu « Fiche de personnage » »), valeur de la ligne supprimée par la migration"
       },
       "alias_supprimes": [
         {

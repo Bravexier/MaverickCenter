@@ -4193,7 +4193,8 @@ CREATE VIEW v_potion AS
 
 -- Objets à la ceinture (décision R81 ; page « Ceinture » /ressources/objets-a-la-ceinture/, onglet « Ceinture » de /ressources/equipement/ jusqu'au 2026-10-29) :
 -- les objets du catalogue que la page liste parmi ceux qu'un personnage met dans les 3 emplacements de sa ceinture (guide « Fiche de personnage :
--- Accessoires et Ceinture », dont la liste est « non exhaustive » : « Voyez avec votre mj »). Une ligne par objet, `famille` :
+-- Accessoires et Ceinture », dont la liste est « non exhaustive » : « Voyez avec votre mj » ; section Ceinture dans la page « Inventaire/Sac à dos »
+-- depuis la migration 0124, décision R272). Une ligne par objet, `famille` :
 --   'fiole', 'philtre', 'remede', 'primitive', 'huile' : toutes les potions (table potion, famille de leur recette ; la panacée est un remède) ;
 --   'contenant' : les carquois, sacs de bombes et sacs de pierres du matériel (« Les carquois, sac de bombe ou sac de pierre DOIVENT être mis dans la
 --                 ceinture pour être utilisés ») : une ressource 'materiel' dont la clé du nom (normalize(nom)) écrit l'un d'eux ;
@@ -4859,7 +4860,8 @@ CREATE TABLE personnage_inventaire (
 
 -- La ceinture (demande du propriétaire, migration 0031) : ses 3 emplacements d'objets rapides, utilisables en IC (guide « Fiche de personnage :
 -- Accessoires et Ceinture » : « La ceinture […] possède 3 emplacements d'objets rapides », « Les objets dans la ceinture ne peuvent pas dépasser le
--- nombre de 3 ») ; un objet par emplacement, au catalogue (`ressource_id`) ou non, et sa quantité (les flèches d'un carquois…).
+-- nombre de 3 » ; section Ceinture dans la page « Inventaire/Sac à dos » depuis la migration 0124, décision R272) ; un objet par emplacement, au
+-- catalogue (`ressource_id`) ou non, et sa quantité (les flèches d'un carquois…).
 CREATE TABLE personnage_ceinture (
   personnage_id  TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
   rang           INTEGER NOT NULL CHECK (rang BETWEEN 1 AND 3),   -- l'emplacement

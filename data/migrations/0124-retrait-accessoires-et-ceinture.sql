@@ -23,9 +23,9 @@
 --      guide/liste-des-effets-mode-super). Aucun autre texte de la base (hors historique) ne cite /regles/fiche-inventaire-sac-a-dos/ ni
 --      /regles/fiche-accessoires-et-ceinture/ ; les anciennes adresses sont renvoyées par lib/livres.mjs.
 --   5. La page retirée (son id n'est pas réutilisé) et ses lignes : 1 alias (le titre écrit par le site), 2 page_source (les deux sources sont aussi
---      celles de l'inventaire : aucune ne devient orpheline), son entrée du menu « Fiche de personnage » (rang 11 ; les autres gardent leur rang, comme
---      à la 0122 : rang n'est ni UNIQUE ni continu), ses liens dérivés. Retirés d'abord : une migration s'applique clés étrangères coupées
---      (tools/db/maverick.py#migrer), sans cascade.
+--      celles de l'inventaire : aucune ne devient orpheline), son entrée du menu « Fiche de personnage » (rang 11, 10 à l'import : le site l'a
+--      déplacée ; les autres gardent leur rang, comme à la 0122 : rang n'est ni UNIQUE ni continu), ses liens dérivés. Retirés d'abord : une
+--      migration s'applique clés étrangères coupées (tools/db/maverick.py#migrer), sans cascade.
 -- La garde : chaque écriture doit toucher le nombre de lignes attendu ; un texte ou une valeur que le site de dev aurait changé arrête la migration.
 
 CREATE TEMP TABLE garde_0124 (quoi TEXT NOT NULL, lignes INTEGER NOT NULL, attendu INTEGER NOT NULL DEFAULT 1, CHECK (lignes = attendu));
