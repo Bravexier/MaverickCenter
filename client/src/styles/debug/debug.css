@@ -220,6 +220,8 @@
 .debug-alertes { margin: 0 0 0.6rem; padding: 0; list-style: none; display: grid; gap: 0.3rem; }
 .debug-alerte { margin: 0 0 0.4rem; padding: 0.4rem 0.7rem; border-left: 4px solid var(--warn-text); border-radius: var(--radius-xs); background: var(--warn-bg); color: var(--warn-text); }
 .debug-alertes .debug-alerte { margin: 0; }
+.debug-sauvegardes h4 { margin: 0.8rem 0 0.2rem; font-size: var(--fs-md); }
+.debug-sauvegardes .debug-sauvegardes__marque { display: inline-block; margin: 0; padding: 0.1rem 0.5rem; font-weight: normal; }
 .debug-alerte--erreur { border-left-color: var(--danger); background: var(--dbg-erreur-fond); color: var(--danger); font-weight: bold; }
 .debug-alerte--info { border-left-color: var(--accent); background: var(--accent-soft); color: var(--text); }
 

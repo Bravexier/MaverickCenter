@@ -1,7 +1,7 @@
 ---
 name: zone-hebergement
 description: "Hébergement deploy/ : installateurs prod/test, VPS (durcir, outils, instances, Caddyfile), paquet NAS (build.sh, update-site.sh, branche site qui n'avance plus), nginx.conf, docker-compose.yml, fins de ligne LF. À charger avant de lire, modifier ou relire deploy/ ou ses tests."
-paths: ["deploy/**", ".gitattributes", "client/test/deploy-vps.test.mjs", "client/test/deploy-volume.test.mjs", "client/test/installateur.test.mjs", "client/test/mise-a-jour.test.mjs", "client/test/update-site.test.mjs", "client/test/serveur-livraison.test.mjs"]
+paths: ["deploy/**", ".gitattributes", "client/test/deploy-vps.test.mjs", "client/test/deploy-volume.test.mjs", "client/test/installateur.test.mjs", "client/test/mise-a-jour.test.mjs", "client/test/update-site.test.mjs", "client/test/serveur-livraison.test.mjs", "client/test/deploy-sauvegardes*.test.mjs", "client/test/aide-sauvegardes.mjs"]
 user-invocable: false
 ---
 # Hébergement (`deploy/`)
@@ -36,5 +36,19 @@ user-invocable: false
 - Accès pour le PoC (décision du propriétaire) : pas de mot de passe visible, adresse non référencée (`X-Robots-Tag`, `robots.txt`). Le contenu appartient au propriétaire du jeu : ne pas désactiver la protection ni la non-indexation sans son accord.
 - `PREMIERE_VERSION_HEBERGEE` (`tools/flux-git/regles.mjs`, 0.2.0) : en dessous, `livrableDe` choisirait la branche `site` ; dev et master l'ont dépassée, seuls les installateurs sont publiés.
 
+## Sauvegardes automatiques (`deploy/installateur/sauvegarde/`)
+- `lib.sh`, `copie.sh`, `envoi.sh`, `essai.sh`, `installer.sh`, `lanceur.sh`, `mots.txt` sont livrés dans `<instance>/sauvegarde/` par l'installateur, remplacés à chaque installation sans doublon (un fichier qui n'est plus livré est retiré). `mise-a-jour.sh` garde `installateur-courant/`, que l'installateur ne touche jamais.
+- Trois minuteurs systemd (horaire, nuit, essai mensuel) les exécutent en root par le lanceur stable `/usr/local/lib/maverick-center/maverick-sauvegarde-lanceur.sh`, qui prend les scripts du site de dev, sinon ceux de la production, et refuse des scripts modifiables par un autre que root.
+- Copies dans `/srv/maverick-sauvegardes`, accès et clé dans `/etc/maverick-sauvegardes` (700/600), hors des dossiers d'instance. `volume.sh` compte `/srv/maverick-sauvegardes` dans « installations ».
+- Le geste unique du propriétaire, relançable : `sudo sh /srv/maverick-center-test/sauvegarde/installer.sh` (options `--stockage`, `--verifier-le-stockage`, `--afficher-la-cle`, `--essai`, `--sans-stockage`, `--retirer`).
+- La copie ouvre chaque base en lecture seule : le contenu de `db/` n'est jamais modifié et rien n'y est créé (une base WAL sans `-wal` est ouverte « immutable », `copie.sh#source_a_ouvrir`) ; seule exception, un `-wal` laissé sans `-shm` après un arrêt brutal, que SQLite doit rouvrir. `docker-compose.yml` n'est pas concerné.
+- Chaque instance est copiée dans son propre processus (`MAVERICK_SAUV_ENFANT=1`) : l'échec de l'une n'empêche jamais l'autre ; un arrêt inattendu donne l'alerte `erreur_interne`.
+- Un réglage illisible de `reglages.env` alerte (`locale.reglages_illisibles`) et prend la valeur par défaut, jamais en silence.
+- Aucun message ne répète la valeur d'un secret saisi (`installer.sh#valide_secret`).
+- Aucun secret dans le dépôt, un journal, l'état ou la page Debug. Le dépôt est public : aucune valeur réelle de stockage, seulement `https://s3.exemple.invalid` et `bucket-exemple`.
+- Outil : restic (apt). En 0.16.4, `--keep-monthly unlimited`, pas `-1`.
+- Choix du propriétaire (R275) : copie extérieure chiffrée, fiches comprises, chez un autre fournisseur que l'hébergeur, dont il garde la clé ; rétention de 30 jours, plus une copie par mois et une par version sans limite ; envoi chaque nuit ; clé = phrase de 6 mots, réaffichable ; changer de stockage ou d'hébergeur ne demande que la phrase et les accès.
+
 ## Tests
+- `deploy-sauvegardes`, `deploy-sauvegardes-installer` (scripts exécutés pour de bon dans un monde factice, `aide-sauvegardes.mjs`).
 - `deploy-vps` (`instances.sh` : dossiers partagés de la maintenance et des métriques, une instance par fichier, minuteur du relevé de l'hôte ; l'étape « Site de dev » du README), `deploy-volume` (rotation des journaux Docker, métriques hors de `db/`, `volume.sh`), `installateur` (`db/` jamais vidé ni remplacé, copie sur demande, métriques jamais copiées ni effacées), `mise-a-jour` (`mise-a-jour.sh` : refus d'une livraison plus ancienne en mode test, R274), `update-site` (contre un faux serveur GitHub), `serveur-livraison` (`docker-compose.yml` et `nginx.conf` cohérents).

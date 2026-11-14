@@ -233,12 +233,124 @@ df -h /                                                   # espace libre (étape
 
 ## Sauvegardes (à faire avant d'y mettre de vraies données)
 
-`db/` de chaque instance est la seule donnée qui ne se reconstruit pas (voir [`docs/serveur.md`](../../docs/serveur.md)). En attendant une sauvegarde
-automatique vers un stockage extérieur (prochaine étape) :
+La base de chaque instance (`db/` : fiches, comptes, et pour le site de dev les modifications des règles) est la seule donnée qui ne se reconstruit
+pas ([`docs/serveur.md`](../../docs/serveur.md), « Sauvegardes automatiques » : le détail, les réglages, la forme de l'état). Deux temps, posés par
+**une seule commande**, lancée une fois sur le serveur :
 
 ```
-sudo sqlite3 /srv/maverick-center/db/vivante.db ".backup /root/vivante-$(date +%F).db"
+sudo sh /srv/maverick-center-test/sauvegarde/installer.sh
 ```
+
+Le dossier `sauvegarde/` est posé par l'installateur du site de dev (à chaque fusion dans `dev`, dans les cinq minutes : `mise-a-jour.sh`) ; les
+scripts se mettent donc à jour tout seuls, sans `scp` ni geste. La commande demande son mot de passe `sudo` et rien d'autre tant que le temps 2 n'est pas
+voulu.
+
+1. **Temps 1, copies locales** (sans stockage extérieur, la commande les pose seule). Un minuteur copie toute la base des deux sites, de façon
+   cohérente (interface de sauvegarde de SQLite, connexion en lecture seule : le contenu de `db/` n'est jamais modifié et rien n'y est créé ; seule exception, un `-wal` resté sans son `-shm` après un arrêt brutal, que SQLite doit alors rouvrir), **chaque heure où elle a changé** et **chaque nuit** (3 h 30), dans
+   `/srv/maverick-sauvegardes` (root seul : les fiches y sont). Chaque copie est contrôlée (`integrity_check`, nombre de lignes de chaque table
+   comparé à la copie précédente). Une **chute anormale** (une table de 20 lignes ou plus qui en perd plus de 20 %) ou une base abîmée met la nouvelle copie
+   de côté (`suspectes/`), garde les anciennes sans les remplacer ni les tourner, et alerte (page Debug). Un plafond de place (4 Go pour toutes les
+   copies) et un espace libre minimal (3 Go) protègent le disque partagé avec la production : au-delà, les plus anciennes copies partent d'abord (jamais les deux
+   dernières de chaque sorte), puis plus rien n'est écrit et l'alerte le dit. Gardées : 24 copies horaires et 7 de nuit par instance.
+   Les copies mises de côté (`suspectes/`) **ne partent jamais à l'extérieur** : l'envoi de nuit n'envoie que la dernière copie saine. Tant qu'une alerte n'est pas
+   levée (une copie saine, ou `copie.sh accepter <instance>` pour une baisse voulue), rien de postérieur à la chute n'est donc envoyé : la dernière copie extérieure reste celle d'avant.
+2. **Temps 2, envoi chiffré de nuit hors du serveur** (`restic`, paquet Ubuntu). Chaque nuit, la dernière bonne copie de chaque instance part, avec
+   le dernier installateur de chaque site (`installateur-courant/`, gardé par `mise-a-jour.sh`), vers un stockage compatible S3 **chez un autre
+   fournisseur que l'hébergeur**, chiffrée avec une phrase de 6 mots que seul le propriétaire garde (décision R275). Gardées : une copie par jour pendant 30
+   jours, **une par mois et une par version sans limite**. L'étiquette « version » est posée par l'envoi de nuit qui suit un changement de version, sur la copie de cette nuit : si deux versions se succèdent entre deux nuits, seule la dernière est étiquetée. Réglable : `VERSIONS_DE="prod"` dans `reglages.env` limite les versions gardées à celles de la production (par défaut : `prod dev`). Chaque nuit, le dépôt est contrôlé (le dimanche, une partie des données est relue) ; chaque mois,
+   et juste après l'activation, un **essai de restauration** relit la dernière copie extérieure dans un conteneur vide et contrôle l'intégrité et les nombres
+   de lignes, sans le propriétaire.
+
+**Activer le temps 2.** Il faut un bucket chez le fournisseur et une clé d'accès (identifiant et clé secrète) qui peut y lire et y écrire. La commande
+prend adresse, bucket et région (facultative) en arguments, et demande les deux clés, saisies masquées (rien n'est écrit dans un journal, dans `ps` ni dans
+git) :
+
+```
+sudo sh /srv/maverick-center-test/sauvegarde/installer.sh --stockage --adresse https://s3.exemple.invalid --bucket bucket-exemple --region region-exemple
+```
+
+(sans `--adresse`, `--bucket` ni `--region`, la commande pose les questions ; les variables `MAVERICK_SAUV_ADRESSE`, `MAVERICK_SAUV_BUCKET` et
+`MAVERICK_SAUV_REGION` font de même. La région est facultative : restic prend celle du stockage ; pour un stockage hors AWS, la région éventuelle est
+transmise par `AWS_DEFAULT_REGION`.) Dans l'ordre, elle :
+
+- essaie **tout de suite** le stockage : dépôt existant (la clé de chiffrement l'ouvre-t-elle, l'écriture est-elle permise ?), sinon création du dépôt. Un refus
+  donne la cause probable en français (adresse injoignable, certificat, bucket introuvable, clés refusées ou droits insuffisants, région) sans afficher
+  aucun secret, avec un code de sortie non nul, et **n'enregistre rien** : le stockage précédent, s'il y en avait un, est gardé ;
+- crée la **clé de chiffrement** : six mots tirés au hasard (`/dev/urandom`) dans la liste de 7 776 mots `sauvegarde/mots.txt` (la grande liste de l'EFF
+  pour les phrases de passe, licence CC BY 3.0 US), soit 6 × log₂ 7776 ≈ **77,5 bits** d'entropie, bien plus que ce qu'une attaque hors ligne peut essayer ;
+  elle l'affiche et demande de la **recopier sur papier** ; elle reste dans `/etc/maverick-sauvegardes/cle-depot` (root, 600, dossier 700) ;
+- range les accès au stockage dans `/etc/maverick-sauvegardes/stockage.env` (root, 600), fait un premier envoi, puis un essai de restauration.
+
+La commande est **relançable sans dégât** : elle ne recrée jamais une clé existante, ne réinitialise jamais un dépôt existant, ne redemande rien de ce
+qui est en place. Les autres options :
+
+| Option | Effet |
+| --- | --- |
+| `--afficher-la-cle` | réaffiche la phrase de chiffrement (sur un terminal), tant que le serveur vit |
+| `--verifier-le-stockage` | essaie le stockage déjà configuré (joignable, clé acceptée, écriture possible) sans rien ressaisir ni changer |
+| `--stockage` | change de stockage (nouvelle adresse, nouveau bucket, nouvelles clés d'accès) ; **la clé de chiffrement et les copies locales sont gardées** |
+| `--essai` | lance tout de suite un essai de restauration |
+| `--sans-stockage` | ne propose pas le temps 2 |
+| `--retirer` | arrête et retire les minuteurs (copies, clés et réglages restent) |
+
+**Changer de stockage (autre bucket, autre fournisseur).** `--stockage` avec les nouvelles valeurs crée un dépôt neuf avec la **même** phrase ; les nuits
+suivantes y vont. L'ancien dépôt n'est pas copié tout seul : on garde l'ancien bucket tant qu'on a besoin de son historique (les copies de l'ancien serveur y restent
+lisibles avec la même phrase), ou on le reporte dans le nouveau avec `restic copy` (`restic -r <nouveau dépôt> copy --from-repo <ancien dépôt>`, voir la
+documentation de restic : les clés d'accès de deux fournisseurs ne tiennent pas dans les mêmes variables `AWS_*`).
+
+**Ce qu'on voit.** La page Debug (Système, alertes) : âge de la dernière copie, place prise et plafond, dernière alerte, dernier envoi, dernier essai de
+restauration ; le fichier `/srv/maverick-center/metriques/sauvegardes.json` (sans secret). Sur le serveur :
+
+```
+systemctl list-timers 'maverick-sauvegarde-*'                     # dernier et prochain passage
+sudo journalctl -u maverick-sauvegarde-horaire -u maverick-sauvegarde-nuit -u maverick-sauvegarde-essai -n 50
+sudo ls /srv/maverick-sauvegardes/prod/{horaire,nuit,suspectes}     # les copies locales
+sudo sh /srv/maverick-center-test/sauvegarde/copie.sh accepter prod # une chute de lignes voulue devient la référence
+```
+
+Les réglages (plafond, nombre de copies, seuil de chute, jours gardés, versions gardées) sont dans `/etc/maverick-sauvegardes/reglages.env` (lignes commentées, valeurs par
+défaut dedans ; retirer le `#` d'une ligne suffit, un commentaire de fin de ligne et des guillemets sont admis). Un réglage illisible n'est jamais ignoré en silence : la valeur
+par défaut est prise, le journal du minuteur le dit, la page Debug l'affiche et le code de sortie de la copie est 3. La phrase et les accès au stockage ne sont jamais dans le dépôt Git : à la charge du propriétaire, qui garde la phrase sur papier.
+
+**Retour en arrière.** `sudo sh /srv/maverick-center-test/sauvegarde/installer.sh --retirer` arrête les minuteurs. Pour suspendre seulement l'envoi extérieur :
+`sudo mv /etc/maverick-sauvegardes/stockage.env{,.arrete}` (le temps 1 continue) ; le remettre le reprend.
+
+**Restaurer** (la base d'une instance abîmée, sur le même serveur) : arrêter le conteneur de l'instance (`docker compose stop serveur`), mettre de côté son
+`db/` (`mv db db.abime`), copier le contenu de `db/` de la copie voulue (`/srv/maverick-sauvegardes/<instance>/<horaire|nuit>/<date>/db/`), `docker compose up -d`.
+Aucune installation ne touche à `db/`.
+
+**Serveur neuf, ou autre hébergeur** (avec la seule phrase et les accès au stockage ; essayé tous les mois par `essai.sh`, sans le propriétaire).
+
+1. Sur la machine vide (Ubuntu 24.04) : `sudo apt-get install -y restic sqlite3`, puis les étapes 1 à 4 de ce guide (durcir, Docker et Caddy, les deux instances).
+2. Dans une session `sudo -i`, sans laisser de trace dans l'historique :
+   ```
+   export RESTIC_REPOSITORY=s3:https://s3.exemple.invalid/bucket-exemple
+   read -rs -p 'Identifiant de clé : ' AWS_ACCESS_KEY_ID; export AWS_ACCESS_KEY_ID; echo
+   read -rs -p 'Clé secrète : ' AWS_SECRET_ACCESS_KEY; export AWS_SECRET_ACCESS_KEY; echo
+   read -rs -p 'Phrase de chiffrement : ' RESTIC_PASSWORD; export RESTIC_PASSWORD; echo   # les mots séparés par des tirets
+   restic snapshots                                  # une ligne par copie : étiquettes inst-prod / inst-dev, nuit, version, V…
+   ```
+3. Restaurer la dernière copie de chaque instance (ou une autre : l'identifiant de `restic snapshots`, ou `--tag V0.2` pour une version) :
+   ```
+   restic restore latest --host maverick --tag inst-prod --target /root/restauration/prod
+   restic restore latest --host maverick --tag inst-dev  --target /root/restauration/dev
+   ```
+   Chaque dossier contient la copie (`…/srv/maverick-sauvegardes/<instance>/nuit/<date>/db/`, `comptes.tsv` : le nombre de lignes de chaque table au moment de la copie)
+   et `…/<dossier de l'instance>/installateur-courant/` : le dernier installateur du site.
+4. Contrôler : `sqlite3 <copie>/db/vivante.db 'PRAGMA integrity_check'` (« ok »).
+5. Poser les sites avec leurs installateurs restaurés, qui créent chaque instance (étape 5 de ce guide) :
+   `sh …/installateur-courant/maverick-center-<étiquette>-install.sh --dossier /srv/maverick-center` (et `…-test` pour l'autre), puis copier le contenu
+   de `db/` de chaque copie dans `db/` de l'instance **avant** le premier `docker compose up -d`, et lancer les conteneurs. Les mots de passe, le `.env` et le jeton GitHub
+   ne sont pas dans la copie : étapes 4 à 6 de ce guide.
+6. Reprendre les sauvegardes : `sudo sh /srv/maverick-center-test/sauvegarde/installer.sh --stockage --adresse … --bucket …` (une fois la mise à jour automatique en
+   place, qui pose `sauvegarde/`). Le dépôt existe déjà : la commande demande sa phrase (les mots en minuscules ou en majuscules, avec des espaces ou des tirets),
+   le reprend tel quel sans le réinitialiser et garde la même clé.
+
+**Pourquoi restic** (et non borg ou rclone + age). `restic` est dans les paquets d'Ubuntu 24.04 (0.16.4), parle S3 nativement, est un seul binaire qui se restaure
+depuis n'importe quelle machine avec la seule phrase et les accès au stockage, chiffre et déduplique, et a la rétention (`forget`, étiquettes de version),
+la vérification (`check`) et le prune. `borg` demande un serveur borg ou SSH (pas de S3 natif sans surcouche) ; `rclone` + `age` copie et chiffre des fichiers,
+mais sans instantanés ni rétention ni contrôle : tout serait à écrire. Dans restic 0.16.4, `--keep-monthly -1` est refusé : la valeur illimitée s'écrit
+`unlimited` ; « 30 jours » s'écrit `--keep-within-daily 30d` (et non `--keep-daily 30`, qui compterait les 30 derniers jours *qui ont une copie*).
 
 ## En cas de problème
 

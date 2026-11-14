@@ -24,6 +24,7 @@ user-invocable: false
 - Journaux du serveur : journal du service en mémoire, 2 000 entrées, `GET /api/debug/journal/?depuis=&min_ms=`, relevé toutes les 2 s, filtres niveau, catégorie, texte, durée ; chaque requête `/api/` notée en catégorie `http` avec ses champs isolés.
 - DB (« un mappage vectoriel des tables ») : le schéma, dessiné à la première ouverture ; toutes les tables et les vues (masquées par défaut), colonnes, types, un lien par clé étrangère (dont deux auto-références en boucle : `note_cellule`, `modification_lot.resolu_par` de la migration 0072) ; zoom, déplacement, recherche ; au double clic, le contenu de la table dans une fenêtre, fiches comprises, qui se met à jour quand la table change.
 - Contenu des tables : tout est lisible sur le site de dev ; seule la base de production est fermée (décision du propriétaire du 2026-10-15).
+- Sauvegardes : bloc « Sauvegardes » du menu Système. `sauvegardes.json`, dans le dossier des métriques (écrit par `deploy/installateur/sauvegarde/`, skill `zone-hebergement`), est lu par `serveur/metriques.mjs#lireSauvegardes` et exposé dans le champ `sauvegardes` de `/api/debug/systeme/` ; `null` sans fichier, et le bloc affiche alors une ligne sobre. Seuils : `SEUILS_SAUVEGARDES` (`lib/debug-metriques.mjs`), 26 h par copie, 36 h par envoi.
 - Balise des pages (`Base.astro`) active en production aussi (décision du propriétaire du 2026-10-15) ; `MAVERICK_METRIQUES_PAGES=0` (service) ou `SITE_METRIQUES_PAGES=0` (build) la coupent.
 
 ## Invariants
@@ -32,6 +33,7 @@ user-invocable: false
 - Une table ajoutée peut faire tomber la densité de la carte sous le seuil de `debug-schema.test.mjs`. On rebalaie alors `RAPPORT_GLOBAL` (choisi au milieu d'un palier de densité), sans baisser le seuil.
 - Contenu des tables : lu dans la base vivante en lecture seule, `GET /api/debug/tables/<nom>/` avec `ETag`, version relevée par `GET /api/debug/base/`. Images jamais entières, même dans le JSON du journal ; textes longs coupés en SQL. Un nom n'entre dans le SQL qu'après `PRAGMA table_list` (une colonne de tri, `PRAGMA table_info`).
 - Métriques : une base SQLite par instance, `<MAVERICK_DOSSIER_METRIQUES>/<instance>.db` (`prod.db`, `dev.db`, dossier partagé). Jamais la base vivante ni `data/rows`.
+- `lireSauvegardes` ne reprend que les champs connus, bornés. Le tableau `locale.reglages_illisibles` déclenche une alerte « avertissement » du service. Les clés de `systeme()` sont épinglées dans `serveur-metriques.test.mjs` : une clé ajoutée s'y ajoute.
 - Versées une fois par minute, jamais une écriture par requête.
 - Une route est un gabarit (`routeNormalisee`) : jamais un identifiant ni la chaîne de requête. Une route ajoutée à `serveur/api.mjs` y va aussi, sinon elle compte comme `/api/{inconnue}`.
 - Jamais d'IP, de corps, de cookie ni de User-Agent entier.
@@ -42,5 +44,5 @@ user-invocable: false
 
 ## Tests
 - `debug-page` (quatre menus fermés et leur ordre, menu fermé sans requête, absence en production), `debug-metriques`, `debug-schema`, `debug-balise`, `nav`.
-- `journal-du-service`, `serveur-debug-tables`, `serveur-metriques`, `serveur-metriques-bornes`, `serveur-metriques-http`, `serveur-metriques-disque`, `deploy-volume` (compare `volume.sh` au service).
+- `journal-du-service`, `serveur-debug-tables`, `serveur-metriques`, `serveur-metriques-bornes`, `serveur-metriques-http`, `serveur-metriques-disque`, `serveur-metriques-sauvegardes`, `debug-metriques-sauvegardes`, `deploy-volume` (compare `volume.sh` au service).
 - La CI construit aussi le site de production et y relance `debug-page.test.mjs` et `site-html.test.mjs`.

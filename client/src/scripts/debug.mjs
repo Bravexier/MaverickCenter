@@ -26,7 +26,7 @@ import {
 import {
   INSTANCES, PERIODE_PAR_DEFAUT, RELEVE_METRIQUES_MS, REQUETES_AUTRE_INSTANCE, REQUETES_LIMITE, TRI_PAR_DEFAUT, adresseDeLExport, adresseDesMetriques,
   adresseDesRequetes, adresseDuSysteme, ariaSort, courbeDeLaSerie, courbeDuSysteme, echapper, htmlDeLEspaceDisque, htmlDesAlertes, htmlDesChiffres,
-  htmlDesEvenements, htmlDesFichiers, htmlDesNavigateurs, htmlDesOrigines, htmlDesPages, htmlDesRequetes, htmlDesRoutes, htmlDuDisque,
+  htmlDesEvenements, htmlDesFichiers, htmlDesNavigateurs, htmlDesOrigines, htmlDesPages, htmlDesRequetes, htmlDesRoutes, htmlDesSauvegardes, htmlDuDisque,
   htmlDuProcessus, htmlDuVolume, noteDeFenetreHoraire, optionsDesRoutes, plusLentes, requetesDeLInstance, resumeDesMetriques, resumeDuSysteme,
   seuilSaisi, sensParDefaut, suivreLOuverture, trierRoutes,
 } from '../lib/debug-metriques.mjs';
@@ -271,7 +271,7 @@ function brancherLesMetriques(api) {
       return;
     }
     const vider = () => {
-      for (const nom of ['systeme-alertes', 'systeme-processus', 'systeme-disque', 'systeme-volume', 'systeme-echantillons']) champ(systeme, nom).innerHTML = '';
+      for (const nom of ['systeme-alertes', 'systeme-processus', 'systeme-disque', 'systeme-volume', 'systeme-sauvegardes', 'systeme-echantillons']) champ(systeme, nom).innerHTML = '';
       champ(systeme, 'systeme-fichiers').innerHTML = '';
       remplir('systeme-evenements', '');
       champ(systeme, 'systeme-resume').textContent = '';
@@ -293,6 +293,7 @@ function brancherLesMetriques(api) {
     champ(systeme, 'systeme-processus').innerHTML = htmlDuProcessus(corps.processus, maintenant);
     champ(systeme, 'systeme-disque').innerHTML = htmlDuDisque(corps.disque);
     champ(systeme, 'systeme-volume').innerHTML = htmlDuVolume(corps.volume);
+    champ(systeme, 'systeme-sauvegardes').innerHTML = htmlDesSauvegardes(corps.sauvegardes, { maintenant });
     champ(systeme, 'systeme-echantillons').innerHTML = courbeDuSysteme(corps.echantillons);
     champ(systeme, 'systeme-fichiers').innerHTML = htmlDesFichiers(corps.fichiers);
     remplir('systeme-evenements', htmlDesEvenements(corps.evenements, maintenant));

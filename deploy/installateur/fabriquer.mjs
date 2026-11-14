@@ -21,6 +21,9 @@ const FICHIERS_LIVRES = {
   'README.md': join(ICI, 'README.md'),
   'mise-a-jour.sh': join(ICI, 'mise-a-jour.sh'),
 };
+/** Scripts des sauvegardes automatiques (deploy/installateur/sauvegarde/) : livrés dans le dossier sauvegarde/ de l'instance, que les minuteurs exécutent. */
+const DOSSIER_SAUVEGARDE = join(ICI, 'sauvegarde');
+for (const nom of readdirSync(DOSSIER_SAUVEGARDE).filter((f) => f.endsWith('.sh') || f === 'mots.txt').sort()) FICHIERS_LIVRES[`sauvegarde/${nom}`] = join(DOSSIER_SAUVEGARDE, nom);
 
 const FORMATS = {
   mode: /^(prod|test)$/,
@@ -68,7 +71,10 @@ export function fabriquer(options) {
   try {
     const contenu = join(travail, 'contenu');
     cpSync(resolve(site), join(contenu, 'site'), { recursive: true });
-    for (const [nom, source] of Object.entries(FICHIERS_LIVRES)) copyFileSync(source, join(contenu, nom));
+    for (const [nom, source] of Object.entries(FICHIERS_LIVRES)) {
+      mkdirSync(dirname(join(contenu, nom)), { recursive: true });
+      copyFileSync(source, join(contenu, nom));
+    }
     const archive = join(travail, 'archive.tar.gz');
     const tar = spawnSync('tar', ['-czf', archive, '-C', contenu, '.'], { encoding: 'utf8' });
     if (tar.status !== 0) throw new Error(`tar : ${tar.stderr}`);
