@@ -558,9 +558,10 @@ propriétaire du 2026-10-15, « Il faut tout rendre ouvert. Ce qui est fermé c'
 méthode que `GET` répond `405` (`Allow: GET`). Code : `serveur/debug-tables.mjs`.
 
 **Le serveur de dev reste ouvert** (réponse du propriétaire du 2026-10-15 : « Le serveur dev restera. Il servira toujours pour modifier les
-règles par ceux qui en auront l'accès. ») ; qui y a accès se réglera avec la connexion Discord (E7). Sa base vivante est une **copie de celle de
-production**, faite à sa première installation puis conservée (`MAVERICK_BASE_TEST=conservee`, [`deploy/vps/README.md`](../deploy/vps/README.md)) :
-ce qu'on y lit des fiches, des comptes et des groupes est cette copie, sans les règles de visibilité de `/api/personnages/` (`v_personnage_visible`).
+règles par ceux qui en auront l'accès. ») ; qui y a accès se réglera avec la connexion Discord (E7). Sa base vivante est la **sienne, que
+l'installateur ne remplace jamais** (R274 ; [`deploy/installateur/README.md`](../deploy/installateur/README.md)) ; à l'origine, la copie de celle de
+production que l'installateur de test pose sur demande (`--copier-base-prod`) : ce qu'on y lit des fiches, des comptes et des groupes est ce
+qu'elle contient, sans les règles de visibilité de `/api/personnages/` (`v_personnage_visible`).
 Une fiche créée ou supprimée sur le site de dev ne part jamais en production (un lot ne porte pas la section 13). Le propriétaire attend une copie
 de la production vers le dev après chaque mise en production, que le serveur de test ne fait pas encore (question 7 de
 [`feuille-de-route.md`](feuille-de-route.md), « Questions encore ouvertes »).

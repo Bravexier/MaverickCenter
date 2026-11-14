@@ -490,7 +490,7 @@ test('serveur HTTP : état, création, corps trop gros ; surveillance : nouvelle
     assert.equal(adapte.metier_id, null);
     assert.equal(adapte.notes, `[${jourDuRetrait(adapte.modifie_le)}] Retrait (règles modifiées) : ${retrait} n’existe plus dans les règles. Choisissez autre chose ou adaptez la fiche à la nouvelle règle.`);
 
-    // L'installateur du serveur de test remplace la base vivante par une copie de la production : le service la rouvre.
+    // La base vivante est remplacée de l'extérieur (restauration, ou copie de la production posée sur demande par l'installateur de test) : le service la rouvre.
     const production = join(racine, 'production.db');
     copyFileSync(join(dossier, 'vivante.db'), production);
     const p = new DatabaseSync(production);

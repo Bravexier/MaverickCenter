@@ -4,17 +4,20 @@
 # Hébergement : serveur normal et serveur de test (docs/flux-git.md) ; le paquet du NAS a sa propre installation (deploy/README.md).
 # Le site (déjà construit) est dans ce fichier même, sous la ligne __ARCHIVE__ : rien n'est téléchargé, aucun jeton n'est nécessaire.
 #
-# Usage : sh <ce-fichier> [--dossier <dossier>] [--dossier-prod <dossier>] [--sans-base-prod] [--verifier]
+# Usage : sh <ce-fichier> [--dossier <dossier>] [--copier-base-prod] [--dossier-prod <dossier>] [--sans-base-prod] [--verifier]
 #   --dossier       dossier de l'instance (défaut : ./maverick-center en prod, ./maverick-center-test en test)
-#   --dossier-prod  test seulement : instance de production dont on copie la base (défaut : le voisin « maverick-center »)
-#   --sans-base-prod  test seulement : accepter qu'il n'y ait pas d'instance de production (base de test vide)
+#   --copier-base-prod  test seulement : poser dans db/ une copie, prise à cet instant, de la base de la production. Refusé (rien n'est modifié)
+#                   si db/ contient autre chose que metriques/ : une installation n'efface jamais une base.
+#   --dossier-prod  test, avec --copier-base-prod : instance de production dont on copie la base (défaut : le voisin « maverick-center »)
+#   --sans-base-prod  accepté et sans effet (un installateur ne copie plus la production sans --copier-base-prod)
 #   --verifier      contrôler l'archive intégrée et s'arrêter (rien n'est installé)
 #
 # Une instance = un dossier :
 #   site/                le site statique (remplacé à chaque installation ; nginx le relit sans redémarrage)
-#   db/                  la base vivante de l'instance (le service des personnages y écrit). Production : jamais touchée par une installation.
-#                        Test : son contenu est remplacé à chaque installation par une copie, à cet instant, du db/ de la production, sauf
-#                        db/metriques/ (métriques d'une instance sans dossier des métriques réglé) : ni copié de la production, ni effacé.
+#   db/                  la base vivante de l'instance (le service des personnages y écrit). Jamais vidé ni remplacé par une installation, en
+#                        production comme en test : db/ vide, le service crée sa base à partir des règles du site. Seule exception, sur
+#                        demande : --copier-base-prod (test), dans un db/ vide.
+#                        db/metriques/ (métriques d'une instance sans dossier des métriques réglé) : jamais copié de la production, jamais touché.
 #   metriques/           les métriques du service (docker-compose.yml, MAVERICK_DOSSIER_METRIQUES) : jamais touché par une installation.
 #   docker-compose.yml, nginx.conf   posés s'ils sont absents ; s'ils diffèrent, la version livrée est écrite à côté (.nouveau)
 #   .env                 port et nom du conteneur de l'instance (créé une fois, jamais écrasé)
@@ -35,17 +38,19 @@ INSTALLATEUR=$0
 USE_RSYNC=${USE_RSYNC:-auto}
 NOM_PROD=maverick-center
 
-usage() { echo "Usage : sh $INSTALLATEUR [--dossier <dossier>] [--dossier-prod <dossier>] [--sans-base-prod] [--verifier]" >&2; exit 2; }
+usage() { echo "Usage : sh $INSTALLATEUR [--dossier <dossier>] [--copier-base-prod] [--dossier-prod <dossier>] [--sans-base-prod] [--verifier]" >&2; exit 2; }
 
 DOSSIER=''
 DOSSIER_PROD=''
 SANS_BASE_PROD=0
+COPIER_BASE_PROD=0
 VERIFIER=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --dossier) [ $# -ge 2 ] || usage; DOSSIER=$2; shift 2 ;;
     --dossier-prod) [ $# -ge 2 ] || usage; DOSSIER_PROD=$2; shift 2 ;;
     --sans-base-prod) SANS_BASE_PROD=1; shift ;;
+    --copier-base-prod) COPIER_BASE_PROD=1; shift ;;
     --verifier) VERIFIER=1; shift ;;
     *) usage ;;
   esac
@@ -104,16 +109,23 @@ if [ -n "$EXISTANT" ] && [ "$EXISTANT" != "$MODE" ]; then
   die "$DOSSIER est une instance « $EXISTANT » : un installateur « $MODE » refuse de l'écraser"
 fi
 
-if [ "$MODE" = test ]; then
+# Métriques (docs/serveur.md, « Métriques et volume ») : sans dossier des métriques réglé, le service range sa base de métriques dans db/metriques/.
+# Chaque instance a la sienne, jamais mêlée à celle de l'autre : ce dossier n'est ni copié de la production, ni touché, ni compté comme une base.
+METRIQUES=metriques
+# Vrai si le db/ de l'instance contient autre chose que ses métriques : une base, une archive, n'importe quel fichier.
+base_remplie() { [ -d "$DOSSIER/db" ] && find "$DOSSIER/db/" -mindepth 1 -maxdepth 1 ! -name "$METRIQUES" | grep -q .; }
+
+if [ "$COPIER_BASE_PROD" -eq 1 ]; then
+  # La seule route qui écrit dans db/ en mode test : refus ICI, avant le verrou, l'extraction et toute autre écriture.
+  [ "$MODE" = test ] || die "--copier-base-prod n'existe qu'en mode test : une installation de production ne touche jamais à db/"
+  [ "$SANS_BASE_PROD" -eq 0 ] || die "--copier-base-prod et --sans-base-prod s'excluent"
   [ -n "$DOSSIER_PROD" ] || DOSSIER_PROD="$(dirname "$DOSSIER")/$NOM_PROD"
-  if [ -d "$DOSSIER_PROD" ]; then
-    DOSSIER_PROD=$(cd "$DOSSIER_PROD" && pwd -P)
-    [ "$DOSSIER_PROD" != "$DOSSIER" ] || die "le serveur de test ne peut pas s'installer dans le dossier de la production ($DOSSIER)"
-    [ "$(mode_de "$DOSSIER_PROD")" = prod ] || die "$DOSSIER_PROD n'est pas une instance de production (fichier VERSION) : précisez --dossier-prod"
-  elif [ "$SANS_BASE_PROD" -eq 1 ]; then
-    DOSSIER_PROD=''
-  else
-    die "instance de production introuvable ($DOSSIER_PROD) : précisez --dossier-prod <dossier>, ou --sans-base-prod pour une base de test vide"
+  [ -d "$DOSSIER_PROD" ] || die "instance de production introuvable ($DOSSIER_PROD) : précisez --dossier-prod <dossier>"
+  DOSSIER_PROD=$(cd "$DOSSIER_PROD" && pwd -P)
+  [ "$DOSSIER_PROD" != "$DOSSIER" ] || die "le serveur de test ne peut pas s'installer dans le dossier de la production ($DOSSIER)"
+  [ "$(mode_de "$DOSSIER_PROD")" = prod ] || die "$DOSSIER_PROD n'est pas une instance de production (fichier VERSION) : précisez --dossier-prod"
+  if base_remplie; then
+    die "copie de la production refusée : $DOSSIER/db n'est pas vide (une installation n'efface jamais une base). Rien n'a été modifié ; videz-le vous-même après en avoir fait une sauvegarde si c'est voulu"
   fi
 fi
 
@@ -140,29 +152,26 @@ PAGES=$(find "$TRAVAIL/site" -name index.html | wc -l | tr -d ' ')
 [ "$PAGES" -eq "$PAGES_ATTENDUES" ] || die "archive refusée : $PAGES pages au lieu de $PAGES_ATTENDUES (rien n'a été modifié)"
 
 # ---------------------------------------------------------------- base (avant le site : en cas d'échec, rien n'a changé)
-# Test seulement : MAVERICK_BASE_TEST=conservee dans le .env de l'instance. La base de test est alors copiée de la production à la première
-# installation seulement ; ensuite son db/ n'est plus touché (les modifications faites en test durent, jusqu'à ce qu'on retire la ligne).
-# Métriques (docs/serveur.md, « Métriques et volume ») : sans dossier des métriques réglé, le service range sa base de métriques dans db/metriques/.
-# Chaque instance a la sienne, jamais mêlée à celle de l'autre : ce dossier n'est ni copié de la production, ni effacé du test, ni compté comme une base.
-METRIQUES=metriques
-BASE_CONSERVEE=0
-if [ "$MODE" = test ] && [ -f "$DOSSIER/.env" ] && grep -q '^MAVERICK_BASE_TEST=conservee[[:space:]]*$' "$DOSSIER/.env" \
-  && [ -d "$DOSSIER/db" ] && find "$DOSSIER/db/" -mindepth 1 -maxdepth 1 ! -name "$METRIQUES" | grep -q .; then
-  BASE_CONSERVEE=1
-fi
-if [ "$MODE" = prod ]; then
-  mkdir -p "$DOSSIER/db"
-elif [ "$BASE_CONSERVEE" -eq 1 ]; then
-  log "Base de test conservée (MAVERICK_BASE_TEST=conservee dans $DOSSIER/.env) : $DOSSIER/db n'est pas touché."
-else
+# Pose $1 en $2 sans jamais écraser : « mv » remplacerait un fichier créé entre le contrôle et la pose. « ln » (fichier) et « mkdir »
+# (dossier) échouent si $2 existe ; la source n'est retirée qu'ensuite. Même système de fichiers (la copie est dans le dossier de l'instance).
+poser_sans_ecraser() {
+  if [ -d "$1" ]; then
+    mkdir "$2" 2>/dev/null && cp -Rp "$1/." "$2/" && rm -rf "$1"
+  else
+    ln "$1" "$2" 2>/dev/null && rm -f "$1"
+  fi
+}
+# db/ n'est JAMAIS vidé ni remplacé par une installation (production comme test) : les saisies d'un serveur de test n'existent nulle part ailleurs.
+# Aucun « rm » ne vise db/ dans ce script. Il est monté tel quel dans le conteneur du service (docker-compose.yml) : on le crée s'il manque
+# et on n'y touche pas. Vide, le service y crée sa base à partir des règles du site (docs/serveur.md, « Base vivante »).
+mkdir -p "$DOSSIER/db" || die "impossible de créer $DOSSIER/db"
+if [ "$MODE" = test ] && [ "$COPIER_BASE_PROD" -eq 1 ]; then
+  # Copie préparée à part, dans le dossier de l'instance : si elle échoue, db/ n'a pas bougé.
   COPIE="$DOSSIER/.db.copie.$$"
   mkdir "$COPIE"
   SOURCE="$DOSSIER_PROD/db"
-  if [ -z "$DOSSIER_PROD" ]; then
-    log "Pas d'instance de production (--sans-base-prod) : base de test vide."
-    ORIGINE='aucune (--sans-base-prod)'
-  elif [ ! -d "$SOURCE" ]; then
-    log "La production n'a pas de base vivante ($SOURCE absent) : base de test vide."
+  if [ ! -d "$SOURCE" ]; then
+    log "La production n'a pas de base vivante ($SOURCE absent) : rien à copier."
     ORIGINE="$SOURCE (absent)"
   else
     ORIGINE=$SOURCE
@@ -197,14 +206,24 @@ else
   {
     echo "copie_le=$(date '+%Y-%m-%d %H:%M:%S')"
     echo "source=$ORIGINE"
-    if [ -n "$DOSSIER_PROD" ] && [ -f "$DOSSIER_PROD/VERSION" ]; then sed -n 's/^tag=/version_prod=/p' "$DOSSIER_PROD/VERSION"; fi
+    if [ -f "$DOSSIER_PROD/VERSION" ]; then sed -n 's/^tag=/version_prod=/p' "$DOSSIER_PROD/VERSION"; fi
   } > "$COPIE/.copie-de-la-production"
-  # db/ est monté tel quel dans le conteneur du service (docker-compose.yml) : on garde le dossier et on remplace son contenu, comme pour
-  # site/ (un dossier remplacé laisserait le conteneur sur l'ancien, supprimé). Le service voit sa base remplacée et la rouvre.
-  mkdir -p "$DOSSIER/db"
-  find "$DOSSIER/db/" -mindepth 1 -maxdepth 1 ! -name "$METRIQUES" -exec rm -rf {} \; || die "impossible de vider $DOSSIER/db"
-  find "$COPIE" -mindepth 1 -maxdepth 1 -exec mv {} "$DOSSIER/db/" \; || die "impossible de poser la copie dans $DOSSIER/db"
-  rmdir "$COPIE"
+  # Le contrôle fait avant le verrou date d'avant la copie, qui peut être longue : il est refait juste avant de poser (le service a pu écrire
+  # dans db/ entre-temps), puis chaque entrée est posée sans jamais en écraser une.
+  if base_remplie; then die "copie de la production refusée : $DOSSIER/db n'est plus vide (rien n'a été modifié)"; fi
+  find "$COPIE" -mindepth 1 -maxdepth 1 > "$TRAVAIL/a-poser" || die "lecture de la copie impossible"
+  while IFS= read -r entree; do
+    nom=$(basename "$entree")
+    if [ -e "$DOSSIER/db/$nom" ] || [ -L "$DOSSIER/db/$nom" ]; then die "copie de la production refusée : $DOSSIER/db/$nom existe déjà (rien n'a été modifié)"; fi
+  done < "$TRAVAIL/a-poser"
+  while IFS= read -r entree; do
+    nom=$(basename "$entree")
+    if [ -e "$DOSSIER/db/$nom" ] || [ -L "$DOSSIER/db/$nom" ]; then die "copie de la production interrompue : $DOSSIER/db/$nom existe déjà"; fi
+    poser_sans_ecraser "$entree" "$DOSSIER/db/$nom" || die "copie de la production interrompue : $DOSSIER/db/$nom n'a pas pu être posé (créé entre-temps ? rien n'a été écrasé)"
+  done < "$TRAVAIL/a-poser"
+  rmdir "$COPIE" 2>/dev/null || true
+elif [ "$MODE" = test ]; then
+  log "Base de test : $DOSSIER/db n'est pas touché (la production n'est copiée que sur demande : --copier-base-prod, dans un db/ vide)."
 fi
 
 # ---------------------------------------------------------------- site

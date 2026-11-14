@@ -119,13 +119,14 @@ serveur à cette forme. Seule la toute première livraison de test s'est appelé
 
 - **Serveur de test** (`maverick-center-test`, port 8081, bandeau « Serveur de dev » sur chaque page — il renvoie à la page « Mise à jour », qui
   liste les modifications en cours —, `[TEST]` dans le titre de l'onglet).
-  À chaque installation, **sa base est remplacée par une copie de celle du serveur normal prise à cet instant** (dossier `db/` de l'instance de
-  production ; avec `sqlite3`, chaque base SQLite est copiée par `.backup`, donc cohérente même si la production écrit), sauf avec
-  `MAVERICK_BASE_TEST=conservee` (le réglage du VPS : copie à la première installation seulement). Rien de ce qui est fait en test ne revient en
+  Une installation **ne vide ni ne remplace jamais sa base** (dossier `db/`, décision R274 : la base du site de dev fait foi, ses saisies
+  n'existent nulle part ailleurs) ; `mise-a-jour.sh` refuse en outre une livraison plus ancienne que celle installée. La copie de la base du serveur
+  normal (dossier `db/` de l'instance de production ; avec `sqlite3`, chaque base SQLite est copiée par `.backup`, donc cohérente même si la
+  production écrit) ne se fait que sur demande (`--copier-base-prod`), dans un `db/` vide. Rien de ce qui est fait en test ne revient en
   production par la base : les modifications des règles y vont par la page « Mise à jour ».
 - **Serveur normal** : le site réellement utilisé (`maverick-center`, port 8080). Une installation remplace le site, **jamais la base vivante** (`db/`).
 
-La copie est faite par l'installateur, sur le serveur, au moment où il s'exécute : GitHub n'a pas accès à la base de production, et elle ne doit pas
+Quand elle est demandée, la copie est faite par l'installateur, sur le serveur, au moment où il s'exécute : GitHub n'a pas accès à la base de production, et elle ne doit pas
 quitter le serveur. La base vivante (`db/`) est celle du service des personnages ([`serveur.md`](serveur.md)) : les prétirés, puis, avec la
 connexion Discord, les utilisateurs et leurs fiches ; la base des règles du site (`/donnees/`), elle, est reconstruite depuis `data/rows` à chaque version.
 La mise à jour automatique de chaque instance est `mise-a-jour.sh`. Détails : [`deploy/installateur/README.md`](../deploy/installateur/README.md).

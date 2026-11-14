@@ -210,7 +210,7 @@ jobs:
             usage="Installe ou met à jour le site de production. La base vivante de l'instance (dossier db/) n'est jamais touchée."
           else
             titre="Serveur de test $TAG"; dossier=/srv/maverick-center-test; options="--prerelease --latest=false"
-            usage="Installe ou met à jour le serveur de test et remplace sa base (db/) par une copie, à cet instant, de celle de la production."
+            usage="Installe ou met à jour le serveur de test. Sa base vivante (dossier db/) n'est jamais touchée ; la base de la production n'y est copiée que sur demande (option --copier-base-prod, dans un db/ vide)."
           fi
           {
             echo "Installateur **${MODE}** de Maverick Center : \`${TAG}\` (version ${VERSION}, commit ${SHA:0:7}, ${TYPE})."

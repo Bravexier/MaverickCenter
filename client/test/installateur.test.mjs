@@ -122,89 +122,209 @@ for (const rsync of ['auto', '0']) {
   });
 }
 
-test('test : la base est une copie de celle de la production à l\'instant de l\'installation', { skip }, () => {
-  const parent = dossier('nas');
+/** Tout ce que contient un dossier, avec le contenu des fichiers : de quoi vérifier que rien n'a bougé. */
+function empreinte(d) {
+  const sortie = {};
+  const parcourir = (rel) => {
+    for (const e of readdirSync(join(d, rel), { withFileTypes: true })) {
+      const r = join(rel, e.name);
+      if (e.isDirectory()) { sortie[`${r}/`] = ''; parcourir(r); } else sortie[r] = readFileSync(join(d, r), 'utf8');
+    }
+  };
+  parcourir('');
+  return sortie;
+}
+/** Un serveur de production avec une vraie base SQLite (table fiche) et une pièce jointe, puis le dossier d'un serveur de test. */
+function productionEtTest(nom) {
+  const parent = dossier(nom);
   const prod = join(parent, 'maverick-center');
-  const test_ = join(parent, 'maverick-center-test');
   assert.equal(lancer(installateur({ label: 'prod' }).fichier, ['--dossier', prod]).code, 0);
   const base = new DatabaseSync(join(prod, 'db', 'maverick.db'));
   base.exec("CREATE TABLE fiche (nom TEXT); INSERT INTO fiche VALUES ('Aldric'), ('Brune');");
   base.close();
   mkdirSync(join(prod, 'db', 'pieces'));
   writeFileSync(join(prod, 'db', 'pieces', 'carte.txt'), 'carte');
+  return { parent, prod, test_: join(parent, 'maverick-center-test') };
+}
+/** Ce que le site de dev a saisi : un db/ rempli de fichiers introuvables ailleurs. */
+function remplirLaBaseDeDev(test_) {
+  mkdirSync(join(test_, 'db', 'archives'), { recursive: true });
+  const base = new DatabaseSync(join(test_, 'db', 'vivante.db'));
+  base.exec("CREATE TABLE fiche (nom TEXT); INSERT INTO fiche VALUES ('Saisie du site de dev');");
+  base.close();
+  writeFileSync(join(test_, 'db', 'archives', 'vivante-ancienne.db'), 'archive');
+  writeFileSync(join(test_, 'db', '.cache-cache'), 'fichier caché');
+}
+const noms = (d, fichier = 'maverick.db') => {
+  const b = new DatabaseSync(join(d, 'db', fichier));
+  try { return b.prepare('SELECT nom FROM fiche ORDER BY nom').all().map((l) => l.nom); } finally { b.close(); }
+};
 
-  const i = installateur({ mode: 'test', label: 'dev', version: '0.2.3' });
-  const r = lancer(i.fichier, ['--dossier', test_]); // dossier de la production : le voisin « maverick-center »
+test('test : par défaut, aucune copie de la production ; db/ (rempli ou non, avec ou sans MAVERICK_BASE_TEST=conservee) n\'est jamais touché (R274)', { skip }, () => {
+  const { prod, test_ } = productionEtTest('nas-defaut');
+  const i = installateur({ mode: 'test', label: 'dev', version: '0.2.3' }).fichier;
+  const avantProd = empreinte(join(prod, 'db'));
+
+  // Première installation : db/ n'existe pas, il est créé vide ; le service y crée sa base. Aucune copie, même avec la production voisine.
+  const r = lancer(i, ['--dossier', test_]);
   assert.equal(r.code, 0, r.out);
   assert.equal(lire(test_, 'site/index.html'), '<h1>accueil dev</h1>');
   assert.equal(champs(test_).mode, 'test');
   assert.match(lire(test_, '.env'), /MAVERICK_PORT=8081/);
-  assert.match(lire(test_, '.env'), /MAVERICK_CONTENEUR=maverick-center-test/);
   assert.match(lire(test_, '.env'), /^MAVERICK_EDITION=1$/m, 'édition des règles ouverte sur le serveur de test');
-  const copie = new DatabaseSync(join(test_, 'db', 'maverick.db'));
-  assert.deepEqual(copie.prepare('SELECT nom FROM fiche ORDER BY nom').all().map((l) => l.nom), ['Aldric', 'Brune']);
-  copie.exec("INSERT INTO fiche VALUES ('Essai')"); // ce qu'on fait en test…
-  copie.close();
+  assert.deepEqual(readdirSync(join(test_, 'db')), [], 'db/ créé, vide : rien n\'est copié');
+  assert.doesNotMatch(r.out, /copie de /);
+
+  // Le site de dev saisit des choses ; les installations suivantes, avec ou sans le réglage historique, n'y touchent pas.
+  remplirLaBaseDeDev(test_);
+  const dossierDb = statSync(join(test_, 'db')).ino;
+  const avant = empreinte(join(test_, 'db'));
+  const env = lire(test_, '.env');
+  for (const [n, conservee] of [[4, false], [5, true], [6, false]]) {
+    if (conservee) writeFileSync(join(test_, '.env'), `${env}MAVERICK_BASE_TEST=conservee\n`);
+    else writeFileSync(join(test_, '.env'), env);
+    const suite = lancer(installateur({ mode: 'test', label: `dev${n}`, version: `0.2.${n}` }).fichier, ['--dossier', test_]);
+    assert.equal(suite.code, 0, suite.out);
+    assert.equal(lire(test_, 'site/index.html'), `<h1>accueil dev${n}</h1>`, 'le site, lui, est mis à jour');
+    assert.deepEqual(empreinte(join(test_, 'db')), avant, `db/ intact (conservee : ${conservee})`);
+    assert.equal(statSync(join(test_, 'db')).ino, dossierDb, 'db/ gardé : il est monté dans le conteneur');
+    assert.ok(!readdirSync(test_).some((f) => f.startsWith('.db.')), 'aucun dossier provisoire restant');
+  }
+  assert.deepEqual(noms(test_, 'vivante.db'), ['Saisie du site de dev']);
+
+  // Les options que mise-a-jour.sh passait (--dossier-prod, --sans-base-prod) sont acceptées et ne déclenchent aucune copie.
+  for (const options of [['--dossier-prod', prod], ['--sans-base-prod'], ['--dossier-prod', prod, '--sans-base-prod']]) {
+    const r2 = lancer(installateur({ mode: 'test', label: 'dev-options', version: '0.2.9' }).fichier, ['--dossier', test_, ...options]);
+    assert.equal(r2.code, 0, r2.out);
+    assert.deepEqual(empreinte(join(test_, 'db')), avant);
+  }
+  assert.deepEqual(empreinte(join(prod, 'db')), avantProd, 'la production n\'est ni lue ni modifiée par défaut');
+  assert.ok(!existsSync(join(test_, 'db', '.copie-de-la-production')));
+});
+
+test('test : aucun « rm » de l\'installateur ne vise db/ (garde sur le script)', () => {
+  const script = readFileSync(new URL('../../deploy/installateur/installateur.sh', import.meta.url), 'utf8');
+  const lignes = script.split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('#'));
+  assert.deepEqual(lignes.filter((l) => /\b(rm|rmdir|unlink)\b|-delete/.test(l) && /(\/db\b|\$\{?DB)/.test(l)), []);
+  assert.ok(!lignes.some((l) => /find\s+"\$DOSSIER\/db\/?"[^|]*(-exec\s+rm|-delete)/.test(l)));
+});
+
+test('test : --copier-base-prod copie la production à l\'instant de l\'installation, dans un db/ vide seulement', { skip }, () => {
+  const { prod, test_ } = productionEtTest('nas-copie');
+  const i = installateur({ mode: 'test', label: 'dev', version: '0.2.3' }).fichier;
+  const r = lancer(i, ['--dossier', test_, '--copier-base-prod']); // dossier de la production : le voisin « maverick-center »
+  assert.equal(r.code, 0, r.out);
+  assert.deepEqual(noms(test_), ['Aldric', 'Brune']);
   assert.equal(lire(test_, 'db', 'pieces', 'carte.txt'), 'carte');
   const trace = lire(test_, 'db', '.copie-de-la-production');
   assert.match(trace, new RegExp(`source=${join(prod, 'db').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));
   assert.match(trace, /^version_prod=v0\.2$/m);
-
-  const verifierProd = new DatabaseSync(join(prod, 'db', 'maverick.db'));
-  assert.equal(verifierProd.prepare('SELECT count(*) AS n FROM fiche').get().n, 2, '…ne revient jamais en production');
-  verifierProd.exec("INSERT INTO fiche VALUES ('Cyrielle')");
-  verifierProd.close();
-
-  // Nouvelle installation de test : nouvelle copie, les essais précédents disparaissent. Le dossier db/ lui-même reste (même inode) : il est
-  // monté dans le conteneur du service, qui ne verrait pas un dossier remplacé ; seul son contenu change.
-  const dossierDb = statSync(join(test_, 'db')).ino;
-  writeFileSync(join(test_, 'db', 'essai-du-test.txt'), 'disparaît');
-  const r2 = lancer(installateur({ mode: 'test', label: 'dev2', version: '0.2.4' }).fichier, ['--dossier', test_, '--dossier-prod', prod]);
-  assert.equal(r2.code, 0, r2.out);
-  const copie2 = new DatabaseSync(join(test_, 'db', 'maverick.db'));
-  assert.deepEqual(copie2.prepare('SELECT nom FROM fiche ORDER BY nom').all().map((l) => l.nom), ['Aldric', 'Brune', 'Cyrielle']);
-  copie2.close();
-  assert.equal(statSync(join(test_, 'db')).ino, dossierDb, 'db/ gardé, contenu remplacé');
-  assert.deepEqual(readdirSync(join(test_, 'db')).sort(), ['.copie-de-la-production', 'maverick.db', 'pieces']);
   assert.ok(!readdirSync(test_).some((f) => f.startsWith('.db.')), 'aucun dossier provisoire restant');
+
+  // Ce qu'on fait en test ne revient jamais en production.
+  const copie = new DatabaseSync(join(test_, 'db', 'maverick.db'));
+  copie.exec("INSERT INTO fiche VALUES ('Essai')");
+  copie.close();
+  assert.deepEqual(noms(prod), ['Aldric', 'Brune']);
+
+  // Deuxième demande de copie, db/ rempli : refus avant toute écriture, base de test et site intacts.
+  const apres = empreinte(test_);
+  const r2 = lancer(installateur({ mode: 'test', label: 'dev2', version: '0.2.4' }).fichier, ['--dossier', test_, '--copier-base-prod', '--dossier-prod', prod]);
+  assert.equal(r2.code, 1);
+  assert.match(r2.out, /copie de la production refusée : .* n'est pas vide/);
+  const sansLog = (e) => Object.fromEntries(Object.entries(e).filter(([k]) => k !== 'installation.log'));
+  assert.deepEqual(sansLog(empreinte(test_)), sansLog(apres), 'rien n\'a été modifié (site, VERSION, db/ : tout est identique)');
+  assert.deepEqual(noms(test_), ['Aldric', 'Brune', 'Essai']);
 });
 
-test('test : MAVERICK_BASE_TEST=conservee copie la production à la première installation seulement, puis garde la base de test', { skip }, () => {
-  const parent = dossier('nas-conservee');
-  const prod = join(parent, 'maverick-center');
-  const test_ = join(parent, 'maverick-center-test');
-  assert.equal(lancer(installateur({ label: 'prod' }).fichier, ['--dossier', prod]).code, 0);
-  const base = new DatabaseSync(join(prod, 'db', 'maverick.db'));
-  base.exec("CREATE TABLE fiche (nom TEXT); INSERT INTO fiche VALUES ('Aldric');");
-  base.close();
-  // Le réglage est posé avant la première installation (deploy/vps/instances.sh) ; l'installateur ne réécrit jamais le .env.
-  mkdirSync(test_, { recursive: true });
-  const env = 'MAVERICK_CONTENEUR=maverick-center-test\nMAVERICK_PORT=127.0.0.1:8081\nMAVERICK_BASE_TEST=conservee\n';
-  writeFileSync(join(test_, '.env'), env);
-  const noms = (d) => {
-    const b = new DatabaseSync(join(d, 'db', 'maverick.db'));
-    try { return b.prepare('SELECT nom FROM fiche ORDER BY nom').all().map((l) => l.nom); } finally { b.close(); }
-  };
+test('test : --copier-base-prod refusée sur un db/ rempli, même s\'il n\'y a pas encore de site ; db/ avec ses seules métriques : copie faite', { skip }, () => {
+  const { test_ } = productionEtTest('nas-copie-refus');
+  const i = installateur({ mode: 'test', label: 'dev', version: '0.2.3' }).fichier;
+  remplirLaBaseDeDev(test_);
+  const avant = empreinte(test_);
+  const r = lancer(i, ['--dossier', test_, '--copier-base-prod']);
+  assert.equal(r.code, 1);
+  assert.match(r.out, /copie de la production refusée/);
+  const sansLog = (e) => Object.fromEntries(Object.entries(e).filter(([k]) => k !== 'installation.log'));
+  assert.deepEqual(sansLog(empreinte(test_)), sansLog(avant), 'ni site, ni VERSION, ni .env, ni verrou : rien d\'écrit');
+  assert.deepEqual(noms(test_, 'vivante.db'), ['Saisie du site de dev']);
 
-  const r1 = lancer(installateur({ mode: 'test', label: 'dev', version: '0.2.1' }).fichier, ['--dossier', test_]);
-  assert.equal(r1.code, 0, r1.out);
-  assert.deepEqual(noms(test_), ['Aldric'], 'première installation : db/ vide, donc copie de la production');
-  const b = new DatabaseSync(join(test_, 'db', 'maverick.db'));
-  b.exec("INSERT INTO fiche VALUES ('Règle modifiée en dev')"); // ce qu'on fait en test…
-  b.close();
-  writeFileSync(join(test_, 'db', 'note.txt'), 'reste');
-  const p = new DatabaseSync(join(prod, 'db', 'maverick.db'));
-  p.exec("INSERT INTO fiche VALUES ('Brune')"); // …et ce que fait la production entre-temps
-  p.close();
+  // Un fichier caché suffit à remplir db/ ; seules les métriques ne comptent pas.
+  rmSync(join(test_, 'db'), { recursive: true });
+  mkdirSync(join(test_, 'db', 'metriques'), { recursive: true });
+  writeFileSync(join(test_, 'db', 'metriques', 'dev.db'), 'mesures du site de dev');
+  writeFileSync(join(test_, 'db', '.x'), 'x');
+  assert.equal(lancer(i, ['--dossier', test_, '--copier-base-prod']).code, 1);
+  rmSync(join(test_, 'db', '.x'));
+  const metriques = statSync(join(test_, 'db', 'metriques')).ino;
+  const ok = lancer(i, ['--dossier', test_, '--copier-base-prod']);
+  assert.equal(ok.code, 0, ok.out);
+  assert.deepEqual(noms(test_), ['Aldric', 'Brune']);
+  assert.equal(lire(test_, 'db', 'metriques', 'dev.db'), 'mesures du site de dev');
+  assert.equal(statSync(join(test_, 'db', 'metriques')).ino, metriques);
 
-  const r2 = lancer(installateur({ mode: 'test', label: 'dev2', version: '0.2.2' }).fichier, ['--dossier', test_]);
-  assert.equal(r2.code, 0, r2.out);
-  assert.match(r2.out, /Base de test conservée/);
-  assert.deepEqual(noms(test_), ['Aldric', 'Règle modifiée en dev'], 'la base de test n\'est ni recopiée ni vidée');
-  assert.equal(lire(test_, 'db', 'note.txt'), 'reste');
-  assert.equal(lire(test_, 'site/index.html'), '<h1>accueil dev2</h1>', 'le site, lui, est mis à jour');
-  assert.equal(lire(test_, '.env'), env, '.env jamais écrasé');
-  assert.ok(!readdirSync(test_).some((f) => f.startsWith('.db.')), 'aucun dossier provisoire restant');
+  // Incompatibilités : production (jamais de copie), --sans-base-prod, production introuvable ou qui n'en est pas une.
+  assert.equal(lancer(installateur({ label: 'p' }).fichier, ['--dossier', join(dossier('nas-copie-refus'), 'autre-prod'), '--copier-base-prod']).code, 1);
+  let r2 = lancer(i, ['--dossier', join(dossier('nas-copie-refus'), 'sans'), '--copier-base-prod', '--sans-base-prod']);
+  assert.equal(r2.code, 1);
+  assert.match(r2.out, /s'excluent/);
+  r2 = lancer(i, ['--dossier', join(dossier('nas-copie-refus'), 'sans'), '--copier-base-prod', '--dossier-prod', join(dossier('nas-copie-refus'), 'absente')]);
+  assert.equal(r2.code, 1);
+  assert.match(r2.out, /instance de production introuvable/);
+  assert.ok(!existsSync(join(dossier('nas-copie-refus'), 'sans', 'site')));
+});
+
+test('test : db/ qui se remplit pendant la copie (le service y écrit) : la copie est refusée au moment de poser, rien n\'est écrasé', { skip }, () => {
+  const { test_ } = productionEtTest('nas-copie-course');
+  // Un faux sqlite3, lancé par l'installateur pendant la copie : il écrit dans db/ de l'instance de test (comme le service qui crée sa base)
+  // puis fait la sauvegarde en copiant le fichier.
+  const faux = dossier('faux-sqlite3');
+  mkdirSync(faux, { recursive: true });
+  writeFileSync(join(faux, 'sqlite3'), '#!/bin/sh\nprintf arrive > "$MAVERICK_DB_ESSAI/vivante.db"\ncp "$1" "${2#.backup }"\n');
+  chmodSync(join(faux, 'sqlite3'), 0o755);
+  const r = spawnSync('sh', [installateur({ mode: 'test', label: 'dev', version: '0.2.3' }).fichier, '--dossier', test_, '--copier-base-prod'], {
+    cwd: racine, encoding: 'utf8', env: { PATH: `${faux}:${process.env.PATH}`, MAVERICK_DB_ESSAI: join(test_, 'db') },
+  });
+  assert.equal(r.status, 1, r.stdout + r.stderr);
+  assert.match(r.stdout + r.stderr, /n'est plus vide/);
+  assert.deepEqual(readdirSync(join(test_, 'db')), ['vivante.db']);
+  assert.equal(lire(test_, 'db', 'vivante.db'), 'arrive');
+  assert.ok(!readdirSync(test_).some((f) => f.startsWith('.db.') || f.startsWith('.installation')), 'ni copie provisoire ni verrou restants');
+  assert.ok(!existsSync(join(test_, 'site')), 'le site n\'est pas posé : l\'installation s\'arrête avant');
+});
+
+test('test : une entrée créée dans db/ juste avant sa pose (fichier ou dossier) n\'est jamais écrasée : la copie s\'interrompt', { skip }, () => {
+  // Un faux « ln » (fichier) et un faux « mkdir » (dossier) créent l'entrée visée, comme le service qui écrit entre le contrôle et la pose,
+  // puis laissent la vraie commande échouer dessus : la pose ne doit rien remplacer.
+  for (const [cas, entree, fausse] of [['fichier', 'maverick.db', 'ln'], ['dossier', 'pieces', 'mkdir']]) {
+    const { test_ } = productionEtTest(`nas-copie-pose-${cas}`);
+    const faux = dossier(`faux-${fausse}-${cas}`);
+    mkdirSync(faux, { recursive: true });
+    const creer = cas === 'fichier' ? 'printf arrive > "$d"' : 'mkdir -p "$d" && printf arrive > "$d/arrive.txt"';
+    writeFileSync(join(faux, fausse), `#!/bin/sh\nPATH=$PATH_REEL\nfor a; do d=$a; done\ncase "$d" in */db/${entree}) ${creer} ;; esac\nexec ${fausse} "$@"\n`);
+    chmodSync(join(faux, fausse), 0o755);
+    const r = spawnSync('sh', [installateur({ mode: 'test', label: 'dev', version: '0.2.3' }).fichier, '--dossier', test_, '--copier-base-prod'], {
+      cwd: racine, encoding: 'utf8', env: { PATH: `${faux}:${process.env.PATH}`, PATH_REEL: process.env.PATH },
+    });
+    assert.equal(r.status, 1, `${cas} : ${r.stdout}${r.stderr}`);
+    assert.match(r.stdout + r.stderr, /copie de la production interrompue/, cas);
+    const arrive = cas === 'fichier' ? join(test_, 'db', entree) : join(test_, 'db', entree, 'arrive.txt');
+    assert.equal(readFileSync(arrive, 'utf8'), 'arrive', `${cas} : ce que le service avait créé est intact`);
+    if (cas === 'dossier') assert.deepEqual(readdirSync(join(test_, 'db', entree)), ['arrive.txt'], 'rien n\'est mêlé au dossier du service');
+    assert.ok(!existsSync(join(test_, 'site')), `${cas} : le site n'est pas posé`);
+  }
+});
+
+test('test : la pose conserve droits et contenu, fichiers et dossiers', { skip }, () => {
+  const { test_, prod } = productionEtTest('nas-copie-pose-droits');
+  chmodSync(join(prod, 'db', 'pieces'), 0o750);
+  chmodSync(join(prod, 'db', 'pieces', 'carte.txt'), 0o640);
+  const r = lancer(installateur({ mode: 'test', label: 'dev', version: '0.2.3' }).fichier, ['--dossier', test_, '--copier-base-prod']);
+  assert.equal(r.code, 0, r.out);
+  assert.equal(lire(test_, 'db', 'pieces', 'carte.txt'), 'carte');
+  assert.equal(statSync(join(test_, 'db', 'pieces', 'carte.txt')).mode & 0o777, 0o640);
+  assert.equal(statSync(join(test_, 'db', 'pieces')).mode & 0o777, 0o750);
+  assert.ok(!readdirSync(test_).some((f) => f.startsWith('.db.')), 'la copie provisoire est retirée');
 });
 
 test('refus : mauvais mode d\'instance, production introuvable ou confondue avec le test', { skip }, () => {
@@ -213,7 +333,7 @@ test('refus : mauvais mode d\'instance, production introuvable ou confondue avec
   const test_ = join(parent, 'maverick-center-test');
   const iTest = installateur({ mode: 'test', label: 't' }).fichier;
 
-  let r = lancer(iTest, ['--dossier', test_]);
+  let r = lancer(iTest, ['--dossier', test_, '--copier-base-prod']);
   assert.equal(r.code, 1);
   assert.match(r.out, /instance de production introuvable/);
   assert.ok(!existsSync(join(test_, 'site')));
@@ -224,7 +344,7 @@ test('refus : mauvais mode d\'instance, production introuvable ou confondue avec
 
   r = lancer(iTest, ['--dossier', test_, '--sans-base-prod']);
   assert.equal(r.code, 0, r.out);
-  assert.deepEqual(readdirSync(join(test_, 'db')), ['.copie-de-la-production'], 'base de test vide');
+  assert.deepEqual(readdirSync(join(test_, 'db')), [], 'base de test vide : sans demande, rien n\'est copié');
 
   const iProd = installateur({ label: 'p' }).fichier;
   r = lancer(iProd, ['--dossier', test_]);
@@ -245,7 +365,7 @@ test('refus : mauvais mode d\'instance, production introuvable ou confondue avec
   r = lancer(iTest, ['--dossier', ancienne]);
   assert.equal(r.code, 1);
   assert.match(r.out, /instance « prod »/);
-  r = lancer(iTest, ['--dossier', join(parent, 'autre-test'), '--dossier-prod', ancienne]);
+  r = lancer(iTest, ['--dossier', join(parent, 'autre-test'), '--dossier-prod', ancienne, '--copier-base-prod']);
   assert.equal(r.code, 0, r.out);
   assert.match(r.out, /pas de base vivante/);
   assert.equal(lancer(iProd, ['--dossier', ancienne]).code, 0, 'un installateur de production peut la reprendre');
@@ -273,7 +393,7 @@ test('test : base de production en cours d\'écriture (WAL non reporté) copiée
   ecrivain.exec("PRAGMA journal_mode = WAL; PRAGMA wal_autocheckpoint = 0; CREATE TABLE t (x INTEGER); INSERT INTO t VALUES (1), (2), (3);");
   assert.ok(existsSync(join(prod, 'db', 'maverick.db-wal')), 'les écritures sont encore dans le journal WAL');
   try {
-    const r = lancer(installateur({ mode: 'test', label: 't' }).fichier, ['--dossier', join(parent, 'maverick-center-test')]);
+    const r = lancer(installateur({ mode: 'test', label: 't' }).fichier, ['--dossier', join(parent, 'maverick-center-test'), '--copier-base-prod']);
     assert.equal(r.code, 0, r.out);
   } finally {
     ecrivain.close();
@@ -292,7 +412,7 @@ test('test : liens symboliques dans la base du serveur normal refusés ; db/ lui
   // Un lien vers un fichier du serveur normal : le test y écrirait. Refus, rien d'installé.
   writeFileSync(join(prod, 'db', 'vraie.db'), 'x');
   symlinkSync(join(prod, 'db', 'vraie.db'), join(prod, 'db', 'lien.db'));
-  let r = lancer(iTest, ['--dossier', join(parent, 'maverick-center-test')]);
+  let r = lancer(iTest, ['--dossier', join(parent, 'maverick-center-test'), '--copier-base-prod']);
   assert.equal(r.code, 1);
   assert.match(r.out, /liens symboliques : copie refusée/);
   assert.ok(!existsSync(join(parent, 'maverick-center-test', 'site')));
@@ -308,7 +428,7 @@ test('test : liens symboliques dans la base du serveur normal refusés ; db/ lui
   chmodSync(join(ailleurs, 'maverick.db'), 0o640);
   rmSync(join(prod, 'db'), { recursive: true });
   symlinkSync(ailleurs, join(prod, 'db'));
-  r = lancer(iTest, ['--dossier', join(parent, 'maverick-center-test')]);
+  r = lancer(iTest, ['--dossier', join(parent, 'maverick-center-test'), '--copier-base-prod']);
   assert.equal(r.code, 0, r.out);
   const copie = new DatabaseSync(join(parent, 'maverick-center-test', 'db', 'maverick.db'));
   assert.equal(copie.prepare('SELECT x FROM t').get().x, 42);
@@ -357,14 +477,13 @@ test('test : les métriques (db/metriques/, sans dossier des métriques réglé)
   mesures.exec('CREATE TABLE heure (n INTEGER); INSERT INTO heure VALUES (7);');
   mesures.close();
 
-  // Test : son db/ ne contient que ses métriques (pas encore de base) : MAVERICK_BASE_TEST=conservee ne l'en empêche pas de copier la production.
+  // Test : son db/ ne contient que ses métriques (pas encore de base) : la copie de la production, demandée, est permise.
   mkdirSync(join(test_, 'db', 'metriques'), { recursive: true });
   writeFileSync(join(test_, 'db', 'metriques', 'dev.db'), 'mesures du site de dev');
   writeFileSync(join(test_, '.env'), 'MAVERICK_CONTENEUR=maverick-center-test\nMAVERICK_PORT=127.0.0.1:8081\nMAVERICK_BASE_TEST=conservee\n');
   const metriques = statSync(join(test_, 'db', 'metriques')).ino;
-  const r = lancer(installateur({ mode: 'test', label: 'dev', version: '0.2.1' }).fichier, ['--dossier', test_]);
+  const r = lancer(installateur({ mode: 'test', label: 'dev', version: '0.2.1' }).fichier, ['--dossier', test_, '--copier-base-prod']);
   assert.equal(r.code, 0, r.out);
-  assert.doesNotMatch(r.out, /Base de test conservée/, 'db/ sans base : la production est copiée');
   const copie = new DatabaseSync(join(test_, 'db', 'maverick.db'));
   assert.deepEqual(copie.prepare('SELECT nom FROM fiche').all().map((l) => l.nom), ['Aldric']);
   copie.close();
@@ -373,7 +492,7 @@ test('test : les métriques (db/metriques/, sans dossier des métriques réglé)
   assert.equal(statSync(join(test_, 'db', 'metriques')).ino, metriques, 'dossier gardé (le service peut y avoir sa base ouverte)');
   assert.match(lire(test_, 'db', '.copie-de-la-production'), /^source=/m);
 
-  // Sans MAVERICK_BASE_TEST=conservee, chaque installation recopie la production : les métriques du test restent.
+  // Installations suivantes, avec ou sans le réglage historique : ni recopie, ni effacement ; les métriques du test restent.
   writeFileSync(join(test_, '.env'), 'MAVERICK_CONTENEUR=maverick-center-test\nMAVERICK_PORT=127.0.0.1:8081\n');
   const r2 = lancer(installateur({ mode: 'test', label: 'dev2', version: '0.2.2' }).fichier, ['--dossier', test_]);
   assert.equal(r2.code, 0, r2.out);
