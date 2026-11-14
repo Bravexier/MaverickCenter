@@ -6,7 +6,7 @@ Docker 29.1, Caddy 2.6.2 ; `instances.sh` est aussi exécuté par les tests, ave
 | | Adresse | Branche | Port interne | Base `db/` |
 | --- | --- | --- | --- | --- |
 | **Serveur normal** | `https://maverick-jdr.com` | `master` | `127.0.0.1:8080` | `/srv/maverick-center/db`, jamais touchée par une installation |
-| **Serveur de test** | `https://dev.maverick-jdr.com` | `dev` | `127.0.0.1:8081` | `/srv/maverick-center-test/db` : copie de celle du normal **à la première installation seulement**, puis **conservée** (`MAVERICK_BASE_TEST=conservee`) |
+| **Serveur de test** | `https://dev.maverick-jdr.com` | `dev` | `127.0.0.1:8081` | `/srv/maverick-center-test/db` : **la sienne**, jamais vidée ni remplacée par une installation ; la copie de celle du normal ne se pose que sur demande (`--copier-base-prod`, `db/` vide) |
 
 Le site est posé par les [installateurs](../installateur/README.md) (un par fusion, publiés en *release* GitHub par
 `.github/workflows/livraison.yml`). Caddy fait le HTTPS et aiguille vers l'instance selon l'adresse.
@@ -73,7 +73,7 @@ chaque instance ; rien n'est affiché. Relancer le script les conserve (`--regen
 1. Dans GitHub, page **Releases** du dépôt (public depuis le 2026-10-14), télécharger les deux fichiers de la dernière version :
    `maverick-center-VX.Y-install.sh` (normal) et `maverick-center-VX.Y.Z-install.sh` (test : la version complète de `dev`).
 2. Les copier sur le serveur : `scp -i .ssh\maverick_key maverick-center-*-install.sh ubuntu@<IP>:~/`
-3. Sur le serveur, **le normal d'abord** (le test en copie la base) :
+3. Sur le serveur, le normal d'abord (le serveur de test démarre avec une base vide, que le service crée à partir des règles du site ; pour partir d'une copie de la base du normal, ajouter `--copier-base-prod` à la commande du test) :
 
 ```
 sudo sh ~/maverick-center-VX.Y-install.sh --dossier /srv/maverick-center
@@ -146,7 +146,7 @@ Une maintenance qui ne finit pas (installateur bloqué, fichier `GELER`) : bouto
 Le service de chaque instance mesure ses temps de réponse, ses pages et le serveur ([`docs/serveur.md`](../../docs/serveur.md), « Métriques et
 volume » ; la page Debug du site de dev les montre). **Deux jeux de données séparés** (décision du propriétaire) : `prod.db` pour le serveur normal,
 `dev.db` pour le serveur de test, côte à côte dans `/srv/maverick-center/metriques/`, que les deux instances montent ; chacune n'écrit que le sien,
-le site de dev lit aussi celui de la production. Hors de `db/` : l'installateur de test ne les copie ni ne les efface. `instances.sh` (étape 4)
+le site de dev lit aussi celui de la production. Hors de `db/` : l'installateur ne les copie ni ne les efface. `instances.sh` (étape 4)
 crée ce dossier, pose `MAVERICK_INSTANCE` et `MAVERICK_DOSSIER_METRIQUES` dans les deux `.env` et installe `volume.sh` et son minuteur
 (`maverick-volume.timer`). Les journaux des conteneurs tournent : 5 fichiers de 10 Mo au plus par conteneur (`docker-compose.yml`). La mesure des
 pages par le navigateur est active sur les deux sites ; pour la couper sur une instance : `MAVERICK_METRIQUES_PAGES=0` dans son `.env`, puis

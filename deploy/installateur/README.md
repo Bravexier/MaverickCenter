@@ -16,7 +16,7 @@ Prérequis sur l'hôte : un hôte Docker (Linux), `sh`, `tar`, `gzip`, et `sha25
 | Installateur | `maverick-center-VX.Y-install.sh` (fusion dans `master` ; `VX.Y-hotfix.N` après un hotfix) | `maverick-center-VX.Y.Z-install.sh` (fusion dans `dev` : la version complète de `dev`, sans suffixe) |
 | Dossier conseillé | `/srv/maverick-center` | `/srv/maverick-center-test` (à côté du serveur normal) |
 | Adresse | `http://<hôte>:8080` | `http://<hôte>:8081`, bandeau « Serveur de dev » sur chaque page |
-| Base vivante `db/` | jamais touchée par une installation | **son contenu est remplacé à chaque installation par une copie de celle du serveur normal, prise à cet instant** (le dossier reste : il est monté dans le conteneur du service, qui rouvre la base). **Sauf** si le `.env` de l'instance contient `MAVERICK_BASE_TEST=conservee` : la copie n'est faite qu'à la première installation (`db/` vide), puis `db/` n'est plus touché, pour que les modifications faites en test durent ([`deploy/vps/`](../vps/README.md) pose ce réglage) |
+| Base vivante `db/` | jamais touchée par une installation | **jamais vidée ni remplacée par une installation** : la base du site de dev (ses saisies) n'existe nulle part ailleurs. `db/` vide, le service y crée sa base à partir des règles du site. La copie de celle du serveur normal, prise à cet instant, ne se fait que **sur demande** (`--copier-base-prod`) et **seulement si `db/` est vide** (hors `metriques/`) : sinon l'installateur refuse, avant d'écrire quoi que ce soit. Le réglage `MAVERICK_BASE_TEST=conservee` du `.env` n'a plus d'effet |
 
 Une instance = un dossier : `site/` (remplacé à chaque installation, avec le code du service des personnages, `site/_serveur/`), `db/` (base vivante
 du service : utilisateurs, fiches, et ce qu'ils font ; voir [`docs/serveur.md`](../../docs/serveur.md)), `docker-compose.yml` (deux conteneurs : nginx et le service),
@@ -37,10 +37,11 @@ tournent : 5 fichiers de 10 Mo au plus par conteneur. Un installateur de test re
 2. Lancez-le (en `root` ou avec un compte qui peut écrire dans le dossier) :
    ```bash
    sh maverick-center-V1.2-install.sh --dossier /srv/maverick-center                # serveur normal
-   sh maverick-center-V1.2.3-install.sh --dossier /srv/maverick-center-test         # test : copie la base du serveur normal voisin
+   sh maverick-center-V1.2.3-install.sh --dossier /srv/maverick-center-test         # test : db/ n'est pas touché
    ```
-   Options : `--verifier` (contrôle l'archive et s'arrête), `--dossier-prod <dossier>` (test : serveur normal ailleurs que dans le dossier voisin
-   `maverick-center`), `--sans-base-prod` (test sans serveur normal : base vide).
+   Options : `--verifier` (contrôle l'archive et s'arrête), `--copier-base-prod` (test : pose dans `db/` une copie de la base du serveur normal ;
+   refusé si `db/` n'est pas vide : arrêtez d'abord le service, sinon il recrée sa base et la copie est refusée), `--dossier-prod <dossier>` (avec `--copier-base-prod` : serveur normal ailleurs que dans le dossier voisin
+   `maverick-center`). `--sans-base-prod` est accepté et sans effet.
 3. **Première installation d'une instance** : créez le fichier de mots de passe, puis lancez le conteneur (l'installateur le rappelle) :
    ```bash
    cd /srv/maverick-center
@@ -48,7 +49,7 @@ tournent : 5 fichiers de 10 Mo au plus par conteneur. Un installateur de test re
    docker compose up -d
    ```
 
-Ordre conseillé la première fois : le serveur normal, puis le serveur de test (qui copie sa base). Les mises à jour suivantes n'ont besoin que de
+Ordre conseillé la première fois : le serveur normal, puis le serveur de test (base vide, sauf `--copier-base-prod`). Les mises à jour suivantes n'ont besoin que de
 l'étape 2 : nginx relit les fichiers, et le service se relance seul quand la livraison apporte une nouvelle version de son code (il refait aussi sa
 base quand les règles changent, sans perdre les fiches). Port ou nom du conteneur : à changer dans `.env`, puis `docker compose up -d`.
 
@@ -67,8 +68,7 @@ l'instance :
 
 1. `touch GELER`, puis sauvegardez la base en place, hors de `db/` : `sqlite3 db/vivante.db ".backup /root/vivante-avant-retour.db"`.
 2. Trouvez l'archive, la plus récente de `db/archives/` qui a encore la table `personnage_progression`, et **copiez-la à part tout de suite** :
-   seules les 5 dernières archives sont gardées (`ARCHIVES_GARDEES` : au-delà, chaque reconstruction efface la plus ancienne), et l'installateur
-   de test remplace le contenu de `db/`.
+   seules les 5 dernières archives sont gardées (`ARCHIVES_GARDEES` : au-delà, chaque reconstruction efface la plus ancienne).
    ```bash
    for f in db/archives/vivante-*.db; do sqlite3 "$f" ".tables personnage_progression" | grep -q . && echo "$f"; done | tail -1
    cp db/archives/vivante-AAAA-MM-JJT….db /root/vivante-avant-0045.db     # le fichier affiché par la ligne précédente
@@ -97,6 +97,12 @@ sont perdues avec le reste. Revenir sous 0045 depuis une version d'après 0055 :
 l'exécute s'il n'est pas déjà installé. Connexions sortantes uniquement : aucun port à ouvrir. Il reconnaît les livraisons de son serveur à la
 forme de leur étiquette : `VX.Y.Z` (trois nombres, la version de `dev`) pour le serveur de test, `VX.Y` pour le serveur normal.
 
+**Le serveur de test refuse une livraison plus ancienne que celle installée** (`VX.Y.Z-rebuild.N` compte : V1.2.4-rebuild.1 est plus récente que V1.2.4) : il
+écrit le refus dans `mise-a-jour.log` et sort avec le code 1, sans rien télécharger ni modifier, à chaque passage du minuteur tant que la situation dure.
+Même étiquette : « À jour ». Pas de `VERSION` ni de ligne `tag=` : première installation, elle se fait. Une étiquette installée qui n'a pas la forme
+d'une livraison de test est refusée aussi, avec son message. `sh mise-a-jour.sh --force` installe la livraison publiée malgré tout (retour en arrière
+voulu) ; un fichier `GELER` suspend les mises à jour. Attention : un `--force` qui installerait un installateur de test publié avant cette règle (db/ jamais touché) recopierait la production sur `db/`, sauf si `MAVERICK_BASE_TEST=conservee` est posé dans le `.env` et `db/` rempli (c'est le cas du VPS, `deploy/vps/instances.sh`). Le serveur normal ne fait pas ce contrôle : sa livraison est celle que GitHub marque « latest ».
+
 1. **Jeton GitHub** : *Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token*, *Repository access* :
    **Only select repositories → MaverickCenter**, *Permissions → Contents : Read-only*. Déposez-le dans chaque dossier d'instance, lisible par `root`
    uniquement (jamais dans une conversation, un fichier du dépôt ou un journal) :
@@ -107,9 +113,8 @@ forme de leur étiquette : `VX.Y.Z` (trois nombres, la version de `dev`) pour le
 3. **Planifier toutes les 5 minutes**, une tâche par instance : `crontab -e` puis `*/5 * * * * sh /srv/maverick-center/mise-a-jour.sh`
    (et `…/maverick-center-test/mise-a-jour.sh`).
 
-Serveur de test dont le serveur normal n'est pas le dossier voisin `maverick-center` : créez `mise-a-jour.env` à côté du script avec
-`DOSSIER_PROD=/chemin/du/serveur-normal` (ou `SANS_BASE_PROD=1` pour un serveur de test sans serveur normal, base vide). Un fichier `GELER` dans le
-dossier de l'instance suspend ses mises à jour. Chaque installation automatique du test reprend une copie fraîche de la base du serveur normal.
+Un fichier `GELER` dans le dossier de l'instance suspend ses mises à jour. Une installation automatique ne touche jamais à `db/` : le serveur de test
+garde sa base.
 Un jeton expiré, un problème réseau ou un installateur abîmé n'abîment rien : l'instance reste telle quelle et `mise-a-jour.log` indique l'erreur.
 
 ## Fabriquer un installateur à la main

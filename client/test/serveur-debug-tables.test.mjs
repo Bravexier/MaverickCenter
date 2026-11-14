@@ -160,8 +160,8 @@ test('fiches (section 13) : tout se lit sur le site de dev (décision du propri�
   }
   // le journal de l'édition (section 14) et les notes de version (15) se lisent aussi
   for (const nom of [...TABLES_EDITION, 'note_version', 'historique_modification']) assert.equal(appel('GET', `/api/debug/tables/${nom}/`).statut, 200, nom);
-  // le serveur de dev reste ouvert (réponses du propriétaire du 2026-10-15) : sa base vivante est une copie de celle de production, faite à sa
-  // première installation — dit dans l'en-tête du module, dans docs/api.md (« Contenu des tables ») et docs/serveur.md ; les réponses rangées dans la
+  // le serveur de dev reste ouvert (réponses du propriétaire du 2026-10-15) : sa base vivante est la sienne, qu'une installation ne remplace jamais
+  // (R274 ; à l'origine, une copie de celle de production posée sur demande) — dit dans l'en-tête du module, dans docs/api.md (« Contenu des tables ») et docs/serveur.md ; les réponses rangées dans la
   // feuille de route, et l'écart (copie après chaque mise en production, attendue par le propriétaire) posé parmi les questions ouvertes
   const racine = trouverRacine();
   const aplatir = (texte) => texte.replace(/^\s*\/\/ ?/gm, '').replace(/\s+/g, ' ');
@@ -173,8 +173,8 @@ test('fiches (section 13) : tout se lit sur le site de dev (décision du propri�
   const questions = aplatir(section(feuille, '### Questions encore ouvertes'));
   const serveur = aplatir(readFileSync(join(racine, 'docs', 'serveur.md'), 'utf8'));
   for (const [ou, texte, motifs] of [
-    ['en-tête de debug-tables.mjs', entete, [/Le serveur de dev reste ouvert/, /copiée de celle de production à sa première installation/, /ne part jamais en production/]],
-    ['docs/api.md', doc, [/\*\*Le serveur de dev reste ouvert\*\*/, /copie de celle de production\*\*/, /MAVERICK_BASE_TEST=conservee/, /ne part jamais en production/]],
+    ['en-tête de debug-tables.mjs', entete, [/Le serveur de dev reste ouvert/, /Sa base vivante est la sienne : une installation ne la remplace jamais/, /ne part jamais en production/]],
+    ['docs/api.md', doc, [/\*\*Le serveur de dev reste ouvert\*\*/, /la \*\*sienne, que l'installateur ne remplace jamais\*\*/, /R274/, /ne part jamais en production/]],
     ['docs/feuille-de-route.md, réponses', reponses, [/\*\*Serveur de dev\*\* : il reste/, /« Le serveur dev restera\./, /ne part pas en production/]],
     ['docs/feuille-de-route.md, questions', questions, [/\*\*Copie de la production vers le dev après la mise en production\*\*/, /MAVERICK_BASE_TEST=conservee/]],
     ['docs/serveur.md', serveur, [/ni listée ni lisible par l'API des personnages/, /le serveur de dev reste ouvert à ceux qui y auront accès/]],

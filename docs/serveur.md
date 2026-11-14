@@ -141,7 +141,7 @@ d'avant les retraits et les conversions (les gains niveau par niveau compris).
 refaite en 0045 (sans `personnage_progression`, toute lecture de fiche échoue) et refuse de la reconstruire (`gains_sante` et `gains_chakra`,
 obligatoires, sont toujours remplis, même à 0). Il faut lui rendre l'archive faite à la reconstruction 0045 : la plus récente de `db/archives/` qui
 a encore la table `personnage_progression`, **copiée à part avant tout** (seules les `ARCHIVES_GARDEES` = 5 dernières sont gardées : au-delà,
-chaque reconstruction efface la plus ancienne ; l'installateur de test remplace le contenu de `db/`). **De même pour la migration 0055** : le service
+chaque reconstruction efface la plus ancienne). **De même pour la migration 0055** : le service
 d'avant ne relit pas une base refaite en 0055 (sans `personnage_armure`, toute lecture de fiche échoue) et refuse de la reconstruire (les colonnes
 `personnage.armure_*` remplies n'existent pas dans ses règles) ; l'archive à rendre est la plus récente qui a encore la table `personnage_armure`
 (sous 0045 aussi : celle qui a encore `personnage_progression`), et l'armure et la solidité des parties saisies depuis sont perdues avec le reste.
@@ -1123,8 +1123,8 @@ pour ne pas agir au milieu d'une copie) :
 
 1. `site/_serveur/version.json` : une nouvelle version du service s'arrête (code 0) et Docker la relance (`restart: unless-stopped`) ;
 2. `site/donnees/maverick.db` : de nouvelles règles refont la base vivante (ci-dessus) ;
-3. `db/vivante.db` : remplacée par l'installateur du serveur de test (copie de la production), elle est rouverte. L'installateur remplace le
-   **contenu** de `db/`, pas le dossier, qui est monté dans le conteneur.
+3. `db/vivante.db` : remplacée de l'extérieur (une restauration, ou la copie de la production que l'installateur de test pose sur demande, dans un
+   `db/` vide), elle est rouverte. Une installation ne vide ni ne remplace jamais `db/` (R274) ; le dossier est monté dans le conteneur.
 
 Seul un changement de `docker-compose.yml` ou de `nginx.conf` demande `docker compose up -d` (l'installateur le signale ; sur le NAS, voir
 `deploy/README.md`).
@@ -1192,8 +1192,9 @@ qui grossit sur le serveur.
   | Autre instance posée par un installateur | `metriques/` du dossier de l'instance (créé par Docker) | Non : le site de dev ne voit la production que si son `.env` donne `MAVERICK_DOSSIER_METRIQUES=<dossier du serveur normal>/metriques` |
   | NAS (`deploy/docker-compose.yml`) et `npm run serveur` | `db/metriques/` (défaut du service : `<dossier de la base vivante>/metriques/`) | Non (une seule instance) |
 
-- **L'installateur de test** remplace le contenu de `db/` par une copie de celui du serveur normal : les métriques n'y sont pas quand le dossier est
-  réglé, et `db/metriques/` (défaut) n'est **ni copié** de la production **ni effacé** du test, ni compté comme une base (`MAVERICK_BASE_TEST=conservee`).
+- **L'installateur de test** ne touche jamais à `db/`, sauf pour y poser, sur demande (`--copier-base-prod`) et dans un `db/` vide, une copie de celui du
+  serveur normal : les métriques n'y sont pas quand le dossier est réglé, et `db/metriques/` (défaut) n'est **jamais copié** de la production, jamais
+  effacé du test, et ne compte pas pour une base (un `db/` qui ne contient que lui est vide).
   `client/test/installateur.test.mjs` le vérifie.
 - **Mesure des pages par le navigateur** (`POST /api/metriques/page/`) : acceptée sur les deux instances, chacune dans son fichier ; l'interrupteur
   pour plus tard est `MAVERICK_METRIQUES_PAGES=0` dans le `.env` de l'instance, puis `docker compose up -d` (la balise reçoit alors `403`).
@@ -1375,7 +1376,7 @@ journald).
 | Images Docker | `/var/lib/docker/` | `nginx:1.27-alpine` (~50 Mo) et `node:22-alpine` (~160 Mo), partagées par les deux instances | Oui : jamais retirées automatiquement ; après un `docker compose pull`, l'ancienne image reste : `docker image prune` |
 | Installateurs téléchargés par `mise-a-jour.sh` | `$TMPDIR` (`/tmp/maverick-mise-a-jour.*`), puis extraits dans `<instance>/.installation.<pid>/` | ~20 Mo, puis ~145 Mo extraits, **pendant l'installation seulement** (les deux instances peuvent s'installer dans les mêmes 5 minutes : ~330 Mo de pointe) | Oui : effacés à la fin ; restent seulement après un arrêt brutal (coupure, `kill -9`) : voir les commandes ci-dessous |
 | Installateurs copiés à la main | `~/maverick-center-*-install.sh` | ~20 Mo chacun | **Non** : à effacer après l'installation |
-| Copie de la base par l'installateur de test | `/srv/maverick-center-test/db/` (et `.db.copie.<pid>/` pendant la copie) | Le `db/` du serveur normal, archives comprises (≤ ~150 Mo), le double pendant la copie | Oui : avec `MAVERICK_BASE_TEST=conservee` (VPS), à la première installation seulement |
+| Copie de la base par l'installateur de test | `/srv/maverick-center-test/db/` (et `.db.copie.<pid>/` pendant la copie) | Le `db/` du serveur normal, archives comprises (≤ ~150 Mo), le double pendant la copie | Oui : jamais sans `--copier-base-prod`, refusée si `db/` n'est pas vide |
 | Journaux des scripts | `mise-a-jour.log`, `update.log` ; `installation.log` | Les deux premiers tournent au-delà de 200 Ko ; `installation.log` : ~5 lignes par installation | `installation.log` non borné, ~0,2 Mo par an |
 | Sauvegardes à la main | `/root/vivante-*.db` (`deploy/vps/README.md`, « Sauvegardes ») | Une base vivante chacune | **Non** : à faire tourner ou à sortir du serveur |
 | Système | journal de systemd (Caddy, mises à jour automatiques), `/var/cache/apt` | journald se borne seul (10 % du disque, 4 Gio au plus) | Oui ; `journalctl --vacuum-size=200M`, `apt-get clean` pour en reprendre |
@@ -1415,7 +1416,7 @@ journal, rejeu), `serveur-tipeee` et `tipeee` (la partie « Bienvenue » de Tipe
 (liste et couleurs), `mise-a-jour-regles` (lot appliqué à data/rows : conflit, liste blanche), `mise-a-jour-github` (le workflow),
 `mise-a-jour-simulation` (le lot synthétique de la CI, l'état « note en attente », le job `simulation-de-mise-a-jour`), `serveur-maintenance`
 (annonce, deux serveurs qui rouvrent chacun à sa version, fin sans livraison, levée, plafond, minuterie, adresse de retour), `db-appliquer-edition` (rapatriement dans data/rows, versé dans l’historique), `historique-site` (ce que le site a changé, état d’import), `serveur-livraison` (modules livrés, service livré démarré tel quel,
-`docker-compose.yml` et `nginx.conf` cohérents), `installateur` (contenu de `db/` remplacé, dossier gardé, métriques jamais copiées ni effacées),
+`docker-compose.yml` et `nginx.conf` cohérents), `installateur` (`db/` jamais vidé ni remplacé, copie de la production sur demande dans un `db/` vide seulement, métriques jamais copiées ni effacées),
 `serveur-metriques`, `serveur-metriques-http`, `serveur-metriques-bornes` et `serveur-metriques-disque` (métriques : routes normalisées, agrégats,
 quantiles, rétention, deux instances, vraies requêtes HTTP, croissance et projections, cardinalité et plafond, répartition du disque, relevé de
 l'hôte, réserve de root), `debug-metriques` et `debug-balise` (rendus de la page

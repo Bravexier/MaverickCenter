@@ -4,7 +4,7 @@
 // Il surveille trois fichiers (toutes les `intervalle` ms ; un changement compte quand il a été vu deux fois de suite, pour ne pas agir au
 // milieu d'une copie) :
 //   - la base des règles publiée par le site : quand une livraison la change, la base vivante est refaite (fiches reprises) ;
-//   - la base vivante : remplacée par l'installateur du serveur de test (copie de la production), elle est rouverte ;
+//   - la base vivante : remplacée de l'extérieur (une restauration, ou la copie de la production posée par l'installateur de test sur demande), elle est rouverte ;
 //   - version.json du service livré : une nouvelle version arrête le processus (code 0), que Docker relance (restart: unless-stopped).
 // Sur le site de dev, la même minuterie suit aussi une vraie mise à jour en cours (run GitHub, note arrivée) et publie l'annonce de maintenance que
 // lisent les deux serveurs (maintenance.mjs).

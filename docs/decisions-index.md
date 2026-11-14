@@ -2,7 +2,7 @@
 
 Ne lis jamais `docs/decisions-regles.md` en entier : trouve ici le numéro de la décision, puis cherche sa ligne avec Grep (motif `^\| R41 \|`) et ne lis qu'elle.
 
-Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 273 décisions, de R1 à R273, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
+Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 276 décisions, de R1 à R276, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
 
 | Réf. | Sujet | Décision |
 | --- | --- | --- |
@@ -279,3 +279,6 @@ Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas mo
 | R271 | Couleur d'une page et mot-clé qui mène à une section (lot « fusion des pag… | Un mot-clé dont l'adresse mène à une section (`#…`) ne… |
 | R272 | Page « Accessoires et Ceinture » supprimée, adresse de la page de l'invent… | Les sections « Accessoires » et « Ceinture » passent t… |
 | R273 | « (classe) » dans l’historique des modifications (CI rouge de la simulatio… | L’historique des modifications garde les valeurs telle… |
+| R274 | La base du site de dev devient la source de vérité (2026-11-14, plan `docs… | La base du site de dev fait foi ; le dépôt GitHub ne g… |
+| R275 | Réponses au plan « la base du site de dev devient la source de vérité » (2… | Le plan est accepté et les recommandations des questio… |
+| R276 | Ce que le propriétaire fait lui-même pendant le chantier de la base de dev… | Chaque lot réduit au strict nécessaire ce que le propr… |
