@@ -6,7 +6,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ancresRompues } from '../src/lib/ancres-figees.mjs';
-import { decouperEnOnglets, panneauRendu } from '../src/lib/guide-onglets.mjs';
+import { ALIGNEMENTS_EN_GRILLE } from '../src/lib/caracteristiques-postures.mjs';
+import { dansLOrdre, decouperEnOnglets, panneauRendu } from '../src/lib/guide-onglets.mjs';
+import { idDeCouleur } from '../src/lib/palette-css.mjs';
 import { versMarkdown } from '../src/lib/markdown-edition.mjs';
 import { enfantsDuHtml, rendreCommeLeGuide } from './aide-rendu-du-site.mjs';
 
@@ -138,4 +140,21 @@ test('le mode modification relit un morceau en onglets sans perte : barre ignor�
   // sans la marque `data-ed-ignorer`, la barre s'écrirait dans le texte : c'est elle qui la garde hors du Markdown
   const sansMarque = versMarkdown(enfantsDuHtml(await compose((ps) => barre(ps).replace(' data-ed-ignorer', ''))));
   assert.notEqual(sansMarque, aPlat);
+});
+
+test('la barre dans l’ordre voulu, les panneaux intacts ; une ancre hors de l’ordre suit, dans l’ordre du texte', () => {
+  const panneaux = ['a', 'x', 'b', 'c', 'y'].map((ancre) => ({ ancre }));
+  assert.deepEqual(dansLOrdre(panneaux, ['c', 'a', 'b']).map((p) => p.ancre), ['c', 'a', 'b', 'x', 'y']);
+  assert.deepEqual(panneaux.map((p) => p.ancre), ['a', 'x', 'b', 'c', 'y'], 'la liste reçue n’est pas changée');
+  assert.deepEqual(dansLOrdre(panneaux, new Map([['b', 1]]).keys()).map((p) => p.ancre), ['b', 'a', 'x', 'c', 'y'], 'un itérable suffit');
+});
+
+test('la grille des alignements : Loyal, Neutre, Chaotique en colonnes ; Bon, Neutre, Mauvais en lignes (demande du propriétaire du 2026-11-14)', () => {
+  const lignes = [0, 3, 6].map((i) => ALIGNEMENTS_EN_GRILLE.slice(i, i + 3));
+  const axe = (nom, mots) => mots.find((m) => nom.split(' ').includes(m)) ?? 'Neutre';
+  for (const [i, ligne] of lignes.entries()) {
+    assert.deepEqual(ligne.map((n) => axe(n, ['Loyal', 'Chaotique'])), ['Loyal', 'Neutre', 'Chaotique'], `ligne ${i + 1} : les colonnes`);
+    assert.ok(ligne.every((n) => axe(n, ['Bon', 'Mauvais']) === ['Bon', 'Neutre', 'Mauvais'][i]), `ligne ${i + 1} : la morale`);
+  }
+  assert.equal(new Set(ALIGNEMENTS_EN_GRILLE.map(idDeCouleur)).size, 9);
 });

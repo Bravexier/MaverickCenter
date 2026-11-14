@@ -17,8 +17,8 @@ import { fileURLToPath } from 'node:url';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { morceauxDuChapitre } from '../src/lib/guide.mjs';
-import { decouperEnOnglets } from '../src/lib/guide-onglets.mjs';
-import { COULEURS_ALIGNEMENTS } from '../src/lib/caracteristiques-postures.mjs';
+import { dansLOrdre, decouperEnOnglets } from '../src/lib/guide-onglets.mjs';
+import { ALIGNEMENTS_EN_GRILLE, COULEURS_ALIGNEMENTS } from '../src/lib/caracteristiques-postures.mjs';
 import { classeDuMotCle, motCleDeLaPage } from '../src/lib/mots-cles-liens.mjs';
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 import { decouperCorps, versMarkdown } from '../src/lib/markdown-edition.mjs';
@@ -478,7 +478,7 @@ test('« Alignement » : les neuf alignements en onglets colorés, un panneau pa
   const decoupe = (corps) => morceauxDuChapitre(corps).filter((m) => 'markdown' in m).map((m) => decouperEnOnglets(m.markdown, ancres)).find(Boolean) ?? null;
   const id = 'guide/alignement';
 
-  // à l'import : neuf sections, une par alignement de la palette, dans l'ordre de la grille (LB, LN, LM, NB, N, NM, CB, CN, CM) ; la phrase de clôture sort du dernier
+  // à l'import : neuf sections, une par alignement de la palette, dans l'ordre du texte (LB, LN, LM, NB, N, NM, CB, CN, CM) ; la phrase de clôture sort du dernier
   const dImport = decoupe(texteDImport('page', { id }, 'corps_md'));
   assert.ok(dImport, 'l’import découpe la page en onglets');
   assert.equal(dImport.panneaux.length, 9);
@@ -498,14 +498,18 @@ test('« Alignement » : les neuf alignements en onglets colorés, un panneau pa
   if (!attendu) return assert.equal(onglets.length + panneaux.length, 0, 'sans section à ancre d’alignement, pas d’onglets');
   assert.equal(onglets.length, attendu.panneaux.length);
   assert.equal(panneaux.length, attendu.panneaux.length);
-  assert.deepEqual(onglets.map((o) => o[2]), attendu.panneaux.map((p) => p.ancre), 'un onglet par section, dans l’ordre du texte');
+  // la barre suit la grille des alignements (« LB NB CB / LN N CN / LM NM CM »), les panneaux l'ordre du texte ; le premier de la barre est ouvert
+  const grille = dansLOrdre(attendu.panneaux, ALIGNEMENTS_EN_GRILLE.map(idDeCouleur));
+  assert.deepEqual(onglets.map((o) => o[2]), grille.map((p) => p.ancre), 'un onglet par section, dans l’ordre de la grille');
+  assert.deepEqual(panneaux.map((p) => p[2]), attendu.panneaux.map((p) => p.ancre), 'les panneaux dans l’ordre du texte');
   for (const [i, p] of attendu.panneaux.entries()) {
-    const [, classe, ancre, href, titre] = onglets[i];
+    const [, classe, ancre, href, titre] = onglets.find((o) => o[2] === p.ancre);
+    const ouvert = p.ancre === grille[0].ancre;
     const couleur = classes.get(p.ancre);
     // l'onglet : la classe de couleur de la palette (jamais un style), il mène à son panneau ; le premier est ouvert, lui seul
     assert.deepEqual(classe.split(/\s+/).filter((c) => c.startsWith('couleur-')), [couleur], `${p.ancre} : la classe de couleur de l’alignement`);
     assert.ok(classe.split(/\s+/).includes('onglet'), `${p.ancre} : la classe que le script des onglets prend`);
-    assert.equal(classe.split(/\s+/).includes('is-active'), i === 0, `${p.ancre} : onglet ouvert au départ`);
+    assert.equal(classe.split(/\s+/).includes('is-active'), ouvert, `${p.ancre} : onglet ouvert au départ`);
     assert.equal(href, p.ancre);
     assert.equal(ancre, p.ancre);
     // le panneau : l'id de l'ancre (une adresse `#<ancre>` ou un mot-clé y mène), la même classe de couleur, son texte entier
@@ -513,7 +517,7 @@ test('« Alignement » : les neuf alignements en onglets colorés, un panneau pa
     assert.equal(idPanneau, p.ancre);
     assert.equal(html.split(`id="${p.ancre}"`).length - 1, 1, `${p.ancre} : l’id n’est qu’une fois dans la page (l’intertitre du panneau ne le double pas)`);
     assert.deepEqual(classePanneau.split(/\s+/).filter((c) => c.startsWith('couleur-')), [couleur], `${p.ancre} : le panneau reprend la couleur`);
-    assert.equal(classePanneau.split(/\s+/).includes('is-active'), i === 0, `${p.ancre} : panneau ouvert au départ`);
+    assert.equal(classePanneau.split(/\s+/).includes('is-active'), ouvert, `${p.ancre} : panneau ouvert au départ`);
     assert.match(interieur, new RegExp(`<h3[^>]*\\sdata-ancre-figee="${p.ancre}"`), `${p.ancre} : l’intertitre garde son ancre figée (l’éditeur la réécrit)`);
     const rendu = avecLesMotsCles(await rendreCommeLeGuide(p.markdown), db);
     assert.equal(texteAffiche(interieur).trim(), texteAffiche(rendu).trim(), `${p.ancre} : tout le texte de la section`);

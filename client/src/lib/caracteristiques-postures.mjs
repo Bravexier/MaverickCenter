@@ -47,6 +47,16 @@ export const COULEURS_ALIGNEMENTS = {
 };
 
 /**
+ * Les neuf alignements dans l'ordre de leur grille, ligne par ligne : Loyal, Neutre, Chaotique en colonnes ; Bon, Neutre, Mauvais en lignes (demande du
+ * propriétaire du 2026-11-14 pour les onglets de la page « Alignement » : « LB NB CB / LN N CN / LM NM CM »).
+ */
+export const ALIGNEMENTS_EN_GRILLE = Object.freeze([
+  'Loyal Bon', 'Neutre Bon', 'Chaotique Bon',
+  'Loyal Neutre', 'Neutre', 'Chaotique Neutre',
+  'Loyal Mauvais', 'Neutre Mauvais', 'Chaotique Mauvais',
+]);
+
+/**
  * Couleur d'une caractéristique, d'une posture ou d'un alignement absent des listes (aucun aujourd'hui : test/caracteristiques-postures.test.mjs) ; sa
  * classe est `couleur-<famille>-par-defaut` (lib/palette-css.mjs).
  */

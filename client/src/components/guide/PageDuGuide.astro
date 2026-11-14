@@ -6,8 +6,8 @@ import Onglets from '../Onglets.astro';
 import PiedDePage from '../PiedDePage.astro';
 import GuideBloc from './GuideBloc.astro';
 import { morceauxDuChapitre } from '../../lib/guide.mjs';
-import { decouperEnOnglets, panneauRendu } from '../../lib/guide-onglets.mjs';
-import { COULEURS_ALIGNEMENTS } from '../../lib/caracteristiques-postures.mjs';
+import { dansLOrdre, decouperEnOnglets, panneauRendu } from '../../lib/guide-onglets.mjs';
+import { ALIGNEMENTS_EN_GRILLE } from '../../lib/caracteristiques-postures.mjs';
 import { estDuGuideDuMj, filDAriane, partieDeLaPage, RUBRIQUES_SOUS_LA_PAGE } from '../../lib/livres.mjs';
 import { classeDAlignement, classeDePartie, cssDesAlignements, cssDesParties, idDeCouleur } from '../../lib/palette-css.mjs';
 import { classeDeLaPageDuSite } from '../../lib/couleur-de-la-page.mjs';
@@ -47,17 +47,21 @@ const reference = estDuGuideDuMj(entry.id);
 // Les neuf alignements de « Alignement » en onglets, un par intertitre `###` dont l'ancre figée est celle d'un alignement de la palette (lib/guide-onglets.mjs :
 // jamais son texte, qui se renomme sur le site de dev), chacun dans la classe de sa couleur (`couleur-alignement-<id>`, lib/palette-css.mjs) : demande du
 // propriétaire, « Liste les 9 allignements sous forme de tableau (ou de tuile) à onglet ou chaque onglet a la couleur de l'alignement ».
-const classesDesOnglets = new Map(Object.keys(COULEURS_ALIGNEMENTS).map((nom) => [idDeCouleur(nom), classeDAlignement(nom)]));
+// La barre suit la grille des alignements (ALIGNEMENTS_EN_GRILLE : « LB NB CB / LN N CN / LM NM CM »), les panneaux l'ordre du texte ; le premier de la barre
+// est ouvert.
+const classesDesOnglets = new Map(ALIGNEMENTS_EN_GRILLE.map((nom) => [idDeCouleur(nom), classeDAlignement(nom)]));
 const rendre = async (markdown: string) => (markdown.trim() ? rendreMarkdown(markdown, entry.id, entry.data.status) : '');
 const morceaux: any[] = await Promise.all(
   morceauxDuChapitre(entry.body ?? '').map(async (m: any) => {
     if ('bloc' in m) return m;
     const decoupe = decouperEnOnglets(m.markdown, new Set(classesDesOnglets.keys()));
     if (!decoupe) return { html: await rendre(m.markdown) };
+    const premier = dansLOrdre(decoupe.panneaux, classesDesOnglets.keys())[0].ancre;
     const panneaux = await Promise.all(
-      decoupe.panneaux.map(async (p: any, i: number) => ({ ...panneauRendu(await rendre(p.markdown), p.ancre), ancre: p.ancre, classe: classesDesOnglets.get(p.ancre), actif: i === 0 })),
+      decoupe.panneaux.map(async (p: any) => ({ ...panneauRendu(await rendre(p.markdown), p.ancre), ancre: p.ancre, classe: classesDesOnglets.get(p.ancre), actif: p.ancre === premier })),
     );
-    return { onglets: { avant: await rendre(decoupe.avant), panneaux, apres: await rendre(decoupe.apres), etiquette: decoupe.etiquette } };
+    const barre = dansLOrdre(panneaux, classesDesOnglets.keys());
+    return { onglets: { avant: await rendre(decoupe.avant), panneaux, barre, apres: await rendre(decoupe.apres), etiquette: decoupe.etiquette } };
   }),
 );
 const avecOnglets = morceaux.some((m) => 'onglets' in m);
@@ -104,7 +108,7 @@ const css = [blocsCss, magieTooltipsCss, ...(avecOnglets ? [ongletsCss] : [])].j
             <Fragment set:html={m.onglets.avant} />
             <div class="onglets-guide" data-onglets>
               <nav class="onglets-guide__liste" aria-labelledby={m.onglets.etiquette ?? undefined} data-ed-ignorer contenteditable="false">
-                {m.onglets.panneaux.map((p: any) => (
+                {m.onglets.barre.map((p: any) => (
                   <a class:list={['onglet', 'onglets-guide__onglet', p.classe, p.actif && 'is-active']} id={`onglet-${p.ancre}`} href={`#${p.ancre}`} set:html={p.titre} />
                 ))}
               </nav>
