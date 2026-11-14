@@ -2519,6 +2519,9 @@ export const FUSIONS_DE_MIGRATION = Object.freeze([
   // migration 0122 (demande du propriétaire du 2026-11-13, « Le fondre dans l'autre ») : « La montée de niveau » (id 172), dont la page est retirée,
   // dans « Fiche de personnage : Expérience/Niveau global » (138), qui mène à la page gardée
   Object.freeze({ source: 'la-montee-de-niveau', cible: 'fiche-de-personnage-experience-niveau-global', texte: 'La montée de niveau', migration: '0122' }),
+  // migration 0124 (R272, « Tout déplacer » : la page « Accessoires et Ceinture » est supprimée) : son mot-clé (id 136) dans « Fiche de personnage :
+  // Inventaire/Sac à dos » (139), dont la page est gardée (servie à /regles/inventaire-sac-a-dos/)
+  Object.freeze({ source: 'fiche-de-personnage-accessoires-et-ceinture', cible: 'fiche-de-personnage-inventaire-sac-a-dos', texte: 'Fiche de personnage : Accessoires et Ceinture', migration: '0124' }),
 ]);
 
 /**

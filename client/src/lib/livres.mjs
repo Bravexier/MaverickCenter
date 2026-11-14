@@ -174,6 +174,9 @@ export const NOMS_RESERVES = Object.freeze(['artisanat', 'avancees', 'glossaire'
  *   - « Les neuf alignements » dans « Alignement » (migration 0123, demande du propriétaire : « Les pages … /regles/alignement/ et
  *     /regles/les-neuf-alignements/ font doublon. Réunis toutes les informations dans la page /regles/alignement/ »), sous l'intertitre
  *     `{#les-neuf-alignements}` ; ses neuf sections, `{#loyal-bon}`…, y sont les onglets de la page (lib/guide-onglets.mjs).
+ *   - « Accessoires et Ceinture » dans « Inventaire/Sac à dos » (migration 0124, R272 : « Tout lien qui revois vers cette page doit renvoyer vers
+ *     https://dev.maverick-jdr.com/regles/fiche-inventaire-sac-a-dos/ »), dont ses sections « Accessoires » (`{#accessoires}`, où mène son ancienne
+ *     adresse) et « Ceinture » (`{#ceinture}`, lue par l'onglet Ceinture) sont maintenant la fin du texte.
  * Les six étapes de la création, fusionnées dans « Créer son personnage » du 2026-10-18 à R184, sont redevenues des pages, sous leur id.
  */
 export const PAGES_ABSORBEES = Object.freeze({
@@ -181,6 +184,7 @@ export const PAGES_ABSORBEES = Object.freeze({
   'guide/resistance-faiblesse-magie': 'guide/resistances-et-faiblesses',
   'guide/situations-avancees': 'guide/prise-en-tenaille-et-zone-d-influence',
   'guide/les-neuf-alignements': 'guide/alignement',
+  'guide/fiche-accessoires-et-ceinture': 'guide/fiche-inventaire-sac-a-dos',
 });
 
 /**
@@ -192,6 +196,7 @@ export const PAGES_ABSORBEES = Object.freeze({
 export const ANCRES_DES_PAGES_ABSORBEES = Object.freeze({
   'guide/le-jeu-de-role': 'le-jeu-de-rôle-comment-ça-marche-',
   'guide/les-neuf-alignements': 'les-neuf-alignements', // ancre figée (lib/ancres-figees.mjs) : l'intertitre garde son id quand il est renommé
+  'guide/fiche-accessoires-et-ceinture': 'accessoires', // ancre figée : la première section de la page retirée, déplacée telle quelle (0124)
 });
 
 /** L'adresse où mène une page fusionnée (`ancienne`, une clé de PAGES_ABSORBEES) : la page qui l'absorbe (`cheminDe` : lib/metiers.mjs#cheminDePage), à son ancre s'il y en a une. */
@@ -270,9 +275,13 @@ export function adresseDuGuide(id) {
  * dans ADRESSES_DU_PLAN_PRECEDENT (page 404, liens écrits) ; aucune autre page ne prend la nouvelle (verifierLePlan, serveur/edition-plan.mjs#idPris).
  *   - R228 (2026-11-08 : « https://dev.maverick-jdr.com/regles/liste-des-effets-mode-super/ à changer en https://dev.maverick-jdr.com/regles/mode-super/
  *     (et le titre aussi) ») : la page du Mode Super, guide/liste-des-effets-mode-super, est servie à /regles/mode-super/.
+ *   - R272 (2026-11-14 : « Il faudrai d'ailleur corriger le nom de ce ce lien pour qu'il corresponde mieux au titre. » ; réponse : « Renommer l'adresse
+ *     fiche-inventaire-sac-a-dos (sans le préfixe « fiche- ») et rediriger l'ancienne. Cela déroge à la règle des adresses figées. ») : la page
+ *     « Inventaire/Sac à dos », guide/fiche-inventaire-sac-a-dos, est servie à /regles/inventaire-sac-a-dos/ (migration 0124).
  */
 export const ADRESSES_RENOMMEES_DU_GUIDE = Object.freeze({
   'guide/liste-des-effets-mode-super': 'mode-super',
+  'guide/fiche-inventaire-sac-a-dos': 'inventaire-sac-a-dos',
 });
 
 /** Le dernier segment de l'adresse d'une page `guide/<slug>` : son slug, ou celui que lui donne ADRESSES_RENOMMEES_DU_GUIDE. */
@@ -302,8 +311,9 @@ const ANCIENNES_REGLES_AVANCEES = Object.freeze([
  * Les pages des onglets des Règles qui avaient leur adresse à plat (/regles/<slug>/, `adresseDuGuide`) avant d'être fusionnées dans une autre
  * (PAGES_ABSORBEES) : leur ancienne adresse y mène, à l'ancre de la section (ou à celle que l'ancienne adresse écrit : « /regles/les-neuf-alignements/#loyal-bon »
  * mène à « /regles/alignement/#loyal-bon »). Les pages fusionnées plus tôt n'en ont pas : elles étaient encore sous /regles/avancees/ ou /decouvrir/.
+ * « Accessoires et Ceinture » (migration 0124, R272) : /regles/fiche-accessoires-et-ceinture/ mène à /regles/inventaire-sac-a-dos/#accessoires.
  */
-const PAGES_DES_REGLES_ABSORBEES = Object.freeze(['guide/les-neuf-alignements']);
+const PAGES_DES_REGLES_ABSORBEES = Object.freeze(['guide/les-neuf-alignements', 'guide/fiche-accessoires-et-ceinture']);
 
 /** Les six étapes de la création : pages du 2026-10-16 au 2026-10-18 (/decouvrir/<slug>/), puis fusionnées, de nouveau des pages depuis R184. */
 const ETAPES_DE_LA_CREATION = PAGES_DE_LA_CREATION.pages.slice(1);
@@ -318,7 +328,8 @@ const ETAPES_DE_LA_CREATION = PAGES_DE_LA_CREATION.pages.slice(1);
  *     (ANCIENNES_REGLES_AVANCEES) à sa nouvelle adresse ;
  *   - une page dont l'adresse a changé sans son identifiant (ADRESSES_RENOMMEES_DU_GUIDE) : son adresse tirée de l'identifiant, /regles/<slug>/ (R228 :
  *     /regles/liste-des-effets-mode-super/ mène à /regles/mode-super/) ;
- *   - une page des Règles fusionnée depuis dans une autre (PAGES_DES_REGLES_ABSORBEES : /regles/les-neuf-alignements/, migration 0123).
+ *   - une page des Règles fusionnée depuis dans une autre (PAGES_DES_REGLES_ABSORBEES : /regles/les-neuf-alignements/, migration 0123 ;
+ *     /regles/fiche-accessoires-et-ceinture/, migration 0124) ; /regles/fiche-inventaire-sac-a-dos/ (page renommée, R272) mène à /regles/inventaire-sac-a-dos/.
  * « Créer son personnage » (/decouvrir/creer-son-personnage/), découpée, et « Les situations avancées » sont dans PAGES_ECLATEES_DU_GUIDE. La page
  * « Liens » (/decouvrir/liens/), supprimée le 2026-10-22, n'est plus renvoyée nulle part (réponse du propriétaire du 2026-10-23 : « supprimer ce lien »).
  */
