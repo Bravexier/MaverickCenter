@@ -3,7 +3,7 @@
 //
 // Trois classes, du moins au plus fermé :
 //   ouverte    sans rien : ce dont les pages ont besoin pour se lire (la lecture du site de dev reste libre) et la connexion elle-même ;
-//   lecture    la clé de lecture (en-tête X-Maverick-Cle) OU le mot de passe (cookie de session) : ce qui montre le journal des modifications, la page
+//   lecture    la clé de lecture (en-tête X-Maverick-Cle ou X-Maverick-Key) OU le mot de passe (cookie de session) : ce qui montre le journal des modifications, la page
 //              Debug et ses tables (fiches, comptes et groupes compris), l'API /api/v1/ en lecture, les lots en conflit de la page « Mise à jour » ;
 //   ecriture   le mot de passe seul : toute écriture (édition, prétirés, /api/v1/), « Effectuer la mise à jour », la simulation, lever la maintenance.
 // Une route absente de cette table (inconnue) se classe `ecriture` : fermée par défaut.

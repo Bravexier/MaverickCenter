@@ -32,7 +32,7 @@ externes ; la page **Debug** du site de dev (menu Outils) n'a plus de testeur de
 - **Un mot de passe pour écrire, la lecture ouverte** (décision R275, option b ; [`serveur.md`](serveur.md), « Accès au site de dev »). Une fois le mot de
   passe posé sur le site de dev (commande `acces.sh` de l'hôte ; rien ne change tant qu'il ne l'est pas), chaque route est classée : **toute écriture
   d'`/api/v1/`** (`POST`, `PATCH`, `DELETE`) demande la **session du mot de passe** (`POST /api/acces/`, cookie `maverick_acces`), et **toute lecture
-  d'`/api/v1/`** (catalogue, description OpenAPI comprises) demande **la clé de lecture** (en-tête `X-Maverick-Cle: mvk_…`, jamais dans l'adresse) **ou** la
+  d'`/api/v1/`** (catalogue, description OpenAPI comprises) demande **la clé de lecture** (en-tête `X-Maverick-Cle: mvk_…` ou `X-Maverick-Key: mvk_…`, jamais dans l'adresse) **ou** la
   session. La clé de lecture ne permet jamais d'écrire. Un refus est un `401` `{ erreur, acces }` : `acces: "cle"` (clé ou mot de passe) pour une lecture,
   `"mot_de_passe"` pour une écriture.
 - **Pas de comptes** : quiconque a le mot de passe du site de dev lit et écrit (le lot n'a pas d'auteur). Les écritures exigent
@@ -179,7 +179,7 @@ Une erreur est toujours `{ "erreur": "<message en français>", … }`, avec les 
 ## Exemples (`curl`)
 
 Sur le site de dev, ajouter `-u <utilisateur>:<mot de passe>` (mot de passe du site) ; avec un mot de passe d'accès posé (« Accès au site de dev »), les lectures
-ajoutent `-H "X-Maverick-Cle: $CLE"` (la clé de lecture) et les écritures passent par la session (`curl -c cookies -X POST …/api/acces/ -H 'Content-Type:
+ajoutent `-H "X-Maverick-Cle: $CLE"` (la clé de lecture ; `X-Maverick-Key` vaut aussi) et les écritures passent par la session (`curl -c cookies -X POST …/api/acces/ -H 'Content-Type:
 application/json' -d '{"mot_de_passe":"…"}'`, puis `-b cookies`) ; en développement, le service seul répond sur
 `http://127.0.0.1:8787` (`npm run serveur`) et le site sur `http://localhost:4321` (`npm run dev`, qui lui transmet `/api/`).
 

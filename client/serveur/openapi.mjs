@@ -584,7 +584,7 @@ function cheminsDuService() {
     '/acces/verifier/': {
       get: {
         operationId: 'verifier_l_acces', tags: [SERVICE], summary: 'Vérification d’accès pour un mandataire',
-        description: '204 sans corps si la requête a au moins le droit de lecture (cookie de session, ou en-tête X-Maverick-Cle), 401 { erreur, acces } sinon : la route que le forward_auth de Caddy interroge le jour où le propriétaire choisit la portée « tout » (docs/serveur.md, « Accès au site de dev »). Sans réglage posé : 204.',
+        description: '204 sans corps si la requête a au moins le droit de lecture (cookie de session, ou en-tête X-Maverick-Cle ou X-Maverick-Key), 401 { erreur, acces } sinon : la route que le forward_auth de Caddy interroge le jour où le propriétaire choisit la portée « tout » (docs/serveur.md, « Accès au site de dev »). Sans réglage posé : 204.',
         responses: { 204: { description: 'Accès permis (pas de corps).' }, 401: reponse('Accès refusé.', ref('schemas', 'Erreur')) },
       },
     },
@@ -712,7 +712,7 @@ export function descriptionOpenApi(catalogue) {
         'passe par le service d’édition : un lot du journal, rapatrié dans data/rows par la mise à jour. Les adresses finissent par « / » ; la clé d’une ' +
         'ligne y est écrite valeur par valeur (encodée : « / » → %2F, « # » → %23), jointes par « , ». Les écritures exigent Content-Type: ' +
         'application/json ; If-Match (la version, ETag) protège une modification ou une suppression. Accès : quand le propriétaire a posé un mot de passe sur le site de dev ' +
-        '(commande acces.sh de l’hôte), l’API /api/v1/ se lit avec la clé de lecture (en-tête X-Maverick-Cle) ou la session du mot de passe, et s’écrit avec la ' +
+        '(commande acces.sh de l’hôte), l’API /api/v1/ se lit avec la clé de lecture (en-tête X-Maverick-Cle ou X-Maverick-Key) ou la session du mot de passe, et s’écrit avec la ' +
         'session seule ; un refus est un 401 { erreur, acces: "cle" | "mot_de_passe" } (GET /api/acces/, POST /api/acces/).',
     },
     servers: [{ url: '/api', description: 'Le service du site (le préfixe de déploiement du site s’y ajoute).' }],

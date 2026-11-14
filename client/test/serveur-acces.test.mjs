@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync, statSync, unlinkSync, utimesSync, writeFileSync } from 'node:fs';
 import { test } from 'node:test';
 import {
-  COOKIE, DUREE_SESSION_S, ENTETE_CLE, LIMITES, MOT_DE_PASSE_MIN, commandeAcces, connexionSecurisee, cookiesDeSession, creerAcces, creerJeton, egaux, lireJeton,
+  COOKIE, DUREE_SESSION_S, ENTETE_CLE, ENTETES_CLE, LIMITES, MOT_DE_PASSE_MIN, commandeAcces, connexionSecurisee, cookiesDeSession, creerAcces, creerJeton, egaux, lireJeton,
   nouvelleCle, reglageApres, validerReglage, valeursDuCookie,
 } from '../serveur/acces.mjs';
 import { dossierTemporaire, fichierTemporaire } from './aide-dossier-temporaire.mjs';
@@ -141,8 +141,21 @@ test('la clé de lecture lit mais n’écrit jamais ; le mot de passe (session) 
   assert.equal(acces.controler({ methode: 'POST', chemin: '/api/mise-a-jour/lancer/', entetes: avecCle }).statut, 401);
   assert.equal(acces.controler({ methode: 'GET', chemin: '/api/v1/metiers/', entetes: avecCle }), null);
 
+  // le second nom de l'en-tête (X-Maverick-Key) vaut X-Maverick-Cle : lecture permise, écriture refusée
+  assert.deepEqual(ENTETES_CLE, [ENTETE_CLE, 'x-maverick-key']);
+  const avecKey = { 'x-maverick-key': cle };
+  assert.equal(acces.controler({ ...lecture, entetes: avecKey }), null);
+  assert.equal(acces.controler({ methode: 'GET', chemin: '/api/v1/metiers/', entetes: avecKey }), null);
+  assert.equal(acces.controler({ ...ecriture, entetes: avecKey }).corps.acces, 'mot_de_passe', 'X-Maverick-Key ne permet pas d’écrire');
+  assert.equal(acces.controler({ ...lecture, entetes: { 'x-maverick-key': `${cle}x` } }).statut, 401);
+  assert.equal(acces.controler({ ...lecture, entetes: { 'x-maverick-key': '' } }).statut, 401, 'une clé vide n’ouvre rien');
+  assert.equal(acces.controler({ ...lecture, entetes: { [ENTETE_CLE]: 'mvk_faux', 'x-maverick-key': cle } }), null, 'la bonne clé sous l’un des deux noms suffit');
+
   // une clé fausse, ou la clé dans un autre en-tête (ou l'adresse) n'ouvre rien
   assert.equal(acces.controler({ ...lecture, entetes: { [ENTETE_CLE]: `${cle}x` } }).statut, 401);
+  for (const nom of ['x-maverick-token', 'x-api-key', 'x-maverick-cle-key', 'maverick-key']) {
+    assert.equal(acces.controler({ ...lecture, entetes: { [nom]: cle } }).statut, 401, `l’en-tête ${nom} n’ouvre rien`);
+  }
   assert.equal(acces.controler({ ...lecture, entetes: { authorization: `Bearer ${cle}` } }).statut, 401);
   assert.equal(acces.controler({ methode: 'GET', chemin: `/api/edition/journal/?cle=${cle}`, entetes: {} }).statut, 401);
 

@@ -87,7 +87,7 @@
 //                                   429 trop de balises cette minute
 // Accès au site de dev (serveur/acces.mjs ; docs/serveur.md, « Accès au site de dev » ; R275). Sans réglage posé (secrets/acces.json), rien ne change.
 // Avec un réglage, sur le site de dev seulement, chaque route est classée (serveur/acces-routes.mjs : ouverte, lecture, ecriture) ; refus : 401
-// { erreur, acces: 'cle' | 'mot_de_passe' } (« cle » : la clé de lecture, en-tête X-Maverick-Cle, OU le mot de passe) :
+// { erreur, acces: 'cle' | 'mot_de_passe' } (« cle » : la clé de lecture, en-tête X-Maverick-Cle ou X-Maverick-Key, OU le mot de passe) :
 //   GET  /api/acces/                { protege, portee, connecte, droit, expire_le } : où en est ce visiteur (droit : ecriture | lecture | aucun) ; toujours ouverte
 //   POST /api/acces/                { mot_de_passe } → ouvre une session (cookie HttpOnly, 12 h) ; 401 mot de passe faux, 429 trop d'essais, 409 sans mot de passe posé
 //   DELETE /api/acces/              ferme la session (retire le cookie)

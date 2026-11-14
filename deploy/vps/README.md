@@ -139,7 +139,7 @@ sudo sh /srv/maverick-center-test/acces/acces.sh
 ```
 
 Elle pose le mot de passe (10 caractères au moins) dans `secrets/acces.json` (le service le relit tout seul : rien à redémarrer) et, la première fois, affiche
-**une seule fois** la **clé de lecture** : à donner aux sessions de Claude (en-tête `X-Maverick-Cle`) pour lire le journal d'édition, la page Debug et l'API
+**une seule fois** la **clé de lecture** : à donner aux sessions de Claude (en-tête `X-Maverick-Cle` ou `X-Maverick-Key`) pour lire le journal d'édition, la page Debug et l'API
 `/api/v1/`, jamais pour écrire. Relancer la même commande change le mot de passe (la clé est gardée, les sessions ouvertes sont fermées). Options :
 `--cle` (une clé de lecture neuve), `--portee tout` (option c : le même mot de passe pour tout le site, voir le Caddyfile), `--etat`, et
 `--retirer` (le site de dev redevient ouvert, comme avant). Elle refuse la production et n'a pas besoin de l'ancien mot de passe : on ne s'enferme jamais dehors.

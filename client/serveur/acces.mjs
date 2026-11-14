@@ -11,7 +11,7 @@
 // de session (renouvelé à chaque changement de mot de passe ou de portée : les sessions ouvertes tombent). Les comparaisons se font à temps constant.
 //
 // Le service ne voit jamais d'en-tête Authorization (Caddy le remplace, nginx l'efface : docs/serveur.md, « Hébergement ») : la clé de lecture voyage dans
-// X-Maverick-Cle, la session du navigateur dans un cookie. Jamais dans l'adresse (le journal la noterait).
+// X-Maverick-Cle (ou son second nom X-Maverick-Key), la session du navigateur dans un cookie. Jamais dans l'adresse (le journal la noterait).
 import { createHash, createHmac, randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import { readFileSync, statSync } from 'node:fs';
 import { classer } from './acces-routes.mjs';
@@ -20,6 +20,11 @@ import { classer } from './acces-routes.mjs';
 export const FICHIER_PAR_DEFAUT = '/secrets/acces.json';
 export const COOKIE = 'maverick_acces';
 export const ENTETE_CLE = 'x-maverick-cle';
+/**
+ * Les seuls en-têtes qui portent la clé de lecture : X-Maverick-Cle, et son second nom X-Maverick-Key (le formulaire sûr qui remet la clé aux sessions
+ * de Claude n'accepte qu'un nom d'en-tête finissant par « key », « token »…). Tout autre en-tête, ou l'adresse, n'ouvre rien.
+ */
+export const ENTETES_CLE = Object.freeze([ENTETE_CLE, 'x-maverick-key']);
 export const PREFIXE_DE_LA_CLE = 'mvk_';
 /** Durée d'une session ouverte par le mot de passe. Le cookie n'a pas de date : il part avec le navigateur ; le jeton, lui, expire. */
 export const DUREE_SESSION_S = 12 * 3600;
@@ -191,8 +196,10 @@ export function creerAcces({ fichier, horloge = () => Date.now(), journal = null
       const exp = lireJeton(r.secret_de_session, jeton, maintenantS());
       if (exp) return { droit: 'ecriture', session: true, expire_s: exp };
     }
-    const cle = entetes[ENTETE_CLE];
-    if (typeof cle === 'string' && cle && r.cle_de_lecture && egaux(empreinteDeLaCle(cle), r.cle_de_lecture.empreinte)) return { droit: 'lecture', session: false, expire_s: null };
+    for (const nom of ENTETES_CLE) {
+      const cle = entetes[nom];
+      if (typeof cle === 'string' && cle && r.cle_de_lecture && egaux(empreinteDeLaCle(cle), r.cle_de_lecture.empreinte)) return { droit: 'lecture', session: false, expire_s: null };
+    }
     return { droit: 'aucun', session: false, expire_s: null };
   }
 
