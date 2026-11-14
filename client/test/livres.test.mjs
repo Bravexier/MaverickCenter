@@ -172,13 +172,22 @@ const aPourSegment = (adresse, slug) => adresse.split(/[/?#]/).includes(slug);
 test('R184 (9) : les pages supprimées ne sont ni dans la base, ni dans le plan, ni dans aucun renvoi (page 404, R185 (6))', () => {
   // R184 (9) ; puis, le 2026-11-06, les trois pages retirées par la migration 0094, la « Liste des effets mode hyper » (R187 (1), migration 0095) et
   // « Altérations d'états et Mode Hyper » (migration 0096), « La montée de niveau » (migration 0122) (tests « 0094 », « R187 », « 0096 » et « 0122 » plus bas)
-  assert.deepEqual(PAGES_SUPPRIMEES, ['guide/les-documents-des-regles', 'guide/en-resume-deroulement-d-un-tour', 'guide/aide-memoire', 'guide/mode-hyper-magie',
+  for (const id of ['guide/les-documents-des-regles', 'guide/en-resume-deroulement-d-un-tour', 'guide/aide-memoire', 'guide/mode-hyper-magie',
     'guide/postures', 'guide/les-boss-et-leurs-postures', 'guide/le-mode-super', 'guide/liste-des-effets-mode-hyper',
-    'guide/alterations-d-etats-et-mode-hyper', 'guide/la-montee-de-niveau']);
+    'guide/alterations-d-etats-et-mode-hyper', 'guide/la-montee-de-niveau', 'guide/fiche-classe']) assert.ok(PAGES_SUPPRIMEES.includes(id), `${id} : dans PAGES_SUPPRIMEES`);
+  assert.equal(new Set(PAGES_SUPPRIMEES).size, PAGES_SUPPRIMEES.length, 'aucune page deux fois');
   const renvois = renvoisDuGuide(ids);
   const eclatees = { ...RENVOIS_DES_PAGES_ECLATEES, ...PAGES_ECLATEES_DU_GUIDE };
+  // une page que le site de dev a supprimée (rapatriée dans data/rows, sans migration) est encore dans l'état d'import : elle est absente de la base courante,
+  // le reste (plan, renvois) se lit sur l'état d'import quand une migration l'a retirée
+  const courante = ouvrirBase({ sansExemples: false });
+  const supprimeeParLeSite = (id) => historiqueSite(courante).supprimee('page', { id });
   for (const id of PAGES_SUPPRIMEES) {
     const slug = id.slice('guide/'.length);
+    if (ids.includes(id) && supprimeeParLeSite(id)) {
+      assert.equal(courante.prepare('SELECT COUNT(*) AS n FROM page WHERE id = ?').get(id).n, 0, `${id} : supprimée sur le site de dev, absente de la base courante`);
+      continue;
+    }
     assert.ok(!ids.includes(id), `${id} : plus dans la base`);
     assert.equal(ongletDe(id), null);
     assert.equal(placeDansLeGuide(id).rubrique, null, `${id} : rangée nulle part (notes de version : « Pages retirées », lib/notes-de-version.mjs)`);
@@ -636,7 +645,9 @@ test('R184, R185 : les anciennes adresses figées mènent à la nouvelle adresse
   const avancees = Object.entries(ADRESSES_DU_PLAN_PRECEDENT).filter(([a]) => a.startsWith('regles/avancees/') && a !== 'regles/avancees/');
   // moins « Postures » (migration 0094), la « Liste des effets mode hyper » (R187, migration 0095) et « Altérations d'états et Mode Hyper » (migration
   // 0096), supprimées le 2026-11-06
-  assert.equal(avancees.length, 31, 'les 37 pages des Règles avancées au commit 92a123d, moins les 6 supprimées (« Les situations avancées » : éclatée, à part)');
+  // (et moins celles que le propriétaire a supprimées depuis : PAGES_SUPPRIMEES, que `ANCIENNES_REGLES_AVANCEES` ne cite plus)
+  assert.ok(avancees.every(([, id]) => !PAGES_SUPPRIMEES.includes(id)), 'aucune ancienne page des Règles avancées n’est une page supprimée');
+  assert.ok(avancees.length >= 30 && avancees.length <= 31, `${avancees.length} : les 37 pages des Règles avancées au commit 92a123d, moins les supprimées (« Les situations avancées » : éclatée, à part)`);
   for (const [adresse, id] of avancees) {
     // une page supprimée sur le site de dev (« Formule des dégâts », le 2026-11-06) : son ancienne adresse mène à la page 404, sans renvoi vers une
     // autre page (réponse du propriétaire : « Page 404 » ; R185 (6))

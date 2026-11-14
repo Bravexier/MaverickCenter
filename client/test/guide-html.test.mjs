@@ -17,12 +17,8 @@ import { fileURLToPath } from 'node:url';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { morceauxDuChapitre } from '../src/lib/guide.mjs';
-import { dansLOrdre, decouperEnOnglets } from '../src/lib/guide-onglets.mjs';
-import { ALIGNEMENTS_EN_GRILLE, COULEURS_ALIGNEMENTS } from '../src/lib/caracteristiques-postures.mjs';
-import { classeDuMotCle, motCleDeLaPage } from '../src/lib/mots-cles-liens.mjs';
-import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
-import { decouperCorps, versMarkdown } from '../src/lib/markdown-edition.mjs';
-import { classeDAlignement, classeDePartie, cssDesAlignements, cssDesFamilles, idDeCouleur } from '../src/lib/palette-css.mjs';
+import { decouperCorps } from '../src/lib/markdown-edition.mjs';
+import { classeDePartie, cssDesFamilles } from '../src/lib/palette-css.mjs';
 import {
   ARTISANAT, DECOUVRIR, entreesDuMenuLateral, estDuGuideDuMj, GUIDE_DU_MJ, installerLePlan, ongletsDesRegles, PAGES_ABSORBEES, PAGES_DE_LA_CREATION,
   PAGES_SUPPRIMEES, pagesDeLaRubrique, partieDeLaPage,
@@ -32,8 +28,7 @@ import { cheminDePage } from '../src/lib/metiers.mjs';
 import { chargerModeHyper } from '../src/lib/guide-db.mjs';
 import { chargerFilRouge } from '../src/lib/guide-fil-rouge.mjs';
 import { baseDImport, texteDImport } from './aide-base-d-import.mjs';
-import { avecLesMotsCles, htmlParLignes, premiersMotsAffiches, texteAffiche } from './aide-texte-affiche.mjs';
-import { enfantsDuHtml, rendreCommeLeGuide } from './aide-rendu-du-site.mjs';
+import { htmlParLignes, premiersMotsAffiches, texteAffiche } from './aide-texte-affiche.mjs';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
 const present = existsSync(join(dist, 'decouvrir', 'index.html'));
@@ -468,94 +463,39 @@ test('Plus aucune page du site n’a de rétroliens (« Cette page mentionne » 
   }
 });
 
-// Migration 0123, demande du propriétaire : « Réunis toutes les informations dans la page /regles/alignement/ Liste les 9 allignements sous forme de
-// tableau (ou de tuile) à onglet ou chaque onglet a la couleur de l'alignement. » : les neuf sections `###` à ancre figée de « Alignement » sont les
-// onglets d'une barre (components/guide/PageDuGuide.astro, lib/guide-onglets.mjs, components/Onglets.astro), chacun dans la classe de couleur de son
-// alignement (palette, famille `alignement`). Le déclencheur est l'ancre figée, jamais le texte de l'intertitre.
-test('« Alignement » : les neuf alignements en onglets colorés, un panneau par section au texte entier, l’adresse #<ancre> y mène ; script des onglets posé une fois', options, async () => {
-  const classes = new Map(Object.keys(COULEURS_ALIGNEMENTS).map((nom) => [idDeCouleur(nom), classeDAlignement(nom)]));
-  const ancres = new Set(classes.keys());
-  const decoupe = (corps) => morceauxDuChapitre(corps).filter((m) => 'markdown' in m).map((m) => decouperEnOnglets(m.markdown, ancres)).find(Boolean) ?? null;
-  const id = 'guide/alignement';
-
-  // à l'import : neuf sections, une par alignement de la palette, dans l'ordre du texte (LB, LN, LM, NB, N, NM, CB, CN, CM) ; la phrase de clôture sort du dernier
-  const dImport = decoupe(texteDImport('page', { id }, 'corps_md'));
-  assert.ok(dImport, 'l’import découpe la page en onglets');
-  assert.equal(dImport.panneaux.length, 9);
-  assert.deepEqual(dImport.panneaux.map((p) => p.ancre), [...classes.keys()]);
-  assert.ok(dImport.etiquette && dImport.avant.includes(`{#${dImport.etiquette}}`), 'la barre est nommée par le dernier intertitre à ancre de l’introduction');
-  assert.ok(dImport.apres.trim() && !dImport.panneaux.at(-1).markdown.includes(dImport.apres), 'la phrase finale en gras suit les onglets, hors du dernier panneau');
-
-  // la page construite suit la base courante : ses sections, dans l'ordre du texte
-  const page = pageDe(id);
-  assert.ok(page, 'Alignement est construite (page protégée : elle absorbe Les neuf alignements)');
-  const attendu = decoupe(page.corps_md);
-  const { html, main } = lire(cheminDePage(id));
-  const onglets = [...main.matchAll(/<a class="([^"]*)" id="onglet-([^"]+)" href="#([^"]+)"[^>]*>([\s\S]*?)<\/a>/g)];
-  const panneaux = [...main.matchAll(/<section class="onglets-guide__panneau ([^"]*)" id="([^"]+)">([\s\S]*?)<\/section>/g)];
-  assert.equal((html.match(/onglets:brancher/g) ?? []).length, attendu ? 1 : 0, 'le script d’Onglets.astro, posé une fois');
-  assert.equal((main.match(/data-onglets(?=[\s>=])/g) ?? []).length, attendu ? 1 : 0, 'un seul groupe d’onglets');
-  if (!attendu) return assert.equal(onglets.length + panneaux.length, 0, 'sans section à ancre d’alignement, pas d’onglets');
-  assert.equal(onglets.length, attendu.panneaux.length);
-  assert.equal(panneaux.length, attendu.panneaux.length);
-  // la barre suit la grille des alignements (« LB NB CB / LN N CN / LM NM CM »), les panneaux l'ordre du texte ; le premier de la barre est ouvert
-  const grille = dansLOrdre(attendu.panneaux, ALIGNEMENTS_EN_GRILLE.map(idDeCouleur));
-  assert.deepEqual(onglets.map((o) => o[2]), grille.map((p) => p.ancre), 'un onglet par section, dans l’ordre de la grille');
-  assert.deepEqual(panneaux.map((p) => p[2]), attendu.panneaux.map((p) => p.ancre), 'les panneaux dans l’ordre du texte');
-  for (const [i, p] of attendu.panneaux.entries()) {
-    const [, classe, ancre, href, titre] = onglets.find((o) => o[2] === p.ancre);
-    const ouvert = p.ancre === grille[0].ancre;
-    const couleur = classes.get(p.ancre);
-    // l'onglet : la classe de couleur de la palette (jamais un style), il mène à son panneau ; le premier est ouvert, lui seul
-    assert.deepEqual(classe.split(/\s+/).filter((c) => c.startsWith('couleur-')), [couleur], `${p.ancre} : la classe de couleur de l’alignement`);
-    assert.ok(classe.split(/\s+/).includes('onglet'), `${p.ancre} : la classe que le script des onglets prend`);
-    assert.equal(classe.split(/\s+/).includes('is-active'), ouvert, `${p.ancre} : onglet ouvert au départ`);
-    assert.equal(href, p.ancre);
-    assert.equal(ancre, p.ancre);
-    // le panneau : l'id de l'ancre (une adresse `#<ancre>` ou un mot-clé y mène), la même classe de couleur, son texte entier
-    const [, classePanneau, idPanneau, interieur] = panneaux[i];
-    assert.equal(idPanneau, p.ancre);
-    assert.equal(html.split(`id="${p.ancre}"`).length - 1, 1, `${p.ancre} : l’id n’est qu’une fois dans la page (l’intertitre du panneau ne le double pas)`);
-    assert.deepEqual(classePanneau.split(/\s+/).filter((c) => c.startsWith('couleur-')), [couleur], `${p.ancre} : le panneau reprend la couleur`);
-    assert.equal(classePanneau.split(/\s+/).includes('is-active'), ouvert, `${p.ancre} : panneau ouvert au départ`);
-    assert.match(interieur, new RegExp(`<h3[^>]*\\sdata-ancre-figee="${p.ancre}"`), `${p.ancre} : l’intertitre garde son ancre figée (l’éditeur la réécrit)`);
-    const rendu = avecLesMotsCles(await rendreCommeLeGuide(p.markdown), db);
-    assert.equal(texteAffiche(interieur).trim(), texteAffiche(rendu).trim(), `${p.ancre} : tout le texte de la section`);
-    assert.equal((interieur.match(/<table/g) ?? []).length, (rendu.match(/<table/g) ?? []).length, `${p.ancre} : ses tableaux`);
-    // l'onglet porte le nom de l'intertitre tel qu'il est maintenant (il se renomme sur le site de dev)
-    assert.equal(texteAffiche(titre).trim(), texteAffiche(interieur.match(/<h3[^>]*>([\s\S]*?)<\/h3>/)[1]).trim(), `${p.ancre} : le nom de l’onglet`);
+// Demande du propriétaire : « La page des alignements a perdu le tableau et les onglets […] Cette fois tu auras 2 tableaux » et « de manière à pouvoir faire
+// manuellement ce genre de tableau et d'onglet » : les onglets d'une page du guide sont un groupe écrit dans son texte (`::: onglets` … `:::`,
+// lib/onglets-groupe.mjs), rendu par la chaîne Markdown (lib/markdown-onglets.mjs), jamais déclenché par l'ancre d'un intertitre. Le test suit le texte
+// courant de chaque page construite (le site de dev les écrit) : un groupe écrit donne une barre, un panneau par `###`, le script des onglets posé une fois ;
+// une page sans groupe n'en a aucun.
+test('onglets du guide : un groupe `::: onglets` du texte donne une barre et un panneau par `###` (l’ancre figée est l’id du panneau), script posé une fois ; sans groupe, rien', options, async () => {
+  const groupes = (corps) => [...String(corps).matchAll(/^::: onglets[ \t]*\n([\s\S]*?)^:::[ \t]*$/gm)].map((m) => m[1]);
+  for (const page of pagesConstruites) {
+    const { html, main } = lire(cheminDePage(page.id));
+    const ecrits = groupes(page.corps_md);
+    assert.equal((main.match(/data-onglets-md/g) ?? []).length, ecrits.length, `${page.id} : un groupe rendu par groupe écrit`);
+    assert.equal((html.match(/onglets:brancher/g) ?? []).length, ecrits.length ? 1 : 0, `${page.id} : le script d’Onglets.astro, posé une fois s’il y a un groupe`);
+    assert.equal(/\.onglets-md__liste/.test(html), ecrits.length > 0, `${page.id} : la feuille des onglets avec le groupe seulement`);
+    assert.doesNotMatch(main, /onglets-guide/, `${page.id} : plus de déclenchement par l’ancre d’un intertitre (ancienne classe)`);
+    assert.doesNotMatch(main, /style="[^"]*(?:color|couleur|background)/, `${page.id} : aucune couleur écrite en style`);
+    const barres = [...main.matchAll(/<nav class="onglets-md__liste" data-colonnes="(\d)"[^>]*>([\s\S]*?)<\/nav>/g)];
+    assert.equal(barres.length, ecrits.length, page.id);
+    for (const [i, ecrit] of ecrits.entries()) {
+      const titres = [...ecrit.matchAll(/^### (.*)$/gm)].map((m) => m[1]);
+      const onglets = [...barres[i][2].matchAll(/<a class="([^"]*)" id="onglet-([^"]+)" href="#([^"]+)"/g)];
+      assert.equal(onglets.length, titres.length, `${page.id} : un onglet par « ### » du groupe ${i + 1}`);
+      assert.equal(onglets.filter((o) => o[1].split(/\s+/).includes('is-active')).length, 1, `${page.id} : un seul onglet ouvert`);
+      for (const o of onglets) {
+        assert.ok(o[1].split(/\s+/).includes('onglet'), `${page.id} : la classe que le script des onglets prend`);
+        assert.equal(main.split(`id="${o[3]}"`).length - 1, 1, `${page.id} : l’id ${o[3]} du panneau n’est qu’une fois dans la page`);
+      }
+      // l'ancre figée d'un intertitre est l'id de son panneau (une adresse #<ancre> y mène), et l'intertitre la garde pour l'éditeur
+      for (const titre of titres) {
+        const ancre = /\{#([a-z0-9-]+)\}\s*$/.exec(titre)?.[1];
+        if (!ancre) continue;
+        assert.ok(onglets.some((o) => o[3] === ancre), `${page.id} : l’onglet de l’ancre ${ancre}`);
+        assert.match(main, new RegExp(`<section class="[^"]*" id="${ancre}"[^>]*>(?:(?!</section>)[\\s\\S])*?<h3[^>]*\\sdata-ancre-figee="${ancre}"`), `${page.id} : le panneau ${ancre}`);
+      }
+    }
   }
-  // l'introduction reste au-dessus de la barre, la phrase de clôture et la suite après les panneaux ; la barre est nommée par l'intertitre qui la précède
-  const barre = main.indexOf('<div class="onglets-guide"');
-  assert.ok(barre > 0 && main.indexOf('<nav class="onglets-guide__liste"') > barre);
-  if (attendu.etiquette) {
-    assert.ok(main.indexOf(`id="${attendu.etiquette}"`) > 0 && main.indexOf(`id="${attendu.etiquette}"`) < barre, 'l’intertitre qui nomme la barre est au-dessus');
-    assert.match(main, new RegExp(`<nav class="onglets-guide__liste" aria-labelledby="${attendu.etiquette}"`));
-  }
-  const apres = main.slice(main.lastIndexOf('</section>'));
-  if (attendu.apres.trim()) assert.ok(texteAffiche(apres).includes(texteAffiche(avecLesMotsCles(await rendreCommeLeGuide(attendu.apres), db)).trim()), 'la phrase finale, après le dernier panneau');
-  // la feuille des alignements (famille de zone de la palette) : posée avec les classes, une seule fois (hors la feuille des mots-clés colorés)
-  assert.equal(main.split(`<style>${cssDesAlignements()}</style>`).length - 1, 1, 'la feuille des alignements, une fois');
-  assert.doesNotMatch(main, /style="[^"]*(?:color|couleur|background)/, 'aucune couleur écrite en style');
-  // Q5 « Ancre = pas de couleur » : les mots-clés des alignements mènent à une section (adresse à ancre), ils ne colorent pas la page entière ; la page prend
-  // la couleur d'un mot-clé coloré qui mène à elle, sans ancre, s'il y en a un, sinon l'accent du site
-  const motCle = motCleDeLaPage(chargerVocabulaire(db), `/${cheminDePage(id)}`);
-  const classeDeLaPage = classeDuMotCle(motCle);
-  assert.ok(!classeDeLaPage || !classeDeLaPage.startsWith('couleur-alignement-') || !motCle.url.includes('#'), 'jamais la couleur d’un mot-clé à ancre');
-  assert.ok(main.includes(classeDeLaPage ? `<div class="guide-reference guide-reference--couleur ${classeDeLaPage}">` : '<div class="guide-reference">'), 'la couleur de la page');
-
-  // le mode modification : la barre est ignorée de l'éditeur (data-ed-ignorer), le groupe et les panneaux sont transparents — le Markdown relu du morceau
-  // est celui qu'on relit du rendu à plat (aucune perte à l'enregistrement : lib/markdown-edition.mjs#versMarkdown)
-  const trouver = (noeuds) => noeuds.flatMap((n) => {
-    if (n.type !== 'element') return [];
-    const contient = (e) => e.enfants?.some((c) => c.type === 'element' && ((c.attributs.class ?? '').split(/\s+/).includes('onglets-guide') || contient(c)));
-    return n.attributs['data-ed-morceau'] !== undefined && contient(n) ? [n] : trouver(n.enfants ?? []);
-  });
-  const [morceau] = trouver(enfantsDuHtml(html));
-  assert.ok(morceau, 'le morceau de texte modifiable qui porte les onglets');
-  const barreIgnoree = (noeuds) => noeuds.some((n) => n.type === 'element' && (((n.attributs.class ?? '').split(/\s+/).includes('onglets-guide__liste') && n.attributs['data-ed-ignorer'] !== undefined) || barreIgnoree(n.enfants ?? [])));
-  assert.ok(barreIgnoree([morceau]), 'la barre d’onglets est ignorée de l’éditeur');
-  const morceauSource = morceauxDuChapitre(page.corps_md).find((m) => 'markdown' in m && decouperEnOnglets(m.markdown, ancres)).markdown;
-  const aPlat = versMarkdown(enfantsDuHtml(avecLesMotsCles(await rendreCommeLeGuide(morceauSource), db)));
-  assert.equal(versMarkdown(morceau.enfants), aPlat, 'le Markdown relu du morceau en onglets est celui du rendu à plat');
 });

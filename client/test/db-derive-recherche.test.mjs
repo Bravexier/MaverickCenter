@@ -49,3 +49,25 @@ test('page_fts : une page qui cite {{orios}} est trouvée par « Orios » ; une 
   assert.equal(texte, 'Rencontre avec Orios, puis Zorglubienne écarlate et Essai complet : Définition qui cite la Brumolithe.. En code : {{qxwvcode}} .');
   lue.close();
 });
+
+// Les marques d'un texte qui ne s'affichent pas ne s'indexent pas, comme dans l'index du site (lib/recherche-index.ts) : lignes `::: onglets` et `:::`
+// d'un groupe d'onglets (lib/markdown-onglets.mjs), ancre figée `{#…}` et couleur `{couleur:…}` d'un intertitre (lib/ancres-figees.mjs) ; le nom de
+// l'onglet et son texte, si.
+test('page_fts : les marques d’un groupe d’onglets, d’une ancre figée et d’une couleur d’intertitre ne s’indexent pas', (t) => {
+  const base = join(dossierTemporaire('derive-recherche-onglets', { t }), 'regles.db');
+  lancer('db-build.mjs', ['--out', base]);
+  const db = new DatabaseSync(base);
+  const page = db.prepare("SELECT id FROM page WHERE statut <> 'example' ORDER BY id LIMIT 1").get().id;
+  db.prepare('UPDATE page SET corps_md = ? WHERE id = ?').run(
+    ['Avant.', '', '::: onglets', '', '### {couleur:alignement:loyal-bon} Qxwvtitre {#qxwvancre}', '', 'Texte qxwvpanneau.', '', ':::', '', 'Après.'].join('\n'), page);
+  db.close();
+  lancer('db-derive.mjs', [base]);
+
+  const lue = new DatabaseSync(base, { readOnly: true });
+  const { texte } = lue.prepare('SELECT texte FROM page_fts WHERE page_id = ?').get(page);
+  assert.equal(texte, 'Avant. Qxwvtitre Texte qxwvpanneau. Après.');
+  const trouvees = (requete) => lue.prepare('SELECT page_id FROM page_fts WHERE page_fts MATCH ?').all(requete).map((r) => r.page_id);
+  assert.ok(trouvees('texte:qxwvtitre').includes(page), 'le nom de l’onglet');
+  assert.deepEqual(trouvees('qxwvancre'), [], 'l’ancre figée');
+  lue.close();
+});

@@ -10,6 +10,7 @@ import { fromHtml } from 'hast-util-from-html';
 import { remarkCouleursDeCase } from '../src/lib/markdown-couleurs.mjs';
 import { remarkMonnaies } from '../src/lib/markdown-monnaies.mjs';
 import { remarkAncresFigees } from '../src/lib/ancres-figees.mjs';
+import { remarkOnglets } from '../src/lib/markdown-onglets.mjs';
 import { htmlAvecMotsCles } from '../src/lib/mots-cles-balises.mjs';
 import { buildIndex, remarkWikilinks, scanContent } from '../src/lib/wikilinks.mjs';
 import { adresseDesAnciensLiens, avecPrefixe, remarkAnciensLiensDuGuide } from '../src/lib/guide.mjs';
@@ -24,7 +25,7 @@ let processeur = null;
 export async function rendreLeMarkdown(md) {
   processeur ??= createMarkdownProcessor({
     syntaxHighlight: false,
-    remarkPlugins: [[remarkWikilinks, { index: buildIndex(scanContent(DOSSIER_DU_WIKI)), base: '/' }], remarkCouleursDeCase, remarkMonnaies, remarkAncresFigees],
+    remarkPlugins: [[remarkWikilinks, { index: buildIndex(scanContent(DOSSIER_DU_WIKI)), base: '/' }], remarkCouleursDeCase, remarkMonnaies, remarkAncresFigees, remarkOnglets],
   });
   return (await (await processeur).render(md, { frontmatter: { status: 'example' } })).code;
 }
@@ -41,7 +42,7 @@ export async function rendreCommeLeGuide(md, base = '/') {
     const adresse = (chemin) => adresseDesAnciensLiens(chemin, { cheminDe: cheminDePage, existe: (id) => ids.has(id), accueil: ACCUEIL_DU_GUIDE });
     processeursDuGuide.set(base, createMarkdownProcessor({
       syntaxHighlight: false,
-      remarkPlugins: [[remarkWikilinks, { index: buildIndex(pages), base }], remarkCouleursDeCase, remarkMonnaies, remarkAncresFigees, [remarkAnciensLiensDuGuide, { base, adresse }]],
+      remarkPlugins: [[remarkWikilinks, { index: buildIndex(pages), base }], remarkCouleursDeCase, remarkMonnaies, remarkAncresFigees, remarkOnglets, [remarkAnciensLiensDuGuide, { base, adresse }]],
     }));
   }
   return (await (await processeursDuGuide.get(base)).render(avecPrefixe(md, base), { frontmatter: { status: 'example' } })).code;
