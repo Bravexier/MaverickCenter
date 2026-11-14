@@ -1728,6 +1728,16 @@ propriétaire ; « durabilité » n'est plus écrit nulle part sur le site (sauf
   montre « 1 [PP] 245 [RO] 50 [RF] ») ; dans un attribut ou une `<option>`, le texte simple, comme le texte courant. La fiche de personnage n'en garde que le
   texte affiché (le texte écrit, ou le libellé ; jamais la définition), l'index de la recherche le texte simple (« Libellé : définition » pour le mode
   complet) ; `/recherche/?mot-cle=<clé>` liste aussi les pages qui **citent** un mot-clé.
+- **Valeurs fermées** (migration 0125, demande du propriétaire : lier aux mots-clés du glossaire, « si ils existent », les types de dégâts et les magies) : les
+  pages affichent la valeur comme une balise, en gras, la définition du mot-clé en infobulle, un lien quand il a une adresse (le rendu d'un `{{clé|texte}}`,
+  écrit par `lib/valeurs-fermees-rendu.mjs` d'après le champ `liens` des lecteurs, `lib/mots-cles-des-valeurs.mjs`, et rendu comme les autres balises : middleware
+  au build, `mots-cles-vivants` sur le site de dev). Une magie s'affiche par son nom court (« Feu », l'infobulle de « Magie du Feu ») ; `feu`, `eau`, `glace`
+  d'un type de dégâts suivent leur magie ; une valeur sans mot-clé (physique, sonore) ou une page sans `liens` garde son libellé nu. Où : types de dégâts des
+  armes (pastilles Taille, Estoc, Frappe, et la magie d'une arme élémentaire), des armures (résistance et faiblesse), cibles écrites et magies d'une créature
+  invoquée (carte et tableau du Bestiaire), résistances physiques, magies citées et « même nom dans une autre magie » des pages de magie. Jamais un texte libre
+  (effets, descriptions, `*_brut`). Sur la pastille pleine d'une magie (`.arme-dgt--magie`, `.bmagie`) et dans une pastille `.chip`, le mot-clé garde le texte de
+  la pastille, pas sa teinte. Non liés : les boutons de choix de la fiche (listes, `<select>`, pastilles de choix : une balise ne s'y rend pas), la carte d'un
+  monstre (ses cibles sont lues d'un texte), la carte d'une créature dans une infobulle de page de magie, les matrices de magies, les pages de race.
 - **Forme canonique** (celle que le service du site de dev enregistre) : la ref est toujours la clé, et selon la colonne :
   - un **texte mis en forme** (Markdown : corps des pages du guide et du Codex, descriptions de la chronologie, blocs des panneaux de règles) garde
     `{{clé}}` (le texte affiché suit le libellé : un renommage se voit partout), écrit `{{clé|texte}}` si un autre texte que le libellé est écrit (le
