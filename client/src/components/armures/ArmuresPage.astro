@@ -56,7 +56,7 @@ import type { PanneauRendu } from '../equipement/PanneauDeRegles.astro';
 type Armures = ReturnType<typeof chargerArmures>;
 interface Props {
   armures: Armures;
-  contexte: ReturnType<typeof contexteDesArmures>;
+  contexte: ReturnType<typeof contexteDesArmures> & { liens?: ReturnType<typeof chargerArmures>['liens'] };
   /** la page : Armures (`armures`) ou Boucliers (`boucliers`) */
   vue: 'armures' | 'boucliers';
   /** le panneau de règles de la page (`armures` ou `boucliers`), le Markdown de ses blocs rendu (src/pages/ressources/armures.astro, bouclier.astro) */

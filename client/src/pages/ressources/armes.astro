@@ -21,6 +21,6 @@ const piecesElementaires = await piecesElementairesRendues('armes');
 
 <Base title={page.nom} description="Armes : un tableau par famille, armes élémentaires comprises, matériaux, améliorations et fiche de l’arme forgée." edition={page.chemin}>
   <EquipementPage id={page.id}>
-    <ArmesPage armes={armes} contexte={contexteDesArmes(db)} regles={regles} piecesElementaires={piecesElementaires} />
+    <ArmesPage armes={armes} contexte={{ ...contexteDesArmes(db), liens: armes.liens }} regles={regles} piecesElementaires={piecesElementaires} />
   </EquipementPage>
 </Base>

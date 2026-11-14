@@ -19,14 +19,14 @@ import { fragmentsAjoutes, messageDeRefus } from '../src/lib/markdown-sur.mjs';
 import { estVerrouille, parLibelle, RAISON_DU_VERROU } from '../src/lib/mots-cles.mjs';
 import { categoriesDesMotsCles, motsClesDeLaBase, pagesDesLiens } from '../src/lib/mots-cles-db.mjs';
 import { reciblerLeMotCle, synonymesPris } from '../src/lib/mots-cles-balises.mjs';
-import { mentionsDe, mentionsDesMotsCles, texteDesMentions } from '../src/lib/mentions-des-mots-cles.mjs';
+import { mentionsDe, mentionsDesMotsCles, referencesDesMotsCles, texteDesMentions } from '../src/lib/mentions-des-mots-cles.mjs';
 import { indexDesAdresses, pageDeLAdresse } from '../src/lib/adresses-db.mjs';
 import { classeDuMotCle } from '../src/lib/mots-cles-liens.mjs';
 import { cssDesMotsCles } from '../src/lib/palette-css.mjs';
 import { ICONES } from '../src/lib/icones.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { lireLigne } from './edition-journal.mjs';
-import { recevoirLaFusion, retirerLesFillesDuMotCle, synonymesDuMotCle } from './edition-mots-cles.mjs';
+import { recevoirLaFusion, reporterLesReferences, retirerLesFillesDuMotCle, synonymesDuMotCle } from './edition-mots-cles.mjs';
 
 const ORIGINE = 'chronologie';
 
@@ -352,6 +352,31 @@ export function domainesDeLaChronologie({
       + 'une règle posée par décision du propriétaire.');
   }
 
+  /**
+   * Refus pour un mot-clé que la base cite par clé étrangère (migration 0125 ; lib/mentions-des-mots-cles.mjs#REFERENCES_AUX_MOTS_CLES) : le mot-clé
+   * d'un type de dégâts à valeur fermée (type_degats.mot_cle_id : taille, estoc, frappe) ou d'une magie (magie.mot_cle_id). Comme l'étiquette d'un sort
+   * (verifierSansSort, par analogie avec R223 (5) : « le forçage ne lève que le refus des mentions »), une référence n'est pas un texte que le site
+   * réécrit : la suppression, simple ou forcée, est refusée en 409 avec ce qui la cite (`references`), sans l'erreur brute de la base (clé étrangère sans
+   * cascade). La fusion, elle, reporte la référence sur la cible (reporterLesReferences) ; seule la cible déjà citée par une magie refuse (un mot-clé
+   * par magie, index unique magie_mot_cle) : action 'fusionne' vérifie ce cas, sur la source et la cible.
+   */
+  function verifierSansReference(db, m, action, cible = null) {
+    const references = referencesDesMotsCles(db, [m.id]);
+    if (!references.length) return;
+    if (action === 'fusionne') {
+      const magieSource = references.find((r) => r.table === 'magie');
+      const magieCible = cible && referencesDesMotsCles(db, [cible.id]).find((r) => r.table === 'magie');
+      if (!magieSource || !magieCible) return;
+      throw new ErreurEdition(409, `Le mot-clé « ${m.libelle} » ne se fusionne pas dans « ${cible.libelle} » : chacun est le mot-clé d'une magie, et une magie n'a qu'un mot-clé.`,
+        { references: [magieSource, magieCible] });
+    }
+    const noms = references.slice(0, 3).map((r) => (r.table === 'magie' ? `la magie « ${nomDeLaMagie(db, r.id)} »` : `le type de dégâts « ${r.id} »`)).join(', ')
+      + (references.length > 3 ? '…' : '');
+    throw new ErreurEdition(409, `Le mot-clé « ${m.libelle} » ne se ${action} pas depuis le site : il est le mot-clé de ${noms} (${nombre(references.length, 'référence', 'références')} de la base, `
+      + 'que le forçage ne remplace pas).', { references });
+  }
+  const nomDeLaMagie = (db, id) => db.prepare('SELECT nom FROM magie WHERE id = ?').get(id)?.nom ?? id;
+
   const MOT_CLE = {
     // tous les champs d'un mot-clé non verrouillé se modifient, libellé compris (décision R195 : seul l'id reste figé ; le site reconnaît les mots-clés
     // dont il se sert à leur id, un renommage ne déplace aucune page ni ne change aucun calcul) ; ceux d'un mot-clé verrouillé aussi (demande du propriétaire :
@@ -422,6 +447,7 @@ export function domainesDeLaChronologie({
       if (!m) throw new ErreurEdition(404, `Mot-clé introuvable : ${cle?.id}`);
       verifierNonVerrouille(ctx, m, 'supprime');
       verifierSansSort(db, m, 'supprime');
+      verifierSansReference(db, m, 'supprime');
       if (op.forcer !== undefined && typeof op.forcer !== 'boolean') throw refus(`Mot-clé « ${m.libelle} » : « forcer » vaut true ou false.`);
       const mentions = mentionsDe(db, m.id);
       if (mentions.length && op.forcer !== true) {
@@ -485,6 +511,7 @@ export function domainesDeLaChronologie({
     try {
       verifierNonVerrouille({ gel }, m, 'supprime');
       verifierSansSort(db, m, 'supprime');
+      verifierSansReference(db, m, 'supprime');
     } catch (e) {
       if (e instanceof ErreurEdition) return e;
       throw e;
@@ -568,6 +595,7 @@ export function domainesDeLaChronologie({
     verifierNonVerrouille(ctx, source, 'fusionne');
     verifierSansSort(db, source, 'fusionne');
     verifierSansSort(db, cible, 'fusionne');
+    verifierSansReference(db, source, 'fusionne', cible);
     // une cible verrouillée ne reçoit pas de synonymes (R233 (6)) : la fusion d'un mot-clé qui en a est refusée (réponse du propriétaire, « Refuser la
     // fusion » : « On ne peut pas fusionner un mot-clé dans un mot-clé verrouillé qui a des synonymes à recevoir. ») ; sans synonyme, elle passe
     // (R219 (4)) et ne lui transmet que ses clés ; au rejeu (`ctx.gel` faux), le verrou n'est pas contrôlé (R219 (6))
@@ -611,6 +639,8 @@ export function domainesDeLaChronologie({
     // puis, la source supprimée et les clés recalculées, sa clé devient une clé quittée de la cible et ses synonymes s'ajoutent aux siens
     // (serveur/edition-mots-cles.mjs#recevoirLaFusion : ceux que R233 (4) refuse sont écartés, et le résumé les nomme)
     const synonymes = retirerLesFillesDuMotCle(db, w, source.id, { vers: cible.id });
+    // les références de la base (type de dégâts, magie : migration 0125) suivent la cible, avant la suppression de la source (clé étrangère sans cascade)
+    const references = reporterLesReferences(db, w, source.id, cible.id);
     w.supprimer('mot_cle', { id: source.id });
     // un homonyme qui disparaît : la clé des autres est recalculée (décision R232 (2))
     const cles = recalculerLesCles(ctx);
@@ -620,6 +650,7 @@ export function domainesDeLaChronologie({
     const precisions = [
       ...(Object.keys(reprises).length ? [`il en prend ${Object.keys(reprises).map((c) => NOMS_REPRIS[c]).join(' et ')}`] : []),
       ...(gardees.length ? [`« ${cible.libelle} » garde ${gardees.join(' et ')}`] : []),
+      ...(references.length ? [`${references.length > 1 ? 'ses références' : 'sa référence'} (${references.map((r) => `${r.table} ${r.id}`).join(', ')}) ${references.length > 1 ? 'passent' : 'passe'} à la cible`] : []),
       ...(laissees.length ? [`« ${cible.libelle} », verrouillé, n’en prend pas ${laissees.join(' ni ')}`] : []),
       ...(legs.repris.length ? [`il en prend ${legs.repris.length > 1 ? 'les synonymes' : 'le synonyme'} ${legs.repris.map((x) => `« ${x} »`).join(', ')}`] : []),
       ...(legs.ecartes.length ? [`synonymes écartés : ${legs.ecartes.map((e) => `« ${e.synonyme} » (${e.raison})`).join(', ')}`] : []),

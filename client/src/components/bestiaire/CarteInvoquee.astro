@@ -15,14 +15,17 @@ import { htmlDesCapacites, htmlDesCaracteristiques } from '../../lib/monstre-ren
 import { coutAuNpm, creatureAuNpm, NPMS, parNpm, varieAvecLeNpm } from '../../lib/creature-npm.mjs';
 import ValeurParNpm from './ValeurParNpm.astro';
 import { classeDeMagie } from '../../lib/palette-css.mjs';
+import { htmlDeLaCible, htmlDeLaDefenseDeCreature, htmlDeLaMagie } from '../../lib/valeurs-fermees-rendu.mjs';
 import { url } from '../../lib/wiki';
 import type { chargerInvocations } from '../../lib/bestiaire-db.mjs';
 
 interface Props {
   ligne: ReturnType<typeof chargerInvocations>['lignes'][number];
   bulle?: string;
+  /** les mots-clés du glossaire des valeurs fermées (chargerInvocations().liens, migration 0125) : sans eux, les magies et types de dégâts s'affichent nus (la carte d'une infobulle) */
+  liens?: ReturnType<typeof chargerInvocations>['liens'];
 }
-const { ligne: l, bulle } = Astro.props;
+const { ligne: l, bulle, liens } = Astro.props;
 // en infobulle, la carte est dans sa bulle ; sinon, seule
 const Enveloppe = bulle ? 'div' : Fragment;
 const enveloppe = bulle ? { class: 'bulle bulle--carte', role: 'tooltip', id: bulle, 'data-placement': 'cote', 'data-fermer-au-toucher': true, hidden: true } : {};
@@ -52,9 +55,9 @@ const coutDuBloc = !variable && l.npmDuBloc ? coutAu(l.npmDuBloc) : null;
       </p>
       <p class="bcarte__badges">
         {
-          l.magies.map((m) => (
+          l.magies.map((m, i) => (
             <span class={pastille(m)}>
-              {m}
+              <Fragment set:html={htmlDeLaMagie(liens, l.magiesIds[i], m)} />
             </span>
           ))
         }
@@ -156,7 +159,7 @@ const coutDuBloc = !variable && l.npmDuBloc ? coutAu(l.npmDuBloc) : null;
             <dd>
               <span class="bcibles">
                 {l.defensesEcrites.map((x) => (
-                  <span class={`bcible bcible--${x.sens}`} data-npm-min={x.npm_min ?? undefined} title={x.npm_min ? `À partir du NPM ${x.npm_min}` : undefined}>{x.libelle}</span>
+                  <span class={`bcible bcible--${x.sens}`} data-npm-min={x.npm_min ?? undefined} title={x.npm_min ? `À partir du NPM ${x.npm_min}` : undefined}><Fragment set:html={htmlDeLaDefenseDeCreature(x, liens)} /></span>
                 ))}
               </span>
             </dd>
@@ -168,9 +171,9 @@ const coutDuBloc = !variable && l.npmDuBloc ? coutAu(l.npmDuBloc) : null;
           <div class="brubrique">
             <dt>Selon sa magie {d.magie} (« Élémentaire »)</dt>
             <dd>
-              {d.resiste.length > 0 && <>Résiste à : {d.resiste.join(', ')}</>}
+              {d.resiste.length > 0 && <>Résiste à : <Fragment set:html={d.resisteCibles.map((c) => htmlDeLaCible(c, liens)).join(', ')} /></>}
               {d.resiste.length > 0 && d.vulnerable.length > 0 && ' · '}
-              {d.vulnerable.length > 0 && <>Vulnérable à : {d.vulnerable.join(', ')}</>}
+              {d.vulnerable.length > 0 && <>Vulnérable à : <Fragment set:html={d.vulnerableCibles.map((c) => htmlDeLaCible(c, liens)).join(', ')} /></>}
             </dd>
           </div>
         ))

@@ -22,6 +22,7 @@ import { bonusDeSortsEcrits, preparationEcrite } from './sort-bonus-texte.mjs';
 import { DONS_SANS_ACQUIS, lecteurDAcquis } from './acquis-texte.mjs';
 import { critiqueDeLAccessoire, critiqueDuDon, critiqueDuPremierCoup } from './critique-texte.mjs';
 import { chargerInvocations } from './bestiaire-db.mjs';
+import { liensDesValeursFermees } from './mots-cles-des-valeurs.mjs';
 import { FAMILLES_DES_SAUF, desSelonLaForce, famillesAuChoix, idDeSourceDeClasse } from './maitrise-arme.mjs';
 import { ORDRE_DES_RACES, raceKind } from './race-kinds.mjs';
 import { lecteurDeResistances } from './resistance-texte.mjs';
@@ -903,6 +904,8 @@ function reglesDeLaBase(db) {
   return {
     constantes, am_classe_magique: amMagique, niveaux, caracteristiques, caracteristique_par_defaut, competences, initiative, races, ethnies, magies, dieux, metiers, classes, sorts, postures,
     ordre_postures, mode_hyper, ambidextrie, resistance_paliers, etats, alignements, alignement_par_defaut, race_par_nature, neutre, invocations, ...equipement,
+    // le mot-clé du glossaire de chaque type de dégâts et de chaque magie (lib/mots-cles-des-valeurs.mjs, migration 0125) : { degats, magies }, null sans mot-clé
+    liens: liensDesValeursFermees(db),
   };
 }
 

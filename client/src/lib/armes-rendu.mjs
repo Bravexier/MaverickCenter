@@ -14,6 +14,7 @@ import {
 import { attributEd } from './edition-modele.mjs';
 import { htmlAvecMonnaies, htmlDeMontant } from './monnaies.mjs';
 import { classeDeDegats, classeDeMagie, classesDeDeuxCaracteristiques } from './palette-css.mjs';
+import { htmlDeLaMagie, htmlDuTypeDeDegats } from './valeurs-fermees-rendu.mjs';
 
 const ENTITES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 const e = (texte) => String(texte ?? '').replace(/[&<>"']/g, (c) => ENTITES[c]);
@@ -87,10 +88,17 @@ export function htmlDuFiltreDeCompetence(id, ctx = {}) {
   return `<button type="button" class="arme-comp armes-filtre__choix ${couleurs}" data-competence="${e(id)}" aria-pressed="false" title="${e(`${c.nom} (${carac})`)}">${e(c.libelle)}</button>`;
 }
 
-/** Les types de dégâts en pastilles (Taille, Estoc, Frappe), d'après l'effet. */
-function htmlDesTypesDeDegats(effet) {
+/**
+ * La pastille d'un type de dégâts physique (Taille, Estoc, Frappe) : son libellé, lié à son mot-clé du glossaire quand `liens` (lib/mots-cles-des-valeurs.mjs)
+ * en donne un (migration 0125 : en gras, sa définition en infobulle), sinon nu.
+ */
+const pastilleDeDegats = (t, liens) =>
+  `<span class="arme-dgt arme-dgt--${t} ${classeDeDegats(t)}">${htmlDuTypeDeDegats(liens, t, LIBELLES_DES_DEGATS[t])}</span>`;
+
+/** Les types de dégâts en pastilles (Taille, Estoc, Frappe), d'après l'effet ; `liens` : ceux du contexte de la page (`ctx.liens`). */
+function htmlDesTypesDeDegats(effet, liens) {
   const types = analyserEffetDArme(effet).degats;
-  return types.length ? types.map((t) => `<span class="arme-dgt arme-dgt--${t} ${classeDeDegats(t)}">${LIBELLES_DES_DEGATS[t]}</span>`).join(' ') : VIDE;
+  return types.length ? types.map((t) => pastilleDeDegats(t, liens)).join(' ') : VIDE;
 }
 
 /** Les effets supplémentaires, une ligne par ligne de l'effet (les modes « Une main = … » gardés). */
@@ -115,7 +123,7 @@ export const RENDUS_DES_ARMES = {
     const titre = regle ? ` title="${e(`Dé selon la Force : ${regle}`)}"` : '';
     return `<span class="arme-degats"${attribut('de', de)}${attribut('bonus', bonus)}${titre}>${e(texte)}</span>`;
   },
-  'arme-types-degats': (valeur) => htmlDesTypesDeDegats(valeur),
+  'arme-types-degats': (valeur, _ligne, ctx = {}) => htmlDesTypesDeDegats(valeur, ctx.liens),
   // portée : celle de l'effet, 1 par défaut (décision R50)
   'arme-portee': (_valeur, ligne) => `<span class="arme-portee" data-portee="${e(porteeDeLArme(ligne))}">${e(porteeDeLArme(ligne))}</span>`,
   'arme-durabilite': (_valeur, ligne, ctx = {}) => {
@@ -241,13 +249,14 @@ export function htmlDeLigneDArme(a, ctx = {}) {
  * pastilles physiques portent la classe de leur type (`couleur-degats-<type>` : famille `degats` de la palette), leur liseré tiré de la leur ; la pastille de la
  * magie, sans classe de dégâts, lit celle de la ligne.
  */
-export function htmlDesTypesDeDegatsElementaires(ae, type) {
-  const physiques = (type?.types_degats ?? []).filter((t) => LIBELLES_DES_DEGATS[t]).map((t) => `<span class="arme-dgt arme-dgt--${t} ${classeDeDegats(t)}">${LIBELLES_DES_DEGATS[t]}</span>`);
+export function htmlDesTypesDeDegatsElementaires(ae, type, liens = null) {
+  const physiques = (type?.types_degats ?? []).filter((t) => LIBELLES_DES_DEGATS[t]).map((t) => pastilleDeDegats(t, liens));
   const auChoix = Boolean(type?.type_degats_au_choix) && physiques.length > 1;
   const physique = auChoix
     ? `<span class="arme-dgt-choix" title="Un seul type, au choix du porteur">${physiques.slice(0, -1).join(', ')} ou ${physiques.at(-1)} <small>(au choix)</small></span>`
     : physiques.join(' ');
-  const magie = `<span class="arme-dgt arme-dgt--magie" data-magie="${e(ae.magie_id)}">${e(ae.magie)}</span>`;
+  // la magie : son nom court lié au mot-clé de sa magie (« Feu » : la bulle de « Magie du Feu »), nu sans lien
+  const magie = `<span class="arme-dgt arme-dgt--magie" data-magie="${e(ae.magie_id)}">${htmlDeLaMagie(liens, ae.magie_id, ae.magie)}</span>`;
   return physique ? `${physique} + ${magie}` : magie;
 }
 
@@ -308,7 +317,7 @@ export function htmlDeLigneDArmeElementaire(ae, { type, solidite }, ctx = {}) {
     + `<td class="arme__competence">${htmlDeCompetencesElementaires(type?.competences, ctx)}</td>`
     + `<td class="arme__type">${e(type?.nom ?? '')}</td>`
     + `<td class="arme__degats"><span class="arme-degats"${attribut('de', de)}${attribut('bonus', bonus)}${titreDe}>${e(bonus ? `${de}+${bonus}` : de)}</span></td>`
-    + `<td class="arme__types">${htmlDesTypesDeDegatsElementaires(ae, type)}</td>`
+    + `<td class="arme__types">${htmlDesTypesDeDegatsElementaires(ae, type, ctx.liens)}</td>`
     + `<td class="arme__portee"><span class="arme-portee" data-portee="${e(portee)}">${e(portee)}</span></td>`
     + `<td class="arme__durabilite"><span class="arme-durabilite" data-durabilite="${crans}" title="${crans} cran${crans > 1 ? 's' : ''} de solidité">${crans}</span></td>`
     + `<td class="arme__origine">${VIDE}</td>`

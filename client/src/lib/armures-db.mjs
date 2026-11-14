@@ -8,6 +8,7 @@
 // leurs liens mènent à leur onglet (lib/metiers.mjs#adresseDePage).
 // Sans dépendance (sauf des modules purs) : `chargerArmures` reçoit la base ouverte par lib/donnees.mjs.
 import { PAGE_DES_ARMURES, PAGE_DES_BOUCLIERS } from './corps-composants.mjs';
+import { liensDesValeursFermees } from './mots-cles-des-valeurs.mjs';
 import { cleDeMateriau } from './materiaux-couleurs.mjs';
 import { prixEnRo } from './arme-champs.mjs';
 import { coutDeLaPiece, coutParClasseDuBouclier } from './armure-champs.mjs';
@@ -169,7 +170,10 @@ export const poidsDeBouclier = (db) => lignes(db, 'SELECT * FROM bouclier_poids 
  *   boucliers       : les boucliers préfabriqués, par forme puis dans l'ordre des matières, chacun avec `poids_id` (la couleur de sa case : R92) ;
  *   poids           : les poids de boucliers (poidsDeBouclier) ;
  *   ecarts          : les écarts de la source notés dans le corps de la page « Armures » (ecartsDeLaSource) ;
- *   pages           : { armures, boucliers } : { titre, resume, corps_md }.
+ *   pages           : { armures, boucliers } : { titre, resume, corps_md } ;
+ *   liens           : { degats, magies } (lib/mots-cles-des-valeurs.mjs#liensDesValeursFermees, migration 0125) : le mot-clé du glossaire de chaque type de dégâts
+ *                     (`liens.degats.taille`… : armure_degats.type_degats) et de chaque magie (`liens.magies[magie_id]` : armure_elementaire.magie_id ; `texte` : son nom
+ *                     court), ou null.
  */
 export function chargerArmures(db) {
   const materiau = ({ nom, prix_ressource, description, type_materiau, ...ligne }) => ({
@@ -237,5 +241,6 @@ export function chargerArmures(db) {
     poids: poidsDeBouclier(db),
     ecarts: ecartsDeLaSource(page(PAGE_DES_ARMURES)?.corps_md),
     pages: { armures: page(PAGE_DES_ARMURES), boucliers: page(PAGE_DES_BOUCLIERS) },
+    liens: liensDesValeursFermees(db),
   };
 }

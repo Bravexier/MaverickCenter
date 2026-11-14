@@ -3,6 +3,7 @@ import { bulleDeCreature, carteDeCreature, pageHref, sortAncre, titreDeCreature,
 import { attributEd } from '../../lib/edition-modele.mjs';
 import { classesDeDeuxMagies } from '../../lib/palette-css.mjs';
 import { NPMS, varieAvecLeNpm } from '../../lib/creature-npm.mjs';
+import { htmlDeLaMagie } from '../../lib/valeurs-fermees-rendu.mjs';
 import Texte from './Texte.astro';
 
 // Détails d'un sort, affichés juste sous sa ligne quand on la sélectionne : ses effets (le texte des effets secondaires, puis la remarque du classeur
@@ -124,7 +125,7 @@ const ed = (colonne: string) => attributEd('sort', { id: sort.id }, colonne);
       <section class="sort-detail__bloc">
         <h5>Même nom dans une autre magie</h5>
         <ul class="chips">
-          {memeNom.map((o) => <li><a class="chip" href={`${pageHref(o.magie.id)}#${sortAncre(o.sort)}`}>{o.magie.nom}</a></li>)}
+          {memeNom.map((o) => <li><a class="chip" href={`${pageHref(o.magie.id)}#${sortAncre(o.sort)}`}><Fragment set:html={htmlDeLaMagie(magies.liens, o.magie.id, o.magie.nom)} /></a></li>)}
         </ul>
       </section>
     )

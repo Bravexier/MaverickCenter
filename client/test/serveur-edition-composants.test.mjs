@@ -191,6 +191,7 @@ function magieDEssai(base) {
   copier('page', { ...base.prepare('SELECT * FROM page WHERE id = ?').get(POTENTIEL_ILLIMITE), id, slug, titre: nom, titre_cle: `magie-d-essai-${process.pid}` });
   copier('magie', {
     ...base.prepare('SELECT * FROM magie WHERE id = ?').get(POTENTIEL_ILLIMITE), id, nom, nom_cle: `magie-d-essai-${process.pid}`,
+    mot_cle_id: null, // un mot-clé par magie (index unique magie_mot_cle, migration 0125) : la copie n'a pas celui du Potentiel Illimité
     ordre: base.prepare('SELECT max(ordre) AS m FROM magie').get().m + 1,
   });
   return id;

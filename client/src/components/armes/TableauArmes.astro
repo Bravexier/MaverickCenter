@@ -38,7 +38,7 @@ import Tableau from '../Tableau.astro';
 type Armes = ReturnType<typeof chargerArmes>;
 interface Props {
   famille: Omit<Armes['familles'][number], 'categorie' | 'armes'> & { armes: readonly Armes['familles'][number]['armes'][number][] };
-  contexte: ReturnType<typeof contexteDesArmes>;
+  contexte: ReturnType<typeof contexteDesArmes> & { liens?: ReturnType<typeof chargerArmes>['liens'] };
   /** la famille affichée au départ (la première du menu) */
   actif?: boolean;
   /** la solidité de base d'une arme élémentaire (chargerArmes().solidite_elementaire, R167) */

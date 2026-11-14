@@ -518,8 +518,8 @@ test('site construit : /debug/ selon le mode — quatre menus fermés (Système,
   const json = main.match(/<script type="application\/json" data-debug-schema>([^<]*)<\/script>/);
   assert.ok(json, 'la structure du schéma, en JSON');
   const structure = JSON.parse(json[1]);
-  // 217 : les 212 d'avant, plus categorie_mot_cle, mot_cle_categorie, mot_cle_ancienne_cle (migration 0113), mot_cle_synonyme (0115) et personnage_specialisation_magie (0118)
-  assert.equal(structure.tables.filter((t) => t.genre !== 'vue').length, 217);
+  // 218 : les 212 d'avant, plus categorie_mot_cle, mot_cle_categorie, mot_cle_ancienne_cle (migration 0113), mot_cle_synonyme (0115), personnage_specialisation_magie (0118) et type_degats (0125)
+  assert.equal(structure.tables.filter((t) => t.genre !== 'vue').length, 218);
   assert.equal(structure.tables.filter((t) => t.genre === 'vue').length, 38);
   assert.ok(structure.tables.find((t) => t.nom === 'sort').lignes > 0, 'nombre de lignes du build');
   assert.match(main, /<dialog class="schema-contenu" data-schema-dialogue aria-labelledby="schema-contenu-titre">/);

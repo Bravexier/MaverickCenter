@@ -23,7 +23,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 124;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 125;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -669,10 +669,16 @@ CREATE TABLE magie (
   remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   mono_magie            INTEGER NOT NULL CHECK (mono_magie IN (0, 1)),   -- 1 = « Mono-magie uniquement » : ne se combine avec aucune autre magie, sauf pour les
                                                     -- ethnies de magie_ethnie_secondaire (décision R15 du propriétaire : Potentiel Illimité et Corruption ; migration 0010)
+  -- Mot-clé du glossaire de la magie (« Magie du Feu » pour « Feu » ; migration 0125, demande du propriétaire du 2026-11-14 : les champs à valeur
+  -- fermée liés aux mots-clés du glossaire, « Si ils existent! ») : le site affiche le nom court de la magie avec l'infobulle de ce mot-clé (choix du
+  -- propriétaire). Pas de cascade, comme sort_mot_cle : la clé étrangère refuse de supprimer le mot-clé d'une magie. NULL : aucun mot-clé
+  mot_cle_id            INTEGER REFERENCES mot_cle(id),
   CHECK ((barre4_ressource IS NULL) = (barre4_texte IS NULL))
 ) STRICT;
 
 CREATE INDEX magie_caracteristique ON magie (caracteristique_id) WHERE caracteristique_id IS NOT NULL;
+
+CREATE UNIQUE INDEX magie_mot_cle ON magie (mot_cle_id) WHERE mot_cle_id IS NOT NULL;   -- deux magies n'ont jamais le même mot-clé (migration 0125)
 
 -- Rôles de la magie (bloc « ROLES » : trois cellules, de gauche à droite). `rang` = position dans l'onglet ; la source ne dit
 -- pas que le premier rôle est « principal » : ne pas l'interpréter.
@@ -1023,6 +1029,24 @@ CREATE TABLE sort_mot_cle (
 ) STRICT, WITHOUT ROWID;
 
 CREATE INDEX sort_mot_cle_mot_cle ON sort_mot_cle (mot_cle_id);   -- « les sorts grenades » : tous les sorts qui portent un mot-clé
+
+-- Types de dégâts : une ligne par valeur fermée des colonnes de type de dégâts (arme_degats.type_degats, arme_elementaire_type_degats.type_degats,
+-- armure_degats.type_degats, personnage_arme.type_degats_choisi, magie_resistance.cible_physique, invocation_resistance.cible_degat,
+-- creature_capacite_resistance.cible_degat, creature_attaque_type.type), et ce qui la lie au glossaire (migration 0125, demande du propriétaire du
+-- 2026-11-14 : « les armes et armures référencera leur type ou résistance (taille, estoc et frappe) via ce mot clé », « Si ils existent! »).
+-- Ces colonnes gardent leur valeur et leur CHECK, sans clé étrangère vers cette table (choix du propriétaire : leurs données et leur format ne
+-- changent pas). Pas de libellé ici : le mot-clé (ou la magie) donne le nom affiché.
+--   mot_cle_id : le mot-clé du type (Taille, Estoc, Frappe) ; NULL quand le glossaire n'en a pas (physique, sonore). Pas de cascade, comme
+--                sort_mot_cle : la clé étrangère refuse de supprimer un mot-clé qui définit un type de dégâts.
+--   magie_id   : feu, eau, glace (attaques de créature) se lient à la magie du même nom (choix du propriétaire), comme creature_attaque_type.magie_id ;
+--                leur mot-clé est celui de la magie (magie.mot_cle_id). Renseignée pour ces trois-là seulement, et jamais avec mot_cle_id.
+CREATE TABLE type_degats (
+  id          TEXT    NOT NULL PRIMARY KEY CHECK (id IN ('taille', 'estoc', 'frappe', 'physique', 'sonore', 'feu', 'eau', 'glace')),
+  mot_cle_id  INTEGER REFERENCES mot_cle(id),
+  magie_id    TEXT    REFERENCES magie(id),
+  CHECK ((id IN ('feu', 'eau', 'glace')) = (magie_id IS NOT NULL)),
+  CHECK (magie_id IS NULL OR mot_cle_id IS NULL)
+) STRICT;
 
 -- Fils de commentaires du Sommaire ancrés en A1 : commentaires de cellules supprimées, sans sort identifiable (certains portent
 -- des textes de règle). Conservés tels quels, sans rattachement inventé.

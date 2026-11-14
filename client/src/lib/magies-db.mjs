@@ -3,6 +3,7 @@
 // le gabarit des pages de magie (components/MagiePage.astro) n'interprète aucun Markdown, il affiche ces lignes.
 // Node seulement (la base est ouverte par lib/donnees.mjs au build). Une requête par table, puis assemblage en mémoire.
 import { libelleDuBloc } from './bestiaire-db.mjs';
+import { liensDesValeursFermees } from './mots-cles-des-valeurs.mjs';
 import { blocsDeTexte } from './sort-format.mjs';
 import { ORDRE_CHAMPS_NM } from './sort-maitrise.mjs';
 
@@ -29,10 +30,13 @@ const ORDRE_VARIANTES = ['mono', 'mono_et_bi', 'bi', 'forme_complete'];
 const ORDRE_CHAMPS_SQL = `CASE champ ${ORDRE_CHAMPS_NM.map((c, i) => `WHEN '${c}' THEN ${i}`).join(' ')} END`;
 
 /**
- * @returns {{ magies: Map<string, object>, sorts: Map<string, object>, etats: Map<string, object>, regles: object[] }}
+ * @returns {{ magies: Map<string, object>, sorts: Map<string, object>, etats: Map<string, object>, regles: object[], liens: { degats: object, magies: object } }}
  *   magies : clé = id de la page (« magies/magie-du-feu »), dans l'ordre du classeur ;
  *   sorts  : clé = id du sort (« magies/magie-du-feu#sort:boule-de-feu ») ;
- *   etats  : clé = id de l'altération d'état (« guide/liste-des-alterations-d-etat#etat:brulure »).
+ *   etats  : clé = id de l'altération d'état (« guide/liste-des-alterations-d-etat#etat:brulure ») ;
+ *   liens  : { degats, magies } (lib/mots-cles-des-valeurs.mjs#liensDesValeursFermees, migration 0125) : le mot-clé du glossaire de chaque type de dégâts
+ *            (`liens.degats[type]` : magie_resistance.cible_physique) et de chaque magie (`liens.magies[magie_id]` : magie_id des résistances, incompatibilités,
+ *            sorts… ; `texte` : son nom court), ou null.
  */
 export function chargerMagies(db) {
   const all = (sql) => db.prepare(sql).all();
@@ -272,5 +276,6 @@ export function chargerMagies(db) {
     sorts,
     etats,
     regles: all('SELECT id, titre, niveau_sort, texte FROM regle_magie ORDER BY id'),
+    liens: liensDesValeursFermees(db),
   };
 }

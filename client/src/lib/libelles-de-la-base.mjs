@@ -130,6 +130,8 @@ export const NOMS_DES_TABLES = Object.freeze({
   // un onglet des Règles (migration 0091, R184), cité par son menu latéral (regles_onglet_entree, dans TABLES : son nom vient de là) ; fixe
   regles_onglet: 'Onglet des Règles',
   sort_mot_cle: 'Étiquette du sort',
+  // les types de dégâts à valeur fermée (migration 0125) : leur mot-clé ou leur magie, lus seulement
+  type_degats: 'Type de dégâts',
   // les fiches de personnage (section 13) qui citent une table écrite : jamais écrites par l'édition des règles
   personnage: 'Fiche de personnage',
   personnage_accessoire: 'Accessoire du personnage',

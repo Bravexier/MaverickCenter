@@ -70,7 +70,7 @@ import type { PanneauRendu } from '../equipement/PanneauDeRegles.astro';
 type Armes = ReturnType<typeof chargerArmes>;
 interface Props {
   armes: Armes;
-  contexte: ReturnType<typeof contexteDesArmes>;
+  contexte: ReturnType<typeof contexteDesArmes> & { liens?: ReturnType<typeof chargerArmes>['liens'] };
   /** le panneau de règles de la page (`armes`), le Markdown de ses blocs rendu (src/pages/ressources/armes.astro) */
   regles: PanneauRendu | null;
   /** le texte de la page « Pièces élémentaires » qui touche les armes, rendu (lib/equipement-rendu.ts#piecesElementairesRendues) */
