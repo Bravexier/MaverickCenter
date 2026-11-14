@@ -25,6 +25,7 @@ import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
 import { casDeSantePotentiel, CONSTANTE_SANTE_POTENTIEL, MAGIE_POTENTIEL, plafondDeSantePotentiel } from './aide-sante-potentiel.mjs';
 import { textesReecrits } from './aide-textes-reecrits.mjs';
 import { retireeParLa0122 } from './aide-migration-0122.mjs';
+import { ouLitLa0124 } from './aide-migration-0124.mjs';
 import { fragmentRetireParLeSite } from './aide-fragments-du-site.mjs';
 
 const NOM = '0111-relecture-des-regles-contre-les-decisions';
@@ -88,7 +89,9 @@ test('0111 : le registre ne touche que le corps ou le résumé de pages des Règ
 test('0111 : chaque remplacement est en place dans l’état de la migration (le fragment écrit présent, l’ancien absent)', () => {
   const imp = apresLa0111();
   assert.equal(imp.prepare('PRAGMA user_version').get().user_version >= 111, true);
-  for (const t of registre.textes) {
+  for (const entree of registre.textes) {
+    // le texte de « Accessoires et Ceinture », passé tel quel dans « Inventaire/Sac à dos » par la migration 0124 (R272), se lit dans cette page
+    const t = ouLitLa0124(entree);
     // la page « La montée de niveau », retirée depuis par la migration 0122 (son registre : aide-migration-0122.mjs)
     if (t.table === 'page' && retireeParLa0122(t.cle.id)) { assert.equal(valeur(imp, t), undefined, t.cle.id); continue; }
     const v = valeur(imp, t);

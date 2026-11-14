@@ -428,6 +428,8 @@ La page est réécrite (migration `0112-r231-attaquer-et-se-defendre`, décision
 
 #### guide/fiche-accessoires-et-ceinture
 
+Texte passé dans `guide/fiche-inventaire-sac-a-dos` (migration 0124, R272) ; les numéros de ligne sont ceux de la page retirée.
+
 - **L9** — « permet une - utilisation plus rapide » — Tiret parasite au milieu de la phrase (reste d'import) : le retirer touche un signe. → permet une utilisation plus rapide
 - **L10** — « allumer des autres objets » — « des autres » devrait être « d'autres » : changement de mot. → allumer d'autres objets
 - **L16** — « absolument tout Attention il y a » — Point manquant entre deux phrases (ajout d'un signe). → absolument tout. Attention il y a
