@@ -33,6 +33,7 @@ user-invocable: false
 - Contenu des tables : lu dans la base vivante en lecture seule, `GET /api/debug/tables/<nom>/` avec `ETag`, version relevée par `GET /api/debug/base/`. Images jamais entières, même dans le JSON du journal ; textes longs coupés en SQL. Un nom n'entre dans le SQL qu'après `PRAGMA table_list` (une colonne de tri, `PRAGMA table_info`).
 - Métriques : une base SQLite par instance, `<MAVERICK_DOSSIER_METRIQUES>/<instance>.db` (`prod.db`, `dev.db`, dossier partagé). Jamais la base vivante ni `data/rows`.
 - Versées une fois par minute, jamais une écriture par requête.
+- Évènements `extrait` (fabrication de l'extrait du contenu) et `attestation` (écriture de celle de la production) : durée et nombres seulement, jamais un nom de fiche ni un texte de problème (skill `zone-service-extrait`). L'attestation passe par le dossier des métriques, déjà partagé entre les deux instances : rien dans `deploy/`.
 - Une route est un gabarit (`routeNormalisee`) : jamais un identifiant ni la chaîne de requête. Une route ajoutée à `serveur/api.mjs` y va aussi, sinon elle compte comme `/api/{inconnue}`.
 - Jamais d'IP, de corps, de cookie ni de User-Agent entier.
 - Cardinalité bornée même devant un trafic fabriqué : refus `403`/`405` regroupés (`routeGardee`), pages du site construit seulement (`pagesDuSite`), plafond dur `PLAFOND_METRIQUES_OCTETS` (au-delà, collecte restreinte).

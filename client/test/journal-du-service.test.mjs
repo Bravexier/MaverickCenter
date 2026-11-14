@@ -82,7 +82,7 @@ test('les appels journal(…) écrits avant la page Debug sont tous rangés : «
   // rangé par la suite du message (la requête : « http »)
   const dossier = new URL('../serveur/', import.meta.url);
   const debuts = [];
-  for (const nom of ['service.mjs', 'api.mjs', 'notes-de-version.mjs']) {
+  for (const nom of ['service.mjs', 'api.mjs', 'notes-de-version.mjs', 'extrait.mjs']) {
     const code = readFileSync(new URL(nom, dossier), 'utf8');
     for (const m of code.matchAll(/journal\??\.?\(\s*(?:\w+\s*\?\s*)?[`'"]([^`'"$]*)/g)) {
       if (m[1].replace(/^(ERREUR|ATTENTION|AVERTISSEMENT)\b/, '').trim()) debuts.push([nom, m[1]]);

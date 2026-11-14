@@ -38,6 +38,9 @@
 //   POST /api/edition/portrait/     { table, cle } → le portrait d'une carte de monstre ou d'une espèce, en entier, et son cadrage (les autres réponses
 //                                   de l'édition ne donnent d'une image que son empreinte : ligneSansImage ; le journal la porte en entier)
 //   POST /api/edition/              { page, operations } → applique un lot d'un bloc et le note au journal
+//   GET  /api/edition/extrait/      l'extrait du contenu : un fichier SQLite neuf (règles, notes de version, historique avec les modifications en attente ;
+//                                   ni fiche, ni compte, ni journal), refait au premier téléchargement qui suit un changement (serveur/extrait.mjs ; ETag, 304) ;
+//                                   GET /api/edition/extrait/meta/ : son méta en JSON (date, version du site, empreinte de chaque table) — `npm run db:extrait`
 //   GET  /api/edition/journal/      le journal des modifications en attente, à rapatrier dans data/rows (npm run db:appliquer-edition)
 // Page « Mise à jour », sur le site de dev seulement (même garde) — serveur/notes-de-version.mjs :
 //   GET  /api/mise-a-jour/              la note en préparation : modifications production → dev (calculées), brouillon, état du lancement
@@ -108,7 +111,9 @@ import { BALISE, ErreurMetriques } from './metriques.mjs';
 import { ErreurTables, lireTable, listerTables, versionDeLaBase, versionDuContenu } from './debug-tables.mjs';
 import { ErreurClasseur } from './classeur.mjs';
 import { TYPE_XLSX } from '../src/lib/google-sheets.mjs';
-import { reponseVersionnee, segmentDecode } from './partage.mjs';
+import { etiquetteCorrespond, etiquettesDe, reponseVersionnee, segmentDecode } from './partage.mjs';
+import { ErreurExtrait } from './extrait.mjs';
+import { etatDeLaProduction } from './attestation.mjs';
 
 export const PREFIXE = '/api/';
 /** Taille maximale d'un corps de requête (une fiche fait quelques kilo-octets). */
@@ -295,9 +300,39 @@ function traiterTipeee(service, brut, reste, permis) {
   return service.tipeee.lire().then((r) => json(200, r));
 }
 
+/**
+ * GET /api/edition/extrait/ (le fichier SQLite de l'extrait du contenu, ses octets) et GET /api/edition/extrait/meta/ (son méta en JSON) : site de dev
+ * seulement (403 ailleurs, avant tout). L'extrait est fabriqué au premier appel qui suit un changement du contenu (serveur/extrait.mjs) : la réponse
+ * est une PROMESSE. ETag = l'empreinte du fichier : 304 sans le relire si l'appelant l'a déjà.
+ */
+function traiterExtrait(requete, service, reste, permis) {
+  if (reste.length > 1 || (reste.length === 1 && reste[0] !== 'meta')) return erreur(404, 'Adresse inconnue.');
+  const refus = permis('GET');
+  if (refus) return refus;
+  if (!service.extrait) return erreur(503, 'L’extrait du contenu n’est pas disponible sur ce service.');
+  const echec = (e) => {
+    if (e instanceof ErreurExtrait) return erreur(e.statut, e.message);
+    throw e;
+  };
+  if (reste[0] === 'meta') return service.extrait.meta().then((meta) => json(200, meta), echec);
+  return service.extrait.meta().then((meta) => {
+    const cache = { ETag: `"${meta.fichier.sha256}"`, 'Cache-Control': 'private, no-cache', 'X-Extrait-Fabrique-Le': meta.fabrique_le };
+    const connues = etiquettesDe(requete.entetes?.['if-none-match']);
+    if (connues && etiquetteCorrespond(connues, meta.fichier.sha256)) return { statut: 304, corps: null, brut: '', entetes: cache };
+    return service.extrait.lire().then(({ meta: lue, octets }) => ({
+      statut: 200,
+      corps: null,
+      brut: octets,
+      entetes: { ...cache, ETag: `"${lue.fichier.sha256}"`, 'X-Extrait-Fabrique-Le': lue.fabrique_le, 'Content-Type': 'application/vnd.sqlite3',
+        'Content-Disposition': 'attachment; filename="maverick-extrait.db"' },
+    }));
+  }).catch(echec);
+}
+
 /** Les routes /api/edition/… (site de dev seulement). */
 function traiterEdition(requete, service, action, reste, permis) {
   if (!service.edition) return erreur(403, 'L’édition des règles n’est ouverte que sur le site de dev.');
+  if (action === 'extrait') return traiterExtrait(requete, service, reste, permis);
   if (reste.length || !['en-attente', 'lignes', 'listes', 'pages', 'mots-cles', 'chronologie', 'plan', 'journal', 'race', 'classe', 'bestiaire', 'portrait', 'evenement', undefined].includes(action)) {
     return erreur(404, 'Adresse inconnue.');
   }
@@ -532,7 +567,10 @@ function traiterMiseAJour(requete, service, action, reste, permis) {
     // mêmes règles que le service pour la page : annulable, et place occupée (un nouveau lancement serait refusé)
     const regles = { liberable: estLiberable(lancement, maintenant), occupe: occupe(lancement, maintenant) };
     if (action === 'lancement') return json(200, { lancement, ...regles, github });
-    return json(200, { ...noteEnPreparation(db, { reference: service.reference, versionDev }), lancement, ...regles, github, confirmation: CONFIRMATION });
+    // `etat_production` : la production a-t-elle appliqué sa dernière mise à jour ? (son attestation comparée à ce qu'elle publie : serveur/attestation.mjs)
+    const reference = service.reference && typeof service.reference === 'object' ? service.reference : {};
+    const etat_production = etatDeLaProduction({ dossier: service.attestations ?? null, production: reference.production ?? null, propre: reference.propre ?? null });
+    return json(200, { ...noteEnPreparation(db, { reference: service.reference, versionDev }), lancement, ...regles, github, confirmation: CONFIRMATION, etat_production });
   }
   const interdit = refusEcriture(requete.entetes ?? {});
   if (interdit) return interdit;

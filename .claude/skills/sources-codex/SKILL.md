@@ -52,4 +52,4 @@ user-invocable: false
 ## Tests
 - `client/test/codex.test.mjs`. Son vocabulaire d'essai a des ids entiers et une `cle` ; l'id de « codex » vient de `IDS_DES_MOTS_CLES_PROTEGES`, un autre mot-clé de la base se trouve par le registre de la 0113. Un renommage se simule avec la réécriture des pages qui le citent, notée au journal (R232 (3)). Un test qui simule une édition de page part de son état d'import (titre, texte, alias), pas du `.md` courant (le site peut modifier les 116 pages) ; les liens se résolvent comme le site (`lib/wikilinks-resolution.mjs`, slug compris), sur la base d'import (`test/aide-base-d-import.mjs`).
 - `client/test/eaunoire.test.mjs` : R21 dans la base (migration `0012-eaunoire`, nom corrigé partout, identifiant inchangé, le sort « Eau noire » garde le sien).
-- L'aller-retour de l'éditeur sur les pages du Codex : `client/test/markdown-edition.test.mjs` (skill `zone-edition`).
+- L'aller-retour de l'éditeur sur les pages du Codex : `client/test/markdown-edition.test.mjs` (skill `zone-edition-texte`).

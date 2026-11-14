@@ -27,7 +27,7 @@ Tenu à jour par la PR de chaque lot (état : à faire, en cours, fait ; puis le
 | 2 | Une installation ne peut plus effacer la base de dev | S | fait | #353 |
 | 3 | L'onglet Mise à jour compare au contenu réel de la production | M | fait | #354 |
 | 4 | Accès au site de dev | S | à faire | |
-| 5 | Extrait du contenu pour les sessions de Claude, attestation de la production | M | à faire | |
+| 5 | Extrait du contenu pour les sessions de Claude, attestation de la production | M | en cours (extrait, attestation, alerte de l'onglet : PR A ; base de la production refaite selon l'empreinte du contenu, archive au nom de sa version : PR B) | |
 | 6 | Lots de changements, annulation d'un lot, nature de chaque trace | L | à faire | |
 | 7 | Changements de structure appliqués sur place, d'abord à blanc | L | à faire | |
 | 8 | Bascule 1 : la base du site de dev fait foi | L | à faire | |

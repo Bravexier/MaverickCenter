@@ -20,7 +20,8 @@ import { textesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { TABLES_DES_NOTES as NOTES } from '../src/lib/notes-de-version.mjs';
 import { lireSchema } from '../src/lib/schema-doc.mjs';
 import {
-  TABLES_DERIVEES, TABLES_DES_NOTES, TABLES_DU_JOURNAL, TABLES_HORS_REGLES, TRACES_TELLES_QUELLES,
+  CLASSES_DE_TABLES, TABLES_CALCULEES, TABLES_DE_CONTENU, TABLES_DE_REGLES, TABLES_DERIVEES, TABLES_DES_NOTES, TABLES_DU_JOURNAL, TABLES_HORS_REGLES, TABLES_PROPRES_AU_SITE,
+  TRACES_TELLES_QUELLES, classeDeLaTable, tablesNonClassees,
 } from '../src/lib/tables-de-la-base.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
@@ -83,4 +84,54 @@ test('db:check : une balise d’un lien du Markdown reprise dans `lien.ancre`, o
   } finally {
     rmSync(dossier, { recursive: true, force: true });
   }
+});
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------------
+// Le classement de toutes les tables en « contenu », « propre au site » ou « calculée » (lot 5 du chantier de la base de dev, garde-fou 9 : un extrait ou
+// un paquet ne porte jamais une table que le classement ne connaît pas)
+// ---------------------------------------------------------------------------------------------------------------------------------------------------
+
+const TOUTES_LES_TABLES = (db) => db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name").all().map((t) => t.name);
+const schemaEnMemoire = (supplement = '') => {
+  const db = new DatabaseSync(':memory:');
+  db.exec(readFileSync(join(RACINE, 'data', 'schema.sql'), 'utf8'));
+  if (supplement) db.exec(supplement);
+  return db;
+};
+
+test('classement : les listes des trois classes suivent les sections de data/schema.sql et ne se recouvrent pas', () => {
+  const numero = (s) => Number(/^\d+/.exec(s.titre)?.[0]);
+  const tablesDesSections = (garde) => SECTIONS.filter((s) => /^\d+(?: bis)?\. /.test(s.titre) && garde(numero(s))).flatMap((s) => s.objets)
+    .filter((o) => o.genre === 'table' || o.genre === 'table de recherche (FTS5)').map((o) => o.nom).sort();
+  assert.deepEqual(trie(TABLES_DE_REGLES), tablesDesSections((n) => n <= 10), 'sections 0 à 10 : les règles');
+  assert.deepEqual(trie(TABLES_DE_CONTENU), trie([...tablesDesSections((n) => n <= 10), ...tablesDe(15)]), 'contenu = règles + notes de version et historique');
+  assert.deepEqual(trie(TABLES_PROPRES_AU_SITE), trie([...tablesDe(13), ...tablesDe(14)]), 'propre au site = fiches, comptes, groupes, journal, brouillon');
+  assert.deepEqual(trie(TABLES_CALCULEES), tablesDesSections((n) => n === 11), 'calculées = section 11 (dérivées et recherche plein texte)');
+  const toutes = [...TABLES_DE_CONTENU, ...TABLES_PROPRES_AU_SITE, ...TABLES_CALCULEES];
+  assert.equal(new Set(toutes).size, toutes.length, 'une table n’est que d’une classe');
+  for (const t of TABLES_DE_CONTENU) assert.equal(classeDeLaTable(t), CLASSES_DE_TABLES.CONTENU, t);
+  for (const t of TABLES_PROPRES_AU_SITE) assert.equal(classeDeLaTable(t), CLASSES_DE_TABLES.PROPRE_AU_SITE, t);
+  for (const t of TABLES_CALCULEES) assert.equal(classeDeLaTable(t), CLASSES_DE_TABLES.CALCULEE, t);
+});
+
+test('classement : toute table du schéma, et de la base construite, a une classe — les ombres du plein texte et les tables internes de SQLite sont calculées', () => {
+  const schema = schemaEnMemoire();
+  const noms = TOUTES_LES_TABLES(schema);
+  assert.ok(noms.some((t) => /^page_fts_/.test(t)), 'les tables d’ombre du plein texte existent dans le schéma exécuté');
+  assert.deepEqual(tablesNonClassees(noms), []);
+  for (const t of noms.filter((n) => /_fts(_|$)/.test(n))) assert.equal(classeDeLaTable(t), CLASSES_DE_TABLES.CALCULEE, t);
+  schema.close();
+  assert.deepEqual(tablesNonClassees(TOUTES_LES_TABLES(ouvrirBase({ sansExemples: false }))), [], 'la base construite depuis data/rows aussi');
+  assert.equal(classeDeLaTable('sqlite_sequence'), CLASSES_DE_TABLES.CALCULEE);
+});
+
+test('classement : une table nouvelle, non classée, est refusée (le schéma d’essai qui en a une de plus fait échouer le contrôle)', () => {
+  const faux = schemaEnMemoire('CREATE TABLE une_table_nouvelle (id INTEGER PRIMARY KEY) STRICT; CREATE TABLE personnage_autre_nouveau (id INTEGER PRIMARY KEY) STRICT;');
+  const noms = TOUTES_LES_TABLES(faux);
+  faux.close();
+  assert.deepEqual(tablesNonClassees(noms), ['personnage_autre_nouveau', 'une_table_nouvelle']);
+  assert.equal(classeDeLaTable('une_table_nouvelle'), null);
+  // un nom qui ressemble à une ombre du plein texte sans l'être n'est pas classé non plus
+  assert.equal(classeDeLaTable('page_fts_nouvelle'), null);
+  assert.equal(classeDeLaTable('autre_fts_data'), null);
 });

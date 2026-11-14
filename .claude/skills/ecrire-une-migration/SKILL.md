@@ -19,7 +19,7 @@ Un changement de structure, ou une correction de données qu'aucun outil n'écri
 4. **La doc**, depuis `client/` : `npm run db:doc` (régénère `docs/sql/structure.md` et `apercu.md`), et `db:build` quand un outil l'exige. **Les contrôles** (`db:check`, `db:pages-check`, `db:doc -- --check`, `npm run test:cible`) sont passés par `tech-qualite` en fin de lot (`controles-avant-rendu`) : l'auteur ne lance que le fichier de test qu'il écrit (`node --test test/<fichier>`).
 5. **Les suites dans le code.**
    - Une table ajoutée se range dans le registre de l'API (`client/src/lib/ressources/` ou `HORS_RESSOURCE` : `zone-api-rest`).
-   - Une table des sections 13, 14 ou 15 va dans ses listes (`zone-fiches-base`, `zone-edition`).
+   - Toute table nouvelle se classe dans `client/src/lib/tables-de-la-base.mjs` (contenu, propre au site ou calculée ; `TABLES_DE_REGLES` pour les règles) : sinon `test/tables-de-la-base.test.mjs` échoue. Une table des sections 13, 14 ou 15 va en plus dans ses listes (`zone-fiches-base`, `zone-edition`).
    - La base vivante d'un serveur n'est pas migrée mais reconstruite (`COLONNES_RETIREES`, `TABLES_RETIREES`, conversions : `zone-service`).
    - Le compteur de tables, de vues et de clés étrangères suit dans `base-sqlite` et dans les tests qui l'épinglent.
    - Une valeur importée d'un classeur que la migration change de façon voulue (décision R…) a son entrée `voulus` dans le registre `tools/sources/ignorer/<classeur>.json`, avec sa raison (`docs/sources.md`, « Rapprochement d'un classeur ») : `tech-sources` l'écrit. Sans elle, le test de rapprochement d'un classeur `rapproche` est rouge.

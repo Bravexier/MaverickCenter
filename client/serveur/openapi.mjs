@@ -468,8 +468,16 @@ function cheminsDuService() {
     '/edition/portrait/': ecritureDuService('edition_portrait', 'Portrait d’une carte ou d’une espèce', `{ table, cle } → le portrait en entier et son cadrage (lecture).${SITE_DE_DEV}`, { table: 'monstre', cle: { id: '<identifiant>' } }),
     '/edition/': ecritureDuService('edition_lot', 'Enregistrer un lot de modifications', `{ page, operations } → applique un lot d’un bloc et le note au journal (opérations : modifier, creer, supprimer, relations, magies_innees, categories, fusionner_mots_cles, categories_mot_cle, synonymes_mot_cle, valeurs_de_capacite, ordonner).${SITE_DE_DEV}`,
       { page: 'api/debug', operations: [{ op: 'modifier', table: 'metier', cle: { id: '<identifiant>' }, valeurs: { description: '…' } }] }, { 404: ref('responses', 'Introuvable'), 409: ref('responses', 'Conflit'), 422: ref('responses', 'Refusee') }),
+    '/edition/extrait/': {
+      get: {
+        operationId: 'edition_extrait', tags: [SERVICE], summary: 'Extrait du contenu (fichier SQLite)',
+        description: `Un fichier SQLite neuf : les règles, les notes de version et l’historique (avec les modifications en attente, sans leur auteur) ; jamais une fiche, un compte, un groupe ni le journal. Refait au premier appel qui suit un changement du contenu (en-tête X-Extrait-Fabrique-Le : sa date). 304 si l’empreinte est celle de If-None-Match. \`npm run db:extrait\` le télécharge et vérifie son empreinte.${SITE_DE_DEV}`,
+        responses: { 200: { description: 'Le fichier SQLite.', content: { 'application/vnd.sqlite3': { schema: { type: 'string', format: 'binary' } } } }, 304: ref('responses', 'NonModifie'), 403: ref('responses', 'Fermee'), 503: ref('responses', 'Indisponible') },
+      },
+    },
+    '/edition/extrait/meta/': lectureDuService('edition_extrait_meta', 'Méta de l’extrait du contenu', `La date de fabrication (UTC), la version du site, le schéma, l’empreinte globale et celle de chaque table de contenu, le nombre de lignes des tables calculées, la taille et l’empreinte du fichier (fabrique l’extrait s’il est périmé).${SITE_DE_DEV}`),
     '/edition/journal/': lectureDuService('edition_journal', 'Journal des modifications en attente', `Le journal à rapatrier dans data/rows (npm run db:appliquer-edition), en pièce jointe.${SITE_DE_DEV}`),
-    '/mise-a-jour/': lectureDuService('mise_a_jour', 'Note en préparation', `Modifications production → dev (calculées), brouillon, état du lancement.${SITE_DE_DEV}`),
+    '/mise-a-jour/': lectureDuService('mise_a_jour', 'Note en préparation', `Modifications production → dev (calculées), brouillon, état du lancement, et \`etat_production\` : la production a-t-elle appliqué sa dernière mise à jour (\`a_jour\`, \`pas_appliquee\`, \`inconnue\`).${SITE_DE_DEV}`),
     '/mise-a-jour/brouillon/': ecritureDuService('mise_a_jour_brouillon', 'Enregistrer le brouillon', `{ texte, avant } → enregistre le champ libre des admins.${SITE_DE_DEV}`, { texte: '…', avant: '' }, { 409: ref('responses', 'Conflit') }),
     '/mise-a-jour/majeure/': ecritureDuService('mise_a_jour_majeure', 'Version majeure ou non', `{ majeure } → la case « Version majeure » : la prochaine mise à jour sera la X+1.0 (true) ou la X.Y+1 (false) ; rien n’est déclenché ; rend la note en préparation.${SITE_DE_DEV}`, { majeure: true }, { 409: ref('responses', 'Conflit') }),
     '/mise-a-jour/lancer/': ecritureDuService('mise_a_jour_lancer', 'Lancer une mise à jour (ou une simulation)',

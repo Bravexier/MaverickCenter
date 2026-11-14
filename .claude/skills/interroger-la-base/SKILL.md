@@ -1,6 +1,6 @@
 ---
 name: interroger-la-base
-description: "Lire la base SQLite de Maverick en lecture seule (construire var/maverick.db, requêtes node ou python, valeur d'import, schéma et vues) pour répondre à une question de règle, de lore ou de données. À charger avant toute requête SQL d'analyse."
+description: "Lire la base SQLite de Maverick en lecture seule (extrait du site de dev, var/maverick.db, requêtes node ou python, valeur d'import, schéma et vues) pour répondre à une question de règle, de lore ou de données. À charger avant toute requête SQL d'analyse."
 user-invocable: false
 ---
 
@@ -8,7 +8,14 @@ user-invocable: false
 
 ## Préparer
 
-`var/maverick.db` (à la racine du dépôt, ignorée par git) est construite depuis `data/rows`. Le scratchpad est partagé entre agents, et `db:build` commence par effacer sa sortie : chaque agent qui construit une base le fait donc sous un nom à lui.
+**Une analyse du contenu (règles, lore) lit d'abord l'extrait du site de dev**, qui porte aussi les saisies pas encore rapatriées. Depuis `client/` : `npm run db:extrait` (`scripts/db-extrait.mjs`). Il écrit `var/extrait/maverick-dev.db` et `maverick-dev.json` à la racine (dossier ignoré par git) et ne retélécharge pas un extrait inchangé.
+- Adresse : `--url` ou `MAVERICK_EXTRAIT_URL` (défaut `https://dev.maverick-jdr.com`). Clé de lecture facultative : `--cle` ou `MAVERICK_EXTRAIT_CLE` (`user:pass` part en Basic, sinon Bearer).
+- **Jamais les fiches ni les comptes** : les tables propres au site y sont vides.
+- **Chaque rapport cite la date de l'extrait** : `fabrique_le`, dans la vue `extrait_meta` ou dans le `.json`.
+- Les saisies du site pas encore rapatriées sont dans `historique_modification`, avec `version` NULL. Les tables calculées (liens, recherche) sont telles que la base vivante les porte.
+- Site de dev injoignable : on lit `var/maverick.db` ci-dessous, et le rapport le dit.
+
+**`var/maverick.db`** (racine du dépôt, ignorée par git, construite depuis `data/rows`) reste la voie pour ce qui concerne le dépôt : migration, test, état d'import. Le scratchpad est partagé entre agents, et `db:build` commence par effacer sa sortie : chaque agent qui construit une base le fait sous un nom à lui.
 
 1. **Si elle est à jour**, on la lit telle quelle : elle existe, et `find data/rows -newer var/maverick.db` (depuis la racine) ne renvoie rien.
 2. **Sinon**, on construit sa propre copie sous un nom unique, sans toucher à `var/maverick.db`. Depuis `client/` : `F=$(mktemp -p <scratchpad> base-XXXXXX.db) && node --no-warnings scripts/db-build.mjs --out "$F" && node --no-warnings scripts/db-derive.mjs "$F"`. On interroge ensuite `$F`.
@@ -21,9 +28,10 @@ node -e "const {DatabaseSync}=require('node:sqlite');const db=new DatabaseSync('
 python3 -I -c "import sqlite3,sys;c=sqlite3.connect('file:var/maverick.db?mode=ro',uri=True);[print(r) for r in c.execute(sys.argv[1])]" "SELECT count(*) FROM sort"
 ```
 
+- Les commandes ci-dessus lisent `var/maverick.db` ; pour l'extrait, le chemin est `var/extrait/maverick-dev.db`.
 - **Toujours en lecture seule** (`readOnly: true`, `?mode=ro`). On n'écrit jamais dans une base, ni dans `data/rows` : une donnée se change par l'équipe technique.
 - **Où chercher.** La structure de chaque table et de chaque vue est dans `data/schema.sql` : son en-tête donne les conventions, et chaque table a un commentaire. Les mêmes informations sont lisibles dans `docs/sql/structure.md`. Les sections du schéma suivent les domaines : 2 fiche, 3 magies, 4 annexes, 5 dieux, 5 bis chronologie, 6 classes, 7 races, 8 et 8 bis bestiaire, 9 équipement.
 - **Valeur d'origine.** Une valeur modifiée sur le site de dev diffère de l'import. La valeur d'import se lit dans `historique_modification`, ou par `client/src/lib/historique-site.mjs`.
 - **Lectures sans base.** `data/rows/<table>.sql` (des `INSERT`) se lit aussi par `Grep` sans construire la base.
-- **Ce que la base ne contient jamais.** Les tables des fiches de personnages (section 13) et du journal (section 14) sont vides dans `data/rows`. On ne lit jamais la base vivante d'un serveur. Les modifications faites sur le site de dev et pas encore rapatriées ne se voient donc pas : le rapport le dit quand cela peut changer la réponse.
+- **Ce que la base ne contient jamais.** Les tables des fiches de personnages (section 13) et du journal (section 14) sont vides, dans `data/rows` comme dans l'extrait. On ne lit jamais la base vivante d'un serveur. Dans `var/maverick.db`, les modifications du site de dev pas encore rapatriées ne se voient pas : le rapport le dit quand cela peut changer la réponse.
 - **Preuve dans le rapport.** Donner la requête et son résultat (ou les premières lignes et le compte).

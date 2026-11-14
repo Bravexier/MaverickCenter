@@ -667,9 +667,75 @@ déjà versées (idempotent ; seul `historique_modification.sql` change).
 | `POST /api/edition/portrait/` | `{ table, cle }` → le portrait d'une carte de monstre ou d'une espèce, en entier (`portrait` : data URL, ou null) et son cadrage. Les autres réponses (lignes lues, en attente, d'un lot, d'un conflit) ne donnent d'une image que `{ image: true, empreinte, resume }` (`lib/edition-modele.mjs#ligneSansImage`) : 700 000 caractères par image |
 | `POST /api/edition/` | `{ page, operations: [...] }` → applique un lot d'un bloc (`modifier`, `creer`, `supprimer`, `relations`, `magies_innees`, `categories`, `fusionner_mots_cles` : `serveur/edition.mjs` ; `ordonner` : `serveur/edition-plan.mjs` ; `valeurs_de_capacite` : les valeurs « {N} » d'une capacité de monstre pour une carte, décision R69, `serveur/edition-bestiaire.mjs`) ; rend `{ lot, modifications, crees, lignes, fiches }` (`fiches` : les fiches de personnage dont le lot a retiré un élément, R42) |
 | `GET /api/edition/journal/` | Le journal des modifications en attente, et des « intégrées » des lots que les règles n'ont pas encore reçus (`maverick-edition/1`), en pièce jointe |
+| `GET /api/edition/extrait/` | L'extrait du contenu (un fichier SQLite) : ci-dessous, « Extrait du contenu et attestation de la production » ; `…/extrait/meta/` : son méta en JSON |
 
 **Pas de comptes** : quiconque a le mot de passe du site de dev peut modifier les règles (le journal n'a pas d'auteur :
 `modification_lot.auteur_id` attend la connexion Discord). Mêmes protections d'écriture que les fiches (JSON, `Sec-Fetch-Site`).
+
+## Extrait du contenu et attestation de la production
+
+Lot 5 du chantier « la base du site de dev devient la source de vérité » (`docs/chantier-base-de-dev.md`, R274, R275 (3)) : les sessions de Claude lisent le
+vrai contenu du site de dev, sans fiche ni compte ; la production dit d'elle-même, sans nom ni fiche, où elle en est.
+
+**Le classement des tables** (`src/lib/tables-de-la-base.mjs#classeDeLaTable`, garde-fou 9). Toute table de la base est de l'une de trois classes ; une table
+que le classement ne connaît pas rend `null`, et le test `tables-de-la-base` échoue : une migration qui ajoute une table l'ajoute à la liste de sa classe.
+- **contenu** : les règles (sections 0 à 10 de `data/schema.sql` : `TABLES_DE_REGLES`), les notes de version et l'historique des modifications (section 15) ;
+- **propre au site** : les fiches, comptes et groupes (section 13), le journal de l'édition et le brouillon de la note (section 14) — vides dans tout fichier qui sort ;
+- **calculée** : les tables dérivées (`lien`, `lien_candidat`), la recherche plein texte (`page_fts`, `entite_fts`, avec leurs tables d'ombre) et les tables internes de SQLite.
+
+**Les empreintes** (`serveur/empreintes.mjs#empreintesDuContenu`) : le SHA-256 de chaque table de contenu, puis une empreinte globale (noms et empreintes des
+tables). Elles ne dépendent ni de l'ordre des lignes (lues triées par clé primaire, puis par toutes les colonnes, en comparaison binaire) ni de l'ordre des
+colonnes (prises par nom, avec leur type, `NOT NULL` et rang dans la clé) ni des octets du fichier : deux bases au même contenu ont les mêmes empreintes.
+Chaque valeur porte son type (NULL, entier, réel, texte, binaire). Une table propre au site, calculée ou inconnue n'y entre jamais.
+
+**L'extrait** (`serveur/extrait.mjs`, site de dev seulement). Un fichier SQLite **neuf** (jamais la base vivante copiée puis vidée : aucune page libre héritée) :
+le schéma de la base vivante ; les tables de contenu recopiées depuis elle, donc avec les modifications du site ; les tables propres au site **vides** (le service
+refuse le fichier si l'une contient une ligne ; une table inconnue du classement n'est jamais recopiée) ; les tables calculées recopiées **telles que la base vivante
+les porte** (le service ne les recalcule pas : après une édition, `lien` et la recherche plein texte peuvent retarder sur le contenu, jamais l'inverse) ; les
+modifications en attente du journal versées dans `historique_modification` **sans leur auteur**, version `NULL` (garde-fou 10 ; la règle de `db:appliquer-edition` :
+`serveur/historique.mjs#historiser`, un lot en conflit n'est pas versé) ; une vue `extrait_meta` (format, date UTC de fabrication, version du site, schéma,
+empreinte globale). Les fiches, comptes, groupes et le journal n'y sont pas : un test cherche leurs noms sentinelles dans chaque octet.
+
+Il est **refait une fois par changement**, pas à chaque téléchargement : rangé dans `db/extrait/` (`extrait.db` et `extrait.json`, le méta qui fait foi : date,
+version du site, schéma, empreinte globale et de chaque table, lignes des tables calculées, taille et SHA-256 du fichier), réutilisé tant que la **clé de
+changement** (`extrait.mjs#cleDeChangement`) ne bouge pas. Elle bouge avec la base vivante refaite (`vivante.json` : règles, schéma, `refaite_le`) et avec le
+journal de l'édition — un lot de plus, une modification qui change d'état (en attente, intégrée, en conflit), un lot résolu, abandonné — parce que tout écrit de
+contenu passe par lui (`enregistrer`, résolution d'un conflit) ; jamais avec une fiche, un compte ou un groupe. Quelques requêtes sur le journal, jamais le contenu.
+Le premier téléchargement qui suit un changement fabrique l'extrait **dans un fil à part** (`Worker` du même module : le service reste libre), une seule fabrication à
+la fois (les demandes simultanées l'attendent), écriture atomique (`rename`, le méta en dernier).
+
+| Requête | Réponse |
+| --- | --- |
+| `GET /api/edition/extrait/` | Le fichier SQLite (`application/vnd.sqlite3`, en pièce jointe) ; `ETag` = son SHA-256, `X-Extrait-Fabrique-Le` ; `304` sur `If-None-Match` ; `403` hors du site de dev ; `503` sans base |
+| `GET /api/edition/extrait/meta/` | Le méta (`extrait.json`) : `format`, `fabrique_le`, `version_du_site`, `schema`, `empreinte`, `tables` (`{ empreinte, lignes }` par table), `calculees`, `modifications_versees`, `fichier` (`octets`, `sha256`), `duree_ms`… |
+
+**La commande** : `cd client && npm run db:extrait` (`scripts/db-extrait.mjs`) télécharge l'extrait depuis `https://dev.maverick-jdr.com` (`--url` ou `MAVERICK_EXTRAIT_URL`),
+dans `var/extrait/` (ignoré par git ; `--dossier`) : `maverick-dev.db` et `maverick-dev.json`. Une clé de lecture facultative (`--cle` ou `MAVERICK_EXTRAIT_CLE` ; le lot 4 du chantier
+met un mot de passe) : « utilisateur:motdepasse » part en `Basic`, toute autre valeur en `Bearer`. Elle vérifie le SHA-256 du fichier, puis l'empreinte de **chaque** table
+contre le méta (`ecartsAvecLeMeta`), pose le fichier par `rename` (rien n'est écrit si l'un ne concorde pas), ne retélécharge pas un extrait déjà à jour, et affiche **la date de
+l'extrait** : chaque analyse la cite. Les sessions de Claude lisent ce fichier en lecture seule (`node:sqlite`, comme `interroger-la-base`), jamais les fiches ni les comptes.
+
+**L'attestation de la production** (`serveur/attestation.mjs`). Au démarrage du service, après la préparation de la base vivante, et après chaque reconstruction (aussi
+quand elle échoue), la production écrit par `rename` `<dossier des métriques>/attestation-prod.json` — le dossier que les deux instances se partagent sur le VPS
+(`MAVERICK_DOSSIER_METRIQUES`, déjà monté dans les deux : aucun réglage de `deploy/`). Le site de dev n'en écrit pas (option `attestation` de `demarrerService` : `publier`
+par défaut sans l'édition ; `false` : ni écriture ni lecture). Elle contient : `version` (`service`, `code`), `schema`, `base_vivante` (`empreinte` globale et `tables`
+par table, du contenu de la base vivante), `regles_publiees` (`empreinte` globale du contenu de `site/donnees/maverick.db`), `preparation` (`appliquee`, **le nombre** de
+`problemes`, jamais leur texte, `refaite_le`, `regles`), `citations` (pour chaque élément de règle cité par une fiche — clé étrangère d'une table de fiche vers une table
+de contenu — `{ table, id, fiches }` : le nombre de fiches **distinctes** qui le citent, une clé composée donnant un id « a+b ») et `duree_ms`. Ni nom ni identifiant de fiche, de
+compte ou de groupe. Un échec d'écriture est noté au journal du service (`ERREUR attestation`) et n'empêche rien : le service démarre, les fiches ne sont que lues.
+
+**Côté site de dev** : `GET /api/mise-a-jour/` porte `etat_production` (`attestation.mjs#etatDeLaProduction`), la comparaison de l'attestation au contenu que la production
+publie (`/production`, `MAVERICK_PRODUCTION` : son `_serveur/version.json` et l'empreinte de son `donnees/maverick.db`, gardée par signature du fichier : rien ne se recalcule à
+chaque requête) :
+
+```json
+{ "etat": "a_jour" | "pas_appliquee" | "inconnue", "raison": null | "version" | "contenu" | "preparation" | "en_cours" | "absente" | "illisible" | "production_illisible" | "non_configuree",
+  "message": "…", "version_publiee": "0.4.79", "version_attestee": "0.4.78", "attestee_le": "2026-11-14T10:00:00Z", "problemes": 0, "tables_differentes": [] }
+```
+
+`pas_appliquee` : la production n'a pas appliqué sa dernière mise à jour (`version` : elle tourne sur une autre version que celle qu'elle publie ; `contenu` : sa base vivante
+n'a pas le contenu publié, `tables_differentes` les nomme ; `preparation` : la préparation de sa base a échoué). `inconnue` : sans alerte — `en_cours` (la version ou le contenu diffère, mais le fichier publié a changé il y a moins de `TOLERANCE_DE_LA_MISE_A_JOUR_MS` = 10 minutes et est plus neuf que l'attestation : la production applique sa mise à jour), ou l'attestation est absente (la production ne
+l'écrit qu'après sa prochaine livraison) ou illisible, ou la production n'est pas lisible depuis ce site.
 
 ## API REST `/api/v1/` et page Debug (site de dev)
 
@@ -1067,7 +1133,7 @@ pas encore résolus et les lots retenus derrière eux sont défaits, dans un sav
 
 | Requête | Réponse |
 | --- | --- |
-| `GET /api/mise-a-jour/` | La note en préparation : `reference`, `version_dev`, `version_cible` (selon la case « Version majeure »), `version_mineure`, `version_majeure`, `en_attente`, `en_conflit` (`{ lots, modifications }` à résoudre), `lignes`, `bilan`, `brouillon` (dont `majeure`), `lancement`, `github`, `confirmation` |
+| `GET /api/mise-a-jour/` | La note en préparation : `reference`, `version_dev`, `version_cible` (selon la case « Version majeure »), `version_mineure`, `version_majeure`, `en_attente`, `en_conflit` (`{ lots, modifications }` à résoudre), `lignes`, `bilan`, `brouillon` (dont `majeure`), `lancement`, `github`, `confirmation`, `etat_production` (la production a-t-elle appliqué sa dernière mise à jour : « Extrait du contenu et attestation de la production », ci-dessus) |
 | `POST /api/mise-a-jour/brouillon/` | `{ texte, avant }` → le champ libre enregistré (`409` s'il a changé entre-temps ou si un lot est figé) |
 | `POST /api/mise-a-jour/majeure/` | `{ majeure }` (`true` ou `false`) → la case « Version majeure » enregistrée, et la note en préparation à sa nouvelle version cible ; rien n'est déclenché (`409` si un lot est figé) |
 | `POST /api/mise-a-jour/lancer/` | `{ confirmation, simulation?, version_cible? }` → fige le lot et déclenche le workflow (`simulation: true` : simulation de mise à jour, rien n'est poussé ; `version_cible` : celle que la page a montrée, `409` si une autre partirait, case « Version majeure » changée depuis un autre onglet) → `202`, `{ lancement }` (`etat` : `envoi`, `lance`, `en_cours`, `termine`, `echec`, `erreur`, `manuel`, `annule`, `simulation_reussie`, `simulation_echouee`) |
@@ -1440,7 +1506,8 @@ quantiles, rétention, deux instances, vraies requêtes HTTP, croissance et proj
 l'hôte, réserve de root), `debug-metriques` et `debug-balise` (rendus de la page
 Debug, balise des pages), `deploy-vps` (`instances.sh` : dossiers partagés de la maintenance et des métriques, une instance par fichier, minuteur du relevé de l'hôte) et
 `deploy-volume` (rotation des journaux Docker, métriques montées hors de `db/`, mesure des pages active par défaut, `volume.sh` exécuté sur une
-arborescence factice : clés et classement du service, chaque octet compté une fois, cette section fidèle au code), `ressources-registre`, `serveur-api-v1` et
+arborescence factice : clés et classement du service, chaque octet compté une fois, cette section fidèle au code), `serveur-extrait`, `serveur-attestation` et `db-extrait` (l'extrait du contenu : aucune trace d'une fiche, empreintes, modifications versées, une fabrication par changement,
+route ; l'attestation de la production et son état côté dev ; la commande de téléchargement), `ressources-registre`, `serveur-api-v1` et
 `api-doc` (API REST `/api/v1/`, [`api.md`](api.md)), `journal-du-service` et `debug-page` (page Debug) ; `site-html` contrôle `dist/_serveur/`
 après le build, le script de maintenance de chaque page (exécuté dans un faux navigateur) et `/maintenance/`.
 

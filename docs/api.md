@@ -57,6 +57,7 @@ Toutes finissent par « / », comme celles du site (en développement, Astro ref
 | `GET` | `/api/debug/systeme/` | Processus, disque et sa répartition par type de données, fichiers, échantillons, évènements, volume des métriques, alertes (page Debug, plus bas) |
 | `GET` | `/api/debug/tables/`, `/api/debug/tables/<nom>/` | Les tables et vues de la base vivante, puis une page des lignes de l'une d'elles (fiches comprises), en lecture seule, avec son `ETag` et `304` sur `If-None-Match` (menu « DB », le schéma de la base, de la page Debug, plus bas) |
 | `GET` | `/api/debug/base/` | La version de la base vivante, qui change à chaque écriture validée : la page Debug la relève pour suivre les tables en direct (plus bas) |
+| `GET` | `/api/edition/extrait/`, `/api/edition/extrait/meta/` | L'extrait du contenu du site (un fichier SQLite neuf : règles, notes de version, historique avec les modifications en attente ; ni fiche, ni compte, ni journal) et son méta (date, empreinte de chaque table) : `npm run db:extrait`, [`serveur.md`](serveur.md#extrait-du-contenu-et-attestation-de-la-production) |
 | `POST` | `/api/metriques/page/` | La balise des pages vues (mesures du navigateur) : **les deux instances**, hors `/api/v1/` (plus bas) |
 
 `PUT` n'existe pas : `PATCH` modifie les colonnes envoyées, les autres restent.

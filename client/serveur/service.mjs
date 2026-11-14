@@ -37,6 +37,8 @@ import { creerMesureSql } from './metriques-sql.mjs';
 import { creerClasseurEnLigne } from './classeur.mjs';
 import { creerTipeee } from './tipeee.mjs';
 import { compterLesConflits } from './edition-conflits.mjs';
+import { ecrireAttestation, fabriquerAttestation } from './attestation.mjs';
+import { creerExtrait } from './extrait.mjs';
 
 /** La ligne de la sortie console (`docker logs`) : « <instant> <message> », la même que celle du journal en mémoire (journal-du-service.mjs). */
 const horodater = (ligne) => `${maintenant()} ${ligne}`;
@@ -123,11 +125,15 @@ const inode = (chemin) => {
  *   <dossier>/metriques), MAVERICK_INSTANCE (sinon « dev » avec l'édition, « prod » sans), MAVERICK_METRIQUES_BRUTES=1 (requêtes brutes gardées 30
  *   jours), MAVERICK_METRIQUES_PAGES=0 (balise des pages vues fermée ; ouverte par défaut, décision du propriétaire) ; `site` : le dossier du site
  *   construit (répartition du disque ; par défaut dossierDuSite) ; false : aucune collecte
+ * @param {false | { dossier?: string|null, publier?: boolean }} [o.attestation] l'attestation de la production (serveur/attestation.mjs) : `publier`
+ *   (par défaut : sans l'édition, c'est-à-dire en production) l'écrit dans `dossier` (par défaut le dossier des métriques, partagé entre les deux
+ *   instances du VPS) au démarrage et après chaque reconstruction de la base vivante ; le site de dev y lit celle de la production (page « Mise à
+ *   jour ») ; false : ni écriture ni lecture
  */
 export async function demarrerService({ regles, dossier, hote = '127.0.0.1', port = 8787, intervalle = 15000, fichierVersion = null, edition = false,
   reference = null, depot = 'Bravexier/MaverickCenter', adresse = null, jetonFichier = null, maintenance = null, versionParDefaut = 'développement',
   journal: ecouteur = null, journalDuService = null, relancer = () => process.exit(0), metriques: reglagesMetriques = {}, fetch: fetchDuClasseur = globalThis.fetch,
-  tipeee: reglagesTipeee = {} }) {
+  tipeee: reglagesTipeee = {}, attestation: reglagesAttestation = {} }) {
   const lancementDuService = performance.now();
   // la production sert de référence à la page « Mise à jour » sauf si c'est la base de ce site même (lireReference compare les fichiers)
   const referenceDuSite = reference && typeof reference === 'object' ? { propre: regles, ...reference } : reference;
@@ -163,12 +169,15 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
   };
   // les métriques de cette instance (serveur/metriques.mjs) : créées avant tout le reste, pour noter aussi la préparation de la base vivante
   let metriques = null;
-  if (reglagesMetriques !== false) {
-    const r = reglagesMetriques ?? {};
+  const reglesDesMetriques = reglagesMetriques === false ? null : (reglagesMetriques ?? {});
+  const dossierDesMetriques = reglesDesMetriques ? (reglesDesMetriques.dossier ?? (process.env.MAVERICK_DOSSIER_METRIQUES || join(dossier, 'metriques'))) : null;
+  const nomDInstance = instanceDuService({ edition, instance: reglesDesMetriques?.instance ?? process.env.MAVERICK_INSTANCE });
+  if (reglesDesMetriques) {
+    const r = reglesDesMetriques;
     try {
       metriques = creerMetriques({
-        dossier: r.dossier ?? (process.env.MAVERICK_DOSSIER_METRIQUES || join(dossier, 'metriques')),
-        instance: instanceDuService({ edition, instance: r.instance ?? process.env.MAVERICK_INSTANCE }),
+        dossier: dossierDesMetriques,
+        instance: nomDInstance,
         brutes: r.brutes ?? process.env.MAVERICK_METRIQUES_BRUTES === '1',
         pages: r.pages ?? process.env.MAVERICK_METRIQUES_PAGES !== '0',
         intervalle: r.intervalle ?? INTERVALLE_VERSEMENT,
@@ -196,6 +205,9 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
       journal(`ERREUR métriques : collecte désactivée : ${e.message}`);
     }
   }
+  // l'attestation de la production : écrite (sans l'édition) dans le dossier partagé des métriques, lue par le site de dev (page « Mise à jour »)
+  const dossierDesAttestations = reglagesAttestation === false ? null : (reglagesAttestation?.dossier ?? dossierDesMetriques);
+  const publierAttestation = Boolean(dossierDesAttestations) && (reglagesAttestation?.publier ?? !edition);
   /** Note un évènement du service dans les métriques (jamais d'exception). */
   const evenement = (type, o) => {
     try {
@@ -227,6 +239,8 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
   // dernier texte valide est gardé à côté de la base vivante
   const tipeee = reglagesTipeee === false ? null : creerTipeee({ dossier, journal, evenement, ...(reglagesTipeee ?? {}) });
   const etat = { db: null, inode: null, erreur: null, demarre_le: maintenant() };
+  // l'extrait du contenu pour les sessions de Claude (GET /api/edition/extrait/) : site de dev seulement, fabriqué au premier téléchargement qui suit un changement
+  const extrait = edition ? creerExtrait({ dossier, base: () => etat.db, version: () => version.version, journal, evenement }) : null;
 
   function fermer() {
     if (etat.db) {
@@ -239,6 +253,7 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
   function ouvrir() {
     fermer();
     const t0 = performance.now();
+    const preparation = { appliquee: true, problemes: 0 }; // dit à l'attestation de la production si la dernière préparation a réussi
     try {
       const r = preparerBaseVivante({ regles, dossier, evenement });
       evenement('base_vivante', {
@@ -257,6 +272,8 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
       etat.erreur = null;
     } catch (e) {
       etat.erreur = e.message;
+      preparation.appliquee = false;
+      preparation.problemes = e.problemes?.length || 1; // le nombre seulement : le texte d'un problème cite des fiches
       evenement('base_vivante', { duree_ms: performance.now() - t0, detail: { erreur: String(e.message).slice(0, 300) } });
       journal(`ERREUR base vivante : ${e.message}`);
     }
@@ -267,6 +284,28 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
     } catch (e) {
       etat.erreur = `${etat.erreur ? `${etat.erreur} ; ` : ''}base vivante illisible : ${e.message}`;
       journal(`ERREUR ouverture de la base vivante : ${e.message}`);
+    }
+    attester(preparation);
+  }
+
+  /**
+   * L'attestation de la production (serveur/attestation.mjs), écrite après chaque préparation de la base vivante. Un échec n'empêche rien : le service
+   * démarre, les fiches ne sont pas touchées (la base vivante n'est que lue), l'échec est noté.
+   */
+  function attester(preparation) {
+    if (!publierAttestation) return;
+    const t0 = performance.now();
+    try {
+      const enregistre = lireEtat(dossier);
+      const a = fabriquerAttestation({
+        db: etat.db, regles, version: { version: version.version, code: version.empreinte ?? null }, instance: nomDInstance,
+        preparation: { ...preparation, refaite_le: enregistre?.refaite_le ?? null, regles: enregistre?.regles?.slice(0, 12) ?? null },
+      });
+      ecrireAttestation(dossierDesAttestations, a);
+      evenement('attestation', { duree_ms: performance.now() - t0, detail: { appliquee: a.preparation.appliquee, citations: a.citations.length, tables: Object.keys(a.base_vivante?.tables ?? {}).length } });
+    } catch (e) {
+      journal(`ERREUR attestation : ${e.message}`);
+      evenement('attestation', { duree_ms: performance.now() - t0, detail: { erreur: String(e.message).slice(0, 300) } });
     }
   }
 
@@ -493,7 +532,7 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
           reponse = traiter({ methode: req.method ?? 'GET', chemin: url.pathname, recherche: url.search, entetes: req.headers, corps: Buffer.concat(morceaux).toString('utf8'),
             signal: abandon.signal },
           { base: baseMesuree, etat: decrire, journal, journalDuService: memoire, edition: Boolean(edition), dossier, reference: referenceDuSite, depot, adresse, github,
-            maintenance: maintenanceDemandee, metriques, evenement, classeur, tipeee });
+            maintenance: maintenanceDemandee, metriques, evenement, classeur, tipeee, extrait, attestations: dossierDesAttestations });
         } finally {
           const mesureSql = sql.terminer();
           if (mesure) mesure.sql = mesureSql;
