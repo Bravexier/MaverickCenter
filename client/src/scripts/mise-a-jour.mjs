@@ -89,12 +89,15 @@ function rendre() {
   const occupe = verrouille || Boolean(d.occupe); // règle du service (occupe : lancement en cours ou en attente de livraison)
   const ref = d.reference;
   const versionProd = ref?.version ? `V${ref.version.split('.').slice(0, 2).join('.')}` : 'inconnue';
+  // d'où vient la référence : le contenu que la production publie, ou (tant que son dossier n'est pas monté) la copie de master tirée du dépôt
+  const origine = ref?.source === 'production' ? 'contenu publié par la production'
+    : ref?.source === 'depot' ? `copie de master tirée du dépôt${ref.raison ? ` — ${ref.raison}` : ''}` : null;
   const n = d.lignes ? compter(d.lignes) : null;
   const bilan = d.lignes
-    ? `${d.lignes.length} modification${d.lignes.length > 1 ? 's' : ''} des règles depuis la production (${versionProd})`
+    ? `${d.lignes.length} modification${d.lignes.length > 1 ? 's' : ''} des règles depuis la production (${versionProd}${origine ? ` · ${echapper(origine)}` : ''})`
       + `${n.amelioration ? ` · <span class="nv-sens--amelioration">${n.amelioration} amélioration${n.amelioration > 1 ? 's' : ''}</span>` : ''}`
       + `${n.affaiblissement ? ` · <span class="nv-sens--affaiblissement">${n.affaiblissement} affaiblissement${n.affaiblissement > 1 ? 's' : ''}</span>` : ''}`
-    : `La base de production (référence) manque sur ce serveur : la liste ne peut pas être calculée.`;
+    : `La base de production (référence) manque sur ce serveur : la liste ne peut pas être calculée.${ref?.raison ? ` (${echapper(ref.raison)})` : ''}`;
   const enConflit = d.en_conflit?.lots ?? 0;
   const bilanDesConflits = enConflit
     ? ` · <a href="#nv-conflits">${enConflit} lot${enConflit > 1 ? 's' : ''} en conflit ${enConflit > 1 ? 'ne partent' : 'ne part'} pas avec cette mise à jour</a>` : '';

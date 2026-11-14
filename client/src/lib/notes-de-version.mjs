@@ -15,7 +15,7 @@ import { PAGES_DE_L_EQUIPEMENT, SOUS_ONGLETS_DE_LA_CEINTURE } from './equipement
 import { FAMILLES_DE_LA_CEINTURE } from './ceinture-db.mjs';
 import { texteSansBalises, vocabulaireDesMotsCles } from './mots-cles-balises.mjs';
 import { ordonnerBlocs } from './panneaux-regles-db.mjs';
-import { TABLES_DES_NOTES } from './tables-de-la-base.mjs';
+import { TABLES_DERIVEES, TABLES_DES_NOTES, TABLES_HORS_REGLES } from './tables-de-la-base.mjs';
 import { sensDuChangement } from './notes-de-version-sens.mjs';
 import { resumeDuPortrait } from './portrait.mjs';
 import { ORDRE_DES_RACES } from './race-kinds.mjs';
@@ -62,6 +62,7 @@ export const DOMAINES = [
   { id: 'composants', titre: 'Composants' },
   { id: 'chronologie', titre: 'Chronologie' },
   { id: 'mots-cles', titre: 'Mots-clés' },
+  { id: 'autres-tables', titre: 'Autres tables' },
 ];
 
 /**
@@ -916,6 +917,73 @@ const comparerOrdres = (p, q) => {
 };
 
 /**
+ * Les tables que la comparaison décrit (TABLES_LUES) et celles qu'elle ne compare pas : hors des règles (fiches, journal, notes), dérivées (lien,
+ * lien_candidat) et index de recherche (page_fts, entite_fts et leurs tables internes), que la fabrication de la base ajoute ou retire d'elle-même.
+ */
+export const TABLES_SANS_COMPARAISON = Object.freeze([...TABLES_HORS_REGLES, ...TABLES_DERIVEES]);
+export const estUneTableAutre = (nom) => !TABLES_LUES.includes(nom) && !TABLES_SANS_COMPARAISON.includes(nom) && !nom.startsWith('sqlite_')
+  && !/^(page|entite)_fts(_|$)/.test(nom);
+
+/** Au-delà de ce nombre de lignes d'écart dans une table, la note les compte au lieu de les lister. */
+const LIGNES_PAR_TABLE = 40;
+
+/**
+ * Les autres tables de contenu (celles que DEFINITIONS ne décrit pas) : lignes ajoutées, retirées ou changées sur les colonnes communes, et
+ * « structure changée » dit à part. `ref` / `dev` = { <table>: { colonnes: string[], cle: string[], lignes: object[] } } (lireAutresTables).
+ */
+function comparerAutresTables(ref, dev) {
+  if (!ref || !dev) return [];
+  const sortie = [];
+  const tables = [...new Set([...Object.keys(ref), ...Object.keys(dev)])].filter(estUneTableAutre).sort();
+  const ligne = (table, i, entite, champ, nature, avant, apres, cle = {}, colonne = null) => sortie.push({
+    domaine: 'autres-tables', groupe: table, entite, champ, nature, avant: texte(avant), apres: texte(apres), sens: 'neutre', parties: null,
+    table_nom: table, cle: cleTriee(cle), colonne, ordre: [i, entite],
+  });
+  tables.forEach((table, i) => {
+    const a = ref[table];
+    const b = dev[table];
+    if (!a || !b) {
+      ligne(table, i, `Table ${table}`, null, a ? 'retire' : 'ajoute', a ? `${a.lignes.length} ligne(s)` : null, b ? `${b.lignes.length} ligne(s)` : null);
+      return;
+    }
+    const communes = b.colonnes.filter((c) => a.colonnes.includes(c));
+    const ajoutees = b.colonnes.filter((c) => !a.colonnes.includes(c));
+    const retirees = a.colonnes.filter((c) => !b.colonnes.includes(c));
+    if (ajoutees.length || retirees.length) {
+      ligne(table, i, `Table ${table}`, 'Structure changée', 'modifie', retirees.length ? `colonnes retirées : ${retirees.join(', ')}` : null,
+        ajoutees.length ? `colonnes ajoutées : ${ajoutees.join(', ')}` : null);
+    }
+    const cle = (b.cle.length && b.cle.every((c) => communes.includes(c)) ? b.cle : communes);
+    const cleDe = (r) => cle.map((c) => String(r[c])).join('\u0000');
+    const index = (rows) => new Map(rows.map((r) => [cleDe(r), r]));
+    const [ma, mb] = [index(a.lignes), index(b.lignes)];
+    const entiteDe = (r) => (cle.length === 1 ? String(r[cle[0]]) : cle.map((c) => r[c]).join(' · ')) || '—';
+    const cleObjet = (r) => Object.fromEntries(cle.map((c) => [c, r[c]]));
+    const changees = [];
+    for (const [k, r] of mb) {
+      const avant = ma.get(k);
+      if (!avant) continue;
+      const champs = communes.filter((c) => !pareil(avant[c], r[c]));
+      if (champs.length) changees.push({ r, avant, champs });
+    }
+    const nouvelles = [...mb].filter(([k]) => !ma.has(k)).map(([, r]) => r);
+    const perdues = [...ma].filter(([k]) => !mb.has(k)).map(([, r]) => r);
+    if (nouvelles.length + perdues.length + changees.length > LIGNES_PAR_TABLE) {
+      if (nouvelles.length) ligne(table, i, `${nouvelles.length} ligne(s) ajoutée(s)`, null, 'ajoute', null, null);
+      if (perdues.length) ligne(table, i, `${perdues.length} ligne(s) retirée(s)`, null, 'retire', null, null);
+      if (changees.length) ligne(table, i, `${changees.length} ligne(s) changée(s)`, null, 'modifie', null, null);
+      return;
+    }
+    for (const r of nouvelles) ligne(table, i, entiteDe(r), null, 'ajoute', null, null, cleObjet(r));
+    for (const r of perdues) ligne(table, i, entiteDe(r), null, 'retire', null, null, cleObjet(r));
+    for (const { r, avant, champs } of changees) {
+      for (const c of champs) ligne(table, i, entiteDe(r), c, 'modifie', avant[c], r[c], cleObjet(r), c);
+    }
+  });
+  return sortie;
+}
+
+/**
  * La liste des modifications de la production (`ref`) à la dev (`dev`) : [{ domaine, groupe, entite, champ, nature, avant, apres, sens, parties,
  * table_nom, cle, colonne, rang }], dans l'ordre d'affichage (domaine, groupe, entité, champ). `ref` / `dev` = { tables: { <table>: lignes[] } }
  * pour les tables de TABLES_LUES (une table absente d'une base : undefined).
@@ -931,6 +999,7 @@ export function comparerBases(ref, dev) {
     ...comparerOrdreDesBlocs(ref, dev, x),
     ...comparerPlanDesRegles(ref, dev, x),
     ...comparerOrdreDesRaces(ref, dev),
+    ...comparerAutresTables(ref?.autres, dev?.autres),
   ];
   const rangDomaine = (d) => DOMAINES.findIndex((x_) => x_.id === d);
   lignes.sort((p, q) => rangDomaine(p.domaine) - rangDomaine(q.domaine) || comparerOrdres(p.ordre, q.ordre));

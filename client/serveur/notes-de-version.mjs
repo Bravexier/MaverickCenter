@@ -13,7 +13,7 @@ import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from '
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { installerLePlan } from '../src/lib/livres.mjs';
-import { bilan, comparerBases, TABLES_LUES, versionDeLivraison } from '../src/lib/notes-de-version.mjs';
+import { bilan, comparerBases, estUneTableAutre, TABLES_LUES, versionDeLivraison } from '../src/lib/notes-de-version.mjs';
 import { chargerPlanDesRegles } from '../src/lib/plan-des-regles-db.mjs';
 import { signature } from './base-vivante.mjs';
 import { ErreurHttp, sha256 } from './partage.mjs';
@@ -37,23 +37,81 @@ export const DUREE_MAX_RUN = 3 * 3_600_000;
 export class ErreurNotes extends ErreurHttp {}
 
 /** Les tables de `noms` qui existent dans la base, lues entières : { tables: { nom: lignes[] } }. */
-export function lireTables(db, noms = TABLES_LUES) {
+export function lireTables(db, noms = TABLES_LUES, { autres = false } = {}) {
   const existantes = new Set(db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all().map((t) => t.name));
   const tables = {};
   for (const t of noms) if (existantes.has(t)) tables[t] = db.prepare(`SELECT * FROM "${t}"`).all().map((r) => ({ ...r }));
-  return { tables };
+  return autres ? { tables, autres: lireAutresTables(db, existantes) } : { tables };
 }
 
-/** La base de référence (production) et sa version : { disponible, chemin, version, commit } (reference.json à côté de la base). */
-export function lireReference(chemin) {
-  if (!chemin || !existsSync(chemin)) return { disponible: false, chemin: chemin ?? null, version: null, commit: null };
+/** Les autres tables de contenu (que la comparaison ne décrit pas) : { <table>: { colonnes, cle, lignes } }. */
+export function lireAutresTables(db, existantes = null) {
+  const noms = existantes ?? new Set(db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all().map((t) => t.name));
+  const sortie = {};
+  for (const t of [...noms].filter(estUneTableAutre)) {
+    const infos = db.prepare(`PRAGMA table_info("${t}")`).all();
+    sortie[t] = {
+      colonnes: infos.map((c) => c.name), cle: infos.filter((c) => c.pk > 0).sort((p, q) => p.pk - q.pk).map((c) => c.name),
+      lignes: db.prepare(`SELECT * FROM "${t}"`).all().map((r) => Object.fromEntries(Object.entries(r).map(([c, v]) => [c, v instanceof Uint8Array
+        ? `binaire ${sha256(v).slice(0, 8)} (${v.length} octets)` : v]))),
+    };
+  }
+  return sortie;
+}
+
+/** Où la production publie son contenu, vu du service de dev (dossier monté en lecture seule : le site de la production, sans fiche ni compte). */
+const BASE_DE_PRODUCTION = ['donnees', 'maverick.db'];
+const VERSION_DE_PRODUCTION = ['_serveur', 'version.json'];
+
+/** Le contenu publié par la production est-il lisible (fichier présent, ouvrable, version connue) ? { chemin, version } ou { raison }. */
+function productionPubliee(dossier) {
+  const chemin = join(dossier, ...BASE_DE_PRODUCTION);
+  if (!existsSync(chemin)) return { raison: 'le dossier de la production est monté, mais sans sa base (donnees/maverick.db)' };
+  let version = null;
+  try {
+    version = JSON.parse(readFileSync(join(dossier, ...VERSION_DE_PRODUCTION), 'utf8')).version ?? null;
+  } catch {
+    return { raison: 'le dossier de la production est monté, mais sa version est illisible (_serveur/version.json)' };
+  }
+  if (!version) return { raison: 'le dossier de la production ne dit pas sa version (_serveur/version.json)' };
+  try {
+    const db = new DatabaseSync(chemin, { readOnly: true });
+    try {
+      db.prepare("SELECT count(*) FROM sqlite_master").get();
+    } finally {
+      db.close();
+    }
+  } catch (e) {
+    return { raison: `la base publiée par la production est illisible (${String(e.message).slice(0, 120)})` };
+  }
+  return { chemin, version };
+}
+
+/**
+ * La base de référence (production) et sa version : { disponible, chemin, version, commit, source, raison }.
+ * `reference` : un chemin (base + reference.json à côté, tirée du dépôt : la copie de GitHub) ou { production, depot } — le dossier de la production
+ * monté en lecture seule (lot 3 du chantier de la base de dev ; R274) d'abord, puis la copie de GitHub tant que ce dossier n'est pas monté ou lisible.
+ * `source` dit laquelle sert : 'production' ou 'depot' ; `raison`, pourquoi la production ne sert pas (quand elle est configurée).
+ */
+export function lireReference(reference) {
+  const { production = null, depot = null } = reference && typeof reference === 'object' ? reference : { depot: reference };
+  let raison = null;
+  if (production) {
+    if (!existsSync(production)) raison = 'le dossier de la production n’est pas monté';
+    else {
+      const lue = productionPubliee(production);
+      if (lue.chemin) return { disponible: true, chemin: lue.chemin, version: lue.version, commit: null, source: 'production', raison: null };
+      raison = lue.raison;
+    }
+  }
+  if (!depot || !existsSync(depot)) return { disponible: false, chemin: depot ?? null, version: null, commit: null, source: null, raison };
   let info = {};
   try {
-    info = JSON.parse(readFileSync(chemin.replace(/\.db$/, '.json'), 'utf8'));
+    info = JSON.parse(readFileSync(depot.replace(/\.db$/, '.json'), 'utf8'));
   } catch {
     // version inconnue : la liste reste calculable
   }
-  return { disponible: true, chemin, version: info.version ?? null, commit: info.commit ?? null };
+  return { disponible: true, chemin: depot, version: info.version ?? null, commit: info.commit ?? null, source: 'depot', raison };
 }
 
 const cacheReference = new Map(); // chemin -> { cle, tables } : la référence ne change qu'avec une nouvelle version du site
@@ -63,7 +121,7 @@ function tablesDeReference(chemin) {
   if (deja && deja.cle === cle) return deja.tables;
   const db = new DatabaseSync(chemin, { readOnly: true });
   try {
-    const tables = lireTables(db);
+    const tables = lireTables(db, TABLES_LUES, { autres: true });
     cacheReference.set(chemin, { cle, tables });
     return tables;
   } finally {
@@ -134,7 +192,7 @@ export function noteEnPreparation(db, { reference, versionDev }) {
   // les pages du guide se rangent par le plan des onglets des Règles de la base vivante (R184, R185 ; lib/livres.mjs#placeDansLeGuide), relu à chaque
   // calcul : une livraison refait la base vivante, et son plan avec elle
   installerLePlan(chargerPlanDesRegles(db));
-  const lignes = comparerBases(tablesDeReference(ref.chemin), enSuspens ? tablesQuiPartiront(db, retenus) : lireTables(db));
+  const lignes = comparerBases(tablesDeReference(ref.chemin), enSuspens ? tablesQuiPartiront(db, retenus) : lireTables(db, TABLES_LUES, { autres: true }));
   return { ...commun, lignes, bilan: bilan(lignes) };
 }
 
@@ -149,7 +207,7 @@ function tablesQuiPartiront(db, retenus) {
   try {
     db.exec('PRAGMA defer_foreign_keys = ON');
     defaireLesLotsEnSuspens(db, retenus);
-    return lireTables(db);
+    return lireTables(db, TABLES_LUES, { autres: true });
   } finally {
     db.exec('ROLLBACK TO note_sans_les_lots_en_suspens');
     db.exec('RELEASE note_sans_les_lots_en_suspens');

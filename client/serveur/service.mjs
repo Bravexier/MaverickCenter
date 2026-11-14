@@ -98,7 +98,7 @@ const inode = (chemin) => {
  * @param {number} [o.intervalle] surveillance des fichiers en ms ; 0 = aucune
  * @param {string|null} [o.fichierVersion] version.json du service livré (null en développement)
  * @param {boolean} [o.edition] édition des règles ouverte (site de dev seulement : MAVERICK_EDITION=1)
- * @param {string|null} [o.reference] page « Mise à jour » : la base de la production (site/donnees/reference.db)
+ * @param {string|{production: string|null, depot: string|null}|null} [o.reference] page « Mise à jour » : le dossier de la production (monté en lecture seule), puis la copie tirée du dépôt (site/donnees/reference.db)
  * @param {string} [o.depot] dépôt GitHub du workflow de mise à jour
  * @param {string|null} [o.adresse] adresse publique du site (https://dev.<domaine>) ; sinon l'hôte de la requête
  * @param {string|null} [o.jetonFichier] fichier du jeton GitHub (permission Actions) ; sans lui, le workflow se lance à la main

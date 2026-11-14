@@ -727,8 +727,16 @@ champ libre des admins. Tant qu'aucune livraison n'a eu lieu, deux notes d'exemp
 la première vraie mise à jour les retire.
 
 **Sur le site de dev** (`MAVERICK_EDITION=1`) : au-dessus, la note **en préparation**, calculée par le service à chaque visite
-(`GET /api/mise-a-jour/`) : la base de la **production** (référence : la base de master, construite au build à côté de celle du site,
-`site/donnees/reference.db` et `reference.json`, `scripts/db-reference.mjs`) comparée à la base vivante (règles de dev + modifications du site).
+(`GET /api/mise-a-jour/`) : la base de la **production** comparée à la base vivante (règles de dev + modifications du site). Référence, dans cet ordre
+(`serveur/notes-de-version.mjs#lireReference`, lot 3 du chantier de la base de dev, R274) : **le contenu que la production publie** — le dossier `site/`
+de son instance, monté en lecture seule sur `/production` (`MAVERICK_PRODUCTION` ; `donnees/maverick.db` et `_serveur/version.json`, donc ses règles et sa
+version, sans fiche ni compte : la base des fiches reste fermée) ; à défaut (dossier non monté, base ou version illisible), la **copie de master tirée du
+dépôt** (`site/donnees/reference.db` et `reference.json`, `scripts/db-reference.mjs`). La page dit laquelle sert. Sur le VPS le montage est celui de
+`docker-compose.yml` (`../maverick-center/site` par défaut, `MAVERICK_DOSSIER_PRODUCTION` dans `.env`, posé par `instances.sh`) : une installation qui
+change le `docker-compose.yml` demande de lancer `docker compose up -d` dans le dossier de l'instance, une fois. Les tables de contenu que la
+comparaison ne décrit pas (domaine « Autres tables ») sont comparées sur leurs colonnes communes : lignes ajoutées, retirées ou changées (au-delà de 40
+par table : leur nombre), « structure changée » à part ; ni les fiches, le journal et les notes, ni ce que la fabrication calcule elle-même (`lien`,
+`lien_candidat`, `page_fts`, `entite_fts`) n'y entrent. Juste après une mise à jour réussie, la comparaison ne montre aucun écart.
 Seuls les champs que le site modifie sont comparés (`lib/edition-modele.mjs#TABLES`) : le reste en est dérivé (depuis la migration `0043`, la chronologie
 (événements, descriptions, catégories) et le vocabulaire des mots-clés en sont : domaines « Chronologie » et « Mots-clés » ; les catégories d'un événement sont comparées comme un ensemble ; depuis la migration `0056`, les panneaux de règles de la page « Équipement » : domaine « Équipement », un panneau sous le nom de son onglet, un bloc par son titre de tuile, sinon ses premiers mots (« Toutes les armes ont de base… »), ou le libellé du mot-clé d'une tuile qui n'est qu'une balise ; la place des blocs n'est pas listée bloc par bloc : une ligne « Ordre des blocs » par panneau quand les blocs qu'il garde ne se lisent plus dans le même ordre, de la première à la dernière place qui change (`comparerOrdreDesBlocs` ; une tuile insérée ou un bloc retiré n'est dit que par son ajout ou son retrait)). Une ligne qui n'existe qu'avec une
 autre (la rubrique d'une carte de monstre, une case de butin, un bloc d'une espèce) n'est listée que pour un champ modifié : son ajout ou son retrait est
@@ -1108,7 +1116,7 @@ Deux conteneurs dans chaque `docker-compose.yml`, celui des [installateurs](../d
 - **serveur** (`node:22-alpine`) exécute `site/_serveur/serveur/index.mjs` ; aucun port publié (seul nginx l'atteint). Variables :
   `MAVERICK_REGLES` (base des règles, `/site/donnees/maverick.db`), `MAVERICK_DB` (dossier de la base vivante, `/db`), `HOST`, `PORT` (8787),
   `MAVERICK_INTERVALLE` (surveillance, 15 000 ms), `MAVERICK_EDITION` (`1` : édition des règles ouverte, serveur de test seulement) ; page
-  « Mise à jour » du serveur de test : `MAVERICK_REFERENCE` (base de la production, `/site/donnees/reference.db`), `MAVERICK_ADRESSE_PUBLIQUE`
+  « Mise à jour » du serveur de test : `MAVERICK_PRODUCTION` (`/production`, site de la production en lecture seule), `MAVERICK_REFERENCE` (repli : copie de master, `/site/donnees/reference.db`), `MAVERICK_ADRESSE_PUBLIQUE`
   (`https://dev.<domaine>`, sinon l'hôte de la requête), `MAVERICK_GITHUB_JETON_FICHIER` (`/secrets/github-actions-token`, dossier `secrets/` de
   l'instance monté en lecture seule), `MAVERICK_DEPOT` (`Bravexier/MaverickCenter`) ; les deux serveurs : `MAVERICK_MAINTENANCE` (`/maintenance`,
   dossier partagé de l'annonce de maintenance, ci-dessus), `MAVERICK_DOSSIER_METRIQUES` (`/metriques`), `MAVERICK_INSTANCE` (`prod` ou `dev`),

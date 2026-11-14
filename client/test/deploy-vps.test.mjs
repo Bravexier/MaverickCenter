@@ -151,7 +151,7 @@ test('instances.sh : deux instances sur 127.0.0.1, base de test conservée, mots
   const test_ = env(join(d.test, '.env'));
   assert.deepEqual(test_, { MAVERICK_CONTENEUR: 'maverick-center-test', MAVERICK_PORT: '127.0.0.1:8081', MAVERICK_BASE_TEST: 'conservee', MAVERICK_EDITION: '1',
     MAVERICK_ADRESSE_PUBLIQUE: 'https://dev.maverick-jdr.com', MAVERICK_DOSSIER_MAINTENANCE: join(d.normal, 'maintenance'),
-    MAVERICK_INSTANCE: 'dev', MAVERICK_DOSSIER_METRIQUES: metriques });
+    MAVERICK_INSTANCE: 'dev', MAVERICK_DOSSIER_METRIQUES: metriques, MAVERICK_DOSSIER_PRODUCTION: join(d.normal, 'site') });
   // métriques (docs/serveur.md, « Métriques et volume ») : un dossier partagé, celui du serveur normal, où chaque instance écrit SA base (prod.db,
   // dev.db : jamais mêlées) ; hors de db/ (db/ appartient au service et aux saisies du site de dev : un installateur n'y touche pas) ; écrit par le service, root dans son conteneur
   assert.ok(statSync(metriques).isDirectory());

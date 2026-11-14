@@ -24,8 +24,8 @@ Tenu à jour par la PR de chaque lot (état : à faire, en cours, fait ; puis le
 | --- | --- | --- | --- | --- |
 | — | Rapatriement préalable de l'édition du site de dev (125 lots en attente le 2026-11-14) | S | fait | #352 |
 | 1 | Sauvegardes automatiques, restauration essayée | M | à faire | |
-| 2 | Une installation ne peut plus effacer la base de dev | S | en cours | #353 |
-| 3 | L'onglet Mise à jour compare au contenu réel de la production | M | à faire | |
+| 2 | Une installation ne peut plus effacer la base de dev | S | fait | #353 |
+| 3 | L'onglet Mise à jour compare au contenu réel de la production | M | en cours | PR `feature/mise-a-jour-compare-a-la-production` |
 | 4 | Accès au site de dev | S | à faire | |
 | 5 | Extrait du contenu pour les sessions de Claude, attestation de la production | M | à faire | |
 | 6 | Lots de changements, annulation d'un lot, nature de chaque trace | L | à faire | |
