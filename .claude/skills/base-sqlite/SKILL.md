@@ -41,7 +41,7 @@ Détail : `docs/sql/remplissage.md`. `npm run db:build` (→ `var/maverick.db`),
 - Provenance (`famille`, `origine`, `source_ref`) : retirée à la 1.0 (`CLAUDE.md`) ; n'y rien investir.
 - Registre `.json` d'une migration de données : `textes` ou `valeurs` pour ce qui n'est pas une correction d'un classeur ; `corrections` (avant/apres en chaînes) est lu comme de l'orthographe et défait par `tools/sources/rapprocher.mjs` (skill `sources-rapprochement`) ; `evenements` est lu par la chronologie (skill `zone-chronologie`).
 - Ce que chaque migration a fixé (mots-clés, plan des Règles, ordre des races, critique, spécialisations, classes, plafonds de NPM, résistances physiques, 0121…) : skill `base-sqlite-migrations`.
-- Dérivées (`scripts/db-derive.mjs`) : `lien` (vue `lien_page`) = les `[[…]]` (pages d'exemple), puis chaque balise d'un mot-clé dont l'adresse mène à une page (`adresses-db.mjs#pageDeLAdresse`) ; `page_fts` indexe le texte affiché (`texteSansBalises`), jamais l'id d'un mot-clé.
+- Dérivées (`scripts/db-derive.mjs`) : `lien` (vue `lien_page`) = les `[[…]]` (pages d'exemple), puis chaque balise d'un mot-clé dont l'adresse mène à une page (`adresses-db.mjs#pageDeLAdresse`) ; `page_fts` indexe le texte affiché (`texteSansBalises`), jamais l'id d'un mot-clé ni les marques d'onglets (`::: onglets`, `:::`), les ancres figées ni les couleurs écrites (`scripts/db-derive.mjs#textePlein`) : la recherche de la base reste alignée sur celle du site (`lib/recherche-index.ts`).
 - Le site de dev est la source de ce qu'il modifie (`CLAUDE.md`) : valeur d'import par `lib/historique-site.mjs` (`valeurDImport`, `lignesDImport`, `effectifDImport`).
 
 ## Choix du propriétaire
