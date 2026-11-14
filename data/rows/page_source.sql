@@ -1738,8 +1738,6 @@ INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/fiche-capacit
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/fiche-capacites-dons', 1, 'google-doc:1PMmFVmKZspSTXJp-y_on5LoprFu_KHxCp34a9kSTFgA');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/fiche-caracteristiques', 0, 'ref:google-doc-creer-sa-fiche-de-personnage');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/fiche-caracteristiques', 1, 'google-doc:1PMmFVmKZspSTXJp-y_on5LoprFu_KHxCp34a9kSTFgA');
-INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/fiche-classe', 0, 'ref:google-doc-creer-sa-fiche-de-personnage');
-INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/fiche-classe', 1, 'google-doc:1PMmFVmKZspSTXJp-y_on5LoprFu_KHxCp34a9kSTFgA');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/fiche-competences', 0, 'ref:google-doc-creer-sa-fiche-de-personnage');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/fiche-competences', 1, 'google-doc:1PMmFVmKZspSTXJp-y_on5LoprFu_KHxCp34a9kSTFgA');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/fiche-experience-niveau-global', 0, 'ref:google-doc-creer-sa-fiche-de-personnage');

@@ -783,7 +783,6 @@ INSERT INTO page_tag (page_id, ordre, tag_id) VALUES ('guide/creer-son-personnag
 INSERT INTO page_tag (page_id, ordre, tag_id) VALUES ('guide/distance-et-voyage', 1, 92);
 INSERT INTO page_tag (page_id, ordre, tag_id) VALUES ('guide/exercer-un-metier', 0, 240);
 INSERT INTO page_tag (page_id, ordre, tag_id) VALUES ('guide/fiche-capacites-dons', 4, 240);
-INSERT INTO page_tag (page_id, ordre, tag_id) VALUES ('guide/fiche-classe', 1, 66);
 INSERT INTO page_tag (page_id, ordre, tag_id) VALUES ('guide/fiche-personnage', 2, 298);
 INSERT INTO page_tag (page_id, ordre, tag_id) VALUES ('guide/finaliser-son-personnage', 0, 240);
 INSERT INTO page_tag (page_id, ordre, tag_id) VALUES ('guide/mordhau-ou-demi-epee', 0, 251);
