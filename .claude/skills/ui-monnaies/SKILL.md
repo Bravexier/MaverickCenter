@@ -36,8 +36,8 @@ user-invocable: false
 - `.piece` est une classe globale : ne jamais nommer ainsi une autre classe (une ligne de tableau ainsi nommée s'écrase).
 
 ## Icônes de dégâts et de magie (R235, prolongée)
-- Liste : `lib/icones.mjs#ICONES` (skill `zone-mots-cles`) ; dessins : `styles/global/icones.css`, en masque SVG. Classes `icone icone--degats-<id>` (taille, estoc, frappe) et `icone icone--magie icone--magie-<id>` ; jamais `.piece`, réservée aux monnaies.
-- Couleur d'une magie : la classe de palette `couleur-magie-<id>` (`--couleur`, contour `--couleur-texte` ; skill `ui-couleurs`), jamais un hexadécimal (« Aucune couleur en dur », propriétaire, tête de `lib/palette-css.mjs`). Dégâts : `currentColor`, aucune couleur demandée.
+- Liste : `lib/icones.mjs#ICONES` (skill `zone-mots-cles`) ; dessins : `styles/global/icones.css`, en masque SVG. Classes `icone icone--degats icone--degats-<id> couleur-degats-<id>` (taille, estoc, frappe) et `icone icone--magie icone--magie-<id> couleur-magie-<id>` ; jamais `.piece`, réservée aux monnaies.
+- Couleur : la classe de palette de l'icône, jamais un hexadécimal (« Aucune couleur en dur », propriétaire, tête de `lib/palette-css.mjs`) ; `--couleur`, contour `--couleur-texte` (skill `ui-couleurs`). Magie : `couleur-magie-<id>`. Dégâts : `couleur-degats-<id>` (`lib/equipement-couleurs.mjs#COULEURS_DES_DEGATS`, couleurs des pastilles de type des armes ; réponse du propriétaire « Couleurs des armes »).
 
 ## Tests
 - `client/test/monnaies.test.mjs`, `client/test/monnaies-html.test.mjs`, `client/test/markdown-edition.test.mjs`, `client/test/armure-forge.test.mjs`, `client/test/accessoires-html.test.mjs`, `client/test/icones-degats-et-magies.test.mjs` (icônes de dégâts et de magie).

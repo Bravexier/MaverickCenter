@@ -11,7 +11,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
-import { fauteDeLIcone } from '../src/lib/icones.mjs';
+import { fauteDeLIcone, ICONES } from '../src/lib/icones.mjs';
 
 const SCHEMA = readFileSync(new URL('../../data/schema.sql', import.meta.url), 'utf8');
 const db = ouvrirBase({ sansExemples: false });
@@ -32,6 +32,12 @@ test('contrainte (base neuve) : « famille:id » en minuscules, ou NULL ; le res
   }
   for (const icone of ['', 'monnaie', 'monnaie:', ':rf', 'Monnaie:rf', 'monnaie:RF', 'mon-naie:rf', 'monnaie:r f', 'monnaie:rf:x', 'monnaie:rf-', 'monnaie:r--f', '#a1b2c3']) {
     assert.throws(() => poser(icone), /CHECK/, JSON.stringify(icone));
+  }
+  // chaque icône de la liste du site (lib/icones.mjs#ICONES : monnaies, dégâts, magies) passe le CHECK : le service et db:check l'acceptent, la
+  // base doit pouvoir l'écrire (« magie:espace-temps », « magie:potentiel-illimite » : un id composé)
+  for (const { valeur } of ICONES) {
+    assert.doesNotThrow(() => poser(valeur), valeur);
+    essai.exec('DELETE FROM mot_cle WHERE id = 1');
   }
   essai.close();
 });
