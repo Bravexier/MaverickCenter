@@ -1,6 +1,6 @@
 # Chantier — la base du site de dev devient la source de vérité
 
-**État au 2026-11-14 : proposition.** Les décisions du propriétaire (section 11) sont attendues. Les lots qui n'en dépendent pas (2, 3 et la partie « sur le serveur » du lot 1) peuvent partir. C'est une conception sur lecture du code : rien n'a été exécuté.
+**État au 2026-11-14 : plan accepté, en cours.** Le propriétaire a accepté le plan et retenu les recommandations des questions 1 à 6 de la section 11 (décisions R274, R275 et R276 de `docs/decisions-regles.md`). Les questions 7 à 10 restent ouvertes. Avancement : tableau « Suivi des lots ».
 
 La demande du propriétaire (2026-11-14), telle quelle :
 
@@ -22,9 +22,9 @@ Tenu à jour par la PR de chaque lot (état : à faire, en cours, fait ; puis le
 
 | Lot | Titre | Taille | État | PR |
 | --- | --- | --- | --- | --- |
-| — | Rapatriement préalable de l'édition du site de dev (125 lots en attente le 2026-11-14) | S | en cours | |
+| — | Rapatriement préalable de l'édition du site de dev (125 lots en attente le 2026-11-14) | S | en cours | #352 (ouverte) |
 | 1 | Sauvegardes automatiques, restauration essayée | M | à faire | |
-| 2 | Une installation ne peut plus effacer la base de dev | S | à faire | |
+| 2 | Une installation ne peut plus effacer la base de dev | S | en cours | cette PR |
 | 3 | L'onglet Mise à jour compare au contenu réel de la production | M | à faire | |
 | 4 | Accès au site de dev | S | à faire | |
 | 5 | Extrait du contenu pour les sessions de Claude, attestation de la production | M | à faire | |
@@ -438,7 +438,7 @@ Après deux mises à jour réussies par le nouveau circuit. Sortent du dépôt, 
 
 *Bloque le lot : aucun.*
 
-**Pourquoi la question se pose.** Vous aviez répondu : « on a juste une copie de la prod vers dev après la MEP ». Aujourd'hui, cette copie n'a lieu qu'à la première installation, et la page Debug du site de dev, ouvert à tous, la montre. Recopier toute la base ne sera plus possible : cela effacerait le contenu du site de dev.
+**Pourquoi la question se pose.** Vous aviez répondu : « on a juste une copie de la prod vers dev après la MEP ». Depuis le lot 2, aucune installation ne la fait plus d'elle-même (seulement sur option, dans une base vide) ; la copie ancienne reste, et la page Debug du site de dev, ouvert à tous, la montre. Recopier toute la base ne sera plus possible : cela effacerait le contenu du site de dev.
 
 - **(a) Non, et la copie ancienne est retirée du site de dev, qui garde ses fiches d'essai.** — Aucune donnée de joueur ne reste sur un site ouvert. Les conversions de fiches ne sont éprouvées que sur des fiches d'essai et lors de la répétition.
 - **(b) Non, mais la copie ancienne reste.** — Rien à faire. D'anciennes fiches de joueurs restent visibles sur le site de dev.
