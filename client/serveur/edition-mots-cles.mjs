@@ -14,6 +14,7 @@
 import { clesDesMotsCles, HomonymesRefuses } from '../src/lib/mots-cles-cles.mjs';
 import { fautesDuSynonyme, reciblerLaCle, synonymesPris, vocabulaireDesMotsCles } from '../src/lib/mots-cles-balises.mjs';
 import { categoriesDesMotsCles, motsClesDeLaBase, textesDeLaBase } from '../src/lib/mots-cles-db.mjs';
+import { referencesDesMotsCles } from '../src/lib/mentions-des-mots-cles.mjs';
 import { estVerrouille } from '../src/lib/mots-cles.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { lireLigne } from './edition-journal.mjs';
@@ -78,6 +79,21 @@ export function retirerLesFillesDuMotCle(db, w, id, { vers = null } = {}) {
     }
   }
   return synonymes;
+}
+
+/**
+ * Une fusion reporte sur le mot-clé conservé `cibleId` les références de la base au mot-clé `sourceId` (migration 0125 : type_degats.mot_cle_id,
+ * magie.mot_cle_id ; lib/mentions-des-mots-cles.mjs#REFERENCES_AUX_MOTS_CLES), chacune par une modification notée au journal par `w`, avant la
+ * suppression de la source (clé étrangère sans cascade). Rend les références reportées ([{ table, colonne, id }]). Le service refuse avant d'écrire
+ * la fusion de deux mots-clés cités chacun par une magie (un seul mot-clé par magie : serveur/edition-chronologie.mjs#verifierSansReference).
+ */
+export function reporterLesReferences(db, w, sourceId, cibleId) {
+  const reportees = [];
+  for (const r of referencesDesMotsCles(db, [sourceId])) {
+    w.modifier(r.table, { id: r.id }, { [r.colonne]: cibleId });
+    reportees.push({ table: r.table, colonne: r.colonne, id: r.id });
+  }
+  return reportees;
 }
 
 /**

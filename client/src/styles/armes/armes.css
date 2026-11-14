@@ -204,6 +204,8 @@ html.js .arme--depart + .arme-suite:hover > * { background: var(--depart-fond-fo
 .arme--elementaire > .arme__nom, .arme-suite--elementaire > .arme-suite__marge { box-shadow: inset 4px 0 0 var(--couleur), inset 5px 0 0 var(--elem-bord); }
 .arme--elementaire :is(.arme__mains, .vide) { color: color-mix(in srgb, var(--text) 50%, var(--muted)); }
 .arme--elementaire .arme-dgt--magie { background: var(--couleur); color: var(--couleur-texte); border-color: color-mix(in srgb, var(--text) 25%, var(--couleur)); font-weight: 600; }
+/* la magie y est un mot-clé du glossaire (migration 0125 : lib/valeurs-fermees-rendu.mjs) : sur le fond de la couleur pleine, il garde le texte de la pastille, pas sa propre teinte */
+.arme--elementaire .arme-dgt--magie .mot-cle[class*='couleur-'] { color: inherit; }
 html.js :is(.arme--elementaire:hover, .arme--elementaire:has(+ .arme-suite:hover)) > *, html.js .arme--elementaire:hover + .arme-suite > *,
 html.js .arme-suite--elementaire:hover > *, html.js .arme--elementaire.est-choisie > *, html.js .arme--elementaire.est-choisie + .arme-suite > * { background: var(--elem-teinte-forte); }
 html.js .arme--elementaire.est-choisie > .arme__nom, html.js .arme--elementaire.est-choisie + .arme-suite > .arme-suite__marge {

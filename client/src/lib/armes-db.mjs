@@ -6,6 +6,7 @@
 // Sans dépendance (sauf lib/corps-armes.mjs, pur) : `chargerArmes` reçoit la base ouverte par lib/donnees.mjs.
 import { MATERIAU_PAR_DEFAUT } from './arme-forge.mjs';
 import { PAGE_DES_ARMES } from './corps-armes.mjs';
+import { liensDesValeursFermees } from './mots-cles-des-valeurs.mjs';
 
 export { PAGE_DES_ARMES };
 
@@ -69,7 +70,10 @@ export function coutsElementairesCumules(ameliorations) {
  *   couts_elementaires : le coût élémentaire cumulé du 0 au +N, par niveau (coutsElementairesCumules) ;
  *   solidite_elementaire : la solidité de base d'une arme élémentaire (constante_equipement « piece_elementaire.solidite_base », celle de toute pièce élémentaire ; R167 : « 4 crans + les
  *                   crans de la ligne d'amélioration choisie ») ;
- *   page          : { titre, resume, corps_md } de la page « Armes ».
+ *   page          : { titre, resume, corps_md } de la page « Armes » ;
+ *   liens         : { degats, magies } (lib/mots-cles-des-valeurs.mjs#liensDesValeursFermees, migration 0125) : le mot-clé du glossaire de chaque type de dégâts
+ *                   (`liens.degats.taille`, `.estoc`, `.frappe` ; `feu`, `eau`, `glace` : celui de leur magie) et de chaque magie (`liens.magies[magie_id]`,
+ *                   `texte` : son nom court), ou null ; la page en fait des balises.
  */
 export function chargerArmes(db) {
   const armes = lignes(db, 'SELECT * FROM arme ORDER BY famille_id, ordre');
@@ -108,5 +112,6 @@ export function chargerArmes(db) {
   return {
     familles, materiaux, ameliorations, couts_elementaires: coutsElementairesCumules(ameliorations), solidite_elementaire: solidite?.valeur ?? null,
     page: page ? { ...page } : null,
+    liens: liensDesValeursFermees(db),
   };
 }

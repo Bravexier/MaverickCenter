@@ -436,4 +436,8 @@ export const RESSOURCES = [
 ];
 
 /** Tables de ce module qui ne sont pas des éléments de l'API, avec la raison. */
-export const HORS_RESSOURCE = {};
+export const HORS_RESSOURCE = {
+  type_degats:
+    'Table de référence des huit valeurs fermées des types de dégâts (taille, estoc, frappe, physique, sonore, feu, eau, glace ; migration 0125) : elle ne ' +
+    'dit que le mot-clé du glossaire, ou la magie, que chaque valeur affiche ; ni créée ni supprimée depuis le site, lisible dans l’onglet DB (/donnees/).',
+};

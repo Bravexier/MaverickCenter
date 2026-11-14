@@ -32,6 +32,8 @@
 .bmagies { display: inline-flex; flex-wrap: wrap; gap: 0.2rem; align-items: center; }
 /* une magie en pastille : la classe de la magie (lib/palette-css.mjs : --couleur, --couleur-texte) */
 .bmagie { display: inline-block; padding: 0 0.45rem; border-radius: var(--radius-pill); font-size: var(--fs-xs); background: var(--couleur); color: var(--couleur-texte); border: 1px solid color-mix(in srgb, var(--couleur) 70%, var(--text)); }
+/* la magie y est un mot-clé du glossaire (migration 0125 : lib/valeurs-fermees-rendu.mjs) : sur le fond de la couleur pleine, il garde le texte de la pastille, pas sa propre teinte */
+.bmagie .mot-cle[class*='couleur-'] { color: inherit; }
 
 /* La carte */
 .bcarte { padding: 0.9rem 1rem 1.1rem; font-size: var(--fs-lg); }

@@ -16,13 +16,14 @@ import Filtres from './Filtres.astro';
 import CarteInvoquee from './CarteInvoquee.astro';
 import type { chargerInvocations } from '../../lib/bestiaire-db.mjs';
 import { classeDeMagie } from '../../lib/palette-css.mjs';
+import { htmlDeLaMagie } from '../../lib/valeurs-fermees-rendu.mjs';
 import { url } from '../../lib/wiki';
 
 interface Props {
   invocations: ReturnType<typeof chargerInvocations>;
 }
 const { invocations } = Astro.props;
-const { lignes, tableaux, facettes } = invocations;
+const { lignes, tableaux, facettes, liens } = invocations;
 const P = 'i-'; // préfixe de l'état dans l'adresse (le tableau des monstres n'en a pas)
 
 // la pastille d'une magie : la classe de la magie (lib/palette-css.mjs ; styles/bestiaire/carte.css, .bmagie)
@@ -90,9 +91,9 @@ const npms = (t: (typeof tableaux)[number]) => {
                         <th scope="row" class="bligne__bloc" title={l.libelle}>
                           {t.duo ? (
                             <span class="bmagies">
-                              {l.magies.map((m) => (
+                              {l.magies.map((m, i) => (
                                 <span class={pastille(m)}>
-                                  {m}
+                                  <Fragment set:html={htmlDeLaMagie(liens, l.magiesIds[i], m)} />
                                 </span>
                               ))}
                               {l.mono && <span class="muted"> mono</span>}
@@ -122,7 +123,7 @@ const npms = (t: (typeof tableaux)[number]) => {
     </div>
     <aside class="bcartes" aria-label="Carte de la créature choisie" data-cartes>
       <p class="bcartes__invite js-seul">Choisissez une créature dans un tableau pour ouvrir sa carte.</p>
-      {lignes.map((l) => <CarteInvoquee ligne={l} />)}
+      {lignes.map((l) => <CarteInvoquee ligne={l} {liens} />)}
     </aside>
   </div>
 </section>

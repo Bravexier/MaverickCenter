@@ -12,6 +12,7 @@ import { htmlAvecMonnaies, htmlDeMontant } from './monnaies.mjs';
 import { cleDeMateriau } from './materiaux-couleurs.mjs';
 import { RENDUS_DES_ARMES } from './armes-rendu.mjs';
 import { classeDeDegats, classeDuPoids, classeDuTypeDArmure } from './palette-css.mjs';
+import { htmlDuTypeDeDegats } from './valeurs-fermees-rendu.mjs';
 
 const ENTITES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 const e = (texte) => String(texte ?? '').replace(/[&<>"']/g, (c) => ENTITES[c]);
@@ -78,12 +79,15 @@ export function htmlDuPoids(p) {
     + `${force === null ? '' : ` title="${e(`Requiert ${force} Force minimum`)}"`}>${e(p.nom)}</span>`;
 }
 
-/** Les résistances ou faiblesses d'une armure (« x2 Frappe », « Estoc/Taille ») en pastilles, « ×2 » compris. */
-export function htmlDesDegats(valeur, sens) {
+/**
+ * Les résistances ou faiblesses d'une armure (« x2 Frappe », « Estoc/Taille ») en pastilles, « ×2 » compris ; le type de chaque pastille est lié à son mot-clé du
+ * glossaire quand `liens` (lib/mots-cles-des-valeurs.mjs, ctx.liens) en donne un (migration 0125), nu sinon.
+ */
+export function htmlDesDegats(valeur, sens, liens = null) {
   const lignes = sens === 'faiblesse' ? degatsDeLArmure(null, valeur) : degatsDeLArmure(valeur, null);
   if (!lignes.length) return String(valeur ?? '').trim() ? `<span class="pdgt-texte">${e(valeur)}</span>` : VIDE;
   return lignes
-    .map((l) => `<span class="pdgt pdgt--${l.type_degats} ${classeDeDegats(l.type_degats)}"${l.multiplicateur ? ` title="${e(`${LIBELLES_DES_DEGATS[l.type_degats]} ×${l.multiplicateur} (« x${l.multiplicateur} » de la source)`)}"` : ''}>${l.multiplicateur ? `<b>×${l.multiplicateur}</b> ` : ''}${LIBELLES_DES_DEGATS[l.type_degats]}</span>`)
+    .map((l) => `<span class="pdgt pdgt--${l.type_degats} ${classeDeDegats(l.type_degats)}"${l.multiplicateur ? ` title="${e(`${LIBELLES_DES_DEGATS[l.type_degats]} ×${l.multiplicateur} (« x${l.multiplicateur} » de la source)`)}"` : ''}>${l.multiplicateur ? `<b>×${l.multiplicateur}</b> ` : ''}${htmlDuTypeDeDegats(liens, l.type_degats, LIBELLES_DES_DEGATS[l.type_degats])}</span>`)
     .join(' ');
 }
 
@@ -132,8 +136,8 @@ export const RENDUS_DES_ARMURES = {
       ? ' <span class="psol__uni" title="Cran de solidité uni : si un cran de solidité est perdu, c’est toute l’armure qui est abîmée">uni</span>' : '';
     return `<span class="psol" data-solidite="${n}">${n}${uni}</span>`;
   },
-  'armure-resistance': (valeur) => htmlDesDegats(valeur, 'resistance'),
-  'armure-faiblesse': (valeur) => htmlDesDegats(valeur, 'faiblesse'),
+  'armure-resistance': (valeur, _ligne, ctx = {}) => htmlDesDegats(valeur, 'resistance', ctx.liens),
+  'armure-faiblesse': (valeur, _ligne, ctx = {}) => htmlDesDegats(valeur, 'faiblesse', ctx.liens),
   'armure-effet': (valeur) => (String(valeur ?? '').trim() ? `<span class="armure-effet">${e(valeur)}</span>` : VIDE),
   // un coût du tableau FABRICATION de l'onglet (« Armure Complète », compté dans le prix des armures de la grille : décision R93 ; « Bouclier »,
   // « 250 RF / Classe », sous les formes de l'onglet Boucliers) : tel qu'écrit, en RO dans `data-ro` (null pour « 250 RF / Classe »)

@@ -1,6 +1,6 @@
 # Aperçu du schéma de la base
 
-> **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` : ne pas l'éditer. Version compacte de [`structure.md`](structure.md) (qui détaille chaque colonne) pour relire le schéma d'un coup d'œil : 217 tables, 2 tables de recherche, 38 vues.
+> **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` : ne pas l'éditer. Version compacte de [`structure.md`](structure.md) (qui détaille chaque colonne) pour relire le schéma d'un coup d'œil : 218 tables, 2 tables de recherche, 38 vues.
 > Ce qui reste à trancher sur le **contenu** (pas sur la forme) est dans [`a-valider.md`](a-valider.md).
 
 **Lecture des colonnes** : **gras** = clé primaire ; `→table` = clé étrangère vers cette table ; `?` = peut être absente (`NULL`, jamais une valeur inventée) ; `+provenance` = `origine` (famille d'import) et `source_ref` (classeur › onglet › plage). Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté.
@@ -61,13 +61,13 @@
 
 ## 3. MAGIES ET SORTS (famille « magies »)
 
-**Relations dans cette section** : `magie_dieu→magie`, `magie_ethnie_secondaire→magie`, `magie_incompatibilite→magie`, `magie_npm_plafond→magie`, `magie_resistance→magie`, `magie_role→magie`, `magie_specialisation→magie`, `sort_bonus_maitrise→sort`, `sort_etat→sort`, `sort_mode→sort`, `sort_mot_cle→sort`, `sort_type→sort`, `sort→magie`, `sort→magie_specialisation`
+**Relations dans cette section** : `magie_dieu→magie`, `magie_ethnie_secondaire→magie`, `magie_incompatibilite→magie`, `magie_npm_plafond→magie`, `magie_resistance→magie`, `magie_role→magie`, `magie_specialisation→magie`, `sort_bonus_maitrise→sort`, `sort_etat→sort`, `sort_mode→sort`, `sort_mot_cle→sort`, `sort_type→sort`, `sort→magie`, `sort→magie_specialisation`, `type_degats→magie`
 
-**Vers d'autres sections** : `magie_dieu→dieu (§5)`, `magie_ethnie_secondaire→ethnie (§7)`, `magie_resistance→etat (§4)`, `magie→caracteristique (§2)`, `magie→page (§1)`, `sort_etat→etat (§4)`, `sort_mot_cle→mot_cle (§1)`
+**Vers d'autres sections** : `magie_dieu→dieu (§5)`, `magie_ethnie_secondaire→ethnie (§7)`, `magie_resistance→etat (§4)`, `magie→caracteristique (§2)`, `magie→mot_cle (§1)`, `magie→page (§1)`, `sort_etat→etat (§4)`, `sort_mot_cle→mot_cle (§1)`, `type_degats→mot_cle (§1)`
 
 | Table | Rôle | Colonnes |
 | --- | --- | --- |
-| `magie` | MAGIE : une ligne par onglet de magie (15 : Potentiel Illimité + 14 magies) | **id**→page, nom, nom_cle, onglet, ordre, banniere?, description?, description_physique?, explication?, sante_offerte?, chakra_offert?, caracteristique_id→caracteristique?, caracteristique_brut?, barre4_ressource?, barre4_texte?, barre4_max?, barre4_regen?, incompatibilite_note?, remarque?, mono_magie, +provenance |
+| `magie` | MAGIE : une ligne par onglet de magie (15 : Potentiel Illimité + 14 magies) | **id**→page, nom, nom_cle, onglet, ordre, banniere?, description?, description_physique?, explication?, sante_offerte?, chakra_offert?, caracteristique_id→caracteristique?, caracteristique_brut?, barre4_ressource?, barre4_texte?, barre4_max?, barre4_regen?, incompatibilite_note?, remarque?, mono_magie, mot_cle_id→mot_cle?, +provenance |
 | `magie_role` | Rôles de la magie (bloc « ROLES » : trois cellules, de gauche à droite). | **magie_id**→magie, **rang**, role, role_brut, +provenance |
 | `magie_resistance` | Résistances et vulnérabilités de la magie (4 blocs de l'onglet : « Résistance magique », « Vulnérabilité magique », « Résistance altération d'état », « Vulnérabilité altération d'état » ; « Aucune » = aucune ligne). | **magie_id**→magie, **sens**, **cible_type**, **rang**, cible_magie_id→magie?, cible_etat_id→etat?, cible_brut, cible_physique?, +provenance |
 | `magie_incompatibilite` | Magies qu'on ne peut pas combiner. | **magie_id**→magie, **autre_magie_id**→magie, +provenance |
@@ -80,6 +80,7 @@
 | `sort_bonus_maitrise` | Bonus de niveau de maîtrise (NM) d'un sort : chaque renforcement que les cellules du classeur écrivent, quelle que soit la colonne. | **sort_id**→sort, **champ**, **rang**, nature, texte_brut, contexte, increment_brut?, increment_entier?, pas_nm?, seuil_nm?, +provenance |
 | `sort_etat` | Sort <-> altération d'état. | **sort_id**→sort, **etat_id**→etat, **relation**, **rang**, stade?, champ, forme_trouvee, extrait, +provenance |
 | `sort_mot_cle` | Étiquettes d'un sort : un mot-clé du glossaire (mot_cle) posé sur un sort (décision R114 du propriétaire, migration 0067 : « Il faudra d'ailleurs redéfinir ce qu'est un sort "grenade" autrement que pa | **sort_id**→sort, **mot_cle_id**→mot_cle |
+| `type_degats` | Types de dégâts : une ligne par valeur fermée des colonnes de type de dégâts (arme_degats.type_degats, arme_elementaire_type_degats.type_degats, armure_degats.type_degats, personnage_arme.type_degats_ | **id**, mot_cle_id→mot_cle?, magie_id→magie? |
 | `commentaire_orphelin` | Fils de commentaires du Sommaire ancrés en A1 : commentaires de cellules supprimées, sans sort identifiable (certains portent des textes de règle). | **id**, empreinte, occurrence, onglet, cellule, resolu, texte, +provenance |
 | `legende_sort` | Légende commune des 14 tables de sorts (identique dans chaque onglet) : « IC = Instant Cast » et les trois modes d'obtention d'un niveau de maîtrise (N, L, C). | **code**, groupe, libelle, description?, +provenance |
 | `regle_magie` | Règles de magie qui valent pour toutes les magies (Sommaire!A31 du classeur V8 : « Règle spéciale pour sort niveau 5 », gardée par R237 (7) ; Sommaire!AP1 du classeur de Décembre : « CHOSES A SAVOIR » | **id**, titre, niveau_sort?, texte, +provenance |

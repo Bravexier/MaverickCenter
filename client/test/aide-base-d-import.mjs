@@ -80,6 +80,23 @@ function avantReecrit(table, cle, col, avant, apres, actuelle) {
 }
 
 /**
+ * Les références qu'une migration a posées vers une ligne créée par le site de dev, par table citée : [table qui cite, colonne nullable]. À l'import,
+ * la ligne citée n'existait pas : la référence y vaut NULL. Migration 0125 : type_degats.mot_cle_id cite Frappe, Taille et Estoc, mots-clés créés sur
+ * le site (« Si ils existent! »). Une migration qui cite une autre ligne créée par le site s'ajoute ici ; sans elle, baseDImport refuse la copie
+ * (clés étrangères rompues).
+ */
+const REFERENCES_DES_MIGRATIONS = Object.freeze({ mot_cle: Object.freeze([['type_degats', 'mot_cle_id']]) });
+
+/** Met à NULL, avant que la ligne `cle` de `table` (créée par le site) soit retirée, les références que des migrations ont posées vers elle. */
+function oublierLesReferencesDesMigrations(db, table, cle) {
+  const valeurs = Object.values(cle);
+  if (valeurs.length !== 1) return;
+  for (const [cite, colonne] of REFERENCES_DES_MIGRATIONS[table] ?? []) {
+    if (colonnesDe(db, cite)?.has(colonne)) db.prepare(`UPDATE "${cite}" SET "${colonne}" = NULL WHERE "${colonne}" = ?`).run(valeurs[0]);
+  }
+}
+
+/**
  * Défait dans `db` (ouverte en écriture) les modifications du site, de la dernière à la première, sauf celles des lots `garder`, puis retire de
  * l'historique les lots défaits. Rend ce qui n'a pas pu être défait (opération et raison). Exporté pour le test de l'aide.
  * @param {import('node:sqlite').DatabaseSync} db
@@ -102,6 +119,7 @@ export function defaireLeSite(db, { garder = new Set() } = {}) {
       const actuelle = db.prepare(`SELECT * FROM "${e.table}" WHERE ${ou}`).get(...Object.values(cle));
       try {
         if (e.operation === 'inserer') {
+          if (actuelle) oublierLesReferencesDesMigrations(db, e.table, cle);
           if (actuelle) db.prepare(`DELETE FROM "${e.table}" WHERE ${ou}`).run(...Object.values(cle));
         } else if (e.operation === 'supprimer') {
           if (actuelle) continue; // remise depuis par une migration : gardée

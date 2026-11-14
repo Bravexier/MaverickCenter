@@ -10,6 +10,9 @@
 //     ligne ; « Chronologie › <événement> » ; « Mot-clé « <libellé> » » pour la définition d'un autre mot-clé), sinon par sa table et sa ligne.
 // Les pages d'exemple comptent (marquées `exemple`) ; la définition du mot-clé lui-même, son adresse et sa couleur ne sont pas des mentions ; un prix
 // (« 100 RO ») n'est pas une balise et ne mentionne pas le mot-clé `ro`.
+//   - par une référence de la base (migration 0125, `comment: 'reference'`) : le mot-clé d'un type de dégâts à valeur fermée (type_degats.mot_cle_id : taille,
+//     estoc, frappe) ou d'une magie (magie.mot_cle_id) ; la page de la magie nomme la mention. Ce n'est pas un texte : aucune suppression, même forcée,
+//     ne la remplace (serveur/edition-chronologie.mjs#verifierSansReference), la fusion la reporte sur la cible.
 // Pur, sans dépendance navigateur ni Astro : la base est passée par l'appelant.
 import { nomDeTable } from './libelles-de-la-base.mjs';
 import { lireBalises, motCleDeLaRef, vocabulaireDesMotsCles } from './mots-cles-balises.mjs';
@@ -17,6 +20,33 @@ import { motsClesDeLaBase, textesDeLaBase } from './mots-cles-db.mjs';
 
 const q = (c) => (c === 'rowid' ? 'rowid' : `"${c}"`);
 const existe = (db, table) => Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(table));
+
+/** Les colonnes de la base qui citent un mot-clé (migration 0125) : la table, sa clé primaire, la colonne. */
+export const REFERENCES_AUX_MOTS_CLES = Object.freeze([
+  Object.freeze({ table: 'type_degats', cle: 'id', colonne: 'mot_cle_id' }),
+  Object.freeze({ table: 'magie', cle: 'id', colonne: 'mot_cle_id' }),
+]);
+
+const aLaColonne = (db, table, colonne) => Boolean(db.prepare('SELECT 1 FROM pragma_table_info(?) WHERE name = ?').get(table, colonne));
+
+/**
+ * Les lignes de la base dont une colonne cite un des mots-clés `ids` (REFERENCES_AUX_MOTS_CLES) : [{ table, colonne, id (la ligne citante), mot_cle_id }],
+ * triées par table puis id. Une base d'avant la migration 0125 n'a ni la table ni la colonne : aucune référence.
+ * @param {import('node:sqlite').DatabaseSync} db
+ * @param {Iterable<number>} ids
+ */
+export function referencesDesMotsCles(db, ids) {
+  const voulus = new Set(ids);
+  const sortie = [];
+  if (!voulus.size) return sortie;
+  for (const { table, cle, colonne } of REFERENCES_AUX_MOTS_CLES) {
+    if (!existe(db, table) || !aLaColonne(db, table, colonne)) continue;
+    for (const l of db.prepare(`SELECT "${cle}" AS id, "${colonne}" AS mot_cle_id FROM "${table}" WHERE "${colonne}" IS NOT NULL ORDER BY "${cle}"`).all()) {
+      if (voulus.has(l.mot_cle_id)) sortie.push({ table, colonne, id: l.id, mot_cle_id: l.mot_cle_id });
+    }
+  }
+  return sortie;
+}
 
 /**
  * Les mentions de chacun des mots-clés `ids` : Map(id → [{ table, cle, colonne, comment, page: { id, titre } | null, libelle, exemple }]), triées par
@@ -54,6 +84,11 @@ export function mentionsDesMotsCles(db, ids) {
     for (const t of db.prepare('SELECT page_id, ordre, tag_id FROM page_tag ORDER BY page_id, ordre').all()) {
       if (voulus.has(t.tag_id)) ajouter(t.tag_id, { table: 'page_tag', cle: { page_id: t.page_id, ordre: t.ordre }, colonne: 'tag_id', comment: 'etiquette', page: t.page_id });
     }
+  }
+
+  // une référence de la base : la page de la magie (même id) la nomme ; un type de dégâts n'a pas de page
+  for (const r of referencesDesMotsCles(db, voulus)) {
+    ajouter(r.mot_cle_id, { table: r.table, cle: { id: r.id }, colonne: r.colonne, comment: 'reference', page: r.table === 'magie' ? r.id : null });
   }
 
   const vocabulaire = vocabulaireDesMotsCles(motsClesDeLaBase(db));

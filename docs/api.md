@@ -384,7 +384,7 @@ avec `mots_cles_verrouilles` (décision R222 ; le rejeu, lui, la fait). Une page
 fiche d'un don, une page des Règles) ne se supprime pas : `DELETE` rend `409` avec `mots_cles_verrouilles` (décision R221). Un mot-clé créé vaut `0`,
 même avec un lien. Un mot-clé non verrouillé se modifie entièrement (décision R195) ; il ne se supprime pas tant qu'une page ou un texte le mentionne
 (R196 : `409` avec `mentions`, la liste des endroits, et `refus_du_forcage`, `null` si la suppression forcée passerait, sinon sa raison), ni ne se
-fusionne s'il étiquette un sort (`409`). **La suppression forcée** (`DELETE /api/v1/mots-cles/<id>/?forcer=1`, décision R223) ne lève que le refus des
+fusionne s'il étiquette un sort (`409`) ; s'il est le mot-clé d'un type de dégâts ou d'une magie (migration `0125`), il ne se supprime pas, même forcé (`409` avec `references`, comptées parmi les `mentions` avec `comment: "reference"`), et sa fusion reporte la référence sur la cible. **La suppression forcée** (`DELETE /api/v1/mots-cles/<id>/?forcer=1`, décision R223) ne lève que le refus des
 mentions : dans le même lot, chaque balise qui le cite (toute forme, ref par id, écriture ou abréviation, pages d'exemple comprises) devient son
 texte affiché en texte simple, sans lien (le libellé pour `{{id}}` et `{{id:}}`, le texte écrit pour `{{id|texte}}`), chaque étiquette de page est retirée, puis le mot-clé est supprimé ; le résumé du lot compte les mentions
 remplacées. Elle reste refusée en `409`, avant toute écriture, pour un mot-clé verrouillé, qui étiquette un sort, cité par la définition d'un mot-clé

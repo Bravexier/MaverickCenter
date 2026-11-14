@@ -36,9 +36,9 @@ const tablesAvecNotes = db.prepare("SELECT DISTINCT entite_table AS t FROM note_
 // type élémentaire d'une famille d'armes, le coût élémentaire d'une amélioration d'arme (tableau fondu, table reconstruite avec sa colonne en dernier) ;
 // 0092 : le rang d'une race dans le menu des races et la liste /races/ (race.rang_liste, ajoutée par ALTER TABLE après la remarque) ; 0099 : le sort
 // dont le tableau est celui d'une invocation (invocation.tableau_sort_id, ALTER TABLE) ; 0117 : la spécialisation magique d'un sort de NPM 3 à 5
-// (sort.specialisation_id, ALTER TABLE, R236 (1)).
+// (sort.specialisation_id, ALTER TABLE, R236 (1)) ; 0125 : le mot-clé du glossaire d'une magie (magie.mot_cle_id, ALTER TABLE).
 const APRES_REMARQUE = {
-  sort: ['mode_brut', 'bonus_maitrise', 'cout_secondaire', 'specialisation_id'], mode_hyper_effet: ['nom'], magie: ['mono_magie'], race: ['mono_magie', 'rang_liste'], classe: ['magie_innee_id', 'magie_innee_exclue_id'],
+  sort: ['mode_brut', 'bonus_maitrise', 'cout_secondaire', 'specialisation_id'], mode_hyper_effet: ['nom'], magie: ['mono_magie', 'mot_cle_id'], race: ['mono_magie', 'rang_liste'], classe: ['magie_innee_id', 'magie_innee_exclue_id'],
   arme_famille: ['maitrisable', 'categorie', 'nom_lecture', 'type_elementaire_id'], accessoire_effet: ['usage'], bouclier: ['poids_id'], amelioration_equipement: ['cout_elementaire_brut'],
   invocation: ['tableau_sort_id'],
 };

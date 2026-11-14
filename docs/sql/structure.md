@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 124 : 217 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 125 : 218 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -10,7 +10,7 @@
 - [0. FAMILLES D'IMPORT](#0-familles-dimport) : `famille`
 - [1. PAGES, LIENS, MOTS-CLÉS, SOURCES (couche générique)](#1-pages-liens-mots-clés-sources-couche-générique) : `type_page`, `page`, `alias`, `mot_cle`, `categorie_mot_cle`, `mot_cle_categorie`, `mot_cle_ancienne_cle`, `mot_cle_synonyme`, `page_tag`, `source`, `page_source`, `page_entite`, `panneau_regles`, `panneau_regles_bloc`, `composant_onglet`, `annonce`, `regles_onglet`, `regles_onglet_entree`
 - [2. RÈGLES DE LA FICHE : caractéristiques, compétences, niveaux, constantes, postures (famille « fiche »)](#2-règles-de-la-fiche--caractéristiques-compétences-niveaux-constantes-postures-famille--fiche) : `caracteristique`, `competence`, `niveau_global`, `niveau_deblocage`, `seuil_niveau`, `regle_constante`, `entrainement_palier`, `initiative_agilite`, `type_don`, `posture`, `posture_effet`, `posture_critique`
-- [3. MAGIES ET SORTS (famille « magies »)](#3-magies-et-sorts-famille--magies) : `magie`, `magie_role`, `magie_resistance`, `magie_incompatibilite`, `magie_ethnie_secondaire`, `magie_dieu`, `magie_specialisation`, `sort`, `sort_type`, `sort_mode`, `sort_bonus_maitrise`, `sort_etat`, `sort_mot_cle`, `commentaire_orphelin`, `legende_sort`, `regle_magie`, `magie_npm_plafond`
+- [3. MAGIES ET SORTS (famille « magies »)](#3-magies-et-sorts-famille--magies) : `magie`, `magie_role`, `magie_resistance`, `magie_incompatibilite`, `magie_ethnie_secondaire`, `magie_dieu`, `magie_specialisation`, `sort`, `sort_type`, `sort_mode`, `sort_bonus_maitrise`, `sort_etat`, `sort_mot_cle`, `type_degats`, `commentaire_orphelin`, `legende_sort`, `regle_magie`, `magie_npm_plafond`
 - [4. ANNEXES DES MAGIES : états, résistances, météo, modes hyper et super (famille « annexes »)](#4-annexes-des-magies--états-résistances-météo-modes-hyper-et-super-famille--annexes) : `resistance_palier`, `etat`, `etat_magie`, `etat_stade`, `etat_palier`, `meteo`, `meteo_effet`, `mode_texte`, `mode_hyper_depassement`, `mode_super_objet`, `mode_hyper_effet`
 - [5. DIEUX](#5-dieux) : `dieu`
 - [5 bis. CHRONOLOGIE : les événements datés du Codex et des races (famille « chronologie » ; migration 0035, docs/chronologie.md)](#5-bis-chronologie--les-événements-datés-du-codex-et-des-races-famille--chronologie---migration-0035-docschronologiemd) : `evenement`, `evenement_extrait`, `categorie_chronologie`, `evenement_categorie`
@@ -460,6 +460,7 @@ MAGIE : une ligne par onglet de magie (15 : Potentiel Illimité + 14 magies)
 | `source_ref` | TEXT | oui |  |  |
 | `remarque` | TEXT | non |  | remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne |
 | `mono_magie` | INTEGER | oui |  | 1 = « Mono-magie uniquement » : ne se combine avec aucune autre magie, sauf pour les ethnies de magie_ethnie_secondaire (décision R15 du propriétaire : Potentiel Illimité et Corruption ; migration 0010) |
+| `mot_cle_id` | INTEGER | non | → mot_cle.id, unique |  |
 
 ### `magie_role`
 
@@ -650,6 +651,16 @@ Sort <-> altération d'état. INDEX DÉRIVÉ DU TEXTE (la source n'a pas de colo
 | --- | --- | --- | --- | --- |
 | `sort_id` | TEXT | oui | PK 1, → sort.id |  |
 | `mot_cle_id` | INTEGER | oui | PK 2, → mot_cle.id | mot_cle.id (entier depuis la migration 0113) |
+
+### `type_degats`
+
+Types de dégâts : une ligne par valeur fermée des colonnes de type de dégâts (arme_degats.type_degats, arme_elementaire_type_degats.type_degats, armure_degats.type_degats, personnage_arme.type_degats_choisi, magie_resistance.cible_physique, invocation_resistance.cible_degat, creature_capacite_resistance.cible_degat, creature_attaque_type.type), et ce qui la lie au glossaire (migration 0125, demande du propriétaire du 2026-11-14 : « les armes et armures référencera leur type ou résistance (taille, estoc et frappe) via ce mot clé », « Si ils existent! »). Ces colonnes gardent leur valeur et leur CHECK, sans clé étrangère vers cette table (choix du propriétaire : leurs données et leur format ne changent pas). Pas de libellé ici : le mot-clé (ou la magie) donne le nom affiché. mot_cle_id : le mot-clé du type (Taille, Estoc, Frappe) ; NULL quand le glossaire n'en a pas (physique, sonore). Pas de cascade, comme sort_mot_cle : la clé étrangère refuse de supprimer un mot-clé qui définit un type de dégâts. magie_id : feu, eau, glace (attaques de créature) se lient à la magie du même nom (choix du propriétaire), comme creature_attaque_type.magie_id ; leur mot-clé est celui de la magie (magie.mot_cle_id). Renseignée pour ces trois-là seulement, et jamais avec mot_cle_id.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `id` | TEXT | oui | PK |  |
+| `mot_cle_id` | INTEGER | non | → mot_cle.id |  |
+| `magie_id` | TEXT | non | → magie.id |  |
 
 ### `commentaire_orphelin`
 

@@ -121,6 +121,7 @@ import {
   corpsAvecMateriauRenomme, corpsDesArmesApres, ErreurCorpsArmes, PAGE_DES_ARMES, PAGES_DES_MATERIAUX, TABLES_DE_LA_PAGE_DES_ARMES,
 } from '../src/lib/corps-armes.mjs';
 import { contexteDesArmes } from '../src/lib/armes-db.mjs';
+import { liensDesValeursFermees } from '../src/lib/mots-cles-des-valeurs.mjs';
 import { poidsDeBouclier } from '../src/lib/armures-db.mjs';
 import { echellesDesCartes, magiesDesCibles, renvoisAuxDegatsMoyens } from '../src/lib/bestiaire-db.mjs';
 import {
@@ -3696,6 +3697,9 @@ export function listes(db) {
     // la page des armes (lib/armes-rendu.mjs) : types d'armes (champ « Type », dé, règle du dé, portée), solidité de base des armes
     typesDArmes: contexteDesArmes(db).typesDArmes,
     soliditeDesArmes: contexteDesArmes(db).soliditeDesArmes,
+    // les types de dégâts et les magies liés à leur mot-clé du glossaire (migration 0125 ; lib/mots-cles-des-valeurs.mjs) : les cellules des armes, des armures
+    // et du bestiaire redessinées par le mode modification gardent leur balise (`ctx.liens` des rendus)
+    liens: liensDesValeursFermees(db),
     // la page des armures : les poids de boucliers (choix « Poids » d'un bouclier, rendu « bouclier-poids » : décision R92)
     poidsDeBouclier: poidsDeBouclier(db),
     // les familles de la page des armes (formulaire « Nouvelle arme » : pas les armes de monstres, décision R45), celles créées sur le site comprises

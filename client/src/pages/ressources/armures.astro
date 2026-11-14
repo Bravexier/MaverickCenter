@@ -15,10 +15,11 @@ const page = pageDeLEquipement('armures')!;
 const db = ouvrirBase();
 const regles = await panneauRendu(db, page.id);
 const piecesElementaires = await piecesElementairesRendues('armures');
+const armures = chargerArmures(db);
 ---
 
 <Base title={page.nom} description="Armures : deux matériaux font une armure complète, armures particulières, armures élémentaires, améliorations et fiche de l’armure." edition={page.chemin}>
   <EquipementPage id={page.id}>
-    <ArmuresPage armures={chargerArmures(db)} contexte={contexteDesArmures(db)} vue="armures" regles={regles} piecesElementaires={piecesElementaires} />
+    <ArmuresPage armures={armures} contexte={{ ...contexteDesArmures(db), liens: armures.liens }} vue="armures" regles={regles} piecesElementaires={piecesElementaires} />
   </EquipementPage>
 </Base>

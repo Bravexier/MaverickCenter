@@ -228,8 +228,9 @@ test('chaque identifiant est unique dans une page ; aria-controls, aria-describe
 test('infobulles : un déclencheur par bulle, un texte de repli (title), une bulle en role="tooltip" cachée et faite d’éléments en ligne seulement', options, () => {
   let bulles = 0;
   for (const { slug, html } of pages) {
-    // la carte d'une créature (bulle-creature-…) est une infobulle à part : test suivant
-    const declencheurs = [...html.matchAll(/<(?:a|button)\b[^>]*\sdata-bulle="([^"]+)"[^>]*>/g)].filter((d) => !d[1].startsWith('bulle-creature-'));
+    // la carte d'une créature (bulle-creature-…) est une infobulle à part : test suivant ; la bulle d'un mot-clé du glossaire (mot-cle-<clé>) est posée par le
+    // middleware, sans texte de repli (skill ui-infobulles) : une magie ou un type de dégâts lié (migration 0125) est un déclencheur de cette forme, plusieurs fois par page
+    const declencheurs = [...html.matchAll(/<(?:a|button)\b[^>]*\sdata-bulle="([^"]+)"[^>]*>/g)].filter((d) => !d[1].startsWith('bulle-creature-') && !d[1].startsWith('mot-cle-'));
     for (const [balise, id] of declencheurs) {
       assert.match(balise, /\saria-describedby="/, `${slug} : ${id} sans aria-describedby`);
       assert.match(balise, /\stitle="[^"]+"/, `${slug} : ${id} sans texte de repli (sans JavaScript)`);
