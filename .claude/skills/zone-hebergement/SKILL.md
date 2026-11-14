@@ -28,6 +28,7 @@ user-invocable: false
 - Aucune installation ne vide ni ne remplace `db/` (R274 : les saisies du site de dev sont introuvables ailleurs). Copie de la production sur demande seulement (`--copier-base-prod`), refusée si `db/` est rempli hors `metriques/`. `MAVERICK_BASE_TEST=conservee` est sans effet.
 - `mise-a-jour.sh` en mode test refuse une livraison plus ancienne que celle installée (comparaison X, Y, Z, rebuild) ; `--force` pour revenir en arrière ; `VERSION` absent = première installation. La production n'est pas concernée.
 - Un installateur de test refuse un dossier de production et inversement. L'installateur ne touche jamais aux métriques.
+- L'attestation de la production (`attestation-prod.json`) voyage par le dossier des métriques, déjà partagé entre les deux instances : aucun montage ni variable de plus dans `deploy/` (skill `zone-service-extrait`).
 - Journaux des conteneurs : pilote `json-file`, 5 fichiers de 10 Mo au plus par conteneur (`logging` de chaque service des deux `docker-compose.yml`).
 
 ## VPS

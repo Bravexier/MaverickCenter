@@ -17,7 +17,7 @@
 // les choix en cours ne se perdent pas.
 // Ce script n'importe que le rendu commun et celui des conflits (aucun autre script de page ne les importe : la version portable refuse un module
 // partagé).
-import { compter, echapper, htmlDeLaListe, htmlDuTexteLibre, lancementAffiche } from '../lib/notes-de-version-rendu.mjs';
+import { affichageDeLaProduction, compter, echapper, htmlDeLaListe, htmlDuTexteLibre, lancementAffiche } from '../lib/notes-de-version-rendu.mjs';
 import { avecDateLisible, corpsDeLaResolution, htmlDesConflits, messageDeResolution } from '../lib/conflits-rendu.mjs';
 
 const racine = document.querySelector('[data-mise-a-jour]');
@@ -119,14 +119,41 @@ function rendre() {
     : '';
   zone.innerHTML = `<div class="nv-dev__titre"><h2>Mise à jour en préparation : V${echapper(d.version_cible ?? '?')}</h2>${caseMajeure}</div>
     <p class="nv-dev__bilan">${bilan}${bilanDesConflits}</p>
+    <div data-nv-production></div>
     <div class="nv-dev__note">${note}</div>
     ${bouton}
     ${htmlDuLancement(lancementAffiche(d), d.github, d.liberable)}
     <div class="nv-dev__liste">${d.lignes ? htmlDeLaListe(d.lignes, { niveau: 3, plafond: 25 }) : ''}</div>`;
+  rendreLEtatDeLaProduction(zone.querySelector('[data-nv-production]'), d.etat_production);
   // après les listes, la section des conflits, la même d'un rendu à l'autre (choix en cours gardés)
   zone.append(sectionDesConflits());
   zone.hidden = false;
   brancher(zone);
+}
+
+/** L'état de la production (`etat_production`) : une alerte si elle n'a pas appliqué sa dernière mise à jour, sinon une ligne discrète. Texte par textContent. */
+function rendreLEtatDeLaProduction(place, etat) {
+  if (!place) return;
+  const a = affichageDeLaProduction(etat);
+  if (!a) return;
+  const ajouter = (parent, balise, texte, classe) => {
+    const e = document.createElement(balise);
+    if (classe) e.className = classe;
+    e.textContent = texte;
+    parent.append(e);
+    return e;
+  };
+  const bloc = document.createElement('div');
+  bloc.className = `nv-production nv-production--${a.niveau}`;
+  if (a.niveau === 'alerte') bloc.setAttribute('role', 'alert');
+  if (a.message) ajouter(bloc, 'p', a.message, a.niveau === 'alerte' ? 'nv-message nv-message--erreur' : 'nv-message');
+  if (a.lignes.length) {
+    const liste = document.createElement('ul');
+    for (const l of a.lignes) ajouter(liste, 'li', l);
+    bloc.append(liste);
+  }
+  if (a.tables.length) ajouter(bloc, 'p', `Tables dont le contenu diffère : ${a.tables.join(', ')}`, 'nv-message');
+  place.append(bloc);
 }
 
 // --- Lignes en conflit ---------------------------------------------------------------------------------------------------------------------------

@@ -77,7 +77,7 @@ function memeFichier(a, b) {
  * Le contenu publié par la production est-il lisible (fichier présent, ouvrable, version connue) ? { chemin, version } ou { raison }.
  * `propre` : la base des règles de ce site ; une « production » qui est ce même fichier (mauvais montage) ne sert pas : le dev se comparerait à lui-même.
  */
-function productionPubliee(dossier, propre = null) {
+export function productionPubliee(dossier, propre = null) {
   const chemin = join(dossier, ...BASE_DE_PRODUCTION);
   if (!existsSync(chemin)) return { raison: 'le dossier de la production est monté, mais sans sa base (donnees/maverick.db)' };
   if (propre && memeFichier(chemin, propre)) return { raison: 'le dossier de la production est celui de ce site de dev (même base) : il ne peut pas servir de référence' };

@@ -256,7 +256,7 @@ export const ROUTE_INCONNUE = '/api/{inconnue}';
 /** Méthodes gardées telles quelles ; toute autre devient « AUTRE ». */
 export const METHODES = Object.freeze(['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']);
 
-const ACTIONS_EDITION = new Set(['en-attente', 'lignes', 'listes', 'pages', 'mots-cles', 'chronologie', 'plan', 'journal', 'race', 'classe', 'bestiaire', 'portrait', 'evenement']);
+const ACTIONS_EDITION = new Set(['en-attente', 'lignes', 'listes', 'pages', 'mots-cles', 'chronologie', 'plan', 'journal', 'extrait', 'race', 'classe', 'bestiaire', 'portrait', 'evenement']);
 const ACTIONS_MISE_A_JOUR = new Set(['brouillon', 'majeure', 'lancer', 'liberer', 'lancement', 'conflits']);
 const V1 = new Map(RESSOURCES.map((r) => [r.cle, { enfants: new Set((r.enfants ?? []).map((e) => e.cle)), actions: new Set((r.actions ?? []).map((a) => a.cle)) }]));
 
@@ -300,6 +300,7 @@ export function routeNormalisee(adresse) {
       return seul(3) && c === 'portrait' ? r('personnages', '{id}', 'portrait') : ROUTE_INCONNUE;
     case 'edition':
       if (seul(1)) return r('edition');
+      if (b === 'extrait' && seul(3)) return c === 'meta' ? r('edition', 'extrait', 'meta') : ROUTE_INCONNUE;
       return seul(2) && ACTIONS_EDITION.has(b) ? r('edition', b) : ROUTE_INCONNUE;
     case 'mise-a-jour':
       if (seul(1)) return r('mise-a-jour');

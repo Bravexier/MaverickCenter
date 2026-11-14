@@ -229,6 +229,42 @@ export function htmlDeLaNote(note, lignes, { niveau = 2, texte = echapper } = {}
   </article>`;
 }
 
+/**
+ * Ce que la page montre de `etat_production` (GET /api/mise-a-jour/ : la production a-t-elle appliqué sa dernière mise à jour ?), ou null (rien).
+ * `niveau` : `alerte` (seulement `pas_appliquee`) ou `discret` (`inconnue`, `a_jour`) ; `message` : le texte du service ; `lignes` : les versions
+ * publiée et attestée, la date d'attestation ; `tables` : les tables au contenu différent (`alerte` seulement). Une réponse sans le champ (ancien
+ * service), un état inconnu ou un champ de mauvais type ne cassent rien : ils ne montrent rien. Pur : le script
+ * de la page bâtit les nœuds par `textContent`.
+ * @param {unknown} etat `etat_production` de la réponse
+ * @returns {{ niveau: 'alerte' | 'discret', message: string, lignes: string[], tables: string[] } | null}
+ */
+export function affichageDeLaProduction(etat) {
+  if (!etat || typeof etat !== 'object') return null;
+  const chaine = (v) => (typeof v === 'string' ? v.trim() : '');
+  const message = chaine(etat.message);
+  const version = (v) => chaine(v);
+  const publiee = version(etat.version_publiee);
+  const attestee = version(etat.version_attestee);
+  const jour = /^\d{4}-\d{2}-\d{2}/.exec(chaine(etat.attestee_le))?.[0];
+  const le = jour && !Number.isNaN(Date.parse(`${jour}T00:00:00Z`)) ? dateLisible(jour) : '';
+  if (etat.etat === 'pas_appliquee') {
+    const tables = Array.isArray(etat.tables_differentes) ? etat.tables_differentes.filter((t) => typeof t === 'string' && t) : [];
+    const lignes = [
+      publiee ? `Version publiée par la production : V${publiee}` : '',
+      attestee ? `Dernière version attestée par la production : V${attestee}${le ? `, le ${le}` : ''}` : '',
+    ].filter(Boolean);
+    return { niveau: 'alerte', message, lignes, tables };
+  }
+  if (etat.etat === 'inconnue') return message ? { niveau: 'discret', message, lignes: [], tables: [] } : null;
+  if (etat.etat === 'a_jour') {
+    const v = attestee || publiee;
+    const dit = message || (v ? `La production a appliqué la version ${v}` : '');
+    if (!dit) return null;
+    return { niveau: 'discret', message: le ? `${dit.replace(/\.$/, '')}, attestée le ${le}.` : dit, lignes: [], tables: [] };
+  }
+  return null;
+}
+
 /** États d'un lot entré dans dev ou livré : « libérer » n'y fait que vider le texte qu'il tient encore (serveur/notes-de-version.mjs#libererLot). */
 const LOT_DANS_DEV = ['fusionne', 'echec_livraison', 'termine'];
 

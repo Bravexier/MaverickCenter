@@ -9,23 +9,23 @@ user-invocable: false
 ## Fichiers
 - `serveur/index.mjs` (point d'entrée livré), `service.mjs` (HTTP, surveillance des fichiers), `api.mjs` (routes), `fiches.mjs` (fiche ↔ lignes de la section 13), `base-vivante.mjs` (création, renouvellement, archives), `fiches-retraits.mjs` (R42), `livraison.mjs` (Astro), `dev.mjs` (`npm run serveur`, jamais livré).
 - `src/lib/fiche-format.mjs` : format d'une fiche, partagé avec les pages (sans dépendance).
-- Édition des règles (`/api/edition/`, `serveur/edition*.mjs`) : skill `zone-edition`. Conteneurs, nginx, installateurs : skill `zone-hebergement`. Maintenance : skill `zone-maintenance`. Page « Mise à jour » : skill `zone-mise-a-jour`. `/api/v1/` : skill `zone-api-rest`. Métriques et page Debug : skill `zone-debug-metriques`. Tables de la section 13 : skill `zone-fiches-base`. `POST /api/classeur/` et `GET /api/tipeee/` (les deux sorties vers l'extérieur) : skill `zone-service-sorties`.
+- Édition des règles (`/api/edition/`, `serveur/edition*.mjs`) : skill `zone-edition`. Conteneurs, nginx, installateurs : skill `zone-hebergement`. Maintenance : skill `zone-maintenance`. Page « Mise à jour » : skill `zone-mise-a-jour`. `/api/v1/` : skill `zone-api-rest`. Métriques et page Debug : skill `zone-debug-metriques`. Tables de la section 13 : skill `zone-fiches-base`. `POST /api/classeur/` et `GET /api/tipeee/` (les deux sorties vers l'extérieur) : skill `zone-service-sorties`. Extrait du contenu, attestation de la production (`extrait.mjs`, `attestation.mjs`, `empreintes.mjs`, `historique.mjs`, option `attestation`) : skill `zone-service-extrait`.
 
 ## À lire
-- `docs/serveur.md` : « Le code », « La base vivante (`db/`) » (reconstruction, retraits, conversions, retour sous 0045 / 0055, sauvegarde), « L'API » (routes, format JSON d'une fiche, création, modification, refus, repli sur une base d'avant), « Hébergement », « Développement » (tests).
+- `docs/serveur.md` : « Le code », « La base vivante (`db/`) » (reconstruction, retraits, conversions, sauvegarde), « L'API » (routes, format JSON d'une fiche, refus, repli sur une base d'avant), « Hébergement », « Développement ».
 
 ## Ce que fait le service
-- Node ≥ 22.13, `node:sqlite`, aucun paquet npm. Il répond sous `/api/` : prétirés (liste, lecture, création, modification avec `version`, suppression), portrait, contrôles de `v_personnage_controle` (ils signalent, ne bloquent jamais).
-- Il écrit dans la base vivante `db/vivante.db` = copie de `site/donnees/maverick.db` + lignes de la section 13, refaite quand les règles changent (fiches reprises ; archives dans `db/archives/`).
+- Node ≥ 22.13, `node:sqlite`, aucun paquet npm. Sous `/api/` : prétirés (liste, lecture, création, modification avec `version`, suppression), portrait, contrôles de `v_personnage_controle` (ils signalent, ne bloquent jamais).
+- Il écrit dans la base vivante `db/vivante.db` = copie de `site/donnees/maverick.db` + section 13, refaite quand les règles changent (fiches reprises ; archives dans `db/archives/`).
 - À la reconstruction, un don, une spécialité, un sort (avec son livre), un métier ou une arme (R52) disparu est retiré des fiches avec une note datée (R42, `serveur/fiches-retraits.mjs`), liste dans `/api/etat`. Toute autre référence rompue : rien ne change et `/api/etat` dit pourquoi.
-- Livré : `serveur/livraison.mjs` le copie dans `dist/_serveur/` avec `version.json` et `FICHIERS_JOINTS` (instantané Tipeee, registres 0098 et 0113). Prétirés seulement, pas de comptes.
+- Livré : `serveur/livraison.mjs` le copie dans `dist/_serveur/` avec `version.json` et `FICHIERS_JOINTS` (instantané Tipeee, registres 0098 et 0113). Prétirés seulement.
 - `/api/etat` (site de dev) : `modifications.en_attente`, `modifications.conflit` et `modifications.lots_en_conflit` ne comptent que les lots à résoudre (`edition-conflits.mjs#compterLesConflits`).
 
 ## Invariants
 - Le service n'importe que `node:…` et des chemins relatifs (`modulesDuServeur` de `serveur/livraison.mjs`, testé). `tools/build-artifact.mjs` n'emporte pas `_serveur/`. Il emporte `lib/fiche-moteur.mjs` (pur) par `lib/poids-portable-db.mjs`, jamais `lib/fiche-regles.mjs`.
-- Une écriture exige `Content-Type: application/json` et refuse un `Sec-Fetch-Site` d'un autre site.
+- Une écriture exige `Content-Type: application/json` et refuse un autre `Sec-Fetch-Site`.
 - Les adresses de l'API finissent par « / » (`/api/personnages/<id>/`) : en développement, Astro (`trailingSlash: 'always'`) refuse les autres.
-- `traiter` (`serveur/api.mjs`) est synchrone, sauf `POST /api/classeur/` et `GET /api/tipeee/`, qui rendent une promesse que `service.mjs` attend (une réponse détruite n'est plus écrite).
+- `traiter` (`serveur/api.mjs`) est synchrone, sauf `POST /api/classeur/`, `GET /api/tipeee/` et `GET /api/edition/extrait/`, qui rendent une promesse que `service.mjs` attend (une réponse détruite n'est plus écrite).
 - Surveillance (`service.mjs`) : un changement compte vu deux fois de suite (`guetteur`). `version.json` changé : le service s'arrête (code 0), Docker le relance ; `maverick.db` changé : base vivante refaite ; `db/vivante.db` remplacée : rouverte.
 - Une table ajoutée à la section 13 va dans `TABLES_FICHES` (`src/lib/fiche-format.mjs`, réexportée par `base-vivante.mjs`, donc dans `TABLES_VIVANTES` et dans `TABLES_INTERDITES` du journal) et, si elle cite `personnage`, dans `PARTIES_DE_FICHE` ou `HORS_FICHE` (`fiche-format.mjs`). Les tests `serveur-*` le vérifient contre `data/schema.sql`.
 - Une clé étrangère de plus vers `metier`, `specialite`, `capacite`, `sort`, `arme` ou `classe_annexe_entree` va dans `RETRAITS` (`serveur/fiches-retraits.mjs`, testé).

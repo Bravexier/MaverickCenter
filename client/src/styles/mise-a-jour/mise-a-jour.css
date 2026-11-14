@@ -70,6 +70,11 @@
 .nv-lancement--echec, .nv-lancement--erreur { border-color: var(--danger); }
 .nv-lancement--termine { border-color: var(--good); }
 .nv-lancement code { overflow-wrap: anywhere; }
+/* l'état de la production (etat_production) : une alerte si elle n'a pas appliqué sa dernière mise à jour, sinon une ligne discrète */
+.nv-production--alerte { margin: 1rem 0; padding: 0.7rem 1rem; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--danger); }
+.nv-production--alerte ul { margin: 0.3rem 0; }
+.nv-production--discret { margin: 0 0 1rem; font-size: var(--fs-md); color: var(--muted); }
+.nv-production--discret .nv-message { margin: 0; }
 .nv-message { margin: 0.4rem 0; }
 .nv-message--erreur { color: var(--danger); font-weight: bold; }
 .nv-bascule { font-size: var(--fs-lg); }
