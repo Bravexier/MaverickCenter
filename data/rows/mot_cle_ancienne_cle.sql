@@ -6,6 +6,7 @@ INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('attaque-et-defense',
 INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('attaquer-et-se-defendre', 30);
 INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('caracteristiques', 56);
 INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('fenrir', 133);
+INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('fiche-de-personnage-accessoires-et-ceinture', 139);
 INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('goleois', 150);
 INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('hybride', 160);
 INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('jackalope', 165);

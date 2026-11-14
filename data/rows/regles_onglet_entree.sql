@@ -17,7 +17,6 @@ INSERT INTO regles_onglet_entree (id, onglet_id, rang, page_id, libelle, adresse
 INSERT INTO regles_onglet_entree (id, onglet_id, rang, page_id, libelle, adresse) VALUES ('page:guide/donjon-pas-bon', 'exploration', 9, 'guide/donjon-pas-bon', NULL, NULL);
 INSERT INTO regles_onglet_entree (id, onglet_id, rang, page_id, libelle, adresse) VALUES ('page:guide/equipement-et-butin', 'exploration', 3, 'guide/equipement-et-butin', NULL, NULL);
 INSERT INTO regles_onglet_entree (id, onglet_id, rang, page_id, libelle, adresse) VALUES ('page:guide/exercer-un-metier', 'exploration', 6, 'guide/exercer-un-metier', NULL, NULL);
-INSERT INTO regles_onglet_entree (id, onglet_id, rang, page_id, libelle, adresse) VALUES ('page:guide/fiche-accessoires-et-ceinture', 'fiche-de-personnage', 11, 'guide/fiche-accessoires-et-ceinture', NULL, NULL);
 INSERT INTO regles_onglet_entree (id, onglet_id, rang, page_id, libelle, adresse) VALUES ('page:guide/fiche-armure-defense-bouclier', 'fiche-de-personnage', 10, 'guide/fiche-armure-defense-bouclier', NULL, NULL);
 INSERT INTO regles_onglet_entree (id, onglet_id, rang, page_id, libelle, adresse) VALUES ('page:guide/fiche-attributs', 'fiche-de-personnage', 5, 'guide/fiche-attributs', NULL, NULL);
 INSERT INTO regles_onglet_entree (id, onglet_id, rang, page_id, libelle, adresse) VALUES ('page:guide/fiche-capacites-dons', 'fiche-de-personnage', 8, 'guide/fiche-capacites-dons', NULL, NULL);

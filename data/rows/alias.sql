@@ -20,7 +20,6 @@ INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/bienvenue', 1, 'Bi
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/blessures-et-etats', 0, 'Blessures et états', 'blessures-et-etats');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/deplacement-ou-sortie-de-la-zone-d-influence', 0, 'Le déplacement ou la sortie de la zone d''influence', 'le-deplacement-ou-la-sortie-de-la-zone-dinfluence');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/donjon-pas-bon', 0, 'Type de donjon', 'type-de-donjon');
-INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/fiche-accessoires-et-ceinture', 0, 'Fiche de personnage : Accessoires et Ceinture', 'fiche-de-personnage-accessoires-et-ceinture');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/fiche-armure-defense-bouclier', 0, 'Armure/Défense/Bouclier', 'armure-defense-bouclier');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/fiche-armure-defense-bouclier', 1, 'Fiche de personnage : Armure/Défense/Bouclier', 'fiche-de-personnage-armure-defense-bouclier');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/fiche-attributs', 0, 'Fiche de personnage : Attributs', 'fiche-de-personnage-attributs');
