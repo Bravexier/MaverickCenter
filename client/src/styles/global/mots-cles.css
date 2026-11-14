@@ -9,7 +9,8 @@
      cette couleur (réponse du propriétaire : « La couleur inclue la tuile (quand on a la définition complète {{X:}} ) et l'habillage de l'infobulle »).
      Le texte coloré : la couleur mêlée de noir en thème clair, de blanc en sombre (la formule de --mag-readable des pages de magie, styles/magie/base.css). */
 .mot-cle { font-weight: 700; }
-.mot-cle[data-bulle] {
+/* `[data-infobulle]` : un mot-clé que le navigateur dessine avec son `title` (le résumé d'une arme de la fiche, scripts/fiche.mjs#motCleAffiche) */
+.mot-cle[data-bulle], .mot-cle[data-infobulle] {
   cursor: help;
   text-decoration: underline dotted;
   text-decoration-color: color-mix(in srgb, currentColor 45%, transparent);

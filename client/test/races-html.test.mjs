@@ -170,17 +170,40 @@ test('liste des races : l’accroche de chaque race en infobulle ; ni magies ni 
   assert.ok(pastillesDe(colonne('hybrides')).find((p) => p.slug === 'kitsune').attributs.includes(`title="${echapper(accroche)}"`), `kitsune : « ${accroche} »`);
 });
 
-test('magies innées d’une race : chaque pastille dans la couleur de sa magie, par la classe de la magie (lib/palette-css.mjs), sans style', options, () => {
+// Une magie y est affichée par son nom court, liée au mot-clé de sa magie (migration 0125, demande du propriétaire « si ils existent » : lib/valeurs-fermees-rendu.mjs) :
+// en gras, sa définition en infobulle (la bulle `mot-cle-<clé>` posée par le middleware) ; sans mot-clé, le nom nu. Le mot-clé est lu par l'id de la magie dans la
+// base courante (le site de dev change les clés), jamais écrit ici.
+const magiesDeLaBase = new Map(base.prepare('SELECT g.id, g.nom, m.cle FROM magie g LEFT JOIN mot_cle m ON m.id = g.mot_cle_id').all().map((g) => [g.id, g]));
+const sansBalises = (h) => h.replace(/<[^>]+>/g, '').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+function verifierLaMagieLiee(ou, slugDeLaMagie, interieur) {
+  const g = magiesDeLaBase.get(`magies/${slugDeLaMagie}`);
+  assert.ok(g, `${ou} : une magie de la base`);
+  assert.equal(sansBalises(interieur), g.nom, `${ou} : le nom court`);
+  if (g.cle) {
+    assert.match(interieur, new RegExp(`^<strong class="mot-cle[ "][^>]*data-mot-cle="${g.cle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"`), `${ou} : le mot-clé de la magie`);
+    assert.doesNotMatch(interieur, /<a\b/, `${ou} : jamais un lien dans un lien`);
+  } else assert.doesNotMatch(interieur, /<strong|<a\b/, `${ou} : sans mot-clé, le nom nu`);
+}
+
+test('magies innées d’une race : chaque pastille dans la couleur de sa magie, par la classe de la magie (lib/palette-css.mjs), sans style ; le nom est le mot-clé de la magie', options, () => {
   let pastilles = 0;
+  let liees = 0;
   for (const { slug, html } of pages) {
-    const puces = [...html.matchAll(/<a class="chip race-magie (couleur-magie-[\w-]+)" href="[^"]*\/magies\/[^"]+\/">([^<]+)<\/a>/g)];
-    for (const [, classe, nom] of puces) assert.equal(classe, classeDeMagie(nom), `${slug} : ${nom}`);
+    const puces = [...html.matchAll(/<a class="chip race-magie (couleur-magie-[\w-]+)" href="[^"]*\/magies\/([^"/]+)\/">(.*?)<\/a>/g)];
+    for (const [, classe, magie, interieur] of puces) {
+      assert.equal(classe, classeDeMagie(sansBalises(interieur)), `${slug} : ${magie}`);
+      verifierLaMagieLiee(`${slug} : ${magie}`, magie, interieur);
+      if (interieur.startsWith('<strong')) liees += 1;
+    }
     assert.ok(puces.every(([, classe]) => cssDeLaPalette().includes(`.${classe}{`)), `${slug} : des classes de la palette`);
     assert.doesNotMatch(html, /class="chip race-magie[^"]*"[^>]*style=/, `${slug} : aucune pastille en style`);
+    // les magies non disponibles : même rendu, sans la couleur
+    for (const [, magie, interieur] of html.matchAll(/<a class="chip" href="[^"]*\/magies\/([^"/]+)\/">(.*?)<\/a>/g)) verifierLaMagieLiee(`${slug} : ${magie} (non disponible)`, magie, interieur);
     pastilles += puces.length;
   }
   assert.ok(pastilles > 100, `${pastilles} pastilles`);
-  assert.match(page('nain'), /<a class="chip race-magie couleur-magie-feu" href="\/magies\/magie-du-feu\/">Feu<\/a>/);
+  // des pastilles liées dès que des magies ont un mot-clé (le site de dev peut les retirer toutes : alors aucune)
+  assert.ok([...magiesDeLaBase.values()].every((g) => !g.cle) || liees > 0, 'des pastilles liées quand des magies ont un mot-clé');
 });
 
 // Le tableau des magies innées de toutes les races, en bas de /races/ (components/magie/TableauMagiesInnees.astro) : il remplace /races-et-magies/.
@@ -189,7 +212,9 @@ test('liste des races : tableau des magies innées en bas de page, races dans l�
   const debut = liste.indexOf('<section id="magies-innees"');
   assert.ok(debut > liste.indexOf('id="hybrides"'), 'après les deux listes');
   const tableau = liste.slice(debut);
-  assert.deepEqual([...tableau.matchAll(/<span class="tableau-magies__vertical">([^<]+)<\/span>/g)].map((m) => m[1]), [
+  const entetes = [...tableau.matchAll(/<a href="[^"]*\/magies\/([^"/]+)\/"[^>]*><span class="tableau-magies__vertical">(.*?)<\/span><\/a>/g)];
+  for (const [, magie, interieur] of entetes) verifierLaMagieLiee(`en-tête ${magie}`, magie, interieur);
+  assert.deepEqual([...tableau.matchAll(/<span class="tableau-magies__vertical">(.*?)<\/span>/g)].map((m) => sansBalises(m[1])), [
     'Potentiel Illimité', 'Sang', 'Arcane', 'Corruption', 'Espace/Temps', 'Vide', 'Nécromancie', 'Feu', 'Eau', 'Glace', 'Terre', 'Vent', 'Foudre', 'Lumière', 'Ombre', 'Total',
   ]);
   // colonnes, en-têtes et pastilles dans la couleur de leur magie : sa classe (lib/palette-css.mjs), jamais un style

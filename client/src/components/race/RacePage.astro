@@ -2,7 +2,8 @@
 import raceBaseCss from '../../styles/race/base.css?raw';
 import racePageCss from '../../styles/race/page.css?raw';
 import raceRelationsCss from '../../styles/race/relations.css?raw';
-import { pageHref } from '../../lib/magies';
+import { loadMagies, pageHref } from '../../lib/magies';
+import { htmlDeLaMagie } from '../../lib/valeurs-fermees-rendu.mjs';
 import type { RaceDb, Races } from '../../lib/races';
 import { relationsDeRace } from '../../lib/race-relations.mjs';
 import { classeDeMagie, classeDeRace, cssDesFamilles } from '../../lib/palette-css.mjs';
@@ -41,6 +42,9 @@ const relations = relationsDeRace(races.relations, race.id);
 const aPresentation = race.descriptionGenerale.length > 0 || race.description.length > 0 || race.histoire.length > 0;
 const aDons = race.dons.length > 0 || race.tableau !== null;
 const totalMagies = race.magiesInnees.avec.length + race.magiesInnees.sans.length;
+// une magie innée s'affiche par son nom court, lié au mot-clé de sa magie (gras, définition en infobulle : migration 0125, demande du propriétaire « si ils
+// existent » ; lib/valeurs-fermees-rendu.mjs) ; sans mot-clé, son nom nu. La pastille garde son lien vers la page de la magie.
+const liens = loadMagies().liens;
 
 const titreDon = (d: RaceDb['dons'][number]) => (d.forme === 'ethnie' ? d.etiquette! : d.nom!);
 // Champs modifiables sur le site de dev (lib/edition-modele.mjs) ; un champ vide est rendu caché (`data-ed-cadre`) pour pouvoir être rempli.
@@ -232,7 +236,7 @@ const nav = [
         {race.magiesInnees.avec.length > 0 ? (
           <ul class="chips race-magies">
             {race.magiesInnees.avec.map((m) => (
-              <li data-magie={m.id}><a class={`chip race-magie ${classeDeMagie(m.nom)}`} href={pageHref(m.id)}>{m.nom}</a></li>
+              <li data-magie={m.id}><a class={`chip race-magie ${classeDeMagie(m.nom)}`} href={pageHref(m.id)}><Fragment set:html={htmlDeLaMagie(liens, m.id, m.nom)} /></a></li>
             ))}
           </ul>
         ) : (
@@ -242,7 +246,7 @@ const nav = [
           <details>
             <summary>Magies innées non disponibles ({race.magiesInnees.sans.length})</summary>
             <ul class="chips">
-              {race.magiesInnees.sans.map((m) => <li><a class="chip" href={pageHref(m.id)}>{m.nom}</a></li>)}
+              {race.magiesInnees.sans.map((m) => <li><a class="chip" href={pageHref(m.id)}><Fragment set:html={htmlDeLaMagie(liens, m.id, m.nom)} /></a></li>)}
             </ul>
           </details>
         )}
