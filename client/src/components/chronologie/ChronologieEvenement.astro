@@ -2,6 +2,7 @@
 import {
   extraitsParPage, LIBELLE_SANS_CATEGORIE, libelleDeDate, marquerLaDate, PORTEES, SANS_CATEGORIE, surlignerLaDate, titreDeSection,
 } from '../../lib/chronologie.mjs';
+import SupportDuMarkdown from '../SupportDuMarkdown.astro';
 import { attributEd } from '../../lib/edition-modele.mjs';
 import { rendreMarkdown } from '../../lib/guide-rendu';
 import { pageHref } from '../../lib/magies';
@@ -40,6 +41,7 @@ const filtre = (id: string) => url(`chronologie/?filtre=${encodeURIComponent(id)
 const aTrier = !modeDuSite(process.env, '').prod;
 ---
 
+<SupportDuMarkdown textes={evenement.extraits.map((x: any) => x.texte)} />
 <article class="chrono-page" aria-labelledby="chrono-titre" data-chrono-evenement={evenement.id}>
   <p class="chrono-numero">Chronologie · événement {position} sur {total}</p>
   <p class="chrono-date" data-ed-lecture={ed('epoque')} data-ed-rendu="evenement-date">{libelleDeDate(evenement)}</p>

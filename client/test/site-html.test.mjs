@@ -995,3 +995,26 @@ test('/archives/, /mise-a-jour/ et /maintenance/ : aucune feuille de zone de la 
   // les jetons lus par les feuilles
   assert.ok(lire('archives/index.html').includes('var(--doc-google)') && lire('mise-a-jour/index.html').includes('var(--texte-sur-good)'));
 });
+
+// « Posé une fois par page » (skill ui-onglets ; R277, onglets écrits dans un texte : lib/pose-unique.mjs) : la feuille des groupes d'onglets
+// (`<style data-onglets-feuille>`, components/SupportDuMarkdown.astro) n'est pas écrite deux fois dans une page construite, même quand plusieurs textes
+// de la page ont un groupe. (Le script en ligne de la classe `js` n'est pas compté ici : ClassePage.astro et ArmesPage.astro ont le leur, en plus de
+// celui d'Onglets.astro, sans marque qui les distingue.)
+const FEUILLE_DES_ONGLETS = /<style\b[^>]*\sdata-onglets-feuille[\s>=]/g;
+/** Le nombre de feuilles des onglets écrites dans une page. */
+const feuillesDesOnglets = (html) => (html.match(FEUILLE_DES_ONGLETS) ?? []).length;
+
+test('feuillesDesOnglets : compte chaque feuille des onglets d’une page, rien d’autre', () => {
+  const feuille = '<style data-onglets-feuille>.onglets-md{}</style>';
+  assert.equal(feuillesDesOnglets(`<head>${feuille}</head>`), 1);
+  assert.equal(feuillesDesOnglets(`${feuille}<p>x</p>${feuille}`), 2, 'un doublon se voit');
+  assert.equal(feuillesDesOnglets('<style data-couleurs-texte>.x{}</style><p>data-onglets-feuille</p>'), 0, 'ni une autre feuille, ni le mot dans le texte');
+});
+
+test('chaque page construite écrit au plus une fois la feuille des onglets', options, () => {
+  const doubles = walk(dist).filter((f) => f.endsWith('.html')).flatMap((f) => {
+    const n = feuillesDesOnglets(readFileSync(f, 'utf8'));
+    return n > 1 ? [`${relative(dist, f)} : × ${n}`] : [];
+  });
+  assert.deepEqual(doubles, []);
+});

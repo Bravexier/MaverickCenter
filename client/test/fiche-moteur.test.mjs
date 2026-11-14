@@ -780,8 +780,11 @@ test('alignement (demande du propriétaire, guide « Alignement ») : 5 points d
   assert.deepEqual(crans(ecartAxe - 1, 0, 0, 1), { loi: 1, bien: 3 }, 'un penchant reste Neutre');
   assert.deepEqual(cransDAlignement(regles, {}), { loi: 2, bien: 2 }, 'cases vides : le milieu');
   // les neuf combinaisons sont les titres de la section « Les neuf alignements » d'« Alignement » (la page « Les neuf alignements » y est fondue
-  // depuis la migration 0123 : ses titres sont les intertitres à ancre figée de la section #les-neuf-alignements)
-  const titres = ancresDuCorps(sectionParAncre(historique.valeurDImport('page', { id: 'guide/alignement' }, 'corps_md'), 'les-neuf-alignements') ?? '').map((a) => a.texte.trim());
+  // depuis la migration 0123 : ses titres sont les intertitres à ancre figée de la section #les-neuf-alignements ; le site de dev en a fait des balises
+  // de leurs mots-clés, que la migration 0126 garde : un titre se lit tel qu'il s'affiche)
+  const vocabulaire = chargerVocabulaire(db);
+  const titres = ancresDuCorps(sectionParAncre(historique.valeurDImport('page', { id: 'guide/alignement' }, 'corps_md'), 'les-neuf-alignements') ?? '')
+    .map((a) => texteSansBalises(a.texte, vocabulaire, { markdown: true }).trim());
   const combinaisons = new Set();
   for (const [l, c] of [[5, 0], [0, 0], [0, 5]]) for (const [b, m] of [[5, 0], [0, 0], [0, 5]]) combinaisons.add(nom(l, c, b, m));
   assert.deepEqual([...combinaisons].sort(), [...titres].sort());

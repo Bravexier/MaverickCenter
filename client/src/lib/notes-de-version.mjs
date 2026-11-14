@@ -481,7 +481,7 @@ export function premiersMots(markdown, vocabulaire = null, n = MOTS_DU_NOM) {
     .replace(/\[\[([^\]]+)\]\]/g, '$1')
     .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
     .replace(/<(https?:[^>\s]+)>/g, '$1')
-    .replace(/\{couleur:[a-z]+\}/g, ' ')
+    .replace(/\{couleur:[^}\s]+\}/g, ' ')
     .replace(/<br\s*\/?>/gi, ' ')
     .replace(/^[ \t]*(?:#{1,6}[ \t]+|>[ \t]?|[-+*][ \t]+|\d+[.)][ \t]+)/gm, '')
     .replace(/(?<!\\)(?:\*+|~~|`+)/g, '')

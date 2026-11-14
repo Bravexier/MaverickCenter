@@ -173,7 +173,7 @@ export const NOMS_RESERVES = Object.freeze(['artisanat', 'avancees', 'glossaire'
  *     mène son ancienne ancre (PAGES_ECLATEES_DU_GUIDE).
  *   - « Les neuf alignements » dans « Alignement » (migration 0123, demande du propriétaire : « Les pages … /regles/alignement/ et
  *     /regles/les-neuf-alignements/ font doublon. Réunis toutes les informations dans la page /regles/alignement/ »), sous l'intertitre
- *     `{#les-neuf-alignements}` ; ses neuf sections, `{#loyal-bon}`…, y sont les onglets de la page (lib/guide-onglets.mjs).
+ *     `{#les-neuf-alignements}` ; ses neuf sections, `{#loyal-bon}`…, y sont des intertitres ; un groupe `::: onglets` les met en onglets (lib/onglets-groupe.mjs).
  *   - « Accessoires et Ceinture » dans « Inventaire/Sac à dos » (migration 0124, R272 : « Tout lien qui revois vers cette page doit renvoyer vers
  *     https://dev.maverick-jdr.com/regles/fiche-inventaire-sac-a-dos/ »), dont ses sections « Accessoires » (`{#accessoires}`, où mène son ancienne
  *     adresse) et « Ceinture » (`{#ceinture}`, lue par l'onglet Ceinture) sont maintenant la fin du texte.
@@ -219,13 +219,14 @@ export const adresseDeLaPageAbsorbee = (ancienne, cheminDe) => {
  *   - migration 0096 (même jour : « L'onglet suivant est à retirer …/regles/alterations-d-etats-et-mode-hyper/ ») : « Altérations d'états et Mode
  *     Hyper », un aiguillage vers deux classeurs, doublon de guide/alterations-d-etats, guide/liste-des-alterations-d-etat et guide/le-mode-hyper, que
  *     ses cinq liens visent maintenant ;
+ *   - 2026-11-14, rapatriement du site de dev (le propriétaire l'a supprimée : « Oui, voulue ») : « Classe » (`guide/fiche-classe`), absente de la base ;
  *   - 2026-11-13, migration 0122 (demande du propriétaire : « Supprime juste le doublon ») : « La montée de niveau », doublon de la page des règles
  *     /regles/fiche-experience-niveau-global/, dont le mot-clé (172) est fondu dans celui de la page gardée (138) ; Exploration s'ouvre sur guide/equipement-et-butin.
  */
 export const PAGES_SUPPRIMEES = Object.freeze([
   'guide/les-documents-des-regles', 'guide/en-resume-deroulement-d-un-tour', 'guide/aide-memoire', 'guide/mode-hyper-magie',
   'guide/postures', 'guide/les-boss-et-leurs-postures', 'guide/le-mode-super', 'guide/liste-des-effets-mode-hyper',
-  'guide/alterations-d-etats-et-mode-hyper', 'guide/la-montee-de-niveau',
+  'guide/alterations-d-etats-et-mode-hyper', 'guide/la-montee-de-niveau', 'guide/fiche-classe',
 ]);
 
 /**
@@ -300,7 +301,7 @@ const PAGES_DES_ADRESSES_RENOMMEES = new Map(Object.entries(ADRESSES_RENOMMEES_D
  */
 const ANCIENNES_REGLES_AVANCEES = Object.freeze([
   'actions-et-mouvements', 'alignement', 'attaque-et-defense', 'distance-et-voyage', 'donjon-pas-bon',
-  'fiche-accessoires-et-ceinture', 'fiche-armure-defense-bouclier', 'fiche-attributs', 'fiche-capacites-dons', 'fiche-caracteristiques', 'fiche-classe',
+  'fiche-accessoires-et-ceinture', 'fiche-armure-defense-bouclier', 'fiche-attributs', 'fiche-capacites-dons', 'fiche-caracteristiques',
   'fiche-competences', 'fiche-experience-niveau-global', 'fiche-inventaire-sac-a-dos', 'fiche-maitrise-darme-et-armes', 'fiche-personnage',
   'fiche-tableau-magie', 'fiche-tableau-posture', 'fiche-tableau-resistances-faiblesses', 'formule-des-degats', 'jet-de-des', 'le-mode-hyper',
   'les-neuf-alignements', 'les-pieges', 'les-portes', 'liste-des-alterations-d-etat', 'liste-des-effets-mode-super',

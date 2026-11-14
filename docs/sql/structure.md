@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 125 : 218 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 126 : 218 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -2993,7 +2993,7 @@ Pages candidates d'un lien ambigu (les pages qui portent la même clé).
 
 *table de recherche (FTS5)* · *table dérivée : client/scripts/db-derive.mjs*
 
-Recherche plein texte. Accents et casse ignorés ; l'apostrophe sépare deux mots (« l'alchimiste » = « l » + « alchimiste »). Colonnes : titre, alias (écritures séparées par des retours à la ligne), tag (libellés), resume, texte (corps sans Markdown : [[a|b]] -> b, caractères # > * _ ` | retirés — même nettoyage que search-index.json.ts, sans la coupe à 4000). Titre, résumé et texte tels qu'ils s'affichent : chaque balise du glossaire devient son texte affiché, « {{orios}} » -> « Orios » (lib/mots-cles-balises.mjs#texteSansBalises) ; l'id d'un mot-clé n'est pas indexé. Pondération conseillée (reprend search.mjs : titre 6, alias 5, mots-clés 4, résumé 2, texte 1) : ORDER BY bm25(page_fts, 0, 6, 5, 4, 2, 1) -- le 0 = page_id (colonne non indexée)
+Recherche plein texte. Accents et casse ignorés ; l'apostrophe sépare deux mots (« l'alchimiste » = « l » + « alchimiste »). Colonnes : titre, alias (écritures séparées par des retours à la ligne), tag (libellés), resume, texte (corps sans Markdown : [[a|b]] -> b, caractères # > * _ ` | retirés — même nettoyage que search-index.json.ts, sans la coupe à 4000). Titre, résumé et texte tels qu'ils s'affichent : chaque balise du glossaire devient son texte affiché, « {{orios}} » -> « Orios » (lib/mots-cles-balises.mjs#texteSansBalises) ; l'id d'un mot-clé n'est pas indexé. Les marques qui ne s'affichent pas ne s'indexent pas : lignes `::: onglets` et `:::` d'un groupe d'onglets (lib/markdown-onglets.mjs#sansMarquesDOnglets), ancre figée et couleur d'un intertitre (lib/ancres-figees.mjs#sansAncresFigees). Pondération conseillée (reprend search.mjs : titre 6, alias 5, mots-clés 4, résumé 2, texte 1) : ORDER BY bm25(page_fts, 0, 6, 5, 4, 2, 1) -- le 0 = page_id (colonne non indexée)
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |

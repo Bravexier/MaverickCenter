@@ -17,6 +17,7 @@ import { cheminDeLAdresse } from '../src/lib/mots-cles-liens.mjs';
 import { fauteDeLaCouleur, idDeCouleur } from '../src/lib/palette-css.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
 import { rendreCommeLeGuide } from './aide-rendu-du-site.mjs';
 
@@ -26,7 +27,12 @@ const ACCUEIL = retiree.contenu_dans;
 const ANCRE = retiree.ancre;
 const dImport = baseDImport();
 const courante = ouvrirBase();
-const corpsDImport = () => dImport.prepare('SELECT corps_md FROM page WHERE id = ?').get(ACCUEIL)?.corps_md;
+/**
+ * Le texte tel que la 0123 l'a écrit. La migration 0126 a réécrit la page après des modifications du site de dev : la base d'import garde son texte à
+ * elle (la migration a le dernier mot : test/aide-base-d-import.mjs#defaireLeSite) ; celui de la 0123 est l'« avant » de la première modification du
+ * site (lib/historique-site.mjs#valeurDImport, lu dans la base courante, qui garde l'historique).
+ */
+const corpsDImport = () => historiqueSite(courante).valeurDImport('page', { id: ACCUEIL }, 'corps_md');
 /** Le dernier texte que le site de dev a écrit pour la page retirée (lot rapatrié avant la migration). */
 function dernierTexteDuSite(db, id) {
   const lignes = db.prepare("SELECT apres FROM historique_modification WHERE table_nom = 'page' AND cle = ? AND operation = 'modifier' ORDER BY fait_le, lot_id, rang")

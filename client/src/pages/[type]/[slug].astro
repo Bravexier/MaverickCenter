@@ -2,6 +2,7 @@
 import { render } from 'astro:content';
 import Base from '../../layouts/Base.astro';
 import PiedDePage from '../../components/PiedDePage.astro';
+import SupportDuMarkdown from '../../components/SupportDuMarkdown.astro';
 import MagiesDeRace from '../../components/magie/MagiesDeRace.astro';
 import RacesDeMagie from '../../components/magie/RacesDeMagie.astro';
 import MagiePage from '../../components/magie/MagiePage.astro';
@@ -119,6 +120,7 @@ const texteModifiable = modifiable && pageDeTexte;
         {typeOf(entry) === 'races' && <MagiesDeRace entry={entry} entries={entries} />}
         {typeOf(entry) === 'magies' && <RacesDeMagie entry={entry} entries={entries} />}
 
+        {Content && <SupportDuMarkdown textes={[entry.body]} />}
         {texteModifiable ? (
           <div class="prose" data-ed-corps={entry.id} data-ed-morceau>{Content && <Content />}</div>
         ) : (

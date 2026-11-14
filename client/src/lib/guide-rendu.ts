@@ -3,6 +3,7 @@ import { buildIndex, remarkWikilinks } from './wikilinks.mjs';
 import { remarkCouleursDeCase } from './markdown-couleurs.mjs';
 import { remarkMonnaies } from './markdown-monnaies.mjs';
 import { remarkAncresFigees } from './ancres-figees.mjs';
+import { remarkOnglets } from './markdown-onglets.mjs';
 import { adresseDesAnciensLiens, avecPrefixe, remarkAnciensLiensDuGuide } from './guide.mjs';
 import { ACCUEIL_DU_GUIDE, pagesEclateesDuGuide } from './livres.mjs';
 import { cheminDePage } from './metiers.mjs';
@@ -34,7 +35,7 @@ async function creer() {
   };
   return createMarkdownProcessor({
     syntaxHighlight: false,
-    remarkPlugins: [[remarkWikilinks, { index, base: import.meta.env.BASE_URL }], remarkCouleursDeCase, remarkMonnaies, remarkAncresFigees,
+    remarkPlugins: [[remarkWikilinks, { index, base: import.meta.env.BASE_URL }], remarkCouleursDeCase, remarkMonnaies, remarkAncresFigees, remarkOnglets,
       [remarkAnciensLiensDuGuide, { base: import.meta.env.BASE_URL, adresse }]],
   });
 }

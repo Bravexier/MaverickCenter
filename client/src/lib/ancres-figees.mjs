@@ -10,7 +10,9 @@
 //   - Texte brut (recherche, résumé) : `sansAncresFigees`.
 // Une ancre se choisit égale au slug du texte d'origine (`## La ceinture` → `la-ceinture`) : les liens d'avant la marque continuent de mener à
 // l'intertitre. Deux intertitres d'une page n'ont jamais la même ancre.
-// Module pur, sans import : partagé par les lecteurs de la base (lib/ceinture-db.mjs…), le rendu et l'éditeur.
+// Module pur, sans autre import que lib/couleurs-ecrites.mjs (pur lui aussi) : partagé par les lecteurs de la base (lib/ceinture-db.mjs…), le rendu et l'éditeur.
+
+import { separerLaCouleur } from './couleurs-ecrites.mjs';
 
 /** La forme d'une ancre figée (minuscules ASCII, chiffres, tirets entre deux mots) : l'éditeur visuel ne réécrit que celle-là. */
 export const ANCRE_FIGEE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -22,10 +24,13 @@ const TITRE = /^ {0,3}(#{1,6})(?:[ \t]|$)/;
 const MARQUE_FINALE = /[ \t]+\{#([a-z0-9]+(?:-[a-z0-9]+)*)\}[ \t]*$/;
 const FENCE = /^ {0,3}(`{3,}|~{3,})/;
 
-/** L'ancre figée d'une ligne d'intertitre : { niveau, texte (sans la marque), ancre }, ou null (pas un intertitre, ou sans ancre). */
+/**
+ * L'ancre figée d'une ligne d'intertitre : { niveau, texte (sans la marque d'ancre ni la marque de couleur `{couleur:…}` d'un onglet : lib/onglets-groupe.mjs),
+ * couleur (la valeur de cette marque, ou null), ancre }, ou null (pas un intertitre, ou sans ancre).
+ */
 export function ancreDuTitre(ligne) {
   const m = TITRE_A_ANCRE.exec(String(ligne ?? ''));
-  return m ? { niveau: m[1].length, texte: m[2], ancre: m[3] } : null;
+  return m ? { niveau: m[1].length, texte: separerLaCouleur(m[2]).texte, ancre: m[3] } : null;
 }
 
 /** Les lignes d'un corps, chacune avec son drapeau « dans un bloc de code délimité » (un « ## » de code n'est pas un intertitre). */
@@ -77,7 +82,9 @@ export function sansAncresFigees(markdown) {
   return lignesDuCorps(markdown)
     .map(({ ligne, code }) => {
       const a = code ? null : ancreDuTitre(ligne);
-      return a ? `${'#'.repeat(a.niveau)} ${a.texte}` : ligne;
+      if (a) return `${'#'.repeat(a.niveau)} ${a.texte}`;
+      // un intertitre sans ancre garde sa marque de couleur ailleurs que dans le texte cherché
+      return code ? ligne : ligne.replace(/^( {0,3}#{1,6}[ \t]+)(\{couleur:[^}\s]+\}[ \t]?)/, '$1');
     })
     .join('\n');
 }

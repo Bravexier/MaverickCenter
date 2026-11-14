@@ -804,7 +804,7 @@ test('aucune couleur écrite dans les fichiers des lots faits (ni dans les règl
     'src/styles/mise-a-jour/mise-a-jour.css .nv-badge--ajout', 'src/styles/mise-a-jour/mise-a-jour.css .nv-diff del',
     'src/styles/mise-a-jour/mise-a-jour.css .nv-dev button.nv-principal, .nv-dialogue button.nv-principal',
     // lot des cases de tableau
-    "src/styles/global/wiki.css :is(td, th)[class*='couleur-case-'][class*='couleur-case-']", "src/styles/edition/edition.css .ed-barre-guide .ed-couleur[class*='couleur-case-']"]) {
+    "src/styles/global/wiki.css :is(td, th).case-coloree.case-coloree"]) {
     assert.ok(regles.some((r) => `${r.fichier} ${r.selecteur}` === attendue), `règle choisie : ${attendue}`);
   }
   // plus rien hors du lot dans ces règles (l'ombre de l'infobulle et l'échelle des relations sont passées aux jetons au lot des restes) : chacune entière
@@ -1446,7 +1446,7 @@ test('les feuilles des parties du guide lisent les propriétés que pose la clas
   const wiki = 'src/styles/global/wiki.css';
   assert.doesNotMatch(lire(wiki), /--sommaire-couleur|sommaire--couleur/, 'plus de couleur de groupe dans un sommaire');
   // (et, depuis le lot 11, la case de tableau, sur la case qui porte la classe de sa couleur)
-  assert.deepEqual(lecteurs(wiki), [":is(td, th)[class*='couleur-case-'][class*='couleur-case-']"]);
+  assert.deepEqual(lecteurs(wiki), [":is(td, th).case-coloree.case-coloree"]);
   // la fiche : --etape tirée de la classe de la partie de la zone, sur la zone ; la magie innée (sa classe est sur .fiche, posée par le script) est lue sur
   // .fiche elle-même, avant les zones, et les enfants d'une zone la retrouvent : les cadres (`.fiche[data-magie] .fiche-etape`) et tout élément sans classe
   // propre gardent la magie innée, jamais la couleur de la zone
@@ -2071,7 +2071,7 @@ test('les cases de tableau : une famille de la palette, les couleurs d’avant, 
 
 test('les cases de tableau : le texte du site sur le mélange de chaque couleur à la surface, lisible dans les deux thèmes (4,5:1)', () => {
   const wiki = lire('src/styles/global/wiki.css');
-  const regle = wiki.match(/\n:is\(td, th\)\[class\*='couleur-case-'\]\[class\*='couleur-case-'\] \{ background: color-mix\(in srgb, var\(--couleur\) (\d+)%, var\(--surface\)\); \}/);
+  const regle = wiki.match(/\n:is\(td, th\)\.case-coloree\.case-coloree \{ background: color-mix\(in srgb, var\(--couleur\) (\d+)%, var\(--surface\)\); \}/);
   assert.ok(regle, 'la règle des cases dans wiki.css (la part lue dans la feuille)');
   const part = Number(regle[1]) / 100;
   assert.equal(part, 0.26, 'la part d’avant le lot');
@@ -2091,20 +2091,22 @@ test('les cases de tableau : le texte du site sur le mélange de chaque couleur 
 });
 
 test('les cases de tableau : la feuille ne lit que la classe, l’éditeur pose la classe par classList, aucune couleur écrite ; l’aller-retour ignore la classe', () => {
-  for (const f of ['src/styles/global/wiki.css', 'src/styles/edition/edition.css', 'src/scripts/edition/guide.mjs', 'src/lib/markdown-couleurs.mjs', 'src/lib/markdown-edition.mjs']) {
+  for (const f of ['src/styles/global/wiki.css', 'src/styles/edition/edition.css', 'src/scripts/edition/guide.mjs', 'src/scripts/edition/tableaux.mjs', 'src/scripts/edition/onglets.mjs', 'src/lib/markdown-couleurs.mjs', 'src/lib/couleurs-ecrites.mjs', 'src/lib/markdown-edition.mjs']) {
     assert.deepEqual(couleursDuFichier(f), [], f);
   }
   const wiki = lire('src/styles/global/wiki.css').replace(/\/\*[\s\S]*?\*\//g, '');
   assert.doesNotMatch(wiki, /\[data-couleur|--case\b/, 'plus de règle par attribut ni de variable des cases');
   const edition = lire('src/styles/edition/edition.css').replace(/\/\*[\s\S]*?\*\//g, '');
-  assert.ok(edition.includes(".ed-barre-guide .ed-couleur[class*='couleur-case-'] { background: color-mix(in srgb, var(--couleur) 60%, var(--surface)); }"), 'les pastilles de l’éditeur');
+  assert.doesNotMatch(edition, /\.ed-couleur\[class/, 'plus de pastille par couleur de case : le choix de couleur est celui du glossaire (editeur.mjs#controleDeCouleur)');
   assert.doesNotMatch(edition, /--case\b|\.ed-couleur\[data-couleur\]/);
   // l'éditeur du guide : la classe de la palette posée et retirée avec le nom, par classList ; ni style, ni import de la palette ou du module des couleurs
   const guide = lire('src/scripts/edition/guide.mjs');
   assert.doesNotMatch(guide, /palette-css|cases-couleurs|setProperty|\.style\b/);
-  assert.ok(guide.includes('c.classList.add(classeDeCouleurDeCase(nom));'), 'la case colorée');
-  assert.ok(guide.includes("for (const k of [...c.classList]) if (k.startsWith('couleur-case-')) c.classList.remove(k);"), 'la couleur d’avant retirée');
-  assert.ok(guide.includes('b.classList.add(classeDeCouleurDeCase(nom));'), 'la pastille de chaque couleur');
+  // la case colorée : ses classes (la marque et celle de la palette) posées et retirées par classList, avec la valeur écrite, dans les outils des tableaux partagés par toutes les barres
+  const tableaux = lire('src/scripts/edition/tableaux.mjs');
+  assert.doesNotMatch(tableaux, /palette-css|cases-couleurs|setProperty|\.style\b/);
+  assert.ok(tableaux.includes('c.classList.add(...classes);'), 'la case colorée');
+  assert.ok(tableaux.includes("if (k === CLASSE_DE_CASE_COLOREE || k.startsWith('couleur-')) c.classList.remove(k);"), 'la couleur d’avant retirée');
   // l'aller-retour : le Markdown ne relit que `data-couleur`, jamais la classe
   const td = (attributs, texte = 'x') => ({ type: 'element', nom: 'td', attributs, enfants: [{ type: 'texte', valeur: texte }] });
   const table = (...cases) => [{ type: 'element', nom: 'table', attributs: {}, enfants: [{ type: 'element', nom: 'tr', attributs: {}, enfants: cases }] }];
@@ -2113,7 +2115,7 @@ test('les cases de tableau : la feuille ne lit que la classe, l’éditeur pose 
   assert.doesNotMatch(versMarkdown(table(td({ 'data-couleur': 'bleu', class: 'couleur-case-bleu' }))), /couleur-case/);
   // l'aperçu assaini : la classe recalculée depuis le nom, jamais celle reçue
   assert.equal(htmlSur(table(td({ 'data-couleur': 'vert', class: 'couleur-case-rouge autre' }))),
-    '<table><tr><td data-couleur="vert" class="couleur-case-vert">x</td></tr></table>');
+    '<table><tr><td data-couleur="vert" class="case-coloree couleur-case-vert">x</td></tr></table>');
   assert.equal(htmlSur(table(td({ 'data-couleur': 'noir', class: 'couleur-case-rouge' }))), '<table><tr><td>x</td></tr></table>');
 });
 

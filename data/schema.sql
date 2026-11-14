@@ -23,7 +23,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 125;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 126;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -3983,7 +3983,9 @@ CREATE TABLE lien_candidat (
 -- Colonnes : titre, alias (écritures séparées par des retours à la ligne), tag (libellés), resume, texte (corps sans
 -- Markdown : [[a|b]] -> b, caractères # > * _ ` | retirés — même nettoyage que search-index.json.ts, sans la coupe à 4000).
 -- Titre, résumé et texte tels qu'ils s'affichent : chaque balise du glossaire devient son texte affiché, « {{orios}} » -> « Orios »
--- (lib/mots-cles-balises.mjs#texteSansBalises) ; l'id d'un mot-clé n'est pas indexé.
+-- (lib/mots-cles-balises.mjs#texteSansBalises) ; l'id d'un mot-clé n'est pas indexé. Les marques qui ne s'affichent pas ne s'indexent pas : lignes
+-- `::: onglets` et `:::` d'un groupe d'onglets (lib/markdown-onglets.mjs#sansMarquesDOnglets), ancre figée et couleur d'un intertitre
+-- (lib/ancres-figees.mjs#sansAncresFigees).
 -- Pondération conseillée (reprend search.mjs : titre 6, alias 5, mots-clés 4, résumé 2, texte 1) :
 --     ORDER BY bm25(page_fts, 0, 6, 5, 4, 2, 1)       -- le 0 = page_id (colonne non indexée)
 CREATE VIRTUAL TABLE page_fts USING fts5(

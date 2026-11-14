@@ -23,6 +23,8 @@ const { buildIndex, extractLinks, resolve } = await import(pathToFileURL(`${LIB}
 const { normalize } = await import(pathToFileURL(`${LIB}/text.mjs`).href);
 const { lireBalises, motCleDeLaRef, texteDeLaBalise, texteSansBalises, vocabulaireDesMotsCles } = await import(pathToFileURL(`${LIB}/mots-cles-balises.mjs`).href);
 const { motsClesDeLaBase } = await import(pathToFileURL(`${LIB}/mots-cles-db.mjs`).href);
+const { sansAncresFigees } = await import(pathToFileURL(`${LIB}/ancres-figees.mjs`).href);
+const { sansMarquesDOnglets } = await import(pathToFileURL(`${LIB}/markdown-onglets.mjs`).href);
 const { indexDesAdresses, pageDeLAdresse } = await import(pathToFileURL(`${LIB}/adresses-db.mjs`).href);
 
 const args = process.argv.slice(2);
@@ -33,10 +35,12 @@ const deriveSql = chemin(args.includes('--derive-sql') ? args[args.indexOf('--de
  * Texte brut pour la recherche, tel qu'il s'affiche : chaque balise du glossaire devient son texte affiché (le texte écrit, ou le libellé du mot-clé ;
  * « Libellé : définition » pour le mode complet ; une balise dans un code reste écrite : lib/mots-cles-balises.mjs#texteSansBalises) — depuis la
  * migration 0098, un lien est une balise sans texte, « {{lequipement}} », et seul son libellé, « L’équipement », se lit ; puis même nettoyage que
- * lib/recherche-index.ts#plainText, sans la coupe à 4000 caractères.
+ * lib/recherche-index.ts#plainText, sans la coupe à 4000 caractères. Comme lib/recherche-index.ts, les lignes de marque d'un groupe d'onglets
+ * (`::: onglets`, `:::` : lib/markdown-onglets.mjs#sansMarquesDOnglets), les ancres figées et la marque de couleur d'un intertitre (`{#ancre}`,
+ * `{couleur:…}` : lib/ancres-figees.mjs#sansAncresFigees) ne s'affichent pas : elles ne s'indexent pas.
  */
 function textePlein(corps, vocabulaire) {
-  return texteSansBalises(corps, vocabulaire, { markdown: true })
+  return texteSansBalises(sansAncresFigees(sansMarquesDOnglets(corps ?? '')), vocabulaire, { markdown: true })
     .replace(/\[\[([^\[\]|]+?)(?:\|([^\[\]]+?))?\]\]/g, (_, cible, ancre) => ancre ?? cible)
     .replace(/[#>*_`|]/g, ' ')
     .replace(/\s+/g, ' ')

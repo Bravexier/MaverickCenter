@@ -120,11 +120,11 @@ test('liens du guide écrits vers une ancienne adresse (/guide/<slug>/) : rendus
 test('couleur des cases : écrite « {couleur:x} » en tête de case, rendue data-couleur et la classe de la palette (lot 11) ; couleur inconnue ignorée', async () => {
   const md = '| A | B |\n| --- | --- |\n| {couleur:vert} un | deux |\n| {couleur:fuchsia} trois | {couleur:rouge} |\n';
   const html = await rendre(md);
-  assert.match(html, /<td data-couleur="vert" class="couleur-case-vert">un<\/td>/);
+  assert.match(html, /<td data-couleur="vert" class="case-coloree couleur-case-vert">un<\/td>/);
   assert.match(html, /<td>\{couleur:fuchsia\} trois<\/td>/);
-  assert.match(html, /<td data-couleur="rouge" class="couleur-case-rouge"><\/td>/);
+  assert.match(html, /<td data-couleur="rouge" class="case-coloree couleur-case-rouge"><\/td>/);
   // en-tête et alignement : la classe s'ajoute aux autres propriétés de la case
-  assert.match(await rendre('| {couleur:bleu} T |\n| :---: |\n| x |\n'), /<th align="center" data-couleur="bleu" class="couleur-case-bleu">T<\/th>/);
+  assert.match(await rendre('| {couleur:bleu} T |\n| :---: |\n| x |\n'), /<th align="center" data-couleur="bleu" class="case-coloree couleur-case-bleu">T<\/th>/);
   assert.equal(versMarkdown(enfants(html)), '| A | B |\n| --- | --- |\n| {couleur:vert} un | deux |\n| {couleur:fuchsia} trois | {couleur:rouge} |\n');
   assert.equal(versMarkdown(enfants('<table><tr><th data-couleur="bleu">T</th></tr><tr><td data-couleur="noir">x</td></tr></table>')), '| {couleur:bleu} T |\n| --- |\n| x |\n');
   assert.deepEqual(COULEURS_DE_CASE, ['rouge', 'orange', 'jaune', 'vert', 'bleu', 'violet', 'gris']);
@@ -192,7 +192,7 @@ test('aperçu assaini : ni script, ni style, ni attribut d’événement, ni adr
     '<p>Texte <strong>gras</strong> ',
     '<a>piège</a> <a>protocole relatif</a> <a href="/races/">races</a>',
     '<a class="wikilink" data-cible="Humain" href="/races/humain/">Humain</a> </p>',
-    '<table><tbody><tr><td data-couleur="vert" class="couleur-case-vert" align="center">a</td><td>b</td></tr></tbody></table>',
+    '<table><tbody><tr><td data-couleur="vert" class="case-coloree couleur-case-vert" align="center">a</td><td>b</td></tr></tbody></table>',
     '<h2 id="titre">T</h2><h3>U</h3><ol start="3"><li>c</li></ol>police',
   ].join(''));
 });

@@ -24,6 +24,8 @@ import { echapperHtml } from '../../lib/edition-rendu.mjs';
 import { arbreDuDom, versMarkdown } from '../../lib/markdown-edition.mjs';
 import { cheminDePage } from '../../lib/metiers.mjs';
 import { classeDEvenement, cssDesEvenements } from '../../lib/palette-css.mjs';
+import { brancherLesOnglets, outilsDesOnglets } from './onglets.mjs';
+import { outilsDesTableaux } from './tableaux.mjs';
 import { editeurEnPlace, libelleDePage, outilsDesMotsCles, pageChoisie, pagesDuWiki } from './texte-en-place.mjs';
 
 const etat = {
@@ -192,6 +194,7 @@ function centrer() {
 }
 
 async function surcoucheVivante(ed) {
+  brancherLesOnglets(); // une description refaite ici peut avoir des onglets : ils s'ouvrent au clic
   const [vivante, pages] = await Promise.all([ed.appel('GET', 'edition/chronologie/'), pagesDuWiki(ed).catch(() => null)]);
   if (pages) etat.pages = pages;
   etat.vivante = vivante;
@@ -231,6 +234,8 @@ async function surcoucheVivante(ed) {
 // --- Mode modification ----------------------------------------------------------------------------------------------------------------------------
 
 const texte = editeurEnPlace(() => etat.blocs.filter((b) => !b.retire).map((b) => b.el));
+const tableaux = outilsDesTableaux(texte, () => etat.blocs.filter((b) => !b.retire).map((b) => b.el));
+const onglets = outilsDesOnglets(texte, () => etat.blocs.filter((b) => !b.retire).map((b) => b.el));
 const OUTILS = [
   ['Texte', [
     ['G', 'Gras (Ctrl+B)', (ed) => texte.commande(ed, 'bold'), 'ed-gras'],
@@ -240,6 +245,7 @@ const OUTILS = [
   ]],
   ['Mise en page', [
     ['¶', 'Paragraphe', (ed) => texte.bloc(ed, 'p')],
+    ['Sous-titre', 'Sous-titre (les onglets en font un groupe)', (ed) => texte.bloc(ed, 'h3')],
     ['• Liste', 'Liste à puces', (ed) => texte.commande(ed, 'insertUnorderedList')],
     ['1. Liste', 'Liste numérotée', (ed) => texte.commande(ed, 'insertOrderedList')],
   ]],
@@ -248,6 +254,8 @@ const OUTILS = [
     ['Lien web', 'Lien vers une adresse web', texte.lienWeb],
     ['Sans lien', 'Retirer le lien (le texte reste)', texte.retirerLien],
   ]],
+  tableaux.groupe,
+  onglets.groupe,
   outilsDesMotsCles(texte),
 ];
 
@@ -490,6 +498,7 @@ function monterLeBloc(ed, el, ligne) {
   el.normalize();
   const bloc = { el, rang: ligne.rang, ligne, initial: '', lien: { valeur: ligne.page_id ?? null, invalide: false, el: null }, retire: false };
   texte.rendreModifiable(ed, el, etat.abandon.signal);
+  tableaux.brancher(el, etat.abandon.signal);
   bloc.initial = markdownDe(ed, el); // relu une fois les mots-clés en balises écrites (rendreModifiable)
   etat.blocs.push(bloc);
   el.after(saisieDuLien(ed, bloc));
@@ -570,6 +579,9 @@ async function debutDeLEvenement(ed) {
   // la barre de mise en forme des descriptions
   document.execCommand('defaultParagraphSeparator', false, 'p');
   etat.barre = texte.barre(ed, OUTILS, 'Mise en forme des descriptions').element;
+  onglets.ajouterLaCouleur(ed, etat.barre, etat.abandon.signal);
+  tableaux.ajouterLaCouleur(ed, etat.barre, etat.abandon.signal);
+  brancherLesOnglets();
   document.body.append(etat.barre);
 }
 

@@ -29,7 +29,7 @@ Tous les tableaux de règles suivent un seul gabarit (demande du propriétaire :
 - Plusieurs tableaux : `.tableaux` (l'un sous l'autre) ou `.tableaux--cote-a-cote` (autant par rangée que la largeur minimale `--tableau-largeur` le permet : 26rem par défaut, 30rem pour les potions de la ceinture, soit 2 ou 3).
 - Teinte : `--tab`, `--tab-soft`, `--tab-line`, posée par la page sur son conteneur ; sinon l'accent du site.
 - `bloc` du composant : les classes de la page (`armes-famille`, `armes-famille__compte`…) posées à côté de celles du gabarit ; scripts, tests et feuille de page s'y accrochent.
-- Les tableaux Markdown (`.prose`) prennent le même gabarit.
+- Les tableaux Markdown prennent le même gabarit : conteneurs `.prose` et `.chrono-extrait` (descriptions de la chronologie), sous `:where()` dans `styles/global/tableaux.css`.
 - Le Glossaire l'emploie avec un `<tbody>` par entrée : une ligne, puis une sous-ligne pleine largeur ; un mot-clé coloré pose `ligne-couleur` sur les deux (R234 (1), (3) ; skill `zone-glossaire`).
 - À part : les matrices des magies (`/magies/`, `/races/`), le butin d'une carte de monstre et les tableaux de saisie (fiche, Debug, DB).
 

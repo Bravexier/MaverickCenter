@@ -91,6 +91,7 @@ import { COULEURS_DES_NIVEAUX } from './accessoires-couleurs.mjs';
 import { COULEURS_DES_PARTIES } from './parties-couleurs.mjs';
 import { COULEURS_DES_GENRES, COULEURS_DES_TYPES_DE_DON } from './genres-couleurs.mjs';
 import { COULEURS_DES_CASES } from './cases-couleurs.mjs';
+import { lireLaCouleurEcrite } from './couleurs-ecrites.mjs';
 import { normalize } from './text.mjs';
 
 /** L'id de la classe d'une couleur inconnue de sa famille (magie : COULEUR_PAR_DEFAUT ; caractéristique, posture, alignement, neutre : COULEUR_NEUTRE). */
@@ -321,11 +322,28 @@ export const cssDeLaPalette = () => cssDesFamilles(FAMILLES_DE_CHAQUE_PAGE) + cs
 export const cssDesParties = () => cssDesFamilles([FAMILLE_DES_PARTIES]);
 
 /**
- * La feuille des alignements (famille `alignement`, d'une zone) : celle qu'émet la page du guide dont les neuf alignements sont en onglets
- * (components/guide/PageDuGuide.astro, lib/guide-onglets.mjs), comme la fiche (FAMILLES_DE_LA_FICHE) ; la feuille des mots-clés colorés l'a aussi quand
- * un mot-clé la nomme, mais la page ne s'y fie pas.
+ * La feuille des couleurs écrites d'un texte Markdown (`{couleur:x}` d'une case ou d'un onglet : lib/couleurs-ecrites.mjs) : pour chaque valeur de `valeurs`,
+ * la règle de sa classe `.couleur-<famille>-<id>{--couleur:…;--couleur-texte:…}` pour une couleur d'une famille d'une zone (celles de FAMILLES_DE_CHAQUE_PAGE
+ * et les sept noms d'avant, famille `case`, sont déjà sur chaque page) ; pour une couleur écrite « #rrggbb », `.couleur-ecrite-<rrggbb>` (le fond rendu
+ * lisible, le texte de texteSurCouleur, comme une couleur des règles ou celle d'un mot-clé : cssDesMotsCles). Une référence que la palette ne connaît pas n'a
+ * pas de règle (l'élément reste neutre). Une règle par classe, dans l'ordre des valeurs. Émise par components/SupportDuMarkdown.astro, réécrite au besoin par
+ * le mode modification (scripts/edition/couleurs.mjs).
  */
-export const cssDesAlignements = () => cssDesFamilles(['alignement']);
+export function cssDesCouleursEcrites(valeurs) {
+  const regles = new Map();
+  for (const v of valeurs ?? []) {
+    const lue = lireLaCouleurEcrite(v);
+    if (!lue || regles.has(lue.classe)) continue;
+    if (lue.genre === 'ecrite') {
+      const fond = lisible(lue.valeur);
+      regles.set(lue.classe, `.${lue.classe}{--couleur:${fond};--couleur-texte:${texteSurCouleur(fond)}}`);
+    } else if (lue.genre === 'reference') {
+      const c = couleurDeReference(lue.valeur);
+      if (c && !FAMILLES_DE_CHAQUE_PAGE.includes(c.famille)) regles.set(c.classe, `.${c.classe}{--couleur:${c.fond};--couleur-texte:${c.texte}}`);
+    }
+  }
+  return [...regles.values()].join('');
+}
 
 /** Les classes que la palette pose sur chaque page (familles de chaque page et seconds rangs des magies). */
 export const classesDeLaPalette = () =>

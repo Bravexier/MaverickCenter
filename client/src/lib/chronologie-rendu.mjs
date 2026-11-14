@@ -13,6 +13,7 @@ import { remarkAncresFigees } from './ancres-figees.mjs';
 import { extraitsParPage, LIBELLE_SANS_CATEGORIE, marquerLaDate, PORTEES, SANS_CATEGORIE, surlignerLaDate, titreDeSection } from './chronologie.mjs';
 import { remarkCouleursDeCase } from './markdown-couleurs.mjs';
 import { remarkMonnaies } from './markdown-monnaies.mjs';
+import { remarkOnglets } from './markdown-onglets.mjs';
 import { processeurDuWiki } from './markdown-rendu.mjs';
 import { WIKILINK_SOURCE } from './wikilinks-resolution.mjs';
 
@@ -58,7 +59,7 @@ const processeurs = new Map();
 /** La chaîne du build pour une fonction `page` (une par appelant : les scripts en gardent une). */
 function processeur(page) {
   if (!processeurs.has(page)) {
-    processeurs.set(page, processeurDuWiki([[remarkLiensDuWiki, { page }], remarkCouleursDeCase, remarkMonnaies, remarkAncresFigees]));
+    processeurs.set(page, processeurDuWiki([[remarkLiensDuWiki, { page }], remarkCouleursDeCase, remarkMonnaies, remarkAncresFigees, remarkOnglets]));
   }
   return processeurs.get(page);
 }
