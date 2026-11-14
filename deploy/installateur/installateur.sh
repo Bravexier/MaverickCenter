@@ -23,6 +23,7 @@
 #   .env                 port et nom du conteneur de l'instance (créé une fois, jamais écrasé)
 #   .htpasswd            mots de passe (jamais touché)
 #   sauvegarde/          les scripts des sauvegardes automatiques (copie, envoi chiffré, essai de restauration, installer.sh) : remplacés à chaque installation
+#   acces/               acces.sh, la commande du mot de passe du site de dev (remplacée à chaque installation ; le réglage est dans secrets/, jamais touché)
 #   installateur-courant/ le dernier installateur installé par mise-a-jour.sh, que l'envoi de nuit joint à la copie extérieure (jamais touché ici)
 #   VERSION              ce qui est installé (étiquette, version, commit, mode, date)
 # Prérequis : sh, tar, gzip, et sha256sum (ou shasum / openssl) pour contrôler l'archive. rsync et sqlite3 sont utilisés s'ils sont présents.
@@ -265,20 +266,24 @@ for f in README.md mise-a-jour.sh; do
   cp "$TRAVAIL/$f" "$DOSSIER/.$f.$$" && mv -f "$DOSSIER/.$f.$$" "$DOSSIER/$f" || die "impossible de poser $f"
 done
 # sauvegarde/ : les scripts des sauvegardes automatiques (deploy/vps/README.md, « Sauvegardes »), que des minuteurs systemd exécutent en root depuis le
-# dossier du serveur de test. Chaque fichier est remplacé par renommage (un script peut être en train de tourner), ceux qui ne sont plus livrés sont
-# retirés : le dossier ne garde jamais deux versions. Les copies, l'état et les clés ne sont PAS ici (/srv/maverick-sauvegardes, /etc/maverick-sauvegardes).
-if [ -d "$TRAVAIL/sauvegarde" ]; then
-  mkdir -p "$DOSSIER/sauvegarde"
-  for f in "$TRAVAIL/sauvegarde"/*; do
+# dossier du serveur de test. Les copies, l'état et les clés ne sont PAS ici (/srv/maverick-sauvegardes, /etc/maverick-sauvegardes).
+# acces/ : la commande du mot de passe du site de dev (acces.sh ; docs/serveur.md, « Accès au site de dev »), que le propriétaire lance. Le réglage qu'elle
+# écrit est secrets/acces.json, jamais ici : une installation ne touche pas à secrets/.
+# Chaque fichier est remplacé par renommage (un script peut être en train de tourner), ceux qui ne sont plus livrés sont retirés : un dossier ne garde
+# jamais deux versions.
+for dossier in sauvegarde acces; do
+  [ -d "$TRAVAIL/$dossier" ] || continue
+  mkdir -p "$DOSSIER/$dossier"
+  for f in "$TRAVAIL/$dossier"/*; do
     nom=$(basename "$f")
-    cp "$f" "$DOSSIER/sauvegarde/.$nom.$$" && chmod 755 "$DOSSIER/sauvegarde/.$nom.$$" && mv -f "$DOSSIER/sauvegarde/.$nom.$$" "$DOSSIER/sauvegarde/$nom" ||
-      die "impossible de poser sauvegarde/$nom"
+    cp "$f" "$DOSSIER/$dossier/.$nom.$$" && chmod 755 "$DOSSIER/$dossier/.$nom.$$" && mv -f "$DOSSIER/$dossier/.$nom.$$" "$DOSSIER/$dossier/$nom" ||
+      die "impossible de poser $dossier/$nom"
   done
-  for f in "$DOSSIER/sauvegarde"/*; do
+  for f in "$DOSSIER/$dossier"/*; do
     [ -e "$f" ] || continue
-    [ -f "$TRAVAIL/sauvegarde/$(basename "$f")" ] || rm -rf "$f"
+    [ -f "$TRAVAIL/$dossier/$(basename "$f")" ] || rm -rf "$f"
   done
-fi
+done
 if [ ! -f "$DOSSIER/.env" ]; then
   if [ "$MODE" = prod ]; then CONTENEUR=$NOM_PROD; PORT=8080; else CONTENEUR=$NOM_PROD-test; PORT=8081; fi
   {

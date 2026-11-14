@@ -1,7 +1,7 @@
 ---
 name: zone-hebergement
-description: "Hébergement deploy/ : installateurs prod/test, VPS (durcir, outils, instances, Caddyfile), paquet NAS (build.sh, update-site.sh, branche site qui n'avance plus), nginx.conf, docker-compose.yml, fins de ligne LF. À charger avant de lire, modifier ou relire deploy/ ou ses tests."
-paths: ["deploy/**", ".gitattributes", "client/test/deploy-vps.test.mjs", "client/test/deploy-volume.test.mjs", "client/test/installateur.test.mjs", "client/test/mise-a-jour.test.mjs", "client/test/update-site.test.mjs", "client/test/serveur-livraison.test.mjs", "client/test/deploy-sauvegardes*.test.mjs", "client/test/aide-sauvegardes.mjs"]
+description: "Hébergement deploy/ : installateurs prod/test, VPS (durcir, outils, instances, Caddyfile), paquet NAS (build.sh, update-site.sh, branche site qui n'avance plus), nginx.conf, docker-compose.yml, accès au site de dev (acces.sh), fins de ligne LF. À charger avant de lire, modifier ou relire deploy/ ou ses tests."
+paths: ["deploy/**", ".gitattributes", "client/test/deploy-vps.test.mjs", "client/test/deploy-volume.test.mjs", "client/test/installateur.test.mjs", "client/test/mise-a-jour.test.mjs", "client/test/update-site.test.mjs", "client/test/serveur-livraison.test.mjs", "client/test/deploy-sauvegardes*.test.mjs", "client/test/deploy-acces.test.mjs", "client/test/aide-sauvegardes.mjs"]
 user-invocable: false
 ---
 # Hébergement (`deploy/`)
@@ -34,7 +34,7 @@ user-invocable: false
 ## VPS
 - `instances.sh` pose les dossiers et le `.env` de chaque instance : ports sur `127.0.0.1` (Docker contourne ufw : seul Caddy les atteint), `MAVERICK_BASE_TEST=conservee` (ceinture contre un ancien installateur lancé à la main), `MAVERICK_EDITION=1` et `MAVERICK_DOSSIER_MAINTENANCE` (le `maintenance/` du serveur normal) et `MAVERICK_DOSSIER_PRODUCTION` (le `site/` du serveur normal, monté en lecture seule sur `/production` par `docker-compose.yml` : référence de l'onglet « Mise à jour », skill `zone-mise-a-jour`) pour le test ; ce dossier ne doit jamais être le `site/` de l'instance elle-même (le service refuse la production), et le NAS n'a pas ce montage (`deploy/vps/README.md`, « 7. Site de dev ») ; mots de passe internes présentés par Caddy à la place des visiteurs.
 - `Caddyfile` : `maverick-jdr.com` → 8080 (serveur normal, `master`), `dev.maverick-jdr.com` → 8081 (serveur de test, `dev`), `www.` → domaine principal.
-- Accès pour le PoC (décision du propriétaire) : pas de mot de passe visible, adresse non référencée (`X-Robots-Tag`, `robots.txt`). Le contenu appartient au propriétaire du jeu : ne pas désactiver la protection ni la non-indexation sans son accord.
+- Accès pour le PoC (décision du propriétaire) : pas de mot de passe visible pour la lecture, adresse non référencée (`X-Robots-Tag`, `robots.txt`). Le contenu appartient au propriétaire du jeu : ne pas désactiver la protection ni la non-indexation sans son accord.
 - `PREMIERE_VERSION_HEBERGEE` (`tools/flux-git/regles.mjs`, 0.2.0) : en dessous, `livrableDe` choisirait la branche `site` ; dev et master l'ont dépassée, seuls les installateurs sont publiés.
 
 ## Sauvegardes automatiques (`deploy/installateur/sauvegarde/`)
@@ -50,6 +50,10 @@ user-invocable: false
 - Outil : restic (apt). En 0.16.4, `--keep-monthly unlimited`, pas `-1`.
 - Choix du propriétaire (R275) : copie extérieure chiffrée, fiches comprises, chez un autre fournisseur que l'hébergeur, dont il garde la clé ; rétention de 30 jours, plus une copie par mois et une par version sans limite ; envoi chaque nuit ; clé = phrase de 6 mots, réaffichable ; changer de stockage ou d'hébergeur ne demande que la phrase et les accès.
 
+## Accès au site de dev (`deploy/installateur/acces/`, R275)
+- `acces.sh` est livré dans `<instance>/acces/` comme `sauvegarde/` (`DOSSIERS_DE_SCRIPTS`, remplacé à chaque installation). Geste du propriétaire : `sudo sh /srv/maverick-center-test/acces/acces.sh` (options `--cle`, `--portee ecriture|tout`, `--etat`, `--retirer`). Il refuse la production et pose `secrets/acces.json` en 600. Le mot de passe n'est jamais un argument de commande ni un fichier. Détail : `docs/serveur.md`, « Accès au site de dev ».
+- Option c (un mot de passe pour tout le site) : le snippet `forward_auth` de `deploy/vps/Caddyfile` est en commentaire, jamais actif ; `docker-compose.yml`, `nginx.conf` et le Caddyfile actif ne changent pas.
+
 ## Tests
-- `deploy-sauvegardes`, `deploy-sauvegardes-installer` (scripts exécutés pour de bon dans un monde factice, `aide-sauvegardes.mjs`).
+- `deploy-acces` (`acces.sh`, livraison par l'installateur), `deploy-sauvegardes`, `deploy-sauvegardes-installer` (scripts exécutés pour de bon dans un monde factice, `aide-sauvegardes.mjs`).
 - `deploy-vps` (`instances.sh` : dossiers partagés de la maintenance et des métriques, une instance par fichier, minuteur du relevé de l'hôte ; l'étape « Site de dev » du README), `deploy-volume` (rotation des journaux Docker, métriques hors de `db/`, `volume.sh`), `installateur` (`db/` jamais vidé ni remplacé, copie sur demande, métriques jamais copiées ni effacées), `mise-a-jour` (`mise-a-jour.sh` : refus d'une livraison plus ancienne en mode test, R274), `update-site` (contre un faux serveur GitHub), `serveur-livraison` (`docker-compose.yml` et `nginx.conf` cohérents).

@@ -131,6 +131,21 @@ travail sans rien pousser : sur GitHub, le lot est rejoué sur `dev` et passe to
 son application sur `dev` et le jeton (écriture par un `git push --dry-run`, lecture des PR). Seuls les droits *Pull requests* et *Workflows* en
 écriture du jeton ne peuvent pas se vérifier sans effet de bord (le résumé du run le rappelle).
 
+**Mot de passe du site de dev** (décision du propriétaire, R275 : « un mot de passe pour modifier et pour lancer une mise à jour ; la lecture reste ouverte »).
+Sans réglage, le site de dev se comporte comme avant. Pour en poser un, une commande depuis le serveur, à saisir au clavier (deux fois, sans écho) :
+
+```
+sudo sh /srv/maverick-center-test/acces/acces.sh
+```
+
+Elle pose le mot de passe (10 caractères au moins) dans `secrets/acces.json` (le service le relit tout seul : rien à redémarrer) et, la première fois, affiche
+**une seule fois** la **clé de lecture** : à donner aux sessions de Claude (en-tête `X-Maverick-Cle`) pour lire le journal d'édition, la page Debug et l'API
+`/api/v1/`, jamais pour écrire. Relancer la même commande change le mot de passe (la clé est gardée, les sessions ouvertes sont fermées). Options :
+`--cle` (une clé de lecture neuve), `--portee tout` (option c : le même mot de passe pour tout le site, voir le Caddyfile), `--etat`, et
+`--retirer` (le site de dev redevient ouvert, comme avant). Elle refuse la production et n'a pas besoin de l'ancien mot de passe : on ne s'enferme jamais dehors.
+Le workflow GitHub n'y gagne ni ne perd rien : il ne télécharge que le lot figé (`/api/mise-a-jour/lots/<uuid>/`), qui reste ouvert ; aucune clé d'écriture
+n'est donnée à GitHub. Détail : [`docs/serveur.md`](../../docs/serveur.md), « Accès au site de dev ».
+
 ## 8. Maintenance pendant une mise à jour
 
 Pendant une vraie mise à jour (bouton « Effectuer la mise à jour » du site de dev, pas la simulation), **les deux sites affichent « Maintenance en

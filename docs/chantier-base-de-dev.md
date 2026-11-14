@@ -23,10 +23,10 @@ Tenu à jour par la PR de chaque lot (état : à faire, en cours, fait ; puis le
 | Lot | Titre | Taille | État | PR |
 | --- | --- | --- | --- | --- |
 | — | Rapatriement préalable de l'édition du site de dev (125 lots en attente le 2026-11-14) | S | fait | #352 |
-| 1 | Sauvegardes automatiques, restauration essayée | M | fait | cette PR |
+| 1 | Sauvegardes automatiques, restauration essayée | M | fait | #359 |
 | 2 | Une installation ne peut plus effacer la base de dev | S | fait | #353 |
 | 3 | L'onglet Mise à jour compare au contenu réel de la production | M | fait | #354 |
-| 4 | Accès au site de dev | S | à faire | |
+| 4 | Accès au site de dev | S | fait | cette PR |
 | 5 | Extrait du contenu pour les sessions de Claude, attestation de la production | M | fait (extrait, attestation, alerte de l'onglet : #360 ; base refaite selon l'empreinte du contenu, archive au nom de sa version : PR `feature/base-de-production-refaite-selon-le-contenu`) | #360 |
 | 6 | Lots de changements, annulation d'un lot, nature de chaque trace | L | à faire | |
 | 7 | Changements de structure appliqués sur place, d'abord à blanc | L | à faire | |
@@ -203,7 +203,7 @@ Le dossier où la production publie son contenu (sans fiche ni compte) est montr
 - **Risque** : Un mauvais réglage empêche GitHub de télécharger le lot : à vérifier par une « Simulation ».
 - **Prérequis** : Votre réponse sur l'accès au site de dev.
 
-Selon votre réponse : rien, ou un mot de passe pour modifier et lancer une mise à jour, ou un mot de passe pour tout le site. Dans les deux derniers cas, GitHub présente une clé pour télécharger le lot, dans une étape placée avant toute installation d'outils, et les sessions de Claude reçoivent une clé de lecture. Aucune clé d'écriture n'est donnée à GitHub.
+Selon votre réponse : rien, ou un mot de passe pour modifier et lancer une mise à jour, ou un mot de passe pour tout le site. Choix retenu (option b : un mot de passe pour modifier et lancer une mise à jour, la lecture reste ouverte) : le lot figé reste téléchargeable sans clé (adresse aléatoire, ni fiche ni compte, contenu publié de toute façon dans la PR) et rien n'est ajouté à GitHub ; les sessions de Claude reçoivent une clé de lecture, dans l'en-tête `X-Maverick-Cle`. Aucune clé d'écriture n'est donnée à GitHub ni aux sessions.
 
 **État après ce lot.** Même circuit. Si vous l'avez décidé, l'édition, l'accès par programme et le bouton ne répondent plus à n'importe qui.
 

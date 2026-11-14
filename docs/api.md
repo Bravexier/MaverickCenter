@@ -29,6 +29,12 @@ externes ; la page **Debug** du site de dev (menu Outils) n'a plus de testeur de
   [`serveur.md`](serveur.md), « L'API ») et celles du journal de l'édition (section 14). La section 15 (notes de version, historique des modifications) se lit seulement.
   Une image (portrait d'un monstre ou d'une espèce) n'est jamais rendue en entier : `{ image: true, empreinte, resume }`
   (`edition-modele.mjs#ligneSansImage`) ; l'image entière passe par `POST /api/edition/portrait/`.
+- **Un mot de passe pour écrire, la lecture ouverte** (décision R275, option b ; [`serveur.md`](serveur.md), « Accès au site de dev »). Une fois le mot de
+  passe posé sur le site de dev (commande `acces.sh` de l'hôte ; rien ne change tant qu'il ne l'est pas), chaque route est classée : **toute écriture
+  d'`/api/v1/`** (`POST`, `PATCH`, `DELETE`) demande la **session du mot de passe** (`POST /api/acces/`, cookie `maverick_acces`), et **toute lecture
+  d'`/api/v1/`** (catalogue, description OpenAPI comprises) demande **la clé de lecture** (en-tête `X-Maverick-Cle: mvk_…`, jamais dans l'adresse) **ou** la
+  session. La clé de lecture ne permet jamais d'écrire. Un refus est un `401` `{ erreur, acces }` : `acces: "cle"` (clé ou mot de passe) pour une lecture,
+  `"mot_de_passe"` pour une écriture.
 - **Pas de comptes** : quiconque a le mot de passe du site de dev lit et écrit (le lot n'a pas d'auteur). Les écritures exigent
   `Content-Type: application/json` (`415` sinon, `DELETE` compris) et refusent une requête qu'un navigateur dit venir d'un autre site
   (`Sec-Fetch-Site`, `403`) ; corps de 1 Mio au plus (`413`).
@@ -59,6 +65,8 @@ Toutes finissent par « / », comme celles du site (en développement, Astro ref
 | `GET` | `/api/debug/base/` | La version de la base vivante, qui change à chaque écriture validée : la page Debug la relève pour suivre les tables en direct (plus bas) |
 | `GET` | `/api/edition/extrait/`, `/api/edition/extrait/meta/` | L'extrait du contenu du site (un fichier SQLite neuf : règles, notes de version, historique avec les modifications en attente ; ni fiche, ni compte, ni journal) et son méta (date, empreinte de chaque table) : `npm run db:extrait`, [`serveur.md`](serveur.md#extrait-du-contenu-et-attestation-de-la-production) |
 | `POST` | `/api/metriques/page/` | La balise des pages vues (mesures du navigateur) : **les deux instances**, hors `/api/v1/` (plus bas) |
+| `GET`, `POST`, `DELETE` | `/api/acces/` | L'accès au site de dev : où en est le visiteur (`protege`, `portee`, `connecte`, `droit`, `expire_le`), se connecter avec le mot de passe (cookie de session), se déconnecter ([`serveur.md`](serveur.md), « Accès au site de dev ») |
+| `GET` | `/api/acces/verifier/` | `204` si la requête a au moins la lecture (clé de lecture ou session), `401` sinon : pour le `forward_auth` d'un mandataire |
 
 `PUT` n'existe pas : `PATCH` modifie les colonnes envoyées, les autres restent.
 
@@ -155,11 +163,13 @@ adaptées, jamais leurs noms ; le lot porte la page `api/v1/<ressource>[/<sous-r
 | `200` `201` | Lu, modifié, supprimé ; créé (`Location`) |
 | `304` | `If-None-Match` égal à la version (détail) |
 | `400` | Corps illisible ou qui n'est pas un objet JSON, rien à modifier, colonne ou paramètre inconnu, valeur refusée par le service d'édition (type, bornes, champ obligatoire, balise du glossaire qui ne cite aucun mot-clé : `refs`, ou un libellé de plusieurs homonymes : `refs`, `homonymes` ; synonyme d'un mot-clé mal écrit : `champ: "synonymes"`, lien ou couleur d'un mot-clé refusés : `champ: "url"`, `champ: "couleur"`, lien saisi qu'aucun mot-clé ne porte : `champ`, `liens`), `limite` hors bornes, `forcer` mal écrit ou hors d'un mot-clé (R223) |
+| `401` | Mot de passe posé sur le site de dev et ni clé de lecture ni session : `{ erreur, acces: "cle" \| "mot_de_passe" }` (`POST /api/acces/` : mot de passe faux) |
 | `403` | Hors du site de dev (tout `/api/v1/`) ; écriture qui vient d'un autre site (`Sec-Fetch-Site`) |
 | `404` | Ressource, sous-ressource ou ligne inconnue (ou hors de la ressource) ; extension absente au `PATCH` |
 | `405` | Méthode que la ressource n'a pas : `Allow` donne la liste exacte, le corps la raison (lecture seule ; ni le service d'édition ni une opération du lot ne le font, et par quelles méthodes la ressource s'écrit) et les `capacites` |
 | `409` | `If-Match` périmé ; refus du service d'édition (élément cité par d'autres règles, mot-clé protégé, dernier bloc d'un événement, maîtrise d'arme illisible dans une classe ou un don, don à plus d'une part de maîtrise à choisir, nom de famille d'armes déjà pris ou qui changerait une maîtrise existante, avec la liste dans `sources` : décision R159 ; synonyme d'un mot-clé qui est le libellé, un synonyme ou la clé d'un autre, ou mot-clé créé ou renommé vers le synonyme d'un autre : `champ: "synonymes"` ou `"libelle"`, `mot_cle` : l'autre ; homonyme sans catégorie distinctive ou clé déjà prise (R232) : `champ: "categories"` ou `"libelle"`, `mots_cles` ; catégorie de mots-clés non vide : `mots_cles` ; mot-clé mentionné : `mentions`, `refus_du_forcage` ; suppression forcée refusée : `mots_cles_verrouilles`, `url` ou `mentions_bloquantes`…) |
 | `413` | Corps de plus de 1 Mio |
+| `429` | `POST /api/acces/` : trop d'essais de mot de passe ratés (`attente_s`) |
 | `415` | Écriture sans `Content-Type: application/json` |
 | `422` | Refusé par la base (contrainte CHECK, UNIQUE, NOT NULL, clé étrangère) ou valeur que les importeurs ne sauraient pas relire ; une gemme ou un bois du Potentiel Illimité (`POST /api/v1/gemmes/`, `POST /api/v1/bois/`) : « Le Potentiel Illimité n’a ni gemme, ni bois, ni bâton magique, ni pièce élémentaire (décision R160). » |
 | `503` | Base vivante indisponible (`/api/etat/` dit pourquoi) |
@@ -168,7 +178,9 @@ Une erreur est toujours `{ "erreur": "<message en français>", … }`, avec les 
 
 ## Exemples (`curl`)
 
-Sur le site de dev, ajouter `-u <utilisateur>:<mot de passe>` (mot de passe du site) ; en développement, le service seul répond sur
+Sur le site de dev, ajouter `-u <utilisateur>:<mot de passe>` (mot de passe du site) ; avec un mot de passe d'accès posé (« Accès au site de dev »), les lectures
+ajoutent `-H "X-Maverick-Cle: $CLE"` (la clé de lecture) et les écritures passent par la session (`curl -c cookies -X POST …/api/acces/ -H 'Content-Type:
+application/json' -d '{"mot_de_passe":"…"}'`, puis `-b cookies`) ; en développement, le service seul répond sur
 `http://127.0.0.1:8787` (`npm run serveur`) et le site sur `http://localhost:4321` (`npm run dev`, qui lui transmet `/api/`).
 
 ```bash

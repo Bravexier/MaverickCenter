@@ -1,9 +1,9 @@
-// `npm run db:extrait [-- --url <adresse>] [--cle <clé>] [--dossier <dossier>]` (dans client/) : télécharge l'extrait du contenu du site de dev
+// `npm run db:extrait [-- --url <adresse>] [--dossier <dossier>]` (dans client/) : télécharge l'extrait du contenu du site de dev
 // (docs/serveur.md, « Extrait du contenu » ; lot 5 du chantier de la base de dev, R274, R275 (3)) pour que les sessions de Claude lisent le vrai
 // contenu du site — les modifications faites sur le site comprises — sans fiche, sans compte, sans journal.
 //   - adresse : --url, sinon MAVERICK_EXTRAIT_URL, sinon https://dev.maverick-jdr.com ;
-//   - clé de lecture (facultative : le lot 4 du chantier met un mot de passe) : --cle, sinon MAVERICK_EXTRAIT_CLE ; « utilisateur:motdepasse » part en
-//     Basic, toute autre valeur en Bearer ;
+//   - clé de lecture (facultative : sans mot de passe posé sur le site de dev, elle est inutile) : la seule variable MAVERICK_EXTRAIT_CLE, jamais une option de la ligne de commande (la clé se retrouverait dans l'historique et la conversation) ; elle part dans
+//     l'en-tête X-Maverick-Cle (le service ne voit jamais Authorization : Caddy le remplace, nginx le vide ; serveur/acces.mjs) ;
 //   - dossier : --dossier, sinon var/extrait/ (ignoré par git) ; y sont écrits maverick-dev.db (SQLite) et maverick-dev.json (le méta : date, version du site,
 //     empreinte de chaque table).
 // L'empreinte du fichier, puis celle de chaque table de contenu (serveur/empreintes.mjs : le calcul du service), sont vérifiées avant que le fichier ne
@@ -25,11 +25,10 @@ export class ErreurExtrait extends Error {}
 
 const sha256 = (donnees) => createHash('sha256').update(donnees).digest('hex');
 
-/** L'en-tête Authorization d'une clé de lecture : « utilisateur:motdepasse » en Basic, sinon Bearer ; aucun sans clé. */
+/** L'en-tête d'une clé de lecture du site de dev (serveur/acces.mjs#ENTETE_CLE) ; aucun sans clé. */
 export function enteteDeLaCle(cle) {
   const valeur = String(cle ?? '').trim();
-  if (!valeur) return {};
-  return { Authorization: valeur.includes(':') ? `Basic ${Buffer.from(valeur).toString('base64')}` : `Bearer ${valeur}` };
+  return valeur ? { 'X-Maverick-Cle': valeur } : {};
 }
 
 async function demander(fetch, adresse, entetes) {
@@ -39,7 +38,7 @@ async function demander(fetch, adresse, entetes) {
   } catch (e) {
     throw new ErreurExtrait(`${adresse} : ${e.cause?.message ?? e.message}`);
   }
-  if (reponse.status === 401) throw new ErreurExtrait(`${adresse} : accès refusé (401) — une clé de lecture est demandée (--cle ou MAVERICK_EXTRAIT_CLE).`);
+  if (reponse.status === 401) throw new ErreurExtrait(`${adresse} : accès refusé (401) — une clé de lecture est demandée (variable MAVERICK_EXTRAIT_CLE).`);
   if (reponse.status === 403) throw new ErreurExtrait(`${adresse} : refusé (403) — l’extrait n’existe que sur le site de dev, et la clé de lecture doit être valable.`);
   if (reponse.status !== 200 && reponse.status !== 304) throw new ErreurExtrait(`${adresse} : réponse ${reponse.status}`);
   return reponse;
@@ -111,13 +110,23 @@ export async function telechargerExtrait({ url = ADRESSE_DU_SITE_DE_DEV, cle = n
   return { meta, chemin, telecharge: true };
 }
 
+/** Une option --cle donnée en ligne de commande est refusée : la clé de lecture ne passe que par la variable d'environnement. Rend le message, ou null. */
+export function refusDeLaCleEnArgument(args) {
+  return args.some((a) => a === '--cle' || a.startsWith('--cle=')) ? 'L’option --cle n’existe plus : la clé de lecture se donne par la variable d’environnement MAVERICK_EXTRAIT_CLE (jamais dans la ligne de commande).' : null;
+}
+
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
+  const refus = refusDeLaCleEnArgument(args);
+  if (refus) {
+    console.error(refus);
+    process.exit(1);
+  }
   const option = (nom) => (args.includes(nom) ? args[args.indexOf(nom) + 1] : undefined);
   try {
     const { meta, chemin, telecharge } = await telechargerExtrait({
       url: option('--url') ?? process.env.MAVERICK_EXTRAIT_URL ?? ADRESSE_DU_SITE_DE_DEV,
-      cle: option('--cle') ?? process.env.MAVERICK_EXTRAIT_CLE ?? null,
+      cle: process.env.MAVERICK_EXTRAIT_CLE ?? null,
       dossier: option('--dossier') ? resolve(option('--dossier')) : DOSSIER_PAR_DEFAUT,
     });
     console.log(`Extrait du ${meta.fabrique_le} (site ${meta.version_du_site ?? 'de version inconnue'}, schéma ${meta.schema}) : ${chemin}`);

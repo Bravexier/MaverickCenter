@@ -17,6 +17,7 @@ user-invocable: false
 ## Invariants
 - Aucune donnée de joueur ne sort : ni fiche, ni compte, ni groupe, ni journal, ni auteur d'une modification. Ce que `classeDeLaTable` (`lib/tables-de-la-base.mjs`) range « propre au site » ou ne connaît pas est vide dans l'extrait.
 - `GET /api/edition/extrait/` et `/meta/` : 403 en production, avant tout. La route rend une promesse (comme `classeur` et `tipeee`, skill `zone-service`).
+- Accès (R275, skill `zone-service`) : `GET /api/edition/extrait/` et `/meta/` sont classés en lecture (clé ou mot de passe, `acces-routes.mjs`). `scripts/db-extrait.mjs` envoie la clé dans `X-Maverick-Cle`, jamais en `Authorization` (Caddy et nginx l'effacent).
 - L'extrait est un fichier neuf (jamais la base vivante copiée puis vidée), fabriqué dans un Worker, un seul à la fois, puis posé par rename (`extrait.json` en dernier : il fait foi). Un contrôle refuse le fichier si une table propre au site a une ligne.
 - Les tables calculées sont recopiées telles que la base vivante les porte (elles peuvent retarder sur une édition ; le contenu, jamais).
 - Les modifications du journal en attente sont versées dans `historique_modification`, version NULL (sinon un test prendrait une saisie récente pour le texte d'origine).

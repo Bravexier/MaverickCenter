@@ -9,7 +9,7 @@ user-invocable: false
 ## Préparer
 
 **Une analyse du contenu (règles, lore) lit d'abord l'extrait du site de dev**, qui porte aussi les saisies pas encore rapatriées. Depuis `client/` : `npm run db:extrait` (`scripts/db-extrait.mjs`). Il écrit `var/extrait/maverick-dev.db` et `maverick-dev.json` à la racine (dossier ignoré par git) et ne retélécharge pas un extrait inchangé.
-- Adresse : `--url` ou `MAVERICK_EXTRAIT_URL` (défaut `https://dev.maverick-jdr.com`). Clé de lecture facultative : `--cle` ou `MAVERICK_EXTRAIT_CLE` (`user:pass` part en Basic, sinon Bearer).
+- Adresse : `--url` ou `MAVERICK_EXTRAIT_URL` (défaut `https://dev.maverick-jdr.com`). Clé de lecture facultative : variable `MAVERICK_EXTRAIT_CLE` seulement (`--cle` est refusé ; elle part dans l'en-tête `X-Maverick-Cle`).
 - **Jamais les fiches ni les comptes** : les tables propres au site y sont vides.
 - **Chaque rapport cite la date de l'extrait** : `fabrique_le`, dans la vue `extrait_meta` ou dans le `.json`.
 - Les saisies du site pas encore rapatriées sont dans `historique_modification`, avec `version` NULL. Les tables calculées (liens, recherche) sont telles que la base vivante les porte.
