@@ -1,7 +1,7 @@
 ---
 name: zone-menu
 description: "Menu du site (lib/nav.mjs : rubriques, entrées « bientôt », devSeulement, PAGES_RENOMMEES, renvois de la page 404) et en-tête (layouts/Base.astro, site-shell.css, logo et icônes). À charger avant de lire, modifier ou relire le menu, l'en-tête ou leurs tests."
-paths: ["client/src/lib/nav.mjs", "client/src/layouts/Base.astro", "client/src/styles/global/site-shell.css", "client/public/logo.webp", "client/public/favicon.png", "client/public/apple-touch-icon.png", "client/test/nav.test.mjs"]
+paths: ["client/src/lib/nav.mjs", "client/src/layouts/Base.astro", "client/src/components/Acces.astro", "client/src/styles/global/acces.css", "client/src/styles/global/site-shell.css", "client/public/logo.webp", "client/public/favicon.png", "client/public/apple-touch-icon.png", "client/test/nav.test.mjs"]
 user-invocable: false
 ---
 # Menu et en-tête
@@ -11,7 +11,7 @@ user-invocable: false
 - Menu : `client/src/lib/nav.mjs` (`NAV`, `entreesDuMenu`, `activeGroup`, `groupIsCurrent`, `legacyWikiRedirect`, `PAGES_RENOMMEES`, `nouvelleAdresse`, `adresseEclatee`, `adresseDeRenvoi`, `cheminVersUnePageEclatee`), `client/src/layouts/Base.astro`.
 - En-tête : `layouts/Base.astro`, `styles/global/site-shell.css`, `public/logo.webp`, `public/favicon.png`, `public/apple-touch-icon.png`.
 
-`Base.astro` porte aussi des scripts d'autres zones : infobulles (skill `ui-infobulles`), maintenance (skill `zone-maintenance`) et bandeau du site de dev (skill `zone-mise-a-jour`), balise des métriques (skill `zone-debug-metriques`), feuille des mots-clés colorés et couleur de `<main>` (skill `zone-mots-cles-liens`).
+`Base.astro` porte aussi des scripts d'autres zones : infobulles (skill `ui-infobulles`), maintenance (skill `zone-maintenance`) et bandeau du site de dev (skill `zone-mise-a-jour`), balise des métriques (skill `zone-debug-metriques`), accès au site de dev (`components/Acces.astro`, `styles/global/acces.css`, mention « Connecté · Se déconnecter » au pied de page ; skill `site-version-portable`), feuille des mots-clés colorés et couleur de `<main>` (skill `zone-mots-cles-liens`).
 
 ## À lire
 

@@ -85,6 +85,13 @@
 //   POST /api/metriques/page/       { page, ttfb_ms, dom_ms, charge_ms, lcp_ms } (navigator.sendBeacon : Content-Type application/json ou text/plain,
 //                                   2 Kio au plus, Sec-Fetch-Site same-origin, sinon Origin du même hôte) → 204 ; 400 invalide, 413 trop gros,
 //                                   429 trop de balises cette minute
+// Accès au site de dev (serveur/acces.mjs ; docs/serveur.md, « Accès au site de dev » ; R275). Sans réglage posé (secrets/acces.json), rien ne change.
+// Avec un réglage, sur le site de dev seulement, chaque route est classée (serveur/acces-routes.mjs : ouverte, lecture, ecriture) ; refus : 401
+// { erreur, acces: 'cle' | 'mot_de_passe' } (« cle » : la clé de lecture, en-tête X-Maverick-Cle, OU le mot de passe) :
+//   GET  /api/acces/                { protege, portee, connecte, droit, expire_le } : où en est ce visiteur (droit : ecriture | lecture | aucun) ; toujours ouverte
+//   POST /api/acces/                { mot_de_passe } → ouvre une session (cookie HttpOnly, 12 h) ; 401 mot de passe faux, 429 trop d'essais, 409 sans mot de passe posé
+//   DELETE /api/acces/              ferme la session (retire le cookie)
+//   GET  /api/acces/verifier/       204 si la requête a au moins le droit de lecture (clé ou session), 401 sinon : pour un forward_auth de Caddy (portée « tout »)
 // Les adresses finissent par « / », comme celles du site (en développement, Astro refuse une adresse sans « / » finale avant de la transmettre) ;
 // le service accepte aussi la forme sans « / ». La chaîne de requête (« ?q=… ») vient dans `requete.recherche`, ou à la suite du chemin.
 //
@@ -114,6 +121,7 @@ import { TYPE_XLSX } from '../src/lib/google-sheets.mjs';
 import { etiquetteCorrespond, etiquettesDe, reponseVersionnee, segmentDecode } from './partage.mjs';
 import { ErreurExtrait } from './extrait.mjs';
 import { etatDeLaProduction } from './attestation.mjs';
+import { COOKIE, MOT_DE_PASSE_MAX, connexionSecurisee, cookiesDeSession } from './acces.mjs';
 
 export const PREFIXE = '/api/';
 /** Taille maximale d'un corps de requête (une fiche fait quelques kilo-octets). */
@@ -187,9 +195,29 @@ export function traiter(requete, service) {
   const [ressource, brut, ...reste] = morceaux;
   const permis = (...methodes) => (methodes.includes(methode) ? null : json(405, { erreur: `Méthode ${methode} non permise ici.` }, { Allow: methodes.join(', ') }));
 
+  // accès au site de dev : une seule porte, avant toute route (serveur/acces-routes.mjs classe chacune ; une route inconnue demande le mot de passe).
+  // Sans réglage (ou hors du site de dev), `controler` rend null : rien ne change.
+  const acces = service.edition ? service.acces ?? null : null;
+  if (acces) {
+    const interdit = acces.controler({ methode, chemin, entetes });
+    if (interdit) return interdit;
+  }
+  // un appelant sans droit de lecture (route ouverte) ne reçoit jamais la liste des fiches adaptées (`retraits` de l'état, qui nomme des fiches) ni leurs
+  // libellés : `service.etat()` rend l'état masqué pour toute la suite, donc aussi dans les 503 « base indisponible » des routes ouvertes
+  const lecture = () => !acces || acces.droit(entetes).droit !== 'aucun';
+  if (acces && !lecture()) {
+    const entier = service;
+    service = { ...entier, etat: () => {
+      const etat = entier.etat();
+      // `erreur` (pourquoi la base vivante n'a pas pu se refaire) peut citer une fiche : réservée à la lecture, comme `retraits`
+      return etat?.base ? { ...etat, base: { ...etat.base, retraits: null, erreur: etat.base.erreur ? 'La base vivante est en erreur (le détail demande la clé de lecture ou le mot de passe).' : null } } : etat;
+    } };
+  }
+
+  if (ressource === 'acces') return traiterAcces(requete, service, acces, brut, reste, permis);
   if (ressource === 'etat' && brut === undefined) return permis('GET') ?? json(200, service.etat());
   if (ressource === 'maintenance') return traiterMaintenance(requete, service, brut, reste, permis);
-  if (ressource === 'edition') return traiterEdition(requete, service, brut, reste, permis);
+  if (ressource === 'edition') return traiterEdition(requete, service, brut, reste, permis, lecture);
   if (ressource === 'mise-a-jour') return traiterMiseAJour(requete, service, brut, reste, permis);
   if (ressource === 'v1') return traiterApiV1(requete, service, { segments: morceaux.slice(1), params, refusEcriture });
   if (ressource === 'debug') return traiterDebug(requete, service, brut, reste, permis, params);
@@ -330,7 +358,7 @@ function traiterExtrait(requete, service, reste, permis) {
 }
 
 /** Les routes /api/edition/… (site de dev seulement). */
-function traiterEdition(requete, service, action, reste, permis) {
+function traiterEdition(requete, service, action, reste, permis, lecture = () => true) {
   if (!service.edition) return erreur(403, 'L’édition des règles n’est ouverte que sur le site de dev.');
   if (action === 'extrait') return traiterExtrait(requete, service, reste, permis);
   if (reste.length || !['en-attente', 'lignes', 'listes', 'pages', 'mots-cles', 'chronologie', 'plan', 'journal', 'race', 'classe', 'bestiaire', 'portrait', 'evenement', undefined].includes(action)) {
@@ -356,7 +384,8 @@ function traiterEdition(requete, service, action, reste, permis) {
   return repondre(ErreurEdition, () => {
     if (action === 'lignes') return json(200, { lignes: lireLignes(db, valeur?.lignes) });
     if (action === 'race') return json(200, donneesDeRace(db, valeur?.race));
-    if (action === 'classe') return json(200, donneesDeClasse(db, valeur?.classe));
+    // les libellés de fiches (un prétiré par son nom, un joueur par un numéro) ne se montrent qu'avec la lecture : la page n'en tire que la confirmation d'une suppression
+    if (action === 'classe') return json(200, lecture() ? donneesDeClasse(db, valeur?.classe) : { ...donneesDeClasse(db, valeur?.classe), fiches: {} });
     if (action === 'bestiaire') return json(200, lignesDuBestiaire(db, valeur));
     if (action === 'portrait') return json(200, portraitDe(db, valeur));
     if (action === 'evenement') {
@@ -484,6 +513,56 @@ export function memeOrigine(entetes) {
   } catch {
     return false;
   }
+}
+
+/** L'état d'accès de ce visiteur, pour les pages : { protege, portee, connecte, droit, expire_le }. */
+function etatDAcces(acces, entetes) {
+  if (!acces?.protege()) return { protege: false, portee: null, connecte: false, droit: 'ecriture', expire_le: null };
+  const d = acces.droit(entetes);
+  return { protege: true, portee: acces.portee(), connecte: d.session, droit: d.droit, expire_le: d.expire_s ? new Date(d.expire_s * 1000).toISOString() : null };
+}
+
+/** Une requête qui vient d'une page de ce site (Sec-Fetch-Site) ; la déconnexion n'a pas de corps JSON, seul ce garde-fou lui sert. */
+function memeSite(entetes) {
+  const site = String(entetes['sec-fetch-site'] ?? '').toLowerCase();
+  return !site || site === 'same-origin' || site === 'none';
+}
+
+/**
+ * Les routes /api/acces/… (serveur/acces.mjs) : se connecter (POST { mot_de_passe } : cookie de session), se déconnecter (DELETE), savoir où l'on en est
+ * (GET) et la vérification d'un mandataire (GET …/verifier/ : 204 ou 401, sans corps utile). Toujours ouvertes (la porte ne les arrête pas) ; sans réglage
+ * posé, ou hors du site de dev, il n'y a rien à ouvrir : GET dit « pas protégé », POST et DELETE rendent 409.
+ */
+function traiterAcces(requete, service, acces, action, reste, permis) {
+  const entetes = requete.entetes ?? {};
+  if (reste.length || ![undefined, 'verifier'].includes(action)) return erreur(404, 'Adresse inconnue.');
+  if (action === 'verifier') {
+    const refus = permis('GET');
+    if (refus) return refus;
+    if (!acces || acces.droit(entetes).droit !== 'aucun') return { statut: 204, corps: null, entetes: {} };
+    return json(401, { erreur: 'Accès refusé : la clé de lecture ou le mot de passe est nécessaire.', acces: 'cle' });
+  }
+  const refus = permis('GET', 'POST', 'DELETE');
+  if (refus) return refus;
+  if (requete.methode === 'GET') return json(200, etatDAcces(acces, entetes));
+  if (!acces?.protege()) return erreur(409, 'Aucun mot de passe n’est posé sur ce serveur : il n’y a rien à ouvrir.');
+  const securise = connexionSecurisee(entetes);
+  if (requete.methode === 'DELETE') {
+    if (!memeSite(entetes)) return erreur(403, 'Requête refusée : elle ne vient pas d’une page de ce site.');
+    return json(200, etatDAcces(acces, {}), { 'Set-Cookie': cookiesDeSession(null, { portee: acces.portee(), securise }) });
+  }
+  const { valeur, refus: interdit } = lireEcriture(requete);
+  if (interdit) return interdit;
+  const mot = valeur?.mot_de_passe;
+  if (typeof mot !== 'string' || !mot || mot.length > MOT_DE_PASSE_MAX) return erreur(400, 'Corps attendu : { mot_de_passe } (un texte).');
+  const r = acces.connecter(mot, entetes);
+  if (r.ok) {
+    const connecte = etatDAcces(acces, { cookie: `${COOKIE}=${r.jeton}` });
+    return json(200, connecte, { 'Set-Cookie': cookiesDeSession(r.jeton, { portee: acces.portee(), securise }) });
+  }
+  if (r.raison === 'limite') return json(429, { erreur: 'Trop d’essais refusés : attendez avant de réessayer.', acces: 'mot_de_passe', attente_s: r.attente_s }, { 'Retry-After': String(r.attente_s) });
+  if (r.raison === 'ferme') return erreur(503, 'Le réglage d’accès de ce serveur est illisible : refaites-le avec la commande acces.sh.', { acces: 'mot_de_passe' });
+  return erreur(401, 'Mot de passe incorrect.', { acces: 'mot_de_passe' });
 }
 
 const sansMaintenance = { active: false };

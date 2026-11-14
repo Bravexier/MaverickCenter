@@ -24,6 +24,7 @@
 import { createServer } from 'node:http';
 import { readFileSync, statSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
+import { creerAcces } from './acces.mjs';
 import { CORPS_MAX, traiter } from './api.mjs';
 import { creerJournalDuService, estUneReleve } from './journal-du-service.mjs';
 import { instant as maintenant } from './instant.mjs';
@@ -104,6 +105,9 @@ const inode = (chemin) => {
  * @param {string} [o.depot] dépôt GitHub du workflow de mise à jour
  * @param {string|null} [o.adresse] adresse publique du site (https://dev.<domaine>) ; sinon l'hôte de la requête
  * @param {string|null} [o.jetonFichier] fichier du jeton GitHub (permission Actions) ; sans lui, le workflow se lance à la main
+ * @param {string|{ controler: Function, droit: Function, protege: Function, portee: Function, connecter: Function }|null} [o.acces] accès au site de dev
+ *   (serveur/acces.mjs, docs/serveur.md, « Accès au site de dev ») : le fichier de réglage (secrets/acces.json ; MAVERICK_ACCES_FICHIER), relu quand il
+ *   change ; absent ou sans fichier, rien n'est protégé ; jamais lu sans l'édition (la production n'est pas concernée)
  * @param {string|null} [o.maintenance] dossier partagé de l'annonce de maintenance (MAVERICK_MAINTENANCE : le même pour les deux serveurs) ;
  *   sans lui, le site de dev se met en maintenance d'après son seul lancement et la production ne l'est jamais
  * @param {string} [o.versionParDefaut] version annoncée sans version.json (développement : celle de package.json)
@@ -131,7 +135,7 @@ const inode = (chemin) => {
  *   jour ») ; false : ni écriture ni lecture
  */
 export async function demarrerService({ regles, dossier, hote = '127.0.0.1', port = 8787, intervalle = 15000, fichierVersion = null, edition = false,
-  reference = null, depot = 'Bravexier/MaverickCenter', adresse = null, jetonFichier = null, maintenance = null, versionParDefaut = 'développement',
+  reference = null, depot = 'Bravexier/MaverickCenter', adresse = null, jetonFichier = null, acces: reglageAcces = null, maintenance = null, versionParDefaut = 'développement',
   journal: ecouteur = null, journalDuService = null, relancer = () => process.exit(0), metriques: reglagesMetriques = {}, fetch: fetchDuClasseur = globalThis.fetch,
   tipeee: reglagesTipeee = {}, attestation: reglagesAttestation = {} }) {
   const lancementDuService = performance.now();
@@ -158,6 +162,9 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
       return { version: versionParDefaut, empreinte: null };
     }
   })();
+  // accès au site de dev (serveur/acces.mjs) : le réglage est relu quand le fichier change ; lu une fois ici pour que le démarrage le note au journal
+  const acces = edition && reglageAcces ? (typeof reglageAcces === 'string' ? creerAcces({ fichier: reglageAcces, journal }) : reglageAcces) : null;
+  acces?.protege();
   // page « Mise à jour » (site de dev) : le jeton GitHub du serveur, relu à chaque appel (fichier monté dans le conteneur, jamais dans site/)
   const lireJeton = () => {
     if (!jetonFichier) return null;
@@ -533,7 +540,7 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
           reponse = traiter({ methode: req.method ?? 'GET', chemin: url.pathname, recherche: url.search, entetes: req.headers, corps: Buffer.concat(morceaux).toString('utf8'),
             signal: abandon.signal },
           { base: baseMesuree, etat: decrire, journal, journalDuService: memoire, edition: Boolean(edition), dossier, reference: referenceDuSite, depot, adresse, github,
-            maintenance: maintenanceDemandee, metriques, evenement, classeur, tipeee, extrait, attestations: dossierDesAttestations });
+            maintenance: maintenanceDemandee, metriques, evenement, classeur, tipeee, extrait, attestations: dossierDesAttestations, acces });
         } finally {
           const mesureSql = sql.terminer();
           if (mesure) mesure.sql = mesureSql;

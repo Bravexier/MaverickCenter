@@ -1833,7 +1833,7 @@ test('les restes : le bandeau du site de dev, l’échelle des relations et l’
       .filter(([, , corps]) => /background: var\(--good\)/.test(corps)).map(([, s, corps]) => ({ regle: `${f} ${s.trim().replace(/\s+/g, ' ')}`, corps })));
   assert.deepEqual(surLeVert.map((r) => r.regle), [
     "src/styles/edition/edition.css .ed-confirmer", "src/styles/edition/edition.css .ed-dialogue button[type='submit']",
-    'src/styles/fiche/fiche.css .onglet__compte[data-ok]', 'src/styles/mise-a-jour/mise-a-jour.css .nv-dev button.nv-principal, .nv-dialogue button.nv-principal',
+    'src/styles/fiche/fiche.css .onglet__compte[data-ok]', "src/styles/global/acces.css .acces-boutons button[type='submit']", 'src/styles/mise-a-jour/mise-a-jour.css .nv-dev button.nv-principal, .nv-dialogue button.nv-principal',
   ]);
   for (const { regle, corps } of surLeVert) assert.match(corps, /color: var\(--texte-sur-good\);/, regle);
   // le compteur des onglets de la fiche dans ses autres états : sur le rouge du site (règles à revoir), --texte-sur-danger (réponse du propriétaire du

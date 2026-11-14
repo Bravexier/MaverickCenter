@@ -6,6 +6,7 @@ import { NAV, activeGroup, entreesDuMenu, groupIsCurrent } from '../lib/nav.mjs'
 import { modeDuSite } from '../lib/mode-site.mjs';
 import Edition from '../components/edition/Edition.astro';
 import Infobulles from '../components/Infobulles.astro';
+import Acces from '../components/Acces.astro';
 import { cssDesAttributs } from '../lib/attributs-couleurs.mjs';
 import { cssDeLaPalette } from '../lib/palette-css.mjs';
 import { classeDeLaPageDuSite, cssDesMotsClesDuSite } from '../lib/couleur-de-la-page.mjs';
@@ -70,6 +71,8 @@ const couleurDeLaPage = couleurPropre || maintenance ? null : classeDeLaPageDuSi
     <title>{site.test ? '[TEST] ' : ''}{title === 'Accueil' ? 'Maverick Center' : `${title} — Maverick Center`}</title>
     {/* ce qu'une page ajoute à son en-tête (la fiche : sa politique de Referer, pour la connexion à Google) */}
     <slot name="tete" />
+    {/* l'accès au site de dev (R275 : mot de passe demandé une fois, sur un refus du service ; src/scripts/acces.mjs) : ni dans la version portable (pas de service) */}
+    {!portable && <Acces />}
     {
       /* Maintenance pendant une mise à jour (demande du propriétaire ; serveur/maintenance.mjs, docs/serveur.md) : chaque page demande au service si
          ce serveur est en maintenance — au chargement, au retour sur l'onglet, puis toutes les 30 s — et, si oui, grise le menu et part vers

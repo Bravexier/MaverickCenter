@@ -23,7 +23,7 @@ user-invocable: false
 - Performances : temps de réponse par route normalisée, pages vues mesurées par le navigateur, navigateurs, origines, requêtes récentes, export CSV. Instance production ou site de dev, jamais mélangées (décision du propriétaire).
 - Journaux du serveur : journal du service en mémoire, 2 000 entrées, `GET /api/debug/journal/?depuis=&min_ms=`, relevé toutes les 2 s, filtres niveau, catégorie, texte, durée ; chaque requête `/api/` notée en catégorie `http` avec ses champs isolés.
 - DB (« un mappage vectoriel des tables ») : le schéma, dessiné à la première ouverture ; toutes les tables et les vues (masquées par défaut), colonnes, types, un lien par clé étrangère (dont deux auto-références en boucle : `note_cellule`, `modification_lot.resolu_par` de la migration 0072) ; zoom, déplacement, recherche ; au double clic, le contenu de la table dans une fenêtre, fiches comprises, qui se met à jour quand la table change.
-- Contenu des tables : tout est lisible sur le site de dev ; seule la base de production est fermée (décision du propriétaire du 2026-10-15).
+- Contenu des tables : tout est lisible sur le site de dev ; seule la base de production est fermée (décision du propriétaire du 2026-10-15). Avec le mot de passe d'accès posé (R275, skill `zone-service`), `GET /api/debug/…` demande la clé de lecture ou le mot de passe ; `scripts/acces.mjs` gère le 401 (relèves comprises), rien dans `debug.mjs`.
 - Sauvegardes : bloc « Sauvegardes » du menu Système. `sauvegardes.json`, dans le dossier des métriques (écrit par `deploy/installateur/sauvegarde/`, skill `zone-hebergement`), est lu par `serveur/metriques.mjs#lireSauvegardes` et exposé dans le champ `sauvegardes` de `/api/debug/systeme/` ; `null` sans fichier, et le bloc affiche alors une ligne sobre. Seuils : `SEUILS_SAUVEGARDES` (`lib/debug-metriques.mjs`), 26 h par copie, 36 h par envoi.
 - Balise des pages (`Base.astro`) active en production aussi (décision du propriétaire du 2026-10-15) ; `MAVERICK_METRIQUES_PAGES=0` (service) ou `SITE_METRIQUES_PAGES=0` (build) la coupent.
 
@@ -36,7 +36,7 @@ user-invocable: false
 - `lireSauvegardes` ne reprend que les champs connus, bornés. Le tableau `locale.reglages_illisibles` déclenche une alerte « avertissement » du service. Les clés de `systeme()` sont épinglées dans `serveur-metriques.test.mjs` : une clé ajoutée s'y ajoute.
 - Versées une fois par minute, jamais une écriture par requête.
 - Évènements `extrait` (fabrication de l'extrait du contenu) et `attestation` (écriture de celle de la production) : durée et nombres seulement, jamais un nom de fiche ni un texte de problème (skill `zone-service-extrait`). L'attestation passe par le dossier des métriques, déjà partagé entre les deux instances : rien dans `deploy/`.
-- Une route est un gabarit (`routeNormalisee`) : jamais un identifiant ni la chaîne de requête. Une route ajoutée à `serveur/api.mjs` y va aussi, sinon elle compte comme `/api/{inconnue}`.
+- Une route est un gabarit (`routeNormalisee`) : jamais un identifiant ni la chaîne de requête. Une route ajoutée à `serveur/api.mjs` y va aussi, sinon elle compte comme `/api/{inconnue}` (gabarit `acces` pour `/api/acces/…`).
 - Jamais d'IP, de corps, de cookie ni de User-Agent entier.
 - Cardinalité bornée même devant un trafic fabriqué : refus `403`/`405` regroupés (`routeGardee`), pages du site construit seulement (`pagesDuSite`), plafond dur `PLAFOND_METRIQUES_OCTETS` (au-delà, collecte restreinte).
 - Un quantile au-delà de la dernière borne n'est qu'une borne basse (`au_dela`).

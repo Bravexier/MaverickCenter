@@ -313,6 +313,9 @@ export function routeNormalisee(adresse) {
       return seul(3) && b === 'metriques' && (c === 'requetes' || c === 'export') ? r('debug', 'metriques', c) : ROUTE_INCONNUE;
     case 'metriques':
       return seul(2) && b === 'page' ? r('metriques', 'page') : ROUTE_INCONNUE;
+    case 'acces':
+      if (seul(1)) return r('acces');
+      return seul(2) && b === 'verifier' ? r('acces', 'verifier') : ROUTE_INCONNUE;
     case 'classeur':
       return seul(1) ? r('classeur') : ROUTE_INCONNUE;
     case 'tipeee':

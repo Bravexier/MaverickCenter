@@ -562,6 +562,32 @@ function cheminsDuService() {
           415: ref('responses', 'TypeDeCorps'), 429: reponse('Trop de mesures reçues cette minute.', ref('schemas', 'Erreur')) },
       },
     },
+    '/acces/': {
+      get: {
+        operationId: 'etat_de_l_acces', tags: [SERVICE], summary: 'Où en est ce visiteur (accès au site de dev)',
+        description: 'Toujours ouverte. { protege, portee (ecriture | tout | null), connecte (une session ouverte par le mot de passe), droit (ecriture : le mot de passe ; lecture : la clé de lecture ; aucun), expire_le }. Sans réglage d’accès (secrets/acces.json, posé par la commande acces.sh de l’hôte), protege est faux et tout reste ouvert comme avant.',
+        responses: { 200: reponse('L’état d’accès.', objet) },
+      },
+      post: {
+        operationId: 'se_connecter', tags: [SERVICE], summary: 'Ouvrir une session avec le mot de passe',
+        description: 'Le mot de passe du site de dev (un seul, pour modifier et lancer une mise à jour ; avec la portée « tout », pour tout le site). Rend l’état d’accès et pose le cookie de session maverick_acces (HttpOnly, SameSite, Secure derrière https, 12 h). 401 { erreur, acces: "mot_de_passe" } : mot de passe faux ; 429 { attente_s } : trop d’essais ratés ; 409 : aucun mot de passe n’est posé. Mêmes refus que les écritures (corps JSON, requête d’une page de ce site).',
+        requestBody: { required: true, ...json(objet, { example: { mot_de_passe: '<le mot de passe>' } }) },
+        responses: { 200: reponse('Session ouverte.', objet), 400: ref('responses', 'Requete'), 401: reponse('Mot de passe incorrect.', ref('schemas', 'Erreur')), 403: ref('responses', 'Fermee'),
+          409: ref('responses', 'Conflit'), 415: ref('responses', 'TypeDeCorps'), 429: reponse('Trop d’essais ratés : attendre attente_s secondes.', ref('schemas', 'Erreur')) },
+      },
+      delete: {
+        operationId: 'se_deconnecter', tags: [SERVICE], summary: 'Fermer la session',
+        description: 'Retire le cookie de session et rend l’état d’accès. Refusée si le navigateur dit la requête venue d’un autre site.',
+        responses: { 200: reponse('Session fermée.', objet), 403: ref('responses', 'Fermee'), 409: ref('responses', 'Conflit') },
+      },
+    },
+    '/acces/verifier/': {
+      get: {
+        operationId: 'verifier_l_acces', tags: [SERVICE], summary: 'Vérification d’accès pour un mandataire',
+        description: '204 sans corps si la requête a au moins le droit de lecture (cookie de session, ou en-tête X-Maverick-Cle), 401 { erreur, acces } sinon : la route que le forward_auth de Caddy interroge le jour où le propriétaire choisit la portée « tout » (docs/serveur.md, « Accès au site de dev »). Sans réglage posé : 204.',
+        responses: { 204: { description: 'Accès permis (pas de corps).' }, 401: reponse('Accès refusé.', ref('schemas', 'Erreur')) },
+      },
+    },
     '/tipeee/': {
       get: {
         operationId: 'tipeee_bienvenue', tags: [SERVICE], summary: 'La partie « Bienvenue » de Tipeee',
@@ -685,7 +711,9 @@ export function descriptionOpenApi(catalogue) {
         '(décision du propriétaire, 2026-10-15 : en production, tout /api/v1/ répond 403 ; la base ne se lit que par les pages du site). Toute écriture ' +
         'passe par le service d’édition : un lot du journal, rapatrié dans data/rows par la mise à jour. Les adresses finissent par « / » ; la clé d’une ' +
         'ligne y est écrite valeur par valeur (encodée : « / » → %2F, « # » → %23), jointes par « , ». Les écritures exigent Content-Type: ' +
-        'application/json ; If-Match (la version, ETag) protège une modification ou une suppression.',
+        'application/json ; If-Match (la version, ETag) protège une modification ou une suppression. Accès : quand le propriétaire a posé un mot de passe sur le site de dev ' +
+        '(commande acces.sh de l’hôte), l’API /api/v1/ se lit avec la clé de lecture (en-tête X-Maverick-Cle) ou la session du mot de passe, et s’écrit avec la ' +
+        'session seule ; un refus est un 401 { erreur, acces: "cle" | "mot_de_passe" } (GET /api/acces/, POST /api/acces/).',
     },
     servers: [{ url: '/api', description: 'Le service du site (le préfixe de déploiement du site s’y ajoute).' }],
     tags,

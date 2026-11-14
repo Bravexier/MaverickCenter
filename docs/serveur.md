@@ -12,7 +12,8 @@ navigateur ──▶ nginx (mot de passe du site) ──┬──▶ site/      
 **Pas de comptes** : quiconque a le mot de passe du site lit et écrit les prétirés (un prétiré n'est à personne et tout le monde
 le voit : `v_personnage_visible`). Une fiche de joueur n'est ni listée ni lisible par l'API des personnages ; elle viendra avec la connexion
 Discord. Sur le site de dev seulement, le menu « DB » de la page Debug lit pourtant toute la base vivante, fiches comprises (décision du
-propriétaire du 2026-10-15 ; le serveur de dev reste ouvert à ceux qui y auront accès : [`api.md`](api.md), « Contenu des tables »).
+propriétaire du 2026-10-15 ; le serveur de dev reste ouvert à ceux qui y auront accès : [`api.md`](api.md), « Contenu des tables »). Sur le site de dev,
+un second mot de passe, posé par le propriétaire, protège les écritures et la mise à jour ; la lecture des pages reste libre (« Accès au site de dev »).
 
 ## Le code
 
@@ -21,6 +22,7 @@ propriétaire du 2026-10-15 ; le serveur de dev reste ouvert à ceux qui y auron
 | `client/serveur/index.mjs` | Point d'entrée livré (variables d'environnement ci-dessous) |
 | `client/serveur/service.mjs` | Serveur HTTP (`node:http`), surveillance des fichiers, arrêt propre |
 | `client/serveur/api.mjs` | Routes : une requête lue → une réponse (JSON, sauf l'image d'un portrait et un classeur), sans réseau (testé directement) ; `POST /api/classeur/` et `GET /api/tipeee/` rendent une promesse, que `service.mjs` attend |
+| `client/serveur/acces.mjs`, `acces-routes.mjs` | L'accès au site de dev : le réglage (`secrets/acces.json`), les sessions, les essais ratés, la commande de l'hôte ; le classement de chaque route (ouverte, lecture, écriture) que la porte de `traiter` consulte (« Accès au site de dev », plus bas) |
 | `client/serveur/fiches.mjs` | Une fiche ↔ les lignes de la section 13 de `data/schema.sql` ; contrôles ; résumé pour la recherche |
 | `client/serveur/base-vivante.mjs` | Création et renouvellement de la base vivante, archives |
 | `client/serveur/classeur.mjs` | « Importer (en ligne) » de la fiche : le téléchargement d'une feuille Google Sheets partagée par lien (`POST /api/classeur/`, ci-dessous), la seule sortie du service vers une adresse que donne le visiteur (« Hébergement ») |
@@ -729,8 +731,7 @@ la fois (les demandes simultanées l'attendent), écriture atomique (`rename`, l
 | `GET /api/edition/extrait/meta/` | Le méta (`extrait.json`) : `format`, `fabrique_le`, `version_du_site`, `schema`, `empreinte`, `tables` (`{ empreinte, lignes }` par table), `calculees`, `modifications_versees`, `fichier` (`octets`, `sha256`), `duree_ms`… |
 
 **La commande** : `cd client && npm run db:extrait` (`scripts/db-extrait.mjs`) télécharge l'extrait depuis `https://dev.maverick-jdr.com` (`--url` ou `MAVERICK_EXTRAIT_URL`),
-dans `var/extrait/` (ignoré par git ; `--dossier`) : `maverick-dev.db` et `maverick-dev.json`. Une clé de lecture facultative (`--cle` ou `MAVERICK_EXTRAIT_CLE` ; le lot 4 du chantier
-met un mot de passe) : « utilisateur:motdepasse » part en `Basic`, toute autre valeur en `Bearer`. Elle vérifie le SHA-256 du fichier, puis l'empreinte de **chaque** table
+dans `var/extrait/` (ignoré par git ; `--dossier`) : `maverick-dev.db` et `maverick-dev.json`. Une clé de lecture facultative (la variable `MAVERICK_EXTRAIT_CLE` seulement : une option `--cle` est refusée, la clé ne va jamais dans la ligne de commande ; sans mot de passe posé sur le site de dev, elle est inutile) part dans l'en-tête `X-Maverick-Cle` (« Accès au site de dev » : `Authorization` n'arrive jamais au service). Elle vérifie le SHA-256 du fichier, puis l'empreinte de **chaque** table
 contre le méta (`ecartsAvecLeMeta`), pose le fichier par `rename` (rien n'est écrit si l'un ne concorde pas), ne retélécharge pas un extrait déjà à jour, et affiche **la date de
 l'extrait** : chaque analyse la cite. Les sessions de Claude lisent ce fichier en lecture seule (`node:sqlite`, comme `interroger-la-base`), jamais les fiches ni les comptes.
 
@@ -1200,6 +1201,79 @@ le VPS, `deploy/vps/instances.sh` crée `/srv/maverick-center/maintenance` et po
 dans le `.env` du serveur de test ; puis `docker compose up -d` dans les deux dossiers ([`deploy/vps/README.md`](../deploy/vps/README.md)). Sans ce
 réglage, le site de dev se met en maintenance d'après son seul lancement et la production jamais.
 
+## Accès au site de dev
+
+Décision du propriétaire (R275, question 2, option b) : « Un mot de passe pour modifier et pour lancer une mise à jour ; la lecture reste ouverte. »
+L'option c (« un mot de passe pour tout le site ») est le même réglage avec une autre **portée**, même mot de passe, une seule saisie. Chantier :
+[`chantier-base-de-dev.md`](chantier-base-de-dev.md), lot 4. Code : `serveur/acces.mjs` (réglage, sessions, essais), `serveur/acces-routes.mjs` (le
+classement des routes), la porte unique au début de `traiter` (`serveur/api.mjs`). Tests : `serveur-acces`, `serveur-acces-routes`, `deploy-acces`.
+
+**Sans réglage, rien ne change** : la mise à jour, la Simulation, l'édition et `/api/v1/` répondent comme avant. Le service ne lit le réglage que sur le
+site de dev (`MAVERICK_EDITION=1`) : la production n'est jamais concernée, ni l'installateur, ni la CI.
+
+**Le réglage** est le fichier `secrets/acces.json` de l'instance (le dossier `secrets/`, déjà monté en lecture seule sur `/secrets` pour le jeton GitHub ;
+`MAVERICK_ACCES_FICHIER` en dit un autre, sinon `acces.json` à côté de `MAVERICK_GITHUB_JETON_FICHIER`). Aucun secret en clair : l'empreinte **scrypt** du
+mot de passe (avec son sel), l'empreinte **SHA-256** de la clé de lecture, un **secret de session**, la portée (`ecriture` ou `tout`). Le service le relit
+quand le fichier change (date, inode, taille) : rien à redémarrer. Absent : ouvert. Illisible ou invalide : le site de dev reste **fermé** (aucune connexion
+possible, ligne au journal) jusqu'à ce que la commande de l'hôte le refasse. Les comparaisons se font à temps constant.
+
+**Qui peut quoi** : chaque route est classée dans `serveur/acces-routes.mjs`. Une route que la table ne nomme pas est fermée comme une écriture ; le test
+`serveur-acces-routes` compare la table aux routes d'en-tête d'`api.mjs` et au code de l'aiguillage : **une route nouvelle non classée fait échouer la
+suite**.
+
+| Classe | Ce qu'il faut | Routes |
+| --- | --- | --- |
+| ouverte | rien | `GET /api/etat/` (sans la liste des fiches adaptées), `/api/maintenance/`, `/api/tipeee/`, `POST /api/classeur/`, `POST /api/metriques/page/` ; les prétirés en lecture (`GET /api/personnages/`, `…/<id>/`, `…/<id>/portrait/` : jamais une fiche de joueur) ; ce que les pages lisent pour montrer la base vivante : `GET /api/edition/{en-attente,listes,pages,mots-cles,chronologie,plan}/` et `POST /api/edition/{lignes,race,classe,bestiaire,portrait,evenement}/` (`classe` sans les libellés de fiches) ; la note en préparation et l'état du lancement `GET /api/mise-a-jour/` et `…/lancement/` (la page les relève sans connexion) ; le lot figé `GET /api/mise-a-jour/lots/<uuid>/` ; `/api/acces/` |
+| lecture | la clé de lecture **ou** le mot de passe | `GET /api/edition/journal/`, `GET /api/edition/extrait/` et `…/extrait/meta/` (l'extrait du contenu : ni fiche, ni compte, ni journal), `GET /api/mise-a-jour/conflits/` (les lots en conflit), tout `GET /api/debug/…` (le contenu des tables : fiches, comptes et groupes compris), tout `GET /api/v1/…` |
+| écriture | le mot de passe (session) | `POST /api/edition/` (un lot), `POST /api/maintenance/lever/`, `POST /api/mise-a-jour/{brouillon,majeure,lancer,liberer,conflits}/` (« Effectuer la mise à jour » et la Simulation), les prétirés en écriture (`POST`, `PUT`, `DELETE /api/personnages/…`), tout `POST`, `PATCH`, `PUT`, `DELETE /api/v1/…` |
+
+La clé de lecture ne permet jamais d'écrire. Le lot figé reste ouvert : le workflow `mise-a-jour.yml` (job `preparer`) ne joint que cette route du site de dev,
+sans aucun secret ajouté côté GitHub ; l'adresse est à capacité (uuid aléatoire, lot sans fiche ni compte, contenu publié de toute façon dans la PR). Aucune
+clé d'écriture n'est donnée à GitHub ni aux sessions.
+
+**Où passent les secrets** : le service ne voit jamais l'en-tête `Authorization` (Caddy y met le mot de passe interne de nginx, nginx l'efface). La clé de
+lecture voyage donc dans **`X-Maverick-Cle`** (jamais dans l'adresse, que le journal note), la session du navigateur dans le cookie **`maverick_acces`**.
+Aucun des deux n'est dans le journal, les métriques (seuls `Referer`, `Host` et `User-Agent` sont lus), l'état ou la page Debug.
+
+**Connexion** (`/api/acces/`, toujours ouverte, mêmes refus que les écritures : JSON, requête d'une page de ce site) :
+- `GET` → `{ protege, portee, connecte, droit, expire_le }` ; `droit` : `ecriture` (session du mot de passe), `lecture` (clé), `aucun`. Sans réglage :
+  `{ protege: false, portee: null, connecte: false, droit: 'ecriture', expire_le: null }`.
+- `POST { mot_de_passe }` → 200 avec le même état et le cookie `maverick_acces=v1.<expiration>.<HMAC-SHA256>` : `HttpOnly`, `SameSite=Strict`, `Path=/api/`,
+  `Secure` pour un nom d'hôte (nginx réécrit `X-Forwarded-Proto` en `http` derrière Caddy : le service ne voit jamais `https`, il juge d'après l'hôte, comme `adressePublique`), **sans date** (il part avec le navigateur ; le jeton expire à 12 h). 401 mot de passe faux, **429** après 5 essais ratés d'une même
+  source (première adresse de `X-Forwarded-For`, jamais notée) ou 60 au total sur 10 minutes (`attente_s`), 400 corps invalide, 409 sans mot de passe posé.
+- `DELETE` → ferme la session : le cookie est retiré du navigateur, sous `/api/` et sous `/`, **sans révoquer le jeton** (valable jusqu'à 12 h pour qui l'aurait copié ;
+  relancer `acces.sh` renouvelle le secret de session et ferme toutes les sessions).
+- `GET /api/acces/verifier/` → 204 si la requête a au moins la lecture (cookie ou clé), 401 sinon : pour le `forward_auth` de Caddy (portée `tout`).
+- Un refus de la porte est un **401** `{ erreur, acces }` : `acces: 'cle'` (la clé de lecture ou le mot de passe) pour une route de lecture, `'mot_de_passe'`
+  pour une écriture ou une route inconnue.
+- Changer le mot de passe ou la portée renouvelle le secret de session : toutes les sessions ouvertes tombent, au prochain appel.
+
+**Portée `tout`** (option c, non activée) : chaque route ouverte qui n'est pas indispensable passe en lecture ; restent ouvertes la connexion
+(`/api/acces/…`) et le lot figé. Les pages sont servies par nginx : elles ne se ferment que si Caddy interroge `/api/acces/verifier/` avant de les servir.
+La ligne est écrite, en commentaire et sans effet, dans `deploy/vps/Caddyfile` (`forward_auth` + exceptions : `/api/acces/*`, le lot figé, `/connexion/*`,
+`/_astro/*`, `robots.txt`) ; elle n'a jamais été essayée sur un serveur, et la page `/connexion/` vers laquelle renvoyer un visiteur sans session reste à
+écrire le jour où l'option c est choisie. Le cookie prend alors `Path=/` et `SameSite=Lax` (un lien venu d'ailleurs arrive connecté).
+
+**Le geste du propriétaire** : `sudo sh /srv/maverick-center-test/acces/acces.sh` (livré par l'installateur dans le dossier de l'instance, comme
+`sauvegarde/`, remplacé à chaque installation ; `secrets/` n'est jamais touché). Sans option : deux saisies du mot de passe, sans écho (10 caractères au
+moins) ; il est haché par le service lui-même (`docker exec -i … node`, entrée standard : jamais un argument de commande, jamais un fichier, rien exigé de
+l'hôte), le fichier est posé en 600 dans `secrets/` (700), et la première fois la **clé de lecture** s'affiche une seule fois à l'écran (jamais hors d'un
+terminal). Changer le mot de passe garde la clé et ferme les sessions. Options : `--cle` (une clé neuve, l'ancienne cesse de marcher), `--portee
+ecriture|tout`, `--etat` (sans secret), `--retirer` (retour à l'ouvert). Elle refuse la production (`MAVERICK_EDITION=1` absent du `.env`) et n'a pas besoin
+de l'ancien mot de passe : un mot de passe perdu se remplace, ou la protection se retire, par la même commande. Elle ne change ni `docker-compose.yml`, ni
+`nginx.conf`, ni le Caddyfile actif.
+
+**Dans le navigateur** (pages, tech-front) : la lecture des pages ne demande rien. Une écriture ou une page de lecture protégée qui reçoit un 401 demande le
+mot de passe **une fois** (`POST /api/acces/`) ; le cookie accompagne ensuite chaque appel de la visite. Un seul script, `src/scripts/acces.mjs`
+(posé dans l'en-tête par `components/Acces.astro` depuis `layouts/Base.astro`, absent de la version portable), enveloppe `fetch` pour les adresses
+`/api/…` : sur un 401 portant `acces`, une petite fenêtre (`<dialog>`, champ `password`, `autocomplete="current-password"`) demande le mot de passe, le
+poste, puis rejoue l'appel ; des appels refusés en même temps partagent la même fenêtre, une session expirée (12 h) redemande, 401 et 429 (`attente_s`)
+se disent dans la fenêtre. Annuler rend le 401 d'origine à la page ; une lecture refusée dans les 60 s qui suivent ne rouvre pas la fenêtre (les
+relèves de la page Debug). Jamais de demande pour `/api/acces/`, la balise des pages ni la relève de la maintenance. Un `<a download>` du service
+(journal de l'édition, exports de Debug) passe par `fetch` puis s'enregistre. Une fois connecté, « Connecté · Se déconnecter » apparaît dans le pied de
+page (`sessionStorage`, confirmé par `GET /api/acces/`). L'option c n'y change rien : même mot de passe, même cookie, même fenêtre. Test :
+`test/acces-navigateur.test.mjs`.
+
 ## Hébergement
 
 Deux conteneurs dans chaque `docker-compose.yml`, celui des [installateurs](../deploy/installateur/README.md) (serveur normal et serveur de test,
@@ -1213,7 +1287,7 @@ Deux conteneurs dans chaque `docker-compose.yml`, celui des [installateurs](../d
   `MAVERICK_INTERVALLE` (surveillance, 15 000 ms), `MAVERICK_EDITION` (`1` : édition des règles ouverte, serveur de test seulement) ; page
   « Mise à jour » du serveur de test : `MAVERICK_PRODUCTION` (`/production`, site de la production en lecture seule), `MAVERICK_REFERENCE` (repli : copie de master, `/site/donnees/reference.db`), `MAVERICK_ADRESSE_PUBLIQUE`
   (`https://dev.<domaine>`, sinon l'hôte de la requête), `MAVERICK_GITHUB_JETON_FICHIER` (`/secrets/github-actions-token`, dossier `secrets/` de
-  l'instance monté en lecture seule), `MAVERICK_DEPOT` (`Bravexier/MaverickCenter`) ; les deux serveurs : `MAVERICK_MAINTENANCE` (`/maintenance`,
+  l'instance monté en lecture seule), `MAVERICK_ACCES_FICHIER` (réglage de l'accès, `/secrets/acces.json` par défaut : « Accès au site de dev », ci-dessus), `MAVERICK_DEPOT` (`Bravexier/MaverickCenter`) ; les deux serveurs : `MAVERICK_MAINTENANCE` (`/maintenance`,
   dossier partagé de l'annonce de maintenance, ci-dessus), `MAVERICK_DOSSIER_METRIQUES` (`/metriques`), `MAVERICK_INSTANCE` (`prod` ou `dev`),
   `MAVERICK_METRIQUES_PAGES` (`1` par défaut) et `MAVERICK_METRIQUES_BRUTES` (`0` par défaut) : « Métriques et volume », ci-dessous ;
   `MAVERICK_TIPEEE` (`0` : Tipeee jamais relu) et `MAVERICK_TIPEEE_CACHE_MIN` (360 par défaut), absents des `docker-compose.yml` (valeurs par

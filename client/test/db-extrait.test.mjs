@@ -3,7 +3,7 @@
 // Sans réseau : le service de dev tourne en local, dans le test.
 //   node --test test/db-extrait.test.mjs
 import assert from 'node:assert/strict';
-import { execFile, execFileSync } from 'node:child_process';
+import { execFile, execFileSync, spawnSync } from 'node:child_process';
 import { copyFileSync, existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { join } from 'node:path';
@@ -11,7 +11,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { demarrerService } from '../serveur/service.mjs';
-import { DOSSIER_PAR_DEFAUT, ErreurExtrait, FICHIER, FICHIER_META, enteteDeLaCle, telechargerExtrait } from '../scripts/db-extrait.mjs';
+import { DOSSIER_PAR_DEFAUT, ErreurExtrait, FICHIER, FICHIER_META, enteteDeLaCle, refusDeLaCleEnArgument, telechargerExtrait } from '../scripts/db-extrait.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { SENTINELLES, marquesDesFiches } from './aide-fiches-sentinelles.mjs';
@@ -36,11 +36,11 @@ test('le dossier par défaut est ignoré par git (var/)', () => {
   assert.equal(execFileSync('git', ['check-ignore', '-q', join('var', 'extrait', FICHIER)], { cwd: RACINE, stdio: 'pipe' }).toString(), '', 'git ignore var/extrait/');
 });
 
-test('la clé de lecture : « utilisateur:motdepasse » part en Basic, toute autre valeur en Bearer, aucune sans clé', () => {
+test('la clé de lecture part dans X-Maverick-Cle (jamais Authorization, que le service ne voit pas), aucune sans clé', () => {
   assert.deepEqual(enteteDeLaCle(null), {});
   assert.deepEqual(enteteDeLaCle('  '), {});
-  assert.deepEqual(enteteDeLaCle('claude:secret'), { Authorization: `Basic ${Buffer.from('claude:secret').toString('base64')}` });
-  assert.deepEqual(enteteDeLaCle('jeton-123'), { Authorization: 'Bearer jeton-123' });
+  assert.deepEqual(enteteDeLaCle(' mvk_jeton-123 '), { 'X-Maverick-Cle': 'mvk_jeton-123' });
+  assert.ok(!('Authorization' in enteteDeLaCle('mvk_x')));
 });
 
 test('télécharge l’extrait du site de dev, le vérifie et l’écrit avec son méta ; sans fiche ; relancé sans changement, il n’est pas retéléchargé', async (t) => {
@@ -87,20 +87,29 @@ test('télécharge l’extrait du site de dev, le vérifie et l’écrit avec so
   }
 });
 
-test('la clé est envoyée : Basic ou Bearer ; refus du site (401, 403) dits clairement, rien d’écrit', async (t) => {
+test('la clé de lecture ne se donne que par MAVERICK_EXTRAIT_CLE : --cle (seule ou --cle=…) est refusé en le disant', () => {
+  for (const args of [['--cle', 'mvk_x'], ['--url', 'http://h', '--cle=mvk_x']]) assert.match(refusDeLaCleEnArgument(args), /MAVERICK_EXTRAIT_CLE/);
+  assert.equal(refusDeLaCleEnArgument(['--url', 'http://h', '--dossier', 'd']), null);
+  const r = spawnSync(process.execPath, [fileURLToPath(new URL('../scripts/db-extrait.mjs', import.meta.url)), '--cle', 'mvk_secret'], { encoding: 'utf8', env: { PATH: process.env.PATH } });
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /MAVERICK_EXTRAIT_CLE/);
+  assert.ok(!r.stderr.includes('mvk_secret'), 'le message ne répète pas la clé');
+});
+
+test('la clé est envoyée dans X-Maverick-Cle ; refus du site (401, 403) dits clairement, rien d’écrit', async (t) => {
   const racine = dossierTemporaire('db-extrait-cle', { t });
   const vus = [];
   const faux = createServer((req, res) => {
-    vus.push(req.headers.authorization ?? null);
+    vus.push([req.headers['x-maverick-cle'] ?? null, req.headers.authorization ?? null]);
     res.writeHead(vus.length === 1 ? 401 : 403, { 'Content-Type': 'application/json' });
     res.end('{}');
   });
   await new Promise((ok) => faux.listen(0, '127.0.0.1', ok));
   t.after(() => faux.close());
   const url = `http://127.0.0.1:${faux.address().port}`;
-  await assert.rejects(() => telechargerExtrait({ url, dossier: racine, cle: 'claude:secret' }), (e) => e instanceof ErreurExtrait && /401/.test(e.message) && /clé de lecture/.test(e.message));
-  await assert.rejects(() => telechargerExtrait({ url, dossier: racine, cle: 'jeton' }), (e) => /403/.test(e.message));
-  assert.deepEqual(vus, [`Basic ${Buffer.from('claude:secret').toString('base64')}`, 'Bearer jeton']);
+  await assert.rejects(() => telechargerExtrait({ url, dossier: racine, cle: 'mvk_premiere' }), (e) => e instanceof ErreurExtrait && /401/.test(e.message) && /clé de lecture/.test(e.message));
+  await assert.rejects(() => telechargerExtrait({ url, dossier: racine, cle: 'mvk_seconde' }), (e) => /403/.test(e.message));
+  assert.deepEqual(vus, [['mvk_premiere', null], ['mvk_seconde', null]]);
   assert.deepEqual(readdirSync(racine), [], 'rien d’écrit');
   await assert.rejects(() => telechargerExtrait({ url: 'http://127.0.0.1:1', dossier: racine }), ErreurExtrait);
 });
