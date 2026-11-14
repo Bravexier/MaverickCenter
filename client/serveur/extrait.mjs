@@ -49,7 +49,7 @@ const sha256 = (donnees) => createHash('sha256').update(donnees).digest('hex');
 
 /**
  * La clé de changement du contenu de la base vivante : un texte qui ne bouge qu'avec le contenu. Elle lit l'état de la base vivante (vivante.json :
- * règles, schéma, date de la dernière reconstruction), le schéma, l'état de chaque modification du journal et de chaque lot (nouvelle saisie, conflit,
+ * empreinte logique des règles, schéma, date de la dernière reconstruction), le schéma, l'état de chaque modification du journal et de chaque lot (nouvelle saisie, conflit,
  * lot résolu ou abandonné) et le nombre de lignes de l'historique et des notes ; aucune table de fiche. Quelques requêtes sur le journal (de quoi lire
  * une dizaine de milliers de lignes en quelques millisecondes), jamais le contenu.
  * @param {import('node:sqlite').DatabaseSync} db la base vivante
@@ -58,7 +58,7 @@ const sha256 = (donnees) => createHash('sha256').update(donnees).digest('hex');
 export function cleDeChangement(db, dossier) {
   const etat = lireEtat(dossier) ?? {};
   const hachage = createHash('sha256');
-  hachage.update(`${etat.regles ?? ''}|${etat.schema ?? ''}|${etat.refaite_le ?? ''}|${db.prepare('PRAGMA user_version').get().user_version}\n`);
+  hachage.update(`${etat.logique ?? etat.regles ?? ''}|${etat.schema ?? ''}|${etat.refaite_le ?? ''}|${db.prepare('PRAGMA user_version').get().user_version}\n`);
   const lignes = (sql) => {
     for (const l of db.prepare(sql).iterate()) hachage.update(`${Object.values(l).join('|')}\n`);
     hachage.update('--\n');

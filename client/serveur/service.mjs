@@ -255,15 +255,16 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
     const t0 = performance.now();
     const preparation = { appliquee: true, problemes: 0 }; // dit à l'attestation de la production si la dernière préparation a réussi
     try {
-      const r = preparerBaseVivante({ regles, dossier, evenement });
+      const r = preparerBaseVivante({ regles, dossier, evenement, version: version.version, journal });
       evenement('base_vivante', {
         duree_ms: performance.now() - t0,
         detail: {
-          refaite: Boolean(r.refaite), regles: r.empreinte?.slice(0, 12) ?? null, schema: r.schema ?? null, archive: Boolean(r.archive), fiches_adaptees: r.fiches?.length ?? 0,
+          refaite: Boolean(r.refaite), identique: Boolean(r.identique), regles: r.empreinte?.slice(0, 12) ?? null, schema: r.schema ?? null, archive: Boolean(r.archive), fiches_adaptees: r.fiches?.length ?? 0,
           ...(r.rejeu ? { rejeu: { lots: r.rejeu.lots ?? 0, appliquees: r.rejeu.appliquees ?? 0, integrees: r.rejeu.integrees ?? 0, conflits: r.rejeu.conflits ?? 0 } } : {}),
         },
       });
       if (r.refaite) journal(`base vivante faite pour les règles ${r.empreinte.slice(0, 12)} (schéma ${r.schema})${r.archive ? ` ; l’ancienne est archivée : ${basename(r.archive)}` : ''}`);
+      if (r.identique) journal(`base vivante gardée : le fichier des règles ${r.empreinte.slice(0, 12)} a changé, pas ce qu'il apporte (schéma et lignes) ; rien n'est refait`);
       if (r.rejeu?.lots) journal(`journal des modifications rejoué : ${r.rejeu.appliquees} réappliquée(s), ${r.rejeu.integrees} déjà dans les règles, ${r.rejeu.conflits} en conflit`);
       // R42 : un don, une spécialité, un sort ou un métier disparu des règles a été retiré de ces fiches (prétirés nommés, fiches de joueur anonymes)
       if (r.fiches?.length) {

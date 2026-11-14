@@ -32,6 +32,7 @@ import { TABLES_DU_JOURNAL } from '../src/lib/tables-de-la-base.mjs';
 import { rejouerLeJournal } from './edition.mjs';
 import { instant as ecrireInstant } from './instant.mjs';
 import { sha256 } from './partage.mjs';
+import { empreinteLogique } from './empreintes.mjs';
 import { noterLesRetraits, nouveauxRetraitsDeFiches, retirerLesArmuresHorsRegle, retirerLesManquants } from './fiches-retraits.mjs';
 import { poidsPortableDeLaBase } from '../src/lib/poids-portable-db.mjs';
 
@@ -349,6 +350,16 @@ function convertirLesTablesRetirees(db, retraits) {
   return problemes;
 }
 
+/**
+ * La version de la LOGIQUE de reconstruction : à augmenter de 1 chaque fois que ce que `preparerBaseVivante` fait d'une base d'avant change, sans que le
+ * fichier des règles change — une conversion (CONVERSIONS, COLONNES_CONVERTIES), un retrait (R42 : serveur/fiches-retraits.mjs ; R165 : l'armure), une ligne
+ * écartée (LIGNES_ECARTEES), une table ou une colonne retirée (TABLES_RETIREES, COLONNES_RETIREES), le rejeu du journal, un contrôle des fiches. Le service ne
+ * refait la base que si l'empreinte logique des règles (serveur/empreintes.mjs#empreinteLogique) ou cette version a changé depuis la dernière reconstruction
+ * (vivante.json : `logique`, `reconstruction`) : sans l'augmenter, un changement de cette logique ne s'appliquerait qu'à la prochaine livraison des règles.
+ * Une base d'avant ce réglage (vivante.json sans `reconstruction`) garde l'ancienne règle : refaite quand le fichier des règles change.
+ */
+export const VERSION_DE_LA_RECONSTRUCTION = 1;
+
 export const FICHIER_BASE = 'vivante.db';
 /** À côté de la base : l'empreinte des règles dont elle est faite (refaite quand elle diffère de celle de la base publiée). */
 export const FICHIER_ETAT = 'vivante.json';
@@ -380,7 +391,10 @@ export function signature(chemin) {
 }
 
 /**
- * Contenu de vivante.json ({ regles, schema, refaite_le, retraits? }), null s'il est absent ou illisible. `retraits` : { le, fiches } de la dernière
+ * Contenu de vivante.json ({ regles, logique?, reconstruction?, version?, schema, refaite_le, retraits? }), null s'il est absent ou illisible. `regles` :
+ * l'empreinte SHA-256 du fichier des règles dont la base est faite ; `logique` : leur empreinte logique (serveur/empreintes.mjs#empreinteLogique) ;
+ * `reconstruction` : la VERSION_DE_LA_RECONSTRUCTION de la dernière reconstruction ; `version` : celle du service qui fait tourner la base (« inconnue » si on ne la
+ * sait pas) — les trois absentes d'un état écrit avant ce réglage. `retraits` : { le, fiches } de la dernière
  * reconstruction qui a retiré quelque chose des fiches (R42), gardé par les suivantes qui ne retirent rien ; absent s'il n'y en a jamais eu.
  */
 export function lireEtat(dossier) {
@@ -563,8 +577,15 @@ export function viderBrouillonLivre(db) {
 /** Nom d'archive horodaté (l'ordre alphabétique est l'ordre chronologique). */
 const horodatage = (instant) => instant.toISOString().replace(/[:.]/g, '-');
 
-/** Archive la base vivante si elle a des lignes de la section 13 ; garde les ARCHIVES_GARDEES dernières. */
-function archiver(dossier, chemin, instant) {
+/** Le nom d'archive d'une version : sans caractère hors [A-Za-z0-9._+-] (elle entre dans un nom de fichier), « inconnue » quand on ne la sait pas. */
+const versionDansUnNom = (version) => String(version ?? '').replace(/[^A-Za-z0-9._+-]/g, '_').slice(0, 40) || 'inconnue';
+
+/**
+ * Archive la base vivante si elle a des lignes de la section 13 ; garde les ARCHIVES_GARDEES dernières. L'archive porte, après son horodatage (qui reste en
+ * tête : l'ordre alphabétique est l'ordre chronologique), la version du service qui faisait tourner la base : `vivante-<horodatage>-v<version>.db`
+ * (`vivante-<horodatage>-inconnue.db` si on ne la sait pas) ; les archives d'avant (`vivante-<horodatage>.db`) restent comptées et purgées avec elles.
+ */
+function archiver(dossier, chemin, instant, version = null) {
   const db = new DatabaseSync(chemin, { readOnly: true });
   let lignes = 0;
   try {
@@ -575,7 +596,8 @@ function archiver(dossier, chemin, instant) {
   if (!lignes) return null;
   const archives = join(dossier, DOSSIER_ARCHIVES);
   mkdirSync(archives, { recursive: true });
-  const fichier = join(archives, `vivante-${horodatage(instant)}.db`);
+  const connue = version !== null && version !== undefined && String(version) !== '' && String(version) !== 'inconnue';
+  const fichier = join(archives, `vivante-${horodatage(instant)}-${connue ? 'v' : ''}${versionDansUnNom(connue ? version : null)}.db`);
   copyFileSync(chemin, fichier);
   const toutes = readdirSync(archives).filter((f) => /^vivante-.+\.db$/.test(f)).sort();
   for (const f of toutes.slice(0, -ARCHIVES_GARDEES)) rmSync(join(archives, f), { force: true });
@@ -584,7 +606,9 @@ function archiver(dossier, chemin, instant) {
 
 /**
  * Prépare la base vivante du dossier `dossier` pour la base des règles `regles` (celle que publie le site) : la crée au premier lancement, la
- * refait quand les règles ont changé, ne touche à rien sinon. Rend { chemin, refaite, archive, empreinte, schema, rejeu, fiches } (rejeu : bilan des
+ * refait quand ce que les règles apportent a changé (leur empreinte LOGIQUE : schéma et lignes, serveur/empreintes.mjs#empreinteLogique — un fichier aux octets
+ * différents mais au même contenu ne la fait pas refaire ; ni la version de reconstruction, VERSION_DE_LA_RECONSTRUCTION, qui la fait refaire quand elle change),
+ * ne touche à rien sinon. `journal` (facultatif) reçoit une note quand l'état de la base ne peut pas être écrit sans que cela change rien (disque plein). `calculerLogique` (facultatif) remplace le calcul de l'empreinte logique (tests : un calcul en échec). `version` : celle du service qui l'appelle (vivante.json la garde ; l'archive d'avant une reconstruction porte celle de la base qu'elle garde). Rend { chemin, refaite, archive, empreinte, schema, rejeu, fiches } (rejeu : bilan des
  * modifications du journal rejouées, null sans base précédente ; fiches : celles dont un élément disparu a été retiré, R42, [] sinon). En cas d'échec,
  * lève une erreur (ErreurBaseVivante quand les fiches ne passent pas) et la base en place reste intacte. `evenement` (facultatif) : les métriques du
  * service (durées du rejeu, des retraits des fiches et de l'archivage). Une armure trop lourde pour le poids portable d'une fiche (décision R165 (6),
@@ -594,12 +618,26 @@ function archiver(dossier, chemin, instant) {
  * (son lot à résoudre sur la page Mise à jour) et les lots en conflit non résolus sont réévalués (serveur/edition-journal.mjs#rejouer, `garder`) ; faux
  * est réservé aux tests qui refont une base vivante d'avant cette règle (lots annulés en entier au moindre conflit).
  */
-export function preparerBaseVivante({ regles, dossier, instant = new Date(), evenement = null, poidsPortable = undefined, garderLeSite = true }) {
+export function preparerBaseVivante({ regles, dossier, instant = new Date(), evenement = null, poidsPortable = undefined, garderLeSite = true, version = null, calculerLogique = empreinteLogique, journal = null }) {
   if (!existsSync(regles)) throw new ErreurBaseVivante(`base des règles introuvable : ${regles} (le site est-il installé ?)`);
   mkdirSync(dossier, { recursive: true });
   const chemin = join(dossier, FICHIER_BASE);
   const etat = lireEtat(dossier);
-  if (existsSync(chemin) && etat?.regles && etat.regles === empreinteFichier(regles)) {
+  const connue = existsSync(chemin) && Boolean(etat?.regles);
+  /** Écrit vivante.json quand la base est gardée telle quelle : un disque plein n'y fait jamais échouer la préparation (la base en place sert, l'état se réécrira). */
+  const noterEtat = (nouvel) => {
+    try {
+      ecrireEtat(dossier, nouvel);
+    } catch (e) {
+      journal?.(`base vivante gardée, mais son état n'a pas pu être écrit (${dossier}) : ${e.message}`);
+    }
+  };
+  // la logique de reconstruction a changé depuis la dernière : refaite, même si le fichier des règles est le même (une base d'avant ce réglage n'a pas
+  // `reconstruction` : l'ancienne règle, ci-dessous)
+  const logiqueChangee = connue && etat.reconstruction !== undefined && etat.reconstruction !== VERSION_DE_LA_RECONSTRUCTION;
+  if (connue && !logiqueChangee && etat.regles === empreinteFichier(regles)) {
+    // rien de changé : aucun calcul de plus ; seule la version du service qui la fait tourner est tenue à jour (le nom de la prochaine archive)
+    if (version && etat.version !== version) noterEtat({ ...etat, version });
     return { chemin, refaite: false, archive: null, empreinte: etat.regles, schema: etat.schema ?? null, fiches: [] };
   }
 
@@ -614,22 +652,46 @@ export function preparerBaseVivante({ regles, dossier, instant = new Date(), eve
   try {
     const empreinte = empreinteFichier(neuve); // celle de la copie : les règles peuvent être remplacées pendant qu'on les copie
     const db = new DatabaseSync(neuve);
+    let logique = null;
+    let identique = false;
     try {
+      // Le fichier a changé, pas forcément ce qu'il apporte : si l'empreinte logique (schéma, lignes de toutes les tables hors fiches et journal, calculées
+      // comprises) est celle de la dernière reconstruction, la base vivante en est déjà faite : rien n'est refait (docs/serveur.md, « La base vivante »). Dans
+      // le doute — pas d'empreinte gardée, logique de reconstruction changée, calcul en échec — la base est refaite, comme avant.
+      // la copie est contrôlée AVANT de décider de garder la base : un fichier des règles qui porte une fiche ou un compte, ou abîmé, est une erreur dans tous
+      // les chemins (leurs lignes ne comptent pas dans l'empreinte logique)
       verifierRegles(db);
-      if (existsSync(chemin)) ({ rejeu, fiches } = transferer(db, chemin, iso, evenement, poidsPortable, garderLeSite));
-      schema = db.prepare('PRAGMA user_version').get().user_version;
+      const t0 = performance.now();
+      try {
+        logique = calculerLogique(db, { exclues: TABLES_VIVANTES }).empreinte;
+        identique = connue && !logiqueChangee && etat.reconstruction === VERSION_DE_LA_RECONSTRUCTION && Boolean(etat.logique) && etat.logique === logique;
+      } catch {
+        logique = null;
+      }
+      evenement?.('empreinte_logique', { duree_ms: performance.now() - t0, detail: { identique, calculee: logique !== null, connue: Boolean(etat?.logique) } });
+      if (!identique) {
+        if (existsSync(chemin)) ({ rejeu, fiches } = transferer(db, chemin, iso, evenement, poidsPortable, garderLeSite));
+        schema = db.prepare('PRAGMA user_version').get().user_version;
+      }
     } finally {
       db.close();
     }
+    if (identique) {
+      rmSync(neuve, { force: true });
+      noterEtat({ ...etat, regles: empreinte, ...(version ? { version } : {}) });
+      return { chemin, refaite: false, archive: null, empreinte, schema: etat.schema ?? null, fiches: [], identique: true };
+    }
     if (existsSync(chemin)) {
       const t0 = performance.now();
-      archive = archiver(dossier, chemin, instant);
+      archive = archiver(dossier, chemin, instant, etat?.version);
       if (archive) evenement?.('archive_base_vivante', { duree_ms: performance.now() - t0, detail: { octets: statSync(archive).size } });
     }
     renameSync(neuve, chemin);
     // la dernière liste non vide des fiches adaptées (R42), datée, survit aux reconstructions qui ne retirent rien et au redémarrage du service
     const retraits = fiches.length ? { le: iso, fiches } : etat?.retraits;
-    ecrireEtat(dossier, { regles: empreinte, schema, refaite_le: iso, ...(retraits ? { retraits } : {}) });
+    ecrireEtat(dossier, {
+      regles: empreinte, ...(logique ? { logique } : {}), reconstruction: VERSION_DE_LA_RECONSTRUCTION, schema, refaite_le: iso, version: version || 'inconnue', ...(retraits ? { retraits } : {}),
+    });
     return { chemin, refaite: true, archive, empreinte, schema, rejeu, fiches };
   } catch (e) {
     rmSync(neuve, { force: true });

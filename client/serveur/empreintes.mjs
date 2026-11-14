@@ -14,7 +14,7 @@
 //
 // Les noms de table et de colonne viennent de la base elle-même (sqlite_master, PRAGMA table_info), vérifiés avant d'être écrits entre guillemets.
 import { createHash } from 'node:crypto';
-import { CLASSES_DE_TABLES, classeDeLaTable } from '../src/lib/tables-de-la-base.mjs';
+import { CLASSES_DE_TABLES, OMBRES_DE_RECHERCHE, classeDeLaTable } from '../src/lib/tables-de-la-base.mjs';
 
 const IDENTIFIANT = /^[A-Za-z0-9_]+$/;
 const FORMAT = 'maverick-contenu/1';
@@ -91,4 +91,29 @@ export function empreinteGlobale(tables) {
   const hachage = createHash('sha256').update(`${FORMAT}\n`);
   for (const nom of Object.keys(tables).sort()) hachage.update(`${nom}:${tables[nom].empreinte}\n`);
   return hachage.digest('hex');
+}
+
+/**
+ * L'empreinte LOGIQUE d'une base de règles : tout ce que ce fichier apporte à la base vivante (serveur/base-vivante.mjs#preparerBaseVivante), sans ses octets.
+ * Elle couvre le schéma complet (le SQL de chaque table, index et vue de sqlite_master — les tables de fiches comprises : une colonne de plus à `personnage` doit
+ * faire refaire la base), `user_version`, et les lignes de TOUTES les tables hors `exclues` : contenu, notes, historique et tables calculées (liens, recherche plein
+ * texte lue par ses colonnes ; un lien périmé doit faire refaire la base). Les tables d'ombre du plein texte et les tables internes de SQLite n'y entrent pas
+ * (elles ne sont que la forme physique de l'index). Même calcul de chaque table que les empreintes du contenu : indépendant de l'ordre des lignes.
+ * @param {string[]} [exclues] les tables dont les lignes ne comptent pas (les tables de la base vivante : TABLES_VIVANTES, vides dans les règles)
+ * @returns {{ empreinte: string, tables: number }}
+ */
+export function empreinteLogique(db, { exclues = [], schema = 'main' } = {}) {
+  const ignoree = (nom) => /^sqlite_/.test(nom) || OMBRES_DE_RECHERCHE.test(nom);
+  const hachage = createHash('sha256').update('maverick-logique/1\n');
+  const objets = db.prepare(`SELECT type, name, tbl_name, sql FROM ${identifiant(schema)}.sqlite_master WHERE sql IS NOT NULL ORDER BY type, name`).all()
+    .filter((o) => !ignoree(o.name) && !ignoree(o.tbl_name));
+  for (const o of objets) hachage.update(`${o.type}|${o.name}|${o.tbl_name}|${o.sql}\n`);
+  hachage.update(`user_version=${db.prepare(`PRAGMA ${identifiant(schema)}.user_version`).get().user_version}\n`);
+  let tables = 0;
+  for (const { nom } of tablesDeLaBase(db, schema)) {
+    if (ignoree(nom) || exclues.includes(nom)) continue;
+    hachage.update(`${nom}:${empreinteDeLaTable(db, nom, schema).empreinte}\n`);
+    tables += 1;
+  }
+  return { empreinte: hachage.digest('hex'), tables };
 }
