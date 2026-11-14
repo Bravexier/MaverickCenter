@@ -142,13 +142,13 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
   (`#467fda`) depuis que son texte suit la règle du site (le texte foncé, 4,3:1 sur la couleur du classeur) et non plus le noir du classeur ; sa
   couleur de référence reste dans `lib/materiaux-couleurs.mjs`.
 - **Où la feuille est émise** : les familles que beaucoup de pages posent (`FAMILLES_DE_CHAQUE_PAGE` : magies, attributs, caractéristiques,
-  affinités, cases de tableau) et les seconds rangs des magies sur chaque page, par `layouts/Base.astro` (`cssDeLaPalette` : environ 3,7 ko, 45 classes
+  affinités, cases de tableau, types de dégâts : l'icône d'un mot-clé, dans ses bulles) et les seconds rangs des magies sur chaque page, par `layouts/Base.astro` (`cssDeLaPalette` : environ 3,9 ko, 48 classes
   et 16 de second rang ; version portable comprise ; plafond testé : 4 ko, que toutes les familles sur chaque page dépasseraient) ; les familles d'une zone
   (`FAMILLES_DES_ZONES` : postures, alignements, catégories de classe, races, paliers de résistance, Mode Hyper, neutre, matériaux, armes de départ,
-  types d'armure, poids des boucliers, types de dégâts, niveaux des accessoires, parties du guide) et les seconds rangs des caractéristiques par le composant des seules pages qui les posent (`cssDesFamilles`,
+  types d'armure, poids des boucliers, niveaux des accessoires, parties du guide) et les seconds rangs des caractéristiques par le composant des seules pages qui les posent (`cssDesFamilles`,
   `cssDesSecondsRangs` : le bloc `postures` du guide, `pages/fiche/index.astro` (`FAMILLES_DE_LA_FICHE` : celles d'une zone, sans les matériaux, les
-  armes de départ, les types d'armure ni les niveaux des accessoires), l'onglet Armes (seconds rangs des caractéristiques, `materiau`, `arme`, `degats`), `ArmuresPage.astro` (`armure`,
-  `poids`, `degats`), `AccessoiresPage.astro` (`niveau`), `ComposantsPage.astro` (`materiau`), `ClassesPastilles.astro` et `ClassePage.astro` (`classe`),
+  armes de départ, les types d'armure ni les niveaux des accessoires), l'onglet Armes (seconds rangs des caractéristiques, `materiau`, `arme`), `ArmuresPage.astro` (`armure`,
+  `poids`), `AccessoiresPage.astro` (`niveau`), `ComposantsPage.astro` (`materiau`), `ClassesPastilles.astro` et `ClassePage.astro` (`classe`),
   `RacesPastilles.astro` et `RacePage.astro` (`race`), `PageDuGuide.astro` (une page de Découvrir) et `pages/index.astro` (l'accueil) (`partie` ; la fiche
   l'émet avec ses autres familles), et le mode modification avec la page d'une race ou d'une classe créée,
   `scripts/edition/nouvelles.mjs`, car la page 404 où il la dessine ne les a pas), comme les combinaisons des potions (`cssDesPotions`) et les couleurs
@@ -1832,8 +1832,10 @@ seul (R233 (9)), dans le titre de sa bulle, sa pastille de `/recherche/` (« Arm
 (`lib/mots-cles-balises.mjs#htmlDuNomDuMotCle`, `htmlDeLaPastille`, `htmlDeLaBulle`) ; sa bulle porte ensuite « Aussi appelé : … » quand il a des
 synonymes (`{{AM}}` montre « AM », sa bulle dit « Armure magique », puis « Aussi appelé : AM »). Deux **homonymes** (R232 (4) : la race et la classe
 raciale « Orios ») s'affichent sous le même libellé sur toutes les pages, plus de suffixe « (classe) » (R191 remplacée) ; leurs clés les distinguent.
-**L'icône** d'un mot-clé (`mot_cle.icone`, migration `0116`, décision R235 : une icône de la liste du site, `lib/icones.mjs`, pour l'instant celles des
-trois monnaies, que le RF, le RO et la PP ont reçues) suit son nom partout où il apparaît : dans le texte d'une balise (après le texte affiché, sauf s'il
+**L'icône** d'un mot-clé (`mot_cle.icone`, migration `0116`, décision R235 : une icône de la liste du site, `lib/icones.mjs`, celles des
+trois monnaies, que le RF, le RO et la PP ont reçues, puis celles des types de dégâts physiques — épée, flèche, marteau — et des quinze magies : le dessin prend la
+couleur de sa classe de la palette (`couleur-magie-<id>`, `couleur-degats-<id>`, les couleurs des pastilles de type des armes : « Couleurs des armes », 2026-11-14), sur chaque
+page (`FAMILLES_DE_CHAQUE_PAGE`) ; le propriétaire les attribue lui-même sur le site de dev, « Liste seulement » ; dessins : `styles/global/icones.css`) suit son nom partout où il apparaît : dans le texte d'une balise (après le texte affiché, sauf s'il
 montre déjà ce dessin : `{{ricken-dor|RO}}` est l'icône elle-même), le nom du mode complet, le titre de sa bulle, sa pastille et sa vue de
 `/recherche/` (« Libellé + icône », R63 ; `lib/mots-cles-balises.mjs#htmlDeLIcone`) ; l'affichage passe par `icone`, plus par `monnaie_id`. Dans le
 tableau, l'icône a sa colonne, et le nom est le libellé seul. L'abréviation de sa propre monnaie n'est jamais un « Aussi appelé » (R234 (8), R235 (4)). Le texte affiché d'une balise et la définition du mode complet ont aussi leurs monnaies en icônes (R63,

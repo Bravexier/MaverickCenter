@@ -253,7 +253,7 @@ test('boucliers : la forme et, sous elle, les améliorations, la matière à cô
     assert.ok(l.includes(`<span class="ppoids ${classeDuPoids(q.id)}" data-poids="${q.id}" data-force="${q.force_min}" title="Requiert ${q.force_min} Force minimum">${q.nom}</span>`), x.id);
   }
   // les couleurs des types et des poids : leurs classes, dont l'onglet émet la feuille ; plus de --t en style
-  assert.ok(html.includes(`<style>${cssDesFamilles(['armure', 'poids', 'degats'])}</style>`), 'la feuille des types, des poids et des types de dégâts');
+  assert.ok(html.includes(`<style>${cssDesFamilles(['armure', 'poids'])}</style>`), 'la feuille des types et des poids (les types de dégâts : la feuille de chaque page)');
   assert.doesNotMatch(main, /style="[^"]*--t\b/, 'plus de --t en style');
 
   // à côté : la fiche ; la liste des poids reste (mode modification, sans JavaScript), ses champs modifiables, mais plus en lecture (styles/armures/armures.css)

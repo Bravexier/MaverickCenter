@@ -115,8 +115,8 @@ test('vingt et une familles, chacune lue dans le module de sa règle : magies, a
   }
   // chaque famille est émise sur chaque page ou par les pages de sa zone, jamais les deux
   assert.deepEqual([...FAMILLES_DE_CHAQUE_PAGE, ...FAMILLES_DES_ZONES].sort(), Object.keys(FAMILLES_DE_LA_PALETTE).sort());
-  assert.deepEqual(FAMILLES_DE_CHAQUE_PAGE, ['magie', 'attribut', 'caracteristique', 'affinite', 'case']);
-  assert.deepEqual(FAMILLES_DES_ZONES, ['posture', 'alignement', 'classe', 'race', 'palier', 'mode', 'neutre', 'materiau', 'arme', 'armure', 'poids', 'degats', 'niveau', 'partie', 'genre', 'don']);
+  assert.deepEqual(FAMILLES_DE_CHAQUE_PAGE, ['magie', 'attribut', 'caracteristique', 'affinite', 'case', 'degats']);
+  assert.deepEqual(FAMILLES_DES_ZONES, ['posture', 'alignement', 'classe', 'race', 'palier', 'mode', 'neutre', 'materiau', 'arme', 'armure', 'poids', 'niveau', 'partie', 'genre', 'don']);
   // la fiche : les familles d'une zone qu'elle pose, sans celles des onglets de l'équipement hors le poids du bouclier ; plus les parties du guide (ses
   // quatre zones)
   assert.deepEqual(FAMILLES_DE_LA_FICHE, ['posture', 'alignement', 'classe', 'race', 'palier', 'mode', 'neutre', 'poids', 'partie']);
@@ -296,7 +296,7 @@ test('les combinaisons des potions : la base (une classe du site) et le niveau ;
 test('aucune couleur écrite dans le module de la palette ; la palette posée sur chaque page par layouts/Base.astro, d’un poids borné ; les familles d’une zone émises par leurs pages', () => {
   assert.deepEqual(lire('src/lib/palette-css.mjs').match(HEX) ?? [], []);
   assert.match(lire('src/layouts/Base.astro'), /<style is:inline set:html=\{cssDeLaPalette\(\)\}><\/style>/);
-  // le poids ajouté à chaque page : environ 3,7 ko aujourd'hui (45 classes, dont les 7 des cases de tableau, et les 16 de second rang des magies) ; au-delà de 4 ko, revoir la manière de
+  // le poids ajouté à chaque page : environ 3,9 ko aujourd'hui (48 classes, dont les 7 des cases de tableau et les 3 des types de dégâts, et les 16 de second rang des magies) ; au-delà de 4 ko, revoir la manière de
   // l'émettre. Toutes les familles et tous les seconds rangs sur chaque page le dépasseraient : c'est pourquoi les familles d'une zone n'y sont pas.
   assert.ok(cssDeLaPalette().length < 4000, `${cssDeLaPalette().length} octets`);
   const tout = cssDesFamilles(Object.keys(FAMILLES_DE_LA_PALETTE)) + cssDesSecondsRangs('magie') + cssDesSecondsRangs('caracteristique');
@@ -320,8 +320,8 @@ test('aucune couleur écrite dans le module de la palette ; la palette posée su
   for (const famille of ['classe', 'race', 'palier', 'mode', 'neutre']) assert.ok(FAMILLES_DES_ZONES.includes(famille), `${famille} : une famille d’une zone`);
   // les matériaux, le bleu des armes de départ (l'onglet Armes ; les matériaux aussi sur la page Composants), les types d'armure et les poids des
   // boucliers (les onglets Armures et Boucliers ; le poids aussi sur la fiche)
-  assert.match(lire('src/components/armes/ArmesPage.astro'), /const couleurs = cssDesFamilles\(\['materiau', 'arme', 'degats'\]\);[^]*<style is:inline set:html=\{couleurs\}><\/style>/);
-  assert.match(lire('src/components/armures/ArmuresPage.astro'), /const couleurs = cssDesFamilles\(\['armure', 'poids', 'degats'\]\);[^]*<style is:inline set:html=\{couleurs\}><\/style>/);
+  assert.match(lire('src/components/armes/ArmesPage.astro'), /const couleurs = cssDesFamilles\(\['materiau', 'arme'\]\);[^]*<style is:inline set:html=\{couleurs\}><\/style>/);
+  assert.match(lire('src/components/armures/ArmuresPage.astro'), /const couleurs = cssDesFamilles\(\['armure', 'poids'\]\);[^]*<style is:inline set:html=\{couleurs\}><\/style>/);
   assert.match(lire('src/components/composants/ComposantsPage.astro'), /const couleurs = cssDesFamilles\(\['materiau'\]\);[^]*<style is:inline set:html=\{couleurs\}><\/style>/);
   // les niveaux des accessoires : l'onglet Accessoires seul
   assert.match(lire('src/components/accessoires/AccessoiresPage.astro'), /const couleurs = cssDesFamilles\(\['niveau'\]\);[^]*<style is:inline set:html=\{couleurs\}><\/style>/);
@@ -368,8 +368,10 @@ test('la palette dans les pages construites', construit ? {} : { skip: 'site non
   for (const rel of ['races/index.html', 'races/humain/index.html']) assert.ok(page(rel).includes(`<style>${cssDesFamilles(['race'])}</style>`), `races : ${rel}`);
   for (const rel of ['index.html', 'magies/index.html']) assert.ok(!/\.couleur-(?:classe|race|palier|mode|neutre)-/.test(page(rel)), `${rel} : pas de ces familles`);
   // les matériaux, les armes de départ, les types d'armure et les poids : les pages Armes, Armures et Boucliers, les composants (matériaux), la fiche (poids)
-  assert.ok(page('ressources/armes/index.html').includes(`<style>${cssDesFamilles(['materiau', 'arme', 'degats'])}</style>`), 'la page Armes');
-  for (const rel of ['ressources/armures/index.html', 'ressources/bouclier/index.html']) assert.ok(page(rel).includes(`<style>${cssDesFamilles(['armure', 'poids', 'degats'])}</style>`), rel);
+  assert.ok(page('ressources/armes/index.html').includes(`<style>${cssDesFamilles(['materiau', 'arme'])}</style>`), 'la page Armes');
+  // les types de dégâts sont dans la feuille de chaque page (icône d'un mot-clé) : la page Armes ne les émet pas une seconde fois
+  for (const c of couleursDeLaPalette(['degats'])) assert.equal(page('ressources/armes/index.html').split(`.${c.classe}{`).length - 1, 1, `${c.classe} : une seule règle`);
+  for (const rel of ['ressources/armures/index.html', 'ressources/bouclier/index.html']) assert.ok(page(rel).includes(`<style>${cssDesFamilles(['armure', 'poids'])}</style>`), rel);
   assert.ok(page('ressources/composants/index.html').includes(`<style>${cssDesFamilles(['materiau'])}</style>`), 'les composants');
   assert.ok(!/\.couleur-(?:materiau|arme|armure)-/.test(page('fiche/index.html')), 'la fiche : le poids seulement');
   for (const rel of ['index.html', 'magies/index.html']) assert.ok(!/\.couleur-(?:materiau|arme|armure|poids)-/.test(page(rel)), `${rel} : pas de ces familles`);

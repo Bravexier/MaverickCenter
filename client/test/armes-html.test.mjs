@@ -259,7 +259,7 @@ test('matériaux : toute la ligne dans leur couleur, prix en RO, effets en morce
   assert.ok(!main.includes('<th scope="row" class="materiau__nom" style='), 'plus de couleur sur la seule case du nom');
   assert.doesNotMatch(main, /style="[^"]*--mat\b/, 'plus de --mat en style');
   // l'onglet émet les familles qu'il pose (les matériaux, le bleu des armes de départ, posé sur `.armes`)
-  assert.ok(html.includes(`<style>${cssDesFamilles(['materiau', 'arme', 'degats'])}</style>`), 'la feuille des matériaux, des armes de départ et des types de dégâts');
+  assert.ok(html.includes(`<style>${cssDesFamilles(['materiau', 'arme'])}</style>`), 'la feuille des matériaux et des armes de départ (les types de dégâts : la feuille de chaque page)');
   assert.equal(CLASSE_DES_ARMES_DE_DEPART, 'couleur-arme-depart');
   // les effets sur une ligne (styles/armes/armes.css) : le bonus aux dégâts, puis les autres effets, en morceaux frères ; le mot « Dégâts » reste pour
   // les lecteurs d'écran (les effets se modifient sur la page Composants, R62 : le test lit ceux de la base)

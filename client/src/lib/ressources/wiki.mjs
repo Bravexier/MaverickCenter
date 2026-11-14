@@ -191,8 +191,8 @@ export const RESSOURCES = [
       'une rubrique ou une route fixe (400 sinon ; l’ancre et la requête ne sont pas vérifiées) ; une balise du mot-clé mène à cette adresse, et un ' +
       'lien `[[…]]` ou `[texte](/…)` saisi dans un texte devient la balise du seul mot-clé qui mène à sa page (400 s’il n’y en a aucun ou plusieurs). ' +
       'Une couleur (`couleur`) : « #rrggbb » (minuscules) ou « <famille>:<id> » d’une couleur de la palette du site (« classe:melee », 400 sinon). ' +
-      'Une icône (`icone`, migration 0116, décision R235) : NULL, ou « <famille>:<id> » d’une icône de la liste du site (pour l’instant les trois ' +
-      'monnaies : « monnaie:rf », « monnaie:ro », « monnaie:pp » ; la liste `icones` de GET /api/edition/listes/ ; 400 sinon, `champ: icone`). ' +
+      'Une icône (`icone`, migration 0116, décision R235) : NULL, ou « <famille>:<id> » d’une icône de la liste du site (les trois ' +
+      'monnaies : « monnaie:rf », « monnaie:ro », « monnaie:pp », puis les types de dégâts « degats:taille » et les magies « magie:feu »… ; la liste `icones` de GET /api/edition/listes/ ; 400 sinon, `champ: icone`). ' +
       'Les trois se modifient pour tout mot-clé non verrouillé ; vidés, NULL. Une fusion garde le lien, la couleur et l’icône de la cible, et lui donne ' +
       'ceux de la source qu’elle n’a pas, sauf à une cible verrouillée, qui garde les siens ; elle lui transmet aussi les synonymes de la source (sauf ' +
       'ceux que R233 (4) refuse) et sa clé, qui mène désormais à la cible (R233 (11)) ; une source qui a des synonymes ne se fusionne pas dans une ' +

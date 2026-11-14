@@ -34,7 +34,7 @@
 //     matériau sans couleur dans l'onglet) ; la ligne d'un matériau de l'onglet Armes, sa pastille dans la fiche de l'arme et sur la page Composants ;
 //   - arme : lib/equipement-couleurs.mjs#COULEURS_DES_ARMES (depart : le bleu des armes de départ, sans texte : une nuance et un filet) ;
 //   - degats : lib/equipement-couleurs.mjs#COULEURS_DES_DEGATS (taille, estoc, frappe : les types de dégâts physiques), sans texte : le liseré des
-//     pastilles de type des armes, des résistances et des faiblesses des armures ;
+//     pastilles de type des armes, des résistances et des faiblesses des armures, et le dessin de l'icône `degats:<id>` d'un mot-clé (lib/icones.mjs) ;
 //   - armure : lib/equipement-couleurs.mjs#COULEURS_DES_TYPES (le type d'une armure ou d'une matière : « Léger » → leger), plus `par-defaut`
 //     (COULEUR_SANS_TYPE) ;
 //   - poids : lib/equipement-couleurs.mjs#COULEURS_DES_POIDS (bouclier_poids.id, décision R92), plus `par-defaut` (COULEUR_SANS_TYPE) ; la pastille du
@@ -54,9 +54,10 @@
 // affiché change.
 //
 // Où la feuille est émise (le poids de chaque page) : les familles que beaucoup de pages posent (FAMILLES_DE_CHAQUE_PAGE : magies, attributs,
-// caractéristiques, affinités, cases de tableau : toute page qui rend du Markdown, et l'éditeur en place) et les seconds rangs des magies sont posés sur chaque page par layouts/Base.astro (cssDeLaPalette) ; les familles d'une
+// caractéristiques, affinités, cases de tableau : toute page qui rend du Markdown, et l'éditeur en place ; types de dégâts : l'icône d'un mot-clé, dans ses
+// bulles) et les seconds rangs des magies sont posés sur chaque page par layouts/Base.astro (cssDeLaPalette) ; les familles d'une
 // zone (FAMILLES_DES_ZONES : postures, alignements, catégories de classe, races, paliers, Mode Hyper, neutre, matériaux, armes de départ, types
-// d'armure, poids des boucliers, types de dégâts, niveaux des accessoires, parties du guide) et les seconds rangs des caractéristiques ne le sont que par le composant des
+// d'armure, poids des boucliers, niveaux des accessoires, parties du guide) et les seconds rangs des caractéristiques ne le sont que par le composant des
 // pages qui les posent (cssDesFamilles, cssDesSecondsRangs : le bloc « postures » du guide, la fiche (FAMILLES_DE_LA_FICHE), l'onglet Armes, les onglets
 // Armures et Boucliers, l'onglet Accessoires, la page Composants, /classes/ et les pages de classe, /races/ et les pages de race, le mode modification
 // qui dessine une race ou une classe créée, une page de Découvrir, l'accueil), comme les combinaisons des potions
@@ -124,17 +125,19 @@ export const FAMILLES_DE_LA_PALETTE = Object.freeze({
 
 /**
  * Les familles posées sur chaque page (layouts/Base.astro : cssDeLaPalette), celles que beaucoup de pages posent ; `case` : les cases de tableau du
- * Markdown, sur toute page qui en rend (wiki, guide, Codex, chronologie, panneaux de règles, accueil) et dans l'éditeur en place, qui les pose au navigateur.
+ * Markdown, sur toute page qui en rend (wiki, guide, Codex, chronologie, panneaux de règles, accueil) et dans l'éditeur en place, qui les pose au navigateur ;
+ * `degats` : les trois types de dégâts physiques, pour l'icône d'un mot-clé (lib/icones.mjs, `couleur-degats-<id>`), que montrent les bulles du Glossaire de
+ * n'importe quelle page, comme les magies (les pastilles des onglets Armes, Armures et Boucliers la lisent aussi).
  */
-export const FAMILLES_DE_CHAQUE_PAGE = Object.freeze(['magie', 'attribut', 'caracteristique', 'affinite', 'case']);
+export const FAMILLES_DE_CHAQUE_PAGE = Object.freeze(['magie', 'attribut', 'caracteristique', 'affinite', 'case', 'degats']);
 /**
  * Les familles d'une zone, émises par le composant des pages qui les posent (cssDesFamilles) : `posture` (le bloc « postures » du guide, la fiche),
  * `alignement`, `palier`, `mode`, `neutre` (la fiche), `classe` (/classes/, les pages de classe, la fiche, la page d'une classe créée sur le site de
  * dev), `race` (/races/, les pages de race, la fiche, la page d'une race créée), `materiau` (l'onglet Armes, la page Composants), `arme` (l'onglet
- * Armes), `armure` (les onglets Armures et Boucliers), `poids` (l'onglet Boucliers, la fiche), `degats` (les onglets Armes, Armures et Boucliers), `niveau` (l'onglet Accessoires), `partie` (une page de
+ * Armes), `armure` (les onglets Armures et Boucliers), `poids` (l'onglet Boucliers, la fiche), `niveau` (l'onglet Accessoires), `partie` (une page de
  * Découvrir, l'accueil, la fiche), `genre` (les pages des magies), `don` (les pages de classe).
  */
-export const FAMILLES_DES_ZONES = Object.freeze(['posture', 'alignement', 'classe', 'race', 'palier', 'mode', 'neutre', 'materiau', 'arme', 'armure', 'poids', 'degats', 'niveau', 'partie', 'genre', 'don']);
+export const FAMILLES_DES_ZONES = Object.freeze(['posture', 'alignement', 'classe', 'race', 'palier', 'mode', 'neutre', 'materiau', 'arme', 'armure', 'poids', 'niveau', 'partie', 'genre', 'don']);
 
 /**
  * Les familles d'une zone que la fiche de personnage pose (pages/fiche/index.astro) : toutes, sauf celles des onglets de l'équipement hors le poids (ni

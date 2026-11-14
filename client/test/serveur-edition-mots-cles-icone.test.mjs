@@ -1,5 +1,5 @@
-// L'icône d'un mot-clé (mot_cle.icone, migration 0116 ; décision R235) : la seule liste des icônes du site (lib/icones.mjs#ICONES, les monnaies du jeu
-// pour l'instant), que lisent db:check, le service et le menu du site de dev ; le service la refuse hors de la liste (400, `champ: 'icone'`), la vide
+// L'icône d'un mot-clé (mot_cle.icone, migration 0116 ; décision R235) : la seule liste des icônes du site (lib/icones.mjs#ICONES : les monnaies du jeu,
+// puis les types de dégâts et les magies, test/icones-degats-et-magies.test.mjs), que lisent db:check, le service et le menu du site de dev ; le service la refuse hors de la liste (400, `champ: 'icone'`), la vide
 // en NULL, la laisse modifiable sur un mot-clé verrouillé (seule sa suppression est bloquée), la rend avec le vocabulaire (GET /api/edition/mots-cles/ : `icone` et la liste `icones`) et dans les
 // listes de l'édition ; une fusion la donne à une cible qui n'en a pas. Mots-clés d'essai (test/aide-mots-cles.mjs) ; un mot-clé verrouillé choisi par
 // requête, jamais par son texte.
@@ -30,12 +30,14 @@ function base() {
 const ok = (r) => assert.equal(r.statut, 200, JSON.stringify(r.corps));
 const modifier = (id, icone_) => [{ op: 'modifier', table: 'mot_cle', cle: { id }, valeurs: { icone: icone_ } }];
 
-test('R235 : une seule liste des icônes (une par monnaie du jeu, « monnaie:<id> », son dessin piece--<id>) ; la règle de db:check et du service', () => {
-  assert.deepEqual(ICONES.map((i) => i.valeur).sort(), Object.values(MONNAIES_DU_JEU).map((m) => `monnaie:${m.id}`).sort());
+test('R235 : une seule liste des icônes (une par monnaie du jeu, « monnaie:<id> », son dessin piece--<id>, puis les dégâts et les magies) ; la règle de db:check et du service', () => {
+  const monnaies = ICONES.filter((i) => i.famille === 'monnaie');
+  assert.deepEqual(monnaies.map((i) => i.valeur).sort(), Object.values(MONNAIES_DU_JEU).map((m) => `monnaie:${m.id}`).sort());
   for (const i of ICONES) {
     assert.equal(icone(i.valeur), i);
     assert.equal(fauteDeLIcone(i.valeur), null);
-    assert.match(i.classe, new RegExp(`\\bpiece--${i.id}\\b`));
+    if (i.famille === 'monnaie') assert.match(i.classe, new RegExp(`\\bpiece--${i.id}\\b`));
+    else assert.match(i.classe, new RegExp(`\\bicone--${i.famille}-${i.id}\\b`));
   }
   assert.equal(fauteDeLIcone(null), null, 'aucune icône');
   for (const x of ['monnaie:xx', 'classe:melee', 'monnaie', '', 3]) assert.equal(typeof fauteDeLIcone(x), 'string', String(x));

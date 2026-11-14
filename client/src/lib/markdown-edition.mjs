@@ -1,6 +1,6 @@
 // Éditeur visuel du guide (site de dev, src/scripts/edition/guide.mjs) : le texte d'une page se modifie en place (texte, liens, mise en page, tableaux
 // et couleur de leurs cases : demande du propriétaire), puis cet HTML est réécrit en Markdown, le format des pages (page.corps_md).
-// Ici, sans dépendance navigateur ni Astro (dépendances : lib/mots-cles-balises.mjs, lib/ancres-figees.mjs) : un arbre simple { type: 'texte', valeur }
+// Ici, sans dépendance navigateur ni Astro (dépendances : lib/mots-cles-balises.mjs, lib/ancres-figees.mjs, lib/icones.mjs) : un arbre simple { type: 'texte', valeur }
 // | { type: 'element', nom, attributs, enfants } (le script le tire du DOM, les tests d'un HTML analysé) → Markdown, dans les écritures du site : liens [[cible|texte]] (attribut
 // data-cible posé par lib/wikilinks.mjs), tableaux GFM, couleur de case « {couleur:vert} » en tête de case (lib/markdown-couleurs.mjs), mots-clés du
 // glossaire (lib/mots-cles-balises.mjs : un `strong.mot-cle` (ou `a.mot-cle`, un mot-clé à adresse) redevient sa balise avec le texte qu'il montre, « {{id|texte}} » — le service la ramène à
@@ -8,6 +8,7 @@
 // « | » échappé dans une case de tableau), ancre figée d'un intertitre « {#ancre} » (`data-ancre-figee`, lib/ancres-figees.mjs).
 // test/markdown-edition.test.mjs rejoue l'aller-retour Markdown → HTML → Markdown → HTML sur toutes les pages du guide : le rendu ne change pas.
 import { ANCRE_FIGEE } from './ancres-figees.mjs';
+import { ICONES } from './icones.mjs';
 import { echapperDebutDeLigne, lireUneBalise } from './mots-cles-balises.mjs';
 
 /**
@@ -469,6 +470,13 @@ function attributsSurs(n, nom) {
       garder('role', 'img');
       if (attribut(n, 'aria-label')) garder('aria-label', attribut(n, 'aria-label'));
       garder('data-monnaie', attribut(n, 'data-monnaie'));
+    }
+    // une autre icône du site (lib/icones.mjs : dégâts, magies ; un mot-clé la porte) : ses classes et son nom, recalculés d'après la liste, jamais reçus
+    const autre = nom === 'span' ? ICONES.find((i) => i.famille !== 'monnaie' && i.classe.split(' ').every((c) => classes(n).includes(c))) : null;
+    if (autre) {
+      garder('class', autre.classe);
+      garder('role', 'img');
+      garder('aria-label', autre.libelle);
     }
   }
   if (nom === 'a' && ADRESSE_SURE.test(attribut(n, 'href') ?? '')) garder('href', attribut(n, 'href'));
