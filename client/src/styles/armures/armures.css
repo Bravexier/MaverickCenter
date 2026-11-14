@@ -131,7 +131,6 @@ th[aria-sort]:not([aria-sort="none"]) .ptri { color: var(--pro); }
 .pdef__ap { background: color-mix(in srgb, var(--defense-ap) 16%, var(--surface)); border: 1px solid color-mix(in srgb, var(--defense-ap) 40%, var(--border)); }
 .pdef__am { background: color-mix(in srgb, var(--defense-am) 14%, var(--surface)); border: 1px solid color-mix(in srgb, var(--defense-am) 40%, var(--border)); }
 .pdef__aucune { color: var(--muted); }
-.pdgt--frappe { border-color: color-mix(in srgb, var(--degats-frappe) 45%, var(--border)); }
 .psol__uni { font-size: var(--fs-xs); color: var(--muted); cursor: help; }
 
 /* Fiche de l'armure ou du bouclier choisi (remplie par src/scripts/armures.mjs) : un seul cadre, son bouton Fermer en haut à droite, réduit à son

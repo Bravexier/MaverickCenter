@@ -11,7 +11,7 @@ import { ouvrirBase } from '../src/lib/donnees.mjs';
 import {
   CLASSE_DES_ARMES_DE_DEPART, CLASSE_NEUTRE, FAMILLES_DE_CHAQUE_PAGE, FAMILLES_DE_LA_FICHE, FAMILLES_SANS_TEXTE, FAMILLES_DE_LA_PALETTE, FAMILLES_DES_ZONES,
   MAGIE_PAR_DEFAUT, PAR_DEFAUT, classeDAffinite, classeDAlignement, classeDeMateriau, classeDuPoids, classeDuTypeDArmure,
-  classeDAttribut, classeDUneClasse, classeDeCaracteristique, classeDeCategorie, classeDeCouleur, classeDeMagie, classeDePalier, classeDePosture,
+  classeDAttribut, classeDUneClasse, classeDeCaracteristique, classeDeCategorie, classeDeCouleur, classeDeDegats, classeDeMagie, classeDePalier, classeDePosture,
   classeDeNiveau, classeDePartie, classeDePotion, cssDesParties, classeDeRace, classeDeSecondeCaracteristique, classeDeSecondeMagie, classeDuModeHyper, classesDeDeuxCaracteristiques,
   classesDeDeuxMagies, classesDeLaPalette, couleursDeLaPalette, cssDeLaPalette, cssDesEvenements, cssDesFamilles, cssDesPotions, cssDesSecondsRangs, idDeCouleur,
   secondsRangs, secondsRangsDesMagies, classeDEvenement, classeDeGenre, classeDeTypeDeDon, classeDeCase,
@@ -33,7 +33,8 @@ import { CLASS_COLORS, CLASS_GROUPS, classColor } from '../src/lib/class-groups.
 import { RACE_COLORS } from '../src/lib/race-kinds.mjs';
 import { COULEURS_DES_PALIERS, COULEURS_DU_MODE_HYPER } from '../src/lib/fiche-couleurs.mjs';
 import { COULEURS_DES_MATERIAUX } from '../src/lib/materiaux-couleurs.mjs';
-import { COULEUR_SANS_TYPE, COULEURS_DES_ARMES, COULEURS_DES_POIDS, COULEURS_DES_TYPES } from '../src/lib/equipement-couleurs.mjs';
+import { COULEUR_SANS_TYPE, COULEURS_DES_ARMES, COULEURS_DES_DEGATS, COULEURS_DES_POIDS, COULEURS_DES_TYPES } from '../src/lib/equipement-couleurs.mjs';
+import { LIBELLES_DES_DEGATS } from '../src/lib/arme-champs.mjs';
 import { COULEURS_DES_NIVEAUX } from '../src/lib/accessoires-couleurs.mjs';
 import { COULEURS_DES_PARTIES } from '../src/lib/parties-couleurs.mjs';
 import { DECOUVRIR, PAGES_DE_LA_CREATION, PARTIES, partieDeLaPage, RUBRIQUES_SOUS_LA_PAGE } from '../src/lib/livres.mjs';
@@ -47,9 +48,9 @@ const HEX = /(?<!&)#[0-9a-f]{6}\b|(?<!&)#[0-9a-f]{3}\b/gi;
 const regles = (css) => new Map([...css.matchAll(/\.([a-z0-9-]+)\{([^}]*)\}/g)].map(([, classe, corps]) =>
   [classe, Object.fromEntries(corps.split(';').filter(Boolean).map((d) => d.split(':')))]));
 
-test('vingt familles, chacune lue dans le module de sa règle : magies, attributs, caractéristiques, affinités sans autre règle, postures, alignements, catégories de classe, races, paliers de résistance, Mode Hyper, neutre, matériaux, armes de départ, types d’armure, poids des boucliers, niveaux des accessoires, parties du guide, genres de sort, types de don, cases de tableau (et la couleur par défaut de sept d’entre elles)', () => {
+test('vingt et une familles, chacune lue dans le module de sa règle : magies, attributs, caractéristiques, affinités sans autre règle, postures, alignements, catégories de classe, races, paliers de résistance, Mode Hyper, neutre, matériaux, armes de départ, types d’armure, poids des boucliers, types de dégâts, niveaux des accessoires, parties du guide, genres de sort, types de don, cases de tableau (et la couleur par défaut de sept d’entre elles)', () => {
   assert.deepEqual(Object.keys(FAMILLES_DE_LA_PALETTE), ['magie', 'attribut', 'caracteristique', 'affinite', 'posture', 'alignement', 'classe', 'race', 'palier', 'mode', 'neutre',
-    'materiau', 'arme', 'armure', 'poids', 'niveau', 'partie', 'genre', 'don', 'case']);
+    'materiau', 'arme', 'armure', 'poids', 'degats', 'niveau', 'partie', 'genre', 'don', 'case']);
   assert.equal(MAGIE_PAR_DEFAUT, PAR_DEFAUT);
   assert.deepEqual(FAMILLES_DE_LA_PALETTE.magie, { ...COULEURS_DES_MAGIES, [PAR_DEFAUT]: COULEUR_PAR_DEFAUT });
   assert.equal(FAMILLES_DE_LA_PALETTE.attribut, COULEURS_DES_ATTRIBUTS);
@@ -73,6 +74,11 @@ test('vingt familles, chacune lue dans le module de sa règle : magies, attribut
   assert.deepEqual(FAMILLES_DE_LA_PALETTE.armure, { ...COULEURS_DES_TYPES, [PAR_DEFAUT]: COULEUR_SANS_TYPE });
   assert.deepEqual(FAMILLES_DE_LA_PALETTE.poids, { ...COULEURS_DES_POIDS, [PAR_DEFAUT]: COULEUR_SANS_TYPE });
   assert.deepEqual(Object.keys(COULEURS_DES_ARMES), ['depart'], 'le bleu des armes de départ');
+  // les types de dégâts physiques : les clés sont celles de LIBELLES_DES_DEGATS (arme-champs.mjs), la valeur reste dans le module de la règle
+  assert.equal(FAMILLES_DE_LA_PALETTE.degats, COULEURS_DES_DEGATS);
+  assert.deepEqual(Object.keys(COULEURS_DES_DEGATS), Object.keys(LIBELLES_DES_DEGATS));
+  assert.deepEqual(Object.keys(COULEURS_DES_DEGATS).map(classeDeDegats), ['couleur-degats-taille', 'couleur-degats-estoc', 'couleur-degats-frappe']);
+  assert.equal(classeDeDegats('inconnu'), null, 'sans classe par défaut : un type inconnu n’a aucune couleur');
   // lot des accessoires : les couleurs des niveaux (celles de l'onglet du classeur) restent dans leur module, une famille à elles même quand une valeur
   // est celle d'un type d'armure ou d'une magie (« Garder séparées ») ; pas de `par-defaut` (un niveau absent ne porte aucune couleur)
   assert.equal(FAMILLES_DE_LA_PALETTE.niveau, COULEURS_DES_NIVEAUX);
@@ -110,7 +116,7 @@ test('vingt familles, chacune lue dans le module de sa règle : magies, attribut
   // chaque famille est émise sur chaque page ou par les pages de sa zone, jamais les deux
   assert.deepEqual([...FAMILLES_DE_CHAQUE_PAGE, ...FAMILLES_DES_ZONES].sort(), Object.keys(FAMILLES_DE_LA_PALETTE).sort());
   assert.deepEqual(FAMILLES_DE_CHAQUE_PAGE, ['magie', 'attribut', 'caracteristique', 'affinite', 'case']);
-  assert.deepEqual(FAMILLES_DES_ZONES, ['posture', 'alignement', 'classe', 'race', 'palier', 'mode', 'neutre', 'materiau', 'arme', 'armure', 'poids', 'niveau', 'partie', 'genre', 'don']);
+  assert.deepEqual(FAMILLES_DES_ZONES, ['posture', 'alignement', 'classe', 'race', 'palier', 'mode', 'neutre', 'materiau', 'arme', 'armure', 'poids', 'degats', 'niveau', 'partie', 'genre', 'don']);
   // la fiche : les familles d'une zone qu'elle pose, sans celles des onglets de l'équipement hors le poids du bouclier ; plus les parties du guide (ses
   // quatre zones)
   assert.deepEqual(FAMILLES_DE_LA_FICHE, ['posture', 'alignement', 'classe', 'race', 'palier', 'mode', 'neutre', 'poids', 'partie']);
@@ -181,7 +187,7 @@ test('le nom d’une classe : « couleur-<famille>-<id> », l’id = la clé du 
   const classes = couleursDeLaPalette().map((c) => c.classe);
   assert.equal(classes.length, Object.values(FAMILLES_DE_LA_PALETTE).reduce((n, f) => n + Object.keys(f).length, 0));
   assert.equal(new Set(classes).size, classes.length, 'une classe par couleur');
-  for (const c of classes) assert.match(c, /^couleur-(?:magie|attribut|caracteristique|affinite|posture|alignement|classe|race|palier|mode|neutre|materiau|arme|armure|poids|niveau|partie|genre|don|case)-[a-z0-9]+(?:-[a-z0-9]+)*$/);
+  for (const c of classes) assert.match(c, /^couleur-(?:magie|attribut|caracteristique|affinite|posture|alignement|classe|race|palier|mode|neutre|materiau|arme|armure|poids|degats|niveau|partie|genre|don|case)-[a-z0-9]+(?:-[a-z0-9]+)*$/);
 });
 
 test('pas de recopie : une affinité qui est un attribut ou une magie garde la classe de cet attribut ou de cette magie ; Anti et Démon n’en ont pas', () => {
@@ -214,7 +220,7 @@ test('la valeur de chaque classe est celle de sa règle (rendue lisible), et son
   assert.equal(COULEURS_DES_MATERIAUX.titane, '#3c78d8', 'la couleur de référence reste dans son module');
   // une famille dont la couleur ne porte pas de texte (le trait d'un palier de résistance ; le bleu des armes de départ, une nuance et un filet) n'est
   // pas corrigée : le seuil de 4,5:1 vaut pour un texte ; la grande vulnérabilité garde #e53935 (4,4:1 au mieux), les armes de départ #3c78d8
-  assert.deepEqual(FAMILLES_SANS_TEXTE, ['palier', 'arme', 'genre', 'don', 'case']);
+  assert.deepEqual(FAMILLES_SANS_TEXTE, ['palier', 'arme', 'degats', 'genre', 'don', 'case']);
   assert.equal(couleursDeLaPalette(['arme']).find((c) => c.cle === 'depart').fond, '#3c78d8');
   assert.equal(couleursDeLaPalette(['palier']).find((c) => c.cle === 'grande_vulnerabilite').fond, '#e53935');
   assert.ok(contraste('#e53935', texteSurCouleur('#e53935')) < CONTRASTE_MINIMAL, 'elle serait corrigée si elle portait un texte');
@@ -314,8 +320,8 @@ test('aucune couleur écrite dans le module de la palette ; la palette posée su
   for (const famille of ['classe', 'race', 'palier', 'mode', 'neutre']) assert.ok(FAMILLES_DES_ZONES.includes(famille), `${famille} : une famille d’une zone`);
   // les matériaux, le bleu des armes de départ (l'onglet Armes ; les matériaux aussi sur la page Composants), les types d'armure et les poids des
   // boucliers (les onglets Armures et Boucliers ; le poids aussi sur la fiche)
-  assert.match(lire('src/components/armes/ArmesPage.astro'), /const couleurs = cssDesFamilles\(\['materiau', 'arme'\]\);[^]*<style is:inline set:html=\{couleurs\}><\/style>/);
-  assert.match(lire('src/components/armures/ArmuresPage.astro'), /const couleurs = cssDesFamilles\(\['armure', 'poids'\]\);[^]*<style is:inline set:html=\{couleurs\}><\/style>/);
+  assert.match(lire('src/components/armes/ArmesPage.astro'), /const couleurs = cssDesFamilles\(\['materiau', 'arme', 'degats'\]\);[^]*<style is:inline set:html=\{couleurs\}><\/style>/);
+  assert.match(lire('src/components/armures/ArmuresPage.astro'), /const couleurs = cssDesFamilles\(\['armure', 'poids', 'degats'\]\);[^]*<style is:inline set:html=\{couleurs\}><\/style>/);
   assert.match(lire('src/components/composants/ComposantsPage.astro'), /const couleurs = cssDesFamilles\(\['materiau'\]\);[^]*<style is:inline set:html=\{couleurs\}><\/style>/);
   // les niveaux des accessoires : l'onglet Accessoires seul
   assert.match(lire('src/components/accessoires/AccessoiresPage.astro'), /const couleurs = cssDesFamilles\(\['niveau'\]\);[^]*<style is:inline set:html=\{couleurs\}><\/style>/);
@@ -362,8 +368,8 @@ test('la palette dans les pages construites', construit ? {} : { skip: 'site non
   for (const rel of ['races/index.html', 'races/humain/index.html']) assert.ok(page(rel).includes(`<style>${cssDesFamilles(['race'])}</style>`), `races : ${rel}`);
   for (const rel of ['index.html', 'magies/index.html']) assert.ok(!/\.couleur-(?:classe|race|palier|mode|neutre)-/.test(page(rel)), `${rel} : pas de ces familles`);
   // les matériaux, les armes de départ, les types d'armure et les poids : les pages Armes, Armures et Boucliers, les composants (matériaux), la fiche (poids)
-  assert.ok(page('ressources/armes/index.html').includes(`<style>${cssDesFamilles(['materiau', 'arme'])}</style>`), 'la page Armes');
-  for (const rel of ['ressources/armures/index.html', 'ressources/bouclier/index.html']) assert.ok(page(rel).includes(`<style>${cssDesFamilles(['armure', 'poids'])}</style>`), rel);
+  assert.ok(page('ressources/armes/index.html').includes(`<style>${cssDesFamilles(['materiau', 'arme', 'degats'])}</style>`), 'la page Armes');
+  for (const rel of ['ressources/armures/index.html', 'ressources/bouclier/index.html']) assert.ok(page(rel).includes(`<style>${cssDesFamilles(['armure', 'poids', 'degats'])}</style>`), rel);
   assert.ok(page('ressources/composants/index.html').includes(`<style>${cssDesFamilles(['materiau'])}</style>`), 'les composants');
   assert.ok(!/\.couleur-(?:materiau|arme|armure)-/.test(page('fiche/index.html')), 'la fiche : le poids seulement');
   for (const rel of ['index.html', 'magies/index.html']) assert.ok(!/\.couleur-(?:materiau|arme|armure|poids)-/.test(page(rel)), `${rel} : pas de ces familles`);
@@ -720,7 +726,7 @@ const FEUILLES_DES_CLASSES_ET_RACES = /^src\/styles\/(?:classe|race)\//;
  * Mode Hyper de la fiche et du guide) ; et, dans les feuilles des classes et des races, celles de leur catégorie ou de leur nature (`var(--cla…)`,
  * `var(--rac…)`, `var(--hero-1)`, `var(--hero-2)`) ; et partout, celles qui lisent un jeton de ce lot posé sur une bannière ou un aplat foncé
  * (`var(--texte-sur-fonce)`, `var(--fond-banniere)` : un `color: #fff` remis là se verrait), le bleu des armes de départ tiré de sa classe
- * (`var(--depart…)`), les jetons du lot des matériaux, des armes et des armures (`var(--degats-…)`, `var(--defense-ap|am)`, `var(--ombre-fiche)`) et ceux
+ * (`var(--depart…)`), les jetons du lot des matériaux, des armes et des armures (`var(--defense-ap|am)`, `var(--ombre-fiche)`) et ceux
  * du lot des accessoires (`var(--maudit)`, `var(--maudit-texte)`, `var(--maudit-choisi)`, `var(--ombre-encart)`) et de la chronologie (`var(--ombre-evenement)`,
  * `var(--ombre-barre-du-bas)`, `var(--ombre-poignee)`, `var(--ombre-tiroir)`, `var(--voile-tiroir)`) et des parties du guide (`var(--sommaire-couleur)`,
  * `var(--guide…)`, `var(--etape…)`) et des archives et de la mise à jour (`var(--doc-google…)`, `var(--sheet-google…)`, `var(--amelioration…)`,
@@ -735,7 +741,7 @@ const reglesQuiLisentLaPalette = () => readdirSync(new URL('../src/styles/', imp
     .filter(([, , corps]) => /var\(--(?:couleur(?:-texte|-2)?|mag(?:-[a-z]+)?)[,)]/.test(corps)
       || (FEUILLES_DES_VARIABLES_DE_LA_PALETTE.has(`src/styles/${n}`) && /var\(--(?:c|c1|c2|c-texte|texte-sur-c)[,)]/.test(corps))
       || (FEUILLES_DES_CLASSES_ET_RACES.test(`src/styles/${n}`) && /var\(--(?:cla|rac)(?:-[a-z]+)?[,)]|var\(--hero-[12]\)/.test(corps))
-      || /var\(--(?:texte-sur-fonce|fond-banniere|depart(?:-[a-z]+)*|degats-[a-z]+|defense-a[pm]|ombre-fiche|maudit(?:-texte|-choisi)?|ombre-encart|ombre-evenement|ombre-barre-du-bas|ombre-poignee|ombre-tiroir|voile-tiroir|sommaire-couleur|guide(?:-[a-z]+)?|etape(?:-[a-z]+)?|(?:doc|sheet)-google(?:-fond)?|(?:amelioration|affaiblissement)(?:-fond)?|texte-sur-good)[,)]/.test(corps))
+      || /var\(--(?:texte-sur-fonce|fond-banniere|depart(?:-[a-z]+)*|defense-a[pm]|ombre-fiche|maudit(?:-texte|-choisi)?|ombre-encart|ombre-evenement|ombre-barre-du-bas|ombre-poignee|ombre-tiroir|voile-tiroir|sommaire-couleur|guide(?:-[a-z]+)?|etape(?:-[a-z]+)?|(?:doc|sheet)-google(?:-fond)?|(?:amelioration|affaiblissement)(?:-fond)?|texte-sur-good)[,)]/.test(corps))
     .map(([, selecteur, corps]) => ({ fichier: `src/styles/${n}`, selecteur: selecteur.trim().replace(/\s+/g, ' '), corps })));
 test('aucune couleur écrite dans les fichiers des lots faits (ni dans les règles de ces lots des feuilles partagées), hors le noir et le blanc de mélange', () => {
   for (const f of [...FICHIERS_DU_LOT_DES_MAGIES, ...FICHIERS_DU_LOT_DES_CARACTERISTIQUES, ...FICHIERS_DU_LOT_DES_CLASSES_ET_RACES, ...FICHIERS_DU_LOT_DES_ARMES_ET_ARMURES,
@@ -767,14 +773,13 @@ test('aucune couleur écrite dans les fichiers des lots faits (ni dans les règl
     // lot des matériaux, des armes de départ, des types d'armure et des poids des boucliers
     'src/styles/armes/armes.css .materiau', 'src/styles/armes/armes.css .arme-fiche__materiau', 'src/styles/armes/armes.css .armes',
     'src/styles/armes/armes.css .armes__phrase-depart', 'src/styles/armes/armes.css .arme--depart > .arme__nom, .arme--depart + .arme-suite > .arme-suite__marge',
-    'src/styles/armes/armes.css .arme-dgt--frappe',
     // les armes élémentaires (R167) : leurs lignes teintées de leur magie (demande du propriétaire du 2026-10-29), sa pastille dans la ligne et dans la
     // fiche de l'arme
     'src/styles/armes/armes.css .arme--elementaire, .arme-suite--elementaire', 'src/styles/armes/armes.css .arme--elementaire .arme-dgt--magie',
     'src/styles/armes/armes.css .arme-fiche__magie',
     'src/styles/armures/armures.css .pmat__nom', 'src/styles/armures/armures.css .ptype, .pmat-pastille, .ppoids',
     'src/styles/armures/armures.css .poids__nom', 'src/styles/armures/armures.css .pdef__ap', 'src/styles/armures/armures.css .pdef__am',
-    'src/styles/armures/armures.css .pdgt--frappe', 'src/styles/composants/composants.css .comp-teinte', 'src/styles/equipement/equipement.css .arme-dgt--taille, .pdgt--taille',
+    'src/styles/composants/composants.css .comp-teinte', "src/styles/equipement/equipement.css :is(.arme-dgt, .pdgt)[class*='couleur-degats-']",
     'src/styles/equipement/equipement.css .arme-fiche, .pfiche', "src/styles/fiche/fiche.css .bouclier__tuile[data-poids]",
     // lot des niveaux des accessoires
     "src/styles/accessoires/accessoires.css .acc-niveau-pastille[class*='couleur-niveau-']", "src/styles/accessoires/accessoires.css .acc-ligne[class*='couleur-niveau-']",
@@ -961,19 +966,22 @@ test('les feuilles des matériaux, des armes, des armures et des boucliers lisen
   // les couleurs d'interface sans règle : des jetons du thème, avec leur valeur d'avant (styles/global/base.css ; « Thème reste, Debug à part »)
   const theme = lire('src/styles/global/base.css');
   const jeton = (nom) => theme.match(new RegExp(`\\n {2}${nom}: ([^;]+);`))?.[1];
-  assert.deepEqual(['--degats-taille', '--degats-estoc', '--degats-frappe', '--defense-ap', '--defense-am', '--ombre-fiche'].map(jeton),
-    ['#c0392b', '#2471a3', '#7d6608', '#7d6608', '#2471a3', '0 6px 14px -12px rgb(0 0 0 / 0.4)']);
+  assert.deepEqual(['--defense-ap', '--defense-am', '--ombre-fiche'].map(jeton), ['#7d6608', '#2471a3', '0 6px 14px -12px rgb(0 0 0 / 0.4)']);
   dans('src/styles/armures/armures.css', '.pdef__ap', ['color-mix(in srgb, var(--defense-ap) 16%, var(--surface))', 'color-mix(in srgb, var(--defense-ap) 40%, var(--border))']);
   dans('src/styles/armures/armures.css', '.pdef__am', ['color-mix(in srgb, var(--defense-am) 14%, var(--surface))', 'color-mix(in srgb, var(--defense-am) 40%, var(--border))']);
-  for (const [f, s] of [['src/styles/armes/armes.css', '.arme-dgt--frappe'], ['src/styles/armures/armures.css', '.pdgt--frappe']]) dans(f, s, 'var(--degats-frappe)');
-  dans('src/styles/equipement/equipement.css', '.arme-dgt--taille, .pdgt--taille', 'var(--degats-taille)');
-  dans('src/styles/equipement/equipement.css', '.arme-dgt--estoc, .pdgt--estoc', 'var(--degats-estoc)');
+  // les types de dégâts Taille, Estoc et Frappe : une famille de la palette (`degats`), plus des jetons du thème ; une seule règle, sur la pastille qui
+  // porte la classe, lit sa couleur (le même liseré à 45 % qu'avant, pour les trois types)
+  dans('src/styles/equipement/equipement.css', ":is(.arme-dgt, .pdgt)[class*='couleur-degats-']", `border-color: color-mix(in srgb, var(${fond}) 45%, var(--border));`);
   dans('src/styles/equipement/equipement.css', '.arme-fiche, .pfiche', 'box-shadow: var(--ombre-fiche);');
-  assert.doesNotMatch(lire('src/styles/equipement/equipement.css'), /--degats-(?:taille|estoc):/, 'la page ne les écrit plus');
+  assert.doesNotMatch(theme, /--degats-/, 'plus de jeton du thème : la couleur d’un type de dégâts est celle de sa classe');
+  for (const f of ['src/styles/armes/armes.css', 'src/styles/armures/armures.css', 'src/styles/equipement/equipement.css']) {
+    assert.doesNotMatch(lire(f), /--degats-|\.(?:arme-dgt|pdgt)--(?:taille|estoc|frappe)\b/, `${f} : plus de règle par type`);
+  }
 });
 
 test('les classes de ce lot posées par les rendus, les scripts des onglets et la fiche : des noms de la palette, jamais une couleur ni un style', async () => {
   const { htmlDuPoids, htmlDeMateriau, htmlDeLigneDeMateriau, RENDUS_DES_ARMURES } = await import('../src/lib/armures-rendu.mjs');
+  const { htmlDesTypesDeDegatsElementaires, RENDUS_DES_ARMES } = await import('../src/lib/armes-rendu.mjs');
   const { htmlDeLigneDeMateriau: ligneDeComposant } = await import('../src/lib/composants-rendu.mjs');
   // les rendus (les mêmes pour la page construite et le mode modification) : la classe, jamais un style
   const rendus = [
@@ -984,7 +992,17 @@ test('les classes de ce lot posées par les rendus, les scripts des onglets et l
     [htmlDeLigneDeMateriau({ ligne: { ressource_id: 'ressources/armures#materiau:fer', ap: 5, am: 0, solidite: 3 }, cle: 'fer', nom: 'Fer', type: 'Lourd', prix: '1 RO' }, 'matiere'), 'couleur-armure-lourd'],
     [ligneDeComposant({ id: 'ressources/armures#materiau:fer-noir', nom: 'Fer noir', type: 'Lourd', citations: [] }), 'couleur-materiau-fer-noir'],
     [ligneDeComposant({ id: 'ressources/armures#materiau:nouveau', nom: 'Nouveau', type: 'Autres', citations: [] }), `couleur-materiau-${PAR_DEFAUT}`],
+    // les pastilles des types de dégâts : la classe de leur type (armes du catalogue, résistances et faiblesses des armures, types physiques d'une arme élémentaire)
+    [RENDUS_DES_ARMES['arme-types-degats']('Dégâts frappe/taille, Arme lourde'), 'couleur-degats-frappe'],
+    [RENDUS_DES_ARMES['arme-types-degats']('Dégâts frappe/taille, Arme lourde'), 'couleur-degats-taille'],
+    [RENDUS_DES_ARMURES['armure-resistance']('x2 Frappe'), 'couleur-degats-frappe'],
+    [RENDUS_DES_ARMURES['armure-faiblesse']('Estoc/Taille'), 'couleur-degats-estoc'],
+    [RENDUS_DES_ARMURES['armure-faiblesse']('Estoc/Taille'), 'couleur-degats-taille'],
+    [htmlDesTypesDeDegatsElementaires({ magie_id: 'magies/magie-du-feu', magie: 'Feu' }, { types_degats: ['estoc', 'taille'] }), 'couleur-degats-estoc'],
+    [htmlDesTypesDeDegatsElementaires({ magie_id: 'magies/magie-du-feu', magie: 'Feu' }, { types_degats: ['estoc', 'taille'] }), 'couleur-degats-taille'],
   ];
+  // la pastille de la magie d'une arme élémentaire n'a pas de classe de dégâts : elle lit la couleur de la ligne, rien d'autre
+  assert.doesNotMatch(htmlDesTypesDeDegatsElementaires({ magie_id: 'magies/magie-du-feu', magie: 'Feu' }, { types_degats: [] }), /couleur-degats-/);
   for (const [html, classe] of rendus) {
     assert.ok(html.includes(` ${classe}"`) || html.includes(` ${classe} `), `${classe} dans ${html.slice(0, 120)}`);
     assert.doesNotMatch(html, /\bstyle="/, html.slice(0, 120));

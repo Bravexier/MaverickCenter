@@ -134,7 +134,7 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
   couleur ; son fond est la couleur de la règle rendue lisible (`alchimie-couleurs.mjs#lisible` : inchangée quand son texte atteint déjà 4,5:1, soit
   toutes sauf Loyal Bon, Loyal Neutre et le Titane, à peine éclaircis, testé). Une famille sur la couleur de laquelle aucun texte n'est posé en fond
   (`FAMILLES_SANS_TEXTE` : `palier`, le trait de 3 px d'une ligne de résistance de la fiche ; `arme`, le bleu des armes de départ, une nuance, un
-  filet et, mêlé au texte du site, la couleur de la phrase des règles) n'est pas corrigée : le seuil de 4,5:1 vaut pour un texte (la grande vulnérabilité garde `#e53935`, les armes de départ `#3c78d8`). Pour ces deux alignements, réponse du propriétaire du 2026-10-23 à « Deux couleurs
+  filet et, mêlé au texte du site, la couleur de la phrase des règles ; `degats`, le liseré des pastilles Taille, Estoc et Frappe) n'est pas corrigée : le seuil de 4,5:1 vaut pour un texte (la grande vulnérabilité garde `#e53935`, les armes de départ `#3c78d8`). Pour ces deux alignements, réponse du propriétaire du 2026-10-23 à « Deux couleurs
   d'alignement du guide pour MJ, Loyal Bon (#45818e) et Loyal Neutre (#3c78d8), n'atteignent pas le contraste minimal de lisibilité (4,5:1), ni avec le
   texte foncé ni avec le blanc (4,2:1 au mieux). Que faire ? » : « Éclaircir (Recommandé) » ; option : « Fond à peine éclairci (#4e8794 et #467fda),
   texte foncé : lisible ; les couleurs de référence du guide restent dans le code. » Leur couleur de référence reste dans
@@ -145,10 +145,10 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
   affinités, cases de tableau) et les seconds rangs des magies sur chaque page, par `layouts/Base.astro` (`cssDeLaPalette` : environ 3,7 ko, 45 classes
   et 16 de second rang ; version portable comprise ; plafond testé : 4 ko, que toutes les familles sur chaque page dépasseraient) ; les familles d'une zone
   (`FAMILLES_DES_ZONES` : postures, alignements, catégories de classe, races, paliers de résistance, Mode Hyper, neutre, matériaux, armes de départ,
-  types d'armure, poids des boucliers, niveaux des accessoires, parties du guide) et les seconds rangs des caractéristiques par le composant des seules pages qui les posent (`cssDesFamilles`,
+  types d'armure, poids des boucliers, types de dégâts, niveaux des accessoires, parties du guide) et les seconds rangs des caractéristiques par le composant des seules pages qui les posent (`cssDesFamilles`,
   `cssDesSecondsRangs` : le bloc `postures` du guide, `pages/fiche/index.astro` (`FAMILLES_DE_LA_FICHE` : celles d'une zone, sans les matériaux, les
-  armes de départ, les types d'armure ni les niveaux des accessoires), l'onglet Armes (seconds rangs des caractéristiques, `materiau`, `arme`), `ArmuresPage.astro` (`armure`,
-  `poids`), `AccessoiresPage.astro` (`niveau`), `ComposantsPage.astro` (`materiau`), `ClassesPastilles.astro` et `ClassePage.astro` (`classe`),
+  armes de départ, les types d'armure ni les niveaux des accessoires), l'onglet Armes (seconds rangs des caractéristiques, `materiau`, `arme`, `degats`), `ArmuresPage.astro` (`armure`,
+  `poids`, `degats`), `AccessoiresPage.astro` (`niveau`), `ComposantsPage.astro` (`materiau`), `ClassesPastilles.astro` et `ClassePage.astro` (`classe`),
   `RacesPastilles.astro` et `RacePage.astro` (`race`), `PageDuGuide.astro` (une page de Découvrir) et `pages/index.astro` (l'accueil) (`partie` ; la fiche
   l'émet avec ses autres familles), et le mode modification avec la page d'une race ou d'une classe créée,
   `scripts/edition/nouvelles.mjs`, car la page 404 où il la dessine ne les a pas), comme les combinaisons des potions (`cssDesPotions`) et les couleurs
@@ -249,10 +249,12 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
   bannières des classes, des races et des magies), `--vert-action` (`#2e7d4f`, l'action principale de la fiche, que sa feuille lit en `--vert`), `--a-choisir`
   (`#b45309`, `#f0a14a` en sombre : un choix qui reste à faire), `--a-choisir-plein` (`#b45309` dans les deux thèmes : le compte des choix en attente ;
   le budget en manque lit `--a-choisir`, lisible en sombre) et `--etoile` (`#c99a06`, l'étoile d'une remarque de sort ou d'arme) ; puis (lot des
-  matériaux, des armes et des armures) `--degats-taille` (`#c0392b`), `--degats-estoc` (`#2471a3`), `--degats-frappe` (`#7d6608`), le liseré des
-  pastilles des types de dégâts des armes et des armures, `--defense-ap` (`#7d6608`) et `--defense-am` (`#2471a3`), les pastilles AP et AM, et
-  `--ombre-fiche` (`0 6px 14px -12px rgb(0 0 0 / 0.4)`, l'ombre des fiches d'une arme, d'une armure ou d'un bouclier) ; l'onglet Équipement n'écrit
-  plus ses `--degats-taille` et `--degats-estoc` ; puis (lot des niveaux des accessoires) `--maudit` (`#8e44ad`, le violet d'un accessoire maudit,
+  matériaux, des armes et des armures) `--defense-ap` (`#7d6608`) et `--defense-am` (`#2471a3`), les pastilles AP et AM, et
+  `--ombre-fiche` (`0 6px 14px -12px rgb(0 0 0 / 0.4)`, l'ombre des fiches d'une arme, d'une armure ou d'un bouclier) ; les types de dégâts Taille
+  (`#c0392b`), Estoc (`#2471a3`) et Frappe (`#7d6608`), qui étaient les jetons `--degats-*` (le liseré de leurs pastilles), sont la famille `degats` de la
+  palette (`lib/equipement-couleurs.mjs#COULEURS_DES_DEGATS`, mêmes valeurs ; demande du propriétaire : ces trois couleurs manquaient aux choix de
+  couleur d'un mot-clé du Glossaire) : la pastille porte `couleur-degats-<type>` et `equipement.css` lit `var(--couleur)` ; `--defense-ap` et
+  `--defense-am` restent des jetons séparés (« Garder séparées ») ; puis (lot des niveaux des accessoires) `--maudit` (`#8e44ad`, le violet d'un accessoire maudit,
   qu'aucune source ne donne : la référence, la même dans les deux thèmes, que lit le cadre pointillé de l'encart maudit, sans texte), `--maudit-texte`
   (ce violet en texte sur le fond de la page, la ligne « MALÉDICTION », le mot « Maudit », le titre d'un accessoire détruit : `var(--maudit)` en
   clair, `#a86ec0` en sombre, 4,6:1 ; réponse du propriétaire du 2026-10-23 à « Le violet d'un accessoire maudit (#8e44ad : ligne « MALÉDICTION », mot « Maudit ») n'atteint que 2,9:1 sur le fond du thème sombre, et 3,3:1 sur le niveau 5 dans l'encart, alors que le minimal de lisibilité est 4,5:1. Que faire ? » : « Plus clair en sombre (Recommandé) » ; option : « Un violet plus clair en thème sombre seulement (#a86ec0, 4,6:1) ; le thème clair ne change pas. ») ;
@@ -394,7 +396,7 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
   moins un argument écrit, couleur nommée d'une feuille — dans les fichiers propres aux lots faits ni dans aucune règle d'une feuille qui lit
   `var(--couleur…)` ou `var(--mag…)`, ou, dans `fiche.css` et `guide/blocs.css`, les variables qui en sont tirées (`--c`, `--c1`, `--c2`, `--c-texte`,
   `--texte-sur-c`), ou, dans `styles/classe/` et `styles/race/`, celles de la catégorie ou de la nature (`--cla…`, `--rac…`, `--hero-1`, `--hero-2`),
-  ou, partout, les jetons du thème des lots faits et le bleu des armes de départ (`--texte-sur-fonce`, `--fond-banniere`, `--depart…`, `--degats-…`,
+  ou, partout, les jetons du thème des lots faits et le bleu des armes de départ (`--texte-sur-fonce`, `--fond-banniere`, `--depart…`,
   `--defense-ap`, `--defense-am`, `--ombre-fiche`, `--maudit`, `--maudit-texte`, `--maudit-choisi`, `--ombre-encart`), choisie d'après ce qu'elle lit ; depuis le lot des restes, toutes les feuilles de `src/styles/`, hors les blocs du thème de `global/base.css` et ce
   qui est laissé de côté, nommé avec sa raison : `FEUILLES_LAISSEES_DE_COTE` (Debug, `magie/print.css`), `IMPRESSION_LAISSEE_DE_COTE`,
   `REGLES_LAISSEES_DE_COTE` (vide depuis le lot 11, qui y a retiré les cases de tableau ; une exception future s'y nomme), chacune vérifiée encore
@@ -837,7 +839,7 @@ ne sert qu'à la recherche et aux `[[liens]]`, et suit les tables à chaque modi
   « l'arme s'adapte au porteur », choix du leader-technique), sa compétence au choix du porteur
   (Lourde / Légère ; Arc / Légère pour l'arc ; Arbalète seule : `type_elementaire.competences`), son type, **le dé et la portée de son type** (rien de
   l'arme d'origine ; Pugilat selon la Force) **+ 8** (`bonus_degats`), ses **types de dégâts** (réponse du propriétaire, « Les deux » : « Estoc + Feu pour un arc de feu par exemple » : les
-  types physiques de son type, `type_elementaire.types_degats`, en pastilles aux jetons `--degats-*`, la dague « Estoc Taille », la bombe « Estoc,
+  types physiques de son type, `type_elementaire.types_degats`, en pastilles de la famille `degats` (`couleur-degats-<type>`), la dague « Estoc Taille », la bombe « Estoc,
   Frappe ou Taille (au choix) » (`type_degats_au_choix`), puis « + » et le type de sa magie, son nom, `arme-dgt--magie` ;
   `htmlDesTypesDeDegatsElementaires`), pas d'origine (« — »), solidité **4**
   (`solidite_elementaire`) ; sur la ligne des effets, sa capacité (« Nom (mode) : texte »), « Ignore 4 AP » pour l'arbalète, la mention de l'arme de jet
