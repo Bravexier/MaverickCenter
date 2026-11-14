@@ -144,6 +144,23 @@ test('garde-fou 10 : les modifications en attente sont versées dans l’histori
   assert.equal(db.prepare('SELECT auteur_id FROM modification_lot WHERE id = ?').get(lot).auteur_id, SENTINELLES.idCompte);
 });
 
+test('nature des traces (0127) : l’historique de l’extrait reprend la nature et le numéro de décision du lot ; une saisie reste « saisie »', (t) => {
+  const { base, db } = nouvelleBase(t);
+  const { lot: saisie } = creerUnMetier(db, 'Essai de la nature (saisie)');
+  const { lot: decision } = creerUnMetier(db, 'Essai de la nature (décision)');
+  db.prepare("UPDATE modification_lot SET nature = 'decision', decision = 'R275' WHERE id = ?").run(decision);
+  const sortie = join(base, 'sortie.db');
+  fabriquerExtrait({ source: join(base, 'vivante.db'), destination: sortie });
+  const extrait = new DatabaseSync(sortie, { readOnly: true });
+  try {
+    const natures = (lot) => extrait.prepare('SELECT DISTINCT nature, decision FROM historique_modification WHERE lot_id = ?').all(lot).map((n) => ({ ...n }));
+    assert.deepEqual(natures(saisie), [{ nature: 'saisie', decision: null }]);
+    assert.deepEqual(natures(decision), [{ nature: 'decision', decision: 'R275' }]);
+  } finally {
+    extrait.close();
+  }
+});
+
 test('empreintes : stables malgré l’ordre des lignes et des colonnes et les octets du fichier ; sensibles au type et à la valeur', (t) => {
   const a = new DatabaseSync(':memory:');
   const b = new DatabaseSync(':memory:');

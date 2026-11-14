@@ -23,7 +23,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 126;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 127;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -5552,9 +5552,17 @@ CREATE TABLE modification_lot (
   resolu_par TEXT    REFERENCES modification_lot(id) CHECK (resolu_par IS NULL OR (resolu_le IS NOT NULL AND resolu_par <> id)),
                                                                      -- le lot normal qui reprend celui-ci ; NULL : pas résolu, ou tous les choix ont
                                                                      -- abandonné (rien à écrire). Sans index : petite table, lue par id
-  resolution TEXT    CHECK ((resolution IS NULL) = (resolu_le IS NULL) AND (resolution IS NULL OR (json_valid(resolution) AND json_type(resolution) = 'array')))
+  resolution TEXT    CHECK ((resolution IS NULL) = (resolu_le IS NULL) AND (resolution IS NULL OR (json_valid(resolution) AND json_type(resolution) = 'array'))),
                                                                      -- les choix faits : [{"rang": n, "colonne": "corps_md" | null, "choix": 1 | 2 | 3}] ;
                                                                      -- la valeur saisie au choix 3 est dans le nouveau lot, pas ici
+  nature     TEXT    NOT NULL DEFAULT 'saisie' CHECK (nature IN ('saisie', 'source', 'decision', 'migration', 'code')),
+                                                                     -- d'où vient le lot (migration 0127, R275) : 'saisie' = fait sur le site de dev ;
+                                                                     -- 'source' = réimport d'une source ; 'decision' = application d'une décision du
+                                                                     -- propriétaire (son numéro dans `decision`) ; 'migration' = changement de données du
+                                                                     -- dépôt ; 'code' = recalcul après un changement de code
+  decision   TEXT    CHECK ((nature = 'decision') = (decision IS NOT NULL) AND (decision IS NULL OR (decision GLOB 'R[0-9]*' AND decision NOT GLOB 'R*[^0-9]*')))
+                                                                     -- numéro de la décision appliquée (« R275 », docs/decisions-regles.md) ;
+                                                                     -- présent si et seulement si nature = 'decision'
 ) STRICT;
 
 -- Une ligne de table touchée par un lot. `cle` = la clé primaire de la ligne ({"id": "metiers/forgeron"}) ; `avant` / `apres` = les colonnes
@@ -5655,6 +5663,11 @@ CREATE TABLE historique_modification (
   operation   TEXT    NOT NULL CHECK (operation IN ('inserer', 'modifier', 'supprimer')),
   avant       TEXT    CHECK (avant IS NULL OR (json_valid(avant) AND json_type(avant) = 'object')),
   apres       TEXT    CHECK (apres IS NULL OR (json_valid(apres) AND json_type(apres) = 'object')),
+  nature      TEXT    NOT NULL DEFAULT 'saisie' CHECK (nature IN ('saisie', 'source', 'decision', 'migration', 'code')),
+                                                                     -- celle du lot (modification_lot.nature, migration 0127) ; les lignes d'avant
+                                                                     -- la 0127 sont des saisies du site de dev
+  decision    TEXT    CHECK ((nature = 'decision') = (decision IS NOT NULL) AND (decision IS NULL OR (decision GLOB 'R[0-9]*' AND decision NOT GLOB 'R*[^0-9]*'))),
+                                                                     -- celle du lot (modification_lot.decision)
   PRIMARY KEY (lot_id, rang),
   CHECK ((operation = 'inserer') = (avant IS NULL)),
   CHECK ((operation = 'supprimer') = (apres IS NULL))

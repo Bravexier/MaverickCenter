@@ -44,8 +44,9 @@ test('migration 0072 : trois colonnes de modification_lot, NULL par défaut, en 
   const db = new DatabaseSync(REGLES, { readOnly: true });
   try {
     const colonnes = db.prepare("SELECT name, type, \"notnull\", dflt_value FROM pragma_table_info('modification_lot') ORDER BY cid").all().map((c) => ({ ...c }));
-    assert.deepEqual(colonnes.map((c) => c.name), ['id', 'fait_le', 'auteur_id', 'page_id', 'resume', 'resolu_le', 'resolu_par', 'resolution']);
-    for (const c of colonnes.slice(5)) assert.deepEqual([c.type, c.notnull, c.dflt_value], ['TEXT', 0, null], c.name);
+    // les colonnes suivantes viennent de migrations postérieures (0127 : nature, decision ; test/db-0127-nature-des-traces.test.mjs)
+    assert.deepEqual(colonnes.slice(0, 8).map((c) => c.name), ['id', 'fait_le', 'auteur_id', 'page_id', 'resume', 'resolu_le', 'resolu_par', 'resolution']);
+    for (const c of colonnes.slice(5, 8)) assert.deepEqual([c.type, c.notnull, c.dflt_value], ['TEXT', 0, null], c.name);
     const fk = db.prepare("SELECT \"table\", \"from\", \"to\" FROM pragma_foreign_key_list('modification_lot') WHERE \"from\" = 'resolu_par'").all().map((f) => ({ ...f }));
     assert.deepEqual(fk, [{ table: 'modification_lot', from: 'resolu_par', to: 'id' }]);
     assert.equal(db.prepare('SELECT count(*) AS n FROM modification_lot').get().n, 0, 'section 14 vide dans data/rows');

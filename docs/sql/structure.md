@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 126 : 218 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 127 : 218 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -3952,6 +3952,8 @@ Un enregistrement fait depuis une page (le bouton de confirmation) : toutes ses 
 | `resolu_le` | TEXT | non |  |  |
 | `resolu_par` | TEXT | non | → modification_lot.id |  |
 | `resolution` | TEXT | non |  |  |
+| `nature` | TEXT | oui |  |  |
+| `decision` | TEXT | non |  |  |
 
 ### `modification`
 
@@ -4034,3 +4036,5 @@ Le journal du site de dev une fois livré (une ligne par ligne de table touchée
 | `operation` | TEXT | oui |  |  |
 | `avant` | TEXT | non |  |  |
 | `apres` | TEXT | non |  |  |
+| `nature` | TEXT | oui |  |  |
+| `decision` | TEXT | non |  |  |

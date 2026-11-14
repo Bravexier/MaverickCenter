@@ -14,18 +14,20 @@ import { journalSansImage } from '../src/lib/edition-modele.mjs';
 export function historiser(db) {
   const modifications = db
     .prepare(
-      `SELECT m.lot_id, m.rang, l.fait_le, l.resume, m.table_nom, m.cle, m.operation, m.avant, m.apres FROM modification m JOIN modification_lot l ON l.id = m.lot_id
+      `SELECT m.lot_id, m.rang, l.fait_le, l.resume, l.nature, l.decision, m.table_nom, m.cle, m.operation, m.avant, m.apres FROM modification m JOIN modification_lot l ON l.id = m.lot_id
        WHERE m.etat <> 'conflit' AND NOT EXISTS (SELECT 1 FROM historique_modification h WHERE h.lot_id = m.lot_id) ORDER BY l.fait_le, l.id, m.rang`,
     )
     .all();
-  const inserer = db.prepare(`INSERT INTO historique_modification (lot_id, rang, fait_le, resume, version, table_nom, cle, operation, avant, apres)
-    VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?, ?)`);
+  // la nature et le numéro de décision du lot suivent chaque ligne (migration 0127 : saisie, source, decision, migration, code)
+  const inserer = db.prepare(`INSERT INTO historique_modification (lot_id, rang, fait_le, resume, version, table_nom, cle, operation, avant, apres, nature, decision)
+    VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?)`);
   // un lot noté avant la 0113 nomme ses mots-clés par leur ancien id texte : la trace les nomme par leur id entier (serveur/edition.mjs#traceDAujourdhui)
   const enTrace = traceDAujourdhui(db);
   // une image (portrait) n'y est que résumée : la ligne de sa table la garde
   for (const brute of modifications) {
     const m = enTrace(brute);
-    inserer.run(m.lot_id, m.rang, m.fait_le, m.resume, m.table_nom, m.cle, m.operation, journalSansImage(m.table_nom, m.avant), journalSansImage(m.table_nom, m.apres));
+    inserer.run(m.lot_id, m.rang, m.fait_le, m.resume, m.table_nom, m.cle, m.operation, journalSansImage(m.table_nom, m.avant), journalSansImage(m.table_nom, m.apres),
+      m.nature, m.decision);
   }
   return modifications.length;
 }
