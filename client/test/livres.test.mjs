@@ -136,12 +136,13 @@ test('installerLePlan contrôle la forme du plan : onglet vide ou nommé deux fo
   }
 });
 
-test('les pages fusionnées dans une autre : Le jeu de rôle dans Bienvenue, Résistance/Faiblesse Magie, Les situations avancées (R184, R185) et Les neuf alignements dans Alignement (migration 0123) ; plus dans la base', () => {
+test('les pages fusionnées dans une autre : Le jeu de rôle dans Bienvenue, Résistance/Faiblesse Magie, Les situations avancées (R184, R185) Les neuf alignements dans Alignement (migration 0123) et Accessoires et Ceinture dans Inventaire/Sac à dos (migration 0124, R272) ; plus dans la base', () => {
   assert.deepEqual(PAGES_ABSORBEES, {
     'guide/le-jeu-de-role': 'guide/bienvenue',
     'guide/resistance-faiblesse-magie': 'guide/resistances-et-faiblesses',
     'guide/situations-avancees': 'guide/prise-en-tenaille-et-zone-d-influence',
     'guide/les-neuf-alignements': 'guide/alignement',
+    'guide/fiche-accessoires-et-ceinture': 'guide/fiche-inventaire-sac-a-dos',
   });
   for (const [ancienne, nouvelle] of Object.entries(PAGES_ABSORBEES)) {
     assert.ok(!ids.includes(ancienne), `${ancienne} : retirée de la base`);
@@ -150,7 +151,9 @@ test('les pages fusionnées dans une autre : Le jeu de rôle dans Bienvenue, Ré
   // les six étapes de la création (fusionnées du 2026-10-18 à R184) sont redevenues des pages, sous leur id : plus absorbées
   for (const id of PAGES_DE_LA_CREATION.pages.slice(1)) assert.ok(ids.includes(id) && !Object.hasOwn(PAGES_ABSORBEES, id), id);
   // une page fusionnée mène à l'intertitre où se lit son contenu, s'il est nommé (github-slugger, comme le rendu Markdown), sinon à la page entière
-  assert.deepEqual(ANCRES_DES_PAGES_ABSORBEES, { 'guide/le-jeu-de-role': 'le-jeu-de-rôle-comment-ça-marche-', 'guide/les-neuf-alignements': 'les-neuf-alignements' });
+  assert.deepEqual(ANCRES_DES_PAGES_ABSORBEES, {
+    'guide/le-jeu-de-role': 'le-jeu-de-rôle-comment-ça-marche-', 'guide/les-neuf-alignements': 'les-neuf-alignements', 'guide/fiche-accessoires-et-ceinture': 'accessoires',
+  });
   for (const [ancienne, ancre] of Object.entries(ANCRES_DES_PAGES_ABSORBEES)) {
     // l'intertitre visé : son id de github-slugger, ou son ancre figée (`{#ancre}`, lib/ancres-figees.mjs : elle ne change pas quand l'intertitre est renommé)
     const corps = corpsDe(PAGES_ABSORBEES[ancienne]);
@@ -160,6 +163,7 @@ test('les pages fusionnées dans une autre : Le jeu de rôle dans Bienvenue, Ré
   assert.equal(adresseDeLaPageAbsorbee('guide/resistance-faiblesse-magie', cheminDePage), 'regles/resistances-et-faiblesses/');
   assert.equal(adresseDeLaPageAbsorbee('guide/situations-avancees', cheminDePage), 'regles/prise-en-tenaille-et-zone-d-influence/');
   assert.equal(adresseDeLaPageAbsorbee('guide/les-neuf-alignements', cheminDePage), 'regles/alignement/#les-neuf-alignements');
+  assert.equal(adresseDeLaPageAbsorbee('guide/fiche-accessoires-et-ceinture', cheminDePage), 'regles/inventaire-sac-a-dos/#accessoires');
 });
 
 /** Vrai si l'adresse `adresse` (relative à la racine, ancre et requête comprises) a `slug` pour un de ses segments (« regles/les-postures/ » n'a pas « postures »). */
@@ -189,8 +193,9 @@ test('R184 (9) : les pages supprimées ne sont ni dans la base, ni dans le plan,
 });
 
 test('chaque page `guide/…` de la base a une adresse à elle, jamais sous /guide/ ; à plat sous /regles/ pour les onglets ; une seule place dans le plan (sauf la fixture)', () => {
-  // 67 avant la migration 0122 (La montée de niveau retirée), 66 avant la 0123 (Les neuf alignements fondue dans Alignement)
-  assert.ok(ids.length >= 65, `${ids.length} pages du guide`);
+  // 67 avant la migration 0122 (La montée de niveau retirée), 66 avant la 0123 (Les neuf alignements fondue dans Alignement),
+  // 65 avant la 0124 (Accessoires et Ceinture fondue dans Inventaire/Sac à dos)
+  assert.ok(ids.length >= 64, `${ids.length} pages du guide`);
   const chemins = ids.map(cheminDePage);
   assert.equal(new Set(chemins).size, chemins.length, 'deux pages à la même adresse');
   for (const [i, id] of ids.entries()) {
@@ -479,6 +484,52 @@ test('Les neuf alignements fondue dans Alignement (migration 0123) : /regles/les
   assert.ok(ancresDuCorps(corpsDe('guide/alignement')).some((a) => a.ancre === 'les-neuf-alignements'));
 });
 
+// Migration 0124, R272 (« Cette page doit être supprimé. Tout lien qui revois vers cette page doit renvoyer vers …/regles/fiche-inventaire-sac-a-dos/ » ;
+// « Renommer l'adresse fiche-inventaire-sac-a-dos (sans le préfixe « fiche- ») et rediriger l'ancienne. Cela déroge à la règle des adresses figées. ») :
+// « Accessoires et Ceinture » est fondue dans « Inventaire/Sac à dos », servie à /regles/inventaire-sac-a-dos/ (id inchangé, comme le Mode Super en R228).
+// Toute ancienne adresse des deux pages mène à la page de l'inventaire ; celle de la page retirée, à l'ancre figée de sa première section.
+test('R272 (migration 0124) : la page de l’inventaire est servie à /regles/inventaire-sac-a-dos/ (id inchangé) ; « Accessoires et Ceinture », fondue dedans, y mène', () => {
+  const gardee = 'guide/fiche-inventaire-sac-a-dos';
+  const absorbee = 'guide/fiche-accessoires-et-ceinture';
+  assert.ok(ids.includes(gardee) && !ids.includes(absorbee), 'la page de l’inventaire reste dans la base, la page absorbée n’y est plus');
+  assert.ok(estDesOnglets(gardee), 'rangée dans un onglet des Règles');
+  assert.equal(PAGES_ABSORBEES[absorbee], gardee);
+  assert.equal(adresseDuGuide(gardee), 'regles/inventaire-sac-a-dos/');
+  assert.equal(cheminDePage(gardee), 'regles/inventaire-sac-a-dos/');
+  assert.equal(Livres.pageDuGuideALAdresse('regles/inventaire-sac-a-dos/#ceinture'), gardee);
+  assert.equal(Livres.pageDuGuideALAdresse('regles/fiche-inventaire-sac-a-dos/'), null, 'l’ancienne adresse ne sert plus aucune page');
+  assert.deepEqual(ids.filter((i) => cheminDePage(i) === 'regles/inventaire-sac-a-dos/'), [gardee]);
+  assert.ok(!ids.includes('guide/inventaire-sac-a-dos') && !nomsReserves().includes('inventaire-sac-a-dos'));
+  // les anciennes adresses : page 404, requête et ancre écrites gardées ; sans ancre, l'ancre figée de la section de la page retirée
+  assert.equal(ADRESSES_DU_PLAN_PRECEDENT['regles/fiche-inventaire-sac-a-dos/'], gardee);
+  assert.equal(ADRESSES_DU_PLAN_PRECEDENT['regles/fiche-accessoires-et-ceinture/'], absorbee);
+  for (const ancienne of ['/regles/fiche-inventaire-sac-a-dos/', '/regles/avancees/fiche-inventaire-sac-a-dos/', `/${gardee}/`]) {
+    assert.equal(renvoi(ancienne), '/regles/inventaire-sac-a-dos/', ancienne);
+    assert.equal(renvoi(ancienne, { search: '?q=1', hash: '#ceinture' }), '/regles/inventaire-sac-a-dos/?q=1#ceinture', `${ancienne} : requête et ancre`);
+  }
+  for (const ancienne of ['/regles/fiche-accessoires-et-ceinture/', '/regles/avancees/fiche-accessoires-et-ceinture/', `/${absorbee}/`]) {
+    assert.equal(renvoi(ancienne), '/regles/inventaire-sac-a-dos/#accessoires', ancienne);
+    assert.equal(renvoi(ancienne, { hash: '#ceinture' }), '/regles/inventaire-sac-a-dos/#ceinture', `${ancienne} : l’ancre écrite l’emporte`);
+    assert.equal(renvoi(ancienne, { search: '?q=1', hash: '#ceinture' }), '/regles/inventaire-sac-a-dos/?q=1#ceinture', `${ancienne} : requête et ancre`);
+  }
+  assert.equal(renvoi('/MaverickCenter/regles/fiche-accessoires-et-ceinture/', { base: '/MaverickCenter/' }), '/MaverickCenter/regles/inventaire-sac-a-dos/#accessoires', 'sous un sous-chemin');
+  assert.equal(renvoi('/regles/inventaire-sac-a-dos/'), null, 'la nouvelle adresse est servie, jamais renvoyée');
+  // les liens Markdown écrits vers elles (lib/guide.mjs#adresseDesAnciensLiens) : la même destination que la page 404
+  const options = { cheminDe: cheminDePage, existe: (i) => ids.includes(i), accueil: ACCUEIL_DU_GUIDE };
+  assert.equal(Guide.adresseDesAnciensLiens('regles/fiche-inventaire-sac-a-dos/#ceinture', options), 'regles/inventaire-sac-a-dos/#ceinture');
+  assert.equal(Guide.adresseDesAnciensLiens('regles/fiche-accessoires-et-ceinture/', options), 'regles/inventaire-sac-a-dos/#accessoires');
+  assert.equal(Guide.adresseDesAnciensLiens('regles/avancees/fiche-accessoires-et-ceinture/#ceinture', options), 'regles/inventaire-sac-a-dos/#ceinture');
+  assert.equal(Guide.adresseDesAnciensLiens('regles/inventaire-sac-a-dos/', options), 'regles/inventaire-sac-a-dos/', 'la nouvelle adresse, telle qu’écrite');
+  // la page de l'inventaire supprimée sur le site de dev : les deux anciennes adresses donnent la 404 (R185 (6))
+  const sans = ids.filter((i) => i !== gardee);
+  for (const adresse of ['regles/fiche-inventaire-sac-a-dos/', 'regles/fiche-accessoires-et-ceinture/']) assert.equal(renvoisDuGuide(sans)[adresse], undefined, adresse);
+  // l'ancre visée existe à l'import : la section « Accessoires », déplacée telle quelle, sous son ancre figée
+  assert.ok(ancresDuCorps(corpsDe(gardee)).some((a) => a.ancre === ANCRES_DES_PAGES_ABSORBEES[absorbee]));
+  // le plan est contrôlé au build : une page guide/inventaire-sac-a-dos prendrait l'adresse de la page de l'inventaire
+  assert.throws(() => verifierLePlan([...pagesDuGuide, { id: 'guide/inventaire-sac-a-dos', data: { title: 'x', status: 'draft' } }]),
+    /guide\/inventaire-sac-a-dos prendrait l'adresse \/regles\/inventaire-sac-a-dos\/, celle de guide\/fiche-inventaire-sac-a-dos/);
+});
+
 // Migration 0094, demande du propriétaire du 2026-11-06 : « Il y a 4 pages à supprimer car inutile ou doublon. * Postures * Les boss et leurs postures
 // * Le mode hyper * Mode super » (« Le mode hyper » reste, a-t-il précisé). Convention R185 (6) (« Page 404 ») : PAGES_SUPPRIMEES, sans renvoi.
 test('0094 (2026-11-06) : « Postures », « Les boss et leurs postures » et « Le Mode Super » supprimées sans renvoi ; « Le Mode Hyper » reste', () => {
@@ -644,7 +695,7 @@ test('R184, R185 : les anciennes adresses figées mènent à la nouvelle adresse
 // une liste du code, que le site de dev ne modifie pas) ; l'ancienne adresse mène à la nouvelle comme les autres anciennes adresses. Aucun texte lu.
 test('R228 : la page du Mode Super est servie à /regles/mode-super/ (id inchangé) ; /regles/liste-des-effets-mode-super/ y mène, requête et ancre gardées', () => {
   const id = 'guide/liste-des-effets-mode-super';
-  assert.deepEqual(ADRESSES_RENOMMEES_DU_GUIDE, { [id]: 'mode-super' });
+  assert.deepEqual(ADRESSES_RENOMMEES_DU_GUIDE, { [id]: 'mode-super', 'guide/fiche-inventaire-sac-a-dos': 'inventaire-sac-a-dos' }); // la seconde : R272, test plus bas
   assert.ok(ids.includes(id), `${id} : une page de la base, sous son id`);
   assert.ok(estDesOnglets(id), `${id} : rangée dans un onglet des Règles`);
   // la nouvelle adresse : la route des Règles (cheminDePage, par pagesSous), le menu latéral et le fil d'Ariane (entryHref), la recherche (adresseDePage)

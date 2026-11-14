@@ -26,7 +26,7 @@ import { PAGES_ABSORBEES, PAGES_DE_LA_CREATION, PAR_OU_COMMENCER, RUBRIQUES_SOUS
  */
 export const PAGES_LUES_PAR_LE_CODE = Object.freeze({
   'guide/l-equipement': 'lib/ceinture-db.mjs lit sa section « La ceinture » (onglet Ceinture de l’équipement)',
-  'guide/fiche-accessoires-et-ceinture': 'lib/ceinture-db.mjs la lit (onglet Ceinture de l’équipement)',
+  'guide/fiche-inventaire-sac-a-dos': 'lib/ceinture-db.mjs lit sa section « Ceinture » (onglet Ceinture de l’équipement ; R272)',
   'guide/s-entrainer-et-exercer-un-metier': 'lib/fiche-regles.mjs y renvoie l’aide du champ « Entraînement » de la fiche (décision R71)',
   'guide/le-mode-hyper': 'les pages des magies et des races y renvoient sous « Capacité Mode Hyper » (décision R187)',
 });

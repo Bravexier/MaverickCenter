@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 123 : 217 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 124 : 217 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -3316,7 +3316,7 @@ Potions avec leur niveau, leur prix et leurs recettes (une ligne par potion et v
 
 *vue*
 
-Objets à la ceinture (décision R81 ; page « Ceinture » /ressources/objets-a-la-ceinture/, onglet « Ceinture » de /ressources/equipement/ jusqu'au 2026-10-29) : les objets du catalogue que la page liste parmi ceux qu'un personnage met dans les 3 emplacements de sa ceinture (guide « Fiche de personnage : Accessoires et Ceinture », dont la liste est « non exhaustive » : « Voyez avec votre mj »). Une ligne par objet, `famille` : 'fiole', 'philtre', 'remede', 'primitive', 'huile' : toutes les potions (table potion, famille de leur recette ; la panacée est un remède) ; 'contenant' : les carquois, sacs de bombes et sacs de pierres du matériel (« Les carquois, sac de bombe ou sac de pierre DOIVENT être mis dans la ceinture pour être utilisés ») : une ressource 'materiel' dont la clé du nom (normalize(nom)) écrit l'un d'eux ; 'baton' : les bâtons magiques (onglet « Bâton magique » : « Ces objets peuvent être portés à la ceinture ou dans un emplacement d'arme pour que l'effet soit actif »). `ressource_id` (potion, contenant) ou `baton_id` (bâton magique) : l'un des deux. Le bouclier n'en est pas (décision R82 : son emplacement est dans l'armure). Le matériel que le guide cite aussi (briquet, torche, corde, kits) va à la ceinture mais n'est pas listé (décision R81 : il reste dans « Composants »).
+Objets à la ceinture (décision R81 ; page « Ceinture » /ressources/objets-a-la-ceinture/, onglet « Ceinture » de /ressources/equipement/ jusqu'au 2026-10-29) : les objets du catalogue que la page liste parmi ceux qu'un personnage met dans les 3 emplacements de sa ceinture (guide « Fiche de personnage : Accessoires et Ceinture », dont la liste est « non exhaustive » : « Voyez avec votre mj » ; section Ceinture dans la page « Inventaire/Sac à dos » depuis la migration 0124, décision R272). Une ligne par objet, `famille` : 'fiole', 'philtre', 'remede', 'primitive', 'huile' : toutes les potions (table potion, famille de leur recette ; la panacée est un remède) ; 'contenant' : les carquois, sacs de bombes et sacs de pierres du matériel (« Les carquois, sac de bombe ou sac de pierre DOIVENT être mis dans la ceinture pour être utilisés ») : une ressource 'materiel' dont la clé du nom (normalize(nom)) écrit l'un d'eux ; 'baton' : les bâtons magiques (onglet « Bâton magique » : « Ces objets peuvent être portés à la ceinture ou dans un emplacement d'arme pour que l'effet soit actif »). `ressource_id` (potion, contenant) ou `baton_id` (bâton magique) : l'un des deux. Le bouclier n'en est pas (décision R82 : son emplacement est dans l'armure). Le matériel que le guide cite aussi (briquet, torche, corde, kits) va à la ceinture mais n'est pas listé (décision R81 : il reste dans « Composants »).
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -3771,7 +3771,7 @@ Livres de sort lus (ligne « Livre de sort » de l'entraînement, décision R104
 
 ### `personnage_ceinture`
 
-La ceinture (demande du propriétaire, migration 0031) : ses 3 emplacements d'objets rapides, utilisables en IC (guide « Fiche de personnage : Accessoires et Ceinture » : « La ceinture […] possède 3 emplacements d'objets rapides », « Les objets dans la ceinture ne peuvent pas dépasser le nombre de 3 ») ; un objet par emplacement, au catalogue (`ressource_id`) ou non, et sa quantité (les flèches d'un carquois…).
+La ceinture (demande du propriétaire, migration 0031) : ses 3 emplacements d'objets rapides, utilisables en IC (guide « Fiche de personnage : Accessoires et Ceinture » : « La ceinture […] possède 3 emplacements d'objets rapides », « Les objets dans la ceinture ne peuvent pas dépasser le nombre de 3 » ; section Ceinture dans la page « Inventaire/Sac à dos » depuis la migration 0124, décision R272) ; un objet par emplacement, au catalogue (`ressource_id`) ou non, et sa quantité (les flèches d'un carquois…).
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |

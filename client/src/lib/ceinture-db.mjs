@@ -6,7 +6,7 @@
 // objets : la vue v_objet_ceinture (décision R81 : toutes les potions et huiles, les carquois, sacs de bombes et sacs de pierres, les bâtons magiques ;
 // pas le bouclier : décision R82 ; la liste du guide reste « non exhaustive »). Les bâtons magiques ont leur sous-onglet, chargé par lib/batons-db.mjs.
 // Les règles affichées sont des textes de la base, rendus par l'onglet : le paragraphe « La ceinture » du chapitre « L'équipement » du guide et la
-// section « Ceinture » de la page de référence (le texte du Google Doc). Chaque potion porte la couleur que lui donne la règle du site
+// section « Ceinture » de la page de référence, « Inventaire/Sac à dos » (le texte du Google Doc). Chaque potion porte la couleur que lui donne la règle du site
 // (lib/alchimie-couleurs.mjs : la couleur que le propriétaire a choisie pour sa page, sinon l'affinité de son essence, ou la caractéristique d'un
 // philtre, nuancée selon son niveau d'alchimie ; demande du propriétaire du 2026-10-22 : « Partout il faut utiliser Que les couleurs du site »).
 // Sans dépendance (sauf lib/equipement.mjs, lib/alchimie-couleurs.mjs et lib/ancres-figees.mjs, purs) : `chargerObjetsDeCeinture` reçoit la base ouverte par lib/donnees.mjs.
@@ -18,12 +18,13 @@ import { SOUS_ONGLETS_DE_LA_CEINTURE } from './equipement.mjs';
  * Le chapitre du guide dont la section « La ceinture » donne les règles, et la page de référence qui les détaille. Chaque section se rattache par
  * l'ancre figée de son intertitre seule (lib/ancres-figees.mjs : `## La ceinture {#la-ceinture}`, posée en base par la migration 0100), que le site
  * de dev ne change pas quand il renomme l'intertitre. TITRE_… : l'intertitre d'origine, tel que l'import l'écrit (le message du build, le test de
- * l'import), jamais un repli du rattachement.
+ * l'import), jamais un repli du rattachement. La page de référence est « Inventaire/Sac à dos » : la section « Ceinture » de l'ancienne page « Accessoires
+ * et Ceinture » y est passée telle quelle, sous la même ancre figée (migration 0124, R272).
  */
 export const CHAPITRE_DE_LA_CEINTURE = 'guide/l-equipement';
 export const ANCRE_DES_REGLES = 'la-ceinture';
 export const TITRE_DES_REGLES = '## La ceinture';
-export const PAGE_DE_REFERENCE = 'guide/fiche-accessoires-et-ceinture';
+export const PAGE_DE_REFERENCE = 'guide/fiche-inventaire-sac-a-dos';
 export const ANCRE_DE_LA_REFERENCE = 'ceinture';
 export const TITRE_DE_LA_REFERENCE = '## Ceinture';
 

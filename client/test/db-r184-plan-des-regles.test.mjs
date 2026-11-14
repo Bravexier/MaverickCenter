@@ -20,6 +20,7 @@ import { ecrituresDuTexte } from './aide-ecritures-du-lien.mjs';
 
 const MIGRATION = '0091-r184-plan-des-regles.sql';
 const lire = (chemin) => readFileSync(new URL(`../../${chemin}`, import.meta.url), 'utf8');
+const [RETRAIT_0124] = JSON.parse(lire('data/migrations/0124-retrait-accessoires-et-ceinture.json')).pages_retirees;
 const db = ouvrirBase({ sansExemples: false });
 const page = (id) => db.prepare('SELECT * FROM page WHERE id = ?').get(id);
 const corps = (id) => page(id).corps_md;
@@ -56,9 +57,10 @@ const PLAN = {
 // de même la « Liste des effets mode hyper » (2026-11-06, migration 0095 : db-retrait-liste-des-effets-mode-hyper.test.mjs) et « Altérations d'états
 // et Mode Hyper » (2026-11-06, migration 0096 : db-retrait-alterations-d-etats-et-mode-hyper.test.mjs) ; « La montée de niveau », première entrée
 // d'Exploration, en doublon de la fiche « Expérience/Niveau global » (2026-11-13, migration 0122 : db-0122-retrait-la-montee-de-niveau.test.mjs) ;
-// « Les neuf alignements », fondue dans « Alignement » (2026-11-13, migration 0123 : db-0123-fusion-pages-alignement.test.mjs)
+// « Les neuf alignements », fondue dans « Alignement » (2026-11-13, migration 0123 : db-0123-fusion-pages-alignement.test.mjs) ; « Accessoires et
+// Ceinture », fondue dans « Inventaire/Sac à dos » (2026-11-14, migration 0124, R272 : db-0124-retrait-accessoires-et-ceinture.test.mjs)
 const RETIREES_DEPUIS = g(['postures', 'les-boss-et-leurs-postures', 'le-mode-super', 'liste-des-effets-mode-hyper', 'alterations-d-etats-et-mode-hyper',
-  'la-montee-de-niveau', 'les-neuf-alignements']);
+  'la-montee-de-niveau', 'les-neuf-alignements', 'fiche-accessoires-et-ceinture']);
 const sansLesRetireesDepuis = (ids) => ids.filter((id) => !RETIREES_DEPUIS.includes(id));
 const RETIREES = g(['les-documents-des-regles', 'en-resume-deroulement-d-un-tour', 'mode-hyper-magie', 'aide-memoire', 'resistance-faiblesse-magie',
   'situations-avancees']);
@@ -110,7 +112,12 @@ test('R184, R185 : à l’import, chaque menu latéral suit la spécification, u
     const rangs = ENTREES_D_IMPORT.filter((e) => e.onglet_id === onglet).map((e) => e.rang).sort((a, b) => a - b);
     // la migration 0122 retire la première entrée d'Exploration sans renuméroter les suivantes (rang n'est ni UNIQUE ni continu) : rangs 2 à n + 1
     const premier = onglet === 'exploration' ? 2 : 1;
-    assert.deepEqual(rangs, rangs.map((_, i) => i + premier), `${onglet} : rangs ${premier} à ${rangs.length + premier - 1}`);
+    // la 0124 (R272) retire de même l'entrée d'« Accessoires et Ceinture » : son rang (celui de l'import : le site l'a déplacé depuis) reste libre, les
+    // suivants gardent le leur ; un seul rang manque dans 1 à n + 1
+    const perdu = RETRAIT_0124.entree_du_menu.onglet_id === onglet ? 1 : 0;
+    const attendus = Array.from({ length: rangs.length + perdu }, (_, i) => i + premier);
+    assert.equal(new Set(rangs).size, rangs.length, `${onglet} : un rang par entrée`);
+    assert.ok(rangs.every((r) => attendus.includes(r)), `${onglet} : rangs ${premier} à ${attendus.length + premier - 1}${perdu ? ', un seul laissé libre' : ''}`);
   }
   assert.equal(ENTREES_D_IMPORT.length, sansLesRetireesDepuis(Object.values(PLAN).flat()).length);
   assert.deepEqual(ENTREES_D_IMPORT.filter((e) => e.page_id === null),

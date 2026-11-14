@@ -1730,8 +1730,6 @@ INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/exercer-un-me
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/exercer-un-metier', 4, 'ref:google-doc-regle-du-jeu-guide-pour-mj-maverick');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/exercer-un-metier', 5, 'google-doc:17VxGUwjzEZWElwIYVaXvaaumqFM4yKnO1C7uhVyc9iM');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/exercer-un-metier', 6, 'ref:decisions-du-proprietaire-r19-r26-r33-a-r41-et-r104-docs-decisions-regles-md');
-INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/fiche-accessoires-et-ceinture', 0, 'ref:google-doc-creer-sa-fiche-de-personnage');
-INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/fiche-accessoires-et-ceinture', 1, 'google-doc:1PMmFVmKZspSTXJp-y_on5LoprFu_KHxCp34a9kSTFgA');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/fiche-armure-defense-bouclier', 0, 'ref:google-doc-creer-sa-fiche-de-personnage');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/fiche-armure-defense-bouclier', 1, 'google-doc:1PMmFVmKZspSTXJp-y_on5LoprFu_KHxCp34a9kSTFgA');
 INSERT INTO page_source (page_id, ordre, source_id) VALUES ('guide/fiche-attributs', 0, 'ref:google-doc-creer-sa-fiche-de-personnage');

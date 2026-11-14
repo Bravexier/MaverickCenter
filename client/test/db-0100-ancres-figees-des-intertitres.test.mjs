@@ -20,6 +20,10 @@ import { rejouerLaMigration } from './aide-migration-rejouee.mjs';
 
 const MIGRATION = '0100-ancres-figees-des-intertitres.sql';
 const CEINTURE = [[CHAPITRE_DE_LA_CEINTURE, ANCRE_DES_REGLES], [PAGE_DE_REFERENCE, ANCRE_DE_LA_REFERENCE]];
+// La 0100 pose `{#ceinture}` sur « ## Ceinture » de guide/fiche-accessoires-et-ceinture. La 0124 (R272) retire cette page et passe ses sections, marque
+// comprise, dans l'inventaire (PAGE_DE_REFERENCE) : rejouée, la 0100 n'a plus de page où la poser. Son ancre reste lue à l'import (test 1, 0124) ; les tests
+// qui rejouent la migration ne retirent ni ne reposent que les marques de ce qu'elle écrit encore.
+const REJOUEES = ([page]) => page !== PAGE_DE_REFERENCE;
 
 // la page d'un état est le préfixe de son id (lib/magies-db.mjs, `pageId`)
 const ETATS = "SELECT id, substr(id, 1, instr(id, '#') - 1) AS page_id FROM etat ORDER BY ordre, id";
@@ -62,7 +66,7 @@ test('migration 0100, à l’import : chaque état a son ancre (son id après «
 
 test('migration 0100, à l’import : retirées, les marques sont reposées par la migration, et seulement elles', (t) => {
   const db = copie(t, cheminDImport());
-  const pages = [...new Set(voulues(db).map(([p]) => p))];
+  const pages = [...new Set(voulues(db).filter(REJOUEES).map(([p]) => p))];
   const importes = new Map(pages.map((p) => [p, corpsDe(db, p)]));
   const ecrire = db.prepare('UPDATE page SET corps_md = ? WHERE id = ?');
   for (const p of pages) ecrire.run(sansMarques(importes.get(p)), p);
@@ -79,7 +83,7 @@ test('migration 0100 rejouée sur la base courante : aucune page ne change (rien
 
 test('migration 0100, garde : seule la ligne entière exacte, présente une fois, dans une page sans l’ancre, reçoit la marque', (t) => {
   const db = copie(t, cheminDImport());
-  for (const [page, ancre] of [voulues(db)[0], ...CEINTURE]) {
+  for (const [page, ancre] of [voulues(db)[0], ...CEINTURE].filter(REJOUEES)) {
     const titre = ancresDuCorps(corpsDe(db, page)).find((a) => a.ancre === ancre);
     const ligne = sansMarques(corpsDe(db, page).split('\n')[titre.ligne]); // l'intertitre d'avant la migration, tiré de la base
     const marque = `${ligne} {#${ancre}}`;

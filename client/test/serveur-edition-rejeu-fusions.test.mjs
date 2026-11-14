@@ -68,9 +68,11 @@ const ligneAvant0090 = (l) => (l && typeof l === 'object' ? Object.fromEntries(O
 test('FUSIONS_DE_MIGRATION : « CR » dans « Corruption » (migration 0090, R183 (3)) ; les règles n’ont plus `cr`', () => {
   assert.deepEqual(FUSIONS_DE_MIGRATION[0], { source: 'cr', cible: 'corruption', texte: 'CR', migration: '0090' });
   // les fusions de la 0115 (R233 (5)) : leurs sources absentes des règles, leur cible, Instant Cast, présente
-  // celle de la 0122 (« La montée de niveau » dans « Fiche de personnage : Expérience/Niveau global ») : test plus bas
+  // celle de la 0122 (« La montée de niveau » dans « Fiche de personnage : Expérience/Niveau global ») et celle de la 0124 (R272 : « Accessoires et Ceinture »
+  // dans « Inventaire/Sac à dos ») : tests plus bas
   assert.deepEqual(FUSIONS_DE_MIGRATION.slice(1).map((f) => [f.source, f.cible, f.migration]), [['action-bonus', 'instant-cast', '0115'], ['action-rapide', 'instant-cast', '0115'],
-    ['la-montee-de-niveau', 'fiche-de-personnage-experience-niveau-global', '0122']]);
+    ['la-montee-de-niveau', 'fiche-de-personnage-experience-niveau-global', '0122'],
+    ['fiche-de-personnage-accessoires-et-ceinture', 'fiche-de-personnage-inventaire-sac-a-dos', '0124']]);
   const db = new DatabaseSync(regles.base, { readOnly: true });
   assert.equal(REGISTRE_0113.get('cr'), undefined, '`cr` n’existait plus à la 0113');
   for (const f of FUSIONS_DE_MIGRATION.slice(1)) assert.equal(db.prepare('SELECT 1 FROM mot_cle WHERE id = ?').get(REGISTRE_0113.get(f.source)), undefined, f.source);
@@ -81,30 +83,40 @@ test('FUSIONS_DE_MIGRATION : « CR » dans « Corruption » (migration 0090, R18
   assert.ok(dImport0090().prepare('SELECT libelle FROM mot_cle_synonyme WHERE mot_cle_id = ?').all(CORRUPTION).some((x) => x.libelle === 'CR'));
 });
 
-test('FUSIONS_DE_MIGRATION (0122) : « La montée de niveau » fondu dans « Fiche de personnage : Expérience/Niveau global » ; un lot d’avant la migration lit ses balises comme elle les a reciblées', () => {
-  // le registre de la migration nomme la fusion ; les ids figés se lisent dans le registre de la 0113 (un lot d'avant la 0122 écrit la clé de son temps)
-  const registre = JSON.parse(readFileSync(join(RACINE, 'data/migrations/0122-retrait-la-montee-de-niveau.json'), 'utf8'));
-  const f = FUSIONS_DE_MIGRATION.find((x) => x.migration === '0122');
-  assert.deepEqual(f, { source: registre.fusion.source, cible: registre.fusion.cible, texte: registre.fusion.texte, migration: '0122' });
-  assert.deepEqual([REGISTRE_0113.get(f.source), REGISTRE_0113.get(f.cible)], [registre.fusion.source_id, registre.fusion.cible_id]);
-  // une copie des règles, la cible présente (remise depuis l'import si le site de dev l'a supprimée : décision R211), la source absente
-  const chemin = join(dossier, `copie-${(n += 1)}.db`);
-  cpSync(regles.base, chemin);
-  const db = new DatabaseSync(chemin);
-  db.exec('PRAGMA foreign_keys = ON');
-  remettreDepuisLImport(db, 'mot_cle', { id: registre.fusion.cible_id });
-  assert.equal(db.prepare('SELECT 1 FROM mot_cle WHERE id = ?').get(registre.fusion.source_id), undefined, 'la source a quitté le vocabulaire');
-  const adapter = ancienneEcritureDesFusions(db);
-  // chaque balise que la migration a reciblée (registre `textes`) : le lot qui la portait la porte reciblée, avant comme après
-  for (const t of registre.textes) {
-    const lu = adapter(modification(t.table, 'modifier', t.cle, { [t.col]: `a ${t.avant}.` }, { [t.col]: `a ${t.avant}, b.` }));
-    assert.deepEqual([JSON.parse(lu.avant)[t.col], JSON.parse(lu.apres)[t.col]], [`a ${t.apres}.`, `a ${t.apres}, b.`], t.cle.id);
-  }
-  // les autres formes : texte écrit gardé, échappée d'un tableau, définition
-  const formes = adapter(modification('page', 'modifier', { id: 'guide/bienvenue' }, null, { corps_md: '{{la-montee-de-niveau|monter}} {{la-montee-de-niveau\\|x}} {{la-montee-de-niveau:}}' }));
-  assert.equal(JSON.parse(formes.apres).corps_md, `{{${f.cible}|monter}} {{${f.cible}\\|x}} {{${f.cible}:}}`);
-  db.close();
-});
+// Les fusions de la 0122 (« La montée de niveau » dans « Fiche de personnage : Expérience/Niveau global ») et de la 0124 (R272, « Accessoires et Ceinture » dans
+// « Inventaire/Sac à dos ») : même forme, nommées par le registre de leur migration.
+for (const [migration, nomDuRegistre, titre] of [
+  ['0122', '0122-retrait-la-montee-de-niveau', '« La montée de niveau » fondu dans « Fiche de personnage : Expérience/Niveau global »'],
+  ['0124', '0124-retrait-accessoires-et-ceinture', '« Accessoires et Ceinture » fondu dans « Fiche de personnage : Inventaire/Sac à dos » (R272)'],
+]) {
+  test(`FUSIONS_DE_MIGRATION (${migration}) : ${titre} ; un lot d’avant la migration lit ses balises comme elle les a reciblées`, () => {
+    // le registre de la migration nomme la fusion ; les ids figés se lisent dans le registre de la 0113 (un lot d'avant la migration écrit la clé de son temps)
+    const registre = JSON.parse(readFileSync(join(RACINE, `data/migrations/${nomDuRegistre}.json`), 'utf8'));
+    const f = FUSIONS_DE_MIGRATION.find((x) => x.migration === migration);
+    assert.deepEqual(f, { source: registre.fusion.source, cible: registre.fusion.cible, texte: registre.fusion.texte, migration });
+    assert.deepEqual([REGISTRE_0113.get(f.source), REGISTRE_0113.get(f.cible)], [registre.fusion.source_id, registre.fusion.cible_id]);
+    // une copie des règles, la cible présente (remise depuis l'import si le site de dev l'a supprimée : décision R211), la source absente
+    const chemin = join(dossier, `copie-${(n += 1)}.db`);
+    cpSync(regles.base, chemin);
+    const db = new DatabaseSync(chemin);
+    db.exec('PRAGMA foreign_keys = ON');
+    remettreDepuisLImport(db, 'mot_cle', { id: registre.fusion.cible_id });
+    assert.equal(db.prepare('SELECT 1 FROM mot_cle WHERE id = ?').get(registre.fusion.source_id), undefined, 'la source a quitté le vocabulaire');
+    const adapter = ancienneEcritureDesFusions(db);
+    // chaque balise que la migration a reciblée (registre `textes` ; la 0124 y note aussi le texte déplacé, qui ne recible rien) : le lot qui la portait la
+    // porte reciblée, avant comme après
+    const reciblees = registre.textes.filter((t) => t.avant.includes(`{{${f.source}`));
+    assert.ok(reciblees.length > 0, 'le registre note au moins une balise reciblée');
+    for (const t of reciblees) {
+      const lu = adapter(modification(t.table, 'modifier', t.cle, { [t.col]: `a ${t.avant}.` }, { [t.col]: `a ${t.avant}, b.` }));
+      assert.deepEqual([JSON.parse(lu.avant)[t.col], JSON.parse(lu.apres)[t.col]], [`a ${t.apres}.`, `a ${t.apres}, b.`], t.cle.id);
+    }
+    // les autres formes : texte écrit gardé, échappée d'un tableau, définition
+    const formes = adapter(modification('page', 'modifier', { id: 'guide/bienvenue' }, null, { corps_md: `{{${f.source}|monter}} {{${f.source}\\|x}} {{${f.source}:}}` }));
+    assert.equal(JSON.parse(formes.apres).corps_md, `{{${f.cible}|monter}} {{${f.cible}\\|x}} {{${f.cible}:}}`);
+    db.close();
+  });
+}
 
 test('adaptateur : balises (avant et apres, toute table), étiquettes de page et de sort (clé comprise, sans doublon) ; la ligne `cr` elle-même inchangée', () => {
   const db = reglesOuLaCible({ cible: true });

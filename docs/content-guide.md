@@ -1362,7 +1362,7 @@ dev (un commit la change) ni cherchée par la recherche.
   une erreur claire s'il n'est pas installé. **Adresses à plat** : toute page d'un onglet est à `/regles/<slug>/` (les pages des anciennes Bases
   gardent la leur) ; l'adresse ne dépend pas du plan (`adresseDuGuide` : la chaîne de l'édition du navigateur, qui ne le reçoit pas, la calcule
   aussi). Le `<slug>` est celui de l'id, sauf exception voulue par le propriétaire, figée dans `ADRESSES_RENOMMEES_DU_GUIDE` (id inchangé) : R228,
-  `guide/liste-des-effets-mode-super` à `/regles/mode-super/` ; aucune page ne prend cette adresse (`verifierLePlan`, et le service ne crée pas
+  `guide/liste-des-effets-mode-super` à `/regles/mode-super/`, puis R272 (migration `0124`), `guide/fiche-inventaire-sac-a-dos` à `/regles/inventaire-sac-a-dos/` ; aucune page ne prend ces adresses (`verifierLePlan`, et le service ne crée pas
   `guide/mode-super`). Chaque onglet est à `/regles/<onglet>/` (`pages/regles/[...page].astro`), qui montre sa page d'ouverture sous le titre de l'onglet, avec
   un `<link rel="canonical">` vers `/regles/<slug>/` ; `/regles/` (`pages/regles/index.astro`) montre celle du premier onglet. Les ids des onglets,
   `artisanat`, `avancees` et `glossaire` (la page du Glossaire) sont des noms réservés (`nomsReserves`) : aucune page ne les prend. Chaque page est à côté du **menu latéral** de son
@@ -1471,6 +1471,10 @@ dev (un commit la change) ni cherchée par la recherche.
   dans la page /regles/alignement/ ») : `/regles/les-neuf-alignements/` (son adresse à plat, ajoutée aux renvois figés : `PAGES_DES_REGLES_ABSORBEES`),
   `/guide/les-neuf-alignements/` et `/regles/avancees/les-neuf-alignements/` mènent à `/regles/alignement/#les-neuf-alignements` (ancre figée), l'ancre
   écrite l'emportant (`/regles/les-neuf-alignements/#loyal-bon` → `/regles/alignement/#loyal-bon`).
+  « Accessoires et Ceinture » est fondue dans « Inventaire/Sac à dos » (migration `0124`, R272 : ses sections `{#accessoires}` et `{#ceinture}` passent telles
+  quelles à la fin de l'inventaire, que lit l'onglet Ceinture, `lib/ceinture-db.mjs#PAGE_DE_REFERENCE`) : `/regles/fiche-accessoires-et-ceinture/`,
+  `/guide/fiche-accessoires-et-ceinture/` et `/regles/avancees/fiche-accessoires-et-ceinture/` mènent à `/regles/inventaire-sac-a-dos/#accessoires` (ancre figée), l'ancre
+  écrite l'emportant ; `/regles/fiche-inventaire-sac-a-dos/` et `/regles/avancees/fiche-inventaire-sac-a-dos/` mènent à `/regles/inventaire-sac-a-dos/`.
 - **Des sections en onglets** (`lib/guide-onglets.mjs`, `components/guide/PageDuGuide.astro`, `styles/guide/onglets.css`, `test/guide-onglets.test.mjs`,
   `test/guide-html.test.mjs`) : sur « Alignement », les neuf sections `### Loyal Bon {#loyal-bon}`… sont les onglets d'une barre posée sous
   l'introduction (demande du propriétaire : « Liste les 9 allignements sous forme de tableau (ou de tuile) à onglet ou chaque onglet a la couleur de

@@ -150,8 +150,6 @@ INSERT INTO mot_cle_categorie (mot_cle_id, categorie_id) VALUES (132, 3);
 INSERT INTO mot_cle_categorie (mot_cle_id, categorie_id) VALUES (133, 3);
 INSERT INTO mot_cle_categorie (mot_cle_id, categorie_id) VALUES (134, 6);
 INSERT INTO mot_cle_categorie (mot_cle_id, categorie_id) VALUES (135, 5);
-INSERT INTO mot_cle_categorie (mot_cle_id, categorie_id) VALUES (136, 5);
-INSERT INTO mot_cle_categorie (mot_cle_id, categorie_id) VALUES (136, 7);
 INSERT INTO mot_cle_categorie (mot_cle_id, categorie_id) VALUES (137, 4);
 INSERT INTO mot_cle_categorie (mot_cle_id, categorie_id) VALUES (137, 5);
 INSERT INTO mot_cle_categorie (mot_cle_id, categorie_id) VALUES (137, 7);

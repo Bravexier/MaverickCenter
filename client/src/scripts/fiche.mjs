@@ -3628,7 +3628,7 @@ function construireDefense() {
 // ------------------------------------------------------------------ portrait et ceinture (demandes du propriétaire)
 /**
  * Le portrait (le logo en attendant une image, recadrable une fois choisie : personnage.portrait et son cadrage, migration 0031) et les 3 emplacements
- * de la ceinture (objets rapides, guide « Fiche de personnage : Accessoires et Ceinture » : personnage_ceinture), enregistrés avec la fiche.
+ * de la ceinture (objets rapides, section « Ceinture » de la page « Inventaire/Sac à dos » du guide, R272 : personnage_ceinture), enregistrés avec la fiche.
  */
 const PLACES_DE_CEINTURE = 3;
 /** La vignette affichée (le carré cadré), refaite quand l'image ou son cadrage changent. */

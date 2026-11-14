@@ -6838,29 +6838,6 @@ Le document des métiers accompagne ses métiers de repères sur leurs bonus, qu
 
 Et, quoi qu’il arrive, le MJ a toujours raison. Les règles complètes : {{regles-des-metiers}}.
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-accessoires-et-ceinture', 'guide', 'fiche-accessoires-et-ceinture', 'Accessoires et Ceinture', 'accessoires-et-ceinture', '6 emplacements pour y mettre des accessoires aux effets variés.', NULL, '## Accessoires
-
-6 emplacements pour y mettre des accessoires aux effets variés. Plus d’info dans “[Ressources et craft](https://docs.google.com/spreadsheets/u/0/d/1KkOG6FYjIf62Y_xLQxIE8aQTZFLlKPXmCB9e7XU3-vw/edit)” et l’onglet “Accessoires”.
-
-## Ceinture {#ceinture}
-
-La ceinture est un accessoire que tout le monde possède (sauf si vous avez les parties à l''air ... évidemment) qui possède 3 emplacements d''objets rapides. Ces emplacements permettent l''utilisation d''objet en IC (ou 2 IC pour certains comme allumer un objet ou faire des soins physiques) là où avant c''était une action complète, voici une petite liste non exhaustive des objets qui peuvent être mis sur la ceinture :
-
-- Fiole de soin ou de poison, ce qui permet une - utilisation plus rapide de ces dernières
-- Briquet ou objet pour allumer des autres objets
-- Torche ou Lanterne
-- Les différents kits comme celui de soin, du voleur, du saboteur, etc...
-- Une corde
-- Ou tout autre objet de petite taille qui pourrait se mettre sur la ceinture
-
-Voyez avec votre mj pour voir quel objet pourrait se mettre sur votre ceinture, impossible de penser à absolument tout Attention il y a des choses à savoir :
-
-Certains objets ne peuvent pas se mettre comme les armes (ils ont leur emplacement dédié)
-
-Les objets sont dans la ceinture ne peuvent pas dépasser 3 exemplaires du même objet par emplacement, 4 avec le don « Organisé » du Mercenaire (impossible de cumuler les objets à l''infini)
-
-Les carquois, sac de bombe ou sac de pierre DOIVENT être mis dans la ceinture pour être utilisés, vous pouvez mettre le nombre de flèches que peut contenir le carquois maximum
-', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-armure-defense-bouclier', 'guide', 'fiche-armure-defense-bouclier', 'Armure/Défense/Bouclier', 'armure-defense-bouclier', 'C’est ici qu’on retrouve toutes les informations sur la défense du personnage.', NULL, 'C’est ici qu’on retrouve toutes les informations sur la défense du personnage.
 
 **AP base** : Il s’agit de l’armure physique que possède naturellement un personnage, elle est déterminée si une race possède un bonus d’armure physique (exemple : Certains Drakos, Namazu, etc…) ou alors par un objet.
@@ -7124,6 +7101,29 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 La place de l’inventaire est donnée par la Force de votre personnage, sans sac à dos à choisir ; un sac à dos reste un objet possible de l’inventaire.
 
 L''inventaire de départ est déterminé par la Classe, allez voir directement les classes pour connaître votre inventaire de départ. Si jamais vous commencez avec 2 classes, prenez 5 objets parmi les 10 disponibles.
+
+## Accessoires {#accessoires}
+
+6 emplacements pour y mettre des accessoires aux effets variés. Plus d’info dans “[Ressources et craft](https://docs.google.com/spreadsheets/u/0/d/1KkOG6FYjIf62Y_xLQxIE8aQTZFLlKPXmCB9e7XU3-vw/edit)” et l’onglet “Accessoires”.
+
+## Ceinture {#ceinture}
+
+La ceinture est un accessoire que tout le monde possède (sauf si vous avez les parties à l''air ... évidemment) qui possède 3 emplacements d''objets rapides. Ces emplacements permettent l''utilisation d''objet en IC (ou 2 IC pour certains comme allumer un objet ou faire des soins physiques) là où avant c''était une action complète, voici une petite liste non exhaustive des objets qui peuvent être mis sur la ceinture :
+
+- Fiole de soin ou de poison, ce qui permet une - utilisation plus rapide de ces dernières
+- Briquet ou objet pour allumer des autres objets
+- Torche ou Lanterne
+- Les différents kits comme celui de soin, du voleur, du saboteur, etc...
+- Une corde
+- Ou tout autre objet de petite taille qui pourrait se mettre sur la ceinture
+
+Voyez avec votre mj pour voir quel objet pourrait se mettre sur votre ceinture, impossible de penser à absolument tout Attention il y a des choses à savoir :
+
+Certains objets ne peuvent pas se mettre comme les armes (ils ont leur emplacement dédié)
+
+Les objets sont dans la ceinture ne peuvent pas dépasser 3 exemplaires du même objet par emplacement, 4 avec le don « Organisé » du Mercenaire (impossible de cumuler les objets à l''infini)
+
+Les carquois, sac de bombe ou sac de pierre DOIVENT être mis dans la ceinture pour être utilisés, vous pouvez mettre le nombre de flèches que peut contenir le carquois maximum
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-maitrise-darme-et-armes', 'guide', 'fiche-maitrise-darme-et-armes', 'Maîtrise d’arme et Armes', 'maitrise-darme-et-armes', 'Ce tableau correspond à ce que votre personnage maîtrise comme armes, plus il maîtrise une arme, plus il va infliger de dégâts.', NULL, '## Maîtrise d’arme
 
@@ -7649,7 +7649,7 @@ Voici quelques objets qui peuvent y aller (la liste n’est pas complète, voyez
 - L’inventaire de départ vient de la classe : sa page le donne. Avec deux classes dès le départ, on prend 5 objets parmi les 10 proposés.
 - En combat, sortir un objet du sac prend toute l’action (voir {{le-tour-de-jeu}}).
 
-Le texte des règles d’où vient cette page : {{fiche-de-personnage-maitrise-darme-et-armes|Maîtrise d’arme et Armes}}, {{fiche-de-personnage-armure-defense-bouclier|Armure/Défense/Bouclier}}, {{fiche-de-personnage-accessoires-et-ceinture|Accessoires et Ceinture}} et {{fiche-de-personnage-inventaire-sac-a-dos|Inventaire/Sac à dos}}.
+Le texte des règles d’où vient cette page : {{fiche-de-personnage-maitrise-darme-et-armes|Maîtrise d’arme et Armes}}, {{fiche-de-personnage-armure-defense-bouclier|Armure/Défense/Bouclier}}, {{fiche-de-personnage-inventaire-sac-a-dos|Accessoires et Ceinture}} et {{fiche-de-personnage-inventaire-sac-a-dos|Inventaire/Sac à dos}}.
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/l-univers', 'guide', 'l-univers', 'L’univers', 'lunivers', 'Un monde de high fantasy où tout être vivant naît avec une magie, où races, classes et magies s’assemblent en milliers de héros possibles, et où plusieurs siècles d’histoire cachent encore des mystères, des périls et des complots.', NULL, 'Maverick est un monde de high fantasy où la magie est partout. Elle n’est pas réservée aux mages, aux temples ou aux érudits : **tout être vivant naît avec une magie**, qui le lie à un dieu dès la naissance. Autour de cette idée se tisse un monde dont l’histoire s’étend sur plusieurs siècles, et dans lequel les personnages joueurs sont des héros : ils parcourent ses royaumes et ses ruines pour en percer les mystères, affronter ses périls et déjouer ses complots.
 

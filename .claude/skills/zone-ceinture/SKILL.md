@@ -23,6 +23,7 @@ user-invocable: false
 ## Invariants
 - Quels objets : la vue `v_objet_ceinture` (migration `0047-objets-a-la-ceinture`) : toutes les potions et huiles, les carquois, sacs de bombes et sacs de pierres, les bâtons magiques (R81). Une vue, pas une table : elle suit les tables. La liste du guide reste « non exhaustive ».
 - Les règles se rattachent à leur section par l'ancre figée seule (`ceinture-db.mjs#ANCRE_DES_REGLES` `la-ceinture`, `#ANCRE_DE_LA_REFERENCE` `ceinture`, `sectionParAncre` de `lib/ancres-figees.mjs`, posées par la migration 0100), sans repli sur le texte de l'intertitre : une page qui ne porte plus l'ancre n'a plus la section (`null`).
+- La page de référence (`ceinture-db.mjs#PAGE_DE_REFERENCE`) est `guide/fiche-inventaire-sac-a-dos` : sa section « Ceinture » `{#ceinture}` y est passée telle quelle (R272, migration 0124).
 - Le bouclier n'en est pas : son emplacement est dans l'armure (R82).
 - La fiche se sert de la vue pour reconnaître bâtons et carquois (maximum, contenance) ; ses 3 emplacements prennent n'importe quel objet du sac (R89).
 - Rendu depuis la base, dans `section.equipement-panneau#ceinture` : règles de la ceinture repliées (section « La ceinture » de `guide/l-equipement`, et en dépliable la section « Ceinture » de la page de référence), puis trois sous-onglets dans l'ordre de `SOUS_ONGLETS_DE_LA_CEINTURE` (groupe `data-onglets="Ceinture"`, panneaux `section.ceinture-panneau`). Deux niveaux d'onglets sur la page : Ceinture › Consommables (plus d'onglet de page).

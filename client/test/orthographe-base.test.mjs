@@ -15,6 +15,7 @@ import { normalize } from '../src/lib/text.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
 import { textesReecrits } from './aide-textes-reecrits.mjs';
 import { ecrituresDuTexte } from './aide-ecritures-du-lien.mjs';
+import { ouLitLa0124 } from './aide-migration-0124.mjs';
 
 const racine = trouverRacine();
 const dossier = join(racine, 'data', 'migrations');
@@ -207,7 +208,8 @@ test('base : chaque correction est faite (le texte corrigé est dans sa cellule,
   for (const c0 of corrections) {
     if (pageRetiree(c0)) continue;
     const f = fondue(c0);
-    const c = f ? { ...c0, cle: f.dans } : c0;
+    // le texte de « Accessoires et Ceinture », passé tel quel dans « Inventaire/Sac à dos » par la migration 0124 (R272) : lu dans cette page
+    const c = f ? { ...c0, cle: f.dans } : ouLitLa0124(c0);
     const sp = supprimee(c);
     if (sp) {
       assert.equal(valeur(c), undefined, `${c.table} ${JSON.stringify(c.cle)} : supprimée par ${sp.migration}`);
