@@ -983,6 +983,34 @@ function comparerAutresTables(ref, dev) {
   return sortie;
 }
 
+/** Les identifiants des pages d'exemple de l'une ou l'autre base. */
+const pagesDExemple = (ref, dev) => new Set([ref, dev].flatMap((b) => b?.tables?.page ?? []).filter((p) => p.statut === 'example').map((p) => p.id));
+
+/**
+ * Les autres tables sans ce qui tient aux pages d'exemple (`statut = 'example'`, comme les pages comparées plus haut) : la copie de master garde
+ * ses exemples (db-build sans --sans-exemples), le site de dev les masque (HIDE_EXAMPLES=1). Sont écartées, de chaque côté, les lignes d'une colonne
+ * `page_id` qui vise un exemple (de l'une ou l'autre base), et les `source` que seules des pages d'exemple citent (`page_source`).
+ */
+function autresSansExemples(ref, dev, exemples) {
+  if (!exemples.size) return [ref, dev];
+  const sans = (autres) => {
+    if (!autres) return autres;
+    const citees = new Map(); // source_id -> au moins une page hors exemple la cite ?
+    for (const r of autres.page_source?.lignes ?? []) citees.set(r.source_id, (citees.get(r.source_id) ?? false) || !exemples.has(r.page_id));
+    const sortie = {};
+    for (const [nom, t] of Object.entries(autres)) {
+      const parPage = t.colonnes.includes('page_id');
+      const parSource = nom === 'source' && t.cle.length === 1;
+      sortie[nom] = !parPage && !parSource ? t : {
+        ...t,
+        lignes: t.lignes.filter((r) => !(parPage && exemples.has(r.page_id)) && !(parSource && citees.get(r[t.cle[0]]) === false)),
+      };
+    }
+    return sortie;
+  };
+  return [sans(ref), sans(dev)];
+}
+
 /**
  * La liste des modifications de la production (`ref`) à la dev (`dev`) : [{ domaine, groupe, entite, champ, nature, avant, apres, sens, parties,
  * table_nom, cle, colonne, rang }], dans l'ordre d'affichage (domaine, groupe, entité, champ). `ref` / `dev` = { tables: { <table>: lignes[] } }
@@ -999,7 +1027,7 @@ export function comparerBases(ref, dev) {
     ...comparerOrdreDesBlocs(ref, dev, x),
     ...comparerPlanDesRegles(ref, dev, x),
     ...comparerOrdreDesRaces(ref, dev),
-    ...comparerAutresTables(ref?.autres, dev?.autres),
+    ...comparerAutresTables(...autresSansExemples(ref?.autres, dev?.autres, pagesDExemple(ref, dev))),
   ];
   const rangDomaine = (d) => DOMAINES.findIndex((x_) => x_.id === d);
   lignes.sort((p, q) => rangDomaine(p.domaine) - rangDomaine(q.domaine) || comparerOrdres(p.ordre, q.ordre));

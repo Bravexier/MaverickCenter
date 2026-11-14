@@ -9,7 +9,7 @@
 // L'état du lancement est gardé dans db/mise-a-jour/etat.json : le service redémarre pendant le processus (nouvelle version livrée sur dev).
 // Node seulement (node:…), sans dépendance.
 import { randomUUID } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { installerLePlan } from '../src/lib/livres.mjs';
@@ -63,10 +63,24 @@ export function lireAutresTables(db, existantes = null) {
 const BASE_DE_PRODUCTION = ['donnees', 'maverick.db'];
 const VERSION_DE_PRODUCTION = ['_serveur', 'version.json'];
 
-/** Le contenu publié par la production est-il lisible (fichier présent, ouvrable, version connue) ? { chemin, version } ou { raison }. */
-function productionPubliee(dossier) {
+/** Les deux chemins sont-ils le même fichier (même périphérique et même inode : un montage en lecture seule du fichier de ce site compris) ? */
+function memeFichier(a, b) {
+  try {
+    const [x, y] = [statSync(a, { bigint: true }), statSync(b, { bigint: true })];
+    return x.dev === y.dev && x.ino === y.ino;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Le contenu publié par la production est-il lisible (fichier présent, ouvrable, version connue) ? { chemin, version } ou { raison }.
+ * `propre` : la base des règles de ce site ; une « production » qui est ce même fichier (mauvais montage) ne sert pas : le dev se comparerait à lui-même.
+ */
+function productionPubliee(dossier, propre = null) {
   const chemin = join(dossier, ...BASE_DE_PRODUCTION);
   if (!existsSync(chemin)) return { raison: 'le dossier de la production est monté, mais sans sa base (donnees/maverick.db)' };
+  if (propre && memeFichier(chemin, propre)) return { raison: 'le dossier de la production est celui de ce site de dev (même base) : il ne peut pas servir de référence' };
   let version = null;
   try {
     version = JSON.parse(readFileSync(join(dossier, ...VERSION_DE_PRODUCTION), 'utf8')).version ?? null;
@@ -89,17 +103,18 @@ function productionPubliee(dossier) {
 
 /**
  * La base de référence (production) et sa version : { disponible, chemin, version, commit, source, raison }.
- * `reference` : un chemin (base + reference.json à côté, tirée du dépôt : la copie de GitHub) ou { production, depot } — le dossier de la production
- * monté en lecture seule (lot 3 du chantier de la base de dev ; R274) d'abord, puis la copie de GitHub tant que ce dossier n'est pas monté ou lisible.
+ * `reference` : un chemin (base + reference.json à côté, tirée du dépôt : la copie de GitHub) ou { production, depot, propre } — le dossier de la
+ * production monté en lecture seule (lot 3 du chantier de la base de dev ; R274) d'abord, puis la copie de GitHub tant que ce dossier n'est pas monté,
+ * lisible, ni distinct de ce site (`propre` : la base des règles de ce site, que la production ne peut pas être).
  * `source` dit laquelle sert : 'production' ou 'depot' ; `raison`, pourquoi la production ne sert pas (quand elle est configurée).
  */
 export function lireReference(reference) {
-  const { production = null, depot = null } = reference && typeof reference === 'object' ? reference : { depot: reference };
+  const { production = null, depot = null, propre = null } = reference && typeof reference === 'object' ? reference : { depot: reference };
   let raison = null;
   if (production) {
     if (!existsSync(production)) raison = 'le dossier de la production n’est pas monté';
     else {
-      const lue = productionPubliee(production);
+      const lue = productionPubliee(production, propre);
       if (lue.chemin) return { disponible: true, chemin: lue.chemin, version: lue.version, commit: null, source: 'production', raison: null };
       raison = lue.raison;
     }
@@ -166,12 +181,37 @@ export function enregistrerMajeure(db, { majeure } = {}) {
 }
 
 /**
+ * La référence et ses tables lues. Une base de production à moitié copiée (copie non atomique de l'installateur) peut s'ouvrir sans se lire : la copie
+ * du dépôt sert alors, comme production absente (`raison` le dit) ; sans elle non plus, la référence est dite absente. Jamais une erreur de la page.
+ */
+function referenceEtTables(reference) {
+  const ref = lireReference(reference);
+  if (!ref.disponible) return { ref, tables: null };
+  try {
+    return { ref, tables: tablesDeReference(ref.chemin) };
+  } catch (e) {
+    const raison = `la base de la référence est illisible (${String(e.message).slice(0, 120)})`;
+    if (ref.source === 'production' && reference.depot) {
+      const repli = referenceEtTables({ production: null, depot: reference.depot });
+      return { ref: { ...repli.ref, raison }, tables: repli.tables };
+    }
+    return { ref: { ...ref, disponible: false, version: null, commit: null, source: null, raison }, tables: null };
+  }
+}
+
+/**
+ * Le nombre de lignes de la note qui comptent pour « Rien à livrer » : celles que le workflow écrit dans la note (scripts/mise-a-jour-regles.mjs :
+ * lireTables sans `autres`). Les lignes « Autres tables » restent affichées sur la page mais ne comptent pas, jusqu'à un lot ultérieur.
+ */
+export const lignesALivrer = (lignes) => (lignes ? lignes.filter((l) => l.domaine !== 'autres-tables').length : null);
+
+/**
  * La note en préparation : référence (production), versions (la cible selon la case « Version majeure », et les deux possibles), lignes calculées
  * et leur bilan, brouillon.
  * @param {import('node:sqlite').DatabaseSync} db base vivante
  */
 export function noteEnPreparation(db, { reference, versionDev }) {
-  const ref = lireReference(reference);
+  const { ref, tables: tablesDeLaReference } = referenceEtTables(reference);
   const brouillon = lireBrouillon(db);
   const versionMineure = versionDeLivraison(versionDev, ref.version);
   const versionMajeure = versionDeLivraison(versionDev, ref.version, { majeure: true });
@@ -192,7 +232,7 @@ export function noteEnPreparation(db, { reference, versionDev }) {
   // les pages du guide se rangent par le plan des onglets des Règles de la base vivante (R184, R185 ; lib/livres.mjs#placeDansLeGuide), relu à chaque
   // calcul : une livraison refait la base vivante, et son plan avec elle
   installerLePlan(chargerPlanDesRegles(db));
-  const lignes = comparerBases(tablesDeReference(ref.chemin), enSuspens ? tablesQuiPartiront(db, retenus) : lireTables(db, TABLES_LUES, { autres: true }));
+  const lignes = comparerBases(tablesDeLaReference, enSuspens ? tablesQuiPartiront(db, retenus) : lireTables(db, TABLES_LUES, { autres: true }));
   return { ...commun, lignes, bilan: bilan(lignes) };
 }
 
@@ -220,8 +260,10 @@ function tablesQuiPartiront(db, retenus) {
 //
 // États du lancement (db/mise-a-jour/etat.json) :
 //   envoi        lot figé, déclenchement du workflow en cours           lance / en_cours   run déclenché / en cours sur GitHub
-//   fusionne     le lot est dans dev (étape « Fusion dans dev » réussie, ou sa note est arrivée dans les règles), livraison master pas finie
-//   termine      livré sur master (run réussi, ou la référence — master — porte la version de sa note)
+//   fusionne     le lot est dans dev (étape « Fusion dans dev » réussie, ou sa note est arrivée dans les règles), pas encore installé en production ;
+//                en lancement `manuel` (aucun suivi du run), il dure jusqu'à l'installation par le cron des installateurs, ou jusqu'à DUREE_MAX_RUN
+//   termine      livré : run réussi (suivi par le jeton), ou la référence porte la version de sa note — celle de la production installée
+//                (`_serveur/version.json` de son site : après l'installation, pas à la fusion sur master), à défaut celle de la copie de master
 //   echec        run en échec AVANT d'entrer dans dev : rien n'a été fusionné, le lancement peut être annulé
 //   echec_livraison  run en échec APRÈS la fusion dans dev : le lot est dans dev, pas sur master ; on le reprend (Re-run sur GitHub, il reprend à
 //                la livraison) ou on fusionne la PR de livraison à la main — une nouvelle mise à jour attend (le workflow la refuse : code 7)
@@ -424,9 +466,12 @@ export function leverMaintenance(dossier, { lot, instant }) {
 }
 
 /**
- * Ce que les règles du site (la base vivante, refaite à chaque version) et la référence (master) disent du lancement : sa note est-elle arrivée
- * (le lot est dans dev), et livrée sur master (la référence porte la version de sa note) ? Termine aussi les simulations. Rend l'état.
- * `reference` : lireReference(…) (sa version : celle de master quand ce site a été construit).
+ * Ce que les règles du site (la base vivante, refaite à chaque version) et la référence disent du lancement : sa note est-elle arrivée (le lot est
+ * dans dev), et livrée (la référence porte la version de sa note) ? Termine aussi les simulations. Rend l'état.
+ * `reference` : lireReference(…). Sa version est celle de la production installée (`_serveur/version.json` de son site) : « terminé » par la
+ * référence attend donc l'installation, après la livraison sur master ; sans production lisible, celle de la copie de master du dépôt (repli). En
+ * lancement `manuel` (aucun jeton, donc aucun suivi du run : seule la référence peut le terminer), « fusionné » dure jusqu'à cette installation
+ * (cron des installateurs) ou jusqu'à DUREE_MAX_RUN.
  */
 export function actualiserLancement(db, dossier, { reference = null } = {}) {
   const l = lireLancement(dossier);

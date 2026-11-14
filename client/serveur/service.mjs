@@ -129,6 +129,8 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
   journal: ecouteur = null, journalDuService = null, relancer = () => process.exit(0), metriques: reglagesMetriques = {}, fetch: fetchDuClasseur = globalThis.fetch,
   tipeee: reglagesTipeee = {} }) {
   const lancementDuService = performance.now();
+  // la production sert de référence à la page « Mise à jour » sauf si c'est la base de ce site même (lireReference compare les fichiers)
+  const referenceDuSite = reference && typeof reference === 'object' ? { propre: regles, ...reference } : reference;
   const chemin = join(dossier, FICHIER_BASE);
   // la mémoire de la page Debug (site de dev seulement) et la sortie de toujours (console, horodatée ; l'écouteur à sa place dans les tests) ; une
   // relève (estUneReleve) n'est notée nulle part
@@ -362,7 +364,7 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
     if (!edition) return;
     const recent = (l) => Boolean(l?.lot) && Date.now() - Date.parse(l.lance_le) <= DUREE_MAX_MAINTENANCE; // au-delà, plus rien à suivre ici
     try {
-      if (etat.db && recent(lireLancement(dossier))) actualiserLancement(etat.db, dossier, { reference: lireReference(reference) });
+      if (etat.db && recent(lireLancement(dossier))) actualiserLancement(etat.db, dossier, { reference: lireReference(referenceDuSite) });
     } catch (e) {
       journal(`ERREUR maintenance : suivi du lancement : ${e.message}`);
     }
@@ -490,7 +492,7 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
         try {
           reponse = traiter({ methode: req.method ?? 'GET', chemin: url.pathname, recherche: url.search, entetes: req.headers, corps: Buffer.concat(morceaux).toString('utf8'),
             signal: abandon.signal },
-          { base: baseMesuree, etat: decrire, journal, journalDuService: memoire, edition: Boolean(edition), dossier, reference, depot, adresse, github,
+          { base: baseMesuree, etat: decrire, journal, journalDuService: memoire, edition: Boolean(edition), dossier, reference: referenceDuSite, depot, adresse, github,
             maintenance: maintenanceDemandee, metriques, evenement, classeur, tipeee });
         } finally {
           const mesureSql = sql.terminer();

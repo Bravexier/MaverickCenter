@@ -138,6 +138,26 @@ cours »** et chacun rouvre de lui-même dès que sa nouvelle version y tourne (
 mise à jour »). Le service du serveur de test écrit l'annonce dans `/srv/maverick-center/maintenance/`, que les deux instances montent
 (`docker-compose.yml`) : `instances.sh` (étape 4) crée ce dossier et pose `MAVERICK_DOSSIER_MAINTENANCE` dans le `.env` du test.
 
+**Contenu de la production lu par le site de dev** (onglet « Mise à jour » de `docs/serveur.md`) : le `docker-compose.yml` monte le `site/` du serveur normal
+en lecture seule sur `/production` (par défaut `../maverick-center/site`, vrai sur le VPS ; `instances.sh` pose aussi `MAVERICK_DOSSIER_PRODUCTION` dans le
+`.env` du test). Un `docker-compose.yml` livré qui change n'est appliqué que par une commande à lancer à la main dans le dossier de l'instance (l'installateur
+le dit dans son journal), **une seule fois pour ce montage** :
+
+```bash
+cd /srv/maverick-center-test
+docker compose config -q && docker compose up -d          # config -q : la syntaxe seulement ; up -d ne recrée que le conteneur « serveur »
+docker compose exec serveur ls /production/donnees/maverick.db /production/_serveur/version.json     # les deux fichiers doivent s'afficher
+```
+
+Puis, sur le site de dev, l'onglet « Mise à jour » dit « contenu publié par la production » (au lieu de « copie de master tirée du dépôt »). Tant que le
+montage manque, l'onglet continue avec la copie de master et le dit : rien ne casse avant cette commande. Retour en arrière si le site de dev ne repart pas :
+retirer du `docker-compose.yml` de l'instance la ligne `MAVERICK_PRODUCTION` et la ligne de volume `:/production:ro`, puis `docker compose up -d` (l'installation
+ne garde pas l'ancienne version du fichier : `.livre/` reçoit la nouvelle). L'instance de production n'a rien à lancer : son service n'utilise pas ce montage.
+Le NAS (`deploy/docker-compose.yml`) n'a ni ce montage ni la page de mise à jour (elle n'existe que sur le site de dev) : rien à régler. Une instance de
+test dont le dossier voisin `maverick-center/site` n'existe pas : Docker crée un dossier vide à cet endroit, et la page retombe sur la copie de master ;
+`MAVERICK_DOSSIER_PRODUCTION` dans son `.env` désigne le vrai `site/` de la production. Ce dossier ne doit jamais être le `site/` de l'instance elle-même :
+le service refuse alors la production (« base de ce site même ») et la page garde la copie de master.
+
 Une maintenance qui ne finit pas (installateur bloqué, fichier `GELER`) : bouton **« Lever la maintenance (les deux sites) »** sur
 `https://dev.maverick-jdr.com/maintenance/` ; elle se lève d'elle-même 4 h après le lancement.
 

@@ -7,7 +7,7 @@
 //   MAVERICK_EDITION     1 = édition des règles depuis les pages et page « Mise à jour » (site de dev SEULEMENT ; défaut : fermée)
 //   MAVERICK_PRODUCTION  dossier du site de la PRODUCTION, monté en lecture seule (donnees/maverick.db et _serveur/version.json : ses règles, sans fiche ni
 //                        compte) ; la page « Mise à jour » compare la base dev à ce contenu, et à défaut à la copie ci-dessous
-//   MAVERICK_REFERENCE   base de production à laquelle la page « Mise à jour » compare la base dev (défaut : site/donnees/reference.db)
+//   MAVERICK_REFERENCE   repli de la page « Mise à jour » quand la production n'est pas lisible : la copie de master tirée du dépôt (défaut : site/donnees/reference.db)
 //   MAVERICK_GITHUB_JETON_FICHIER  fichier du jeton GitHub (permission Actions seulement) qui déclenche le workflow de mise à jour
 //   MAVERICK_DEPOT       dépôt GitHub (défaut : Bravexier/MaverickCenter) ; MAVERICK_ADRESSE_PUBLIQUE : adresse du site de dev (https://…)
 //   MAVERICK_MAINTENANCE dossier partagé de l'annonce de maintenance pendant une mise à jour (serveur/maintenance.mjs), le même pour les deux
