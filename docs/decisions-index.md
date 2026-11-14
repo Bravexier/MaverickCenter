@@ -2,7 +2,7 @@
 
 Ne lis jamais `docs/decisions-regles.md` en entier : trouve ici le numéro de la décision, puis cherche sa ligne avec Grep (motif `^\| R41 \|`) et ne lis qu'elle.
 
-Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 271 décisions, de R1 à R271, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
+Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 272 décisions, de R1 à R272, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
 
 | Réf. | Sujet | Décision |
 | --- | --- | --- |
@@ -277,3 +277,4 @@ Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas mo
 | R269 | Boxeur, suite de R255 et R267 : Égide d'assaut, arrondi de Bouclier d'atta… | (1) Avec Égide d'assaut, Bouclier d'attaque divise (AP… |
 | R270 | Fiche, suite de R260 : casse du nom d'une spécialisation. Le nom est en ca… | Sur la fiche, le nom d'une spécialisation s'écrit avec… |
 | R271 | Couleur d'une page et mot-clé qui mène à une section (lot « fusion des pag… | Un mot-clé dont l'adresse mène à une section (`#…`) ne… |
+| R272 | Page « Accessoires et Ceinture » supprimée, adresse de la page de l'invent… | Les sections « Accessoires » et « Ceinture » passent t… |
