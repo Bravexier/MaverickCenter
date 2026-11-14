@@ -98,7 +98,7 @@ import { chronologieVivante, donneesDEvenement, vocabulaireEtFeuille } from './e
 import { planVivant } from './edition-plan.mjs';
 import {
   actualiserLancement, CONFIRMATION, enregistrerBrouillon, enregistrerMajeure, ErreurNotes, estLiberable, figerLot, leverMaintenance, libererLot, lireLot,
-  lireReference, noteEnPreparation, occupe,
+  lignesALivrer, lireReference, noteEnPreparation, occupe,
 } from './notes-de-version.mjs';
 import { ErreurFiche, controlesDe, enregistrerFiche, lireFiche, listerFiches, niveauDe, portraitDeFiche, supprimerFiche } from './fiches.mjs';
 import { CHAMP_VERSION } from '../src/lib/fiche-format.mjs';
@@ -563,7 +563,7 @@ function traiterMiseAJour(requete, service, action, reste, permis) {
     // sans jeton GitHub sur ce serveur : le lot est figé quand même, la page dit comment lancer le workflow à la main
     const lancement = figerLot(db, service.dossier, {
       versionDev, versionCible: note.version_cible, instant: maintenant, confirmation: valeur?.confirmation, adresse: adressePublique(service, requete.entetes ?? {}),
-      etat: github.configure ? 'envoi' : 'manuel', simulation: valeur?.simulation === true, aLivrer: note.lignes ? note.lignes.length : null,
+      etat: github.configure ? 'envoi' : 'manuel', simulation: valeur?.simulation === true, aLivrer: lignesALivrer(note.lignes),
       ...(service.limites ? { limites: service.limites } : {}),
     });
     service.journal?.(`${lancement.simulation ? 'simulation de mise à jour' : 'mise à jour'} : lot ${lancement.lot} figé (${lancement.modifications} modification(s), V${note.version_cible})`);

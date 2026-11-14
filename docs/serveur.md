@@ -731,13 +731,20 @@ la première vraie mise à jour les retire.
 (`serveur/notes-de-version.mjs#lireReference`, lot 3 du chantier de la base de dev, R274) : **le contenu que la production publie** — le dossier `site/`
 de son instance, monté en lecture seule sur `/production` (`MAVERICK_PRODUCTION` ; `donnees/maverick.db` et `_serveur/version.json`, donc ses règles et sa
 version, sans fiche ni compte : la base des fiches reste fermée) ; à défaut (dossier non monté, base ou version illisible), la **copie de master tirée du
-dépôt** (`site/donnees/reference.db` et `reference.json`, `scripts/db-reference.mjs`). La page dit laquelle sert. Sur le VPS le montage est celui de
+dépôt** (`site/donnees/reference.db` et `reference.json`, `scripts/db-reference.mjs`, `MAVERICK_REFERENCE` : un repli seulement). La page dit laquelle
+sert, et pourquoi la production ne sert pas : dossier non monté, sans base, version absente de `version.json`, base illisible (une base à moitié
+copiée, que le calcul de la note ne peut pas lire : repli sur la copie du dépôt, jamais une erreur de la page) ou **base de ce site même** (le même
+fichier, même périphérique et même inode que `MAVERICK_REGLES` : le dev ne se compare pas à lui-même). Sur le VPS le montage est celui de
 `docker-compose.yml` (`../maverick-center/site` par défaut, `MAVERICK_DOSSIER_PRODUCTION` dans `.env`, posé par `instances.sh`) : une installation qui
 change le `docker-compose.yml` demande de lancer `docker compose up -d` dans le dossier de l'instance, une fois. Les tables de contenu que la
 comparaison ne décrit pas (domaine « Autres tables ») sont comparées sur leurs colonnes communes : lignes ajoutées, retirées ou changées (au-delà de 40
 par table : leur nombre), « structure changée » à part ; ni les fiches, le journal et les notes, ni ce que la fabrication calcule elle-même (`lien`,
-`lien_candidat`, `page_fts`, `entite_fts`) n'y entrent. Juste après une mise à jour réussie, la comparaison ne montre aucun écart.
-Seuls les champs que le site modifie sont comparés (`lib/edition-modele.mjs#TABLES`) : le reste en est dérivé (depuis la migration `0043`, la chronologie
+`lien_candidat`, `page_fts`, `entite_fts`) n'y entrent, ni les lignes qui tiennent à une page d'exemple (`statut = 'example'` : la copie de master les
+garde, le site de dev les masque ; les `source` que seules des pages d'exemple citent comprises). Ces lignes sont **affichées mais ne comptent pas
+dans « à livrer »** (`lignesALivrer`) : le workflow n'écrit pas encore les « Autres tables » dans la note (`mise-a-jour-regles.mjs#lireTables`, sans
+`autres`), si bien qu'une mise à jour dont seules ces lignes diffèrent, sans modification en attente ni texte, reste refusée (« Rien à livrer »). Juste
+après une mise à jour réussie, la comparaison ne montre aucun écart.
+Hors ce domaine, seuls les champs que le site modifie sont comparés (`lib/edition-modele.mjs#TABLES`) : le reste en est dérivé (depuis la migration `0043`, la chronologie
 (événements, descriptions, catégories) et le vocabulaire des mots-clés en sont : domaines « Chronologie » et « Mots-clés » ; les catégories d'un événement sont comparées comme un ensemble ; depuis la migration `0056`, les panneaux de règles de la page « Équipement » : domaine « Équipement », un panneau sous le nom de son onglet, un bloc par son titre de tuile, sinon ses premiers mots (« Toutes les armes ont de base… »), ou le libellé du mot-clé d'une tuile qui n'est qu'une balise ; la place des blocs n'est pas listée bloc par bloc : une ligne « Ordre des blocs » par panneau quand les blocs qu'il garde ne se lisent plus dans le même ordre, de la première à la dernière place qui change (`comparerOrdreDesBlocs` ; une tuile insérée ou un bloc retiré n'est dit que par son ajout ou son retrait)). Une ligne qui n'existe qu'avec une
 autre (la rubrique d'une carte de monstre, une case de butin, un bloc d'une espèce) n'est listée que pour un champ modifié : son ajout ou son retrait est
 dit par la carte ou l'espèce qui la porte ; un contenu entièrement absent de la production (le Codex et le bestiaire à leur première livraison) tient en
@@ -815,7 +822,8 @@ note dans les règles est vidé. Le serveur normal reçoit la nouvelle note avec
 
 **États du lancement** (`db/mise-a-jour/etat.json`, `serveur/notes-de-version.mjs`) : `envoi` → `lance` → `en_cours` → `fusionne` (le lot est
 dans dev : étape « Fusion dans dev » du job `livrer` réussie, ou sa note arrivée dans les règles) → `termine` (run réussi, ou la référence
-— master — porte la version de sa note : jamais par la seule arrivée de la note dans dev). Un échec **avant** dev donne `echec` (annulable) ;
+porte la version de sa note — celle de la production installée, à défaut celle de la copie de master : jamais par la seule arrivée de la note dans dev ;
+sans jeton, `manuel` : aucun suivi du run, `fusionne` dure jusqu'à l'installation par le cron des installateurs, ou jusqu'à `DUREE_MAX_RUN`). Un échec **avant** dev donne `echec` (annulable) ;
 **après**, `echec_livraison` : le lot est dans dev, il ne s'annule plus, on relance son run (« Re-run all jobs » : il reprend à la livraison) ou on
 fusionne sa PR de livraison, et une nouvelle mise à jour attend (le script de rejeu refuse aussi, code 7, d'écraser la note d'un autre lot
 pas encore livrée). Sans jeton : `manuel`. Annulé : `annule`. Simulation : `simulation_reussie` / `simulation_echouee`. Garanties :
@@ -1091,7 +1099,7 @@ grisé** et inerte. L'écran disparaît **dès que c'est terminé, pour chaque s
 
 Le site de dev **suit la mise à jour sans personne sur sa page** (ses pages renvoient vers `/maintenance/`) : sa minuterie (`MAVERICK_INTERVALLE`)
 relit le run GitHub (au plus toutes les 20 s, tant qu'il est dans les états suivis et sans nouvelles depuis moins de 3 h) et ce que disent les
-règles (`actualiserLancement` : note arrivée → `fusionne`, version livrée sur master → `termine`), puis republie l'annonce ; sans minuterie
+règles (`actualiserLancement` : note arrivée → `fusionne`, version installée en production → `termine`), puis republie l'annonce ; sans minuterie
 (`npm run serveur`), c'est l'interrogation de la page de maintenance qui le fait. Un « Re-run » d'une livraison échouée repasse le lancement
 `fusionne` : les deux sites se referment.
 

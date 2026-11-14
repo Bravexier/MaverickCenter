@@ -153,8 +153,10 @@ Puis, sur le site de dev, l'onglet « Mise à jour » dit « contenu publié par
 montage manque, l'onglet continue avec la copie de master et le dit : rien ne casse avant cette commande. Retour en arrière si le site de dev ne repart pas :
 retirer du `docker-compose.yml` de l'instance la ligne `MAVERICK_PRODUCTION` et la ligne de volume `:/production:ro`, puis `docker compose up -d` (l'installation
 ne garde pas l'ancienne version du fichier : `.livre/` reçoit la nouvelle). L'instance de production n'a rien à lancer : son service n'utilise pas ce montage.
-Une installation sans dossier voisin `maverick-center/site` (le NAS) : Docker crée un dossier vide à cet endroit ; mettre `MAVERICK_DOSSIER_PRODUCTION=./site`
-dans son `.env` l'évite, la page de mise à jour n'existant de toute façon que sur le site de dev.
+Le NAS (`deploy/docker-compose.yml`) n'a ni ce montage ni la page de mise à jour (elle n'existe que sur le site de dev) : rien à régler. Une instance de
+test dont le dossier voisin `maverick-center/site` n'existe pas : Docker crée un dossier vide à cet endroit, et la page retombe sur la copie de master ;
+`MAVERICK_DOSSIER_PRODUCTION` dans son `.env` désigne le vrai `site/` de la production. Ce dossier ne doit jamais être le `site/` de l'instance elle-même :
+le service refuse alors la production (« base de ce site même ») et la page garde la copie de master.
 
 Une maintenance qui ne finit pas (installateur bloqué, fichier `GELER`) : bouton **« Lever la maintenance (les deux sites) »** sur
 `https://dev.maverick-jdr.com/maintenance/` ; elle se lève d'elle-même 4 h après le lancement.
