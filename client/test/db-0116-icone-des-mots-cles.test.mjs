@@ -11,11 +11,10 @@ import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
-import { MONNAIES_DU_JEU } from '../src/lib/monnaies.mjs';
+import { fauteDeLIcone, ICONES } from '../src/lib/icones.mjs';
 
 const SCHEMA = readFileSync(new URL('../../data/schema.sql', import.meta.url), 'utf8');
 const db = ouvrirBase({ sansExemples: false });
-const IDS_DES_MONNAIES = new Set(Object.values(MONNAIES_DU_JEU).map((m) => m.id));
 
 test('structure : mot_cle.icone, texte nullable, ajoutée en dernier', () => {
   const colonnes = db.prepare('PRAGMA table_info(mot_cle)').all();
@@ -34,6 +33,12 @@ test('contrainte (base neuve) : « famille:id » en minuscules, ou NULL ; le res
   for (const icone of ['', 'monnaie', 'monnaie:', ':rf', 'Monnaie:rf', 'monnaie:RF', 'mon-naie:rf', 'monnaie:r f', 'monnaie:rf:x', 'monnaie:rf-', 'monnaie:r--f', '#a1b2c3']) {
     assert.throws(() => poser(icone), /CHECK/, JSON.stringify(icone));
   }
+  // chaque icône de la liste du site (lib/icones.mjs#ICONES : monnaies, dégâts, magies) passe le CHECK : le service et db:check l'acceptent, la
+  // base doit pouvoir l'écrire (« magie:espace-temps », « magie:potentiel-illimite » : un id composé)
+  for (const { valeur } of ICONES) {
+    assert.doesNotThrow(() => poser(valeur), valeur);
+    essai.exec('DELETE FROM mot_cle WHERE id = 1');
+  }
   essai.close();
 });
 
@@ -45,10 +50,9 @@ test('import : chaque mot-clé d’une monnaie a l’icône de sa monnaie, et lu
   assert.deepEqual(motsCles.filter((m) => m.monnaie_id === null && m.icone !== null).map((m) => m.id), []);
 });
 
-test('état courant : une icône est NULL ou « monnaie:<id> » d’une monnaie du site (la seule famille aujourd’hui)', () => {
-  // la famille « monnaie » : les dessins des monnaies (lib/monnaies.mjs#MONNAIES_DU_JEU, classe piece--<id>) ; une famille nouvelle s'ajoute ici
+test('état courant : une icône est NULL ou une icône de la liste du site (lib/icones.mjs#ICONES : monnaies, dégâts, magies ; la règle de db:check)', () => {
   const fautes = db.prepare('SELECT id, icone FROM mot_cle WHERE icone IS NOT NULL').all()
-    .filter(({ icone }) => !(icone.startsWith('monnaie:') && IDS_DES_MONNAIES.has(icone.slice('monnaie:'.length))))
+    .filter(({ icone }) => fauteDeLIcone(icone) !== null)
     .map((m) => `${m.id} : ${m.icone}`);
   assert.deepEqual(fautes, []);
 });

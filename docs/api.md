@@ -371,8 +371,8 @@ cherche dans le lien), qui se donnent à la création et se modifient par `PATCH
 interne relative à la racine du site, sans le préfixe de déploiement, dont le chemin mène à une page du site (`/races/drakos/`,
 `/metiers/#metier-mineur` ; l'ancre et la requête ne sont pas vérifiées) ; la couleur, `#rrggbb` ou `<famille>:<id>` d'une couleur de la palette
 (`classe:melee`) ; refusés en `400` avec `champ: "url"` ou `champ: "couleur"`. L'icône (`icone`, migration 0116, décision R235) se lit, se donne à
-la création et se modifie de même : `null`, ou `<famille>:<id>` d'une icône de la liste du site (`lib/icones.mjs#ICONES` : pour l'instant
-`monnaie:rf`, `monnaie:ro`, `monnaie:pp` ; le catalogue en donne les `valeurs`, la liste `icones` de `GET /api/edition/listes/`), sinon `400` avec
+la création et se modifie de même : `null`, ou `<famille>:<id>` d'une icône de la liste du site (`lib/icones.mjs#ICONES` : les trois monnaies
+(`monnaie:rf`, `monnaie:ro`, `monnaie:pp`), les types de dégâts (`degats:taille`, `degats:estoc`, `degats:frappe`) et les magies (`magie:feu`…) ; le catalogue en donne les `valeurs`, la liste `icones` de `GET /api/edition/listes/`), sinon `400` avec
 `champ: "icone"`. Un lien `[[…]]` ou `[texte](/…)` saisi dans un texte devient la balise
 du seul mot-clé qui mène à sa page (sinon `400` avec `champ` et `liens`, [`serveur.md`](serveur.md), « Édition des règles »). Le verrou d'un mot-clé
 (`verrou`, migration 0110, décisions R218 et R219) se lit dans la liste, le détail et le catalogue (colonne non modifiable) ; aucune route ne l'écrit

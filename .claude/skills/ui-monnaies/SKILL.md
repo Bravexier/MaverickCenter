@@ -1,7 +1,7 @@
 ---
 name: ui-monnaies
-description: "Monnaies en icônes partout (R61, R63) : lib/monnaies.mjs, plugin remark lib/markdown-monnaies.mjs, styles/global/monnaies.css (.piece), montant décomposé PP / RO / RF, data-montant et data-monnaie. À charger avant de lire, modifier ou relire un affichage de prix ou de monnaie."
-paths: ["client/src/lib/monnaies.mjs", "client/src/lib/markdown-monnaies.mjs", "client/src/styles/global/monnaies.css", "client/test/monnaies.test.mjs", "client/test/monnaies-html.test.mjs"]
+description: "Monnaies en icônes partout (R61, R63) : lib/monnaies.mjs, plugin remark lib/markdown-monnaies.mjs, styles/global/monnaies.css (.piece), montant décomposé PP / RO / RF, data-montant et data-monnaie ; icônes de dégâts et de magie (icones.css, .icone). À charger avant de lire, modifier ou relire un prix, une monnaie ou ces icônes."
+paths: ["client/src/lib/monnaies.mjs", "client/src/lib/markdown-monnaies.mjs", "client/src/styles/global/monnaies.css", "client/src/styles/global/icones.css", "client/test/monnaies.test.mjs", "client/test/monnaies-html.test.mjs", "client/test/icones-degats-et-magies.test.mjs"]
 user-invocable: false
 ---
 # Monnaies en icônes
@@ -35,5 +35,9 @@ user-invocable: false
 - La page des armes décompose par `lib/arme-forge.mjs#piecesDuMontant` (même calcul, testé) avec les icônes de ses `<template data-armes-piece>`. `lib/armure-forge.mjs` a aussi un `piecesDuMontant` pour la page des armures.
 - `.piece` est une classe globale : ne jamais nommer ainsi une autre classe (une ligne de tableau ainsi nommée s'écrase).
 
+## Icônes de dégâts et de magie (R235, prolongée)
+- Liste : `lib/icones.mjs#ICONES` (skill `zone-mots-cles`) ; dessins : `styles/global/icones.css`, en masque SVG. Classes `icone icone--degats icone--degats-<id> couleur-degats-<id>` (taille, estoc, frappe) et `icone icone--magie icone--magie-<id> couleur-magie-<id>` ; jamais `.piece`, réservée aux monnaies.
+- Couleur : la classe de palette de l'icône, jamais un hexadécimal (« Aucune couleur en dur », propriétaire, tête de `lib/palette-css.mjs`) ; `--couleur`, contour `--couleur-texte` (skill `ui-couleurs`). Magie : `couleur-magie-<id>`. Dégâts : `couleur-degats-<id>` (`lib/equipement-couleurs.mjs#COULEURS_DES_DEGATS`, couleurs des pastilles de type des armes ; réponse du propriétaire « Couleurs des armes »).
+
 ## Tests
-- `client/test/monnaies.test.mjs`, `client/test/monnaies-html.test.mjs`, `client/test/markdown-edition.test.mjs`, `client/test/armure-forge.test.mjs`, `client/test/accessoires-html.test.mjs`.
+- `client/test/monnaies.test.mjs`, `client/test/monnaies-html.test.mjs`, `client/test/markdown-edition.test.mjs`, `client/test/armure-forge.test.mjs`, `client/test/accessoires-html.test.mjs`, `client/test/icones-degats-et-magies.test.mjs` (icônes de dégâts et de magie).

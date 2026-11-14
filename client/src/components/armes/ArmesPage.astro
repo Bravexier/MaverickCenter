@@ -95,7 +95,7 @@ const secondsRangs = cssDesSecondsRangs('caracteristique');
 // la couleur de chaque matériau (sa ligne, sa pastille dans la fiche de l'arme) et le bleu des armes de départ (`--depart`, tiré de la classe posée sur
 // `.armes`) : les classes de la palette (familles `materiau` et `arme`, valeurs dans lib/materiaux-couleurs.mjs et lib/equipement-couleurs.mjs),
 // émises par cette page, jamais un style
-const couleurs = cssDesFamilles(['materiau', 'arme', 'degats']);
+const couleurs = cssDesFamilles(['materiau', 'arme']);
 // les modèles d'une famille créée (décision R159) ne servent qu'au mode modification : posés là où la page peut charger l'éditeur, comme
 // components/edition/Edition.astro (layouts/Base.astro) — jamais dans la version portable (tools/build-artifact.mjs, INLINE_CSS=1 : pas de service) ;
 // le build de production les garde, comme l'éditeur, que le service n'ouvre qu'avec MAVERICK_EDITION=1
