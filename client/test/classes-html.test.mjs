@@ -273,7 +273,10 @@ const sansLaRubriqueMotsCles = (html) => {
   }
   return sortie + html.slice(depuis);
 };
-const ecritClasse = (relatif, html) => /\(classe\)/i.test(relatif === NOTES_DE_VERSION ? sansLaRubriqueMotsCles(html) : html);
+// R273 : l’historique des modifications garde les valeurs telles qu’elles ont été saisies (avant et après), « (classe) » compris ; exempté.
+const HISTORIQUE_DES_MODIFICATIONS = 'donnees/historique_modification/index.html';
+const ecritClasse = (relatif, html) => relatif !== HISTORIQUE_DES_MODIFICATIONS
+  && /\(classe\)/i.test(relatif === NOTES_DE_VERSION ? sansLaRubriqueMotsCles(html) : html);
 
 test('R191 étendue aux notes de version : « (classe) » admis dans la rubrique « Mots-clés » seulement, une faute partout ailleurs sur la page', () => {
   const domaine = (d, corps) => `<details class="nv-domaine" data-domaine="${d}" open><summary><h3>${d}</h3></summary><ul><li>${corps}</li></ul></details>`;
@@ -288,6 +291,8 @@ test('R191 étendue aux notes de version : « (classe) » admis dans la rubrique
     `<a title="Orios (classe)">Orios</a>${motsCles}`,
   ]) assert.equal(ecritClasse(NOTES_DE_VERSION, faute), true, faute);
   assert.equal(ecritClasse('classes/orios/index.html', motsCles), true, 'la rubrique n’est admise que sur la page des notes de version');
+  assert.equal(ecritClasse(HISTORIQUE_DES_MODIFICATIONS, '<td>Orios (classe)</td>'), false, 'R273 : l’historique des modifications est exempté');
+  assert.equal(ecritClasse('donnees/index.html', '<td>Orios (classe)</td>'), true, 'R273 : seul l’historique, pas toute la page Données');
 });
 
 test('« (classe) » supprimé de partout (migration 0009 ; R232 (4), qui remplace R191), sauf dans la rubrique « Mots-clés » des notes de version (R232 (12)) : aucune page construite ne l’écrit, Glossaire, Recherche et Données compris, bulles comprises ; la classe raciale porte le nom de sa race', options, () => {
