@@ -28,7 +28,7 @@ const ANCRE = retiree.ancre;
 const dImport = baseDImport();
 const courante = ouvrirBase();
 /**
- * Le texte tel que la 0123 l'a écrit. La migration 0125 a réécrit la page après des modifications du site de dev : la base d'import garde son texte à
+ * Le texte tel que la 0123 l'a écrit. La migration 0126 a réécrit la page après des modifications du site de dev : la base d'import garde son texte à
  * elle (la migration a le dernier mot : test/aide-base-d-import.mjs#defaireLeSite) ; celui de la 0123 est l'« avant » de la première modification du
  * site (lib/historique-site.mjs#valeurDImport, lu dans la base courante, qui garde l'historique).
  */

@@ -166,9 +166,9 @@ test('0111 : chaque balise écrite vise un mot-clé qui a une adresse (C11, C17 
       assert.equal(formeCanonique(brut, vocabulaire, { markdown: true }).texte, brut, `${t.correction} ${t.cle.id} : ${b.brut}`);
     }
   }
-  // une cellule qu'une migration postérieure a réécrite après le site de dev (0125 : le corps de guide/alignement) garde, dans l'état de la 0111, le texte
+  // une cellule qu'une migration postérieure a réécrite après le site de dev (0126 : le corps de guide/alignement) garde, dans l'état de la 0111, le texte
   // de cette migration, qui cite des mots-clés que le site a créés depuis (défaits dans cet état) : elle se vérifie dans la base courante, avec son vocabulaire
-  const reecritesApresLeSite = textesReecrits('0125-onglets-de-l-alignement');
+  const reecritesApresLeSite = textesReecrits('0126-onglets-de-l-alignement');
   const vocabulaireCourant = motsClesDeLaBase(courante());
   for (const t of registre.textes) {
     const apres = reecritesApresLeSite.some((r) => r.table === t.table && r.col === t.col && JSON.stringify(r.cle) === JSON.stringify(t.cle)

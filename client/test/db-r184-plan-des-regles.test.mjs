@@ -315,8 +315,8 @@ test('R184 (5) : les retouches E1 à E12 ; plus aucune phrase ne renvoie « plus
   assert.ok(contient('guide/le-tour-de-jeu', '[[guide/actions-et-mouvements|Les actions et mouvements]] et [[guide/vitesse-et-portee|La vitesse et la portée]] ; sa page')); // E5
   // E6 : phrase retirée depuis par la 0104 (R200 (5), P9) : l'une ou l'autre écriture
   assert.ok(corps('guide/le-mode-hyper').includes('aux valeurs différentes : cette liste ne compte pas') || !corps('guide/le-mode-hyper').includes('onglet masqué')); // E6
-  // E9 : la page visée est fondue dans « Alignement » depuis la 0123 ; son mot-clé mène alors à l'intertitre de cette page (même balise). La 0125 a
-  // réécrit la page après le site de dev, qui avait retiré la phrase : l'état d'après la 0091 garde alors le texte de la 0125 (la migration a le dernier
+  // E9 : la page visée est fondue dans « Alignement » depuis la 0123 ; son mot-clé mène alors à l'intertitre de cette page (même balise). La 0126 a
+  // réécrit la page après le site de dev, qui avait retiré la phrase : l'état d'après la 0091 garde alors le texte de la 0126 (la migration a le dernier
   // mot), et le retrait se lit dans l'historique (test/aide-fragments-du-site.mjs)
   const e9 = ['(voir [[guide/les-neuf-alignements|Les neuf alignements]])', '(voir [[guide/alignement|Les neuf alignements]])'];
   assert.ok(e9.some((modele) => contient('guide/alignement', modele))

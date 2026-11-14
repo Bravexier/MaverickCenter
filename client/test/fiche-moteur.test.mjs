@@ -781,7 +781,7 @@ test('alignement (demande du propriétaire, guide « Alignement ») : 5 points d
   assert.deepEqual(cransDAlignement(regles, {}), { loi: 2, bien: 2 }, 'cases vides : le milieu');
   // les neuf combinaisons sont les titres de la section « Les neuf alignements » d'« Alignement » (la page « Les neuf alignements » y est fondue
   // depuis la migration 0123 : ses titres sont les intertitres à ancre figée de la section #les-neuf-alignements ; le site de dev en a fait des balises
-  // de leurs mots-clés, que la migration 0125 garde : un titre se lit tel qu'il s'affiche)
+  // de leurs mots-clés, que la migration 0126 garde : un titre se lit tel qu'il s'affiche)
   const vocabulaire = chargerVocabulaire(db);
   const titres = ancresDuCorps(sectionParAncre(historique.valeurDImport('page', { id: 'guide/alignement' }, 'corps_md'), 'les-neuf-alignements') ?? '')
     .map((a) => texteSansBalises(a.texte, vocabulaire, { markdown: true }).trim());

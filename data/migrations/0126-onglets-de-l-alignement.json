@@ -1,5 +1,5 @@
 {
- "migration": "0125-onglets-de-l-alignement",
+ "migration": "0126-onglets-de-l-alignement",
  "decisions": ["R277"],
  "description": "Deux groupes d’onglets écrits dans le texte de « Alignement » (guide/alignement), demande du propriétaire du 2026-11-14 : les quatre tendances (Loyal, Chaotique, Bon, Mauvais ; sans couleur) sous « ## Les Quatre Tendances » remis en intertitre, et les neuf alignements dans l’ordre de la grille (LB NB CB / LN N CN / LM NM CM), chacun de la couleur de son alignement (« {couleur:alignement:<id>} »). Aucun mot de la page changé. `textes` : trois fragments réécrits du corps (`avant` présent une fois ; appliqués dans l’ordre, ils donnent le texte écrit par la migration) ; ce ne sont pas des corrections d’un classeur.",
  "textes": [

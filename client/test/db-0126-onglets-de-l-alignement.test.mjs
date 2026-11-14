@@ -1,4 +1,4 @@
-// Migration data/migrations/0125-onglets-de-l-alignement.sql (décision R277 du propriétaire, 2026-11-14) : la page « Alignement » (guide/alignement) prend deux
+// Migration data/migrations/0126-onglets-de-l-alignement.sql (décision R277 du propriétaire, 2026-11-14) : la page « Alignement » (guide/alignement) prend deux
 // groupes d'onglets écrits dans son texte (lib/markdown-onglets.mjs) : les quatre tendances, sans couleur, sous l'intertitre « ## » remis en titre ; les
 // neuf alignements dans l'ordre de la grille (lib/caracteristiques-postures.mjs#ALIGNEMENTS_EN_GRILLE), chaque intertitre préfixé de la couleur de son
 // alignement dans la palette (« {couleur:alignement:<id>} »). Aucun mot de la page n'est réécrit : chaque section garde ses lignes, et le texte entier
@@ -6,7 +6,7 @@
 // Le site de dev est la source de ce qu'il modifie : ce que la migration écrit se lit dans la base d'import (test/aide-base-d-import.mjs) ; le texte
 // d'avant se recalcule par le registre (`apres` → `avant`), et aucun texte n'est écrit ici. Sur l'état courant : les groupes encore écrits sont fermés,
 // et leurs couleurs sont celles de la palette.
-//   node --test test/db-0125-onglets-de-l-alignement.test.mjs
+//   node --test test/db-0126-onglets-de-l-alignement.test.mjs
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
@@ -20,8 +20,8 @@ import { fauteDeLaCouleur, idDeCouleur } from '../src/lib/palette-css.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
 import { rendreCommeLeGuide } from './aide-rendu-du-site.mjs';
 
-const registre = JSON.parse(readFileSync(new URL('../../data/migrations/0125-onglets-de-l-alignement.json', import.meta.url), 'utf8'));
-const migration = readFileSync(new URL('../../data/migrations/0125-onglets-de-l-alignement.sql', import.meta.url), 'utf8');
+const registre = JSON.parse(readFileSync(new URL('../../data/migrations/0126-onglets-de-l-alignement.json', import.meta.url), 'utf8'));
+const migration = readFileSync(new URL('../../data/migrations/0126-onglets-de-l-alignement.sql', import.meta.url), 'utf8');
 const registre0123 = JSON.parse(readFileSync(new URL('../../data/migrations/0123-fusion-pages-alignement.json', import.meta.url), 'utf8'));
 const PAGE = 'guide/alignement';
 const GRILLE = ALIGNEMENTS_EN_GRILLE.map(idDeCouleur);
@@ -85,7 +85,7 @@ function lignesSansMarques(corps) {
   return compte;
 }
 
-test('0125 : le registre ne réécrit que le corps de la page, chaque fragment écrit en place et l’ancien absent (état de la migration)', () => {
+test('0126 : le registre ne réécrit que le corps de la page, chaque fragment écrit en place et l’ancien absent (état de la migration)', () => {
   const corps = corpsDe(dImport);
   assert.ok(corps, PAGE);
   assert.deepEqual(registre.decisions, ['R277']);
@@ -100,7 +100,7 @@ test('0125 : le registre ne réécrit que le corps de la page, chaque fragment �
   for (const g of ['changes()', 'marques dans l’ordre', 'longueur : rien de perdu', 'aucun groupe d’onglets déjà écrit']) assert.ok(migration.includes(g), g);
 });
 
-test('0125 (R277) : deux groupes d’onglets — les quatre tendances sans couleur sous un intertitre « ## », puis les neuf alignements dans l’ordre de la grille, chacun de sa couleur', () => {
+test('0126 (R277) : deux groupes d’onglets — les quatre tendances sans couleur sous un intertitre « ## », puis les neuf alignements dans l’ordre de la grille, chacun de sa couleur', () => {
   const corps = corpsDe(dImport);
   const [tendances, neuf, ...autres] = groupes(corps);
   assert.equal(autres.length, 0, 'deux groupes');
@@ -129,7 +129,7 @@ test('0125 (R277) : deux groupes d’onglets — les quatre tendances sans coule
   assert.ok(titreDesNeuf && titreDesNeuf.niveau === 2 && tendances.fin < titreDesNeuf.ligne && titreDesNeuf.ligne < neuf.debut);
 });
 
-test('0125 : aucun mot changé — chaque section garde ses lignes, et le texte entier les siennes hors des marques ajoutées', () => {
+test('0126 : aucun mot changé — chaque section garde ses lignes, et le texte entier les siennes hors des marques ajoutées', () => {
   const apres = corpsDe(dImport);
   const avant = reecrit(apres, 'apres', 'avant');
   assert.equal(groupes(avant).length, 0, 'le texte d’avant n’avait pas de groupe');
@@ -159,7 +159,7 @@ test('0125 : aucun mot changé — chaque section garde ses lignes, et le texte 
   assert.deepEqual([...lignesSansMarques(apres)].sort(), [...attendu].sort());
 });
 
-test('0125 : le rendu pose deux groupes, onglets dans l’ordre de la grille avec la classe de leur couleur, ancres figées gardées en id des panneaux', async () => {
+test('0126 : le rendu pose deux groupes, onglets dans l’ordre de la grille avec la classe de leur couleur, ancres figées gardées en id des panneaux', async () => {
   const corps = corpsDe(dImport);
   let html = '';
   for (const m of morceauxDuChapitre(corps)) if ('markdown' in m) html += await rendreCommeLeGuide(m.markdown);
@@ -175,7 +175,7 @@ test('0125 : le rendu pose deux groupes, onglets dans l’ordre de la grille ave
   assert.ok(!/:::|\{couleur:/.test(html.replace(/<pre[\s\S]*?<\/pre>/g, '')), 'aucune marque ne s’affiche');
 });
 
-test('0125 : aujourd’hui, chaque groupe encore écrit dans la page est fermé, et chaque couleur d’onglet est connue de la palette', () => {
+test('0126 : aujourd’hui, chaque groupe encore écrit dans la page est fermé, et chaque couleur d’onglet est connue de la palette', () => {
   const corps = corpsDe(courante);
   if (corps === undefined) return; // page retirée sur le site de dev : admis
   const ouvertures = corps.split('\n').filter((l) => marque(l) === MARQUE_D_OUVERTURE).length;
