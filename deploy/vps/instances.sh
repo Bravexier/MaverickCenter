@@ -82,6 +82,9 @@ poser "$NORMAL/.env" MAVERICK_INSTANCE prod
 poser "$TEST/.env" MAVERICK_INSTANCE dev
 poser "$NORMAL/.env" MAVERICK_DOSSIER_METRIQUES "$NORMAL/metriques"
 poser "$TEST/.env" MAVERICK_DOSSIER_METRIQUES "$NORMAL/metriques"
+# Contenu de la production (docs/serveur.md, « Mise à jour (site de dev) ») : le serveur de test monte le site du serveur normal en lecture seule
+# (docker-compose.yml) pour comparer ses règles à ce que la production publie.
+poser "$TEST/.env" MAVERICK_DOSSIER_PRODUCTION "$NORMAL/site"
 
 mkdir -p "$ETC_CADDY"
 if [ "$REGENERER" -eq 1 ] || [ ! -f "$ENV_CADDY" ] || [ ! -f "$NORMAL/.htpasswd" ] || [ ! -f "$TEST/.htpasswd" ]; then

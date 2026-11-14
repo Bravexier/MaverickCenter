@@ -46,10 +46,14 @@ services:
       # (MAVERICK_DOSSIER_MAINTENANCE dans son .env, posé par deploy/vps/instances.sh), sinon la production n'est jamais mise en maintenance.
       MAVERICK_MAINTENANCE: /maintenance
       # Métriques (docs/serveur.md, « Métriques et volume ») : chaque service écrit SA base <instance>.db (prod.db ou dev.db) dans ce dossier, jamais
-      # dans db/ (l'installateur de test, qui remplace le contenu de db/, ne la copie ni ne l'efface donc jamais), et le site de dev y lit aussi celle
+      # dans db/ (l'installateur de test, qui peut y copier la base de la production sur demande, ne les copie ni ne les efface), et le site de dev y lit aussi celle
       # de la production, sans y écrire. Dossier de l'hôte : metriques/ de l'instance par défaut ; sur le VPS, celui du serveur normal pour les deux
       # instances (MAVERICK_DOSSIER_METRIQUES dans chaque .env, posé par deploy/vps/instances.sh), comme le dossier de la maintenance.
       MAVERICK_DOSSIER_METRIQUES: /metriques
+      # Contenu de la production (docs/serveur.md, « Mise à jour (site de dev) ») : le site de dev compare ses règles à ce que la production publie
+      # (donnees/maverick.db et _serveur/version.json de son site, sans fiche ni compte), lu dans ce dossier monté en lecture seule. Tant qu'il n'est pas
+      # monté ou lisible, la page garde la copie de master tirée du dépôt et le dit. La production ne s'en sert pas.
+      MAVERICK_PRODUCTION: /production
       # Nom de l'instance, donc de son fichier : prod ou dev (posé par instances.sh). Vide, le service le déduit de MAVERICK_EDITION (1 : dev).
       MAVERICK_INSTANCE: ${MAVERICK_INSTANCE:-}
       # 1 = requêtes brutes aussi gardées sur disque, 30 jours (volume : docs/serveur.md) ; 0 par défaut (seulement en mémoire, site de dev).
@@ -63,6 +67,10 @@ services:
       - ./secrets:/secrets:ro
       - ${MAVERICK_DOSSIER_MAINTENANCE:-./maintenance}:/maintenance
       - ${MAVERICK_DOSSIER_METRIQUES:-./metriques}:/metriques
+      # site/ de la production, en lecture seule : par défaut le dossier voisin maverick-center/ (le VPS : /srv/maverick-center-test lit /srv/maverick-center) ;
+      # MAVERICK_DOSSIER_PRODUCTION dans .env (posé par deploy/vps/instances.sh) en dit un autre. Le dossier, pas le fichier : maverick.db est remplacé à
+      # chaque installation de la production.
+      - ${MAVERICK_DOSSIER_PRODUCTION:-../maverick-center/site}:/production:ro
     logging:
       driver: json-file
       options:
