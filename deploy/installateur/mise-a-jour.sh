@@ -149,8 +149,32 @@ case "$(mode_de_etiquette "$TAG")" in
   *) die "réponse inattendue de GitHub (étiquette « $TAG »)" ;;
 esac
 
+# Le dernier installateur installé est gardé dans installateur-courant/ (un seul : celui de la livraison installée) : l'envoi chiffré de nuit des
+# sauvegardes automatiques le joint à la copie extérieure (deploy/vps/README.md, « Sauvegardes »), de quoi remonter un site à partir de rien.
+GARDE_DIR="$BASE_DIR/installateur-courant"
+GARDE="$GARDE_DIR/maverick-center-$TAG-install.sh"
+garder_installateur() {
+  mkdir -p "$GARDE_DIR" || return 0
+  if cp "$1" "$GARDE_DIR/.nouveau.$$" 2>/dev/null && mv -f "$GARDE_DIR/.nouveau.$$" "$GARDE"; then
+    for ancien in "$GARDE_DIR"/maverick-center-*-install.sh; do
+      [ "$ancien" = "$GARDE" ] || rm -f "$ancien"
+    done
+  else
+    rm -f "$GARDE_DIR/.nouveau.$$"
+    log "Avertissement : l'installateur $TAG n'a pas pu être gardé dans installateur-courant/."
+  fi
+}
+ASSET=$(grep -o '"url": *"[^"]*/releases/assets/[0-9]*"' "$TMP/livraison.json" | head -n 1 | sed 's/^.*: *"//; s/"$//')
+
 INSTALLE=$(sed -n 's/^tag=//p' "$BASE_DIR/VERSION" 2>/dev/null | head -n 1 || true)
 if [ "$FORCE" -eq 0 ] && [ "$INSTALLE" = "$TAG" ] && [ -f "$BASE_DIR/site/index.html" ]; then
+  # À jour : si l'installateur de cette livraison n'est pas gardé (livraison installée à la main), il l'est une fois ; l'installation ne change pas.
+  if [ ! -f "$GARDE" ] && [ -n "$ASSET" ] &&
+    gh_curl -H 'Accept: application/octet-stream' -o "$TMP/installateur.sh" "$ASSET" 2>/dev/null &&
+    sh "$TMP/installateur.sh" --verifier >/dev/null 2>&1; then
+    garder_installateur "$TMP/installateur.sh"
+    log "Installateur $TAG gardé dans installateur-courant/."
+  fi
   log "À jour ($TAG)."
   exit 0
 fi
@@ -169,7 +193,6 @@ if [ "$MODE" = test ] && [ "$FORCE" -eq 0 ] && [ -n "$INSTALLE" ]; then
 fi
 
 # Une livraison ne porte qu'un fichier joint : son installateur. On le télécharge par l'API (dépôt privé).
-ASSET=$(grep -o '"url": *"[^"]*/releases/assets/[0-9]*"' "$TMP/livraison.json" | head -n 1 | sed 's/^.*: *"//; s/"$//')
 [ -n "$ASSET" ] || die "la livraison $TAG n'a pas encore d'installateur joint (construction en cours ?)"
 log "Nouvelle livraison $TAG (installée : ${INSTALLE:-aucune}) : téléchargement."
 gh_curl -H 'Accept: application/octet-stream' -o "$TMP/installateur.sh" "$ASSET" || die "téléchargement de l'installateur $TAG impossible"
@@ -178,6 +201,7 @@ sh "$TMP/installateur.sh" --verifier >/dev/null 2>&1 || die "installateur $TAG r
 # Aucune option de base : un installateur de test ne copie la production que si on le lui demande à la main (--copier-base-prod).
 if sh "$TMP/installateur.sh" --dossier "$BASE_DIR" >> "$LOG_FILE" 2>&1; then
   log "Installé : $TAG."
+  garder_installateur "$TMP/installateur.sh"
 else
   die "l'installateur $TAG a échoué (détail ci-dessus dans $LOG_FILE)"
 fi

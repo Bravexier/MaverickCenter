@@ -12,7 +12,7 @@
 //   GET <base>api/debug/metriques/requetes/?limite=&route_exacte=&min_ms=  → { requetes: [{ instant, methode, route, adresse, statut, duree_ms,
 //       phases: { corps_ms, traitement_ms, envoi_ms }, octets_entree, octets_sortie, sql: { n, ms, plus_lente: { sql, ms } }, page, navigateur,
 //       appareil, simultanees }] } (la mémoire du serveur qui répond, le site de dev : rien pour l'instance « Production », requetesDeLInstance)
-//   GET <base>api/debug/systeme/?instance=…  → { instance, maintenant, processus, disque, fichiers, echantillons, evenements, volume, alertes }
+//   GET <base>api/debug/systeme/?instance=…  → { instance, maintenant, processus, disque, fichiers, echantillons, evenements, volume, sauvegardes, alertes }
 //   GET <base>api/debug/metriques/export/?instance=&periode=&format=csv|json  (lien « Exporter »)
 // Deux jeux de données séparés (décision du propriétaire du 2026-10-15) : la page montre l'instance choisie, dev OU production, jamais un mélange.
 // Les courbes sont du SVG en ligne, sans bibliothèque et sans <title> (une infobulle native : jamais, Infobulles.astro) : un aria-label les décrit.
@@ -984,4 +984,153 @@ export function htmlDeLEspaceDisque(disque, { instance = '', maintenant = new Da
     + `<ul class="debug-espace__legende">${legende}</ul>`
     + notes.map((n) => `<p class="debug-petit">${n}</p>`).join('')
     + '<p class="debug-petit">Tailles en unités décimales (1 Go = 1 000 000 000 octets, comme les hébergeurs) ; le bloc « Système » compte en Gio.</p>';
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+// Sauvegardes automatiques (menu « Système » ; chantier de la base de dev, lot 1 : « La page Debug affiche l'âge de la dernière copie ») :
+// GET <base>api/debug/systeme/, champ `sauvegardes` (null sans fichier d'état : NAS, développement ; même contenu pour les deux instances ;
+// forme : docs/serveur.md, « Sauvegardes automatiques »). Les alertes du service (`sauvegardes.alertes`) sont déjà dans `alertes` du système :
+// ce bloc ne les redit pas, il met en évidence les valeurs fautives à côté de leur chiffre.
+
+/** Seuils techniques de la mise en évidence : une copie de plus de 26 h, un envoi extérieur de plus de 36 h (ceux des alertes du service). */
+export const SEUILS_SAUVEGARDES = { copieMaxS: 26 * 3600, envoiMaxS: 36 * 3600 };
+
+/** L'état d'une instance (`instances.<i>.etat`), en français. */
+export const ETATS_DE_SAUVEGARDE = { ok: 'à jour', alerte: 'alerte en cours', ancienne: 'copie trop ancienne', sans_copie: 'aucune copie' };
+
+/** Les types de copie : horaire (si la base a changé) ou de nuit. */
+export const TYPES_DE_COPIE = { horaire: 'horaire', nuit: 'de nuit' };
+
+/** Les codes d'alerte d'une copie (`alerte.code`), en français ; un code inconnu se lit tel quel. */
+export const CODES_D_ALERTE_DE_COPIE = {
+  chute_de_lignes: 'chute anormale du nombre de lignes',
+  integrite: 'contrôle d’intégrité en échec',
+  copie_impossible: 'copie impossible',
+  plafond: 'plafond de place atteint',
+  disque_plein: 'disque plein',
+  base_absente: 'base absente',
+};
+
+const estUnObjet = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+/** Un âge en secondes lisible : « il y a 2 h 05 min » ; « — » s'il est inconnu. */
+export const ageLisible = (secondes) => (fini(secondes) ? `il y a ${formaterDureeLongue(secondes)}` : '—');
+
+/** Le niveau d'une copie : 'erreur' si elle date de plus de `copieMaxS` (26 h), sinon ''. Sans copie : 'avertissement'. */
+export function niveauDeLaCopie(copie, seuils = SEUILS_SAUVEGARDES) {
+  if (!estUnObjet(copie) || !fini(copie.age_s)) return 'avertissement';
+  return Number(copie.age_s) > seuils.copieMaxS ? 'erreur' : '';
+}
+
+/** Le niveau de l'état d'une instance : 'erreur' (alerte en cours, copie ancienne), 'avertissement' (aucune copie), sinon ''. */
+export function niveauDeLEtat(instance) {
+  const etat = estUnObjet(instance) ? instance.etat : null;
+  if (etat === 'alerte' || etat === 'ancienne') return 'erreur';
+  if (etat === 'sans_copie') return 'avertissement';
+  return '';
+}
+
+/**
+ * Le niveau de la copie extérieure : '' si elle n'est pas active, 'erreur' pour un envoi raté ou de plus de `envoiMaxS` (36 h),
+ * 'avertissement' si elle est active sans aucun envoi.
+ */
+export function niveauDeLEnvoi(exterieur, seuils = SEUILS_SAUVEGARDES) {
+  if (!estUnObjet(exterieur) || exterieur.active !== true) return '';
+  const envoi = exterieur.dernier_envoi;
+  if (!estUnObjet(envoi)) return 'avertissement';
+  if (envoi.ok === false) return 'erreur';
+  return fini(envoi.age_s) && Number(envoi.age_s) > seuils.envoiMaxS ? 'erreur' : '';
+}
+
+/** Le niveau d'un contrôle ou d'un essai (`dernier_controle`, `dernier_essai`) : 'erreur' s'il a échoué, sinon ''. */
+export const niveauDUnEssai = (essai) => (estUnObjet(essai) && essai.ok === false ? 'erreur' : '');
+
+/** Une valeur, mise en évidence (classe d'alerte du bloc Système) si `niveau` n'est pas vide ; le niveau est aussi dit par un mot, jamais la couleur seule. */
+const marquee = (html, niveau) => (niveau ? `<span class="debug-alerte debug-alerte--${niveau} debug-sauvegardes__marque">${html}</span>` : html);
+
+const lignes = (paires) => `<dl class="debug-definitions">${paires.map(([dt, dd]) => `<div><dt>${dt}</dt><dd>${dd}</dd></div>`).join('')}</dl>`;
+
+/** Une durée ou un âge en phrase : « il y a 3 h 02 min (le 14/11 02:00:03) ». */
+const quand = (objet, maintenant) => (estUnObjet(objet)
+  ? `${ageLisible(objet.age_s)}${objet.le ? ` (<time datetime="${echapper(objet.le)}">${echapper(instantLisible(objet.le, maintenant))}</time>)` : ''}`
+  : '—');
+
+/** Une instance : âge et type de la dernière copie, état, dernière vérification, alerte en cours, place prise. */
+export function htmlDeSauvegardeDInstance(instance, libelle, { maintenant = new Date(), seuils = SEUILS_SAUVEGARDES } = {}) {
+  const titre = `<h4>${echapper(libelle)}</h4>`;
+  if (!estUnObjet(instance)) return `${titre}<p class="debug-vide">Aucune information pour cette instance.</p>`;
+  const copie = instance.derniere_copie;
+  const niveauCopie = niveauDeLaCopie(copie, seuils);
+  const etat = ETATS_DE_SAUVEGARDE[instance.etat] ?? String(instance.etat ?? '—');
+  const copieTexte = estUnObjet(copie)
+    ? `${quand(copie, maintenant)} · ${echapper(TYPES_DE_COPIE[copie.type] ?? copie.type ?? '—')}`
+      + `${fini(copie.octets) ? ` · ${formaterOctets(copie.octets)}` : ''}${fini(copie.lignes) ? ` · ${nombre(copie.lignes)}${INSECABLE}lignes` : ''}`
+      + `${niveauCopie === 'erreur' ? ` (plus de ${nombreCourt(seuils.copieMaxS / 3600)}${INSECABLE}h)` : ''}`
+    : 'aucune';
+  const verification = instance.derniere_verification;
+  const alerte = instance.alerte;
+  const alerteEnCours = estUnObjet(alerte) && alerte.en_cours === true;
+  const texteAlerte = alerteEnCours
+    ? `${echapper(CODES_D_ALERTE_DE_COPIE[alerte.code] ?? alerte.code ?? 'alerte')}${alerte.detail ? ` — ${echapper(alerte.detail)}` : ''} (${ageLisible(alerte.age_s)})`
+    : 'aucune';
+  return `${titre}${lignes([
+    ['Dernière copie', marquee(copieTexte, niveauCopie)],
+    ['État', marquee(echapper(etat), niveauDeLEtat(instance))],
+    ['Alerte en cours', alerteEnCours ? marquee(texteAlerte, 'erreur') : texteAlerte],
+    ['Dernière vérification', estUnObjet(verification)
+      ? `${quand(verification, maintenant)}${verification.resultat ? ` · ${echapper(verification.resultat)}` : ''}` : '—'],
+    ['Copies gardées', `${nombre(instance.copies)} · ${formaterOctets(instance.occupe_octets)}`],
+  ])}`;
+}
+
+/** La place des copies locales : place prise, part du plafond (niveau de l'alerte du service au-delà de 80 %), libre du disque. */
+export function htmlDeLaPlaceDesCopies(locale) {
+  if (!estUnObjet(locale)) return '';
+  const part = fini(locale.part_plafond) ? Number(locale.part_plafond) : null;
+  const niveau = part !== null && part >= 0.8 ? 'avertissement' : '';
+  const libreBas = fini(locale.disque_libre_octets) && fini(locale.libre_min_octets) && Number(locale.disque_libre_octets) < Number(locale.libre_min_octets);
+  return `<h4>Place des copies locales</h4>${lignes([
+    ['Place prise', `${formaterOctets(locale.occupe_octets)} sur un plafond de ${formaterOctets(locale.plafond_octets)}`],
+    ['Part du plafond', marquee(formaterPart(locale.part_plafond), niveau)],
+    ['Libre sur le disque', marquee(formaterOctets(locale.disque_libre_octets), libreBas ? 'avertissement' : '')],
+  ])}`;
+}
+
+/** La copie extérieure : active ou non, dernier envoi (âge, succès), dernier contrôle du dépôt, dernier essai de restauration. */
+export function htmlDeLaCopieExterieure(exterieur, { maintenant = new Date(), seuils = SEUILS_SAUVEGARDES } = {}) {
+  const titre = '<h4>Copie extérieure</h4>';
+  if (!estUnObjet(exterieur)) return `${titre}<p class="debug-vide">Inconnue.</p>`;
+  if (exterieur.active !== true) return `${titre}${lignes([['Envoi hors du serveur', 'non activé']])}`;
+  const resultat = (ok) => (ok === true ? 'réussi' : ok === false ? 'échoué' : '—');
+  const envoi = exterieur.dernier_envoi;
+  const controle = exterieur.dernier_controle;
+  const essai = exterieur.dernier_essai;
+  const envoiTexte = estUnObjet(envoi)
+    ? `${quand(envoi, maintenant)} · ${resultat(envoi.ok)}${envoi.code ? ` (${echapper(envoi.code)})` : ''}`
+      + `${fini(envoi.age_s) && Number(envoi.age_s) > seuils.envoiMaxS ? ` (plus de ${nombreCourt(seuils.envoiMaxS / 3600)}${INSECABLE}h)` : ''}`
+    : 'aucun';
+  const essaiTexte = estUnObjet(essai)
+    ? `${quand(essai, maintenant)} · ${resultat(essai.ok)}${essai.code ? ` (${echapper(essai.code)})` : ''}${fini(essai.duree_s) ? ` · ${formaterDureeLongue(essai.duree_s)}` : ''}`
+    : 'aucun';
+  return `${titre}${lignes([
+    ['Envoi hors du serveur', 'activé'],
+    ['Dernier envoi', marquee(envoiTexte, niveauDeLEnvoi(exterieur, seuils))],
+    ['Dernier contrôle du dépôt', estUnObjet(controle) ? marquee(`${quand(controle, maintenant)} · ${resultat(controle.ok)}`, niveauDUnEssai(controle)) : 'aucun'],
+    ['Dernier essai de restauration', marquee(essaiTexte, niveauDUnEssai(essai))],
+  ])}`;
+}
+
+/**
+ * Le bloc « Sauvegardes » : `sauvegardes` null ou `disponible: false` → une ligne sobre (la raison, sinon « Pas de sauvegarde automatique sur cette
+ * machine. ») ; sinon chaque instance (prod, dev), la place des copies locales et la copie extérieure.
+ */
+export function htmlDesSauvegardes(sauvegardes, { maintenant = new Date(), seuils = SEUILS_SAUVEGARDES } = {}) {
+  if (!estUnObjet(sauvegardes) || sauvegardes.disponible === false) {
+    const raison = estUnObjet(sauvegardes) && sauvegardes.raison ? ` (${sauvegardes.raison})` : '';
+    return `<p class="debug-vide">${echapper(`Pas de sauvegarde automatique sur cette machine${raison}.`)}</p>`;
+  }
+  const instances = estUnObjet(sauvegardes.instances) ? sauvegardes.instances : {};
+  const libelleDe = (cle) => INSTANCES.find((i) => i.cle === cle)?.libelle ?? cle;
+  const parInstance = ['prod', 'dev'].map((cle) => htmlDeSauvegardeDInstance(instances[cle], libelleDe(cle), { maintenant, seuils })).join('');
+  return `<div class="debug-sauvegardes">${parInstance}${htmlDeLaPlaceDesCopies(sauvegardes.locale)}`
+    + `${htmlDeLaCopieExterieure(sauvegardes.exterieur, { maintenant, seuils })}</div>`;
 }

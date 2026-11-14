@@ -38,4 +38,5 @@ user-invocable: false
   - `fichierTemporaire(nom, prefixe, options)` donne un chemin dans un dossier neuf, `dans` place le dossier sous un autre ;
   - `variablesTemporaires(dossier)` donne le dossier de l'aide à un script, un outil ou un service lancé par le test (`TMPDIR`).
   - Un fichier qui crée beaucoup de copies (`serveur-base-vivante`) prend un dossier par cas. Garde-fou `dossiers-temporaires.test.mjs` : refuse hors de l'aide `mkdtemp`, `os.tmpdir()`, `/tmp`, `/var/tmp`, `/dev/shm`, `TMPDIR`, `tempfile` (`.py`), `mktemp` (`.sh`). Une exception s'y inscrit, raison dite.
+- **Sauvegardes** (`deploy-sauvegardes*.test.mjs`). `test/aide-sauvegardes.mjs` fournit un monde factice, un faux docker et un restic espion ; les tests restic se sautent sans restic, ceux de bash, sqlite3 et flock aussi (outil absent, pas un test écarté).
 - **Jamais** sauter, désactiver ni mettre en quarantaine un test pour obtenir du vert.

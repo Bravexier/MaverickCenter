@@ -1338,7 +1338,7 @@ exactement la taille du disque. Deux mesures, **avec les mêmes clés** :
 | `site-autres` | Autres fichiers du site | Polices, textes… ; l'hôte y ajoute le reste du dossier de l'instance (`docker-compose.yml`, `nginx.conf`, `.env`, scripts, dossiers) | Oui | Oui |
 | `docker` | Docker (images et conteneurs) | Le dossier de Docker (`docker info` : `DockerRootDir`, `/var/lib/docker`), sans changer de disque, moins les journaux des conteneurs | — | Oui |
 | `journaux` | Journaux | Journaux des conteneurs (`*-json.log*`), `/var/log` (journal de systemd, Caddy), journaux des scripts de l'instance (`*.log`) | — | Oui |
-| `installations` | Installations et copies | Restes d'une installation (`.installation.*`, `.db.copie.*`), téléchargements de `mise-a-jour.sh` et `update-site.sh` (`/tmp/maverick-*`), installateurs copiés à la main (`/root`, `/home/*`) | — | Oui |
+| `installations` | Installations et copies | Restes d'une installation (`.installation.*`, `.db.copie.*`), téléchargements de `mise-a-jour.sh` et `update-site.sh` (`/tmp/maverick-*`), installateurs copiés à la main (`/root`, `/home/*`), copies locales des sauvegardes automatiques (`/srv/maverick-sauvegardes`) | — | Oui |
 | `autres` | Système et autres | La place prise que rien de ce qui précède n'explique (système, paquets, Caddy… ; côté service sans relevé de l'hôte, aussi Docker, les journaux et l'autre instance) | Oui | Oui |
 | `reserve` | Réservé au système | La réserve du système de fichiers : blocs libres gardés pour root (ext4 : 5 % par défaut), que `df` ne compte ni dans *Used* ni dans *Avail* (`statfs` : `bfree − bavail`) ; à part, pour que la place occupée de la jauge soit celle de `df` (*Used*) | Oui | Oui |
 | `libre` | Libre | La place disponible (`df` : *Avail*, `statfs` : `bavail`) | Oui | Oui |
@@ -1397,6 +1397,7 @@ journald).
 | Copie de la base par l'installateur de test | `/srv/maverick-center-test/db/` (et `.db.copie.<pid>/` pendant la copie) | Le `db/` du serveur normal, archives comprises (≤ ~150 Mo), le double pendant la copie | Oui : jamais sans `--copier-base-prod`, refusée si `db/` n'est pas vide |
 | Journaux des scripts | `mise-a-jour.log`, `update.log` ; `installation.log` | Les deux premiers tournent au-delà de 200 Ko ; `installation.log` : ~5 lignes par installation | `installation.log` non borné, ~0,2 Mo par an |
 | Sauvegardes à la main | `/root/vivante-*.db` (`deploy/vps/README.md`, « Sauvegardes ») | Une base vivante chacune | **Non** : à faire tourner ou à sortir du serveur |
+| Sauvegardes automatiques | `/srv/maverick-sauvegardes/` (copies locales, cache de restic) ; `<instance>/installateur-courant/` (un installateur, ~20 Mo) | 24 horaires et 7 de nuit par instance, ~une base vivante chacune (les archives, identiques d'une copie à l'autre, sont des liens durs) | Oui : plafond de 4 Go et 3 Go libres au moins (`reglages.env`), au-delà plus rien n'est écrit et l'alerte le dit (« Sauvegardes automatiques ») |
 | Système | journal de systemd (Caddy, mises à jour automatiques), `/var/cache/apt` | journald se borne seul (10 % du disque, 4 Gio au plus) | Oui ; `journalctl --vacuum-size=200M`, `apt-get clean` pour en reprendre |
 
 **Voir l'espace libre sur le VPS** (la page Debug le montre aussi, mesuré par le service : `GET /api/debug/systeme/`, `disque` et `fichiers`, et
@@ -1417,6 +1418,62 @@ ls -d /srv/maverick-center*/.installation.* /srv/maverick-center*/.db.copie.* /t
 
 La dernière ligne liste ce qu'une installation interrompue ou une installation à la main a laissé : à effacer (`sudo rm -rf …`) quand aucune
 installation ne tourne (pas de `.installation.lock` ni de `.mise-a-jour.lock` dans le dossier de l'instance).
+
+### Sauvegardes automatiques
+
+Chantier « la base du site de dev devient la source de vérité » (`docs/chantier-base-de-dev.md`, lot 1 ; décisions R274, R275). Scripts dans
+`deploy/installateur/sauvegarde/`, livrés dans le dossier `sauvegarde/` de chaque instance par son installateur (le site de dev les met à jour à chaque fusion dans
+`dev`), exécutés en root par trois minuteurs systemd (`maverick-sauvegarde-horaire`, `-nuit`, `-essai`) que pose **une commande** (`sauvegarde/installer.sh`, mode
+d'emploi et restauration : `deploy/vps/README.md`, « Sauvegardes »). Le lanceur (`/usr/local/lib/maverick-center/maverick-sauvegarde-lanceur.sh`) refuse des
+scripts qu'un autre que root pourrait modifier.
+
+| Script | Rôle |
+| --- | --- |
+| `copie.sh horaire\|nuit` | Copie la base des deux instances dans `/srv/maverick-sauvegardes/<instance>/{horaire,nuit}/<AAAAMMJJ-HHMMSS>/` (root 700) : chaque base SQLite par `.backup` (connexion en lecture seule : le contenu de `db/` n'est jamais modifié et rien n'y est créé — une base WAL sans `-wal` est ouverte « immutable », sans écrivain à gêner ; seul un `-wal` resté sans `-shm` après un arrêt brutal doit être rouvert par SQLite), les autres fichiers tels quels (lien dur sur le fichier identique de la copie précédente), `comptes.tsv` (lignes de chaque table), `copie.meta`. L'horaire ne copie que si `db/` a changé (noms, tailles et dates de modification) |
+| `envoi.sh` | Envoie la dernière copie saine et le dernier installateur à un dépôt restic chiffré (S3), applique la rétention, contrôle le dépôt |
+| `essai.sh` | Restaure la dernière copie extérieure dans un conteneur Docker jetable (image `ubuntu:24.04`, système de fichiers en lecture seule, seulement le binaire restic, les deux fichiers d'accès et un dossier de sortie vide), puis contrôle `integrity_check` et le nombre de lignes de chaque table contre `comptes.tsv` |
+| `installer.sh` | Le geste : minuteurs, dossiers, saisie et essai du stockage, clé de chiffrement (6 mots de `mots.txt`), premier envoi, premier essai |
+
+**Seuils** (`/etc/maverick-sauvegardes/reglages.env`, ou variable `MAVERICK_SAUV_<NOM>` ; défauts) : `PLAFOND_MO=4096` (place des copies locales, les deux instances),
+`LIBRE_MIN_MO=3072` (libre du disque après une copie), `HORAIRES_GARDEES=24`, `NUITS_GARDEES=7`, `SUSPECTES_GARDEES=3`, `CHUTE_POURCENT=20` et `CHUTE_MIN_LIGNES=20` (une
+table qui avait au moins 20 lignes dans la copie précédente et en perd plus de 20 % est une chute anormale, alerte ; une table disparue compte pour 100 %), `JOURS_GARDES=30`,
+`VERSIONS_DE="prod dev"` (instances dont chaque version est gardée sans limite à l'extérieur), `CONTROLE_DONNEES=5%`. Un réglage se lit « retirer le `#` » : valeur éventuellement entre guillemets, commentaire de fin admis ; illisible (pas un entier, nom d'instance inconnu), il est dit sur la sortie d'erreur, listé dans `locale.reglages_illisibles` de l'état, fait sortir la copie en code 3 et la valeur par défaut est prise. Chaque instance est traitée dans son propre processus : un arrêt inattendu de l'une est noté en alerte `erreur_interne`, sa copie provisoire est effacée, l'autre est copiée. En alerte (chute, intégrité, copie impossible), la
+copie va dans `suspectes/`, les copies saines ne sont ni remplacées ni tournées ; les copies mises de côté ne sont jamais envoyées à l'extérieur ; `copie.sh accepter <instance>` fait d'une baisse voulue la nouvelle référence. Plafond
+atteint : les plus anciennes copies partent d'abord (jamais les deux dernières horaires, ni les deux dernières de nuit), sinon rien n'est écrit (alerte `plafond` ou `disque_plein`).
+
+**Extérieur** : dépôt restic ; une copie chaque nuit par instance (étiquettes `inst-<instance>`, `horaire`|`nuit`, et `version` + l'étiquette de version quand elle a changé depuis le
+dernier envoi : `--keep-tag version` les garde sans limite) ; `forget --keep-within-daily 30d --keep-monthly unlimited --keep-tag version` par instance, puis `prune` ; `check` chaque
+nuit, avec `--read-data-subset` le dimanche. La dernière copie d'un groupe est toujours gardée par restic, quelle que soit la règle. Les installateurs sont gardés par `mise-a-jour.sh`
+(`<instance>/installateur-courant/`, un seul : celui de la livraison installée). Aucun secret en argument ni dans l'état : les accès sont dans l'environnement du processus, la clé de
+chiffrement dans un fichier (`RESTIC_PASSWORD_FILE`).
+
+**État pour la page Debug** : `<dossier des métriques>/sauvegardes.json` (`format` 1, `644`, remplacé d'un coup comme `volume-hote.json`, sans secret : dates, tailles, nombres, codes courts),
+écrit à chaque passage des scripts. Le service le lit (`serveur/metriques.mjs#lireSauvegardes`, champ par champ, sans rien reprendre d'inconnu) et l'expose dans `GET /api/debug/systeme/`,
+champ `sauvegardes` (`null` sans fichier : NAS, développement), pour les deux instances quelle que soit celle qu'on regarde :
+
+```json
+{ "disponible": true, "raison": null, "instant": "2026-11-14T12:07:00Z", "age_s": 1800,
+  "locale": { "plafond_octets": 0, "occupe_octets": 0, "part_plafond": 0.02, "libre_min_octets": 0, "disque_libre_octets": 0,
+              "horaires_gardees": 24, "nuits_gardees": 7, "chute_pourcent": 20, "chute_min_lignes": 20, "reglages_illisibles": ["PLAFOND_MO"] },
+  "instances": { "prod": { "copies": 12, "occupe_octets": 0, "etat": "ok|alerte|ancienne|sans_copie",
+      "derniere_copie": { "le": "…Z", "age_s": 7200, "type": "horaire|nuit", "octets": 0, "lignes": 0 },
+      "derniere_verification": { "le": "…Z", "age_s": 1800, "resultat": "copiee|inchangee|alerte|refusee|sans_base" },
+      "alerte": { "le": "…Z", "age_s": 0, "code": "chute_de_lignes|integrite|copie_impossible|plafond|disque_plein|base_absente|erreur_interne", "detail": "…", "en_cours": true } },
+    "dev": { "…": "…" } },
+  "exterieur": { "active": true,
+    "dernier_envoi": { "le": "…Z", "age_s": 0, "ok": true, "code": null, "instances": ["prod", "dev"] },
+    "dernier_controle": { "le": "…Z", "age_s": 0, "ok": true, "donnees_relues": false },
+    "dernier_essai": { "le": "…Z", "age_s": 0, "ok": true, "code": null, "duree_s": 41, "instances": { "prod": "ok", "dev": "ok" } } },
+  "alertes": [ { "niveau": "info|avertissement|erreur", "message": "…" } ] }
+```
+
+`disponible: false` (avec `raison`) si le fichier est illisible, d'un autre format ou de plus de 64 Kio ; `derniere_copie`, `derniere_verification`, `alerte`, `dernier_*` valent `null` tant qu'ils n'existent pas.
+`etat` : `alerte` (alerte de copie en cours), `ancienne` (aucune copie depuis plus de 26 h), `sans_copie`, sinon `ok`. Codes de l'envoi : `restic_absent`, `cle_refusee`, `depot_absent`,
+`depot_inaccessible`, `envoi_echoue`, `retention_echouee`, `controle_echoue` ; de l'essai : `docker_absent`, `restic_absent`, `image_absente`, `restauration_echouee`, `copie_introuvable`, `integrite`,
+`comptes_differents`, `copie_incomplete`. Les alertes (`alertes`, aussi ajoutées à celles de l'état du système) : erreur pour une alerte de copie en cours, une copie vieille de plus de 26 h, un envoi
+raté ou vieux de plus de 36 h, un essai de restauration raté, un contrôle du dépôt raté ; avertissement quand l'état n'est plus réécrit depuis 3 h (minuteur arrêté), au-delà de 80 % du plafond, sous
+l'espace libre minimal, ou sans essai de restauration depuis 40 jours ; information quand l'envoi hors du serveur n'est pas activé. Tests : `deploy-sauvegardes`, `deploy-sauvegardes-installer`,
+`serveur-metriques-sauvegardes`, `mise-a-jour` (installateur gardé).
 
 ## Développement
 

@@ -433,3 +433,30 @@ test('GELER suspend les mises à jour (retour à une version précédente)', { s
   assert.equal((await t.run()).code, 0);
   assert.equal(t.tag(), 'v1.3.1');
 });
+
+test('l’installateur installé est gardé dans installateur-courant/ (un seul, le dernier), pour la copie extérieure des sauvegardes ; une livraison déjà installée le reçoit une fois', { skip }, async () => {
+  publier(livraison('v1.2', { label: 'v1' }));
+  const n = nas('installateur-garde');
+  assert.equal((await n.run()).code, 0);
+  const garde = 'installateur-courant/maverick-center-v1.2-install.sh';
+  assert.ok(n.has(garde), 'l’installateur de la livraison installée est gardé');
+  assert.equal(spawnSync('sh', [join(n.base, garde), '--verifier'], { encoding: 'utf8' }).status, 0, 'gardé entier : son archive se contrôle');
+  assert.ok(!readFileSync(join(n.base, garde), 'latin1').includes(TOKEN));
+
+  publier(livraison('v1.3', { label: 'v2' }), livraison('v1.2'));
+  assert.equal((await n.run()).code, 0);
+  assert.ok(n.has('installateur-courant/maverick-center-v1.3-install.sh'));
+  assert.ok(!n.has(garde), 'un seul installateur gardé : l’ancien est retiré');
+
+  // une instance à jour qui n'a rien gardé (installation à la main) : téléchargé une fois, sans rien réinstaller
+  rmSync(join(n.base, 'installateur-courant'), { recursive: true });
+  const avant = state.telechargements;
+  const res = await n.run();
+  assert.equal(res.code, 0, res.out);
+  assert.match(res.out, /Installateur v1\.3 gardé/);
+  assert.match(res.out, /À jour \(v1\.3\)/);
+  assert.equal(state.telechargements, avant + 1);
+  assert.ok(n.has('installateur-courant/maverick-center-v1.3-install.sh'));
+  assert.equal((await n.run()).code, 0);
+  assert.equal(state.telechargements, avant + 1, 'ensuite, plus aucun téléchargement');
+});

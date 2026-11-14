@@ -674,7 +674,7 @@ test('état du système : processus, disque, fichiers mesurés, échantillons, v
     for (let i = 0; i < 30; i++) requete(m, { adresse: `/api/v1/metiers/m${i}/` });
     m.echantillonner();
     const s = m.systeme({});
-    assert.deepEqual(Object.keys(s), ['instance', 'instances', 'maintenant', 'periode', 'processus', 'disque', 'fichiers', 'echantillons', 'evenements', 'volume', 'alertes', 'panne', 'perdues']);
+    assert.deepEqual(Object.keys(s), ['instance', 'instances', 'maintenant', 'periode', 'processus', 'disque', 'fichiers', 'echantillons', 'evenements', 'volume', 'alertes', 'sauvegardes', 'panne', 'perdues']);
     for (const c of ['version', 'code', 'node', 'pid', 'depuis', 'duree_s', 'rss', 'tas_utilise', 'tas_total', 'externe', 'cpu_utilisateur_pct', 'cpu_systeme_pct',
       'boucle_p50_ms', 'boucle_p99_ms', 'boucle_max_ms', 'charge']) assert.ok(c in s.processus, c);
     assert.equal(s.processus.version, '0.3.2');
