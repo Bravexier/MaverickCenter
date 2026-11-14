@@ -112,10 +112,12 @@ test('R184, R185 : à l’import, chaque menu latéral suit la spécification, u
     const rangs = ENTREES_D_IMPORT.filter((e) => e.onglet_id === onglet).map((e) => e.rang).sort((a, b) => a - b);
     // la migration 0122 retire la première entrée d'Exploration sans renuméroter les suivantes (rang n'est ni UNIQUE ni continu) : rangs 2 à n + 1
     const premier = onglet === 'exploration' ? 2 : 1;
-    // la 0124 (R272) retire de même l'entrée d'« Accessoires et Ceinture » (rang lu dans son registre) : son rang reste libre, les suivants gardent le leur
-    const libre = RETRAIT_0124.entree_du_menu.onglet_id === onglet ? RETRAIT_0124.entree_du_menu.rang : null;
-    const attendus = Array.from({ length: rangs.length + (libre === null ? 0 : 1) }, (_, i) => i + premier).filter((r) => r !== libre);
-    assert.deepEqual(rangs, attendus, `${onglet} : rangs ${premier} à ${rangs.length + premier - 1}${libre === null ? '' : `, sauf ${libre}`}`);
+    // la 0124 (R272) retire de même l'entrée d'« Accessoires et Ceinture » : son rang (celui de l'import : le site l'a déplacé depuis) reste libre, les
+    // suivants gardent le leur ; un seul rang manque dans 1 à n + 1
+    const perdu = RETRAIT_0124.entree_du_menu.onglet_id === onglet ? 1 : 0;
+    const attendus = Array.from({ length: rangs.length + perdu }, (_, i) => i + premier);
+    assert.equal(new Set(rangs).size, rangs.length, `${onglet} : un rang par entrée`);
+    assert.ok(rangs.every((r) => attendus.includes(r)), `${onglet} : rangs ${premier} à ${attendus.length + premier - 1}${perdu ? ', un seul laissé libre' : ''}`);
   }
   assert.equal(ENTREES_D_IMPORT.length, sansLesRetireesDepuis(Object.values(PLAN).flat()).length);
   assert.deepEqual(ENTREES_D_IMPORT.filter((e) => e.page_id === null),

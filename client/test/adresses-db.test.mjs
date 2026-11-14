@@ -13,6 +13,7 @@ import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { baseDImport, lotsAvant } from './aide-base-d-import.mjs';
 import { TYPES } from '../src/lib/types.mjs';
 import { fonduParLa0122, retireeParLa0122 } from './aide-migration-0122.mjs';
+import { fonduParLa0124, repriseDeLAdresseParLa0124, retireeParLa0124 } from './aide-migration-0124.mjs';
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
 const PAGES = fileURLToPath(new URL('../src/pages/', import.meta.url));
@@ -85,9 +86,12 @@ test('migration 0098 : chaque adresse du registre est permise, et mène à la pa
   for (const m of REGISTRE.motsCles) {
     // la page « La montée de niveau » et son mot-clé, retirés et fondu depuis par la migration 0122 (son registre : aide-migration-0122.mjs)
     if (retireeParLa0122(m.page) || fonduParLa0122(m.id)) continue;
+    // la page « Accessoires et Ceinture » et son mot-clé, retirés et fondu depuis par la migration 0124 (R272, registre : aide-migration-0124.mjs)
+    if (retireeParLa0124(m.page) || fonduParLa0124(m.id)) continue;
     // une page du registre retirée depuis par une migration (0123 : « Les neuf alignements », fondue dans « Alignement ») : son mot-clé prend
     // l'adresse que cette migration fixe (registre `mots_cles_modifies`, ancienne adresse = celle du registre), qui mène à la page qui l'accueille
-    const reprise = REPRISES_APRES_0098.find((r) => r.id === m.page && r.avant === m.url);
+    // l'adresse que la 0124 (R272) donne à la page de l'inventaire (renommée, comme R228) : registre `mots_cles_modifies`
+    const reprise = REPRISES_APRES_0098.find((r) => r.id === m.page && r.avant === m.url) ?? repriseDeLAdresseParLa0124(m);
     const url = reprise?.apres ?? m.url;
     assert.equal(fauteDeLUrl(url, adresses), null, `${m.id} : ${url}`);
     if (m.page) assert.equal(pageDeLAdresse(index, url), reprise?.contenu_dans ?? m.page, `${m.id} : ${url}`);
