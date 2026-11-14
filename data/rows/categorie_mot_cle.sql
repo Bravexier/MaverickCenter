@@ -14,3 +14,8 @@ INSERT INTO categorie_mot_cle (id, libelle, libelle_cle) VALUES (12, 'Lieu', 'li
 INSERT INTO categorie_mot_cle (id, libelle, libelle_cle) VALUES (13, 'Divinité', 'divinite');
 INSERT INTO categorie_mot_cle (id, libelle, libelle_cle) VALUES (14, 'Faction', 'faction');
 INSERT INTO categorie_mot_cle (id, libelle, libelle_cle) VALUES (15, 'Lien', 'lien');
+INSERT INTO categorie_mot_cle (id, libelle, libelle_cle) VALUES (16, 'Sort', 'sort');
+INSERT INTO categorie_mot_cle (id, libelle, libelle_cle) VALUES (17, 'État', 'etat');
+INSERT INTO categorie_mot_cle (id, libelle, libelle_cle) VALUES (18, 'Don', 'don');
+INSERT INTO categorie_mot_cle (id, libelle, libelle_cle) VALUES (19, 'Dégâts', 'degats');
+INSERT INTO categorie_mot_cle (id, libelle, libelle_cle) VALUES (20, 'Alignement', 'alignement');

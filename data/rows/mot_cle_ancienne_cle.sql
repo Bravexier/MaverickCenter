@@ -1,9 +1,12 @@
 -- data/rows/mot_cle_ancienne_cle.sql : export déterministe, une instruction par ligne, triée par (cle). NE PAS ÉDITER À LA MAIN.
 INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('action-bonus', 163);
+INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('action-combat', 5);
 INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('action-rapide', 163);
 INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('anansi', 14);
 INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('attaque-et-defense', 28);
 INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('attaquer-et-se-defendre', 30);
+INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('cac', 51);
+INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('capacite-de-classe', 54);
 INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('caracteristiques', 56);
 INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('fenrir', 133);
 INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('fiche-de-personnage-accessoires-et-ceinture', 139);
@@ -20,8 +23,11 @@ INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('namazu', 256);
 INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('olwman', 267);
 INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('orios', 278);
 INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('pp', 292);
+INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('resistance', 308);
+INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('resistance-darmurme', 443);
 INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('reussites-echecs-et-critiques', 399);
 INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('rf', 312);
 INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('ro', 313);
 INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('rokh', 314);
 INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('satyre', 319);
+INSERT INTO mot_cle_ancienne_cle (cle, mot_cle_id) VALUES ('vulnerabilite', 365);

@@ -25,15 +25,17 @@ INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/fiche-armure-defen
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/fiche-attributs', 0, 'Fiche de personnage : Attributs', 'fiche-de-personnage-attributs');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/fiche-capacites-dons', 0, 'Capacités/Don', 'capacites-don');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/fiche-capacites-dons', 1, 'Fiche de personnage : Capacités/Dons', 'fiche-de-personnage-capacites-dons');
+INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/fiche-capacites-dons', 2, 'Capacités/Dons', 'capacites-dons');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/fiche-caracteristiques', 0, 'Fiche de personnage : Caractéristiques', 'fiche-de-personnage-caracteristiques');
-INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/fiche-classe', 0, 'Fiche de personnage : Classe', 'fiche-de-personnage-classe');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/fiche-competences', 0, 'Fiche de personnage : Compétences', 'fiche-de-personnage-competences');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/fiche-experience-niveau-global', 0, 'Expérience/Niveau global', 'experience-niveau-global');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/fiche-experience-niveau-global', 1, 'Fiche de personnage : Expérience/Niveau global', 'fiche-de-personnage-experience-niveau-global');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/fiche-inventaire-sac-a-dos', 0, 'Inventaire/Sac à dos', 'inventaire-sac-a-dos');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/fiche-inventaire-sac-a-dos', 1, 'Fiche de personnage : Inventaire/Sac à dos', 'fiche-de-personnage-inventaire-sac-a-dos');
+INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/fiche-inventaire-sac-a-dos', 2, 'Inventaire et Ceinture', 'inventaire-et-ceinture');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/fiche-maitrise-darme-et-armes', 0, 'Maîtrise d’arme', 'maitrise-darme');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/fiche-maitrise-darme-et-armes', 1, 'Fiche de personnage : Maîtrise d’arme et Armes', 'fiche-de-personnage-maitrise-darme-et-armes');
+INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/fiche-maitrise-darme-et-armes', 2, 'Maîtrise d’arme et Armes', 'maitrise-darme-et-armes');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/fiche-personnage', 0, 'Créer sa fiche de personnage', 'creer-sa-fiche-de-personnage');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/fiche-personnage', 1, 'Fiche de personnage : Personnage', 'fiche-de-personnage-personnage');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/fiche-personnage', 2, 'Personnage', 'personnage');
