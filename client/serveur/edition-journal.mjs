@@ -106,6 +106,48 @@ export function lireLigne(db, table, cle) {
   return db.prepare(`SELECT * FROM "${table}" WHERE ${ouDe(db, table)}`).get(...Object.values(c)) ?? null;
 }
 
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+// Les numéros : un numéro n'est jamais redonné (lot 6 du chantier de la base de dev, garde-fou 11 ; table numero_donne, migration 0128)
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+
+const existe = (db, nom) => Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(nom));
+
+/**
+ * Le plus haut numéro connu pour la clé entière d'une table : le plafond déjà donné (`numero_donne`, jamais diminué), le maximum de la colonne, le plus
+ * haut trouvé dans les traces du journal (`modification`) et de l'historique (`historique_modification`), et `plancher` (le registre d'une migration) :
+ * une ligne retirée, un lot annulé ou une base restaurée (sans `numero_donne`) ne font pas redonner un numéro. La table et la colonne sont vérifiées par
+ * PRAGMA table_info avant d'entrer dans le SQL. Une base d'avant la migration 0128 (sans `numero_donne`) n'a pas de plafond : le reste tient.
+ */
+export function plusHautNumero(db, table, colonne, { plancher = 0 } = {}) {
+  const { colonnes } = structure(db, table);
+  if (!colonnes.includes(colonne)) throw new ErreurJournal(`${table} : colonne inconnue « ${colonne} »`);
+  const plafond = existe(db, 'numero_donne') ? db.prepare('SELECT plafond FROM numero_donne WHERE table_nom = ? AND colonne = ?').get(table, colonne)?.plafond ?? 0 : 0;
+  const dansLaTable = db.prepare(`SELECT max("${colonne}") AS m FROM "${table}"`).get().m ?? 0;
+  const chemin = `$."${colonne}"`;
+  const dansLaTrace = (trace) => (existe(db, trace)
+    ? db.prepare(`SELECT max(CAST(json_extract(cle, ?) AS INTEGER)) AS m FROM ${trace} WHERE table_nom = ? AND json_type(cle, ?) = 'integer'`).get(chemin, table, chemin).m ?? 0
+    : 0);
+  return Math.max(plancher, plafond, dansLaTable, dansLaTrace('modification'), dansLaTrace('historique_modification'));
+}
+
+/** Monte le plafond d'une colonne (jamais il ne diminue). Sans effet sur une base d'avant la migration 0128. */
+export function monterLePlafond(db, table, colonne, plafond) {
+  if (!existe(db, 'numero_donne')) return;
+  db.prepare('INSERT INTO numero_donne (table_nom, colonne, plafond) VALUES (?, ?, ?) ON CONFLICT (table_nom, colonne) DO UPDATE SET plafond = max(plafond, excluded.plafond)')
+    .run(table, colonne, plafond);
+}
+
+/**
+ * Le numéro d'une ligne neuve : 1 + `plusHautNumero`, et le plafond monté AVANT de rendre le numéro, dans la transaction de l'appelant (un lot annulé ou
+ * refusé emporte les deux). L'édition des mots-clés (`idSuivant`) et les lots de changements (jeton `$numero`) l'appellent : une seule règle.
+ * `monter: false` : un numéro que l'on calcule sans le réserver (la traduction d'un ancien journal au rejeu, qui n'écrit pas dans la base ici).
+ */
+export function donnerUnNumero(db, table, colonne, { plancher = 0, monter = true } = {}) {
+  const numero = plusHautNumero(db, table, colonne, { plancher }) + 1;
+  if (monter) monterLePlafond(db, table, colonne, numero);
+  return numero;
+}
+
 function verifierColonnes(db, table, valeurs) {
   const { colonnes } = structure(db, table);
   for (const c of Object.keys(valeurs)) if (!colonnes.includes(c)) throw new ErreurJournal(`${table} : colonne inconnue « ${c} »`);

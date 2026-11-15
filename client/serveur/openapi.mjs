@@ -518,6 +518,31 @@ function cheminsDuService() {
         responses: { 200: reponse('Refusée.', objet), 403: ref('responses', 'Fermee'), 404: ref('responses', 'Introuvable'), 409: reponse('Le lot n’est plus proposé.', objet) },
       },
     },
+    '/edition/lots/{id}/annulation/': {
+      parameters: [idLot],
+      get: {
+        operationId: 'edition_lot_annulation', tags: [SERVICE], summary: 'Aperçu de l’annulation d’un lot appliqué',
+        description: `Ce que « Annuler ce lot » ferait aujourd’hui, calculé sur une copie de la base (rien n’est écrit) : par ligne du lot du journal, remise si la valeur vaut encore ce que le lot a écrit, gardée (avec la valeur trouvée : le site prime) sinon ; une ligne créée par le lot n’est supprimée que si elle vaut encore ce qu’il a inséré, une ligne qu’il a retirée n’est réinsérée que si elle est encore absente. Avec l’aperçu avant et après de chaque ligne, les verrous de décision à ouvrir et les problèmes du contenu nés de l’annulation. Clé de lecture ou mot de passe.${SITE_DE_DEV}`,
+        responses: { 200: reponse('L’aperçu de l’annulation.', objet), 403: ref('responses', 'Fermee'), 404: ref('responses', 'Introuvable'), 409: reponse('Le lot n’est pas appliqué.', objet) },
+      },
+    },
+    '/edition/lots/{id}/annuler/': {
+      parameters: [idLot],
+      post: {
+        operationId: 'edition_lot_annuler', tags: [SERVICE], summary: 'Annuler un lot de changements appliqué',
+        description: `Le clic du propriétaire (mot de passe) : refait la comparaison et, d’un bloc, sous le verrou de l’édition, remet « avant » là où la valeur vaut encore ce que le lot a écrit (une valeur changée depuis est gardée, listée). Écrit par le service d’édition, rejoue les contrôles du contenu, note un lot du journal « Annulation de … » de la même nature et du même numéro de décision, passe la proposition à « annule ». Les numéros donnés ne sont jamais rendus. 409 : rien à remettre, une ligne refusée, un verrou de décision pas ouvert dans verrous_ouverts, un contrôle du contenu qui échoue ; le lot reste appliqué.${SITE_DE_DEV}`,
+        requestBody: { required: false, ...json(objet, { example: { verrous_ouverts: [] } }) },
+        responses: { 200: reponse('Annulée.', objet), 400: ref('responses', 'Requete'), 403: ref('responses', 'Fermee'), 404: ref('responses', 'Introuvable'), 409: reponse('Refusée : le message dit pourquoi.', objet) },
+      },
+    },
+    '/edition/lots/recalcul/': {
+      post: {
+        operationId: 'edition_lots_recalcul', tags: [SERVICE], summary: 'Tout recalculer : déposer les écarts du code',
+        description: `Après un changement de code : calcule, sur une copie, l’écart entre les colonnes que le code dérive du contenu (corps, résumé et données des pages de races, de classes, de dons et de métiers) et leur valeur stockée, et le dépose comme un lot de changements de nature « code » (valeur stockée en avant, valeur recalculée en apres), essayé à blanc. Rien n’est écrit dans le contenu : le propriétaire l’applique d’un clic, comme tout lot. 201 avec { lot, recalcul } ; 200 sans lot quand rien ne diffère. Clé de lecture ou mot de passe.${SITE_DE_DEV}`,
+        requestBody: { required: false, ...json(objet) },
+        responses: { 200: reponse('Rien à recalculer.', objet), 201: reponse('Déposé et essayé.', objet), 403: ref('responses', 'Fermee'), 409: reponse('Plus d’écarts que ce qu’un lot porte.', objet), 503: ref('responses', 'Indisponible') },
+      },
+    },
     '/edition/extrait/': {
       get: {
         operationId: 'edition_extrait', tags: [SERVICE], summary: 'Extrait du contenu (fichier SQLite)',

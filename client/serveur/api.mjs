@@ -51,6 +51,12 @@
 //   POST /api/edition/lots/<id>/essai/         refait l'essai (n'écrit que `essai`) → la proposition
 //   POST /api/edition/lots/<id>/appliquer/     { verrous_ouverts? } → écrit le lot d'un bloc par le service d'édition (mot de passe) ; 409 dit ce qui le refuse
 //   POST /api/edition/lots/<id>/refuser/       refuse la proposition (mot de passe) ; rien n'est écrit dans le contenu
+//   GET  /api/edition/lots/<id>/annulation/    l'aperçu de l'annulation d'un lot appliqué, calculé sur une copie (la réponse est une promesse ; rien n'est écrit) :
+//                                              par ligne du lot du journal, « remise » si la valeur vaut encore ce que le lot a écrit, « gardée » sinon
+//   POST /api/edition/lots/recalcul/           « tout recalculer » : les écarts entre les colonnes dérivées stockées (corps des pages de races, classes, dons, métiers) et ce que le
+//                                              code d'aujourd'hui en dérive, calculés sur une copie et DÉPOSÉS comme un lot de nature « code » (essai à blanc, clic du propriétaire :
+//                                              comme tout lot) ; la réponse (une promesse) porte { lot, recalcul } (lot null sans écart ; rien n'est écrit dans le contenu)
+//   POST /api/edition/lots/<id>/annuler/       { verrous_ouverts? } → remet `avant` là où la valeur vaut encore ce que le lot a écrit, d'un bloc (mot de passe) ; 409 dit ce qui le refuse
 // Page « Mise à jour », sur le site de dev seulement (même garde) — serveur/notes-de-version.mjs :
 //   GET  /api/mise-a-jour/              la note en préparation : modifications production → dev (calculées), brouillon, état du lancement
 //   POST /api/mise-a-jour/brouillon/    { texte, avant } → enregistre le champ libre des admins
@@ -369,16 +375,41 @@ function traiterExtrait(requete, service, reste, permis) {
 
 const FORME_D_UN_LOT = /^[0-9a-f-]{36}$/;
 
+/** POST /api/edition/lots/recalcul/ : « tout recalculer » (serveur/edition-lots.mjs#recalculerTout), classe `proposition` : il dépose un lot de nature « code », rien de plus. */
+function traiterLeRecalcul(requete, service, permis) {
+  const refus = permis('POST');
+  if (refus) return refus;
+  const { refus: indisponible } = baseOuRefus(service, 'La base n’est pas disponible pour le moment.');
+  if (indisponible) return indisponible;
+  const { refus: interdit } = lireEcriture(requete);
+  if (interdit) return interdit;
+  const options = { enArrierePlan: service.lots?.enArrierePlan !== false };
+  const echec = (e) => {
+    if (e instanceof ErreurEdition) return erreur(e.statut, e.message, e.details);
+    throw e;
+  };
+  try {
+    return lots.recalculerTout(service.base, options).then(({ lot, recalcul }) => {
+      service.journal?.(lot ? `lots : recalcul déposé en proposition ${lot.id} (${recalcul.ecarts} page(s) écartée(s) sur ${recalcul.pages_examinees}, essai : ${lot.verdict ?? '?'})` : `lots : recalcul sans écart (${recalcul.pages_examinees} page(s) examinée(s))`);
+      return json(lot ? 201 : 200, { lot, recalcul });
+    }, echec);
+  } catch (e) {
+    return echec(e);
+  }
+}
+
 /**
- * Les routes /api/edition/lots/… (lots de changements, serveur/edition-lots.mjs ; site de dev seulement, 403 ailleurs avant tout). Le dépôt et l'essai rendent
- * une PROMESSE (l'essai tourne dans un fil à part : une copie de la base et les contrôles du contenu) ; lire, appliquer et refuser répondent aussitôt.
+ * Les routes /api/edition/lots/… (lots de changements, serveur/edition-lots.mjs ; site de dev seulement, 403 ailleurs avant tout). Le dépôt, l'essai et
+ * l'aperçu d'une annulation rendent une PROMESSE (ils tournent dans un fil à part : une copie de la base et les contrôles du contenu) ; lire, appliquer, refuser et annuler
+ * répondent aussitôt.
  * `service.lots.enArrierePlan === false` : l'essai dans le fil du service (les tests).
  */
 function traiterLots(requete, service, reste, permis) {
   if (!service.edition) return erreur(403, 'Les lots de changements ne s’ouvrent que sur le site de dev.');
   const [id, action, ...suite] = reste;
-  if (suite.length || (id !== undefined && !FORME_D_UN_LOT.test(id)) || (action !== undefined && !['essai', 'appliquer', 'refuser'].includes(action))) return erreur(404, 'Adresse inconnue.');
-  const refus = permis(...(id === undefined ? ['GET', 'POST'] : action === undefined ? ['GET'] : ['POST']));
+  if (id === 'recalcul' && action === undefined) return traiterLeRecalcul(requete, service, permis);
+  if (suite.length || (id !== undefined && !FORME_D_UN_LOT.test(id)) || (action !== undefined && !['essai', 'appliquer', 'refuser', 'annuler', 'annulation'].includes(action))) return erreur(404, 'Adresse inconnue.');
+  const refus = permis(...(id === undefined ? ['GET', 'POST'] : action === undefined || action === 'annulation' ? ['GET'] : ['POST']));
   if (refus) return refus;
   const { db, refus: indisponible } = baseOuRefus(service, 'La base n’est pas disponible pour le moment.');
   if (indisponible) return indisponible;
@@ -389,6 +420,7 @@ function traiterLots(requete, service, reste, permis) {
   const options = { enArrierePlan: service.lots?.enArrierePlan !== false };
   if (requete.methode === 'GET') {
     try {
+      if (action === 'annulation') return lots.previsualiserLAnnulation(service.base, id, options).then((apercu) => json(200, apercu), echec);
       return json(200, id === undefined ? { lots: lots.lister(db) } : lots.lire(db, id));
     } catch (e) {
       return echec(e);
@@ -410,6 +442,13 @@ function traiterLots(requete, service, reste, permis) {
       return json(200, lot);
     }
     const t0 = performance.now();
+    if (action === 'annuler') {
+      const lot = lots.annuler(db, id, valeur);
+      const annulation = lot.bilan?.annulation;
+      service.journal?.(`lots : proposition ${id} annulée (lot ${lot.annulation_lot_id}, ${annulation?.remises ?? 0} ligne(s) remise(s), ${annulation?.gardees ?? 0} gardée(s) : changée(s) depuis)`);
+      service.evenement?.('lot_edition', { duree_ms: performance.now() - t0, detail: { lot: lot.annulation_lot_id, operations: annulation?.operations?.length ?? 0, modifications: annulation?.remises ?? 0, page: null, fiches_adaptees: 0 } });
+      return json(200, lot);
+    }
     const lot = lots.appliquer(db, id, valeur);
     service.journal?.(`lots : proposition ${id} appliquée (lot ${lot.lot_id}, ${lot.bilan?.ecrites ?? 0} opération(s) écrite(s), ${lot.bilan?.changees ?? 0} changée(s) entre-temps)`);
     service.evenement?.('lot_edition', { duree_ms: performance.now() - t0, detail: { lot: lot.lot_id, operations: lot.operations, modifications: lot.bilan?.ecrites ?? 0, page: null, fiches_adaptees: 0 } });

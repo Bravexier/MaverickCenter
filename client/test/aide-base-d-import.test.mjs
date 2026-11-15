@@ -23,13 +23,13 @@ function copieDImport(t) {
 }
 
 /** Une opération du site : appliquée à la table, puis notée dans historique_modification (lot, rang, instant). */
-function noter(db, { lot, rang, faitLe, table, cle, operation, avant = null, apres = null }) {
+function noter(db, { lot, rang, faitLe, table, cle, operation, avant = null, apres = null, nature = 'saisie', decision = null }) {
   const ou = Object.keys(cle).map((k) => `"${k}" = ?`).join(' AND ');
   if (operation === 'modifier') db.prepare(`UPDATE "${table}" SET ${Object.keys(apres).map((c) => `"${c}" = ?`).join(', ')} WHERE ${ou}`).run(...Object.values(apres), ...Object.values(cle));
   if (operation === 'inserer') db.prepare(`INSERT INTO "${table}" (${Object.keys(apres).map((c) => `"${c}"`).join(', ')}) VALUES (${Object.keys(apres).map(() => '?').join(', ')})`).run(...Object.values(apres));
   if (operation === 'supprimer') db.prepare(`DELETE FROM "${table}" WHERE ${ou}`).run(...Object.values(cle));
-  db.prepare('INSERT INTO historique_modification (lot_id, rang, fait_le, resume, version, table_nom, cle, operation, avant, apres) VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?, ?)')
-    .run(lot, rang, faitLe, 'Essai', table, JSON.stringify(cle), operation, avant && JSON.stringify(avant), apres && JSON.stringify(apres));
+  db.prepare('INSERT INTO historique_modification (lot_id, rang, fait_le, resume, version, table_nom, cle, operation, avant, apres, nature, decision) VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?)')
+    .run(lot, rang, faitLe, 'Essai', table, JSON.stringify(cle), operation, avant && JSON.stringify(avant), apres && JSON.stringify(apres), nature, decision);
 }
 
 const ligne = (db, sql, ...p) => {
@@ -89,6 +89,40 @@ test('defaireLeSite : une cellule dont une migration n’a remplacé, après le 
   db.prepare(`UPDATE "${r.table}" SET "${r.col}" = ? WHERE ${ou}`).run(SITE2.split(r.avant).join(r.apres), ...Object.values(r.cle));
   assert.deepEqual(defaireLeSite(db), []);
   assert.equal(lire(), SITE2.split(r.avant).join(r.apres), 'le fragment n’est pas dans l’« avant » : gardée');
+});
+
+test('defaireLeSite : seules les traces de nature saisie et decision sont défaites ; source, migration et code font partie de l’import (R275)', (t) => {
+  const db = copieDImport(t);
+  const [a, b, c] = db.prepare('SELECT id, description FROM mot_cle WHERE description IS NOT NULL ORDER BY id LIMIT 3').all().map((r) => ({ ...r }));
+  const trace = (rang, nature, decision, m, apres) => noter(db, { lot: `2026-11-0${rang}T10:00:00.000Z-nature-${rang}`, rang: 1, faitLe: `2026-11-0${rang}T10:00:00Z`, table: 'mot_cle',
+    cle: { id: m.id }, operation: 'modifier', avant: { description: m.description }, apres: { description: apres }, nature, decision });
+  trace(1, 'saisie', null, a, 'Saisie.');
+  trace(2, 'decision', 'R275', b, 'Décision.');
+  trace(3, 'source', null, c, 'Source.');
+  // ni la migration ni le code ne sont défaits : la ligne qu'ils ont insérée reste
+  noter(db, { lot: '2026-11-04T10:00:00.000Z-nature-4', rang: 1, faitLe: '2026-11-04T10:00:00Z', table: 'mot_cle', cle: { id: 9003 }, operation: 'inserer', nature: 'migration',
+    apres: { id: 9003, libelle: 'Essai migration', cle: 'essai-migration', description: null } });
+  noter(db, { lot: '2026-11-05T10:00:00.000Z-nature-5', rang: 1, faitLe: '2026-11-05T10:00:00Z', table: 'mot_cle', cle: { id: 9004 }, operation: 'inserer', nature: 'code',
+    apres: { id: 9004, libelle: 'Essai code', cle: 'essai-code', description: null } });
+  assert.deepEqual(defaireLeSite(db), []);
+  const description = (m) => ligne(db, 'SELECT description FROM mot_cle WHERE id = ?', m.id).description;
+  assert.equal(description(a), a.description, 'saisie défaite');
+  assert.equal(description(b), b.description, 'décision défaite');
+  assert.equal(description(c), 'Source.', 'une source fait partie de l’import');
+  assert.ok(ligne(db, 'SELECT id FROM mot_cle WHERE id = 9003'), 'la ligne d’une migration reste');
+  assert.ok(ligne(db, 'SELECT id FROM mot_cle WHERE id = 9004'), 'la ligne du code reste');
+  assert.deepEqual(db.prepare('SELECT nature FROM historique_modification ORDER BY lot_id').all().map((r) => r.nature), ['source', 'migration', 'code'], 'seuls les lots défaits quittent l’historique');
+  assert.ok(historiqueSite(db).vide, 'historiqueSite ne voit plus rien à défaire');
+});
+
+test('defaireLeSite et historiqueSite s’accordent : une saisie suivie d’une trace code sur la même cellule n’est pas défaite (la cellule garde la valeur du code)', (t) => {
+  const db = copieDImport(t);
+  const a = ligne(db, 'SELECT id, description FROM mot_cle WHERE description IS NOT NULL ORDER BY id LIMIT 1');
+  noter(db, { lot: '2026-11-01T10:00:00.000Z-accord-1', rang: 1, faitLe: '2026-11-01T10:00:00Z', table: 'mot_cle', cle: { id: a.id }, operation: 'modifier', avant: { description: a.description }, apres: { description: 'Saisie.' } });
+  noter(db, { lot: '2026-11-02T10:00:00.000Z-accord-2', rang: 1, faitLe: '2026-11-02T10:00:00Z', table: 'mot_cle', cle: { id: a.id }, operation: 'modifier', avant: { description: 'Saisie.' }, apres: { description: 'Code.' }, nature: 'code' });
+  assert.equal(historiqueSite(db).valeurDImport('mot_cle', { id: a.id }, 'description'), 'Code.');
+  assert.deepEqual(defaireLeSite(db), []);
+  assert.equal(ligne(db, 'SELECT description FROM mot_cle WHERE id = ?', a.id).description, 'Code.', 'les deux aides rendent la valeur du code');
 });
 
 test('defaireLeSite { garder } : l’état d’après une migration — les lots gardés restent, avec leur historique ; les suivants sont défaits', (t) => {

@@ -17,27 +17,23 @@ import { categoriesDesMotsCles, motsClesDeLaBase, textesDeLaBase } from '../src/
 import { referencesDesMotsCles } from '../src/lib/mentions-des-mots-cles.mjs';
 import { estVerrouille } from '../src/lib/mots-cles.mjs';
 import { normalize } from '../src/lib/text.mjs';
-import { lireLigne } from './edition-journal.mjs';
+import { donnerUnNumero, lireLigne } from './edition-journal.mjs';
 
 const tableExiste = (db, nom) => Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(nom));
 const q = (c) => (c === 'rowid' ? 'rowid' : `"${c}"`);
 
 /**
- * L'id d'une ligne neuve de `table` (mot_cle, mot_cle_synonyme, categorie_mot_cle : un id entier, migration 0113) : le plus grand de la table, de
- * l'historique du site et du journal (`$.id` des lignes de cette table) et, pour mot_cle, de mot_cle_ancienne_cle et des `plancher` (le registre de la
- * migration 0113), plus un — un id n'est jamais réutilisé (décision R232 (1) : « un entier auto-incrémenté », figé). `table` vient du code, jamais d'un
- * lot (un nom de la liste ci-dessous).
+ * L'id d'une ligne neuve de `table` (mot_cle, mot_cle_synonyme, categorie_mot_cle : un id entier, migration 0113) : 1 + le plus haut numéro connu
+ * (edition-journal.mjs#donnerUnNumero, la règle des lots de changements : le plafond `numero_donne`, le plus grand de la table, de l'historique du site et
+ * du journal, et pour mot_cle aussi de mot_cle_ancienne_cle et des `plancher`, le registre de la migration 0113). Le plafond est monté dans la même
+ * transaction : un id n'est jamais réutilisé, même après la suppression de la ligne, l'annulation d'un lot ou une base restaurée (décision R232 (1) : « un
+ * entier auto-incrémenté », figé ; chantier de la base de dev, garde-fou 11). `monter: false` : le numéro est seulement calculé (traduction d'un ancien
+ * journal au rejeu). `table` vient du code, jamais d'un lot (un nom de la liste ci-dessous).
  */
-export function idSuivant(db, table, { plancher = 0 } = {}) {
+export function idSuivant(db, table, { plancher = 0, monter = true } = {}) {
   if (!['mot_cle', 'mot_cle_synonyme', 'categorie_mot_cle'].includes(table)) throw new Error(`idSuivant : table inattendue « ${table} »`);
-  let plus = Math.max(plancher, db.prepare(`SELECT max(id) AS m FROM "${table}"`).get().m ?? 0);
-  for (const t of ['historique_modification', 'modification']) {
-    if (!tableExiste(db, t)) continue;
-    const m = db.prepare(`SELECT max(CAST(json_extract(cle, '$.id') AS INTEGER)) AS m FROM "${t}" WHERE table_nom = ? AND json_type(cle, '$.id') = 'integer'`).get(table).m;
-    if (m > plus) plus = m;
-  }
-  if (table === 'mot_cle' && tableExiste(db, 'mot_cle_ancienne_cle')) plus = Math.max(plus, db.prepare('SELECT max(mot_cle_id) AS m FROM mot_cle_ancienne_cle').get().m ?? 0);
-  return plus + 1;
+  const anciennes = table === 'mot_cle' && tableExiste(db, 'mot_cle_ancienne_cle') ? db.prepare('SELECT max(mot_cle_id) AS m FROM mot_cle_ancienne_cle').get().m ?? 0 : 0;
+  return donnerUnNumero(db, table, 'id', { plancher: Math.max(plancher, anciennes), monter });
 }
 
 /** Les catégories d'un mot-clé (ids croissants). */
