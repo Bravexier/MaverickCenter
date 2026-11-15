@@ -3,7 +3,9 @@
 // tar.gz du site construit et des fichiers d'hébergement. Un seul fichier à copier sur le serveur, aucun téléchargement à l'installation.
 //
 // Usage : node deploy/installateur/fabriquer.mjs --mode prod|test --site <dossier dist> --tag <étiquette> --version <X.Y.Z>
-//                                                 --sha <commit> --sortie <dossier>
+//                                                 --sha <commit> --sortie <dossier> [--kit <racine du dépôt>]
+// --kit (mode test seulement) : joint à l'installateur le kit de l'atelier (kit.mjs : client/ avec ses node_modules, le schéma, les registres, deux fichiers de sources ;
+// jamais de contenu), que l'installateur pose dans <instance>/atelier/kit/. L'installateur de production n'en porte pas : son script est celui d'avant le kit.
 // Résultat : <sortie>/maverick-center-<étiquette>-install.sh (chemin écrit sur la sortie standard).
 // Appelé par .github/workflows/livraison.yml après chaque fusion dans dev (mode test) ou master (mode prod), et par fabriquer.sh (à la main).
 import { spawnSync } from 'node:child_process';
@@ -12,6 +14,7 @@ import { chmodSync, copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, re
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { DOSSIER_DU_KIT, fabriquerLeKit } from './kit.mjs';
 
 const ICI = dirname(fileURLToPath(import.meta.url));
 /** Fichiers d'hébergement livrés avec le site (l'installateur les pose dans le dossier de l'instance) : nom → source. La configuration nginx est celle du NAS. */
@@ -57,6 +60,10 @@ function valider(o) {
   if (o.mode === 'prod' && complete) throw new Error(`une étiquette de production est de la forme VX.Y, sans troisième nombre (reçu « ${o.tag} »)`);
   if (!o.site || !existsSync(join(o.site, 'index.html'))) throw new Error(`--site : pas de index.html dans « ${o.site ?? ''} »`);
   if (!o.sortie) throw new Error('--sortie manquant');
+  if (o.kit !== undefined) {
+    if (o.mode !== 'test') throw new Error('--kit est réservé au mode test : l’installateur de production ne porte pas de kit');
+    if (!existsSync(join(o.kit, 'client', 'package.json'))) throw new Error(`--kit : pas de client/package.json dans « ${o.kit} » (la racine du dépôt est attendue)`);
+  }
 }
 
 function compterPages(dossier) {
@@ -80,6 +87,7 @@ export function fabriquer(options) {
       mkdirSync(dirname(join(contenu, nom)), { recursive: true });
       copyFileSync(source, join(contenu, nom));
     }
+    const kit = options.kit === undefined ? null : fabriquerLeKit({ racine: resolve(options.kit), destination: join(contenu, DOSSIER_DU_KIT), version, sha });
     const archive = join(travail, 'archive.tar.gz');
     const tar = spawnSync('tar', ['-czf', archive, '-C', contenu, '.'], { encoding: 'utf8' });
     if (tar.status !== 0) throw new Error(`tar : ${tar.stderr}`);
@@ -91,7 +99,12 @@ export function fabriquer(options) {
     };
     const modele = readFileSync(join(ICI, 'installateur.sh'), 'utf8');
     if (!modele.endsWith('\n__ARCHIVE__\n')) throw new Error('deploy/installateur/installateur.sh doit se terminer par la ligne __ARCHIVE__');
-    const script = modele.replace(/@@([A-Z0-9_]+)@@/g, (tout, cle) => {
+    // La ligne repère du kit : le fragment de kit-pose.sh dans un installateur de test (il ne fait rien sans kit dans l'archive), rien du tout dans celui de
+    // production, dont le script reste identique, octet pour octet, à celui d'avant le kit.
+    if (modele.split('\n@@KIT@@\n').length !== 2) throw new Error('deploy/installateur/installateur.sh doit porter une seule ligne @@KIT@@');
+    const fragment = mode === 'test' ? readFileSync(join(ICI, 'kit-pose.sh'), 'utf8') : '';
+    if (fragment.includes('@@')) throw new Error('deploy/installateur/kit-pose.sh ne porte pas de paramètre @@…@@');
+    const script = modele.replace('\n@@KIT@@\n', () => (fragment ? `\n${fragment}` : '\n')).replace(/@@([A-Z0-9_]+)@@/g, (tout, cle) => {
       if (!(cle in valeurs)) throw new Error(`paramètre inconnu ${tout} dans deploy/installateur/installateur.sh`);
       return valeurs[cle];
     });
@@ -99,7 +112,7 @@ export function fabriquer(options) {
     const fichier = join(resolve(sortie), `maverick-center-${tag}-install.sh`);
     writeFileSync(fichier, Buffer.concat([Buffer.from(script, 'utf8'), octets]));
     chmodSync(fichier, 0o755);
-    return { fichier, ...valeurs };
+    return { fichier, ...valeurs, kit };
   } finally {
     rmSync(travail, { recursive: true, force: true });
   }
@@ -108,7 +121,7 @@ export function fabriquer(options) {
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   try {
     const r = fabriquer(arguments_(process.argv.slice(2)));
-    console.error(`Installateur ${r.TAG} (${r.MODE}) : ${r.PAGES} pages, archive ${r.ARCHIVE_SHA256.slice(0, 12)}…`);
+    console.error(`Installateur ${r.TAG} (${r.MODE}) : ${r.PAGES} pages, archive ${r.ARCHIVE_SHA256.slice(0, 12)}…${r.kit ? `, kit de l'atelier ${r.kit.fichiers} fichiers, ${(r.kit.taille_archive_octets / 1048576).toFixed(0)} Mo` : ''}`);
     console.log(r.fichier);
   } catch (e) {
     console.error(`ERREUR : ${e.message}`);
