@@ -279,7 +279,7 @@ test('serveur : une demande déposée dans db/ est essayée, répondue et journa
     let r = await fetch(`${s.url}/api/debug/structure/`);
     assert.equal(r.status, 200);
     assert.equal(r.headers.get('cache-control'), 'no-store');
-    assert.deepEqual(await r.json(), { format: FORMAT_DE_L_ETAT, en_cours: null, en_attente: 0, dernier: null });
+    assert.deepEqual(await r.json(), { format: FORMAT_DE_L_ETAT, en_cours: null, en_attente: 0, dernier: null, ombre: { en_cours: null, dernier: null } }, 'le site de dev a aussi son essai dans l’ombre (rien à dire : aucune installation)');
 
     const table = 'CREATE TABLE essai_de_structure_du_service (id INTEGER PRIMARY KEY) STRICT;\n';
     const demande = deposer(db, { version: '7.7.7', fausses: [[V + 1, 'table-d-essai', table]], schema: `${schemaALaVersion(V + 1)}\n${table}` });

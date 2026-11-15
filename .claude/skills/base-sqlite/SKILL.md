@@ -6,7 +6,7 @@ user-invocable: false
 # Base SQLite (`data/schema.sql`, `data/rows/`)
 
 ## Fichiers
-- `data/schema.sql` : la structure. 220 tables STRICT, FTS5, 38 vues, rangées en sections numérotées (en-têtes `-- N. …` du fichier) :
+- `data/schema.sql` : la structure. 221 tables STRICT, FTS5, 38 vues, rangées en sections numérotées (en-têtes `-- N. …` du fichier) :
   0 familles d'import ; 1 pages, liens, mots-clés, sources ; 2 règles de la fiche ; 3 magies et sorts ; 4 annexes des magies ; 5 dieux ;
   5 bis chronologie ; 6 classes, spécialités, capacités ; 7 races ; 8 bestiaire (invocations et créatures) ; 8 bis monstres du Bestiaire 2.0 et leurs
   capacités communes ; 9 équipement, ressources, craft, métiers ; 10 notes de cellule et écarts entre sources ; 11 tables dérivées ; 12 vues ;
@@ -30,8 +30,9 @@ Détail : `docs/sql/remplissage.md`. `npm run db:build` (→ `var/maverick.db`),
 - `var/maverick.db` est une copie reconstruite, jamais commitée. La seule persistance versionnée est `data/rows`.
 - `data/rows` s'écrit tel que l'exporteur l'écrit : jamais de résolution de conflit git à la main (relancer l'importeur ou `db:sync-pages`). Sinon une mise à jour est bloquée (skill `zone-mise-a-jour`).
 - Un changement de structure passe par une migration, jamais par une retouche de `data/rows`.
-- Les 25 tables de la section 13 (fiches, groupes de jeu) et les 5 de la section 14 (journal de l'édition, brouillon de la note de version, `lot_de_changements` et `numero_donne` : migration 0128)
+- Les 25 tables de la section 13 (fiches, groupes de jeu) et 5 des 6 de la section 14 (journal de l'édition, brouillon de la note de version, `lot_de_changements` et `numero_donne` : migration 0128)
   restent vides dans `data/rows` ; les vraies fiches vivent dans la base vivante (skill `zone-fiches-base`, skill `zone-service`).
+- La 6e, `migration_recue` (migration 0129), est propre à chaque base et vide dans `data/rows`, mais pas après une reconstruction : le service y note les migrations reçues (mode `reconstruction` ou `sur_place`). Table vide = migrations ≤ `user_version` présumées reçues (skill `zone-service`).
 - Journal de l'édition (section 14) : un lot en conflit n'est jamais effacé ni réécrit. Sa résolution (`/mise-a-jour/`, migration 0072) remplit `modification_lot.resolu_le`, `resolution` (JSON) et `resolu_par` (le nouveau lot normal) ; ses lignes restent `conflit` (skill `zone-edition-rejeu`).
 - Les commentaires de `data/schema.sql` (recopiés par `db:doc`) ne citent que du code qui existe : fichier cité, `fichier.mjs#Nom`, `#Nom.prop` d'un module de `lib/` (`db-schema.test.mjs`). Un renommage dans le code corrige le commentaire dans le même lot, sans migration (`maverick.py#comparer_schemas` ignore les commentaires), sauf dans le corps d'une `CREATE VIEW` ou `CREATE TRIGGER` : SQLite le garde dans `sqlite_master.sql`, que les tests de migration rejouée (`aide-migration-rejouee.mjs#rejouerLaMigration`) comparent à `data/schema.sql` ; il reste identique à celui de la dernière migration qui crée l'objet, et le changer demande une migration qui le recrée.
 - Classement des tables : toute table nouvelle se range dans `client/src/lib/tables-de-la-base.mjs`, dans l'une des trois classes : contenu (`TABLES_DE_REGLES` pour les sections 0 à 10 ; notes de version et historique), propre au site (fiches, journal) ou calculée. Sinon `test/tables-de-la-base.test.mjs` échoue ; l'extrait du site de dev (skill `zone-service-extrait`) s'appuie dessus.

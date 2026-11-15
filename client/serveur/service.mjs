@@ -41,6 +41,7 @@ import { compterLesConflits } from './edition-conflits.mjs';
 import { ecrireAttestation, fabriquerAttestation } from './attestation.mjs';
 import { creerExtrait } from './extrait.mjs';
 import { purgerLesEssais } from './edition-lots.mjs';
+import { creerOmbre } from './essai-dans-l-ombre.mjs';
 import { INTERVALLE_DES_DEMANDES_MS, creerEssaiDeStructure } from './essai-de-structure.mjs';
 
 /** La ligne de la sortie console (`docker logs`) : « <instant> <message> », la même que celle du journal en mémoire (journal-du-service.mjs). */
@@ -131,9 +132,11 @@ const inode = (chemin) => {
  *   <dossier>/metriques), MAVERICK_INSTANCE (sinon « dev » avec l'édition, « prod » sans), MAVERICK_METRIQUES_BRUTES=1 (requêtes brutes gardées 30
  *   jours), MAVERICK_METRIQUES_PAGES=0 (balise des pages vues fermée ; ouverte par défaut, décision du propriétaire) ; `site` : le dossier du site
  *   construit (répartition du disque ; par défaut dossierDuSite) ; false : aucune collecte
- * @param {false | { intervalle?: number, essayer?: Function, espaceLibre?: Function }} [o.essaiDeStructure] l'essai d'une livraison avant son installation
- *   (serveur/essai-de-structure.mjs) : `intervalle` du passage sur db/essai-de-structure/ en ms (par défaut 3 s, sans dépasser `intervalle` ; 0 = aucun passage,
- *   les tests l'appellent), `essayer` et `espaceLibre` remplacent l'essai et la mesure du disque (tests) ; false : aucun essai, une demande reste sans réponse
+ * @param {false | { intervalle?: number, essayer?: Function, espaceLibre?: Function, ombre?: false | object }} [o.essaiDeStructure] l'essai d'une livraison avant son
+ *   installation (serveur/essai-de-structure.mjs) : `intervalle` du passage sur db/essai-de-structure/ en ms (par défaut 3 s, sans dépasser `intervalle` ; 0 = aucun passage,
+ *   les tests l'appellent), `essayer` et `espaceLibre` remplacent l'essai et la mesure du disque (tests) ; false : aucun essai, une demande reste sans réponse ;
+ *   `ombre` : l'essai dans l'ombre (serveur/essai-dans-l-ombre.mjs, site de dev seulement : à chaque installation, la base d'avant migrée sur place comparée à la base
+ *   refaite), ses réglages (`executer`, `espaceLibre`, `migrations`, `schema` : tests), false : aucun
  * @param {false | { dossier?: string|null, publier?: boolean }} [o.attestation] l'attestation de la production (serveur/attestation.mjs) : `publier`
  *   (par défaut : sans l'édition, c'est-à-dire en production) l'écrit dans `dossier` (par défaut le dossier des métriques, partagé entre les deux
  *   instances du VPS) au démarrage et après chaque reconstruction de la base vivante ; le site de dev y lit celle de la production (page « Mise à
@@ -262,8 +265,11 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
   }
   // l'essai d'une livraison avant son installation (serveur/essai-de-structure.mjs) : sur les deux instances, la production comprise. Les copies qu'un arrêt a
   // laissées sont retirées avant tout essai.
+  // l'essai dans l'ombre, lui, est propre au site de dev (`edition`) : la production n'en fait jamais
+  const ombre = reglagesEssai === false || !edition || reglagesEssai?.ombre === false ? null
+    : creerOmbre({ dossier, instance: nomDInstance, journal, evenement, ...(reglagesEssai?.ombre ?? {}) });
   const essaiDeStructure = reglagesEssai === false ? null
-    : creerEssaiDeStructure({ dossier, source: chemin, instance: nomDInstance, journal, evenement, ...(reglagesEssai ?? {}) });
+    : creerEssaiDeStructure({ dossier, source: chemin, instance: nomDInstance, journal, evenement, ...(reglagesEssai ?? {}), ombre });
   if (essaiDeStructure) {
     try {
       const n = essaiDeStructure.purger();
@@ -282,13 +288,14 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
     }
   }
 
+  let serviceOuvert = false;
   /** (Re)prépare puis ouvre la base vivante ; en cas d'échec, l'erreur est gardée et la base en place, si elle existe, reste servie telle quelle. */
   function ouvrir() {
     fermer();
     const t0 = performance.now();
     const preparation = { appliquee: true, problemes: 0 }; // dit à l'attestation de la production si la dernière préparation a réussi
     try {
-      const r = preparerBaseVivante({ regles, dossier, evenement, version: version.version, journal });
+      const r = preparerBaseVivante({ regles, dossier, evenement, version: version.version, journal, ombre });
       evenement('base_vivante', {
         duree_ms: performance.now() - t0,
         detail: {
@@ -297,6 +304,9 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
         },
       });
       if (r.refaite) journal(`base vivante faite pour les règles ${r.empreinte.slice(0, 12)} (schéma ${r.schema})${r.archive ? ` ; l’ancienne est archivée : ${basename(r.archive)}` : ''}`);
+      if (r.ombre?.erreur) journal(`ERREUR structure : les copies de l’essai dans l’ombre n’ont pas pu être préparées : ${r.ombre.erreur}`, { categorie: 'base' });
+      // l'essai dans l'ombre (serveur/essai-dans-l-ombre.mjs) ne part qu'une fois le service ouvert, jamais pendant son démarrage
+      if (r.ombre?.programme && serviceOuvert) setImmediate(() => ombre.demarrer());
       if (r.identique) journal(`base vivante gardée : le fichier des règles ${r.empreinte.slice(0, 12)} a changé, pas ce qu'il apporte (schéma et lignes) ; rien n'est refait`);
       if (r.rejeu?.lots) journal(`journal des modifications rejoué : ${r.rejeu.appliquees} réappliquée(s), ${r.rejeu.integrees} déjà dans les règles, ${r.rejeu.conflits} en conflit`);
       // R42 : un don, une spécialité, un sort ou un métier disparu des règles a été retiré de ces fiches (prétirés nommés, fiches de joueur anonymes)
@@ -593,6 +603,8 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
     serveur.listen(port, hote, ok);
   });
   const ecoute = serveur.address();
+  serviceOuvert = true;
+  setImmediate(() => ombre?.demarrer());
   journal(`service des personnages ${version.version} : http://${hote}:${ecoute.port}/api/ (règles ${regles}, base ${chemin})${edition ? ' ; édition des règles OUVERTE (site de dev)' : ''}${maintenance ? ` ; annonce de maintenance : ${maintenance}` : ''}${metriques ? ` ; métriques : ${metriques.fichier}${metriques.pagesOuvertes ? '' : ' (pages vues fermées)'}` : ''}`);
   evenement('demarrage', {
     duree_ms: performance.now() - lancementDuService,
@@ -609,6 +621,7 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
     if (minuterie) clearInterval(minuterie);
     if (veilleDesDemandes) clearInterval(veilleDesDemandes);
     essaiDeStructure?.arreter();
+    const ombreFinie = ombre?.arreter();
     await new Promise((ok) => {
       serveur.close(() => ok());
       serveur.closeAllConnections?.();
@@ -618,6 +631,7 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
     evenement('arret', { detail: { duree_s: Math.round((performance.now() - lancementDuService) / 1000) } });
     if (metriques) sansEchec(() => metriques.arreter());
     fermer();
+    await ombreFinie; // le fil de l'essai dans l'ombre efface ses copies avant que le service rende la main
   }
 
   // les demandes d'essai de l'installateur : un `readdir` d'un dossier presque toujours absent, plus souvent que la surveillance des fichiers (l'installateur
@@ -664,5 +678,5 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
     minuterie.unref?.();
   }
 
-  return { url: `http://${hote}:${ecoute.port}`, port: ecoute.port, arreter, etat: decrire, maintenance: etatMaintenance, journalDuService: memoire, metriques, essaiDeStructure };
+  return { url: `http://${hote}:${ecoute.port}`, port: ecoute.port, arreter, etat: decrire, maintenance: etatMaintenance, journalDuService: memoire, metriques, essaiDeStructure, ombre };
 }

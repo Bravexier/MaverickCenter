@@ -100,7 +100,8 @@ export function empreinteGlobale(tables) {
  * texte lue par ses colonnes ; un lien périmé doit faire refaire la base). Les tables d'ombre du plein texte et les tables internes de SQLite n'y entrent pas
  * (elles ne sont que la forme physique de l'index). Même calcul de chaque table que les empreintes du contenu : indépendant de l'ordre des lignes.
  * @param {string[]} [exclues] les tables dont les lignes ne comptent pas (les tables de la base vivante : TABLES_VIVANTES, vides dans les règles)
- * @returns {{ empreinte: string, tables: number }}
+ * @returns {{ empreinte: string, tables: number, parTable: Record<string, string> }} `parTable` : l'empreinte (hex) de chaque table lue, déjà calculée pour
+ *   l'empreinte d'ensemble (serveur/base-vivante.mjs la garde pour l'essai dans l'ombre : les tables de contenu que les règles ont changées)
  */
 export function empreinteLogique(db, { exclues = [], schema = 'main' } = {}) {
   const ignoree = (nom) => /^sqlite_/.test(nom) || OMBRES_DE_RECHERCHE.test(nom);
@@ -110,10 +111,13 @@ export function empreinteLogique(db, { exclues = [], schema = 'main' } = {}) {
   for (const o of objets) hachage.update(`${o.type}|${o.name}|${o.tbl_name}|${o.sql}\n`);
   hachage.update(`user_version=${db.prepare(`PRAGMA ${identifiant(schema)}.user_version`).get().user_version}\n`);
   let tables = 0;
+  const parTable = {};
   for (const { nom } of tablesDeLaBase(db, schema)) {
     if (ignoree(nom) || exclues.includes(nom)) continue;
-    hachage.update(`${nom}:${empreinteDeLaTable(db, nom, schema).empreinte}\n`);
+    const { empreinte } = empreinteDeLaTable(db, nom, schema);
+    hachage.update(`${nom}:${empreinte}\n`);
+    parTable[nom] = empreinte;
     tables += 1;
   }
-  return { empreinte: hachage.digest('hex'), tables };
+  return { empreinte: hachage.digest('hex'), tables, parTable };
 }
