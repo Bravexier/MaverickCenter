@@ -19,7 +19,22 @@ DEFAUT_BESOIN_KO=1572864
 DEFAUT_CPUS=1
 DEFAUT_DISQUE_MIN_KO=2097152
 DEFAUT_DELAI_S=1800
-RAPPORTS_GARDES=20
+# Rapports gardés : de quoi couvrir une journée pleine (au plus 12 fabrications par jour par défaut) sur plus de trois jours, et le bilan des dernières 24 h.
+RAPPORTS_GARDES=40
+# La journée type : le minuteur du jour n'ajoute rien quand la journée UTC compte déjà 10 fabrications (toutes origines confondues : la nuit et les livraisons comptent), une toutes les 40 minutes au moins ; au plus 12 par jour toutes origines confondues ; une journée de mesure par défaut.
+DEFAUT_JOURS_DE_MESURE=1
+DEFAUT_MAX_PAR_JOUR=12
+JOURNEE_TYPE_FABRICATIONS=10
+JOURNEE_TYPE_ECART_S=2400
+# La sonde de la production : une requête par seconde et par instance au plus, 5 s de délai, une référence et une phase après d'environ 30 s ; trois mauvaises réponses de suite l'arrêtent.
+# Le User-Agent de la sonde : exact, reconnu par le service (serveur/metriques.mjs#UA_SONDE) qui ne compte pas ces requêtes dans ses métriques.
+SONDE_AGENT='maverick-atelier-sonde/1'
+SONDE_DELAI_S=5
+SONDE_REFERENCE_S=${MAVERICK_ATELIER_SONDE_REFERENCE:-30}
+SONDE_APRES_S=${MAVERICK_ATELIER_SONDE_APRES:-30}
+SONDE_MAUVAISES_DE_SUITE=3
+SONDE_LENTEUR_MS=2000
+SONDE_CIBLES='/ /api/personnages/'
 # Plafond de taille de ce que root copie depuis le conteneur (octets) et depuis le service (l'extrait).
 PLAFOND_RESULTAT=262144
 PLAFOND_EXTRAIT=536870912
@@ -91,5 +106,30 @@ json_texte() {
 }
 json_booleen() { if [ "$1" = 1 ] || [ "$1" = true ]; then printf 'true'; else printf 'false'; fi; }
 
-maintenant_iso() { date -u '+%Y-%m-%dT%H:%M:%SZ'; }
-identifiant_de_rapport() { date -u '+%Y%m%d-%H%M%S'; }
+# L'horloge : MAVERICK_ATELIER_MAINTENANT (secondes depuis 1970) la fige dans les tests ; sinon celle du serveur. Les rapports portent l'heure UTC : « la journée » est le jour UTC.
+epoch_maintenant() { if [ -n "${MAVERICK_ATELIER_MAINTENANT:-}" ]; then printf '%s\n' "$MAVERICK_ATELIER_MAINTENANT"; else date +%s; fi; }
+maintenant_iso() { date -u -d "@$(epoch_maintenant)" '+%Y-%m-%dT%H:%M:%SZ'; }
+identifiant_de_rapport() { date -u -d "@${1:-$(epoch_maintenant)}" '+%Y%m%d-%H%M%S'; }
+# Le jour UTC (AAAAMMJJ) et l'instant (secondes) d'un identifiant de rapport AAAAMMJJ-HHMMSS.
+jour_de_l_identifiant() { printf '%s' "${1%%-*}"; }
+epoch_de_l_identifiant() { d=${1%%-*}; h=${1##*-}; date -u -d "$(printf '%s' "$d" | sed 's/\(....\)\(..\)\(..\)/\1-\2-\3/') $(printf '%s' "$h" | sed 's/\(..\)\(..\)\(..\)/\1:\2:\3/')" +%s; }
+
+# Les rapports d'aujourd'hui (jour UTC) qui comptent comme des fabrications : tous, sauf ceux qui disent seulement que le plafond du jour est atteint.
+rapports_du_jour() { # dossier_des_rapports -> identifiants, un par ligne
+  jour=$(date -u -d "@$(epoch_maintenant)" '+%Y%m%d')
+  ls -1 "$1" 2>/dev/null | grep -E "^$jour-[0-9]{6}\$" | while read -r id; do
+    grep -Eq '"motif": *"plafond_du_jour"' "$1/$id/rapport.json" 2>/dev/null || printf '%s\n' "$id"
+  done
+}
+
+# Les nombres d'une phase d'une instance : n, médiane, 95e centile et maximum (rang le plus proche : le plus petit rang qui couvre 50 % ou 95 % des mesures), et le nombre de mauvaises réponses.
+sonde_stats() { # phase étiquette
+  grep "^$1 $2 " "$SONDE_DIR/mesures" 2>/dev/null | awk '{ print $4 " " $5 }' | sort -n | awk '
+    { v[NR] = $1; e += $2 }
+    END {
+      n = NR
+      if (n == 0) { printf "{ \"n\": 0, \"mediane_ms\": null, \"p95_ms\": null, \"max_ms\": null, \"erreurs\": 0 }"; exit }
+      rm = int((50 * n + 99) / 100); rp = int((95 * n + 99) / 100)
+      printf "{ \"n\": %d, \"mediane_ms\": %d, \"p95_ms\": %d, \"max_ms\": %d, \"erreurs\": %d }", n, v[rm], v[rp], v[n], e
+    }'
+}

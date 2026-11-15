@@ -21,6 +21,10 @@
 #   --disque-min <taille>   espace libre minimal, « 2g » par défaut : en dessous, la fabrication est refusée (et mesurée)
 #   --delai <secondes>      durée maximale d'une fabrication, 1800 par défaut, puis arrêt
 #   --client-google <id>    l'identifiant client OAuth du bouton « Exporter » (variable GOOGLE_CLIENT_ID du dépôt) : sans lui, le site témoin diffère du site livré par ce seul bouton
+#   --jours-de-mesure <n>   la journée type dure n jours (1 par défaut) à compter de ce geste ou de sa relance : pendant ce temps, le minuteur du jour (toutes les 20 minutes entre 8 h et 20 h)
+#                           ajoute des fabrications jusqu'à 10 dans la journée, au moins 40 minutes après la dernière ; la nuit (04:30), elle, continue toujours
+#   --max-par-jour <n>      au plus n fabrications par jour (12 par défaut), toutes origines confondues, livraisons comprises ; au-delà, un rapport court le dit
+#   --dossier-prod <dir>    le dossier de l'instance de production, dont la sonde lit le port (par défaut le voisin « maverick-center »)
 #   --sans-fabrication      ne pas lancer la première fabrication
 #   --sans-montage          n'écrit pas docker-compose.override.yml : pour un fichier de ce nom qui n'est pas celui de l'atelier et où le montage a été ajouté à la main
 #   --etat                  dit où en est l'atelier (réglages, unités, dernière fabrication, ce que la mémoire d'aujourd'hui permettrait), sans rien changer
@@ -52,8 +56,8 @@ relancer_le_service() { # raison
 }
 
 die() { echo "ERREUR : $*" >&2; exit 1; }
-USAGE="Usage : sudo sh $0 [--memoire-max <taille>] [--besoin <taille>] [--cpus <n>] [--disque-min <taille>] [--delai <s>] [--client-google <id>] [--sans-fabrication] [--sans-montage] [--etat] [--retirer]"
-MEMOIRE_MAX=''; BESOIN=''; CPUS_DEMANDES=''; DISQUE_MIN=''; DELAI=''; GOOGLE_DEMANDE=''; SANS_FABRICATION=0; SANS_MONTAGE=0; ETAT=0; RETIRER=0
+USAGE="Usage : sudo sh $0 [--memoire-max <taille>] [--besoin <taille>] [--cpus <n>] [--disque-min <taille>] [--delai <s>] [--client-google <id>] [--jours-de-mesure <n>] [--max-par-jour <n>] [--dossier-prod <dossier>] [--sans-fabrication] [--sans-montage] [--etat] [--retirer]"
+MEMOIRE_MAX=''; BESOIN=''; CPUS_DEMANDES=''; DISQUE_MIN=''; DELAI=''; GOOGLE_DEMANDE=''; JOURS=''; MAX_JOUR=''; DOSSIER_PROD_DEMANDE=''; SANS_FABRICATION=0; SANS_MONTAGE=0; ETAT=0; RETIRER=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --memoire-max) [ $# -ge 2 ] || { echo "$USAGE" >&2; exit 2; }; MEMOIRE_MAX=$2; shift 2 ;;
@@ -62,6 +66,9 @@ while [ $# -gt 0 ]; do
     --disque-min) [ $# -ge 2 ] || { echo "$USAGE" >&2; exit 2; }; DISQUE_MIN=$2; shift 2 ;;
     --delai) [ $# -ge 2 ] || { echo "$USAGE" >&2; exit 2; }; DELAI=$2; shift 2 ;;
     --client-google) [ $# -ge 2 ] || { echo "$USAGE" >&2; exit 2; }; GOOGLE_DEMANDE=$2; shift 2 ;;
+    --jours-de-mesure) [ $# -ge 2 ] || { echo "$USAGE" >&2; exit 2; }; JOURS=$2; shift 2 ;;
+    --max-par-jour) [ $# -ge 2 ] || { echo "$USAGE" >&2; exit 2; }; MAX_JOUR=$2; shift 2 ;;
+    --dossier-prod) [ $# -ge 2 ] || { echo "$USAGE" >&2; exit 2; }; DOSSIER_PROD_DEMANDE=$2; shift 2 ;;
     --sans-fabrication) SANS_FABRICATION=1; shift ;;
     --sans-montage) SANS_MONTAGE=1; shift ;;
     --etat) ETAT=1; shift ;;
@@ -77,6 +84,11 @@ if [ -n "$BESOIN" ]; then BESOIN_KO=$(taille_en_ko "$BESOIN") || { echo "--besoi
 if [ -n "$DISQUE_MIN" ]; then DISQUE_MIN_KO=$(taille_en_ko "$DISQUE_MIN") || { echo "--disque-min : une taille comme 2g ou 2000m (reçu « $DISQUE_MIN »)" >&2; exit 2; }; fi
 if [ -n "$CPUS_DEMANDES" ]; then valide_cpus "$CPUS_DEMANDES" || { echo "--cpus : un nombre entre 0.1 et 64 (reçu « $CPUS_DEMANDES »)" >&2; exit 2; }; fi
 if [ -n "$DELAI" ]; then entier_positif "$DELAI" && [ "$DELAI" -le 86400 ] || { echo "--delai : un nombre de secondes entre 1 et 86400 (reçu « $DELAI »)" >&2; exit 2; }; fi
+if [ -n "$JOURS" ]; then entier_positif "$JOURS" && [ "$JOURS" -le 30 ] || { echo "--jours-de-mesure : un nombre de jours entre 1 et 30 (reçu « $JOURS »)" >&2; exit 2; }; fi
+if [ -n "$MAX_JOUR" ]; then entier_positif "$MAX_JOUR" && [ "$MAX_JOUR" -le 48 ] || { echo "--max-par-jour : un nombre entre 1 et 48 (reçu « $MAX_JOUR »)" >&2; exit 2; }; fi
+if [ -n "$DOSSIER_PROD_DEMANDE" ]; then
+  case "$DOSSIER_PROD_DEMANDE" in /*[!A-Za-z0-9._/-]*|[!/]*|'') echo "--dossier-prod : un chemin absolu sans espace ni caractère spécial (reçu « $DOSSIER_PROD_DEMANDE »)" >&2; exit 2 ;; esac
+fi
 if [ -n "$GOOGLE_DEMANDE" ]; then
   case "$GOOGLE_DEMANDE" in *[!A-Za-z0-9._-]*|'') echo "--client-google : des lettres, chiffres, points, tirets (reçu « $GOOGLE_DEMANDE »)" >&2; exit 2 ;; esac
 fi
@@ -91,9 +103,9 @@ command -v systemctl >/dev/null 2>&1 || die "systemctl est absent : l'atelier se
 
 # ---------------------------------------------------------------- retirer
 retirer() {
-  systemctl disable --now "$UNITE.path" >/dev/null 2>&1 || true
-  systemctl stop "$UNITE.service" >/dev/null 2>&1 || true
-  rm -f "$ETC_SYSTEMD/$UNITE.path" "$ETC_SYSTEMD/$UNITE.service" "$ETC_SYSTEMD/$UNITE.slice"
+  systemctl disable --now "$UNITE.path" "$UNITE-nuit.timer" "$UNITE-jour.timer" >/dev/null 2>&1 || true
+  systemctl stop "$UNITE.service" "$UNITE-nuit.service" "$UNITE-jour.service" >/dev/null 2>&1 || true
+  rm -f "$ETC_SYSTEMD/$UNITE.path" "$ETC_SYSTEMD/$UNITE.service" "$ETC_SYSTEMD/$UNITE.slice" "$ETC_SYSTEMD/$UNITE-nuit.timer" "$ETC_SYSTEMD/$UNITE-nuit.service" "$ETC_SYSTEMD/$UNITE-jour.timer" "$ETC_SYSTEMD/$UNITE-jour.service"
   systemctl daemon-reload >/dev/null 2>&1 || true
   rm -f "$REGLAGES" "$RAPPORTS/installe.json" "$RAPPORTS/en-cours.json"
   if override_de_l_atelier; then
@@ -126,7 +138,14 @@ parler_de_l_etat() {
   else
     echo "Réglages : atelier non installé (sudo sh $ATELIER/installer.sh)."
   fi
-  echo "Unités : path $(systemctl is-enabled "$UNITE.path" 2>/dev/null || echo absente) / $(systemctl is-active "$UNITE.path" 2>/dev/null || echo inactive) ; service $(systemctl is-active "$UNITE.service" 2>/dev/null || echo inactive)"
+  echo "Unités : path $(systemctl is-enabled "$UNITE.path" 2>/dev/null || echo absente) / $(systemctl is-active "$UNITE.path" 2>/dev/null || echo inactive) ; service $(systemctl is-active "$UNITE.service" 2>/dev/null || echo inactive) ; minuteur de nuit $(systemctl is-active "$UNITE-nuit.timer" 2>/dev/null || echo inactif) ; minuteur du jour $(systemctl is-active "$UNITE-jour.timer" 2>/dev/null || echo inactif)"
+  if [ -f "$REGLAGES" ]; then
+    depuis=$(champ_du_fichier "$REGLAGES" MESURE_DEPUIS); jours=$(champ_du_fichier "$REGLAGES" JOURS_DE_MESURE)
+    if entier_positif "${depuis:-0}" && entier_positif "${jours:-0}"; then
+      fin=$((depuis + jours * 86400))
+      echo "Journée type : fenêtre de mesure de $jours jour(s), du $(date -u -d "@$depuis" '+%Y-%m-%d %H:%M') au $(date -u -d "@$fin" '+%Y-%m-%d %H:%M') UTC ($([ "$(epoch_maintenant)" -lt "$fin" ] && echo ouverte || echo fermée)) ; au plus $(champ_du_fichier "$REGLAGES" MAX_PAR_JOUR) fabrications par jour"
+    fi
+  fi
   derniers=$(ls -1 "$RAPPORTS" 2>/dev/null | grep -E '^[0-9]{8}-[0-9]{6}$' | sort -r | head -n 3 || true)
   if [ -n "$derniers" ]; then
     for r in $derniers; do echo "Rapport $r : $(sed -n 's/^ *"issue": *"\([a-z]*\)".*/\1/p' "$RAPPORTS/$r/rapport.json" 2>/dev/null | head -n 1) $(sed -n 's/^ *"motif": *"\([a-z_]*\)".*/\1/p' "$RAPPORTS/$r/rapport.json" 2>/dev/null | head -n 1)"; done
@@ -167,6 +186,11 @@ repris() { # nom défaut
 CPUS=${CPUS_DEMANDES:-$(repris CPUS "$DEFAUT_CPUS")}
 DELAI_S=${DELAI:-$(repris DELAI_S "$DEFAUT_DELAI_S")}
 GOOGLE=${GOOGLE_DEMANDE:-$(repris GOOGLE_CLIENT_ID '')}
+JOURS_DE_MESURE=${JOURS:-$(repris JOURS_DE_MESURE "$DEFAUT_JOURS_DE_MESURE")}
+MAX_PAR_JOUR=${MAX_JOUR:-$(repris MAX_PAR_JOUR "$DEFAUT_MAX_PAR_JOUR")}
+DOSSIER_PROD=${DOSSIER_PROD_DEMANDE:-$(repris DOSSIER_PROD "$(dirname "$INSTANCE")/maverick-center")}
+# la fenêtre de la journée type s'ouvre à chaque geste, première fois ou relance
+MESURE_DEPUIS=$(epoch_maintenant)
 [ "$MEMOIRE_MAX_KO" -ge "$BESOIN_KO" ] || die "la mémoire maximale ($MEMOIRE_MAX_KO ko) est inférieure au besoin ($BESOIN_KO ko) : aucune fabrication ne démarrerait."
 
 mkdir -p "$ATELIER/declencheur" "$RAPPORTS" "$ATELIER/depot" "$ATELIER/travail" "$ATELIER/sortie" "$ATELIER/resultats"
@@ -181,6 +205,10 @@ chmod 755 "$ATELIER/travail" "$ATELIER/sortie" "$ATELIER/resultats"
   echo "DISQUE_MIN_KO=$DISQUE_MIN_KO"
   echo "DELAI_S=$DELAI_S"
   echo "GOOGLE_CLIENT_ID=$GOOGLE"
+  echo "JOURS_DE_MESURE=$JOURS_DE_MESURE"
+  echo "MAX_PAR_JOUR=$MAX_PAR_JOUR"
+  echo "MESURE_DEPUIS=$MESURE_DEPUIS"
+  echo "DOSSIER_PROD=$DOSSIER_PROD"
 } > "$REGLAGES.neuf"
 chmod 644 "$REGLAGES.neuf"
 mv -f "$REGLAGES.neuf" "$REGLAGES"
@@ -210,6 +238,39 @@ IOSchedulingClass=idle
 CPUWeight=20
 TimeoutStartSec=$((DELAI_S + 1800))
 UNITE_SERVICE
+# La nuit et la journée type : deux minuteurs, déclenchés par l'horloge (jamais par le site de dev), qui lancent la même fabrication sous une autre origine. La nuit remplace le contrôle de
+# nuit (lot 10) ; le jour n'ajoute une fabrication que dans les règles de lancer.sh (fenêtre de mesure ouverte, moins de 10 dans la journée UTC, nuit et livraisons comprises, 40 minutes depuis la dernière).
+for origine in nuit jour; do
+  if [ "$origine" = nuit ]; then option=nuit; description="fabrication de nuit (remplace le contrôle de nuit)"; calendrier='*-*-* 04:30:00'
+  else option=journee_type; description="fabrication de la journée type (toutes les 20 minutes entre 8 h et 20 h, dans les règles de lancer.sh)"; calendrier='*-*-* 08..19:00/20:00'; fi
+  cat > "$ETC_SYSTEMD/$UNITE-$origine.service" <<UNITE_ORIGINE
+[Unit]
+Description=Atelier du site de dev : $description
+After=docker.service
+Wants=docker.service
+ConditionPathExists=$REGLAGES
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh $OUTILS/lancer.sh --origine $option
+Nice=19
+IOSchedulingClass=idle
+CPUWeight=20
+TimeoutStartSec=$((DELAI_S + 1800))
+UNITE_ORIGINE
+  cat > "$ETC_SYSTEMD/$UNITE-$origine.timer" <<UNITE_MINUTEUR
+[Unit]
+Description=Atelier du site de dev : $description
+
+[Timer]
+OnCalendar=$calendrier
+Persistent=false
+
+[Install]
+WantedBy=timers.target
+UNITE_MINUTEUR
+  chmod 644 "$ETC_SYSTEMD/$UNITE-$origine.service" "$ETC_SYSTEMD/$UNITE-$origine.timer"
+done
 cat > "$ETC_SYSTEMD/$UNITE.slice" <<UNITE_SLICE
 [Unit]
 Description=Atelier du site de dev : tranche de basse priorité du conteneur (le serveur porte aussi la production)
@@ -231,8 +292,8 @@ WantedBy=multi-user.target
 UNITE_PATH
 chmod 644 "$ETC_SYSTEMD/$UNITE.service" "$ETC_SYSTEMD/$UNITE.path" "$ETC_SYSTEMD/$UNITE.slice"
 systemctl daemon-reload
-systemctl enable --now "$UNITE.path" >/dev/null
-echo "== Unités : $UNITE.path (surveille $ATELIER/declencheur/marque), $UNITE.service et $UNITE.slice (poids bas du processeur et des disques pour le conteneur)"
+systemctl enable --now "$UNITE.path" "$UNITE-nuit.timer" "$UNITE-jour.timer" >/dev/null
+echo "== Unités : $UNITE.path (surveille $ATELIER/declencheur/marque), $UNITE.service et $UNITE.slice (poids bas du processeur et des disques pour le conteneur) ; minuteurs $UNITE-nuit (04:30) et $UNITE-jour (toutes les 20 minutes entre 8 h et 20 h, $JOURS_DE_MESURE jour(s) de mesure, au plus $MAX_PAR_JOUR fabrications par jour)"
 
 # La marque : normalement posée par l'installateur de test avec le kit ; refaite ici si elle manque, d'après le fichier VERSION de l'instance (root).
 if [ ! -f "$ATELIER/declencheur/marque" ]; then
@@ -243,7 +304,8 @@ fi
 # ---------------------------------------------------------------- « installé », pour le service, puis le montage des rapports
 {
   printf '{ "format": "maverick-atelier-installe/1", "installe_le": "%s", "reglages": ' "$(maintenant_iso)"
-  printf '{ "memoire_max_ko": %s, "besoin_ko": %s, "cpus": %s, "disque_min_ko": %s, "delai_s": %s } }\n' "$(json_nombre "$MEMOIRE_MAX_KO")" "$(json_nombre "$BESOIN_KO")" "$(json_nombre "$CPUS")" "$(json_nombre "$DISQUE_MIN_KO")" "$(json_nombre "$DELAI_S")"
+  printf '{ "memoire_max_ko": %s, "besoin_ko": %s, "cpus": %s, "disque_min_ko": %s, "delai_s": %s, "jours_de_mesure": %s, "max_par_jour": %s } }\n' \
+    "$(json_nombre "$MEMOIRE_MAX_KO")" "$(json_nombre "$BESOIN_KO")" "$(json_nombre "$CPUS")" "$(json_nombre "$DISQUE_MIN_KO")" "$(json_nombre "$DELAI_S")" "$(json_nombre "$JOURS_DE_MESURE")" "$(json_nombre "$MAX_PAR_JOUR")"
 } > "$RAPPORTS/installe.json.neuf"
 chmod 644 "$RAPPORTS/installe.json.neuf"
 mv -f "$RAPPORTS/installe.json.neuf" "$RAPPORTS/installe.json"

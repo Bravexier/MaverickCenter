@@ -5,9 +5,11 @@
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { test } from 'node:test';
+import { calculerLeBilan } from '../src/lib/atelier-bilan.mjs';
 import { jugerLeServeur, presenterLAtelier } from '../src/lib/debug-atelier.mjs';
 import {
-  FABRICATIONS_AFFICHEES, FORMAT_DE_L_ETAT, LIBELLES_DE_GRAVITE, MESSAGES, adresseDeLAtelier, htmlDeLAtelier, lireLaReponse, resumeDeLAtelier,
+  FABRICATIONS_AFFICHEES, FORMAT_DE_L_ETAT, LIBELLES_DE_GRAVITE, LIBELLES_DU_BILAN, MESSAGES, adresseDeLAtelier, htmlDeLAtelier, lireLaReponse, messageDeLaJourneeIncomplete, phrasesDesSeuils,
+  resumeDeLAtelier,
 } from '../src/lib/debug-atelier-page.mjs';
 
 const lire = (chemin) => readFileSync(new URL(chemin, import.meta.url), 'utf8');
@@ -127,6 +129,124 @@ test('des valeurs absentes ou mal formées ne cassent pas le rendu', () => {
     assert.equal(typeof resumeDeLAtelier(lecture, presentation), 'string');
   }
   assert.equal(typeof htmlDeLAtelier(lireLaReponse(200, etat({ etat: 'rapport', dernier: {} })), presenterLAtelier(etat({ etat: 'rapport', dernier: {} })), jugerLeServeur({})), 'string');
+});
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+// La journée type (PR 4) : le bilan des dernières 24 h, en tête du bloc
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+const MAINTENANT = Date.parse('2026-11-15T12:00:00Z');
+/** Un enregistrement compact de rapport (src/lib/atelier-bilan.mjs), `i` fabrications ordonnées dans les 24 h. */
+const compact = (i, plus = {}) => ({
+  id: `c${i}`, horodatage: new Date(MAINTENANT - (i + 1) * 3600_000).toISOString(), origine: 'journee_type', version_installee: '0.4.95', issue: 'fait', motif: null, duree_ms: 20000, pic_ko: 1400000, cpu_ms: 40000, plafond_ko: 2621440,
+  serveur: { processeurs: 4, memoire_totale_ko: 8388608, memoire_disponible_ko: 6291456, disque_total_ko: 100000000, disque_libre_ko: 60000000 },
+  sonde: { format: 'maverick-sonde/1', disponible: true, instances: { prod: { disponible: true, authentifie: true, phases: { reference: { n: 10, mediane_ms: 40, p95_ms: 90, max_ms: 120, erreurs: 0 }, fabrication: { n: 40, mediane_ms: 50, p95_ms: 100, max_ms: 150, erreurs: 0 }, apres: { n: 10, mediane_ms: 40, p95_ms: 90, max_ms: 100, erreurs: 0 } } } } },
+  ...plus,
+});
+const journee = (n, plus = () => ({})) => Array.from({ length: n }, (_, i) => compact(i, plus(i)));
+const avecBilan = (compacts, plus = {}) => etat({ etat: 'rapport', dernier: rapport(), bilan: calculerLeBilan(compacts, { maintenant: MAINTENANT }), ...plus });
+
+test('le bilan de la journée vient en tête, avant la dernière mesure : verdict en toutes lettres, phrase, lignes, seuils', () => {
+  const { html, presentation, resume } = rendre(200, avecBilan(journee(12)));
+  assert.equal(presentation.bilan.verdict, 'tient');
+  assert.ok(html.indexOf('<section class="atelier-bilan">') === 0, 'le bilan ouvre le bloc');
+  assert.ok(html.indexOf('atelier-bilan') < html.indexOf('<h4>Dernière fabrication</h4>'));
+  assert.match(html, /structure-verdict--ok" role="status"/);
+  assert.ok(html.includes(LIBELLES_DU_BILAN.tient));
+  assert.ok(html.includes(presentation.bilan.phrase.replace(/&/g, '&amp;')), 'la phrase du service');
+  for (const { libelle } of presentation.bilan.lignes) assert.ok(html.includes(`<dt>${libelle}</dt>`), libelle);
+  // ce que le propriétaire lit pour choisir son serveur : taille, pic, durée, processeur, disque, effet sur la production
+  const libelles = presentation.bilan.lignes.map((l) => l.libelle).join('|');
+  for (const attendu of [/Serveur/, /Pic de mémoire/, /Durée/, /Temps processeur/, /Effet sur la production/, /Fabrications/]) assert.match(libelles, attendu);
+  assert.equal(resume, LIBELLES_DU_BILAN.tient.toLowerCase());
+});
+
+test('les seuils affichés sont ceux du bilan, dits comme des choix techniques réglables', () => {
+  const brut = avecBilan(journee(12));
+  const { html } = rendre(200, brut);
+  const phrases = phrasesDesSeuils(brut.bilan.seuils);
+  assert.equal(phrases.length, 4);
+  assert.match(html, /<details class="structure-repli atelier-seuils"><summary>/);
+  for (const [cle, valeur] of Object.entries(brut.bilan.seuils)) assert.ok(phrases.join(' ').includes(String(valeur)), `le seuil ${cle} (${valeur}) est dit`);
+  assert.match(html, /choix techniques, réglables/);
+  // un seuil modifié par le service se lit tel quel ; sans seuils complets, rien
+  assert.ok(phrasesDesSeuils({ ...brut.bilan.seuils, fabrications_minimum: 37 }).join(' ').includes('37'));
+  assert.deepEqual(phrasesDesSeuils({ periode_h: 24 }), []);
+  assert.deepEqual(phrasesDesSeuils(null), []);
+  const sans = rendre(200, { ...brut, bilan: { ...brut.bilan, seuils: {} } }).html;
+  assert.doesNotMatch(sans, /atelier-seuils/);
+});
+
+test('ne tient pas : alerte, les raisons en liste, rien d’adouci', () => {
+  const { html, presentation, resume } = rendre(200, avecBilan(journee(12, (i) => (i === 0 ? { issue: 'oom' } : {}))));
+  assert.equal(presentation.bilan.verdict, 'ne_tient_pas');
+  assert.ok(presentation.bilan.raisons.length > 0);
+  assert.match(html, /<section class="atelier-bilan"><h4>[^<]*<\/h4><p class="structure-verdict structure-verdict--alerte" role="alert">/);
+  assert.ok(html.includes(LIBELLES_DU_BILAN.ne_tient_pas));
+  for (const raison of presentation.bilan.raisons) assert.ok(html.includes(`<li>${raison.replace(/&/g, '&amp;')}</li>`), raison);
+  assert.equal(resume, 'le serveur ne tient pas');
+});
+
+test('tient tout juste : sévérité attention', () => {
+  // une production qui répond plus lentement, sans atteindre le seuil grave : le rapport entre 2 fois la référence et 5 fois
+  const lente = journee(12, () => ({ sonde: { format: 'maverick-sonde/1', disponible: true, instances: { prod: { disponible: true, authentifie: true, phases: { reference: { n: 10, mediane_ms: 100, p95_ms: 600, max_ms: 700, erreurs: 0 }, fabrication: { n: 40, mediane_ms: 300, p95_ms: 1500, max_ms: 1800, erreurs: 0 }, apres: { n: 10, mediane_ms: 100, p95_ms: 600, max_ms: 700, erreurs: 0 } } } } } }));
+  const { html, presentation } = rendre(200, avecBilan(lente));
+  assert.equal(presentation.bilan.verdict, 'tient_tout_juste');
+  assert.match(html, /atelier-bilan"><h4>[^<]*<\/h4><p class="structure-verdict structure-verdict--attention" role="status">/);
+  assert.ok(html.includes(LIBELLES_DU_BILAN.tient_tout_juste));
+});
+
+test('journée incomplète : un message neutre qui dit combien de fabrications ont eu lieu, jamais une alerte', () => {
+  const brut = avecBilan(journee(3));
+  const { html, presentation } = rendre(200, brut);
+  assert.equal(presentation.bilan.verdict, 'journee_incomplete');
+  assert.equal(presentation.bilan.severite, 'neutre');
+  const message = messageDeLaJourneeIncomplete(brut.bilan);
+  assert.ok(message.startsWith('3 fabrications'), message);
+  assert.ok(message.includes(String(brut.bilan.seuils.fabrications_minimum)), 'combien il en faut');
+  assert.ok(html.includes(message));
+  assert.match(html, /atelier-bilan"><h4>[^<]*<\/h4><p class="structure-verdict structure-verdict--neutre" role="status">/);
+  assert.ok(html.includes(LIBELLES_DU_BILAN.journee_incomplete));
+  assert.doesNotMatch(html.slice(0, html.indexOf('<h4>Dernière fabrication</h4>')), /role="alert"/);
+  assert.ok(messageDeLaJourneeIncomplete({ ...brut.bilan, fabrications: { ...brut.bilan.fabrications, total: 1 } }).startsWith('1 fabrication sur'), 'le singulier');
+  assert.equal(messageDeLaJourneeIncomplete({ ...brut.bilan, verdict: 'tient' }), '');
+  assert.equal(messageDeLaJourneeIncomplete(null), '');
+});
+
+test('le dernier rapport et l’historique disent l’origine et la sonde ; une sonde qui n’a mesuré que le serveur web est signalée', () => {
+  const dernier = rapport({ origine: 'journee_type', sonde: compact(0).sonde });
+  const sonde = (authentifie) => ({ ...compact(0).sonde, instances: { prod: { ...compact(0).sonde.instances.prod, authentifie } } });
+  const brut = etat({ etat: 'rapport', dernier, historique: [{ id: 'a', issue: 'fait', origine: 'nuit', horodatage: '2026-11-15T03:00:00Z', duree_ms: 21000, pic_ko: 1400000, differents: 0 }, { id: 'b', issue: 'fait', origine: 'livraison', horodatage: '2026-11-14T03:00:00Z', duree_ms: 21000, pic_ko: 1400000, differents: 0 }] });
+  const { html, presentation } = rendre(200, brut);
+  const valeurs = (p) => Object.fromEntries(p.lignes.map((l) => [l.libelle, l.valeur]));
+  assert.ok(presentation.lignes.some((l) => l.libelle === 'Origine'), 'l’origine du dernier rapport');
+  assert.ok(presentation.lignes.some((l) => /pendant/.test(l.libelle)), 'la sonde : avant (référence) et pendant');
+  assert.ok(presentation.lignes.some((l) => /référence/.test(l.libelle)));
+  assert.ok(html.includes('<dt>Origine</dt>'));
+  assert.ok(presentation.historique[0].texte.includes('nuit') && !presentation.historique[1].texte.includes('livraison'), 'l’origine hors livraison, dite dans l’historique');
+  // authentifie:false : la ligne « pendant » le dit, et la page la rend
+  const sansMotDePasse = presenterLAtelier(etat({ etat: 'rapport', dernier: rapport({ sonde: sonde(false) }) }));
+  const avec = presenterLAtelier(etat({ etat: 'rapport', dernier: rapport({ sonde: sonde(true) }) }));
+  const pendant = (p) => valeurs(p)['Production : pendant'];
+  assert.notEqual(pendant(sansMotDePasse), pendant(avec), 'le mot de passe non lu change ce que dit la ligne');
+  assert.ok(pendant(sansMotDePasse).length > pendant(avec).length);
+});
+
+test('sans bilan (null, absent, d’un autre format) : le bloc reste celui de la PR 3, rien en tête', () => {
+  for (const bilan of [undefined, null, { format: 'autre' }]) {
+    const { html, presentation } = rendre(200, etat({ etat: 'rapport', dernier: rapport(), bilan }));
+    assert.equal(presentation.bilan, null);
+    assert.doesNotMatch(html, /atelier-bilan|<h4>/);
+  }
+});
+
+test('le bilan est échappé, une raison ou un verdict inconnu ne casse rien', () => {
+  const pirate = '<img src=x onerror=alert(1)>';
+  const brut = avecBilan(journee(12));
+  const html = htmlDeLAtelier({ etat: 'ok', atelier: { ...brut, bilan: { ...brut.bilan, seuils: null } } }, { severite: 'x', message: '', lignes: [], historique: [], bilan: { severite: 'alerte', titre: pirate, phrase: pirate, verdict: pirate, lignes: [{ libelle: pirate, valeur: pirate }], raisons: [pirate, 3, null] } }, null);
+  assert.doesNotMatch(html, /<img/);
+  assert.match(html, /&lt;img/);
+  assert.ok(html.includes(LIBELLES_DU_BILAN.inconnu), 'un verdict inconnu se lit « pas de verdict »');
+  assert.equal((html.match(/<li>/g) ?? []).length, 1, 'seule la raison texte');
 });
 
 test('le script : un seul appel, à l’ouverture du menu et à « Actualiser », aucune relève ; les deux modules ne sont importés que par lui', () => {

@@ -18,6 +18,17 @@
 set -eu
 umask 022
 
+# L'origine de la fabrication : « livraison » (la marque de l'installateur, par l'unité .path), « nuit » (le minuteur de 04:30) ou « journee_type » (le minuteur du jour) ; les deux
+# derniers n'ont pas de marque nouvelle : ils refont une fabrication de la version installée, sous les mêmes règles (verrou, refus de mémoire et de disque, plafonds).
+ORIGINE=livraison
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --origine) [ $# -ge 2 ] || { echo "Usage : lancer.sh [--origine livraison|nuit|journee_type]" >&2; exit 2; }; ORIGINE=$2; shift 2 ;;
+    *) echo "Usage : lancer.sh [--origine livraison|nuit|journee_type]" >&2; exit 2 ;;
+  esac
+done
+case "$ORIGINE" in livraison|nuit|journee_type) ;; *) echo "origine inconnue : « $ORIGINE »" >&2; exit 2 ;; esac
+
 ICI=$(cd "$(dirname "$0")" && pwd -P)
 [ -f "$ICI/lib.sh" ] || { echo "lib.sh introuvable à côté de lancer.sh" >&2; exit 1; }
 # shellcheck source=lib.sh
@@ -68,6 +79,11 @@ valide_cpus "$CPUS" 2>/dev/null || CPUS=$DEFAUT_CPUS
 GOOGLE=$(champ_du_fichier "$REGLAGES" GOOGLE_CLIENT_ID | tr -cd 'A-Za-z0-9._-' | cut -c1-128)
 INTERVALLE=${MAVERICK_ATELIER_INTERVALLE:-1}
 ATTENTE=${MAVERICK_ATELIER_ATTENTE:-300}
+MAX_PAR_JOUR=$(reglage MAX_PAR_JOUR "$DEFAUT_MAX_PAR_JOUR")
+JOURS_DE_MESURE=$(reglage JOURS_DE_MESURE "$DEFAUT_JOURS_DE_MESURE")
+MESURE_DEPUIS=$(reglage MESURE_DEPUIS 0)
+DOSSIER_PROD=$(champ_du_fichier "$REGLAGES" DOSSIER_PROD)
+[ -n "$DOSSIER_PROD" ] || DOSSIER_PROD=$(dirname "$INSTANCE")/maverick-center
 
 # ---------------------------------------------------------------- une marque à la fois
 CID=''
@@ -76,9 +92,11 @@ en_ms() { # date +%s%N, sinon des secondes
   nano=$(date +%s%N 2>/dev/null || true)
   case "$nano" in ''|*[!0-9]*) echo $(($(date +%s) * 1000)) ;; *) echo $((nano / 1000000)) ;; esac
 }
+SONDE_DIR=''
 nettoyer() {
   if [ -n "$CID" ]; then docker rm -f "$CID" >/dev/null 2>&1 || true; fi
   rm -f "$RAPPORTS/en-cours.json"
+  if [ -n "$SONDE_DIR" ]; then rm -rf "$SONDE_DIR"; fi
 }
 trap nettoyer EXIT
 trap 'exit 1' INT TERM HUP
@@ -97,12 +115,12 @@ ecrire_le_rapport() { # issue [motif]
   motif=${2:-}
   dossier=$RAPPORTS/$ID
   mkdir -p "$dossier"
-  fin=$(en_ms)
+  fin=${FIN_MS:-$(en_ms)}
   duree=$((fin - DEBUT_MS))
   fichier=$dossier/.rapport.json.$$
   {
     printf '{\n'
-    printf '  "format": "maverick-atelier/1",\n  "id": "%s",\n' "$ID"
+    printf '  "format": "maverick-atelier/1",\n  "id": "%s",\n  "origine": "%s",\n' "$ID" "$ORIGINE"
     printf '  "issue": "%s",\n  "motif": %s,\n' "$issue" "$(json_texte "$motif")"
     printf '  "horodatage": "%s",\n' "$HORODATAGE"
     printf '  "version_installee": %s,\n  "version_du_kit": %s,\n  "tag": %s,\n' "$(json_texte "$VERSION_INSTALLEE")" "$(json_texte "${VERSION_KIT:-}")" "$(json_texte "$TAG")"
@@ -114,6 +132,7 @@ ecrire_le_rapport() { # issue [motif]
     printf '  "plafond_ko": %s,\n  "marge_ko": %s,\n  "duree_ms": %s,\n  "code_sortie": %s,\n' "$(json_nombre "${PLAFOND_KO:-}")" "$(json_nombre "${MARGE_KO:-}")" "$(json_nombre "$duree")" "$(json_nombre "${CODE_SORTIE:-}")"
     printf '  "memoire": { "pic_ko": %s, "source": %s },\n  "cpu_ms": %s,\n' "$(json_nombre "${PIC_KO:-}")" "$(json_texte "${SOURCE_DU_PIC:-}")" "$(json_nombre "${CPU_MS:-}")"
     printf '  "place": { "kit_ko": %s, "travail_ko": %s, "sortie_ko": %s },\n' "$(json_nombre "${KIT_KO:-}")" "$(json_nombre "${TRAVAIL_KO:-}")" "$(json_nombre "${SORTIE_KO:-}")"
+    printf '  "sonde": %s,\n' "$(sonde_json)"
     printf '  "fabrication": %s,\n  "comparaison": %s\n}\n' "$(json_booleen "${A_FABRICATION:-0}")" "$(json_booleen "${A_COMPARAISON:-0}")"
   } > "$fichier"
   mv -f "$fichier" "$dossier/rapport.json"
@@ -121,6 +140,144 @@ ecrire_le_rapport() { # issue [motif]
   # ne garder que les derniers rapports (des dossiers de la forme AAAAMMJJ-HHMMSS, rien d'autre)
   anciens=$(ls -1 "$RAPPORTS" | grep -E '^[0-9]{8}-[0-9]{6}$' | sort -r | tail -n +"$((RAPPORTS_GARDES + 1))" || true)
   for ancien in $anciens; do rm -rf "${RAPPORTS:?}/$ancien"; done
+}
+
+# ---------------------------------------------------------------- la sonde des temps de réponse (pendant chaque fabrication)
+# Des requêtes en lecture seule, sur 127.0.0.1, aux ports des deux instances (prod et site de dev), pour mesurer ce que la fabrication fait à la production : une référence
+# d'environ 30 s avant, puis pendant, puis une phase après. Deux cibles publiques, valables sur les deux instances : une page statique (« / », nginx) et une route de lecture de l'API
+# (« /api/personnages/ », la liste des prétirés, qui ne fait que lire la base). Au plus une requête par seconde et par instance, 5 s de délai. Garde-fou 20 : root ne garde que le code HTTP
+# et le temps (`-o /dev/null`, `-w`) ; il n'interprète ni ne stocke jamais le corps d'une réponse. Trois mauvaises réponses de suite de la production arrêtent la sonde, sans insister.
+# Le port se lit dans le .env de chaque instance (écrit par l'installateur) : refusé s'il est dans un dossier monté en écriture dans un conteneur (le service pourrait l'avoir changé) ;
+# la sonde note alors « sonde impossible » pour cette instance.
+sonde_montages_en_ecriture() { # écrit les dossiers montés en écriture dans un conteneur, un par ligne ; code 1 si Docker ne répond pas
+  : > "$SONDE_DIR/montages-rw"
+  docker ps -q > "$SONDE_DIR/conteneurs" 2>/dev/null || return 1
+  [ ! -s "$SONDE_DIR/conteneurs" ] || docker inspect -f '{{range .Mounts}}{{if .RW}}{{println .Source}}{{end}}{{end}}' $(cat "$SONDE_DIR/conteneurs") > "$SONDE_DIR/montages-rw" 2>/dev/null || return 1
+}
+sonde_lire_le_port() { # dossier_de_l_instance -> le port ; code 1 : pas de .env ; 2 : monté en écriture ou non fiable ; 3 : illisible
+  env=$1/.env
+  [ -f "$env" ] && [ ! -L "$env" ] || return 1
+  if [ "$ESSAI" != 1 ]; then
+    [ "$(stat -c '%u' "$env" 2>/dev/null || echo x)" = 0 ] && [ $((0$(stat -c '%a' "$env" 2>/dev/null || echo 777) & 022)) -eq 0 ] || return 2
+  fi
+  reel=$(cd "$1" && pwd -P)
+  while read -r source; do
+    [ -n "$source" ] || continue
+    case "$reel/" in "${source%/}"/*) return 2 ;; esac
+  done < "$SONDE_DIR/montages-rw"
+  port=$(sed -n 's/^MAVERICK_PORT=\([0-9][0-9]*\)$/\1/p' "$env" | head -n 1)
+  case "$port" in ''|*[!0-9]*) return 3 ;; esac
+  [ "$port" -ge 1 ] && [ "$port" -le 65535 ] || return 3
+  printf '%s' "$port"
+}
+sonde_lire_l_acces() { # cle -> « invite:… » en base64, ou rien (le mot de passe interne que Caddy présente : /etc/caddy/maverick.env, à root)
+  fichier=${MAVERICK_ATELIER_ACCES:-/etc/caddy/maverick.env}
+  [ -f "$fichier" ] && [ ! -L "$fichier" ] || return 0
+  if [ "$ESSAI" != 1 ]; then
+    [ "$(stat -c '%u' "$fichier" 2>/dev/null || echo x)" = 0 ] && [ $((0$(stat -c '%a' "$fichier" 2>/dev/null || echo 777) & 077)) -eq 0 ] || return 0
+  fi
+  sed -n "s/^$1=\([A-Za-z0-9+\/=]\{8,256\}\)\$/\1/p" "$fichier" | head -n 1
+}
+sonde_preparer() {
+  SONDE_MOTIF=''
+  if [ -n "$SONDE_DIR" ]; then rm -rf "$SONDE_DIR"; fi
+  SONDE_DIR=$(mktemp -d "$ATELIER/.sonde.XXXXXX") || { SONDE_DIR=''; SONDE_MOTIF=dossier_de_travail; return 0; }
+  chmod 700 "$SONDE_DIR"
+  : > "$SONDE_DIR/mesures"
+  SONDE_ACCES_PROD=''; SONDE_ACCES_DEV=''
+  if ! command -v curl >/dev/null 2>&1; then SONDE_MOTIF=curl_absent; return 0; fi
+  if ! sonde_montages_en_ecriture; then SONDE_MOTIF=montages_illisibles; return 0; fi
+  for etiquette in prod dev; do
+    if [ "$etiquette" = prod ]; then dossier_instance=$DOSSIER_PROD; cle=MAVERICK_ACCES_NORMAL; else dossier_instance=$INSTANCE; cle=MAVERICK_ACCES_TEST; fi
+    if [ ! -d "$dossier_instance" ]; then printf 'introuvable' > "$SONDE_DIR/motif.$etiquette"; continue; fi
+    if port=$(sonde_lire_le_port "$dossier_instance"); then
+      printf '%s' "$port" > "$SONDE_DIR/port.$etiquette"
+      acces=$(sonde_lire_l_acces "$cle")
+      if [ "$etiquette" = prod ]; then SONDE_ACCES_PROD=$acces; else SONDE_ACCES_DEV=$acces; fi
+      [ -z "$acces" ] || : > "$SONDE_DIR/authentifie.$etiquette"
+    else
+      case $? in 1) m=env_absent ;; 2) m=env_monte ;; *) m=port_illisible ;; esac
+      printf '%s' "$m" > "$SONDE_DIR/motif.$etiquette"
+    fi
+  done
+  [ -f "$SONDE_DIR/port.prod" ] || [ -f "$SONDE_DIR/port.dev" ] || SONDE_MOTIF=sonde_impossible
+  return 0
+}
+# Une requête vers une instance, en alternant les deux cibles : « phase etiquette code ms erreur » est ajouté aux mesures (rien d'autre n'est gardé de la réponse).
+sonde_mesurer() { # phase étiquette
+  [ -n "$SONDE_DIR" ] && [ -f "$SONDE_DIR/port.$2" ] && [ ! -f "$SONDE_DIR/arret.$2" ] && [ ! -f "$SONDE_DIR/arret.prod-degradee" ] || return 0
+  port=$(cat "$SONDE_DIR/port.$2")
+  tour_de_sonde=$(cat "$SONDE_DIR/tour.$2" 2>/dev/null || echo 0)
+  echo $((tour_de_sonde + 1)) > "$SONDE_DIR/tour.$2"
+  chemin=$(printf '%s\n' $SONDE_CIBLES | sed -n "$((tour_de_sonde % 2 + 1))p")
+  if [ "$2" = prod ]; then acces=$SONDE_ACCES_PROD; else acces=$SONDE_ACCES_DEV; fi
+  config=''
+  [ -z "$acces" ] || config="header = \"Authorization: Basic $acces\""
+  reponse=$(printf '%s\n' "$config" | curl -s -A "$SONDE_AGENT" -o /dev/null -w '%{http_code} %{time_total}' --max-time "$SONDE_DELAI_S" --connect-timeout 2 -K - "http://127.0.0.1:$port$chemin" 2>/dev/null || true)
+  code=${reponse%% *}
+  case "$code" in [0-9][0-9][0-9]) ;; *) code=000 ;; esac
+  ms=$(printf '%s\n' "${reponse#* }" | awk '/^[0-9.]+$/ { printf "%d", $1 * 1000 + 0.5; found = 1 } END { if (!found) printf "%d", '"$SONDE_DELAI_S"' * 1000 }')
+  # une mauvaise réponse : une erreur, un code hors 200 à 399 (le 401 de nginx compte pour bon tant que le mot de passe interne n'est pas lu : la mesure dit alors « authentifie: false »), ou un délai de plus de 2 s
+  mauvaise=0
+  case "$code" in 2??|3??) ;; 401) [ -f "$SONDE_DIR/authentifie.$2" ] && mauvaise=1 ;; *) mauvaise=1 ;; esac
+  [ "$ms" -lt "$SONDE_LENTEUR_MS" ] || mauvaise=1
+  printf '%s %s %s %s %s\n' "$1" "$2" "$code" "$ms" "$mauvaise" >> "$SONDE_DIR/mesures"
+  if [ "$mauvaise" -eq 1 ]; then
+    n=$(cat "$SONDE_DIR/mauvaises.$2" 2>/dev/null || echo 0); echo $((n + 1)) > "$SONDE_DIR/mauvaises.$2"
+    if [ $((n + 1)) -ge "$SONDE_MAUVAISES_DE_SUITE" ]; then
+      if [ "$2" = prod ]; then : > "$SONDE_DIR/arret.prod-degradee"; else : > "$SONDE_DIR/arret.$2"; fi
+      printf '%s' "$2" > "$SONDE_DIR/arret-de"
+      log "sonde arrêtée : $2 répond mal ($SONDE_MAUVAISES_DE_SUITE mauvaises réponses de suite)."
+    fi
+  else
+    echo 0 > "$SONDE_DIR/mauvaises.$2"
+  fi
+}
+sonde_un_tour() { sonde_mesurer "$1" prod; sonde_mesurer "$1" dev; }
+# Une phase de durée fixe (la référence, l'après) : une requête par instance toutes les secondes.
+sonde_une_phase() { # phase secondes
+  [ -n "$SONDE_DIR" ] && { [ -f "$SONDE_DIR/port.prod" ] || [ -f "$SONDE_DIR/port.dev" ]; } || return 0
+  i=0
+  while [ "$i" -lt "$2" ]; do sonde_un_tour "$1"; i=$((i + 1)); sleep 1; done
+}
+sonde_json() {
+  if [ -z "${SONDE_DIR:-}" ] || [ -z "${SONDE_PREPAREE:-}" ]; then printf 'null'; return 0; fi
+  if [ -n "$SONDE_MOTIF" ]; then printf '{ "format": "maverick-sonde/1", "disponible": false, "motif": %s, "instances": null }' "$(json_texte "$SONDE_MOTIF")"; return 0; fi
+  arret='null'
+  if [ -f "$SONDE_DIR/arret-de" ]; then arret="{ \"instance\": $(json_texte "$(cat "$SONDE_DIR/arret-de")"), \"motif\": \"reponses_mauvaises\" }"; fi
+  printf '{ "format": "maverick-sonde/1", "disponible": true, "motif": null, "cibles": ["/", "/api/personnages/"], "delai_s": %s, "arretee": %s, "instances": {' "$SONDE_DELAI_S" "$arret"
+  virgule=''
+  for etiquette in prod dev; do
+    printf '%s "%s": ' "$virgule" "$etiquette"; virgule=','
+    if [ ! -f "$SONDE_DIR/port.$etiquette" ]; then
+      printf '{ "disponible": false, "motif": %s, "authentifie": false, "phases": null }' "$(json_texte "$(cat "$SONDE_DIR/motif.$etiquette" 2>/dev/null || echo sonde_impossible)")"
+      continue
+    fi
+    printf '{ "disponible": true, "motif": null, "authentifie": %s, "phases": { "reference": %s, "fabrication": %s, "apres": %s } }' \
+      "$([ -f "$SONDE_DIR/authentifie.$etiquette" ] && echo true || echo false)" "$(sonde_stats reference "$etiquette")" "$(sonde_stats fabrication "$etiquette")" "$(sonde_stats apres "$etiquette")"
+  done
+  printf ' } }'
+}
+
+# ---------------------------------------------------------------- la journée type : ce que les minuteurs ont le droit de lancer
+plafond_deja_dit() { # un rapport « plafond_du_jour » existe déjà aujourd'hui
+  jour=$(date -u -d "@$(epoch_maintenant)" '+%Y%m%d')
+  for id in $(ls -1 "$RAPPORTS" 2>/dev/null | grep -E "^$jour-[0-9]{6}\$" || true); do
+    ! grep -Eq '"motif": *"plafond_du_jour"' "$RAPPORTS/$id/rapport.json" 2>/dev/null || return 0
+  done
+  return 1
+}
+# Le minuteur du jour n'ajoute une fabrication que si la fenêtre de mesure est ouverte, si la journée UTC en compte moins de 10 (toutes origines : nuit et livraisons comprises) et si la dernière date de plus de 40 minutes. Sinon : rien, sans rapport.
+regles_de_la_journee_type() {
+  maintenant=$(epoch_maintenant)
+  if [ "$MESURE_DEPUIS" -le 0 ] || [ "$maintenant" -ge $((MESURE_DEPUIS + JOURS_DE_MESURE * 86400)) ]; then refuser_de_demarrer "journée type : la fenêtre de mesure est fermée (relancer atelier/installer.sh --jours-de-mesure N pour la rouvrir)."; fi
+  faites=$(rapports_du_jour "$RAPPORTS" | grep -c . || true)
+  [ "$faites" -lt "$JOURNEE_TYPE_FABRICATIONS" ] || refuser_de_demarrer "journée type : $faites fabrications aujourd'hui, la journée est pleine."
+  derniere=$(ls -1 "$RAPPORTS" 2>/dev/null | grep -E '^[0-9]{8}-[0-9]{6}$' | sort | tail -n 1 || true)
+  if [ -n "$derniere" ]; then
+    ecart=$((maintenant - $(epoch_de_l_identifiant "$derniere")))
+    [ "$ecart" -ge "$JOURNEE_TYPE_ECART_S" ] || refuser_de_demarrer "journée type : la dernière fabrication date de $((ecart / 60)) min (au moins $((JOURNEE_TYPE_ECART_S / 60)) min d'écart)."
+  fi
 }
 
 # Copie un résultat du conteneur : un fichier régulier, jamais un lien ni une FIFO, au plus $PLAFOND_RESULTAT octets, copié sans l'interpréter, sous délai. Appelée seulement quand le
@@ -194,9 +351,12 @@ releve_du_conteneur() {
 # ---------------------------------------------------------------- une fabrication
 fabriquer_pour_la_marque() {
   HORODATAGE=$(maintenant_iso)
+  decalage=0
   ID=$(identifiant_de_rapport)
-  while [ -d "$RAPPORTS/$ID" ]; do sleep 1; ID=$(identifiant_de_rapport); done
+  while [ -d "$RAPPORTS/$ID" ]; do decalage=$((decalage + 1)); ID=$(identifiant_de_rapport $(($(epoch_maintenant) + decalage))); done
   DEBUT_MS=$(en_ms)
+  FIN_MS=''
+  SONDE_PREPAREE=''
   PLAFOND_KO=''; MARGE_KO=''; CODE_SORTIE=''; PIC_KO=''; SOURCE_DU_PIC=''; CPU_MS=''; KIT_KO=''; TRAVAIL_KO=''; SORTIE_KO=''; A_FABRICATION=0; A_COMPARAISON=0
   VERSION_KIT=''
   mkdir -p "$RAPPORTS"
@@ -209,6 +369,13 @@ fabriquer_pour_la_marque() {
   { read -r CHARGE_1 CHARGE_5 CHARGE_15 _ < "$PROC/loadavg"; } 2>/dev/null || { CHARGE_1=''; CHARGE_5=''; CHARGE_15=''; }
 
   marque_valide || { ecrire_le_rapport refus marque_illisible; return 0; }
+
+  # le plafond du jour, toutes origines confondues (livraisons comprises) : au-delà, plus aucune fabrication ce jour-là ; un seul rapport court le dit
+  faites_aujourdhui=$(rapports_du_jour "$RAPPORTS" | grep -c . || true)
+  if [ "$faites_aujourdhui" -ge "$MAX_PAR_JOUR" ]; then
+    if plafond_deja_dit; then log "plafond du jour atteint ($faites_aujourdhui fabrications, maximum $MAX_PAR_JOUR) : rien à faire, déjà noté."; else ecrire_le_rapport refus plafond_du_jour; fi
+    return 0
+  fi
 
   # le kit : posé par l'installateur de test, de la version de la marque
   VERSION_KIT=$(sed -n 's/.*"version": *"\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\)".*/\1/p' "$ATELIER/kit/kit.json" 2>/dev/null | head -n 1)
@@ -234,6 +401,11 @@ fabriquer_pour_la_marque() {
     if [ "$attente" -gt "$ATTENTE" ]; then ecrire_le_rapport refus extrait_absent; return 0; fi
     sleep 1
   done
+
+  # la référence : les temps de réponse des deux instances avant la fabrication (environ 30 s)
+  sonde_preparer
+  SONDE_PREPAREE=1
+  if [ -z "$SONDE_MOTIF" ]; then sonde_une_phase reference "$SONDE_REFERENCE_S"; fi
 
   # l'image (celle du kit) : téléchargée seulement si elle manque
   if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
@@ -261,6 +433,8 @@ fabriquer_pour_la_marque() {
     return 0
   fi
 
+  DEBUT_MS=$(en_ms)
+  DERNIERE_SONDE=0
   # le suivi : un relevé de la mémoire (le cgroup disparaît avec le conteneur, memory.peak se lit pendant qu'il vit), de l'espace libre (sous le minimum, le conteneur est arrêté :
   # c'est une mesure), jusqu'à son arrêt ou au délai
   DEPASSE=0
@@ -281,14 +455,19 @@ fabriquer_pour_la_marque() {
       docker kill "$CID" >/dev/null 2>&1 || true
       break
     fi
+    # la sonde : une requête par instance et par seconde au plus
+    if [ -z "$SONDE_MOTIF" ] && [ "$(date +%s)" -gt "$DERNIERE_SONDE" ]; then DERNIERE_SONDE=$(date +%s); sonde_un_tour fabrication; fi
     sleep "$INTERVALLE"
   done
+  FIN_MS=$(en_ms)
   OOM=$(docker inspect -f '{{.State.OOMKilled}}' "$CID" 2>/dev/null || echo false)
   CODE_SORTIE=$(docker inspect -f '{{.State.ExitCode}}' "$CID" 2>/dev/null || echo '')
   case "$CODE_SORTIE" in ''|*[!0-9]*) CODE_SORTIE='' ;; esac
   # le conteneur est supprimé AVANT de toucher à ce qu'il a laissé : plus aucun processus ne peut changer un fichier entre le contrôle de son type et son ouverture
   docker rm -f "$CID" >/dev/null 2>&1 || true
   CID=''
+  # l'après : les temps de réponse des deux instances une fois la fabrication finie (environ 30 s)
+  if [ -z "$SONDE_MOTIF" ]; then sonde_une_phase apres "$SONDE_APRES_S"; fi
 
   # ce que le conteneur a laissé : copié tel quel (jamais lu ni interprété ; fichier régulier seulement), mesuré, puis nettoyé ; le travail part, la dernière sortie reste
   dossier=$RAPPORTS/$ID
@@ -307,6 +486,21 @@ fabriquer_pour_la_marque() {
   else ecrire_le_rapport echec
   fi
 }
+
+# Une fabrication de nuit ou de la journée type : une seule, de la version installée, sans marque nouvelle ; la journée type n'a lieu que dans ses règles.
+# Elle relit la marque en sortant : une livraison arrivée pendant elle (son .path a été refusé par le verrou) est fabriquée à la suite, avec l'origine « livraison »,
+# dans la limite des tours et du plafond du jour (c'est la mesure principale).
+if [ "$ORIGINE" != livraison ]; then
+  marque_avant=$(cat "$MARQUE" 2>/dev/null || true)
+  [ "$ORIGINE" != journee_type ] || regles_de_la_journee_type
+  log "fabrication ($ORIGINE) pour la marque : $(tr '\n' ' ' < "$MARQUE")"
+  fabriquer_pour_la_marque
+  rm -f "$RAPPORTS/en-cours.json"
+  marque_apres=$(cat "$MARQUE" 2>/dev/null || true)
+  if [ -z "$marque_apres" ] || [ "$marque_apres" = "$marque_avant" ]; then exit 0; fi
+  log "une livraison est arrivée pendant la fabrication ($ORIGINE) : elle est fabriquée à la suite."
+  ORIGINE=livraison
+fi
 
 # Jusqu'à trois tours : une marque posée pendant une fabrication la remplace (seule la dernière version compte).
 tour=0

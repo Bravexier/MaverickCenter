@@ -74,9 +74,76 @@ function htmlDeLHistorique(historique) {
   );
 }
 
+const nombre = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+const objet = (v) => (v !== null && typeof v === 'object' && !Array.isArray(v) ? v : {});
+
+/** Le titre du verdict du bilan de la journée, en toutes lettres (la couleur ne le porte jamais seule). */
+export const LIBELLES_DU_BILAN = {
+  tient: 'Le serveur tient',
+  tient_tout_juste: 'Le serveur tient tout juste',
+  ne_tient_pas: 'À examiner : le serveur ne tient pas',
+  journee_incomplete: 'Journée incomplète',
+  inconnu: 'Pas de verdict',
+};
+const libelleDuBilan = (verdict) => (Object.hasOwn(LIBELLES_DU_BILAN, verdict) ? LIBELLES_DU_BILAN[verdict] : LIBELLES_DU_BILAN.inconnu);
+
+/** Le message d'une journée incomplète : combien de fabrications ont eu lieu, et combien il en faut pour juger ; '' si ce n'est pas le cas ou si les nombres manquent. */
+export function messageDeLaJourneeIncomplete(bilan) {
+  const b = objet(bilan);
+  const total = nombre(objet(b.fabrications).total);
+  const minimum = nombre(objet(b.seuils).fabrications_minimum);
+  const heures = nombre(objet(b.seuils).periode_h) ?? nombre(b.periode_h);
+  if (b.verdict !== 'journee_incomplete' || total === null) return '';
+  return `${total} fabrication${total > 1 ? 's' : ''} sur les ${heures ?? '?'} dernières heures${minimum === null ? '' : `, il en faut au moins ${minimum} pour juger le serveur`}.`;
+}
+
+/** Les phrases des seuils du verdict, d'après `bilan.seuils` (jamais écrits ici en chiffres : le service les expose). Vide sans seuils. */
+export function phrasesDesSeuils(seuils) {
+  const s = objet(seuils);
+  const n = (cle) => nombre(s[cle]);
+  if (['periode_h', 'fabrications_minimum', 'facteur_de_reference', 'plancher_ms', 'facteur_grave', 'plancher_grave_ms', 'erreurs_graves_pct'].some((c) => n(c) === null)) return [];
+  return [
+    `Période jugée : les ${n('periode_h')} dernières heures ; au moins ${n('fabrications_minimum')} fabrications pour rendre un verdict.`,
+    `Le serveur tient : aucun refus ni échec, et le temps de réponse de la production (95e centile) pendant les fabrications reste sous ${n('facteur_de_reference')} fois sa référence ou sous ${n('plancher_ms')} ms.`,
+    `Le serveur ne tient pas : un refus ou un arrêt faute de mémoire, de marge, de disque ou de délai ; ou la production à plus de ${n('facteur_grave')} fois sa référence et au-delà de ${n('plancher_grave_ms')} ms ; ou plus de ${n('erreurs_graves_pct')} % de mauvaises réponses.`,
+    'Entre les deux : il tient tout juste.',
+  ];
+}
+
+function htmlDesSeuils(seuils) {
+  const phrases = phrasesDesSeuils(seuils);
+  if (phrases.length === 0) return '';
+  return (
+    '<details class="structure-repli atelier-seuils"><summary>Seuils du verdict</summary>' +
+    `<ul class="structure-liste">${phrases.map((p) => `<li>${echapper(p)}</li>`).join('')}</ul>` +
+    '<p class="debug-petit">Ce sont des choix techniques, réglables dans le code (<code>src/lib/atelier-bilan.mjs</code>), pas des règles du jeu.</p></details>'
+  );
+}
+
+/** Le bilan de la journée : `presentation.bilan` (`presenterLeBilan`), `atelier.bilan` pour les nombres bruts (seuils, total). '' sans bilan. */
+function htmlDuBilan(bilan, brut) {
+  if (!bilan || typeof bilan !== 'object') return '';
+  const s = gravite(bilan.severite);
+  const incomplete = bilan.verdict === 'journee_incomplete';
+  const message = incomplete ? messageDeLaJourneeIncomplete(brut) : bilan.phrase;
+  const raisons = liste(bilan.raisons).filter((r) => typeof r === 'string' && r !== '');
+  return (
+    `<section class="atelier-bilan"><h4>${echapper(bilan.titre ?? '')}</h4>` +
+    `<p class="structure-verdict structure-verdict--${s}" role="${s === 'alerte' ? 'alert' : 'status'}">` +
+    `<strong class="structure-verdict__nom">${echapper(libelleDuBilan(bilan.verdict))}</strong>` +
+    (message ? ` <span>${echapper(message)}</span>` : '') +
+    '</p>' +
+    (raisons.length ? `<ul class="structure-liste atelier-bilan__raisons">${raisons.map((r) => `<li>${echapper(r)}</li>`).join('')}</ul>` : '') +
+    htmlDesLignes(bilan.lignes) +
+    htmlDesSeuils(objet(brut).seuils) +
+    '</section>'
+  );
+}
+
 /**
  * Tout le contenu du bloc pour une réponse lue (`lireLaReponse`). `presentation` = `presenterLAtelier(lecture.atelier)` et `jugement` =
  * `jugerLeServeur(lecture.atelier.dernier)`, calculés par le script ; sans contenu, le message neutre de l'état.
+ * Le bilan de la journée vient en tête, puis l'état de l'atelier, la dernière mesure et l'historique.
  */
 export function htmlDeLAtelier(lecture, presentation, jugement) {
   const l = lecture !== null && typeof lecture === 'object' ? lecture : {};
@@ -84,12 +151,16 @@ export function htmlDeLAtelier(lecture, presentation, jugement) {
   const avecMesure = liste(presentation.lignes).length > 0;
   // le jugement sur le serveur ne se dit que s'il y a une mesure ; « inconnu » dit déjà quelque chose (pas de mesure exploitable) sans verdict
   const phrase = avecMesure && jugement && typeof jugement.phrase === 'string' ? jugement.phrase : '';
-  return htmlDuVerdict(presentation.severite, presentation.message, phrase) + htmlDesLignes(presentation.lignes) + htmlDeLHistorique(presentation.historique);
+  const bilan = htmlDuBilan(presentation.bilan, objet(l.atelier).bilan);
+  const dernier = htmlDuVerdict(presentation.severite, presentation.message, phrase) + htmlDesLignes(presentation.lignes);
+  return bilan + (bilan && avecMesure ? '<h4>Dernière fabrication</h4>' : '') + dernier + htmlDeLHistorique(presentation.historique);
 }
 
-/** Le résumé d'une ligne du bloc (à droite du titre) : la gravité en toutes lettres quand une mesure existe, sinon rien. */
+/** Le résumé d'une ligne du bloc (à droite du titre) : le verdict du bilan quand il existe, sinon la gravité de la dernière mesure, sinon rien. */
 export function resumeDeLAtelier(lecture, presentation) {
   const l = lecture !== null && typeof lecture === 'object' ? lecture : {};
-  if (l.etat !== 'ok' || !presentation || liste(presentation.lignes).length === 0) return '';
+  if (l.etat !== 'ok' || !presentation) return '';
+  if (presentation.bilan && typeof presentation.bilan === 'object') return libelleDuBilan(presentation.bilan.verdict).replace(/^À examiner : /, '').toLowerCase();
+  if (liste(presentation.lignes).length === 0) return '';
   return LIBELLES_DE_GRAVITE[gravite(presentation.severite)].toLowerCase();
 }
