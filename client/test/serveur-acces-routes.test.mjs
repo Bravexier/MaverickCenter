@@ -50,7 +50,7 @@ test('chaque ressource et chaque action que traiter aiguille est dans la table (
   // les actions de l'édition, de la mise à jour et de Debug, lues dans le code de leur aiguillage
   const liste = (debut) => [...SOURCE_API.slice(SOURCE_API.indexOf(debut)).match(/\[([^\]]+)\]/)[1].matchAll(/'([a-z-]+)'/g)].map((m) => m[1]);
   const actions = {
-    '/api/edition/': [...liste("['en-attente'"), 'extrait'], // `extrait` est aiguillé avant la liste (traiterExtrait)
+    '/api/edition/': [...liste("['en-attente'"), 'extrait', 'lots'], // `extrait` et `lots` sont aiguillés avant la liste (traiterExtrait, traiterLots)
     '/api/mise-a-jour/': liste("[undefined, 'brouillon'"),
     '/api/debug/': [...SOURCE_API.slice(SOURCE_API.indexOf('function traiterDebug'), SOURCE_API.indexOf('\nfunction ', SOURCE_API.indexOf('function traiterDebug') + 10)).matchAll(/action === '([a-z]+)'/g)].map((m) => m[1]),
   };
@@ -78,9 +78,13 @@ test('le classement : lecture libre pour les pages, lecture avec clé pour le jo
       ['GET', '/api/debug/systeme/'], ['GET', '/api/debug/base/'], ['GET', '/api/debug/tables/'], ['GET', '/api/debug/tables/personnage/'],
       ['GET', '/api/debug/tables/utilisateur/'], ['GET', '/api/debug/tables/groupe/'],
       ['GET', '/api/v1/'], ['GET', '/api/v1/openapi.json'], ['GET', '/api/v1/metiers/'], ['GET', '/api/v1/metiers/essai/'],
+      ['GET', '/api/edition/lots/'], ['GET', `/api/edition/lots/${UUID}/`],
     ],
+    // lots de changements : une session dépose et refait l'essai avec la clé de lecture (elle n'écrit que `lot_de_changements`, jamais le contenu)
+    proposition: [['POST', '/api/edition/lots/'], ['POST', `/api/edition/lots/${UUID}/essai/`]],
     ecriture: [
       ['POST', '/api/edition/'], ['POST', '/api/maintenance/lever/'],
+      ['POST', `/api/edition/lots/${UUID}/appliquer/`], ['POST', `/api/edition/lots/${UUID}/refuser/`],
       ['POST', '/api/mise-a-jour/brouillon/'], ['POST', '/api/mise-a-jour/majeure/'], ['POST', '/api/mise-a-jour/lancer/'], ['POST', '/api/mise-a-jour/liberer/'],
       ['POST', '/api/mise-a-jour/conflits/'],
       ['POST', '/api/personnages/'], ['PUT', '/api/personnages/essai/'], ['DELETE', '/api/personnages/essai/'],
@@ -98,10 +102,11 @@ test('le classement : lecture libre pour les pages, lecture avec clé pour le jo
 });
 
 test('toute méthode d’écriture d’une route connue est « ecriture », sauf la liste des POST qui ne font que lire (les pages en ont besoin sans connexion)', () => {
+  const PROPOSITIONS = new Set(['/api/edition/lots', `/api/edition/lots/${UUID}/essai`]); // elles n'écrivent que la proposition et son essai
   const POST_QUI_LISENT = new Set(['/api/classeur', '/api/metriques/page', '/api/acces',
     '/api/edition/lignes', '/api/edition/race', '/api/edition/classe', '/api/edition/bestiaire', '/api/edition/portrait', '/api/edition/evenement']);
   for (const [m, c] of routesDeLEntete().filter(([m]) => m !== 'GET')) {
-    const attendu = POST_QUI_LISENT.has(cheminSansFin(c)) || (m === 'DELETE' && cheminSansFin(c) === '/api/acces') ? 'ouverte' : 'ecriture';
+    const attendu = POST_QUI_LISENT.has(cheminSansFin(c)) || (m === 'DELETE' && cheminSansFin(c) === '/api/acces') ? 'ouverte' : PROPOSITIONS.has(cheminSansFin(c)) ? 'proposition' : 'ecriture';
     assert.equal(classer(m, c).classe, attendu, `${m} ${c}`);
   }
 });
@@ -160,11 +165,12 @@ test('la porte : pour chaque route de l’en-tête, sans rien / avec la clé / a
   for (const [methode, chemin] of routes) {
     const { classe } = classer(methode, chemin);
     const qui = { rien: {}, cle: m.avecCle, mot_de_passe: m.cookie };
+    // la clé de lecture passe pour `lecture` et `proposition` (déposer un lot : R275) ; l'écriture demande le mot de passe seul
     const attendu = { rien: classe !== 'ouverte', cle: classe === 'ecriture', mot_de_passe: false };
     for (const [nom, entetes] of Object.entries(qui)) {
       const r = m.appel(methode, chemin, { entetes });
       assert.equal(r.statut === 401, attendu[nom], `${methode} ${chemin} avec « ${nom} » : ${r.statut}`);
-      if (r.statut === 401) assert.deepEqual(r.corps.acces, classe === 'lecture' ? 'cle' : 'mot_de_passe', `${methode} ${chemin}`);
+      if (r.statut === 401) assert.deepEqual(r.corps.acces, classe === 'lecture' || classe === 'proposition' ? 'cle' : 'mot_de_passe', `${methode} ${chemin}`);
     }
   }
   // une route inconnue : 401 « mot de passe » (jamais un 404 qui montrerait ce qui existe)

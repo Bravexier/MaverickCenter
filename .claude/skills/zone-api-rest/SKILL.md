@@ -38,6 +38,7 @@ user-invocable: false
 - Jamais une table des sections 13 et 14 (fiches, comptes, groupes : elles passent par `/api/personnages/` ; journal de l'édition). Jamais une image entière (`ligneSansImage`).
 - Le routeur n'injecte un nom de colonne dans le SQL qu'après l'avoir trouvé par `PRAGMA table_info`.
 - Les adresses finissent par « / » (skill `zone-service`).
+- Les routes `/api/edition/lots/` (lots de changements, R274, R275) ne sont pas des ressources du registre : skill `zone-edition`, `docs/api.md`.
 - `OPERATIONS_DU_LOT` (`lib/ressources.mjs`) liste les opérations du lot qu'une ressource peut nommer (`ordonner` comprise) : chacune existe au service et est joignable (`ressources-registre`).
 
 ## Tests

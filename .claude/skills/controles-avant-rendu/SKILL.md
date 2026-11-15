@@ -23,6 +23,8 @@ Depuis `client/`, Node ≥ 22.12 (`npm ci` si `node_modules` manque). Les tests 
 | `deploy/` | `test/deploy-vps.test.mjs` (dans `npm test`) ; fins de ligne LF |
 | `tools/flux-git/` | `test/flux-git.test.mjs` et `test/flux-git-etat.test.mjs` (dans `npm test`) |
 
+Le code de `db:check` est `client/serveur/controles-du-contenu.mjs#controlerLeContenu(db)` (le service d'édition le lance aussi, sur la copie où il essaie un lot de changements) ; `scripts/db-check.mjs` n'est que la ligne de commande (test `controles-du-contenu`).
+
 `db:check` rend aussi une clé `avertissements` (R207 : divergence de coût de fabrication du bouclier) : elle se lit dans le rapport, elle ne fait pas échouer le contrôle.
 
 Un contrôle rouge se corrige à sa cause, jamais en sautant le test : l'échec revient à son auteur, via le `leader-technique`. Le rapport (de `tech-qualite`) donne la commande et le résultat (le nombre de tests passés, ou la première erreur). Un échec que le changement n'explique pas se signale : `diagnostiquer-la-ci`.

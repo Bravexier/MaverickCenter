@@ -42,6 +42,15 @@
 //                                   ni fiche, ni compte, ni journal), refait au premier téléchargement qui suit un changement (serveur/extrait.mjs ; ETag, 304) ;
 //                                   GET /api/edition/extrait/meta/ : son méta en JSON (date, version du site, empreinte de chaque table) — `npm run db:extrait`
 //   GET  /api/edition/journal/      le journal des modifications en attente, à rapatrier dans data/rows (npm run db:appliquer-edition)
+// Lots de changements (R274, R275 ; serveur/edition-lots.mjs), site de dev seulement : une session de Claude DÉPOSE une proposition (rien n'est écrit dans le
+// contenu), le propriétaire l'applique ou la refuse d'un clic :
+//   GET  /api/edition/lots/                    les propositions, la plus récente d'abord (résumé : état, verdict de l'essai)
+//   POST /api/edition/lots/                    le lot (maverick-lot/1 : titre, nature, decision, operations) → contrôle du format, état « propose », essai à blanc
+//                                              sur une copie ; la réponse (une promesse) porte la proposition avec son essai ; 400 dit l'opération à corriger
+//   GET  /api/edition/lots/<id>/               une proposition : contenu déposé, essai (aperçu avant et après), bilan
+//   POST /api/edition/lots/<id>/essai/         refait l'essai (n'écrit que `essai`) → la proposition
+//   POST /api/edition/lots/<id>/appliquer/     { verrous_ouverts? } → écrit le lot d'un bloc par le service d'édition (mot de passe) ; 409 dit ce qui le refuse
+//   POST /api/edition/lots/<id>/refuser/       refuse la proposition (mot de passe) ; rien n'est écrit dans le contenu
 // Page « Mise à jour », sur le site de dev seulement (même garde) — serveur/notes-de-version.mjs :
 //   GET  /api/mise-a-jour/              la note en préparation : modifications production → dev (calculées), brouillon, état du lancement
 //   POST /api/mise-a-jour/brouillon/    { texte, avant } → enregistre le champ libre des admins
@@ -106,6 +115,7 @@ import { journalExporte, lignesEnAttente } from './edition-journal.mjs';
 import { conflitsDuJournal, resoudreLeConflit } from './edition-conflits.mjs';
 import { chronologieVivante, donneesDEvenement, vocabulaireEtFeuille } from './edition-chronologie.mjs';
 import { planVivant } from './edition-plan.mjs';
+import * as lots from './edition-lots.mjs';
 import {
   actualiserLancement, CONFIRMATION, enregistrerBrouillon, enregistrerMajeure, ErreurNotes, estLiberable, figerLot, leverMaintenance, libererLot, lireLot,
   lignesALivrer, lireReference, noteEnPreparation, occupe,
@@ -357,10 +367,63 @@ function traiterExtrait(requete, service, reste, permis) {
   }).catch(echec);
 }
 
+const FORME_D_UN_LOT = /^[0-9a-f-]{36}$/;
+
+/**
+ * Les routes /api/edition/lots/… (lots de changements, serveur/edition-lots.mjs ; site de dev seulement, 403 ailleurs avant tout). Le dépôt et l'essai rendent
+ * une PROMESSE (l'essai tourne dans un fil à part : une copie de la base et les contrôles du contenu) ; lire, appliquer et refuser répondent aussitôt.
+ * `service.lots.enArrierePlan === false` : l'essai dans le fil du service (les tests).
+ */
+function traiterLots(requete, service, reste, permis) {
+  if (!service.edition) return erreur(403, 'Les lots de changements ne s’ouvrent que sur le site de dev.');
+  const [id, action, ...suite] = reste;
+  if (suite.length || (id !== undefined && !FORME_D_UN_LOT.test(id)) || (action !== undefined && !['essai', 'appliquer', 'refuser'].includes(action))) return erreur(404, 'Adresse inconnue.');
+  const refus = permis(...(id === undefined ? ['GET', 'POST'] : action === undefined ? ['GET'] : ['POST']));
+  if (refus) return refus;
+  const { db, refus: indisponible } = baseOuRefus(service, 'La base n’est pas disponible pour le moment.');
+  if (indisponible) return indisponible;
+  const echec = (e) => {
+    if (e instanceof ErreurEdition) return erreur(e.statut, e.message, e.details);
+    throw e;
+  };
+  const options = { enArrierePlan: service.lots?.enArrierePlan !== false };
+  if (requete.methode === 'GET') {
+    try {
+      return json(200, id === undefined ? { lots: lots.lister(db) } : lots.lire(db, id));
+    } catch (e) {
+      return echec(e);
+    }
+  }
+  const { valeur, refus: interdit } = lireEcriture(requete);
+  if (interdit) return interdit;
+  try {
+    if (id === undefined) {
+      return lots.deposer(service.base, valeur, options).then((lot) => {
+        service.journal?.(`lots : proposition ${lot.id} déposée (${lot.operations} opération(s), essai : ${lot.verdict ?? '?'})`);
+        return json(201, lot);
+      }, echec);
+    }
+    if (action === 'essai') return lots.essayerLaProposition(service.base, id, options).then((lot) => json(200, lot), echec);
+    if (action === 'refuser') {
+      const lot = lots.refuser(db, id);
+      service.journal?.(`lots : proposition ${id} refusée`);
+      return json(200, lot);
+    }
+    const t0 = performance.now();
+    const lot = lots.appliquer(db, id, valeur);
+    service.journal?.(`lots : proposition ${id} appliquée (lot ${lot.lot_id}, ${lot.bilan?.ecrites ?? 0} opération(s) écrite(s), ${lot.bilan?.changees ?? 0} changée(s) entre-temps)`);
+    service.evenement?.('lot_edition', { duree_ms: performance.now() - t0, detail: { lot: lot.lot_id, operations: lot.operations, modifications: lot.bilan?.ecrites ?? 0, page: null, fiches_adaptees: 0 } });
+    return json(200, lot);
+  } catch (e) {
+    return echec(e);
+  }
+}
+
 /** Les routes /api/edition/… (site de dev seulement). */
 function traiterEdition(requete, service, action, reste, permis, lecture = () => true) {
   if (!service.edition) return erreur(403, 'L’édition des règles n’est ouverte que sur le site de dev.');
   if (action === 'extrait') return traiterExtrait(requete, service, reste, permis);
+  if (action === 'lots') return traiterLots(requete, service, reste, permis);
   if (reste.length || !['en-attente', 'lignes', 'listes', 'pages', 'mots-cles', 'chronologie', 'plan', 'journal', 'race', 'classe', 'bestiaire', 'portrait', 'evenement', undefined].includes(action)) {
     return erreur(404, 'Adresse inconnue.');
   }

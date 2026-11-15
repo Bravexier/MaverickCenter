@@ -1,0 +1,1 @@
+-- data/rows/numero_donne.sql : export déterministe, une instruction par ligne, triée par (table_nom, colonne). NE PAS ÉDITER À LA MAIN.

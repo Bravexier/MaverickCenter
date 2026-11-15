@@ -301,6 +301,12 @@ export function routeNormalisee(adresse) {
     case 'edition':
       if (seul(1)) return r('edition');
       if (b === 'extrait' && seul(3)) return c === 'meta' ? r('edition', 'extrait', 'meta') : ROUTE_INCONNUE;
+      // lots de changements : la liste, un lot (`{lot}`), et ses trois actions
+      if (b === 'lots') {
+        if (seul(2)) return r('edition', 'lots');
+        if (seul(3)) return r('edition', 'lots', '{lot}');
+        return seul(4) && ['essai', 'appliquer', 'refuser'].includes(d) ? r('edition', 'lots', '{lot}', d) : ROUTE_INCONNUE;
+      }
       return seul(2) && ACTIONS_EDITION.has(b) ? r('edition', b) : ROUTE_INCONNUE;
     case 'mise-a-jour':
       if (seul(1)) return r('mise-a-jour');

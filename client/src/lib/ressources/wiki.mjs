@@ -489,6 +489,8 @@ export const HORS_RESSOURCE = {
   groupe_membre: `Membres d’un groupe de jeu et la fiche que chacun y inscrit : ${FICHES}.`,
   modification_lot: `Un enregistrement fait depuis une page du site de dev (lot atomique) : ${JOURNAL}.`,
   modification: `Une ligne de table touchée par un lot, avec ses valeurs avant et après et son état (en attente, intégrée, conflit) : ${JOURNAL}.`,
+  lot_de_changements: `Une proposition de lot de changements déposée par une session, essayée à blanc, appliquée ou refusée d'un clic du propriétaire (R274, R275, migration 0128) : ${JOURNAL}.`,
+  numero_donne: `Le plus haut numéro jamais donné à une clé entière par un lot de changements, jamais diminué (un numéro n'est pas redonné, même après une restauration ; migration 0128) : ${JOURNAL}.`,
   note_version_brouillon:
     'Note de version en préparation (champ libre des admins et case « Version majeure » sur /mise-a-jour/, une seule ligne, section 14) : servie et écrite par /api/mise-a-jour/ ' +
     '(serveur/notes-de-version.mjs), vide dans data/rows, dans TABLES_INTERDITES du journal.',

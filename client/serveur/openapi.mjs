@@ -402,6 +402,7 @@ const SITE_DE_DEV = ' Site de dev seulement (403 ailleurs).';
 
 function cheminsDuService() {
   const idFiche = { name: 'id', in: 'path', required: true, description: 'Identifiant du prétiré (rendu par sa création).', schema: { type: 'string' } };
+  const idLot = { name: 'id', in: 'path', required: true, description: 'Identifiant du lot de changements (rendu par son dépôt).', schema: { type: 'string' } };
   return {
     '/v1/': lectureDuService('catalogue_v1', 'Catalogue de l’API v1', `Les modules et les ressources : capacités, colonnes (et celles qui se modifient), champs de création, sous-ressources, nombre de lignes.${SITE_DE_DEV}`),
     '/v1/openapi.json': lectureDuService('openapi_v1', 'Cette description OpenAPI', `La description OpenAPI 3.1 de tout le service, refaite à chaque demande d’après la base vivante.${SITE_DE_DEV}`),
@@ -468,6 +469,55 @@ function cheminsDuService() {
     '/edition/portrait/': ecritureDuService('edition_portrait', 'Portrait d’une carte ou d’une espèce', `{ table, cle } → le portrait en entier et son cadrage (lecture).${SITE_DE_DEV}`, { table: 'monstre', cle: { id: '<identifiant>' } }),
     '/edition/': ecritureDuService('edition_lot', 'Enregistrer un lot de modifications', `{ page, operations } → applique un lot d’un bloc et le note au journal (opérations : modifier, creer, supprimer, relations, magies_innees, categories, fusionner_mots_cles, categories_mot_cle, synonymes_mot_cle, valeurs_de_capacite, ordonner).${SITE_DE_DEV}`,
       { page: 'api/debug', operations: [{ op: 'modifier', table: 'metier', cle: { id: '<identifiant>' }, valeurs: { description: '…' } }] }, { 404: ref('responses', 'Introuvable'), 409: ref('responses', 'Conflit'), 422: ref('responses', 'Refusee') }),
+    // lots de changements (R274, R275 ; serveur/edition-lots.mjs)
+    '/edition/lots/': {
+      get: {
+        operationId: 'edition_lots', tags: [SERVICE], summary: 'Les lots de changements proposés',
+        description: `Les propositions, la plus récente d’abord : état (propose, applique, refuse, annule) et verdict de l’essai à blanc. Clé de lecture ou mot de passe.${SITE_DE_DEV}`,
+        responses: { 200: reponse('Les propositions.', objet), 403: ref('responses', 'Fermee'), 503: ref('responses', 'Indisponible') },
+      },
+      post: {
+        operationId: 'edition_lot_deposer', tags: [SERVICE], summary: 'Déposer un lot de changements',
+        description: `Le lot (maverick-lot/1 : titre, nature, decision, auteur, operations de table, cle, operation, avant, apres) est contrôlé, enregistré « propose » et essayé à blanc sur une copie de la base ; la réponse porte l’essai (opérations applicables, changées entre-temps, verrouillées par une décision, refusées ; aperçu avant et après ; problèmes du contenu nés du lot). Rien n’est écrit dans le contenu : le propriétaire l’applique ou le refuse d’un clic. Clé de lecture ou mot de passe (jamais de clé d’écriture). 400 dit l’opération à corriger.${SITE_DE_DEV}`,
+        requestBody: { required: true, ...json(objet, { example: { format: 'maverick-lot/1', titre: 'Redonner à un mot-clé sa couleur', nature: 'decision', decision: 'R275', operations: [{ table: 'mot_cle', cle: { id: 1 }, operation: 'modifier', avant: { couleur: null }, apres: { couleur: '#aa3322' } }] } }) },
+        responses: { 201: reponse('Proposée, essayée.', objet), 400: ref('responses', 'Requete'), 403: ref('responses', 'Fermee'), 415: ref('responses', 'TypeDeCorps'), 503: ref('responses', 'Indisponible') },
+      },
+    },
+    '/edition/lots/{id}/': {
+      parameters: [idLot],
+      get: {
+        operationId: 'edition_lot_lire', tags: [SERVICE], summary: 'Un lot de changements',
+        description: `Le contenu déposé, l’essai à blanc (aperçu avant et après, verdict, verrous à ouvrir) et, appliqué, le bilan (opérations écrites, valeurs changées entre-temps avec la valeur trouvée, numéros donnés). Clé de lecture ou mot de passe.${SITE_DE_DEV}`,
+        responses: { 200: reponse('La proposition.', objet), 403: ref('responses', 'Fermee'), 404: ref('responses', 'Introuvable') },
+      },
+    },
+    '/edition/lots/{id}/essai/': {
+      parameters: [idLot],
+      post: {
+        operationId: 'edition_lot_essai', tags: [SERVICE], summary: 'Refaire l’essai à blanc d’un lot',
+        description: `Refait l’essai sur une copie de la base d’aujourd’hui ; n’écrit que l’essai de la proposition. Clé de lecture ou mot de passe.${SITE_DE_DEV}`,
+        requestBody: { required: false, ...json(objet) },
+        responses: { 200: reponse('La proposition et son essai.', objet), 403: ref('responses', 'Fermee'), 404: ref('responses', 'Introuvable'), 409: reponse('Le lot n’est plus proposé.', objet) },
+      },
+    },
+    '/edition/lots/{id}/appliquer/': {
+      parameters: [idLot],
+      post: {
+        operationId: 'edition_lot_appliquer', tags: [SERVICE], summary: 'Appliquer un lot de changements',
+        description: `Le clic du propriétaire (mot de passe) : écrit le lot d’un bloc par le service d’édition, dans la transaction de l’édition. Une valeur changée depuis l’essai n’est pas écrite (le site prime), elle est listée. 409 : l’essai a des refus à corriger, un verrou de décision n’est pas ouvert dans verrous_ouverts, un contrôle du contenu échoue, ou rien ne reste à écrire.${SITE_DE_DEV}`,
+        requestBody: { required: false, ...json(objet, { example: { verrous_ouverts: [] } }) },
+        responses: { 200: reponse('Appliquée.', objet), 400: ref('responses', 'Requete'), 403: ref('responses', 'Fermee'), 404: ref('responses', 'Introuvable'), 409: reponse('Refusée : le message dit pourquoi.', objet) },
+      },
+    },
+    '/edition/lots/{id}/refuser/': {
+      parameters: [idLot],
+      post: {
+        operationId: 'edition_lot_refuser', tags: [SERVICE], summary: 'Refuser un lot de changements',
+        description: `Le propriétaire refuse la proposition (mot de passe) : rien n’est écrit dans le contenu, elle reste lisible.${SITE_DE_DEV}`,
+        requestBody: { required: false, ...json(objet) },
+        responses: { 200: reponse('Refusée.', objet), 403: ref('responses', 'Fermee'), 404: ref('responses', 'Introuvable'), 409: reponse('Le lot n’est plus proposé.', objet) },
+      },
+    },
     '/edition/extrait/': {
       get: {
         operationId: 'edition_extrait', tags: [SERVICE], summary: 'Extrait du contenu (fichier SQLite)',
