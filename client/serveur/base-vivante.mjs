@@ -33,6 +33,7 @@ import { rejouerLeJournal } from './edition.mjs';
 import { instant as ecrireInstant } from './instant.mjs';
 import { sha256 } from './partage.mjs';
 import { empreinteLogique } from './empreintes.mjs';
+import { noterLesMigrationsRecues } from './structure-sur-place.mjs';
 import { noterLesRetraits, nouveauxRetraitsDeFiches, retirerLesArmuresHorsRegle, retirerLesManquants } from './fiches-retraits.mjs';
 import { poidsPortableDeLaBase } from '../src/lib/poids-portable-db.mjs';
 
@@ -359,6 +360,8 @@ function convertirLesTablesRetirees(db, retraits) {
  * Une base d'avant ce réglage (vivante.json sans `reconstruction`) garde l'ancienne règle : refaite quand le fichier des règles change.
  */
 export const VERSION_DE_LA_RECONSTRUCTION = 1;
+// (Pas augmentée pour `migration_recue` : la production porte les fiches des joueurs, on ne refait pas la base pour noter une table. Elle se remplit à la prochaine
+// reconstruction naturelle, quand les règles ou le contenu changent ; d'ici là, une table vide veut dire « migrations <= user_version présumées reçues ».)
 
 export const FICHIER_BASE = 'vivante.db';
 /** À côté de la base : l'empreinte des règles dont elle est faite (refaite quand elle diffère de celle de la base publiée). */
@@ -589,7 +592,7 @@ function archiver(dossier, chemin, instant, version = null) {
   const db = new DatabaseSync(chemin, { readOnly: true });
   let lignes = 0;
   try {
-    for (const t of TABLES_VIVANTES) if (colonnes(db, 'main', t).length) lignes += compter(db, 'main', t);
+    for (const t of TABLES_VIVANTES) if (t !== 'migration_recue' && colonnes(db, 'main', t).length) lignes += compter(db, 'main', t); // les migrations reçues ne sont pas des données à garder
   } finally {
     db.close();
   }
@@ -617,8 +620,12 @@ function archiver(dossier, chemin, instant, version = null) {
  * null : pas d'étape du poids. `garderLeSite` (vrai par défaut) : au rejeu, une fusion ambiguë avec les nouvelles règles garde la valeur du site de dev
  * (son lot à résoudre sur la page Mise à jour) et les lots en conflit non résolus sont réévalués (serveur/edition-journal.mjs#rejouer, `garder`) ; faux
  * est réservé aux tests qui refont une base vivante d'avant cette règle (lots annulés en entier au moindre conflit).
+ * La base refaite note les migrations qu'elle porte (serveur/structure-sur-place.mjs#noterLesMigrationsRecues : une ligne « reconstruction » par migration livrée
+ * de numéro <= sa version, jamais réécrite ; les lignes d'une version plus récente que la sienne sont retirées) : `migrations` (facultatif) est le dossier des
+ * migrations livrées (undefined : celui de la livraison ; null : aucune), `version` la version du site, notée si elle est de la forme X.Y.Z (sinon NULL) ; le
+ * résultat porte `migrations` ({ notees, retirees, ecarts, livrees, erreur? } : une note qui échoue est consignée au journal, sans arrêter la reconstruction), null quand la base n'a pas été refaite.
  */
-export function preparerBaseVivante({ regles, dossier, instant = new Date(), evenement = null, poidsPortable = undefined, garderLeSite = true, version = null, calculerLogique = empreinteLogique, journal = null }) {
+export function preparerBaseVivante({ regles, dossier, instant = new Date(), evenement = null, poidsPortable = undefined, garderLeSite = true, version = null, calculerLogique = empreinteLogique, journal = null, migrations = undefined }) {
   if (!existsSync(regles)) throw new ErreurBaseVivante(`base des règles introuvable : ${regles} (le site est-il installé ?)`);
   mkdirSync(dossier, { recursive: true });
   const chemin = join(dossier, FICHIER_BASE);
@@ -648,6 +655,7 @@ export function preparerBaseVivante({ regles, dossier, instant = new Date(), eve
   let schema;
   let rejeu = null;
   let fiches = [];
+  let recues = null;
   const iso = ecrireInstant(instant); // format des colonnes `*_le` : date des notes de retrait et de refaite_le
   try {
     const empreinte = empreinteFichier(neuve); // celle de la copie : les règles peuvent être remplacées pendant qu'on les copie
@@ -672,6 +680,12 @@ export function preparerBaseVivante({ regles, dossier, instant = new Date(), eve
       if (!identique) {
         if (existsSync(chemin)) ({ rejeu, fiches } = transferer(db, chemin, iso, evenement, poidsPortable, garderLeSite));
         schema = db.prepare('PRAGMA user_version').get().user_version;
+        // une note qui échoue n'arrête ni la reconstruction ni le site : la base refaite est gardée, l'erreur va au journal et dans le résultat (`migrations.erreur`) ; son affichage sur la page Debug viendra avec les PR suivantes du lot 7
+        try {
+          recues = noterLesMigrationsRecues(db, { migrations, version, instant: iso });
+        } catch (e) {
+          recues = { table: true, livrees: false, notees: 0, retirees: 0, ecarts: [], erreur: String(e?.message ?? e) };
+        }
       }
     } finally {
       db.close();
@@ -692,7 +706,10 @@ export function preparerBaseVivante({ regles, dossier, instant = new Date(), eve
     ecrireEtat(dossier, {
       regles: empreinte, ...(logique ? { logique } : {}), reconstruction: VERSION_DE_LA_RECONSTRUCTION, schema, refaite_le: iso, version: version || 'inconnue', ...(retraits ? { retraits } : {}),
     });
-    return { chemin, refaite: true, archive, empreinte, schema, rejeu, fiches };
+    if (recues?.erreur) journal?.(`ERREUR base vivante : la base refaite est gardée, mais ses migrations reçues ne sont pas notées : ${recues.erreur}`);
+    else if (recues && !recues.livrees) journal?.('base vivante : migrations non livrées avec le service, aucune n’est notée comme reçue par la base refaite');
+    if (recues?.ecarts.length) journal?.(`base vivante : migrations notées dont le fichier livré a changé (une migration fusionnée ne se modifie plus) : ${recues.ecarts.join(', ')}`);
+    return { chemin, refaite: true, archive, empreinte, schema, rejeu, fiches, migrations: recues };
   } catch (e) {
     rmSync(neuve, { force: true });
     throw e;

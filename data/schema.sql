@@ -23,7 +23,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 128;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 129;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -5664,6 +5664,27 @@ CREATE TABLE note_version_brouillon (
   lot         TEXT    CHECK (lot IS NULL OR length(lot) > 0),
   majeure     INTEGER CHECK (majeure IS NULL OR majeure = 1)         -- la case « Version majeure » (migration 0070) : 1 = cochée, la prochaine mise à jour
                                                                      -- est la X+1.0 (PR de livraison avec [V: X+1]) ; NULL = décochée ; part avec le lot
+) STRICT;
+
+-- Ce que la base a reçu : une ligne par migration data/migrations/NNNN-<nom>.sql reçue par CETTE base (lot 7 du chantier « la base du site de dev
+-- devient la source de vérité », R274, R275 ; migration 0129). Propre à chaque base : data/rows la garde VIDE (la base du dépôt ne reçoit rien), le
+-- service remplit celle de sa base vivante, jamais dans un extrait ni un paquet (lib/tables-de-la-base.mjs#TABLES_DU_JOURNAL). Une ligne n'est jamais
+-- réécrite : une migration reçue l'est une fois, sur place ou par une reconstruction. Sans index : petite table, lue par numéro ou en entier.
+CREATE TABLE migration_recue (
+  numero          INTEGER NOT NULL PRIMARY KEY CHECK (numero >= 1),        -- le NNNN du fichier (« 129 » pour 0129-…)
+  fichier         TEXT    NOT NULL CHECK (fichier GLOB '[0-9][0-9][0-9][0-9]-?*.sql' AND fichier NOT GLOB '*[^a-z0-9.-]*'
+                                          AND CAST(substr(fichier, 1, 4) AS INTEGER) = numero),
+                                                                           -- nom du fichier dans data/migrations/ (« 0129-migrations-recues.sql »)
+  empreinte       TEXT    NOT NULL CHECK (length(empreinte) = 64 AND empreinte NOT GLOB '*[^0-9a-f]*'),
+                                                                           -- sha256 du fichier SQL reçu, octets tels quels, en hexadécimal minuscule :
+                                                                           -- une migration fusionnée ne se modifie plus, un écart se voit
+  recue_le        TEXT    NOT NULL CHECK (recue_le GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9]Z'),
+  mode            TEXT    NOT NULL CHECK (mode IN ('reconstruction', 'sur_place')),
+                                                                           -- 'reconstruction' : base refaite depuis le dépôt à une version qui la
+                                                                           -- contient ; 'sur_place' : appliquée par le service à la base en place
+  version_du_site TEXT    CHECK (version_du_site IS NULL OR (version_du_site GLOB '[0-9]*.[0-9]*.[0-9]*'
+                                 AND version_du_site NOT GLOB '*[^0-9.]*' AND version_du_site NOT GLOB '*.*.*.*'))
+                                                                           -- version X.Y.Z du site qui l'a reçue (client/package.json) ; NULL : non dite
 ) STRICT;
 
 -- ====================================================================================================================

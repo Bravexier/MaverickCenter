@@ -12,10 +12,13 @@
 import { TABLES_FICHES } from './fiche-format.mjs';
 
 /**
- * Section 14 : le journal des modifications du site de dev, les lots de changements déposés et le plafond des numéros donnés (migration 0128), et le
- * brouillon de la note de version — dans l'ordre de data/schema.sql (la base vivante les recopie dans cet ordre : serveur/base-vivante.mjs#TABLES_EDITION).
+ * Section 14 : le journal des modifications du site de dev, les lots de changements déposés et le plafond des numéros donnés (migration 0128), le
+ * brouillon de la note de version, et les migrations que cette base a reçues (migration 0129, propre à chaque base) — dans l'ordre de data/schema.sql
+ * (la base vivante les recopie dans cet ordre : serveur/base-vivante.mjs#TABLES_EDITION).
  */
-export const TABLES_DU_JOURNAL = Object.freeze(['modification_lot', 'modification', 'lot_de_changements', 'numero_donne', 'note_version_brouillon']);
+export const TABLES_DU_JOURNAL = Object.freeze([
+  'modification_lot', 'modification', 'lot_de_changements', 'numero_donne', 'note_version_brouillon', 'migration_recue',
+]);
 
 /** Section 15 : les notes de version et l'historique des modifications faites sur le site de dev (des traces qui citent la production d'avant). */
 export const TABLES_DES_NOTES = Object.freeze(['note_version', 'note_version_ligne', 'historique_modification']);
@@ -39,7 +42,8 @@ export const TRACES_TELLES_QUELLES = Object.freeze(['note_cellule', 'ecart_sourc
 // ici, à la liste de sa classe :
 //   - « contenu » : ce que le site de dev est la source de (les règles des sections 0 à 10, les notes de version et l'historique, section 15) ;
 //     l'extrait pour les sessions de Claude et l'attestation de la production en recopient ou en comptent l'empreinte (serveur/extrait.mjs) ;
-//   - « propre au site » : ce qu'un visiteur ou le service écrit (fiches, comptes, groupes : section 13 ; journal et brouillon de la note : section 14) ;
+//   - « propre au site » : ce qu'un visiteur ou le service écrit (fiches, comptes, groupes : section 13 ; journal, brouillon de la note et migrations
+//     reçues par la base : section 14) ;
 //     jamais dans un extrait ni un paquet : une table de cette classe y est vide ;
 //   - « calculée » : recalculée par le build depuis le contenu (tables dérivées, recherche plein texte et ses tables d'ombre, tables internes de SQLite) ;
 //     hors de toute empreinte.
@@ -80,7 +84,10 @@ export const TABLES_DE_REGLES = Object.freeze([
 /** Classe « contenu » : les règles, plus les notes de version et l'historique des modifications du site (section 15). */
 export const TABLES_DE_CONTENU = Object.freeze([...TABLES_DE_REGLES, ...TABLES_DES_NOTES]);
 
-/** Classe « propre au site » : les fiches, les comptes et les groupes (section 13), le journal de l'édition et le brouillon de la note (section 14). */
+/**
+ * Classe « propre au site » : les fiches, les comptes et les groupes (section 13), le journal de l'édition, le brouillon de la note et les migrations
+ * reçues par la base (section 14).
+ */
 export const TABLES_PROPRES_AU_SITE = Object.freeze([...TABLES_FICHES, ...TABLES_DU_JOURNAL]);
 
 /** Les tables de recherche plein texte (FTS5, section 11) : calculées elles aussi, leurs tables d'ombre (OMBRES_DE_RECHERCHE) avec elles. */

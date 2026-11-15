@@ -120,7 +120,9 @@ test('première préparation : copie des règles, empreinte et schéma notés, s
   assert.match(lireEtat(dossier).logique, /^[0-9a-f]{64}$/);
   assert.match(lireEtat(dossier).refaite_le, /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/);
   assert.equal(valeur(r.chemin, 'SELECT count(*) AS n FROM race').n, valeur(REGLES, 'SELECT count(*) AS n FROM race').n);
-  for (const t of TABLES_VIVANTES) assert.equal(valeur(r.chemin, `SELECT count(*) AS n FROM "${t}"`).n, 0, t);
+  // la section 13 et le journal sont vides ; `migration_recue` (migration 0129) note les migrations que la base refaite porte (serveur-structure-sur-place-reconstruction)
+  for (const t of TABLES_VIVANTES.filter((x) => x !== 'migration_recue')) assert.equal(valeur(r.chemin, `SELECT count(*) AS n FROM "${t}"`).n, 0, t);
+  assert.ok(valeur(r.chemin, 'SELECT count(*) AS n FROM migration_recue').n > 0, 'les migrations reçues sont notées à la reconstruction');
   assert.deepEqual(sansArchives(dossier), [FICHIER_BASE, FICHIER_ETAT], 'aucun fichier provisoire laissé');
 
   const inode = statSync(r.chemin).ino;
