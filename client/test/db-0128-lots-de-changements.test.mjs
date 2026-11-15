@@ -68,7 +68,8 @@ test('structure : deux tables STRICT de la section 14, entre le journal et le br
   const debut14 = SCHEMA.indexOf('-- 14. ÉDITION');
   const debut15 = SCHEMA.indexOf('-- 15. NOTES DE VERSION');
   const section14 = [...SCHEMA.slice(debut14, debut15).matchAll(/^CREATE TABLE (\w+)/gm)].map((m) => m[1]);
-  assert.deepEqual(section14, ['modification_lot', 'modification', ...TABLES, 'note_version_brouillon']);
+  // les tables d'une migration postérieure (0129 : migration_recue) viennent après le brouillon de la note
+  assert.deepEqual(section14.slice(0, 5), ['modification_lot', 'modification', ...TABLES, 'note_version_brouillon']);
   assert.deepEqual([...TABLES_DU_JOURNAL], section14, 'lib/tables-de-la-base.mjs#TABLES_DU_JOURNAL, dans l’ordre du schéma');
   const db = baseNeuve();
   try {

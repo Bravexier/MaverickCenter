@@ -494,4 +494,6 @@ export const HORS_RESSOURCE = {
   note_version_brouillon:
     'Note de version en préparation (champ libre des admins et case « Version majeure » sur /mise-a-jour/, une seule ligne, section 14) : servie et écrite par /api/mise-a-jour/ ' +
     '(serveur/notes-de-version.mjs), vide dans data/rows, dans TABLES_INTERDITES du journal.',
+  migration_recue: 'Les migrations que cette base a reçues, une ligne par migration (numéro, fichier, empreinte, instant, reconstruction ou sur place ; ' +
+    'lot 7 du chantier de la base de dev, migration 0129) : propre à chaque base, vide dans data/rows, jamais servie, dans TABLES_INTERDITES du journal.',
 };

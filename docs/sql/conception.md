@@ -380,6 +380,15 @@ son lot. `npm run db:appliquer-edition` le rejoue de même sur `data/rows`, que 
 comparaison par git). Voir `docs/serveur.md`, « Édition ». Restent à décider avec le propriétaire : l'état `brouillon / validé` (relecture avant
 publication), l'auteur (connexion Discord) et le moment où la base devient canonique (les classeurs, une archive).
 
+Toujours en section 14, trois tables propres à chaque base, vides dans `data/rows` et classées « propres au site »
+(`client/src/lib/tables-de-la-base.mjs`, jamais dans un extrait ni un paquet ; la base vivante les recopie à la reconstruction,
+`serveur/base-vivante.mjs#TABLES_VIVANTES`) : `lot_de_changements` et `numero_donne` (migration `0128-lots-de-changements`, lot 6 du chantier
+`docs/chantier-base-de-dev.md`), et `migration_recue` (migration `0129-migrations-recues`, lot 7 : « Une table note ce que la base a reçu »).
+Celle-ci a une ligne par migration reçue par CETTE base : `numero` (clé, le NNNN du fichier), `fichier` (son nom, dont le préfixe vaut `numero`),
+`empreinte` (sha256 des octets du fichier SQL, hexadécimal minuscule : une migration fusionnée ne se modifie plus, un écart se voit), `recue_le`
+(UTC), `mode` (`reconstruction` : base refaite depuis le dépôt à une version qui la contient ; `sur_place` : appliquée par le service à la base en
+place) et `version_du_site` (X.Y.Z, facultative). La base du dépôt ne « reçoit » rien : c'est le service qui remplit la table de sa base vivante.
+
 ### 10.4 Portabilité vers PostgreSQL
 
 | Construction SQLite | Occurrences (SQL exécutable) | Équivalent PostgreSQL |

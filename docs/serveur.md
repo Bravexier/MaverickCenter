@@ -25,6 +25,7 @@ un second mot de passe, posé par le propriétaire, protège les écritures et l
 | `client/serveur/acces.mjs`, `acces-routes.mjs` | L'accès au site de dev : le réglage (`secrets/acces.json`), les sessions, les essais ratés, la commande de l'hôte ; le classement de chaque route (ouverte, lecture, écriture) que la porte de `traiter` consulte (« Accès au site de dev », plus bas) |
 | `client/serveur/fiches.mjs` | Une fiche ↔ les lignes de la section 13 de `data/schema.sql` ; contrôles ; résumé pour la recherche |
 | `client/serveur/base-vivante.mjs` | Création et renouvellement de la base vivante, archives |
+| `client/serveur/structure-sur-place.mjs` | Un changement de structure appliqué à la base en place (migrations livrées, essai sur une copie, migrations reçues par une base refaite) : « Changement de structure appliqué sur place », ci-dessous ; pas encore branché sur la vraie base |
 | `client/serveur/classeur.mjs` | « Importer (en ligne) » de la fiche : le téléchargement d'une feuille Google Sheets partagée par lien (`POST /api/classeur/`, ci-dessous), la seule sortie du service vers une adresse que donne le visiteur (« Hébergement ») |
 | `client/serveur/tipeee.mjs` | La partie « Bienvenue » de Tipeee relue en direct (`GET /api/tipeee/`, ci-dessous) : cache, une requête à la fois, dernier texte gardé (`db/tipeee.json`), repli sur l'instantané livré avec le site ; l'extraction du texte est pure, `client/src/lib/tipeee.mjs` |
 | `client/serveur/maintenance.mjs` | « Maintenance en cours » pendant une vraie mise à jour : annonce, dossier partagé, état de ce serveur (ci-dessous) |
@@ -175,6 +176,30 @@ règles en attente (journal de l'édition). Sauvegarder d'abord la base en place
 **Sauvegarde** : `db/` est la seule donnée du serveur qui ne se reconstruit pas. La copier avec `sqlite3 db/vivante.db ".backup sauvegarde.db"`
 (cohérente même pendant une écriture), ou copier le dossier `db/` pendant que le conteneur « serveur » est arrêté. `data/rows` garde les tables de la section 13 **vides** : aucune
 fiche réelle dans git ni dans `/donnees/maverick.db` (le service refuse une base des règles qui en contient).
+
+### Changement de structure appliqué sur place
+
+Lot 7 du chantier « la base du site de dev devient la source de vérité » (R274, R275 ; plan : `docs/chantier-base-de-dev.md`). Code : `serveur/structure-sur-place.mjs` ;
+tests : `serveur-structure-sur-place`, `serveur-structure-sur-place-reconstruction`. **Il n'est pas branché sur la vraie base avant le lot 8** : rien ne migre la base
+vivante au démarrage, qui reste refaite depuis les règles puis rejouée depuis le journal (« Quand refait-on la base vivante ? »). Le module sert à deux choses seulement : l'**essai** (sur une
+copie) et la **note des migrations reçues** par une base refaite.
+
+- **Livré.** Chaque `data/migrations/NNNN-<nom>.sql` (les registres `.json` se joignent un à un) et `data/schema.sql` sont copiés dans `dist/_serveur/data/` (`livraison.mjs#fichiersDeStructure`, `FICHIERS_JOINTS`) :
+  ils comptent dans l'empreinte du code. `lireLesMigrations` rend pour chacune son numéro, son fichier, son SQL et le sha256 des octets du `.sql`. Dossier absent : `null`, sans erreur.
+- **Appliquer** (`appliquerSurPlace`, les garde-fous de `tools/db/maverick.py#migrer`). Les migrations de numéro > `PRAGMA user_version`, **d'un seul bloc** : les numéros se suivent un à un ; une migration qui porte `BEGIN`, `COMMIT`, `END`, `ROLLBACK`
+  ou `PRAGMA` est refusée ; la **sauvegarde** d'abord (`VACUUM INTO`, `structure-<instant>-v<version>.db` ; l'option `sauvegarde` est obligatoire, `false` pour un essai sur une copie) ; `foreign_keys` coupées pendant le bloc
+  puis rétablies, `PRAGMA foreign_key_check` vide après chaque migration ; `user_version` posé ; le schéma obtenu comparé à `schema.sql` (`comparerLesSchemas`, portage de `comparer_schemas` : tables, colonnes dans l'ordre, index, vues) ;
+  une ligne `migration_recue` en mode `sur_place` par migration (version du site notée si elle est X.Y.Z, sinon NULL). Au moindre écart : `ROLLBACK` complet et une `ErreurStructure` qui dit la migration, l'étape
+  (`suite`, `interdit`, `execution`, `cles_etrangeres`, `schema`, `schema_attendu`, `notes`, `sauvegarde`) et la raison.
+- **Essayer** (`essayerSurUneCopie`, `essayerEnArrierePlan` : un fil à part, un essai à la fois). Une copie `VACUUM INTO` de la base (ouverte en lecture seule), une seconde pour l'état d'avant ; l'application sur la première, sans sauvegarde ; le bilan ; les deux copies
+  **toujours effacées** (`purgerLesEssaisDeStructure` retire celles d'un service arrêté en plein essai : branchée à l'ouverture du service par les PR suivantes du lot 7 ; de même l'appel de `essayerEnArrierePlan` avant une installation, l'essai dans l'ombre et la remise du bilan à la relecture et à la page Debug). Le bilan est un JSON : `verdict` (`accepte`, `refuse`, `a_jour`, `indisponible`), `versions`, `migrations`, `tables`
+  (`creees` et `retirees` avec leurs lignes, `renommees` { de, vers } — même contenu et mêmes colonnes sous un autre nom —, `modifiees` par table { `ajoutees`, `retirees`, `modifiees` comparées par clé primaire, `colonnes_ajoutees`,
+  `colonnes_retirees`, `structure_changee` }, `inchangees` : les tables d'empreinte identique, par `serveur/empreintes.mjs#empreinteDeLaTable`, fiches et journal compris), `objets` (index, vues, déclencheurs créés, retirés, modifiés), `totaux`.
+  Un refus rend `refuse` et `refus` { migration, etape, raison, details }. Les tables virtuelles (plein texte) n'y comptent pas : elles se recalculent.
+- **Migrations reçues par une base refaite** (`noterLesMigrationsRecues`, appelée par `preparerBaseVivante`, `VERSION_DE_LA_RECONSTRUCTION` inchangée : la production porte les fiches des joueurs, on ne refait pas la base pour noter une table). Après chaque reconstruction, chaque migration livrée de numéro <= `user_version` que `migration_recue` ne note pas encore y
+  entre en mode `reconstruction` (version du site X.Y.Z, sinon NULL). Une ligne déjà notée (`sur_place` comprise) n'est jamais réécrite ; si le fichier livré a changé depuis, l'écart est dit au journal du service. Une ligne dont le numéro dépasse la version
+  de la base refaite (retour à une version plus ancienne) est retirée. Migrations non livrées : rien n'est noté, sans erreur, et le journal le dit. Une erreur d'écriture de la table n'arrête pas la reconstruction : la base refaite est gardée, l'erreur va au journal et dans `migrations.erreur` du résultat (son affichage sur la page Debug viendra avec les PR suivantes du lot 7).
+  **Table vide** : une base qui n'a pas encore été refaite depuis cette migration n'a pas de lignes ; la table se remplit à la prochaine reconstruction naturelle (règles ou contenu changés). D'ici là, une table vide veut dire « migrations <= `user_version` présumées reçues ». `appliquerSurPlace` retire d'abord, dans son bloc, les lignes de numéro > `user_version`. Les lignes de `migration_recue` ne comptent pas pour décider d'archiver la base vivante.
 
 ## L'API
 

@@ -6,9 +6,11 @@
 // de GET /api/tipeee/, serveur/tipeee.mjs), versionné dans sources/ à la racine du dépôt et copié dans _serveur/sources/ ; absent, il n'est pas copié
 // (le service le dit à son démarrage) ; il compte dans l'empreinte du code. Et le registre de la migration 0098 (data/migrations/, copié dans
 // _serveur/data/migrations/) : le rejeu d'un lot d'avant la migration y lit la conversion de ses liens en balises (serveur/edition.mjs#tableDesLiensDeLa0098) ;
-// de même celui de la migration 0113 (ancien id texte d'un mot-clé → id entier : serveur/edition.mjs#registreDes0113).
+// de même celui de la migration 0113 (ancien id texte d'un mot-clé → id entier : serveur/edition.mjs#registreDes0113). Et la STRUCTURE : toutes les migrations
+// data/migrations/NNNN-<nom>.sql et data/schema.sql (copiés dans _serveur/data/) : le service y lit ce qu'il essaie, puis applique sur sa base, et ce qu'une base
+// refaite a reçu (serveur/structure-sur-place.mjs ; lot 7 du chantier de la base de dev).
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CHEMIN_INSTANTANE } from '../src/lib/tipeee.mjs';
@@ -20,11 +22,19 @@ export const CLIENT = fileURLToPath(new URL('..', import.meta.url));
 export const DOSSIER_LIVRE = '_serveur';
 export const ENTREE = 'serveur/index.mjs';
 
+/** Les fichiers de structure livrés : chaque migration `data/migrations/NNNN-<nom>.sql` (les registres `.json` n'y sont pas : ils se joignent un à un), puis `data/schema.sql`. */
+export function fichiersDeStructure(client = CLIENT) {
+  const dossier = resolve(client, '..', 'data', 'migrations');
+  const migrations = existsSync(dossier) ? readdirSync(dossier).filter((f) => /^\d{4}-[a-z0-9.-]+\.sql$/.test(f)).sort() : [];
+  return [...migrations.map((f) => ({ source: `../data/migrations/${f}`, cible: `data/migrations/${f}` })), { source: '../data/schema.sql', cible: 'data/schema.sql' }];
+}
+
 /** Fichiers livrés avec le service hors de ses modules : `source` relatif à client/, `cible` relatif au dossier livré. */
 export const FICHIERS_JOINTS = Object.freeze([
   Object.freeze({ source: `../${CHEMIN_INSTANTANE}`, cible: CHEMIN_INSTANTANE }),
   Object.freeze({ source: `../${REGISTRE_DES_LIENS}`, cible: REGISTRE_DES_LIENS }),
   Object.freeze({ source: `../${REGISTRE_DES_IDS_DE_MOTS_CLES}`, cible: REGISTRE_DES_IDS_DE_MOTS_CLES }),
+  ...fichiersDeStructure().map((f) => Object.freeze(f)),
 ]);
 
 const IMPORTS = /\b(?:import|export)\s+(?:[^'"`;]*?\s+from\s+)?['"]([^'"]+)['"]|\bimport\(\s*['"]([^'"]+)['"]\s*\)/g;

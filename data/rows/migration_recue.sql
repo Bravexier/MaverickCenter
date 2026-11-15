@@ -1,0 +1,1 @@
+-- data/rows/migration_recue.sql : export déterministe, une instruction par ligne, triée par (numero). NE PAS ÉDITER À LA MAIN.
