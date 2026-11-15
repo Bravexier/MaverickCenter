@@ -15,10 +15,19 @@
 // fois chaque choix fait ; jamais pour un lot qui attend un lot plus ancien : `bloque`) : le service écrit une nouvelle modification du site de dev et
 // marque l'ancien lot résolu. Rendu : lib/conflits-rendu.mjs. La section reste la même d'un rendu de la note à l'autre (le suivi d'un lancement la refait toutes les 15 s) :
 // les choix en cours ne se perdent pas.
-// Ce script n'importe que le rendu commun et celui des conflits (aucun autre script de page ne les importe : la version portable refuse un module
-// partagé).
+// Avant les conflits, les lots de changements proposés (R275, question 4 a : « Chaque lot attend votre clic sur le site de dev, avec un aperçu avant et
+// après. ») : une session dépose une proposition (GET /api/edition/lots/, serveur/edition-lots.mjs), la page la montre en langage simple avec l'aperçu
+// avant et après, et le clic du propriétaire (mot de passe : scripts/acces.mjs le demande, rien à faire ici) l'applique ou la refuse ; un lot appliqué
+// s'annule d'un clic, après l'aperçu de l'annulation ; « Tout recalculer » dépose le lot des pages que le code d'aujourd'hui calcule autrement. Rendu :
+// lib/lots-rendu.mjs. Rien de cela en production ni sans le service (la lecture des lots répond 403 ou 404 : la section reste cachée).
+// Ce script n'importe que les rendus communs, celui des conflits et celui des lots (aucun autre script de page ne les importe : la version portable
+// refuse un module partagé).
 import { affichageDeLaProduction, compter, echapper, htmlDeLaListe, htmlDuTexteLibre, lancementAffiche } from '../lib/notes-de-version-rendu.mjs';
 import { avecDateLisible, corpsDeLaResolution, htmlDesConflits, messageDeResolution } from '../lib/conflits-rendu.mjs';
+import {
+  APPLIQUES_RECENTS, corpsDuClic, htmlDeLaConfirmation, htmlDesLots, lotsAppliques, messageDeLAnnulation, messageDErreur, messageDuBilan,
+  messageDuRecalcul, peutAnnuler, peutAppliquer, verrousDuLot,
+} from '../lib/lots-rendu.mjs';
 
 const racine = document.querySelector('[data-mise-a-jour]');
 const api = racine?.dataset.api ?? '/api/';
@@ -62,6 +71,12 @@ let donnees = null;
 let suivi = null;
 /** Les lots en conflit : la section (gardée d'un rendu à l'autre), le dernier diagnostic, les listes des champs « choix », les choix en cours. */
 const conflits = { section: null, reponse: null, listes: null, choisis: new Map(), message: '', erreur: '' };
+/**
+ * Les lots de changements : la section (gardée d'un rendu à l'autre), la liste lue avec le détail des lots à décider et des appliqués récents, ce que le
+ * propriétaire a coché (décisions à ouvrir, par lot ; `annulation:<lot>` pour une annulation), les aperçus d'annulation demandés, les messages, ce qu'il a
+ * déplié, le message d'en tête, et un verrou contre le double clic.
+ */
+const lots = { section: null, reponse: null, erreur: '', annulations: new Map(), coches: new Map(), messages: new Map(), ouverts: new Set(), toutes: new Set(), message: null, occupe: false };
 
 function htmlDuLancement(l, github, liberable) {
   if (!l) return '';
@@ -125,8 +140,8 @@ function rendre() {
     ${htmlDuLancement(lancementAffiche(d), d.github, d.liberable)}
     <div class="nv-dev__liste">${d.lignes ? htmlDeLaListe(d.lignes, { niveau: 3, plafond: 25 }) : ''}</div>`;
   rendreLEtatDeLaProduction(zone.querySelector('[data-nv-production]'), d.etat_production);
-  // après les listes, la section des conflits, la même d'un rendu à l'autre (choix en cours gardés)
-  zone.append(sectionDesConflits());
+  // après les listes, la section des lots de changements puis celle des conflits, les mêmes d'un rendu à l'autre (choix en cours gardés)
+  zone.append(sectionDesLots(), sectionDesConflits());
   zone.hidden = false;
   brancher(zone);
 }
@@ -154,6 +169,287 @@ function rendreLEtatDeLaProduction(place, etat) {
   }
   if (a.tables.length) ajouter(bloc, 'p', `Tables dont le contenu diffère : ${a.tables.join(', ')}`, 'nv-message');
   place.append(bloc);
+}
+
+// --- Lots de changements ------------------------------------------------------------------------------------------------------------------------
+
+const adresseDuLot = (id, action = '') => `edition/lots/${encodeURIComponent(id)}/${action}`;
+const lotParId = (id) => lots.reponse?.lots?.find((l) => l.id === id) ?? null;
+const desactiver = (bouton, oui) => {
+  bouton.disabled = oui;
+  if (oui) bouton.setAttribute('disabled', '');
+  else bouton.removeAttribute('disabled');
+};
+
+function sectionDesLots() {
+  if (lots.section) return lots.section;
+  const section = document.createElement('section');
+  section.className = 'nv-lots';
+  section.id = 'nv-lots';
+  section.setAttribute('data-nv-lots', '');
+  section.setAttribute('aria-live', 'polite');
+  section.hidden = true;
+  // délégation : la section est refaite après chaque clic, ses écouteurs restent
+  section.addEventListener('click', (e) => {
+    const bouton = e.target?.closest?.('button');
+    if (!bouton || bouton.hasAttribute('disabled')) return;
+    clicSurLesLots(bouton).catch((err) => {
+      lots.message = messageDErreur(err);
+      rendreLesLots();
+    });
+  });
+  section.addEventListener('change', (e) => {
+    const caseACocher = e.target?.closest?.('[data-nv-verrou]');
+    if (caseACocher) cocherUneDecision(caseACocher);
+  });
+  // ce que le propriétaire déplie se garde d'un rendu à l'autre (`toggle` ne remonte pas : écoute à la descente)
+  section.addEventListener('toggle', (e) => {
+    const cle = e.target?.getAttribute?.('data-nv-ouvert');
+    if (!cle) return;
+    if (e.target.open) lots.ouverts.add(cle);
+    else lots.ouverts.delete(cle);
+  }, true);
+  lots.section = section;
+  return section;
+}
+
+/** L'état de la page pour le rendu (`lib/lots-rendu.mjs`). */
+const vueDesLots = () => ({ coches: lots.coches, annulations: lots.annulations, messages: lots.messages, ouverts: lots.ouverts, toutes: lots.toutes, message: lots.message });
+
+function rendreLesLots() {
+  const section = sectionDesLots();
+  const r = lots.reponse;
+  if (!r) {
+    // la lecture refusée ou absente (production, service sans lots, mot de passe annulé) : rien ; une autre erreur est dite
+    section.innerHTML = lots.erreur ? `<p class="nv-message nv-message--erreur">${echapper(lots.erreur)}</p>` : '';
+    section.hidden = !lots.erreur;
+    return;
+  }
+  section.innerHTML = htmlDesLots(r, vueDesLots());
+  section.hidden = false;
+}
+
+/** Lit les lots, puis le détail de ceux qui attendent le clic et des appliqués récents (l'essai, l'aperçu avant et après, le bilan), et les pose. */
+async function chargerLesLots() {
+  let liste;
+  try {
+    liste = (await appel('GET', 'edition/lots/'))?.lots ?? [];
+  } catch (e) {
+    lots.reponse = null;
+    lots.erreur = [401, 403, 404].includes(e.statut) ? '' : `Les lots de changements n’ont pas pu être lus : ${e.message}`;
+    rendreLesLots();
+    return;
+  }
+  lots.erreur = '';
+  const aLire = [...liste.filter((l) => l.etat === 'propose'), ...lotsAppliques(liste).slice(0, APPLIQUES_RECENTS)];
+  const details = new Map((await Promise.all(aLire.map(async (l) => [l.id, await appel('GET', adresseDuLot(l.id)).catch(() => null)]))));
+  lots.reponse = { lots: liste.map((l) => ({ ...l, ...(details.get(l.id) ?? {}) })) };
+  // ce qui ne vaut plus pour l'état d'un lot (annulation demandée d'un lot plus appliqué, cases d'un lot décidé) s'oublie
+  for (const id of [...lots.annulations.keys()]) if (lotParId(id)?.etat !== 'applique') lots.annulations.delete(id);
+  for (const cle of [...lots.coches.keys()]) {
+    const id = cle.replace(/^annulation:/, '');
+    if (lotParId(id)?.etat !== (cle.startsWith('annulation:') ? 'applique' : 'propose')) lots.coches.delete(cle);
+  }
+  rendreLesLots();
+}
+
+/** Relit un seul lot (après un essai, un refus du service) : sa place dans la liste est remplacée. */
+async function relireUnLot(id, lot = null) {
+  const neuf = lot ?? (await appel('GET', adresseDuLot(id)).catch(() => null));
+  if (!neuf || !lots.reponse) return;
+  lots.reponse = { lots: lots.reponse.lots.map((l) => (l.id === id ? { ...l, ...neuf } : l)) };
+}
+
+/** Une case « J'accepte d'ouvrir ce que la décision R… verrouille » : le bouton qui en dépend s'active ou s'éteint, sans refaire la section. */
+function cocherUneDecision(caseACocher) {
+  const article = caseACocher.closest('[data-nv-lot-id]');
+  const annulation = caseACocher.closest('[data-nv-annulation]');
+  const id = article?.dataset.nvLotId;
+  if (!id) return;
+  const cle = annulation ? `annulation:${id}` : id;
+  const coches = new Set(lots.coches.get(cle) ?? []);
+  const decision = caseACocher.getAttribute('data-nv-verrou');
+  if (caseACocher.checked) coches.add(decision);
+  else coches.delete(decision);
+  lots.coches.set(cle, coches);
+  const verdict = annulation ? peutAnnuler(lots.annulations.get(id)?.apercu, coches) : peutAppliquer(lotParId(id), coches);
+  const zone = annulation ?? article;
+  const bouton = zone.querySelector(annulation ? '[data-nv-confirmer-annulation]' : '[data-nv-appliquer]');
+  if (bouton) desactiver(bouton, !verdict.possible);
+  const raison = zone.querySelector('[data-nv-raison]');
+  if (raison) {
+    raison.textContent = verdict.raison ?? '';
+    raison.hidden = verdict.possible;
+  }
+}
+
+/** Dit quelque chose dans le lot (« Envoi… »), sans refaire la section : le message est remplacé au rendu suivant. */
+function direDansLeLot(id, texte) {
+  const article = [...(lots.section?.querySelectorAll('[data-nv-lot-id]') ?? [])].find((a) => a.dataset.nvLotId === id);
+  const p = article?.querySelector('[data-nv-lot-message]');
+  if (!p) return;
+  p.textContent = texte;
+  p.hidden = !texte;
+}
+
+async function clicSurLesLots(bouton) {
+  if (lots.occupe) return;
+  if (bouton.hasAttribute('data-nv-toutes')) {
+    lots.toutes.add(bouton.getAttribute('data-nv-toutes'));
+    return rendreLesLots();
+  }
+  const id = bouton.closest('[data-nv-lot-id]')?.dataset.nvLotId ?? null;
+  const action = ['data-nv-recalcul', 'data-nv-lots-actualiser', 'data-nv-appliquer', 'data-nv-refuser', 'data-nv-essai', 'data-nv-annuler', 'data-nv-confirmer-annulation', 'data-nv-renoncer']
+    .find((a) => bouton.hasAttribute(a));
+  if (!action || (action !== 'data-nv-recalcul' && action !== 'data-nv-lots-actualiser' && !id)) return;
+  lots.occupe = true;
+  try {
+    if (action !== 'data-nv-renoncer') lots.message = null;
+    if (action === 'data-nv-recalcul') await toutRecalculer();
+    else if (action === 'data-nv-lots-actualiser') await chargerLesLots();
+    else if (action === 'data-nv-appliquer') await appliquerUnLot(id);
+    else if (action === 'data-nv-refuser') await refuserUnLot(id);
+    else if (action === 'data-nv-essai') await refaireLEssai(id);
+    else if (action === 'data-nv-annuler') await voirLAnnulation(id);
+    else if (action === 'data-nv-confirmer-annulation') await annulerUnLot(id);
+    else {
+      lots.annulations.delete(id);
+      lots.coches.delete(`annulation:${id}`);
+      rendreLesLots();
+    }
+  } finally {
+    lots.occupe = false;
+  }
+}
+
+/** Une confirmation (`<dialog>`) avant un clic qui écrit ou décide : vrai si le propriétaire confirme. */
+function confirmerLeClic(options) {
+  return new Promise((resoudre) => {
+    const dialogue = document.createElement('dialog');
+    dialogue.className = 'nv-dialogue';
+    dialogue.innerHTML = htmlDeLaConfirmation(options);
+    racine.append(dialogue);
+    let confirme = false;
+    dialogue.querySelector('[value="annuler"]').addEventListener('click', () => dialogue.close());
+    dialogue.addEventListener('close', () => {
+      dialogue.remove();
+      resoudre(confirme);
+    });
+    dialogue.querySelector('form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      confirme = true;
+      dialogue.close();
+    });
+    dialogue.showModal();
+  });
+}
+
+/** « Appliquer » : confirmation, puis le clic part avec les décisions cochées ; le bilan dit ce qui est écrit et ce qui est gardé parce que la valeur avait changé. */
+async function appliquerUnLot(id) {
+  const lot = lotParId(id);
+  const coches = lots.coches.get(id) ?? new Set();
+  if (!lot || !peutAppliquer(lot, coches).possible) return;
+  const corps = corpsDuClic(verrousDuLot(lot), coches);
+  if (!(await confirmerLeClic({ action: 'appliquer', lot, verrous: corps.verrous_ouverts }))) return;
+  lots.messages.delete(id);
+  direDansLeLot(id, 'Envoi…');
+  try {
+    const r = await appel('POST', adresseDuLot(id, 'appliquer/'), corps);
+    lots.coches.delete(id);
+    lots.message = messageDuBilan(r);
+  } catch (e) {
+    // 409 : le lot a changé (essai refait, valeur modifiée) ou il y a quelque chose à corriger : le lot à jour est reposé, avec ce que dit le service
+    lots.messages.set(id, messageDErreur(e));
+    await relireUnLot(id);
+    rendreLesLots();
+    return;
+  }
+  await relireLaPage(); // la note en préparation compte les nouvelles modifications ; les lots et les conflits sont relus
+}
+
+/** Relit la page après un clic réussi : un échec de la relecture ne se dit pas comme un refus du lot (il est écrit), il s'ajoute au message du clic. */
+async function relireLaPage() {
+  try {
+    await charger();
+  } catch (e) {
+    lots.message = { ...lots.message, lignes: [...(lots.message?.lignes ?? []), `La page n’a pas pu être relue : ${e.message}. Actualisez-la.`] };
+    rendreLesLots();
+  }
+}
+
+/** « Refuser » : confirmation, puis rien n'est écrit ; le lot passe dans l'historique. */
+async function refuserUnLot(id) {
+  const lot = lotParId(id);
+  if (!lot || !(await confirmerLeClic({ action: 'refuser', lot }))) return;
+  lots.messages.delete(id);
+  try {
+    await appel('POST', adresseDuLot(id, 'refuser/'), {});
+    lots.coches.delete(id);
+    lots.message = { texte: `« ${lot.titre} » est refusé : rien n’a été écrit.`, lignes: [] };
+    await chargerLesLots();
+  } catch (e) {
+    lots.messages.set(id, messageDErreur(e));
+    rendreLesLots();
+  }
+}
+
+/** « Refaire l'essai » : le service refait l'essai à blanc (quelques secondes) ; l'aperçu et la phrase sont remplacés. */
+async function refaireLEssai(id) {
+  lots.messages.delete(id);
+  direDansLeLot(id, 'Essai en cours…');
+  try {
+    await relireUnLot(id, await appel('POST', adresseDuLot(id, 'essai/'), {}));
+  } catch (e) {
+    lots.messages.set(id, messageDErreur(e));
+  }
+  rendreLesLots();
+}
+
+/** « Annuler ce lot » : d'abord l'aperçu de l'annulation (ce qui serait remis, déjà comme avant, gardé parce que la valeur a changé) ; rien ne part encore. */
+async function voirLAnnulation(id) {
+  lots.annulations.set(id, { chargement: true });
+  rendreLesLots();
+  try {
+    lots.annulations.set(id, { apercu: await appel('GET', adresseDuLot(id, 'annulation/')) });
+  } catch (e) {
+    lots.annulations.set(id, { erreur: e.message });
+  }
+  rendreLesLots();
+}
+
+/** « Oui, annuler ce lot » : la confirmation de l'aperçu ; le clic part avec les décisions cochées. */
+async function annulerUnLot(id) {
+  const lot = lotParId(id);
+  const apercu = lots.annulations.get(id)?.apercu;
+  const coches = lots.coches.get(`annulation:${id}`) ?? new Set();
+  if (!lot || !apercu || !peutAnnuler(apercu, coches).possible) return;
+  const corps = corpsDuClic(apercu.verrous_a_ouvrir ?? [], coches);
+  lots.messages.delete(id);
+  direDansLeLot(id, 'Envoi…');
+  try {
+    const r = await appel('POST', adresseDuLot(id, 'annuler/'), corps);
+    lots.annulations.delete(id);
+    lots.coches.delete(`annulation:${id}`);
+    lots.message = messageDeLAnnulation(r, apercu);
+  } catch (e) {
+    lots.messages.set(id, messageDErreur(e));
+    rendreLesLots();
+    return;
+  }
+  await relireLaPage();
+}
+
+/** « Tout recalculer » : dépose le lot des pages que le code d'aujourd'hui calcule autrement, et l'affiche ; ou dit qu'il n'y a rien à recalculer. */
+async function toutRecalculer() {
+  lots.message = { texte: 'Calcul en cours : les pages dérivées sont recalculées sur une copie…', lignes: [] };
+  rendreLesLots();
+  try {
+    const r = await appel('POST', 'edition/lots/recalcul/', {});
+    lots.message = messageDuRecalcul(r);
+  } catch (e) {
+    lots.message = messageDErreur(e);
+  }
+  await chargerLesLots();
 }
 
 // --- Lignes en conflit ---------------------------------------------------------------------------------------------------------------------------
@@ -336,8 +632,13 @@ function brancher(zone) {
   zone.querySelector('[data-nv-voir-prod]')?.addEventListener('change', (e) => {
     zone.querySelector('.nv-dev__liste').hidden = e.target.checked;
     zone.querySelector('.nv-dev__note').hidden = e.target.checked;
-    if (e.target.checked) sectionDesConflits().hidden = true;
-    else rendreLesConflits();
+    if (e.target.checked) {
+      sectionDesConflits().hidden = true;
+      sectionDesLots().hidden = true;
+    } else {
+      rendreLesLots();
+      rendreLesConflits();
+    }
     racine.querySelector('[data-nv-production]').scrollIntoView({ behavior: 'smooth' });
   });
 }
@@ -498,6 +799,7 @@ async function charger() {
     conflits.erreur = `Les lignes en conflit n’ont pas pu être lues : ${e.message}`;
     rendreLesConflits();
   });
+  await chargerLesLots();
 }
 
 async function lancer() {

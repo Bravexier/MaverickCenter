@@ -714,7 +714,7 @@ const FICHIERS_DU_LOT_DES_PARTIES = [
 const FICHIERS_DU_LOT_DES_ARCHIVES_ET_DE_LA_MISE_A_JOUR = [
   'src/styles/archives/archives.css', 'src/pages/archives.astro', 'src/lib/archives.mjs',
   'src/styles/mise-a-jour/mise-a-jour.css', 'src/pages/mise-a-jour.astro', 'src/scripts/mise-a-jour.mjs', 'src/lib/notes-de-version.mjs',
-  'src/lib/notes-de-version-sens.mjs', 'src/lib/notes-de-version-rendu.mjs', 'src/lib/conflits-rendu.mjs',
+  'src/lib/notes-de-version-sens.mjs', 'src/lib/notes-de-version-rendu.mjs', 'src/lib/conflits-rendu.mjs', 'src/lib/lots-rendu.mjs',
   'src/styles/maintenance/maintenance.css', 'src/pages/maintenance.astro', 'src/scripts/maintenance.mjs', 'src/lib/maintenance-retour.mjs',
 ];
 /** Les feuilles où `--c`, `--c1`, `--c2`, `--c-texte` et `--texte-sur-c` sont les variables de la palette (tirées de la classe : `.fiche .teinte-palette`, `.guide-carac`…). */
@@ -1651,10 +1651,13 @@ test('les archives et la mise à jour : aucune famille de la palette ; leurs cou
   assert.deepEqual(boutons, ['Effectuer la mise à jour', 'Passer en version majeure', 'Lancer la simulation', 'Effectuer la mise à jour']);
   // « Résoudre ce lot » : grisé (`disabled`) quand le lot attend un lot plus ancien (`bloque`), la classe du bouton principal dans les deux cas
   assert.match(lire('src/lib/conflits-rendu.mjs'), /<div class="nv-dev__actions"><button type="submit" class="nv-principal"(?:\$\{bloque \? ' disabled' : ''\})?>Résoudre ce lot<\/button><\/div>/);
-  assert.equal((script.match(/dialogue\.className = 'nv-dialogue';/g) ?? []).length, 2);
-  assert.equal((script.match(/racine\.append\(dialogue\);/g) ?? []).length, 2);
+  // … et la confirmation d'un lot de changements (« Appliquer », « Refuser » : le bouton principal est dans lib/lots-rendu.mjs#htmlDeLaConfirmation)
+  assert.equal((script.match(/dialogue\.className = 'nv-dialogue';/g) ?? []).length, 3);
+  assert.equal((script.match(/racine\.append\(dialogue\);/g) ?? []).length, 3);
+  assert.match(lire('src/lib/lots-rendu.mjs'), /<button type="submit" class="nv-principal">\$\{action === 'refuser' \? 'Refuser le lot' : 'Appliquer le lot'\}<\/button>/);
+  assert.match(lire('src/lib/lots-rendu.mjs'), /<button type="button" class="nv-principal" data-nv-appliquer /);
   assert.ok(script.includes("const racine = document.querySelector('[data-mise-a-jour]');") && script.includes("const zone = racine.querySelector('[data-nv-dev]');")
-    && script.includes('zone.append(sectionDesConflits());'));
+    && script.includes('zone.append(sectionDesLots(), sectionDesConflits());'));
   const page = lire('src/pages/mise-a-jour.astro');
   assert.match(page, /<div class="mise-a-jour" data-mise-a-jour [^>]*>\s*<section class="nv-dev" data-nv-dev /);
   // aucune famille ajoutée : les pages n'émettent aucune feuille de la palette (celle de chaque page leur vient de Base.astro), le plafond de 4 ko tenu
