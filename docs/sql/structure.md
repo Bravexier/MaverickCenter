@@ -1,7 +1,7 @@
 # Structure de la base de données
 
 > **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` (dans `client/`) : ne pas l'éditer à la main, la CI vérifie qu'il est à jour (`npm run db:doc -- --check`).
-> Schéma version 127 : 218 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
+> Schéma version 128 : 220 tables, 2 tables de recherche plein texte (FTS5) et 38 vues. Les conventions de nommage et de typage sont en tête du schéma ; le raisonnement est dans [`conception.md`](conception.md) (les commentaires du schéma l'appellent `design.md`).
 
 « Obligatoire » = `NOT NULL` ou clé primaire. Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté. Une table **dérivée** est recalculée par `npm run db:build` : elle n'est jamais exportée ni éditée.
 
@@ -23,7 +23,7 @@
 - [11. TABLES DÉRIVÉES (jamais exportées dans data/rows/, recalculées par `npm run db:build`)](#11-tables-dérivées-jamais-exportées-dans-datarows-recalculées-par-npm-run-dbbuild) : `lien`, `lien_candidat`, `page_fts`, `entite_fts`
 - [12. VUES (toujours à jour : rien à recalculer)](#12-vues-toujours-à-jour--rien-à-recalculer) : `cle_page`, `lien_page`, `lien_a_creer`, `v_mot_cle`, `v_magie_incompatible`, `v_sort_bonus_au_nm`, `v_race_carac_borne`, `v_race_classe_accessible`, `v_race_magie_accessible`, `v_regard_peuple`, `v_creature_magie`, `v_creature_resistance`, `v_creature_sort`, `v_creature_cout_invocation`, `v_creature_meme_bloc`, `v_arme`, `v_ingredient_possible`, `v_ressource_recette`, `v_metier_recette`, `v_potion`, `v_objet_ceinture`, `v_arme_composee`, `v_armure_piece`, `v_niveau`, `v_competence`, `v_resistance_combinaison`, `v_mode_hyper_lectures`, `v_classe_capacite`, `v_capacite_exclusive`, `v_capacite_partagee`
 - [13. PERSONNAGES : les vraies fiches (joueurs et prétirés), les groupes de jeu et la visibilité (saisie, jamais importée ; migration 0011)](#13-personnages--les-vraies-fiches-joueurs-et-prétirés-les-groupes-de-jeu-et-la-visibilité-saisie-jamais-importée--migration-0011) : `utilisateur`, `utilisateur_role`, `personnage`, `personnage_partage`, `personnage_classe`, `personnage_specialisation_magie`, `personnage_caracteristique`, `personnage_competence`, `personnage_entrainement`, `personnage_acquis_choix`, `personnage_resistance_choix`, `personnage_metier_bonus`, `personnage_capacite`, `personnage_don_obtenu`, `personnage_sort`, `personnage_livre_sort`, `personnage_maitrise_choix`, `personnage_arme`, `personnage_armure_partie`, `personnage_accessoire`, `personnage_inventaire`, `personnage_ceinture`, `personnage_action_usage`, `groupe`, `groupe_membre`, `v_personnage_niveau`, `v_personnage_metier_bonus`, `v_personnage_don_acquis`, `v_personnage_maitrise_part`, `v_personnage_maitrise_arme`, `v_personnage_visible`, `v_groupe_controle`, `v_personnage_controle`
-- [14. ÉDITION : le journal des modifications faites depuis le site de dev (saisie, jamais importée ; migration 0017)](#14-édition--le-journal-des-modifications-faites-depuis-le-site-de-dev-saisie-jamais-importée--migration-0017) : `modification_lot`, `modification`, `note_version_brouillon`
+- [14. ÉDITION : le journal des modifications faites depuis le site de dev (saisie, jamais importée ; migration 0017)](#14-édition--le-journal-des-modifications-faites-depuis-le-site-de-dev-saisie-jamais-importée--migration-0017) : `modification_lot`, `modification`, `lot_de_changements`, `numero_donne`, `note_version_brouillon`
 - [15. NOTES DE VERSION : ce que chaque version a changé dans les règles, et l'historique des modifications faites sur le site de dev](#15-notes-de-version--ce-que-chaque-version-a-changé-dans-les-règles-et-lhistorique-des-modifications-faites-sur-le-site-de-dev) : `note_version`, `note_version_ligne`, `historique_modification`
 
 ## 0. FAMILLES D'IMPORT
@@ -173,7 +173,7 @@ Provenance au niveau de la page : une entrée de frontmatter `sources` = une lig
 
 ### `page_entite`
 
-Lien page -> entité typée. Chaque importeur de domaine écrit ses lignes (test de complétude : db:check). Convention d'id : l'entité qui a SA page réutilise l'id de la page (principale = 1) ; une sous-entité a l'id '<id de la page qui la contient>#<sorte>:<slug>' (principale = 0). Exception : les postures (« guide/postures#posture:… », ids figés) sont rattachées à guide/les-postures, qui affiche leur tableau, depuis le retrait de la page guide/postures (migration 0094). De même, les trois textes du Mode Hyper (mode_texte, « guide/liste-des-effets-mode-hyper#texte:… », ids figés) sont rattachés à guide/le-mode-hyper depuis le retrait de la page « Liste des effets mode hyper » (migration 0095). db:check contrôle leur page par la table de ces préfixes retirés (client/scripts/db-check.mjs#PAGES_DES_PREFIXES_RETIRES). `entite_table` n'est pas une clé étrangère (SQLite ne vise pas une table variable) : db:check vérifie que (entite_table, entite_id) existe.
+Lien page -> entité typée. Chaque importeur de domaine écrit ses lignes (test de complétude : db:check). Convention d'id : l'entité qui a SA page réutilise l'id de la page (principale = 1) ; une sous-entité a l'id '<id de la page qui la contient>#<sorte>:<slug>' (principale = 0). Exception : les postures (« guide/postures#posture:… », ids figés) sont rattachées à guide/les-postures, qui affiche leur tableau, depuis le retrait de la page guide/postures (migration 0094). De même, les trois textes du Mode Hyper (mode_texte, « guide/liste-des-effets-mode-hyper#texte:… », ids figés) sont rattachés à guide/le-mode-hyper depuis le retrait de la page « Liste des effets mode hyper » (migration 0095). db:check contrôle leur page par la table de ces préfixes retirés (client/serveur/controles-du-contenu.mjs#PAGES_DES_PREFIXES_RETIRES). `entite_table` n'est pas une clé étrangère (SQLite ne vise pas une table variable) : db:check vérifie que (entite_table, entite_id) existe.
 
 | Colonne | Type | Obligatoire | Clé | Description |
 | --- | --- | --- | --- | --- |
@@ -3971,6 +3971,39 @@ Une ligne de table touchée par un lot. `cle` = la clé primaire de la ligne ({"
 | `etat` | TEXT | oui |  |  |
 | `detail` | TEXT | non |  | raison d'un conflit ; NULL sinon |
 | `apercu` | TEXT | non |  |  |
+
+### `lot_de_changements`
+
+Un lot de changements déposé par une session de Claude (lot 6 du chantier « la base du site de dev devient la source de vérité », R274, R275 ; migration 0128 ; format : client/src/lib/lot-de-changements.mjs). Le dépôt n'écrit rien dans le contenu : le service l'essaie à blanc sur une copie, puis le propriétaire l'applique ou le refuse. L'application écrit les tables et un lot du journal (`lot_id`, de la nature du lot) d'un seul bloc ; une valeur changée entre-temps n'est pas écrite. « Annuler ce lot » écrit un autre lot du journal (`annulation_lot_id`). Une proposition n'est jamais effacée. Sans index sur `etat` : petite table, lue par id ou en entier.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `id` | TEXT | oui | PK | UUID tiré par le service |
+| `depose_le` | TEXT | oui |  |  |
+| `titre` | TEXT | oui |  | l'en-tête du lot (`contenu`), recopié au dépôt : le résumé au journal |
+| `nature` | TEXT | oui |  |  |
+| `decision` | TEXT | non |  |  |
+| `auteur` | TEXT | non |  | texte libre de l'en-tête ; NULL : non dit |
+| `contenu` | TEXT | oui |  |  |
+| `etat` | TEXT | oui |  |  |
+| `essai` | TEXT | non |  |  |
+| `essaye_le` | TEXT | non |  |  |
+| `decide_le` | TEXT | non |  |  |
+| `lot_id` | TEXT | non | → modification_lot.id, unique | le lot du journal écrit à l'application ; présent ssi appliqué ou annulé |
+| `verrous_ouverts` | TEXT | non |  |  |
+| `annule_le` | TEXT | non |  |  |
+| `annulation_lot_id` | TEXT | non | → modification_lot.id, unique | le lot du journal qui annule celui-ci ; présent ssi etat = 'annule' |
+| `bilan` | TEXT | non |  |  |
+
+### `numero_donne`
+
+Le plus haut numéro jamais donné, par table et colonne de clé entière (lot 6 du chantier, garde-fou 11 : « Un numéro n'est jamais redonné, même par un lot ou après une restauration » ; migration 0128). Jamais diminué : le service le monte quand il donne un numéro (application d'un lot). Le numéro suivant dépasse le maximum de ce plafond, de la table et des traces du journal (`modification`) et de l'historique (`historique_modification`) : une ligne retirée, un lot annulé ou une base restaurée ne font pas redonner un numéro.
+
+| Colonne | Type | Obligatoire | Clé | Description |
+| --- | --- | --- | --- | --- |
+| `table_nom` | TEXT | oui | PK 1 |  |
+| `colonne` | TEXT | oui | PK 2 |  |
+| `plafond` | INTEGER | oui |  |  |
 
 ### `note_version_brouillon`
 

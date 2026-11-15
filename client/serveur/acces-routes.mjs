@@ -1,11 +1,17 @@
 // Classement des routes du service pour l'accès au site de dev (docs/serveur.md, « Accès au site de dev » ; R275). Sans état et sans dépendance :
 // api.mjs le consulte, le test `serveur-acces-routes` le compare à la liste des routes d'en-tête d'api.mjs (une route nouvelle non classée échoue).
 //
-// Trois classes, du moins au plus fermé :
-//   ouverte    sans rien : ce dont les pages ont besoin pour se lire (la lecture du site de dev reste libre) et la connexion elle-même ;
-//   lecture    la clé de lecture (en-tête X-Maverick-Cle ou X-Maverick-Key) OU le mot de passe (cookie de session) : ce qui montre le journal des modifications, la page
-//              Debug et ses tables (fiches, comptes et groupes compris), l'API /api/v1/ en lecture, les lots en conflit de la page « Mise à jour » ;
-//   ecriture   le mot de passe seul : toute écriture (édition, prétirés, /api/v1/), « Effectuer la mise à jour », la simulation, lever la maintenance.
+// Quatre classes, du moins au plus fermé :
+//   ouverte      sans rien : ce dont les pages ont besoin pour se lire (la lecture du site de dev reste libre) et la connexion elle-même ;
+//   lecture      la clé de lecture (en-tête X-Maverick-Cle ou X-Maverick-Key) OU le mot de passe (cookie de session) : ce qui montre le journal des modifications, la page
+//                Debug et ses tables (fiches, comptes et groupes compris), l'API /api/v1/ en lecture, les lots en conflit de la page « Mise à jour », les lots de
+//                changements déposés ;
+//   proposition  la même porte que `lecture` (la clé de lecture OU le mot de passe), pour la seule route qui ÉCRIT sans toucher au contenu : déposer un lot de
+//                changements (R275, question 4 a) ou refaire son essai. Elle n'écrit que dans `lot_de_changements` (la proposition et son essai à blanc, sur
+//                une copie) ; rien du contenu ne change tant que le propriétaire n'a pas cliqué (« appliquer », classé `ecriture`). Aucune clé d'écriture n'existe :
+//                une session de Claude propose, jamais n'applique ;
+//   ecriture     le mot de passe seul : toute écriture (édition, prétirés, /api/v1/, appliquer ou refuser un lot de changements), « Effectuer la mise à jour », la
+//                simulation, lever la maintenance.
 // Une route absente de cette table (inconnue) se classe `ecriture` : fermée par défaut.
 //
 // Portée « tout » (option c du propriétaire, un seul mot de passe pour tout le site) : chaque route `ouverte` qui n'est pas `essentielle` passe en
@@ -15,7 +21,7 @@
 // Aucune route ouverte ne montre une fiche de joueur, un compte ou un groupe : `/api/personnages/` ne sert que les prétirés (nature = 'pretire'), l'état
 // masque la liste des fiches adaptées (`retraits`) et la route `classe` ses libellés de fiches quand l'appelant n'a pas la lecture (api.mjs).
 
-export const CLASSES = Object.freeze(['ouverte', 'lecture', 'ecriture']);
+export const CLASSES = Object.freeze(['ouverte', 'lecture', 'proposition', 'ecriture']);
 export const PORTEES = Object.freeze(['ecriture', 'tout']);
 
 const LECTURE = ['GET'];
@@ -43,6 +49,12 @@ const TABLE = [
   // l'extrait du contenu pour les sessions de Claude (serveur/extrait.mjs) : règles, notes et historique ; les tables des fiches, comptes, groupes et du journal y sont vides
   [LECTURE, /^\/api\/edition\/extrait(\/meta)?$/, 'lecture'],
   [['POST'], /^\/api\/edition$/, 'ecriture'],
+  // les lots de changements (serveur/edition-lots.mjs) : se lisent avec la clé ; une session dépose une proposition et refait son essai avec la clé (classe
+  // `proposition` : seule `lot_de_changements` s'écrit) ; appliquer ou refuser, qui décident, demandent le mot de passe
+  [LECTURE, /^\/api\/edition\/lots(\/[0-9a-f-]{36})?$/, 'lecture'],
+  [['POST'], /^\/api\/edition\/lots$/, 'proposition'],
+  [['POST'], /^\/api\/edition\/lots\/[0-9a-f-]{36}\/essai$/, 'proposition'],
+  [['POST'], /^\/api\/edition\/lots\/[0-9a-f-]{36}\/(appliquer|refuser)$/, 'ecriture'],
   // page « Mise à jour »
   [LECTURE, /^\/api\/mise-a-jour\/lots\/[0-9a-f-]{36}$/, 'ouverte', true],
   // la note en préparation et l'état du lancement s'affichent sans connexion (la page /mise-a-jour/ les relève ; /api/maintenance/, ouverte, donne déjà le

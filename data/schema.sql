@@ -23,7 +23,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 127;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 128;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -315,7 +315,7 @@ CREATE INDEX page_source_source ON page_source (source_id);
 -- Exception : les postures (« guide/postures#posture:… », ids figés) sont rattachées à guide/les-postures, qui affiche leur tableau, depuis le retrait de
 -- la page guide/postures (migration 0094). De même, les trois textes du Mode Hyper (mode_texte, « guide/liste-des-effets-mode-hyper#texte:… », ids
 -- figés) sont rattachés à guide/le-mode-hyper depuis le retrait de la page « Liste des effets mode hyper » (migration 0095). db:check contrôle leur
--- page par la table de ces préfixes retirés (client/scripts/db-check.mjs#PAGES_DES_PREFIXES_RETIRES).
+-- page par la table de ces préfixes retirés (client/serveur/controles-du-contenu.mjs#PAGES_DES_PREFIXES_RETIRES).
 -- `entite_table` n'est pas une clé étrangère (SQLite ne vise pas une table variable) : db:check vérifie que (entite_table, entite_id) existe.
 CREATE TABLE page_entite (
   entite_table TEXT    NOT NULL CHECK (length(entite_table) > 0 AND entite_table NOT GLOB '*[^a-z_]*'),   -- 'magie', 'sort', 'classe', 'race'…
@@ -5590,6 +5590,69 @@ CREATE TABLE modification (
 ) STRICT;
 CREATE INDEX modification_etat ON modification (etat);
 CREATE INDEX modification_ligne ON modification (table_nom, cle);
+
+-- Un lot de changements déposé par une session de Claude (lot 6 du chantier « la base du site de dev devient la source de vérité », R274, R275 ;
+-- migration 0128 ; format : client/src/lib/lot-de-changements.mjs). Le dépôt n'écrit rien dans le contenu : le service l'essaie à blanc sur une
+-- copie, puis le propriétaire l'applique ou le refuse. L'application écrit les tables et un lot du journal (`lot_id`, de la nature du lot) d'un seul
+-- bloc ; une valeur changée entre-temps n'est pas écrite. « Annuler ce lot » écrit un autre lot du journal (`annulation_lot_id`). Une proposition
+-- n'est jamais effacée. Sans index sur `etat` : petite table, lue par id ou en entier.
+CREATE TABLE lot_de_changements (
+  id                TEXT    NOT NULL PRIMARY KEY CHECK (length(id) > 0),   -- UUID tiré par le service
+  depose_le         TEXT    NOT NULL CHECK (depose_le GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9]Z'),
+  titre             TEXT    NOT NULL CHECK (length(titre) > 0),            -- l'en-tête du lot (`contenu`), recopié au dépôt : le résumé au journal
+  nature            TEXT    NOT NULL CHECK (nature IN ('source', 'decision', 'migration', 'code')),
+                                                                           -- celle de modification_lot.nature, jamais 'saisie' (un lot n'est pas une
+                                                                           -- saisie du site) ; recopiée de l'en-tête, comme `decision`
+  decision          TEXT    CHECK (decision IS NULL OR (decision GLOB 'R[0-9]*' AND decision NOT GLOB 'R*[^0-9]*')),
+                                                                           -- numéro de la décision appliquée (« R275 ») ; présent ssi nature = 'decision'
+  auteur            TEXT    CHECK (auteur IS NULL OR length(auteur) > 0),  -- texte libre de l'en-tête ; NULL : non dit
+  contenu           TEXT    NOT NULL CHECK (json_valid(contenu) AND json_type(contenu) = 'object'
+                                   AND coalesce(json_type(contenu, '$.operations'), '') = 'array'),
+                                                                           -- le lot tel que déposé (en-tête et operations)
+  etat              TEXT    NOT NULL CHECK (etat IN ('propose', 'applique', 'refuse', 'annule')),
+  essai             TEXT    CHECK (essai IS NULL OR (json_valid(essai) AND json_type(essai) = 'object')),
+                                                                           -- le dernier essai à blanc (aperçu, contrôles) ; NULL : jamais essayé
+  essaye_le         TEXT    CHECK (essaye_le IS NULL OR essaye_le GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9]Z'),
+  decide_le         TEXT    CHECK (decide_le IS NULL OR decide_le GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9]Z'),
+                                                                           -- instant de l'application ou du refus ; NULL ssi etat = 'propose'
+  lot_id            TEXT    REFERENCES modification_lot(id),               -- le lot du journal écrit à l'application ; présent ssi appliqué ou annulé
+  verrous_ouverts   TEXT    CHECK (verrous_ouverts IS NULL OR (json_valid(verrous_ouverts) AND json_type(verrous_ouverts) = 'array'
+                                   AND json_type(verrous_ouverts, '$[0]') IS NOT NULL)),
+                                                                           -- les numéros « R… » que le propriétaire a accepté d'ouvrir au clic
+                                                                           -- d'application ; NULL : aucun verrou ouvert
+  annule_le         TEXT    CHECK (annule_le IS NULL OR annule_le GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9]Z'),
+  annulation_lot_id TEXT    REFERENCES modification_lot(id),               -- le lot du journal qui annule celui-ci ; présent ssi etat = 'annule'
+  bilan             TEXT    CHECK (bilan IS NULL OR (json_valid(bilan) AND json_type(bilan) = 'object')),
+                                                                           -- ce que l'application a fait : opérations écrites, valeurs changées
+                                                                           -- entre-temps et non écrites (avec la valeur trouvée au clic), numéros
+                                                                           -- donnés ; NULL ssi proposé ou refusé
+  CHECK ((nature = 'decision') = (decision IS NOT NULL)),
+  CHECK ((essai IS NULL) = (essaye_le IS NULL)),
+  CHECK ((etat = 'propose') = (decide_le IS NULL)),
+  CHECK ((etat IN ('applique', 'annule')) = (lot_id IS NOT NULL)),
+  CHECK ((etat = 'annule') = (annule_le IS NOT NULL)),
+  CHECK ((etat = 'annule') = (annulation_lot_id IS NOT NULL)),
+  CHECK ((etat IN ('applique', 'annule')) = (bilan IS NOT NULL)),
+  CHECK (verrous_ouverts IS NULL OR etat IN ('applique', 'annule')),
+  CHECK (annulation_lot_id IS NULL OR annulation_lot_id <> lot_id),
+  CHECK (essaye_le IS NULL OR essaye_le >= depose_le),
+  CHECK (decide_le IS NULL OR decide_le >= depose_le),
+  CHECK (annule_le IS NULL OR annule_le >= decide_le)
+) STRICT;
+-- un lot du journal n'est écrit que par une application ou une annulation (index aussi des clés étrangères)
+CREATE UNIQUE INDEX lot_de_changements_lot ON lot_de_changements (lot_id);
+CREATE UNIQUE INDEX lot_de_changements_annulation ON lot_de_changements (annulation_lot_id);
+
+-- Le plus haut numéro jamais donné, par table et colonne de clé entière (lot 6 du chantier, garde-fou 11 : « Un numéro n'est jamais redonné, même
+-- par un lot ou après une restauration » ; migration 0128). Jamais diminué : le service le monte quand il donne un numéro (application d'un lot).
+-- Le numéro suivant dépasse le maximum de ce plafond, de la table et des traces du journal (`modification`) et de l'historique
+-- (`historique_modification`) : une ligne retirée, un lot annulé ou une base restaurée ne font pas redonner un numéro.
+CREATE TABLE numero_donne (
+  table_nom TEXT    NOT NULL CHECK (length(table_nom) > 0 AND table_nom NOT GLOB '*[^a-z0-9_]*'),
+  colonne   TEXT    NOT NULL CHECK (length(colonne) > 0 AND colonne NOT GLOB '*[^a-z0-9_]*'),
+  plafond   INTEGER NOT NULL CHECK (plafond >= 0),
+  PRIMARY KEY (table_nom, colonne)
+) STRICT;
 
 -- La note de version en préparation sur le site de dev (page /mise-a-jour/ : le champ libre que les admins remplissent, en plus de la liste
 -- calculée ; migration 0023). Une seule ligne. `lot` : le lot figé quand « Effectuer la mise à jour » est lancé (son texte part avec lui) ; la

@@ -213,7 +213,7 @@ export function creerAcces({ fichier, horloge = () => Date.now(), journal = null
     const { classe } = classer(requete.methode, requete.chemin, etat.reglage?.portee ?? 'ecriture');
     if (classe === 'ouverte') return null;
     const { droit: d } = droit(requete.entetes ?? {}, etat);
-    if (d === 'ecriture' || (d === 'lecture' && classe === 'lecture')) return null;
+    if (d === 'ecriture' || (d === 'lecture' && (classe === 'lecture' || classe === 'proposition'))) return null;
     return refus401(classe);
   }
 
@@ -269,7 +269,7 @@ export function creerAcces({ fichier, horloge = () => Date.now(), journal = null
 
 /** La réponse 401 d'une route fermée : `acces` dit ce qui manque (« cle » : la clé de lecture OU le mot de passe ; « mot_de_passe » : lui seul). */
 export function refus401(classe) {
-  const lecture = classe === 'lecture';
+  const lecture = classe === 'lecture' || classe === 'proposition';
   return {
     statut: 401,
     corps: { erreur: lecture ? 'Accès refusé : la clé de lecture ou le mot de passe est nécessaire.' : 'Accès refusé : le mot de passe est nécessaire.', acces: lecture ? 'cle' : 'mot_de_passe' },

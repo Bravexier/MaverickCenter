@@ -143,11 +143,12 @@ function supprimerBrut(db, table, cle) {
  * @param {import('node:sqlite').DatabaseSync} db
  * @param {{ id: string, instant: string, pageId?: string | null, auteurId?: string | null }} o
  */
-export function ouvrirLot(db, { id, instant, pageId = null, auteurId = null }) {
-  // une saisie du site de dev : nature 'saisie', sans numéro de décision (lot 6 du chantier de la base de dev, migration 0127 ; les autres natures sont celles
-  // des lots de changements, src/lib/lot-de-changements.mjs)
-  db.prepare("INSERT INTO modification_lot (id, fait_le, auteur_id, page_id, resume, nature, decision) VALUES (?, ?, ?, ?, ?, 'saisie', NULL)")
-    .run(id, instant, auteurId, pageId, '…');
+export function ouvrirLot(db, { id, instant, pageId = null, auteurId = null, nature = 'saisie', decision = null }) {
+  // une saisie du site de dev : nature 'saisie', sans numéro de décision (lot 6 du chantier de la base de dev, migration 0127) ; les autres natures sont
+  // celles des lots de changements (src/lib/lot-de-changements.mjs), que seul serveur/edition-lots.mjs ouvre (jamais une route d'édition : le corps d'une
+  // requête ne porte ni nature ni décision) ; la base refuse (CHECK) une nature inconnue ou un numéro de décision mal placé
+  db.prepare('INSERT INTO modification_lot (id, fait_le, auteur_id, page_id, resume, nature, decision) VALUES (?, ?, ?, ?, ?, ?, ?)')
+    .run(id, instant, auteurId, pageId, '…', nature, decision);
   let rang = 0;
   const noter = db.prepare(
     "INSERT INTO modification (lot_id, rang, table_nom, cle, operation, avant, apres, etat, detail, apercu) VALUES (?, ?, ?, ?, ?, ?, ?, 'en_attente', NULL, ?)",
@@ -200,6 +201,26 @@ export function ouvrirLot(db, { id, instant, pageId = null, auteurId = null }) {
     lignes,
     get nombre() {
       return rang;
+    },
+    /**
+     * Une opération isolée : si `faire` lève, ses écritures et leurs lignes du journal sont défaites (SAVEPOINT) et le rang du journal revient où il en
+     * était (aucune lettre fantôme), puis l'erreur remonte. Pour l'essai d'un lot de changements, qui juge chaque opération à part.
+     */
+    isoler(faire) {
+      const rangAvant = rang;
+      const lignesAvant = lignes.length;
+      db.exec('SAVEPOINT operation_du_lot');
+      try {
+        const resultat = faire();
+        db.exec('RELEASE operation_du_lot');
+        return resultat;
+      } catch (e) {
+        db.exec('ROLLBACK TO operation_du_lot');
+        db.exec('RELEASE operation_du_lot');
+        rang = rangAvant;
+        lignes.length = lignesAvant;
+        throw e;
+      }
     },
     /** `entete` : un texte gardé entier en tête du résumé, hors de sa troncature (le marqueur des suppressions forcées, décision R223 (6)). */
     terminer(resume, { entete = '' } = {}) {

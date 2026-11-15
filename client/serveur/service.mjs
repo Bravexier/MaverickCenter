@@ -40,6 +40,7 @@ import { creerTipeee } from './tipeee.mjs';
 import { compterLesConflits } from './edition-conflits.mjs';
 import { ecrireAttestation, fabriquerAttestation } from './attestation.mjs';
 import { creerExtrait } from './extrait.mjs';
+import { purgerLesEssais } from './edition-lots.mjs';
 
 /** La ligne de la sortie console (`docker logs`) : « <instant> <message> », la même que celle du journal en mémoire (journal-du-service.mjs). */
 const horodater = (ligne) => `${maintenant()} ${ligne}`;
@@ -246,6 +247,15 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
   // dernier texte valide est gardé à côté de la base vivante
   const tipeee = reglagesTipeee === false ? null : creerTipeee({ dossier, journal, evenement, ...(reglagesTipeee ?? {}) });
   const etat = { db: null, inode: null, erreur: null, demarre_le: maintenant() };
+  // les copies d'essai d'un lot de changements qu'un arrêt a laissées (serveur/edition-lots.mjs)
+  if (edition) {
+    try {
+      const n = purgerLesEssais(dossier);
+      if (n) journal(`lots : ${n} copie(s) d’essai restée(s) supprimée(s)`);
+    } catch (e) {
+      journal(`lots : copies d’essai non purgées : ${e?.message ?? e}`);
+    }
+  }
   // l'extrait du contenu pour les sessions de Claude (GET /api/edition/extrait/) : site de dev seulement, fabriqué au premier téléchargement qui suit un changement
   const extrait = edition ? creerExtrait({ dossier, base: () => etat.db, version: () => version.version, journal, evenement }) : null;
 

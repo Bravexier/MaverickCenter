@@ -699,6 +699,7 @@ nature inconnue ou un numéro de décision mal placé en nommant le lot). Test :
 | `POST /api/edition/` | `{ page, operations: [...] }` → applique un lot d'un bloc (`modifier`, `creer`, `supprimer`, `relations`, `magies_innees`, `categories`, `fusionner_mots_cles` : `serveur/edition.mjs` ; `ordonner` : `serveur/edition-plan.mjs` ; `valeurs_de_capacite` : les valeurs « {N} » d'une capacité de monstre pour une carte, décision R69, `serveur/edition-bestiaire.mjs`) ; rend `{ lot, modifications, crees, lignes, fiches }` (`fiches` : les fiches de personnage dont le lot a retiré un élément, R42) |
 | `GET /api/edition/journal/` | Le journal des modifications en attente, et des « intégrées » des lots que les règles n'ont pas encore reçus (`maverick-edition/1` ; chaque lot porte sa `nature` et sa `decision`), en pièce jointe |
 | `GET /api/edition/extrait/` | L'extrait du contenu (un fichier SQLite) : ci-dessous, « Extrait du contenu et attestation de la production » ; `…/extrait/meta/` : son méta en JSON |
+| `GET`, `POST /api/edition/lots/`, `GET /api/edition/lots/<id>/`, `POST …/<id>/{essai,appliquer,refuser}/` | Les lots de changements : déposer une proposition, la lire, refaire son essai à blanc, l'appliquer ou la refuser d'un clic (ci-dessous, « Lots de changements (service) ») |
 
 **Pas de comptes** : quiconque a le mot de passe du site de dev peut modifier les règles (le journal n'a pas d'auteur :
 `modification_lot.auteur_id` attend la connexion Discord). Mêmes protections d'écriture que les fiches (JSON, `Sec-Fetch-Site`).
@@ -707,7 +708,7 @@ nature inconnue ou un numéro de décision mal placé en nommant le lot). Test :
 
 Lot 6 du chantier de la base de dev (R274, R275). Un **lot de changements** est un fichier d'opérations pour changer ce que le site ne sait pas écrire : le
 décrit et le valide `client/src/lib/lot-de-changements.mjs` (module pur, sans base ni navigateur). Il n'écrit rien : le dépôt, l'essai à blanc, l'application
-d'un bloc, les numéros et l'annulation sont le service, ajouté ensuite.
+d'un bloc et les numéros sont le service (section suivante) ; l'annulation d'un lot et « tout recalculer » suivent (lot 6, PR 3).
 
 ```json
 { "titre": "…", "nature": "decision", "decision": "R275", "auteur": "…",
@@ -730,7 +731,68 @@ d'un bloc, les numéros et l'annulation sont le service, ajouté ensuite.
   changée pour le reste), avec `raison` et, pour une valeur, `ecarts` (`colonne`, `attendue`, `actuelle`). Le site prime : une opération `changee` n'est pas écrite,
   elle est listée. C'est la base de l'essai à blanc.
 
-Tests : `lot-de-changements`, `serveur-edition-nature-des-traces`.
+- **Numéro à donner** : la clé entière d'une insertion (table à clé simple de type entier) s'écrit `{ "$numero": "a" }` ; le même jeton se réutilise ensuite
+  dans `apres` (ou dans la clé d'une insertion à clé composée) d'une opération **suivante** du même lot. Un jeton se donne une fois, n'entre jamais dans `avant`
+  ni dans la clé d'une modification ou d'une suppression. `donnerLesNumeros(lot, depart)` rend le lot résolu : numéros consécutifs par table et colonne, dans
+  l'ordre des opérations ; `depart` est le plus haut numéro connu (le service le calcule : ci-dessous).
+
+Tests : `lot-de-changements`, `lot-de-changements-numeros`, `serveur-edition-nature-des-traces`.
+
+### Lots de changements (service)
+
+Décision du propriétaire (R275, question 4 a) : « Chaque lot attend votre clic sur le site de dev, avec un aperçu avant et après. » Code :
+`serveur/edition-lots.mjs` (les routes, dans `serveur/api.mjs#traiterLots`), `serveur/edition.mjs#appliquerUnLot` (l'hôte de l'application),
+`serveur/controles-du-contenu.mjs` (les contrôles de `db:check`). Tables : `lot_de_changements` et `numero_donne` (migration 0128). Une session de Claude **dépose**
+une proposition avec la **clé de lecture** ; rien n'est écrit dans le contenu. Le propriétaire l'**applique** ou la **refuse** (mot de passe). Aucune clé
+d'écriture n'existe pour les sessions. Sans mot de passe posé, le site se comporte comme avant.
+
+| Route | Classe d'accès | Rôle |
+| --- | --- | --- |
+| `GET /api/edition/lots/` | lecture | Les propositions, la plus récente d'abord (résumé : état, verdict de l'essai) |
+| `POST /api/edition/lots/` | proposition | Le lot (`maverick-lot/1`) : contrôlé par `controlerLeLot` (400 avec le rang de l'opération à corriger : `erreurs`), enregistré « propose », essayé à blanc ; `201` avec l'essai |
+| `GET /api/edition/lots/<id>/` | lecture | Le contenu déposé, l'essai (aperçu avant et après), le bilan |
+| `POST /api/edition/lots/<id>/essai/` | proposition | Refait l'essai (n'écrit que `essai` et `essaye_le`) |
+| `POST /api/edition/lots/<id>/appliquer/` | écriture | `{ verrous_ouverts?: ["R…"] }` : l'application d'un bloc (le clic du propriétaire) |
+| `POST /api/edition/lots/<id>/refuser/` | écriture | L'état « refuse » : rien n'est écrit, la proposition reste |
+
+La classe **proposition** (`serveur/acces-routes.mjs`) a la porte de la lecture (la clé OU le mot de passe) pour les deux seules routes qui écrivent sans toucher au
+contenu : elles n'écrivent que `lot_de_changements`. Appliquer et refuser, qui décident, demandent le mot de passe. En production : `403` avant tout.
+
+**Essai à blanc.** Une copie de la base vivante (`VACUUM INTO`, dans `<dossier de la base>/essais/`, supprimée à la fin même en cas d'échec ; jamais la base elle-même), dans
+un fil à part (le service ne s'arrête pas ; un essai à la fois). Le lot y est appliqué par **le même code** que l'application, puis les contrôles du contenu de
+`db:check` (`controlerLeContenu`) avant et après : seuls les problèmes **qui naissent du lot** comptent (`problemes_nouveaux` ; ceux d'avant sont gardés dans
+`problemes_avant` pour le contrôle de l'application). Résultat enregistré dans `lot_de_changements.essai` : `verdict` (`applicable`, `verrous`, `a_corriger`,
+`rien_a_ecrire`, `en_echec`), `comptes`, `verrous_a_ouvrir`, `numeros` (provisoires) et, par opération, `etat` : `applicable` ; `changee` (la valeur a bougé : `ecarts`
+avec la valeur trouvée) ; `verrouillee` (`decisions`) ; `refusee` (`message`, le rang est celui de l'opération) ; chacune avec son `apercu` (table et ligne par leur
+nom, chaque colonne par son libellé, valeur d'avant et d'après ; `lib/libelles-de-la-base.mjs`).
+
+**Application** (`appliquerUnLot`) : dans **une** transaction et sous le même verrou d'écrivain que `POST /api/edition/` (`BEGIN IMMEDIATE`). La comparaison est refaite au
+clic (`comparerAvecLaBase` : une valeur changée entre-temps n'est pas écrite, listée avec la valeur trouvée dans `bilan` : le site prime) ; chaque opération est écrite
+**par le service d'édition dès que la table lui est connue** (`traduire`) : « modifier » pour les colonnes de `TABLES`, « supprimer » par l'entité de la table
+(ses refus comprennent liens rompus, fiches R42…) ; une colonne que le service ne sait pas écrire, sur une table qu'il connaît, passe par le journal (voie générique :
+`ecrire_modifier`, `ecrire_inserer`, `ecrire_supprimer`, jamais dans `OPERATIONS` : aucune route ne les joint), jugée par l'essai et par `db:check`. Le service ne crée pas
+la ligne d'une table qu'il crée lui-même (identifiant tiré du nom, page, clés recalculées) : l'insertion y est refusée ; une entité sans suppression (R159) n'est pas
+supprimée. Une opération que le service accepte sans rien écrire est refusée. Le journal : un `modification_lot` à la nature, au numéro de décision et au titre du lot
+(`resume`), ses `modification` « en_attente » comme une saisie (le rapatriement et la mise à jour les reprennent). `lot_de_changements` passe à « applique »
+(`lot_id`, `decide_le`, `verrous_ouverts`, `bilan` : opérations écrites ou changées, numéros donnés) dans la même transaction. Refus (409, rien n'est écrit, le lot reste
+« propose ») : l'essai a des opérations refusées ou des problèmes nés du lot, une opération est refusée au clic, un contrôle du contenu échoue après les écritures
+(rejoué dans la transaction), un verrou n'est pas ouvert, ou rien ne reste à écrire.
+
+**Verrous des décisions.** Ce que le service refuse au nom d'une décision cite son numéro (« décision R219 ») : `decisionsCitees` le lit du message, sans liste recopiée. Un
+refus qui cite un numéro et que le **gel** (`ctx.gel === false` : mots-clés verrouillés, monnaies ; R218, R219, comme au rejeu) lève est « verrouillée » à l'essai
+(`decisions`) ; à l'application, il est refusé sauf si **tous** ses numéros sont dans `verrous_ouverts` (donné au clic), qui est alors enregistré. L'opération s'écrit alors
+sous un gel ouvert pour elle seule. Un refus qui cite un numéro mais que le gel ne lève pas (une règle : R105, R181…) reste « refusée ». Rien ne change pour l'édition ordinaire :
+`enregistrer` n'est pas touché, le gel reste fermé.
+
+**Numéros.** Le numéro d'un jeton = 1 + le plus haut de : le plafond de `numero_donne`, le maximum de la colonne, le plus haut trouvé dans `modification` et
+`historique_modification` pour cette table (`plusHautNumero`) ; le plafond est monté dans la même transaction (`INSERT … ON CONFLICT … max`). Un numéro n'est donc jamais redonné,
+même après une suppression, une annulation ou une base restaurée sans `numero_donne`. L'édition ordinaire donne elle-même des numéros entiers (`idSuivant` des mots-clés, de leurs
+synonymes et catégories, `serveur/edition-mots-cles.mjs`) sans lire `numero_donne` ; elle est inchangée ici.
+
+**Éteint hors de l'édition** : `controlerLeLot` refuse au dépôt une table que le service ne sait pas écrire (jusqu'au lot 8).
+
+Tests : `serveur-edition-lots` (dépôt avec la clé sans écriture dans le contenu, copie, application en bloc, changée entre-temps, refus avec rang, contrôles du contenu, verrou refusé
+puis ouvert, numéros, table hors édition, édition ordinaire inchangée), `lot-de-changements-numeros`, `serveur-acces-routes`.
 
 ## Extrait du contenu et attestation de la production
 
@@ -1264,9 +1326,10 @@ suite**.
 | --- | --- | --- |
 | ouverte | rien | `GET /api/etat/` (sans la liste des fiches adaptées), `/api/maintenance/`, `/api/tipeee/`, `POST /api/classeur/`, `POST /api/metriques/page/` ; les prétirés en lecture (`GET /api/personnages/`, `…/<id>/`, `…/<id>/portrait/` : jamais une fiche de joueur) ; ce que les pages lisent pour montrer la base vivante : `GET /api/edition/{en-attente,listes,pages,mots-cles,chronologie,plan}/` et `POST /api/edition/{lignes,race,classe,bestiaire,portrait,evenement}/` (`classe` sans les libellés de fiches) ; la note en préparation et l'état du lancement `GET /api/mise-a-jour/` et `…/lancement/` (la page les relève sans connexion) ; le lot figé `GET /api/mise-a-jour/lots/<uuid>/` ; `/api/acces/` |
 | lecture | la clé de lecture **ou** le mot de passe | `GET /api/edition/journal/`, `GET /api/edition/extrait/` et `…/extrait/meta/` (l'extrait du contenu : ni fiche, ni compte, ni journal), `GET /api/mise-a-jour/conflits/` (les lots en conflit), tout `GET /api/debug/…` (le contenu des tables : fiches, comptes et groupes compris), tout `GET /api/v1/…` |
-| écriture | le mot de passe (session) | `POST /api/edition/` (un lot), `POST /api/maintenance/lever/`, `POST /api/mise-a-jour/{brouillon,majeure,lancer,liberer,conflits}/` (« Effectuer la mise à jour » et la Simulation), les prétirés en écriture (`POST`, `PUT`, `DELETE /api/personnages/…`), tout `POST`, `PATCH`, `PUT`, `DELETE /api/v1/…` |
+| proposition | la clé de lecture **ou** le mot de passe | `POST /api/edition/lots/` et `POST …/lots/<id>/essai/` : déposer une proposition de lot de changements et refaire son essai ; elles n'écrivent que `lot_de_changements` (la proposition, son essai sur une copie), jamais le contenu |
+| écriture | le mot de passe (session) | `POST /api/edition/` (un lot), `POST …/lots/<id>/appliquer/` et `…/refuser/` (le clic du propriétaire sur un lot de changements), `POST /api/maintenance/lever/`, `POST /api/mise-a-jour/{brouillon,majeure,lancer,liberer,conflits}/` (« Effectuer la mise à jour » et la Simulation), les prétirés en écriture (`POST`, `PUT`, `DELETE /api/personnages/…`), tout `POST`, `PATCH`, `PUT`, `DELETE /api/v1/…` |
 
-La clé de lecture ne permet jamais d'écrire. Le lot figé reste ouvert : le workflow `mise-a-jour.yml` (job `preparer`) ne joint que cette route du site de dev,
+La clé de lecture ne permet jamais d'écrire dans le contenu (elle dépose une proposition, qui attend le clic du propriétaire). Le lot figé reste ouvert : le workflow `mise-a-jour.yml` (job `preparer`) ne joint que cette route du site de dev,
 sans aucun secret ajouté côté GitHub ; l'adresse est à capacité (uuid aléatoire, lot sans fiche ni compte, contenu publié de toute façon dans la PR). Aucune
 clé d'écriture n'est donnée à GitHub ni aux sessions.
 

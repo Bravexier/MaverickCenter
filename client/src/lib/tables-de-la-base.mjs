@@ -11,8 +11,11 @@
 // Le classement en trois classes (contenu, propre au site, calculée) est en bas de ce fichier. Sans dépendance (sauf lib/fiche-format.mjs, pur).
 import { TABLES_FICHES } from './fiche-format.mjs';
 
-/** Section 14 : le journal des modifications du site de dev et le brouillon de la note de version. */
-export const TABLES_DU_JOURNAL = Object.freeze(['modification_lot', 'modification', 'note_version_brouillon']);
+/**
+ * Section 14 : le journal des modifications du site de dev, les lots de changements déposés et le plafond des numéros donnés (migration 0128), et le
+ * brouillon de la note de version — dans l'ordre de data/schema.sql (la base vivante les recopie dans cet ordre : serveur/base-vivante.mjs#TABLES_EDITION).
+ */
+export const TABLES_DU_JOURNAL = Object.freeze(['modification_lot', 'modification', 'lot_de_changements', 'numero_donne', 'note_version_brouillon']);
 
 /** Section 15 : les notes de version et l'historique des modifications faites sur le site de dev (des traces qui citent la production d'avant). */
 export const TABLES_DES_NOTES = Object.freeze(['note_version', 'note_version_ligne', 'historique_modification']);

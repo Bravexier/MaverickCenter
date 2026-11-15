@@ -1,6 +1,6 @@
 # Aperçu du schéma de la base
 
-> **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` : ne pas l'éditer. Version compacte de [`structure.md`](structure.md) (qui détaille chaque colonne) pour relire le schéma d'un coup d'œil : 218 tables, 2 tables de recherche, 38 vues.
+> **Document généré** depuis [`data/schema.sql`](../../data/schema.sql) par `npm run db:doc` : ne pas l'éditer. Version compacte de [`structure.md`](structure.md) (qui détaille chaque colonne) pour relire le schéma d'un coup d'œil : 220 tables, 2 tables de recherche, 38 vues.
 > Ce qui reste à trancher sur le **contenu** (pas sur la forme) est dans [`a-valider.md`](a-valider.md).
 
 **Lecture des colonnes** : **gras** = clé primaire ; `→table` = clé étrangère vers cette table ; `?` = peut être absente (`NULL`, jamais une valeur inventée) ; `+provenance` = `origine` (famille d'import) et `source_ref` (classeur › onglet › plage). Une colonne `*_brut` garde le texte de la source quand la colonne typée voisine n'a pas pu être déduite sans ambiguïté.
@@ -389,7 +389,7 @@
 
 ## 14. ÉDITION : le journal des modifications faites depuis le site de dev (saisie, jamais importée ; migration 0017)
 
-**Relations dans cette section** : `modification_lot→modification_lot`, `modification→modification_lot`
+**Relations dans cette section** : `lot_de_changements→modification_lot`, `modification_lot→modification_lot`, `modification→modification_lot`
 
 **Vers d'autres sections** : `modification_lot→utilisateur (§13)`
 
@@ -397,6 +397,8 @@
 | --- | --- | --- |
 | `modification_lot` | Un enregistrement fait depuis une page (le bouton de confirmation) : toutes ses modifications passent ou aucune. | **id**, fait_le, auteur_id→utilisateur?, page_id?, resume, resolu_le?, resolu_par→modification_lot?, resolution?, nature, decision? |
 | `modification` | Une ligne de table touchée par un lot. | **lot_id**→modification_lot, **rang**, table_nom, cle, operation, avant?, apres?, etat, detail?, apercu? |
+| `lot_de_changements` | Un lot de changements déposé par une session de Claude (lot 6 du chantier « la base du site de dev devient la source de vérité », R274, R275 ; migration 0128 ; format : client/src/lib/lot-de-changements.mjs). | **id**, depose_le, titre, nature, decision?, auteur?, contenu, etat, essai?, essaye_le?, decide_le?, lot_id→modification_lot?, verrous_ouverts?, annule_le?, annulation_lot_id→modification_lot?, bilan? |
+| `numero_donne` | Le plus haut numéro jamais donné, par table et colonne de clé entière (lot 6 du chantier, garde-fou 11 : « Un numéro n'est jamais redonné, même par un lot ou après une restauration » ; migration 0128). | **table_nom**, **colonne**, plafond |
 | `note_version_brouillon` | La note de version en préparation sur le site de dev (page /mise-a-jour/ : le champ libre que les admins remplissent, en plus de la liste calculée ; migration 0023). | **id**, texte?, modifie_le?, lot?, majeure? |
 
 ## 15. NOTES DE VERSION : ce que chaque version a changé dans les règles, et l'historique des modifications faites sur le site de dev

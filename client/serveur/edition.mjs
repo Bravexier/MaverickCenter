@@ -3558,6 +3558,150 @@ function supprimer(ctx, op) {
 const OPERATIONS = { modifier, creer, supprimer, relations, magies_innees: magiesInnees, ordonner: PLAN.ordonner, ...CHRONOLOGIE.operations, ...MOTS_CLES.operations, ...operationsDuBestiaire({ refus, ErreurEdition, provenance }) };
 
 /**
+ * Une opération d'un lot, par le domaine qui la connaît ; un refus (ErreurEdition, ErreurJournal, contrainte de la base) rend son erreur en français, avec la
+ * place de l'opération (« operations[i] : … ») sauf `prefixe` faux (le lot de changements dit la sienne).
+ * @param {object} ctx le contexte du lot (enregistrer, appliquerUnLot)
+ * @param {{ op: string }} op
+ * @param {number} i sa place dans le lot
+ * @param {{ operations?: Record<string, Function>, prefixe?: boolean }} [o] `operations` : les opérations permises (défaut : celles du service, que les
+ *   routes d'édition joignent ; `appliquerUnLot` y ajoute celles du lot de changements, qu'aucune route ne joint)
+ */
+function executerUneOperation(ctx, op, i, { operations = OPERATIONS, prefixe = true } = {}) {
+  ctx.operation = i;
+  const place = prefixe ? `operations[${i}] : ` : '';
+  const faire = operations[op?.op];
+  if (!faire) throw refus(`${place}opération inconnue « ${op?.op} »`);
+  try {
+    return faire(ctx, op);
+  } catch (e) {
+    if (e instanceof ErreurEdition) throw new ErreurEdition(e.statut, `${place}${e.message}`, e.details);
+    if (e instanceof ErreurJournal) throw refus(`${place}${e.message}`);
+    if (refuseeParLaBase(e)) throw new ErreurEdition(422, `${place}${messageSqlite(e)}`);
+    throw e;
+  }
+}
+
+/**
+ * Les colonnes qu'aucune route n'écrit et que le service tient lui-même (décision R218 (4) : « aucune route n'écrit `verrou` » ; `cle` est recalculée par
+ * le service, R232 (2) ; `monnaie_id` lie un mot-clé à sa monnaie) : la voie générique d'un lot les refuse au nom de ces décisions, sous le même drapeau
+ * `gel` que le verrou des mots-clés (le propriétaire l'ouvre au clic avec « R218 », « R232 »). colonne → décisions citées dans le refus.
+ */
+const COLONNES_TENUES_PAR_LE_SERVICE = Object.freeze({
+  mot_cle: Object.freeze({ verrou: 'décision R218 (4)', cle: 'décisions R218, R232 (2)', monnaie_id: 'décision R218' }),
+});
+
+/** Le refus (409) d'une écriture générique dans une colonne que le service tient lui-même, ou null. */
+function raisonDeLaColonneTenue(table, colonnes) {
+  const tenues = COLONNES_TENUES_PAR_LE_SERVICE[table] ?? {};
+  const c = colonnes.find((x) => Object.hasOwn(tenues, x));
+  return c ? `${table}.${c} : le service d’édition tient cette colonne lui-même, un lot ne l’écrit pas sans l’accord du propriétaire (${tenues[c]})` : null;
+}
+
+/**
+ * Les opérations d'un lot de changements que le service d'édition n'a pas (serveur/edition-lots.mjs) : écrire une colonne, insérer ou supprimer une ligne
+ * que le service ne sait pas écrire, par le journal (`w`) et sous le même gel (R218, R219 : `raisonDuGel`, `TABLES_FIGEES`). Jamais dans `OPERATIONS` :
+ * aucune route d'édition, de l'API ni du rejeu ne les joint (le corps d'une requête dit « op » : une opération inconnue y est refusée).
+ */
+const OPERATIONS_DU_LOT = {
+  ecrire_modifier(ctx, op) {
+    const avant = lireLigne(ctx.db, op.table, op.cle);
+    if (!avant) throw new ErreurEdition(404, `${op.table} ${JSON.stringify(op.cle)} : ligne introuvable`);
+    const gelee = ctx.gel !== false ? raisonDuGel(op.table, avant) ?? raisonDeLaColonneTenue(op.table, Object.keys(op.valeurs)) : null;
+    if (gelee) throw new ErreurEdition(409, gelee);
+    ctx.w.modifier(op.table, op.cle, op.valeurs);
+    return `${op.table} ${Object.keys(op.valeurs).join(', ')}`;
+  },
+  ecrire_inserer(ctx, op) {
+    if (TABLES_FIGEES[op.table] && ctx.gel !== false) throw new ErreurEdition(409, `${op.table} : ${TABLES_FIGEES[op.table]}.`);
+    const tenue = ctx.gel !== false ? raisonDeLaColonneTenue(op.table, Object.keys(op.valeurs)) : null;
+    if (tenue) throw new ErreurEdition(409, tenue);
+    ctx.w.inserer(op.table, op.valeurs);
+    return `${op.table} : une ligne`;
+  },
+  ecrire_supprimer(ctx, op) {
+    const avant = lireLigne(ctx.db, op.table, op.cle);
+    if (!avant) throw new ErreurEdition(404, `${op.table} ${JSON.stringify(op.cle)} : ligne introuvable`);
+    const gelee = ctx.gel !== false ? raisonDuGel(op.table, avant) : null;
+    if (gelee) throw new ErreurEdition(409, gelee);
+    ctx.w.supprimer(op.table, op.cle);
+    return `${op.table} : une ligne retirée`;
+  },
+};
+
+/**
+ * Le service d'édition au service d'un lot de changements (serveur/edition-lots.mjs ; R274, R275) : ouvre, dans UNE transaction (le verrou d'écrivain de
+ * `enregistrer`), un lot du journal de la nature du lot de changements, laisse `travail` y écrire par l'hôte qu'il reçoit, puis termine comme `enregistrer`
+ * (choix retirés des fiches R181, notes de R42, résumé = le titre) et valide. Rien n'est écrit si `travail` lève ou n'écrit aucune ligne du journal
+ * (rien n'est alors validé : le lot du journal n'existe pas et `travail` n'a rien changé non plus).
+ *   hote.id, hote.instant : le lot du journal (déjà écrit dans la transaction : une clé étrangère peut le viser).
+ *   hote.executer(op, { gel }) : une opération du service ou du lot (`OPERATIONS`, `OPERATIONS_DU_LOT`), erreurs en français (ErreurEdition : statut, message,
+ *     détails). `gel: false` ouvre le gel des mots-clés verrouillés et des monnaies (R218, R219) pour cette seule opération : le seul « verrou de décision »
+ *     que le service sait lever (comme le rejeu, R219 (6)).
+ *   hote.isoler(faire) : `faire` sous un SAVEPOINT ; s'il lève, rien de ce qu'il a écrit (ni ses lignes du journal) ne reste.
+ *   hote.ecrites() : le nombre de lignes du journal écrites jusqu'ici.
+ * @param {import('node:sqlite').DatabaseSync} db base vivante (clés étrangères contrôlées)
+ * @param {{ id?: string, instant?: string, titre: string, nature: string, decision?: string | null, auteurId?: string | null,
+ *   travail: (hote: { db: object, id: string, instant: string, isoler: Function, executer: Function, ecrites: () => number }) => unknown }} o
+ * @returns {{ lot: string | null, ecrites: number, resultat: unknown }} `lot` : null quand rien n'a été écrit
+ */
+export function appliquerUnLot(db, { id, instant, titre, nature, decision = null, auteurId = null, travail }) {
+  if (instant === undefined || id === undefined) {
+    const lot = nouveauLot();
+    instant ??= lot.instant;
+    id ??= lot.id;
+  }
+  db.exec('BEGIN IMMEDIATE');
+  let ouverte = true;
+  const annuler = () => {
+    if (!ouverte) return;
+    ouverte = false;
+    try {
+      db.exec('ROLLBACK');
+    } catch {
+      // déjà annulée par SQLite
+    }
+  };
+  try {
+    const w = ouvrirLot(db, { id, instant, auteurId, nature, decision });
+    const ctx = { db, w, instant, crees: [], retraits: nouveauxRetraitsDeFiches(), gel: true, forcees: [], fusions: [] };
+    const variablesAvant = magiesDesDonsVariables(db);
+    const permises = { ...OPERATIONS, ...OPERATIONS_DU_LOT };
+    let place = 0;
+    const hote = {
+      db,
+      id,
+      instant,
+      isoler: (faire) => w.isoler(faire),
+      executer: (op, { gel = true } = {}) => {
+        ctx.gel = gel;
+        return executerUneOperation(ctx, op, place++, { operations: permises, prefixe: false });
+      },
+      ecrites: () => w.nombre,
+    };
+    const resultat = travail(hote);
+    if (!w.nombre) {
+      annuler();
+      return { lot: null, ecrites: 0, resultat };
+    }
+    retirerLesChoixDesDonsChanges(db, variablesAvant, ctx.retraits);
+    noterLesRetraits(db, ctx.retraits, instant);
+    // le titre est un résumé comme un autre : un marqueur de suppression forcée ou de fusion qu'il porterait serait lu au rejeu (`marqueursDuResume`)
+    w.terminer(neutraliserLeMarqueur(titre), { entete: marqueursDuLot(ctx) });
+    try {
+      db.exec('COMMIT');
+    } catch (e) {
+      if (refuseeParLaBase(e)) throw new ErreurEdition(422, messageSqlite(e));
+      throw e;
+    }
+    ouverte = false;
+    return { lot: id, ecrites: w.nombre, resultat };
+  } catch (e) {
+    annuler();
+    throw e;
+  }
+}
+
+/**
  * Applique un lot dans la base vivante, d'un bloc : tout passe ou rien n'est écrit (ErreurEdition : statut HTTP, message en français).
  * @param {import('node:sqlite').DatabaseSync} db base vivante (clés étrangères contrôlées)
  * @param {{ page?: string, operations: object[] }} corps
@@ -3598,19 +3742,7 @@ export function enregistrer(db, corps, { instant, id, auteurId = null, gel = tru
     // la magie de chaque don « Variable » avant le lot : un don qui quitte ce type ou change de magie perd les choix des fiches (R181)
     const variablesAvant = magiesDesDonsVariables(db);
     const resumes = [];
-    corps.operations.forEach((op, i) => {
-      ctx.operation = i;
-      const faire = OPERATIONS[op?.op];
-      if (!faire) throw refus(`operations[${i}] : opération inconnue « ${op?.op} »`);
-      try {
-        resumes.push(faire(ctx, op));
-      } catch (e) {
-        if (e instanceof ErreurEdition) throw new ErreurEdition(e.statut, `operations[${i}] : ${e.message}`, e.details);
-        if (e instanceof ErreurJournal) throw refus(`operations[${i}] : ${e.message}`);
-        if (refuseeParLaBase(e)) throw new ErreurEdition(422, `operations[${i}] : ${messageSqlite(e)}`);
-        throw e;
-      }
-    });
+    corps.operations.forEach((op, i) => resumes.push(executerUneOperation(ctx, op, i)));
     if (!w.nombre) {
       annuler();
       return { lot: null, modifications: 0, crees: [], lignes: [], fiches: [] };

@@ -44,7 +44,7 @@ const REQUETE = /^(GET|HEAD|POST|PUT|PATCH|DELETE|OPTIONS) \S+/;
 /** Catégorie d'un message d'après son début (le préfixe de niveau retiré), dans cet ordre ; sinon « service ». */
 const REGLES_DE_CATEGORIE = [
   [REQUETE, 'http'],
-  [/^édition\b/i, 'edition'], // « édition : lot … (N ligne(s)) depuis <page> » (api.mjs)
+  [/^(édition|lots)\b/i, 'edition'], // « édition : lot … (N ligne(s)) depuis <page> » ; « lots : proposition … déposée, appliquée, refusée » (api.mjs, lots de changements)
   [/^(simulation de )?mise à jour\b/i, 'mise-a-jour'], // lot figé, workflow déclenché ou annulé (api.mjs, notes-de-version.mjs)
   [/^maintenance\b/i, 'maintenance'], // annonce publiée ou retirée, levée depuis la page, suivi du lancement (service.mjs, api.mjs)
   [/^métriques\b/i, 'metriques'], // base des métriques en panne ou de nouveau disponible (serveur/metriques.mjs, service.mjs)
