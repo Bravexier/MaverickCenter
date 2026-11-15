@@ -33,12 +33,13 @@ const ecoule = (depuis, instant) => Date.parse(instant) - Date.parse(depuis);
 
 /**
  * L'annonce que porte le lancement `l` à l'instant `instant` : un objet pendant une vraie mise à jour, `null` quand ce lancement ne met (plus)
- * rien en maintenance (simulation, échec, annulé, maintenance levée, plafond dépassé), `undefined` sans lancement connu (rien n'est su : une
+ * rien en maintenance (simulation, copie vers le dépôt, échec, annulé, maintenance levée, plafond dépassé), `undefined` sans lancement connu (rien n'est su : une
  * annonce déjà publiée reste, et s'éteint d'elle-même au plafond).
  */
 export function annonceDuLancement(l, { instant }) {
   if (!l?.lot) return undefined;
-  if (l.simulation || !ETATS_DE_MAINTENANCE.includes(l.etat) || l.maintenance_levee_le) return null;
+  // une copie vers le dépôt (lot 8 : serveur/paquet.mjs) ne livre rien en production : pas de maintenance
+  if (l.simulation || l.copie || !ETATS_DE_MAINTENANCE.includes(l.etat) || l.maintenance_levee_le) return null;
   if (!ID_LOT.test(l.lot) || !VERSION_CIBLE.test(String(l.version_cible ?? '')) || Number.isNaN(Date.parse(l.lance_le))) return null;
   if (ecoule(l.lance_le, instant) > DUREE_MAX_MAINTENANCE) return null;
   return { format: FORMAT_ANNONCE, lot: l.lot, version_cible: l.version_cible, depuis: l.lance_le, etat: l.etat };

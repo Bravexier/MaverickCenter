@@ -22,7 +22,10 @@
 // lib/lots-rendu.mjs. Rien de cela en production ni sans le service (la lecture des lots répond 403 ou 404 : la section reste cachée).
 // Ce script n'importe que les rendus communs, celui des conflits et celui des lots (aucun autre script de page ne les importe : la version portable
 // refuse un module partagé).
-import { affichageDeLaProduction, compter, echapper, htmlDeLaListe, htmlDuTexteLibre, lancementAffiche } from '../lib/notes-de-version-rendu.mjs';
+import {
+  PHRASE_DE_LA_COPIE, affichageDeLaProduction, compter, echapper, enteteDuLancement, erreurDuReport, htmlDeLaListe, htmlDuTexteLibre, lancementAffiche, messageDuRefus,
+  modeDuLancement, motDeLaCopie, texteDeLEtat,
+} from '../lib/notes-de-version-rendu.mjs';
 import { avecDateLisible, corpsDeLaResolution, htmlDesConflits, messageDeResolution } from '../lib/conflits-rendu.mjs';
 import {
   APPLIQUES_RECENTS, corpsDuClic, htmlDeLaConfirmation, htmlDesLots, lotsAppliques, messageDeLAnnulation, messageDErreur, messageDuBilan,
@@ -84,16 +87,19 @@ function htmlDuLancement(l, github, liberable) {
   const manuel = l.etat === 'manuel' || l.etat === 'erreur'
     ? `<p>Sur GitHub : <a href="https://github.com/${echapper(github?.depot ?? 'Bravexier/MaverickCenter')}/actions/workflows/mise-a-jour.yml" rel="noopener noreferrer" target="_blank">Actions › Mise à jour des règles › Run workflow</a> (branche dev), avec :</p>
        <ul><li>lot : <code>${echapper(l.lot)}</code></li><li>empreinte : <code>${echapper(l.empreinte)}</code></li><li>adresse : <code>${echapper(l.adresse)}</code></li>
-       <li>case « Simulation » : ${l.simulation ? '<strong>cochée</strong>' : 'décochée'}</li></ul>`
+       <li>case « Simulation » : ${l.simulation ? '<strong>cochée</strong>' : 'décochée'}</li>
+       ${modeDuLancement(l) === 'copie' ? '<li>case « Copie » : <strong>cochée</strong></li>' : ''}</ul>`
     : '';
   // le service dit si le lancement est annulable (mêmes règles des deux côtés : estLiberable) ; un lot dans dev ou livré, resté sans nouvelles plus
   // de 3 h, libère seulement le texte
   const tardif = ['fusionne', 'echec_livraison', 'termine', 'lance', 'en_cours'].includes(l.etat);
   const liberer = liberable
     ? `<button type="button" data-nv-liberer data-lot="${echapper(l.lot)}">${tardif ? 'Libérer le texte (sans nouvelles depuis plus de 3 h)' : 'Annuler ce lancement'}</button>` : '';
+  const entete = enteteDuLancement(l); // « Dernière copie » sans version cible : une copie n'en a pas
+  const reportRate = erreurDuReport(l);
   return `<div class="nv-lancement nv-lancement--${echapper(l.etat)}">
-    <p class="nv-message"><strong>${l.simulation ? 'Dernière simulation' : 'Dernier lancement'}</strong> (V${echapper(l.version_cible ?? '?')}, ${echapper(l.lance_le ?? '')}) : ${echapper(ETATS[l.etat] ?? l.etat)}${run}</p>
-    ${l.erreur ? `<p class="nv-message nv-message--erreur">${echapper(l.erreur)}</p>` : ''}${manuel}${liberer}</div>`;
+    <p class="nv-message"><strong>${echapper(entete.titre)}</strong> (${echapper(entete.precision)}) : ${echapper(texteDeLEtat(l, ETATS))}${run}</p>
+    ${l.erreur ? `<p class="nv-message nv-message--erreur">${echapper(l.erreur)}</p>` : ''}${reportRate ? `<p class="nv-message nv-message--erreur">${echapper(reportRate)}</p>` : ''}${manuel}${liberer}</div>`;
 }
 
 function rendre() {
@@ -123,9 +129,15 @@ function rendre() {
        <div class="nv-dev__actions"><button type="button" data-nv-enregistrer>Enregistrer le texte</button><span data-nv-etat-texte></span></div>
        <div class="nv-dev__apercu nv-texte" data-nv-apercu ${texte ? '' : 'hidden'}>${htmlDuTexteLibre(texte)}</div>`
     : texte ? `<div class="nv-texte">${htmlDuTexteLibre(texte)}</div>` : '';
+  // base source seulement (lot 8) : « Copier vers le dépôt », à côté des deux autres ; sans elle la page reste telle qu'elle était. Une copie ne demande ni
+  // ligne à livrer ni référence : seule une place occupée la grise.
+  const motCopie = motDeLaCopie(d);
+  const copier = motCopie
+    ? `<button type="button" data-nv-copier title="${echapper(PHRASE_DE_LA_COPIE)}" ${occupe ? 'disabled' : ''}>Copier vers le dépôt</button>` : '';
   const bouton = `<div class="nv-dev__actions"><button type="button" data-nv-simuler ${occupe || !d.lignes ? 'disabled' : ''}>Simulation de mise à jour</button>
-       <button type="button" class="nv-principal" data-nv-lancer ${occupe || !d.lignes ? 'disabled' : ''}>Effectuer la mise à jour</button>
-       <span class="nv-bascule"><label><input type="checkbox" data-nv-voir-prod> Voir la page de production</label></span></div>`;
+       <button type="button" class="nv-principal" data-nv-lancer ${occupe || !d.lignes ? 'disabled' : ''}>Effectuer la mise à jour</button>${copier}
+       <span class="nv-bascule"><label><input type="checkbox" data-nv-voir-prod> Voir la page de production</label></span></div>
+       ${motCopie ? `<p class="nv-message nv-copie-aide" data-nv-copie-aide>« Copier vers le dépôt » : ${echapper(PHRASE_DE_LA_COPIE.charAt(0).toLowerCase() + PHRASE_DE_LA_COPIE.slice(1))}</p>` : ''}`;
   // la case « Version majeure » : figée avec le lot, comme le texte
   const majeure = Boolean(d.brouillon?.majeure);
   const caseMajeure = d.version_majeure
@@ -620,6 +632,7 @@ function brancher(zone) {
   });
   zone.querySelector('[data-nv-lancer]')?.addEventListener('click', () => confirmer({ simulation: false }));
   zone.querySelector('[data-nv-simuler]')?.addEventListener('click', () => confirmer({ simulation: true }));
+  zone.querySelector('[data-nv-copier]')?.addEventListener('click', () => confirmerLaCopie());
   zone.querySelector('[data-nv-liberer]')?.addEventListener('click', async (e) => {
     try {
       // le lot affiché : si un autre lancement a eu lieu entre-temps (autre onglet), le service refuse (409) au lieu de l'annuler
@@ -754,8 +767,69 @@ function confirmer({ simulation }) {
       }
       await charger(); // le brouillon est maintenant figé (lot) : texte et boutons verrouillés jusqu'à la fin
     } catch (err) {
-      erreur.textContent = err.message;
+      direLErreur(erreur, err);
+    }
+  });
+  dialogue.showModal();
+}
+
+/**
+ * Dit l'erreur d'un lancement dans le dialogue (`erreur` : son `<p data-erreur>`). Un refus avant l'envoi (409 avec `refus` : attestation de la production ou
+ * éléments cités par des fiches) se dit en une ou deux phrases et le détail par table, jamais un nom de fiche ; toute autre erreur garde le message du service.
+ */
+function direLErreur(erreur, err) {
+  const refus = messageDuRefus(err.corps?.refus);
+  erreur.textContent = refus ? refus.texte : err.message;
+  erreur.hidden = false;
+  let liste = erreur.parentNode?.querySelector?.('[data-refus]');
+  if (liste) liste.remove();
+  if (!refus?.lignes.length) return;
+  liste = document.createElement('ul');
+  liste.setAttribute('data-refus', '');
+  for (const ligne of refus.lignes) {
+    const li = document.createElement('li');
+    li.textContent = ligne;
+    liste.append(li);
+  }
+  erreur.after(liste);
+}
+
+/**
+ * « Copier vers le dépôt » (base source seulement) : ce que fait la copie, et le mot à taper (`confirmation_copie`). Le service fige un paquet du contenu du
+ * site de dev et GitHub le fusionne dans dev ; aucune maintenance, aucune livraison, aucune version.
+ */
+function confirmerLaCopie() {
+  const mot = motDeLaCopie(donnees);
+  if (!mot) return;
+  const dialogue = document.createElement('dialog');
+  dialogue.className = 'nv-dialogue';
+  dialogue.innerHTML = `<form method="dialog">
+    <h2>Copier vers le dépôt</h2>
+    <p>${echapper(PHRASE_DE_LA_COPIE)} Les pages sont refaites dans la branche dev du dépôt (une PR, fusionnée automatiquement si les tests passent) ; le contenu
+    copié part en production avec la prochaine mise à jour. Les modifications du site de dev restent en attente : une copie n’écrit ni note de version ni version.</p>
+    <p>Pour confirmer, tapez <strong>${echapper(mot)}</strong> :</p>
+    <input name="mot" autocomplete="off" required>
+    <p class="nv-message nv-message--erreur" data-erreur hidden></p>
+    <div class="nv-dev__actions"><button type="button" value="annuler">Annuler</button><button type="submit" class="nv-principal">Copier vers le dépôt</button></div>
+  </form>`;
+  racine.append(dialogue);
+  const erreur = dialogue.querySelector('[data-erreur]');
+  dialogue.querySelector('[value="annuler"]').addEventListener('click', () => dialogue.close());
+  dialogue.addEventListener('close', () => dialogue.remove());
+  dialogue.querySelector('form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const saisi = dialogue.querySelector('input').value.trim();
+    if (saisi !== mot) {
+      erreur.textContent = `Tapez exactement « ${mot} ».`;
       erreur.hidden = false;
+      return;
+    }
+    try {
+      await appel('POST', 'mise-a-jour/copier/', { confirmation: saisi });
+      dialogue.close();
+      await charger(); // le lancement de la copie est affiché et suivi ; le texte libre reste libre (rien n'est figé pour une copie)
+    } catch (err) {
+      direLErreur(erreur, err);
     }
   });
   dialogue.showModal();

@@ -62,7 +62,7 @@ const TABLE = [
   // lot pendant une maintenance) ; les lots en conflit, eux, sont l'outil de résolution
   [LECTURE, /^\/api\/mise-a-jour(\/lancement)?$/, 'ouverte'],
   [LECTURE, /^\/api\/mise-a-jour\/conflits$/, 'lecture'],
-  [['POST'], /^\/api\/mise-a-jour\/(brouillon|majeure|lancer|liberer|conflits)$/, 'ecriture'],
+  [['POST'], /^\/api\/mise-a-jour\/(brouillon|majeure|lancer|liberer|conflits|copier)$/, 'ecriture'],
   // page Debug : le contenu de toutes les tables, fiches, comptes et groupes compris
   [LECTURE, /^\/api\/debug\/(journal|systeme|base|structure|atelier|metriques|metriques\/(requetes|export)|tables|tables\/[^/]+)$/, 'lecture'],
   // API REST

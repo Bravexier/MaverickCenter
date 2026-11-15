@@ -12,7 +12,7 @@ import { attendre, el, fauxDocument } from './aide-faux-dom.mjs';
 let numero = 0;
 
 /** Un faux service : GET etat/ et mise-a-jour/, POST mise-a-jour/majeure/ ; `appels` : les requêtes reçues (méthode, chemin, corps). */
-function fauxService({ lot = null } = {}) {
+function fauxService({ lot = null, baseSource = false, lancement = null, refus = null } = {}) {
   const etat = { majeure: false, appels: [] };
   const note = () => ({
     reference: { disponible: true, version: '0.3.0' }, version_dev: '0.3.70', version_cible: etat.majeure ? '1.0' : '0.4', version_mineure: '0.4',
@@ -24,7 +24,17 @@ function fauxService({ lot = null } = {}) {
     etat.appels.push({ methode: init.method ?? 'GET', chemin, corps });
     const json = (statut, donnees) => new Response(JSON.stringify(donnees), { status: statut, headers: { 'Content-Type': 'application/json' } });
     if (chemin === 'etat/') return json(200, { edition: true });
-    if (chemin === 'mise-a-jour/') return json(200, { ...note(), lancement: null, liberable: false, occupe: false, github: { configure: true }, confirmation: 'METTRE A JOUR' });
+    if (chemin === 'mise-a-jour/') {
+      return json(200, { ...note(), lancement, liberable: false, occupe: false, github: { configure: true }, confirmation: 'METTRE A JOUR',
+        ...(baseSource === null ? {} : { base_source: baseSource, ...(baseSource ? { confirmation_copie: 'COPIER VERS LE DEPOT' } : {}) }) });
+    }
+    // un refus avant l'envoi (lot 8) : 409 avec `refus`, et le message du service (qu'on n'affiche pas quand `refus` se lit)
+    if (refus && init.method === 'POST' && ['mise-a-jour/lancer/', 'mise-a-jour/copier/'].includes(chemin)) return json(409, { erreur: 'Refusé avant l’envoi : message du service.', refus });
+    if (chemin === 'mise-a-jour/copier/' && init.method === 'POST') {
+      if (!baseSource) return json(409, { erreur: 'Pas de base source.' });
+      if (corps.confirmation !== 'COPIER VERS LE DEPOT') return json(400, { erreur: 'Confirmation absente.' });
+      return json(202, { lancement: { lot: 'c', etat: 'envoi', mode: 'copie', copie: true, version_cible: null }, github: { configure: true } });
+    }
     if (chemin === 'maintenance/') return json(200, { active: false });
     if (chemin === 'mise-a-jour/lancer/' && init.method === 'POST') {
       if (corps.version_cible !== note().version_cible) return json(409, { erreur: 'La version en préparation a changé : rechargez la page.' });
@@ -165,4 +175,131 @@ test('« Effectuer la mise à jour » envoie la version montrée : le service re
 test('un lot figé (mise à jour en cours) fige la case', async () => {
   const p = await monter({ lot: '11111111-2222-3333-4444-555555555555' });
   assert.equal(p.caseMajeure().hasAttribute('disabled'), true);
+});
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+// Base source (lot 8) : « Copier vers le dépôt », refus avant l'envoi, encart d'une copie ou d'un paquet reporté
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+const soumettre = (d) => d.querySelector('form').dispatchEvent(new Event('submit', { cancelable: true }));
+const copier = (p) => p.zone.querySelector('[data-nv-copier]');
+
+test('sans base source, la page est celle d’avant : ni bouton « Copier vers le dépôt », ni phrase', async () => {
+  for (const baseSource of [false, null]) {
+    const p = await monter({ baseSource });
+    assert.equal(copier(p), null);
+    assert.equal(p.zone.querySelector('[data-nv-copie-aide]'), null);
+    assert.doesNotMatch(p.zone.textContent, /Copier vers le dépôt/);
+    assert.ok(p.zone.querySelector('[data-nv-simuler]') && p.zone.querySelector('[data-nv-lancer]'));
+  }
+});
+
+test('avec une base source : le bouton est à côté des deux autres, avec sa phrase ; un lancement en cours le grise', async () => {
+  const p = await monter({ baseSource: true });
+  const bouton = copier(p);
+  assert.ok(bouton, 'le bouton');
+  assert.equal(bouton.textContent, 'Copier vers le dépôt');
+  assert.equal(bouton.parentNode, p.zone.querySelector('[data-nv-lancer]').parentNode, 'à côté de « Effectuer la mise à jour »');
+  assert.equal(bouton.hasAttribute('disabled'), false);
+  assert.match(p.zone.querySelector('[data-nv-copie-aide]').textContent, /Refait les pages du site de dev avec le contenu du jour, sans rien livrer en production/i);
+  const occupe = await monter({ baseSource: true, lot: '11111111-2222-3333-4444-555555555555' });
+  assert.equal(copier(occupe).hasAttribute('disabled'), true, 'un lot figé occupe la place');
+});
+
+test('« Copier vers le dépôt » : le mot à taper est celui du service ; un autre mot n’envoie rien ; le bon envoie { confirmation } à copier/ sans version ni maintenance', async () => {
+  const p = await monter({ baseSource: true });
+  copier(p).dispatchEvent(new Event('click'));
+  const d = p.dialogue();
+  assert.ok(d?.ouvert);
+  assert.match(d.textContent, /COPIER VERS LE DEPOT/);
+  assert.match(d.textContent, /sans rien livrer en production/);
+  d.querySelector('input').value = 'METTRE A JOUR';
+  soumettre(d);
+  await reponses();
+  assert.deepEqual(p.ecritures(), [], 'un mauvais mot n’envoie rien');
+  assert.equal(d.querySelector('[data-erreur]').hidden, false);
+  assert.match(d.querySelector('[data-erreur]').textContent, /COPIER VERS LE DEPOT/);
+  d.querySelector('input').value = ' COPIER VERS LE DEPOT ';
+  soumettre(d);
+  await reponses();
+  assert.deepEqual(p.ecritures(), [{ methode: 'POST', chemin: 'mise-a-jour/copier/', corps: { confirmation: 'COPIER VERS LE DEPOT' } }]);
+  assert.equal(p.dialogue(), null, 'confirmation fermée');
+  assert.equal(p.service.appels.some((a) => a.chemin === 'maintenance/'), false, 'une copie ne passe pas par la maintenance');
+  assert.ok(p.service.appels.filter((a) => a.chemin === 'mise-a-jour/').length >= 2, 'la page est relue');
+});
+
+test('« Annuler » dans la confirmation de la copie : rien n’est envoyé', async () => {
+  const p = await monter({ baseSource: true });
+  copier(p).dispatchEvent(new Event('click'));
+  p.dialogue().querySelector('[value="annuler"]').dispatchEvent(new Event('click'));
+  await reponses();
+  assert.equal(p.dialogue(), null);
+  assert.deepEqual(p.ecritures(), []);
+});
+
+test('un refus de citations (409) se dit en une phrase, puis une ligne par table, sans nom de fiche ; le dialogue reste ouvert', async () => {
+  const refus = { raison: 'citations', elements: 3, fiches: 7, tables: [{ table: 'don', elements: 2, fiches: 5 }, { table: 'race', elements: 1, fiches: 2 }] };
+  const p = await monter({ baseSource: true, refus });
+  for (const [bouton, mot] of [['[data-nv-copier]', 'COPIER VERS LE DEPOT'], ['[data-nv-lancer]', 'METTRE A JOUR']]) {
+    p.zone.querySelector(bouton).dispatchEvent(new Event('click'));
+    const d = p.dialogue();
+    d.querySelector('input').value = mot;
+    soumettre(d);
+    await reponses();
+    assert.ok(p.dialogue(), 'le dialogue reste ouvert');
+    const erreur = p.dialogue().querySelector('[data-erreur]');
+    assert.equal(erreur.hidden, false);
+    assert.match(erreur.textContent, /^3 éléments cités par 7 fiches de la production manqueraient/);
+    assert.doesNotMatch(erreur.textContent, /question 9|message du service/, 'la phrase vient de `refus`, pas du texte du service');
+    assert.deepEqual([...p.dialogue().querySelectorAll('[data-refus] li')].map((li) => li.textContent), ['don : 2 éléments, 5 fiches', 'race : 1 élément, 2 fiches']);
+    // un second refus remplace le détail au lieu de l'ajouter
+    soumettre(p.dialogue());
+    await reponses();
+    assert.equal(p.dialogue().querySelectorAll('[data-refus]').length, 1);
+    p.dialogue().querySelector('[value="annuler"]').dispatchEvent(new Event('click'));
+  }
+});
+
+test('un refus d’attestation dit le message de la production ; la Simulation le dit aussi ; une erreur sans refus garde le message du service', async () => {
+  const refus = { raison: 'attestation', etat: 'pas_appliquee', raison_production: 'x', message: 'Refusé avant l’envoi : la production n’a pas appliqué sa dernière mise à jour.' };
+  const p = await monter({ baseSource: true, refus });
+  p.zone.querySelector('[data-nv-simuler]').dispatchEvent(new Event('click'));
+  soumettre(p.dialogue());
+  await reponses();
+  assert.equal(p.dialogue().querySelector('[data-erreur]').textContent, refus.message);
+  assert.equal(p.dialogue().querySelector('[data-refus]'), null, 'pas de liste pour une attestation');
+  // sans `refus` lisible, le message du service est dit tel quel
+  const q = await monter({ baseSource: true, refus: { raison: 'autre' } });
+  copier(q).dispatchEvent(new Event('click'));
+  q.dialogue().querySelector('input').value = 'COPIER VERS LE DEPOT';
+  soumettre(q.dialogue());
+  await reponses();
+  assert.match(q.dialogue().querySelector('[data-erreur]').textContent, /message du service/);
+});
+
+test('l’encart d’une copie dit « Dernière copie » sans version cible, et sa fin ne parle pas de livraison', async () => {
+  const p = await monter({ baseSource: true, lancement: { lot: 'c', etat: 'termine', mode: 'copie', copie: true, version_cible: null, lance_le: '2026-11-15T10:00:00Z' } });
+  const encart = p.zone.querySelector('.nv-lancement');
+  assert.ok(encart, 'la copie terminée reste affichée');
+  assert.match(encart.textContent, /Dernière copie/);
+  assert.match(encart.textContent, /2026-11-15T10:00:00Z/);
+  assert.doesNotMatch(encart.textContent, /V\?|V\d|Dernier lancement/);
+  assert.match(encart.textContent, /Copie terminée/);
+  assert.match(encart.textContent, /Rien n’a été livré en production/);
+});
+
+test('l’encart d’une mise à jour reportée dit « reportée le … » ; une erreur de report est dite', async () => {
+  const lancement = { lot: 'm', etat: 'termine', mode: 'mise-a-jour', paquet: true, version_cible: '0.4', lance_le: '2026-11-14T10:00:00Z',
+    reporte_le: '2026-11-15T08:15:00Z', report: { historique: 3, integrees: 2, deja: false } };
+  const p = await monter({ baseSource: true, lancement });
+  const texte = p.zone.querySelector('.nv-lancement').textContent;
+  assert.match(texte, /Dernier lancement \(V0\.4/);
+  assert.match(texte, /reportée le 15 novembre 2026/);
+  assert.match(texte, /3 traces d’historique, 2 modifications livrées/);
+  const q = await monter({ baseSource: true, lancement: { ...lancement, reporte_le: null, report: undefined, erreur_report: 'base occupée' } });
+  const encart = q.zone.querySelector('.nv-lancement');
+  assert.match(encart.textContent, /sera reportée/);
+  assert.match(encart.textContent, /report .*a échoué.*base occupée/);
+  // sans base source, un lancement ordinaire garde son texte d'avant
+  const r = await monter({ baseSource: false, lancement: { lot: 'o', etat: 'termine', version_cible: '0.4', lance_le: '2026-11-14T10:00:00Z' } });
+  assert.match(r.zone.querySelector('.nv-lancement').textContent, /Le site de dev se met à jour de lui-même/);
 });

@@ -10,7 +10,7 @@ import { test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import {
-  TOLERANCE_DE_LA_MISE_A_JOUR_MS, citationsDesFiches, ecrireAttestation, empreintesDuFichier, etatDeLaProduction, fabriquerAttestation, fichierAttestation, lireAttestation,
+  INTERVALLE_DE_L_ATTESTATION_MS, TOLERANCE_DE_LA_MISE_A_JOUR_MS, citationsDesFiches, ecrireAttestation, empreintesDuFichier, etatDeLaProduction, fabriquerAttestation, fichierAttestation, lireAttestation,
 } from '../serveur/attestation.mjs';
 import { demarrerService } from '../serveur/service.mjs';
 import { enregistrerFiche } from '../serveur/fiches.mjs';
@@ -335,5 +335,34 @@ test('un échec d’écriture de l’attestation n’empêche pas le service de 
     assert.ok(!existsSync(join(racine2, 'm', fichierAttestation('prod'))));
   } finally {
     await inactive.arreter();
+  }
+});
+
+test('la production réécrit son attestation à intervalle régulier (une heure par défaut) : une fiche enregistrée depuis le démarrage y compte', async (t) => {
+  assert.equal(INTERVALLE_DE_L_ATTESTATION_MS, 60 * 60 * 1000);
+  const racine = dossierTemporaire('attestation-periodique', { t });
+  const regles = join(racine, 'regles.db');
+  copyFileSync(REGLES, regles);
+  const metriques = join(racine, 'metriques');
+  const s = await demarrerService({ regles, dossier: join(racine, 'prod'), port: 0, intervalle: 0, journal: () => {}, tipeee: false, metriques: false,
+    attestation: { dossier: metriques, intervalle: 40 } });
+  try {
+    const lire = () => JSON.parse(readFileSync(join(metriques, fichierAttestation('prod')), 'utf8'));
+    const lecture = new DatabaseSync(regles, { readOnly: true });
+    const race = lecture.prepare('SELECT id FROM race ORDER BY id LIMIT 1').get().id;
+    lecture.close();
+    const citee = (a) => a.citations.find((c) => c.table === 'race' && c.id === race)?.fiches ?? 0;
+    assert.equal(citee(lire()), 0, 'aucune fiche au démarrage');
+    const creee = await fetch(`${s.url}/api/personnages`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nom: 'Zqx périodique', race_id: race }) });
+    assert.equal(creee.status, 201);
+    let a = lire();
+    for (let i = 0; i < 100 && citee(a) === 0; i += 1) {
+      await new Promise((ok) => { setTimeout(ok, 20); });
+      a = lire();
+    }
+    assert.equal(citee(a), 1, 'la fiche enregistrée après le démarrage est comptée par la réécriture');
+    assert.equal(a.preparation.appliquee, true, 'la dernière préparation, redite telle quelle');
+  } finally {
+    await s.arreter();
   }
 });

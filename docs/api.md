@@ -565,7 +565,9 @@ l'onglet se voit), relève la version de la base toutes les 2 s et ne relit nomb
    tableau **replié** des tables qui changent (lignes ajoutées, retirées, modifiées) avec le nombre de tables inchangées. *Essai dans l'ombre* :
    verdict en toutes lettres (`identique` ok ; `attendu` normal, avec une phrase : le contenu arrive encore par le dépôt jusqu'au lot 8 ; `ecart`,
    `refuse`, `indisponible` en alerte « À examiner »), versions du site et de la base, migrations, chiffres par catégorie, tableau des tables qui
-   diffèrent (catégorie, gravité, lignes, raison). `403` (pas le site de dev), `503`, `ombre: null` : un message neutre. Rendu pur :
+   diffèrent (catégorie, gravité, lignes, raison). *Base source* (lot 8, en tête du bloc, d'après `base_source: { source, sur_place }` de la même route) :
+   « Base source : oui » ou « non » et, si le service en donne une, la dernière application des migrations sur place (date, versions de la base,
+   migrations, sauvegarde) ; un service d'avant, sans `base_source`, n'a pas cette partie. `403` (pas le site de dev), `503`, `ombre: null` : un message neutre. Rendu pur :
    `lib/debug-structure.mjs` ; script : `scripts/debug-structure.mjs` (n'importe que ce module, qu'aucun autre script n'importe) ; test :
    `debug-structure.test.mjs`.
    **Fabrication témoin** (bloc suivant, même menu DB, lot 9, un seul `GET /api/debug/atelier/` à l'ouverture puis à « Actualiser », jamais relevé) :

@@ -33,6 +33,11 @@ export const INSTANCE_DE_PRODUCTION = 'prod';
  * `en_cours`, sans alerte. Au-delà, `pas_appliquee`.
  */
 export const TOLERANCE_DE_LA_MISE_A_JOUR_MS = 10 * 60 * 1000;
+/**
+ * La production réécrit aussi son attestation toutes les heures (décision de leader-technique, lot 8) : une fiche enregistrée depuis le démarrage compte
+ * alors dans `citations` avant qu'une mise à jour par paquet ne soit jugée (serveur/paquet.mjs#citationsManquantes). Même fonction, même écriture.
+ */
+export const INTERVALLE_DE_L_ATTESTATION_MS = 60 * 60 * 1000;
 /** Le nom du fichier d'une instance, dans le dossier partagé des métriques. */
 export const fichierAttestation = (instance) => `attestation-${instance}.json`;
 

@@ -1644,16 +1644,18 @@ test('les archives et la mise à jour : aucune famille de la palette ; leurs cou
   for (const [f, css] of [['archives.css', archives], ['mise-a-jour.css', maj]]) {
     assert.doesNotMatch(css, /:root|prefers-color-scheme|--nv-(?:vert|rouge)/, `${f} : ni bloc du thème, ni variable locale de couleur`);
   }
-  // les quatre boutons principaux sont couverts par la règle : trois boîtes ou boutons du script, « Résoudre ce lot » du rendu des conflits ; la page et ses
+  // les boutons principaux sont couverts par la règle : ceux des boîtes et de la page dans le script, « Résoudre ce lot » du rendu des conflits ; la page et ses
   // boîtes de dialogue sont dans .mise-a-jour (les boîtes y sont ajoutées), la section des conflits dans .nv-dev
   const script = lire('src/scripts/mise-a-jour.mjs');
   const boutons = [...script.matchAll(/<button type="(?:button|submit)" class="nv-principal"[^>]*>([^<]+)<\/button>/g)].map((m) => m[1]);
-  assert.deepEqual(boutons, ['Effectuer la mise à jour', 'Passer en version majeure', 'Lancer la simulation', 'Effectuer la mise à jour']);
+  // (« Copier vers le dépôt » : la confirmation de la copie, base source seulement, lot 8)
+  assert.deepEqual(boutons, ['Effectuer la mise à jour', 'Passer en version majeure', 'Lancer la simulation', 'Effectuer la mise à jour', 'Copier vers le dépôt']);
   // « Résoudre ce lot » : grisé (`disabled`) quand le lot attend un lot plus ancien (`bloque`), la classe du bouton principal dans les deux cas
   assert.match(lire('src/lib/conflits-rendu.mjs'), /<div class="nv-dev__actions"><button type="submit" class="nv-principal"(?:\$\{bloque \? ' disabled' : ''\})?>Résoudre ce lot<\/button><\/div>/);
   // … et la confirmation d'un lot de changements (« Appliquer », « Refuser » : le bouton principal est dans lib/lots-rendu.mjs#htmlDeLaConfirmation)
-  assert.equal((script.match(/dialogue\.className = 'nv-dialogue';/g) ?? []).length, 3);
-  assert.equal((script.match(/racine\.append\(dialogue\);/g) ?? []).length, 3);
+  // quatre boîtes du script : version majeure, mise à jour ou simulation, lot de changements, copie vers le dépôt (lot 8)
+  assert.equal((script.match(/dialogue\.className = 'nv-dialogue';/g) ?? []).length, 4);
+  assert.equal((script.match(/racine\.append\(dialogue\);/g) ?? []).length, 4);
   assert.match(lire('src/lib/lots-rendu.mjs'), /<button type="submit" class="nv-principal">\$\{action === 'refuser' \? 'Refuser le lot' : 'Appliquer le lot'\}<\/button>/);
   assert.match(lire('src/lib/lots-rendu.mjs'), /<button type="button" class="nv-principal" data-nv-appliquer /);
   assert.ok(script.includes("const racine = document.querySelector('[data-mise-a-jour]');") && script.includes("const zone = racine.querySelector('[data-nv-dev]');")

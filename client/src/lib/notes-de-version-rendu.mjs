@@ -273,15 +273,135 @@ const LOT_DANS_DEV = ['fusionne', 'echec_livraison', 'termine'];
  * « Dernière simulation » ne parle que de la version en préparation — un lancement d'une autre version (la livraison précédente, terminée) n'y
  * apparaît plus. Il reste tant qu'il pèse sur la page, quelle que soit sa version : il bloque un nouveau lancement (`occupe`), tient le texte
  * figé (`brouillon.lot`), ou son lot, toujours servi au workflow, peut être annulé (`liberable` hors lot déjà dans dev : un lot livré resté sans
- * nouvelles 3 h est `liberable` pour toujours, et n'a plus rien à libérer une fois le texte rendu) ; sans lui, la page ne dirait plus pourquoi.
+ * nouvelles 3 h est `liberable` pour toujours, et n'a plus rien à libérer une fois le texte rendu) ; sans lui, la page ne dirait plus pourquoi. Une copie
+ * vers le dépôt (`mode: 'copie'`, sans version cible) reste affichée : c'est le dernier lancement, et aucune version ne la périme.
  * @param {{ lancement?: { lot?: string, version_cible?: string, etat?: string } | null, version_cible?: string, occupe?: boolean, liberable?: boolean, brouillon?: { lot?: string | null } | null }} donnees réponse de GET /api/mise-a-jour/
  */
 export function lancementAffiche({ lancement, version_cible: versionCible, occupe = false, liberable = false, brouillon = null }) {
   if (!lancement) return null;
   if (lancement.version_cible === versionCible) return lancement;
+  // une copie vers le dépôt (base source) n'a pas de version cible : elle ne parle d'aucune version en préparation, et c'est le dernier lancement
+  if (modeDuLancement(lancement) === 'copie') return lancement;
   const tientLeTexte = Boolean(brouillon?.lot) && brouillon.lot === lancement.lot;
   const annulable = liberable && !LOT_DANS_DEV.includes(lancement.etat);
   return occupe || tientLeTexte || annulable ? lancement : null;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+// Base source (lot 8) : « Copier vers le dépôt », refus avant l'envoi, lancement d'un paquet
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+// Rien de cela ne paraît sans le marqueur `db/source` : `GET /api/mise-a-jour/` porte alors `base_source: false`, et ces fonctions ne sont pas appelées
+// (ou rendent ce que la page disait déjà). Texte pur : le script de la page le pose par `textContent` ou le passe par `echapper`.
+
+/** La phrase qui dit ce que fait « Copier vers le dépôt » (à côté des boutons, et dans sa confirmation). */
+export const PHRASE_DE_LA_COPIE = 'Refait les pages du site de dev avec le contenu du jour, sans rien livrer en production.';
+
+/**
+ * Faut-il montrer « Copier vers le dépôt » ? Seulement quand le service dit `base_source: true` et donne le mot à taper (`confirmation_copie`) ; une
+ * réponse d'avant (sans l'un ou l'autre) laisse la page comme elle était. Rend le mot, ou null.
+ * @param {{ base_source?: unknown, confirmation_copie?: unknown } | null | undefined} donnees réponse de GET /api/mise-a-jour/
+ */
+export function motDeLaCopie(donnees) {
+  if (donnees?.base_source !== true) return null;
+  const mot = donnees.confirmation_copie;
+  return typeof mot === 'string' && mot.trim() ? mot : null;
+}
+
+/** Le mode d'un lancement : `copie`, `simulation` ou `mise-a-jour` (le champ `mode` du service, sinon ses drapeaux : un lancement d'avant n'a pas de `mode`). */
+export function modeDuLancement(lancement) {
+  const mode = lancement?.mode;
+  if (mode === 'copie' || mode === 'simulation' || mode === 'mise-a-jour') return mode;
+  return lancement?.copie ? 'copie' : lancement?.simulation ? 'simulation' : 'mise-a-jour';
+}
+
+/**
+ * L'en-tête de l'encart du dernier lancement : { titre, precision }. « Dernier lancement » ou « Dernière simulation » (version cible et date) ; « Dernière
+ * copie » (la date seule : une copie n'a pas de version cible).
+ */
+export function enteteDuLancement(lancement) {
+  const mode = modeDuLancement(lancement);
+  const date = String(lancement?.lance_le ?? '');
+  if (mode === 'copie') return { titre: 'Dernière copie', precision: date };
+  return { titre: mode === 'simulation' ? 'Dernière simulation' : 'Dernier lancement', precision: `V${lancement?.version_cible ?? '?'}, ${date}` };
+}
+
+/** Ce que dit l'encart d'un lancement de copie, état par état ; un état absent d'ici se lit comme celui des autres lancements. */
+export const ETATS_DE_LA_COPIE = {
+  envoi: 'Copie préparée, envoi à GitHub…',
+  lance: 'Workflow déclenché sur GitHub : en attente de démarrage.',
+  en_cours: 'Copie en cours sur GitHub (PR vers dev, tests, fusion dans dev).',
+  fusionne: 'Le contenu du site de dev est fusionné dans dev ; la fin du travail sur GitHub est en cours.',
+  termine: 'Copie terminée : le contenu du site de dev est fusionné dans dev. Rien n’a été livré en production ; il y partira avec la prochaine livraison dev → master.',
+  echec: 'La copie a échoué sur GitHub avant d’entrer dans dev : rien n’a été fusionné. Le journal du workflow dit pourquoi ; vous pouvez annuler ce lancement.',
+  annule: 'Copie annulée.',
+};
+
+const nombreOuNull = (v) => (Number.isFinite(v) && v >= 0 ? v : null);
+const pluriel = (n, un, plusieurs) => `${n} ${n > 1 ? plusieurs : un}`;
+
+/**
+ * La phrase de fin d'une mise à jour faite depuis la base source : « reporté le … » quand la note et l'historique ont été reportés dans la base
+ * (`reporte_le`, `report`), avec ce qui a été reporté ; sinon, que le report attend l'installation par la production. Vide pour tout autre lancement.
+ */
+export function phraseDuReport(lancement) {
+  const l = lancement ?? {};
+  if (!l.paquet || modeDuLancement(l) !== 'mise-a-jour' || l.etat !== 'termine') return '';
+  if (!l.reporte_le) return 'Mise à jour terminée : fusionnée dans dev puis livrée sur master. La note de version sera reportée dans la base du site de dev quand la production aura installé cette version.';
+  const jour = /^\d{4}-\d{2}-\d{2}/.exec(String(l.reporte_le))?.[0];
+  const le = jour && !Number.isNaN(Date.parse(`${jour}T00:00:00Z`)) ? ` le ${dateLisible(jour)}` : '';
+  const historique = nombreOuNull(l.report?.historique);
+  const integrees = nombreOuNull(l.report?.integrees);
+  const comptes = [
+    historique === null ? '' : pluriel(historique, 'trace d’historique', 'traces d’historique'),
+    integrees === null ? '' : pluriel(integrees, 'modification livrée', 'modifications livrées'),
+  ].filter(Boolean).join(', ');
+  return `Mise à jour terminée : livrée sur master, puis reportée${le} dans la base du site de dev (note de version et historique${comptes ? ` : ${comptes}` : ''}).`;
+}
+
+/**
+ * Le texte d'un état de lancement. `etats` : la table de la page (état → texte) pour les lancements ordinaires ; une copie et une mise à jour depuis la
+ * base source ont les leurs.
+ */
+export function texteDeLEtat(lancement, etats) {
+  const mode = modeDuLancement(lancement);
+  const etat = lancement?.etat;
+  if (mode === 'copie' && Object.hasOwn(ETATS_DE_LA_COPIE, etat)) return ETATS_DE_LA_COPIE[etat];
+  const report = phraseDuReport(lancement);
+  if (report) return report;
+  return etats?.[etat] ?? String(etat ?? '');
+}
+
+/** L'erreur du report de la note dans la base (`erreur_report`), à dire sous l'état ; vide sans erreur. */
+export function erreurDuReport(lancement) {
+  const e = lancement?.erreur_report;
+  return typeof e === 'string' && e.trim() ? `Le report de la note dans la base du site de dev a échoué (il sera retenté) : ${e.trim()}` : '';
+}
+
+/**
+ * Ce que la page dit d'un refus avant l'envoi (`409 { erreur, refus }` de « Effectuer la mise à jour », de la Simulation et de « Copier vers le
+ * dépôt ») : { texte, lignes } — une ou deux phrases, puis le détail par table. Jamais un nom de fiche (le service n'en donne pas). Sans `refus`
+ * lisible, null : la page dit alors le message d'erreur du service.
+ *   - attestation : le `message` du service ;
+ *   - citations : « N éléments cités par M fiches de la production manqueraient », puis une ligne par table.
+ * @param {unknown} refus `refus` du corps de la réponse
+ * @returns {{ texte: string, lignes: string[] } | null}
+ */
+export function messageDuRefus(refus) {
+  if (!refus || typeof refus !== 'object') return null;
+  if (refus.raison === 'attestation') {
+    const message = typeof refus.message === 'string' ? refus.message.trim() : '';
+    return message ? { texte: message, lignes: [] } : null;
+  }
+  if (refus.raison !== 'citations') return null;
+  const elements = nombreOuNull(refus.elements);
+  const fiches = nombreOuNull(refus.fiches);
+  if (elements === null || fiches === null) return null;
+  const texte = `${pluriel(elements, 'élément cité', 'éléments cités')} par ${pluriel(fiches, 'fiche', 'fiches')} de la production ${elements > 1 ? 'manqueraient' : 'manquerait'}. Rien n’a été envoyé.`;
+  const tables = Array.isArray(refus.tables) ? refus.tables : [];
+  const lignes = tables
+    .filter((t) => t && typeof t === 'object' && typeof t.table === 'string' && t.table)
+    .map((t) => `${t.table} : ${pluriel(nombreOuNull(t.elements) ?? 0, 'élément', 'éléments')}, ${pluriel(nombreOuNull(t.fiches) ?? 0, 'fiche', 'fiches')}`);
+  return { texte, lignes };
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------

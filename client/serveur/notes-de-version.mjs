@@ -145,7 +145,7 @@ function tablesDeReference(chemin) {
 }
 
 /** Le brouillon de la note (champ libre et case « Version majeure ») : { texte, modifie_le, lot, majeure }. */
-function lireBrouillon(db) {
+export function lireBrouillon(db) {
   const b = db.prepare('SELECT texte, modifie_le, lot, majeure FROM note_version_brouillon WHERE id = 1').get();
   return { texte: b?.texte ?? null, modifie_le: b?.modifie_le ?? null, lot: b?.lot ?? null, majeure: b?.majeure === 1 };
 }
@@ -305,7 +305,7 @@ export function lireLancement(dossier) {
   }
 }
 
-function ecrireLancement(dossier, etat) {
+export function ecrireLancement(dossier, etat) {
   mkdirSync(dossierLots(dossier), { recursive: true });
   const chemin = join(dossierLots(dossier), FICHIER_LANCEMENT);
   writeFileSync(`${chemin}.tmp`, `${JSON.stringify(etat, null, 2)}\n`);
@@ -317,7 +317,7 @@ function ecrireLancement(dossier, etat) {
  * Met à jour l'état du lancement SEULEMENT s'il porte toujours le lot `lot` et l'un des états `si` : un suivi en arrière-plan ou un déclenchement
  * qui revient après une annulation (ou après qu'un autre lot a pris la place) ne réécrit jamais un état plus récent. Rend l'état actuel.
  */
-function modifierLancement(dossier, lot, si, changement) {
+export function modifierLancement(dossier, lot, si, changement) {
   const actuel = lireLancement(dossier);
   if (!actuel || actuel.lot !== lot || (si && !si.includes(actuel.etat))) return actuel;
   return ecrireLancement(dossier, { ...actuel, ...changement(actuel) });
@@ -342,13 +342,22 @@ export function estLiberable(l, instant) {
 }
 
 const fichierLot = (dossier, id, suffixe = '') => join(dossierLots(dossier), `${id}${suffixe}.json`);
+/**
+ * Le paquet d'un lancement depuis la base source (lot 8 : serveur/paquet.mjs) : un fichier SQLite, `<id>.db`, à côté des lots figés. `suffixe` : celui
+ * d'un paquet retiré (`.annule`, `.simulation`).
+ */
+export const fichierPaquet = (dossier, id, suffixe = '') => join(dossierLots(dossier), `${id}${suffixe}.db`);
+/** Le dossier des lots figés et des paquets (db/mise-a-jour/). */
+export const dossierDesLots = (dossier) => dossierLots(dossier);
 
-/** Retire le lot du service (il n'est plus téléchargeable) : renommé, gardé pour l'enquête. */
+/** Retire le lot du service (il n'est plus téléchargeable) : renommé, gardé pour l'enquête ; le paquet d'un lancement depuis la base source aussi. */
 function retirerLot(dossier, id, suffixe) {
-  try {
-    renameSync(fichierLot(dossier, id), fichierLot(dossier, id, suffixe));
-  } catch {
-    // déjà retiré
+  for (const [de, vers] of [[fichierLot(dossier, id), fichierLot(dossier, id, suffixe)], [fichierPaquet(dossier, id), fichierPaquet(dossier, id, suffixe)]]) {
+    try {
+      renameSync(de, vers);
+    } catch {
+      // déjà retiré, ou absent (un lot figé n'a pas de paquet, un paquet n'a pas de lot figé)
+    }
   }
 }
 
@@ -361,7 +370,8 @@ export function lireLot(dossier, id) {
   const l = lireLancement(dossier);
   if (!l || l.lot !== id || LOT_RETIRE.includes(l.etat)) return null;
   try {
-    return readFileSync(fichierLot(dossier, id), 'utf8');
+    // le paquet d'un lancement depuis la base source (serveur/paquet.mjs) : ses octets tels quels (un Buffer), que son empreinte couvre
+    return l.paquet ? readFileSync(fichierPaquet(dossier, id)) : readFileSync(fichierLot(dossier, id), 'utf8');
   } catch {
     return null;
   }
@@ -376,8 +386,39 @@ export function lireLot(dossier, id) {
  * mise à jour sans rien à livrer est refusée.
  */
 export function figerLot(db, dossier, { versionDev, versionCible, instant, confirmation, adresse, etat = 'envoi', simulation = false, aLivrer = null,
-  limites = { delai: DELAI_ENTRE_LANCEMENTS, parJour: LANCEMENTS_PAR_JOUR } }) {
-  if (confirmation !== CONFIRMATION) throw new ErreurNotes(400, `Confirmation attendue : tapez « ${CONFIRMATION} ».`);
+  limites = LIMITES_DES_LANCEMENTS }) {
+  const { recents } = controlerLeLancement(db, dossier, { instant, confirmation, adresse, simulation, aLivrer, limites });
+  const id = randomUUID();
+  const journal = journalExporte(db);
+  for (const lot of journal.lots) for (const m of lot.modifications) delete m.apercu;
+  const brouillon = lireBrouillon(db);
+  const lot = {
+    format: 'maverick-mise-a-jour/1', id, cree_le: instant, version_dev: versionDev, version_cible: versionCible, simulation: Boolean(simulation),
+    majeure: brouillon.majeure, texte: brouillon.texte, journal,
+  };
+  const texte = `${JSON.stringify(lot)}\n`;
+  mkdirSync(dossierLots(dossier), { recursive: true });
+  writeFileSync(fichierLot(dossier, id), texte);
+  db.prepare(`INSERT INTO note_version_brouillon (id, texte, modifie_le, lot) VALUES (1, NULL, NULL, ?)
+              ON CONFLICT (id) DO UPDATE SET lot = excluded.lot`).run(id);
+  return ecrireLancement(dossier, {
+    lot: id, empreinte: sha256(texte), lance_le: instant, version_cible: versionCible, majeure: brouillon.majeure,
+    modifications: journal.lots.reduce((n, l) => n + l.modifications.length, 0), adresse: `${adresse}/api/mise-a-jour/lots/${id}/`,
+    etat, simulation: Boolean(simulation), run: null, erreur: null, suivi_le: null, lancements_recents: recents,
+  });
+}
+
+/** Le délai minimal entre deux lancements et le plafond par 24 h (le bouton n'a pas d'authentification) : figerLot et serveur/paquet.mjs#figerPaquet. */
+export const LIMITES_DES_LANCEMENTS = Object.freeze({ delai: DELAI_ENTRE_LANCEMENTS, parJour: LANCEMENTS_PAR_JOUR });
+
+/**
+ * Les contrôles d'un lancement, communs au lot figé (figerLot) et au paquet de la base source (serveur/paquet.mjs#figerPaquet) : le mot de confirmation
+ * (`attendue`), la place libre, aucun lot déjà figé, la cadence (`limites`), « Rien à livrer » pour une vraie mise à jour (`rienARefuser` : faux pour une
+ * copie vers le dépôt), l'adresse publique. Lève une ErreurNotes ; rend { precedent, recents } (les lancements des 24 dernières heures).
+ */
+export function controlerLeLancement(db, dossier, { instant, confirmation, adresse, simulation = false, aLivrer = null, limites = LIMITES_DES_LANCEMENTS,
+  attendue = CONFIRMATION, rienARefuser = true }) {
+  if (confirmation !== attendue) throw new ErreurNotes(400, `Confirmation attendue : tapez « ${attendue} ».`);
   const precedent = lireLancement(dossier);
   if (occupe(precedent, instant)) {
     const message = precedent.etat === 'echec_livraison'
@@ -400,28 +441,11 @@ export function figerLot(db, dossier, { versionDev, versionCible, instant, confi
     throw new ErreurNotes(429, `Déjà ${recents.length} lancements en 24 h (au plus ${limites.parJour}) : réessayez plus tard.`);
   }
   const enAttente = db.prepare("SELECT count(*) AS n FROM modification WHERE etat = 'en_attente'").get().n;
-  if (!simulation && aLivrer === 0 && enAttente === 0 && !lireBrouillon(db).texte) {
+  if (rienARefuser && !simulation && aLivrer === 0 && enAttente === 0 && !lireBrouillon(db).texte) {
     throw new ErreurNotes(400, 'Rien à livrer : aucune différence avec la production, aucune modification en attente, pas de texte.');
   }
   if (!adresse || !/^https?:\/\/[^/\s]+$/.test(adresse)) throw new ErreurNotes(500, 'Adresse publique du site de dev inconnue (MAVERICK_ADRESSE_PUBLIQUE).');
-  const id = randomUUID();
-  const journal = journalExporte(db);
-  for (const lot of journal.lots) for (const m of lot.modifications) delete m.apercu;
-  const brouillon = lireBrouillon(db);
-  const lot = {
-    format: 'maverick-mise-a-jour/1', id, cree_le: instant, version_dev: versionDev, version_cible: versionCible, simulation: Boolean(simulation),
-    majeure: brouillon.majeure, texte: brouillon.texte, journal,
-  };
-  const texte = `${JSON.stringify(lot)}\n`;
-  mkdirSync(dossierLots(dossier), { recursive: true });
-  writeFileSync(fichierLot(dossier, id), texte);
-  db.prepare(`INSERT INTO note_version_brouillon (id, texte, modifie_le, lot) VALUES (1, NULL, NULL, ?)
-              ON CONFLICT (id) DO UPDATE SET lot = excluded.lot`).run(id);
-  return ecrireLancement(dossier, {
-    lot: id, empreinte: sha256(texte), lance_le: instant, version_cible: versionCible, majeure: brouillon.majeure,
-    modifications: journal.lots.reduce((n, l) => n + l.modifications.length, 0), adresse: `${adresse}/api/mise-a-jour/lots/${id}/`,
-    etat, simulation: Boolean(simulation), run: null, erreur: null, suivi_le: null, lancements_recents: recents,
-  });
+  return { precedent, recents };
 }
 
 /**
@@ -481,6 +505,8 @@ export function actualiserLancement(db, dossier, { reference = null } = {}) {
     if (l.etat === 'echec') return terminerSimulation(db, dossier, l, 'simulation_echouee');
     return l;
   }
+  // un paquet de la base source (lot 8) : sa note n'entre dans la base qu'après la confirmation de la production (serveur/paquet.mjs#actualiser)
+  if (l.paquet) return l;
   const aNote = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'note_version'").get();
   const note = aNote ? db.prepare('SELECT version, texte FROM note_version WHERE lot = ? AND exemple = 0').get(l.lot) : null;
   if (!note) return l;
@@ -542,7 +568,8 @@ export function creerGithub({ dossier, depot, lireJeton, fetch: f = globalThis.f
           method: 'POST',
           // les entrées d'un workflow_dispatch sont des chaînes ; « essai » est l'entrée booléenne du workflow : la simulation de mise à jour,
           // qui applique et contrôle le lot sans rien pousser (le lot porte aussi `simulation` : le workflow refuse un désaccord)
-          body: JSON.stringify({ ref: 'dev', inputs: { lot: l.lot, empreinte: l.empreinte, adresse: l.adresse, essai: l.simulation ? 'true' : 'false' }, return_run_details: true }),
+          // « copie » (lot 8 : « Copier vers le dépôt », un paquet de la base source) n'est envoyée que pour une copie : un lancement d'avant reste identique
+          body: JSON.stringify({ ref: 'dev', inputs: { lot: l.lot, empreinte: l.empreinte, adresse: l.adresse, essai: l.simulation ? 'true' : 'false', ...(l.copie ? { copie: 'true' } : {}) }, return_run_details: true }),
         });
         if (r.status !== 200 && r.status !== 204) throw new Error(`GitHub a répondu ${r.status} : ${(await r.text()).slice(0, 300)}`);
         const details = r.status === 200 ? await r.json() : {};

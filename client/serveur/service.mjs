@@ -31,7 +31,8 @@ import { instant as maintenant } from './instant.mjs';
 import { DOSSIER_ARCHIVES, FICHIER_BASE, lireEtat, ouvrirBaseVivante, preparerBaseVivante, signature } from './base-vivante.mjs';
 import { ErreurBaseSource, estUneBaseSource, etatDeLaBaseSource, preparerBaseSource } from './base-source.mjs';
 import { annonceDuLancement, DUREE_MAX_MAINTENANCE, etatDeMaintenance, lireAnnonce, publierAnnonce } from './maintenance.mjs';
-import { actualiserLancement, creerGithub, lireLancement, lireReference, sansNouvelles, SUIVIS } from './notes-de-version.mjs';
+import { creerGithub, lireLancement, lireReference, sansNouvelles, SUIVIS } from './notes-de-version.mjs';
+import { actualiser } from './paquet.mjs';
 import {
   CAPACITE_REQUETES, creerMetriques, empreinteDePile, instanceDuService, INTERVALLE_VERSEMENT, limiteMemoire, methodeNormalisee, octetsDesImages, routeNormalisee,
 } from './metriques.mjs';
@@ -39,7 +40,7 @@ import { creerMesureSql } from './metriques-sql.mjs';
 import { creerClasseurEnLigne } from './classeur.mjs';
 import { creerTipeee } from './tipeee.mjs';
 import { compterLesConflits } from './edition-conflits.mjs';
-import { ecrireAttestation, fabriquerAttestation } from './attestation.mjs';
+import { ecrireAttestation, fabriquerAttestation, INTERVALLE_DE_L_ATTESTATION_MS } from './attestation.mjs';
 import { creerAtelier } from './atelier.mjs';
 import { creerExtrait } from './extrait.mjs';
 import { purgerLesEssais } from './edition-lots.mjs';
@@ -142,9 +143,10 @@ const inode = (chemin) => {
  * @param {false | { rapports?: string|null, delai?: number, intervalle?: number, fabriquer?: Function }} [o.atelier] l'atelier du site de dev (serveur/atelier.mjs, site de dev seulement) :
  *   `rapports` le dossier des rapports de root monté en lecture seule (par défaut MAVERICK_ATELIER, sinon aucun), `depot` le dépôt de l'atelier monté en lecture-écriture (par défaut MAVERICK_ATELIER_DEPOT, sinon aucun : pas d'extrait), `delai` entre un contenu changé et son extrait
  *   refait, `intervalle` des passages (0 : aucun, les tests appellent `atelier.passer()`), `fabriquer` remplace la fabrication de l'extrait (tests) ; false : aucun atelier
- * @param {false | { dossier?: string|null, publier?: boolean }} [o.attestation] l'attestation de la production (serveur/attestation.mjs) : `publier`
+ * @param {false | { dossier?: string|null, publier?: boolean, intervalle?: number }} [o.attestation] l'attestation de la production (serveur/attestation.mjs) : `publier`
  *   (par défaut : sans l'édition, c'est-à-dire en production) l'écrit dans `dossier` (par défaut le dossier des métriques, partagé entre les deux
- *   instances du VPS) au démarrage et après chaque reconstruction de la base vivante ; le site de dev y lit celle de la production (page « Mise à
+ *   instances du VPS) au démarrage, après chaque reconstruction de la base vivante, et toutes les `intervalle` ms (par défaut
+ *   INTERVALLE_DE_L_ATTESTATION_MS, une heure ; 0 : jamais) ; le site de dev y lit celle de la production (page « Mise à
  *   jour ») ; false : ni écriture ni lecture
  * @param {{ migrations?: string|null, schema?: string|null }} [o.structure] la base source (fichier `source` dans `dossier` : serveur/base-source.mjs) : les
  *   migrations et le schema.sql appliqués sur place au démarrage (undefined : ceux de la livraison, _serveur/data/ ; tests). Une base source absente, refusée
@@ -397,8 +399,10 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
    * L'attestation de la production (serveur/attestation.mjs), écrite après chaque préparation de la base vivante. Un échec n'empêche rien : le service
    * démarre, les fiches ne sont pas touchées (la base vivante n'est que lue), l'échec est noté.
    */
+  let dernierePreparation = null; // la dernière préparation de la base vivante : la réécriture de chaque heure la redit telle quelle
   function attester(preparation) {
     if (!publierAttestation) return;
+    dernierePreparation = preparation;
     const t0 = performance.now();
     try {
       const enregistre = lireEtat(dossier);
@@ -511,7 +515,7 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
     if (!edition) return;
     const recent = (l) => Boolean(l?.lot) && Date.now() - Date.parse(l.lance_le) <= DUREE_MAX_MAINTENANCE; // au-delà, plus rien à suivre ici
     try {
-      if (etat.db && recent(lireLancement(dossier))) actualiserLancement(etat.db, dossier, { reference: lireReference(referenceDuSite) });
+      if (etat.db && recent(lireLancement(dossier))) actualiser(etat.db, dossier, { reference: lireReference(referenceDuSite), journal });
     } catch (e) {
       journal(`ERREUR maintenance : suivi du lancement : ${e.message}`);
     }
@@ -692,12 +696,14 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
 
   let minuterie = null;
   let veilleDesDemandes = null;
+  let reattestation = null;
   let arrete = false;
   async function arreter() {
     if (arrete) return;
     arrete = true;
     if (minuterie) clearInterval(minuterie);
     if (veilleDesDemandes) clearInterval(veilleDesDemandes);
+    if (reattestation) clearInterval(reattestation);
     essaiDeStructure?.arreter();
     const ombreFinie = ombre?.arreter();
     const atelierFini = atelier?.arreter();
@@ -726,6 +732,15 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
       }
     }, passageDesDemandes);
     veilleDesDemandes.unref?.();
+  }
+
+  // l'attestation réécrite toutes les heures (production) : les fiches enregistrées depuis comptent ; un échec est noté, rien d'autre (attester)
+  const periodeDeLAttestation = reglagesAttestation?.intervalle ?? INTERVALLE_DE_L_ATTESTATION_MS;
+  if (publierAttestation && periodeDeLAttestation > 0) {
+    reattestation = setInterval(() => {
+      if (dernierePreparation) attester(dernierePreparation);
+    }, periodeDeLAttestation);
+    reattestation.unref?.();
   }
 
   if (intervalle > 0) {

@@ -87,7 +87,7 @@ test('le classement : lecture libre pour les pages, lecture avec clé pour le jo
       ['POST', '/api/edition/'], ['POST', '/api/maintenance/lever/'],
       ['POST', `/api/edition/lots/${UUID}/appliquer/`], ['POST', `/api/edition/lots/${UUID}/refuser/`], ['POST', `/api/edition/lots/${UUID}/annuler/`],
       ['POST', '/api/mise-a-jour/brouillon/'], ['POST', '/api/mise-a-jour/majeure/'], ['POST', '/api/mise-a-jour/lancer/'], ['POST', '/api/mise-a-jour/liberer/'],
-      ['POST', '/api/mise-a-jour/conflits/'],
+      ['POST', '/api/mise-a-jour/conflits/'], ['POST', '/api/mise-a-jour/copier/'], // « Copier vers le dépôt » (lot 8, base source)
       ['POST', '/api/personnages/'], ['PUT', '/api/personnages/essai/'], ['DELETE', '/api/personnages/essai/'],
       ['POST', '/api/v1/metiers/'], ['PATCH', '/api/v1/metiers/essai/'], ['DELETE', '/api/v1/metiers/essai/'],
     ],

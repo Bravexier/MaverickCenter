@@ -1,7 +1,7 @@
 name: Mise à jour des règles
 # Le nom de chaque run porte le lot : le service retrouve ainsi son run même si GitHub ne lui a pas rendu son identifiant au déclenchement
 # (client/serveur/notes-de-version.mjs#creerGithub, suivre).
-run-name: "Mise à jour des règles — lot ${{ inputs.lot }}${{ inputs.essai && ' (simulation)' || '' }}"
+run-name: "Mise à jour des règles — lot ${{ inputs.lot }}${{ inputs.essai && ' (simulation)' || '' }}${{ inputs.copie && ' (copie vers le dépôt)' || '' }}"
 
 # Page « Mise à jour » du site de dev (client/serveur/notes-de-version.mjs) : « Effectuer la mise à jour » (ou « Simulation de mise à jour »),
 # après confirmation, fige un lot (journal des modifications du site + champ libre + `simulation`), le sert à
@@ -54,6 +54,10 @@ on:
         required: true
       essai:
         description: Simulation de mise à jour (applique et contrôle le lot, vérifie le jeton, sans rien pousser ni fusionner) ; doit correspondre au lot
+        type: boolean
+        default: false
+      copie:
+        description: Copier vers le dépôt (un paquet de la base source sans note de version, fusionné dans dev seulement, jamais livré vers master) ; doit correspondre au paquet
         type: boolean
         default: false
 
@@ -120,6 +124,7 @@ jobs:
           EMPREINTE: ${{ inputs.empreinte }}
           ADRESSE: ${{ inputs.adresse }}
           ESSAI: ${{ inputs.essai }}
+          COPIE: ${{ inputs.copie }}
           HOTE_ATTENDU: ${{ vars.MISE_A_JOUR_HOTE || 'dev.maverick-jdr.com' }}
           ARTEFACT: ${{ runner.temp }}/mise-a-jour-preparation
         run: node client/scripts/mise-a-jour-github.mjs --phase preparer
@@ -218,12 +223,15 @@ jobs:
           EMPREINTE: ${{ inputs.empreinte }}
           ADRESSE: ${{ inputs.adresse }}
           ESSAI: ${{ inputs.essai }}
+          COPIE: ${{ inputs.copie }}
           HOTE_ATTENDU: ${{ vars.MISE_A_JOUR_HOTE || 'dev.maverick-jdr.com' }}
           ARTEFACT: ${{ runner.temp }}/mise-a-jour-preparation
         run: node client/scripts/mise-a-jour-github.mjs --phase dev
 
       - name: Livraison vers master
         id: master
+        # une copie vers le dépôt n'entre que dans dev (le script le refuse aussi) ; sans fonction d'état, la condition garde success()
+        if: ${{ !inputs.copie }}
         env:
           GH_TOKEN: ${{ secrets.MISE_A_JOUR_TOKEN }}
           GITHUB_TOKEN_LECTURE: ${{ github.token }}
@@ -231,6 +239,7 @@ jobs:
           EMPREINTE: ${{ inputs.empreinte }}
           ADRESSE: ${{ inputs.adresse }}
           ESSAI: ${{ inputs.essai }}
+          COPIE: ${{ inputs.copie }}
           HOTE_ATTENDU: ${{ vars.MISE_A_JOUR_HOTE || 'dev.maverick-jdr.com' }}
           ARTEFACT: ${{ runner.temp }}/mise-a-jour-preparation
         run: node client/scripts/mise-a-jour-github.mjs --phase master
@@ -242,11 +251,14 @@ jobs:
           ETAPE_DEV: ${{ steps.dev.outcome }}
           ETAPE_MASTER: ${{ steps.master.outcome }}
           ESSAI: ${{ inputs.essai }}
+          COPIE: ${{ inputs.copie }}
         run: |
           {
             echo
             if [ -z "$ETAPE_DEV" ] || [ "$ETAPE_DEV" = skipped ]; then
               echo "**Arrêt avant la fusion dans dev** (garde-fous, récupération du dépôt ou de la préparation) : voir les étapes ci-dessus. Rien n'a été poussé."
+            elif [ "$ETAPE_DEV" = success ] && [ "$COPIE" = true ]; then
+              echo "**Copie vers le dépôt fusionnée dans dev** : rien ne part vers master ; le contenu suivra la prochaine livraison dev → master."
             elif [ "$ETAPE_DEV" = success ] && [ "$ETAPE_MASTER" != success ] && [ "$ESSAI" != true ]; then
               echo "**« Fusion dans dev » réussie, « Livraison vers master » non** : le lot est dans dev. Relancer le run (Re-run all jobs : rien n'est rejoué, le run reprend à la livraison dev → master), ou livrer dev → master à la main (« Create a merge commit »)."
             fi
