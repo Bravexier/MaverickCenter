@@ -93,8 +93,9 @@
 //                                   tables et vues, fiches (section 13) comprises (décision du propriétaire du 2026-10-15 : « Il faut tout rendre
 //                                   ouvert. Ce qui est fermé c'est que la base du serveur de prod. ») ; ETag (empreinte du corps), 304 sur If-None-Match
 //   GET  /api/debug/structure/      le dernier essai d'une livraison sur une copie de la base (serveur/essai-de-structure.mjs) : { format, en_cours, en_attente,
-//                                   dernier } ; `dernier` : le bilan `maverick-structure/1` (verdict, versions, migrations, tables…) et `demande`, `essaye_le`, `instance`,
-//                                   `resume`, ou null (aucun essai depuis que le dossier existe) ; Cache-Control: no-store
+//                                   dernier, ombre } ; `dernier` : le bilan `maverick-structure/1` (verdict, versions, migrations, tables…) et `demande`, `essaye_le`,
+//                                   `instance`, `resume`, ou null (aucun essai depuis que le dossier existe) ; `ombre` : { en_cours, dernier } de l'essai dans l'ombre
+//                                   (serveur/essai-dans-l-ombre.mjs, rapport `maverick-ombre/1`), null sans lui ; Cache-Control: no-store
 //   GET  /api/debug/base/           { version } : la version de la base vivante, qui change à chaque écriture validée (coût fixe, aucune table lue) ;
 //                                   la page la relève toutes les 2 s, menu « DB » ouvert, pour suivre les tables en direct (une relève : ni au journal
 //                                   du service ni dans la mémoire des requêtes)
@@ -527,7 +528,8 @@ function parametres(params, noms) {
  *     (serveur/debug-tables.mjs) ; le contenu d'une table porte son ETag (versionDuContenu : l'empreinte du JSON du corps) et répond 304 sans corps
  *     à un If-None-Match qui la contient ;
  *   GET /api/debug/base/ : { version } de la base vivante (debug-tables.mjs#versionDeLaBase), Cache-Control: no-store ;
- *   GET /api/debug/structure/ : l'état de l'essai d'une livraison avant son installation (serveur/essai-de-structure.mjs), Cache-Control: no-store.
+ *   GET /api/debug/structure/ : l'état de l'essai d'une livraison avant son installation (serveur/essai-de-structure.mjs) et de l'essai dans l'ombre (`ombre` :
+ *     serveur/essai-dans-l-ombre.mjs), Cache-Control: no-store.
  * En production, tout répond 403 : c'est la base du serveur de prod qui reste fermée (décisions du propriétaire du 2026-10-15).
  */
 function traiterDebug(requete, service, action, reste, permis, params) {

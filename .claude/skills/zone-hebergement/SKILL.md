@@ -1,7 +1,7 @@
 ---
 name: zone-hebergement
 description: "Hébergement deploy/ : installateurs prod/test, VPS (durcir, outils, instances, Caddyfile), paquet NAS (build.sh, update-site.sh, branche site qui n'avance plus), nginx.conf, docker-compose.yml, accès au site de dev (acces.sh), fins de ligne LF. À charger avant de lire, modifier ou relire deploy/ ou ses tests."
-paths: ["deploy/**", ".gitattributes", "client/test/deploy-vps.test.mjs", "client/test/deploy-volume.test.mjs", "client/test/installateur.test.mjs", "client/test/mise-a-jour.test.mjs", "client/test/update-site.test.mjs", "client/test/serveur-livraison.test.mjs", "client/test/deploy-sauvegardes*.test.mjs", "client/test/deploy-acces.test.mjs", "client/test/aide-sauvegardes.mjs"]
+paths: ["deploy/**", ".gitattributes", "client/test/deploy-vps.test.mjs", "client/test/deploy-volume.test.mjs", "client/test/installateur.test.mjs", "client/test/installateur-essai-de-structure.test.mjs", "client/test/mise-a-jour.test.mjs", "client/test/update-site.test.mjs", "client/test/serveur-livraison.test.mjs", "client/test/deploy-sauvegardes*.test.mjs", "client/test/deploy-acces.test.mjs", "client/test/aide-sauvegardes.mjs"]
 user-invocable: false
 ---
 # Hébergement (`deploy/`)
@@ -25,7 +25,7 @@ user-invocable: false
 - Deux conteneurs dans chaque `docker-compose.yml` (NAS et installateurs) : nginx et `serveur` (`node:22-alpine`, exécute `site/_serveur/serveur/index.mjs`, port 8787 sans port publié).
 - `deploy/nginx.conf` transmet `/api/` (adresse résolue à chaque requête, `proxy_connect_timeout 5s` : nginx démarre sans le service, et `/api/` répond 502 s'il est arrêté) et répond 404 sur `/_serveur/` (code du service, jamais servi).
 - Le service se relance seul quand `version.json` change (code 0, `restart: unless-stopped`). Seul un changement de `docker-compose.yml` ou de `nginx.conf` demande `docker compose up -d`.
-- Aucune installation ne vide ni ne remplace `db/` (R274 : les saisies du site de dev sont introuvables ailleurs). Copie de la production sur demande seulement (`--copier-base-prod`), refusée si `db/` est rempli hors `metriques/`. `MAVERICK_BASE_TEST=conservee` est sans effet.
+- Aucune installation ne vide ni ne remplace `db/` (R274 : les saisies du site de dev sont introuvables ailleurs). Copie de la production sur demande seulement (`--copier-base-prod`), refusée si `db/` est rempli hors `metriques/` et `essai-de-structure/`. `MAVERICK_BASE_TEST=conservee` est sans effet.
 - `mise-a-jour.sh` en mode test refuse une livraison plus ancienne que celle installée (comparaison X, Y, Z, rebuild) ; `--force` pour revenir en arrière ; `VERSION` absent = première installation. La production n'est pas concernée.
 - Un installateur de test refuse un dossier de production et inversement. L'installateur ne touche jamais aux métriques.
 - L'attestation de la production (`attestation-prod.json`) voyage par le dossier des métriques, déjà partagé entre les deux instances : aucun montage ni variable de plus dans `deploy/` (skill `zone-service-extrait`).
@@ -54,6 +54,12 @@ user-invocable: false
 - `acces.sh` est livré dans `<instance>/acces/` comme `sauvegarde/` (`DOSSIERS_DE_SCRIPTS`, remplacé à chaque installation). Geste du propriétaire : `sudo sh /srv/maverick-center-test/acces/acces.sh` (options `--cle`, `--portee ecriture|tout`, `--etat`, `--retirer`). Il refuse la production et pose `secrets/acces.json` en 600. Le mot de passe n'est jamais un argument de commande ni un fichier. Détail : `docs/serveur.md`, « Accès au site de dev ».
 - Option c (un mot de passe pour tout le site) : le snippet `forward_auth` de `deploy/vps/Caddyfile` est en commentaire, jamais actif ; `docker-compose.yml`, `nginx.conf` et le Caddyfile actif ne changent pas.
 
+## Essai de structure et contrôle des migrations (R274, R275)
+- `ci.yml` a un job `controle-des-migrations` : checkout `fetch-depth: 0`, sans `npm ci`, parallèle, hors du job `client` dont les commandes sont épinglées. Vers `master`, il ne contrôle que les règles (`--sans-essai`). Règles : `docs/flux-git.md`, « Règles des migrations ». Toute nouvelle commande du job `client` entre aussi dans `scripts/mise-a-jour-github.mjs#CONTROLES`.
+- L'installateur n'écrit que sa demande dans `db/essai-de-structure/` et n'a jamais de `rm` ailleurs dans `db/`. Délais : 20 s pour l'accusé, 120 s pour le résultat.
+- Ce dossier ne compte pas pour un `db/` rempli, et n'est copié ni de la production ni par les sauvegardes (`copie.sh`, `lib.sh`).
+- Tant que `db/source` n'existe pas, l'installation continue toujours ; ce marqueur est celui de la bascule : un refus de l'essai arrêtera alors l'installation avant tout dépôt. Service : skill `zone-service`.
+
 ## Tests
 - `deploy-acces` (`acces.sh`, livraison par l'installateur), `deploy-sauvegardes`, `deploy-sauvegardes-installer` (scripts exécutés pour de bon dans un monde factice, `aide-sauvegardes.mjs`).
-- `deploy-vps` (`instances.sh` : dossiers partagés de la maintenance et des métriques, une instance par fichier, minuteur du relevé de l'hôte ; l'étape « Site de dev » du README), `deploy-volume` (rotation des journaux Docker, métriques hors de `db/`, `volume.sh`), `installateur` (`db/` jamais vidé ni remplacé, copie sur demande, métriques jamais copiées ni effacées), `mise-a-jour` (`mise-a-jour.sh` : refus d'une livraison plus ancienne en mode test, R274), `update-site` (contre un faux serveur GitHub), `serveur-livraison` (`docker-compose.yml` et `nginx.conf` cohérents).
+- `deploy-vps` (`instances.sh` : dossiers partagés de la maintenance et des métriques, une instance par fichier, minuteur du relevé de l'hôte ; l'étape « Site de dev » du README), `deploy-volume` (rotation des journaux Docker, métriques hors de `db/`, `volume.sh`), `installateur` (`db/` jamais vidé ni remplacé, copie sur demande, métriques jamais copiées ni effacées), `installateur-essai-de-structure` (demande, délais, refus), `mise-a-jour` (`mise-a-jour.sh` : refus d'une livraison plus ancienne en mode test, R274), `update-site` (contre un faux serveur GitHub), `serveur-livraison` (`docker-compose.yml` et `nginx.conf` cohérents).

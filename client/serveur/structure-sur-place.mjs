@@ -7,7 +7,8 @@
 //
 //   lireLesMigrations      les migrations livrées (numéro, fichier, SQL, sha256 des octets) et le schema.sql attendu ;
 //   appliquerSurPlace      les migrations de numéro > user_version, d'un bloc ; refus (ErreurStructure) et retour arrière complet au moindre écart ;
-//   essayerSurUneCopie     une copie de la base (VACUUM INTO), l'application, le bilan, la copie effacée ; `essayerEnArrierePlan` : dans un fil à part ;
+//   essayerSurUneCopie     une copie de la base (VACUUM INTO), l'application, le bilan, la copie effacée ; `essayerEnArrierePlan` : dans un fil à part (`executerEnArrierePlan` :
+//                          la file commune, un travail à la fois ; l'autre travail est l'essai dans l'ombre, serveur/essai-dans-l-ombre.mjs) ;
 //   noterLesMigrationsRecues  à la reconstruction de la base vivante : serveur/base-vivante.mjs#preparerBaseVivante.
 // Le service importe seulement des modules de Node et de serveur/ : ce module sert aussi de fil de travail (comme serveur/edition-lots.mjs).
 import { randomUUID } from 'node:crypto';
@@ -428,7 +429,9 @@ export function bilanDesTables(db, { avant = 'avant', apres = 'main' } = {}) {
 // L'essai sur une copie
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 const EFFACER = ['', '-wal', '-shm', '-journal'];
-const NOM_D_UN_ESSAI = /^structure-essai-[0-9]+-[0-9a-f-]{36}-(?:avant|apres)\.db/;
+const NOM_D_UN_ESSAI = /^structure-essai-[0-9]+-[0-9a-f-]{36}-(?:ombre-)?(?:avant|apres)\.db/;
+/** Les copies de l'essai dans l'ombre (serveur/essai-dans-l-ombre.mjs) : `…-ombre-avant.db` et `…-ombre-apres.db`. */
+const NOM_D_UNE_OMBRE = /^structure-essai-[0-9]+-[0-9a-f-]{36}-ombre-(?:avant|apres)\.db/;
 
 /**
  * Essaie les migrations livrées sur une COPIE de la base `source` (jamais la base elle-même : elle n'est ouverte qu'en lecture seule, pour une copie VACUUM
@@ -491,13 +494,15 @@ export function essayerSurUneCopie({ source, dossier, migrations, schema, instan
 
 /**
  * Supprime les copies d'essai de structure restées dans `dossier` (un service arrêté en plein essai : `essayerSurUneCopie` les supprime sinon). À
- * l'ouverture du service, avant tout essai. Rend le nombre de fichiers retirés.
+ * l'ouverture du service, avant tout essai. Rend le nombre de fichiers retirés. `ombre: false` laisse les copies de l'essai dans l'ombre (elles attendent leur
+ * fil : serveur/essai-dans-l-ombre.mjs) ; l'ouverture du service les retire avec les autres.
  */
-export function purgerLesEssaisDeStructure(dossier) {
+export function purgerLesEssaisDeStructure(dossier, { ombre = true } = {}) {
   if (!existsSync(dossier)) return 0;
   let n = 0;
   for (const nom of readdirSync(dossier)) {
     if (!NOM_D_UN_ESSAI.test(nom)) continue;
+    if (!ombre && NOM_D_UNE_OMBRE.test(nom)) continue;
     rmSync(join(dossier, nom), { force: true });
     n += 1;
   }
@@ -505,9 +510,15 @@ export function purgerLesEssaisDeStructure(dossier) {
 }
 
 /** L'essai dans un fil à part (le service ne s'arrête pas ; la charge reste faible : il porte aussi la production) : une promesse du bilan. */
-export function essayerEnArrierePlan(options) {
+export const essayerEnArrierePlan = (options) => executerEnArrierePlan('maverickEssaiDeStructure', options);
+
+/**
+ * Un travail de ce module dans un fil à part, UN SEUL à la fois pour tout le service (l'essai avant installation et l'essai dans l'ombre se mettent en file :
+ * deux copies de la base et deux calculs complets d'empreintes chacun). `cle` : un nom de TRAVAUX (`maverickEssaiDeStructure`, `maverickEssaiDansLOmbre`).
+ */
+export function executerEnArrierePlan(cle, options) {
   return enFile(() => new Promise((ok, ko) => {
-    const fil = new Worker(fileURLToPath(import.meta.url), { workerData: { maverickEssaiDeStructure: options } });
+    const fil = new Worker(fileURLToPath(import.meta.url), { workerData: { [cle]: options } });
     let reponse = null;
     fil.once('message', (m) => { reponse = m; });
     fil.once('error', ko);
@@ -572,14 +583,16 @@ export function noterLesMigrationsRecues(db, { migrations, version = null, insta
 
 // Le même module sert de fil de travail : l'essai d'un changement de structure y tourne sans bloquer le service (comme serveur/edition-lots.mjs)
 // (en fin de module : le fil exécute le travail dès qu'il charge le module, après les constantes dont celui-ci se sert)
-const TRAVAUX = { maverickEssaiDeStructure: (o) => essayerSurUneCopie(o) };
+// (l'essai dans l'ombre est chargé à la demande : son module importe celui-ci)
+const TRAVAUX = {
+  maverickEssaiDeStructure: (o) => essayerSurUneCopie(o),
+  maverickEssaiDansLOmbre: (o) => import('./essai-dans-l-ombre.mjs').then((m) => m.comparerDansLOmbre(o)),
+};
 if (!isMainThread) {
   const cle = Object.keys(TRAVAUX).find((c) => workerData?.[c]);
   if (cle) {
-    try {
-      parentPort.postMessage({ essai: TRAVAUX[cle](workerData[cle]) });
-    } catch (e) {
-      parentPort.postMessage({ erreur: String(e?.message ?? e) });
-    }
+    Promise.resolve()
+      .then(() => TRAVAUX[cle](workerData[cle]))
+      .then((essai) => parentPort.postMessage({ essai }), (e) => parentPort.postMessage({ erreur: String(e?.message ?? e) }));
   }
 }

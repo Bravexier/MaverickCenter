@@ -28,7 +28,7 @@ import {
   accessoiresGardes, acquisRetires, armeDAvant, armureDesArmures, COLONNES_DE_L_ARMURE, COLONNES_RETIREES, entrainementEnLignes, maitrisesDAvant, matiereDuBouclier,
   retraitsDeLArmure, retraitsDuBouclier, TABLES_FICHES, TABLES_RETIREES,
 } from '../src/lib/fiche-format.mjs';
-import { TABLES_DU_JOURNAL } from '../src/lib/tables-de-la-base.mjs';
+import { CLASSES_DE_TABLES, TABLES_DU_JOURNAL, classeDeLaTable } from '../src/lib/tables-de-la-base.mjs';
 import { rejouerLeJournal } from './edition.mjs';
 import { instant as ecrireInstant } from './instant.mjs';
 import { sha256 } from './partage.mjs';
@@ -399,6 +399,8 @@ export function signature(chemin) {
  * `reconstruction` : la VERSION_DE_LA_RECONSTRUCTION de la dernière reconstruction ; `version` : celle du service qui fait tourner la base (« inconnue » si on ne la
  * sait pas) — les trois absentes d'un état écrit avant ce réglage. `retraits` : { le, fiches } de la dernière
  * reconstruction qui a retiré quelque chose des fiches (R42), gardé par les suivantes qui ne retirent rien ; absent s'il n'y en a jamais eu.
+ * `tables_regles` (site de dev seulement, option `ombre` de `preparerBaseVivante`) : { table de contenu → 16 premiers caractères de son empreinte } dans les
+ * règles dont la base est faite, avant le rejeu du journal : ce que l'essai dans l'ombre compare à celles de la livraison suivante (serveur/essai-dans-l-ombre.mjs).
  */
 export function lireEtat(dossier) {
   try {
@@ -577,6 +579,13 @@ export function viderBrouillonLivre(db) {
   if (b?.lot && db.prepare('SELECT 1 FROM note_version WHERE lot = ?').get(b.lot)) db.exec('DELETE FROM note_version_brouillon');
 }
 
+/** Les empreintes des tables de CONTENU d'une base de règles (lib/tables-de-la-base.mjs), tronquées à 16 caractères : { table → empreinte } (vivante.json, `tables_regles`). */
+function empreintesDesTablesDeContenu(parTable) {
+  const sortie = {};
+  for (const nom of Object.keys(parTable).sort()) if (classeDeLaTable(nom) === CLASSES_DE_TABLES.CONTENU) sortie[nom] = String(parTable[nom]).slice(0, 16);
+  return sortie;
+}
+
 /** Nom d'archive horodaté (l'ordre alphabétique est l'ordre chronologique). */
 const horodatage = (instant) => instant.toISOString().replace(/[:.]/g, '-');
 
@@ -624,8 +633,12 @@ function archiver(dossier, chemin, instant, version = null) {
  * de numéro <= sa version, jamais réécrite ; les lignes d'une version plus récente que la sienne sont retirées) : `migrations` (facultatif) est le dossier des
  * migrations livrées (undefined : celui de la livraison ; null : aucune), `version` la version du site, notée si elle est de la forme X.Y.Z (sinon NULL) ; le
  * résultat porte `migrations` ({ notees, retirees, ecarts, livrees, erreur? } : une note qui échoue est consignée au journal, sans arrêter la reconstruction), null quand la base n'a pas été refaite.
+ * `ombre` (site de dev seulement : serveur/essai-dans-l-ombre.mjs#creerOmbre) : l'essai dans l'ombre. Sur une reconstruction, la base d'avant existant, `ombre.preparer`
+ * reçoit { ancienne, neuve, etat, version, schema, reglesApres } JUSTE AVANT que la base refaite remplace l'ancienne (tout est synchrone : aucune écriture ne passe entre
+ * les deux) et garde les deux copies s'il s'agit d'une installation ; son compte rendu est rendu dans `ombre` du résultat, une erreur n'arrête jamais la reconstruction.
+ * Avec `ombre`, vivante.json garde aussi `tables_regles` (l'empreinte de chaque table de contenu des règles dont la base est faite : le point de comparaison de la livraison suivante).
  */
-export function preparerBaseVivante({ regles, dossier, instant = new Date(), evenement = null, poidsPortable = undefined, garderLeSite = true, version = null, calculerLogique = empreinteLogique, journal = null, migrations = undefined }) {
+export function preparerBaseVivante({ regles, dossier, instant = new Date(), evenement = null, poidsPortable = undefined, garderLeSite = true, version = null, calculerLogique = empreinteLogique, journal = null, migrations = undefined, ombre = null }) {
   if (!existsSync(regles)) throw new ErreurBaseVivante(`base des règles introuvable : ${regles} (le site est-il installé ?)`);
   mkdirSync(dossier, { recursive: true });
   const chemin = join(dossier, FICHIER_BASE);
@@ -656,6 +669,8 @@ export function preparerBaseVivante({ regles, dossier, instant = new Date(), eve
   let rejeu = null;
   let fiches = [];
   let recues = null;
+  let reglesApres = null; // { table de contenu → empreinte (16 caractères) } des règles, pour l'essai dans l'ombre
+  let compteRenduDeLOmbre = null;
   const iso = ecrireInstant(instant); // format des colonnes `*_le` : date des notes de retrait et de refaite_le
   try {
     const empreinte = empreinteFichier(neuve); // celle de la copie : les règles peuvent être remplacées pendant qu'on les copie
@@ -671,7 +686,9 @@ export function preparerBaseVivante({ regles, dossier, instant = new Date(), eve
       verifierRegles(db);
       const t0 = performance.now();
       try {
-        logique = calculerLogique(db, { exclues: TABLES_VIVANTES }).empreinte;
+        const calcul = calculerLogique(db, { exclues: TABLES_VIVANTES });
+        logique = calcul.empreinte;
+        if (ombre && calcul.parTable) reglesApres = empreintesDesTablesDeContenu(calcul.parTable);
         identique = connue && !logiqueChangee && etat.reconstruction === VERSION_DE_LA_RECONSTRUCTION && Boolean(etat.logique) && etat.logique === logique;
       } catch {
         logique = null;
@@ -700,18 +717,27 @@ export function preparerBaseVivante({ regles, dossier, instant = new Date(), eve
       archive = archiver(dossier, chemin, instant, etat?.version);
       if (archive) evenement?.('archive_base_vivante', { duree_ms: performance.now() - t0, detail: { octets: statSync(archive).size } });
     }
+    if (ombre && existsSync(chemin)) {
+      try {
+        compteRenduDeLOmbre = ombre.preparer({ ancienne: chemin, neuve, etat, version, schema, reglesApres }) ?? null;
+      } catch (e) {
+        compteRenduDeLOmbre = { programme: false, erreur: String(e?.message ?? e).slice(0, 300) };
+      }
+    }
     renameSync(neuve, chemin);
     // la dernière liste non vide des fiches adaptées (R42), datée, survit aux reconstructions qui ne retirent rien et au redémarrage du service
     const retraits = fiches.length ? { le: iso, fiches } : etat?.retraits;
     ecrireEtat(dossier, {
       regles: empreinte, ...(logique ? { logique } : {}), reconstruction: VERSION_DE_LA_RECONSTRUCTION, schema, refaite_le: iso, version: version || 'inconnue', ...(retraits ? { retraits } : {}),
+      ...(ombre && reglesApres ? { tables_regles: reglesApres } : {}),
     });
     if (recues?.erreur) journal?.(`ERREUR base vivante : la base refaite est gardée, mais ses migrations reçues ne sont pas notées : ${recues.erreur}`);
     else if (recues && !recues.livrees) journal?.('base vivante : migrations non livrées avec le service, aucune n’est notée comme reçue par la base refaite');
     if (recues?.ecarts.length) journal?.(`base vivante : migrations notées dont le fichier livré a changé (une migration fusionnée ne se modifie plus) : ${recues.ecarts.join(', ')}`);
-    return { chemin, refaite: true, archive, empreinte, schema, rejeu, fiches, migrations: recues };
+    return { chemin, refaite: true, archive, empreinte, schema, rejeu, fiches, migrations: recues, ...(compteRenduDeLOmbre ? { ombre: compteRenduDeLOmbre } : {}) };
   } catch (e) {
     rmSync(neuve, { force: true });
+    ombre?.annuler?.();
     throw e;
   }
 }

@@ -12,6 +12,7 @@
 //                         `instance` et `resume` (une phrase) ; écrit en JSON indenté de deux espaces, `verdict` et `resume` au premier niveau (le shell de
 //                         l'installateur les lit sans JSON)
 //   db/essai-de-structure/dernier.json                    le dernier résultat, gardé (page Debug : GET /api/debug/structure/)
+//   db/essai-de-structure/ombre.json                      le dernier essai dans l'ombre (serveur/essai-dans-l-ombre.mjs), rendu aussi par GET /api/debug/structure/ (`ombre`)
 //   db/essai-de-structure/structure-essai-*.db            les copies d'un essai en cours : TOUJOURS effacées (à la fin d'un essai, et à l'ouverture du service)
 //
 // La charge reste faible, le serveur porte aussi la production : un `readdir` d'un dossier presque toujours absent toutes les 3 s ; un essai à la fois, dans un
@@ -26,7 +27,7 @@ import { FORMAT_DU_BILAN, essayerEnArrierePlan, purgerLesEssaisDeStructure } fro
 export const DOSSIER_DES_ESSAIS = 'essai-de-structure';
 export const FORMAT_DE_LA_DEMANDE = 'maverick-essai-demande/1';
 export const FORMAT_DE_L_ACCUSE = 'maverick-essai-accuse/1';
-/** Ce que rend GET /api/debug/structure/ (le dernier résultat y est tel que `resultat.json` l'a écrit). */
+/** Ce que rend GET /api/debug/structure/ (le dernier résultat y est tel que `resultat.json` l'a écrit ; `ombre`, ajouté au format sans le changer : l'essai dans l'ombre). */
 export const FORMAT_DE_L_ETAT = 'maverick-essai-etat/1';
 export const FICHIERS_DE_LA_DEMANDE = { demande: 'demande.json', accuse: 'accuse.json', resultat: 'resultat.json', migrations: 'migrations', schema: 'schema.sql' };
 export const FICHIER_DU_DERNIER = 'dernier.json';
@@ -91,9 +92,10 @@ export function resumeDuBilan(bilan) {
  * @param {typeof essayerEnArrierePlan} [o.essayer] l'essai lui-même (un faux dans les tests)
  * @param {(dossier: string) => number} [o.espaceLibre] octets libres (par défaut statfs)
  * @param {() => string} [o.maintenant]
+ * @param {{ lire: () => object } | null} [o.ombre] l'essai dans l'ombre (serveur/essai-dans-l-ombre.mjs#creerOmbre) : son état s'ajoute à `lire()`
  */
 export function creerEssaiDeStructure({ dossier, source, instance = null, journal = () => {}, evenement = () => {}, essayer = essayerEnArrierePlan,
-  espaceLibre = null, maintenant = ecrireInstant }) {
+  espaceLibre = null, maintenant = ecrireInstant, ombre = null }) {
   const racine = join(dossier, DOSSIER_DES_ESSAIS);
   const vues = new Set();
   let suite = Promise.resolve();
@@ -141,9 +143,10 @@ export function creerEssaiDeStructure({ dossier, source, instance = null, journa
           version, instant: maintenant(),
         });
     } catch (e) {
-      // le fil a pu s'arrêter sans effacer ses copies (copies de la base) : un seul essai tourne à la fois, aucune n'est en cours
+      // le fil a pu s'arrêter sans effacer ses copies (copies de la base) : un seul essai tourne à la fois, aucune n'est en cours (sauf celles de l'essai dans
+      // l'ombre, qui attendent leur tour dans la même file)
       try {
-        purgerLesEssaisDeStructure(racine);
+        purgerLesEssaisDeStructure(racine, { ombre: false });
       } catch {
         // la purge de l'ouverture du service reprendra
       }
@@ -234,9 +237,14 @@ export function creerEssaiDeStructure({ dossier, source, instance = null, journa
     return suite;
   }
 
-  /** Ce que lit la page Debug : l'essai en cours, le nombre en attente, le dernier résultat (null s'il n'y en a pas). */
+  /**
+   * Ce que lit la page Debug : l'essai en cours, le nombre en attente, le dernier résultat (null s'il n'y en a pas), et `ombre` : { en_cours, dernier } de l'essai
+   * dans l'ombre (null sur un service qui n'en a pas : la production).
+   */
   function lire() {
-    return { format: FORMAT_DE_L_ETAT, en_cours: enCours, en_attente: file.length - (enCours ? 1 : 0), dernier: lireJson(join(racine, FICHIER_DU_DERNIER)) };
+    return {
+      format: FORMAT_DE_L_ETAT, en_cours: enCours, en_attente: file.length - (enCours ? 1 : 0), dernier: lireJson(join(racine, FICHIER_DU_DERNIER)), ombre: ombre ? ombre.lire() : null,
+    };
   }
 
   /** Plus aucune demande n'est prise ; l'essai en cours se termine. */
