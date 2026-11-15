@@ -625,9 +625,15 @@ test('le geste refuse sans rien écrire : valeur invalide, mémoire maximale sou
   const sansCgroup = monde({ reglages: false });
   rmDossier(join(sansCgroup.dossier, 'cgroup', 'cgroup.controllers'));
   assert.match(installer(sansCgroup).out, /cgroup v2 absent/);
+  // Docker muet : un faux docker qui échoue, placé en tête du PATH (la machine de la CI a un vrai Docker : on ne compte jamais sur son absence)
   const muet = monde({ reglages: false });
-  const r = installer(muet, [], { PATH: `${join(muet.dossier, 'rien')}:/usr/bin:/bin`.replace(/:\/usr\/bin:\/bin$/, `:${dirname(process.execPath)}:/usr/bin:/bin`) });
-  assert.equal(r.code, 1);
+  const binMuet = join(muet.dossier, 'docker-muet');
+  mkdirSync(binMuet);
+  ecrire(join(binMuet, 'docker'), '#!/bin/sh\nexit 1\n');
+  chmodSync(join(binMuet, 'docker'), 0o755);
+  const r = installer(muet, [], { PATH: `${binMuet}:${muet.bin}:${process.env.PATH}` });
+  assert.equal(r.code, 1, r.out);
+  assert.match(r.out, /Docker ne répond pas/);
   assert.ok(!existsSync(join(muet.atelier, 'reglages.env')));
 });
 
