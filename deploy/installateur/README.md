@@ -147,6 +147,14 @@ git (`docs/serveur.md`, « Fabriquer le site depuis un fichier de contenu »). L
   renommage ; un seul kit est gardé. Il vérifie d'abord la place libre (`df`) : deux fois la taille décompressée annoncée, plus 256 Mo. **Un manque de place ou un échec ne
   fait jamais échouer l'installation** : le site est posé, le journal (`installation.log`) dit que le kit manque, l'ancien kit reste.
 
+## L'atelier du site de dev (serveur de test seulement)
+
+L'installateur de test livre aussi les scripts de l'atelier (`deploy/installateur/atelier/`) : `installer.sh` à la racine de `<instance>/atelier/` (la commande courte du propriétaire) et `lancer.sh`, `lib.sh` dans `atelier/outils/`.
+Seuls ces fichiers sont remplacés, par renommage ; les fichiers d'`outils/` qui ne sont plus livrés sont retirés ; le kit, le travail, la sortie, les rapports et les réglages de l'atelier ne sont jamais touchés. À chaque livraison,
+l'installateur copie `kit.json` dans `atelier/rapports/` (le service y lit « le kit est posé ») et pose la marque `atelier/declencheur/marque` quand le kit posé est celui de la livraison. Rien ne consomme la marque tant que le propriétaire n'a pas
+lancé `sudo sh /srv/maverick-center-test/atelier/installer.sh` (`deploy/vps/README.md`, « Atelier du site de dev ») ; ce geste pose les unités systemd, les réglages et, dans le dossier de l'instance de test seulement, un `docker-compose.override.yml` (le montage des rapports, en lecture seule) : l'installateur ne le livre, ne le pose ni ne l'efface jamais, et le `docker-compose.yml` livré, commun à la production, ne change pas. L'installateur de production n'en porte rien.
+Détail et garde-fous : `docs/serveur.md`, « Atelier du site de dev ».
+
 ## Fabriquer un installateur à la main
 
 `./deploy/installateur/fabriquer.sh prod` (ou `test`) construit le site sur votre machine (Node.js ≥ 22.12) et écrit l'installateur dans

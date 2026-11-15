@@ -313,7 +313,7 @@ export function routeNormalisee(adresse) {
       if (b === 'lots') return seul(3) ? r('mise-a-jour', 'lots', '{lot}') : ROUTE_INCONNUE;
       return seul(2) && ACTIONS_MISE_A_JOUR.has(b) ? r('mise-a-jour', b) : ROUTE_INCONNUE;
     case 'debug':
-      if (seul(2) && (b === 'journal' || b === 'systeme' || b === 'metriques' || b === 'tables' || b === 'base' || b === 'structure')) return r('debug', b);
+      if (seul(2) && (b === 'journal' || b === 'systeme' || b === 'metriques' || b === 'tables' || b === 'base' || b === 'structure' || b === 'atelier')) return r('debug', b);
       // le contenu d'une table (serveur/debug-tables.mjs) : un gabarit, quel que soit le nom demandé (connu ou non)
       if (seul(3) && b === 'tables') return r('debug', 'tables', '{table}');
       return seul(3) && b === 'metriques' && (c === 'requetes' || c === 'export') ? r('debug', 'metriques', c) : ROUTE_INCONNUE;

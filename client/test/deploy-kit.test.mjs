@@ -213,6 +213,8 @@ function installateur({ mode = 'test', kit, version = '0.2.0', label = 'v1' } = 
   const tag = mode === 'prod' ? `v${version.replace(/\.\d+$/, '')}` : `v${version}`;
   return fabriquer({ mode, site, tag, version, sha: 'c'.repeat(40), sortie: join(racine, 'sortie'), ...(kit ? { kit } : {}) });
 }
+/** Ce que le dossier de l'atelier garde de provisoire ou d'ancien (les dossiers .kit-*) : rien, après une installation. */
+const rienDeProvisoire = (atelier) => readdirSync(atelier).filter((n) => n.startsWith('.kit-'));
 function lancer(fichier, args = [], env = {}) {
   const r = spawnSync('sh', [fichier, ...args], { cwd: racine, encoding: 'utf8', env: { PATH: process.env.PATH, ...env } });
   return { code: r.status, out: r.stdout + r.stderr };
@@ -260,7 +262,7 @@ test('l’installateur de test pose le kit dans atelier/kit/, hors de site/ ; un
   assert.deepEqual(JSON.parse(readFileSync(join(kit, 'kit.json'), 'utf8')), test1.kit, 'kit.json accompagne le kit posé');
   assert.deepEqual(controlerLeKit(kit), []);
   assert.ok(!lister(join(instance, 'site')).some((f) => /atelier|kit/.test(f)), 'jamais servi : rien du kit dans site/');
-  assert.deepEqual(readdirSync(join(instance, 'atelier')), ['kit']);
+  assert.deepEqual(rienDeProvisoire(join(instance, 'atelier')), []);
   assert.ok(!existsSync(join(instance, '.installation.lock')));
 
   // une nouvelle livraison remplace le kit : l'ancien ne reste pas
@@ -272,7 +274,7 @@ test('l’installateur de test pose le kit dans atelier/kit/, hors de site/ ; un
   assert.ok(!existsSync(join(kit, 'ancien.txt')));
   assert.equal(readFileSync(join(kit, 'client/src/pages/index.astro'), 'utf8'), '<h1>version 2</h1>');
   assert.equal(JSON.parse(readFileSync(join(kit, 'kit.json'), 'utf8')).version, '0.2.1');
-  assert.deepEqual(readdirSync(join(instance, 'atelier')), ['kit'], 'un seul kit, ni provisoire ni ancien');
+  assert.deepEqual(rienDeProvisoire(join(instance, 'atelier')), [], 'un seul kit, ni provisoire ni ancien');
 
   // un installateur sans kit laisse celui qui est posé
   const sans = installateur({ version: '0.2.2', label: 'v3' });
@@ -304,14 +306,14 @@ test('une installation interrompue entre les deux renommages : l’ancien kit, s
   assert.equal(manque.code, 0, manque.out);
   assert.match(manque.out, /remis en place/);
   assert.equal(readFileSync(join(atelier, 'kit', 'reste.txt'), 'utf8'), 'le seul kit');
-  assert.deepEqual(readdirSync(atelier), ['kit'], 'ni provisoire ni ancien');
+  assert.deepEqual(rienDeProvisoire(atelier), [], 'ni provisoire ni ancien');
 
   // kit/ est là et un ancien périmé traîne : il est jeté
   mkdirSync(join(atelier, '.kit-ancien.1'));
   const r = lancer(installateur({ kit: depot, version: '0.2.2', label: 'v3' }).fichier, ['--dossier', instance]);
   assert.equal(r.code, 0, r.out);
   assert.ok(!existsSync(join(atelier, 'kit', 'reste.txt')), 'le nouveau kit a remplacé l’ancien');
-  assert.deepEqual(readdirSync(atelier), ['kit']);
+  assert.deepEqual(rienDeProvisoire(atelier), []);
 });
 
 test('place insuffisante : l’installation CONTINUE sans kit, le journal le dit, le site est posé, l’ancien kit reste', { skip }, () => {
@@ -327,7 +329,7 @@ test('place insuffisante : l’installation CONTINUE sans kit, le journal le dit
   assert.match(readFileSync(join(instance, 'site', 'index.html'), 'utf8'), /v2/, 'le site est celui de la nouvelle livraison');
   assert.match(readFileSync(join(instance, 'VERSION'), 'utf8'), /version=0\.2\.1/);
   assert.equal(readFileSync(join(instance, 'atelier', 'kit', 'ancien.txt'), 'utf8'), 'ancien kit', 'l’ancien kit n’est pas touché');
-  assert.deepEqual(readdirSync(join(instance, 'atelier')), ['kit']);
+  assert.deepEqual(rienDeProvisoire(join(instance, 'atelier')), []);
 
   // juste assez : le seuil est deux fois la taille décompressée plus une marge
   const besoinKo = Math.ceil((2 * neuf.kit.taille_decompressee_octets) / 1024) + 262144;
@@ -352,7 +354,7 @@ test('une décompression qui échoue ne fait pas échouer l’installation : san
   assert.match(r.out, /Kit de l'atelier : décompression impossible/);
   assert.match(readFileSync(join(instance, 'site', 'index.html'), 'utf8'), /v2/);
   assert.equal(readFileSync(join(instance, 'atelier', 'kit', 'ancien.txt'), 'utf8'), 'ancien kit');
-  assert.deepEqual(readdirSync(join(instance, 'atelier')), ['kit']);
+  assert.deepEqual(rienDeProvisoire(join(instance, 'atelier')), []);
 });
 
 test('livraison.yml : le kit est joint pour le serveur de test seulement', () => {

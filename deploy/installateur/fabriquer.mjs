@@ -6,6 +6,7 @@
 //                                                 --sha <commit> --sortie <dossier> [--kit <racine du dépôt>]
 // --kit (mode test seulement) : joint à l'installateur le kit de l'atelier (kit.mjs : client/ avec ses node_modules, le schéma, les registres, deux fichiers de sources ;
 // jamais de contenu), que l'installateur pose dans <instance>/atelier/kit/. L'installateur de production n'en porte pas : son script est celui d'avant le kit.
+// Le mode test emporte aussi les scripts de l'atelier du site de dev (deploy/installateur/atelier/), que l'installateur pose dans <instance>/atelier/ (kit-pose.sh).
 // Résultat : <sortie>/maverick-center-<étiquette>-install.sh (chemin écrit sur la sortie standard).
 // Appelé par .github/workflows/livraison.yml après chaque fusion dans dev (mode test) ou master (mode prod), et par fabriquer.sh (à la main).
 import { spawnSync } from 'node:child_process';
@@ -86,6 +87,13 @@ export function fabriquer(options) {
     for (const [nom, source] of Object.entries(FICHIERS_LIVRES)) {
       mkdirSync(dirname(join(contenu, nom)), { recursive: true });
       copyFileSync(source, join(contenu, nom));
+    }
+    // les scripts de l'atelier du site de dev (deploy/installateur/atelier/) : dans l'installateur de test seulement ; l'installateur les pose dans <instance>/atelier/
+    if (mode === 'test') {
+      for (const nom of readdirSync(join(ICI, 'atelier')).filter((f) => f.endsWith('.sh')).sort()) {
+        mkdirSync(join(contenu, 'atelier-scripts'), { recursive: true });
+        copyFileSync(join(ICI, 'atelier', nom), join(contenu, 'atelier-scripts', nom));
+      }
     }
     const kit = options.kit === undefined ? null : fabriquerLeKit({ racine: resolve(options.kit), destination: join(contenu, DOSSIER_DU_KIT), version, sha });
     const archive = join(travail, 'archive.tar.gz');

@@ -64,7 +64,7 @@ const TABLE = [
   [LECTURE, /^\/api\/mise-a-jour\/conflits$/, 'lecture'],
   [['POST'], /^\/api\/mise-a-jour\/(brouillon|majeure|lancer|liberer|conflits)$/, 'ecriture'],
   // page Debug : le contenu de toutes les tables, fiches, comptes et groupes compris
-  [LECTURE, /^\/api\/debug\/(journal|systeme|base|structure|metriques|metriques\/(requetes|export)|tables|tables\/[^/]+)$/, 'lecture'],
+  [LECTURE, /^\/api\/debug\/(journal|systeme|base|structure|atelier|metriques|metriques\/(requetes|export)|tables|tables\/[^/]+)$/, 'lecture'],
   // API REST
   [LECTURE, /^\/api\/v1(\/.*)?$/, 'lecture'],
   [ECRITURE_V1, /^\/api\/v1(\/.*)?$/, 'ecriture'],
