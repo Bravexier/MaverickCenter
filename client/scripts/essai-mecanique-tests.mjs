@@ -188,9 +188,11 @@ function marques(fichier) {
     const s = cache.get(f);
     const nom = f.replace(`${client}/`, '');
     if (MARQUES_CONTENU.some((r) => r.test(s)) && !/src\/lib\/(donnees|contenu-fourni)\.mjs$/.test(nom)) contenu.push(nom);
-    if (MARQUES_DEPOT.some((r) => r.test(s))) depot.push(nom);
+    // lib/donnees.mjs et contenu-fourni.mjs citent data/rows et db-build mais obéissent à la variable : ils ne comptent pas comme lecture directe
+    const lus = /src\/lib\/(donnees|contenu-fourni)\.mjs$/.test(nom) ? [] : MARQUES_DEPOT.filter((r) => r.test(s)).map((r) => r.source.replace(/\\\//g, '/'));
+    if (lus.length) depot.push({ module: nom, lit: lus });
   }
-  return { lit_contenu: contenu.length > 0, lit_depot_direct: depot.length > 0, par: contenu.slice(0, 3) };
+  return { lit_contenu: contenu.length > 0, lit_depot_direct: depot.length > 0, lit: [...new Set(depot.flatMap((d) => d.lit))], par: contenu.slice(0, 3) };
 }
 
 // La cause d'un échec : la première erreur du journal, ramenée à une forme sans valeurs, puis rangée par famille (règles ordonnées).
@@ -225,13 +227,14 @@ export function trier() {
   for (const fichier of fichiersDeTest()) {
     const a = A.get(fichier);
     const b = B.get(fichier);
+    if (!a && !b) continue; // fichier arrivé depuis la mesure : non mesuré
     const m = marques(fichier);
     const reussi = (r) => r && r.code === 0;
     let categorie;
     if (!reussi(a)) categorie = 'casse-sur-le-vrai';
     else if (!reussi(b)) categorie = 'casse-sur-le-factice';
     else categorie = m.lit_contenu || m.lit_depot_direct ? 'passe-sur-les-deux' : 'ne-lit-pas-le-contenu';
-    const ligne = { fichier, categorie, lit_contenu: m.lit_contenu, lit_depot_direct: m.lit_depot_direct, ms: (a?.ms ?? 0) + (b?.ms ?? 0) };
+    const ligne = { fichier, categorie, lit_contenu: m.lit_contenu, lit_depot_direct: m.lit_depot_direct, lit: m.lit, ms: (a?.ms ?? 0) + (b?.ms ?? 0) };
     if (categorie === 'casse-sur-le-factice' || categorie === 'casse-sur-le-vrai') {
       const passeNom = categorie === 'casse-sur-le-vrai' ? 'A' : 'B';
       const r = categorie === 'casse-sur-le-vrai' ? a : b;
@@ -263,7 +266,7 @@ export function trier() {
   writeFileSync(join(sortie, 'tri.md'), md);
   if (drapeau('--ecrire-docs')) {
     // la version rangée dans le dépôt : un fichier de test par ligne (catégorie, famille), sans les journaux
-    const compact = { bilan, fichiers: lignes.map(({ fichier, categorie, famille, lit_contenu, lit_depot_direct }) => ({ fichier, categorie, ...(famille ? { famille } : {}), lit_contenu, lit_depot_direct })) };
+    const compact = { bilan, fichiers: lignes.map(({ fichier, categorie, famille, lit_contenu, lit_depot_direct, lit }) => ({ fichier, categorie, ...(famille ? { famille } : {}), lit_contenu, lit_depot_direct, ...(lit?.length ? { lit } : {}) })) };
     writeFileSync(join(client, '..', 'docs', 'essai-mecanique-des-tests.json'), JSON.stringify(compact, null, 0).replace(/\{"fichier"/g, '\n{"fichier"') + '\n');
   }
   return bilan;
