@@ -7,7 +7,7 @@
 # Usage : sh <ce-fichier> [--dossier <dossier>] [--copier-base-prod] [--dossier-prod <dossier>] [--sans-base-prod] [--verifier]
 #   --dossier       dossier de l'instance (défaut : ./maverick-center en prod, ./maverick-center-test en test)
 #   --copier-base-prod  test seulement : poser dans db/ une copie, prise à cet instant, de la base de la production. Refusé (rien n'est modifié)
-#                   si db/ contient autre chose que metriques/ : une installation n'efface jamais une base.
+#                   si db/ contient autre chose que metriques/ : une installation n'efface jamais une base ; toujours refusé quand db/source existe.
 #   --dossier-prod  test, avec --copier-base-prod : instance de production dont on copie la base (défaut : le voisin « maverick-center »)
 #   --sans-base-prod  accepté et sans effet (un installateur ne copie plus la production sans --copier-base-prod)
 #   --verifier      contrôler l'archive intégrée et s'arrêter (rien n'est installé)
@@ -19,6 +19,7 @@
 #                        demande : --copier-base-prod (test), dans un db/ vide.
 #                        db/metriques/ (métriques d'une instance sans dossier des métriques réglé) : jamais copié de la production, jamais touché.
 #                        db/essai-de-structure/ : l'échange avec le service pour l'essai de la livraison (voir plus bas) ; l'installateur n'y retire que sa propre demande.
+#                        db/source : le marqueur de la base source (bascule.sh) ; avec lui, ni --copier-base-prod ni une publication plus ancienne que celle installée.
 #   metriques/           les métriques du service (docker-compose.yml, MAVERICK_DOSSIER_METRIQUES) : jamais touché par une installation.
 #   docker-compose.yml, nginx.conf   posés s'ils sont absents ; s'ils diffèrent, la version livrée est écrite à côté (.nouveau)
 #   .env                 port et nom du conteneur de l'instance (créé une fois, jamais écrasé)
@@ -26,6 +27,7 @@
 #   sauvegarde/          les scripts des sauvegardes automatiques (copie, envoi chiffré, essai de restauration, installer.sh) : remplacés à chaque installation
 #   acces/               acces.sh, la commande du mot de passe du site de dev (remplacée à chaque installation ; le réglage est dans secrets/, jamais touché)
 #   installateur-courant/ le dernier installateur installé par mise-a-jour.sh, que l'envoi de nuit joint à la copie extérieure (jamais touché ici)
+#   bascule.sh           (test seulement) le script du jour de la bascule 1 : constat, sauvegarde nommée, pose du marqueur db/source (remplacé à chaque installation)
 #   VERSION              ce qui est installé (étiquette, version, commit, mode, date)
 # Prérequis : sh, tar, gzip, et sha256sum (ou shasum / openssl) pour contrôler l'archive. rsync et sqlite3 sont utilisés s'ils sont présents.
 set -eu
@@ -120,6 +122,27 @@ METRIQUES=metriques
 ESSAIS=essai-de-structure
 # Vrai si le db/ de l'instance contient autre chose que ses métriques et son dossier d'essai : une base, une archive, n'importe quel fichier.
 base_remplie() { [ -d "$DOSSIER/db" ] && find "$DOSSIER/db/" -mindepth 1 -maxdepth 1 ! -name "$METRIQUES" ! -name "$ESSAIS" | grep -q .; }
+
+# Base source (lot 8 du chantier de la base de dev ; docs/serveur.md, « Base source (lot 8) ») : le fichier db/source dit que la base de cette instance est
+# la source de vérité (bascule.sh le pose, le jour de la bascule). Rien ne peut alors la remplacer, la vider ni la recréer (--copier-base-prod est refusé), et
+# une publication plus ancienne que celle installée est refusée (garde-fou 7 : son service ne connaîtrait pas la structure de la base). Refus ICI, avant le
+# verrou et toute écriture. Sans ce fichier, rien ne change. Une instance sans VERSION lisible (une base restaurée avant la première installation) s'installe.
+# Écrit « oui » si la version $1 (X.Y.Z) est plus ancienne que $2.
+plus_ancienne() {
+  awk -v a="$1" -v b="$2" 'BEGIN {
+    na = split(a, x, "."); nb = split(b, y, ".")
+    for (i = 1; i <= 3; i++) { u = x[i] + 0; v = y[i] + 0; if (u < v) { print "oui"; exit } if (u > v) { print "non"; exit } }
+    print "non"
+  }'
+}
+if [ -e "$DOSSIER/db/source" ]; then
+  [ "$COPIER_BASE_PROD" -eq 0 ] ||
+    die "--copier-base-prod refusé : $DOSSIER/db/source existe (la base de cette instance est la source de vérité : elle ne se remplace jamais, elle se restaure depuis une sauvegarde). Rien n'a été modifié"
+  INSTALLEE=$(sed -n 's/^version=//p' "$DOSSIER/VERSION" 2>/dev/null | head -n 1 || true)
+  if [ -n "$INSTALLEE" ] && [ "$(plus_ancienne "$VERSION" "$INSTALLEE")" = oui ]; then
+    die "publication $VERSION refusée : elle est plus ancienne que la $INSTALLEE installée, et $DOSSIER/db/source existe (une base source ne revient jamais à une version plus ancienne). Rien n'a été modifié"
+  fi
+fi
 
 if [ "$COPIER_BASE_PROD" -eq 1 ]; then
   # La seule route qui écrit dans db/ en mode test : refus ICI, avant le verrou, l'extraction et toute autre écriture.
@@ -350,6 +373,11 @@ done
 for f in README.md mise-a-jour.sh; do
   cp "$TRAVAIL/$f" "$DOSSIER/.$f.$$" && mv -f "$DOSSIER/.$f.$$" "$DOSSIER/$f" || die "impossible de poser $f"
 done
+# bascule.sh (installateur de test seulement) : le script du jour de la bascule 1, que le propriétaire lance en root (docs/serveur.md, « Base source (lot 8) »).
+if [ -f "$TRAVAIL/bascule.sh" ]; then
+  cp "$TRAVAIL/bascule.sh" "$DOSSIER/.bascule.sh.$$" && chmod 755 "$DOSSIER/.bascule.sh.$$" && mv -f "$DOSSIER/.bascule.sh.$$" "$DOSSIER/bascule.sh" ||
+    die "impossible de poser bascule.sh"
+fi
 # sauvegarde/ : les scripts des sauvegardes automatiques (deploy/vps/README.md, « Sauvegardes »), que des minuteurs systemd exécutent en root depuis le
 # dossier du serveur de test. Les copies, l'état et les clés ne sont PAS ici (/srv/maverick-sauvegardes, /etc/maverick-sauvegardes).
 # acces/ : la commande du mot de passe du site de dev (acces.sh ; docs/serveur.md, « Accès au site de dev »), que le propriétaire lance. Le réglage qu'elle

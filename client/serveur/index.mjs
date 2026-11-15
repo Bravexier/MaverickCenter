@@ -23,6 +23,8 @@ import { demarrerService } from './service.mjs';
 import { reglagesTipeee } from './tipeee.mjs';
 
 const ici = (relatif) => fileURLToPath(new URL(relatif, import.meta.url));
+// Le service peut refuser de démarrer (une base source absente, refusée par l'essai de ses migrations ou d'une autre structure que la livraison : serveur/base-source.mjs) :
+// la raison est déjà au journal ; la sortie non nulle le dit à Docker.
 const service = await demarrerService({
   regles: process.env.MAVERICK_REGLES || ici('../../donnees/maverick.db'),
   dossier: process.env.MAVERICK_DB || ici('../../../db/'),
@@ -39,6 +41,9 @@ const service = await demarrerService({
   maintenance: process.env.MAVERICK_MAINTENANCE || null,
   fichierVersion: ici('../version.json'),
   tipeee: reglagesTipeee(process.env, ici('../sources/tipeee/bienvenue.json')),
+}).catch((e) => {
+  console.error(`service des personnages non démarré : ${e?.message ?? e}`);
+  process.exit(1);
 });
 
 for (const signal of ['SIGTERM', 'SIGINT']) {

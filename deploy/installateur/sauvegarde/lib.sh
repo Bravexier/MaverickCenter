@@ -7,7 +7,9 @@
 #   MAVERICK_DIR_NORMAL / MAVERICK_DIR_TEST   instances prod (/srv/maverick-center) et dev (/srv/maverick-center-test)
 #   MAVERICK_DIR_SAUVEGARDES                  copies locales et état (/srv/maverick-sauvegardes, root 700 : les fiches sont dedans)
 #   MAVERICK_DIR_ETC_SAUVEGARDES              clés et réglages (/etc/maverick-sauvegardes, root 700)
-#   MAVERICK_DIR_METRIQUES                    dossier des métriques où va sauvegardes.json (<normal>/metriques)
+#   MAVERICK_DIR_METRIQUES                    dossier des métriques où va sauvegardes.json (<normal>/metriques). S'il n'existe pas (instances.sh pas
+#                                             relancé depuis les métriques), l'état va là où le service de chaque instance le lit : metriques_de_l_instance
+#   MAVERICK_SAUV_DOCKER                      la commande docker (docker ; un faux dans les tests)
 # Aucun secret ne sort de ce fichier : l'état et le JSON ne portent que des dates, des tailles, des nombres et des codes courts.
 
 NORMAL=${MAVERICK_DIR_NORMAL:-/srv/maverick-center}
@@ -16,6 +18,7 @@ SAUV=${MAVERICK_DIR_SAUVEGARDES:-/srv/maverick-sauvegardes}
 ETC=${MAVERICK_DIR_ETC_SAUVEGARDES:-/etc/maverick-sauvegardes}
 METRIQUES=${MAVERICK_DIR_METRIQUES:-$NORMAL/metriques}
 SORTIE_JSON=$METRIQUES/sauvegardes.json
+DOCKER_DES_INSTANCES=${MAVERICK_SAUV_DOCKER:-docker}
 ETAT=$SAUV/etat
 INSTANCES="prod dev"
 
@@ -159,16 +162,90 @@ copies_de() { # instance [type…]
 }
 derniere_copie() { copies_de "$1" | tail -n 1; } # « type/nom » de la plus récente copie bonne, vide sans copie
 
-# Écrit sauvegardes.json (format 1) dans le dossier des métriques, d'un coup (fichier provisoire créé en exclusivité puis renommage : un lien
-# posé à l'avance dans ce dossier partagé n'est jamais suivi), en 644 : il est lu par les conteneurs, il ne porte aucun secret.
+# Le dossier de l'HÔTE où le service d'une instance lit sauvegardes.json (son dossier des métriques : MAVERICK_DOSSIER_METRIQUES du conteneur, sinon
+# <MAVERICK_DB>/metriques, serveur/service.mjs). D'abord tel que son conteneur le monte (docker inspect du conteneur « <MAVERICK_CONTENEUR>-serveur ») :
+# un docker-compose.yml d'avant les métriques ne monte pas metriques/, son service les range dans db/metriques/. Sans docker ni conteneur, celui que
+# docker-compose.yml monterait : MAVERICK_DOSSIER_METRIQUES du .env de l'instance, sinon <instance>/metriques. Écrit « docker|compose <chemin> », rien si
+# l'instance est inconnue.
+metriques_de_l_instance() { # instance
+  local d conteneur montages env dans base dest src meilleur='' hote=''
+  d=$(dossier_de "$1") || return 0
+  conteneur=$(sed -n 's/^MAVERICK_CONTENEUR=//p' "$d/.env" 2>/dev/null | tail -n 1 | tr -d '"\r' || true)
+  if [ -z "$conteneur" ]; then if [ "$1" = prod ]; then conteneur=maverick-center; else conteneur=maverick-center-test; fi; fi
+  if command -v "$DOCKER_DES_INSTANCES" >/dev/null 2>&1 &&
+    montages=$("$DOCKER_DES_INSTANCES" inspect -f '{{range .Mounts}}{{.Destination}}|{{.Source}}{{println}}{{end}}' "$conteneur-serveur" 2>/dev/null) &&
+    env=$("$DOCKER_DES_INSTANCES" inspect -f '{{range .Config.Env}}{{println .}}{{end}}' "$conteneur-serveur" 2>/dev/null); then
+    dans=$(printf '%s\n' "$env" | sed -n 's/^MAVERICK_DOSSIER_METRIQUES=//p' | tail -n 1)
+    if [ -z "$dans" ]; then
+      base=$(printf '%s\n' "$env" | sed -n 's/^MAVERICK_DB=//p' | tail -n 1)
+      dans="${base:-/db}"
+      dans="${dans%/}/metriques"
+    fi
+    while IFS='|' read -r dest src; do
+      [ -n "$dest" ] && [ -n "$src" ] || continue
+      case "$dans/" in
+        "${dest%/}/"*) if [ "${#dest}" -gt "${#meilleur}" ]; then meilleur=$dest; hote=${src%/}${dans#"${dest%/}"}; fi ;;
+      esac
+    done <<< "$montages"
+    if [ -n "$hote" ]; then printf 'docker %s' "$hote"; return 0; fi
+  fi
+  dans=$(sed -n 's/^MAVERICK_DOSSIER_METRIQUES=//p' "$d/.env" 2>/dev/null | tail -n 1 | tr -d '"\r' || true)
+  case "$dans" in
+    '') printf 'compose %s' "$d/metriques" ;;
+    /*) printf 'compose %s' "$dans" ;;
+    *) printf 'compose %s' "$d/${dans#./}" ;;
+  esac
+}
+
+# Les dossiers où écrire sauvegardes.json, un par ligne : le dossier des métriques réglé s'il existe (le VPS mis en place par instances.sh : celui des
+# deux instances) ; sinon celui que lit le service de chaque instance (metriques_de_l_instance), sans doublon. Un dossier que le conteneur monte (vu par
+# docker inspect) est créé s'il manque ; un dossier seulement déduit du .env ne l'est pas (rien ne dit que le conteneur le lit).
+dossiers_du_json() {
+  if [ -d "$METRIQUES" ]; then printf '%s\n' "$METRIQUES"; return 0; fi
+  local inst ligne origine chemin vus=''
+  for inst in dev prod; do
+    ligne=$(metriques_de_l_instance "$inst")
+    [ -n "$ligne" ] || continue
+    origine=${ligne%% *}
+    chemin=${ligne#* }
+    case " $vus " in *" $chemin "*) continue ;; esac
+    if [ ! -d "$chemin" ] && [ "$origine" = docker ]; then mkdir -p "$chemin" && chmod 755 "$chemin" || true; fi
+    [ -d "$chemin" ] || continue
+    vus="$vus $chemin"
+    printf '%s\n' "$chemin"
+  done
+}
+
+# Écrit sauvegardes.json (format 1) dans le dossier des métriques (dossiers_du_json : là où chaque service le lit), d'un coup (fichier provisoire créé
+# en exclusivité puis renommage : un lien posé à l'avance dans ce dossier partagé n'est jamais suivi), en 644 : il est lu par les conteneurs, il ne
+# porte aucun secret.
 ecrire_json() {
-  [ -d "$METRIQUES" ] || { echec "dossier des métriques introuvable ($METRIQUES) : état non écrit"; return 0; }
+  local dossiers dossier contenu
+  dossiers=$(dossiers_du_json)
+  if [ -z "$dossiers" ]; then echec "dossier des métriques introuvable ($METRIQUES, ni celui d'aucune instance) : état non écrit"; return 0; fi
+  [ "$dossiers" = "$METRIQUES" ] || journal "dossier des métriques réglé absent ($METRIQUES) : état écrit là où les services le lisent ($(printf '%s' "$dossiers" | tr '\n' ' '))"
+  contenu=$(mktemp "${TMPDIR:-/tmp}/sauvegardes.json.XXXXXX") || return 0
+  json_complet > "$contenu"
+  while IFS= read -r dossier; do
+    ecrire_json_dans "$dossier" "$contenu"
+  done <<< "$dossiers"
+  rm -f "$contenu"
+}
+
+ecrire_json_dans() { # dossier fichier_du_contenu
+  local provisoire
+  provisoire=$(mktemp "$1/.sauvegardes.json.XXXXXX") || return 0
+  cat "$2" > "$provisoire"
+  chmod 644 "$provisoire"
+  mv -f "$provisoire" "$1/sauvegardes.json"
+}
+
+json_complet() {
   charger_reglages
-  local maintenant occupe libre inst d sep='' provisoire
+  local maintenant occupe libre inst d sep=''
   maintenant=$(instant)
   occupe=$(octets_de "$SAUV/prod" "$SAUV/dev")
   libre=$(libre_octets "$SAUV")
-  provisoire=$(mktemp "$METRIQUES/.sauvegardes.json.XXXXXX") || return 0
   {
     printf '{\n  "format": 1, "instant": %s,\n' "$(json_chaine "$(iso_de "$maintenant")")"
     printf '  "locale": { "plafond_octets": %s, "occupe_octets": %s, "libre_min_octets": %s, "disque_libre_octets": %s, "horaires_gardees": %s, "nuits_gardees": %s, "chute_pourcent": %s, "chute_min_lignes": %s, "reglages_illisibles": %s },\n' \
@@ -184,9 +261,7 @@ ecrire_json() {
     printf '\n  },\n'
     json_exterieur
     printf '\n}\n'
-  } > "$provisoire"
-  chmod 644 "$provisoire"
-  mv -f "$provisoire" "$SORTIE_JSON"
+  }
 }
 
 json_instance() { # instance fichier_d_etat

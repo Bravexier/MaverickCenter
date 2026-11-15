@@ -408,7 +408,8 @@ function traiterLeRecalcul(requete, service, permis) {
  * Les routes /api/edition/lots/… (lots de changements, serveur/edition-lots.mjs ; site de dev seulement, 403 ailleurs avant tout). Le dépôt, l'essai et
  * l'aperçu d'une annulation rendent une PROMESSE (ils tournent dans un fil à part : une copie de la base et les contrôles du contenu) ; lire, appliquer, refuser et annuler
  * répondent aussitôt.
- * `service.lots.enArrierePlan === false` : l'essai dans le fil du service (les tests).
+ * `service.lots.enArrierePlan === false` : l'essai dans le fil du service (les tests). `service.source()` vrai (la base source, lot 8) : le dépôt ouvre le lot aux
+ * tables de contenu hors édition (`ouvertHorsEdition` de `controlerLeLot`).
  */
 function traiterLots(requete, service, reste, permis) {
   if (!service.edition) return erreur(403, 'Les lots de changements ne s’ouvrent que sur le site de dev.');
@@ -436,7 +437,10 @@ function traiterLots(requete, service, reste, permis) {
   if (interdit) return interdit;
   try {
     if (id === undefined) {
-      return lots.deposer(service.base, valeur, options).then((lot) => {
+      // la base source (db/source, lot 8 : serveur/base-source.mjs) : un lot vaut pour toutes les tables de contenu, hors édition comprises (la voie générique du
+      // journal) ; sans elle, le défaut du module (LOT_OUVERT_AUX_TABLES_HORS_EDITION, faux) : seules les tables de l'édition
+      const controle = service.source?.() ? { ouvertHorsEdition: true } : {};
+      return lots.deposer(service.base, valeur, { ...options, controle }).then((lot) => {
         service.journal?.(`lots : proposition ${lot.id} déposée (${lot.operations} opération(s), essai : ${lot.verdict ?? '?'})`);
         return json(201, lot);
       }, echec);

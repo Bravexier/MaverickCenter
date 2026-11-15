@@ -410,7 +410,8 @@ export function lireEtat(dossier) {
   }
 }
 
-function ecrireEtat(dossier, etat) {
+/** Écrit vivante.json d'un coup (fichier provisoire, puis renommé). Exportée pour la base source (serveur/base-source.mjs), qui n'est jamais refaite. */
+export function ecrireEtat(dossier, etat) {
   const provisoire = join(dossier, `.${FICHIER_ETAT}.${process.pid}`);
   writeFileSync(provisoire, `${JSON.stringify(etat, null, 2)}\n`);
   renameSync(provisoire, join(dossier, FICHIER_ETAT));

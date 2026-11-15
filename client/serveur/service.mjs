@@ -29,6 +29,7 @@ import { CORPS_MAX, traiter } from './api.mjs';
 import { creerJournalDuService, estUneReleve } from './journal-du-service.mjs';
 import { instant as maintenant } from './instant.mjs';
 import { DOSSIER_ARCHIVES, FICHIER_BASE, lireEtat, ouvrirBaseVivante, preparerBaseVivante, signature } from './base-vivante.mjs';
+import { ErreurBaseSource, estUneBaseSource, etatDeLaBaseSource, preparerBaseSource } from './base-source.mjs';
 import { annonceDuLancement, DUREE_MAX_MAINTENANCE, etatDeMaintenance, lireAnnonce, publierAnnonce } from './maintenance.mjs';
 import { actualiserLancement, creerGithub, lireLancement, lireReference, sansNouvelles, SUIVIS } from './notes-de-version.mjs';
 import {
@@ -145,11 +146,14 @@ const inode = (chemin) => {
  *   (par défaut : sans l'édition, c'est-à-dire en production) l'écrit dans `dossier` (par défaut le dossier des métriques, partagé entre les deux
  *   instances du VPS) au démarrage et après chaque reconstruction de la base vivante ; le site de dev y lit celle de la production (page « Mise à
  *   jour ») ; false : ni écriture ni lecture
+ * @param {{ migrations?: string|null, schema?: string|null }} [o.structure] la base source (fichier `source` dans `dossier` : serveur/base-source.mjs) : les
+ *   migrations et le schema.sql appliqués sur place au démarrage (undefined : ceux de la livraison, _serveur/data/ ; tests). Une base source absente, refusée
+ *   par l'essai, ou d'une autre structure que le schema.sql livré : la promesse est rejetée, le service ne démarre pas
  */
 export async function demarrerService({ regles, dossier, hote = '127.0.0.1', port = 8787, intervalle = 15000, fichierVersion = null, edition = false,
   reference = null, depot = 'Bravexier/MaverickCenter', adresse = null, jetonFichier = null, acces: reglageAcces = null, maintenance = null, versionParDefaut = 'développement',
   journal: ecouteur = null, journalDuService = null, relancer = () => process.exit(0), metriques: reglagesMetriques = {}, fetch: fetchDuClasseur = globalThis.fetch,
-  tipeee: reglagesTipeee = {}, attestation: reglagesAttestation = {}, essaiDeStructure: reglagesEssai = {}, atelier: reglagesAtelier = {} }) {
+  tipeee: reglagesTipeee = {}, attestation: reglagesAttestation = {}, essaiDeStructure: reglagesEssai = {}, atelier: reglagesAtelier = {}, structure: reglagesStructure = {} }) {
   const lancementDuService = performance.now();
   // la production sert de référence à la page « Mise à jour » sauf si c'est la base de ce site même (lireReference compare les fichiers)
   const referenceDuSite = reference && typeof reference === 'object' ? { propre: regles, ...reference } : reference;
@@ -258,6 +262,10 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
   // dernier texte valide est gardé à côté de la base vivante
   const tipeee = reglagesTipeee === false ? null : creerTipeee({ dossier, journal, evenement, ...(reglagesTipeee ?? {}) });
   const etat = { db: null, inode: null, erreur: null, demarre_le: maintenant() };
+  // la base source (lot 8 : serveur/base-source.mjs) : le fichier `source` dans le dossier de la base, relu à chaque fois (bascule.sh le pose, puis relance le
+  // service) ; avec lui, la base n'est jamais refaite depuis les règles, ses migrations sont appliquées sur place, et un lot de changements vaut pour toutes les tables
+  const estSource = () => estUneBaseSource(dossier);
+  const sourceAuDemarrage = estSource();
   // les copies d'essai d'un lot de changements qu'un arrêt a laissées (serveur/edition-lots.mjs)
   if (edition) {
     try {
@@ -270,10 +278,11 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
   // l'essai d'une livraison avant son installation (serveur/essai-de-structure.mjs) : sur les deux instances, la production comprise. Les copies qu'un arrêt a
   // laissées sont retirées avant tout essai.
   // l'essai dans l'ombre, lui, est propre au site de dev (`edition`) : la production n'en fait jamais
-  const ombre = reglagesEssai === false || !edition || reglagesEssai?.ombre === false ? null
+  // (sans objet pour une base source : elle n'est jamais refaite, il n'y a rien à comparer à sa migration sur place)
+  const ombre = reglagesEssai === false || !edition || reglagesEssai?.ombre === false || sourceAuDemarrage ? null
     : creerOmbre({ dossier, instance: nomDInstance, journal, evenement, ...(reglagesEssai?.ombre ?? {}) });
   const essaiDeStructure = reglagesEssai === false ? null
-    : creerEssaiDeStructure({ dossier, source: chemin, instance: nomDInstance, journal, evenement, ...(reglagesEssai ?? {}), ombre });
+    : creerEssaiDeStructure({ dossier, source: chemin, instance: nomDInstance, journal, evenement, ...(reglagesEssai ?? {}), ombre, baseSource: () => etatDeLaBaseSource(dossier) });
   if (essaiDeStructure) {
     try {
       const n = essaiDeStructure.purger();
@@ -302,6 +311,10 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
   let serviceOuvert = false;
   /** (Re)prépare puis ouvre la base vivante ; en cas d'échec, l'erreur est gardée et la base en place, si elle existe, reste servie telle quelle. */
   function ouvrir() {
+    if (estSource()) {
+      ouvrirLaBaseSource();
+      return;
+    }
     fermer();
     const t0 = performance.now();
     const preparation = { appliquee: true, problemes: 0 }; // dit à l'attestation de la production si la dernière préparation a réussi
@@ -341,6 +354,43 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
       journal(`ERREUR ouverture de la base vivante : ${e.message}`);
     }
     attester(preparation);
+  }
+
+  /**
+   * La base source (serveur/base-source.mjs ; docs/serveur.md, « Base source (lot 8) ») : jamais refaite depuis les règles ; les migrations livrées essayées sur
+   * une copie puis appliquées sur place, la structure comparée au schema.sql livré, AVANT toute écriture. Au démarrage (`auDemarrage`), un refus est levé : le
+   * service ne démarre pas. Ensuite (base remplacée : une restauration ; base retirée), la base reste fermée et /api/etat dit pourquoi. Le journal et
+   * l'évènement `base_source` ne portent jamais un texte de contenu.
+   */
+  function ouvrirLaBaseSource({ auDemarrage = false } = {}) {
+    fermer();
+    const t0 = performance.now();
+    try {
+      const r = preparerBaseSource({ dossier, version: version.version, migrations: reglagesStructure?.migrations, schema: reglagesStructure?.schema });
+      evenement('base_source', { duree_ms: performance.now() - t0, detail: { appliquees: r.appliquees.length, avant: r.avant, apres: r.apres, sauvegarde: Boolean(r.sauvegarde) } });
+      if (r.appliquees.length) {
+        journal(`structure : base source migrée sur place, version ${r.avant} → ${r.apres} (${r.appliquees.map((m) => m.fichier).join(', ')}) ; sauvegarde d’avant : ${r.sauvegarde ? basename(r.sauvegarde) : 'aucune'}`, { categorie: 'base' });
+      } else journal(`base source ouverte telle quelle (schéma ${r.apres}) : rien n’est refait depuis les règles`, { categorie: 'base' });
+      etat.erreur = null;
+    } catch (e) {
+      const etape = e instanceof ErreurBaseSource ? e.etape : 'panne';
+      evenement('base_source', { duree_ms: performance.now() - t0, detail: { erreur: etape, ...(e?.refus?.etape ? { refus: e.refus.etape } : {}), ...(e?.refus?.migration ? { migration: e.refus.migration } : {}) } });
+      journal(`ATTENTION ${e.message}${e?.details?.length ? ` : ${e.details.slice(0, 5).join(' ; ')}` : ''}`, { categorie: 'base' });
+      etat.erreur = e.message;
+      etat.inode = inode(chemin);
+      if (auDemarrage) throw e;
+      return;
+    }
+    etat.inode = inode(chemin);
+    try {
+      etat.db = ouvrirBaseVivante(chemin);
+    } catch (e) {
+      etat.erreur = `base source illisible : ${e.message}`;
+      journal(`ERREUR ouverture de la base source : ${e.message}`, { categorie: 'base' });
+      if (auDemarrage) throw e;
+      return;
+    }
+    attester({ appliquee: true, problemes: 0 });
   }
 
   /**
@@ -397,6 +447,9 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
         // les fiches adaptées par la dernière reconstruction qui a retiré quelque chose (R42) : { le, fiches: [{ fiche, retraits }] }
         retraits: enregistre?.retraits ?? null,
         pretires: personnages,
+        // la base source (lot 8) : le marqueur db/source, et la dernière application des migrations sur place (null sans elle)
+        source: estSource(),
+        sur_place: enregistre?.sur_place ?? null,
       },
     };
   }
@@ -479,7 +532,20 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
     return etatMaintenance();
   }
 
-  ouvrir();
+  if (sourceAuDemarrage) {
+    try {
+      ouvrirLaBaseSource({ auDemarrage: true });
+    } catch (e) {
+      // le service ne démarre pas (garde-fou 5) : les métriques versent l'évènement, puis l'erreur remonte (index.mjs sort avec un code non nul)
+      try {
+        metriques?.arreter();
+      } catch {
+        // rien de plus à noter
+      }
+      essaiDeStructure?.arreter();
+      throw e;
+    }
+  } else ouvrir();
 
   /** Exécute une étape des métriques sans jamais faire échouer la requête (une panne est notée une fois par le collecteur). */
   const sansEchec = (f) => {
@@ -587,7 +653,7 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
           reponse = traiter({ methode: req.method ?? 'GET', chemin: url.pathname, recherche: url.search, entetes: req.headers, corps: Buffer.concat(morceaux).toString('utf8'),
             signal: abandon.signal },
           { base: baseMesuree, etat: decrire, journal, journalDuService: memoire, edition: Boolean(edition), dossier, reference: referenceDuSite, depot, adresse, github,
-            maintenance: maintenanceDemandee, metriques, evenement, classeur, tipeee, extrait, attestations: dossierDesAttestations, acces, essaiDeStructure, atelier });
+            maintenance: maintenanceDemandee, metriques, evenement, classeur, tipeee, extrait, attestations: dossierDesAttestations, acces, essaiDeStructure, atelier, source: estSource });
         } finally {
           const mesureSql = sql.terminer();
           if (mesure) mesure.sql = mesureSql;
@@ -678,14 +744,20 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
       else if (vue !== autreBase) autreBase = vue;
       else {
         autreBase = undefined;
-        journal(vue === null ? 'base vivante absente : recréation' : 'base vivante remplacée : réouverture');
-        evenement('base_vivante_remplacee', { detail: { absente: vue === null } });
+        const source = estSource(); // une base source absente n'est jamais recréée : ouvrir() le dit et la laisse fermée
+        journal(vue === null ? (source ? 'base source absente' : 'base vivante absente : recréation') : 'base vivante remplacée : réouverture');
+        evenement('base_vivante_remplacee', { detail: { absente: vue === null, ...(source ? { source: true } : {}) } });
         ouvrir();
       }
       if (nouvellesRegles(signature(regles))) {
-        journal('base des règles changée');
-        evenement('regles_changees', {});
-        ouvrir();
+        if (estSource()) {
+          journal('base des règles changée : la base est la source (db/source), elle n’est pas refaite', { categorie: 'base' });
+          evenement('regles_changees', { detail: { source: true } });
+        } else {
+          journal('base des règles changée');
+          evenement('regles_changees', {});
+          ouvrir();
+        }
       }
       suivreLaMiseAJour();
     }, intervalle);

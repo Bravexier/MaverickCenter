@@ -8,7 +8,8 @@
 // _serveur/data/migrations/) : le rejeu d'un lot d'avant la migration y lit la conversion de ses liens en balises (serveur/edition.mjs#tableDesLiensDeLa0098) ;
 // de même celui de la migration 0113 (ancien id texte d'un mot-clé → id entier : serveur/edition.mjs#registreDes0113). Et la STRUCTURE : toutes les migrations
 // data/migrations/NNNN-<nom>.sql et data/schema.sql (copiés dans _serveur/data/) : le service y lit ce qu'il essaie, puis applique sur sa base, et ce qu'une base
-// refaite a reçu (serveur/structure-sur-place.mjs ; lot 7 du chantier de la base de dev).
+// refaite a reçu (serveur/structure-sur-place.mjs ; lot 7 du chantier de la base de dev). Et scripts/constat-de-bascule.mjs (le constat du jour de la bascule 1,
+// lancé dans le conteneur par deploy/installateur/bascule.sh ; il n'importe que des modules du service).
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve, sep } from 'node:path';
@@ -29,12 +30,17 @@ export function fichiersDeStructure(client = CLIENT) {
   return [...migrations.map((f) => ({ source: `../data/migrations/${f}`, cible: `data/migrations/${f}` })), { source: '../data/schema.sql', cible: 'data/schema.sql' }];
 }
 
+/** Le script du constat de la bascule 1 (scripts/constat-de-bascule.mjs), livré sous le même chemin dans _serveur/. */
+export const CONSTAT_DE_BASCULE = 'scripts/constat-de-bascule.mjs';
+
 /** Fichiers livrés avec le service hors de ses modules : `source` relatif à client/, `cible` relatif au dossier livré. */
 export const FICHIERS_JOINTS = Object.freeze([
   Object.freeze({ source: `../${CHEMIN_INSTANTANE}`, cible: CHEMIN_INSTANTANE }),
   Object.freeze({ source: `../${REGISTRE_DES_LIENS}`, cible: REGISTRE_DES_LIENS }),
   Object.freeze({ source: `../${REGISTRE_DES_IDS_DE_MOTS_CLES}`, cible: REGISTRE_DES_IDS_DE_MOTS_CLES }),
   ...fichiersDeStructure().map((f) => Object.freeze(f)),
+  // le constat d'égalité du jour de la bascule 1 (deploy/installateur/bascule.sh le lance dans le conteneur du service) : il n'importe que des modules déjà livrés
+  Object.freeze({ source: CONSTAT_DE_BASCULE, cible: CONSTAT_DE_BASCULE }),
 ]);
 
 const IMPORTS = /\b(?:import|export)\s+(?:[^'"`;]*?\s+from\s+)?['"]([^'"]+)['"]|\bimport\(\s*['"]([^'"]+)['"]\s*\)/g;

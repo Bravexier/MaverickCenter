@@ -9,7 +9,7 @@
 //
 // Le partage dit où en est le service : une opération passe aujourd'hui par un lot (a), ou elle est refusée (b) : table que le service d'édition ne sait
 // pas écrire (le lot reste éteint jusqu'au lot 8), entité qu'il ne sait pas créer ou supprimer. La partie (b) ne s'applique que par l'option de test
-// `ouvertHorsEdition` de `controlerLeLot` (aucune route ne la donne) : elle prouve que le moteur retrouve la même base une fois ouvert, sans rien ouvrir.
+// `ouvertHorsEdition` de `controlerLeLot` (la route ne la donne qu'à une base source, db/source : lot 8) : elle prouve que le moteur retrouve la même base une fois ouvert, sans rien ouvrir.
 // Le module ne dépend que du service d'édition et de node:sqlite ; ni git, ni réseau : les lots et leur complément sont des fichiers du dépôt.
 import { copyFileSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
