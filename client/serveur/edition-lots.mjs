@@ -749,7 +749,8 @@ function messageDesErreurs(erreurs) {
  * @param {() => import('node:sqlite').DatabaseSync | null} base
  * @param {unknown} corps le lot (objet : `format`, `titre`, `nature`, `decision`, `auteur`, `operations`)
  * @param {{ instant?: string, id?: string, controle?: object, enArrierePlan?: boolean, dossier?: string }} [options] `controle` : des options de
- *   `controlerLeLot` (les tests ouvrent `ouvertHorsEdition` pour éprouver les numéros ; aucune route ne le donne : le lot reste éteint hors édition)
+ *   `controlerLeLot` : la route le donne `{ ouvertHorsEdition: true }` quand la base est la source (db/source, lot 8 : serveur/api.mjs#traiterLots), sinon
+ *   rien (le lot reste éteint hors édition) ; les tests l'ouvrent aussi pour éprouver les numéros
  * @returns {Promise<object>} la proposition avec son essai
  */
 export function deposer(base, corps, { instant = instantMaintenant(), id = randomUUID(), controle = {}, ...options } = {}) {

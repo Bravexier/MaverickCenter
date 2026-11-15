@@ -90,6 +90,8 @@ export function fabriquer(options) {
     }
     // les scripts de l'atelier du site de dev (deploy/installateur/atelier/) : dans l'installateur de test seulement ; l'installateur les pose dans <instance>/atelier/
     if (mode === 'test') {
+      // bascule.sh : le script du jour de la bascule 1 (lot 8), que l'installateur de test pose à la racine de l'instance
+      copyFileSync(join(ICI, 'bascule.sh'), join(contenu, 'bascule.sh'));
       for (const nom of readdirSync(join(ICI, 'atelier')).filter((f) => f.endsWith('.sh')).sort()) {
         mkdirSync(join(contenu, 'atelier-scripts'), { recursive: true });
         copyFileSync(join(ICI, 'atelier', nom), join(contenu, 'atelier-scripts', nom));

@@ -2,6 +2,8 @@
 # Envoi chiffré de nuit hors du serveur (temps 2 des sauvegardes automatiques ; deploy/vps/README.md, « Sauvegardes »).
 #
 #   envoi.sh        envoie, pour chaque instance, sa dernière copie locale saine et son dernier installateur ; applique la rétention ; contrôle le dépôt
+#   MAVERICK_SAUV_NOMMEE=<nom> envoi.sh   envoie à la place la copie NOMMÉE <nom> de chaque instance (<sauvegardes>/<instance>/nommees/<nom>, posée par
+#                   deploy/installateur/bascule.sh), étiquetée « nommees,<nom> » et gardée sans limite (--keep-tag nommees)
 #
 # Outil : restic (paquet Ubuntu), dépôt chiffré sur un stockage compatible S3 d'un autre fournisseur que l'hébergeur (R275). Réglages dans
 # /etc/maverick-sauvegardes (root 700) : stockage.env (adresse du dépôt et clés d'accès au stockage, 600) et cle-depot (la clé de chiffrement, 600).
@@ -14,7 +16,7 @@
 #      installée a changé depuis le dernier envoi (VERSIONS_DE) ;
 #   2. restic forget : une copie par jour pendant les JOURS_GARDES (30) derniers jours (--keep-within-daily 30d : des JOURS, pas les 30 derniers jours
 #      qui ont une copie, comme le ferait --keep-daily), la dernière copie de chaque mois sans limite (--keep-monthly unlimited, valeur de restic 0.16),
-#      toutes celles étiquetées « version » (--keep-tag) ; puis restic prune ;
+#      toutes celles étiquetées « version » ou « nommees » (--keep-tag) ; puis restic prune ;
 #   3. restic check ; le dimanche, avec --read-data-subset=CONTROLE_DONNEES (5 %) : une part des données est relue.
 # Code de sortie : 0 = envoi fait (ou non activé), 3 = échec (l'état et le journal du minuteur disent lequel), 1 = erreur d'usage.
 set -euo pipefail
@@ -49,6 +51,12 @@ terminer() {
   exit 0
 }
 ENVOYEES=''
+# Une copie nommée (bascule.sh) : un nom simple, jamais un chemin.
+NOMMEE=${MAVERICK_SAUV_NOMMEE:-}
+case "$NOMMEE" in
+  '') ;;
+  *[!a-z0-9-]*|-*) echec "copie nommée refusée : « $NOMMEE » (lettres minuscules, chiffres et tirets)"; exit 1 ;;
+esac
 
 if ! command -v restic >/dev/null 2>&1; then
   echouer restic_absent "restic est absent (apt-get install restic)"
@@ -81,6 +89,9 @@ RETENTION_OK=1
 for inst in $INSTANCES; do
   dossier=$(dossier_de "$inst")
   copie=$(derniere_copie "$inst")
+  if [ -n "$NOMMEE" ]; then
+    if [ -d "$SAUV/$inst/nommees/$NOMMEE" ]; then copie="nommees/$NOMMEE"; else echouer copie_nommee_absente "$inst : la copie nommée $NOMMEE est absente"; continue; fi
+  fi
   if [ -z "$copie" ]; then
     journal "$inst : aucune copie locale saine à envoyer"
     continue
@@ -88,6 +99,7 @@ for inst in $INSTANCES; do
   chemins=("$SAUV/$inst/$copie")
   [ -d "$dossier/installateur-courant" ] && chemins+=("$dossier/installateur-courant")
   etiquettes="inst-$inst,${copie%%/*}"
+  [ -z "$NOMMEE" ] || etiquettes="$etiquettes,$NOMMEE"
   version=''
   [ -f "$dossier/VERSION" ] && version=$(sed -n 's/^tag=//p' "$dossier/VERSION" | head -n 1)
   nouvelle_version=0
@@ -105,7 +117,7 @@ for inst in $INSTANCES; do
     continue
   fi
   # La rétention de l'instance : jamais sans règle (« forget » sans --keep-* ne retire rien), jamais avant un envoi réussi.
-  if ! restic forget -q --tag "inst-$inst" --group-by host --keep-within-daily "${JOURS_GARDES}d" --keep-monthly unlimited --keep-tag version; then
+  if ! restic forget -q --tag "inst-$inst" --group-by host --keep-within-daily "${JOURS_GARDES}d" --keep-monthly unlimited --keep-tag version --keep-tag nommees; then
     echouer retention_echouee "$inst : la rétention a échoué"
     RETENTION_OK=0
   fi

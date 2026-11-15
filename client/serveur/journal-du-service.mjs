@@ -49,7 +49,7 @@ const REGLES_DE_CATEGORIE = [
   [/^maintenance\b/i, 'maintenance'], // annonce publiée ou retirée, levée depuis la page, suivi du lancement (service.mjs, api.mjs)
   [/^métriques\b/i, 'metriques'], // base des métriques en panne ou de nouveau disponible (serveur/metriques.mjs, service.mjs)
   [/prétiré|^fiches\b/i, 'fiches'], // création, modification, suppression d'un prétiré (api.mjs) ; fiches adaptées aux nouvelles règles (R42)
-  [/base vivante|base des règles|^journal des modifications rejoué|^extrait du contenu|^attestation\b|^(ATTENTION |ERREUR )?structure :/i, 'base'], // reconstruction, réouverture, rejeu du journal (service.mjs) ; extrait du contenu (extrait.mjs), attestation de la production (service.mjs) et essai d'une livraison (« structure : », essai-de-structure.mjs)
+  [/base vivante|base source|base des règles|^journal des modifications rejoué|^extrait du contenu|^attestation\b|^(ATTENTION |ERREUR )?structure :/i, 'base'], // reconstruction, réouverture, rejeu du journal (service.mjs) ; extrait du contenu (extrait.mjs), attestation de la production (service.mjs), essai d'une livraison (« structure : », essai-de-structure.mjs) et base source (« base source », serveur/base-source.mjs)
   [/^service des personnages|^nouvelle version du service/i, 'service'], // démarrage, relance après livraison (service.mjs)
 ];
 

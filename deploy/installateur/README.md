@@ -126,9 +126,36 @@ réponse du service, et la note dans `installation.log`. Le service est le seul 
 - Pas de réponse (service arrêté, `MAVERICK_ESSAI_ACCUSE_S`, 20 s), délai dépassé (`MAVERICK_ESSAI_DELAI_S`, 120 s) ou essai refusé : l'installation
   continue, la ligne du journal le dit. Le détail d'un refus se lit sur la page Debug du site de dev et dans `db/essai-de-structure/dernier.json`.
 - Un fichier `db/source` (le marqueur d'une base qui est la source de vérité de l'instance) change le refus : l'installation s'arrête avant d'avoir rien
-  installé. Rien ne pose ce fichier à la main ; il n'est là que quand le changement de structure sur place est actif.
+  installé. Seul `bascule.sh` pose ce fichier (« La base source du site de dev », plus bas).
 - Première installation et `--copier-base-prod` : aucun essai. Aucun geste sur le serveur, `docker-compose.yml` ne change. Détail : `docs/serveur.md`,
   « Essai avant installation ».
+
+## La base source du site de dev (`db/source`, `bascule.sh`)
+
+Le fichier `db/source` dit que la base du site de dev est la **source de vérité** : le service ne la refait plus jamais depuis les règles du site, applique
+lui-même les changements de structure sur place (essai sur une copie, sauvegarde, puis application, avant d'accepter une écriture) et **ne démarre pas** si elle
+manque (elle se restaure depuis une sauvegarde, jamais depuis le dépôt). Avec ce fichier, l'installateur refuse `--copier-base-prod` et toute publication
+plus ancienne que celle installée (`version=` de `VERSION`), avant d'écrire quoi que ce soit, et s'arrête si le service refuse l'essai de la structure.
+Sans lui, rien ne change. Détail : `docs/serveur.md`, « Base source (lot 8) ».
+
+Seul `bascule.sh`, posé par l'installateur de test à la racine de l'instance, le pose ou le retire, en root, une étape à la fois (une ligne par action,
+code 0 si l'étape a réussi) :
+
+```bash
+sudo bash /srv/maverick-center-test/bascule.sh etat         # où on en est
+sudo bash /srv/maverick-center-test/bascule.sh geler        # GELER posé, service du site de dev arrêté : plus aucune écriture
+sudo bash /srv/maverick-center-test/bascule.sh constat      # égalité production / site de dev / dépôt, table par table : EGALITE ou les tables qui diffèrent
+sudo bash /srv/maverick-center-test/bascule.sh sauvegarder  # copie nommée bascule-1-<date> des deux bases, locale puis hors du serveur
+sudo bash /srv/maverick-center-test/bascule.sh poser        # le marqueur, puis le service relancé ; vérifie « source: true »
+sudo bash /srv/maverick-center-test/bascule.sh retirer      # retour arrière : marqueur renommé (rien n'est effacé), service relancé
+sudo bash /srv/maverick-center-test/bascule.sh degeler      # sans poser : relance le service et retire GELER
+```
+
+`poser` refuse sans constat `EGALITE` de moins d'une heure fait pendant le gel en cours, et sans sauvegarde nommée réussie depuis ce constat ;
+`sauvegarder` refuse tant que l'envoi hors du serveur n'est pas réglé (`sauvegarde/installer.sh --stockage`). Le constat tourne dans le conteneur du
+service (l'hôte n'a pas besoin de Node) et lit la production par son attestation ; il ne montre que des noms de tables et des nombres de lignes.
+`--dev <dossier>` et `--prod <dossier>` changent les dossiers (`/srv/maverick-center-test` et `/srv/maverick-center` par défaut). L'état des étapes est
+gardé dans `.bascule/` de l'instance.
 
 ## Le kit de l'atelier (serveur de test seulement)
 

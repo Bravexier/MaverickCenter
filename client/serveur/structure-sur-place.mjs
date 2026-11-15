@@ -2,14 +2,16 @@
 // « Changement de structure appliqué sur place » ; plan : docs/chantier-base-de-dev.md). Le service sait appliquer les migrations livrées
 // (data/migrations/NNNN-<nom>.sql, jointes à la livraison : serveur/livraison.mjs#FICHIERS_JOINTS) à une base en place : sauvegarde, UN SEUL bloc, clés
 // étrangères contrôlées, schéma obtenu comparé à data/schema.sql, une ligne `migration_recue` par migration. Les mêmes garde-fous que
-// tools/db/maverick.py#migrer. Rien n'y est branché sur la vraie base avant le lot 8 : aujourd'hui, la base vivante est refaite depuis les règles, et ce
-// module sert à l'ESSAI (sur une copie, dans un fil à part, copie toujours effacée) et à noter les migrations d'une base refaite.
+// tools/db/maverick.py#migrer. Sans le marqueur db/source, la base vivante est refaite depuis les règles, et ce module sert à l'ESSAI (sur une copie, dans
+// un fil à part, copie toujours effacée) et à noter les migrations d'une base refaite ; avec lui (lot 8, serveur/base-source.mjs), le service migre sa vraie
+// base sur place au démarrage, après un essai sur une copie.
 //
 //   lireLesMigrations      les migrations livrées (numéro, fichier, SQL, sha256 des octets) et le schema.sql attendu ;
 //   appliquerSurPlace      les migrations de numéro > user_version, d'un bloc ; refus (ErreurStructure) et retour arrière complet au moindre écart ;
 //   essayerSurUneCopie     une copie de la base (VACUUM INTO), l'application, le bilan, la copie effacée ; `essayerEnArrierePlan` : dans un fil à part (`executerEnArrierePlan` :
 //                          la file commune, un travail à la fois ; l'autre travail est l'essai dans l'ombre, serveur/essai-dans-l-ombre.mjs) ;
-//   noterLesMigrationsRecues  à la reconstruction de la base vivante : serveur/base-vivante.mjs#preparerBaseVivante.
+//   noterLesMigrationsRecues  à la reconstruction de la base vivante : serveur/base-vivante.mjs#preparerBaseVivante ;
+//   ecartsAvecLeSchema     la structure d'une base comparée au schema.sql attendu (la base source, serveur/base-source.mjs : lot 8).
 // Le service importe seulement des modules de Node et de serveur/ : ce module sert aussi de fil de travail (comme serveur/edition-lots.mjs).
 import { randomUUID } from 'node:crypto';
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs';
@@ -196,6 +198,25 @@ function schemaAttendu(sql) {
     throw new ErreurStructure(`le schema.sql attendu ne se rejoue pas : ${e.message}`, { etape: 'schema_attendu' });
   }
   return db;
+}
+
+/**
+ * Les écarts entre la structure d'une base et le schema.sql attendu (`sql`), `user_version` comprise : vide quand la base est exactement celle que décrit
+ * schema.sql. Sert à la base source (serveur/base-source.mjs) : sans migration à appliquer, sa structure doit déjà être celle de la livraison. Lève une
+ * ErreurStructure (`schema_attendu`) si `sql` ne se rejoue pas.
+ * @param {import('node:sqlite').DatabaseSync} db
+ * @param {string} sql
+ * @returns {string[]}
+ */
+export function ecartsAvecLeSchema(db, sql) {
+  const attendu = schemaAttendu(sql);
+  try {
+    const ecarts = [];
+    if (versionDeLaBase(db) !== versionDeLaBase(attendu)) ecarts.push(`user_version : ${versionDeLaBase(db)} dans la base, ${versionDeLaBase(attendu)} dans le schema.sql attendu`);
+    return [...ecarts, ...comparerLesSchemas(db, attendu)];
+  } finally {
+    attendu.close();
+  }
 }
 
 const resumeDesCles = (violations) => {

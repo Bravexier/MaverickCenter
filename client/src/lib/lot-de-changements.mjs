@@ -45,8 +45,9 @@ export const OPERATIONS = Object.freeze(['inserer', 'modifier', 'supprimer']);
 
 /**
  * Le lot reste ÉTEINT pour les tables que le service d'édition ne sait pas écrire (« Elle passe par le service d'édition dès que la table lui est
- * connue », chantier de la base de dev, lot 6, risque ; « Le lot reste éteint pour les tables hors édition jusqu'au lot 8 »). Elle passe à `true` au
- * lot 8, avec l'accord du propriétaire, et pas avant : `controlerLeLot` refuse alors seulement ce que les contrôles de structure refusent.
+ * connue », chantier de la base de dev, lot 6, risque ; « Le lot reste éteint pour les tables hors édition jusqu'au lot 8 »). C'est le défaut de ce module
+ * pur ; le service donne `ouvertHorsEdition: true` à `controlerLeLot` quand sa base est la source (le marqueur db/source du lot 8 : serveur/api.mjs#traiterLots),
+ * et `controlerLeLot` refuse alors seulement ce que les contrôles de structure refusent.
  */
 export const LOT_OUVERT_AUX_TABLES_HORS_EDITION = false;
 

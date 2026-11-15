@@ -95,7 +95,7 @@ export function resumeDuBilan(bilan) {
  * @param {{ lire: () => object } | null} [o.ombre] l'essai dans l'ombre (serveur/essai-dans-l-ombre.mjs#creerOmbre) : son état s'ajoute à `lire()`
  */
 export function creerEssaiDeStructure({ dossier, source, instance = null, journal = () => {}, evenement = () => {}, essayer = essayerEnArrierePlan,
-  espaceLibre = null, maintenant = ecrireInstant, ombre = null }) {
+  espaceLibre = null, maintenant = ecrireInstant, ombre = null, baseSource = null }) {
   const racine = join(dossier, DOSSIER_DES_ESSAIS);
   const vues = new Set();
   let suite = Promise.resolve();
@@ -238,12 +238,14 @@ export function creerEssaiDeStructure({ dossier, source, instance = null, journa
   }
 
   /**
-   * Ce que lit la page Debug : l'essai en cours, le nombre en attente, le dernier résultat (null s'il n'y en a pas), et `ombre` : { en_cours, dernier } de l'essai
-   * dans l'ombre (null sur un service qui n'en a pas : la production).
+   * Ce que lit la page Debug : l'essai en cours, le nombre en attente, le dernier résultat (null s'il n'y en a pas), `ombre` : { en_cours, dernier } de l'essai
+   * dans l'ombre (null sur un service qui n'en a pas : la production), et `base_source` : { source, sur_place } (serveur/base-source.mjs ; null sans l'option
+   * `baseSource`).
    */
   function lire() {
     return {
       format: FORMAT_DE_L_ETAT, en_cours: enCours, en_attente: file.length - (enCours ? 1 : 0), dernier: lireJson(join(racine, FICHIER_DU_DERNIER)), ombre: ombre ? ombre.lire() : null,
+      base_source: baseSource ? baseSource() : null,
     };
   }
 

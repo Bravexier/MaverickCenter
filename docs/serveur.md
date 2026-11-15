@@ -52,6 +52,7 @@ ne l'emporte pas.
 | `db/vivante.db` | Copie de la base des règles publiée par le site (`site/donnees/maverick.db`), plus ce que le service écrit (section 13 : utilisateurs, fiches, groupes) |
 | `db/vivante.json` | Empreinte SHA-256 du fichier des règles dont elle est faite (`regles`), leur empreinte logique (`logique`), la version de la logique de reconstruction (`reconstruction`), la version du service qui la fait tourner (`version`), version du schéma, date |
 | `db/archives/` | Les 5 dernières bases remplacées qui avaient des lignes de la section 13, `vivante-<horodatage>-v<version>.db` (la version du service qui faisait tourner la base ; `-inconnue` si on ne la sait pas ; les anciennes `vivante-<horodatage>.db` se comptent et se purgent avec elles) |
+| `db/source` | Seulement sur une base source (posé par `deploy/installateur/bascule.sh`) : la base n'est plus jamais refaite depuis les règles, elle est migrée sur place (« Base source (lot 8) », plus bas) |
 | `db/metriques/` | Seulement sans dossier des métriques réglé (NAS, `npm run serveur`) : la base des métriques de l'instance (« Métriques et volume », plus bas) ; l'installateur de test ne la copie ni ne l'efface |
 
 Pourquoi une copie des règles : les fiches citent les règles (race, classe, sorts…) par clés étrangères, et les contrôles (`v_personnage_controle`,
@@ -182,9 +183,9 @@ fiche réelle dans git ni dans `/donnees/maverick.db` (le service refuse une bas
 ### Changement de structure appliqué sur place
 
 Lot 7 du chantier « la base du site de dev devient la source de vérité » (R274, R275 ; plan : `docs/chantier-base-de-dev.md`). Code : `serveur/structure-sur-place.mjs` ;
-tests : `serveur-structure-sur-place`, `serveur-structure-sur-place-reconstruction`. **Il n'est pas branché sur la vraie base avant le lot 8** : rien ne migre la base
-vivante au démarrage, qui reste refaite depuis les règles puis rejouée depuis le journal (« Quand refait-on la base vivante ? »). Le module sert à deux choses seulement : l'**essai** (sur une
-copie) et la **note des migrations reçues** par une base refaite.
+tests : `serveur-structure-sur-place`, `serveur-structure-sur-place-reconstruction`. **Sans le marqueur `db/source`** (« Base source (lot 8) », plus bas), rien ne migre la base
+vivante au démarrage, qui reste refaite depuis les règles puis rejouée depuis le journal (« Quand refait-on la base vivante ? ») : le module sert alors à deux choses seulement, l'**essai** (sur une
+copie) et la **note des migrations reçues** par une base refaite. **Avec lui**, le service migre sa vraie base sur place à son démarrage.
 
 - **Livré.** Chaque `data/migrations/NNNN-<nom>.sql` (les registres `.json` se joignent un à un) et `data/schema.sql` sont copiés dans `dist/_serveur/data/` (`livraison.mjs#fichiersDeStructure`, `FICHIERS_JOINTS`) :
   ils comptent dans l'empreinte du code. `lireLesMigrations` rend pour chacune son numéro, son fichier, son SQL et le sha256 des octets du `.sql`. Dossier absent : `null`, sans erreur.
@@ -203,6 +204,39 @@ copie) et la **note des migrations reçues** par une base refaite.
   de la base refaite (retour à une version plus ancienne) est retirée. Migrations non livrées : rien n'est noté, sans erreur, et le journal le dit. Une erreur d'écriture de la table n'arrête pas la reconstruction : la base refaite est gardée, l'erreur va au journal et dans `migrations.erreur` du résultat (son affichage sur la page Debug viendra avec les PR suivantes du lot 7).
   **Table vide** : une base qui n'a pas encore été refaite depuis cette migration n'a pas de lignes ; la table se remplit à la prochaine reconstruction naturelle (règles ou contenu changés). D'ici là, une table vide veut dire « migrations <= `user_version` présumées reçues ». `appliquerSurPlace` retire d'abord, dans son bloc, les lignes de numéro > `user_version`. Les lignes de `migration_recue` ne comptent pas pour décider d'archiver la base vivante.
 
+#### Base source (lot 8)
+
+Lot 8 du chantier (« Bascule 1 : la base du site de dev fait foi » ; garde-fous 5, 6 et 7 du plan). Code : `serveur/base-source.mjs`, `serveur/service.mjs`,
+`deploy/installateur/installateur.sh`, `deploy/installateur/bascule.sh`, `scripts/constat-de-bascule.mjs` ; tests : `serveur-base-source`, `installateur-base-source`, `bascule`,
+`bascule-constat`. **Rien ne pose le marqueur hors de `bascule.sh`**, que le propriétaire lance le jour de la bascule : sans lui, tout fonctionne comme avant.
+
+- **Le marqueur** est un **fichier**, `db/source`, dans le dossier de la base vivante (jamais un réglage ni une variable) ; son contenu est indicatif (`format=maverick-source/1`, `pose_le`,
+  `version`, `empreinte` du contenu de la base au constat, `sauvegarde` nommée). Le service le relit à chaque préparation de la base ; `bascule.sh` le pose, puis relance le service.
+- **Jamais refaite depuis les règles.** Avec le marqueur, ni le démarrage ni la surveillance du fichier des règles ne refont la base (journal : « base des règles changée : la base est la
+  source (db/source), elle n'est pas refaite ») : pas de rejeu du journal, pas d'`integrerLivrees`, pas d'archive de reconstruction, pas d'essai dans l'ombre (sans objet). **Base absente** :
+  le service **ne démarre pas** (`ATTENTION base source absente : <chemin>, la restaurer depuis une sauvegarde, jamais depuis le dépôt`, puis sortie de code 1 : `index.mjs`) ; retirée
+  pendant qu'il tourne, elle n'est pas recréée, `/api/etat` dit l'erreur et toute écriture répond 503.
+- **Structure, avant toute écriture** (`preparerBaseSource`). Les migrations livrées (`_serveur/data/`) de numéro > `user_version` sont **essayées sur une copie** (`essayerSurUneCopie`, copies
+  dans `db/essai-de-structure/`, toujours effacées), puis **appliquées sur place** (`appliquerSurPlace`, sauvegarde `structure-<instant>-v<version>.db` dans `db/archives/`, les 5 plus récentes
+  gardées) ; ensuite la structure, migrée ou non, est comparée au `schema.sql` livré, `user_version` comprise (`ecartsAvecLeSchema`). Migrations ou schéma non livrés, essai refusé, application
+  en échec (le `ROLLBACK` laisse la base telle qu'elle était) ou structure différente (une publication plus ancienne que la base, par exemple) : le service **ne démarre pas**, la raison au
+  journal (catégorie `base`, préfixe `ATTENTION`) et l'évènement `base_source` dans les métriques (`erreur` : l'étape `absente`, `non_livrees`, `essai`, `application`, `schema` ; le numéro de
+  migration ; jamais un texte). Réussie : `base_source` (`appliquees`, `avant`, `apres`, `sauvegarde`) et « structure : base source migrée sur place, version A → B ». Une base remplacée
+  pendant que le service tourne (une restauration) repasse par les mêmes contrôles ; refusée, elle reste fermée.
+- **`vivante.json`** garde `version` (celle du service), `schema`, `source: true` et `sur_place` : la dernière application (`le`, `avant`, `apres`, `migrations` [{ numero, fichier }],
+  `sauvegarde`, `essai_ms`, `duree_ms`). **`/api/etat`** : `base.source` (le marqueur présent ou non) et `base.sur_place` (`null` sans application). **`GET /api/debug/structure/`** ajoute
+  `base_source` : `{ source, sur_place }` (le format `maverick-essai-etat/1` ne change pas ; la page Debug ne l'affiche pas encore).
+- **Lots de changements** : avec le marqueur, `POST /api/edition/lots/` donne `ouvertHorsEdition: true` à `controlerLeLot` (`serveur/api.mjs#traiterLots`) : un lot vaut pour toutes les tables de
+  contenu, celles que le service d'édition ne sait pas écrire passant par la voie générique du journal ; `LOT_OUVERT_AUX_TABLES_HORS_EDITION` reste `false`, le défaut du module pur.
+- **Installateur** : avec `db/source`, `--copier-base-prod` est refusé, une publication plus ancienne que la `version=` de `VERSION` aussi (avant toute écriture) ; un refus de l'essai de la
+  structure arrête l'installation (« Essai avant installation »). Une instance sans `VERSION` lisible (une base restaurée avant la première installation) s'installe.
+- **Le jour J** (`bascule.sh`, livré par l'installateur de test à la racine de l'instance ; `deploy/installateur/README.md`) : `geler` (fichier `GELER` et service arrêté : l'annonce de
+  maintenance n'arrête pas les écritures), `constat` (dans le conteneur du service, `docker compose run` : `scripts/constat-de-bascule.mjs`, livré dans `_serveur/scripts/`, compare table de contenu
+  par table de contenu l'attestation de la production, la base vivante du site de dev et son fichier des règles ; hors compte : tables propres au site et calculées, pages d'exemple ; il ne sort
+  que des noms de tables et des comptes ; `EGALITE` ou la liste, code 0 ou 1), `sauvegarder` (copie `nuit` par `copie.sh`, gardée sous `<sauvegardes>/<instance>/nommees/bascule-1-<date>`,
+  envoyée par `envoi.sh` avec l'étiquette `nommees,bascule-1-<date>`, gardée sans limite), `poser` (refusé sans constat `EGALITE` de moins d'une heure fait pendant ce gel ni sauvegarde
+  nommée réussie depuis ; relance le service et lit `/api/etat` dans le conteneur), `retirer` (le marqueur est renommé `db/source-retire-<date>`, rien n'est effacé ; service relancé), `etat`.
+
 #### Essai avant installation
 
 Avant de remplacer le site, l'installateur fait essayer les migrations qu'il livre **par le service en place**, sur une copie de la vraie base : un seul programme touche la base à la fois, et ce n'est jamais l'installateur. Code : `serveur/essai-de-structure.mjs` (service),
@@ -216,7 +250,7 @@ Avant de remplacer le site, l'installateur fait essayer les migrations qu'il liv
   - Les copies d'un essai (`structure-essai-*.db`, dans ce même dossier) sont **toujours effacées** : à la fin de l'essai, même en échec, et à l'ouverture du service. Sans la place de deux copies plus une marge (3 × la base + 64 Mio), l'essai n'est pas lancé : `indisponible`, raison dite. Une demande abandonnée (un installateur tué) est retirée au bout d'une heure, à l'ouverture et à chaque passage ; seuls les noms `demande-…` et `.depot-<pid>` peuvent être retirés, jamais un autre fichier ni dossier. Si le fil de l'essai meurt, le service efface aussitôt les copies qu'il a laissées (un seul essai tourne à la fois).
 - **Ce que fait l'installateur** (avant la synchronisation du site ; jamais pour une première installation — pas de `VERSION` ni de `db/vivante.db` —, ni avec `--copier-base-prod`). Il attend `accuse.json` au plus `MAVERICK_ESSAI_ACCUSE_S` (20 s) puis `resultat.json` jusqu'à `MAVERICK_ESSAI_DELAI_S` (120 s, compté depuis le dépôt), en regardant chaque seconde. Il écrit le verdict dans `installation.log`, retire sa demande, et :
   - **pas de réponse** (service arrêté, version du service sans cet essai : aucun accusé), délai dépassé, réponse illisible, `indisponible`, `a_jour` : noté, **l'installation continue** ;
-  - **refus** : noté (`ATTENTION essai de la structure REFUSÉ…`), l'installation continue, **sauf si `db/source` existe** : il s'arrête alors avant d'avoir rien installé (code 1, `site/` et `VERSION` intacts). `db/source` est le marqueur du lot 8 (garde-fou 6 du plan : la base de l'instance est la source de vérité) : **rien ne le pose aujourd'hui**, ce comportement n'est donc jamais déclenché avant le lot 8, mais il est écrit et testé.
+  - **refus** : noté (`ATTENTION essai de la structure REFUSÉ…`), l'installation continue, **sauf si `db/source` existe** : il s'arrête alors avant d'avoir rien installé (code 1, `site/` et `VERSION` intacts). `db/source` est le marqueur du lot 8 (garde-fou 6 du plan : la base de l'instance est la source de vérité ; « Base source (lot 8) », plus haut) : seul `bascule.sh` le pose, le jour de la bascule ; avant, ce refus n'est jamais déclenché.
   - Le dossier `essai-de-structure/` ne compte pas pour un `db/` rempli (`--copier-base-prod` reste permise dans un `db/` qui n'a que lui et `metriques/`) et n'est jamais copié de la production.
 - **Surveillance.** Un `readdir` de `db/essai-de-structure/` toutes les 3 s (`INTERVALLE_DES_DEMANDES_MS`, au plus l'intervalle de la surveillance des fichiers ; dossier absent : rien d'autre à faire), sans `fs.watch` (un dossier monté depuis l'hôte n'en garantit pas les évènements). Le travail lourd tourne dans un fil à part, un essai à la fois : sur la base de développement du dépôt (25 Mio), un essai prend environ 0,7 s de CPU et 50 Mio de disque le temps de l'essai, une fois par installation. Une demande déjà répondue (`resultat.json`) n'est jamais refaite après un redémarrage. La base vivante n'est pas en WAL : pendant le `VACUUM INTO` de l'essai, une écriture du service attend la fin de la copie (quelques dizaines de millisecondes pour la taille actuelle, 31 Mio ; le même verrou que la sauvegarde horaire `.backup`). Au-delà de `busy_timeout` (5 s, vers 3 Gio), l'écriture échouerait.
 - **Page Debug.** `GET /api/debug/structure/` (site de dev, classe `lecture`, `Cache-Control: no-store`) : `{ format: 'maverick-essai-etat/1', en_cours: { demande, version, depuis } | null, en_attente, dernier, ombre }` (`ombre` : l'essai dans l'ombre, « Essai dans l'ombre » plus bas) ; `dernier` est le contenu de `dernier.json` (`null` tant qu'aucun essai n'a eu lieu, relu du disque : il survit à un redémarrage). Le format est stable : l'affichage de la page s'appuie sur lui.
@@ -1954,7 +1988,9 @@ nuit, avec `--read-data-subset` le dimanche. La dernière copie d'un groupe est 
 chiffrement dans un fichier (`RESTIC_PASSWORD_FILE`).
 
 **État pour la page Debug** : `<dossier des métriques>/sauvegardes.json` (`format` 1, `644`, remplacé d'un coup comme `volume-hote.json`, sans secret : dates, tailles, nombres, codes courts),
-écrit à chaque passage des scripts. Le service le lit (`serveur/metriques.mjs#lireSauvegardes`, champ par champ, sans rien reprendre d'inconnu) et l'expose dans `GET /api/debug/systeme/`,
+écrit à chaque passage des scripts. Si le dossier des métriques réglé (`MAVERICK_DIR_METRIQUES`, `<normal>/metriques`) n'existe pas (un VPS où `instances.sh` n'a pas été relancé depuis les
+métriques), il est écrit là où le service de chaque instance lit ses métriques (`lib.sh#metriques_de_l_instance`) : le dossier que son conteneur monte sur son dossier des métriques
+(`docker inspect` de `<MAVERICK_CONTENEUR>-serveur` : `MAVERICK_DOSSIER_METRIQUES`, sinon `<MAVERICK_DB>/metriques`), créé s'il manque ; sans conteneur, celui que son `.env` désigne s'il existe. Le service le lit (`serveur/metriques.mjs#lireSauvegardes`, champ par champ, sans rien reprendre d'inconnu) et l'expose dans `GET /api/debug/systeme/`,
 champ `sauvegardes` (`null` sans fichier : NAS, développement), pour les deux instances quelle que soit celle qu'on regarde :
 
 ```json
