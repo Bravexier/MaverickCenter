@@ -5,7 +5,7 @@
 // sauvegarde nommée, aussi sqlite3 et flock (outils des sauvegardes) : sinon ces tests sont ignorés.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { chmodSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync, appendFileSync } from 'node:fs';
+import { chmodSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync, appendFileSync, utimesSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { DatabaseSync } from 'node:sqlite';
@@ -212,4 +212,119 @@ test('sauvegarder : une copie nommée bascule-1-<date> des deux bases (copie loc
   assert.match(appels, /--keep-tag version --keep-tag nommees/);
   assert.match(m.etatBascule(), /^SAUVEGARDE=ok$/m);
   assert.match(m.etatBascule(), new RegExp(`^SAUVEGARDE_NOM=${nom}$`, 'm'));
+});
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+// restaurer (docs/serveur.md, « Restauration de la base du site de dev ») : une copie locale (copie.sh, pour de bon) ou extérieure (faux restic qui rend une
+// copie), contrôlée, la base en place gardée à part, le service arrêté puis relancé ; un paquet figé après la copie est signalé.
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+const nomDeLaFiche = (chemin) => {
+  const db = new DatabaseSync(chemin, { readOnly: true });
+  try {
+    return db.prepare("SELECT nom FROM personnage WHERE id = 'p1'").get()?.nom ?? null;
+  } finally {
+    db.close();
+  }
+};
+/** Une copie de nuit de la base du site de dev (copie.sh, celle des minuteurs), puis une écriture faite après elle. Rend le nom de la copie (« nuit/<nom> »). */
+function copieDuSiteDeDev(m) {
+  const r = spawnSync('bash', [join(SAUVEGARDE, 'copie.sh'), 'nuit', 'dev'], { encoding: 'utf8', env: m.env });
+  assert.equal(r.status, 0, `${r.stdout}${r.stderr}`);
+  const nuit = readdirSync(m.d('sauv', 'dev', 'nuit'));
+  assert.equal(nuit.length, 1);
+  const db = new DatabaseSync(m.d('dev', 'db', 'vivante.db'));
+  db.exec("UPDATE personnage SET nom = 'Écrite après la copie' WHERE id = 'p1'");
+  db.close();
+  return `nuit/${nuit[0]}`;
+}
+
+test('restaurer --copie : copie contrôlée, GELER et service arrêté, base en place gardée à part, copie posée, service relancé ; un paquet figé après la copie est signalé', { skip: skipSauvegarde }, (t) => {
+  const m = creerMonde(t);
+  const copie = copieDuSiteDeDev(m);
+  // un paquet de mise à jour figé APRÈS la copie (son contenu manque à la base restaurée)
+  const paquet = m.d('dev', 'db', 'mise-a-jour', '3f8fad5b-d9cb-469f-a165-70867728950e.db');
+  mkdirSync(join(paquet, '..'), { recursive: true });
+  writeFileSync(paquet, 'SQLite format 3\0');
+  const apres = new Date(Date.parse(HORLOGE) + 1800_000);
+  utimesSync(paquet, apres, apres);
+
+  let r = m.lancer('copies');
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, new RegExp(`bascule :   ${copie} : 2026-11-15T10:00:00Z`));
+  assert.match(r.out, /copies extérieures : envoi non activé/);
+
+  r = m.lancer('restaurer');
+  assert.equal(r.code, 2, 'restaurer sans copie choisie : usage');
+  r = spawnSync('bash', [SCRIPT, 'restaurer', '--copie', 'derniere'], { encoding: 'utf8', env: m.env });
+  const out = `${r.stdout}${r.stderr}`;
+  assert.equal(r.status, 0, out);
+  assert.equal(nomDeLaFiche(m.d('dev', 'db', 'vivante.db')), 'Une fiche', 'la base d’avant l’écriture est en place');
+  const gardes = readdirSync(m.d('dev', 'var')).filter((f) => f.startsWith('avant-restauration-'));
+  assert.deepEqual(gardes, ['avant-restauration-20261115-100000']);
+  assert.equal(nomDeLaFiche(m.d('dev', 'var', gardes[0], 'vivante.db')), 'Écrite après la copie', 'la base remplacée est gardée telle quelle');
+  assert.match(m.docker(), /^compose stop serveur$/m);
+  assert.match(m.docker(), /^compose start serveur$/m);
+  assert.ok(!existsSync(m.d('dev', 'GELER')), 'GELER posé par la restauration est retiré');
+  assert.match(out, /ATTENTION le paquet 3f8fad5b a été figé après cette copie/);
+  assert.match(out, /le service répond \(source=false\)/);
+  assert.match(out, /rien ne les rejoue/);
+  assert.deepEqual(readdirSync(m.d('dev', 'db')).filter((f) => f.startsWith('.')), [], 'aucun fichier provisoire dans db/');
+  assert.match(m.etatBascule(), new RegExp(`^RESTAURE_DEPUIS=locale ${copie}$`, 'm'));
+});
+
+test('restaurer refuse une copie abîmée ou mal comptée sans rien toucher ; usage strict', { skip: skipSauvegarde }, (t) => {
+  const m = creerMonde(t);
+  const copie = copieDuSiteDeDev(m);
+  appendFileSync(m.d('sauv', 'dev', ...copie.split('/'), 'comptes.tsv'), 'vivante.db\tfamille\t99\n');
+  const r = spawnSync('bash', [SCRIPT, 'restaurer', '--copie', copie], { encoding: 'utf8', env: m.env });
+  assert.equal(r.status, 1);
+  assert.match(`${r.stdout}${r.stderr}`, /ne compte pas les lignes notées à sa copie/);
+  assert.equal(nomDeLaFiche(m.d('dev', 'db', 'vivante.db')), 'Écrite après la copie', 'rien n’a été touché');
+  assert.ok(!existsSync(m.d('dev', 'var')) && !existsSync(m.d('dev', 'GELER')));
+  assert.equal(existsSync(m.d('docker.log')) && /stop/.test(m.docker()), false, 'le service n’a pas été arrêté');
+  for (const args of [['restaurer'], ['restaurer', '--copie', '../../etc'], ['restaurer', '--copie', 'x/y'], ['restaurer', '--exterieure', 'pas-un-id!'], ['etat', '--copie', copie],
+    ['restaurer', '--copie', copie, '--exterieure', 'latest']]) {
+    assert.equal(spawnSync('bash', [SCRIPT, ...args], { encoding: 'utf8', env: m.env }).status, 2, args.join(' '));
+  }
+});
+
+test('restaurer --exterieure latest : la copie rendue par restic (dépôt de l’envoi, étiquette inst-dev), contrôlée puis posée', { skip: skipSauvegarde }, (t) => {
+  const m = creerMonde(t);
+  const copie = copieDuSiteDeDev(m);
+  const rendue = m.d('rendue');
+  cpSync(m.d('sauv', 'dev', ...copie.split('/')), rendue, { recursive: true });
+  writeFileSync(m.d('etc', 'stockage.env'), 'RESTIC_REPOSITORY=s3:https://s3.exemple.invalid/bucket-exemple\n');
+  writeFileSync(m.d('etc', 'cle-depot'), 'phrase d essai\n');
+  // le faux restic : « restore » recopie la copie préparée sous <target>/srv/…, comme restic rend les chemins absolus sauvegardés
+  writeFileSync(m.d('bin', 'restic'), `#!/bin/sh\nprintf '%s\\n' "$*" >> '${m.d('restic.log')}'\n[ "$1" = restore ] || exit 0\nwhile [ $# -gt 0 ]; do [ "$1" = --target ] && t=$2; shift; done\nmkdir -p "$t/srv/maverick-sauvegardes/dev/nuit/x" && cp -R '${rendue}/.' "$t/srv/maverick-sauvegardes/dev/nuit/x/"\n`);
+  chmodSync(m.d('bin', 'restic'), 0o755);
+  const r = spawnSync('bash', [SCRIPT, 'restaurer', '--exterieure', 'latest'], { encoding: 'utf8', env: m.env });
+  assert.equal(r.status, 0, `${r.stdout}${r.stderr}`);
+  assert.match(readFileSync(m.d('restic.log'), 'utf8'), /^restore latest --host maverick --tag inst-dev --target [^ ]*\/sauv\/\.restauration\.[A-Za-z0-9]+$/m);
+  assert.equal(nomDeLaFiche(m.d('dev', 'db', 'vivante.db')), 'Une fiche');
+  assert.deepEqual(readdirSync(m.d('sauv')).filter((f) => f.startsWith('.restauration')), [], 'le dossier de la restauration est effacé');
+});
+
+test('restaurer --exterieure refuse une copie de la production (chemin et copie.meta) avant toute écriture', { skip: skipSauvegarde }, (t) => {
+  const m = creerMonde(t);
+  copieDuSiteDeDev(m);
+  // une copie de la production, rendue par un identifiant d'instantané : chemin …/prod/…, copie.meta INSTANCE=prod
+  const r1 = spawnSync('bash', [join(SAUVEGARDE, 'copie.sh'), 'nuit', 'prod'], { encoding: 'utf8', env: m.env });
+  assert.equal(r1.status, 0, `${r1.stdout}${r1.stderr}`);
+  const rendue = m.d('sauv', 'prod', 'nuit', readdirSync(m.d('sauv', 'prod', 'nuit'))[0]);
+  writeFileSync(m.d('etc', 'stockage.env'), 'RESTIC_REPOSITORY=s3:https://s3.exemple.invalid/bucket-exemple\n');
+  writeFileSync(m.d('etc', 'cle-depot'), 'phrase d essai\n');
+  const faux = (dossier) => `#!/bin/sh\n[ "$1" = restore ] || exit 0\nwhile [ $# -gt 0 ]; do [ "$1" = --target ] && t=$2; shift; done\nmkdir -p "$t/srv/maverick-sauvegardes/${dossier}/nuit/x" && cp -R '${rendue}/.' "$t/srv/maverick-sauvegardes/${dossier}/nuit/x/"\n`;
+  for (const dossier of ['prod', 'dev']) {
+    // sous …/prod/… comme envoi.sh la pose ; puis la même copie placée sous …/dev/… : son copie.meta (INSTANCE=prod) la trahit encore
+    writeFileSync(m.d('bin', 'restic'), faux(dossier));
+    chmodSync(m.d('bin', 'restic'), 0o755);
+    const r = spawnSync('bash', [SCRIPT, 'restaurer', '--exterieure', '0123abcd'], { encoding: 'utf8', env: m.env });
+    assert.equal(r.status, 1, dossier);
+    assert.match(`${r.stdout}${r.stderr}`, /n'est pas une copie du site de dev \(instance prod\) : rien n'a été touché/);
+  }
+  assert.equal(nomDeLaFiche(m.d('dev', 'db', 'vivante.db')), 'Écrite après la copie', 'la base du site de dev n’a pas bougé');
+  assert.ok(!existsSync(m.d('dev', 'var')) && !existsSync(m.d('dev', 'GELER')));
+  assert.equal(existsSync(m.d('docker.log')) && /stop/.test(m.docker()), false, 'le service n’a pas été arrêté');
+  assert.deepEqual(readdirSync(m.d('sauv')).filter((f) => f.startsWith('.restauration')), [], 'le dossier de la restauration est effacé');
 });

@@ -157,6 +157,37 @@ service (l'hôte n'a pas besoin de Node) et lit la production par son attestatio
 `--dev <dossier>` et `--prod <dossier>` changent les dossiers (`/srv/maverick-center-test` et `/srv/maverick-center` par défaut). L'état des étapes est
 gardé dans `.bascule/` de l'instance.
 
+### Restaurer la base du site de dev
+
+```bash
+sudo bash /srv/maverick-center-test/bascule.sh copies                            # les copies locales (type/nom, date, lignes) et extérieures (restic)
+sudo bash /srv/maverick-center-test/bascule.sh restaurer --copie derniere        # ou --copie horaire/<nom>, nuit/<nom>, nommees/<nom>
+sudo bash /srv/maverick-center-test/bascule.sh restaurer --exterieure latest     # ou l'identifiant d'une copie extérieure (« copies »)
+```
+
+La copie est contrôlée d'abord (copie du site de dev, jamais de la production ; intégrité ; nombre de lignes de chaque table égal à celui noté à la copie) :
+refusée, rien n'est touché. Puis `GELER` est
+posé, le service arrêté, la base en place (`vivante.db`, `vivante.json`) **renommée** dans `var/avant-restauration-<date>/` de l'instance (jamais effacée),
+la copie posée et le service relancé : avec `db/source`, il applique lui-même les migrations à la base restaurée (ou ne démarre pas, la raison au journal).
+Ensuite, le report de la note d'un paquet livré se refait seul, et ce que la copie n'a pas (les lots écrits depuis) reste dans la base gardée à part :
+`docs/serveur.md`, « Restauration de la base du site de dev ».
+
+## Répétition de la mise à jour de la production (`repetition-prod.sh`)
+
+Posé par l'installateur de test à côté de `bascule.sh`. Il joue, sur une **copie** de la base de la production, ce que fera la dernière mise à jour par
+l'ancien circuit : le contenu à venir tiré de la base du site de dev, puis la préparation de la base que ferait le service de la production à son
+installation (fiches recopiées, conversions, retraits, contrôle), dans un conteneur du code du site de dev. La vraie production n'est jamais touchée.
+
+```bash
+sudo bash /srv/maverick-center-test/repetition-prod.sh                          # copie prise à l'instant (sqlite3 .backup, lecture seule)
+sudo bash /srv/maverick-center-test/repetition-prod.sh --depuis-la-sauvegarde   # la dernière copie locale de la production
+```
+
+Il n'écrit que des comptes (jamais un nom de fiche) : `PASSERA` (code 0) ou `REFUSEE` (code 1 : la production garderait sa base, et pourquoi, par table et
+colonne), les fiches adaptées par nature, les tables en « chute anormale » que verra la copie horaire suivante, la durée et la place. Le dossier de travail
+(`var/repetition-prod.*` de l'instance, 4 fois la base de la production plus celle du site de dev) est effacé à la fin ; `--garder` le garde (il contient
+les fiches de la production : à effacer soi-même). Détail : `docs/serveur.md`, « Répétition de la mise à jour de la production ».
+
 ## Le kit de l'atelier (serveur de test seulement)
 
 Chaque installateur **de test** emporte un kit : le code du site et ses `node_modules`, de quoi lancer `npm run build:depuis-contenu` sans réseau, sans `data/rows` ni

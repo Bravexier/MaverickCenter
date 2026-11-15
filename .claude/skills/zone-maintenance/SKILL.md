@@ -19,7 +19,7 @@ La page « Mise à jour » et le workflow qui lancent la maintenance : skill `zo
 
 ## Invariants
 - Maintenance, « terminé » pour un serveur : la version qui tourne (celle du service, lue au démarrage) atteint la version cible X.Y du lot. Le serveur de test passe par la version de dev qui porte le lot, encore en maintenance.
-- L'annonce ne vient que d'une vraie mise à jour (`envoi` → `termine`), jamais d'une simulation ni de `manuel` (la page « Mise à jour » doit rester ouverte pour en donner les valeurs). Le service du site de dev la publie (lot, version cible) dans le dossier partagé (`MAVERICK_MAINTENANCE`, le `maintenance/` du serveur normal monté dans les deux instances) ; la production la lit et n'écrit rien.
+- L'annonce ne vient que d'une vraie mise à jour (`envoi` → `termine`), jamais d'une simulation, d'une copie (« Copier vers le dépôt », base source : `annonceDuLancement` n'annonce rien) ni de `manuel` (la page « Mise à jour » doit rester ouverte pour en donner les valeurs). Le service du site de dev la publie (lot, version cible) dans le dossier partagé (`MAVERICK_MAINTENANCE`, le `maintenance/` du serveur normal monté dans les deux instances) ; la production la lit et n'écrit rien.
 - Échec, annulation, « Lever la maintenance » ou 4 h (`DUREE_MAX_MAINTENANCE`) retirent l'annonce.
 - La minuterie du site de dev suit le run et republie l'annonce : personne n'est sur ses pages, qui renvoient vers `/maintenance/`.
 - Le script de chaque page (`Base.astro`, demande `/api/maintenance/`) est en ligne (aucun module partagé), absent de la version portable et de `/maintenance/`. `lib/maintenance-retour.mjs` ne ramène qu'à une page de ce site.

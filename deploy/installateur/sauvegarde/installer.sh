@@ -1,7 +1,7 @@
 #!/bin/sh
 # Le geste : met en place les sauvegardes automatiques du serveur, en une commande lancée une fois, depuis le serveur :
 #
-#   sudo sh /srv/maverick-center-test/sauvegarde/installer.sh [options]
+#   sudo bash /srv/maverick-center-test/sauvegarde/installer.sh [options]
 #
 # Sans option, la commande :
 #   1. pose le temps 1 : un minuteur qui copie toute la base des deux sites chaque heure où elle a changé et chaque nuit (copie.sh), contrôlée,
@@ -47,7 +47,7 @@ VERIFIER_STOCKAGE=0
 ADRESSE=${MAVERICK_SAUV_ADRESSE:-}
 REGION=${MAVERICK_SAUV_REGION:-}
 BUCKET=${MAVERICK_SAUV_BUCKET:-}
-USAGE="Usage : sudo sh $0 [--stockage] [--adresse <url>] [--region <région>] [--bucket <nom>] [--verifier-le-stockage] [--afficher-la-cle] [--sans-stockage] [--essai] [--retirer]"
+USAGE="Usage : sudo bash $0 [--stockage] [--adresse <url>] [--region <région>] [--bucket <nom>] [--verifier-le-stockage] [--afficher-la-cle] [--sans-stockage] [--essai] [--retirer]"
 while [ $# -gt 0 ]; do
   case "$1" in
     --stockage) STOCKAGE=1; shift ;;
@@ -63,7 +63,7 @@ while [ $# -gt 0 ]; do
   esac
 done
 [ "$STOCKAGE" -eq 0 ] || [ "$SANS_STOCKAGE" -eq 0 ] || { echo "--stockage et --sans-stockage s'excluent" >&2; exit 2; }
-[ "$ESSAI" = 1 ] || [ "$(id -u)" -eq 0 ] || { echo "À lancer en root : sudo sh $0" >&2; exit 1; }
+[ "$ESSAI" = 1 ] || [ "$(id -u)" -eq 0 ] || { echo "À lancer en root : sudo bash $0" >&2; exit 1; }
 
 die() { echo "ERREUR : $*" >&2; exit 1; }
 ECHEC_SAUV=0
@@ -84,7 +84,7 @@ afficher_cle() { # phrase
   echo "      $1"
   echo
   echo "  Sans elle, aucune copie extérieure ne peut être relue. Elle reste aussi dans $ETC/cle-depot"
-  echo "  (root seul), mais un serveur perdu emporte ce fichier. La réafficher : sudo sh $ICI/installer.sh --afficher-la-cle"
+  echo "  (root seul), mais un serveur perdu emporte ce fichier. La réafficher : sudo bash $ICI/installer.sh --afficher-la-cle"
   echo "=============================================================================================="
 }
 exige_un_terminal() {
@@ -141,14 +141,14 @@ essayer_l_ecriture() { # fichier_d_acces fichier_de_cle
 }
 
 if [ "$VERIFIER_STOCKAGE" -eq 1 ]; then
-  [ -f "$ETC/stockage.env" ] && [ -f "$ETC/cle-depot" ] || die "l'envoi extérieur n'est pas configuré sur ce serveur : sudo sh $ICI/installer.sh --stockage"
+  [ -f "$ETC/stockage.env" ] && [ -f "$ETC/cle-depot" ] || die "l'envoi extérieur n'est pas configuré sur ce serveur : sudo bash $ICI/installer.sh --stockage"
   installer_paquet restic restic
   mkdir -p "$SAUV/.cache-restic"
   chmod 700 "$SAUV/.cache-restic"
   etat=$(sonder_depot "$ETC/stockage.env" "$ETC/cle-depot")
   case "$etat" in
     existe) ;;
-    absent) die "le dépôt n'existe pas à l'adresse configurée : le bucket a-t-il été vidé ou changé ? (sudo sh $ICI/installer.sh --stockage pour le recréer)" ;;
+    absent) die "le dépôt n'existe pas à l'adresse configurée : le bucket a-t-il été vidé ou changé ? (sudo bash $ICI/installer.sh --stockage pour le recréer)" ;;
     cle) die "$(expliquer_erreur 'wrong password')" ;;
     *) die "$(expliquer_erreur "${etat#erreur: }")" ;;
   esac
@@ -286,7 +286,7 @@ activer_stockage() {
       lire_valeur adresse "Adresse du stockage (ex. https://s3.exemple.invalid)"
       invite=1
       if [ -z "$adresse" ]; then
-        echo "Temps 2 passé. Pour l'activer plus tard : sudo sh $ICI/installer.sh --stockage"
+        echo "Temps 2 passé. Pour l'activer plus tard : sudo bash $ICI/installer.sh --stockage"
         return 0
       fi
     fi
@@ -405,7 +405,7 @@ elif [ "$CONFIGURE" -eq 1 ]; then
   echo "Envoi extérieur déjà activé : rien de changé (--stockage pour changer les accès au stockage, --essai pour un essai de restauration)."
 else
   echo
-  echo "Envoi extérieur non activé (pas de terminal pour saisir les accès). Pour l'activer : sudo sh $ICI/installer.sh --stockage"
+  echo "Envoi extérieur non activé (pas de terminal pour saisir les accès). Pour l'activer : sudo bash $ICI/installer.sh --stockage"
 fi
 
 echo

@@ -253,7 +253,7 @@ pas ([`docs/serveur.md`](../../docs/serveur.md), « Sauvegardes automatiques » 
 **une seule commande**, lancée une fois sur le serveur :
 
 ```
-sudo sh /srv/maverick-center-test/sauvegarde/installer.sh
+sudo bash /srv/maverick-center-test/sauvegarde/installer.sh
 ```
 
 Le dossier `sauvegarde/` est posé par l'installateur du site de dev (à chaque fusion dans `dev`, dans les cinq minutes : `mise-a-jour.sh`) ; les
@@ -282,7 +282,7 @@ prend adresse, bucket et région (facultative) en arguments, et demande les deux
 git) :
 
 ```
-sudo sh /srv/maverick-center-test/sauvegarde/installer.sh --stockage --adresse https://s3.exemple.invalid --bucket bucket-exemple --region region-exemple
+sudo bash /srv/maverick-center-test/sauvegarde/installer.sh --stockage --adresse https://s3.exemple.invalid --bucket bucket-exemple --region region-exemple
 ```
 
 (sans `--adresse`, `--bucket` ni `--region`, la commande pose les questions ; les variables `MAVERICK_SAUV_ADRESSE`, `MAVERICK_SAUV_BUCKET` et
@@ -321,14 +321,14 @@ restauration ; le fichier `/srv/maverick-center/metriques/sauvegardes.json` (san
 systemctl list-timers 'maverick-sauvegarde-*'                     # dernier et prochain passage
 sudo journalctl -u maverick-sauvegarde-horaire -u maverick-sauvegarde-nuit -u maverick-sauvegarde-essai -n 50
 sudo ls /srv/maverick-sauvegardes/prod/{horaire,nuit,suspectes}     # les copies locales
-sudo sh /srv/maverick-center-test/sauvegarde/copie.sh accepter prod # une chute de lignes voulue devient la référence
+sudo bash /srv/maverick-center-test/sauvegarde/copie.sh accepter prod # une chute de lignes voulue devient la référence
 ```
 
 Les réglages (plafond, nombre de copies, seuil de chute, jours gardés, versions gardées) sont dans `/etc/maverick-sauvegardes/reglages.env` (lignes commentées, valeurs par
 défaut dedans ; retirer le `#` d'une ligne suffit, un commentaire de fin de ligne et des guillemets sont admis). Un réglage illisible n'est jamais ignoré en silence : la valeur
 par défaut est prise, le journal du minuteur le dit, la page Debug l'affiche et le code de sortie de la copie est 3. La phrase et les accès au stockage ne sont jamais dans le dépôt Git : à la charge du propriétaire, qui garde la phrase sur papier.
 
-**Retour en arrière.** `sudo sh /srv/maverick-center-test/sauvegarde/installer.sh --retirer` arrête les minuteurs. Pour suspendre seulement l'envoi extérieur :
+**Retour en arrière.** `sudo bash /srv/maverick-center-test/sauvegarde/installer.sh --retirer` arrête les minuteurs. Pour suspendre seulement l'envoi extérieur :
 `sudo mv /etc/maverick-sauvegardes/stockage.env{,.arrete}` (le temps 1 continue) ; le remettre le reprend.
 
 **Restaurer** (la base d'une instance abîmée, sur le même serveur) : arrêter le conteneur de l'instance (`docker compose stop serveur`), mettre de côté son
@@ -358,7 +358,7 @@ Aucune installation ne touche à `db/`.
    `sh …/installateur-courant/maverick-center-<étiquette>-install.sh --dossier /srv/maverick-center` (et `…-test` pour l'autre), puis copier le contenu
    de `db/` de chaque copie dans `db/` de l'instance **avant** le premier `docker compose up -d`, et lancer les conteneurs. Les mots de passe, le `.env` et le jeton GitHub
    ne sont pas dans la copie : étapes 4 à 6 de ce guide.
-6. Reprendre les sauvegardes : `sudo sh /srv/maverick-center-test/sauvegarde/installer.sh --stockage --adresse … --bucket …` (une fois la mise à jour automatique en
+6. Reprendre les sauvegardes : `sudo bash /srv/maverick-center-test/sauvegarde/installer.sh --stockage --adresse … --bucket …` (une fois la mise à jour automatique en
    place, qui pose `sauvegarde/`). Le dépôt existe déjà : la commande demande sa phrase (les mots en minuscules ou en majuscules, avec des espaces ou des tirets),
    le reprend tel quel sans le réinitialiser et garde la même clé.
 

@@ -289,6 +289,23 @@ describe('le workflow avec un paquet (dépôts git temporaires)', () => {
     assert.throws(() => verifierContrePaquet(prep.g, { commit: ampute, paquet: PAQUET_COPIE }),
       (e) => e.etape === 'paquet' && /data\/rows\/race\.sql \(absent du commit\)/.test(e.message));
     prep.g(['reset', '--quiet', '--hard', prepare]);
+    // octet pour octet, jamais après décodage : un paquet dont le texte porte le caractère de remplacement (U+FFFD, EF BF BD en UTF-8) et un commit qui écrit
+    // à sa place un octet invalide (FF) donnent le même texte décodé ; ils sont refusés. Le commit qui porte l'export exact passe.
+    const remplacement = paquetChange(PAQUET_COPIE, (p) => p.prepare('UPDATE metier SET bonus_brut = bonus_brut || ? WHERE id = ?').run('�', metier.id));
+    const exportRemplacement = exporter(remplacement);
+    const octetsExacts = readFileSync(join(exportRemplacement, 'metier.sql'));
+    const rang = octetsExacts.indexOf(Buffer.from('�', 'utf8'));
+    assert.ok(rang >= 0, 'l’export porte le caractère de remplacement');
+    writeFileSync(join(prep.d, 'data', 'rows', 'metier.sql'), octetsExacts);
+    prep.g(['commit', '--quiet', '-am', 'export exact']);
+    const exact = prep.g(['rev-parse', 'HEAD']).sortie.trim();
+    assert.equal(verifierContrePaquet(prep.g, { commit: exact, paquet: remplacement }), fichiersDuDepot().length);
+    writeFileSync(join(prep.d, 'data', 'rows', 'metier.sql'), Buffer.concat([octetsExacts.subarray(0, rang), Buffer.from([0xff]), octetsExacts.subarray(rang + 3)]));
+    prep.g(['commit', '--quiet', '-am', 'un octet invalide à la place']);
+    const invalide = prep.g(['rev-parse', 'HEAD']).sortie.trim();
+    assert.equal(prep.g(['show', `${invalide}:data/rows/metier.sql`]).sortie, prep.g(['show', `${exact}:data/rows/metier.sql`]).sortie, 'les deux textes décodés sont égaux');
+    assert.throws(() => verifierContrePaquet(prep.g, { commit: invalide, paquet: remplacement }), (e) => e.etape === 'paquet' && /data\/rows\/metier\.sql/.test(e.message));
+    prep.g(['reset', '--quiet', '--hard', prepare]);
     // jamais vers master : l'étape « Livraison vers master » ne fait rien
     const livr = cloner('livrer');
     const m = await livraisonVersMaster({ ...entrees, jeton: 'pat', jetonLecture: 'lecture' },

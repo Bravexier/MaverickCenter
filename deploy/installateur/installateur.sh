@@ -27,7 +27,8 @@
 #   sauvegarde/          les scripts des sauvegardes automatiques (copie, envoi chiffré, essai de restauration, installer.sh) : remplacés à chaque installation
 #   acces/               acces.sh, la commande du mot de passe du site de dev (remplacée à chaque installation ; le réglage est dans secrets/, jamais touché)
 #   installateur-courant/ le dernier installateur installé par mise-a-jour.sh, que l'envoi de nuit joint à la copie extérieure (jamais touché ici)
-#   bascule.sh           (test seulement) le script du jour de la bascule 1 : constat, sauvegarde nommée, pose du marqueur db/source (remplacé à chaque installation)
+#   bascule.sh           (test seulement) le script du jour de la bascule 1 : constat, sauvegarde nommée, pose du marqueur db/source, restauration (remplacé à chaque installation)
+#   repetition-prod.sh   (test seulement) la répétition, sur une copie, de la dernière mise à jour de la production par l'ancien circuit (remplacé à chaque installation)
 #   VERSION              ce qui est installé (étiquette, version, commit, mode, date)
 # Prérequis : sh, tar, gzip, et sha256sum (ou shasum / openssl) pour contrôler l'archive. rsync et sqlite3 sont utilisés s'ils sont présents.
 set -eu
@@ -373,11 +374,14 @@ done
 for f in README.md mise-a-jour.sh; do
   cp "$TRAVAIL/$f" "$DOSSIER/.$f.$$" && mv -f "$DOSSIER/.$f.$$" "$DOSSIER/$f" || die "impossible de poser $f"
 done
-# bascule.sh (installateur de test seulement) : le script du jour de la bascule 1, que le propriétaire lance en root (docs/serveur.md, « Base source (lot 8) »).
-if [ -f "$TRAVAIL/bascule.sh" ]; then
-  cp "$TRAVAIL/bascule.sh" "$DOSSIER/.bascule.sh.$$" && chmod 755 "$DOSSIER/.bascule.sh.$$" && mv -f "$DOSSIER/.bascule.sh.$$" "$DOSSIER/bascule.sh" ||
-    die "impossible de poser bascule.sh"
-fi
+# bascule.sh et repetition-prod.sh (installateur de test seulement) : les scripts du jour de la bascule 1, que le propriétaire lance en root (docs/serveur.md,
+# « Base source (lot 8) » et « Répétition de la mise à jour de la production »).
+for f in bascule.sh repetition-prod.sh; do
+  if [ -f "$TRAVAIL/$f" ]; then
+    cp "$TRAVAIL/$f" "$DOSSIER/.$f.$$" && chmod 755 "$DOSSIER/.$f.$$" && mv -f "$DOSSIER/.$f.$$" "$DOSSIER/$f" ||
+      die "impossible de poser $f"
+  fi
+done
 # sauvegarde/ : les scripts des sauvegardes automatiques (deploy/vps/README.md, « Sauvegardes »), que des minuteurs systemd exécutent en root depuis le
 # dossier du serveur de test. Les copies, l'état et les clés ne sont PAS ici (/srv/maverick-sauvegardes, /etc/maverick-sauvegardes).
 # acces/ : la commande du mot de passe du site de dev (acces.sh ; docs/serveur.md, « Accès au site de dev »), que le propriétaire lance. Le réglage qu'elle
