@@ -513,6 +513,11 @@ test('site construit : /debug/ selon le mode — quatre menus fermés (Système,
   assert.match(db, /<section class="structure" data-structure /, 'le bloc est dans le menu DB');
   assert.match(db, /<button type="button" class="structure__actualiser" data-structure-actualiser>/);
   assert.ok(db.indexOf('data-structure-contenu') > 0 && main.indexOf('data-structure ') > main.indexOf('data-schema-cadre'));
+  // « Fabrication témoin » (lot 9) : de même dans le menu DB, après la structure, avec son bouton « Actualiser »
+  assert.match(db, /<section class="structure atelier" data-atelier /, 'le bloc de l’atelier est dans le menu DB');
+  assert.match(db, /<button type="button" class="structure__actualiser" data-atelier-actualiser>/);
+  assert.ok(db.indexOf('data-atelier-contenu') > db.indexOf('data-structure-contenu'));
+  assert.doesNotMatch(main, /<details class="debug-bloc[^"]*" data-atelier/, 'pas un cinquième menu');
   assert.doesNotMatch(main, /data-debug-testeur|data-testeur|Tester l’API/, 'plus de testeur');
   assert.match(main, /<h2 class="debug-bloc__titre" id="debug-schema-titre">DB<\/h2>\s*<span class="debug-bloc__resume">Schéma de la base : \d+ tables, \d+ vues, \d+ clés étrangères<\/span>/);
   // la jauge de l'espace disque, dans Système
@@ -542,6 +547,8 @@ test('site construit : /debug/ selon le mode — quatre menus fermés (Système,
     'le script du schéma dans dist/_astro/ (contenu des tables, et relève de la version de la base pour les suivre)');
   assert.ok(construits.some((code) => code.includes('debug/structure/') && !code.includes('debug/tables/') && !code.includes('debug/journal/')),
     'le script de la structure de la base dans dist/_astro/, sans module commun avec les deux autres');
-  assert.equal((main.match(/<script type="module"/g) ?? []).length, 3, 'les trois scripts de la page (menus, schéma, structure de la base), aucun module partagé');
+  assert.ok(construits.some((code) => code.includes('debug/atelier/') && !code.includes('debug/tables/') && !code.includes('debug/journal/') && !code.includes('debug/structure/')),
+    'le script de l’atelier dans dist/_astro/, sans module commun avec les trois autres');
+  assert.equal((main.match(/<script type="module"/g) ?? []).length, 4, 'les quatre scripts de la page (menus, schéma, structure de la base, atelier), aucun module partagé');
   assert.doesNotMatch(main, /<(?:a|button|span|div|input|select|td|th)\b[^>]*\stitle=/, 'jamais d’infobulle native');
 });

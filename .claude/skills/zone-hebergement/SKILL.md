@@ -1,7 +1,7 @@
 ---
 name: zone-hebergement
-description: "Hébergement deploy/ : installateurs prod/test, VPS (durcir, outils, instances, Caddyfile), paquet NAS (build.sh, update-site.sh, branche site qui n'avance plus), nginx.conf, docker-compose.yml, accès au site de dev (acces.sh), fins de ligne LF. À charger avant de lire, modifier ou relire deploy/ ou ses tests."
-paths: ["deploy/**", ".gitattributes", "client/test/deploy-vps.test.mjs", "client/test/deploy-volume.test.mjs", "client/test/installateur.test.mjs", "client/test/installateur-essai-de-structure.test.mjs", "client/test/mise-a-jour.test.mjs", "client/test/update-site.test.mjs", "client/test/serveur-livraison.test.mjs", "client/test/deploy-sauvegardes*.test.mjs", "client/test/deploy-acces.test.mjs", "client/test/deploy-kit.test.mjs", "client/test/aide-sauvegardes.mjs"]
+description: "Hébergement deploy/ : installateurs prod/test, VPS (durcir, outils, instances, Caddyfile), paquet NAS (build.sh, update-site.sh, branche site qui n'avance plus), nginx.conf, docker-compose.yml, accès au site de dev (acces.sh), fins de ligne LF. L'atelier et le kit : skill `zone-hebergement-atelier`. À charger avant de lire, modifier ou relire deploy/ ou ses tests."
+paths: ["deploy/{README.md,build.sh,docker-compose.yml,nginx.conf,update-site.sh}", "deploy/vps/**", "deploy/installateur/{README.md,docker-compose.yml,fabriquer.mjs,fabriquer.sh,installateur.sh,mise-a-jour.sh}", "deploy/installateur/acces/**", "deploy/installateur/sauvegarde/**", ".gitattributes", "client/test/deploy-vps.test.mjs", "client/test/deploy-volume.test.mjs", "client/test/installateur.test.mjs", "client/test/installateur-essai-de-structure.test.mjs", "client/test/mise-a-jour.test.mjs", "client/test/update-site.test.mjs", "client/test/serveur-livraison.test.mjs", "client/test/deploy-sauvegardes*.test.mjs", "client/test/deploy-acces.test.mjs", "client/test/aide-sauvegardes.mjs"]
 user-invocable: false
 ---
 # Hébergement (`deploy/`)
@@ -29,11 +29,7 @@ user-invocable: false
 - `mise-a-jour.sh` en mode test refuse une livraison plus ancienne que celle installée (comparaison X, Y, Z, rebuild) ; `--force` pour revenir en arrière ; `VERSION` absent = première installation. La production n'est pas concernée.
 - Un installateur de test refuse un dossier de production et inversement. L'installateur ne touche jamais aux métriques.
 - L'attestation de la production (`attestation-prod.json`) voyage par le dossier des métriques, déjà partagé entre les deux instances : aucun montage ni variable de plus dans `deploy/` (skill `zone-service-extrait`).
-- Kit de l'atelier (installateur de test seulement) : `fabriquer.mjs --kit` (refusé en prod) le fabrique (`kit.mjs`) et l'emporte ; `kit-pose.sh` est inséré à la ligne `@@KIT@@` du modèle, retirée en prod : le script de prod reste identique à celui d'avant le kit. Il se pose dans `<instance>/atelier/kit/`, hors de `site/` (jamais servi), par renommage, un seul kit gardé.
-  - Aucun contenu (R275, question 6) : un contrôle refuse le kit s'il contient `data/rows`, `sources/raw`, un `.db`, `src/content/wiki` ou un lien qui sort du kit.
-  - Élagage selon la règle de npm (`os`, `cpu`, `libc` déclarés par chaque paquet), sans liste de noms.
-  - L'image de l'atelier est `kit.json#image`, de la libc du kit : Debian slim (glibc), jamais Alpine (musl) pour un kit fait par GitHub.
-  - La pose ne bloque jamais l'installation : place insuffisante (2 × la taille décompressée + 256 Mo) ou échec, l'installation continue sans kit et le dit au journal.
+- Le kit de l'atelier et l'atelier : skill `zone-hebergement-atelier`. L'installateur de production n'en porte rien (son script reste identique à celui d'avant le kit).
 - Journaux des conteneurs : pilote `json-file`, 5 fichiers de 10 Mo au plus par conteneur (`logging` de chaque service des deux `docker-compose.yml`).
 
 ## VPS
@@ -66,5 +62,5 @@ user-invocable: false
 - Tant que `db/source` n'existe pas, l'installation continue toujours ; ce marqueur est celui de la bascule : un refus de l'essai arrêtera alors l'installation avant tout dépôt. Service : skill `zone-service`.
 
 ## Tests
-- `deploy-kit` (kit, contrôle sans contenu, élagage, pose, script de prod identique), `deploy-acces` (`acces.sh`, livraison par l'installateur), `deploy-sauvegardes`, `deploy-sauvegardes-installer` (scripts exécutés pour de bon dans un monde factice, `aide-sauvegardes.mjs`).
+- `deploy-acces` (`acces.sh`, livraison par l'installateur), `deploy-sauvegardes`, `deploy-sauvegardes-installer` (scripts exécutés pour de bon dans un monde factice, `aide-sauvegardes.mjs`).
 - `deploy-vps` (`instances.sh` : dossiers partagés de la maintenance et des métriques, une instance par fichier, minuteur du relevé de l'hôte ; l'étape « Site de dev » du README), `deploy-volume` (rotation des journaux Docker, métriques hors de `db/`, `volume.sh`), `installateur` (`db/` jamais vidé ni remplacé, copie sur demande, métriques jamais copiées ni effacées), `installateur-essai-de-structure` (demande, délais, refus), `mise-a-jour` (`mise-a-jour.sh` : refus d'une livraison plus ancienne en mode test, R274), `update-site` (contre un faux serveur GitHub), `serveur-livraison` (`docker-compose.yml` et `nginx.conf` cohérents).

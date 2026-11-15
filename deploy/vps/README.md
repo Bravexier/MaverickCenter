@@ -368,6 +368,35 @@ la vérification (`check`) et le prune. `borg` demande un serveur borg ou SSH (p
 mais sans instantanés ni rétention ni contrôle : tout serait à écrire. Dans restic 0.16.4, `--keep-monthly -1` est refusé : la valeur illimitée s'écrit
 `unlimited` ; « 30 jours » s'écrit `--keep-within-daily 30d` (et non `--keep-daily 30`, qui compterait les 30 derniers jours *qui ont une copie*).
 
+## Atelier du site de dev (mesurer si le serveur tient la fabrication)
+
+Le serveur de test peut fabriquer, après chaque installation, un **site témoin** depuis l'extrait du contenu de la base de dev, dans un conteneur Docker sans réseau, et le comparer au site que GitHub a livré : durée, mémoire, écarts, sur la page
+Debug. **Rien de ce qui est servi ne change** ; c'est une mesure (`docs/serveur.md`, « Atelier du site de dev »). Elle se fait en une commande, une fois.
+
+**Quand.** Après qu'une installation du site de dev a posé le kit (`/srv/maverick-center-test/atelier/kit/`, joint à chaque installateur de test) : la page Debug, menu « DB », bloc « Atelier », dit « atelier non installé » avant le geste (le service ne voit encore rien de l'atelier), « pas d'atelier »
+si le kit manque (place manquante au moment de la pose) ou en production. Avant cette commande, rien ne tourne et rien ne casse.
+
+**Commande** (en root, sur le serveur) :
+
+```
+sudo sh /srv/maverick-center-test/atelier/installer.sh
+```
+
+Réglages facultatifs (tailles en `g` ou `m`) : `--memoire-max 2.5g` (plafond du conteneur), `--besoin 1.5g` (en dessous, la fabrication est refusée et mesurée ; le pic mesuré est d'environ 1,4 Go), `--cpus 1`, `--disque-min 2g`, `--delai 1800` (secondes), `--client-google <identifiant>`
+(la variable `GOOGLE_CLIENT_ID` du dépôt : sans lui, le bouton « Exporter » est la seule différence entre les deux sites). La commande vérifie root, l'instance de test, Docker, le cgroup v2 et le kit, prépare l'image Docker du kit (téléchargée une fois), pose
+`maverick-atelier.path` (qui surveille la marque de l'installateur), `maverick-atelier.service` et `maverick-atelier.slice` (poids bas du processeur et des disques : la production passe devant), écrit ses réglages dans `atelier/reglages.env` (à root) et un `docker-compose.override.yml` dans `/srv/maverick-center-test` (que compose lit de lui-même : le montage des rapports en lecture seule, et celui du dépôt de l'atelier, `atelier/depot/` créé par root, où le service dépose l'extrait du contenu ; le `docker-compose.yml` livré, commun à la production, ne change pas), puis lance **`docker compose up -d`** : cela **relance le service du site de dev quelques
+secondes** ; le site reste servi. Un `docker-compose.override.yml` qui n'est pas celui de l'atelier est respecté : la commande s'arrête sans rien écrire et dit quoi faire (`--sans-montage` quand le montage y a été ajouté à la main). Elle lance enfin une première fabrication. Relançable sans dégât (les réglages déjà posés sont repris : une option ne change que la sienne).
+
+**Ce qu'il doit voir.**
+- À la fin de la commande : « Première fabrication lancée » et où regarder ; `systemctl list-units 'maverick-atelier*'` ; `journalctl -u maverick-atelier.service -f` pour le suivi.
+- Quelques minutes plus tard, la page Debug : « en cours », puis le rapport (issue, durée, pic de mémoire du conteneur, taille du serveur, écarts avec le site livré) et une phrase « ce serveur tient (ou ne tient pas) la fabrication ». Un refus (mémoire ou disque
+  insuffisant) est aussi un rapport : il porte les chiffres relevés. Chaque livraison suivante du site de dev refait une fabrication toute seule, sans geste.
+- `sudo sh /srv/maverick-center-test/atelier/installer.sh --etat` : l'état, les derniers rapports, et ce que la mémoire d'aujourd'hui permettrait. Les rapports sont dans `/srv/maverick-center-test/atelier/rapports/`.
+- Sur un serveur trop juste (la mémoire disponible laisse un plafond sous 1,5 Go, ou moins de 1 Go ou 25 % de la mémoire totale à la production) la fabrication est refusée : c'est le résultat voulu de la mesure, non une panne.
+  Chaque fabrication prend de la place (la dernière sortie, environ 180 Mo, plus le travail le temps de la fabrication) ; l'envoi de nuit de la sauvegarde grossit de la taille du kit à chaque version (voir « Sauvegardes »).
+
+**Retour en arrière.** `sudo sh /srv/maverick-center-test/atelier/installer.sh --retirer` arrête et retire les unités, les réglages, les dossiers de travail et les rapports, **supprime le `docker-compose.override.yml` de l'atelier, relance le service quelques secondes** (`docker compose up -d`) puis défait le dépôt ; le kit reste (il revient avec chaque installation). Rien d'autre à défaire : le site, la base et la production ne sont jamais touchés par l'atelier.
+
 ## En cas de problème
 
 | Symptôme | Piste |

@@ -73,6 +73,22 @@ const communes = structure ? tablesCommunes(structure) : [];
               <p class="debug-vide">Chargement à l’ouverture de ce menu…</p>
             </div>
           </section>
+          {/* « Fabrication témoin » : l'atelier du site de dev (GET <base>api/debug/atelier/, lot 9), lu une fois à la première ouverture puis à chaque
+              « Actualiser », jamais relevé ; rendu pur : lib/debug-atelier-page.mjs, script : scripts/debug-atelier.mjs */}
+          <section class="structure atelier" data-atelier aria-labelledby="debug-atelier-titre">
+            <div class="structure__entete">
+              <h3 id="debug-atelier-titre">Fabrication témoin</h3>
+              <span class="structure__resume" data-atelier-resume></span>
+              <button type="button" class="structure__actualiser" data-atelier-actualiser>Actualiser</button>
+            </div>
+            <p class="debug-petit">
+              L’atelier du serveur fabrique un site témoin à partir de l’extrait du contenu, pour mesurer ce que la fabrication demande : mémoire, processeurs,
+              durée, disque. Les chiffres du dernier essai aident à choisir le prochain serveur.
+            </p>
+            <div class="structure__contenu" data-atelier-contenu>
+              <p class="debug-vide">Chargement à l’ouverture de ce menu…</p>
+            </div>
+          </section>
           <div class="schema-outils">
             <div class="schema-outils__recherche">
               <label for="schema-recherche">Chercher une table</label>
@@ -164,6 +180,9 @@ const communes = structure ? tablesCommunes(structure) : [];
       </script>
       <script>
         import '../../scripts/debug-structure.mjs';
+      </script>
+      <script>
+        import '../../scripts/debug-atelier.mjs';
       </script>
     </>
   )

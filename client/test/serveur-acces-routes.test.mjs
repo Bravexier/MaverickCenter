@@ -75,7 +75,7 @@ test('le classement : lecture libre pour les pages, lecture avec clé pour le jo
     lecture: [
       ['GET', '/api/edition/journal/'], ['GET', '/api/edition/extrait/'], ['GET', '/api/edition/extrait/meta/'], ['GET', '/api/mise-a-jour/conflits/'],
       ['GET', '/api/debug/journal/'], ['GET', '/api/debug/metriques/'], ['GET', '/api/debug/metriques/requetes/'], ['GET', '/api/debug/metriques/export/'],
-      ['GET', '/api/debug/systeme/'], ['GET', '/api/debug/base/'], ['GET', '/api/debug/structure/'], ['GET', '/api/debug/tables/'], ['GET', '/api/debug/tables/personnage/'],
+      ['GET', '/api/debug/systeme/'], ['GET', '/api/debug/base/'], ['GET', '/api/debug/structure/'], ['GET', '/api/debug/atelier/'], ['GET', '/api/debug/tables/'], ['GET', '/api/debug/tables/personnage/'],
       ['GET', '/api/debug/tables/utilisateur/'], ['GET', '/api/debug/tables/groupe/'],
       ['GET', '/api/v1/'], ['GET', '/api/v1/openapi.json'], ['GET', '/api/v1/metiers/'], ['GET', '/api/v1/metiers/essai/'],
       ['GET', '/api/edition/lots/'], ['GET', `/api/edition/lots/${UUID}/`],

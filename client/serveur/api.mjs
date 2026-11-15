@@ -92,6 +92,8 @@
 //                                   { table, genre, colonnes, total, limite, decalage, tri, ordre, lignes } (images et textes longs résumés) ; toutes les
 //                                   tables et vues, fiches (section 13) comprises (décision du propriétaire du 2026-10-15 : « Il faut tout rendre
 //                                   ouvert. Ce qui est fermé c'est que la base du serveur de prod. ») ; ETag (empreinte du corps), 304 sur If-None-Match
+//   GET  /api/debug/atelier/        l'atelier du site de dev (serveur/atelier.mjs) : { format: 'maverick-atelier-etat/1', etat, message, kit, installe, extrait, en_cours, dernier,
+//                                   historique, resume } (forme : src/lib/debug-atelier.mjs), Cache-Control: no-store ; 503 sans atelier ; 403 en production
 //   GET  /api/debug/structure/      le dernier essai d'une livraison sur une copie de la base (serveur/essai-de-structure.mjs) : { format, en_cours, en_attente,
 //                                   dernier, ombre } ; `dernier` : le bilan `maverick-structure/1` (verdict, versions, migrations, tables…) et `demande`, `essaye_le`,
 //                                   `instance`, `resume`, ou null (aucun essai depuis que le dossier existe) ; `ombre` : { en_cours, dernier } de l'essai dans l'ombre
@@ -528,6 +530,8 @@ function parametres(params, noms) {
  *     (serveur/debug-tables.mjs) ; le contenu d'une table porte son ETag (versionDuContenu : l'empreinte du JSON du corps) et répond 304 sans corps
  *     à un If-None-Match qui la contient ;
  *   GET /api/debug/base/ : { version } de la base vivante (debug-tables.mjs#versionDeLaBase), Cache-Control: no-store ;
+ *   GET /api/debug/atelier/ : l'état de l'atelier du site de dev (serveur/atelier.mjs : l'extrait de son contenu, les rapports de fabrication lus en lecture seule),
+ *     Cache-Control: no-store ;
  *   GET /api/debug/structure/ : l'état de l'essai d'une livraison avant son installation (serveur/essai-de-structure.mjs) et de l'essai dans l'ombre (`ombre` :
  *     serveur/essai-dans-l-ombre.mjs), Cache-Control: no-store.
  * En production, tout répond 403 : c'est la base du serveur de prod qui reste fermée (décisions du propriétaire du 2026-10-15).
@@ -536,7 +540,7 @@ function traiterDebug(requete, service, action, reste, permis, params) {
   if (!service.edition) {
     const quoi = action === 'journal' ? 'Le journal du service ne se lit'
       : action === 'tables' ? 'Le contenu des tables ne se lit'
-        : action === 'base' ? 'La version de la base ne se lit' : action === 'structure' ? 'L’essai de structure ne se lit' : 'Les métriques ne se lisent';
+        : action === 'base' ? 'La version de la base ne se lit' : action === 'structure' ? 'L’essai de structure ne se lit' : action === 'atelier' ? 'L’atelier ne se lit' : 'Les métriques ne se lisent';
     // décision du propriétaire (2026-10-15) : en production, la base ne s'ouvre que par les pages du site
     return erreur(403, `${quoi} que sur le site de dev (page Debug).`);
   }
@@ -544,9 +548,14 @@ function traiterDebug(requete, service, action, reste, permis, params) {
   const tables = action === 'tables' && reste.length <= 1;
   const base = action === 'base' && !reste.length;
   const structure = action === 'structure' && !reste.length;
-  if (!(action === 'journal' && !reste.length) && !metriques && !(action === 'systeme' && !reste.length) && !tables && !base && !structure) return erreur(404, 'Adresse inconnue.');
+  const atelier = action === 'atelier' && !reste.length;
+  if (!(action === 'journal' && !reste.length) && !metriques && !(action === 'systeme' && !reste.length) && !tables && !base && !structure && !atelier) return erreur(404, 'Adresse inconnue.');
   const refus = permis('GET');
   if (refus) return refus;
+  if (atelier) {
+    if (!service.atelier) return erreur(503, 'L’atelier n’est pas disponible sur ce service.');
+    return json(200, service.atelier.lire(), { 'Cache-Control': 'no-store' });
+  }
   if (structure) {
     if (!service.essaiDeStructure) return erreur(503, 'L’essai de structure n’est pas disponible sur ce service.');
     return json(200, service.essaiDeStructure.lire(), { 'Cache-Control': 'no-store' });

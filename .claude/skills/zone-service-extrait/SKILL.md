@@ -31,6 +31,7 @@ user-invocable: false
   - par défaut, deux temps : l'étape `derive` tourne dans son propre processus, puis Astro construit ; `--en-un-temps` garde l'ancien chemin. `MAVERICK_CONTENU_DERIVE` est une convention interne entre `fabrication-depuis-contenu.mjs` et `donnees.mjs#ouvrirBase` (copie telle quelle, pour la variante nommée seulement), pas un réglage extérieur.
   - la comparaison ne classe en « variable » que `donnees/maverick.db` (contenu, tables calculées et tables propres au site égaux) ; `donnees/reference.*` y est absent sans git, et c'est attendu.
   - la mémoire d'un processus enfant lancé par un gros processus est surestimée : le `fork` lui fait reprendre la taille de son parent (d'où les deux temps pour mesurer).
+- Consommateurs de l'extrait : `db:extrait` et la fabrication depuis un fichier de contenu, et l'atelier du site de dev, qui en tient un à jour (`serveur/atelier.mjs`, skill `zone-service` ; l'atelier, skill `zone-hebergement-atelier`). Aucune donnée de joueur n'y entre : mêmes garanties.
 - Évènements de métriques `extrait` et `attestation` : skill `zone-debug-metriques`.
 
 ## Tests

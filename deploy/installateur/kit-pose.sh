@@ -60,3 +60,49 @@ poser_le_kit() {
   fi
 }
 poser_le_kit || log "Kit de l'atelier : échec inattendu, installation sans kit."
+
+# --- Les outils de l'atelier et la marque (mode test seulement) --------------------------------------------------------------------------------------------
+# Les scripts de l'atelier (deploy/installateur/atelier/ : installer.sh, lancer.sh, lib.sh) sont posés dans <instance>/atelier/ : installer.sh à la racine de l'atelier
+# (la commande courte du propriétaire), les autres dans atelier/outils/. Seuls ces fichiers sont remplacés (par renommage), et seuls ceux d'outils/ qui ne sont plus
+# livrés sont retirés : le kit, le travail, la sortie et les rapports de l'atelier ne sont jamais touchés. Tout est à root, comme l'installateur.
+poser_les_outils_de_l_atelier() {
+  OUTILS_SOURCE="$TRAVAIL/atelier-scripts"
+  [ -d "$OUTILS_SOURCE" ] || return 0
+  mkdir -p "$DOSSIER/atelier/outils" || { log "Atelier : impossible de créer $DOSSIER/atelier/outils, outils non posés."; return 0; }
+  for f in "$OUTILS_SOURCE"/*; do
+    [ -f "$f" ] || continue
+    nom=$(basename "$f")
+    if [ "$nom" = installer.sh ]; then cible="$DOSSIER/atelier/installer.sh"; else cible="$DOSSIER/atelier/outils/$nom"; fi
+    if ! { cp "$f" "$cible.$$" && chmod 755 "$cible.$$" && mv -f "$cible.$$" "$cible"; }; then
+      rm -f "$cible.$$"
+      log "Atelier : $nom n'a pas pu être posé."
+    fi
+  done
+  for f in "$DOSSIER/atelier/outils"/*; do
+    [ -e "$f" ] || continue
+    nom=$(basename "$f")
+    if [ "$nom" = installer.sh ] || [ ! -f "$OUTILS_SOURCE/$nom" ]; then rm -rf "$f"; fi
+  done
+}
+# La marque : ce que l'atelier surveille. Posée seulement si le kit posé est celui de cette livraison (sinon l'atelier fabriquerait avec le code d'une autre version) ;
+# kit.json est recopié dans rapports/ (lu par le service, en lecture seule : « le kit est posé »), ou retiré quand il n'y a pas de kit. Rien ne consomme la marque tant
+# que le propriétaire n'a pas lancé atelier/installer.sh.
+signaler_l_atelier() {
+  rapports_atelier="$DOSSIER/atelier/rapports"
+  if [ -f "$DOSSIER/atelier/kit/kit.json" ]; then
+    mkdir -p "$rapports_atelier" "$DOSSIER/atelier/declencheur" || return 0
+    chmod 755 "$rapports_atelier" "$DOSSIER/atelier/declencheur"
+    cp "$DOSSIER/atelier/kit/kit.json" "$rapports_atelier/.kit.json.$$" && chmod 644 "$rapports_atelier/.kit.json.$$" && mv -f "$rapports_atelier/.kit.json.$$" "$rapports_atelier/kit.json" || rm -f "$rapports_atelier/.kit.json.$$"
+    version_du_kit=$(sed -n 's/.*"version": *"\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\)".*/\1/p' "$DOSSIER/atelier/kit/kit.json" | head -n 1)
+    if [ "$version_du_kit" = "$VERSION" ]; then
+      printf 'version=%s\ntag=%s\ncommit=%s\n' "$VERSION" "$TAG" "$COMMIT" > "$DOSSIER/atelier/declencheur/marque"
+      log "Atelier : marque posée pour la version $VERSION."
+    else
+      log "Atelier : le kit posé est celui de la version ${version_du_kit:-inconnue}, pas de la $VERSION : pas de marque."
+    fi
+  elif [ -d "$rapports_atelier" ]; then
+    rm -f "$rapports_atelier/kit.json"
+  fi
+}
+poser_les_outils_de_l_atelier || log "Atelier : outils non posés."
+signaler_l_atelier || log "Atelier : marque non posée."

@@ -39,6 +39,7 @@ import { creerClasseurEnLigne } from './classeur.mjs';
 import { creerTipeee } from './tipeee.mjs';
 import { compterLesConflits } from './edition-conflits.mjs';
 import { ecrireAttestation, fabriquerAttestation } from './attestation.mjs';
+import { creerAtelier } from './atelier.mjs';
 import { creerExtrait } from './extrait.mjs';
 import { purgerLesEssais } from './edition-lots.mjs';
 import { creerOmbre } from './essai-dans-l-ombre.mjs';
@@ -137,6 +138,9 @@ const inode = (chemin) => {
  *   les tests l'appellent), `essayer` et `espaceLibre` remplacent l'essai et la mesure du disque (tests) ; false : aucun essai, une demande reste sans réponse ;
  *   `ombre` : l'essai dans l'ombre (serveur/essai-dans-l-ombre.mjs, site de dev seulement : à chaque installation, la base d'avant migrée sur place comparée à la base
  *   refaite), ses réglages (`executer`, `espaceLibre`, `migrations`, `schema` : tests), false : aucun
+ * @param {false | { rapports?: string|null, delai?: number, intervalle?: number, fabriquer?: Function }} [o.atelier] l'atelier du site de dev (serveur/atelier.mjs, site de dev seulement) :
+ *   `rapports` le dossier des rapports de root monté en lecture seule (par défaut MAVERICK_ATELIER, sinon aucun), `depot` le dépôt de l'atelier monté en lecture-écriture (par défaut MAVERICK_ATELIER_DEPOT, sinon aucun : pas d'extrait), `delai` entre un contenu changé et son extrait
+ *   refait, `intervalle` des passages (0 : aucun, les tests appellent `atelier.passer()`), `fabriquer` remplace la fabrication de l'extrait (tests) ; false : aucun atelier
  * @param {false | { dossier?: string|null, publier?: boolean }} [o.attestation] l'attestation de la production (serveur/attestation.mjs) : `publier`
  *   (par défaut : sans l'édition, c'est-à-dire en production) l'écrit dans `dossier` (par défaut le dossier des métriques, partagé entre les deux
  *   instances du VPS) au démarrage et après chaque reconstruction de la base vivante ; le site de dev y lit celle de la production (page « Mise à
@@ -145,7 +149,7 @@ const inode = (chemin) => {
 export async function demarrerService({ regles, dossier, hote = '127.0.0.1', port = 8787, intervalle = 15000, fichierVersion = null, edition = false,
   reference = null, depot = 'Bravexier/MaverickCenter', adresse = null, jetonFichier = null, acces: reglageAcces = null, maintenance = null, versionParDefaut = 'développement',
   journal: ecouteur = null, journalDuService = null, relancer = () => process.exit(0), metriques: reglagesMetriques = {}, fetch: fetchDuClasseur = globalThis.fetch,
-  tipeee: reglagesTipeee = {}, attestation: reglagesAttestation = {}, essaiDeStructure: reglagesEssai = {} }) {
+  tipeee: reglagesTipeee = {}, attestation: reglagesAttestation = {}, essaiDeStructure: reglagesEssai = {}, atelier: reglagesAtelier = {} }) {
   const lancementDuService = performance.now();
   // la production sert de référence à la page « Mise à jour » sauf si c'est la base de ce site même (lireReference compare les fichiers)
   const referenceDuSite = reference && typeof reference === 'object' ? { propre: regles, ...reference } : reference;
@@ -280,6 +284,13 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
   }
   // l'extrait du contenu pour les sessions de Claude (GET /api/edition/extrait/) : site de dev seulement, fabriqué au premier téléchargement qui suit un changement
   const extrait = edition ? creerExtrait({ dossier, base: () => etat.db, version: () => version.version, journal, evenement }) : null;
+
+  // l'atelier du site de dev (serveur/atelier.mjs) : l'extrait de son contenu, tenu à jour une fois qu'il est installé, et ses rapports, lus en lecture seule ; jamais en production
+  const atelier = reglagesAtelier === false || !edition ? null : creerAtelier({
+    dossier, edition: true, rapports: reglagesAtelier?.rapports !== undefined ? reglagesAtelier.rapports : (process.env.MAVERICK_ATELIER || null),
+    depot: reglagesAtelier?.depot !== undefined ? reglagesAtelier.depot : (process.env.MAVERICK_ATELIER_DEPOT || null),
+    base: () => etat.db, version: () => version.version, journal, evenement, ...(reglagesAtelier ?? {}),
+  });
 
   function fermer() {
     if (etat.db) {
@@ -576,7 +587,7 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
           reponse = traiter({ methode: req.method ?? 'GET', chemin: url.pathname, recherche: url.search, entetes: req.headers, corps: Buffer.concat(morceaux).toString('utf8'),
             signal: abandon.signal },
           { base: baseMesuree, etat: decrire, journal, journalDuService: memoire, edition: Boolean(edition), dossier, reference: referenceDuSite, depot, adresse, github,
-            maintenance: maintenanceDemandee, metriques, evenement, classeur, tipeee, extrait, attestations: dossierDesAttestations, acces, essaiDeStructure });
+            maintenance: maintenanceDemandee, metriques, evenement, classeur, tipeee, extrait, attestations: dossierDesAttestations, acces, essaiDeStructure, atelier });
         } finally {
           const mesureSql = sql.terminer();
           if (mesure) mesure.sql = mesureSql;
@@ -605,6 +616,7 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
   const ecoute = serveur.address();
   serviceOuvert = true;
   setImmediate(() => ombre?.demarrer());
+  atelier?.demarrer();
   journal(`service des personnages ${version.version} : http://${hote}:${ecoute.port}/api/ (règles ${regles}, base ${chemin})${edition ? ' ; édition des règles OUVERTE (site de dev)' : ''}${maintenance ? ` ; annonce de maintenance : ${maintenance}` : ''}${metriques ? ` ; métriques : ${metriques.fichier}${metriques.pagesOuvertes ? '' : ' (pages vues fermées)'}` : ''}`);
   evenement('demarrage', {
     duree_ms: performance.now() - lancementDuService,
@@ -622,6 +634,7 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
     if (veilleDesDemandes) clearInterval(veilleDesDemandes);
     essaiDeStructure?.arreter();
     const ombreFinie = ombre?.arreter();
+    const atelierFini = atelier?.arreter();
     await new Promise((ok) => {
       serveur.close(() => ok());
       serveur.closeAllConnections?.();
@@ -632,6 +645,7 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
     if (metriques) sansEchec(() => metriques.arreter());
     fermer();
     await ombreFinie; // le fil de l'essai dans l'ombre efface ses copies avant que le service rende la main
+    await atelierFini;
   }
 
   // les demandes d'essai de l'installateur : un `readdir` d'un dossier presque toujours absent, plus souvent que la surveillance des fichiers (l'installateur
@@ -678,5 +692,5 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
     minuterie.unref?.();
   }
 
-  return { url: `http://${hote}:${ecoute.port}`, port: ecoute.port, arreter, etat: decrire, maintenance: etatMaintenance, journalDuService: memoire, metriques, essaiDeStructure, ombre };
+  return { url: `http://${hote}:${ecoute.port}`, port: ecoute.port, arreter, etat: decrire, maintenance: etatMaintenance, journalDuService: memoire, metriques, essaiDeStructure, ombre, atelier };
 }
