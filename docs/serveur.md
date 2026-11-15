@@ -822,6 +822,17 @@ blanc et appliqué d'un clic comme tout lot (R275 : rien n'entre sans le clic du
 ne se refont qu'à partir d'une modification précise (le rendu remplace la ligne touchée) : elles ne sont pas recalculées d'un bloc ; les clés des mots-clés et les colonnes calculées des
 armures (R207) sont tenues par le service et ne sont pas non plus dans ce recalcul.
 
+**La page « Mise à jour »** (`src/scripts/mise-a-jour.mjs`, rendu pur `src/lib/lots-rendu.mjs`, lot 6 PR 4) : la section « Lots de changements proposés », entre les listes de la note en préparation
+et les lignes en conflit, sur le site de dev seulement (`GET /api/edition/lots/` répond `403` en production, `404` sans le service : la section reste cachée ; une autre erreur est dite). Pour
+chaque proposition à décider : le titre, la date et l'auteur, la décision citée, le résultat de l'essai en une phrase (prêt ; N valeurs ont changé depuis et ne seront pas écrites ; à corriger :
+ligne N du lot…), l'aperçu dépliable par ligne de la base (le nom, les colonnes par leur libellé, « avant » et « après » ; deux longs textes par leurs différences), une case par décision à ouvrir
+(« J'accepte d'ouvrir ce que la décision R… verrouille » : « Appliquer » reste inactif tant qu'elle n'est pas cochée, le clic envoie `verrous_ouverts`), puis « Appliquer » (confirmation, puis le bilan :
+écrit, gardé parce que la valeur avait changé), « Refuser » (confirmation) et « Refaire l'essai ». Un `409` est dit avec la ligne à corriger et le lot est relu. Les dix lots appliqués les plus récents
+montrent leur bilan et « Annuler ce lot » : un clic affiche d'abord l'aperçu de l'annulation (remis, déjà comme avant, gardé avec la valeur trouvée), le bouton « Oui, annuler ce lot » l'exécute. Les
+refusés et les annulés sont dans un historique replié. « Tout recalculer » (`POST …/recalcul/`) dépose le lot et l'affiche, ou dit qu'il n'y a rien à recalculer. Le mot de passe est demandé par
+`scripts/acces.mjs` (rien à faire dans la page). Le détail (GET `…/<id>/`) n'est lu que pour les lots à décider et les appliqués récents. Tests : `lots-rendu` (module pur), `mise-a-jour-lots` (le script dans
+un faux navigateur), `lots-rendu-service` (le rendu sur ce que rend le vrai service).
+
 **Éteint hors de l'édition** : `controlerLeLot` refuse au dépôt une table que le service ne sait pas écrire (jusqu'au lot 8).
 
 Tests : `serveur-edition-lots` (dépôt avec la clé sans écriture dans le contenu, copie, application en bloc, changée entre-temps, refus avec rang, contrôles du contenu, verrou refusé

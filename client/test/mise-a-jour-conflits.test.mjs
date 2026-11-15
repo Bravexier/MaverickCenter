@@ -113,7 +113,8 @@ test('après les listes de la note en préparation, la section des lignes en con
   assert.ok(dev.children.indexOf(dev.querySelector('.nv-dev__liste')) < dev.children.indexOf(s));
   assert.match(dev.querySelector('.nv-dev__bilan').textContent, /8 lots en conflit ne partent pas avec cette mise à jour/);
   assert.equal(s.querySelectorAll('[data-nv-lot]').length, 8);
-  assert.deepEqual(page.envois.map(([c]) => c), ['GET etat/', 'GET mise-a-jour/', 'GET mise-a-jour/conflits/']);
+  // (puis la lecture des lots de changements, que ce faux service ne connaît pas : la section reste cachée, test/mise-a-jour-lots.test.mjs)
+  assert.deepEqual(page.envois.map(([c]) => c), ['GET etat/', 'GET mise-a-jour/', 'GET mise-a-jour/conflits/', 'GET edition/lots/']);
   // la raison du rejeu : le texte lisible du service (comme la légende), jamais la trace (id du lot, clé JSON, nom de colonne)
   assert.equal(page.lot(FORGERON.lot).querySelector('.nv-conflit-lot__detail').textContent, 'Au rejeu : Métier « Forgeron » : les règles ont changé « Bonus » autrement');
   for (const l of DIAG.lots) assert.doesNotMatch(page.lot(l.lot).querySelector('.nv-conflit-lot__detail').textContent, /^Au rejeu : lot |bonus_brut|corps_md/, l.lot);
@@ -165,7 +166,7 @@ test('le script de la page n’importe ni le modèle ni le registre des noms (sk
     return vus;
   };
   const graphe = [...importes(new URL('../src/scripts/mise-a-jour.mjs', import.meta.url))].map((h) => h.replace(/^.*\/src\//, ''));
-  assert.deepEqual(graphe.sort(), ['lib/conflits-rendu.mjs', 'lib/diff-replie.mjs', 'lib/notes-de-version-rendu.mjs']);
+  assert.deepEqual(graphe.sort(), ['lib/conflits-rendu.mjs', 'lib/diff-replie.mjs', 'lib/lots-rendu.mjs', 'lib/notes-de-version-rendu.mjs']);
 });
 
 test('le choix 3 ouvre sa saisie ; l’envoi attend un choix par conflit, puis part avec la valeur saisie ; le message dit ce qui est fait', async () => {
