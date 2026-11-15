@@ -11,7 +11,8 @@
 //                            celle que le site a laissée) est gardée telle que la migration l'a écrite : sa valeur d'import n'existe plus ; sauf si
 //                            la migration n'y a remplacé que des fragments de son registre `textes` (data/migrations/NNNN.json, comme la 0122 qui
 //                            recible une balise) présents aussi dans la valeur « avant » : celle-ci est remise, avec le même remplacement. Les lots
-//                            défaits quittent l'historique de la copie (historiqueSite y voit l'état d'import comme courant). `base.ecarts` : ce
+//                            défaits quittent l'historique de la copie (historiqueSite y voit l'état d'import comme courant). Seules les traces de nature
+//                            `saisie` et `decision` sont défaites (R275 : une source, une migration ou un recalcul du code font partie de l'import). `base.ecarts` : ce
 //                            qui n'a pas pu être défait (vide d'ordinaire). Une copie par processus et par options, supprimée à sa sortie.
 //     { garder: lotsAvant('0093') }
 //                            l'état d'après une migration : ne défait que les lots rapatriés après elle (liste figée test/fixtures/lots-avant-NNNN.json,

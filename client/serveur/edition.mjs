@@ -3225,7 +3225,7 @@ export function ancienneEcritureDesIds(db) {
     if (registre.has(x)) return registre.get(x);
     if (crees.has(x)) return crees.get(x);
     if (!creer) return x;
-    prochain ??= idSuivant(db, 'mot_cle', { plancher: plancherDesIdsDeMotsCles() });
+    prochain ??= idSuivant(db, 'mot_cle', { plancher: plancherDesIdsDeMotsCles(), monter: false }); // calculé seulement : le journal rejoué n'écrit pas ici
     crees.set(x, prochain);
     prochain += 1;
     return crees.get(x);
@@ -3613,7 +3613,9 @@ const OPERATIONS_DU_LOT = {
   },
   ecrire_inserer(ctx, op) {
     if (TABLES_FIGEES[op.table] && ctx.gel !== false) throw new ErreurEdition(409, `${op.table} : ${TABLES_FIGEES[op.table]}.`);
-    const tenue = ctx.gel !== false ? raisonDeLaColonneTenue(op.table, Object.keys(op.valeurs)) : null;
+    // `restaurer` : l'annulation d'un lot remet une ligne qu'il a retirée, à l'identique (ses colonnes tenues par le service comprises : ce n'est pas une
+    // écriture de `verrou` ou de `cle`, mais le retour de la ligne telle que le service l'avait)
+    const tenue = ctx.gel !== false && op.restaurer !== true ? raisonDeLaColonneTenue(op.table, Object.keys(op.valeurs)) : null;
     if (tenue) throw new ErreurEdition(409, tenue);
     ctx.w.inserer(op.table, op.valeurs);
     return `${op.table} : une ligne`;

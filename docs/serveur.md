@@ -681,6 +681,10 @@ un clic sur le site). Le report vers l'historique (`serveur/historique.mjs#histo
 `scripts/mise-a-jour-regles.mjs`, l'extrait) ne change pas la nature. Le journal exporté (`maverick-edition/1`) porte `nature` et `decision` sur chaque
 lot ; `chargerJournal` lit un journal téléchargé avant la 0127, sans ces champs, comme une `saisie` (`edition-journal.mjs#natureDuLot`, qui refuse une
 nature inconnue ou un numéro de décision mal placé en nommant le lot). Test : `serveur-edition-nature-des-traces`.
+**L'état d'origine** (`lib/historique-site.mjs`, lu par les tests, `db:check`, le rapprochement des classeurs : `historiqueSite`, `lireHistorique`, `defaireLeSite` de
+`test/aide-base-d-import.mjs`) ne défait que les traces de nature `saisie` et `decision` (`NATURES_DEFAITES`) : un réimport d'une source, une migration ou un recalcul du code
+(`source`, `migration`, `code`) font partie du contenu de référence. Un historique sans colonne `nature` (base d'avant la 0127) se lit comme des saisies ; `valeursDAvant` (les noms
+qu'une ligne a portés) lit toutes les natures. Tests : `historique-site`, `aide-base-d-import`.
 
 | Requête | Réponse |
 | --- | --- |
@@ -699,7 +703,7 @@ nature inconnue ou un numéro de décision mal placé en nommant le lot). Test :
 | `POST /api/edition/` | `{ page, operations: [...] }` → applique un lot d'un bloc (`modifier`, `creer`, `supprimer`, `relations`, `magies_innees`, `categories`, `fusionner_mots_cles` : `serveur/edition.mjs` ; `ordonner` : `serveur/edition-plan.mjs` ; `valeurs_de_capacite` : les valeurs « {N} » d'une capacité de monstre pour une carte, décision R69, `serveur/edition-bestiaire.mjs`) ; rend `{ lot, modifications, crees, lignes, fiches }` (`fiches` : les fiches de personnage dont le lot a retiré un élément, R42) |
 | `GET /api/edition/journal/` | Le journal des modifications en attente, et des « intégrées » des lots que les règles n'ont pas encore reçus (`maverick-edition/1` ; chaque lot porte sa `nature` et sa `decision`), en pièce jointe |
 | `GET /api/edition/extrait/` | L'extrait du contenu (un fichier SQLite) : ci-dessous, « Extrait du contenu et attestation de la production » ; `…/extrait/meta/` : son méta en JSON |
-| `GET`, `POST /api/edition/lots/`, `GET /api/edition/lots/<id>/`, `POST …/<id>/{essai,appliquer,refuser}/` | Les lots de changements : déposer une proposition, la lire, refaire son essai à blanc, l'appliquer ou la refuser d'un clic (ci-dessous, « Lots de changements (service) ») |
+| `GET`, `POST /api/edition/lots/`, `GET /api/edition/lots/<id>/`, `POST …/<id>/{essai,appliquer,refuser,annuler}/`, `GET …/<id>/annulation/`, `POST /api/edition/lots/recalcul/` | Les lots de changements : déposer une proposition, la lire, refaire son essai à blanc, l'appliquer, la refuser ou l'annuler d'un clic, aperçu de l'annulation, « tout recalculer » (ci-dessous, « Lots de changements (service) ») |
 
 **Pas de comptes** : quiconque a le mot de passe du site de dev peut modifier les règles (le journal n'a pas d'auteur :
 `modification_lot.auteur_id` attend la connexion Discord). Mêmes protections d'écriture que les fiches (JSON, `Sec-Fetch-Site`).
@@ -754,6 +758,9 @@ d'écriture n'existe pour les sessions. Sans mot de passe posé, le site se comp
 | `POST /api/edition/lots/<id>/essai/` | proposition | Refait l'essai (n'écrit que `essai` et `essaye_le`) |
 | `POST /api/edition/lots/<id>/appliquer/` | écriture | `{ verrous_ouverts?: ["R…"] }` : l'application d'un bloc (le clic du propriétaire) |
 | `POST /api/edition/lots/<id>/refuser/` | écriture | L'état « refuse » : rien n'est écrit, la proposition reste |
+| `GET /api/edition/lots/<id>/annulation/` | lecture | L'aperçu de l'annulation d'un lot appliqué, calculé sur une copie (rien n'est écrit) : par ligne du lot du journal, `remise`, `gardee` (avec la valeur trouvée), `deja` |
+| `POST /api/edition/lots/<id>/annuler/` | écriture | `{ verrous_ouverts?: ["R…"] }` : « Annuler ce lot » d'un bloc (le clic du propriétaire) |
+| `POST /api/edition/lots/recalcul/` | proposition | « Tout recalculer » : dépose les écarts des colonnes dérivées comme un lot de nature `code` (`201 { lot, recalcul }` ; `200` sans lot quand rien ne diffère) |
 
 La classe **proposition** (`serveur/acces-routes.mjs`) a la porte de la lecture (la clé OU le mot de passe) pour les deux seules routes qui écrivent sans toucher au
 contenu : elles n'écrivent que `lot_de_changements`. Appliquer et refuser, qui décident, demandent le mot de passe. En production : `403` avant tout.
@@ -785,14 +792,42 @@ sous un gel ouvert pour elle seule. Un refus qui cite un numéro mais que le gel
 `enregistrer` n'est pas touché, le gel reste fermé.
 
 **Numéros.** Le numéro d'un jeton = 1 + le plus haut de : le plafond de `numero_donne`, le maximum de la colonne, le plus haut trouvé dans `modification` et
-`historique_modification` pour cette table (`plusHautNumero`) ; le plafond est monté dans la même transaction (`INSERT … ON CONFLICT … max`). Un numéro n'est donc jamais redonné,
-même après une suppression, une annulation ou une base restaurée sans `numero_donne`. L'édition ordinaire donne elle-même des numéros entiers (`idSuivant` des mots-clés, de leurs
-synonymes et catégories, `serveur/edition-mots-cles.mjs`) sans lire `numero_donne` ; elle est inchangée ici.
+`historique_modification` pour cette table (`plusHautNumero`, `serveur/edition-journal.mjs`) ; le plafond est monté dans la même transaction (`INSERT … ON CONFLICT … max`). Un
+numéro n'est donc jamais redonné, même après une suppression, une annulation ou une base restaurée sans `numero_donne`. L'édition ordinaire donne ses numéros entiers
+(`idSuivant` des mots-clés, de leurs synonymes et catégories, `serveur/edition-mots-cles.mjs`) par **la même fonction** (`donnerUnNumero`) : l'id est 1 + le plus haut numéro connu
+(et, pour un mot-clé, `mot_cle_ancienne_cle` et le registre de la migration 0113) et le plafond monte dans la transaction du lot ; seuls des numéros plus hauts sont possibles.
+Le rejeu d'un ancien journal (`ancienneEcritureDesIds`) calcule un numéro sans le réserver (`monter: false`). Une base d'avant la migration 0128 (sans `numero_donne`) s'en passe.
+
+**Annuler ce lot** (`annuler`, `previsualiserLAnnulation` ; plan : « remet une valeur seulement si elle vaut encore ce que le lot a écrit »). Pour un lot « applique ». La source est le lot du
+journal (`lot_id` : `modification`, à défaut `historique_modification`), ramené à son **effet net** par ligne de table (`lib/lot-de-changements.mjs#effetNetDuLot` : le service
+écrit plusieurs fois la même ligne) puis jugé (`jugerLAnnulation`) : une colonne qui vaut encore ce que le lot a écrit reprend son `avant` (`remise`) ; si elle a sa valeur d'avant,
+`deja` ; sinon `gardee`, listée avec la valeur trouvée (le site prime). Une ligne **insérée** par le lot n'est supprimée que si elle vaut encore, en entier, ce qu'il a inséré ; une ligne
+**supprimée** n'est réinsérée (à l'identique, `restaurer` : pas de refus des colonnes tenues par le service) que si elle est encore absente. Ordre : les lignes retirées d'abord
+(la dernière retirée en premier), puis les colonnes changées (dans l'ordre du lot), enfin les lignes créées (la dernière créée en premier). Écriture par le service d'édition dès qu'il
+connaît la colonne (`traduire`, comme l'application) : ce qu'il recalcule seul (la clé d'un mot-clé après son libellé, la page d'un métier) est déjà revenu quand on arrive à la ligne qui le
+note (`deja`). Une colonne dérivée d'une page typée, que le service refuse d'écrire, passe par le journal. La comparaison est **refaite à chaque ligne** sur l'état du moment ; l'aperçu
+(`GET …/annulation/`, classe lecture) est calculé par **le même code** sur une copie `VACUUM INTO` dans un fil à part (un à la fois, avec les essais), rien n'est enregistré ; il rend
+`verdict` (`applicable`, `verrous`, `refusee`, `rien_a_remettre`), `comptes`, `verrous_a_ouvrir`, les opérations avec leur aperçu avant et après (`ecarts` des valeurs gardées) et les
+problèmes du contenu nés de l'annulation. Le clic (`POST …/annuler/`, mot de passe) : une transaction sous le verrou de l'édition, contrôles du contenu rejoués (le calcul « avant » se fait
+au clic, environ une seconde), un lot du journal `Annulation de « … »` de **la même nature et du même numéro de décision** que le lot annulé (titre neutralisé comme à l'application), puis
+`lot_de_changements` passe à « annule » (`annule_le`, `annulation_lot_id`, `bilan.annulation` : le bilan d'application est gardé). Les verrous de décision se rouvrent au clic
+(`verrous_ouverts`). Refus (409, rien n'est écrit, le lot reste « applique ») : rien à remettre (tout a changé depuis, ou est déjà revenu), une ligne refusée par le service, un verrou
+non ouvert, un contrôle du contenu qui échoue, un lot du journal en conflit ou qui n'y est plus. Les numéros donnés restent dans `numero_donne`. Limite connue : annuler un
+renommage de mot-clé laisse la clé que le renommage avait posée en clé quittée (un renvoi, R233 (11)), que le service tient lui-même.
+
+**Tout recalculer** (`recalculerTout`, classe `proposition`). Après un changement de code, le corps, le résumé et les `donnees` des pages que le code dérive des tables et que
+`recalculerLesPages` refait sans qu'on lui dise ce qui a changé — races, classes, fiches de dons, métiers (`TYPES_DE_PAGES_RECALCULEES`) — sont refaits **sur une copie** et comparés à
+ce qui est stocké ; les écarts sont **déposés comme un lot de nature `code`** (une opération `modifier` par page : la valeur stockée en `avant`, la valeur recalculée en `apres`), essayé à
+blanc et appliqué d'un clic comme tout lot (R275 : rien n'entre sans le clic du propriétaire). Aucun écart : `200`, aucun lot. Les pages des magies, armes, armures, composants et potions
+ne se refont qu'à partir d'une modification précise (le rendu remplace la ligne touchée) : elles ne sont pas recalculées d'un bloc ; les clés des mots-clés et les colonnes calculées des
+armures (R207) sont tenues par le service et ne sont pas non plus dans ce recalcul.
 
 **Éteint hors de l'édition** : `controlerLeLot` refuse au dépôt une table que le service ne sait pas écrire (jusqu'au lot 8).
 
 Tests : `serveur-edition-lots` (dépôt avec la clé sans écriture dans le contenu, copie, application en bloc, changée entre-temps, refus avec rang, contrôles du contenu, verrou refusé
-puis ouvert, numéros, table hors édition, édition ordinaire inchangée), `lot-de-changements-numeros`, `serveur-acces-routes`.
+puis ouvert, numéros, table hors édition, édition ordinaire inchangée), `serveur-edition-lots-annulation` (remise, valeur gardée, insertion et suppression, aperçu sur copie, numéros jamais
+rendus, nature du journal d'annulation, rien à remettre, verrous, classes d'accès, tout recalculer), `lot-de-changements-annulation` (effet net et jugement, module pur),
+`serveur-edition-numeros` (`idSuivant`, `donnerUnNumero`), `lot-de-changements-numeros`, `serveur-acces-routes`.
 
 ## Extrait du contenu et attestation de la production
 

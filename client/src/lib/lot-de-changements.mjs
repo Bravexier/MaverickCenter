@@ -343,3 +343,108 @@ export function donnerLesNumeros(lot, depart) {
   const operations = lot.operations.map((o) => ({ ...o, ...(o.cle === undefined ? {} : { cle: remplacer(o.cle) }), ...(o.apres === undefined ? {} : { apres: remplacer(o.apres) }) }));
   return { lot: { ...lot, operations }, numeros };
 }
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+// Annuler un lot (lot 6 du chantier de la base de dev, R274, R275, garde-fou 11 ; serveur/edition-lots.mjs#annuler)
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+
+/**
+ * L'effet net d'un lot du journal, ligne par ligne : ce que le lot a fait de chaque ligne de table entre le début et la fin (le service écrit plusieurs
+ * fois la même ligne : une clé recalculée après une insertion, deux colonnes écrites par deux opérations). Les lignes sont celles de `modification` (ou de
+ * `historique_modification`) du lot, dans l'ordre des rangs : { rang, table, cle, operation, avant, apres } (`avant` / `apres` : objets, ou null).
+ *   - `inserer` : le lot a créé la ligne (`fin` : la ligne entière telle que le lot l'a laissée) ; annuler la supprime ;
+ *   - `supprimer` : le lot a retiré la ligne (`origine` : la ligne entière d'avant) ; annuler la réinsère ;
+ *   - `modifier` : le lot a changé des colonnes (`origine` : leur valeur d'avant le lot, `fin` : celle que le lot a laissée) ; annuler les remet ;
+ *   - rien : une ligne créée puis supprimée par le même lot, ou dont chaque colonne est revenue à sa valeur, n'est pas rendue.
+ * `rang` est celui de la première ligne du journal qui touche la ligne de table (l'ordre de l'annulation s'en sert).
+ * @param {{ rang: number, table: string, cle: object, operation: string, avant: object | null, apres: object | null }[]} lignes
+ * @returns {{ rang: number, table: string, cle: object, genre: 'inserer' | 'supprimer' | 'modifier', origine: object | null, fin: object | null }[]}
+ */
+export function effetNetDuLot(lignes) {
+  const parLigne = new Map();
+  for (const l of [...lignes].sort((a, b) => a.rang - b.rang)) {
+    const k = JSON.stringify([l.table, l.cle]);
+    let e = parLigne.get(k);
+    const premiere = !e;
+    if (premiere) parLigne.set(k, (e = { rang: l.rang, table: l.table, cle: l.cle, origine: null, fin: null }));
+    if (l.operation === 'inserer') {
+      if (premiere) e.origine = null;
+      e.fin = { ...l.apres };
+    } else if (l.operation === 'modifier') {
+      if (premiere) e.origine = {};
+      if (e.origine !== null) for (const [c, v] of Object.entries(l.avant ?? {})) if (!(c in e.origine)) e.origine[c] = v;
+      e.fin = { ...(e.fin ?? {}), ...l.apres };
+    } else {
+      if (premiere) e.origine = { ...l.avant };
+      else if (e.origine !== null) for (const [c, v] of Object.entries(l.avant ?? {})) if (!(c in e.origine)) e.origine[c] = v;
+      e.fin = null;
+    }
+  }
+  const nets = [];
+  for (const e of parLigne.values()) {
+    if (e.origine === null && e.fin === null) continue;
+    if (e.origine === null) nets.push({ ...e, genre: 'inserer' });
+    else if (e.fin === null) nets.push({ ...e, genre: 'supprimer' });
+    else {
+      const colonnes = Object.keys(e.fin).filter((c) => !egal(e.origine[c], e.fin[c]));
+      if (colonnes.length) {
+        nets.push({ ...e, genre: 'modifier', origine: Object.fromEntries(colonnes.map((c) => [c, e.origine[c] ?? null])), fin: Object.fromEntries(colonnes.map((c) => [c, e.fin[c] ?? null])) });
+      }
+    }
+  }
+  return nets.sort((a, b) => a.rang - b.rang);
+}
+
+/**
+ * Juge ce que l'annulation ferait d'une ligne de `effetNetDuLot`, d'après la ligne actuelle de la base : une valeur n'est remise que si elle vaut encore ce que
+ * le lot a écrit (le site prime : une valeur changée depuis est gardée, avec ce que la base porte).
+ *   - `modifier` : colonne par colonne : `remises` (vaut `fin` : on remet `origine`), `deja` (vaut déjà `origine`), `gardees` (autre chose : `trouvee`) ;
+ *   - `inserer` : la ligne est supprimée seulement si elle vaut encore, en entier, ce que le lot a inséré (`remises` = toutes les colonnes) ; absente :
+ *     `deja` ; différente : `gardees` ;
+ *   - `supprimer` : la ligne est réinsérée seulement si elle est encore absente (`remises` = toutes les colonnes) ; présente et identique : `deja` ;
+ *     présente et différente : `gardees`.
+ * `etat` : `remise` (au moins une valeur à remettre), `gardee` (rien à remettre, au moins une valeur gardée), `deja` (rien à faire).
+ * @param {{ genre: string, origine: object | null, fin: object | null }} net une ligne de `effetNetDuLot`
+ * @param {object | null | undefined} actuelle la ligne actuelle de la table (null : absente)
+ * @returns {{ etat: 'remise' | 'gardee' | 'deja', remises: string[], deja: string[], gardees: { colonne: string, ecrite: unknown, avant: unknown, trouvee: unknown }[], raison: string | null }}
+ */
+export function jugerLAnnulation(net, actuelle) {
+  const remises = [];
+  const deja = [];
+  const gardees = [];
+  let raison = null;
+  const classer = (colonne, courante, ecrite, avant) => {
+    if (egal(courante, ecrite)) remises.push(colonne);
+    else if (egal(courante, avant)) deja.push(colonne);
+    else gardees.push({ colonne, ecrite: ecrite ?? null, avant: avant ?? null, trouvee: courante ?? null });
+  };
+  if (net.genre === 'modifier') {
+    if (!actuelle) raison = 'ligne_absente';
+    for (const c of Object.keys(net.fin)) {
+      if (!actuelle) gardees.push({ colonne: c, ecrite: net.fin[c] ?? null, avant: net.origine[c] ?? null, trouvee: null });
+      else classer(c, actuelle[c], net.fin[c], net.origine[c]);
+    }
+  } else if (net.genre === 'inserer') {
+    const colonnes = Object.keys(net.fin);
+    if (!actuelle) {
+      raison = 'ligne_absente';
+      deja.push(...colonnes);
+    } else {
+      const ecarts = colonnes.filter((c) => !egal(actuelle[c], net.fin[c]));
+      if (ecarts.length) {
+        raison = 'ligne_changee';
+        for (const c of ecarts) gardees.push({ colonne: c, ecrite: net.fin[c] ?? null, avant: null, trouvee: actuelle[c] ?? null });
+      } else remises.push(...colonnes);
+    }
+  } else if (!actuelle) {
+    remises.push(...Object.keys(net.origine));
+  } else {
+    const colonnes = Object.keys(net.origine);
+    const ecarts = colonnes.filter((c) => !egal(actuelle[c], net.origine[c]));
+    if (ecarts.length) {
+      raison = 'ligne_existante';
+      for (const c of ecarts) gardees.push({ colonne: c, ecrite: null, avant: net.origine[c] ?? null, trouvee: actuelle[c] ?? null });
+    } else deja.push(...colonnes);
+  }
+  return { etat: remises.length ? 'remise' : gardees.length ? 'gardee' : 'deja', remises, deja, gardees, raison };
+}

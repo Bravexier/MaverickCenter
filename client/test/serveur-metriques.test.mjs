@@ -71,6 +71,13 @@ test('routes d’api.mjs : chaque adresse de son en-tête a un gabarit sans iden
     '/api/edition/': '/api/edition/',
     '/api/edition/lignes/': '/api/edition/lignes/',
     '/api/mise-a-jour/lots/0f0e2c1a-1111-2222-3333-444455556666/': '/api/mise-a-jour/lots/{lot}/',
+    // lots de changements : jamais l'identifiant du lot, le recalcul garde son nom (une adresse fixe)
+    '/api/edition/lots/': '/api/edition/lots/',
+    '/api/edition/lots/0f0e2c1a-1111-2222-3333-444455556666/': '/api/edition/lots/{lot}/',
+    '/api/edition/lots/0f0e2c1a-1111-2222-3333-444455556666/annulation/': '/api/edition/lots/{lot}/annulation/',
+    '/api/edition/lots/0f0e2c1a-1111-2222-3333-444455556666/annuler/': '/api/edition/lots/{lot}/annuler/',
+    '/api/edition/lots/0f0e2c1a-1111-2222-3333-444455556666/appliquer/': '/api/edition/lots/{lot}/appliquer/',
+    '/api/edition/lots/recalcul/': '/api/edition/lots/recalcul/',
     '/api/mise-a-jour/lancer/': '/api/mise-a-jour/lancer/',
     '/api/mise-a-jour/majeure/': '/api/mise-a-jour/majeure/',
     '/api/mise-a-jour/conflits/': '/api/mise-a-jour/conflits/',
@@ -95,7 +102,7 @@ test('routes d’api.mjs : chaque adresse de son en-tête a un gabarit sans iden
   };
   for (const [a, r] of Object.entries(attendues)) assert.equal(routeNormalisee(a), r, a);
   for (const a of ['/', '/api/', '/autre/api/etat/', '/api/inconnue/', '/api/etat/x/', '/api/personnages//', '/api/personnages/a/b/', '/api/personnages/a/portrait/b/',
-    '/api/edition/inconnue/', '/api/edition/lignes/x/', '/api/mise-a-jour/lots/', '/api/mise-a-jour/lots/a/b/', '/api/debug/', '/api/debug/autre/',
+    '/api/edition/inconnue/', '/api/edition/lignes/x/', '/api/edition/lots/a/b/c/', '/api/edition/lots/a/inconnue/', '/api/mise-a-jour/lots/', '/api/mise-a-jour/lots/a/b/', '/api/debug/', '/api/debug/autre/',
     '/api/debug/metriques/autre/', '/api/debug/base/x/', '/api/metriques/', '/api/metriques/page/x/', '/api/classeur/x/', '/api/classeur/1AbCdEfGhIjKlMnOpQrStUvWxYz/edit/', '/api/tipeee/x/', '/api/v1/inconnue/', '/api/v1/openapi.json/x', '/api/v1/metiers/x/inconnu/',
     '/api/v1/metiers/x/y/z/w/', '', null]) {
     assert.equal(routeNormalisee(a), ROUTE_INCONNUE, String(a));

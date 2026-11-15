@@ -50,11 +50,12 @@ const TABLE = [
   [LECTURE, /^\/api\/edition\/extrait(\/meta)?$/, 'lecture'],
   [['POST'], /^\/api\/edition$/, 'ecriture'],
   // les lots de changements (serveur/edition-lots.mjs) : se lisent avec la clé ; une session dépose une proposition et refait son essai avec la clé (classe
-  // `proposition` : seule `lot_de_changements` s'écrit) ; appliquer ou refuser, qui décident, demandent le mot de passe
-  [LECTURE, /^\/api\/edition\/lots(\/[0-9a-f-]{36})?$/, 'lecture'],
+  // `proposition` : seule `lot_de_changements` s'écrit) ; appliquer, refuser et annuler, qui décident, demandent le mot de passe
+  [LECTURE, /^\/api\/edition\/lots(\/[0-9a-f-]{36}(\/annulation)?)?$/, 'lecture'],
   [['POST'], /^\/api\/edition\/lots$/, 'proposition'],
   [['POST'], /^\/api\/edition\/lots\/[0-9a-f-]{36}\/essai$/, 'proposition'],
-  [['POST'], /^\/api\/edition\/lots\/[0-9a-f-]{36}\/(appliquer|refuser)$/, 'ecriture'],
+  [['POST'], /^\/api\/edition\/lots\/recalcul$/, 'proposition'], // « tout recalculer » : dépose un lot de nature « code » (aucune écriture du contenu)
+  [['POST'], /^\/api\/edition\/lots\/[0-9a-f-]{36}\/(appliquer|refuser|annuler)$/, 'ecriture'],
   // page « Mise à jour »
   [LECTURE, /^\/api\/mise-a-jour\/lots\/[0-9a-f-]{36}$/, 'ouverte', true],
   // la note en préparation et l'état du lancement s'affichent sans connexion (la page /mise-a-jour/ les relève ; /api/maintenance/, ouverte, donne déjà le
