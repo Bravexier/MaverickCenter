@@ -2,11 +2,13 @@
 //   node scripts/db-export-pages.mjs [--out <dossier>] [--verifier <dossier-existant>]
 // Lancé automatiquement avant `npm run dev`, `npm run build` et `npm test` (scripts « pre… » de package.json) : les `.md` ne sont plus dans git, la base est la source.
 // --verifier : n'écrit rien ; compare ce que la base produirait au dossier donné (code 1 s'il y a un écart).
+// MAVERICK_CONTENU=<fichier SQLite> : la base est une copie de ce fichier (un extrait du contenu, lib/contenu-fourni.mjs) au lieu d'être reconstruite depuis data/rows.
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { contenuFourni, copierLeContenu } from '../src/lib/contenu-fourni.mjs';
 import { emettrePage, lirePages, ouvrirEnLectureSeule } from '../src/lib/pages-db.mjs';
 
 const client = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -22,8 +24,13 @@ const fichier = join(dossier, 'maverick.db');
 /** Fabrique ou vérifie les pages ; renvoie le code de sortie. Le dossier temporaire est supprimé dans tous les cas (d'où aucun `process.exit` ici). */
 function executer() {
   try {
-    const r = spawnSync(process.execPath, ['--no-warnings', join(client, 'scripts', 'db-build.mjs'), '--out', fichier], { encoding: 'utf8', cwd: racine });
-    if (r.status !== 0) { console.error(`db-build a échoué : ${r.stderr || r.stdout}`); return 1; }
+    // MAVERICK_CONTENU : les pages viennent d'une copie du fichier de contenu fourni (jamais modifié), sans data/rows
+    const contenu = contenuFourni();
+    if (contenu) copierLeContenu(contenu, fichier);
+    else {
+      const r = spawnSync(process.execPath, ['--no-warnings', join(client, 'scripts', 'db-build.mjs'), '--out', fichier], { encoding: 'utf8', cwd: racine });
+      if (r.status !== 0) { console.error(`db-build a échoué : ${r.stderr || r.stdout}`); return 1; }
+    }
     const db = ouvrirEnLectureSeule(fichier);
     const types = db.prepare('SELECT id FROM type_page ORDER BY ordre').all().map((t) => t.id);
     const pages = lirePages(db);

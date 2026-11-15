@@ -8,6 +8,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { contenuFourni } from '../src/lib/contenu-fourni.mjs';
 
 const CLIENT = fileURLToPath(new URL('../', import.meta.url));
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
@@ -56,6 +57,12 @@ export function integrationReference() {
     hooks: {
       'astro:build:done': ({ dir, logger }) => {
         if (process.env.INLINE_CSS === '1' || process.env.SITE_MODE === 'prod') return;
+        // MAVERICK_CONTENU (fabrication depuis un fichier de contenu, lib/contenu-fourni.mjs) : la référence se lit dans git (master), que le kit n'a pas ;
+        // le site témoin n'en porte pas, ce que la comparaison avec le site livré classe comme attendu
+        if (contenuFourni()) {
+          logger.info('base de référence (production) non construite : le contenu est fourni par MAVERICK_CONTENU');
+          return;
+        }
         const r = construireReference({ sortie: fileURLToPath(new URL('donnees/reference.db', dir)) });
         if (r.chemin) logger.info(`base de référence (production) : ${r.ref} ${r.commit.slice(0, 7)}, version ${r.version}`);
         else logger.warn(`base de référence (production) absente : ${r.raison}`);

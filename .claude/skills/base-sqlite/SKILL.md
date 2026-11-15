@@ -29,6 +29,7 @@ Détail : `docs/sql/remplissage.md`. `npm run db:build` (→ `var/maverick.db`),
 ## Invariants
 - `var/maverick.db` est une copie reconstruite, jamais commitée. La seule persistance versionnée est `data/rows`.
 - `data/rows` s'écrit tel que l'exporteur l'écrit : jamais de résolution de conflit git à la main (relancer l'importeur ou `db:sync-pages`). Sinon une mise à jour est bloquée (skill `zone-mise-a-jour`).
+- `MAVERICK_CONTENU` (un extrait du contenu, skill `zone-service-extrait`) remplace `data/rows` au build : `donnees.mjs#trouverRacine` n'exige `data/rows` que sans elle, et `ouvrirBase` copie le fichier puis le dérive (ou le copie tel quel s'il est déjà dérivé).
 - Un changement de structure passe par une migration, jamais par une retouche de `data/rows`.
 - Les 25 tables de la section 13 (fiches, groupes de jeu) et 5 des 6 de la section 14 (journal de l'édition, brouillon de la note de version, `lot_de_changements` et `numero_donne` : migration 0128)
   restent vides dans `data/rows` ; les vraies fiches vivent dans la base vivante (skill `zone-fiches-base`, skill `zone-service`).
