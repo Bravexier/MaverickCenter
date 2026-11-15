@@ -1003,6 +1003,43 @@ chaque requête) :
 n'a pas le contenu publié, `tables_differentes` les nomme ; `preparation` : la préparation de sa base a échoué). `inconnue` : sans alerte — `en_cours` (la version ou le contenu diffère, mais le fichier publié a changé il y a moins de `TOLERANCE_DE_LA_MISE_A_JOUR_MS` = 10 minutes et est plus neuf que l'attestation : la production applique sa mise à jour), ou l'attestation est absente (la production ne
 l'écrit qu'après sa prochaine livraison) ou illisible, ou la production n'est pas lisible depuis ce site.
 
+## Fabriquer le site depuis un fichier de contenu
+
+Lot 9 du chantier « la base du site de dev devient la source de vérité » (`docs/chantier-base-de-dev.md`, PR 1 sur 4) : le site se fabrique depuis un fichier de contenu,
+sans `data/rows`. Ce sont les briques de l'atelier du site de dev (PR 3) ; **le build par défaut ne change pas** : sans variable, `npm run build` reconstruit la base depuis `data/rows`
+et produit le même site qu'avant.
+
+- **`MAVERICK_CONTENU=<fichier SQLite>`** (`src/lib/contenu-fourni.mjs`) : un extrait du contenu (« Extrait du contenu et attestation de la production », ci-dessus). Posée, tout ce qui
+  lit la base au build en lit **une copie** (`lib/donnees.mjs#ouvrirBase`, passée par `db-derive.mjs`, avec `--sans-exemples` si `HIDE_EXAMPLES=1` ; `scripts/db-export-pages.mjs`) ; le fichier
+  fourni n'est jamais modifié, `trouverRacine` n'exige plus `data/rows`, et la base de référence de la production (`scripts/db-reference.mjs`, lue dans git) n'est pas construite. Un fichier
+  introuvable est une erreur, jamais un repli sur `data/rows`.
+- **`npm run build:depuis-contenu -- --contenu <fichier> [--sortie <dossier>] [--mesure <fichier.json>]`** (`scripts/fabriquer-depuis-contenu.mjs`, logique : `serveur/fabrication-depuis-contenu.mjs`) :
+  1. *controle* : le fichier est copié dans un dossier de travail, puis contrôlé (`serveur/fichier-de-contenu.mjs`, avec le classement de `lib/tables-de-la-base.mjs` et les empreintes de
+     `serveur/empreintes.mjs`) : SQLite lisible, structure (`user_version`) du `data/schema.sql` livré, toutes les tables du contenu présentes, aucune ligne dans une table propre au site
+     (fiches, comptes, groupes, journal : l'extrait en garde les tables, vides) ni dans une table inconnue, empreinte annoncée (`extrait_meta`) égale à celle des tables. Le message nomme la table,
+     jamais une valeur ;
+  2. *pages* : `db-export-pages` écrit les pages du wiki depuis la copie, **dans le vrai `client/src/content/wiki/`** (fabriqué et ignoré par git, comme au `prebuild`) : après une
+     fabrication depuis un extrait, `db:pages-check` peut être rouge à tort en local jusqu'au prochain `npm run build` ou `db:export-pages` ;
+  3. *derive* (« en deux temps », le mode par défaut) : `db-derive` dérive une autre copie dans **son propre processus** (`--sans-exemples` si `HIDE_EXAMPLES=1`) ;
+  4. *build* : `astro build` vers `--sortie` (défaut `client/dist`), `MAVERICK_CONTENU` pointant sur la copie dérivée et la variable interne `MAVERICK_CONTENU_DERIVE`
+     (`complete` ou `sans-exemples`) disant à `ouvrirBase` de la copier telle quelle, pour cette variante seulement (une autre est une erreur). `--en-un-temps` garde l'ancien chemin
+     (`ouvrirBase` dérive dans le processus d'Astro, sans étape *derive*) ; le JSON de mesure porte `mode` (`deux-temps` ou `en-un-temps`). Les deux sites produits sont identiques (`comparer-sites`).
+     Astro vide son dossier de sortie : le script refuse un dossier qui contient le code, ou qui n'est ni vide ni un site déjà fabriqué, même interrompu (il porte `_astro` et une page : `index.html`,
+     `404.html` ou `_serveur`) ; une seule trace au milieu de fichiers étrangers ne suffit pas.
+  `--mesure` écrit un JSON `maverick-fabrication/1` : durée de chaque étape et totale, mémoire (pic de chaque processus Node et leur cumul, au total et par étape : `scripts/mesure-memoire.mjs`,
+  chargé par `NODE_OPTIONS` dans les processus des étapes 2 à 4, `process.resourceUsage().maxRSS`), taille et nombre de fichiers du dossier produit, version, schéma et empreinte du contenu. Un échec
+  sort en code 1, nomme l'étape et écrit quand même la mesure (`statut: "echec"`). Une limite de la mesure : sous Linux, le `maxRSS` d'un processus lancé par un gros processus
+  reprend la taille de son parent au moment du `fork` (un enfant vide d'un parent de 1,2 Go rapporte 1,17 Go) ; `db-derive` lancé par Astro paraissait donc peser ~570 Mo, contre ~90 Mo seul.
+  En deux temps, chaque processus naît du petit script de fabrication : les chiffres sont fidèles, et le pic réel est celui d'Astro (~1,4 Go sur l'extrait d'essai de 31 Mo).
+- **`npm run comparer-sites -- <dossier-a> <dossier-b> [--json <fichier>] [--exemples <n>]`** (`scripts/comparer-sites.mjs`, logique : `serveur/comparaison-de-sites.mjs`) : empreinte sha256 de
+  chaque fichier ; identiques, différents, seulement dans A, seulement dans B, listes plafonnées (20 exemples par défaut), nombres exacts. Code 0 si les sites sont équivalents. À part, `variables` :
+  ce que la fabrication fait varier d'elle-même sans que le contenu change. Mesuré en fabriquant deux fois le même extrait : les deux sites sont identiques octet pour octet (les noms d'assets
+  suivent leur contenu, aucune date n'entre dans une page). Entre un site fabriqué depuis un extrait et celui que GitHub livre depuis `data/rows`, ne varient que la base publiée
+  `donnees/maverick.db` (mêmes lignes de contenu et mêmes tables calculées, autre forme de fichier : la vue `extrait_meta`, la disposition des pages) et `donnees/reference.db` / `.json` (lue dans git).
+  Une règle de plus n'entre qu'après une mesure ; aucune ne cache un fichier dont le contenu diffère.
+- **Ce que le kit doit porter** : `client/` et ses `node_modules`, `data/schema.sql`, `data/derive.sql`, `data/migrations/` (le schéma, et les registres `.json` que lisent `lib/archives.mjs`,
+  `lib/noms-d-avant-des-migrations.mjs`), `sources/sources.json` et `sources/tipeee/` (la page Archives et l'accueil les lisent). Ni `data/rows`, ni git.
+
 ## API REST `/api/v1/` et page Debug (site de dev)
 
 Demande du propriétaire : un CRUD pour tous les éléments du jeu. Détail complet (adresses, paramètres, formats, ETag, codes, exemples `curl`,
