@@ -61,7 +61,9 @@ function exigerLesTables(db) {
 /** La structure d'une table pour `controlerLeLot` : colonnes, types et clé ; null si la table n'existe pas. */
 const structureDe = (db) => (table) => {
   try {
-    return structure(db, table);
+    const s = structure(db, table);
+    const etrangeres = Object.fromEntries(db.prepare(`PRAGMA foreign_key_list("${table}")`).all().map((f) => [f.from, f.table]));
+    return { ...s, etrangeres };
   } catch {
     return null;
   }
@@ -118,7 +120,8 @@ const sous = (valeurs, colonnes) => Object.fromEntries(colonnes.map((c) => [c, v
  *     canonique, colonnes calculées, pages refaites, gel) ; les autres colonnes de la même ligne par la voie générique du journal, dans la même opération du lot ;
  *   - « supprimer » : par l'opération « supprimer » de l'entité de la table quand elle en a une (refus du service comprises : liens rompus, fiches,
  *     R42…) ; une entité sans suppression (familles d'armes, R159) est refusée, jamais supprimée en douce ; une table sans entité : voie générique ;
- *   - « inserer » : refusée sur une table que le service crée lui-même (son identifiant, sa page, ses clés recalculées ne se donnent pas d'un bloc) ;
+ *   - « inserer » : un mot-clé se crée par le service (`traduireLaCreationDUnMotCle` : id suivant, clé, puis vérification que la ligne créée est celle du
+ *     lot) ; refusée sur les autres tables que le service crée lui-même (son identifiant, sa page, ses clés recalculées ne se donnent pas d'un bloc) ;
  *     voie générique sinon.
  */
 export function traduire(o) {
@@ -140,9 +143,34 @@ export function traduire(o) {
     return { ops: [{ op: 'supprimer', entite: entite[0], cle: o.cle }] };
   }
   if (entite) {
+    if (o.table === 'mot_cle') return traduireLaCreationDUnMotCle(o);
     return { refus: `« ${nomDeTable(o.table) ?? o.table} » : le service d’édition crée lui-même cette ligne (identifiant tiré du nom, page, clés recalculées) : un lot ne l’insère pas, elle se crée par le service` };
   }
   return { ops: [{ op: 'ecrire_inserer', table: o.table, valeurs: o.apres }] };
+}
+
+/** Les colonnes d'un mot-clé que le service écrit à la création (ENTITES.mot_cle.champs), qu'il tire lui-même (id, clé) ou qu'il tient (verrou, R218 (4)). */
+const COLONNES_D_UN_MOT_CLE_CREE = Object.freeze(['id', 'libelle', 'cle', 'description', 'url', 'couleur', 'icone', 'verrou']);
+
+/**
+ * L'insertion d'un mot-clé par le lot : le service le CRÉE (`creer` de l'entité : id suivant, clé de la règle R232, adresse, couleur et icône contrôlées),
+ * puis `verrou` à 1 par la voie générique quand le lot le veut (colonne tenue par le service : le verrou R218 la gèle, le propriétaire l'ouvre au clic),
+ * enfin le lot VÉRIFIE que la ligne créée est celle qu'il décrit (identifiant donné à l'application, clé, valeurs) : sinon l'opération est refusée.
+ * Ses catégories sont des lignes de `mot_cle_categorie` (opérations du lot à part : table hors édition, lot 8). Un mot-clé d'une monnaie (`monnaie_id`) ou
+ * une colonne que le service ne sait pas écrire à la création : refus.
+ */
+function traduireLaCreationDUnMotCle(o) {
+  const a = o.apres;
+  const autres = Object.keys(a).filter((c) => !COLONNES_D_UN_MOT_CLE_CREE.includes(c) && a[c] !== null && a[c] !== undefined);
+  if (autres.length) return { refus: `« Mot-clé » : le service d’édition ne crée pas un mot-clé avec ${autres.map((c) => `« ${c} »`).join(', ')}` };
+  if (![0, 1, null, undefined].includes(a.verrou)) return { refus: '« Mot-clé » : « verrou » vaut 0 ou 1' };
+  const valeurs = Object.fromEntries(['libelle', 'description', 'url', 'couleur', 'icone'].filter((c) => a[c] !== null && a[c] !== undefined).map((c) => [c, a[c]]));
+  const cle = { id: a.id };
+  const ops = [{ op: 'creer', entite: 'mot_cle', valeurs }];
+  if (a.verrou === 1) ops.push({ op: 'ecrire_modifier', table: 'mot_cle', cle, valeurs: { verrou: 1 } });
+  // le lot attend ce qu'il dit : seules les colonnes qu'il écrit se vérifient (l'identifiant, la clé, les valeurs données)
+  ops.push({ op: 'verifier_ligne', table: 'mot_cle', cle, attendu: Object.fromEntries(Object.keys(a).filter((c) => COLONNES_D_UN_MOT_CLE_CREE.includes(c)).map((c) => [c, a[c]])) });
+  return { ops };
 }
 
 /** Les numéros de décision que cite un refus du service (« décision R218 », « décisions R218, R219 ») : ce qu'il verrouille au nom du propriétaire. */

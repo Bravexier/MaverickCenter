@@ -88,3 +88,33 @@ test('donnerLesNumeros : 1 + le plus haut connu, consécutifs par table et colon
   assert.equal(JSON.stringify(lot), copie);
   assert.equal(aDesNumeros(resolu), false);
 });
+
+test('une clé composée REPREND le numéro qu’une insertion précédente a donné (la ligne de liaison d’une ligne créée par le même lot) : jamais un second numéro, jamais avant d’être donné', () => {
+  const [k1, k2] = structure(COMPOSEE).cle;
+  const entier = /INT/.test(structure(COMPOSEE).types[k1]) ? k1 : k2;
+  const autre = entier === k1 ? k2 : k1;
+  const liaison = (n, valeur = 'x') => inserer(COMPOSEE, { [entier]: jeton(n), [autre]: valeur });
+  const cree = inserer(ENTIERE, { [CLE]: jeton('a') }, { [CLE]: jeton('a'), [AUTRE]: 'x' });
+  // donné d'abord, repris ensuite : valide
+  assert.equal(controler({ ...entete, operations: [cree, liaison('a')] }).valide, true, JSON.stringify(controler({ ...entete, operations: [cree, liaison('a')] }).erreurs));
+  // repris avant d'être donné, ou jamais donné : refusé, avec le rang
+  assert.deepEqual(rangs(controler({ ...entete, operations: [liaison('a'), cree] })), [1]);
+  assert.deepEqual(rangs(controler({ ...entete, operations: [cree, liaison('b')] })), [2]);
+  // plusieurs lignes de liaison pour le même numéro
+  assert.equal(controler({ ...entete, operations: [cree, liaison('a', 'x'), liaison('a', 'y')] }).valide, true);
+  // donner deux fois le même numéro reste refusé (clé simple)
+  assert.deepEqual(rangs(controler({ ...entete, operations: [cree, inserer(ENTIERE, { [CLE]: jeton('a') })] })), [2]);
+  // donnerLesNumeros : un seul numéro, repris dans la clé et la ligne de la liaison
+  const { lot, numeros } = donnerLesNumeros({ ...entete, operations: [cree, liaison('a', 'x'), liaison('a', 'y')] }, () => 40);
+  assert.deepEqual(numeros, [{ jeton: 'a', table: ENTIERE, colonne: CLE, numero: 41 }]);
+  assert.deepEqual(lot.operations[1].cle, { [entier]: 41, [autre]: 'x' });
+  assert.deepEqual(lot.operations[2].apres, { [entier]: 41, [autre]: 'y' });
+  assert.equal(aDesNumeros(lot), false);
+  // quand l'appelant donne les clés étrangères, la colonne qui reprend le numéro cite la table qui l'a donné
+  const avecEtrangeres = (cible) => (t) => ({ ...structure(t), ...(t === COMPOSEE ? { etrangeres: { [entier]: cible } } : {}) });
+  const lotLiaison = { ...entete, operations: [cree, liaison('a')] };
+  assert.equal(controlerLeLot(lotLiaison, { structure: avecEtrangeres(ENTIERE), tablesEdition: new Set([ENTIERE, TEXTE, COMPOSEE]) }).valide, true);
+  const autreTable = controlerLeLot(lotLiaison, { structure: avecEtrangeres(TEXTE), tablesEdition: new Set([ENTIERE, TEXTE, COMPOSEE]) });
+  assert.deepEqual(rangs(autreTable), [2]);
+  assert.match(autreTable.erreurs[0].message, /ne cite pas cette table/);
+});

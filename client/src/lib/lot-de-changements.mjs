@@ -113,8 +113,8 @@ export function lireUnLot(texte) {
  * `null` : l'en-tête ou la liste).
  * @param {unknown} lot le lot (objet lu du fichier)
  * @param {object} options
- * @param {(table: string) => ({ colonnes: string[], cle: string[] } | null | undefined)} options.structure colonnes d'une table (dans l'ordre) et colonnes
- *   de sa clé primaire (dans l'ordre) ; rend null pour une table qui n'existe pas
+ * @param {(table: string) => ({ colonnes: string[], cle: string[], etrangeres?: Record<string, string> } | null | undefined)} options.structure colonnes d'une table (dans l'ordre) et colonnes
+ *   de sa clé primaire (dans l'ordre) ; `etrangeres` (facultatif) : colonne → table citée ; rend null pour une table qui n'existe pas
  * @param {Set<string>} [options.tablesEdition] les tables que le service d'édition sait écrire (défaut : `tablesDeLEdition()`)
  * @param {boolean} [options.ouvertHorsEdition] défaut `LOT_OUVERT_AUX_TABLES_HORS_EDITION`
  * @returns {{ valide: boolean, erreurs: { rang: number | null, message: string }[] }}
@@ -140,6 +140,7 @@ export function controlerLeLot(lot, { structure, tablesEdition = tablesDeLEditio
 
   const lignes = new Map(); // ligne (table + clé) → les opérations déjà vues dessus : { rang, operation, colonnes }
   const numeros = new Map(); // jeton → l'opération qui le donne (rang) : un jeton se donne une fois, avant de servir
+  const tablesDesNumeros = new Map(); // jeton → la table dont il est la clé
   lot.operations.forEach((o, i) => {
     const rang = i + 1;
     const dit = (message) => refuser(rang, `opération ${rang} : ${message}`);
@@ -177,11 +178,21 @@ export function controlerLeLot(lot, { structure, tablesEdition = tablesDeLEditio
         for (const c of s.cle.filter((k) => estUnJeton(o.cle[k]))) {
           const jeton = o.cle[c].$numero;
           const entier = /INT/.test(s.types?.[c] ?? 'INTEGER');
-          const faute = !FORME_D_UN_JETON.test(jeton) ? `le numéro « ${jeton} » s'écrit avec des lettres, des chiffres, « _ » ou « - » (40 au plus)`
-            : s.cle.length !== 1 || !entier ? `un numéro ne se donne que pour la clé entière d'une table à clé simple (« ${o.table} » : ${liste(s.cle)})`
-              : numeros.has(jeton) ? `le numéro « ${jeton} » est déjà donné par l'opération ${numeros.get(jeton)}` : null;
+          // une clé composée ne DONNE pas un numéro : elle reprend celui qu'une insertion précédente a donné (la table de liaison d'une ligne créée par le même lot)
+          const repris = s.cle.length > 1 && numeros.has(jeton);
+          // la colonne qui reprend le numéro cite la table qui l'a donné (quand l'appelant donne les clés étrangères : `structure(table).etrangeres`, colonne → table citée)
+          const donneur = tablesDesNumeros.get(jeton);
+          const autreTable = repris && s.etrangeres && s.etrangeres[c] !== donneur;
+          const faute = autreTable ? `le numéro « ${jeton} » est donné pour « ${donneur} » : la colonne « ${c} » de « ${o.table} » ne cite pas cette table`
+            : !FORME_D_UN_JETON.test(jeton) ? `le numéro « ${jeton} » s'écrit avec des lettres, des chiffres, « _ » ou « - » (40 au plus)`
+            : repris ? null
+              : s.cle.length !== 1 || !entier ? `un numéro ne se donne que pour la clé entière d'une table à clé simple (« ${o.table} » : ${liste(s.cle)})`
+                : numeros.has(jeton) ? `le numéro « ${jeton} » est déjà donné par l'opération ${numeros.get(jeton)}` : null;
           if (faute) return dit(`cle : ${faute}`); // la suite de l'opération n'est pas jugée : une seule erreur par faute
-          numeros.set(jeton, rang);
+          if (!repris) {
+            numeros.set(jeton, rang);
+            tablesDesNumeros.set(jeton, o.table);
+          }
         }
       }
     }
@@ -331,7 +342,7 @@ export function donnerLesNumeros(lot, depart) {
   for (const o of lot.operations) {
     if (o.operation !== 'inserer' || !estUnObjet(o.cle)) continue;
     for (const [colonne, v] of Object.entries(o.cle)) {
-      if (!estUnJeton(v)) continue;
+      if (!estUnJeton(v) || donnes.has(v.$numero)) continue; // une clé composée reprend le numéro déjà donné (controlerLeLot)
       const cle = JSON.stringify([o.table, colonne]);
       const numero = (derniers.get(cle) ?? depart(o.table, colonne)) + 1;
       derniers.set(cle, numero);
