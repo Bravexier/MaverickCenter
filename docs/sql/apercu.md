@@ -395,7 +395,7 @@
 
 | Table | Rôle | Colonnes |
 | --- | --- | --- |
-| `modification_lot` | Un enregistrement fait depuis une page (le bouton de confirmation) : toutes ses modifications passent ou aucune. | **id**, fait_le, auteur_id→utilisateur?, page_id?, resume, resolu_le?, resolu_par→modification_lot?, resolution? |
+| `modification_lot` | Un enregistrement fait depuis une page (le bouton de confirmation) : toutes ses modifications passent ou aucune. | **id**, fait_le, auteur_id→utilisateur?, page_id?, resume, resolu_le?, resolu_par→modification_lot?, resolution?, nature, decision? |
 | `modification` | Une ligne de table touchée par un lot. | **lot_id**→modification_lot, **rang**, table_nom, cle, operation, avant?, apres?, etat, detail?, apercu? |
 | `note_version_brouillon` | La note de version en préparation sur le site de dev (page /mise-a-jour/ : le champ libre que les admins remplissent, en plus de la liste calculée ; migration 0023). | **id**, texte?, modifie_le?, lot?, majeure? |
 
@@ -407,4 +407,4 @@
 | --- | --- | --- |
 | `note_version` | Une version livrée (dev → master) : « 0.2 » (X.Y : la production ne porte que deux chiffres), sa date, le champ libre des admins. | **version**, publiee_le, depuis?, texte?, lot?, exemple |
 | `note_version_ligne` | Une ligne de la liste calculée : une modification d'un champ d'une entité entre la production et la nouvelle version. | **version**→note_version, **rang**, domaine, groupe?, entite, champ?, nature, avant?, apres?, sens, parties?, table_nom?, cle?, colonne? |
-| `historique_modification` | Le journal du site de dev une fois livré (une ligne par ligne de table touchée, comme `modification`) : qui a changé quoi, quand, avant et après (docs/feuille-de-route.md : modifications historisées). | **lot_id**, **rang**, fait_le, resume, version→note_version?, table_nom, cle, operation, avant?, apres? |
+| `historique_modification` | Le journal du site de dev une fois livré (une ligne par ligne de table touchée, comme `modification`) : qui a changé quoi, quand, avant et après (docs/feuille-de-route.md : modifications historisées). | **lot_id**, **rang**, fait_le, resume, version→note_version?, table_nom, cle, operation, avant?, apres?, nature, decision? |

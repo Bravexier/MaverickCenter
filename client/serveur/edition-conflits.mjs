@@ -1055,8 +1055,10 @@ function resoudreUnLotGarde(db, lot, diag, choix, resolution, { instant, id }) {
   try {
     db.exec('PRAGMA defer_foreign_keys = ON');
     const { entete, reste } = OUTILS.separerLeMarqueur(lot.resume);
-    db.prepare('INSERT INTO modification_lot (id, fait_le, auteur_id, page_id, resume) VALUES (?, ?, ?, ?, ?)')
-      .run(reprise, lot.fait_le, lot.auteur_id ?? null, lot.page_id, `${entete}${`Reprise du lot ${lot.id} (conflit résolu) : ${reste}`.slice(0, 500)}`);
+    // la reprise garde la nature du lot gardé (une résolution de conflit reste une saisie ; un lot de changements garde la sienne, et son numéro de décision)
+    db.prepare('INSERT INTO modification_lot (id, fait_le, auteur_id, page_id, resume, nature, decision) VALUES (?, ?, ?, ?, ?, ?, ?)')
+      .run(reprise, lot.fait_le, lot.auteur_id ?? null, lot.page_id, `${entete}${`Reprise du lot ${lot.id} (conflit résolu) : ${reste}`.slice(0, 500)}`,
+        lot.nature ?? 'saisie', lot.decision ?? null);
     const noter = db.prepare(`INSERT INTO modification (lot_id, rang, table_nom, cle, operation, avant, apres, etat, detail, apercu)
       VALUES (?, ?, ?, ?, ?, ?, ?, 'en_attente', NULL, ?)`);
     const enJson = (v) => (v === null || v === undefined ? null : JSON.stringify(v));

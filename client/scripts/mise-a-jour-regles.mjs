@@ -21,7 +21,7 @@ import { fileURLToPath } from 'node:url';
 import { construireReference } from './db-reference.mjs';
 import { TABLES_FICHES } from '../serveur/base-vivante.mjs';
 import { rejouerLeJournal, traceDAujourdhui } from '../serveur/edition.mjs';
-import { chargerJournal, ORDRE_DE_REJEU, TABLES_INTERDITES } from '../serveur/edition-journal.mjs';
+import { chargerJournal, natureDuLot, ORDRE_DE_REJEU, TABLES_INTERDITES } from '../serveur/edition-journal.mjs';
 import { lireTables } from '../serveur/notes-de-version.mjs';
 import { journalSansImage } from '../src/lib/edition-modele.mjs';
 import { installerLePlan } from '../src/lib/livres.mjs';
@@ -55,6 +55,14 @@ export function verifierLot(lot) {
   const touchees = [...new Set(lot.journal.lots.flatMap((l) => (l.modifications ?? []).map((m) => m.table)))];
   const horsRegles = touchees.filter((t) => typeof t !== 'string' || interdites.has(t));
   if (horsRegles.length) throw new ErreurMiseAJour(2, `lot : tables hors des règles (${horsRegles.join(', ')}) : refusé`);
+  // la nature d'un lot et son numéro de décision (migration 0127) : une nature inconnue est refusée ici, avant tout rejeu (un lot sans eux est une saisie)
+  for (const l of lot.journal.lots) {
+    try {
+      natureDuLot(l);
+    } catch (e) {
+      throw new ErreurMiseAJour(2, `lot : ${e.message}`);
+    }
+  }
   // ni HTML brut ni lien non sûr ajouté au Markdown que le build rend tel quel (le service le refuse déjà : lib/markdown-sur.mjs) ; le lot vient du site de dev
   for (const l of lot.journal.lots) {
     for (const m of l.modifications ?? []) {
@@ -241,7 +249,7 @@ export function appliquerMiseAJour(lot, { rows = join(RACINE, 'data', 'rows'), r
         production.close();
       }
       // tout le journal sans conflit : réécrit par le rejeu (resté « en_attente ») ou déjà dans les règles (« integree »)
-      const historique = db.prepare(`SELECT m.*, l.fait_le, l.resume FROM modification m JOIN modification_lot l ON l.id = m.lot_id
+      const historique = db.prepare(`SELECT m.*, l.fait_le, l.resume, l.nature AS nature_du_lot, l.decision FROM modification m JOIN modification_lot l ON l.id = m.lot_id
         WHERE m.etat <> 'conflit' ORDER BY ${ORDRE_DE_REJEU}`).all();
       touchees = new Set(historique.map((m) => m.table_nom));
       if (recalcul.pages.length) touchees.add('page');
@@ -262,15 +270,16 @@ export function appliquerMiseAJour(lot, { rows = join(RACINE, 'data', 'rows'), r
         insererLigne.run(version, l.rang, l.domaine, l.groupe, l.entite, l.champ, l.nature, l.avant, l.apres, l.sens,
           l.parties ? JSON.stringify(l.parties) : null, l.table_nom, l.cle ? JSON.stringify(l.cle) : null, l.colonne);
       }
-      const insererHistorique = db.prepare(`INSERT INTO historique_modification (lot_id, rang, fait_le, resume, version, table_nom, cle, operation, avant, apres)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
+      // la nature et le numéro de décision du lot suivent chaque ligne de l'historique (migration 0127)
+      const insererHistorique = db.prepare(`INSERT INTO historique_modification (lot_id, rang, fait_le, resume, version, table_nom, cle, operation, avant, apres,
+        nature, decision) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`);
       // un lot noté avant la 0113 nomme ses mots-clés par leur ancien id texte : la trace les nomme par leur id entier (serveur/edition.mjs#traceDAujourdhui)
       const enTrace = traceDAujourdhui(db);
       // une image (portrait) n'y est que résumée : la ligne de sa table la garde
       for (const brute of historique) {
         const m = enTrace(brute);
         insererHistorique.run(m.lot_id, m.rang, m.fait_le, m.resume, version, m.table_nom, m.cle, m.operation, journalSansImage(m.table_nom, m.avant),
-          journalSansImage(m.table_nom, m.apres));
+          journalSansImage(m.table_nom, m.apres), m.nature_du_lot, m.decision);
       }
       db.exec('DELETE FROM modification; DELETE FROM modification_lot; DELETE FROM note_version_brouillon');
       const rompues = db.prepare('PRAGMA foreign_key_check').all();

@@ -672,6 +672,16 @@ Un lot noté par un site de dev d'avant la migration 0113 nomme ses mots-clés p
 `libelle_cle` devient `cle` ; id inconnu laissé tel quel). `npm run db:appliquer-edition -- --reparer-traces` refait cette mise à jour sur les traces
 déjà versées (idempotent ; seul `historique_modification.sql` change).
 
+**Nature de chaque trace** (migration 0127, lot 6 du chantier de la base de dev, garde-fou 11). `modification_lot` et `historique_modification` portent
+`nature` (`saisie`, `source`, `decision`, `migration`, `code`) et `decision` (le numéro « R275 », présent si et seulement si la nature est `decision`). La
+nature est celle du **lot** ; chaque ligne de l'historique reprend celle de son lot. Le service écrit `saisie` pour tout lot de l'éditeur
+(`edition-journal.mjs#ouvrirLot`). Dans la résolution d'un conflit, seule la **reprise** d'un lot gardé (`edition-conflits.mjs#resoudreUnLotGarde`) garde la
+nature et le numéro du lot repris ; le lot des choix 2 et 3 et l'ancienne forme (lots annulés) passent par `ouvrirLot` et écrivent `saisie` (choix voulu : c'est
+un clic sur le site). Le report vers l'historique (`serveur/historique.mjs#historiser`,
+`scripts/mise-a-jour-regles.mjs`, l'extrait) ne change pas la nature. Le journal exporté (`maverick-edition/1`) porte `nature` et `decision` sur chaque
+lot ; `chargerJournal` lit un journal téléchargé avant la 0127, sans ces champs, comme une `saisie` (`edition-journal.mjs#natureDuLot`, qui refuse une
+nature inconnue ou un numéro de décision mal placé en nommant le lot). Test : `serveur-edition-nature-des-traces`.
+
 | Requête | Réponse |
 | --- | --- |
 | `GET /api/edition/en-attente/` | Lignes modifiées depuis la construction des pages (`{ lignes: [{ table, cle, creee, ligne, apercu? }] }`) |
@@ -687,11 +697,40 @@ déjà versées (idempotent ; seul `historique_modification.sql` change).
 | `POST /api/edition/bestiaire/` | `{ connues, logo }` → l'ordre des lignes du tableau des monstres (`ordre` : leurs identifiants) et, pour celles que la page n'a pas (`connues`), la ligne et la carte en HTML (`lib/bestiaire-rendu.mjs`, comme la page construite, sauf le lien du nom, qui mène à la carte dans la page (`#carte-…`) : un monstre créé depuis la construction n'a pas de page ; le logo à la place du portrait, que le mode modification charge ensuite) ; `{ capacites: [ids des cartes] }` → `{ capacites: { id: html } }` : le bloc des capacités de ces cartes (`htmlDesCapacitesDeLaCarte`), après une modification de leurs capacités ou d'une capacité commune qu'elles ont (décision R66) |
 | `POST /api/edition/portrait/` | `{ table, cle }` → le portrait d'une carte de monstre ou d'une espèce, en entier (`portrait` : data URL, ou null) et son cadrage. Les autres réponses (lignes lues, en attente, d'un lot, d'un conflit) ne donnent d'une image que `{ image: true, empreinte, resume }` (`lib/edition-modele.mjs#ligneSansImage`) : 700 000 caractères par image |
 | `POST /api/edition/` | `{ page, operations: [...] }` → applique un lot d'un bloc (`modifier`, `creer`, `supprimer`, `relations`, `magies_innees`, `categories`, `fusionner_mots_cles` : `serveur/edition.mjs` ; `ordonner` : `serveur/edition-plan.mjs` ; `valeurs_de_capacite` : les valeurs « {N} » d'une capacité de monstre pour une carte, décision R69, `serveur/edition-bestiaire.mjs`) ; rend `{ lot, modifications, crees, lignes, fiches }` (`fiches` : les fiches de personnage dont le lot a retiré un élément, R42) |
-| `GET /api/edition/journal/` | Le journal des modifications en attente, et des « intégrées » des lots que les règles n'ont pas encore reçus (`maverick-edition/1`), en pièce jointe |
+| `GET /api/edition/journal/` | Le journal des modifications en attente, et des « intégrées » des lots que les règles n'ont pas encore reçus (`maverick-edition/1` ; chaque lot porte sa `nature` et sa `decision`), en pièce jointe |
 | `GET /api/edition/extrait/` | L'extrait du contenu (un fichier SQLite) : ci-dessous, « Extrait du contenu et attestation de la production » ; `…/extrait/meta/` : son méta en JSON |
 
 **Pas de comptes** : quiconque a le mot de passe du site de dev peut modifier les règles (le journal n'a pas d'auteur :
 `modification_lot.auteur_id` attend la connexion Discord). Mêmes protections d'écriture que les fiches (JSON, `Sec-Fetch-Site`).
+
+### Lots de changements (format)
+
+Lot 6 du chantier de la base de dev (R274, R275). Un **lot de changements** est un fichier d'opérations pour changer ce que le site ne sait pas écrire : le
+décrit et le valide `client/src/lib/lot-de-changements.mjs` (module pur, sans base ni navigateur). Il n'écrit rien : le dépôt, l'essai à blanc, l'application
+d'un bloc, les numéros et l'annulation sont le service, ajouté ensuite.
+
+```json
+{ "titre": "…", "nature": "decision", "decision": "R275", "auteur": "…",
+  "operations": [ { "table": "…", "cle": { "id": 12 }, "operation": "modifier", "avant": { "colonne": "ancienne" }, "apres": { "colonne": "nouvelle" } } ] }
+```
+
+- **En-tête** : `titre` (lisible, 200 caractères au plus), `nature` (`source`, `decision`, `migration` ou `code` ; `saisie` est refusée, un lot n'étant pas une
+  saisie du site), `decision` (« R… », si et seulement si la nature est `decision`), `auteur` (libre, facultatif), `format` (facultatif, `maverick-lot/1`).
+  Une clé inconnue est refusée (une faute de frappe ne passe pas en silence).
+- **Opérations**, dans l'ordre (le rang d'un message d'erreur est la place dans la liste, à partir de 1) : `table`, `cle` (l'objet de **toute** la clé
+  primaire), `operation` (`inserer`, `modifier`, `supprimer`), `avant` (les valeurs attendues des colonnes touchées ; la ligne **entière** pour `supprimer` ;
+  absent pour `inserer`), `apres` (les valeurs écrites ; absent pour `supprimer`) : la forme de `avant` / `apres` d'une ligne de `modification`. Une insertion
+  porte sa clé dans `apres` ; une modification ne touche pas la clé et change chaque colonne qu'elle nomme.
+- **Contrôles** (`controlerLeLot` : toutes les erreurs d'un coup, avec le rang à corriger) : table existante et de classe « contenu » (`lib/tables-de-la-base.mjs`),
+  hors notes de version, historique et journal ; colonnes existantes ; clé complète ; cohérence `avant` / `apres` / opération ; jamais deux opérations sur la
+  même ligne, sauf deux `modifier` de colonnes différentes. La structure des tables (colonnes, clé) est fournie par l'appelant (`PRAGMA table_info`).
+- **Éteint hors de l'édition** : un lot est refusé pour une table que le service d'édition ne sait pas écrire (les tables de `TABLES` et d'`ENTITES`, `lib/edition-modele.mjs`,
+  la seule liste : `tablesDeLEdition`), tant que `LOT_OUVERT_AUX_TABLES_HORS_EDITION` vaut `false` ; elle passe à `true` au lot 8, avec l'accord du propriétaire.
+- **Valeurs attendues** (`comparerAvecLaBase(lot, lireLigne)`) : par opération, `applicable` ou `changee` (ligne déjà là pour une insertion, absente ou de valeur
+  changée pour le reste), avec `raison` et, pour une valeur, `ecarts` (`colonne`, `attendue`, `actuelle`). Le site prime : une opération `changee` n'est pas écrite,
+  elle est listée. C'est la base de l'essai à blanc.
+
+Tests : `lot-de-changements`, `serveur-edition-nature-des-traces`.
 
 ## Extrait du contenu et attestation de la production
 
@@ -933,7 +972,7 @@ tient le texte figé, ou ce lot, pas encore dans dev, s'annule encore (`liberabl
 
 **Le site est la source** des données qu'il modifie (décision du propriétaire) : toute modification rapatriée dans `data/rows` (par ce bouton,
 avec la version qui la livre, ou par `npm run db:appliquer-edition`, version vide) est gardée, ligne par ligne, dans `historique_modification`
-(lot, rang, date, table, clé, opération, avant, après). `client/src/lib/historique-site.mjs` le relit (`historiqueSite(db)`) : `creee`,
+(lot, rang, date, table, clé, opération, avant, après, et la nature du lot avec son numéro de décision, migration 0127). `client/src/lib/historique-site.mjs` le relit (`historiqueSite(db)`) : `creee`,
 `supprimee`, `modifiee`, `touchee` disent ce que le site a fait d'une ligne ou d'une colonne ; `valeurDImport`, `ligneDImport`, `lignesDImport`
 et `effectifDImport` redonnent l'état d'avant toute édition (l'historique rejoué à l'envers ; clé = colonnes de la clé primaire, comme le
 journal). Les tests s'en servent ainsi :

@@ -28,7 +28,7 @@ Tenu à jour par la PR de chaque lot (état : à faire, en cours, fait ; puis le
 | 3 | L'onglet Mise à jour compare au contenu réel de la production | M | fait | #354 |
 | 4 | Accès au site de dev | S | fait | cette PR |
 | 5 | Extrait du contenu pour les sessions de Claude, attestation de la production | M | fait (extrait, attestation, alerte de l'onglet : #360 ; base refaite selon l'empreinte du contenu, archive au nom de sa version : #361) | #360, #361 |
-| 6 | Lots de changements, annulation d'un lot, nature de chaque trace | L | à faire | |
+| 6 | Lots de changements, annulation d'un lot, nature de chaque trace | L | en cours (1/4 : nature de chaque trace et format du lot, PR `feature/lots-de-changements` ; à venir : service — dépôt, essai à blanc, application, numéros, verrous, annulation, recalcul ; onglet Mise à jour ; épreuve d'entrée 0122 à 0124) | |
 | 7 | Changements de structure appliqués sur place, d'abord à blanc | L | à faire | |
 | 8 | Bascule 1 : la base du site de dev fait foi | L | à faire | |
 | 9 | Fabrication témoin sur le serveur : la mesure | L | à faire | |

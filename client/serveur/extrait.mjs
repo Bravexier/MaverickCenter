@@ -117,8 +117,9 @@ export function fabriquerExtrait({ source, destination, version = null, instant 
     // les modifications en attente (sans leur auteur) passent par les tables du journal, le temps de les verser dans l'historique, puis elles en repartent
     let historisees = 0;
     if (colonnesDeLaTable(db, 'modification', 'src').length && colonnesDeLaTable(db, 'modification_lot', 'src').length) {
-      db.exec(`INSERT INTO main.modification_lot (id, fait_le, page_id, resume)
-        SELECT id, fait_le, page_id, resume FROM src.modification_lot WHERE id IN (SELECT lot_id FROM src.modification WHERE etat <> 'conflit')`);
+      // la nature et le numéro de décision du lot (migration 0127) vont avec lui, pour l'historique de l'extrait
+      db.exec(`INSERT INTO main.modification_lot (id, fait_le, page_id, resume, nature, decision)
+        SELECT id, fait_le, page_id, resume, nature, decision FROM src.modification_lot WHERE id IN (SELECT lot_id FROM src.modification WHERE etat <> 'conflit')`);
       db.exec(`INSERT INTO main.modification (lot_id, rang, table_nom, cle, operation, avant, apres, etat, detail, apercu)
         SELECT lot_id, rang, table_nom, cle, operation, avant, apres, etat, NULL, NULL FROM src.modification WHERE etat <> 'conflit'`);
       historisees = historiser(db);

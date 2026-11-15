@@ -12,6 +12,7 @@
 // client/scripts/db-appliquer-edition.mjs.
 import { randomUUID } from 'node:crypto';
 import { fusionner } from '../src/lib/fusion-trois-voies.mjs';
+import { controlerLaNature } from '../src/lib/lot-de-changements.mjs';
 import { TABLES_HORS_REGLES } from '../src/lib/tables-de-la-base.mjs';
 
 /**
@@ -67,6 +68,20 @@ export function structure(db, table) {
 }
 
 const guillemets = (c) => `"${c}"`;
+
+/**
+ * La nature et le numéro de décision d'un lot du journal (migration 0127), tels que le lot les porte : un lot sans eux (un journal téléchargé avant la
+ * 0127, une base d'avant) est une saisie du site de dev. Une nature inconnue, ou un numéro de décision mal placé, refuse le journal (sinon le CHECK de la
+ * table le ferait, sans dire quel lot).
+ * @returns {{ nature: string, decision: string | null }}
+ */
+export function natureDuLot(lot) {
+  const nature = lot?.nature ?? 'saisie';
+  const decision = lot?.decision ?? null;
+  const erreurs = controlerLaNature({ nature, decision }, { saisie: true });
+  if (erreurs.length) throw new ErreurJournal(`lot ${lot?.id ?? '?'} : ${erreurs[0]}`);
+  return { nature, decision };
+}
 
 /** La clé primaire d'une ligne, colonnes dans l'ordre de la clé : la même ligne donne toujours le même texte JSON. */
 export function cleDe(db, table, ligne) {
@@ -129,7 +144,10 @@ function supprimerBrut(db, table, cle) {
  * @param {{ id: string, instant: string, pageId?: string | null, auteurId?: string | null }} o
  */
 export function ouvrirLot(db, { id, instant, pageId = null, auteurId = null }) {
-  db.prepare('INSERT INTO modification_lot (id, fait_le, auteur_id, page_id, resume) VALUES (?, ?, ?, ?, ?)').run(id, instant, auteurId, pageId, '…');
+  // une saisie du site de dev : nature 'saisie', sans numéro de décision (lot 6 du chantier de la base de dev, migration 0127 ; les autres natures sont celles
+  // des lots de changements, src/lib/lot-de-changements.mjs)
+  db.prepare("INSERT INTO modification_lot (id, fait_le, auteur_id, page_id, resume, nature, decision) VALUES (?, ?, ?, ?, ?, 'saisie', NULL)")
+    .run(id, instant, auteurId, pageId, '…');
   let rang = 0;
   const noter = db.prepare(
     "INSERT INTO modification (lot_id, rang, table_nom, cle, operation, avant, apres, etat, detail, apercu) VALUES (?, ?, ?, ?, ?, ?, ?, 'en_attente', NULL, ?)",
@@ -1021,7 +1039,8 @@ export function journalExporte(db, { etats = ['en_attente', 'integree'] } = {}) 
   const mods = db.prepare('SELECT * FROM modification ORDER BY lot_id, rang').all();
   const historique = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'historique_modification'").get();
   const livres = new Set(historique ? db.prepare('SELECT DISTINCT lot_id FROM historique_modification').all().map((h) => h.lot_id) : []);
-  const parLot = new Map(lots.map((l) => [l.id, { ...l, modifications: [] }]));
+  // chaque lot porte sa nature et son numéro de décision (migration 0127) ; une base d'avant ne les a pas : saisie
+  const parLot = new Map(lots.map((l) => [l.id, { ...l, ...natureDuLot(l), modifications: [] }]));
   const retenus = lotsRetenus(db, lots, mods);
   for (const m of mods) {
     if (!etats.includes(m.etat)) continue;
@@ -1115,13 +1134,15 @@ export function lotsRetenus(db, lots = null, mods = null) {
  */
 export function chargerJournal(db, journal) {
   if (journal?.format !== 'maverick-edition/1') throw new ErreurJournal('journal illisible (format « maverick-edition/1 » attendu)');
-  const lot = db.prepare('INSERT OR IGNORE INTO modification_lot (id, fait_le, auteur_id, page_id, resume) VALUES (?, ?, NULL, ?, ?)');
+  // la nature et le numéro de décision du lot suivent le journal ; un journal d'avant la 0127 (téléchargé avant) n'en porte pas : c'est une saisie
+  const lot = db.prepare('INSERT OR IGNORE INTO modification_lot (id, fait_le, auteur_id, page_id, resume, nature, decision) VALUES (?, ?, NULL, ?, ?, ?, ?)');
   const mod = db.prepare(
     "INSERT OR IGNORE INTO modification (lot_id, rang, table_nom, cle, operation, avant, apres, etat, detail, apercu) VALUES (?, ?, ?, ?, ?, ?, ?, 'en_attente', NULL, ?)",
   );
   let n = 0;
   for (const l of journal.lots ?? []) {
-    lot.run(l.id, l.fait_le, l.page_id ?? null, l.resume);
+    const { nature, decision } = natureDuLot(l);
+    lot.run(l.id, l.fait_le, l.page_id ?? null, l.resume, nature, decision);
     for (const m of l.modifications ?? []) {
       mod.run(l.id, m.rang, m.table, JSON.stringify(m.cle), m.operation, m.avant === null ? null : JSON.stringify(m.avant), m.apres === null ? null : JSON.stringify(m.apres),
         m.apercu ? JSON.stringify(m.apercu) : null);
