@@ -32,7 +32,7 @@ Tenu à jour par la PR de chaque lot (état : à faire, en cours, fait ; puis le
 | 7 | Changements de structure appliqués sur place, d'abord à blanc | L | fait (table `migration_recue`, migration 0129 ; application sur place, essai sur une copie et bilan par le service, #369 ; règles des migrations contrôlées par la CI, bilan dans le résumé du job, #370 ; essai de la structure livrée par le service en place avant chaque installation, sur une copie, non bloquant avant le lot 8 (marqueur `db/source`), #371 ; essai dans l'ombre à chaque installation du site de dev, base migrée sur place comparée à la base refaite, écarts classés — « livré par le dépôt » attendu tant que les migrations de données existent —, rapports sur la page Debug, PR `feature/essai-dans-l-ombre`) | #369, #370, #371 |
 | 8 | Bascule 1 : la base du site de dev fait foi | L | à faire | |
 | 9 | Fabrication témoin sur le serveur : la mesure | L | en cours (fabrication depuis un fichier de contenu, #373 ; kit de l'atelier joint à l'installateur de test, PR `feature/kit-de-l-atelier`) | #373 |
-| 10 | Des contrôles qui ne lisent plus le contenu du dépôt | XL | à faire | |
+| 10 | Des contrôles qui ne lisent plus le contenu du dépôt | XL | en cours (premier temps : essai mécanique sur un contenu fourni, tri des 444 fichiers, `docs/essai-mecanique-des-tests.md`) | PR `feature/tri-mecanique-des-tests` |
 | 11 | Bascule 2 : mise à jour directe, pages fabriquées sur le serveur | XL | à faire | |
 | 12 | Le dépôt ne garde plus le contenu ; ménage | L | à faire | |
 ## 1. Recommandation
