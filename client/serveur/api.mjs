@@ -92,6 +92,9 @@
 //                                   { table, genre, colonnes, total, limite, decalage, tri, ordre, lignes } (images et textes longs résumés) ; toutes les
 //                                   tables et vues, fiches (section 13) comprises (décision du propriétaire du 2026-10-15 : « Il faut tout rendre
 //                                   ouvert. Ce qui est fermé c'est que la base du serveur de prod. ») ; ETag (empreinte du corps), 304 sur If-None-Match
+//   GET  /api/debug/structure/      le dernier essai d'une livraison sur une copie de la base (serveur/essai-de-structure.mjs) : { format, en_cours, en_attente,
+//                                   dernier } ; `dernier` : le bilan `maverick-structure/1` (verdict, versions, migrations, tables…) et `demande`, `essaye_le`, `instance`,
+//                                   `resume`, ou null (aucun essai depuis que le dossier existe) ; Cache-Control: no-store
 //   GET  /api/debug/base/           { version } : la version de la base vivante, qui change à chaque écriture validée (coût fixe, aucune table lue) ;
 //                                   la page la relève toutes les 2 s, menu « DB » ouvert, pour suivre les tables en direct (une relève : ni au journal
 //                                   du service ni dans la mémoire des requêtes)
@@ -523,23 +526,29 @@ function parametres(params, noms) {
  *   GET /api/debug/tables/ et /api/debug/tables/<nom>/ : le contenu des tables de la base vivante, en lecture seule, toutes les tables et vues
  *     (serveur/debug-tables.mjs) ; le contenu d'une table porte son ETag (versionDuContenu : l'empreinte du JSON du corps) et répond 304 sans corps
  *     à un If-None-Match qui la contient ;
- *   GET /api/debug/base/ : { version } de la base vivante (debug-tables.mjs#versionDeLaBase), Cache-Control: no-store.
+ *   GET /api/debug/base/ : { version } de la base vivante (debug-tables.mjs#versionDeLaBase), Cache-Control: no-store ;
+ *   GET /api/debug/structure/ : l'état de l'essai d'une livraison avant son installation (serveur/essai-de-structure.mjs), Cache-Control: no-store.
  * En production, tout répond 403 : c'est la base du serveur de prod qui reste fermée (décisions du propriétaire du 2026-10-15).
  */
 function traiterDebug(requete, service, action, reste, permis, params) {
   if (!service.edition) {
     const quoi = action === 'journal' ? 'Le journal du service ne se lit'
       : action === 'tables' ? 'Le contenu des tables ne se lit'
-        : action === 'base' ? 'La version de la base ne se lit' : 'Les métriques ne se lisent';
+        : action === 'base' ? 'La version de la base ne se lit' : action === 'structure' ? 'L’essai de structure ne se lit' : 'Les métriques ne se lisent';
     // décision du propriétaire (2026-10-15) : en production, la base ne s'ouvre que par les pages du site
     return erreur(403, `${quoi} que sur le site de dev (page Debug).`);
   }
   const metriques = action === 'metriques' && (!reste.length || (reste.length === 1 && ['requetes', 'export'].includes(reste[0])));
   const tables = action === 'tables' && reste.length <= 1;
   const base = action === 'base' && !reste.length;
-  if (!(action === 'journal' && !reste.length) && !metriques && !(action === 'systeme' && !reste.length) && !tables && !base) return erreur(404, 'Adresse inconnue.');
+  const structure = action === 'structure' && !reste.length;
+  if (!(action === 'journal' && !reste.length) && !metriques && !(action === 'systeme' && !reste.length) && !tables && !base && !structure) return erreur(404, 'Adresse inconnue.');
   const refus = permis('GET');
   if (refus) return refus;
+  if (structure) {
+    if (!service.essaiDeStructure) return erreur(503, 'L’essai de structure n’est pas disponible sur ce service.');
+    return json(200, service.essaiDeStructure.lire(), { 'Cache-Control': 'no-store' });
+  }
   if (tables || base) {
     const { db, refus: indisponible } = baseOuRefus(service, 'La base n’est pas disponible pour le moment.');
     if (indisponible) return indisponible;

@@ -117,6 +117,19 @@ Un fichier `GELER` dans le dossier de l'instance suspend ses mises à jour. Une 
 garde sa base.
 Un jeton expiré, un problème réseau ou un installateur abîmé n'abîment rien : l'instance reste telle quelle et `mise-a-jour.log` indique l'erreur.
 
+## Essai de la structure avant l'installation
+
+Sur une instance déjà en service, l'installateur ne remplace pas le site avant que le **service en place** ait essayé les migrations de la livraison sur
+une copie de sa base : il dépose une demande dans `db/essai-de-structure/` (c'est tout ce qu'il y écrit, et il retire sa demande ensuite), attend la
+réponse du service, et la note dans `installation.log`. Le service est le seul à toucher la base.
+
+- Pas de réponse (service arrêté, `MAVERICK_ESSAI_ACCUSE_S`, 20 s), délai dépassé (`MAVERICK_ESSAI_DELAI_S`, 120 s) ou essai refusé : l'installation
+  continue, la ligne du journal le dit. Le détail d'un refus se lit sur la page Debug du site de dev et dans `db/essai-de-structure/dernier.json`.
+- Un fichier `db/source` (le marqueur d'une base qui est la source de vérité de l'instance) change le refus : l'installation s'arrête avant d'avoir rien
+  installé. Rien ne pose ce fichier à la main ; il n'est là que quand le changement de structure sur place est actif.
+- Première installation et `--copier-base-prod` : aucun essai. Aucun geste sur le serveur, `docker-compose.yml` ne change. Détail : `docs/serveur.md`,
+  « Essai avant installation ».
+
 ## Fabriquer un installateur à la main
 
 `./deploy/installateur/fabriquer.sh prod` (ou `test`) construit le site sur votre machine (Node.js ≥ 22.12) et écrit l'installateur dans

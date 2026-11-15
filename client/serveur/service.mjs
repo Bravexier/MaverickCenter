@@ -41,6 +41,7 @@ import { compterLesConflits } from './edition-conflits.mjs';
 import { ecrireAttestation, fabriquerAttestation } from './attestation.mjs';
 import { creerExtrait } from './extrait.mjs';
 import { purgerLesEssais } from './edition-lots.mjs';
+import { INTERVALLE_DES_DEMANDES_MS, creerEssaiDeStructure } from './essai-de-structure.mjs';
 
 /** La ligne de la sortie console (`docker logs`) : « <instant> <message> », la même que celle du journal en mémoire (journal-du-service.mjs). */
 const horodater = (ligne) => `${maintenant()} ${ligne}`;
@@ -130,6 +131,9 @@ const inode = (chemin) => {
  *   <dossier>/metriques), MAVERICK_INSTANCE (sinon « dev » avec l'édition, « prod » sans), MAVERICK_METRIQUES_BRUTES=1 (requêtes brutes gardées 30
  *   jours), MAVERICK_METRIQUES_PAGES=0 (balise des pages vues fermée ; ouverte par défaut, décision du propriétaire) ; `site` : le dossier du site
  *   construit (répartition du disque ; par défaut dossierDuSite) ; false : aucune collecte
+ * @param {false | { intervalle?: number, essayer?: Function, espaceLibre?: Function }} [o.essaiDeStructure] l'essai d'une livraison avant son installation
+ *   (serveur/essai-de-structure.mjs) : `intervalle` du passage sur db/essai-de-structure/ en ms (par défaut 3 s, sans dépasser `intervalle` ; 0 = aucun passage,
+ *   les tests l'appellent), `essayer` et `espaceLibre` remplacent l'essai et la mesure du disque (tests) ; false : aucun essai, une demande reste sans réponse
  * @param {false | { dossier?: string|null, publier?: boolean }} [o.attestation] l'attestation de la production (serveur/attestation.mjs) : `publier`
  *   (par défaut : sans l'édition, c'est-à-dire en production) l'écrit dans `dossier` (par défaut le dossier des métriques, partagé entre les deux
  *   instances du VPS) au démarrage et après chaque reconstruction de la base vivante ; le site de dev y lit celle de la production (page « Mise à
@@ -138,7 +142,7 @@ const inode = (chemin) => {
 export async function demarrerService({ regles, dossier, hote = '127.0.0.1', port = 8787, intervalle = 15000, fichierVersion = null, edition = false,
   reference = null, depot = 'Bravexier/MaverickCenter', adresse = null, jetonFichier = null, acces: reglageAcces = null, maintenance = null, versionParDefaut = 'développement',
   journal: ecouteur = null, journalDuService = null, relancer = () => process.exit(0), metriques: reglagesMetriques = {}, fetch: fetchDuClasseur = globalThis.fetch,
-  tipeee: reglagesTipeee = {}, attestation: reglagesAttestation = {} }) {
+  tipeee: reglagesTipeee = {}, attestation: reglagesAttestation = {}, essaiDeStructure: reglagesEssai = {} }) {
   const lancementDuService = performance.now();
   // la production sert de référence à la page « Mise à jour » sauf si c'est la base de ce site même (lireReference compare les fichiers)
   const referenceDuSite = reference && typeof reference === 'object' ? { propre: regles, ...reference } : reference;
@@ -254,6 +258,18 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
       if (n) journal(`lots : ${n} copie(s) d’essai restée(s) supprimée(s)`);
     } catch (e) {
       journal(`lots : copies d’essai non purgées : ${e?.message ?? e}`);
+    }
+  }
+  // l'essai d'une livraison avant son installation (serveur/essai-de-structure.mjs) : sur les deux instances, la production comprise. Les copies qu'un arrêt a
+  // laissées sont retirées avant tout essai.
+  const essaiDeStructure = reglagesEssai === false ? null
+    : creerEssaiDeStructure({ dossier, source: chemin, instance: nomDInstance, journal, evenement, ...(reglagesEssai ?? {}) });
+  if (essaiDeStructure) {
+    try {
+      const n = essaiDeStructure.purger();
+      if (n) journal(`structure : ${n} reste(s) d’essai supprimé(s) (copies d’une base, demandes abandonnées)`, { categorie: 'base' });
+    } catch (e) {
+      journal(`structure : restes d’essai non purgés : ${e?.message ?? e}`, { categorie: 'base' });
     }
   }
   // l'extrait du contenu pour les sessions de Claude (GET /api/edition/extrait/) : site de dev seulement, fabriqué au premier téléchargement qui suit un changement
@@ -550,7 +566,7 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
           reponse = traiter({ methode: req.method ?? 'GET', chemin: url.pathname, recherche: url.search, entetes: req.headers, corps: Buffer.concat(morceaux).toString('utf8'),
             signal: abandon.signal },
           { base: baseMesuree, etat: decrire, journal, journalDuService: memoire, edition: Boolean(edition), dossier, reference: referenceDuSite, depot, adresse, github,
-            maintenance: maintenanceDemandee, metriques, evenement, classeur, tipeee, extrait, attestations: dossierDesAttestations, acces });
+            maintenance: maintenanceDemandee, metriques, evenement, classeur, tipeee, extrait, attestations: dossierDesAttestations, acces, essaiDeStructure });
         } finally {
           const mesureSql = sql.terminer();
           if (mesure) mesure.sql = mesureSql;
@@ -585,11 +601,14 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
   });
 
   let minuterie = null;
+  let veilleDesDemandes = null;
   let arrete = false;
   async function arreter() {
     if (arrete) return;
     arrete = true;
     if (minuterie) clearInterval(minuterie);
+    if (veilleDesDemandes) clearInterval(veilleDesDemandes);
+    essaiDeStructure?.arreter();
     await new Promise((ok) => {
       serveur.close(() => ok());
       serveur.closeAllConnections?.();
@@ -599,6 +618,20 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
     evenement('arret', { detail: { duree_s: Math.round((performance.now() - lancementDuService) / 1000) } });
     if (metriques) sansEchec(() => metriques.arreter());
     fermer();
+  }
+
+  // les demandes d'essai de l'installateur : un `readdir` d'un dossier presque toujours absent, plus souvent que la surveillance des fichiers (l'installateur
+  // attend la réponse) ; l'essai lui-même tourne dans un fil à part
+  const passageDesDemandes = reglagesEssai === false ? 0 : (reglagesEssai?.intervalle ?? (intervalle > 0 ? Math.min(INTERVALLE_DES_DEMANDES_MS, intervalle) : 0));
+  if (essaiDeStructure && passageDesDemandes > 0) {
+    veilleDesDemandes = setInterval(() => {
+      try {
+        essaiDeStructure.surveiller().catch((e) => journal(`ERREUR structure : ${e?.message ?? e}`, { categorie: 'base' }));
+      } catch (e) {
+        journal(`ERREUR structure : ${e?.message ?? e}`, { categorie: 'base' });
+      }
+    }, passageDesDemandes);
+    veilleDesDemandes.unref?.();
   }
 
   if (intervalle > 0) {
@@ -631,5 +664,5 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
     minuterie.unref?.();
   }
 
-  return { url: `http://${hote}:${ecoute.port}`, port: ecoute.port, arreter, etat: decrire, maintenance: etatMaintenance, journalDuService: memoire, metriques };
+  return { url: `http://${hote}:${ecoute.port}`, port: ecoute.port, arreter, etat: decrire, maintenance: etatMaintenance, journalDuService: memoire, metriques, essaiDeStructure };
 }

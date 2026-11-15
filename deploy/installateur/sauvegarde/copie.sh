@@ -7,7 +7,7 @@
 #   copie.sh etat                   réécrit seulement metriques/sauvegardes.json
 #
 # Ce que fait une copie, par instance :
-#   - tout le dossier db/ de l'instance : chaque base SQLite (.db, .sqlite, .sqlite3, hors archives/ et metriques/) par l'interface de sauvegarde de
+#   - tout le dossier db/ de l'instance, hors metriques/ et essai-de-structure/ (l'échange avec le service pour l'essai d'une livraison, copies transitoires) : chaque base SQLite (.db, .sqlite, .sqlite3, hors archives/) par l'interface de sauvegarde de
 #     SQLite (« .backup », connexion en lecture seule : cohérente même si le service écrit), les autres fichiers tels quels (un fichier identique à
 #     celui de la copie précédente en est un lien dur : les archives ne coûtent la place qu'une fois) ; le contenu de db/ n'est jamais modifié et rien
 #     n'y est créé (source_a_ouvrir : une base WAL sans écrivain est ouverte « immutable ») ;
@@ -56,7 +56,7 @@ alerter() { # instance code detail niveau(alerte|refusee)
 
 # Empreinte de db/ (noms, tailles, dates de modification) : ne lit aucun contenu, n'écrit rien.
 signature_de() {
-  (cd "$1" && find . -type f ! -path './metriques/*' -printf '%P %s %T@\n' | sort | sha256sum | cut -d ' ' -f 1)
+  (cd "$1" && find . -type f ! -path './metriques/*' ! -path './essai-de-structure/*' -printf '%P %s %T@\n' | sort | sha256sum | cut -d ' ' -f 1)
 }
 
 # Les dossiers (chemins complets) d'un dossier de copies, du plus ancien au plus récent.
@@ -182,7 +182,7 @@ copier_instance() { # instance type
   if [ -n "$precedente" ]; then refcomptes=$SAUV/$inst/$precedente/comptes.tsv; fi
 
   # Pas de db/, ou un db/ sans aucun fichier : rien à copier (une alerte si une copie précédente existe : une base ne disparaît pas toute seule).
-  if [ ! -d "$db" ] || [ -z "$(find "$db" -type f ! -path "$db/metriques/*" -print -quit)" ]; then
+  if [ ! -d "$db" ] || [ -z "$(find "$db" -type f ! -path "$db/metriques/*" ! -path "$db/essai-de-structure/*" -print -quit)" ]; then
     if [ -n "$precedente" ]; then alerter "$inst" base_absente "le dossier db/ de l'instance est absent ou vide" alerte
     else etat_poser_tout "$etat" VERIF_LE "$maintenant" VERIF_RESULTAT sans_base; journal "$inst : pas de base dans db/, rien à copier"; fi
     return 0
@@ -196,7 +196,7 @@ copier_instance() { # instance type
   fi
 
   # La place : la taille de db/ (borne haute : les liens durs ne la prendront pas tous).
-  besoin=$( { du -s -B1 --exclude=metriques "$db" 2>/dev/null || echo 0; } | cut -f1)
+  besoin=$( { du -s -B1 --exclude=metriques --exclude=essai-de-structure "$db" 2>/dev/null || echo 0; } | cut -f1)
   if ! faire_de_la_place "$besoin"; then
     alerter "$inst" "$PLACE_CODE" "copie non écrite : $((besoin / 1048576)) Mo à copier, plafond $PLAFOND_MO Mo, libre minimal $LIBRE_MIN_MO Mo" refusee
     return 0
@@ -227,7 +227,7 @@ copier_instance() { # instance type
   # (le contrôle a pu ouvrir une copie en mode WAL : ses -wal et -shm ne font pas partie de la copie)
   find "$tmp/db" -type f \( -name '*-wal' -o -name '*-shm' -o -name '*-journal' \) -delete
   # 2. tous les autres fichiers, tels quels
-  (cd "$db" && find . -type f ! -path './metriques/*' ! -name '*-wal' ! -name '*-shm' ! -name '*-journal' -print | sed 's|^\./||' | sort) > "$tmp/fichiers.liste"
+  (cd "$db" && find . -type f ! -path './metriques/*' ! -path './essai-de-structure/*' ! -name '*-wal' ! -name '*-shm' ! -name '*-journal' -print | sed 's|^\./||' | sort) > "$tmp/fichiers.liste"
   while IFS= read -r rel; do
     [ -n "$rel" ] || continue
     if grep -qxF -- "$rel" "$tmp/bases.liste"; then continue; fi

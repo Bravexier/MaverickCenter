@@ -106,9 +106,9 @@ etat_poser_tout() {
 }
 
 # ---------------------------------------------------------------- bases SQLite
-# Les bases d'un dossier db/ : fichiers .db / .sqlite / .sqlite3, hors archives/ (copies déjà figées par le service) et metriques/.
+# Les bases d'un dossier db/ : fichiers .db / .sqlite / .sqlite3, hors archives/ (copies déjà figées par le service), metriques/ et essai-de-structure/ (l'échange avec le service pour l'essai d'une livraison : ses copies d'essai sont transitoires).
 bases_de() { # dossier db
-  (cd "$1" && find . -type f \( -name '*.db' -o -name '*.sqlite' -o -name '*.sqlite3' \) ! -path './archives/*' ! -path './metriques/*' | sed 's|^\./||' | sort)
+  (cd "$1" && find . -type f \( -name '*.db' -o -name '*.sqlite' -o -name '*.sqlite3' \) ! -path './archives/*' ! -path './metriques/*' ! -path './essai-de-structure/*' | sed 's|^\./||' | sort)
 }
 # Nombre de lignes de chaque table d'une base, une ligne « chemin<TAB>table<TAB>n » par table (écrit sur la sortie standard). Les noms de tables
 # viennent de sqlite_master et sont entre guillemets (%w double les guillemets internes) : jamais un nom venu d'ailleurs.

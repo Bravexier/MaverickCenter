@@ -628,6 +628,8 @@ function cheminsDuService() {
     },
     '/debug/base/': lectureDuService('version_de_la_base', 'Version de la base vivante',
       `{ version } : un texte opaque qui change dès qu’une écriture est validée dans la base vivante, quelle que soit la table (et quand la base est rouverte ou le service redémarré) ; coût fixe, aucune table lue ; Cache-Control: no-store. La page Debug la relève toutes les 2 s tant que le menu « DB » est ouvert, et ne relit les nombres de lignes et la fenêtre « Contenu de <table> » que quand elle change (une relève : ni au journal du service ni dans la mémoire des requêtes).${SITE_DE_DEV}`),
+    '/debug/structure/': lectureDuService('essai_de_structure', 'Dernier essai d’une livraison avant son installation',
+      `{ format: 'maverick-essai-etat/1', en_cours, en_attente, dernier } : l’essai que le service fait, sur une copie de sa base vivante, des migrations d’une livraison que l’installateur lui présente avant de l’installer. \`dernier\` : le bilan (\`format\` maverick-structure/1, \`verdict\` accepte, refuse, a_jour ou indisponible, \`versions\`, \`migrations\`, \`tables\`, \`refus\`…) et \`demande\`, \`essaye_le\`, \`instance\`, \`resume\` ; null sans essai. Cache-Control: no-store.${SITE_DE_DEV}`),
     '/metriques/page/': {
       post: {
         operationId: 'metriques_page', tags: [SERVICE], summary: 'Mesure d’une page vue',

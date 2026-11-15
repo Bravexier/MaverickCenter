@@ -57,6 +57,11 @@ test('copie : cohérente même pendant une écriture (WAL), contrôlée, rien n�
   writeFileSync(join(db, 'archives', 'vivante-ancienne.db'), 'une archive déjà figée par le service');
   mkdirSync(join(db, 'metriques'));
   writeFileSync(join(db, 'metriques', 'prod.db'), 'métriques : jamais copiées');
+  // l'échange avec le service pour l'essai d'une livraison (installateur.sh : db/essai-de-structure/) : une copie d'essai en cours (« .db » à moitié écrit) ou
+  // le dernier résultat ne sont jamais copiés, ni pris pour une base, ni comptés dans la signature de db/
+  mkdirSync(join(db, 'essai-de-structure'));
+  writeFileSync(join(db, 'essai-de-structure', 'structure-essai-1-00000000-0000-0000-0000-000000000000-avant.db'), 'copie d’essai, à moitié écrite');
+  writeFileSync(join(db, 'essai-de-structure', 'dernier.json'), '{"verdict":"accepte"}');
   const avant = empreintes(db);
   const nomsAvant = noms(db);
 
@@ -72,6 +77,7 @@ test('copie : cohérente même pendant une écriture (WAL), contrôlée, rien n�
   assert.equal(readFileSync(join(dossier, 'db', 'tipeee.json'), 'utf8'), '{"texte":"bienvenue"}', 'les autres fichiers sont copiés tels quels');
   assert.ok(existsSync(join(dossier, 'db', 'archives', 'vivante-ancienne.db')));
   assert.ok(!existsSync(join(dossier, 'db', 'metriques')), 'les métriques ne sont pas copiées');
+  assert.ok(!existsSync(join(dossier, 'db', 'essai-de-structure')), 'l’échange de l’essai d’une livraison n’est pas copié');
   const comptes = readFileSync(join(dossier, 'comptes.tsv'), 'utf8').trim().split('\n').map((l) => l.split('\t'));
   assert.deepEqual(comptes, [['vivante.db', 'fiche', '81'], ['vivante.db', 'sort', '30'], ['vivante.db', 'vide', '0']]);
   assert.match(readFileSync(join(dossier, 'copie.meta'), 'utf8'), /^LIGNES=111$/m);
