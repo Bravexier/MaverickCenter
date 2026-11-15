@@ -50,6 +50,11 @@ export async function fabriquerLesContenus() {
   const { fabriquerExtrait } = await import('../serveur/extrait.mjs');
   const { normalize } = await import('../src/lib/text.mjs');
   fabriquerExtrait({ source: cheminBase({ sansExemples: false }), destination: FICHIER.A, version: '0.0.0-essai' });
+  // La vue `extrait_meta` n'existe que dans un extrait : une base fabriquée depuis data/rows ne l'a pas, et les tests qui listent les vues ou refont un extrait la refusent
+  // (constat de l'essai : 8 fichiers). Elle est retirée des deux contenus ; le branchement propre (retirer la vue à l'ouverture d'un contenu fourni) est un autre lot.
+  const a = new DatabaseSync(FICHIER.A);
+  a.exec('DROP VIEW IF EXISTS extrait_meta');
+  a.close();
   copyFileSync(FICHIER.A, FICHIER.B);
   const db = new DatabaseSync(FICHIER.B);
   const rapport = { tables: 0, colonnes: 0, lignes: 0, refusees: [] };
@@ -159,7 +164,7 @@ async function passe(nom, fichiers) {
 // ───────────────────────── tri ─────────────────────────
 // Ce que le fichier lit, par ses importations (transitives, dans client/test et client/src) : on cherche des marques de lecture du contenu.
 const MARQUES_CONTENU = [/lib\/donnees\.mjs/, /\bcheminBase\b/, /aide-base-d-import/, /aide-contenu-fourni/, /\bouvrirBase\b/, /fiche-regles/];
-const MARQUES_DEPOT = [/data\/rows/, /['"`]rows['"`]/, /db-build/, /tools\/db/, /maverick\.py/, /python3?['"`]/, /MAVERICK_ROOT/, /data\/migrations/];
+const MARQUES_DEPOT = [/content\/wiki/, /data\/rows/, /['"`]rows['"`]/, /db-build/, /tools\/db/, /maverick\.py/, /python3?['"`]/, /MAVERICK_ROOT/, /data\/migrations/];
 
 function fermetureDesImports(fichier) {
   const vus = new Set();
