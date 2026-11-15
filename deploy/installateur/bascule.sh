@@ -14,6 +14,12 @@
 #   poser        pose db/source (date, version, empreinte du contenu, sauvegarde) : refusé sans constat EGALITE de moins d'une heure fait pendant ce gel, et
 #                sans sauvegarde nommée réussie depuis ; relance le service et vérifie que /api/etat dit « source: true »
 #   retirer      le retour arrière : le marqueur est renommé (rien n'est effacé), le service relancé
+#   copies       les copies de la base du site de dev qu'on peut restaurer : locales (type/nom, date, lignes) et, envoi activé, extérieures (restic) ; rien n'est modifié
+#   restaurer --copie <type>/<nom>|derniere  ou  restaurer --exterieure <id>|latest
+#                remet une copie de la base du site de dev dans db/ (docs/serveur.md, « Restauration de la base du site de dev ») : copie contrôlée (intégrité,
+#                comptes de la copie), GELER posé, service arrêté, base en place gardée à part dans <dev>/var/avant-restauration-<date>/ (renommée, jamais
+#                effacée), la copie posée, le service relancé. Il migre lui-même la base restaurée (marqueur db/source) ; il dit si un paquet a été figé
+#                après la copie. Les lots écrits depuis la copie ne sont que dans la base gardée à part : rien ne les rejoue
 # Chaque étape écrit une ligne par action ; code 0 si elle a réussi, 1 sinon, 2 pour un usage inconnu.
 # Variables (tests) : MAVERICK_DIR_TEST, MAVERICK_DIR_NORMAL (dossiers des instances), MAVERICK_SAUV_DOCKER (docker), MAVERICK_DIR_BASCULE (état ; défaut
 # <dev>/.bascule), MAVERICK_BASCULE_SAUVEGARDE (scripts des sauvegardes ; défaut <dev>/sauvegarde), MAVERICK_BASCULE_ATTENTE (secondes d'attente du service),
@@ -21,19 +27,31 @@
 set -euo pipefail
 umask 077
 
-usage() { echo "Usage : sudo bash $0 [--dev <dossier>] [--prod <dossier>] etat|geler|degeler|constat|sauvegarder|poser|retirer" >&2; exit 2; }
+usage() { echo "Usage : sudo bash $0 [--dev <dossier>] [--prod <dossier>] etat|geler|degeler|constat|sauvegarder|poser|retirer|copies | restaurer --copie <type>/<nom>|derniere | restaurer --exterieure <id>|latest" >&2; exit 2; }
 DEV=${MAVERICK_DIR_TEST:-/srv/maverick-center-test}
 PROD=${MAVERICK_DIR_NORMAL:-/srv/maverick-center}
 ETAPE=''
+COPIE=''
+EXTERIEURE=''
 while [ $# -gt 0 ]; do
   case "$1" in
     --dev) [ $# -ge 2 ] || usage; DEV=$2; shift 2 ;;
     --prod) [ $# -ge 2 ] || usage; PROD=$2; shift 2 ;;
-    etat|geler|degeler|constat|sauvegarder|poser|retirer) [ -z "$ETAPE" ] || usage; ETAPE=$1; shift ;;
+    --copie) [ $# -ge 2 ] || usage; COPIE=$2; shift 2 ;;
+    --exterieure) [ $# -ge 2 ] || usage; EXTERIEURE=$2; shift 2 ;;
+    etat|geler|degeler|constat|sauvegarder|poser|retirer|copies|restaurer) [ -z "$ETAPE" ] || usage; ETAPE=$1; shift ;;
     *) usage ;;
   esac
 done
 [ -n "$ETAPE" ] || usage
+# une copie à restaurer, et une seule, pour « restaurer » ; jamais ailleurs
+if [ "$ETAPE" = restaurer ]; then
+  [ -n "$COPIE$EXTERIEURE" ] && { [ -z "$COPIE" ] || [ -z "$EXTERIEURE" ]; } || usage
+  case "$COPIE" in ''|derniere|horaire/*|nuit/*|nommees/*) ;; *) usage ;; esac
+  case "$COPIE" in */*/*|*..*) usage ;; esac
+  case "$EXTERIEURE" in ''|latest) ;; *[!0-9a-f]*) usage ;; esac
+elif [ -n "$COPIE$EXTERIEURE" ]; then usage
+fi
 
 etape() { echo "bascule : $*"; }
 die() { echo "bascule : REFUS : $*" >&2; exit 1; }
@@ -137,7 +155,7 @@ case "$ETAPE" in
     ;;
 
   sauvegarder)
-    [ -f "$ETC/stockage.env" ] && [ -f "$ETC/cle-depot" ] || die "l'envoi hors du serveur n'est pas activé ($ETC) : « sudo sh $DEV/sauvegarde/installer.sh --stockage » d'abord"
+    [ -f "$ETC/stockage.env" ] && [ -f "$ETC/cle-depot" ] || die "l'envoi hors du serveur n'est pas activé ($ETC) : « sudo bash $DEV/sauvegarde/installer.sh --stockage » d'abord"
     debut=$(instant)
     nom="bascule-1-$(nom_de_copie "$debut")"
     etape "copie locale des deux bases (copie.sh nuit)…"
@@ -226,6 +244,115 @@ case "$ETAPE" in
     etape "marqueur retiré (gardé sous $garde) : la base n'est plus la source."
     compose restart serveur >/dev/null 2>&1 || relancer_le_service
     etape "service du site de dev relancé (« bascule.sh etat » pour vérifier)."
+    ;;
+
+  copies)
+    etape "copies locales de la base du site de dev ($SAUV/dev), de la plus ancienne à la plus récente :"
+    n=0
+    while IFS= read -r c; do
+      [ -n "$c" ] || continue
+      meta="$SAUV/dev/$c/copie.meta"
+      etape "  $c : $(date_de "$(etat_lire "$meta" INSTANT)"), version $(etat_lire "$meta" VERSION), $(etat_lire "$meta" LIGNES) ligne(s), $(( $(octets_de "$SAUV/dev/$c") / 1048576 )) Mo"
+      n=$((n + 1))
+    done <<EOF_COPIES
+$(copies_de dev horaire nuit nommees)
+EOF_COPIES
+    [ "$n" -gt 0 ] || etape "  aucune."
+    if [ -f "$ETC/stockage.env" ] && [ -f "$ETC/cle-depot" ] && command -v restic >/dev/null 2>&1; then
+      etape "copies extérieures (restic, étiquette inst-dev) :"
+      ( set -a; . "$ETC/stockage.env"; set +a; export RESTIC_PASSWORD_FILE=$ETC/cle-depot RESTIC_CACHE_DIR=$SAUV/.cache-restic
+        restic snapshots --host maverick --tag inst-dev --compact ) 2>&1 | sed 's/^/bascule :   /' || etape "  lecture impossible (accès au stockage ?)"
+    else
+      etape "copies extérieures : envoi non activé ou restic absent."
+    fi
+    ;;
+
+  restaurer)
+    command -v sqlite3 >/dev/null 2>&1 || die "sqlite3 est absent (apt-get install sqlite3) : la copie ne peut pas être contrôlée"
+    prendre_le_verrou 600 || die "une sauvegarde est en cours : réessayez dans quelques minutes"
+    REST=''
+    trap '[ -z "$REST" ] || rm -rf "$REST"' EXIT
+    # 1. la copie choisie, contrôlée avant de toucher à quoi que ce soit
+    if [ -n "$EXTERIEURE" ]; then
+      [ -f "$ETC/stockage.env" ] && [ -f "$ETC/cle-depot" ] || die "l'envoi hors du serveur n'est pas activé ($ETC) : seules les copies locales se restaurent (--copie)"
+      command -v restic >/dev/null 2>&1 || die "restic est absent (apt-get install restic)"
+      REST=$(mktemp -d "$SAUV/.restauration.XXXXXX")
+      etape "copie extérieure $EXTERIEURE : téléchargement et déchiffrement dans $REST…"
+      filtre=()
+      [ "$EXTERIEURE" != latest ] || filtre=(--host maverick --tag inst-dev)
+      ( set -a; . "$ETC/stockage.env"; set +a; export RESTIC_PASSWORD_FILE=$ETC/cle-depot RESTIC_CACHE_DIR=$SAUV/.cache-restic
+        restic restore "$EXTERIEURE" "${filtre[@]}" --target "$REST" ) >/dev/null 2>"$REST.erreur" ||
+        { e=$(tail -n 2 "$REST.erreur" | tr '\n' ' ' | cut -c1-200); rm -f "$REST.erreur"; die "la restauration de la copie extérieure a échoué ($e)"; }
+      rm -f "$REST.erreur"
+      [ "$(find "$REST" -name comptes.tsv | wc -l | tr -d ' ')" = 1 ] || die "la copie extérieure ne rend pas exactement une copie de base (instance du site de dev ?)"
+      SOURCE_COPIE=$(dirname "$(find "$REST" -name comptes.tsv)")
+      # une copie du SITE DE DEV seulement (un identifiant peut désigner une copie de la production, avec ses fiches) : envoi.sh sauvegarde
+      # <sauvegardes>/dev/<type>/<nom>, dont copie.meta dit INSTANCE=dev ; les deux sont exigés, avant toute écriture dans l'instance
+      [ "$(basename "$(dirname "$(dirname "$SOURCE_COPIE")")")" = dev ] && [ "$(etat_lire "$SOURCE_COPIE/copie.meta" INSTANCE)" = dev ] ||
+        die "la copie extérieure $EXTERIEURE n'est pas une copie du site de dev (instance $(etat_lire "$SOURCE_COPIE/copie.meta" INSTANCE)) : rien n'a été touché"
+      NOM_COPIE="extérieure $EXTERIEURE"
+    else
+      [ "$COPIE" != derniere ] || COPIE=$(derniere_copie dev)
+      [ -n "$COPIE" ] || die "aucune copie locale du site de dev ($SAUV/dev)"
+      SOURCE_COPIE="$SAUV/dev/$COPIE"
+      [ -d "$SOURCE_COPIE" ] || die "copie introuvable : $SOURCE_COPIE (« bascule.sh copies »)"
+      NOM_COPIE="locale $COPIE"
+    fi
+    [ -f "$SOURCE_COPIE/db/vivante.db" ] && [ ! -L "$SOURCE_COPIE/db/vivante.db" ] || die "la copie $NOM_COPIE n'a pas de db/vivante.db"
+    controle=$(controle_integrite "$SOURCE_COPIE/db/vivante.db")
+    [ "$controle" = ok ] || die "la copie $NOM_COPIE échoue au contrôle d'intégrité ($controle) : rien n'a été touché"
+    attendus=$(awk -F'\t' '$1 == "vivante.db"' "$SOURCE_COPIE/comptes.tsv" 2>/dev/null | sort)
+    [ -n "$attendus" ] && [ "$(comptes_de "$SOURCE_COPIE/db/vivante.db" vivante.db | sort)" = "$attendus" ] ||
+      die "la copie $NOM_COPIE ne compte pas les lignes notées à sa copie (comptes.tsv) : rien n'a été touché"
+    instant_copie=$(etat_lire "$SOURCE_COPIE/copie.meta" INSTANT)
+    etape "copie $NOM_COPIE contrôlée : $(date_de "$instant_copie"), $(awk -F'\t' '{ s += $3 } END { print s + 0 }' <<<"$attendus") ligne(s)."
+    # 2. les écritures gelées : plus de mise à jour automatique, service arrêté
+    if [ ! -e "$DEV/GELER" ]; then : > "$DEV/GELER"; noter GELER_POSE 1; etape "fichier GELER posé dans $DEV : plus de mise à jour automatique."; fi
+    compose stop serveur >/dev/null 2>&1 || die "le service du site de dev n'a pas pu être arrêté (docker compose stop serveur, dans $DEV)"
+    service_actif && die "le service du site de dev tourne encore"
+    etape "service du site de dev arrêté."
+    # 3. la base en place, gardée à part (renommée sur le même disque : rien n'est copié ni effacé)
+    GARDE="$DEV/var/avant-restauration-$(nom_de_copie "$(instant)")"
+    [ ! -e "$GARDE" ] || die "$GARDE existe déjà"
+    mkdir -p "$DEV/var" && mkdir -m 700 "$GARDE" || die "impossible de créer $GARDE"
+    gardes=0
+    for f in vivante.db vivante.db-journal vivante.db-wal vivante.db-shm vivante.json; do
+      if [ -e "$DEV/db/$f" ] || [ -L "$DEV/db/$f" ]; then mv -T "$DEV/db/$f" "$GARDE/$f" || die "$DEV/db/$f n'a pas pu être mis de côté"; gardes=$((gardes + 1)); fi
+    done
+    if [ "$gardes" -gt 0 ]; then etape "base en place gardée à part : $GARDE ($gardes fichier(s), jamais effacés par ce script)."
+    else etape "aucune base en place dans $DEV/db (perdue) : rien à garder à part."; fi
+    # 4. la copie posée d'un coup (fichier provisoire dans db/, puis renommé)
+    provisoire="$DEV/db/.vivante.db.restauration.$$"
+    cp "$SOURCE_COPIE/db/vivante.db" "$provisoire" && chmod 644 "$provisoire" && mv -T "$provisoire" "$DEV/db/vivante.db" ||
+      { rm -f "$provisoire"; die "la copie n'a pas pu être posée dans $DEV/db (la base d'avant est dans $GARDE)"; }
+    if [ -f "$SOURCE_COPIE/db/vivante.json" ]; then cp "$SOURCE_COPIE/db/vivante.json" "$DEV/db/.vivante.json.$$" && chmod 644 "$DEV/db/.vivante.json.$$" && mv -T "$DEV/db/.vivante.json.$$" "$DEV/db/vivante.json"; fi
+    noter RESTAURE_LE "$(instant)" RESTAURE_DEPUIS "$NOM_COPIE" RESTAURE_GARDE "$GARDE"
+    etape "copie $NOM_COPIE posée dans $DEV/db/vivante.db."
+    # 5. un paquet figé après la copie : la production a (ou aura) un contenu que la base restaurée n'a pas
+    if [ -n "$instant_copie" ] && [ -d "$DEV/db/mise-a-jour" ]; then
+      for paquet in "$DEV/db/mise-a-jour"/*.db; do
+        [ -f "$paquet" ] || continue
+        case "$(basename "$paquet")" in ????????-????-????-????-????????????.db) ;; *) continue ;; esac
+        if [ "$(stat -c %Y "$paquet")" -gt "$instant_copie" ]; then
+          etape "ATTENTION le paquet $(basename "$paquet" .db | cut -c1-8) a été figé après cette copie : son contenu n'est pas dans la base restaurée ; si la production l'a installé, le service REFUSERA d'en reporter la note (rien n'est écrit ; « ERREUR mise à jour : report de la note… » au journal et sur la page Mise à jour) : faire refaire ce contenu sur le site de dev par une session, d'après la note du paquet (docs/serveur.md, « Restauration de la base du site de dev »)."
+        fi
+      done
+    fi
+    # 6. le service relancé : avec db/source, il migre la base restaurée sur place (ou refuse de démarrer, la raison au journal)
+    relancer_le_service
+    retirer_geler
+    noter GEL_LE ''
+    reponse=''
+    for _ in $(seq 1 "$((ATTENTE / 2 + 1))"); do
+      reponse=$(source_selon_le_service)
+      case "$reponse" in source=*) break ;; esac
+      sleep 2
+    done
+    case "$reponse" in
+      source=*) etape "le service répond ($reponse) : base restaurée en service." ;;
+      *) die "le service ne répond pas en $ATTENTE s : voir « docker compose logs serveur » dans $DEV (une migration refusée l'arrête) ; la base d'avant est dans $GARDE" ;;
+    esac
+    etape "les lots écrits après la copie ne sont que dans la base gardée à part ($GARDE) : rien ne les rejoue."
     ;;
 esac
 exit 0

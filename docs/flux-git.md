@@ -150,6 +150,31 @@ Les fichiers de `data/migrations/` sont comparés à ceux de `git merge-base <ba
 
 Le résumé du job (`$GITHUB_STEP_SUMMARY`) donne, par migration nouvelle : sa nature, par table les lignes ajoutées, retirées et modifiées, et le nombre de tables à l'empreinte inchangée (liste repliée). Le job est à part, parallèle aux autres : il lui faut l'historique complet (`fetch-depth: 0`) et aucun paquet npm.
 
+## Contenu écrit à la main (lot 8)
+
+Garde-fou 12 du chantier (`docs/chantier-base-de-dev.md`) : une fois la base du site de dev devenue la source, le contenu n'entre plus dans le dépôt que par le
+workflow de mise à jour. Job `controle-du-contenu-ecrit` de `ci.yml`, sur chaque PR ; code : `client/scripts/controler-le-contenu-ecrit.mjs` (lecture du dépôt)
+et `controler-le-contenu-ecrit-lib.mjs` (règles pures) ; test : `scripts-controler-le-contenu-ecrit`. Sortie 0 (éteint, ou rien de refusé), 1 (un refus : la règle
+et quoi faire), 2 (usage ou dépôt illisible).
+
+- **Interrupteur** : `tools/flux-git/bascule-1.json`, `{ "actif": false }`. Il se lit dans **`origin/dev`**, jamais dans la PR contrôlée : la PR qui le passe à
+  `true` passe elle-même (dev l'a encore à `false`), et une PR ne peut pas s'en exempter en l'éteignant dans sa branche. Éteint (ou fichier absent), le job passe
+  vert sans rien lire d'autre et le résumé le dit.
+- **`ecrit-a-la-main`** (PR vers `dev` qui change `data/rows/`) : chaque commit de la PR qui touche `data/rows/` doit être celui du workflow de mise à jour —
+  branche `feature/mise-a-jour-regles-…`, auteur et commiteur `github-actions[bot]`, une ligne `Lot : <uuid>` ou `Copie : <uuid>`, rien hors de `data/rows/`.
+  Les commits sont lus de la base de la PR à sa tête (`github.event.pull_request.head.sha`), une fusion comparée à son premier parent. Limite : l'identité
+  d'un commit se déclare ; le contrôle arrête l'erreur et l'oubli, pas une falsification voulue. **Exception** : une PR qui ajoute une migration de
+  **structure** peut changer `data/rows/<t>.sql`, seulement pour les tables que ses migrations nomment (`CREATE`, `ALTER`, `DROP TABLE <t>`, les deux noms
+  d'un renommage, la cible d'un `INSERT … SELECT` : `tablesDeLaStructure`) ; toute autre table reste refusée. Ce contrôle ne juge que les noms : l'égalité
+  exacte de l'export est déjà prouvée par `controle-des-migrations` (base remplie migrée), qu'il est recommandé de rendre obligatoire.
+- **`donnees`** (PR vers `dev`) : une migration ajoutée sans DDL (`controler-les-migrations-lib.mjs#analyserUneMigration`) est refusée ; la structure reste.
+- **`correctif-urgent`** (PR `hotfix/<nom>` vers `master`) : rien dans `data/rows/`, `data/migrations/` ni `data/schema.sql`. La livraison `dev` → `master`
+  n'est pas concernée.
+
+Le jour de la bascule : une PR vers `dev` passe `actif` à `true`. Le job n'est pas un check requis (`.github/rulesets/`, `CHECKS_REQUIS` de
+`client/scripts/mise-a-jour-github.mjs`) : un refus rend la PR rouge, ce qui arrête la fusion automatique des sessions ; le rendre obligatoire suit le même
+chemin que `controle-des-migrations` (ajouter son nom aux deux fichiers de règles et à `CHECKS_REQUIS`, puis réappliquer les règles sur GitHub).
+
 ## Au quotidien
 
 ```bash

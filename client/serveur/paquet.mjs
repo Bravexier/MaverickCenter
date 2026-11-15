@@ -381,7 +381,8 @@ export function noteLivree(reference, lot) {
 /**
  * Reporte dans la base source `db` la note de version du paquet `chemin` (lot `lot`), ses lignes et l'historique qu'il a livré, d'une transaction : les
  * notes d'exemple retirées, les modifications livrées sorties du journal en attente (integrerLivrees : `integree`), le brouillon de ce lot vidé
- * (viderBrouillonLivre). Idempotent : une note déjà là (un redémarrage entre le report et l'état) n'est pas réécrite. Rend { version, deja, historique, integrees }.
+ * (viderBrouillonLivre). Idempotent : une note déjà là (un redémarrage entre le report et l'état) n'est pas réécrite. Refusé (Error, rien d'écrit) quand la base n'a pas
+ * un lot que le paquet a versé dans l'historique, ni dans son journal ni dans sa trace : une base restaurée plus ancienne que le paquet. Rend { version, deja, historique, integrees }.
  */
 export function reporterPaquet(db, chemin, { lot }) {
   const paquet = new DatabaseSync(chemin, { readOnly: true });
@@ -402,6 +403,14 @@ export function reporterPaquet(db, chemin, { lot }) {
   try {
     const deja = Boolean(db.prepare('SELECT 1 FROM note_version WHERE lot = ? AND exemple = 0').get(lot));
     if (!deja) {
+      // la base porte-t-elle le contenu du paquet ? Chaque lot qu'il a versé dans l'historique venait du journal de cette base (fabriquerPaquet) : une base
+      // qui n'a ni ce lot dans son journal ni sa trace est plus ancienne que le paquet (une restauration). Reporter la note y dirait livré un contenu absent.
+      const connu = db.prepare('SELECT EXISTS (SELECT 1 FROM modification_lot WHERE id = ?) OR EXISTS (SELECT 1 FROM historique_modification WHERE lot_id = ?) AS ok');
+      const manquants = [...new Set(historique.map((h) => h.lot_id))].filter((id) => !connu.get(id, id).ok);
+      if (manquants.length) {
+        throw new Error(`la base n’a pas ${manquants.length} lot(s) de modifications que le paquet a livrés : elle est plus ancienne que lui (une restauration ?) ; rien n’est reporté. `
+          + 'Son contenu est à refaire sur le site de dev, sa note dit quoi (docs/serveur.md, « Restauration de la base du site de dev »)');
+      }
       const autre = db.prepare('SELECT lot FROM note_version WHERE version = ? AND exemple = 0').get(note.version);
       if (autre) throw new Error(`la V${note.version} a déjà une note de version d’un autre lot (${autre.lot ?? 'inconnu'}) dans la base`);
       for (const { version } of db.prepare('SELECT version FROM note_version WHERE exemple = 1').all()) {

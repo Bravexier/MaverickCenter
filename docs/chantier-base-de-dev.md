@@ -30,7 +30,7 @@ Tenu à jour par la PR de chaque lot (état : à faire, en cours, fait ; puis le
 | 5 | Extrait du contenu pour les sessions de Claude, attestation de la production | M | fait (extrait, attestation, alerte de l'onglet : #360 ; base refaite selon l'empreinte du contenu, archive au nom de sa version : #361) | #360, #361 |
 | 6 | Lots de changements, annulation d'un lot, nature de chaque trace | L | fait (nature de chaque trace et format du lot, #364 ; service — dépôt, essai à blanc, application, numéros, verrous, #365 ; annulation d'un lot, « tout recalculer » (races, classes, dons, métiers ; les autres pages restent à couvrir), état d'origine par nature, numéros de l'édition, #366 ; onglet Mise à jour, #367 ; épreuve d'entrée 0122 à 0124 refaites en lots sur une copie, même base retrouvée sauf la page protégée « La montée de niveau » ; ce qui touche des tables hors édition attend le lot 8, dont la suppression des deux pages retirées par 0122 et 0124 (citées par une constante de règle) ; l'annulation des fusions 0123 et 0124 est refusée par les gardes du service, #368) | #364, #365, #366, #367, #368 |
 | 7 | Changements de structure appliqués sur place, d'abord à blanc | L | fait (table `migration_recue`, migration 0129 ; application sur place, essai sur une copie et bilan par le service, #369 ; règles des migrations contrôlées par la CI, bilan dans le résumé du job, #370 ; essai de la structure livrée par le service en place avant chaque installation, sur une copie, non bloquant avant le lot 8 (marqueur `db/source`), #371 ; essai dans l'ombre à chaque installation du site de dev, base migrée sur place comparée à la base refaite, écarts classés — « livré par le dépôt » attendu tant que les migrations de données existent —, rapports sur la page Debug, #372) | #369, #370, #371, #372 |
-| 8 | Bascule 1 : la base du site de dev fait foi | L | en cours : code préparé, éteint (rien ne pose le marqueur) ; la bascule se fait le jour choisi avec le propriétaire (« Le jour J de la bascule 1 », plus bas) | PR `feature/bascule-1-base-de-dev-source` |
+| 8 | Bascule 1 : la base du site de dev fait foi | L | code prêt, **éteint** (rien ne pose le marqueur) : marqueur `db/source`, lots ouverts à toutes les tables, installateur, `bascule.sh`, R279, #378 ; paquet de mise à jour, « Copier vers le dépôt », report après la production, #379 ; répétition de la mise à jour de la production, restauration, contrôle du contenu écrit à la main (interrupteur éteint), procédure du jour J, PR C. **Bascule : le jour choisi avec le propriétaire** (section 14) | #378, #379, PR C |
 | 9 | Fabrication témoin sur le serveur : la mesure | L | fait, mesure en attente du geste du propriétaire (fabrication depuis un fichier de contenu, #373 ; kit de l'atelier joint à l'installateur de test, #374 ; atelier du site de dev — extrait, conteneur, rapports, page Debug —, #376 ; la journée type — minuteurs de nuit et du jour, sonde des temps de réponse, bilan de la journée —, #377) | #373, #374, #376, #377 |
 | 10 | Des contrôles qui ne lisent plus le contenu du dépôt | XL | en cours (premier temps : essai mécanique sur un contenu fourni, tri des 444 fichiers, `docs/essai-mecanique-des-tests.md`, #375) | #375 |
 | 11 | Bascule 2 : mise à jour directe, pages fabriquées sur le serveur | XL | à faire | |
@@ -485,3 +485,120 @@ Relu dans le code le 2026-11-14, sur la branche `dev` (version 0.4.72) :
 - le journal des modifications en attente se télécharge sans identification (`GET /api/edition/journal/` du site de dev) : 125 lots et 254 modifications le 2026-11-14 à 18 h UTC, du 2026-11-13 au 2026-11-14, dont 17 mots-clés créés (Estoc, Taille et Frappe compris).
 
 Non vérifiable depuis une session : l'état réel du serveur et de la base du site de dev, la taille du serveur, la durée d'une fabrication.
+
+## 14. Le jour J de la bascule 1
+
+Préparé par le lot 8 (#378, #379, PR C). **Rien n'est allumé** tant que les gestes ci-dessous n'ont pas été faits. Le jour est choisi avec le propriétaire. L'atelier (`atelier/installer.sh`) ne fait pas partie de la bascule.
+
+### Vos gestes (root, sur le serveur)
+
+Chaque commande se copie telle quelle. On ne passe à la suivante que si la précédente affiche ce qui est indiqué. Sinon, on s'arrête et on transmet sa sortie à une session.
+
+**La veille ou le matin même : les préalables**
+
+1. Vérifier que le site de dev a installé le code du lot 8 : `sudo bash /srv/maverick-center-test/bascule.sh etat`. Il doit afficher « marqueur : absent » et « service du site de dev : en marche ». Si le fichier est introuvable (« No such file or directory »), la version n'est pas encore installée : attendre 5 minutes.
+2. Faire une restauration réussie depuis la copie hors serveur (garde-fou 1, exigée avant la bascule) : `sudo bash /srv/maverick-center-test/sauvegarde/essai.sh && echo "Essai réussi."`. Il doit afficher les deux lignes « sauvegarde: prod : copie extérieure restaurée et contrôlée » et « sauvegarde: dev : copie extérieure restaurée et contrôlée », puis « Essai réussi. ». **Ce sont les deux lignes « copie extérieure restaurée et contrôlée » qui prouvent la restauration** : si l'une manque, ou si la sortie dit « envoi extérieur non activé », on s'arrête, même si « Essai réussi. » s'affiche.
+3. Répéter la mise à jour de la production sur une copie, sans toucher la vraie : `sudo bash /srv/maverick-center-test/repetition-prod.sh`. Code 0, et la dernière ligne doit commencer par `repetition : == la production PASSERA`. Lire les lignes `adaptées (…)` : ce sont les fiches que la mise à jour adaptera, avec une note datée. « GARDERAIT SA BASE » : on s'arrête.
+4. Sur la page Mise à jour du site de dev : « Aucun lot en conflit à résoudre. ».
+
+**La dernière mise à jour par l'ancien circuit**
+
+5. Sur la page Mise à jour du site de dev : « Effectuer la mise à jour », puis taper `METTRE A JOUR`. Cette mise à jour livre à la production les modifications des règles en attente (1643 au dernier relevé) **et** le code des lots 1 à 9 (v0.4 → v0.5.0).
+6. Attendre que la page dise la mise à jour terminée, et que la production soit à jour : alerte de l'onglet levée, plus aucune modification en attente. Compter jusqu'à une heure (run GitHub, puis le cron toutes les 5 min). **À partir d'ici et jusqu'à l'étape 12, plus aucune saisie sur le site de dev** : sinon le constat de l'étape 10 ne sera pas « EGALITE ».
+7. Regarder `/srv/maverick-center/installation.log`. S'il dit « docker-compose.yml mis à jour par cette livraison » : `cd /srv/maverick-center && docker compose up -d`. Le conteneur `serveur` doit être « Recreated » puis « Started ». S'il dit plutôt « docker-compose.yml a été modifié sur place » : on s'arrête et on transmet ces lignes à une session, qui dira quoi faire du fichier `.nouveau`.
+8. Seulement si la répétition (étape 3) annonçait des chutes, après la première copie horaire : `sudo bash /srv/maverick-center-test/sauvegarde/copie.sh accepter prod`. Il doit afficher `sauvegarde: prod : la copie mise de côté … devient la référence`.
+
+**La bascule (une demi-heure, écritures gelées)**
+
+9. `sudo bash /srv/maverick-center-test/bascule.sh geler` : arrête le service du site de dev. Le site reste lisible, l'édition est coupée.
+10. `sudo bash /srv/maverick-center-test/bascule.sh constat`. Il doit afficher `EGALITE` : production, base du site de dev et dépôt sont égaux, table par table. Sinon, il nomme les tables qui diffèrent : on fait `… bascule.sh degeler` et on s'arrête.
+11. `sudo bash /srv/maverick-center-test/bascule.sh sauvegarder` : une copie nommée `bascule-1-<date>` des deux bases, sur le serveur et hors du serveur. Elle doit finir sans erreur.
+12. `sudo bash /srv/maverick-center-test/bascule.sh poser` : pose le marqueur et relance le service. Il doit afficher « /api/etat dit « source: true » ».
+13. `sudo bash /srv/maverick-center-test/bascule.sh etat` : « marqueur : POSÉ » et « service du site de dev : en marche ».
+
+C'est tout pour le serveur.
+
+### Vos deux décisions sur GitHub (irréversibles, à faire par vous ou par une session qui en a le droit)
+
+- **Rendre obligatoires** `controle-des-migrations` et `controle-du-contenu-ecrit` (questions du lot 7, ci-dessous). La PR du jour J ajoute les deux checks à `.github/rulesets/dev.json` et `master.json` (et à `CHECKS_REQUIS` de `client/scripts/mise-a-jour-github.mjs`). GitHub ne lit pas ces fichiers : il faut ensuite, depuis une copie à jour du dépôt, `gh api -X PUT repos/Bravexier/MaverickCenter/rulesets/24749972 --input .github/rulesets/dev.json` puis `gh api -X PUT repos/Bravexier/MaverickCenter/rulesets/24749999 --input .github/rulesets/master.json`. Ou bien réimporter ces deux fichiers dans les réglages du dépôt (Rules › Rulesets).
+- **Retirer les anciens installateurs de test** (garde-fou 7). Il y a 281 pré-publications de test, environ 7,2 Go. Jusqu'à V0.4.73, elles recopient la base de la production dans celle du site de dev ; de V0.4.74 à V0.4.98, elles ignorent le marqueur. Recommandation : retirer celles d'avant V0.4.99, soit 279. Les étiquettes git restent. Commandes (REST) : `R=repos/Bravexier/MaverickCenter; G=V0.4.99; for p in 1 2 3 4; do gh api "$R/releases?per_page=100&page=$p" --jq '.[]|select(.prerelease)|"\(.id) \(.tag_name)"'; done | while read -r id tag; do [ "$tag" != "$G" ] && [ "$(printf '%s\n%s\n' "$tag" "$G" | sort -V | head -n1)" = "$tag" ] && echo "$id $tag"; done > /tmp/a-retirer.txt; wc -l < /tmp/a-retirer.txt`. Ce compte doit afficher 279. Puis : `while read -r id tag; do gh api -X DELETE "$R/releases/$id" >/dev/null && echo "retirée $tag"; done < /tmp/a-retirer.txt`.
+
+### Ce que fait l'équipe le même jour (une PR vers dev, sitôt le marqueur posé)
+
+- `tools/flux-git/bascule-1.json` passe à `"actif": true`. Une PR vers `dev` ne peut plus changer `data/rows/` à la main, ni ajouter une migration de données. Seuls les commits du workflow (« Lot : », « Copie : ») et l'export des tables qu'une migration de structure nomme passent. Un correctif urgent ne porte plus ni contenu ni structure.
+- `CLAUDE.md`, réécrit par la session principale (liste ci-dessous), et les skills, par `tech-skills` (liste ci-dessous).
+- Décisions consignées : la date de la bascule, et vos réponses aux questions de la section « Questions ouvertes du lot 8 ».
+- Le tableau de suivi : lot 8 « fait ».
+
+### Ce que change la mise à jour v0.4 → v0.5 pour la production (relevé de la PR C)
+
+- Le `mise-a-jour.sh` v0.4 lance l'installateur v0.5. La production n'a pas de marqueur, donc aucun refus. L'essai de structure attend 20 s sans réponse du service v0.4, puis l'installation continue.
+- Sont remplacés : `site/`, `README.md`, `mise-a-jour.sh`, `VERSION`. Arrivent : `sauvegarde/` et `acces/`. `acces.sh` refuse la production.
+- `docker-compose.yml` : une variable et un montage en lecture seule de plus. Il est remplacé s'il n'a pas été touché sur place, sinon livré en `.nouveau` (étape 7).
+- Le service redémarre en v0.5 et **refait la base** (schéma 81 → 129) : fiches converties, retraits R42 et R165 notés dans chaque fiche concernée, ancienne base archivée dans `db/archives/`. Puis il écrit sa première attestation.
+- La maintenance s'affiche pendant la mise à jour, 4 h au plus. Les sauvegardes de nuit sont étiquetées `version,V0.5`.
+- Risques :
+  - une préparation refusée : la production garde son ancienne base, et l'onglet du site de dev le dit (« pas appliquée ») ; la répétition (étape 3) est là pour le voir avant ;
+  - des alertes « chute anormale » des sauvegardes (étape 8) ;
+  - un disque trop juste (environ deux fois la base, plus l'archive) ;
+  - quelques secondes d'erreur 502.
+
+### Retour arrière
+
+- **Avant l'étape 12** : `sudo bash /srv/maverick-center-test/bascule.sh degeler`. Rien n'a changé.
+- **Après l'étape 12** :
+  1. Sur la page Mise à jour du site de dev, « Copier vers le dépôt » (mot `COPIER VERS LE DEPOT`), et attendre que l'encart dise la copie terminée. Le dépôt reçoit alors tout ce qui a été saisi depuis, y compris dans les tables que l'ancien circuit ne savait pas écrire. **Puis attendre que le site de dev ait installé la version qui porte cette copie** : une demi-heure (commit de version, publication, cron toutes les 5 min). Sans cette attente, la base serait refaite depuis les règles d'avant la copie.
+  2. `sudo bash /srv/maverick-center-test/bascule.sh retirer` : le marqueur est renommé (rien n'est effacé), le service est relancé et refait sa base depuis les règles, comme avant.
+  3. L'équipe remet `tools/flux-git/bascule-1.json` à `false` et `CLAUDE.md` comme avant.
+
+  Limite : après un changement de structure appliqué sur place, on ne revient pas au code d'avant sans perdre les saisies faites depuis (section 10, point 2).
+- **Base du site de dev perdue ou abîmée** (restauration en trois temps) :
+  1. Remettre la copie : `sudo bash /srv/maverick-center-test/bascule.sh copies` pour voir les copies, puis `sudo bash /srv/maverick-center-test/bascule.sh restaurer --copie derniere` (ou `restaurer --exterieure latest` si le serveur a perdu ses copies locales). Il doit afficher `le service répond (source=true)`. La base en place est d'abord mise de côté dans `/srv/maverick-center-test/var/avant-restauration-<date>/`, jamais effacée.
+  2. Remonter la copie au dernier paquet livré : le service applique seul les changements de structure au démarrage. `restaurer` ne remplace que la base (`vivante.db`, `vivante.json`) : les paquets de `db/mise-a-jour/` restent en place, et le service reporte seul la note et l'historique d'un paquet livré. Si la copie est plus ancienne que le contenu de ce paquet, il **refuse** ce report, n'écrit rien et le dit (`erreur_report` sur la page Mise à jour) : il faut alors une session, car le contenu livré manque à la base restaurée.
+  3. Les lots écrits depuis la copie : **rien ne les rejoue** aujourd'hui. Ils restent lisibles dans la base mise de côté. Perte au pire : une heure de saisie avec une copie locale, une journée avec la copie extérieure.
+
+### `CLAUDE.md` le jour J (appliqué par la session principale)
+
+- « La base est la source » devient : la **base du site de dev** fait foi (R274). `data/rows` est une copie écrite par le workflow (« Lot : », « Copie : »), jamais à la main, ni par une migration de données, ni par `db:sync-pages` ou `db:appliquer-edition`. Un changement de contenu se **propose** comme lot de changements sur le site de dev (clé de lecture, `POST /api/edition/lots/`) ; il est appliqué par le clic du propriétaire (R275 (4)).
+- « Le site de dev est la source de ce qu'il modifie » : étendu à tout le contenu ; la valeur d'import se lit toujours dans `historique_modification`.
+- Les analyses de règles et de lore lisent l'**extrait du jour** du site de dev (lot 5, clé de lecture), plus `var/maverick.db` bâti depuis `data/rows`, qui n'est qu'une copie datée.
+- Une migration ne porte plus que de la **structure**, sans texte de règle (règles du lot 7). Le service l'applique sur place au démarrage.
+- Circuit direct : « ni donnée de `data/` » devient « aucun contenu : un lot de changements » ; le rapatriement disparaît des procédures citées.
+- Git : un `hotfix/*` ne porte ni contenu ni structure ; une PR ne touche pas `data/rows/` (contrôle `controle-du-contenu-ecrit`).
+- Tests : la CI lit toujours `data/rows`, tenu à jour par « Copier vers le dépôt » et chaque mise à jour (R278 : le lot 10 les fera lire le contenu du site de dev).
+
+### Les skills le jour J (par `tech-skills`, en un appel)
+
+- skill `rapatrier-l-edition` — **retiré** (ou réduit à « ne plus rapatrier ») — plus de rapatriement : le site de dev est la source — tout le skill.
+- skill `modifier-une-page-wiki` — le texte d'une page change par un lot de changements sur le site de dev, plus par `db:sync-pages` vers `data/rows` — la procédure.
+- skills `ecrire-une-migration`, `base-sqlite-migrations` — structure seule, aucune migration de données, appliquée sur place par le service, export de `data/rows` limité aux tables nommées — les règles.
+- skill `base-sqlite` — `data/rows` est une copie écrite par une machine ; `db:sync-pages` et `db:appliquer-edition` ne s'emploient plus pour changer le contenu — invariants.
+- skill `interroger-la-base` — l'extrait du jour du site de dev d'abord ; `var/maverick.db` est une copie datée — la source à lire.
+- skill `zone-mise-a-jour` (et `zone-mise-a-jour-conflits`) — circuit par paquet actif, « Copier vers le dépôt » ; plus de lots en conflit ni de rejeu sur le site de dev — invariants.
+- skills `zone-edition-rejeu`, `zone-service` — base du site de dev jamais refaite ; le rejeu ne sert plus qu'à la production et aux tests — invariants.
+- skill `zone-edition-lots` — le lot de changements est **la** voie de l'équipe pour changer le contenu ; ouvert à toutes les tables — usage.
+- skill `zone-hebergement` — marqueur posé sur le site de dev ; restauration en trois temps ; anciens installateurs retirés — invariants.
+- skills `tests-conventions`, `choisir-les-tests` — `data/rows` n'est plus écrit par une PR : un test qui en a besoin attend la copie du jour — conventions.
+- skill `sources-rapprochement` — un écart d'un classeur s'applique par un lot sur le site de dev (R83 reste, question 8) — la procédure.
+- skills `circuit-des-demandes`, `consigner-une-decision` — l'application d'une décision de contenu passe par un lot de changements, appliqué par le propriétaire — le circuit.
+- skills `publier-une-branche`, `corriger-une-pr`, `resoudre-un-conflit` — une PR ne porte plus `data/rows/` ; un conflit de données ne se résout plus dans git — les cas.
+
+### Les reports des lots 6 et 7, avec nos recommandations
+
+- **`LOT_OUVERT_AUX_TABLES_HORS_EDITION`** : réglé par le marqueur. Sur une base source, le service ouvre les lots à toutes les tables. La constante du module pur reste `false` : elle ne vaut que pour les tests et l'épreuve. Rien à décider.
+- **Annulation des fusions de pages (0123, 0124)** : le service la refuse (ancres figées de « Alignement », ancienne adresse R272). Recommandation : garder ce refus. Une fusion se défait par un lot inverse préparé par l'équipe, ou par une restauration, pas par un code d'annulation de plus. À rouvrir seulement si vous en avez besoin.
+- **Étendre « Tout recalculer »** aux pages des magies, armes, armures, composants et potions. Recommandation : un petit lot technique après la bascule, avant le premier changement de code qui modifie le rendu de ces pages. Sans lui, un tel changement ne refait ces pages qu'à leur prochaine modification.
+- **Lot 7, bloquer l'installation quand l'essai de migration échoue ?** C'est déjà bloquant sur le site de dev une fois le marqueur posé (`installateur.sh`, `db/source`). La production continue, car sa base est refaite depuis les règles. Recommandation : ne rien changer avant la bascule 2.
+- **Lot 7, rendre `controle-des-migrations` obligatoire ?** Recommandation : oui, avec `controle-du-contenu-ecrit`, le jour J (vos décisions sur GitHub, plus haut).
+
+### Questions ouvertes du lot 8 (à vous, avec nos recommandations)
+
+1. Question 9 : sans réponse, la recommandation est appliquée. Une mise à jour est **refusée avant l'envoi** si elle retire un élément cité par des fiches de la production ; elle donne le nombre de fiches. Les dons, sorts, spécialités, métiers et armes restent retirés avec une note (R42). À confirmer.
+2. Le mot à taper pour « Copier vers le dépôt » : `COPIER VERS LE DEPOT`. À valider.
+3. Les copies nommées (`bascule-1-<date>`) sont gardées sans limite, sur le serveur et à l'extérieur, en plus des 30 jours, des copies mensuelles et de celle de chaque version. Recommandation : oui.
+4. Le gel de la bascule 1 est l'arrêt du service du site de dev, une demi-heure. Le vrai gel des écritures est prévu pour la bascule 2 (garde-fou 16). Recommandation : oui.
+5. Une copie terminée reste affichée dans l'encart de la page Mise à jour jusqu'au lancement suivant. Recommandation : la garder.
+6. Les phrases d'état de la copie et du report, sur la page Mise à jour, ont été écrites par l'équipe : à relire.
+7. Le paquet se télécharge sans clé, comme le lot figé (lot 4) : adresse aléatoire, aucune fiche, et le dépôt public porte déjà le contenu à l'étape 1. Recommandation : le garder ainsi.
+8. Retirer les installateurs de test d'avant V0.4.99 (recommandé), ou tous sauf celui installé le jour J ?
+9. Rendre `controle-des-migrations` et `controle-du-contenu-ecrit` obligatoires le jour J ? Recommandation : oui.

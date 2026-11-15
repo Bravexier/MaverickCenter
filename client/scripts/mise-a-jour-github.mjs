@@ -161,7 +161,7 @@ export const CODES_PAQUET = {
 };
 /** Heure des noms de branche et date de la note : celle du propriétaire. */
 const FUSEAU = 'Europe/Paris';
-const BOT = { nom: 'github-actions[bot]', courriel: '41898282+github-actions[bot]@users.noreply.github.com' };
+export const BOT = { nom: 'github-actions[bot]', courriel: '41898282+github-actions[bot]@users.noreply.github.com' };
 /** Préfixe des commandes git du job livrer qui pourraient lancer un hook (push, cherry-pick) et du commit de preparer. */
 const SANS_HOOKS = ['-c', 'core.hooksPath=/dev/null'];
 const IDENTITE_DU_BOT = ['-c', `user.name=${BOT.nom}`, '-c', `user.email=${BOT.courriel}`];
@@ -169,7 +169,7 @@ const IDENTITE_DU_BOT = ['-c', `user.name=${BOT.nom}`, '-c', `user.email=${BOT.c
 const SANS_AVIS = new Set(['skipped', 'neutral']);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const SHA = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
-const BRANCHE_DU_WORKFLOW = /^feature\/mise-a-jour-regles-[0-9]{8}-[0-9]{4}(?:-[0-9]+)?$/;
+export const BRANCHE_DU_WORKFLOW = /^feature\/mise-a-jour-regles-[0-9]{8}-[0-9]{4}(?:-[0-9]+)?$/;
 const FICHIER_DE_DATA_ROWS = /^data\/rows\/[A-Za-z0-9_]+\.sql$/;
 
 class ErreurMiseAJourGithub extends Error {
@@ -686,15 +686,20 @@ export function verifierContrePaquet(g, { commit, paquet, temp = null }) {
     if (r.status !== 0) {
       throw echec('paquet', `le paquet ne se réexporte pas (tools/db/exporter.py : ${String(r.stderr || r.stdout || r.error?.message || '').trim().slice(0, 300)}) : rien n'est poussé.`);
     }
-    const fichiers = g(['ls-tree', '-r', '--name-only', '-z', commit, '--', 'data/rows/']).sortie.split('\0').filter((f) => FICHIER_DE_DATA_ROWS.test(f));
+    // chaque fichier du commit avec l'empreinte git de ses octets (« <mode> blob <objet>\t<chemin> ») : la comparaison porte sur les OCTETS, jamais sur un
+    // texte décodé (deux octets invalides en UTF-8 donneraient le même caractère de remplacement et passeraient pour égaux)
+    const objets = new Map(g(['ls-tree', '-r', '-z', commit, '--', 'data/rows/']).sortie.split('\0').map((l) => /^\d+ blob ([0-9a-f]+)\t(.+)$/.exec(l))
+      .filter((m) => m && FICHIER_DE_DATA_ROWS.test(m[2])).map((m) => [m[2], m[1]]));
+    const fichiers = [...objets.keys()];
     // les deux ensembles doivent être égaux : un fichier que le paquet donne et que le commit retire (ou l'inverse) est un écart, comme un contenu différent
     const exportes = readdirSync(dossier).filter((f) => f.endsWith('.sql')).map((f) => `data/rows/${f}`);
     const dansLeCommit = new Set(fichiers);
+    // l'empreinte git des octets exportés, d'un seul appel, sans filtre (ni fin de ligne ni .gitattributes) : celle qu'aurait le fichier écrit tel quel
+    const communs = fichiers.filter((f) => existsSync(join(dossier, f.slice('data/rows/'.length))));
+    const empreintes = communs.length ? g(['hash-object', '--no-filters', '--', ...communs.map((f) => join(dossier, f.slice('data/rows/'.length)))]).sortie.trim().split('\n') : [];
+    const exporte = new Map(communs.map((f, i) => [f, empreintes[i]]));
     const ecarts = [
-      ...fichiers.filter((f) => {
-        const exporte = join(dossier, f.slice('data/rows/'.length));
-        return !existsSync(exporte) || readFileSync(exporte, 'utf8') !== g(['show', `${commit}:${f}`]).sortie;
-      }),
+      ...fichiers.filter((f) => exporte.get(f) !== objets.get(f)),
       ...exportes.filter((f) => !dansLeCommit.has(f)).map((f) => `${f} (absent du commit)`),
     ].sort();
     if (ecarts.length) {

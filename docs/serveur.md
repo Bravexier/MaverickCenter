@@ -236,7 +236,49 @@ Lot 8 du chantier (« Bascule 1 : la base du site de dev fait foi » ; garde-fou
   par table de contenu l'attestation de la production, la base vivante du site de dev et son fichier des règles ; hors compte : tables propres au site et calculées, pages d'exemple ; il ne sort
   que des noms de tables et des comptes ; `EGALITE` ou la liste, code 0 ou 1), `sauvegarder` (copie `nuit` par `copie.sh`, gardée sous `<sauvegardes>/<instance>/nommees/bascule-1-<date>`,
   envoyée par `envoi.sh` avec l'étiquette `nommees,bascule-1-<date>`, gardée sans limite), `poser` (refusé sans constat `EGALITE` de moins d'une heure fait pendant ce gel ni sauvegarde
-  nommée réussie depuis ; relance le service et lit `/api/etat` dans le conteneur), `retirer` (le marqueur est renommé `db/source-retire-<date>`, rien n'est effacé ; service relancé), `etat`.
+  nommée réussie depuis ; relance le service et lit `/api/etat` dans le conteneur), `retirer` (le marqueur est renommé `db/source-retire-<date>`, rien n'est effacé ; service relancé), `etat`,
+  `copies` et `restaurer` (plus bas).
+
+#### Restauration de la base du site de dev
+
+Code : `deploy/installateur/bascule.sh` (`copies`, `restaurer`) ; test : `bascule`. Les copies sont celles des sauvegardes automatiques (« Sauvegardes automatiques ») ; restic n'est appelé que
+pour une copie extérieure, avec les accès de l'envoi (`/etc/maverick-sauvegardes`, jamais en argument). Trois temps :
+
+1. **Remettre la copie** : `restaurer --copie <type>/<nom>|derniere` (locale) ou `--exterieure <id>|latest` (restic, étiquette `inst-dev`, rendue dans `<sauvegardes>/.restauration.*`, effacé
+   ensuite ; refusée, avant toute écriture, si ce n'est pas une copie du site de dev : chemin `…/dev/<type>/<nom>` et `INSTANCE=dev` dans son `copie.meta`). Sous le verrou des sauvegardes (aucune copie pendant ce temps). La copie est contrôlée avant tout geste (`PRAGMA integrity_check`, et chaque table de `vivante.db` compte les
+   lignes notées dans son `comptes.tsv`) ; refusée, rien n'est touché. Puis `GELER` (s'il manque), service arrêté, `vivante.db` (et ses `-journal`, `-wal`, `-shm`) et `vivante.json` renommés dans
+   `<dev>/var/avant-restauration-<date>/` (même disque, rien n'est effacé), la copie posée d'un coup (fichier provisoire, puis renommé), le service relancé, `GELER` retiré s'il l'a posé, et
+   `/api/etat` lu dans le conteneur. `db/source` n'est pas touché : avec lui, le service essaie puis applique sur place les migrations livrées que la copie n'a pas (« Base source (lot 8) ») ;
+   s'il les refuse, il ne démarre pas, la base d'avant reste dans `var/`.
+2. **La remonter au dernier paquet livré.** Le report se refait seul : `serveur/paquet.mjs#actualiser` (à chaque `GET /api/mise-a-jour/`, et par la minuterie tant que le dernier lancement a
+   moins de 4 h) reporte la note de tout paquet de `db/mise-a-jour/` dont la base n'a pas la note et que la production publie (`noteLivree`). Conditions : le fichier du paquet est encore là
+   (les 3 plus récents sont gardés, et tout paquet de mise à jour non reporté dans la base où se fait la purge) ; la production publie la note de ce lot. **Limite** : le report n'apporte que
+   la note, l'historique et l'état `integree` des modifications ; il ne remet pas le contenu. Un paquet figé **après** la copie a livré à la production un contenu que la base restaurée n'a
+   pas : `restaurer` le signale (« ATTENTION le paquet … a été figé après cette copie », d'après la date du fichier), et `reporterPaquet` **refuse** alors le report (rien n'est écrit ;
+   « ERREUR mise à jour : report de la note… » au journal et `erreur_report` dans le lancement, retenté à chaque suivi) : un lot que le paquet a versé dans l'historique n'est ni dans
+   le journal (`modification_lot`) ni dans l'historique de la base. Critère sûr (chaque lot versé venait du journal de la base source) et d'une requête par lot ; des empreintes de
+   tables ne conviendraient pas, la base ayant pu changer depuis le paquet. Le contenu du paquet est alors à refaire sur le site de dev, sa note disant quoi.
+3. **Rejouer les lots écrits depuis** : rien ne le fait. Les modifications et lots de changements écrits après la copie ne sont que dans la base gardée à part (`var/avant-restauration-*`),
+   si elle se lit encore ; la copie horaire (prise chaque heure où la base a changé) borne la perte à une heure d'écritures, la copie extérieure de nuit à une journée. Les numéros donnés
+   depuis la copie (`numero_donne`) peuvent être redonnés par la base restaurée.
+
+#### Répétition de la mise à jour de la production
+
+Code : `deploy/installateur/repetition-prod.sh` (posé par l'installateur de test à la racine de l'instance, comme `bascule.sh`), `scripts/repetition-prod.mjs` (livré dans `_serveur/scripts/`) ;
+test : `repetition-prod`. Avant la dernière mise à jour par l'ancien circuit (lot 8), il joue sur une **copie** ce que le service de la production fera de sa base en recevant le contenu du
+site de dev, autant de fois qu'on veut, sans jamais toucher à la production.
+
+- **La copie** : la base vivante de la production lue en lecture seule (`sqlite3 .backup`, comme `copie.sh`) ou, avec `--depuis-la-sauvegarde`, sa dernière copie locale ; avec sa `vivante.json`.
+  Dossier de travail `<dev>/var/repetition-prod.*` (700), refusé sans la place de 4 fois la base de la production plus celle du site de dev plus 64 Mio ; effacé à la fin (`--garder` le garde).
+- **Dans un conteneur du code du site de dev** (`docker compose run --rm --no-deps -T` du service `serveur` de son instance, dossier de travail monté sur `/repetition`) : le contenu à venir est
+  l'extrait de la base du site de dev (`serveur/extrait.mjs#fabriquerExtrait` : tables de contenu, modifications en attente versées dans l'historique) ; puis `preparerBaseVivante` en mode
+  production (sans essai dans l'ombre) sur la copie. Écarts avec le vrai fichier des règles : les tables calculées (liens, recherche) sont celles de la base du site de dev, et la vue
+  `extrait_meta` s'y ajoute ; aucun n'entre dans le contrôle des fiches.
+- **Rapport, des comptes seulement** (une valeur citée par un problème est masquée : `« … »`) : `PASSERA` (code 0) ou `REFUSEE` (code 1 : la production garderait sa base, son nouveau service
+  tournerait sur elle ; les problèmes par table et colonne, avec leur nombre de lignes) ; schémas avant et après ; fiches avant et après ; lignes des tables de fiches qui changent ; fiches
+  adaptées par nature (`ORDRE_DES_NATURES` : fiches et éléments, d'après l'évènement `retraits_fiches` de `preparerBaseVivante`, qui porte `natures`) ; contrôle de la base refaite (intégrité,
+  clés rompues des fiches et du contenu) ; taille de l'archive ; tables en « chute anormale » pour la copie horaire suivante (seuils `CHUTE_POURCENT` et `CHUTE_MIN_LIGNES` des sauvegardes :
+  la copie sera mise de côté jusqu'à `copie.sh accepter prod`) ; durées et place. Code 2 : répétition impossible.
 
 #### Essai avant installation
 

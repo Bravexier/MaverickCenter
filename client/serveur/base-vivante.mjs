@@ -533,9 +533,18 @@ function transferer(db, ancienne, instant, evenement = null, poidsPortable = und
         // pour toutes les fiches, lib/poids-portable-db.mjs) sont retirées, à chaque reconstruction (idempotent)
         const portable = poidsPortable === undefined ? poidsPortableDeLaBase(db) : poidsPortable;
         retirerLesArmuresHorsRegle(db, retraits, { poidsPortable: portable });
+        // par nature (ORDRE_DES_NATURES) : les fiches touchées et les éléments retirés, des comptes seulement (la répétition de la mise à jour de la production les dit)
+        const natures = {};
+        for (const { retraits: liste } of retraits.values()) {
+          for (const nature of new Set(liste.map((d) => d.nature))) {
+            natures[nature] ??= { fiches: 0, elements: 0 };
+            natures[nature].fiches += 1;
+            natures[nature].elements += liste.filter((d) => d.nature === nature).length;
+          }
+        }
         fiches = noterLesRetraits(db, retraits, instant);
         // un compte, jamais les noms des fiches
-        evenement?.('retraits_fiches', { duree_ms: performance.now() - t0, detail: { fiches: fiches.length } });
+        evenement?.('retraits_fiches', { duree_ms: performance.now() - t0, detail: { fiches: fiches.length, natures } });
       }
       if (!problemes.length) {
         for (const t of TABLES_VIVANTES) {

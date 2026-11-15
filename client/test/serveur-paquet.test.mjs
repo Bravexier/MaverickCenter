@@ -251,6 +251,29 @@ test('« Effectuer la mise à jour » avec le marqueur : un paquet figé, servi 
   assert.equal(reporterPaquet(db, fichierPaquet(dossier, l.lot), { lot: l.lot }).deja, true);
   assert.deepEqual(etatDeLaSource(), apres);
 
+  // une base restaurée plus ancienne que le paquet (sans le lot du site, ni dans le journal ni dans l'historique) : le report est refusé, rien n'est écrit ;
+  // le suivi le dit au journal et dans erreur_report
+  const restauree = join(dossierTemporaire('restauree', { dans: racine }), 'vivante.db');
+  db.prepare('VACUUM INTO ?').run(restauree);
+  const vieille = ouvrirBaseVivante(restauree);
+  try {
+    for (const t of ['note_version_ligne', 'historique_modification', 'note_version']) vieille.prepare(`DELETE FROM ${t} WHERE version = ?`).run(g.corps.version_cible);
+    vieille.prepare('DELETE FROM modification WHERE lot_id = ?').run(LOT_DU_SITE);
+    vieille.prepare('DELETE FROM modification_lot WHERE id = ?').run(LOT_DU_SITE);
+    const empreinte = () => compter(vieille, 'SELECT count(*) AS n FROM note_version') + compter(vieille, 'SELECT count(*) AS n FROM historique_modification');
+    const avantRefus = empreinte();
+    assert.throws(() => reporterPaquet(vieille, fichierPaquet(dossier, l.lot), { lot: l.lot }), /plus ancienne que lui/);
+    assert.equal(empreinte(), avantRefus, 'rien n’est écrit');
+    const journal = [];
+    const suivi = actualiser(vieille, dossier, { reference: { disponible: true, chemin: baseDeProduction, source: 'production', raison: null }, journal: (m) => journal.push(m) });
+    assert.match(journal.join('\n'), /^ERREUR mise à jour : report de la note du lot .*plus ancienne que lui/m);
+    assert.match(lireLancement(dossier).erreur_report, /plus ancienne que lui/);
+    assert.ok(suivi);
+    assert.equal(compter(vieille, 'SELECT count(*) AS n FROM note_version WHERE lot = ?', l.lot), 0);
+  } finally {
+    vieille.close();
+  }
+
   // remise en état pour les tests suivants : la production d'avant, la modification de nouveau en attente, la note retirée
   publier(regles, VERSION);
   db.prepare('DELETE FROM note_version_ligne WHERE version = ?').run(g.corps.version_cible);
