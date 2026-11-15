@@ -68,7 +68,10 @@
 //   POST /api/mise-a-jour/liberer/      { lot } → annule ce lancement s'il n'est pas parti, a échoué avant dev, ou se lance à la main : le brouillon
 //                                       redevient modifiable, le lot n'est plus servi (et son run est annulé sur GitHub)
 //   GET  /api/mise-a-jour/lancement/    état du lancement (suivi du run GitHub)
-//   GET  /api/mise-a-jour/lots/<id>/    un lot figé, tel quel (le workflow le télécharge et vérifie son empreinte)
+//   POST /api/mise-a-jour/copier/       { confirmation } → base source seulement (lot 8) : « Copier vers le dépôt », un paquet sans note de version, le même
+//                                       workflow avec l'entrée `copie` (fusion dans dev seulement) → 202 { lancement, github } ; 409 hors base source
+//   GET  /api/mise-a-jour/lots/<id>/    un lot figé, tel quel (le workflow le télécharge et vérifie son empreinte) ; avec la base source, le paquet
+//                                       (SQLite, serveur/paquet.mjs)
 //   GET  /api/mise-a-jour/conflits/     les lots du journal en conflit à résoudre, chacun avec ses modifications saines et ses conflits (version 1 = le
 //                                       site de dev, version 2 = les règles livrées, choix permis) ; les lots résolus — serveur/edition-conflits.mjs
 //   POST /api/mise-a-jour/conflits/     { lot, empreinte, choix: { "<id>": { choix: 1 | 2 | 3, valeur? } } } → résout le lot : un nouveau lot du journal
@@ -129,9 +132,10 @@ import { chronologieVivante, donneesDEvenement, vocabulaireEtFeuille } from './e
 import { planVivant } from './edition-plan.mjs';
 import * as lots from './edition-lots.mjs';
 import {
-  actualiserLancement, CONFIRMATION, enregistrerBrouillon, enregistrerMajeure, ErreurNotes, estLiberable, figerLot, leverMaintenance, libererLot, lireLot,
+  CONFIRMATION, enregistrerBrouillon, enregistrerMajeure, ErreurNotes, estLiberable, figerLot, leverMaintenance, libererLot, lireLot,
   lignesALivrer, lireReference, noteEnPreparation, occupe,
 } from './notes-de-version.mjs';
+import { actualiser, CONFIRMATION_COPIE, figerPaquet } from './paquet.mjs';
 import { ErreurFiche, controlesDe, enregistrerFiche, lireFiche, listerFiches, niveauDe, portraitDeFiche, supprimerFiche } from './fiches.mjs';
 import { CHAMP_VERSION } from '../src/lib/fiche-format.mjs';
 import { instant } from './instant.mjs';
@@ -745,6 +749,44 @@ function traiterConflits(requete, service, db) {
   });
 }
 
+/**
+ * POST /api/mise-a-jour/lancer/ avec la base source, et POST /api/mise-a-jour/copier/ (lot 8 : serveur/paquet.mjs) : le paquet est fabriqué dans un fil à part,
+ * la réponse est une PROMESSE. 202 { lancement, github } ; 409 { erreur, refus? } (refus avant l'envoi : `refus.raison` = `attestation` ou `citations`,
+ * avec `elements`, `fiches` et `tables` [{ table, elements, fiches }]) ; « copier » sans la base source : 409.
+ */
+function figerUnPaquet(requete, service, db, { copie, valeur, versionDev, github, maintenant, t0 }) {
+  if (copie && !service.source?.()) return erreur(409, '« Copier vers le dépôt » n’existe qu’avec la base source (marqueur db/source).');
+  const mode = copie ? 'copie' : valeur?.simulation === true ? 'simulation' : 'mise-a-jour';
+  const note = copie ? null : noteEnPreparation(db, { reference: service.reference, versionDev });
+  if (!copie && valeur?.version_cible !== undefined && valeur.version_cible !== note.version_cible) {
+    return erreur(409, `La version en préparation est maintenant la V${note.version_cible} (la page montrait la V${valeur.version_cible}) : rechargez la page.`, { version_cible: note.version_cible });
+  }
+  const config = service.reference && typeof service.reference === 'object' ? service.reference : {};
+  return figerPaquet(db, service.dossier, {
+    mode, versionDev, versionCible: note?.version_cible ?? null, instant: maintenant, confirmation: valeur?.confirmation, adresse: adressePublique(service, requete.entetes ?? {}),
+    etat: github.configure ? 'envoi' : 'manuel', aLivrer: note ? lignesALivrer(note.lignes) : null, reference: lireReference(service.reference),
+    production: { attestations: service.attestations ?? null, production: config.production ?? null, propre: config.propre ?? null },
+    ...(service.limites ? { limites: service.limites } : {}), ...(service.paquetEnArrierePlan === false ? { enArrierePlan: false } : {}),
+  }).then((lancement) => {
+    const quoi = copie ? 'copie vers le dépôt' : lancement.simulation ? 'simulation de mise à jour' : 'mise à jour';
+    service.journal?.(`${quoi} : paquet ${lancement.lot} figé (${lancement.modifications} modification(s)${copie ? '' : `, V${lancement.version_cible}`}, ${lancement.octets} octets)`);
+    service.evenement?.('mise_a_jour', {
+      duree_ms: performance.now() - t0,
+      detail: { etape: 'figer', lot: lancement.lot, paquet: true, mode, simulation: Boolean(lancement.simulation), modifications: lancement.modifications ?? null, version_cible: lancement.version_cible ?? null, etat: lancement.etat },
+    });
+    service.maintenance?.();
+    if (github.configure) service.github.declencher().then(() => service.maintenance?.()).catch(() => {});
+    return json(202, { lancement, github });
+  }, (e) => {
+    if (!(e instanceof ErreurNotes)) throw e;
+    if (e.details?.refus) {
+      service.journal?.(`mise à jour : paquet refusé avant l’envoi (${e.details.refus.raison})`);
+      service.evenement?.('mise_a_jour', { detail: { etape: 'refus', mode, raison: e.details.refus.raison, elements: e.details.refus.elements ?? null, fiches: e.details.refus.fiches ?? null } });
+    }
+    return erreur(e.statut, e.message, e.details);
+  });
+}
+
 /** Les routes /api/mise-a-jour/… (site de dev seulement). */
 function traiterMiseAJour(requete, service, action, reste, permis) {
   if (!service.edition) return erreur(403, 'La page Mise à jour ne se prépare que sur le site de dev.');
@@ -755,9 +797,12 @@ function traiterMiseAJour(requete, service, action, reste, permis) {
     if (!/^[0-9a-f-]{36}$/.test(reste[0])) return erreur(404, 'Lot introuvable.');
     // seul le lot du lancement actuel, toujours en jeu, est servi : un lot annulé, remplacé ou de simulation finie ne peut plus être livré
     const lot = lireLot(service.dossier, reste[0]);
-    return lot === null ? erreur(410, 'Lot introuvable, annulé ou remplacé : il ne peut plus être livré.') : { statut: 200, corps: null, brut: lot, entetes: {} };
+    if (lot === null) return erreur(410, 'Lot introuvable, annulé ou remplacé : il ne peut plus être livré.');
+    // le paquet de la base source (serveur/paquet.mjs) : un fichier SQLite, servi octet pour octet
+    const entetes = Buffer.isBuffer(lot) ? { 'Content-Type': 'application/vnd.sqlite3', 'Content-Disposition': `attachment; filename="paquet-${reste[0]}.db"` } : {};
+    return { statut: 200, corps: null, brut: lot, entetes };
   }
-  if (reste.length || ![undefined, 'brouillon', 'majeure', 'lancer', 'liberer', 'lancement', 'conflits'].includes(action)) return erreur(404, 'Adresse inconnue.');
+  if (reste.length || ![undefined, 'brouillon', 'majeure', 'lancer', 'liberer', 'lancement', 'conflits', 'copier'].includes(action)) return erreur(404, 'Adresse inconnue.');
   const refus = action === 'conflits' ? permis('GET', 'POST') : action === undefined || action === 'lancement' ? permis('GET') : permis('POST');
   if (refus) return refus;
   const { db, refus: indisponible } = baseOuRefus(service, 'La base n’est pas disponible pour le moment.');
@@ -768,14 +813,18 @@ function traiterMiseAJour(requete, service, action, reste, permis) {
   const maintenant = instant();
   if (action === undefined || action === 'lancement') {
     service.github?.suivre().catch(() => {}); // en arrière-plan : la réponse suivante aura l'état à jour
-    const lancement = actualiserLancement(db, service.dossier, { reference: lireReference(service.reference) });
+    // (un paquet de la base source : sa note reportée dans la base quand la production la publie, serveur/paquet.mjs#actualiser)
+    const lancement = actualiser(db, service.dossier, { reference: lireReference(service.reference), journal: service.journal ?? (() => {}) });
     // mêmes règles que le service pour la page : annulable, et place occupée (un nouveau lancement serait refusé)
     const regles = { liberable: estLiberable(lancement, maintenant), occupe: occupe(lancement, maintenant) };
     if (action === 'lancement') return json(200, { lancement, ...regles, github });
     // `etat_production` : la production a-t-elle appliqué sa dernière mise à jour ? (son attestation comparée à ce qu'elle publie : serveur/attestation.mjs)
     const reference = service.reference && typeof service.reference === 'object' ? service.reference : {};
     const etat_production = etatDeLaProduction({ dossier: service.attestations ?? null, production: reference.production ?? null, propre: reference.propre ?? null });
-    return json(200, { ...noteEnPreparation(db, { reference: service.reference, versionDev }), lancement, ...regles, github, confirmation: CONFIRMATION, etat_production });
+    // `base_source` : le marqueur db/source (lot 8) — « Effectuer la mise à jour » fige alors un paquet, et « Copier vers le dépôt » existe
+    const baseSource = Boolean(service.source?.());
+    return json(200, { ...noteEnPreparation(db, { reference: service.reference, versionDev }), lancement, ...regles, github, confirmation: CONFIRMATION, etat_production,
+      base_source: baseSource, ...(baseSource ? { confirmation_copie: CONFIRMATION_COPIE } : {}) });
   }
   const interdit = refusEcriture(requete.entetes ?? {});
   if (interdit) return interdit;
@@ -797,6 +846,7 @@ function traiterMiseAJour(requete, service, action, reste, permis) {
       return json(200, { lancement, liberable: estLiberable(lancement, maintenant), occupe: occupe(lancement, maintenant) });
     }
     const t0 = performance.now();
+    if (action === 'copier' || service.source?.()) return figerUnPaquet(requete, service, db, { copie: action === 'copier', valeur, versionDev, github, maintenant, t0 });
     const note = noteEnPreparation(db, { reference: service.reference, versionDev });
     // la version que la page a montrée (et confirmée) doit être celle qui partirait : la case « Version majeure » cochée ou décochée depuis un
     // autre onglet (ou une nouvelle version de master) ne fait jamais partir une autre version que celle qu'on a vue

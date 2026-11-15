@@ -187,7 +187,10 @@ protégée ni la branche par défaut).
 livraison `dev` → `master`, fusionnée de même (étape « Livraison vers master » ; son titre porte `[V: X+1]` seulement si la case « Version
 majeure » de la page était cochée quand le lot a été figé : la livraison fait alors la `X+1.0.0`). Les bots font ensuite leur travail habituel
 (versions, étiquettes, installateurs). Une seule mise à jour à la fois attend sa livraison : tant que celle d'un autre lot est dans `dev` sans être
-sur `master`, le workflow refuse d'en commencer une autre.
+sur `master`, le workflow refuse d'en commencer une autre. Avec la base source (marqueur `db/source`, lot 8 ; `docs/serveur.md`, « Mise à jour depuis la
+base source (lot 8) »), le lot est un paquet SQLite dont le job `preparer` tire `data/rows`, et que le job `livrer` réexporte (Python, sans npm) pour exiger que
+chaque `data/rows/*.sql` du commit en soit la copie octet pour octet ; « Copier vers le dépôt » (entrée `copie`) n'ouvre que la PR vers
+`dev` (commit « Copie : <id> », jamais « Lot : ») : son contenu part en production avec la livraison `dev` → `master` suivante.
 
 ## Mise en place (une seule fois, par le propriétaire)
 

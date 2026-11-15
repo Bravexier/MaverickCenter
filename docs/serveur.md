@@ -225,7 +225,8 @@ Lot 8 du chantier (« Bascule 1 : la base du site de dev fait foi » ; garde-fou
   pendant que le service tourne (une restauration) repasse par les mêmes contrôles ; refusée, elle reste fermée.
 - **`vivante.json`** garde `version` (celle du service), `schema`, `source: true` et `sur_place` : la dernière application (`le`, `avant`, `apres`, `migrations` [{ numero, fichier }],
   `sauvegarde`, `essai_ms`, `duree_ms`). **`/api/etat`** : `base.source` (le marqueur présent ou non) et `base.sur_place` (`null` sans application). **`GET /api/debug/structure/`** ajoute
-  `base_source` : `{ source, sur_place }` (le format `maverick-essai-etat/1` ne change pas ; la page Debug ne l'affiche pas encore).
+  `base_source` : `{ source, sur_place }` (le format `maverick-essai-etat/1` ne change pas ; la page Debug l'affiche en tête du bloc « Structure de la base », menu DB : `lib/debug-structure.mjs#htmlDeLaBaseSource`).
+- **Mise à jour** : avec le marqueur, « Effectuer la mise à jour », la Simulation et « Copier vers le dépôt » figent un paquet (« Mise à jour depuis la base source (lot 8) »).
 - **Lots de changements** : avec le marqueur, `POST /api/edition/lots/` donne `ouvertHorsEdition: true` à `controlerLeLot` (`serveur/api.mjs#traiterLots`) : un lot vaut pour toutes les tables de
   contenu, celles que le service d'édition ne sait pas écrire passant par la voie générique du journal ; `LOT_OUVERT_AUX_TABLES_HORS_EDITION` reste `false`, le défaut du module pur.
 - **Installateur** : avec `db/source`, `--copier-base-prod` est refusé, une publication plus ancienne que la `version=` de `VERSION` aussi (avant toute écriture) ; un refus de l'essai de la
@@ -1015,8 +1016,9 @@ dans `var/extrait/` (ignoré par git ; `--dossier`) : `maverick-dev.db` et `mave
 contre le méta (`ecartsAvecLeMeta`), pose le fichier par `rename` (rien n'est écrit si l'un ne concorde pas), ne retélécharge pas un extrait déjà à jour, et affiche **la date de
 l'extrait** : chaque analyse la cite. Les sessions de Claude lisent ce fichier en lecture seule (`node:sqlite`, comme `interroger-la-base`), jamais les fiches ni les comptes.
 
-**L'attestation de la production** (`serveur/attestation.mjs`). Au démarrage du service, après la préparation de la base vivante, et après chaque reconstruction (aussi
-quand elle échoue), la production écrit par `rename` `<dossier des métriques>/attestation-prod.json` — le dossier que les deux instances se partagent sur le VPS
+**L'attestation de la production** (`serveur/attestation.mjs`). Au démarrage du service, après la préparation de la base vivante, après chaque reconstruction (aussi
+quand elle échoue), et toutes les heures (`INTERVALLE_DE_L_ATTESTATION_MS`, option `attestation.intervalle` de `demarrerService` ; la dernière préparation redite telle quelle :
+une fiche enregistrée depuis le démarrage compte avant qu'un paquet ne soit jugé), la production écrit par `rename` `<dossier des métriques>/attestation-prod.json` — le dossier que les deux instances se partagent sur le VPS
 (`MAVERICK_DOSSIER_METRIQUES`, déjà monté dans les deux : aucun réglage de `deploy/`). Le site de dev n'en écrit pas (option `attestation` de `demarrerService` : `publier`
 par défaut sans l'édition ; `false` : ni écriture ni lecture). Elle contient : `version` (`service`, `code`), `schema`, `base_vivante` (`empreinte` globale et `tables`
 par table, du contenu de la base vivante), `regles_publiees` (`empreinte` globale du contenu de `site/donnees/maverick.db`), `preparation` (`appliquee`, **le nombre** de
@@ -1531,13 +1533,14 @@ pas encore résolus et les lots retenus derrière eux sont défaits, dans un sav
 
 | Requête | Réponse |
 | --- | --- |
-| `GET /api/mise-a-jour/` | La note en préparation : `reference`, `version_dev`, `version_cible` (selon la case « Version majeure »), `version_mineure`, `version_majeure`, `en_attente`, `en_conflit` (`{ lots, modifications }` à résoudre), `lignes`, `bilan`, `brouillon` (dont `majeure`), `lancement`, `github`, `confirmation`, `etat_production` (la production a-t-elle appliqué sa dernière mise à jour : « Extrait du contenu et attestation de la production », ci-dessus) |
+| `GET /api/mise-a-jour/` | La note en préparation : `reference`, `version_dev`, `version_cible` (selon la case « Version majeure »), `version_mineure`, `version_majeure`, `en_attente`, `en_conflit` (`{ lots, modifications }` à résoudre), `lignes`, `bilan`, `brouillon` (dont `majeure`), `lancement`, `github`, `confirmation`, `etat_production` (la production a-t-elle appliqué sa dernière mise à jour : « Extrait du contenu et attestation de la production », ci-dessus), `base_source` (le marqueur `db/source` : vrai, « Copier vers le dépôt » existe) et, avec lui, `confirmation_copie` |
 | `POST /api/mise-a-jour/brouillon/` | `{ texte, avant }` → le champ libre enregistré (`409` s'il a changé entre-temps ou si un lot est figé) |
 | `POST /api/mise-a-jour/majeure/` | `{ majeure }` (`true` ou `false`) → la case « Version majeure » enregistrée, et la note en préparation à sa nouvelle version cible ; rien n'est déclenché (`409` si un lot est figé) |
 | `POST /api/mise-a-jour/lancer/` | `{ confirmation, simulation?, version_cible? }` → fige le lot et déclenche le workflow (`simulation: true` : simulation de mise à jour, rien n'est poussé ; `version_cible` : celle que la page a montrée, `409` si une autre partirait, case « Version majeure » changée depuis un autre onglet) → `202`, `{ lancement }` (`etat` : `envoi`, `lance`, `en_cours`, `termine`, `echec`, `erreur`, `manuel`, `annule`, `simulation_reussie`, `simulation_echouee`) |
 | `POST /api/mise-a-jour/liberer/` | Annule un lancement qui n'est pas parti, a échoué ou se lance à la main : le texte redevient modifiable (annulé pendant l'envoi : le run parti quand même est annulé sur GitHub) |
 | `GET /api/mise-a-jour/lancement/` | L'état du lancement (le run GitHub est relu au plus toutes les 20 s) |
-| `GET /api/mise-a-jour/lots/<lot>/` | Le lot figé, octet pour octet (le workflow le télécharge et vérifie son empreinte) |
+| `GET /api/mise-a-jour/lots/<lot>/` | Le lot figé, octet pour octet (le workflow le télécharge et vérifie son empreinte) ; avec la base source, le paquet (`application/vnd.sqlite3`) |
+| `POST /api/mise-a-jour/copier/` | Base source seulement : `{ confirmation }` (`confirmation_copie` de `GET /api/mise-a-jour/`) → « Copier vers le dépôt » : `202 { lancement, github }` ; `409` sans le marqueur, ou refus avant l'envoi (« Mise à jour depuis la base source (lot 8) ») |
 | `GET /api/mise-a-jour/conflits/` | `{ lots: [{ lot, fait_le, page_id, resume, garde, bloque, detail, detail_lisible, empreinte, saines: [{ rang, table, cle, operation, libelle, issue, colonnes?, colonnes_libelles?, fusionnees?, fusionnees_libelles? }], conflits: [{ id, rang, table, cle, operation, libelle, colonne, colonne_libelle, genre, garde, raison, raison_lisible, version_1, version_2, avant, provenance_1, provenance_2, actuelle?, passages, lots_suivants?, valeur_1?, valeur_2?, apercu, choix_possibles, refus_1?, refus_1_lot?, refus_2?, refus_2_lot?, saisie, refus_3?, bloque }] }], resolus: [{ lot, fait_le, resume, resolu_le, resolu_par, resolution }], retenus: [{ lot, fait_le, resume, derriere }] }` (une version : `{ genre: 'valeur' \| 'ligne' \| 'valeurs' \| 'suppression' \| 'absente', valeur }`, images résumées) |
 | `POST /api/mise-a-jour/conflits/` | `{ lot, empreinte, choix: { "<id>": { choix: 1 \| 2 \| 3, valeur? } } }` → `{ lot, nouveau_lot, reprise?, modifications, lignes, fiches, resolution }` ; `400`, `404`, `409` (`lot` : le diagnostic à jour ; `bloque` : un lot plus ancien à résoudre d'abord), `422` |
 
@@ -1546,6 +1549,73 @@ pas encore résolus et les lots retenus derrière eux sont défaits, dans un sav
 et, sur le serveur de test, le fichier `secrets/github-actions-token` (jeton fine-grained, ce dépôt seulement : *Actions* en écriture), pas à
 pas dans [`deploy/vps/README.md`](../deploy/vps/README.md). Chaque mise à jour consomme environ quatre passages de la CI (préparation, PR,
 livraison, publication) en minutes GitHub Actions ; une simulation, un seul (la préparation).
+
+### Mise à jour depuis la base source (lot 8)
+
+PR B du lot 8 (« Bascule 1 : la base du site de dev fait foi », `docs/chantier-base-de-dev.md`, garde-fous 4, 8, 9, 10 et 14 ; question 9). Code : `serveur/paquet.mjs`,
+`serveur/notes-de-version.mjs` (`controlerLeLancement`, `lireLot`), `serveur/api.mjs` (`figerUnPaquet`), `scripts/mise-a-jour-paquet.mjs`, `scripts/mise-a-jour-github.mjs`,
+`.github/workflows/mise-a-jour.yml` ; tests : `serveur-paquet`, `mise-a-jour-paquet`. **Tout est éteint sans le marqueur `db/source`** (« Base source (lot 8) ») : le lot figé du
+journal, son rejeu et la note écrite par GitHub restent ceux décrits plus haut, à l'identique.
+
+**Le paquet.** Avec le marqueur, « Effectuer la mise à jour » et la Simulation (`POST /api/mise-a-jour/lancer/`), et « Copier vers le dépôt » (`POST /api/mise-a-jour/copier/`),
+figent un **paquet** au lieu d'un lot : un fichier SQLite **neuf**, fabriqué dans un fil à part comme l'extrait (`fabriquerExtrait` : le schéma de la base source, ses tables de
+contenu, les tables calculées telles quelles, les tables propres au site **vides** — ni fiche, ni compte, ni groupe, ni journal —, les modifications en attente versées dans
+`historique_modification` avec leur nature, sans auteur). Le service y écrit ensuite :
+- mise à jour et simulation : la **note de version** de la version en préparation (`version_cible` de la page, X+1.0 case « Version majeure » cochée ; la page envoie celle
+  qu'elle a montrée, `409` si une autre partirait), calculée comme avant (la base publiée par la production comparée au contenu du paquet, plan des Règles du paquet), avec le
+  champ libre ; les notes d'exemple retirées ; les lignes d'historique versées prennent la version de cette note. La date de la note est celle du jour (UTC) ;
+- copie : rien de plus. Ses lignes d'historique gardent une version vide (la règle de `db:appliquer-edition`), et ses modifications **restent en attente** dans la base source.
+
+Une vue `paquet_meta` le décrit (`format` `maverick-paquet/1`, `id` du lot, `mode` `mise-a-jour` | `simulation` | `copie`, `version`, `depuis`, `majeure`, `fabrique_le`,
+`version_du_site`, `schema`, `empreinte` du contenu, `lots` versés, `modifications`, `lignes` de la note, `tables_de_contenu`). Il est rangé dans `db/mise-a-jour/<lot>.db`
+(un paquet à moitié fait, `.<lot>.db.neuf`, est effacé ; au-delà des 3 plus récents, `PAQUETS_GARDES`, les paquets sont effacés, sauf un paquet de mise à jour pas
+encore reporté), son SHA-256 est l'`empreinte` du lancement, et il est servi **octet pour octet** à la même adresse qu'un lot,
+`GET /api/mise-a-jour/lots/<lot>/` (classe ouverte, comme avant : le job `preparer` n'a aucun secret ; l'adresse ne sert que le lancement en cours). **La base source n'est
+pas écrite** (garde-fou 8 : « préparée, pas livrée ») : seul `note_version_brouillon.lot`, le verrou du texte, est posé quand le paquet est prêt — jamais pour une copie, dont
+le texte libre reste à la prochaine note. Mêmes états, mêmes verrous et même cadence que le lot figé (`controlerLeLancement` : mot de confirmation, place libre, aucun lot
+figé, 2 minutes et 8 par 24 h, « Rien à livrer » sauf pour une copie) ; un seul paquet en fabrication à la fois (`409`) ; le texte ou la case « Version majeure » changés pendant la
+fabrication font refuser (`409`, relancer). Le lancement porte en plus `paquet: true`, `mode`, `copie`, `octets`, `lignes`. Une copie ne met rien en maintenance
+(`maintenance.mjs#annonceDuLancement`), n'a pas de `version_cible`, et son mot de confirmation est `COPIER VERS LE DEPOT` (`confirmation_copie`).
+
+**Refus avant l'envoi** (question 9 du plan, sans réponse : « refuser avant l'envoi, et dire combien de fiches bloquent »), pour les trois modes, avant tout déclenchement :
+- l'attestation de la production doit décrire le contenu qu'elle publie (`etatDeLaProduction` : `a_jour`) ; absente, illisible ou périmée (version ou contenu différents,
+  livraison en cours) : `409`, `refus: { raison: 'attestation', etat, raison_production, message }`, rien n'est fabriqué ;
+- puis chaque élément de règle que ses fiches citent (`citations`) doit être dans le paquet, cherché par les colonnes que visent les clés étrangères des tables de fiches
+  (`citationsManquantes`) ; sauf les tables que la décision R42 et ses suites retirent des fiches sans bloquer (`serveur/fiches-retraits.mjs#RETRAITS` : `arme`, `capacite`,
+  `classe_annexe_entree`, `magie_specialisation`, `metier`, `sort`, `specialite` : `TABLES_RETIREES_DES_FICHES`). Un manque : `409`, `refus: { raison: 'citations', elements,
+  fiches, tables: [{ table, elements, fiches }] }` (`fiches` additionne les fiches de chaque élément : une fiche qui cite deux éléments manquants compte deux fois), le paquet
+  effacé, aucun lancement noté. Des nombres et des noms de tables, jamais un nom de fiche ni un identifiant d'élément.
+
+L'attestation est réécrite toutes les heures : une fiche enregistrée depuis moins d'une heure peut ne pas y être encore comptée.
+
+**Le workflow.** Le service envoie l'entrée `copie: 'true'` pour une copie seulement (un lancement d'avant ne change pas). Le job `preparer` reconnaît un paquet à son en-tête
+SQLite (`estUnPaquet`), vérifie l'empreinte, lit `paquet_meta` (`lirePaquet`) et refuse un mode qui ne correspond pas aux entrées, dans les deux sens (`verifierSimulation`,
+`verifierCopie` ; `essai` et `copie` ensemble : refusés). Il le pose dans l'artefact (`paquet.db` au lieu de `lot.json`), puis lance `scripts/mise-a-jour-paquet.mjs` au lieu du
+rejeu, qui **recontrôle** et tire `data/rows` du paquet :
+1. le lot et le mode attendus ; la structure (`user_version` du fichier et de sa vue) égale à `data/rows/VERSION` (code 5) ; la note de ce lot, à la version que donnent dev et
+   master (`versionDeLivraison`, comme le bot ; code 6), aucune pour une copie ;
+2. aucune ligne dans une table ni de contenu ni calculée (fiches, comptes, groupes, journal, brouillon ; code 2) ;
+3. ni HTML brut ni lien non sûr **ajouté** par rapport à `data/rows` (pages, annonces, blocs : `texteNonSurApresLeRejeu`, la règle du rejeu ; code 3) ;
+4. `data/rows` réécrit par l'exporteur des importeurs, dans une copie d'abord ; toute table changée doit être une table de contenu du paquet, et avoir au moins une **trace
+   nouvelle** dans `historique_modification` (une ligne `(lot_id, rang)` absente de celui de `data/rows`), ou en découler comme au rejeu d'un lot (`tablesDuLot` sur ces
+   traces : sources de maîtrise, règles du don, armures calculées, filles et balises d'un mot-clé retiré) ; les tables des notes en sont exemptées. La table `page` se juge
+   page par page (`pagesSansTrace`) : la trace de sa ligne, un mot-clé retiré, ou — pour une page typée que le code refait depuis ses tables, seulement sur ses colonnes
+   dérivées (`edition.mjs#colonneDerivee`) — une trace d'une autre table ; une page libre (guide, lore) changée sans la trace de sa ligne est refusée (code 4, tables et pages nommées) ;
+5. seuls les fichiers changés sont écrits. Puis les mêmes `CONTROLES` qu'aujourd'hui, le même commit, le même artefact.
+
+La liste blanche du job `livrer` est alors celle des **tables de contenu du paquet** (`tables_de_contenu`, couvertes par l'empreinte de l'entrée), plus les tables des notes ;
+en plus, `livrer` **réexporte le paquet** (`tools/db/exporter.py`, Python et sa bibliothèque standard seulement, aucun npm) dans un dossier temporaire et compare octet pour
+octet les `data/rows/*.sql` du commit de l'artefact à cet export (`verifierContrePaquet`) : mêmes fichiers des deux côtés, même contenu ; tout écart (un fichier retiré compris) est un refus net, rien n'est poussé. Le reste de `livrer` ne change pas. Une copie : commit et PR « Copie du contenu du site de dev vers le dépôt (lot …) », corps du commit `Copie : <id>` (jamais `Lot : <id>`,
+si bien qu'une copie dans `dev` ne bloque aucune mise à jour : `lotsEnAttente`), fusion dans `dev` seulement ; l'étape « Livraison vers master » est sautée
+(`if: ${{ !inputs.copie }}`) et le script la refuse de toute façon (`etat: 'copie'`). Le contenu copié part en production avec la prochaine livraison `dev` → `master`.
+
+**Report après la confirmation** (`paquet.mjs#actualiser`, appelé à la place d'`actualiserLancement` par la page et par la minuterie du service). Quand la base publiée par la
+production porte la note d'un paquet rangé (celui du lancement, ou un plus ancien que la production n'avait pas encore installé quand un autre lancement a pris la place) (`noteLivree` ; la copie de master seulement si la production n'est pas configurée sur ce site), le service écrit dans **sa** base, d'une
+transaction (`reporterPaquet`) : la note, ses lignes et l'historique du paquet (une ligne déjà là sans version prend celle de la note), les notes d'exemple retirées, les
+modifications livrées passées `integree` (`integrerLivrees`), le brouillon de ce lot vidé (`viderBrouillonLivre`) ; puis l'état `termine` (`reporte_le`, `report`).
+Idempotent : une note déjà là n'est pas réécrite (un redémarrage entre le report et l'état). Un échec garde l'état, dit `erreur_report`, et se retente au prochain suivi.
+Une copie n'écrit **rien** dans la base source, ni à son installation : ses modifications restent en attente ; la mise à jour suivante les verse avec sa version, et la ligne de
+`data/rows` versée sans version par la copie prend alors cette version. La note reste juste : elle compare la production au contenu, pas au journal.
 
 ## Maintenance pendant une mise à jour
 
@@ -1604,7 +1674,7 @@ suite**.
 | ouverte | rien | `GET /api/etat/` (sans la liste des fiches adaptées), `/api/maintenance/`, `/api/tipeee/`, `POST /api/classeur/`, `POST /api/metriques/page/` ; les prétirés en lecture (`GET /api/personnages/`, `…/<id>/`, `…/<id>/portrait/` : jamais une fiche de joueur) ; ce que les pages lisent pour montrer la base vivante : `GET /api/edition/{en-attente,listes,pages,mots-cles,chronologie,plan}/` et `POST /api/edition/{lignes,race,classe,bestiaire,portrait,evenement}/` (`classe` sans les libellés de fiches) ; la note en préparation et l'état du lancement `GET /api/mise-a-jour/` et `…/lancement/` (la page les relève sans connexion) ; le lot figé `GET /api/mise-a-jour/lots/<uuid>/` ; `/api/acces/` |
 | lecture | la clé de lecture **ou** le mot de passe | `GET /api/edition/journal/`, `GET /api/edition/extrait/` et `…/extrait/meta/` (l'extrait du contenu : ni fiche, ni compte, ni journal), `GET /api/mise-a-jour/conflits/` (les lots en conflit), tout `GET /api/debug/…` (le contenu des tables : fiches, comptes et groupes compris), tout `GET /api/v1/…` |
 | proposition | la clé de lecture **ou** le mot de passe | `POST /api/edition/lots/` et `POST …/lots/<id>/essai/` : déposer une proposition de lot de changements et refaire son essai ; elles n'écrivent que `lot_de_changements` (la proposition, son essai sur une copie), jamais le contenu |
-| écriture | le mot de passe (session) | `POST /api/edition/` (un lot), `POST …/lots/<id>/appliquer/` et `…/refuser/` (le clic du propriétaire sur un lot de changements), `POST /api/maintenance/lever/`, `POST /api/mise-a-jour/{brouillon,majeure,lancer,liberer,conflits}/` (« Effectuer la mise à jour » et la Simulation), les prétirés en écriture (`POST`, `PUT`, `DELETE /api/personnages/…`), tout `POST`, `PATCH`, `PUT`, `DELETE /api/v1/…` |
+| écriture | le mot de passe (session) | `POST /api/edition/` (un lot), `POST …/lots/<id>/appliquer/` et `…/refuser/` (le clic du propriétaire sur un lot de changements), `POST /api/maintenance/lever/`, `POST /api/mise-a-jour/{brouillon,majeure,lancer,liberer,conflits,copier}/` (« Effectuer la mise à jour », la Simulation et « Copier vers le dépôt »), les prétirés en écriture (`POST`, `PUT`, `DELETE /api/personnages/…`), tout `POST`, `PATCH`, `PUT`, `DELETE /api/v1/…` |
 
 La clé de lecture ne permet jamais d'écrire dans le contenu (elle dépose une proposition, qui attend le clic du propriétaire). Le lot figé reste ouvert : le workflow `mise-a-jour.yml` (job `preparer`) ne joint que cette route du site de dev,
 sans aucun secret ajouté côté GitHub ; l'adresse est à capacité (uuid aléatoire, lot sans fiche ni compte, contenu publié de toute façon dans la PR). Aucune

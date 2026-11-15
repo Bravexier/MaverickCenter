@@ -17,6 +17,7 @@ import {
   formaterLeMoment,
   htmlDeLEssai,
   htmlDeLOmbre,
+  htmlDeLaBaseSource,
   htmlDeLaStructure,
   libelleDeMigration,
   lignesDesTablesDuBilan,
@@ -25,6 +26,11 @@ import {
   verdictDe,
 } from '../src/lib/debug-structure.mjs';
 import { FORMAT_DE_L_ETAT as FORMAT_DU_SERVICE } from '../serveur/essai-de-structure.mjs';
+import { FICHIER_SOURCE, etatDeLaBaseSource } from '../serveur/base-source.mjs';
+import { ecrireEtat } from '../serveur/base-vivante.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 const lire = (chemin) => readFileSync(new URL(chemin, import.meta.url), 'utf8');
 const ton = (html) => html.match(/structure-verdict--(\w+)/)?.[1];
@@ -337,4 +343,67 @@ test('le composant DB : le bloc est dans le menu DB (pas un cinquième menu), av
 test('la route n’est pas relevée par la page : elle reste hors des relevés du service', () => {
   assert.doesNotMatch(lire('../serveur/metriques.mjs').match(/RELEVES_GET[\s\S]{0,600}/)?.[0] ?? '', /structure/);
   assert.doesNotMatch(lire('../serveur/journal-du-service.mjs').match(/function estUneReleve[\s\S]{0,600}/)?.[0] ?? '', /structure/);
+});
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+// Base source (lot 8)
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+const surPlace = (o = {}) => ({
+  le: '2026-11-14T09:30:00Z', avant: 120, apres: 122, migrations: [{ numero: 121, fichier: '0121-a.sql' }, { numero: 122, fichier: '0122-b.sql' }],
+  sauvegarde: 'structure-2026-11-14T09-30-00Z-v120.db', essai_ms: 40, duree_ms: 90, ...o,
+});
+
+test('base source : « oui » ou « non », et la dernière application sur place (migrations, date, versions, sauvegarde)', () => {
+  const non = htmlDeLaBaseSource({ source: false, sur_place: null });
+  assert.match(non, /Base source : non/);
+  assert.doesNotMatch(non, /Migrations|Sauvegarde/);
+  const sans = htmlDeLaBaseSource({ source: true, sur_place: null });
+  assert.match(sans, /Base source : oui/);
+  assert.match(sans, /Aucune migration n’a été appliquée sur place/);
+  const oui = htmlDeLaBaseSource({ source: true, sur_place: surPlace() });
+  assert.match(oui, /Base source : oui/);
+  assert.match(oui, /2026-11-14 09:30 UTC/);
+  assert.match(oui, /120 → 122/);
+  assert.match(oui, /<code>0121 0121-a\.sql<\/code>/);
+  assert.match(oui, /<code>0122 0122-b\.sql<\/code>/);
+  assert.match(oui, /<code>structure-2026-11-14T09-30-00Z-v120\.db<\/code>/);
+  assert.match(htmlDeLaBaseSource({ source: true, sur_place: surPlace({ sauvegarde: null }) }), /Sauvegarde<\/dt><dd>aucune/);
+});
+
+test('base source : un service d’avant (sans `base_source`) ne change rien au bloc ; avec, elle est en tête et dans le résumé', () => {
+  for (const vide of [undefined, null, 'oui', [], 3]) assert.equal(htmlDeLaBaseSource(vide), '');
+  const ancien = lireLaReponse(200, etat());
+  assert.doesNotMatch(htmlDeLaStructure(ancien), /structure-source|Base source/);
+  assert.equal(resumeDeLaStructure(ancien), '');
+  const lecture = lireLaReponse(200, etat({ dernier: bilan(), base_source: { source: true, sur_place: surPlace() } }));
+  const html = htmlDeLaStructure(lecture);
+  assert.ok(html.indexOf('structure-source') < html.indexOf('structure-essai'), 'la base source d’abord');
+  assert.match(resumeDeLaStructure(lecture), /^base source : oui · avant installation : accepté/);
+  assert.match(resumeDeLaStructure(lireLaReponse(200, etat({ base_source: { source: false, sur_place: null } }))), /^base source : non$/);
+});
+
+test('base source : tout texte venu du service est échappé ; des valeurs mal formées ne cassent rien', () => {
+  const piege = '<img src=x onerror=alert(1)>';
+  const html = htmlDeLaBaseSource({ source: true, sur_place: surPlace({ le: piege, avant: piege, apres: 1, migrations: [{ numero: 1, fichier: piege }], sauvegarde: piege }) });
+  assert.doesNotMatch(html, /<img/);
+  assert.match(html, /&lt;img/);
+  for (const sur_place of [{}, { migrations: 'x' }, { migrations: [null, 3] }, [], 'x']) assert.equal(typeof htmlDeLaBaseSource({ source: true, sur_place }), 'string');
+});
+
+test('base source : la page lit la forme que le service rend (etatDeLaBaseSource)', (t) => {
+  const dossier = dossierTemporaire('debug-structure-source-', { t });
+  assert.deepEqual(etatDeLaBaseSource(dossier), { source: false, sur_place: null });
+  assert.match(htmlDeLaBaseSource(etatDeLaBaseSource(dossier)), /Base source : non/);
+  writeFileSync(join(dossier, FICHIER_SOURCE), 'format=maverick-source/1\n');
+  ecrireEtat(dossier, { version: '1.0.0', schema: 122, source: true, sur_place: surPlace() });
+  const lu = etatDeLaBaseSource(dossier);
+  assert.equal(lu.source, true);
+  assert.deepEqual(Object.keys(lu.sur_place).sort(), Object.keys(surPlace()).sort(), 'les champs de la dernière application sont ceux que le service écrit');
+  const html = htmlDeLaBaseSource(lu);
+  assert.match(html, /Base source : oui/);
+  assert.match(html, /120 → 122/);
+  // le service écrit bien ces champs (base-source.mjs#preparerBaseSource)
+  const code = lire('../serveur/base-source.mjs');
+  for (const champ of ['le:', 'avant:', 'apres:', 'migrations:', 'sauvegarde:']) assert.ok(code.includes(champ), `le service écrit ${champ}`);
+  assert.ok(lire('../serveur/essai-de-structure.mjs').includes('base_source: baseSource ? baseSource() : null'), 'la route porte base_source');
 });

@@ -1,10 +1,12 @@
 // Bloc « Structure de la base » du menu DB de la page Debug (components/debug/SchemaDeLaBase.astro, src/scripts/debug-structure.mjs) : fonctions
 // pures sur la réponse de GET <base>api/debug/structure/ (serveur/essai-de-structure.mjs#lire, format `maverick-essai-etat/1`, site de dev,
 // `Cache-Control: no-store`, 403 en production) :
-//   { format, en_cours: { demande, version, depuis } | null, en_attente, dernier, ombre }
+//   { format, en_cours: { demande, version, depuis } | null, en_attente, dernier, ombre, base_source }
 //   - `dernier` : le bilan `maverick-structure/1` du dernier essai avant installation (verdict accepte, refuse, a_jour, indisponible) ;
 //   - `ombre` : { en_cours: { version, depuis, etat } | null, dernier: <rapport maverick-ombre/1> | null } | null (verdict identique, attendu, ecart,
-//     refuse, indisponible). Le sens des verdicts est dans docs/serveur.md, « Essai dans l'ombre ».
+//     refuse, indisponible). Le sens des verdicts est dans docs/serveur.md, « Essai dans l'ombre » ;
+//   - `base_source` : { source, sur_place } | null (serveur/base-source.mjs#etatDeLaBaseSource, lot 8 : le marqueur `db/source`, et la dernière application
+//     des migrations sur place : { le, avant, apres, migrations: [{ numero, fichier }], sauvegarde, essai_ms, duree_ms }, ou null). Absent d'un service d'avant.
 // Aucune dépendance (pas même debug-metriques.mjs : deux scripts de page n'importent jamais le même module, skill site-version-portable) ; le
 // service n'envoie jamais un nom de fiche ni une valeur du contenu, mais chaque texte est échappé ici quand même.
 
@@ -338,11 +340,44 @@ export function htmlDeLOmbre(ombre) {
   return parties.join('');
 }
 
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+// Base source (lot 8)
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Le bloc « Base source » : « Base source : oui / non » et, si le service en donne une, la dernière application des migrations sur place (date, versions,
+ * migrations, sauvegarde). `baseSource` = `base_source` de la réponse ; absent (service d'avant, ou rien de lisible) : aucun bloc. Aucun nom de fiche ni valeur
+ * du contenu : des numéros de version, des noms de fichiers de migration et de sauvegarde.
+ */
+export function htmlDeLaBaseSource(baseSource) {
+  if (baseSource === null || baseSource === undefined || typeof baseSource !== 'object' || Array.isArray(baseSource)) return '';
+  const b = baseSource;
+  const parties = ['<h4>Base source</h4>', `<p class="structure-source__etat"><strong>Base source : ${b.source === true ? 'oui' : 'non'}</strong></p>`];
+  const p = b.sur_place !== null && typeof b.sur_place === 'object' && !Array.isArray(b.sur_place) ? b.sur_place : null;
+  if (!p) {
+    if (b.source === true) parties.push('<p class="debug-petit">Aucune migration n’a été appliquée sur place.</p>');
+    return parties.join('');
+  }
+  const migrations = liste(p.migrations).map(libelleDeMigration).filter(Boolean);
+  const versions = p.avant === undefined || p.avant === null ? '' : p.avant === p.apres || p.apres === undefined ? echapper(p.avant) : `${echapper(p.avant)} → ${echapper(p.apres)}`;
+  parties.push(
+    '<p class="debug-petit">Dernière application des migrations sur place :</p>',
+    htmlDesFaits([
+      { terme: 'Le', valeur: p.le ? echapper(formaterLeMoment(p.le)) : '' },
+      { terme: 'Version de la base', valeur: versions },
+      { terme: 'Migrations', valeur: migrations.length ? `<ul class="structure-liste">${migrations.map((m) => `<li><code>${echapper(m)}</code></li>`).join('')}</ul>` : '' },
+      { terme: 'Sauvegarde', valeur: p.sauvegarde ? `<code>${echapper(p.sauvegarde)}</code>` : 'aucune' },
+    ]),
+  );
+  return parties.join('');
+}
+
 /** Tout le contenu du bloc pour une réponse lue (`lireLaReponse`) ; sans contenu, le message neutre de l'état. */
 export function htmlDeLaStructure(lecture) {
   const l = objet(lecture);
   if (l.etat !== 'ok') return `<p class="debug-vide">${echapper(MESSAGES[l.etat] ?? MESSAGES.erreur)}</p>`;
-  return `<section class="structure-essai">${htmlDeLEssai(l.structure)}</section><section class="structure-ombre">${htmlDeLOmbre(l.structure?.ombre)}</section>`;
+  const source = htmlDeLaBaseSource(l.structure?.base_source);
+  return `${source ? `<section class="structure-source">${source}</section>` : ''}<section class="structure-essai">${htmlDeLEssai(l.structure)}</section><section class="structure-ombre">${htmlDeLOmbre(l.structure?.ombre)}</section>`;
 }
 
 /** Le résumé d'une ligne du bloc (la sous-ligne du titre) : les deux verdicts, ou rien. */
@@ -351,6 +386,7 @@ export function resumeDeLaStructure(lecture) {
   if (l.etat !== 'ok') return '';
   const s = objet(l.structure);
   const morceaux = [];
+  if (s.base_source && typeof s.base_source === 'object') morceaux.push(`base source : ${s.base_source.source === true ? 'oui' : 'non'}`);
   if (s.dernier) morceaux.push(`avant installation : ${verdictDe(VERDICTS_DE_L_ESSAI, objet(s.dernier).verdict).libelle.toLowerCase()}`);
   if (s.ombre?.dernier) morceaux.push(`dans l’ombre : ${verdictDe(VERDICTS_DE_L_OMBRE, objet(s.ombre.dernier).verdict).libelle.toLowerCase()}`);
   return morceaux.join(' · ');

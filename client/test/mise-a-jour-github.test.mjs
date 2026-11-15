@@ -1415,13 +1415,15 @@ describe('.github/workflows/mise-a-jour.yml', () => {
   const etape = (job, predicat) => job.steps.find(predicat);
   const parNom = (job, nom) => job.steps.find((s) => s.name === nom);
 
-  test('déclenché seulement à la main (workflow_dispatch) avec lot, empreinte, adresse et essai ; le run porte le lot', () => {
+  test('déclenché seulement à la main (workflow_dispatch) avec lot, empreinte, adresse, essai et copie ; le run porte le lot', () => {
     assert.equal(wf.name, 'Mise à jour des règles');
     assert.deepEqual(Object.keys(wf.on), ['workflow_dispatch']);
     const entrees = wf.on.workflow_dispatch.inputs;
-    assert.deepEqual(Object.keys(entrees), ['lot', 'empreinte', 'adresse', 'essai']);
+    assert.deepEqual(Object.keys(entrees), ['lot', 'empreinte', 'adresse', 'essai', 'copie']);
     for (const nom of ['lot', 'empreinte', 'adresse']) assert.deepEqual([entrees[nom].type, entrees[nom].required], ['string', true], nom);
     assert.deepEqual([entrees.essai.type, entrees.essai.default], ['boolean', false]);
+    // « Copier vers le dépôt » (lot 8 : un paquet de la base source sans note) : décochée par défaut, un lancement d'avant reste une mise à jour
+    assert.deepEqual([entrees.copie.type, entrees.copie.default], ['boolean', false]);
     assert.match(wf['run-name'], /\$\{\{ inputs\.lot \}\}/, 'le service retrouve son run par le lot dans le nom');
   });
 
@@ -1467,7 +1469,7 @@ describe('.github/workflows/mise-a-jour.yml', () => {
     assert.equal(script.id, 'preparer');
     assert.ok(!('GH_TOKEN' in script.env) && !('GITHUB_TOKEN_LECTURE' in script.env), 'aucun jeton pour le script de preparer');
     assert.equal(script.env.HOTE_ATTENDU, "${{ vars.MISE_A_JOUR_HOTE || 'dev.maverick-jdr.com' }}", 'un seul hôte permis, même sans la variable');
-    for (const [variable, entree] of [['LOT', 'lot'], ['EMPREINTE', 'empreinte'], ['ADRESSE', 'adresse'], ['ESSAI', 'essai']]) {
+    for (const [variable, entree] of [['LOT', 'lot'], ['EMPREINTE', 'empreinte'], ['ADRESSE', 'adresse'], ['ESSAI', 'essai'], ['COPIE', 'copie']]) {
       assert.equal(script.env[variable], `\${{ inputs.${entree} }}`);
     }
     const envoi = etape(jobPreparer, (s) => s.uses?.startsWith('actions/upload-artifact@'));
@@ -1496,13 +1498,15 @@ describe('.github/workflows/mise-a-jour.yml', () => {
     assert.deepEqual(reception.with, { name: NOM_ARTEFACT, path: dev.env.ARTEFACT });
     assert.deepEqual([dev.id, dev.run], ['dev', 'node client/scripts/mise-a-jour-github.mjs --phase dev']);
     assert.deepEqual([master.id, master.run], ['master', 'node client/scripts/mise-a-jour-github.mjs --phase master']);
-    assert.ok(!master.if, 'la livraison suit une fusion réussie (succès par défaut)');
+    // la livraison suit une fusion réussie (une condition sans fonction d'état garde success()) ; jamais pour une copie vers le dépôt (lot 8)
+    assert.equal(master.if, '${{ !inputs.copie }}');
+    assert.ok(!dev.if, 'la fusion dans dev a lieu pour une copie aussi');
     for (const s of [dev, master]) {
       assert.equal(s.env.GH_TOKEN, '${{ secrets.MISE_A_JOUR_TOKEN }}');
       assert.equal(s.env.GITHUB_TOKEN_LECTURE, '${{ github.token }}');
       assert.equal(s.env.ARTEFACT, '${{ runner.temp }}/mise-a-jour-preparation');
       assert.equal(s.env.HOTE_ATTENDU, "${{ vars.MISE_A_JOUR_HOTE || 'dev.maverick-jdr.com' }}");
-      for (const [variable, entree] of [['LOT', 'lot'], ['EMPREINTE', 'empreinte'], ['ADRESSE', 'adresse'], ['ESSAI', 'essai']]) assert.equal(s.env[variable], `\${{ inputs.${entree} }}`);
+      for (const [variable, entree] of [['LOT', 'lot'], ['EMPREINTE', 'empreinte'], ['ADRESSE', 'adresse'], ['ESSAI', 'essai'], ['COPIE', 'copie']]) assert.equal(s.env[variable], `\${{ inputs.${entree} }}`);
     }
     const rang = (s) => jobLivrer.steps.indexOf(s);
     assert.ok(rang(checkout) < rang(reception) && rang(reception) < rang(dev) && rang(dev) < rang(master));

@@ -556,13 +556,16 @@ function cheminsDuService() {
     '/mise-a-jour/brouillon/': ecritureDuService('mise_a_jour_brouillon', 'Enregistrer le brouillon', `{ texte, avant } → enregistre le champ libre des admins.${SITE_DE_DEV}`, { texte: '…', avant: '' }, { 409: ref('responses', 'Conflit') }),
     '/mise-a-jour/majeure/': ecritureDuService('mise_a_jour_majeure', 'Version majeure ou non', `{ majeure } → la case « Version majeure » : la prochaine mise à jour sera la X+1.0 (true) ou la X.Y+1 (false) ; rien n’est déclenché ; rend la note en préparation.${SITE_DE_DEV}`, { majeure: true }, { 409: ref('responses', 'Conflit') }),
     '/mise-a-jour/lancer/': ecritureDuService('mise_a_jour_lancer', 'Lancer une mise à jour (ou une simulation)',
-      `{ confirmation, simulation?, version_cible? } → fige le lot et déclenche le workflow GitHub de mise à jour → 202 (version_cible : celle qu’on a vue, 409 si ce n’est plus celle qui partirait). ATTENTION : sans « simulation: true », une vraie mise à jour (livraison en production).${SITE_DE_DEV}`,
+      `{ confirmation, simulation?, version_cible? } → fige le lot et déclenche le workflow GitHub de mise à jour → 202 (version_cible : celle qu’on a vue, 409 si ce n’est plus celle qui partirait). ATTENTION : sans « simulation: true », une vraie mise à jour (livraison en production). Avec la base source (lot 8) : un paquet (note et historique écrits dedans), refusé avant l’envoi (409, \`refus\`) si des fiches de la production citent un élément absent ou si l’attestation de la production manque.${SITE_DE_DEV}`,
       { confirmation: '<la phrase de confirmation que donne GET /api/mise-a-jour/>', simulation: true }, { 202: reponse('Lancé.', objet), 409: ref('responses', 'Conflit') }),
+    '/mise-a-jour/copier/': ecritureDuService('mise_a_jour_copier', 'Copier vers le dépôt (base source)',
+      `{ confirmation } → avec la base source (marqueur db/source, lot 8) seulement : fige un paquet sans note de version et déclenche le workflow avec l’entrée « copie » (fusion dans dev, jamais vers master) → 202 ; 409 sans la base source, ou refus avant l’envoi (\`refus\` : \`attestation\` ou \`citations\`, avec le nombre d’éléments et de fiches par table).${SITE_DE_DEV}`,
+      { confirmation: '<la phrase de confirmation_copie que donne GET /api/mise-a-jour/>' }, { 202: reponse('Lancé.', objet), 409: ref('responses', 'Conflit') }),
     '/mise-a-jour/liberer/': ecritureDuService('mise_a_jour_liberer', 'Annuler un lancement', `{ lot } → annule ce lancement s’il n’est pas parti, a échoué avant dev, ou se lance à la main.${SITE_DE_DEV}`, { lot: '<identifiant du lot>' }, { 409: ref('responses', 'Conflit') }),
     '/mise-a-jour/lancement/': lectureDuService('mise_a_jour_lancement', 'État du lancement', `Le suivi du run GitHub.${SITE_DE_DEV}`),
     '/mise-a-jour/lots/{lot}/': {
       parameters: [{ name: 'lot', in: 'path', required: true, description: 'Identifiant du lot figé (uuid).', schema: { type: 'string' } }],
-      ...lectureDuService('mise_a_jour_lot', 'Un lot figé', `Le lot du lancement en cours, tel quel (le workflow le télécharge et vérifie son empreinte) ; 410 s’il est annulé ou remplacé.${SITE_DE_DEV}`),
+      ...lectureDuService('mise_a_jour_lot', 'Un lot figé', `Le lot du lancement en cours, tel quel (le workflow le télécharge et vérifie son empreinte) ; avec la base source, le paquet (un fichier SQLite) ; 410 s’il est annulé ou remplacé.${SITE_DE_DEV}`),
     },
     '/mise-a-jour/conflits/': {
       ...lectureDuService('mise_a_jour_conflits', 'Lots du journal en conflit',
