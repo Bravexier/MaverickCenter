@@ -778,8 +778,10 @@ clic (`comparerAvecLaBase` : une valeur changée entre-temps n'est pas écrite, 
 **par le service d'édition dès que la table lui est connue** (`traduire`) : « modifier » pour les colonnes de `TABLES`, « supprimer » par l'entité de la table
 (ses refus comprennent liens rompus, fiches R42…) ; une colonne que le service ne sait pas écrire, sur une table qu'il connaît, passe par le journal (voie générique :
 `ecrire_modifier`, `ecrire_inserer`, `ecrire_supprimer`, jamais dans `OPERATIONS` : aucune route ne les joint), jugée par l'essai et par `db:check`. Le service ne crée pas
-la ligne d'une table qu'il crée lui-même (identifiant tiré du nom, page, clés recalculées) : l'insertion y est refusée ; une entité sans suppression (R159) n'est pas
-supprimée. Une opération que le service accepte sans rien écrire est refusée. Le journal : un `modification_lot` à la nature, au numéro de décision et au titre du lot
+la ligne d'une table qu'il crée lui-même (identifiant tiré du nom, page, clés recalculées) : l'insertion y est refusée, sauf un **mot-clé** : le service le CRÉE (`creer` de l'entité : id suivant,
+clé de la règle R232, adresse, couleur et icône contrôlées), `verrou` à 1 s'écrit ensuite sous le gel (colonne tenue, R218 (4) : le propriétaire ouvre R218 au clic) et le lot **vérifie** que la ligne
+créée est celle qu'il décrit (`verifier_ligne` : identifiant donné à l'application, clé ; sinon 409) ; ses catégories sont des lignes de `mot_cle_categorie`, opérations du lot à part. Une entité sans
+suppression (R159) n'est pas supprimée. Une opération que le service accepte sans rien écrire est refusée. Le journal : un `modification_lot` à la nature, au numéro de décision et au titre du lot
 (`resume`), ses `modification` « en_attente » comme une saisie (le rapatriement et la mise à jour les reprennent). `lot_de_changements` passe à « applique »
 (`lot_id`, `decide_le`, `verrous_ouverts`, `bilan` : opérations écrites ou changées, numéros donnés) dans la même transaction. Refus (409, rien n'est écrit, le lot reste
 « propose ») : l'essai a des opérations refusées ou des problèmes nés du lot, une opération est refusée au clic, un contrôle du contenu échoue après les écritures
@@ -835,10 +837,38 @@ un faux navigateur), `lots-rendu-service` (le rendu sur ce que rend le vrai serv
 
 **Éteint hors de l'édition** : `controlerLeLot` refuse au dépôt une table que le service ne sait pas écrire (jusqu'au lot 8).
 
+### Lots de changements (épreuve)
+
+L'épreuve d'entrée du lot 6 (R274, R275 ; plan : « refaire les migrations 0122 à 0124 sous forme de lots, sur une copie, et retrouver la même base »). Code : `serveur/epreuve-des-lots.mjs`
+et `scripts/epreuve-des-lots.mjs` (`npm run db:epreuve-lots`, dans `client/`, sur une copie de la base des règles (`--regles`, `var/maverick.db` par défaut), environ une minute ; sortie : le partage, la comparaison table par table, les annulations).
+Test : `epreuve-lots-0122-0124` ; lots : `client/test/fixtures/lots-0122-0124/` (`0122.json`, `0123.json`, `0124.json`, `complement.json`).
+
+- **Fabriqués une fois** (`epreuve-des-lots.mjs fabriquer`, avec l'historique git ; le test ne le lit pas) : pour chaque migration, la base du commit parent de celui qui l'a ajoutée et celle de ce commit sont
+  bâties depuis `data/rows` (les migrations 0122, 0123 et 0124 ne se suivent pas dans une même base : un rapatriement de l'édition passe entre la 0122 et la 0123) ; la migration rejouée en SQL sur l'avant doit
+  redonner l'après (sinon rien n'est écrit) ; la différence, table de contenu par table de contenu, devient un lot (modifier, puis insérer parents d'abord, puis supprimer enfants d'abord, un mot-clé avant la page
+  qu'il ouvre : R221). `nature` `migration` (0122, 0123) ou `decision` R272 (0124, que sa migration cite). Les clés entières insérées sont des numéros à donner (`mot_cle_421` : le jeton garde le numéro de la
+  migration). `complement.json` : les lignes que le service retire **lui-même** avec une entité supprimée (page : entrée de menu, alias, étiquettes, sources de page ; mot-clé : catégories, synonymes, clés
+  quittées ; `COUVERT_PAR_L_ENTITE`), que le lot ne porte pas (la ligne serait déjà partie : 404), et que l'épreuve vérifie par la comparaison. Les tables calculées (`lien`, `lien_candidat`) ne sont pas dans un lot.
+- **Refaite sur une copie** : la base des règles, les trois migrations défaites en SQL direct (avec ce qui a été posé APRÈS elles sur les lignes qu'elles ont créées : des saisies du site, comme des catégories ajoutées à des mots-clés créés par la 0123, ou une migration suivante) = la base
+  d'**avant** ; la **référence** = l'avant, le SQL des migrations rejoué ; le **service** = l'avant, chaque lot déposé, essayé et appliqué par `edition-lots.mjs`, les verrous de l'essai ouverts (le clic). Les tables
+  de contenu se comparent une à une (hors notes de version) ; les numéros donnés par le service diffèrent de ceux de la migration (le plus haut numéro d'aujourd'hui est plus haut) : comparés **modulo ces numéros**.
+- **Le partage.** (a) passe aujourd'hui par un lot ; (b) est refusé : table que le service d'édition ne sait pas écrire (`hors_edition`, le lot reste éteint jusqu'au lot 8) ; (c) est refusé par le service **même
+  une fois les tables ouvertes** (ses règles : une page protégée, un mot-clé qui y mène…). La partie (b) ne s'applique que par l'option de test `ouvertHorsEdition` de `controlerLeLot` (jamais une route : le lot
+  entier est refusé au dépôt, `400`) ; ce que le service refuse alors est écarté du lot, listé, et expliqué dans la comparaison.
+- **Résultat.** Même base, table par table, modulo les numéros donnés et la ligne (c). 0122 : 10 opérations, (a) 6 (5 pages, 1 mot-clé ; la suppression de la page, comptée avec les pages, est en réalité refusée par le service dans la partie (a) seule, faute des opérations (b) : elle est alors citée par une ligne de « Constante de règle » et ouvre un onglet) ; (b) 3, `regle_constante`, `regles_onglet`, `mot_cle_ancienne_cle` ; (c) 1 : la
+  page `guide/la-montee-de-niveau` est protégée par le service (elle porte le bloc « niveaux » tiré de la base), donc elle et ce que le service emporte avec elle (5 `page_source`, 1 `source`, 1 entrée de menu) restent ;
+  verrous R218, R219. 0123 : 21 opérations, (a) 12 (les neuf mots-clés créés par le service, `mot_cle` modifié, 2 pages), (b) 9 `mot_cle_categorie` ; refaite en entier ; verrou R218. 0124 : 7 opérations, (a) 5 (la suppression de `guide/fiche-accessoires-et-ceinture` y est aussi refusée sans les (b) : citée par une « Constante de règle »), (b) 2
+  (`regle_constante`, `mot_cle_ancienne_cle`) ; refaite en entier avec les (b) ; verrous R218, R219. La liste (b) est épinglée par table par le test : quand le lot 8 ouvre une table, sa ligne en sort.
+- **Annuler** (garde-fou 11), chaque lot sur une copie de la base juste après lui, dans l'ordre inverse : la 0122 s'annule et la base d'avant revient (toutes les tables égales) ; la 0123 est refusée par le service (le
+  corps de « Alignement » perdrait ses ancres figées `{#…}` : elles ne se retirent pas) et la 0124 aussi (l'ancienne adresse `/regles/fiche-inventaire-sac-a-dos/` n'est plus celle d'aucune page : R272). Le lot
+  reste appliqué ; le service ne remet pas ce qu'il ne saurait pas écrire aujourd'hui.
+- **Ajouté pour l'épreuve** : une clé composée reprend le numéro qu'une insertion précédente a donné (`mot_cle_categorie` d'un mot-clé du même lot ; `controlerLeLot`, `donnerLesNumeros`) ; l'insertion d'un mot-clé
+  passe par la création du service (ci-dessus). Rien ne change pour l'édition ordinaire.
+
 Tests : `serveur-edition-lots` (dépôt avec la clé sans écriture dans le contenu, copie, application en bloc, changée entre-temps, refus avec rang, contrôles du contenu, verrou refusé
 puis ouvert, numéros, table hors édition, édition ordinaire inchangée), `serveur-edition-lots-annulation` (remise, valeur gardée, insertion et suppression, aperçu sur copie, numéros jamais
 rendus, nature du journal d'annulation, rien à remettre, verrous, classes d'accès, tout recalculer), `lot-de-changements-annulation` (effet net et jugement, module pur),
-`serveur-edition-numeros` (`idSuivant`, `donnerUnNumero`), `lot-de-changements-numeros`, `serveur-acces-routes`.
+`serveur-edition-numeros` (`idSuivant`, `donnerUnNumero`), `lot-de-changements-numeros`, `serveur-acces-routes`, `serveur-edition-lots-mot-cle` (un mot-clé créé par un lot), `epreuve-lots-0122-0124` (l'épreuve).
 
 ## Extrait du contenu et attestation de la production
 

@@ -3628,6 +3628,19 @@ const OPERATIONS_DU_LOT = {
     ctx.w.supprimer(op.table, op.cle);
     return `${op.table} : une ligne retirée`;
   },
+  /**
+   * N'écrit rien : refuse (409) si la ligne que le service vient de créer n'est pas celle que le lot décrit (un identifiant, une clé recalculée ou une valeur
+   * que le service ne retient pas telle quelle). Suit une création par le service dans une opération du lot : le lot dit ce qu'il attend, le service l'écrit.
+   */
+  verifier_ligne(ctx, op) {
+    const ligne = lireLigne(ctx.db, op.table, op.cle);
+    if (!ligne) throw new ErreurEdition(409, `${op.table} ${JSON.stringify(op.cle)} : le service d’édition n’a pas créé la ligne attendue`);
+    const ecarts = Object.entries(op.attendu).filter(([c, v]) => (ligne[c] ?? null) !== (v ?? null)).map(([c]) => c);
+    if (ecarts.length) {
+      throw new ErreurEdition(409, `${op.table} ${JSON.stringify(op.cle)} : le service d’édition crée cette ligne autrement que le lot ne la décrit (${ecarts.map((c) => `« ${c} » : ${JSON.stringify(ligne[c] ?? null)} au lieu de ${JSON.stringify(op.attendu[c] ?? null)}`).join(' ; ')})`);
+    }
+    return `${op.table} : la ligne créée est celle du lot`;
+  },
 };
 
 /**

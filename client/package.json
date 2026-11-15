@@ -28,6 +28,7 @@
     "db:migrate": "python3 -I ../tools/db/migrer.py",
     "db:appliquer-edition": "node --no-warnings scripts/db-appliquer-edition.mjs",
     "db:extrait": "node --no-warnings scripts/db-extrait.mjs",
+    "db:epreuve-lots": "node --no-warnings scripts/epreuve-des-lots.mjs refaire",
     "mutation": "node --no-warnings scripts/mutation.mjs"
   },
   "dependencies": {
