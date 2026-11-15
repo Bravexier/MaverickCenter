@@ -130,6 +130,23 @@ réponse du service, et la note dans `installation.log`. Le service est le seul 
 - Première installation et `--copier-base-prod` : aucun essai. Aucun geste sur le serveur, `docker-compose.yml` ne change. Détail : `docs/serveur.md`,
   « Essai avant installation ».
 
+## Le kit de l'atelier (serveur de test seulement)
+
+Chaque installateur **de test** emporte un kit : le code du site et ses `node_modules`, de quoi lancer `npm run build:depuis-contenu` sans réseau, sans `data/rows` ni
+git (`docs/serveur.md`, « Fabriquer le site depuis un fichier de contenu »). L'installateur de production n'en porte pas : son script n'a pas la ligne qui le pose.
+
+- **Fabrication** : `fabriquer.mjs --kit <racine du dépôt>` (mode test seulement, refusé en production ; `livraison.yml` le passe pour le serveur de test, après `npm ci`) ;
+  la logique est dans `kit.mjs`. L'archive `atelier-kit.tar.gz` et son `kit.json` (format `maverick-kit/1` : version, commit, Node de `.nvmrc`, plateforme et libc des modules
+  compilés, image Docker à employer, taille, nombre de fichiers, empreintes, ce que l'élagage a retiré) sont joints sous `atelier-kit/`.
+- **Contenu** : `client/` avec ses `node_modules` (sans `dist/`, `.astro/`, `src/content/wiki/`, `test/`, `var/` ni ce que git ignore), `data/schema.sql`, `data/derive.sql`,
+  `data/migrations/`, `sources/sources.json`, `sources/tipeee/bienvenue.json`, `.nvmrc`. Aucun contenu : un contrôle refuse tout kit qui porte `data/rows`, `sources/raw`, un
+  fichier de base (`.db`, `.sqlite`), les pages fabriquées, l'historique git ou un lien qui sorte du kit.
+- **Image** : les modules natifs sont ceux de la machine qui fabrique (Linux, glibc sur GitHub) ; l'atelier doit tourner sur l'image `kit.json#image` (`node:<.nvmrc>-bookworm-slim`),
+  jamais sous Alpine. Les variantes natives d'une autre libc, plateforme ou architecture, d'après le `package.json` de chaque paquet (`os`, `cpu`, `libc`), ne sont pas emportées.
+- **Pose** : `<instance>/atelier/kit/` (avec `kit.json`), hors de `site/` : jamais servi. L'installateur le décompresse dans un dossier provisoire voisin, puis remplace l'ancien par
+  renommage ; un seul kit est gardé. Il vérifie d'abord la place libre (`df`) : deux fois la taille décompressée annoncée, plus 256 Mo. **Un manque de place ou un échec ne
+  fait jamais échouer l'installation** : le site est posé, le journal (`installation.log`) dit que le kit manque, l'ancien kit reste.
+
 ## Fabriquer un installateur à la main
 
 `./deploy/installateur/fabriquer.sh prod` (ou `test`) construit le site sur votre machine (Node.js ≥ 22.12) et écrit l'installateur dans

@@ -274,7 +274,8 @@ voulu.
    fournisseur que l'hébergeur**, chiffrée avec une phrase de 6 mots que seul le propriétaire garde (décision R275). Gardées : une copie par jour pendant 30
    jours, **une par mois et une par version sans limite**. L'étiquette « version » est posée par l'envoi de nuit qui suit un changement de version, sur la copie de cette nuit : si deux versions se succèdent entre deux nuits, seule la dernière est étiquetée. Réglable : `VERSIONS_DE="prod"` dans `reglages.env` limite les versions gardées à celles de la production (par défaut : `prod dev`). Chaque nuit, le dépôt est contrôlé (le dimanche, une partie des données est relue) ; chaque mois,
    et juste après l'activation, un **essai de restauration** relit la dernière copie extérieure dans un conteneur vide et contrôle l'intégrité et les nombres
-   de lignes, sans le propriétaire.
+   de lignes, sans le propriétaire. L'installateur du site de dev pèse environ 57 Mo parce qu'il emporte le kit de l'atelier (`deploy/installateur/README.md`) : l'envoi de nuit
+   grossit d'autant chaque nuit où dev a changé de version (le kit voyage dans la sauvegarde, avant la bascule 2).
 
 **Activer le temps 2.** Il faut un bucket chez le fournisseur et une clé d'accès (identifiant et clé secrète) qui peut y lire et y écrire. La commande
 prend adresse, bucket et région (facultative) en arguments, et demande les deux clés, saisies masquées (rien n'est écrit dans un journal, dans `ps` ni dans

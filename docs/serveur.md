@@ -1038,7 +1038,7 @@ et produit le même site qu'avant.
   `donnees/maverick.db` (mêmes lignes de contenu et mêmes tables calculées, autre forme de fichier : la vue `extrait_meta`, la disposition des pages) et `donnees/reference.db` / `.json` (lue dans git).
   Une règle de plus n'entre qu'après une mesure ; aucune ne cache un fichier dont le contenu diffère.
 - **Ce que le kit doit porter** : `client/` et ses `node_modules`, `data/schema.sql`, `data/derive.sql`, `data/migrations/` (le schéma, et les registres `.json` que lisent `lib/archives.mjs`,
-  `lib/noms-d-avant-des-migrations.mjs`), `sources/sources.json` et `sources/tipeee/` (la page Archives et l'accueil les lisent). Ni `data/rows`, ni git.
+  `lib/noms-d-avant-des-migrations.mjs`), `sources/sources.json` et `sources/tipeee/bienvenue.json` (la page Archives et l'accueil les lisent). Ni `data/rows`, ni git. Chaque installateur de **test** l'emporte (`deploy/installateur/kit.mjs`, `fabriquer.mjs --kit`, posé par l'installateur dans `<instance>/atelier/kit/` hors de `site/` ; `deploy/installateur/README.md`, « Le kit de l'atelier ») : sans contenu (contrôle de `kit.mjs`), modules natifs de la libc de l'image `kit.json#image` seulement, et l'installation continue sans kit si la place manque. Le `node_modules` du kit ne doit contenir aucun lien vers un autre dossier : un lien vers le `node_modules` d'un autre arbre fait lire ses modules par leur chemin réel, les duplique, et change la disposition des assets du site fabriqué.
 
 ## API REST `/api/v1/` et page Debug (site de dev)
 

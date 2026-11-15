@@ -191,7 +191,10 @@ jobs:
       - name: Fabriquer l'installateur
         id: fabrication
         run: |
-          fichier=$(node deploy/installateur/fabriquer.mjs --mode "$MODE" --site client/dist --tag "$TAG" --version "$VERSION" --sha "$SHA" --sortie "$RUNNER_TEMP/installateurs")
+          # Serveur de test seulement : le kit de l'atelier (le code et ses node_modules, sans aucun contenu : deploy/installateur/kit.mjs). Les node_modules de « npm ci » sont déjà là.
+          kit=""
+          if [ "$MODE" = test ]; then kit="--kit ."; fi
+          fichier=$(node deploy/installateur/fabriquer.mjs --mode "$MODE" --site client/dist --tag "$TAG" --version "$VERSION" --sha "$SHA" --sortie "$RUNNER_TEMP/installateurs" $kit)
           sh "$fichier" --verifier
           echo "fichier=$fichier" >> "$GITHUB_OUTPUT"
 

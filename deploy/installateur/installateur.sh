@@ -387,6 +387,7 @@ fi
   echo "mode=$MODE"
   echo "installe_le=$(date '+%Y-%m-%d %H:%M:%S')"
 } > "$DOSSIER/VERSION"
+@@KIT@@
 log "Installé : $TAG, $PAGES pages."
 
 if [ ! -f "$DOSSIER/.htpasswd" ]; then
