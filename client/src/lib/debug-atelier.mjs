@@ -18,11 +18,19 @@
 //       invalides: string[] (ce que le service a refusé de lire dans les fichiers du rapport) }
 //   Resume : { id, horodatage, version_installee, issue, motif, duree_ms, pic_ko, equivalents, differents }
 //
-// Sortie de `presenterLAtelier(etat)` : { severite: 'neutre' | 'ok' | 'attention' | 'alerte', titre, message, lignes: [{ libelle, valeur }], historique: [{ id, severite, texte }] }.
+// La journée type (PR 4) : `etat.bilan` (`maverick-atelier-bilan/1`, src/lib/atelier-bilan.mjs : fabrications des dernières 24 h par origine, serveur, pic de mémoire, durées, temps
+// processeur, effet sur la production d'après la sonde, verdict `tient | tient_tout_juste | ne_tient_pas | journee_incomplete | inconnu`, raisons, phrase, seuils), `rapport.origine`
+// (`livraison | nuit | journee_type`) et `rapport.sonde` (`maverick-sonde/1` : par instance `prod` et `dev`, par phase `reference`, `fabrication`, `apres` : n, médiane, 95e centile,
+// maximum, erreurs, en ms), `etat.installe.fenetre_de_mesure` ({ depuis, jusqua }), `Resume.origine`.
+//
+// Sortie de `presenterLAtelier(etat)` : { severite: 'neutre' | 'ok' | 'attention' | 'alerte', titre, message, lignes: [{ libelle, valeur }], historique: [{ id, severite, texte }],
+// bilan: { severite, titre, phrase, verdict, lignes: [{ libelle, valeur }], raisons: string[] } | null }.
 // `severite` : neutre (pas d'atelier, non installé, en attente, en cours), ok (fabrication faite, site témoin équivalent), attention (faite, mais des fichiers diffèrent), alerte
 // (refus, échec, mémoire, délai).
 
 export const ETATS_DE_L_ATELIER = Object.freeze(['pas_d_atelier', 'non_installe', 'en_attente', 'en_cours', 'rapport']);
+export const ORIGINES = Object.freeze({ livraison: 'livraison', nuit: 'nuit', journee_type: 'journée type' });
+export const VERDICTS_DU_BILAN = Object.freeze(['tient', 'tient_tout_juste', 'ne_tient_pas', 'journee_incomplete', 'inconnu']);
 export const ISSUES_DU_RAPPORT = Object.freeze(['fait', 'refus', 'echec', 'oom', 'delai']);
 /** Ce qu'un refus peut dire (le motif du rapport) et la phrase qui le dit. */
 export const MOTIFS = Object.freeze({
@@ -36,6 +44,7 @@ export const MOTIFS = Object.freeze({
   image_absente: 'l’image Docker manque et ne se télécharge pas',
   docker_refuse: 'Docker n’a pas démarré le conteneur',
   marque_illisible: 'la marque de l’installateur est illisible',
+  plafond_du_jour: 'le plafond de fabrications du jour est atteint',
 });
 
 const virgule = (n, decimales) => n.toFixed(decimales).replace('.', ',');
@@ -105,10 +114,10 @@ export function texteDuResume(r) {
   const version = r.version_installee ? ` v${r.version_installee}` : '';
   if (r.issue === 'fait') {
     const ecarts = r.differents === null || r.differents === undefined ? '' : r.differents === 0 ? ', site équivalent' : `, ${r.differents} fichier(s) différent(s)`;
-    return `${quand}${version} : faite en ${formaterLaDuree(r.duree_ms)}, pic ${formaterLaTaille(r.pic_ko, { unite: 'ko' })}${ecarts}`;
+    return `${quand}${version}${r.origine && r.origine !== 'livraison' ? ` (${ORIGINES[r.origine] ?? r.origine})` : ''} : faite en ${formaterLaDuree(r.duree_ms)}, pic ${formaterLaTaille(r.pic_ko, { unite: 'ko' })}${ecarts}`;
   }
   const quoi = { refus: 'refusée', echec: 'en échec', oom: 'arrêtée par manque de mémoire', delai: 'arrêtée (délai dépassé)' }[r.issue] ?? r.issue;
-  return `${quand}${version} : ${quoi}${r.motif && MOTIFS[r.motif] ? ` (${MOTIFS[r.motif]})` : ''}`;
+  return `${quand}${version}${r.origine && r.origine !== 'livraison' ? ` (${ORIGINES[r.origine] ?? r.origine})` : ''} : ${quoi}${r.motif && MOTIFS[r.motif] ? ` (${MOTIFS[r.motif]})` : ''}`;
 }
 
 /** Les lignes (libellé, valeur) d'un rapport complet, dans l'ordre où la page les affiche. */
@@ -121,6 +130,7 @@ export function lignesDuRapport(r) {
     { libelle: 'Date', valeur: String(r.horodatage ?? r.id ?? '—') },
     { libelle: 'Version installée', valeur: r.version_installee ? `${r.version_installee}${r.tag ? ` (${r.tag})` : ''}` : '—' },
     { libelle: 'Version du kit', valeur: r.version_du_kit ?? '—' },
+    { libelle: 'Origine', valeur: ORIGINES[r.origine] ?? 'livraison' },
     { libelle: 'Issue', valeur: r.issue === 'fait' ? 'fabrication faite' : `${r.issue}${r.motif && MOTIFS[r.motif] ? ` : ${MOTIFS[r.motif]}` : ''}` },
     { libelle: 'Serveur', valeur: `${s.processeurs ?? '?'} processeur(s), ${formaterLaTaille(s.memoire_totale_ko, { unite: 'ko' })} de mémoire (${formaterLaTaille(s.memoire_disponible_ko, { unite: 'ko' })} disponibles)` },
     { libelle: 'Disque', valeur: `${formaterLaTaille(s.disque_libre_ko, { unite: 'ko' })} libres sur ${formaterLaTaille(s.disque_total_ko, { unite: 'ko' })}` },
@@ -138,17 +148,65 @@ export function lignesDuRapport(r) {
   if (c) {
     lignes.push({ libelle: 'Comparaison au site livré', valeur: `${c.identiques} identiques · ${c.differents?.nombre ?? '?'} différents · ${c.seulement_a?.nombre ?? '?'} seulement dans le livré · ${c.seulement_b?.nombre ?? '?'} seulement dans le témoin · ${c.variables?.nombre ?? '?'} variations attendues` });
   }
+  if (r.sonde) {
+    const arret = r.sonde.arretee ? ` — sonde arrêtée : ${r.sonde.arretee.instance === 'prod' ? 'la production' : 'le site de dev'} répondait mal` : '';
+    if (!r.sonde.disponible) lignes.push({ libelle: 'Production pendant la fabrication', valeur: `sonde impossible (${r.sonde.motif ?? 'raison inconnue'})` });
+    for (const [instance, nom] of [['prod', 'Production'], ['dev', 'Site de dev']]) {
+      const i = r.sonde.instances?.[instance];
+      if (!i) continue;
+      if (!i.disponible || !i.phases) { lignes.push({ libelle: `${nom} pendant la fabrication`, valeur: `sonde impossible (${i.motif ?? 'raison inconnue'})` }); continue; }
+      const phase = (p) => (p && p.n > 0 ? `médiane ${p.mediane_ms} ms, 95e centile ${p.p95_ms} ms, max ${p.max_ms} ms, ${p.erreurs} erreur(s) sur ${p.n}` : 'aucune mesure');
+      lignes.push({ libelle: `${nom} : référence`, valeur: phase(i.phases.reference) });
+      lignes.push({ libelle: `${nom} : pendant`, valeur: `${phase(i.phases.fabrication)}${i.authentifie ? '' : ' (réponse de nginx seul : mot de passe interne non lu)'}${instance === 'prod' ? arret : ''}` });
+      lignes.push({ libelle: `${nom} : après`, valeur: phase(i.phases.apres) });
+    }
+  }
   if (r.invalides?.length) lignes.push({ libelle: 'Fichiers refusés à la lecture', valeur: r.invalides.join(' ; ') });
   return lignes;
+}
+
+/** La gravité d'un verdict du bilan : ok, attention, alerte, ou neutre quand il n'y a pas encore de jugement. */
+export function severiteDuVerdict(verdict) {
+  return { tient: 'ok', tient_tout_juste: 'attention', ne_tient_pas: 'alerte' }[verdict] ?? 'neutre';
+}
+const LIBELLES_DU_VERDICT = Object.freeze({ tient: 'tient', tient_tout_juste: 'tient tout juste', ne_tient_pas: 'ne tient pas', journee_incomplete: 'journée incomplète', inconnu: 'pas de verdict' });
+
+/** Les lignes (libellé, valeur) du bilan de la journée. */
+export function lignesDuBilan(b) {
+  if (!b) return [];
+  const f = b.fabrications;
+  const p = b.production;
+  // les seuils peuvent manquer (un bilan sans eux : pas de ligne de seuil, pas d'erreur)
+  const seuil = b.seuils ? `, seuil : moins de ${b.seuils.facteur_de_reference} fois la référence ou de ${b.seuils.plancher_ms} ms` : '';
+  const lignes = [
+    { libelle: 'Verdict', valeur: LIBELLES_DU_VERDICT[b.verdict] ?? b.verdict },
+    { libelle: 'Fabrications sur 24 h', valeur: `${f.total} (livraison ${f.par_origine.livraison}, nuit ${f.par_origine.nuit}, journée type ${f.par_origine.journee_type}) : ${f.faites} faites, ${f.refus} refusées, ${f.echecs} en échec, ${f.oom} par manque de mémoire, ${f.delai} au délai${f.plafond_du_jour_atteint ? ' ; plafond du jour atteint' : ''}` },
+  ];
+  if (b.serveur) {
+    lignes.push({ libelle: 'Serveur', valeur: `${b.serveur.processeurs ?? '?'} processeur(s), ${formaterLaTaille(b.serveur.memoire_totale_ko, { unite: 'ko' })} de mémoire (au plus bas ${formaterLaTaille(b.serveur.memoire_disponible_min_ko, { unite: 'ko' })} disponibles), disque : au plus bas ${formaterLaTaille(b.serveur.disque_libre_min_ko, { unite: 'ko' })} libres sur ${formaterLaTaille(b.serveur.disque_total_ko, { unite: 'ko' })}` });
+  }
+  lignes.push({ libelle: 'Pic de mémoire', valeur: `${formaterLaTaille(b.memoire.pic_max_ko, { unite: 'ko' })} (plafond ${formaterLaTaille(b.memoire.plafond_ko, { unite: 'ko' })})` });
+  lignes.push({ libelle: 'Durée d’une fabrication', valeur: `médiane ${formaterLaDuree(b.duree.mediane_ms)}, maximum ${formaterLaDuree(b.duree.max_ms)}` });
+  lignes.push({ libelle: 'Temps processeur', valeur: `${formaterLaDuree(b.cpu.total_ms)} en tout, médiane ${formaterLaDuree(b.cpu.mediane_ms)}` });
+  lignes.push({ libelle: 'Effet sur la production', valeur: p.mesuree
+    ? `95e centile ${p.pendant.p95_ms} ms pendant les fabrications contre ${p.reference.p95_ms} ms en référence (rapport ${p.rapport_p95 ?? '—'}${seuil}) ; médiane ${p.pendant.mediane_ms} ms contre ${p.reference.mediane_ms} ms ; ${p.pendant.erreurs} mauvaise(s) réponse(s) sur ${p.pendant.n}${p.authentifie ? '' : ' (réponse de nginx seul : mot de passe interne non lu)'}`
+    : 'non mesuré' });
+  return lignes;
+}
+
+/** Le bilan de la journée tel que la page l'affiche, ou null. */
+export function presenterLeBilan(b) {
+  if (!b || b.format !== 'maverick-atelier-bilan/1') return null;
+  return { severite: severiteDuVerdict(b.verdict), titre: 'Bilan des dernières 24 h', phrase: b.phrase, verdict: b.verdict, lignes: lignesDuBilan(b), raisons: b.raisons ?? [] };
 }
 
 /** Tout ce que la page affiche, d'après la réponse de `GET /api/debug/atelier/`. */
 export function presenterLAtelier(etat) {
   if (!etat || etat.format !== 'maverick-atelier-etat/1') {
-    return { severite: 'neutre', titre: 'Atelier', message: 'L’état de l’atelier n’est pas lisible.', lignes: [], historique: [] };
+    return { severite: 'neutre', titre: 'Atelier', message: 'L’état de l’atelier n’est pas lisible.', lignes: [], historique: [], bilan: null };
   }
   const dernier = etat.dernier ?? null;
-  const base = { titre: 'Atelier du site de dev', message: etat.message ?? '', historique: (etat.historique ?? []).map((h) => ({ id: h.id, severite: severiteDuRapport(h), texte: texteDuResume(h) })) };
+  const base = { titre: 'Atelier du site de dev', message: etat.message ?? '', bilan: presenterLeBilan(etat.bilan), historique: (etat.historique ?? []).map((h) => ({ id: h.id, severite: severiteDuRapport(h), texte: texteDuResume(h) })) };
   if (!dernier) return { severite: 'neutre', ...base, lignes: [] };
   // en attente ou en cours : la page montre la dernière mesure sans la juger (neutre) tant qu'une autre est attendue
   const jugee = etat.etat === 'rapport';

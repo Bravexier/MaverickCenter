@@ -31,7 +31,7 @@ Tenu à jour par la PR de chaque lot (état : à faire, en cours, fait ; puis le
 | 6 | Lots de changements, annulation d'un lot, nature de chaque trace | L | fait (nature de chaque trace et format du lot, #364 ; service — dépôt, essai à blanc, application, numéros, verrous, #365 ; annulation d'un lot, « tout recalculer » (races, classes, dons, métiers ; les autres pages restent à couvrir), état d'origine par nature, numéros de l'édition, #366 ; onglet Mise à jour, #367 ; épreuve d'entrée 0122 à 0124 refaites en lots sur une copie, même base retrouvée sauf la page protégée « La montée de niveau » ; ce qui touche des tables hors édition attend le lot 8, dont la suppression des deux pages retirées par 0122 et 0124 (citées par une constante de règle) ; l'annulation des fusions 0123 et 0124 est refusée par les gardes du service, #368) | #364, #365, #366, #367, #368 |
 | 7 | Changements de structure appliqués sur place, d'abord à blanc | L | fait (table `migration_recue`, migration 0129 ; application sur place, essai sur une copie et bilan par le service, #369 ; règles des migrations contrôlées par la CI, bilan dans le résumé du job, #370 ; essai de la structure livrée par le service en place avant chaque installation, sur une copie, non bloquant avant le lot 8 (marqueur `db/source`), #371 ; essai dans l'ombre à chaque installation du site de dev, base migrée sur place comparée à la base refaite, écarts classés — « livré par le dépôt » attendu tant que les migrations de données existent —, rapports sur la page Debug, PR `feature/essai-dans-l-ombre`) | #369, #370, #371 |
 | 8 | Bascule 1 : la base du site de dev fait foi | L | à faire | |
-| 9 | Fabrication témoin sur le serveur : la mesure | L | en cours (fabrication depuis un fichier de contenu, #373 ; kit de l'atelier joint à l'installateur de test, #374 ; atelier du site de dev — extrait, conteneur, rapports, page Debug —, PR `feature/atelier-du-site-de-dev`) | #373, #374 |
+| 9 | Fabrication témoin sur le serveur : la mesure | L | fait, mesure en attente du geste du propriétaire (fabrication depuis un fichier de contenu, #373 ; kit de l'atelier joint à l'installateur de test, #374 ; atelier du site de dev — extrait, conteneur, rapports, page Debug —, #376 ; la journée type — minuteurs de nuit et du jour, sonde des temps de réponse, bilan de la journée —, PR `feature/journee-type-de-l-atelier`) | #373, #374, #376 |
 | 10 | Des contrôles qui ne lisent plus le contenu du dépôt | XL | en cours (premier temps : essai mécanique sur un contenu fourni, tri des 444 fichiers, `docs/essai-mecanique-des-tests.md`) | PR `feature/tri-mecanique-des-tests` |
 | 11 | Bascule 2 : mise à jour directe, pages fabriquées sur le serveur | XL | à faire | |
 | 12 | Le dépôt ne garde plus le contenu ; ménage | L | à faire | |
@@ -263,6 +263,8 @@ Le site apprend à se fabriquer depuis un fichier de contenu ; cela sert aussi l
 - **Risque** : Fort par le volume : 237 fichiers lisent la base, 196 attendent les pages d'exemple, 38 lancent Python. Aucun test n'est retiré sans équivalent ; tech-qualite relit.
 - **Prérequis** : Lots 5, 6 et 9. Votre réponse sur le passage du contenu par GitHub.
 
+**Depuis R278 (2026-11-15), le lot devient** : faire lire aux tests de GitHub le contenu du site de dev, et faire passer par ce même chemin les tests qui lisent encore le dépôt en direct (essai mécanique : `docs/essai-mecanique-des-tests.md`). Le jeu d'essai inventé n'est plus la voie retenue. Le texte qui suit est celui d'avant la réponse.
+
 D'abord classer les 395 fichiers de test. Puis, selon votre réponse. Soit un jeu d'essai inventé entre dans le dépôt (noms visiblement faux, numéros réservés que le site de dev refuse de donner) pour le contrôle exigé avant chaque fusion, et le vrai contenu est contrôlé sur le serveur : à chaque fabrication pour les contrôles rapides, chaque nuit et avant chaque mise à jour pour tous. Soit GitHub lit une copie du contenu le temps du contrôle. Dans les deux cas : l'ancienne voie reste par défaut tant que la nouvelle n'est pas verte ; l'état d'origine lu par 151 fichiers de test est refabriqué à chaque fois (le contenu moins vos saisies), jamais figé ; un refus dit quelle ligne corriger sur le site ; le dernier résultat s'affiche dans l'onglet Mise à jour.
 
 **État après ce lot.** Circuit inchangé. Les contrôles savent se passer de la copie du dépôt, qui est encore là.
@@ -390,6 +392,8 @@ Après deux mises à jour réussies par le nouveau circuit. Sortent du dépôt, 
 
 ### Question 6 — Une fois le contenu sorti du dépôt, les machines de GitHub peuvent-elles encore le lire de passage, sans le garder ?
 
+*Tranchée : R275, puis R278 pour les tests (réponse en fin de question).*
+
 *Bloque le lot : 9.*
 
 **Pourquoi la question se pose.** Votre demande dit que le dépôt ne garde pas le contenu. Elle ne dit pas si GitHub peut le lire le temps d'un contrôle ou d'une fabrication. Aujourd'hui, 237 fichiers de test sur 395 lisent les vraies règles. Votre réponse fixe le prix du lot le plus lourd, et le repli si le serveur se révèle trop petit pour fabriquer les pages.
@@ -399,6 +403,8 @@ Après deux mises à jour réussies par le nouveau circuit. Sortent du dépôt, 
 - **(c) Oui, pour les contrôles et pour fabriquer les pages.** — Rien à installer sur le serveur. Mais tout le contenu traverse GitHub à chaque fabrication, et le site de dev devient un passage obligé : s'il s'arrête, plus rien ne se livre.
 
 **Recommandation.** Non, jamais : c'est la lecture la plus fidèle de votre demande, et vous avez déjà demandé que les tests ne dépendent pas des textes saisis. La deuxième réponse est acceptable si le prix du lot des tests vous arrête.
+
+**Réponse.** D'abord « non, jamais » (R275). Puis, le 2026-11-15, après l'essai mécanique du lot 10 (`docs/essai-mecanique-des-tests.md`, PR #375 : tous les tests passent avec le vrai contenu reçu par un fichier, 212 fichiers sur 444 cassent sur un contenu factice), **« Oui » pour les tests seulement** (R278, réponse (b)). GitHub ne fabrique toujours pas les pages avec le contenu, et le dépôt ne le garde toujours pas.
 
 ### Question 7 — Le dépôt porte du contenu ailleurs que dans les lignes des tables. Qu'est-ce qui doit en sortir à la fin du chantier ?
 

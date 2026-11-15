@@ -9,14 +9,14 @@ import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import {
   ANCIEN_DOSSIER_DE_L_EXTRAIT, FICHIER_DU_CONTENU, FORMAT_ETAT_DE_L_ATELIER, RAPPORTS_GARDES, creerAtelier, lireUnRapport, listerLesRapports, nomDeLExtrait, validerLaComparaison,
-  validerLaFabrication, validerLeKit, validerLeRapport,
+  validerLaFabrication, validerLaSonde, validerLeKit, validerLeRapport,
 } from '../serveur/atelier.mjs';
 import { demarrerService } from '../serveur/service.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const KIT = { format: 'maverick-kit/1', version: '0.4.95', node: '22', image: 'node:22-bookworm-slim', plateforme: { os: 'linux', arch: 'x64', libc: 'glibc' }, fichiers: 11902, taille_decompressee_octets: 191021072, taille_archive_octets: 57504685 };
-const INSTALLE = { format: 'maverick-atelier-installe/1', installe_le: '2026-11-15T10:00:00Z', reglages: { memoire_max_ko: 2621440, besoin_ko: 1572864, cpus: 1, disque_min_ko: 2097152, delai_s: 1800 } };
+const INSTALLE = { format: 'maverick-atelier-installe/1', installe_le: '2026-11-15T10:00:00Z', reglages: { memoire_max_ko: 2621440, besoin_ko: 1572864, cpus: 1, disque_min_ko: 2097152, delai_s: 1800, jours_de_mesure: 1, max_par_jour: 12 } };
 const rapportDe = (id, plus = {}) => ({
   format: 'maverick-atelier/1', id, issue: 'fait', motif: null, horodatage: '2026-11-15T10:15:00Z', version_installee: '0.4.95', version_du_kit: '0.4.95', tag: 'v0.4.95',
   serveur: { processeurs: 4, memoire_totale_ko: 8388608, memoire_disponible_ko: 6291456, disque_total_ko: 100000000, disque_libre_ko: 60000000, charge: [0.5, 0.4, 0.3] },
@@ -304,4 +304,82 @@ test('GET /api/debug/atelier/ : l’état sur le site de dev, 403 en production,
   const sans = await demarrer('sans', { edition: true, atelier: false });
   t.after(() => sans.arreter());
   assert.equal((await fetch(`${sans.url}/api/debug/atelier/`)).status, 503);
+});
+
+// ---------------------------------------------------------------- la journée type : origine, sonde, bilan
+
+const phaseDe = (p95, n = 10, erreurs = 0) => ({ n, mediane_ms: Math.round(p95 / 2), p95_ms: p95, max_ms: p95 + 5, erreurs });
+const SONDE = (pendant = 30) => ({
+  format: 'maverick-sonde/1', disponible: true, motif: null, cibles: ['/', '/api/personnages/'], delai_s: 5, arretee: null,
+  instances: {
+    prod: { disponible: true, motif: null, authentifie: true, phases: { reference: phaseDe(25), fabrication: phaseDe(pendant), apres: phaseDe(25) } },
+    dev: { disponible: false, motif: 'env_monte', authentifie: false, phases: null },
+  },
+});
+
+test('le rapport porte son origine et sa sonde : validés champ par champ ; une origine absente est une livraison, un motif ou une instance inconnus ne passent pas', (t) => {
+  const { rapports } = monde(t);
+  poserUnRapport(rapports, '20261115-101500', { rapport: rapportDe('20261115-101500', { origine: 'nuit', sonde: SONDE() }) });
+  const nuit = lireUnRapport(rapports, '20261115-101500');
+  assert.equal(nuit.origine, 'nuit');
+  assert.equal(nuit.sonde.format, 'maverick-sonde/1');
+  assert.deepEqual(nuit.sonde.instances.prod.phases.fabrication, { n: 10, mediane_ms: 15, p95_ms: 30, max_ms: 35, erreurs: 0 });
+  assert.deepEqual(nuit.sonde.instances.dev, { disponible: false, motif: 'env_monte', authentifie: false, phases: null });
+  poserUnRapport(rapports, '20261115-102000');
+  assert.equal(lireUnRapport(rapports, '20261115-102000').origine, 'livraison');
+  assert.equal(lireUnRapport(rapports, '20261115-102000').sonde, null);
+  poserUnRapport(rapports, '20261115-102500', { rapport: rapportDe('20261115-102500', { origine: 'pirate', issue: 'refus', motif: 'plafond_du_jour' }), fabrication: null, comparaison: null });
+  const plafond = lireUnRapport(rapports, '20261115-102500');
+  assert.equal(plafond.origine, 'livraison');
+  assert.equal(plafond.motif, 'plafond_du_jour');
+  // une sonde hostile : des instances inconnues, des motifs inventés, des nombres hors bornes, des textes
+  const hostile = validerLaSonde({ ...SONDE(), motif: 'rm -rf /', cibles: ['<script>x</script>'], instances: { prod: { ...SONDE().instances.prod, motif: 'inventé', phases: { reference: { n: 1e30, mediane_ms: -4, p95_ms: 'x' }, fabrication: null, apres: undefined } }, pirate: { disponible: true } }, arretee: { instance: 'pirate', motif: 'autre' } });
+  assert.equal(hostile.motif, null);
+  assert.ok(!/[<>]/.test(hostile.cibles.join('')));
+  assert.equal(hostile.instances.prod.motif, null);
+  assert.deepEqual(hostile.instances.prod.phases.reference, { n: null, mediane_ms: null, p95_ms: null, max_ms: null, erreurs: null });
+  assert.ok(!('pirate' in hostile.instances));
+  assert.deepEqual(hostile.arretee, { instance: null, motif: null });
+  assert.equal(validerLaSonde({ format: 'autre' }), null);
+});
+
+test('l’état porte le bilan des dernières 24 h et la fenêtre de mesure de la journée type', (t) => {
+  const m = monde(t);
+  m.etat.horloge = Date.parse('2026-11-15T18:00:00Z');
+  const pose = (heure, minute, plus = {}) => {
+    const id = `20261115-${heure}${minute}00`;
+    poserUnRapport(m.rapports, id, { rapport: rapportDe(id, { horodatage: `2026-11-15T${heure}:${minute}:00Z`, origine: 'journee_type', sonde: SONDE(), ...plus }), fabrication: null, comparaison: null });
+  };
+  for (const heure of ['08', '09', '10', '11']) pose(heure, '00', { fabrication: false, comparaison: false });
+  const peu = m.atelier.lire();
+  assert.equal(peu.bilan.format, 'maverick-atelier-bilan/1');
+  assert.equal(peu.bilan.verdict, 'journee_incomplete');
+  assert.equal(peu.bilan.fabrications.total, 4);
+  assert.deepEqual(peu.bilan.fabrications.par_origine, { livraison: 0, nuit: 0, journee_type: 4 });
+  assert.equal(peu.bilan.seuils.facteur_de_reference, 2);
+  assert.equal(peu.bilan.seuils.plancher_ms, 1000);
+  for (const heure of ['12', '13', '14', '15', '16', '17']) pose(heure, '00', { fabrication: false, comparaison: false });
+  const pleine = m.atelier.lire();
+  assert.equal(pleine.bilan.fabrications.total, 10);
+  assert.equal(pleine.bilan.verdict, 'tient');
+  assert.equal(pleine.bilan.production.pendant.p95_ms, 30);
+  assert.match(pleine.bilan.phrase, /^Ce serveur \(4 processeur\(s\), 8,0 Go de mémoire\) tient/);
+  assert.equal(pleine.historique[0].origine, 'journee_type');
+  // la fenêtre de mesure : à compter du geste
+  assert.deepEqual(pleine.installe.fenetre_de_mesure, { depuis: '2026-11-15T10:00:00Z', jusqua: '2026-11-16T10:00:00Z' });
+  assert.equal(pleine.installe.reglages.max_par_jour, 12);
+  // un refus de mémoire fait basculer le verdict
+  pose('17', '30', { issue: 'refus', motif: 'memoire_insuffisante', sonde: null });
+  assert.equal(m.atelier.lire().bilan.verdict, 'ne_tient_pas');
+  // les rapports d'avant 24 h n'y sont plus
+  m.etat.horloge = Date.parse('2026-11-17T18:00:00Z');
+  assert.equal(m.atelier.lire().bilan.fabrications.total, 0);
+  // sans rapport : un bilan sans verdict ; sans atelier installé : pas de bilan
+  const vide = monde(t).atelier.lire().bilan;
+  assert.deepEqual([vide.verdict, vide.fabrications.total], ['inconnu', 0]);
+  assert.equal(monde(t, { installe: false }).atelier.lire().bilan, null);
+});
+
+test('on garde assez de rapports pour une journée pleine : 40', () => {
+  assert.equal(RAPPORTS_GARDES, 40);
 });

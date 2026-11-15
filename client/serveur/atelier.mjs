@@ -14,10 +14,12 @@
 //      fabrication.json (`maverick-fabrication/1`) et comparaison.json (`maverick-comparaison/1`), produits dans le conteneur et copiés tels quels par root. Root n'en lit
 //      aucun ; c'est ICI que chaque fichier est borné en taille et validé champ par champ (une liste blanche : un champ inconnu n'entre pas), jamais interprété autrement.
 //
+// Le bilan de la journée (`bilan`, src/lib/atelier-bilan.mjs) est calculé à chaque lecture d'après les rapports des dernières 24 h.
 // État rendu (GET /api/debug/atelier/, `maverick-atelier-etat/1`, forme décrite dans src/lib/debug-atelier.mjs) : pas_d_atelier (production, ou dossier des rapports monté
 // sans kit), non_installe (dossier des rapports pas monté, ou kit posé et geste du propriétaire pas encore fait), en_attente (installé, rien de mesuré pour la version installée), en_cours, rapport.
 import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { calculerLeBilan } from '../src/lib/atelier-bilan.mjs';
 import { jugerLeServeur, picDuRapport, texteDuResume } from '../src/lib/debug-atelier.mjs';
 import { DOSSIER_DES_ESSAIS } from './essai-de-structure.mjs';
 import { FICHIER_BASE } from './base-vivante.mjs';
@@ -35,9 +37,10 @@ export const nomDeLExtrait = (version) => `contenu-${version}.db`;
 export const VERSION_VALIDE = /^\d+\.\d+\.\d+$/;
 const ID_DU_RAPPORT = /^\d{8}-\d{6}$/;
 const PLAFOND_DES_FICHIERS = Object.freeze({ kit: 16384, installe: 8192, enCours: 4096, rapport: 32768, fabrication: 262144, comparaison: 262144 });
-export const RAPPORTS_GARDES = 20;
+export const RAPPORTS_GARDES = 40;
+export const ORIGINES = ['livraison', 'nuit', 'journee_type'];
 const ISSUES = ['fait', 'refus', 'echec', 'oom', 'delai'];
-const MOTIFS = ['memoire_insuffisante', 'marge_insuffisante', 'disque_insuffisant', 'extrait_absent', 'extrait_refuse', 'kit_perime', 'kit_absent', 'image_absente', 'docker_refuse', 'marque_illisible'];
+const MOTIFS = ['memoire_insuffisante', 'marge_insuffisante', 'disque_insuffisant', 'extrait_absent', 'extrait_refuse', 'kit_perime', 'kit_absent', 'image_absente', 'docker_refuse', 'marque_illisible', 'plafond_du_jour'];
 const SOURCES_DE_LA_MEMOIRE = ['cgroup', 'cgroup_echantillonne', 'docker_stats'];
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
@@ -74,13 +77,17 @@ export function validerLeKit(o) {
   };
 }
 
-const REGLAGES = ['memoire_max_ko', 'besoin_ko', 'cpus', 'disque_min_ko', 'delai_s'];
+const REGLAGES = ['memoire_max_ko', 'besoin_ko', 'cpus', 'disque_min_ko', 'delai_s', 'jours_de_mesure', 'max_par_jour'];
 const validerLesReglages = (o) => Object.fromEntries(REGLAGES.map((k) => [k, nombre(o?.[k], 1e12)]));
 
 /** installe.json (`maverick-atelier-installe/1`, écrit par le geste du propriétaire). */
 export function validerLInstallation(o) {
   if (!o || o.format !== 'maverick-atelier-installe/1') return null;
-  return { installe_le: date(o.installe_le), reglages: validerLesReglages(o.reglages) };
+  const installe_le = date(o.installe_le);
+  const reglages = validerLesReglages(o.reglages);
+  // la fenêtre de mesure de la journée type : à compter du geste (ou de sa relance)
+  const fin = installe_le && reglages.jours_de_mesure ? new Date(Date.parse(installe_le) + reglages.jours_de_mesure * 86400000).toISOString().replace(/\.\d+Z$/, 'Z') : null;
+  return { installe_le, reglages, fenetre_de_mesure: { depuis: installe_le, jusqua: fin } };
 }
 
 /** en-cours.json (écrit par root pendant une fabrication). */
@@ -133,6 +140,23 @@ export function validerLaComparaison(o) {
   };
 }
 
+
+const validerUnePhase = (p) => ({ n: entier(p?.n, 1e6), mediane_ms: entier(p?.mediane_ms, 1e7), p95_ms: entier(p?.p95_ms, 1e7), max_ms: entier(p?.max_ms, 1e7), erreurs: entier(p?.erreurs, 1e6) });
+/** Le champ `sonde` d'un rapport (`maverick-sonde/1`, écrit par root : des codes et des temps, jamais un corps de réponse). */
+export function validerLaSonde(o) {
+  if (!o || o.format !== 'maverick-sonde/1') return null;
+  const instance = (i) => (i ? {
+    disponible: i.disponible === true, motif: motif(i.motif, ['env_absent', 'env_monte', 'port_illisible', 'introuvable', 'sonde_impossible']), authentifie: i.authentifie === true,
+    phases: i.phases ? { reference: validerUnePhase(i.phases.reference), fabrication: validerUnePhase(i.phases.fabrication), apres: validerUnePhase(i.phases.apres) } : null,
+  } : null);
+  return {
+    format: o.format, disponible: o.disponible === true, motif: motif(o.motif, ['dossier_de_travail', 'curl_absent', 'montages_illisibles', 'sonde_impossible']),
+    cibles: liste(o.cibles, 4).map((c) => texte(c, 60)), delai_s: entier(o.delai_s, 600),
+    arretee: o.arretee ? { instance: motif(o.arretee.instance, ['prod', 'dev']), motif: motif(o.arretee.motif, ['reponses_mauvaises']) } : null,
+    instances: o.instances ? { prod: instance(o.instances.prod), dev: instance(o.instances.dev) } : null,
+  };
+}
+
 /** rapport.json (`maverick-atelier/1`, écrit par root : des nombres et des mots connus). Rend null s'il n'est pas de ce format ou si son identifiant n'est pas celui de son dossier. */
 export function validerLeRapport(o, id) {
   if (!o || o.format !== FORMAT_RAPPORT_DE_L_ATELIER || o.id !== id || !ID_DU_RAPPORT.test(id)) return null;
@@ -140,7 +164,7 @@ export function validerLeRapport(o, id) {
   if (!issue) return null;
   const s = o.serveur ?? {};
   return {
-    id, issue, motif: motif(o.motif, MOTIFS), horodatage: date(o.horodatage), version_installee: version(o.version_installee), version_du_kit: version(o.version_du_kit), tag: texte(o.tag, 40),
+    id, issue, origine: motif(o.origine, ORIGINES) ?? 'livraison', motif: motif(o.motif, MOTIFS), horodatage: date(o.horodatage), version_installee: version(o.version_installee), version_du_kit: version(o.version_du_kit), tag: texte(o.tag, 40),
     serveur: {
       processeurs: entier(s.processeurs, 1e5), memoire_totale_ko: entier(s.memoire_totale_ko), memoire_disponible_ko: entier(s.memoire_disponible_ko),
       disque_total_ko: entier(s.disque_total_ko), disque_libre_ko: entier(s.disque_libre_ko), charge: liste(s.charge, 3).map((n) => nombre(n, 1e6)),
@@ -148,7 +172,7 @@ export function validerLeRapport(o, id) {
     reglages: validerLesReglages(o.reglages), plafond_ko: entier(o.plafond_ko), marge_ko: Number.isSafeInteger(o.marge_ko) ? o.marge_ko : null, duree_ms: nombre(o.duree_ms, 1e10), code_sortie: Number.isSafeInteger(o.code_sortie) ? o.code_sortie : null,
     memoire: { pic_ko: entier(o.memoire?.pic_ko), source: motif(o.memoire?.source, SOURCES_DE_LA_MEMOIRE) }, cpu_ms: nombre(o.cpu_ms, 1e12),
     place: { kit_ko: entier(o.place?.kit_ko), travail_ko: entier(o.place?.travail_ko), sortie_ko: entier(o.place?.sortie_ko) },
-    a_fabrication: o.fabrication === true, a_comparaison: o.comparaison === true,
+    sonde: validerLaSonde(o.sonde), a_fabrication: o.fabrication === true, a_comparaison: o.comparaison === true,
   };
 }
 
@@ -175,9 +199,20 @@ export function lireUnRapport(dossier, id) {
 /** Le résumé d'une ligne de l'historique. */
 export function resumerUnRapport(r) {
   return {
-    id: r.id, horodatage: r.horodatage, version_installee: r.version_installee, issue: r.issue, motif: r.motif, duree_ms: r.duree_ms, pic_ko: picDuRapport(r),
+    id: r.id, horodatage: r.horodatage, origine: r.origine, version_installee: r.version_installee, issue: r.issue, motif: r.motif, duree_ms: r.duree_ms, pic_ko: picDuRapport(r),
     equivalents: r.comparaison ? r.comparaison.equivalents : null, differents: r.comparaison ? r.comparaison.differents?.nombre ?? null : null,
   };
+}
+
+/** Le résumé d'un enregistrement compact (la ligne de l'historique). */
+export function resumerUnCompact(c) {
+  const { id, horodatage, origine, version_installee, issue, motif, duree_ms, pic_ko, equivalents, differents } = c;
+  return { id, horodatage, origine, version_installee, issue, motif, duree_ms, pic_ko, equivalents, differents };
+}
+
+/** Ce que le bilan de la journée garde d'un rapport (src/lib/atelier-bilan.mjs) : le résumé, le temps processeur, le plafond, la taille du serveur et la sonde. */
+export function compacterUnRapport(r) {
+  return { ...resumerUnRapport(r), cpu_ms: r.cpu_ms, plafond_ko: r.plafond_ko, serveur: r.serveur, sonde: r.sonde };
 }
 
 /** Les identifiants des dossiers de rapports de `rapports`, du plus récent au plus ancien (un dossier de la forme AAAAMMJJ-HHMMSS, jamais un lien). */
@@ -216,7 +251,7 @@ export function creerAtelier({ dossier, rapports = null, depot = null, edition, 
   let minuteur = null;
   let dernierIdVu = null;
   let ferme = false;
-  const resumes = new Map(); // id -> résumé (un rapport écrit ne change plus)
+  const compacts = new Map(); // id -> enregistrement compact (un rapport écrit ne change plus)
 
   const lireInstallation = () => (rapports ? validerLInstallation(lireUnJsonBorne(join(rapports, 'installe.json'), PLAFOND_DES_FICHIERS.installe)) : null);
   const lireLeKit = () => (rapports ? validerLeKit(lireUnJsonBorne(join(rapports, 'kit.json'), PLAFOND_DES_FICHIERS.kit)) : null);
@@ -311,7 +346,7 @@ export function creerAtelier({ dossier, rapports = null, depot = null, edition, 
   function lire() {
     const v = versionInstallee();
     const etat = (nom, message, plus = {}) => ({
-      format: FORMAT_ETAT_DE_L_ATELIER, etat: nom, message, version_installee: version(v), kit: null, installe: null, extrait: null, en_cours: null, dernier: null, historique: [], resume: null, ...plus,
+      format: FORMAT_ETAT_DE_L_ATELIER, etat: nom, message, version_installee: version(v), kit: null, installe: null, extrait: null, en_cours: null, dernier: null, historique: [], bilan: null, resume: null, ...plus,
     });
     if (!edition) return etat('pas_d_atelier', 'L’atelier n’existe que sur le site de dev.');
     // avant le geste du propriétaire, rien n'est monté (le montage vient de docker-compose.override.yml, écrit par atelier/installer.sh) : le kit, lui, n'est pas visible d'ici
@@ -331,20 +366,22 @@ export function creerAtelier({ dossier, rapports = null, depot = null, edition, 
     const extrait = contenu ? { version: contenu.version, fabrique_le: contenu.fabrique_le, octets: contenu.octets, duree_ms: contenu.duree_ms, a_jour: aJour } : null;
     const ids = listerLesRapports(rapports);
     const historique = [];
+    const enregistrements = [];
     let dernier = null;
     for (const id of ids) {
-      let r = null;
-      if (resumes.has(id) && id !== ids[0]) { historique.push(resumes.get(id)); continue; }
-      r = lireUnRapport(rapports, id);
+      if (compacts.has(id) && id !== ids[0]) { enregistrements.push(compacts.get(id)); historique.push(resumerUnCompact(compacts.get(id))); continue; }
+      const r = lireUnRapport(rapports, id);
       if (!r) continue;
       if (!dernier) dernier = r;
-      const resume = resumerUnRapport(r);
-      resumes.set(id, resume);
-      historique.push(resume);
+      const compact = compacterUnRapport(r);
+      compacts.set(id, compact);
+      enregistrements.push(compact);
+      historique.push(resumerUnRapport(r));
     }
-    if (resumes.size > 200) resumes.clear();
+    if (compacts.size > 200) compacts.clear();
+    const bilan = calculerLeBilan(enregistrements, { maintenant: horloge() });
     const enCoursDeRoot = validerLEnCours(lireUnJsonBorne(join(rapports, 'en-cours.json'), PLAFOND_DES_FICHIERS.enCours));
-    const plus = { kit, installe, extrait, en_cours: enCoursDeRoot, dernier, historique, resume: dernier ? jugerLeServeur(dernier).phrase : null };
+    const plus = { kit, installe, extrait, en_cours: enCoursDeRoot, dernier, historique, bilan, resume: dernier ? jugerLeServeur(dernier).phrase : null };
     if (enCoursDeRoot) return etat('en_cours', `Fabrication en cours (version ${enCoursDeRoot.version_installee ?? '?'}, depuis ${enCoursDeRoot.debut ?? '?'}).`, plus);
     if (!dernier) return etat('en_attente', 'En attente de la première fabrication.', plus);
     if (version(v) && dernier.version_installee !== version(v)) return etat('en_attente', `En attente de la fabrication de la version ${v} (la dernière mesurée est celle de la version ${dernier.version_installee ?? '?'}).`, plus);

@@ -347,3 +347,5 @@ td.est-coupee:focus-visible { outline: 2px solid var(--accent); outline-offset: 
 .atelier-historique__ligne--ok { border-left-color: var(--good); }
 .atelier-historique__ligne--attention { border-left-color: var(--warn-text); }
 .atelier-historique__ligne--alerte { border-left-color: var(--danger); }
+.atelier-bilan { margin: 0 0 0.8rem; }
+.atelier-bilan__raisons { margin: 0 0 0.6rem; }

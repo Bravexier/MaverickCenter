@@ -11,7 +11,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import {
   alertesDu, BALISE, BORNES_MS, CLASSES, classeDe, creerMetriques, empreinteDePile, estUnSuivi, instanceDuService, methodeNormalisee, navigateurDe,
-  PAGES_PAR_HEURE, pageDuReferent, quantile, quantileDetaille, RETENTION, ROUTE_INCONNUE, routeNormalisee, SEUILS, statistiques,
+  PAGES_PAR_HEURE, pageDuReferent, quantile, quantileDetaille, RETENTION, ROUTE_INCONNUE, routeNormalisee, SEUILS, statistiques, UA_SONDE,
 } from '../serveur/metriques.mjs';
 import { creerMesureSql, normaliserSql } from '../serveur/metriques-sql.mjs';
 import { RESSOURCES } from '../src/lib/ressources.mjs';
@@ -155,6 +155,25 @@ test('méthodes gardées ; relèves (suivi) : réussies seulement', () => {
   assert.equal(estUnSuivi('POST', '/api/metriques/page/', 204), true);
   assert.equal(estUnSuivi('POST', '/api/metriques/page/', 400), false);
   assert.equal(estUnSuivi('GET', '/api/etat/', 200), false);
+});
+
+test('la sonde de l’atelier (son User-Agent exact) n’entre dans aucune métrique de requêtes ; tout autre User-Agent est mesuré comme avant', () => {
+  const m = creerMetriques({ dossier: dossierNeuf(), instance: 'dev', intervalle: 0, memoireRequetes: 100 });
+  try {
+    const sonde = m.debut('GET', '/api/personnages/', { host: 'site', 'user-agent': UA_SONDE });
+    assert.equal(sonde, null, 'aucune mesure pour la sonde');
+    assert.equal(m.fin(sonde, { statut: 200 }), null, 'et sa fin ne compte rien (le service passe la mesure à fin)');
+    // des User-Agent voisins ne sont pas écartés : seul le texte exact l'est
+    for (const ua of [`${UA_SONDE} `, UA_SONDE.toUpperCase(), `${UA_SONDE}x`, 'maverick-atelier-sonde', CHROME, '']) {
+      requete(m, { adresse: '/api/personnages/', entetes: { 'user-agent': ua } });
+    }
+    requete(m, { adresse: '/api/personnages/', entetes: { 'user-agent': undefined } });
+    const l = m.lire({ periode: '1h' });
+    assert.equal(l.global.n, 7, 'sept requêtes mesurées, la sonde n’en fait pas une huitième');
+    assert.equal(m.requetes({}).requetes.length, 7);
+  } finally {
+    m.arreter();
+  }
 });
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------

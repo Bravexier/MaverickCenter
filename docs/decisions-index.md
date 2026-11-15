@@ -2,7 +2,7 @@
 
 Ne lis jamais `docs/decisions-regles.md` en entier : trouve ici le numéro de la décision, puis cherche sa ligne avec Grep (motif `^\| R41 \|`) et ne lis qu'elle.
 
-Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 277 décisions, de R1 à R277, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
+Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 278 décisions, de R1 à R278, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
 
 | Réf. | Sujet | Décision |
 | --- | --- | --- |
@@ -283,3 +283,4 @@ Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas mo
 | R275 | Réponses au plan « la base du site de dev devient la source de vérité » (2… | Le plan est accepté et les recommandations des questio… |
 | R276 | Ce que le propriétaire fait lui-même pendant le chantier de la base de dev… | Chaque lot réduit au strict nécessaire ce que le propr… |
 | R277 | Onglets de la page « Alignement » et onglets écrits à la main (demande du… | (1) Deux groupes d'onglets sur la page « Alignement »… |
+| R278 | Les tests de GitHub peuvent lire le contenu du site de dev (2026-11-15, `d… | Oui, pour les tests seulement : cela remplace, pour le… |

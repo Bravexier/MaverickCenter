@@ -26,6 +26,7 @@
 //     erreurs 5xx avec l'empreinte de leur pile, purge) ;
 //   - les pages vues mesurées par le navigateur (POST /api/metriques/page/ : temps jusqu'au premier octet, DOMContentLoaded, chargement, LCP), ouverte
 //     sur les deux instances (décision du propriétaire), fermée par MAVERICK_METRIQUES_PAGES=0.
+// Écartée : la sonde de l'atelier (User-Agent exact UA_SONDE) n'est jamais mesurée (60 à 200 requêtes par fabrication fausseraient les comptes et les durées).
 // JAMAIS : adresse IP, corps, chaîne de requête, identifiant de fiche, Authorization ou cookie, User-Agent entier.
 //
 // Agrégats persistés (tables ci-dessous) : par heure × route × méthode (et par tranche de 5 minutes, gardée 2 jours, pour la période « 1h ») : n,
@@ -98,6 +99,12 @@ export const RETENTION = Object.freeze({
 export const INTERVALLE_VERSEMENT = 60_000;
 /** Purge (rétention) et VACUUM incrémental : une fois par jour. */
 export const INTERVALLE_PURGE = 86_400_000;
+/**
+ * Le User-Agent de la sonde de l'atelier (deploy/installateur/atelier/lib.sh#SONDE_AGENT) : ses requêtes ne sont pas mesurées (ce texte exact, rien d'autre ;
+ * la production exécute le même code, et un autre User-Agent est mesuré comme avant).
+ */
+export const UA_SONDE = 'maverick-atelier-sonde/1';
+
 /** Requêtes gardées en mémoire, une à une (site de dev : GET /api/debug/metriques/requetes/). */
 export const CAPACITE_REQUETES = 2000;
 /** Bornes de la mémoire tant que la base ne reçoit rien (panne) : au-delà, les plus anciennes entrées sont perdues (comptées). */
@@ -1680,6 +1687,8 @@ export function creerMetriques({
    * jamais gardés tels quels).
    */
   function debut(methode, adresse, entetes = {}) {
+    // la sonde de l'atelier (UA_SONDE, exactement) n'entre pas dans les métriques : 60 à 200 requêtes par fabrication fausseraient les temps et les comptes
+    if (entetes['user-agent'] === UA_SONDE) return null;
     enCours += 1;
     if (enCours > simultaneesMax) simultaneesMax = enCours;
     const chemin = cheminSeul(adresse);

@@ -30,6 +30,8 @@ if (cadre && bloc) {
     bouton.disabled = true;
     bloc.setAttribute('aria-busy', 'true');
     let lecture;
+    let presentation = null;
+    let jugement = null;
     try {
       const reponse = await fetch(adresseDeLAtelier(api), { cache: 'no-store', headers: { Accept: 'application/json' } });
       let corps = null;
@@ -39,11 +41,16 @@ if (cadre && bloc) {
         corps = null;
       }
       lecture = lireLaReponse(reponse.status, corps);
+      // la présentation est dans le try : une erreur de calcul donne le message neutre, jamais un bloc figé sur « Chargement… »
+      if (lecture.etat === 'ok') {
+        presentation = presenterLAtelier(lecture.atelier);
+        jugement = jugerLeServeur(lecture.atelier.dernier);
+      }
     } catch {
       lecture = { etat: 'injoignable' };
+      presentation = null;
+      jugement = null;
     }
-    const presentation = lecture.etat === 'ok' ? presenterLAtelier(lecture.atelier) : null;
-    const jugement = lecture.etat === 'ok' ? jugerLeServeur(lecture.atelier.dernier) : null;
     afficher(htmlDeLAtelier(lecture, presentation, jugement) || `<p class="debug-vide">${MESSAGES.erreur}</p>`, resumeDeLAtelier(lecture, presentation));
     charge = true;
     enCours = false;

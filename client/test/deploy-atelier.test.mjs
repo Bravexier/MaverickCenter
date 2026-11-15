@@ -12,6 +12,7 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import YAML from 'yaml';
 import { fabriquer } from '../../deploy/installateur/fabriquer.mjs';
+import { UA_SONDE } from '../serveur/metriques.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const have = (cmd, arg = '--version') => spawnSync(cmd, [arg], { stdio: 'ignore' }).status === 0;
@@ -30,6 +31,7 @@ cmd=$1; shift
 case "$cmd" in
   info) exit 0 ;;
   compose) exit 0 ;;
+  ps) [ -z "\${FAKE_MONTAGES_RW:-}" ] || echo conteneur-de-service; exit 0 ;;
   image) if [ "\${FAKE_IMAGE_ABSENTE:-0}" = 1 ] && [ ! -f "$FAKE_DIR/image-tiree" ]; then exit 1; fi; exit 0 ;;
   pull) if [ "\${FAKE_PULL_ECHEC:-0}" = 1 ]; then exit 1; fi; touch "$FAKE_DIR/image-tiree"; exit 0 ;;
   run)
@@ -42,6 +44,8 @@ case "$cmd" in
       prev=$a
     done
     cid=fakecid$$
+    # une livraison qui arrive pendant la fabrication : la marque change (une seule fois), comme le fait l'installateur de test
+    [ -z "\${FAKE_NOUVELLE_MARQUE:-}" ] || [ -f "$FAKE_DIR/marque-posee" ] || { cp "$FAKE_NOUVELLE_MARQUE" "$FAKE_MARQUE"; touch "$FAKE_DIR/marque-posee"; }
     [ -z "$contenu" ] || cp "$contenu"/contenu-*.db "$FAKE_DIR/contenu-vu.db"
     if [ -n "$resultats" ]; then
       [ -z "\${FAKE_FABRICATION:-}" ] || cp "$FAKE_FABRICATION" "$resultats/fabrication.json"
@@ -61,9 +65,10 @@ case "$cmd" in
     echo "$cid"; exit 0 ;;
   inspect)
     case "$*" in
+      *Mounts*) [ -z "\${FAKE_MONTAGES_RW:-}" ] || printf '%s\\n' $FAKE_MONTAGES_RW; exit 0 ;;
       *State.Running*)
         k=$(cat "$FAKE_DIR/inspections" 2>/dev/null || echo 0); echo $((k + 1)) > "$FAKE_DIR/inspections"
-        if [ "\${FAKE_JAMAIS_FINI:-0}" = 1 ] && [ ! -f "$FAKE_DIR/tue" ]; then echo true; elif [ "$k" -lt 1 ]; then echo true; else echo false; fi ;;
+        if [ "\${FAKE_JAMAIS_FINI:-0}" = 1 ] && [ ! -f "$FAKE_DIR/tue" ]; then echo true; elif [ "$k" -lt "\${FAKE_ITERATIONS:-1}" ]; then echo true; else echo false; fi ;;
       *OOMKilled*) echo "\${FAKE_OOM:-false}" ;;
       *ExitCode*) echo "\${FAKE_CODE:-0}" ;;
     esac; exit 0 ;;
@@ -76,10 +81,30 @@ case "$cmd" in
 esac
 exit 0
 `;
+/** Un faux curl : il vérifie le contrat de la sonde (corps jeté vers /dev/null, seuls le code et le temps relevés), note ses appels et sa configuration lue sur l'entrée, et répond ce que le test a prévu pour le port. */
+const FAUX_CURL = `#!/bin/sh
+echo "$*" >> "$FAKE_DIR/curl.log"
+config=''
+case "$*" in *"-K -"*) config=$(cat) ;; esac
+printf '%s\\n' "$config" >> "$FAKE_DIR/curl-config.log"
+case "$*" in *"-o /dev/null"*) ;; *) echo "-o /dev/null manque" >> "$FAKE_DIR/curl-violations" ;; esac
+case "$*" in *"%{http_code} %{time_total}"*) ;; *) echo "-w manque" >> "$FAKE_DIR/curl-violations" ;; esac
+case "$*" in *--dump-header*|*" -D "*|*" -O "*|*--output\\ *|*" -L "*|*--location*|*--data*|*" -X "*) echo "option interdite : $*" >> "$FAKE_DIR/curl-violations" ;; esac
+for dernier in "$@"; do :; done
+port=\${dernier#http://127.0.0.1:}; port=\${port%%/*}
+fichier="$FAKE_DIR/curl-$port.txt"
+if [ -f "$fichier" ]; then
+  n=$(cat "$FAKE_DIR/curl-$port.n" 2>/dev/null || echo 0); n=$((n + 1)); echo "$n" > "$FAKE_DIR/curl-$port.n"
+  total=$(wc -l < "$fichier"); [ "$n" -le "$total" ] || n=$total
+  sed -n "\${n}p" "$fichier" | tr -d '\\n'
+else
+  printf '200 0.010'
+fi
+`;
 const FAUX_SYSTEMCTL = '#!/bin/sh\necho "$*" >> "$FAKE_DIR/systemctl.log"\ncase "$1" in is-enabled) echo enabled ;; is-active) echo active ;; esac\nexit 0\n';
 
 /** Un monde : une instance de test avec son atelier (scripts du dépôt, kit, marque, extrait du service), des faux outils et de la mémoire à volonté. */
-function monde({ mode = 'test', total = 8388608, dispo = 6291456, version = '0.4.95', reglages = true, extrait = true, kitVersion = version, image = IMAGE } = {}) {
+function monde({ mode = 'test', total = 8388608, dispo = 6291456, version = '0.4.95', reglages = true, extrait = true, kitVersion = version, image = IMAGE, sonde = false, depuis = 0 } = {}) {
   const dossier = join(racine, `monde-${(n += 1)}`);
   const instance = join(dossier, 'instance');
   const atelier = join(instance, 'atelier');
@@ -95,7 +120,12 @@ function monde({ mode = 'test', total = 8388608, dispo = 6291456, version = '0.4
   ecrire(join(atelier, 'kit', 'client', 'package.json'), '{}');
   ecrire(join(atelier, 'declencheur', 'marque'), `version=${version}\ntag=v${version}\ncommit=${'a'.repeat(40)}\n`);
   mkdirSync(join(atelier, 'rapports'), { recursive: true });
-  if (reglages) ecrire(join(atelier, 'reglages.env'), 'MEMOIRE_MAX_KO=2621440\nBESOIN_KO=1572864\nCPUS=1\nDISQUE_MIN_KO=2097152\nDELAI_S=1800\nGOOGLE_CLIENT_ID=\n');
+  if (reglages) ecrire(join(atelier, 'reglages.env'), `MEMOIRE_MAX_KO=2621440\nBESOIN_KO=1572864\nCPUS=1\nDISQUE_MIN_KO=2097152\nDELAI_S=1800\nGOOGLE_CLIENT_ID=\nJOURS_DE_MESURE=1\nMAX_PAR_JOUR=12\nMESURE_DEPUIS=${depuis}\n`);
+  // la sonde : le port de chaque instance, dans son .env (celui de la production dans le dossier voisin « maverick-center »)
+  if (sonde) {
+    ecrire(join(instance, '.env'), 'MAVERICK_CONTENEUR=maverick-center-test\nMAVERICK_PORT=8081\nMAVERICK_EDITION=1\n');
+    ecrire(join(dossier, 'maverick-center', '.env'), 'MAVERICK_CONTENEUR=maverick-center\nMAVERICK_PORT=8080\n');
+  }
   // les faux outils
   const bin = join(dossier, 'bin');
   const faux = join(dossier, 'faux');
@@ -103,6 +133,8 @@ function monde({ mode = 'test', total = 8388608, dispo = 6291456, version = '0.4
   mkdirSync(faux);
   ecrire(join(bin, 'docker'), FAUX_DOCKER);
   ecrire(join(bin, 'systemctl'), FAUX_SYSTEMCTL);
+  ecrire(join(bin, 'curl'), FAUX_CURL);
+  chmodSync(join(bin, 'curl'), 0o755);
   chmodSync(join(bin, 'docker'), 0o755);
   chmodSync(join(bin, 'systemctl'), 0o755);
   ecrire(join(dossier, 'proc', 'meminfo'), meminfo(total, dispo));
@@ -113,11 +145,11 @@ function monde({ mode = 'test', total = 8388608, dispo = 6291456, version = '0.4
     dossier, instance, atelier, bin, faux, rapports: join(atelier, 'rapports'),
     env: (plus = {}) => ({
       PATH: `${bin}:${process.env.PATH}`, MAVERICK_ATELIER_ESSAI: '1', MAVERICK_ATELIER_PROC: join(dossier, 'proc'), MAVERICK_ATELIER_CGROUP: join(dossier, 'cgroup'),
-      MAVERICK_ATELIER_INTERVALLE: '0', MAVERICK_ATELIER_ATTENTE: '1', MAVERICK_DIR_ETC_SYSTEMD: join(dossier, 'systemd'), FAKE_DIR: faux, FAKE_CGROUP: join(dossier, 'cgroup'), FAKE_RAPPORTS: join(atelier, 'rapports'), ...plus,
+      MAVERICK_ATELIER_INTERVALLE: '0', MAVERICK_ATELIER_ATTENTE: '1', MAVERICK_ATELIER_SONDE_REFERENCE: '1', MAVERICK_ATELIER_SONDE_APRES: '1', MAVERICK_ATELIER_ACCES: join(dossier, 'acces-caddy.env'), MAVERICK_DIR_ETC_SYSTEMD: join(dossier, 'systemd'), FAKE_DIR: faux, FAKE_CGROUP: join(dossier, 'cgroup'), FAKE_RAPPORTS: join(atelier, 'rapports'), ...plus,
     }),
   };
 }
-const lancer = (m, plus = {}) => { const r = spawnSync('sh', [join(m.atelier, 'outils', 'lancer.sh')], { encoding: 'utf8', env: m.env(plus), timeout: 60000 }); return { code: r.status, out: `${r.stdout}${r.stderr}` }; };
+const lancer = (m, plus = {}, args = []) => { const r = spawnSync('sh', [join(m.atelier, 'outils', 'lancer.sh'), ...args], { encoding: 'utf8', env: m.env(plus), timeout: 120000 }); return { code: r.status, out: `${r.stdout}${r.stderr}` }; };
 const installer = (m, args = [], plus = {}) => { const r = spawnSync('sh', [join(m.atelier, 'installer.sh'), ...args], { encoding: 'utf8', env: m.env(plus), timeout: 60000 }); return { code: r.status, out: `${r.stdout}${r.stderr}` }; };
 const rapportsDe = (m) => readdirSync(m.rapports).filter((x) => /^\d{8}-\d{6}$/.test(x)).sort();
 const dernierRapport = (m) => { const ids = rapportsDe(m); return ids.length ? JSON.parse(readFileSync(join(m.rapports, ids.at(-1), 'rapport.json'), 'utf8')) : null; };
@@ -540,16 +572,15 @@ test('les marques en attente se fondent : une marque changée pendant la fabrica
   assert.deepEqual(versions.sort(), ['0.4.95', '0.4.96']);
 });
 
-test('seuls les derniers rapports sont gardés, et seuls des dossiers de la forme des rapports sont jamais effacés', { skip }, () => {
+test('seuls les derniers rapports sont gardés (40 : de quoi couvrir une journée pleine), et seuls des dossiers de la forme des rapports sont jamais effacés', { skip }, () => {
   const m = monde();
-  for (let i = 0; i < 24; i += 1) json(join(m.rapports, `2026010${(i % 9) + 1}-${String(1000000 + i).slice(1)}`, 'rapport.json'), {});
+  for (let i = 0; i < 44; i += 1) json(join(m.rapports, `2026010${(i % 9) + 1}-${String(1000000 + i).slice(1)}`, 'rapport.json'), {});
   mkdirSync(join(m.rapports, 'a-garder'));
   ecrire(join(m.rapports, 'kit.json'), '{}');
-  const avant = rapportsDe(m).length;
-  assert.ok(avant >= 20);
+  assert.equal(rapportsDe(m).length, 44);
   lancer(m);
   const apres = rapportsDe(m);
-  assert.equal(apres.length, 20);
+  assert.equal(apres.length, 40);
   assert.ok(apres.includes(dernierRapport(m).id), 'le nouveau rapport est gardé');
   assert.ok(existsSync(join(m.rapports, 'a-garder')) && existsSync(join(m.rapports, 'kit.json')));
 });
@@ -813,4 +844,370 @@ test('sans kit (ou avec un kit d’une autre version) : pas de marque ; kit.json
   const prod = join(racine, `prod-${(n += 1)}`);
   assert.equal(lancerInstallateur(installateur({ mode: 'prod' }).fichier, prod).code, 0);
   assert.ok(!existsSync(join(prod, 'atelier')), 'la production ne reçoit ni outils ni marque');
+});
+
+// ---------------------------------------------------------------- la journée type : la sonde, les minuteurs, le plafond du jour
+
+const MAINTENANT = Date.UTC(2026, 10, 15, 12, 0, 0) / 1000; // 15 novembre 2026, 12:00 UTC
+const idDe = (epoch) => new Date(epoch * 1000).toISOString().replace(/[-:]/g, '').replace('T', '-').slice(0, 15);
+/** Pose des rapports factices : [{ il_y_a (secondes), origine, motif, issue }]. */
+function poserDesRapports(m, liste) {
+  for (const { il_y_a: ilYA, origine = 'livraison', motif = null, issue = 'fait' } of liste) {
+    const id = idDe(MAINTENANT - ilYA);
+    json(join(m.rapports, id, 'rapport.json'), { format: 'maverick-atelier/1', id, origine, issue, motif });
+  }
+}
+const horloge = (epoch = MAINTENANT) => ({ MAVERICK_ATELIER_MAINTENANT: String(epoch) });
+const appelsDeCurl = (m) => (existsSync(join(m.faux, 'curl.log')) ? readFileSync(join(m.faux, 'curl.log'), 'utf8').split('\n').filter(Boolean) : []);
+const reponses = (m, port, lignes) => ecrire(join(m.faux, `curl-${port}.txt`), `${lignes.join('\n')}\n`);
+
+test('les centiles de la sonde (le rang le plus proche) : le script de root donne les nombres du bilan du service', { skip }, async () => {
+  const { centile } = await import('../src/lib/atelier-bilan.mjs');
+  const dossier = join(racine, `stats-${(n += 1)}`);
+  mkdirSync(dossier);
+  const lib = join(SOURCES, 'lib.sh');
+  const stats = (ms, erreurs = []) => {
+    ecrire(join(dossier, 'mesures'), ms.map((v, i) => `phase prod ${erreurs.includes(i) ? 500 : 200} ${v} ${erreurs.includes(i) ? 1 : 0}`).join('\n') + '\n');
+    return JSON.parse(spawnSync('sh', ['-c', `. "${lib}"; SONDE_DIR="${dossier}"; sonde_stats phase prod`], { encoding: 'utf8' }).stdout);
+  };
+  const vingt = Array.from({ length: 20 }, (_, i) => i + 1);
+  assert.deepEqual(stats(vingt), { n: 20, mediane_ms: 10, p95_ms: 19, max_ms: 20, erreurs: 0 });
+  assert.deepEqual(stats([42]), { n: 1, mediane_ms: 42, p95_ms: 42, max_ms: 42, erreurs: 0 });
+  assert.deepEqual(stats([30, 10]), { n: 2, mediane_ms: 10, p95_ms: 30, max_ms: 30, erreurs: 0 });
+  assert.deepEqual(stats([5, 9, 7, 3, 1], [0, 3]), { n: 5, mediane_ms: 5, p95_ms: 9, max_ms: 9, erreurs: 2 });
+  ecrire(join(dossier, 'mesures'), '');
+  assert.deepEqual(JSON.parse(spawnSync('sh', ['-c', `. "${lib}"; SONDE_DIR="${dossier}"; sonde_stats phase prod`], { encoding: 'utf8' }).stdout), { n: 0, mediane_ms: null, p95_ms: null, max_ms: null, erreurs: 0 });
+  // le même calcul que le bilan du service, sur des séries au hasard (mêmes rangs)
+  for (const taille of [1, 2, 3, 7, 19, 20, 21, 40, 101]) {
+    const serie = Array.from({ length: taille }, (_, i) => ((i * 7919) % 997) + 1);
+    const r = stats(serie);
+    assert.equal(r.mediane_ms, centile(serie, 50), `médiane de ${taille}`);
+    assert.equal(r.p95_ms, centile(serie, 95), `95e centile de ${taille}`);
+    assert.equal(r.max_ms, Math.max(...serie));
+  }
+});
+
+test('la sonde : une référence, la fabrication, un après ; les deux instances, deux cibles publiques en lecture seule, jamais un corps de réponse', { skip }, () => {
+  const m = monde({ sonde: true });
+  reponses(m, 8080, ['200 0.010', '200 0.030', '200 0.020', '200 0.025', '200 0.015', '200 0.040', '200 0.012', '200 0.011']);
+  reponses(m, 8081, ['200 0.100', '200 0.120', '200 0.110', '200 0.130', '200 0.140', '200 0.150', '200 0.160', '200 0.170']);
+  const r = lancer(m, { FAKE_ITERATIONS: '3', MAVERICK_ATELIER_INTERVALLE: '1', MAVERICK_ATELIER_SONDE_REFERENCE: '2', MAVERICK_ATELIER_SONDE_APRES: '2' });
+  assert.equal(r.code, 0, r.out);
+  const rapport = dernierRapport(m);
+  assert.equal(rapport.issue, 'fait', r.out);
+  const sonde = rapport.sonde;
+  assert.equal(sonde.format, 'maverick-sonde/1');
+  assert.equal(sonde.disponible, true);
+  assert.deepEqual(sonde.cibles, ['/', '/api/personnages/']);
+  assert.equal(sonde.delai_s, 5);
+  assert.equal(sonde.arretee, null);
+  for (const instance of ['prod', 'dev']) {
+    const i = sonde.instances[instance];
+    assert.equal(i.disponible, true, instance);
+    assert.equal(i.authentifie, false, 'sans mot de passe interne lu, le 401 de nginx est la réponse');
+    assert.equal(i.phases.reference.n, 2, `${instance} : une requête par seconde pendant la référence`);
+    assert.equal(i.phases.apres.n, 2);
+    assert.ok(i.phases.fabrication.n >= 1, `${instance} : des mesures pendant la fabrication`);
+    assert.equal(i.phases.reference.erreurs, 0);
+    for (const phase of Object.values(i.phases)) assert.ok(phase.mediane_ms <= phase.p95_ms && phase.p95_ms <= phase.max_ms);
+  }
+  assert.equal(sonde.instances.prod.phases.reference.max_ms, 30, 'les deux premières réponses de la production : 10 ms et 30 ms');
+  assert.equal(sonde.instances.dev.phases.reference.max_ms, 120);
+  // les appels : le bon hôte, les ports lus dans les .env, les deux cibles, jamais plus que prévu
+  const appels = appelsDeCurl(m);
+  assert.ok(appels.length >= 8);
+  const urls = new Set(appels.map((a) => a.split(' ').at(-1)));
+  assert.deepEqual([...urls].sort(), ['http://127.0.0.1:8080/', 'http://127.0.0.1:8080/api/personnages/', 'http://127.0.0.1:8081/', 'http://127.0.0.1:8081/api/personnages/']);
+  for (const appel of appels) {
+    assert.match(appel, /--max-time 5 /);
+    assert.match(appel, /-s -A maverick-atelier-sonde\/1 -o \/dev\/null -w %\{http_code\} %\{time_total\}/);
+    assert.ok(appel.includes(`-A ${UA_SONDE} `), 'le User-Agent de la sonde est celui que le service n’enregistre pas dans ses métriques');
+  }
+  assert.ok(!existsSync(join(m.faux, 'curl-violations')), existsSync(join(m.faux, 'curl-violations')) ? readFileSync(join(m.faux, 'curl-violations'), 'utf8') : '');
+  // rien d'une réponse n'est gardé : ni dans le rapport, ni dans l'atelier ; le dossier de travail de la sonde est effacé
+  assert.deepEqual(readdirSync(m.atelier).filter((x) => x.startsWith('.sonde')), []);
+  assert.deepEqual(readdirSync(join(m.rapports, rapport.id)), ['rapport.json']);
+});
+
+test('la sonde ne garde que le code et le temps : root n’interprète jamais le corps (le code de lancer.sh, et un corps sentinelle jeté)', { skip }, () => {
+  const lignes = readFileSync(join(SOURCES, 'lancer.sh'), 'utf8').split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('#'));
+  const curl = lignes.filter((l) => /\bcurl\b/.test(l) && !l.startsWith('if ! command'));
+  assert.ok(curl.length >= 1);
+  for (const l of curl) {
+    assert.match(l, /-o \/dev\/null/);
+    assert.match(l, /-w '%\{http_code\} %\{time_total\}'/);
+    assert.doesNotMatch(l, /--dump-header|\s-D\s|\s-O\s|\s-L\s|--data|\s-X\s|--output /);
+  }
+  // un faux curl qui « reçoit » un corps : il n'arrive nulle part dans ce que root écrit
+  const m = monde({ sonde: true });
+  const sentinelle = 'CORPS-SENTINELLE-NE-DOIT-PAS-SE-RETROUVER';
+  ecrire(join(m.bin, 'curl'), `#!/bin/sh\\necho "${sentinelle}" > /dev/null\\nprintf '200 0.010'\\n`.replace(/\\\\n/g, '\\n'));
+  chmodSync(join(m.bin, 'curl'), 0o755);
+  lancer(m);
+  assert.equal(spawnSync('grep', ['-r', sentinelle, m.atelier, m.faux], { encoding: 'utf8' }).stdout, '', 'rien d’une réponse n’est gardé, nulle part');
+  assert.ok(dernierRapport(m).duree_ms < 1500, 'la durée est celle du conteneur : la référence et l’après (une seconde chacune ici) n’y comptent pas');
+});
+
+test('la sonde s’arrête aussitôt quand la production répond mal (trois mauvaises réponses de suite), sans insister ; la fabrication continue', { skip }, () => {
+  const m = monde({ sonde: true });
+  reponses(m, 8080, ['500 0.010', '503 0.010', '200 5.000', '200 0.010', '200 0.010']);
+  const r = lancer(m, { MAVERICK_ATELIER_SONDE_REFERENCE: '6', MAVERICK_ATELIER_SONDE_APRES: '2' });
+  assert.equal(r.code, 0, r.out);
+  const rapport = dernierRapport(m);
+  assert.equal(rapport.issue, 'fait', 'la fabrication, elle, continue');
+  assert.deepEqual(rapport.sonde.arretee, { instance: 'prod', motif: 'reponses_mauvaises' });
+  assert.equal(rapport.sonde.instances.prod.phases.reference.n, 3, 'trois mesures, puis plus rien : un 500, un 503 et un délai dépassé');
+  assert.equal(rapport.sonde.instances.prod.phases.reference.erreurs, 3);
+  assert.equal(rapport.sonde.instances.prod.phases.fabrication.n, 0);
+  assert.equal(rapport.sonde.instances.prod.phases.apres.n, 0);
+  assert.equal(appelsDeCurl(m).filter((a) => a.includes(':8080')).length, 3, 'la production n’est plus interrogée une fois la sonde arrêtée');
+  assert.equal(appelsDeCurl(m).filter((a) => a.includes(':8081')).length, 2, 'et la sonde est arrêtée tout entière : le site de dev n’a plus reçu de requête après le troisième tour');
+  assert.match(r.out, /sonde arrêtée/);
+});
+
+test('le .env d’une instance dans un dossier monté en écriture dans un conteneur n’est pas lu : « sonde impossible » pour cette instance', { skip }, () => {
+  const m = monde({ sonde: true });
+  const prod = join(m.dossier, 'maverick-center');
+  // le dossier de la production est monté en écriture dans un conteneur (le service pourrait avoir changé son .env)
+  lancer(m, { FAKE_MONTAGES_RW: `${prod} ${join(m.instance, 'db')}` });
+  const sonde = dernierRapport(m).sonde;
+  assert.deepEqual([sonde.instances.prod.disponible, sonde.instances.prod.motif], [false, 'env_monte']);
+  assert.equal(sonde.instances.prod.phases, null);
+  assert.equal(sonde.instances.dev.disponible, true, 'db/ de l’instance de test est monté, pas son .env');
+  assert.ok(!appelsDeCurl(m).some((a) => a.includes(':8080')), 'aucune requête vers une instance dont le port n’est pas fiable');
+  // un parent monté en écriture : refusé aussi ; un dossier voisin : sans effet
+  const parent = monde({ sonde: true });
+  lancer(parent, { FAKE_MONTAGES_RW: parent.instance });
+  assert.equal(dernierRapport(parent).sonde.instances.dev.motif, 'env_monte');
+  const voisin = monde({ sonde: true });
+  lancer(voisin, { FAKE_MONTAGES_RW: `${voisin.instance}/db ${voisin.instance}/metriques ${voisin.dossier}/autre` });
+  assert.equal(dernierRapport(voisin).sonde.instances.dev.disponible, true);
+  assert.equal(dernierRapport(voisin).sonde.instances.prod.disponible, true);
+  // ni .env, ni sonde : « sonde impossible » (aucune requête)
+  const sans = monde();
+  lancer(sans);
+  assert.deepEqual([dernierRapport(sans).sonde.disponible, dernierRapport(sans).sonde.motif], [false, 'sonde_impossible']);
+  assert.equal(appelsDeCurl(sans).length, 0);
+  // un lien à la place du .env : refusé
+  const lien = monde({ sonde: true });
+  rmDossier(join(lien.instance, '.env'));
+  symlinkSync(join(lien.dossier, 'maverick-center', '.env'), join(lien.instance, '.env'));
+  lancer(lien);
+  assert.equal(dernierRapport(lien).sonde.instances.dev.motif, 'env_absent');
+});
+
+test('le mot de passe interne (celui que Caddy présente) : lu chez root, passé à curl par l’entrée standard (jamais dans la ligne de commande), jamais dans un rapport', { skip }, () => {
+  const m = monde({ sonde: true });
+  const secretProd = Buffer.from('invite:secret-prod-123').toString('base64');
+  const secretTest = Buffer.from('invite:secret-test-456').toString('base64');
+  ecrire(join(m.dossier, 'acces-caddy.env'), `MAVERICK_DOMAINE=exemple.invalid\nMAVERICK_ACCES_NORMAL=${secretProd}\nMAVERICK_ACCES_TEST=${secretTest}\n`);
+  lancer(m);
+  const sonde = dernierRapport(m).sonde;
+  assert.equal(sonde.instances.prod.authentifie, true);
+  assert.equal(sonde.instances.dev.authentifie, true);
+  const config = readFileSync(join(m.faux, 'curl-config.log'), 'utf8');
+  assert.ok(config.includes(`header = "Authorization: Basic ${secretProd}"`) && config.includes(`header = "Authorization: Basic ${secretTest}"`));
+  assert.ok(!appelsDeCurl(m).join('\\n').includes(secretProd) && !appelsDeCurl(m).join('\\n').includes(secretTest), 'jamais dans les arguments (visibles par ps)');
+  const [id] = rapportsDe(m);
+  assert.ok(!readFileSync(join(m.rapports, id, 'rapport.json'), 'utf8').includes('secret') && !readFileSync(join(m.rapports, id, 'rapport.json'), 'utf8').includes(secretProd));
+  // avec un mot de passe lu, un 401 est une erreur
+  const m2 = monde({ sonde: true });
+  ecrire(join(m2.dossier, 'acces-caddy.env'), `MAVERICK_ACCES_NORMAL=${secretProd}\nMAVERICK_ACCES_TEST=${secretTest}\n`);
+  reponses(m2, 8081, ['401 0.010', '401 0.010', '200 0.010']);
+  lancer(m2, { MAVERICK_ATELIER_SONDE_REFERENCE: '3' });
+  assert.equal(dernierRapport(m2).sonde.instances.dev.phases.reference.erreurs, 2);
+});
+
+test('le plafond du jour compte toutes les origines, livraisons comprises : au-delà, plus aucune fabrication ce jour-là, un seul rapport court le dit', { skip }, () => {
+  const m = monde({ depuis: MAINTENANT - 3600 });
+  poserDesRapports(m, [
+    ...Array.from({ length: 4 }, (_, i) => ({ il_y_a: 3600 * 5 + i * 60, origine: 'livraison' })),
+    ...Array.from({ length: 4 }, (_, i) => ({ il_y_a: 3600 * 4 + i * 60, origine: 'journee_type' })),
+    ...Array.from({ length: 3 }, (_, i) => ({ il_y_a: 3600 * 3 + i * 60, origine: 'nuit', issue: 'refus', motif: 'memoire_insuffisante' })),
+    { il_y_a: 3600 * 36, origine: 'livraison' }, // la veille : ne compte pas
+  ]);
+  writeFileSync(join(m.atelier, 'reglages.env'), readFileSync(join(m.atelier, 'reglages.env'), 'utf8').replace('MAX_PAR_JOUR=12', 'MAX_PAR_JOUR=12'));
+  // 11 fabrications ce jour-là : la 12e est permise (livraison), puis plus aucune
+  const douzieme = lancer(m, horloge());
+  assert.equal(douzieme.code, 0, douzieme.out);
+  assert.equal(dernierRapport(m).issue, 'fait');
+  assert.equal(dernierRapport(m).origine, 'livraison');
+  const treizieme = lancer(m, horloge(MAINTENANT + 60));
+  assert.equal(treizieme.code, 0, treizieme.out);
+  const dernier = dernierRapport(m);
+  assert.equal(dernier.issue, 'refus');
+  assert.equal(dernier.motif, 'plafond_du_jour');
+  assert.equal(lancements(m).length, 1, 'aucune autre fabrication');
+  const avant = rapportsDe(m).length;
+  const encore = lancer(m, horloge(MAINTENANT + 120));
+  assert.match(encore.out, /plafond du jour atteint/);
+  assert.equal(rapportsDe(m).length, avant, 'un seul rapport court par jour');
+  assert.equal(lancements(m).length, 1);
+  // le lendemain : de nouveau permis
+  const lendemain = lancer(m, horloge(MAINTENANT + 86400));
+  assert.equal(lendemain.code, 0, lendemain.out);
+  assert.equal(dernierRapport(m).issue, 'fait');
+  // le plafond se règle
+  const petit = monde({ depuis: MAINTENANT - 60 });
+  writeFileSync(join(petit.atelier, 'reglages.env'), `${readFileSync(join(petit.atelier, 'reglages.env'), 'utf8').replace('MAX_PAR_JOUR=12', 'MAX_PAR_JOUR=2')}`);
+  poserDesRapports(petit, [{ il_y_a: 7200 }, { il_y_a: 3600, origine: 'nuit' }]);
+  lancer(petit, horloge());
+  assert.equal(dernierRapport(petit).motif, 'plafond_du_jour');
+});
+
+test('le minuteur du jour n’ajoute une fabrication que si la fenêtre est ouverte, que la journée en compte moins de 10 et que la dernière date de plus de 40 minutes', { skip }, () => {
+  const ARGS = ['--origine', 'journee_type'];
+  const sans = (m, plus = horloge()) => { const r = lancer(m, plus, ARGS); assert.equal(r.code, 0, r.out); if (process.env.DEBUG_ATELIER) console.error(r.out); return r; };
+  // fenêtre fermée : le geste date de plus d'un jour (1 jour par défaut) ; ou jamais posée
+  const fermee = monde({ depuis: MAINTENANT - 86400 - 10 });
+  assert.match(sans(fermee).out, /fenêtre de mesure est fermée/);
+  assert.equal(rapportsDe(fermee).length, 0);
+  assert.equal(lancements(fermee).length, 0);
+  const jamais = monde({ depuis: 0 });
+  assert.match(sans(jamais).out, /fenêtre de mesure est fermée/);
+  // fenêtre ouverte, rien d'autre aujourd'hui : fabrique, origine journee_type
+  const ouverte = monde({ depuis: MAINTENANT - 3600 });
+  sans(ouverte);
+  assert.equal(dernierRapport(ouverte).origine, 'journee_type');
+  assert.equal(dernierRapport(ouverte).issue, 'fait');
+  assert.equal(lancements(ouverte).length, 1);
+  // trop tôt : la dernière date de moins de 40 minutes
+  const tot = monde({ depuis: MAINTENANT - 3600 });
+  poserDesRapports(tot, [{ il_y_a: 39 * 60 }]);
+  assert.match(sans(tot).out, /la dernière fabrication date de 39 min/);
+  assert.equal(lancements(tot).length, 0);
+  assert.equal(rapportsDe(tot).length, 1);
+  // pile 40 minutes : permis
+  const pile = monde({ depuis: MAINTENANT - 3600 });
+  poserDesRapports(pile, [{ il_y_a: 40 * 60 }]);
+  sans(pile);
+  assert.equal(lancements(pile).length, 1);
+  // la journée est pleine : 10 fabrications aujourd'hui (celles de la veille ne comptent pas)
+  const pleine = monde({ depuis: MAINTENANT - 3600 });
+  poserDesRapports(pleine, [...Array.from({ length: 10 }, (_, i) => ({ il_y_a: 3600 * 3 + i * 600 })), { il_y_a: 3600 * 30 }]);
+  assert.match(sans(pleine).out, /la journée est pleine/);
+  assert.equal(lancements(pleine).length, 0);
+  const neuf = monde({ depuis: MAINTENANT - 3600 });
+  poserDesRapports(neuf, [...Array.from({ length: 9 }, (_, i) => ({ il_y_a: 3600 * 3 + i * 600 })), { il_y_a: 3600 * 30 }]);
+  sans(neuf);
+  assert.equal(lancements(neuf).length, 1, 'neuf aujourd’hui : une de plus est permise');
+  // les rapports « plafond du jour » ne sont pas des fabrications
+  const plafond = monde({ depuis: MAINTENANT - 3600 });
+  poserDesRapports(plafond, [...Array.from({ length: 9 }, (_, i) => ({ il_y_a: 3600 * 3 + i * 600 })), { il_y_a: 3600 * 2, issue: 'refus', motif: 'plafond_du_jour' }]);
+  sans(plafond);
+  assert.equal(lancements(plafond).length, 1);
+  // une fenêtre de plusieurs jours reste ouverte
+  const troisJours = monde({ depuis: MAINTENANT - 2 * 86400 });
+  writeFileSync(join(troisJours.atelier, 'reglages.env'), readFileSync(join(troisJours.atelier, 'reglages.env'), 'utf8').replace('JOURS_DE_MESURE=1', 'JOURS_DE_MESURE=3'));
+  sans(troisJours);
+  assert.equal(lancements(troisJours).length, 1);
+  // origine inconnue : refusée
+  assert.equal(lancer(monde(), {}, ['--origine', 'pirate']).code, 2);
+  assert.equal(lancer(monde(), {}, ['--autre']).code, 2);
+});
+
+test('la fabrication de nuit : toujours permise (sans fenêtre ni écart), marquée « nuit », sous les mêmes règles de mémoire et de plafond', { skip }, () => {
+  const m = monde({ depuis: 0 });
+  poserDesRapports(m, [{ il_y_a: 60 }]);
+  const r = lancer(m, horloge(), ['--origine', 'nuit']);
+  assert.equal(r.code, 0, r.out);
+  assert.equal(dernierRapport(m).origine, 'nuit');
+  assert.equal(dernierRapport(m).issue, 'fait');
+  const sansMemoire = monde({ dispo: 2000000 });
+  lancer(sansMemoire, {}, ['--origine', 'nuit']);
+  assert.equal(dernierRapport(sansMemoire).motif, 'memoire_insuffisante');
+  assert.equal(dernierRapport(sansMemoire).origine, 'nuit');
+  // une livraison garde l'origine « livraison » ; la nuit ne relit pas la marque en boucle
+  const livraison = monde();
+  lancer(livraison);
+  assert.equal(dernierRapport(livraison).origine, 'livraison');
+});
+
+test('le geste pose la nuit (04:30) et la journée type (toutes les 20 minutes entre 8 h et 20 h), à l’horloge ; --retirer les retire ; les options se valident et se reprennent', { skip }, () => {
+  const m = monde({ reglages: false });
+  const r = installer(m, ['--jours-de-mesure', '3', '--max-par-jour', '8', '--sans-fabrication'], horloge());
+  assert.equal(r.code, 0, r.out);
+  const unites = join(m.dossier, 'systemd');
+  const nuit = readFileSync(join(unites, 'maverick-atelier-nuit.timer'), 'utf8');
+  const jour = readFileSync(join(unites, 'maverick-atelier-jour.timer'), 'utf8');
+  assert.match(nuit, /OnCalendar=\*-\*-\* 04:30:00/);
+  assert.match(jour, /OnCalendar=\*-\*-\* 08\.\.19:00\/20:00/);
+  assert.match(readFileSync(join(unites, 'maverick-atelier-nuit.service'), 'utf8'), new RegExp(`ExecStart=/bin/sh ${m.atelier}/outils/lancer\\.sh --origine nuit\\n`));
+  assert.match(readFileSync(join(unites, 'maverick-atelier-jour.service'), 'utf8'), new RegExp(`ExecStart=/bin/sh ${m.atelier}/outils/lancer\\.sh --origine journee_type\\n`));
+  for (const nom of ['nuit', 'jour']) assert.match(readFileSync(join(unites, `maverick-atelier-${nom}.service`), 'utf8'), /Nice=19\n[\s\S]*IOSchedulingClass=idle/);
+  assert.match(readFileSync(join(m.faux, 'systemctl.log'), 'utf8'), /enable --now maverick-atelier\.path maverick-atelier-nuit\.timer maverick-atelier-jour\.timer/);
+  const reglages = readFileSync(join(m.atelier, 'reglages.env'), 'utf8');
+  assert.ok(reglages.includes('JOURS_DE_MESURE=3') && reglages.includes('MAX_PAR_JOUR=8') && reglages.includes(`MESURE_DEPUIS=${MAINTENANT}`));
+  assert.ok(reglages.includes(`DOSSIER_PROD=${m.dossier}/maverick-center`), 'la production voisine par défaut');
+  const installe = JSON.parse(readFileSync(join(m.rapports, 'installe.json'), 'utf8'));
+  assert.equal(installe.reglages.jours_de_mesure, 3);
+  assert.equal(installe.reglages.max_par_jour, 8);
+  // relancé : la fenêtre se rouvre à la date de la relance, les autres réglages sont repris
+  const relance = installer(m, ['--sans-fabrication'], horloge(MAINTENANT + 86400));
+  assert.equal(relance.code, 0, relance.out);
+  const apres = readFileSync(join(m.atelier, 'reglages.env'), 'utf8');
+  assert.ok(apres.includes(`MESURE_DEPUIS=${MAINTENANT + 86400}`) && apres.includes('JOURS_DE_MESURE=3') && apres.includes('MAX_PAR_JOUR=8'));
+  // --etat dit la fenêtre
+  const etat = installer(m, ['--etat'], horloge(MAINTENANT + 86400 + 60));
+  assert.match(etat.out, /fenêtre de mesure de 3 jour\(s\).*\(ouverte\)/);
+  assert.match(etat.out, /au plus 8 fabrications par jour/);
+  assert.match(etat.out, /minuteur de nuit/);
+  // --retirer : les quatre unités de plus partent
+  assert.equal(installer(m, ['--retirer']).code, 0);
+  assert.deepEqual(readdirSync(unites), []);
+  assert.match(readFileSync(join(m.faux, 'systemctl.log'), 'utf8'), /disable --now maverick-atelier\.path maverick-atelier-nuit\.timer maverick-atelier-jour\.timer/);
+  // des valeurs refusées, sans rien écrire
+  const refus = monde({ reglages: false });
+  for (const args of [['--jours-de-mesure', '0'], ['--jours-de-mesure', '31'], ['--jours-de-mesure', 'x'], ['--max-par-jour', '0'], ['--max-par-jour', '49'], ['--dossier-prod', 'relatif'], ['--dossier-prod', '/a b'], ['--dossier-prod', '/x;y']]) {
+    assert.equal(installer(refus, args).code, 2, args.join(' '));
+  }
+  assert.ok(!existsSync(join(refus.atelier, 'reglages.env')));
+  // le dossier de la production se règle
+  const prod = monde({ reglages: false });
+  assert.equal(installer(prod, ['--dossier-prod', '/srv/maverick-center', '--sans-fabrication']).code, 0);
+  assert.ok(readFileSync(join(prod.atelier, 'reglages.env'), 'utf8').includes('DOSSIER_PROD=/srv/maverick-center\n'));
+});
+
+test('garde-fou 20, sonde : lancer.sh ne lit que le .env des instances (jamais un fichier du service), n’écrit rien de la sonde ailleurs que dans son dossier de travail à root', () => {
+  const lignes = readFileSync(join(SOURCES, 'lancer.sh'), 'utf8').split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('#'));
+  assert.ok(lignes.some((l) => /mktemp -d "\$ATELIER\/\.sonde/.test(l)), 'dossier de travail à root, dans l’atelier');
+  assert.ok(!lignes.some((l) => /curl.*\$SONDE_ACCES|curl.* -u |curl.*--user/.test(l)), 'le mot de passe ne passe jamais en argument');
+  assert.ok(lignes.some((l) => /curl .*-K -/.test(l)), 'il passe par l’entrée standard');
+});
+
+/** Pose la marque d'une livraison « qui arrive pendant la fabrication » : le faux docker la copie sur la marque à l'instant du lancement du conteneur. */
+function livraisonEnCours(m) {
+  const nouvelle = join(m.dossier, 'marque-nouvelle');
+  ecrire(nouvelle, `version=0.4.95\ntag=v0.4.95\ncommit=${'b'.repeat(40)}\n`);
+  return { FAKE_NOUVELLE_MARQUE: nouvelle, FAKE_MARQUE: join(m.atelier, 'declencheur', 'marque') };
+}
+
+test('une livraison arrivée pendant une fabrication de nuit ou de la journée type n’est pas perdue : la marque est relue en sortant, et elle est fabriquée à la suite sous l’origine « livraison »', { skip }, () => {
+  for (const origine of ['nuit', 'journee_type']) {
+    const m = monde({ depuis: MAINTENANT - 3600 });
+    const r = lancer(m, { ...horloge(), ...livraisonEnCours(m) }, ['--origine', origine]);
+    assert.equal(r.code, 0, r.out);
+    const rapports = rapportsDe(m).map((id) => JSON.parse(readFileSync(join(m.rapports, id, 'rapport.json'), 'utf8')));
+    assert.deepEqual(rapports.map((x) => x.origine), [origine, 'livraison'], `${origine} : deux fabrications, la livraison en dernier`);
+    assert.deepEqual(rapports.map((x) => x.issue), ['fait', 'fait']);
+    assert.equal(lancements(m).length, 2);
+    assert.match(readFileSync(join(m.atelier, 'declencheur', 'derniere-marque'), 'utf8'), /commit=b{40}/, 'la marque de la livraison est mémorisée comme celle des livraisons');
+  }
+  // sans livraison entre-temps : une seule fabrication, la marque n'est pas relue en boucle
+  const seule = monde();
+  lancer(seule, horloge(), ['--origine', 'nuit']);
+  assert.equal(rapportsDe(seule).length, 1);
+  assert.equal(lancements(seule).length, 1);
+  assert.ok(!existsSync(join(seule.atelier, 'declencheur', 'derniere-marque')));
+});
+
+test('la livraison arrivée pendant une fabrication de nuit reste sous le plafond du jour : au-delà, un rapport court le dit, sans fabrication', { skip }, () => {
+  const m = monde({ depuis: MAINTENANT - 3600 });
+  poserDesRapports(m, Array.from({ length: 11 }, (_, i) => ({ il_y_a: 3600 * 2 + i * 60, origine: i % 2 ? 'journee_type' : 'livraison' })));
+  const r = lancer(m, { ...horloge(), ...livraisonEnCours(m) }, ['--origine', 'nuit']);
+  assert.equal(r.code, 0, r.out);
+  const dernier = dernierRapport(m);
+  assert.equal(dernier.origine, 'livraison');
+  assert.equal(dernier.motif, 'plafond_du_jour');
+  assert.equal(lancements(m).length, 1, 'seule la fabrication de nuit (la douzième) a tourné');
 });
