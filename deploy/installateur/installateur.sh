@@ -18,6 +18,7 @@
 #                        production comme en test : db/ vide, le service crée sa base à partir des règles du site. Seule exception, sur
 #                        demande : --copier-base-prod (test), dans un db/ vide.
 #                        db/metriques/ (métriques d'une instance sans dossier des métriques réglé) : jamais copié de la production, jamais touché.
+#                        db/essai-de-structure/ : l'échange avec le service pour l'essai de la livraison (voir plus bas) ; l'installateur n'y retire que sa propre demande.
 #   metriques/           les métriques du service (docker-compose.yml, MAVERICK_DOSSIER_METRIQUES) : jamais touché par une installation.
 #   docker-compose.yml, nginx.conf   posés s'ils sont absents ; s'ils diffèrent, la version livrée est écrite à côté (.nouveau)
 #   .env                 port et nom du conteneur de l'instance (créé une fois, jamais écrasé)
@@ -115,8 +116,10 @@ fi
 # Métriques (docs/serveur.md, « Métriques et volume ») : sans dossier des métriques réglé, le service range sa base de métriques dans db/metriques/.
 # Chaque instance a la sienne, jamais mêlée à celle de l'autre : ce dossier n'est ni copié de la production, ni touché, ni compté comme une base.
 METRIQUES=metriques
-# Vrai si le db/ de l'instance contient autre chose que ses métriques : une base, une archive, n'importe quel fichier.
-base_remplie() { [ -d "$DOSSIER/db" ] && find "$DOSSIER/db/" -mindepth 1 -maxdepth 1 ! -name "$METRIQUES" | grep -q .; }
+# Essai de la structure (docs/serveur.md, « Essai avant installation ») : le dossier d'échange avec le service, dans db/ (monté dans son conteneur).
+ESSAIS=essai-de-structure
+# Vrai si le db/ de l'instance contient autre chose que ses métriques et son dossier d'essai : une base, une archive, n'importe quel fichier.
+base_remplie() { [ -d "$DOSSIER/db" ] && find "$DOSSIER/db/" -mindepth 1 -maxdepth 1 ! -name "$METRIQUES" ! -name "$ESSAIS" | grep -q .; }
 
 if [ "$COPIER_BASE_PROD" -eq 1 ]; then
   # La seule route qui écrit dans db/ en mode test : refus ICI, avant le verrou, l'extraction et toute autre écriture.
@@ -142,7 +145,10 @@ if ! mkdir "$VERROU" 2>/dev/null; then
 fi
 echo "$$" > "$VERROU/pid"
 TRAVAIL="$DOSSIER/.installation.$$"
-nettoyer() { rm -rf "$TRAVAIL" "$DOSSIER/.db.copie.$$" "$VERROU"; }
+# $ESSAI_DEPOT et $ESSAI_DEMANDE : la demande d'essai de CETTE installation (noms bâtis plus bas, jamais vides quand ils servent), rien d'autre dans db/.
+ESSAI_DEPOT=''
+ESSAI_DEMANDE=''
+nettoyer() { rm -rf "$TRAVAIL" "$DOSSIER/.db.copie.$$" "$VERROU" ${ESSAI_DEPOT:+"$ESSAI_DEPOT"} ${ESSAI_DEMANDE:+"$ESSAI_DEMANDE"}; }
 trap nettoyer EXIT
 trap 'exit 1' INT TERM HUP
 
@@ -192,12 +198,12 @@ if [ "$MODE" = test ] && [ "$COPIER_BASE_PROD" -eq 1 ]; then
     # le contenu de chaque base remplacé par une sauvegarde cohérente (.backup) prise à cet instant, réécrite en place pour garder
     # son propriétaire et ses droits.
     (cd "$SOURCE/" && tar -cf - .) | (cd "$COPIE" && tar -xf -) || die "copie de $SOURCE impossible"
-    rm -rf "${COPIE:?}/$METRIQUES"
+    rm -rf "${COPIE:?}/$METRIQUES" "${COPIE:?}/$ESSAIS"
     if [ "$SQLITE" -eq 1 ]; then
       find "$SOURCE/" -type f \( -name '*.db' -o -name '*.sqlite' -o -name '*.sqlite3' \) | while IFS= read -r base; do
         relatif=${base#"$SOURCE"/}
         relatif=${relatif#/}
-        case "$relatif" in "$METRIQUES"/*) continue ;; esac
+        case "$relatif" in "$METRIQUES"/*|"$ESSAIS"/*) continue ;; esac
         cible="$COPIE/$relatif"
         rm -f "$cible-wal" "$cible-shm" "$cible-journal"
         (cd "$(dirname "$cible")" && sqlite3 "$base" ".backup copie-en-cours.tmp" && cat copie-en-cours.tmp > "$(basename "$cible")" && rm -f copie-en-cours.tmp) ||
@@ -227,6 +233,85 @@ if [ "$MODE" = test ] && [ "$COPIER_BASE_PROD" -eq 1 ]; then
   rmdir "$COPIE" 2>/dev/null || true
 elif [ "$MODE" = test ]; then
   log "Base de test : $DOSSIER/db n'est pas touché (la production n'est copiée que sur demande : --copier-base-prod, dans un db/ vide)."
+fi
+
+# ---------------------------------------------------------------- essai de la structure (avant le site : refus, et rien n'est installé)
+# Avant de remplacer le site, le service EN PLACE essaie les migrations de cette livraison sur une COPIE de sa base vivante (docs/serveur.md, « Essai avant
+# installation »). Un seul programme touche la base à la fois : le service, jamais cet installateur. Il dépose une demande dans db/essai-de-structure/
+# (migrations/*.sql, schema.sql et demande.json de la livraison, posés d'un coup : dossier provisoire puis « mv ») et attend le resultat.json du service. Il ne
+# touche à rien d'autre dans db/ et ne retire que sa propre demande.
+#   - pas de réponse (service arrêté, version du service sans cet essai : aucun accusé de réception), délai dépassé, réponse illisible : noté, l'installation continue ;
+#   - essai refusé : noté, l'installation continue, SAUF si db/source existe. Ce marqueur est celui du changement de structure sur place (la base vivante y est la
+#     source de vérité) : l'installation s'arrête alors AVANT d'avoir rien installé. Rien ne le pose aujourd'hui ; il ne servira qu'une fois ce changement actif ;
+#   - première installation (pas de VERSION, pas de base) et --copier-base-prod : aucun essai.
+# Réglages : MAVERICK_ESSAI_ACCUSE_S (20 s : attente de l'accusé de réception du service ; un service arrêté coûte ce délai, pas le suivant), MAVERICK_ESSAI_DELAI_S
+# (120 s : attente totale du résultat, comptée dès le dépôt).
+ESSAI_ACCUSE_S=${MAVERICK_ESSAI_ACCUSE_S:-20}
+ESSAI_DELAI_S=${MAVERICK_ESSAI_DELAI_S:-120}
+case "$ESSAI_ACCUSE_S$ESSAI_DELAI_S" in *[!0-9]*|'') ESSAI_ACCUSE_S=20; ESSAI_DELAI_S=120 ;; esac
+
+# Attend resultat.json dans le dossier $1 : 0 = reçu, 1 = aucun accusé de réception dans le délai, 2 = accusé reçu mais pas de résultat dans le délai.
+attendre_l_essai() {
+  ecoule=0
+  accuse=0
+  while :; do
+    if [ -f "$1/resultat.json" ]; then return 0; fi
+    if [ -f "$1/accuse.json" ]; then accuse=1; fi
+    if [ "$accuse" -eq 0 ] && [ "$ecoule" -ge "$ESSAI_ACCUSE_S" ]; then return 1; fi
+    if [ "$ecoule" -ge "$ESSAI_DELAI_S" ]; then return 2; fi
+    sleep 1
+    ecoule=$((ecoule + 1))
+  done
+}
+
+# Une valeur du premier niveau du resultat.json du service (JSON indenté de deux espaces : « "verdict": "…" » seul sur sa ligne).
+champ_du_resultat() {
+  sed -n "s/^  \"$2\": \"\\(.*\\)\"[,]*\$/\\1/p" "$1" | head -n 1 | sed 's/\\"/"/g' | cut -c1-400
+}
+
+essayer_la_structure() {
+  ESSAI_DEPOT="$DOSSIER/db/$ESSAIS/.depot-$$"
+  ESSAI_DEMANDE="$DOSSIER/db/$ESSAIS/demande-$(printf '%s' "$VERSION" | tr -c 'A-Za-z0-9.-' '_')-$$"
+  if ! { mkdir -p "$DOSSIER/db/$ESSAIS" && mkdir "$ESSAI_DEPOT" && mkdir "$ESSAI_DEPOT/migrations" &&
+    cp "$TRAVAIL"/site/_serveur/data/migrations/*.sql "$ESSAI_DEPOT/migrations/" && cp "$TRAVAIL/site/_serveur/data/schema.sql" "$ESSAI_DEPOT/schema.sql" &&
+    printf '{"format":"maverick-essai-demande/1","version":"%s","tag":"%s","deposee_le":"%s"}\n' "$VERSION" "$TAG" "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" > "$ESSAI_DEPOT/demande.json" &&
+    mv "$ESSAI_DEPOT" "$ESSAI_DEMANDE"; } 2>/dev/null; then
+    log "Essai de la structure : la demande n'a pas pu être déposée dans db/$ESSAIS : l'installation continue sans essai."
+    return 0
+  fi
+  ESSAI_DEPOT=''
+  log "Essai de la structure : demande déposée, le service essaie les migrations de $VERSION sur une copie de sa base (au plus $ESSAI_DELAI_S s)."
+  attente=0
+  attendre_l_essai "$ESSAI_DEMANDE" || attente=$?
+  if [ "$attente" -eq 1 ]; then
+    log "Essai de la structure : aucune réponse du service en $ESSAI_ACCUSE_S s (arrêté, ou sans cet essai) : l'installation continue sans essai."
+  elif [ "$attente" -eq 2 ]; then
+    log "Essai de la structure : le service n'a pas fini en $ESSAI_DELAI_S s : l'installation continue sans le résultat."
+  else
+    verdict=$(champ_du_resultat "$ESSAI_DEMANDE/resultat.json" verdict)
+    resume=$(champ_du_resultat "$ESSAI_DEMANDE/resultat.json" resume)
+    case "$verdict" in
+      accepte) log "Essai de la structure : accepté par le service ($resume)." ;;
+      a_jour) log "Essai de la structure : rien à appliquer ($resume)." ;;
+      indisponible) log "Essai de la structure : indisponible ($resume) : l'installation continue sans essai." ;;
+      refuse)
+        if [ -e "$DOSSIER/db/source" ]; then
+          rm -rf "$ESSAI_DEMANDE"
+          ESSAI_DEMANDE=''
+          die "ATTENTION essai de la structure REFUSÉ par le service ($resume) : rien n'a été installé (db/source existe : la base de cette instance est la source de vérité)"
+        fi
+        log "ATTENTION essai de la structure REFUSÉ par le service ($resume) : l'installation continue (db/source n'existe pas). Détail : page Debug, db/$ESSAIS/dernier.json."
+        ;;
+      *) log "Essai de la structure : réponse du service illisible : l'installation continue sans essai." ;;
+    esac
+  fi
+  rm -rf "$ESSAI_DEMANDE"
+  ESSAI_DEMANDE=''
+}
+
+if [ "$COPIER_BASE_PROD" -eq 0 ] && [ -n "$EXISTANT" ] && [ -f "$DOSSIER/db/vivante.db" ] &&
+  [ -d "$TRAVAIL/site/_serveur/data/migrations" ] && [ -f "$TRAVAIL/site/_serveur/data/schema.sql" ]; then
+  essayer_la_structure
 fi
 
 # ---------------------------------------------------------------- site
