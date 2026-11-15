@@ -78,6 +78,44 @@ jobs:
       - run: node ../tools/build-artifact.mjs --out "$RUNNER_TEMP/artifact"
       - run: git diff --exit-code --stat && test -z "$(git ls-files --others --exclude-standard)"
 
+  # Règles des migrations (lot 7 du chantier « la base du site de dev devient la source de vérité », R274, R275 ; docs/flux-git.md) : une migration fusionnée ne se
+  # modifie plus, une migration de structure ne porte aucun texte de règle, un renommage réécrit le journal et l'historique, et les migrations nouvelles passent
+  # sur une base remplie (celle de la version dont part la PR, fiches et journal compris) par le code du service. Le bilan va dans le résumé du job.
+  # Un job à part, parallèle aux autres : il lui faut l'historique complet (merge-base ; le job client ne récupère que master, à profondeur 1) et aucun paquet
+  # npm (node:sqlite seul), donc pas de `npm ci` ; il n'allonge pas la CI. Sur une PR, la base est la branche visée ; sur un push, le commit d'avant (`before`),
+  # sinon le premier parent. Vers `master` (PR ou push) : les règles seules (`--sans-essai`) : l'essai reconstruirait la base de `master`, dont `data/rows` a changé hors migrations
+  # depuis, et refuserait à tort ; chaque migration a déjà été essayée sur `dev`.
+  controle-des-migrations:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - env:
+          EVENEMENT: ${{ github.event_name }}
+          BRANCHE_VISEE: ${{ github.base_ref }}
+          REF: ${{ github.ref }}
+          AVANT: ${{ github.event.before }}
+        run: |
+          essai=
+          if [ "$EVENEMENT" = pull_request ]; then
+            base="origin/$BRANCHE_VISEE"
+            [ "$BRANCHE_VISEE" = master ] && essai=--sans-essai
+          elif [ -n "$AVANT" ] && [ "$AVANT" != 0000000000000000000000000000000000000000 ] && git cat-file -e "$AVANT^{commit}" 2>/dev/null; then
+            base="$AVANT"
+            [ "$REF" = refs/heads/master ] && essai=--sans-essai
+          else
+            base="HEAD^1"
+            [ "$REF" = refs/heads/master ] && essai=--sans-essai
+          fi
+          node --no-warnings scripts/controler-les-migrations.mjs --base "$base" $essai --resume "$GITHUB_STEP_SUMMARY"
+
   character-service:
     runs-on: ubuntu-latest
     defaults:

@@ -7,11 +7,10 @@ import { copyFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { empreinteDeLaTable } from '../serveur/empreintes.mjs';
-import { enregistrer } from '../serveur/edition.mjs';
 import { trouverRacine } from '../src/lib/donnees.mjs';
 import { OMBRES_DE_RECHERCHE } from '../src/lib/tables-de-la-base.mjs';
+import { remplirUneBase } from '../scripts/base-remplie-lib.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
-import { poserDesFiches } from './aide-fiches-sentinelles.mjs';
 
 export const RACINE = trouverRacine();
 /** Le numéro de la migration que les tests appliquent sur place (celle qui crée `migration_recue`). */
@@ -38,8 +37,8 @@ export const nouveauChemin = (prefixe, extension = '.db') => join(dossier, `${pr
 export const nouveauDossier = (prefixe, t) => dossierTemporaire(prefixe, { t, dans: dossier });
 
 /**
- * Une base REMPLIE : la base de règles, des fiches (un compte, un groupe, un prétiré, une fiche de joueur), une ligne du journal de l'édition (un métier créé
- * par le service d'édition : modification_lot, modification) et une ligne de l'historique des modifications. `anterieure` : ramenée à la version
+ * Une base REMPLIE : la base de règles, puis `scripts/base-remplie-lib.mjs#remplirUneBase` (fiches, journal de l'édition, historique des modifications, lot de
+ * changements et plafond de numéro ; le même générateur que le contrôle des migrations de la CI). `anterieure` : ramenée à la version
  * `NUMERO - 1`, sans `migration_recue` (la migration 0129 la crée) — la base que le service avait avant cette migration. Rend { chemin, poses }.
  */
 export function baseRemplie({ anterieure = false } = {}) {
@@ -52,10 +51,7 @@ export function baseRemplie({ anterieure = false } = {}) {
       db.exec('DROP TABLE migration_recue');
       db.exec(`PRAGMA user_version = ${NUMERO - 1}`);
     }
-    const poses = poserDesFiches(db);
-    enregistrer(db, { page: 'metiers/', operations: [{ op: 'creer', entite: 'metier', valeurs: { nom: 'Métier d’essai de la structure', description: 'Un métier d’essai.', bonus_brut: '+1 INI' } }] });
-    db.prepare(`INSERT INTO historique_modification (lot_id, rang, fait_le, resume, version, table_nom, cle, operation, avant, apres)
-      VALUES ('essai-structure', 1, '2026-11-01T10:00:00Z', 'Un lot d’essai', NULL, 'race', '{"id":"essai"}', 'inserer', NULL, '{"id":"essai"}')`).run();
+    const poses = remplirUneBase(db);
     return { chemin, poses };
   } finally {
     db.close();

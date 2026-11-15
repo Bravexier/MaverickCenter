@@ -29,6 +29,7 @@
     "db:appliquer-edition": "node --no-warnings scripts/db-appliquer-edition.mjs",
     "db:extrait": "node --no-warnings scripts/db-extrait.mjs",
     "db:epreuve-lots": "node --no-warnings scripts/epreuve-des-lots.mjs refaire",
+    "db:controler-migrations": "node --no-warnings scripts/controler-les-migrations.mjs",
     "mutation": "node --no-warnings scripts/mutation.mjs"
   },
   "dependencies": {
