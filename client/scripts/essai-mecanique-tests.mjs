@@ -10,7 +10,7 @@
 //   node scripts/essai-mecanique-tests.mjs                       tout : fabrique A et B, lance les deux passes, écrit le tri
 //   node scripts/essai-mecanique-tests.mjs --fabriquer           seulement A et B (var/essai-mecanique/)
 //   node scripts/essai-mecanique-tests.mjs --passe A|B [--fichiers a.test.mjs,b.test.mjs]
-//   node scripts/essai-mecanique-tests.mjs --trier               refait le tri depuis les journaux déjà écrits
+//   node scripts/essai-mecanique-tests.mjs --trier [--ecrire-docs]   refait le tri depuis les journaux déjà écrits (--ecrire-docs : docs/essai-mecanique-des-tests.json)
 // Options : --parallele N (défaut : nombre de cœurs), --delai SECONDES (défaut 600, par fichier), --sortie <dossier> (défaut var/essai-mecanique).
 // Sorties : <sortie>/journaux/{A,B}/<fichier>.log (complets, à chercher par Grep), <sortie>/tri.json ; le résumé lisible est écrit par --trier dans <sortie>/tri.md.
 import { spawn } from 'node:child_process';
@@ -196,20 +196,20 @@ function marques(fichier) {
 // La cause d'un échec : la première erreur du journal, ramenée à une forme sans valeurs, puis rangée par famille (règles ordonnées).
 const FAMILLES = [
   ['delai', 'Délai dépassé', (s, e) => e.code === 'delai'],
-  ['nom-introuvable', 'Une ligne ou une page cherchée par son nom ou son titre est introuvable', (s) => /(introuvable|not found|aucune? (page|ligne|sort|race|classe|magie|monstre)|manque|absent|n'existe pas|undefined)/i.test(s) && /(nom|titre|slug|libell)/i.test(s)],
-  ['texte-attendu', 'Un texte, un nom ou une règle écrits dans le test ne sont plus ceux du contenu', (s) => /(Texte factice|Nom factice)/.test(s) || /(expected|attendu).*(['"«][^'"»]{3,}['"»])/i.test(s)],
-  ['comptage', 'Un nombre de lignes, de pages ou de liens attendu a changé', (s) => /(length|count|nombre|comptage|\d+ !== \d+|1169|expected: \d+)/i.test(s)],
-  ['lien', 'Liens et balises : le contenu factice n\'en porte plus', (s) => /(lien|wikilink|balise|\[\[|href)/i.test(s)],
-  ['recherche', 'Recherche plein texte ou fiche de personnage qui lit un texte', (s) => /(fts|recherche|search|fiche)/i.test(s)],
-  ['construction', 'Construction du site ou script lancé par le test', (s) => /(build|astro|spawn|exit code|status|db-derive|db-build|python)/i.test(s)],
+  ['corps-markdown', 'Le test (ou le service) lit la structure du corps Markdown d\'une page : sections, puces, balises', (s) => /section introuvable|corps illisible|pas de section|section « /i.test(s)],
+  ['regle-lue-dans-un-texte', 'Une règle lue dans un texte (puces d\'effets, notes, relecture des règles) : le texte factice n\'en porte plus', (s) => /aucun effet|puces|une note attendue|à l[’']import|C\d+ guide|choisissez|texte de r/i.test(s)],
+  ['fiche-moteur', 'Fiche de personnage et moteur : le test échoue sans message (la fiche lit des noms et des textes)', (s, e, f) => /^(fiche|personnages|r\d+)/.test(f) && /test failed/.test(s)],
+  ['nom-ou-texte-compare', 'Une valeur attendue est un nom ou un texte du contenu, comparé tel quel', (s) => /Nom factice|Texte factice/.test(s)],
+  ['ligne-absente', 'Une ligne cherchée par son nom ou son titre n\'est pas trouvée', (s) => /Cannot read properties|introuvable|absent|undefined/i.test(s)],
+  ['valeur-attendue', 'Une valeur, une liste ou un comptage attendus ont changé', (s) => /strictly (deep-)?equal|deepEqual|expected|attendu/i.test(s)],
+  ['exception-attendue', 'Une erreur attendue ne se produit plus', (s) => /Missing expected exception/.test(s)],
 ];
 
 function signature(texte) {
   const lignes = texte.split('\n');
-  const i = lignes.findIndex((l) => /^\s*✖|^not ok|failureType|^\s*error:/.test(l));
+  const i = lignes.findIndex((l) => /^\s*error:/.test(l));
   const bloc = (i >= 0 ? lignes.slice(i, i + 14) : lignes.slice(-14)).join('\n');
-  const premiere = bloc.split('\n').find((l) => /(Error|Assertion|expected|message|introuvable|rejected)/i.test(l)) ?? bloc.split('\n')[0];
-  return { bloc: bloc.slice(0, 1500), premiere: premiere.trim().slice(0, 200) };
+  return { bloc: bloc.slice(0, 1500), premiere: bloc.replace(/\s+/g, ' ').slice(0, 200) };
 }
 
 function lireLeJournal(passeNom, fichier) {
@@ -236,7 +236,7 @@ export function trier() {
       const passeNom = categorie === 'casse-sur-le-vrai' ? 'A' : 'B';
       const r = categorie === 'casse-sur-le-vrai' ? a : b;
       const s = signature(lireLeJournal(passeNom, fichier));
-      const famille = FAMILLES.find(([, , test]) => test(s.bloc, r));
+      const famille = FAMILLES.find(([, , test]) => test(s.bloc, r, fichier));
       ligne.famille = categorie === 'casse-sur-le-vrai' ? 'branchement' : (famille?.[0] ?? 'autre');
       ligne.cause = s.premiere;
     }
@@ -261,6 +261,11 @@ export function trier() {
     '| Famille de cause (sur le contenu factice) | Fichiers |', '| --- | ---: |', ...Object.entries(bilan.familles).map(([k, v]) => `| ${k} | ${v} |`), '',
   ].join('\n');
   writeFileSync(join(sortie, 'tri.md'), md);
+  if (drapeau('--ecrire-docs')) {
+    // la version rangée dans le dépôt : un fichier de test par ligne (catégorie, famille), sans les journaux
+    const compact = { bilan, fichiers: lignes.map(({ fichier, categorie, famille, lit_contenu, lit_depot_direct }) => ({ fichier, categorie, ...(famille ? { famille } : {}), lit_contenu, lit_depot_direct })) };
+    writeFileSync(join(client, '..', 'docs', 'essai-mecanique-des-tests.json'), JSON.stringify(compact, null, 0).replace(/\{"fichier"/g, '\n{"fichier"') + '\n');
+  }
   return bilan;
 }
 
