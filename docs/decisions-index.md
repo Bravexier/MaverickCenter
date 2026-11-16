@@ -2,7 +2,7 @@
 
 Ne lis jamais `docs/decisions-regles.md` en entier : trouve ici le numéro de la décision, puis cherche sa ligne avec Grep (motif `^\| R41 \|`) et ne lis qu'elle.
 
-Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 279 décisions, de R1 à R279, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
+Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 282 décisions, de R1 à R282, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
 
 | Réf. | Sujet | Décision |
 | --- | --- | --- |
@@ -285,3 +285,6 @@ Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas mo
 | R277 | Onglets de la page « Alignement » et onglets écrits à la main (demande du… | (1) Deux groupes d'onglets sur la page « Alignement »… |
 | R278 | Les tests de GitHub peuvent lire le contenu du site de dev (2026-11-15, `d… | Oui, pour les tests seulement : cela remplace, pour le… |
 | R279 | Le mot de passe du site de dev est provisoire (2026-11-15, chantier `docs/… | Le mot de passe d'édition du site de dev reste en plac… |
+| R280 | Une mise à jour qui retire un élément utilisé par une fiche de la producti… | Une mise à jour n'est pas refusée parce qu'elle retire… |
+| R281 | Le gel des écritures pendant la bascule 1 (2026-11-15, `docs/chantier-base… | Accepté : pendant la bascule 1, le service du site de… |
+| R282 | Deux contrôles GitHub obligatoires et retrait des vieux installateurs de t… | Accepté : le jour J, `controle-des-migrations` et `con… |

@@ -236,29 +236,6 @@ test('« Annuler » dans la confirmation de la copie : rien n’est envoyé', as
   assert.deepEqual(p.ecritures(), []);
 });
 
-test('un refus de citations (409) se dit en une phrase, puis une ligne par table, sans nom de fiche ; le dialogue reste ouvert', async () => {
-  const refus = { raison: 'citations', elements: 3, fiches: 7, tables: [{ table: 'don', elements: 2, fiches: 5 }, { table: 'race', elements: 1, fiches: 2 }] };
-  const p = await monter({ baseSource: true, refus });
-  for (const [bouton, mot] of [['[data-nv-copier]', 'COPIER VERS LE DEPOT'], ['[data-nv-lancer]', 'METTRE A JOUR']]) {
-    p.zone.querySelector(bouton).dispatchEvent(new Event('click'));
-    const d = p.dialogue();
-    d.querySelector('input').value = mot;
-    soumettre(d);
-    await reponses();
-    assert.ok(p.dialogue(), 'le dialogue reste ouvert');
-    const erreur = p.dialogue().querySelector('[data-erreur]');
-    assert.equal(erreur.hidden, false);
-    assert.match(erreur.textContent, /^3 éléments cités par 7 fiches de la production manqueraient/);
-    assert.doesNotMatch(erreur.textContent, /question 9|message du service/, 'la phrase vient de `refus`, pas du texte du service');
-    assert.deepEqual([...p.dialogue().querySelectorAll('[data-refus] li')].map((li) => li.textContent), ['don : 2 éléments, 5 fiches', 'race : 1 élément, 2 fiches']);
-    // un second refus remplace le détail au lieu de l'ajouter
-    soumettre(p.dialogue());
-    await reponses();
-    assert.equal(p.dialogue().querySelectorAll('[data-refus]').length, 1);
-    p.dialogue().querySelector('[value="annuler"]').dispatchEvent(new Event('click'));
-  }
-});
-
 test('un refus d’attestation dit le message de la production ; la Simulation le dit aussi ; une erreur sans refus garde le message du service', async () => {
   const refus = { raison: 'attestation', etat: 'pas_appliquee', raison_production: 'x', message: 'Refusé avant l’envoi : la production n’a pas appliqué sa dernière mise à jour.' };
   const p = await monter({ baseSource: true, refus });

@@ -11,9 +11,8 @@
 //   - pour une copie vers le dépôt : rien de plus (les modifications versées gardent une version vide, comme `npm run db:appliquer-edition` ; elles restent
 //     en attente dans la base source, pour la prochaine note).
 // Une vue `paquet_meta` dit ce qu'il est (format, lot, mode, version, tables de contenu…). La base source N'EST PAS modifiée (garde-fou 8 : « préparée, pas
-// livrée »). Avant l'envoi, le paquet est comparé à l'attestation de la production : un élément de règle que des fiches citent et qui manque au paquet le fait
-// refuser (question 9 du plan, réponse par défaut « refuser avant l'envoi ») — sauf ce que la décision R42 retire des fiches sans bloquer
-// (serveur/fiches-retraits.mjs#RETRAITS) ; une attestation absente, ou qui ne décrit pas le contenu publié par la production, aussi.
+// livrée »). Avant l'envoi, une attestation absente, ou qui ne décrit pas le contenu publié par la production, fait refuser le paquet. Un élément retiré
+// qu'une fiche de la production utilise ne le fait PAS refuser (décision R280) : la production adapte la fiche et le note, comme dans l'ancien circuit.
 //
 // Le paquet est servi tel quel à /api/mise-a-jour/lots/<lot>/ (serveur/notes-de-version.mjs#lireLot), son empreinte part avec le workflow
 // mise-a-jour.yml, qui le recontrôle et en tire data/rows (scripts/mise-a-jour-paquet.mjs). Quand la production publie la note de ce lot, le service la
@@ -25,16 +24,14 @@ import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
-import { TABLES_FICHES } from '../src/lib/fiche-format.mjs';
 import { installerLePlan } from '../src/lib/livres.mjs';
 import { comparerBases, versionCourte } from '../src/lib/notes-de-version.mjs';
 import { chargerPlanDesRegles } from '../src/lib/plan-des-regles-db.mjs';
 import { CLASSES_DE_TABLES } from '../src/lib/tables-de-la-base.mjs';
 import { etatDeLaProduction, lireAttestation } from './attestation.mjs';
 import { FICHIER_BASE, integrerLivrees, viderBrouillonLivre } from './base-vivante.mjs';
-import { colonnesDeLaTable, empreintesDuContenu, identifiant, tablesDeLaBase } from './empreintes.mjs';
+import { empreintesDuContenu, tablesDeLaBase } from './empreintes.mjs';
 import { fabriquerExtrait } from './extrait.mjs';
-import { RETRAITS } from './fiches-retraits.mjs';
 import { instant as ecrireInstant } from './instant.mjs';
 import {
   actualiserLancement, CONFIRMATION, controlerLeLancement, dossierDesLots, ecrireLancement, ErreurNotes, fichierPaquet, lireBrouillon, lireLancement,
@@ -48,8 +45,6 @@ export const VUE_DU_PAQUET = 'paquet_meta';
 export const MODES_DU_PAQUET = Object.freeze(['mise-a-jour', 'simulation', 'copie']);
 /** Le mot à taper pour « Copier vers le dépôt » (celui de la mise à jour reste CONFIRMATION). */
 export const CONFIRMATION_COPIE = 'COPIER VERS LE DEPOT';
-/** Les tables de règles qu'une suppression retire des fiches sans bloquer la production (décision R42 et suivantes : serveur/fiches-retraits.mjs#RETRAITS). */
-export const TABLES_RETIREES_DES_FICHES = Object.freeze([...new Set(RETRAITS.map((r) => r.vise))].sort());
 /** Les débuts de fichier d'un paquet (SQLite) : le workflow s'en sert pour distinguer un paquet d'un lot figé (JSON). */
 export const ENTETE_SQLITE = 'SQLite format 3\0';
 
@@ -184,75 +179,11 @@ export function lireMetaDuPaquet(chemin) {
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
-// Refus avant l'envoi : les éléments que des fiches de la production citent
+// Refus avant l'envoi : l'attestation de la production
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 
 /**
- * Les éléments cités par des fiches de la production (attestation : [{ table, id, fiches }]) qui manquent au paquet `db`, hors ceux que la décision R42 retire
- * des fiches sans bloquer (TABLES_RETIREES_DES_FICHES). Un élément se cherche par les colonnes que visent les clés étrangères des tables de fiches du paquet
- * (vides, mais leur structure y est), dans l'ordre de la clé ; un id composé est « a+b » (serveur/attestation.mjs#citationsDesFiches).
- * Rend { elements, fiches, tables: [{ table, elements, fiches }] } — `fiches` additionne les fiches de chaque élément (une fiche qui cite deux éléments
- * manquants compte deux fois) ; jamais un nom de fiche, ni un identifiant d'élément.
- */
-export function citationsManquantes(db, citations) {
-  const tables = new Set(db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all().map((t) => t.name));
-  const cleDe = (table) => colonnesDeLaTable(db, table).filter((c) => c.pk > 0).sort((a, b) => a.pk - b.pk).map((c) => c.nom);
-  // table visée → les listes de colonnes que les fiches y visent
-  const visees = new Map();
-  for (const fiche of TABLES_FICHES) {
-    if (!tables.has(fiche)) continue;
-    const liaisons = new Map();
-    for (const f of db.prepare(`PRAGMA foreign_key_list(${identifiant(fiche)})`).all()) {
-      if (!liaisons.has(f.id)) liaisons.set(f.id, []);
-      liaisons.get(f.id).push(f);
-    }
-    for (const liaison of liaisons.values()) {
-      liaison.sort((a, b) => a.seq - b.seq);
-      const cible = liaison[0].table;
-      if (!tables.has(cible)) continue;
-      const colonnes = liaison.some((f) => f.to === null) ? cleDe(cible) : liaison.map((f) => f.to);
-      if (!visees.has(cible)) visees.set(cible, new Map());
-      visees.get(cible).set(colonnes.join(','), colonnes);
-    }
-  }
-  const presents = new Map(); // `${table}|${colonnes}` → Set des ids
-  const ensemble = (table, colonnes) => {
-    const cle = `${table}|${colonnes.join(',')}`;
-    if (!presents.has(cle)) {
-      const valeur = colonnes.map((c) => `CAST(${identifiant(c)} AS TEXT)`).join(" || '+' || ");
-      presents.set(cle, new Set(db.prepare(`SELECT ${valeur} AS k FROM ${identifiant(table)}`).all().map((l) => l.k)));
-    }
-    return presents.get(cle);
-  };
-  const parTable = new Map();
-  for (const c of Array.isArray(citations) ? citations : []) {
-    if (!c || typeof c.table !== 'string' || TABLES_RETIREES_DES_FICHES.includes(c.table)) continue;
-    const id = String(c.id);
-    let present = false;
-    if (tables.has(c.table) && /^[A-Za-z0-9_]+$/.test(c.table)) {
-      const variantes = visees.has(c.table) ? [...visees.get(c.table).values()] : [cleDe(c.table)];
-      const parties = id.split('+').length;
-      present = variantes.some((colonnes) => colonnes.length === parties && ensemble(c.table, colonnes).has(id))
-        // un id simple qui contient « + » : la clé entière, d'un seul morceau
-        || variantes.some((colonnes) => colonnes.length === 1 && ensemble(c.table, colonnes).has(id));
-    }
-    if (present) continue;
-    const t = parTable.get(c.table) ?? { table: c.table, elements: 0, fiches: 0 };
-    t.elements += 1;
-    t.fiches += Math.max(0, Math.trunc(Number(c.fiches) || 0));
-    parTable.set(c.table, t);
-  }
-  const liste = [...parTable.values()].sort((a, b) => (a.table < b.table ? -1 : 1));
-  return { elements: liste.reduce((n, t) => n + t.elements, 0), fiches: liste.reduce((n, t) => n + t.fiches, 0), tables: liste };
-}
-
-/** Le message d'un refus pour des fiches (des nombres et des noms de tables, jamais un nom de fiche). */
-export const messageDesCitations = (m) => `Refusé avant l’envoi : ${m.elements} élément(s) de règle que des fiches de la production utilisent manquent au contenu `
-  + `(${m.tables.map((t) => `${t.table} : ${t.elements} élément(s), ${t.fiches} fiche(s)`).join(' ; ')}). Remettez-les sur le site de dev, ou faites corriger `
-  + 'ces fiches, puis relancez (question 9 du plan : sans réponse, la mise à jour est refusée).';
-
-/**
- * L'attestation de la production, si elle permet de juger le paquet : { attestation } quand elle décrit le contenu que la production publie
+ * L'attestation de la production, si elle permet d'envoyer le paquet : { attestation } quand elle décrit le contenu que la production publie
  * (etatDeLaProduction : `a_jour`) ; sinon { refus: { raison: 'attestation', etat, message } } — absente, illisible, ou périmée (la production n'a pas appliqué
  * sa dernière mise à jour, ou la livraison est en cours).
  */
@@ -260,7 +191,7 @@ export function attestationUtilisable({ attestations = null, production = null, 
   const etat = etatDeLaProduction({ dossier: attestations, production, propre, instant });
   const lue = attestations ? lireAttestation(attestations) : { raison: 'absente' };
   if (etat.etat === 'a_jour' && lue.attestation) return { attestation: lue.attestation };
-  const message = `Refusé avant l’envoi : l’attestation de la production ne permet pas de vérifier les fiches (${etat.message})`;
+  const message = `Refusé avant l’envoi : l’attestation de la production ne décrit pas le contenu qu’elle publie (${etat.message})`;
   return { refus: { raison: 'attestation', etat: etat.etat, raison_production: etat.raison, message } };
 }
 
@@ -278,7 +209,7 @@ function purgerLesPaquetsNeufs(dossierLots) {
 
 /**
  * Fige un paquet et note le lancement (états et verrous de figerLot : `envoi` ou `manuel`, brouillon tenu pour une mise à jour et sa simulation, jamais pour une
- * copie). Une promesse de l'état du lancement ; lève une ErreurNotes (400, 409, 429, 500), `details.refus` pour un refus avant l'envoi (attestation, citations).
+ * copie). Une promesse de l'état du lancement ; lève une ErreurNotes (400, 409, 429, 500), `details.refus` pour un refus avant l'envoi (attestation).
  * La base source n'est jamais écrite, sauf `note_version_brouillon.lot` (le verrou du texte), posé quand le paquet est prêt.
  * @param {import('node:sqlite').DatabaseSync} db la base source
  * @param {string} dossier le dossier de la base source (le paquet est rangé dans <dossier>/mise-a-jour/<lot>.db)
@@ -299,7 +230,7 @@ export async function figerPaquet(db, dossier, { mode, versionDev = null, versio
     throw new ErreurNotes(409, `La note de version se calcule contre la production, qui n’est pas lisible${reference?.raison ? ` (${reference.raison})` : ''} : rien n’est préparé.`);
   }
   if (!copie && !/^\d+\.\d+$/.test(String(versionCible))) throw new ErreurNotes(409, 'Version en préparation inconnue : rechargez la page.');
-  // l'attestation d'abord (rien n'est fabriqué si elle ne permet pas de juger)
+  // l'attestation d'abord (rien n'est fabriqué si elle ne décrit pas le contenu publié par la production)
   const lue = attestationUtilisable({ ...production, instant: new Date(instant) });
   if (lue.refus) throw new ErreurNotes(409, lue.refus.message, { refus: lue.refus });
   const brouillon = lireBrouillon(db);
@@ -316,18 +247,6 @@ export async function figerPaquet(db, dossier, { mode, versionDev = null, versio
       majeure: !copie && brouillon.majeure, versionDuSite: versionDev, instant: new Date(instant),
     };
     const meta = enArrierePlan ? await fabriquerPaquetEnArrierePlan(options) : fabriquerPaquet(options);
-    // le refus avant l'envoi : un élément cité par des fiches de la production absent du paquet
-    const lecture = new DatabaseSync(neuf, { readOnly: true });
-    let manquants;
-    try {
-      manquants = citationsManquantes(lecture, lue.attestation.citations);
-    } finally {
-      lecture.close();
-    }
-    if (manquants.elements) {
-      const refus = { raison: 'citations', ...manquants };
-      throw new ErreurNotes(409, messageDesCitations(manquants), { refus });
-    }
     // le texte et la case « Version majeure » sont ceux qui sont partis dans la note (changés pendant la fabrication : on recommence)
     const maintenant = lireBrouillon(db);
     if (!copie && (maintenant.lot || maintenant.texte !== brouillon.texte || maintenant.majeure !== brouillon.majeure)) {

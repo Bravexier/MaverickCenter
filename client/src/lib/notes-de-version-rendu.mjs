@@ -379,10 +379,9 @@ export function erreurDuReport(lancement) {
 
 /**
  * Ce que la page dit d'un refus avant l'envoi (`409 { erreur, refus }` de « Effectuer la mise à jour », de la Simulation et de « Copier vers le
- * dépôt ») : { texte, lignes } — une ou deux phrases, puis le détail par table. Jamais un nom de fiche (le service n'en donne pas). Sans `refus`
+ * dépôt ») : { texte, lignes } — une phrase (`lignes` vide). Jamais un nom de fiche (le service n'en donne pas). Sans `refus`
  * lisible, null : la page dit alors le message d'erreur du service.
- *   - attestation : le `message` du service ;
- *   - citations : « N éléments cités par M fiches de la production manqueraient », puis une ligne par table.
+ *   - attestation : le `message` du service (seul refus : un élément retiré qu'une fiche utilise ne fait jamais refuser, décision R280).
  * @param {unknown} refus `refus` du corps de la réponse
  * @returns {{ texte: string, lignes: string[] } | null}
  */
@@ -392,16 +391,7 @@ export function messageDuRefus(refus) {
     const message = typeof refus.message === 'string' ? refus.message.trim() : '';
     return message ? { texte: message, lignes: [] } : null;
   }
-  if (refus.raison !== 'citations') return null;
-  const elements = nombreOuNull(refus.elements);
-  const fiches = nombreOuNull(refus.fiches);
-  if (elements === null || fiches === null) return null;
-  const texte = `${pluriel(elements, 'élément cité', 'éléments cités')} par ${pluriel(fiches, 'fiche', 'fiches')} de la production ${elements > 1 ? 'manqueraient' : 'manquerait'}. Rien n’a été envoyé.`;
-  const tables = Array.isArray(refus.tables) ? refus.tables : [];
-  const lignes = tables
-    .filter((t) => t && typeof t === 'object' && typeof t.table === 'string' && t.table)
-    .map((t) => `${t.table} : ${pluriel(nombreOuNull(t.elements) ?? 0, 'élément', 'éléments')}, ${pluriel(nombreOuNull(t.fiches) ?? 0, 'fiche', 'fiches')}`);
-  return { texte, lignes };
+  return null;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
