@@ -15,9 +15,8 @@ import { FICHIER_BASE, ouvrirBaseVivante, preparerBaseVivante } from '../serveur
 import { annonceDuLancement } from '../serveur/maintenance.mjs';
 import { CONFIRMATION, fichierPaquet, lireLancement } from '../serveur/notes-de-version.mjs';
 import {
-  actualiser, citationsManquantes, CONFIRMATION_COPIE, ENTETE_SQLITE, fabriquerPaquet, FORMAT_PAQUET, lireMetaDuPaquet, reporterPaquet, TABLES_RETIREES_DES_FICHES,
+  actualiser, CONFIRMATION_COPIE, ENTETE_SQLITE, fabriquerPaquet, FORMAT_PAQUET, lireMetaDuPaquet, reporterPaquet,
 } from '../serveur/paquet.mjs';
-import { RETRAITS } from '../serveur/fiches-retraits.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { CLASSES_DE_TABLES, classeDeLaTable } from '../src/lib/tables-de-la-base.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
@@ -133,28 +132,6 @@ test('le paquet d\'une copie vers le dépôt : sans note, l\'historique versé s
   }
 });
 
-test('les éléments cités par des fiches de la production : un absent bloque, sauf ce que R42 retire des fiches ; des nombres, jamais un nom', () => {
-  assert.deepEqual(TABLES_RETIREES_DES_FICHES, [...new Set(RETRAITS.map((r) => r.vise))].sort());
-  assert.ok(TABLES_RETIREES_DES_FICHES.includes('metier') && !TABLES_RETIREES_DES_FICHES.includes('race'));
-  const destination = join(dossierTemporaire('paquet-citations'), 'paquet.db');
-  fabriquerPaquet({ source: chemin, destination, id: 'copie-2', mode: 'copie' });
-  const p = ouvrir(destination);
-  try {
-    const citations = [
-      { table: 'race', id: poses.race, fiches: 2 },
-      { table: 'race', id: 'races/zqx-absente', fiches: 3 },
-      { table: 'race', id: 'races/zqx-absente-2', fiches: 1 },
-      { table: 'metier', id: 'metiers/zqx-absent', fiches: 4 }, // R42 : retiré des fiches, ne bloque pas
-      { table: 'metier', id: poses.metier, fiches: 2 },
-    ];
-    assert.deepEqual(citationsManquantes(p, citations), { elements: 2, fiches: 4, tables: [{ table: 'race', elements: 2, fiches: 4 }] });
-    assert.deepEqual(citationsManquantes(p, citations.filter((c) => !c.id.includes('zqx'))), { elements: 0, fiches: 0, tables: [] });
-    assert.deepEqual(citationsManquantes(p, [{ table: 'table_zqx_inconnue', id: '1', fiches: 1 }]).tables, [{ table: 'table_zqx_inconnue', elements: 1, fiches: 1 }]);
-  } finally {
-    p.close();
-  }
-});
-
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 // Les routes, avec le marqueur (service.source)
 // ---------------------------------------------------------------------------------------------------------------------------------------------
@@ -189,20 +166,21 @@ test('sans le marqueur, « Copier vers le dépôt » n\'existe pas, et « Effect
   assert.ok(existsSync(join(lots, `${l.corps.lancement.lot}.json`)));
 });
 
-test('refus avant l\'envoi : attestation absente, puis élément cité par des fiches absent du paquet ; rien n\'est figé ni verrouillé', async () => {
+test('refus avant l\'envoi : seulement une attestation absente ; un élément retiré qu\'une fiche de la production utilise ne fait pas refuser (R280)', async () => {
   sansAttestation();
   const a = await lancer();
   assert.equal(a.statut, 409);
   assert.equal(a.corps.refus.raison, 'attestation');
+  assert.equal(lireLancement(dossier), null, 'aucun lancement');
+  assert.deepEqual(existsSync(lots) ? readdirSync(lots) : [], [], 'aucun paquet laissé');
+  assert.equal(db.prepare('SELECT lot FROM note_version_brouillon WHERE id = 1').get()?.lot ?? null, null, 'le texte reste modifiable');
+  // une race et un sort cités par des fiches de la production, absents du contenu : la production adaptera ses fiches et le notera (R42, R280)
   attester([{ table: 'race', id: 'races/zqx-absente', fiches: 3 }, { table: 'race', id: poses.race, fiches: 2 }, { table: 'sort', id: 'zqx', fiches: 9 }]);
   const c = await lancer();
-  assert.equal(c.statut, 409, JSON.stringify(c.corps));
-  assert.deepEqual(c.corps.refus, { raison: 'citations', elements: 1, fiches: 3, tables: [{ table: 'race', elements: 1, fiches: 3 }] }, 'un sort (R42) ne bloque pas');
-  assert.match(c.corps.erreur, /1 élément\(s\).*race : 1 élément\(s\), 3 fiche\(s\)/);
-  for (const marque of marquesDesFiches(poses)) assert.equal(JSON.stringify(c.corps).includes(marque), false);
-  assert.equal(lireLancement(dossier), null, 'aucun lancement');
-  assert.deepEqual(readdirSync(lots), [], 'aucun paquet laissé');
-  assert.equal(db.prepare('SELECT lot FROM note_version_brouillon WHERE id = 1').get()?.lot ?? null, null, 'le texte reste modifiable');
+  assert.equal(c.statut, 202, JSON.stringify(c.corps));
+  assert.equal(c.corps.refus, undefined);
+  assert.ok(c.corps.lancement.paquet, 'un paquet figé');
+  assert.ok(existsSync(fichierPaquet(dossier, c.corps.lancement.lot)));
 });
 
 test('« Effectuer la mise à jour » avec le marqueur : un paquet figé, servi tel quel, le texte verrouillé ; puis le report, une seule fois, après la production', async () => {

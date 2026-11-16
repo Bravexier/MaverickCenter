@@ -1619,16 +1619,14 @@ figé, 2 minutes et 8 par 24 h, « Rien à livrer » sauf pour une copie) ; un s
 fabrication font refuser (`409`, relancer). Le lancement porte en plus `paquet: true`, `mode`, `copie`, `octets`, `lignes`. Une copie ne met rien en maintenance
 (`maintenance.mjs#annonceDuLancement`), n'a pas de `version_cible`, et son mot de confirmation est `COPIER VERS LE DEPOT` (`confirmation_copie`).
 
-**Refus avant l'envoi** (question 9 du plan, sans réponse : « refuser avant l'envoi, et dire combien de fiches bloquent »), pour les trois modes, avant tout déclenchement :
-- l'attestation de la production doit décrire le contenu qu'elle publie (`etatDeLaProduction` : `a_jour`) ; absente, illisible ou périmée (version ou contenu différents,
-  livraison en cours) : `409`, `refus: { raison: 'attestation', etat, raison_production, message }`, rien n'est fabriqué ;
-- puis chaque élément de règle que ses fiches citent (`citations`) doit être dans le paquet, cherché par les colonnes que visent les clés étrangères des tables de fiches
-  (`citationsManquantes`) ; sauf les tables que la décision R42 et ses suites retirent des fiches sans bloquer (`serveur/fiches-retraits.mjs#RETRAITS` : `arme`, `capacite`,
-  `classe_annexe_entree`, `magie_specialisation`, `metier`, `sort`, `specialite` : `TABLES_RETIREES_DES_FICHES`). Un manque : `409`, `refus: { raison: 'citations', elements,
-  fiches, tables: [{ table, elements, fiches }] }` (`fiches` additionne les fiches de chaque élément : une fiche qui cite deux éléments manquants compte deux fois), le paquet
-  effacé, aucun lancement noté. Des nombres et des noms de tables, jamais un nom de fiche ni un identifiant d'élément.
+**Refus avant l'envoi**, pour les trois modes, avant tout déclenchement : l'attestation de la production doit décrire le contenu qu'elle publie (`etatDeLaProduction` : `a_jour`) ;
+absente, illisible ou périmée (version ou contenu différents, livraison en cours) : `409`, `refus: { raison: 'attestation', etat, raison_production, message }`, rien n'est fabriqué.
+**Un élément de règle retiré qu'une fiche de la production utilise ne fait jamais refuser** (décision R280, question 9 du plan) : la production adapte la fiche
+à l'installation et le note dans ses notes, comme dans l'ancien circuit (« Quand une livraison change les règles », plus haut : retraits R42 et suites, `serveur/fiches-retraits.mjs#RETRAITS`).
+Le paquet porte le même contenu que l'ancien lot une fois rejoué : à l'étape 1, la production reçoit toujours ses règles par `data/rows` et refait sa base comme avant.
+Limite, inchangée elle aussi : une race, une classe, une magie… retirée (hors des tables de `RETRAITS`) n'est pas retirée des fiches ; la production garde alors sa base d'avant, et l'onglet du site de dev le dit (« pas appliquée »). Aucun retrait automatique n'est décidé pour ces éléments (question ouverte au propriétaire).
 
-L'attestation est réécrite toutes les heures : une fiche enregistrée depuis moins d'une heure peut ne pas y être encore comptée.
+L'attestation est réécrite toutes les heures (ses `citations` informent, elles ne font plus refuser).
 
 **Le workflow.** Le service envoie l'entrée `copie: 'true'` pour une copie seulement (un lancement d'avant ne change pas). Le job `preparer` reconnaît un paquet à son en-tête
 SQLite (`estUnPaquet`), vérifie l'empreinte, lit `paquet_meta` (`lirePaquet`) et refuse un mode qui ne correspond pas aux entrées, dans les deux sens (`verifierSimulation`,

@@ -8,7 +8,7 @@ import { test } from 'node:test';
 import {
   ETATS_DE_LA_COPIE, PHRASE_DE_LA_COPIE, enteteDuLancement, erreurDuReport, lancementAffiche, messageDuRefus, modeDuLancement, motDeLaCopie, phraseDuReport, texteDeLEtat,
 } from '../src/lib/notes-de-version-rendu.mjs';
-import { CONFIRMATION_COPIE, messageDesCitations } from '../serveur/paquet.mjs';
+import { CONFIRMATION_COPIE } from '../serveur/paquet.mjs';
 
 const ETATS = { termine: 'texte ordinaire de la fin', en_cours: 'texte ordinaire en cours', echec_livraison: 'texte ordinaire de livraison' };
 
@@ -97,32 +97,10 @@ test('un refus d’attestation se dit par le message du service', () => {
   assert.equal(messageDuRefus({ raison: 'attestation' }), null, 'sans message, la page dit celui de l’erreur');
 });
 
-test('un refus de citations : N éléments, M fiches, puis le détail par table ; accord du singulier et du pluriel', () => {
-  const r = messageDuRefus({ raison: 'citations', elements: 5, fiches: 12, tables: [{ table: 'don', elements: 3, fiches: 9 }, { table: 'race', elements: 2, fiches: 3 }] });
-  assert.match(r.texte, /^5 éléments cités par 12 fiches de la production manqueraient\./);
-  assert.deepEqual(r.lignes, ['don : 3 éléments, 9 fiches', 'race : 2 éléments, 3 fiches']);
-  const un = messageDuRefus({ raison: 'citations', elements: 1, fiches: 1, tables: [{ table: 'don', elements: 1, fiches: 1 }] });
-  assert.match(un.texte, /^1 élément cité par 1 fiche de la production manquerait\./);
-  assert.deepEqual(un.lignes, ['don : 1 élément, 1 fiche']);
-  // des valeurs mal formées ne cassent rien : une table sans nom est ignorée, un compte absent vaut 0
-  const mal = messageDuRefus({ raison: 'citations', elements: 2, fiches: 2, tables: [null, { elements: 1 }, { table: 'don' }, 'x'] });
-  assert.deepEqual(mal.lignes, ['don : 0 élément, 0 fiche']);
-  assert.deepEqual(messageDuRefus({ raison: 'citations', elements: 2, fiches: 2 }).lignes, []);
-});
-
-test('un refus illisible ou d’une autre raison : null, la page garde le message du service', () => {
-  for (const r of [undefined, null, 'x', 3, {}, { raison: 'autre' }, { raison: 'citations' }, { raison: 'citations', elements: 'x', fiches: 1 }, { raison: 'citations', elements: -1, fiches: 1 }]) {
+test('un refus illisible ou d’une autre raison (des éléments cités ne font plus refuser, R280) : null, la page garde le message du service', () => {
+  for (const r of [undefined, null, 'x', 3, {}, { raison: 'autre' }, { raison: 'citations' }, { raison: 'citations', elements: 2, fiches: 4, tables: [{ table: 'don', elements: 2, fiches: 4 }] }]) {
     assert.equal(messageDuRefus(r), null);
   }
-});
-
-test('le refus de citations ne dit jamais un nom de fiche : seulement ce que le service donne (nombres et tables)', () => {
-  const refus = { raison: 'citations', elements: 2, fiches: 4, tables: [{ table: 'don', elements: 2, fiches: 4 }], fiche: 'Aldric le Brave', nom: 'Aldric', fiches_noms: ['Aldric'] };
-  const r = messageDuRefus(refus);
-  assert.doesNotMatch(JSON.stringify(r), /Aldric/);
-  // et la phrase du service reste cohérente avec la nôtre : mêmes nombres, mêmes tables
-  const service = messageDesCitations({ elements: 2, fiches: 4, tables: [{ table: 'don', elements: 2, fiches: 4 }] });
-  assert.match(service, /don : 2 élément\(s\), 4 fiche\(s\)/);
 });
 
 test('le module reste pur : aucune dépendance, aucun accès au navigateur', () => {
