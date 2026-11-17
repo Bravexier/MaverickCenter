@@ -18,6 +18,9 @@ import { ameliorationElementaire, coutElementaireEcrit } from '../src/lib/armure
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { attributEd } from '../src/lib/edition-modele.mjs';
+import { ENTETES_DE_DEFENSE, baliseDeLEnteteDeDefense } from '../src/lib/armures-rendu.mjs';
+import { motCleDeLaRef } from '../src/lib/mots-cles-balises.mjs';
+import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 import { chargerPanneau } from '../src/lib/panneaux-regles-db.mjs';
 import { baseDImport, texteDImport } from './aide-base-d-import.mjs';
 import { avecLesMotsCles, verifierLeTexteDuPanneau } from './aide-texte-affiche.mjs';
@@ -148,8 +151,25 @@ test('armures : les armures particulières en premier puis la liste par type, un
     assert.ok(historiqueSite(db).supprimee('mot_cle', { id: idSolidite }), 'le mot-clé « solidite » manque sans que le site de dev l’ait supprimé');
   }
   assert.ok(entetes.every((e) => e.includes(solidite)), `l’en-tête « ${solidite} » dans chaque liste`);
+  // « Résistance » et « Faiblesse » : le texte du mot-clé que la clé du code résout, rendu comme au build (icône éventuelle du mot-clé comprise), sinon nu
+  const enteteDe = (sens) => avecLesMotsCles(baliseDeLEnteteDeDefense(sens), db).replace(/<[^>]+>/g, '');
+  const [resistance, faiblesse] = ['resistance', 'faiblesse'].map(enteteDe);
   assert.deepEqual(entetes[0], ['Nom', 'Type', 'AP', 'AM', solidite, 'Effet', 'Prix'], 'armures particulières');
-  for (const e of entetes.slice(1)) assert.deepEqual(e, ['Nom', 'Matériaux', 'Type', 'AP', 'AM', solidite, 'Résistance', 'Faiblesse', 'Prix'], 'armures de la grille');
+  for (const e of entetes.slice(1)) assert.deepEqual(e, ['Nom', 'Matériaux', 'Type', 'AP', 'AM', solidite, resistance, faiblesse, 'Prix'], 'armures de la grille');
+  // le mot-clé que la clé du code résout (motCleDeLaRef, lib/mots-cles-balises.mjs), en gras avec sa définition en infobulle ; aucun, l'en-tête reste nu
+  // (test/armures-entetes-defense.test.mjs)
+  const vocabulaire = chargerVocabulaire(db);
+  for (const colonne of ['resistance', 'faiblesse']) {
+    const { texte } = ENTETES_DE_DEFENSE[colonne];
+    const motCle = motCleDeLaRef(vocabulaire, ENTETES_DE_DEFENSE[colonne].cle);
+    const cases = [...listes.matchAll(new RegExp(`<th scope="col" data-colonne="${colonne}">(.*?)</th>`, 'g'))].map((m) => m[1]);
+    assert.equal(cases.length, entetes.length - 1, `l’en-tête « ${texte} » dans chaque liste de la grille`);
+    for (const c of cases) {
+      assert.ok(c.replace(/<[^>]+>/g, '').includes(texte), `l’en-tête « ${texte} » : son texte`);
+      if (motCle) assert.match(c, new RegExp(`^<(?:a|strong) class="mot-cle[ "][^>]*data-mot-cle="${motCle.cle}"`), `« ${texte} » : le mot-clé du glossaire`);
+      else assert.ok(!c.includes('<') && !c.includes('{{'), `« ${texte} » : sans mot-clé, le texte nu`);
+    }
+  }
   assert.ok(p.includes(`data-m1="${a.m1}" data-m2="${a.m2}"`));
   const particuliere = armures.particulieres[0];
   for (const colonne of ['type', 'ap', 'am', 'effet', 'prix_brut']) {

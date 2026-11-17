@@ -1,7 +1,7 @@
 # Ce qu'il reste à valider sur la base de données
 
 Deux listes : les **choix de forme** du schéma (ce que tu peux relire dans [`apercu.md`](apercu.md)) et les **questions de contenu** que les sources ne tranchent pas.
-Les décisions déjà prises sont dans [`../decisions-regles.md`](../decisions-regles.md) (R1 à R273, liste à jour) ; la conception complète est dans [`conception.md`](conception.md) (§2 conventions, §12 points ouverts).
+Les décisions déjà prises sont dans [`../decisions-regles.md`](../decisions-regles.md) (R1 à R290, liste à jour) ; la conception complète est dans [`conception.md`](conception.md) (§2 conventions, §12 points ouverts).
 
 ## 1. Choix de forme du schéma
 
@@ -448,10 +448,13 @@ Demande du propriétaire du 2026-11-14 : lier aux mots-clés du glossaire, « Si
 
 | # | Question | Ce que le site fait en attendant |
 | --- | --- | --- |
-| GL1 | **Suppression forcée** (R223) d'un mot-clé cité par `type_degats` ou par une magie (Frappe, Taille, Estoc ne sont pas verrouillés) : (a) refusée, même forcée ; (b) acceptée, le lien saute et la valeur reste affichée sans lien | (a), par analogie avec R223 (5) (« les autres refus restent ») |
-| GL2 | **Fusion** de Taille, Estoc ou Frappe dans le mot-clé verrouillé d'une magie (permise par R219 (4)) : le type de dégâts pointerait alors vers ce mot-clé de magie. (a) permise ; (b) refusée | (a) : la fusion reporte la référence sur la cible (refusée seulement si deux magies se disputeraient un même mot-clé) |
-| GL3 | **« physique » et « sonore »** (résistances d'invocation et de capacité de créature, attaques de créature) n'ont pas de mot-clé. Faut-il en créer (« Dégâts physiques », « Sonore »), avec quelle définition ? | Sans lien, libellé nu |
-| GL4 | **En-têtes « Résistance » et « Faiblesse »** des armures : les lier aux mots-clés « Résistance d'Armure » et « Vulnérabilité d'Armure » ? | Non liés |
-| GL5 | **Textes libres** (effets, descriptions, colonnes `*_brut`) : y baliser aussi les types de dégâts et les magies ? | Non touchés |
+| GL1 | **Suppression forcée** (R223) d'un mot-clé cité par `type_degats` ou par une magie (Frappe, Taille, Estoc ne sont pas verrouillés) : (a) refusée, même forcée ; (b) acceptée, le lien saute et la valeur reste affichée sans lien | **Décidé (R289)** le 2026-11-17 : (a), le refus est gardé |
+| GL2 | **Fusion** de Taille, Estoc ou Frappe dans le mot-clé verrouillé d'une magie (permise par R219 (4)) : le type de dégâts pointerait alors vers ce mot-clé de magie. (a) permise ; (b) refusée | **Décidé (R290)** le 2026-11-17 : (a) pour le moment (nettoyage rapide des doublons) ; le propriétaire veut supprimer cette possibilité plus tard |
+| GL3 | **« physique » et « sonore »** (résistances d'invocation et de capacité de créature, attaques de créature) n'ont pas de mot-clé. Faut-il en créer (« Dégâts physiques », « Sonore »), avec quelle définition ? | **Décidé (R286)** le 2026-11-17 : créés avec les définitions du propriétaire, par un lot de changements sur le site de dev (R275) ; catégorie : GL8 |
+| GL4 | **En-têtes « Résistance » et « Faiblesse »** des armures : les lier aux mots-clés « Résistance d'Armure » et « Vulnérabilité d'Armure » ? | **Décidé (R284)** le 2026-11-17 : liés |
+| GL5 | **Textes libres** (effets, descriptions, colonnes `*_brut`) : y baliser aussi les types de dégâts et les magies ? | **Décidé (R287)** le 2026-11-17 : non touchés |
 | GL6 | **Fiche de personnage** : y lier le type de dégâts choisi et les magies demande des bulles créées dans le navigateur et une pastille en gras à la place des choix (menus, boutons), ce qui change son interface. (a) lier ; (b) laisser la fiche hors lien. Et le résumé « Arme » (« type choisi · amélioration… ») : texte brut ou gras ? | Décidé le 2026-11-14 (« 1) Ta question , ok reco. ») : les commandes de la fiche restent sans lien ; le résumé « Arme » affiche le type de dégâts choisi en gras, avec l'infobulle de son mot-clé |
-| GL7 | **Attaques et cartes de monstre** : la page n'affiche que la ligne brute (texte libre) d'une attaque, et les cibles des cartes de monstre se lisent dans un texte. Ajouter une valeur typée affichée, pour la lier ? | Non liées |
+| GL7 | **Attaques et cartes de monstre** : la page n'affiche que la ligne brute (texte libre) d'une attaque, et les cibles des cartes de monstre se lisent dans un texte. Ajouter une valeur typée affichée, pour la lier ? | **Décidé (R288)** le 2026-11-17 : oui ; créatures invoquées appliquées, cartes de monstre à appliquer (aucun type dans la base) |
+| GL8 | **Catégorie des mots-clés « Dégâts physiques » et « Sonore »** (créés par R286) : les ranger dans la catégorie « Dégâts » (id 19), comme Taille, Estoc et Frappe ? Recommandation : oui | Sans catégorie ; icône et couleur vides |
+
+**Décidé le 2026-11-17** : GL4 (R284) ; les matrices des magies liées (R285) ; GL3 (R286) ; GL5 (R287) ; GL7 (R288) ; GL1 (R289) ; GL2 (R290). Reste ouverte : GL8.

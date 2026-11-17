@@ -44,6 +44,32 @@ export const htmlDeLaMagie = (liens, id, libelle) => htmlDeLaValeur(lienDeLaMagi
 export const htmlDeLaMagieDeLaPage = (liens, id, libelle, pageId) => (id === pageId ? echapper(libelle) : htmlDeLaMagie(liens, id, libelle));
 
 /**
+ * Le nom d'une magie dans un en-tête de tableau, où le nom est déjà un lien vers la page de la magie (matrice des relations, matrice race × magie) : { html, titre }.
+ * `html` : le nom court lié à son mot-clé (gras, définition en infobulle ; le middleware n'y pose pas de second lien : un lien n'en contient pas d'autre), sinon le
+ * nom échappé ; `titre` : l'infobulle du lien de la page (`titre`) seulement quand le nom n'est pas une balise (l'infobulle du mot-clé la remplace : jamais deux).
+ */
+export function htmlDeLaMagieDeTableau(liens, id, nom, titre) {
+  const balise = baliseDeLaValeur(lienDeLaMagie(liens, id), nom);
+  return { html: balise ?? echapper(nom), titre: balise ? undefined : titre };
+}
+
+/**
+ * Les types de dégâts d'une attaque de créature (lib/bestiaire-db.mjs#chargerInvocations, `attaques[].types` : [{ type, libelle, magie_id }] dans l'ordre de
+ * `creature_attaque_type.rang`), séparés par « / » comme la source (« taille/estoc ») : chacun lié à son mot-clé dans `liens` quand il en a un (feu, eau, glace :
+ * celui de leur magie, nom court ; taille, estoc, frappe : le leur), sinon son libellé nu (physique, sonore). Le libellé est celui de la base, première lettre en
+ * capitale ; une attaque sans type rend '' (rien n'est déduit de son texte).
+ */
+export function htmlDesTypesDeLAttaque(types, liens) {
+  return (types ?? [])
+    .map((t) => {
+      const libelle = String(t.libelle || t.type || '');
+      return htmlDuTypeDeDegats(liens, t.type, libelle.charAt(0).toUpperCase() + libelle.slice(1));
+    })
+    .filter(Boolean)
+    .join(' / ');
+}
+
+/**
  * Le lien de la magie nommée `nom` (son nom court : « Feu »), dans `liens` — pour une page que la base ne donne que par le nom d'une magie (le Bestiaire :
  * lib/bestiaire-db.mjs, les magies d'une créature invoquée et la cible d'une résistance écrite) ; null sans magie de ce nom. Le nom d'une magie est unique.
  */

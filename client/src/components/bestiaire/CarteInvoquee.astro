@@ -15,7 +15,7 @@ import { htmlDesCapacites, htmlDesCaracteristiques } from '../../lib/monstre-ren
 import { coutAuNpm, creatureAuNpm, NPMS, parNpm, varieAvecLeNpm } from '../../lib/creature-npm.mjs';
 import ValeurParNpm from './ValeurParNpm.astro';
 import { classeDeMagie } from '../../lib/palette-css.mjs';
-import { htmlDeLaCible, htmlDeLaDefenseDeCreature, htmlDeLaMagie } from '../../lib/valeurs-fermees-rendu.mjs';
+import { htmlDeLaCible, htmlDeLaDefenseDeCreature, htmlDeLaMagie, htmlDesTypesDeLAttaque } from '../../lib/valeurs-fermees-rendu.mjs';
 import { url } from '../../lib/wiki';
 import type { chargerInvocations } from '../../lib/bestiaire-db.mjs';
 
@@ -126,7 +126,7 @@ const coutDuBloc = !variable && l.npmDuBloc ? coutAu(l.npmDuBloc) : null;
       </div>
       <div class="brubrique">
         <dt>Dégâts</dt>
-        <dd>{l.attaques.length ? <ul role="list">{l.attaques.map((a, k) => <li><ValeurParNpm ecrit={a.brut} groupes={groupes((c) => c.attaques[k])} /></li>)}</ul> : '—'}</dd>
+        <dd>{l.attaques.length ? <ul role="list">{l.attaques.map((a, k) => <li><ValeurParNpm ecrit={a.brut} groupes={groupes((c) => c.attaques[k])} />{a.types.length > 0 && <> <span class="battaque__types"><span class="muted">Type :</span> <Fragment set:html={htmlDesTypesDeLAttaque(a.types, liens)} /></span></>}</li>)}</ul> : '—'}</dd>
       </div>
       <div class="brubrique brubrique--capacites">
         <dt>Capacité(s)</dt>

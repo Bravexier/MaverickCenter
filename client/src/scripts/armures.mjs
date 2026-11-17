@@ -270,6 +270,13 @@ if (racine) {
     return racine.querySelector(`tr.armure[data-m1="${a}"][data-m2="${b}"]`) ?? racine.querySelector(`tr.armure[data-m1="${b}"][data-m2="${a}"]`);
   }
 
+  /**
+   * L'en-tête d'une colonne de la liste (`th[data-colonne]`), tel que la page l'affiche : « Résistance » et « Faiblesse » sont des mots-clés du glossaire quand ils
+   * existent (gras, définition en infobulle : lib/armures-rendu.mjs#ENTETES_DE_DEFENSE), nus sinon. Le navigateur n'a pas le vocabulaire : la fiche reprend le HTML
+   * déjà rendu de l'en-tête, comme elle reprend celui des cases. `repli` sans cette colonne.
+   */
+  const enteteDeColonne = (colonne, repli) => racine.querySelector(`th[data-colonne="${colonne}"]`)?.innerHTML.trim() || repli;
+
   /** L'armure telle qu'affichée dans sa ligne de la liste. */
   function lireArmure(ligne) {
     // l'AP et l'AM, chacun dans sa case (demande du propriétaire, 2026-10-17 : deux valeurs séparées), comme pour un bouclier
@@ -389,7 +396,7 @@ if (racine) {
       </div>
       <div class="pfiche__infos">${a.particuliere
         ? `<p><span class="pfiche__etiquette">Effet :</span> ${a.effet}</p>`
-        : `<p><span class="pfiche__etiquette">Résistance :</span> ${a.resistance}</p><p><span class="pfiche__etiquette">Faiblesse :</span> ${a.faiblesse}</p>`}</div>`;
+        : `<p><span class="pfiche__etiquette">${enteteDeColonne('resistance', 'Résistance')} :</span> ${a.resistance}</p><p><span class="pfiche__etiquette">${enteteDeColonne('faiblesse', 'Faiblesse')} :</span> ${a.faiblesse}</p>`}</div>`;
     A.fiche.setAttribute('aria-labelledby', 'armure-fiche-titre');
   }
 
