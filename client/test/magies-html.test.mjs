@@ -10,12 +10,14 @@ import { chargerInvocations } from '../src/lib/bestiaire-db.mjs';
 import { ORDRE_DES_RACES } from '../src/lib/race-kinds.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { chargerMagies } from '../src/lib/magies-db.mjs';
+import { liensDesValeursFermees } from '../src/lib/mots-cles-des-valeurs.mjs';
 import { classeDeMagie, cssDeLaPalette } from '../src/lib/palette-css.mjs';
 import { ENCOMBREMENT, liaisonsEntreMagies, POINTES, segmentCoupe } from '../src/lib/magie-fleches.mjs';
 import { npmMaxDuPotentiel, POTENTIEL_ILLIMITE } from '../src/lib/potentiel-illimite.mjs';
 import { ancreDeSpecialisation, phrasesDesSpecialisations, sortsParSpecialisation } from '../src/lib/sort-format.mjs';
 import { sansBonus } from '../src/lib/sort-maitrise.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
+import { texteAffiche } from './aide-texte-affiche.mjs';
 import { tuilesDeCapacites } from './aide-bestiaire.mjs';
 
 const dossier = fileURLToPath(new URL('../dist/magies/', import.meta.url));
@@ -547,10 +549,17 @@ test('/magies/ : le tableau des relations suit la carte, lignes et colonnes dans
   const debut = indexMagies.indexOf('<section id="relations"');
   assert.ok(debut > indexMagies.indexOf('class="magies-orbite"'), 'sous la carte des magies');
   const tableau = contenu(indexMagies, debut, 'section');
-  assert.deepEqual([...tableau.matchAll(/<span class="tableau-magies__vertical">([^<]+)<\/span>/g)].map((m) => m[1]), ORDRE_DU_CLASSEUR, 'colonnes');
+  // le nom d'une magie y est lié à son mot-clé du glossaire quand il en a un (migration 0125) : le texte affiché (l'icône que le site de dev pose sur le
+  // mot-clé, R235, n'en ajoute aucun)
+  const sansBalisesHtml = (h) => texteAffiche(h).trim();
+  assert.deepEqual([...tableau.matchAll(/<span class="tableau-magies__vertical">(.*?)<\/span><\/a>/g)].map((m) => sansBalisesHtml(m[1])), ORDRE_DU_CLASSEUR, 'colonnes');
   // chaque ligne porte la classe de sa magie (lib/palette-css.mjs), jamais une couleur en style
-  const lignes = [...tableau.matchAll(/<tr class="tableau-magies__ligne (couleur-magie-[\w-]+)"><th scope="row" class="tableau-magies__nom"><a [^>]*><span[^>]*><\/span>([^<]+)<\/a>/g)];
-  assert.deepEqual(lignes.map((m) => m[2]), ORDRE_DU_CLASSEUR, 'lignes');
+  const lignes = [...tableau.matchAll(/<tr class="tableau-magies__ligne (couleur-magie-[\w-]+)"><th scope="row" class="tableau-magies__nom"><a [^>]*><span[^>]*><\/span>(.*?)<\/a>/g)];
+  assert.deepEqual(lignes.map((m) => sansBalisesHtml(m[2])), ORDRE_DU_CLASSEUR, 'lignes');
+  // chaque magie dont la base porte un mot-clé (liens du glossaire, lus dans la base courante) : lié une fois en colonne, une fois en ligne, sans second lien dans le lien de la page
+  const liees = Object.entries(liensDesValeursFermees(ouvrirBase()).magies).filter(([id, l]) => l && id !== POTENTIEL_ILLIMITE);
+  for (const [id, l] of liees) assert.equal(tableau.split(`data-mot-cle="${l.cle}"`).length - 1, 2, `${id} : son mot-clé en colonne et en ligne`);
+  assert.ok(!/<a [^>]*>(?:(?!<\/a>).)*<a /.test(tableau), 'aucun lien dans un lien');
   assert.deepEqual(lignes.map((m) => m[1]), ORDRE_DU_CLASSEUR.map(classeDeMagie), 'chaque ligne : la classe de sa magie');
   assert.equal(lignes[6][1], 'couleur-magie-feu', 'la ligne du Feu');
   assert.ok(cssDeLaPalette().includes('.couleur-magie-feu{--couleur:#ff4500;'), 'rouge orangé (sa classe de la palette ; demande du propriétaire du 2026-10-23, valeur validée le 2026-10-23 : « Garder les deux »)');

@@ -32,7 +32,7 @@
 .tableau-magies__entete a::after { content: ''; width: 0.7rem; height: 0.7rem; border-radius: 50%; background: var(--couleur); box-shadow: 0 0 0 1px color-mix(in srgb, var(--text) 30%, transparent); }
 .tableau-magies__entete a:hover .tableau-magies__vertical,
 .tableau-magies__entete a:focus-visible .tableau-magies__vertical { text-decoration: underline; }
-.tableau-magies__entete .mot-cle[class*='couleur-'] { color: inherit; } /* le mot-clé de la magie (migration 0125) garde le texte de l'en-tête */
+.tableau-magies__entete .mot-cle[class*='couleur-'], .tableau-magies__nom .mot-cle[class*='couleur-'] { color: inherit; } /* le mot-clé de la magie (migration 0125) garde le texte de l'en-tête et du nom de la ligne */
 .tableau-magies__vertical { writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; line-height: 1; }
 
 .tableau-magies tbody .tableau-magies__nom { text-align: left; padding-inline: 0.5rem; font-weight: normal; overflow-wrap: anywhere; }

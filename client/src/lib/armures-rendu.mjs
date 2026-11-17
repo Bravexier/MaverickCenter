@@ -80,6 +80,21 @@ export function htmlDuPoids(p) {
 }
 
 /**
+ * Les en-têtes des colonnes « Résistance » et « Faiblesse » de la liste des armures (demande du propriétaire : « Tout les liens communs j'aimerai que tu les lie aux
+ * mots clés (ceux du glossaire) », « Si ils existent ! » ; réponse : « Les en-têtes "Résistance" et "Faiblesse" des armures deviennent des liens vers "Résistance
+ * d'Armure" et "Vulnérabilité d'Armure" » → « Oui »). Le texte affiché reste « Résistance » / « Faiblesse » ; le mot-clé est visé par sa clé (comme l'en-tête
+ * `{{solidite}}`, dont le gabarit cite la clé : une clé que le site de dev change reste reconnue par ses anciennes clés, lib/mots-cles-balises.mjs#motCleDeLaRef).
+ * Sans mot-clé de cette clé (supprimé sur le site de dev), la balise se rend en son texte : l'en-tête reste nu, lisible. Rien n'est ajouté à MOTS_CLES_PROTEGES.
+ */
+export const ENTETES_DE_DEFENSE = {
+  resistance: { cle: 'resistance-darmure', texte: 'Résistance' },
+  faiblesse: { cle: 'vulnerabilite-darmure', texte: 'Faiblesse' },
+};
+
+/** La balise `{{clé|texte}}` de l'en-tête `sens` (`resistance` ou `faiblesse`) : rendue par le middleware au build et par mots-cles-vivants sur le site de dev. */
+export const baliseDeLEnteteDeDefense = (sens) => `{{${ENTETES_DE_DEFENSE[sens].cle}|${ENTETES_DE_DEFENSE[sens].texte}}}`;
+
+/**
  * Les résistances ou faiblesses d'une armure (« x2 Frappe », « Estoc/Taille ») en pastilles, « ×2 » compris ; le type de chaque pastille est lié à son mot-clé du
  * glossaire quand `liens` (lib/mots-cles-des-valeurs.mjs, ctx.liens) en donne un (migration 0125), nu sinon.
  */

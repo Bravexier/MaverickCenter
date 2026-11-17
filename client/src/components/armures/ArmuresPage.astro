@@ -3,7 +3,7 @@ import armuresCss from '../../styles/armures/armures.css?raw';
 import { attributEd } from '../../lib/edition-modele.mjs';
 import type { chargerArmures, contexteDesArmures } from '../../lib/armures-db.mjs';
 import {
-  htmlDeLigneDAmelioration, htmlDeLigneDAmeliorationDeBouclier, htmlDeLigneDArmure,
+  baliseDeLEnteteDeDefense, htmlDeLigneDAmelioration, htmlDeLigneDAmeliorationDeBouclier, htmlDeLigneDArmure,
   htmlDeLigneDeBouclier, htmlDeLigneDeForme, htmlDeLigneDeMateriau, RENDUS_DES_ARMURES,
 } from '../../lib/armures-rendu.mjs';
 import { COULEURS_DES_TYPES } from '../../lib/equipement-couleurs.mjs';
@@ -225,7 +225,7 @@ const cumulElementaire = (niveau: number) => coutElementaireEcrit(ameliorationEl
                   <tr>
                     <th scope="col">Nom</th><th scope="col">Matériaux</th><th scope="col">Type</th>
                     <th scope="col" title="Armure physique">AP</th><th scope="col" title="Armure magique">AM</th>
-                    <th scope="col">{'{{solidite}}'}</th><th scope="col">Résistance</th><th scope="col">Faiblesse</th>
+                    <th scope="col">{'{{solidite}}'}</th><th scope="col" data-colonne="resistance">{baliseDeLEnteteDeDefense('resistance')}</th><th scope="col" data-colonne="faiblesse">{baliseDeLEnteteDeDefense('faiblesse')}</th>
                     <th scope="col" title={`La fabrication de l’armure complète + ${armures.unitesParMateriau} unités de chaque matériau, achetées (décision R93)`}>Prix</th>
                   </tr>
                 </thead>

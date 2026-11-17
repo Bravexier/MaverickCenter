@@ -2,7 +2,7 @@
 
 Ne lis jamais `docs/decisions-regles.md` en entier : trouve ici le numéro de la décision, puis cherche sa ligne avec Grep (motif `^\| R41 \|`) et ne lis qu'elle.
 
-Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 282 décisions, de R1 à R282, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
+Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 289 décisions, de R1 à R289, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
 
 | Réf. | Sujet | Décision |
 | --- | --- | --- |
@@ -288,3 +288,10 @@ Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas mo
 | R280 | Une mise à jour qui retire un élément utilisé par une fiche de la producti… | Une mise à jour n'est pas refusée parce qu'elle retire… |
 | R281 | Le gel des écritures pendant la bascule 1 (2026-11-15, `docs/chantier-base… | Accepté : pendant la bascule 1, le service du site de… |
 | R282 | Deux contrôles GitHub obligatoires et retrait des vieux installateurs de t… | Accepté : le jour J, `controle-des-migrations` et `con… |
+| R283 | En-têtes « Résistance » et « Faiblesse » des armures (`docs/sql/a-valider.… | Oui : sur les pages Armures, l'en-tête « Résistance »… |
+| R284 | Matrices des magies (suite de la demande du 2026-11-14, `docs/sql/a-valide… | Oui : les magies des matrices sont liées à leur mot-cl… |
+| R285 | Mots-clés des types de dégâts « physique » et « sonore » (`docs/sql/a-vali… | Créer les deux mots-clés, option B : « Dégâts physique… |
+| R286 | Textes libres (`docs/sql/a-valider.md` §12, GL5 : effets, descriptions, co… | Non : les textes libres ne sont pas balisés ; seules l… |
+| R287 | Type de dégâts des attaques et des cartes de monstre (`docs/sql/a-valider.… | Oui, contre la recommandation : le type de dégâts est… |
+| R288 | Suppression forcée d'un mot-clé lié (`docs/sql/a-valider.md` §12, GL1 ; R2… | Refus gardé : un mot-clé cité par `type_degats` ou par… |
+| R289 | Fusion de Taille, Estoc ou Frappe dans le mot-clé d'une magie (`docs/sql/a… | Rien ne change pour le moment : la fusion reste permis… |
