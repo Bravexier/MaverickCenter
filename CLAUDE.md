@@ -40,6 +40,7 @@ Les règles et le lore viennent du Discord « L'univers de Maverick » et de Goo
 Elle suit alors ce que les skills disent du « circuit court du `leader-technique` » : skill de la zone, code et test, un seul passage de tests à la fin, relecture de son diff (`revue-de-diff`), publication (`publier-une-branche`). Une difficulté imprévue (migration, deuxième zone, test rouge après deux corrections, règle à trancher) : elle passe la main au chef, avec ce qu'elle a déjà établi.
 
 **Au-delà, elle ne délègue qu'à trois chefs**, qui dirigent leur équipe (`.claude/agents/`, présentation : `docs/equipe.md`). La demande est transmise mot pour mot.
+Deux agents transverses, en lecture seule, servent les chefs et la session principale : `explorateur` (haiku) pour une recherche qui ferait lire beaucoup, `conseiller` (fable), rarement, pour un jugement difficile. Le conseiller ne tranche rien.
 
 | Chef | Domaine |
 | --- | --- |
