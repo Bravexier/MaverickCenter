@@ -22,6 +22,11 @@ import { dirname, join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
+import { TABLES_DE_LA_PAGE_DES_ARMES } from '../src/lib/corps-armes.mjs';
+import { TABLES_DES_PAGES_DES_ARMURES } from '../src/lib/corps-armures.mjs';
+import { TABLES_DES_COMPOSANTS } from '../src/lib/corps-composants.mjs';
+import { PAGE_DE_LA_LIGNE } from '../src/lib/corps-magies.mjs';
+import { TABLES_DES_POTIONS } from '../src/lib/corps-potions.mjs';
 import { ENTITES, TABLES } from '../src/lib/edition-modele.mjs';
 import { colonneMasquee, nomDeColonne, nomDeTable } from '../src/lib/libelles-de-la-base.mjs';
 import { comparerAvecLaBase, controlerLeLot, donnerLesNumeros, effetNetDuLot, FORMAT_DU_LOT, jugerLAnnulation, lireUnLot } from '../src/lib/lot-de-changements.mjs';
@@ -654,24 +659,46 @@ export function essayerLAnnulation({ source, dossier, depose }) {
 
 /**
  * Les pages dont le corps, le résumé ou les données sont dérivés des tables et que `recalculerLesPages` (edition.mjs) refait depuis elles sans qu'on lui
- * dise ce qui a changé : races, classes, fiches de dons (D11) et métiers. Les autres pages typées (magies, armes, armures, composants, potions) ne se
- * refont qu'à partir d'une modification précise (le rendu remplace la ligne qu'elle touche) : elles n'ont pas d'état « recalculé » à comparer.
+ * dise ce qui a changé : races, classes, fiches de dons (D11) et métiers.
  */
 export const TYPES_DE_PAGES_RECALCULEES = Object.freeze(['races', 'classes', 'capacites', 'metiers']);
+/**
+ * Les tables dont chaque ligne a sa place dans le corps d'une page qui n'est refaite que morceau par morceau (le rendu remplace la ligne qu'une modification
+ * touche ; un morceau déjà d'accord avec sa ligne reste tel quel) : pages des magies (lib/corps-magies.mjs), des armes, des armures et des boucliers, des
+ * composants, des consommables de la ceinture. Le recalcul rejoue chacune de leurs lignes telle quelle (avant = après) : chaque morceau est réécrit par le
+ * code d'aujourd'hui (rapport du lot 8 : « Tout recalculer » étendu après la bascule 1).
+ */
+export const TABLES_DES_PAGES_PAR_MORCEAUX = Object.freeze([...new Set([...Object.keys(PAGE_DE_LA_LIGNE), ...TABLES_DE_LA_PAGE_DES_ARMES,
+  ...TABLES_DES_PAGES_DES_ARMURES, ...TABLES_DES_COMPOSANTS, ...TABLES_DES_POTIONS])]);
 const COLONNES_RECALCULEES = Object.freeze(['corps_md', 'resume', 'donnees']);
 
 /**
  * Les écarts entre ce que les pages portent et ce que le code d'aujourd'hui en dérive : sur la copie `db` (écrite : le service n'y touche pas), chaque page
- * des types ci-dessus est refaite par `recalculerLesPages`, puis comparée à ce qu'elle portait.
+ * des types ci-dessus est refaite par `recalculerLesPages`, et chaque ligne des tables des pages par morceaux y est rejouée telle quelle ; puis toutes les
+ * pages sont comparées à ce qu'elles portaient (`examinees` : les pages qui ont des colonnes dérivées).
  * @returns {{ examinees: number, ecarts: { id: string, colonnes: { colonne: string, avant: unknown, apres: unknown }[] }[], illisibles: { page: string, raison: string }[] }}
  */
 export function ecartsDuRecalcul(db) {
   const colonnes = structure(db, 'page').colonnes.filter((c) => COLONNES_RECALCULEES.includes(c));
-  const lire = () => db.prepare(`SELECT id, ${colonnes.map((c) => `"${c}"`).join(', ')} FROM page WHERE ${TYPES_DE_PAGES_RECALCULEES.map(() => 'id GLOB ?').join(' OR ')} ORDER BY id`)
-    .all(...TYPES_DE_PAGES_RECALCULEES.map((t) => `${t}/*`)).map((p) => ({ ...p }));
+  const lire = () => db.prepare(`SELECT id, ${colonnes.map((c) => `"${c}"`).join(', ')} FROM page ORDER BY id`).all()
+    .filter((p) => colonneDerivee('page', { id: p.id }, 'corps_md')).map((p) => ({ ...p }));
   const avant = lire();
-  // chaque page est marquée comme le journal marque une page dont seules des colonnes dérivées ont été notées (edition.mjs#lignesRejouees)
-  const marques = avant.map((p) => ({ table: 'page', cle: { id: p.id }, operation: 'modifier', avant: { corps_md: null }, apres: { corps_md: null } }));
+  // chaque page des types recalculés est marquée comme le journal marque une page dont seules des colonnes dérivées ont été notées (edition.mjs#lignesRejouees)
+  const marques = avant.filter((p) => TYPES_DE_PAGES_RECALCULEES.includes(p.id.slice(0, p.id.indexOf('/'))))
+    .map((p) => ({ table: 'page', cle: { id: p.id }, operation: 'modifier', avant: { corps_md: null }, apres: { corps_md: null } }));
+  // chaque ligne des pages par morceaux, rejouée telle quelle (edition.mjs#lignesRejouees : avant = la ligne en place, après = la même)
+  for (const table of TABLES_DES_PAGES_PAR_MORCEAUX) {
+    let cle;
+    try {
+      ({ cle } = structure(db, table));
+    } catch {
+      continue; // une table absente de cette base
+    }
+    if (!cle.length) continue;
+    for (const l of db.prepare(`SELECT ${cle.map((c) => `"${c}"`).join(', ')} FROM "${table}"`).all()) {
+      marques.push({ table, cle: Object.fromEntries(cle.map((c) => [c, l[c]])), operation: 'modifier', avant: {}, apres: {} });
+    }
+  }
   const { illisibles } = recalculerLesPages(db, marques);
   const apres = new Map(lire().map((p) => [p.id, p]));
   const ecarts = [];
