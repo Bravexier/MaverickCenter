@@ -9,6 +9,7 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { classeDeMagie, cssDeLaPalette, cssDesFamilles } from '../src/lib/palette-css.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { htmlDeLIcone } from '../src/lib/mots-cles-balises.mjs';
 import { RACE_COLORS } from '../src/lib/race-kinds.mjs';
 import { racesParNature } from '../src/lib/races-db.mjs';
 
@@ -172,13 +173,20 @@ test('liste des races : l’accroche de chaque race en infobulle ; ni magies ni 
 
 // Une magie y est affichée par son nom court, liée au mot-clé de sa magie (migration 0125, demande du propriétaire « si ils existent » : lib/valeurs-fermees-rendu.mjs) :
 // en gras, sa définition en infobulle (la bulle `mot-cle-<clé>` posée par le middleware) ; sans mot-clé, le nom nu. Le mot-clé est lu par l'id de la magie dans la
-// base courante (le site de dev change les clés), jamais écrit ici.
-const magiesDeLaBase = new Map(base.prepare('SELECT g.id, g.nom, m.cle FROM magie g LEFT JOIN mot_cle m ON m.id = g.mot_cle_id').all().map((g) => [g.id, g]));
+// base courante (le site de dev change les clés), jamais écrit ici. Le mot-clé peut avoir une icône (mot_cle.icone, R235 (3), posée ou retirée sur le
+// site de dev) : le nom est alors suivi d'une espace et de son dessin (lib/mots-cles-balises.mjs#avecLIcone), lu dans la base courante lui aussi.
+const magiesDeLaBase = new Map(base.prepare('SELECT g.id, g.nom, m.cle, m.icone FROM magie g LEFT JOIN mot_cle m ON m.id = g.mot_cle_id').all().map((g) => [g.id, g]));
 const sansBalises = (h) => h.replace(/<[^>]+>/g, '').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+// le HTML sans les icônes des mots-clés (le dessin et l'espace qui le précède), pour en lire le nom
+const DESSINS = [...new Set(base.prepare('SELECT icone FROM mot_cle WHERE icone IS NOT NULL').all().map((m) => htmlDeLIcone(m.icone)).filter(Boolean))];
+const sansIcones = (h) => DESSINS.reduce((x, d) => x.replaceAll(` ${d}`, ''), h);
 function verifierLaMagieLiee(ou, slugDeLaMagie, interieur) {
   const g = magiesDeLaBase.get(`magies/${slugDeLaMagie}`);
   assert.ok(g, `${ou} : une magie de la base`);
-  assert.equal(sansBalises(interieur), g.nom, `${ou} : le nom court`);
+  const dessin = g.cle ? htmlDeLIcone(g.icone) : '';
+  if (dessin) assert.ok(interieur.endsWith(` ${dessin}</strong>`), `${ou} : l'icône du mot-clé après le nom, dans sa balise`);
+  else assert.equal(sansIcones(interieur), interieur, `${ou} : sans icône du mot-clé, aucune icône`);
+  assert.equal(sansBalises(sansIcones(interieur)), g.nom, `${ou} : le nom court`);
   if (g.cle) {
     assert.match(interieur, new RegExp(`^<strong class="mot-cle[ "][^>]*data-mot-cle="${g.cle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"`), `${ou} : le mot-clé de la magie`);
     assert.doesNotMatch(interieur, /<a\b/, `${ou} : jamais un lien dans un lien`);
@@ -191,7 +199,7 @@ test('magies innées d’une race : chaque pastille dans la couleur de sa magie,
   for (const { slug, html } of pages) {
     const puces = [...html.matchAll(/<a class="chip race-magie (couleur-magie-[\w-]+)" href="[^"]*\/magies\/([^"/]+)\/">(.*?)<\/a>/g)];
     for (const [, classe, magie, interieur] of puces) {
-      assert.equal(classe, classeDeMagie(sansBalises(interieur)), `${slug} : ${magie}`);
+      assert.equal(classe, classeDeMagie(sansBalises(sansIcones(interieur))), `${slug} : ${magie}`);
       verifierLaMagieLiee(`${slug} : ${magie}`, magie, interieur);
       if (interieur.startsWith('<strong')) liees += 1;
     }
@@ -214,7 +222,7 @@ test('liste des races : tableau des magies innées en bas de page, races dans l�
   const tableau = liste.slice(debut);
   const entetes = [...tableau.matchAll(/<a href="[^"]*\/magies\/([^"/]+)\/"[^>]*><span class="tableau-magies__vertical">(.*?)<\/span><\/a>/g)];
   for (const [, magie, interieur] of entetes) verifierLaMagieLiee(`en-tête ${magie}`, magie, interieur);
-  assert.deepEqual([...tableau.matchAll(/<span class="tableau-magies__vertical">(.*?)<\/span>/g)].map((m) => sansBalises(m[1])), [
+  assert.deepEqual([...sansIcones(tableau).matchAll(/<span class="tableau-magies__vertical">(.*?)<\/span>/g)].map((m) => sansBalises(m[1])), [
     'Potentiel Illimité', 'Sang', 'Arcane', 'Corruption', 'Espace/Temps', 'Vide', 'Nécromancie', 'Feu', 'Eau', 'Glace', 'Terre', 'Vent', 'Foudre', 'Lumière', 'Ombre', 'Total',
   ]);
   // colonnes, en-têtes et pastilles dans la couleur de leur magie : sa classe (lib/palette-css.mjs), jamais un style
