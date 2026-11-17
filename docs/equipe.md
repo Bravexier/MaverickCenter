@@ -41,6 +41,15 @@ Les instructions générales (`CLAUDE.md`, fiches d'agents, ce document hors sa 
 | WorldBuilding | `wb-divinites` | Dieux, primordiaux, cosmologie, temples et cultes, races non jouables, objets légendaires | rien (rapport) | sonnet, medium |
 | WorldBuilding | `wb-coherence` | Pertinence globale : contradictions, graphies, lore et règles, relecture de ce que l'équipe livre | rien (rapport) | sonnet, high |
 
+## Les agents transverses
+
+Demande du propriétaire, 2026-11-17 : chaque modèle à son rôle, Haiku pour explorer et Fable pour conseiller. Ces deux agents sont lancés par les chefs ou par la session principale, jamais par un membre. Ils ne modifient aucun fichier et rendent leur rapport à qui les a lancés.
+
+| Agent | Rôle | Écrit | Modèle, effort | Outils |
+| --- | --- | --- | --- | --- |
+| `explorateur` | Trouver des fichiers, des passages, des usages ; rendre des `chemin:ligne`, sans conclure | rien (rapport) | haiku, low | Read, Grep, Glob |
+| `conseiller` | Avis argumenté sur un jugement difficile : architecture, migration risquée, diagnostic qui résiste, contradiction entre sources à exposer, plan d'un gros lot. Ne tranche rien | rien (rapport) | fable, high | Read, Grep, Glob, Skill |
+
 ## Les outils des membres
 
 Chaque agent n'a que les outils de son rôle :
@@ -58,8 +67,9 @@ Le critère est le rapport qualité / jetons :
 - **Opus, effort high** pour ce qui ne se rattrape pas en aval : le chef Game Design, `tech-db` (schéma, migrations, données) et `tech-qualite` (relecture indépendante d'un lot à risque : migration, SQL, instructions, plus de 300 lignes).
 - **Opus, effort medium** pour le chef Technique : son rôle est de cadrer et de répartir ; le raisonnement long est dans les membres.
 - **Sonnet** pour tout le reste (décision du propriétaire du 2026-11-12, pour réduire la consommation de jetons) : les auteurs de code `tech-front`, `tech-back` et `tech-sources`, `gd-fiche`, les membres Game Design et WorldBuilding (high, ou medium pour le lore), le chef WorldBuilding (high), `tech-skills` (high), et la relecture d'un petit lot.
-- **Haiku** pour la publication git, qui suit un script (`tools/flux-git/etat-branche.mjs` classe l'état de la branche) ; devant un cas que le script ne classe pas, elle s'arrête et le dit (« bloqué ») plutôt que de deviner.
-- **L'évaluation** s'appuie sur la « ligne de suivi » que le `leader-technique` ajoute à chaque synthèse (agents lancés, relances, échecs de CI). Un modèle se change quand cette ligne montre des reprises répétées.
+- **Fable** pour le `conseiller`, consulté rarement : le modèle le plus fort sert aux jugements qui engagent la suite, pas au travail courant.
+- **Haiku** pour l'`explorateur` (recherche et lecture) et pour la publication git, qui suit un script (`tools/flux-git/etat-branche.mjs` classe l'état de la branche) ; devant un cas que le script ne classe pas, elle s'arrête et le dit (« bloqué ») plutôt que de deviner.
+- **L'évaluation** s'appuie sur la « ligne de suivi » que le `leader-technique` ajoute à chaque synthèse (agents lancés, relances, échecs de CI). Un modèle se change quand cette ligne montre des reprises répétées. Elle compte aussi les appels à l'`explorateur` et au `conseiller` : ce dernier peut augmenter la consommation au lieu de la réduire, on l'ajuste selon ce qu'elle montre.
 
 ## Le circuit
 

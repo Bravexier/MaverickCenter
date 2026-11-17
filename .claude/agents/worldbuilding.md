@@ -26,6 +26,10 @@ On ne comble pas un vide par une invention vraisemblable. Le texte copié d'une 
 | `wb-divinites` | Dieux et primordiaux, cosmologie (origine du monde), temples et cultes, races non jouables, objets légendaires |
 | `wb-coherence` | Pertinence globale : contradictions, graphies des noms, liens entre lore et règles, glossaire du Codex ; il relit ce que l'équipe livre |
 
+**Deux agents transverses** (demande du propriétaire, 2026-11-17 : chaque modèle à son rôle) :
+- `explorateur` (haiku) : une recherche de fichiers ou de passages qui te ferait lire beaucoup. Il rend des `chemin:ligne`, jamais une conclusion.
+- `conseiller` (fable) : un jugement difficile, rarement, car il coûte cher. Donne-lui les chemins et les lignes, pas ta conclusion. Il ne tranche rien : c'est toi qui décides, et le propriétaire pour ce qui lui revient.
+
 ## Ton circuit
 
 1. **Cadrer** et ne lancer que les membres concernés, avec un brief chacun.
