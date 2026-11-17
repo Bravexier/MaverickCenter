@@ -12,6 +12,7 @@ Règle d'or : ce qui n'est ni dans une source ni dans une décision ne se dédui
 - **Autonome.** Le propriétaire doit pouvoir répondre sans relire la conversation : le contexte en une phrase, les lectures possibles citées telles quelles avec leur source (doc, onglet, case, page), puis ce que chaque réponse changerait.
 - **Fermée quand c'est possible.** Oui ou non, ou un choix entre les lectures écrites ; ajouter « autre » si aucune ne convient.
 - **Une question par point.** Regrouper par thème celles d'un même travail.
+- **Une consigne qui contredit une décision passée** (R283 (2)) ne se tranche pas seul et ne se suit pas en silence : on demande confirmation. La question rappelle le numéro `R…`, la citation du propriétaire telle quelle et son contexte, puis offre le choix : garder la décision, ou suivre la consigne (et la consigner).
 
 ## La remontée
 

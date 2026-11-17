@@ -19,6 +19,7 @@ Les règles et le lore viennent du Discord « L'univers de Maverick » et de Goo
 
 `docs/decisions-regles.md` (R1 et suivantes) recense ses choix ; le code et les tests citent leur numéro (`R41`). On le lit par `docs/decisions-index.md`, puis par un `Grep` sur le numéro, jamais en entier.
 - Les suivre, et ne jamais en déduire d'autres.
+- Une consigne du propriétaire qui contredit une décision du registre ne se tranche pas seul ni ne se suit en silence : lui demander confirmation en rappelant ce qu'il avait dit (R…, citation) et dans quel contexte (R283).
 - Une nouvelle décision s'ajoute au registre, pas ici (skill `consigner-une-decision`).
 
 ## Sobriété en jetons (demande du propriétaire)

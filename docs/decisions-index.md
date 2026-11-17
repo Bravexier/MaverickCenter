@@ -2,7 +2,7 @@
 
 Ne lis jamais `docs/decisions-regles.md` en entier : trouve ici le numéro de la décision, puis cherche sa ligne avec Grep (motif `^\| R41 \|`) et ne lis qu'elle.
 
-Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 282 décisions, de R1 à R282, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
+Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 283 décisions, de R1 à R283, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
 
 | Réf. | Sujet | Décision |
 | --- | --- | --- |
@@ -288,3 +288,4 @@ Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas mo
 | R280 | Une mise à jour qui retire un élément utilisé par une fiche de la producti… | Une mise à jour n'est pas refusée parce qu'elle retire… |
 | R281 | Le gel des écritures pendant la bascule 1 (2026-11-15, `docs/chantier-base… | Accepté : pendant la bascule 1, le service du site de… |
 | R282 | Deux contrôles GitHub obligatoires et retrait des vieux installateurs de t… | Accepté : le jour J, `controle-des-migrations` et `con… |
+| R283 | Les verrous de décision qu'une proposition peut ouvrir, et les consignes q… | Lecture de l'équipe (pas les mots du propriétaire) : (… |
