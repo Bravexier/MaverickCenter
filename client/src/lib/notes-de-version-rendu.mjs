@@ -379,17 +379,17 @@ export function erreurDuReport(lancement) {
 
 /**
  * Ce que la page dit d'un refus avant l'envoi (`409 { erreur, refus }` de « Effectuer la mise à jour », de la Simulation et de « Copier vers le
- * dépôt ») : { texte, lignes } — une phrase (`lignes` vide). Jamais un nom de fiche (le service n'en donne pas). Sans `refus`
+ * dépôt ») : { texte } — une phrase. Jamais un nom de fiche (le service n'en donne pas). Sans `refus`
  * lisible, null : la page dit alors le message d'erreur du service.
  *   - attestation : le `message` du service (seul refus : un élément retiré qu'une fiche utilise ne fait jamais refuser, décision R280).
  * @param {unknown} refus `refus` du corps de la réponse
- * @returns {{ texte: string, lignes: string[] } | null}
+ * @returns {{ texte: string } | null}
  */
 export function messageDuRefus(refus) {
   if (!refus || typeof refus !== 'object') return null;
   if (refus.raison === 'attestation') {
     const message = typeof refus.message === 'string' ? refus.message.trim() : '';
-    return message ? { texte: message, lignes: [] } : null;
+    return message ? { texte: message } : null;
   }
   return null;
 }

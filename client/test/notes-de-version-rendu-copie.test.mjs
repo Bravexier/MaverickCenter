@@ -93,7 +93,7 @@ test('l’erreur du report est dite ; sans erreur, rien', () => {
 
 test('un refus d’attestation se dit par le message du service', () => {
   const r = messageDuRefus({ raison: 'attestation', etat: 'pas_appliquee', raison_production: 'x', message: 'Refusé avant l’envoi : la production n’a pas appliqué sa dernière mise à jour.' });
-  assert.deepEqual(r, { texte: 'Refusé avant l’envoi : la production n’a pas appliqué sa dernière mise à jour.', lignes: [] });
+  assert.deepEqual(r, { texte: 'Refusé avant l’envoi : la production n’a pas appliqué sa dernière mise à jour.' });
   assert.equal(messageDuRefus({ raison: 'attestation' }), null, 'sans message, la page dit celui de l’erreur');
 });
 
