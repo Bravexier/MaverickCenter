@@ -1775,7 +1775,7 @@ propriétaire ; « durabilité » n'est plus écrit nulle part sur le site (sauf
   pas des balises.
 
 **Baliser un mot dans tous les textes** (demande du propriétaire du 2026-10-17 : « Transforme dans tous les textes le mot "Chakra" (ou chakra) en mot
-clé », puis « Barrière ») : l'outil hors ligne `client/scripts/baliser-mot-cle.mjs --mots <mots.json> --journal <journal.json> --appliquer` pose une fois
+clé », puis « Barrière ») : l'outil hors ligne `client/scripts/baliser-mot-cle.mjs --mots <mots.json> --lot <lot.json> --nature <nature> [--decision R…]` pose une fois
 les balises, que les textes gardent ensuite (le site, lui, ne repère jamais un mot tout seul). Il passe par le service du site de dev, comme le mode
 modification : chaque mot-clé est créé avec sa définition (`mots.json` : `[{ libelle, motif, casse, description, exclus, contextes, horsDe, sauf }]`,
 `motif` = les écritures du mot, « chakras? », avec la casse si `casse` (« CR » n'est pas « cr ») ; ceux des demandes : `tools/glossaire/chakra-barriere.json`,
@@ -1784,8 +1784,13 @@ puis chaque texte que le site de dev modifie (champs « texte » et « markdown 
 dons, les races, les cartes de monstre, les potions…, plus quatre phrases d'une ligne : type d'un don, D/S/B d'un sort, artisanat d'un métier, case de
 butin) est réécrit dans sa forme canonique (« {{chakra}} » pour le libellé dans un texte mis en forme, « {{chakra|chakra}} » sinon) ; tout ce qui en
 dépend est refait par le service (un lot par colonne) ; une modification qui ne pose que des balises est neutre pour la note de version (R29 : les cases
-se lisent sans elles), mais elle y est listée ; le journal est rapatrié dans `data/rows` (`scripts/db-appliquer-edition.mjs`), donc versé dans
-`historique_modification` : l'état d'import des textes ne change pas. Ne sont jamais balisés (`lib/glossaire-balisage.mjs`) : un mot collé (« Nanochakra »,
+se lisent sans elles), mais elle y est listée. L'outil part d'une copie de l'extrait du jour du site de dev (`--base`, défaut `var/extrait/maverick-dev.db`) et
+n'écrit jamais `data/rows` (bascule 1) : ce qui a changé devient un lot de changements (`--lot`) à proposer au site de dev (`POST /api/edition/lots/`),
+appliqué par le clic du propriétaire (R275 (4)), puis versé dans `historique_modification` : l'état d'import des textes ne change pas. Nature du lot :
+`decision` avec son numéro quand le balisage applique une décision (`--decision R164` pour `sort-fer.json`), sinon `code`. Le lot porte les mots-clés créés
+en tête, jamais les colonnes que le service refait (corps des pages typées : `serveur/edition.mjs#colonneDerivee`) ; une remarque qui recopie la note d'une
+cellule (`note_cellule`) reste telle quelle. L'essai à blanc du site de dev peut encore demander des corrections (un texte modifié depuis l'extrait) :
+refaire alors l'extrait et l'outil. Ne sont jamais balisés (`lib/glossaire-balisage.mjs`) : un mot collé (« Nanochakra »,
 « chakratique », « Anti-barrière »), le nom d'une chose (« Boule de Chakra », « Barrière rocheuse » : les noms de la base qui contiennent le mot), une
 écriture exclue de `mots.json` (`exclus` : un nom propre que la base ne range pas, « Académie de Chakra », « Forteresse de Chakra », « Barrières Crocs » ;
 un autre sens du mot, « barrière naturelle », « barrière de glace », les herses du guide), une balise, un code, un lien, une adresse, un titre de section (son ancre)
