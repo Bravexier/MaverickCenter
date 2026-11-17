@@ -1,4 +1,4 @@
 {
-  "actif": false,
-  "a_lire": "Interrupteur du contrôle du contenu écrit à la main (lot 8, garde-fou 12 ; docs/flux-git.md, « Contenu écrit à la main (lot 8) »). Le jour de la bascule 1, une PR vers dev passe « actif » à true ; lu dans origin/dev par client/scripts/controler-le-contenu-ecrit.mjs (job controle-du-contenu-ecrit de ci.yml)."
+  "actif": true,
+  "a_lire": "Interrupteur du contrôle du contenu écrit à la main (lot 8, garde-fou 12 ; docs/flux-git.md, « Contenu écrit à la main (lot 8) »). Allumé le jour de la bascule 1 (2026-11-17, marqueur posé sur le site de dev à 21:44:11Z) ; lu dans origin/dev par client/scripts/controler-le-contenu-ecrit.mjs (job controle-du-contenu-ecrit de ci.yml)."
 }

@@ -8,6 +8,8 @@ user-invocable: false
 
 Mode modification et service : skill `zone-edition`. Mise à jour et conflits côté page : skills `zone-mise-a-jour`, `zone-mise-a-jour-conflits`. `docs/serveur.md` (« Édition des règles (site de dev) ») n'est pas recopié.
 
+La base du site de dev (`db/source`) n'est jamais refaite : le rejeu ne sert plus qu'à la production, refaite depuis les règles, et aux tests (skill `zone-service`).
+
 ## Fichiers
 - `serveur/edition.mjs` (`rejouerLeJournal`), `serveur/edition-journal.mjs` (`rejouer`, `rejouerUneFois`, `evaluerUne`, `parcourirUnLot`, `adaptateurDuJournal`, section 14), `serveur/edition-conflits.mjs` (`examiner`, `OUTILS_DE_RESOLUTION`), `serveur/edition-maitrises.mjs` (sources de maîtrise d'arme), `lib/fusion-trois-voies.mjs` (pur).
 

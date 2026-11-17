@@ -10,6 +10,7 @@ user-invocable: false
 
 - **Les auteurs** (`tech-front`, `tech-back`, `tech-db`, `tech-sources`) ne lancent que le fichier de test qu'ils écrivent ou corrigent (`node --test test/<fichier>`), jamais `npm test` ni `test:cible`. `tech-skills` ne lance aucun test.
 - **Un même test ne se relance pas** sans qu'un fichier qu'il couvre ait changé, ou si son échec venait de l'environnement (ex. `node_modules` absent), une fois celui-ci réparé : seuls les fichiers en échec se relancent.
+- **`data/rows` ne vient pas du lot** : aucune PR ne l'écrit (`controle-du-contenu-ecrit`). Un test qui dépend d'un contenu proposé en lot de changements sur le site de dev attend la copie du jour (« Copier vers le dépôt », R278).
 
 ## Quoi lancer
 

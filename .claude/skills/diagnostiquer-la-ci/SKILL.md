@@ -6,7 +6,7 @@ user-invocable: false
 
 # Diagnostiquer une CI rouge
 
-Les jobs sont décrits dans `.github/workflows/ci.yml` (`client`, `simulation-de-mise-a-jour`, `character-service`) et dans `garde-branches.yml` (le check `regles-de-branches`, job `pull-request`). Les règles de branches sont dans `docs/flux-git.md`.
+Les jobs sont décrits dans `.github/workflows/ci.yml` (`client`, `simulation-de-mise-a-jour`, `controle-des-migrations`, `controle-du-contenu-ecrit`, `character-service`) et dans `garde-branches.yml` (le check `regles-de-branches`, job `pull-request`). Checks requis (R282) : tous sauf `simulation-de-mise-a-jour`. Les règles de branches sont dans `docs/flux-git.md`.
 
 1. **Le journal.** La session principale fournit, par les outils GitHub, le journal du job et l'état du même check sur le dernier commit de `dev`. Garder l'erreur exacte, le test et le fichier.
 2. **Reproduire en local** sur la tête de la branche, en commençant par le **seul fichier de test en échec** (`node --test test/<fichier>`), avec la même commande que le job pour le reste (`npm run build` puis les tests `*-html`, `db:check`…). Une fois la correction faite, seulement les tests en échec et ceux du diff de la correction (`npm run test:cible -- --fichiers <fichiers corrigés>`), pas toute la sélection ni la suite entière.

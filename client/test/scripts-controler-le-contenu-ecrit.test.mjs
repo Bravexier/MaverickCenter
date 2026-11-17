@@ -8,7 +8,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { controlerLeContenu, INTERRUPTEUR, lireLInterrupteur, raisonHorsWorkflow, tablesDeLaStructure } from '../scripts/controler-le-contenu-ecrit-lib.mjs';
+import { controlerLeContenu, fichiersDeLaStructure, INTERRUPTEUR, lireLInterrupteur, raisonHorsWorkflow, tablesDeLaStructure } from '../scripts/controler-le-contenu-ecrit-lib.mjs';
 import { BOT } from '../scripts/mise-a-jour-github.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
@@ -21,8 +21,8 @@ const duBot = (fichiers = ['data/rows/metier.sql'], message = `Mise à jour des 
 });
 const aLaMain = (fichiers = ['data/rows/metier.sql']) => ({ ...duBot(fichiers), sha: 'b'.repeat(40), auteur: 'Quelqu’un', courriel: 'q@example.com', commiteur: 'Quelqu’un', courrielCommiteur: 'q@example.com' });
 
-test('l’interrupteur du dépôt est ÉTEINT, et se lit strictement', () => {
-  assert.equal(lireLInterrupteur(readFileSync(join(RACINE, INTERRUPTEUR), 'utf8')), false, 'rien ne s’allume avant la PR du jour J');
+test('l’interrupteur du dépôt est allumé (bascule 1 faite), et se lit strictement', () => {
+  assert.equal(lireLInterrupteur(readFileSync(join(RACINE, INTERRUPTEUR), 'utf8')), true, 'allumé par la PR du jour J');
   assert.equal(lireLInterrupteur(null), false, 'fichier absent : éteint');
   assert.equal(lireLInterrupteur('{"actif": true}'), true);
   assert.throws(() => lireLInterrupteur('{"actif": "oui"}'), /actif/);
@@ -72,9 +72,45 @@ test('allumé, vers dev : une migration de structure admet l’export refait des
   assert.deepEqual(pr(['data/rows/metier.sql', 'data/rows/race.sql']), [], 'l’export des tables de la migration passe');
   const refus = pr(['data/rows/metier.sql', 'data/rows/sort.sql']);
   assert.deepEqual(refus.map((x) => x.regle), ['ecrit-a-la-main']);
-  assert.match(refus[0].message, /tables hors des migrations de structure de la PR : sort/);
+  assert.match(refus[0].message, /fichiers hors de ce que refont les migrations de structure de la PR .* : sort$|: sort\.? /);
   // sans migration de structure, aucun export n'est admis
   assert.equal(controlerLeContenu({ actif: true, cible: 'dev', source: 'feature/x', fichiers: ['data/rows/metier.sql'], commits: [aLaMain()] }).refus.length, 1);
+});
+
+// Une migration de structure refait aussi data/rows/VERSION (schema_version) ; un renommage, de plus, les tables qui gardent des noms (journal, historique, lots, plafond).
+const prDeStructure = (migration, fichiersDuCommit) => controlerLeContenu({
+  actif: true, cible: 'dev', source: 'feature/structure', fichiers: ['data/migrations/0200-x.sql', 'data/schema.sql', ...fichiersDuCommit],
+  commits: [aLaMain(['data/migrations/0200-x.sql', 'data/schema.sql', ...fichiersDuCommit])], migrations: new Map([['0200-x.sql', migration]]),
+}).refus;
+const AJOUT = 'ALTER TABLE metier ADD COLUMN rang INTEGER;';
+const RENOMMAGE = "ALTER TABLE metier RENAME COLUMN rang TO rang_brut; UPDATE modification SET champ = 'rang_brut' WHERE champ = 'rang'; UPDATE historique_modification SET champ = 'rang_brut' WHERE champ = 'rang'; UPDATE lot_de_changements SET corps = replace(corps, 'rang', 'rang_brut'); UPDATE numero_donne SET champ = 'rang_brut' WHERE champ = 'rang';";
+const QUATRE_TABLES = ['modification', 'historique_modification', 'lot_de_changements', 'numero_donne'].map((t) => `data/rows/${t}.sql`);
+
+test('allumé, vers dev : ALTER TABLE … ADD COLUMN admet data/rows/<t>.sql et VERSION', () => {
+  assert.deepEqual(prDeStructure(AJOUT, ['data/rows/metier.sql', 'data/rows/VERSION']), []);
+  assert.deepEqual(prDeStructure(AJOUT, ['data/rows/VERSION']), [], 'VERSION seule, avec la migration');
+});
+
+test('allumé, vers dev : VERSION sans migration de structure est refusée (aucune migration, ou migration de données)', () => {
+  assert.equal(controlerLeContenu({ actif: true, cible: 'dev', source: 'feature/x', fichiers: ['data/rows/VERSION'], commits: [aLaMain(['data/rows/VERSION'])] }).refus.length, 1);
+  const donnees = controlerLeContenu({
+    actif: true, cible: 'dev', source: 'feature/x', fichiers: ['data/migrations/0201-d.sql', 'data/rows/VERSION'],
+    commits: [aLaMain(['data/migrations/0201-d.sql', 'data/rows/VERSION'])], migrations: new Map([['0201-d.sql', "UPDATE metier SET bonus_brut = 'x';"]]),
+  }).refus;
+  assert.deepEqual(donnees.map((x) => x.regle).sort(), ['donnees', 'ecrit-a-la-main']);
+  assert.ok(donnees.find((x) => x.regle === 'ecrit-a-la-main').message.includes(': VERSION'), 'le nom du fichier refusé est dit');
+  assert.deepEqual([...fichiersDeLaStructure(new Map([['0201-d.sql', "UPDATE metier SET bonus_brut = 'x';"]]))], []);
+});
+
+test('allumé, vers dev : un renommage admet journal, historique, lots déposés et plafond des numéros ; sans renommage ils sont refusés', () => {
+  assert.deepEqual(prDeStructure(RENOMMAGE, ['data/rows/metier.sql', 'data/rows/VERSION', ...QUATRE_TABLES]), []);
+  assert.deepEqual(prDeStructure(RENOMMAGE, ['data/rows/historique_modification.sql']), [], 'historique_modification.sql seul');
+  for (const f of QUATRE_TABLES) {
+    const refus = prDeStructure(AJOUT, ['data/rows/metier.sql', 'data/rows/VERSION', f]);
+    assert.deepEqual(refus.map((x) => x.regle), ['ecrit-a-la-main'], f);
+    assert.ok(refus[0].message.includes(f.replace(/^data\/rows\//, '').replace(/\.sql$/, '')), 'le nom du fichier refusé est dit');
+  }
+  assert.deepEqual([...fichiersDeLaStructure(new Map([['0200-x.sql', AJOUT]]))].sort(), ['data/rows/VERSION', 'data/rows/metier.sql']);
 });
 
 test('allumé, correctif urgent vers master : ni data/rows/, ni data/migrations/, ni data/schema.sql ; la livraison dev → master n’est pas concernée', () => {

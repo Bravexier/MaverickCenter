@@ -58,13 +58,15 @@ user-invocable: false
 - `ci.yml` a un job `controle-des-migrations` : checkout `fetch-depth: 0`, sans `npm ci`, parallèle, hors du job `client` dont les commandes sont épinglées. Vers `master`, il ne contrôle que les règles (`--sans-essai`). Règles : `docs/flux-git.md`, « Règles des migrations ». Toute nouvelle commande du job `client` entre aussi dans `scripts/mise-a-jour-github.mjs#CONTROLES`.
 - L'installateur n'écrit que sa demande dans `db/essai-de-structure/` et n'a jamais de `rm` ailleurs dans `db/`. Délais : 20 s pour l'accusé, 120 s pour le résultat.
 - Ce dossier ne compte pas pour un `db/` rempli, et n'est copié ni de la production ni par les sauvegardes (`copie.sh`, `lib.sh`).
-- Sans `db/source`, l'installation continue toujours. Avec lui (base source, skill `zone-service`) : l'installateur refuse `--copier-base-prod` et une publication plus ancienne que la `version=` de `VERSION`, avant toute écriture, et un refus de l'essai arrête l'installation avant tout dépôt.
+- Le site de dev porte `db/source` (base source, skill `zone-service`) : l'installateur y refuse `--copier-base-prod` et une publication plus ancienne que la `version=` de `VERSION`, avant toute écriture, et un refus de l'essai arrête l'installation avant tout dépôt. La production n'a pas de marqueur : son installation continue toujours.
 
 ## Bascule : `bascule.sh` et `repetition-prod.sh` (`deploy/installateur/README.md`, `docs/serveur.md`)
 - Rien hors `bascule.sh` ne pose ni ne retire `db/source` (`etat`, `geler`, `degeler`, `constat`, `sauvegarder`, `poser`, `retirer`, `copies`, `restaurer`) ; il est lancé par le propriétaire, en root, par `bash`, et n'existe que sur l'instance de test.
-- `restaurer` n'efface jamais la base qu'il remplace : elle est renommée dans `<dev>/var/avant-restauration-<date>/`. `poser` exige un constat `EGALITE` récent et une sauvegarde nommée réussie.
+- Restauration du site de dev, en trois temps (`docs/serveur.md`, « Restauration de la base du site de dev ») : `restaurer` remet une copie locale ou extérieure, sans jamais effacer la base qu'il remplace (renommée dans `<dev>/var/avant-restauration-<date>/`) ; le service applique seul les migrations et le report des paquets livrés (refusé si la copie est plus ancienne que le paquet) ; rien ne rejoue les lots écrits depuis la copie.
+- `poser` exige un constat `EGALITE` récent et une sauvegarde nommée réussie.
+- Un installateur de test antérieur à V0.4.99 ne se relance jamais : avant V0.4.74 il recopie la base de la production dans celle du site de dev, jusqu'à V0.4.98 il ignore le marqueur. R282 les retire de GitHub (les étiquettes git restent).
 - `repetition-prod.sh` joue la mise à jour de la production sur une copie, sans toucher à la production ; il n'écrit que des comptes.
-- Job CI `controle-du-contenu-ecrit` (`docs/flux-git.md`, « Contenu écrit à la main ») : éteint tant que `tools/flux-git/bascule-1.json` dit `actif: false` ; l'interrupteur se lit sur `origin/dev`, jamais dans la PR contrôlée.
+- Jobs CI `controle-des-migrations` et `controle-du-contenu-ecrit` (`docs/flux-git.md`, « Contenu écrit à la main ») : checks requis (R282 ; `.github/rulesets/`, `CHECKS_REQUIS` : skill `zone-mise-a-jour`). L'interrupteur `tools/flux-git/bascule-1.json` est allumé (`actif: true`) ; il se lit sur `origin/dev`, jamais dans la PR contrôlée, et ne repasse à `false` qu'avec un retour arrière.
 
 ## Tests
 - `bascule`, `installateur-base-source`, `repetition-prod` (et `bascule-constat` : skill `zone-service-extrait`) ; `deploy-sauvegardes-metriques` (`sauvegardes.json` là où lit chaque conteneur).

@@ -307,21 +307,23 @@ test('restaurer --exterieure latest : la copie rendue par restic (dépôt de l�
 
 test('restaurer --exterieure refuse une copie de la production (chemin et copie.meta) avant toute écriture', { skip: skipSauvegarde }, (t) => {
   const m = creerMonde(t);
-  copieDuSiteDeDev(m);
+  const copieDev = copieDuSiteDeDev(m);
   // une copie de la production, rendue par un identifiant d'instantané : chemin …/prod/…, copie.meta INSTANCE=prod
   const r1 = spawnSync('bash', [join(SAUVEGARDE, 'copie.sh'), 'nuit', 'prod'], { encoding: 'utf8', env: m.env });
   assert.equal(r1.status, 0, `${r1.stdout}${r1.stderr}`);
   const rendue = m.d('sauv', 'prod', 'nuit', readdirSync(m.d('sauv', 'prod', 'nuit'))[0]);
+  const rendueDev = m.d('sauv', 'dev', ...copieDev.split('/')); // une vraie copie du site de dev : copie.meta INSTANCE=dev
   writeFileSync(m.d('etc', 'stockage.env'), 'RESTIC_REPOSITORY=s3:https://s3.exemple.invalid/bucket-exemple\n');
   writeFileSync(m.d('etc', 'cle-depot'), 'phrase d essai\n');
-  const faux = (dossier) => `#!/bin/sh\n[ "$1" = restore ] || exit 0\nwhile [ $# -gt 0 ]; do [ "$1" = --target ] && t=$2; shift; done\nmkdir -p "$t/srv/maverick-sauvegardes/${dossier}/nuit/x" && cp -R '${rendue}/.' "$t/srv/maverick-sauvegardes/${dossier}/nuit/x/"\n`;
-  for (const dossier of ['prod', 'dev']) {
-    // sous …/prod/… comme envoi.sh la pose ; puis la même copie placée sous …/dev/… : son copie.meta (INSTANCE=prod) la trahit encore
-    writeFileSync(m.d('bin', 'restic'), faux(dossier));
+  const faux = (dossier, source) => `#!/bin/sh\n[ "$1" = restore ] || exit 0\nwhile [ $# -gt 0 ]; do [ "$1" = --target ] && t=$2; shift; done\nmkdir -p "$t/srv/maverick-sauvegardes/${dossier}/nuit/x" && cp -R '${source}/.' "$t/srv/maverick-sauvegardes/${dossier}/nuit/x/"\n`;
+  // chaque contrôle seul : sous …/prod/… comme envoi.sh la pose (les deux le refusent) ; la copie de la production placée sous …/dev/… (son copie.meta, INSTANCE=prod,
+  // la trahit) ; une copie du site de dev (INSTANCE=dev) placée sous …/prod/… (le chemin la refuse : retirer ce contrôle laisserait passer)
+  for (const [dossier, source, instance] of [['prod', rendue, 'prod'], ['dev', rendue, 'prod'], ['prod', rendueDev, 'dev']]) {
+    writeFileSync(m.d('bin', 'restic'), faux(dossier, source));
     chmodSync(m.d('bin', 'restic'), 0o755);
     const r = spawnSync('bash', [SCRIPT, 'restaurer', '--exterieure', '0123abcd'], { encoding: 'utf8', env: m.env });
-    assert.equal(r.status, 1, dossier);
-    assert.match(`${r.stdout}${r.stderr}`, /n'est pas une copie du site de dev \(instance prod\) : rien n'a été touché/);
+    assert.equal(r.status, 1, `${dossier} / ${instance}`);
+    assert.match(`${r.stdout}${r.stderr}`, new RegExp(`n'est pas une copie du site de dev \\(instance ${instance}\\) : rien n'a été touché`));
   }
   assert.equal(nomDeLaFiche(m.d('dev', 'db', 'vivante.db')), 'Écrite après la copie', 'la base du site de dev n’a pas bougé');
   assert.ok(!existsSync(m.d('dev', 'var')) && !existsSync(m.d('dev', 'GELER')));

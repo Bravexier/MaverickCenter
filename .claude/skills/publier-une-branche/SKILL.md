@@ -11,16 +11,16 @@ Règles du propriétaire, en détail dans `docs/flux-git.md` (code : `tools/flux
 
 - **Création.** Après `git fetch --prune origin` :
   - `feature/<nom>` depuis `origin/dev`, pour une PR vers `dev` ;
-  - `hotfix/<nom>` depuis `origin/master`, pour une PR vers `master`, seulement à la demande du propriétaire.
+  - `hotfix/<nom>` depuis `origin/master`, pour une PR vers `master`, seulement à la demande du propriétaire ; il ne porte ni contenu ni structure (rien dans `data/rows/`, `data/migrations/`, `data/schema.sql`).
 
   Toute autre branche poussée est supprimée par la garde (`claude/…`, `dev/…`, `main`…). `dev/…` ne peut même pas exister à côté de `dev`.
 - **Le nom.** `<nom>` dit l'évolution ou le correctif, en minuscules et tirets (`feature/npm5-info-apres-titre`). Jamais le nom aléatoire que propose l'environnement (`feature/awesome-pascal-…`) : renommer la branche avant le premier push (`git branch -m`).
-- **Les commits.** Ils contiennent les fichiers du lot que donne le chef, registres des chefs compris (`docs/decisions-regles.md`, `docs/sql/a-valider.md`…). Les messages disent quoi et pourquoi, en français ou en anglais comme l'historique. Une décision appliquée porte « décision » (`consigner-une-decision`). Jamais de fichier fabriqué (`client/src/content/wiki/`, `var/`, `dist/`).
+- **Les commits.** Ils contiennent les fichiers du lot que donne le chef, registres des chefs compris (`docs/decisions-regles.md`, `docs/sql/a-valider.md`…). Les messages disent quoi et pourquoi, en français ou en anglais comme l'historique. Une décision appliquée porte « décision » (`consigner-une-decision`). Jamais de fichier fabriqué (`client/src/content/wiki/`, `var/`, `dist/`), ni `data/rows/` : c'est une copie du site de dev (contrôle `controle-du-contenu-ecrit`), sauf l'export des tables que nomme une migration de structure du lot.
 - **La version.** Ne jamais modifier celle de `client/package.json` : le bot la tient après chaque fusion.
 - **Juste après le dernier commit, et avant chaque push**, même sans conflit. La base est `origin/dev`, ou `origin/master` pour un hotfix.
   1. `git fetch --prune origin`, puis reprendre les commits que la branche distante aurait reçus (`resoudre-un-conflit`, étape 1) ;
   2. si la base a bougé (`git merge-base --is-ancestor <base> HEAD` échoue), et seulement à son tour (« L'ordre de passage »), `git rebase <base>`. La branche de refusion de `master` dans `dev` ne se rebase jamais (`docs/flux-git.md`) ;
-  3. résoudre les conflits aussitôt : mécaniques par `tech-publication`, données, schéma et sens par leur auteur (`resoudre-un-conflit`) ;
+  3. résoudre les conflits aussitôt : mécaniques par `tech-publication`, schéma, migration et sens par leur auteur (`resoudre-un-conflit`) ;
   4. après un rebase, donner le recouvrement (`npm run test:cible -- --apres-rebase --liste`, sans rien lancer) : vide, on pousse ; sinon le chef le fait passer par `tech-qualite` avant le push (`choisir-les-tests`) ;
   5. pousser.
 
@@ -41,7 +41,7 @@ Règle du propriétaire (`CLAUDE.md`, « Git ») : éviter une suite de rebases 
 ## La PR (session principale)
 
 - **Ouverture.** Ouvrir la PR `feature/<nom>` → `dev` par les outils GitHub de la session, en français : quoi et pourquoi, contrôles passés. S'abonner à son activité.
-- **Fusion.** Une fois la CI verte, la fusionner sans attendre le propriétaire, par « Create a merge commit » (ni squash, ni rebase). C'est une consigne permanente.
+- **Fusion.** Une fois la CI verte (les cinq checks requis, R282 : `docs/flux-git.md`), la fusionner sans attendre le propriétaire, par « Create a merge commit » (ni squash, ni rebase). C'est une consigne permanente.
 - **Correction automatique.** Une CI rouge, une revue, un conflit ou un constat d'un robot se corrigent sans attendre le propriétaire, jusqu'à la fusion (`corriger-une-pr`). La session confie l'événement au `leader-technique`, et la correction est poussée par `tech-publication`.
 - **Ce qui ne se fait qu'à la demande du propriétaire :** une livraison `dev` → `master`, un hotfix → `master`. Jamais `[V: X+1]` de soi-même : le passage en 1.0 est son signal.
 - **Après la fusion**, le bot supprime la branche. Une suite de travail repart d'une nouvelle branche, depuis `origin/dev` à jour.

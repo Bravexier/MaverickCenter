@@ -1,6 +1,6 @@
 # Chantier — la base du site de dev devient la source de vérité
 
-**État au 2026-11-14 : plan accepté, en cours.** Le propriétaire a accepté le plan et retenu les recommandations des questions 1 à 6 de la section 11 (décisions R274, R275 et R276 de `docs/decisions-regles.md`). Les questions 7 à 10 restent ouvertes. Avancement : tableau « Suivi des lots ».
+**État au 2026-11-17 : bascule 1 faite (lot 8) ; la base du site de dev fait foi.** Le propriétaire a accepté le plan et retenu les recommandations des questions 1 à 6 de la section 11 (décisions R274, R275 et R276 de `docs/decisions-regles.md`). Les questions 7 à 10 restent ouvertes. Avancement : tableau « Suivi des lots ».
 
 La demande du propriétaire (2026-11-14), telle quelle :
 
@@ -30,7 +30,7 @@ Tenu à jour par la PR de chaque lot (état : à faire, en cours, fait ; puis le
 | 5 | Extrait du contenu pour les sessions de Claude, attestation de la production | M | fait (extrait, attestation, alerte de l'onglet : #360 ; base refaite selon l'empreinte du contenu, archive au nom de sa version : #361) | #360, #361 |
 | 6 | Lots de changements, annulation d'un lot, nature de chaque trace | L | fait (nature de chaque trace et format du lot, #364 ; service — dépôt, essai à blanc, application, numéros, verrous, #365 ; annulation d'un lot, « tout recalculer » (races, classes, dons, métiers ; les autres pages restent à couvrir), état d'origine par nature, numéros de l'édition, #366 ; onglet Mise à jour, #367 ; épreuve d'entrée 0122 à 0124 refaites en lots sur une copie, même base retrouvée sauf la page protégée « La montée de niveau » ; ce qui touche des tables hors édition attend le lot 8, dont la suppression des deux pages retirées par 0122 et 0124 (citées par une constante de règle) ; l'annulation des fusions 0123 et 0124 est refusée par les gardes du service, #368) | #364, #365, #366, #367, #368 |
 | 7 | Changements de structure appliqués sur place, d'abord à blanc | L | fait (table `migration_recue`, migration 0129 ; application sur place, essai sur une copie et bilan par le service, #369 ; règles des migrations contrôlées par la CI, bilan dans le résumé du job, #370 ; essai de la structure livrée par le service en place avant chaque installation, sur une copie, non bloquant avant le lot 8 (marqueur `db/source`), #371 ; essai dans l'ombre à chaque installation du site de dev, base migrée sur place comparée à la base refaite, écarts classés — « livré par le dépôt » attendu tant que les migrations de données existent —, rapports sur la page Debug, #372) | #369, #370, #371, #372 |
-| 8 | Bascule 1 : la base du site de dev fait foi | L | code prêt, **éteint** (rien ne pose le marqueur) : marqueur `db/source`, lots ouverts à toutes les tables, installateur, `bascule.sh`, R279, #378 ; paquet de mise à jour, « Copier vers le dépôt », report après la production, #379 ; répétition de la mise à jour de la production, restauration, contrôle du contenu écrit à la main (interrupteur éteint), procédure du jour J, #380 ; réponses du propriétaire R280 à R282 (aucun refus pour une fiche, gel accepté, contrôles obligatoires et retrait des installateurs de test), PR `feature/bascule-1-base-de-dev-source`. **Bascule : le jour choisi avec le propriétaire** (section 14) | #378, #379, #380 |
+| 8 | Bascule 1 : la base du site de dev fait foi | L | **fait : bascule le 2026-11-17** (marqueur posé à 21:44:11Z, V0.5.1, constat EGALITE sur 188 tables, sauvegarde `bascule-1-20261117-214248`). Code : marqueur, installateur, `bascule.sh`, #378 ; paquet et « Copier vers le dépôt », #379 ; répétition, restauration, contrôle du contenu écrit, procédure, #380 ; R280 à R282, #381 ; corrections du jour J, #383, #386 ; dernière mise à jour par l'ancien circuit, #384, livrée en V0.5.0 par #385 ; interrupteur allumé, consignes et skills, PR `feature/bascule-1-base-de-dev-source` | #378, #379, #380, #381, #383, #384, #385, #386 |
 | 9 | Fabrication témoin sur le serveur : la mesure | L | fait, mesure en attente du geste du propriétaire (fabrication depuis un fichier de contenu, #373 ; kit de l'atelier joint à l'installateur de test, #374 ; atelier du site de dev — extrait, conteneur, rapports, page Debug —, #376 ; la journée type — minuteurs de nuit et du jour, sonde des temps de réponse, bilan de la journée —, #377) | #373, #374, #376, #377 |
 | 10 | Des contrôles qui ne lisent plus le contenu du dépôt | XL | en cours (premier temps : essai mécanique sur un contenu fourni, tri des 444 fichiers, `docs/essai-mecanique-des-tests.md`, #375) | #375 |
 | 11 | Bascule 2 : mise à jour directe, pages fabriquées sur le serveur | XL | à faire | |
@@ -459,7 +459,7 @@ Après deux mises à jour réussies par le nouveau circuit. Sortent du dépôt, 
 ## 12. À faire tout de suite
 
 1. Aujourd'hui : une copie à la main des deux bases, sur le serveur. La commande est déjà écrite dans deploy/vps/README.md (« Sauvegardes »). La base du site de dev est la seule copie de ce qui n'est pas encore rapatrié.
-2. Les 13 mots-clés, dans le système actuel. Ils sont dans le journal du site de dev, sans conflit : ils faisaient partie de la simulation du 14 novembre. Les trois tests qui la bloquaient sont corrigés (version 0.4.72). Ce qui les débloque : un rapatriement. Sur l'onglet Mise à jour, vous téléchargez « N modifications à rapatrier » et donnez le fichier à une session. L'équipe le rejoue dans le dépôt (.claude/skills/rapatrier-l-edition/SKILL.md), puis ouvre une demande de fusion vers dev. Rien ne part en production. Ils sont alors dans la base que lisent les sessions.
+2. Les 13 mots-clés, dans le système actuel. Ils sont dans le journal du site de dev, sans conflit : ils faisaient partie de la simulation du 14 novembre. Les trois tests qui la bloquaient sont corrigés (version 0.4.72). Ce qui les débloque : un rapatriement. Sur l'onglet Mise à jour, vous téléchargez « N modifications à rapatrier » et donnez le fichier à une session. L'équipe le rejouait alors dans le dépôt (procédure de rapatriement, retirée à la bascule 1), puis ouvre une demande de fusion vers dev. Rien ne part en production. Ils sont alors dans la base que lisent les sessions.
 3. Autre voie, si vous voulez aussi les livrer en production : relancer la « Simulation », puis « Effectuer la mise à jour ».
 4. Les mêmes mots-clés dans la cible. Dès le lot 5, les sessions téléchargent un extrait daté du site de dev : un mot-clé créé leur est lisible aussitôt, sans rapatriement. Dès le lot 8, « Copier vers le dépôt » les montre aussi aux tests. Après le lot 12, ils se lisent dans l'extrait et sont contrôlés sur le serveur.
 5. Le lot 2 (une installation ne peut plus effacer la base de dev) et la partie « sur le serveur » du lot 1 : aucune réponse n'est nécessaire.
@@ -490,7 +490,7 @@ Non vérifiable depuis une session : l'état réel du serveur et de la base du s
 
 ## 14. Le jour J de la bascule 1
 
-Préparé par le lot 8 (#378, #379, PR C). **Rien n'est allumé** tant que les gestes ci-dessous n'ont pas été faits. Le jour est choisi avec le propriétaire. L'atelier (`atelier/installer.sh`) ne fait pas partie de la bascule.
+Préparé par le lot 8 (#378, #379, #380). **Fait le 2026-11-17** : marqueur posé, contrôle du contenu écrit allumé. La procédure est gardée telle qu'elle a servi, corrigée d'après le jour J (« Ce qui s'est passé le jour J », plus bas), pour une prochaine bascule ou un retour arrière. L'atelier (`atelier/installer.sh`) ne fait pas partie de la bascule.
 
 ### Vos gestes (root, sur le serveur)
 
@@ -507,10 +507,12 @@ Chaque commande se copie telle quelle. On ne passe à la suivante que si la pré
 
 5. Sur la page Mise à jour du site de dev : « Effectuer la mise à jour », puis taper `METTRE A JOUR`. Cette mise à jour livre à la production les modifications des règles en attente (1643 au dernier relevé) **et** le code des lots 1 à 9 (v0.4 → v0.5.0).
 6. Attendre que la page dise la mise à jour terminée, et que la production soit à jour : alerte de l'onglet levée, plus aucune modification en attente. Compter jusqu'à une heure (run GitHub, puis le cron toutes les 5 min). **À partir d'ici et jusqu'à l'étape 12, plus aucune saisie sur le site de dev** : sinon le constat de l'étape 10 ne sera pas « EGALITE ».
-7. Regarder `/srv/maverick-center/installation.log`. S'il dit « docker-compose.yml mis à jour par cette livraison » : `cd /srv/maverick-center && docker compose up -d`. Le conteneur `serveur` doit être « Recreated » puis « Started ». S'il dit plutôt « docker-compose.yml a été modifié sur place » : on s'arrête et on transmet ces lignes à une session, qui dira quoi faire du fichier `.nouveau`.
-8. Seulement si la répétition (étape 3) annonçait des chutes, après la première copie horaire : `sudo bash /srv/maverick-center-test/sauvegarde/copie.sh accepter prod`. Il doit afficher `sauvegarde: prod : la copie mise de côté … devient la référence`.
+7. Regarder `/srv/maverick-center/installation.log`. S'il dit « docker-compose.yml mis à jour par cette livraison » : `cd /srv/maverick-center && sudo docker compose up -d`. Le conteneur `serveur` doit être « Started » (« Recreated » peut ne pas s'afficher). S'il dit plutôt « docker-compose.yml a été modifié sur place » : on s'arrête et on transmet ces lignes à une session, qui dira quoi faire du fichier `.nouveau`.
+8. **Obligatoire si la répétition (étape 3) annonçait des chutes** (le 2026-11-17 : `magie_role` 42 → 0), sinon l'étape 11 refuse. Attendre la copie horaire qui suit l'installation de la production (au plus une heure) : c'est elle qui met de côté la copie de la chute. Puis `sudo bash /srv/maverick-center-test/sauvegarde/copie.sh accepter prod`. Il doit afficher `sauvegarde: prod : la copie mise de côté … devient la référence`. S'il dit « aucune copie mise de côté à accepter », la copie horaire n'est pas encore passée : attendre et relancer.
 
 **La bascule (une demi-heure, écritures gelées)**
+
+Avant de commencer, et après chaque correctif fusionné entre-temps : attendre que le site de dev ait installé la dernière version fusionnée (`bascule.sh etat`, ou la version de la page Debug), puis relancer l'étape qui avait échoué.
 
 9. `sudo bash /srv/maverick-center-test/bascule.sh geler` : arrête le service du site de dev. Le site reste lisible, l'édition est coupée.
 10. `sudo bash /srv/maverick-center-test/bascule.sh constat`. Il doit afficher `EGALITE` : production, base du site de dev et dépôt sont égaux, table par table. Sinon, il nomme les tables qui diffèrent : on fait `… bascule.sh degeler` et on s'arrête.
@@ -531,6 +533,15 @@ C'est tout pour le serveur.
 - `CLAUDE.md`, réécrit par la session principale (liste ci-dessous), et les skills, par `tech-skills` (liste ci-dessous).
 - Décisions consignées : la date de la bascule, et vos réponses aux questions de la section « Questions ouvertes du lot 8 ».
 - Le tableau de suivi : lot 8 « fait ».
+
+### Ce qui s'est passé le jour J (2026-11-17), pour la prochaine fois
+
+- Le premier run de la dernière mise à jour par l'ancien circuit a été refusé par `races-html.test.mjs` : des icônes avaient été posées sur des mots-clés de magies. Corrigé par la PR #383, puis la mise à jour a été relancée.
+- Le premier constat a refusé : il comptait les conflits de lots déjà résolus (71). Corrigé par la PR #386.
+- `bascule.sh sauvegarder` refuse tant que la chute attendue de la production (`magie_role` 42 → 0) n'est pas acceptée. Or `copie.sh accepter prod` ne marche qu'après qu'une copie horaire a mis de côté la copie de la chute. L'étape 8 est donc obligatoire dans ce cas, et vient après une copie horaire (texte corrigé ci-dessus).
+- `docker compose up -d` demande `sudo`, et peut afficher « Started » sans « Recreated » (étape 7 corrigée).
+- Après chaque correctif fusionné, il faut attendre que le site de dev ait installé la version avant de relancer l'étape (ajouté avant l'étape 9).
+- Résultat : marqueur posé le 2026-11-17 à 21:44:11Z, V0.5.1, sauvegarde nommée `bascule-1-20261117-214248` (locale et hors serveur), constat EGALITE sur 188 tables, production en 0.5.0, aucune modification en attente.
 
 ### Ce que change la mise à jour v0.4 → v0.5 pour la production (relevé de la PR C)
 

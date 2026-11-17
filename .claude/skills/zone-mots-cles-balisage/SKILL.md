@@ -21,7 +21,7 @@ user-invocable: false
 - L'outil retrouve le mot-clé d'une entrée par la règle d'une balise (`motCleDeLaRef` : clé, libellé d'un seul mot-clé, synonyme), le crée sinon, et écrit sa clé dans les balises (`{{clé}}`, `{{clé|texte}}`).
 - L'entrée « CR » de `corruption.json` vise `corruption` par `"libelle": "Corruption"` (`cr` y est fondu, R183 (3) ; « CR » en est un synonyme).
 - `sort-fer.json` pose les cinq textes que le site de dev modifie ; les trois autres (« Immatériel » du Fantôme et du Golem d'arcane, page « Pièces élémentaires ») viennent de la migration 0079 (registre `corrections` de `0079-r164-sorts-fer.json`).
-- L'outil passe par le service du site de dev ; le journal est rapatrié (`historique_modification` : l'import reste lisible).
+- L'outil passe par le service du site de dev, sur une copie, et écrit un journal. `--appliquer` le rejoue dans `data/rows`, ce qu'aucune PR ne porte plus (`controle-du-contenu-ecrit`) : son résultat se propose en lot de changements sur le site de dev (skill `modifier-une-page-wiki`).
 - Les balises déjà posées du mot, celles de la main comprises, sont retirées puis reposées (`sansLesBalisesDuMot`) ; le rapport liste chaque balise retirée ou nouvelle.
 - Jamais balisé : un nom de la base, un contexte exclu de l'entrée (nom propre du Codex, autre sens du mot), un texte hors du balisage (`horsDe` : récit du Codex et de la chronologie, sauf `sauf`), un code, un lien, un titre de section, un intitulé en gras seul sur sa ligne.
 

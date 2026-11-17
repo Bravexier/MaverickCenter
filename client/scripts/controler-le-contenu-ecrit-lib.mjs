@@ -6,14 +6,15 @@
 //   ecrit-a-la-main     une PR vers dev qui change data/rows/ : chaque commit de la PR qui y touche doit être celui du workflow de mise à jour (branche
 //                       feature/mise-a-jour-regles-…, auteur et commiteur github-actions[bot], une ligne « Lot : <uuid> » ou « Copie : <uuid> », et rien
 //                       hors de data/rows/) — sauf l'export qu'une migration de STRUCTURE ajoutée par la PR refait : data/rows/<t>.sql des seules tables que
-//                       ses migrations nomment (CREATE, ALTER, DROP TABLE <t>, renommage, cible d'un INSERT … SELECT : tablesDeLaStructure). L'égalité
+//                       ses migrations nomment (CREATE, ALTER, DROP TABLE <t>, renommage, cible d'un INSERT … SELECT : tablesDeLaStructure), data/rows/VERSION
+//                       (schema_version) et, pour un renommage seulement, les quatre tables qui gardent des noms (fichiersDeLaStructure). L'égalité
 //                       exacte de cet export est prouvée par le job controle-des-migrations (base remplie migrée), pas ici ;
 //   donnees             une PR vers dev qui ajoute une migration de données (sans DDL : controler-les-migrations-lib.mjs#analyserUneMigration) ; seule la
 //                       structure reste ;
 //   correctif-urgent    une PR hotfix/<nom> vers master qui change data/rows/, data/migrations/ ou data/schema.sql : ni contenu ni structure dans un
 //                       correctif urgent.
 // Limite : l'identité d'un commit se déclare (git) ; le contrôle écarte l'erreur et l'oubli, pas une falsification délibérée.
-import { analyserUneMigration } from './controler-les-migrations-lib.mjs';
+import { analyserUneMigration, TABLES_QUI_GARDENT_DES_NOMS } from './controler-les-migrations-lib.mjs';
 import { BOT, BRANCHE_DU_WORKFLOW } from './mise-a-jour-github.mjs';
 
 /** L'interrupteur, relatif à la racine du dépôt ; il est lu dans `origin/dev` (la branche où arrive la PR du jour J), jamais dans la PR contrôlée. */
@@ -71,6 +72,30 @@ export function tablesDeLaStructure(migrations = new Map()) {
   return tables;
 }
 const tableDuFichier = (f) => /^data\/rows\/([A-Za-z0-9_]+)\.sql$/.exec(f)?.[1]?.toLowerCase() ?? null;
+const nomDuFichier = (f) => f.replace(/^data\/rows\//, '').replace(/\.sql$/, '');
+
+/**
+ * Les fichiers de `data/rows/` que l'export refait quand la PR ajoute une migration de STRUCTURE : le fichier de chaque table que ces migrations nomment
+ * (`tablesDeLaStructure`) ; `VERSION` (`schema_version`, réécrit par tools/db/maverick.py#exporter à chaque changement de schéma) ; et, seulement si l'une
+ * renomme une table ou une colonne, les tables qui gardent des noms (`TABLES_QUI_GARDENT_DES_NOMS` : journal, historique, lots déposés, plafond des numéros),
+ * que la règle `renommage` de controler-les-migrations-lib.mjs oblige cette migration à réécrire. Sans migration de structure : rien.
+ */
+export function fichiersDeLaStructure(migrations = new Map()) {
+  const fichiers = new Set();
+  let structure = false;
+  let renomme = false;
+  for (const sql of migrations.values()) {
+    const analyse = analyserUneMigration(sql);
+    if (analyse.nature !== 'structure') continue;
+    structure = true;
+    if (analyse.renommages.length) renomme = true;
+  }
+  if (!structure) return fichiers;
+  for (const t of tablesDeLaStructure(migrations)) fichiers.add(`data/rows/${t}.sql`);
+  fichiers.add('data/rows/VERSION');
+  if (renomme) for (const t of TABLES_QUI_GARDENT_DES_NOMS) fichiers.add(`data/rows/${t}.sql`);
+  return fichiers;
+}
 
 /**
  * Les règles. `actif` : l'interrupteur ; `cible`, `source` : les branches de la PR ; `fichiers` : les chemins changés par la PR (merge-base → tête) ;
@@ -89,13 +114,13 @@ export function controlerLeContenu({ actif, cible, source, fichiers = [], commit
   }
   if (cible !== 'dev') return { actif, refus };
   if (fichiers.some(dansLesLignes)) {
-    const refaites = tablesDeLaStructure(migrations);
+    const refaites = fichiersDeLaStructure(migrations);
     for (const c of commits) {
       const raison = raisonHorsWorkflow(c, source);
-      // hors du workflow, seul l'export des tables que les migrations de structure de la PR nomment est admis
-      const autres = c.fichiers.filter(dansLesLignes).filter((f) => !refaites.has(tableDuFichier(f)));
+      // hors du workflow, seul l'export refait par les migrations de structure de la PR est admis (fichiersDeLaStructure)
+      const autres = c.fichiers.filter(dansLesLignes).filter((f) => !refaites.has(f));
       if (raison && refaites.size && !autres.length) continue;
-      if (raison) refus.push({ regle: 'ecrit-a-la-main', message: `commit ${String(c.sha).slice(0, 7)} : change data/rows/ hors du workflow de mise à jour (${raison})${refaites.size ? ` ; tables hors des migrations de structure de la PR : ${autres.slice(0, 5).map(tableDuFichier).join(', ')}` : ''}. Le contenu s’écrit sur le site de dev, puis « Effectuer la mise à jour » ou « Copier vers le dépôt ».` });
+      if (raison) refus.push({ regle: 'ecrit-a-la-main', message: `commit ${String(c.sha).slice(0, 7)} : change data/rows/ hors du workflow de mise à jour (${raison})${refaites.size ? ' ; fichiers hors de ce que refont les migrations de structure de la PR (tables nommées, VERSION, et pour un renommage le journal, l’historique, les lots déposés et le plafond des numéros)' : ' ; fichiers (aucune migration de structure dans la PR)'} : ${autres.slice(0, 5).map(nomDuFichier).join(', ')}. Le contenu s’écrit sur le site de dev, puis « Effectuer la mise à jour » ou « Copier vers le dépôt ».` });
     }
     if (!commits.length) refus.push({ regle: 'ecrit-a-la-main', message: 'data/rows/ change sans commit qui le porte (contrôle impossible) : refusé.' });
   }

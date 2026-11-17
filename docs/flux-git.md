@@ -28,7 +28,7 @@ ou d'une `hotfix/<nom>` ; une PR vers `dev` que d'une `feature/<nom>`.
 - **À chaque PR** (job `regles-de-branches`) : source permise pour la cible, bon point de départ, version de `client/package.json` non modifiée à la main
   (elle est tenue par le bot), et, pour une livraison, `master` déjà refusionnée dans `dev`.
 - **Par GitHub lui-même** (règles importables, `.github/rulesets/`) : création limitée à `feature/**` et `hotfix/**`, `master` et `dev` non supprimables,
-  modifiées seulement par PR avec les checks `client`, `character-service` et `regles-de-branches` verts. Voir « Mise en place ».
+  modifiées seulement par PR avec les checks `client`, `character-service`, `regles-de-branches`, `controle-des-migrations` et `controle-du-contenu-ecrit` verts (R282). Voir « Mise en place ».
 
 « Créée depuis » se déduit des commits, dans le sens qui compte pour la production : une `hotfix/<nom>` ne doit rien contenir de `dev` ni d'une
 `feature/…` qui ne soit déjà dans `master` (sinon du travail non livré partirait en production) ; une `feature/<nom>` ne doit rien contenir d'une
@@ -165,15 +165,19 @@ et quoi faire), 2 (usage ou dépôt illisible).
   Les commits sont lus de la base de la PR à sa tête (`github.event.pull_request.head.sha`), une fusion comparée à son premier parent. Limite : l'identité
   d'un commit se déclare ; le contrôle arrête l'erreur et l'oubli, pas une falsification voulue. **Exception** : une PR qui ajoute une migration de
   **structure** peut changer `data/rows/<t>.sql`, seulement pour les tables que ses migrations nomment (`CREATE`, `ALTER`, `DROP TABLE <t>`, les deux noms
-  d'un renommage, la cible d'un `INSERT … SELECT` : `tablesDeLaStructure`) ; toute autre table reste refusée. Ce contrôle ne juge que les noms : l'égalité
-  exacte de l'export est déjà prouvée par `controle-des-migrations` (base remplie migrée), qu'il est recommandé de rendre obligatoire.
+  d'un renommage, la cible d'un `INSERT … SELECT` : `tablesDeLaStructure`), plus `data/rows/VERSION` (`schema_version`, réécrit par `tools/db/maverick.py#exporter`
+  à chaque changement de schéma) ; et, **si l'une renomme** une table ou une colonne, les tables qui gardent des noms (`modification`, `historique_modification`,
+  `lot_de_changements`, `numero_donne` : la règle `renommage` oblige la migration à les réécrire). `fichiersDeLaStructure` ; sans migration de structure
+  (ou avec une migration de données seule), ni `VERSION` ni ces tables ne passent, et le refus nomme les fichiers. Toute autre table reste refusée. Ce contrôle ne juge que les noms : l'égalité
+  exacte de l'export est déjà prouvée par `controle-des-migrations` (base remplie migrée), qui est obligatoire (R282).
 - **`donnees`** (PR vers `dev`) : une migration ajoutée sans DDL (`controler-les-migrations-lib.mjs#analyserUneMigration`) est refusée ; la structure reste.
 - **`correctif-urgent`** (PR `hotfix/<nom>` vers `master`) : rien dans `data/rows/`, `data/migrations/` ni `data/schema.sql`. La livraison `dev` → `master`
   n'est pas concernée.
 
-Le jour de la bascule : une PR vers `dev` passe `actif` à `true`. Le job n'est pas un check requis (`.github/rulesets/`, `CHECKS_REQUIS` de
-`client/scripts/mise-a-jour-github.mjs`) : un refus rend la PR rouge, ce qui arrête la fusion automatique des sessions ; le rendre obligatoire suit le même
-chemin que `controle-des-migrations` (ajouter son nom aux deux fichiers de règles et à `CHECKS_REQUIS`, puis réappliquer les règles sur GitHub).
+Le jour de la bascule : une PR vers `dev` passe `actif` à `true`. Le job est un check requis (R282), comme `controle-des-migrations` : il figure dans
+`.github/rulesets/` (`dev.json`, `master.json`) et dans `CHECKS_REQUIS` de `client/scripts/mise-a-jour-github.mjs`, et un refus arrête la fusion. Les deux jobs
+tournent sur toute PR vers `dev` et `master` (`pull_request` sans filtre de branche ni de chemin dans `ci.yml`), y compris les PR « Lot : » et « Copie : »
+du workflow de mise à jour et la livraison `dev` → `master`. Après une modification des fichiers de règles, les réimporter sur GitHub (GitHub ne les lit pas).
 
 ## Au quotidien
 

@@ -334,7 +334,7 @@ EOF_COPIES
         [ -f "$paquet" ] || continue
         case "$(basename "$paquet")" in ????????-????-????-????-????????????.db) ;; *) continue ;; esac
         if [ "$(stat -c %Y "$paquet")" -gt "$instant_copie" ]; then
-          etape "ATTENTION le paquet $(basename "$paquet" .db | cut -c1-8) a été figé après cette copie : son contenu n'est pas dans la base restaurée ; si la production l'a installé, le service REFUSERA d'en reporter la note (rien n'est écrit ; « ERREUR mise à jour : report de la note… » au journal et sur la page Mise à jour) : faire refaire ce contenu sur le site de dev par une session, d'après la note du paquet (docs/serveur.md, « Restauration de la base du site de dev »)."
+          etape "ATTENTION le paquet $(basename "$paquet" .db | cut -c1-8) a été figé après cette copie : son contenu n'est pas dans la base restaurée ; si la production l'a installé, le service REFUSERA d'en reporter la note (rien n'est écrit ; « ERREUR mise à jour : report de la note… » au journal du service ; sur la page Mise à jour, seulement pour le paquet du lancement en cours) : faire refaire ce contenu sur le site de dev par une session, d'après la note du paquet (docs/serveur.md, « Restauration de la base du site de dev »)."
         fi
       done
     fi

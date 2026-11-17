@@ -11,7 +11,7 @@ user-invocable: false
 - Modèle et rendus : `lib/edition-modele.mjs` (`TABLES`, `CHAMPS_DE_TEXTE`, `attributEd`), `lib/edition-rendu.mjs` (`RENDUS`), `lib/tables-de-la-base.mjs`, `lib/libelles-de-la-base.mjs` (noms d'affichage des tables et colonnes).
 - Service : `serveur/edition.mjs` (un lot d'un bloc, les champs recalculés), `serveur/edition-journal.mjs` (section 14 ; rejeu, adaptateur, conflits, résolution : skill `zone-edition-rejeu`), extensions `serveur/edition-<domaine>.mjs` (plan des Règles : `edition-plan.mjs`, skill `zone-edition-menus` ; corps de page illisible : `serveur/edition-corps.mjs` ; maîtrise d'arme : `serveur/edition-maitrises.mjs`).
 - Dons et spécialités (D11) : `lib/dons-edition.mjs`, `edition/classes.mjs`, `lib/classe-dons-rendu.mjs`.
-- Ce que chaque domaine modifie et recalcule : le skill de sa zone. Balises : `zone-mots-cles`. Rapatrier le journal : `rapatrier-l-edition`. Mise à jour : `zone-mise-a-jour`. `/api/v1/` : `zone-api-rest`. Service : `zone-service`.
+- Ce que chaque domaine modifie et recalcule : le skill de sa zone. Balises : `zone-mots-cles`. Mise à jour : `zone-mise-a-jour`. `/api/v1/` : `zone-api-rest`. Service : `zone-service`.
 
 ## À lire
 - `docs/serveur.md`, « Édition des règles (site de dev) » : pages, balises, corps des pages typées, D11, fiches (R42), journal, rejeu, rapatriement, routes `/api/edition/`, refus des suppressions citées, mots-clés mentionnés (R196), crans propres (R194).

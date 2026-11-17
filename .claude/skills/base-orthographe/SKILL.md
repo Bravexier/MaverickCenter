@@ -19,10 +19,10 @@ user-invocable: false
 - `docs/sql/conception.md`, « Fait (migration 0006) » : les sept tables qui ne dérivent plus l'id du nom.
 - Corrections faites dans un dump de classeur avant extraction (`tools/sheets/corrections.json`, `corriger-dump.py`) : `docs/sources.md`, « Coquilles et
   fautes d'orthographe ».
-- Écrire une nouvelle migration de données : skill `ecrire-une-migration`.
+- Une correction nouvelle : un lot de changements proposé sur le site de dev (skill `modifier-une-page-wiki`) ; une migration ne porte plus que de la structure (skill `ecrire-une-migration`).
 
 ## Invariants
-- L'orthographe se corrige dans la base, par une migration de données avec son registre `.json` et son test. Jamais dans une page fabriquée.
+- L'orthographe se corrige dans la base du site de dev, par un lot de changements appliqué par le propriétaire ; les migrations de données ci-dessus (registre `.json`, test) ne se refont plus. Jamais dans une page fabriquée ni dans `data/rows`.
 - Décision R10 : corriger, jamais un chiffre ni le sens d'une règle. Une correction qui demande d'ajouter, retirer ou remplacer un mot, ou de choisir entre deux
   lectures, est une question au propriétaire (`docs/sql/orthographe-a-valider.md`).
 - Une phrase corrigée l'est partout où elle est écrite : page, résumé, tables typées, extraits, notes de cellule.
