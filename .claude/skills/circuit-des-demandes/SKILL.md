@@ -27,14 +27,16 @@ Une demande mixte est pilotée par le chef du domaine d'origine, qui sollicite l
 3. Chaque membre analyse son domaine et rend un rapport (`format-de-rapport`).
 4. `game-design` en fait une spécification unique : la règle exacte, sa source ou les mots du propriétaire, les valeurs, ce qui change. Il consigne la décision s'il y en a une (`consigner-une-decision`).
 5. Si le site doit changer, `game-design` lance `leader-technique` avec cette spécification comme cahier des charges.
-6. `leader-technique` fait réaliser le travail par son équipe (données, code, tests, relecture, branche poussée), puis rend son rapport à `game-design`.
+6. `leader-technique` fait réaliser le travail par son équipe (lot de changements pour le contenu, code, tests, relecture, branche poussée), puis rend son rapport à `game-design`.
 7. `game-design` vérifie la conformité du résultat à la spécification, puis rend la synthèse finale à la session principale.
 
 Le lore suit le même circuit avec `worldbuilding`. Un travail purement technique part directement à `leader-technique`.
 
-**Contrôle du fond.** Un lot technique peut changer une valeur, un texte ou un nom de règle ou du lore sans venir d'une spécification de `game-design` ou de `worldbuilding` : migration de données, réimport, texte d'une page. `leader-technique` le soumet alors au chef du domaine. Ce chef fait vérifier le lot (sources, décisions R…) par le membre concerné et rend son verdict : conforme, ou à corriger avec les R… en cause.
+**Une décision de contenu** (valeur, texte, nom, ligne) s'applique par un lot de changements déposé sur le site de dev (skill `modifier-une-page-wiki`), jamais par `data/rows` ni par une migration : il n'entre dans la base qu'au clic du propriétaire (R275 (4)).
 
-Un rapatriement de l'édition du site de dev n'est pas jugé : le site est la source de ce qu'il modifie. On n'en tire, au plus, que des questions au propriétaire.
+**Contrôle du fond.** Un lot technique peut changer une valeur, un texte ou un nom de règle ou du lore sans venir d'une spécification de `game-design` ou de `worldbuilding` : lot de changements, réimport, texte d'une page. `leader-technique` le soumet alors au chef du domaine. Ce chef fait vérifier le lot (sources, décisions R…) par le membre concerné et rend son verdict : conforme, ou à corriger avec les R… en cause.
+
+Une saisie du propriétaire sur le site de dev n'est pas jugée : le site est la source du contenu. On n'en tire, au plus, que des questions au propriétaire.
 
 **L'ordre des vérifications.** Ce verdict, ou la conformité vérifiée par le chef qui a commandé, passe **avant** la relecture de `tech-qualite`. Une correction faite après la relecture (écart de conformité, CI rouge) a sa propre relecture courte, limitée à son diff.
 

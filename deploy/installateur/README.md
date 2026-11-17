@@ -169,7 +169,7 @@ La copie est contrôlée d'abord (copie du site de dev, jamais de la production 
 refusée, rien n'est touché. Puis `GELER` est
 posé, le service arrêté, la base en place (`vivante.db`, `vivante.json`) **renommée** dans `var/avant-restauration-<date>/` de l'instance (jamais effacée),
 la copie posée et le service relancé : avec `db/source`, il applique lui-même les migrations à la base restaurée (ou ne démarre pas, la raison au journal).
-Ensuite, le report de la note d'un paquet livré se refait seul, et ce que la copie n'a pas (les lots écrits depuis) reste dans la base gardée à part :
+Ensuite, le report de la note d'un paquet livré se refait seul (refusé quand la copie est plus ancienne que le paquet : `client/serveur/paquet.mjs#reporterPaquet`), et ce que la copie n'a pas (les lots écrits depuis) reste dans la base gardée à part :
 `docs/serveur.md`, « Restauration de la base du site de dev ».
 
 ## Répétition de la mise à jour de la production (`repetition-prod.sh`)

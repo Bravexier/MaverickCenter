@@ -62,7 +62,7 @@ const CHEMINS = FICHIERS.map((f) => `data/rows/${f}`);
 const racineTemp = dossierTemporaire('mise-a-jour-github');
 const dossierTemp = (prefixe) => dossierTemporaire(prefixe.replace(/-$/, ''), { dans: racineTemp });
 
-/** Checks d'un commit : regles-de-branches sauté (événement create) puis, après `lectures` lectures, les trois checks requis verts. */
+/** Checks d'un commit : regles-de-branches sauté (événement create) puis, après `lectures` lectures, les checks requis verts. */
 const checksVerts = (lectures = 1) => {
   const vus = new Map();
   return (s) => {
@@ -1025,11 +1025,15 @@ describe('fonctions pures', () => {
   test('checks : un job sauté ne compte pas, un échec l\'emporte, un check en cours fait attendre', () => {
     const ok = (name) => ({ name, status: 'completed', conclusion: 'success' });
     assert.deepEqual(etatDesChecks(CHECKS_REQUIS.map(ok)).reussis, CHECKS_REQUIS);
-    assert.deepEqual(etatDesChecks([ok('client'), ok('character-service'), { name: 'regles-de-branches', status: 'completed', conclusion: 'skipped' }]).attente,
+    const sans = (nom) => CHECKS_REQUIS.filter((n) => n !== nom).map(ok);
+    assert.deepEqual(etatDesChecks([...sans('regles-de-branches'), { name: 'regles-de-branches', status: 'completed', conclusion: 'skipped' }]).attente,
       ['regles-de-branches (pas encore lancé)']);
+    // R282 : les deux contrôles du dépôt sont requis, comme dans .github/rulesets/
+    assert.ok(CHECKS_REQUIS.includes('controle-des-migrations') && CHECKS_REQUIS.includes('controle-du-contenu-ecrit'));
+    assert.deepEqual(etatDesChecks(sans('controle-du-contenu-ecrit')).attente, ['controle-du-contenu-ecrit (pas encore lancé)']);
     assert.deepEqual(etatDesChecks([...CHECKS_REQUIS.map(ok), { name: 'client', status: 'completed', conclusion: 'cancelled' }]).echecs, ['client (cancelled)']);
     assert.deepEqual(etatDesChecks([...CHECKS_REQUIS.map(ok), { name: 'client', status: 'queued', conclusion: null }]).attente, ['client (en cours)']);
-    assert.equal(etatDesChecks([]).attente.length, 3);
+    assert.equal(etatDesChecks([]).attente.length, CHECKS_REQUIS.length);
   });
 
   test('liste blanche : fichiers annoncés ET tables du lot ou de la note de version', () => {

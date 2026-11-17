@@ -13,11 +13,11 @@ user-invocable: false
 - Édition des règles (`/api/edition/`, `serveur/edition*.mjs`) : skill `zone-edition`. Conteneurs, nginx, installateurs : skill `zone-hebergement`. Maintenance : skill `zone-maintenance`. Page « Mise à jour » : skill `zone-mise-a-jour`. `/api/v1/` : skill `zone-api-rest`. Métriques et page Debug : skill `zone-debug-metriques`. Tables de la section 13 : skill `zone-fiches-base`. `POST /api/classeur/` et `GET /api/tipeee/` (les deux sorties vers l'extérieur) : skill `zone-service-sorties`. Extrait du contenu, attestation, empreintes : skill `zone-service-extrait`.
 
 ## À lire
-- `docs/serveur.md` : « Le code », « La base vivante (`db/`) » (reconstruction, retraits, conversions, sauvegarde), « L'API » (routes, format JSON d'une fiche, refus, repli sur une base d'avant), « Hébergement », « Développement ».
+- `docs/serveur.md` : « Le code », « La base vivante (`db/`) » (reconstruction, retraits, conversions), « L'API » (routes, format d'une fiche, refus), « Hébergement », « Développement ».
 
 ## Ce que fait le service
 - Node ≥ 22.13, `node:sqlite`, aucun paquet npm. Sous `/api/` : prétirés (liste, lecture, création, modification avec `version`, suppression), portrait, contrôles de `v_personnage_controle` (ils signalent seulement).
-- Il écrit dans la base vivante `db/vivante.db` = copie de `site/donnees/maverick.db` + section 13, refaite seulement quand ce que les règles apportent change (fiches reprises ; archives dans `db/archives/`) : voir « Reconstruction ».
+- Il écrit dans la base vivante `db/vivante.db`. Site de dev : la base source, jamais refaite (« Structure de la base »). Production : copie de `site/donnees/maverick.db` + section 13, refaite seulement quand ce que les règles apportent change (fiches reprises ; archives dans `db/archives/`) : voir « Reconstruction ».
 - À la reconstruction, un don, une spécialité, un sort (avec son livre), un métier ou une arme (R52) disparu est retiré des fiches avec une note datée (R42, `fiches-retraits.mjs`), liste dans `/api/etat` (l'évènement `retraits_fiches` porte `natures`). Toute autre référence rompue : rien ne change, `/api/etat` dit pourquoi.
 - Livré : `livraison.mjs` le copie dans `dist/_serveur/` avec `version.json` et `FICHIERS_JOINTS` (qui livre aussi toutes les migrations `.sql`, `schema.sql`, `scripts/constat-de-bascule.mjs` et `scripts/repetition-prod.mjs`). Prétirés seulement.
 - `/api/etat` (site de dev) : `modifications.en_attente`, `.conflit` et `.lots_en_conflit` ne comptent que les lots à résoudre.
@@ -71,13 +71,13 @@ Chaque conversion est décrite dans `docs/serveur.md` (« La base vivante », «
 - `personnage_sort.nm_livre` (0082, R169) : chaque sort à `nm_livre = 1` devient un livre de `personnage_livre_sort` (`COLONNES_CONVERTIES`), le NM ne change pas (`livres_sorts` avec un `nm_livre` à 1 : 409). `RETRAITS` a **deux entrées pour `sort`** (la liste, et `personnage_livre_sort`, sans ON DELETE) : le livre part avec le sort retiré par R42, y compris un livre seul ; `appliquer` parcourt toutes les entrées qui visent l'élément.
 
 ## Structure de la base (R274, R275)
-- Sans `db/source`, rien ne migre la vraie base : un essai de structure qui échoue n'arrête ni le site ni l'installation.
-- Sur une base source (`db/source`, fichier que seul `bascule.sh` pose : skill `zone-hebergement`) :
+- Le site de dev porte le marqueur `db/source` (R274 ; seul `bascule.sh` le pose ou le retire : skill `zone-hebergement`). La production n'en a pas : sa base est refaite depuis les règles, et un essai de structure qui échoue n'y arrête ni le site ni l'installation.
+- Sur la base source :
   - elle n'est jamais refaite depuis les règles : ni rejeu, ni archive de reconstruction, ni essai dans l'ombre ;
   - base absente : le service ne démarre pas (sortie 1) et ne la recrée pas, même retirée en cours de route (toute écriture répond 503) ; une restauration repasse par les mêmes contrôles ;
   - `preparerBaseSource`, avant toute écriture : les migrations livrées de numéro > `user_version` sont essayées sur une copie, puis appliquées sur place avec sauvegarde `db/archives/structure-*.db` (5 gardées, même après un échec) ; la structure est comparée au `schema.sql` livré. Migrations ou schéma non livrés, essai ou application refusés, structure différente (une publication plus ancienne que la base) : le service ne démarre pas, la raison au journal (catégorie `base`) et dans l'évènement `base_source` ;
-  - `vivante.json` porte `source` et `sur_place` ; `/api/etat` porte `base.source` et `base.sur_place` ; l'option `service.source` (vraie avec le marqueur) ouvre les voies de la bascule (skills `zone-edition-lots`, `zone-mise-a-jour`).
-  - Détail : `docs/serveur.md`, « Base source ».
+  - `vivante.json` porte `source` et `sur_place` ; `/api/etat` porte `base.source` et `base.sur_place` ; l'option `service.source` (vraie avec le marqueur) ouvre le paquet et les lots sur toutes les tables (skills `zone-edition-lots`, `zone-mise-a-jour`).
+  - Détail : `docs/serveur.md`, « Base source » et « Restauration de la base du site de dev ».
 - Les copies d'essai sont toujours effacées (purge à l'ouverture et dans le `catch` d'un fil mort). La base n'est pas en WAL : un `VACUUM INTO` fait attendre les écritures.
 - Les messages « structure : … » du journal du service sont rangés en catégorie `base`. Page Debug : skill `zone-debug-metriques` ; installateur : skill `zone-hebergement`.
 

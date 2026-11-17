@@ -42,12 +42,12 @@ user-invocable: false
 ## Nouvel export
 1. Remplacer l'export dans `sources/raw/`.
 2. `python3 -I tools/docs/codex.py`, puis `python3 -I tools/docs/codex.py --verifier`.
-3. `npm run db:sync-pages` (depuis `client/`), puis commiter `data/rows`.
+3. Les pages changées se proposent en lot de changements sur le site de dev (nature `source` ; skill `modifier-une-page-wiki`), jamais par `db:sync-pages` ni un commit de `data/rows`.
 4. La chronologie, qui cite le texte des pages : `node tools/chronologie/chronologie.mjs --verifier` (détail : `docs/codex.md`, « Règles du découpage »).
 
 ## Choix du propriétaire
 - Décision R21 : « Eaunoire », en un seul mot ; la page s'appelle « Eaunoire », alias « Eaunoir ».
-- La relecture orthographique du Codex (R10) reste à faire, par une migration de données avec son registre (skill `base-orthographe`).
+- La relecture orthographique du Codex (R10) reste à faire, par un lot de changements sur le site de dev (skill `base-orthographe`).
 
 ## Tests
 - `client/test/codex.test.mjs`. Son vocabulaire d'essai a des ids entiers et une `cle` ; l'id de « codex » vient de `IDS_DES_MOTS_CLES_PROTEGES`, un autre mot-clé de la base se trouve par le registre de la 0113. Un renommage se simule avec la réécriture des pages qui le citent, notée au journal (R232 (3)). Un test qui simule une édition de page part de son état d'import (titre, texte, alias), pas du `.md` courant (le site peut modifier les 116 pages) ; les liens se résolvent comme le site (`lib/wikilinks-resolution.mjs`, slug compris), sur la base d'import (`test/aide-base-d-import.mjs`).

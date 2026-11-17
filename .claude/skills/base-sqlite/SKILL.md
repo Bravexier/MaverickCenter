@@ -1,6 +1,6 @@
 ---
 name: base-sqlite
-description: "Base SQLite : data/schema.sql (sections, tables STRICT, vues), data/rows versionné, commandes db:*, colonne remarque, onglet DB /donnees/, identifiants figés. À charger avant de lire, modifier ou relire le schéma, data/rows, les scripts db-* ou tools/db/."
+description: "Base SQLite : data/schema.sql (sections, tables STRICT, vues), data/rows (copie du site de dev), commandes db:*, colonne remarque, onglet DB /donnees/, identifiants figés. À charger avant de lire, modifier ou relire le schéma, data/rows, les scripts db-* ou tools/db/."
 user-invocable: false
 ---
 # Base SQLite (`data/schema.sql`, `data/rows/`)
@@ -12,8 +12,8 @@ user-invocable: false
   capacités communes ; 9 équipement, ressources, craft, métiers ; 10 notes de cellule et écarts entre sources ; 11 tables dérivées ; 12 vues ;
   13 fiches de personnages et groupes de jeu ; 14 journal de l'édition et brouillon de la note de version ; 15 notes de version et historique des
   modifications du site.
-- `data/rows/` : les lignes versionnées, un fichier par table, une instruction `INSERT` par ligne, triées.
-- `data/migrations/NNNN-<nom>.sql` (+ registre `.json` pour une migration de données) : tout changement de schéma ou de données (skill `ecrire-une-migration`).
+- `data/rows/` : la copie du contenu du site de dev, un fichier par table, une instruction `INSERT` par ligne, triées.
+- `data/migrations/NNNN-<nom>.sql` : tout changement de structure (skill `ecrire-une-migration`) ; un registre `.json` accompagne les anciennes migrations de données.
 - `client/scripts/db-*.mjs` (build, derive, check, doc, init, export-pages, appliquer-edition, reference), `tools/db/` (`maverick.py`, `migrer.py`, `pages_md.py`, `exporter.py`, `races_onglet.py`, `homonymes.py`).
 - Onglet DB : `client/src/lib/donnees.mjs`, `client/src/pages/donnees/` (`index.astro`, `[table].astro`, `maverick.db.ts`).
 
@@ -21,14 +21,14 @@ user-invocable: false
 - `docs/sql/remplissage.md` : commandes, qui met quoi à jour, pourquoi `data/rows` est commité, onglet DB, pages fabriquées, `db:migrate`, colonne `remarque`.
 - `docs/sql/conception.md` : conventions (`nom`, `titre`, `*_cle`, `origine`, `source_ref`, cascades), §10.1 migrations.
 - `docs/sql/structure.md`, `docs/sql/apercu.md` : générés par `npm run db:doc`, jamais écrits à la main.
-- Procédures voisines : skill `ecrire-une-migration`, skill `interroger-la-base`, skill `rapatrier-l-edition`, skill `modifier-une-page-wiki`, skill `revue-sql`, skill `relecture-db`.
+- Procédures voisines : skill `ecrire-une-migration`, skill `interroger-la-base`, skill `modifier-une-page-wiki`, skill `revue-sql`, skill `relecture-db`.
 
 ## Commandes (depuis `client/`)
-Détail : `docs/sql/remplissage.md`. `npm run db:build` (→ `var/maverick.db`), `db:check` (code 1 ; ses contrôles vivent dans `client/serveur/controles-du-contenu.mjs#controlerLeContenu(db)`, `scripts/db-check.mjs` n'est que la ligne de commande), `db:pages-check`, `db:sync-pages` (les `.md` fabriqués → `data/rows`), `db:export-pages` (lancé avant `dev`, `build`, `test`), `db:init`, `db:doc` (régénère `structure.md` et `apercu.md`), `db:migrate`, `db:appliquer-edition -- <journal.json>` (rejoue le journal du site de dev sur `data/rows`, versé dans `historique_modification`, réécrit par `tools/db/exporter.py`).
+Détail : `docs/sql/remplissage.md`. `npm run db:build` (→ `var/maverick.db`), `db:check` (code 1 ; ses contrôles vivent dans `client/serveur/controles-du-contenu.mjs#controlerLeContenu(db)`, `scripts/db-check.mjs` n'est que la ligne de commande), `db:pages-check`, `db:sync-pages` (les `.md` fabriqués → `data/rows`, plus pour changer le contenu), `db:export-pages` (lancé avant `dev`, `build`, `test`), `db:init`, `db:doc` (régénère `structure.md` et `apercu.md`), `db:migrate`, `db:appliquer-edition -- <journal.json>` (rejoue un journal du site de dev sur `data/rows` ; plus pour changer le contenu).
 
 ## Invariants
-- `var/maverick.db` est une copie reconstruite, jamais commitée. La seule persistance versionnée est `data/rows`.
-- `data/rows` s'écrit tel que l'exporteur l'écrit : jamais de résolution de conflit git à la main (relancer l'importeur ou `db:sync-pages`). Sinon une mise à jour est bloquée (skill `zone-mise-a-jour`).
+- La base du site de dev fait foi (R274). `data/rows` en est une copie écrite par une machine (workflow de mise à jour : commits « Lot : », « Copie : ») : jamais à la main, ni par `db:sync-pages` ou `db:appliquer-edition` (contrôle `controle-du-contenu-ecrit`) ; une migration de structure n'y réécrit que les tables qu'elle nomme. `var/maverick.db`, bâtie depuis `data/rows`, est une copie datée, jamais commitée.
+- `data/rows` s'écrit tel que l'exporteur l'écrit : jamais de résolution de conflit git à la main (skill `resoudre-un-conflit`). Sinon une mise à jour est bloquée (skill `zone-mise-a-jour`).
 - `MAVERICK_CONTENU` (un extrait du contenu, skill `zone-service-extrait`) remplace `data/rows` au build : `donnees.mjs#trouverRacine` n'exige `data/rows` que sans elle, et `ouvrirBase` copie le fichier puis le dérive (ou le copie tel quel s'il est déjà dérivé).
 - Un changement de structure passe par une migration, jamais par une retouche de `data/rows`.
 - Les 25 tables de la section 13 (fiches, groupes de jeu) et 5 des 6 de la section 14 (journal de l'édition, brouillon de la note de version, `lot_de_changements` et `numero_donne` : migration 0128)
@@ -42,10 +42,10 @@ Détail : `docs/sql/remplissage.md`. `npm run db:build` (→ `var/maverick.db`),
 - Les lignes typées ne se réimportent pas depuis les classeurs : une mise à jour passe par le rapprochement (skill `sources-rapprochement`).
 - Colonne `remarque` : chaque table d'entités en a une, texte libre, vide par défaut, qui reprend les notes de cellule des classeurs (réunies, séparées par une ligne vide). `note_cellule` n'est qu'une trace : le site lit la remarque. `db:check` vérifie qu'aucune note n'est absente de la remarque de sa ligne.
 - Provenance (`famille`, `origine`, `source_ref`) : retirée à la 1.0 (`CLAUDE.md`) ; n'y rien investir.
-- Registre `.json` d'une migration de données : `textes` ou `valeurs` pour ce qui n'est pas une correction d'un classeur ; `corrections` (avant/apres en chaînes) est lu comme de l'orthographe et défait par `tools/sources/rapprocher.mjs` (skill `sources-rapprochement`) ; `evenements` est lu par la chronologie (skill `zone-chronologie`).
+- Registre `.json` d'une ancienne migration de données : `textes` ou `valeurs` pour ce qui n'est pas une correction d'un classeur ; `corrections` (avant/apres en chaînes) est lu comme de l'orthographe et défait par `tools/sources/rapprocher.mjs` (skill `sources-rapprochement`) ; `evenements` est lu par la chronologie (skill `zone-chronologie`).
 - Ce que chaque migration a fixé (mots-clés, plan des Règles, ordre des races, critique, spécialisations, classes, plafonds de NPM, résistances physiques, 0121…) : skill `base-sqlite-migrations`.
 - Dérivées (`scripts/db-derive.mjs`) : `lien` (vue `lien_page`) = les `[[…]]` (pages d'exemple), puis chaque balise d'un mot-clé dont l'adresse mène à une page (`adresses-db.mjs#pageDeLAdresse`) ; `page_fts` indexe le texte affiché (`texteSansBalises`), jamais l'id d'un mot-clé ni les marques d'onglets (`::: onglets`, `:::`), les ancres figées ni les couleurs écrites (`scripts/db-derive.mjs#textePlein`) : la recherche de la base reste alignée sur celle du site (`lib/recherche-index.ts`).
-- Le site de dev est la source de ce qu'il modifie (`CLAUDE.md`) : valeur d'import par `lib/historique-site.mjs` (`valeurDImport`, `lignesDImport`, `effectifDImport`).
+- Le site de dev est la source de tout le contenu (`CLAUDE.md`) : valeur d'import par `lib/historique-site.mjs` (`valeurDImport`, `lignesDImport`, `effectifDImport`).
 
 ## Choix du propriétaire
 - Le site tire de la base toutes ses pages et l'onglet **DB** : `/donnees/` (tables et vues) et la base en téléchargement `/donnees/maverick.db` (absente de la version portable).

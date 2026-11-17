@@ -8,13 +8,15 @@ user-invocable: false
 
 La page, les notes de version, le workflow : skill `zone-mise-a-jour`. Rejeu d'un lot et `parcourirUnLot` : skill `zone-edition-rejeu`.
 
+La base du site de dev (`db/source`) n'est jamais refaite : rien n'y est rejoué, aucun lot nouveau n'y tombe en conflit. Ce code ne sert plus qu'aux tests et à un retour arrière (skill `zone-hebergement`).
+
 ## Fichiers
 - Rendu pur `lib/conflits-rendu.mjs` (`htmlDesConflits`…), posé et envoyé par `src/scripts/mise-a-jour.mjs` (seul script à l'importer).
 - Service : `serveur/edition-conflits.mjs` (`examinerLeLot`, `resoudreLeConflit`…), routes `GET` / `POST /api/mise-a-jour/conflits/` ; parcours sans arrêt au premier conflit : `serveur/edition-journal.mjs#parcourirUnLot`, `evaluerUne`, `rompuesDuLot`.
 - Libellés : `lib/libelles-de-la-base.mjs`. Diff replié : `lib/diff-replie.mjs` (pur, importé par le seul `conflits-rendu`).
 
 ## Choix du propriétaire
-- Conflits (demande du propriétaire : « Après les listes de modifications, montrer les lignes en conflits. 1. Pour chaque conflit, montrer les deux versions 2. Laisser le choix entre 1, 2, ou 3 pour saisir à la main ce qui remplace les deux. ») : les lots en conflit, après les listes de la note en préparation ; version 1 = ce que le site de dev avait écrit, version 2 = la valeur actuelle de la base (ou « ligne supprimée ») ; 1 garde la version 1, 2 la version 2, 3 une valeur saisie (type de la colonne, contrôles de l'éditeur). Site de dev seulement. Versions d'un lot annulé en entier (ancienne forme) ; lot gardé : section suivante.
+- Conflits (demande du propriétaire : « Après les listes de modifications, montrer les lignes en conflits. 1. Pour chaque conflit, montrer les deux versions 2. Laisser le choix entre 1, 2, ou 3 pour saisir à la main ce qui remplace les deux. ») : les lots en conflit, après les listes de la note en préparation ; version 1 = ce que le site de dev avait écrit, version 2 = la valeur actuelle de la base (ou « ligne supprimée ») ; 1 garde la version 1, 2 la version 2, 3 une valeur saisie (type de la colonne, contrôles de l'éditeur). Versions d'un lot annulé en entier (ancienne forme) ; lot gardé : section suivante.
 - La section des conflits (`[data-nv-conflits]`, dernière de la note) : le bilan dit « N lot(s) en conflit ne part (partent) pas avec cette mise à jour » ; par lot, sa date, son résumé, la raison du rejeu (« Au rejeu : » suivi de `detail_lisible`, jamais `detail` : ni id du lot, ni clé JSON, ni nom technique ; rien sans `detail_lisible`), ses modifications saines (« repartira telle quelle »…), puis chaque conflit : les versions.
   - Deux textes en conflit (deux `valeur` chaînes qui diffèrent) : seulement leurs différences mot à mot (`diffMots`), passages identiques repliés autour d'une ligne de contexte, 160 caractères au plus coupés à un blanc, rien de replié sous 80 (`lib/diff-replie.mjs#replierLeDiff`, demande du propriétaire : « … j'aimerai qu'elle ne se limite qu'à la différence entre les deux.. »). Versions entières : bloc fermé (`nv-conflit__entieres`).
   - Les autres cas (ligne entière, suppression, nombre, textes trop longs) : côte à côte, en entier, retours à la ligne gardés.

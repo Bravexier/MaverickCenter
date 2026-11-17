@@ -25,7 +25,7 @@ Les instructions générales (`CLAUDE.md`, fiches d'agents, ce document hors sa 
 | --- | --- | --- | --- | --- |
 | Technique | `tech-front` | Affichage, UX et UI : pages, composants, styles, scripts navigateur, modules de rendu, fiche côté page, version portable | `client/src/` sauf les modules du back, `client/public/`, `astro.config.mjs`, `client/package.json`, `tools/build-artifact.mjs`, docs des pages, ses tests | sonnet, high |
 | Technique | `tech-back` | Service, API, édition et mise à jour du site de dev, modules qui lisent ou écrivent la base, performance, hébergement, CI | `client/serveur/`, `client/scripts/`, les modules de base de `src/lib` (liste fermée dans `leader-technique`), `deploy/`, `.github/`, `tools/flux-git/`, `.gitignore`, `.nvmrc`, `api/` (sur demande), `docs/serveur.md`, `api.md`, `flux-git.md`, ses tests | sonnet, high |
-| Technique | `tech-db` | La base : schéma, migrations, `data/rows` par les outils, pages du wiki (`db:sync-pages`), vues, index, intégrité, optimisation | `data/`, `tools/db/`, `docs/sql/` (hors questions des chefs et rapprochement), ses tests | opus, high |
+| Technique | `tech-db` | La base : schéma, migrations de structure, vues, index, intégrité, optimisation (`data/rows` n'est qu'une copie écrite par le workflow) | `data/`, `tools/db/`, `docs/sql/` (hors questions des chefs et rapprochement), ses tests | opus, high |
 | Technique | `tech-sources` | Import des sources : originaux Google (R83), exports bruts, importeurs et extracteurs, rapprochement des classeurs | `sources/`, `tools/` (hors `db/`, `flux-git/`, `build-artifact.mjs`), `docs/sources.md`, `codex.md`, `fiche-auto.md`, `sql/rapprochement-classeurs.md`, ses tests | sonnet, high |
 | Technique | `tech-qualite` | Tests et qualité : seul à lancer les tests et contrôles d'un lot, une fois en fin de lot ; relecture indépendante de chaque lot et des instructions, couverture, diagnostic de la CI | `client/test/` : aides, tests transverses (`site-html`, `defilement`, `tableaux`, `infobulles`), tests manquants | opus, high (sonnet pour un lot sans migration, SQL, instructions ni plus de 300 lignes) |
 | Technique | `tech-skills` | Les skills : seul habilité à les créer, modifier, resserrer ou éclater ; décide s'il faut éclater (`eclater-un-skill`) ; tient la section « Les skills » de ce document | `.claude/skills/**`, la section « Les skills » de ce document | sonnet, high (opus pour éclater un skill de plus de 20 Ko) |
@@ -101,9 +101,8 @@ Un seul lot écrit à la fois dans l'arbre de travail, sur sa branche créée d'
 | `consigner-une-decision` | Ajouter R… à `docs/decisions-regles.md` | `game-design`, `worldbuilding` |
 | `verifier-une-source` | Trouver et citer la source d'une règle ou d'un fait du lore | Game Design, WorldBuilding, `tech-sources` |
 | `interroger-la-base` | Requêtes SQL en lecture seule | analystes, équipe technique |
-| `ecrire-une-migration` | Changer le schéma ou les données | `tech-db` |
-| `modifier-une-page-wiki` | Texte et frontmatter d'une page (`db:sync-pages`) | `tech-db` |
-| `rapatrier-l-edition` | Reprendre un journal du site de dev | `tech-db` |
+| `ecrire-une-migration` | Changer la structure (jamais les données) | `tech-db` |
+| `modifier-une-page-wiki` | Changer le contenu : un lot de changements proposé sur le site de dev | `tech-db` |
 | `tests-conventions` | Écrire un test | équipe technique |
 | `choisir-les-tests` | Un seul passage de tests par lot, par `tech-qualite` (`npm run test:cible`) ; reprises et rebase limités | `tech-qualite`, `leader-technique`, `tech-publication`, session principale |
 | `tenir-un-skill` | Créer, modifier, resserrer un skill : contenu, budget, format | `tech-skills` |

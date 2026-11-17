@@ -1,7 +1,7 @@
 # Maverick Center — contexte pour Claude
 
 Dépôt de **Maverick JDR** (jeu de rôle high fantasy) : un **wiki** des règles et du lore, et un **générateur de fiche de personnage**.
-Site Astro statique (`client/`), service Node (`client/serveur/`), base SQLite versionnée (`data/`). Structure, commandes, accès aux sources et vision : `docs/depot.md`, à lire seulement au besoin.
+Site Astro statique (`client/`), service Node (`client/serveur/`), base SQLite (`data/` : schéma, migrations et copie du contenu du site de dev). Structure, commandes, accès aux sources et vision : `docs/depot.md`, à lire seulement au besoin.
 
 L'interface et le contenu sont en **français**. Identifiants, fonctions et commits : en anglais ou en français, comme le code voisin.
 **Claude répond toujours en français** au propriétaire, du début à la fin de chaque session (sa demande) : messages, comptes rendus, questions, corps des PR. Les agents rédigent aussi en français.
@@ -35,7 +35,7 @@ Les règles et le lore viennent du Discord « L'univers de Maverick » et de Goo
 
 **Circuit direct (décision du propriétaire, 2026-11-12).** La session principale fait elle-même, sans lancer d'agent :
 - une question ou une analyse en lecture (règles, lore, code), dans le respect de la règle d'or ;
-- un petit lot ou un correctif du site, quand **tout** ceci est vrai : au plus trois fichiers de code (tests exclus), une seule zone ; ni migration, ni schéma, ni donnée de `data/` ; ni règle de jeu ou fait de lore nouveau ou changé ; ni changement d'API ou de format enregistré.
+- un petit lot ou un correctif du site, quand **tout** ceci est vrai : au plus trois fichiers de code (tests exclus), une seule zone ; ni migration, ni schéma, aucun contenu (un contenu se propose en lot de changements sur le site de dev) ; ni règle de jeu ou fait de lore nouveau ou changé ; ni changement d'API ou de format enregistré.
 
 Elle suit alors ce que les skills disent du « circuit court du `leader-technique` » : skill de la zone, code et test, un seul passage de tests à la fin, relecture de son diff (`revue-de-diff`), publication (`publier-une-branche`). Une difficulté imprévue (migration, deuxième zone, test rouge après deux corrections, règle à trancher) : elle passe la main au chef, avec ce qu'elle a déjà établi.
 
@@ -58,8 +58,9 @@ Deux agents transverses, en lecture seule, servent les chefs et la session princ
 
 **Avant de toucher une zone du site, charger son skill** (`zone-…`, `ui-…`, `site-…`, `base-…`, `sources-…`, liste dans `docs/equipe.md`) : il porte les invariants et les choix du propriétaire que les tests épinglent. Il n'est proposé qu'après la lecture d'un fichier de la zone ; avant, on lit `.claude/skills/<nom>/SKILL.md`.
 
-- **La base est la source.** Les pages typées (magies, races, classes, métiers, armes, bestiaire, équipement…) sont rendues depuis les tables, jamais depuis leur Markdown. `data/rows` ne change que par les outils : une migration, `db:sync-pages`, `db:appliquer-edition` ou le workflow de mise à jour. `client/src/content/wiki/` est fabriqué (`db:export-pages`) et ignoré par git.
-- **Le site de dev est la source de ce qu'il modifie.** La valeur d'import se lit dans `historique_modification` (`client/src/lib/historique-site.mjs`).
+- **La base du site de dev fait foi** (R274, bascule 1 du 2026-11-17). Les pages typées (magies, races, classes, métiers, armes, bestiaire, équipement…) sont rendues depuis les tables, jamais depuis leur Markdown. `data/rows` n'est qu'une copie écrite par le workflow (« Lot : », « Copie : ») : jamais à la main, ni par une migration de données, ni par `db:sync-pages` ou `db:appliquer-edition` (contrôle `controle-du-contenu-ecrit`). Un changement de contenu se **propose** comme lot de changements sur le site de dev (clé de lecture, `POST /api/edition/lots/`), appliqué par le clic du propriétaire (R275). `client/src/content/wiki/` est fabriqué (`db:export-pages`) et ignoré par git.
+- **Le site de dev est la source de tout le contenu.** La valeur d'import se lit dans `historique_modification` (`client/src/lib/historique-site.mjs`). Les analyses de règles et de lore lisent l'extrait du jour du site de dev (clé de lecture) ; `var/maverick.db`, bâti depuis `data/rows`, n'est qu'une copie datée.
+- **Migrations : structure seule**, sans texte de règle. Le service les applique sur place au démarrage.
 - **Identifiants figés.** Un nom corrigé ou renommé ne change jamais son identifiant ni son adresse.
 - **Modules et scripts de page** (skill `site-version-portable`). `src/lib/*.mjs` reste sans dépendance navigateur ni Astro ; le code qui touche au DOM va dans `src/scripts/` ; deux scripts de page n'importent jamais le même module.
 - **Provenance** (`famille`, `origine`, `source_ref`) : retirée à la 1.0, n'y rien investir.
@@ -68,12 +69,12 @@ Deux agents transverses, en lecture seule, servent les chefs et la session princ
 - **Tests** (`client/test/`, skill `tests-conventions`). Toute logique de règle ou de lien nouvelle a son test, écrit par son auteur.
   - **Pas de texte figé** : un test porte sur le fonctionnement, les formules et les règles, jamais sur un texte modifiable sur le site de dev.
   - **Un seul passage par lot**, en fin de lot : `npm run test:cible` (skill `choisir-les-tests`) et les contrôles, par `tech-qualite`, ou par celui qui mène un circuit direct ou court. Les auteurs ne lancent que le test qu'ils écrivent ; après une correction, seulement les tests en échec et ceux de son diff ; après un rebase, le recouvrement.
-  - La CI lance la suite entière. Jamais un test sauté pour obtenir du vert.
+  - La CI lance la suite entière. Jamais un test sauté pour obtenir du vert. Elle lit `data/rows`, tenu à jour par « Copier vers le dépôt » et chaque mise à jour (R278).
 
 ## Git
 
 Détail : `docs/flux-git.md` et skill `publier-une-branche`.
-- **Branches.** `master` est la production, `dev` l'intégration. On ne crée que `feature/<nom>` depuis `origin/dev`, ou `hotfix/<nom>` depuis `origin/master` à la demande du propriétaire. `<nom>` dit le changement ; une branche au nom aléatoire se renomme avant le premier push.
+- **Branches.** `master` est la production, `dev` l'intégration. On ne crée que `feature/<nom>` depuis `origin/dev`, ou `hotfix/<nom>` depuis `origin/master` à la demande du propriétaire. `<nom>` dit le changement ; une branche au nom aléatoire se renomme avant le premier push. Une PR ne touche pas `data/rows/`, hors l'export des tables qu'une migration de structure nomme ; un `hotfix/*` ne porte ni contenu ni structure.
 - **Avant chaque push.** `git fetch --prune origin`, `git rebase` sur la base si elle a bougé, conflits résolus aussitôt (skill `resoudre-un-conflit`), puis push et PR. Jamais de fusion de la base dans la branche, sauf la refusion de `master` dans `dev`.
 - **Ordre de passage.** Les PR dont les fichiers se recoupent passent dans l'ordre de leur numéro, sauf demande urgente du propriétaire ; la session principale annonce l'ordre, chacune ne rebase qu'à son tour.
 - **Version.** Ne jamais modifier celle de `client/package.json` : le bot la tient.

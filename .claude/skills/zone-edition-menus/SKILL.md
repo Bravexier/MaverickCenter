@@ -35,4 +35,4 @@ user-invocable: false
 - La page d'une Règle créée est dessinée sur la 404 (`edition/nouvelles.mjs`) tant que le site n'est pas reconstruit ; le plan vivant redessine les menus.
 
 ## Tests
-- `ordre-des-menus`, `serveur-edition-plan`, `serveur-edition-pages-regles`, `pages-protegees`, `citations-db`, `db-pages-du-site` (une page créée sur le site passe `db:sync-pages`), `edition-tous-ecrans`.
+- `ordre-des-menus`, `serveur-edition-plan`, `serveur-edition-pages-regles`, `pages-protegees`, `citations-db`, `db-pages-du-site` (une page créée sur le site de dev vit dans sa base ; `data/rows` en reçoit la copie par le workflow), `edition-tous-ecrans`.
