@@ -24,14 +24,20 @@ export const RESSOURCES = [
     noms: 'Pages du guide',
     description:
       'Les pages de la rubrique « guide », rangées par le plan du site (lib/livres.mjs) : « Découvrir » (/decouvrir/…, une page par entrée du menu), ' +
-      '« Les bases » (/regles/<slug>/, un sommaire à /regles/), le Guide du MJ (/mj/…) et les Règles avancées (/regles/avancees/…), toutes les autres ' +
-      'pages de référence (Google Docs « Règle du jeu/Guide pour MJ » et « Créer sa fiche de ' +
-      'personnage », et six pages tirées des classeurs : altérations d’état, météo, modes hyper et super, statistiques) ; le titre et le texte (Markdown) ' +
-      'se modifient par le service : ni HTML brut ni lien non sûr ajouté, blocs <!-- guide:… --> connus seulement, un titre qui est déjà le nom d’une ' +
-      'autre page refusé (409), l’ancien titre devient un alias ; l’identifiant <type>/<slug> et l’adresse ne changent jamais ; le résumé ne se ' +
-      'modifie pas ; ni création ni suppression.',
+      'les quatre onglets des Règles (Fiche de personnage, Mécaniques générales, Les combats, Exploration ; décisions R184 et R185), chacun en menu ' +
+      'latéral, dont le plan est la ressource onglets-des-regles, et le Guide du MJ (/mj/…) ; pages écrites pour le site et pages de référence (Google ' +
+      'Docs « Règle du jeu/Guide pour MJ » et « Créer sa fiche de personnage », et quatre pages tirées des classeurs : la liste des altérations d’état, la ' +
+      'météo, les effets des modes hyper et super) ; le titre et le texte (Markdown) ' +
+      'se modifient par le service : ni HTML brut ni lien non sûr ajouté, blocs <!-- guide:… --> connus seulement, ancre figée d’un intertitre (« {#ancre} ») ni ' +
+      'retirée, ni renommée, ni doublée (400), un titre qui est déjà le nom d’une autre page refusé (409), l’ancien titre devient un alias ; l’identifiant <type>/<slug> et l’adresse ne changent jamais ; le résumé (une ' +
+      'ligne) se modifie aussi. Une page des Règles (les quatre onglets) se crée — titre, onglet et résumé obligatoires, texte « À compléter. », ' +
+      'adresse tirée du titre puis figée, en fin du menu de l’onglet ou à la place d’une entrée « bientôt » (`bientot`) — et se supprime avec son ' +
+      'entrée de menu, sauf une page protégée (409 avec ses raisons : clé étrangère, famille tirée d’un classeur, ouverture d’onglet, page nommée ' +
+      'par le plan du site ou lue par le code, bloc tiré de la base) ou citée par une autre (409 avec les citations) ; une page de Découvrir ou du ' +
+      'Guide du MJ ne se supprime pas (400).',
     table: 'page',
     condition: { type: ['guide'] },
+    ecriture: { creer: 'page_des_regles', supprimer: 'page_des_regles' },
     libelle: 'titre',
     liste: ['id', 'titre', 'resume', 'origine', 'statut', 'source_ref'],
     recherche: ['titre', 'resume'],
@@ -88,6 +94,51 @@ export const RESSOURCES = [
     tri: 'id',
   },
   {
+    cle: 'onglets-des-regles',
+    nom: 'Onglet des Règles',
+    noms: 'Onglets des Règles',
+    description:
+      'Le plan de la rubrique Règles (migration 0091, décisions R184 et R185) : les onglets qui suivent Découvrir et L’univers (« Fiche de ' +
+      'personnage », « Mécaniques générales », « Les combats », « Exploration »), dans l’ordre de `ordre` (à égalité, l’identifiant), chacun avec son ' +
+      'titre et la page montrée à son adresse (`ouverture_page_id`, une page de son menu, pas forcément la première) ; son menu latéral en ' +
+      'sous-ressource ; liste fermée, en lecture seule (l’ordre des onglets et leur page d’ouverture sont fixes) ; l’action `ordre` donne l’ordre de ' +
+      'son menu d’un bloc.',
+    table: 'regles_onglet',
+    libelle: 'titre',
+    liste: ['id', 'titre', 'ordre', 'ouverture_page_id'],
+    recherche: ['titre'],
+    tri: 'ordre',
+    enfants: [
+      {
+        cle: 'entrees',
+        nom: 'Entrée du menu d’un onglet des Règles',
+        noms: 'Entrées du menu d’un onglet des Règles',
+        table: 'regles_onglet_entree',
+        parent: { onglet_id: 'id' },
+        tri: 'rang',
+        description:
+          'Le menu latéral de l’onglet, dans l’ordre de `rang` (à égalité, l’identifiant) : une page du guide (`page_id`, identifiant « page:<id de ' +
+          'la page> », son libellé est le titre de la page ; une page n’est que dans un onglet), un lien vers une autre adresse du site (`libelle` ' +
+          'et `adresse`, « lien:… » : « Artisanat », regles/artisanat/) ou une entrée grisée « bientôt » (`libelle` seul, « bientot:… », aucune ' +
+          'aujourd’hui) ; une page retirée emporte son entrée, sauf la page d’ouverture d’un onglet, refusée ; en lecture seule ici (décision du ' +
+          'leader-technique : le site de dev change l’onglet d’une page par sa page, l’ordre par l’action `ordre` de l’onglet, une entrée naît et ' +
+          'part avec sa page des Règles, pages-du-guide).',
+        lectureSeule: true,
+      },
+    ],
+    actions: [
+      {
+        cle: 'ordre',
+        nom: 'Ordonner le menu de l’onglet',
+        description:
+          'L’ordre du menu latéral de l’onglet, d’un bloc : `ids`, tous les identifiants de ses entrées (pages, liens, entrées « bientôt ») dans le ' +
+          'nouvel ordre ; 409 si la liste n’est pas exactement celle du menu (une entrée ajoutée, retirée ou passée dans un autre onglet entre-temps) ; ' +
+          'les rangs qu’occupait le menu sont redonnés dans ce nouvel ordre, seules les entrées qui changent de place sont écrites.',
+        op: 'ordonner',
+      },
+    ],
+  },
+  {
     cle: 'alias-des-pages',
     nom: 'Alias d’une page',
     noms: 'Alias des pages',
@@ -106,20 +157,46 @@ export const RESSOURCES = [
     nom: 'Mot-clé',
     noms: 'Mots-clés',
     description:
-      'Le glossaire des mots-clés (migrations 0043 et 0056, demandes du propriétaire) : un libellé et une définition (`description`, NULL tant qu’il ' +
-      'n’est pas décrit), cités dans les textes par une balise (« {{id}} », « {{id|texte}} », « {{id:}} » : enregistrée sous sa forme canonique, l’id ' +
-      'seul dans un texte mis en forme, « {{id|texte}} » toujours dans un texte de case, où le mode complet est refusé ; une balise qui ne cite aucun ' +
-      'mot-clé, ou dont la ref est à la fois l’id d’un mot-clé et l’écriture d’un autre, refusée en 400), posés sur quelques pages et listés sur ' +
-      '/recherche/ (?mot-cle=<id>) : ' +
-      'identifiant tiré une fois du libellé (normalize, suffixé -2… s’il est pris ou a déjà servi), figé et jamais réutilisé ; deux mots-clés ne ' +
-      's’écrivent jamais de la même façon (`libelle_cle`) ; renommer ne réécrit aucun texte (une case garde le texte écrit de ses balises, un texte mis ' +
-      'en forme montre le nouveau libellé), vers l’écriture d’un autre mot-clé : refusé (409, avec ' +
-      'l’action qui fusionne les deux) ; la fusion (action « fusion », opération `fusionner_mots_cles`) verse ses pages dans l’autre mot-clé (une page ' +
-      'qui avait les deux perd seulement l’ancien) et y recible ses balises, puis le retire du vocabulaire ; un mot-clé créé n’a pas de page ; supprimé, ' +
-      'il est retiré de toutes les pages qui le portent et de tous les textes qui le citent (sa balise devient son texte simple) ; ceux dont le site se sert pour ranger ses pages (catégories de /classes/, « classe », « race », « race hybride », « capacité ' +
-      'de classe », « métier », « codex »), « Sort grenade » (décision R114) et « Sort fer » (décision R164), dont la fiche se sert, ne se renomment, ne se suppriment ni ne se ' +
-      'créent seuls (409), leur définition se modifie ; un mot-clé qui étiquette un sort (sous-ressource `mots-cles` des sorts, migrations 0067 et 0079) ne ' +
-      'se supprime ni ne se fusionne (409).',
+      'Le glossaire des mots-clés (migrations 0043, 0056 et 0113 à 0115, demandes du propriétaire) : un identifiant entier (`id`, attribué à la ' +
+      'création, figé, jamais réutilisé), un libellé (pas unique : des homonymes), une clé (`cle`, en lecture seule : le slug du libellé, suivi pour un ' +
+      'homonyme des slugs de ses catégories qui ne sont pas communes à tous ses homonymes ; recalculée à chaque renommage, changement de catégorie, ' +
+      'homonyme qui apparaît ou disparaît et catégorie renommée, décision R232), une définition (`description`, NULL tant qu’il n’est pas décrit), ses ' +
+      'catégories (sous-ressource `categories`) et ses synonymes (sous-ressource `synonymes`, décision R233 : l’ancienne abréviation en est un). Les ' +
+      'textes le citent par une balise (« {{cle}} », « {{cle|texte}} », « {{cle:}} » ; la ref saisie peut être la clé, le libellé quand un seul ' +
+      'mot-clé le porte, ou un synonyme, quelle que soit la casse : « {{am}} » s’enregistre « {{armure-magique|am}} », la casse tapée gardée ; un ' +
+      'libellé que portent plusieurs homonymes est ambigu, refusé en 400 : il faut écrire la clé ; une balise qui ne cite aucun mot-clé, refusée en ' +
+      '400 ; le mode complet refusé dans un texte de case) ; listés sur /recherche/ (?mot-cle=<clé>). Quand la clé change, chaque balise qui la cite ' +
+      'est réécrite et la clé quittée mène encore au mot-clé (sous-ressource `anciennes-cles`). Refusés (409, `champ`) : un homonyme sans catégorie ' +
+      'qui le distingue de chacun des autres (`categories`), une clé déjà prise (`libelle`), un libellé qui s’écrit comme le synonyme d’un autre ' +
+      'mot-clé (`libelle`). La création (POST) accepte `categories` (identifiants) et `synonymes` (écritures). ' +
+      'La fusion (action « fusion », opération `fusionner_mots_cles`) verse ses pages dans l’autre mot-clé (une page ' +
+      'qui avait les deux perd seulement l’ancien) et y recible ses balises, puis le retire du vocabulaire ; un mot-clé créé n’a pas de page ; il ne se ' +
+      'supprime que si rien ne le mentionne (décision R196) : une page qui le porte ou une balise qui le cite, pages d’exemple comprises, refusent la ' +
+      'suppression (409, `mentions` : la liste des endroits, page, ou table et ligne ; `refus_du_forcage` : null si la suppression forcée passerait, ' +
+      'sinon sa raison), aucun texte n’est réécrit ; DELETE `?forcer=1` (ou le corps `{ "forcer": true }`) la force (décision R223) : dans le même lot, ' +
+      'chaque balise qui le cite devient son texte affiché (le libellé, ou le texte écrit de « {{cle|texte}} ») en texte simple et chaque étiquette de page est retirée ; le forçage reste refusé (409, avant ' +
+      'toute écriture) pour un mot-clé verrouillé, qui étiquette un sort, cité par la définition d’un mot-clé verrouillé (`mots_cles_verrouilles`), ' +
+      'dont le lien mène sans ancre à une page de la base (une ancre, une route sans page ou une rubrique sont épargnées, R223 (7)), ou mentionné là où le site ne sait pas remplacer la balise ' +
+      '(`mentions_bloquantes`). Le verrou (`verrou`, migration 0110, ' +
+      'décisions R218 et R219 ; en lecture seule : aucune route ne l’écrit, un POST ou un PATCH qui le porte est refusé en 400) : un mot-clé verrouillé ' +
+      '(1 : ceux qui mènent à une page, ceux des monnaies et ceux dont le site se sert pour ranger ses pages ou reconnaître un sort) ne se modifie ' +
+      'pas (409, quel que soit le champ, synonymes compris), ne se supprime pas, même sans mention (409), et ne se fusionne pas dans un autre (409) ; il se pose encore ' +
+      'sur une page, se cite par une balise, reçoit la fusion d’un autre mot-clé, et ses catégories se posent et se retirent (R232 (11)) ; sa clé suit ' +
+      'son libellé et ses catégories ; un mot-clé créé n’est pas verrouillé (0), même avec un lien. `monnaie_id` (lecture seule) : la monnaie dont c’est ' +
+      'le mot-clé. ' +
+      'Un mot-clé non verrouillé se modifie entièrement (décision R195 : le site reconnaît ceux dont il se sert à leur id, jamais à leur écriture). ' +
+      'Un mot-clé qui étiquette un sort (sous-ressource `mots-cles` des sorts, migrations 0067 et 0079) ne ' +
+      'se supprime ni ne se fusionne (409). Un lien (`url`, migration 0098 : les liens des textes devenus des balises) : une adresse interne, relative ' +
+      'à la racine du site et sans le préfixe de déploiement (« /races/elfe/ », « /metiers/#metier-mineur »), dont le chemin mène à une page du site, ' +
+      'une rubrique ou une route fixe (400 sinon ; l’ancre et la requête ne sont pas vérifiées) ; une balise du mot-clé mène à cette adresse, et un ' +
+      'lien `[[…]]` ou `[texte](/…)` saisi dans un texte devient la balise du seul mot-clé qui mène à sa page (400 s’il n’y en a aucun ou plusieurs). ' +
+      'Une couleur (`couleur`) : « #rrggbb » (minuscules) ou « <famille>:<id> » d’une couleur de la palette du site (« classe:melee », 400 sinon). ' +
+      'Une icône (`icone`, migration 0116, décision R235) : NULL, ou « <famille>:<id> » d’une icône de la liste du site (les trois ' +
+      'monnaies : « monnaie:rf », « monnaie:ro », « monnaie:pp », puis les types de dégâts « degats:taille » et les magies « magie:feu »… ; la liste `icones` de GET /api/edition/listes/ ; 400 sinon, `champ: icone`). ' +
+      'Les trois se modifient pour tout mot-clé non verrouillé ; vidés, NULL. Une fusion garde le lien, la couleur et l’icône de la cible, et lui donne ' +
+      'ceux de la source qu’elle n’a pas, sauf à une cible verrouillée, qui garde les siens ; elle lui transmet aussi les synonymes de la source (sauf ' +
+      'ceux que R233 (4) refuse) et sa clé, qui mène désormais à la cible (R233 (11)) ; une source qui a des synonymes ne se fusionne pas dans une ' +
+      'cible verrouillée (409, `champ: synonymes`).',
     table: 'mot_cle',
     libelle: 'libelle',
     enfants: [
@@ -134,21 +211,77 @@ export const RESSOURCES = [
           'Les pages qui portent le mot-clé, avec son rang dans leur liste `tags:` (un mot-clé supprimé laisse un trou : l’ordre des autres ne change ' +
           'pas) ; aucune opération du site ne pose ni ne retire un mot-clé sur une page : en lecture seule.',
       },
+      {
+        cle: 'categories',
+        nom: 'Catégorie du mot-clé',
+        noms: 'Catégories du mot-clé',
+        table: 'mot_cle_categorie',
+        parent: { mot_cle_id: 'id' },
+        tri: 'categorie_id',
+        description:
+          'Les catégories que porte le mot-clé (décision R232 : aucune, une ou plusieurs ; un homonyme en porte au moins une qui le distingue de chacun ' +
+          'des autres) ; une catégorie se pose (POST, `categorie_id`) ou se retire (DELETE) par l’opération `categories_mot_cle` du site de dev, permise ' +
+          'sur un mot-clé verrouillé (R232 (11)) ; la clé est recalculée et les textes qui la citent réécrits.',
+        operations: { POST: 'categories_mot_cle', DELETE: 'categories_mot_cle' },
+      },
+      {
+        cle: 'synonymes',
+        nom: 'Synonyme du mot-clé',
+        noms: 'Synonymes du mot-clé',
+        table: 'mot_cle_synonyme',
+        parent: { mot_cle_id: 'id' },
+        tri: 'ordre',
+        description:
+          'Les synonymes du mot-clé, dans l’ordre (décision R233 : ils servent à la saisie d’une balise, à la recherche et à l’affichage ; l’ancienne ' +
+          'abréviation en est un) ; un synonyme s’ajoute à la fin (POST, `libelle`) ou se retire (DELETE) par l’opération `synonymes_mot_cle`, refusée ' +
+          'sur un mot-clé verrouillé (409, R233 (6)) ; un synonyme mal écrit (400) ou qui s’écrit comme le libellé, un synonyme ou la clé d’un autre ' +
+          'mot-clé, ou comme son propre libellé, est refusé (409 ou 400, `champ: synonymes`).',
+        operations: { POST: 'synonymes_mot_cle', DELETE: 'synonymes_mot_cle' },
+      },
+      {
+        cle: 'anciennes-cles',
+        nom: 'Ancienne clé du mot-clé',
+        noms: 'Anciennes clés du mot-clé',
+        table: 'mot_cle_ancienne_cle',
+        parent: { mot_cle_id: 'id' },
+        tri: 'cle',
+        lectureSeule: true,
+        description:
+          'Les clés que le mot-clé a quittées (un renommage, une catégorie changée, son ancien identifiant texte d’avant la migration 0113) : une ' +
+          'ancienne balise ou une ancienne adresse /recherche/?mot-cle=<clé> mène encore à lui ; tenues par le service : en lecture seule.',
+      },
     ],
-    liste: ['id', 'libelle', 'libelle_cle', 'description'],
-    recherche: ['libelle', 'description'],
-    tri: 'libelle_cle',
+    liste: ['id', 'libelle', 'cle', 'description', 'url', 'couleur', 'icone', 'verrou', 'monnaie_id'],
+    recherche: ['libelle', 'cle', 'description', 'url'],
+    tri: 'cle',
     ecriture: { creer: 'mot_cle', supprimer: 'mot_cle' },
     actions: [
       {
         cle: 'fusion',
         nom: 'Fusionner dans un autre mot-clé',
         description:
-          'Le mot-clé rejoint `dans` (l’identifiant d’un autre mot-clé) : ses pages passent à `dans` (une page qui avait les deux perd seulement ' +
-          'l’ancien), puis il quitte le vocabulaire ; ni l’un ni l’autre ne peut être un mot-clé dont le site se sert ou qui étiquette un sort (409).',
+          'Le mot-clé rejoint `dans` (l’identifiant entier d’un autre mot-clé) : ses pages passent à `dans` (une page qui avait les deux perd seulement ' +
+          'l’ancien), puis il quitte le vocabulaire ; le mot-clé fusionné ne peut pas être verrouillé (décisions R218, R219 : 409), `dans` le peut ' +
+          '(il garde alors son lien et sa couleur) ; ni l’un ni l’autre ne peut étiqueter un sort (409).',
         op: 'fusionner_mots_cles',
       },
     ],
+  },
+  {
+    cle: 'categories-de-mots-cles',
+    nom: 'Catégorie de mots-clés',
+    noms: 'Catégories de mots-clés',
+    description:
+      'Les catégories possibles des mots-clés (migration 0113, décision R232 (5)) : un identifiant entier (attribué à la création, figé, jamais ' +
+      'réutilisé) et un libellé unique (deux catégories ne s’écrivent jamais de la même façon : 409) ; elles s’ajoutent, se renomment (la clé des ' +
+      'mots-clés homonymes qui la portent est recalculée, et leurs balises réécrites) et se suppriment si elles sont vides (409 sinon, `mots_cles` : ceux ' +
+      'qui la portent).',
+    table: 'categorie_mot_cle',
+    libelle: 'libelle',
+    liste: ['id', 'libelle', 'libelle_cle'],
+    recherche: ['libelle'],
+    tri: 'id',
+    ecriture: { creer: 'categorie_mot_cle', supprimer: 'categorie_mot_cle' },
   },
   {
     cle: 'sources',
@@ -334,6 +467,7 @@ export const HORS_RESSOURCE = {
   personnage: `Fiche de personnage (prétiré ou fiche de joueur, ses choix seulement) : ${FICHES}.`,
   personnage_partage: `Partage d’une fiche de joueur avec des utilisateurs désignés (hors du JSON d’une fiche) : ${FICHES}.`,
   personnage_classe: `Classes d’une fiche (partie de la fiche) : ${FICHES}.`,
+  personnage_specialisation_magie: `Spécialisation magique choisie par magie d’une fiche, une par magie ; aucune ligne = choix en attente, celle d’un mono-magie ou d’un Potentiel Illimité est sans effet (partie de la fiche, R236) : ${FICHES}.`,
   personnage_caracteristique: `Caractéristiques de base et croix d’une fiche (partie de la fiche, R19) : ${FICHES}.`,
   personnage_competence: `Points de compétences d’une fiche, le naturel (partie de la fiche ; l’acquis se calcule, R104) : ${FICHES}.`,
   personnage_entrainement: `Lignes de l’entraînement d’une fiche, une compétence et ses points ou un texte libre (partie de la fiche, R104) : ${FICHES}.`,
@@ -341,18 +475,25 @@ export const HORS_RESSOURCE = {
   personnage_resistance_choix: `Résistance au choix d’une fiche : d’une ligne du tableau de la race, « Au choix parmi les autres » du Drakos orange (R124), ou à une magie au choix ou tirée d’un don, Ocultomancien « Résilience », Anansi d’Arcane (R137) (partie de la fiche) : ${FICHES}.`,
   personnage_metier_bonus: `Choix d’un rang de bonus de métier à plusieurs compétences (partie de la fiche) : ${FICHES}.`,
   personnage_capacite: `Dons à choix d’une fiche (partie de la fiche) : ${FICHES}.`,
+  personnage_don_obtenu: `Dons obtenus d’une fiche : l’entrée du tableau du Mage Bleu qu’obtient chaque don « Variable », une entrée une seule fois (partie de la fiche, R181) : ${FICHES}.`,
   personnage_sort: `Sorts d’une fiche et leurs NM (partie de la fiche, R24, R26) : ${FICHES}.`,
+  personnage_livre_sort: `Livres de sort lus d’une fiche, un par sort, sur un sort de la liste ou non ; son NM n’est utilisé que si le sort est choisi (partie de la fiche, R26, R169) : ${FICHES}.`,
   personnage_maitrise_choix: `Choix de maîtrise d’armes d’une fiche, une famille par point à choisir de chaque source ; les points et les dés se calculent (partie de la fiche, R148 à R153) : ${FICHES}.`,
   personnage_arme: `Armes d’une fiche (partie de la fiche) : ${FICHES}.`,
   personnage_armure_partie: `Solidité du moment des parties de l’armure d’une fiche (partie de la fiche ; décision R95) : ${FICHES}.`,
   personnage_accessoire: `Accessoires d’une fiche et leurs choix (partie de la fiche, R54, R97) : ${FICHES}.`,
   personnage_inventaire: `Inventaire d’une fiche (partie de la fiche, R60) : ${FICHES}.`,
   personnage_ceinture: `Ceinture d’une fiche, trois emplacements (partie de la fiche) : ${FICHES}.`,
+  personnage_action_usage: `Compteurs entamés des actions d’une fiche (usages restants ; une action absente est au maximum ; partie de la fiche, R173) : ${FICHES}.`,
   groupe: `Groupe de jeu (one-shot, campagne) : ${FICHES} ; dépend des comptes, aucun code ne le remplit encore.`,
   groupe_membre: `Membres d’un groupe de jeu et la fiche que chacun y inscrit : ${FICHES}.`,
   modification_lot: `Un enregistrement fait depuis une page du site de dev (lot atomique) : ${JOURNAL}.`,
   modification: `Une ligne de table touchée par un lot, avec ses valeurs avant et après et son état (en attente, intégrée, conflit) : ${JOURNAL}.`,
+  lot_de_changements: `Une proposition de lot de changements déposée par une session, essayée à blanc, appliquée ou refusée d'un clic du propriétaire (R274, R275, migration 0128) : ${JOURNAL}.`,
+  numero_donne: `Le plus haut numéro jamais donné à une clé entière par un lot de changements, jamais diminué (un numéro n'est pas redonné, même après une restauration ; migration 0128) : ${JOURNAL}.`,
   note_version_brouillon:
     'Note de version en préparation (champ libre des admins et case « Version majeure » sur /mise-a-jour/, une seule ligne, section 14) : servie et écrite par /api/mise-a-jour/ ' +
     '(serveur/notes-de-version.mjs), vide dans data/rows, dans TABLES_INTERDITES du journal.',
+  migration_recue: 'Les migrations que cette base a reçues, une ligne par migration (numéro, fichier, empreinte, instant, reconstruction ou sur place ; ' +
+    'lot 7 du chantier de la base de dev, migration 0129) : propre à chaque base, vide dans data/rows, jamais servie, dans TABLES_INTERDITES du journal.',
 };

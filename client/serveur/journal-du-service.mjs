@@ -44,12 +44,12 @@ const REQUETE = /^(GET|HEAD|POST|PUT|PATCH|DELETE|OPTIONS) \S+/;
 /** Catégorie d'un message d'après son début (le préfixe de niveau retiré), dans cet ordre ; sinon « service ». */
 const REGLES_DE_CATEGORIE = [
   [REQUETE, 'http'],
-  [/^édition\b/i, 'edition'], // « édition : lot … (N ligne(s)) depuis <page> » (api.mjs)
+  [/^(édition|lots)\b/i, 'edition'], // « édition : lot … (N ligne(s)) depuis <page> » ; « lots : proposition … déposée, appliquée, refusée, annulée ; recalcul déposé » (api.mjs, lots de changements)
   [/^(simulation de )?mise à jour\b/i, 'mise-a-jour'], // lot figé, workflow déclenché ou annulé (api.mjs, notes-de-version.mjs)
   [/^maintenance\b/i, 'maintenance'], // annonce publiée ou retirée, levée depuis la page, suivi du lancement (service.mjs, api.mjs)
   [/^métriques\b/i, 'metriques'], // base des métriques en panne ou de nouveau disponible (serveur/metriques.mjs, service.mjs)
   [/prétiré|^fiches\b/i, 'fiches'], // création, modification, suppression d'un prétiré (api.mjs) ; fiches adaptées aux nouvelles règles (R42)
-  [/base vivante|base des règles|^journal des modifications rejoué/i, 'base'], // reconstruction, réouverture, rejeu du journal (service.mjs)
+  [/base vivante|base source|base des règles|^journal des modifications rejoué|^extrait du contenu|^attestation\b|^(ATTENTION |ERREUR )?structure :/i, 'base'], // reconstruction, réouverture, rejeu du journal (service.mjs) ; extrait du contenu (extrait.mjs), attestation de la production (service.mjs), essai d'une livraison (« structure : », essai-de-structure.mjs) et base source (« base source », serveur/base-source.mjs)
   [/^service des personnages|^nouvelle version du service/i, 'service'], // démarrage, relance après livraison (service.mjs)
 ];
 

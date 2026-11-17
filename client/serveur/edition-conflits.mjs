@@ -2,8 +2,14 @@
 // modifications, montrer les lignes en conflits. 1. Pour chaque conflit, montrer les deux versions 2. Laisser le choix entre 1, 2, ou 3 pour saisir
 // à la main ce qui remplace les deux. » ; docs/serveur.md, « Mise à jour », « Conflits du journal »).
 //
-// Un lot passe « conflit » au rejeu du journal (edition-journal.mjs#rejouer, quand une livraison refait la base vivante) : il est annulé en entier, ses
-// lignes gardent un seul message (`detail`), et il n'est plus jamais rejoué. Ce module :
+// Un lot passe « conflit » au rejeu du journal (edition-journal.mjs#rejouer, quand une livraison refait la base vivante), de deux façons :
+//   - gardé (demande du propriétaire : « les modification apporté sur le site prime » ; « Quand un conflit est trop ambigüe seulement là il est listé
+//     dans l'onglet mise à jour avec à gauche "modification sur site" et à droite "modification du code" ») : une fusion à trois voies ambiguë
+//     (lib/fusion-trois-voies.mjs) ; la valeur du site est écrite et reste, la trace de chaque ligne (`detail`, edition-journal.mjs#lireLaTrace) garde
+//     ce qui a été écrit et la valeur du code. Diagnostic : examinerUnLotGarde ; résolution : resoudreUnLotGarde ;
+//   - annulé : tout autre conflit (ligne supprimée, référence rompue, contrainte, forme ancienne…), ou un lot d'une base vivante d'avant cette règle ;
+//     il est annulé en entier, ses lignes gardent un seul message (`detail`). Un lot annulé non résolu est réévalué à la reconstruction suivante.
+// Ce module :
 //   - examinerLeLot : le diagnostic d'un lot en conflit, recalculé sur la base vivante d'aujourd'hui (règles livrées + lots rejoués depuis), dans un
 //     savepoint TOUJOURS annulé : chaque modification est rejouée sans s'arrêter au premier conflit (edition-journal.mjs#parcourirUnLot), les saines
 //     sont dites telles quelles, chaque conflit porte la version 1 (ce que le site de dev avait écrit), la version 2 (ce que disent les règles
@@ -25,11 +31,18 @@
 // Exception assumée à « lecture seule quand rien n'est écrit » : l'examen (GET) écrit dans un savepoint annulé, sur la connexion du service (traiter
 // est synchrone : rien d'autre ne s'intercale). Node seulement, sans dépendance.
 import { createHash } from 'node:crypto';
-import { ErreurJournal, lireLigne, modifierSansNoter, nouveauLot, ouvrirLot, parcourirUnLot, rompuesDuLot, rupturesEnPlace, structure } from './edition-journal.mjs';
-import { ErreurEdition, OUTILS_DE_RESOLUTION as OUTILS, adaptateurDuJournal, colonneDerivee, messageSqlite, recalculerLesPages } from './edition.mjs';
+import {
+  ErreurJournal, MARQUE_DE_REPRISE, ORDRE_DE_REJEU, cleDe, lireLaTrace, lireLigne, lotsRetenus, modifierSansNoter, nouveauLot, ouvrirLot, parcourirUnLot,
+  rompuesDuLot, rupturesEnPlace, structure,
+} from './edition-journal.mjs';
+import { ErreurEdition, OUTILS_DE_RESOLUTION as OUTILS, TABLES_DES_REGLES_DU_DON, adaptateurDuJournal, colonneDerivee, messageSqlite, raisonDuGel, recalculerLesPages } from './edition.mjs';
 import { TABLES_DES_SOURCES, sourcesAvantLaSuppression, sourcesRefaitesParLaResolution } from './edition-maitrises.mjs';
-import { detacherDesFiches, noterLesRetraits, nouveauxRetraitsDeFiches, retirerDesFiches } from './fiches-retraits.mjs';
-import { TABLES, ligneSansImage } from '../src/lib/edition-modele.mjs';
+import { retirerLesFillesDuMotCle } from './edition-mots-cles.mjs';
+import {
+  detacherDesFiches, magiesDesDonsVariables, noterLesRetraits, nouveauxRetraitsDeFiches, retirerDesFiches, retirerLesChoixDesDonsChanges,
+} from './fiches-retraits.mjs';
+import { TABLES, colonneFusionnable, ligneSansImage } from '../src/lib/edition-modele.mjs';
+import { fusionner } from '../src/lib/fusion-trois-voies.mjs';
 import { colonneMasquee, colonneSource, nomDeColonne, nomDeTable } from '../src/lib/libelles-de-la-base.mjs';
 import { instant as maintenant } from './instant.mjs';
 
@@ -73,7 +86,9 @@ export function lotsEnConflit(db) {
 /** Les lots déjà résolus (les RESOLUS_MONTRES plus récents) : { lot, fait_le, resume, resolu_le, resolu_par, resolution }. */
 export function lotsResolus(db) {
   return db.prepare(`SELECT id AS lot, fait_le, resume, resolu_le, resolu_par, resolution FROM modification_lot WHERE resolu_le IS NOT NULL
-    ORDER BY resolu_le DESC, id DESC LIMIT ?`).all(RESOLUS_MONTRES).map((l) => ({ ...l, resolution: json(l.resolution) }));
+    ORDER BY resolu_le DESC, id DESC LIMIT ?`).all(RESOLUS_MONTRES)
+    // le résumé montré sans les marqueurs du rejeu (décision R223 (6) : serveur/edition.mjs#marqueursDuLot), gardés au journal
+    .map((l) => ({ ...l, resume: resumeVu(l.resume), resolution: json(l.resolution) }));
 }
 
 /** Le nombre de lots et de modifications en conflit à résoudre (/api/etat, note en préparation). */
@@ -92,12 +107,16 @@ const lignesEnConflit = (db, id) => db.prepare("SELECT * FROM modification WHERE
 
 /**
  * Ce que les fiches perdent quand une ligne de règle part (R42, R52 ; une ressource : R60), avant sa suppression : comme les domaines de l'édition ; et
- * les sources de maîtrise d'arme d'un don ou d'une ligne de classe_maitrise_arme, notées avant elle (pas par la cascade du schéma).
+ * les sources de maîtrise d'arme d'un don ou d'une ligne de classe_maitrise_arme, et les règles en données d'un don (edition.mjs#retirerLesReglesDuDon :
+ * celles qu'un lot noté avant ne retirait pas lui-même), et les lignes filles d'un mot-clé (ses catégories, synonymes et clés quittées :
+ * edition-mots-cles.mjs#retirerLesFillesDuMotCle), notées avant elle (pas par la cascade du schéma).
  */
 const RETRAITS_PAR_TABLE = Object.freeze({ metier: 'metiers', specialite: 'specialites', capacite: 'capacites', sort: 'sorts', arme: 'armes' });
 function avantLaSuppression(ctx, table, cle) {
   sourcesAvantLaSuppression(ctx.db, ctx.w, table, cle);
+  if (table === 'mot_cle' && Number.isInteger(cle?.id)) retirerLesFillesDuMotCle(ctx.db, ctx.w, cle.id);
   if (typeof cle?.id !== 'string') return;
+  if (table === 'capacite') OUTILS.retirerLesReglesDuDon(ctx.db, ctx.w, cle.id);
   if (RETRAITS_PAR_TABLE[table]) retirerDesFiches(ctx.db, { [RETRAITS_PAR_TABLE[table]]: [cle.id] }, ctx.retraits);
   if (table === 'ressource') detacherDesFiches(ctx.db, [cle.id], ctx.retraits);
 }
@@ -142,7 +161,7 @@ function parcourir(ctx, lignes, abandons = new Set()) {
     },
   };
   const entrees = parcourirUnLot(db, lignes, {
-    derivee: deriveeDuLot, siOrphelines: ['source'], adapte: adaptateurDuJournal(db), ecrire, sauter,
+    derivee: deriveeDuLot, siOrphelines: ['source'], adapte: adaptateurDuJournal(db), ecrire, sauter, fusionnable: colonneFusionnable,
     creer: (table, valeurs) => ctx.w.inserer(table, valeurs),
   });
   return { entrees, differees };
@@ -422,7 +441,7 @@ function colonnesChangees(table, liste) {
 /** Une partie de la raison d'un conflit (les raisons d'un abandon sont jointes par « ; »), lisible ; une forme inconnue telle quelle. */
 function partieLisible(table, p) {
   let r;
-  if ((r = /^les règles ont changé (.+) autrement$/.exec(p))) return `les règles ont changé ${colonnesChangees(table, r[1])} autrement`;
+  if ((r = /^les règles ont changé (.+?) autrement(, la valeur du site reste en place)?$/.exec(p))) return `les règles ont changé ${colonnesChangees(table, r[1])} autrement${r[2] ?? ''}`;
   if ((r = /^([a-z_][a-z0-9_]*) : clé étrangère rompue vers ([a-z_][a-z0-9_]*) \((.+?) = (.+)\)$/.exec(p))) return ruptureLisible(r[1], r[2], r[3], r[4]) ?? p;
   if ((r = /^([a-z_][a-z0-9_]*) : clé étrangère rompue vers ([a-z_][a-z0-9_]*)$/.exec(p))) return `${tableLisible(r[1])} : clé étrangère rompue vers ${tableLisible(r[2])}`;
   if ((r = /^(écriture refusée|l’édition refuse aujourd’hui cette valeur|après le lot) : (.+)$/.exec(p))) return `${r[1]} : ${messageLisible(r[2])}`;
@@ -473,6 +492,25 @@ export function detailLisible(detail, libelles = [], db = null) {
 const saisieDe = (champ) => JSON.parse(JSON.stringify(champ));
 
 /**
+ * Pourquoi le choix 3 d'un champ manque : la ligne est gelée (serveur/edition.mjs#raisonDuGel : un mot-clé verrouillé, une monnaie), et une valeur
+ * saisie à la résolution serait une modification nouvelle, que le verrou vise (décisions R218 (3), R219 (6), R220 (1) : seuls le lot ancien, choix 1,
+ * et la règle livrée, choix 2, passent). Null sinon. La ligne est lue telle que le parcours la laisse, sinon la règle livrée.
+ */
+function refusDuChoix3(db, table, cle, ligne) {
+  const l = lireLigne(db, table, cle) ?? ligne;
+  return l ? raisonDuGel(table, l) : null;
+}
+
+/**
+ * Les choix d'un champ en conflit (`choix` : sans le 3 ; `gel` : refusDuChoix3) : `choix_possibles` (le 3 en plus, sauf une image ou une ligne
+ * gelée), `entre` (refus_1…), la saisie, et `refus_3` (la raison du gel) quand le 3 manque pour elle.
+ */
+const choixDuChamp = (champ, image, gel, choix, entre = {}) => {
+  const saisissable = Boolean(champ) && !image;
+  return { choix_possibles: saisissable && !gel ? [...choix, 3] : choix, ...entre, saisie: saisissable && !gel ? saisieDe(champ) : null, ...(saisissable && gel ? { refus_3: gel } : {}) };
+};
+
+/**
  * Les conflits d'une modification du parcours, sous la forme de la page (sans `refus_1` ni les rattachements des clés étrangères) : `libelle` et
  * `raison_lisible` (raisonLisible) pour la page, `raison` comme trace.
  */
@@ -483,6 +521,7 @@ function conflitsDeLEntree(e, db) {
   };
   const ligneEntiere = { colonne: null, colonne_libelle: null, avant: null, apercu: null, saisie: null };
   if (e.genre === 'colonnes') {
+    const gel = refusDuChoix3(db, e.table, e.cle, e.ligne);
     return e.colonnes.map((c) => {
       const champ = TABLES[e.table]?.colonnes[c];
       const image = champ?.type === 'image';
@@ -490,7 +529,7 @@ function conflitsDeLEntree(e, db) {
         ...base, id: `${e.rang}:${c}`, colonne: c, colonne_libelle: libelleDeColonne(e.table, c), genre: champ ? 'champ' : 'hors_modele',
         version_1: valeurVue(e.table, c, e.apres[c]), version_2: valeurVue(e.table, c, e.ligne?.[c]), avant: valeurVue(e.table, c, e.avant?.[c]),
         apercu: e.table === 'page' && c === 'corps_md' ? e.apercu : null,
-        choix_possibles: champ && !image ? [1, 2, 3] : [1, 2], saisie: champ && !image ? saisieDe(champ) : null,
+        ...choixDuChamp(champ, image, gel, [1, 2]),
       };
     });
   }
@@ -549,6 +588,19 @@ function refaireParLEditeur(ctx, operations, valeursDe, refus = null) {
 }
 
 /**
+ * Les conflits d'une règle en données d'un don (TABLES_DES_REGLES_DU_DON, clé { capacite_id }) dont le don est supprimé par le même lot :
+ * Map(rang de la règle → entrée de la suppression du don). La règle suit le choix du don (examiner).
+ */
+function suiventLeDon(entrees, conflits) {
+  const dons = new Map(entrees.filter((e) => e.issue !== 'saute' && e.table === 'capacite' && e.operation === 'supprimer').map((e) => [e.cle?.id, e]));
+  const suivent = new Map();
+  for (const c of conflits) {
+    if (TABLES_DES_REGLES_DU_DON.includes(c.table) && dons.has(c.cle?.capacite_id)) suivent.set(c.rang, dons.get(c.cle.capacite_id));
+  }
+  return suivent;
+}
+
+/**
  * Une passe de l'examen d'un lot (dans un savepoint que l'appelant annule) : { public (la forme de GET /api/mise-a-jour/conflits/), interne:
  * { idsDuParcours, abandons } }. `abandons` (Map rang → conflit) : les modifications abandonnées d'office (forme ancienne sans équivalent, écriture
  * refusée, clé étrangère rompue, erreur après le lot), que la passe laisse de côté ; elle rend les siennes en plus. `idsDuParcours` : les conflits nés
@@ -556,10 +608,17 @@ function refaireParLEditeur(ctx, operations, valeursDe, refus = null) {
  */
 function examiner(db, lot, lignes, instant, abandons, deja) {
   const ctx = contexte(db, { id: nouveauLot().id, instant, pageId: lot.page_id });
+  // décision R196 : la suppression d'un mot-clé qu'un endroit mentionne encore (sur la base telle que le lot la trouve, comme le crochet `avantLeLot`
+  // du rejeu : serveur/edition.mjs#motsClesEncoreMentionnes) n'a que le choix 2 — sinon le choix 1, ou la suppression saine, referait la cascade ; une
+  // suppression forcée n'y est pas (décision R223 (6) : elle se rejoue forcée, ses balises remplacées par leur texte affiché)
+  const mentionnes = new Map(OUTILS.motsClesEncoreMentionnes(db, lignes.filter((m) => !abandons.has(m.rang))).map((r) => [r.id, r.raison]));
   const { entrees, differees } = parcourir(ctx, lignes, new Set(abandons.keys()));
   const duParcours = entrees.filter((e) => e.issue === 'conflit').flatMap((e) => conflitsDeLEntree(e, db));
   const idsDuParcours = duParcours.map((c) => c.id);
   const sortants = new Map(abandons);
+  for (const e of entrees) {
+    if (e.issue !== 'saute' && e.table === 'mot_cle' && e.operation === 'supprimer' && mentionnes.has(e.cle?.id)) sortants.set(e.rang, abandon(e, mentionnes.get(e.cle.id), db));
+  }
   for (const c of duParcours) if (c.genre === 'sans_valeur') sortants.set(c.rang, c);
   let conflits = duParcours.filter((c) => !sortants.has(c.rang));
   // les colonnes du modèle que le site de dev avait écrites et que l'éditeur refuse aujourd'hui (Markdown sûr, bloc inconnu, balise d'un mot-clé
@@ -578,7 +637,7 @@ function examiner(db, lot, lignes, instant, abandons, deja) {
         rang, table: d.table, cle: d.cle, operation: 'modifier', libelle: libelleDeLigne(d.table, e.ligne, d.cle, db), raison: texte, raison_lisible: raisonLisible(d.table, texte),
         id: `${rang}:${colonne}`, colonne, colonne_libelle: champ.libelle, genre: 'champ', version_1: valeurVue(d.table, colonne, d.final[colonne]),
         version_2: valeurVue(d.table, colonne, d.original[colonne]), avant: valeurVue(d.table, colonne, d.original[colonne]),
-        apercu: colonne === 'corps_md' ? d.apercu : null, choix_possibles: image ? [2] : [2, 3], refus_1: raison, saisie: image ? null : saisieDe(champ),
+        apercu: colonne === 'corps_md' ? d.apercu : null, ...choixDuChamp(champ, image, refusDuChoix3(db, d.table, d.cle, e.ligne), [2], { refus_1: raison }),
       });
     }
   }
@@ -602,12 +661,15 @@ function examiner(db, lot, lignes, instant, abandons, deja) {
   // les clés étrangères, choix 2 partout : une rupture abandonne la modification qui l'écrit (ou la suppression qui la cause)
   const parcourues = entrees.filter((e) => e.issue !== 'saute' && !sortants.has(e.rang));
   let rompues = [];
+  let liens = [];
   const apres = essayer(db, 'conflit_apres', () => {
     commeLeRejeu(ctx, entrees, ecritesSansLEditeur(entrees, differees));
     rompues = rompuesDuLot(db, parcourues, { tables: [...new Set(ctx.w.lignes.map((l) => l.table))], deja });
+    // une page des Règles supprimée qu'un texte qui reste cite encore (le lot qui retirait le lien est en conflit) : comme une référence rompue
+    liens = OUTILS.liensRompusParLeLot(db, parcourues.map((e) => e.m), { faites: parcourues.filter((e) => e.issue === 'applique').map((e) => e.m) });
   });
   const raisons = new Map();
-  for (const r of rompues) raisons.set(r.rang, [...(raisons.get(r.rang) ?? []), r.raison]);
+  for (const r of [...rompues, ...liens.flatMap((l) => l.rangs.map((rang) => ({ rang, raison: l.raison })))]) raisons.set(r.rang, [...(raisons.get(r.rang) ?? []), r.raison]);
   if (apres) {
     // après le lot (balises d'un mot-clé retiré, pages refaites) : rattaché aux suppressions de mot-clé, sinon à la première modification
     const rangs = parcourues.filter((e) => e.table === 'mot_cle' && e.operation === 'supprimer').map((e) => e.rang);
@@ -616,18 +678,36 @@ function examiner(db, lot, lignes, instant, abandons, deja) {
   for (const [rang, rs] of raisons) sortants.set(rang, abandon(entrees.find((x) => x.rang === rang), [...new Set(rs)].join(' ; '), db));
   conflits = [...conflits.filter((c) => !sortants.has(c.rang)), ...sortants.values()];
   conflits.sort((a, b) => a.rang - b.rang || String(a.colonne ?? '').localeCompare(String(b.colonne ?? '')));
-  const saines = entrees.filter((e) => e.issue !== 'saute' && !sortants.has(e.rang) && (e.issue !== 'conflit' || (e.genre === 'colonnes' && e.ecrites?.length)))
+  // une règle en données d'un don (TABLES_DES_REGLES_DU_DON) que ce lot retire aussi : pas de choix à elle, elle suit celui du don (réponse du chef
+  // technique, lot « Défauts du code » : jamais une règle sans son don ni un don sans sa règle). Le don supprimé (modification saine, ou choix 1) la retire,
+  // notée (avantLaSuppression → retirerLesReglesDuDon) ; le don gardé (choix 2, ou suppression abandonnée) la garde telle que les règles livrées l'écrivent :
+  // sa propre modification n'est jamais écrite. Elle passe des conflits aux modifications du lot, « suit le don ».
+  const suivent = suiventLeDon(entrees, conflits);
+  conflits = conflits.filter((c) => !suivent.has(c.rang));
+  const saines = entrees.filter((e) => e.issue !== 'saute' && !sortants.has(e.rang) && !suivent.has(e.rang) && (e.issue !== 'conflit' || (e.genre === 'colonnes' && e.ecrites?.length)))
     .map((e) => ({
       rang: e.rang, table: e.table, cle: e.cle, operation: e.operation, libelle: libelleDeLigne(e.table, e.ligne ?? e.apres ?? e.avant, e.cle, db),
       issue: e.issue === 'conflit' ? 'reappliquee' : ISSUES[e.issue],
       ...(e.issue === 'conflit' ? { colonnes: e.ecrites, colonnes_libelles: e.ecrites.map((c) => libelleDeColonne(e.table, c)) } : {}),
     }));
+  for (const [rang, don] of suivent) {
+    const e = entrees.find((x) => x.rang === rang);
+    // la règle dite par le nom de son don (le parcours a pu le retirer déjà : la base ne le nomme plus)
+    const nom = nomDe(don.ligne ?? don.avant);
+    saines.push({
+      rang, table: e.table, cle: e.cle, operation: e.operation, issue: 'suit_le_don',
+      libelle: nom ? `${tableLisible(e.table)} « ${nom} »` : libelleDeLigne(e.table, e.ligne ?? e.apres ?? e.avant, e.cle, db),
+      don: libelleDeLigne(don.table, don.ligne ?? don.avant, don.cle, db),
+    });
+  }
+  saines.sort((a, b) => a.rang - b.rang);
   const empreinte = createHash('sha256').update(JSON.stringify({
     lot: lot.id, saines: saines.map((s) => [s.rang, s.issue, s.colonnes ?? null]), conflits: conflits.map((c) => [c.id, c.genre, c.version_1, c.version_2, c.choix_possibles]),
   })).digest('hex').slice(0, 32);
   return {
     public: {
-      lot: lot.id, fait_le: lot.fait_le, page_id: lot.page_id, resume: lot.resume, detail: lignes[0]?.detail ?? null,
+      // le résumé montré sans les marqueurs du rejeu (décision R223 (6)) ; la résolution relit le lot entier (lireLot), marqueurs compris
+      lot: lot.id, fait_le: lot.fait_le, page_id: lot.page_id, resume: resumeVu(lot.resume), detail: lignes[0]?.detail ?? null,
       detail_lisible: detailLisible(lignes[0]?.detail ?? null, [...conflits, ...saines], db), empreinte, saines, conflits,
     },
     interne: { idsDuParcours, abandons: sortants },
@@ -662,16 +742,274 @@ function examen(db, lot, instant) {
 }
 
 
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+// Provenance, ordre des résolutions, lots gardés
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+
+const egal = (a, b) => (a ?? null) === (b ?? null);
+/** (fait_le, id) de `a` vient-il après celui de `b`, dans l'ordre du rejeu (edition-journal.mjs#ORDRE_DE_REJEU) ? */
+const apres = (a, b) => a.fait_le > b.fait_le || (a.fait_le === b.fait_le && a.id > b.id);
+/** Le résumé d'un lot tel que la page le montre (sans les marqueurs du rejeu, décision R223 (6)). */
+/** Le lot qu'un résumé de résolution reprend (« Résolution du conflit du lot <id> : … », « Reprise du lot <id> (conflit résolu) : … »), ou null. */
+const LOT_RESOLU = /^(?:Résolution du conflit du lot|Reprise du lot) (\S+?)(?: \(conflit résolu\))? : /;
+const resoluDans = (resume) => LOT_RESOLU.exec(OUTILS.separerLeMarqueur(resume ?? '').reste)?.[1] ?? null;
+/**
+ * Le résumé d'un lot tel que la page le montre : sans les marqueurs du rejeu (décision R223 (6)) ni l'id du lot qu'une résolution reprend (« Résolution
+ * du conflit du lot <id> : » ou « Reprise du lot <id> (conflit résolu) : » retirés ; `provenance.resout` le donne).
+ */
+const resumeVu = (resume) => OUTILS.separerLeMarqueur(resume ?? '').reste.replace(LOT_RESOLU, '');
+/** Une modification touche-t-elle le champ `colonne` (null : la ligne entière) ? Une insertion ou une suppression touche tous ses champs. */
+const toucheLeChamp = (m, colonne) => colonne === null || m.operation !== 'modifier' || colonne in (json(m.apres) ?? {});
+
+/**
+ * Les modifications qui sont dans la base vivante et touchent le champ (table, clé, colonne ; null : la ligne), dans l'ordre du rejeu : en attente, ou
+ * d'un lot gardé pas encore résolu (la valeur du site en place). Chacune avec son lot : { m, lot: { id, fait_le, resume } }.
+ */
+function ecrituresDuChamp(db, table, cle, colonne) {
+  return db.prepare(`SELECT m.*, l.fait_le AS lot_fait_le, l.resume AS lot_resume FROM modification m JOIN modification_lot l ON l.id = m.lot_id
+    WHERE m.table_nom = ? AND m.cle = ? AND (m.etat = 'en_attente' OR (m.etat = 'conflit' AND l.resolu_le IS NULL AND instr(m.detail, ?) > 0))
+    ORDER BY ${ORDRE_DE_REJEU}`).all(table, JSON.stringify(cle), MARQUE_DE_REPRISE)
+    .filter((m) => toucheLeChamp(m, colonne))
+    .map((m) => ({ m, lot: { id: m.lot_id, fait_le: m.lot_fait_le, resume: resumeVu(m.lot_resume), resout: resoluDans(m.lot_resume) } }));
+}
+
+/**
+ * D'où vient la valeur actuelle d'un champ (demande du propriétaire : « Il faut aussi clarifié d'où viens la modification de la V1 et de la V2 ») : le
+ * dernier lot du site de dev encore dans la base vivante qui l'a écrite, hors `sauf` — { genre: 'site', lot, fait_le, resume }, ou 'resolution'
+ * (le lot qu'une résolution a écrit, ou la reprise d'un lot gardé) —, sinon { genre: 'regles' } : les règles livrées.
+ */
+function provenanceActuelle(db, table, cle, colonne, { sauf = null } = {}) {
+  const dernier = ecrituresDuChamp(db, table, cle, colonne).filter((e) => e.lot.id !== sauf).at(-1);
+  if (!dernier) return { genre: 'regles' };
+  const { resout } = dernier.lot;
+  return { genre: resout ? 'resolution' : 'site', lot: dernier.lot.id, fait_le: dernier.lot.fait_le, resume: dernier.lot.resume, ...(resout ? { resout } : {}) };
+}
+
+/** La place d'une provenance dans l'ordre du rejeu : celle de son lot, ou, pour une résolution, celle du lot qu'elle résout. */
+function placeDe(db, p) {
+  if (p.resout) {
+    const l = lireLot(db, p.resout);
+    if (l) return { id: l.id, fait_le: l.fait_le };
+  }
+  return { id: p.lot, fait_le: p.fait_le };
+}
+
+/**
+ * Le choix d'un conflit est-il bloqué par un lot plus ancien, en conflit et pas encore résolu, qui touche le même champ (même table, même clé, même
+ * colonne, ou la ligne entière) ? Le résoudre d'abord : sinon un choix écrirait la valeur la plus ancienne par-dessus la plus récente. Rend
+ * { lot, fait_le, resume, raison } ou null.
+ */
+function blocageDuChamp(db, lot, table, cle, colonne) {
+  const plusAnciens = db.prepare(`SELECT m.lot_id, m.operation, m.apres, l.fait_le, l.resume FROM modification m JOIN modification_lot l ON l.id = m.lot_id
+    WHERE m.etat = 'conflit' AND l.resolu_le IS NULL AND m.table_nom = ? AND m.cle = ? AND m.lot_id <> ? ORDER BY l.fait_le, l.id, m.rang`)
+    .all(table, JSON.stringify(cle), lot.id)
+    .filter((m) => apres(lot, { id: m.lot_id, fait_le: m.fait_le }) && (colonne === null || toucheLeChamp(m, colonne)));
+  const premier = plusAnciens[0];
+  if (!premier) return null;
+  const resume = resumeVu(premier.resume);
+  return {
+    lot: premier.lot_id, fait_le: premier.fait_le, resume,
+    raison: `Le lot du ${premier.fait_le} (« ${resume} »), plus ancien, touche aussi ce champ et n’est pas résolu : résolvez-le d’abord.`,
+  };
+}
+
+/** L'empreinte d'un diagnostic : ce qui, s'il change, rend une résolution caduque (409). */
+const empreinteDu = (pub) => createHash('sha256').update(JSON.stringify({
+  lot: pub.lot,
+  saines: pub.saines.map((x) => [x.rang, x.issue, x.colonnes ?? null]),
+  conflits: pub.conflits.map((c) => [c.id, c.genre, c.version_1, c.version_2, c.choix_possibles, c.actuelle ?? null, c.bloque?.lot ?? null, c.valeur_2 ?? null]),
+})).digest('hex').slice(0, 32);
+
+/**
+ * Le diagnostic d'un lot annulé (examen), complété : pour chaque conflit, la provenance de ses versions (`provenance_1` : ce lot ; `provenance_2` :
+ * provenanceActuelle, la version 2 étant la valeur actuelle de la base), les passages en conflit de deux textes (`passages` : fusion à trois voies,
+ * base = la valeur que le lot avait trouvée), la valeur que laisse chaque choix (`valeur_1`, `valeur_2` : un texte long ambigu, la fusion où les
+ * passages en conflit prennent le côté du site, ou du code, et le reste fusionné — rangées dans `fusions`, id → { v1, v2 }, pour la résolution ;
+ * sinon la version 1 et la version 2), son blocage (`bloque` : blocageDuChamp) ; un choix 1 qui écraserait la valeur d'un lot plus récent du
+ * site de dev est retiré (`refus_1`, et `refus_1_lot` : { lot, fait_le, resume } de ce lot). `garde` faux. L'empreinte est refaite.
+ */
+function completerLeDiagnostic(db, lot, pub, fusions = new Map()) {
+  for (const c of pub.conflits) {
+    c.garde = false;
+    c.provenance_1 = { genre: 'site', lot: lot.id, fait_le: lot.fait_le, resume: pub.resume };
+    c.provenance_2 = c.version_2?.genre === 'absente' ? { genre: 'regles' } : provenanceActuelle(db, c.table, c.cle, c.colonne, { sauf: lot.id });
+    const texte = c.colonne && typeof c.version_1?.valeur === 'string' && typeof c.version_2?.valeur === 'string';
+    const f = texte ? fusionner(c.avant?.valeur, c.version_1.valeur, c.version_2.valeur, { texte: colonneFusionnable(c.table, c.colonne) }) : null;
+    c.passages = f?.passages ?? [];
+    if (c.genre === 'champ' || c.genre === 'hors_modele') {
+      // la valeur que laisse chaque choix (réponse du propriétaire « Les garder », étendue aux lots annulés par le leader-technique) : un texte long
+      // ambigu, les passages en conflit d'un côté et le reste fusionné ; sinon la version 1, et la valeur actuelle (choix 2 : rien n'est écrit)
+      const ambigu = f?.issue === 'ambigue' && colonneFusionnable(c.table, c.colonne);
+      if (ambigu) fusions.set(c.id, { v1: f.siteGagne, v2: f.codeGagne });
+      c.valeur_1 = ambigu ? valeurVue(c.table, c.colonne, f.siteGagne) : c.version_1;
+      c.valeur_2 = ambigu ? valeurVue(c.table, c.colonne, f.codeGagne) : c.version_2;
+    }
+    c.bloque = blocageDuChamp(db, lot, c.table, c.cle, c.colonne);
+    const p = c.provenance_2;
+    if (p.lot && c.choix_possibles.includes(1) && apres(placeDe(db, p), lot)) {
+      c.choix_possibles = c.choix_possibles.filter((x) => x !== 1);
+      if (!c.refus_1) {
+        c.refus_1 = `Le lot du ${p.fait_le} (« ${p.resume} »), plus récent, a modifié ce champ depuis : sa valeur reste (choix 2), ou saisissez-en une (choix 3).`;
+        c.refus_1_lot = { lot: p.lot, fait_le: p.fait_le, resume: p.resume };
+      }
+    }
+  }
+  pub.garde = false;
+  pub.bloque = pub.conflits.some((c) => c.bloque);
+  pub.empreinte = empreinteDu(pub);
+  return pub;
+}
+
+/** Les lignes en conflit d'un lot gardé (au moins une porte la reprise du rejeu), avec leur reprise ; null pour un lot annulé. */
+function reprisesDuLot(lignes) {
+  const reprises = lignes.map((m) => ({ m, ...lireLaTrace(m.detail) }));
+  return reprises.some((r) => r.reprise) ? reprises : null;
+}
+
+/**
+ * La valeur que prendrait un champ gardé au choix 2 : la fusion côté code (`codeGagne`), puis chaque lot plus récent du site de dev qui a écrit ce champ (sur la valeur
+ * du site) refait dessus, comme le rejeu (fusion à trois voies) : { valeur } ou { refus, par } (un lot suivant qui ne s'y fusionne pas ; `par` :
+ * { lot, fait_le, resume }, rendu en `refus_2_lot` ; un refus de l'éditeur n'en a pas).
+ */
+function valeurDuChoix2(table, colonne, code, suivants) {
+  let v = code;
+  for (const { m, lot } of suivants) {
+    const par = { lot: lot.id, fait_le: lot.fait_le, resume: lot.resume };
+    if (m.operation !== 'modifier') return { par, refus: `Le lot du ${lot.fait_le} (« ${lot.resume} »), plus récent, a ${m.operation === 'supprimer' ? 'supprimé' : 'recréé'} cette ligne depuis : gardez la valeur du site (choix 1).` };
+    const a = json(m.avant)?.[colonne];
+    const s = json(m.apres)[colonne];
+    if (egal(v, a)) {
+      v = s;
+      continue;
+    }
+    const f = fusionner(a, s, v, { texte: colonneFusionnable(table, colonne) });
+    if (f.issue === 'ambigue') {
+      return { par, refus: `Le lot du ${lot.fait_le} (« ${lot.resume} »), plus récent, a modifié ce champ depuis, et sa modification ne se fusionne pas avec la valeur du code : gardez la valeur du site (choix 1) ou saisissez-en une (choix 3).` };
+    }
+    v = f.valeur;
+  }
+  return { valeur: v };
+}
+
+/** Ce que devient une modification saine d'un lot gardé, pour la page (celles d'un lot annulé : ISSUES). */
+const ISSUES_GARDEES = Object.freeze({ applique: 'reappliquee', integree: 'deja_la', derivee: 'derivee', fantome: 'sans_effet' });
+
+/**
+ * Le diagnostic d'un lot gardé (la valeur du site en place depuis le rejeu), dans un savepoint toujours annulé (le choix 2 essayé par l'éditeur) :
+ * chaque champ gardé est un conflit — version 1 la valeur du site (ce lot), version 2 la valeur du code (les règles livrées, ou les règles fusionnées avec
+ * un lot plus ancien du site : `provenance_2`), `avant` la valeur que le site avait trouvée, `passages` ceux de la fusion, `actuelle` la valeur de la
+ * base quand un lot plus récent l'a changée depuis (avec sa provenance), `lots_suivants` ces lots ; choix 1 (rien à écrire : la valeur en place, la
+ * fusion où les passages en conflit prennent le côté du site, `valeur_1`), 2 (la même fusion côté code, les changements du site hors conflit gardés,
+ * refaite avec les lots suivants : valeurDuChoix2, `valeur_2` ; `refus_2` sinon, ou si l'éditeur la refuse aujourd'hui ; réponse du propriétaire « Les
+ * garder »), 3 (saisie, sauf ligne gelée, image ou colonne hors du modèle). Une valeur courte : le site, le code. Les autres modifications du
+ * lot sont ses saines (`fusionnees` : les colonnes fusionnées sans conflit). Rend { public, interne: { valeurs2: Map id → valeur du choix 2 } }.
+ */
+function examinerUnLotGarde(db, lot, reprises, instant) {
+  const conflits = [];
+  const saines = [];
+  const valeurs2 = new Map();
+  db.exec('SAVEPOINT examen_garde');
+  try {
+    const ctx = contexte(db, { id: nouveauLot().id, instant, pageId: lot.page_id });
+    for (const { m, reprise } of reprises) {
+      if (!reprise) continue;
+      const table = m.table_nom;
+      const cle = JSON.parse(m.cle);
+      let ligne = null;
+      try {
+        ligne = lireLigne(db, table, cle);
+      } catch {
+        ligne = null;
+      }
+      const libelle = libelleDeLigne(table, ligne ?? reprise.apres ?? reprise.avant, cle, db);
+      const gardees = reprise.gardees ?? {};
+      for (const [c, g] of Object.entries(gardees)) {
+        const champ = TABLES[table]?.colonnes[c];
+        const image = champ?.type === 'image';
+        const raison = `les règles ont changé ${c} autrement, la valeur du site reste en place`;
+        const suivants = ecrituresDuChamp(db, table, cle, c).filter((e) => apres(e.lot, lot));
+        // ce que le rejeu a écrit (les passages en conflit côté site, le reste fusionné) ; le choix 2 part de la même fusion côté code
+        const siteGagne = g.siteGagne === undefined ? reprise.apres?.[c] ?? g.site : g.siteGagne;
+        const deux = valeurDuChoix2(table, c, g.codeGagne === undefined ? g.code : g.codeGagne, suivants);
+        let refus2 = deux.refus ?? null;
+        if (!refus2 && champ && ligne) {
+          const r = essayer(db, 'conflit_choix', () => modifierParLEditeur(ctx, { table, cle, valeurs: { [c]: deux.valeur } }), { garder: false });
+          if (r) refus2 = r.message;
+        }
+        if (!refus2) valeurs2.set(`${m.rang}:${c}`, deux.valeur);
+        const actuelle = ligne?.[c];
+        conflits.push({
+          rang: m.rang, table, cle, operation: m.operation, libelle, raison, raison_lisible: raisonLisible(table, raison),
+          id: `${m.rang}:${c}`, colonne: c, colonne_libelle: libelleDeColonne(table, c), genre: champ ? 'champ' : 'hors_modele', garde: true,
+          version_1: valeurVue(table, c, g.site), version_2: valeurVue(table, c, g.code), avant: valeurVue(table, c, g.base),
+          provenance_1: { genre: 'site', lot: lot.id, fait_le: lot.fait_le, resume: resumeVu(lot.resume) },
+          provenance_2: g.provenance
+            ? { genre: 'regles_et_site', lot: g.provenance.lot, fait_le: g.provenance.fait_le, resume: resumeVu(lireLot(db, g.provenance.lot)?.resume) }
+            : { genre: 'regles' },
+          actuelle: !ligne || egal(actuelle, siteGagne) ? null : { ...valeurVue(table, c, actuelle), provenance: provenanceActuelle(db, table, cle, c) },
+          passages: g.passages ?? [],
+          // la valeur que chaque choix laisse : 1, celle en place ; 2, la fusion côté code, les lots suivants refaits dessus (null si refusé)
+          valeur_1: valeurVue(table, c, ligne ? actuelle : siteGagne),
+          valeur_2: refus2 ? null : valeurVue(table, c, deux.valeur),
+          lots_suivants: [...new Map(suivants.map((e) => [e.lot.id, { lot: e.lot.id, fait_le: e.lot.fait_le, resume: e.lot.resume }])).values()],
+          apercu: table === 'page' && c === 'corps_md' ? json(m.apercu) : null,
+          ...choixDuChamp(champ, image, refusDuChoix3(db, table, cle, ligne), refus2 ? [1] : [1, 2],
+            refus2 ? { refus_2: refus2, ...(deux.par ? { refus_2_lot: deux.par } : {}) } : {}),
+          bloque: blocageDuChamp(db, lot, table, cle, c),
+        });
+      }
+      const colonnes = Object.keys(reprise.apres ?? {}).filter((c) => !(c in gardees));
+      if (Object.keys(gardees).length && !colonnes.length) continue;
+      const fusionnees = reprise.fusionnees ?? [];
+      saines.push({
+        rang: m.rang, table, cle, operation: m.operation, libelle, issue: ISSUES_GARDEES[reprise.issue] ?? 'reappliquee',
+        ...(Object.keys(gardees).length ? { colonnes, colonnes_libelles: colonnes.map((c) => libelleDeColonne(table, c)) } : {}),
+        ...(fusionnees.length ? { fusionnees, fusionnees_libelles: fusionnees.map((c) => libelleDeColonne(table, c)) } : {}),
+      });
+    }
+  } finally {
+    db.exec('ROLLBACK TO examen_garde');
+    db.exec('RELEASE examen_garde');
+  }
+  conflits.sort((a, b) => a.rang - b.rang || String(a.colonne).localeCompare(String(b.colonne)));
+  const { texte } = reprises.find((r) => r.reprise) ?? reprises[0];
+  const pub = {
+    lot: lot.id, fait_le: lot.fait_le, page_id: lot.page_id, resume: resumeVu(lot.resume), garde: true, detail: texte,
+    detail_lisible: detailLisible(texte, [...conflits, ...saines], db), empreinte: null, saines, conflits, bloque: conflits.some((c) => c.bloque),
+  };
+  pub.empreinte = empreinteDu(pub);
+  return { public: pub, interne: { valeurs2 } };
+}
+
+/** Le diagnostic d'un lot (gardé ou annulé), ou null s'il n'a rien en conflit : { public, interne, garde, reprises }. */
+function diagnostiquer(db, lot, instant) {
+  const lignes = lignesEnConflit(db, lot.id);
+  if (!lignes.length) return null;
+  const reprises = reprisesDuLot(lignes);
+  if (reprises) return { ...examinerUnLotGarde(db, lot, reprises, instant), garde: true, reprises };
+  const r = examen(db, lot, instant);
+  if (!r) return null;
+  const fusions = new Map();
+  return { ...r, public: completerLeDiagnostic(db, lot, r.public, fusions), interne: { ...r.interne, fusions }, garde: false };
+}
+
 /** Le diagnostic d'un lot en conflit pas encore résolu (GET /api/mise-a-jour/conflits/) ; null si le lot est inconnu, résolu ou sans conflit. */
 export function examinerLeLot(db, id, { instant = maintenant() } = {}) {
   const lot = lireLot(db, id);
   if (!lot || lot.resolu_le) return null;
-  return examen(db, lot, instant)?.public ?? null;
+  return diagnostiquer(db, lot, instant)?.public ?? null;
 }
 
-/** GET /api/mise-a-jour/conflits/ : { lots: [diagnostic de chaque lot à résoudre], resolus: lotsResolus }. */
+/**
+ * GET /api/mise-a-jour/conflits/ : { lots: [diagnostic de chaque lot à résoudre], resolus: lotsResolus, retenus } ; `retenus` : les lots qui ne
+ * partent pas encore parce qu'ils suivent un lot gardé sur l'un de ses champs ([{ lot, fait_le, resume, derriere }] ; edition-journal.mjs#lotsRetenus).
+ */
 export function conflitsDuJournal(db, { instant = maintenant() } = {}) {
-  return { lots: lotsEnConflit(db).map((l) => examinerLeLot(db, l.id, { instant })).filter(Boolean), resolus: lotsResolus(db) };
+  const retenus = [...lotsRetenus(db)].map(([id, derriere]) => {
+    const l = lireLot(db, id);
+    return { lot: id, fait_le: l?.fait_le ?? null, resume: resumeVu(l?.resume), derriere };
+  });
+  return { lots: lotsEnConflit(db).map((l) => examinerLeLot(db, l.id, { instant })).filter(Boolean), resolus: lotsResolus(db), retenus };
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
@@ -689,6 +1027,8 @@ function choixControles(diag, choix) {
     const r = choix[c.id];
     const n = typeof r === 'number' ? r : r?.choix;
     if (n === undefined || n === null) throw erreur(400, `${c.libelle}${c.colonne_libelle ? ` (${c.colonne_libelle})` : ''} : choisissez 1, 2 ou 3.`);
+    // une ligne gelée : pas de valeur saisie, ce serait une modification nouvelle (refusDuChoix3 ; décisions R218 (3), R219 (6))
+    if (n === 3 && c.refus_3) throw erreur(409, `${c.libelle} (${c.colonne_libelle}) : pas de valeur saisie, seuls les choix 1 et 2 restent. ${c.refus_3}`, { conflit: c.id, lot: diag });
     if (!CHOIX.includes(n) || !c.choix_possibles.includes(n)) throw erreur(400, `${c.libelle}${c.colonne_libelle ? ` (${c.colonne_libelle})` : ''} : choix ${JSON.stringify(n)} impossible ici (${c.choix_possibles.join(', ')}).`);
     if (n === 3 && (r === null || typeof r !== 'object' || !('valeur' in r))) throw erreur(400, `${c.libelle} (${c.colonne_libelle}) : la valeur saisie manque (choix 3).`);
     sortie.set(c.id, { choix: n, valeur: n === 3 ? r.valeur : undefined });
@@ -697,10 +1037,118 @@ function choixControles(diag, choix) {
 }
 
 /**
+ * Résout un lot gardé (la valeur du site en place depuis le rejeu ; resoudreLeConflit a contrôlé l'empreinte, le blocage et les choix), dans une seule
+ * transaction :
+ *   - la reprise du lot (`<lot>-reprise`) : un lot normal du journal, à la place du lot gardé dans l'ordre du rejeu (même `fait_le`, son id le suit),
+ *     qui note ce que le rejeu a écrit à partir des règles livrées (edition-journal.mjs#lireLaTrace : la valeur du site pour un champ gardé, la valeur
+ *     fusionnée, la valeur du code en `avant`) : rejoué sur les règles, il redonne la base vivante, et les lots suivants du même champ (écrits sur la
+ *     valeur du site) passent après lui. Choix 1 : rien d'autre ;
+ *   - les choix 2 et 3, s'il y en a : UN lot normal (`id`, `instant`), écrit par l'éditeur sur la base telle qu'elle est (après les lots suivants) :
+ *     choix 2, la valeur du code refaite avec les lots suivants (valeurDuChoix2) ; choix 3, la valeur saisie ;
+ *   - le lot gardé marqué résolu (`resolu_par` : la reprise), ses lignes restant « conflit » comme trace.
+ */
+function resoudreUnLotGarde(db, lot, diag, choix, resolution, { instant, id }) {
+  const reprise = `${lot.id}-reprise`;
+  if (lireLot(db, reprise)) throw erreur(409, 'Ce lot vient d’être résolu.');
+  db.exec('BEGIN IMMEDIATE');
+  let ouverte = true;
+  try {
+    db.exec('PRAGMA defer_foreign_keys = ON');
+    const { entete, reste } = OUTILS.separerLeMarqueur(lot.resume);
+    // la reprise garde la nature du lot gardé (une résolution de conflit reste une saisie ; un lot de changements garde la sienne, et son numéro de décision)
+    db.prepare('INSERT INTO modification_lot (id, fait_le, auteur_id, page_id, resume, nature, decision) VALUES (?, ?, ?, ?, ?, ?, ?)')
+      .run(reprise, lot.fait_le, lot.auteur_id ?? null, lot.page_id, `${entete}${`Reprise du lot ${lot.id} (conflit résolu) : ${reste}`.slice(0, 500)}`,
+        lot.nature ?? 'saisie', lot.decision ?? null);
+    const noter = db.prepare(`INSERT INTO modification (lot_id, rang, table_nom, cle, operation, avant, apres, etat, detail, apercu)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'en_attente', NULL, ?)`);
+    const enJson = (v) => (v === null || v === undefined ? null : JSON.stringify(v));
+    let rang = 0;
+    const touchees = [];
+    for (const { m, reprise: r } of diag.reprises) {
+      if (!r || r.issue === 'integree') continue;
+      for (const { table, valeurs } of r.creees ?? []) {
+        rang += 1;
+        const cle = cleDe(db, table, valeurs);
+        noter.run(reprise, rang, table, JSON.stringify(cle), 'inserer', null, JSON.stringify(valeurs), null);
+        touchees.push({ table, cle });
+      }
+      rang += 1;
+      // l'aperçu HTML du corps d'une page, s'il décrit encore ce qui est écrit (pas une fusion)
+      const corps = m.table_nom === 'page' && r.apres && 'corps_md' in r.apres && r.apres.corps_md === json(m.apres)?.corps_md;
+      noter.run(reprise, rang, m.table_nom, m.cle, m.operation, enJson(r.avant), enJson(r.apres), corps ? m.apercu : null);
+      touchees.push({ table: m.table_nom, cle: JSON.parse(m.cle) });
+    }
+    const ctx = contexte(db, { id, instant, pageId: lot.page_id });
+    const variablesAvant = magiesDesDonsVariables(db);
+    const parLigne = new Map();
+    for (const c of diag.public.conflits) {
+      const { choix: n, valeur } = choix.get(c.id);
+      if (n === 1) continue;
+      const v = n === 2 ? diag.interne.valeurs2.get(c.id) : valeur;
+      const k = cleDeLaLigne(c.table, c.cle);
+      if (!parLigne.has(k)) parLigne.set(k, { table: c.table, cle: c.cle, modele: {}, hors: {} });
+      parLigne.get(k)[c.genre === 'champ' ? 'modele' : 'hors'][c.colonne] = v;
+    }
+    const brutes = [];
+    for (const { table, cle, modele, hors } of parLigne.values()) {
+      if (!lireLigne(db, table, cle)) continue;
+      if (Object.keys(modele).length) {
+        ctx.operation = 0;
+        modifierParLEditeur(ctx, { table, cle, valeurs: modele });
+      }
+      if (Object.keys(hors).length) {
+        const avant = lireLigne(db, table, cle);
+        ctx.w.modifier(table, cle, hors);
+        brutes.push({ table, cle, operation: 'modifier', avant: Object.fromEntries(Object.keys(hors).map((c) => [c, avant[c]])), apres: hors });
+      }
+    }
+    if (brutes.length) recalculerLesPages(db, brutes);
+    retirerLesChoixDesDonsChanges(db, variablesAvant, ctx.retraits);
+    const fiches = noterLesRetraits(db, ctx.retraits, instant);
+    const ecrit = ctx.w.nombre > 0;
+    if (ecrit) ctx.w.terminer(`Résolution du conflit du lot ${lot.id} : ${reste}`, { entete });
+    else db.prepare('DELETE FROM modification_lot WHERE id = ?').run(id);
+    const marque = db.prepare('UPDATE modification_lot SET resolu_le = ?, resolu_par = ?, resolution = ? WHERE id = ? AND resolu_le IS NULL')
+      .run(instant, reprise, JSON.stringify(resolution), lot.id);
+    if (!marque.changes) throw erreur(409, 'Ce lot vient d’être résolu.');
+    db.exec('COMMIT');
+    ouverte = false;
+    const vues = new Map([...touchees, ...ctx.w.lignes].map((l) => [cleDeLaLigne(l.table, l.cle), l]));
+    return {
+      lot: lot.id, nouveau_lot: ecrit ? id : null, reprise, modifications: ctx.w.nombre + rang, resolution,
+      lignes: [...vues.values()].map((l) => {
+        let ligne = null;
+        try {
+          ligne = lireLigne(db, l.table, l.cle);
+        } catch {
+          ligne = null;
+        }
+        return { table: l.table, cle: l.cle, ligne: ligne && ligneSansImage(l.table, ligne) };
+      }),
+      fiches,
+    };
+  } catch (e) {
+    if (ouverte) {
+      try {
+        db.exec('ROLLBACK');
+      } catch {
+        // déjà annulée par SQLite
+      }
+    }
+    if (e instanceof ErreurEdition) throw e;
+    const r = refusDe(e);
+    if (r) throw erreur(r.statut, r.message);
+    throw e;
+  }
+}
+
+/**
  * Résout un lot en conflit (POST /api/mise-a-jour/conflits/ { lot, empreinte, choix }) : une seule transaction (BEGIN IMMEDIATE, clés étrangères
  * différées puis contrôlées), le nouveau lot du journal (`nouveau_lot` : null si tout est au choix 2 et rien de sain n'est à réécrire), l'ancien
- * marqué résolu. Refus (ErreurEdition) : 404 lot inconnu ou sans conflit, 409 déjà résolu, diagnostic changé (empreinte) ou une ligne qui ne passe plus
- * avec ces choix (`details.lot` : le diagnostic à jour), 400 choix manquant ou impossible, valeur refusée par l'éditeur, 422 contrainte de la base.
+ * marqué résolu. Refus (ErreurEdition) : 404 lot inconnu ou sans conflit, 409 déjà résolu, choix 3 sur une ligne gelée (`refus_3`), diagnostic
+ * changé (empreinte) ou une ligne qui ne passe plus avec ces choix (`details.lot` : le diagnostic à jour), un lot plus ancien en conflit sur le même
+ * champ (`details.bloque` : blocageDuChamp, à résoudre d'abord), 400 choix manquant ou impossible, valeur refusée par l'éditeur, 422 contrainte de la
+ * base. Un lot gardé se résout par resoudreUnLotGarde (`reprise` en plus dans la réponse).
  * @returns {{ lot: string, nouveau_lot: string | null, modifications: number, lignes: object[], fiches: object[], resolution: object[] }}
  */
 export function resoudreLeConflit(db, corps, { instant, id } = {}) {
@@ -713,17 +1161,25 @@ export function resoudreLeConflit(db, corps, { instant, id } = {}) {
   const lot = lireLot(db, corps.lot);
   if (!lot) throw erreur(404, `Lot introuvable : ${corps.lot}`);
   if (lot.resolu_le) throw erreur(409, `Ce lot est déjà résolu (le ${lot.resolu_le}${lot.resolu_par ? `, par le lot ${lot.resolu_par}` : ''}).`, { resolu_par: lot.resolu_par });
-  const diag = examen(db, lot, instant);
+  const diag = diagnostiquer(db, lot, instant);
   if (!diag) throw erreur(404, `Ce lot n’a aucune modification en conflit : ${lot.id}`);
   if (corps.empreinte !== diag.public.empreinte) throw erreur(409, 'Les conflits de ce lot ont changé depuis leur affichage : relisez-les.', { lot: diag.public });
+  // un lot plus ancien, en conflit, touche le même champ : il se résout d'abord (sinon la valeur la plus ancienne écraserait la plus récente)
+  const bloque = diag.public.conflits.find((c) => c.bloque);
+  if (bloque) {
+    throw erreur(409, `${bloque.libelle}${bloque.colonne_libelle ? ` (${bloque.colonne_libelle})` : ''} : ${bloque.bloque.raison}`, { lot: diag.public, bloque: bloque.bloque });
+  }
   const choix = choixControles(diag.public, corps.choix);
   const resolution = diag.public.conflits.map((c) => ({ rang: c.rang, colonne: c.colonne, choix: choix.get(c.id).choix }));
+  if (diag.garde) return resoudreUnLotGarde(db, lot, diag, choix, resolution, { instant, id });
 
   db.exec('BEGIN IMMEDIATE');
   let ouverte = true;
   try {
     db.exec('PRAGMA defer_foreign_keys = ON');
     const ctx = contexte(db, { id, instant, pageId: lot.page_id });
+    // la magie de chaque don « Variable » avant la résolution : un don que le lot fait quitter ce type ou changer de magie perd les choix des fiches (R181)
+    const variablesAvant = magiesDesDonsVariables(db);
     const lignes = lignesEnConflit(db, lot.id);
     const { entrees, differees } = parcourir(ctx, lignes, new Set(diag.interne.abandons.keys()));
     const ids = entrees.filter((e) => e.issue === 'conflit').flatMap((e) => conflitsDeLEntree(e, db)).map((c) => c.id);
@@ -741,10 +1197,15 @@ export function resoudreLeConflit(db, corps, { instant, id } = {}) {
         if (!operations.has(k)) operations.set(k, { table: c.table, cle: c.cle, original: {}, final: {}, apercu: null, rangs: new Set() });
         const d = operations.get(k);
         d.rangs.add(c.rang);
-        const v1 = c.colonne in d.final ? d.final[c.colonne] : e.apres[c.colonne];
+        // un texte long ambigu : choix 1 et 2, la fusion où les passages en conflit prennent un côté et le reste est fusionné (completerLeDiagnostic)
+        const fusion = diag.interne.fusions.get(c.id);
+        const v1 = fusion ? fusion.v1 : c.colonne in d.final ? d.final[c.colonne] : e.apres[c.colonne];
+        const v2 = fusion && fusion.v2 !== e.ligne?.[c.colonne] ? fusion.v2 : undefined;
         d.choix ??= {};
-        d.choix[c.colonne] = { n, valeur, v1, apercu: c.colonne === 'corps_md' ? (d.apercu ?? e.apercu) : null };
-        if (n === 2 && OUTILS.aUneDerivation(c.table)) {
+        // l'aperçu HTML du site ne décrit que sa version entière
+        const apercuDuSite = c.colonne === 'corps_md' && (!fusion || fusion.v1 === e.apres[c.colonne]) ? (d.apercu ?? e.apercu) : null;
+        d.choix[c.colonne] = { n, valeur, v1, v2, apercu: apercuDuSite };
+        if (n === 2 && v2 === undefined && OUTILS.aUneDerivation(c.table)) {
           if (!aRederiver.has(k)) aRederiver.set(k, { table: c.table, cle: c.cle, v1: {} });
           aRederiver.get(k).v1[c.colonne] = v1;
         }
@@ -776,11 +1237,12 @@ export function resoudreLeConflit(db, corps, { instant, id } = {}) {
         valeurs[col] = v;
         if (col === 'corps_md') apercu = d.apercu;
       }
-      for (const [col, { n, valeur, v1, apercu: a }] of Object.entries(d.choix ?? {})) {
+      for (const [col, { n, valeur, v1, v2, apercu: a }] of Object.entries(d.choix ?? {})) {
         if (n === 1) {
           valeurs[col] = v1;
           if (col === 'corps_md') apercu = a;
-        } else if (n === 3) valeurs[col] = valeur;
+        } else if (n === 2 && v2 !== undefined) valeurs[col] = v2; // les changements du site hors des passages en conflit, gardés
+        else if (n === 3) valeurs[col] = valeur;
       }
       if (!('corps_md' in valeurs)) apercu = null;
       return { valeurs, apercu };
@@ -790,13 +1252,23 @@ export function resoudreLeConflit(db, corps, { instant, id } = {}) {
       if (ligne) OUTILS.deriver({ ...ctx, db: vueSansPages(db) }, table, { ...ligne, ...v1 }, ligne);
     }
     commeLeRejeu(ctx, entrees, brutes);
+    // décision R181, « Retirés avec une note », R192 : comme un lot du site de dev (serveur/edition.mjs#enregistrer), une fois toutes les lignes écrites
+    retirerLesChoixDesDonsChanges(db, variablesAvant, ctx.retraits);
     const fiches = noterLesRetraits(db, ctx.retraits, instant);
     const rompues = rompuesDuLot(db, entrees.filter((e) => e.issue !== 'saute'), { tables: [...new Set(ctx.w.lignes.map((l) => l.table))], deja: diag.interne.deja });
     if (rompues.length) {
       throw erreur(409, `Ces choix rompraient une référence : ${[...new Set(rompues.map((r) => r.raison))].slice(0, 5).join(' ; ')}.`, { lot: diag.public });
     }
+    // une page des Règles supprimée (choix 1 d'une suppression en conflit) qu'un texte cite encore : un lien cassé, refusé comme une référence rompue
+    const supprimeesAuChoix1 = new Set(diag.public.conflits.filter((c) => c.genre === 'suppression' && choix.get(c.id).choix === 1).map((c) => c.rang));
+    const liens = OUTILS.liensRompusParLeLot(db, entrees.map((e) => e.m), {
+      faites: entrees.filter((e) => e.issue === 'applique' || supprimeesAuChoix1.has(e.rang)).map((e) => e.m),
+    });
+    if (liens.length) throw erreur(409, `Ces choix casseraient un lien : ${liens.map((l) => l.raison).slice(0, 5).join(' ; ')}.`, { lot: diag.public });
     const ecrit = ctx.w.nombre > 0;
-    if (ecrit) ctx.w.terminer(`Résolution du conflit du lot ${lot.id} : ${lot.resume}`);
+    // le marqueur des suppressions forcées du lot résolu (décision R223 (6)) reste en tête du résumé, hors de sa troncature
+    const { entete, reste } = OUTILS.separerLeMarqueur(lot.resume);
+    if (ecrit) ctx.w.terminer(`Résolution du conflit du lot ${lot.id} : ${reste}`, { entete });
     else db.prepare('DELETE FROM modification_lot WHERE id = ?').run(id);
     const marque = db.prepare('UPDATE modification_lot SET resolu_le = ?, resolu_par = ?, resolution = ? WHERE id = ? AND resolu_le IS NULL')
       .run(instant, ecrit ? id : null, JSON.stringify(resolution), lot.id);

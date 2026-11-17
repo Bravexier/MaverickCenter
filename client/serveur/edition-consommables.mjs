@@ -1,4 +1,4 @@
-// Édition des consommables de l'onglet Ceinture de /ressources/equipement/ (sous-onglet Consommables : les tableaux Fioles, Remèdes, Philtres, Huiles,
+// Édition des consommables de la page Ceinture, /ressources/objets-a-la-ceinture/ (sous-onglet Consommables : les tableaux Fioles, Remèdes, Philtres, Huiles,
 // Alchimie primitive) depuis le site de dev — demande du propriétaire (2026-10-17) : « Les tableaux des consommables devrai pouvoir aussi être
 // modifiées . (sauf pour les champ calculés) ». Les domaines pour serveur/edition.mjs (DOMAINES) :
 //   - une potion (une ligne d'un tableau) : son nom et son prix (sa ligne de la table ressource, genre 'potion' ; le prix en RF en est recalculé,

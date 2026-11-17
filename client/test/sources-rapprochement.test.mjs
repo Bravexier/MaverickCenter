@@ -13,7 +13,8 @@ import {
   plage, rapport, rapprocher, remplacer, sansCorrections,
 } from '../../tools/sources/rapprocher.mjs';
 import { texteDInstantane } from '../../tools/sources/instantane.mjs';
-import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
+import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { baseDImport, cheminDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire, fichierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const racine = new URL('../../', import.meta.url);
@@ -102,6 +103,10 @@ for (const c of registre.classeurs.filter((x) => x.etat === 'rapproche')) {
   });
 }
 
+// Les essais qui changent une cellule (ou une ligne) lisent la base dans son état d'import (aide-base-d-import.mjs) : le site de dev est la source de
+// ce qu'il modifie, et une ligne qu'il a réécrite ferait d'une cellule changée un conflit (ou une ligne de plus touchée), pas l'écart attendu. Ce qui
+// est épinglé est la sortie de l'outil à partir de sa source (l'instantané) et de la base telle que l'import l'a écrite, jamais un texte courant.
+const dbImport = baseDImport();
 const v7 = registre.classeurs.find((x) => x.titre === 'Classe Maverick V7');
 const avecCellule = (onglet, r, c, changer) => {
   const dump = structuredClone(instantanes[v7.titre]);
@@ -118,18 +123,18 @@ test('le rapprochement voit un mot changé, un nombre changé et une cellule ajo
   const mot = guerrier.cells.find((x) => typeof x.v === 'string' && x.v.includes('dégâts') && x !== niveau);
   mot.v = mot.v.replace('dégâts', 'soins');
   guerrier.cells.push({ r: 99, c: 2, v: 'Nouvelle règle' });
-  const R = relever(db, v7, dump);
+  const R = relever(dbImport, v7, dump);
   assert.equal(R.nombres.length, 1, 'le niveau changé');
   assert.ok(R.ecarts.length >= 1, 'le mot changé (base -> classeur)');
   assert.ok(R.motsAbsents.some((m) => m.mots.includes('soins')), 'le mot changé (classeur -> base)');
   assert.deepEqual(R.nonCitees.map((x) => `${x.onglet}!${x.cellule}`), ['Guerrier!B99']);
 });
 
-// Le site de dev est la source de ce qu'il modifie : une copie de la base où le site a supprimé ou modifié un don.
+// Le site de dev est la source de ce qu'il modifie : une copie de la base d'import où le site a supprimé ou modifié un don (son seul historique).
 const dossier = dossierTemporaire('rapprochement');
 const copieAvec = (nom, ecrire) => {
   const fichier = join(dossier, `${nom}.db`);
-  copyFileSync(cheminBase({ sansExemples: false }), fichier);
+  copyFileSync(cheminDImport(), fichier);
   const w = new DatabaseSync(fichier);
   w.exec('PRAGMA foreign_keys = OFF');
   const id = 'capacites/anansi-piege-toile';
@@ -161,7 +166,7 @@ test('une colonne modifiée par le site de dev n’est pas un écart ; si sa cel
   });
   const R = relever(base, v7);
   assert.equal(nombreDEcarts(R), 0, rapport(R, { exemples: 20 }));
-  // (les autres modifications du site de dev, de vraies modifications rapatriées dans data/rows, ne sont pas celles du test)
+  // (la copie part de l'état d'import : seule la modification du test est dans son historique)
   const duTest = (x) => x.ligne === 'capacite {"id":"capacites/anansi-piege-toile"}';
   assert.deepEqual(R.site.modifiees.filter(duTest).map((x) => [x.colonne, x.import, x.actuelle]), [['nom', 'Piège-toile', 'Toile piégée']]);
   const C = relever(base, v7, avecCellule('Anansi', 11, 18, () => 'Piège-soie'));
@@ -173,11 +178,90 @@ test('une colonne modifiée par le site de dev n’est pas un écart ; si sa cel
   base.close();
 });
 
+// Le contrôle par mutation (suppressions du site de dev, lot 3) : des dons supprimés dont la période d'import ne diffère de la cellule que par la casse
+// (« Combat » -> « combat ») sortaient en conflit. Une copie d'import où le site a supprimé TOUTES les lignes qui citent le classeur (chacune notée dans
+// historique_modification) : aucun écart ; les différences de casse restent pour mémoire ; une cellule vraiment changée, ou jamais importée, en reste un.
+test('les lignes supprimées par le site de dev ne sont pas des écarts (même une différence de casse) ; une cellule changée ou non importée l’est toujours', (t) => {
+  const R0 = relever(dbImport, v7);
+  assert.equal(nombreDEcarts(R0), 0, rapport(R0, { exemples: 20 }));
+  assert.ok(R0.casse.length > 0, 'l’import a normalisé la casse d’au moins une valeur du classeur (le cas que la mutation a montré)');
+  const fichier = fichierTemporaire('toutes-supprimees.db', 'rapprochement', { t });
+  copyFileSync(cheminDImport(), fichier);
+  const w = new DatabaseSync(fichier);
+  w.exec('PRAGMA foreign_keys = OFF');
+  const tables = w.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND sql NOT LIKE 'CREATE VIRTUAL%'").all().map((x) => x.name)
+    .filter((nom) => !['correction', 'historique_modification'].includes(nom) && w.prepare(`PRAGMA table_info("${nom}")`).all().some((c) => c.name === 'source_ref'));
+  const sourceRef = new Map();
+  let lot = 0;
+  for (const table of tables) {
+    const pk = w.prepare(`PRAGMA table_info("${table}")`).all().filter((c) => c.pk).sort((a, b) => a.pk - b.pk).map((c) => c.name);
+    if (!pk.length) continue;
+    for (const l of w.prepare(`SELECT * FROM "${table}"`).all()) {
+      if (!citations(l.source_ref).some((x) => x.classeur === v7.titre && !x.page)) continue;
+      const cle = Object.fromEntries(pk.map((k) => [k, l[k]]));
+      sourceRef.set(`${table} ${JSON.stringify(cle)}`, l.source_ref);
+      w.prepare(`DELETE FROM "${table}" WHERE ${pk.map((k) => `"${k}" = ?`).join(' AND ')}`).run(...pk.map((k) => l[k]));
+      lot += 1;
+      w.prepare(`INSERT INTO historique_modification (lot_id, rang, fait_le, resume, version, table_nom, cle, operation, avant, apres)
+        VALUES (?, 1, '2026-11-07T00:00:00Z', 'test', NULL, ?, ?, 'supprimer', ?, NULL)`).run(`test-suppression-${lot}`, table, JSON.stringify(cle), JSON.stringify(l));
+    }
+  }
+  w.close();
+  const base = new DatabaseSync(fichier, { readOnly: true });
+  try {
+    const R = relever(base, v7);
+    assert.equal(nombreDEcarts(R), 0, rapport(R, { exemples: 20 }));
+    assert.ok(sourceRef.size > 0 && sourceRef.size <= R0.lignes);
+    assert.deepEqual(R.site.supprimees.map((x) => x.ligne).sort(), [...sourceRef.keys()].sort(), 'chaque ligne supprimée est listée à part');
+    assert.deepEqual(R.conflits, []);
+    assert.deepEqual(R.casse.map((x) => `${x.ligne}|${x.colonne}`).sort(), R0.casse.map((x) => `${x.ligne}|${x.colonne}`).sort(), 'la casse reste pour mémoire');
+    // Un vrai écart : les cellules d'une ligne supprimée changent dans le classeur (conflit à trancher), et une cellule nouvelle n'est citée par rien.
+    const { ligne } = R0.casse[0];
+    assert.ok(sourceRef.has(ligne), ligne);
+    const dump = structuredClone(instantanes[v7.titre]);
+    for (const ci of citations(sourceRef.get(ligne)).filter((x) => x.classeur === v7.titre)) {
+      const onglet = dump.sheets.find((s) => s.name === ci.onglet);
+      for (const p of ci.plages) for (const x of onglet.cells) if (x.r >= p.r1 && x.r <= p.r2 && x.c >= p.c1 && x.c <= p.c2 && x.v !== null && x.v !== '') x.v = 'Cellule changée';
+    }
+    dump.sheets.find((s) => s.name === 'Guerrier').cells.push({ r: 99, c: 2, v: 'Nouvelle règle' });
+    const C = relever(base, v7, dump);
+    assert.ok(C.conflits.some((x) => x.ligne === ligne && x.note === 'ligne supprimée par le site de dev'), rapport(C, { exemples: 20 }));
+    assert.deepEqual(C.nonCitees.map((x) => `${x.onglet}!${x.cellule}`), ['Guerrier!B99']);
+    assert.ok(nombreDEcarts(C) >= C.conflits.length + 1);
+  } finally {
+    base.close();
+  }
+});
+
+test('une colonne modifiée par le site de dev dont la valeur d’import ne diffère de sa cellule que par la casse n’est pas un conflit', (t) => {
+  const R0 = relever(dbImport, v7);
+  const { ligne, colonne } = R0.casse.find((x) => x.ligne.startsWith('capacite '));
+  const cle = JSON.parse(ligne.slice('capacite '.length));
+  const fichier = fichierTemporaire('casse-modifiee.db', 'rapprochement', { t });
+  copyFileSync(cheminDImport(), fichier);
+  const w = new DatabaseSync(fichier);
+  const avant = w.prepare(`SELECT "${colonne}" AS v FROM capacite WHERE id = ?`).get(cle.id).v;
+  const apres = `${avant} (site)`;
+  w.prepare(`UPDATE capacite SET "${colonne}" = ? WHERE id = ?`).run(apres, cle.id);
+  w.prepare(`INSERT INTO historique_modification (lot_id, rang, fait_le, resume, version, table_nom, cle, operation, avant, apres)
+    VALUES ('test-casse', 1, '2026-11-07T00:00:00Z', 'test', NULL, 'capacite', ?, 'modifier', ?, ?)`).run(JSON.stringify(cle), JSON.stringify({ [colonne]: avant }), JSON.stringify({ [colonne]: apres }));
+  w.close();
+  const base = new DatabaseSync(fichier, { readOnly: true });
+  try {
+    const R = relever(base, v7);
+    assert.equal(nombreDEcarts(R), 0, rapport(R, { exemples: 20 }));
+    assert.ok(R.site.modifiees.some((x) => x.ligne === ligne && x.colonne === colonne));
+    assert.ok(R.casse.some((x) => x.ligne === ligne && x.colonne === colonne));
+  } finally {
+    base.close();
+  }
+});
+
 test('une mise à jour du classeur : chaque cellule changée et les lignes de la base qu’elle touche (le contrôle que le rapprochement par ligne ne fait pas)', () => {
   // Une barrière de 1 devenue 5 : la ligne de la classe écrit déjà « 5 » ailleurs (classe de bouclier), le rapprochement ne la voit pas ; le diff, si.
   const apres = avecCellule('Guerrier', 5, 5, () => 5);
-  assert.equal(nombreDEcarts(relever(db, v7, apres)), 0, 'limite documentée du rapprochement par ligne');
-  assert.deepEqual(changements(db, { classeur: v7.titre, avant: instantanes[v7.titre], apres }), [
+  assert.equal(nombreDEcarts(relever(dbImport, v7, apres)), 0, 'limite documentée du rapprochement par ligne');
+  assert.deepEqual(changements(dbImport, { classeur: v7.titre, avant: instantanes[v7.titre], apres }), [
     { onglet: 'Guerrier', cellule: 'E5', avant: '1', apres: '5', lignes: ['classe {"id":"classes/guerrier"}'] },
   ]);
 });
@@ -189,9 +273,9 @@ test('les tolérances du rapprochement, sur un classeur synthétique : première
     CREATE TABLE page_entite (entite_table TEXT, entite_id TEXT, page_id TEXT);
     CREATE TABLE note_cellule (entite_table TEXT, entite_id TEXT, rang INTEGER, texte TEXT, nature TEXT, source_ref TEXT, PRIMARY KEY (entite_table, entite_id, rang));
     CREATE TABLE commentaire_orphelin (id TEXT PRIMARY KEY, occurrence INTEGER, texte TEXT, source_ref TEXT);
-    CREATE TABLE chose (id TEXT PRIMARY KEY, nom TEXT, source_ref TEXT);
+    CREATE TABLE chose (id TEXT PRIMARY KEY, nom TEXT, source_ref TEXT, valeur INTEGER);
   `);
-  const ajouter = base.prepare('INSERT INTO chose VALUES (?, ?, ?)');
+  const ajouter = base.prepare('INSERT INTO chose (id, nom, source_ref) VALUES (?, ?, ?)');
   ajouter.run('a', 'Alpha', 'Essai › première feuille › A1');                          // le premier onglet, sous le nom que lui donne l'import des races
   ajouter.run('b', 'Vert', 'Essai › Liste › B2 (liste déroulante, rang 2)');           // une saisie vide : sa liste de validation
   ajouter.run('c', "La lame d'Eaunoire", 'Essai › Texte › A1');                         // un écart voulu (décision), déclaré
@@ -199,17 +283,23 @@ test('les tolérances du rapprochement, sur un classeur synthétique : première
   ajouter.run('e', 'Bêta\nGamma', 'Essai › Texte › A3 ; Autre › Feuille › A1');          // une ligne qui cite deux classeurs
   ajouter.run('f', 'Delta\nEpsilon', 'Essai › Texte › A4 ; Google Doc « Notes » › Section'); // … dont l'un sans instantané
   ajouter.run('g', 'un\ndeux', 'Essai › Liste › D1:D2');                                 // la source d'une copie
+  // un nombre changé par une décision (R207 : l'AP d'une armure calculé d'après ses matériaux), déclaré en écart voulu, écrit en texte
+  base.prepare("INSERT INTO chose (id, nom, source_ref, valeur) VALUES ('h', NULL, 'Essai › Texte › A5', 16)").run();
   const dump = { sheets: [
     { name: 'Sommaire', cells: [{ r: 1, c: 1, v: 'Alpha' }] },
     { name: 'Liste', validations: [{ range: 'B2', type: 'list', formula1: '"Rouge,Vert"' }], cells: [{ r: 1, c: 4, v: 'un' }, { r: 2, c: 4, v: 'deux' }] },
     { name: 'Texte', cells: [
       { r: 1, c: 1, v: "La lame d'eau noire" }, { r: 2, c: 1, v: 'xy', threads: [{ text: 'salut', done: true }] }, { r: 3, c: 1, v: 'Bêta' }, { r: 4, c: 1, v: 'Delta' },
+      { r: 5, c: 1, v: 17 },
     ] },
     { name: 'Copie', cells: [{ r: 1, c: 1, v: 'un' }, { r: 2, c: 1, v: 'deux' }] },
   ] };
   const autres = { Autre: { sheets: [{ name: 'Feuille', cells: [{ r: 1, c: 1, v: 'Gamma' }] }] } };
   const registre = {
-    voulus: [{ table: 'chose', cle: { id: 'c' }, colonne: 'nom', avant: "d'eau noire", apres: "d'Eaunoire", raison: 'décision' }],
+    voulus: [
+      { table: 'chose', cle: { id: 'c' }, colonne: 'nom', avant: "d'eau noire", apres: "d'Eaunoire", raison: 'décision' },
+      { table: 'chose', cle: { id: 'h' }, colonne: 'valeur', avant: '17', apres: '16', raison: 'décision' },
+    ],
     commentaires: [{ onglet: 'Texte', cellule: 'A2', texte: 'salut', raison: 'conversation' }],
     copies: [{ onglet: 'Copie', plage: 'A1:A2', de: { onglet: 'Liste', plage: 'D1:D2' }, raison: 'copie' }],
   };
@@ -219,6 +309,10 @@ test('les tolérances du rapprochement, sur un classeur synthétique : première
   // Chaque tolérance retirée ou contredite redevient un écart.
   const sans = (cle) => rapprocher(base, { classeur: 'Essai', dump, autres, ...registre, [cle]: [] });
   assert.ok(sans('voulus').ecarts.length && sans('voulus').motsAbsents.length, 'écart voulu non déclaré');
+  assert.deepEqual(sans('voulus').nombres.map((x) => [x.ligne, x.colonne, x.valeur]), [['chose {"id":"h"}', 'valeur', 16]], 'nombre voulu non déclaré');
+  // un écart voulu d'un nombre ne vaut que pour sa colonne, et que si la cellule écrit son `avant`
+  const autreAvant = rapprocher(base, { classeur: 'Essai', dump, autres, ...registre, voulus: [...registre.voulus.slice(0, 1), { ...registre.voulus[1], avant: '18' }] });
+  assert.equal(autreAvant.nombres.length, 1, 'l’avant d’un nombre voulu doit se lire dans la cellule');
   assert.equal(sans('commentaires').notes.manquantes.length, 1, 'commentaire non déclaré');
   assert.equal(sans('copies').nonCitees.length, 2, 'copie non déclarée');
   const copieChangee = structuredClone(dump);
@@ -228,5 +322,25 @@ test('les tolérances du rapprochement, sur un classeur synthétique : première
   assert.deepEqual(perimee.perimees.map((x) => x.liste), ['regles'], 'entrée qui ne couvre plus rien');
   const sansAutre = rapprocher(base, { classeur: 'Essai', dump, ...registre });
   assert.ok(sansAutre.aRelire.some((x) => x.ligne === 'chose {"id":"e"}'), 'sans l’instantané de l’autre classeur, la ligne est à relire');
+  base.close();
+});
+
+test('une valeur de la base qui porte des balises du glossaire (R233) se lit dans la cellule qui n’en a pas : on compare le texte que la balise montre', () => {
+  const base = new DatabaseSync(':memory:');
+  base.exec(`
+    CREATE TABLE correction (classeur TEXT, onglet TEXT, cellule TEXT, champ TEXT, avant TEXT, apres TEXT);
+    CREATE TABLE page_entite (entite_table TEXT, entite_id TEXT, page_id TEXT);
+    CREATE TABLE note_cellule (entite_table TEXT, entite_id TEXT, rang INTEGER, texte TEXT, nature TEXT, source_ref TEXT, PRIMARY KEY (entite_table, entite_id, rang));
+    CREATE TABLE commentaire_orphelin (id TEXT PRIMARY KEY, occurrence INTEGER, texte TEXT, source_ref TEXT);
+    CREATE TABLE chose (id TEXT PRIMARY KEY, nom TEXT, source_ref TEXT);
+  `);
+  const ajouter = base.prepare('INSERT INTO chose (id, nom, source_ref) VALUES (?, ?, ?)');
+  ajouter.run('a', 'Si {{corruption|CR}} : inflige 4 {{corruption|corruption}}.', 'Essai › Texte › A1');
+  const dump = (texte) => ({ sheets: [{ name: 'Texte', cells: [{ r: 1, c: 1, v: texte }] }] });
+  const lu = rapprocher(base, { classeur: 'Essai', dump: dump('Si CR : inflige 4 corruption.') });
+  assert.equal(nombreDEcarts(lu), 0, rapport(lu, { exemples: 20 }));
+  // Seul le texte montré par la balise compte : une cellule qui dit autre chose reste un écart.
+  const change = rapprocher(base, { classeur: 'Essai', dump: dump('Si CR : inflige 5 corruption.') });
+  assert.ok(change.ecarts.length, 'un texte changé derrière les balises reste un écart');
   base.close();
 });

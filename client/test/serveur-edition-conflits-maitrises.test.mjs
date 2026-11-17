@@ -113,7 +113,8 @@ before(() => {
     [ARCHER, [creation(ARCHER, DOUBLE, TEXTES.double[2])]],
     [S.autre, [maitrises(S.autre, AUTRE_REGLES)]],
   ]);
-  const { rejeu } = preparerBaseVivante({ regles: S.regles, dossier: S.dossier });
+  // une base vivante d'avant la fusion à trois voies (garderLeSite faux : un lot en conflit est annulé en entier), pour éprouver leur résolution
+  const { rejeu } = preparerBaseVivante({ regles: S.regles, dossier: S.dossier, garderLeSite: false });
   assert.equal(rejeu.lots, 5);
   assert.equal(rejeu.appliquees > 0, true, 'le don créé seul passe');
 });
@@ -255,7 +256,7 @@ test('R159 : la résolution d’un lot en conflit qui écrit une famille d’arm
   assert.ok(retirees.changes > 0, 'le lot notait les options de la famille créée');
   dev.close();
   const regles = reglesLivrees(r0, [['ressources/armes', [{ op: 'modifier', table: 'arme_famille', cle: { id: 'dagues' }, valeurs: { nom: `Poignards des règles ${pid}` } }]]]);
-  preparerBaseVivante({ regles, dossier });
+  preparerBaseVivante({ regles, dossier, garderLeSite: false });
   const db = ouvrirBaseVivante(join(dossier, FICHIER_BASE));
   ouvertes.push(db);
   assert.equal(q(db, 'SELECT 1 FROM arme_famille WHERE id = ?', id).length, 0, 'le lot est en conflit : rien n’en est rejoué');

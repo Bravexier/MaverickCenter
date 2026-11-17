@@ -145,7 +145,7 @@ test('le mode est celui de l\'instance (VERSION) ; sans VERSION, refus avant tou
   const prod = join(root, 'serveur-normal');
   writeFileSync(join(root, 'prod.sh'), state.livraisons[0].octets);
   assert.equal(spawnSync('sh', [join(root, 'prod.sh'), '--dossier', prod]).status, 0);
-  const n = nas('mode-de-l-instance', { mode: '', env: { DOSSIER_PROD: prod } }); // pas de MODE : celui de l'instance
+  const n = nas('mode-de-l-instance', { mode: '' }); // pas de MODE : celui de l'instance
   state.auth.length = 0;
   const sans = await n.run();
   assert.equal(sans.code, 1);
@@ -184,7 +184,7 @@ test('étiquettes du bot (tools/flux-git) : production VX.Y et VX.Y-hotfix.N, te
   assert.equal(n.tag(), 'V1.2-hotfix.1');
   assert.equal(n.read('site/index.html'), '<h1>accueil correctif</h1>');
   assert.match(n.read('VERSION'), /^version=1\.2\.0$/m);
-  const t = nas('etiquettes-v-test', { mode: 'test', env: { SANS_BASE_PROD: '1' } });
+  const t = nas('etiquettes-v-test', { mode: 'test' });
   const test_ = await t.run();
   assert.equal(test_.code, 0, test_.out);
   assert.equal(t.tag(), 'V1.2.4');
@@ -194,14 +194,14 @@ test('test : la version complète la plus récente (VX.Y.Z ou sa régénération
   // De la plus récente à la plus ancienne. V1.2.0-test : la forme d'avant (seule la 0.2.0 l'a portée), encore reconnue comme une livraison de test.
   publier(livraison('V1.3', { label: 'production plus récente' }), livraison('V1.2.4-rebuild.1', { label: 'régénérée' }), livraison('V1.2.4'),
     livraison('V1.2.0-test', { label: 'ancienne forme' }), livraison('V1.2'));
-  const t = nas('formes-test', { mode: 'test', env: { SANS_BASE_PROD: '1' } });
+  const t = nas('formes-test', { mode: 'test' });
   const res = await t.run();
   assert.equal(res.code, 0, res.out);
   assert.equal(t.tag(), 'V1.2.4-rebuild.1');
   assert.equal(t.read('site/index.html'), '<h1>accueil régénérée</h1>');
 
   publier(livraison('V1.2.0-test', { label: 'ancienne forme' }), livraison('V1.2'));
-  const ancien = nas('forme-ancienne', { mode: 'test', env: { SANS_BASE_PROD: '1' } });
+  const ancien = nas('forme-ancienne', { mode: 'test' });
   assert.equal((await ancien.run()).code, 0);
   assert.equal(ancien.tag(), 'V1.2.0-test');
 
@@ -222,7 +222,7 @@ test('test : la plus haute version gagne même si GitHub liste V0.3.99 avant V0.
   // L'ordre observé de l'API (releases?per_page=30) : V0.3.99 en tête, puis V0.3.98, V0.3.112, V0.3.100, V0.3.85, et une production au milieu.
   publier(livraison('V0.3.99', { label: 'v99' }), livraison('V0.3.98'), livraison('V0.3.112', { label: 'v112' }), livraison('V0.3.3'),
     livraison('V0.4', { label: 'prod' }), livraison('V0.3.100'), livraison('V0.3.85'));
-  const t = nas('ordre-github', { mode: 'test', env: { SANS_BASE_PROD: '1' } });
+  const t = nas('ordre-github', { mode: 'test' });
   const res = await t.run();
   assert.equal(res.code, 0, res.out);
   assert.equal(t.tag(), 'V0.3.112');
@@ -233,21 +233,110 @@ test('test : la plus haute version gagne même si GitHub liste V0.3.99 avant V0.
   assert.match(encore.out, /À jour \(V0\.3\.112\)/);
 });
 
-test('test : la livraison de test la plus récente, avec copie de la base de la production', { skip }, async () => {
+test('test : la livraison de test la plus récente est installée ; la base de la production n\'est jamais copiée, db/ n\'est jamais touché', { skip }, async () => {
   publier(livraison('v1.2', { label: 'prod' }));
   const prod = nas('maverick-center');
   assert.equal((await prod.run()).code, 0);
   writeFileSync(join(prod.base, 'db', 'fiches.json'), '{"fiches": 2}');
 
   publier(livraison('v1.3', { label: 'prod' }), livraison('v1.2.4', { label: 'test récent' }), livraison('v1.2.3'), livraison('v1.2'));
+  // Les réglages d'avant (DOSSIER_PROD, SANS_BASE_PROD dans mise-a-jour.env, ou MAVERICK_BASE_TEST=conservee) n'ont plus d'effet sur la base.
   const t = nas('maverick-center-test', { mode: 'test', env: { DOSSIER_PROD: prod.base } });
+  mkdirSync(join(t.base, 'db', 'pieces'), { recursive: true });
+  writeFileSync(join(t.base, 'db', 'saisie-du-site-de-dev.txt'), 'introuvable ailleurs');
+  writeFileSync(join(t.base, 'db', 'pieces', 'a.txt'), 'a');
   const res = await t.run();
   assert.equal(res.code, 0, res.out);
   assert.equal(t.tag(), 'v1.2.4');
   assert.equal(t.read('site/index.html'), '<h1>accueil test récent</h1>');
-  assert.equal(t.read('db/fiches.json'), '{"fiches": 2}');
+  assert.ok(!t.has('db/fiches.json'), 'la base de la production n\'est pas copiée');
+  assert.equal(t.read('db/saisie-du-site-de-dev.txt'), 'introuvable ailleurs');
+  assert.equal(t.read('db/pieces/a.txt'), 'a');
   assert.match(t.read('VERSION'), /^mode=test$/m);
   assert.match(t.read('.env'), /8081/);
+});
+
+test('test : une livraison plus ancienne que celle installée est refusée (R274), sans téléchargement ni changement de db/', { skip }, async () => {
+  publier(livraison('V1.2.9', { label: 'v9' }));
+  const t = nas('refus-plus-ancienne', { mode: 'test' });
+  assert.equal((await t.run()).code, 0);
+  writeFileSync(join(t.base, 'db', 'vivante.db'), 'saisies');
+
+  // Plus ancienne : le numéro se compare comme un nombre (V1.2.10 > V1.2.9), jamais comme du texte.
+  publier(livraison('V1.2.10', { label: 'v10' }));
+  assert.equal((await t.run()).code, 0);
+  assert.equal(t.tag(), 'V1.2.10');
+  publier(livraison('V1.2.9', { label: 'v9 bis' }), livraison('V1.2.8'));
+  const avant = state.telechargements;
+  const refus = await t.run();
+  assert.equal(refus.code, 1, 'un minuteur le lance : le refus est une erreur visible, pas un succès');
+  assert.match(refus.out, /V1\.2\.9 est plus ancienne que V1\.2\.10/);
+  assert.match(t.log(), /plus ancienne/);
+  assert.equal(state.telechargements, avant, 'refusée avant le téléchargement');
+  assert.equal(t.tag(), 'V1.2.10');
+  assert.equal(t.read('site/index.html'), '<h1>accueil v10</h1>');
+  assert.equal(t.read('db/vivante.db'), 'saisies');
+
+  // Égale : à jour, comme avant.
+  publier(livraison('V1.2.10', { label: 'v10' }));
+  assert.match((await t.run()).out, /À jour \(V1\.2\.10\)/);
+
+  // La régénération (rebuild) compte : V1.2.10-rebuild.1 est plus récente que V1.2.10 et plus ancienne que V1.2.10-rebuild.2.
+  publier(livraison('V1.2.10-rebuild.2', { label: 'rebuild 2' }), livraison('V1.2.10-rebuild.1'));
+  assert.equal((await t.run()).code, 0);
+  assert.equal(t.tag(), 'V1.2.10-rebuild.2');
+  publier(livraison('V1.2.10-rebuild.1', { label: 'rebuild 1' }), livraison('V1.2.10'));
+  const rebuild = await t.run();
+  assert.equal(rebuild.code, 1);
+  assert.match(rebuild.out, /V1\.2\.10-rebuild\.1 est plus ancienne que V1\.2\.10-rebuild\.2/);
+  assert.equal(t.tag(), 'V1.2.10-rebuild.2');
+
+  // --force : le retour en arrière voulu, et lui seul.
+  const force = await t.run(['--force']);
+  assert.equal(force.code, 0, force.out);
+  assert.equal(t.tag(), 'V1.2.10-rebuild.1');
+  assert.equal(t.read('site/index.html'), '<h1>accueil rebuild 1</h1>');
+  assert.equal(t.read('db/vivante.db'), 'saisies');
+  assert.match((await t.run()).out, /À jour \(V1\.2\.10-rebuild\.1\)/, 'une fois revenu, l\'instance est à jour');
+});
+
+test('test : sans VERSION ni étiquette installée, on installe ; une étiquette installée hors forme de test est refusée (--force installe)', { skip }, async () => {
+  publier(livraison('V1.2.4', { label: 'v4' }));
+  // Première installation : pas de VERSION (MODE donné), db/ déjà rempli : l'installation n'y touche pas.
+  const neuf = nas('premiere-installation', { mode: 'test' });
+  mkdirSync(join(neuf.base, 'db'), { recursive: true });
+  writeFileSync(join(neuf.base, 'db', 'vivante.db'), 'saisies');
+  assert.ok(!neuf.has('VERSION'));
+  assert.equal((await neuf.run()).code, 0);
+  assert.equal(neuf.tag(), 'V1.2.4');
+  assert.equal(neuf.read('db/vivante.db'), 'saisies');
+
+  // VERSION sans ligne tag= : comme une première installation.
+  const sansTag = nas('version-sans-tag', { mode: 'test' });
+  writeFileSync(join(sansTag.base, 'VERSION'), 'mode=test\n');
+  const r = await sansTag.run();
+  assert.equal(r.code, 0, r.out);
+  assert.equal(sansTag.tag(), 'V1.2.4');
+
+  // Étiquette installée qui n'est pas celle d'une livraison de test : refus clair, rien n'est modifié.
+  const bizarre = nas('etiquette-bizarre', { mode: 'test' });
+  writeFileSync(join(bizarre.base, 'VERSION'), 'tag=essai-local\nmode=test\n');
+  const refus = await bizarre.run();
+  assert.equal(refus.code, 1);
+  assert.match(refus.out, /« essai-local » n'a pas la forme d'une livraison de test/);
+  assert.ok(!bizarre.has('site/index.html'));
+  assert.equal((await bizarre.run(['--force'])).code, 0);
+  assert.equal(bizarre.tag(), 'V1.2.4');
+});
+
+test('production : le contrôle d\'ordre ne s\'applique pas (« latest » est choisi par GitHub ; revenir en arrière = publier la version voulue)', { skip }, async () => {
+  publier(livraison('v1.3', { label: 'v13' }));
+  const p = nas('prod-sans-controle-d-ordre');
+  assert.equal((await p.run()).code, 0);
+  publier(livraison('v1.2', { label: 'v12' }));
+  const res = await p.run();
+  assert.equal(res.code, 0, res.out);
+  assert.equal(p.tag(), 'v1.2');
 });
 
 test('jeton refusé : erreur claire, site inchangé', { skip }, async () => {
@@ -325,9 +414,9 @@ test('verrou : exemplaire déjà en cours = on sort sans rien faire ; verrou pé
   assert.ok(!n.has('.mise-a-jour.lock'), 'le verrou est retiré en fin de script');
 });
 
-test('GELER suspend les mises à jour (retour à une version précédente) ; SANS_BASE_PROD pour un test sans serveur normal', { skip }, async () => {
+test('GELER suspend les mises à jour (retour à une version précédente)', { skip }, async () => {
   publier(livraison('v1.3.0', { label: 'test seul' }));
-  const t = nas('test-seul', { mode: 'test', env: { SANS_BASE_PROD: '1' } });
+  const t = nas('test-seul', { mode: 'test' });
   const res = await t.run();
   assert.equal(res.code, 0, res.out);
   assert.equal(t.tag(), 'v1.3.0');
@@ -343,4 +432,31 @@ test('GELER suspend les mises à jour (retour à une version précédente) ; SAN
   rmSync(join(t.base, 'GELER'));
   assert.equal((await t.run()).code, 0);
   assert.equal(t.tag(), 'v1.3.1');
+});
+
+test('l’installateur installé est gardé dans installateur-courant/ (un seul, le dernier), pour la copie extérieure des sauvegardes ; une livraison déjà installée le reçoit une fois', { skip }, async () => {
+  publier(livraison('v1.2', { label: 'v1' }));
+  const n = nas('installateur-garde');
+  assert.equal((await n.run()).code, 0);
+  const garde = 'installateur-courant/maverick-center-v1.2-install.sh';
+  assert.ok(n.has(garde), 'l’installateur de la livraison installée est gardé');
+  assert.equal(spawnSync('sh', [join(n.base, garde), '--verifier'], { encoding: 'utf8' }).status, 0, 'gardé entier : son archive se contrôle');
+  assert.ok(!readFileSync(join(n.base, garde), 'latin1').includes(TOKEN));
+
+  publier(livraison('v1.3', { label: 'v2' }), livraison('v1.2'));
+  assert.equal((await n.run()).code, 0);
+  assert.ok(n.has('installateur-courant/maverick-center-v1.3-install.sh'));
+  assert.ok(!n.has(garde), 'un seul installateur gardé : l’ancien est retiré');
+
+  // une instance à jour qui n'a rien gardé (installation à la main) : téléchargé une fois, sans rien réinstaller
+  rmSync(join(n.base, 'installateur-courant'), { recursive: true });
+  const avant = state.telechargements;
+  const res = await n.run();
+  assert.equal(res.code, 0, res.out);
+  assert.match(res.out, /Installateur v1\.3 gardé/);
+  assert.match(res.out, /À jour \(v1\.3\)/);
+  assert.equal(state.telechargements, avant + 1);
+  assert.ok(n.has('installateur-courant/maverick-center-v1.3-install.sh'));
+  assert.equal((await n.run()).code, 0);
+  assert.equal(state.telechargements, avant + 1, 'ensuite, plus aucun téléchargement');
 });

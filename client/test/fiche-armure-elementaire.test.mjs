@@ -8,14 +8,14 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { enregistrerFiche, lireFiche } from '../serveur/fiches.mjs';
-import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { ficheVide, ligneDeRetrait, POIDS_DES_ARMURES, PREFIXE_DE_RETRAIT, valeurDuPoids } from '../src/lib/fiche-format.mjs';
 import * as M from '../src/lib/fiche-moteur.mjs';
-import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { baseDImport, cheminDImport, reglesDImport } from './aide-base-d-import.mjs';
 
-const db = ouvrirBase({ sansExemples: false });
-const regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(db))); // tel que la page le reçoit
+// les règles (textes et valeurs que le site de dev modifie librement) : épinglées sur leur état d'import (test/aide-base-d-import.mjs)
+const db = baseDImport();
+const regles = reglesDImport(); // tel que la page le reçoit
 const INSTANT = '2026-10-23T08:00:00Z';
 const xpDuNiveau = (n) => regles.niveaux.find((x) => x.niveau === n).xp_min;
 const NAIN = { race_id: 'races/nain', ethnie_id: 'races/nain#ethnie:nain-est' };
@@ -101,9 +101,9 @@ test('R165 (6) : poidsPortableDesTextes — l’ordre (classes, dons, +1 du Nain
   assert.equal(M.poidsEcritDuDon('+3% pour les compétences d\'arme, peut porter les armures lourdes, +5 points'), 3);
 });
 
-test('R165 (6) : le relevé des dons qui écrivent un poids, sur toute la base — les 20 de gd-fiche, tous de spécialité au niveau de classe 10 ; Cuirassé et Lancier exclus', () => {
+test('R165 (6) : le relevé des dons qui écrivent un poids, sur toute la base — les 20 de gd-fiche et « Carcasse rouillée » du Boxeur (« Maîtrise les armures lourdes », migration 0119), tous de spécialité au niveau de classe 10 ; Cuirassé et Lancier exclus', () => {
   const lus = Object.fromEntries(regles.classes.flatMap((c) => c.dons).map((d) => [d.id, M.poidsEcritDuDon(d.effet)]).filter(([, v]) => v !== null));
-  const a3 = ['clerc-zelote', 'guerrier-maitre-darme', 'lancier-maitre-dhast', 'mercenaire-combattant-libre', 'moine-templier'];
+  const a3 = ['boxeur-carcasse-rouillee', 'clerc-zelote', 'guerrier-maitre-darme', 'lancier-maitre-dhast', 'mercenaire-combattant-libre', 'moine-templier'];
   const a2 = ['fenrir-belliciste', 'goleois-irreductible', 'mage-rouge-mage-grenat', 'marcass-canaille', 'medusain-hoplite', 'minotaure-gladiateur', 'minotaure-medium',
     'namazu-batailleur', 'namazu-devin', 'orios-chaman', 'orios-va-t-en-guerre', 'satyre-galopin', 'satyre-oracle', 'lanceur-fantassin', 'martiale-heros'];
   assert.deepEqual(Object.keys(lus).sort(), [...a3, ...a2].map((x) => `capacites/${x}`).sort());
@@ -243,7 +243,7 @@ test('R165 (7), (8) : retraitsDeLArmureHorsListe — trop lourde (le poids baiss
 
 test('R165 (7) : les lignes du moteur sont celles du service (enregistrerFiche avec poidsPortable branché sur le moteur) — trop lourde, magie absente, « Familier », armure et élément d’avant', (t) => {
   const racine = dossierTemporaire('r165-fiche', { t });
-  const vivante = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(racine, 'db') }).chemin);
+  const vivante = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminDImport(), dossier: join(racine, 'db') }).chemin);
   try {
     const poidsPortable = (base, id) => M.poidsPortable(regles, lireFiche(base, id));
     const lanceur = { classe: 'classes/lanceur', specialite: 'classes/lanceur#specialite:fantassin', niveauDeClasse: 4 };

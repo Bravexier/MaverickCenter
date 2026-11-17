@@ -140,7 +140,7 @@ main:has(> .fiche) { max-width: 100rem; }
   .zp-colonne { grid-area: col; }
   .zp-sorts { grid-area: sor; }
   .zp-dons { grid-area: don; }
-  /* III. selon la situation : les postures (et le Mode Hyper) sur toute la largeur ; armure et accessoires, à côté initiative, résistances et bouclier */
+  /* III. selon la situation : les postures (et le Mode Hyper) sur toute la largeur ; armure et accessoires, à côté résistances et bouclier */
   .zone-situation { grid-template-columns: minmax(0, 5fr) minmax(0, 3fr); grid-template-areas: 'pos pos' 'gau dro'; }
   .zs-posture { grid-area: pos; }
   .zs-gauche { grid-area: gau; }
@@ -179,12 +179,13 @@ main:has(> .fiche) { max-width: 100rem; }
 .fiche-aide { margin: 0; color: var(--muted); font-size: var(--fs-sm); }
 .fiche-aide a { color: inherit; }
 
-/* ----------------------------------------------------------------- I. identité : le portrait à gauche, le nom en grand et le niveau à droite,
-   surnom, origine et alignement, puis race, magies et classes en trois colonnes de menus */
+/* ----------------------------------------------------------------- I. identité : le portrait à gauche et l'alignement dessous, le nom en grand et le
+   niveau à droite, surnom, origine et métier, puis race, magies et classes en trois colonnes de menus (demande du propriétaire du 2026-11-13) */
 .identite { display: grid; gap: 0.9rem; padding: 0.8rem; grid-template-columns: minmax(0, 1fr); }
 @media (min-width: 48rem) {
-  .identite { grid-template-columns: 11rem minmax(0, 1fr); align-items: start; }
+  .identite { grid-template-columns: 15rem minmax(0, 1fr); align-items: start; }
 }
+.identite__gauche { display: grid; gap: 0.6rem; align-content: start; min-width: 0; }
 .identite__corps { display: grid; gap: 0.6rem; min-width: 0; }
 .identite__tete { display: flex; align-items: center; gap: 0.75rem; }
 .identite__nom { flex: 1; min-width: 0; }
@@ -222,11 +223,16 @@ main:has(> .fiche) { max-width: 100rem; }
 .identite__niveau small { color: var(--muted); font-size: 0.62rem; letter-spacing: var(--ls-caps); text-transform: uppercase; }
 .identite__niveau strong { font-size: 1.75rem; font-variant-numeric: tabular-nums; }
 .identite__ligne { display: grid; gap: 0.5rem 0.75rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 11rem), 1fr)); align-items: end; }
-.identite__ligne .alignement { grid-column: span 2; }
-@media (max-width: 40rem) {
-  .identite__ligne .alignement { grid-column: auto; }
-}
 .identite__choix { position: relative; display: grid; gap: 0.5rem 0.75rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); align-items: start; }
+@media (min-width: 64rem) {
+  /* la race seule à gauche, plus étroite : les magies et les classes portent chacune leur spécialisation ou spécialité à côté */
+  .identite__choix { grid-template-columns: minmax(0, 0.75fr) minmax(0, 1.2fr) minmax(0, 1.5fr); }
+}
+/* un menu et sa spécialité (ou spécialisation) côte à côte ; seul, il prend la ligne ; trop étroit, la spécialité passe dessous */
+.identite__paire { display: flex; flex-wrap: wrap; gap: 0.35rem; min-width: 0; }
+.identite__paire > * { flex: 1 1 10rem; min-width: 0; }
+.identite__paire:not(:has(> :not([hidden]))) { display: none; }
+.identite__paire .choix > summary { flex-wrap: wrap; row-gap: 0.15rem; }
 .identite__colonne { display: grid; gap: 0.35rem; align-content: start; min-width: 0; }
 .identite__dieux { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.75rem; align-items: start; }
 .identite__dieux p { margin: 0; }
@@ -295,6 +301,8 @@ main:has(> .fiche) { max-width: 100rem; }
 .parametres .onglet.is-active { border-color: var(--etape); border-bottom-color: var(--surface); background: var(--surface); color: color-mix(in srgb, var(--etape) 70%, var(--text)); }
 .onglet__compte { padding: 0 0.4rem; border-radius: var(--radius-pill); background: var(--danger); color: var(--texte-sur-danger); font-size: var(--fs-xxs); }
 .onglet__compte[data-ok] { background: var(--good); color: var(--texte-sur-good); }
+/* des avertissements seulement (décision R170 : le plafond de maîtrise), aucune erreur */
+.onglet__compte[data-avertissement] { background: var(--warn-bg); color: var(--warn-text); }
 .onglet__compte--attente { background: var(--a-choisir-plein); color: var(--texte-sur-fonce); }
 .parametres__panneau { border-top-left-radius: 0; border-top-right-radius: 0; }
 html.js .parametres[data-onglets] .parametres__panneau:not(.is-active) { display: none; }
@@ -487,7 +495,7 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .choix[open] > summary::after { content: '▴'; }
 .choix > summary:hover, .choix > summary:focus-visible { border-color: var(--etape); outline: none; }
 .choix__etiquette { flex: none; color: var(--muted); font-size: var(--fs-xs); }
-/* une liste simple présentée comme les menus des choix (le métier, facultatif, sous l'ethnie : demande du propriétaire) */
+/* une liste simple présentée comme les menus des choix (le métier, facultatif, à droite du lieu d'origine : demande du propriétaire) */
 .choix-liste {
   display: flex;
   align-items: center;
@@ -499,8 +507,6 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
   background: var(--surface);
 }
 .choix-liste:focus-within { border-color: var(--etape); box-shadow: 0 0 0 1px var(--etape); }
-.fiche .choix-liste select { flex: 1; min-width: 0; border: 0; background: none; font-weight: 700; }
-.fiche .choix-liste select:focus { outline: none; }
 .choix__valeur { display: flex; flex-wrap: wrap; gap: 0.3rem; min-width: 0; }
 .choix__pastille {
   --c: var(--etape);
@@ -594,7 +600,7 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .pastille:disabled { opacity: 0.4; box-shadow: none; text-decoration: line-through; cursor: not-allowed; }
 /* choisie alors que les règles la ferment (race changée, fiche importée) : reste cliquable pour la retirer, cerclée de rouge */
 .pastille[data-refus] { outline: 2px dashed var(--danger); outline-offset: 2px; }
-/* imposée par les règles (l'Archimage du Potentiel Illimité, décision R23) : ne se retire pas */
+/* imposée par les règles (l'ethnie d'une race hybride) : ne se retire pas */
 .pastille[data-verrou] { cursor: not-allowed; }
 .pastille[data-verrou]:hover { transform: none; }
 .pastille small { font-weight: normal; opacity: 0.85; }
@@ -687,19 +693,28 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .fiche-table--maitrises tbody th { color: var(--text); font-size: var(--fs-sm); font-weight: 600; white-space: nowrap; }
 .fiche .fiche-table--maitrises td, .fiche .fiche-table--maitrises tbody th { vertical-align: top; }
 .fiche-table--maitrises tr[data-nul] > * { color: var(--muted); font-weight: normal; }
-.fiche-table--maitrises tr[data-etat='trop'] > * { background: color-mix(in srgb, var(--danger) 8%, transparent); }
+/* au-delà du plafond (R149) : un avertissement, pas une erreur (décision R170) */
+.fiche-table--maitrises tr[data-etat='avertissement'] > * { background: var(--warn-bg); }
 .maitrise-detail { color: var(--muted); font-size: var(--fs-xs); }
 .maitrise-alerte { display: block; margin-top: 0.1rem; padding-left: 0.4rem; border-left: 3px solid var(--border); }
-.maitrise-alerte[data-ton='trop'] { border-color: var(--danger); color: var(--danger); font-weight: 600; }
+.maitrise-alerte[data-ton='avertissement'] { border-color: var(--warn-text); color: var(--warn-text); font-weight: 600; }
 
-/* alignement (demande du propriétaire) : les quatre scores serrés, l'alignement qui en résulte à côté */
-.alignement { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.7rem; margin: 0; padding: 0.25rem 0.55rem 0.4rem; border: 1px solid var(--etape-ligne); border-radius: var(--radius); }
+/* alignement (demande du propriétaire) : une jauge à deux bornes par axe (score modifiable à chaque borne, cinq crans entre elles), l'alignement
+   qui en résulte à côté */
+.alignement { display: grid; grid-template-columns: auto auto auto minmax(0, 1fr); align-items: center; gap: 0.3rem 0.7rem; margin: 0; padding: 0.25rem 0.55rem 0.4rem; border: 1px solid var(--etape-ligne); border-radius: var(--radius); }
 .alignement legend { padding: 0 0.3rem; color: var(--muted); font-size: var(--fs-xs); }
-.alignement__axe { display: inline-flex; gap: 0.25rem; }
-.alignement__axe label { display: inline-flex; align-items: center; gap: 0.15rem; color: var(--muted); font-size: var(--fs-xs); font-weight: 700; }
+.alignement__axe { display: contents; }
+.alignement__axe label { display: inline-flex; align-items: center; gap: 0.25rem; color: var(--muted); font-size: var(--fs-xs); font-weight: 700; }
+.alignement__axe label:first-child { justify-self: end; }
 .fiche .alignement input { width: 3.3rem; padding-inline: 0.3rem; text-align: right; font-variant-numeric: tabular-nums; }
+.alignement__jauge { display: inline-flex; gap: 0.2rem; }
+.alignement__jauge i { width: 0.85rem; height: 0.85rem; border: 1px solid var(--etape-ligne); border-radius: 50%; }
+.alignement__jauge i:nth-child(3) { border-radius: 2px; }
+.alignement__jauge i.alignement__cran--actif { background: var(--etape); border-color: var(--etape); }
 .alignement__resultat {
-  margin-left: auto;
+  grid-column: 4;
+  grid-row: 1 / span 2;
+  justify-self: end;
   padding: 0.05rem 0.7rem;
   border-radius: var(--radius-pill);
   background: var(--c, var(--etape));
@@ -707,6 +722,18 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
   font-size: var(--fs-md);
   font-weight: 700;
   white-space: nowrap;
+}
+/* sous le portrait (demande du propriétaire du 2026-11-13) : chaque borne a son nom au-dessus de son score, l'alignement qui en résulte dessous */
+.identite__gauche .alignement { grid-template-columns: auto minmax(0, 1fr) auto; justify-items: center; gap: 0.35rem 0.4rem; }
+.identite__gauche .alignement__axe label { flex-direction: column; gap: 0.1rem; }
+.identite__gauche .alignement__axe label:last-child { flex-direction: column-reverse; }
+.identite__gauche .alignement__axe label:first-child { justify-self: center; }
+.fiche .identite__gauche .alignement input { width: 3rem; }
+.identite__gauche .alignement__resultat { grid-column: 1 / -1; grid-row: auto; justify-self: center; }
+@media (max-width: 30rem) {
+  .alignement { grid-template-columns: repeat(3, auto); gap: 0.3rem 0.4rem; }
+  .fiche .alignement input { width: 2.8rem; }
+  .alignement__resultat { grid-column: 1 / -1; grid-row: auto; justify-self: start; }
 }
 
 /* ----------------------------------------------------------------- tableaux de saisie */
@@ -739,13 +766,10 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .fiche-table--sorts tr.sort-effet td { padding-top: 0; color: var(--muted); font-size: var(--fs-xs); line-height: 1.3; white-space: pre-line; }
 /* la remarque d'un sort : une étoile, son texte en infobulle (demande du propriétaire ; son `title`, montré en position fixe par components/Infobulles.astro : le cadre défilant ne la coupe pas) */
 .sort-choix { display: flex; min-width: 9rem; align-items: center; gap: 0.3rem; }
-.sort-choix select { flex: 1; min-width: 0; }
 .sort-remarque { flex: none; color: var(--etoile); font-size: var(--fs-lg); line-height: 1; cursor: help; }
 .sort-remarque:focus-visible { outline: 2px solid var(--etape); outline-offset: 2px; border-radius: var(--radius-xxs); }
-/* liste d'un emplacement : un groupe par NPM, chaque sort sur la couleur de sa magie (demande du propriétaire) ; fermée, la couleur du sort choisi */
-.fiche .fiche-table--sorts select[data-couleur] { background-color: var(--c); color: var(--texte-sur-c); font-weight: 600; } /* la classe de la magie du sort (teinte-palette) */
-.fiche-table--sorts optgroup, .fiche-table--sorts option.option-vide { background-color: var(--surface); color: var(--text); font-weight: normal; }
-.fiche-table--sorts optgroup { color: var(--muted); font-style: normal; }
+/* liste d'un emplacement : un groupe par NPM, chaque sort sur la couleur de sa magie (demande du propriétaire) ; fermée, la couleur du sort choisi (la
+   liste dessinée par le site : .liste-choix, plus bas) */
 /* un sort au-delà des emplacements (XP baissée, magie retirée) : pas d'emplacement en plus (décision R27), à retirer */
 .fiche-table--sorts tr.en-trop td { background: color-mix(in srgb, var(--danger) 8%, var(--surface)); }
 /* le NM d'un sort (décision R118) : un curseur de 0 à 3, sa valeur, et « livre » quand l'entraînement en note un */
@@ -768,10 +792,11 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .sort-prepare { margin-top: 0.6rem; }
 .sort-prepare__champs { display: flex; flex-wrap: wrap; align-items: end; gap: 0.5rem 0.75rem; }
 .sort-prepare__sort { flex: 1 1 14rem; min-width: 0; }
+/* la plage de réussite critique figée et le rappel de Double coup (décision R182), sous les champs du bloc */
+.sort-prepare__critique, .sort-prepare__rappel { margin: 0.4rem 0 0; }
 .fiche .sort-prepare__jet { width: 5.5rem; }
-/* la magie du sort (teinte-palette) ; la posture, sa couleur et son texte en style jusqu'à leur lot */
-.fiche .sort-prepare select[data-couleur], .sort-prepare__posture[data-couleur] { background-color: var(--c); color: var(--texte-sur-c); font-weight: 600; }
-.sort-prepare option { background-color: var(--surface); color: var(--text); font-weight: normal; }
+/* la posture de la préparation sur sa couleur (teinte-palette) ; le sort, sur celle de sa magie, est une liste du site (.liste-choix, plus bas) */
+.sort-prepare__posture[data-couleur] { background-color: var(--c); color: var(--texte-sur-c); font-weight: 600; }
 .sort-prepare__posture { display: inline-block; padding: 0.15rem 0.5rem; border-radius: var(--radius-xxs); }
 /* les NM du MJ, pour toute la fiche (décision R118) : à côté du décompte des NM */
 .budget--mj { align-items: center; color: var(--muted); }
@@ -870,7 +895,8 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .attribut__tete { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 0 0.5rem; }
 .attribut__nom { color: var(--a-nom); font-size: var(--fs-xs); font-weight: 700; }
 .attribut__valeur { font-size: 1.15rem; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.attribut__valeur[data-hors] { color: var(--danger); }
+.attribut__valeur[data-hors],
+.attribut__valeur[data-negative] { color: var(--danger); }   /* data-negative : la santé sous 0 (décision R171 : sans plancher) */
 .attribut__curseur { display: flex; align-items: center; gap: 0.3rem; }
 .attribut .curseur { min-width: 3rem; accent-color: var(--a); }
 .fiche .ajuster {
@@ -904,21 +930,30 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 }
 .attributs-corruption { display: grid; }
 .attributs .attribut__valeur, .attributs-corruption .attribut__valeur { font-size: 1.35rem; }
-/* initiative, vitesse et nage (zone III) : trois tuiles, le nom en petit au-dessus de la valeur */
-.fiche .attributs-pastilles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.4rem; font-size: 1.2rem; }
+/* la 2ᵉ ligne des attributs (demande du propriétaire du 2026-10-29) : AP et AM, puis initiative, vitesse et nage, cinq tuiles de même largeur ;
+   dessous, les dégâts reçus (.defense) */
+.attributs-ligne2 { display: grid; gap: 0.4rem; grid-template-columns: minmax(0, 1fr); margin-top: 0.45rem; }
+@media (min-width: 40rem) {
+  .attributs-ligne2 { grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); }
+}
+/* initiative, vitesse et nage : trois tuiles, le nom en petit au-dessus de la valeur, comme l'AP et l'AM */
+.fiche .attributs-pastilles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.4rem; margin: 0; padding: 0; list-style: none; }
 .fiche .attributs-pastilles li {
   display: grid;
   justify-items: center;
   gap: 0.1rem;
-  padding: 0.35rem 0.3rem;
+  padding: 0.3rem;
+  border: 1px solid var(--etape-ligne);
   border-radius: var(--radius);
+  background: var(--etape-doux);
+  font-size: 1.3rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   line-height: 1.15;
   text-align: center;
   cursor: help;
 }
-.fiche .attributs-pastilles strong { color: var(--muted); font-size: var(--fs-xxs); letter-spacing: var(--ls-caps); text-transform: uppercase; }
+.fiche .attributs-pastilles strong { color: var(--muted); font-size: var(--fs-xxs); font-weight: 600; letter-spacing: var(--ls-caps); text-transform: uppercase; }
 /* les six postures (demande du propriétaire) : une case chacune, dans sa couleur (la classe de la posture et teinte-palette), avec ses effets toujours lisibles ; la choisie pleine. Puis le Mode
    Hyper et le Mode Hyper 100 % une fois débloqués, sur deux colonnes (leurs effets sont plus longs), chacun dans la classe de son mode (famille `mode`
    de lib/palette-css.mjs) et teinte-palette */
@@ -955,6 +990,19 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 /* avantages en vert, inconvénients en rouge (décision du propriétaire) */
 .posture-carte__effets li.est-avantage { color: var(--good); }
 .posture-carte__effets li.est-inconvenient { color: var(--danger); font-weight: 600; }
+/* le Mode Hyper et le Mode Hyper 100 % activables (décision R172) : leur nom est le bouton qui les coche ; actifs, pleins comme la posture choisie ; sous
+   eux, le compteur de la semaine et les boutons des jauges. En Mode Hyper 100 %, toutes les postures sont actives, leurs inconvénients barrés */
+.fiche .posture-carte__bascule { display: block; width: 100%; border: 0; border-radius: 0; color: var(--text); font: inherit; font-size: var(--fs-md); font-weight: 700; text-align: left; cursor: pointer; }
+.fiche .posture-carte__bascule:disabled { cursor: not-allowed; opacity: 0.6; }
+.fiche .posture-carte--hyper[data-actif] { border-color: var(--c); box-shadow: 0 0 0 2px var(--c), 0 2px 8px color-mix(in srgb, var(--c) 40%, transparent); }
+.fiche .posture-carte--hyper[data-actif] .posture-carte__bascule { background: var(--c); color: var(--c-texte); }
+.fiche .posture-carte--hyper[data-actif] .posture-carte__bascule::after { content: ' ✓'; }
+.posture-carte__suivi { display: flex; flex-wrap: wrap; gap: 0.35rem 0.6rem; align-items: center; padding: 0 0.6rem 0.45rem; font-size: var(--fs-xs); }
+.posture-carte__semaine { --a: var(--c); --a-trait: color-mix(in srgb, var(--c) 65%, var(--border)); display: inline-flex; gap: 0.25rem; align-items: center; }
+.fiche .posture-carte__semaine .ajuster:disabled { opacity: 0.45; }
+.posture-carte__compte { min-width: 2.6em; font-weight: 700; text-align: center; font-variant-numeric: tabular-nums; }
+.fiche .postures__cartes[data-cent] .posture-carte { border-color: var(--c); }
+.fiche .postures__cartes[data-cent] .posture-carte__effets li.est-inconvenient { text-decoration: line-through; opacity: 0.7; }
 /* la corruption reste noire en mode sombre : son nom et ses boutons prennent alors la couleur du texte pour rester lisibles */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) .attribut[data-a='corruption'] { --a-trait: var(--muted); --a-nom: var(--text); }
@@ -966,7 +1014,7 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .retirer:hover { border-color: var(--danger) !important; }
 
 /* dons à choix */
-/* rappel des dons sous les sorts (demande du propriétaire) : don de base et don de race, puis les dons débloqués de chaque classe */
+/* les actions sous la ceinture et les passifs (décision R173) : dons de race, puis les dons débloqués de chaque classe, puis l'équipement */
 .dons-liste { display: grid; gap: 0.3rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr)); margin: 0; padding: 0; list-style: none; }
 .don { display: grid; gap: 0.1rem; align-content: start; padding: 0.25rem 0.45rem; border: 1px solid var(--etape-ligne); border-left: 3px solid var(--c, var(--etape)); border-radius: var(--radius); background: var(--etape-doux); font-size: var(--fs-sm); }
 .don__tete { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.15rem 0.4rem; }
@@ -976,9 +1024,23 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .don__texte { color: var(--muted); font-size: var(--fs-xs); line-height: 1.3; white-space: pre-line; }
 /* l'aide de la fiche sous le texte d'un don (« ... plus fort ! » du Flagelleur, décision R163) */
 .don__aide { font-size: var(--fs-xs); font-style: italic; line-height: 1.3; }
-/* « Entraînement » (décision R71) : texte libre, entre les dons de la race et ceux des classes */
-.dons-entrainement textarea { display: block; width: 100%; min-height: 2.6rem; resize: vertical; }
-.dons-entrainement .fiche-aide { margin-top: 0.2rem; font-size: var(--fs-xs); }
+/* d'où vient un passif ou une action (un objet, une classe) */
+.don__source { color: var(--muted); font-size: var(--fs-xxs); }
+/* les actions sous la ceinture (décision R173) : le nom d'une action à compteur est le bouton qui la consomme ; grisée en Symbiose (R112) ou à 0 */
+.actions-liste { grid-template-columns: 1fr; }
+.fiche .action__utiliser { padding: 0 0.45rem; font-size: var(--fs-sm); font-weight: 700; }
+.fiche .action__utiliser[aria-disabled='true'] { opacity: 0.45; cursor: not-allowed; }
+/* grisée : le trait de gauche en pointillés et le bouton atténué ; le texte garde sa couleur (--muted, lisible : pas d'opacité en plus) */
+.action[data-grisee] { border-left-style: dashed; }
+.action:focus-visible { outline: 2px solid var(--etape); outline-offset: 1px; }
+.action__suivi { --a: var(--c, var(--etape)); --a-trait: color-mix(in srgb, var(--a) 60%, var(--border)); display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; }
+.action__compte { font-variant-numeric: tabular-nums; font-weight: 700; }
+.fiche .action__suivi .ajuster[aria-disabled='true'] { opacity: 0.45; cursor: not-allowed; }
+.action__raison:empty { display: none; }
+.action .fiche-aide { font-size: var(--fs-xs); }
+.actions__pied { margin: 0.4rem 0 0; }
+/* « Entraînement » (décisions R104, R169) : son onglet de la zone IV, après « Choix » */
+.entrainement-panneau .fiche-aide { margin-top: 0.2rem; font-size: var(--fs-xs); }
 .dons-classes { display: grid; gap: 0.5rem; }
 .dons-classe > h4 { margin: 0 0 0.25rem; padding-bottom: 0.15rem; border-bottom: 2px solid var(--c); font-size: var(--fs-sm); }
 
@@ -1011,19 +1073,15 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .objet__solidite .curseur__valeur { min-width: 2.6rem; }
 .objet__solidite[data-cassee] .curseur__valeur { color: var(--danger); }
 /* la liste unique des armures (décision R165 (5)) : chaque armure élémentaire sur la couleur de sa magie (sa classe et teinte-palette, comme les sorts) ;
-   fermée, la couleur de l'armure élémentaire choisie ; le poids portable dessous */
-.fiche .armure__choix select[data-couleur] { background-color: var(--c); color: var(--texte-sur-c); font-weight: 600; }
-.armure__choix optgroup, .armure__choix option.option-vide, .armure__choix option:not(.teinte-palette) { background-color: var(--surface); color: var(--text); font-weight: normal; }
-.armure__choix optgroup { color: var(--muted); font-style: normal; }
+   fermée, la couleur de l'armure élémentaire choisie (la liste dessinée par le site : .liste-choix, plus bas) ; le poids portable dessous */
 .armure__poids { margin: 0; cursor: help; }
 /* l'armure portée (décision R95) : la solidité de chacune de ses parties, sur deux colonnes quand la place le permet ; une partie cassée en rouge */
 .armure__parties { display: grid; gap: 0.3rem 0.9rem; grid-template-columns: repeat(auto-fill, minmax(min(100%, 13rem), 1fr)); }
 .armure__partie .objet__solidite-nom { min-width: 6.2rem; }
 .armure__partie[data-cassee] .objet__solidite-nom { color: var(--danger); }
-/* une arme élémentaire (décision R167) : sa liste sur le fond de sa magie (la classe de la magie et `teinte-palette`, comme un sort), les groupes et les
-   autres options au fond du site ; sous la liste, son effet (capacité, « Ignore 4 AP », mention) et le rappel des sorts « Fer » d'un autre élément */
-.fiche .objet select[data-couleur] { background-color: var(--c); color: var(--texte-sur-c); font-weight: 600; }
-.fiche .objet select[data-couleur] optgroup, .fiche .objet select[data-couleur] option:not(.teinte-palette) { background-color: var(--surface); color: var(--text); font-weight: normal; }
+/* une arme élémentaire (décision R167) : sa liste sur le fond de sa magie (la classe de la magie et `teinte-palette`, comme un sort : la liste dessinée
+   par le site, .liste-choix, plus bas), les groupes et les autres options au fond du site ; sous la liste, son effet (capacité, « Ignore 4 AP », mention)
+   et le rappel des sorts « Fer » d'un autre élément */
 .objet__effet { display: grid; gap: 0.15rem; margin: 0; color: var(--muted); font-size: var(--fs-xs); }
 .objet__rappels { margin: 0; padding: 0; list-style: none; color: var(--danger); font-size: var(--fs-xs); }
 .objet__rappels li { cursor: help; }
@@ -1037,6 +1095,8 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .controles { margin: 0; padding-left: 1.1rem; font-size: var(--fs-md); }
 .controles li { margin: 0.1rem 0; }
 .controles[data-vide] { list-style: none; padding: 0; color: var(--good); }
+.controles .controles__ok { list-style: none; margin-left: -1.1rem; color: var(--good); }
+.controles li[data-gravite='avertissement'] { color: var(--warn-text); }
 
 @media (max-width: 40rem) {
   .fiche-zone { padding: 0.45rem 0.4rem 0.5rem; }
@@ -1048,7 +1108,7 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 }
 @media print {
   .site-header, .site-footer, .fiche-barre, .retirer, .fiche-indisponible, .fiche-retraits, .xp__plus, .xp__ajout, .ajuster, .ajout,
-  .portrait__actions, .ceinture__actions, .ceinture__refus, .parametres__onglets, .recadrage, .import-cible, .tiroir__tete { display: none !important; }
+  .portrait__actions, .ceinture__actions, .ceinture__refus, .actions__pied, .parametres__onglets, .recadrage, .import-cible, .tiroir__tete { display: none !important; }
   .parametres__panneau.est-tiroir { position: static; transform: none; max-height: none; box-shadow: none; animation: none; }
   .fiche-etape { break-inside: avoid-page; }
   .fiche-zone { break-inside: auto; background: none; }
@@ -1072,6 +1132,8 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .resistance { padding: 0 0.45rem; border: 1.5px solid var(--c, var(--border)); border-radius: var(--radius-pill); font-size: var(--fs-xs); line-height: 1.5; cursor: help; }
 .resistance--magie { background: var(--c, var(--etape-doux)); color: var(--c-texte, var(--text)); }
 .resistance--etat { background: var(--surface); color: var(--text); }
+/* un type physique (décision R174 : Estoc, Frappe, Taille) : cerclé de la couleur de son palier (sa classe et teinte-palette), jamais un texte sur elle */
+.resistance--physique { background: var(--surface); color: var(--text); }
 .resistances__vide { color: var(--muted); }
 #resistances-choix { margin: 0.3rem 0 0; }
 #resistances-choix[hidden] { display: none; }
@@ -1083,9 +1145,10 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .accessoire-effet:empty { display: none; }
 .accessoire-cellule > select[data-a-choisir] { outline: 2px solid var(--a-choisir); outline-offset: 1px; }
 
-/* ----------------------------------------------------------------- défense et dégâts reçus (décision R98) : l'AP et l'AM totaux en deux tuiles (le
-   détail en infobulle), le bouclier à part, puis une ligne de calcul : dégâts entrants, type, « Dégâts réduits » (et « Au bouclier »), le résultat */
-.defense { display: grid; gap: 0.4rem; margin-bottom: 0.6rem; }
+/* ----------------------------------------------------------------- défense et dégâts reçus (décisions R98, R171), dans la 2ᵉ ligne des attributs :
+   l'AP et l'AM totaux en deux tuiles (le détail en infobulle), puis une ligne de calcul (dégâts entrants, type, élément, partie touchée, « Dégâts
+   réduits », « Au bouclier », « Don ÷ 2 », le résultat) et celle de la barrière (ses cases, ce que deviendront barrière et santé, « Appliquer ») */
+.defense { display: grid; gap: 0.4rem; margin-top: 0.45rem; }
 .defense__tuiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.4rem; margin: 0; padding: 0; list-style: none; }
 .defense__tuile, .bouclier__tuile {
   display: grid;
@@ -1102,13 +1165,16 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
   cursor: help;
 }
 .defense__tuile small, .bouclier__tuile small { color: var(--muted); font-size: var(--fs-xxs); font-weight: 600; letter-spacing: var(--ls-caps); text-transform: uppercase; }
-.defense__bouclier { margin: 0; }
-.defense__bouclier[hidden] { display: none; }
 .defense__degats { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.6rem; padding-top: 0.4rem; border-top: 1px dashed var(--etape-ligne); }
 .defense__titre { color: var(--muted); font-size: var(--fs-xs); letter-spacing: var(--ls-caps); text-transform: uppercase; }
 .fiche .defense__degats input[type='number'] { width: 5.5rem; }
 .defense__degats label[hidden], .defense__degats select[hidden] { display: none; }
 .defense__recus { margin-left: auto; font-size: 1.2rem; font-weight: 700; font-variant-numeric: tabular-nums; cursor: help; }
+.defense__degats select[data-a-choisir] { outline: 2px solid var(--a-choisir); outline-offset: 1px; }
+.defense__barriere { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.6rem; }
+.defense__apercu { margin-left: auto; color: var(--muted); font-size: var(--fs-sm); font-variant-numeric: tabular-nums; }
+.defense__apercu:empty { display: none; }
+.fiche .defense__appliquer { padding: 0.15rem 0.7rem; font-weight: 700; }
 
 /* le bouclier (décision R96) : forme, matière, amélioration ; AP, AM et poids en tuiles (le poids dans la couleur de sa case de l'onglet, R92 ; trop
    lourd pour la Force : en rouge), puis la solidité du moment */
@@ -1144,6 +1210,57 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .autocompletion__liste[hidden] { display: none; }
 .autocompletion__liste li { padding: 0.25rem 0.6rem; cursor: pointer; white-space: nowrap; }
 .autocompletion__liste li:hover, .autocompletion__liste li[aria-selected='true'] { background: var(--etape-doux); color: var(--text); }
+
+/* la liste de choix dessinée par le site à la place d'un menu (src/scripts/liste-choix.mjs : métier, sorts, livres, armes, armure ; demande du
+   propriétaire : l'infobulle de chaque option, ce qu'elle apporte) : fermée, l'aspect du menu qu'elle remplace (bordure, fond, la couleur du choix
+   quand le menu en avait une : `data-couleur` et les classes de la palette recopiées sur le bouton) ; ouverte, une liste en position fixe aux couleurs du
+   thème, bornée à l'écran par le script, chaque option sur la couleur de sa magie comme les options d'avant ; l'option active (le focus) cerclée */
+.liste-choix { display: flex; min-width: 0; }
+.fiche-champ .liste-choix, .fiche-table .liste-choix { width: 100%; }
+.sort-choix .liste-choix, .choix-liste .liste-choix { flex: 1; }
+.entrainement__ligne > .liste-choix { flex: 1 1 6rem; }
+.fiche .liste-choix__bouton {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+}
+.liste-choix__valeur { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.liste-choix__bouton::after { content: '▾'; flex: none; font-size: 0.85em; opacity: 0.7; }
+.liste-choix__bouton[aria-expanded='true']::after { content: '▴'; }
+.fiche .liste-choix__bouton[aria-invalid='true'] { border-color: var(--danger); box-shadow: 0 0 0 1px var(--danger); }
+.fiche .liste-choix__bouton[data-couleur] { background-color: var(--c); color: var(--texte-sur-c); font-weight: 600; }
+.fiche .choix-liste .liste-choix__bouton { padding-inline: 0; border: 0; background: none; font-weight: 700; }
+.fiche .choix-liste .liste-choix__bouton:focus { outline: none; }
+.liste-choix__liste {
+  position: fixed;
+  z-index: 20;
+  width: max-content;
+  margin: 0;
+  padding: 0.2rem 0;
+  overflow-y: auto;
+  border: 1px solid var(--etape-ligne);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--ombre-flottante);
+  font-size: var(--fs-md);
+  font-weight: normal;
+  text-align: left;
+}
+.liste-choix__titre { padding: 0.3rem 0.6rem 0.1rem; color: var(--muted); font-size: var(--fs-xs); font-weight: 600; }
+.liste-choix__option { padding: 0.25rem 0.6rem; overflow-wrap: anywhere; cursor: pointer; }
+.liste-choix__groupe .liste-choix__option { padding-left: 1.1rem; }
+.liste-choix__option.option-vide { color: var(--muted); }
+.fiche .liste-choix__option.teinte-palette { background-color: var(--c); color: var(--c-texte); }
+.liste-choix__option[aria-selected='true'] { font-weight: 700; }
+.liste-choix__option[aria-disabled='true'] { opacity: 0.55; cursor: not-allowed; }
+.liste-choix__option:hover:not(.teinte-palette), .liste-choix__option:focus:not(.teinte-palette) { background: var(--etape-doux); color: var(--text); }
+.liste-choix__option:hover, .liste-choix__option:focus { outline: 2px solid var(--etape); outline-offset: -2px; }
 /* l'inventaire, sous les accessoires (zone III) : le sac puis la bourse ; la liste qui se filtre déborde du tableau qui défile */
 .inventaire { display: grid; gap: 0.6rem; }
 #etape-inventaire .fiche-defile { overflow: visible; }
@@ -1180,6 +1297,9 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .acquis-calcule { font-weight: 600; cursor: help; }
 .acquis-calcule[data-rogne] { color: var(--danger); }
 .nm-livre[hidden] { display: none; }
+/* un livre de sort dont le sort n'est pas choisi (décision R169) : son NM attend */
+.entrainement__attente { color: var(--muted); font-size: var(--fs-xs); font-style: italic; }
+.entrainement__attente[hidden] { display: none; }
 .acquis-choix { display: grid; gap: 0.3rem; margin: 0; padding: 0; list-style: none; }
 /* « à répartir au choix » (décision R104) : chaque compétence et ses points, ce qui reste à répartir */
 .acquis-choix__reste { display: block; color: var(--muted); font-size: var(--fs-xs); }
@@ -1210,10 +1330,10 @@ html.js .parametres[data-onglets] .parametres__panneau.est-tiroir, .parametres__
 .invocations__aide { margin: 0.3rem 0 0; font-size: var(--fs-xs); }
 .invocation-carte { margin-top: 0.35rem; padding: 0.4rem 0.6rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); }
 .invocation-carte__titre { margin: 0 0 0.3rem; }
-.invocation-carte dl, .invocations__tableau { display: grid; gap: 0.2rem; margin: 0; }
-.invocation-carte__rubrique, .invocations__tableau > div { display: grid; grid-template-columns: minmax(6rem, max-content) 1fr; gap: 0.6rem; }
-.invocation-carte dt, .invocations__tableau dt { font-weight: 600; color: var(--muted); }
-.invocation-carte dd, .invocations__tableau dd { margin: 0; }
+.invocation-carte dl { display: grid; gap: 0.2rem; margin: 0; }
+.invocation-carte__rubrique { display: grid; grid-template-columns: minmax(6rem, max-content) 1fr; gap: 0.6rem; }
+.invocation-carte dt { font-weight: 600; color: var(--muted); }
+.invocation-carte dd { margin: 0; }
 .invocation-carte ul { margin: 0; padding-left: 1rem; }
 .invocation-carte__caracs { display: inline-flex; flex-wrap: wrap; gap: 0.2rem; }
 .invocation-carte__carac { padding: 0 0.35rem; border-radius: var(--radius-xxs); background: var(--c); color: var(--c-texte); font-variant-numeric: tabular-nums; font-weight: 600; }

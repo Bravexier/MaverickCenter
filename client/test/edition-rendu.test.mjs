@@ -18,6 +18,7 @@ import { poidsDeBouclier as lesPoidsDeBouclier } from '../src/lib/armures-db.mjs
 import { CONTEXTE_PASTILLE, echapperHtml, htmlDeBlocs, rendreChamp, RENDUS } from '../src/lib/edition-rendu.mjs';
 import { htmlAvecMotsCles } from '../src/lib/mots-cles-balises.mjs';
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
+import { liensDesValeursFermees } from '../src/lib/mots-cles-des-valeurs.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const vocabulaire = chargerVocabulaire(db);
@@ -31,6 +32,8 @@ const objetsDuButin = db.prepare('SELECT id, nom, texte FROM monstre_butin_objet
 const magies = db.prepare('SELECT id, nom FROM magie ORDER BY ordre').all();
 // les listes des rendus de l'onglet Armes de la page « Équipement » (types d'armes, solidité de base : lib/armes-db.mjs#contexteDesArmes)
 const { typesDArmes, soliditeDesArmes } = contexteDesArmes(db);
+// les mots-clés des valeurs fermées (types de dégâts, magies : migration 0125), comme serveur/edition.mjs#listes
+const liens = liensDesValeursFermees(db);
 // les poids de boucliers (rendu « bouclier-poids » de l'onglet Boucliers : lib/armures-db.mjs#poidsDeBouclier, comme serveur/edition.mjs#listes)
 const poidsDeBouclier = lesPoidsDeBouclier(db);
 const renvoisAuxDegatsMoyens = lesRenvois(db);
@@ -158,7 +161,8 @@ const ligneDe = (table, cle) => {
 
 test('site construit : chaque champ [data-ed] des métiers, des magies, des races, des classes, du bestiaire, de la chronologie et de l’équipement (armes, armures, consommables de la ceinture) redonne le HTML du gabarit', { skip: sansDist && 'dist/ absent (npm run build)' }, () => {
   const sousPages = (type) => readdirSync(join(dist, type), { withFileTypes: true }).filter((d) => d.isDirectory() && !d.name.startsWith('exemple')).map((d) => `${type}/${d.name}`);
-  const pages = ['metiers', 'bestiaire', ...sousPages('magies'), ...sousPages('races'), ...sousPages('classes'), 'chronologie', ...sousPages('chronologie'), 'ressources/equipement'];
+  const pages = ['metiers', 'bestiaire', ...sousPages('magies'), ...sousPages('races'), ...sousPages('classes'), 'chronologie', ...sousPages('chronologie'),
+    'ressources/armes', 'ressources/armures', 'ressources/bouclier', 'ressources/objets-a-la-ceinture'];
   const parRendu = new Map();
   for (const p of pages) {
     const arbre = fromHtml(readFileSync(join(dist, p, 'index.html'), 'utf8'));
@@ -174,7 +178,7 @@ test('site construit : chaque champ [data-ed] des métiers, des magies, des race
       // les pastilles d'état que la page montre dans le champ, comme le script les relève (src/scripts/edition/editeur.mjs#rendreElement)
       const pastilles = zones(cible).map((z) => ({ forme: texteDe(trouver(z, 'chip--etat')), avant: texteAvant(cible, z), html: toHtml(z) }));
       // les balises du glossaire, que la page construite montre rendues (le middleware ; dans l'éditeur, src/scripts/edition/mots-cles-vivants.mjs)
-      const obtenu = fragment(htmlAvecMotsCles(rendreChamp(rendu, ligne[info.colonne], ligne, { competences, caracteristiques, objets, typesDon, echellesDePuissance, objetsDuButin, magies, renvoisAuxDegatsMoyens, echellesDesCartes, magiesDesCibles, typesDArmes, soliditeDesArmes, poidsDeBouclier, niveauxDAlchimie, pastilles }), vocabulaire).html);
+      const obtenu = fragment(htmlAvecMotsCles(rendreChamp(rendu, ligne[info.colonne], ligne, { competences, caracteristiques, objets, typesDon, echellesDePuissance, objetsDuButin, magies, renvoisAuxDegatsMoyens, echellesDesCartes, magiesDesCibles, typesDArmes, soliditeDesArmes, poidsDeBouclier, niveauxDAlchimie, pastilles, liens }), vocabulaire).html);
       assert.equal(obtenu, attendu, `${p} : ${info.table} ${JSON.stringify(info.cle)} ${info.colonne} (rendu ${rendu})`);
       parRendu.set(rendu, (parRendu.get(rendu) ?? 0) + 1);
     }

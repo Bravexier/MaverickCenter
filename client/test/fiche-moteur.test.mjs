@@ -7,27 +7,30 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { enregistrerFiche } from '../serveur/fiches.mjs';
-import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
+import { ancresDuCorps, sectionParAncre } from '../src/lib/ancres-figees.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
 import {
-  ajusterValeurDuMoment, alignementDe, artisanatDe, attributsDe, bonusDuMetier, borner, choisirObjetDeMetier, choixDeMetierValables, inventaireSelonLeMetier,
-  objetChoisi, objetDInventaire, objetsDuMetier, deDeLaFamille, donsAcquis, donsDeRace, compteurDeMaitrise, famillesMaitrisables, maitriseChoixValables, maitrisesParFamille, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe, classeImposee, lignesDeSorts, magieAcquiseValable, nmDuSort,
-  bornesDuNm, livreAuPlafond, sortAuNm, sortAvecLivre, sortPourUnLivre,
+  ajusterValeurDuMoment, alignementDe, cransDAlignement, artisanatDe, attributsDe, bonusDuMetier, borner, choisirObjetDeMetier, choixDeMetierValables, inventaireSelonLeMetier,
+  objetChoisi, objetDInventaire, objetsDuMetier, deDeLaFamille, donsAcquis, donsDeRace, compteurDeMaitrise, famillesMaitrisables, maitriseChoixValables, maitrisesParFamille, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe, lignesDeSorts, magieAcquiseValable, nmDuSort,
+  bornesDuNm, livreAuPlafond, livresAEnregistrer, livresApresAjout, livresApresChangement, livresApresRetrait, livresDe, sortAuNm, sortAvecLivre, sortPourUnLivre,
+  sortsApresChoixDEmplacement, sortsDesLivres, infobulleDeClasse, infobulleDeSpecialite, infobulleDuDonAChoisir, texteDuDon, TYPES_DE_DON,
   progressionXp, classeMagique, classesPermises, classesSelonLaMagieInnee,
   competencesDe, donsAChoisir, donsValables, emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, magiesInneesPermises, maitriseDesSorts, niveauGlobal,
   gainsAttendus, gainsDeNiveau, maitriseDArme, niveauxDeClasse, notationDesDes, npmMax, puissanceMagique, refusClasse, refusMagieAcquise, resistancesDe, sortsParNpm, sortsPossibles, ecrireValeurDuMoment, valeursDuMoment, xpDuNiveauSuivant,
 } from '../src/lib/fiche-moteur.mjs';
-import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { FIL_ROUGE, chargerFilRouge } from '../src/lib/guide-fil-rouge.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { horsDeLa0120 } from './aide-races-0120.mjs';
+import { baseDImport, cheminDImport, lotsAvant, reglesDImport } from './aide-base-d-import.mjs';
 
-const db = ouvrirBase({ sansExemples: false });
-const regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(db))); // tel que la page le reçoit
+// les règles (textes et valeurs que le site de dev modifie librement) : épinglées sur leur état d'import (test/aide-base-d-import.mjs)
+const db = baseDImport();
+const regles = reglesDImport(); // tel que la page le reçoit
 const racine = dossierTemporaire('moteur');
-const vivante = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: racine }).chemin);
+const vivante = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminDImport(), dossier: racine }).chemin);
 
 /**
  * Humain central, Feu inné (Social), Guerrier, HACHE pour sa maîtrise au choix (décision R148 : sans elle, un choix reste à faire) ; 14 points de
@@ -245,7 +248,9 @@ test('classe magique : catégorie et Archimage (R6), spécialité « considéré
   assert.equal(classeMagique(regles, { classe_id: 'classes/archimage', specialite_id: null }, 1), true);
   assert.equal(classeMagique(regles, { classe_id: 'classes/guerrier', specialite_id: null }, 20), false);
   const fiche = { ...ficheVide(), race_id: 'races/orios', xp: 11450, magie_innee_id: 'magies/magie-du-sang', classes: [{ rang: 1, classe_id: orios.id, specialite_id: chaman.id }] };
-  assert.equal(emplacementsDeSorts(regles, fiche).conditions, 2);
+  // niveau global 10 (puissance magique 3, au seuil des spécialisations) : mono-magie, la Super-magie est une condition de plus (R236 (4), test/r236-fiche-specialisations.test.mjs)
+  assert.deepEqual(emplacementsDeSorts(regles, fiche), { conditions: 3, puissance: 3, total: 9, superMagie: true });
+  assert.equal(emplacementsDeSorts(regles, { ...fiche, xp: 0 }).conditions, 1, 'niveau 1 : la classe n’est pas magique (spécialité au niveau 10), pas de Super-magie');
 });
 
 test('race : classes et magies innées permises (R8, R11), ethnies de la race et de sa magie', () => {
@@ -261,21 +266,19 @@ test('race : classes et magies innées permises (R8, R11), ethnies de la race et
   assert.equal(ethnieCompatible(deSang, 'magies/magie-du-feu'), false);
 });
 
-test('décision R23 : l’Archimage seulement avec le Potentiel Illimité inné, qui l’impose en classe 1 ; mêmes refus que la base', () => {
+test('décision R23 (partie réservée) et R238 (5) : l’Archimage seulement avec le Potentiel Illimité inné, qui ne l’impose plus ; mêmes refus que la base', () => {
   assert.deepEqual(regles.classes.filter((c) => c.magie_innee_id).map((c) => [c.id, c.magie_innee_id]), [['classes/archimage', 'magies/potentiel-illimite']]);
   const archimage = [{ rang: 1, classe_id: 'classes/archimage', specialite_id: null }];
   const feu = ficheConforme();
   const pi = ficheConforme({ magie_innee_id: 'magies/potentiel-illimite', caracteristique_magie_id: 'force' });
-  assert.equal(classeImposee(regles, feu), null);
-  assert.equal(classeImposee(regles, { ...feu, magie_innee_id: null }), null);
-  assert.equal(classeImposee(regles, pi).id, 'classes/archimage');
 
   assert.equal(refusClasse(regles, feu, 'classes/archimage', 1), 'réservée à la magie innée Potentiel Illimité');
   assert.equal(refusClasse(regles, feu, 'classes/archimage', 2), 'réservée à la magie innée Potentiel Illimité', 'ni en seconde classe');
   assert.equal(refusClasse(regles, { ...feu, magie_innee_id: null }, 'classes/archimage', 1), 'réservée à la magie innée Potentiel Illimité');
   assert.equal(refusClasse(regles, feu, 'classes/guerrier', 1), null);
   assert.equal(refusClasse(regles, pi, 'classes/archimage', 1), null);
-  assert.equal(refusClasse(regles, pi, 'classes/guerrier', 1), 'la magie innée Potentiel Illimité impose Archimage');
+  assert.equal(refusClasse(regles, pi, 'classes/archimage', 2), null, 'ni obligatoire en classe 1, ni fermée en classe 2');
+  assert.equal(refusClasse(regles, pi, 'classes/guerrier', 1), null, 'R238 (5) : un autre choix en classe 1 reste permis');
   assert.equal(refusClasse(regles, { ...pi, classes: archimage }, 'classes/guerrier', 2), null, 'la seconde classe reste libre');
   assert.equal(refusClasse(regles, { ...pi, classes: archimage }, 'classes/archimage', 2), 'déjà l’autre classe');
   assert.equal(refusClasse(regles, { ...feu, race_id: 'races/medusain' }, 'classes/guerrier', 1), 'classe que la race ne permet pas');
@@ -286,11 +289,13 @@ test('décision R23 : l’Archimage seulement avec le Potentiel Illimité inné,
   assert.deepEqual(enBase(feu), []);
   assert.deepEqual(enBase({ ...feu, classes: archimage }), ['classe_reservee classes/archimage']);
   assert.deepEqual(enBase({ ...feu, mode_classe: 'bi', classes: [...feu.classes, { rang: 2, classe_id: 'classes/archimage', specialite_id: null }] }), ['classe_reservee classes/archimage']);
-  assert.deepEqual(enBase(pi), ['classe_imposee classes/archimage']);
-  assert.deepEqual(enBase({ ...pi, classes: archimage }), []);
+  // R238 (5) : un Potentiel Illimité sans Archimage en classe 1 (ni du tout) n'enfreint plus rien
+  assert.deepEqual(enBase(pi), [], 'Guerrier en classe 1 : aucune erreur de contrôle');
+  assert.deepEqual(enBase({ ...pi, classes: archimage }), [], 'Archimage en classe 1');
   assert.deepEqual(enBase({ ...pi, mode_classe: 'bi', classes: [...archimage, { rang: 2, classe_id: 'classes/guerrier', specialite_id: null }] }), []);
-  assert.deepEqual(enBase({ ...pi, mode_classe: 'bi', classes: [{ ...feu.classes[0] }, { rang: 2, classe_id: 'classes/archimage', specialite_id: null }] }),
-    ['classe_imposee classes/archimage'], 'en classe 1, pas en classe 2');
+  assert.deepEqual(enBase({ ...pi, mode_classe: 'bi', classes: [{ ...feu.classes[0] }, { rang: 2, classe_id: 'classes/archimage', specialite_id: null }] }), [],
+    'Archimage en classe 2');
+  assert.deepEqual(enBase({ ...pi, classes: [] }), ['classe_1_manquante null'], 'sans classe : seulement la classe 1 à choisir, pas d’Archimage exigée');
 });
 
 test('décision R25 : le Mage Bleu est fermé au Potentiel Illimité, à tous les rangs ; toute autre seconde classe reste permise', () => {
@@ -305,19 +310,20 @@ test('décision R25 : le Mage Bleu est fermé au Potentiel Illimité, à tous le
   assert.deepEqual(enregistrerFiche(vivante, avecMageBleu).controles.filter((c) => c.regle.startsWith('classe_')).map((c) => `${c.regle} ${c.detail}`), ['classe_exclue classes/mage-bleu']);
   assert.deepEqual(enregistrerFiche(vivante, { ...pi, classes: [...pi.classes, { rang: 2, classe_id: 'classes/mage', specialite_id: null }] }).controles.filter((c) => c.regle.startsWith('classe_')), []);
   const feu = ficheConforme({ mode_classe: 'bi', classes: [{ rang: 1, classe_id: 'classes/guerrier', specialite_id: null }, { rang: 2, classe_id: 'classes/mage-bleu', specialite_id: null }] });
-  assert.deepEqual(classesSelonLaMagieInnee(regles, { ...feu, magie_innee_id: 'magies/potentiel-illimite' }).map((c) => [c.rang, c.classe_id]), [[1, 'classes/archimage']]);
+  assert.deepEqual(classesSelonLaMagieInnee(regles, { ...feu, magie_innee_id: 'magies/potentiel-illimite' }).map((c) => [c.rang, c.classe_id]), [[1, 'classes/guerrier']],
+    'R238 (5) : le Mage Bleu part, la classe 1 n’est pas remplacée par l’Archimage');
 });
 
-test('décision R23 : choisir le Potentiel Illimité met l’Archimage en classe 1, le quitter la retire ; les dons d’une classe partie s’en vont avec elle', () => {
-  const imposee = { rang: 1, classe_id: 'classes/archimage', specialite_id: null };
+test('décisions R23, R238 (5) : choisir le Potentiel Illimité n’ajoute ni ne remplace aucune classe, le quitter retire l’Archimage ; les dons d’une classe partie s’en vont avec elle', () => {
+  const archimage = { rang: 1, classe_id: 'classes/archimage', specialite_id: null };
   const mage = { rang: 1, classe_id: 'classes/mage', specialite_id: null };
   const guerrier2 = { rang: 2, classe_id: 'classes/guerrier', specialite_id: null };
   const fiche = (magie, classes) => ({ ...ficheVide(), magie_innee_id: magie, mode_classe: 'bi', classes });
   const pi = 'magies/potentiel-illimite';
-  assert.deepEqual(classesSelonLaMagieInnee(regles, fiche(pi, [])), [imposee]);
-  assert.deepEqual(classesSelonLaMagieInnee(regles, fiche(pi, [mage, guerrier2])), [imposee, guerrier2], 'à la place de la classe 1, la seconde reste');
-  assert.deepEqual(classesSelonLaMagieInnee(regles, fiche(pi, [mage, { ...imposee, rang: 2 }])), [imposee], 'déjà en seconde classe (fiche importée) : passe en classe 1');
-  const enPlace = [{ ...imposee, specialite_id: 'classes/archimage#specialite:x' }, guerrier2];
+  assert.deepEqual(classesSelonLaMagieInnee(regles, fiche(pi, [])), [], 'rien n’est imposé');
+  assert.deepEqual(classesSelonLaMagieInnee(regles, fiche(pi, [mage, guerrier2])), [mage, guerrier2], 'la classe 1 choisie reste');
+  assert.deepEqual(classesSelonLaMagieInnee(regles, fiche(pi, [mage, { ...archimage, rang: 2 }])), [mage, { ...archimage, rang: 2 }], 'Archimage en classe 2 : gardée à son rang');
+  const enPlace = [{ ...archimage, specialite_id: 'classes/archimage#specialite:x' }, guerrier2];
   assert.deepEqual(classesSelonLaMagieInnee(regles, fiche(pi, enPlace)), enPlace, 'déjà en classe 1 : rien ne change (spécialité gardée)');
   assert.deepEqual(classesSelonLaMagieInnee(regles, fiche('magies/magie-du-feu', enPlace)), [guerrier2], 'une autre magie innée : l’Archimage part');
   assert.deepEqual(classesSelonLaMagieInnee(regles, fiche(null, enPlace)), [guerrier2], 'sans magie innée non plus');
@@ -331,11 +337,16 @@ test('décision R23 : choisir le Potentiel Illimité met l’Archimage en classe
   assert.deepEqual(donsValables(regles, { ...avecDon, capacites: [don, { capacite_id: 'capacites/hors-des-choix' }] }), [don],
     'un don que les règles ne rangent dans aucun choix (supprimé depuis le site de dev, ou devenu reçu d’office : D11) est écarté');
   const sansSpecialite = { ...avecDon, classes: [mage] };
-  const remplace = { ...avecDon, magie_innee_id: pi, caracteristique_magie_id: 'force' };
+  // l'Archimage (Potentiel Illimité) part quand la magie innée change : son don à choix part avec elle
+  const donArchimage = { capacite_id: regles.classes.find((c) => c.id === 'classes/archimage').choix[0].options[0].id };
+  const avecArchimage = ficheConforme({ xp: 11450, magie_innee_id: pi, caracteristique_magie_id: 'force', classes: [archimage], capacites: [donArchimage] });
+  assert.deepEqual(donsValables(regles, avecArchimage), [donArchimage]);
+  const remplace = { ...avecArchimage, magie_innee_id: 'magies/magie-du-feu', caracteristique_magie_id: null };
   remplace.classes = classesSelonLaMagieInnee(regles, remplace);
-  for (const f of [sansSpecialite, remplace]) {
+  assert.deepEqual(remplace.classes, []);
+  for (const [f, id] of [[sansSpecialite, don.capacite_id], [remplace, donArchimage.capacite_id]]) {
     assert.deepEqual(donsValables(regles, f), []);
-    assert.ok(enregistrerFiche(vivante, f).controles.some((c) => c.regle === 'capacite_hors_classe' && c.detail === don.capacite_id), 'la base refuse le don gardé');
+    assert.ok(enregistrerFiche(vivante, f).controles.some((c) => c.regle === 'capacite_hors_classe' && c.detail === id), 'la base refuse le don gardé');
     assert.ok(!enregistrerFiche(vivante, { ...f, capacites: donsValables(regles, f) }).controles.some((c) => c.regle === 'capacite_hors_classe'));
   }
 });
@@ -385,7 +396,8 @@ test('magie acquise : même magie, incompatibles, mono-magie (R15) sauf Corrupti
 });
 
 test('décision R28 : la Lamia n’a qu’une magie ; toute magie acquise est refusée, et la base dit la même chose', () => {
-  assert.deepEqual(regles.races.filter((r) => r.mono_magie).map((r) => r.id), ['races/lamia']);
+  // le Gémidien, mono-magie aussi (R239, migration 0120), est épinglé par test/db-0120-races-fongoide-gemidien.test.mjs
+  assert.deepEqual(regles.races.filter((r) => r.mono_magie && horsDeLa0120(r.id)).map((r) => r.id), ['races/lamia']);
   const lamia = ficheConforme({ race_id: 'races/lamia', ethnie_id: 'races/lamia#ethnie:lamia' });
   const refus = regles.magies.filter((m) => m.id !== lamia.magie_innee_id).map((m) => refusMagieAcquise(regles, lamia, m.id));
   assert.ok(refus.length === 14 && refus.every((r) => r === 'Lamia : une seule magie'), refus.join());
@@ -413,7 +425,8 @@ test('ethnie sans choix (demande du propriétaire) : la seule de la race, ou la 
   assert.equal(ethnieImposee(regles, fiche('races/goleois', 'magies/magie-de-la-glace')), 'races/goleois#ethnie:goleois-de-glace');
   assert.equal(ethnieImposee(regles, fiche('races/drakos', 'magies/magie-du-feu')), 'races/drakos#ethnie:drakos-rouge');
   assert.equal(ethnieImposee(regles, fiche(null)), null);
-  const seules = regles.races.filter((r) => ethniesDeLaRace(regles, r.id).length === 1).map((r) => r.id).sort();
+  // Fongoïde et Gémidien (une seule ethnie, R239 (3), migration 0120) : épinglés par test/db-0120-races-fongoide-gemidien.test.mjs
+  const seules = regles.races.filter((r) => horsDeLa0120(r.id) && ethniesDeLaRace(regles, r.id).length === 1).map((r) => r.id).sort();
   assert.deepEqual(seules, ['races/elfe-dore', 'races/hujin', 'races/lamia', 'races/majin']);
   // toute race, toute magie innée permise : l'ethnie posée est de la race, va avec la magie, et la base n'y trouve rien à redire
   for (const r of regles.races) {
@@ -441,7 +454,7 @@ test('sorts : puissance magique 5 au niveau 16 (R16), palier 5 fermé avec une m
   assert.ok(sortsPossibles(regles, pi).every((s) => s.niveau === 1));
   const nm = maitriseDesSorts(regles, { ...seize, sorts: [{ sort_id: 'x', rang: 1, niveau_maitrise: 3 }, { sort_id: 'y', rang: 2, niveau_maitrise: 2 }] });
   const disponibles = regles.niveaux.find((n) => n.niveau === 16).niveaux_maitrise_cumul;
-  assert.deepEqual(nm, { plafond: 3, maxParSort: 15, maxCompteParSort: 15, total: 5, livres: 0, comptes: 5, niveaux: disponibles, dons: [], disponibles, mj: 0, limite: disponibles });
+  assert.deepEqual(nm, { plafond: 3, maxParSort: 15, maxCompteParSort: 15, total: 5, livres: 0, enAttente: 0, comptes: 5, niveaux: disponibles, dons: [], disponibles, mj: 0, limite: disponibles });
 });
 
 test('tableau des sorts : une ligne par emplacement, sans emplacement en plus (R27) ; sorts possibles moins ceux des autres lignes ; un sort hors des règles reste visible', () => {
@@ -470,50 +483,125 @@ test('tableau des sorts : une ligne par emplacement, sans emplacement en plus (R
 });
 
 test('décisions R26, R118 : un curseur de NM par sort, de 0 à 3, de 1 à 3 avec un livre dont le NM ne compte pas ; les NM du MJ valent pour toute la fiche, ajoutés à la limite ; même chose que la base', () => {
-  // niveau 3 : 2 NM gagnés, 2 au plus de niveau sur un sort
-  const sort = (sort_id, rang, nm, livre = 0) => ({ sort_id, rang, niveau_maitrise: nm, nm_livre: livre });
-  const fiche = (sorts, nm_mj = 0) => ficheConforme({ xp: 550, sorts, nm_mj });
+  // niveau 3 : 2 NM gagnés, 2 au plus de niveau sur un sort ; les livres de la fiche (décision R169 : livres_sorts), à part de la liste des sorts
+  const sort = (sort_id, rang, nm) => ({ sort_id, rang, niveau_maitrise: nm });
+  const livres = (...ids) => ids.map((sort_id, i) => ({ sort_id, rang: i + 1 }));
+  const fiche = (sorts, nm_mj = 0, livres_sorts = []) => ficheConforme({ xp: 550, sorts, nm_mj, livres_sorts });
   const enBase = (f) => enregistrerFiche(vivante, f).controles.filter((c) => c.regle.startsWith('sort')).map((c) => `${c.regle} ${c.detail}`);
   const bdf = 'magies/magie-du-feu#sort:boule-de-feu';
   const cau = 'magies/magie-du-feu#sort:cauterisation';
-  const juste = fiche([sort(bdf, 1, 3, 1), sort(cau, 2, 1)], 1);
-  assert.deepEqual(maitriseDesSorts(regles, juste), { plafond: 3, maxParSort: 2, maxCompteParSort: 3, total: 4, livres: 1, comptes: 3, niveaux: 2, dons: [], disponibles: 2, mj: 1, limite: 3 });
-  assert.deepEqual(nmDuSort(juste.sorts[0]), { total: 3, livre: 1, comptes: 2 });
+  const juste = fiche([sort(bdf, 1, 3), sort(cau, 2, 1)], 1, livres(bdf));
+  assert.deepEqual(maitriseDesSorts(regles, juste), { plafond: 3, maxParSort: 2, maxCompteParSort: 3, total: 4, livres: 1, enAttente: 0, comptes: 3, niveaux: 2, dons: [], disponibles: 2, mj: 1, limite: 3 });
+  assert.deepEqual(nmDuSort(juste.sorts[0], juste), { total: 3, livre: 1, comptes: 2 });
+  assert.deepEqual(nmDuSort(juste.sorts[0]), { total: 3, livre: 0, comptes: 3 }, 'sans la fiche, pas de livre');
   assert.deepEqual(enBase(juste), [], '2 NM gagnés et 1 du MJ ; le NM du livre ne compte pas (« compte pour -1 dans le décompte total »)');
   assert.deepEqual(enBase(fiche([sort(bdf, 1, 2), sort(cau, 2, 1)])), ['sorts_nm_total 3 / 2'], 'sans NM du MJ, un NM de trop');
   assert.deepEqual(enBase(fiche([sort(bdf, 1, 2), sort(cau, 2, 2)], 1)), ['sorts_nm_total 4 / 2 + 1 du MJ'], 'le détail cite les NM du MJ');
   assert.deepEqual(enBase(fiche([sort(bdf, 1, 3)])), [`sort_nm_max ${bdf} = 3`, 'sorts_nm_total 3 / 2'], 'sur un sort, au plus niveau − 1 comptés…');
   assert.deepEqual(enBase(fiche([sort(bdf, 1, 3)], 1)), [], '… plus les NM du MJ');
-  assert.deepEqual(enBase(fiche([sort(bdf, 1, 4, 1)], 2)), [`sort_nm_plafond ${bdf} = 4`], 'jamais plus de 3 sur un sort, livre et MJ compris');
-  assert.throws(() => enregistrerFiche(vivante, fiche([sort(bdf, 1, 0, 1)])), (e) => e.statut === 400, 'un livre : au moins 1 NM sur le sort');
-  assert.throws(() => enregistrerFiche(vivante, fiche([sort(bdf, 1, 2, 2)])), (e) => e.statut === 400, 'un seul NM de livre par sort');
+  assert.deepEqual(enBase(fiche([sort(bdf, 1, 4)], 2, livres(bdf))), [`sort_nm_plafond ${bdf} = 4`], 'jamais plus de 3 sur un sort, livre et MJ compris');
+  // un livre sur un sort choisi enregistré à 0 NM (par l'API ou un import ; la page borne le curseur à 1) : le NM du livre est offert, le sort se lit
+  // à 1 NM, 0 compté, comme la base (R118, R169 : « un NM est offert. A l'affichage le curseur deviens alors de 1 à 3 »)
+  const zero = fiche([sort(bdf, 1, 0)], 0, livres(bdf));
+  assert.deepEqual(nmDuSort(zero.sorts[0], zero), { total: 1, livre: 1, comptes: 0 });
+  assert.deepEqual(enBase(zero), []);
   assert.throws(() => enregistrerFiche(vivante, fiche([], -1)), (e) => e.statut === 400, 'pas de NM du MJ négatif');
   // le curseur : « un slider de 0 à 3 », de 1 à 3 avec un livre
-  assert.deepEqual(bornesDuNm(regles, sort(bdf, 1, 0)), { min: 0, max: 3 });
-  assert.deepEqual(bornesDuNm(regles, sort(bdf, 1, 2, 1)), { min: 1, max: 3 });
-  assert.deepEqual([5, -1, 0, 2].map((v) => sortAuNm(regles, sort(bdf, 1, 2, 1), v).niveau_maitrise), [3, 1, 1, 2], 'borné');
-  assert.equal(sortAuNm(regles, sort(bdf, 1, 2), 0).niveau_maitrise, 0);
-  // noter ou retirer le livre dans l'entraînement
-  assert.deepEqual(sortAvecLivre(regles, sort(bdf, 1, 1), true), sort(bdf, 1, 2, 1), 'le livre ajoute son NM : les NM comptés ne changent pas');
-  assert.deepEqual(sortAvecLivre(regles, sort(bdf, 1, 3), true), sort(bdf, 1, 3, 1), 'au plafond : le sort garde ses 3 NM, dont celui du livre');
-  assert.deepEqual(sortAvecLivre(regles, sort(bdf, 1, 2, 1), false), sort(bdf, 1, 1), 'retiré : son NM part avec lui');
-  const meme = sort(bdf, 1, 2, 1);
-  assert.equal(sortAvecLivre(regles, meme, true), meme, 'rien ne change : le même sort');
+  const avecLivre = { livres_sorts: livres(bdf) };
+  assert.deepEqual(bornesDuNm(regles, sort(bdf, 1, 0), {}), { min: 0, max: 3 });
+  assert.deepEqual(bornesDuNm(regles, sort(bdf, 1, 2), avecLivre), { min: 1, max: 3 });
+  assert.deepEqual([5, -1, 0, 2].map((v) => sortAuNm(regles, sort(bdf, 1, 2), v, avecLivre).niveau_maitrise), [3, 1, 1, 2], 'borné');
+  assert.equal(sortAuNm(regles, sort(bdf, 1, 2), 0, {}).niveau_maitrise, 0);
+  // noter ou retirer le livre d'un sort choisi dans l'entraînement (la fiche d'avant le geste dit s'il l'avait)
+  assert.deepEqual(sortAvecLivre(regles, {}, sort(bdf, 1, 1), true), sort(bdf, 1, 2), 'le livre ajoute son NM : les NM comptés ne changent pas');
+  assert.deepEqual(sortAvecLivre(regles, {}, sort(bdf, 1, 3), true), sort(bdf, 1, 3), 'au plafond : le sort garde ses 3 NM, dont celui du livre');
+  assert.deepEqual(sortAvecLivre(regles, avecLivre, sort(bdf, 1, 2), false), sort(bdf, 1, 1), 'retiré : son NM part avec lui');
+  const meme = sort(bdf, 1, 2);
+  assert.equal(sortAvecLivre(regles, avecLivre, meme, true), meme, 'rien ne change : le même sort');
   // au plafond, le livre prend la place d'un NM compté : rendu s'il part (la page le sait tant que le curseur n'a pas bougé) ; un livre déplacé d'un
   // sort à l'autre ne fait perdre aucun NM
-  assert.deepEqual([livreAuPlafond(regles, sort(bdf, 1, 3)), livreAuPlafond(regles, sort(bdf, 1, 2)), livreAuPlafond(regles, sort(bdf, 1, 3, 1))], [true, false, false]);
-  assert.deepEqual(sortAvecLivre(regles, sort(bdf, 1, 3, 1), false, { rendre: true }), sort(bdf, 1, 3), 'le NM pris au plafond rendu');
-  const a = sort(bdf, 1, 3);
-  const b = sort(cau, 2, 1);
-  const aAvecLivre = sortAvecLivre(regles, a, true);
-  assert.deepEqual([sortAvecLivre(regles, aAvecLivre, false, { rendre: livreAuPlafond(regles, a) }), sortAvecLivre(regles, b, true)], [a, sort(cau, 2, 2, 1)],
-    'le livre passe de A (3 NM) à B : A garde ses 3 NM, B en gagne un');
-  // « + Livre de sort » : le premier sort sans livre sous le plafond, sinon le premier sans livre
-  assert.equal(sortPourUnLivre(regles, [sort(bdf, 1, 3), sort(cau, 2, 1)]), 1);
-  assert.equal(sortPourUnLivre(regles, [sort(bdf, 1, 3), sort(cau, 2, 3, 1)]), 0, 'tous au plafond : le premier sans livre');
-  assert.equal(sortPourUnLivre(regles, [sort(bdf, 1, 2, 1)]), -1, 'chacun a son livre');
-  assert.equal(sortPourUnLivre(regles, undefined), -1);
+  assert.deepEqual([livreAuPlafond(regles, {}, sort(bdf, 1, 3)), livreAuPlafond(regles, {}, sort(bdf, 1, 2)), livreAuPlafond(regles, avecLivre, sort(bdf, 1, 3))], [true, false, false]);
+  assert.deepEqual(sortAvecLivre(regles, avecLivre, sort(bdf, 1, 3), false, { rendre: true }), sort(bdf, 1, 3), 'le NM pris au plafond rendu');
+  const deux = fiche([sort(bdf, 1, 3), sort(cau, 2, 1)], 0, livres(bdf));
+  const deplace = livresApresChangement(regles, deux, bdf, cau, { rendre: true });
+  assert.deepEqual(deplace, { livres_sorts: livres(cau), sorts: [sort(bdf, 1, 3), sort(cau, 2, 2)] }, 'le livre passe de A (3 NM, pris au plafond) à B : A garde ses 3 NM, B en gagne un, à la même place');
+  // « + Livre de sort » : le premier sort choisi sans livre sous le plafond, sinon le premier sans livre, sinon le premier sort possible sans livre
+  assert.equal(sortPourUnLivre(regles, fiche([sort(bdf, 1, 3), sort(cau, 2, 1)])), cau);
+  assert.equal(sortPourUnLivre(regles, fiche([sort(bdf, 1, 3), sort(cau, 2, 3)], 0, livres(cau))), bdf, 'tous au plafond : le premier sans livre');
+  const autre = sortPourUnLivre(regles, fiche([sort(bdf, 1, 2)], 0, livres(bdf)));
+  assert.ok(autre && autre !== bdf && trouverSort(autre).magie_id === 'magies/magie-du-feu', 'chaque sort choisi a son livre : un sort de la magie, non choisi');
+  assert.equal(sortPourUnLivre(regles, ficheVide()), null, 'sans magie, aucun sort');
   assert.equal(regles.constantes['sort.nm_max'], 3);
+});
+
+const trouverSort = (id) => regles.sorts.find((s) => s.id === id);
+
+test('décision R169 : un livre de sort pour n’importe quel sort de ses magies, choisi ou non ; non choisi, il attend ; choisi ensuite, R118 ; retiré, le livre reste', () => {
+  // niveau 5 : 4 NM gagnés ; le sort A choisi à 2 NM, un livre du sort B qui n'est pas choisi
+  const A = 'magies/magie-du-feu#sort:boule-de-feu';
+  const B = 'magies/magie-du-feu#sort:cauterisation';
+  const enBase = (f) => enregistrerFiche(vivante, f).controles.filter((c) => c.regle.startsWith('sort')).map((c) => `${c.regle} ${c.detail}`);
+  const f = ficheConforme({ xp: 1650, sorts: [{ sort_id: A, rang: 1, niveau_maitrise: 2 }] });
+  const avec = { ...f, ...livresApresAjout(regles, f, B) };
+  assert.deepEqual(avec.livres_sorts, [{ sort_id: B, rang: 1 }]);
+  assert.equal(avec.sorts[0], f.sorts[0], 'B non choisi : les sorts ne changent pas (le même objet)');
+  assert.deepEqual(livresDe(regles, avec).map((l) => [l.sort_id, l.choisi, l.enAttente, l.horsDesMagies]), [[B, false, true, false]], 'B « en attente »');
+  const nm = maitriseDesSorts(regles, avec);
+  assert.deepEqual([nm.comptes, nm.livres, nm.enAttente, nm.disponibles], [2, 0, 1, 4], 'le décompte ne change pas : le NM du livre n’est pas utilisé');
+  assert.deepEqual(enBase(avec), [], 'la base ne refuse rien');
+  // B choisi ensuite : 1 NM, celui du livre (« Une fois le sort repris, le NM est automatiquement réactivé ») ; curseur de 1 à 3 ; hors du décompte
+  const choisi = { ...avec, sorts: sortsApresChoixDEmplacement(avec, 1, B) };
+  assert.deepEqual(choisi.sorts[1], { sort_id: B, rang: 2, niveau_maitrise: 1 });
+  assert.deepEqual(bornesDuNm(regles, choisi.sorts[1], choisi), { min: 1, max: 3 });
+  assert.deepEqual(nmDuSort(choisi.sorts[1], choisi), { total: 1, livre: 1, comptes: 0 });
+  const monte = { ...choisi, sorts: [choisi.sorts[0], sortAuNm(regles, choisi.sorts[1], 3, choisi)] };
+  assert.deepEqual([maitriseDesSorts(regles, monte).comptes, maitriseDesSorts(regles, monte).livres, maitriseDesSorts(regles, monte).enAttente], [4, 1, 0]);
+  assert.deepEqual(enBase(monte), [], '2 + (3 − 1) = 4 NM comptés sur 4 gagnés, comme la base');
+  // B retiré de la liste : le livre reste, de nouveau en attente
+  const retire = { ...monte, sorts: sortsApresChoixDEmplacement(monte, 1, null) };
+  assert.deepEqual(retire.livres_sorts, [{ sort_id: B, rang: 1 }]);
+  assert.equal(livresDe(regles, retire)[0].enAttente, true);
+  assert.equal(maitriseDesSorts(regles, retire).comptes, 2);
+  // l'emplacement de B pris par un autre sort : le livre reste aussi ; un seul livre par sort (R26)
+  assert.deepEqual(livresApresAjout(regles, retire, B), { livres_sorts: retire.livres_sorts, sorts: retire.sorts }, 'B a déjà son livre');
+  // retiré de l'entraînement : un sort choisi perd le NM du livre, un sort non choisi rien
+  assert.deepEqual(livresApresRetrait(regles, monte, B).sorts[1], { sort_id: B, rang: 2, niveau_maitrise: 2 });
+  assert.deepEqual(livresApresRetrait(regles, retire, B), { livres_sorts: [], sorts: retire.sorts });
+  // un livre dont la magie est perdue (magie innée changée) reste, en attente, signalé hors des magies ; aucun contrôle ne le refuse
+  const perdue = { ...retire, magie_innee_id: 'magies/magie-de-leau', sorts: [] };
+  assert.deepEqual(livresDe(regles, perdue).map((l) => [l.sort_id, l.enAttente, l.horsDesMagies]), [[B, true, true]]);
+  assert.deepEqual(enBase(perdue), []);
+  // les livres à enregistrer : un par sort, rangés
+  assert.deepEqual(livresAEnregistrer({ livres_sorts: [{ sort_id: B, rang: 4 }, { sort_id: A, rang: 2 }, { sort_id: B, rang: 7 }] }), [{ sort_id: A, rang: 1 }, { sort_id: B, rang: 2 }]);
+});
+
+test('décision R169 : la liste des sorts d’un livre (sortsDesLivres) : magie innée puis acquise, quel que soit le NPM ; une seule magie ; le Potentiel Illimité, toutes les magies', () => {
+  const de = (m) => regles.sorts.filter((s) => s.magie_id === m).map((s) => s.id);
+  const feu = 'magies/magie-du-feu';
+  const eau = 'magies/magie-de-leau';
+  // une seule magie, au niveau 1 : tous ses sorts, même au-delà du NPM accessible (sortsPossibles s'arrête au NPM 1)
+  const mono = { ...ficheVide(), magie_innee_id: feu, xp: 0 };
+  assert.deepEqual(sortsDesLivres(regles, mono).map((s) => s.id), de(feu));
+  assert.ok(sortsDesLivres(regles, mono).some((s) => s.niveau > npmMax(regles, mono)), 'quel que soit le NPM');
+  assert.ok(sortsDesLivres(regles, mono).length > sortsPossibles(regles, mono).length);
+  // magie innée et magie acquise (bi-magie : les sorts communs, sans spécialisation choisie ; décision R236 (8), test/r236-fiche-specialisations.test.mjs)
+  const communs = (m) => regles.sorts.filter((s) => s.magie_id === m && !s.specialisation_id).map((s) => s.id);
+  assert.deepEqual(sortsDesLivres(regles, { ...mono, magie_acquise_id: eau }).map((s) => s.id), [...communs(feu), ...communs(eau)]);
+  // le Potentiel Illimité : les sorts de toutes les magies
+  const pi = { ...ficheVide(), magie_innee_id: 'magies/potentiel-illimite' };
+  assert.equal(sortsDesLivres(regles, pi).length, regles.sorts.length);
+  assert.ok(new Set(sortsDesLivres(regles, pi).map((s) => s.magie_id)).size > 2);
+  // décision R176 : le Potentiel Illimité est toujours la magie innée ; une fiche qui le met en magie acquise (signalée par mono_magie) n'ouvre
+  // pas toutes les magies : la liste reste celle de ses magies, et un livre d'une autre magie y est horsDesMagies, en attente, jamais refusé
+  const piAcquis = { ...mono, magie_acquise_id: 'magies/potentiel-illimite' };
+  assert.deepEqual(sortsDesLivres(regles, piAcquis).map((s) => s.id), [...communs(feu), ...de('magies/potentiel-illimite')]);
+  assert.ok(sortsDesLivres(regles, piAcquis).length < regles.sorts.length);
+  const livreEau = de(eau)[0];
+  const [l] = livresDe(regles, { ...piAcquis, livres_sorts: [{ sort_id: livreEau, rang: 1 }] });
+  assert.equal(l.sort_id, livreEau);
+  assert.equal(l.horsDesMagies, true);
+  assert.equal(l.enAttente, true);
+  assert.deepEqual(sortsDesLivres(regles, ficheVide()), [], 'sans magie, aucun');
 });
 
 test('gains attendus (décision R73) : les points d’attributs cumulés, plus de 1 à 8 par dé bonus atteint ; tout lu dans les règles (v_niveau, niveau_global)', () => {
@@ -587,26 +675,30 @@ test('saisie d’un curseur au clic droit (demande du propriétaire) : ramenée 
 });
 
 test('valeurs du moment : de 0 au maximum, absentes au maximum (corruption à 0) ; la corruption prend la place du chakra, pour tous (R142)', () => {
-  // les phrases du guide que valeursDuMoment applique, telles que la page les affiche (sans les balises du glossaire)
-  const vocabulaire = chargerVocabulaire(db);
-  const corps = (id) => texteSansBalises(db.prepare('SELECT corps_md FROM page WHERE id = ?').get(id).corps_md, vocabulaire, { markdown: true });
+  // les phrases du guide que valeursDuMoment applique, telles que la page les affiche (sans les balises du glossaire) ; écrites par le site de dev
+  // (décisions R142, R146), elles se lisent dans l'état d'après la dernière migration : un texte réécrit depuis sur le site ne les défait pas
+  const ref = baseDImport({ garder: lotsAvant('0093') });
+  const vocabulaire = chargerVocabulaire(ref);
+  const corps = (id) => texteSansBalises(ref.prepare('SELECT corps_md FROM page WHERE id = ?').get(id).corps_md, vocabulaire, { markdown: true });
   assert.match(corps('guide/fiche-attributs'), /25 de chakra maximum, si jamais vous avez 2 points de corruption, vous ne pourrez pas monter au-delà de 23\/25/);
   // décision R142 : la magie de la Corruption ne dispense pas de cette règle ; seule la mort au maximum est épargnée, à la Corruption innée ou acquise (R146)
   assert.doesNotMatch(corps('guide/fiche-attributs'), /ne sont pas concernés par cette règle/);
   assert.doesNotMatch(corps('magies/magie-de-la-corruption'), /n'empiète pas dans l'espace du chakra/);
   // décision R146 : seule la Corruption innée ou acquise échappe à la mort au maximum ; le Potentiel Illimité, même s'il peut s'en servir, peut en mourir
-  for (const id of ['guide/aide-memoire', 'guide/blessures-et-etats', 'guide/creer-son-personnage', 'guide/fiche-attributs', 'guide/la-magie-en-jeu']) {
+  // R184 : la phrase de la création est partie avec l'étape 6 (guide/finaliser-son-personnage) ; l'Aide-mémoire est supprimée (R184 (9))
+  for (const id of ['guide/blessures-et-etats', 'guide/finaliser-son-personnage', 'guide/fiche-attributs', 'guide/la-magie-en-jeu']) {
     assert.match(corps(id), /ont la Corruption en magie innée ou acquise/i, id);
     assert.match(corps(id), /le Potentiel Illimité, même s[’']il peut (?:s[’']en servir|l[’']utiliser), peut en mourir s[’']il en cumule trop/i, id);
     assert.doesNotMatch(corps(id), /(?:mages de la Corruption|utilisent la magie de la corruption) ne (?:risquent|meurent)/i, id);
   }
-  assert.match(corps('guide/creer-son-personnage'), /\*\*Corruption\*\* : son maximum est celui du chakra/); // l’étape 6 de la création (guide/finaliser-son-personnage, fusionnée)
+  assert.match(corps('guide/finaliser-son-personnage'), /\*\*Corruption\*\* : son maximum est celui du chakra/); // l’étape 6 de la création (une page à elle depuis R184)
   // l'exemple du propriétaire : 50 de chakra, 15 de corruption, 35 au plus
   const attributs = { sante: 40, chakra: 50, barriere: 25, corruptionMax: 50, quatriemeBarre: null };
   const par = (fiche) => Object.fromEntries(valeursDuMoment(regles, { ...ficheVide(), ...fiche }, attributs).map((j) => [j.champ, j]));
   const vide = par({});
   assert.deepEqual(Object.keys(vide), ['sante_actuelle', 'chakra_actuel', 'barriere_actuelle', 'corruption']);
-  assert.deepEqual(Object.values(vide).map((j) => [j.min, j.max, j.valeur]), [[0, 40, 40], [0, 50, 50], [0, 25, 25], [0, 50, 0]]);
+  // la santé sans plancher (décision R171 : « La santé du moment peut devenir négative »), les autres au moins à 0
+  assert.deepEqual(Object.values(vide).map((j) => [j.min, j.max, j.valeur]), [[null, 40, 40], [0, 50, 50], [0, 25, 25], [0, 50, 0]]);
   const corrompu = par({ corruption: 15 });
   assert.deepEqual([corrompu.chakra_actuel.max, corrompu.chakra_actuel.valeur, corrompu.chakra_actuel.reduction], [35, 35, 15]);
   assert.equal(par({ corruption: 15, chakra_actuel: 20 }).chakra_actuel.valeur, 20);
@@ -674,8 +766,25 @@ test('alignement (demande du propriétaire, guide « Alignement ») : 5 points d
   assert.equal(nom(0, 6, 1, 7), 'Chaotique Mauvais');
   assert.equal(nom(12, 1, 20, 2), 'Loyal Bon');
   assert.deepEqual(alignementDe(regles, { alignement_loyal: '', alignement_chaotique: null }), { loi: 'Neutre', bien: 'Neutre', nom: 'Neutre' }, 'cases vides : 0');
-  // les neuf combinaisons sont les titres de la page « Les neuf alignements »
-  const titres = [...historique.valeurDImport('page', { id: 'guide/les-neuf-alignements' }, 'corps_md').matchAll(/^## (.+)$/gm)].map((m) => m[1].trim());
+  // les jauges à cinq crans (demande du propriétaire) : calées sur la pastille — le cran du bout ⇔ la tendance, le milieu ⇔ l'écart nul
+  const ecartAxe = regles.constantes['alignement.ecart_axe'];
+  const crans = (loyal, chaotique, bon, mauvais) => cransDAlignement(regles, { ...ficheVide(), alignement_loyal: loyal, alignement_chaotique: chaotique, alignement_bon: bon, alignement_mauvais: mauvais });
+  for (let l = 0; l <= 2 * ecartAxe; l++) for (let c = 0; c <= 2 * ecartAxe; c++) {
+    const { loi, bien } = crans(l, c, c, l);
+    const a = alignementDe(regles, { ...ficheVide(), alignement_loyal: l, alignement_chaotique: c, alignement_bon: c, alignement_mauvais: l });
+    assert.equal(loi === 0, a.loi === 'Loyal', `${l}/${c}`);
+    assert.equal(loi === 4, a.loi === 'Chaotique', `${l}/${c}`);
+    assert.equal(loi === 2, l === c, `${l}/${c}`);
+    assert.equal(bien, 4 - loi, 'les deux axes se lisent de même');
+  }
+  assert.deepEqual(crans(ecartAxe - 1, 0, 0, 1), { loi: 1, bien: 3 }, 'un penchant reste Neutre');
+  assert.deepEqual(cransDAlignement(regles, {}), { loi: 2, bien: 2 }, 'cases vides : le milieu');
+  // les neuf combinaisons sont les titres de la section « Les neuf alignements » d'« Alignement » (la page « Les neuf alignements » y est fondue
+  // depuis la migration 0123 : ses titres sont les intertitres à ancre figée de la section #les-neuf-alignements ; le site de dev en a fait des balises
+  // de leurs mots-clés, que la migration 0126 garde : un titre se lit tel qu'il s'affiche)
+  const vocabulaire = chargerVocabulaire(db);
+  const titres = ancresDuCorps(sectionParAncre(historique.valeurDImport('page', { id: 'guide/alignement' }, 'corps_md'), 'les-neuf-alignements') ?? '')
+    .map((a) => texteSansBalises(a.texte, vocabulaire, { markdown: true }).trim());
   const combinaisons = new Set();
   for (const [l, c] of [[5, 0], [0, 0], [0, 5]]) for (const [b, m] of [[5, 0], [0, 0], [0, 5]]) combinaisons.add(nom(l, c, b, m));
   assert.deepEqual([...combinaisons].sort(), [...titres].sort());
@@ -740,6 +849,9 @@ test('boutons + et − des valeurs du moment (demande du propriétaire) : la val
   assert.deepEqual(ajusterValeurDuMoment(regles, { ...fiche, sante_actuelle: 4 }, 'sante_actuelle', 3), { sante_actuelle: 7 });
   assert.deepEqual(ajusterValeurDuMoment(regles, fiche, 'sante_actuelle', 100), { sante_actuelle: a.sante }, 'au plus le maximum');
   assert.deepEqual(ajusterValeurDuMoment(regles, fiche, 'barriere_actuelle', -999), { barriere_actuelle: 0 }, 'au moins 0');
+  // la santé passe sous 0, sans plancher (décision R171)
+  assert.deepEqual(ajusterValeurDuMoment(regles, { ...fiche, sante_actuelle: 4 }, 'sante_actuelle', -10), { sante_actuelle: -6 }, 'santé négative (R171)');
+  assert.deepEqual(ajusterValeurDuMoment(regles, { ...fiche, sante_actuelle: -6 }, 'sante_actuelle', 2), { sante_actuelle: -4 });
   assert.deepEqual(ajusterValeurDuMoment(regles, fiche, 'corruption', 3), { corruption: 3, chakra_actuel: a.chakra - 3 }, 'la corruption prend la place du chakra');
   assert.deepEqual(ajusterValeurDuMoment(regles, { ...fiche, corruption: 3, chakra_actuel: a.chakra - 3 }, 'chakra_actuel', 10), { chakra_actuel: a.chakra - 3 });
   assert.deepEqual(ajusterValeurDuMoment(regles, fiche, 'barre4_actuelle', 1), {}, 'pas de 4ᵉ barre sans Sang ni Nécromancie');
@@ -949,11 +1061,12 @@ test('dons de la race (demande du propriétaire) : le don de base d’abord, le 
 });
 
 test('résistances (fiche auto Personnage!BA2:BI12) : les crans de la magie innée et de l’acquise s’additionnent, rangés dans les six paliers ; à 0, rien', () => {
-  // la base recalcule la même chose : somme des crans des deux listes (magie_resistance), palier de resistance_palier
+  // la base recalcule la même chose : somme des crans des deux listes (magie_resistance), palier de resistance_palier ; les types de dégâts physiques
+  // aussi (décision R174 : la ligne du tableau est le type, estoc, taille ou frappe ; le Potentiel Illimité, une vulnérabilité à chacun)
   const palierSql = db.prepare(`
     SELECT r.cible, p.id AS palier FROM (
-      SELECT COALESCE(cible_magie_id, cible_etat_id) AS cible, SUM(CASE sens WHEN 'resistance' THEN 1 ELSE -1 END) AS v
-      FROM magie_resistance WHERE magie_id IN (?, ?) GROUP BY cible) r
+      SELECT COALESCE(cible_magie_id, cible_etat_id, cible_physique) AS cible, SUM(CASE sens WHEN 'resistance' THEN 1 ELSE -1 END) AS v
+      FROM magie_resistance WHERE magie_id IN (?, ?) GROUP BY cible_type, cible) r
     JOIN resistance_palier p ON (p.valeur_min IS NULL OR r.v >= p.valeur_min) AND (p.valeur_max IS NULL OR r.v <= p.valeur_max)`);
   let paires = 0;
   for (const innee of regles.magies) {
@@ -1006,9 +1119,58 @@ test('résistances des dons : ethnie hybride (sa magie innée et son altération
   const rouge = resistancesDe(regles, ficheConforme({ race_id: 'races/drakos', ethnie_id: 'races/drakos#ethnie:drakos-rouge' }));
   assert.equal(cible(rouge, 'Brûlure').crans, 2);
   const orange = resistancesDe(regles, ficheConforme({ race_id: 'races/drakos', ethnie_id: 'races/drakos#ethnie:drakos-orange', magie_innee_id: 'magies/potentiel-illimite' }));
-  assert.deepEqual([orange.paliers.flatMap((p) => p.cibles), orange.auChoix, orange.aChoisir.map((c) => [c.nom, c.fait])], [[], [], [['Écaille draconique', false]]]);
+  // le Potentiel Illimité : aucune magie ni altération (R139), ses trois vulnérabilités physiques seulement (R174, « Surtension corporelle »)
+  assert.deepEqual([orange.paliers.flatMap((p) => p.cibles).filter((c) => c.type !== 'physique'), orange.auChoix, orange.aChoisir.map((c) => [c.nom, c.fait])],
+    [[], [], [['Écaille draconique', false]]]);
+  assert.deepEqual(orange.paliers.flatMap((p) => p.cibles.filter((c) => c.type === 'physique').map((c) => `${c.id}:${c.crans}>${p.id}`)),
+    ['estoc:-1>vulnerabilite', 'frappe:-1>vulnerabilite', 'taille:-1>vulnerabilite']);
   // Clerc, don de classe de niveau 1 « Proche » : la magie innée (Feu) et la Brûlure gagnent un cran
   const clerc = resistancesDe(regles, ficheConforme({ classes: [{ rang: 1, classe_id: 'classes/clerc', specialite_id: null }] }));
   assert.deepEqual([cible(clerc, 'Feu').crans, cible(clerc, 'Brûlure').crans, cible(clerc, 'Glace').crans], [2, 2, 1]);
   assert.ok(cible(clerc, 'Feu').origines.some((o) => o.nom === 'Proche (Clerc)'));
+});
+
+test('infobulles des tuiles de choix (demande du propriétaire du 2026-10-29) : classe, spécialité (description, sinon l’effet du cartouche), don à choisir ; les textes de la base tels quels, sans balise', () => {
+  const classe = (nom) => regles.classes.find((c) => c.nom === nom);
+  const sansBalise = (t) => assert.doesNotMatch(String(t), /\{\{|\}\}/, 'sans balise du glossaire');
+  // classe : sa description, sinon rien
+  const guerrier = classe('Guerrier');
+  assert.ok(guerrier.description);
+  assert.equal(infobulleDeClasse(guerrier), guerrier.description);
+  sansBalise(infobulleDeClasse(guerrier));
+  for (const c of regles.classes) assert.equal(infobulleDeClasse(c), c.description || null, c.nom);
+  assert.equal(infobulleDeClasse({ ...guerrier, description: null }), null, 'sans description, pas d’infobulle');
+  // spécialité : sa description ; sans elle, l'effet de son cartouche (choix du propriétaire) ; sans l'un ni l'autre, rien
+  const epeiste = guerrier.specialites.find((s) => s.description);
+  assert.equal(infobulleDeSpecialite(guerrier, epeiste), epeiste.description);
+  const cartouche = (c, s) => c.dons.find((d) => d.nature === 'specialite' && d.specialite_id === s.id)?.effet ?? null;
+  for (const c of regles.classes) {
+    for (const s of c.specialites) {
+      const attendu = s.description || cartouche(c, s) || null;
+      assert.equal(infobulleDeSpecialite(c, s), attendu, `${c.nom} · ${s.nom}`);
+      if (attendu) sansBalise(attendu);
+    }
+  }
+  assert.equal(infobulleDeSpecialite(guerrier, { ...epeiste, description: null }), cartouche(guerrier, epeiste), 'sans description : l’effet du cartouche');
+  assert.equal(infobulleDeSpecialite({ ...guerrier, dons: [] }, { ...epeiste, description: null }), null, 'sans l’un ni l’autre : pas d’infobulle');
+  // don à choisir : son type et sa précision, puis son effet, retrouvé par l'identifiant de l'option
+  const options = regles.classes.flatMap((c) => c.choix.flatMap((g) => g.options.map((o) => [c, o])));
+  assert.ok(options.length > 100);
+  for (const [c, o] of options) {
+    const d = c.dons.find((x) => x.id === o.id);
+    const tete = [TYPES_DE_DON[d.type] ?? d.type, d.precision ? `(${d.precision})` : null].filter(Boolean).join(' ');
+    assert.equal(infobulleDuDonAChoisir(c, o.id), d.effet ? (tete ? `${tete}\n${d.effet}` : d.effet) : null, `${c.nom} · ${o.nom}`);
+  }
+  const [c, o] = options.find(([k, x]) => k.dons.find((d) => d.id === x.id)?.precision);
+  assert.match(infobulleDuDonAChoisir(c, o.id), /^(Passif|Actif|Action|Réaction|Variable) \([^)]+\)\n/);
+  assert.equal(infobulleDuDonAChoisir(c, 'capacites/inconnu'), null);
+  assert.equal(texteDuDon({ type: 'passif', precision: null, effet: '' }), null, 'sans effet, rien');
+  // la page : la pastille d'une classe et d'une spécialité porte l'infobulle sous la raison d'un refus ; l'option d'un don, sur son libellé (le focus de son
+  // rond l'ouvre, components/Infobulles.astro)
+  const script = readFileSync(new URL('../src/scripts/fiche.mjs', import.meta.url), 'utf8');
+  assert.match(script, /infobulle\(bouton, \[non \|\| impose, description\]\.filter\(Boolean\)\.join\('\\n\\n'\)\);/);
+  assert.match(script, /description: infobulleDeClasse\(k\)/);
+  assert.equal([...script.matchAll(/description: infobulleDeSpecialite\(c\.classe, s\)/g)].length, 2, 'le menu de l’identité et l’onglet « Choix »');
+  // le texte d'un don à choisir sur l'option et sur son rond : Infobulles.astro n'ouvre au clavier que la bulle de l'élément qui a le focus
+  assert.match(script, /const texte = infobulleDuDonAChoisir\(d\.classe, o\.id\);\s+const rond = radio\(o\);\s+if \(texte\) rond\.title = texte;\s+return el\('label', \{ title: texte \}, rond,/);
 });

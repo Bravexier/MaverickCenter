@@ -1,6 +1,6 @@
 // Analyse des cases d'un sort (tables sort, sort_type, sort_mode, sort_bonus_maitrise ; data/schema.sql, section 3) : ce que la base tire du texte
 // d'une case (colonnes typées, types et modes, bonus de niveau de maîtrise). Les mêmes lectures que l'importeur des magies, réécrites pour l'édition
-// depuis le site de dev (client/serveur/edition.mjs) ; test/sort-analyse.test.mjs les rejoue sur les 322 sorts de la base.
+// depuis le site de dev (client/serveur/edition.mjs) ; test/sort-analyse.test.mjs les rejoue sur tous les sorts de la base.
 // Rien n'est inventé : une forme qui n'est pas reconnue laisse la colonne typée vide (NULL) et le brut fait foi.
 // Une case s'analyse sans les balises du glossaire des mots-clés (lib/mots-cles-balises.mjs : « {{id|texte}} » se lit « texte »).
 // Fonctions pures, sans dépendance (sauf text.mjs et mots-cles-balises.mjs) : partagées par le service et par les pages (affichage d'une case modifiée).
@@ -71,13 +71,18 @@ export function analyserType(typeBrut) {
   };
 }
 
+// Un coût « par » une unité, écrit « N/<unité> » (« 4/projectile » : Projectile arcanique, décision R251) : un seul mot après la barre, jamais « NM »
+// (« 5/NM » est un bonus de maîtrise, pas une unité).
+const PAR_UNITE = /^(\d+)\s*\/\s*(?!NM(?![\p{L}-]))[\p{L}-]+$/u;
+
 /**
- * Colonnes « Coût » et « Coût secondaire » (décision R105) : la consommation de chakra quand le coût est « N » ou « N (k/NM) » ; la ressource de la
- * 4ème barre quand le coût secondaire est « M Sang » ou « M âme(s) », et sa quantité (NULL pour « X »).
+ * Colonnes « Coût » et « Coût secondaire » (décision R105) : la consommation de chakra quand le coût est « N », « N (k/NM) » ou « N/<unité> »
+ * (« 4/projectile », R251 : N est le coût d'une unité) ; la ressource de la 4ème barre quand le coût secondaire est « M Sang » ou « M âme(s) », et sa
+ * quantité (NULL pour « X »).
  */
 export function analyserCout(coutBrut, coutSecondaire = null) {
   const base = sansExpressionsNM(texteSansBalises(coutBrut));
-  const seul = /^(\d+)$/.exec(base);
+  const seul = /^(\d+)$/.exec(base) ?? PAR_UNITE.exec(base);
   const second = /^(\d+|X)\s+(Sang|âmes?)$/.exec(String(texteSansBalises(coutSecondaire ?? '')).trim());
   return {
     cout_chakra: seul ? Number(seul[1]) : null,

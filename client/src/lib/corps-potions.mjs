@@ -1,5 +1,5 @@
 // Corps Markdown de la page d'une potion (page.corps_md de la page de sa ressource, `ressource.page_id` : « Fiole rouge », « Alchimie primitive »…), suivi
-// depuis les tables quand le sous-onglet Consommables de l'onglet Ceinture de /ressources/equipement/ les modifie sur le site de dev
+// depuis les tables quand le sous-onglet Consommables de la page Ceinture (/ressources/objets-a-la-ceinture/) les modifie sur le site de dev
 // (serveur/edition-consommables.mjs) et au rejeu du journal (serveur/edition.mjs#recalculerLesPages). La page, rendue depuis son Markdown, écrit chaque
 // palier dans un tableau à lui (Google Doc « Alchimie ») :
 //   | Petite fiole rouge |  |  |

@@ -72,6 +72,20 @@ export function alignementDe(regles, fiche) {
 }
 
 /**
+ * Cran de chaque jauge d'alignement (demande du propriétaire, 2026-11-13 : une jauge à deux bornes et cinq crans par axe, calée sur la pastille) :
+ * 0 = tendance de la première borne (Loyal, Bon : écart ≥ alignement.ecart_axe), 1 = penchant vers elle (écart de 1 à ecart − 1, encore Neutre),
+ * 2 = écart nul, 3 et 4 = de même vers la seconde borne (Chaotique, Mauvais). Le nom de l'alignement reste celui d'alignementDe.
+ */
+export function cransDAlignement(regles, fiche) {
+  const ecart = constante(regles, 'alignement.ecart_axe');
+  const cran = (a, b) => {
+    const d = entier(fiche[a]) - entier(fiche[b]);
+    return d >= ecart ? 0 : d > 0 ? 1 : d === 0 ? 2 : -d >= ecart ? 4 : 3;
+  };
+  return { loi: cran('alignement_loyal', 'alignement_chaotique'), bien: cran('alignement_bon', 'alignement_mauvais') };
+}
+
+/**
  * Niveaux de classe (décision R2, v_personnage_niveau) : mono-classe, la classe 1 gagne 2 niveaux par niveau global jusqu'à 20 et l'excédent va
  * à la classe 2 (prise au niveau global 11) ; bi-classe, chacune = niveau global.
  */
@@ -89,18 +103,10 @@ export function classesPermises(regles, raceId) {
 }
 
 /**
- * Classe qu'impose la magie innée de la fiche, en classe 1 (classe.magie_innee_id : le Potentiel Illimité impose l'Archimage, « Chose à savoir » de
- * l'Archimage, décision R23), ou null.
- */
-export function classeImposee(regles, fiche) {
-  return fiche.magie_innee_id ? regles.classes.find((c) => c.magie_innee_id === fiche.magie_innee_id) ?? null : null;
-}
-
-/**
  * Pourquoi une classe ne peut pas être la classe `rang` de cette fiche (null : elle le peut) : classe que la race ne permet pas (R8), classe réservée à
- * une autre magie innée, classe que ferme la magie innée (décision R25 : pas de Mage Bleu pour un Potentiel Illimité), autre classe que celle qu'impose la
- * magie innée en classe 1 (décision R23 : l'Archimage n'est ouverte qu'au Potentiel Illimité, qui l'impose), classe déjà prise à l'autre rang. Mêmes
- * règles que v_personnage_controle (classe_inaccessible, classe_reservee, classe_exclue, classe_imposee).
+ * une autre magie innée (décision R23 : l'Archimage n'est ouverte qu'au Potentiel Illimité, qui ne l'impose plus, R238 (5)), classe que ferme la magie
+ * innée (décision R25 : pas de Mage Bleu pour un Potentiel Illimité), classe déjà prise à l'autre rang. Mêmes règles que v_personnage_controle
+ * (classe_inaccessible, classe_reservee, classe_exclue).
  */
 export function refusClasse(regles, fiche, classeId, rang) {
   const classe = trouver(regles.classes, classeId);
@@ -112,26 +118,21 @@ export function refusClasse(regles, fiche, classeId, rang) {
   if (classe.magie_innee_exclue_id && classe.magie_innee_exclue_id === fiche.magie_innee_id) {
     return `fermée à la magie innée ${trouver(regles.magies, fiche.magie_innee_id)?.nom ?? fiche.magie_innee_id}`;
   }
-  const imposee = classeImposee(regles, fiche);
-  if (rang === 1 && imposee && imposee.id !== classe.id) return `la magie innée ${trouver(regles.magies, fiche.magie_innee_id)?.nom} impose ${imposee.nom}`;
   if ((fiche.classes ?? []).some((c) => c.rang !== rang && c.classe_id === classe.id)) return 'déjà l’autre classe';
   return null;
 }
 
 /**
- * Classes de la fiche une fois la magie innée choisie (décisions R23, R25) : une classe réservée à une autre magie innée, ou que la magie innée ferme,
- * est retirée, et la classe qu'impose la magie innée devient la classe 1, à la place de celle qui y était (spécialité à choisir). Rend une nouvelle
- * liste ; la fiche n'est pas modifiée.
+ * Classes de la fiche une fois la magie innée choisie (décisions R23, R25) : une classe réservée à une autre magie innée (l'Archimage hors Potentiel
+ * Illimité), ou que la magie innée ferme (le Mage Bleu au Potentiel Illimité), est retirée. Rien n'est ajouté : le Potentiel Illimité n'impose plus
+ * l'Archimage (R238 (5)), qu'il prend en classe 1, en classe 2 ou pas du tout. Rend une nouvelle liste ; la fiche n'est pas modifiée.
  */
 export function classesSelonLaMagieInnee(regles, fiche) {
-  const classes = (fiche.classes ?? []).filter((c) => {
+  return (fiche.classes ?? []).filter((c) => {
     const classe = trouver(regles.classes, c.classe_id);
     if (classe?.magie_innee_exclue_id && classe.magie_innee_exclue_id === fiche.magie_innee_id) return false;
     return !classe?.magie_innee_id || classe.magie_innee_id === fiche.magie_innee_id;
   });
-  const imposee = classeImposee(regles, fiche);
-  if (!imposee || classes.some((c) => c.rang === 1 && c.classe_id === imposee.id)) return classes;
-  return [{ rang: 1, classe_id: imposee.id, specialite_id: null }, ...classes.filter((c) => c.rang !== 1 && c.classe_id !== imposee.id)];
 }
 
 /** Magies innées que la race permet (liste de l'onglet de la race quand elle existe, R11 ; sinon la matrice, R8) ; sans race, toutes. */
@@ -277,7 +278,8 @@ export function choixDeMetierValables(regles, fiche) {
  * `metier`, `accessoire` ; les mêmes avant le plafond : `…Brut`), plafonds (naturel : seuil du niveau ; acquis : 5 par point de la caractéristique
  * totale, le +1 de la magie innée compris — décision R41 : « 5 en volonté donnerait un max de 25 aquis » —, `plafondAcquis` ; « le plafond prévaut »,
  * R38) et score (guide, « Réussir une action » : 10 × la caractéristique + naturel + acquis ; une croix −20 %, deux croix : inutilisable, décision R19),
- * plus le bonus au jet des dons (décision R122 : « +5% à tout jet impliquant la Perception », hors acquis et hors plafond : `jet`, son détail `jetDetail`).
+ * plus le bonus au jet des dons (décision R122 : « +5% à tout jet impliquant la Perception », hors acquis et hors plafond : `jet`, son détail `jetDetail`),
+ * et le bonus de réussite critique de la compétence au moment présent (décision R180 : `critique`, critiqueDe ; null à deux croix).
  */
 export function competencesDe(regles, fiche) {
   const niveau = niveauGlobal(regles, fiche.xp);
@@ -287,7 +289,8 @@ export function competencesDe(regles, fiche) {
   const { parCompetence } = bonusDuMetier(regles, fiche);
   const posture = postureDuMoment(regles, fiche);
   const entrainement = entrainementDe(regles, fiche).parCompetence;
-  const { parCompetence: dons, plafonds, jets } = acquisDesDons(regles, fiche);
+  const { parCompetence: dons, plafonds, jets, jetsParCompetence } = acquisDesDons(regles, fiche);
+  const sourcesCritique = sourcesDuCritique(regles, fiche);
   return regles.competences.map((k) => {
     const saisie = parId.get(k.id);
     const carac = caracs.get(k.caracteristique_id);
@@ -318,18 +321,116 @@ export function competencesDe(regles, fiche) {
     const acquis = entrainementCompte + donsComptes + metier + accessoire;
     // le bonus au jet d'un don (décision R122 : « +5% à tout jet impliquant la Perception » du Fenrir, « +5% à tout test d'Agilité » de l'Elfe forestier) :
     // « il s'ajoute au score sans passer par le plafond d'acquis », comme une posture ; toujours effectif (un don passif), il est dans `score`
-    const jetDetail = jets.get(k.caracteristique_id) ?? [];
+    // (par caractéristique, R122 ; par compétence nommée, R267 (2) : « Chef résiliant » et ses trois pareils du Porte-étendard)
+    const jetDetail = [...(jets.get(k.caracteristique_id) ?? []), ...(jetsParCompetence.get(k.id) ?? [])];
     const jet = jetDetail.reduce((t, d) => t + d.valeur, 0);
     const score = utilisable ? carac.valeur * constante(regles, 'competence.base_par_point_caracteristique') + naturel + acquis + malus + jet : null;
     // la posture du moment (décision R100) : un bonus au jet, pas un Acquis — `score` reste celui de la fiche (tableur), `scoreDuMoment` le compte
     const bonusPosture = bonusDePostureSurCompetence(posture, k);
+    const scoreDuMoment = score === null ? null : score + bonusPosture;
     return {
       id: k.id, nom: k.nom, caracteristique_id: k.caracteristique_id, naturel, maxNaturel, plafondAcquis, plafondBonus,
       acquis, acquisBrut: entrainementBrut + donsBrut + metierBrut + accessoireBrut,
       entrainement: entrainementCompte, entrainementBrut, dons: donsComptes, donsBrut, donsDetail, metier, metierBrut, accessoire, accessoireBrut,
-      jet, jetDetail, score, posture: bonusPosture, scoreDuMoment: score === null ? null : score + bonusPosture,
+      jet, jetDetail, score, posture: bonusPosture, scoreDuMoment,
+      critique: critiqueDe(regles, posture, k, scoreDuMoment, sourcesCritique),
     };
   });
+}
+
+/**
+ * Ce qui touche la réussite critique en permanence, hors posture et score (décisions R180 (4), R182 (3) ; « Seulement ce qui joue en permanence », R128) :
+ * les dons acquis — de classe, passifs, et de race — dont le texte écrit « (Posture X) Augmente la réussite critique de +N% » (`critique` des règles :
+ * lib/critique-texte.mjs#critiqueDuDon, Sci du Crit), seulement mentionnés (R182 (3) : ils dépendent de l'arme utilisée), et les accessoires portés
+ * « Augmente la réussite critique de N%, peu importe le jet. » (lib/critique-texte.mjs#critiqueDeLAccessoire ; maudit : l'effet contraire, R54), comptés.
+ * `contact` : les compétences des armes de contact (competencesDeContact), où un don de posture se mentionne. { dons: [{ nom, critique: { postures,
+ * valeur } }], accessoires: [{ nom, valeur }], contact }. Jamais les sorts « à la prochaine attaque », les dons actifs, l'arme utilisée, la tenaille ni une
+ * situation (Q88 : (a)).
+ */
+export function sourcesDuCritique(regles, fiche) {
+  const vus = new Set();
+  const dons = [...donsAcquis(regles, fiche).flatMap((c) => c.dons), ...donsDeRace(regles, fiche).dons]
+    .filter((d) => d.critique && !vus.has(d.id) && vus.add(d.id));
+  const accessoires = (fiche.accessoires ?? []).flatMap((a) => {
+    const effet = trouver(regles.accessoires ?? [], a.accessoire_effet_id);
+    return effet?.critique ? [{ nom: nomDAccessoire(a), valeur: a.maudit ? -effet.critique : effet.critique }] : [];
+  });
+  return { dons, accessoires, contact: competencesDeContact(regles) };
+}
+
+/**
+ * Les compétences des armes de contact (décision R182 (3) : Sci du Crit « Tout jet d'attaque au corps à corps », les familles de contact de R127 et
+ * R151) : celles que donnent les armes des familles `categorie` 'contact' (regles.familles_armes[].competences, lues dans arme.competence_brut, R48 ;
+ * aujourd'hui Arme légère et Arme lourde), dans l'ordre de la table competence, jamais une liste écrite ici.
+ */
+export function competencesDeContact(regles) {
+  const ids = new Set((regles.familles_armes ?? []).filter((f) => f.categorie === 'contact').flatMap((f) => f.competences ?? []));
+  return regles.competences.map((k) => k.id).filter((id) => ids.has(id));
+}
+
+/**
+ * Le bonus de réussite critique d'une compétence au moment présent (décision R180), null à deux croix (`scoreDuMoment` null) :
+ * { base, bonus, brut, rogne, releve, plafond, plancher, plage, origines: [{ origine: 'palier' | 'posture' | 'accessoire', nom, valeur }], mentions: [{ nom, valeur }] }.
+ * - le palier, lu sur le score du moment (posture comprise : « 113 de base en offensif ça passe à 103 ») : de `critique.palier_1_score_min` (96) à
+ *   `critique.palier_2_score_min` − 1 (102), `critique.palier_1_bonus` (+2) ; à partir de `critique.palier_2_score_min` (103), `critique.palier_2_bonus`
+ *   (+5 au total), sans borne haute ; « sur tout jet, quelle que soit la posture » ;
+ * - chaque ligne de réussite critique des postures actives qui vise la compétence (`posture.critique` : posture_critique, 'posture') ; au Mode Hyper
+ *   100 %, l'Offensif et le Défensif ensemble (R172) ;
+ * - chaque accessoire porté, sur toutes les compétences.
+ * `mentions` : chaque don de posture (Sci du Crit) dont une posture écrite est active (`posture.noms` ; au Mode Hyper 100 %, toutes), sur les compétences
+ * des armes de contact (`sources.contact`) : il ne vaut qu'avec une arme de contact (décision R182 (3), Q90 : « Le mentionner seulement ») et dépend de
+ * l'arme utilisée (R128) ; jamais dans le total ni le plafond.
+ * `brut` : la somme des origines ; `bonus` : rogné pour que la base plus le bonus ne dépasse pas `critique.plafond` (« ne dépasse jamais 1 à 15 », base comprise,
+ * « toutes sources ensemble ») et relevé pour qu'elle ne descende pas sous `critique.plancher` (décision R203, Q97 : « 1 est le plus bas possible » ; six
+ * accessoires maudits à −1 % sur un score sans palier : brut −6, plage « 1 à 1 », jamais « 1 à −1 ») ; `rogne` : ce que le plafond retire ; `releve` : ce que
+ * le plancher rend (R203) ; `plage` : base + bonus (« 1 à `plage` »). Toutes les valeurs viennent de regle_constante (`critique.*`), jamais écrites ici.
+ */
+export function critiqueDe(regles, posture, k, scoreDuMoment, sources = { dons: [], accessoires: [], contact: [] }) {
+  if (scoreDuMoment === null || scoreDuMoment === undefined) return null;
+  const c = (id) => constante(regles, id);
+  const base = c('critique.base');
+  const plafond = c('critique.plafond');
+  const plancher = c('critique.plancher');
+  const seuil1 = c('critique.palier_1_score_min');
+  const seuil2 = c('critique.palier_2_score_min');
+  const origines = [];
+  if (scoreDuMoment >= seuil2) origines.push({ origine: 'palier', nom: `score de ${seuil2} % et plus`, valeur: c('critique.palier_2_bonus') });
+  else if (scoreDuMoment >= seuil1) origines.push({ origine: 'palier', nom: `score de ${seuil1} à ${seuil2 - 1} %`, valeur: c('critique.palier_1_bonus') });
+  for (const l of posture?.critique ?? []) {
+    if (l.competences.includes(k.id)) origines.push({ origine: 'posture', nom: `posture ${l.posture}${posture.cent ? ', Mode Hyper 100 %' : ''}`, valeur: l.valeur });
+  }
+  for (const a of sources.accessoires ?? []) origines.push({ origine: 'accessoire', nom: a.nom, valeur: a.valeur });
+  const contact = (sources.contact ?? []).includes(k.id);
+  const mentions = (sources.dons ?? []).filter((d) => contact && d.critique.postures.some((p) => posture?.noms?.includes(p)))
+    .map((d) => ({ nom: d.nom, valeur: d.critique.valeur }));
+  const brut = origines.reduce((t, o) => t + o.valeur, 0);
+  const rogne = Math.max(0, brut - (plafond - base));
+  // le plancher (décision R203) : la plage ne descend jamais sous « 1 à `plancher` », le bonus total y est ramené
+  const releve = Math.max(0, (plancher - base) - (brut - rogne));
+  const bonus = brut - rogne + releve;
+  return { base, bonus, brut, rogne, releve, plafond, plancher, plage: base + bonus, origines, mentions };
+}
+
+const signeDe = (n) => (n > 0 ? `+${n}` : String(n));
+/**
+ * Les lignes de l'infobulle du score sur la réussite critique (décision R180 (4) : « elle affiche le bonus de critique dès qu'il n'est pas nul, quelle
+ * que soit sa provenance ») : le total et la plage (« Réussite critique : +10 % (1 à 15) »), une ligne par origine (« +5 % (posture Offensif) »), le
+ * plafond quand il rogne, le plancher quand il relève (décision R203 : « Plancher : -6 % ramené à -4 % (jamais moins de 1 à 1) »), puis chaque don de posture mentionné, hors du total (décision R182 (3) : « Sci du Crit : +5 % avec une arme de contact (non
+ * compté) ») ; [] sans bonus ni mention (ou à deux croix).
+ */
+export function lignesDuCritique(critique) {
+  if (!critique) return [];
+  const mentions = (critique.mentions ?? []).map((m) => `${m.nom} : ${signeDe(m.valeur)} % avec une arme de contact (non compté)`);
+  if (critique.bonus === 0) return mentions;
+  return [
+    `Réussite critique : ${signeDe(critique.bonus)} % (1 à ${critique.plage})`,
+    ...critique.origines.map((o) => `${signeDe(o.valeur)} % (${o.nom})`),
+    ...(critique.rogne > 0
+      ? [`Plafond : ${signeDe(critique.brut)} % ramené à ${signeDe(critique.bonus)} % (jamais plus de 1 à ${critique.plafond})`] : []),
+    ...(critique.releve > 0
+      ? [`Plancher : ${signeDe(critique.brut)} % ramené à ${signeDe(critique.bonus)} % (jamais moins de 1 à ${critique.plancher})`] : []),
+    ...mentions,
+  ];
 }
 
 /**
@@ -378,7 +479,9 @@ export function entrainementsAEnregistrer(fiche) {
  * à 0 n'en donne plus aucun : décisions R157, R158, armureCassee, raison 'armure_cassee') :
  * { parCompetence: Map(competence_id → [{ nom, valeur }]), plafonds: Map(caracteristique_id → [{ nom, valeur }])
  * (« Son acquis max en Social est augmenté de +20 »), jets: Map(caracteristique_id → [{ nom, valeur }]) (« +5% à tout jet impliquant la Perception » :
- * un bonus au jet de chaque compétence de la caractéristique, hors acquis et hors plafond, décision R122 : competencesDe), artisanat: [{ nom, valeur }]
+ * un bonus au jet de chaque compétence de la caractéristique, hors acquis et hors plafond, décision R122 : competencesDe), jetsParCompetence:
+ * Map(competence_id → [{ nom, valeur }]) (« les alliés ont un bonus de 5% à tous les jets de calme, vigueur et fermeté », décision R267 (2) : le même bonus
+ * au jet, d'une compétence nommée), artisanat: [{ nom, valeur }]
  * (« +10% à tous les tests d'artisanat » : la compétence d'artisanat du métier, décision R123 : artisanatDe), choix, nonComptes: [{ nom, valeur, raison,
  * texte }] }. Un bonus « X ou Y » ou « pour les compétences d'arme » (R120) est un choix (personnage_acquis_choix : source = le don, rang = le rang du
  * choix dans son texte) : { source, rang, nom, valeur, options, choisi, fait } ; « choisir 2 sur les 3 » (R121), autant de choix que le texte le dit, à
@@ -406,6 +509,7 @@ export function acquisDesDons(regles, fiche) {
   };
   const plafonds = new Map();
   const jets = new Map();
+  const jetsParCompetence = new Map();
   const artisanat = [];
   const competences = new Set(regles.competences.map((k) => k.id));
   const sansArtisanat = !trouver(regles.metiers ?? [], fiche.metier_id)?.artisanat;
@@ -433,6 +537,11 @@ export function acquisDesDons(regles, fiche) {
         // au jet, ajouté au score de chaque compétence de la caractéristique (competencesDe), pas un acquis
         if (!jets.has(b.jet)) jets.set(b.jet, []);
         jets.get(b.jet).push({ nom: source.nom, valeur: b.valeur });
+      } else if (b.jet_competence) {
+        // décision R267 (2) : « Tant qu'il est debout, les alliés ont un bonus de 5% à tous les jets de … » (Chef résiliant, agile, fort, malin du Porte-étendard,
+        // qui compte parmi ses alliés, R254 (2)) : un bonus au jet de cette compétence, hors acquis, comme un bonus qui joue tout le temps
+        if (!jetsParCompetence.has(b.jet_competence)) jetsParCompetence.set(b.jet_competence, []);
+        jetsParCompetence.get(b.jet_competence).push({ nom: source.nom, valeur: b.valeur });
       } else if (b.artisanat) {
         // décision R123 : « +5% à chaque test lié à l'artisanat » (Nain, Londolor ouest), « +10% à tous les tests d'artisanat » (Elfe noir, Sang purifié) :
         // « Les test d'artisanat dépendent du métier » : la compétence d'artisanat du métier (artisanatDe) ; sans elle, rien
@@ -495,7 +604,7 @@ export function acquisDesDons(regles, fiche) {
       } else ajouter(b.competence_id, source.nom, b.valeur);
     }
   }
-  return { parCompetence, plafonds, jets, artisanat, choix, nonComptes };
+  return { parCompetence, plafonds, jets, jetsParCompetence, artisanat, choix, nonComptes };
 }
 
 /**
@@ -888,7 +997,7 @@ export function actionsDeLEmplacement(regles, fiche, rang) {
     max,
     genre,
     utiliser,
-    refus: posture?.armesInutilisables && !estUnParchemin(regles, x) ? `Posture ${posture.posture.nom} : on ne peut que lancer des sorts` : null,
+    refus: posture?.armesInutilisables && !estUnParchemin(regles, x) ? `${posture.libelle} : on ne peut que lancer des sorts` : null,
     remplir: quantite < max,
     duSac: genre === 'contenant' ? null : Math.max(0, Math.min(max - quantite, dansLeSac(fiche, x.nom))),
   };
@@ -1013,10 +1122,33 @@ export function gainsAttendus(regles, niveau) {
   };
 }
 
+/** La donnée de la décision R225 (regle_constante, lue par lib/fiche-regles.mjs) : la santé au plus par niveau d'un Potentiel Illimité inné. */
+const CONSTANTE_SANTE_POTENTIEL = 'potentiel_illimite.sante_max_par_niveau';
+
+/**
+ * La santé gagnée au plus par un personnage dont la magie innée est le Potentiel Illimité (décision R225 : « 5 santé max/niveau » sur les points
+ * d'attributs à répartir ; V5 bis : « Non, le dé en plus ») : N (regles.constantes, jamais écrit ici) × les niveaux atteints qui donnent des points
+ * d'attributs (niveau_global.points_attributs renseigné, toujours > 0 par son CHECK), plus le plus grand résultat cumulé des dés bonus atteints
+ * (v_niveau.de_attributs_max_cumul) — le même calcul que la règle gains_sante_potentiel de v_personnage_controle (test/fiche-sante-potentiel.test.mjs).
+ * La fiche n'a que deux totaux (R73) : le contrôle porte sur gains_sante. null pour une autre magie innée (ou sans la donnée).
+ *   { parNiveau (N), niveaux (ceux qui donnent des points), de (le dé bonus au plus), plafond, depasse (santé > plafond) }
+ */
+export function santeDuPotentiel(regles, fiche) {
+  if (fiche.magie_innee_id !== POTENTIEL_ILLIMITE_INNE) return null;
+  const parNiveau = regles.constantes?.[CONSTANTE_SANTE_POTENTIEL];
+  if (parNiveau === undefined || parNiveau === null) return null;
+  const niveau = niveauGlobal(regles, fiche.xp);
+  const niveaux = regles.niveaux.filter((n) => n.niveau <= niveau && n.points_attributs !== null && n.points_attributs !== undefined).length;
+  const de = entier(ligneDeNiveau(regles, niveau)?.de_attributs_max_cumul);
+  const plafond = parNiveau * niveaux + de;
+  return { parNiveau, niveaux, de, plafond, depasse: entier(fiche.gains_sante) > plafond };
+}
+
 /**
  * Les gains de niveau de la fiche (décision R73) : santé et chakra gagnés (personnage.gains_sante, gains_chakra ; une valeur absente ou illisible compte 0),
  * leur total, ce qu'il faut saisir au niveau atteint (gainsAttendus) et `hors` : le total sort de la plage — exactement quand la base ajoute la ligne
- * gains_niveau à v_personnage_controle. { sante, chakra, total, niveau, points, parNiveau, depuis, des, min, max, hors }.
+ * gains_niveau à v_personnage_controle. `potentiel` : le plafond de santé d'un Potentiel Illimité inné (décision R225, santeDuPotentiel ; null sinon),
+ * qui s'ajoute à la plage sans la changer. { sante, chakra, total, niveau, points, parNiveau, depuis, des, min, max, hors, potentiel }.
  */
 export function gainsDeNiveau(regles, fiche) {
   const sante = entier(fiche.gains_sante);
@@ -1024,7 +1156,7 @@ export function gainsDeNiveau(regles, fiche) {
   const total = sante + chakra;
   const niveau = niveauGlobal(regles, fiche.xp);
   const attendus = gainsAttendus(regles, niveau);
-  return { sante, chakra, total, niveau, ...attendus, hors: total < attendus.min || total > attendus.max };
+  return { sante, chakra, total, niveau, ...attendus, hors: total < attendus.min || total > attendus.max, potentiel: santeDuPotentiel(regles, fiche) };
 }
 
 /**
@@ -1178,8 +1310,8 @@ export function valeurDEffetDAccessoire(regles, a) {
 }
 
 /**
- * Les effets d'accessoire rappelés à la suite des dons de race, sous le même format (demande du propriétaire : « Dans le cas d'une action ajoute-le à la
- * suite des dons raciaux » ; décision R54 : les effets « (Action) » et ceux à usage compté, accessoire_effet.usage) : { nom, type, texte, maudit }.
+ * Les effets d'accessoire « (Action) » et à usage compté (décision R54 : accessoire_effet.usage) : { nom, type, texte, maudit }. Ils étaient rappelés à
+ * la suite des dons de race ; la page les liste maintenant parmi les actions, avec leur compteur (décision R173 : actionsDeLaFiche).
  */
 export function actionsDesAccessoires(regles, fiche) {
   return (fiche.accessoires ?? []).flatMap((a) => {
@@ -1512,12 +1644,13 @@ export function carteDeMaitrise(regles, s) {
 /**
  * Une ligne du tableau des familles du bloc Maîtrises (maitrisesParFamille) : d'où viennent ses points, en mots (« Guerrier (maîtrise 1) +1 »,
  * « Mage saphir (Mage Bleu) +2 (suit un choix) »), et ses alertes : les points au-delà du plafond (R149, « 5 points : 1 au-delà du plafond, non compté »,
- * ton 'trop') ; un total des sources sous 0, ramené à 0 (R151, ton 'info'). { detail: [texte], alertes: [{ ton, texte }] }.
+ * ton 'avertissement' : « ne devrai pas remonter une erreur. Juste un avertissement, surtout quand ils sont imposées », décision R170 ; le calcul ne
+ * change pas) ; un total des sources sous 0, ramené à 0 (R151, ton 'info'). { detail: [texte], alertes: [{ ton, texte }] }.
  */
 export function ligneDeMaitrise(m) {
   const detail = m.detail.map((d) => `${d.titre} ${pointsSignes(d.points)}${d.genre === 'suit' ? ' (suit un choix)' : ''}`);
   const alertes = [];
-  if (m.excedent) alertes.push({ ton: 'trop', texte: `${pluriel(m.points, 'point')} : ${m.excedent} au-delà du plafond, non compté${m.excedent > 1 ? 's' : ''}` });
+  if (m.excedent) alertes.push({ ton: 'avertissement', texte: `${pluriel(m.points, 'point')} : ${m.excedent} au-delà du plafond, non compté${m.excedent > 1 ? 's' : ''}` });
   const brut = m.detail.reduce((t, d) => t + d.points, 0);
   if (brut < 0) alertes.push({ ton: 'info', texte: `${pointsSignes(brut)} en tout : ramené à 0, une famille ne descend jamais sous 0` });
   return { detail, alertes };
@@ -1567,12 +1700,29 @@ export function presentationDuCompteurDeMaitrise(compteur, sources) {
  * d'équipement, R166, même quand sa magie est la magie désactivée) restent. `desactivee` : cette magie
  * ({ id, nom }), null sinon. `options.avecLaPosture` (vrai par défaut, la page) : faux, la posture du moment est ignorée, aucune magie n'est
  * désactivée (l'export en tableur, qui écrit les valeurs de la fiche, pas celles de la posture : docs/character-generator.md, « Export »).
- * { paliers: [{ id, libelle, effet, cibles: [{ type, id, nom, crans, immunite, origines: [{ nom, crans } | { nom, immunite }] }] }], auChoix: [nom], aChoisir, desactivee }
+ * Les trois types de dégâts physiques (décision R174 : « rajouter les 3 type de physique dans le tableau de résistance », « Oui, palier personnel ») :
+ * des cibles `type: 'physique'` (id estoc, frappe ou taille, nom de DEGATS_PHYSIQUES), rangées après les magies et les altérations, dans l'ordre du
+ * propriétaire (RESISTANCES_PHYSIQUES : « Estoc, Frappe, Taille ») ; mêmes paliers, crans additionnés comme pour une magie, absentes à 0 comme une
+ * magie sans cran. Seule source aujourd'hui : la liste de la magie innée du Potentiel Illimité (magie_resistance, « Surtension corporelle », un cran
+ * de moins à chacune : la Vulnérabilité ; origine « Potentiel Illimité (magie innée) »), ni les dons, ni l'équipement (les dons du Mage Bleu
+ * « Squelettique » et « Gluant » jouent sur l'armure, pas sur ce palier).
+ * Le Mode Hyper actif (décision R172 ; `options.avecLeModeHyper`, comme `avecLaPosture` par défaut : l'export en tableur ne le compte pas), origine
+ * « Mode Hyper » : une seule magie, l'immunité à sa magie innée ; deux magies, le palier Grande résistance à chacune (« Très résistant aux deux
+ * magies » : un palier fixé, pas un cran ; `palier` de la cible), sauf une magie déjà en immunité, qui le reste (« sauf celles où il est déjà immunisé,
+ * qui le restent ») ; le Potentiel Illimité, +1 cran à chacune des quatorze magies (elementsDeDegats : « un cran de résistance de plus à toutes les
+ * magies ») et l'annulation de son malus physique (R174 : « le mode hyper se contente d'annuler malus passif du PI ») : les crans négatifs que la
+ * liste du Potentiel Illimité donne aux types physiques ne comptent pas, ses crans positifs et ceux d'une autre origine restent. `options.sansMalusPhysique`
+ * (null par défaut : le Mode Hyper en décide) force cette annulation (vrai) ou l'empêche (faux).
+ * Le Mode Hyper 100 % (R172) : en Symbiose, aucune magie désactivée (R111 levé : postureDuMoment).
+ * { paliers: [{ id, libelle, effet, cibles: [{ type, id, nom, crans, immunite, palier?, origines: [{ nom, crans } | { nom, immunite } | { nom, palier }] }] }],
+ *   auChoix: [nom], aChoisir, desactivee }
  */
-export function resistancesDe(regles, fiche, { avecLaPosture = true } = {}) {
+export function resistancesDe(regles, fiche, { avecLaPosture = true, avecLeModeHyper = avecLaPosture, sansMalusPhysique = null } = {}) {
   const innee = trouver(regles.magies, fiche.magie_innee_id);
   const acquise = trouver(regles.magies, fiche.magie_acquise_id);
   const desactivee = avecLaPosture ? postureDuMoment(regles, fiche)?.symbiose?.inactive ?? null : null;
+  const hyper = avecLeModeHyper ? modeHyperDuMoment(regles, fiche) : null;
+  const sansMalus = sansMalusPhysique ?? Boolean(hyper);
   const cibles = new Map();
   const auChoix = [];
   // les altérations dont « ... plus fort ! » retire les crans négatifs (décision R163), appliqué après tous les crans : id → origine (la première)
@@ -1631,7 +1781,11 @@ export function resistancesDe(regles, fiche, { avecLaPosture = true } = {}) {
   for (const [magie, role] of [[innee, 'magie innée'], [acquise, 'magie acquise']]) {
     // la magie que la Symbiose désactive : ni ses résistances ni ses faiblesses (décision R111)
     if (!magie || magie.id === desactivee?.id) continue;
-    for (const e of magie.resistances ?? []) compter(e, `${magie.nom} (${role})`);
+    for (const e of magie.resistances ?? []) {
+      // le malus physique du Potentiel Illimité, annulé en Mode Hyper (R172, R174) : ses seuls crans négatifs aux types physiques
+      if (sansMalus && magie.id === POTENTIEL_ILLIMITE && e.type === 'physique' && e.crans < 0) continue;
+      compter(e, `${magie.nom} (${role})`);
+    }
   }
   const race = donsDeRace(regles, fiche);
   const ethnie = trouver(regles.ethnies, fiche.ethnie_id)?.nom ?? trouver(regles.races, fiche.race_id)?.nom;
@@ -1647,6 +1801,20 @@ export function resistancesDe(regles, fiche, { avecLaPosture = true } = {}) {
   // écrite prévaut ; jamais retirés par une partie à 0 (armureCassee n'est pas lue) ni par la Symbiose (effet d'équipement)
   const elementaire = trouver(regles.armures_elementaires ?? [], fiche.armure_elementaire_id);
   if (elementaire) for (const e of elementaire.resistances?.effets ?? []) compter(e, `${elementaire.nom} (armure élémentaire)`);
+  // le Mode Hyper actif (décision R172) : le Potentiel Illimité, +1 cran à chacune des quatorze magies ; une seule magie, l'immunité à la magie innée ;
+  // deux magies, le palier Grande résistance fixé à chacune (une immunité, écrite ou de crans, prévaut : palierDe)
+  if (hyper?.potentielIllimite) for (const m of elementsDeDegats(regles)) compter({ type: 'magie', id: m.id, crans: 1 }, 'Mode Hyper');
+  else if (hyper?.uneSeule) {
+    if (innee) compter({ type: 'magie', id: innee.id, immunite: true }, 'Mode Hyper');
+  } else if (hyper) {
+    for (const m of [innee, acquise].filter(Boolean)) {
+      compter({ type: 'magie', id: m.id, crans: 0 }, 'Mode Hyper');
+      const c = cibles.get(`magie:${m.id}`);
+      c.origines.pop();
+      c.palier = PALIER_DU_MODE_HYPER_BI;
+      c.origines.push({ nom: 'Mode Hyper', palier: (regles.resistance_paliers ?? []).find((p) => p.id === PALIER_DU_MODE_HYPER_BI)?.libelle ?? PALIER_DU_MODE_HYPER_BI });
+    }
+  }
 
   // « ... plus fort ! » (décision R163) : après tous les crans (magies, dons, accessoires maudits compris), une altération de la liste de faiblesses de la
   // magie innée (ou tirée) perd ses crans négatifs, quelle qu'en soit l'origine, et garde les positifs (« +1 et −2 donnent +1 ») ; une origine de plus,
@@ -1659,12 +1827,16 @@ export function resistancesDe(regles, fiche, { avecLaPosture = true } = {}) {
     c.origines.push({ nom: origine, crans: -negatifs });
   }
 
-  const rang = (c) => (c.type === 'magie' ? regles.magies : regles.etats ?? []).findIndex((x) => x.id === c.id);
+  // les magies, puis les altérations, puis les types physiques (R174), chacun dans son ordre (regles.magies, regles.etats, RESISTANCES_PHYSIQUES)
+  const listeDe = (type) => (type === 'magie' ? regles.magies : type === 'physique' ? RESISTANCES_PHYSIQUES : regles.etats ?? []);
+  const ordreDuType = (type) => ['magie', 'etat', 'physique'].indexOf(type);
+  const rang = (c) => listeDe(c.type).findIndex((x) => x.id === c.id);
   const rangees = [...cibles.values()]
-    .map((c) => ({ ...c, nom: trouver(c.type === 'magie' ? regles.magies : regles.etats ?? [], c.id)?.nom ?? c.id }))
-    .sort((a, b) => (a.type === b.type ? 0 : a.type === 'magie' ? -1 : 1) || rang(a) - rang(b));
-  const palierDe = (c) => (c.immunite ? 'immunite'
-    : (regles.resistance_paliers ?? []).find((p) => (p.min === null || c.crans >= p.min) && (p.max === null || c.crans <= p.max))?.id ?? null);
+    .map((c) => ({ ...c, nom: trouver(listeDe(c.type), c.id)?.nom ?? c.id }))
+    .sort((a, b) => ordreDuType(a.type) - ordreDuType(b.type) || rang(a) - rang(b));
+  const parCrans = (c) => (regles.resistance_paliers ?? []).find((p) => (p.min === null || c.crans >= p.min) && (p.max === null || c.crans <= p.max))?.id ?? null;
+  // un palier fixé (le Mode Hyper à deux magies) cède à l'immunité, écrite ou de crans (R172)
+  const palierDe = (c) => (c.immunite ? 'immunite' : c.palier && parCrans(c) !== 'immunite' ? c.palier : parCrans(c));
   return {
     paliers: (regles.resistance_paliers ?? []).map((p) => ({ id: p.id, libelle: p.libelle, effet: p.effet, cibles: rangees.filter((c) => palierDe(c) === p.id) })),
     auChoix,
@@ -1678,7 +1850,8 @@ export function resistancesDe(regles, fiche, { avecLaPosture = true } = {}) {
  *   santé    = classes + race + magie innée + magie acquise + ethnie + accessoires « Santé » + gains de niveau
  *   chakra   = classes + race + magie innée + magie acquise + ethnie + accessoires « Chakra » + gains de niveau
  *   barrière = chakra ÷ 2 (arrondi à l'inférieur) + classes + race + ethnie + accessoires « Barrière »
- * Vitesse et vitesse de nage de la race, de l'ethnie et du métier (décision R37) ; armure de base : AP/AM de la race et de l'ethnie, AM de chaque classe magique (guide, étape 6) ; initiative :
+ * Vitesse et vitesse de nage de la race, de l'ethnie et du métier (décision R37) ; armure de base : AP/AM de la race et de l'ethnie, et ceux qu'écrivent
+ * leurs dons (armureDesDonsDeRace, décision R172), AM de chaque classe magique (guide, étape 6) ; initiative :
  * 1D20 + le bonus de l'Agilité (table initiative_agilite) + le bonus d'initiative du métier (« +X INI », décision R33) : `initiativeBonus` ; 4ᵉ barre
  * (Sang, Âme) de la magie qui en a une ; Corruption au plus le chakra.
  */
@@ -1710,6 +1883,9 @@ export function attributsDe(regles, fiche) {
   // accessoires (décision R54) : initiative, vitesse (au sol), 4ᵉ barre (« Augmente le maximum de sang ou d'âme »), AP et AM de base
   const acc = (cible) => sommeDesAccessoires(regles, fiche, cible);
   const initiativeAccessoires = acc('initiative');
+  // le Mode Hyper actif (décision R172) : la vitesse qu'écrit l'effet de la race (« +2 à la Vitesse », « +3 Vitesse »), lue dans son texte ; comme la
+  // posture, une valeur du moment : `vitesseSol` reste celle de la fiche (tableur)
+  const vitesseModeHyper = modeHyperDuMoment(regles, fiche)?.vitesse ?? [];
   return {
     sante: total(detail.sante),
     chakra,
@@ -1720,8 +1896,11 @@ export function attributsDe(regles, fiche) {
     vitesseMetier: metier.vitesse,
     vitesseNageMetier: metier.vitesseNage,
     vitesseAccessoires: acc('vitesse'),
-    ap: (race?.ap ?? 0) + (ethnie?.ap ?? 0) + acc('armure_ap'),
-    am: (race?.am ?? 0) + (ethnie?.am ?? 0) + classes.filter((c) => c.magique).length * regles.am_classe_magique + acc('armure_am'),
+    vitesseModeHyper: vitesseModeHyper.reduce((s, l) => s + l.valeur, 0),
+    vitesseModeHyperDetail: vitesseModeHyper,
+    // (l'AP et l'AM qu'écrivent les dons de race et d'ethnie, « +2 Armure magique (+2 tous les 5 niveaux) » du Marcass : décision R177, « Oui, toujours »)
+    ap: (race?.ap ?? 0) + (ethnie?.ap ?? 0) + armureDesDonsDeRace(regles, fiche, 'ap') + acc('armure_ap'),
+    am: (race?.am ?? 0) + (ethnie?.am ?? 0) + armureDesDonsDeRace(regles, fiche, 'am') + classes.filter((c) => c.magique).length * regles.am_classe_magique + acc('armure_am'),
     apAccessoires: acc('armure_ap'),
     amAccessoires: acc('armure_am'),
     initiative,
@@ -1746,19 +1925,25 @@ export function attributsDe(regles, fiche) {
  * monter au-delà de 23/25 car la corruption prend la place »), pour tous, magie de la Corruption innée ou acquise comprise (décision R142 : « le maximum
  * de corruption comme pour tous les autre resent la même valeur que le maximum de chakra et chaque point de corruption empêche de récupérer un point de
  * chakra » ; la mort au maximum n'est épargnée qu'à la Corruption innée ou acquise, pas au Potentiel Illimité, R146).
- * La santé s'arrête à 0 : « Quand sa santé tombe à 0 ou moins, le personnage est dans le coma » (guide « Blessures et états »).
- * `hors` : la valeur enregistrée dépasse le maximum (le curseur, lui, s'arrête au maximum).
+ * La santé n'a pas de plancher (décision R171 : « La santé du moment peut devenir négative », aucun plancher n'est donné ; guide « Blessures et
+ * états » : « Quand sa santé tombe à 0 ou moins, le personnage est dans le coma ») : son `min` est null, une santé enregistrée sous 0 est gardée
+ * telle quelle. Les autres valeurs restent au moins à 0 (la barrière comprise, R171).
+ * `hors` : la valeur enregistrée dépasse le maximum, ou passe sous le minimum (le curseur, lui, s'arrête au maximum et à 0).
  */
 export function valeursDuMoment(regles, fiche, attributs = attributsDe(regles, fiche)) {
-  const jauge = (champ, nom, max, vide = max) => {
+  const jauge = (champ, nom, max, vide = max, min = 0) => {
     const v = fiche[champ];
     const enregistree = v === null || v === undefined || v === '' ? null : entier(v);
-    return { champ, nom, min: 0, max, valeur: enregistree === null ? vide : Math.min(max, Math.max(0, enregistree)), hors: enregistree !== null && (enregistree > max || enregistree < 0) };
+    const plancher = (x) => (min === null ? x : Math.max(min, x));
+    return {
+      champ, nom, min, max, valeur: enregistree === null ? vide : Math.min(max, plancher(enregistree)),
+      hors: enregistree !== null && (enregistree > max || (min !== null && enregistree < min)),
+    };
   };
   const corruption = jauge('corruption', 'Corruption', attributs.corruptionMax, 0);
   const reduction = corruption.valeur;
   return [
-    jauge('sante_actuelle', 'Santé actuelle', attributs.sante),
+    jauge('sante_actuelle', 'Santé actuelle', attributs.sante, attributs.sante, null),
     { ...jauge('chakra_actuel', 'Chakra actuel', Math.max(0, attributs.chakra - reduction)), chakra: attributs.chakra, reduction },
     jauge('barriere_actuelle', 'Barrière actuelle', attributs.barriere),
     corruption,
@@ -1768,13 +1953,15 @@ export function valeursDuMoment(regles, fiche, attributs = attributsDe(regles, f
 
 /**
  * Ce qu'écrit un curseur des valeurs du moment : la valeur, bornée ; et, pour la corruption, le chakra actuel qu'elle laisse — celui d'avant, au plus
- * le nouveau maximum (la corruption qui monte prend la place du chakra ; celle qui baisse ne rend pas de chakra). { champ: valeur }.
+ * le nouveau maximum (la corruption qui monte prend la place du chakra ; celle qui baisse ne rend pas de chakra). La santé n'a pas de plancher
+ * (décision R171 : son `min` est null). { champ: valeur }.
  */
 export function ecrireValeurDuMoment(regles, fiche, champ, valeur) {
   const avant = valeursDuMoment(regles, fiche);
   const jauge = avant.find((j) => j.champ === champ);
   if (!jauge) return {};
-  const ecrit = { [champ]: Math.min(jauge.max, Math.max(jauge.min, entier(valeur))) };
+  const v = entier(valeur);
+  const ecrit = { [champ]: Math.min(jauge.max, jauge.min === null ? v : Math.max(jauge.min, v)) };
   if (champ !== 'corruption') return ecrit;
   const chakra = valeursDuMoment(regles, { ...fiche, ...ecrit }).find((j) => j.champ === 'chakra_actuel');
   return { ...ecrit, chakra_actuel: Math.min(avant.find((j) => j.champ === 'chakra_actuel').valeur, chakra.max) };
@@ -1782,7 +1969,7 @@ export function ecrireValeurDuMoment(regles, fiche, champ, valeur) {
 
 /**
  * Ce qu'écrivent les boutons + et − d'une valeur du moment (demande du propriétaire) : la valeur affichée plus `ecart` (négatif pour retirer), bornée
- * comme le curseur (ecrireValeurDuMoment). { champ: valeur }.
+ * comme le curseur (ecrireValeurDuMoment), sauf la santé, qui peut passer sous 0 (décision R171). { champ: valeur }.
  */
 export function ajusterValeurDuMoment(regles, fiche, champ, ecart) {
   const jauge = valeursDuMoment(regles, fiche).find((j) => j.champ === champ);
@@ -1795,7 +1982,11 @@ export function puissanceMagique(regles, niveau) {
   return Math.max(0, ...regles.niveaux.filter((n) => n.niveau <= niveau && n.puissance_magique).map((n) => n.puissance_magique));
 }
 
-/** Plus haut niveau de sort (NPM) accessible : la puissance magique, sans le palier réservé aux personnages sans magie acquise (v_personnage_controle). */
+/**
+ * Puissance magique (NPM) du niveau pour ce personnage : la puissance magique, sans le palier réservé aux personnages sans magie acquise
+ * (v_personnage_controle). Ni le plafond d'une magie innée ni un don n'y comptent (décision R188 (2)) : la Symbiose, les invocations s'en servent ; le
+ * choix des sorts prend npmDesSorts.
+ */
 export function npmMax(regles, fiche) {
   const niveau = niveauGlobal(regles, fiche.xp);
   return Math.max(0, ...regles.niveaux
@@ -1804,27 +1995,182 @@ export function npmMax(regles, fiche) {
 }
 
 /**
- * Emplacements de sorts (guide, étape 5 ; Doc « Créer sa fiche » › Tableau magie) : conditions remplies (magie innée, magie acquise, chaque classe
- * magique) × puissance magique. Avec deux magies, les emplacements du palier 5 s'ouvrent quand même (correction 29 de la fiche).
+ * Plus haut NPM des sorts que la fiche choisit (décision R188) : la puissance du niveau (npmMax), bornée par le plafond de sa magie innée quand elle en a
+ * un (`regles.magies[].npm_plafond`, magie_npm_plafond : le Potentiel Illimité), relevé par les dons acquis qui en écrivent un (donsAcquis,
+ * `npm_plafond`, capacite_npm_plafond : « Semi-complet » de l'Archimage) : min(npmMax, max(plafond de la magie, plafonds des dons)). Le don relève le
+ * plafond sans ouvrir un NPM que le niveau n'ouvre pas (R188 (1)). Sans plafond de la magie innée : npmMax. Seul le choix des sorts est plafonné
+ * (R188 (2) : sortsPossibles, les mentions « sorts jusqu'au NPM » de la page et « NPM … au plus » du tableur) ; la Symbiose, les invocations et le
+ * multiplicateur des emplacements gardent la puissance du niveau. Comme la règle sort_puissance de v_personnage_controle.
  */
-export function emplacementsDeSorts(regles, fiche) {
-  const conditions = (fiche.magie_innee_id ? 1 : 0) + (fiche.magie_acquise_id ? 1 : 0) + classesDe(regles, fiche).filter((c) => c.magique).length;
-  const puissance = puissanceMagique(regles, niveauGlobal(regles, fiche.xp));
-  return { conditions, puissance, total: conditions * puissance };
+export function npmDesSorts(regles, fiche) {
+  const max = npmMax(regles, fiche);
+  const plafond = trouver(regles.magies ?? [], fiche.magie_innee_id)?.npm_plafond;
+  if (!Number.isInteger(plafond)) return max;
+  const releves = donsAcquis(regles, fiche).flatMap((c) => c.dons.map((d) => d.npm_plafond).filter(Number.isInteger));
+  return Math.min(max, Math.max(plafond, ...releves));
 }
 
-/** Sorts que la fiche peut prendre : de sa magie innée ou acquise (toutes pour le Potentiel Illimité), jusqu'au NPM accessible. */
-export function sortsPossibles(regles, fiche) {
-  const toutes = fiche.magie_innee_id === 'magies/potentiel-illimite';
-  const magies = new Set([fiche.magie_innee_id, fiche.magie_acquise_id].filter(Boolean));
-  const max = npmMax(regles, fiche);
-  return regles.sorts.filter((s) => (toutes || magies.has(s.magie_id)) && s.niveau <= max);
+// ------------------------------------------------------------------------------------------------------------------------------------------------
+// Spécialisations magiques (décision R236, Magie V10) : deux par magie (sauf le Potentiel Illimité), leurs sorts aux NPM 3 à 5 (`regles.sorts[]
+// .specialisation_id`, `regles.magies[].specialisations`). Le mono-magie (sans magie acquise : Lamia, Corruption innée et Potentiel Illimité compris)
+// a les deux de sa magie, le Potentiel Illimité celles de toutes (R236 (2), (7)) ; seul le bi-magie choisit une spécialisation par magie (R236 (3)),
+// modifiable à tout moment (R236 (6), comme la spécialité de classe). Pendant de la base : personnage_specialisation_magie et les règles
+// sort_hors_specialisation, specialisation_hors_magie de v_personnage_controle (migration 0118).
+// ------------------------------------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Le NPM où s'ouvrent les spécialisations : le plus petit NPM d'un sort qui en a une (`specialisation_id` des règles ; 3 à l'import), jamais écrit en
+ * dur ; null quand aucun sort n'en a.
+ */
+export function seuilDesSpecialisations(regles) {
+  const niveaux = (regles.sorts ?? []).filter((s) => s.specialisation_id).map((s) => s.niveau);
+  return niveaux.length ? Math.min(...niveaux) : null;
 }
 
 /**
- * Niveaux de maîtrise (NM) des sorts (décisions R24, R26, R118). Le NM d'un sort (`niveau_maitrise`, un curseur de 0 à `plafond` sur la page : R118)
- * compte toutes ses origines ; celui d'un livre de sort (un seul par sort, `nm_livre`, noté dans l'entraînement) en fait partie sans compter dans le
- * décompte. Les NM comptés (`comptes` : ceux des sorts sans leurs livres) vont au plus jusqu'à la limite (`limite`), les NM gagnés (`disponibles`) plus
+ * Le bi-magie, seul à choisir ses spécialisations (R236 (3)) : une magie acquise et une magie innée autre que le Potentiel Illimité (comme la règle
+ * sort_hors_specialisation de la vue). Le mono-magie, sans magie acquise (Lamia, Corruption innée et Potentiel Illimité compris), a les deux
+ * spécialisations de sa magie (R236 (2)).
+ */
+export const estBiMagie = (fiche) => Boolean(fiche?.magie_acquise_id) && fiche.magie_innee_id !== POTENTIEL_ILLIMITE;
+
+/**
+ * Les choix de spécialisation à garder (R236 (3), `fiche.specialisations_magie` : [{ magie_id, specialisation_id }], personnage_specialisation_magie) :
+ * au plus un par magie de la fiche (innée ou acquise), d'une spécialisation de cette magie des règles (`magies[].specialisations`) ; le premier de chaque
+ * magie, les autres (magie perdue, spécialisation d'une autre magie ou inconnue) partent. Dans l'ordre de la fiche. Le choix d'un mono-magie est gardé
+ * sans effet (la base le tolère).
+ */
+export function specialisationsValables(regles, fiche) {
+  const magies = new Set([fiche?.magie_innee_id, fiche?.magie_acquise_id].filter(Boolean));
+  const vues = new Set();
+  return (fiche?.specialisations_magie ?? []).flatMap((c) => {
+    const magie = magies.has(c?.magie_id) ? trouver(regles.magies ?? [], c.magie_id) : null;
+    if (!magie || vues.has(c.magie_id) || !(magie.specialisations ?? []).some((s) => s.id === c.specialisation_id)) return [];
+    vues.add(c.magie_id);
+    return [{ magie_id: c.magie_id, specialisation_id: c.specialisation_id }];
+  });
+}
+
+/**
+ * fiche.specialisations_magie après le choix de la spécialisation `specialisationId` pour la magie `magieId` (null : plus de choix) : sa ligne remplacée.
+ * Choisir celle qui est déjà choisie la retire (bascule, comme la spécialité de classe). Une spécialisation qui n'est pas de cette magie ne change rien.
+ */
+export function specialisationsApresChoix(regles, fiche, magieId, specialisationId) {
+  const actuelles = fiche?.specialisations_magie ?? [];
+  const autres = actuelles.filter((c) => c?.magie_id !== magieId);
+  if (!specialisationId) return autres;
+  if (!(trouver(regles.magies ?? [], magieId)?.specialisations ?? []).some((s) => s.id === specialisationId)) return actuelles;
+  if (actuelles.some((c) => c?.magie_id === magieId && c.specialisation_id === specialisationId)) return autres;
+  return [...autres, { magie_id: magieId, specialisation_id: specialisationId }];
+}
+
+/**
+ * Les spécialisations que la fiche choisit : pour un bi-magie, une par magie (innée puis acquise) qui en a, quand le NPM de ses sorts (npmDesSorts) atteint
+ * le seuil. [{ magie, specialisations, choix (l'id de la spécialisation choisie valable, ou null) }] ; vide pour un mono-magie ou avant le seuil.
+ */
+export function specialisationsAChoisir(regles, fiche) {
+  const seuil = seuilDesSpecialisations(regles);
+  if (!estBiMagie(fiche) || seuil === null || npmDesSorts(regles, fiche) < seuil) return [];
+  const valables = specialisationsValables(regles, fiche);
+  return [fiche.magie_innee_id, fiche.magie_acquise_id].filter(Boolean)
+    .map((id) => trouver(regles.magies ?? [], id))
+    .filter((m) => m?.specialisations?.length)
+    .map((magie) => ({ magie, specialisations: magie.specialisations, choix: valables.find((c) => c.magie_id === magie.id)?.specialisation_id ?? null }));
+}
+
+/**
+ * Les spécialisations dont les sorts sont ouverts à la fiche (R236) : pour un bi-magie, seulement celles qu'il a choisies ; null pour tous les autres
+ * (mono-magie, Potentiel Illimité : tous les sorts de leurs magies). Un bi-magie sans choix pour une magie n'a aucun sort à spécialisation de cette magie.
+ */
+const specialisationsOuvertes = (regles, fiche) => (estBiMagie(fiche) ? new Set(specialisationsValables(regles, fiche).map((c) => c.specialisation_id)) : null);
+
+/** Vrai si la fiche peut prendre ce sort au regard des spécialisations (sort commun, ou spécialisation ouverte : specialisationsOuvertes). */
+const sortOuvert = (ouvertes, sort) => !ouvertes || !sort.specialisation_id || ouvertes.has(sort.specialisation_id);
+
+/**
+ * Emplacements de sorts (guide, étape 5 ; Doc « Créer sa fiche » › Tableau magie) : conditions remplies (magie innée, magie acquise, chaque classe
+ * magique, chaque don acquis qui compte comme une magie acquise : « Grimoire » de l'Archimage, décision R189, `condition_emplacements` des règles,
+ * capacite_condition_emplacements ; il ne donne pas de seconde magie) × puissance magique du niveau (puissanceMagique, jamais le plafond de R188).
+ * Avec deux magies, les emplacements du palier 5 s'ouvrent quand même (correction 29 de la fiche).
+ * Super-magie (décision R236 (4), (5)) : une condition de plus quand la puissance magique du niveau atteint le seuil des spécialisations
+ * (seuilDesSpecialisations : le NPM 3, niveau global 8), que la fiche a une magie innée et pas de magie acquise (mono-magie, Potentiel Illimité compris),
+ * comme une magie acquise, sans seconde magie. « Grimoire » et la Super-magie sont la même condition (R236 (5), MAJ-F3c : un Archimage du Potentiel
+ * Illimité de niveau 8 reste à 9 emplacements avec une classe magique) : avec un don `condition_emplacements` acquis, elle ne s'ajoute pas. Rendue à part
+ * (`superMagie: true`) seulement quand elle compte.
+ */
+export function emplacementsDeSorts(regles, fiche) {
+  const dons = donsAcquis(regles, fiche).reduce((n, c) => n + c.dons.filter((d) => d.condition_emplacements).length, 0);
+  const puissance = puissanceMagique(regles, niveauGlobal(regles, fiche.xp));
+  const seuil = seuilDesSpecialisations(regles);
+  const superMagie = seuil !== null && puissance >= seuil && Boolean(fiche.magie_innee_id) && !fiche.magie_acquise_id && dons === 0;
+  const conditions = (fiche.magie_innee_id ? 1 : 0) + (fiche.magie_acquise_id ? 1 : 0) + classesDe(regles, fiche).filter((c) => c.magique).length + dons + (superMagie ? 1 : 0);
+  return { conditions, puissance, total: conditions * puissance, ...(superMagie ? { superMagie: true } : {}) };
+}
+
+/**
+ * Sorts que la fiche peut prendre : de sa magie innée ou acquise (toutes pour le Potentiel Illimité), jusqu'au NPM des sorts (npmDesSorts : la
+ * puissance du niveau sous le plafond de R188). Le bi-magie n'a que les sorts communs de ses magies et ceux de la spécialisation choisie pour chacune
+ * (R236 (3)) ; le mono-magie et le Potentiel Illimité gardent tous ceux de leurs magies (R236 (2), (7)).
+ */
+export function sortsPossibles(regles, fiche) {
+  const toutes = fiche.magie_innee_id === POTENTIEL_ILLIMITE;
+  const magies = new Set([fiche.magie_innee_id, fiche.magie_acquise_id].filter(Boolean));
+  const max = npmDesSorts(regles, fiche);
+  const ouvertes = specialisationsOuvertes(regles, fiche);
+  return regles.sorts.filter((s) => (toutes || magies.has(s.magie_id)) && s.niveau <= max && sortOuvert(ouvertes, s));
+}
+
+/**
+ * Les sorts dont un livre peut s'apprendre dans l'entraînement (décision R169 : « on peux apprendre n'importe quel "entainement" livre de sort pour
+ * n'importe quel sort de sa magie, même si on l'a pas sélectionné » ; réponses du propriétaire : « Tous, quel que soit le NPM », « Oui, toutes les
+ * magies » pour le Potentiel Illimité) : tous ceux de la magie innée puis de la magie acquise, quel que soit le NPM ; le Potentiel Illimité, toujours
+ * la magie innée (R176 : une fiche qui le met en magie acquise est signalée par la règle mono_magie, la liste n'y ouvre que ses magies), ceux de
+ * toutes les magies, comme sortsPossibles. La seule liste des livres (la ligne « Livre de sort » de la page, l'import du tableur la préfère pour un nom
+ * ambigu) ; aucun contrôle ne refuse un livre hors d'elle (un livre d'une magie perdue reste, en attente : livresDe). Dans l'ordre des règles.
+ * Pour un bi-magie, seulement les sorts communs et ceux d'une spécialisation qu'il a choisie (décision R236 (8) : « Un livre ne peut porter que sur
+ * un sort commun ou un sort de la spécialisation choisie »).
+ */
+export function sortsDesLivres(regles, fiche) {
+  const magies = [fiche?.magie_innee_id, fiche?.magie_acquise_id].filter(Boolean);
+  const ouvertes = fiche ? specialisationsOuvertes(regles, fiche) : null;
+  if (fiche?.magie_innee_id === POTENTIEL_ILLIMITE) return [...(regles.sorts ?? [])];
+  return magies.flatMap((m) => (regles.sorts ?? []).filter((s) => s.magie_id === m && sortOuvert(ouvertes, s)));
+}
+
+/** Vrai si l'entraînement de la fiche note un livre du sort `sortId` (fiche.livres_sorts, décision R169 ; un seul par sort, R26). */
+export const aUnLivre = (fiche, sortId) => Boolean(sortId) && (fiche?.livres_sorts ?? []).some((l) => l?.sort_id === sortId);
+
+/**
+ * Les livres de sort de la fiche (décision R169), dans l'ordre de l'entraînement (`rang`) : [{ sort_id, rang, sort (des règles, null s'il n'y est
+ * plus), choisi (le sort est dans la liste des sorts), enAttente (il ne l'est pas : son NM n'est pas utilisé, « mis en attente tant que le sort n'est
+ * pas réintégré », page « Livre / Parchemin »), horsDesMagies (le sort n'est pas dans sortsDesLivres : magie acquise changée, Livre du Rien ; rien n'est
+ * refusé, le livre reste) }]. Un second livre du même sort n'est pas repris (R26).
+ */
+export function livresDe(regles, fiche) {
+  const choisis = new Set((fiche?.sorts ?? []).map((s) => s?.sort_id).filter(Boolean));
+  const possibles = new Set(sortsDesLivres(regles, fiche).map((s) => s.id));
+  const vus = new Set();
+  return [...(fiche?.livres_sorts ?? [])]
+    .filter((l) => l?.sort_id && !vus.has(l.sort_id) && vus.add(l.sort_id))
+    .sort((a, b) => entier(a.rang) - entier(b.rang))
+    .map((l) => ({
+      sort_id: l.sort_id, rang: entier(l.rang), sort: trouver(regles.sorts ?? [], l.sort_id) ?? null,
+      choisi: choisis.has(l.sort_id), enAttente: !choisis.has(l.sort_id), horsDesMagies: !possibles.has(l.sort_id),
+    }));
+}
+
+/** Les livres de sort à enregistrer (décision R169) : un par sort (le premier), rangés dans l'ordre (rang 1, 2…). */
+export const livresAEnregistrer = (fiche) => {
+  const vus = new Set();
+  return [...(fiche?.livres_sorts ?? [])].filter((l) => l?.sort_id && !vus.has(l.sort_id) && vus.add(l.sort_id))
+    .sort((a, b) => entier(a.rang) - entier(b.rang)).map((l, i) => ({ sort_id: l.sort_id, rang: i + 1 }));
+};
+
+/**
+ * Niveaux de maîtrise (NM) des sorts (décisions R24, R26, R118, R169). Le NM d'un sort (`niveau_maitrise`, un curseur de 0 à `plafond` sur la page :
+ * R118) compte toutes ses origines ; celui d'un livre de sort (un seul par sort, `fiche.livres_sorts`, noté dans l'entraînement) en fait partie sans
+ * compter dans le décompte, seulement quand le sort est choisi (R169 ; `livres`) ; le livre d'un sort non choisi attend (`enAttente`, sans rien changer
+ * au décompte). Les NM comptés (`comptes` : ceux des sorts sans leurs livres) vont au plus jusqu'à la limite (`limite`), les NM gagnés (`disponibles`) plus
  * ceux du MJ (`mj`, personnage.nm_mj : « Les NM du MJ […] vaudront donc pour toute la fiche », R118). Les NM gagnés : ceux des niveaux (`niveaux`,
  * v_niveau.niveaux_maitrise_cumul) et ceux qu'écrivent les dons acquis (décision R154 : « Gagne 4 niveaux de maîtrise (NM). », Ocultomancien
  * « Maîtrise » ; `nm_gagnes` des règles, capacite_nm_gagne ; `dons` : [{ nom, nm }], pour l'infobulle du décompte), comme la règle sorts_nm_total de
@@ -1833,7 +2179,7 @@ export function sortsPossibles(regles, fiche) {
  */
 export function maitriseDesSorts(regles, fiche) {
   const niveau = niveauGlobal(regles, fiche.xp);
-  const sorts = (fiche.sorts ?? []).map(nmDuSort);
+  const sorts = (fiche.sorts ?? []).map((ligne) => nmDuSort(ligne, fiche));
   const maxParSort = Math.max(0, niveau - constante(regles, 'sort.nm_ecart_niveau_global'));
   const niveaux = ligneDeNiveau(regles, niveau).niveaux_maitrise_cumul;
   const dons = donsAcquis(regles, fiche).flatMap((c) => c.dons.filter((d) => d.nm_gagnes).map((d) => ({ nom: `${d.nom} (${c.classe.nom})`, nm: d.nm_gagnes })));
@@ -1845,6 +2191,7 @@ export function maitriseDesSorts(regles, fiche) {
     maxCompteParSort: maxParSort + mj,
     total: sorts.reduce((s, x) => s + x.total, 0),
     livres: sorts.reduce((s, x) => s + x.livre, 0),
+    enAttente: livresDe(regles, fiche).filter((l) => l.enAttente).length,
     comptes: sorts.reduce((s, x) => s + x.comptes, 0),
     niveaux,
     dons,
@@ -1854,11 +2201,18 @@ export function maitriseDesSorts(regles, fiche) {
   };
 }
 
-/** NM d'un sort de la fiche : en tout, dont celui d'un livre (0 ou 1), et ceux qui comptent dans le décompte (le livre ôté : décision R118). */
-export function nmDuSort(ligne) {
-  const total = entier(ligne?.niveau_maitrise);
-  const livre = entier(ligne?.nm_livre);
-  return { total, livre, comptes: Math.max(0, total - livre) };
+/**
+ * NM d'un sort de la fiche : en tout, dont celui d'un livre (0 ou 1 : le sort est choisi et l'entraînement note son livre, `fiche` portant
+ * `livres_sorts`), et ceux qui comptent dans le décompte (le livre ôté). Décisions R118, R169 : « Si le sort a été amélioré via un livre de sort, alors
+ * un NM est offert. A l'affichage le curseur deviens alors de 1 à 3. Le NM donné par le livre ne compte toujours pas dans le total de NM. » : un sort
+ * choisi avec son livre se lit à 1 NM au moins, même enregistré à 0 (par l'API ou un import) ; le décompte est celui des règles sort_nm_max et
+ * sorts_nm_total de v_personnage_controle (0 pour ce sort).
+ */
+export function nmDuSort(ligne, fiche) {
+  const enregistre = entier(ligne?.niveau_maitrise);
+  const livre = aUnLivre(fiche, ligne?.sort_id) ? 1 : 0;
+  const total = Math.max(enregistre, livre);
+  return { total, livre, comptes: total - livre };
 }
 
 /**
@@ -1869,7 +2223,7 @@ export function nmDuSort(ligne) {
  * ligne), detail: [{ nom, valeur }] }.
  */
 export function nmDuMoment(regles, fiche, ligne, contexte = contexteDesSorts(regles, fiche)) {
-  const base = nmDuSort(ligne).total;
+  const base = nmDuSort(ligne, fiche).total;
   const sort = trouver(regles.sorts, ligne?.sort_id);
   const detail = [];
   let total = base;
@@ -1884,44 +2238,91 @@ export function nmDuMoment(regles, fiche, ligne, contexte = contexteDesSorts(reg
   return { total, base, detail };
 }
 
-/** Bornes du curseur de NM d'un sort (décision R118) : « un slider de 0 à 3 », de 1 à 3 quand l'entraînement note un livre de ce sort. */
-export function bornesDuNm(regles, ligne) {
-  return { min: nmDuSort(ligne).livre ? 1 : 0, max: constante(regles, 'sort.nm_max') };
+/**
+ * Bornes du curseur de NM d'un sort (décisions R118, R169) : « un slider de 0 à 3 », de 1 à 3 quand l'entraînement note un livre de ce sort (la base ne
+ * l'impose pas : la page le borne).
+ */
+export function bornesDuNm(regles, ligne, fiche) {
+  return { min: ligne && aUnLivre(fiche, ligne.sort_id) ? 1 : 0, max: constante(regles, 'sort.nm_max') };
 }
 
 /** Le sort au NM `valeur` choisi au curseur, borné (bornesDuNm). */
-export function sortAuNm(regles, ligne, valeur) {
-  const { min, max } = bornesDuNm(regles, ligne);
+export function sortAuNm(regles, ligne, valeur, fiche) {
+  const { min, max } = bornesDuNm(regles, ligne, fiche);
   return { ...ligne, niveau_maitrise: Math.min(max, Math.max(min, entier(valeur))) };
 }
 
 /**
- * Le sort quand l'entraînement note (`livre` vrai) ou retire son livre (décision R118) : noter le livre lui donne son NM, en plus de ceux qu'il a ; au
- * plafond (3 NM : livreAuPlafond), le sort les garde et le livre prend la place d'un NM compté. Le retirer lui reprend son NM, sauf avec `rendre` : le
- * NM compté qu'il avait pris au plafond est rendu, le sort garde ses NM (la page le sait tant que le curseur n'a pas bougé). Le même sort quand rien ne
- * change.
+ * Le sort choisi `ligne` quand l'entraînement note (`livre` vrai) ou retire son livre (décision R118), `fiche` étant la fiche d'avant le geste : noter
+ * le livre lui donne son NM, en plus de ceux qu'il a ; au plafond (3 NM : livreAuPlafond), le sort les garde et le livre prend la place d'un NM compté.
+ * Le retirer lui reprend son NM, sauf avec `rendre` : le NM compté qu'il avait pris au plafond est rendu, le sort garde ses NM (la page le sait tant
+ * que le curseur n'a pas bougé). Le même sort quand rien ne change. Le livre lui-même (fiche.livres_sorts) : livresApresAjout, livresApresRetrait.
  */
-export function sortAvecLivre(regles, ligne, livre, { rendre = false } = {}) {
-  const nm = nmDuSort(ligne);
-  if (Boolean(livre) === Boolean(nm.livre)) return ligne;
-  const total = livre ? Math.min(constante(regles, 'sort.nm_max'), nm.total + 1) : rendre ? nm.total : Math.max(0, nm.total - 1);
-  return { ...ligne, niveau_maitrise: total, nm_livre: livre ? 1 : 0 };
+export function sortAvecLivre(regles, fiche, ligne, livre, { rendre = false } = {}) {
+  if (Boolean(livre) === aUnLivre(fiche, ligne?.sort_id)) return ligne;
+  const nm = entier(ligne?.niveau_maitrise);
+  const total = livre ? Math.min(constante(regles, 'sort.nm_max'), nm + 1) : rendre ? nm : Math.max(0, nm - 1);
+  return { ...ligne, niveau_maitrise: total };
 }
 
-/** Vrai si noter le livre de ce sort prend la place d'un NM compté : le sort, sans livre, est au plafond (sortAvecLivre). */
-export const livreAuPlafond = (regles, ligne) => !nmDuSort(ligne).livre && nmDuSort(ligne).total >= constante(regles, 'sort.nm_max');
+/** Vrai si noter le livre de ce sort choisi prend la place d'un NM compté : le sort, sans livre, est au plafond (sortAvecLivre). */
+export const livreAuPlafond = (regles, fiche, ligne) => Boolean(ligne) && !aUnLivre(fiche, ligne.sort_id)
+  && entier(ligne.niveau_maitrise) >= constante(regles, 'sort.nm_max');
 
-/** L'index du sort qui reçoit un livre ajouté : le premier sans livre sous le plafond, sinon le premier sans livre ; −1 si chacun a le sien. */
-export function sortPourUnLivre(regles, sorts) {
-  const libres = (sorts ?? []).map((x, i) => [x, i]).filter(([x]) => !nmDuSort(x).livre);
-  return (libres.find(([x]) => !livreAuPlafond(regles, x)) ?? libres[0])?.[1] ?? -1;
+/**
+ * Le sort qui reçoit un livre ajouté (« + Livre de sort », décision R169) : parmi les sorts choisis sans livre, le premier sous le plafond, sinon le
+ * premier ; s'ils en ont tous un, le premier sort de sortsDesLivres sans livre ; null quand chaque sort possible a le sien.
+ */
+export function sortPourUnLivre(regles, fiche) {
+  const choisis = (fiche?.sorts ?? []).filter((x) => x?.sort_id && !aUnLivre(fiche, x.sort_id));
+  const choisi = choisis.find((x) => !livreAuPlafond(regles, fiche, x)) ?? choisis[0];
+  if (choisi) return choisi.sort_id;
+  return sortsDesLivres(regles, fiche).find((s) => !aUnLivre(fiche, s.id))?.id ?? null;
+}
+
+/** La fiche après un geste sur ses livres : { livres_sorts, sorts }, chaque sort qui ne change pas étant le même objet (la page garde ses lignes). */
+const apresLivres = (regles, fiche, livres, gestes) => ({
+  livres_sorts: livres,
+  sorts: (fiche?.sorts ?? []).map((x) => (x && Object.hasOwn(gestes, x.sort_id) ? sortAvecLivre(regles, fiche, x, gestes[x.sort_id].livre, gestes[x.sort_id]) : x)),
+});
+
+/**
+ * Un livre du sort `sortId` noté dans l'entraînement (décision R169) : sur n'importe quel sort, choisi ou non ; choisi, il reçoit le NM du livre
+ * (sortAvecLivre) ; non choisi, le livre attend (rien d'autre ne change). Un seul livre par sort (R26) : un sort qui en a déjà un, ou pas de sort, ne
+ * change rien. { livres_sorts, sorts }.
+ */
+export function livresApresAjout(regles, fiche, sortId) {
+  if (!sortId || aUnLivre(fiche, sortId)) return { livres_sorts: fiche?.livres_sorts ?? [], sorts: fiche?.sorts ?? [] };
+  const rang = Math.max(0, ...(fiche?.livres_sorts ?? []).map((l) => entier(l?.rang))) + 1;
+  return apresLivres(regles, fiche, [...(fiche?.livres_sorts ?? []), { sort_id: sortId, rang }], { [sortId]: { livre: true } });
+}
+
+/**
+ * Le livre du sort `sortId` retiré de l'entraînement : le sort choisi perd le NM du livre (`rendre` : sortAvecLivre). { livres_sorts, sorts }.
+ */
+export function livresApresRetrait(regles, fiche, sortId, { rendre = false } = {}) {
+  if (!aUnLivre(fiche, sortId)) return { livres_sorts: fiche?.livres_sorts ?? [], sorts: fiche?.sorts ?? [] };
+  return apresLivres(regles, fiche, (fiche.livres_sorts ?? []).filter((l) => l?.sort_id !== sortId), { [sortId]: { livre: false, rendre } });
+}
+
+/**
+ * Le livre du sort `ancien` porté sur le sort `nouveau` (la liste de sa ligne), à la même place de l'entraînement : comme un retrait puis un ajout,
+ * sans perdre de NM (`rendre` pour l'ancien : sortAvecLivre). Un nouveau sort qui a déjà son livre ne change rien. { livres_sorts, sorts }.
+ */
+export function livresApresChangement(regles, fiche, ancien, nouveau, { rendre = false } = {}) {
+  if (!nouveau || ancien === nouveau || !aUnLivre(fiche, ancien) || aUnLivre(fiche, nouveau)) {
+    return { livres_sorts: fiche?.livres_sorts ?? [], sorts: fiche?.sorts ?? [] };
+  }
+  return apresLivres(regles, fiche, (fiche.livres_sorts ?? []).map((l) => (l?.sort_id === ancien ? { ...l, sort_id: nouveau } : l)),
+    { [ancien]: { livre: false, rendre }, [nouveau]: { livre: true } });
 }
 
 /**
  * Tableau des sorts de la page (demande du propriétaire) : une ligne par emplacement. Chaque ligne propose les sorts possibles (sortsPossibles : magies du
- * personnage, NPM accessible) moins ceux déjà pris sur les autres lignes ; le sort de la ligne y reste, même s'il n'est plus possible (`horsDesRegles`),
+ * personnage, NPM des sorts) moins ceux déjà pris sur les autres lignes ; le sort de la ligne y reste, même s'il n'est plus possible (`horsDesRegles`),
  * pour qu'on le voie et qu'on le change. Il n'y a pas d'emplacement en plus (décision R27) : un sort au-delà des emplacements (XP baissée, magie retirée)
- * a sa ligne `enTrop`, à retirer.
+ * a sa ligne `enTrop`, à retirer. Le sort d'une spécialisation que le bi-magie n'a pas choisie (ou changée depuis) est aussi `horsDesRegles` (R236 (3),
+ * (6) : comme R27, il reste en rouge, à remplacer ; pendant de la règle sort_hors_specialisation).
  */
 export function lignesDeSorts(regles, fiche) {
   const choisis = fiche.sorts ?? [];
@@ -2008,6 +2409,98 @@ export function donDeBase(texte) {
 /** Le niveau de classe où se choisit la spécialité : celui de son don de spécialité (le plus bas des dons `specialite` de la classe, 10). */
 export const niveauDeSpecialite = (classe) => Math.min(...(classe?.dons ?? []).filter((d) => d.nature === 'specialite').map((d) => d.niveau));
 
+// ------------------------------------------------------------------------------------------------------------------------------------------------
+// Infobulles des tuiles de choix (demande du propriétaire du 2026-10-29 : « les tuiles de choix de classe / dons […] devraient avoir une infobulle avec
+// leur description ») : les textes de la base, tels qu'écrits (sans les balises du glossaire, comme tout texte des règles de la page), jamais réécrits.
+// ------------------------------------------------------------------------------------------------------------------------------------------------
+
+/** Les libellés des types d'un don (capacite.type), comme la liste des dons débloqués de la page. */
+export const TYPES_DE_DON = Object.freeze({ passif: 'Passif', actif: 'Actif', action: 'Action', reaction: 'Réaction', variable: 'Variable' });
+
+/** Le texte d'un don des règles pour une infobulle : son type et sa précision (« Actif (1 fois/combat) ») s'il en a, puis son effet ; null sans effet. */
+export function texteDuDon(don) {
+  if (!don?.effet) return null;
+  const tete = [TYPES_DE_DON[don.type] ?? don.type, don.precision ? `(${don.precision})` : null].filter(Boolean).join(' ');
+  return tete ? `${tete}\n${don.effet}` : don.effet;
+}
+
+/** L'infobulle d'une option d'un groupe de dons à choisir (`classe.choix[].options` : { id, nom, type }) : le texte de son don (texteDuDon). */
+export const infobulleDuDonAChoisir = (classe, optionId) => texteDuDon((classe?.dons ?? []).find((d) => d.id === optionId));
+
+/**
+ * L'infobulle d'une spécialité : sa description ; sans description, l'effet de son cartouche, le don de la spécialité (choix du propriétaire) ; sans
+ * l'un ni l'autre (Élémentaliste et Occultiste de l'Archimage aujourd'hui), null : pas d'infobulle. Le titre de la description (« Description
+ * Épéiste ») n'apprend rien de plus : il n'est pas repris. La seule fonction de ce choix.
+ */
+export function infobulleDeSpecialite(classe, specialite) {
+  if (specialite?.description) return specialite.description;
+  return (classe?.dons ?? []).find((d) => d.nature === 'specialite' && d.specialite_id === specialite?.id)?.effet || null;
+}
+
+/** L'infobulle d'une classe : sa description, sinon null (pas d'infobulle). */
+export const infobulleDeClasse = (classe) => classe?.description || null;
+
+/*
+ * Les infobulles des options des listes de la fiche (demande du propriétaire : « Il faudrai également une infobulle au survol des choix pour voir ce
+ * qu'ils apportent. » ; le métier, les sorts, les armes (catalogue et élémentaires) et l'armure, dans la liste dessinée par le site : src/scripts/liste-choix.mjs) : les
+ * textes et valeurs de la base tels qu'écrits (sans balises, comme tout regles.json), une ligne par champ, sous le libellé que le site leur donne déjà
+ * (tableau /metiers/, colonnes des sorts des pages de magie, tableaux des armures) ; un champ vide est omis ; rien du tout : null, pas d'infobulle.
+ */
+const lignesDeChamps = (champs) => champs.filter(([, v]) => v !== null && v !== undefined && String(v).trim() !== '').map(([libelle, v]) => `${libelle} : ${v}`);
+const infobulleDesLignes = (lignes) => (lignes.length ? lignes.join('\n') : null);
+
+/** L'infobulle d'un métier : ce qu'il apporte (`apport` : Bonus, Artisanat possible, Équipement supplémentaire possible, Avantage possible, tels qu'écrits). */
+export const infobulleDeMetier = (metier) => infobulleDesLignes(lignesDeChamps((metier?.apport ?? []).map((a) => [a.libelle, a.texte])));
+
+/**
+ * L'infobulle d'un sort (listes des emplacements, du sort préparé et des livres) : sa magie et son NPM (« Feu, NPM 2 », comme l'infobulle du sort choisi),
+ * suivis du nom de sa spécialisation s'il en a une (« Arcane, NPM 3 · Construction », initiale seule en majuscule : décisions R260 (1), R270 ; `sort.specialisation_id`, une
+ * spécialisation de la magie), puis Type, Coût, Coût secondaire, Portée, Zone, D/S/B, Effets et Remarque tels qu'écrits, « (+1/NM) » compris (valeurs au NM 0 :
+ * la ligne du tableau donne celles du NM choisi). `magie` : l'entrée de regles.magies (facultative).
+ */
+export function infobulleDeSort(sort, magie = null) {
+  if (!sort) return null;
+  const specialisation = sort.specialisation_id ? (magie?.specialisations ?? []).find((x) => x.id === sort.specialisation_id) : null;
+  return infobulleDesLignes([
+    ...(magie ? [`${magie.nom}, NPM ${sort.niveau}${specialisation ? ` · ${nomDeSpecialisation(specialisation.nom)}` : ''}`] : []),
+    ...lignesDeChamps([['Type', sort.type], ['Coût', sort.cout], ['Coût secondaire', sort.cout_secondaire], ['Portée', sort.portee], ['Zone', sort.zone],
+      ['D/S/B', sort.dsb], ['Effets', sort.effets], ['Remarque', sort.remarque]]),
+  ]);
+}
+
+/**
+ * L'infobulle d'une arme élémentaire (décision R167) : « Arme élémentaire : <magie> » (l'infobulle de son nom sur la page des armes), puis son effet
+ * tel que la fiche l'écrit sous la liste (effetDeLArmeElementaire : capacité, « Ignore N AP », mention). `type` : regles.types_elementaires[] de l'arme.
+ */
+export function infobulleDArmeElementaire(arme, type = null, magie = null) {
+  if (!arme) return null;
+  return infobulleDesLignes([magie ? `Arme élémentaire : ${magie.nom}` : null, ...effetDeLArmeElementaire(arme, type)].filter(Boolean));
+}
+
+/** L'infobulle d'une arme du catalogue (réponse du propriétaire : « Chaque arme du catalogue montre son effet au survol, texte de la base tel qu'écrit ») :
+ * « Effet : <effet> » (regles.armes[].effet) ; sans effet, null. */
+export const infobulleDArme = (arme) => infobulleDesLignes(lignesDeChamps([['Effet', arme?.effet]]));
+
+/**
+ * L'infobulle d'une armure de base (son nom, son AP et son AM sont déjà dans l'option, son poids dans le groupe) : Solidité (« uni » pour une armure à
+ * solidité unifiée, comme la page des armures), Résistance et Faiblesse (« ×2 Frappe » ; `degats`, sens `resistance` et `vulnerabilite`), Effet tel
+ * qu'écrit.
+ */
+export function infobulleDArmure(armure) {
+  if (!armure) return null;
+  const nomDuType = new Map(DEGATS_PHYSIQUES);
+  const degats = (sens) => (armure.degats ?? []).filter((d) => d.sens === sens)
+    .map((d) => `${d.multiplicateur > 1 ? `×${d.multiplicateur} ` : ''}${nomDuType.get(d.type) ?? d.type}`).join(', ');
+  return infobulleDesLignes(lignesDeChamps([['Solidité', armure.solidite === null || armure.solidite === undefined ? null : `${armure.solidite}${armure.solidite_uni ? ' uni' : ''}`],
+    ['Résistance', degats('resistance')], ['Faiblesse', degats('vulnerabilite')], ['Effet', armure.effet]]));
+}
+
+/** L'infobulle d'une armure élémentaire (décision R165) : « <magie> : armure élémentaire », puis ses effets tels qu'écrits, un par ligne. */
+export function infobulleDArmureElementaire(armure, magie = null) {
+  if (!armure) return null;
+  return infobulleDesLignes([magie ? `${magie.nom} : armure élémentaire` : null, ...(armure.effets ?? [])].filter((x) => x && String(x).trim()));
+}
+
 /**
  * Le libellé d'une magie tirée qui tient lieu de magie innée pour un don (décision R163 : « Punis-moi ... », « ... plus fort ! » d'un personnage du
  * Potentiel Illimité ; un choix de resistancesDe().aChoisir, `remplaceMagieInnee`) : le tiroir et la liste sous le tableau des résistances.
@@ -2024,6 +2517,10 @@ export const cleDeChoix = {
   acquis: (source, rang) => `acquis:${source}:${rang}`,
   maitrise: (source, rang) => `maitrise:${source}:${rang}`,
   resistance: (source, rang) => `resistance:${source}:${rang}`,
+  // l'entrée qu'obtient un don « Variable » du Mage Bleu (décision R181) : un choix par don, sa source
+  donObtenu: (source) => `don_obtenu:${source}`,
+  // la spécialisation d'une magie d'un bi-magie (décision R236 (3)) : un choix par magie
+  specialisationMagie: (magieId) => `specialisation_magie:${magieId}`,
 };
 
 /**
@@ -2044,7 +2541,10 @@ export function accessoiresDesSorts(regles, fiche) {
  * la caractéristique au choix, les points de maîtrise d'arme sans famille et les parts qui suivent une famille pas encore choisie (sourcesDeMaitrise,
  * décisions R148, R151 : nature `maitrise`, sur le premier point à choisir de la source, ou sur la maîtrise au choix suivie ; l'accessoire sans famille
  * reste de nature `accessoire`), les choix d'acquis des dons (acquisDesDons ; « l'arme choisie » attend la maîtrise au choix de sa classe, R152) et les
- * résistances au choix (resistancesDe : d'une ligne du tableau de la race, décision R124 ; à une magie, décision R137). [{ nature, libelle, cle, rang? }] ; vide quand tout est choisi. `cle` désigne le choix (la page
+ * résistances au choix (resistancesDe : d'une ligne du tableau de la race, décision R124 ; à une magie, décision R137), l'entrée qu'obtient un don « Variable » du Mage Bleu
+ * (donsVariables, décision R181 : nature `don_obtenu`, une entrée libre de sa liste, ou un choix hors de la liste à refaire) et, pour un bi-magie dont le
+ * NPM des sorts atteint le seuil des spécialisations, la spécialisation de chaque magie sans choix valable (specialisationsAChoisir, décision R236 (3) :
+ * nature `specialisation_magie`, une par magie). [{ nature, libelle, cle, rang? }] ; vide quand tout est choisi. `cle` désigne le choix (la page
  * y accroche sa tuile, montrée dans l'infobulle de l'élément du tiroir : demande du propriétaire).
  */
 export function choixEnAttente(regles, fiche) {
@@ -2055,11 +2555,25 @@ export function choixEnAttente(regles, fiche) {
     if (!c.classe || !c.classe.specialites.length) continue;
     if (c.niveau >= niveauDeSpecialite(c.classe) && !c.choix?.specialite_id) attente.push({ nature: 'specialite', rang: c.rang, cle: cleDeChoix.specialite(c.rang), libelle: `Spécialité : ${c.classe.nom}` });
   }
+  // la spécialisation de chaque magie d'un bi-magie dont le NPM des sorts atteint le seuil (décision R236 (3)) : un choix par magie sans choix valable ;
+  // une fiche d'avant y tombe, rien n'est choisi à la place du joueur
+  for (const s of specialisationsAChoisir(regles, fiche)) {
+    if (!s.choix) attente.push({ nature: 'specialisation_magie', cle: cleDeChoix.specialisationMagie(s.magie.id), libelle: `Spécialisation magique : ${s.magie.nom}` });
+  }
   const choisis = new Set((fiche.capacites ?? []).map((d) => d.capacite_id));
   for (const d of donsAChoisir(regles, fiche)) {
     for (const g of d.groupes) {
       if (!g.options.some((o) => choisis.has(o.id))) attente.push({ nature: 'don', rang: d.rang, cle: cleDeChoix.don(d.rang, g), libelle: `Don ${d.classe.nom} niv. ${g.niveau} : ${g.options.map((o) => o.nom).join(' ou ')}` });
     }
+  }
+  // l'entrée qu'obtient chaque don « Variable » acquis du Mage Bleu (décision R181 : donsVariables), tant qu'il n'en a pas une de sa liste et qu'il y en
+  // reste une libre ; sans entrée libre (Q96), sans magie acquise pour Secondaire : rien à choisir, la fiche le dit ailleurs
+  for (const d of donsVariables(regles, fiche).dons) {
+    if (d.etat !== 'a_choisir' && !(d.etat === 'hors_liste' && d.options.length)) continue;
+    attente.push({
+      nature: 'don_obtenu', rang: d.rang, cle: cleDeChoix.donObtenu(d.source),
+      libelle: `Don obtenu par ${d.don.nom} (${d.classe.nom}) : ${d.magie.nom}${d.etat === 'hors_liste' ? ' (le choix est hors de la liste)' : ''}`,
+    });
   }
   for (const b of bonusDuMetier(regles, fiche).rangs) if (b.aChoisir && !b.retenue) attente.push({ nature: 'metier_bonus', cle: cleDeChoix.metierBonus(b.rang), libelle: `Métier : ${b.texte}` });
   for (const r of objetsDuMetier(regles, fiche.metier_id)) {
@@ -2747,7 +3261,7 @@ export function retraitsDeLArmureHorsListe(regles, fiche, { portable = null } = 
 }
 
 // ------------------------------------------------------------------------------------------------------------------------------------------------
-// Bouclier porté (décision R96, migration 0060 : « Forme + matière », comme l'onglet Boucliers de /ressources/equipement/) : sa forme
+// Bouclier porté (décision R96, migration 0060 : « Forme + matière », comme la page Boucliers (/ressources/bouclier/)) : sa forme
 // (fiche.bouclier_classe_id) et sa matière (fiche.bouclier_materiau_id) donnent le bouclier de la liste (regles.boucliers_formes_matieres : AP, AM,
 // poids, décision R92) ; sa solidité est celle de la matière (R78), plus les crans de son amélioration (R76 : « crans cumulés ») ; son amélioration
 // +N ajoute l'AP (et l'AM) écrit au niveau choisi (R76). Le calcul de lib/armure-forge.mjs#forgerBouclier, que ce module ne peut pas importer
@@ -2798,6 +3312,63 @@ export function bouclierDe(regles, fiche) {
   };
 }
 
+/**
+ * Le poids d'un bouclier en nombre (décisions R255 (2), R92) : Léger 1, Moyen 2, Lourd 3, Très lourd 4 (`regles.poids_bouclier[].id`, figés). Bouragé
+ * compte +2 dégâts par poids.
+ */
+export const POIDS_DU_BOUCLIER = Object.freeze({ leger: 1, moyen: 2, lourd: 3, 'tres-lourd': 4 });
+
+/**
+ * « Bouclier d'attaque » (décisions R255 (3), R269 (2)) : (AP + AM du bouclier) ÷ `diviseur`, toujours arrondi à l'inférieur (R175, ÷ 4 comme ÷ 3), au moins
+ * `minimum` (÷ 4 : 5 → 1 ; 6 → 1 ; 7 → 1 ; 10 → 2 ; 8 → 2). Les +2 de Mur restent dans la somme (R255 (4)) : l'appelant les y met.
+ */
+export function extensionDeDegats(ap, am, { diviseur, minimum }) {
+  const somme = Math.max(0, Math.round(ap) + Math.round(am));
+  return Math.max(minimum, Math.floor(somme / diviseur));
+}
+
+/**
+ * Le diviseur de « Bouclier d'attaque » pour ces effets (`effetsDeBouclierDesDons`) : celui du don, sauf si un don écrit « La division […] est de N au lieu de M »
+ * pour ce diviseur M (« Égide d'assaut », 3 au lieu de 4 : R269 (1)). Lu dans les textes, jamais une constante.
+ */
+export function diviseurDeLExtension(extension, effets) {
+  return effets.filter((e) => e.cle === 'extension_diviseur' && e.au_lieu_de === extension.diviseur).reduce((d, e) => e.diviseur, extension.diviseur);
+}
+
+/**
+ * Le nom d'une spécialisation magique à l'affichage (décision R270) : l'initiale seule en majuscule (« CONSTRUCTION » → « Construction »). La base garde ses
+ * capitales ; la fiche ne transforme qu'à l'affichage (infobulle d'un sort, pastilles).
+ */
+export const nomDeSpecialisation = (nom) => {
+  const t = String(nom ?? '');
+  return t.charAt(0).toLocaleUpperCase('fr') + t.slice(1).toLocaleLowerCase('fr');
+};
+
+/**
+ * Ce que les dons passifs débloqués font du bouclier porté (lib/bouclier-texte.mjs : Bouclier d'attaque, Bouragé, Mur du Boxeur ; décisions R255, R267),
+ * lus au build dans leur texte, jamais par le nom : [{ nom, cle: 'extension_de_degats' | 'degats_par_poids' | 'defense', … }].
+ */
+export function effetsDeBouclierDesDons(regles, fiche) {
+  return donsAcquis(regles, fiche).flatMap((c) => c.dons.filter((d) => d.bouclier).map((d) => ({ ...d.bouclier, nom: `${d.nom} (${c.classe.nom})` })));
+}
+
+/**
+ * Le bouclier tel que les dons le font jouer (décisions R255, R267) : null sans bouclier de la liste (forme et matière) ; sinon { bouclier (bouclierDe), cassee,
+ * poids (le nombre, POIDS_DU_BOUCLIER), mur: [{ nom, ap, am }] (les dons « defense » : « Les boucliers donnent +2AP et AM »), ap, am (AP et AM du bouclier,
+ * les +2 de Mur compris : « le bouclier gagne +2 AP et +2 AM »), effets }. Cassé (solidité 0), ses AP et AM ne comptent plus (R108) : `ap` et `am` à 0.
+ */
+export function bouclierDesDons(regles, fiche) {
+  const b = bouclierDe(regles, fiche);
+  if (!b?.bouclier) return null;
+  const effets = effetsDeBouclierDesDons(regles, fiche);
+  const mur = effets.filter((e) => e.cle === 'defense').map((e) => ({ nom: e.nom, ap: e.ap, am: e.am }));
+  const cassee = Boolean(b.solidite?.cassee);
+  return {
+    bouclier: b, cassee, poids: POIDS_DU_BOUCLIER[b.poids?.id] ?? 0, mur, effets,
+    ap: cassee ? 0 : b.ap + mur.reduce((s, m) => s + m.ap, 0), am: cassee ? 0 : b.am + mur.reduce((s, m) => s + m.am, 0),
+  };
+}
+
 /** Ce qui s'enregistre comme solidité du moment du bouclier (personnage.bouclier_solidite) : null à son maximum (ou au-delà), sans valeur ou sans matière. */
 export function soliditeDuBouclierAEcrire(regles, fiche, valeur) {
   const max = bouclierDe(regles, fiche)?.solidite?.max ?? null;
@@ -2832,22 +3403,83 @@ export function bouclierApresChoix(regles, fiche, champ, valeur) {
 
 /** Le Potentiel Illimité : pas un type de dégâts (« L'une des 14 formes de magie hors PI »). */
 const POTENTIEL_ILLIMITE = 'magies/potentiel-illimite';
+/** Le palier du Mode Hyper à deux magies (décision R172 : « Très résistant aux deux magies » → « Grande résistance, sauf pour les magies déjà "immunisé" ») */
+const PALIER_DU_MODE_HYPER_BI = 'grande_resistance';
 /** Les dégâts physiques (armure_degats.type_degats), dans l'ordre de la page « Armes ». */
 export const DEGATS_PHYSIQUES = Object.freeze([['estoc', 'Estoc'], ['taille', 'Taille'], ['frappe', 'Frappe']]);
+/**
+ * Les types physiques du tableau des résistances (décision R174), dans l'ordre que le propriétaire écrit (« Estoc, Frappe, Taille »), leur nom celui de
+ * DEGATS_PHYSIQUES : la fiche (resistancesDe) et la page d'une magie (components/magie/MagieAffinites.astro). [{ id, nom }]
+ */
+export const RESISTANCES_PHYSIQUES = Object.freeze(['estoc', 'frappe', 'taille']
+  .map((id) => Object.freeze({ id, nom: DEGATS_PHYSIQUES.find(([x]) => x === id)[1] })));
 
-/** Les types de dégâts reçus proposés : les trois physiques, puis les quatorze magies (sans le Potentiel Illimité). [{ id, nom, physique }] */
+/**
+ * Les dix-sept types de dégâts d'avant R171 (R98) : les trois physiques, puis les quatorze magies (sans le Potentiel Illimité). [{ id, nom, physique }].
+ * Ils nomment encore le type des armes (`type_degats_choisi`) et leur magie ; un coup les écrit en type et élément (coupDeDegats : un type physique sans
+ * élément, ou « Magique » et la magie).
+ */
 export function typesDeDegats(regles) {
   return [
     ...DEGATS_PHYSIQUES.map(([id, nom]) => ({ id, nom, physique: true })),
-    ...(regles.magies ?? []).filter((m) => m.id !== POTENTIEL_ILLIMITE).map((m) => ({ id: m.id, nom: m.nom, physique: false })),
+    ...elementsDeDegats(regles).map((m) => ({ id: m.id, nom: m.nom, physique: false })),
   ];
 }
+
+/**
+ * Le type de dégâts `id` (un type de typesDeDegats : un physique, ou l'id d'une magie) tel que le résumé d'une arme l'affiche, comme une balise du glossaire
+ * (migration 0125, demande du propriétaire : « Tous les liens communs, j'aimerais que tu les lies aux mots clés (ceux du glossaire) », « si ils existent » ;
+ * recommandation acceptée : les commandes de la fiche restent sans lien, le texte affiché porte le gras et l'infobulle) : `regles.liens` (le mot-clé de chaque
+ * type de dégâts et de chaque magie, lib/mots-cles-des-valeurs.mjs) donne `texte` (le nom court d'une magie, sinon `nom`), `classe` (sa couleur de la palette,
+ * null sans) et `infobulle` (le libellé du mot-clé, puis sa définition, '' sans définition : un mot-clé non décrit est en gras sans bulle). Sans mot-clé
+ * (physique, sonore) ou sans `liens` : { texte: nom, motCle: false }, rien n'est deviné.
+ * @returns {{ texte: string, motCle: boolean, classe: string | null, infobulle: string }}
+ */
+export function typeDeDegatsAffiche(regles, id, nom = id) {
+  const lien = regles?.liens?.degats?.[id] ?? regles?.liens?.magies?.[id] ?? null;
+  if (!lien) return { texte: nom, motCle: false, classe: null, infobulle: '' };
+  const definition = String(lien.description ?? '').trim();
+  return { texte: lien.texte ?? nom, motCle: true, classe: lien.classe ?? null, infobulle: definition ? `${lien.libelle}\n${definition}` : '' };
+}
+
+/** Le type « Magique » d'un coup (décision R171 : « ni Estoc, ni Taille, ni Frappe », les sorts). */
+export const TYPE_MAGIQUE = 'magique';
+/** Les types d'un coup (décision R171) : Estoc, Taille, Frappe, puis Magique. [{ id, nom, physique }] */
+export const TYPES_DE_COUP = Object.freeze([...DEGATS_PHYSIQUES.map(([id, nom]) => Object.freeze({ id, nom, physique: true })),
+  Object.freeze({ id: TYPE_MAGIQUE, nom: 'Magique', physique: false })]);
+
+/** Les éléments d'un coup (décision R171) : les quatorze magies, sans le Potentiel Illimité, dans l'ordre de regles.magies. [magie] */
+export const elementsDeDegats = (regles) => (regles.magies ?? []).filter((m) => m.id !== POTENTIEL_ILLIMITE);
+
+/**
+ * Le coup reçu (décision R171) : son type (TYPES_DE_COUP) et son élément (une magie d'elementsDeDegats, facultatif, obligatoire avec « Magique ») ;
+ * `type` peut aussi être l'un des dix-sept types de typesDeDegats (une magie : « Magique » et cette magie). null sans type connu, « Magique » sans
+ * élément, ou un élément qui n'en est pas un (le Potentiel Illimité). { type, element (la magie, ou null) }
+ */
+export function coupDeDegats(regles, { type = null, element = null } = {}) {
+  const elements = elementsDeDegats(regles);
+  const ancien = TYPES_DE_COUP.some((t) => t.id === type) ? null : elements.find((m) => m.id === type);
+  if (ancien) return element && element !== ancien.id ? null : { type: TYPES_DE_COUP.find((t) => t.id === TYPE_MAGIQUE), element: ancien };
+  const t = TYPES_DE_COUP.find((x) => x.id === type);
+  if (!t) return null;
+  const e = element ? elements.find((m) => m.id === element) : null;
+  if (element && !e) return null;
+  if (!t.physique && !e) return null;
+  return { type: t, element: e ?? null };
+}
+
+/**
+ * Le type de typesDeDegats qui écrit le même coup (R98 avant R171) : un type physique sans élément, ou la magie d'un coup « Magique » ; null pour un
+ * coup physique avec un élément (il n'en a pas). L'équivalence est épinglée par test/fiche-degats-recus.test.mjs.
+ */
+export const typeDeDegatsDuCoup = (coup) => (!coup ? null : coup.type.physique ? (coup.element ? null : coup.type.id) : coup.element.id);
 
 /**
  * L'armure physique (AP) et l'armure magique (AM) du personnage (décision R98), sur la partie du corps `partie` (décision R108 ; un id de partiesDuCorps,
  * le torse par défaut : « Une attaque "non ciblée" touche par défaut le torse ») : { ap: { total, armure, detail }, am: { total, armure, detail }, element
  * (l'armure élémentaire portée, ou null), partie ({ id, nom, cassee }), cassees (les parties cassées : [{ id, nom }]), bouclier ({ nom, ap, am, cassee }
- * du bouclier, comptés seulement en parade partielle et plus du tout cassé ; null sans bouclier de la liste) }.
+ * du bouclier, comptés seulement en parade partielle et plus du tout cassé ; `mur` : le Boxeur qui a « Mur » les compte toujours, +2 de Mur compris, dans le
+ * total et dans `ap.bouclier` / `am.bouclier`, R267 (1) ; null sans bouclier de la liste) }.
  * Le total : l'armure de base (race, ethnie, classes magiques, accessoires : attributsDe, guide « Fiche de personnage : Armure/Défense/Bouclier »), la
  * posture du moment (R100) et l'armure portée — la sienne et celle de son amélioration au niveau choisi (R77), de base ou élémentaire (R99, R165 :
  * armurePortee) —, sur une partie cassée 0 (R108 : « Seul l'AP et l'AM de l'armure tombe à zéro.
@@ -2877,22 +3509,49 @@ export function defenseDe(regles, fiche, attributs = attributsDe(regles, fiche),
     for (const l of portee.detail.ap) ajouter(ap, l.nom, l.valeur, true);
     for (const l of portee.detail.am) ajouter(am, l.nom, l.valeur, true);
   }
-  // la posture du moment (décision R100) : Défensif « +2/4 niveau global AP/AM », Symbiose « +4 (+2/NPM) à l'Armure magique »
+  // la posture du moment (décision R100) : Défensif « +2/4 niveau global AP/AM », Symbiose « +4 (+2/NPM) à l'Armure magique » ; en Mode Hyper 100 %,
+  // toutes les postures (R172 : le Défensif à 2 × ⌈N ÷ 4⌉, exception de R175)
   const posture = postureDuMoment(regles, fiche);
   if (posture) {
-    ajouter(ap, `Posture ${posture.posture.nom}`, posture.ap);
-    ajouter(am, `Posture ${posture.posture.nom}`, posture.am);
+    ajouter(ap, posture.libelle, posture.ap);
+    ajouter(am, posture.libelle, posture.am);
   }
+  // le Mode Hyper actif (décision R172) : l'effet de la magie qui l'écrit, « L'armure physique (AP) de base augmente de 25 » (Terre), « L'armure
+  // magique (AM) de base augmente de 25 » (Glace), 10 avec deux magies, lu dans son texte (modeHyperDuMoment) ; une armure de base, pas celle de l'armure
+  // portée
+  const hyper = modeHyperDuMoment(regles, fiche);
+  for (const l of hyper?.apBase ?? []) ajouter(ap, l.nom, l.valeur);
+  for (const l of hyper?.amBase ?? []) ajouter(am, l.nom, l.valeur);
   const b = bouclierDe(regles, fiche);
+  // « Mur » (décisions R255 (1), R267 (1)) : toute l'AP et l'AM du bouclier, les +2 de Mur compris, s'ajoutent à la défense à chaque attaque subie, même sans
+  // parade partielle (exception à R96) ; cassé, plus du tout (R108). Le total les compte une fois : degatsRecus n'ajoute plus le bouclier en parade partielle
+  const dons = bouclierDesDons(regles, fiche);
+  const mur = dons?.mur.length && !dons.cassee ? dons : null;
+  if (mur) {
+    const nom = `Bouclier ${dons.bouclier.nom} : ${mur.mur.map((m) => m.nom).join(', ')}`;
+    ajouter(ap, nom, mur.ap);
+    ajouter(am, nom, mur.am);
+  }
   const total = (x) => x.detail.reduce((s, d) => s + d.valeur, 0);
   return {
-    ap: { total: total(ap), armure: ap.armure, detail: ap.detail },
-    am: { total: total(am), armure: am.armure, detail: am.detail },
+    ap: { total: total(ap), armure: ap.armure, bouclier: mur?.ap ?? 0, detail: ap.detail },
+    am: { total: total(am), armure: am.armure, bouclier: mur?.am ?? 0, detail: am.detail },
     element: portee?.element ?? null,
     partie: touchee ? { ...touchee, cassee: Boolean(etat?.cassee) } : null,
     cassees: (parPartie ?? []).filter((p) => p.cassee).map((p) => ({ id: p.id, nom: p.nom })),
-    bouclier: b?.bouclier ? { nom: b.nom, ap: b.ap, am: b.am, cassee: Boolean(b.solidite?.cassee) } : null,
+    bouclier: b?.bouclier ? { nom: b.nom, ap: b.ap, am: b.am, cassee: Boolean(b.solidite?.cassee), mur: Boolean(mur) } : null,
   };
+}
+
+/**
+ * L'AP ou l'AM (`cle`) qu'écrivent les dons de race et d'ethnie du personnage (`races[].dons[].armure_naturelle`, lus dans le texte : « +2 Armure
+ * magique (+2 tous les 5 niveaux) » du Marcass), au niveau global comme R110 : base + pas × ⌊N ÷ niveaux⌋ (2, 4 au niveau 5, 6 au niveau 10).
+ * Toujours comptée dans l'armure de base de la fiche (attributsDe ; décision R177 : « Oui, toujours »).
+ */
+export function armureDesDonsDeRace(regles, fiche, cle) {
+  const niveau = niveauGlobal(regles, fiche.xp);
+  return donsDeRace(regles, fiche).dons.flatMap((d) => (d.armure_naturelle ?? []).filter((a) => a.cle === cle))
+    .reduce((s, a) => s + a.base + (a.niveaux ? a.pas * Math.floor(niveau / a.niveaux) : 0), 0);
 }
 
 /**
@@ -2920,14 +3579,35 @@ export function appliquerMultiplicateur(valeur, mult) {
  * la part de l'armure (rien sur une partie cassée). Contre une magie, le palier de résistance du personnage à cette magie multiplie le résultat
  * (resistancesDe ; décision R155 : immunité 0, grande résistance ÷ 3, résistance ÷ 2, vulnérabilité × 2, grande vulnérabilité × 3, sensibilité × 4 ;
  * un multiplicateur inverse d'un entier divise : appliquerMultiplicateur). `don` : l'étape « ÷ 2 si un don divise les dégâts » de la formule, cochée par le
- * joueur (un tel don dépend de la situation : la fiche ne le lit pas). null sans type connu.
- * { recus, etapes: [{ texte, valeur }], armure, type, partie }
+ * joueur (un tel don dépend de la situation : la fiche ne le lit pas).
+ * Le coup (décision R171, coupDeDegats) : `type` (Estoc, Taille, Frappe ou « Magique ») et `element` (une des quatorze magies ; obligatoire avec
+ * « Magique ») ; chaque étape de R98 est inchangée : un type physique prend l'AP (et la résistance ou la faiblesse de l'armure à ce type), « Magique »
+ * l'AM ; l'élément applique ensuite le palier de résistance à sa magie, ou l'immunité de la Symbiose (R100) ; un coup physique avec un élément prend
+ * l'AP, puis le palier de son élément (« Oui, les deux »). null sans coup valable (coupDeDegats).
+ * Le palier physique personnel (décision R174 : « Oui, armure puis palier ») : un coup Estoc, Taille ou Frappe prend, après l'armure (sa résistance ou
+ * sa faiblesse au type, R98) et les ÷ 2, le palier du personnage à ce type (resistancesDe, cible `physique` ; le Potentiel Illimité : la
+ * Vulnérabilité, × 2), au même endroit que le palier de l'élément ; avec un élément, les deux se multiplient (« Ils se multiplient » : 30 entrants,
+ * AP 4, × 2, grande résistance au Feu ÷ 3 → 26 × 2 ÷ 3 = 17), arrondi à l'inférieur une seule fois, à la fin (R175). « Magique » n'en a pas. Aucune
+ * case pour les dons d'attaquant qui ignorent une résistance physique (« Pas de case »). `sansMalusPhysique` : passé à resistancesDe (forcé ;
+ * sinon le Mode Hyper actif l'annule, R172).
+ * Mode Hyper (décision R172) : ses résistances (resistancesDe) ; en Mode Hyper 100 %, l'immunité de la Symbiose vaut pour ses deux magies.
+ * Le Marcass en Mode Hyper (décision R178 ; « Corps isolant », effet de sa race lu dans son texte, jamais par le nom : « Les AP et AM naturels s'ajoutent
+ * à toute réduction de dégâts, quel que soit le type d'attaque », modeHyperDuMoment, `armureNaturelle`) : la réduction de tout coup est son AP naturelle
+ * + son AM naturelle + l'armure du calcul classique (l'armure portée : sa part d'AP, avec sa résistance au type, contre un coup physique, sa part d'AM
+ * contre un coup magique ; le bouclier en parade partielle), chaque part naturelle comptée une fois. « Naturel » = tout ce qui n'est pas l'armure portée
+ * ni le bouclier (« Quand on parle d'AP nat, c'est tout ce qui n'est pas "armure" ») : le total de defenseDe moins la part de l'armure portée (race,
+ * ethnie, classes magiques, dons dont R177, accessoires, posture, AP ou AM de base du Mode Hyper de la Terre ou de la Glace). Marcass de Terre de niveau
+ * 10, AP naturelle 25, AM naturelle 6, armure portée AP 8 et AM 3 : 50 physiques → 39 retirés, 11 reçus ; 50 magiques → 34 retirés, 16 reçus.
+ * `ignoreArmure` (case « L'attaque ignore l'armure », R172, R178 : « Ignore l'armure, ou Igore AP ou AM, tout passe à 0. Même pour le Marcass. ») :
+ * aucune réduction (ni l'armure portée, ni sa résistance au type, ni le bouclier, ni l'armure naturelle, Marcass compris).
+ * { recus, etapes: [{ texte, valeur }], armure (la réduction totale), type, element, partie }
  */
 export function degatsRecus(regles, fiche, options = {}) {
-  const { entrants = 0, type = null, reduits = false, parade = false, don = false } = options;
+  const { entrants = 0, reduits = false, parade = false, don = false, sansMalusPhysique = null, ignoreArmure = false } = options;
   const partie = options.partie ?? PARTIE_PAR_DEFAUT;
-  const t = typesDeDegats(regles).find((x) => x.id === type);
-  if (!t) return null;
+  const coup = coupDeDegats(regles, options);
+  if (!coup) return null;
+  const t = coup.type;
   const d = defenseDe(regles, fiche, undefined, { partie });
   const brut = Math.max(0, entier(entrants));
   const etapes = [{ texte: 'Dégâts entrants', valeur: brut }];
@@ -2941,18 +3621,37 @@ export function degatsRecus(regles, fiche, options = {}) {
       facteur *= r.sens === 'resistance' ? f : 1 / f;
     }
   }
-  let armure = x.total - x.armure + x.armure * facteur;
-  const auBouclier = reduits && parade && d.bouclier;
-  const bouclier = auBouclier && !d.bouclier.cassee ? (t.physique ? d.bouclier.ap : d.bouclier.am) : 0;
-  armure += bouclier;
+  // le bouclier de « Mur » est déjà dans la défense, à chaque attaque (R267 (1)) : la parade partielle ne l'ajoute pas une seconde fois
+  const auBouclier = reduits && parade && d.bouclier && !d.bouclier.mur;
+  const bouclier = (auBouclier && !d.bouclier.cassee ? (t.physique ? d.bouclier.ap : d.bouclier.am) : 0) + x.bouclier;
+  // la part de l'armure portée (sa résistance ou sa faiblesse au type comprise) et le bouclier
+  const portee = x.armure * facteur + bouclier;
   const nomArmure = t.physique ? 'AP' : 'AM';
   const precisions = [
     facteur !== 1 ? `armure ${facteur > 1 ? `× ${facteur}` : `÷ ${1 / facteur}`} contre ${t.nom.toLowerCase()}` : null,
     d.partie?.cassee ? `partie ${d.partie.nom} cassée : l’armure n’y compte pas` : null,
-    bouclier ? `bouclier +${bouclier}` : null,
+    bouclier ? `bouclier +${bouclier}${x.bouclier ? ' (Mur : à chaque attaque)' : ''}` : null,
     auBouclier && d.bouclier.cassee ? 'bouclier cassé : il ne compte plus' : null,
   ].filter(Boolean);
-  etapes.push({ texte: `− ${nomArmure}${precisions.map((p) => ` (${p})`).join('')}`, valeur: -armure });
+  const entre = (liste) => liste.map((p) => ` (${p})`).join('');
+  // le Marcass en Mode Hyper (décision R178) : AP naturelle + AM naturelle + l'armure portée du calcul classique
+  const marcass = !ignoreArmure && Boolean(modeHyperDuMoment(regles, fiche)?.armureNaturelle.length);
+  let armure;
+  if (ignoreArmure) {
+    // « L'attaque ignore l'armure » (décisions R172, R178) : tout passe à 0, même pour le Marcass
+    armure = 0;
+    etapes.push({ texte: `− ${nomArmure} (l’attaque ignore l’armure : aucune réduction)`, valeur: 0 });
+  } else if (marcass) {
+    const apNaturelle = d.ap.total - d.ap.armure - d.ap.bouclier;
+    const amNaturelle = d.am.total - d.am.armure - d.am.bouclier;
+    armure = apNaturelle + amNaturelle + portee;
+    etapes.push({ texte: '− AP naturelle (Mode Hyper, Marcass)', valeur: -apNaturelle });
+    etapes.push({ texte: '− AM naturelle (Mode Hyper, Marcass)', valeur: -amNaturelle });
+    etapes.push({ texte: `− ${nomArmure} de l’armure portée${entre(precisions)}`, valeur: -portee });
+  } else {
+    armure = x.total - x.armure - x.bouclier + portee;
+    etapes.push({ texte: `− ${nomArmure}${entre(precisions)}`, valeur: -armure });
+  }
   let reste = Math.max(0, brut - armure);
   if (reduits) {
     reste /= 2;
@@ -2964,19 +3663,148 @@ export function degatsRecus(regles, fiche, options = {}) {
   }
   // la posture Symbiose : « Immunité à la magie de la symbiose » (décision R100) ; le Potentiel Illimité n'a pas de magie de la symbiose, donc pas
   // d'immunité (décision R109)
-  const symbiose = t.physique ? null : postureDuMoment(regles, fiche)?.symbiose;
-  if (symbiose?.immunite && symbiose.magie?.id === t.id) {
+  // l'élément du coup (R171), qu'il soit « Magique » ou physique : l'immunité de la Symbiose, sinon le palier de résistance à sa magie
+  const e = coup.element;
+  const paliers = t.physique || e ? resistancesDe(regles, fiche, { sansMalusPhysique }).paliers : [];
+  const palierDe = (type, id) => paliers.find((p) => p.cibles.some((c) => c.type === type && c.id === id)) ?? null;
+  const multiplicateurDe = (palier) => (regles.resistance_paliers ?? []).find((p) => p.id === palier.id)?.multiplicateur ?? 1;
+  // le palier physique personnel du type du coup (décision R174), avant celui de l'élément : les deux se multiplient, l'arrondi reste à la fin
+  const physique = t.physique ? palierDe('physique', t.id) : null;
+  if (physique) {
+    reste = appliquerMultiplicateur(reste, multiplicateurDe(physique));
+    etapes.push({ texte: `${physique.libelle} contre ${t.nom.toLowerCase()} (${physique.effet})`, valeur: reste });
+  }
+  // (en Mode Hyper 100 %, la Symbiose vaut pour ses deux magies : R172)
+  const symbiose = e ? postureDuMoment(regles, fiche)?.symbiose : null;
+  const immunisee = symbiose?.immunite ? symbiose.magies.find((m) => m.id === e.id) : null;
+  if (immunisee) {
     reste = 0;
-    etapes.push({ texte: `Symbiose avec ${symbiose.magie.nom} : immunité`, valeur: 0 });
-  } else if (!t.physique) {
-    const palier = resistancesDe(regles, fiche).paliers.find((p) => p.cibles.some((c) => c.type === 'magie' && c.id === t.id));
-    const mult = palier ? (regles.resistance_paliers ?? []).find((p) => p.id === palier.id)?.multiplicateur ?? 1 : 1;
+    etapes.push({ texte: `Symbiose avec ${immunisee.nom} : immunité`, valeur: 0 });
+  } else if (e) {
+    const palier = palierDe('magie', e.id);
     if (palier) {
-      reste = appliquerMultiplicateur(reste, mult);
+      reste = appliquerMultiplicateur(reste, multiplicateurDe(palier));
       etapes.push({ texte: `${palier.libelle} (${palier.effet})`, valeur: reste });
     }
   }
-  return { recus: Math.floor(reste), etapes, armure, type: t, partie: d.partie };
+  return { recus: Math.floor(reste), etapes, armure, type: t, element: e, partie: d.partie };
+}
+
+// ------------------------------------------------------------------------------------------------------------------------------------------------
+// Les dégâts reçus appliqués aux jauges (décision R171) : le résultat baisse d'abord la barrière du moment, puis la santé ; des cases pour les coups
+// contre lesquels la barrière ne joue pas normalement. Tous les arrondis à l'inférieur (R175).
+// ------------------------------------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Les cases de la barrière (décision R171) : `passe` « Passe la barrière » (un sort ou une capacité de monstre qui ignore la barrière), `casse` « Casse la
+ * barrière » (qui la brise), `laiton` « Dégâts doublés contre la barrière » (qui la frappe double ; l'identifiant garde l'ancien nom), `medusain` « Deux
+ * fois moins » (dons du Médusain). Décision R241 (3) : une arme en Mythril, Maverium ou Laiton ne les déclenche plus (leurs effets de matériau sont des
+ * passifs écrits, R128, rien ne les calcule) ; les cases restent pour les sorts et les capacités de monstre. [{ id, nom, aide }]
+ */
+export const CASES_DE_LA_BARRIERE = Object.freeze([
+  Object.freeze({ id: 'passe', nom: 'Passe la barrière', aide: 'Sorts et capacités de monstre qui ignorent la barrière : la barrière ne bouge pas, tout baisse la santé' }),
+  Object.freeze({ id: 'casse', nom: 'Casse la barrière', aide: 'Capacités de monstre qui brisent la barrière : la barrière tombe à 0 sans rien absorber, tout baisse la santé' }),
+  Object.freeze({ id: 'laiton', nom: 'Dégâts doublés contre la barrière', aide: 'Sorts et capacités de monstre qui frappent la barrière double : chaque point retire 2 de barrière' }),
+  Object.freeze({ id: 'medusain', nom: 'Deux fois moins', aide: 'Médusain (« Barrière résistante », « Barrière isolante ») : chaque point retire 0,5 de barrière, arrondi à l’inférieur' }),
+]);
+
+/**
+ * Les cases d'attaque qu'on ne coche qu'une à la fois (décision R171 : « une seule à la fois en attendant » ; question Q74 ouverte au propriétaire :
+ * peut-on en cocher plusieurs ?). Le choix provisoire tient tout entier ici : vider la liste (ou en retirer une) les rend cumulables.
+ */
+export const CASES_EXCLUSIVES_DE_LA_BARRIERE = Object.freeze(['passe', 'casse', 'laiton']);
+
+/**
+ * Les cases de la barrière après un clic sur `cle` (`coche` : son nouvel état) : une case exclusive cochée décoche les autres cases exclusives
+ * (CASES_EXCLUSIVES_DE_LA_BARRIERE, Q74) ; « Deux fois moins » (Médusain) se coche avec n'importe laquelle (R171). Rend un nouvel objet { passe, casse,
+ * laiton, medusain }.
+ */
+export function casesDeLaBarriereApres(cases, cle, coche) {
+  const apres = { ...cases, [cle]: Boolean(coche) };
+  if (coche && CASES_EXCLUSIVES_DE_LA_BARRIERE.includes(cle)) {
+    for (const autre of CASES_EXCLUSIVES_DE_LA_BARRIERE) if (autre !== cle) apres[autre] = false;
+  }
+  return apres;
+}
+
+/**
+ * Ce que perdent la barrière et la santé (décision R171) : `recus` (les dégâts reçus, entier ≥ 0), `barriere` et `sante` (leurs valeurs du moment),
+ * `cases` ({ passe, casse, laiton, medusain }). Le résultat baisse la barrière ; si elle passe à 0, ou y est déjà, le reste baisse la santé (sans
+ * plancher). « Passe » : la barrière ne bouge pas, tout baisse la santé. « Casse » : la barrière tombe à 0 sans rien absorber, tout baisse la santé ; elle
+ * ignore le Médusain (« Casse barrière ignore l'effet du Medusain »). Sinon chaque point retire c de barrière : 1 ; 2 avec les dégâts doublés (`laiton`) ; 0,5 avec le
+ * Médusain ; 1 avec les deux (« Ils se compensent », × 2 puis ÷ 2). La barrière absorbe ⌈B ÷ c⌉ points au plus (le dernier point du Laiton peut ne
+ * retirer qu'1), et perd ⌊reçus × c⌋ sans être vidée (Médusain : « chaque point retire 0,5 de barrière, arrondi à l'inférieur », R175). Les exemples
+ * de R171 (20 reçus, barrière 12, santé 40) : sans case, barrière 0 et santé 32 ; Passe, santé 20 ; Casse, barrière 0 et santé 20 ; Laiton, 6 points la
+ * vident, santé 26 ; Médusain, barrière 2, santé 40 (30 reçus : 24 points la vident, santé 34).
+ * { barriere, sante (après), absorbes (les points que la barrière a pris), etapes: [texte] }
+ */
+export function degatsALaBarriere(recus, { barriere, sante }, cases = {}) {
+  const r = Math.max(0, Math.floor(entier(recus)));
+  const b = Math.max(0, Math.floor(entier(barriere)));
+  const s = Math.floor(entier(sante));
+  // un coup sans dégâts ne touche rien, quelle que soit la case (réponse du propriétaire à « Casse la barrière » sur un coup de 0 : « Non, il faut
+  // des dégâts »)
+  if (r === 0) return { barriere: b, sante: s, absorbes: 0, etapes: [] };
+  if (cases.passe) return { barriere: b, sante: s - r, absorbes: 0, etapes: ['La barrière est passée : tout baisse la santé'] };
+  if (cases.casse) return { barriere: 0, sante: s - r, absorbes: 0, etapes: ['La barrière est cassée : elle tombe à 0, tout baisse la santé'] };
+  // c = num ÷ den : ce qu'un point retire de barrière (en entiers, pour des arrondis exacts)
+  const [num, den, texte] = cases.laiton && cases.medusain ? [1, 1, 'Dégâts doublés et Médusain se compensent : chaque point retire 1 de barrière']
+    : cases.laiton ? [2, 1, 'Dégâts doublés contre la barrière : chaque point retire 2 de barrière']
+      : cases.medusain ? [1, 2, 'Médusain : chaque point retire 0,5 de barrière']
+        : [1, 1, null];
+  const pourVider = Math.ceil((b * den) / num);
+  const absorbes = Math.min(r, pourVider);
+  const barriereApres = r >= pourVider ? 0 : b - Math.floor((r * num) / den);
+  return { barriere: barriereApres, sante: s - (r - absorbes), absorbes, etapes: texte ? [texte] : [] };
+}
+
+/**
+ * La barrière moins touchée qu'écrit le texte d'un don (décision R171, Médusain : « La barrière prend deux fois moins de dégâts physiques » —
+ * « Barrière résistante » —, « … magiques » — « Barrière isolante ») ; lue dans le texte, jamais par le nom du don. { physiques, magiques }
+ */
+export function barriereMoinsToucheeEcrite(texte) {
+  const t = texteALire(texte);
+  const lu = (mot) => new RegExp(`\\bla barri[eè]re prend deux fois moins de d[ée]g[âa]ts ${mot}\\b`).test(t);
+  return { physiques: lu('physiques'), magiques: lu('magiques') };
+}
+
+/**
+ * « Deux fois moins » cochée d'office (décision R171 : « Automatique si don + type ») : le personnage a un don qui écrit la barrière moins touchée
+ * (barriereMoinsToucheeEcrite : dons de classe débloqués, donsAcquis ; dons de sa race et de son ethnie, donsDeRace) par les dégâts physiques et le coup a
+ * un type physique, ou par les dégâts magiques et le coup a un élément (un coup physique avec un élément : l'un ou l'autre suffit). La case se décoche à
+ * la main (la page). `coup` : { type, element } (coupDeDegats). { coche, dons: [noms des dons qui comptent] }
+ */
+export function medusainDOffice(regles, fiche, coup) {
+  const c = coupDeDegats(regles, coup ?? {});
+  if (!c) return { coche: false, dons: [] };
+  const race = trouver(regles.races ?? [], fiche.race_id);
+  const dons = [
+    ...donsAcquis(regles, fiche).flatMap((x) => x.dons.map((d) => ({ nom: d.nom, texte: d.effet }))),
+    ...(race ? donsDeRace(regles, fiche).dons.map((d) => ({ nom: `${race.nom}${d.etiquette ? ` (${d.etiquette})` : ''}`, texte: d.texte })) : []),
+  ];
+  const comptent = dons.filter((d) => {
+    const lu = barriereMoinsToucheeEcrite(d.texte);
+    return (lu.physiques && c.type.physique) || (lu.magiques && Boolean(c.element));
+  });
+  return { coche: comptent.length > 0, dons: comptent.map((d) => d.nom) };
+}
+
+/**
+ * Le bouton « Appliquer » des dégâts reçus (décision R171) : les valeurs du moment de la barrière et de la santé (valeursDuMoment) après `recus`
+ * (degatsALaBarriere, avec `cases`). Rend { ecrit: { barriere_actuelle, sante_actuelle } (à écrire dans la fiche), barriere: { avant, apres },
+ * sante: { avant, apres }, absorbes, etapes }. La barrière reste ≥ 0 ; la santé peut devenir négative.
+ */
+export function appliquerDegatsRecus(regles, fiche, recus, cases = {}, attributs = attributsDe(regles, fiche)) {
+  const jauges = valeursDuMoment(regles, fiche, attributs);
+  const avant = { barriere: jauges.find((j) => j.champ === 'barriere_actuelle').valeur, sante: jauges.find((j) => j.champ === 'sante_actuelle').valeur };
+  const apres = degatsALaBarriere(recus, avant, cases);
+  return {
+    ecrit: { barriere_actuelle: apres.barriere, sante_actuelle: apres.sante },
+    barriere: { avant: avant.barriere, apres: apres.barriere },
+    sante: { avant: avant.sante, apres: apres.sante },
+    absorbes: apres.absorbes,
+    etapes: apres.etapes,
+  };
 }
 
 /**
@@ -3034,6 +3862,18 @@ export function degatsDArme(regles, fiche, rang) {
       else if ((p.familles ?? []).includes(arme.famille_id) && p.mains && !arme.mains) nonComptes.push({ nom, valeur, raison: 'mains' });
     }
   }
+  // le bouclier porté (décisions R255 (2), (3), R267 (3), R269) : dès qu'un bouclier est porté, « Bouclier d'attaque » ajoute (AP + AM du bouclier) ÷ 4 (÷ 3 avec
+  // « Égide d'assaut »), à l'inférieur, minimum 1, et « Bouragé » +2 par poids du bouclier aux dégâts de pugilat ; cassé, le bouclier ne compte plus (R108)
+  const duBouclier = arme.famille_id === 'pugilat' ? bouclierDesDons(regles, fiche) : null;
+  if (duBouclier && !duBouclier.cassee) {
+    for (const e of duBouclier.effets) {
+      if (e.cle === 'extension_de_degats') {
+        const diviseur = diviseurDeLExtension(e, duBouclier.effets);
+        ajouter(`${e.nom} : (AP + AM du bouclier) ÷ ${diviseur}`, extensionDeDegats(duBouclier.ap, duBouclier.am, { ...e, diviseur }));
+      }
+      else if (e.cle === 'degats_par_poids') ajouter(`${e.nom} : poids ${duBouclier.poids}`, e.valeur * duBouclier.poids);
+    }
+  }
   // accessoires (décision R54) : « Dégâts physiques +N » sur toutes les armes, « +5 dégâts avec une catégorie d'arme » sur la famille choisie ; « Augmente
   // la portée des armes à distance » : `porteeEnPlus`
   let porteeEnPlus = 0;
@@ -3071,38 +3911,57 @@ export function magiesDeLaSymbiose(regles, fiche) {
 
 /**
  * La posture du moment et ce qu'elle change (décision R100), ou null sans posture :
- * { posture, competences: [{ toutes | caracteristiques | competences, valeur }], initiative, ap, am, degatsMaximum, diviseur, crans,
- *   symbiose: { magie (la magie de la symbiose, null tant qu'elle n'est pas choisie), possibles, aChoisir, degats (dégâts et soin des sorts de cette
- *   magie), am, immunite, inactive (l'autre magie), potentielIllimite } | null, armesInutilisables, lignes: [{ texte, chiffre, inconvenient }] }.
+ * { posture, libelle, noms, cent, competences: [{ toutes | caracteristiques | competences, valeur }], initiative, ap, am, degatsMaximum, diviseur, crans,
+ *   symbiose: { magie (la magie de la symbiose, null tant qu'elle n'est pas choisie), magies (celles dont les sorts reçoivent son bonus et qu'elle
+ *   immunise : [magie], ou les deux en Mode Hyper 100 %), possibles, aChoisir, degats (dégâts et soin des sorts de ces magies), am, immunite, inactive
+ *   (l'autre magie), potentielIllimite } | null, armesInutilisables, lignes: [{ texte, chiffre, inconvenient }], critique: [{ posture, valeur,
+ *   competences }] } (la réussite critique, décision R180 : critiqueDe ; un don de posture se lit sur `noms`, R182).
  * Défensif : 2 × ⌈N ÷ 4⌉ AP et AM (N niveau global ; réponse « 2 × ⌈N/4⌉ ») ; Symbiose : base + pas × (puissance magique − 1) (« le premier niveau ne
  * compte pas » ; réponse « +5 dégâts et soin ») ; sa magie : la seule du personnage, sinon `fiche.symbiose_magie_id` (« choisie dans la case »).
  * Magie innée Potentiel Illimité (décision R109) : `potentielIllimite` vrai, ni magie ni magie à choisir (`magie` null, `possibles` vide, `aChoisir`
  * faux), le bonus de dégâts et de soin sur tous ses sorts, quelle que soit leur magie (sortDuMoment), l'AM de la posture, jamais l'immunité (degatsRecus :
  * elle vise la magie de la symbiose, qu'il n'a pas).
+ * Mode Hyper 100 % actif (décision R172 : « le cumul de tous les avantages chiffrés des postures (R100), sans leurs inconvénients, la posture cochée étant
+ * ignorée tant qu'il dure ») : les lignes chiffrées de toutes les postures, sauf leurs inconvénients (`posture_effet.inconvenient`, R47 : ni le −10 de
+ * l'Offensif, ni le ÷ 2 du Défensif, ni les armes inutilisables — R112 levé —, ni « Une seule magie active » — R111 levé) ; `cent` vrai, `posture` :
+ * { id: null, nom: 'Mode Hyper 100 %' }, `noms` : les noms de toutes les postures (un bonus écrit pour une posture compte) ; la Symbiose « vaut pour ses
+ * deux magies » (bonus de dégâts et de soins, AM, immunité), sans magie à choisir.
+ * `libelle` : « Posture X » (ou « Mode Hyper 100 % (postures) »), le nom d'une ligne de détail ; `noms` : le nom des postures actives, en minuscules.
+ * Option `cent` (booléen) : le Mode Hyper 100 % compté ou non, quel que soit l'état du moment (le sort préparé, figé à sa préparation : décisions R172,
+ * R179, contexteDesSorts) ; absente, celui du moment.
  */
-export function postureDuMoment(regles, fiche) {
-  const posture = trouver(regles.postures ?? [], fiche.posture_id);
+export function postureDuMoment(regles, fiche, { cent: centForce } = {}) {
+  const cent = typeof centForce === 'boolean' ? centForce : Boolean(modeHyperDe(regles, fiche)?.cent.actif);
+  const posture = cent ? { id: null, nom: 'Mode Hyper 100 %' } : trouver(regles.postures ?? [], fiche.posture_id);
   if (!posture) return null;
+  const ordre = (p) => (regles.ordre_postures ?? []).indexOf(p.id);
+  const actives = cent ? [...(regles.postures ?? [])].sort((a, b) => ordre(a) - ordre(b)) : [posture];
   const niveau = niveauGlobal(regles, fiche.xp);
-  // « +2 tous les niveaux de puissance magique » : le NPM accessible (npmMax : le palier 5 n'est pas pour un personnage à magie acquise)
+  // « +2 tous les niveaux de puissance magique » : la puissance du niveau (npmMax : le palier 5 n'est pas pour un personnage à magie acquise), pas le
+  // plafond des sorts de R188 (2)
   const puissance = npmMax(regles, fiche);
+  const lignesDe = (p) => p.effets.map((texte, i) => ({ texte, chiffre: p.chiffres?.[i] ?? null, inconvenient: (p.inconvenients ?? []).includes(i + 1) }));
   const r = {
-    posture, competences: [], initiative: 0, ap: 0, am: 0, degatsMaximum: false, diviseur: 1, crans: 0, symbiose: null, armesInutilisables: false,
-    lignes: posture.effets.map((texte, i) => ({ texte, chiffre: posture.chiffres?.[i] ?? null, inconvenient: (posture.inconvenients ?? []).includes(i + 1) })),
+    posture, libelle: cent ? 'Mode Hyper 100 % (postures)' : `Posture ${posture.nom}`, noms: actives.map((p) => p.nom.toLowerCase()), cent,
+    competences: [], initiative: 0, ap: 0, am: 0, degatsMaximum: false, diviseur: 1, crans: 0, symbiose: null, armesInutilisables: false, critique: [],
+    // en Mode Hyper 100 %, les avantages seuls
+    lignes: actives.flatMap((p) => lignesDe(p).filter((l) => !cent || !l.inconvenient)),
   };
   const symbiose = () => {
     if (!r.symbiose) {
       // le Potentiel Illimité inné (R109) : pas de magie de la symbiose, ni à choisir
       const potentielIllimite = fiche.magie_innee_id === POTENTIEL_ILLIMITE_INNE;
       const possibles = potentielIllimite ? [] : magiesDeLaSymbiose(regles, fiche);
-      const magie = possibles.length === 1 ? possibles[0] : possibles.find((m) => m.id === fiche.symbiose_magie_id) ?? null;
+      const magie = possibles.length === 1 ? possibles[0] : cent ? null : possibles.find((m) => m.id === fiche.symbiose_magie_id) ?? null;
       r.symbiose = {
-        magie, possibles, aChoisir: possibles.length > 1 && !magie, degats: 0, am: 0, immunite: false, inactive: null, uneSeule: false, potentielIllimite,
+        magie, magies: cent ? possibles : magie ? [magie] : [], possibles, aChoisir: !cent && possibles.length > 1 && !magie, degats: 0, am: 0, immunite: false,
+        inactive: null, uneSeule: false, potentielIllimite,
       };
     }
     return r.symbiose;
   };
-  for (const c of posture.chiffres ?? []) {
+  for (const l of r.lignes) {
+    const c = l.chiffre;
     if (!c) continue;
     if (c.cible === 'competences') r.competences.push(c);
     else if (c.cible === 'initiative') r.initiative += c.valeur;
@@ -3128,6 +3987,11 @@ export function postureDuMoment(regles, fiche) {
     r.am += s.am;
     if (s.uneSeule && s.magie) s.inactive = s.possibles.find((m) => m.id !== s.magie.id) ?? null;
   }
+  // la réussite critique (décision R180) : chaque ligne « +N% à la réussite critique » d'une posture active, sur les compétences de cette posture
+  // (posture_critique, 'posture' : Offensif ses six jets d'attaque, Défensif Esquive et Parade ; en Mode Hyper 100 %, les deux), jamais une liste
+  // écrite ici ; un don de posture (Sci du Crit) n'est que mentionné (décision R182 (3) : critiqueDe, sur `noms`)
+  r.critique = actives.flatMap((p) => lignesDe(p).filter((l) => l.chiffre?.cible === 'critique' && !(cent && l.inconvenient))
+    .map((l) => ({ posture: p.nom, valeur: l.chiffre.valeur, competences: p.critique?.posture ?? [] })));
   return r;
 }
 
@@ -3139,23 +4003,224 @@ export function bonusDePostureSurCompetence(posture, k) {
 
 /**
  * Le Mode Hyper et le Mode Hyper 100 % du personnage (demande du propriétaire : leurs cases à côté des postures, une fois débloqués) : débloqués au niveau
- * global qu'écrit la page « Liste des effets mode hyper » (2 et 10) ; les effets de base de la fiche (décision R5), l'effet de chaque magie du personnage
- * (« Mono-Magie » ou « Bi-magie » selon qu'il en a une ou deux) et celui de sa race (décision R13) ; ceux du Mode Hyper 100 %. null sans ces règles.
+ * global des constantes `mode_hyper.niveau_deblocage` et `mode_hyper.niveau_100` (2 et 10, lues en base : décision R187) ; les effets de base de la fiche (décision R5), l'effet de chaque magie du personnage
+ * (« Mono-Magie » ou « Bi-magie » selon qu'il en a une ou deux) et celui de sa race (décision R13), avec
+ * ce que chacun change aux valeurs (`chiffres` : lib/mode-hyper-texte.mjs) ; ceux du Mode Hyper 100 %. null sans ces règles.
+ * Décision R172 (« Deux cases activables, comme les postures ») : `actif` (personnage.mode_hyper, et débloqué), `cent.actif` (personnage.mode_hyper_100,
+ * seulement avec le Mode Hyper actif et débloqué : la case n'est « cochable seulement quand le Mode Hyper l'est ») ; `semaine` : le compteur « une fois
+ * par semaine » (« Oui, compteur manuel »), { restantes, max } — max : la constante `mode_hyper.usage_par_semaine`, restantes : personnage.mode_hyper_semaine,
+ * NULL au maximum (migration 0084) — ; `activable` : la case du Mode Hyper se coche (débloqué, une utilisation qui reste) ou se décoche (actif) ;
+ * `cent.activable` : celle du Mode Hyper 100 % (débloqué, Mode Hyper actif). `tour` et `cent.sortie` : les pourcentages du chakra maximum d'un tour de
+ * Mode Hyper et de la sortie du Mode Hyper 100 % (constantes `mode_hyper.conso_chakra_pct_max_par_tour`, `mode_hyper_100.cout_chakra_pct_max`).
  */
 export function modeHyperDe(regles, fiche) {
   const h = regles.mode_hyper;
   if (!h) return null;
   const niveau = niveauGlobal(regles, fiche.xp);
   const variante = fiche.magie_acquise_id ? 'bi' : 'mono';
+  // (la « Forme complète » du Potentiel Illimité n'est pas montrée : son Mode Hyper est celui de la décision R172, modeHyperDuMoment)
+  const deLaVariante = (parVariante) => parVariante?.[variante] ?? parVariante?.mono_et_bi ?? null;
   const magies = [fiche.magie_innee_id, fiche.magie_acquise_id].filter(Boolean)
-    .map((id) => ({ magie: trouver(regles.magies, id), effet: h.magies[id]?.[variante] ?? h.magies[id]?.mono_et_bi ?? null }))
+    .map((id) => ({ magie: trouver(regles.magies, id), effet: deLaVariante(h.magies[id]), chiffres: deLaVariante(h.chiffres_magies?.[id]) ?? [] }))
     .filter((x) => x.magie && x.effet);
+  const debloque = niveau >= h.niveau;
+  const centDebloque = niveau >= h.cent.niveau;
+  const actif = debloque && entier(fiche.mode_hyper) === 1;
+  const max = regles.constantes?.['mode_hyper.usage_par_semaine'] ?? null;
+  const enregistree = fiche.mode_hyper_semaine;
+  const restantes = max === null ? null
+    : enregistree === null || enregistree === undefined || enregistree === '' ? max : Math.min(max, Math.max(0, entier(enregistree)));
   return {
-    debloque: niveau >= h.niveau, niveau: h.niveau, effets: h.effets, magies, race: (fiche.race_id && h.races[fiche.race_id]) || null,
+    debloque, niveau: h.niveau, effets: h.effets, magies, race: (fiche.race_id && h.races[fiche.race_id]) || null,
     // accessoire « +1 tour de Mode Hyper (100% exclu) » (décision R54)
     toursAccessoires: sommeDesAccessoires(regles, fiche, 'mode_hyper_tours'),
-    cent: { debloque: niveau >= h.cent.niveau, niveau: h.cent.niveau, effets: h.cent.effets, suite: h.cent.suite },
+    actif,
+    semaine: max === null ? null : { restantes, max },
+    activable: debloque && (actif || restantes === null || restantes > 0),
+    tour: regles.constantes?.['mode_hyper.conso_chakra_pct_max_par_tour'] ?? null,
+    cent: {
+      debloque: centDebloque, niveau: h.cent.niveau, effets: h.cent.effets, suite: h.cent.suite,
+      actif: actif && centDebloque && entier(fiche.mode_hyper_100) === 1, activable: actif && centDebloque,
+      sortie: regles.constantes?.['mode_hyper_100.cout_chakra_pct_max'] ?? null,
+    },
   };
+}
+
+/**
+ * Ce que le Mode Hyper actif change aux valeurs du moment (décision R172), ou null hors Mode Hyper (case décochée ou pas encore débloquée) :
+ * { cent (le Mode Hyper 100 % est actif), armes (« Dégâts physiques +15 »), sorts: { valeur (+15 avec une seule magie, +7 avec deux : R5), magies
+ * (les siennes), tous (le Potentiel Illimité : tous ses sorts, comme sa Symbiose, R109) }, soins (+15), coutNul (« Consommation de chakra = 0 », R18),
+ * attaques (Mode Hyper 100 % : « +10 dégâts à toutes les attaques, physiques et magiques », en plus du Mode Hyper ; 0 sinon), uneSeule, potentielIllimite,
+ * et les effets de magie et de race lus dans leur texte (mode_hyper.chiffres_magies, races[].chiffres) : apBase, amBase (Terre, Glace : « de base
+ * augmente de 25 », 10 avec deux magies, l'écrit de chaque variante), desAttaques (Humain : armes et sorts), desArmes (Nain), desSorts (Felfe ; `soins` :
+ * les soins aussi), vitesse (Humain, Jackalope), chacun [{ nom, valeur, soins? }] ; armureNaturelle (Marcass : les noms des effets, [] sinon) }.
+ * Les valeurs de base viennent des constantes `mode_hyper.*` de la base (regles.constantes), jamais écrites ici.
+ */
+export function modeHyperDuMoment(regles, fiche, h = modeHyperDe(regles, fiche)) {
+  if (!h?.actif) return null;
+  const c = (id) => regles.constantes?.[id] ?? 0;
+  const uneSeule = !fiche.magie_acquise_id;
+  const potentielIllimite = fiche.magie_innee_id === POTENTIEL_ILLIMITE;
+  const lus = effetsLusDuModeHyper(regles, fiche, h);
+  const de = (cible) => deLaCible(lus, cible);
+  return {
+    cent: h.cent.actif,
+    armes: c('mode_hyper.degats_physique'),
+    ...bonusDuModeHyperSurLesSorts(regles, fiche, { cent: h.cent.actif }),
+    coutNul: true,
+    uneSeule, potentielIllimite,
+    apBase: de('ap_base'), amBase: de('am_base'), desAttaques: de('des_attaques'), desArmes: de('des_armes'), desSorts: de('des_sorts'), vitesse: de('vitesse'),
+    armureNaturelle: lus.filter((x) => x.cible === 'armure_naturelle').map((x) => x.nom),
+  };
+}
+
+/**
+ * Les effets de magie et de race du Mode Hyper lus dans leur texte (décision R13 : mode_hyper.chiffres_magies, races[].chiffres), chacun avec son nom
+ * (« Mode Hyper (Feu) », « Mode Hyper (<effet de race>, <race>) »), que le Mode Hyper soit actif ou non (`h` : modeHyperDe). [{ cible, valeur, soins?, nom }]
+ */
+function effetsLusDuModeHyper(regles, fiche, h) {
+  const race = trouver(regles.races ?? [], fiche.race_id);
+  return [
+    ...h.magies.flatMap((m) => m.chiffres.map((x) => ({ ...x, nom: `Mode Hyper (${m.magie.nom})` }))),
+    ...(h.race?.chiffres ?? []).map((x) => ({ ...x, nom: `Mode Hyper (${[h.race.nom, race?.nom].filter(Boolean).join(', ')})` })),
+  ];
+}
+
+/** Les effets lus (effetsLusDuModeHyper) d'une cible : [{ nom, valeur, soins? }]. */
+const deLaCible = (lus, cible) => lus.filter((x) => x.cible === cible).map(({ nom, valeur, soins }) => ({ nom, valeur, ...(soins ? { soins } : {}) }));
+
+/**
+ * Les bonus du Mode Hyper aux sorts (décision R172) : { sorts: { valeur (+15 avec une seule magie, +7 avec deux : R5), magies (celles du personnage),
+ * tous (le Potentiel Illimité : tous ses sorts) }, soins (+15), attaques (+10 du Mode Hyper 100 % avec `cent`, 0 sinon) }, des constantes `mode_hyper.*`
+ * de la base. Le nombre de magies est celui de la fiche telle qu'elle est, lu au lancer pour un sort préparé en Mode Hyper (modeHyperDuSortPrepare) :
+ * il ne peut pas changer entre la préparation et le lancer (décision R179, la question Q83 sans objet : « Un sort préparer ne demeure que jusqu'à la fin
+ * d'un combat. Changer de magie est acte théoriquement impossible hors combat. »).
+ */
+function bonusDuModeHyperSurLesSorts(regles, fiche, { cent = false } = {}) {
+  const c = (id) => regles.constantes?.[id] ?? 0;
+  return {
+    sorts: {
+      valeur: c(fiche.magie_acquise_id ? 'mode_hyper.degats_magie_bi' : 'mode_hyper.degats_magie_mono'),
+      magies: [fiche.magie_innee_id, fiche.magie_acquise_id].filter(Boolean), tous: fiche.magie_innee_id === POTENTIEL_ILLIMITE,
+    },
+    soins: c('mode_hyper.soin_magique'),
+    attaques: cent ? c('mode_hyper_100.degats_bonus') : 0,
+  };
+}
+
+/**
+ * Ce que le sort préparé tient du Mode Hyper, figé à sa préparation (décisions R172, R179 : « le sort préparé est comme "figé" à un instant T près à être
+ * lancé plus tard » ; réponses aux questions Q82 « Oui : 2d6+20 », Q84 « Oui : 3D8 au maximum + 30 = 54 », Q85 « Non : 2d6+5 », Q87 « Oui : 3d6+20 »),
+ * ou null pour un sort préparé hors Mode Hyper, qui n'en reçoit rien, même lancé en Mode Hyper ou au Mode Hyper 100 % : préparé en Mode Hyper
+ * (personnage_sort.prepare_hyper, migration 0086), son +15 (+7 avec deux magies ; tous les sorts du Potentiel Illimité) aux dégâts et aux soins et le
+ * dé de race du Mode Hyper (`des` : Humain +1 dé à toutes les attaques, Felfe +1 dé aux dégâts et aux soins magiques depuis R237 (12), lus dans le texte de la race) ;
+ * préparé au Mode Hyper 100 % (prepare_cent), en plus le +10 du 100 % (et le cumul des postures : contexteDesSorts) ; jusqu'au lancer, à « Lâcher le
+ * sort », à une nouvelle préparation ou à « Fin de combat » (R179), même après la fin du Mode Hyper. Le coût et les résistances, qui ne sont pas des
+ * valeurs du sort préparé, restent ceux du moment. `prepare` : sortPrepare. { cent, sorts, soins, attaques (bonusDuModeHyperSurLesSorts), des:
+ * { desAttaques, desSorts } }.
+ */
+export function modeHyperDuSortPrepare(regles, fiche, prepare = sortPrepare(regles, fiche)) {
+  if (!prepare?.hyper) return null;
+  const h = modeHyperDe(regles, fiche);
+  const lus = h ? effetsLusDuModeHyper(regles, fiche, h) : null;
+  return {
+    cent: prepare.cent, ...bonusDuModeHyperSurLesSorts(regles, fiche, { cent: prepare.cent }),
+    des: { desAttaques: lus ? deLaCible(lus, 'des_attaques') : [], desSorts: lus ? deLaCible(lus, 'des_sorts') : [] },
+  };
+}
+
+/**
+ * Ce qu'écrit un clic sur la case du Mode Hyper (`cle` 'mode_hyper') ou du Mode Hyper 100 % ('mode_hyper_100'), `coche` son nouvel état (décision R172) :
+ * { mode_hyper?, mode_hyper_100?, mode_hyper_semaine? }, {} quand le clic ne change rien. Cocher le Mode Hyper demande qu'il soit débloqué et qu'il reste
+ * une utilisation dans la semaine (« consommé à l'activation » : le compteur baisse d'un ; à 0, la case est grisée, comme une action épuisée) ; le
+ * décocher décoche aussi le Mode Hyper 100 % (la base ne le fait pas d'elle-même : contrainte personnage_mode_hyper_100_avec_mode_hyper), sans rendre
+ * l'utilisation. Le Mode Hyper 100 % ne se coche qu'avec le Mode Hyper actif et débloqué.
+ */
+export function modeHyperApres(regles, fiche, cle, coche) {
+  const h = modeHyperDe(regles, fiche);
+  if (!h) return {};
+  if (cle === 'mode_hyper') {
+    if (!coche) return h.actif || entier(fiche.mode_hyper) || entier(fiche.mode_hyper_100) ? { mode_hyper: 0, mode_hyper_100: 0 } : {};
+    if (h.actif || !h.activable) return {};
+    const reste = h.semaine ? h.semaine.restantes - 1 : null;
+    return { mode_hyper: 1, mode_hyper_100: 0, ...(h.semaine ? { mode_hyper_semaine: reste >= h.semaine.max ? null : reste } : {}) };
+  }
+  if (cle === 'mode_hyper_100') {
+    if (!coche) return entier(fiche.mode_hyper_100) ? { mode_hyper_100: 0 } : {};
+    return h.cent.activable && !h.cent.actif ? { mode_hyper_100: 1 } : {};
+  }
+  return {};
+}
+
+/**
+ * Le compteur « une fois par semaine » remonté (ou baissé) à la main de `ecart` (décision R172 : « ne remonte qu'à la main ») : { mode_hyper_semaine },
+ * borné de 0 au maximum ; au maximum, NULL (migration 0084 : « remonter au maximum écrit NULL »). {} sans compteur.
+ */
+export function semaineDuModeHyperApres(regles, fiche, ecart) {
+  const s = modeHyperDe(regles, fiche)?.semaine;
+  if (!s) return {};
+  const v = Math.min(s.max, Math.max(0, s.restantes + entier(ecart)));
+  return { mode_hyper_semaine: v >= s.max ? null : v };
+}
+
+/**
+ * Le Mode Hyper et le Mode Hyper 100 % que la fiche peut garder (décision R172) : décochés quand le niveau ne les débloque plus, le Mode Hyper 100 % sans le
+ * Mode Hyper décoché aussi (la base le refuse : personnage_mode_hyper_100_avec_mode_hyper). { mode_hyper, mode_hyper_100 }.
+ */
+export function modeHyperValable(regles, fiche) {
+  const h = modeHyperDe(regles, fiche);
+  const mode_hyper = h?.debloque && entier(fiche.mode_hyper) === 1 ? 1 : 0;
+  return { mode_hyper, mode_hyper_100: mode_hyper && h.cent.debloque && entier(fiche.mode_hyper_100) === 1 ? 1 : 0 };
+}
+
+/**
+ * « 3 santé pour 1 chakra » manquant (décision R186 : « Tout point de chakra dépensé (de force) sous 0 ne coûte plus 2 santé mais 3! », qui remplace la
+ * valeur de R18) : aucune table ne le porte.
+ */
+export const SANTE_PAR_CHAKRA_MANQUANT = 3;
+
+/**
+ * Payer `cout` chakra avec les jauges du moment (décisions R18, R186) : le chakra du moment paie ce qu'il peut, sans descendre sous 0 ; le chakra qui
+ * manque se paie SANTE_PAR_CHAKRA_MANQUANT santé pour 1 chakra, la santé pouvant devenir négative (R171). Ce prix en santé ignore la barrière (R186 : « Si
+ * c'est pas précisé ce prix de santé ignore la barrière ») : il est retiré de la santé directement, jamais par degatsALaBarriere, et la barrière n'est ni
+ * lue ni écrite. { ecrit: { chakra_actuel, sante_actuelle? }, cout, chakra: { avant, apres }, sante: { avant, apres }, manque }.
+ */
+export function payerDuChakra(regles, fiche, cout, attributs = attributsDe(regles, fiche)) {
+  const jauges = valeursDuMoment(regles, fiche, attributs);
+  const chakra = jauges.find((j) => j.champ === 'chakra_actuel').valeur;
+  const sante = jauges.find((j) => j.champ === 'sante_actuelle').valeur;
+  const du = Math.max(0, Math.floor(entier(cout)));
+  const pris = Math.min(du, Math.max(0, chakra));
+  const manque = du - pris;
+  const apres = { chakra: chakra - pris, sante: sante - manque * SANTE_PAR_CHAKRA_MANQUANT };
+  return {
+    // (la santé, seulement quand elle change)
+    ecrit: { chakra_actuel: apres.chakra, ...(manque ? { sante_actuelle: apres.sante } : {}) },
+    cout: du, chakra: { avant: chakra, apres: apres.chakra }, sante: { avant: sante, apres: apres.sante }, manque,
+  };
+}
+
+/**
+ * Le bouton « Tour de Mode Hyper » (décision R172 : « un tour de Mode Hyper retire 10 % du chakra maximum », Mode Hyper actif, pas en Mode Hyper 100 % :
+ * « le chakra ne s'évapore plus ») : ⌊10 % du chakra maximum⌋ (R175 : 65 → 6), payé par payerDuChakra à la fin du tour du joueur (décision R200 (3) :
+ * « Fin du tour du joueur ») ; le manque se paie en santé (R200 (3), R186). null hors de ce cas.
+ */
+export function tourDeModeHyper(regles, fiche, attributs = attributsDe(regles, fiche)) {
+  const h = modeHyperDe(regles, fiche);
+  if (!h?.actif || h.cent.actif || h.tour === null) return null;
+  return { ...payerDuChakra(regles, fiche, Math.floor((attributs.chakra * h.tour) / 100), attributs), pourcent: h.tour };
+}
+
+/**
+ * Le bouton « Fin du Mode Hyper 100 % » (décision R172 : « sortir du Mode Hyper 100 % consomme 75 % du chakra maximum (un coût, pas un retour du
+ * chakra à 75 %) et ramène au Mode Hyper ») : ⌊75 % du chakra maximum⌋ (R175 : 65 → 48), payé par payerDuChakra (40 de chakra : 40 chakra et 24 santé, R186) ;
+ * la case du Mode Hyper 100 % se décoche (`ecrit.mode_hyper_100` : 0), le Mode Hyper reste. null hors du Mode Hyper 100 %.
+ */
+export function finDuModeHyperCent(regles, fiche, attributs = attributsDe(regles, fiche)) {
+  const h = modeHyperDe(regles, fiche);
+  if (!h?.cent.actif || h.cent.sortie === null) return null;
+  const r = payerDuChakra(regles, fiche, Math.floor((attributs.chakra * h.cent.sortie) / 100), attributs);
+  return { ...r, ecrit: { ...r.ecrit, mode_hyper_100: 0 }, pourcent: h.cent.sortie };
 }
 
 // ------------------------------------------------------------------------------------------------------------------------------------------------
@@ -3226,7 +4291,9 @@ export function effetsDesBatons(regles, fiche) {
 // Le sort préparé (décision R115 ; présentation validée par le propriétaire le 2026-10-18 : « Le don niveau 1 (et son équivalent mage vert) permettrai de
 // choisir le sort qui est préparé et de noter le résultat du jet de magie si réussi » ; « le sort même répété plusieurs fois (don lvl 20) se lance toujours
 // avec les règles de postures du moment où il a été préparé ») : un des sorts de la fiche (personnage_sort.prepare, migration 0067), son jet de magie (un
-// D100, `prepare_jet`) et la posture du moment où il a été préparé (`prepare_posture_id`).
+// D100, `prepare_jet`) et la posture du moment où il a été préparé (`prepare_posture_id`) ; préparé en Mode Hyper ou au Mode Hyper 100 % (décision R172,
+// question Q82 : `prepare_hyper`, `prepare_cent`, migration 0086), il garde ce qu'ils lui donnent (modeHyperDuSortPrepare) ; sa plage de réussite
+// critique est celle de la préparation (décision R182 (4), Q91 : `prepare_critique`, migration 0089 : critiqueAlaPreparation).
 // ------------------------------------------------------------------------------------------------------------------------------------------------
 
 /** Les bornes du jet de magie d'un sort préparé : un D100 (regles.sort_prepare, décision R115 ; personnage_sort.prepare_jet, de 1 à 100). { min, max }. */
@@ -3274,7 +4341,10 @@ export function sortsAPreparer(regles, fiche, don = donDePreparation(regles, fic
  * Le sort préparé de la fiche (décision R115), ou null : sans don qui le permet (donDePreparation), sans sort marqué `prepare`, quand le sort marqué
  * n'est pas de ceux que le don autorise (il ne compte pas, et part à l'enregistrement : sortsAEnregistrer), ou quand la fiche est en Symbiose avec une
  * autre magie que la sienne (décision R135 : il est perdu, sortsApresLaSymbiose) ; une autre posture cochée depuis n'y change rien. { index, ligne, sort,
- * jet (1 à 100, ou null tant qu'il n'est pas noté), posture (la posture du moment de la préparation, ou null : aucune n'était cochée), dons }.
+ * jet (1 à 100, ou null tant qu'il n'est pas noté), posture (la posture du moment de la préparation, ou null : aucune n'était cochée), hyper (préparé
+ * en Mode Hyper, `prepare_hyper`), cent (préparé au Mode Hyper 100 %, `prepare_cent`, seulement avec `hyper` : décision R172), critique (le N de
+ * « 1 à N », figé à la préparation, `prepare_critique` : décision R182 (4) ; null tant qu'il n'est pas noté, une fiche d'avant n'est jamais recalculée),
+ * dons }.
  */
 export function sortPrepare(regles, fiche) {
   const don = donDePreparation(regles, fiche);
@@ -3286,33 +4356,79 @@ export function sortPrepare(regles, fiche) {
     ...choisi, dons: don.dons,
     jet: jet === null || jet === undefined || jet === '' ? null : borner(jet, jetDuSortPrepare(regles).min, jetDuSortPrepare(regles).max),
     posture: trouver(regles.postures ?? [], choisi.ligne.prepare_posture_id),
+    hyper: entier(choisi.ligne.prepare_hyper) === 1,
+    cent: entier(choisi.ligne.prepare_hyper) === 1 && entier(choisi.ligne.prepare_cent) === 1,
+    critique: critiqueNotee(choisi.ligne.prepare_critique),
   };
 }
 
-/** Une ligne de sort qui n'est pas le sort préparé : ni marque, ni jet, ni posture (la base les refuse hors du sort préparé : CHECK de personnage_sort). */
-const nonPrepare = (ligne) => ({ ...ligne, prepare: 0, prepare_jet: null, prepare_posture_id: null });
+/** La plage figée notée sur la ligne du sort préparé (`prepare_critique`), un entier, ou null (absente, vide ou illisible). */
+const critiqueNotee = (v) => (v === null || v === undefined || v === '' || !Number.isFinite(Number(v)) ? null : Math.trunc(Number(v)));
+
+/**
+ * La plage de réussite critique figée à la préparation d'un sort (décision R182 (4), Q91 : « c'est le critique au moment de la préparation qui va taper
+ * quand le sort est relaché ») : le N de « 1 à N » de la compétence `regles.sort_prepare.competence_id` (Concentration : les mages rouge et vert lancent
+ * leurs sorts avec elle), calculé à cet instant (critiqueDe par competencesDe : la posture cochée, le score du moment, le Mode Hyper et le Mode Hyper
+ * 100 % du moment, les sources permanentes de R180) ; null quand la compétence n'a pas de critique (deux croix, R19).
+ */
+export function critiqueAlaPreparation(regles, fiche) {
+  return competencesDe(regles, fiche).find((k) => k.id === regles.sort_prepare.competence_id)?.critique?.plage ?? null;
+}
+
+/** Le texte de la plage figée du bloc « Sort préparé » (décision R182 (4), sans verdict sur le jet noté), ou null sans plage notée. `prepare` : sortPrepare. */
+export function texteDuCritiquePrepare(prepare) {
+  return prepare?.critique === null || prepare?.critique === undefined ? null : `Réussite critique : 1 à ${prepare.critique} (figée à la préparation)`;
+}
+
+/**
+ * Les rappels du bloc « Sort préparé » (décision R182 (5)) : pour chaque don acquis dont la remarque écrit que seul le premier coup peut être un critique
+ * (`critique_premier_coup` des règles, lu par lib/critique-texte.mjs#critiqueDuPremierCoup : « Double coup », Mage Rouge et Mage Vert, niveau 20),
+ * « Seul le premier relâchement peut être un critique ; les suivants sont fixés à 40 de réussite (Double coup). », sans calcul ; un texte en double
+ * (bi-classé avec les deux) n'est écrit qu'une fois.
+ */
+export function rappelsDuSortPrepare(regles, fiche) {
+  const textes = donsAcquis(regles, fiche).flatMap((c) => c.dons).filter((d) => d.critique_premier_coup)
+    .map((d) => `Seul le premier relâchement peut être un critique ; les suivants sont fixés à ${d.critique_premier_coup.reussite} de réussite (${d.nom}).`);
+  return [...new Set(textes)];
+}
+
+/**
+ * Une ligne de sort qui n'est pas le sort préparé : ni marque, ni jet, ni posture, ni Mode Hyper, ni plage de critique figée (la base les refuse hors du
+ * sort préparé : CHECK de personnage_sort ; contraintes personnage_sort_prepare_hyper_avec_prepare et personnage_sort_prepare_cent_avec_prepare_hyper,
+ * migration 0086 ; personnage_sort_prepare_critique_avec_prepare, migration 0089).
+ */
+const nonPrepare = (ligne) => ({ ...ligne, prepare: 0, prepare_jet: null, prepare_posture_id: null, prepare_hyper: 0, prepare_cent: 0, prepare_critique: null });
 
 /**
  * Les sorts de la fiche quand l'emplacement `index` du tableau des sorts reçoit le sort `sortId` : vide (`sortId` absent), la ligne part ; un autre
- * sort sur une ligne existante, il la prend à 0 NM, sans livre et sans la préparation de l'ancien (décision R115 : le sort préparé est un sort, pas un
- * emplacement) ; un emplacement libre, une ligne de plus. Une nouvelle liste, la fiche n'est pas touchée.
+ * sort sur une ligne existante, il la prend à 0 NM, ou à 1 quand l'entraînement note son livre (décisions R118, R169 : « Une fois le sort repris, le NM
+ * est automatiquement réactivé »), sans la préparation de l'ancien (décision R115 : le sort préparé est un sort, pas un emplacement) ; un emplacement
+ * libre, une ligne de plus. Le livre d'un sort qui quitte la liste reste noté, en attente (R169). Une nouvelle liste, la fiche n'est pas touchée.
  */
 export function sortsApresChoixDEmplacement(fiche, index, sortId) {
   const sorts = [...(fiche.sorts ?? [])];
+  const nm = aUnLivre(fiche, sortId) ? 1 : 0;
   if (!sortId) sorts.splice(index, 1);
-  else if (sorts[index]) sorts[index] = { ...nonPrepare(sorts[index]), sort_id: sortId, niveau_maitrise: 0, nm_livre: 0 };
-  else sorts.push({ sort_id: sortId, rang: sorts.length + 1, niveau_maitrise: 0, nm_livre: 0 });
+  else if (sorts[index]) sorts[index] = { ...nonPrepare(sorts[index]), sort_id: sortId, niveau_maitrise: nm };
+  else sorts.push({ sort_id: sortId, rang: sorts.length + 1, niveau_maitrise: nm });
   return sorts;
 }
 
 /**
  * Les sorts de la fiche quand on prépare le sort `sortId` (décision R115) : lui seul est marqué, avec la posture cochée à cet instant (personnage.posture_id,
- * « la posture du moment où il a été préparé » ; null sans posture), son jet effacé (à noter : noterLeJet) ; les autres ne le sont plus. Sans `sortId`
- * (« Lâcher le sort »), aucun ne l'est : marque, jet et posture remis à zéro.
+ * « la posture du moment où il a été préparé » ; null sans posture) et l'état du Mode Hyper à cet instant (décision R172 : `prepare_hyper` si le Mode
+ * Hyper est actif, débloqué et coché, `prepare_cent` si le Mode Hyper 100 % l'est : modeHyperDe) et la plage de réussite critique de cet instant
+ * (décision R182 (4) : `prepare_critique`, critiqueAlaPreparation), son jet effacé (à noter : noterLeJet) ; les autres ne le sont plus. Sans `sortId`
+ * (« Lâcher le sort »), aucun ne l'est : marque, jet, posture, Mode Hyper et plage remis à zéro.
  */
 export function sortsApresPreparation(regles, fiche, sortId) {
   const posture = trouver(regles.postures ?? [], fiche.posture_id)?.id ?? null;
-  return (fiche.sorts ?? []).map((l) => (sortId && l.sort_id === sortId ? { ...l, prepare: 1, prepare_jet: null, prepare_posture_id: posture } : nonPrepare(l)));
+  const h = modeHyperDe(regles, fiche);
+  const hyper = h?.actif ? 1 : 0;
+  const cent = hyper && h.cent.actif ? 1 : 0;
+  const critique = sortId ? critiqueAlaPreparation(regles, fiche) : null;
+  return (fiche.sorts ?? []).map((l) => (sortId && l.sort_id === sortId
+    ? { ...l, prepare: 1, prepare_jet: null, prepare_posture_id: posture, prepare_hyper: hyper, prepare_cent: cent, prepare_critique: critique } : nonPrepare(l)));
 }
 
 /**
@@ -3338,14 +4454,17 @@ export function sortsApresLeJet(regles, fiche, saisie) {
 }
 
 /**
- * Les sorts à enregistrer (page, fiche en tableur) : rangés dans l'ordre (rang 1, 2…) ; le sort préparé (sortPrepare) garde sa marque, son jet et sa
- * posture, tous les autres ne les ont pas — une préparation que le don ne permet plus (classe changée, sort retiré, sort d'un autre type ou NPM) part.
+ * Les sorts à enregistrer (page, fiche en tableur) : rangés dans l'ordre (rang 1, 2…) ; le sort préparé (sortPrepare) garde sa marque, son jet, sa
+ * posture, son Mode Hyper (R172) et sa plage de critique figée (R182), tous les autres ne les ont pas — une préparation que le don ne permet plus (classe changée, sort retiré, sort d'un autre type ou NPM) part.
  */
 export function sortsAEnregistrer(regles, fiche) {
   const prepare = sortPrepare(regles, fiche);
   return (fiche.sorts ?? []).map((s, i) => {
     if (prepare?.index !== i) return { ...nonPrepare(s), rang: i + 1 };
-    return { ...s, rang: i + 1, prepare: 1, prepare_jet: prepare.jet, prepare_posture_id: prepare.posture?.id ?? null };
+    return {
+      ...s, rang: i + 1, prepare: 1, prepare_jet: prepare.jet, prepare_posture_id: prepare.posture?.id ?? null,
+      prepare_hyper: prepare.hyper ? 1 : 0, prepare_cent: prepare.cent ? 1 : 0, prepare_critique: prepare.critique,
+    };
   });
 }
 
@@ -3354,14 +4473,29 @@ export function sortsAEnregistrer(regles, fiche) {
 // le calcul des dégâts de chaque sort (s'ils en font) à jour avec différents passifs de classe, d'équipement, d'accessoire etc. et de posture choisie »).
 // ------------------------------------------------------------------------------------------------------------------------------------------------
 
-/** Les dés dans l'ordre des crans (posture Focus : « augmenter d'un cran la nature des dés […] il n'y a pas plus haut que le D20 »). */
+/**
+ * Les dés dans l'ordre des crans. Une montée s'arrête au D12 (décision R252 : « La limite d'augmentation de la nature des dé est de maximum D12 »), quelle
+ * que soit la source (posture Focus, accessoire, don, capacité) ; le D20 reste dans l'échelle pour les baisses seules (un D20 moins un cran est un D12,
+ * décision R252 (3) : les baisses ne changent pas) et parce qu'un dé écrit D20 reste D20.
+ */
 export const CRANS_DES_DES = Object.freeze([4, 6, 8, 10, 12, 20]);
 
-/** Le dé `faces` monté (ou descendu) de `crans` crans, sans dépasser le D20 ni descendre sous le D4 ; un dé hors de la liste ne change pas. */
+/** Le plus grand dé qu'une montée atteint (décision R252) : le D12. */
+export const DE_MAXIMUM_D_UNE_MONTEE = 12;
+
+/**
+ * Le dé `faces` monté (`crans` > 0) ou descendu (`crans` < 0) de `crans` crans. Une montée s'arrête au D12 (R252 (1) : un D12 monté reste D12, un D10
+ * monté de deux crans devient D12) ; un dé qui est déjà D20 de nature reste D20 qu'on le monte ou non (R252 (2) : la limite porte sur l'augmentation, pas
+ * sur les dés écrits). Une baisse part de l'échelle entière (D20 → D12, R252 (3)) et ne descend pas sous le D4. Un dé hors de l'échelle ne change pas.
+ */
 export function deMonte(faces, crans) {
   const i = CRANS_DES_DES.indexOf(entier(faces));
   if (i < 0 || !crans) return faces;
-  return CRANS_DES_DES[Math.min(CRANS_DES_DES.length - 1, Math.max(0, i + crans))];
+  if (crans > 0) {
+    const plafond = CRANS_DES_DES.indexOf(DE_MAXIMUM_D_UNE_MONTEE);
+    return i >= plafond ? faces : CRANS_DES_DES[Math.min(i + crans, plafond)];
+  }
+  return CRANS_DES_DES[Math.max(0, i + crans)];
 }
 
 const ECRITURE_DES_DEGATS = /^(soigne\s+)?(?:(\d+)\s*d\s*(\d+))?\s*(?:\+\s*(\d+)|(\d+))?\s*((?:de\s+)?(?:d[ée]g[âa]ts?|soins?))?(\s+(?:d['’]acide|sonores?))?(\s*(?:\/\s*tour|par tour))?\s*\.?$/i;
@@ -3436,17 +4570,27 @@ export function bonusDeSortsDuPersonnage(regles, fiche) {
 
 /**
  * Ce qui vaut pour tous les sorts de la fiche (sortDuMoment), calculé une fois : la posture du moment, les bâtons à la ceinture, les bonus écrits des
- * dons et de l'armure élémentaire, les effets des accessoires ; le sort préparé (décision R115 : sortPrepare) et la posture de sa préparation, à
- * laquelle il se calcule (`prepare` : { sort_id, posture (postureDuMoment à la posture enregistrée, null sans posture) }, null sans sort préparé).
+ * dons et de l'armure élémentaire, les effets des accessoires, le Mode Hyper actif (modeHyperDuMoment) ; le sort préparé (décision R115 : sortPrepare) et la posture de sa préparation, à
+ * laquelle il se calcule (`prepare` : { sort_id, posture (postureDuMoment à la posture enregistrée, null sans posture ; pour un sort préparé au Mode
+ * Hyper 100 %, le cumul des postures, décision R172), modeHyper (ce qu'il garde du Mode Hyper de sa préparation :
+ * modeHyperDuSortPrepare, null préparé hors Mode Hyper) }, null sans sort préparé). La posture est figée (décision R179) : celle de la préparation, ou
+ * le cumul des postures s'il a été préparé au Mode Hyper 100 % ; le 100 % du moment ne la change pas.
  */
 export function contexteDesSorts(regles, fiche) {
   const prepare = sortPrepare(regles, fiche);
   return {
     posture: postureDuMoment(regles, fiche), batons: effetsDesBatons(regles, fiche), ecrits: bonusDeSortsDuPersonnage(regles, fiche),
-    prepare: prepare && { sort_id: prepare.sort.id, posture: postureDuMoment(regles, { ...fiche, posture_id: prepare.posture?.id ?? null }) },
+    prepare: prepare && {
+      sort_id: prepare.sort.id,
+      posture: postureDuMoment(regles, { ...fiche, posture_id: prepare.posture?.id ?? null }, { cent: prepare.cent }),
+      // (figée : au Mode Hyper 100 % seulement s'il y a été préparé, jamais par le 100 % du moment, R179)
+      modeHyper: modeHyperDuSortPrepare(regles, fiche, prepare),
+    },
     accessoires: effetsDesAccessoires(regles, fiche).filter((e) => e.valeur && !e.aChoisir),
     // le chakra maximum du personnage, pour un coût qui en est un pourcentage (décision R106)
     chakraMax: attributsDe(regles, fiche).chakra,
+    // le Mode Hyper actif (décision R172), null sinon
+    modeHyper: modeHyperDuMoment(regles, fiche),
   };
 }
 
@@ -3466,14 +4610,37 @@ const TAUX_SELON_LE_NM = new Set(['magies/magie-de-larcane#sort:echange']);
  * pas une durée (« Par tour », « Par tour et par cible », « Par jour » : la canalisation, payée à chaque tour) ni un taux qui change avec le NM
  * (TAUX_SELON_LE_NM). Rend { unite (le texte écrit, jusqu'au premier point), creature (le NPM d'une créature, invoquée ou sacrifiée), npm (une
  * créature invoquée : le sort est surchargé à ce NPM, qui est alors son niveau de puissance pour Économe ; pas une créature sacrifiée, dont le
- * sort garde le sien) } ou null.
+ * sort garde le sien) } ou null. Un coût qui monte à chaque unité (coutProgressif, décision R248 : Projectile arcanique, « 4/projectile » et « +1 au
+ * coût de chaque projectile supplémentaire ») rend en plus `progressif` : { pas }.
  */
 export function multiplicateurDuCout(sort) {
   const m = /^(?:par|pour 1)\s+([^.]+)/i.exec(String(sort?.cout_secondaire ?? '').trim());
-  if (!m || /^(?:tour|jour)\b/i.test(m[1]) || TAUX_SELON_LE_NM.has(sort.id)) return null;
+  if (!m) return coutProgressif(sort);
+  if (/^(?:tour|jour)\b/i.test(m[1]) || TAUX_SELON_LE_NM.has(sort.id)) return null;
   const creature = /^NPM de la créature\b/i.test(m[1]);
   return { unite: m[0].trim(), creature, npm: creature && /^NPM de la créature invoquée\b/i.test(m[1]) };
 }
+
+/**
+ * Un coût qui monte à chaque unité (décision R248, Projectile arcanique ; texte de R251) : le coût écrit « N/<unité> » (« 4/projectile ») et le coût
+ * secondaire « +K au coût de chaque <unité> supplémentaire » (« +1 au coût de chaque projectile supplémentaire. »), de la même unité ; lus dans les
+ * règles, jamais par l'identifiant du sort. Rend { unite (l'unité écrite), creature: false, npm: false, progressif: { pas (K) } } ou null (une autre
+ * unité dans le coût secondaire : rien n'est deviné).
+ */
+const COUT_PAR_UNITE = /^(\d+)\s*\/\s*([^\s+()\d][^\s+()]*)/;
+const COUT_QUI_MONTE = /^\+\s*(\d+)\s+au coût de chaque\s+(.+?)\s+supplémentaires?\s*\.?$/i;
+function coutProgressif(sort) {
+  const coutEcrit = COUT_PAR_UNITE.exec(String(sort?.cout ?? '').trim());
+  const monte = COUT_QUI_MONTE.exec(String(sort?.cout_secondaire ?? '').trim());
+  if (!coutEcrit || !monte || coutEcrit[2].toLowerCase() !== monte[2].toLowerCase()) return null;
+  return { unite: coutEcrit[2], creature: false, npm: false, progressif: { pas: Number(monte[1]) } };
+}
+
+/**
+ * Le coût de `n` unités quand le coût monte à chaque unité (décision R248) : `base` pour la première, puis `base + pas`, `base + 2 × pas`…, soit
+ * n × base + pas × n × (n − 1) / 2 (4 + 5 + … : 4, 9, 15… ; dix projectiles : 85).
+ */
+export const coutProgressifDe = (base, pas, n) => base * n + (pas * n * (n - 1)) / 2;
 
 /** « 30 chakra maximum en 1 fois » (remarque de Charge d'énergie ; une balise du glossaire tolérée sur « chakra ») : le chakra maximum, ou null. */
 const CHAKRA_MAX_EN_UNE_FOIS = /(\d+)\s*(?:\{\{chakra(?:\|[^}]*)?\}\}|chakra)\s+maximum en 1 fois/i;
@@ -3482,8 +4649,9 @@ const FOIS_MAX = 99;
 
 /**
  * Les bornes du multiplicateur du coût d'un sort (décision R129), ou null sans multiplicateur : au moins 1 ; le NPM d'une créature jusqu'au NPM
- * accessible du personnage (npmMax ; texte des invocations : « Avoir le bon niveau de puissance magique permet d'avoir des invocations plus
- * puissantes […] seuls les utilisateurs d'une seule magie peuvent invoquer les créatures NPM 5 ») ; un sort dont la remarque écrit un chakra
+ * du niveau du personnage (npmMax : la puissance du niveau, pas le plafond des sorts de R188 (2) ; texte des invocations : « Avoir le bon niveau de
+ * puissance magique permet d'avoir des invocations plus puissantes […] seuls les utilisateurs d'une seule magie peuvent invoquer les créatures
+ * NPM 5 ») ; un sort dont la remarque écrit un chakra
  * maximum en une fois (Charge d'énergie, « 30 chakra maximum en 1 fois », que le propriétaire reprend : « Chargé au maximum 30 chakra »), jusqu'à ce
  * maximum divisé par son coût ; sinon FOIS_MAX.
  */
@@ -3498,8 +4666,7 @@ export function bornesDuMultiplicateur(regles, fiche, sort) {
 
 // ------------------------------------------------------------------------------------------------------------------------------------------------
 // Invocations (décision R130, demandes du propriétaire du 2026-10-18 : « avoir la liste des invocations possibles pour les sorts qui invoquent des
-// créatures », « Toutes, les miennes d'abord » ; « avoir toutes les améliorations visibles en fonction de l'invocation sacrifiée » pour « Amélioration
-// cadavérique ») : regles.invocations et regles.tableaux_de_sacrifice (lib/fiche-regles.mjs) ; les valeurs d'une créature à son NPM : lib/creature-npm.mjs.
+// créatures », « Toutes, les miennes d'abord ») : regles.invocations (lib/fiche-regles.mjs) ; les valeurs d'une créature à son NPM : lib/creature-npm.mjs.
 // ------------------------------------------------------------------------------------------------------------------------------------------------
 
 /**
@@ -3508,7 +4675,8 @@ export function bornesDuMultiplicateur(regles, fiche, sort) {
  * pouvoir invoquer un golem double-magie, il faut posséder une seconde magie ou alors être à proximité d'un allié », « le potentiel illimité ne peut pas
  * faire d'invocation double élément tout seul » : à sa portée, la combinaison mono et celle de sa seconde magie (l'innée ou l'acquise qui n'est pas celle du
  * sort, jamais le Potentiel Illimité) ; deux fois la magie du sort (« Terre + Terre ») demande l'aide d'un allié (`raison` : 'allie'). Une marionnette (une
- * créature par NPM, décision R53) est à sa portée jusqu'au NPM accessible (npmMax ; `raison` : 'npm').
+ * créature par NPM, décision R53) est à sa portée jusqu'au NPM du niveau (npmMax : la puissance du niveau, pas le plafond des sorts de R188 (2) ;
+ * `raison` : 'npm').
  */
 export function creaturesDuSort(regles, fiche, sort) {
   const invocation = (regles.invocations ?? []).find((i) => i.sort_id === sort?.id);
@@ -3524,15 +4692,13 @@ export function creaturesDuSort(regles, fiche, sort) {
 
 /**
  * Ce que donne un sort qui sacrifie une invocation, selon l'invocation sacrifiée : { type: 'effets', lignes: [{ creature, libelle, texte }] } pour un effet
- * écrit sur la carte de la créature (« Effet "Manteau noir" » des marionnettes : creature_effet.sort_id) ; { type: 'tableau', lignes: [{ nom, effet }] } pour
- * le tableau d'invocation que le sort désigne par son nom (« Amélioration cadavérique ») ; null pour un autre sort.
+ * écrit sur la carte de la créature (« Effet "Manteau noir" » des marionnettes : creature_effet.sort_id) ; null pour un autre sort. Le tableau « Amélioration
+ * cadavérique » (type 'tableau') est retiré avec sa table (R237 (7), migration 0117).
  */
 export function sacrificeDuSort(regles, sortId) {
   const effets = (regles.invocations ?? []).flatMap((i) => i.creatures.flatMap((c) => c.effets.filter((e) => e.sort_id === sortId)
     .map((e) => ({ creature: c, libelle: e.libelle, texte: e.texte }))));
-  if (effets.length) return { type: 'effets', lignes: effets };
-  const tableau = (regles.tableaux_de_sacrifice ?? []).find((t) => t.sort_id === sortId);
-  return tableau ? { type: 'tableau', lignes: tableau.lignes } : null;
+  return effets.length ? { type: 'effets', lignes: effets } : null;
 }
 
 /**
@@ -3555,7 +4721,9 @@ export function sacrificeDuSort(regles, sortId) {
  *   par unité (multiplicateurDuCout, borné : bornesDuMultiplicateur) est multiplié d'abord, puis réduit (décision R129 : les réductions de chakra
  *   s'appliquent après la multiplication du prix) ; surchargé au NPM d'une créature invoquée, le sort a ce niveau de puissance pour Économe
  *   (exemple du propriétaire : 20 − 3 pour le bâton − 4 pour Économe = 13 au NPM 4), sinon le sien (Charge d'énergie chargée à 30 : 30 − 3 − 1) :
- *   `cout.fois` { n, unite, base, npm, economeAuNpm (Économe a compté le NPM de la créature), max } ;
+ *   `cout.fois` { n, unite, base, npm, economeAuNpm (Économe a compté le NPM de la créature), max } ; un coût qui monte à chaque unité (décision R248,
+ *   Projectile arcanique : « 4/projectile », « +1 au coût de chaque projectile supplémentaire ») vaut 4 + 5 + 6… pour n unités (coutProgressifDe : 4, 9,
+ *   15…, 85 pour dix), puis les réductions s'appliquent au total ; `cout.fois.progressif` { pas, total } (le total avant réductions) ;
  * - Portée, seulement un nombre : accessoires, dons, bâton ;
  * - Dégâts (lireDegatsDeSort ; une valeur « par tour » comme une autre, ses bonus à chaque tour : décision R113, « 3d6 dégâts par tour » avec +5 →
  *   « 3d6 + 5 dégâts par tour », la période écrite après la valeur) : les dés montés d'un cran par la posture Focus et l'accessoire « Augmente le dé
@@ -3571,10 +4739,15 @@ export function sacrificeDuSort(regles, sortId) {
  */
 export function sortDuMoment(regles, fiche, sort, auNm, contexte = contexteDesSorts(regles, fiche), { fois = 1 } = {}) {
   const { batons, ecrits, accessoires } = contexte;
+  const hyper = contexte.modeHyper ?? null;
   // le sort préparé se calcule à la posture du moment où il a été préparé (décision R115 : « préparé en posture offensive, fera les dégâts maximals, même si
   // l'attaque physique a lieu en posture défensive ») ; les autres, à la posture cochée
   const estPrepare = Boolean(contexte.prepare) && contexte.prepare.sort_id === sort.id;
   const posture = estPrepare ? contexte.prepare.posture : contexte.posture;
+  // le sort préparé est figé à sa préparation (décisions R172, R179) : du Mode Hyper, ses dégâts et ses soins ne reçoivent que ce qu'il avait alors
+  // (modeHyperDuSortPrepare : +15 ou +7, dé de race, +10 au 100 %), jamais celui du moment ; préparé hors Mode Hyper, rien (Q85 : « Non : 2d6+5 »)
+  const fige = estPrepare ? contexte.prepare.modeHyper ?? null : null;
+  const modeHyperAuLancer = estPrepare ? null : hyper;
   const nonComptes = [];
   const rappels = [];
   const symbiose = posture?.symbiose ?? null;
@@ -3596,7 +4769,7 @@ export function sortDuMoment(regles, fiche, sort, auNm, contexte = contexteDesSo
       dejaLus.add(b);
       const valeur = valeurEcrite(b, npm);
       if (b.raison) nonComptes.push({ nom: b.nom, valeur, raison: b.raison, cible: colonneDe(cible) });
-      else if (b.posture && b.posture !== posture?.posture.nom.toLowerCase()) nonComptes.push({ nom: b.nom, valeur, raison: 'posture', cible: colonneDe(cible) });
+      else if (b.posture && !(posture?.noms ?? []).includes(b.posture)) nonComptes.push({ nom: b.nom, valeur, raison: 'posture', cible: colonneDe(cible) });
       else {
         r.push({ nom: b.nom, valeur });
         if ('parNpm' in b) parNpmCompte = true;
@@ -3623,22 +4796,37 @@ export function sortDuMoment(regles, fiche, sort, auNm, contexte = contexteDesSo
     const p = Number(pourcent[1]);
     cout.calcule = { pourcent: p, chakra: contexte.chakraMax, valeur: Math.floor((contexte.chakraMax * p) / 100) };
   }
-  const brut = cout.calcule ? [null, String(cout.calcule.valeur)] : /^(\d+)(\s*\+\s*.+)?$/.exec(String(auNm.cout ?? '').trim());
+  // un coût qui monte à chaque unité s'écrit « N/<unité> » (décision R248, R251) : son premier terme N, l'unité n'est plus lue
+  const coutParUnite = multiplicateur?.progressif ? COUT_PAR_UNITE.exec(String(auNm.cout ?? '').trim()) : null;
+  const coutEcrit = coutParUnite ? [null, coutParUnite[1]] : null;
+  const brut = cout.calcule ? [null, String(cout.calcule.valeur)] : coutEcrit ?? /^(\d+)(\s*\+\s*.+)?$/.exec(String(auNm.cout ?? '').trim());
   const reductions = [...ecritsPour('cout', multiplicateur?.npm ? n : sort.niveau), ...duBaton('cout')];
   if (brut && Number(brut[1]) === 0 && !cout.calcule) {
     // un sort qui ne consomme pas de chakra (« 0 » : son coût est le coût secondaire, âmes, Sang, santé, corruption ; décision R106) : rien à réduire
     pasCompte(reductions, 'sans_chakra', 'cout');
     cout.texte = `0${brut[2] ?? ''}`;
   } else if (brut) {
-    const base = Number(brut[1]) * n;
+    // (coût qui monte : 4 + 5 + 6 ; décision R248) ; les réductions s'appliquent au total
+    const base = multiplicateur?.progressif && coutEcrit ? coutProgressifDe(Number(brut[1]), multiplicateur.progressif.pas, n) : Number(brut[1]) * n;
     if (multiplicateur && !cout.calcule) {
-      cout.fois = { n, unite: multiplicateur.unite, base: Number(brut[1]), npm: multiplicateur.npm, economeAuNpm: multiplicateur.npm && parNpmCompte, max: bornes.max };
+      cout.fois = {
+        n, unite: multiplicateur.unite, base: Number(brut[1]), npm: multiplicateur.npm, economeAuNpm: multiplicateur.npm && parNpmCompte, max: bornes.max,
+        ...(multiplicateur.progressif && coutEcrit ? { progressif: { pas: multiplicateur.progressif.pas, total: base } } : {}),
+      };
     }
     // réduit, jamais moins de 1 (un pourcentage du chakra calculé à 0 le reste)
     const reduit = reductions.length ? Math.max(Math.min(base, 1), base + somme(reductions)) : base;
     cout.detail = reductions;
     cout.texte = `${reduit}${brut[2] ?? ''}`;
-    if (sort.magie_id === 'magies/magie-de-la-corruption') {
+    // le Mode Hyper (décisions R172, R18 : « Le cout des sort passe à 0 de chakra ») : la part en chakra, pas un coût secondaire (âmes, Sang…) ; la
+    // corruption d'un sort de la Corruption non plus (« Oui, aussi à 0 » : ci-dessous)
+    if (hyper?.coutNul && reduit) {
+      cout.detail = [...reductions, { nom: 'Mode Hyper : consommation de chakra = 0', valeur: -reduit }];
+      cout.texte = `0${brut[2] ?? ''}`;
+      cout.modeHyper = true;
+    }
+    // le Mode Hyper (décision R172, « Oui, aussi à 0 ») : un sort de la Corruption est gratuit dans les deux monnaies, chakra et corruption
+    if (sort.magie_id === 'magies/magie-de-la-corruption' && !cout.modeHyper) {
       const corr = duBaton('cout_corruption');
       cout.corruption = { valeur: Math.max(Math.min(2 * reduit, 1), 2 * reduit + somme(corr)), detail: [{ nom: 'Coût en corruption : 2 × le coût', valeur: 2 * reduit }, ...corr] };
     }
@@ -3657,11 +4845,29 @@ export function sortDuMoment(regles, fiche, sort, auNm, contexte = contexteDesSo
   const effets = { texte: auNm.effets ?? '', detail: [] };
   const v = lireDegatsDeSort(auNm.dsb);
   // la Symbiose : les sorts de sa magie ; le Potentiel Illimité, tous ses sorts, quelle que soit leur magie (décision R109)
+  // (en Mode Hyper 100 %, ses deux magies : R172)
+  const magieDeSymbiose = symbiose?.magies?.find((m) => m.id === sort.magie_id) ?? null;
+  const nomDeSymbiose = (magie) => `${posture?.cent ? 'Mode Hyper 100 % : Symbiose' : 'Posture Symbiose'} (${magie})`;
   const deSymbiose = !symbiose?.degats ? []
-    : symbiose.potentielIllimite ? [{ nom: 'Posture Symbiose (Potentiel Illimité)', valeur: symbiose.degats }]
-      : symbiose.magie?.id === sort.magie_id ? [{ nom: `Posture Symbiose (${symbiose.magie.nom})`, valeur: symbiose.degats }] : [];
-  const fixesDesDegats = () => [...(sort.attaque ? accessoire('degats_magie') : []), ...ecritsPour('degats'), ...duBaton('degats'), ...deSymbiose];
-  const fixesDuSoin = () => [...ecritsPour('soin'), ...duBaton('soin'), ...deSymbiose];
+    : symbiose.potentielIllimite ? [{ nom: nomDeSymbiose('Potentiel Illimité'), valeur: symbiose.degats }]
+      : magieDeSymbiose ? [{ nom: nomDeSymbiose(magieDeSymbiose.nom), valeur: symbiose.degats }] : [];
+  // le Mode Hyper actif (décision R172) : +15 aux dégâts des sorts de ses magies (+7 avec deux, R5 ; tous ses sorts pour le Potentiel Illimité) et, en
+  // Mode Hyper 100 %, +10 à toutes les attaques ; +15 aux soins. Le sort préparé ne reçoit que ceux de sa préparation (`fige`, « à la préparation »,
+  // R179), les autres sorts ceux du moment
+  const deModeHyper = (nature) => {
+    const h = modeHyperAuLancer ?? fige;
+    if (!h) return [];
+    const nom = modeHyperAuLancer ? 'Mode Hyper' : 'Mode Hyper (à la préparation)';
+    if (nature === 'soin') return h.soins ? [{ nom, valeur: h.soins }] : [];
+    const attaques = modeHyperAuLancer?.attaques ? { nom: 'Mode Hyper 100 %', valeur: modeHyperAuLancer.attaques }
+      : fige?.attaques ? { nom: 'Mode Hyper 100 % (à la préparation)', valeur: fige.attaques } : null;
+    return [
+      ...(h.sorts.valeur && (h.sorts.tous || h.sorts.magies.includes(sort.magie_id)) ? [{ nom, valeur: h.sorts.valeur }] : []),
+      ...(attaques ? [attaques] : []),
+    ];
+  };
+  const fixesDesDegats = () => [...(sort.attaque ? accessoire('degats_magie') : []), ...ecritsPour('degats'), ...duBaton('degats'), ...deSymbiose, ...deModeHyper('degats')];
+  const fixesDuSoin = () => [...ecritsPour('soin'), ...duBaton('soin'), ...deSymbiose, ...deModeHyper('soin')];
   // une valeur par tour reçoit ses bonus à chaque tour, comme une autre (décision R113)
   if (v) {
     dsb.lu = true;
@@ -3672,6 +4878,18 @@ export function sortDuMoment(regles, fiche, sort, auNm, contexte = contexteDesSo
       const faces = deMonte(x.faces, crans);
       if (faces !== x.faces) dsb.detail.push({ nom: `Dés d${x.faces} → d${faces}`, valeur: 0, crans: true });
       x.faces = faces;
+    }
+    // le Mode Hyper actif (décision R172), lu dans le texte de la race : un dé de plus à toutes les attaques (Humain), deux dés aux dégâts et aux soins
+    // magiques (Felfe) ; du même type que le premier dé du coup (après le cran de Focus), rien sur un sort sans dé
+    // (le sort préparé en Mode Hyper garde le sien, Q84, Q87 : « à la préparation » ; préparé hors Mode Hyper, aucun)
+    const desDeRace = modeHyperAuLancer ?? (fige?.des
+      ? { desAttaques: fige.des.desAttaques.map((d) => ({ ...d, nom: `${d.nom} (à la préparation)` })), desSorts: fige.des.desSorts.map((d) => ({ ...d, nom: `${d.nom} (à la préparation)` })) }
+      : null);
+    if (x.nombre && desDeRace) {
+      for (const d of [...(v.nature === 'degats' ? desDeRace.desAttaques : []), ...desDeRace.desSorts.filter((y) => v.nature === 'degats' || y.soins)]) {
+        x.nombre += d.valeur;
+        dsb.detail.push({ nom: `${d.nom} : +${d.valeur}d`, valeur: 0, des: d.valeur });
+      }
     }
     let fixes;
     if (v.nature === 'degats') {
@@ -3695,7 +4913,7 @@ export function sortDuMoment(regles, fiche, sort, auNm, contexte = contexteDesSo
     x.fixe += somme(fixes);
     if (v.nature === 'degats' && posture?.degatsMaximum) {
       // Offensif : « 6 D6+4 deviens alors 40 » (demande du propriétaire) ; guide : « 2d6+2 de dégâts en offensif fera automatiquement 14 dégâts »
-      dsb.detail.push({ nom: `Posture ${posture.posture.nom} : dégâts maximum`, valeur: x.nombre * x.faces, maximum: true });
+      dsb.detail.push({ nom: `${posture.libelle} : dégâts maximum`, valeur: x.nombre * x.faces, maximum: true });
       x.fixe += x.nombre * x.faces;
       x.nombre = 0;
     }
@@ -3741,7 +4959,11 @@ export function sortDuMoment(regles, fiche, sort, auNm, contexte = contexteDesSo
   for (const r of batons.rappels) rappels.push({ nom: r.baton.nom, texte: r.texte });
   const protection = batons.comptes.get('protection');
   if (protection && sort.types?.includes('protection') && !dsb.lu && !effets.detail.length) rappels.push({ nom: protection.baton.nom, texte: protection.texte });
-  return { inactif, cout, portee, dsb, effets, nonComptes, rappels, prepare: estPrepare, posture: posture?.posture ?? null };
+  return {
+    inactif, cout, portee, dsb, effets, nonComptes, rappels, prepare: estPrepare, posture: posture?.posture ?? null,
+    // l'état du Mode Hyper à la préparation du sort préparé (décision R172) : « Mode Hyper », « Mode Hyper 100 % », ou null
+    prepareModeHyper: fige ? (fige.cent ? 'Mode Hyper 100 %' : 'Mode Hyper') : null,
+  };
 }
 
 /**
@@ -3751,22 +4973,43 @@ export function sortDuMoment(regles, fiche, sort, auNm, contexte = contexteDesSo
  * d'utiliser les armes » (`inutilisable`) — sauf l'arme élémentaire de la magie de la Symbiose (décision R167, exception à R112 : « l'arme élémentaire de
  * la magie de la Symbiose reste utilisable et reçoit le bonus de dégâts de la posture », celui de R100, +5 et +2 par NPM au-delà du premier, le NPM
  * accessible) ; tant que la magie de la Symbiose n'est pas choisie, ou pour le Potentiel Illimité (R109 : sa Symbiose n'a pas de magie), aucune arme
- * élémentaire ne correspond. null sans arme. { ...degatsDArme, texte, moment: [{ nom, valeur }], diviseur, inutilisable }.
+ * élémentaire ne correspond.
+ * Le Mode Hyper actif (décision R172) : les dés que l'effet de la race écrit (Humain, « 1d de dégâts en plus pour toutes les attaques » ; Nain, « 2d de
+ * dégâts physiques en plus » : du dé de l'arme), +15 (« Dégâts physiques ») et, en Mode Hyper 100 %, +10 ; le Mode Hyper 100 % cumule les postures
+ * sans leurs inconvénients (postureDuMoment : le maximum de l'Offensif, ni ÷ 2 ni armes inutilisables ; la Symbiose de ses deux magies sur leurs armes
+ * élémentaires). null sans arme. { ...degatsDArme, texte, moment: [{ nom, valeur, des? }], diviseur, inutilisable }.
  */
 export function degatsDArmeDuMoment(regles, fiche, rang) {
   const d = degatsDArme(regles, fiche, rang);
   if (!d) return null;
   const posture = postureDuMoment(regles, fiche);
+  const hyper = modeHyperDuMoment(regles, fiche);
   const faces = /^D(\d+)$/i.exec(String(d.de ?? '').trim());
   const moment = [];
   let nombre = d.nombre;
   let total = d.total;
-  // décision R167 : l'arme élémentaire de la magie de la Symbiose (postureDuMoment : symbiose.magie, null tant qu'elle n'est pas choisie et pour le
-  // Potentiel Illimité)
-  const symbiose = posture?.armesInutilisables && d.elementaire && posture.symbiose?.magie?.id === d.elementaire.magie_id ? posture.symbiose : null;
+  // décision R167 : l'arme élémentaire de la magie de la Symbiose (postureDuMoment : symbiose.magies, vide tant qu'elle n'est pas choisie et pour le
+  // Potentiel Illimité ; ses deux magies en Mode Hyper 100 %, R172)
+  const magieDeSymbiose = d.elementaire ? posture?.symbiose?.magies?.find((m) => m.id === d.elementaire.magie_id) ?? null : null;
+  const symbiose = (posture?.armesInutilisables || posture?.cent) && magieDeSymbiose ? posture.symbiose : null;
   if (symbiose?.degats) {
     total += symbiose.degats;
-    moment.push({ nom: `Posture ${posture.posture.nom} (${symbiose.magie.nom})`, valeur: symbiose.degats });
+    moment.push({ nom: `${posture.cent ? 'Mode Hyper 100 % : Symbiose' : `Posture ${posture.posture.nom}`} (${magieDeSymbiose.nom})`, valeur: symbiose.degats });
+  }
+  // le Mode Hyper (R172) : les dés de plus, puis ses bonus
+  if (hyper && faces && nombre >= 1) {
+    for (const x of [...hyper.desAttaques, ...hyper.desArmes]) {
+      nombre += x.valeur;
+      moment.push({ nom: x.nom, valeur: 0, des: x.valeur });
+    }
+  }
+  if (hyper?.armes) {
+    total += hyper.armes;
+    moment.push({ nom: 'Mode Hyper', valeur: hyper.armes });
+  }
+  if (hyper?.attaques) {
+    total += hyper.attaques;
+    moment.push({ nom: 'Mode Hyper 100 %', valeur: hyper.attaques });
   }
   const deMax = effetsDesAccessoires(regles, fiche).filter((e) => e.cible === 'de_maximum' && e.valeur).reduce((s, e) => s + e.valeur, 0);
   if (deMax && faces && nombre >= 1 && !posture?.degatsMaximum) {
@@ -3780,7 +5023,7 @@ export function degatsDArmeDuMoment(regles, fiche, rang) {
   let texte;
   if (posture?.degatsMaximum && faces) {
     const max = nombre * Number(faces[1]);
-    moment.push({ nom: `Posture ${posture.posture.nom} : dégâts maximum`, valeur: max });
+    moment.push({ nom: `${posture.libelle} : dégâts maximum`, valeur: max });
     texte = String(max + total);
   } else {
     const notation = nombre ? notationDesDes(d.de, nombre) : '';
@@ -3791,4 +5034,478 @@ export function degatsDArmeDuMoment(regles, fiche, rang) {
     diviseur: posture?.diviseur > 1 ? posture.diviseur : 1,
     inutilisable: posture?.armesInutilisables && !symbiose ? posture.posture.nom : null,
   };
+}
+
+// ------------------------------------------------------------------------------------------------------------------------------------------------
+// Dons « Variable » du Mage Bleu (décision R181 : « Il devra choisir l'un dons disponible en bas de la fiche de la classe du mage bleu, limité sa magie
+// innée (sauf mention contraire) pour le don "secondaire". » ; « Dans le cas où il n'a pas de magie aquise, il ne peut pas choisir le don
+// "secondaire" »). Chaque don « Variable » acquis (Mimétisme, Mime, Principale, Secondaire, Ultime raison : `classes[].dons[].magie_visee`) obtient une
+// entrée du tableau du bas de l'onglet de sa classe (`classes[].entrees`), sur la ligne de sa magie innée, ou acquise pour Secondaire ; chaque entrée
+// ne se prend qu'une fois (Q93). Le choix est une ligne de fiche.dons_obtenus ({ source, entree_id } : personnage_don_obtenu, migration 0088).
+// « (Ne peut pas être changé une fois choisi) » n'est qu'un rappel (Q95) : le choix reste modifiable. Quand la magie visée n'a plus d'entrée libre
+// (l'Arcane et l'Espace/Temps n'en ont que 3), le don ne donne rien et la fiche le dit (Q96). Un choix dont le don n'est plus acquis (niveau, spécialité,
+// don à choix, classe) est gardé sans effet et signalé (choix de game-design, comme maitrise_source_perdue de R148). Aucun calcul ne lit l'effet d'une
+// entrée : il est montré tel qu'écrit (« cette créature »). Pendant SQL : les règles don_obtenu_* de v_personnage_controle.
+// ------------------------------------------------------------------------------------------------------------------------------------------------
+
+/** Les entrées de toutes les classes (classes[].entrees), par identifiant, avec leur classe. */
+function entreesDesRegles(regles) {
+  const index = new Map();
+  for (const c of regles.classes ?? []) for (const e of c.entrees ?? []) index.set(e.id, { entree: e, classe: c });
+  return index;
+}
+
+/** Le don « Variable » `id` des règles (un don qui a `magie_visee`), avec sa classe ; null pour un autre don ou un identifiant inconnu. */
+function donVariableDesRegles(regles, id) {
+  for (const c of regles.classes ?? []) {
+    const d = (c.dons ?? []).find((x) => x.id === id);
+    if (d) return d.magie_visee ? { don: d, classe: c } : null;
+  }
+  return null;
+}
+
+/**
+ * La précision de l'en-tête d'une entrée, ce qu'il écrit après son type (« (Actif 2 fois/combat) » → « 2 fois/combat », comme la précision d'un don de
+ * classe) ; null quand il n'écrit que le type (« (Passif) », « (Passif] »).
+ */
+export const precisionDeLEntree = (entree) => String(entree?.type_brut ?? '').trim().replace(/^[([]\s*/, '').replace(/\s*[)\]]$/, '').replace(/^\S+\s*/, '').trim() || null;
+
+/**
+ * Les dons « Variable » de la fiche (décision R181). `dons` : un par don « Variable » acquis (donsAcquis : classe, spécialité et niveau de classe atteint,
+ * dons à choix choisis), dans l'ordre de la fiche — { source (l'id du don), don, classe, rang (de la classe), niveau, magie_visee ('innee' |
+ * 'acquise'), magie (la magie visée, null sans elle), liste (les entrées de la ligne de cette magie, dans l'ordre du tableau), options (celles qu'aucun
+ * autre choix de la fiche n'a prises, la sienne comprise : « chaque entrée ne se prend qu'une fois »), choix (sa ligne de fiche.dons_obtenus, ou null),
+ * entree (l'entrée obtenue : son choix quand il est dans la liste, sinon null), choisie (l'entrée de son choix, même hors de la liste), etat } ; `etat` :
+ * 'choisi' ; 'a_choisir' (une entrée libre l'attend) ; 'hors_liste' (son choix n'est pas une entrée de sa liste : autre classe, autre magie ; sans
+ * effet) ; 'epuise' (aucune entrée libre : le don ne donne rien, Q96) ; 'sans_magie_acquise' (Secondaire sans magie acquise : il ne peut pas être
+ * choisi) ; 'sans_magie_innee' (magie innée pas encore choisie). `perdus` : les choix dont la source n'est pas un don « Variable » acquis, gardés sans
+ * effet (comme maitrise_source_perdue, R148) — { source, entree_id, don, classe (null pour un don inconnu), entree (null pour une entrée inconnue) }.
+ * Une entrée prise par un choix, même perdu ou hors de sa liste, n'est plus libre (comme la base : une entrée une seule fois par fiche).
+ */
+export function donsVariables(regles, fiche) {
+  const lignes = (fiche.dons_obtenus ?? []).filter((o) => o?.source && o.entree_id);
+  const entrees = entreesDesRegles(regles);
+  const dons = [];
+  for (const c of donsAcquis(regles, fiche)) {
+    for (const don of c.dons.filter((d) => d.magie_visee)) {
+      const magieId = don.magie_visee === 'acquise' ? fiche.magie_acquise_id : fiche.magie_innee_id;
+      const magie = trouver(regles.magies ?? [], magieId);
+      const liste = magie ? (c.classe.entrees ?? []).filter((e) => e.magie_id === magie.id) : [];
+      const choix = lignes.find((o) => o.source === don.id) ?? null;
+      const prises = new Set(lignes.filter((o) => o !== choix).map((o) => o.entree_id));
+      const options = liste.filter((e) => !prises.has(e.id));
+      const entree = choix ? liste.find((e) => e.id === choix.entree_id) ?? null : null;
+      const etat = entree ? 'choisi'
+        : !magie ? (don.magie_visee === 'acquise' ? 'sans_magie_acquise' : 'sans_magie_innee')
+          : choix ? 'hors_liste'
+            : options.length ? 'a_choisir' : 'epuise';
+      dons.push({
+        source: don.id, don, classe: c.classe, rang: c.rang, niveau: don.niveau, magie_visee: don.magie_visee, magie, liste, options, choix, entree,
+        choisie: choix ? entrees.get(choix.entree_id)?.entree ?? null : null, etat,
+      });
+    }
+  }
+  const acquis = new Set(dons.map((d) => d.source));
+  const perdus = lignes.filter((o) => !acquis.has(o.source)).map((o) => {
+    const v = donVariableDesRegles(regles, o.source);
+    const nonVariable = v ? null : (regles.classes ?? []).flatMap((c) => (c.dons ?? []).map((d) => ({ don: d, classe: c }))).find((x) => x.don.id === o.source);
+    return { source: o.source, entree_id: o.entree_id, don: (v ?? nonVariable)?.don ?? null, classe: (v ?? nonVariable)?.classe ?? null, entree: entrees.get(o.entree_id)?.entree ?? null };
+  });
+  return { dons, perdus };
+}
+
+/**
+ * Ce que la fiche dit d'un don « Variable » (décision R181), à côté de son nom dans les passifs (« → <entrée obtenue> ») et dans le bloc des choix :
+ * l'entrée obtenue, ou pourquoi il ne donne rien. `d` : un élément de donsVariables().dons.
+ */
+export function texteDuDonVariable(d) {
+  const magie = d.magie?.nom ?? '';
+  switch (d.etat) {
+    case 'choisi': return `→ ${d.entree.nom}`;
+    case 'a_choisir': return `→ à choisir parmi les entrées de ${magie}`;
+    case 'hors_liste': return `→ ${d.choisie?.nom ?? d.choix?.entree_id} : hors de la liste de ${magie}, sans effet`;
+    // décision R181 (Q96 : « Ce don ne donne rien, la fiche le signale »)
+    case 'epuise': return d.liste.length ? `→ rien : ${magie} n’a plus d’entrée libre, ce don ne donne rien (décision R181)` : `→ rien : le tableau n’a pas d’entrée pour ${magie}`;
+    // décision R181 : « Dans le cas où il n'a pas de magie aquise, il ne peut pas choisir le don "secondaire" »
+    case 'sans_magie_acquise': return '→ rien : sans magie acquise, ce don ne peut pas être choisi (décision R181)';
+    default: return '→ choisissez d’abord la magie innée';
+  }
+}
+
+/**
+ * Pourquoi un don à choix ne peut pas être choisi (décision R181 : « Dans le cas où il n'a pas de magie aquise, il ne peut pas choisir le don
+ * "secondaire" » : un don « Variable » qui vise la magie acquise, sans magie acquise) ; null sinon. La base le signale aussi
+ * (don_obtenu_sans_magie_acquise) ; la page grise l'option, sauf si elle est déjà choisie.
+ */
+export function refusDuDon(regles, fiche, donId) {
+  const v = donVariableDesRegles(regles, donId);
+  return v?.don.magie_visee === 'acquise' && !fiche.magie_acquise_id ? 'Sans magie acquise, ce don ne peut pas être choisi (décision R181)' : null;
+}
+
+/**
+ * fiche.dons_obtenus après le choix de l'entrée `entreeId` pour le don « Variable » `source` (null : plus de choix) : sa ligne remplacée. Une entrée
+ * qu'un autre choix a déjà prise n'est pas posée (« chaque entrée ne se prend qu'une fois », décision R181 ; la base la refuserait) : rien ne change.
+ */
+export function donsObtenusApresChoix(fiche, source, entreeId) {
+  const autres = (fiche.dons_obtenus ?? []).filter((o) => o?.source !== source);
+  if (!entreeId) return autres;
+  if (autres.some((o) => o?.entree_id === entreeId)) return fiche.dons_obtenus ?? [];
+  return [...autres, { source, entree_id: entreeId }];
+}
+
+/**
+ * Les choix à enregistrer (personnage_don_obtenu, décision R181) : une ligne par don « Variable » des règles, d'une entrée des règles, une seule fois
+ * chacune (la première) ; les choix gardés sans effet (don plus acquis, hors de la liste) restent : la base les signale. Une ligne d'un don qui n'est pas
+ * « Variable » ou d'une entrée inconnue part.
+ */
+export function donsObtenusValables(regles, fiche) {
+  const entrees = entreesDesRegles(regles);
+  const sources = new Set();
+  const prises = new Set();
+  return (fiche.dons_obtenus ?? []).flatMap((o) => {
+    if (!o?.source || !entrees.has(o.entree_id) || !donVariableDesRegles(regles, o.source) || sources.has(o.source) || prises.has(o.entree_id)) return [];
+    sources.add(o.source);
+    prises.add(o.entree_id);
+    return [{ source: o.source, entree_id: o.entree_id }];
+  });
+}
+
+/** L'infobulle d'une entrée à obtenir (décision R181) : son en-tête tel qu'écrit, puis son effet tel qu'écrit. */
+export const infobulleDEntree = (entree) => (entree ? [entree.type_brut, entree.effet].filter((x) => x && String(x).trim()).join('\n') || null : null);
+
+// ------------------------------------------------------------------------------------------------------------------------------------------------
+// Actions et passifs (décision R173 : « Il faudrait lister toutes les actions utilisables (dons, accessoire activable(s) directement sous la case de la
+// ceinture. Il faudrai pouvoir les sélectionner pour les "consommer" (et griser si plus utilisable). Un bouton "fin de combat" permet de remettre tous les
+// compteur X/combat au maximum. Le compteur 1/ jour / semainee lui ne peut que remonter manuellement. Juste après, il faudra mettre les passifs (donc de
+// race / classe ou equipement) »). Les limites viennent des règles (regles.json) : celle d'un don de classe, de son type (`classes[].dons[].limite`) ;
+// celles du don de base, des accessoires, des armes et des armures élémentaires, de leur texte (lib/limite-texte.mjs, au build). Le compteur entamé
+// d'une action est une ligne de fiche.actions_usage ({ action_id, restants } : personnage_action_usage, migration 0085) ; une ligne absente = au
+// maximum, jamais stocké. La clé d'une action (cleDAction) porte l'identifiant de l'objet porté : un autre objet repart au maximum.
+// ------------------------------------------------------------------------------------------------------------------------------------------------
+
+/** Les types de dons de classe listés parmi les actions (décision R173 : « dons de classe débloqués de type Action, Actif et Réaction »). */
+export const TYPES_D_ACTION = Object.freeze(['action', 'actif', 'reaction']);
+
+/**
+ * La clé d'une action (personnage_action_usage.action_id) : un don de classe par son identifiant (un compteur par don, donc un par classe d'un
+ * bi-classé : décision R173, « Un par classe ») ; le don de base par la race ; un accessoire par son emplacement et son effet ; une arme élémentaire par
+ * son rang et son identifiant ; un effet d'armure élémentaire par l'armure et son rang. Un objet changé ou retiré change la clé : son compteur repart au
+ * maximum (actionsUsageSansObjetRetire).
+ */
+export const cleDAction = Object.freeze({
+  capacite: (capaciteId) => `capacite:${capaciteId}`,
+  donDeBase: (raceId) => `race:don-de-base:${raceId}`,
+  accessoire: (emplacement, effetId) => `accessoire:${emplacement}:${effetId}`,
+  arme: (rang, armeElementaireId) => `arme:${rang}:${armeElementaireId}`,
+  armure: (armureElementaireId, rang) => `armure:${armureElementaireId}:${rang}`,
+  // l'entrée obtenue par un don « Variable » du Mage Bleu (décision R181) : par son identifiant (une entrée une seule fois par fiche)
+  entree: (entreeId) => `entree:${entreeId}`,
+});
+
+/** Vrai pour la clé d'une action d'équipement (accessoire, arme ou armure élémentaire : grisées en Symbiose, décision R112, et liées à l'objet porté). */
+export const estUneActionDEquipement = (cle) => /^(?:accessoire|arme|armure):/.test(String(cle ?? ''));
+
+/** Ce qui remonte un compteur (décision R173) : « Fin de combat » (par combat) ou la main (jour, semaine…), comme la page le dit. */
+export const REMONTEES = Object.freeze({ fin_de_combat: 'remis au maximum par « Fin de combat »', main: 'remonté seulement à la main' });
+
+/**
+ * Le compteur d'une action d'après sa limite (décision R173) : { max, restants, remontee: 'fin_de_combat' | 'main' } pour une limite de genre `combat`
+ * ou `manuel` ; null sans compteur (sans limite écrite, rappel, texte seulement). `restants` : la ligne de fiche.actions_usage, bornée de 0 au maximum ;
+ * sans ligne, le maximum.
+ */
+function compteurDeLAction(fiche, cle, limite) {
+  if (!limite || (limite.genre !== 'combat' && limite.genre !== 'manuel') || !(entier(limite.nombre) >= 1)) return null;
+  const max = Math.trunc(entier(limite.nombre));
+  const ligne = (fiche.actions_usage ?? []).find((u) => u?.action_id === cle);
+  const restants = ligne ? Math.min(max, Math.max(0, Math.trunc(entier(ligne.restants)))) : max;
+  return { max, restants, remontee: limite.genre === 'combat' ? 'fin_de_combat' : 'main' };
+}
+
+/** Le texte d'un effet d'armure élémentaire sans son « (Action) » ou « (Réaction) » de tête (le type est dit à part). */
+const sansTypeDeTete = (texte) => String(texte ?? '').replace(/^\((?:Action|Réaction|Reaction)\)\s*/i, '');
+
+/**
+ * Les actions utilisables de la fiche (décision R173), dans l'ordre de la fiche — le don de base de la race (R13 : « Méditation (Action 3 fois/jour) »,
+ * lu dans le texte de l'onglet, jamais par son nom ; la race d'abord, comme le rappel des dons), les dons de classe débloqués de type Action, Actif et
+ * Réaction (donsAcquis : classe 1 puis 2, par niveau), chacune suivie de l'entrée Actif, Action ou Réaction qu'obtient un de ses dons « Variable »
+ * (décision R181 : donsVariables, clé cleDAction.entree), les effets d'accessoire activables (accessoire_effet.usage : « (Action) » ou usage compté, R54,
+ * dans l'ordre des emplacements), les capacités « actif » et « action » des armes élémentaires portées (armes 1 et 2), les effets « (Action) »,
+ * « (Réaction) » et « (actif) » de l'armure élémentaire portée et ceux qui écrivent une limite d'usage (Q79 : « Deviennent des actions »). Les objets de la ceinture n'en sont pas (ils gardent leurs boutons, R89, R131). Chaque action :
+ * { cle (cleDAction), origine ('race' | 'classe' | 'don_obtenu' | 'accessoire' | 'arme' | 'armure'), nom, source (la race, la classe, l'objet), niveau (don de classe),
+ * type ('action' | 'actif' | 'reaction' | null), precision (ce que le type d'un don écrit entre parenthèses, tel quel), texte (tel qu'écrit), maudit
+ * (accessoire : R54, l'effet est le contraire), teinte (ce qui porte sa couleur : race, classe, magie), limite ({ nombre, periode, genre } ; un don dont
+ * le type écrit une précision illisible, « X tour/combat » : genre `texte`), compteur (compteurDeLAction), seBrise (« l'objet se brise après »),
+ * emplacement (accessoire), grisee (pourquoi elle est grisée, null sinon), epuisee (compteur à 0), utilisable (la sélectionner la consomme) }.
+ * Grisée : la capacité d'une arme élémentaire cassée (solidité à 0, R74 ; réponse du propriétaire à Q80 : « Non, grisée ») ; une action d'équipement en
+ * Symbiose (« Impossible d'utiliser les armes ou objets », R112 : comme « Utiliser » à la ceinture), sauf
+ * l'arme élémentaire de la magie de la Symbiose (R167) ; jamais en Mode Hyper 100 % (R172 : sans les inconvénients des postures) ; jamais un don
+ * (« (Posture X) », « (Rage) » restent listés tels qu'écrits) ; un compteur à 0 (`epuisee`). Une action sans compteur (sans limite écrite, rappel,
+ * texte) n'est jamais grisée par sa limite.
+ */
+export function actionsDeLaFiche(regles, fiche) {
+  const posture = postureDuMoment(regles, fiche);
+  const symbiose = posture?.armesInutilisables ? `${posture.libelle} : on ne peut que lancer des sorts` : null;
+  const actions = [];
+  const ajouter = ({ equipement = false, permise = false, cassee = null, ...a }) => {
+    const compteur = compteurDeLAction(fiche, a.cle, a.limite);
+    const epuisee = Boolean(compteur && compteur.restants <= 0);
+    const grisee = cassee ?? (equipement && symbiose && !permise ? symbiose : epuisee ? 'Plus d’utilisation : le compteur est à 0' : null);
+    actions.push({
+      niveau: null, type: null, precision: null, maudit: false, teinte: null, limite: null, seBrise: false, emplacement: null, ...a,
+      compteur, grisee, epuisee, utilisable: !grisee && (compteur ? compteur.restants > 0 : Boolean(a.seBrise)),
+    });
+  };
+  const variables = donsVariables(regles, fiche);
+  const race = trouver(regles.races ?? [], fiche.race_id);
+  if (race?.don_base_action) {
+    const { nom, texte } = donDeBase(race.don_base);
+    ajouter({ cle: cleDAction.donDeBase(race.id), origine: 'race', nom, source: race.nom, type: race.don_base_action.type, texte, teinte: race, limite: race.don_base_action.limite });
+  }
+  for (const c of donsAcquis(regles, fiche)) {
+    for (const d of c.dons.filter((x) => TYPES_D_ACTION.includes(x.type))) {
+      ajouter({
+        cle: cleDAction.capacite(d.id), origine: 'classe', nom: d.nom, source: c.classe.nom, niveau: d.niveau, type: d.type, precision: d.precision ?? null,
+        texte: d.effet ?? null, teinte: c.classe, limite: d.limite ?? (d.precision ? { nombre: null, periode: null, genre: 'texte' } : null), don: d,
+      });
+    }
+    // décision R181 (Q94 : « Va dans la liste des actions avec son compteur ») : l'entrée Actif, Action ou Réaction obtenue par un don « Variable » de
+    // cette classe, son compteur comme celui d'un don (« 2 fois/combat » : « Fin de combat » ; « 1 fois/tour » : un rappel) ; son effet tel qu'écrit
+    for (const v of variables.dons.filter((x) => x.rang === c.rang && x.etat === 'choisi' && TYPES_D_ACTION.includes(x.entree.type))) {
+      const precision = precisionDeLEntree(v.entree);
+      ajouter({
+        cle: cleDAction.entree(v.entree.id), origine: 'don_obtenu', nom: v.entree.nom, source: `${v.don.nom} (${v.classe.nom})`, type: v.entree.type, precision,
+        texte: v.entree.effet ?? null, teinte: trouver(regles.magies ?? [], v.entree.magie_id), limite: v.entree.limite ?? (precision ? { nombre: null, periode: null, genre: 'texte' } : null),
+        don: v.don, entree: v.entree,
+      });
+    }
+  }
+  const ordre = (a) => {
+    const i = EMPLACEMENTS_ACCESSOIRES.findIndex(([cle]) => cle === a.emplacement);
+    return i < 0 ? EMPLACEMENTS_ACCESSOIRES.length : i;
+  };
+  for (const a of [...(fiche.accessoires ?? [])].sort((x, y) => ordre(x) - ordre(y))) {
+    const effet = trouver(regles.accessoires ?? [], a.accessoire_effet_id);
+    if (!effet?.usage) continue;
+    ajouter({
+      cle: cleDAction.accessoire(a.emplacement, effet.id), origine: 'accessoire', nom: nomDAccessoire(a), source: null, type: TYPE_D_USAGE[effet.usage],
+      texte: String(effet.libelle ?? '').replace(/^\(Action\)\s*/i, ''), maudit: Boolean(entier(a.maudit)), limite: effet.limite ?? null,
+      seBrise: Boolean(effet.se_brise), emplacement: a.emplacement, equipement: true,
+    });
+  }
+  for (const rang of [1, 2]) {
+    const ligne = (fiche.armes ?? []).find((x) => entier(x.rang) === rang);
+    const element = ligne?.arme_id ? null : trouver(regles.armes_elementaires ?? [], ligne?.arme_elementaire_id);
+    if (!element || !['actif', 'action'].includes(element.capacite_mode)) continue;
+    // décision R167 : l'arme élémentaire de la magie de la Symbiose reste utilisable (postureDuMoment : symbiose.magies, vide tant qu'elle n'est pas
+    // choisie et pour le Potentiel Illimité)
+    const permise = Boolean(posture?.symbiose?.magies?.some((m) => m.id === element.magie_id));
+    // réponse du propriétaire à Q80 (« Non, grisée ») : l'arme cassée (solidité à 0, décision R74) ne sert plus, sa capacité non plus
+    const cassee = durabiliteDArme(regles, fiche, rang)?.cassee ? 'Arme cassée (solidité à 0, décision R74) : réparez-la pour utiliser sa capacité' : null;
+    ajouter({
+      cle: cleDAction.arme(rang, element.id), origine: 'arme', nom: element.capacite_nom || element.nom, source: `Arme ${rang} : ${element.nom}`,
+      type: element.capacite_mode, texte: element.capacite_texte ?? null, teinte: element, limite: element.capacite_limite ?? null, equipement: true, permise, cassee,
+    });
+  }
+  const armure = trouver(regles.armures_elementaires ?? [], fiche.armure_elementaire_id);
+  for (const x of armure?.actions ?? []) {
+    ajouter({
+      cle: cleDAction.armure(armure.id, x.rang), origine: 'armure', nom: armure.nom, source: 'Armure élémentaire', type: x.type,
+      texte: sansTypeDeTete(armure.effets?.[x.index]), teinte: trouver(regles.magies ?? [], armure.magie_id), limite: x.limite ?? null, equipement: true,
+    });
+  }
+  return actions;
+}
+
+/**
+ * Les passifs de la fiche, juste après les actions (décision R173) : { race: [...], ethnieAChoisir, classes: [{ rang, classe, niveau, dons }],
+ * equipement: [...] }. Race : tous les dons de race et d'ethnie (donsDeRace : le don de l'ethnie, la ligne de son ethnie dans le tableau de la race), sans
+ * le don de base quand il est une action (sinon, il reste ici, tel qu'écrit). Classes : les dons de classe débloqués qui ne sont pas des actions
+ * (passifs, « Variable » du Mage Bleu, sans type), avec leur précision (« Noyau dur » du Flagelleur : « 1 fois/combat », un rappel, « Dans les
+ * passifs ») ; un don « Variable » du Mage Bleu porte `obtenu` (texteDuDonVariable : « → <entrée obtenue> », décision R181) et `variable`
+ * (donsVariables), suivi de l'entrée Passif qu'il obtient (origine 'don_obtenu', `entree`). Équipement (« Ce qu'elle compte + les textes ») : les effets tels qu'écrits, que la fiche les compte ou non — accessoires sans usage,
+ * effet de l'armure de base portée (« aucun effet » quand elle est cassée, R157, R158), effets de l'armure élémentaire ni « (Action) » ni
+ * « (Réaction) » (ni « (actif) », ni limite écrite : Q79), bâtons magiques à la ceinture (R101), armes 1 et 2 (l'effet d'une arme du catalogue et
+ * l'effet secondaire de son matériau ; d'une arme élémentaire, ses lignes d'effet sans sa capacité quand celle-ci est une action), le texte de
+ * l'amélioration de chaque objet porté (armure, armes, bouclier : « Oui, dans ce lot D »). Chaque entrée : { origine, nom, source, texte, type, precision, niveau, maudit, aide, teinte, don }.
+ */
+export function passifsDeLaFiche(regles, fiche) {
+  const r = donsDeRace(regles, fiche);
+  const race = trouver(regles.races ?? [], fiche.race_id);
+  const passif = (x) => ({ source: null, type: null, precision: null, niveau: null, maudit: false, aide: null, teinte: null, don: null, ...x });
+  const raceListe = [
+    ...(r.base && !race?.don_base_action ? [passif({ origine: 'race', ...donDeBase(r.base), source: race?.nom ?? null, teinte: race })] : []),
+    ...r.dons.map((d) => passif({ origine: 'race', nom: d.nom ?? d.etiquette ?? 'Don de race', texte: d.texte ?? null, source: race?.nom ?? null, teinte: race })),
+    ...(r.tableau ? [passif({
+      origine: 'race', nom: r.tableau.titre ?? 'Selon l’ethnie', source: race?.nom ?? null, teinte: race,
+      texte: r.tableau.cellules.map((c) => `${String(c.libelle ?? '').replace(/\n/g, ' / ')} : ${c.valeur}`).join('\n'),
+    })] : []),
+  ];
+  // décision R181 : un don « Variable » reste ici avec ce qu'il obtient (« → <entrée obtenue> », ou pourquoi il ne donne rien : texteDuDonVariable),
+  // suivi de l'entrée obtenue quand elle est un Passif, son effet tel qu'écrit (une entrée Actif, Action ou Réaction est une action)
+  const variables = new Map(donsVariables(regles, fiche).dons.map((v) => [v.source, v]));
+  const classes = donsAcquis(regles, fiche).map((c) => ({
+    rang: c.rang, classe: c.classe, niveau: c.niveau,
+    dons: c.dons.filter((d) => !TYPES_D_ACTION.includes(d.type)).flatMap((d) => {
+      const v = variables.get(d.id);
+      const don = passif({
+        origine: 'classe', nom: d.nom, source: c.classe.nom, niveau: d.niveau, type: d.type ?? null, precision: d.precision ?? null, texte: d.effet ?? null,
+        teinte: c.classe, don: d, ...(v ? { obtenu: texteDuDonVariable(v), variable: v } : {}),
+      });
+      if (v?.etat !== 'choisi' || v.entree.type !== 'passif') return [don];
+      return [don, passif({
+        origine: 'don_obtenu', nom: v.entree.nom, source: `${d.nom} (${c.classe.nom})`, type: v.entree.type, precision: precisionDeLEntree(v.entree),
+        texte: v.entree.effet ?? null, teinte: trouver(regles.magies ?? [], v.entree.magie_id), don: d, entree: v.entree,
+      })];
+    }),
+  }));
+  const equipement = [];
+  // le texte d'une amélioration portée (amelioration_equipement.effet_brut, tel qu'écrit ; réponse du propriétaire : « Oui, dans ce lot D »), de sa cible
+  const amelioration = (id, cible, source) => {
+    const a = trouver(regles.ameliorations ?? [], id);
+    if (a?.cible === cible && a.effet) equipement.push(passif({ origine: 'amelioration', nom: `Amélioration niveau ${a.niveau}`, source, texte: a.effet }));
+  };
+  const ordre = (a) => {
+    const i = EMPLACEMENTS_ACCESSOIRES.findIndex(([cle]) => cle === a.emplacement);
+    return i < 0 ? EMPLACEMENTS_ACCESSOIRES.length : i;
+  };
+  for (const a of [...(fiche.accessoires ?? [])].sort((x, y) => ordre(x) - ordre(y))) {
+    const effet = trouver(regles.accessoires ?? [], a.accessoire_effet_id);
+    if (!effet || effet.usage) continue;
+    equipement.push(passif({ origine: 'accessoire', nom: nomDAccessoire(a), source: effet.propriete_nom ?? null, texte: effet.libelle ?? null, maudit: Boolean(entier(a.maudit)) }));
+  }
+  const portee = armureDeLaFiche(regles, fiche);
+  if (portee && !portee.elementaire && portee.armure.effet) {
+    equipement.push(passif({
+      origine: 'armure', nom: portee.armure.nom, source: 'Armure', texte: portee.armure.effet,
+      aide: armureCassee(regles, fiche) ? 'Armure cassée : aucun de ses effets jusqu’à sa réparation (décisions R157, R158).' : null,
+    }));
+  }
+  if (portee?.elementaire) {
+    const actives = new Set((portee.armure.actions ?? []).map((x) => x.index));
+    const textes = (portee.armure.effets ?? []).filter((_, i) => !actives.has(i));
+    if (textes.length) equipement.push(passif({ origine: 'armure', nom: portee.armure.nom, source: 'Armure élémentaire', texte: textes.join('\n'), teinte: trouver(regles.magies ?? [], portee.armure.magie_id) }));
+  }
+  if (portee) {
+    amelioration(portee.elementaire ? fiche.armure_amelioration_elementaire_id : fiche.armure_amelioration_id, portee.elementaire ? 'armure_elementaire' : 'armure',
+      `${portee.elementaire ? 'Armure élémentaire' : 'Armure'} : ${portee.armure.nom}`);
+  }
+  for (const l of [...(fiche.ceinture ?? [])].sort((a, b) => entier(a.rang) - entier(b.rang))) {
+    const b = batonDuSac(regles, l.nom);
+    if (!b?.regle) continue;
+    equipement.push(passif({ origine: 'baton', nom: b.baton.nom, source: `Ceinture, emplacement ${entier(l.rang)}`, texte: (b.baton.effets ?? []).map((e) => e.texte).join('\n') || null, teinte: trouver(regles.magies ?? [], b.baton.magie_id) }));
+  }
+  for (const rang of [1, 2]) {
+    const ligne = (fiche.armes ?? []).find((x) => entier(x.rang) === rang);
+    if (ligne?.arme_id) {
+      const arme = trouver(regles.armes ?? [], ligne.arme_id);
+      if (!arme) continue;
+      if (arme.effet) equipement.push(passif({ origine: 'arme', nom: arme.nom, source: `Arme ${rang}`, texte: arme.effet }));
+      // l'effet secondaire écrit de son matériau (« +1d de dégâts contre les non-morts » ; réponse du propriétaire : « Oui, dans ce lot D »)
+      const materiau = trouver(regles.materiaux_armes ?? [], ligne.materiau_id);
+      if (materiau?.effet_secondaire) equipement.push(passif({ origine: 'materiau', nom: materiau.nom, source: `Arme ${rang} : ${arme.nom}`, texte: materiau.effet_secondaire }));
+      amelioration(ligne.amelioration_id, 'arme', `Arme ${rang} : ${arme.nom}`);
+      continue;
+    }
+    const element = trouver(regles.armes_elementaires ?? [], ligne?.arme_elementaire_id);
+    if (!element) continue;
+    const type = trouver(regles.types_elementaires ?? [], element.type_id);
+    const lignes = effetDeLArmeElementaire(element, type);
+    const textes = ['actif', 'action'].includes(element.capacite_mode) && (element.capacite_nom || element.capacite_texte) ? lignes.slice(1) : lignes;
+    if (textes.length) equipement.push(passif({ origine: 'arme', nom: element.nom, source: `Arme ${rang}`, texte: textes.join('\n'), teinte: element }));
+    amelioration(ligne.amelioration_id, 'arme', `Arme ${rang} : ${element.nom}`);
+  }
+  const bouclier = bouclierDe(regles, fiche);
+  if (bouclier) amelioration(fiche.bouclier_amelioration_id, 'bouclier', `Bouclier : ${bouclier.nom}`);
+  return { race: raceListe, ethnieAChoisir: r.ethnieAChoisir, classes, equipement };
+}
+
+/** fiche.actions_usage avec la ligne de `cle` à `restants` : supprimée au maximum (migration 0085 : « remettre au maximum supprime la ligne »). */
+function avecLUsage(fiche, cle, restants, max) {
+  const autres = (fiche.actions_usage ?? []).filter((u) => u?.action_id !== cle);
+  return restants >= max ? autres : [...autres, { action_id: cle, restants: Math.max(0, restants) }];
+}
+
+/**
+ * Sélectionner l'action `cle` pour la consommer (décision R173 : « On sélectionne une action pour la consommer ; elle se grise quand son compteur est à
+ * 0 ») : son compteur baisse de 1 (fiche.actions_usage) ; un accessoire « l'objet se brise après » quitte son emplacement (« Retiré de
+ * l'emplacement » : fiche.accessoires sans lui). {} quand rien ne change : une action grisée (Symbiose, compteur à 0), sans compteur (sans limite
+ * écrite, rappel, texte), ou inconnue. { actions_usage, accessoires? }.
+ */
+export function consommerLAction(regles, fiche, cle) {
+  const a = actionsDeLaFiche(regles, fiche).find((x) => x.cle === cle);
+  if (!a?.utilisable) return {};
+  const ecrit = {};
+  if (a.compteur) ecrit.actions_usage = avecLUsage(fiche, cle, a.compteur.restants - 1, a.compteur.max);
+  if (a.seBrise) {
+    ecrit.accessoires = (fiche.accessoires ?? []).filter((x) => x.emplacement !== a.emplacement);
+    ecrit.actions_usage = (ecrit.actions_usage ?? fiche.actions_usage ?? []).filter((u) => u?.action_id !== cle);
+  }
+  return ecrit;
+}
+
+/**
+ * Le compteur de l'action `cle` remonté à la main de `ecart` (décision R173 : « ne remontent qu'à la main », un bouton par compteur ; il sert aussi à
+ * reprendre une sélection faite par erreur) : { actions_usage }, borné de 0 au maximum, sans ligne au maximum. {} sans compteur ou si rien ne change.
+ */
+export function remonterLAction(regles, fiche, cle, ecart = 1) {
+  const c = actionsDeLaFiche(regles, fiche).find((x) => x.cle === cle)?.compteur;
+  if (!c) return {};
+  const v = Math.min(c.max, Math.max(0, c.restants + Math.trunc(entier(ecart))));
+  return v === c.restants ? {} : { actions_usage: avecLUsage(fiche, cle, v, c.max) };
+}
+
+/**
+ * « Fin de combat » (décision R173 : « remet au maximum les compteurs "par combat" ») : { actions_usage } sans les lignes des actions dont le compteur
+ * est par combat ; ceux par jour, semaine… restent (« ne remontent qu'à la main »), comme une ligne qui ne répond à aucune action (nettoyée à
+ * l'enregistrement : actionsUsageValables). Elle lâche aussi le sort préparé (décision R179 : « Un sort préparer ne demeure que jusqu'à la fin d'un
+ * combat » ; Q86 : « Oui, « Fin de combat » le lâche aussi ») : `sorts`, comme « Lâcher le sort » (sortsApresPreparation : `prepare`, `prepare_jet`,
+ * `prepare_posture_id`, `prepare_hyper`, `prepare_cent`, `prepare_critique` remis à zéro), seulement quand un sort est préparé.
+ */
+export function finDeCombat(regles, fiche) {
+  const parCombat = new Set(actionsDeLaFiche(regles, fiche).filter((a) => a.compteur?.remontee === 'fin_de_combat').map((a) => a.cle));
+  return {
+    actions_usage: (fiche.actions_usage ?? []).filter((u) => !parCombat.has(u?.action_id)),
+    ...(unSortEstPrepare(fiche) ? { sorts: sortsApresPreparation(regles, fiche, null) } : {}),
+  };
+}
+
+/** Vrai si une ligne de sort de la fiche porte la marque du sort préparé (`prepare`, décision R115) : ce que « Fin de combat » lâche (R179). */
+const unSortEstPrepare = (fiche) => (fiche.sorts ?? []).some((l) => entier(l?.prepare) === 1);
+
+/**
+ * Le bouton « Fin de combat » est montré (décisions R173, R179) : quand une action de la fiche a un compteur par combat, ou qu'un sort est préparé (il le
+ * lâche) — celui que la page montre (sortPrepare), pas une marque que le don ne permet plus. `actions` : actionsDeLaFiche.
+ */
+export function finDeCombatMontree(regles, fiche, actions = actionsDeLaFiche(regles, fiche)) {
+  return actions.some((a) => a.compteur?.remontee === 'fin_de_combat') || Boolean(sortPrepare(regles, fiche));
+}
+
+/**
+ * Les compteurs à enregistrer (personnage_action_usage, migration 0085) : une ligne par action de la fiche qui a un compteur entamé, ses restants
+ * bornés de 0 au maximum moins 1 ; une ligne au maximum, en double, ou d'une clé qu'aucune action de la fiche n'a plus (un don perdu, un objet retiré :
+ * « une clé orpheline est ignorée à l'affichage et nettoyée à l'enregistrement ») part.
+ */
+export function actionsUsageValables(regles, fiche) {
+  const compteurs = new Map(actionsDeLaFiche(regles, fiche).filter((a) => a.compteur).map((a) => [a.cle, a.compteur]));
+  const vus = new Set();
+  return (fiche.actions_usage ?? []).flatMap((u) => {
+    const c = compteurs.get(u?.action_id);
+    if (!c || vus.has(u.action_id) || c.restants >= c.max) return [];
+    vus.add(u.action_id);
+    return [{ action_id: u.action_id, restants: c.restants }];
+  });
+}
+
+/**
+ * fiche.actions_usage sans les compteurs des objets qui ne sont plus portés (décision R173, choix technique de la clé : un objet changé ou retiré, dont
+ * un accessoire qui « se brise », perd sa ligne : remis, il repart au maximum) : les lignes d'une clé d'équipement (estUneActionDEquipement) qu'aucune
+ * action de la fiche n'a plus partent ; celles des dons restent jusqu'à l'enregistrement (un niveau retapé repasse par le niveau 1 : actionsUsageValables).
+ * La page l'applique à chaque rafraîchissement.
+ */
+export function actionsUsageSansObjetRetire(regles, fiche) {
+  const usages = fiche.actions_usage ?? [];
+  if (!usages.some((u) => estUneActionDEquipement(u?.action_id))) return usages;
+  const cles = new Set(actionsDeLaFiche(regles, fiche).map((a) => a.cle));
+  const gardes = usages.filter((u) => !estUneActionDEquipement(u?.action_id) || cles.has(u.action_id));
+  return gardes.length === usages.length ? usages : gardes;
 }

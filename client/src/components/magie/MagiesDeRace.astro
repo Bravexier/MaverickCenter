@@ -1,6 +1,9 @@
 ---
 import { magieIndex, magiesOfRace } from '../../lib/magie-relations.mjs';
 import { raceKind, racialClassOf } from '../../lib/race-kinds.mjs';
+import { loadMagies } from '../../lib/magies';
+import { htmlDeLaMagie } from '../../lib/valeurs-fermees-rendu.mjs';
+import { lienDeLaMagie } from '../../lib/mots-cles-des-valeurs.mjs';
 import { entryHref, url, type WikiEntry } from '../../lib/wiki';
 
 interface Props {
@@ -9,6 +12,9 @@ interface Props {
 }
 const { entry, entries } = Astro.props;
 const result = magiesOfRace(entries, entry);
+// la magie, par son nom court, liée à son mot-clé du glossaire (migration 0125) : sa bulle remplace l'infobulle du nom de la page ; sans mot-clé, le nom nu
+const liens = loadMagies().liens;
+const puce = (m: WikiEntry) => ({ html: htmlDeLaMagie(liens, m.id, m.data.nom_court!), titre: lienDeLaMagie(liens, m.id) ? undefined : m.data.title });
 const racial = racialClassOf(entries, entry);
 const kind = raceKind(entries, entry);
 const unavailable = result
@@ -29,13 +35,13 @@ const unavailable = result
         )}
       </p>
       <ul class="chips">
-        {result.magies.map((m) => <li><a class="chip" href={entryHref(m)} title={m.data.title}>{m.data.nom_court}</a></li>)}
+        {result.magies.map((m) => <li><a class="chip" href={entryHref(m)} title={puce(m).titre}><Fragment set:html={puce(m).html} /></a></li>)}
       </ul>
       {unavailable.length > 0 && (
         <details>
           <summary>Magies innées non disponibles ({unavailable.length})</summary>
           <ul class="chips">
-            {unavailable.map((m) => <li><a class="chip" href={entryHref(m)} title={m.data.title}>{m.data.nom_court}</a></li>)}
+            {unavailable.map((m) => <li><a class="chip" href={entryHref(m)} title={puce(m).titre}><Fragment set:html={puce(m).html} /></a></li>)}
           </ul>
         </details>
       )}

@@ -18,16 +18,15 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { enregistrerFiche } from '../serveur/fiches.mjs';
-import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
 import * as M from '../src/lib/fiche-moteur.mjs';
-import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { cheminDImport, reglesDImport } from './aide-base-d-import.mjs';
 
-const db = ouvrirBase({ sansExemples: false });
-const regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(db))); // tel que la page le reçoit
+// les règles (textes et valeurs que le site de dev modifie librement) : épinglées sur leur état d'import (test/aide-base-d-import.mjs)
+const regles = reglesDImport(); // tel que la page le reçoit
 const racine = dossierTemporaire('maitrises');
-const vivante = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: racine }).chemin);
+const vivante = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminDImport(), dossier: racine }).chemin);
 
 const xpDuNiveau = (n) => regles.niveaux.find((l) => l.niveau === n).xp_min;
 const ligne = (classe, rang) => `classes/${classe}#maitrise-arme:${rang}`;
@@ -343,7 +342,7 @@ test('décision R154 : un Ocultomancien de niveau de classe 20 a les 4 NM gagné
   assert.deepEqual([a20.maxParSort, a20.maxCompteParSort, a20.plafond], [a19.maxParSort + 1, a19.maxCompteParSort + 1, 3], 'R118, R26 : inchangés');
   // la base : sorts_nm_total compte les NM des dons
   const sorts = (total) => regles.sorts.filter((s) => s.magie_id === 'magies/magie-du-feu').slice(0, Math.ceil(total / 3))
-    .map((s, i) => ({ sort_id: s.id, rang: i + 1, niveau_maitrise: Math.min(3, total - 3 * i), nm_livre: 0 }));
+    .map((s, i) => ({ sort_id: s.id, rang: i + 1, niveau_maitrise: Math.min(3, total - 3 * i) }));
   const enBase = (f) => enregistrerFiche(vivante, f).controles.filter((c) => c.regle === 'sorts_nm_total').map((c) => c.detail);
   const juste = oculto(20, sorts(a20.disponibles));
   assert.equal(M.maitriseDesSorts(regles, juste).comptes, a20.disponibles);
@@ -405,16 +404,17 @@ test('décision R148, variante A de la maquette : les cartes du bloc Maîtrises 
   assert.equal(carte({ ...ex2, accessoires: [accessoire('bague-1', 'epees', 1)] }, 'accessoire:bague-1').sousTitre, 'Accessoire maudit : l’effet contraire');
   assert.deepEqual(M.ligneDeMaitrise(famille(ex2, 'epees')), {
     detail: ['Guerrier (maîtrise 1) +1', 'Épéiste (Guerrier) +2', 'Mercenaire (maîtrise 1) +2', 'Accessoire : Bague 1 +1'],
-    alertes: [{ ton: 'trop', texte: '6 points : 2 au-delà du plafond, non comptés' }],
+    alertes: [{ ton: 'avertissement', texte: '6 points : 2 au-delà du plafond, non comptés' }],
   });
   assert.equal(famille(ex2, 'epees').notation, '5D10', '5 dés au plus');
   assert.deepEqual(M.ligneDeMaitrise(famille(ex2, 'hache')), { detail: ['Guerrier (maîtrise 2) +1', 'Épéiste (Guerrier) −1 (suit un choix)'], alertes: [] });
   const compteur = M.presentationDuCompteurDeMaitrise(M.compteurDeMaitrise(regles, ex2), M.sourcesDeMaitrise(regles, ex2));
   assert.deepEqual([compteur.texte, compteur.etat], ['8 points · 0 à choisir', 'trop']);
   assert.match(compteur.infobulle, /Mercenaire \(maîtrise 1\) \+3 · Accessoire : Bague 1 \+1 ; 1 point au-delà d’une limite écrite$/);
-  // un seul point au-delà du plafond : « non compté » (la phrase de la maquette)
+  // un seul point au-delà du plafond : « non compté » (la phrase de la maquette) ; un avertissement, pas une erreur, même pour des points imposés
+  // (décision R170 : « Juste un avertissement , surtout quand ils sont imposées »)
   const lancier = fiche([['lanceur', 'fantassin'], ['lancier']], { maitrise_choix: [choix(ligne('lanceur', 2), 1, 'hache'), choix('capacites/lanceur-fantassin', 1, 'hache')], accessoires: [accessoire('chef', 'arme-de-jet')] });
-  assert.deepEqual(M.ligneDeMaitrise(famille(lancier, 'arme-de-jet')).alertes, [{ ton: 'trop', texte: '5 points : 1 au-delà du plafond, non compté' }]);
+  assert.deepEqual(M.ligneDeMaitrise(famille(lancier, 'arme-de-jet')).alertes, [{ ton: 'avertissement', texte: '5 points : 1 au-delà du plafond, non compté' }]);
   // jamais sous 0 (R151) : l'Épéiste et un accessoire maudit sur la maîtrise au choix du Guerrier
   const sous = fiche([['guerrier', 'epeiste']], { niveau: 10, maitrise_choix: [choix(ligne('guerrier', 2), 1, 'hache')], accessoires: [accessoire('chef', 'hache', 1)] });
   assert.deepEqual(M.ligneDeMaitrise(famille(sous, 'hache')).alertes, [{ ton: 'info', texte: '−1 en tout : ramené à 0, une famille ne descend jamais sous 0' }]);
@@ -470,4 +470,48 @@ test('décision R148 : les contrôles maitrise_* de la page nomment leurs source
   // les titres sont ceux des cartes (sourcesDeMaitrise) : « Guerrier (maîtrise 2) », « Épéiste (Guerrier) », « Accessoire : Bague 1 »
   const f = fiche([['guerrier', 'epeiste']], { niveau: 10, accessoires: [accessoire('bague-1', null)] });
   assert.deepEqual(M.sourcesDeMaitrise(regles, f).map((s) => s.titre), ['Guerrier (maîtrise 1)', 'Guerrier (maîtrise 2)', 'Épéiste (Guerrier)', 'Accessoire : Bague 1']);
+});
+
+test('décisions R238 (4), R148, R149 : l’Archimage a deux maîtrises au choix (distance, contact), le point Bâton n’est plus imposé ; aucun don ne dépend de sa ligne au choix', () => {
+  const archimage = regles.classes.find((c) => c.id === 'classes/archimage');
+  const lignes = archimage.maitrises.filter((m) => m.au_choix);
+  const categorieDe = (m) => new Set(m.au_choix.familles.map((id) => regles.familles_armes.find((f) => f.id === id).categorie));
+  assert.deepEqual(lignes.map((m) => [m.source, [...categorieDe(m)]]), [[ligne('archimage', 1), ['distance']], [ligne('archimage', 2), ['contact']]]);
+  assert.equal(M.ligneAuChoixDeLaClasse(archimage), null, 'deux lignes au choix : « laquelle ? »');
+  assert.equal(M.armeAuChoixDeLaClasse(archimage), null);
+  // les sept familles de contact (R127, catégorie lue dans la table) ; Bâton de combat comprise, sans point imposé
+  const contact = regles.familles_armes.filter((f) => f.maitrisable && f.categorie === 'contact').map((f) => f.id).sort();
+  assert.equal(contact.length, 7);
+  const deux = lignes[1];
+  assert.deepEqual(deux.parts.map((p) => [p.genre, [...(p.options ?? [])].sort()]), [['choix', contact]]);
+  assert.ok(deux.parts.every((p) => p.genre !== 'imposee'), 'plus de point Bâton imposé');
+  // aucun don de l'Archimage ne lit sa ligne au choix : ni part qui suit la maîtrise au choix, ni bonus « de l'arme choisie »
+  assert.ok(archimage.dons.every((d) => (d.maitrise?.parts ?? []).every((p) => p.genre !== 'suit')), 'aucune part « suit »');
+  assert.ok(archimage.dons.every((d) => (d.acquis ?? []).every((b) => !b.arme)), 'aucun acquis « de l’arme choisie »');
+
+  // une fiche d'avant (seul le choix de la ligne 1) : le choix de la ligne 2 est en attente, sans point Bâton
+  const avant = fiche([['archimage']], { niveau: 1, magie_innee_id: 'magies/potentiel-illimite', caracteristique_magie_id: 'force', maitrise_choix: [choix(ligne('archimage', 1), 1, 'arc')] });
+  assert.deepEqual(points(avant), { arc: 1 });
+  assert.equal(famille(avant, 'baton-de-combat').points, 0);
+  assert.deepEqual(M.sourcesDeMaitrise(regles, avant).map((s) => [s.source, s.etat]), [[ligne('archimage', 1), 'complete'], [ligne('archimage', 2), 'a_choisir']]);
+  assert.deepEqual(M.compteurDeMaitrise(regles, avant), { points: 2, aChoisir: 1, refus: 0 }, '« 2 points · 1 à choisir »');
+  assert.deepEqual(M.choixEnAttente(regles, avant).filter((c) => c.nature === 'maitrise').map((c) => c.cle), [M.cleDeChoix.maitrise(ligne('archimage', 2), 1)],
+    'le choix en attente s’ouvre dans le tiroir');
+  assert.deepEqual(accordAvecLaBase(avant, 'Archimage d’avant'), [`maitrise_a_choisir ${ligne('archimage', 2)} = 1`]);
+
+  // le joueur choisit : une des sept familles de contact, pas une famille à distance ni ARME DE MONSTRES
+  const bâton = { ...avant, ...M.maitriseApresChoix(avant, ligne('archimage', 2), 1, 'baton-de-combat') };
+  assert.deepEqual(points(bâton), { arc: 1, 'baton-de-combat': 1 });
+  assert.deepEqual(M.maitriseChoixValables(regles, bâton).map((c) => c.source), [ligne('archimage', 1), ligne('archimage', 2)]);
+  assert.deepEqual(accordAvecLaBase(bâton, 'Archimage, Bâton choisi'), []);
+  const horsOptions = { ...avant, ...M.maitriseApresChoix(avant, ligne('archimage', 2), 1, 'arbalete') };
+  assert.deepEqual(M.maitriseChoixValables(regles, horsOptions).map((c) => c.source), [ligne('archimage', 1)], 'une famille à distance n’est pas une option de la ligne 2');
+
+  // R149 : plafond inchangé, 4 points comptés au plus ; l'excédent est signalé sans être refusé (l'Élémentaliste ajoute un point de contact)
+  const e = fiche([['archimage']], {
+    niveau: 10, maitrise_choix: [choix(ligne('archimage', 2), 1, 'epees'), choix('capacites/archimage-elementaliste', 1, 'epees')],
+    capacites: [{ capacite_id: 'capacites/archimage-elementaliste' }],
+  });
+  assert.equal(famille(e, 'epees').comptes, Math.min(famille(e, 'epees').points, 4));
+  assert.equal(M.maitriseDArme(regles).pointsMax, 4);
 });

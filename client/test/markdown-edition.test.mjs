@@ -9,12 +9,14 @@ import { test } from 'node:test';
 import { splitFrontmatter } from '../src/lib/wikilinks.mjs';
 import { avecPhraseDesArmesDeDepart } from '../src/lib/armes-rendu.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
-import { COULEURS_DE_CASE, decouperCorps, htmlSur, recomposerCorps, versMarkdown } from '../src/lib/markdown-edition.mjs';
+import { COULEURS_DE_CASE, decouperCorps, etatDeLApercu, htmlSur, recomposerCorps, versMarkdown } from '../src/lib/markdown-edition.mjs';
+import { ancresRompues } from '../src/lib/ancres-figees.mjs';
 import { fragmentsAjoutes } from '../src/lib/markdown-sur.mjs';
 import { texteDePageModifiable } from '../src/lib/edition-modele.mjs';
 import { htmlAvecMotsCles, lireBalises } from '../src/lib/mots-cles-balises.mjs';
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 import { chargerPanneaux } from '../src/lib/panneaux-regles-db.mjs';
+import { baseDImport } from './aide-base-d-import.mjs';
 // le processeur Markdown du site et la lecture du HTML comme le ferait le navigateur (hast-util-from-html, dépendance de @astrojs/markdown-remark)
 import { DOSSIER_DU_WIKI as dossier, enfantsDuHtml as enfants, normal, rendreCommeLeGuide, rendreLeMarkdown as rendre } from './aide-rendu-du-site.mjs';
 
@@ -46,6 +48,8 @@ test('aller-retour sur toutes les pages du guide et du Codex : le Markdown réé
       assert.equal(versMarkdown(enfants(await rendrePage(md))), md, `${page.id} : le Markdown réécrit est stable`);
       // ni HTML brut ni lien non sûr ajouté : le service refuserait le texte (lib/markdown-sur.mjs)
       assert.deepEqual(fragmentsAjoutes(m.texte, md), [], `${page.id} : fragments ajoutés par l’éditeur`);
+      // ni ancre figée perdue, renommée ni doublée : le service refuserait le texte (serveur/edition.mjs#modifier, lib/ancres-figees.mjs)
+      assert.deepEqual(ancresRompues(m.texte, md), { retirees: [], doublees: [] }, `${page.id} : ancres figées gardées par l’éditeur`);
       // l'aperçu assaini garde tout ce que le Markdown dit
       assert.equal(versMarkdown(enfants(htmlSur(enfants(html)))), md, `${page.id} : aperçu assaini`);
     }
@@ -113,12 +117,14 @@ test('liens du guide écrits vers une ancienne adresse (/guide/<slug>/) : rendus
   assert.doesNotMatch(await rendreCommeLeGuide('[les races](/races/) et [[Humain]]'), /data-lien-ecrit/);
 });
 
-test('couleur des cases : écrite « {couleur:x} » en tête de case, rendue data-couleur ; couleur inconnue ignorée', async () => {
+test('couleur des cases : écrite « {couleur:x} » en tête de case, rendue data-couleur et la classe de la palette (lot 11) ; couleur inconnue ignorée', async () => {
   const md = '| A | B |\n| --- | --- |\n| {couleur:vert} un | deux |\n| {couleur:fuchsia} trois | {couleur:rouge} |\n';
   const html = await rendre(md);
-  assert.match(html, /<td data-couleur="vert">un<\/td>/);
+  assert.match(html, /<td data-couleur="vert" class="case-coloree couleur-case-vert">un<\/td>/);
   assert.match(html, /<td>\{couleur:fuchsia\} trois<\/td>/);
-  assert.match(html, /<td data-couleur="rouge"><\/td>/);
+  assert.match(html, /<td data-couleur="rouge" class="case-coloree couleur-case-rouge"><\/td>/);
+  // en-tête et alignement : la classe s'ajoute aux autres propriétés de la case
+  assert.match(await rendre('| {couleur:bleu} T |\n| :---: |\n| x |\n'), /<th align="center" data-couleur="bleu" class="case-coloree couleur-case-bleu">T<\/th>/);
   assert.equal(versMarkdown(enfants(html)), '| A | B |\n| --- | --- |\n| {couleur:vert} un | deux |\n| {couleur:fuchsia} trois | {couleur:rouge} |\n');
   assert.equal(versMarkdown(enfants('<table><tr><th data-couleur="bleu">T</th></tr><tr><td data-couleur="noir">x</td></tr></table>')), '| {couleur:bleu} T |\n| --- |\n| x |\n');
   assert.deepEqual(COULEURS_DE_CASE, ['rouge', 'orange', 'jaune', 'vert', 'bleu', 'violet', 'gris']);
@@ -151,6 +157,18 @@ test('deux listes de même sorte qui se suivent restent deux listes : la seconde
   assert.equal(await aller(md), md);
 });
 
+test('liste à puces ou filet en tête d’un item à puces : jamais une ligne que le Markdown relit comme un filet (« - - - », « - --- »)', async () => {
+  // listes imbriquées à item vide, filet seul dans un item, sous des marques « - » et « * », et sous une liste numérotée
+  for (const md of ['Texte.\n\n- a\n- * *\n\nFin.\n', '* - -\n', '- * * *\n', '* ---\n', '1. - - x\n', '- - a\n- b\n', '- * a\n  * b\n\n  - c\n']) {
+    const html = await rendre(md);
+    const ecrit = versMarkdown(enfants(html));
+    assert.equal(normal(await rendre(ecrit)), normal(html), `${JSON.stringify(md)} réécrit ${JSON.stringify(ecrit)}`);
+    assert.equal(await aller(ecrit), ecrit, `${JSON.stringify(ecrit)} : stable`);
+  }
+  // un vrai filet hors d'une liste reste « --- »
+  assert.equal(versMarkdown(enfants('<p>a</p><hr><p>b</p>')), 'a\n\n---\n\nb\n');
+});
+
 test('corps découpé aux blocs tirés de la base : rien ne se perd, seuls les morceaux de texte visibles sont remplacés', () => {
   const corps = 'Intro.\n\n<!-- guide:niveaux -->\n\nSuite **grasse**.\n\n<!-- guide:postures -->\n';
   const morceaux = decouperCorps(corps);
@@ -174,7 +192,7 @@ test('aperçu assaini : ni script, ni style, ni attribut d’événement, ni adr
     '<p>Texte <strong>gras</strong> ',
     '<a>piège</a> <a>protocole relatif</a> <a href="/races/">races</a>',
     '<a class="wikilink" data-cible="Humain" href="/races/humain/">Humain</a> </p>',
-    '<table><tbody><tr><td data-couleur="vert" align="center">a</td><td>b</td></tr></tbody></table>',
+    '<table><tbody><tr><td data-couleur="vert" class="case-coloree couleur-case-vert" align="center">a</td><td>b</td></tr></tbody></table>',
     '<h2 id="titre">T</h2><h3>U</h3><ol start="3"><li>c</li></ol>police',
   ].join(''));
 });
@@ -249,6 +267,29 @@ test('aperçu assaini : un mot-clé et le mode complet gardent leurs classes, le
   assert.doesNotMatch(htmlSur(enfants('<strong class="mot-cle" data-mot-cle="X Y" data-balise="{{x}}">t</strong>')), /data-mot-cle/, 'un id qui n’en est pas un');
 });
 
+// Un mot-clé qui a une adresse est un lien (`a.mot-cle`, migration 0098 ; réponse du propriétaire : « une balise dont le mot-clé a une URL est un lien »),
+// coloré par sa classe : l'éditeur le relit en balise comme `strong.mot-cle` (sinon l'aller-retour l'écrirait en lien Markdown), l'aperçu assaini garde
+// son adresse et sa classe de couleur, rien d'autre.
+const GLOSSAIRE_A_LIENS = [
+  { id: 'elfe', libelle: 'Elfe', description: 'Un peuple.', url: '/races/elfe/', couleur: 'race:pure' },
+  { id: 'feu', libelle: 'Feu', description: '', url: '/magies/magie-du-feu/', couleur: '#ff4500' },
+];
+
+test('mots-clés à adresse (migration 0098) : le lien relu en balise, mode complet compris ; l’aperçu assaini garde l’adresse et la couleur', async () => {
+  const md = 'Les {{elfe|elfes}}, le {{feu}} et {{elfe:}}.';
+  const html = htmlAvecMotsCles(await rendre(md), GLOSSAIRE_A_LIENS, { base: '/MaverickCenter/' }).html;
+  assert.match(html, /<a class="mot-cle couleur-race-pure" href="\/MaverickCenter\/races\/elfe\/" data-mot-cle="elfe" data-bulle="mot-cle-elfe" aria-describedby="mot-cle-elfe" data-balise="\{\{elfe\|elfes\}\}">elfes<\/a>/);
+  assert.match(html, /<span class="mot-cle-definition couleur-race-pure" data-mot-cle="elfe" data-balise="\{\{elfe:\}\}"><a class="mot-cle-definition__nom" href="\/MaverickCenter\/races\/elfe\/">Elfe<\/a>/);
+  assert.equal(versMarkdown(enfants(html)), 'Les {{elfe|elfes}}, le {{feu|Feu}} et {{elfe:}}.\n', 'des balises, jamais un lien Markdown');
+  const sur = htmlSur(enfants(html.replace('<a class="mot-cle couleur-race-pure"', '<a onclick="x()" class="mot-cle couleur-race-pure autre"')));
+  assert.match(sur, /<a class="mot-cle couleur-race-pure" href="\/MaverickCenter\/races\/elfe\/" data-mot-cle="elfe"/);
+  assert.match(sur, /<a class="mot-cle couleur-mot-cle-feu" href="\/MaverickCenter\/magies\/magie-du-feu\/" data-mot-cle="feu"/);
+  assert.match(sur, /<a class="mot-cle-definition__nom" href="\/MaverickCenter\/races\/elfe\/">Elfe<\/a>/);
+  assert.ok(!/onclick|autre/.test(sur));
+  assert.equal(versMarkdown(enfants(sur)), 'Les {{elfe|elfes}}, le {{feu|Feu}} et {{elfe:}}.\n', 'l’aperçu assaini se relit aussi');
+  assert.doesNotMatch(htmlSur(enfants('<a class="mot-cle" href="javascript:alert(1)" data-mot-cle="elfe" data-balise="{{elfe}}">x</a>')), /javascript/, 'une adresse qui n’est pas sûre');
+});
+
 // Les panneaux de règles (migration 0056) : le texte de chaque bloc se modifie en place (src/scripts/edition/panneaux.mjs, même éditeur que la
 // chronologie) ; le HTML de la page = le Markdown du bloc rendu au build (lib/guide-rendu.ts#rendreMarkdown : mêmes plugins), « Les armes en bleu… »
 // retouché (avecPhraseDesArmesDeDepart), puis les balises du glossaire (le middleware). L'extension compare le Markdown relu à celui relu au départ,
@@ -257,7 +298,9 @@ test('aller-retour sur tous les blocs des panneaux de règles : le HTML ne chang
   const db = ouvrirBase({ sansExemples: false });
   const vocabulaire = chargerVocabulaire(db);
   const blocs = chargerPanneaux(db).flatMap((p) => p.blocs.map((b) => ({ ...b, retouche: p.id === 'armes' ? avecPhraseDesArmesDeDepart : (h) => h })));
-  assert.ok(blocs.length >= 13, `${blocs.length} blocs`);
+  // tous ceux de la base (le site de dev en crée et en supprime) ; treize au moins à l'import
+  assert.ok(blocs.length > 0, `${blocs.length} blocs`);
+  assert.ok(chargerPanneaux(baseDImport()).flatMap((p) => p.blocs).length >= 13, 'les blocs de l’import');
   const page = async (b, md) => htmlAvecMotsCles(b.retouche(await rendre(md)), vocabulaire).html;
   let differents = 0;
   for (const b of blocs) {
@@ -277,4 +320,16 @@ test('aller-retour sur tous les blocs des panneaux de règles : le HTML ne chang
   }
   assert.ok(blocs.some((b) => /^\{\{[^{}]+:\}\}$/.test(b.texte.trim())), 'au moins une tuile qui n’est qu’une balise en mode complet');
   assert.ok(differents > 0, 'au moins un bloc dont le Markdown relu n’est pas le texte de la base (comparer au texte de la base ferait un faux changement)');
+});
+
+// Essai dans Chromium (tech-qualite) : une page des Règles créée sur le site de dev (ligne en attente { creee: true, apercu: null }) était prise pour un texte
+// « périmé » : son « À compléter. » ne se modifiait pas en place. Une page créée est dessinée depuis son texte actuel (edition/nouvelles.mjs) : rien à faire.
+test('etatDeLApercu : l’aperçu posé, un texte périmé, ou rien — une page créée sans aperçu se modifie en place', () => {
+  assert.equal(etatDeLApercu(undefined, 1), null, 'aucune ligne en attente');
+  assert.equal(etatDeLApercu({ table: 'page', creee: false }, 1), null, 'le titre seul a changé (pas d’aperçu)');
+  assert.equal(etatDeLApercu({ creee: false, apercu: ['<p>x</p>', '<p>y</p>'] }, 2), 'apercu');
+  assert.equal(etatDeLApercu({ creee: false, apercu: ['<p>x</p>'] }, 2), 'perime', 'pas autant de morceaux');
+  assert.equal(etatDeLApercu({ creee: false, apercu: null }, 1), 'perime', 'un texte changé sans aperçu');
+  assert.equal(etatDeLApercu({ creee: true, apercu: null }, 1), null, 'une page créée : son texte « À compléter. » se modifie en place');
+  assert.equal(etatDeLApercu({ creee: true, apercu: ['<p>Écrit.</p>'] }, 1), 'apercu', 'une page créée puis écrite : l’aperçu');
 });

@@ -15,3 +15,15 @@ INSERT INTO note_version (version, publiee_le, depuis, texte, lot, exemple) VALU
 -Correctifs de multiples règles mal implémentées ou ambigues.
 -Réorganisation des menus
 -Refonte du système de Mots-clés (création de nouveaux mots clés encore à prévoir)', '0612c920-f6b3-461d-a036-9c404066f10c', 0);
+INSERT INTO note_version (version, publiee_le, depuis, texte, lot, exemple) VALUES ('0.5', '2026-11-17', '0.4', '-L''ensemble des tableaux devraient être plus lisibles.
+-Uniformisation des couleurs
+-Corrections multiples dans les fiches de personnage.
+-Activation d''un calculateur de dégâts subbits
+-Activation du mode Hyper sur la fiche avec calcul automatique des cout de chakra
+-Réorganisation (Encore) des onglets principaux.
+-Ajout du menu latéral dans les pages d''armes, magies, races classes et dans les pages de règles.
+-Réorganisation du menu "Règles"
+-Intégration de la V10 des magies et de la Mise à Jour de Décembre 2026
+-Ajout des races des Gémédiens et des Fongoïdes.
+-Ajout des classes Boxer et Porte-Etandard
+-Correctif d''une erreur de conception quand à ce comparatif avec la version de prod.', '75dbb997-d7fa-4ccb-b8bf-6c3a0d37da21', 0);

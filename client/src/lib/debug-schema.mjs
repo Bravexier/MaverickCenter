@@ -48,9 +48,13 @@ export const GEOMETRIE = Object.freeze({
   boucle: 26, // écart d'une auto-référence au bord de sa table
 });
 
-/** Proportions visées (largeur / hauteur) d'un bloc de section, et de toute la carte. */
+/**
+ * Proportions visées (largeur / hauteur) d'un bloc de section, et de toute la carte. La carte posée par ligne d'horizon change par paliers avec la
+ * largeur : 1.9 est au milieu d'un palier dense (densité 0,276 de 1.85 à 1.95 avec les tables de la migration 0097 ; 1.7 tombait à 0,243, sous le
+ * quart exigé par test/debug-schema.test.mjs).
+ */
 export const RAPPORT_SECTION = 1.5;
-export const RAPPORT_GLOBAL = 1.7;
+export const RAPPORT_GLOBAL = 1.9;
 
 /** Bornes du zoom (k : pixels par unité du schéma). */
 export const ZOOM_MIN = 0.03;

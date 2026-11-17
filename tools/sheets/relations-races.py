@@ -6,6 +6,7 @@ Usage (bibliothèque standard uniquement ; relançable, même fichier à l'ident
     python3 -I tools/sheets/relations-races.py --dump <les-races-annexes.json> \
         --out /home/user/MaverickCenter/client/src/content/wiki
     python3 -I tools/sheets/relations-races.py --verifier --dump <les-races-annexes.json> --out <même dossier>
+    (--vocabulaire <mot_cle.sql> : les mots-clés, data/rows/mot_cle.sql par défaut ; le mot-clé protégé `race` s'écrit avec son libellé courant)
 
 Le dump JSON uniforme (tools/sheets/sheets_api_to_json.py) doit contenir l'onglet « Relation entre les races » COMPLET
 du classeur « Les races » (la copie de cet onglet dans le dump principal du classeur est tronquée : le script s'arrête
@@ -38,8 +39,9 @@ Page produite (status draft ; tags « relations », « peuples », « race » ; 
   section « Nom du peuple : comment ce peuple voit les autres » : une ligne `- **niveau** : peuples` par niveau, dans
   l'ordre de l'échelle (du plus favorable au plus défavorable), les peuples dans l'ordre de l'onglet ; un niveau sans
   peuple n'est pas écrit. Les 69 x 69 relations y figurent, chacune une fois (la section d'un peuple le range lui-même
-  sous « Même peuple »). Aucun lien [[…]] : le maillage automatique (`npm run autolink`) les ajoutera ; le vérificateur
-  les ignore (il lit `[[T]]` et `[[T|texte]]` comme le texte affiché), mais ce script réécrit la page sans eux.
+  sous « Même peuple »). Aucun lien ni balise : depuis la migration 0098, un lien est la balise d'un mot-clé et `db:check`
+  refuse un `[[…]]` ; le maillage automatique (`npm run autolink`) ne touche plus les pages `lore` (TYPES_SANS_MAILLAGE de
+  client/src/lib/autolink.mjs). Le vérificateur lit encore `[[T]]` et `[[T|texte]]` comme le texte affiché (ancien maillage).
 
 Rapprochement avec les pages de races (informatif, jamais un lien) : un peuple est rangé sous la page `races/*.md` (hors
 `status: example`) dont le titre, comparé comme le wiki (minuscules, sans accents ni apostrophes), COMMENCE son nom
@@ -75,7 +77,28 @@ import unicodedata
 CATEGORY = "lore"
 PAGE_TITLE = "Relations entre les races"
 STATUS = "draft"
-TAGS = ["relations", "peuples", "race"]
+TAGS = ["relations", "peuples"]   # écritures (un mot-clé du vocabulaire qui les porte est posé)
+TAG_RACE = "race"                 # le mot-clé protégé (clé de maverick.py#MOTS_CLES_PROTEGES), après elles (page_tags)
+VOCABULAIRE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "data", "rows", "mot_cle.sql")   # --vocabulaire
+
+
+def protected_tag(ident):
+    """L'écriture de `tags:` du mot-clé protégé `ident` (une clé de tools/db/maverick.py#MOTS_CLES_PROTEGES, copie de
+    client/src/lib/mots-cles.mjs : posé par l'id entier qu'elle lui donne, migration 0113, jamais par son écriture, qu'un autre mot-clé pourrait
+    prendre sur le site de dev) : son libellé courant dans le vocabulaire (VOCABULAIRE, --vocabulaire ; sa clé s'il a des homonymes), ou None
+    s'il n'y est pas (non écrit : un import ne crée jamais de mot-clé). tools/db/maverick.py#libelle_protege, chargé par son chemin : `python3 -I`
+    n'ajoute pas tools/db à sys.path."""
+    dossier = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "db")
+    if dossier not in sys.path:
+        sys.path.insert(0, dossier)
+    import maverick
+    return maverick.libelle_protege(ident, VOCABULAIRE)
+
+
+def page_tags():
+    """Le `tags:` de la page : TAGS, puis le mot-clé protégé `race` (son libellé courant), absent s'il n'est pas au vocabulaire."""
+    return TAGS + [t for t in [protected_tag(TAG_RACE)] if t is not None]
+
 
 BOOK_TITLE = "Les races"
 BOOK_ID = "150Q6SJi4ft0oROtwT6snMAZUdWMVtkblxwYY9TqxV4Q"
@@ -475,7 +498,7 @@ def check_page(text, tab, races=None, render=None):
     parsed = parse_page(text)
     problems = []
     front = parsed["front"]
-    expected_front = {"title": PAGE_TITLE, "aliases": [], "tags": TAGS, "sources": SOURCES, "status": STATUS}
+    expected_front = {"title": PAGE_TITLE, "aliases": [], "tags": page_tags(), "sources": SOURCES, "status": STATUS}
     if list(front) != ["title", "aliases", "tags", "summary", "sources", "status"]:
         problems.append("frontmatter : champs %s" % list(front))
     for key, want in expected_front.items():
@@ -821,7 +844,7 @@ def render_page(tab, races):
     L = ["---",
          "title: " + yaml_str(PAGE_TITLE),
          "aliases: []",
-         "tags: " + yaml_list(TAGS),
+         "tags: " + yaml_list(page_tags()),
          "summary: " + yaml_str(summary_text(tab)),
          "sources: " + yaml_list(SOURCES),
          "status: " + STATUS,
@@ -954,7 +977,12 @@ def main(argv=None):
     ap.add_argument("--dump", required=True, help="dump JSON contenant l'onglet « %s » complet" % TAB)
     ap.add_argument("--out", required=True, help="dossier racine du wiki (client/src/content/wiki)")
     ap.add_argument("--verifier", action="store_true", help="n'écrit rien : compare la page existante à l'onglet et rejoue des cas d'erreur")
+    ap.add_argument("--vocabulaire",
+                    help="les mots-clés (data/rows/mot_cle.sql par défaut) : libellé courant des mots-clés protégés écrits dans `tags:`")
     args = ap.parse_args(argv)
+    if args.vocabulaire:
+        global VOCABULAIRE
+        VOCABULAIRE = args.vocabulaire
     try:
         if args.verifier:
             run_verifier(args.dump, args.out, render=render_page, load_races=load_races)

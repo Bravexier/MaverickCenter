@@ -1,6 +1,6 @@
 // Corps et résumé de la page d'un métier (page.corps_md et page.resume de metiers/<slug>) recalculés depuis sa ligne de la table `metier` : le défaut D4
 // de l'édition du site de dev (client/serveur/edition.mjs ; docs/serveur.md, « Édition »). Ce corps ne s'affiche pas (un métier est une ligne du tableau
-// de /metiers/, lib/metiers.mjs) : il sert à la recherche (page_fts, search-index.json) et aux [[liens]].
+// de /metiers/, lib/metiers.mjs) : il sert à la recherche (page_fts, search-index.json) et aux liens de la page (table `lien`, par les balises).
 //
 // Forme du corps : cinq champs « **Libellé :** valeur », un paragraphe chacun, séparés par une ligne vide, dans l'ordre de CHAMPS_DU_CORPS. Une valeur
 // est du texte, jamais du Markdown (le tableau l'affiche telle quelle) : elle est échappée (markdownDeValeur), si bien qu'aucune ligne d'une valeur ne
@@ -8,12 +8,12 @@
 // compris. Un champ vide s'écrit « **Libellé :** » sans valeur (« Avantage possible » de l'Artisan). Le nom fait le titre de la page, pas le corps ; la
 // colonne `remarque` n'y est pas écrite (aucun corps de l'import ne porte de remarque : aucune forme à reprendre).
 //
-// Stratégie : REMPLACEMENT DE SECTIONS. Le rendu complet (corpsDeMetier) redonne corps_md à l'octet près pour chaque métier dont le corps n'a pas de
-// [[lien]] (70 des 72 de l'import) ; l'Alchimiste et l'Apothicaire portent dans « Artisanat possible » le lien [[Alchimie primitive|alchimie primitive]]
-// posé par le maillage (npm run autolink), que la table n'a pas : un rendu complet le perdrait. corpsApres ne réécrit donc que les champs des colonnes
-// modifiées et y repose les liens de l'ancien champ dont le texte est encore écrit dans la nouvelle valeur. Invariants rejoués sur toute la base par
-// test/corps-metiers.test.mjs : sansLiens(corps_md) === corpsDeMetier(ligne) pour tout métier, et remplacer un champ par sa propre valeur redonne le
-// corps à l'octet près.
+// Stratégie : REMPLACEMENT DE SECTIONS. Le rendu complet (corpsDeMetier) redonne corps_md à l'octet près pour chaque métier : depuis la migration 0098
+// (les liens devenus des balises), le lien [[Alchimie primitive|alchimie primitive]] que le maillage avait posé dans le corps de l'Alchimiste et de
+// l'Apothicaire, et que la table n'avait pas, est devenu une balise de leur ligne (metier.artisanat_texte, artisanat_brut) : aucun corps n'a plus rien
+// que la table n'ait, il n'y a plus de lien à reposer. corpsApres ne réécrit que les champs des colonnes modifiées (un corps écrit sous Windows, un
+// texte hors des champs restent tels quels). Invariants rejoués sur toute la base par test/corps-metiers.test.mjs : corps_md === corpsDeMetier(ligne)
+// pour tout métier, et remplacer un champ par sa propre valeur redonne le corps à l'octet près.
 //
 // Fonctions pures, sans dépendance : importées par lib/metier-champs.mjs (qui les réexporte pour le service et le script de l'édition).
 
@@ -25,9 +25,6 @@ export const CHAMPS_DU_CORPS = [
   { colonne: 'equipement_brut', libelle: 'Équipement supplémentaire possible' },
   { colonne: 'avantage_brut', libelle: 'Avantage possible' },
 ];
-
-/** Syntaxe des [[liens]] : la même que WIKILINK_SOURCE de lib/wikilinks.mjs (qui lit des fichiers et ne peut pas être importé ici ; testé). */
-export const SOURCE_DES_LIENS = String.raw`\[\[([^\[\]|]+?)(?:\|([^\[\]]+?))?\]\]`;
 
 /**
  * Une balise du glossaire dont le séparateur vient d'être échappé (« {{id\|texte}} ») : hors d'une ligne de tableau, il s'écrit « | » (forme canonique
@@ -105,29 +102,6 @@ export function champsDuCorps(corps) {
   });
 }
 
-/** Le texte d'un Markdown sans ses [[liens]] : [[Cible|texte]] → texte, [[Cible]] → Cible. */
-export const sansLiens = (md) => String(md ?? '').replace(new RegExp(SOURCE_DES_LIENS, 'g'), (_, cible, texte) => texte ?? cible);
-
-const lettreOuChiffre = /[\p{L}\p{N}]/u;
-
-/**
- * Repose dans `md` (nouvelle valeur, sans lien) les liens d'une ancienne valeur, dans leur ordre : chacun à la première occurrence de son texte qui
- * suit le lien précédent et forme des mots entiers (ni lettre ni chiffre collé de part et d'autre) ; un lien dont le texte n'est plus écrit disparaît.
- */
-function reposerLiens(md, ancien) {
-  let sortie = '';
-  let depuis = 0;
-  for (const m of ancien.matchAll(new RegExp(SOURCE_DES_LIENS, 'g'))) {
-    const texte = m[2] ?? m[1];
-    let i = md.indexOf(texte, depuis);
-    while (i >= 0 && (lettreOuChiffre.test(md[i - 1] ?? '') || lettreOuChiffre.test(md[i + texte.length] ?? ''))) i = md.indexOf(texte, i + 1);
-    if (i < 0) continue;
-    sortie += md.slice(depuis, i) + m[0];
-    depuis = i + texte.length;
-  }
-  return sortie + md.slice(depuis);
-}
-
 const rangDuLibelle = (libelle) => CHAMPS_DU_CORPS.findIndex((c) => c.libelle === libelle);
 
 /** Ajoute un champ absent à sa place dans l'ordre de CHAMPS_DU_CORPS (après le dernier champ qui le précède, sinon avant le premier qui le suit), sinon à la fin. */
@@ -145,8 +119,8 @@ function insererChamp(texte, champs, libelle, nouveau, fin) {
 
 /**
  * Remplace un champ « **Libellé :** valeur » du corps, en entier (tous ses paragraphes, jusqu'au champ suivant ou à la fin), partout où il est écrit ;
- * le reste du corps ne bouge pas, octet pour octet, et les liens [[…]] de l'ancienne valeur dont le texte est encore écrit sont reposés. Un champ absent
- * est ajouté à sa place. `valeur` null, vide ou faite d'espaces : « **Libellé :** » sans valeur.
+ * le reste du corps ne bouge pas, octet pour octet. Un champ absent est ajouté à sa place. `valeur` null, vide ou faite d'espaces : « **Libellé :** »
+ * sans valeur.
  */
 export function remplacerChampDuCorps(corps, libelle, valeur) {
   const texte = String(corps ?? '');
@@ -157,19 +131,16 @@ export function remplacerChampDuCorps(corps, libelle, valeur) {
   const vises = champs.filter((c) => c.libelle === libelle);
   if (!vises.length) return insererChamp(texte, champs, libelle, tete + nouveau, fin);
   let sortie = texte;
-  for (const c of vises.reverse()) {
-    const ancien = texte.slice(c.debut + tete.length, c.fin);
-    sortie = `${sortie.slice(0, c.debut)}${tete}${reposerLiens(nouveau, ancien)}${sortie.slice(c.fin)}`;
-  }
+  for (const c of vises.reverse()) sortie = `${sortie.slice(0, c.debut)}${tete}${nouveau}${sortie.slice(c.fin)}`;
   return sortie;
 }
 
-/** Vrai si le champ est écrit dans le corps et redit `valeur` (liens [[…]] mis à part, fins de ligne comprises) partout où il est écrit. */
+/** Vrai si le champ est écrit dans le corps et redit `valeur` (fins de ligne comprises) partout où il est écrit. */
 export function champAJour(corps, libelle, valeur) {
   const texte = String(corps ?? '');
   const vises = champsDuCorps(texte).filter((c) => c.libelle === libelle);
   const attendu = champDuCorps(libelle, valeur);
-  return vises.length > 0 && vises.every((c) => sansLiens(texte.slice(c.debut, c.fin)).replace(/\r\n?/g, '\n') === attendu);
+  return vises.length > 0 && vises.every((c) => texte.slice(c.debut, c.fin).replace(/\r\n?/g, '\n') === attendu);
 }
 
 /**

@@ -8,18 +8,19 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
 import * as M from '../src/lib/fiche-moteur.mjs';
-import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { corpsDeDon, resumeDeDon } from '../src/lib/corps-classes.mjs';
 import { MOTS_CLES_PROTEGES } from '../src/lib/mots-cles.mjs';
+import { IDS_DES_MOTS_CLES_PROTEGES } from '../src/lib/mots-cles-proteges.mjs';
 import { bonusDeSortsEcrits, ETIQUETTES_DES_SORTS, preparationEcrite } from '../src/lib/sort-bonus-texte.mjs';
 import { valeurAuNm } from '../src/lib/sort-maitrise.mjs';
+import { baseDImport, reglesDImport } from './aide-base-d-import.mjs';
 
-const db = ouvrirBase({ sansExemples: false });
-const regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(db))); // tel que la page le reçoit
+// les règles (textes et valeurs que le site de dev modifie librement) : épinglées sur leur état d'import (test/aide-base-d-import.mjs)
+const db = baseDImport();
+const regles = reglesDImport(); // tel que la page le reçoit
 const lignes = (sql, ...p) => db.prepare(sql).all(...p).map((l) => ({ ...l }));
 const xpDuNiveau = (n) => regles.niveaux.find((l) => l.niveau === n).xp_min;
 const POSTURE = (slug) => `guide/postures#posture:${slug}`;
@@ -37,21 +38,28 @@ const PARDON = { nom: 'Pardon ?!? (Grenadier)', valeur: 11 };
 // ------------------------------------------------------------------ R114 : les sorts grenades
 
 test('R114 : « Sort grenade » étiquette les 14 sorts « Grenade… » (sort_mot_cle), emportés dans regles.json ; le mot-clé est protégé ; aucun autre sort n’a cette étiquette', () => {
-  const etiquetes = lignes("SELECT sort_id FROM sort_mot_cle WHERE mot_cle_id = 'sort-grenade' ORDER BY sort_id").map((l) => l.sort_id);
+  // le mot-clé par son id entier (migration 0113 : lib/mots-cles-proteges.mjs), la fiche par son nom
+  const etiquetes = lignes('SELECT sort_id FROM sort_mot_cle WHERE mot_cle_id = ? ORDER BY sort_id', IDS_DES_MOTS_CLES_PROTEGES['sort-grenade']).map((l) => l.sort_id);
   assert.equal(etiquetes.length, 14);
   assert.equal(new Set(etiquetes.map((id) => sortDe(id).magie_id)).size, 14, 'un dans chaque magie');
   assert.ok(etiquetes.every((id) => /^Grenade /i.test(sortDe(id).nom)), 'les sorts « Grenade… » de la décision');
   // les sorts « Fer… » portent une autre étiquette, « Sort fer » (décision R164, migration 0079 : test/sorts-fer.test.mjs)
   assert.deepEqual(regles.sorts.filter((s) => s.mots_cles?.includes('sort-grenade')).map((s) => s.id).sort(), etiquetes);
   for (const id of etiquetes) assert.deepEqual(sortDe(id).mots_cles, ['sort-grenade'], id);
-  assert.deepEqual(regles.sorts.filter((s) => s.mots_cles && !s.mots_cles.includes('sort-grenade')).map((s) => s.mots_cles), Array(13).fill(['sort-fer']));
+  // (R164, R237 (2) : Fer brillant de l'Arcane compris ; comptés par l'étiquette, sans effectif figé)
+  const fers = regles.sorts.filter((s) => s.mots_cles && !s.mots_cles.includes('sort-grenade'));
+  assert.ok(fers.length > 0);
+  for (const s of fers) assert.deepEqual(s.mots_cles, ['sort-fer'], s.id);
+  assert.deepEqual(fers.map((s) => s.id).sort(), regles.sorts.filter((s) => s.mots_cles?.includes('sort-fer')).map((s) => s.id).sort());
   // chaque id lu par la fiche (lib/sort-bonus-texte.mjs) est celui d'un mot-clé protégé de la base (lib/mots-cles.mjs, qui ne l'importe pas) : « Sort
   // grenade » (R114), puis « Sort fer » (décision R164 : test/fiche-sorts-fer.test.mjs), et aucun autre
   const LIBELLES = { 'sort-grenade': 'Sort grenade', 'sort-fer': 'Sort fer' };
   assert.deepEqual(ETIQUETTES_DES_SORTS.map(([id]) => id), Object.keys(LIBELLES));
   for (const [id] of ETIQUETTES_DES_SORTS) {
-    assert.ok(MOTS_CLES_PROTEGES.has(id), `${id} : protégé`);
-    assert.deepEqual(lignes('SELECT id, libelle, libelle_cle FROM mot_cle WHERE id = ?', id), [{ id, libelle: LIBELLES[id], libelle_cle: id }]);
+    const numero = IDS_DES_MOTS_CLES_PROTEGES[id];
+    assert.ok(MOTS_CLES_PROTEGES.has(numero), `${id} : protégé`);
+    // verrouillé (R219 (2)) : son libellé ne se modifie pas sur le site
+    assert.deepEqual(lignes('SELECT id, libelle, cle, verrou FROM mot_cle WHERE id = ?', numero), [{ id: numero, libelle: LIBELLES[id], cle: id, verrou: 1 }]);
   }
 });
 
@@ -106,7 +114,7 @@ test('R114 : le Grenadier de niveau de classe 20 ajoute +11 aux dégâts des sor
 // ------------------------------------------------------------------ R115 : le sort préparé
 
 test('R115 : seuls « Préparation » (Mage Rouge) et « Chargement » (Mage Vert) permettent de préparer un sort — un sort d’attaque de NPM 1 ou 2 (lus sur toute la base)', () => {
-  const lus = lignes('SELECT id, effet FROM capacite WHERE effet IS NOT NULL').map((d) => [d.id, preparationEcrite(d.effet)]).filter(([, p]) => p);
+  const lus = lignes('SELECT id, effet FROM capacite WHERE effet IS NOT NULL ORDER BY id').map((d) => [d.id, preparationEcrite(d.effet)]).filter(([, p]) => p);
   assert.deepEqual(lus, [
     ['capacites/mage-rouge-preparation', { types: ['attaque'], niveaux: [1, 2] }],
     ['capacites/mage-vert-chargement', { types: ['attaque'], niveaux: [1, 2] }],
@@ -132,7 +140,7 @@ function mage(niveau, sorts, x = {}) {
   return {
     ...ficheVide('Ignis'), race_id: 'races/humain', magie_innee_id: 'magies/magie-du-feu', xp: xpDuNiveau(niveau),
     classes: [{ rang: 1, classe_id: 'classes/mage-rouge', specialite_id: 'classes/mage-rouge#specialite:mage-rubis' }],
-    sorts: sorts.map((sort_id, i) => ({ sort_id, rang: i + 1, niveau_maitrise: 0, nm_livre: 0 })),
+    sorts: sorts.map((sort_id, i) => ({ sort_id, rang: i + 1, niveau_maitrise: 0 })),
     ...x,
   };
 }
@@ -157,7 +165,8 @@ test('R115 : le don débloqué propose les sorts de la fiche qu’il autorise ; 
     [ATTAQUE_1, 0, null, null], [ATTAQUE_2, 1, null, POSTURE('offensif')], [ATTAQUE_3, 0, null, null], [AUTRE_1, 0, null, null],
   ]);
   // le jet de magie : un D100 (regles.sort_prepare, la décision), borné ; vide, effacé
-  assert.deepEqual([regles.sort_prepare, M.jetDuSortPrepare(regles)], [{ jet_min: 1, jet_max: 100 }, { min: 1, max: 100 }]);
+  // (la compétence de la plage de critique figée, décision R182 (4) : test/fiche-critique-sort-prepare.test.mjs)
+  assert.deepEqual([regles.sort_prepare, M.jetDuSortPrepare(regles)], [{ jet_min: 1, jet_max: 100, competence_id: 'concentration' }, { min: 1, max: 100 }]);
   for (const [saisie, jet] of [['57', 57], ['0', 1], ['140', 100], ['', null], ['abc', null]]) {
     assert.equal(M.sortsApresLeJet(regles, { ...f, sorts }, saisie)[1].prepare_jet, jet, saisie);
   }
@@ -224,16 +233,20 @@ test('R135 : en Symbiose d’une autre magie que la sienne, le sort préparé es
   assert.match(rafraichir, /fiche\.sorts = sortsApresLaSymbiose\(regles, fiche\);/);
 });
 
-test('R115 : changer le sort d’un emplacement (sortsApresChoixDEmplacement) : le nouveau sort à 0 NM, sans livre ni la préparation de l’ancien ; vider retire la ligne ; un emplacement libre en ajoute une', () => {
+test('R115, R169 : changer le sort d’un emplacement (sortsApresChoixDEmplacement) : le nouveau sort à 0 NM (1 avec son livre), sans la préparation de l’ancien, dont le livre reste ; vider retire la ligne ; un emplacement libre en ajoute une', () => {
   const f = mage(3, [ATTAQUE_1, ATTAQUE_2]);
-  const avant = { ...f, sorts: M.sortsApresPreparation(regles, { ...f, posture_id: POSTURE('focus') }, ATTAQUE_1).map((s, i) => (i === 0 ? { ...s, prepare_jet: 40, niveau_maitrise: 2, nm_livre: 1 } : s)) };
+  const avant = { ...f, livres_sorts: [{ sort_id: ATTAQUE_1, rang: 1 }],
+    sorts: M.sortsApresPreparation(regles, { ...f, posture_id: POSTURE('focus') }, ATTAQUE_1).map((s, i) => (i === 0 ? { ...s, prepare_jet: 40, niveau_maitrise: 2 } : s)) };
   const gele = structuredClone(avant);
   assert.deepEqual(M.sortsApresChoixDEmplacement(avant, 0, AUTRE_1)[0],
-    { sort_id: AUTRE_1, rang: 1, niveau_maitrise: 0, nm_livre: 0, prepare: 0, prepare_jet: null, prepare_posture_id: null });
+    { sort_id: AUTRE_1, rang: 1, niveau_maitrise: 0, prepare: 0, prepare_jet: null, prepare_posture_id: null, prepare_hyper: 0, prepare_cent: 0, prepare_critique: null });
   assert.equal(M.sortPrepare(regles, avant).sort.id, ATTAQUE_1);
   assert.equal(M.sortPrepare(regles, { ...avant, sorts: M.sortsApresChoixDEmplacement(avant, 0, AUTRE_1) }), null, 'plus de sort préparé');
   assert.deepEqual(M.sortsApresChoixDEmplacement(avant, 0, null).map((s) => s.sort_id), [ATTAQUE_2]);
-  assert.deepEqual(M.sortsApresChoixDEmplacement(avant, 2, ATTAQUE_3).at(-1), { sort_id: ATTAQUE_3, rang: 3, niveau_maitrise: 0, nm_livre: 0 });
+  assert.deepEqual(M.sortsApresChoixDEmplacement(avant, 2, ATTAQUE_3).at(-1), { sort_id: ATTAQUE_3, rang: 3, niveau_maitrise: 0 });
+  // R169 : le sort qui a son livre reprend son emplacement à 1 NM (« Une fois le sort repris, le NM est automatiquement réactivé ») ; le livre est resté
+  assert.deepEqual(M.sortsApresChoixDEmplacement({ ...avant, sorts: M.sortsApresChoixDEmplacement(avant, 0, null) }, 1, ATTAQUE_1).at(-1),
+    { sort_id: ATTAQUE_1, rang: 2, niveau_maitrise: 1 });
   // l'autre ligne garde la sienne (rien de préparé, mais son objet n'est pas recréé) ; la fiche n'est pas touchée
   assert.equal(M.sortsApresChoixDEmplacement(avant, 0, AUTRE_1)[1], avant.sorts[1]);
   assert.deepEqual(avant, gele);

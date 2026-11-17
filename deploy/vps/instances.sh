@@ -5,7 +5,7 @@
 # Ce que fait le script (sûr à relancer, il ne touche ni au site, ni à db/, ni aux métriques déjà écrites) :
 #   /srv/maverick-center        serveur normal : .env (port 127.0.0.1:8080, MAVERICK_INSTANCE=prod, MAVERICK_DOSSIER_METRIQUES=<normal>/metriques),
 #                               .htpasswd, maintenance/ (annonce de maintenance des deux serveurs), metriques/ (prod.db et dev.db, une base par instance)
-#   /srv/maverick-center-test   serveur de test : .env (port 127.0.0.1:8081, MAVERICK_BASE_TEST=conservee, MAVERICK_EDITION=1,
+#   /srv/maverick-center-test   serveur de test : .env (port 127.0.0.1:8081, MAVERICK_BASE_TEST=conservee (sans effet, voir plus bas), MAVERICK_EDITION=1,
 #                               MAVERICK_ADRESSE_PUBLIQUE=https://dev.<domaine>, MAVERICK_DOSSIER_MAINTENANCE=<normal>/maintenance,
 #                               MAVERICK_INSTANCE=dev, MAVERICK_DOSSIER_METRIQUES=<normal>/metriques), .htpasswd, secrets/ (jeton de la page Mise à jour)
 #   /etc/caddy/maverick.env     mot de passe interne de chaque instance (droits 600) ; /etc/caddy/Caddyfile : deploy/vps/Caddyfile
@@ -57,8 +57,8 @@ preparer() {
 
 preparer "$NORMAL" maverick-center 8080
 preparer "$TEST" maverick-center-test 8081
-# Serveur de test : la base de test est copiée de la production à la première installation, puis gardée (décision du propriétaire :
-# on y modifie les règles, une mise à jour du site ne doit pas effacer ces modifications).
+# Serveur de test : l'installateur ne vide ni ne remplace jamais db/ (R274 : la base du site de dev fait foi, on y modifie les règles). Cette ligne n'a
+# plus d'effet sur lui ; elle reste posée parce qu'un installateur plus ancien, lancé à la main, la respecte encore et laisse alors db/ en place.
 poser "$TEST/.env" MAVERICK_BASE_TEST conservee
 # Serveur de test : les règles s'y modifient depuis les pages (crayon, docs/serveur.md, « Édition » ; demande du propriétaire : le site de dev seulement).
 poser "$TEST/.env" MAVERICK_EDITION 1
@@ -74,7 +74,7 @@ poser "$TEST/.env" MAVERICK_DOSSIER_MAINTENANCE "$NORMAL/maintenance"
 # Métriques (docs/serveur.md, « Métriques et volume ») : un dossier PARTAGÉ, sur le modèle de celui de la maintenance, monté dans le conteneur
 # « serveur » des deux instances (docker-compose.yml) ; chacune n'y écrit QUE sa base (prod.db, dev.db : deux jeux de données séparés, décision du
 # propriétaire du 2026-10-15), et le site de dev y lit aussi celle de la production pour la page Debug. Hors de db/ : l'installateur de test, qui
-# remplace le contenu de db/, ne les copie ni ne les efface. Le service tourne en root dans son conteneur (node:22-alpine, pas de « user: ») :
+# peut y copier la base de la production sur demande, ne les copie ni ne les efface. Le service tourne en root dans son conteneur (node:22-alpine, pas de « user: ») :
 # root:root 755 lui suffit, comme pour db/.
 mkdir -p "$NORMAL/metriques"
 chmod 755 "$NORMAL/metriques"
@@ -82,6 +82,9 @@ poser "$NORMAL/.env" MAVERICK_INSTANCE prod
 poser "$TEST/.env" MAVERICK_INSTANCE dev
 poser "$NORMAL/.env" MAVERICK_DOSSIER_METRIQUES "$NORMAL/metriques"
 poser "$TEST/.env" MAVERICK_DOSSIER_METRIQUES "$NORMAL/metriques"
+# Contenu de la production (docs/serveur.md, « Mise à jour (site de dev) ») : le serveur de test monte le site du serveur normal en lecture seule
+# (docker-compose.yml) pour comparer ses règles à ce que la production publie.
+poser "$TEST/.env" MAVERICK_DOSSIER_PRODUCTION "$NORMAL/site"
 
 mkdir -p "$ETC_CADDY"
 if [ "$REGENERER" -eq 1 ] || [ ! -f "$ENV_CADDY" ] || [ ! -f "$NORMAL/.htpasswd" ] || [ ! -f "$TEST/.htpasswd" ]; then

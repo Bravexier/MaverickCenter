@@ -9,7 +9,7 @@ import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { rejouerLeJournal } from '../serveur/edition.mjs';
 import { chargerJournal, journalExporte } from '../serveur/edition-journal.mjs';
-import { analyserEffetDArme, totalDesAmeliorations } from '../src/lib/arme-champs.mjs';
+import { analyserEffetDArme, prixEnRf as prixEnRfDArme, totalDesAmeliorations } from '../src/lib/arme-champs.mjs';
 import { ligneDAmelioration, ligneDArme, ligneDeMateriau, ligneDeRemarque, ligneDuTotal, PAGE_DES_ARMES, PAGES_DES_MATERIAUX } from '../src/lib/corps-armes.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
@@ -121,6 +121,44 @@ test('matériau : ses effets (modifiés depuis la page « Composants », R62) re
   assert.ok(corps().split('\n').includes(ligneDeMateriau(nom, apres)));
 });
 
+test('matériau (R62, R49) : seul un prix changé de la ressource se recopie dans materiau_arme ; une autre colonne (description) n’y touche pas ; le prix se lit avec l’espace des milliers', () => {
+  // une base à part : on y pose un prix de l'onglet Armes qui diffère de celui de la ressource (le cas des RF d'un zéro oublié dans la source)
+  const base = vivante();
+  const envoyer = (operations) => traiter({ methode: 'POST', chemin: '/api/edition/', entetes: { 'content-type': 'application/json' },
+    corps: JSON.stringify({ page: 'ressources/composants/', operations }) }, { base: () => base, etat: () => ({}), edition: true });
+  try {
+    const id = base.prepare("SELECT r.id FROM ressource r JOIN materiau_arme m ON m.ressource_id = r.id WHERE r.id LIKE '%:cuivre'").get().id;
+    const ressource = base.prepare('SELECT * FROM ressource WHERE id = ?').get(id);
+    const propre = `${ressource.prix_brut ?? ''} (onglet Armes)`;
+    const ancienne = { ...base.prepare('SELECT * FROM materiau_arme WHERE ressource_id = ?').get(id) };
+    base.prepare('UPDATE materiau_arme SET prix_brut = ?, prix_rf = ? WHERE ressource_id = ?').run(propre, prixEnRfDArme(propre), id);
+    const avant = { ...base.prepare('SELECT * FROM materiau_arme WHERE ressource_id = ?').get(id) };
+    // sa ligne du corps de la page des armes, comme le service l'écrirait
+    const page = corps(base);
+    assert.ok(page.split('\n').includes(ligneDeMateriau(ressource.nom, ancienne)));
+    base.prepare('UPDATE page SET corps_md = ? WHERE id = ?').run(page.replace(ligneDeMateriau(ressource.nom, ancienne), ligneDeMateriau(ressource.nom, avant)), PAGE_DES_ARMES);
+    const notees = () => base.prepare("SELECT count(*) AS n FROM modification WHERE table_nom = 'materiau_arme'").get().n;
+    const n0 = notees();
+    // la description seule (mutation de la prose) : materiau_arme ne bouge pas, rien n'est noté pour lui
+    const r = envoyer([{ op: 'modifier', table: 'ressource', cle: { id }, valeurs: { description: `${ressource.description ?? ''} Essai.` } }]);
+    assert.equal(r.statut, 200, JSON.stringify(r.corps));
+    assert.deepEqual({ ...base.prepare('SELECT * FROM materiau_arme WHERE ressource_id = ?').get(id) }, avant);
+    assert.equal(notees(), n0);
+    // le prix changé (espace des milliers insécable, puis fine insécable) : recopié, et lu de la même façon par les deux modules
+    for (const prix of ['2 500 RF / 25 RO', '3 000 RF / 30 RO']) {
+      const p = envoyer([{ op: 'modifier', table: 'ressource', cle: { id }, valeurs: { prix_brut: prix } }]);
+      assert.equal(p.statut, 200, JSON.stringify(p.corps));
+      const m = base.prepare('SELECT * FROM materiau_arme WHERE ressource_id = ?').get(id);
+      const rf = base.prepare('SELECT prix_rf FROM ressource WHERE id = ?').get(id).prix_rf;
+      assert.deepEqual([m.prix_brut, m.prix_rf, prixEnRfDArme(m.prix_brut)], [prix, rf, rf], prix);
+      assert.ok(rf >= 1000, `${prix} : ${rf}`);
+      assert.ok(corps(base).split('\n').includes(ligneDeMateriau(ressource.nom, m)), `${prix} : la ligne du corps suit`);
+    }
+  } finally {
+    base.close();
+  }
+});
+
 test('amélioration d’arme : coût et effet refont RO, matériaux, bonus et crans, et la ligne TOTAL ; le coût élémentaire de la ligne (R167) reste ; celle d’une armure élémentaire est refusée', () => {
   const avant = ligne("SELECT * FROM amelioration_equipement WHERE cible = 'arme' AND niveau = 3");
   const r = enregistrer([{ op: 'modifier', table: 'amelioration_equipement', cle: { id: avant.id }, valeurs: { cout_brut: '1 Matériel + 120 RO', effet_brut: '+7 dégâts, +1 cran de solidité' } }]);
@@ -180,7 +218,8 @@ test('matériau renommé (même ressource que les armures et les boucliers) : le
   const pages = Object.fromEntries(PAGES_DES_MATERIAUX.map((id) => [id, corps(db, id)]));
   const r = enregistrer([{ op: 'modifier', table: 'ressource', cle: { id: avant.id }, valeurs: { nom } }]);
   assert.equal(r.statut, 200, JSON.stringify(r.corps));
-  assert.equal(ligne('SELECT nom_cle FROM ressource WHERE id = ?', avant.id).nom_cle.startsWith('fer-noir-essai'), true, 'clé du nom recalculée');
+  const cle = ligne('SELECT nom_cle FROM ressource WHERE id = ?', avant.id).nom_cle;
+  assert.equal(cle.startsWith(`${avant.nom_cle}-essai-`), true, `clé du nom recalculée : ${cle}`);
   const m = ligne('SELECT * FROM materiau_arme WHERE ressource_id = ?', avant.id);
   assert.ok(corps().split('\n').includes(ligneDeMateriau(nom, m)), 'ligne du tableau des matériaux');
   for (const id of PAGES_DES_MATERIAUX) {
@@ -242,7 +281,9 @@ test('arme supprimée : retirée des fiches qui l’ont, avec une note datée (d
   assert.equal(ligne('SELECT count(*) AS n FROM personnage_arme WHERE personnage_id = ?', fiche).n, 0, 'l’arme a quitté la fiche');
   const notes = ligne('SELECT notes FROM personnage WHERE id = ?', fiche).notes;
   assert.ok(notes.startsWith('Notes du joueur.\n'), 'le texte du joueur reste');
-  assert.match(notes, new RegExp(`l’arme « ${nom} » \\(ÉPÉES, arme 1\\) n’existe plus dans les règles`));
+  // la famille nommée comme la base la nomme (le site de dev peut la renommer)
+  const nomDeFamille = ligne('SELECT nom FROM arme_famille WHERE id = ?', famille).nom;
+  assert.ok(notes.includes(`l’arme « ${nom} » (${nomDeFamille}, arme 1) n’existe plus dans les règles`), notes);
   assert.ok(r.corps.fiches.some((f) => f.fiche === `Témoin ${process.pid}`), 'la fiche est annoncée');
   // une arme de monstre ne se supprime pas ici
   const monstre = ligne("SELECT a.id FROM arme a JOIN arme_famille f ON f.id = a.famille_id WHERE f.maitrisable = 0 LIMIT 1");
@@ -483,4 +524,51 @@ test('rejeu du journal (livraison) : les mêmes lignes et le même corps de page
     assert.deepEqual(neuve.prepare(`SELECT * FROM ${t} ORDER BY 1, 2`).all(), db.prepare(`SELECT * FROM ${t} ORDER BY 1, 2`).all(), t);
   }
   neuve.close();
+});
+
+test('R194 : une arme a toujours au moins 1 cran propre — création et modification refusées à « 0 seul cran » et pour un delta qui mène à 0 (API v1 comprise, 400), acceptées à 1 ; au rejeu, en conflit', () => {
+  const base = ligne("SELECT valeur FROM constante_equipement WHERE id = 'arme.solidite_base'").valeur;
+  const vers = (n) => `${n - base} cran${Math.abs(n - base) > 1 ? 's' : ''} de solidité`; // un delta qui mène à n crans propres
+  const arme = armeDeLaPage();
+  const modifier = (effet) => enregistrer([{ op: 'modifier', table: 'arme', cle: { id: arme.id }, valeurs: { effet } }]);
+  for (const effet of ['Dégâts taille, 0 seul cran de solidité', `Dégâts taille, ${vers(0)}`]) {
+    const r = modifier(effet);
+    assert.equal(r.statut, 400, `${effet} : ${JSON.stringify(r.corps)}`);
+    assert.match(r.corps.erreur, /au moins 1 cran propre \(décision R194\)/);
+  }
+  assert.equal(ligne('SELECT effet FROM arme WHERE id = ?', arme.id).effet, arme.effet, 'rien n’est écrit');
+  const v1 = appel('PATCH', `/api/v1/armes/${encodeURIComponent(arme.id)}/`, { effet: 'Dégâts taille, 0 seul cran de solidité' });
+  assert.equal(v1.statut, 400, JSON.stringify(v1.corps));
+  // à 1 cran : accepté (le delta de « -1 cran » sur la base de 2, ou « 1 seul cran »)
+  for (const effet of [`Dégâts taille, ${vers(1)}`, 'Dégâts taille, 1 seul cran de solidité']) assert.equal(modifier(effet).statut, 200, effet);
+  const famille = arme.famille_id;
+  const creer = (nom, effet) => enregistrer([{ op: 'creer', entite: 'arme', valeurs: { famille_id: famille, nom: nomLibre(famille, nom), competence_brut: 'Arme Légère', type_id: 'dague', effet, depart_possible: '0' } }]);
+  assert.equal(creer('Lame sans cran', 'Dégâts estoc, 0 seul cran de solidité').statut, 400);
+  assert.equal(creer('Lame d’un cran', 'Dégâts estoc, 1 seul cran de solidité').statut, 200);
+
+  // rejeu : un lot noté avant (le service l'aurait refusé depuis) qui met une arme à 0 est en conflit, rien n'en est écrit
+  const neuve = vivante();
+  try {
+    const cible = neuve.prepare('SELECT * FROM arme WHERE id = ?').get(arme.id);
+    const effet = 'Dégâts taille, 0 seul cran de solidité';
+    const journal = { format: 'maverick-edition/1', lots: [{ id: 'essai-r194', fait_le: '2026-11-07T12:00:00Z', page_id: 'ressources/armes/', resume: 'Arme à 0 cran', modifications: [
+      { rang: 1, table: 'arme', cle: { id: arme.id }, operation: 'modifier', avant: { effet: cible.effet, solidite_fixee: cible.solidite_fixee }, apres: { effet, solidite_fixee: 0 } },
+    ] }] };
+    neuve.exec('PRAGMA foreign_keys = OFF');
+    neuve.exec('BEGIN');
+    chargerJournal(neuve, journal);
+    const bilan = rejouerLeJournal(neuve);
+    neuve.exec('COMMIT');
+    assert.equal(bilan.conflits, 1, JSON.stringify(bilan));
+    assert.equal(neuve.prepare('SELECT effet FROM arme WHERE id = ?').get(arme.id).effet, cible.effet);
+    assert.match(neuve.prepare("SELECT detail FROM modification WHERE lot_id = 'essai-r194'").get()?.detail ?? '', /R194/);
+  } finally {
+    neuve.close();
+  }
+});
+
+test('R194, aujourd’hui : chaque arme de la base a au moins 1 cran propre (sans plancher)', () => {
+  const base = ligne("SELECT valeur FROM constante_equipement WHERE id = 'arme.solidite_base'").valeur;
+  const sous = lignes('SELECT id, solidite_fixee, solidite_delta FROM arme').filter((a) => (a.solidite_fixee ?? base + (a.solidite_delta ?? 0)) < 1);
+  assert.deepEqual(sous, []);
 });

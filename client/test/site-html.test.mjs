@@ -8,18 +8,53 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
-import { htmlAvecMotsCles, pageAvecMotsCles } from '../src/lib/mots-cles-balises.mjs';
+import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { morceauxDuChapitre } from '../src/lib/guide.mjs';
+import { htmlAvecMotsCles, htmlDeLIcone, lireBalises, pageAvecMotsCles } from '../src/lib/mots-cles-balises.mjs';
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
+import { classeDuMotCle } from '../src/lib/mots-cles-liens.mjs';
+import { cssDesMotsClesDuSite } from '../src/lib/couleur-de-la-page.mjs';
 import { trierVersions } from '../src/lib/notes-de-version.mjs';
-import { ADRESSES_DU_PLAN_PRECEDENT, ANCRES_DES_PAGES_ABSORBEES, PAGES_ABSORBEES, PAR_OU_COMMENCER, partieDeLaPage } from '../src/lib/livres.mjs';
+import {
+  ADRESSES_DU_PLAN_PRECEDENT, ANCRES_DES_PAGES_ABSORBEES, PAGES_ABSORBEES, PAGES_DE_LA_CREATION, PAGES_ECLATEES_DU_GUIDE, pageDuGuideALAdresse, pagesEclateesDuGuide, PAGES_RETIREES, PAGES_SUPPRIMEES, PAR_OU_COMMENCER, partieDeLaPage,
+} from '../src/lib/livres.mjs';
 import { cheminDePage } from '../src/lib/metiers.mjs';
 import { classeDePartie, classesDeLaPalette, cssDeLaPalette, cssDesFamilles } from '../src/lib/palette-css.mjs';
 import { cssDesAttributs } from '../src/lib/attributs-couleurs.mjs';
 import { htmlDeLaNote } from '../src/lib/notes-de-version-rendu.mjs';
+import { htmlAvecMonnaies, MONNAIES_DU_JEU } from '../src/lib/monnaies.mjs';
+import { rendreCommeLeGuide } from './aide-rendu-du-site.mjs';
+import { idDuMotCleNomme } from './aide-mots-cles.mjs';
 
 const dist =fileURLToPath(new URL('../dist/', import.meta.url));
 const present = existsSync(join(dist, 'index.html'));
 const options = present ? {} : { skip: 'site non construit (npm run build)' };
+
+/**
+ * Les ids des intertitres que la page du guide `id` tire de son texte courant, calculés comme au build : le texte coupé à ses blocs
+ * (lib/guide.mjs#morceauxDuChapitre, comme components/guide/PageDuGuide.astro), chaque morceau rendu par le processeur du site
+ * (test/aide-rendu-du-site.mjs#rendreCommeLeGuide : l'id vient du texte affiché de l'intertitre, lien, emphase ou monnaie compris). Une page absente de la
+ * base échoue (jamais une liste vide qui ferait passer le contrôle sans rien vérifier).
+ */
+async function intertitresRendus(id) {
+  const ligne = id ? ouvrirBase().prepare('SELECT corps_md FROM page WHERE id = ?').get(id) : undefined;
+  assert.ok(ligne, `${id} : la page du guide visée par le renvoi, dans la base`);
+  const ids = [];
+  for (const m of morceauxDuChapitre(ligne.corps_md ?? '')) {
+    if ('markdown' in m) ids.push(...[...(await rendreCommeLeGuide(m.markdown)).matchAll(/<h[2-6] id="([^"]+)"/g)].map((x) => x[1]));
+  }
+  return ids;
+}
+/**
+ * L'ancre `ancre` d'un renvoi vers la page construite `rel` (page du guide `id`) : un intertitre de la page porte cet id si et seulement si le texte
+ * courant de la page a cet intertitre (le site de dev renomme et retire les intertitres : leur existence se contrôle sur l'état d'import,
+ * test/livres.test.mjs). Toujours une assertion, jamais un saut.
+ */
+async function verifierLAncre(rel, id, ancre, quoi) {
+  const echappee = ancre.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const dansLaPage = new RegExp(`<h[2-6] id="${echappee}"`).test(lire(rel));
+  assert.equal(dansLaPage, (await intertitresRendus(id)).includes(ancre), `${quoi} : #${ancre} sur /${rel} si et seulement si le texte courant de ${id} a cet intertitre`);
+}
 
 const walk = (dir) => readdirSync(dir).flatMap((name) => (statSync(join(dir, name)).isDirectory() ? walk(join(dir, name)) : [join(dir, name)]));
 const lire = (rel) => readFileSync(join(dist, rel), 'utf8');
@@ -43,38 +78,96 @@ test('plus rien sous /guide/ (éclatement du guide, 2026-10-18) : ni page, ni li
     .filter((f) => /(?:href|action|src)="\/guide\/|"path":"guide\//.test(readFileSync(f, 'utf8')));
   assert.deepEqual(avecGuide.map((f) => relative(dist, f)), [], 'aucun lien vers /guide/');
   const guide = JSON.parse(lire('search-index.json')).filter((e) => e.type === 'Guide');
-  assert.ok(guide.length > 50 && guide.every((e) => /^(?:decouvrir|regles|mj)\//.test(e.path)), 'les pages du guide à leurs nouvelles adresses');
+  // une entrée par page du guide de la base (le site de dev en crée et en supprime : le nombre suit la base, pas un seuil) ; une page d'exemple ne
+  // compte que si elle est construite (le build de la CI tourne avec HIDE_EXAMPLES=1, que `node --test` ne reçoit pas)
+  const duGuide = ouvrirBase({ sansExemples: false }).prepare("SELECT id, statut FROM page WHERE type = 'guide'").all()
+    .filter((p) => p.statut !== 'example' || existsSync(join(dist, cheminDePage(p.id), 'index.html')));
+  assert.ok(guide.length > 0 && guide.length === duGuide.length, `${guide.length} pages du guide dans l’index, ${duGuide.length} dans la base`);
+  assert.ok(guide.every((e) => /^(?:decouvrir|regles|mj)\//.test(e.path)), 'les pages du guide à leurs nouvelles adresses');
 });
 
-test('la page 404 renvoie les anciennes adresses /wiki/… vers les nouvelles', options, () => {
+test('la page 404 renvoie les anciennes adresses /wiki/… vers les nouvelles', options, async () => {
   const html = lire('404.html');
-  assert.match(html, /<p id="introuvable" data-base="\/" data-renvois="[^"]*">/);
+  assert.match(html, /<p id="introuvable" data-base="\/" data-renvois="[^"]*" data-eclatees="[^"]*">/);
   assert.match(html, /location\.replace/);
-  // les anciennes adresses du guide (/guide/, /guide/<slug>/) : une par page du guide de l'index de la recherche, vers sa nouvelle adresse ; puis, pour
-  // chaque page fusionnée dans une autre (refonte du 2026-10-18), /guide/<slug>/ et /decouvrir/<slug>/, et les adresses du plan précédent qui ont changé
-  const attribut = html.match(/data-renvois="([^"]*)"/)[1].replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
-  const renvois = JSON.parse(attribut);
+  // les anciennes adresses du guide (/guide/, /guide/<slug>/) : une par page du guide de l'index de la recherche, vers sa nouvelle adresse ; puis
+  // /guide/<slug>/ de chaque page fusionnée dans une autre, les adresses des plans précédents (dont /decouvrir/<étape>/ et /regles/avancees/<slug>/,
+  // R184) et celles du Lexique
+  const decoder = (nom) => JSON.parse(html.match(new RegExp(`data-${nom}="([^"]*)"`))[1].replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&'));
+  const renvois = decoder('renvois');
   assert.equal(renvois['guide/'], 'decouvrir/');
   const guide = JSON.parse(lire('search-index.json')).filter((e) => e.type === 'Guide');
   for (const e of guide) {
     const slug = Object.keys(renvois).find((k) => renvois[k] === e.path);
     assert.ok(slug && slug.startsWith('guide/'), `${e.path} : renvoi absent`);
   }
-  assert.equal(Object.keys(renvois).length, guide.length + 1 + 2 * Object.keys(PAGES_ABSORBEES).length + Object.keys(ADRESSES_DU_PLAN_PRECEDENT).length);
+  const adressesRetirees = Object.values(PAGES_RETIREES).flatMap((p) => p.adresses);
+  // une adresse des plans précédents n'est renvoyée que si sa page (ou celle qui l'absorbe) est construite : sans les pages d'exemple
+  // (HIDE_EXAMPLES=1, build de la CI), /regles/avancees/utiliser-ce-wiki/ (la fixture) ne l'est pas
+  const construite = (id) => existsSync(join(dist, cheminDePage(PAGES_ABSORBEES[id] ?? id), 'index.html'));
+  const precedentes = Object.entries(ADRESSES_DU_PLAN_PRECEDENT).filter(([, id]) => construite(id)).length;
+  assert.equal(Object.keys(renvois).length, guide.length + 1 + Object.keys(PAGES_ABSORBEES).length + precedentes + adressesRetirees.length);
+  for (const [adresse, id] of Object.entries(ADRESSES_DU_PLAN_PRECEDENT)) assert.equal(Object.hasOwn(renvois, adresse), construite(id), `${adresse} : renvoyée si et seulement si ${id} est construite`);
+  // le Lexique, devenu des mots-clés (migration 0090, « Supprime la page lexique. ») : ses adresses menaient à /recherche/ (« Rediriger vers
+  // /recherche/ »), elles mènent au Glossaire depuis qu'il a sa page (réponses du propriétaire du 2026-11-06)
+  assert.equal(renvois['regles/lexique/'], 'regles/glossaire/');
+  assert.equal(renvois['guide/lexique/'], 'regles/glossaire/');
+  assert.ok(!existsSync(join(dist, 'regles', 'lexique')), '/regles/lexique/ n’est plus construite');
   for (const ancienne of Object.keys(PAGES_ABSORBEES)) {
     const slug = ancienne.slice('guide/'.length);
-    assert.equal(renvois[`decouvrir/${slug}/`], renvois[`${ancienne}/`], `${ancienne} : ses deux anciennes adresses mènent au même endroit`);
-    // … à l'intertitre de la page qui l'absorbe où se lit son contenu
+    // chaque ancienne adresse du plan précédent de la page (/decouvrir/le-jeu-de-role/, /regles/avancees/resistance-faiblesse-magie/) mène au même endroit
+    for (const [adresse, id] of Object.entries(ADRESSES_DU_PLAN_PRECEDENT)) {
+      if (id === ancienne) assert.equal(renvois[adresse], renvois[`${ancienne}/`], `${ancienne} : ${adresse} et /guide/${slug}/ mènent au même endroit`);
+    }
+    // … à la page qui l'absorbe, à l'intertitre où se lit son contenu s'il est nommé (ANCRES_DES_PAGES_ABSORBEES)
     const [chemin, ancre] = renvois[`${ancienne}/`].split('#');
+    assert.equal(chemin, cheminDePage(PAGES_ABSORBEES[ancienne]), ancienne);
     assert.equal(ancre, ANCRES_DES_PAGES_ABSORBEES[ancienne], ancienne);
-    assert.match(lire(join(chemin, 'index.html')), new RegExp(`<h[2-6] id="${ancre}"`), `${ancienne} : #${ancre} absent de /${chemin}`);
-    assert.ok(!existsSync(join(dist, 'decouvrir', slug)), `${ancienne} : plus construite`);
+    // la page construite ; l'intertitre visé y porte son id tant que le texte courant de la page l'a (verifierLAncre)
+    assert.ok(existsSync(join(dist, chemin, 'index.html')), `${ancienne} : /${chemin} construite`);
+    if (ancre) await verifierLAncre(join(chemin, 'index.html'), PAGES_ABSORBEES[ancienne], ancre, ancienne);
+    for (const dossier of ['decouvrir', 'regles', join('regles', 'avancees')]) assert.ok(!existsSync(join(dist, dossier, slug)), `${ancienne} : plus construite sous /${dossier}/`);
   }
+  // R184 : plus de Règles avancées ; /regles/avancees/ mène au Mode Hyper, chacune de ses pages à son adresse à plat ; les six étapes de la création, de
+  // nouveau des pages, depuis leurs adresses de Découvrir
+  assert.ok(!existsSync(join(dist, 'regles', 'avancees')), '/regles/avancees/ n’est plus construite');
+  assert.equal(renvois['regles/avancees/'], 'regles/le-mode-hyper/');
+  assert.equal(renvois['regles/avancees/meteo/'], 'regles/meteo/');
+  assert.equal(renvois['regles/avancees/resistance-faiblesse-magie/'], 'regles/resistances-et-faiblesses/');
+  assert.equal(renvois['decouvrir/premiers-sorts/'], 'regles/premiers-sorts/');
+  // les pages supprimées (R184 (9), R185 (6) : « page 404 ») : ni construites ni renvoyées
+  for (const supprimee of PAGES_SUPPRIMEES) {
+    const slug = supprimee.slice('guide/'.length);
+    // un segment d'adresse, pas une sous-chaîne : « postures » (supprimée le 2026-11-06, migration 0094) est dans « les-postures », qui garde ses adresses
+    const aPourSegment = (adresse) => adresse.split(/[/?#]/).includes(slug);
+    assert.ok(Object.keys(renvois).every((k) => !aPourSegment(k)) && Object.values(renvois).every((v) => !aPourSegment(v)), `${supprimee} : aucun renvoi`);
+    assert.ok(!existsSync(join(dist, 'regles', slug)), `${supprimee} : plus construite`);
+  }
+  // les pages découpées en plusieurs (data-eclatees, avec celles de l'équipement) : « Créer son personnage » des six étapes, « Les situations avancées »
+  const eclatees = decoder('eclatees');
+  // sans les cibles absentes (une page des Règles supprimée sur le site de dev : son ancienne adresse donne la 404, R185 (6) ; pagesEclateesDuGuide)
+  const presentes = pagesEclateesDuGuide((id) => construite(id));
+  for (const adresse of Object.keys(PAGES_ECLATEES_DU_GUIDE)) assert.deepEqual(eclatees[adresse], presentes[adresse], adresse);
+  for (const { defaut, anciennesAncres } of Object.values(presentes)) {
+    for (const cible of [defaut, ...Object.values(anciennesAncres)]) {
+      const [chemin, ancre] = cible.split('#');
+      assert.ok(existsSync(join(dist, chemin, 'index.html')), `${cible} : page construite`);
+      // l'intertitre visé y porte son id tant que le texte courant de sa page l'a (verifierLAncre)
+      if (ancre) await verifierLAncre(join(chemin, 'index.html'), pageDuGuideALAdresse(chemin), ancre, cible);
+    }
+  }
+  // « Les boss et leurs postures », supprimée le 2026-11-06 (migration 0094) : son ancienne section mène à « ## Les boss » de la page des postures
+  assert.equal(eclatees['guide/situations-avancees/'].anciennesAncres['les-boss-et-leurs-postures'], 'regles/les-postures/#les-boss');
+  assert.ok(!existsSync(join(dist, 'decouvrir', 'creer-son-personnage')), '/decouvrir/creer-son-personnage/ n’est plus construite');
   assert.equal(renvois['decouvrir/campagne-ou-scenario-one-shot/'], 'mj/campagne-ou-scenario-one-shot/');
   // la page Liens, supprimée le 2026-10-22 : son ancienne adresse n'est plus renvoyée nulle part (réponse du propriétaire du 2026-10-23 : « supprimer ce
   // lien ») ; ses blocs, aux mêmes ancres, sont sur l'accueil (« Ces 3 blocs auraient plus leur place dans l'onglet d'acceuil. »), plus sur Bienvenue
   assert.equal(Object.hasOwn(renvois, 'decouvrir/liens/'), false, 'plus de renvoi de /decouvrir/liens/');
   assert.ok(!existsSync(join(dist, 'decouvrir', 'liens')), '/decouvrir/liens/ n’est plus construite');
+  // « Rejoindre une partie », effacée le 2026-11-05 (« Efface la page "Rejoindre une partie" et son lien. ») : plus construite, son adresse n'est
+  // renvoyée nulle part (réponse du propriétaire : « Page 404 (Recommandé) »), comme celle de la page Liens
+  assert.ok(!existsSync(join(dist, 'decouvrir', 'rejoindre-une-partie')), '/decouvrir/rejoindre-une-partie/ n’est plus construite');
+  assert.ok(Object.keys(renvois).every((k) => !k.includes('rejoindre-une-partie')), 'aucun renvoi de « Rejoindre une partie »');
   for (const ancre of ['lien-discord', 'lien-tipeee', 'prochaine-rencontre']) {
     assert.match(lire('index.html'), new RegExp(` id="${ancre}"`), `${ancre} : sur l’accueil`);
     assert.doesNotMatch(lire('decouvrir/index.html'), new RegExp(` id="${ancre}"`), `${ancre} : plus sur Bienvenue`);
@@ -98,16 +191,53 @@ test('en-tête : plus de barre de recherche (une page à part, avec les mots-cl�
   const entete = html.slice(html.indexOf('<header'), html.indexOf('</header>'));
   assert.ok(!/<form|type="search"/.test(entete), 'aucun formulaire de recherche dans l’en-tête');
   assert.deepEqual([...entete.matchAll(/class="nav-group__toggle" data-group="([^"]+)"[^>]*>([^<]+)</g)].map((m) => `${m[1]} ${m[2].trim()}`),
-    ['decouvrir Découvrir', 'regles Règles', 'joueur Espace joueur', 'mj Espace MJ', 'codex Codex', 'outils Outils']);
-  assert.match(entete, /data-group="decouvrir" aria-pressed="true"/, 'l’accueil ouvre Découvrir');
+    ['regles Règles', 'personnage Personnage', 'equipement Équipement', 'joueur Espace joueur', 'mj Espace MJ', 'codex Codex', 'outils Outils']);
+  assert.match(entete, /data-group="regles" aria-pressed="true"/, 'l’accueil ouvre les Règles');
   const outils = entete.match(/<ul class="site-nav__items" data-group="outils"[^>]*>([\s\S]*?)<\/ul>/)[1];
   // Debug : au menu du site de dev seulement (lib/nav.mjs#entreesDuMenu) ; un build de production (SITE_MODE=prod) a la page réservée, sans menu
   // (test/debug-page.test.mjs)
   const production = lire('debug/index.html').includes('class="debug-reservee"');
   assert.deepEqual([...outils.matchAll(/<a href="([^"]+)"[^>]*>([^<]+)<\/a>/g)].map((m) => `${m[2]} ${m[1]}`),
     ['Mise à jour /mise-a-jour/', 'Galeries /galeries/', 'Recherche /recherche/', 'Archives /archives/', ...(production ? [] : ['Debug /debug/'])]);
-  assert.match(lire('ressources/alchimie/index.html'), /data-group="regles" aria-pressed="true" aria-current="true"/, 'une ressource hors menu ouvre les Règles');
+  assert.match(lire('ressources/alchimie/index.html'), /data-group="equipement" aria-pressed="true" aria-current="true"/, 'une ressource hors menu ouvre l’Équipement');
+  // les onglets des Règles (R184), lus dans leur menu latéral : leurs pages ouvrent les Règles et marquent l'entrée de leur onglet, tirée du plan
+  // (`entree` de layouts/Base.astro), elle seule ; l'adresse de l'onglet (ouverte sur sa page d'ouverture) en est la page ; /regles/ montre la page
+  // d'ouverture du premier onglet. L'Artisanat (/regles/artisanat/, entrée lien d'Exploration) ouvre les Règles et marque Exploration, plus l'Équipement.
+  // Les onglets sont fixes ; le site de dev range une page dans un autre onglet (regles_onglet_entree.onglet_id) : la page d'un onglet est lue dans la base
+  const base = ouvrirBase();
+  const pageDuMenu = (onglet) => base.prepare(`SELECT e.page_id FROM regles_onglet_entree e JOIN regles_onglet o ON o.id = e.onglet_id
+    WHERE e.onglet_id = ? AND e.page_id IS NOT NULL AND e.page_id <> o.ouverture_page_id ORDER BY e.rang, e.id`).get(onglet)?.page_id;
+  const deLOnglet = (onglet, chemin, libelle) => [`${cheminDePage(pageDuMenu(onglet))}index.html`, chemin, libelle, 'true'];
+  for (const [rel, chemin, libelle, courant] of [
+    ['regles/index.html', '/regles/fiche-de-personnage/', 'Fiche de personnage', 'true'],
+    ['regles/fiche-de-personnage/index.html', '/regles/fiche-de-personnage/', 'Fiche de personnage', 'page'],
+    deLOnglet('fiche-de-personnage', '/regles/fiche-de-personnage/', 'Fiche de personnage'),
+    ['regles/mecaniques-generales/index.html', '/regles/mecaniques-generales/', 'Mécaniques générales', 'page'],
+    deLOnglet('mecaniques-generales', '/regles/mecaniques-generales/', 'Mécaniques générales'),
+    ['regles/combats/index.html', '/regles/combats/', 'Les combats', 'page'], deLOnglet('combats', '/regles/combats/', 'Les combats'),
+    ['regles/exploration/index.html', '/regles/exploration/', 'Exploration', 'page'], deLOnglet('exploration', '/regles/exploration/', 'Exploration'),
+    ['regles/artisanat/index.html', '/regles/exploration/', 'Exploration', 'true'],
+  ]) {
+    const page = lire(rel);
+    assert.match(page, /data-group="regles" aria-pressed="true" aria-current="true"/, `${rel} : les Règles`);
+    assert.match(page, /data-group="equipement" aria-pressed="false">/, `${rel} : pas l’Équipement`);
+    assert.ok(page.includes(`<a href="${chemin}" aria-current="${courant}">${libelle}</a>`), `${rel} : l’entrée « ${libelle} »`);
+    assert.equal(page.match(/<a href="\/regles\/[a-z-]+\/" aria-current=/g).length, 1, `${rel} : une seule entrée des onglets marquée`);
+  }
+  // l'ouverture d'un onglet n'est pas une seconde page : son adresse canonique est celle de la page montrée
+  assert.match(lire('regles/fiche-de-personnage/index.html'), /<link rel="canonical" href="\/regles\/creer-son-personnage\/">/);
+  assert.match(lire('regles/index.html'), /<link rel="canonical" href="\/regles\/creer-son-personnage\/">/);
   assert.ok(!entete.includes('data-group="ressources"'), 'plus de rubrique Ressources');
+  // réponse du propriétaire du 2026-10-29 : « Famillier devrai être dans Personnage, Le reste dans equipement (sous menu-autres pour commencer) »
+  const familiers = lire('ressources/familiers/index.html');
+  assert.match(familiers, /data-group="personnage" aria-pressed="true" aria-current="true"/, 'Familiers ouvre le Personnage');
+  assert.match(familiers, /data-group="equipement" aria-pressed="false">/, 'pas l’Équipement');
+  assert.ok(familiers.includes('<a href="/ressources/familiers/" aria-current="page">Familiers</a>'), 'son entrée, courante');
+  const autres = lire('ressources/index.html');
+  assert.match(autres, /data-group="equipement" aria-pressed="true" aria-current="true"/, 'la liste des pages de ressources ouvre l’Équipement');
+  assert.ok(autres.includes('<a href="/ressources/" aria-current="page">Autres</a>'), 'son entrée Autres, courante');
+  const equipement = entete.match(/<ul class="site-nav__items" data-group="equipement"[^>]*>([\s\S]*?)<\/ul>/)[1];
+  assert.match(equipement, /<a href="\/ressources\/">Autres<\/a><\/li>\s*$/, 'Autres, en dernière entrée de l’Équipement');
 });
 
 test('accueil : texte de bienvenue et défilement des images de la galerie (en construction : le logo seul)', options, () => {
@@ -115,10 +245,11 @@ test('accueil : texte de bienvenue et défilement des images de la galerie (en c
   const main = html.slice(html.indexOf('<main'), html.indexOf('</main>'));
   assert.match(main, /<h1 id="titre-accueil">Bienvenue sur Maverick Center<\/h1>/);
   // la phrase de la première visite ne dit que la navigation (plus de livre : « Découvrir », la rubrique)
-  assert.match(main, /<p>Première visite \? Commencez par Découvrir : le jeu, son univers, la création d’un personnage et comment rejoindre une partie\.<\/p>/);
+  // (plus de « Rejoindre une partie », effacée le 2026-11-05 ; réponse du propriétaire : « Phrase raccourcie (Recommandé) »)
+  assert.match(main, /<p>Première visite \? Commencez par Découvrir : le jeu, son univers et la création d’un personnage\.<\/p>/);
   assert.match(main, /<a class="accueil__bouton accueil__bouton--principal" href="\/decouvrir\/">Découvrir Maverick<\/a>/);
   assert.doesNotMatch(main, /Lire le guide|pas à pas/);
-  // « Par où commencer ? » : quatre cartes, le titre et le résumé de chaque page tels que la base les écrit, liés à leur adresse, chacune dans la couleur
+  // « Par où commencer ? » : trois cartes, le titre et le résumé de chaque page tels que la base les écrit, liés à leur adresse, chacune dans la couleur
   // de son groupe (la classe de sa partie, jamais un style)
   assert.match(main, /<h2 id="titre-par-ou-commencer">Par où commencer \?<\/h2>/);
   const cartes = [...main.matchAll(/<li class="accueil-debut__carte (couleur-partie-[a-z-]+)"><a class="accueil-debut__lien" href="([^"]+)">([^<]+)<\/a>(?:<p class="accueil-debut__resume">([\s\S]*?)<\/p>)?<\/li>/g)]
@@ -182,7 +313,7 @@ test('aucun lien vers les classeurs « Familiers » et « Prototype » (demande 
   assert.deepEqual(avecLien, []);
 });
 
-test('/recherche/ : la recherche et le glossaire des mots-clés (tous, liens ?mot-cle=<id>, nombre de pages, définition en infobulle) ; plus de /tags/ (la page 404 y renvoie) ; les pastilles des pages y mènent', options, () => {
+test('/recherche/ : la recherche et le glossaire des mots-clés (tous, liens ?mot-cle=<clé>, nombre de pages, définition en infobulle) ; plus de /tags/ (la page 404 y renvoie) ; les pastilles des pages y mènent', options, () => {
   const html = lire('recherche/index.html');
   assert.match(html, /<form id="search-form" action="\/recherche\/"/);
   assert.match(html, /<div class="recherche" data-recherche data-lien-mot-cle="\/recherche\/\?mot-cle=">/);
@@ -195,8 +326,10 @@ test('/recherche/ : la recherche et le glossaire des mots-clés (tous, liens ?mo
   const index = JSON.parse(lire('search-index.json'));
   assert.ok(index.every((e) => Array.isArray(e.motsCles) && !('evenement' in e)), 'motsCles partout, plus de drapeau `evenement`');
   const evenements = index.filter((e) => e.type === 'Événement');
-  assert.ok(evenements.length > 50 && evenements.every((e) => e.path.startsWith('chronologie/')), 'les événements de la chronologie');
   const base = ouvrirBase();
+  // une entrée par événement de la base (lib/recherche-index.ts#chargerChronologie ; le site de dev en crée et en supprime : le nombre suit la base)
+  assert.equal(evenements.length, base.prepare('SELECT count(*) AS n FROM evenement').get().n, 'un événement de l’index par événement de la base');
+  assert.ok(evenements.every((e) => e.path.startsWith('chronologie/')), 'les événements de la chronologie');
   const ids = new Set(base.prepare('SELECT id FROM mot_cle').all().map((m) => m.id));
   assert.ok(evenements.every((e) => e.motsCles.every((id) => ids.has(id))), 'un événement : seulement les mots-clés que citent ses descriptions');
   assert.ok(index.every((e) => ![e.title, e.summary, e.text, ...e.tags, ...e.aliases].some((t) => /\{\{[^{}\n]+\}\}/.test(t ?? ''))), 'aucune balise brute dans l’index');
@@ -210,32 +343,63 @@ test('/recherche/ : la recherche et le glossaire des mots-clés (tous, liens ?mo
   }
   const comptes = new Map();
   for (const e of index) for (const id of new Set(e.motsCles)) comptes.set(id, (comptes.get(id) ?? 0) + 1);
-  // la liste : le glossaire, tout le vocabulaire (même un mot-clé qu'aucune page visible ne porte), chaque mot-clé décrit avec sa définition en infobulle
-  const vocabulaire = new Map(base.prepare('SELECT id, libelle, libelle_cle, description FROM mot_cle').all().map((m) => [m.id, m]));
+  // la liste : le glossaire, tout le vocabulaire (même un mot-clé qu'aucune page visible ne porte), chaque mot-clé décrit avec sa définition en infobulle ;
+  // un mot-clé : son id entier, sa clé (celle de l'adresse et de sa bulle, décision R232 (3)), ses synonymes et ses clés quittées en JSON (R233 (1)) ;
+  // son nom peut porter l’icône que le propriétaire lui a donnée (R235, lib/icones.mjs) : toute famille admise ici, le dessin exact est vérifié plus bas
+  const vocabulaire = new Map(chargerVocabulaire(base).map((m) => [m.id, m]));
   const liste = html.slice(html.indexOf('<ul class="tags" id="liste-mots-cles">'), html.indexOf('id="aucun-mot-cle"'));
-  const motsCles = [...liste.matchAll(/<li data-id="([^"]+)" data-cle="([^"]+)" data-n="(\d+)" data-libelle="[^"]*"( data-definition="[^"]*")?>\s*<a class="badge" href="\/recherche\/\?mot-cle=([^"]+)"( data-bulle="mot-cle-[^"]+" aria-describedby="mot-cle-[^"]+")?>([^<]+)<\/a>\s*<\/li>/g)];
+  const motsCles = [...liste.matchAll(/<li data-id="(\d+)" data-cle="([^"]+)" data-n="(\d+)" data-libelle="[^"]*"( data-synonymes="[^"]*")?( data-anciennes-cles="[^"]*")?( data-definition="[^"]*")?>\s*<a class="badge" href="\/recherche\/\?mot-cle=([^"]+)"( data-bulle="mot-cle-[^"]+" aria-describedby="mot-cle-[^"]+")?>(<span class="recherche-nom">(?:[^<]|<span class="[^"]+"[^>]*><\/span>)*<\/span>(?: · \d+)?)<\/a>\s*<\/li>/g)];
   assert.equal(motsCles.length, (liste.match(/<li /g) ?? []).length, 'chaque mot-clé a la forme attendue');
   assert.ok(motsCles.length > 0, `${motsCles.length} mots-clés`);
-  for (const [, id, cle, n, definition, lien, bulle, texte] of motsCles) {
-    assert.equal(lien, id, 'le lien porte l’id (figé), pas l’écriture');
+  const echappe = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  // dans un attribut entre guillemets doubles, Astro écrit l'apostrophe telle quelle ou en &#39; selon le chemin de rendu : même valeur pour le
+  // navigateur, on compare donc l'attribut sans tenir compte de cette écriture (« Faiblesse d'Armure », lot de mise à jour du 2026-11-14)
+  const apostrophes = (t) => t?.replace(/&#39;/g, '\'');
+  const attribut = (nom, liste) => (liste?.length ? apostrophes(` ${nom}="${echappe(JSON.stringify(liste))}"`) : undefined);
+  for (const [, idTexte, cle, n, synonymes, anciennes, definition, lien, bulle, texte] of motsCles) {
+    const id = Number(idTexte);
+    const m = vocabulaire.get(id);
+    assert.equal(lien, encodeURIComponent(cle), 'le lien porte la clé (R232 (3)), pas l’id');
+    assert.equal(m?.cle, cle, `${id} : sa clé`);
     assert.equal(Number(n), comptes.get(id) ?? 0, `${id} : nombre de pages de l’index`);
-    assert.ok(Number(n) > 0 ? texte.endsWith(` (${n})`) : !/\(\d+\)$/.test(texte), texte);
-    assert.equal(vocabulaire.get(id)?.libelle_cle, cle, `${id} : son écriture`);
-    const decrit = Boolean(vocabulaire.get(id)?.description);
+    assert.ok(Number(n) > 0 ? texte.endsWith(` · ${n}`) : !/ · \d+$/.test(texte), texte);
+    assert.equal(apostrophes(synonymes), attribut('data-synonymes', m.synonymes), `${id} : ses synonymes (la recherche les lit)`);
+    assert.equal(apostrophes(anciennes), attribut('data-anciennes-cles', m.anciennes_cles), `${id} : ses clés quittées`);
+    // la pastille : le libellé seul (R233 (9)), suivi de son icône quand il en a une (R235 (3) : le RF, le RO, la PP ; R63)
+    const nom = m.icone ? `${echappe(m.libelle)} ${htmlDeLIcone(m.icone)}` : echappe(m.libelle);
+    assert.equal(texte, `<span class="recherche-nom">${nom}</span>${Number(n) > 0 ? ` · ${n}` : ''}`, `${id} : sa pastille`);
+    const decrit = Boolean(m.description);
     assert.equal(Boolean(definition), decrit, `${id} : sa définition`);
     assert.equal(Boolean(bulle), decrit, `${id} : l’infobulle de sa définition`);
-    if (decrit) assert.equal((html.match(new RegExp(`<span class="bulle" role="tooltip" id="mot-cle-${id}" hidden>`, 'g')) ?? []).length, 1, `${id} : sa bulle, une fois`);
+    if (decrit) assert.equal(bulle, ` data-bulle="mot-cle-${cle}" aria-describedby="mot-cle-${cle}"`, `${id} : sa bulle, par sa clé`);
+    // sa bulle, habillée de sa couleur (migration 0098 : la classe du mot-clé coloré) ; son titre, le nom de sa pastille
+    const bulleDe = `<span class="${['bulle', classeDuMotCle(m)].filter(Boolean).join(' ')}" role="tooltip" id="mot-cle-${cle}" hidden>`;
+    if (decrit) assert.equal(html.split(bulleDe).length - 1, 1, `${id} : sa bulle, une fois`);
+    if (decrit) assert.ok(html.includes(`${bulleDe}<strong class="bulle__titre">${nom}</strong>`), `${id} : le titre de sa bulle`);
+    // la définition rendue que recopie la vue du mot-clé (monnaies en icônes, R63 ; balises rendues par le middleware), une par mot-clé décrit
+    assert.equal((html.match(new RegExp(`<div data-definition-de="${id}">`, 'g')) ?? []).length, decrit ? 1 : 0, `${id} : sa définition rendue`);
   }
-  assert.deepEqual(motsCles.map((m) => m[1]).sort(), [...vocabulaire.keys()].sort(), 'tout le vocabulaire, rien d’autre');
+  for (const abr of Object.keys(MONNAIES_DU_JEU)) {
+    const motCle = [...vocabulaire.values()].find((x) => x.icone === `monnaie:${MONNAIES_DU_JEU[abr].id}`);
+    if (!motCle) continue; // l'icône d'une monnaie est verrouillée (R235 (5)) : posée à l'import (mots-cles-balises.test.mjs)
+    const m = motsCles.find((x) => Number(x[1]) === motCle.id);
+    assert.ok(m && m[9].includes(`class="piece piece--${MONNAIES_DU_JEU[abr].id}"`) && !m[9].includes(`(${abr})`), `${abr} : libellé + icône`);
+  }
+  assert.match(html, /<div id="definitions-des-mots-cles" hidden>/);
+  const definitions = html.slice(html.indexOf('<div id="definitions-des-mots-cles" hidden>'), html.indexOf('<section class="recherche-pages"'));
+  assert.doesNotMatch(definitions.replace(/<[^>]+>/g, ''), /\{\{[^{}\n]+\}\}/, 'les balises des définitions rendues (le texte ; data-balise les garde)');
+  assert.match(definitions, /<strong class="mot-cle" data-mot-cle="[^"]+"/, 'un mot-clé cité dans une définition : en gras, comme partout');
+  assert.deepEqual(motsCles.map((m) => Number(m[1])).sort((x, y) => x - y), [...vocabulaire.keys()].sort((x, y) => x - y), 'tout le vocabulaire, rien d’autre');
   assert.match(html, new RegExp(`<small id="nombre-mots-cles" class="muted">\\(${motsCles.length}\\)</small>`), 'le nombre de mots-clés');
   assert.match(html, /<p id="vue-du-mot-cle-definition" class="recherche-definition" hidden><\/p>/, 'la vue d’un mot-clé : sa définition');
   // plus de pages /tags/ : la page 404 renvoie /tags/<clé>/ vers /recherche/?mot-cle=<clé>
   assert.ok(!existsSync(join(dist, 'tags')), 'dossier dist/tags/');
-  // les pastilles d'une page du wiki mènent à la recherche, par l'id du mot-clé
+  // les pastilles d'une page du wiki mènent à la recherche, par la clé du mot-clé, et montrent son libellé (sans « (classe) » : R232 (4))
   const nain = lire('races/nain/index.html');
   const pastilles = [...nain.slice(nain.indexOf('<ul class="tags" aria-label="Mots-clés">')).split('</ul>')[0].matchAll(/<a class="badge" href="\/recherche\/\?mot-cle=([^"]+)">([^<]+)<\/a>/g)];
   assert.ok(pastilles.length > 0, 'pastilles de la page du Nain');
-  for (const [, id, libelle] of pastilles) assert.equal(vocabulaire.get(id)?.libelle, libelle.replaceAll('&#39;', "'").replaceAll('&amp;', '&'), id);
+  const parCle = new Map([...vocabulaire.values()].map((m) => [m.cle, m]));
+  for (const [, cle, libelle] of pastilles) assert.equal(parCle.get(decodeURIComponent(cle))?.libelle, libelle.replaceAll('&#39;', "'").replaceAll('&amp;', '&'), cle);
   const avecTags = walk(dist).filter((f) => f.endsWith('.html')).filter((f) => /href="\/tags\//.test(readFileSync(f, 'utf8')));
   assert.deepEqual(avecTags, [], 'aucun lien vers /tags/');
 });
@@ -303,9 +467,10 @@ test('glossaire des mots-clés : aucune balise brute sur le site construit (le m
   assert.deepEqual(visibles, [], 'aucune balise brute dans le texte visible');
   assert.equal(texteVisible('<p title="a">b</p><code>{{x}}</code><div data-mots-cles-bruts><p>{{y}}</p></div><strong data-balise="{{z}}">Z</strong><title>T</title>'),
     '\na\nb\n\n\n\nZ\n\nT\n\n', 'l’aide du test : ni code, ni zone brute, ni data-balise');
-  // « mot-cle-<id> » : l'id des bulles du glossaire, de nul autre élément (une page qui en aurait un autre le confondrait avec la bulle d'un mot-clé)
+  // « mot-cle-<id> » : l'id des bulles du glossaire, de nul autre élément (une page qui en aurait un autre le confondrait avec la bulle d'un mot-clé) ;
+  // la bulle d'un mot-clé coloré et décrit porte aussi sa classe de couleur (lib/mots-cles-balises.mjs#htmlDeLaBulle ; R231, migration 0112)
   const autres = pages.flatMap((f) => [...readFileSync(f, 'utf8').matchAll(/<([a-z]+)([^>]*) id="mot-cle-[^"]*"/g)]
-    .filter((m) => !(m[1] === 'span' && / class="bulle"/.test(m[2]))).map((m) => `${relative(dist, f)} : ${m[0]}`));
+    .filter((m) => !(m[1] === 'span' && / class="bulle(?: [^"]+)?"/.test(m[2]))).map((m) => `${relative(dist, f)} : ${m[0]}`));
   assert.deepEqual(autres, []);
   // les blocs des panneaux de règles écrivent des balises (migration 0056) : la table brute les garde
   const brute = 'donnees/panneau_regles_bloc/index.html';
@@ -363,11 +528,12 @@ test('/mise-a-jour/ : la note de la dernière version, l’historique, la place 
   // (le middleware : src/middleware.mjs), comme partout ; on compare donc au rendu pur passé par le même rendu des mots-clés
   const vocabulaire = chargerVocabulaire(db);
   const htmlDeLaNoteRendue = (...args) => htmlAvecMotsCles(htmlDeLaNote(...args), vocabulaire).html;
+  // les montants des textes cités convertis comme sur la page (htmlAvecMonnaies, R61, R63)
   // la plus récente en premier, telle que le rendu pur la donne ; les autres dans l'historique, de la plus récente à la plus ancienne
-  assert.ok(main.includes(htmlDeLaNoteRendue(derniere, lignesDe(derniere.version), { niveau: 2 })), `la note de la V${derniere.version}`);
+  assert.ok(main.includes(htmlDeLaNoteRendue(derniere, lignesDe(derniere.version), { niveau: 2, texte: htmlAvecMonnaies })), `la note de la V${derniere.version}`);
   assert.equal(main.indexOf('<article class="nv-note"'), main.indexOf(`<article class="nv-note" id="v${derniere.version.replace('.', '-')}">`));
   assert.equal(main.includes('<h2 id="nv-historique">Historique</h2>'), anciennes.length > 0);
-  for (const n of anciennes) assert.ok(main.includes(htmlDeLaNoteRendue(n, lignesDe(n.version), { niveau: 3 })), `la V${n.version} dans l’historique`);
+  for (const n of anciennes) assert.ok(main.includes(htmlDeLaNoteRendue(n, lignesDe(n.version), { niveau: 3, texte: htmlAvecMonnaies })), `la V${n.version} dans l’historique`);
   const positions = [derniere, ...anciennes].map((n) => main.indexOf(`id="v${n.version.replace('.', '-')}"`));
   assert.deepEqual(positions, [...positions].sort((a, b) => a - b));
   assert.equal(/class="nv-exemple" role="note"/.test(main), notes.some((n) => n.exemple === 1), 'le bandeau « donnée d’exemple » sur les seules notes d’exemple');
@@ -513,12 +679,24 @@ test('couleurs des magies : jamais en style sur une page construite, toujours pa
     'races/index.html': /<col class="tableau-magies__col-magie couleur-magie-feu">/,
     'races/nain/index.html': /<a class="chip race-magie couleur-magie-[\w-]+"/,
     'classes/mage-bleu/index.html': /<article class="annexe-classe__carte annexe-classe__carte--magie couleur-magie-sang">/,
-    'decouvrir/l-univers/index.html': /<li class="couleur-magie-feu">\s*<a class="guide-magie"/,
     'bestiaire/index.html': /class="bcible bcible--[a-z_]+ bcible--magie(?: bcible--deux)? couleur-magie-[\w-]+ couleur-2-magie-[\w-]+"/,
     'ressources/composants/index.html': /<tr class="composant composant--magie couleur-magie-[\w-]+"[\s\S]*<span class="comp-magie couleur-magie-[\w-]+">/,
-    'ressources/equipement/index.html': /<span class="acc-gemme couleur-magie-[\w-]+" data-bulle=[\s\S]*<span class="bulle bulle--gemme couleur-magie-[\w-]+"/,
+    'ressources/accessoires/index.html': /<span class="acc-gemme couleur-magie-[\w-]+" data-bulle=[\s\S]*<span class="bulle bulle--gemme couleur-magie-[\w-]+"/,
   };
   for (const [rel, attendu] of Object.entries(zones)) assert.match(avecMagie.get(rel) ?? '', attendu, rel);
+  // « L’univers » ne liste plus les quinze magies (le bloc `guide:magies` a quitté la page) : son texte renvoie aux magies par la balise de leur mot-clé
+  // (un lien du texte est la balise d'un mot-clé à adresse depuis la migration 0098 : `a.mot-cle`). Le texte est au site de dev (il a réécrit la phrase
+  // de la « carte des magies ») : le mot-clé se lit par son id figé, et chaque balise qui le cite dans le texte courant est un lien vers son adresse.
+  const univers = readFileSync(join(dist, 'decouvrir/l-univers/index.html'), 'utf8');
+  const base = ouvrirBase();
+  const corpsUnivers = base.prepare("SELECT corps_md FROM page WHERE id = 'guide/l-univers'").get()?.corps_md ?? '';
+  const motCleMagies = base.prepare('SELECT cle, url FROM mot_cle WHERE id = ?').get(idDuMotCleNomme('magies'));
+  if (motCleMagies?.url && lireBalises(corpsUnivers, { markdown: true }).some((b) => b.ref === motCleMagies.cle)) {
+    const echappe = (v) => v.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    assert.match(univers, new RegExp(`<a class="mot-cle[^"]*" href="[^"]*${echappe(motCleMagies.url)}" data-mot-cle="${echappe(motCleMagies.cle)}"`),
+      'L’univers : la balise des magies est un lien vers leur page');
+  }
+  if (!corpsUnivers.includes('guide:magies')) assert.doesNotMatch(univers, /<ul class="guide-magies"/, 'L’univers : plus de liste des magies');
   assert.ok([...avecMagie.values()].some((html) => /<tr class="couleur-magie-[\w-]+">\s*<th scope="row">\s*<a class="guide-magie guide-magie--ligne"/.test(html)), 'le tableau de ce que donne chaque magie (guide)');
   // la fiche et les personnages posent leurs classes au navigateur : leurs noms viennent de la page ou de regles.json (test/fiche-html.test.mjs)
   const regles = JSON.parse(lire('fiche/regles.json'));
@@ -550,8 +728,8 @@ test('couleurs des caractéristiques, compétences, postures et alignements : ja
   // chaque zone du lot pose bien ses classes
   const zones = {
     'regles/les-postures/index.html': /<section class="guide-posture couleur-posture-offensif" aria-labelledby/,
-    'decouvrir/creer-son-personnage/index.html': /<section class="guide-competences__groupe couleur-caracteristique-force" aria-labelledby/,
-    'ressources/equipement/index.html': /<span class="arme-comp couleur-caracteristique-force couleur-2-caracteristique-force" data-competences="arme-lourde"/,
+    'regles/caracteristiques-et-competences/index.html': /<section class="guide-competences__groupe couleur-caracteristique-force" aria-labelledby/,
+    'ressources/armes/index.html': /<span class="arme-comp couleur-caracteristique-force couleur-2-caracteristique-force" data-competences="arme-lourde"/,
     'bestiaire/index.html': /<span class="bcarac couleur-caracteristique-force" title="Force">/,
     'fiche/index.html': /<output class="alignement__resultat teinte-palette couleur-alignement-neutre" id="alignement-resultat"/,
   };
@@ -594,7 +772,8 @@ test('couleurs des catégories de classe, des races, des paliers, du Mode Hyper 
   // chaque zone du lot pose bien ses classes
   const zones = {
     'classes/index.html': ['couleur-classe-melee', 'couleur-classe-distance', 'couleur-classe-magiques', 'couleur-classe-raciales', 'couleur-classe-speciales'],
-    'classes/guerrier/index.html': ['couleur-classe-melee'],
+    // la page d'une classe : celle de sa catégorie, et celles des cinq types de son menu latéral (components/classes/ClassePage.astro)
+    'classes/guerrier/index.html': ['couleur-classe-melee', 'couleur-classe-distance', 'couleur-classe-magiques', 'couleur-classe-raciales', 'couleur-classe-speciales'],
     'races/index.html': ['couleur-race-pure', 'couleur-race-hybride'],
     'races/humain/index.html': ['couleur-race-pure'],
   };
@@ -636,13 +815,16 @@ test('couleurs des matériaux, des armes de départ, des types d’armure et des
       }
     }
   }
-  // chaque zone du lot pose bien ses classes : la page Équipement (matériaux, armes de départ, types, poids), la page Composants (matériaux)
-  const equipement = parPage.get('ressources/equipement/index.html') ?? new Set();
-  for (const c of ['couleur-arme-depart', 'couleur-materiau-fer', 'couleur-materiau-titane', 'couleur-armure-leger', 'couleur-armure-intermediaire',
-    'couleur-armure-lourd', 'couleur-poids-leger', 'couleur-poids-tres-lourd']) assert.ok(equipement.has(c), `l’équipement : ${c}`);
+  // chaque zone du lot pose bien ses classes : les pages Armes (matériaux, armes de départ), Armures (types), Boucliers (types, poids), la page
+  // Composants (matériaux)
+  const pagesDuLot = { armes: 'ressources/armes/index.html', armures: 'ressources/armures/index.html', boucliers: 'ressources/bouclier/index.html' };
+  const classesDe = (cle) => parPage.get(pagesDuLot[cle]) ?? new Set();
+  for (const c of ['couleur-arme-depart', 'couleur-materiau-fer', 'couleur-materiau-titane']) assert.ok(classesDe('armes').has(c), `les armes : ${c}`);
+  for (const c of ['couleur-armure-leger', 'couleur-armure-intermediaire', 'couleur-armure-lourd']) assert.ok(classesDe('armures').has(c), `les armures : ${c}`);
+  for (const c of ['couleur-poids-leger', 'couleur-poids-tres-lourd']) assert.ok(classesDe('boucliers').has(c), `les boucliers : ${c}`);
   const composants = parPage.get('ressources/composants/index.html') ?? new Set();
   assert.ok(composants.has('couleur-materiau-fer') && composants.has('couleur-materiau-par-defaut'), 'les composants : un matériau d’arme et un d’armure');
-  assert.ok(![...parPage.keys()].some((rel) => !['ressources/equipement/index.html', 'ressources/composants/index.html'].includes(rel)), `ailleurs : ${[...parPage.keys()]}`);
+  assert.ok(![...parPage.keys()].some((rel) => ![...Object.values(pagesDuLot), 'ressources/composants/index.html'].includes(rel)), `ailleurs : ${[...parPage.keys()]}`);
   // la fiche pose la classe du poids au navigateur, d'après regles.json : dans la feuille de la fiche, sans couleur
   const regles = JSON.parse(lire('fiche/regles.json'));
   const fiche = lire('fiche/index.html');
@@ -654,9 +836,9 @@ test('couleurs des matériaux, des armes de départ, des types d’armure et des
 });
 
 // Lot des niveaux des accessoires (même demande, mêmes choix de cadrage : skill ui-couleurs) : sur toute page construite, aucune couleur de niveau en
-// style (ni `--niv`, en style comme dans data-niveaux) ; chaque classe posée existe dans une feuille de la page (famille d'une zone, émise par l'onglet
-// Accessoires de l'équipement, et seulement là).
-/** Les éléments que l'onglet Accessoires pose sur la couleur d'un niveau. */
+// style (ni `--niv`, en style comme dans data-niveaux) ; chaque classe posée existe dans une feuille de la page (famille d'une zone, émise par la page
+// Accessoires, et seulement là).
+/** Les éléments que la page Accessoires pose sur la couleur d'un niveau. */
 const ELEMENTS_DU_LOT_DES_ACCESSOIRES = new Set(['acc-niveau-pastille', 'acc-effet', 'acc-competence', 'acc-monture', 'acc-produit']);
 const CLASSE_DU_LOT_DES_ACCESSOIRES = /^couleur-niveau-/;
 
@@ -677,11 +859,11 @@ test('couleurs des niveaux des accessoires : jamais en style sur une page constr
       }
     }
   }
-  // l'onglet Accessoires pose les cinq niveaux (pastilles de l'étape 3, lignes d'effet et de monture), et lui seul
-  assert.deepEqual([...(parPage.get('ressources/equipement/index.html') ?? [])].sort(), [1, 2, 3, 4, 5].map((n) => `couleur-niveau-${n}`));
-  assert.deepEqual([...parPage.keys()], ['ressources/equipement/index.html'], 'ailleurs : aucune');
+  // la page Accessoires pose les cinq niveaux (pastilles de l'étape 3, lignes d'effet et de monture), et elle seule
+  assert.deepEqual([...(parPage.get('ressources/accessoires/index.html') ?? [])].sort(), [1, 2, 3, 4, 5].map((n) => `couleur-niveau-${n}`));
+  assert.deepEqual([...parPage.keys()], ['ressources/accessoires/index.html'], 'ailleurs : aucune');
   // les classes que le script reprend d'une ligne de compétence (data-niveaux) : des classes de la feuille de la page, jamais une couleur
-  const equipement = lire('ressources/equipement/index.html');
+  const equipement = lire('ressources/accessoires/index.html');
   const niveaux = [...equipement.matchAll(/data-niveaux="([^"]+)"/g)].flatMap((m) => JSON.parse(m[1].replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&')));
   assert.ok(niveaux.length >= 20, `${niveaux.length} niveaux de compétence`);
   for (const n of niveaux) {
@@ -721,14 +903,17 @@ test('couleurs des événements de la chronologie : jamais en style sur une page
   }
   // la feuille : /chronologie/ et la page de chaque événement, et seulement elles
   const pagesDeLaChronologie = walk(join(dist, 'chronologie')).filter((f) => f.endsWith('index.html')).map((f) => relative(dist, f).split('\\').join('/')).sort();
-  assert.ok(pagesDeLaChronologie.length > 50, `${pagesDeLaChronologie.length} pages de la chronologie`);
+  // /chronologie/ et une page par événement de la base (le site de dev en crée et en supprime : le nombre suit la base)
+  const nEvenements = ouvrirBase().prepare('SELECT count(*) AS n FROM evenement').get().n;
+  assert.equal(pagesDeLaChronologie.length, nEvenements + 1, `${pagesDeLaChronologie.length} pages de la chronologie`);
   assert.deepEqual(avecFeuille.sort(), pagesDeLaChronologie);
-  assert.ok(posees > pagesDeLaChronologie.length * 100, `${posees} classes posées`);
+  assert.ok(posees >= nEvenements * 100, `${posees} classes posées`);
 });
 
 // Lot des parties du guide (même demande, mêmes choix de cadrage : skill ui-couleurs) : sur toute page construite, aucune couleur d'une partie en style
 // (ni `--couleur-partie`, ni `--sommaire-couleur`, ni `--etape`, ni le `--c` des cartes de l'accueil) ; chaque classe `couleur-partie-…` posée existe dans
-// une feuille de la page (famille d'une zone : une page de Découvrir ou des Bases, l'accueil, le sommaire des Bases, la fiche, et seulement elles).
+// une feuille de la page (famille d'une zone : une page de Découvrir, l'accueil, la fiche, et seulement elles ; plus les pages des Bases, à l'accent du
+// site depuis le 2026-11-05 : « Accent du site »).
 /** Les éléments que les pages posent sur la couleur d'une partie. */
 const ELEMENTS_DES_PARTIES = new Set(['guide-reference', 'sommaire', 'accueil-debut__carte', 'fiche-zone']);
 const CLASSE_DES_PARTIES = /^couleur-partie-/;
@@ -744,29 +929,38 @@ test('couleurs des parties du guide : jamais en style sur une page construite, t
       const jetons = classe.split(/\s+/);
       if (!jetons.some((c) => CLASSE_DES_PARTIES.test(c) || ELEMENTS_DES_PARTIES.has(c))) continue;
       assert.doesNotMatch(balise, /\bstyle="/, `${rel} : un style sur un élément d’une partie : ${balise.slice(0, 160)}`);
+      // un mot-clé coloré d'une partie (migration 0098 : sa balise, sa tuile, sa bulle) : sa classe vient de la feuille des mots-clés colorés, sur chaque
+      // page ; il n'est pas une page qui pose la couleur d'une partie
+      // (et sa ligne dans le tableau du Glossaire, le liseré de sa couleur : décision R234 (1))
+      const motCle = jetons.some((c) => ['mot-cle', 'mot-cle-definition', 'bulle', 'glossaire-mot__ligne', 'glossaire-mot__suite'].includes(c));
       for (const c of jetons.filter((x) => CLASSE_DES_PARTIES.test(x))) {
         assert.ok(html.includes(`.${c}{`), `${rel} : la classe ${c} n’est pas dans une feuille de la page`);
-        parPage.set(rel, new Set([...(parPage.get(rel) ?? []), c]));
+        if (!motCle) parPage.set(rel, new Set([...(parPage.get(rel) ?? []), c]));
       }
     }
-    if (/\.couleur-partie-[a-z-]+\{/.test(html)) {
+    // la feuille des parties d'une page, hors de celle des mots-clés colorés (layouts/Base.astro, sur chaque page) ; le Glossaire émet toutes les
+    // familles d'une zone, pour le liseré et le choix de la couleur d'un mot-clé (pages/regles/glossaire.astro, test/palette-css.test.mjs)
+    const sansMotsCles = html.replace(/<style data-couleurs-mots-cles>[^<]*<\/style>/, '');
+    if (/\.couleur-partie-[a-z-]+\{/.test(sansMotsCles) && rel !== 'regles/glossaire/index.html') {
       assert.ok(parPage.has(rel), `${rel} : la feuille des parties sans aucune classe posée`);
       // (la fiche l'émet avec ses autres familles d'une zone, FAMILLES_DE_LA_FICHE : test/palette-css.test.mjs)
       if (rel !== 'fiche/index.html') assert.equal(html.split(`<style>${feuille}</style>`).length - 1, 1, `${rel} : la feuille des parties, une fois`);
-      assert.equal(html.split('.couleur-partie-creer{').length - 1, 1, `${rel} : une seule feuille des parties`);
+      assert.equal(sansMotsCles.split('.couleur-partie-creer{').length - 1, 1, `${rel} : une seule feuille des parties`);
     }
   }
-  // les pages qui les posent : les seize de Découvrir et des Bases, l'accueil, le sommaire des Bases, la fiche ; aucune autre
-  const attendues = { 'index.html': ['decouvrir', 'creer', 'jouer'], 'regles/index.html': ['jouer', 'progresser', 'plus-loin'],
-    'fiche/index.html': ['creer', 'jouer', 'decouvrir', 'progresser'], 'decouvrir/index.html': ['decouvrir'], 'decouvrir/creer-son-personnage/index.html': ['creer'],
-    'regles/les-degats/index.html': ['jouer'], 'regles/la-montee-de-niveau/index.html': ['progresser'], 'regles/lexique/index.html': ['plus-loin'] };
+  // les pages qui les posent : les deux de Découvrir, l'accueil, la fiche, et la création du personnage (introduction et six étapes, PAGES_DE_LA_CREATION,
+  // partie « creer », défaut confirmé par le propriétaire), montrée aussi à /regles/fiche-de-personnage/ et à /regles/ (page d'ouverture) ; aucune
+  // autre page des onglets des Règles : l'accent du site (« Accent du site », réponse du 2026-11-05)
+  const creation = PAGES_DE_LA_CREATION.pages.map((id) => [`${cheminDePage(id)}index.html`, ['creer']]);
+  const attendues = { 'index.html': ['decouvrir', 'creer'],
+    'fiche/index.html': ['creer', 'jouer', 'decouvrir', 'progresser'], 'decouvrir/index.html': ['decouvrir'], 'decouvrir/l-univers/index.html': ['decouvrir'],
+    ...Object.fromEntries(creation), 'regles/index.html': ['creer'], 'regles/fiche-de-personnage/index.html': ['creer'] };
   for (const [rel, parties] of Object.entries(attendues)) {
     assert.deepEqual([...(parPage.get(rel) ?? [])].sort(), [...new Set(parties)].map((p) => `couleur-partie-${p}`).sort(), rel);
   }
-  const autres = [...parPage.keys()].filter((rel) => !(rel in attendues));
-  assert.ok(autres.every((rel) => /^(?:decouvrir|regles)\/[a-z-]+\/index\.html$/.test(rel) && !rel.startsWith('regles/avancees/')), `ailleurs : ${autres}`);
-  assert.equal(parPage.size, 3 + 16, `l’accueil, le sommaire des Bases, la fiche et les ${parPage.size - 3} pages de Découvrir et des Bases`);
-  assert.ok(!parPage.has('regles/avancees/meteo/index.html') && !parPage.has('mj/index.html'), 'une page de référence : l’accent du site');
+  assert.deepEqual([...parPage.keys()].filter((rel) => !(rel in attendues)), [], 'ailleurs');
+  assert.equal(parPage.size, 2 + 2 + 7 + 2, 'l’accueil, la fiche, les deux pages de Découvrir, les sept de la création et deux adresses d’ouverture');
+  assert.ok(!parPage.has('regles/meteo/index.html') && !parPage.has('regles/les-degats/index.html') && !parPage.has('mj/index.html'), 'une autre page : l’accent du site');
 });
 
 // Lot des archives et de la mise à jour (même demande, mêmes choix de cadrage : skill ui-couleurs) : aucune famille de la palette ; leurs couleurs sont des
@@ -779,11 +973,14 @@ test('/archives/, /mise-a-jour/ et /maintenance/ : aucune feuille de zone de la 
     const html = lire(rel);
     assert.doesNotMatch(html, /\bstyle="/, `${rel} : un style`);
     assert.equal(html.split(`<style>${palette}</style>`).length - 1, 1, `${rel} : la feuille de chaque page, une fois`);
-    // toute classe de couleur de la page est dans la feuille de chaque page : aucune famille d'une zone, ni second rang des caractéristiques, ni
+    // la feuille des mots-clés colorés (migration 0098), sur chaque page aussi (layouts/Base.astro)
+    const motsCles = cssDesMotsClesDuSite();
+    assert.equal(html.split(`<style data-couleurs-mots-cles>${motsCles}</style>`).length - 1, 1, `${rel} : la feuille des mots-clés colorés, une fois`);
+    // toute classe de couleur de la page est dans l'une de ces deux feuilles : aucune autre famille d'une zone, ni second rang des caractéristiques, ni
     // combinaison de potion, ni événement de la chronologie
     const classes = [...html.matchAll(/\.(couleur-[a-z0-9-]+)\{/g)].map((m) => m[1]);
     assert.ok(classes.length > 30, `${rel} : ${classes.length} classes`);
-    for (const c of classes) assert.ok(palette.includes(`.${c}{`), `${rel} : ${c} n’est pas de la feuille de chaque page`);
+    for (const c of classes) assert.ok(palette.includes(`.${c}{`) || motsCles.includes(`.${c}{`), `${rel} : ${c} n’est pas de la feuille de chaque page`);
     assert.doesNotMatch(html, /data-couleurs-chronologie/, rel);
     // la feuille de la page, insérée telle quelle : sans hex ni fonction de couleur écrite (le voile : noir de mélange)
     const feuille = readFileSync(new URL(`../src/styles/${source}`, import.meta.url), 'utf8');
@@ -797,4 +994,27 @@ test('/archives/, /mise-a-jour/ et /maintenance/ : aucune feuille de zone de la 
   }
   // les jetons lus par les feuilles
   assert.ok(lire('archives/index.html').includes('var(--doc-google)') && lire('mise-a-jour/index.html').includes('var(--texte-sur-good)'));
+});
+
+// « Posé une fois par page » (skill ui-onglets ; R277, onglets écrits dans un texte : lib/pose-unique.mjs) : la feuille des groupes d'onglets
+// (`<style data-onglets-feuille>`, components/SupportDuMarkdown.astro) n'est pas écrite deux fois dans une page construite, même quand plusieurs textes
+// de la page ont un groupe. (Le script en ligne de la classe `js` n'est pas compté ici : ClassePage.astro et ArmesPage.astro ont le leur, en plus de
+// celui d'Onglets.astro, sans marque qui les distingue.)
+const FEUILLE_DES_ONGLETS = /<style\b[^>]*\sdata-onglets-feuille[\s>=]/g;
+/** Le nombre de feuilles des onglets écrites dans une page. */
+const feuillesDesOnglets = (html) => (html.match(FEUILLE_DES_ONGLETS) ?? []).length;
+
+test('feuillesDesOnglets : compte chaque feuille des onglets d’une page, rien d’autre', () => {
+  const feuille = '<style data-onglets-feuille>.onglets-md{}</style>';
+  assert.equal(feuillesDesOnglets(`<head>${feuille}</head>`), 1);
+  assert.equal(feuillesDesOnglets(`${feuille}<p>x</p>${feuille}`), 2, 'un doublon se voit');
+  assert.equal(feuillesDesOnglets('<style data-couleurs-texte>.x{}</style><p>data-onglets-feuille</p>'), 0, 'ni une autre feuille, ni le mot dans le texte');
+});
+
+test('chaque page construite écrit au plus une fois la feuille des onglets', options, () => {
+  const doubles = walk(dist).filter((f) => f.endsWith('.html')).flatMap((f) => {
+    const n = feuillesDesOnglets(readFileSync(f, 'utf8'));
+    return n > 1 ? [`${relative(dist, f)} : × ${n}`] : [];
+  });
+  assert.deepEqual(doubles, []);
 });

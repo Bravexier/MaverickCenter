@@ -29,7 +29,7 @@ INSERT INTO classe_annexe (classe_id, rang, libelle, libelle_cle, magie_id, text
 (Passif) Réparation. Récupère 1d4 barrière chaque début de tour. (ne marche pas quand coma).
 (Passif) Aisance marine. +1 vitesse dans l''eau.
 (Passif) Mucus. Annule les 4 premiers dégâts magiques encaissés. Se recharge tous les débuts de tour.', 'classes', 'Classe Maverick V7 › Mage Bleu › A93:AR97');
-INSERT INTO classe_annexe (classe_id, rang, libelle, libelle_cle, magie_id, texte, origine, source_ref) VALUES ('classes/mage-bleu', 9, 'GLACE', 'glace', 'magies/magie-de-la-glace', '(Actif 2 fois/combat) Attaque glaçante. La prochaine attaque réussie obligera le jet de vigueur à l''adversaire pour ne pas qu''il prenne "gelé 1".
+INSERT INTO classe_annexe (classe_id, rang, libelle, libelle_cle, magie_id, texte, origine, source_ref) VALUES ('classes/mage-bleu', 9, 'GLACE', 'glace', 'magies/magie-de-la-glace', '(Actif 2 fois/combat) Attaque glaçante. La prochaine attaque réussie obligera le jet de vigueur à l''adversaire pour ne pas qu''il prenne "gel 1".
 (Passif) Neige permanente. Quand la météo neige est invoquée, elle perdurera tant que personne ne la change.
 (Passif) Peau froide. +2 AM de base.
 (Passif) Pas de la neige. Ignore totalement les malus des terrains liés à la neige/glace.', 'classes', 'Classe Maverick V7 › Mage Bleu › A98:AR102');

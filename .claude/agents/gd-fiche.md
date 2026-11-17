@@ -2,7 +2,7 @@
 name: gd-fiche
 description: "Membre de l'équipe Game Design (chef game-design) — fiche de personnage et toutes les règles qui la font fonctionner — création, caractéristiques et croix, compétences, acquis et plafonds, entraînement, niveaux et gains, maîtrises, métiers, sorts sur la fiche, équipement porté, contrôles, fiche auto V15.2.2. Analyse une règle de son domaine, ses sources, ses décisions et son impact sur le moteur. Lancé par game-design avec un brief."
 tools: Read, Grep, Glob, Bash, Skill
-model: opus
+model: sonnet
 effort: high
 color: pink
 skills:

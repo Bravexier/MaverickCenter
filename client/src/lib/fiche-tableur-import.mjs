@@ -62,7 +62,8 @@ import {
   degatsDArme, donsValables, durabiliteAEcrire, durabiliteMaxDArme, effetsDesAccessoires, EMPLACEMENTS_ACCESSOIRES, ethnieImposee, ethniesDeLaRace,
   famillesMaitrisables, gainsDeNiveau, magieAcquiseValable, maitriseChoixValables, maitriseDArme, maitrisesParFamille, maitriseDesSorts, minimumDeLEmplacement,
   partiesApresReglage, sourcesDeMaitrise,
-  armureParPartie, bouclierDe, jetDuSortPrepare, partiesDeLArmure, refusMagieAcquise, soliditeDuBouclierAEcrire, sortPrepare, trouver, armeDeLaLigne, typesDeDegats,
+  armureParPartie, aUnLivre, bouclierDe, jetDuSortPrepare, partiesDeLArmure, sortsDesLivres, refusMagieAcquise, soliditeDuBouclierAEcrire, sortPrepare, trouver, armeDeLaLigne, typesDeDegats,
+  modeHyperDe, actionsDeLaFiche,
 } from './fiche-moteur.mjs';
 import { coutEnUneCase } from './sort-cout.mjs';
 import { valeurAuNm } from './sort-maitrise.mjs';
@@ -75,7 +76,7 @@ import {
 import {
   ARMURE_COMPLETE, FLECHE, NON, OUI, SEPARATEUR_D_ACCESSOIRE, SEPARATEUR_D_ARMURE, SUITE_DE_LA_CASE, apAmDuBouclier, enChiffres, lireAccessoire, lireChoixDuMetier, lireEffetDAmelioration,
   lireChoixDeMaitrise, lireEffetDArme, lireGains, lireLigneDArmure, lireLigneDeNote, lireListe, lireNiveauDAmelioration, lireNmOfferts, lireObjet, lireSortEnSuite,
-  lireSortPrepare, partiesDeLArme,
+  lireModeHyper, lireSortPrepare, partiesDeLArme, lireCompteurDAction, lireDonObtenu, lireSpecialisation,
 } from './fiche-tableur-export.mjs';
 
 /** Message d'un onglet qui ne suit aucune des deux dispositions (dispositionDe). */
@@ -171,7 +172,7 @@ const segmentsDe = (texte) => String(texte ?? '').split(/\n| · /).map((l) => l.
 
 /**
  * La case NOTE : { marqueur (la page l'a écrite), notes (le texte avant le dernier marqueur, sans ses lignes vides de fin ; null s'il est vide), valeurs:
- * { nom: [valeur] } (lignes reconnues par lireLigneDeNote : biClasse, gains, sorts…, CLES_DE_LA_NOTE ; une seule par clé, sauf les événements, les textes de l’entraînement, les maîtrises et les acquis au choix,
+ * { nom: [valeur] } (lignes reconnues par lireLigneDeNote : biClasse, gains, sorts…, CLES_DE_LA_NOTE ; une seule par clé, sauf les événements, les textes de l’entraînement, les maîtrises et les acquis au choix, les compteurs d'actions (R173),
  * les résistances au choix et le sort préparé (un seul par fiche, mais l'import dit pourquoi le second ne l'est pas : décision R115) ;
  * accessoires : [{ emplacement, valeur }], un par emplacement), suites: Map<adresse, { valeur, ligne }> (la suite d'un texte coupé, la première par case),
  * autres: [ligne] (lignes après le marqueur que rien ne reconnaît : elles reviennent dans les notes), doubles: [ligne] (une clé déjà lue) }. Les lignes
@@ -199,7 +200,7 @@ export function lireLaNote(texte) {
     } else if (lue.nom === 'accessoire') {
       if ((valeurs.accessoires ??= []).some((a) => a.emplacement === lue.emplacement)) doubles.push(ligne);
       else valeurs.accessoires.push({ emplacement: lue.emplacement, valeur: lue.valeur });
-    } else if (['evenement', 'entrainementTexte', 'maitriseChoix', 'acquisChoix', 'resistanceChoix', 'sortPrepare'].includes(lue.nom)) (valeurs[lue.nom] ??= []).push(lue.valeur);
+    } else if (['evenement', 'entrainementTexte', 'maitriseChoix', 'donObtenu', 'specialisationMagique', 'acquisChoix', 'resistanceChoix', 'sortPrepare', 'compteurAction'].includes(lue.nom)) (valeurs[lue.nom] ??= []).push(lue.valeur);
     else if (valeurs[lue.nom]) doubles.push(ligne);
     else valeurs[lue.nom] = [lue.valeur];
   }
@@ -375,14 +376,27 @@ const segment = (id) => String(id ?? '').split(/[#:/]/).pop();
 
 /**
  * Les entrées de `liste` qu'écrit `texte` : celles dont le nom a sa clé ; à défaut, celles dont une autre écriture la porte (`autres(x)` : par défaut le
- * dernier segment de l'identifiant, l'ancienne graphie). [] pour un texte vide.
+ * dernier segment de l'identifiant, l'ancienne graphie) ; à défaut, celles qui ont porté ce nom avant un renommage sur le site de dev (`noms_d_avant`
+ * d'un don ou d'un sort, lib/fiche-regles.mjs : une fiche écrite avant le renommage se relit). Le nom actuel passe toujours avant un nom d'avant ; deux
+ * entrées du même nom d'avant restent ambiguës (unSeul), jamais départagées par vraisemblance. [] pour un texte vide.
  */
 function retrouver(liste, texte, { nom = (x) => x.nom, autres = (x) => [segment(x.id)] } = {}) {
   const k = cle(texte);
   if (!k) return [];
   const parNom = liste.filter((x) => cle(nom(x)) === k);
-  return parNom.length ? parNom : liste.filter((x) => autres(x).some((a) => a === k));
+  if (parNom.length) return parNom;
+  const parAutre = liste.filter((x) => autres(x).some((a) => a === k));
+  return parAutre.length ? parAutre : liste.filter((x) => aPorteLeNom(x, k));
 }
+
+/** L'entrée (don, sort) a porté le nom de clé `k` avant un renommage sur le site de dev (`noms_d_avant`, lib/fiche-regles.mjs). */
+const aPorteLeNom = (x, k) => (x?.noms_d_avant ?? []).some((n) => cle(n) === k);
+
+/** Les entrées de `liste` que `nomme(x)` désigne par leur nom actuel ; à défaut, celles qui ont porté le nom `texte` avant un renommage. */
+const parNomOuDAvant = (liste, texte, nomme) => {
+  const actuels = liste.filter(nomme);
+  return actuels.length ? actuels : liste.filter((x) => aPorteLeNom(x, cle(texte)));
+};
 
 /**
  * La famille d'armes qu'écrit un classeur, parmi `familles` : par son nom, sinon par son nom de lecture (décision R159, migration 0077 : une fiche
@@ -401,6 +415,14 @@ function sansLesMains(nom) {
 }
 
 // ------------------------------------------------------------------ l'import
+
+/**
+ * Un libellé qui écrit le nom d'un don, tel qu'une fiche écrite sous chacun de ses noms d'avant l'écrivait (`noms_d_avant`, lib/fiche-regles.mjs) : la
+ * première occurrence du nom actuel remplacée, mot pour mot (un remplaçant en fonction : un nom écrit avec « $& » ou « $' » n'est pas un motif de
+ * String.prototype.replace) ; [] sans noms d'avant ou quand le libellé n'écrit pas le nom.
+ */
+export const libellesSousLesNomsDAvant = (libelle, don) => (!don?.noms_d_avant || !String(libelle ?? '').includes(don.nom) ? []
+  : don.noms_d_avant.map((n) => String(libelle).replace(don.nom, () => n)));
 
 /**
  * La fiche que décrit l'onglet « Personnage » d'un classeur (voir l'en-tête). `feuille` : `{ cellules: Map, images }` (lib/tableur-lecture.mjs,
@@ -423,6 +445,11 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
   const remarques = [];
   const perdu = (ligne) => nonRepris.push(ligne);
   const nomDe = (liste, id) => trouver(liste, id)?.nom ?? id;
+  // un libellé qui écrit le nom d'un don (« <don> (<classe>) » d'une source de maîtrise, le nom d'un choix d'acquis ou de résistance) tel qu'une fiche
+  // écrite avant un renommage du don sur le site de dev l'écrivait : le nom actuel remplacé par chacun de ses noms d'avant (`noms_d_avant`,
+  // lib/fiche-regles.mjs) ; [] pour une autre source (classe, race, accessoire) ou un don jamais renommé
+  const donsParId = new Map((regles.classes ?? []).flatMap((c) => (c.dons ?? []).map((d) => [d.id, d])));
+  const libellesDAvant = (libelle, source) => libellesSousLesNomsDAvant(libelle, donsParId.get(source));
   const libelleDEmplacement = (e) => EMPLACEMENTS_ACCESSOIRES.find(([k]) => k === e)?.[1] ?? NOMS_DES_EMPLACEMENTS_D_ACCESSOIRE[e] ?? e;
 
   /** Un nombre lu là où la fiche veut un entier : décimal, arrondi vers le bas, et une remarque (« Bourse (or) : « 12,5 » lu 12 »). */
@@ -725,6 +752,21 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
     else if (magie) perdu(`Magie de la symbiose : « ${symbiose} » n’est pas une magie du personnage`);
   }
 
+  // ---- le Mode Hyper (décision R172), dans la note : son état, s'il est débloqué au niveau du classeur, et le compteur de la semaine
+  const ecritHyper = notee('modeHyper')[0];
+  if (ecritHyper !== undefined) {
+    const lu = lireModeHyper(ecritHyper);
+    const h = modeHyperDe(regles, f);
+    if (!lu || !h) perdu(`Mode Hyper : « ${ecritHyper} » illisible`);
+    else {
+      if (lu.mode_hyper && !h.debloque) perdu(`Mode Hyper : « ${ecritHyper} » : pas débloqué avant le niveau ${h.niveau}`);
+      else if (lu.mode_hyper_100 && !h.cent.debloque) perdu(`Mode Hyper : « ${ecritHyper} » : le Mode Hyper 100 % n’est pas débloqué avant le niveau ${h.cent.niveau}`);
+      f.mode_hyper = lu.mode_hyper && h.debloque ? 1 : 0;
+      f.mode_hyper_100 = f.mode_hyper && lu.mode_hyper_100 && h.cent.debloque ? 1 : 0;
+      if (lu.semaine !== null && h.semaine) f.mode_hyper_semaine = lu.semaine >= h.semaine.max ? null : lu.semaine;
+    }
+  }
+
   // ---- dons de classe : les dons à choix (les autres se déduisent), la spécialité d'après ses dons quand le classeur ne l'écrit pas
   for (const rang of [1, 2]) {
     const choix = f.classes.find((c) => c.rang === rang);
@@ -774,8 +816,7 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
   f.classes = classesSelonLaMagieInnee(regles, f);
   for (const c of classesLues) {
     if (!f.classes.some((x) => x.rang === c.rang && x.classe_id === c.classe_id)) {
-      const imposee = f.classes.find((x) => x.rang === c.rang);
-      perdu(`Classe ${c.rang} « ${nomDe(regles.classes, c.classe_id)} » : ${imposee ? `remplacée par ${nomDe(regles.classes, imposee.classe_id)}, imposée` : 'fermée'} par la magie innée ${innee?.nom}`);
+      perdu(`Classe ${c.rang} « ${nomDe(regles.classes, c.classe_id)} » : fermée par la magie innée ${innee?.nom}`);
     }
   }
   const nomDuDon = (id) => regles.classes.flatMap((c) => c.dons.map((x) => [x, c])).find(([x]) => x.id === id) ?? [];
@@ -798,7 +839,8 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
   for (const ligne of notee('maitriseChoix')) {
     const quoi = `Maîtrise d'arme au choix « ${ligne} »`;
     const lu = lireChoixDeMaitrise(ligne);
-    const source = lu && sourcesAChoisir.find((s) => cle(s.titre) === cle(lu.titre) && !f.maitrise_choix.some((x) => x.source === s.source));
+    const libresDeMaitrise = sourcesAChoisir.filter((s) => !f.maitrise_choix.some((x) => x.source === s.source));
+    const [source] = lu ? parNomOuDAvant(libresDeMaitrise.map((s) => ({ ...s, noms_d_avant: libellesDAvant(s.titre, s.source) })), lu.titre, (s) => cle(s.titre) === cle(lu.titre)) : [];
     if (!source) {
       perdu(`${quoi} : ${lu ? 'aucune source de maîtrise de ce nom dans les classes et les dons de la fiche' : 'illisible (une source, puis une famille par point)'}`);
       continue;
@@ -814,6 +856,43 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
     });
   }
   f.maitrise_choix = maitriseChoixValables(regles, f);
+
+  // ---- les dons obtenus des dons « Variable » du Mage Bleu (décision R181), lignes « Don obtenu » de la note : « <don> (<classe>) : <entrée> (<magie>) »
+  // (lireDonObtenu) ; le don par son nom parmi les dons « Variable » de la classe nommée, l'entrée par son nom sur la ligne de la magie nommée du tableau
+  // de cette classe, jamais rapprochés ; un don une fois, une entrée une fois. Un choix d'un don qui n'est pas acquis, ou hors de la liste du don, est
+  // repris tel quel : gardé sans effet, signalé par la base (comme sur la page)
+  f.dons_obtenus = [];
+  for (const ligne of notee('donObtenu')) {
+    const quoi = `Don obtenu « ${ligne} »`;
+    const lu = lireDonObtenu(ligne);
+    const classe = lu && (regles.classes ?? []).find((c) => cle(c.nom) === cle(lu.classe));
+    const variables = classe ? (classe.dons ?? []).filter((d) => d.magie_visee) : [];
+    const [don] = parNomOuDAvant(variables, lu?.don, (d) => cle(d.nom) === cle(lu.don));
+    const magie = don && (regles.magies ?? []).find((m) => cle(m.nom) === cle(lu.magie));
+    const entree = magie && (classe.entrees ?? []).find((e) => e.magie_id === magie.id && cle(e.nom) === cle(lu.entree));
+    if (!lu) perdu(`${quoi} : illisible (un don « Variable » et sa classe, puis une entrée et sa magie)`);
+    else if (!don) perdu(`${quoi} : aucun don « Variable » de ce nom dans les classes des règles`);
+    else if (!entree) perdu(`${quoi} : « ${lu.entree} » introuvable parmi les entrées de ${lu.magie} du tableau de ${classe.nom}`);
+    else if (f.dons_obtenus.some((o) => o.source === don.id)) perdu(`${quoi} : ce don a déjà son entrée`);
+    else if (f.dons_obtenus.some((o) => o.entree_id === entree.id)) perdu(`${quoi} : entrée déjà obtenue par un autre don (une seule fois, décision R181)`);
+    else f.dons_obtenus.push({ source: don.id, entree_id: entree.id });
+  }
+
+  // ---- les spécialisations magiques (décision R236), lignes « Spécialisation magique » de la note : « <magie> : <spécialisation> » (lireSpecialisation) ; la
+  // magie par son nom parmi les règles, la spécialisation par son nom parmi les deux de cette magie, jamais rapprochées ; une par magie. Le choix d'une magie
+  // que la fiche n'a pas, ou d'un mono-magie, est repris tel quel (gardé sans effet, signalé par la base, comme sur la page)
+  f.specialisations_magie = [];
+  for (const ligne of notee('specialisationMagique')) {
+    const quoi = `Spécialisation magique « ${ligne} »`;
+    const lu = lireSpecialisation(ligne);
+    const magie = lu && (regles.magies ?? []).find((m) => cle(m.nom) === cle(lu.magie));
+    const specialisation = magie && (magie.specialisations ?? []).find((x) => cle(x.nom) === cle(lu.specialisation));
+    if (!lu) perdu(`${quoi} : illisible (une magie, puis une de ses spécialisations)`);
+    else if (!magie) perdu(`${quoi} : aucune magie de ce nom dans les règles`);
+    else if (!specialisation) perdu(`${quoi} : « ${lu.specialisation} » introuvable parmi les spécialisations de ${magie.nom}`);
+    else if (f.specialisations_magie.some((x) => x.magie_id === magie.id)) perdu(`${quoi} : cette magie a déjà sa spécialisation (une par magie, décision R236)`);
+    else f.specialisations_magie.push({ magie_id: magie.id, specialisation_id: specialisation.id });
+  }
 
   // ---- l'entraînement (décision R104) : ses compétences dans la case L42 (« Magie 2 | Concentration 10 », bonusDEntrainement) ; la case est lue ligne
   // par ligne : une ligne qui se lit ainsi en entier donne ses compétences, une autre (le texte libre d'avant, R71) une ligne de texte, puis les
@@ -858,7 +937,8 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
     const coupe = ligne.lastIndexOf(' : ');
     const [nom, valeur] = coupe < 0 ? ['', ligne] : [ligne.slice(0, coupe), ligne.slice(coupe + 3).trim()];
     const quoi = `Acquis au choix « ${ligne} »`;
-    const libres = choixDesDons.filter((c) => cle(c.nom) === cle(nom) && !f.acquis_choix.some((y) => y.source === c.source && y.rang === c.rang));
+    const libres = parNomOuDAvant(choixDesDons.map((c) => ({ ...c, noms_d_avant: libellesDAvant(c.nom, c.source) })), nom, (c) => cle(c.nom) === cle(nom))
+      .filter((c) => !f.acquis_choix.some((y) => y.source === c.source && y.rang === c.rang));
     const choix = libres.find((c) => c.repartition || (c.arme ? armeNommee(c, valeur) : c.options.includes(competenceNommee(valeur)?.id))) ?? null;
     if (!choix) {
       perdu(`${quoi} : ${libres.length ? 'pas une option de ce don' : 'aucun choix d’acquis de ce nom dans les dons de la fiche'}`);
@@ -905,7 +985,8 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
     const coupe = ligne.lastIndexOf(' : ');
     const [nom, valeur] = coupe < 0 ? ['', ligne] : [ligne.slice(0, coupe), ligne.slice(coupe + 3).trim()];
     const quoi = `Résistance au choix « ${ligne} »`;
-    const libres = resistancesAChoisir.filter((c) => cle(c.nom) === cle(nom) && !f.resistance_choix.some((y) => y.source === c.source && y.rang === c.rang));
+    const libres = parNomOuDAvant(resistancesAChoisir.map((c) => ({ ...c, noms_d_avant: libellesDAvant(c.nom, c.source) })), nom, (c) => cle(c.nom) === cle(nom))
+      .filter((c) => !f.resistance_choix.some((y) => y.source === c.source && y.rang === c.rang));
     const etat = (regles.etats ?? []).find((e) => cle(e.nom) === cle(valeur));
     const magie = (regles.magies ?? []).find((m) => cle(m.nom) === cle(valeur));
     const choix = libres.find((c) => (c.magie ? magie && c.options.includes(magie.id) : etat && c.options.includes(etat.id))) ?? null;
@@ -1075,7 +1156,7 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
     });
     if (!sort) return;
     pris.add(sort.id);
-    f.sorts.push({ sort_id: sort.id, rang: f.sorts.length + 1, niveau_maitrise: Math.max(0, nm), nm_livre: 0 });
+    f.sorts.push({ sort_id: sort.id, rang: f.sorts.length + 1, niveau_maitrise: Math.max(0, nm) });
   };
   for (const l of d.sorts.lignes) {
     const nom = texte(`${colonnes.nom}${l}`);
@@ -1084,8 +1165,13 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
   for (const v of notee('sorts')) {
     for (const { nom, nm } of lireListe(v).map(lireSortEnSuite)) ajouterSort(nom, nm ?? 0, null);
   }
-  // les livres de sort ; les NM du MJ sont ceux de la fiche (décision R118 : ligne « NM du MJ »), un classeur d'avant les écrit sort par sort (« MJ 2 »)
+  // les livres de sort (décision R169) : un par sort, sur un sort de la liste ou non (il attend alors), même hors des magies du personnage (aucun
+  // contrôle ne le refuse) ; seul un nom inconnu des règles est perdu. Un nom ambigu (homonymes d'un Potentiel Illimité) se lit d'abord dans la liste
+  // des sorts, puis dans sortsDesLivres, puis dans toutes les règles ; encore ambigu, il est perdu (jamais rapproché par vraisemblance). Les NM du MJ
+  // sont ceux de la fiche (décision R118 : ligne « NM du MJ »), un classeur d'avant les écrit sort par sort (« MJ 2 »)
   let nmDuMj = 0;
+  f.livres_sorts = [];
+  const nomme = (o) => (s) => cle(s.nom) === cle(o.nom) || segment(s.id) === cle(o.nom);
   for (const v of notee('nmOfferts')) {
     const offerts = lireNmOfferts(v);
     if (!offerts) {
@@ -1093,13 +1179,19 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
       continue;
     }
     for (const o of offerts) {
-      const lignes = f.sorts.filter((s) => cle(nomDe(regles.sorts, s.sort_id)) === cle(o.nom) || segment(s.sort_id) === cle(o.nom));
-      if (lignes.length !== 1 || o.livre > 1 || o.livre + o.cadeau > lignes[0].niveau_maitrise) {
-        perdu(`NM offerts : « ${o.nom} » (livre ${o.livre}, MJ ${o.cadeau}) ${lignes.length !== 1 ? 'ne désigne pas un sort de la liste' : 'dépasse les NM du sort'}`);
+      const choisis = f.sorts.map((s) => trouver(regles.sorts, s.sort_id)).filter(Boolean);
+      // le nom actuel d'abord, dans les trois listes ; puis un nom d'avant un renommage sur le site de dev (`noms_d_avant`), dans les trois listes
+      const listes = [choisis, sortsDesLivres(regles, f), regles.sorts];
+      const candidats = [...listes.map((l) => l.filter(nomme(o))), ...listes.map((l) => l.filter((s) => aPorteLeNom(s, cle(o.nom))))].find((c) => c.length) ?? [];
+      if (candidats.length !== 1) {
+        perdu(`NM offerts : « ${o.nom} » (livre ${o.livre}, MJ ${o.cadeau}) ${candidats.length ? 'désigne plusieurs sorts' : 'introuvable dans les règles'}`);
         continue;
       }
-      lignes[0].nm_livre = o.livre;
       nmDuMj += o.cadeau;
+      if (!o.livre) continue;
+      const sort = candidats[0];
+      if (aUnLivre(f, sort.id) || o.livre > 1) perdu(`NM offerts : « ${o.nom} » (livre ${o.livre}) : un seul livre par sort (décision R26)`);
+      if (!aUnLivre(f, sort.id)) f.livres_sorts.push({ sort_id: sort.id, rang: f.livres_sorts.length + 1 });
     }
   }
   for (const v of notee('nmMj')) {
@@ -1108,14 +1200,15 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
   }
   f.nm_mj = nmDuMj;
   // le sort préparé (décision R115), dans la note : un sort de la liste, que le don de préparation de la fiche autorise (sortPrepare), son jet de magie
-  // (1 à 100) et la posture de la préparation ; sinon perdu, et dit
+  // (1 à 100), la posture de la préparation, son Mode Hyper (R172) et sa plage de critique figée (R182) ; sinon perdu, et dit
   for (const v of notee('sortPrepare')) {
     if (f.sorts.some((s) => s.prepare === 1)) {
       perdu(`Sort préparé : « ${v} » : un seul sort préparé par fiche (décision R115)`);
       continue;
     }
     const lu = lireSortPrepare(v);
-    const lignes = f.sorts.filter((s) => cle(nomDe(regles.sorts, s.sort_id)) === cle(lu.nom) || segment(s.sort_id) === cle(lu.nom));
+    const lignes = parNomOuDAvant(f.sorts.map((s) => ({ ligne: s, noms_d_avant: trouver(regles.sorts, s.sort_id)?.noms_d_avant })), lu?.nom,
+      (x) => cle(nomDe(regles.sorts, x.ligne.sort_id)) === cle(lu.nom) || segment(x.ligne.sort_id) === cle(lu.nom)).map((x) => x.ligne);
     if (lignes.length !== 1) {
       perdu(`Sort préparé : « ${v} » ne désigne pas un sort de la liste`);
       continue;
@@ -1125,11 +1218,23 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
       perdu(`Sort préparé : « ${v} » : jet de magie hors de ${bornes.min} à ${bornes.max}`);
       continue;
     }
+    // la plage de réussite critique figée à la préparation (décision R182 (4), « critique 1 à N ») : relue telle quelle, N du plancher (constante
+    // critique.plancher, décision R203 : un accessoire maudit la fait descendre sous critique.base, R180 et R54, jamais sous « 1 à 1 ») au plafond
+    // (constante critique.plafond), comme le CHECK de personnage_sort.prepare_critique, jamais recalculée ; absente, NULL
+    const plage = { min: regles.constantes['critique.plancher'], max: regles.constantes['critique.plafond'] };
+    if (lu.critique !== null && (lu.critique < plage.min || lu.critique > plage.max)) {
+      perdu(`Sort préparé : « ${v} » : réussite critique « 1 à ${lu.critique} » hors des plages possibles (de « 1 à ${plage.min} » à « 1 à ${plage.max} »)`);
+      continue;
+    }
     const posture = lu.posture === null ? null : unSeul(retrouver(regles.postures, lu.posture), 'Sort préparé (posture)', lu.posture);
     if (lu.posture !== null && !posture) continue;
-    Object.assign(lignes[0], { prepare: 1, prepare_jet: lu.jet, prepare_posture_id: posture?.id ?? null });
+    // préparé en Mode Hyper ou au Mode Hyper 100 % (décision R172) : les deux cases, cohérentes (le 100 % l'est aussi en Mode Hyper)
+    Object.assign(lignes[0], {
+      prepare: 1, prepare_jet: lu.jet, prepare_posture_id: posture?.id ?? null, prepare_hyper: lu.hyper ? 1 : 0, prepare_cent: lu.hyper && lu.cent ? 1 : 0,
+      prepare_critique: lu.critique,
+    });
     if (!sortPrepare(regles, f)) {
-      Object.assign(lignes[0], { prepare: 0, prepare_jet: null, prepare_posture_id: null });
+      Object.assign(lignes[0], { prepare: 0, prepare_jet: null, prepare_posture_id: null, prepare_hyper: 0, prepare_cent: 0, prepare_critique: null });
       perdu(`Sort préparé : « ${v} » : la fiche n’a pas le don qui le permet (« Préparation », « Chargement »), ou ce sort n’est pas de ceux qu’il autorise`);
     }
   }
@@ -1501,7 +1606,8 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
       .map(([champ, a, max]) => [champ, entierLu(a, QUOI_DES_JAUGES[champ]), entierLu(max, `${QUOI_DES_JAUGES[champ]} (maximum)`)])
     : [['sante_actuelle', d.sante], ['chakra_actuel', d.chakra], ['barriere_actuelle', d.barriere], ['barre4_actuelle', d.barre4]]
       .map(([champ, a]) => [champ, ...paireLue(a, champ)]);
-  for (const [champ, valeur, max] of jauges) f[champ] = valeur === null || valeur === max ? null : Math.max(0, valeur);
+  // la santé du moment n'a pas de plancher (décision R171 : « Peut devenir négative ») ; les autres jauges restent au moins à 0
+  for (const [champ, valeur, max] of jauges) f[champ] = valeur === null || valeur === max ? null : champ === 'sante_actuelle' ? valeur : Math.max(0, valeur);
   const corruption = auto ? entierLu(d.corruption, QUOI_DES_JAUGES.corruption) : paireLue(d.corruption, 'corruption')[0];
   f.corruption = corruption ? Math.max(0, corruption) : null;
   if (!auto) {
@@ -1547,6 +1653,22 @@ export function ficheDuClasseur(regles, feuille, { nomFichier = '', date = 'JJ/M
     if (lue.ecartees.length) {
       const s = lue.ecartees.length > 1 ? 's' : '';
       remarques.push(`Arme ${rang} (${arme.nom}) : ligne${s} ${lue.ecartees.map((l) => `« ${l} »`).join(', ')} non reprise${s} (recalculée${s} par le site)`);
+    }
+  }
+
+  // ---- les compteurs entamés des actions (décision R173), dans la note : la clé d'une action à compteur de la fiche importée (son équipement, ses dons
+  // et sa race relus), une fois chacune, sous son maximum ; sinon la ligne est perdue, avec sa raison
+  const compteurs = notee('compteurAction');
+  if (compteurs.length) {
+    const actions = new Map(actionsDeLaFiche(regles, f).filter((a) => a.compteur).map((a) => [a.cle, a]));
+    f.actions_usage = [];
+    for (const ecrit of compteurs) {
+      const lu = lireCompteurDAction(ecrit);
+      const action = lu ? actions.get(lu.cle) : null;
+      if (!lu) perdu(`Compteur d’action : « ${ecrit} » illisible`);
+      else if (!action) perdu(`Compteur d’action : « ${ecrit} » : la fiche n’a pas cette action`);
+      else if (f.actions_usage.some((u) => u.action_id === lu.cle)) perdu(`Compteur d’action : « ${ecrit} » : déjà lu`);
+      else if (lu.restants < action.compteur.max) f.actions_usage.push({ action_id: lu.cle, restants: lu.restants });
     }
   }
 
@@ -1611,6 +1733,10 @@ function memesOctets(a, b) {
  * accessoires) ; un maximum plus petit que ce calcul donne 0, à vérifier. La remarque dit toujours la déduction (fiche auto de Lucien : « Gains de
  * niveau déduits des maximums du classeur (santé 60, chakra 150) : santé 41, chakra 121 »), et un total hors de ce que donnent les niveaux atteints
  * (gainsDeNiveau : les points d'attributs et les dés bonus, la règle gains_niveau de la base) : « … : hors du total à saisir (152 à 166), à vérifier ».
+ * Décisions R225 et R230 (2) : la santé déduite d'un Potentiel Illimité inné au-delà de son plafond (gainsDeNiveau().potentiel, soit santeDuPotentiel du
+ * moteur : la donnée potentiel_illimite.sante_max_par_niveau × les niveaux qui donnent des points d'attributs + les dés ; la même que la règle
+ * gains_sante_potentiel de la base) est dite aussi, le nom de la magie lu dans les règles : « … : santé au-delà du plafond de Potentiel Illimité (S / au
+ * plus P), à vérifier ». Comme les autres remarques, rien n'est refusé ni réécrit.
  */
 export function gainsDesMaximums(regles, fiche, maxSante, maxChakra) {
   const sans = attributsDe(regles, { ...fiche, gains_sante: 0, gains_chakra: 0 });
@@ -1619,7 +1745,11 @@ export function gainsDesMaximums(regles, fiche, maxSante, maxChakra) {
   const partie = (nom, champ) => `${nom} ${gains[`gains_${champ}`]}${brut[champ] < 0 ? ` (maximum sous les ${sans[champ]} que la fiche calcule sans gains)` : ''}`;
   const attendus = gainsDeNiveau(regles, { ...fiche, ...gains });
   const plage = attendus.min === attendus.max ? String(attendus.min) : `${attendus.min} à ${attendus.max}`;
-  const suite = attendus.hors ? ` : hors du total à saisir (${plage}), à vérifier` : brut.sante < 0 || brut.chakra < 0 ? ' : à vérifier' : '';
+  const potentiel = attendus.potentiel?.depasse
+    ? `santé au-delà du plafond de ${trouver(regles.magies, fiche.magie_innee_id)?.nom ?? fiche.magie_innee_id} (${attendus.sante} / au plus ${attendus.potentiel.plafond})`
+    : null;
+  const ecarts = [attendus.hors ? `hors du total à saisir (${plage})` : null, potentiel].filter(Boolean);
+  const suite = ecarts.length ? ` : ${ecarts.join(', ')}, à vérifier` : brut.sante < 0 || brut.chakra < 0 ? ' : à vérifier' : '';
   return {
     ...gains,
     remarque: `Gains de niveau déduits des maximums du classeur (santé ${maxSante}, chakra ${maxChakra}) : ${partie('santé', 'sante')}, ${partie('chakra', 'chakra')}${suite}`,

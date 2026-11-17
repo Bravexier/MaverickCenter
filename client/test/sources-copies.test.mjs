@@ -7,6 +7,7 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { baseDImport } from './aide-base-d-import.mjs';
 import { TABLES_DES_NOTES } from '../src/lib/notes-de-version.mjs';
 
 const racine = (chemin) => fileURLToPath(new URL(`../../${chemin}`, import.meta.url));
@@ -50,11 +51,17 @@ test('base : aucune colonne de texte ne cite plus un identifiant d’origine (sa
       for (const c of registre.copies) {
         const n = db.prepare(`SELECT count(*) AS n FROM "${name}" WHERE instr("${col}", ?) > 0`).get(c.avant).n;
         const permis = ORIGINAUX_PERMIS.find((o) => o.titre === c.titre && o.table === name && o.colonne === col)?.n ?? 0;
-        assert.equal(n, permis, `${name}.${col} cite ${c.titre} (${c.avant}) ${n} fois`);
+        // au plus les liens permis (le site de dev supprime des ressources, réécrit leur description) ; exactement eux à l'import (ci-dessous)
+        assert.ok(n <= permis, `${name}.${col} cite ${c.titre} (${c.avant}) ${n} fois, ${permis} permis`);
       }
     }
   }
   assert.ok(colonnes > 500, `${colonnes} colonnes lues`);
+  const dImport = baseDImport();
+  for (const o of ORIGINAUX_PERMIS) {
+    const { avant } = registre.copies.find((c) => c.titre === o.titre);
+    assert.equal(dImport.prepare(`SELECT count(*) AS n FROM "${o.table}" WHERE instr("${o.colonne}", ?) > 0`).get(avant).n, o.n, `${o.table}.${o.colonne} à l’import`);
+  }
 });
 
 test('sources : une ligne par document cité, id dérivé du nouvel identifiant, les renvois des pages comme avant la migration', () => {
@@ -77,8 +84,24 @@ test('sources : une ligne par document cité, id dérivé du nouvel identifiant,
   // 1 057 depuis la refonte des pages du guide (2026-10-18, db:sync-pages) : les sept pages fusionnées retirées (18 renvois), leurs sources reportées sur
   // la page qui les absorbe (« Créer son personnage » : 6 de plus) et la nouvelle page « Rejoindre une partie » (1) ; 1 099 depuis la réécriture de leurs
   // textes (le même jour) : les dix-sept pages réécrites citent chacune les documents dont elles tirent leurs faits (42 renvois de plus, et 2 vers le
-  // CODEX Maverick, hors des onze documents de la migration)
-  assert.equal(historiqueSite(db).lignesDImport('page_source').filter((r) => ids.has(r.source_id)).length, 1099);
+  // CODEX Maverick, hors des onze documents de la migration) ; 1 096 depuis le retrait de la page « Rejoindre une partie » (2026-11-05, db:sync-pages,
+  // réponse du propriétaire : « Efface la page "Rejoindre une partie" et son lien. ») : ses trois renvois vers des documents Google ; 1 087 depuis le
+  // retrait de la page « Lexique » (2026-11-05, migration 0090 : devenue des mots-clés) : ses neuf renvois vers des documents Google ; 1 171 depuis le
+  // nouveau plan des pages de règles (2026-11-06, R184 et R185 : db:sync-pages puis migration 0091) : les 23 pages nouvelles citent les sources de la
+  // page dont elles viennent (99 renvois), les six pages retirées en citaient 15 ; 1 163 depuis le retrait de trois pages des combats (2026-11-06,
+  // migration 0094, demande du propriétaire : « Postures », « Les boss et leurs postures », « Mode Super ») : leurs huit renvois vers des documents Google ;
+  // 1 162 depuis le retrait de la « Liste des effets mode hyper » (2026-11-06, migration 0095, demande du propriétaire) : son renvoi vers le classeur
+  // « Mode hyper et co » ; 1 161 depuis le retrait de « Altérations d'états et Mode Hyper » (2026-11-06, migration 0096, demande du propriétaire) : son
+  // renvoi vers « Règle du jeu/Guide pour MJ - Maverick ». Les renvois que retire une migration postérieure se lisent dans son registre : la 0119
+  // supprime le don Large du Cuirassé (R238 (2)) et ses lignes page_source ; la 0122 (2026-11-13, demande du propriétaire), la page « La montée de
+  // niveau » et ses cinq lignes page_source ; la 0123 retire « Les neuf alignements », fondue dans « Alignement » (2026-11-13, demande du
+  // propriétaire), et ses lignes page_source ; la 0124 retire « Accessoires et Ceinture », fondue dans « Inventaire/Sac à dos » (décision R272), et
+  // ses lignes page_source
+  const registreDe = (nom) => JSON.parse(readFileSync(new URL(`../../data/migrations/${nom}.json`, import.meta.url), 'utf8'));
+  const retiresDepuis = [...registreDe('0119-classes-materiaux-d12').cuirasse.page_source_supprimees,
+    ...registreDe('0122-retrait-la-montee-de-niveau').page_source_supprimees,
+    ...['0123-fusion-pages-alignement', '0124-retrait-accessoires-et-ceinture'].flatMap((nom) => registreDe(nom).pages_retirees.flatMap((p) => p.page_source_supprimees))];
+  assert.equal(historiqueSite(db).lignesDImport('page_source').filter((r) => ids.has(r.source_id)).length + retiresDepuis.filter((r) => ids.has(r.source_id)).length, 1161);
   // aujourd'hui : tout renvoi vers un document Google cite une copie du registre, l'un des deux documents non copiés par la migration ou la copie que
   // le propriétaire en a faite depuis (manifeste : entrée dont `original` cite l'identifiant d'origine ; CODEX Maverick et Bestiaire 2.0, 2026-10-11)
   const copiesUlterieures = manifeste.google.filter((g) => registre.non_copies.some((n) => g.id !== n.id && g.original?.includes(`/d/${n.id}/`))).map((g) => g.id);
@@ -91,12 +114,15 @@ test('sources : une ligne par document cité, id dérivé du nouvel identifiant,
 
 test('liens : les 9 ressources vers le Doc « Alchimie » original, comme le classeur (décision R84, migration 0048) ; le lien du Mage Bleu vers « Familiers » est retiré (migration 0019)', () => {
   const { avant, apres } = parTitre.get('Alchimie');
-  const ressources = (id) => db.prepare('SELECT count(*) AS n FROM ressource WHERE instr(description, ?) > 0').get(id).n;
-  assert.equal(ressources(avant), 9);
-  assert.equal(ressources(apres), 0);
-  // le tableau de la page « Équipement inventaire » les recopie ; les sources des pages d'alchimie restent la copie
+  const ressources = (base, id) => base.prepare('SELECT count(*) AS n FROM ressource WHERE instr(description, ?) > 0').get(id).n;
+  const recopies = (base) => base.prepare("SELECT corps_md FROM page WHERE id = 'ressources/equipement-inventaire'").get().corps_md.split(`/d/${avant}/`).length - 1;
+  // neuf à l'import, dans les ressources et dans le tableau de la page « Équipement inventaire » qui les recopie ; aujourd'hui, la page recopie
+  // celles qui restent (le site de dev supprime des ressources)
+  assert.deepEqual([ressources(baseDImport(), avant), recopies(baseDImport())], [9, 9]);
+  assert.equal(ressources(db, apres), 0);
+  assert.equal(recopies(db), ressources(db, avant));
+  // les sources des pages d'alchimie restent la copie
   const corps = db.prepare("SELECT corps_md FROM page WHERE id = 'ressources/equipement-inventaire'").get().corps_md;
-  assert.equal(corps.split(`/d/${avant}/`).length - 1, 9);
   assert.ok(!corps.includes(apres));
   assert.ok(db.prepare('SELECT count(*) AS n FROM page_source WHERE source_id = ?').get(`google-doc:${apres}`).n > 50);
   assert.equal(db.prepare('SELECT count(*) AS n FROM source WHERE google_id = ?').get(avant).n, 0);

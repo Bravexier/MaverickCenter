@@ -1,85 +1,78 @@
 ---
 name: zone-mots-cles
-description: "Glossaire mot_cle et balises {{ref}} (rendu par le middleware, forme canonique, db:check), outil baliser-mot-cle, importeurs, MOTS_CLES_PROTEGES et refus du service, lots d'avant 0043 et 0056. À charger avant de lire, modifier ou relire ce code ou un texte qui cite un mot-clé."
-paths: ["client/src/lib/mots-cles*.mjs", "client/src/middleware.mjs", "client/src/styles/global/mots-cles.css", "client/src/scripts/edition/mots-cles-vivants.mjs", "client/src/lib/glossaire-balisage.mjs", "client/scripts/baliser-mot-cle.mjs", "tools/glossaire/**", "tools/db/homonymes.py", "client/test/mots-cles*.test.mjs", "client/test/aide-mots-cles.mjs", "client/test/*glossaire*.test.mjs", "client/test/baliser-mot-cle.test.mjs", "client/test/texte-en-place-mots-cles.test.mjs", "data/migrations/0043-*", "data/migrations/0056-*", "data/migrations/0058-*"]
+description: "Glossaire mot_cle : id entier, clé recalculée (R232), catégories, synonymes (R233), icône (R235), balises {{clé}} (saisie, forme canonique, rendu par le middleware, db:check), MOTS_CLES_PROTEGES, importeurs. Ce que le service refuse : skill zone-mots-cles-service. À charger avant de lire, modifier ou relire ce code ou un texte qui cite un mot-clé."
+paths: ["client/src/lib/mots-cles.mjs", "client/src/lib/mots-cles-{balises,db,cles,proteges}.mjs", "client/src/lib/icones.mjs", "client/src/lib/{mots-cles-des-valeurs,valeurs-fermees-rendu}.mjs", "client/src/middleware.mjs", "client/src/styles/global/mots-cles.css", "client/src/scripts/edition/mots-cles-vivants.mjs", "tools/db/homonymes.py", "client/test/mots-cles-{balises,cles,python,r195,vivants,vivants-liens,liens-rendu}.test.mjs", "client/test/aide-mots-cles.mjs", "client/test/{texte-en-place-mots-cles,importeurs-etiquettes,db-lexique-en-mots-cles}.test.mjs", "client/test/db-011{3,4,5,6}-*.test.mjs", "client/test/icones-degats-et-magies.test.mjs", "client/test/{mots-cles-des-valeurs,valeurs-fermees-rendu,edition-liens-des-valeurs}.test.mjs", "data/migrations/{0043,0056,0058,0090,0112,0113,0114,0115,0116,0125}-*"]
 user-invocable: false
 ---
 # Mots-clés (glossaire)
 
 ## Fichiers
-- Balises : `client/src/lib/mots-cles-balises.mjs` (lecture, forme canonique, rendu `htmlAvecMotsCles`, `texteSansBalises`, `avecLeursBalises`, `zonesDeCode`, `ambiguiteDe`, `formeCanonique`, `formesNonCanoniques`, `EXCLUS`, `texteEcrit`).
-- Rendu sur tout le site : `src/middleware.mjs` (build et `astro dev`), CSS `styles/global/mots-cles.css`.
-- Vocabulaire : `lib/mots-cles.mjs` (`MOTS_CLES_PROTEGES`), `lib/mots-cles-db.mjs` (`textesDeLaBase`).
-- Site de dev : `src/scripts/edition/mots-cles-vivants.mjs` (vocabulaire vivant) ; service : `serveur/edition.mjs` (`texteAvecMotsClesCanoniques`, `motCleDe`, `reecrireLesBalises`), `serveur/edition-chronologie.mjs` (`verifierSansSort`, opérations du vocabulaire).
-- Balisage d'un mot : `client/scripts/baliser-mot-cle.mjs`, `lib/glossaire-balisage.mjs`, entrées `tools/glossaire/chakra-barriere.json`, `tools/glossaire/corruption.json`, `tools/glossaire/sort-fer.json`.
-- Importeurs : `tools/db/maverick.py` (`mot_cle`, `poser_les_mots_cles`), `tools/db/homonymes.py` (`MAGIES_HOMONYMES`), `tools/docs/codex.py --vocabulaire`.
-- Page `/recherche/`, index de recherche et gestion du vocabulaire en mode modification (`src/scripts/edition/mots-cles.mjs`, `lib/mots-cles-edition.mjs`) : skill `zone-recherche`.
+- Clé : `lib/mots-cles-cles.mjs#clesDesMotsCles`, jumelle de `tools/db/maverick.py#cles_des_mots_cles` (comparées par `mots-cles-cles.test.mjs`).
+- Balises : `lib/mots-cles-balises.mjs` (`vocabulaireDesMotsCles`, `motCleDeLaRef`, `ambiguiteDe`, `formeCanonique`, `fautesDuSynonyme`, `EXCLUS`, `SANS_LIEN`).
+- Rendu : `src/middleware.mjs` (build et `astro dev`), `styles/global/mots-cles.css` ; site de dev : `src/scripts/edition/mots-cles-vivants.mjs` (vocabulaire vivant, HTML posé après le chargement).
+- Vocabulaire : `lib/mots-cles.mjs` (`MOTS_CLES_PROTEGES`, `estProtege`, `estVerrouille`), `lib/mots-cles-proteges.mjs`, `lib/mots-cles-db.mjs` (`motsClesDeLaBase`, `categoriesDesMotsCles`, `textesDeLaBase`).
+- Icônes : `lib/icones.mjs` (`ICONES`, `icone`, `fauteDeLIcone`), la seule liste (3 familles : `monnaie`, `degats`, `magie`) : `db:check`, le service (`refuserLIcone`), `GET /api/edition/listes/` et l'éditeur la lisent. Dessins des dégâts et des magies : skill `ui-monnaies`.
+- Importeurs : `tools/db/maverick.py`, `tools/db/homonymes.py`, `tools/docs/codex.py --vocabulaire`.
+- Voisins : skills `zone-mots-cles-service` (ce que le service écrit et refuse), `zone-mots-cles-liens` (adresse, couleur), `zone-mots-cles-balisage`, `zone-glossaire`, `zone-recherche`, `zone-edition-rejeu` (lots d'avant une migration). La chronologie a ses propres catégories : skill `zone-chronologie`.
 
 ## À lire
-- `docs/content-guide.md`, « Mots-clés (glossaire) » : écritures, forme canonique, refus, renommer / supprimer / fusionner, ce qui n'est pas un mot-clé, « Baliser un mot dans tous les textes », « Seulement là où il est pertinent », adresse `/recherche/?mot-cle=<id>`.
-- `docs/serveur.md`, « Édition des règles (site de dev) » : rejeu des balises d'un mot-clé supprimé ou fusionné, lots d'avant 0043 et 0056.
-- La forme canonique est aussi à appliquer côté édition : skill `zone-edition`. La chronologie a des catégories, pas des mots-clés : skill `zone-chronologie`.
+- `docs/content-guide.md`, « Mots-clés (glossaire) » : « Le Glossaire » (noms, homonymes, monnaies), « Gérer le vocabulaire », ce qui n'est pas un mot-clé.
+- `docs/serveur.md`, « Édition des règles (site de dev) », paragraphe des balises (forme canonique par la clé, saisie, casse).
 
-## Le glossaire (table `mot_cle`)
-- Migrations `0043`, `0056` (et `0058` pour « Solidité »). Colonnes : `id` figé, `libelle`, `libelle_cle` = `normalize`, `description` (la définition).
-- La définition est NULL tant qu'elle n'est pas écrite, partout (base, service, `mots-cles-db.mjs`) ; elle se lit `?? ''`.
-- La 0056 n'a gardé sur les pages que `MOTS_CLES_PROTEGES` et le glossaire ; les ids des 400 mots-clés retirés peuvent resservir.
-- Une page porte un mot-clé par `page_tag.tag_id` (`ON DELETE CASCADE`) ; un sort, en étiquette, par `sort_mot_cle` (migration 0067, sans cascade : R114 ; « Sort fer » sur les 13 sorts « Fer… », migration 0079 : R164).
-- Les événements de la chronologie n'ont pas d'étiquette mais des catégories (`categorie_chronologie`).
-- Un mot-clé renommé garde son id (et ses adresses `?mot-cle=<id>`).
-- Une capacité, un état ou un type homonyme reste ce qu'il est : aucun lien implicite. Seule une balise fait un mot-clé.
+## Les tables (migrations 0043, 0056, 0090, 0098, 0110, 0113 à 0116 ; schéma : skills `base-sqlite` et `base-sqlite-migrations`)
+- `mot_cle` : `id` entier attribué à la création, figé, jamais réutilisé (R232 (1)) ; `libelle`, pas unique ; `cle` calculée ; `description` (NULL tant qu'elle n'est pas écrite, lue `?? ''`) ; `couleur`, `url` ; `verrou` ; `monnaie_id` (sa monnaie, `ON DELETE SET NULL`) ; `icone` (`<famille>:<id>`, 0116). Aucune route n'écrit `cle`, `verrou` ni `monnaie_id`.
+- `categorie_mot_cle` (libellé unique, 11 au départ), `mot_cle_categorie`, `mot_cle_ancienne_cle` (une clé quittée → le mot-clé), `mot_cle_synonyme` (dans l'ordre ; écriture normalisée unique).
+- La clé (R232 (2), (9), (10)) : sans homonyme, `normalize(libelle)` ; des homonymes (même `normalize`) prennent ensuite, chacune après un tiret, les catégories qui ne sont pas communes à tous, dans l'ordre de leur id (`namazu-race`, `namazu-classe`). Refusés : un homonyme sans catégorie propre face à chacun des autres (aucune, ou incluses dans celles d'un autre) ; une clé déjà prise.
+- R232 (4) remplace R191 : les 13 classes raciales s'appellent comme leur race (catégorie Classe ; la race a Race, 0114) ; le libellé s'affiche tel quel.
+- Synonymes (R233) : saisie d'une balise, recherche, affichage ; la clé n'en dépend pas. L'abréviation en est devenue un (0115) ; « CR » est un synonyme de `corruption` (R183 (3)). Unicité (R233 (4), `fautesDuSynonyme`, `db:check` et service) : ni le libellé de son mot-clé, ni le libellé, un synonyme ou la clé d'un autre.
+- « Action bonus » et « Action rapide » sont fondus dans « Instant Cast », dont ils sont les synonymes (R233 (5)).
+- Icône (R235) : un dessin de `ICONES` ; seules RF, RO, PP en ont une posée (0116). Les icônes de dégâts et de magie s'ajoutent à la liste seulement (prolonge R235) : le propriétaire les attribue sur le site de dev. Un test d'état courant ne suppose jamais « icône = monnaie » : il s'appuie sur `fauteDeLIcone` (`icones-degats-et-magies.test.mjs`). Affichage par `icone` (`htmlDeLIcone`), pas par `monnaie_id` ; elle survit à la suppression de sa monnaie ; le verrou la couvre (R235 (5)). `monnaie_id` ne sert qu'à retirer de « Aussi appelé » l'abréviation de sa propre monnaie (`synonymesAffiches`, R234 (8), R235 (4)). Étiquettes protégées : « Classe » et « Métier » (R183 (8)).
+- Une page porte un mot-clé par `page_tag.tag_id` (`ON DELETE CASCADE`) ; un sort, en étiquette, par `sort_mot_cle` (0067, sans cascade : R114 ; « Sort fer » : R164).
+- Mots-clés de la fiche (R231 (4), migration 0112) : les compétences et les 6 caractéristiques sont des mots-clés colorés `caracteristique:<id>`, sans adresse ni abréviation (sinon `npm run autolink` proposerait « Force », « Arc »… partout). La compétence Magie a l'id `magie-competence`, libellé « Magie (compétence) » : « magie » est une étiquette posée par l'importeur des magies (`tools/sheets/magies.py`, `MAGIES`). Un mot-clé à adresse a verrou 1 (R219 (1), `serveur-edition-verrou`) ; les notions créées à verrou 0 restent sans adresse.
 
 ## Balises
-- Marquage explicite seulement, jamais de repérage automatique (demande du propriétaire). `{{ref}}`, `{{ref|texte}}` (gras, définition en infobulle), `{{ref:}}` (= `{{ref :}}`, mode complet « **Libellé** : définition »). Dans une case de tableau Markdown, `\|`.
-- Dans une saisie, `ref` = id ou écriture du mot-clé, quelle que soit la casse ; la casse écrite est gardée (`{{solidité}}` → `{{solidite|solidité}}`, `texteEcrit` ; demande du propriétaire).
-- La base ne garde que des ids, sous la forme canonique de la colonne (`typeDeTexte`, `CHAMPS_DE_TEXTE` de `lib/edition-modele.mjs`, la seule liste des types de champ texte) :
-  - texte mis en forme (Markdown : pages, chronologie, panneaux) : `{{id}}` (suit le libellé ; le libellé écrit en texte y revient), `{{id|texte}}` pour un autre texte, `{{id:}}` ; une balise dans un code (`zonesDeCode`) est gardée telle quelle ;
-  - texte de case (`ligne`, `texte`) : `{{id|texte}}` toujours (il se lit sans le vocabulaire) ; le mode complet est refusé.
-- Le service enregistre la forme canonique (`texteAvecMotsClesCanoniques`, avant les dérivations et le journal). Il refuse une ref inconnue ou ambiguë (l'id d'un mot-clé et l'écriture d'un autre : `ambiguiteDe`), sauf si elle était déjà présente avant, et le mode complet dans un texte de case.
-- Supprimer retire les balises, fusionner les recible, dans les colonnes texte de `TABLES`, par le chemin normal d'une modification (`reecrireLesBalises`). Renommer ne réécrit aucun texte.
-- Un emplacement `{N}` n'est jamais `{{N}}`. Les monnaies ne lisent rien dans une balise.
+- Marquage explicite seulement, jamais de repérage automatique (demande du propriétaire). `{{ref}}`, `{{ref|texte}}` (gras, définition en infobulle), `{{ref:}}` (« **Libellé** : définition »). Dans une case de tableau Markdown, `\|`.
+- Saisie : la ref se cherche, sans égard à la casse (R233 (10)), comme clé, puis libellé porté par un seul mot-clé, puis synonyme, puis clé quittée (l'ordre de `maverick.py#trouver_mot_cle`). Un libellé que portent des homonymes est ambigu, refusé (`ambiguiteDe`, R232 (4)) : il faut écrire la clé.
+- La casse tapée est gardée (R233 (10), `texteEcrit`) : `{{ic}}` → `{{instant-cast|ic}}`, `{{Action rapide}}` → `{{instant-cast|Action rapide}}`. La clé, une clé quittée ou le libellé écrit à l'identique montrent le libellé.
+- La base ne garde que des clés, sous la forme canonique de la colonne (`typeDeTexte`, `CHAMPS_DE_TEXTE` de `lib/edition-modele.mjs`, la seule liste des types de champ texte) :
+  - texte mis en forme (pages, chronologie, panneaux) : `{{clé}}` (suit le libellé), `{{clé|texte}}` pour un autre texte, `{{clé:}}` ; une balise dans un code (`zonesDeCode`) reste telle quelle ;
+  - texte de case (`ligne`, `texte`) : `{{clé|texte}}` toujours (il se lit sans le vocabulaire) ; le mode complet est refusé.
+- Le service enregistre la forme canonique (`texteAvecMotsClesCanoniques`, avant les dérivations et le journal) ; il refuse une ref inconnue ou ambiguë, sauf si elle était déjà là, et le mode complet dans un texte de case.
+- Une clé qui change réécrit toutes les balises qui la citent ; fusionner les recible ; supprimer n'en réécrit aucune, sauf en forçant (skill `zone-mots-cles-service`).
+- Un emplacement `{N}` n'est jamais `{{N}}`.
 
 ## Rendu (middleware)
-- Rendues dans les nœuds de texte, une bulle par mot-clé et par page. Jamais dans script, style, textarea, template, code, pre, kbd, samp, svg, math, ni sous `[data-mots-cles-bruts]` (`/donnees/`, textes d'aide, dialogues et zone d'annonce du mode modification, page Debug), ni dans leurs attributs. La liste `EXCLUS` est la même dans `mots-cles-vivants.mjs`.
-- Dans une `.bulle` : le gras seul. Dans un élément focalisable (a, button, summary, label, select, `[tabindex]`) : sans `tabindex`. Dans un bouton ou un résumé : sans bulle.
-- Texte simple dans `<title>`, `<option>` et les attributs de texte (`data-*` JSON compris, sauf `data-balise` et `data-ed…`) ; une entité inconnue n'est pas échappée deux fois.
-- L'id `mot-cle-<id>` est réservé aux bulles (posées en fin de page, jamais à la main : skill `ui-infobulles`).
-- Un JSON servi retire lui-même les balises (`texteSansBalises` : `regles.json` sans les définitions, index de recherche).
-- Un découpage lit le texte sans balises ; un affichage morceau par morceau les garde (`avecLeursBalises` : bonus et objets d'un métier, inventaire d'une classe, lieux d'une espèce).
-- Site de dev : `mots-cles-vivants.mjs` refait les bulles et rend les balises du HTML posé après le chargement.
+- Rendues dans les nœuds de texte, une bulle par mot-clé et par page. Jamais dans script, style, textarea, template, code, pre, kbd, samp, svg, math, ni sous `[data-mots-cles-bruts]` (`/donnees/`, aides, dialogues du mode modification, page Debug), ni dans leurs attributs. `EXCLUS` : même liste dans `mots-cles-vivants.mjs`.
+- Un mot-clé à adresse est un lien `a.mot-cle`, son `url` préfixée de la base du site, sans `tabindex` ; sans adresse, `strong.mot-cle`. Dans `SANS_LIEN` (a, button, summary, label, select) ou une `.bulle` : le gras seul, sans bulle dans un bouton ou un résumé ; un `[tabindex]` garde le lien. Un mot-clé coloré porte sa classe sur sa balise, le bloc du mode complet et sa bulle (skill `zone-mots-cles-liens`).
+- Le mot-clé rendu porte `data-mot-cle` = sa clé ; sa bulle a l'id `mot-cle-<clé>` (`idDeBulle`, réservé aux bulles : skill `ui-infobulles`).
+- Texte simple dans `<title>`, `<option>` et les attributs de texte (sauf `data-balise`, `data-ed…`).
+- Titre d'une bulle et nom du mode complet : `htmlDuNomDuMotCle`, le libellé seul (R233 (9)) suivi de son icône ; puis « Aussi appelé : … » (`htmlAussiAppele`, R233 (8)). L'icône suit aussi le texte d'une balise, sans s'y doubler quand il la montre déjà (`{{ricken-dor|RO}}`, R235 (3)). Monnaies en icônes dans les balises et bulles : skill `ui-monnaies`.
+- Un JSON servi retire lui-même les balises (`texteSansBalises` : `regles.json`, index de recherche), `page_fts` aussi. Un découpage lit le texte sans balises ; un affichage morceau par morceau les garde (`avecLeursBalises`).
 
 ## Invariants
-- `db:check` refuse une ref qui n'est pas un id et une forme non canonique (la règle de `formeCanonique`, sauf `{{id|Libellé}}` dans un texte mis en forme), dans toutes les colonnes de texte des règles et des pages (`lib/mots-cles-db.mjs#textesDeLaBase`, `formesNonCanoniques`) ; ni les sections 13 à 15, ni les tables dérivées `lien` et `lien_candidat`, ni les traces gardées telles quelles (`lib/tables-de-la-base.mjs`).
-- Aucun script de page n'importe `mots-cles-balises.mjs` (il entraîne `text.mjs`).
-- Les lectures du sens d'une modification (R29, `lib/notes-de-version-sens.mjs`) lisent les cases sans balises.
-- Un test qui compare un texte « tel qu'écrit » à une sortie qui retire les balises (fiche, `regles.json`, découpages, site construit) lit ce texte sans elles (`texteSansBalises`) ou rend ses balises comme le middleware (`htmlAvecMotsCles`).
-- Les tests du vocabulaire créent leurs mots-clés d'essai (`test/aide-mots-cles.mjs`).
+- `db:check` refuse une ref qui n'est pas une clé et une forme non canonique (`formesNonCanoniques`, sauf `{{clé|Libellé}}` dans un texte mis en forme) dans `textesDeLaBase` (hors sections 13 à 15, tables dérivées et traces : `lib/tables-de-la-base.mjs`), et une icône hors de `ICONES`.
+- `db:check` recalcule chaque clé (`clesDesMotsCles` strict : aucun écart, aucun homonyme refusé), vérifie qu'une clé quittée n'est la clé courante d'aucun mot-clé, et contrôle chaque synonyme (`fautesDuSynonyme`, `libelle_cle` = `normalize`).
+- Aucun script de page n'importe `mots-cles-balises.mjs` (il entraîne `text.mjs` et `monnaies.mjs`).
+- Le sens d'une modification (R29, `lib/notes-de-version-sens.mjs`) se lit sans balises (`texteSansBalises`).
 
-## Vocabulaire : ce que le service refuse
-- `MOTS_CLES_PROTEGES` : ceux dont le site se sert pour ranger ses pages (catégories de `/classes/`, « classe », « race », « race hybride », « capacité de classe », « métier », « codex »), « Sort grenade » (R114) et « Sort fer » (R164), que la fiche lit. Ils ne se suppriment ni ne changent de clé (`409` avec la raison) ; leur définition se modifie. Sur `/recherche/` : skill `zone-recherche`.
-- Un mot-clé qui étiquette un sort ne se supprime ni ne se fusionne, dans un sens ou l'autre (`409` qui nomme les sorts : `serveur/edition-chronologie.mjs#verifierSansSort`). Tests : `serveur-edition-chronologie.test.mjs` (R114, R164).
-- Un renommage vers une écriture déjà prise est une fusion explicite (`fusionner_mots_cles`).
+## Valeurs fermées liées au glossaire (migration 0125, demande du propriétaire : « si ils existent »)
+- Les types de dégâts (taille, estoc, frappe ; feu, eau, glace par leur magie) et les magies sont liés à leur mot-clé quand il existe ; physique et sonore restent sans lien ; aucun mot-clé n'est créé pour cela. Tables : skill `base-sqlite-migrations`.
+- `lib/mots-cles-des-valeurs.mjs#liensDesValeursFermees(db)` rend `{ degats, magies }` (un lien ou null par valeur), relu à chaque appel, sans cache. Chaque lecteur (armes, armures, monstres, invocations, `loadMagies`, règles de la fiche) porte `liens` au premier niveau ; la page le passe à son rendu.
+- `lib/valeurs-fermees-rendu.mjs` écrit le texte `{{clé|texte}}` (la clé relue à chaque construction) : rendu par le middleware au build et par `mots-cles-vivants` sur le site de dev, comme toute balise. Une magie s'affiche par son nom court avec l'infobulle de son mot-clé ; taille, estoc, frappe gardent le libellé de la page. Sans `liens` ou sans mot-clé : le libellé nu, rien n'est deviné.
+- La fiche (GL6, `docs/sql/a-valider.md`, recommandation acceptée) : ses commandes (`<select>`, `<optgroup>`, pastilles, `title`) restent sans lien ; seul le résumé de l'arme, qui est du texte affiché, lie le type choisi : `fiche-moteur.mjs#typeDeDegatsAffiche` lit `regles.liens`, `scripts/fiche.mjs#motCleAffiche` pose un `strong.mot-cle` (classe de couleur, définition en `title`), sans balise `{{…}}` car le navigateur n'a pas le vocabulaire. `.mot-cle[data-infobulle]` est soulignée comme `[data-bulle]` (`styles/global/mots-cles.css`). Les pastilles des magies innées des races sont liées (skill `zone-races`).
+- Ce que le service refuse et reporte sur ces références : skill `zone-mots-cles-service`.
+
+## Mots-clés dont le site se sert
+- `MOTS_CLES_PROTEGES` (ceux qui rangent les pages, « Sort grenade » R114, « Sort fer » R164) identifie, ne refuse pas (le verrou refuse : R219 (2)) : Map id entier → ce que le site en fait, tirée de `RAISONS_DES_MOTS_CLES_PROTEGES` (par nom) et de `lib/mots-cles-proteges.mjs#IDS_DES_MOTS_CLES_PROTEGES` (nom → id de la 0113).
+- Reconnus à leur id entier, jamais à leur libellé ni à leur clé (R195) : `nomDuProtege`, `idDuProtege`, `estProtege`. `race-hybride` n'a pas d'id tant qu'il n'existe pas : reconnu par sa clé ; créé, son id est à reporter dans les deux listes (JS et `maverick.py#MOTS_CLES_PROTEGES`, comparées par `mots-cles-python.test.mjs`).
+- Une page porte leurs noms en `data.mots_cles`, posés par `lib/wiki.ts` (`pages-db.mjs#motsClesDesPages`), jamais dans le `.md`.
 
 ## Importeurs
-- Le `tags:` d'une page s'écrit par libellé : `tools/db/maverick.py#mot_cle` et `serveur/edition.mjs#motCleDe` retrouvent le mot-clé par son écriture.
-- Un import ne crée jamais de mot-clé : une écriture inconnue n'est pas posée, `db:sync-pages` la signale ; `codex.py --vocabulaire`.
-- Le service ne pose sur une page qu'il crée que des mots-clés protégés (une fiche de don : « capacité de classe » seul).
-- Le site de dev est la source du vocabulaire (`historique_modification`) : une écriture qu'un mot-clé a quittée mène à lui (renommé) ou au mot-clé qui l'a reçu (fusionné) ; celle d'un mot-clé supprimé n'est pas reposée (`poser_les_mots_cles`, `test/mots-cles-python.test.mjs`).
-- Un homonyme n'est jamais posé par un import (`tools/db/homonymes.py#MAGIES_HOMONYMES` : la magie « corruption » d'un temple du Codex, d'une page de magie, d'une créature invoquée).
-
-## Baliser un mot dans tous les textes
-- Chakra et Barrière, puis seulement là où il est pertinent : Corruption et « CR » (R103, R140 : « CR » balisé partout où il s'écrit) (demandes du propriétaire). Entrées `tools/glossaire/chakra-barriere.json`, `tools/glossaire/corruption.json`.
-- « Sort fer » (R164, « Oui, tous ») : dans les huit textes qui parlent des sorts fer, jamais sur le nom d'un des 13 sorts. Une expression de deux mots se balise entière, guillemets compris (`{{sort-fer|sorts "fer"}}`, `{{sort-fer|sort “fer”}}`, `{{sort-fer|sorts de Fer Élémentaire}}`), comme `{{recharge-longue|recharge longue}}`. Entrée `tools/glossaire/sort-fer.json` (son motif ne se lit que là) pour les cinq textes que le site de dev modifie ; les trois autres (« Immatériel » du Fantôme et du Golem d'arcane, page « Pièces élémentaires ») par la migration 0079 (registre `corrections` de `0079-r164-sorts-fer.json`, que le rapprochement d'un classeur défait). Test : `sorts-fer.test.mjs`.
-- `client/scripts/baliser-mot-cle.mjs` passe par le service du site de dev ; le journal est rapatrié (`historique_modification` : l'import reste lisible).
-- Les balises déjà posées du mot sont relues, celles posées à la main comprises : retirées puis reposées (`sansLesBalisesDuMot`). Un second passage avec d'autres exclusions retire celles qui ne sont plus pertinentes. Le rapport liste chaque balise retirée ou nouvelle, et ce que l'entrée écrit pour rien.
-- Jamais balisé : un nom de la base, une écriture ou un contexte exclu de l'entrée (nom propre du Codex, autre sens du mot : l'énergie du monde, la magie de la Corruption, son élément), un texte hors du balisage (`horsDe` : le récit du Codex et de la chronologie, sauf le glossaire du Codex et, au cas par cas, une page qui écrit la règle : `sauf`), un code, un lien, une adresse, un titre de section, un intitulé en gras seul sur sa ligne, une rubrique de carte découpée.
-- Détail (mots collés, liste des textes non touchés) : `docs/content-guide.md`, « Baliser un mot dans tous les textes ».
-
-## Rejeu du journal
-- Ce que le rejeu fait des balises d'un mot-clé supprimé ou fusionné (textes réécrits, colonnes dérivées, tables écrites au-delà du journal) : skill `zone-edition`, « Rejeu du journal ».
-- Un lot d'avant la 0056 qui pose l'étiquette d'un mot-clé absent et non protégé, crée un mot-clé non protégé sans définition ou renomme un mot-clé que les règles n'ont plus est rejoué sans effet (`ancienneEcritureDuGlossaire`, `sansEffet` de l'adaptateur de `rejouer`), sans mettre son lot en conflit. De même pour le mot-clé libre d'un lot d'avant la 0043 et ce qui suit sur la même ligne ou le même mot-clé. Une insertion qui suit (mot-clé recréé sous le même id, étiquette reposée) est jugée pour elle-même.
+- Le `tags:` d'un `.md` fabriqué écrit le libellé, ou la clé pour un homonyme (`pages-db.mjs#ecritureDuTag`, la règle de `maverick.py#vocabulaire_des_mots_cles`) ; `db:sync-pages` le relit par `maverick.py#trouver_mot_cle`, qui cherche dans l'ordre clé, libellé, synonyme, clé quittée, puis les écritures que le site de dev a fait quitter (`historique_modification`) ; celle d'un mot-clé supprimé n'est pas reposée. Une écriture ambiguë (homonymes) n'est pas posée et se signale (`mots_cles_poses`).
+- Un protégé se pose par son id (`maverick.py#libelle_protege` : son libellé, ou sa clé s'il a des homonymes ; `codex.py` `Vocabulaire.protege`, `races.py`, `relations-races.py`).
+- Un import ne crée jamais de mot-clé : une écriture inconnue n'est pas posée et se signale (skill `sources-codex`).
+- Un import ne pose jamais un homonyme (`homonymes.py#MAGIES_HOMONYMES`) ni les étiquettes de `homonymes.py#ETIQUETTES_NON_POSEES` (R183 (11), R187 ; `importeurs-etiquettes.test.mjs`).
 
 ## Tests
-- `mots-cles-balises.test.mjs`, `mots-cles-vivants.test.mjs`, `mots-cles-python.test.mjs`, `glossaire-balisage.test.mjs`, `baliser-mot-cle.test.mjs`, `texte-en-place-mots-cles.test.mjs`.
-- Page `/recherche/` et gestion du vocabulaire : skill `zone-recherche`.
-- Aide : `test/aide-mots-cles.mjs`.
+- `mots-cles-balises`, `mots-cles-cles`, `mots-cles-vivants`, `mots-cles-python`, `mots-cles-r195`, `texte-en-place-mots-cles`, `importeurs-etiquettes`, `db-lexique-en-mots-cles` (R183), `db-0113-mots-cles-id-entier`, `db-0114-categories-assignees`, `db-0115-mots-cles-synonymes`, `db-0116-icone-des-mots-cles`, `icones-degats-et-magies`, `pages-db`, `mots-cles-des-valeurs`, `valeurs-fermees-rendu`, `edition-liens-des-valeurs`, `fiche-liens-glossaire` ; `codex.test.mjs` (R145, R183) couvre l'homonyme « sang ». Liens et couleurs : `mots-cles-liens-rendu`, `mots-cles-vivants-liens`.
+- Les tests du vocabulaire créent leurs mots-clés d'essai, non verrouillés, ids 9001 et suivants (`test/aide-mots-cles.mjs#idDEssai`). Un mot-clé protégé se compare par son id entier, ou par sa `cle` pour `race-hybride` sans id (`idDuProtege`), jamais par son libellé.

@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { cleDeLigne, historiqueSite, lireHistorique } from '../src/lib/historique-site.mjs';
+import { NATURES_DEFAITES, cleDeLigne, historiqueSite, lireHistorique, valeursDAvant } from '../src/lib/historique-site.mjs';
 
 const schema = readFileSync(fileURLToPath(new URL('../../data/schema.sql', import.meta.url)), 'utf8');
 const ddl = /CREATE TABLE historique_modification \([\s\S]*?\) STRICT;/.exec(schema)[0];
@@ -140,4 +140,74 @@ test('base sans modification, ou sans la table : l’import est l’état couran
   nue.exec('CREATE TABLE metier (id TEXT NOT NULL PRIMARY KEY, nom TEXT) STRICT');
   assert.deepEqual(lireHistorique(nue), []);
   assert.equal(historiqueSite(nue).effectifDImport('metier'), 0);
+});
+
+// Nature des traces (R275, migration 0127) : seules `saisie` et `decision` sont « le site » ; `source`, `migration` et `code` sont le contenu de référence.
+test('nature : une trace de nature source, migration ou code n’est jamais défaite ; saisie et décision le sont (R275)', () => {
+  const db = base();
+  inserer(db, 'metier', { id: 'forgeron', nom: 'Forgeron', bonus: '+9', remarque: null });
+  inserer(db, 'metier', { id: 'mineur', nom: 'Mineur', bonus: '+1', remarque: null });
+  const poser = (lot, rang, nature, decision, cle, avant, apres) => db.prepare(
+    'INSERT INTO historique_modification (lot_id, rang, fait_le, resume, version, table_nom, cle, operation, avant, apres, nature, decision) VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?)')
+    .run(lot, rang, `2026-10-10T10:0${rang}:00Z`, 'essai', 'metier', JSON.stringify(cle), 'modifier', JSON.stringify(avant), JSON.stringify(apres), nature, decision);
+  // forgeron.bonus : +3 (import) → +4 (une source) → +5 (une saisie) → +9 (une décision R275) ; mineur.nom : un recalcul du code, une migration
+  poser('l1', 1, 'source', null, { id: 'forgeron' }, { bonus: '+3' }, { bonus: '+4' });
+  poser('l2', 1, 'saisie', null, { id: 'forgeron' }, { bonus: '+4' }, { bonus: '+5' });
+  poser('l3', 1, 'decision', 'R275', { id: 'forgeron' }, { bonus: '+5' }, { bonus: '+9' });
+  poser('l4', 1, 'code', null, { id: 'mineur' }, { nom: 'Mineur d’avant' }, { nom: 'Mineur' });
+  poser('l5', 1, 'migration', null, { id: 'mineur' }, { nom: 'Mineur' }, { nom: 'Mineur' });
+
+  assert.deepEqual(NATURES_DEFAITES, ['saisie', 'decision']);
+  assert.deepEqual(lireHistorique(db).map((e) => e.lot), ['l2', 'l3'], 'seules les traces que le site défait');
+  assert.deepEqual(lireHistorique(db).map((e) => [e.nature, e.decision]), [['saisie', null], ['decision', 'R275']]);
+  assert.deepEqual(lireHistorique(db, { natures: null }).map((e) => e.nature), ['source', 'saisie', 'decision', 'code', 'migration']);
+  const h = historiqueSite(db);
+  assert.equal(h.valeurDImport('metier', { id: 'forgeron' }, 'bonus'), '+4', 'l’import garde ce que la source a écrit : défaire le site s’arrête là');
+  assert.equal(h.valeurDImport('metier', { id: 'mineur' }, 'nom'), 'Mineur', 'une trace du code ou d’une migration n’est pas défaite');
+  assert.equal(h.modifiee('metier', { id: 'mineur' }, 'nom'), false);
+  assert.equal(h.touchee('metier', { id: 'mineur' }), false);
+  assert.equal(h.vide, false);
+  assert.equal(h.ligneDImport('metier', { id: 'forgeron' }).bonus, '+4');
+  assert.deepEqual(h.lignesDImport('metier').find((l) => l.id === 'mineur'), { id: 'mineur', nom: 'Mineur', bonus: '+1', remarque: null });
+  // les noms d'avant (valeursDAvant) : un ancien nom reste un ancien nom, d'où que vienne le renommage
+  assert.deepEqual([...valeursDAvant(db, 'metier', 'nom')], [['{"id":"mineur"}', ['Mineur d’avant']]]);
+
+  // aucune trace défaisable : l'historique est vide pour les tests d'import
+  db.exec("DELETE FROM historique_modification WHERE nature IN ('saisie', 'decision')");
+  assert.equal(historiqueSite(db).vide, true);
+});
+
+test('nature : un historique sans colonne `nature` (base d’avant la 0127) se lit comme des saisies', () => {
+  const db = new DatabaseSync(':memory:');
+  db.exec('PRAGMA foreign_keys = OFF');
+  db.exec(ddl.replace(/\n\s*nature\s+TEXT[\s\S]*?\n\s*decision\s+TEXT[^\n]*\n[^\n]*\n/, '\n'));
+  db.exec('CREATE TABLE metier (id TEXT NOT NULL PRIMARY KEY, nom TEXT NOT NULL, bonus TEXT, remarque TEXT) STRICT');
+  assert.equal(db.prepare('PRAGMA table_info("historique_modification")').all().some((c) => c.name === 'nature'), false, 'la colonne est bien absente');
+  inserer(db, 'metier', { id: 'forgeron', nom: 'Forgeron', bonus: '+5', remarque: null });
+  db.prepare('INSERT INTO historique_modification (lot_id, rang, fait_le, resume, version, table_nom, cle, operation, avant, apres) VALUES (?, 1, ?, ?, NULL, ?, ?, ?, ?, ?)')
+    .run('l1', '2026-10-10T10:00:00Z', 'essai', 'metier', '{"id":"forgeron"}', 'modifier', '{"bonus":"+3"}', '{"bonus":"+5"}');
+  const [e] = lireHistorique(db);
+  assert.deepEqual([e.nature, e.decision], ['saisie', null]);
+  assert.equal(historiqueSite(db).valeurDImport('metier', { id: 'forgeron' }, 'bonus'), '+3');
+});
+
+test('nature : une saisie suivie, sur la même cellule, d’une trace code ou source n’est pas défaite : la cellule garde ce que le code a écrit (comme defaireLeSite)', () => {
+  const db = base();
+  inserer(db, 'metier', { id: 'forgeron', nom: 'Forgeron', bonus: '+9', remarque: null });
+  inserer(db, 'metier', { id: 'mineur', nom: 'Mineur', bonus: '+5', remarque: null });
+  const poser = (lot, rang, nature, cle, avant, apres) => db.prepare(
+    'INSERT INTO historique_modification (lot_id, rang, fait_le, resume, version, table_nom, cle, operation, avant, apres, nature, decision) VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, NULL)')
+    .run(lot, rang, `2026-10-10T10:0${rang}:00Z`, 'essai', 'metier', JSON.stringify(cle), 'modifier', JSON.stringify(avant), JSON.stringify(apres), nature);
+  // forgeron : saisie +3 → +5, puis le code +5 → +9 ; la ligne vaut +9
+  poser('l1', 1, 'saisie', { id: 'forgeron' }, { bonus: '+3' }, { bonus: '+5' });
+  poser('l2', 2, 'code', { id: 'forgeron' }, { bonus: '+5' }, { bonus: '+9' });
+  // mineur : le code +1 → +2, puis une saisie +2 → +5 ; la ligne vaut +5 (la saisie, la dernière, est défaite ; le code reste)
+  poser('l3', 3, 'code', { id: 'mineur' }, { bonus: '+1' }, { bonus: '+2' });
+  poser('l4', 4, 'saisie', { id: 'mineur' }, { bonus: '+2' }, { bonus: '+5' });
+  const h = historiqueSite(db);
+  assert.equal(h.valeurDImport('metier', { id: 'forgeron' }, 'bonus'), '+9', 'la trace du code a le dernier mot : la saisie n’est pas défaite');
+  assert.equal(h.valeurDImport('metier', { id: 'mineur' }, 'bonus'), '+2');
+  assert.equal(h.ligneDImport('metier', { id: 'forgeron' }).bonus, '+9');
+  assert.deepEqual(h.lignesDImport('metier').map((l) => [l.id, l.bonus]), [['forgeron', '+9'], ['mineur', '+2']]);
+  assert.equal(h.valeurDImport('metier', { id: 'forgeron' }, 'bonus', '+5'), '+9', 'la valeur donnée n’y change rien : la trace du code a le dernier mot');
 });

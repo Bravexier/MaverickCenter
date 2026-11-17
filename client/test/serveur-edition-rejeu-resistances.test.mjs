@@ -12,15 +12,17 @@ import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.
 import { rejouerLeJournal } from '../serveur/edition.mjs';
 import { TITRES_D_AVANT_0075 } from '../serveur/edition-bestiaire.mjs';
 import { rejouer } from '../serveur/edition-journal.mjs';
-import { cheminBase } from '../src/lib/donnees.mjs';
+import { cheminDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const racine = dossierTemporaire('rejeu-resistances');
 let compteur = 0;
 const ouvertes = [];
 after(() => ouvertes.forEach((b) => b.isOpen && b.close()));
+// la base des règles dans son état d'import (test/aide-base-d-import.mjs) : le texte et le titre de la rubrique du Collecteur, que le site de dev réécrit
+// librement, sont ceux que la migration 0075 a rangés
 const vivante = () => {
-  const b = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(racine, `b${(compteur += 1)}`) }).chemin);
+  const b = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminDImport(), dossier: join(racine, `b${(compteur += 1)}`) }).chemin);
   ouvertes.push(b);
   return b;
 };

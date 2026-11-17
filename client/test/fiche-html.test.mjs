@@ -16,6 +16,7 @@ import { dispositionDe } from '../src/lib/fiche-tableur-cases.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { COLONNES, FILTRES_PAR_DEFAUT } from '../src/lib/personnages-liste.mjs';
 import { lireClasseur } from '../src/lib/tableur-lecture.mjs';
+import { RACES_DE_LA_0120 } from './aide-races-0120.mjs';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
 const present = existsSync(join(dist, 'fiche', 'index.html'));
@@ -54,14 +55,16 @@ test('/fiche/ en quatre zones (demande du propriétaire), sans cadre, titre ni p
   const fiche = html.slice(html.indexOf('<div class="fiche" id="fiche"'));
   const jetons = [...fiche.matchAll(/<section class="fiche-zone[^"]*" id="zone-([a-z]+)"|<(?:section|div) class="fiche-etape[^"]*" id="etape-([a-z]+)"/g)]
     .map((m) => (m[1] ? `[${m[1]}]` : m[2]));
-  assert.deepEqual(jetons, ['[identite]', 'identite', '[portee]', 'attributs', 'caracteristiques', 'armes', 'ceinture', 'sorts', 'dons',
-    '[situation]', 'posture', 'armure', 'accessoires', 'inventaire', 'mouvement', 'resistances', 'bouclier', '[parametres]', 'progression', 'choix', 'jeu', 'controles']);
+  assert.deepEqual(jetons, ['[identite]', 'identite', '[portee]', 'attributs', 'caracteristiques', 'armes', 'ceinture', 'actions', 'sorts', 'passifs',
+    '[situation]', 'posture', 'armure', 'accessoires', 'inventaire', 'resistances', 'bouclier', '[parametres]', 'progression', 'choix', 'entrainement', 'jeu', 'controles']);
   assert.ok(!fiche.includes('fiche-zones-nav') && !fiche.includes('fiche-etapes'), 'ni pastilles des zones ni sommaire des blocs');
   assert.match(html, /\.fiche-zone__titre\s*\{[^}]*clip-path:\s*inset\(50%\)/, 'titres des zones lus par les lecteurs d’écran, pas affichés');
   // zone IV : des onglets (components/Onglets.astro), le compteur des choix et celui du contrôle
   const onglets = [...fiche.matchAll(/<a class="onglet[^"]*" id="onglet-([a-z]+)" href="#etape-([a-z]+)"/g)].map((m) => [m[1], m[2]]);
-  // l'inventaire est sous les accessoires (zone III), plus dans un onglet (demande du propriétaire du 2026-10-17)
-  assert.deepEqual(onglets, [['progression', 'progression'], ['choix', 'choix'], ['jeu', 'jeu'], ['controles', 'controles']]);
+  // l'inventaire est sous les accessoires (zone III), plus dans un onglet (demande du propriétaire du 2026-10-17) ; l'entraînement dans le sien, juste
+  // après « Choix » (demande du propriétaire du 2026-10-29 : « Le tableau d'entrainement devrait être dans un onglet à part à coté des choix. »)
+  assert.deepEqual(onglets, [['progression', 'progression'], ['choix', 'choix'], ['entrainement', 'entrainement'], ['jeu', 'jeu'], ['controles', 'controles']]);
+  assert.match(fiche, /<a class="onglet" id="onglet-entrainement" href="#etape-entrainement">Entraînement<\/a>/);
   assert.match(fiche, /<div class="parametres" data-onglets="Paramètres et suivi">/);
   assert.match(fiche, /id="choix-compte" hidden><\/span>/);
   assert.match(fiche, /id="controles-compte" hidden><\/span>/);
@@ -71,11 +74,15 @@ test('/fiche/ en quatre zones (demande du propriétaire), sans cadre, titre ni p
 test('/fiche/, zone II sur grand écran : les armes à côté des caractéristiques et compétences, la ceinture dessous, comme avant ; les maîtrises dans « Choix » (demande du propriétaire du 2026-10-23)', options, () => {
   const html = lire('fiche/index.html');
   const fiche = html.slice(html.indexOf('<div class="fiche" id="fiche"'));
-  // l'ordre du DOM est celui des écrans moyens et des téléphones : attributs, compétences, armes, ceinture, sorts, dons
-  const ordre = ['attributs', 'caracteristiques', 'armes', 'ceinture', 'sorts', 'dons'].map((id) => fiche.indexOf(`id="etape-${id}"`));
+  // l'ordre du DOM est celui des écrans moyens et des téléphones : attributs, compétences, armes, ceinture, actions (juste sous la ceinture, décision
+  // R173), sorts, passifs (aire `don`, juste sous la colonne sur grand écran)
+  const ordre = ['attributs', 'caracteristiques', 'armes', 'ceinture', 'actions', 'sorts', 'passifs'].map((id) => fiche.indexOf(`id="etape-${id}"`));
   assert.ok(ordre.every((i, n) => i > 0 && (n === 0 || i > ordre[n - 1])), `ordre du DOM de la zone II : ${ordre}`);
   // « Garder l'armes visibles à coté des caractéristiques comme avant » : la colonne des armes, puis de la ceinture, dans l'aire `col`
   assert.match(fiche, /<div class="zp-colonne">\s*(?:<!--[^]*?-->\s*)?<section class="fiche-etape" id="etape-armes" aria-labelledby="titre-armes">\s*<h3 id="titre-armes">Armes<\/h3>[^]*?<section class="fiche-etape" id="etape-ceinture"/);
+  // les actions dans la même colonne, juste après la ceinture (décision R173 : « directement sous la case de la ceinture »)
+  const colonne = fiche.slice(fiche.indexOf('<div class="zp-colonne">'), fiche.indexOf('id="etape-sorts"'));
+  assert.match(colonne, /<section class="fiche-etape" id="etape-ceinture"[^]*?<\/section>\s*<section class="fiche-etape" id="etape-actions" aria-labelledby="titre-actions">\s*<h3 id="titre-actions">Actions<\/h3>/);
   const grand = html.match(/@media \(min-width:\s*64rem\)\s*\{([^]*?)\.zone-situation/)?.[1] ?? '';
   const aires = [...(grand.match(/\.zone-portee\s*\{[^}]*grid-template-areas:\s*([^;}]+)/)?.[1] ?? '').matchAll(/["']([^"']+)["']/g)].map((m) => m[1]);
   assert.deepEqual(aires, ['attr attr', 'car col', 'sor don'], 'la colonne des armes et de la ceinture à côté des compétences');
@@ -101,6 +108,9 @@ test('/fiche/, panneau « Choix » : les maîtrises d’armes sur toute sa large
   assert.ok(choix.indexOf('<div class="choix-maitrises">') > choix.indexOf('id="dons"'), 'sous les dons de classe à choisir');
   assert.equal([...choix.matchAll(/class="parametres__pile"/g)].length, 2);
   assert.match(html, /\.choix-maitrises\s*\{\s*grid-column:\s*1\s*\/\s*-1/, 'une rangée sur toute la largeur');
+  // décision R181 : les dons obtenus des dons « Variable » du Mage Bleu, juste sous les dons à choisir, cachés tant qu'il n'y en a pas (le script les remplit)
+  assert.match(choix, /<div id="dons-obtenus-bloc" hidden><h4 class="fiche-sous-titre">Dons obtenus \(dons « Variable »\)<\/h4><div id="dons-obtenus" class="fiche-etape__dons"><\/div><\/div>/);
+  assert.ok(choix.indexOf('id="dons-obtenus-bloc"') > choix.indexOf('id="dons"') && choix.indexOf('id="dons-obtenus-bloc"') < choix.indexOf('<div class="choix-maitrises">'));
   assert.equal([...html.matchAll(/id="maitrises"/g)].length, 1, 'un seul bloc des maîtrises');
 });
 
@@ -114,7 +124,18 @@ test('/fiche/ : chaque champ dans son bloc (demandes du propriétaire)', options
   for (const champ of ['nom', 'surnom', 'lieu_origine', 'metier_id', 'alignement_loyal', 'alignement_chaotique', 'alignement_bon', 'alignement_mauvais']) {
     assert.match(identite, new RegExp(`data-champ="${champ}"`), `identité : ${champ}`);
   }
-  assert.ok(identite.indexOf('id="metiers"') > identite.indexOf('id="choix-ethnie"'), 'le métier, facultatif, sous l’ethnie');
+  // la mise en page du 2026-11-13 (demande du propriétaire) : le métier à droite du lieu d'origine, l'alignement sous le portrait, chaque classe avec sa
+  // spécialité à côté, chaque magie avec sa spécialisation à côté (montrée pour un bi-magie seul, R236 (3))
+  const ligne = identite.slice(identite.indexOf('class="identite__ligne"'), identite.indexOf('class="identite__choix"'));
+  assert.ok(ligne.indexOf('id="metiers"') > ligne.indexOf('data-champ="lieu_origine"'), 'le métier, facultatif, à droite du lieu d’origine');
+  const gauche = identite.slice(identite.indexOf('class="identite__gauche"'), identite.indexOf('class="identite__corps"'));
+  assert.ok(gauche.indexOf('<fieldset class="alignement">') > gauche.indexOf('id="portrait"'), 'l’alignement sous le portrait');
+  // chaque paire : de son début à celui de la suivante (ses menus contiennent des <div>)
+  const paires = identite.split('<div class="identite__paire">').slice(1);
+  for (const [menu, voisin] of [['magie-innee', 'specialisation-innee'], ['magie-acquise', 'specialisation-acquise'], ['classe-1', 'specialite-1'], ['classe-2', 'specialite-2']]) {
+    assert.ok(paires.some((p) => p.includes(`id="choix-${menu}"`) && p.includes(`id="choix-${voisin}"`)), `${voisin} à côté de ${menu}`);
+  }
+  assert.match(identite, /<details class="choix" id="choix-specialisation-innee" hidden>/, 'cachée hors bi-magie');
   assert.match(identite, /<option value="">Sans métier \(facultatif\)<\/option>/);
   // portrait (le logo en attendant une image), niveau seul (l'XP est dans la zone IV), case « Bi-classé »
   assert.match(identite, /<img class="portrait__image" id="portrait-image" src="\/logo\.webp" data-defaut="\/logo\.webp"/);
@@ -130,6 +151,12 @@ test('/fiche/ : chaque champ dans son bloc (demandes du propriétaire)', options
   assert.match(attributs, /<div id="attributs-barres" class="attributs"><\/div>/, 'valeurs du moment et maximums fusionnés');
   assert.match(attributs, /<div id="attributs-corruption" class="attributs-corruption"><\/div>/);
   assert.ok(!attributs.includes('fiche-aide'), 'pas de texte de calcul');
+  // la 2ᵉ ligne (demande du propriétaire du 2026-10-29 : « une 2em ligne où tu y déplacera : les AP / AM / Vitesse et initiative , ainsi que
+  // l'interface pour les dégâts reçu ») : l'AP et l'AM, puis initiative, vitesse et nage, puis les dégâts reçus (décisions R98, R171)
+  assert.match(attributs, /<div class="attributs-ligne2">\s*<ul id="defense-tuiles" class="defense__tuiles" aria-label="Armure totale"><\/ul>\s*<ul id="attributs-pastilles" class="fiche-resume attributs-pastilles" aria-label="Initiative et vitesses"><\/ul>\s*<\/div>\s*<div id="defense" class="defense"><\/div>/);
+  assert.ok(attributs.indexOf('class="attributs-ligne2"') > attributs.indexOf('id="attributs-corruption"'), 'sous la ligne des valeurs du moment');
+  for (const id of ['defense', 'defense-tuiles', 'attributs-pastilles']) assert.equal([...html.matchAll(new RegExp(`id="${id}"`, 'g'))].length, 1, `un seul #${id}`);
+  assert.ok(!html.includes('id="etape-mouvement"'), 'plus de bloc « Initiative et vitesses » dans la zone III');
   const armes = bloc('armes');
   assert.match(armes, /<div id="armes" class="equipement equipement--armes"><\/div>/);
   assert.doesNotMatch(armes, /maitrise/, 'le bloc des armes n’a plus les maîtrises (panneau « Choix »)');
@@ -145,17 +172,27 @@ test('/fiche/ : chaque champ dans son bloc (demandes du propriétaire)', options
   assert.doesNotMatch(maitrises, /type="range"|class="maitrise"|Points du MJ|à confirmer/i, 'ni curseur, ni points du MJ, ni « à confirmer »');
   assert.doesNotMatch(html, /Points du MJ/);
   assert.match(bloc('ceinture'), /<ol id="ceinture" class="ceinture"/, 'les 3 emplacements de la ceinture');
-  const dons = bloc('dons');
+  // les actions (décision R173) : la liste, puis « Fin de combat » (montré par le script quand une action a un compteur par combat)
+  const actions = bloc('actions');
+  assert.match(actions, /<ul id="actions" class="dons-liste actions-liste" aria-labelledby="titre-actions"><\/ul>\s*<p class="actions__pied"><button type="button" id="fin-de-combat"[^>]*>Fin de combat<\/button><\/p>/);
+  // les passifs (décision R173 ; ils remplacent les « Dons débloqués ») : la race, puis les classes, puis l'équipement
+  const dons = bloc('passifs');
+  assert.match(dons, /<h3 id="titre-passifs">Passifs<\/h3>/);
+  assert.ok(!html.includes('id="etape-dons"') && !html.includes('Dons débloqués'), 'plus de bloc « Dons débloqués »');
   assert.ok(dons.indexOf('id="dons-classes"') > dons.indexOf('id="dons-race"'), 'les dons de la race, puis ceux des classes');
-  // « Entraînement » (décision R104 ; un texte libre avant, R71) : des lignes, entre les dons de la race et ceux des classes, les boutons d'ajout dessous,
-  // avec l'aide du guide (le paragraphe que la base écrit) ; puis les acquis à choisir et les bonus non comptés des dons
-  const entrainement = dons.indexOf('<ul id="entrainement" class="entrainement" aria-labelledby="titre-entrainement">');
-  assert.ok(entrainement > dons.indexOf('id="dons-race"') && entrainement < dons.indexOf('id="dons-classes"'), 'entre les dons de la race et ceux des classes');
-  assert.match(dons, /<h4 class="fiche-sous-titre" id="titre-entrainement">Entraînement<\/h4>\s*<ul id="entrainement" class="entrainement" aria-labelledby="titre-entrainement"><\/ul>\s*<p class="entrainement__ajouts" id="entrainement-ajouts"><\/p>/);
+  assert.ok(dons.indexOf('id="passifs-equipement"') > dons.indexOf('id="dons-classes"'), 'puis l’équipement');
+  // « Entraînement » (décision R104 ; un texte libre avant, R71) : des lignes, dans son onglet de la zone IV, juste après « Choix » (demande du
+  // propriétaire du 2026-10-29), plus dans les dons ; les boutons d'ajout dessous, avec l'aide du guide (le paragraphe que la base écrit) ; les acquis à
+  // choisir et les bonus non comptés restent dans les dons
+  assert.ok(!dons.includes('id="entrainement"') && !dons.includes('titre-entrainement'), 'plus dans les dons débloqués');
+  const entrainement = bloc('entrainement');
+  assert.match(entrainement, /^id="etape-entrainement" aria-labelledby="titre-entrainement">\s*<h3 class="parametres__titre" id="titre-entrainement">Entraînement<\/h3>\s*<div class="fiche-etape__corps entrainement-panneau">\s*<ul id="entrainement" class="entrainement" aria-labelledby="titre-entrainement"><\/ul>\s*<p class="entrainement__ajouts" id="entrainement-ajouts"><\/p>/);
+  assert.ok(html.indexOf('id="etape-entrainement"') > html.indexOf('id="etape-choix"') && html.indexOf('id="etape-entrainement"') < html.indexOf('id="etape-jeu"'));
+  assert.equal([...html.matchAll(/id="entrainement"/g)].length, 1, 'un seul bloc de l’entraînement');
   assert.ok(!html.includes('data-champ="entrainement"') && !html.includes('id="fiche-entrainement"'), 'plus de texte libre d’entraînement');
-  assert.match(html, /<div id="acquis-choix-bloc" hidden>/);
-  assert.match(html, /<div id="acquis-non-comptes-bloc" hidden>/);
-  const aide = /<p class="fiche-aide" id="entrainement-aide">([\s\S]*?)<\/p>/.exec(dons)?.[1] ?? '';
+  assert.match(dons, /<div id="acquis-choix-bloc" hidden>/);
+  assert.match(dons, /<div id="acquis-non-comptes-bloc" hidden>/);
+  const aide = /<p class="fiche-aide" id="entrainement-aide">([\s\S]*?)<\/p>/.exec(entrainement)?.[1] ?? '';
   const guide = aideDeLEntrainement(ouvrirBase());
   const html_ = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   // le titre de la page, puis le paragraphe tel que la base l'écrit ; plus de numéro de chapitre (refonte des pages du guide, 2026-10-18), et pas de lien :
@@ -163,7 +200,7 @@ test('/fiche/ : chaque champ dans son bloc (demandes du propriétaire)', options
   if (guide) assert.ok(aide.startsWith(`<cite>${html_(guide.titre)}</cite> : « ${html_(guide.texte)} »`), 'le titre de la page, puis le paragraphe du guide');
   assert.doesNotMatch(aide, /<a /);
   assert.doesNotMatch(aide, /chapitre \d/);
-  assert.match(aide, /Les points d’une compétence s’ajoutent à son acquis ; un livre de sort lui donne un NM, qui ne compte pas dans le décompte des NM ; un texte libre note un don évènementiel ou ce que le MJ accorde\./);
+  assert.match(aide, /Les points d’une compétence s’ajoutent à son acquis ; un livre de sort donne un NM à son sort, qui ne compte pas dans le décompte des NM, et attend tant que le sort n’est pas choisi ; un texte libre note un don évènementiel ou ce que le MJ accorde\./);
   assert.match(bloc('sorts'), /<table class="fiche-table fiche-table--sorts" id="sorts"><\/table>/);
   // les NM du MJ, pour toute la fiche, juste après le décompte des NM (décision R118 : « noté à coté de la limit de NM »)
   assert.match(bloc('sorts'), /<span class="budget" id="budget-nm"><\/span><label class="budget budget--mj"[^>]*><span aria-hidden="true">\+ MJ<\/span><input type="number" min="0" step="1" inputmode="numeric" data-champ="nm_mj" data-entier id="nm-mj"/);
@@ -171,13 +208,12 @@ test('/fiche/ : chaque champ dans son bloc (demandes du propriétaire)', options
   const posture = bloc('posture');
   assert.match(posture, /<div id="postures" class="postures__cartes" role="group" aria-labelledby="titre-postures"><\/div>/, 'les six postures en cases');
   assert.match(posture, /<div id="postures-hyper" class="postures__hyper" hidden><\/div>/, 'le Mode Hyper et le Mode Hyper 100 %, une fois débloqués');
-  assert.match(bloc('mouvement'), /<ul id="attributs-pastilles" class="fiche-resume attributs-pastilles"/, 'initiative, vitesse et nage');
   assert.match(bloc('resistances'), /<table class="resistances__table" aria-labelledby="titre-resistances"><tbody id="resistances"><\/tbody><\/table>/);
   assert.match(bloc('resistances'), /<p class="fiche-aide" id="resistances-choix" hidden><\/p>/);
   // une armure complète et la solidité de ses parties (décision R95), remplies par le script comme le bouclier ; la défense totale et les dégâts reçus
-  // en tête (décision R98)
+  // sont dans la 2ᵉ ligne des attributs (demande du propriétaire du 2026-10-29)
   assert.match(bloc('armure'), /<div id="armures" class="equipement"><\/div>/);
-  assert.ok(bloc('armure').indexOf('<div id="defense" class="defense"></div>') >= 0 && bloc('armure').indexOf('id="defense"') < bloc('armure').indexOf('id="armures"'), 'la défense en tête de l’armure');
+  assert.ok(!bloc('armure').includes('id="defense"'), 'plus la défense dans l’armure');
   assert.match(bloc('bouclier'), /<div id="bouclier" class="equipement"><\/div>/);
   // IV. paramètres et suivi
   const progression = bloc('progression');
@@ -188,10 +224,12 @@ test('/fiche/ : chaque champ dans son bloc (demandes du propriétaire)', options
   assert.match(gains, /<label class="gains__champ gains__champ--sante"><span>Santé<\/span><input type="number" min="0" step="1" inputmode="numeric" data-champ="gains_sante" data-entier id="gains-sante"><\/label>/);
   assert.match(gains, /<label class="gains__champ gains__champ--chakra"><span>Chakra<\/span><input type="number" min="0" step="1" inputmode="numeric" data-champ="gains_chakra" data-entier id="gains-chakra"><\/label>/);
   assert.match(gains, /<output class="gains__total" id="gains-total" for="gains-sante gains-chakra"><\/output>/);
+  // décision R225 : la santé et son plafond d'un Potentiel Illimité inné, cachés au chargement (le script les montre pour cette magie innée seulement)
+  assert.match(gains, /<output class="gains__total" id="gains-sante-potentiel" for="gains-sante" hidden><\/output>/);
   assert.ok(progression.indexOf('id="progression-aide"') < progression.indexOf('id="progression"'), 'l’aide au-dessus des deux champs');
   assert.equal([...html.matchAll(/data-champ="gains_(sante|chakra)"/g)].length, 2, 'un champ chacun, pas un par niveau');
   const choix = bloc('choix');
-  for (const id of ['choix-tete', 'choix-attente', 'choix-aller', 'choix-reduire', 'metier-bloc', 'bloc-carac-magie', 'choix-specialites', 'dons']) {
+  for (const id of ['choix-tete', 'choix-attente', 'choix-aller', 'choix-reduire', 'metier-bloc', 'bloc-carac-magie', 'choix-specialites', 'choix-specialisations-magie', 'dons']) {
     assert.match(choix, new RegExp(`id="${id}"`), `choix : ${id}`);
   }
   // l'inventaire, juste sous les accessoires (zone III) : le sac puis la bourse
@@ -207,12 +245,21 @@ test('/fiche/ : chaque champ dans son bloc (demandes du propriétaire)', options
   assert.match(html, /<dialog class="recadrage" id="recadrage" aria-labelledby="titre-recadrage">/);
 });
 
+test('/fiche/, bloc « Sort préparé » (décision R182 (4), (5)) : la plage de réussite critique figée et le rappel de Double coup, cachés jusqu’au remplissage', options, () => {
+  const html = lire('fiche/index.html');
+  const debut = html.indexOf('id="sort-prepare-bloc"');
+  assert.ok(debut >= 0, 'bloc du sort préparé');
+  const bloc = html.slice(debut, html.indexOf('id="sort-prepare-rappel"', debut) + 200);
+  assert.match(bloc, /<p[^>]*id="sort-prepare-critique"[^>]*hidden/, 'plage figée, cachée tant que NULL');
+  assert.match(bloc, /<p[^>]*id="sort-prepare-rappel"[^>]*hidden/, 'rappel Double coup, caché sans le don');
+});
+
 test('/fiche/ compacte (demandes du propriétaire) : pas de lien vers le guide, choix en menus déroulants, jauge d’XP avec ajout, suppression', options, () => {
   const html = lire('fiche/index.html');
   const fiche = html.slice(html.indexOf('<div class="fiche" id="fiche"'));
   assert.ok(!/Le guide</.test(fiche) && !/href="\/guide\//.test(fiche), 'aucun lien vers le guide dans la fiche (le menu du site garde le sien)');
   const menus = [...html.matchAll(/<details class="choix" id="choix-([a-z0-9-]+)"( hidden)?>/g)].map((m) => m[1]);
-  assert.deepEqual(menus, ['race', 'ethnie', 'magie-innee', 'magie-acquise', 'classe-1', 'specialite-1', 'classe-2', 'specialite-2']);
+  assert.deepEqual(menus, ['race', 'ethnie', 'magie-innee', 'specialisation-innee', 'magie-acquise', 'specialisation-acquise', 'classe-1', 'specialite-1', 'classe-2', 'specialite-2']);
   for (const conteneur of ['races', 'ethnies', 'magies-innees', 'magies-acquises', 'classe-1', 'classe-2', 'specialite-1', 'specialite-2']) {
     assert.match(html, new RegExp(`<div class="choix__panneau"><(div|ul) id="${conteneur}"`), `${conteneur} dans un menu`);
   }
@@ -285,16 +332,16 @@ test('/fiche/modele.xlsx : le modèle V15.2.2 ordinateur assemblé au build (lib
   assert.deepEqual(feuille.images.map((i) => [i.de, i.a, i.type]), [['A1', 'E5', 'image/png']], 'le logo, en haut à gauche');
 });
 
-test('/fiche/regles.json : les règles de la base que lit la page (races et classes : celles de la base, 27 et 39 à l’import)', options, () => {
+test('/fiche/regles.json : les règles de la base que lit la page (races et classes : celles de la base, 29 et 41 à l’import)', options, () => {
   const regles = JSON.parse(lire('fiche/regles.json'));
-  // le site de dev crée des races et des classes : la page a celles de la base, l'effectif d'import se lit dans l'historique (R1 : 27 races)
+  // le site de dev crée des races et des classes : la page a celles de la base, l'effectif d'import se lit dans l'historique (R1 : 27 races ; R239 : 29)
   const db = ouvrirBase({ sansExemples: false });
   try {
     const historique = historiqueSite(db);
     assert.equal(regles.races.length, db.prepare('SELECT count(*) AS n FROM race').get().n);
-    assert.equal(historique.effectifDImport('race'), 27);
+    assert.equal(historique.effectifDImport('race'), 27 + RACES_DE_LA_0120.size);
     assert.equal(regles.classes.length, db.prepare('SELECT count(*) AS n FROM classe').get().n);
-    assert.equal(historique.effectifDImport('classe'), 39);
+    assert.equal(historique.effectifDImport('classe'), 41);
   } finally {
     db.close();
   }
@@ -312,7 +359,7 @@ test('/fiche/regles.json : les règles de la base que lit la page (races et clas
   for (const m of regles.magies) assert.ok(palette.has(m.classe) && palette.has(m.classe_2) && !('couleur' in m) && !('texte' in m), m.id);
 });
 
-test('/personnages/ (demandes du propriétaire) : filtres sans statut, puis la liste (portrait, nom, race, magies, niveau) dont chaque colonne sauf le portrait se trie (un bouton par en-tête) ; ni phrase d’introduction ni bouton « Nouveau prétiré »', options, () => {
+test('/personnages/ (demandes du propriétaire) : filtres sans statut, puis la liste (portrait, nom, race, magies, classes, niveau) dont chaque colonne sauf le portrait se trie (un bouton par en-tête) ; ni phrase d’introduction ni bouton « Nouveau prétiré »', options, () => {
   const html = lire('personnages/index.html');
   // les adresses du service, de la fiche et du logo (portrait par défaut), et les couleurs des magies pour la bordure des lignes (data-couleurs : du
   // JSON, guillemets échappés par Astro)

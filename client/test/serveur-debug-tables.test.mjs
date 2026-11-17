@@ -102,7 +102,8 @@ test('liste : chaque table (sections 0 à 15, dérivées comprises) et chaque vu
   // les mêmes objets que data/schema.sql : toutes les tables et vues, sans les tables de recherche plein texte
   const attendus = OBJETS.filter((o) => o.genre === 'table' || o.genre === 'vue').map((o) => o.nom).sort();
   assert.deepEqual(noms, attendus);
-  assert.equal(tables.filter((t) => t.genre !== 'vue').length, 201, '201 tables STRICT');
+  // 221 depuis la migration 0129 (migration_recue) ; 220 depuis la migration 0128 (lot_de_changements, numero_donne) ; 218 depuis la 0125 (type_degats) ; 217 depuis la 0118 (personnage_specialisation_magie) ; 216 depuis les migrations 0113 et 0115 (categorie_mot_cle, mot_cle_categorie, mot_cle_ancienne_cle, mot_cle_synonyme)
+  assert.equal(tables.filter((t) => t.genre !== 'vue').length, 221, '221 tables STRICT');
   assert.equal(tables.filter((t) => t.genre === 'vue').length, 38, '38 vues');
   for (const nom of ['sqlite_schema', 'sqlite_master', 'page_fts', 'entite_fts', 'page_fts_data', 'page_fts_idx', 'entite_fts_content']) assert.ok(!noms.includes(nom), nom);
   // genre : vue, table dérivée (`-- @derivee`, hors FTS5), sinon table
@@ -159,8 +160,8 @@ test('fiches (section 13) : tout se lit sur le site de dev (décision du propri�
   }
   // le journal de l'édition (section 14) et les notes de version (15) se lisent aussi
   for (const nom of [...TABLES_EDITION, 'note_version', 'historique_modification']) assert.equal(appel('GET', `/api/debug/tables/${nom}/`).statut, 200, nom);
-  // le serveur de dev reste ouvert (réponses du propriétaire du 2026-10-15) : sa base vivante est une copie de celle de production, faite à sa
-  // première installation — dit dans l'en-tête du module, dans docs/api.md (« Contenu des tables ») et docs/serveur.md ; les réponses rangées dans la
+  // le serveur de dev reste ouvert (réponses du propriétaire du 2026-10-15) : sa base vivante est la sienne, qu'une installation ne remplace jamais
+  // (R274 ; à l'origine, une copie de celle de production posée sur demande) — dit dans l'en-tête du module, dans docs/api.md (« Contenu des tables ») et docs/serveur.md ; les réponses rangées dans la
   // feuille de route, et l'écart (copie après chaque mise en production, attendue par le propriétaire) posé parmi les questions ouvertes
   const racine = trouverRacine();
   const aplatir = (texte) => texte.replace(/^\s*\/\/ ?/gm, '').replace(/\s+/g, ' ');
@@ -172,8 +173,8 @@ test('fiches (section 13) : tout se lit sur le site de dev (décision du propri�
   const questions = aplatir(section(feuille, '### Questions encore ouvertes'));
   const serveur = aplatir(readFileSync(join(racine, 'docs', 'serveur.md'), 'utf8'));
   for (const [ou, texte, motifs] of [
-    ['en-tête de debug-tables.mjs', entete, [/Le serveur de dev reste ouvert/, /copiée de celle de production à sa première installation/, /ne part jamais en production/]],
-    ['docs/api.md', doc, [/\*\*Le serveur de dev reste ouvert\*\*/, /copie de celle de production\*\*/, /MAVERICK_BASE_TEST=conservee/, /ne part jamais en production/]],
+    ['en-tête de debug-tables.mjs', entete, [/Le serveur de dev reste ouvert/, /Sa base vivante est la sienne : une installation ne la remplace jamais/, /ne part jamais en production/]],
+    ['docs/api.md', doc, [/\*\*Le serveur de dev reste ouvert\*\*/, /la \*\*sienne, que l'installateur ne remplace jamais\*\*/, /R274/, /ne part jamais en production/]],
     ['docs/feuille-de-route.md, réponses', reponses, [/\*\*Serveur de dev\*\* : il reste/, /« Le serveur dev restera\./, /ne part pas en production/]],
     ['docs/feuille-de-route.md, questions', questions, [/\*\*Copie de la production vers le dev après la mise en production\*\*/, /MAVERICK_BASE_TEST=conservee/]],
     ['docs/serveur.md', serveur, [/ni listée ni lisible par l'API des personnages/, /le serveur de dev reste ouvert à ceux qui y auront accès/]],

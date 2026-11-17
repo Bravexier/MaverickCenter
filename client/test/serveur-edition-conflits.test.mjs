@@ -18,10 +18,11 @@ import {
 import { journalExporte, ouvrirLot } from '../serveur/edition-journal.mjs';
 import { routeNormalisee } from '../serveur/metriques.mjs';
 import { CONFIRMATION, enregistrerMajeure, figerLot, lireLot, noteEnPreparation } from '../serveur/notes-de-version.mjs';
-import { cheminBase } from '../src/lib/donnees.mjs';
 import { colonneMasquee, nomDeColonne, nomDeTable } from '../src/lib/libelles-de-la-base.mjs';
+import { cheminBase } from '../src/lib/donnees.mjs';
 import { decouperCorps } from '../src/lib/markdown-edition.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { baseDImport, remettreDepuisLImport, texteDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const racine = dossierTemporaire('conflits');
@@ -43,7 +44,8 @@ const BONUS_DU_SITE = '+3% Esquive';
 const BONUS_DES_REGLES = '+5% Parade';
 const DESCRIPTION_DU_SITE = 'Description du forgeron écrite sur le site de dev (essai des conflits).';
 // une étiquette rompue : un mot-clé d'essai (absent de la base) supprimé sur le site de dev, que les règles livrées posent sur un sort (sort_mot_cle)
-const ETIQUETTE = { id: 'essai-conflits-etiquette', libelle: 'Essai conflits étiquette' };
+// (un id entier, migration 0113, loin des ids de data/rows)
+const ETIQUETTE = { id: 9301, cle: 'essai-conflits-etiquette', libelle: 'Essai conflits étiquette' };
 const SORT_ETIQUETE = 'magies/magie-de-la-corruption#sort:aiguisage-magique';
 // un renommage des deux bords : le site de dev et les règles livrées renomment le même métier (nom et sa clé normalisée nom_cle)
 const ACROBATE = 'metiers/acrobate';
@@ -74,8 +76,19 @@ before(() => {
   const r0 = `${chemin('regles')}.db`;
   copyFileSync(cheminBase({ sansExemples: false }), r0);
   const r0db = new DatabaseSync(r0);
-  r0db.prepare('INSERT INTO mot_cle (id, libelle, libelle_cle, description) VALUES (?, ?, ?, ?)')
-    .run(ETIQUETTE.id, ETIQUETTE.libelle, normalize(ETIQUETTE.libelle), 'Mot-clé d’essai des conflits (test/serveur-edition-conflits.test.mjs).');
+  // la capacité de monstre du lot « avant 0044 » : la première de l'import (choix stable, comme la fixture la nomme), remise dans la copie avec sa carte
+  // si le site de dev les a supprimées de la base courante (demande du propriétaire : une modification du site ne fait jamais échouer la suite)
+  const dImport = baseDImport();
+  const capacite = dImport.prepare('SELECT monstre_id, rang FROM monstre_capacite ORDER BY monstre_id, rang LIMIT 1').get();
+  S.monstreAncien = capacite.monstre_id;
+  S.capaciteAncienne = { monstre_id: capacite.monstre_id, rang: capacite.rang };
+  r0db.exec('PRAGMA foreign_keys = ON');
+  remettreDepuisLImport(r0db, 'monstre', { id: capacite.monstre_id });
+  remettreDepuisLImport(r0db, 'monstre_capacite', S.capaciteAncienne);
+  // les deux métiers du scénario (le site de dev supprime des métiers) : leur ligne, leur page et ce qui les compose
+  for (const id of [FORGERON, ACROBATE]) remettreDepuisLImport(r0db, 'metier', { id });
+  r0db.prepare('INSERT INTO mot_cle (id, libelle, cle, description) VALUES (?, ?, ?, ?)')
+    .run(ETIQUETTE.id, ETIQUETTE.libelle, ETIQUETTE.cle, 'Mot-clé d’essai des conflits (test/serveur-edition-conflits.test.mjs).');
   r0db.close();
   S.dossier = chemin('scenario');
   const { chemin: vivante } = preparerBaseVivante({ regles: r0, dossier: S.dossier });
@@ -102,7 +115,7 @@ before(() => {
   db.exec('COMMIT');
   S.alias = '2026-10-21T08:00:00.000Z-000000-essai-alias';
   // une capacité de monstre notée avant la migration 0044 (nom et texte) : une forme ancienne sans équivalent (serveur/edition-bestiaire.mjs)
-  const p = db.prepare('SELECT monstre_id, rang FROM monstre_capacite ORDER BY monstre_id, rang LIMIT 1').get();
+  const p = S.capaciteAncienne;
   S.ancien = '2026-10-21T08:00:01.000Z-000000-essai-ancien';
   db.prepare("INSERT INTO modification_lot (id, fait_le, auteur_id, page_id, resume) VALUES (?, '2026-10-21T08:00:01Z', NULL, 'bestiaire/', 'avant 0044')").run(S.ancien);
   db.prepare(`INSERT INTO modification (lot_id, rang, table_nom, cle, operation, avant, apres, etat) VALUES (?, 1, 'monstre_capacite', ?, 'modifier', ?, ?, 'en_attente')`)
@@ -126,7 +139,9 @@ before(() => {
   assert.deepEqual(regles.prepare('PRAGMA foreign_key_check').all(), [], 'les règles livrées sont saines');
   regles.close();
   S.regles = r1;
-  const { rejeu } = preparerBaseVivante({ regles: r1, dossier: S.dossier });
+  // une base vivante d'avant la fusion à trois voies (garderLeSite faux : un lot en conflit est annulé en entier) : la résolution de ces lots, encore
+  // possibles sur le site de dev, est ce que ce fichier éprouve ; la fusion et les lots gardés : serveur-edition-fusion.test.mjs
+  const { rejeu } = preparerBaseVivante({ regles: r1, dossier: S.dossier, garderLeSite: false });
   assert.equal(rejeu.lots, 8);
   assert.equal(rejeu.appliquees, 0, 'tous les lots du scénario sont en conflit');
 });
@@ -274,7 +289,8 @@ test('la raison du rejeu d’un lot, lisible (detail_lisible) : la ligne dite co
   const { db } = copie();
   const lisible = (id) => diagnostic(db, id).detail_lisible;
   const legende = (id, table) => diagnostic(db, id).conflits.find((c) => c.table === table).libelle;
-  assert.equal(lisible(S.bonus), 'Métier « Forgeron » : les règles ont changé « Bonus » autrement');
+  // le métier nommé comme la base le nomme (le site de dev peut le renommer)
+  assert.equal(lisible(S.bonus), `Métier « ${db.prepare('SELECT nom FROM metier WHERE id = ?').get(FORGERON).nom} » : les règles ont changé « Bonus » autrement`);
   assert.equal(lisible(S.bonus), `${legende(S.bonus, 'metier')} : les règles ont changé « Bonus » autrement`);
   assert.equal(lisible(S.magie), `${legende(S.magie, 'page')} : les règles ont changé « Texte » autrement`);
   assert.equal(lisible(S.hyper), `Page ${HYPER} : la ligne n’existe plus dans les règles`);
@@ -426,7 +442,8 @@ test('les lots de résolution se rejouent sans conflit à la livraison suivante 
   const regles = new DatabaseSync(r2);
   regles.prepare("UPDATE metier SET remarque = 'Livraison suivante (essai des conflits).' WHERE id <> ? AND id = (SELECT min(id) FROM metier WHERE id <> ?)").run(FORGERON, FORGERON);
   regles.close();
-  const { rejeu } = preparerBaseVivante({ regles: r2, dossier });
+  // garderLeSite faux, comme le scénario (sinon les lots pas encore résolus sont réévalués et recomptés : serveur-edition-fusion.test.mjs)
+  const { rejeu } = preparerBaseVivante({ regles: r2, dossier, garderLeSite: false });
   assert.equal(rejeu.conflits, 0, 'aucun conflit nouveau : seules les traces (et les lots pas encore résolus) restent « conflit »');
   assert.ok(rejeu.appliquees > 0);
   const vivante = ouvrirBaseVivante(join(dossier, FICHIER_BASE));
@@ -565,7 +582,7 @@ test('une rupture « enfant » : le mot-clé supprimé sur le site de dev, que l
   assert.equal(d.conflits.length, 1);
   const [c] = d.conflits;
   assert.deepEqual([c.table, c.operation, c.genre, c.choix_possibles], ['mot_cle', 'supprimer', 'sans_valeur', [2]]);
-  assert.equal(c.raison, `sort_mot_cle : clé étrangère rompue vers mot_cle (mot_cle_id = "${ETIQUETTE.id}")`, 'la trace');
+  assert.equal(c.raison, `sort_mot_cle : clé étrangère rompue vers mot_cle (mot_cle_id = ${ETIQUETTE.id})`, 'la trace');
   assert.equal(c.raison_lisible, `Étiquette du sort : clé étrangère rompue vers Mot-clé ${ETIQUETTE.id}`);
   assert.equal(c.libelle, `Mot-clé « ${ETIQUETTE.libelle} »`);
   assert.match(d.detail, /: sort_mot_cle : clé étrangère rompue vers mot_cle$/, 'la trace du rejeu');
@@ -614,9 +631,46 @@ const lisibles = (l) => ({
   conflits: l.conflits.map((c) => [c.id, c.genre, c.libelle, c.colonne_libelle, c.raison_lisible, c.choix_possibles, c.version_1?.libelles ?? null, c.version_2?.libelles ?? null]),
 });
 
+/**
+ * Remet dans `v` (diagnostic, chaîne, tableau ou objet) chaque nom courant de `noms` ([courant, dImport]) au nom d'import : en une passe (un nom remis
+ * n'est jamais relu), et seulement un nom entier, borné par des caractères qui ne sont ni lettre ni chiffre (« Forge » n'est pas remis dans « Forgeron »).
+ */
+function versLImportPar(noms) {
+  const parCourant = new Map(noms);
+  const echapper = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const motif = parCourant.size
+    ? new RegExp([...parCourant.keys()].sort((a, b) => b.length - a.length).map((n) => `(?<![\\p{L}\\p{N}_])${echapper(n)}(?![\\p{L}\\p{N}_])`).join('|'), 'gu')
+    : null;
+  const remettre = (v) => {
+    if (typeof v === 'string') return motif ? v.replace(motif, (m) => parCourant.get(m)) : v;
+    if (Array.isArray(v)) return v.map(remettre);
+    return v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, remettre(x)])) : v;
+  };
+  return remettre;
+}
+
+test('versLImportPar : un nom entier, remis en une passe, jamais une sous-chaîne d’un autre mot', () => {
+  const remettre = versLImportPar([['Forge', 'Forgeron'], ['Acro', 'Acrobate'], ['La magie (v2)', 'La magie en jeu']]);
+  assert.equal(remettre('Métier « Forge » : Forgeron, Forges, forge'), 'Métier « Forgeron » : Forgeron, Forges, forge');
+  assert.equal(remettre('Page Acro : Texte ; Métier « Acrobate des règles »'), 'Page Acrobate : Texte ; Métier « Acrobate des règles »');
+  assert.equal(remettre('Page « La magie (v2) »'), 'Page « La magie en jeu »', 'un nom aux caractères spéciaux, lu tel quel');
+  assert.deepEqual(remettre({ a: ['Forge', 1, null] }), { a: ['Forgeron', 1, null] });
+  assert.equal(versLImportPar([])('Forge'), 'Forge');
+});
+
 test('la fixture du rendu est le diagnostic du service sur ce scénario, jamais écrite à la main (MAVERICK_ECRIRE_FIXTURE=1 la recalcule)', () => {
   const { db } = copie();
-  const diag = raccourcir(conflitsDuJournal(db));
+  // la fixture nomme les lignes du scénario comme l'import (titres des pages, noms des métiers et de la carte) ; le site de dev peut les renommer dans la
+  // base courante (demande du propriétaire) : le diagnostic est comparé (et écrit) ces noms courants remis à ceux de l'import, avant d'être raccourci
+  // (un nom d'une autre longueur décalerait la fenêtre gardée). La base d'import seule ne sert pas de règles au scénario : ses corps de pages, réécrits
+  // par des migrations, citent des mots-clés que le site a créés et qu'elle n'a pas.
+  const regles = new DatabaseSync(cheminBase({ sansExemples: false }), { readOnly: true });
+  const noms = [['page', MAGIE, 'titre'], ['page', HYPER, 'titre'], ['page', METIER_GUIDE, 'titre'], ['page', FORGERON, 'titre'], ['metier', FORGERON, 'nom'],
+    ['metier', ACROBATE, 'nom'], ['monstre', S.monstreAncien, 'nom']]
+    .map(([table, id, colonne]) => [regles.prepare(`SELECT "${colonne}" AS v FROM "${table}" WHERE id = ?`).get(id)?.v, texteDImport(table, { id }, colonne)])
+    .filter(([courant, dImport]) => courant !== undefined && courant !== dImport);
+  regles.close();
+  const diag = raccourcir(versLImportPar(noms)(conflitsDuJournal(db)));
   if (process.env.MAVERICK_ECRIRE_FIXTURE === '1') writeFileSync(FIXTURE, `${JSON.stringify(diag, null, 1)}\n`);
   const fixture = JSON.parse(readFileSync(FIXTURE, 'utf8'));
   const parResume = (d) => Object.fromEntries(d.lots.map((l) => [l.resume, lisibles(l)]));

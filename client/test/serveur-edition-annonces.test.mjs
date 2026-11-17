@@ -21,12 +21,15 @@ import { lireTables } from '../serveur/notes-de-version.mjs';
 import { comparerBases } from '../src/lib/notes-de-version.mjs';
 import { chargerJournal, journalExporte } from '../serveur/edition-journal.mjs';
 import { chargerAnnonce, contenuDeLAnnonce, empreinteDeLAnnonce } from '../src/lib/annonces.mjs';
-import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
+import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { ENTITES, TABLES, typeDeTexte } from '../src/lib/edition-modele.mjs';
 import { RESSOURCES } from '../src/lib/ressources.mjs';
-import { LIENS_ET_RENCONTRE } from '../src/lib/livres.mjs';
+import { installerLePlan, LIENS_ET_RENCONTRE } from '../src/lib/livres.mjs';
+import { chargerPlanDesRegles } from '../src/lib/plan-des-regles-db.mjs';
+import { normalize } from '../src/lib/text.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { copieSansNoteEnAttente, versionALaRevision } from './aide-mise-a-jour.mjs';
+import { cheminDImport } from './aide-base-d-import.mjs';
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
 const ROWS = join(RACINE, 'data', 'rows');
@@ -37,7 +40,9 @@ const racine = dossierTemporaire('edition-annonces');
 let compteur = 0;
 /** Une base vivante neuve et son service d'édition. */
 function nouvelle() {
-  const db = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(racine, `b${(compteur += 1)}`) }).chemin);
+  // les règles de l'import (test/aide-base-d-import.mjs) : le mot-clé qui mène à Bienvenue, que le texte d'essai cite, n'est pas protégé (le site de dev
+  // peut le supprimer)
+  const db = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminDImport(), dossier: join(racine, `b${(compteur += 1)}`) }).chemin);
   const service = { base: () => db, etat: () => ({}), edition: true };
   const appel = (methode, chemin, corps) => traiter({ methode, chemin, entetes: { 'content-type': 'application/json' }, corps: corps && JSON.stringify(corps) }, service);
   const enregistrer = (operations) => appel('POST', '/api/edition/', { page: LIENS_ET_RENCONTRE.page, operations });
@@ -72,17 +77,19 @@ test('le modèle et la base : une annonce par encart placé par le site, son tex
 test('le texte de l’annonce : Markdown sûr (ni HTML brut ni lien non sûr), balises du glossaire en forme canonique, vidé = NULL, 409 s’il a changé', () => {
   const { lire, modifier, db } = nouvelle();
   const avant = lire().texte;
-  const texte = 'Retrouvez-nous **à la convention** ; voir [[guide/rejoindre-une-partie|Rejoindre une partie]].';
-  ok(modifier({ texte }, { texte: avant }));
+  // un lien interne saisi devient la balise du mot-clé qui mène à sa page (migration 0098 : Découvrir, « bienvenue-dans-maverick »)
+  const texte = 'Retrouvez-nous **à la convention** ; voir {{bienvenue-dans-maverick|Bienvenue}}.';
+  ok(modifier({ texte: texte.replace('{{bienvenue-dans-maverick|Bienvenue}}', '[[guide/bienvenue|Bienvenue]]') }, { texte: avant }));
   assert.equal(lire().texte, texte);
   assert.equal(modifier({ texte: 'Du <script>alert(1)</script>' }).statut, 400, 'HTML brut');
   assert.equal(modifier({ texte: '[lien](javascript:alert(1))' }).statut, 400, 'lien non sûr');
   assert.equal(modifier({ texte: 'Autre' }, { texte: avant }).statut, 409, 'changé entre-temps');
   assert.equal(lire().texte, texte, 'rien n’a changé après les refus');
-  // une balise du glossaire, écrite par son libellé : l'id seul dans la base (un texte mis en forme)
-  const motCle = db.prepare('SELECT id, libelle FROM mot_cle WHERE id = ?').get('chakra') ?? db.prepare('SELECT id, libelle FROM mot_cle ORDER BY id LIMIT 1').get();
+  // une balise du glossaire, écrite par son libellé tel quel : la clé seule dans la base (un texte mis en forme ; migration 0113, décision R232 (3)) —
+  // un mot-clé sans homonyme (sa clé est celle de son libellé)
+  const motCle = db.prepare('SELECT id, libelle, cle FROM mot_cle ORDER BY id').all().find((m) => normalize(m.libelle) === m.cle);
   ok(modifier({ texte: `Une balise : {{${motCle.libelle}}}.` }));
-  assert.equal(lire().texte, `Une balise : {{${motCle.id}}}.`);
+  assert.equal(lire().texte, `Une balise : {{${motCle.cle}}}.`);
   assert.equal(modifier({ texte: 'Une balise : {{mot-cle-qui-n-existe-pas}}.' }).statut, 400, 'une balise qui ne cite aucun mot-clé');
   // vidée : NULL, le texte d'attente revient
   ok(modifier({ texte: '' }));
@@ -98,6 +105,9 @@ test('la note de version : une annonce restée vide n’annonce rien, contre une
   const { db, lire, modifier } = nouvelle();
   if (lire().texte !== null) ok(modifier({ texte: '' }));
   assert.equal(lire().texte, null);
+  // contre une production sans la table page, chaque page du guide est ajoutée, donc rangée par le plan des onglets (R184 : celui de la base vivante,
+  // comme le fait serveur/notes-de-version.mjs#noteEnPreparation)
+  installerLePlan(chargerPlanDesRegles(db));
   const lignes = (production) => comparerBases(production, lireTables(db)).filter((l) => l.table_nom === 'annonce');
   assert.deepEqual(lignes({ tables: {} }), [], 'production sans la table annonce');
   assert.deepEqual(lignes({ tables: { annonce: [{ id: ID, texte: null }] } }), [], 'production avec l’annonce vide');

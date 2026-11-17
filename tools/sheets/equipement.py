@@ -122,6 +122,8 @@ Ne touche qu'aux fichiers de sa famille : il refuse d'écraser un fichier qui n'
 pris par une autre page, et n'efface rien.
 """
 import argparse
+import functools
+import importlib.util
 import json
 import os
 import re
@@ -485,6 +487,17 @@ def yaml_list(items):
     return "[" + ", ".join(yaml_str(i) for i in items) + "]"
 
 
+@functools.lru_cache(maxsize=None)
+def etiquettes_non_posees():
+    """tools/db/homonymes.py#ETIQUETTES_NON_POSEES (décision R183 (11) : étiquettes d'un mot-clé de la migration 0090 que l'import n'écrit pas),
+    chargé par son chemin : `python3 -I`."""
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "db", "homonymes.py")
+    spec = importlib.util.spec_from_file_location("homonymes", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.ETIQUETTES_NON_POSEES
+
+
 def first_sentence(text):
     para = fmt(text).split("\n")[0].strip()
     m = re.match(r"(.+?[.!?])(?=\s|$)", para)
@@ -500,7 +513,7 @@ class Page:
         self.sh = sh
         self.slug = slug
         self.title = title
-        self.tags = list(tags)
+        self.tags = [t for t in tags if t not in etiquettes_non_posees()]   # R183 (11) : bouclier, pièce élémentaire, amélioration
         self.aliases = list(aliases)
         self.summary = None
         self.body = []

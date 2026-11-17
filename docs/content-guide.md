@@ -13,7 +13,7 @@ Les catégories sont définies dans `client/src/lib/types.mjs` (`races`, `classe
 ---
 title: Elfe sylvestre          # obligatoire
 aliases: [Elfes des bois]       # autres noms, utilisables dans [[ ]]
-tags: [peuple, forêt]           # mots-clés (vocabulaire mot_cle) : /recherche/?mot-cle=<id>
+tags: [peuple, forêt]           # mots-clés (vocabulaire mot_cle) : /recherche/?mot-cle=<clé>
 summary: Une phrase de résumé.  # affichée dans les listes et la recherche
 sources: [Discord #lien-pour-races, https://docs.google.com/document/d/…]
 status: draft                   # example | draft | verified
@@ -69,8 +69,12 @@ voir l'exception ci-dessus).
 carte des magies et de la page des classes (demande du propriétaire), en deux groupes côte à côte, races pures à gauche et hybrides à droite, l'un sous l'autre
 sur un écran étroit. Chaque groupe a sa couleur, celle du bandeau des pages de race (`RACE_COLORS` dans `lib/race-kinds.mjs`, source unique) ; repère visuel
 sans valeur de règle. La liste, `RacePage.astro` et la fiche posent la classe de la nature (`couleur-race-pure`, `couleur-race-hybride` : famille `race` de
-la palette, émise par la page), jamais un style (« Couleurs du site : la palette en classes »). L'ordre est celui du propriétaire (`ORDRE_DES_RACES`, différent de l'ordre de l'onglet « Race » de la fiche) ;
-une race absente de cette liste vient après les autres, par titre. Une pastille ne porte que le nom de la race ; son accroche est en infobulle (`Infobulles.astro`,
+la palette, émise par la page), jamais un style (« Couleurs du site : la palette en classes »). L'ordre est celui de la liste des races, une donnée de la base
+(`race.rang_liste`, migration `0092`, d'abord l'ancien ordre du propriétaire ; réponse du propriétaire « /races/ suit, le reste figé ») : la liste, le menu latéral
+des races et le tableau des magies innées le suivent (`lib/races.ts#ordreDeLaListeDesRaces`, passé à `lib/race-kinds.mjs#groupRaces`, qui garde les groupes par
+nature), et il se réordonne sur le site de dev, chaque race dans son groupe (glisser-déposer du menu latéral, `docs/serveur.md`, « Plan des Règles et liste des
+races ») ; une race sans rang (créée sur le site de dev) vient après les autres de son groupe, par nom. La fiche et `/magies/` gardent l'ordre figé du code
+(`ORDRE_DES_RACES`), et l'ordre de l'onglet « Race » de la fiche (`race.ordre`) est un autre ordre encore. Une pastille ne porte que le nom de la race ; son accroche est en infobulle (`Infobulles.astro`,
 `title` sans JavaScript) ; ni magies innées ni classe raciale : le tableau du bas de page donne les magies innées, la page de la race sa classe raciale.
 
 **Tableaux des magies** (demande du propriétaire, qui remplacent l'ancienne page `/wiki/races-et-magies/`, supprimée) : en bas de `/races/`, les magies innées
@@ -91,10 +95,14 @@ tableaux de règles suivent le même gabarit, écrit à un seul endroit (`styles
   **note** sous le titre (`.tableau__note`) ; la **zone qui défile** en largeur (`.tableau__defile`, ou le cadre lui-même : `.tableau--defile`) ;
 - **la table** (`.table-donnees`) : en-têtes en petites capitales sur un fond teinté, un filet entre deux lignes, cases alignées en haut à gauche ;
   deux densités (`.table-donnees--serree` : tableaux où l'on choisit une ligne — matériaux, formes, améliorations, étapes des accessoires — et
-  bestiaire ; `.table-donnees--aeree` : les armes, « l'affichage est trop serré ») ; une **ligne colorée** (`tr.ligne-couleur`, `--ligne-fond`, `--ligne-texte`) prend toute la couleur de sa source (potions, bâtons
-  magiques, matériaux des armes), un filet de sa teinte, un voile au survol ; ces deux variables viennent d'une classe de la palette du site (les
-  potions et les bâtons de la ceinture : « Couleurs du site : la palette en classes » ci-dessous) ou, en attendant leur lot, du style de la ligne
-  (matériaux des armes) ;
+  bestiaire ; `.table-donnees--aeree` : les armes, « l'affichage est trop serré ») ; une **ligne colorée** (`tr.ligne-couleur`, `--ligne-fond`, `--ligne-texte`) est dans la couleur de sa source (potions, bâtons
+  magiques, matériaux des armes) comme les tuiles des caractéristiques de la fiche de personnage (demande du propriétaire, 2026-10-29 : « Je ne veux plus de ligne entièrement colorées de la couleur de la magie. Je péfèrerai une bordure ou un fond plus transparent de la même manière sont soint faites les tuiles de caractéristiques et de compétences dans la fiche de personnage ») : le fond du thème teinté à 12 % de la
+  couleur (20 % au survol), un filet de la couleur mêlée à celle des filets (60 %) dessus et dessous, un liseré de la couleur pleine à gauche, bordé
+  d'un trait tiré de `--ligne-texte`, et le texte du thème, lisible sur les deux teintes dans les deux thèmes (`test/tableaux.test.mjs`) ; la couleur
+  pleine ne sert plus qu'aux liserés et aux pastilles, et aucune ligne de tableau n'est plus posée sur elle (même test) ; les armes élémentaires
+  et les lignes des accessoires suivent la même recette dans leur feuille ; ces deux variables viennent d'une classe de la palette du site (les
+  potions et les bâtons de la ceinture, les matériaux des armes par `couleur-materiau-<id>` : « Couleurs du site : la palette en classes »
+  ci-dessous) ;
 - **plusieurs tableaux** : `.tableaux` (l'un sous l'autre) ou `.tableaux--cote-a-cote` (autant par rangée que la largeur en tient : la largeur
   minimale d'un tableau, `--tableau-largeur`, 26rem par défaut, en fixe le nombre ; 30rem pour les potions de la ceinture, deux ou trois dans la page
   de 120rem) ; un tableau dans un groupe de tableaux a un nom plus petit que celui du groupe ;
@@ -126,7 +134,7 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
   couleur ; son fond est la couleur de la règle rendue lisible (`alchimie-couleurs.mjs#lisible` : inchangée quand son texte atteint déjà 4,5:1, soit
   toutes sauf Loyal Bon, Loyal Neutre et le Titane, à peine éclaircis, testé). Une famille sur la couleur de laquelle aucun texte n'est posé en fond
   (`FAMILLES_SANS_TEXTE` : `palier`, le trait de 3 px d'une ligne de résistance de la fiche ; `arme`, le bleu des armes de départ, une nuance, un
-  filet et, mêlé au texte du site, la couleur de la phrase des règles) n'est pas corrigée : le seuil de 4,5:1 vaut pour un texte (la grande vulnérabilité garde `#e53935`, les armes de départ `#3c78d8`). Pour ces deux alignements, réponse du propriétaire du 2026-10-23 à « Deux couleurs
+  filet et, mêlé au texte du site, la couleur de la phrase des règles ; `degats`, le liseré des pastilles Taille, Estoc et Frappe) n'est pas corrigée : le seuil de 4,5:1 vaut pour un texte (la grande vulnérabilité garde `#e53935`, les armes de départ `#3c78d8`). Pour ces deux alignements, réponse du propriétaire du 2026-10-23 à « Deux couleurs
   d'alignement du guide pour MJ, Loyal Bon (#45818e) et Loyal Neutre (#3c78d8), n'atteignent pas le contraste minimal de lisibilité (4,5:1), ni avec le
   texte foncé ni avec le blanc (4,2:1 au mieux). Que faire ? » : « Éclaircir (Recommandé) » ; option : « Fond à peine éclairci (#4e8794 et #467fda),
   texte foncé : lisible ; les couleurs de référence du guide restent dans le code. » Leur couleur de référence reste dans
@@ -134,15 +142,15 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
   (`#467fda`) depuis que son texte suit la règle du site (le texte foncé, 4,3:1 sur la couleur du classeur) et non plus le noir du classeur ; sa
   couleur de référence reste dans `lib/materiaux-couleurs.mjs`.
 - **Où la feuille est émise** : les familles que beaucoup de pages posent (`FAMILLES_DE_CHAQUE_PAGE` : magies, attributs, caractéristiques,
-  affinités) et les seconds rangs des magies sur chaque page, par `layouts/Base.astro` (`cssDeLaPalette` : environ 3,4 ko, 38 classes et 16 de second
-  rang ; version portable comprise ; plafond testé : 4 ko, que toutes les familles sur chaque page dépasseraient) ; les familles d'une zone
+  affinités, cases de tableau, types de dégâts : l'icône d'un mot-clé, dans ses bulles) et les seconds rangs des magies sur chaque page, par `layouts/Base.astro` (`cssDeLaPalette` : environ 3,9 ko, 48 classes
+  et 16 de second rang ; version portable comprise ; plafond testé : 4 ko, que toutes les familles sur chaque page dépasseraient) ; les familles d'une zone
   (`FAMILLES_DES_ZONES` : postures, alignements, catégories de classe, races, paliers de résistance, Mode Hyper, neutre, matériaux, armes de départ,
   types d'armure, poids des boucliers, niveaux des accessoires, parties du guide) et les seconds rangs des caractéristiques par le composant des seules pages qui les posent (`cssDesFamilles`,
   `cssDesSecondsRangs` : le bloc `postures` du guide, `pages/fiche/index.astro` (`FAMILLES_DE_LA_FICHE` : celles d'une zone, sans les matériaux, les
   armes de départ, les types d'armure ni les niveaux des accessoires), l'onglet Armes (seconds rangs des caractéristiques, `materiau`, `arme`), `ArmuresPage.astro` (`armure`,
   `poids`), `AccessoiresPage.astro` (`niveau`), `ComposantsPage.astro` (`materiau`), `ClassesPastilles.astro` et `ClassePage.astro` (`classe`),
-  `RacesPastilles.astro` et `RacePage.astro` (`race`), `PageDuGuide.astro` (une page de Découvrir ou des Bases), `pages/index.astro` (l'accueil) et
-  `Sommaire.astro` (le sommaire des Bases, seul à poser une partie) (`partie` ; la fiche l'émet avec ses autres familles), et le mode modification avec la page d'une race ou d'une classe créée,
+  `RacesPastilles.astro` et `RacePage.astro` (`race`), `PageDuGuide.astro` (une page de Découvrir) et `pages/index.astro` (l'accueil) (`partie` ; la fiche
+  l'émet avec ses autres familles), et le mode modification avec la page d'une race ou d'une classe créée,
   `scripts/edition/nouvelles.mjs`, car la page 404 où il la dessine ne les a pas), comme les combinaisons des potions (`cssDesPotions`) et les couleurs
   des événements de la chronologie (`cssDesEvenements`, ci-dessous). Chaque classe posée existe dans une feuille de sa page (testé sur le site construit).
 - **Les couleurs des événements de la chronologie** (lot 7) : une couleur calculée, pas une famille fixe (elle dépend de la liste des événements). La
@@ -154,12 +162,13 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
   la frise la sienne, sa barre celle de l'événement visible précédent et le morceau de barre qu'elle contient celle du suivant (le dégradé) ; le script
   du filtre les repose entre les lignes visibles, et l'éditeur du site de dev réécrit la feuille d'après la base vivante avant de poser les classes.
 - **Les couleurs des parties du guide** (lot 8) : famille `partie` (`lib/parties-couleurs.mjs#COULEURS_DES_PARTIES`, clé = l'id de la partie de
-  `lib/livres.mjs#PARTIES` : `couleur-partie-decouvrir`, `-creer`, `-jouer`, `-progresser`, `-plus-loin`, `classeDePartie` ; pas de `par-defaut` : une page
-  sans partie, des Règles avancées ou du Guide du MJ, n'a pas de classe et garde l'accent du site). Les valeurs d'avant, inchangées par la règle de
+  `lib/livres.mjs#PARTIES` : `couleur-partie-decouvrir`, `-creer`, `-jouer`, `-progresser`, `-plus-loin`, `classeDePartie` ; pas de `par-defaut` : une
+  page sans partie, d'un onglet des Règles hors création du personnage ou du Guide du MJ, n'a pas de classe et garde l'accent du site ; `-plus-loin` ne colore plus aucune
+  page depuis le 2026-11-05, elle reste une partie de l'ancien guide, que nomme le registre de la migration 0064). Les valeurs d'avant, inchangées par la règle de
   lisibilité (texte blanc, de 5,05:1 à 6,84:1). Le plan n'écrit plus aucune couleur (il entre dans la chaîne de l'édition du navigateur) : un groupe porte
   l'id de sa partie (`partie`), `partieDeLaPage` remplace `couleurDeLaPage`. La classe est posée sur la page du guide (`.guide-reference`, d'où
-  `blocs.css` tire `--guide` et le texte de ses aplats, `--guide-sur`), sur une carte « Par où commencer ? » (`--c`), sur un groupe du sommaire des
-  Bases (`--sommaire-couleur`) et sur chacune des quatre zones de la fiche (`--etape`) ; jamais un style. La classe pose aussi `--couleur` et
+  `blocs.css` tire `--guide` et le texte de ses aplats, `--guide-sur`), sur une carte « Par où commencer ? » (`--c`) et sur chacune des quatre zones
+  de la fiche (`--etape`) ; jamais un style (plus de groupe de sommaire en couleur : Les bases n'ont plus de groupes depuis le 2026-11-05). La classe pose aussi `--couleur` et
   `--couleur-texte` sur toute la zone : les enfants directs de la page du guide les remettent à leur valeur initiale, ceux d'une zone de la fiche à celle
   de la fiche (la magie innée, lue sur `.fiche` : `--couleur-de-la-fiche`), sous `:where()` (sans poids : une classe propre l'emporte) ; les cadres de la
   fiche gardent la magie innée, un bloc du guide sans classe propre son repli (comparé dans Chromium au rendu d'avant le lot : aucune différence hors
@@ -188,7 +197,7 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
     foncent un peu. » (`blocs.css` :
     `--guide-texte: color-mix(in srgb, var(--guide) 90%, #000)` sur `.guide-reference[class*='couleur-partie-']`, que lisent les intertitres, les
     en-têtes du tableau des niveaux, les termes des définitions, les liens des rubriques et le nom d'un personnage fil rouge, sans règle à part ; une
-    page sans partie, des Règles avancées ou du Guide du MJ, garde l'accent du site ; le thème sombre ne change pas ; de 4,99:1 à 7,74:1).
+    page sans partie, d'un onglet des Règles hors création du personnage ou du Guide du MJ, garde l'accent du site ; le thème sombre ne change pas ; de 4,99:1 à 7,74:1).
   Tous les autres textes posés sur ou dans la couleur
   d'une partie atteignent 4,5:1 dans les deux thèmes (le plus juste : l'onglet actif de la zone IV en sombre, 4,52:1 ; testé, parts lues dans les
   feuilles).
@@ -217,7 +226,8 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
   (`lib/accessoires-couleurs.mjs#COULEURS_DES_NIVEAUX`, les cases « Niveau 1 » à « Niveau 5 » du tableau Monture de l'onglet « Accessoires » du
   classeur : `couleur-niveau-1` à `couleur-niveau-5`, `classeDeNiveau` ; pas de `par-defaut` : un niveau absent, « Niveau ? » ou ligne vide, n'a pas de
   couleur ; des fonds clairs inchangés par la règle de lisibilité, texte foncé ; les niveaux 1, 2 et 4 ont la valeur des types d'armure Léger,
-  Intermédiaire et Lourd, le 2 celle de la magie Lumière, chacun garde sa famille), puis `partie` (les parties du guide, ci-dessus). Le texte
+  Intermédiaire et Lourd, le 2 celle de la magie Lumière, chacun garde sa famille), puis `partie` (les parties du guide, ci-dessus), puis `case`
+  (les cases de tableau, ci-dessous). Le texte
   d'un matériau suit la règle du site (`texteSurCouleur`) et non plus celle du classeur (noir, sauf Fer noir et Fonte en blanc) : blanc sur Bronze et Maverium, où le noir
   n'atteignait que 3,6:1.
   Une caractéristique, une posture ou un alignement inconnu reçoit la classe `par-defaut` de sa famille (`COULEUR_NEUTRE`, comme
@@ -239,15 +249,18 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
   bannières des classes, des races et des magies), `--vert-action` (`#2e7d4f`, l'action principale de la fiche, que sa feuille lit en `--vert`), `--a-choisir`
   (`#b45309`, `#f0a14a` en sombre : un choix qui reste à faire), `--a-choisir-plein` (`#b45309` dans les deux thèmes : le compte des choix en attente ;
   le budget en manque lit `--a-choisir`, lisible en sombre) et `--etoile` (`#c99a06`, l'étoile d'une remarque de sort ou d'arme) ; puis (lot des
-  matériaux, des armes et des armures) `--degats-taille` (`#c0392b`), `--degats-estoc` (`#2471a3`), `--degats-frappe` (`#7d6608`), le liseré des
-  pastilles des types de dégâts des armes et des armures, `--defense-ap` (`#7d6608`) et `--defense-am` (`#2471a3`), les pastilles AP et AM, et
-  `--ombre-fiche` (`0 6px 14px -12px rgb(0 0 0 / 0.4)`, l'ombre des fiches d'une arme, d'une armure ou d'un bouclier) ; l'onglet Équipement n'écrit
-  plus ses `--degats-taille` et `--degats-estoc` ; puis (lot des niveaux des accessoires) `--maudit` (`#8e44ad`, le violet d'un accessoire maudit,
+  matériaux, des armes et des armures) `--defense-ap` (`#7d6608`) et `--defense-am` (`#2471a3`), les pastilles AP et AM, et
+  `--ombre-fiche` (`0 6px 14px -12px rgb(0 0 0 / 0.4)`, l'ombre des fiches d'une arme, d'une armure ou d'un bouclier) ; les types de dégâts Taille
+  (`#c0392b`), Estoc (`#2471a3`) et Frappe (`#7d6608`), qui étaient les jetons `--degats-*` (le liseré de leurs pastilles), sont la famille `degats` de la
+  palette (`lib/equipement-couleurs.mjs#COULEURS_DES_DEGATS`, mêmes valeurs ; demande du propriétaire : ces trois couleurs manquaient aux choix de
+  couleur d'un mot-clé du Glossaire) : la pastille porte `couleur-degats-<type>` et `equipement.css` lit `var(--couleur)` ; `--defense-ap` et
+  `--defense-am` restent des jetons séparés (« Garder séparées ») ; puis (lot des niveaux des accessoires) `--maudit` (`#8e44ad`, le violet d'un accessoire maudit,
   qu'aucune source ne donne : la référence, la même dans les deux thèmes, que lit le cadre pointillé de l'encart maudit, sans texte), `--maudit-texte`
   (ce violet en texte sur le fond de la page, la ligne « MALÉDICTION », le mot « Maudit », le titre d'un accessoire détruit : `var(--maudit)` en
   clair, `#a86ec0` en sombre, 4,6:1 ; réponse du propriétaire du 2026-10-23 à « Le violet d'un accessoire maudit (#8e44ad : ligne « MALÉDICTION », mot « Maudit ») n'atteint que 2,9:1 sur le fond du thème sombre, et 3,3:1 sur le niveau 5 dans l'encart, alors que le minimal de lisibilité est 4,5:1. Que faire ? » : « Plus clair en sombre (Recommandé) » ; option : « Un violet plus clair en thème sombre seulement (#a86ec0, 4,6:1) ; le thème clair ne change pas. ») ;
-  sur la couleur d'un niveau, clair dans les deux thèmes, le mot « Maudit » prend la référence assombrie, `color-mix(in srgb, var(--maudit) 80%,
-  #000)` (environ `#72368a`, 4,5:1 au moins sur les cinq niveaux ; réponse du propriétaire du 2026-10-23 à « Sur l'encart d'un accessoire, le mot « Maudit » est en violet sur la couleur du niveau, un fond clair dans les deux thèmes. Le violet actuel (#8e44ad) n'atteint pas le contraste minimal de lisibilité (4,5:1) aux niveaux 4 et 5 (4,0:1 et 3,3:1). Le violet plus clair choisi pour le thème sombre (#a86ec0) y descendrait de 2,1:1 à 3,3:1. Quel violet sur les fonds de niveau ? » : « Violet assombri (Recommandé) » ; option : « Sur un fond de niveau, dans les deux thèmes, le violet du site est assombri par le calcul (environ #72368a), au moins 4,5:1 sur les cinq niveaux ; aucune couleur ajoutée. ») ; `--maudit-choisi` (le violet d'une ligne « MALÉDICTION » choisie :
+  sur la couleur d'un niveau (tant que l'encart était sur la couleur pleine de son niveau), le mot « Maudit » prenait la référence assombrie, `color-mix(in srgb, var(--maudit) 80%,
+  #000)` (environ `#72368a`, 4,5:1 au moins sur les cinq niveaux ; depuis le 2026-10-29, l'encart est teinté à 8 % de la couleur et le mot prend
+  `--maudit-choisi`, ci-dessous, 5,0:1 au moins sur les cinq niveaux dans les deux thèmes ; réponse du propriétaire du 2026-10-23 à « Sur l'encart d'un accessoire, le mot « Maudit » est en violet sur la couleur du niveau, un fond clair dans les deux thèmes. Le violet actuel (#8e44ad) n'atteint pas le contraste minimal de lisibilité (4,5:1) aux niveaux 4 et 5 (4,0:1 et 3,3:1). Le violet plus clair choisi pour le thème sombre (#a86ec0) y descendrait de 2,1:1 à 3,3:1. Quel violet sur les fonds de niveau ? » : « Violet assombri (Recommandé) » ; option : « Sur un fond de niveau, dans les deux thèmes, le violet du site est assombri par le calcul (environ #72368a), au moins 4,5:1 sur les cinq niveaux ; aucune couleur ajoutée. ») ; `--maudit-choisi` (le violet d'une ligne « MALÉDICTION » choisie :
   `var(--maudit-texte)` en clair, 4,6:1 ; en sombre, `color-mix(in srgb, var(--maudit-texte) 80%, #fff)`, environ `#b98bcd`, 4,8:1 sur le fond
   `#3c2e1f` de la ligne choisie ; réponse du propriétaire du 2026-10-23 à « Sur l'onglet Accessoires, en thème sombre, une ligne « MALÉDICTION » choisie (surlignée après un tirage ou un clic) a un fond brun foncé (#3c2e1f). Le violet clair choisi pour le thème sombre (#a86ec0) n'y atteint que 3,5:1, sous le contraste minimal de lisibilité (4,5:1). En thème clair, cette ligne est lisible (4,6:1). Que faire ? » : « Plus clair sur la ligne choisie (Recommandé) » ; option : « En thème sombre seulement, sur une ligne choisie, le violet clair est encore éclairci par le calcul (environ #b98bcd), 4,8:1 ; aucune couleur ajoutée, le thème clair ne change pas. ») ; et `--ombre-encart` (`0 6px 12px -10px rgb(0 0 0 / 0.35)`, l'ombre de l'encart de l'accessoire créé) ; puis (lot de la chronologie, la même valeur dans
   les deux thèmes) `--ombre-evenement` (`0 10px 30px rgb(0 0 0 / 0.05)`, la page d'un événement), `--ombre-barre-du-bas` (`0 -4px 18px rgb(0 0 0 /
@@ -274,10 +287,54 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
   Le compteur garde `var(--texte-sur-fonce)` quand des choix sont en attente, sur `--a-choisir-plein` (5,0:1 dans les deux thèmes). Sur `--danger`
   (règles à revoir), il prend `--texte-sur-danger`, sur le modèle de `--texte-sur-good` : `var(--texte-sur-fonce)` en clair, 7,7:1, `var(--bg)` dans
   les deux blocs du thème sombre, 7,6:1 ; réponse du propriétaire du 2026-10-23 à « En thème sombre, le compteur rouge de l'onglet « Contrôle » de la fiche (le nombre de règles à revoir) a un texte blanc sur le rouge du site (#ef8a8a) : le blanc n'y atteint que 2,4:1, loin du contraste minimal de lisibilité (4,5:1). En thème clair, c'est lisible (7,7:1). Pour les boutons et le compteur verts, vous avez choisi « Texte foncé en sombre ». Faut-il le même choix ici ? » : « Texte foncé en sombre (Recommandé) » ; option : « En thème sombre seulement, le texte de ce compteur prend le fond sombre du site (#17130f, 7,6:1), comme sur le vert. Aucune couleur ajoutée ; le thème clair ne change pas. ». Les pages Debug gardent leurs copies du vert et du rouge (« Thème reste, Debug à part »). Un voile noir ou
-  blanc translucide (le survol d'une ligne, les voiles des champs et du dé posés sur la couleur d'un niveau) s'écrit en noir ou blanc de mélange,
+  blanc translucide (le survol d'une ligne) s'écrit en noir ou blanc de mélange,
   `color-mix(in srgb, #fff 70%, transparent)`, le même rendu que `rgb(255 255 255 / 0.7)` : ainsi les voiles blancs des bannières (`classe/page.css`,
   `classe/dons.css`, `race/page.css`, `magie/page.css`) et les ombres et voiles noirs du mode modification, du carrousel et du bestiaire
   (`edition/edition.css`, `galerie/carrousel.css`, `bestiaire/bestiaire.css`), au lot des restes.
+- **Les couleurs des cases de tableau** (lot 11) : famille `case` (`lib/cases-couleurs.mjs#COULEURS_DES_CASES`, sans import ; clés = les noms
+  de `lib/markdown-edition.mjs#COULEURS_DE_CASE`, que l'éditeur écrit et relit, dans le même ordre : `couleur-case-rouge`, `-orange`, `-jaune`, `-vert`,
+  `-bleu`, `-violet`, `-gris`, `classeDeCase` ; pas de `par-defaut` : une case sans couleur connue n'a pas de classe). Aucune source ne donne ces
+  couleurs : ce sont les valeurs que le site écrivait dans `global/wiki.css` (« Si le site n'a pas de règle il ajoute une nouvelle couleur au site »),
+  inchangées. Le Markdown (`{couleur:x}`) et l'attribut `data-couleur` (le nom, que relit l'aller-retour) ne changent pas (la marque accepte depuis toute couleur du glossaire, et la case porte aussi la classe `case-coloree` : « Des onglets et des couleurs dans un texte ») : le plugin remark
+  (`lib/markdown-couleurs.mjs`, déclaré dans `astro.config.mjs`, `lib/guide-rendu.ts` et, pour le texte que le navigateur du site de dev rend lui-même, `lib/markdown-rendu.mjs#remarkPluginsDuWiki`) pose en plus la classe sur la case, l'aperçu assaini
+  (`htmlSur`) la recalcule depuis le nom (jamais celle reçue), et l'éditeur (`scripts/edition/tableaux.mjs`, partagé par toutes les barres) la pose et la retire par `classList`
+  avec la valeur écrite ; le nom de la classe vient de `lib/couleurs-ecrites.mjs#classeDeLaCouleurEcrite` (sans couleur ; `markdown-edition.mjs#classeDeCouleurDeCase`
+  en est un alias, et son nom pour les sept noms d'avant est celui de `classeDeCase`, testé), car ni le plugin ni le script n'importent la palette pour le nom.
+  `global/wiki.css` ne lit que la classe, `:is(td, th).case-coloree.case-coloree` (le poids qui passe devant les en-têtes des gabarits du guide), avec
+  `var(--couleur)` mêlée à 26 % à `--surface` ; les sept pastilles de l'éditeur sont retirées : le choix de couleur est celui du glossaire (R277). Choix appliqués au nom de la réponse permanente
+  du propriétaire du 2026-10-23 (« Pour toutes tes prochaines questions sur le thème et les palette, considère que je réponds "rcommandé" à chaque
+  fois. ») ; ce ne sont pas des choix qu'il a faits sur ce cas :
+  - question « Les couleurs des cases de tableau ({couleur:x}) n'ont aucune source (ni Docs, ni Sheets, ni Discord) : ce sont celles que le site
+    écrivait dans sa feuille. Quelles valeurs prennent leurs classes ? » ; option retenue : « Garder les valeurs actuelles (Recommandé) : une famille
+    `case` de la palette avec les sept couleurs d'aujourd'hui, chacune sous son nom, même quand une autre famille a une teinte proche (« Garder
+    séparées »). Le rendu ne change pas. » ;
+  - question « Le texte d'une case colorée est-il posé sur la couleur ? » ; option retenue : « Famille sans texte (Recommandé) : la case garde la
+    couleur mêlée à 26 % à la surface, sous le texte du site (de 8,1:1, Jaune en sombre, à 12,9:1, Jaune en clair, mesuré dans les deux thèmes) ; la
+    couleur de base n'est pas corrigée. » (`FAMILLES_SANS_TEXTE`) ;
+  - question « Où la feuille des cases est-elle émise ? » ; option retenue : « Sur chaque page (Recommandé) : avec les familles de chaque page
+    (`layouts/Base.astro`), car toute page qui rend du Markdown peut en avoir et l'éditeur du site de dev les pose au navigateur ; environ 3,7 ko, sous
+    le plafond de 4 ko. » ;
+  - question « Le Markdown des pages et l'attribut des cases changent-ils ? » ; option retenue : « Garder `{couleur:x}` et `data-couleur`
+    (Recommandé) : la classe est posée en plus, par le plugin et par l'éditeur ; le Markdown ne l'écrit jamais. ».
+- **Les couleurs des mots-clés** (migration `0098` ; réponses du propriétaire du 2026-11-06, Q3 à Q5 et Q13) : `mot_cle.couleur` est une référence
+  `famille:id` d'une couleur de la palette (`magie:feu`, `classe:melee`), ou une couleur écrite `#rrggbb`. La classe d'un mot-clé coloré
+  (`lib/mots-cles-liens.mjs#classeDuMotCle`) est celle de la palette, ou `couleur-mot-cle-<id>` pour une couleur écrite (sa règle :
+  `palette-css.mjs#cssDesMotsCles`, fond rendu lisible comme une couleur des règles). La feuille des mots-clés colorés (couleurs écrites et familles
+  d'une zone qu'un mot-clé nomme ; les familles de chaque page y sont déjà) est émise sur chaque page par `layouts/Base.astro`
+  (`<style data-couleurs-mots-cles>`, `lib/couleur-de-la-page.mjs#cssDesMotsClesDuSite`, environ 0,6 ko, plafond épinglé à 1,5 ko), et réécrite sur
+  le site de dev avec celle du service (`GET /api/edition/mots-cles/`, `css`). **Prennent la couleur du mot-clé** (réponse Q13 : « La couleur inclue
+  la tuile (quand on a la définition complète {{X:}} ) et l'habillage de l'infobulle ») : sa balise (le texte, la couleur mêlée de 60 % de noir en
+  clair, de 45 % de blanc en sombre, la formule de `--mag-readable`), la tuile du mode complet (filet et fond pâle), l'habillage de sa bulle (filet,
+  fond, titre : `--bulle-teinte`), et **la page vers laquelle mène son adresse** (réponse Q5, `lib/couleur-de-la-page.mjs#classeDeLaPage` : le mot-clé
+  coloré qui y mène, sans ancre, le premier par libellé ; à défaut, la couleur que la page avait ; un mot-clé dont l'adresse a une ancre, comme les
+  neuf alignements de `/regles/alignement/#loyal-bon`, ne colore pas la page : réponse du propriétaire du 2026-11-13, « Ancre = pas de couleur », R271
+  ; il garde sa couleur dans le texte). Les gabarits des magies, des classes, des races
+  et du guide posent cette classe à la place de la leur ; toute autre page la reçoit sur son `<main>` (`main.page-coloree` : infobulles, tableaux,
+  filet du titre), seulement quand un mot-clé coloré y mène. Les 90 mots-clés colorés de la migration reprennent chacun la couleur de sa page : le rendu
+  ne change pas (« il ne faut pas de changement par rapport à avant en terme de résultat » ; `test/palette-css.test.mjs`, `test/glossaire-html.test.mjs`).
+  Les tuiles des listes (`/classes/`, `/races/`, l'accueil), la carte de `/magies/`, les puces et les tableaux gardent leurs couleurs. `blocs.css` lit la
+  couleur d'une page du guide sur son repère `.guide-reference--couleur` (plus sur `[class*='couleur-partie-']`), pour qu'une couleur d'une autre
+  famille s'y lise aussi.
 - **Deux couleurs d'une famille sur un même élément** (le dégradé de l'innée vers l'acquise des cadres de la fiche et des lignes de `/personnages/`,
   une créature ou une cible de défense à deux magies, le trait d'une relation de la carte de `/magies/`, une arme de deux compétences) : une classe ne
   pose qu'une `--couleur`. La première est la classe de sa couleur (`--couleur`, `--couleur-texte`) ; la seconde, sa **classe de second rang**
@@ -291,8 +348,8 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
 - **Où elle sert** :
   - les potions et les bâtons magiques de l'onglet Ceinture (« Ceinture » plus bas) ;
   - **toute couleur de magie** (lot des magies) : pages de magie (la page, les onglets du Potentiel Illimité, les créatures invoquées), carte et
-    tableaux de `/magies/` et `/races/`, magies innées d'une race (et son éditeur), entrées de l'annexe d'une classe, blocs du guide (les 15 magies,
-    ce que donne chaque magie), pastilles de magie et cibles de défense du bestiaire, gemmes et bois des composants, gemmes des accessoires (pastille,
+    tableaux de `/magies/` et `/races/`, magies innées d'une race (et son éditeur), entrées de l'annexe d'une classe, bloc du guide (ce que donne
+    chaque magie), pastilles de magie et cibles de défense du bestiaire, gemmes et bois des composants, gemmes des accessoires (pastille,
     infobulle, copie de l'encart), lignes de `/personnages/`, fiche de personnage (pastilles, résistances, sorts, créatures, Mode Hyper, cadres) ;
   - **les caractéristiques (et leurs compétences), les postures et les alignements** (lot 3) : blocs du guide (« +1 en … », cadres des compétences,
     postures), cases des caractéristiques des cartes du bestiaire, compétence d'une arme et filtre de l'onglet Armes (R48), compétences et
@@ -309,8 +366,9 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
     reprennent la classe de la ligne affichée (`classList`) dans la fiche qu'ils écrivent, `regles.json` donne `classe` de chaque poids ;
   - **les niveaux des accessoires** (lot 6) : pastilles des niveaux de l'étape 3, lignes d'effet, de compétence et de monture, encart de l'accessoire
     créé (`styles/accessoires/accessoires.css`, qui ne lit `--couleur` et `--couleur-texte` que sur l'élément qui porte la classe d'un niveau,
-    `[class*='couleur-niveau-']` ; le texte adouci de la colonne du jet et des intitulés de l'encart, 68 % du texte de la classe, atteint 4,9:1 au
-    moins sur chaque niveau, testé) ; le script de l'onglet reprend la classe de la ligne de l'effet choisi dans l'encart et, sur une ligne de
+    `[class*='couleur-niveau-']` ; depuis le 2026-10-29, les lignes et l'encart sont teintés de la couleur, la couleur pleine restant aux pastilles
+    des niveaux, et le texte adouci de la colonne du jet, mêlé au texte du thème, est lisible sur la teinte de chaque niveau dans les deux thèmes,
+    testé) ; le script de l'onglet reprend la classe de la ligne de l'effet choisi dans l'encart et, sur une ligne de
     compétence, celle du niveau du bonus d'acquis (`data-niveaux` : `classe`) ;
   - **la chronologie** (lot 7) : la page d'un événement et `/chronologie/` (`--chrono`, et `--chrono-sur` pour le texte de ses aplats, tirés de la classe
     posée sur `.chrono`), lignes de la frise, barre en dégradé (`--c`, `--c-avant`, `--c-apres` lus sur la ligne, sa barre et son morceau de barre, qui
@@ -326,11 +384,11 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
   Une feuille garde ses variables locales (`--mag`, `--creature-1`, `--cadre`, `--magie-1`…) mais les tire des propriétés de la classe, jamais d'un
   style. Les scripts du navigateur posent des classes (`classList`), jamais une couleur : ils reçoivent leurs noms de la page (`data-couleurs` de
   `/personnages/`) ou de `regles.json` (`classe` et `classe_2` de chaque magie, `classe` de chaque caractéristique, posture, alignement, race, classe
-  et palier, de `mode_hyper` et `mode_hyper.cent`, `race_par_nature`, `neutre` : skill `zone-fiche`), car un script de page n'importe pas
+  et palier, de `mode_hyper` et `mode_hyper.cent`, `race_par_nature`, `neutre` : skill `zone-fiche`), ou d'un module sans couleur qu'ils importent
+  déjà (l'éditeur : `lib/couleurs-ecrites.mjs#classeDeLaCouleurEcrite`, le nom de la classe d'une case ou d'un onglet), car un script de page n'importe pas
   `palette-css.mjs`. La carte de `/magies/` : les règles du survol (écrites par le composant) font lire au trait `--couleur` ou `--couleur-2` de ses
   classes selon la magie survolée ; seule la part de la couleur dans le trait se calcule encore depuis la valeur (luminance, au build).
-  Restent : les couleurs des cases de tableau (`{couleur:x}`, `[data-couleur]` de `global/wiki.css`,
-  `lib/markdown-couleurs.mjs` : prévues pour le lot 11). La page Debug et l'impression ne changent pas (`debug/debug.css`, `debug/schema.css`,
+  La page Debug et l'impression ne changent pas (`debug/debug.css`, `debug/schema.css`,
   `magie/print.css`, les blocs `@media print` de `classe/page.css`, `race/page.css` et `global/common.css`). Les dérivées sombres des bannières des magies, des classes et des races (`--hero-1`, `--hero-2`) mêlent la couleur au
   noir `#111` d'avant, par le jeton `--fond-banniere` (les magies, passées au noir pur `#000` au lot 2, ont retrouvé leur rendu d'avant au lot 4).
 - Tests : `test/palette-css.test.mjs` (familles, noms, valeur de chaque classe égale à celle de sa règle, contraste de 4,5:1, combinaisons des potions,
@@ -338,10 +396,12 @@ site qui va avec la couleur de base, comme pour les magies. Si elle n'existe pas
   moins un argument écrit, couleur nommée d'une feuille — dans les fichiers propres aux lots faits ni dans aucune règle d'une feuille qui lit
   `var(--couleur…)` ou `var(--mag…)`, ou, dans `fiche.css` et `guide/blocs.css`, les variables qui en sont tirées (`--c`, `--c1`, `--c2`, `--c-texte`,
   `--texte-sur-c`), ou, dans `styles/classe/` et `styles/race/`, celles de la catégorie ou de la nature (`--cla…`, `--rac…`, `--hero-1`, `--hero-2`),
-  ou, partout, les jetons du thème des lots faits et le bleu des armes de départ (`--texte-sur-fonce`, `--fond-banniere`, `--depart…`, `--degats-…`,
+  ou, partout, les jetons du thème des lots faits et le bleu des armes de départ (`--texte-sur-fonce`, `--fond-banniere`, `--depart…`,
   `--defense-ap`, `--defense-am`, `--ombre-fiche`, `--maudit`, `--maudit-texte`, `--maudit-choisi`, `--ombre-encart`), choisie d'après ce qu'elle lit ; depuis le lot des restes, toutes les feuilles de `src/styles/`, hors les blocs du thème de `global/base.css` et ce
   qui est laissé de côté, nommé avec sa raison : `FEUILLES_LAISSEES_DE_COTE` (Debug, `magie/print.css`), `IMPRESSION_LAISSEE_DE_COTE`,
-  `REGLES_LAISSEES_DE_COTE` (les cases de tableau), chacune vérifiée encore utile ; le texte sur chaque aplat `--good` ; les
+  `REGLES_LAISSEES_DE_COTE` (vide depuis le lot 11, qui y a retiré les cases de tableau ; une exception future s'y nomme), chacune vérifiée encore
+  utile ; les cases de tableau (famille, valeurs d'avant, contraste du mélange dans les deux thèmes, classe posée par le plugin, l'aperçu et l'éditeur,
+  aller-retour sans classe, aucune couleur écrite dans `global/wiki.css`, `edition/edition.css`, `scripts/edition/guide.mjs`) ; le texte sur chaque aplat `--good` ; les
   jetons des restes dans les trois blocs et leurs contrastes ; le script de la fiche ne
   lit ni ne pose aucune de ces couleurs ; jetons du thème ; poids borné),
   `test/alchimie-couleurs.test.mjs`, `test/ceinture-html.test.mjs`, `test/equipement-html.test.mjs` ; sur le site construit, `test/site-html.test.mjs`
@@ -376,8 +436,8 @@ Les 15 pages de `/magies/<magie>/` ne sont **pas** rendues depuis leur Markdown 
 des tables typées de la base, lues par `client/src/lib/magies-db.mjs` : `magie`, `magie_role`, `magie_resistance`, `etat`, `v_magie_incompatible`, `magie_ethnie_secondaire`, `mode_hyper_effet`,
 `sort`, `sort_type`, `sort_mode`, `sort_bonus_maitrise`, `sort_etat`, `etat`, `etat_magie`, `etat_stade`, `invocation`, `invocation_bloc`, `creature`, `caracteristique`, `creature_caracteristique`, `creature_bonus_npm`, `creature_attaque`, `creature_capacite`, `creature_effet`, `amelioration_cadaverique`, `regle_magie`.
 Le corps Markdown de la page (fabriqué depuis `data/rows`) ne sert plus qu'à la recherche plein texte et aux `[[liens]]`. Restent lus dans le front matter : le titre, les alias, le statut, et la
-section « Disponibilité par race » (`magies_innees` des pages de race, avec l'exception du Nain, voir plus haut) : **une seule liste**, les races qui peuvent l'avoir en magie innée, dans l'ordre de `/races/`
-(`ORDRE_DES_RACES`), sans séparer races pures et hybrides, sans la liste des races qui ne le peuvent pas ni lien vers le tableau de `/races/` (demande du propriétaire). Une page de magie sans ligne dans `magie` (la magie d'exemple) garde le rendu Markdown.
+section « Disponibilité par race » (`magies_innees` des pages de race, avec l'exception du Nain, voir plus haut) : **une seule liste**, les races qui peuvent l'avoir en magie innée, dans l'ordre figé
+`ORDRE_DES_RACES` (l'ancien ordre de `/races/`, qui suit maintenant `race.rang_liste` : réponse du propriétaire « /races/ suit, le reste figé »), sans séparer races pures et hybrides, sans la liste des races qui ne le peuvent pas ni lien vers le tableau de `/races/` (demande du propriétaire). Une page de magie sans ligne dans `magie` (la magie d'exemple) garde le rendu Markdown.
 
 **Pour changer une magie ou un sort, on change la base, pas le `.md` fabriqué** (une modification du `.md` n'a plus d'effet sur ces pages). Aucun importeur ne réécrit encore ces lignes depuis les classeurs :
 le changement passe par une migration `data/migrations/NNNN-<nom>.sql` appliquée par `npm run db:migrate` (voir `docs/sql/remplissage.md`). Les notes de cellule d'un sort sont dans sa colonne `remarque`
@@ -386,11 +446,17 @@ le changement passe par une migration `data/migrations/NNNN-<nom>.sql` appliqué
 
 Mise en page (pure forme, jamais de règle ajoutée ; `lib/sort-format.mjs`, testé dans `test/magies-page.test.mjs`) :
 
-- **Bannière** : nom, rôles, santé et chakra offerts, caractéristique bonus, 4ᵉ barre ; la couleur de chaque magie (`COULEURS`) est un repère visuel sans valeur de règle.
+- **Bannière** : nom, rôles (supprimés à la 0117, R237 (7) : la liste n’est affichée que si la magie en a), santé et chakra offerts, caractéristique bonus, 4ᵉ barre ; la couleur de chaque magie (`COULEURS`) est un repère visuel sans valeur de règle.
 - **Altération d'état liée** (demande du propriétaire) : après la présentation (et l'Explication), avant les résistances, un encart montre l'altération d'état de la magie
   (colonne « Magie Liée » de la « Liste des altérations d'état » : `etat_magie`) : son nom (lien vers sa section), son type et l'effet de chaque stade ; une altération partagée
   (Surcharge Magique : Arcane et Corruption) nomme l'autre magie. Pas d'encart sans altération liée (Potentiel Illimité). `components/magie/MagieEtats.astro`.
-- **Capacité Mode Hyper** : un (+) à côté du titre mène à la liste des effets mode hyper (plus de lien en texte).
+- **Résistances et vulnérabilités** (`components/magie/MagieAffinites.astro`) : deux cartes, chacune avec ses magies puis ses altérations d'état ; une magie qui a des
+  lignes physiques (`magie_resistance.cible_physique`, décision R174 : le Potentiel Illimité, « Surtension corporelle ») a de plus un groupe « Dégâts physiques » (Estoc, Frappe,
+  Taille, dans l'ordre de la fiche : `RESISTANCES_PHYSIQUES` de `lib/fiche-moteur.mjs`, sans lien), suivi une fois de la phrase de la source, telle qu'écrite ; les autres magies
+  n'ont pas ce groupe.
+- **Capacité Mode Hyper** : un (+) à côté du titre (titre et `aria-label` « Le Mode Hyper ») mène à la page « Le mode hyper » (`guide/le-mode-hyper`),
+  qui porte le tableau des effets de toutes les magies (plus de lien en texte). Sur une page de race, le lien « Le Mode Hyper » sous le titre y mène
+  aussi. Depuis R187, la « Liste des effets mode hyper » est supprimée et ses renvois visent cette page (`test/magies-html.test.mjs`, `test/races-html.test.mjs`).
 - **Aucune virgule dans les données** : une liste devient des pastilles (une par élément), les bonus du D/S/B (« +8 dégâts, +2AM ») sont un élément par ligne, « 4.0 » s'affiche « 4 », les précisions entre
   parenthèses passent en petit (parenthèses gardées), un coût qui écrirait encore deux coûts en une case (« 5 + 1 âme ») serait séparé en coût et supplément (il n'y en a plus : décisions R105, R106), les types et les marques (IC, imparable, inesquivable) sont des pastilles.
   Le texte des cellules n'est jamais réécrit.
@@ -403,6 +469,21 @@ Mise en page (pure forme, jamais de règle ajoutée ; `lib/sort-format.mjs`, tes
   registre `.json`) ; le corps Markdown de la page, la fiche en tableur et le coût d'invocation d'une créature du bestiaire les gardent en une case (`coutEnUneCase` : « 3 + 1 Sang »,
   « 3 par tour et par cible », le coût secondaire seul pour un coût « 0 » ou « N/A »). Sur le site de dev, les deux se modifient, chacun dans sa saisie (celle du coût secondaire
   même vide) ; le service refuse un second coût dans « Coût » (il dit où l'écrire) et une expression de NM dans « Coût secondaire » (`sort_bonus_maitrise` n'a pas de champ pour elle).
+- **Sorts communs, puis deux spécialisations** (R236 (1), `components/magie/MagieSorts.astro`, `SortsDeSpecialisation.astro`, `lib/sort-format.mjs#sortsParSpecialisation`) : sous « Sorts », d'abord
+  « Sorts communs » (les sorts sans spécialisation, `specialisationId` nul : NPM 1 et 2), puis la section de chacune des deux spécialisations de la magie, dans l'ordre 1, 2 :
+  son nom **tel que la base l'écrit, en capitales** (aucun `text-transform`, comme les spécialités des classes), sa description et sa remarque (`magie_specialisation`, modifiables sur le site de dev ;
+  un cadre vide est caché en lecture), puis ses sorts, un tableau par NPM (les deux spécialisations ont chacune leur NPM 3 : identifiants `#npm-<spécialisation>-<NPM>`, `#specialisation-<spécialisation>`) ; `<spécialisation>` est **l'ancre figée** : le segment de l'identifiant après `#specialisation:`
+  (`lib/sort-format.mjs#ancreDeSpecialisation`), jamais le nom ni `nom_cle`, que le service recalcule au renommage (« Identifiants figés »).
+  Les deux spécialisations sont **côte à côte** (R245 (2), classeur : une colonne chacune, `div.specialisations` ; l'une sous l'autre sous 72rem, chaque tableau défile dans son cadre, jamais la page).
+  **Zone élargie** (R247 (3), « Elargir la zone sur les cotés pour remplir les espace vides ») : à partir de 72rem, une page qui a des spécialisations (page d'une magie, Potentiel Illimité)
+  occupe toute la largeur de la fenêtre, panneau latéral compris, au lieu de rester centrée (`.magie-cadre--large`, posée par `MagiePage.astro` ; `main` jusqu'à `--max-magie-large`, 120rem) ;
+  le panneau reste à gauche, non recouvert. Les autres pages ne changent pas. Dans ce mode, les tableaux sont resserrés (marges des cellules, largeurs minimales du nom et des dégâts levées),
+  aucune colonne retirée, police inchangée ; le défilement du cadre reste le dernier recours (fenêtre étroite). Sous 72rem et à l'impression : une colonne, mise en page d'avant.
+  **Infobulle sur le titre de chacune** (R245 (1), MAJ-A5, MAJ-A6) : les deux phrases de la règle « CHOSES A SAVOIR » (`regle_magie` `magies#regle:choses-a-savoir`) sur la Super-magie et sur le choix
+  des bi-magie, découpées dans la cellule (`lib/sort-format.mjs#phrasesDesSpecialisations` : les puces qui parlent de « super-magie » ou de « bi-magie », mot pour mot), avec le mécanisme de la règle du
+  NPM 5 (`Info.astro`) ; les autres phrases ne s'affichent pas. **Chaque onglet du Potentiel Illimité** reprend la même disposition (R249) : deux spécialisations côte à côte dans
+  `div.specialisations`, zone élargie, même infobulle sur chaque titre ; la règle du niveau 5 n'y paraît que s'il y a un tableau de niveau 5 (le plafond de la base n'en laisse pas).
+  Le nombre de sorts n'est écrit nulle part dans le code : il vient de la base. Le Potentiel Illimité n'a pas de spécialisation à lui.
 - **Un tableau par niveau de puissance magique (NPM)** : Nom, Type, Coût (le coût secondaire dessous), Portée, Zone, D/S/B, une ligne par sort ; **pas de colonne Maîtrise**. Un seul gabarit pour tous les tableaux de sorts du site,
   `components/magie/TableauNpm.astro` (une magie, un NPM ; une ligne : `LigneDeSort.astro` ; le comportement au clic : `SortsInteractifs.astro`, une fois par page). Le bonus de niveau de maîtrise (NM, `sort_bonus_maitrise`, voir « Niveaux de maîtrise »
   ci-dessous) qu'une cellule de Coût, Portée, Zone ou D/S/B écrit entre parenthèses est une **pastille à sa place, à côté de la valeur** (« 55 » puis la pastille « -5/NM », « 5d6 [+3/NM] dégâts sonores » ;
@@ -411,10 +492,9 @@ Mise en page (pure forme, jamais de règle ajoutée ; `lib/sort-format.mjs`, tes
   La **règle spéciale d'un niveau** (`regle_magie`, « Règle spéciale pour sort niveau 5 ») est dans l'infobulle de la pastille « i » du titre du tableau concerné, pas sous le tableau. Pas de légende sur la page.
 - **Un clic sur la ligne** (ou `#sort-<slug>` dans l'adresse) **ouvre juste en dessous un panneau** : un seul cadre « **Effets** » qui contient le texte des effets secondaires (`sort.effets`), puis, à la ligne, la remarque du classeur (`sort.remarque`,
   la note de cellule) et le texte du sort de niveau 5 (`sort.texte_niveau5`) sans intitulé propre. Les **altérations d'état** repérées dans le texte (`sort_etat`, un index dérivé du texte, non exhaustif) sont des **pastilles placées dans le texte**,
-  sur le mot de la source, pas une liste à part ; chacune renvoie à sa section de `/regles/avancees/liste-des-alterations-d-etat/` et a une **infobulle** (type, magie liée, effet de chaque stade ; le stade cité est mis en avant : `etat`, `etat_magie`, `etat_stade`).
+  sur le mot de la source, pas une liste à part ; chacune renvoie à sa section de `/regles/liste-des-alterations-d-etat/` et a une **infobulle** (type, magie liée, effet de chaque stade ; le stade cité est mis en avant : `etat`, `etat_magie`, `etat_stade`).
   Les mêmes infobulles servent aux altérations d'état des résistances et vulnérabilités de la magie. Pas de source citée, pas de liste des créatures qui lancent le sort.
-  Quand le sort a **ses propres règles**, un bloc dédié : pour une invocation (Animation de mort, Appel aux Golems, Marionnette de l'ombre) les règles de l'onglet de l'invocation (**repliées** par défaut, dans un `<details>`), pour Animation de mort le tableau
-  « AMELIORATION CADAVERIQUE » (replié aussi) et la liste des créatures invoquées par bloc. **La carte du bestiaire d'une créature est son infobulle** (demande du propriétaire : « La carte sera à garder et servirait de tooltip
+  Quand le sort a **ses propres règles**, un bloc dédié : pour une invocation (Animation de mort, Appel aux Golems, Marionnette de l'ombre) les règles de l'onglet de l'invocation (**repliées** par défaut, dans un `<details>`), la liste des créatures invoquées par bloc. **La carte du bestiaire d'une créature est son infobulle** (demande du propriétaire : « La carte sera à garder et servirait de tooltip
   dans leur correspondance dans les tableaux des magies et leurs sorts associés ») : au survol, au focus clavier ou au toucher de son nom (un bouton, dans la liste des créatures et dans les effets « Manteau noir » de la Marionnette de l'ombre),
   la carte entière (`components/bestiaire/CarteInvoquee.astro` en mode `bulle` : sans lien ni bouton ni identifiant, CSS commun `styles/bestiaire/carte.css`) s'ouvre à côté du nom (`data-placement="cote"`), sinon dessous ou dessus comme les autres bulles,
   sa hauteur bornée à l'espace qui reste pour ne pas cacher le nom ; plus haute que sa place, elle défile (molette, ou au clavier les flèches, pages, début et fin tant que le nom a le focus) ; un clic dedans ne la ferme pas.
@@ -424,10 +504,10 @@ Mise en page (pure forme, jamais de règle ajoutée ; `lib/sort-format.mjs`, tes
   **NPM des cartes** (décision R130) : au-dessus de la liste des créatures d'un sort d'invocation dont une carte change avec le NPM (golems, non-morts), un
   curseur « Cartes au NPM » (caché sans JavaScript) pose `data-npm` sur toutes les cartes de la page qui changent avec lui (une bulle par créature et par
   page : tous les curseurs de la page vont ensemble, script de `SortsInteractifs.astro`) ; la carte montre alors ses valeurs à ce NPM (voir `docs/bestiaire.md`).
-  **Amélioration cadavérique** (décision R130 : « avoir tous les améliorations visible en fonction de l'invocation sacrifié ») : le sort qui porte le nom écrit dans
-  le titre du tableau d'une invocation (`invocation.tableau_titre`, `lib/bestiaire-db.mjs#tableauxDesSorts`) montre ce tableau dans son bloc « Règles propres :
-  selon l'invocation sacrifiée », une ligne par amélioration ; une amélioration qui porte exactement le nom d'une créature de l'invocation montre sa carte en
-  infobulle sur le nom de la créature (« S. de pierre », « S. rayonnant », « Zombi obscur » restent des noms, à trancher).
+  **Amélioration cadavérique** : le tableau des améliorations, la table `amelioration_cadaverique` et la branche « tableau » du sacrifice sont retirés (R237 (7),
+  migration 0117) ; `invocation.tableau_titre` et `tableau_sort_id` sont vidés et ne sont plus lus. Reste l'effet « Manteau noir » (`creature_effet.sort_id`).
+  **Spécialisations** (R236 (1), migration 0117) : `chargerMagies` donne à chaque magie `specialisations` (`magie_specialisation`, ordre 1 puis 2, `nom` tel qu'écrit,
+  `description` et `remarque` en blocs, `descriptionBrute`, `remarqueBrute` ; vide pour le Potentiel Illimité) et à chaque sort `specialisationId` (NPM 3 à 5, sinon `null`).
 - **Infobulles** (`components/Infobulles.astro`, commun à tout le site, `Info.astro`, `EtatPastille.astro` ; habillage `styles/global/infobulles.css`) : au survol (la bulle reste ouverte quand le pointeur passe dessus), au focus clavier (Échap ferme la bulle seule, pas le panneau du sort) ou au toucher (un premier appui ouvre la bulle,
   un second suit le lien d'une pastille d'état), en position fixe près du déclencheur, bornée à l'écran (le tableau défile et couperait une bulle absolue) ; sans JavaScript l'attribut `title` du déclencheur donne le même contenu en texte simple. La bulle n'est faite que
   d'éléments « en ligne » (`<span>`) : une pastille est posée dans un paragraphe, où un bloc fermerait le `<p>` et ferait fuir le contenu de la bulle (`test/magies-html.test.mjs` le vérifie sur le site construit, ainsi que le câblage `aria-*`) ;
@@ -437,14 +517,17 @@ Mise en page (pure forme, jamais de règle ajoutée ; `lib/sort-format.mjs`, tes
   aussitôt déplacé dans `data-infobulle` et s'affiche dans la bulle habillée (voir le skill `ui-infobulles`).
 - **Potentiel Illimité** : il n'a pas de sorts à lui (« cette magie pioche ses sorts dans toutes les magies existantes », bloc « Explication » de son onglet). À la place de la
   section des sorts, sa page montre **« Sorts des autres magies » : 14 onglets, un par autre magie**, dans l'ordre du classeur et dans sa couleur (`components/magie/SortsDuPotentiel.astro`,
-  `lib/potentiel-illimite.mjs`, CSS `styles/magie/potentiel.css` inséré en `?raw` sur cette page seulement). Chaque onglet reprend **les tableaux de cette magie du NPM 1 au NPM 4** (demande
-  du propriétaire, `NPM_MAX_DU_POTENTIEL` : l'Explication le borne au NPM 3, le don de niveau 20 de l'Archimage, sa classe unique, « Semi-complet », donne le NPM 4) avec le gabarit `TableauNpm` : mêmes lignes et mêmes panneaux que sur la page de la magie, dont le titre de l'onglet est le lien. Les identifiants y sont
-  préfixés du nom court de la magie (`magie.nom_cle`) : `#sort-feu-boule-de-feu`, `#npm-feu-1`, `#sorts-feu` (l'onglet), car deux magies peuvent avoir un sort du même nom ; une adresse vers un sort
+  `lib/potentiel-illimite.mjs`, CSS `styles/magie/potentiel.css` inséré en `?raw` sur cette page seulement). Chaque onglet reprend **les sorts de cette magie du NPM 1 au NPM 4**, rangés comme sur sa page : « Sorts communs » puis ses deux spécialisations, dont le Potentiel Illimité peut prendre n'importe quel sort dans la limite de son NPM (R236 (7)) (demande
+  du propriétaire ; décision R188 : le plafond est en données, `npmMaxDuPotentiel`, lu dans `chargerMagies` (`npmPlafondAvecDon`) : celui de sa magie,
+  `magie_npm_plafond`, 3 d'après l'Explication, relevé par le don de niveau 20 de l'Archimage, sa classe unique, « Semi-complet », `capacite_npm_plafond`, 4 ;
+  la fiche applique le même plafond, `npmDesSorts`) avec le gabarit `TableauNpm` (le nombre de sorts par NPM vient de la base : une spécialisation que la limite de NPM vide n'est pas montrée) : mêmes lignes et mêmes panneaux que sur la page de la magie, dont le titre de l'onglet est le lien. Les identifiants y sont
+  préfixés du nom court de la magie (`magie.nom_cle`) : `#sort-feu-boule-de-feu`, `#npm-feu-1`, `#npm-feu-volcan-3`, `#sorts-feu` (l'onglet), car deux magies peuvent avoir un sort du même nom ; une adresse vers un sort
   ouvre son onglet puis le sort ; pas de texte d'aide au-dessus des onglets. Les onglets (script commun avec les spécialités des pages de classe : `components/Onglets.astro`) suivent le motif « tabs » de l'ARIA ; sans JavaScript et à
   l'impression, les 14 magies se suivent, chacune sous son titre. `test/potentiel-illimite.test.mjs` et `test/magies-html.test.mjs` (site construit) le vérifient.
 - **Sources** : ni « Source : … » dans le panneau d'un sort, ni section « Sources » en pied de page des pages de magie (`sources:` reste dans le front matter pour la traçabilité).
-- **Chaque élément renvoie à sa page** : magie → page de la magie, altération d'état → sa section de `/regles/avancees/liste-des-alterations-d-etat/` (l'ancre est celle du titre `## <nom>`, vérifiée par
-  le test), créature ou invocation → page du bestiaire, race → page de la race.
+- **Chaque élément renvoie à sa page** : magie → page de la magie, altération d'état → sa section de `/regles/liste-des-alterations-d-etat/` (l'ancre figée de son intertitre, tirée de l'id de l'état et
+  jamais de son nom : `## Brûlure {#brulure}` pour `…#etat:brulure`, `lib/magies-db.mjs#ancreDeLEtat` ; « Ancres figées des intertitres » plus bas ;
+  `test/etat-ancre.test.mjs`), créature ou invocation → page du bestiaire, race → page de la race.
 - `Résistances` et `Vulnérabilités` = `magie_resistance` (cibles « magie » et « état », écriture de la source sur la pastille), `Magie non compatible` = `v_magie_incompatible` (relation symétrique)
   **sans le Potentiel Illimité**, cité dans aucun bloc (il est incompatible avec toutes) ; une magie **mono-magie** (`magie.mono_magie` : Potentiel Illimité, Corruption) affiche à la place
   « Mono-magie uniquement », puis « Excepté pour » et les ethnies de `magie_ethnie_secondaire` (Elfe Noir Charbon, Felfe Noir pour la Corruption) ; décision R15, `lib/magie-non-compatible.mjs`.
@@ -472,7 +555,12 @@ typées lues par `client/src/lib/races-db.mjs`, jamais le Markdown. **Aucun tabl
   comment les autres les voient (repliée). **On ne regroupe jamais deux peuples dont les relations diffèrent** (demande du propriétaire) : les peuples de la race au regard identique partagent un bloc,
   sinon chacun a le sien (Elfe Noir Charbon et Elfe Noir Salé côte à côte) ; dans un niveau, une autre race n'est citée d'un seul nom que si tous ses peuples y sont, sinon chacun de ses peuples est cité
   à son propre niveau (« Humain » suivi de « Central · Désertique »). Les relations entre peuples d'une même race sont dans une petite matrice. Une race sans peuple dans l'onglet (Anansi, Farfadet, Goleois) le dit.
-- Le CSS est dans `client/src/styles/race/`, injecté par `RacePage.astro` (`?raw`) seulement, comme celui des magies. `test/races-html.test.mjs` contrôle le site construit (la CI le lance après le build).
+- **Menu latéral de toutes les races** (demande du propriétaire : « comme pour chronologie, et les bases, un menu latéral qui récapitule toutes les races sur le menu d'une race ouverte ») :
+  `components/race/MenuDesRaces.astro`, posé par `pages/[type]/[slug].astro` autour de la page (fil d'Ariane, gabarit, pied de page) quand la race a ses lignes dans la base. Le menu latéral
+  commun des onglets des Règles (`components/guide/MenuLateral.astro`, la page passée en contenu ; classes `lateral*`, feuille `styles/guide/menu-lateral.css`) : à gauche les races de `/races/` dans le même ordre (`groupRaces` : pures puis hybrides, chaque groupe dans l'ordre de `race.rang_liste`),
+  en une seule liste sans titre de groupe (réponse du propriétaire : « Une seule liste »), la race ouverte marquée (`aria-current`), l'accent du site (réponse : « Accent du site ») ; petit écran (<= 56rem), le menu replié au-dessus de la page, ouvert sans JavaScript.
+  Chaque race y porte son id, son rang et son groupe (`data-ed-entree`, `data-ed-rang`, `data-ed-groupe`) : sur le site de dev, le menu se réordonne par glisser-déposer, une race dans son groupe (les pages des Règles, ci-dessous : « Les pages du guide »).
+- Le CSS est dans `client/src/styles/race/`, injecté par `RacePage.astro` (`?raw`) seulement, comme celui des magies (le menu latéral, lui, lit `styles/guide/menu-lateral.css` par `MenuLateral.astro`). `test/races-html.test.mjs` contrôle le site construit (la CI le lance après le build).
 
 **Pour changer une race, on change la base** (une migration `data/migrations/NNNN-<nom>.sql`, voir `docs/sql/remplissage.md`) : modifier le `.md` fabriqué n'a plus d'effet sur la page.
 
@@ -482,10 +570,12 @@ typées lues par `client/src/lib/races-db.mjs`, jamais le Markdown. **Aucun tabl
 (`lib/class-groups.mjs`, testé ; `components/classes/ClassesPastilles.astro`, CSS `styles/classe/liste.css`). Chaque classe est une **pastille sur le modèle de la carte des magies**
 (demande du propriétaire : plus de tableau) : pilule bordée et teintée de la couleur de sa catégorie, point de couleur, nom en gras, légère élévation au survol ; les titres des
 colonnes partagent une même rangée (sous-grille), si bien que leurs soulignements restent alignés quand un titre passe à la ligne. La catégorie vient du tag posé par l'import (intitulé du Sommaire du classeur) :
-« Classe Physique Corps à Corps », « Classe Physique Distance », « Classe Magique », « Classe Hybride Animal » (raciales), « Classe Hybride » et « Classe spéciale » (spéciales : Flagelleur, Archimage).
-Le Parleur, « corps à corps » dans le Sommaire, est sous « Spéciales » (décision du propriétaire, `CLASS_OVERRIDES`) ; une classe sans catégorie reconnue va dans « Non classées », sous « Spéciales ».
+« Classe Physique Corps à Corps », « Classe Physique Distance », « Classe Magique », « Classe Hybride Animal » (raciales), « Classe Hybride » et « Classe spéciale » (spéciales : Flagelleur, Archimage, Parleur).
+Le Parleur est en « Classe spéciale » dans la base (décision R238 (3), migration 0119 : plus d'exception dans `class-groups.mjs`) ; une classe sans catégorie reconnue va dans « Non classées », sous « Spéciales ».
 Chaque colonne prend la couleur de sa catégorie (celle des pages de classe), par la classe de la catégorie (`couleur-classe-<clé>`, famille `classe` de la palette, émise par la page), jamais un style ; le nom d'une classe est son titre : **« (classe) » est supprimé de partout, base comprise** (demande du propriétaire, migration `0009-classes-sans-suffixe`),
-une classe raciale porte le nom de sa race (« Kitsune », page `classes/kitsune`) ;
+une classe raciale porte le nom de sa race (« Kitsune », page `classes/kitsune`) ; le mot-clé d'une classe raciale homonyme de sa race s'écrit lui
+aussi « Kitsune », avec la catégorie Classe (décision R232 (4), qui remplace R191 : plus de « Kitsune (classe) », sur aucune page) ; leurs clés,
+« kitsune-race » et « kitsune-classe », les distinguent dans les balises et les adresses ;
 le résumé de la page (`summary`) est dans une **infobulle** (`components/Infobulles.astro` : survol, focus clavier, premier appui au toucher puis le second suit le lien ; `title` sans JavaScript).
 Sur un écran étroit, les colonnes passent à la ligne. Le fil d'Ariane d'une classe mène à sa colonne (`/classes/#raciales`…).
 
@@ -537,48 +627,77 @@ ses descriptions ont été **copiées** des pages (registre `tools/chronologie/e
 sur le site de dev, avec la date, le titre, le lien de chaque description et les catégories (plusieurs par événement ; sans catégorie, « Sans catégorie
 (à trier) », sur le site de dev seulement) ; la frise se filtre par catégorie (une à la fois).
 Règles de sélection et questions en attente : [`chronologie.md`](chronologie.md).
-## Équipement (`/ressources/equipement/`) : armes, armures, boucliers, ceinture et accessoires
+## Équipement (rubrique du menu) : cinq pages, armes, armures, boucliers, ceinture et accessoires
 
-Demandes du propriétaire (2026-10-16) : « J'aimerai fusionner "Armes" et "Armures" dans un seule onglet : "Equipement" A l'instar de "Armure et bouclier"
-les "Armes" seront dans un onglet à part. Il faudrait également un 4em onglet pour les bâtons magiques du coup qui auront mieux leur place ici » ;
-« J'aimerai rajouter un 5 onglet pour y déplacer les accessoires » ; puis « revoir intégralement la page des objets à la ceinture, renommer l'onglet
-en "Ceinture" et le mettre dans les onglets de équipement » (« Ceinture » ci-dessous). Une seule entrée du menu (rubrique Règles depuis le 2026-10-18), **Équipement**, à la place
-d'« Armes », d'« Armures », d'« Accessoires » et d'« Objets à la ceinture » ; une page sans page du wiki (`src/pages/ressources/equipement.astro`, `components/equipement/EquipementPage.astro`,
-`styles/equipement/equipement.css`), rendue depuis la base, en **cinq onglets** (`components/Onglets.astro`, posé une fois ; sans JavaScript, les panneaux
-se suivent, chacun sous son titre), dans l'ordre de `lib/equipement.mjs#ONGLETS_DE_L_EQUIPEMENT` :
+Demandes du propriétaire du 2026-10-29 : « Entre le nouvellement créé "Personnage" et "Espace Joueur" il faudra un nouveau menu : "Equipement" Dedans tu
+y déplacera les pages "Armes, Armures, Bouclier, Ceinture, Accessoire" en les sortant du sous-menu "Equipement" le remettant à nouveau dans un sous-menu
+dédié. Il faudra aussi y déplacer les sous-menu "Artisanat" et "Livres & parchemins". » ; « Le sous-menu "pièce élémentaire" et sa page associé seront
+supprimées. » ; ses réponses : « Cinq pages séparées », libellés « Comme les onglets (pluriel) », et pour les Pièces élémentaires « Fusionner dans Armes
+et Armures ». Du 2026-10-16 au 2026-10-29, ces cinq pages étaient les onglets d'une seule page « Équipement », `/ressources/equipement/` (« J'aimerai
+fusionner "Armes" et "Armures" dans un seule onglet : "Equipement" » ; « J'aimerai rajouter un 5 onglet pour y déplacer les accessoires » ; puis
+« renommer l'onglet en "Ceinture" et le mettre dans les onglets de équipement »).
 
-| Onglet | Ancre | Page du wiki servie | Contenu |
-| --- | --- | --- | --- |
-| Armes | `#armes` (ouvert au départ) | `ressources/armes` | « Armes » ci-dessous (`components/armes/ArmesPage.astro`) |
-| Armures | `#armures` | `ressources/armures` | « Armures et boucliers » ci-dessous (`components/armures/ArmuresPage.astro`) |
-| Boucliers | `#boucliers` | `ressources/bouclier` | idem |
-| Ceinture | `#ceinture` | aucune (l'ancienne page `/ressources/objets-a-la-ceinture/`, sans page du wiki) ; son sous-onglet Bâtons magiques (`#batons-magiques`) sert `ressources/baton-magique` | « Ceinture » ci-dessous (`components/ceinture/CeinturePanneau.astro`) : trois sous-onglets, Consommables, Carquois, Bâtons magiques (celui-ci avec son panneau de règles) |
-| Accessoires | `#accessoires` | `ressources/accessoires` | « Accessoires » ci-dessous (`components/accessoires/AccessoiresPage.astro`) |
+Au menu, la rubrique **Équipement** a une entrée par page (libellé et adresse de `lib/equipement.mjs#PAGES_DE_L_EQUIPEMENT`), puis Artisanat, Livres &
+Parchemins et **Autres** : la liste de toutes les pages de ressources, `/ressources/` (`pages/[type]/index.astro`). Réponse du propriétaire du 2026-10-29
+sur les pages `/ressources/…` hors menu : « Famillier devrai être dans Personnage, Le reste dans equipement (sous menu-autres pour commencer) » (sic) :
+Familiers (`/ressources/familiers/`) est la dernière entrée de la rubrique Personnage et ouvre le Personnage ; toute autre page `/ressources/…` ouvre
+l'Équipement (`lib/nav.mjs`, plus long début d'adresse). Chaque page est rendue depuis la base, sans page du wiki, dans le cadre commun
+`components/equipement/EquipementPage.astro` (titre `h1#titre-<id>`, `components/Onglets.astro` posé une fois, `styles/equipement/equipement.css`) ;
+ses règles sont rendues par `lib/equipement-rendu.ts` :
 
-- Les cinq pages du wiki servies (`lib/equipement.mjs#PAGES_SERVIES_PAR_L_EQUIPEMENT` : quatre onglets et le sous-onglet des bâtons) **ne sont plus
-  construites** (`lib/metiers.mjs#pageSansAdresse`) : elles restent dans la base (recherche, `[[liens]]`, contexte des liens de leur panneau de règles) ;
-  leurs liens mènent à leur onglet (`adresseDePage`), leurs anciennes adresses aussi, par la page 404 (`lib/nav.mjs#PAGES_RENOMMEES`, la requête gardée :
-  `/ressources/armes/?arme=…` → `/ressources/equipement/?arme=…#armes`), comme celle de l'ancienne page « Objets à la ceinture » (→ `#ceinture`). Les liens écrits à la main
-  dans les chapitres du guide mènent aux onglets depuis la migration `0053-liens-page-equipement` (la version portable n'a pas de page 404).
-- Un lien vers un élément d'un panneau (`#famille-bombes`, `#bouclier-ecu-fer`, `#effets-…`, `#batons-magiques`, `#objets-huile`) ouvre tous les niveaux
-  qui le contiennent (son onglet, son sous-onglet, la famille des consommables ou celle des armes). Chaque onglet garde son script
-  (`src/scripts/armes.mjs`, `armures.mjs`, `batons.mjs`, `accessoires.mjs`) et ses paramètres d'adresse, **sans aucun en commun** (celui des bâtons n'en a pas) (l'amélioration d'une armure est
-  `amelioration-armure`, celle d'une arme `amelioration`) : une même adresse garde l'état de plusieurs onglets. Échap ne ferme l'arme ouverte que si
-  l'onglet Armes est affiché.
-- Identifiants uniques sur toute la page : les matériaux et les améliorations des armes sont `#materiaux-armes`, `#ameliorations-arme`, celles des
+| Page (menu) | Adresse (identifiant figé : celle d'avant la page « Équipement ») | Fichier | Page du wiki servie | Contenu |
+| --- | --- | --- | --- | --- |
+| Armes | `/ressources/armes/` | `src/pages/ressources/armes.astro` | `ressources/armes` | « Armes » ci-dessous (`components/armes/ArmesPage.astro`), puis le texte des Pièces élémentaires qui touche les armes |
+| Armures | `/ressources/armures/` | `src/pages/ressources/armures.astro` | `ressources/armures` | « Armures et boucliers » ci-dessous (`components/armures/ArmuresPage.astro`, vue `armures`), puis le texte des Pièces élémentaires qui touche les armures et les vêtements |
+| Boucliers | `/ressources/bouclier/` | `src/pages/ressources/bouclier.astro` | `ressources/bouclier` | idem, vue `boucliers` |
+| Ceinture | `/ressources/objets-a-la-ceinture/` | `src/pages/ressources/objets-a-la-ceinture.astro` | aucune ; son sous-onglet Bâtons magiques (`#batons-magiques`) sert `ressources/baton-magique` | « Ceinture » ci-dessous (`components/ceinture/CeinturePanneau.astro`) : trois sous-onglets, Consommables, Carquois, Bâtons magiques |
+| Accessoires | `/ressources/accessoires/` | `src/pages/ressources/accessoires.astro` | `ressources/accessoires` | « Accessoires » ci-dessous (`components/accessoires/AccessoiresPage.astro`) |
+
+- Le contenu de chaque page est dans un `section.equipement-panneau#<id>` (`armes`, `armures`, `boucliers`, `ceinture`, `accessoires`), l'id de son
+  panneau de règles ; plus de barre d'onglets de page.
+- Les pages du wiki servies (`lib/equipement.mjs#PAGES_SERVIES_PAR_L_EQUIPEMENT`) et la page « Pièces élémentaires » **ne sont pas construites par la
+  route du wiki** (`lib/metiers.mjs#pageSansAdresse`) : elles restent dans la base (recherche, `[[liens]]`, contexte des liens de leur panneau de règles ;
+  les armes et armures élémentaires citent « Pièces élémentaires ») ; leurs liens mènent à la page qui les sert (`adresseDePage`,
+  `lib/equipement.mjs#ADRESSES_DES_PAGES_SERVIES` : « Bâton magique » → `/ressources/objets-a-la-ceinture/#batons-magiques`, « Pièces élémentaires » →
+  `/ressources/armes/#pieces-elementaires`).
+- **Anciennes adresses** (page 404, la requête gardée) : `/ressources/equipement/` mène à la page de son ancre (un ancien onglet, `#armes`…, mène à sa
+  page sans ancre ; un élément, `#famille-bombes`, `#bouclier-ecu-fer`, `#batons-magiques`, `#objets-huile`, `#effets-…`, à la page qui le contient, l'ancre
+  gardée), sinon de son premier paramètre (`?arme=`, `?forme=`, `?materiau1=`, `?emplacement=`…), sinon Armes ; `/ressources/pieces-elementaires/` mène
+  à la section « Pièces élémentaires » de la page Armes (ses anciennes ancres : à la famille d'armes, aux améliorations, ou à la section de la page
+  Armures). Renvois : `lib/equipement.mjs#RENVOIS_DES_PAGES_ECLATEES`, passés au script de la page 404 (`data-eclatees`), lus par
+  `lib/nav.mjs#adresseEclatee` / `adresseDeRenvoi` ; `/ressources/baton-magique/` par `lib/nav.mjs#PAGES_RENOMMEES`.
+- **Liens écrits à la main** dans les pages du guide vers l'ancienne page (« [Armures](/ressources/equipement/#armures) », migration
+  `0053-liens-page-equipement`) : le texte de la base n'est pas réécrit ; au rendu, ils mènent à la nouvelle page (`lib/guide-rendu.ts`,
+  `lib/nav.mjs#cheminVersUnePageEclatee`), l'adresse écrite gardée en `data-lien-ecrit` (relue par l'éditeur du guide). Pas besoin de page 404 : la
+  version portable les suit aussi.
+- Chaque page garde son script (`src/scripts/armes.mjs`, `armures.mjs` pour Armures et Boucliers, `batons.mjs`, `accessoires.mjs`) et ses paramètres
+  d'adresse, **sans aucun en commun** (celui des bâtons n'en a pas ; l'amélioration d'une armure est `amelioration-armure`, celle d'une arme
+  `amelioration`) : c'est ce qui permet à l'ancienne adresse de choisir sa page par son paramètre. Un lien vers un élément d'un panneau ouvre tous les
+  niveaux d'onglets qui le contiennent (sous-onglet de la Ceinture, famille des consommables) ; sur la page Armes, il affiche la famille qui le
+  contient (menu latéral, « Armes » plus bas).
+- Identifiants uniques sur chaque page : les matériaux et les améliorations des armes sont `#materiaux-armes`, `#ameliorations-arme`, celles des
   armures et des boucliers `#ameliorations-armure`, `#ameliorations-bouclier`. Le tableau MATÉRIAUX des armures et des boucliers (`#materiaux-armures`,
   lignes `#matiere-<clé>`) n'existe plus : il est mêlé à celui de la page « Composants » (voir « Armures et boucliers »).
-- Mode modification (site de dev) : les onglets Armes, Armures et Boucliers comme avant (`src/scripts/edition/armes.mjs`, `armures.mjs`, chacune
-  active dès que son bloc est dans la page) ; les cinq panneaux de règles (`src/scripts/edition/panneaux.mjs`, ci-dessous) ; les tableaux des
-  consommables de la ceinture (« Ceinture » plus bas : les cases saisies des potions, par l'éditeur commun) ; ni les carquois ni les bâtons de la
-  ceinture, ni les tableaux des accessoires.
-- Tests : `test/equipement.test.mjs` (onglets et sous-onglets, adresses, menu, chargement, prix et rendu des bâtons), `equipement-html.test.mjs` (site
-  construit : onglets et panneaux dans l'ordre, identifiants uniques, panneaux de règles, bâtons, anciennes pages absentes et plus aucun lien vers elles,
-  scripts), `batons-script.test.mjs` (le curseur des bâtons, dans un faux navigateur) ; le contenu de chaque onglet : `armes-html`, `armures-html`,
-  `ceinture-html`, `accessoires-html.test.mjs` ; les panneaux de règles : `panneaux-regles.test.mjs` (lecture, ordre, rendu, copie de l'import),
+- **Pièces élémentaires** (« Fusionner dans Armes et Armures ») : les tableaux de la page sont déjà rendus depuis les tables (armes élémentaires dans
+  chaque tableau des armes et leurs améliorations, R167 ; armures élémentaires, leur choix et leurs améliorations sur la page Armures, R165). Son texte,
+  avant ses tableaux, est lu tel qu'écrit dans la base (`page.corps_md`, jamais réécrit) par `lib/pieces-elementaires.mjs#texteDesPiecesElementaires` :
+  la partie « ▸ Armes » va à la page Armes, « ▸ Armures » et « ▸ Vêtements » à la page Armures, le reste (la pièce, sa solidité et son amélioration,
+  son obtention, sa valeur) aux deux pages, en attendant la réponse du propriétaire. Affiché par `components/equipement/PiecesElementaires.astro` : un
+  `details.preg#pieces-elementaires` replié sous le panneau de règles, titré par le titre de la page ; en lecture seule sur le site de dev (aucun
+  `data-panneau-regles`). Une adresse qui vise le bloc, ou un élément qu'il contient, l'ouvre : au chargement, quand l'ancre change, et au clic d'un
+  lien vers l'ancre que l'adresse a déjà, qui ne change pas l'ancre (`src/scripts/pieces-elementaires.mjs`). Une partie « ▸ … » introuvable : tout le
+  texte va aux deux pages, et le build le dit.
+- Mode modification (site de dev) : les pages Armes, Armures et Boucliers (`src/scripts/edition/armes.mjs`, `armures.mjs`), les panneaux de règles
+  (`src/scripts/edition/panneaux.mjs`, ci-dessous), les consommables de la Ceinture (« Ceinture » plus bas : les cases saisies des potions, par
+  l'éditeur commun) ; ni les carquois ni les bâtons de la ceinture, ni les tableaux des accessoires.
+- Tests : `test/equipement.test.mjs` (pages et sous-onglets, adresses, renvois, menu, texte des Pièces élémentaires, prix et rendu des bâtons),
+  `equipement-html.test.mjs` (site construit : chaque page à son adresse, identifiants uniques et renvois de chacun, panneaux de règles, Pièces
+  élémentaires sur Armes et Armures, anciennes pages absentes et plus aucun lien vers elles, scripts), `nav.test.mjs` (renvois de la page 404),
+  `batons-script.test.mjs` (le curseur des bâtons, dans un faux navigateur) ; le contenu de chaque page : `armes-html`, `armures-html`, `ceinture-html`,
+  `accessoires-html.test.mjs` ; les panneaux de règles : `panneaux-regles.test.mjs` (lecture, ordre, rendu, copie de l'import),
   `serveur-edition-panneaux.test.mjs` (le service).
 
-### Panneaux de règles (en tête des onglets et du sous-onglet Bâtons magiques)
+### Panneaux de règles (en tête des pages de l'équipement et du sous-onglet Bâtons magiques)
 
 Demande du propriétaire (2026-10-16) : « Il faudrait refaçonner tous les encarts de début des onglets des équipements. La première ligne serait à
 supprimer et intégrer dans le panneau déroulant. Il faudrait que ce champ texte soit modifiable sur son titre, et son contenu. Son contenu peut d'ailleurs
@@ -587,15 +706,15 @@ Sinon une seule. Dans le cas présent pour les armes les blocs modulaires à sé
 Recharge très longue, Mordhau, Dague et Arme de jet. »
 
 - **Données** (migration `0056-glossaire-et-panneaux-de-regles`) : `panneau_regles` (un par page du wiki que la page sert,
-  `lib/equipement.mjs#PAGES_SERVIES_PAR_L_EQUIPEMENT` ; son `id` est l'ancre de l'onglet ou du sous-onglet de cette page : `armes`, `armures`,
-  `boucliers`, `accessoires`, et `batons-magiques`, le sous-onglet de l'onglet Ceinture ; son titre ; sa page, `page_id`, contexte des `[[liens]]`) et
+  `lib/equipement.mjs#PAGES_SERVIES_PAR_L_EQUIPEMENT` ; son `id` est l'id de la page de l'équipement ou du sous-onglet : `armes`, `armures`,
+  `boucliers`, `accessoires`, et `batons-magiques`, le sous-onglet de la page Ceinture ; son titre ; sa page, `page_id`, contexte des `[[liens]]`) et
   `panneau_regles_bloc` (ses blocs : `rang`, la clé, jamais redonné ; `ordre`, la place de lecture, non unique, à égalité le rang ; `tuile` 0 ou 1 ; le titre facultatif d'une tuile,
   jamais d'un bloc de texte ; le texte, du Markdown des pages). La migration a **copié** le texte que l'onglet affichait (tiré du corps de la page) ;
   depuis, le site de dev en est la source, et le corps de la page (`page.corps_md`) **n'est plus que la trace de l'import** de ces règles : il n'est plus
   affiché ni modifié (la recherche le lit encore, après le texte des panneaux, voir plus bas). Lecture : `lib/panneaux-regles-db.mjs` (`chargerPanneau`,
   `ordonnerBlocs`) ; `test/panneaux-regles.test.mjs` compare les panneaux aux pages servies (un panneau par page, son id = l'ancre :
   `PAGES_SERVIES_PAR_L_EQUIPEMENT`) et vérifie que chaque bloc de l'import se lit mot pour mot dans le corps de sa page.
-- **L'onglet Ceinture n'a pas de panneau de règles** (il ne sert pas de page du wiki) : il garde son encart, le chapeau et les règles de la ceinture
+- **La page Ceinture n'a pas de panneau de règles** (il ne sert pas de page du wiki) : il garde son encart, le chapeau et les règles de la ceinture
   repliées (« Ceinture » plus bas), dont le texte est celui du guide, modifiable sur la page du guide.
 - **Affichage** (`components/equipement/PanneauDeRegles.astro`, générique ; HTML des blocs : `lib/panneaux-regles-rendu.mjs`, le même au build et sur le
   site de dev ; CSS `.preg` dans `styles/equipement/equipement.css`) : plus de phrase au-dessus du panneau (le résumé de la page, qui répétait la
@@ -604,7 +723,7 @@ Recharge très longue, Mordhau, Dague et Arme de jet. »
   une capacité du bestiaire) avec son titre s'il en a un. **Deux colonnes** séparées d'un filet à partir de 64rem, une seule en dessous ; une tuile, un
   paragraphe ou une liste ne se coupe jamais entre deux colonnes, et la fin d'un bloc de texte suivi d'une tuile reste avec elle (« CAS PARTICULIERS : »
   n'est jamais seul en bas d'une colonne ; `break-after: avoid`, que Firefox n'applique pas aux colonnes). Le Markdown de chaque bloc est rendu au build par `lib/guide-rendu.ts` (`[[liens]]`,
-  couleurs, monnaies en icônes) avec la page du panneau comme contexte (`src/pages/ressources/equipement.astro`). Dans celui des armes, « Les armes en
+  couleurs, monnaies en icônes) avec la page du panneau comme contexte (`lib/equipement-rendu.ts#panneauRendu`). Dans celui des armes, « Les armes en
   bleu… » prend le bleu des armes de départ (`lib/armes-rendu.mjs#avecPhraseDesArmesDeDepart`, sur le HTML du bloc qui la contient).
 - **Panneaux à l'import** : Armes — l'introduction (fabrication, recyclage, bonus du matériau), trois tuiles **Recharge longue**, **Recharge très
   longue** et **Mordhau** (sans titre : chacune n'est que la balise du mot-clé en mode complet, « `{{recharge-longue:}}` », la définition vivant dans le
@@ -621,10 +740,10 @@ Recharge très longue, Mordhau, Dague et Arme de jet. »
 - **Recherche** : le titre et les blocs des panneaux d'une page sont en tête du texte de son entrée (`lib/recherche-index.ts`) ; le corps de la page
   (la trace de l'import) suit.
 
-## Armes (onglet Armes de `/ressources/equipement/`) : deux menus à onglets, un tableau par famille, la fiche de l'arme forgée
+## Armes (page `/ressources/armes/`) : un menu latéral des familles, un tableau affiché, la fiche de l'arme forgée
 
 Demande du propriétaire (2026-10-13) : « Pas de tableau markdown, inspire-toi des sorts et fais un tableau par type d'arme. » La page est rendue depuis
-les tables (`lib/armes-db.mjs`, `components/armes/`), jamais depuis son Markdown ; ses règles sont le panneau de règles de l'onglet (« Panneaux de
+les tables (`lib/armes-db.mjs`, `components/armes/`), jamais depuis son Markdown ; ses règles sont le panneau de règles de la page (« Panneaux de
 règles » plus haut : leur texte a été copié de l'introduction et de « Comment déterminer le prix de votre arme ? ») ; le Markdown de la page (tableaux)
 ne sert qu'à la recherche et aux `[[liens]]`, et suit les tables à chaque modification (`lib/corps-armes.mjs`).
 
@@ -633,23 +752,31 @@ ne sert qu'à la recherche et aux `[[liens]]`, et suit les tables à chaque modi
   `lib/armes-rendu.mjs#avecPhraseDesArmesDeDepart` ; ce bleu, `--depart`, est la classe `couleur-arme-depart` posée sur `.armes`), ***CAS PARTICULIERS :*** en gras italique ; Recharge longue, Recharge très longue et Mordhau, Dague,
   Arme de jet et le prix sont des tuiles (migration 0056) ; le texte, lui, n'est pas réécrit. Sur un grand écran, deux colonnes.
 
-- **Deux menus à onglets**, l'un sous l'autre (demande du propriétaire, 2026-10-23 : « Il faudrai réduire çà en deux menus à onglet. Un pour les armes
-  de mêlée l'autre pour les armes à distances. Le fonctionnement interne des tableaux reste inchangé ») : **« Armes de mêlée »** (les familles de
-  catégorie `contact`) et **« Armes à distance »** (`distance` : Arc, Arbalète, Arme de jet et Bombes, décision R127), groupées par `familles[].categorie`
-  de `lib/armes-db.mjs#chargerArmes` (`lib/armes-rendu.mjs#menusDesArmes` ; une famille sans catégorie connue arrête le build), chaque menu dans l'ordre
-  de l'onglet. Un onglet par famille : son nom, la pastille de son dé, son nombre d'armes ; la pastille du dé (dans l'onglet et dans le titre du
-  tableau) a pour infobulle « Dé de la famille, sauf indication contraire », ou les paliers selon la Force quand la note de la famille en écrit
-  (PUGILAT : « Dé selon la Force : D6 1-2 Force, D8 3-4 Force, D10 5 Force », lus dans la note par `lib/armes-de-famille.mjs` ; demande du
-  propriétaire, 2026-10-23 : « Juste l'indiquer suffit (en tooltip de la catégorie) » ; la note reste écrite sous le titre du tableau, et ces paliers
-  ne se modifient pas sur le site) ; le premier de chaque menu ouvert au départ, un seul ouvert
-  par menu (`components/Onglets.astro`, motif « tabs » : flèches, Début, Fin). Le panneau d'une famille garde l'id `famille-<id>` : un lien ou une
-  adresse `#famille-…` (celui de la Ceinture vers les bombes, une adresse partagée) ouvre l'onglet Armes de la page, puis l'onglet de la famille ;
-  **l'onglet choisi est écrit dans l'adresse** (demande du propriétaire, 2026-10-23 : « On peut retenir l'onglet ouvert #epee par exemple » ; forme
-  choisie : « #famille-epees ») : recharger la page ou partager l'adresse rouvre la famille ; `#boucliers` reste l'onglet Boucliers ; aucun paramètre
-  pour l'onglet. Un onglet de famille s'ouvre aussi par un lien de la page vers une de ses armes (`#arme-…`), par `?arme=`, ou en ouvrant une arme. Sur un écran
-  étroit, la barre passe à la ligne et n'y garde que le nom et le dé. Plus de « Tout déplier » ni de « Tout replier ». Sans JavaScript, les tableaux
-  se suivent, chacun sous son titre (nom, dé, compte), les onglets ne sont que des liens.
-- **Un tableau par famille** (bandeau de l'onglet : Épées, Dagues…), le panneau de son onglet, qui ne se replie plus ; sans les armes de monstres
+- **Un menu latéral et un seul tableau** (demande du propriétaire, 2026-11-05 : « Dans la pages des armes, plutôt que 2 tableaux à onglet j'aimerai
+  que tu n'affiche qu'un seul tableau et que tu ajoute un menu lattéral sur la gauche comme pour la page chronologie et les bases pour passer d'un type
+  d'arme à l'autre. », qui remplace les « deux menus à onglet » du 2026-10-23, l'un sous l'autre, « Un pour les armes de mêlée l'autre pour les armes à
+  distances ») : à gauche, le menu des familles (`components/armes/ArmesPage.astro`, `EntreeDeFamille.astro`), sur le modèle de celui des Bases
+  (vertical, collé en haut de l'écran pendant qu'on lit, l'entrée affichée teintée de l'accent du site, un filet de l'accent, en gras, `aria-current`) ;
+  au milieu, le tableau de la famille choisie, seul ; à droite, le panneau de l'arme. **Une seule liste** (réponse du propriétaire, 2026-11-05 :
+  « Liste unique », sans les titres « Armes de mêlée » et « Armes à distance ») : les familles de catégorie `contact`, puis celles à distance
+  (`distance` : Arc, Arbalète, Arme de jet et Bombes, décision R127), rangées par `familles[].categorie` de `lib/armes-db.mjs#chargerArmes`
+  (`lib/armes-rendu.mjs#menusDesArmes`, aplati ; une famille sans catégorie connue arrête le build), chaque catégorie dans l'ordre de la base. Une
+  entrée par famille : son nom, la pastille de son dé, son nombre d'armes ; la pastille du dé (dans le menu et dans le titre du tableau) a pour
+  infobulle « Dé de la famille, sauf indication contraire », ou les paliers selon la Force quand la note de la famille en écrit (PUGILAT : « Dé selon
+  la Force : D6 1-2 Force, D8 3-4 Force, D10 5 Force », lus dans la note par `lib/armes-de-famille.mjs` ; demande du propriétaire, 2026-10-23 :
+  « Juste l'indiquer suffit (en tooltip de la catégorie) » ; la note reste écrite sous le titre du tableau, et ces paliers ne se modifient pas sur le
+  site). La première famille est affichée au départ. Le tableau d'une famille garde l'id `famille-<id>` : un lien ou une adresse `#famille-…` (celui
+  de la Ceinture vers les bombes, `/ressources/armes/#famille-bombes`) affiche la famille ; **la famille choisie est écrite dans l'adresse** (demande
+  du propriétaire, 2026-10-23 : « On peut retenir l'onglet ouvert #epee par exemple » ; forme choisie : « #famille-epees ») : recharger la page ou
+  partager l'adresse rouvre la famille (sans ancre, la première) ; aucun paramètre pour la famille. Une famille s'affiche aussi par un lien de la page
+  vers une de ses armes (`#arme-…`), par `?arme=`, ou en ouvrant une arme (sans réécrire l'adresse). Le menu n'est fait que de liens : Tab et Entrée au
+  clavier, Ctrl+clic ouvre un nouvel onglet du navigateur (`src/scripts/armes.mjs`). Le titre du tableau affiché (nom, dé, compte) se voit au-dessus de
+  lui, comme celui d'une page des Bases (choix de l'équipe). **Petit écran** (56rem ou moins, comme les Bases) : le menu replié au-dessus du tableau,
+  dans un `<details>` (« Familles d'armes » et la famille affichée), qu'un appui ouvre et que le choix d'une famille referme (script en ligne qui
+  n'importe rien). Plus de « Tout déplier » ni de « Tout replier ». Sans JavaScript, les tableaux se suivent, chacun sous son titre (nom, dé, compte),
+  le menu reste ouvert et n'est fait que de liens d'ancre. Le script des onglets (`components/Onglets.astro`) reste posé sur la page par
+  `EquipementPage.astro`, sans groupe.
+- **Un tableau par famille** (bandeau de l'onglet du classeur : Épées, Dagues…), celui que montre son entrée du menu, qui ne se replie plus ; sans les armes de monstres
   (décision R45), aéré (« l'affichage est trop serré »). Colonnes : Nom (la description en infobulle), Compétence, Type, Dégâts, Type de dégâts, Portée, Solidité, Origine ; les **effets
   supplémentaires** sur une seconde ligne, sous l'arme (« à l'instar des sorts choisis de la fiche de personnage » : `tr.arme-suite`, cachée quand l'arme
   n'en a pas ; survol, sélection et couleur avec l'arme). Les colonnes Dégâts (dé de l'arme, « D8 au lieu du D10 » de son effet, sinon celui de son type ;
@@ -659,12 +786,12 @@ ne sert qu'à la recherche et aux `[[liens]]`, et suit les tables à chaque modi
 - **Compétence** (décision R48) : la compétence que l'onglet écrit sous le type, dans la couleur de sa caractéristique (table `competence`) — Lourde
   (Force), Légère (Agilité), Lourde / Légère (dégradé Force - Agilité), Arc (Force), Arc / Légère (dégradé Force - Agilité), Arbalète (Perception).
   La pastille porte la classe de la première caractéristique et la classe de second rang de la seconde, ou de la même
-  (`classesDeDeuxCaracteristiques` : « Couleurs du site : la palette en classes ») ; l'onglet émet les classes de second rang des caractéristiques.
+  (`classesDeDeuxCaracteristiques` : « Couleurs du site : la palette en classes ») ; la page émet les classes de second rang des caractéristiques.
 - **Filtre par compétence** (« filtrer les armes par compétence arc / arbalète / légère et lourde ») : quatre boutons à bascule, Lourde, Légère, Arc,
   Arbalète, dans leur couleur (ils servent aussi de légende) ; une arme reste si l'UNE de ses compétences est choisie (« Arc / Arme Légère » sous Arc comme
-  sous Légère), « Toutes » efface le choix ; l'onglet d'une famille sans arme affichée se cache, un menu dont aucune famille n'a d'arme affichée aussi,
-  et si l'onglet ouvert d'un menu n'en a plus, le premier qui en a s'ouvre (`lib/armes-filtres.mjs#ongletARouvrir`, sans faire défiler ; l'adresse
-  suit quand elle désignait l'onglet fermé : `ancreApresLeFiltre`) ; sans filtre, rien ne se cache (une famille sans arme garde son onglet) ; le compte de tout l'onglet dit « N armes sur M » dès que le filtre est actif, ceux des tableaux et des onglets seulement quand des armes
+  sous Légère), « Toutes » efface le choix ; l'entrée du menu d'une famille sans arme affichée se cache, et si la famille affichée n'en a plus, la
+  première qui en a s'affiche, mêlée et distance confondues (`lib/armes-filtres.mjs#familleARouvrir`, sans faire défiler ; l'adresse suit quand elle
+  désignait la famille fermée : `ancreApresLeFiltre`) ; sans filtre, rien ne se cache (une famille sans arme garde son entrée) ; le compte de toute la page dit « N armes sur M » dès que le filtre est actif, ceux des tableaux et des entrées du menu seulement quand des armes
   sont cachées (sinon le total) ; une arme ouverte qui disparaît se ferme. Plus **« Arme de départ »** (« trier par "arme de départ" ») : seules les armes de départ, en même temps que les compétences. État dans
   l'adresse (`?competence=arc,arbalete&depart=1`) ; pas de filtre sans JavaScript ni en mode modification (`lib/armes-filtres.mjs`, testé).
 - **Armes de départ** (nom sur fond bleu dans la source) : ligne en bleu, infobulle « Arme de départ ».
@@ -672,21 +799,28 @@ ne sert qu'à la recherche et aux `[[liens]]`, et suit les tables à chaque modi
   supprimée par la décision R91 (elle datait des armes à feu).
 - **Panneau de l'arme** (`src/scripts/armes.mjs`) : à côté des tableaux, **toujours affiché** sur un grand écran et **de la largeur de celui des
   armures** (demande du propriétaire, 2026-10-16 : « Avoir l'endroit de l'arme en permanence visible comme c'est le cas pour l'armure, et avec la même
-  largeur ») ; sous 80rem, il passe par-dessus la page une fois une arme choisie, comme celui des armures. Il suit le défilement et remonte à la fiche
-  quand on choisit une arme ; ouvrir une arme (clic, `?arme=`, `#arme-…`) ouvre l'onglet de sa famille (sans changer l'onglet de la page qu'une adresse
-  comme `#boucliers` montre) ; au bout de son défilement, la molette fait défiler la page (« qu'elle descende la fenêtre entière si le max est atteint sur l'intermédiaire » ; de même pour les armures et les
+  largeur » : 38 % de la vue, comme les armures, le menu compris dans la vue, quand tout tient) ; **sur écran moyen, plus étroit** (réponse du
+  propriétaire, 2026-11-05, à « Que fait-on sur écran moyen ? » : « Panneau de l'arme plus étroit », qui remplace là « avec la même largeur ») : le
+  tableau garde d'abord ce que demandent ses 8 colonnes (52.5rem, la plus large des familles), le panneau prend le reste, entre 16rem (fiche, tuiles
+  l'une sous l'autre, matériaux et améliorations l'un sous l'autre) et 38 % ; le menu reste à gauche ; sous 80rem, il passe par-dessus la page une fois une arme choisie, comme celui des armures. Il suit le défilement et remonte à la fiche
+  quand on choisit une arme ; ouvrir une arme (clic, `?arme=`, `#arme-…`) affiche sa famille ; au bout de son défilement, la molette fait défiler la page (« qu'elle descende la fenêtre entière si le max est atteint sur l'intermédiaire » ; de même pour les armures et les
   accessoires). Cliquer une arme (ou la ligne de ses effets) remplit sa fiche, **un seul cadre réduit à son minimum** (« Pas besoin de détailler les calculs
   en dessous, une tuile en tooltip de la case dégâts / durabilité et coût suffit ») : son bouton Fermer (qui la vide) en haut à droite ; type et mains,
   compétence, arme de départ ; ce dont elle est forgée ; trois tuiles, Dégâts, Solidité, Coût, dont le **détail du calcul est
   l'infobulle** (bulle riche, `[data-armes-bulles]`, hors du panneau qui défile) ; puis, sans titre, les effets (types de dégâts, portée, effets
   supplémentaires, celui du matériau en vert), la description et l'origine (« Origine X » ou « Facture X », le mot de la source) (« On en garderai que l'effet la description et l'origine »). Plus de
   « dés selon la maîtrise » ni de « Le nombre de dés dépend de la maîtrise du personnage ». Dessous, côte à côte quand la place le permet, les
-  **matériaux** — toute la ligne dans la couleur du matériau (`lib/materiaux-couleurs.mjs`, posée par sa classe `couleur-materiau-<id>`, que le script
-  reprend sur la pastille du matériau dans la fiche, jamais un style : « Couleurs du site : la palette en classes » ; le texte suit la règle du site),
-  prix en RO seulement, effets sur une seule ligne : le bonus
-  aux dégâts sans le mot « Dégâts » (gardé pour les lecteurs d'écran), puis les autres effets, séparés par « | » (« +7 | dégâts doublés contre la
-  barrière »), lignes basses — et les **améliorations** (+1 à +10, sans ligne TOTAL : « La ligne "total" des amélioration est inutile », de même pour
-  les armures et les boucliers). Le matériau et l'amélioration choisis restent marqués sans arme choisie.
+  **matériaux** — la ligne dans la couleur du matériau (`lib/materiaux-couleurs.mjs`, posée par sa classe `couleur-materiau-<id>`, que le script
+  reprend sur la pastille du matériau dans la fiche, jamais un style : « Couleurs du site : la palette en classes ») : la ligne colorée du gabarit,
+  teintée, avec son filet et son liseré, au texte du thème, depuis le 2026-10-29 (« Tableaux » plus haut ; avant, toute la ligne sur la couleur),
+  prix en RO seulement, sur sa ligne le bonus aux dégâts seul, sans le mot « Dégâts » (gardé pour les lecteurs
+  d'écran), et ses crans et autres effets **sur une ligne à part**, sous la sienne, dans sa couleur (demande du propriétaire, 2026-11-05 : « Pour
+  gagner de la largeur, tu peux mettre l'effet secondaire des matériaux et amélioration sur une ligne à part comme c'est le cas pour les armes elles
+  même » ; avant, sur la même ligne, séparés par « | » : « +7 | dégâts doublés contre la barrière »), lignes basses — et les **améliorations** (+1 à
+  +10, sans ligne TOTAL : « La ligne "total" des amélioration est inutile », de même pour les armures et les boucliers), dont l'effet garde sur sa
+  ligne le bonus aux dégâts et met le reste (« +1 cran de solidité ») sur une ligne à part (`lib/armes-rendu.mjs#decouperEffetDAmelioration` ; en
+  mode modification, tout le texte dans son champ). Le texte des effets ne change pas ; une ligne à part vide n'apparaît pas ; on choisit un matériau
+  ou une amélioration aussi par sa ligne à part. Le matériau et l'amélioration choisis restent marqués sans arme choisie.
   Choisir un matériau (le fer par défaut) et une amélioration ajuste la fiche (`lib/arme-forge.mjs`, décision R49) : dégâts = dé de l'arme + bonus de
   l'arme, du matériau et du niveau d'amélioration ; durabilité = celle de l'arme + crans du matériau et de l'amélioration, au moins 1 (R51) ; coût = arme + niveaux +1 à +N
   + un matériau pour forger et ceux des niveaux, payés en RO ou fournis ; l'effet du matériau en vert. État dans l'adresse (`?arme=…&materiau=…&amelioration=N`,
@@ -696,72 +830,80 @@ ne sert qu'à la recherche et aux `[[liens]]`, et suit les tables à chaque modi
   « en sélectionnant l'arme élémentaire en question ça affichera ou non la bonne colone du tableau "amélioration" et grisera le "matériau" ») : pas
   d'option « Élément » ni de transformation d'une arme choisie. Les **14 armes élémentaires de chaque famille** (une par magie, sans le Potentiel
   Illimité ; `familles[].armes_elementaires` de `chargerArmes`) suivent ses armes dans son tableau, dans l'ordre de `arme_elementaire.ordre` (place
-  choisie par l'équipe), **chacune sur le fond de sa magie** (aucune pour une famille créée sur le site de dev, R167 ; ses deux lignes portent la classe `couleur-magie-<id>`, jamais un style ; texte de
-  `texteSurCouleur`) : `lib/armes-rendu.mjs#htmlDeLigneDArmeElementaire`. Une famille dont le type est mixte montre celles du type où elle mène
+  choisie par l'équipe), **chacune dans la couleur de sa magie** (aucune pour une famille créée sur le site de dev, R167 ; ses deux lignes portent la classe `couleur-magie-<id>`, jamais un style) :
+  depuis le 2026-10-29 (« Je ne veux plus de ligne entièrement colorées de la couleur de la magie »), comme la ligne colorée du gabarit, le fond du
+  thème teinté à 12 % de la magie (20 % survolée ou choisie), un filet de sa couleur au-dessus de l'arme et sous ses effets, un liseré de la couleur
+  pleine à gauche des deux lignes (celui des armes choisies devant lui quand elle est choisie), le texte du thème, et la pastille de sa magie dans les
+  types de dégâts dans la couleur pleine (`styles/armes/armes.css`) : `lib/armes-rendu.mjs#htmlDeLigneDArmeElementaire`. Une famille dont le type est mixte montre celles du type où elle mène
   (`arme_famille.type_elementaire_id` : « Lance de X » sous Lance/Arme d'hast). Colonnes : son nom (« Arc de Sang ») et ses mains (« une ou deux mains », écrites comme une arme `une_ou_deux` du catalogue, à la même place :
   « l'arme s'adapte au porteur », choix du leader-technique), sa compétence au choix du porteur
   (Lourde / Légère ; Arc / Légère pour l'arc ; Arbalète seule : `type_elementaire.competences`), son type, **le dé et la portée de son type** (rien de
   l'arme d'origine ; Pugilat selon la Force) **+ 8** (`bonus_degats`), ses **types de dégâts** (réponse du propriétaire, « Les deux » : « Estoc + Feu pour un arc de feu par exemple » : les
-  types physiques de son type, `type_elementaire.types_degats`, en pastilles aux jetons `--degats-*`, la dague « Estoc Taille », la bombe « Estoc,
+  types physiques de son type, `type_elementaire.types_degats`, en pastilles de la famille `degats` (`couleur-degats-<type>`), la dague « Estoc Taille », la bombe « Estoc,
   Frappe ou Taille (au choix) » (`type_degats_au_choix`), puis « + » et le type de sa magie, son nom, `arme-dgt--magie` ;
   `htmlDesTypesDeDegatsElementaires`), pas d'origine (« — »), solidité **4**
   (`solidite_elementaire`) ; sur la ligne des effets, sa capacité (« Nom (mode) : texte »), « Ignore 4 AP » pour l'arbalète, la mention de l'arme de jet
   et de la bombe (en un seul exemplaire, sans coût à l'unité) ; sa remarque en étoile. Jamais arme de départ ; le filtre Compétence la garde sous chacune
-  de ses compétences ; les comptes (onglets, tableaux, onglet Armes) comptent toutes les lignes, armes élémentaires comprises. **La choisir** pose
+  de ses compétences ; les comptes (menu, tableaux, page) comptent toutes les lignes, armes élémentaires comprises. **La choisir** pose
   `armes--elementaire` sur `.armes` : le tableau des améliorations montre sa colonne **« Coût élémentaire »** (le coût tel que la ligne l'écrit, suivi
   du nom de la gemme de sa magie, `[data-armes-gemme]` ; le cumul du +1 au +N en infobulle) au lieu du coût matériel, **les matériaux sont grisés**
   (boutons désactivés, aucun marqué, une note le dit), l'amélioration repart de « Aucune » (une adresse garde son niveau). Sa fiche
   (`lib/arme-forge.mjs#forgerArmeElementaire`) : type, mains et « Arme élémentaire », ses types de dégâts et sa portée, sa magie en pastille (sa classe), Dégâts = dé du type + 8 + l'effet de la
   ligne (Arc de Sang +5 : D8+18), Solidité = 4 + les crans de la ligne (4, 5 du +5 au +9, 6 au +10), Coût = les gemmes de sa magie cumulées
-  (« 6 communes + 3 raffinées de Grenat » au +5), sans RO ni « [Métier à définir] » ; pas de fer (R49 ne s'applique pas). Adresse :
+  (« 6 communes + 3 raffinées de Grenat » au +5), sans RO ; pas de fer (R49 ne s'applique pas). Le métier qui l'améliore est le **Forgeron**
+  (décision R207 (4), Q58 : « Forgeron pour les armes, Armurier pour les armures ») : la note du tableau des améliorations le nomme par le mot-clé
+  `forgeron` (lien vers sa section de `/metiers/`), comme celle du tableau des améliorations d'une armure élémentaire nomme l'**Armurier** (`armurier`) ;
+  la page copiée « Pièces élémentaires » garde son « [Métier à définir] ». Adresse :
   `?arme=arme-elementaire-<type>-<magie>&amelioration=N` (l'ancre de sa ligne) ; un `?materiau=` posé avec elle est ignoré et n'est pas réécrit. Sans
   JavaScript et en mode modification, les deux colonnes de coût se voient ; en mode modification, ses lignes sont en lecture (leur source est la page
   « Pièces élémentaires ») : ni champ, ni Supprimer, et une arme créée prend place avant elles.
-- **Mode modification** (site de dev) : rien ne se sélectionne ; **les onglets restent affichés** (demande du propriétaire, 2026-10-23 : « Je veux les
-  onglets aussi », qui remplace pour l'affichage en onglets la demande antérieure « Quand le mode Edition est lancé, il n'est pas possible de
-  "sélectionner" une arme / matériau / amélioration, mais tous les tableaux sont visibles ») : un panneau ouvert par menu, le titre de la famille ouverte
-  (nom, dé, compte) au-dessus de son tableau ; pas de filtre ; les matériaux et les améliorations s'ouvrent. Une arme créée s'ajoute à la fin du
-  tableau de sa famille, dont l'onglet s'ouvre, et la page défile jusqu'à elle. Cinq colonnes de plus (Description, Coût, Effet, Arme de
+- **Mode modification** (site de dev) : rien ne se sélectionne ; **le menu et un seul tableau restent** (comme les onglets d'avant : demande du
+  propriétaire, 2026-10-23, « Je veux les onglets aussi », qui remplace pour l'affichage la demande antérieure « Quand le mode Edition est lancé, il
+  n'est pas possible de "sélectionner" une arme / matériau / amélioration, mais tous les tableaux sont visibles ») : le titre de la famille affichée
+  (nom, dé, compte) au-dessus de son tableau ; pas de filtre ; les matériaux et les améliorations s'ouvrent, sous le tableau. Une arme créée s'ajoute à
+  la fin du tableau de sa famille, qui s'affiche, et la page défile jusqu'à elle. Cinq colonnes de plus (Description, Coût, Effet, Arme de
   départ, Remarque : saisie, l'étoile apparaît ; vidée, elle part, R91) ; une arme se crée (« + Ajouter une arme ») ou se supprime (retirée des fiches, R52) ; le nom d'un matériau change aussi pour les armures et les
   boucliers ; voir `docs/serveur.md`, « Édition ». La fiche de personnage calcule les mêmes dégâts (`degatsDArme`) et pose le fer avec l'arme choisie.
 - **Familles d'armes** (décision R159 ; demande du propriétaire, 2026-10-23 : « la possibilité de changer le nom et leur dés, ou même de créer un nouvel
   onglet donc un nouveau tableau si besoin ») : en mode modification, le nom et le dé d'une famille se modifient dans le titre de son tableau, l'en-tête
   de sa colonne de coût dans cette colonne (un des trois de la base : « Coût », « Coût en plus/moins », « Coût en plus/moins (unité) ») ; le dé est
-  obligatoire, « D10 » ou « D6/D8/D10 » (« d6 / d8 » s'enregistre « D6/D8 ») ; l'onglet suit. **« + Nouvelle famille »**, sous la barre de chaque
-  menu, crée une famille de ce menu (sa catégorie, mêlée ou distance, ne change plus ensuite) : nom, dé, en-tête de coût ; un refus du service (nom
-  déjà pris, maîtrise qui se lirait autrement…) s'affiche tel quel. Son onglet et son tableau vide apparaissent aussitôt, ouverts (les modèles
-  `<template data-armes-modele>` de la page, `lib/armes-rendu.mjs#htmlDeFamilleDepuisModele`), et on peut y créer une arme ; une famille créée depuis la
+  obligatoire, « D10 » ou « D6/D8/D10 » (« d6 / d8 » s'enregistre « D6/D8 ») ; l'entrée du menu suit. **Un seul « + Nouvelle famille »**, en bas du
+  menu (réponse du propriétaire, 2026-11-05 : « Un seul bouton en bas »), crée une famille : nom, dé, catégorie (mêlée ou distance, demandée dans le
+  formulaire ; elle ne change plus ensuite, R159), en-tête de coût ; un refus du service (nom déjà pris, maîtrise qui se lirait autrement…) s'affiche
+  tel quel. Son entrée et son tableau vide apparaissent aussitôt, à la fin des familles de sa catégorie, et elle s'affiche (les modèles
+  `<template data-armes-modele="entree|famille">` de la page, `lib/armes-rendu.mjs#htmlDeFamilleDepuisModele`), et on peut y créer une arme ; une famille créée depuis la
   construction du site apparaît au chargement du site de dev. Pas de suppression ; ARME DE MONSTRES reste hors de la page (R45). Les points de
   maîtrise et le classeur : `docs/serveur.md`, « Édition », et `docs/character-generator.md`.
 - `test/arme-champs.test.mjs` (découpages rejoués sur toute la base), `corps-armes.test.mjs`, `arme-forge.test.mjs` (l'exemple du propriétaire : Espadon
-  en titane +5 = D10+29, 620 RO et 3 titanes ou 1 220 RO), `armes-filtres.test.mjs` (filtre, comptes, onglet à rouvrir, ancre qui suit le filtre), `armes-menus.test.mjs` (les deux menus, R127), `armes-script.test.mjs`
-  (le script dans un faux navigateur : onglets et menus cachés, onglet rouvert, arme ouverte, adresse qui suit, famille sans arme), `onglets-script.test.mjs` (le script des onglets construit :
-  `#famille-…` écrit au choix, chargement par `#famille-…` puis `#boucliers`, option sans adresse, onglet caché sauté, `detail.dans`, re-branchement),
-  `armes-edition.test.mjs` (l'extension du mode modification dans un faux navigateur : comptes du tableau et de l'onglet après un ajout et une
-  suppression, `onglets:ouvrir` à la création, « + Nouvelle famille » et la surcouche des familles créées), `serveur-edition-armes.test.mjs`, `armes-html.test.mjs` (site construit : les deux menus et
-  leurs onglets, filtre, seconde ligne des effets, panneau, règles mises en forme, champs d'une famille, modèles d'une famille créée, armes élémentaires et colonnes de coût) ; armes élémentaires (R167) :
+  en titane +5 = D10+29, 620 RO et 3 titanes ou 1 220 RO), `armes-filtres.test.mjs` (filtre, comptes, famille à afficher, ancre qui suit le filtre), `armes-effets-a-part.test.mjs` (l'effet secondaire des matériaux et des améliorations sur une ligne à part, texte recollé à l'identique), `armes-menus.test.mjs` (l'ordre du menu, R127), `armes-script.test.mjs`
+  (le script dans un faux navigateur : entrée choisie, `#famille-…` écrit et lu, retour arrière, `armes:afficher`, entrées cachées, famille rouverte, arme ouverte, adresse qui suit, famille sans arme),
+  `armes-edition.test.mjs` (l'extension du mode modification dans un faux navigateur : comptes du tableau et de l'entrée après un ajout et une
+  suppression, `armes:afficher` à la création, le seul « + Nouvelle famille » et sa catégorie, la place d'une famille créée, la surcouche des familles créées), `serveur-edition-armes.test.mjs`, `armes-html.test.mjs` (site construit : le menu, une seule liste,
+  le seul tableau affiché, la mise en page, filtre, seconde ligne des effets, panneau, règles mises en forme, champs d'une famille, modèles d'une famille créée, armes élémentaires et colonnes de coût) ; armes élémentaires (R167) :
   `armes-elementaires-db.test.mjs` (les données), `armes-elementaires-rendu.test.mjs` (leurs lignes), `arme-forge.test.mjs` (Arc de Sang +5 = D8+18,
   solidité 5, 6 communes + 3 raffinées de Grenat ; +10 : le total B80:F80), `armes-script.test.mjs` (colonne des gemmes, matériau grisé, adresse),
   `armes-edition.test.mjs` (en lecture, arme créée avant elles).
 
 
-## Armures et boucliers (onglets Armures et Boucliers de `/ressources/equipement/`) : deux matériaux pour une armure, une forme et une matière pour un bouclier
+## Armures et boucliers (pages `/ressources/armures/` et `/ressources/bouclier/`) : deux matériaux pour une armure, une forme et une matière pour un bouclier
 
 Demandes du propriétaire (2026-10-15) : « Je souhaite faire la refonte de l'onglet armure, de la même manière que les Armes. […] Les deux seront dans la
 page » ; « les autres armures étant composées de deux matériaux il faut donc deux tables des matériaux à sélectionner pour avoir l'armure ainsi créée. Une
 liste plus classique est disponible également. Il faut aussi le tableau d'amélioration » ; « Il faut aussi inclure ce fonctionnement pour les
 boucliers » ; « Pour les bouclier c'est forme + matière ». La page est rendue depuis les tables (`lib/armures-db.mjs`, `components/armures/ArmuresPage.astro`,
 `styles/armures/armures.css`), jamais depuis les Markdown des pages « Armures » et « Bouclier » ; leurs règles sont le panneau de règles de chaque
-onglet (« Panneaux de règles » plus haut : le texte avant les tableaux, copié par la migration 0056) ; le Markdown ne sert qu'à la recherche et aux
+page (« Panneaux de règles » plus haut : le texte avant les tableaux, copié par la migration 0056) ; le Markdown ne sert qu'à la recherche et aux
 `[[liens]]`, et suit les tables à chaque modification (`lib/corps-armures.mjs`).
-**Les pages « Armures » et « Bouclier » ne sont plus construites** : leurs liens mènent à leur onglet de la page « Équipement » (voir plus haut) ; le
-lien écrit à la main vers la page « Bouclier » dans le chapitre du guide « L'équipement » menait à l'onglet Boucliers depuis la migration
-`0046-armures-boucliers`, il mène à celui de la page « Équipement » depuis la migration `0053-liens-page-equipement` (seule l'adresse a changé).
+**Les pages du wiki « Armures » et « Bouclier » ne sont pas construites par la route du wiki** : les pages Armures et Boucliers de la rubrique
+Équipement les servent, à leurs adresses (`/ressources/armures/`, `/ressources/bouclier/` ; voir plus haut) ; le lien écrit à la main vers la page
+« Bouclier » dans le chapitre du guide « L'équipement » menait à l'onglet Boucliers depuis la migration `0046-armures-boucliers`, puis à celui de la
+page « Équipement » depuis la migration `0053-liens-page-equipement` ; au rendu, il mène à `/ressources/bouclier/` (2026-10-29, voir plus haut).
 
-- **Deux onglets** de la page « Équipement » (avant, de la page des armures) : Armures et Boucliers, chacun avec son panneau de règles replié. **Plus de tableau
+- **Deux pages** de la rubrique Équipement (avant, deux onglets de la page des armures, puis de la page « Équipement ») : Armures et Boucliers, chacune
+  avec son panneau de règles replié ; la page Armures, puis le texte des Pièces élémentaires qui touche les armures et les vêtements. **Plus de tableau
   MATÉRIAUX** sous les deux (prix, description, fabrication) : demande du propriétaire, 2026-10-16 (« Les onglets Matériaux présent en bas de page de
   l'Armure et du bouclier (avec les grand textes) devraient disparaitre et être mélangés au tableau des matériaux des Composants ») ; sa description et
-  son prix étaient déjà ceux du tableau des matériaux de la page « Composants » (R62), sa fabrication y est une colonne ; chaque onglet y renvoie
+  son prix étaient déjà ceux du tableau des matériaux de la page « Composants » (R62), sa fabrication y est une colonne ; chaque page y renvoie
   (`/ressources/composants/#materiaux`), et la description d'une matière reste l'infobulle de son nom dans les tableaux à choisir.
 - **Armures** : deux tableaux des matières de la grille, « Premier matériau » et « Second matériau » (case Matière dans la couleur de son type — vert léger,
   jaune intermédiaire, rouge lourd, relevés sur la capture de l'onglet : `lib/equipement-couleurs.mjs#COULEURS_DES_TYPES`, posés par la classe
@@ -771,11 +913,13 @@ lien écrit à la main vers la page « Bouclier » dans le chapitre du guide « 
   des armures : **les armures particulières en premier** (Nom, Type, AP, AM, Solidité « uni », Effet, Prix ; demande du propriétaire, 2026-10-16 : « tu
   met le tableau "Armure particulières" en tout premier de la liste des armures »), puis les armures de la grille par type (Nom, Matériaux, Type, AP,
   AM, Solidité, Résistance, Faiblesse, Prix ; « séparer les colonnes d'AP et d'AM », demande du propriétaire, 2026-10-16, comme dans la liste des
-  boucliers) ; une ligne choisit l'armure (et ses deux matériaux). **L'AP et l'AM sont deux valeurs de la base, chacune modifiable dans sa case**
-  (demande du propriétaire, 2026-10-17 : « C'est en base que les deux devraient être séparées et donc éditable aussi »), voir « AP et AM » plus bas. Une armure **ne se fabrique plus pièce par pièce, seulement
+  boucliers) ; une ligne choisit l'armure (et ses deux matériaux). **L'AP et l'AM sont deux valeurs de la base, chacune dans sa case** (demande du
+  propriétaire, 2026-10-17 : « C'est en base que les deux devraient être séparées et donc éditable aussi »), **calculées** pour une armure de la grille
+  et un bouclier (décision R207 (1), E6), voir « AP et AM » plus bas. Une armure **ne se fabrique plus pièce par pièce, seulement
   complète** (décision R93) : plus de tableau FABRICATION ; les paragraphes des règles de l'onglet sur la création par pièces sont
   retirés du texte de la page (« Suppression de la création par pièces », décision R95, migration `0055`), et donc du panneau de règles de l'onglet. **Prix d'une armure de la grille** (R93) : la fabrication de l'armure complète (ligne « Armure Complète » du tableau FABRICATION,
-  10 RO, écrite dans la phrase du prix au-dessus des matériaux, modifiable sur le site de dev) + 6 unités de chacun de ses deux matériaux, au prix de la
+  10 RO, écrite dans la phrase du prix au-dessus des matériaux, modifiable sur le site de dev) + 6 unités de chacun de ses deux matériaux (constante
+  `armure.unites_par_materiau`, posée en `data-unites-par-materiau` pour le script de la page : R207 (1)), au prix de la
   page Composants (R62) ; calculé partout (au build : `lib/armures-db.mjs#chargerArmures`, `prix_calcule` ; le script de la page le refait quand un prix
   de matériau ou la fabrication est réécrit), le prix écrit dans la grille n'est plus lu ni modifiable ; une armure particulière garde son prix écrit.
 - **Fiche de l'armure** (à côté, dans un panneau qui suit le défilement et remonte à la fiche quand on choisit une autre armure ; sur un écran étroit,
@@ -801,7 +945,8 @@ lien écrit à la main vers la page « Bouclier » dans le chapitre du guide « 
   l'**effet de la ligne**, sans cumul (au +5 : +10 AP/AM, +1 cran). Une fois l'élément choisi, chaque gemme est **nommée par la gemme de la magie**
   (table `gemme`), avec la qualité écrite par la source : « 2 gemmes communes de Rubis », « 5 gemmes parfaites d’Améthyste » (forme choisie par
   `tech-front` : le nom de la gemme en complément, sans accord à faire) ; la pièce du +5 s'écrit « 1 pièce élémentaire ». **Aucune conversion en RO**,
-  ni coût de transformation, ni métier. **Choisir de nouveau un matériau** (ou une armure de la liste) **vide le choix élément/poids**. Logique pure
+  ni coût de transformation ; la note du tableau nomme le métier qui l'améliore, l'**Armurier** (mot-clé `armurier`, lien vers `/metiers/` ; décision
+  R207 (4), Q58). **Choisir de nouveau un matériau** (ou une armure de la liste) **vide le choix élément/poids**. Logique pure
   (testée) dans `lib/armure-forge.mjs` : `ameliorationElementaire`, `coutElementaireEcrit`, `forgerArmureElementaire`, `choixDArmureApres` (le
   basculement matériaux/élément). Les 56 armures sont rendues cachées (`[data-armures-elementaires]`), lues par le script. Adresse :
   `?element-armure=<magie>&poids-armure=<poids>&amelioration-elementaire=<niveau>` (ex. `?element-armure=magie-du-feu&poids-armure=leger`).
@@ -827,8 +972,12 @@ lien écrit à la main vers la page « Bouclier » dans le chapitre du guide « 
 - État dans l'adresse : `?materiau1=…&materiau2=…&amelioration-armure=N` (ou `?armure=<ancre>` pour une armure particulière),
   `&forme=…&matiere=…&amelioration-bouclier=N` (un ancien `piece=…` est ignoré : R93) ; l'onglet dans l'ancre (`#armures`, `#boucliers`) ; une ancre `#armure-…` ou `#bouclier-…` choisit la ligne.
 - **AP et AM** (demande du propriétaire, 2026-10-17 : « L'édition des colonne AP et AM est mal pris en compte. C'est en base que les deux devraient être
-  séparées et donc éditable aussi » ; « Même remarque sur les AP / AM mais pour les armures ») : pour une armure (de la grille ou particulière) et un
-  bouclier, les colonnes `ap` et `am` sont les valeurs saisies, chacune dans sa case (un entier, signe permis ; vide = pas de bonus, « — » dans la liste,
+  séparées et donc éditable aussi » ; « Même remarque sur les AP / AM mais pour les armures ») : les colonnes `ap` et `am`, chacune dans sa case. Depuis
+  la décision R207 (1), E6 (« D'après les matériaux (+ cout de fabrication pour le prix) »), le **type, l'AP et l'AM d'une armure de la grille** (le
+  plus lourd des deux types, la somme des AP et des AM) et l'**AP, l'AM et le prix d'un bouclier** (classe de la forme × ceux de la matière ; prix :
+  classe × prix de la matière + prix de la forme) **se calculent** (`lib/armure-forge.mjs`, recalculés par le service) : leurs cases sont en lecture
+  (`data-ed-lecture`, jamais `data-ed` : le service refuse ces colonnes), et le script de la page refait le prix des boucliers quand le prix d'une
+  forme change. Seule une armure particulière (R80) garde des valeurs saisies (un entier, signe permis ; vide = pas de bonus, « — » dans la liste,
   0 dans la fiche) ; la défense écrite (`armure.stats_brut`, `bouclier.defense_brut`) n'est plus une case : le service la refait depuis l'AP et l'AM
   (`lib/armure-champs.mjs#defenseEcrite` : « +10AP +14AM », « +2AM », « Aucune » quand les deux sont vides), et la garde telle qu'écrite tant qu'elle se lit
   exactement en ces valeurs (`defenseExacte` : l'écriture de la source, « +13AP+12AM » sans espace, reste) ; elle ne sert plus qu'au corps Markdown (recherche) et
@@ -855,14 +1004,14 @@ lien écrit à la main vers la page « Bouclier » dans le chapitre du guide « 
 - **Choix Oui / Non** (coût en matériaux, cran) : une valeur de la base que la liste n'a pas (un « 2 ») garde son option dans la saisie
   (`lib/edition-modele.mjs#optionsDuChoix`) : rien n'est envoyé tant qu'on n'y touche pas.
 - **Mode modification** (site de dev) : rien ne se sélectionne, tous les tableaux s'ouvrent (la liste des boucliers et celle des poids comprises) ; les
-  cases des armures et des boucliers (nom, AP, AM, prix, poids au choix pour un bouclier), des formes, des poids, des améliorations (coût et effet écrits
+  cases des armures et des boucliers (nom, poids au choix pour un bouclier ; type, AP, AM et prix pour une armure particulière seulement, R207 (1)), des formes, des poids, des améliorations (coût et effet écrits
   pour une armure, quatre cases pour un bouclier) et le coût de fabrication du bouclier (sous les formes) se modifient, les matériaux
   restent en lecture (R62) ; ni création ni suppression. Voir `docs/serveur.md`, « Édition ».
 - `test/armure-champs.test.mjs` (découpages rejoués sur toute la base), `armure-forge.test.mjs` (décisions R75 à R80, R93), `corps-armures.test.mjs`,
   `serveur-edition-armures.test.mjs` (service, notes de version, rejeu du journal), `boucliers-poids.test.mjs` (décision R92 : le registre de la
   migration 0054 = la base dans son état d'import, couleurs, pastille), `armures-tri.test.mjs` (tri de la liste), `armures-html.test.mjs` (site construit).
 
-## Ceinture (onglet Ceinture de `/ressources/equipement/`) : consommables, carquois et sacs, bâtons magiques
+## Ceinture (page `/ressources/objets-a-la-ceinture/`) : consommables, carquois et sacs, bâtons magiques
 
 Demandes du propriétaire : le 2026-10-15, « l'ensemble de tous les objets que les joueurs peuvent placer à la ceinture dans le but de pouvoir les
 utiliser comme un IC. De plus il faut parler aussi des bâtons magiques. Ils ne sont pas consommables mais ils tiennent tout de même un emplacement à la
@@ -870,7 +1019,8 @@ ceinture » (d'abord une page, `/ressources/objets-a-la-ceinture/`, aux tableaux
 à la ceinture, renommer l'onglet en "Ceinture" et le mettre dans les onglets de équipement. Dans cet onglet chaque tableau aurai aussi ses sous onglets
 plutôt que la recherche actuel. On y remettrait à ce moment le tableau Bâton magique (actuellement migré dans équipement). Les onglets seront
 organisées dans l'ordre Consommable / Carquois / Bâton magiques. Les consommables regrouperai les fioles remêdes philtres huiles et alchimie
-privatives dans cet ordre. il faudra aussi récupérer les couleurs utilisé dans les tableaux du GoogleSheet pour les lignes présentes. »
+privatives dans cet ordre. il faudra aussi récupérer les couleurs utilisé dans les tableaux du GoogleSheet pour les lignes présentes. » ; le
+2026-10-29, de nouveau une page à son adresse, « Ceinture » dans la rubrique Équipement (« Cinq pages séparées », voir « Équipement » plus haut).
 
 Le guide ne donne qu'une liste « non exhaustive » (« Voyez avec votre mj ») ; l'onglet liste ce que le propriétaire a retenu (décision R81) : **toutes
 les potions** (fioles, remèdes et panacée, philtres, alchimie primitive), **toutes les huiles**, les **carquois, sacs de bombes et sacs de pierres**
@@ -885,10 +1035,11 @@ table : elle suit les tables (un carquois créé sur la page « Composants » y 
 (`personnage_ceinture`, décision R89) : elle y reconnaît les bâtons magiques (un seul par emplacement) et les carquois ou sacs (leur contenance) ; les
 emplacements, eux, prennent n'importe quel objet du sac (la liste du guide n'est pas exhaustive) ; voir `docs/character-generator.md`, « Ceinture ».
 
-L'onglet est rendu depuis la base (`lib/ceinture-db.mjs`, `components/ceinture/CeinturePanneau.astro`, `styles/ceinture/ceinture.css`, lignes :
-`lib/ceinture-rendu.mjs`), dans le panneau `section.equipement-panneau#ceinture` de la page « Équipement » :
+La page est rendue depuis la base (`lib/ceinture-db.mjs`, `components/ceinture/CeinturePanneau.astro`, `styles/ceinture/ceinture.css`, lignes :
+`lib/ceinture-rendu.mjs`), dans le panneau `section.equipement-panneau#ceinture` de `src/pages/ressources/objets-a-la-ceinture.astro` :
 
-- en tête, **les règles de la ceinture**, repliées comme celles des autres onglets : la section « La ceinture » du chapitre « L'équipement » du guide
+- en tête, **les règles de la ceinture**, repliées comme celles des autres pages de l'équipement : la section « La ceinture »
+  du chapitre « L'équipement » du guide
   (`guide/l-equipement`), rendue depuis la base, et, en dépliable, le texte de la source : la section « Ceinture » de la page de référence « Fiche de
   personnage : Accessoires et Ceinture » (la liste « non exhaustive », « Voyez avec votre mj », le nombre de flèches d'un carquois) ;
 - puis **trois sous-onglets** (`lib/equipement.mjs#SOUS_ONGLETS_DE_LA_CEINTURE`, `components/Onglets.astro` ; leur barre est un groupe à elle,
@@ -904,9 +1055,10 @@ L'onglet est rendu depuis la base (`lib/ceinture-db.mjs`, `components/ceinture/C
     nombre de paliers, le résumé de la page, puis une potion par ligne (nom, niveau, prix, effet tel qu'écrit), dans l'ordre où la page les écrit ;
   - **Carquois** (`#ceinture-carquois`) : le tableau **Carquois et sacs** (nom en lien vers sa ligne de « Composants », où ils se modifient, prix,
     description) ;
-  - **Bâtons magiques** (`#batons-magiques`, l'ancre de l'ancien onglet de la page « Équipement » : les liens déjà faits vers lui ouvrent l'onglet Ceinture
-    et ce sous-onglet) : son panneau de règles en tête, puis le tableau (« Bâtons magiques » ci-dessous).
-- **Plus de recherche** (demande du propriétaire : des sous-onglets « plutôt que la recherche actuel ») : l'onglet n'a pas de script, sauf le curseur des
+  - **Bâtons magiques** (`#batons-magiques`, l'ancre de l'ancien onglet de la page « Équipement » : ses anciennes adresses,
+    `/ressources/equipement/#batons-magiques` et `/ressources/baton-magique/`, mènent à ce sous-onglet par la page 404) : son panneau de règles en tête,
+    puis le tableau (« Bâtons magiques » ci-dessous).
+- **Plus de recherche** (demande du propriétaire : des sous-onglets « plutôt que la recherche actuel ») : la page n'a pas de script, sauf le curseur des
   bâtons. Sans JavaScript, tout est affiché, chaque sous-onglet sous son titre.
 - **Couleurs des lignes : les couleurs du site, jamais une couleur relevée ligne par ligne** (demande du propriétaire du 2026-10-22 : « Partout il
   faut utiliser Que les couleurs du site. Si le site n'a pas de règle il ajoute une nouvelle couleur au site en se basant sur celle du classeur. Aucune
@@ -934,8 +1086,10 @@ L'onglet est rendu depuis la base (`lib/ceinture-db.mjs`, `components/ceinture/C
     pas la classe de sa ligne, qui existe donc toujours dans la page) ;
   - un **bâton**, la couleur de sa magie sur le site (la classe `.couleur-magie-<id>`), comme ses infobulles ;
   - les carquois et sacs n'ont pas de couleur (ni dans l'onglet « Équipement inventaire » du classeur, ni de règle sur le site).
-  Choix du site : la couleur s'étend à toute la ligne, et le texte est le plus lisible sur le fond (`texteSurCouleur`) ; le fond d'une potion qui
-  n'atteint pas un contraste de 4,5:1 avec lui (seuil AA du WCAG) est éclairci ou assombri jusqu'à l'atteindre (`lisible`). Aucun fichier de l'onglet
+  La ligne est la ligne colorée du gabarit (« Tableaux » plus haut : depuis le 2026-10-29, le fond du thème teinté de la couleur, son filet et son
+  liseré, le texte du thème ; avant, toute la ligne sur la couleur) ; la couleur de la classe garde son texte le plus lisible (`texteSurCouleur`,
+  qui borde le liseré) et le fond d'une potion qui n'atteint pas un contraste de 4,5:1 avec lui (seuil AA du WCAG) est éclairci ou assombri jusqu'à
+  l'atteindre (`lisible`) ; le texte du thème est lisible sur la teinte de chaque potion dans les deux thèmes (`test/ceinture-html.test.mjs`). Aucun fichier de l'onglet
   n'écrit de couleur, hors le noir ou le blanc purs de mélange d'un `color-mix` (exception du propriétaire : le liseré de la pastille d'une gemme,
   `styles/equipement/equipement.css` ; `test/alchimie-couleurs.test.mjs`, `test/palette-css.test.mjs`). Repère visuel sans valeur de règle.
   **En classes, jamais en style** (« Couleurs du site : la palette en classes » plus haut ; choix du propriétaire du 2026-10-22, « Module JS → classe »
@@ -988,7 +1142,8 @@ utile. Il faudra un tooltip pour donner le lien vers l'objet de la gemme ou et d
 
 - En tête, son **panneau de règles** (« Panneaux de règles » plus haut ; id `batons-magiques`, l'ancre du sous-onglet) : l'introduction de la page
   « Bâton magique », puis la fabrication en tuile, replié comme ceux des autres onglets.
-- Une ligne par magie (ordre des magies), **toute sur la couleur de sa magie sur le site** (sa classe `.couleur-magie-<id>`,
+- Une ligne par magie (ordre des magies), **dans la couleur de sa magie sur le site** (la ligne colorée du gabarit depuis le 2026-10-29 : fond
+  teinté, filet et liseré de la couleur, texte du thème, la pastille de la gemme dans la couleur pleine ; sa classe `.couleur-magie-<id>`,
   `lib/palette-css.mjs#classeDeMagie` : `--couleur`, et le texte le plus lisible, `--couleur-texte` ; ni style ni couleur dans la ligne ; demande du propriétaire du 2026-10-22 : « Partout il faut utiliser Que les couleurs du site » — la couleur de l'onglet « Bâton
   magique » du classeur, relevée le 2026-10-16, n'est plus lue), **sans colonne Magie** (le nom de la magie reste dans l'en-tête de la ligne pour les lecteurs d'écran, et dans les infobulles) :
   **Gemme | Bois | Niveau | Effet | Prix**.
@@ -1008,13 +1163,13 @@ utile. Il faudra un tooltip pour donner le lien vers l'objet de la gemme ou et d
   null si l'un des deux manque), en icônes de monnaie ; l'en-tête le dit en infobulle. Aucun coût de fabrication n'est ajouté.
 - Pas encore modifiable sur le site de dev : les prix de la gemme et du bois se modifient dans « Composants » et suivent au build suivant.
 
-## Accessoires (onglet Accessoires de `/ressources/equipement/`) : le générateur d'accessoire
+## Accessoires (page `/ressources/accessoires/`) : le générateur d'accessoire
 
 Demande du propriétaire (2026-10-14) : « Pas de tableau markdown. Au lieu de ça, je veux un générateur à accessoire », présenté comme la page des armes :
 un bloc d'explication, plusieurs tableaux et, sur le côté, un encart qui décrit l'accessoire créé d'après ce qui a été sélectionné. La page est rendue
 depuis les tables (`lib/accessoires-db.mjs`, `components/accessoires/AccessoiresPage.astro`, `styles/accessoires/`), jamais depuis son Markdown, dont
 seules les consignes écrites sous chaque étape (« Accessoire trouvé ou bien accessoire vierge », « Ne peut dépasser 4 »…) s'affichent ; ses règles (avant
-« ## CRÉATION D'ACCESSOIRE ») sont le panneau de règles de l'onglet, déplié au départ (« Panneaux de règles » plus haut) ; le reste (tableaux) ne sert
+« ## CRÉATION D'ACCESSOIRE ») sont le panneau de règles de la page, déplié au départ (« Panneaux de règles » plus haut) ; le reste (tableaux) ne sert
 qu'à la recherche et aux `[[liens]]`. Seul le panneau de règles se modifie sur le site de dev.
 
 - **Tableaux** : Étape 1 Identité (`accessoire_emplacement`), Étape 2 Propriété (`accessoire_propriete`, plages du 1d100), Étape 3 Effet — un tableau
@@ -1065,7 +1220,9 @@ qu'à la recherche et aux `[[liens]]`. Seul le panneau de règles se modifie sur
   du tableau), dans l'encart avec la monture choisie.
   Recliquer une ligne choisie la retire. État dans l'adresse (`?emplacement=…&propriete=…&effet=…&acquis=…&monture=…&gemmes=…&maudit=1&detruit=1`),
   lu tel quel (aucune transition à la lecture ; `detruit=1` n'est retenu qu'avec une malédiction choisie, et il implique `maudit`).
-- **Couleurs** : les lignes d'effet, les montures et l'encart dans la couleur de leur niveau, celle des cases « Niveau 1 » à
+- **Couleurs** : les lignes d'effet, de compétence et les montures (le fond du thème teinté à 12 % de la couleur, 20 % au survol ou choisies, un
+  filet et un liseré de la couleur, le texte du thème, et le niveau de la ligne en pastille dans la couleur pleine) et l'encart (teinté à 8 %, cadre
+  et liseré de la couleur) dans la couleur de leur niveau (demande du propriétaire, 2026-10-29 : « Je ne veux plus de ligne entièrement colorées de la couleur de la magie. Je péfèrerai une bordure ou un fond plus transparent de la même manière sont soint faites les tuiles de caractéristiques et de compétences dans la fiche de personnage »), celle des cases « Niveau 1 » à
   « Niveau 5 » du tableau Monture de l'onglet (`lib/accessoires-couleurs.mjs#COULEURS_DES_NIVEAUX`), posée par sa classe (`couleur-niveau-<n>`, que
   l'onglet émet ; l'encart reprend celle de la ligne de l'effet choisi : « Couleurs du site : la palette en classes ») ; une gemme dans la couleur de sa magie
   (la classe de la magie, sur sa pastille comme sur son infobulle, `bulle--gemme` : `--mag` ; l'encart copie la pastille telle quelle). **Pas de tableau des gemmes** : une infobulle par gemme (magie, description, prix d'un quart classique, raffiné, parfait).
@@ -1081,12 +1238,13 @@ fruits. Ainsi que tout ce qui n'est pas directement des consommables mais qui pe
 de page du wiki : elle est rendue depuis les tables (`src/pages/ressources/composants.astro`, `lib/composants-db.mjs`, `components/composants/`,
 `styles/composants/`, lignes : `lib/composants-rendu.mjs`), **un onglet par tableau**, comme la page « Équipement » (demande du propriétaire du
 2026-10-17 : « à l'image de la page d'équipement avoir des onglets pour chaque table. Il faudrait aussi qu'elles soient modifiables et directement liées
-en base »). Au menu, elle est la première page de Règles › Artisanat (`/regles/artisanat/` ; réponse du propriétaire du 2026-10-18 : « Composants en
+en base »). Au menu, elle est la première page d'Équipement › Artisanat (`/regles/artisanat/` ; réponse du propriétaire du 2026-10-18 : « Composants en
 Artisanat ok ») :
 
 - **Monnaie** (`monnaie`) : nom, symbole (son icône, décision R61), valeur en RF ; les conversions vers les plus petites (« 1 PP = 1 000 RO = 100 000 RF »)
   sont celles qui tombent juste, comme le CONVERTISSEUR de l'onglet (`lib/composants-champs.mjs#conversionsDe`). Le RF est l'unité (il vaut 1 et ne se
-  supprime pas). Les valeurs ne se modifient pas, ni l'abréviation du RF, du RO et de la PP (R61).
+  supprime pas). L'onglet est **figé** sur le site de dev (décision R219 (3) : « Ni création, ni modification, ni suppression dans l'onglet Monnaie ») :
+  ni nom, ni abréviation, ni valeur ne se modifient, aucune monnaie ne se crée ni ne se supprime (les valeurs et le nom l'étaient déjà : R61, R193).
 - **Matériaux** (`ressource` de genre `materiau` et table `materiau`) : la **seule source** des matériaux (décision R62) — matière (dans la couleur de
   l'onglet « Armes » : sa pastille porte la classe `couleur-materiau-<id>`, `par-defaut` sans couleur, que la page émet, `cssDesFamilles(['materiau'])`), type d'après l'armure (Léger, Intermédiaire, Lourd, Autres : migration `0041-materiaux-types`), prix, description, effets sur une
   arme (`materiau_arme`), et ce qui les utilise (armes, armures, boucliers, montures d'accessoire). La **fabrication** d'une matière (sa recette,
@@ -1116,8 +1274,11 @@ Sans JavaScript, les panneaux se suivent, chacun sous son titre.
 **Mode modification** (site de dev, `src/scripts/edition/composants.mjs`, `serveur/edition-composants.mjs`) : le titre de chaque onglet (le titre de son
 panneau, affiché en mode modification ; l'onglet le reprend à l'enregistrement) et sa note (vidée : sans note) — ni création ni suppression d'onglet ;
 chaque case se modifie (nom, prix,
-description, prix d'une gemme, type et affinité d'un ingrédient, nom, abréviation et valeur d'une monnaie) ; ce qui en est tiré est recalculé (prix en RF,
-ligne du CONVERTISSEUR, type sans « (majeur) », marque majeur, affinité — créée si elle est nouvelle). Un bouton « + Ajouter » sous chaque tableau (une
+description, prix d'une gemme, type et affinité d'un ingrédient) ; ce qui en est tiré est recalculé (prix en RF,
+type sans « (majeur) », marque majeur, affinité — créée si elle est nouvelle). L'onglet **Monnaie** n'offre aucun contrôle (R219 (3) : ni « + Ajouter »,
+ni case modifiable, ni « Supprimer » ; seuls le titre et la note de l'onglet se modifient) : le service refuse en `409` toute écriture de la table
+`monnaie` (`lib/edition-modele.mjs#TABLES_FIGEES`, API v1 comprise), sauf au rejeu d'un lot ancien du journal, qui passe (R220 (1) ; le renommage
+d'une monnaie y reste en conflit, R193). Un bouton « + Ajouter » sous chaque autre tableau (une
 gemme ou un bois pour une magie qui n'en a pas : « une par magie » ; un « (majeur) » seulement pour un amplificateur) ; « Supprimer » sur chaque ligne que
 rien d'autre ne cite — un composant cité par une armure, une recette, un effet d'accessoire… ne se supprime pas (le bouton grisé dit pourquoi). Un objet
 supprimé reste dans l'inventaire ou la ceinture d'une fiche de personnage, sous son nom, sans lien au catalogue, avec une note datée qui demande de mettre
@@ -1140,6 +1301,15 @@ pas de source citée ; le Markdown de la page ne sert plus qu'à la recherche et
   physiques de mêlée, vert pour les physiques à distance, bleu pour les magiques, violet pour les raciales (hybrides), jaune pour les spéciales (Parleur compris). Repère visuel sans valeur de règle.
   La page pose la classe de la catégorie (`couleur-classe-<catégorie>`, `palette-css.mjs#classeDUneClasse` : famille `classe`, émise par la page), que
   `styles/classe/base.css` lit en `--cla` ; jamais un style (« Couleurs du site : la palette en classes »).
+- **Menu latéral** (demande du propriétaire : « les 5 types de classes en menu à dérouler avec un seul menu déroulable à la fois », celui de la classe affichée ouvert par défaut) :
+  à gauche de la page, les cinq catégories de `/classes/` dans leur ordre (`lib/class-groups.mjs#groupClasses`, Parleur sous « Spéciales » compris), chacune un `<details>` du même
+  `name` (un seul déroulé à la fois ; un relais en ligne le fait aussi dans un navigateur qui ignore `name`), avec son point de couleur, son nombre de classes et ses classes
+  par nom ; celle de la classe affichée est ouverte au build et la classe marquée (`aria-current`). Mise en page du menu des Bases (`styles/classe/menu.css`, sur le modèle de
+  `styles/guide/menu-lateral.css`) : collé en haut de l'écran ; caché à l'impression. Sur petit écran (≤ 56rem), un **tiroir sur le modèle de celui de la chronologie** (réponse du
+  propriétaire : « Sur mobile on le cachera dans un tiroir comme chronologie ») : le menu réduit à une bande collée au bord gauche (poignée et point de chaque type, celui de la
+  classe plus gros), un appui l'ouvre par-dessus la page sur la classe affichée (focus sur elle, le reste de la page inerte, voile) ; la croix, le voile ou Échap le referment
+  (focus rendu au bouton) ; retour sur grand écran ou retour arrière (bfcache) : fermé. Sans JavaScript, le menu est au-dessus de la page, tout ouvert.
+  Testé dans `test/classes-html.test.mjs`.
 - **Sections** : présentation et « Chose à savoir », descriptions des spécialités (un article par spécialité qui a des dons, caché tant qu'il n'a ni description ni remarque :
   le mode modification l'ouvre pour le remplir), « Au départ » (maîtrises, arme, armure, inventaire : chaque objet du glossaire a son infobulle, « A OU B »
   est un emplacement à deux options), **Dons**, tableau sans titre de l'onglet (Mage Bleu : une carte par magie).
@@ -1166,45 +1336,100 @@ Le guide n'est plus un seul livre de 24 chapitres servi sous `/guide/` (demande 
 retravailler pleinement l'organisation des onglets et de la présentation »), ni deux livres lus dans l'ordre (2026-10-18 : « refaire toutes les anciennes
 pages du guide. Retirer le mécanisme de swipe, et les flèches suivant / précédent et la pagination ») : les pages `guide/<slug>` (famille `docs`, ids
 inchangés) sont rangées par le **plan du site**, `client/src/lib/livres.mjs` (sans import, testé par `test/livres.test.mjs`), qui donne à chacune son
-adresse (`adresseDuGuide`, par `lib/metiers.mjs#adresseDePage` : `[[liens]]`, recherche, rétroliens et index la suivent). Seuls des libellés de
+adresse (`adresseDuGuide`, par `lib/metiers.mjs#adresseDePage` : `[[liens]]`, recherche et index la suivent). Seuls des libellés de
 navigation y sont écrits (titres de rubrique, de groupe, libellés des liens) ; les textes sont ceux de la base, sauf une exception : la
 présentation du lien Discord de l'accueil (`LIENS_ET_RENCONTRE.liens[].presentation`, plus bas), écrite dans le plan, donc ni modifiable sur le site de
 dev (un commit la change) ni cherchée par la recherche.
 
-- **Découvrir** (`/decouvrir/`, rubrique Découvrir du menu, faite pour être vue même des non-membres ; `DECOUVRIR`) : **une page par entrée du menu**
-  (choix du propriétaire du 2026-10-18) — « Bienvenue » (servie à `/decouvrir/` ; elle absorbe « Le jeu de rôle, comment ça marche ? », et n'a plus de
-  sommaire), « L'univers » (race, magie, classe ; dessous, un bloc de navigation rendu par le gabarit, `RUBRIQUES_SOUS_LA_PAGE`, mène aux Races, aux
-  Magies et aux Classes), « Créer son personnage » (les six étapes sur une seule page), « Rejoindre une partie » (une page pour les joueurs) —, à
-  `/decouvrir/<slug>/`. Discord, Tipeee et l'encart « Notre prochaine rencontre IRL » sont sur l'accueil (plus bas) ; plus de page « Liens ».
-  Ce sont aussi les quatre cartes « Par où commencer ? » de l'accueil (`PAR_OU_COMMENCER`).
-- **Les bases** (`/regles/`, rubrique Règles ; `LES_BASES`) : un **sommaire** (`pages/regles/index.astro`, comme les Règles avancées) en trois groupes,
-  Jouer, Progresser, Pour aller plus loin, chacun dans sa couleur ; une page par sujet, à `/regles/<slug>/`. L'ancien plan (24 pages, validé par le
-  propriétaire) faisait lire la règle du D100 (« Réussir une action ») **avant** de créer son personnage ; le nouveau la met en tête des Bases : ce
-  remplacement attend la confirmation du propriétaire (`docs/feuille-de-route.md`, « Questions encore ouvertes », 10).
-- **Les couleurs** des groupes sont celles des anciennes parties (`PARTIES` ; chaque groupe porte l'id de sa partie, `partie` : Découvrir #2a6f97,
-  Créer son personnage #2e7d4f, Jouer #b03030 — aussi « Rejoindre une partie » —, Progresser #6a4a9c, Pour aller plus loin #5a6470, valeurs dans
-  `lib/parties-couleurs.mjs`), qui restent celles des quatre zones de la fiche : une page de Découvrir ou des Bases a le filet de son titre, ses
-  intertitres et ses blocs dans la couleur de son groupe (`partieDeLaPage`, la classe de sa partie `.couleur-partie-<id>` : « Couleurs du site : la
-  palette en classes »), une carte de l'accueil et un groupe du sommaire des Bases aussi.
-- **Toute page du guide est une page simple** (`components/guide/PageDuGuide.astro`, servie par `PageDuPlan.astro`) : fil d'Ariane vers sa rubrique
-  (Découvrir) ou son sommaire et son groupe (Les bases, Règles avancées), ou le Guide du MJ (`filDAriane`), titre, texte coupé à ses blocs tirés de la
-  base, puis mots-clés et rétroliens (`components/PiedDePage.astro`). **Plus aucune source sous une page**, quelle qu'elle soit (réponse du
+- **Découvrir** (`/decouvrir/`, en tête de la rubrique Règles du menu — l'ancienne rubrique Découvrir, renommée le 2026-10-29 —, faite pour être vue
+  même des non-membres ; `DECOUVRIR`) : **une page par entrée du menu** (choix du propriétaire du 2026-10-18) — « Bienvenue » (servie à `/decouvrir/`,
+  entrée « Découvrir » du menu ; elle absorbe « Le jeu de rôle, comment ça marche ? », et n'a plus de sommaire) et « L'univers »
+  (`/decouvrir/l-univers/` ; race, magie, classe ; dessous, un bloc de navigation rendu par le gabarit, `RUBRIQUES_SOUS_LA_PAGE`, mène aux Races, aux
+  Magies et aux Classes). « Créer son personnage » n'y est plus depuis R184 : c'est l'introduction de l'onglet « Fiche de personnage ». Discord,
+  Tipeee et l'encart « Notre prochaine rencontre IRL » sont sur l'accueil (plus bas) ; plus de page « Liens ». Les trois cartes « Par où commencer ? »
+  de l'accueil (`PAR_OU_COMMENCER`) : Bienvenue, L'univers et « Créer son personnage » (`/regles/creer-son-personnage/`, défaut confirmé par le
+  propriétaire), sous la phrase « Première visite ? Commencez par Découvrir : le jeu, son univers et la création d’un personnage. ».
+  **Plus de page « Rejoindre une partie »** (demande du propriétaire du 2026-11-05 : « Efface la page "Rejoindre une partie" et son lien. ») : ni dans
+  la base, ni au menu, ni sur l'accueil ; son ancienne adresse `/decouvrir/rejoindre-une-partie/` n'est renvoyée nulle part (réponse « Page 404
+  (Recommandé) ») : la page 404 la dit introuvable, comme `/decouvrir/liens/`.
+- **Les onglets des Règles** (décisions R184 et R185, migration `0091` ; rubrique Règles du menu, après Découvrir et L'univers) : « Fiche de
+  personnage », « Mécaniques générales », « Les combats », « Exploration », aucun onglet « Autre ». **Le plan est une donnée de la base**, jamais
+  écrit dans le code : tables `regles_onglet` (id, titre, ordre, page d'ouverture) et `regles_onglet_entree` (le menu latéral de chaque onglet, dans
+  l'ordre : une page `guide/…`, dont le libellé est le titre ; un lien vers une autre adresse du site, l'Artisanat ; ou une entrée « bientôt »,
+  grisée sans lien, aucune aujourd'hui). `lib/plan-des-regles-db.mjs#chargerPlanDesRegles` le lit ; celui qui charge les pages l'installe dans
+  `lib/livres.mjs` (`installerLePlan`, qui contrôle sa forme : `lib/wiki.ts` au build, le service à son démarrage) : `livres.mjs` reste sans import,
+  et une fonction qui a besoin du plan (`ongletsDesRegles`, `ongletDe`, `menuLateralDe`, `filDAriane`, `placeDansLeGuide`, `verifierLePlan`) lève
+  une erreur claire s'il n'est pas installé. **Adresses à plat** : toute page d'un onglet est à `/regles/<slug>/` (les pages des anciennes Bases
+  gardent la leur) ; l'adresse ne dépend pas du plan (`adresseDuGuide` : la chaîne de l'édition du navigateur, qui ne le reçoit pas, la calcule
+  aussi). Le `<slug>` est celui de l'id, sauf exception voulue par le propriétaire, figée dans `ADRESSES_RENOMMEES_DU_GUIDE` (id inchangé) : R228,
+  `guide/liste-des-effets-mode-super` à `/regles/mode-super/`, puis R272 (migration `0124`), `guide/fiche-inventaire-sac-a-dos` à `/regles/inventaire-sac-a-dos/` ; aucune page ne prend ces adresses (`verifierLePlan`, et le service ne crée pas
+  `guide/mode-super`). Chaque onglet est à `/regles/<onglet>/` (`pages/regles/[...page].astro`), qui montre sa page d'ouverture sous le titre de l'onglet, avec
+  un `<link rel="canonical">` vers `/regles/<slug>/` ; `/regles/` (`pages/regles/index.astro`) montre celle du premier onglet. Les ids des onglets,
+  `artisanat`, `avancees` et `glossaire` (la page du Glossaire) sont des noms réservés (`nomsReserves`) : aucune page ne les prend. Chaque page est à côté du **menu latéral** de son
+  onglet, sur le modèle de la chronologie (demande du propriétaire du 2026-11-05 pour Les bases : « Pour la présation je préfèrera un menu latéral
+  sous le même modèle que la chronologie. » ; réponse « Comme la chronologie (Recommandé) ») : `components/guide/MenuLateral.astro` met à gauche, en
+  vertical, les entrées de l'onglet (une seule liste, sans groupes ; l'entrée affichée marquée, `aria-current`) et à droite le texte de la page
+  choisie (`PageDuGuide`, son pied de page compris). Le menu fait des liens ordinaires (tout se lit sans JavaScript) ; ni barre en dégradé, ni dates,
+  ni chevrons, ni ← → ; sous 56rem, il est replié au-dessus de la page (un `<details>`, ouvert sans JavaScript ; un script en ligne, sans import, le
+  replie sur petit écran). Feuille : `styles/guide/menu-lateral.css` (jetons du thème ; une entrée « bientôt » prend la classe `nav-soon` du menu
+  du site). **L'onglet marqué au menu du site** (`entree` de `layouts/Base.astro`) vient du plan, pas de l'adresse ; toute adresse sous `/regles/`
+  ouvre la rubrique Règles (`autres` de `lib/nav.mjs`). `lib/nav.mjs` n'importe rien : ses libellés et chemins des onglets sont écrits à part, et
+  `test/nav.test.mjs` les compare à la table `regles_onglet`. Fil d'Ariane « Accueil › <onglet> ». La page « Artisanat » (`/regles/artisanat/`) est
+  une entrée lien d'Exploration : elle est à côté de ce menu, son entrée marquée, et l'onglet marqué au menu du site. Le mode modification du site de
+  dev porte sur la page affichée (adresses des onglets comprises). Le texte des pages reste celui de la base : rien n'est réécrit.
+  **Sur le site de dev** (lot de l'édition des menus ; demandes du propriétaire : « changer l'ordre des menu latéraux (par un glisser déposer) », « ajouter
+  / supprimer une page » ; réponses « Règles + Races », « Oui, par une liste », « Titre, onglet, résumé », « Refus si citée, puis 404 » ;
+  `src/scripts/edition/menus.mjs`, le geste `glisser.mjs`, la logique `lib/ordre-des-menus.mjs` ; le service : `docs/serveur.md`, « Plan des Règles et
+  liste des races ») : le menu latéral de chaque onglet (et de l'Artisanat) porte son onglet (`data-ed-menu="onglet:<id>"`) et, sur chaque entrée, l'id
+  et le rang de sa ligne de `regles_onglet_entree` (`data-ed-entree`, `data-ed-rang` ; `lib/livres.mjs#editionDuMenuLateral`). En mode modification :
+  une poignée devant chaque entrée (pages, lien, « bientôt ») la fait glisser à la souris ou au doigt (Pointer Events ; `touch-action: none` sur la
+  poignée seule ; défilement automatique ; Échap annule) ou au clavier (↑ ↓, Début, Fin ; la nouvelle place annoncée, `aria-live`) ; sur petit écran le
+  menu replié s'ouvre ; « Enregistrer » envoie une opération `ordonner` par menu changé. Sous le menu d'un onglet, **« + Ajouter une page »** : titre,
+  onglet (celui du menu) et résumé, tous obligatoires, sans source ; l'adresse `/regles/<slug>/` est tirée du titre et figée ; la page est créée tout de
+  suite, en fin de menu, avec le texte « À compléter. », puis s'ouvre : tant que le site n'est pas reconstruit, la 404 la dessine (menu latéral, fil
+  d'Ariane, titre, texte en place, bandeau « Page créée sur le site de dev » ; `edition/nouvelles.mjs`). Une entrée « bientôt » a **« Créer la page »**
+  (son libellé pour titre, son onglet ; la page prend sa place). Sous le titre d'une page du guide, son **résumé** (une ligne ; `edition/guide.mjs`),
+  puis, pour une page des Règles, la liste **« Onglet »** (la page passe en fin du menu de l'autre onglet, son adresse ne change pas ; désactivée pour
+  la page d'ouverture d'un onglet) et **« Supprimer »**, absent seulement pour une page que le service protège (`protection` de
+  `GET /api/edition/plan/`, `lib/ordre-des-menus.mjs#boutonSupprimer`) : une page citée le garde, et son refus liste en liens les textes qui la citent,
+  à corriger d'abord (décision du leader-technique) ; la suppression part avec « Enregistrer », après confirmation, puis on revient à l'onglet. Les
+  menus sont redessinés d'après le plan vivant (`GET /api/edition/plan/`) au chargement quand le plan a changé depuis la construction, en passant en
+  mode modification et après l'enregistrement ; avant la reconstruction, une page supprimée mais encore construite montre à la place de son texte un
+  avis « Page supprimée sur le site de dev » et un lien vers son onglet, et `/races/` (pastilles et tableau des magies innées) suit le nouvel ordre
+  des races, comme leur menu ; le libellé d'une entrée de page suit le titre de
+  la page modifié (demande du propriétaire : « Changer le titre avec l'édition devrai aussi changer le nom sur le menu lattéral »), même pendant sa
+  saisie. Les onglets eux-mêmes (ordre, titre, ouverture) restent fixes (réponse « Non, fixe »).
+  **Plan strict** (`verifierLePlan`, au build) : toute page `guide/…` qui n'est pas d'exemple est dans Découvrir, un onglet ou le Guide du MJ, sinon
+  le build s'arrête en la nommant (l'ajouter à `regles_onglet_entree`) ; la cible d'un renvoi figé d'une ancienne adresse (ci-dessous) peut, elle,
+  manquer (une page des Règles supprimée sur le site de dev : rien ne la protège pour cela) : son ancienne adresse donne alors la 404 (R185 (6)) ; une page d'exemple (la fixture `guide/utiliser-ce-wiki`) garde une adresse
+  de repli à `/regles/<slug>/`, sans entrée de menu ni fil d'Ariane. Plus de « Les bases » ni de « Règles avancées » (R184) : leurs anciennes
+  adresses sont renvoyées (plus bas). Le Lexique (2026-11-05, « Supprime la page lexique. ») : ses entrées sont des mots-clés du glossaire (migration
+  `0090`), ses adresses `/regles/lexique/` et `/guide/lexique/` mènent au Glossaire, `/regles/glossaire/` (R190 ; `PAGES_RETIREES`, ci-dessous ; à
+  `/recherche/` jusqu'à ce que le Glossaire ait sa page, réponses du propriétaire du 2026-11-06).
+- **Les couleurs** : Découvrir et **la création du personnage** (« Créer son personnage » et ses six étapes, `PAGES_DE_LA_CREATION`) prennent celles des
+  anciennes parties (`PARTIES` ; Découvrir #2a6f97, Créer son personnage #2e7d4f ; Jouer #b03030 et Progresser #6a4a9c ne servent plus qu'à la fiche,
+  Pour aller plus loin #5a6470 plus à rien ; valeurs dans `lib/parties-couleurs.mjs`), qui restent celles des quatre zones de la fiche : la page a le
+  filet de son titre, ses intertitres et ses blocs dans la couleur de sa partie (`partieDeLaPage`, sans le plan ; la classe `.couleur-partie-<id>` :
+  « Couleurs du site : la palette en classes »), une carte de l'accueil aussi. **Les autres pages des onglets n'ont pas de couleur de partie** :
+  l'accent du site, comme le Guide du MJ (réponses du propriétaire du 2026-11-05 : « Une seule couleur », puis « Accent du site » ; `partieDeLaPage`
+  rend null). Une page vers laquelle mène un mot-clé coloré prend la couleur de ce mot-clé (migration `0098`, réponse Q5 ; les mots-clés de la
+  création et de Découvrir reprennent la couleur de leur partie : le rendu ne change pas) : « Couleurs du site : la palette en classes ».
+- **Toute page du guide est une page simple** (`components/guide/PageDuGuide.astro`, servie par `PageDuPlan.astro`, à côté du menu latéral pour une
+  page d'un onglet) : fil d'Ariane vers Découvrir, son onglet ou le Guide du MJ (`filDAriane`), titre, texte coupé à ses blocs tirés de la
+  base, puis ses mots-clés (`components/PiedDePage.astro`). **Plus aucune source sous une page**, quelle qu'elle soit (réponse du
   propriétaire du 2026-10-22, G43 : « Plus de sources ailleurs que dans les archives. On va épurer un peu ce qui est redondant. ») : `sources:` reste
   dans le frontmatter et la base (`page_source`, `source`), que `/archives/` lit. Ni flèches, ni touches ← →, ni glissement du doigt, ni pagination,
   ni numéro de chapitre. Le retour arrière du navigateur au glissement horizontal est empêché pour tout le site (`html { overscroll-behavior-x: none; }`,
   `styles/global/base.css` ; réponse du 2026-10-22 : « Supprime juste le swipe. ») ; sur iOS, le geste qui part du bord de l'écran est celui du
-  système et aucune règle CSS ne le bloque. Les pages de référence (Règles avancées, Guide du MJ) gardent le badge « Guide » à côté du titre.
-- **Deux autres sommaires** (`components/guide/Sommaire.astro` : le titre lié et le résumé de chaque page, tel que la base l'écrit, rien si elle n'en a
-  pas) : « **Règles avancées** » (`/regles/avancees/`), en groupes (Magie et Mode Hyper — « Le Mode Hyper » en tête —, Combat et actions, Altérations
-  d'état, Alignement, Exploration et voyage — pièges, portes, météo et « Donjon pas bon » y sont « pour tout le monde », réponse du propriétaire du
-  2026-10-18 —, La fiche de personnage case par case (les pages `guide/fiche-…`), puis « Autres pages de référence » : **toute autre page `guide/…`**
-  que ni Découvrir, ni Les bases, ni le Guide du MJ ne nomme, de sorte qu'une page ajoutée plus tard a toujours une place), pages à
-  `/regles/avancees/<slug>/` ; et « **Guide du MJ** » (`/mj/`, rubrique Espace MJ : « Un maître du jeu », le guide pour MJ et « « Campagne » ou
-  « Scénario one shot » ? », qui y passe, choix du propriétaire du 2026-10-18), pages à `/mj/<slug>/`. « Les documents des règles » garde son adresse
-  (Autres pages de référence) : son bloc liste les pages de référence par document source (`pagesDeReference` : sans les pages de Découvrir ni des
-  Bases), avec leurs liens, ce que `/archives/` ne montre pas.
+  système et aucune règle CSS ne le bloque. Les pages du Guide du MJ gardent le badge « Guide » à côté du titre et la ligne « Aussi appelé » ; celles
+  de Découvrir et des onglets n'ont ni l'un ni l'autre (réponse du propriétaire du 2026-11-05 : « Retirer, comme Les bases »).
+- **Un sommaire** (`components/guide/Sommaire.astro` : le titre lié et le résumé de chaque page, tel que la base l'écrit, rien si elle n'en a
+  pas ; aucune couleur de partie) : « **Guide du MJ** » (`/mj/`, rubrique Espace MJ : « Un maître du jeu », le guide pour MJ et « « Campagne » ou
+  « Scénario one shot » ? », qui y passe, choix du propriétaire du 2026-10-18), pages à `/mj/<slug>/` ; le même composant sert à l'Artisanat. Les
+  onglets des Règles n'ont pas de sommaire (menu latéral, plus haut). « Les documents des règles » et son bloc `documents` sont supprimés (R184 (9)).
 - **Artisanat** (`/regles/artisanat/`, `lib/livres.mjs#ARTISANAT`) : un sommaire de pages d'autres types — Composants (titre et description de la page,
-  `lib/composants-db.mjs`, faute de ligne `page`), les pages d'alchimie et les règles des métiers.
+  `lib/composants-db.mjs`, faute de ligne `page`), les pages d'alchimie et les règles des métiers —, entrée lien du menu latéral d'Exploration (R184 ;
+  plus au menu Équipement). La page Composants reste dans l'Équipement (`ressources/`), son fil d'Ariane mène à l'Artisanat.
 - **Sur l'accueil**, sous la bienvenue et le carrousel, avant « Par où commencer ? » (`/`, `pages/index.astro` ;
   `components/accueil/LiensEtRencontre.astro`, `LIENS_ET_RENCONTRE`, styles `styles/accueil/liens-et-rencontre.css` ; demandes du propriétaire du
   2026-10-23 : « Ces 3 blocs auraient plus leur place dans l'onglet d'acceuil. », puis, pour leur place, « Sous la bienvenue et le carrousel »).
@@ -1214,8 +1439,8 @@ dev (un commit la change) ni cherchée par la recherche.
   Avant : sur la page Liens, puis sous le texte de Bienvenue (réponses du propriétaire du 2026-10-22, G34 : l'encart et les présentations passent sur
   Bienvenue, « Bonne idée. », et la page Liens qui les portait est supprimée, « Plus d'entrée Liens au menu : tout est sur Bienvenue. L'ancienne
   adresse renverrait vers Bienvenue. »). L'ancienne adresse `/decouvrir/liens/` n'est plus renvoyée nulle part (réponse du propriétaire du
-  2026-10-23 : « supprimer ce lien ») : la page 404 la dit introuvable. Bienvenue et Rejoindre une partie renvoient aux blocs par des liens écrits,
-  `/#lien-discord` et `/#prochaine-rencontre`. Dans l'ordre : le serveur Discord « L'univers de Maverick » et Maverick JDR sur Tipeee (liens donnés par le propriétaire, 2026-10-16 et 2026-10-18), chacun
+  2026-10-23 : « supprimer ce lien ») : la page 404 la dit introuvable. Un lien écrit dans une page y mène par son ancre
+  (Bienvenue : `/#lien-discord`). Dans l'ordre : le serveur Discord « L'univers de Maverick » et Maverick JDR sur Tipeee (liens donnés par le propriétaire, 2026-10-16 et 2026-10-18), chacun
   sous son titre (un `h2` qui porte le lien, au niveau de celui de l'encart : la navigation par titres les trouve ; ancres `#lien-discord`,
   `#lien-tipeee`, celles de l'ancienne page, figées) et suivi de sa **présentation** :
   - Discord : `LIENS_ET_RENCONTRE.liens[].presentation`, Markdown écrit dans le plan (demande du propriétaire : « Étoffe un peu la présentation pour les
@@ -1236,28 +1461,80 @@ dev (un commit la change) ni cherchée par la recherche.
   HTML brut ni lien non sûr ajouté, balises du glossaire en forme canonique : `serveur/edition.mjs#ANNONCE`), la mise à jour aussi
   (`scripts/mise-a-jour-regles.mjs#TEXTES_EN_MARKDOWN`, `texteNonSurApresLeRejeu`), et elle part en production avec la mise à jour (note de version :
   domaine Guide, groupe Découvrir, « Accueil › Notre prochaine rencontre IRL »). Ni création ni suppression d'annonce : le site place les siennes.
-- **Pages fusionnées** (2026-10-18, `PAGES_ABSORBEES`) : « Le jeu de rôle, comment ça marche ? » dans Bienvenue, les six étapes (« Étape 1 : imaginer son
-  personnage et choisir sa race » … « Étape 6 : finaliser son personnage ») dans Créer son personnage. Elles ne sont plus dans la base (retirées par
-  `db:sync-pages`, famille `docs`) ; `verifierLePlan` arrête le build si l'une revient. Leurs adresses — d'avant l'éclatement (`/guide/<slug>/`) et du plan
-  précédent (`/decouvrir/<slug>/`) — mènent à la page qui les absorbe, à l'intertitre où se lit leur contenu (`ANCRES_DES_PAGES_ABSORBEES` :
-  `#étape-5--choisir-ses-premiers-sorts`, `#le-jeu-de-rôle-comment-ça-marche-`… ; un intertitre renommé change l'ancre, `test/livres.test.mjs` et
-  `test/site-html.test.mjs` le vérifient), requête et ancre écrite gardées (`#une-ou-deux-classes--le-biclassage` reste une ancre de Créer son
-  personnage et l'emporte), comme `/decouvrir/campagne-ou-scenario-one-shot/` mène au Guide du MJ
-  (`ADRESSES_DU_PLAN_PRECEDENT` ; `/decouvrir/liens/`, l'ancienne page Liens, n'est plus renvoyée : « supprimer ce lien »).
+- **Pages fusionnées** (`PAGES_ABSORBEES`) : « Le jeu de rôle, comment ça marche ? » dans Bienvenue (2026-10-18) ; « Résistance/Faiblesse Magie »
+  dans « Résistances et faiblesses » et « Les situations avancées » dans « La prise en tenaille et zone d'influence » (R184, R185 (3)). Elles ne sont
+  plus dans la base ; `verifierLePlan` arrête le build si l'une revient. Leurs adresses mènent à la page qui les absorbe, à l'intertitre où se lit leur
+  contenu quand il est nommé (`ANCRES_DES_PAGES_ABSORBEES` : `#le-jeu-de-rôle-comment-ça-marche-` ; un intertitre renommé change l'ancre,
+  `test/livres.test.mjs` et `test/site-html.test.mjs` le vérifient), requête et ancre écrite gardées. Les six étapes de la création, fusionnées dans
+  « Créer son personnage » du 2026-10-18 à R184, sont redevenues des pages sous leur id (`/regles/<étape>/`).
+  « Les neuf alignements » est fondue dans « Alignement » (migration `0123`, demande du propriétaire : « font doublon. Réunis toutes les informations
+  dans la page /regles/alignement/ ») : `/regles/les-neuf-alignements/` (son adresse à plat, ajoutée aux renvois figés : `PAGES_DES_REGLES_ABSORBEES`),
+  `/guide/les-neuf-alignements/` et `/regles/avancees/les-neuf-alignements/` mènent à `/regles/alignement/#les-neuf-alignements` (ancre figée), l'ancre
+  écrite l'emportant (`/regles/les-neuf-alignements/#loyal-bon` → `/regles/alignement/#loyal-bon`).
+  « Accessoires et Ceinture » est fondue dans « Inventaire/Sac à dos » (migration `0124`, R272 : ses sections `{#accessoires}` et `{#ceinture}` passent telles
+  quelles à la fin de l'inventaire, que lit l'onglet Ceinture, `lib/ceinture-db.mjs#PAGE_DE_REFERENCE`) : `/regles/fiche-accessoires-et-ceinture/`,
+  `/guide/fiche-accessoires-et-ceinture/` et `/regles/avancees/fiche-accessoires-et-ceinture/` mènent à `/regles/inventaire-sac-a-dos/#accessoires` (ancre figée), l'ancre
+  écrite l'emportant ; `/regles/fiche-inventaire-sac-a-dos/` et `/regles/avancees/fiche-inventaire-sac-a-dos/` mènent à `/regles/inventaire-sac-a-dos/`.
+- **Des sections en onglets** : un groupe `::: onglets` écrit dans le texte, plus un déclenchement par l'ancre d'un intertitre (« Des onglets et des
+  couleurs dans un texte », plus bas). Sur « Alignement », la base écrit deux groupes (les quatre tendances, après « Les Quatre Tendances », puis les neuf
+  alignements, `### {couleur:alignement:loyal-bon} {{loyal-bon}} {#loyal-bon}`…) : demande du propriétaire, « Cette fois tu auras 2 tableaux ».
+- **Pages supprimées sans renvoi** (`PAGES_SUPPRIMEES`, R184 (9), R185 (6)) : « Les documents des règles », « En résumé : déroulement d'un tour »,
+  « Aide-mémoire », « Mode Hyper (Magie) » ; puis « Postures », « Les boss et leurs postures » et « Le Mode Super » (migration `0094`, demande du
+  propriétaire du 2026-11-06 : « inutile ou doublon » ; « Le Mode Hyper » reste), et la « Liste des effets mode hyper » (R187 (1), migration `0095`,
+  même jour : « Supprime la liste »), doublon de « Le mode hyper », qui porte maintenant ses tableaux (bloc `mode-hyper`) ; puis « Altérations
+  d'états et Mode Hyper » (migration `0096`, même jour : « L'onglet suivant est à retirer »), un aiguillage vers deux classeurs, doublon de
+  « Altérations d’états », « Liste des altérations d'état » et « Le Mode Hyper » : ses cinq liens visent `guide/alterations-d-etats` (Vigueur, dans
+  « Fiche de personnage : Compétences » et la compétence ; « Jet de dés » ; le sommaire du « Guide pour MJ - Maverick ») ou `guide/le-mode-hyper`
+  (« Fiche de personnage : Tableau Posture »), ses alias « Altérations d'états » et « Mode Hyper » ne sont reportés nulle part. Leurs adresses mènent à la page 404 ; `verifierLePlan` arrête le
+  build si l'une revient sans place, et leur id reste réservé (une page créée sur le site de dev prend un suffixe, `serveur/edition-plan.mjs#idPris`).
+  « Postures », la Liste et « Altérations d'états et Mode Hyper » sortent aussi des anciennes Règles avancées (`/regles/avancees/postures/`,
+  `/regles/avancees/liste-des-effets-mode-hyper/` et `/regles/avancees/alterations-d-etats-et-mode-hyper/` donnent la 404, comme
+  `/regles/avancees/mode-hyper-magie/`) ;
+  l'alias « Postures » nomme `guide/les-postures`, et les six postures gardent leur id `guide/postures#posture:…` (identifiants figés), rattachées à
+  `guide/les-postures`. L'ancienne section « Les boss et leurs postures » de « Les situations avancées » mène à la section « Les boss » de
+  `guide/les-postures` (`/regles/les-postures/#les-boss`, `PAGES_ECLATEES_DU_GUIDE`).
+- **Pages retirées dont le contenu se lit ailleurs** (`PAGES_RETIREES` : page retirée → `{ vers, adresses }`, adresses relatives à la racine du site) :
+  le Lexique, devenu des mots-clés (migration `0090`). Ses anciennes adresses (`regles/lexique/`, `guide/lexique/`) mènent à `vers` (`regles/glossaire/`, R190) par
+  la page 404 (`renvoisDuGuide`), requête et ancre d'origine gardées (`/regles/lexique/?q=AM` → `/regles/glossaire/?q=AM`, que le filtre du Glossaire lit), et un lien Markdown écrit vers
+  elles au rendu (`lib/livres.mjs#adresseDeLaPageRetiree`, appelée par `adresseDesAnciensLiens`) ; `verifierLePlan` arrête le build si la page revient
+  dans la base. Une page simplement effacée, sans renvoi (« Rejoindre une partie », « Liens »), n'y est pas : la page 404 la dit introuvable. Tests :
+  `test/livres.test.mjs`, `test/site-html.test.mjs`.
 - **Plus de champs `chapitre` ni `partie`** dans le frontmatter (migration `0064-guide-sans-chapitres`, registre de ce qui est parti dans
-  `data/migrations/0064-guide-sans-chapitres.json`, `test/guide-sans-chapitres.test.mjs`) : l'ordre, les groupes et leurs couleurs sont dans le plan,
-  contrôlé au build (`verifierLePlan` : une page nommée absente, d'exemple ou nommée deux fois arrête tout). Pour placer une page : la nommer dans
-  `lib/livres.mjs` (Découvrir, Les bases, Guide du MJ ou groupe des Règles avancées), sinon elle va d'elle-même dans « Autres pages de référence ».
-- **Les anciennes adresses** `/guide/` et `/guide/<slug>/` mènent aux nouvelles par la page 404 (renvois calculés au build, `lib/metiers.mjs#renvoisDuGuide`,
-  requête et ancre gardées). Un lien Markdown écrit à la main vers `/guide/<slug>/` mène à la nouvelle adresse au rendu — celle de la page qui l'absorbe
-  pour une page fusionnée, à son intertitre si le lien n'écrit pas d'ancre — (`lib/guide.mjs#adresseDesAnciensLiens`, `remarkAnciensLiensDuGuide`), sans que la base change, et garde l'adresse écrite en
-  `data-lien-ecrit` : un morceau de texte modifié sur le site de dev la réécrit telle quelle (`lib/markdown-edition.mjs#versMarkdown`), jamais l'adresse
-  du plan qu'il montre, qui changerait avec le plan. Vers une page du guide, un `[[lien]]` du wiki (`[[guide/les-postures|les postures]]`) suit la page
-  où que le plan la range.
+  `data/migrations/0064-guide-sans-chapitres.json`, `test/guide-sans-chapitres.test.mjs`) : l'ordre et les couleurs sont dans le plan, contrôlé au
+  build (`verifierLePlan`). Pour placer une page : l'ajouter à un onglet (table `regles_onglet_entree`), ou la nommer dans `lib/livres.mjs`
+  (Découvrir, Guide du MJ) ; une page rangée nulle part arrête le build.
+- **Les anciennes adresses** mènent aux nouvelles par la page 404, requête et ancre gardées, d'après des **listes figées** (pas de préfixe deviné) :
+  `/guide/` et `/guide/<slug>/` (renvois calculés au build, `lib/metiers.mjs#renvoisDuGuide`) ; les adresses des plans précédents
+  (`ADRESSES_DU_PLAN_PRECEDENT` : `/decouvrir/<étape>/` des six étapes, `/decouvrir/le-jeu-de-role/`, `/decouvrir/campagne-ou-scenario-one-shot/`,
+  `/regles/avancees/`, qui mène au Mode Hyper, chaque `/regles/avancees/<slug>/` relevée au commit 92a123d, et l'adresse tirée de l'id d'une page
+  de `ADRESSES_RENOMMEES_DU_GUIDE` : `/regles/liste-des-effets-mode-super/` mène à `/regles/mode-super/`, R228) ; les pages découpées en plusieurs,
+  selon l'ancre (`PAGES_ECLATEES_DU_GUIDE`, au format des pages éclatées de l'équipement, passées à la page 404 par `data-eclatees` sans leurs cibles
+  absentes, `pagesEclateesDuGuide` : une ancienne ancre dont la page manque mène à la page qui garde le reste, une page éclatée dont cette page manque
+  donne la 404) :
+  `/decouvrir/creer-son-personnage/` mène à `/regles/creer-son-personnage/`, et chacune de ses anciennes ancres d'étape (`#étape-5--choisir-ses-premiers-sorts`)
+  ou de sous-intertitre (`#une-ou-deux-classes--le-biclassage`) à la page de l'étape ; `/regles/avancees/situations-avancees/` et
+  `/guide/situations-avancees/` à la page de la tenaille, chaque ancienne section à sa page. Une page découpée qui garde son adresse (« Réussir une
+  action », « Le tour de jeu »…) n'a pas de script d'ancre : `test/guide.test.mjs` vérifie que chaque lien écrit vers une page du guide avec une ancre
+  mène à un intertitre existant. Un lien Markdown écrit à la main vers une ancienne adresse mène à la nouvelle au rendu — pages découpées d'abord,
+  puis `/guide/<slug>/`, les plans précédents, les pages fusionnées ou retirées — (`lib/guide-rendu.ts`, `lib/guide.mjs#adresseDesAnciensLiens`,
+  `remarkAnciensLiensDuGuide` : la version portable n'a pas de page 404), sans que la base change, et garde l'adresse écrite en `data-lien-ecrit` :
+  un morceau de texte modifié sur le site de dev la réécrit telle quelle (`lib/markdown-edition.mjs#versMarkdown`), jamais l'adresse du plan qu'il
+  montre, qui changerait avec le plan. Vers une page du guide, un `[[lien]]` du wiki (`[[guide/les-postures|les postures]]`) suit la page où que le
+  plan la range.
 - **Les blocs tirés de la base** : une ligne seule `<!-- guide:<bloc> -->` dans le Markdown (`BLOCS`, chacun appelé une fois dans tout le guide) est
   remplacée au rendu par un tableau lu dans la base (`lib/guide-db.mjs`, `components/guide/GuideBloc.astro`), sur toute page du guide : progression
-  (`niveau_global`), postures, compétences, initiative, ce que donne chaque magie, types de don, entraînement, personnages fil rouge… Plus de bloc
-  `sommaire` (demande du propriétaire du 2026-10-18 : « Dans la page de bienvenue, retire le sommaire ») : un marqueur inconnu arrête le rendu. Ne jamais
+  (`niveau_global`), postures, compétences, initiative, ce que donne chaque magie, types de don, entraînement, personnages fil rouge, et
+  `relations-des-magies` (le tableau « Relations entre magies » de `/magies/#relations`, par son composant `components/magie/TableauRelationsMagies.astro`,
+  juste après le premier paragraphe de « Résistances et faiblesses », R185 (4)), et `mode-hyper` (R187 (2), `chargerModeHyper`, dans « Le mode
+  hyper » sous « Ce qu'il donne ») : deux tableaux, sans intitulé au-dessus, chacun dans sa zone qui défile. Le premier, « Magie | Mono-Magie |
+  Bi-magie » (lecture `onglet_magie` de `mode_hyper_effet`, R172), a une ligne par magie dans l'ordre de la source, le nom du site en pastille de sa
+  couleur liée à sa page ; le Potentiel Illimité y tient une seule case sur les deux colonnes (`colspan="2"`), précédée de son intitulé en gras
+  « Forme Complète : ». Le second, « Race | Capacité | Effet » (lecture `onglet_race`, R13, R178), a une ligne par race, le nom lié à sa page. Les
+  effets sont tels quels : chaque ligne rendue comme une phrase de la base (`rendreLigne` : `[[liens]]`, typographie), les retours à la ligne gardés
+  (`<br />`), les balises `{{…}}` rendues par le middleware… Plus de bloc `sommaire` (demande du propriétaire du 2026-10-18 :
+  « Dans la page de bienvenue, retire le sommaire »), ni `magies` (la liste des 15 magies, qui quitte « L’univers » à sa refonte), ni `documents` (sa
+  page est supprimée, R184 (9)) : un marqueur inconnu arrête le rendu. Depuis R184, les blocs de la création sont dans la page de leur étape
+  (`fil-rouge-race` dans « Choisir sa race », `magie-bonus` et `fil-rouge-magie` dans « Choisir ses magies »…). Ne jamais
   recopier ces chiffres dans le texte. Les caractéristiques (cadre de leurs compétences, « +1 en … » d'une magie) et les postures y sont dans leur
   couleur (demande du propriétaire, `lib/caracteristiques-postures.mjs`, clés = ids de la base, testé : Force #FF6666, Volonté #FF99FF, Intelligence
   #66CCFF, Perception #FFCC00, Social #DDDDDD, Agilité #99FF66 ; Offensif #FF6666, Neutre #EEEEEE, Défensif #99FF99, Focus #9999FF, Vigilance #FFFF66,
@@ -1266,7 +1543,7 @@ dev (un commit la change) ni cherchée par la recherche.
   lui-même la feuille des postures. Un lien Markdown vers une rubrique s'écrit depuis la racine (`[les races](/races/)`) :
   le préfixe de déploiement est ajouté au rendu (`avecPrefixe`). Les couleurs des pages et les blocs sont dans `styles/guide/blocs.css`.
 - **Les textes de Découvrir et des Bases** (refonte du 2026-10-18, demande du propriétaire : « Prends chaque nouvelle page depuis le début à
-  recommencer entièrement ») : les seize pages, « Le Mode Hyper et le Mode Super » et la présentation du lien Discord sont réécrits de zéro à partir
+  recommencer entièrement ») : les seize pages (quatorze depuis que « Rejoindre une partie » et le Lexique sont retirés, 2026-11-05), « Le Mode Hyper et le Mode Super » et la présentation du lien Discord sont réécrits de zéro à partir
   de la base (tables, pages de référence importées des documents), des **originaux** de « Règle du jeu/Guide pour MJ - Maverick » et de « Créer sa
   fiche de personnage » et des décisions R1 à R105 ; quand un original diffère de la base, la page suit la base et les décisions, et l'écart est
   consigné pour le propriétaire (`docs/sql/a-valider.md` §6), jamais appliqué (R83). En réécrivant l'une d'elles : chaque fait vient d'une source
@@ -1274,17 +1551,21 @@ dev (un commit la change) ni cherchée par la recherche.
   renvoie), ni celui d'un tableau que la base n'a qu'en texte (la localisation des dégâts de « Attaque et défense ») ; vers une page du guide,
   `[[guide/<slug>|texte]]`, jamais un lien écrit vers `/guide/…` ; on vouvoie le lecteur ; le document « Règle du jeu/Guide pour MJ - Maverick » se
   nomme « le Doc « Guide pour MJ » » (lié une fois par page à sa page d'accueil, `guide/guide-pour-mj-maverick`), « Guide du MJ » étant la rubrique du
-  menu. Un bloc des personnages fil rouge se pose sous l'intertitre qu'il illustre : `fil-rouge` sous un `##` (ses personnages en `h3`), les autres
-  sous un `###` (la sous-section, ou « Nos quatre personnages » ; leurs personnages en `h4`). Quelques phrases sont **lues par le code** : la section
-  `## La ceinture` de « L'équipement » (les règles de l'onglet Ceinture de l'Équipement, `lib/ceinture-db.mjs`, avec le mot « emplacements »), le
+  menu. Un bloc des personnages fil rouge se pose sous l'intertitre `##` qu'il illustre (« Quatre personnages pour exemple », ou la section de son
+  étape : « Sa race », « Nos quatre personnages »…) ; ses personnages sont des `h3`, comme les groupes du bloc des compétences. Quelques phrases sont **lues par le code** : la section
+  `## La ceinture` de « L'équipement » (les règles de la page Ceinture, `/ressources/objets-a-la-ceinture/`, `lib/ceinture-db.mjs`,
+  avec le mot « emplacements »), le
   paragraphe de « S'entraîner et exercer un métier » qui écrit « case Entraînement » (l'aide du bloc Entraînement de la fiche,
   `lib/fiche-regles.mjs#aideDeLEntrainement`), « 37 ÷ 2 = 18,5, arrondi à **18 dégâts** » dans « Les dégâts » (R17, `test/guide.test.mjs`),
-  « **{{corruption}}** : son maximum est celui du {{chakra|chakra}} » dans « Créer son personnage » (`test/fiche-moteur.test.mjs`), le lien vers
+  « **{{corruption}}** : son maximum est celui du {{chakra|chakra}} » dans « Étape 6 : finaliser son personnage » (`test/fiche-moteur.test.mjs`), le lien vers
   l'onglet Boucliers de « L'équipement » (`test/equipement-html.test.mjs`), le titre « Bienvenue dans Maverick » et son alias « Guide du joueur »
-  (`test/serveur-edition-guide.test.mjs`), les intertitres « Le jeu de rôle, comment ça marche ? » de Bienvenue et « Étape 1 : … » à « Étape 6 : … » de
-  « Créer son personnage » (les ancres où mènent les pages fusionnées, `lib/livres.mjs#ANCRES_DES_PAGES_ABSORBEES`, `test/livres.test.mjs`), le
-  plafond de maîtrise d'arme (« 4 points », « 5 dés », « plafond ») dans la phrase des dés de maîtrise de « Créer son personnage », « L'équipement »,
-  « Aide-mémoire » et « Lexique », sans « et ainsi de suite » (R149, G40, `test/guide.test.mjs`) : les garder en modifiant ces pages.
+  (`test/serveur-edition-guide.test.mjs`), l'intertitre « Le jeu de rôle, comment ça marche ? » de Bienvenue (l'ancre où mène la page fusionnée,
+  `lib/livres.mjs#ANCRES_DES_PAGES_ABSORBEES`, `test/livres.test.mjs`), les sous-intertitres des six étapes et « La prise en tenaille » (les ancres
+  où mènent les anciennes adresses découpées, `PAGES_ECLATEES_DU_GUIDE`, `test/livres.test.mjs`), le premier paragraphe de « Résistances et
+  faiblesses », suivi du bloc `relations-des-magies` (`test/guide.test.mjs`), le plafond de maîtrise d'arme (« 4 points », « 5 dés », « plafond »)
+  dans la phrase des dés de maîtrise de « Étape 4 : répartir caractéristiques et compétences » et de « L'équipement », et dans la définition du
+  mot-clé « Maîtrise d'arme » (`maitrise-darme`, qui reprend la phrase de l'ancien Lexique, migration `0090`), sans « et ainsi de suite » (R149,
+  G40, `test/guide.test.mjs`) : les garder en modifiant ces pages et ce mot-clé.
 - **Les personnages fil rouge** (`lib/guide-fil-rouge.mjs`) : quatre pré-tirés (archer felfe Vide, mage rouge majin Feu, guerrier orios Sang, barde
   kitsune Vent). Seuls leurs choix y sont écrits (race, ethnie, magie, classe ; `nom` à venir) ; santé, chakra, barrière, maîtrises, équipement et
   emplacements de sorts sont lus dans la base et calculés comme la fiche automatique V15.2.2.
@@ -1296,8 +1577,8 @@ dev (un commit la change) ni cherchée par la recherche.
   (l'ancien devient un alias). À l'enregistrement, chaque morceau de texte modifié est réécrit en Markdown (`lib/markdown-edition.mjs`, aller-retour
   vérifié sur toutes les pages du guide par `test/markdown-edition.test.mjs`) : un morceau inchangé garde son écriture exacte.
 - **Couleur d'une case de tableau** : `{couleur:vert}` en tête de case (`| {couleur:vert} Réussite | … |`) ; couleurs : rouge, orange, jaune, vert,
-  bleu, violet, gris (`COULEURS_DE_CASE`). Le plugin `lib/markdown-couleurs.mjs` en fait l'attribut `data-couleur` (palette dans
-  `styles/global/wiki.css`) ; tout autre texte entre accolades reste tel quel.
+  bleu, violet, gris (`COULEURS_DE_CASE`). Le plugin `lib/markdown-couleurs.mjs` en fait l'attribut `data-couleur` et la classe de la palette
+  `couleur-case-<couleur>` (famille `case`, « Couleurs du site : la palette en classes ») ; tout autre texte entre accolades reste tel quel.
 
 ## Niveaux de maîtrise (NM) des sorts
 
@@ -1311,7 +1592,7 @@ en chakra qui baisse, portée, zone, dégâts / soins / barrière, effet seconda
   son écriture est sans ambiguïté. Un sort qui n'écrit aucun NM n'a aucune ligne.
 - **`sort.bonus_maitrise`** : la colonne « Bonus Maîtrise » de la table des sorts, la recopie lisible de ces lignes (une ligne « Coût : -5/NM » par bonus), accord contrôlé par `test/maitrise-sorts.test.mjs`.
 - **`v_sort_bonus_au_nm`** et `lib/sort-maitrise.mjs` (`applications`, `bonusAuNm`) : ce qui s'applique à un niveau de maîtrise donné (0 à 3), pour que la fiche de personnage détermine un sort d'après ses NM : `par_nm` = NM / `pas_nm`
-  fois, `palier` = 1 à partir de `seuil_nm`. La vue SQL et la fonction JavaScript disent la même chose (test d'accord sur les 322 sorts).
+  fois, `palier` = 1 à partir de `seuil_nm`. La vue SQL et la fonction JavaScript disent la même chose (test d'accord sur tous les sorts).
 - **Valeur à N NM** (`lib/sort-maitrise.mjs#valeurAuNm`, tableau des sorts de la fiche de personnage ; demande du propriétaire : la valeur calculée plutôt que
   « (+1/NM) ») : un bonus par NM entre parenthèses s'ajoute au terme qui le précède dans sa phrase quand ce n'est qu'un calcul (« 45 (-5/NM) » à 2 NM → 35 ;
   « 2d6 dégâts (+1d6/NM) » → 4d6 ; « 5d6 dégâts (+3/NM) » → 5d6 + 6 ; « 10d6 + 80 (+10/NM) » → 10d6 + 100) ; sinon il est écrit appliqué à la place de son
@@ -1383,14 +1664,20 @@ coupés sur deux cases, « Tenir ... » / « ... ou charger ? », sont voulus : 
 
 Demande du propriétaire du 2026-10-16 : « Le mot-clé devra désormais servir un peu comme un glossaire. Le mot-clé aura son ID, son texte et une
 description. Partout où un mot-clé est utilisé, il sera affiché en gras. Une infobulle de sa définition sera visible. » La table `mot_cle`
-(migrations `0043`, `0056`) est ce **glossaire** : un identifiant figé (tiré une fois du premier libellé), un libellé, son écriture (`libelle_cle`) et
-une **définition** (`description`, NULL tant qu'il n'est pas décrit). La migration `0056` a retiré les anciens mots-clés des pages : il reste ceux dont le
+(migrations `0043`, `0056`, puis `0113` à `0115`) est ce **glossaire** : un identifiant entier, figé, qui ne dit rien du mot-clé (décision R232 (1)) ;
+un **libellé**, qui n'est pas unique (R232 (4)) ; une **clé** (`cle`, celle que citent les balises et les adresses), recalculée : le slug du libellé,
+suivi, entre homonymes, des slugs de ses catégories qui ne sont pas communes à tous (« orios-race », « orios-classe » ; R232 (2)) ; des **catégories**
+(`categorie_mot_cle`, `mot_cle_categorie` : aucune, une ou plusieurs ; R232 (5)) ; des **synonymes** (`mot_cle_synonyme`, dans l'ordre : « IC », « Action
+rapide » pour Instant Cast ; les anciennes abréviations en sont devenues, R233 (7)) ; une **définition** (`description`, NULL tant qu'il n'est pas
+décrit) ; et les clés qu'il a quittées (`mot_cle_ancienne_cle` : une balise ou une adresse écrite avant un changement de clé mène encore à lui). La migration `0056` a retiré les anciens mots-clés des pages : il reste ceux dont le
 site se sert pour ranger ses pages (catégories de `/classes/`, « classe », « race », « race hybride », « capacité de classe », « métier », « codex ») et
-ceux du glossaire (Mordhau, Recharge longue, Recharge très longue, Solidité, Chakra, Barrière, Corruption, CR…). Un mot-clé peut aussi **étiqueter un
+ceux du glossaire (Mordhau, Recharge longue, Recharge très longue, Solidité, Chakra, Barrière, Corruption…), auxquels la migration `0090` a ajouté les
+entrées de l'ancien Lexique du guide (« CR » y est devenu l'abréviation de Corruption, aujourd'hui l'un de ses synonymes). Un mot-clé peut aussi **étiqueter un
 sort** (table `sort_mot_cle`, migration `0067`, décision R114) : « Sort grenade » (défini par le propriétaire « Type particulier de sort provoquant une
 explosion localisée ») est posé sur les 14 sorts « Grenade… », et la fiche de personnage reconnaît un sort grenade à cette étiquette, jamais à son nom ;
 de même « Sort fer » (migration `0079`, décision R164 : « Type de sort d'amélioration qui s'applique sur une arme. ») sur les 13 sorts « Fer… », que la
-fiche reconnaît pour « ... Brutale » ; « Sort grenade » et « Sort fer » sont protégés comme les mots-clés qui rangent les pages, et tout mot-clé qui
+fiche reconnaît pour « ... Brutale » ; « Sort grenade » et « Sort fer » sont verrouillés comme les mots-clés qui rangent les pages (voir « Gérer le
+vocabulaire »), et tout mot-clé qui
 étiquette un sort ne se supprime ni ne se fusionne depuis le
 site (`409`, avec les sorts : `serveur/edition-chronologie.mjs#verifierSansSort`) ; ces étiquettes se lisent dans l'API (`/api/v1/sorts/<id>/mots-cles/`),
 en lecture seule. « Solidité » (migration `0058`, demande du propriétaire du 2026-10-17 :
@@ -1405,47 +1692,83 @@ propriétaire ; « durabilité » n'est plus écrit nulle part sur le site (sauf
 | `{{non-mort\|non-morts}}` | **non-morts** (le texte écrit), en gras, la définition du mot-clé en infobulle |
 | `{{mordhau:}}` | le **mode complet** : « **Mordhau** : définition », dans le fil du texte (la définition vient du glossaire et la suit) ; `{{mordhau :}}` (une espace avant les deux-points) est la même balise |
 
-- Dans une saisie, la ref est l'**id** du mot-clé ou son **écriture**, **quelle que soit la casse** : `{{Recharge longue}}`, `{{recharge longue}}` et
-  `{{recharge-longue}}` citent le même mot-clé. **La casse écrite est gardée** (demande du propriétaire du 2026-10-17 : « que ça soit insensible à la
-  casse ») : `{{solidité}}` s'affiche « solidité », `{{Solidité}}` « Solidité » ; l'id, ou le libellé écrit tel quel, affiche le libellé (et suit ses
-  renommages). Une écriture autre que le libellé est enregistrée comme un texte écrit : `{{solidité}}` devient `{{solidite|solidité}}`. La balise à copier est écrite à côté
-  de chaque mot-clé sur `/recherche/` en mode modification. **La base ne garde que des ids** : le service enregistre la forme canonique (ci-dessous) et
-  `db:check` refuse toute autre écriture (même règle), sauf le libellé écrit en texte dans un texte mis en forme (`{{id|Libellé}}`, que le service
-  ramène à `{{id}}` : le corps d'une page typée l'écrit, un renommage peut en faire un).
+- Dans une saisie, la ref est la **clé** du mot-clé, son **libellé** (quand un seul mot-clé le porte) ou l'un de ses **synonymes**, **quelle que soit
+  la casse** (décisions R232 (3), R233 (1), (10)) : `{{Recharge longue}}`, `{{recharge longue}}` et `{{recharge-longue}}` citent le même mot-clé ;
+  `{{IC}}`, `{{ic}}`, `{{Action rapide}}` et `{{instant-cast}}` aussi. Une clé qu'il a quittée le désigne encore, en dernier. **Le libellé de deux
+  homonymes est ambigu** (R232 (4)) : `{{Orios}}` est refusé, on écrit la clé, `{{orios-race}}` ou `{{orios-classe}}`. **La casse tapée est gardée**
+  (R233 (10), « Garder la casse tapée, incluant les synonymes et abréviations ») : une écriture autre que la clé ou le libellé exact est enregistrée comme
+  le texte affiché — `{{solidité}}` devient `{{solidite|solidité}}`, `{{ic}}` devient `{{instant-cast|ic}}` (il s'affiche « ic »), `{{Action rapide}}`
+  devient `{{instant-cast|Action rapide}}` ; la clé, ou le libellé écrit tel quel, affiche le libellé (et suit ses renommages). La règle d'avant (une
+  abréviation enregistrée comme la base l'écrit, `{{cr}}` → `{{corruption|CR}}`, R183 (2)) est abandonnée pour les nouvelles saisies ; les textes déjà en
+  base ne changent pas. La balise à copier est écrite à côté de chaque mot-clé sur le Glossaire (`/regles/glossaire/`) en mode modification. **La base
+  ne garde que des balises par la clé**, `{{clé…}}` : le service enregistre la forme canonique (ci-dessous) et `db:check` refuse toute autre écriture
+  (même règle), sauf le libellé écrit en texte dans un texte mis en forme (`{{clé|Libellé}}`, que le service ramène à `{{clé}}` : le corps d'une page
+  typée l'écrit, un renommage peut en faire un).
 - **Dans une case de tableau Markdown**, le séparateur s'écrit `\|` : `| Arbalète | {{recharge-longue\|à recharger}} |` (sinon la case s'arrête au
   `|` ; le service réécrit un `|` en `\|` sur une ligne de tableau). Le texte d'une balise est du **texte simple** : ni gras, ni lien, ni accolade, ni
   retour à la ligne dedans.
 - **Partout** : corps des pages du guide et du Codex, descriptions de la chronologie, textes des tables (effet d'une arme, rubrique d'une carte de
   monstre, effet d'un don, description d'une capacité de monstre…), blocs des panneaux de règles, définition d'un autre mot-clé (citée en texte simple).
   Le site les rend à la construction (`src/middleware.mjs`, `lib/mots-cles-balises.mjs`) : une bulle par mot-clé et par page, posée en fin de page ;
+  un mot-clé qui a une adresse est un **lien** (`a.mot-cle`, l'adresse préfixée de la base du site ; « Liens entre pages »), sans adresse il n'est pas
+  cliquable ; un mot-clé sans définition est en gras, sans bulle (et cliquable s'il a une adresse : réponse Q11) ; un mot-clé coloré porte la classe de
+  sa couleur (« Couleurs du site ») ; dans un lien, un bouton, un résumé, une étiquette, une liste ou une bulle, pas de lien (le gras seul) ;
   dans une bulle, un mot-clé est en gras sans bulle ; dans un bouton ou un résumé de `details`, en gras sans bulle (le toucher ferait l'action) ; dans un
   `title`, un `alt`, une description de page ou un attribut lu par un script, le texte simple. Rien n'est rendu dans le code (`code`, `pre`, ni dans
   leurs attributs), ni sur `/donnees/`, ni dans les textes d'aide du mode modification et la page Debug (les valeurs telles qu'écrites,
-  `data-mots-cles-bruts`). Les monnaies ne lisent aucun montant dans une balise (`{{x|10 RO}}` reste écrit). La fiche de personnage n'en garde que le
+  `data-mots-cles-bruts`). Le passage des monnaies sur le Markdown ne lit aucun montant dans une balise (`{{x|10 RO}}` reste écrit, entier) ; au rendu, le texte affiché de la
+  balise a ses monnaies en icônes et un montant s'y décompose comme ailleurs (R183 (12), « Décomposer comme ailleurs » : `{{prix-fixe|1245,5 RO}}`
+  montre « 1 [PP] 245 [RO] 50 [RF] ») ; dans un attribut ou une `<option>`, le texte simple, comme le texte courant. La fiche de personnage n'en garde que le
   texte affiché (le texte écrit, ou le libellé ; jamais la définition), l'index de la recherche le texte simple (« Libellé : définition » pour le mode
-  complet) ; `/recherche/?mot-cle=<id>` liste aussi les pages qui **citent** un mot-clé.
-- **Forme canonique** (celle que le service du site de dev enregistre) : la ref est toujours l'id, et selon la colonne :
+  complet) ; `/recherche/?mot-cle=<clé>` liste aussi les pages qui **citent** un mot-clé.
+- **Valeurs fermées** (migration 0125, demande du propriétaire : lier aux mots-clés du glossaire, « si ils existent », les types de dégâts et les magies) : les
+  pages affichent la valeur comme une balise, en gras, la définition du mot-clé en infobulle, un lien quand il a une adresse (le rendu d'un `{{clé|texte}}`,
+  écrit par `lib/valeurs-fermees-rendu.mjs` d'après le champ `liens` des lecteurs, `lib/mots-cles-des-valeurs.mjs`, et rendu comme les autres balises : middleware
+  au build, `mots-cles-vivants` sur le site de dev). Une magie s'affiche par son nom court (« Feu », l'infobulle de « Magie du Feu ») ; `feu`, `eau`, `glace`
+  d'un type de dégâts suivent leur magie ; une valeur sans mot-clé (physique, sonore) ou une page sans `liens` garde son libellé nu. Où : types de dégâts des
+  armes (pastilles Taille, Estoc, Frappe, et la magie d'une arme élémentaire), des armures (résistance et faiblesse), cibles écrites et magies d'une créature
+  invoquée (carte et tableau du Bestiaire), résistances physiques, magies citées et « même nom dans une autre magie » des pages de magie. Jamais un texte libre
+  (effets, descriptions, `*_brut`). Sur la pastille pleine d'une magie (`.arme-dgt--magie`, `.bmagie`) et dans une pastille `.chip`, le mot-clé garde le texte de
+  la pastille, pas sa teinte. **Pages de race** : les magies innées (pastilles « disponibles » et « non disponibles » de `RacePage.astro`, de `MagiesDeRace.astro`,
+  en-têtes du tableau de `/races/` : `TableauMagiesInnees.astro`) sont liées à leur magie par son nom court, la pastille gardant son lien vers la page de la magie
+  (la bulle du mot-clé remplace l'infobulle du nom de page) ; les `liens` sont ceux de `loadMagies()` (`lib/magies.ts`). `classe.magie_innee_id` n'est affiché que par
+  la fiche. **Fiche** : le type de dégâts choisi d'une arme élémentaire (la bombe) est en gras avec l'infobulle de son mot-clé dans le résumé « Arme » (voir
+  `docs/character-generator.md`) ; les commandes de la fiche (listes, `<select>`, pastilles de choix, `<optgroup>`, `title`) restent sans lien (réponse du
+  propriétaire : une balise ne s'y rend pas). Non liés : la carte d'un monstre (ses cibles sont lues d'un texte), la carte d'une créature dans une infobulle de
+  page de magie, les matrices de magies, les champs des éditeurs du mode modification (la section des magies innées d'une race, redessinée après une
+  modification, garde ses liens aussitôt : `scripts/edition/races.mjs#htmlMagies` lit `ed.listes.liens`).
+- **Forme canonique** (celle que le service du site de dev enregistre) : la ref est toujours la clé, et selon la colonne :
   - un **texte mis en forme** (Markdown : corps des pages du guide et du Codex, descriptions de la chronologie, blocs des panneaux de règles) garde
-    `{{id}}` (le texte affiché suit le libellé : un renommage se voit partout), écrit `{{id|texte}}` si un autre texte que le libellé est écrit (le
-    libellé écrit en texte redevient `{{id}}`), et permet le mode complet `{{id:}}`. Une balise dans un **code** (`` `{{id}}` ``, bloc ` ``` ` ou `~~~`) est
+    `{{clé}}` (le texte affiché suit le libellé : un renommage se voit partout), écrit `{{clé|texte}}` si un autre texte que le libellé est écrit (le
+    libellé écrit en texte redevient `{{clé}}`), et permet le mode complet `{{clé:}}`. Une balise dans un **code** (`` `{{clé}}` ``, bloc ` ``` ` ou `~~~`) est
     une écriture littérale : ni mise en forme, ni refusée, ni rendue ;
-  - un **texte de case** (cases, effets, descriptions des tables, définitions des mots-clés) porte toujours le texte de sa balise, `{{id|texte}}` (le
+  - un **texte de case** (cases, effets, descriptions des tables, définitions des mots-clés) porte toujours le texte de sa balise, `{{clé|texte}}` (le
     libellé du moment si rien n'est écrit) : un découpage le lit **sans le vocabulaire** (« Recharge longue » d'un effet d'arme donne toujours la
     recharge longue, quel que soit le libellé du mot-clé). Le mode complet y est **refusé** (« le mode complet ne s'écrit que dans un texte mis en
     forme »). Une case découpée et affichée morceau par morceau (bonus et objets d'un métier, inventaire d'une classe, lieux d'une espèce) garde la
     balise de chaque morceau, que le site met en gras.
-- **Refusés** à l'enregistrement : une balise dont la ref n'est pas un mot-clé, et une ref **ambiguë** (l'id d'un mot-clé et l'écriture d'un autre : un
-  mot-clé renommé dont l'id est devenu l'écriture d'un nouveau ; préciser l'id voulu) — sauf si le texte l'avait déjà ; au rendu, une ref inconnue (texte
-  d'avant la suppression de son mot-clé) s'affiche en texte simple.
-- **Renommer** un mot-clé ne réécrit aucun texte : un texte de case garde le texte écrit de ses balises, un texte mis en forme montre le nouveau libellé.
-  Le **supprimer** remplace chacune de ses balises par son texte simple (« Libellé : définition » pour le mode complet), partout ; le **fusionner** dans
-  un autre les fait citer l'autre (un texte de case garde le texte qu'il montrait). À la livraison (rejeu du journal), cela vaut aussi pour les textes
-  que le site de dev n'avait pas (pages d'exemple, textes reçus depuis) ; la cible d'une fusion y est reconnue aux étiquettes ou aux balises que le lot a
-  reportées (sinon les balises sont retirées). Dans l'éditeur en place du mode modification (guide, Codex, chronologie, panneaux de règles), les
-  mots-clés s'affichent **en balises écrites**, comme dans le Markdown (demande du propriétaire du 2026-10-17 : « Quand je passe en mode édition le
-  texte devrai remettre le texte en mode Markdown […] je ne vois pas {{Recharge Longue}} ») : on les lit, les tape et les modifie comme le reste du
-  texte ; ils ne sont rendus (gras, infobulle, mode complet) qu'une fois enregistrés. Ses outils « Mot-clé » et « Définition » écrivent la balise du
-  mot-clé choisi à la place du texte choisi (`{{id}}`, `{{id|texte}}`, `{{id:}}`), ou, le curseur dans une balise, en changent le mot-clé.
+- **Refusés** à l'enregistrement : une balise dont la ref n'est pas un mot-clé, et une ref **ambiguë** (le libellé que portent plusieurs homonymes,
+  R232 (4) : le refus nomme leurs clés, à écrire à la place) — sauf si le texte l'avait déjà ; au rendu, une ref inconnue (texte d'avant la suppression
+  de son mot-clé) s'affiche en texte simple.
+- **Les synonymes** (R233) servent à la saisie d'une balise, à la recherche et à l'affichage (« Aussi appelé ») ; la clé n'en dépend pas. Un synonyme est
+  **unique** (R233 (4)) : il contient une lettre ou un chiffre, n'a ni espace autour, ni `{`, `}`, `|`, saut de ligne, ni `:` final (`{{AM:}}` serait le
+  mode complet) ; une fois normalisé, il n'est ni le libellé de son propre mot-clé, ni le libellé, la clé ou un synonyme d'un autre mot-clé.
+  `db:check` le contrôle et le service le refuse par la même règle (`lib/mots-cles-balises.mjs#fautesDuSynonyme`) ; un mot-clé créé ou renommé ne prend
+  pas non plus l'écriture d'un synonyme d'un autre (`synonymesPris`). Ceux d'un mot-clé verrouillé ne se modifient pas (R233 (6)).
+- **Renommer** un mot-clé, **changer ses catégories**, renommer une catégorie qu'il porte, ou **faire apparaître ou disparaître un homonyme**
+  **recalcule sa clé** (R232 (2)) : quand elle change, chaque balise qui la citait est réécrite vers la nouvelle, dans tous les textes de la base, ceux
+  d'un mot-clé verrouillé compris (R232 (3), (11) ; le texte écrit, le séparateur et le mode complet restent), et la clé quittée est gardée
+  (`mot_cle_ancienne_cle`) ; les adresses déjà partagées changent, « c'est voulu ». Un homonyme sans catégorie propre face à chacun des autres, ou dont
+  la clé serait déjà prise, est refusé (R232 (9), (10)). Un texte de case garde le texte écrit de ses balises, un texte mis en forme montre le nouveau
+  libellé. Le **supprimer** n'est possible que si rien ne le mentionne (R196), sauf en forçant (R223 : chaque balise devient son texte affiché, en texte
+  simple) ; le **fusionner** dans un autre les fait citer l'autre (un texte de case garde le texte qu'il montrait). À la livraison (rejeu du journal),
+  cela vaut aussi pour les textes que le site de dev n'avait pas (pages d'exemple, textes reçus depuis) ; la cible d'une fusion y est reconnue aux
+  étiquettes ou aux balises que le lot a reportées (sinon les balises sont retirées). Dans l'éditeur en place du mode modification (guide, Codex,
+  chronologie, panneaux de règles), les mots-clés s'affichent **en balises écrites**, comme dans le Markdown (demande du propriétaire du 2026-10-17 :
+  « Quand je passe en mode édition le texte devrai remettre le texte en mode Markdown […] je ne vois pas {{Recharge Longue}} ») : on les lit, les tape
+  et les modifie comme le reste du texte ; ils ne sont rendus (gras, infobulle, mode complet) qu'une fois enregistrés. Ses outils « Mot-clé » et
+  « Définition » écrivent la balise du mot-clé choisi, par sa clé, à la place du texte choisi (`{{clé}}`, `{{clé|texte}}`, `{{clé:}}`), ou, le curseur
+  dans une balise, en changent le mot-clé.
 - **Ce qui n'est pas un mot-clé** : une capacité (de monstre, de classe) ou une altération d'état qui porte le nom d'un mot-clé reste la capacité ou
   l'état (le Non-mort, type de monstre ET capacité de monstre : la tuile de capacité n'est jamais un mot-clé) ; seule une balise fait un mot-clé. Les
   valeurs « {N} » des capacités communes (une accolade : `{{12}}` est une balise, jamais un emplacement) et la couleur de case « {couleur:x} » ne sont
@@ -1488,35 +1811,219 @@ balise retirée sans être reposée et chaque balise nouvelle (`changements`, av
 exclusion ou un contexte qui ne se lit dans aucun texte relu, un texte de `horsDe` ou de `sauf` qui n'en désigne aucun ; les écritures exclues du Codex,
 gardées de la première entrée, le sont tant que le Codex n'est pas balisé). Le texte affiché ne change pas ; une colonne que le service tire d'un texte
 réécrit peut, elle, changer si l'import l'avait écrite autrement (le contexte du bonus de maîtrise de « Fouet ténébreux », visible sur `/donnees/`). La
-**Corruption** (la jauge : sa définition résume « Fiche de personnage : Attributs », « Étape 6 », l'explication de sa magie et les décisions R141 à R143 et R146) et **CR** (« Si CR » : si
+**Corruption** (la jauge : sa définition résume « Fiche de personnage : Attributs », « Étape 6 », l'explication de sa magie et les décisions R141 à R143 et R146) et **CR** (devenu l'abréviation de Corruption : migration `0090`, réponse du propriétaire « Fusionner dans Corruption » ;
+ses balises citent `corruption` en gardant le texte « CR » ; « Si CR » : si
 le sort est lancé en utilisant la corruption, décision R103 ; dans le coût, la corruption à dépenser ; dans les dégâts, soins ou barrière ou les effets, la corruption que reçoit la cible, le sort de soin Retrait en retire, R140 ; « CR » balisé partout où il s'écrit, jamais « cr ») sont balisés ainsi. Un import ne pose jamais un mot-clé
 homonyme d'une magie (`tools/db/homonymes.py#MAGIES_HOMONYMES`, lu par `tools/docs/codex.py`, `tools/sheets/magies.py` et `invocations.py`) : ni un
 temple du Codex, ni la page de la magie, ni une créature invoquée de la Corruption ne reçoit le mot-clé « Corruption » de sa magie (le mot-clé est la
 jauge ; un homonyme n'est jamais lié implicitement).
 
-Chaque mot-clé a son adresse, `/recherche/?mot-cle=<id>` (son libellé, sa définition, puis les pages qui le portent ou le citent) ; renommé, il garde son
-adresse. La page Recherche est le glossaire : tous les mots-clés, même sans page, chacun avec l'infobulle de sa définition. Sur le site de dev, en mode
-modification, elle crée (avec sa définition), renomme, fusionne et supprime un mot-clé ; les mots-clés dont le site se sert ne se renomment ni ne se
-suppriment, leur définition se modifie. Une page créée depuis le site ne porte que ces mots-clés-là. Les événements de la chronologie n'ont pas
-d'étiquette (« trop nombreux et trop libres », demande du propriétaire) mais des **catégories**, un vocabulaire à part (voir « Chronologie ») ; leurs
-descriptions peuvent citer des mots-clés.
+Chaque mot-clé a la liste de ses pages, `/recherche/?mot-cle=<clé>` (son libellé, sa définition, puis les pages qui le portent ou le citent) ; sa clé
+suit son libellé et ses catégories (R232 (3)), et une clé qu'il a quittée y mène encore. Les pastilles du pied d'une page et de `/recherche/` y mènent toujours, jamais à l'adresse du mot-clé (réponse Q12).
+
+**Le Glossaire** (`/regles/glossaire/` ; réponses du propriétaire du 2026-11-06, Q6 et Q7 : une entrée « Glossaire » dans le menu Règles, après
+Exploration, une page seule ; le Lexique y mène) : le **tableau** de **tous** les mots-clés, avec ou sans définition (décision R234 : « dans le même style
+que les autres », le gabarit commun des tableaux, `components/Tableau.astro`). Un mot-clé y est un `<tbody>` de deux lignes : la sienne, en cinq
+colonnes — **son icône** seule, dans une colonne étroite, en premier (décision R235 (2) ; vide sans icône), **ses noms** (le libellé seul, en gras, R233 (9) ; puis « Aussi appelé : … », tous ses synonymes, l'ancienne abréviation comprise, R233
+(8)), **ses catégories** (leurs libellés, dans l'ordre de leur id, R232 (5)), **son lien** (le titre de la page où mène son adresse, en lien ; l'adresse
+brute quand elle ne mène à aucune page de la base, une route ou une rubrique : réponse T5, `lib/mots-cles-db.mjs#pagesDesLiens`) et **ses pages** (un
+menu déroulant des pages qui le mentionnent : ses mentions au sens de R196, étiquettes et balises, une ligne par page, sans doublon,
+`lib/mots-cles-balises.mjs#pagesDesMentions` ; « Seulement les pages » : le menu ne liste que les pages où l'on peut aller, en lien, et le total au
+résumé ne compte qu'elles, une page d'exemple en italique ; « Aucune page » sinon ; réponse T2 : il remplace l'ancien nombre et l'ancien lien vers
+`/recherche/` ; le menu des mentions du mode modification, lui, les garde toutes) — puis **sa définition**, dans une ligne pleine
+largeur sous la sienne (réponse T3 : « dans une ligne en plus au sein de la ligne du tableau » ; balises rendues, monnaies en icônes, R63 ; « Pas encore
+de définition. » sinon). Un mot-clé **coloré** a ses deux lignes en ligne colorée du gabarit, le fond à peine teinté et le **liseré** de sa couleur à
+gauche, comme les matériaux des armes (R234 (1) ; `tr.ligne-couleur` et la classe de sa couleur) ; les deux lignes se survolent ensemble. Une ligne :
+`lib/mots-cles-balises.mjs#htmlDeLaLigneDuGlossaire`, le même HTML au build et dans l'extension de l'éditeur. **Deux filtres** (R234 (4)) : le texte
+(libellé, synonymes, définition, sans casse ni accents ; `?q=` dans l'adresse) et la **catégorie** (une liste déroulante : toutes, « Sans catégorie »,
+les mots-clés à classer, puis chaque catégorie) ; ils se combinent : `src/scripts/glossaire.mjs`, qui n'importe que `lib/glossaire-filtre.mjs`. Le **nom** d'un mot-clé est son libellé
+seul (R233 (9)), dans le titre de sa bulle, sa pastille de `/recherche/` (« Armure magique · 3 » ; sans page, pas de nombre) et le titre de sa vue
+(`lib/mots-cles-balises.mjs#htmlDuNomDuMotCle`, `htmlDeLaPastille`, `htmlDeLaBulle`) ; sa bulle porte ensuite « Aussi appelé : … » quand il a des
+synonymes (`{{AM}}` montre « AM », sa bulle dit « Armure magique », puis « Aussi appelé : AM »). Deux **homonymes** (R232 (4) : la race et la classe
+raciale « Orios ») s'affichent sous le même libellé sur toutes les pages, plus de suffixe « (classe) » (R191 remplacée) ; leurs clés les distinguent.
+**L'icône** d'un mot-clé (`mot_cle.icone`, migration `0116`, décision R235 : une icône de la liste du site, `lib/icones.mjs`, celles des
+trois monnaies, que le RF, le RO et la PP ont reçues, puis celles des types de dégâts physiques — épée, flèche, marteau — et des quinze magies : le dessin prend la
+couleur de sa classe de la palette (`couleur-magie-<id>`, `couleur-degats-<id>`, les couleurs des pastilles de type des armes : « Couleurs des armes », 2026-11-14), sur chaque
+page (`FAMILLES_DE_CHAQUE_PAGE`) ; le propriétaire les attribue lui-même sur le site de dev, « Liste seulement » ; dessins : `styles/global/icones.css`) suit son nom partout où il apparaît : dans le texte d'une balise (après le texte affiché, sauf s'il
+montre déjà ce dessin : `{{ricken-dor|RO}}` est l'icône elle-même), le nom du mode complet, le titre de sa bulle, sa pastille et sa vue de
+`/recherche/` (« Libellé + icône », R63 ; `lib/mots-cles-balises.mjs#htmlDeLIcone`) ; l'affichage passe par `icone`, plus par `monnaie_id`. Dans le
+tableau, l'icône a sa colonne, et le nom est le libellé seul. L'abréviation de sa propre monnaie n'est jamais un « Aussi appelé » (R234 (8), R235 (4)). Le texte affiché d'une balise et la définition du mode complet ont aussi leurs monnaies en icônes (R63,
+R183 (9) : « R63 est respectée partout ») : `{{RO}}` montre l'icône du Ricken d'or ; un montant écrit dans une balise se décompose comme ailleurs
+(R183 (12) : `{{prix-fixe|1245,5 RO}}` montre « 1 [PP] 245 [RO] 50 [RF] » ; `htmlDeLaBalise`). La définition que montre la vue d'un mot-clé de
+`/recherche/` est rendue au build (`#definitions-des-mots-cles`, `[data-definition-de]` par l'id du mot-clé : `htmlDeLaDefinition`, monnaies en icônes,
+balises rendues par le middleware) ; le script de la page la recopie sans lire aucune monnaie (il n'importe pas `lib/monnaies.mjs`). Le mode complet
+(`{{clé:}}`) garde « **Libellé** : définition ». La recherche de `/recherche/` trouve un mot-clé par son libellé **ou** l'un de ses synonymes (« AM »
+trouve « Armure magique » : `lib/search.mjs#cleDeRecherche`) ; son adresse `?mot-cle=<clé>` cite sa clé, et une clé qu'il a quittée (un renommage, un
+homonyme apparu, un ancien id texte d'avant la migration `0113`) y mène encore (`lib/recherche-mots-cles.mjs#idDeLaCle`) ; elle ne gère plus le
+vocabulaire.
+
+**Gérer le vocabulaire** (site de dev, mode modification du Glossaire ; `src/scripts/edition/mots-cles.mjs` ; R234 (5), réponse T6 : l'édition dans la
+ligne du tableau) : au crayon, chaque mot-clé devient une ligne de gestion, dans les colonnes du tableau — ses noms : la **balise à copier** (sa clé,
+« {{clé}} »), son **libellé** et ses **synonymes** (une liste ordonnée, un par ligne ; R233 : l'ordre est gardé, une écriture répétée ne compte qu'une
+fois) ; ses **catégories** (une case à cocher par catégorie, choix multiple) ; son **adresse** (« Lien » : interne, `/races/humain/` ; vidée, NULL) ; ce
+qui le porte, le menu de ses mentions et ses outils, et, en première colonne, son **icône** (un choix dans la liste des icônes du site, `icones` de
+`GET /api/edition/mots-cles/` et de `GET /api/edition/listes/` ; vidée, NULL ; R235) — puis, dessous, sa **couleur** (réponses Q3 et Q4 : deux sélecteurs, la liste des couleurs du site —
+toutes les familles de la palette, groupées, chaque couleur nommée par son élément de référence, « Feu », « Chakra », « Mythril » :
+`lib/glossaire-couleurs.mjs`, que la page donne en `data-couleurs` — et un cercle, `<input type="color">`, qui donne une couleur écrite `#rrggbb` ;
+enregistrée en `famille:id` ou `#rrggbb` ; vidée, NULL) et sa **définition**. « + Ajouter un mot-clé » le crée tout de suite, avec sa définition, son
+adresse, sa couleur, son icône, ses catégories et ses synonymes. On le **renomme**, le **fusionne**, le **supprime**, ou on **force** sa suppression (R223,
+ci-dessous). Un renommage vers le libellé d'un autre mot-clé fait deux **homonymes** quand chacun a une catégorie propre face à l'autre (R232 (9) ; les
+cases cochées dans le même lot comptent) ; sinon, la page propose de les fusionner, et un refus laisse le lot non enregistré. **Les catégories** se
+gèrent au-dessus du tableau (R232 (5)) : chacune se renomme (saisie commune), se **supprime si elle est vide** (aucun mot-clé ne la porte : « Supprimer »
+n'est offert qu'alors, mis en file) ; « + Ajouter une catégorie » la crée tout de suite et l'ajoute, non cochée, aux cases de chaque mot-clé. Le lot part
+dans un ordre que le service accepte (`lib/mots-cles-edition.mjs#operationsDuVocabulaire`) : fusions, suppressions, suppressions forcées, catégories des
+mots-clés (`categories_mot_cle`, avant les renommages, pour qu'un homonyme ait déjà ses catégories distinctives), renommages et autres champs, synonymes
+(`synonymes_mot_cle`), catégories supprimées. Un refus du service (400 ou 409, avec `champ` : `categories` pour un homonyme sans catégorie distinctive,
+`libelle` pour une clé déjà prise, `synonymes` pour un synonyme mal écrit ou pris par un autre mot-clé) s'affiche comme tout refus du lot. Chaque
+mot-clé a un **menu déroulant des endroits qui le mentionnent** (décision R196 (2) : une page qui le porte ou dont un texte le cite par une balise, en
+lien ; un texte qu'aucune page ne montre, par sa table et sa ligne ; les pages d'exemple comptent), et **« Supprimer » n'est offert que si cette liste
+est vide** (R196 : un mot-clé mentionné ne se supprime pas, le service refuse en `409` avec la liste ; plus rien n'est retiré des pages ni des textes,
+sauf en forçant : ci-dessous). La fusion, elle, reporte ses mentions sur l'autre mot-clé ; la petite boîte « Fusionner dans… » propose chaque cible par
+son libellé, ou par sa clé quand des homonymes partagent ce libellé ; elle ne propose pas un mot-clé verrouillé quand la source a au moins un synonyme
+(R233 (11), « Refuser la fusion » : le service répond `409`, `champ: 'synonymes'`), mais le propose quand elle n'en a pas. Un mot-clé **verrouillé** (`mot_cle.verrou`, migration `0110` ; décisions R218,
+R219) ne se modifie ni ne se supprime depuis le site : aucun de ses champs (libellé, définition, synonymes (R233 (6)), adresse, couleur, icône (R235 (5))), ni sa
+suppression, même sans mention, ni sa fusion dans un autre ; **ses catégories, si** (R232 (11) : elles ne sont pas couvertes par le verrou) ; il se pose
+encore sur une page et s'en retire, se cite par une balise et **reçoit la fusion** d'un autre mot-clé, sans en prendre l'adresse ni la couleur. Sont
+verrouillés les mots-clés qui mènent à une page (leur adresse), ceux des monnaies (RF, RO, PP), des races, des magies et des classes, et ceux dont le site
+se sert pour ranger ses pages ou reconnaître un sort (`lib/mots-cles.mjs#MOTS_CLES_PROTEGES` ; « race hybride » est créé verrouillé avec la première race
+hybride, R220 (2)) ; un mot-clé créé ensuite ne l'est pas (R219 (5)). Le verrou ne change que par une migration (aucune route ne l'écrit ; un rôle
+d'admin pourra le changer « à l'avenir »). En mode modification, sa ligne a un **cadenas**, ses champs et ses synonymes sont désactivés et la raison est
+en infobulle (R219 (7)), avec le texte « Verrouillé : ni modification ni suppression sur le site (R218). » ; il n'a ni « Supprimer » ni « Fusionner
+dans… », mais il est proposé comme cible d'une fusion et garde son menu des mentions. Hors du mode modification, rien ne le distingue. Une page vers
+laquelle mène un mot-clé verrouillé ne se supprime pas sur le site, et l'adresse du mot-clé n'est jamais vidée (R221). Un mot-clé que cite une balise de
+la définition d'un mot-clé verrouillé, celle de la cible comprise, ne se fusionne pas tant qu'elle le cite : la définition verrouillée n'est pas réécrite
+(R222 (1) ; le service refuse en `409` avec la liste de ces mots-clés) ; un mot écrit sans balise ne compte pas. Les autres mots-clés se modifient tous,
+libellé compris (R195). La page et l'extension ne se parlent que par l'évènement `glossaire:mots-cles` (`detail.gestion` : la gestion est affichée ;
+`detail.categories` : les catégories, pour la liste du filtre) et les `tbody[data-id][data-cle][data-n][data-libelle]`, plus `data-synonymes` et
+`data-categories` (JSON), `data-definition`, `data-url` et `data-couleur` quand le mot-clé en a. Le titre de la page où mène une adresse vient de
+`GET /api/edition/mots-cles/` (`page_du_lien`, `titre_du_lien` ; null : l'adresse brute). Dans l'éditeur en place, l'outil « Lien page » lie le
+texte choisi par un mot-clé qui a une adresse (sa balise, par sa clé) ; « Lien web » garde les adresses web. Une page créée depuis le site ne porte que les
+mots-clés dont le site se sert. Les événements de la chronologie n'ont pas d'étiquette (« trop nombreux et trop libres », demande du propriétaire) mais
+des **catégories**, un vocabulaire à part (voir « Chronologie ») ; leurs descriptions peuvent citer des mots-clés.
+
+**Forcer la suppression** (décision R223, qui amende R196 pour les mots-clés non verrouillés ; `lib/mots-cles-edition.mjs#forcageOffert`,
+`#ceQueRemplaceLeForcage`) : quand le menu des mentions d'un mot-clé non verrouillé n'est pas vide, sa ligne offre **« Forcer la suppression »** à la place
+de « Supprimer » (le « Supprimer » d'une liste vide reste tel quel). Le forçage se met dans la même file que « Supprimer » et « Fusionner dans… » : il
+s'annule avant l'enregistrement (« Sera supprimé en forçant — annuler »), part après les fusions et les suppressions ordinaires (opération
+`{ op: 'supprimer', entite: 'mot_cle', cle: { id }, forcer: true }`), et la confirmation dit ce qu'il remplace : le nombre des mentions (textes qui le
+citent, étiquettes de page), leurs endroits, et ce que chacune devient. **Ce qu'il remplace** (réponse « Le texte affiché ») : chaque balise qui cite le
+mot-clé, pages d'exemple comprises, devient son texte affiché, en texte simple, sans lien — `{{clé}}` et `{{clé:}}` donnent le libellé (la définition
+n'est pas reprise), `{{clé|texte}}` donne son texte (« les {{elfe|elfes}} » → « les elfes ») ; les étiquettes des pages qui le portent sont retirées ;
+puis le mot-clé est supprimé. **Jamais pour un mot-clé verrouillé** : ni bouton, ni envoi (R218 (3), R223 (4)). **Le service refuse le forçage** (`409`,
+avant toute écriture) quand le mot-clé étiquette un sort (R114, R164 : le forçage ne lève que le refus des mentions), quand la définition d'un mot-clé
+verrouillé le cite (elle n'est pas réécrite, R222 (1) : `mots_cles_verrouilles`), quand le site ne sait pas réécrire une de ses mentions
+(`mentions_bloquantes`), et quand son **adresse** mène à une page de la base sans ancre (`lib/adresses-db.mjs#pageDeLAdresse` ; `/ressources/armes/`, par
+exemple) : la page devrait être supprimée avec lui, ce qui attend une décision du propriétaire (R223 (7), lot 2). Une adresse **épargnée** disparaît
+simplement avec le mot-clé : une adresse à **ancre** (`/metiers/#metier-mineur`) et une adresse qui ne mène à aucune page de la base (une route comme
+`/fiche/` ou `/recherche/`, une rubrique comme `/races/`). `GET /api/edition/mots-cles/` donne pour chaque mot-clé `refus_du_forcage` (`null` si le
+forçage passerait, sinon la raison) : le Glossaire n'offre pas le forçage quand il n'est pas `null`, et met à la place la note « Suppression forcée
+impossible », la raison en infobulle et au bas du menu des mentions (lisible au toucher). Un refus qui n'était pas prévu s'affiche comme tout refus du
+lot. Au rejeu du journal, une suppression forcée se rejoue forcée (R223 (6) : `docs/serveur.md`).
 
 ## Liens entre pages
 
+**Un lien est la balise d'un mot-clé** (migration `0098` ; décision du propriétaire : « tous les liens deviendront des mots-clés et tous les mots-clés
+deviendront des liens »). Un mot-clé qui porte une adresse (`mot_cle.url`, interne, relative à la racine du site, sans le préfixe de déploiement :
+`/races/humain/`, `/metiers/#metier-mineur`) mène à cette adresse ; sa balise s'écrit comme toute balise du glossaire :
+
 | Écriture | Effet |
 | --- | --- |
-| `[[Titre]]` | lien vers la page dont le titre, l'alias ou le slug correspond |
-| `[[Titre\|texte]]` | idem, avec un texte d'affichage différent |
-| `[[races/elfe]]` | désigne la page sans ambiguïté (utile si deux pages ont le même titre) |
+| `{{humain}}` | lien vers l'adresse du mot-clé, affiché par son libellé |
+| `{{humain\|les humains}}` | idem, avec un texte d'affichage différent |
 
-La casse, les accents et les apostrophes sont ignorés. Les liens sont **résolus au build** :
+- Une page à laquelle aucun mot-clé ne mène ne se lie pas : on donne d'abord l'adresse à un mot-clé (page Glossaire du site de dev, `/regles/glossaire/`). Un import ne crée
+  jamais de mot-clé.
+- Un mot-clé du glossaire peut mener à la page qui traite son sujet : la migration `0098` a donné aux mots-clés existants l'adresse de leur page
+  plutôt que d'en créer un second (décision du propriétaire : « Fusionner dans l'existant » ; liste : `FUSIONS_DANS_L_EXISTANT` de
+  `client/scripts/liens-en-mots-cles.mjs`) : `{{posture|Les postures}}` mène à « Les postures », `{{classe|classes}}` à `/classes/`, le texte
+  affiché du lien d'origine gardé. Un tel lien garde l'infobulle de la définition (« Oui, avec infobulle »).
+- `[[Titre]]`, `[[Titre|texte]]` et `[texte](/adresse)` ne s'écrivent plus dans les textes : `db:check` les refuse hors code (sauf pages d'exemple et
+  `/#lien-discord`). Saisis sur le site de dev, ils deviennent la balise du seul mot-clé qui mène à la page visée, ou sont refusés
+  ([`serveur.md`](serveur.md), « Édition des règles (site de dev) »).
+- Les pages d'exemple (`status: example`) gardent leurs `[[…]]` : résolus au build (la casse, les accents et les apostrophes ignorés), un lien sans
+  cible s'y affiche en rouge, avec un avertissement `[wikilinks]` et une entrée dans « Pages à créer » de l'index du wiki (`/pages/`).
+- Aucune page n'affiche plus ni « Cette page mentionne » ni « Mentionnée par » (demande du propriétaire du 2026-11-05 : « Supprime ces
+  colonnes de toutes les pages. Elles polluent l'affichage pour rien. ») ; le pied d'une page ne garde que ses mots-clés.
 
-- une page cible affiche automatiquement « Mentionnée par … » (rétroliens) ;
-- un lien sans cible s'affiche en rouge, un avertissement `[wikilinks]` apparaît au build, et la page figure dans
-  « Pages à créer » de l'index du wiki (`/pages/`) ;
-- un titre porté par plusieurs pages est signalé comme ambigu : utiliser `[[catégorie/slug]]`.
+Une balise ou un `[[…]]` placé dans du code (`` `…` `` ou bloc ```) n'est pas interprété.
 
-Les `[[…]]` placés dans du code (`` `…` `` ou bloc ```) ne sont pas interprétés.
+## Ancres figées des intertitres
+
+Un intertitre que le code ou un lien vise (une section rattachée à une page, la section d'une altération d'état) porte une **ancre figée** au bout de
+sa ligne : `## La ceinture {#la-ceinture}`. L'ancre est un identifiant : renommer l'intertitre sur le site de dev ne la change pas, et le rattachement
+ou le lien tient (`lib/ancres-figees.mjs`).
+
+- **Forme.** ` {#ancre}` à la fin d'une ligne d'intertitre `#` à `######`, après au moins une espace ; l'ancre en minuscules ASCII, chiffres et tirets
+  entre deux mots (`[a-z0-9]+(-[a-z0-9]+)*`). Ailleurs (paragraphe, code délimité), le texte reste du texte. Deux intertitres d'une page n'ont jamais
+  la même ancre.
+- **Choix de l'ancre.** Celle que l'intertitre avait déjà (le slug du texte d'origine, `la-ceinture`) : les liens d'avant la marque tiennent. Le
+  slug du build garde les accents (`## Brûlure` → `#brûlure`), qu'une ancre figée n'a pas : quand l'ancre vient d'un identifiant (une altération d'état,
+  `…#etat:brulure` → `{#brulure}`), l'adresse de la section change une fois, à la pose de la marque.
+- **Rendu.** Le plugin remark `remarkAncresFigees` (déclaré dans `astro.config.mjs`, `lib/guide-rendu.ts` et l'aide des tests
+  `test/aide-rendu-du-site.mjs`, qui doivent rester d'accord) retire la marque du texte affiché et pose l'ancre en `id` du titre (à la place du slug du
+  texte) et en `data-ancre-figee`. L'éditeur visuel (`lib/markdown-edition.mjs`) relit `data-ancre-figee` et réécrit ` {#ancre}` : une page modifiée sur
+  le site de dev garde ses ancres. La recherche et les résumés lisent le texte sans la marque (`sansAncresFigees`).
+- **Garde du service.** Le service d'édition refuse (`400`, l'ancre nommée) un texte qui retire, renomme ou double une ancre figée ; une ancre
+  ajoutée, ou l'intertitre renommé qui garde la sienne, passent ; au rejeu, un lot plus ancien qui en romprait une est en conflit (`docs/serveur.md`).
+- **Lecture par le code.** `sectionParAncre(corps, ancre)` donne la section (jusqu'à l'intertitre suivant de même niveau ou plus haut), sans lire le
+  texte de l'intertitre (`lib/ceinture-db.mjs` : `ANCRE_DES_REGLES`, `ANCRE_DE_LA_REFERENCE`).
+
+## Des onglets et des couleurs dans un texte
+
+Décision R277 (`docs/decisions-regles.md`). Le script et la feuille des onglets ne sont posés qu'une fois par page, même si la page a déjà ses onglets (`lib/pose-unique.mjs#poserUneFois`,
+`components/Onglets.astro`, `components/SupportDuMarkdown.astro` : `test/pose-unique.test.mjs`).
+
+Demande du propriétaire : « La page des alignements a perdu le tableau et les onglets […] Cette fois tu auras 2 tableaux. Un après les "Les Quatre Tendances"
+qui est un tableau à 4 onglets : Loyal, Chaotique, Bon, Mauvais. Le 2em tableau avec les 9 onglets pour les alignements », « retravaille le contenu de tous les
+menu d'édition : de manière à pouvoir faire manuellement ce genre de tableau et d'onglet », « Pour les couleurs il faudra reprendre la liste des couleurs de
+l'édition des mots clés du glossaire ». Réponses : les quatre tendances en 4 onglets sans couleur (« Je les choisirai ») sur une rangée de 4, les neuf alignements en
+grille 3×3 ; onglets dans la barre du guide, « Cases : liste du glossaire » (les sept pastilles remplacées), tableaux et onglets aussi dans les barres de la
+chronologie, des annonces et des panneaux de règles.
+
+```
+::: onglets
+
+Texte facultatif, au-dessus de la barre.
+
+### {couleur:alignement:loyal-bon} {{loyal-bon}} {#loyal-bon}
+
+Le texte du premier onglet (tableaux, listes… tout le Markdown).
+
+### Loyal
+
+Le texte du deuxième.
+
+:::
+```
+
+- **Le groupe.** Une ligne `::: onglets`, une ligne `:::` (chacune seule, des lignes vides autour), au premier niveau du texte (ni dans une liste ni dans une
+  citation, ni dans un bloc de code) ; chaque `###` du groupe ouvre un onglet, qui court jusqu'au `###` suivant ou à `:::` (un `####` est un sous-titre du
+  panneau). Un groupe sans `###` ou sans ligne de fin reste du texte, ses lignes de marque affichées : rien n'est perdu. Il se pose dans toute chaîne Markdown du site
+  (plugin remark `remarkOnglets`, `lib/markdown-onglets.mjs`, déclaré après `remarkAncresFigees` dans `astro.config.mjs`, `lib/guide-rendu.ts`,
+  `lib/markdown-rendu.mjs#remarkPluginsDuWiki`, `lib/chronologie-rendu.mjs` et l'aide des tests : `test/onglets-markdown.test.mjs` le vérifie) : pages du guide et
+  du Codex, descriptions de la chronologie, blocs des panneaux de règles, annonce de l'accueil.
+- **L'onglet.** Son nom est le texte de son intertitre (sans la marque de couleur ni l'ancre, qui s'écrit `{#…}` comme toute ancre figée). L'ancre figée est
+  l'`id` de son panneau (`section#loyal-bon` : l'adresse `#loyal-bon` ou un mot-clé ouvre l'onglet) ; sans ancre, `onglet-<slug du texte>`. L'intertitre du
+  panneau garde `data-ancre-figee` (l'éditeur la réécrit) et prend l'id `titre-<id>`. Le premier onglet est ouvert, sans JavaScript les sections se suivent.
+  Le texte avant le premier `###` reste au-dessus de la barre.
+- **La barre** (`lib/onglets-groupe.mjs`) : une colonne par onglet jusqu'à 4 (les quatre tendances : une rangée de 4) ; au-delà, 3 colonnes si leur nombre est un
+  multiple de 3 (neuf : 3×3), sinon 4 ; 2 colonnes sous 30 rem. L'ordre de la barre est celui du texte.
+- **La couleur** (`lib/couleurs-ecrites.mjs`). Facultative : la marque `{couleur:<valeur>}` en tête du texte de l'intertitre. `<valeur>` est ce que rend le choix de
+  couleur d'un mot-clé du glossaire : `famille:id` d'une couleur du site (`alignement:loyal-bon`, `magie:feu` ; `lib/glossaire-couleurs.mjs`) ou `#rrggbb`. Les sept
+  noms d'avant (`rouge`, `orange`, `jaune`, `vert`, `bleu`, `violet`, `gris`) restent lus (cases des données existantes). Le texte de l'onglet ne montre jamais la
+  marque ; sans couleur, l'onglet est neutre (l'accent du site). Le rendu pose la classe de la palette, jamais un style : `couleur-case-<nom>`,
+  `couleur-<famille>-<id>`, `couleur-ecrite-<rrggbb>` (la feuille d'une famille d'une zone ou d'une couleur écrite : `palette-css.mjs#cssDesCouleursEcrites`,
+  émise par `components/SupportDuMarkdown.astro` sur la page qui en a besoin, avec le script et la feuille des onglets).
+- **Les cases de tableau** prennent la même marque en tête de case (`| {couleur:magie:feu} Feu |`) : `data-couleur` (la valeur écrite) et les classes
+  `case-coloree` et celle de la couleur (`styles/global/wiki.css`).
+- **Le texte lu par le code.** `ancreDuTitre` rend le texte de l'intertitre sans la marque de couleur ; `sansAncresFigees` (recherche) aussi, et
+  `sansMarquesDOnglets` retire les lignes `::: onglets` et `:::` ; `fiche-regles.mjs` et les notes de version ignorent la marque.
+- **L'éditeur** (site de dev). `versMarkdown` réécrit un groupe en `::: onglets` (un `###` par panneau, la marque de couleur lue sur `data-couleur`, l'ancre figée,
+  un `###` du contenu écrit `####`) : l'aller-retour est testé, aperçu assaini compris (`htmlSur` refait la barre d'après les panneaux : un texte en attente garde
+  ses onglets, qui s'ouvrent au clic). Barre d'outils (guide, chronologie, annonces, panneaux de règles : `scripts/edition/onglets.mjs`, `tableaux.mjs`,
+  `couleurs.mjs`) : groupe « Onglets » (« Onglets » : les sous-titres choisis deviennent un groupe ; « + onglet » ; « − onglet » ; « Sortir des onglets » ; « Couleur : »),
+  groupe « Tableau » (insérer, lignes, colonnes) et « Case : » ; le choix de couleur est celui du glossaire (liste du site groupée par famille et cercle,
+  « Aucune » pour retirer), sa liste lue sur `/couleurs-du-site.json` (`pages/couleurs-du-site.json.ts`).
 
 ## Statuts
 
@@ -1533,17 +2040,21 @@ Les `[[…]]` placés dans du code (`` `…` `` ou bloc ```) ne sont pas interpr
 
 ## Maillage automatique
 
-Après un import, `npm run autolink` (depuis `client/`) propose des liens `[[…]]` vers les pages dont le titre ou un alias apparaît
-dans le texte des autres pages. **Sans option, il n'écrit rien** : il affiche les statistiques et les 40 premiers liens ;
-`npm run autolink -- --write` les applique, `-- --verbose` liste tout. Règles (précision d'abord) :
+Après un import, `npm run autolink` (depuis `client/`) propose de baliser les mentions d'un **mot-clé à adresse** dans le texte des pages : son
+libellé, ou le titre ou un alias de la page où il mène quand il est le seul mot-clé à y mener. La mention devient `{{clé}}` (le libellé) ou
+`{{clé|texte}}` (forme canonique) ; jamais un `[[…]]`. Les mots-clés et leurs adresses sont lus dans la base reconstruite depuis `data/rows` ; une page
+sans mot-clé n'est pas une cible (le maillage ne crée jamais de mot-clé ; l'aperçu les compte, `--verbose` les liste). **Sans option, il n'écrit
+rien** : il affiche les statistiques et les 40 premières balises ; `npm run autolink -- --write` les applique dans les `.md` fabriqués (puis
+`npm run db:sync-pages`), `-- --verbose` liste tout. Règles (précision d'abord) :
 
-- un seul lien par page cible dans une page, jamais vers la page elle-même ni vers un terme de son propre nom ;
-- rien dans le frontmatter, les titres, les tableaux, le code, les liens et URLs existants ;
-- un titre porté par plusieurs pages est ignoré ; un titre d'un seul mot n'est lié que s'il commence par une majuscule ;
+- une seule balise par mot-clé dans une page (une balise déjà écrite compte), jamais vers la page elle-même ni pour un terme de son propre nom ;
+- rien dans le frontmatter, les titres, les tableaux, le code, les balises, liens et URLs existants ;
+- une écriture partagée par plusieurs mots-clés est ignorée ; un terme d'un seul mot n'est balisé que s'il commence par une majuscule ;
 - les locutions courantes qui sont aussi un titre (par exemple « en résumé ») se déclarent dans `client/scripts/autolink-ignore.txt` ;
-- les pages de race, de classe, de don et de magie ne reçoivent pas de liens (`TYPES_SANS_MAILLAGE`, `src/lib/autolink.mjs`) : leur corps est refait
-  depuis les tables par le mode modification (rendu de l'importeur), un lien y serait perdu, et `races_onglet.py --verifier` le refuserait ; elles
-  restent des cibles.
+- les pages de race, de classe, de don, de magie et de métier ne reçoivent pas de balises (`TYPES_SANS_MAILLAGE`, `src/lib/autolink.mjs`) : leur corps
+  est refait depuis les tables par le mode modification (rendu de l'importeur ; le corps d'un métier est exactement le rendu de sa ligne), une balise y
+  serait perdue, et `races_onglet.py --verifier` la refuserait ; les pages `lore` non plus, que leur importeur réécrit à l'identique (le Codex, dont
+  `codex.py --verifier` veut chaque page à l'octet près ; « Relations entre les races »). Leurs mots-clés restent des cibles.
 
-L'outil ne modifie que du balisage de lien (vérifié : en retirant les `[[…]]`, on retrouve exactement le texte d'origine) et
-peut être relancé sans risque après chaque import. Relire le résultat avec `git diff` avant de commiter.
+L'outil ne modifie que du balisage (en remplaçant chaque balise par son texte affiché, on retrouve exactement le texte d'origine) et peut être relancé
+sans risque après chaque import. Relire le résultat avec `git diff` avant de commiter.

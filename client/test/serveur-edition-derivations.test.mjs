@@ -67,8 +67,11 @@ test('magies innées : une magie retirée et une ajoutée gardent l’ordre de l
 test('altérations d’état : « Inflige gel 1 » devenu « Inflige gel 2 » donne la ligne (gel, inflige, 2) ; une tournure ajoutée est retenue, une retirée part', () => {
   const sort = 'magies/magie-de-la-glace#sort:souffle-glacial';
   const gel = 'guide/liste-des-alterations-d-etat#etat:gel';
+  // la tournure de l'import, posée par le test (le site de dev peut avoir réécrit la case) ; puis son stade changé
+  const r0 = enregistrer([{ op: 'modifier', table: 'sort', cle: { id: sort }, valeurs: { effets: 'Si jet de vigueur raté = Inflige gel 1.' } }]);
+  assert.equal(r0.statut, 200, JSON.stringify(r0.corps));
+  assert.deepEqual(lignes('SELECT etat_id, stade FROM sort_etat WHERE sort_id = ?', sort), [{ etat_id: gel, stade: 1 }]);
   const effets = ligne('SELECT effets FROM sort WHERE id = ?', sort).effets;
-  assert.match(effets, /Inflige gel 1\./);
   const r = enregistrer([{ op: 'modifier', table: 'sort', cle: { id: sort }, valeurs: { effets: effets.replace('Inflige gel 1.', 'Inflige gel 2.') } }]);
   assert.equal(r.statut, 200, JSON.stringify(r.corps));
   assert.deepEqual(lignes('SELECT etat_id, relation, rang, stade, champ, forme_trouvee, extrait FROM sort_etat WHERE sort_id = ?', sort),
@@ -85,14 +88,14 @@ test('altérations d’état : « Inflige gel 1 » devenu « Inflige gel 2 » do
 });
 
 test('altérations d’état : seules les cases modifiées sont relues ; le rang de chaque altération est recompté dans l’ordre des cases', () => {
-  // Regard ardent : brûlure 1 puis brûlure 2 dans ses effets ; une brûlure écrite dans sa case D/S/B (lue avant les effets) passe au rang 1
+  // Regard ardent : brûlure 1 puis brûlure 2 dans ses effets (à l'import ; lues avant d'écrire, le site de dev peut les changer) ; une brûlure écrite
+  // dans sa case D/S/B (lue avant les effets) passe au rang 1
   const sort = 'magies/magie-du-feu#sort:regard-ardent';
   const effetsAvant = lignes("SELECT stade, forme_trouvee, extrait FROM sort_etat WHERE sort_id = ? AND champ = 'effets' ORDER BY rang", sort);
-  assert.equal(effetsAvant.length, 2);
   const r = enregistrer([{ op: 'modifier', table: 'sort', cle: { id: sort }, valeurs: { dsb_brut: 'Inflige brûlure stade 3' } }]);
   assert.equal(r.statut, 200, JSON.stringify(r.corps));
   const apres = lignes('SELECT rang, stade, champ, forme_trouvee, extrait FROM sort_etat WHERE sort_id = ? ORDER BY rang', sort);
-  assert.deepEqual(apres.map((l) => [l.rang, l.champ, l.stade]), [[1, 'dsb', 3], [2, 'effets', 1], [3, 'effets', 2]]);
+  assert.deepEqual(apres.map((l) => [l.rang, l.champ, l.stade]), [[1, 'dsb', 3], ...effetsAvant.map((l, i) => [i + 2, 'effets', l.stade])]);
   assert.deepEqual(apres.slice(1).map(({ stade, forme_trouvee, extrait }) => ({ stade, forme_trouvee, extrait })), effetsAvant);
   // Rayon négatif : ses lignes gardent leur écriture d'import (espaces insécables) tant que sa case Effets n'est pas modifiée
   const rayon = 'magies/magie-de-lombre#sort:rayon-negatif';

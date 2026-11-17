@@ -4,8 +4,8 @@
 // Les pages `metiers/<slug>` restent dans la base et dans les `.md` fabriqués (recherche, mots-clés, `[[liens]]`), mais tout lien vers un métier
 // mène à sa ligne : /metiers/#metier-forgeron. « Règles des métiers », du même type mais sans ligne dans `metier`, garde sa page.
 // Sans dépendance (sauf lib/livres.mjs et lib/equipement.mjs, purs eux aussi) : importé par wikilinks.mjs (au démarrage d'Astro), par wiki.ts et par les tests ; `chargerMetiers` reçoit la base ouverte par lib/donnees.mjs.
-import { CHEMIN_DE_L_EQUIPEMENT, PAGES_SERVIES_PAR_L_EQUIPEMENT } from './equipement.mjs';
-import { ACCUEIL_DU_GUIDE, ADRESSES_DU_PLAN_PRECEDENT, adresseDeLaPageAbsorbee, adresseDuGuide, PAGES_ABSORBEES } from './livres.mjs';
+import { ADRESSES_DES_PAGES_SERVIES } from './equipement.mjs';
+import { ACCUEIL_DU_GUIDE, ADRESSES_DU_PLAN_PRECEDENT, adresseDeLaPageAbsorbee, adresseDuGuide, PAGES_ABSORBEES, PAGES_RETIREES } from './livres.mjs';
 
 /** La seule page du type `metiers` qui n'est pas un métier (test/metiers.test.mjs vérifie que les autres sont exactement les lignes de `metier`). */
 export const PAGE_DES_REGLES = 'metiers/regles-des-metiers';
@@ -17,20 +17,20 @@ export const estUnMetier = (id) => id.startsWith('metiers/') && id !== PAGE_DES_
 export const ancreDeMetier = (id) => `metier-${id.slice(id.indexOf('/') + 1)}`;
 
 /**
- * Pages servies par une autre, qui n'ont pas d'adresse à elles : les pages « Armes », « Armures », « Bouclier » et « Accessoires » sont les onglets
- * de la page « Équipement », « Bâton magique » le sous-onglet Bâtons magiques de son onglet Ceinture (demandes du propriétaire, 2026-10-16 ;
- * lib/equipement.mjs, components/equipement/EquipementPage.astro). Elles restent dans la base (recherche, [[liens]]).
+ * Pages servies par une page de l'équipement, que la route du wiki ne construit pas : les pages « Armes », « Armures », « Bouclier » et « Accessoires »
+ * sont servies, à leur adresse, par leur page de l'équipement (src/pages/ressources/armes.astro…), « Bâton magique » par le sous-onglet Bâtons magiques
+ * de la page Ceinture, « Pièces élémentaires » par sa section de la page Armes (demandes du propriétaire, 2026-10-16 et 2026-10-29 ;
+ * lib/equipement.mjs#ADRESSES_DES_PAGES_SERVIES). Elles restent dans la base (recherche, [[liens]]).
  */
-const PAGES_DANS_UNE_AUTRE = Object.freeze(Object.fromEntries(PAGES_SERVIES_PAR_L_EQUIPEMENT
-  .map((o) => [o.page, Object.freeze({ chemin: CHEMIN_DE_L_EQUIPEMENT, ancre: o.ancre })])));
+const PAGES_DANS_UNE_AUTRE = ADRESSES_DES_PAGES_SERVIES;
 
-/** Vrai si la page d'id donné n'est pas construite : ses liens mènent à la page qui la sert (PAGES_DANS_UNE_AUTRE). */
+/** Vrai si la page d'id donné n'est pas construite par la route du wiki : ses liens mènent à la page qui la sert (PAGES_DANS_UNE_AUTRE). */
 export const pageSansAdresse = (id) => Object.hasOwn(PAGES_DANS_UNE_AUTRE, id);
 
 /**
  * Adresse d'une page du wiki, relative à la racine du site : { chemin: '<id>/', ancre: '' } ; pour un métier, la ligne du tableau ; pour une page du
- * guide, sa place dans le plan du site (lib/livres.mjs#adresseDuGuide : /decouvrir/…, /regles/…, /regles/avancees/…, /mj/… ; plus aucune sous /guide/) ;
- * pour une page servie par un onglet (ou un sous-onglet) de la page « Équipement », cet onglet.
+ * guide, son adresse dans le plan du site (lib/livres.mjs#adresseDuGuide : /decouvrir/…, /regles/<slug>/, /mj/… ; plus aucune sous /guide/) ;
+ * pour une page servie par une page de l'équipement, cette page (à l'ancre de son sous-onglet ou de sa section).
  */
 export function adresseDePage(id) {
   if (estUnMetier(id)) return { chemin: 'metiers/', ancre: ancreDeMetier(id) };
@@ -47,29 +47,46 @@ export function cheminDePage(id) {
 
 /**
  * Vrai si la page est servie à `<id>/` par la route des pages du wiki (pages/[type]/[slug].astro) : ni un métier, ni une page servie par une autre
- * (onglets de l'Équipement), ni une page du guide (servies par les routes de lib/livres.mjs).
+ * (pages de l'équipement, même à l'adresse de la page : « ressources/armes » est servie par src/pages/ressources/armes.astro), ni une page du guide
+ * (servies par les routes de lib/livres.mjs).
  */
-export const estServieASonId = (id) => cheminDePage(id) === `${id}/`;
+export const estServieASonId = (id) => !pageSansAdresse(id) && cheminDePage(id) === `${id}/`;
 
 /**
  * Les renvois des anciennes adresses du guide vers les nouvelles, relatifs à la racine du site, pour les ids donnés (les pages chargées) :
  *   - avant l'éclatement du guide (2026-10-18) : { 'guide/': <adresse de Découvrir>, 'guide/<slug>/': cheminDePage(id)… } ;
- *   - une page fusionnée dans une autre (lib/livres.mjs#PAGES_ABSORBEES) : 'guide/<slug>/' et 'decouvrir/<slug>/' (son adresse du plan précédent) → la
- *     page qui l'absorbe, à l'ancre où se lit son contenu (lib/livres.mjs#adresseDeLaPageAbsorbee ; l'ancre de l'ancienne adresse l'emporte), si elle est chargée ;
- *   - une autre adresse du plan précédent (lib/livres.mjs#ADRESSES_DU_PLAN_PRECEDENT) → la page qui y était, si elle est chargée.
+ *   - une page fusionnée dans une autre (lib/livres.mjs#PAGES_ABSORBEES) : 'guide/<slug>/' → la page qui l'absorbe, à l'ancre où se lit son contenu
+ *     s'il y en a une (lib/livres.mjs#adresseDeLaPageAbsorbee ; l'ancre de l'ancienne adresse l'emporte), si elle est chargée ;
+ *   - une adresse des plans précédents (lib/livres.mjs#ADRESSES_DU_PLAN_PRECEDENT : /decouvrir/<étape>/, /regles/avancees/<slug>/…) → la page qui y
+ *     était, ou celle qui l'absorbe, si elle est chargée ;
+ *   - une page retirée dont le contenu se lit ailleurs (lib/livres.mjs#PAGES_RETIREES : le Lexique, devenu des mots-clés) : chacune de ses anciennes
+ *     adresses → sa destination (/recherche/), tant que la page n'est pas chargée (verifierLePlan arrête le build sinon).
+ * Une page supprimée (lib/livres.mjs#PAGES_SUPPRIMEES) n'y est jamais : la page 404 la dit introuvable (R185 (6)). Les pages découpées en plusieurs
+ * (/decouvrir/creer-son-personnage/, « Les situations avancées ») ont leurs renvois selon l'ancre (lib/livres.mjs#PAGES_ECLATEES_DU_GUIDE, passés à part).
  * Lus par la page 404 (pages/404.astro les écrit au build, lib/nav.mjs#nouvelleAdresse les reçoit : nav.mjs n'importe rien), qui garde requête et ancre.
  */
 export function renvoisDuGuide(ids) {
   const renvois = { 'guide/': ACCUEIL_DU_GUIDE };
   const charges = new Set(ids);
+  /** L'adresse d'une page chargée, ou de celle qui absorbe une page fusionnée ; null si aucune n'est chargée. */
+  const vers = (id) => {
+    if (charges.has(id)) return cheminDePage(id);
+    if (Object.hasOwn(PAGES_ABSORBEES, id) && charges.has(PAGES_ABSORBEES[id])) return adresseDeLaPageAbsorbee(id, cheminDePage);
+    return null;
+  };
   for (const id of ids) if (id.startsWith('guide/')) renvois[`${id}/`] = cheminDePage(id);
-  for (const [ancienne, nouvelle] of Object.entries(PAGES_ABSORBEES)) {
-    if (!charges.has(nouvelle) || charges.has(ancienne)) continue;
-    const slug = ancienne.slice('guide/'.length);
-    renvois[`${ancienne}/`] = adresseDeLaPageAbsorbee(ancienne, cheminDePage);
-    renvois[`decouvrir/${slug}/`] = adresseDeLaPageAbsorbee(ancienne, cheminDePage);
+  for (const ancienne of Object.keys(PAGES_ABSORBEES)) {
+    const cible = vers(ancienne);
+    if (cible !== null && !charges.has(ancienne)) renvois[`${ancienne}/`] = cible;
   }
-  for (const [adresse, id] of Object.entries(ADRESSES_DU_PLAN_PRECEDENT)) if (charges.has(id) && cheminDePage(id) !== adresse) renvois[adresse] = cheminDePage(id);
+  for (const [adresse, id] of Object.entries(ADRESSES_DU_PLAN_PRECEDENT)) {
+    const cible = vers(id);
+    if (cible !== null && cible !== adresse) renvois[adresse] = cible;
+  }
+  for (const [retiree, { vers: destination, adresses }] of Object.entries(PAGES_RETIREES)) {
+    if (charges.has(retiree)) continue;
+    for (const adresse of adresses) renvois[adresse] = destination;
+  }
   return renvois;
 }
 

@@ -13,7 +13,7 @@
 // Script de page (navigateur) : il n'importe que des modules purs que seule cette page utilise (la version portable refuse un module partagé), et le
 // choix et le recadrage du portrait (src/scripts/portrait.mjs, lib/portrait.mjs), partagés avec le mode modification du bestiaire, absent de la version
 // portable.
-import { libelleDuControle } from '../lib/fiche-controles.mjs';
+import { controlesParGravite, libelleDuControle } from '../lib/fiche-controles.mjs';
 import {
   CHAMP_VERSION, COLONNES_DU_SERVICE, PARTIES_DE_FICHE, ajouterAuxNotes, ficheVide, ligneDeRetrait, nouveauxRetraits, resumeDesRetraits, sansPartiesRetirees,
 } from '../lib/fiche-format.mjs';
@@ -30,23 +30,30 @@ import { lireClasseur } from '../lib/tableur-lecture.mjs';
 import { lireZip } from '../lib/zip.mjs';
 import { dessinerVignette, ouvrirRecadrage, reduireImage } from './portrait.mjs';
 import {
-  actionsDeLEmplacement, actionsDesAccessoires, effetsDesAccessoires, EMPLACEMENTS_ACCESSOIRES, exemplairesParEmplacement, inventaireDe,
-  mettreALaCeinture, objetChoisiDansLaListe, quantiteDuSac, rangerLEmplacement, remplirLEmplacement, suggestionsDeCeinture, utiliserLObjet, ajusterValeurDuMoment, alignementDe, armesApresChoix, armesApresReglage, armesValables, artisanatDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, choixEnAttente, cleDeChoix, donDeBase, modeHyperDe, niveauDeSpecialite, borner, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe,
-  choisirObjetDeMetier, choixDeMetierValables, classeImposee, classesDe, classesSelonLaMagieInnee, competencesDe, donsAChoisir, donsAcquis, donsDeRace, donsValables,
+  actionsDeLEmplacement, effetsDesAccessoires, EMPLACEMENTS_ACCESSOIRES, exemplairesParEmplacement, inventaireDe,
+  mettreALaCeinture, objetChoisiDansLaListe, quantiteDuSac, rangerLEmplacement, remplirLEmplacement, suggestionsDeCeinture, utiliserLObjet, ajusterValeurDuMoment, alignementDe, cransDAlignement, armesApresChoix, armesApresReglage, armesValables, artisanatDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, choixEnAttente, cleDeChoix, modeHyperDe, niveauDeSpecialite, borner, budgetCaracteristiques, budgetCompetences, caracteristiquesCompletes, caracteristiquesDe,
+  choisirObjetDeMetier, choixDeMetierValables, classesDe, classesSelonLaMagieInnee, competencesDe, donsAChoisir, donsValables,
   durabiliteAEcrire, durabiliteDArme, emplacementsDeSorts, ethnieCompatible, ethnieImposee, ethniesDeLaRace, famillesMaitrisables, inventaireSelonLeMetier, lignesDeSorts, magieAcquiseValable,
-  magiesInneesPermises, maitriseDArme, maitriseDesSorts, gainsDeNiveau, niveauGlobal, bornesDuNm, nmDuSort, npmMax, objetChoisi, objetsDuMetier, progressionXp,
-  bornesDuMultiplicateur, livreAuPlafond, multiplicateurDuCout, sortAuNm, sortAvecLivre, sortPourUnLivre, donDePreparation, jetDuSortPrepare, sortPrepare, sortsAEnregistrer, sortsAPreparer, sortsApresLeJet,
+  magiesInneesPermises, maitriseDArme, maitriseDesSorts, gainsDeNiveau, niveauGlobal, bornesDuNm, nmDuSort, npmDesSorts, objetChoisi, objetsDuMetier, progressionXp,
+  bornesDuMultiplicateur, livreAuPlafond, livresAEnregistrer, livresApresAjout, livresApresChangement, livresApresRetrait, livresDe, multiplicateurDuCout, sortAuNm, sortPourUnLivre, sortsDesLivres, donDePreparation, jetDuSortPrepare, rappelsDuSortPrepare, sortPrepare, sortsAEnregistrer, texteDuCritiquePrepare, sortsAPreparer, sortsApresLeJet,
   sortsApresChoixDEmplacement, sortsApresPreparation, sortsApresLaSymbiose, nmDuMoment,
   refusClasse, refusMagieAcquise, resistancesDe, sortsParNpm, trouver, ecrireValeurDuMoment, valeursDuMoment,
   armureApresChoix, armuresProposees, partiesApresReglage, partiesDeLArmure, partiesValables, poidsPortableDe, retraitsDeLArmureHorsListe,
   bouclierApresChoix, bouclierDe, catalogueDuSac, defenseDe, degatsRecus, effetDeCompetence, effetsDAccessoireProposes, PARTIE_PAR_DEFAUT, partiesDuCorps, valeurDeCompetenceBornee,
   propositionsDuCatalogue, soliditeDuBouclierAEcrire, typesDeDegats, valeurDEffetDAccessoire,
+  appliquerDegatsRecus, CASES_DE_LA_BARRIERE, casesDeLaBarriereApres, coupDeDegats, elementsDeDegats, medusainDOffice, TYPES_DE_COUP,
   acquisApresChoix, acquisApresRepartition, acquisChoixValables, acquisDesDons, magieTireeParLeMj, resistanceApresChoix, resistanceChoixValables, entrainementDe, entrainementsAEnregistrer, batonDuSac, contexteDesSorts, degatsDArmeDuMoment, magiesDesBatons, nomDuBaton, postureDuMoment, sortDuMoment,
-  creaturesDuSort, sacrificeDuSort,
-  carteDeMaitrise, compteurDeMaitrise, groupesDArmesParMaitrise, ligneDeMaitrise, maitriseApresChoix, maitriseChoixValables, maitrisesParFamille, presentationDuCompteurDeMaitrise, sourcesDeMaitrise,
-  armeDeLaLigne, armesElementairesProposees, effetDeLArmeElementaire, sortsFerDAutreElement,
+  creaturesDuSort, sacrificeDuSort, lignesDuCritique,
+  carteDeMaitrise, compteurDeMaitrise, infobulleDeClasse, infobulleDeSpecialite, infobulleDuDonAChoisir,
+  infobulleDArme, infobulleDArmeElementaire, infobulleDArmure, infobulleDArmureElementaire, infobulleDeMetier, infobulleDeSort, TYPES_DE_DON, groupesDArmesParMaitrise, ligneDeMaitrise, maitriseApresChoix, maitriseChoixValables, maitrisesParFamille, presentationDuCompteurDeMaitrise, sourcesDeMaitrise,
+  armeDeLaLigne, armesElementairesProposees, effetDeLArmeElementaire, sortsFerDAutreElement, typeDeDegatsAffiche,
+  finDuModeHyperCent, modeHyperApres, modeHyperValable, SANTE_PAR_CHAKRA_MANQUANT, semaineDuModeHyperApres, tourDeModeHyper,
+  actionsDeLaFiche, actionsUsageSansObjetRetire, actionsUsageValables, consommerLAction, finDeCombat, finDeCombatMontree, passifsDeLaFiche, REMONTEES, remonterLAction,
+  donsObtenusApresChoix, donsObtenusValables, donsVariables, infobulleDEntree, refusDuDon, texteDuDonVariable,
+  estBiMagie, nomDeSpecialisation, seuilDesSpecialisations, specialisationsAChoisir, specialisationsApresChoix, specialisationsValables,
 } from '../lib/fiche-moteur.mjs';
 import { creatureAuNpm, FPVSIA, vautAuNpm } from '../lib/creature-npm.mjs';
+import { listeDeChoix } from './liste-choix.mjs';
 
 const racine = document.getElementById('fiche');
 const API = racine.dataset.api;
@@ -219,9 +226,11 @@ const retirer = (cle, critere) => {
 /**
  * Une pastille (bouton à bascule) : `choisie()`, `refus()` et `verrou()` sont relus à chaque rafraîchissement (le bouton reste en place, le focus
  * aussi). Une pastille refusée par les règles est grisée ; choisie malgré tout (règles changées, fiche importée), elle reste cliquable et cerclée de
- * rouge. Une pastille choisie que les règles imposent (`verrou()` dit pourquoi) ne se retire pas : le clic est sans effet.
+ * rouge. Une pastille choisie que les règles imposent (`verrou()` dit pourquoi) ne se retire pas : le clic est sans effet. `description` : le texte de
+ * l'infobulle d'une classe ou d'une spécialité (demande du propriétaire du 2026-10-29 : infobulleDeClasse, infobulleDeSpecialite), sous la raison d'un
+ * refus ou d'un verrou ; au survol et au focus du clavier, comme toute infobulle (components/Infobulles.astro).
  */
-function pastille({ texte, teinte, choisie, refus = () => null, verrou = () => null, surClic, detail }) {
+function pastille({ texte, teinte, choisie, refus = () => null, verrou = () => null, surClic, detail, description = null }) {
   const bouton = el('button', {
     type: 'button',
     // les classes de sa couleur (`teinte` : une magie, une compétence, une race, une classe, ou `regles.neutre`), jamais un style
@@ -244,7 +253,8 @@ function pastille({ texte, teinte, choisie, refus = () => null, verrou = () => n
     bouton.toggleAttribute('data-verrou', Boolean(impose));
     if (impose) bouton.setAttribute('aria-disabled', 'true');
     else bouton.removeAttribute('aria-disabled');
-    bouton.title = non || impose || ''; // vide : plus d'infobulle (components/Infobulles.astro a déplacé l'attribut : un removeAttribute ne l'efface pas)
+    // vide : plus d'infobulle (components/Infobulles.astro a déplacé l'attribut : un removeAttribute ne l'efface pas)
+    infobulle(bouton, [non || impose, description].filter(Boolean).join('\n\n'));
   });
   return el('li', {}, bouton);
 }
@@ -343,6 +353,13 @@ function construireAlignement() {
   // inconnu, regles.alignement_par_defaut), jamais un style
   poserTeinte(sortie, teinteDe(regles.alignements?.[a.nom] ?? regles.alignement_par_defaut));
   sortie.title = `Loi/Chaos : ${a.loi} ; Bien/Mal : ${a.bien} (5 points d’écart sur un axe pour qu’une tendance l’emporte)`;
+  // les deux jauges à cinq crans (demande du propriétaire) : le cran du personnage marqué, du côté de sa tendance
+  const crans = cransDAlignement(regles, fiche);
+  for (const [id, cran] of [['alignement-jauge-loi', crans.loi], ['alignement-jauge-bien', crans.bien]]) {
+    const jauge = $(id);
+    jauge.dataset.cran = String(cran);
+    [...jauge.children].forEach((c, i) => c.classList.toggle('alignement__cran--actif', i === cran));
+  }
 }
 
 // ------------------------------------------------------------------ magies et dieux
@@ -355,7 +372,7 @@ function construireMagies() {
       fiche.ethnie_id = ethnieImposee(regles, fiche) ?? fiche.ethnie_id;   // l'ethnie d'une race hybride suit sa magie innée
       fiche.magie_acquise_id = magieAcquiseValable(regles, fiche);   // une acquise devenue incompatible disparaît (demande du propriétaire)
       if (!fiche.magie_innee_id || trouver(regles.magies, fiche.magie_innee_id).caracteristique_id) fiche.caracteristique_magie_id = null;
-      // le Potentiel Illimité impose l'Archimage en classe 1, que nulle autre magie innée n'ouvre (décision R23)
+      // une classe réservée à une autre magie innée, ou que celle-ci ferme, part (décisions R23, R25) ; plus aucune classe imposée (R238 (5))
       fiche.classes = classesSelonLaMagieInnee(regles, fiche);
       fiche.capacites = donsValables(regles, fiche);
       changer();
@@ -394,7 +411,8 @@ function construireMagies() {
 
 /**
  * Résistances et faiblesses (demande du propriétaire, sur le modèle du tableau « Résistance / Faiblesse » de la fiche auto) : les six paliers, chacun avec
- * ses magies (dans leur couleur) puis ses altérations d'état (cerclées de la couleur de leur magie), le détail des crans en infobulle (resistancesDe) ;
+ * ses magies (dans leur couleur) puis ses altérations d'état (cerclées de la couleur de leur magie), puis les types physiques (décision R174 : Estoc,
+ * Frappe, Taille, cerclés de la couleur du palier), le détail des crans en infobulle (resistancesDe) ;
  * sous le tableau, les résistances à choisir — de la ligne du tableau de la race (« Au choix parmi les autres » du Drakos orange, décision R124 : une
  * liste des altérations des autres lignes), d'un don qui laisse une magie au choix ou tirée (décision R137 : Ocultomancien « Résilience », Anansi
  * d'Arcane : une liste des magies) ; personnage_resistance_choix ; surlignées et dans le tiroir des choix tant qu'elles ne sont pas faites —, puis les
@@ -423,14 +441,16 @@ function construireResistances() {
     return li;
   }));
   const magieDeLEtat = new Map(regles.magies.filter((m) => m.etat_id).map((m) => [m.etat_id, m]));
+  const palierTeinte = (id) => { const x = trouver(regles.resistance_paliers, id); return x?.classe ? x : null; };
   const detail = (c) => `${c.nom} : ${c.origines.map((o) => (o.immunite ? `immunisé (${o.nom})` : `${o.nom} ${signe(o.crans)}`)).join(' · ')}`
     + (c.immunite || c.origines.length < 2 ? '' : ` = ${signe(c.crans)}`);
   reconstruire($('resistances'), JSON.stringify(paliers.map((p) => p.cibles.map(detail))), () => paliers.map((p) => el('tr', { class: trouver(regles.resistance_paliers, p.id)?.classe ?? null, dataset: { palier: p.id } },
     el('th', { scope: 'row' }, p.libelle, el('small', {}, p.effet)),
     el('td', {}, p.cibles.length
       ? el('ul', { class: 'resistances__cibles' }, p.cibles.map((c) => {
-        const magie = c.type === 'magie' ? trouver(regles.magies, c.id) : magieDeLEtat.get(c.id);
-        return el('li', { class: [`resistance resistance--${c.type}`, ...teinteDe(magie)].join(' '), title: detail(c) }, c.nom);
+        // un type physique (R174) n'a pas de magie : cerclé de la couleur de son palier (`couleur-palier-…`, sans texte sur elle)
+        const teinte = c.type === 'magie' ? trouver(regles.magies, c.id) : c.type === 'physique' ? palierTeinte(p.id) : magieDeLEtat.get(c.id);
+        return el('li', { class: [`resistance resistance--${c.type}`, ...teinteDe(teinte)].join(' '), title: detail(c) }, c.nom);
       }))
       : el('span', { class: 'resistances__vide' }, '—')))));
   // la ligne sous le tableau : les résistances au choix, et la magie que la Symbiose désactive (décision R111 : ses résistances et faiblesses ne
@@ -456,10 +476,6 @@ function construireClasses() {
     g.classes.push(k);
   }
   groupes.sort((a, b) => a.ordre - b.ordre);
-  const imposee = classeImposee(regles, fiche);
-  const magieImposante = imposee && trouver(regles.magies, imposee.magie_innee_id);
-  // l'explication d'une classe imposée : en infobulle sur sa pastille « · imposée » (demande du propriétaire), pas en texte sous les classes
-  const pourquoiImposee = (classe) => `Classe imposée par la magie innée ${trouver(regles.magies, classe.magie_innee_id)?.nom ?? ''} : ${classe.nom}, qui lui est réservée.`;
   for (const c of calcul.classes) {
     const rang = c.rang;
     $(`choix-classe-${rang}`).hidden = rang === 2 && c.niveau === 0 && !c.choix;
@@ -468,7 +484,6 @@ function construireClasses() {
     const choixDe = (r) => calcul.classes.find((x) => x.rang === r)?.choix ?? null;
     afficherChoix(`classe-${rang}`, [c.classe && {
       nom: c.classe.nom, teinte: c.classe, refus: refusClasse(regles, fiche, c.classe.id, rang),
-      verrou: rang === 1 && imposee?.id === c.classe.id && magieImposante ? pourquoiImposee(imposee) : null,
     }]);
     const specialite = c.classe?.specialites.find((s) => s.id === c.choix?.specialite_id);
     $(`choix-specialite-${rang}`).hidden = !c.classe?.specialites.length || $(`choix-classe-${rang}`).hidden;
@@ -478,9 +493,8 @@ function construireClasses() {
     // un choix qui reste à faire est surligné (demande du propriétaire : « mettre en surbrillance le champ à saisir »)
     $(`choix-specialite-${rang}`).toggleAttribute('data-a-choisir', aChoisir('specialite', rang));
     reconstruire($(`classe-${rang}`), 'fixe', () => groupes.map((g) => groupe(g.label, g, g.classes.map((k) => pastille({
-      texte: k.nom, teinte: k, choisie: () => choixDe(rang)?.classe_id === k.id,
+      texte: k.nom, teinte: k, choisie: () => choixDe(rang)?.classe_id === k.id, description: infobulleDeClasse(k),
       refus: () => refusClasse(regles, fiche, k.id, rang),
-      verrou: () => (rang === 1 && classeImposee(regles, fiche)?.id === k.id ? pourquoiImposee(k) : null),
       surClic: () => {
         const deja = choixDe(rang)?.classe_id === k.id;
         retirer('classes', (l) => l.rang === rang);
@@ -490,7 +504,7 @@ function construireClasses() {
       },
     })))));
     reconstruire($(`specialite-${rang}`), `${c.choix?.classe_id}`, () => (!c.classe ? [] : c.classe.specialites.map((s) => pastille({
-      texte: s.nom, teinte: c.classe, detail: s.magique ? 'classe magique' : null,
+      texte: s.nom, teinte: c.classe, detail: s.magique ? 'classe magique' : null, description: infobulleDeSpecialite(c.classe, s),
       choisie: () => choixDe(rang)?.specialite_id === s.id,
       refus: () => ((calcul.classes.find((x) => x.rang === rang)?.niveau ?? 0) < 10 ? 'au niveau de classe 10' : null),
       surClic: () => {
@@ -603,7 +617,9 @@ function construireCaracteristiques() {
           // le bonus au jet d'un don (décision R122 : « +5% à tout jet impliquant la Perception ») est dans le score, hors acquis : son détail, comme la posture
           const detail = [
             ...(c.jet ? [`${c.score - c.jet} % ${signe(c.jet)} au jet = ${c.score} %`, ...c.jetDetail.map((d) => `${signe(d.valeur)} ${d.nom} (bonus au jet, hors acquis)`)] : []),
-            ...(c.posture ? [`${c.score} % ${signe(c.posture)} (posture ${calcul.posture.posture.nom})`] : []),
+            ...(c.posture ? [`${c.score} % ${signe(c.posture)} (${nomDeLaPosture()})`] : []),
+            // la réussite critique (décision R180) : dès que son bonus n'est pas nul, le total, ses origines et le plafond (lignesDuCritique)
+            ...lignesDuCritique(c.critique),
           ];
           infobulle(score, c.score === null ? 'Deux croix : compétence inutilisable' : detail.join('\n'));
         });
@@ -824,7 +840,8 @@ function ligneDeFamilleDeLaPage(f) {
         ...l.alertes.map((a) => el('span', { class: 'maitrise-alerte', dataset: { ton: a.ton } }, a.texte)));
     }
     attribut(tr, 'data-nul', !m.detail.length);
-    attribut(tr, 'data-etat', l.alertes.some((a) => a.ton === 'trop') ? 'trop' : null);
+    // au-delà du plafond : un avertissement, pas une erreur (décision R170)
+    attribut(tr, 'data-etat', l.alertes.some((a) => a.ton === 'avertissement') ? 'avertissement' : null);
   });
   return tr;
 }
@@ -850,16 +867,17 @@ const foisDesSorts = new Map();
 
 /**
  * Tableau des sorts (demande du propriétaire) : une ligne par emplacement, chacune avec la liste des sorts possibles (magies du personnage, NPM
- * accessible) moins ceux des autres lignes (lignesDeSorts) ; vider la liste libère l'emplacement ; pas d'emplacement en plus (décision R27). Le NM d'un
+ * des sorts : npmDesSorts, sous le plafond de la décision R188) moins ceux des autres lignes (lignesDeSorts) ; vider la liste libère l'emplacement ; pas d'emplacement en plus (décision R27). Le NM d'un
  * sort se règle à un seul curseur, de 0 à 3 (décision R118 : plus de cases « livre » ni « MJ ») ; de 1 à 3 quand l'entraînement note un livre de ce
  * sort, dont le NM ne compte pas dans le décompte. Les NM du MJ sont ceux de la fiche, notés à côté de la limite des NM (champ nm_mj du gabarit).
  */
 function construireSorts() {
   const emplacements = emplacementsDeSorts(regles, fiche);
   const nm = calcul.nm;
-  const max = npmMax(regles, fiche);
+  // « sorts jusqu'au NPM » : le NPM des sorts (décision R188 : plafonné pour le Potentiel Illimité) ; « × puissance » reste celle du niveau (R188 (2))
+  const max = npmDesSorts(regles, fiche);
   $('emplacements-detail').textContent = emplacements.total
-    ? `${emplacements.total} emplacement${emplacements.total > 1 ? 's' : ''} (${emplacements.conditions} condition${emplacements.conditions > 1 ? 's' : ''} × puissance ${emplacements.puissance}), sorts jusqu’au NPM ${max}, ${nm.plafond} NM au plus par sort (dont ${Math.min(nm.plafond, nm.maxParSort)} de niveau).`
+    ? `${emplacements.total} emplacement${emplacements.total > 1 ? 's' : ''} (${emplacements.conditions} condition${emplacements.conditions > 1 ? 's' : ''}${emplacements.superMagie ? ', dont la Super-magie' : ''} × puissance ${emplacements.puissance}), sorts jusqu’au NPM ${max}, ${nm.plafond} NM au plus par sort (dont ${Math.min(nm.plafond, nm.maxParSort)} de niveau).`
     : 'Pas encore d’emplacement de sort : choisissez une magie.';
   etatBudget($('budget-sorts'), (fiche.sorts ?? []).length, emplacements.total, 'Sorts', false);
   // le décompte des NM (décision R118) : ceux des sorts sans leurs livres, sur les NM gagnés plus ceux du MJ, notés juste à côté (la limite affichée est
@@ -869,11 +887,14 @@ function construireSorts() {
   etatBudget(badge, nm.comptes, nm.limite, 'NM');
   badge.textContent = `NM : ${nm.comptes} / ${nm.disponibles}`;
   const gagnes = nm.dons.length ? ` (${nm.niveaux} par les niveaux, ${nm.dons.map((d) => `+${d.nm} ${d.nom}`).join(', ')})` : '';
-  infobulle(badge, `NM répartis sur les sorts (sans ceux des livres${nm.livres ? ` : ${nm.livres} en plus` : ''}) / NM gagnés par les niveaux${nm.dons.length ? ' et les dons' : ''}${gagnes}, `
+  // un livre d'un sort qui n'est pas choisi attend (décision R169) : rappelé, sans rien changer au décompte
+  const attente = nm.enAttente ? `, ${nm.enAttente} livre${nm.enAttente > 1 ? 's' : ''} en attente (sort non choisi)` : '';
+  infobulle(badge, `NM répartis sur les sorts (sans ceux des livres${nm.livres ? ` : ${nm.livres} en plus` : ''}${attente}) / NM gagnés par les niveaux${nm.dons.length ? ' et les dons' : ''}${gagnes}, `
     + `plus ceux du MJ, notés à côté pour toute la fiche${nm.mj ? ` (${nm.disponibles} + ${nm.mj} = ${nm.limite})` : ''} ; ${nm.plafond} NM au plus sur un sort`);
 
   const lignes = lignesDeSorts(regles, fiche);
-  const cle = JSON.stringify([lignes.length, (fiche.sorts ?? []).map((x) => x.sort_id), fiche.magie_innee_id, fiche.magie_acquise_id, max]);
+  // (les spécialisations choisies changent les sorts proposés : décision R236)
+  const cle = JSON.stringify([lignes.length, (fiche.sorts ?? []).map((x) => x.sort_id), fiche.magie_innee_id, fiche.magie_acquise_id, max, specialisationsValables(regles, fiche)]);
   reconstruire($('sorts'), cle, () => [
     el('thead', {}, el('tr', {}, el('th', { class: 'nombre' }, '#'), el('th', {}, 'Sort'),
       el('th', { title: 'Instant Cast (IC), imparable, inesquivable, au NM du sort ; en grisé : pas encore atteint' }, 'IC'),
@@ -883,11 +904,12 @@ function construireSorts() {
     el('tbody', {}, lignes.length === 0
       ? el('tr', {}, el('td', { colspan: '8', class: 'muted' }, 'Aucun emplacement de sort.'))
       : lignes.flatMap((l) => {
-        // un groupe par NPM, le nom seul ; chaque sort sur la couleur de sa magie, comme sur les pages de magie (demande du propriétaire)
+        // un groupe par NPM, le nom seul ; chaque sort sur la couleur de sa magie, comme sur les pages de magie (demande du propriétaire), ce qu'il apporte
+        // en infobulle (infobulleDeSort, dans la liste dessinée par le site : listeDeChoix)
         const couleurDe = (s) => trouver(regles.magies, s?.magie_id);
         const optionDeSort = (s) => {
           const m = couleurDe(s);
-          return el('option', { value: s.id, selected: s.id === l.ligne?.sort_id, class: teinteDe(m).join(' ') || null, title: m?.nom }, s.nom);
+          return el('option', { value: s.id, selected: s.id === l.ligne?.sort_id, class: teinteDe(m).join(' ') || null, title: infobulleDeSort(s, m) }, s.nom);
         };
         const choisi = couleurDe(l.sort);
         const liste = el('select', {
@@ -895,7 +917,8 @@ function construireSorts() {
           title: choisi ? `${l.sort.nom} (${choisi.nom}, NPM ${l.sort.niveau})` : null,
           'aria-label': `Sort de l’emplacement ${l.index + 1}`,
           onchange: (ev) => {
-            // un autre sort dans l'emplacement : à 0 NM, sans livre ni la préparation de l'ancien (décision R115)
+            // un autre sort dans l'emplacement : à 0 NM (à 1 avec son livre, R169), sans la préparation de l'ancien (décision R115) ; le livre de
+            // l'ancien reste noté, en attente
             fiche.sorts = sortsApresChoixDEmplacement(fiche, l.index, ev.target.value || null);
             changer();
           },
@@ -908,7 +931,7 @@ function construireSorts() {
           oninput: (ev) => {
             const x = fiche.sorts[l.index];
             if (!x) return;
-            Object.assign(x, sortAuNm(regles, x, ev.target.value));
+            Object.assign(x, sortAuNm(regles, x, ev.target.value, fiche));
             livresAuPlafond.delete(x);
             changer();
           } });
@@ -947,11 +970,11 @@ function construireSorts() {
         const marquePrepare = el('span', { class: 'sort-prepare__marque', tabindex: '0', hidden: true }, 'préparé');
         const classe = [l.enTrop ? 'en-trop' : null, l.sort?.effets ? 'avec-effet' : null].filter(Boolean).join(' ') || null;
         const tr = el('tr', { class: classe },
-          el('td', { class: 'nombre muted' }, String(l.index + 1)), el('td', {}, el('span', { class: 'sort-choix' }, liste, remarque, marquePrepare)),
+          el('td', { class: 'nombre muted' }, String(l.index + 1)), el('td', {}, el('span', { class: 'sort-choix' }, listeDeChoix(liste, { cle: `sort-${l.index + 1}` }), remarque, marquePrepare)),
           modes, cout, portee, zone, dsb,
           el('td', { class: 'nm-sort' }, el('span', { class: 'curseur-cellule' }, curseur, total), livre));
         synchro(() => {
-          const nm = nmDuSort(fiche.sorts[l.index]);
+          const nm = nmDuSort(fiche.sorts[l.index], fiche);
           // le NM auquel les valeurs se lisent : celui du curseur, plus ceux que les dons donnent au sort préparé (« À l'aise », décision R134 ; au plus 3)
           const nmLu = fiche.sorts[l.index] ? nmDuMoment(regles, fiche, fiche.sorts[l.index], calcul.contexteSorts) : { total: nm.total, detail: [] };
           const auNm = (brut, champ) => (l.sort ? valeurAuNm(brut, l.sort.bonus ?? [], champ, nmLu.total) ?? '' : '');
@@ -977,14 +1000,18 @@ function construireSorts() {
           // puis réduit (décision R129)
           const calcule = m?.cout.calcule;
           const parUnite = m?.cout.fois;
-          const ecrit = parUnite && parUnite.n > 1
+          // (un coût qui monte à chaque unité, décision R248 : « 4 + 5 + 6 », le premier au coût écrit, chacun des suivants plus cher du pas)
+          const suite = (u) => Array.from({ length: u.n }, (_, i) => u.base + u.progressif.pas * i).join(' + ');
+          const ecrit = parUnite && parUnite.n > 1 && parUnite.progressif
+            ? `Coût écrit : ${suite(parUnite)} (${parUnite.unite}) = ${parUnite.progressif.total}${m.cout.detail.length ? ', réduit ensuite' : ''}`
+            : parUnite && parUnite.n > 1
             ? `Coût écrit : ${parUnite.base} × ${parUnite.n} (${parUnite.unite}) = ${parUnite.base * parUnite.n}${m.cout.detail.length ? ', réduit ensuite' : ''}${parUnite.economeAuNpm ? ` ; Économe : le NPM de la créature (${parUnite.n})` : ''}`
             : `Coût écrit : ${auNm(l.sort?.cout, 'cout')}`;
           poserValeur(cout, m ? (m.cout.corruption ? `${m.cout.texte} (ou ${m.cout.corruption.valeur} corruption)` : m.cout.texte) : '',
             m && (calcule || parUnite?.n > 1 || m.cout.detail.length || m.cout.corruption?.detail.length > 1),
             m && detail(calcule ? `${calcule.pourcent} % du chakra maximum (${calcule.chakra}) : ${calcule.valeur}${(calcule.chakra * calcule.pourcent) % 100 ? ', arrondi à l\'inférieur' : ''}` : ecrit,
               m.cout.detail, [
-                'Jamais moins de 1',
+                m.cout.modeHyper ? 'Mode Hyper : les sorts coûtent 0 chakra (décision R18)' : 'Jamais moins de 1',
                 ...(m.cout.corruption ? [detail('Avec la corruption :', m.cout.corruption.detail, ['Jamais moins de 1'])] : []),
                 ...nonComptes('cout'),
               ]), m && (calcule || parUnite?.n > 1 || m.cout.detail.length || m.cout.corruption || nonComptes('cout').length), coutTexte);
@@ -1007,11 +1034,12 @@ function construireSorts() {
             m && detail(`Écrit : ${auNm(l.sort.dsb, 'dsb')}`, m.dsb.detail, [
               ...(m.dsb.diviseur > 1 ? [`Posture ${m.posture?.nom} : dégâts infligés ÷ ${m.dsb.diviseur}, avant l’armure`] : []),
               // le sort préparé : à la posture du moment de sa préparation (décision R115)
-              ...(m.prepare ? [`Sort préparé : calculé à la posture de sa préparation (${m.posture?.nom ?? 'aucune'})`] : []),
+              ...(m.prepare ? [`Sort préparé, figé à sa préparation (décisions R115, R179) : posture ${m.posture?.nom ?? 'aucune'}, ${m.prepareModeHyper
+                ? `préparé en ${m.prepareModeHyper}` : 'préparé hors Mode Hyper (rien du Mode Hyper du lancer)'}`] : []),
               ...autres, ...m.rappels.map((r) => `${r.nom} : ${r.texte}`),
             ]), m && (m.dsb.detail.length || m.dsb.diviseur > 1 || autres.length || m.rappels.length || m.prepare));
           marquePrepare.hidden = !m?.prepare;
-          infobulle(marquePrepare, m?.prepare ? `Sort préparé, à la posture du moment de sa préparation : ${m.posture?.nom ?? 'aucune'}` : '');
+          infobulle(marquePrepare, m?.prepare ? `Sort préparé, figé à sa préparation : posture ${m.posture?.nom ?? 'aucune'}${m.prepareModeHyper ? ` ; préparé en ${m.prepareModeHyper}` : ''}` : '');
           // la magie que la Symbiose désactive (« Une seule magie active ») : ses sorts grisés
           tr.toggleAttribute('data-inactif', Boolean(m?.inactif));
           infobulle(tr, m?.inactif ? `Posture Symbiose : la magie ${m.inactif} est désactivée` : l.enTrop ? 'Au-delà des emplacements du personnage : à retirer' : '');
@@ -1020,7 +1048,7 @@ function construireSorts() {
           if (effet.textContent !== texteEffet) effet.textContent = texteEffet;
           effet.toggleAttribute('data-calcule', Boolean(m?.effets.detail.length));
           infobulle(effet, m?.effets.detail.length ? detail(`Écrit : ${auNm(l.sort.effets, 'effets')}`, m.effets.detail) : '');
-          const bornes = bornesDuNm(regles, fiche.sorts[l.index]);
+          const bornes = bornesDuNm(regles, fiche.sorts[l.index], fiche);
           curseur.min = String(bornes.min);
           curseur.max = String(bornes.max);
           poser(curseur, nm.total);
@@ -1086,8 +1114,8 @@ function carteDInvocation(c, npm) {
  * Sous un sort qui invoque (décision R130 : « avoir la liste des invocations possibles », « Toutes, les miennes d'abord ») : ses créatures, celles à la
  * portée du personnage d'abord (creaturesDuSort), et la carte de la créature choisie au NPM du sort, le « × N » de son coût (décision R129 : borné au
  * NPM accessible) ; une marionnette est la créature d'un NPM : la choisir règle le « × N », le changer la change. Sous un sort qui sacrifie une
- * invocation (sacrificeDuSort) : l'effet de la marionnette sacrifiée au NPM du sort (« Manteau noir »), ou toutes les améliorations (« Amélioration
- * cadavérique » : « avoir toutes les améliorations visibles en fonction de l'invocation sacrifiée »). Repliée au départ ; null pour un autre sort.
+ * invocation (sacrificeDuSort) : l'effet de la marionnette sacrifiée au NPM du sort (« Manteau noir » ; le tableau « Amélioration cadavérique » est
+ * retiré, R237 (7)). Repliée au départ ; null pour un autre sort.
  */
 function ligneDInvocation(l) {
   const sort = l.sort;
@@ -1117,7 +1145,7 @@ function ligneDInvocation(l) {
   };
   // la créature montrée : celle choisie (une marionnette, tant que le « × N » n'a pas changé depuis), sinon la marionnette du NPM du sort, sinon la
   // première à la portée du personnage
-  const creatures = invoque ? invoque.invocation.creatures : sacrifice.type === 'effets' ? sacrifice.lignes.map((x) => x.creature) : [];
+  const creatures = invoque ? invoque.invocation.creatures : sacrifice.lignes.map((x) => x.creature);
   const montree = (npm) => {
     const choix = creaturesChoisies.get(sort.id);
     const choisie = choix && creatures.find((c) => c.id === choix.id);
@@ -1143,12 +1171,9 @@ function ligneDInvocation(l) {
         ? 'La carte suit le NPM de la créature, le « × N » du coût.' : 'Une créature par NPM : le « × N » du coût.'),
       zone,
     ];
-  } else if (sacrifice.type === 'effets') {
+  } else {
     resume = `Selon l’invocation sacrifiée (${sacrifice.lignes.length})`;
     contenu = [groupe('Invocation sacrifiée', creatures), el('p', { class: 'invocations__aide muted' }, 'Le NPM de l’invocation sacrifiée : le « × N » du coût.'), zone];
-  } else {
-    resume = `Améliorations selon l’invocation sacrifiée (${sacrifice.lignes.length})`;
-    contenu = [el('dl', { class: 'invocations__tableau' }, sacrifice.lignes.map((a) => el('div', {}, el('dt', {}, a.nom), el('dd', {}, a.effet))))];
   }
   if (boutons.length) {
     synchro(() => {
@@ -1174,12 +1199,22 @@ function ligneDInvocation(l) {
  * un seul sort d'attaque de niveau 1 ou 2, le jet de magie (le D100), la posture du moment enregistrée, « Lâcher le sort » ») : caché sans l'un de ces dons
  * (donDePreparation) ; l'aide dit qu'il n'y en a qu'un, pour tout type d'attaque (décision R136), perdu en Symbiose d'une autre magie (R135 :
  * sortsApresLaSymbiose, à chaque rafraîchissement) ; la liste ne propose que les sorts de la fiche que le don autorise (sortsAPreparer). Choisir un sort le prépare à la posture cochée à
- * cet instant, qu'on voit à côté ; le jet de magie se note ensuite (« si réussi » : il peut rester vide) ; « Lâcher le sort » remet tout à zéro. Ses dégâts,
+ * cet instant, qu'on voit à côté (avec le Mode Hyper ou le Mode Hyper 100 % de cet instant, décision R172) ; le jet de magie se note ensuite (« si réussi » : il peut rester vide) ; « Lâcher le sort » remet tout à zéro. Ses dégâts,
  * dans le tableau des sorts, se calculent à la posture enregistrée (sortDuMoment).
  */
 function construireSortPrepare() {
   const don = donDePreparation(regles, fiche);
   $('sort-prepare-bloc').hidden = !don;
+  // la plage de réussite critique figée à la préparation (décision R182 (4) : « Réussite critique : 1 à N (figée à la préparation) », sans verdict sur
+  // le jet noté ; une fiche d'avant, sans plage notée, n'a pas la ligne) et le rappel de « Double coup » (R182 (5), sans calcul : rappelsDuSortPrepare)
+  const critique = don ? texteDuCritiquePrepare(sortPrepare(regles, fiche)) : null;
+  const ligneCritique = $('sort-prepare-critique');
+  if (ligneCritique.textContent !== (critique ?? '')) ligneCritique.textContent = critique ?? '';
+  ligneCritique.hidden = !critique;
+  const rappel = don ? rappelsDuSortPrepare(regles, fiche).join(' ') : '';
+  const ligneRappel = $('sort-prepare-rappel');
+  if (ligneRappel.textContent !== rappel) ligneRappel.textContent = rappel;
+  ligneRappel.hidden = !rappel;
   if (!don) {
     reconstruire($('sort-prepare'), '', () => []);
     return;
@@ -1189,7 +1224,7 @@ function construireSortPrepare() {
   // un seul sort préparé à la fois, pour n'importe quel type d'attaque (décision R136 : « Un seul sort préparé à la fois. Il comptera juste pour n'importe
   // quel type d'attaque »), même avec les deux dons ; perdu en Symbiose avec une autre magie que la sienne (décision R135)
   const texteAide = `${noms} : ${don.dons.map((x) => x.don.effet).join(' ')} Un seul sort préparé à la fois, utilisable pour n’importe quel type `
-    + 'd’attaque, de contact ou à distance ; en posture Symbiose avec une autre magie que la sienne, il est perdu.';
+    + 'd’attaque, de contact ou à distance ; en posture Symbiose avec une autre magie que la sienne, il est perdu ; « Fin de combat » le lâche.';
   if (aide.textContent !== texteAide) aide.textContent = texteAide;
   const choix = sortsAPreparer(regles, fiche, don);
   const cle = JSON.stringify([choix.map((x) => x.sort.id), don.dons.map((x) => x.don.id)]);
@@ -1201,7 +1236,7 @@ function construireSortPrepare() {
     }, el('option', { value: '', class: 'option-vide' }, choix.length ? '— aucun —' : `— aucun sort ${don.types.includes('attaque') ? 'd’attaque ' : ''}de NPM ${don.niveaux.join(' ou ')} dans la fiche —`),
     choix.map((x) => {
       const m = couleurDe(x.sort);
-      return el('option', { value: x.sort.id, class: teinteDe(m).join(' ') || null, title: m?.nom }, `${x.sort.nom} (NPM ${x.sort.niveau})`);
+      return el('option', { value: x.sort.id, class: teinteDe(m).join(' ') || null, title: infobulleDeSort(x.sort, m) }, `${x.sort.nom} (NPM ${x.sort.niveau})`);
     }));
     const jet = el('input', {
       type: 'number', min: String(jetDuSortPrepare(regles).min), max: String(jetDuSortPrepare(regles).max), step: '1', inputmode: 'numeric', class: 'sort-prepare__jet',
@@ -1219,15 +1254,23 @@ function construireSortPrepare() {
       poserTeinte(liste, teinteDe(m));
       jet.disabled = !p;
       if (document.activeElement !== jet) poser(jet, p?.jet ?? '');
-      const texte = p ? (p.posture?.nom ?? 'aucune') : '—';
+      // préparé en Mode Hyper ou au Mode Hyper 100 % (décision R172) : dit à côté de la posture, gardé jusqu'au lancer
+      // (au 100 %, la posture cochée ne compte pas : toutes les postures)
+      const texte = !p ? '—' : p.cent ? 'Mode Hyper 100 % (toutes les postures)' : `${p.posture?.nom ?? 'aucune'}${p.hyper ? ' · Mode Hyper' : ''}`;
       if (posture.textContent !== texte) posture.textContent = texte;
-      attribut(posture, 'data-couleur', Boolean(p?.posture));
-      poserTeinte(posture, teinteDe(p?.posture));
-      infobulle(posture, p ? 'La posture du moment où le sort a été préparé : ses dégâts se calculent à elle, même si la posture change ensuite (décision R115)' : '');
+      // la couleur suit le texte : celle du Mode Hyper 100 % (regles.mode_hyper.cent, comme sa case), sinon celle de la posture de préparation
+      const couleur = p?.cent ? regles.mode_hyper?.cent : p?.posture;
+      attribut(posture, 'data-couleur', Boolean(couleur));
+      poserTeinte(posture, teinteDe(couleur));
+      // ce qui est figé à la préparation (décisions R115, R172, R179 : « le sort préparé est comme "figé" à un instant T près à être lancé plus tard »)
+      infobulle(posture, p ? `Le sort préparé est figé à sa préparation jusqu’à son lancer, « Lâcher le sort » ou « Fin de combat » (décisions R115, R179) : ${p.cent
+        ? 'préparé au Mode Hyper 100 %, il garde le cumul des postures, le +10, le bonus du Mode Hyper et son dé de race, même après leur fin'
+        : p.hyper ? 'sa posture ; préparé en Mode Hyper, il garde le bonus du Mode Hyper et son dé de race, même après sa fin, sans le +10 ni le cumul du 100 %'
+          : 'sa posture ; préparé hors Mode Hyper, il ne reçoit rien du Mode Hyper du lancer'}. Le coût et les résistances sont ceux du moment.` : '');
       lacher.disabled = !p;
     });
     return [
-      el('label', { class: 'fiche-champ sort-prepare__sort' }, el('span', {}, 'Sort'), liste),
+      el('label', { class: 'fiche-champ sort-prepare__sort' }, el('span', {}, 'Sort'), listeDeChoix(liste, { cle: 'sort-prepare' })),
       el('label', { class: 'fiche-champ' }, el('span', {}, 'Jet de magie (D100)'), jet),
       el('span', { class: 'fiche-champ' }, el('span', {}, 'Posture à la préparation'), posture),
       lacher,
@@ -1240,22 +1283,36 @@ function construireSortPrepare() {
  * L'entraînement (demande du propriétaire : « Il faudrai remplacer le texte des "Entraînement" par des lignes qu'on peut ajouter (+) et remplir soit par
  * "entrainement compétence : une compétence donnée avec un slider de 0 à 10, qui s'ajoute aux Aquis. […] Soit par un livre de compétence et lister le
  * sort associé (et du coup déplacer la case [livre] du sort, sans changer le calcul. Soit un texte libre pour les "dons évènementiels". ») : une ligne
- * par compétence entraînée (curseur de 0 à entrainement.bonus_max_pct), par livre lu (le NM de livre d'un sort, personnage_sort.nm_livre) et par texte ;
- * trois boutons en ajoutent.
+ * par compétence entraînée (curseur de 0 à entrainement.bonus_max_pct), par livre lu (un livre par sort, fiche.livres_sorts : décision R169) et par
+ * texte ; trois boutons en ajoutent. Dans son onglet « Entraînement » de la zone IV, à côté de « Choix » (demande du propriétaire du 2026-10-29).
  */
 function construireEntrainement() {
   const e = entrainementDe(regles, fiche);
-  const livres = (fiche.sorts ?? []).map((x, i) => ({ x, i })).filter(({ x }) => entier(x.nm_livre) > 0);
+  const livres = livresDe(regles, fiche);
   // (versionInventaire : une fiche relue ou rechargée a d'autres objets, auxquels chaque ligne doit se lier de nouveau)
-  const cle = JSON.stringify([versionInventaire, e.lignes.map((l) => [l.rang, l.competence_id === null ? 't' : 'c']), livres.map(({ x }) => x.sort_id), (fiche.sorts ?? []).map((x) => x.sort_id)]);
+  const cle = JSON.stringify([versionInventaire, e.lignes.map((l) => [l.rang, l.competence_id === null ? 't' : 'c']), livres.map((l) => l.sort_id),
+    fiche.magie_innee_id, fiche.magie_acquise_id]);
   const nomDuSort = (id) => trouver(regles.sorts, id)?.nom ?? id;
-  // noter le livre d'un sort lui donne son NM (au plus 3), le retirer le lui reprend, sauf le NM compté qu'il avait pris au plafond (sortAvecLivre,
-  // décision R118) : déplacer un livre d'un sort à l'autre ne fait perdre aucun NM
-  const poserLivre = (index, oui) => {
-    const x = fiche.sorts[index];
-    if (!x) return;
-    if (oui && livreAuPlafond(regles, x)) livresAuPlafond.add(x);
-    Object.assign(x, sortAvecLivre(regles, x, oui, { rendre: !oui && livresAuPlafond.delete(x) }));
+  // noter le livre d'un sort choisi lui donne son NM (au plus 3), le retirer le lui reprend, sauf le NM compté qu'il avait pris au plafond
+  // (sortAvecLivre, décision R118) : déplacer un livre d'un sort à l'autre ne fait perdre aucun NM ; le livre d'un sort non choisi attend (R169). Les
+  // lignes des sorts gardent leurs objets (livresAuPlafond les connaît) : seules celles qui changent sont recopiées
+  const choisi = (sortId) => (fiche.sorts ?? []).find((y) => y.sort_id === sortId) ?? null;
+  const poserLivres = (r) => {
+    (fiche.sorts ?? []).forEach((x, i) => { if (r.sorts[i] !== x) Object.assign(x, r.sorts[i]); });
+    fiche.livres_sorts = r.livres_sorts;
+  };
+  const ajouterLivre = (sortId) => {
+    const x = choisi(sortId);
+    if (x && livreAuPlafond(regles, fiche, x)) livresAuPlafond.add(x);
+    poserLivres(livresApresAjout(regles, fiche, sortId));
+  };
+  const rendre = (sortId) => { const x = choisi(sortId); return Boolean(x) && livresAuPlafond.delete(x); };
+  const retirerLivre = (sortId) => poserLivres(livresApresRetrait(regles, fiche, sortId, { rendre: rendre(sortId) }));
+  const changerLivre = (ancien, nouveau) => {
+    const x = choisi(nouveau);
+    const auPlafond = x && livreAuPlafond(regles, fiche, x);
+    poserLivres(livresApresChangement(regles, fiche, ancien, nouveau, { rendre: rendre(ancien) }));
+    if (auPlafond) livresAuPlafond.add(x);
   };
   reconstruire($('entrainement'), cle, () => [
     ...e.lignes.map((l, i) => {
@@ -1283,28 +1340,42 @@ function construireEntrainement() {
       return el('li', { class: 'entrainement__ligne' }, el('span', { class: 'entrainement__type' }, 'Compétence'), competence,
         el('span', { class: 'curseur-cellule' }, curseur, valeur), retirer_);
     }),
-    // les livres de sort : le NM de livre du sort (« sans changer le calcul »), choisi parmi les sorts de la fiche
-    ...livres.map(({ x, i }) => {
-      const sort = el('select', { 'aria-label': `Livre de sort : le sort (${nomDuSort(x.sort_id)})`,
-        onchange: (ev) => {
-          const j = fiche.sorts.findIndex((y) => y.sort_id === ev.target.value);
-          if (j < 0 || j === i) return;
-          poserLivre(i, false);
-          poserLivre(j, true);
-          changer();
-        } },
-      (fiche.sorts ?? []).filter((y, j) => j === i || !entier(y.nm_livre)).map((y) => option(y.sort_id, nomDuSort(y.sort_id), y.sort_id === x.sort_id)));
-      const retirer_ = el('button', { type: 'button', class: 'retirer', 'aria-label': `Retirer le livre de ${nomDuSort(x.sort_id)}`,
-        onclick: () => { poserLivre(i, false); changer(); } }, '✕');
-      return el('li', { class: 'entrainement__ligne entrainement__ligne--livre' }, el('span', { class: 'entrainement__type' }, 'Livre'), sort, retirer_);
+    // les livres de sort (décision R169) : le sort parmi ceux de la magie innée et de la magie acquise, quel que soit le NPM (toutes les magies pour le
+    // Potentiel Illimité : sortsDesLivres), choisi ou non, sans ceux qui ont déjà leur livre ; le sort d'une magie perdue reste, à part ; un sort non
+    // choisi : « en attente », son NM n'est pas utilisé
+    ...livres.map((livre) => {
+      const pris = new Set(livres.filter((y) => y.sort_id !== livre.sort_id).map((y) => y.sort_id));
+      const possibles = sortsDesLivres(regles, fiche).filter((s) => !pris.has(s.id));
+      const parMagie = [...new Set(possibles.map((s) => s.magie_id))].map((m) => [trouver(regles.magies, m), possibles.filter((s) => s.magie_id === m)]);
+      const optionDeLivre = (s) => {
+        const m = trouver(regles.magies, s.magie_id);
+        return el('option', { value: s.id, selected: s.id === livre.sort_id, class: teinteDe(m).join(' ') || null, title: s.magie_id ? infobulleDeSort(s, m) : null },
+          `${s.nom} (NPM ${s.niveau})`);
+      };
+      const actuel = livre.sort ?? { id: livre.sort_id, nom: nomDuSort(livre.sort_id), niveau: '?' };
+      const magie = trouver(regles.magies, livre.sort?.magie_id);
+      const sort = el('select', { 'aria-label': `Livre de sort : le sort (${nomDuSort(livre.sort_id)})`, class: teinteDe(magie).join(' ') || null,
+        onchange: (ev) => { changerLivre(livre.sort_id, ev.target.value); changer(); } },
+      parMagie.map(([m, sorts]) => el('optgroup', { label: m?.nom ?? 'Autres' }, sorts.map(optionDeLivre))),
+      livre.horsDesMagies ? el('optgroup', { label: 'Hors des magies du personnage' }, optionDeLivre(actuel)) : null);
+      const attente = el('span', { class: 'entrainement__attente', tabindex: '0', hidden: true }, 'en attente');
+      synchro(() => {
+        const l = livresDe(regles, fiche).find((y) => y.sort_id === livre.sort_id);
+        attente.hidden = !l?.enAttente;
+        infobulle(attente, l?.enAttente ? `${nomDuSort(livre.sort_id)} n’est pas dans la liste des sorts : le NM du livre attend qu’il y soit (décision R169)${l.horsDesMagies ? ' ; ce sort n’est d’aucune magie du personnage' : ''}` : '');
+      });
+      const retirer_ = el('button', { type: 'button', class: 'retirer', 'aria-label': `Retirer le livre de ${nomDuSort(livre.sort_id)}`,
+        onclick: () => { retirerLivre(livre.sort_id); changer(); } }, '✕');
+      return el('li', { class: 'entrainement__ligne entrainement__ligne--livre' }, el('span', { class: 'entrainement__type' }, 'Livre'), listeDeChoix(sort, { cle: `livre-${livre.rang}` }), attente, retirer_);
     }),
   ]);
-  // les ajouts : une compétence (la première qui n'est pas encore entraînée), un livre (le premier sort sans livre sous le plafond : sortPourUnLivre),
-  // un texte ; ce qui est libre se relit au clic (les boutons ne sont refaits que quand l'un d'eux se grise ou se dégrise)
+  // les ajouts : une compétence (la première qui n'est pas encore entraînée), un livre (le premier sort choisi sans livre sous le plafond, sinon le
+  // premier sort possible sans livre : sortPourUnLivre), un texte ; ce qui est libre se relit au clic (les boutons ne sont refaits que quand l'un d'eux
+  // se grise ou se dégrise)
   const ajouts = $('entrainement-ajouts');
   const libre = () => regles.competences.find((c) => !entrainementDe(regles, fiche).parCompetence.has(c.id)) ?? null;
-  const sansLivre = () => sortPourUnLivre(regles, fiche.sorts);
-  const cleAjouts = JSON.stringify([e.competences >= e.max || !libre(), sansLivre() < 0]);
+  const sansLivre = () => sortPourUnLivre(regles, fiche);
+  const cleAjouts = JSON.stringify([e.competences >= e.max || !libre(), !sansLivre()]);
   reconstruire(ajouts, cleAjouts, () => {
     const ajouter = (ligne) => {
       const rang = Math.max(0, ...(fiche.entrainements ?? []).map((y) => entier(y.rang))) + 1;
@@ -1316,8 +1387,9 @@ function construireEntrainement() {
       el('button', { type: 'button', class: 'ajouter', disabled: plein,
         title: e.competences >= e.max ? `${e.max} compétences au plus (« Vous ne pouvez monter que 15 compétences maximum »)` : null,
         onclick: () => { const k = libre(); if (k) ajouter({ competence_id: k.id, valeur: 0, texte: null }); } }, '+ Compétence'),
-      el('button', { type: 'button', class: 'ajouter', disabled: sansLivre() < 0, title: sansLivre() < 0 ? 'Chaque sort de la fiche a déjà son livre' : null,
-        onclick: () => { const j = sansLivre(); if (j >= 0) { poserLivre(j, true); changer(); } } }, '+ Livre de sort'),
+      el('button', { type: 'button', class: 'ajouter', disabled: !sansLivre(),
+        title: !sansLivre() ? (fiche.magie_innee_id ? 'Chaque sort des magies du personnage a déjà son livre' : 'Choisissez une magie : ses sorts peuvent recevoir un livre') : null,
+        onclick: () => { const id_ = sansLivre(); if (id_) { ajouterLivre(id_); changer(); } } }, '+ Livre de sort'),
       el('button', { type: 'button', class: 'ajouter', onclick: () => ajouter({ competence_id: null, valeur: null, texte: '' }) }, '+ Texte'),
     ];
   });
@@ -1439,19 +1511,26 @@ function construireAcquisAChoisir() {
   }));
 }
 
-// ------------------------------------------------------------------ rappel des dons
-const TYPES_DE_DON = { passif: 'Passif', actif: 'Actif', action: 'Action', reaction: 'Réaction', variable: 'Variable' };
+// ------------------------------------------------------------------ actions et passifs (décision R173 ; TYPES_DE_DON : lib/fiche-moteur.mjs)
+
+/** Le type d'un don et sa précision (« Actif (2 fois/combat) », telle qu'écrite), la pastille à droite du nom ; null sans l'un ni l'autre. */
+const typeDuDon = (type, precision) => (type || precision
+  ? el('span', { class: 'don__type', dataset: type ? { type } : {} }, [TYPES_DE_DON[type] ?? type, precision ? `(${precision})` : null].filter(Boolean).join(' '))
+  : null);
 
 /**
- * Un don de la liste : son niveau (s'il en a un), son nom, son type et sa précision (limite d'usage « 2 fois/combat », telle qu'écrite), son texte, et
- * une aide de la fiche sous le texte (`aide`, AIDE_ANNULE_LES_FAIBLESSES).
+ * Un don ou un effet de la liste : son niveau (s'il en a un), son nom, d'où il vient (`source` : un objet, une classe), son type et sa précision (limite
+ * d'usage « 2 fois/combat », telle qu'écrite), son texte, et une aide de la fiche sous le texte (`aide`, AIDE_ANNULE_LES_FAIBLESSES).
  */
-function elementDeDon({ niveau = null, nom, type = null, precision = null, texte, aide = null }) {
-  return el('li', { class: 'don' },
+function elementDeDon({ niveau = null, nom, source = null, type = null, precision = null, texte, aide = null, teinte = null, obtenu = null }) {
+  return el('li', { class: ['don', ...teinteDe(teinte)].join(' ') },
     el('span', { class: 'don__tete' },
       niveau !== null ? el('span', { class: 'don__niveau' }, `Niv. ${niveau}`) : null,
       el('strong', { class: 'don__nom' }, nom),
-      type || precision ? el('span', { class: 'don__type', dataset: type ? { type } : {} }, [TYPES_DE_DON[type] ?? type, precision ? `(${precision})` : null].filter(Boolean).join(' ')) : null),
+      source ? el('span', { class: 'don__source' }, source) : null,
+      typeDuDon(type, precision)),
+    // ce qu'obtient un don « Variable » du Mage Bleu (décision R181 : texteDuDonVariable, « → <entrée obtenue> »)
+    obtenu ? el('strong', { class: 'don__texte don__obtenu' }, obtenu) : null,
     texte ? el('span', { class: 'don__texte' }, texte) : null,
     aide ? el('small', { class: 'fiche-aide don__aide' }, aide) : null);
 }
@@ -1462,35 +1541,136 @@ function elementDeDon({ niveau = null, nom, type = null, precision = null, texte
  */
 const AIDE_ANNULE_LES_FAIBLESSES = 'La fiche retire les faiblesses qu’elle connaît ; le MJ annule aussi en jeu celles qu’elle ne connaît pas (sorts ennemis, météo, armure, états en jeu).';
 const aideDuDon = (d) => ((d.resistances?.effets ?? []).some((e) => e.annule) ? AIDE_ANNULE_LES_FAIBLESSES : null);
+/** Le texte d'un accessoire maudit (décision R54 : « l'effet est le contraire »). */
+const texteMaudit = (x) => (x.maudit ? `${x.texte ?? ''} (maudit : l’effet est le contraire)` : x.texte);
 
 /**
- * Sous les sorts, le rappel des dons (demande du propriétaire) : ceux de la race — le don de base d'abord (demande du propriétaire), puis le don de
- * l'ethnie et la ligne de son ethnie dans le tableau de la race (donsDeRace) —, puis les dons de chaque classe débloqués au niveau atteint (donsAcquis).
+ * Une action de la liste (décision R173 : actionsDeLaFiche) : son nom est le bouton qui la consomme quand elle a un compteur (une utilisation de moins :
+ * consommerLAction) ou qu'elle se brise (l'accessoire quitte son emplacement) ; sinon un simple nom (sans limite écrite, rappel ou texte : rien à
+ * consommer, jamais grisée par sa limite). Son compteur « N / M » et le bouton « + » qui le remonte à la main (remonterLAction ; il reprend aussi une
+ * sélection faite par erreur), et ce qui le remet au maximum (REMONTEES). Grisée (`data-grisee`, le bouton en aria-disabled : il garde le focus, son
+ * infobulle dit pourquoi) en Symbiose pour une action d'équipement (R112, sauf l'arme élémentaire de la magie de la Symbiose, R167) ou à 0. L'état du
+ * moment est relu à chaque rafraîchissement (calcul.actions) : la liste n'est refaite que quand les actions changent.
  */
-function construireDons() {
-  const race = donsDeRace(regles, fiche);
-  const actions = actionsDesAccessoires(regles, fiche);
-  const cleRace = JSON.stringify([fiche.race_id, fiche.ethnie_id, actions]);
-  reconstruire($('dons-race'), cleRace, () => {
-    if (!fiche.race_id) return [el('li', { class: 'fiche-aide' }, 'Choisissez une race : ses dons apparaîtront ici.'), actions.map((x) => elementDeDon({ nom: x.nom, type: x.type, texte: x.texte }))];
+function elementDAction(a) {
+  // l'action utilisée peut quitter la liste (un accessoire qui se brise) : le focus, qu'elle emporterait sur la page, va à sa voisine (rendreLeFocusDesActions)
+  const appliquer = (ecrit) => {
+    if (!Object.keys(ecrit).length) return;
+    const place = [...$('actions').children].indexOf(li);
+    Object.assign(fiche, ecrit);
+    changer();
+    if (!li.isConnected) rendreLeFocusDesActions(place);
+  };
+  const consommable = Boolean(a.compteur || a.seBrise);
+  const nom = consommable
+    ? el('button', {
+      type: 'button', class: 'don__nom action__utiliser', 'aria-label': `Utiliser ${a.nom}${a.source ? ` (${a.source})` : ''}`,
+      onclick: () => { if (nom.getAttribute('aria-disabled') !== 'true') appliquer(consommerLAction(regles, fiche, a.cle)); },
+    }, a.nom)
+    : el('strong', { class: 'don__nom' }, a.nom);
+  const compte = a.compteur ? el('span', { class: 'action__compte' }) : null;
+  const plus = a.compteur ? el('button', {
+    type: 'button', class: 'ajuster', 'aria-label': `${a.nom} : une utilisation de plus`,
+    onclick: () => { if (plus.getAttribute('aria-disabled') !== 'true') appliquer(remonterLAction(regles, fiche, a.cle, 1)); },
+  }, '+') : null;
+  const raison = el('small', { class: 'fiche-aide action__raison' });
+  const li = el('li', { class: ['don', 'action', ...teinteDe(a.teinte)].join(' '), dataset: { origine: a.origine }, tabindex: '-1' },
+    el('span', { class: 'don__tete' },
+      a.niveau !== null ? el('span', { class: 'don__niveau' }, `Niv. ${a.niveau}`) : null,
+      nom,
+      a.source ? el('span', { class: 'don__source' }, a.source) : null,
+      typeDuDon(a.type, a.precision)),
+    a.texte ? el('span', { class: 'don__texte' }, texteMaudit(a)) : null,
+    a.compteur ? el('span', { class: 'action__suivi' }, compte, plus, el('small', { class: 'fiche-aide' }, REMONTEES[a.compteur.remontee])) : null,
+    a.seBrise ? el('small', { class: 'fiche-aide' }, 'L’objet se brise à l’usage : il quitte son emplacement.') : null,
+    a.limite?.genre === 'rappel' ? el('small', { class: 'fiche-aide' }, 'Limite rappelée, sans compteur.') : null,
+    raison);
+  synchro(() => {
+    const x = (calcul.actions ?? []).find((y) => y.cle === a.cle);
+    if (!x) return;
+    li.toggleAttribute('data-grisee', Boolean(x.grisee));
+    if (raison.textContent !== (x.grisee ?? '')) raison.textContent = x.grisee ?? '';
+    if (consommable) {
+      attribut(nom, 'aria-disabled', x.utilisable ? null : 'true');
+      infobulle(nom, x.grisee ?? (x.seBrise ? 'Utiliser : l’objet se brise et quitte son emplacement' : 'Utiliser : une utilisation de moins'));
+    }
+    if (x.compteur) {
+      const texte = `${x.compteur.restants} / ${x.compteur.max}`;
+      if (compte.textContent !== texte) compte.textContent = texte;
+      attribut(plus, 'aria-disabled', x.compteur.restants >= x.compteur.max ? 'true' : null);
+      infobulle(plus, x.compteur.restants >= x.compteur.max ? 'Le compteur est au maximum' : 'Une utilisation de plus (à la main)');
+    }
+  });
+  return li;
+}
+
+/**
+ * Le focus d'une action qui a quitté la liste (un accessoire qui se brise : constat de tech-qualite, comme rendreLeFocus de la ceinture) : à l'action qui a
+ * pris sa place (`place`), sinon à la dernière, sinon à la liste ; jamais à un bouton (le refocaliser referait son action à la touche suivante) : à la
+ * ligne de l'action (tabindex -1), d'où Tab mène à ses boutons.
+ */
+function rendreLeFocusDesActions(place) {
+  const liste = $('actions');
+  const actions = [...liste.children].filter((x) => x.classList.contains('action'));
+  const voisine = actions[Math.min(Math.max(place, 0), actions.length - 1)];
+  if (voisine) return voisine.focus();
+  liste.tabIndex = -1;
+  liste.focus();
+}
+
+/**
+ * Les actions utilisables, juste sous la ceinture (décision R173 : actionsDeLaFiche), et le bouton « Fin de combat » (finDeCombat : les compteurs par
+ * combat remis au maximum ; ceux par jour, semaine… ne remontent qu'à la main ; le sort préparé lâché, R179), montré quand une action a un compteur par
+ * combat ou qu'un sort est préparé (finDeCombatMontree).
+ */
+function construireActions() {
+  calcul.actions = actionsDeLaFiche(regles, fiche);
+  const cle = JSON.stringify(calcul.actions.map((a) => [a.cle, a.nom, a.source, a.niveau, a.type, a.precision, a.texte, a.maudit, a.compteur?.max ?? null,
+    a.compteur?.remontee ?? null, a.seBrise, a.limite?.genre ?? null, a.teinte?.classe ?? null]));
+  reconstruire($('actions'), cle, () => (calcul.actions.length
+    ? calcul.actions.map(elementDAction)
+    : el('li', { class: 'fiche-aide' }, 'Aucune action : le don de base de la race, les dons de classe Action, Actif ou Réaction et l’équipement activable apparaîtront ici.')));
+  $('fin-de-combat').hidden = !finDeCombatMontree(regles, fiche, calcul.actions);
+}
+
+/** « Fin de combat » (décisions R173, R179) : les compteurs par combat remis au maximum, le sort préparé lâché. */
+function finirLeCombat() {
+  const ecrit = finDeCombat(regles, fiche);
+  // (les compteurs par combat, et le sort préparé, que « Fin de combat » lâche : décision R179)
+  if (Object.entries(ecrit).every(([cle, valeur]) => JSON.stringify(valeur) === JSON.stringify(fiche[cle] ?? []))) return;
+  Object.assign(fiche, ecrit);
+  changer();
+}
+
+/**
+ * Les passifs, juste après les actions (décision R173 : passifsDeLaFiche) : ceux de la race (sans le don de base, une action ; le don de l'ethnie et la
+ * ligne de son ethnie dans le tableau de la race), puis les dons de chaque classe débloqués au niveau atteint qui ne sont pas des actions, puis les
+ * effets de l'équipement porté, tels qu'écrits.
+ */
+function construirePassifs() {
+  const p = passifsDeLaFiche(regles, fiche);
+  reconstruire($('dons-race'), JSON.stringify([fiche.race_id, fiche.ethnie_id, p.race.map((x) => x.nom)]), () => {
+    if (!fiche.race_id) return el('li', { class: 'fiche-aide' }, 'Choisissez une race : ses dons apparaîtront ici.');
     return [
-      race.base ? elementDeDon(donDeBase(race.base)) : null,   // « Méditation » ou « Repos » plutôt que « Don de base » (demande du propriétaire)
-      race.dons.map((d) => elementDeDon({ nom: d.nom ?? d.etiquette, texte: d.texte })),
-      race.tableau ? elementDeDon({ nom: race.tableau.titre ?? 'Selon l’ethnie', texte: race.tableau.cellules.map((c) => `${c.libelle.replace(/\n/g, ' / ')} : ${c.valeur}`).join('\n') }) : null,
-      race.ethnieAChoisir ? el('li', { class: 'fiche-aide' }, 'Choisissez l’ethnie : son don apparaîtra ici.') : null,
-      // à la suite, les effets d'accessoire « (Action) » et à usage compté, sous le même format (demande du propriétaire, décision R54)
-      actions.map((x) => elementDeDon({ nom: x.nom, type: x.type, texte: x.maudit ? `${x.texte} (maudit : l’effet est le contraire)` : x.texte })),
+      p.race.map((x) => elementDeDon({ nom: x.nom, type: x.type, texte: x.texte })),
+      p.ethnieAChoisir ? el('li', { class: 'fiche-aide' }, 'Choisissez l’ethnie : son don apparaîtra ici.') : null,
     ];
   });
-  const classes = donsAcquis(regles, fiche);
-  const cleClasses = JSON.stringify(classes.map((c) => [c.classe.id, c.niveau, c.dons.map((d) => d.id)]));
-  reconstruire($('dons-classes'), cleClasses, () => (classes.length === 0
+  const cleClasses = JSON.stringify(p.classes.map((c) => [c.classe.id, c.niveau, c.dons.map((d) => [d.don.id, d.nom, d.obtenu ?? null])]));
+  reconstruire($('dons-classes'), cleClasses, () => (p.classes.length === 0
     ? el('p', { class: 'fiche-aide' }, 'Choisissez une classe : ses dons apparaîtront ici, niveau de classe par niveau de classe.')
-    : classes.map((c) => el('div', { class: ['dons-classe', ...teinteDe(c.classe)].join(' ') },
+    : p.classes.map((c) => el('div', { class: ['dons-classe', ...teinteDe(c.classe)].join(' ') },
       el('h4', {}, `${c.classe.nom} · niveau ${c.niveau}`),
       c.dons.length
-        ? el('ul', { class: 'dons-liste' }, c.dons.map((d) => elementDeDon({ niveau: d.niveau, nom: d.nom, type: d.type, precision: d.precision, texte: d.effet, aide: aideDuDon(d) })))
-        : el('p', { class: 'fiche-aide' }, 'Pas encore de don à ce niveau de classe.')))));
+        // un don « Variable » du Mage Bleu dit ce qu'il obtient (`obtenu`) ; l'entrée Passif obtenue, son don en source et la couleur de sa magie (R181)
+        ? el('ul', { class: 'dons-liste' }, c.dons.map((d) => elementDeDon({
+          niveau: d.niveau, nom: d.nom, type: d.type, precision: d.precision, obtenu: d.obtenu ?? null,
+          ...(d.origine === 'don_obtenu' ? { source: d.source, teinte: d.teinte } : {}), texte: d.texte, aide: aideDuDon(d.don) })))
+        : el('p', { class: 'fiche-aide' }, 'Pas encore de don passif à ce niveau de classe (ses actions sont sous la ceinture).')))));
+  const cleEquipement = JSON.stringify(p.equipement.map((x) => [x.nom, x.source, x.texte, x.maudit, x.aide, x.teinte?.classe ?? null]));
+  reconstruire($('passifs-equipement'), cleEquipement, () => (p.equipement.length
+    ? p.equipement.map((x) => elementDeDon({ nom: x.nom, source: x.source, texte: texteMaudit(x), aide: x.aide, teinte: x.teinte }))
+    : el('li', { class: 'fiche-aide' }, 'Aucun effet d’équipement porté.')));
 }
 
 // ------------------------------------------------------------------ attributs et valeurs du moment
@@ -1585,6 +1765,8 @@ function carteDeJauge(champ) {
     saisie.setAttribute('aria-label', `${texte} : nombre à ${sens > 0 ? 'ajouter' : 'retirer'}`);
     valeur.textContent = `${j.hors ? fiche[champ] : j.valeur} / ${j.max}`;
     valeur.toggleAttribute('data-hors', j.hors);
+    // la santé sous 0 (décision R171 : sans plancher ; guide « Blessures et états » : « à 0 ou moins, le personnage est dans le coma ») : le curseur reste à 0
+    valeur.toggleAttribute('data-negative', j.valeur < 0);
     valeur.title = def.detail(j);   // le calcul du maximum en infobulle seulement (« les textes de calcul sont inutiles », demande du propriétaire)
   });
   const carte = el('div', { class: 'attribut attribut--jauge', dataset: { a: def.a } },
@@ -1596,8 +1778,8 @@ function carteDeJauge(champ) {
 
 /**
  * Attributs et valeurs du moment, fusionnés (demandes du propriétaire) : santé, barrière, chakra (et Âme ou Sang, la 4ᵉ barre de la Nécromancie ou du
- * Sang) en cartes, chacune dans la couleur de son attribut ; puis initiative, vitesse et vitesse de nage en simples pastilles, à côté de la corruption ;
- * l'armure de base n'y est plus (les AP/AM viendront avec l'armure portée).
+ * Sang) en cartes, chacune dans la couleur de son attribut, puis la corruption ; sur la 2ᵉ ligne (demande du propriétaire du 2026-10-29), après l'AP et
+ * l'AM (construireDefense), l'initiative, la vitesse et la vitesse de nage en tuiles.
  */
 function construireAttributs() {
   const barres = ['sante_actuelle', 'barriere_actuelle', 'chakra_actuel', 'barre4_actuelle'].filter((c) => calcul.jauges.some((j) => j.champ === c));
@@ -1613,10 +1795,12 @@ function construireAttributs() {
       return [['Initiative', ecrit ? `1D20 ${bonus >= 0 ? '+' : '−'} ${Math.abs(bonus)}` : '1D20',
         [a.initiative?.note ?? 'Selon l’Agilité', a.initiativeMetier ? `${signe(a.initiativeMetier)} du métier` : null,
           a.initiativeAccessoires ? `${signe(a.initiativeAccessoires)} des accessoires` : null,
-          a.initiativePosture ? `${signe(a.initiativePosture)} de la posture ${calcul.posture.posture.nom}` : null].filter(Boolean).join(' · ')]];
+          a.initiativePosture ? `${signe(a.initiativePosture)} (${nomDeLaPosture()})` : null].filter(Boolean).join(' · ')]];
     })(),
-    // vitesse et vitesse de nage de la race, de l'ethnie et du métier (décision R37)
-    ['Vitesse', a.vitesseSol ?? '—', `Vitesse sur terre (race et ethnie${a.vitesseMetier ? `, ${signe(a.vitesseMetier)} du métier` : ''}${a.vitesseAccessoires ? `, ${signe(a.vitesseAccessoires)} des accessoires` : ''})`],
+    // vitesse et vitesse de nage de la race, de l'ethnie et du métier (décision R37) ; le Mode Hyper actif y ajoute ce qu'écrit l'effet de la race
+    // (décision R172 : Humain, Jackalope), une valeur du moment comme la posture
+    ['Vitesse', a.vitesseSol === null ? '—' : a.vitesseSol + a.vitesseModeHyper,
+      `Vitesse sur terre (race et ethnie${a.vitesseMetier ? `, ${signe(a.vitesseMetier)} du métier` : ''}${a.vitesseAccessoires ? `, ${signe(a.vitesseAccessoires)} des accessoires` : ''}${a.vitesseModeHyperDetail.map((l) => `, ${signe(l.valeur)} ${l.nom}`).join('')})`],
     ['Nage', a.vitesseNage ?? '—', `Vitesse de nage (race et ethnie${a.vitesseNageMetier ? `, ${signe(a.vitesseNageMetier)} du métier` : ''})`],
   ];
   reconstruire($('attributs-pastilles'), JSON.stringify(pastilles), () => pastilles.map(([nom, valeur, titre]) => el('li', { title: titre }, el('strong', {}, `${nom} `), String(valeur))));
@@ -1626,62 +1810,151 @@ function construireAttributs() {
  * Les six postures (demande du propriétaire), chacune dans sa case avec ses effets du tableau de la fiche, toujours lisibles, avantages en vert et
  * inconvénients en rouge, sur deux lignes : un clic choisit la posture du moment (personnage.posture_id), un second la retire. À droite, une fois débloqués
  * (modeHyperDe : niveaux 2 et 10), les cases du Mode Hyper (effets de base, de la magie et de la race) et du Mode Hyper 100 % (demande du propriétaire),
- * pour lecture.
+ * activables comme les postures (décision R172 : « Deux cases activables », personnage.mode_hyper et mode_hyper_100, modeHyperApres) : leur nom est le
+ * bouton qui les coche ; le Mode Hyper 100 % ne se coche qu'avec le Mode Hyper, et décocher le Mode Hyper le décoche. Sous le Mode Hyper, le compteur
+ * « une fois par semaine » (consommé à l'activation, remonté à la main : semaineDuModeHyperApres ; à 0, la case est grisée) et le bouton « Tour de Mode
+ * Hyper » (tourDeModeHyper) ; sous le Mode Hyper 100 %, « Fin du Mode Hyper 100 % » (finDuModeHyperCent). En Mode Hyper 100 %, les cases des postures
+ * sont toutes actives, leurs inconvénients barrés (`data-cent`) : la posture cochée reprend à sa fin.
  */
 function construirePostures() {
   const hyper = modeHyperDe(regles, fiche);
   const cleHyper = JSON.stringify(hyper && [hyper.debloque, hyper.cent.debloque, hyper.magies.map((m) => m.effet), hyper.race?.nom, hyper.toursAccessoires]);
   // dans l'ordre des cases de la fiche (regles.ordre_postures) ; chaque effet en vert (avantage) ou en rouge (inconvénient : `inconvenients`, par rang)
   const ordre = (p) => (regles.ordre_postures ?? []).indexOf(p.id);
-  reconstruire($('postures'), 'fixe', () => [...regles.postures].sort((a, b) => ordre(a) - ordre(b)).map((p) => {
-    const bouton = el('button', {
-      type: 'button', class: ['posture-carte', ...teinteDe(p)].join(' '), 'aria-pressed': 'false',
-      onclick: () => {
-        fiche.posture_id = fiche.posture_id === p.id ? null : p.id;
-        changer();
-      },
-    }, el('span', { class: 'posture-carte__nom' }, p.nom), el('ul', { class: 'posture-carte__effets' }, p.effets.map((e, i) => {
-      const inconvenient = (p.inconvenients ?? []).includes(i + 1);
-      return el('li', { class: inconvenient ? 'est-inconvenient' : 'est-avantage' }, el('span', { class: 'visuellement-cache' }, inconvenient ? 'Inconvénient : ' : 'Avantage : '), e);
-    })));
-    synchro(() => bouton.setAttribute('aria-pressed', String(fiche.posture_id === p.id)));
-    return bouton;
-  }).concat((() => {
-    // la magie de la Symbiose (décision R100 : « Quand vous avez 2 magies, 1 de ces magies doit être désactivée temporairement ») : choisie ici quand le
-    // personnage en a deux ; ses sorts reçoivent le bonus de la posture, l'autre magie est désactivée
-    const choix = el('select', { 'aria-label': 'Magie de la symbiose', onchange: (ev) => { fiche.symbiose_magie_id = ev.target.value || null; changer(); } });
-    const bloc = el('label', { class: 'fiche-champ posture-symbiose', hidden: true, dataset: { choixCle: 'symbiose' } }, el('span', {}, 'Symbiose avec'), choix);
+  reconstruire($('postures'), 'fixe', () => {
+    // le Mode Hyper 100 % (décision R172) : toutes les postures actives, sans leurs inconvénients
     synchro(() => {
-      const s = calcul.posture?.symbiose;
-      bloc.hidden = !s || s.possibles.length < 2;
-      if (bloc.hidden) return;
-      const cle = s.possibles.map((m) => m.id).join();
-      if (choix.dataset.cle !== cle) {
-        choix.replaceChildren(option('', 'Choisir…'), ...s.possibles.map((m) => option(m.id, m.nom)));
-        choix.dataset.cle = cle;
-      }
-      poser(choix, s.magie?.id ?? '');
-      bloc.toggleAttribute('data-a-choisir', s.aChoisir);
+      $('postures').toggleAttribute('data-cent', Boolean(calcul.posture?.cent));
     });
-    return [bloc];
-  })()));
+    return [...regles.postures].sort((a, b) => ordre(a) - ordre(b)).map((p) => {
+      const bouton = el('button', {
+        type: 'button', class: ['posture-carte', ...teinteDe(p)].join(' '), 'aria-pressed': 'false',
+        onclick: () => {
+          fiche.posture_id = fiche.posture_id === p.id ? null : p.id;
+          changer();
+        },
+      }, el('span', { class: 'posture-carte__nom' }, p.nom), el('ul', { class: 'posture-carte__effets' }, p.effets.map((e, i) => {
+        const inconvenient = (p.inconvenients ?? []).includes(i + 1);
+        return el('li', { class: inconvenient ? 'est-inconvenient' : 'est-avantage' }, el('span', { class: 'visuellement-cache' }, inconvenient ? 'Inconvénient : ' : 'Avantage : '), e);
+      })));
+      synchro(() => bouton.setAttribute('aria-pressed', String(fiche.posture_id === p.id)));
+      return bouton;
+    }).concat((() => {
+      // la magie de la Symbiose (décision R100 : « Quand vous avez 2 magies, 1 de ces magies doit être désactivée temporairement ») : choisie ici quand le
+      // personnage en a deux ; ses sorts reçoivent le bonus de la posture, l'autre magie est désactivée (pas en Mode Hyper 100 % : les deux, R172)
+      const choix = el('select', { 'aria-label': 'Magie de la symbiose', onchange: (ev) => { fiche.symbiose_magie_id = ev.target.value || null; changer(); } });
+      const bloc = el('label', { class: 'fiche-champ posture-symbiose', hidden: true, dataset: { choixCle: 'symbiose' } }, el('span', {}, 'Symbiose avec'), choix);
+      synchro(() => {
+        const s = calcul.posture?.symbiose;
+        bloc.hidden = !s || s.possibles.length < 2 || calcul.posture.cent;
+        if (bloc.hidden) return;
+        const cle = s.possibles.map((m) => m.id).join();
+        if (choix.dataset.cle !== cle) {
+          choix.replaceChildren(option('', 'Choisir…'), ...s.possibles.map((m) => option(m.id, m.nom)));
+          choix.dataset.cle = cle;
+        }
+        poser(choix, s.magie?.id ?? '');
+        bloc.toggleAttribute('data-a-choisir', s.aChoisir);
+      });
+      return [bloc];
+    })());
+  });
   const cartesHyper = $('postures-hyper');
   cartesHyper.hidden = !hyper?.debloque;
-  reconstruire(cartesHyper, cleHyper, () => [
+  // un bouton des jauges (décision R172) : ce qu'il coûtera, en infobulle ; appliqué, l'écriture du moteur telle quelle
+  // `moment` : quand le coût se paie, en tête de l'infobulle (« en fin de tour » pour un tour de Mode Hyper, décision R200 (3))
+  const boutonDeJauges = (texte, calculer, moment = null) => {
+    const bouton = el('button', {
+      type: 'button', class: 'posture-carte__jauges',
+      onclick: () => {
+        const r = calculer();
+        if (!r) return;
+        Object.assign(fiche, r.ecrit);
+        changer();
+      },
+    }, texte);
+    synchro(() => {
+      const r = calculer();
+      bouton.hidden = !r;
+      infobulle(bouton, r ? [`${r.pourcent} % du chakra maximum (${calcul.attributs.chakra}), arrondi à l’inférieur${moment ? `, ${moment}` : ''} : ${r.cout} chakra`,
+        `Chakra ${r.chakra.avant} → ${r.chakra.apres}`,
+        ...(r.manque ? [`Chakra manquant : ${r.manque}, payé ${SANTE_PAR_CHAKRA_MANQUANT} santé pour 1 chakra, sans toucher à la barrière (décision R186) : santé ${r.sante.avant} → ${r.sante.apres}`] : [])].join('\n') : '');
+    });
+    return bouton;
+  };
+  // le nom d'une case : le bouton qui la coche (aria-pressed), grisé quand elle ne se coche pas
+  const bascule = (cle, nom, niveau) => {
+    const bouton = el('button', {
+      type: 'button', class: 'posture-carte__nom posture-carte__bascule', 'aria-pressed': 'false',
+      onclick: () => {
+        const actif = cle === 'mode_hyper' ? modeHyperDe(regles, fiche).actif : modeHyperDe(regles, fiche).cent.actif;
+        const ecrit = modeHyperApres(regles, fiche, cle, !actif);
+        if (!Object.keys(ecrit).length) return;
+        Object.assign(fiche, ecrit);
+        changer();
+      },
+    }, nom, el('small', {}, ` · dès le niveau ${niveau}`));
+    return bouton;
+  };
+  reconstruire(cartesHyper, cleHyper, () => {
+    if (!hyper?.debloque) return [];
     // leur couleur : la classe du mode (regles.mode_hyper.classe, .cent.classe : lib/palette-css.mjs, famille `mode`), comme une posture
-    hyper?.debloque ? el('div', { class: ['posture-carte', 'posture-carte--hyper', ...teinteDe(regles.mode_hyper)].join(' ') },
-      el('span', { class: 'posture-carte__nom' }, 'Mode Hyper', el('small', {}, ` · dès le niveau ${hyper.niveau}`)),
+    const nomHyper = bascule('mode_hyper', 'Mode Hyper', hyper.niveau);
+    const carteHyper = el('div', { class: ['posture-carte', 'posture-carte--hyper', ...teinteDe(regles.mode_hyper)].join(' ') }, nomHyper,
       el('ul', { class: 'posture-carte__effets' }, hyper.effets.map((e) => el('li', {}, e)),
         hyper.magies.map((m) => el('li', { class: `posture-carte__magie ${m.magie.classe}` }, el('strong', {}, `${m.magie.nom} : `), m.effet)),
         hyper.race ? el('li', { class: 'posture-carte__race' }, el('strong', {}, `${hyper.race.nom ?? 'Race'} : `), hyper.race.effet) : null,
         // accessoire « +1 tour de Mode Hyper (100% exclu) » (décision R54)
-        hyper.toursAccessoires ? el('li', {}, el('strong', {}, 'Accessoires : '), `${signe(hyper.toursAccessoires)} tour${Math.abs(hyper.toursAccessoires) > 1 ? 's' : ''} (pas le Mode Hyper 100 %)`) : null)) : null,
-    hyper?.cent.debloque ? el('div', { class: ['posture-carte', 'posture-carte--hyper', 'posture-carte--cent', ...teinteDe(regles.mode_hyper.cent)].join(' ') },
-      el('span', { class: 'posture-carte__nom' }, 'Mode Hyper 100 %', el('small', {}, ` · dès le niveau ${hyper.cent.niveau}`)),
+        hyper.toursAccessoires ? el('li', {}, el('strong', {}, 'Accessoires : '), `${signe(hyper.toursAccessoires)} tour${Math.abs(hyper.toursAccessoires) > 1 ? 's' : ''} (pas le Mode Hyper 100 %)`) : null));
+    // le compteur « une fois par semaine » (décision R172 : « Oui, compteur manuel ») : consommé à l'activation, remonté à la main
+    const compte = el('output', { class: 'posture-carte__compte', 'aria-live': 'polite' });
+    const ajusterSemaine = (ecart) => () => {
+      const ecrit = semaineDuModeHyperApres(regles, fiche, ecart);
+      if (!Object.keys(ecrit).length) return;
+      Object.assign(fiche, ecrit);
+      changer();
+    };
+    const moins = el('button', { type: 'button', class: 'ajuster', 'aria-label': 'Utilisations de la semaine : une de moins', title: 'Une utilisation de moins', onclick: ajusterSemaine(-1) }, '−');
+    const plus = el('button', { type: 'button', class: 'ajuster', 'aria-label': 'Utilisations de la semaine : une de plus', title: 'Remonter le compteur (à la main, une nouvelle semaine)', onclick: ajusterSemaine(1) }, '+');
+    const semaine = el('span', { class: 'posture-carte__semaine', title: 'Une fois par semaine : consommé à l’activation, remonté à la main' }, el('span', {}, 'Cette semaine '), moins, compte, plus);
+    carteHyper.append(el('div', { class: 'posture-carte__suivi' }, semaine,
+      // décision R200 (3) : la consommation a lieu à la fin du tour du joueur
+      boutonDeJauges('Tour de Mode Hyper', () => tourDeModeHyper(regles, fiche, calcul.attributs), 'en fin de tour')));
+    synchro(() => {
+      const h = modeHyperDe(regles, fiche);
+      nomHyper.setAttribute('aria-pressed', String(h.actif));
+      carteHyper.toggleAttribute('data-actif', h.actif);
+      nomHyper.disabled = !h.activable;
+      nomHyper.title = h.actif ? 'Mode Hyper actif : un clic le décoche (et le Mode Hyper 100 %)'
+        : h.activable ? 'Activer le Mode Hyper (une utilisation de la semaine)' : 'Plus d’utilisation cette semaine : remonter le compteur à la main';
+      semaine.hidden = !h.semaine;
+      if (h.semaine) {
+        const texte = `${h.semaine.restantes} / ${h.semaine.max}`;
+        if (compte.textContent !== texte) compte.textContent = texte;
+        moins.disabled = h.semaine.restantes <= 0;
+        plus.disabled = h.semaine.restantes >= h.semaine.max;
+      }
+    });
+    if (!hyper.cent.debloque) return [carteHyper];
+    const nomCent = bascule('mode_hyper_100', 'Mode Hyper 100 %', hyper.cent.niveau);
+    const carteCent = el('div', { class: ['posture-carte', 'posture-carte--hyper', 'posture-carte--cent', ...teinteDe(regles.mode_hyper.cent)].join(' ') }, nomCent,
       el('ul', { class: 'posture-carte__effets' }, hyper.cent.effets.map((e) => el('li', {}, e)),
-        hyper.cent.suite ? el('li', { class: 'posture-carte__suite' }, `${hyper.cent.suite.charAt(0).toUpperCase()}${hyper.cent.suite.slice(1)}`) : null)) : null,
-  ]);
+        hyper.cent.suite ? el('li', { class: 'posture-carte__suite' }, `${hyper.cent.suite.charAt(0).toUpperCase()}${hyper.cent.suite.slice(1)}`) : null),
+      el('div', { class: 'posture-carte__suivi' }, boutonDeJauges('Fin du Mode Hyper 100 %', () => finDuModeHyperCent(regles, fiche, calcul.attributs))));
+    synchro(() => {
+      const h = modeHyperDe(regles, fiche);
+      nomCent.setAttribute('aria-pressed', String(h.cent.actif));
+      carteCent.toggleAttribute('data-actif', h.cent.actif);
+      nomCent.disabled = !h.cent.actif && !h.cent.activable;
+      nomCent.title = h.cent.actif ? 'Mode Hyper 100 % actif : un clic le décoche (sans coût ; « Fin du Mode Hyper 100 % » consomme le chakra)'
+        : h.cent.activable ? 'Activer le Mode Hyper 100 %' : 'Seulement avec le Mode Hyper actif';
+    });
+    return [carteHyper, carteCent];
+  });
 }
+
+/** La posture du moment, nommée dans un détail : « posture Offensif », ou le Mode Hyper 100 % qui les cumule toutes (décision R172). */
+const nomDeLaPosture = () => (calcul.posture?.cent ? 'Mode Hyper 100 % : toutes les postures' : `posture ${calcul.posture?.posture.nom ?? ''}`);
 
 // ------------------------------------------------------------------ les choix qui restent à faire, en tiroir (demande du propriétaire)
 /** Le choix `nature` (et de la classe `rang`) reste à faire (choixEnAttente, refait à chaque rafraîchissement) : son champ est surligné. */
@@ -1698,7 +1971,7 @@ function construireChoixSpecialites() {
   reconstruire(bloc, JSON.stringify(classes.map((c) => [c.rang, c.classe.id])), () => classes.map((c) => {
     const choixDe = () => calcul.classes.find((x) => x.rang === c.rang)?.choix;
     const cadre = groupe(`Spécialité · ${c.classe.nom}`, c.classe, c.classe.specialites.map((s) => pastille({
-      texte: s.nom, teinte: c.classe, detail: s.magique ? 'classe magique' : null,
+      texte: s.nom, teinte: c.classe, detail: s.magique ? 'classe magique' : null, description: infobulleDeSpecialite(c.classe, s),
       choisie: () => choixDe()?.specialite_id === s.id,
       surClic: () => {
         const l = ligneDe('classes', (x) => x.rang === c.rang);
@@ -1712,6 +1985,62 @@ function construireChoixSpecialites() {
     synchro(() => cadre.toggleAttribute('data-a-choisir', aChoisir('specialite', c.rang)));
     return cadre;
   }));
+}
+
+/**
+ * La spécialisation de chaque magie d'un bi-magie (décision R236 (3)), dès que le NPM de ses sorts atteint le seuil des spécialisations : les mêmes
+ * pastilles que la spécialité d'une classe, une par spécialisation de la magie (la couleur de la magie), surlignées tant que la magie n'a pas son choix.
+ * Un clic choisit, un second retire ; modifiable à tout moment (R236 (6), comme la spécialité de classe) : les sorts de l'ancienne passent en rouge dans
+ * la liste des sorts, à remplacer (R27). Le mono-magie n'a rien à choisir (R236 (2)) : le bloc reste caché.
+ */
+function construireChoixSpecialisationsMagie() {
+  const choix = specialisationsAChoisir(regles, fiche);
+  const bloc = $('choix-specialisations-magie');
+  bloc.hidden = choix.length === 0;
+  reconstruire(bloc, JSON.stringify(choix.map((c) => [c.magie.id, c.specialisations.map((s) => s.id)])), () => choix.map((c) => {
+    const cle = cleDeChoix.specialisationMagie(c.magie.id);
+    const cadre = groupe(`Spécialisation magique · ${c.magie.nom}`, c.magie, c.specialisations.map((s) => pastille({
+      texte: nomDeSpecialisation(s.nom), teinte: c.magie,
+      // survoler la pastille montre la description de la spécialisation, celle de la page de la magie (R260 (3))
+      description: s.description,
+      choisie: () => specialisationsValables(regles, fiche).some((x) => x.magie_id === c.magie.id && x.specialisation_id === s.id),
+      surClic: () => {
+        fiche.specialisations_magie = specialisationsApresChoix(regles, fiche, c.magie.id, s.id);
+        changer();
+      },
+    })));
+    cadre.dataset.choixCle = cle;
+    synchro(() => cadre.toggleAttribute('data-a-choisir', (calcul?.attente ?? []).some((x) => x.cle === cle)));
+    return cadre;
+  }));
+}
+
+/**
+ * Dans l'identité, la spécialisation de chaque magie à côté d'elle (demande du propriétaire du 2026-11-13), pour un bi-magie seul (R236 (3) : estBiMagie)
+ * et une magie qui en a : les mêmes pastilles que le cadre « Choix », fermées tant que le NPM des sorts n'atteint pas le seuil (seuilDesSpecialisations,
+ * lu dans les données), surlignées tant que la magie n'a pas son choix. Le mono-magie n'a rien à choisir (R236 (2)) : les menus restent cachés.
+ */
+function construireSpecialisationsDeLIdentite() {
+  const seuil = seuilDesSpecialisations(regles);
+  const ouvert = () => seuil !== null && npmDesSorts(regles, fiche) >= seuil;
+  for (const [cote, id] of [['innee', fiche.magie_innee_id], ['acquise', fiche.magie_acquise_id]]) {
+    const magie = trouver(regles.magies, id);
+    const menu = $(`choix-specialisation-${cote}`);
+    menu.hidden = !estBiMagie(fiche) || !magie?.specialisations?.length || seuil === null;
+    if (menu.hidden) continue;
+    const choisie = magie.specialisations.find((s) => specialisationsValables(regles, fiche).some((x) => x.magie_id === magie.id && x.specialisation_id === s.id));
+    afficherChoix(`specialisation-${cote}`, [choisie && { nom: nomDeSpecialisation(choisie.nom), teinte: magie }], ouvert() ? 'À choisir' : `Au NPM ${seuil}`);
+    menu.toggleAttribute('data-a-choisir', (calcul?.attente ?? []).some((x) => x.cle === cleDeChoix.specialisationMagie(magie.id)));
+    reconstruire($(`specialisation-${cote}`), magie.id, () => magie.specialisations.map((s) => pastille({
+      texte: nomDeSpecialisation(s.nom), teinte: magie, description: s.description,
+      choisie: () => specialisationsValables(regles, fiche).some((x) => x.magie_id === magie.id && x.specialisation_id === s.id),
+      refus: () => (ouvert() ? null : `au NPM ${seuil}`),
+      surClic: () => {
+        fiche.specialisations_magie = specialisationsApresChoix(regles, fiche, magie.id, s.id);
+        changer();
+      },
+    })));
+  }
 }
 
 /**
@@ -2262,6 +2591,22 @@ function construireProgression() {
   total.toggleAttribute('data-hors', g.hors);
   total.title = g.hors ? `Hors du total à saisir au niveau ${g.niveau} : santé ${g.sante} + chakra ${g.chakra} = ${g.total}` : '';
   $('progression-aide').textContent = aideDesGains(g);
+  // décision R225 : un Potentiel Illimité inné a un plafond de santé (gainsDeNiveau().potentiel, calculé depuis la donnée et les niveaux, le même que la
+  // règle gains_sante_potentiel de la base, qui le signale à l'enregistrement) ; en rouge au-delà, sans rien bloquer. Caché pour toute autre magie innée
+  const potentiel = $('gains-sante-potentiel');
+  potentiel.hidden = !g.potentiel;
+  potentiel.toggleAttribute('data-hors', Boolean(g.potentiel?.depasse));
+  if (g.potentiel) {
+    const p = g.potentiel;
+    const magie = trouver(regles.magies, fiche.magie_innee_id)?.nom ?? fiche.magie_innee_id;
+    potentiel.textContent = `Santé attribuée : ${g.sante} / au plus : ${p.plafond}`;
+    const detail = `${magie} au niveau ${g.niveau} : au plus ${p.parNiveau} santé par niveau sur les points d’attributs (${p.niveaux} niveau${p.niveaux > 1 ? 'x' : ''})`
+      + `${p.de ? `, plus ${p.de} pour le dé bonus` : ''}, soit ${p.plafond}`;
+    potentiel.title = p.depasse ? `Au-delà du plafond de santé. ${detail}` : detail;
+  } else {
+    potentiel.textContent = '';
+    potentiel.title = '';
+  }
 
   const dons = donsAChoisir(regles, fiche);
   reconstruire($('dons'), JSON.stringify(dons.map((d) => [d.rang, d.classe.id, d.groupes.map((g) => g.options[0].id)])), () => {
@@ -2283,6 +2628,15 @@ function construireProgression() {
             synchro(() => {
               const choisis = new Set((fiche.capacites ?? []).map((c) => c.capacite_id));
               r.checked = option_ ? choisis.has(option_.id) : !g.options.some((o) => choisis.has(o.id));
+              // décision R181 : sans magie acquise, Secondaire ne peut pas être choisi (refusDuDon : l'option grisée, la raison avant le texte du don dans
+              // l'infobulle) ; déjà choisi, il reste cochable (la base le signale : don_obtenu_sans_magie_acquise)
+              const refus = option_ ? refusDuDon(regles, fiche, option_.id) : null;
+              r.disabled = Boolean(refus) && !r.checked;
+              if (!option_ || (!refus && !('refus' in r.dataset))) return;   // dataset.refus vaut « » (faux) : on teste sa présence
+              const bulle = [refus, infobulleDuDonAChoisir(d.classe, option_.id)].filter(Boolean).join('\n');
+              for (const x of [r, r.closest('label')]) if (x && bulle) infobulle(x, bulle);
+              if (refus) r.dataset.refus = '';
+              else delete r.dataset.refus;
             });
             return r;
           };
@@ -2290,7 +2644,14 @@ function construireProgression() {
             el('legend', {}, `Niveau de classe ${g.niveau}${specialite ? ` · ${specialite.nom}` : ''} : un seul au choix`),
             el('div', { class: 'dons-options' },
               el('label', {}, radio(null), 'Pas encore choisi'),
-              g.options.map((o) => el('label', {}, radio(o), o.nom, el('small', { class: 'muted' }, ` (${o.type})`)))));
+              // le texte du don en infobulle (demande du propriétaire du 2026-10-29 : infobulleDuDonAChoisir), au survol de l'option et au focus de son
+              // rond : le `title` est aussi sur le rond, car components/Infobulles.astro n'ouvre au clavier que la bulle de l'élément qui a le focus
+              g.options.map((o) => {
+                const texte = infobulleDuDonAChoisir(d.classe, o.id);
+                const rond = radio(o);
+                if (texte) rond.title = texte;
+                return el('label', { title: texte }, rond, o.nom, el('small', { class: 'muted' }, ` (${o.type})`));
+              })));
           // un groupe encore sans choix est surligné (demande du propriétaire)
           synchro(() => {
             const choisis = new Set((fiche.capacites ?? []).map((c) => c.capacite_id));
@@ -2298,6 +2659,74 @@ function construireProgression() {
           });
           return cadre;
         })));
+  });
+}
+
+/**
+ * L'entrée qu'obtient chaque don « Variable » acquis du Mage Bleu (décision R181 : donsVariables), dans le panneau « Choix », sous les dons à choisir :
+ * un groupe par don, comme un groupe de dons à choisir (des boutons radio, la tuile du tiroir, nature `don_obtenu`), qui ne propose que les entrées
+ * libres de la magie visée (« chaque entrée ne se prend qu'une fois »), chacune avec son en-tête et son effet tels qu'écrits en infobulle
+ * (infobulleDEntree). « (Ne peut pas être changé une fois choisi) » est seulement rappelé (Q95) : le choix reste modifiable. Un don sans entrée libre
+ * (Q96), ou Secondaire sans magie acquise, le dit (texteDuDonVariable) ; un choix hors de la liste aussi. Les choix gardés sans effet d'un don qui
+ * n'est plus acquis sont rappelés, chacun avec « Retirer » (la base les signale : don_obtenu_source_perdue).
+ */
+function construireDonsObtenus() {
+  const { dons, perdus } = calcul.donsVariables;
+  $('dons-obtenus-bloc').hidden = !dons.length && !perdus.length;
+  // reconstruit quand les dons ou leur liste changent ; une entrée prise ou rendue par un autre choix est seulement cachée ou montrée (le focus reste)
+  const cle = JSON.stringify([dons.map((d) => [d.source, d.rang, d.classe.id, d.magie?.id ?? null, d.liste.map((e) => e.id)]), perdus.map((p) => [p.source, p.entree_id])]);
+  reconstruire($('dons-obtenus'), cle, () => {
+    const groupes = dons.map((d, i) => {
+      const nomGroupe = `don-obtenu-${i}`;
+      const actuel = () => calcul.donsVariables.dons.find((x) => x.source === d.source) ?? d;
+      const choisir = (entreeId) => {
+        fiche.dons_obtenus = donsObtenusApresChoix(fiche, d.source, entreeId);
+        changer();
+      };
+      const radio = (entree) => {
+        const r = el('input', { type: 'radio', name: nomGroupe, onchange: () => choisir(entree?.id ?? null) });
+        synchro(() => {
+          const choix = (fiche.dons_obtenus ?? []).find((o) => o?.source === d.source)?.entree_id ?? null;
+          r.checked = entree ? choix === entree.id : !d.liste.some((e) => e.id === choix);
+        });
+        return r;
+      };
+      const legende = el('legend', {}, `${d.don.nom} · niveau de classe ${d.niveau}${d.magie ? ` : une entrée de ${d.magie.nom}` : ''}`);
+      // ce que le don ne donne pas (hors de la liste, plus d'entrée libre : Q96, sans magie acquise), sous la légende
+      const etat = el('p', { class: 'fiche-aide' });
+      const options = d.liste.length
+        ? el('div', { class: 'dons-options' },
+          el('label', {}, radio(null), 'Pas encore choisi'),
+          d.liste.map((e) => {
+            const texte = infobulleDEntree(e);
+            const rond = radio(e);
+            if (texte) rond.title = texte;
+            const etiquette = el('label', { title: texte }, rond, e.nom, el('small', { class: 'muted' }, ` ${e.type_brut}`));
+            // une entrée prise par un autre don « Variable » sort de la liste (« chaque entrée ne se prend qu'une fois », décision R181)
+            synchro(() => { etiquette.hidden = !actuel().options.some((x) => x.id === e.id); });
+            return etiquette;
+          }))
+        : null;
+      // décision R181 (Q95 : « Elle le rappelle seulement ») : rien n'empêche de changer le choix
+      const rappel = options ? el('small', { class: 'fiche-aide' }, 'Rappel du don : « Ne peut pas être changé une fois choisi » (le choix reste modifiable ici).') : null;
+      const cadre = el('fieldset', { class: ['dons-groupe', ...teinteDe(d.magie)].join(' '), dataset: options ? { choixCle: cleDeChoix.donObtenu(d.source) } : {} },
+        legende, etat, options, rappel);
+      synchro(() => {
+        const v = actuel();
+        const texte = v.etat === 'choisi' || v.etat === 'a_choisir' ? '' : texteDuDonVariable(v);
+        etat.hidden = !texte;
+        if (etat.textContent !== texte) etat.textContent = texte;
+        if (options) options.hidden = !v.options.length;
+        if (rappel) rappel.hidden = !v.options.length;
+        cadre.toggleAttribute('data-a-choisir', (calcul.attente ?? []).some((c) => c.cle === cleDeChoix.donObtenu(d.source)));
+      });
+      return el('div', { class: ['groupe-pastilles', ...teinteDe(d.classe)].join(' ') }, el('h4', {}, d.classe.nom), cadre);
+    });
+    // les choix d'un don qui n'est plus acquis (niveau baissé, autre don à choix, classe retirée) : gardés sans effet, signalés (choix de game-design, R181)
+    const gardes = perdus.length ? el('ul', { class: 'dons-liste' }, perdus.map((p) => el('li', { class: 'fiche-aide' },
+      `${p.entree?.nom ?? p.entree_id} (par ${p.don?.nom ?? p.source}${p.classe ? `, ${p.classe.nom}` : ''}) : gardé sans effet, ce don n’est plus acquis. `,
+      el('button', { type: 'button', class: 'retirer', onclick: () => { fiche.dons_obtenus = donsObtenusApresChoix(fiche, p.source, null); changer(); } }, 'Retirer')))) : null;
+    return [groupes, gardes];
   });
 }
 
@@ -2487,11 +2916,14 @@ function construireEquipement() {
       else if (l()) fiche.armes = armesApresReglage(regles, fiche, rang, cle, v);
       changer();
     };
-    const optionDElement = (a) => el('option', { value: a.id, class: teinteDe(a).join(' ') || null, title: trouver(regles.magies, a.magie_id)?.nom ?? null }, a.nom);
+    // une arme élémentaire : ce qu'elle apporte en infobulle (sa magie, sa capacité : infobulleDArmeElementaire, dans la liste dessinée par le site,
+    // listeDeChoix) ; une arme du catalogue : son effet tel qu'écrit (infobulleDArme), aucune infobulle sans effet
+    const optionDElement = (a) => el('option', { value: a.id, class: teinteDe(a).join(' ') || null,
+      title: infobulleDArmeElementaire(a, trouver(regles.types_elementaires ?? [], a.type_id), trouver(regles.magies, a.magie_id)) }, a.nom);
     // les groupes du catalogue, la maîtrise la plus haute d'abord (groupesDArmesParMaitrise, demande du propriétaire du 2026-10-23 : puis par ordre
     // alphabétique à maîtrise égale ; « Autres » à la fin) ; les armes élémentaires proposées à la fin du groupe de leur famille (celle de leur type élémentaire)
     const groupesDuCatalogue = () => groupesDArmesParMaitrise(regles, fiche, calcul.maitrises.familles).map((g) => g.famille);
-    const parFamille = new Map(groupesDArmesParMaitrise(regles, fiche, calcul.maitrises.familles).map((g) => [g.famille, el('optgroup', { label: g.nom }, g.armes.map((a) => option(a.id, a.nom)))]));
+    const parFamille = new Map(groupesDArmesParMaitrise(regles, fiche, calcul.maitrises.familles).map((g) => [g.famille, el('optgroup', { label: g.nom }, g.armes.map((a) => el('option', { value: a.id, title: infobulleDArme(a) }, a.nom)))]));
     for (const a of armesProposees) {
       const f = regles.familles_armes.find((x) => x.type_elementaire_id === a.type_id);
       if (!f) continue;
@@ -2564,7 +2996,8 @@ function construireEquipement() {
       const element = arme?.elementaire ?? null;
       poserTeinte(choixDArme, teinteDe(element));
       attribut(choixDArme, 'data-couleur', Boolean(element));
-      attribut(choixDArme, 'title', element ? `${element.nom} (arme élémentaire, ${trouver(regles.magies, element.magie_id)?.nom ?? element.magie_id})` : null);
+      // (infobulle, pas attribut : un `title` déplacé par components/Infobulles.astro ne se retire qu'en le vidant)
+      infobulle(choixDArme, element ? `${element.nom} (arme élémentaire, ${trouver(regles.magies, element.magie_id)?.nom ?? element.magie_id})` : '');
       attribut(choixDArme, 'aria-invalid', element && !armesProposees.some((a) => a.id === element.id) ? 'true' : null);
       composition.disabled = !x || Boolean(element);
       typeLigne.hidden = !arme?.type_degats_au_choix;
@@ -2614,7 +3047,7 @@ function construireEquipement() {
           ...(d.inutilisable ? [`Posture ${d.inutilisable} : « Impossible d’utiliser les armes ou objets ». Hors de cette posture : ${valeur}`] : []),
           `${d.notation} : ${d.nombre} dé${d.nombre > 1 ? 's' : ''} (maîtrise) de ${d.de ?? '—'}`,
           ...d.bonus.map((b) => `+${b.valeur} ${b.nom}`),
-          ...d.moment.map((b) => `${b.nom} : ${b.valeur}`),
+          ...d.moment.map((b) => (b.des ? `${b.nom} : +${b.des} dé${b.des > 1 ? 's' : ''}` : `${b.nom} : ${b.valeur}`)),
           ...(d.diviseur > 1 ? [`Posture ${calcul.posture.posture.nom} : dégâts infligés ÷ ${d.diviseur}, avant l’armure`] : []),
           ...(d.porteeEnPlus ? [`Portée ${signe(d.porteeEnPlus)} (accessoires)`] : []),
           ...(d.nonComptes.length ? ['Non comptés :', ...d.nonComptes.map((n) => `+${n.valeur} ${n.nom} (${n.raison === 'mains' ? 'arme à une main non écrite' : RAISONS[n.raison]})`)] : []),
@@ -2630,14 +3063,21 @@ function construireEquipement() {
         etoile.title = `${texte} (main ${main.main}${pourquoi.length ? ` ; moitié : ${pourquoi.join(', ')}` : ''})${deux.aPreciser.length ? `\nÀ appliquer à la main : ${deux.aPreciser.join(', ')}` : ''}`;
         etoile.setAttribute('aria-label', texte);
       }
-      const choisis = [!element && trouver(regles.materiaux_armes, x?.materiau_id)?.nom, arme?.type_degats_au_choix && nomsDesTypes.get(x?.type_degats_choisi),
-        x?.amelioration_id && 'amélioration', x?.effet_en_plus && 'effet en plus'].filter(Boolean);
-      resume.textContent = choisis.length ? choisis.join(' · ') : element ? 'amélioration, effet en plus…' : 'composition, amélioration…';
+      // le type choisi est en gras avec l'infobulle de son mot-clé du glossaire (typeDeDegatsAffiche ; les commandes, elles, restent sans lien) ; le résumé n'est
+      // refait que s'il change (une bulle ouverte ne se referme pas à chaque rafraîchissement)
+      const typeChoisi = arme?.type_degats_au_choix && nomsDesTypes.has(x?.type_degats_choisi) ? typeDeDegatsAffiche(regles, x.type_degats_choisi, nomsDesTypes.get(x.type_degats_choisi)) : null;
+      const choisis = [!element && trouver(regles.materiaux_armes, x?.materiau_id)?.nom, typeChoisi, x?.amelioration_id && 'amélioration', x?.effet_en_plus && 'effet en plus'].filter(Boolean);
+      const cleDuResume = JSON.stringify(choisis.length ? choisis : element ? 'amélioration, effet en plus…' : 'composition, amélioration…');
+      if (resume.dataset.cle !== cleDuResume) {
+        resume.dataset.cle = cleDuResume;
+        if (!choisis.length) resume.textContent = element ? 'amélioration, effet en plus…' : 'composition, amélioration…';
+        else resume.replaceChildren(...choisis.flatMap((c, i) => [...(i ? [' · '] : []), typeof c === 'string' ? c : c.motCle ? motCleAffiche(c) : c.texte]));
+      }
     });
     // à portée de main (demande du propriétaire) : l'arme et ses dés ; composition (grisée pour une arme élémentaire), amélioration et effet en plus
     // repliés (décision R167 : plus de champ « Élément » ni « Amélioration de l'élément », un seul niveau d'amélioration)
     return el('div', { class: 'objet' }, el('div', { class: 'objet__tete' }, el('h4', {}, `Arme ${rang}`), el('span', { class: 'objet__degats' }, des, etoile)),
-      el('label', { class: 'fiche-champ' }, el('span', { class: 'visuellement-cache' }, 'Arme'), choixDArme),
+      el('label', { class: 'fiche-champ' }, el('span', { class: 'visuellement-cache' }, 'Arme'), listeDeChoix(choixDArme, { cle: `arme-${rang}` })),
       effetDeLArme, rappels,
       soliditeLigne,
       el('details', { class: 'objet__details' }, el('summary', {}, resume), el('div', { class: 'fiche-champs' },
@@ -2671,8 +3111,9 @@ function construireEquipement() {
       changer();
     };
     const libelle = (a) => `${a.nom} (${[a.categorie, stats(a)].filter(Boolean).join(', ')})`;
-    const optionDArmure = (a, magie = null) => el('option', { value: a.id, class: teinteDe(magie).join(' ') || null, title: magie ? `${magie.nom} : armure élémentaire` : null },
-      magie ? libelle(a) : `${a.nom}${stats(a) ? ` (${stats(a)})` : ''}`);
+    // ce que l'armure apporte en infobulle (infobulleDArmure, infobulleDArmureElementaire : dans la liste dessinée par le site, listeDeChoix)
+    const optionDArmure = (a, magie = null) => el('option', { value: a.id, class: teinteDe(magie).join(' ') || null,
+      title: magie ? infobulleDArmureElementaire(a, magie) : infobulleDArmure(a) }, magie ? libelle(a) : `${a.nom}${stats(a) ? ` (${stats(a)})` : ''}`);
     const armure = el('select', { 'aria-label': 'Armure', onchange: (ev) => choisir('armure')(ev.target.value || null) },
       el('option', { value: '', class: 'option-vide' }, 'Aucune'),
       proposees.base.map((g) => el('optgroup', { label: g.poids }, g.armures.map((a) => optionDArmure(a)))),
@@ -2684,7 +3125,7 @@ function construireEquipement() {
       const magie = trouver(regles.magies, a?.magie_id);
       poserTeinte(armure, teinteDe(magie));
       armure.toggleAttribute('data-couleur', Boolean(magie));
-      attribut(armure, 'title', a ? `${a.nom} : armure élémentaire (${magie?.nom ?? a.magie_id}, ${a.categorie})` : null);
+      infobulle(armure, a ? `${a.nom} : armure élémentaire (${magie?.nom ?? a.magie_id}, ${a.categorie})` : '');
     });
     const poids = el('p', { class: 'fiche-aide armure__poids' });
     synchro(() => {
@@ -2733,7 +3174,7 @@ function construireEquipement() {
     const parties = el('div', { class: 'armure__parties', role: 'group', 'aria-label': 'Solidité des parties de l’armure' }, rangs);
     synchro(() => { parties.hidden = !armurePortee(); });
     return el('div', { class: 'objet' },
-      el('label', { class: 'fiche-champ armure__choix' }, el('span', {}, 'Armure'), armure),
+      el('label', { class: 'fiche-champ armure__choix' }, el('span', {}, 'Armure'), listeDeChoix(armure, { cle: 'armure' })),
       poids,
       el('div', { class: 'fiche-champs' }, el('label', { class: 'fiche-champ' }, el('span', {}, 'Amélioration'), amelioration)),
       parties);
@@ -3022,51 +3463,39 @@ function construireEquipement() {
   ]);
 }
 
-// ------------------------------------------------------------------ défense et dégâts reçus (décision R98)
-/** Les dégâts reçus en cours de calcul : rien n'en est enregistré (un calcul du moment, pas un choix du joueur), la partie touchée comprise (R108). */
-const degatsEnCours = { entrants: '', type: 'estoc', partie: PARTIE_PAR_DEFAUT, reduits: false, parade: false, don: false };
+// ------------------------------------------------------------------ défense et dégâts reçus (décisions R98, R171)
+/**
+ * Les dégâts reçus en cours de calcul : rien n'en est enregistré (un calcul du moment, pas un choix du joueur), la partie touchée comprise (R108). Le
+ * coup en type et élément (décision R171 : l'élément facultatif, '' sans élément ; obligatoire avec « Magique ») ; les cases d'attaque contre la barrière
+ * (`cases` : Passe, Casse, Laiton, une seule à la fois, casesDeLaBarriereApres) ; `medusain` : null tant qu'on n'a pas touché à « Deux fois moins »
+ * (elle suit alors medusainDOffice), le geste du joueur sinon, oublié quand le coup change (type ou élément).
+ */
+const degatsEnCours = {
+  entrants: '', type: 'estoc', element: '', partie: PARTIE_PAR_DEFAUT, reduits: false, parade: false, don: false, ignoreArmure: false,
+  cases: { passe: false, casse: false, laiton: false }, medusain: null,
+};
 
 /**
- * La défense du personnage (demande du propriétaire du 2026-10-17 : « dans l'onglet Armure avoir la valeur totale d'AP et d'AM ») : l'AP et l'AM totaux
- * (defenseDe : base, accessoires, armure portée) sur la partie touchée (décision R108 : « Partie touchée », le torse par défaut, l'armure d'une partie
- * cassée ne compte pas), le détail en infobulle avec les parties cassées, et ceux du bouclier à part (comptés en parade partielle, plus du tout cassé) ;
- * puis les dégâts reçus (degatsRecus : « saisir le nombre de dégâts entrants, et un champ calculant automatiquement les dégâts reçus, avec une case à
- * cocher (dégâts réduits) pour les cas d'esquive ou parade partielle », le type de dégâts : Estoc, Taille, Frappe ou l'une des quatorze magies ; « Ce
- * calcul devra inclure les réductions éventuelles » : l'étape « ÷ 2 si un don divise les dégâts » de la formule, à cocher), les étapes du calcul en
- * infobulle.
+ * La défense du personnage, dans la 2ᵉ ligne des attributs (demande du propriétaire du 2026-10-29 : « une 2em ligne où tu y déplacera : les AP / AM /
+ * Vitesse et initiative , ainsi que l'interface pour les dégâts reçu ») : l'AP et l'AM totaux (décision R98, defenseDe : base, accessoires, armure portée)
+ * sur la partie touchée (décision R108 : « Partie touchée », le torse par défaut, l'armure d'une partie cassée ne compte pas), le détail en infobulle avec
+ * les parties cassées ; puis les dégâts reçus (degatsRecus : « saisir le nombre de dégâts entrants, et un champ calculant automatiquement les dégâts
+ * reçus, avec une case à cocher (dégâts réduits) pour les cas d'esquive ou parade partielle » ; le coup en type — Estoc, Taille, Frappe ou Magique — et
+ * élément — l'une des quatorze magies, « obligatoire si type "magique" » —, décision R171 ; « Au bouclier », dont l'infobulle donne les AP et AM du
+ * bouclier ; « Ce calcul devra inclure les réductions éventuelles » : l'étape « ÷ 2 si un don divise les dégâts » de la formule, à cocher), les étapes
+ * du calcul en infobulle ; enfin les cases de la barrière et « Appliquer » (décision R171 : la barrière du moment, puis la santé, appliquerDegatsRecus),
+ * avec ce que deviendront la barrière et la santé.
  */
 function construireDefense() {
-  // un réglage du calcul ne change pas la fiche : seules les synchronisations de ce bloc sont refaites
-  const majDefense = () => { for (const f of synchros.get($('defense')) ?? []) f(); };
-  reconstruire($('defense'), 'fixe', () => {
+  // un réglage du calcul ne change pas la fiche : seules les synchronisations de ces deux blocs sont refaites
+  const majDefense = () => { for (const c of [$('defense-tuiles'), $('defense')]) for (const f of synchros.get(c) ?? []) f(); };
+  reconstruire($('defense-tuiles'), 'fixe', () => {
     const tuile = (nom) => {
       const valeur = el('strong', {});
       return { valeur, li: el('li', { class: 'defense__tuile', tabindex: '0' }, el('small', {}, nom), valeur) };
     };
     const ap = tuile('AP');
     const am = tuile('AM');
-    const bouclier = el('p', { class: 'fiche-aide defense__bouclier' });
-    const entrants = el('input', {
-      type: 'number', min: '0', step: '1', inputmode: 'numeric', 'aria-label': 'Dégâts entrants', placeholder: 'Dégâts',
-      oninput: (ev) => { degatsEnCours.entrants = ev.target.value; majDefense(); },
-    });
-    const types = typesDeDegats(regles);
-    const type = el('select', { 'aria-label': 'Type de dégâts', onchange: (ev) => { degatsEnCours.type = ev.target.value; majDefense(); } },
-      el('optgroup', { label: 'Physique' }, types.filter((t) => t.physique).map((t) => option(t.id, t.nom, t.id === degatsEnCours.type))),
-      el('optgroup', { label: 'Magie' }, types.filter((t) => !t.physique).map((t) => option(t.id, t.nom, t.id === degatsEnCours.type))));
-    // la partie touchée (décision R108) : les six parties, le torse par défaut (« Une attaque "non ciblée" touche par défaut le torse ») ; seulement
-    // avec une armure (sans elle, toutes les parties se valent)
-    const parties = partiesDuCorps(regles);
-    const partie = el('select', {
-      'aria-label': 'Partie touchée',
-      title: 'Partie touchée : une attaque non ciblée touche le torse ; l’armure d’une partie cassée n’y compte pas (décision R108)',
-      onchange: (ev) => { degatsEnCours.partie = ev.target.value; majDefense(); },
-    }, parties.map((x) => option(x.id, x.nom, x.id === degatsEnCours.partie)));
-    const reduits = el('input', { type: 'checkbox', onchange: (ev) => { degatsEnCours.reduits = ev.target.checked; majDefense(); } });
-    const parade = el('input', { type: 'checkbox', onchange: (ev) => { degatsEnCours.parade = ev.target.checked; majDefense(); } });
-    const paradeLabel = el('label', { class: 'fiche-coche', title: 'La parade partielle se fait au bouclier : ses AP et AM s’ajoutent à l’armure' }, parade, 'Au bouclier');
-    const don = el('input', { type: 'checkbox', onchange: (ev) => { degatsEnCours.don = ev.target.checked; majDefense(); } });
-    const recus = el('output', { class: 'defense__recus', 'aria-live': 'polite' });
     synchro(() => {
       const avecArmure = Boolean(partiesDeLArmure(regles, fiche));
       const d = defenseDe(regles, fiche, calcul.attributs, { partie: degatsEnCours.partie });
@@ -3081,6 +3510,66 @@ function construireDefense() {
       am.valeur.textContent = String(d.am.total);
       infobulle(ap.li, detail(d.ap, 'Armure physique (AP)'));
       infobulle(am.li, detail(d.am, 'Armure magique (AM)'));
+    });
+    return [ap.li, am.li];
+  });
+  reconstruire($('defense'), 'fixe', () => {
+    const entrants = el('input', {
+      type: 'number', min: '0', step: '1', inputmode: 'numeric', 'aria-label': 'Dégâts entrants', placeholder: 'Dégâts',
+      oninput: (ev) => { degatsEnCours.entrants = ev.target.value; majDefense(); },
+    });
+    // le coup (décision R171) : changer de type ou d'élément rend « Deux fois moins » à ce que le don coche d'office
+    const changerDeCoup = (cle) => (ev) => { degatsEnCours[cle] = ev.target.value; degatsEnCours.medusain = null; majDefense(); };
+    const type = el('select', { 'aria-label': 'Type de dégâts', onchange: changerDeCoup('type') },
+      TYPES_DE_COUP.map((t) => option(t.id, t.nom, t.id === degatsEnCours.type)));
+    const element = el('select', { 'aria-label': 'Élément des dégâts', onchange: changerDeCoup('element') },
+      option('', 'Sans élément', degatsEnCours.element === ''),
+      elementsDeDegats(regles).map((m) => option(m.id, m.nom, m.id === degatsEnCours.element)));
+    // la partie touchée (décision R108) : les six parties, le torse par défaut (« Une attaque "non ciblée" touche par défaut le torse ») ; seulement
+    // avec une armure (sans elle, toutes les parties se valent)
+    const parties = partiesDuCorps(regles);
+    const partie = el('select', {
+      'aria-label': 'Partie touchée',
+      title: 'Partie touchée : une attaque non ciblée touche le torse ; l’armure d’une partie cassée n’y compte pas (décision R108)',
+      onchange: (ev) => { degatsEnCours.partie = ev.target.value; majDefense(); },
+    }, parties.map((x) => option(x.id, x.nom, x.id === degatsEnCours.partie)));
+    const reduits = el('input', { type: 'checkbox', onchange: (ev) => { degatsEnCours.reduits = ev.target.checked; majDefense(); } });
+    const parade = el('input', { type: 'checkbox', onchange: (ev) => { degatsEnCours.parade = ev.target.checked; majDefense(); } });
+    const paradeLabel = el('label', { class: 'fiche-coche' }, parade, 'Au bouclier');
+    const don = el('input', { type: 'checkbox', onchange: (ev) => { degatsEnCours.don = ev.target.checked; majDefense(); } });
+    // « L'attaque ignore l'armure » (décision R172) : l'AP ou l'AM ne compte pas, sauf l'AP et l'AM naturels d'un Marcass en Mode Hyper
+    const ignore = el('input', { type: 'checkbox', onchange: (ev) => { degatsEnCours.ignoreArmure = ev.target.checked; majDefense(); } });
+    const recus = el('output', { class: 'defense__recus', 'aria-live': 'polite' });
+    // les cases de la barrière (décision R171) : Passe, Casse et Laiton une à la fois (Q74 : casesDeLaBarriereApres) ; « Deux fois moins » cochée
+    // d'office selon le don et le coup (medusainDOffice), décochée à la main
+    const cases = CASES_DE_LA_BARRIERE.map((c) => {
+      const coche = el('input', {
+        type: 'checkbox',
+        onchange: (ev) => {
+          if (c.id === 'medusain') degatsEnCours.medusain = ev.target.checked;
+          else degatsEnCours.cases = casesDeLaBarriereApres(degatsEnCours.cases, c.id, ev.target.checked);
+          majDefense();
+        },
+      });
+      return { ...c, coche, label: el('label', { class: 'fiche-coche', title: c.aide }, coche, c.nom) };
+    });
+    const appliquer = el('button', {
+      type: 'button', class: 'defense__appliquer',
+      onclick: () => {
+        const coup = { ...degatsEnCours, element: degatsEnCours.element || null };
+        const r = degatsEnCours.entrants === '' ? null : degatsRecus(regles, fiche, coup);
+        if (!r) return;
+        const office = medusainDOffice(regles, fiche, coup);
+        // l'écriture dans les jauges : celle du moteur (la barrière, puis la santé, sans plancher), telle quelle ; le coup appliqué, le champ se vide
+        Object.assign(fiche, appliquerDegatsRecus(regles, fiche, r.recus, { ...degatsEnCours.cases, medusain: degatsEnCours.medusain ?? office.coche }, calcul.attributs).ecrit);
+        degatsEnCours.entrants = '';
+        changer();
+      },
+    }, 'Appliquer');
+    const apercu = el('output', { class: 'defense__apercu', 'aria-live': 'polite' });
+    synchro(() => {
+      const avecArmure = Boolean(partiesDeLArmure(regles, fiche));
+      const d = defenseDe(regles, fiche, calcul.attributs, { partie: degatsEnCours.partie });
       partie.hidden = !avecArmure;
       for (const o of partie.options) {
         const x = parties.find((y) => y.id === o.value);
@@ -3088,33 +3577,57 @@ function construireDefense() {
         if (o.textContent !== texte) o.textContent = texte;
       }
       poser(partie, d.partie?.id ?? degatsEnCours.partie);
-      const texteBouclier = !d.bouclier ? ''
-        : d.bouclier.cassee ? `Bouclier ${d.bouclier.nom} cassé : ses AP et AM ne comptent plus, même en parade partielle (décision R108).`
-          : `Bouclier ${d.bouclier.nom} : +${d.bouclier.ap} AP, +${d.bouclier.am} AM en parade partielle.`;
-      if (bouclier.textContent !== texteBouclier) bouclier.textContent = texteBouclier;
-      bouclier.hidden = !d.bouclier;
       if (document.activeElement !== entrants) poser(entrants, degatsEnCours.entrants);
+      poser(type, degatsEnCours.type);
+      poser(element, degatsEnCours.element);
       poser(reduits, degatsEnCours.reduits);
       poser(parade, degatsEnCours.parade);
       poser(don, degatsEnCours.don);
+      poser(ignore, degatsEnCours.ignoreArmure);
+      // l'élément, obligatoire avec « Magique » (décision R171 : sans lui, pas de calcul)
+      const sansElement = degatsEnCours.type === 'magique' && !degatsEnCours.element;
+      attribut(element, 'required', degatsEnCours.type === 'magique');
+      attribut(element, 'aria-invalid', sansElement ? 'true' : null);
+      attribut(element, 'data-a-choisir', sansElement);
+      infobulle(element, sansElement ? 'Magique : choisir l’élément (obligatoire)' : 'Élément : facultatif, sauf pour un coup magique ; il applique la résistance à sa magie');
+      // « Au bouclier » : la parade partielle se fait au bouclier, ses AP et AM s'ajoutent ; cassé, il ne compte plus (R108)
       paradeLabel.hidden = !d.bouclier;
       parade.disabled = !degatsEnCours.reduits;
-      const r = degatsEnCours.entrants === '' ? null
-        : degatsRecus(regles, fiche, degatsEnCours);
+      infobulle(paradeLabel, !d.bouclier ? ''
+        : d.bouclier.cassee ? `Bouclier ${d.bouclier.nom} cassé : ses AP et AM ne comptent plus, même en parade partielle (décision R108).`
+          : d.bouclier.mur ? `Le bouclier ${d.bouclier.nom} compte déjà à chaque attaque (Mur : ${d.ap.bouclier} AP, ${d.am.bouclier} AM, bonus de Mur compris) : la parade partielle ne l’ajoute pas une seconde fois.`
+          : `La parade partielle se fait au bouclier : ses AP et AM s’ajoutent à l’armure (${d.bouclier.nom} : +${d.bouclier.ap} AP, +${d.bouclier.am} AM).`);
+      const coup = { ...degatsEnCours, element: degatsEnCours.element || null };
+      const r = degatsEnCours.entrants === '' || !coupDeDegats(regles, coup) ? null : degatsRecus(regles, fiche, coup);
       // écrit seulement quand il change : c'est une région annoncée aux lecteurs d'écran (aria-live), et la fiche est rafraîchie à chaque frappe
       const texteRecus = r ? `${r.recus} reçus` : '—';
       if (recus.textContent !== texteRecus) recus.textContent = texteRecus;
-      infobulle(recus, r ? r.etapes.map((e) => `${e.texte} : ${String(Math.round(e.valeur * 100) / 100).replace('.', ',')}`).concat(`Arrondi à l’inférieur : ${r.recus}`).join('\n') : '');
+      infobulle(recus, r ? r.etapes.map((e) => `${e.texte} : ${String(Math.round(e.valeur * 100) / 100).replace('.', ',')}`).concat(`Arrondi à l’inférieur : ${r.recus}`).join('\n')
+        : sansElement ? 'Magique : choisir l’élément' : '');
+      // les cases de la barrière : « Deux fois moins » suit le don tant qu'on n'y a pas touché
+      const office = medusainDOffice(regles, fiche, coup);
+      const etat = { ...degatsEnCours.cases, medusain: degatsEnCours.medusain ?? office.coche };
+      for (const c of cases) {
+        poser(c.coche, etat[c.id]);
+        if (c.id === 'medusain') infobulle(c.label, office.coche ? `${c.aide}. Cochée d’office : ${office.dons.join(', ')} ; se décoche à la main` : c.aide);
+      }
+      // « Appliquer » et ce que deviendront la barrière et la santé
+      appliquer.disabled = !r;
+      const a = r ? appliquerDegatsRecus(regles, fiche, r.recus, etat, calcul.attributs) : null;
+      const texteApercu = a ? `Barrière ${a.barriere.avant} → ${a.barriere.apres} · Santé ${a.sante.avant} → ${a.sante.apres}` : '';
+      if (apercu.textContent !== texteApercu) apercu.textContent = texteApercu;
+      infobulle(appliquer, a ? ['La barrière d’abord ; vide, le reste baisse la santé (décision R171)', ...a.etapes].join('\n') : 'Saisir les dégâts entrants');
     });
     return [
-      el('ul', { class: 'defense__tuiles', 'aria-label': 'Armure totale' }, ap.li, am.li),
-      bouclier,
       el('div', { class: 'defense__degats', role: 'group', 'aria-label': 'Dégâts reçus' },
-        el('span', { class: 'defense__titre' }, 'Dégâts reçus'), entrants, type, partie,
+        el('span', { class: 'defense__titre' }, 'Dégâts reçus'), entrants, type, element, partie,
         el('label', { class: 'fiche-coche', title: 'Esquive ou parade partielle : les dégâts sont divisés par 2 après l’armure' }, reduits, 'Dégâts réduits'),
         paradeLabel,
         el('label', { class: 'fiche-coche', title: 'Formule des dégâts : « ÷ 2 si un don divise les dégâts » (selon la situation : à cocher)' }, don, 'Don ÷ 2'),
+        el('label', { class: 'fiche-coche', title: 'Aucune réduction : ni l’AP ou l’AM, ni l’armure, ni le bouclier, ni l’AP et l’AM naturels du Marcass en Mode Hyper (décisions R172, R178)' }, ignore, 'L’attaque ignore l’armure'),
         recus),
+      el('div', { class: 'defense__barriere', role: 'group', 'aria-label': 'Contre la barrière' },
+        cases.map((c) => c.label), apercu, appliquer),
     ];
   });
 }
@@ -3122,7 +3635,7 @@ function construireDefense() {
 // ------------------------------------------------------------------ portrait et ceinture (demandes du propriétaire)
 /**
  * Le portrait (le logo en attendant une image, recadrable une fois choisie : personnage.portrait et son cadrage, migration 0031) et les 3 emplacements
- * de la ceinture (objets rapides, guide « Fiche de personnage : Accessoires et Ceinture » : personnage_ceinture), enregistrés avec la fiche.
+ * de la ceinture (objets rapides, section « Ceinture » de la page « Inventaire/Sac à dos » du guide, R272 : personnage_ceinture), enregistrés avec la fiche.
  */
 const PLACES_DE_CEINTURE = 3;
 /** La vignette affichée (le carré cadré), refaite quand l'image ou son cadrage changent. */
@@ -3301,12 +3814,19 @@ const avecNoms = (texte) => String(texte).split(/( \/ | : | = |« | »)/).map((x
 
 function construireControles() {
   const liste = $('controles');
-  // l'onglet « Contrôle » de la zone IV compte les règles à revoir (vert quand il n'y en a aucune)
+  // l'onglet « Contrôle » de la zone IV compte les règles à revoir, en rouge (vert quand il n'y en a aucune) ; les avertissements (décision R170 : le
+  // plafond de maîtrise, lib/fiche-controles.mjs#graviteDuControle) ne sont pas des erreurs : comptés à part, dans l'infobulle, et dans le compteur aux
+  // couleurs d'un avertissement seulement quand il n'y a aucune erreur
   const compte = $('controles-compte');
+  const g = controlesParGravite(controles);
+  const avertis = g.avertissements ? `${g.avertissements} avertissement${g.avertissements > 1 ? 's' : ''}` : '';
   compte.hidden = controles === null;
-  compte.textContent = controles === null ? '' : controles.length ? String(controles.length) : '✓';
-  compte.toggleAttribute('data-ok', controles !== null && controles.length === 0);
-  compte.title = controles === null ? '' : controles.length ? `${controles.length} règle${controles.length > 1 ? 's' : ''} à revoir` : 'Aucune règle enfreinte';
+  compte.textContent = controles === null ? '' : g.erreurs ? String(g.erreurs) : g.avertissements ? String(g.avertissements) : '✓';
+  compte.toggleAttribute('data-ok', controles !== null && !g.erreurs && !g.avertissements);
+  compte.toggleAttribute('data-avertissement', controles !== null && !g.erreurs && g.avertissements > 0);
+  compte.title = controles === null ? ''
+    : g.erreurs ? `${g.erreurs} règle${g.erreurs > 1 ? 's' : ''} à revoir${avertis ? ` · ${avertis}` : ''}`
+      : avertis ? `Aucune règle enfreinte · ${avertis}` : 'Aucune règle enfreinte';
   if (controles === null) {
     delete liste.dataset.vide;
     liste.replaceChildren(el('li', {}, id ? 'Enregistrez pour revoir le contrôle.' : 'La fiche n’a pas encore été enregistrée.'));
@@ -3318,7 +3838,12 @@ function construireControles() {
     return;
   }
   delete liste.dataset.vide;
-  liste.replaceChildren(...controles.map((c) => el('li', {}, el('strong', {}, libelleDuControle(c.regle)), c.detail ? ` : ${avecNoms(c.detail)}` : '')));
+  // les erreurs, puis les avertissements, marqués comme tels
+  liste.replaceChildren(
+    ...(g.erreurs ? [] : [el('li', { class: 'controles__ok' }, '✓ Aucune règle enfreinte ; à noter :')]),
+    ...g.lignes.map((c) => el('li', { dataset: c.gravite === 'avertissement' ? { gravite: 'avertissement' } : {} },
+      c.gravite === 'avertissement' ? el('span', { class: 'controles__gravite' }, 'Avertissement · ') : null,
+      el('strong', {}, libelleDuControle(c.regle)), c.detail ? ` : ${avecNoms(c.detail)}` : '')));
 }
 
 // ------------------------------------------------------------------ rafraîchissement
@@ -3372,11 +3897,12 @@ function retirerLArmureHorsListe() {
  * Le contrôle d'un geste, pour le retrait différé de l'armure (armureEnSuspens) : le menu de pastilles (race, ethnie, magies, classe, spécialité : un
  * <details class="choix">, son résumé compris, pour retirer une classe puis en choisir une autre dans le même menu), sinon le groupe de boutons radio
  * (un <fieldset> : les dons à choisir, que les flèches parcourent en déclenchant « change » à chaque bouton), sinon le groupe de pastilles (les
- * spécialités du tiroir), sinon l'élément même (une liste, que les flèches parcourent de même sous Windows ; le champ de l'XP ; la case « Bi-classé »).
+ * spécialités du tiroir), sinon la liste dessinée par le site (listeDeChoix : son bouton et ses options), sinon l'élément même (une liste, que les
+ * flèches parcourent de même sous Windows ; le champ de l'XP ; la case « Bi-classé »).
  */
 function groupeDuControle(cible) {
   if (!(cible instanceof Element)) return null;
-  return cible.closest('details.choix') ?? cible.closest('fieldset') ?? cible.closest('.groupe-pastilles') ?? cible;
+  return cible.closest('details.choix') ?? cible.closest('fieldset') ?? cible.closest('.groupe-pastilles') ?? cible.closest('.liste-choix') ?? cible;
 }
 
 /**
@@ -3406,6 +3932,8 @@ function rafraichir() {
     || ![fiche.magie_innee_id, fiche.magie_acquise_id].includes(fiche.symbiose_magie_id))) fiche.symbiose_magie_id = null;
   // le sort préparé est perdu en Symbiose avec une autre magie que la sienne (décision R135) : sa préparation est lâchée, et ne revient pas
   fiche.sorts = sortsApresLaSymbiose(regles, fiche);
+  // un objet retiré ou changé perd le compteur de son action (décision R173 : remis, il repart au maximum) ; ceux des dons attendent l'enregistrement
+  fiche.actions_usage = actionsUsageSansObjetRetire(regles, fiche);
   calcul = {
     niveau: niveauGlobal(regles, fiche.xp),
     classes: classesDe(regles, fiche),
@@ -3427,6 +3955,8 @@ function rafraichir() {
     compteur: compteurDeMaitrise(regles, fiche, sourcesDesMaitrises),
   };
   calcul.attente = choixEnAttente(regles, fiche);
+  // les dons « Variable » du Mage Bleu (décision R181) : leur liste, leurs options libres et leur état, lus par le bloc des dons obtenus
+  calcul.donsVariables = donsVariables(regles, fiche);
   for (const champ of racine.querySelectorAll('[data-champ]')) poser(champ, fiche[champ.dataset.champ]);
   // cadres des blocs dans la couleur de la magie innée, en dégradé vers celle de la magie acquise (demande du propriétaire ; fiche.css, « cadres »)
   const innee = trouver(regles.magies, fiche.magie_innee_id);
@@ -3445,19 +3975,23 @@ function rafraichir() {
   construireResistances();
   construireClasses();
   construireChoixSpecialites();
+  construireChoixSpecialisationsMagie();
+  construireSpecialisationsDeLIdentite();
   construireCaracteristiques();
   construireMaitrises();
   construireSorts();
   construireSortPrepare();
-  construireDons();
+  construirePassifs();
   construireEntrainement();
   construireAcquisAChoisir();
   construireAttributs();
   construirePostures();
   construireProgression();
+  construireDonsObtenus();
   construireEquipement();
   construireDefense();
   construireCeinture();
+  construireActions();
   construirePortrait();
   for (const liste of synchros.values()) for (const s of liste) s();
   construireControles();
@@ -3465,6 +3999,17 @@ function rafraichir() {
   construireChoixEnAttente();
   etatDesBoutons();
   if (modifie) message(serviceJoignable ? 'Modifications non enregistrées.' : 'Service indisponible : téléchargez la fiche pour ne rien perdre.', 'attente');
+}
+
+/**
+ * Un mot-clé du glossaire dans un texte que la fiche dessine (typeDeDegatsAffiche) : en gras, sur la couleur de son mot-clé (classe de la palette), sa définition
+ * en infobulle du site (`title`, que components/Infobulles.astro déplace) ; sans lien ni tabindex (il est dans un résumé, qui a déjà le focus). Le middleware
+ * (lib/mots-cles-balises.mjs#htmlDeLaBalise) poserait ici un gras sans bulle ; la bulle est voulue (réponse « ok reco » du propriétaire), d'où le `title`. Les balises `{{…}}` ne se rendent pas ici : le navigateur n'a pas le vocabulaire.
+ */
+function motCleAffiche({ texte, classe, infobulle }) {
+  const e = el('strong', { class: classe ? `mot-cle ${classe}` : 'mot-cle' }, texte);
+  if (infobulle) e.title = infobulle;
+  return e;
 }
 
 /** Pose l'infobulle d'un élément (son `title`, que components/Infobulles.astro déplace dans data-infobulle) seulement si elle change. */
@@ -3505,6 +4050,10 @@ function aEnvoyer() {
   // liste maitrises_armes envoyée avec maitrise_choix serait refusée : 409)
   f.maitrise_choix = maitriseChoixValables(regles, f);
   delete f.maitrises_armes;
+  // les dons obtenus des dons « Variable » du Mage Bleu (décision R181) : un par don, une entrée une seule fois ; les choix gardés sans effet restent
+  f.dons_obtenus = donsObtenusValables(regles, f);
+  // la spécialisation de chaque magie (décision R236) : une par magie de la fiche, d'une spécialisation de cette magie
+  f.specialisations_magie = specialisationsValables(regles, f);
   // solidité du moment de chaque arme bornée à son maximum (décision R74 : à son maximum ou au-delà, rien d'enregistré) ; gains de niveau jamais négatifs (R73)
   f.armes = armesValables(regles, f);
   // de même celle des parties de l'armure (décision R95 : une ligne par partie abîmée, rien sans armure)
@@ -3512,12 +4061,19 @@ function aEnvoyer() {
   for (const c of ['gains_sante', 'gains_chakra']) f[c] = Math.max(0, entier(f[c]));
   // rangés dans l'ordre ; le sort préparé garde sa marque, son jet et sa posture, une préparation que le don ne permet plus part (décision R115)
   f.sorts = sortsAEnregistrer(regles, f);
+  // les livres de sort (décision R169) : un par sort, sur un sort choisi ou non, rangés dans l'ordre
+  f.livres_sorts = livresAEnregistrer(f);
   // la solidité du moment du bouclier bornée à son maximum (décision R96 : à son maximum ou au-delà, rien d'enregistré)
   f.bouclier_solidite = soliditeDuBouclierAEcrire(regles, f, f.bouclier_solidite);
+  // le Mode Hyper et le Mode Hyper 100 % (décision R172) : décochés à l'enregistrement quand le niveau ne les débloque pas (la base ne connaît pas les
+  // niveaux) ; pas à chaque rafraîchissement : une XP retapée passe par le niveau 1, et le moteur ne compte que ce qui est débloqué (modeHyperDe)
+  Object.assign(f, modeHyperValable(regles, f));
   f.inventaire = (f.inventaire ?? []).filter((o) => o.nom && o.nom.trim()).map((o, i) => ({ ...o, nom: o.nom.trim(), rang: i + 1 }));
   f.accessoires = (f.accessoires ?? []).filter((a) => a.accessoire_effet_id);
   // la ceinture garde ses emplacements (rang 1 à 3) : seuls les emplacements vides partent
   f.ceinture = (f.ceinture ?? []).filter((o) => o.nom && o.nom.trim()).map((o) => ({ ...o, nom: o.nom.trim() }));
+  // les compteurs entamés des actions (décision R173) : ceux d'une action de la fiche, sous leur maximum ; une clé orpheline part
+  f.actions_usage = actionsUsageValables(regles, f);
   return f;
 }
 
@@ -3597,7 +4153,11 @@ async function enregistrer() {
       serviceJoignable = true;   // il répond de nouveau : Télécharger suit de nouveau l'enregistrement
       appliquer(donnees);
       history.replaceState(null, '', `?id=${encodeURIComponent(id)}`);
-      message(controles.length ? `Enregistré : ${controles.length} règle${controles.length > 1 ? 's' : ''} à revoir (onglet « Contrôle »).` : 'Enregistré ✓', 'ok');
+      // les erreurs seules sont « à revoir » ; un avertissement (décision R170) est dit à part
+      const g = controlesParGravite(controles);
+      const avertis = g.avertissements ? `${g.avertissements} avertissement${g.avertissements > 1 ? 's' : ''}` : '';
+      message(g.erreurs ? `Enregistré : ${g.erreurs} règle${g.erreurs > 1 ? 's' : ''} à revoir${avertis ? `, ${avertis}` : ''} (onglet « Contrôle »).`
+        : avertis ? `Enregistré ✓ (${avertis}, onglet « Contrôle »).` : 'Enregistré ✓', 'ok');
       return;
     }
     enregistrementRefuse = true;   // les modifications restent à l'écran : Télécharger et Exporter permis pour ne rien perdre (etatDesBoutons, plus bas)
@@ -4080,6 +4640,8 @@ function indexerNoms() {
     // les sources de maîtrise d'arme des contrôles maitrise_* (décision R148) : une ligne de classe, un don, comme les titres du bloc Maîtrises
     (c.maitrises ?? []).forEach((m, i) => { if (m.source) noms.set(m.source, `${c.nom} (maîtrise ${i + 1})`); });
     for (const d of c.dons ?? []) if (!noms.has(d.id)) noms.set(d.id, `${d.nom} (${c.nom})`);
+    // les entrées du tableau du bas de la classe (décision R181 : le détail des règles don_obtenu_*, « source = entrée »)
+    for (const e of c.entrees ?? []) noms.set(e.id, `${e.nom} (${regles.magies.find((m) => m.id === e.magie_id)?.nom ?? e.magie_id})`);
   }
   for (const [cle, nom] of EMPLACEMENTS_ACCESSOIRES) noms.set(`accessoire:${cle}`, `Accessoire : ${nom}`);
   // les familles d'armes (une compétence du même identifiant, « arc », garde son nom)
@@ -4088,7 +4650,10 @@ function indexerNoms() {
 
 function remplirListesFixes() {
   $('dieux').append(...regles.dieux.map((d) => option(d.id, d.nom)));
-  $('metiers').append(...regles.metiers.map((m) => option(m.id, m.nom)));
+  // l'infobulle d'un métier : ce qu'il apporte, ses champs tels qu'écrits dans la base (`apport`, lib/fiche-regles.mjs ; infobulleDeMetier), sur sa
+  // ligne de la liste dessinée par le site (listeDeChoix : demande du propriétaire)
+  $('metiers').append(...regles.metiers.map((m) => el('option', { value: m.id, title: infobulleDeMetier(m) }, m.nom)));
+  listeDeChoix($('metiers'), { cle: 'metier' });
   $('carac-magie').replaceChildren(option('', '—'), ...regles.caracteristiques.map((c) => option(c.id, c.nom)));
   // la ceinture propose tous les objets du sac (liste-ceinture, refaite par construireCeinture) ; le sac, son catalogue (autocompletion)
   racine.append(el('datalist', { id: 'liste-ceinture' }));
@@ -4137,6 +4702,7 @@ async function demarrer() {
   document.addEventListener('focusin', quitteLeGroupe, { capture: true });
   $('fiche-enregistrer').addEventListener('click', enregistrer);
   $('fiche-nouvelle').addEventListener('click', nouvelle);
+  $('fin-de-combat').addEventListener('click', finirLeCombat);
   $('fiche-telecharger').addEventListener('click', telechargerClasseur);
   const exporter = $('fiche-exporter');
   exporter.addEventListener('click', exporterVersGoogle);

@@ -18,7 +18,7 @@ import { choseASavoirSansTexte, corpsDeClasse, corpsDeDon, resumeDeDon } from '.
 import { donneesDeDon } from '../src/lib/dons-edition.mjs';
 import { jsonCommePython } from '../src/lib/json-python.mjs';
 import { corpsDeMagieApres, morceauxDuCorpsDeMagie } from '../src/lib/corps-magies.mjs';
-import { corpsDeMetier, sansLiens } from '../src/lib/corps-metiers.mjs';
+import { corpsDeMetier } from '../src/lib/corps-metiers.mjs';
 import { corpsDeRace, corpsDeRaceCreee, etatDeRace } from '../src/lib/corps-races.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { emettrePage, lirePages } from '../src/lib/pages-db.mjs';
@@ -60,12 +60,12 @@ const GUERRIER = 'classes/guerrier';
 const MAITRE = lire(`SELECT s.id FROM specialite s WHERE s.classe_id = ? AND EXISTS (SELECT 1 FROM capacite k WHERE k.specialite_id = s.id AND k.nature = 'specialite')
   ORDER BY s.id = ? DESC, s.rang LIMIT 1`, GUERRIER, `${GUERRIER}#specialite:maitre-darme`)?.id ?? null;
 const BRAVE = lire(`SELECT id FROM capacite WHERE nature = 'classe' ORDER BY classe_id = ? DESC, id = 'capacites/guerrier-brave' DESC, classe_id, ligne, id LIMIT 1`, GUERRIER).id;
-const HERBORISTE = 'metiers/herboriste';
+// un métier, lu dans l'état courant (l'Herboriste s'il est là : le site de dev supprime des métiers)
+const HERBORISTE = lire("SELECT id FROM metier ORDER BY id = 'metiers/herboriste' DESC, id LIMIT 1").id;
 
 // valeurs d'avant (l'ancienne valeur ne doit plus être écrite)
 const avant = {
   feu: { ...lire('SELECT description, description_physique FROM magie WHERE id = ?', FEU) },
-  roleFeu: lire("SELECT rang, role_brut FROM magie_role WHERE magie_id = ? AND role = 'entrave'", FEU),
   hyperFeu: lire("SELECT id, effet FROM mode_hyper_effet WHERE version = 'onglet_magie' AND magie_id = ? AND variante_brut = 'Mono-Magie'", FEU),
   boule: { ...lire('SELECT nom, cout_brut, dsb_brut, ordre FROM sort WHERE id = ?', BOULE) },
   drakos: { ...lire('SELECT histoire, sante_depart, avantages, don_base FROM race_onglet WHERE race_id = ?', DRAKOS) },
@@ -82,7 +82,6 @@ const avant = {
 const nouveau = {
   presentation: 'La magie zorglubpresentation brûle sans fin. Elle éclaire aussi.',
   physique: 'Les mages zorglubphysique ont des cheveux de braise.',
-  role: 'PLACEMENT',
   hyperFeu: 'Effet zorglubhyper du feu en mono-magie.',
   boule: { nom: 'Boule de zorglubfeu', cout_brut: '5', dsb_brut: '3d6 dégâts (+1d6/NM)' },
   manteau: 'Manteau zorglubnoir',
@@ -106,7 +105,6 @@ const noms = { race: nomLibre('race', 'Race zorglub'), classe: nomLibre('classe'
 
 lot([
   { op: 'modifier', table: 'magie', cle: { id: FEU }, valeurs: { description: nouveau.presentation, description_physique: nouveau.physique } },
-  { op: 'modifier', table: 'magie_role', cle: { magie_id: FEU, rang: avant.roleFeu.rang }, valeurs: { role_brut: nouveau.role } },
   { op: 'modifier', table: 'mode_hyper_effet', cle: { id: avant.hyperFeu.id }, valeurs: { effet: nouveau.hyperFeu } },
   { op: 'modifier', table: 'sort', cle: { id: BOULE }, valeurs: nouveau.boule },
 ], `${FEU}/`);
@@ -232,16 +230,16 @@ test('rejoué une seconde fois (règles livrées qui le contiennent) : tout est 
   assert.deepEqual(lireRows(), rowsAppliquees);
 });
 
-test('magie : présentation (et résumé), description physique, rôle, Mode Hyper, ligne du sort (nom, coût, D/S/B) ; sort renommé dans les pages du bestiaire', () => {
+test('magie : présentation (et résumé), description physique, Mode Hyper, ligne du sort (nom, coût, D/S/B) ; sort renommé dans les pages du bestiaire', () => {
   const c = corps(FEU);
   const m = morceauxDuCorpsDeMagie(c);
   assert.ok(c.includes(nouveau.presentation));
-  assert.ok(!c.includes(debut(avant.feu.description)), 'ancienne présentation');
+  // l'ancien texte cherché là où il était (le texte courant, que le site de dev peut réécrire, peut se retrouver dans une autre rubrique)
+  assert.ok(!m.tete.join('\n').includes(debut(avant.feu.description)), 'ancienne présentation');
   assert.equal(ligne('SELECT resume FROM page WHERE id = ?', FEU).resume, 'La magie zorglubpresentation brûle sans fin.');
   assert.ok(section(c, 'Description physique').includes(nouveau.physique));
-  assert.ok(!c.includes(debut(avant.feu.description_physique)), 'ancienne description physique');
-  assert.equal(m.roles[avant.roleFeu.rang - 1], nouveau.role);
-  assert.ok(!m.roles.includes(avant.roleFeu.role_brut));
+  assert.ok(!section(c, 'Description physique').includes(debut(avant.feu.description_physique)), 'ancienne description physique');
+  assert.deepEqual(m.roles, [], 'plus de rôles (R237 (7), migration 0117)');
   assert.equal(m.hyper.find((h) => h.variante === 'Mono-Magie').effet, nouveau.hyperFeu);
   const cases = m.sorts[avant.boule.ordre - 1];
   assert.deepEqual([cases[1], cases[3], cases[6]], [nouveau.boule.nom, nouveau.boule.cout_brut, nouveau.boule.dsb_brut]);
@@ -278,16 +276,17 @@ test('formes que races_onglet.py ne relit pas : identifiant d’un don changé, 
 test('race : histoire, santé, avantages, don de base, case du tableau, magies innées, don racial, Mode Hyper (les citations de la fiche restent)', () => {
   const c = corps(DRAKOS);
   assert.ok(section(c, 'Histoire').includes(nouveau.histoire));
-  assert.ok(!c.includes(debut(avant.drakos.histoire)));
+  assert.ok(!section(c, 'Histoire').includes(debut(avant.drakos.histoire)));
   const stats = section(c, 'Caractéristiques de départ').split('\n').filter((l) => l.startsWith('| '));
   assert.equal(casesDe(stats[2])[0], String(nouveau.sante));
   const ecart = c.split('\n').find((l) => l.startsWith('| Santé de départ<br>'));
   assert.equal(casesDe(ecart)[1], String(nouveau.sante), 'colonne « Onglet (retenu) » du tableau des écarts');
   assert.ok(section(c, 'Avantage(s) et inconvénient(s)').includes(`**Avantage(s)** : ${nouveau.avantages}`));
-  assert.ok(!section(c, 'Avantage(s) et inconvénient(s)').includes(debut(avant.drakos.avantages)));
+  assert.ok(!section(c, 'Avantage(s) et inconvénient(s)').split('**Inconvénient(s)**')[0].includes(debut(avant.drakos.avantages)));
   assert.equal(section(c, 'Don de base').split('\n').slice(2).join('\n').trim(), nouveau.donBase);
   const eth = section(c, 'Ethnies et dons raciaux');
-  const sang = eth.split('\n').find((l) => l.startsWith('| Sang |'));
+  // la ligne de la case modifiée, par son rang (sa première case, que le site de dev peut réécrire, ne la désigne pas) : en-tête, séparateur, puis les lignes
+  const sang = eth.split('\n').filter((l) => l.startsWith('| '))[1 + avant.caseDrakos.ligne];
   assert.equal(casesDe(sang)[1], nouveau.case);
   assert.ok(!sang.includes(avant.caseDrakos.valeur));
   const magies = section(c, 'Magies accessibles');
@@ -308,9 +307,9 @@ test('classe : santé, maîtrises, présentation (et résumé), spécialité ren
   assert.ok(section(c, 'Don de départ').includes(`| ${g.sante_depart}.0 | ${avant.guerrier.chakra_depart}.0 | ${avant.guerrier.barriere_depart}.0 |`));
   assert.ok(!c.includes(`| ${avant.guerrier.sante_depart}.0 | ${avant.guerrier.chakra_depart}.0 |`));
   assert.ok(section(c, 'Maîtrise Arme', '###').includes('- Maîtrise zorglubarme'));
-  assert.ok(!c.includes(avant.guerrier.maitrise_arme.split('\n')[0]));
+  assert.ok(!section(c, 'Maîtrise Arme', '###').includes(avant.guerrier.maitrise_arme.split('\n')[0]));
   assert.ok(section(c, avant.guerrier.description_titre).includes(g.description));
-  assert.ok(!c.includes(debut(avant.guerrier.description)));
+  assert.ok(!section(c, avant.guerrier.description_titre).includes(debut(avant.guerrier.description)));
   assert.equal(ligne('SELECT resume FROM page WHERE id = ?', GUERRIER).resume, 'Le Guerrier zorglubclasse frappe fort.');
   if (MAITRE) {
     assert.ok(c.split('\n').includes(`### ${nouveau.maitre}`));
@@ -374,7 +373,8 @@ test('chaque corps redit ses tables sur la copie : magies, races, classes, dons,
     assert.equal(corpsDeClasse(L, { choseASavoirSansTexte: choseASavoirSansTexte(c) }), c, classe.id);
   }
   for (const don of lignes('SELECT * FROM capacite')) assert.equal(corpsDeDon(don), pages.get(don.id), don.id);
-  for (const m of lignes('SELECT * FROM metier')) assert.equal(sansLiens(pages.get(m.id)), corpsDeMetier(m), m.id);
+  // migration 0098 : plus aucun [[lien]] dans le corps d'un métier, le rendu complet le redonne à l'octet près
+  for (const m of lignes('SELECT * FROM metier')) assert.equal(pages.get(m.id), corpsDeMetier(m), m.id);
 });
 
 test('D11 : spécialité et dons créés, don à note et spécialité importée supprimés, rapatriés : fiches (corps, résumé, donnees), corps de la classe, recherche', () => {

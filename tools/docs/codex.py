@@ -28,6 +28,12 @@ Découpage (une page = une section du document) :
     « GLOSSAIRE »                  une page
 et une page de sommaire par partie qui en a plusieurs, plus `lore/codex` (sommaire du document). Une section vide du document n'a pas de page.
 
+Renvois (sommaires, « Voir aussi », renvoi « Voir “X” … » du document) : la balise du mot-clé qui mène à la page visée (mot_cle.url, migration 0098 :
+les liens sont devenus des mots-clés), « {{clé}} » quand le texte affiché est son libellé, « {{clé|texte}} » sinon (mot_cle.cle, migration 0113) ;
+jamais un [[lien]]. Un import ne
+crée jamais de mot-clé : sans exactement un mot-clé pour la page, le texte simple, signalé « renvoi sans mot-clé » (Codex.lien). Une étiquette de
+partie (PARTIES, continent, magie) n'est jamais le mot-clé d'une page (Vocabulaire.etiquette).
+
 Le script n'écrit que dans <out>/lore/, refuse d'écraser une page qui ne vient pas de ce document et n'efface rien (une page du document qu'il ne
 produit plus est signalée « orpheline »).
 
@@ -38,6 +44,8 @@ produit plus est signalée « orpheline »).
   (3) les pages sur disque sont exactement celles que produit le découpage, à l'octet près.
 Une page que le site de dev a modifiée (titre, texte ou alias ; demande du propriétaire : « le site est la source » de ce qu'il modifie, docs/serveur.md,
 « Mise à jour ») est contrôlée dans son état d'import, relu dans data/rows/historique_modification.sql (pages_du_site) ; l'écriture ne la touche pas.
+Le découpage attendu se refait avec le vocabulaire de l'état d'import (Vocabulaire(…, etat_d_import=True)) : un mot-clé que le site a créé, supprimé
+(R196 : seulement s'il n'est mentionné nulle part) ou dont il a changé l'adresse ne change pas les renvois que l'import a écrits.
 """
 import json
 import os
@@ -64,6 +72,10 @@ VOCABULAIRE = os.path.join(RACINE, 'data', 'rows', 'mot_cle.sql')
 
 # Mots-clés : une étiquette de navigation par partie (ce ne sont pas des faits du lore). Une page ne porte que ceux du vocabulaire du site de dev
 # (migration 0056 : un import ne crée jamais de mot-clé, ceux qui manquent ne sont pas écrits : vocabulaire()) ; depuis 0056, « codex » seul.
+# MOT_CLE_DU_CODEX : le mot-clé posé sur chaque page (protégé, client/src/lib/mots-cles.mjs#MOTS_CLES_PROTEGES ; sa clé du dictionnaire
+# tools/db/maverick.py#MOTS_CLES_PROTEGES) : posé par l'id entier que ce dictionnaire lui donne (migration 0113), écrit avec son libellé courant
+# (Vocabulaire.protege), jamais retrouvé par son écriture (un autre mot-clé pourrait la prendre).
+MOT_CLE_DU_CODEX = 'codex'
 PARTIES = {
     'Au début …': 'histoire',
     'Les Divinités': 'divinité',
@@ -258,25 +270,46 @@ class Codex:
         self.racine = arbre(lignes)
         self.pages = {}       # slug -> page
         self.ordre = []
-        self.vocabulaire = vocabulaire   # écriture -> libellé du mot-clé, ou None (vocabulaire()) ; None : les mots-clés tels que le découpage les donne
+        # Vocabulaire (vocabulaire()) : écriture -> libellé du mot-clé, ou None, et les mots-clés des liens ; None : les mots-clés tels que le découpage
+        # les donne, et aucun lien (texte simple)
+        self.vocabulaire = vocabulaire
+        self.sans_lien = {}   # titre visé -> raison : un renvoi écrit en texte simple, faute d'un mot-clé unique qui mène à sa page (lien())
 
     def page(self, titre, corps, tags, resume=None, aliases=()):
         slug = T.normalize(titre)
         if slug in self.pages:
             raise ValueError(f'deux pages pour le même titre : {titre!r}')
-        tags = ['codex'] + [t for t in tags if t]
+        tags = [MOT_CLE_DU_CODEX] + [t for t in tags if t]
         if self.vocabulaire:
-            # ceux du vocabulaire seulement, dans son écriture (celle que db:export-pages écrit), une fois chacun
-            tags = list(dict.fromkeys(libelle for libelle in map(self.vocabulaire, tags) if libelle))
+            # ceux du vocabulaire seulement, dans son écriture (celle que db:export-pages écrit), une fois chacun ; « codex » par son id
+            # (Vocabulaire.protege) ; une étiquette de partie n'est jamais le mot-clé d'une page (Vocabulaire.etiquette : « Mrode », « Erisia »,
+            # « Glossaire » de la migration 0098)
+            tags = list(dict.fromkeys(libelle for libelle in [self.vocabulaire.protege(tags[0])] + [self.vocabulaire.etiquette(t) for t in tags[1:]]
+                                      if libelle))
         p = dict(slug=slug, titre=titre, corps=nettoyer_lignes(corps), tags=tags,
                  resume=resume if resume is not None else premiere_phrase(corps), aliases=list(aliases))
         self.pages[slug] = p
         self.ordre.append(slug)
         return p
 
-    @staticmethod
-    def lien(titre):
-        return f'[[{titre}]]'
+    def lien(self, titre, texte=None):
+        """Le renvoi vers la page `titre` du Codex (lore/<normalize(titre)>), affiché `texte` (le titre par défaut) : la balise du mot-clé qui mène à
+        cette page (migration 0098 : les liens sont devenus des mots-clés, mot_cle.url), « {{clé}} » quand le texte affiché est son libellé,
+        « {{clé|texte}} » sinon (mot_cle.cle, migration 0113) (lib/liens-en-mots-cles.mjs#baliseDuLien, la forme canonique d'un texte mis en forme). Un import ne crée jamais de
+        mot-clé : s'il n'y en a pas exactement un pour cette page (ou si le texte ne peut pas être celui d'une balise), le texte simple, signalé
+        (self.sans_lien)."""
+        texte = titre if texte is None else texte
+        adresse = f'/{TYPE}/{T.normalize(titre)}/'
+        mots = self.vocabulaire.mots_cles_de_l_adresse(adresse) if self.vocabulaire else []
+        if len(mots) != 1:
+            self.sans_lien.setdefault(titre, f'{len(mots)} mot(s)-clé(s) à l’adresse {adresse}' + (f' ({", ".join(i for i, _ in mots)})' if mots else ''))
+            return texte
+        cle, libelle = mots[0]
+        affiche = texte_affiche(texte)
+        if not affiche or re.search(r'[{}|\n\r]', affiche):
+            self.sans_lien.setdefault(titre, f'texte « {texte} » impossible dans une balise')
+            return texte
+        return f'{{{{{cle}}}}}' if affiche == libelle else f'{{{{{cle}|{texte}}}}}'
 
     def entite(self, noeud, tags, niveau=2, voir_aussi=()):
         """Une page pour une section : titre = le nom ; le reste du titre (sous-titre, parenthèse) en italique en tête de page."""
@@ -344,7 +377,7 @@ class Codex:
                 p = self.entite(divinite, [tag, gtag])
                 p['resume'] = nom_et_reste(divinite['titre'])[1] or p['resume']
                 liste.append((p['titre'], p['resume']))
-            corps += ['', f'## {groupe["titre"]}', ''] + [f'- [[{t}]] — {r}' for t, r in liste]
+            corps += ['', f'## {groupe["titre"]}', ''] + [f'- {self.lien(t)} — {r}' for t, r in liste]
             entrees += [(t, 1) for t, _ in liste]
         self.page('Les Divinités', corps, [tag], resume='Le panthéon de Maverick : forces créatrice et destructrice, dieux primordiaux, dieux et autres êtres divins.')
         return [('Les Divinités', 0)] + entrees
@@ -367,7 +400,7 @@ class Codex:
                     continue
                 p = self.entite(ordre, [tag, None if magie in MAGIES_HOMONYMES else magie])   # un homonyme n'est pas posé
                 reste = nom_et_reste(ordre['titre'])[1]
-                liste.append(f'- [[{p["titre"]}]]' + (f' {reste}' if reste else ''))
+                liste.append(f'- {self.lien(p["titre"])}' + (f' {reste}' if reste else ''))
                 entrees.append((p['titre'], 1))
             corps += ['', f'## {section["titre"]}', ''] + rendre(dict(section, enfants=[]), 2, avec_titre=False)
             if corps[-1]:
@@ -379,7 +412,7 @@ class Codex:
     def races(self, partie, tag):
         corps = corps_markdown(partie['lignes'])
         liste = [self.entite(race, [tag])['titre'] for race in partie['enfants'] if not vide(race)]
-        corps += [''] + [f'- [[{t}]]' for t in liste]
+        corps += [''] + [f'- {self.lien(t)}' for t in liste]
         self.page(partie['titre'], corps, [tag])
         return [(partie['titre'], 0)] + [(t, 1) for t in liste]
 
@@ -405,22 +438,22 @@ class Codex:
                     # « Empire Humain » de Mrode : une phrase, puis ses territoires (une page chacun)
                     pages = [self.entite(s, [tag, ctag])['titre'] for s in sous]
                     liste.append(f'- {region["titre"]}' + (f' : {paragraphes[0]}' if paragraphes else ''))
-                    liste += [f'  - [[{t}]]' for t in pages]
+                    liste += [f'  - {self.lien(t)}' for t in pages]
                     noms += [(t, 2) for t in pages]
                 elif sous:
                     # « Empire Humain (Avant 1145) » d'Erisia : sa page, et une page par royaume (provinces en sections)
                     titres = [nom_et_reste(s['titre'])[0] for s in sous]
                     p = self.entite(dict(region, enfants=[]), [tag, ctag], voir_aussi=titres)
                     pages = [self.entite(s, [tag, ctag])['titre'] for s in sous]
-                    liste.append(f'- [[{p["titre"]}]]')
-                    liste += [f'  - [[{t}]]' for t in pages]
+                    liste.append(f'- {self.lien(p["titre"])}')
+                    liste += [f'  - {self.lien(t)}' for t in pages]
                     noms += [(p['titre'], 2)] + [(t, 3) for t in pages]
                 else:
                     p = self.entite(region, [tag, ctag])
-                    liste.append(f'- [[{p["titre"]}]]')
+                    liste.append(f'- {self.lien(p["titre"])}')
                     noms.append((p['titre'], 2))
             self.page(continent['titre'], corps_markdown(continent['lignes']) + [''] + liste, [tag, ctag])
-            corps.append(f'- [[{continent["titre"]}]]')
+            corps.append(f'- {self.lien(continent["titre"])}')
             entrees += [(continent['titre'], 1)] + noms
         self.page('Les Civilisations', corps, [tag])
         return [('Les Civilisations', 0)] + entrees
@@ -435,8 +468,7 @@ class Codex:
         return None
 
     def lien_renvoi(self, titre):
-        cible = RENVOIS.get(titre, titre)
-        return f'[[{cible}]]' if cible == titre else f'[[{cible}|{titre}]]'
+        return self.lien(RENVOIS.get(titre, titre), titre)
 
     def outils(self, partie, tag):
         corps = corps_markdown(partie['lignes'])
@@ -450,7 +482,7 @@ class Codex:
             if corps[-1]:
                 corps.append('')
             # un objet dont la section n'est qu'un gabarit vide (Dague des zéphires, Lame de fer) : son nom, sans page
-            corps += [f'- [[{nom_et_reste(o["titre"])[0]}]]' if not vide(o) else f'- {o["titre"]}' for o in section['enfants']]
+            corps += [f'- {self.lien(nom_et_reste(o["titre"])[0])}' if not vide(o) else f'- {o["titre"]}' for o in section['enfants']]
             entrees += [(t, 1) for t in liste]
         self.page(partie['titre'], corps, [tag], resume='Les armes et objets légendaires ou uniques de Maverick.')
         return [(partie['titre'], 0)] + entrees
@@ -486,24 +518,128 @@ def du_codex(chemin):
     return (data.get('sources') or [None])[0] == SOURCES[0]
 
 
-def vocabulaire(chemin=VOCABULAIRE, historique=HISTORIQUE, schema=SCHEMA):
-    """Les mots-clés qu'une page du Codex peut porter : une fonction écriture -> libellé du mot-clé du vocabulaire (data/rows/mot_cle.sql) qu'elle
-    désigne, ou None. Même règle que l'import des pages (tools/db/maverick.py#mot_cle, historique du site de dev compris : une écriture qu'un mot-clé
-    renommé a quittée mène à lui) : un import ne crée jamais de mot-clé (migration 0056), db:sync-pages ne poserait pas une écriture inconnue."""
-    with open(schema, encoding='utf-8') as f:
-        texte = f.read()
-    db = sqlite3.connect(':memory:')
-    for table in ('mot_cle', 'historique_modification'):
-        db.execute(re.search(rf'CREATE TABLE {table} \([\s\S]*?\) STRICT;', texte).group(0))
-    for fichier in (chemin, historique):
-        if os.path.exists(fichier):
-            with open(fichier, encoding='utf-8') as f:
-                db.executescript(f.read())
+def texte_affiche(texte):
+    """Le texte d'un renvoi tel que le Markdown l'affiche (ses échappements retirés), pour le comparer au libellé (lib/liens-en-mots-cles.mjs#texteAffiche)."""
+    return re.sub(r'\\([\\`*_\[\]|<{}])', r'\1', str(texte))
 
-    def libelle(ecriture):
-        ident = T.mot_cle(db, ecriture)
-        return db.execute('SELECT libelle FROM mot_cle WHERE id = ?', (ident,)).fetchone()[0] if ident else None
-    return libelle
+
+def decouper_adresse(adresse):
+    """(chemin, requête, ancre) d'une adresse (lib/mots-cles-liens.mjs#decouperLAdresse)."""
+    m = re.match(r'^([^?#]*)(\?[^#]*)?(#.*)?$', adresse or '')
+    return m.group(1), (m.group(2) or '')[1:], (m.group(3) or '')[1:]
+
+
+class Vocabulaire:
+    """Les mots-clés du vocabulaire (data/rows/mot_cle.sql, historique du site de dev compris). Un import ne crée jamais de mot-clé (migration 0056).
+    - protege(clé) : le libellé courant du mot-clé protégé de cette clé de maverick.py#MOTS_CLES_PROTEGES, ou None (un protégé se pose par l'id
+      entier que lui donne ce dictionnaire) ;
+    - appelé (écriture) : le libellé du mot-clé qu'elle désigne, ou None ; même règle que l'import des pages (tools/db/maverick.py#mot_cle : une
+      écriture qu'un mot-clé renommé a quittée mène à lui), db:sync-pages ne poserait pas une écriture inconnue ;
+    - etiquette(écriture) : de même, mais None pour le mot-clé d'une page (mot_cle.url, migration 0098 : « Mrode », « Erisia », « Glossaire ») : une
+      étiquette de partie du Codex (PARTIES, continent, magie) n'en est jamais un, ses pages ne portaient que « codex » ;
+    - mots_cles_de_l_adresse(adresse) : [(clé, libellé d'import)] des mots-clés qui mènent à cette adresse (« /lore/mrode/ ») : leur url, requête
+      ignorée et sans ancre, a le même chemin (lib/mots-cles-liens.mjs#motsClesDeLAdresse) ; la clé (mot_cle.cle, migration 0113) est celle que
+      citent les balises ;
+    - libelle_de(clé) : le libellé (d'import) du mot-clé de cette clé, celle qu'une balise cite, ou None.
+    Les ids sont des entiers (migration 0113), figés ; la clé suit le libellé et les catégories (R232 (2)), et un renommage sur le site réécrit les
+    balises qui citent le mot-clé, journal compris (R232 (3)). Le libellé d'import : celui d'avant la première modification du libellé par le site
+    de dev (historique_modification), sinon le libellé courant ; --verifier compare au document avec lui.
+    `etat_d_import` (--verifier) : le vocabulaire entier tel que l'import l'a laissé, l'historique du site rejoué à l'envers (lignes créées retirées,
+    supprimées remises, colonnes modifiées rendues ; même lecture que client/src/lib/historique-site.mjs#lignesDImport) : les pages sur disque ont été
+    écrites avec lui."""
+
+    def __init__(self, chemin=VOCABULAIRE, historique=HISTORIQUE, schema=SCHEMA, etat_d_import=False):
+        with open(schema, encoding='utf-8') as f:
+            texte = f.read()
+        self.db = sqlite3.connect(':memory:')
+        for table in ('mot_cle', 'historique_modification'):
+            self.db.execute(re.search(rf'CREATE TABLE {table} \([\s\S]*?\) STRICT;', texte).group(0))
+        for fichier in (chemin, historique):
+            if os.path.exists(fichier):
+                with open(fichier, encoding='utf-8') as f:
+                    self.db.executescript(f.read())
+        if etat_d_import:
+            self.defaire_le_site()
+        self.d_import = {}   # id (entier) -> libellé d'avant la première modification de son libellé par le site
+        for cle, avant, apres in self.db.execute(
+                "SELECT cle, avant, apres FROM historique_modification WHERE table_nom = 'mot_cle' ORDER BY fait_le, lot_id, rang"):
+            ident = json.loads(cle).get('id')
+            avant, apres = json.loads(avant or 'null') or {}, json.loads(apres or 'null') or {}
+            if ident not in self.d_import and ('libelle' in avant or 'libelle' in apres):
+                self.d_import[ident] = avant.get('libelle', apres.get('libelle'))
+        self.par_chemin = {}
+        for ident, cle, url in self.db.execute('SELECT id, cle, url FROM mot_cle WHERE url IS NOT NULL ORDER BY id'):
+            chemin_url, _, ancre = decouper_adresse(url)
+            if not ancre:
+                self.par_chemin.setdefault(chemin_url, []).append((cle, self.libelle_d_import(ident)))
+
+    def defaire_le_site(self):
+        """Ramène la table mot_cle à son état d'import : chaque ligne touchée par le site, son historique rejoué à l'envers (historique-site.mjs#versLImport)."""
+        colonnes = [r[1] for r in self.db.execute('PRAGMA table_info(mot_cle)')]
+        operations = {}
+        for cle, operation, avant in self.db.execute(
+                "SELECT cle, operation, avant FROM historique_modification WHERE table_nom = 'mot_cle' ORDER BY fait_le, lot_id, rang"):
+            operations.setdefault(json.loads(cle).get('id'), []).append((operation, json.loads(avant or 'null') or {}))
+        a_l_import = []
+        for ident, ops in operations.items():
+            trouvee = self.db.execute('SELECT * FROM mot_cle WHERE id = ?', (ident,)).fetchone()
+            ligne = dict(zip(colonnes, trouvee)) if trouvee else None
+            for operation, avant in reversed(ops):
+                if operation == 'inserer':
+                    ligne = None
+                elif operation == 'supprimer':
+                    ligne = dict(avant)
+                elif ligne is not None:
+                    ligne.update(avant)
+            a_l_import.append(ligne)
+        # toutes les lignes touchées retirées d'abord (un libellé repris par une ligne créée ne heurte pas celui d'une ligne supprimée), puis remises
+        self.db.executemany('DELETE FROM mot_cle WHERE id = ?', [(ident,) for ident in operations])
+        for ligne in filter(None, a_l_import):
+            cols = [c for c in colonnes if c in ligne]
+            self.db.execute(f'INSERT INTO mot_cle ({", ".join(cols)}) VALUES ({", ".join("?" for _ in cols)})', [ligne[c] for c in cols])
+
+    def libelle(self, ident):
+        """Le libellé courant (l'écriture d'une étiquette, celle que db:export-pages écrit dans `tags:`)."""
+        return self.db.execute('SELECT libelle FROM mot_cle WHERE id = ?', (ident,)).fetchone()[0] if ident else None
+
+    def __call__(self, ecriture):
+        return self.libelle(T.mot_cle(self.db, ecriture))
+
+    def protege(self, ident):
+        """Le libellé courant du mot-clé protégé `ident` (une clé de tools/db/maverick.py#MOTS_CLES_PROTEGES : « codex »), cherché par l'id entier
+        que ce dictionnaire lui donne (migration 0113), ou None s'il n'est pas au vocabulaire : un importeur pose un protégé par son id, jamais par
+        son écriture (que le site pourrait donner à un autre mot-clé). ValueError pour une clé non protégée."""
+        if ident not in T.MOTS_CLES_PROTEGES:
+            raise ValueError(f'{ident!r} : pas un mot-clé protégé')
+        numero = T.MOTS_CLES_PROTEGES[ident]
+        # sans id (race-hybride, absent à la migration 0113) : le mot-clé de cette clé (maverick.py#libelle_protege, de même)
+        trouve = self.db.execute('SELECT libelle FROM mot_cle WHERE id = ?' if numero is not None else 'SELECT libelle FROM mot_cle WHERE cle = ?',
+                                 (numero if numero is not None else ident,)).fetchone()
+        return trouve[0] if trouve else None
+
+    def etiquette(self, ecriture):
+        ident = T.mot_cle(self.db, ecriture)
+        if not ident or self.db.execute('SELECT url FROM mot_cle WHERE id = ?', (ident,)).fetchone()[0] is not None:
+            return None
+        return self.libelle(ident)
+
+    def mots_cles_de_l_adresse(self, adresse):
+        return list(self.par_chemin.get(decouper_adresse(adresse)[0], []))
+
+    def libelle_d_import(self, ident):
+        """Le libellé d'import du mot-clé d'id `ident` (entier), ou None."""
+        trouve = self.db.execute('SELECT libelle FROM mot_cle WHERE id = ?', (ident,)).fetchone()
+        return (self.d_import.get(ident) or trouve[0]) if trouve else None
+
+    def libelle_de(self, cle):
+        """Le libellé d'import du mot-clé que cite la balise « {{cle}} » (mot_cle.cle, migration 0113), ou None."""
+        trouve = self.db.execute('SELECT id FROM mot_cle WHERE cle = ?', (cle,)).fetchone()
+        return self.libelle_d_import(trouve[0]) if trouve else None
+
+
+def vocabulaire(chemin=VOCABULAIRE, historique=HISTORIQUE, schema=SCHEMA, etat_d_import=False):
+    """Les mots-clés qu'une page du Codex peut porter, et ceux de ses renvois : Vocabulaire (celui de l'état d'import pour --verifier)."""
+    return Vocabulaire(chemin, historique, schema, etat_d_import)
 
 
 def pages_du_site(historique=HISTORIQUE, schema=SCHEMA, sur_disque=None):
@@ -605,8 +741,15 @@ def ecrire(codex, out, site):
         print(f'  orpheline (plus produite, non supprimée) : {TYPE}/{slug}')
 
 
-def normaliser(texte):
-    t = texte.replace('\\', '')
+BALISE = re.compile(r'\{\{([a-z0-9-]+)(?:(\\?\|)([^{}]*?)|(:))?\}\}')   # une balise du glossaire : {{clé}}, {{clé|texte}}, {{clé\|texte}}, {{clé:}}
+WIKILIEN = re.compile(r'\[\[([^\[\]|]+?)(?:\|([^\[\]]+?))?\]\]')         # un lien [[cible]], [[cible|texte]] (lib/wikilinks-resolution.mjs)
+
+
+def normaliser(texte, libelle_de=None):
+    """Le texte comparé ligne à ligne au document : les renvois réduits au texte qu'ils affichent (une balise sans texte, au libellé de son mot-clé,
+    `libelle_de` : clé -> libellé), sans échappement, emphase ni titre Markdown, les blancs réduits."""
+    t = BALISE.sub(lambda m: m.group(3) if m.group(2) else ((libelle_de and libelle_de(m.group(1))) or m.group(1)), texte)
+    t = t.replace('\\', '')
     t = re.sub(r'\[\[(?:[^\]|]*\|)?([^\]]*)\]\]', r'\1', t)
     t = re.sub(r'[*#]', '', t)
     return re.sub(r'\s+', ' ', t).strip()
@@ -626,17 +769,43 @@ def pages_sur_disque(out):
     return pages
 
 
+def liens_en_balises(texte, codex):
+    """Les liens [[cible|texte]] d'un texte d'import d'avant la migration 0098 (l'état d'import d'une page modifiée par le site de dev, relu dans
+    l'historique) devenus les renvois que le découpage écrit aujourd'hui (Codex.lien) : la migration a converti de même la page de la base."""
+    return WIKILIEN.sub(lambda m: codex.lien(m.group(1).strip(), (m.group(2) or m.group(1)).strip()), texte)
+
+
+def graphies_de_migration(texte, corrections=CORRECTIONS):
+    """Le texte d'import d'une page que le site de dev a modifiée avant une migration de données (la `valeur d'import` est celle d'avant le site),
+    avec les corrections du registre que cette migration a faites en base (entrées `migration` : R266, 0121) : la page de la base les a reçues,
+    le document les reçoit par `lire_lignes`. Sans effet sur un texte déjà corrigé."""
+    with open(corrections, encoding='utf-8') as f:
+        registre = json.load(f)
+    for c in registre['corrections']:
+        if c.get('migration'):
+            motif = (r'(?<![^\W\d_])' + re.escape(c['avant']) + r'(?![^\W\d_])') if c.get('mot') else re.escape(c['avant'])
+            texte = re.sub(motif, c['apres'].replace('\\', r'\\'), texte)
+    return texte
+
+
 def verifier(lignes, out, site, vocabulaire=None):
     """Contrôles indépendants du découpage (voir l'en-tête), les pages modifiées par le site de dev dans leur état d'import, leurs mots-clés ceux du
-    vocabulaire (Codex(…, vocabulaire)). -> (erreurs, nombre de pages, nombre de pages modifiées par le site)."""
+    vocabulaire (Codex(…, vocabulaire)). -> (erreurs, nombre de pages, nombre de pages modifiées par le site, renvois sans mot-clé)."""
     pages = pages_sur_disque(out)
-    a_l_import = {slug: etat_d_import(t, site.get(slug)) for slug, t in pages.items()}
+    attendu = Codex(lignes, vocabulaire).construire()
+    a_l_import = {}
+    for slug, t in pages.items():
+        data, corps = etat_d_import(t, site.get(slug))
+        if 'corps' in site.get(slug, {}):
+            corps = graphies_de_migration(liens_en_balises(corps, attendu))
+        a_l_import[slug] = (data, corps)
+    libelle_de = vocabulaire.libelle_de if vocabulaire else None
     erreurs = []
-    tout = '\n'.join(normaliser(corps) for _, corps in a_l_import.values())
+    tout = '\n'.join(normaliser(corps, libelle_de) for _, corps in a_l_import.values())
     titres = set()
     for data, corps in a_l_import.values():
         titres |= {normaliser(data['title'])} | {normaliser(a) for a in data.get('aliases', [])}
-        titres |= {normaliser(m) for m in re.findall(r'^#{1,6} (.*)$', corps, flags=re.M)}
+        titres |= {normaliser(m, libelle_de) for m in re.findall(r'^#{1,6} (.*)$', corps, flags=re.M)}
     absentes = 0
     for i, ligne in enumerate(lignes, 1):
         if not ligne.strip() or IMAGE.match(ligne) or REF_IMAGE.match(ligne) or re.fullmatch(r'\s*(\* )?\*\*[^*]+:\*\*\s*', ligne):
@@ -660,7 +829,6 @@ def verifier(lignes, out, site, vocabulaire=None):
                 erreurs.append(f'(1) ligne absente des pages, ligne {i} : {ligne.strip()[:100]!r}')
     if absentes > 20:
         erreurs.append(f'(1) … {absentes} lignes absentes au total')
-    attendu = Codex(lignes, vocabulaire).construire()
     for slug in sorted(set(attendu.pages) | set(pages)):
         if slug not in pages:
             erreurs.append(f'(3) page manquante sur disque : {TYPE}/{slug}')
@@ -671,7 +839,13 @@ def verifier(lignes, out, site, vocabulaire=None):
                 erreurs.append(f'(3) page modifiée par le site de dev, différente du découpage dans son état d\'import : {TYPE}/{slug}')
         elif pages[slug] != texte_de_page(attendu.pages[slug]):
             erreurs.append(f'(3) page différente du découpage : {TYPE}/{slug}')
-    return erreurs, len(pages), len(set(site) & set(pages))
+    return erreurs, len(pages), len(set(site) & set(pages)), attendu.sans_lien
+
+
+def signaler_sans_lien(sans_lien):
+    """Les renvois écrits en texte simple faute d'un mot-clé unique qui mène à leur page (Codex.lien : un import ne crée jamais de mot-clé)."""
+    for titre, raison in sorted(sans_lien.items()):
+        print(f'  renvoi sans mot-clé, écrit en texte simple : « {titre} » ({raison})')
 
 
 def main(argv):
@@ -679,10 +853,11 @@ def main(argv):
     source = option('--source', SOURCE)
     out = option('--out', OUT)
     site = pages_du_site(option('--historique', HISTORIQUE), sur_disque=pages_sur_disque(out))
-    voc = vocabulaire(option('--vocabulaire', VOCABULAIRE), option('--historique', HISTORIQUE))
+    voc = vocabulaire(option('--vocabulaire', VOCABULAIRE), option('--historique', HISTORIQUE), etat_d_import='--verifier' in argv)
     lignes = lire_lignes(source)
     if '--verifier' in argv:
-        erreurs, n, du_site = verifier(lignes, out, site, voc)
+        erreurs, n, du_site, sans_lien = verifier(lignes, out, site, voc)
+        signaler_sans_lien(sans_lien)
         for e in erreurs:
             print(e)
         if erreurs:
@@ -690,7 +865,9 @@ def main(argv):
             return 1
         print(f'{n} pages du Codex conformes au document' + (f' ({du_site} modifiées depuis par le site de dev, contrôlées dans leur état d\'import)' if du_site else ''))
         return 0
-    ecrire(Codex(lignes, voc).construire(), out, site)
+    codex = Codex(lignes, voc).construire()
+    ecrire(codex, out, site)
+    signaler_sans_lien(codex.sans_lien)
     return 0
 
 

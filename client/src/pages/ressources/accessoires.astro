@@ -1,0 +1,22 @@
+---
+import Base from '../../layouts/Base.astro';
+import EquipementPage from '../../components/equipement/EquipementPage.astro';
+import AccessoiresPage from '../../components/accessoires/AccessoiresPage.astro';
+import { chargerAccessoires } from '../../lib/accessoires-db.mjs';
+import { pageDeLEquipement } from '../../lib/equipement.mjs';
+import { panneauRendu } from '../../lib/equipement-rendu';
+import { ouvrirBase } from '../../lib/donnees.mjs';
+
+// /ressources/accessoires/ (rubrique Équipement du menu ; une page à elle depuis le 2026-10-29, « Cinq pages séparées » : lib/equipement.mjs) : le
+// générateur d'accessoire, rendu depuis la base (components/accessoires/AccessoiresPage.astro), son panneau de règles en tête, déplié
+// (lib/equipement-rendu.ts). Non modifiable sur le site de dev, sauf son panneau de règles (src/scripts/edition/panneaux.mjs).
+const page = pageDeLEquipement('accessoires')!;
+const db = ouvrirBase();
+const regles = await panneauRendu(db, page.id);
+---
+
+<Base title={page.nom} description="Accessoires : le générateur d’accessoire, emplacement, propriété, effet, gemmes, monture et malédiction." edition={page.chemin}>
+  <EquipementPage id={page.id}>
+    <AccessoiresPage accessoires={chargerAccessoires(db)} regles={regles} />
+  </EquipementPage>
+</Base>

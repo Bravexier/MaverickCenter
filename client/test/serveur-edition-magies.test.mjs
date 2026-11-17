@@ -7,6 +7,7 @@ import { test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
+import { normalize } from '../src/lib/text.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const racine = dossierTemporaire('edition-magies');
@@ -89,7 +90,7 @@ test('nom d’un autre sort de la magie à la casse, aux accents ou aux espaces 
   }
 });
 
-test('magie : présentation, caractéristique bonus (reconnue ou non), rôles, 4ème barre réservée au Sang et à la Nécromancie', () => {
+test('magie : présentation, caractéristique bonus (reconnue ou non), rôles retirés (R237 (7)), 4ème barre réservée au Sang et à la Nécromancie', () => {
   const feu = { id: 'magies/magie-du-feu' };
   assert.equal(modifier('magie', feu, { description: 'Nouvelle présentation.\n\nDeux paragraphes.', caracteristique_brut: 'FORCE' }).statut, 200);
   assert.deepEqual({ ...ligne('SELECT description, caracteristique_id FROM magie WHERE id = ?', feu.id) }, { description: 'Nouvelle présentation.\n\nDeux paragraphes.', caracteristique_id: 'force' });
@@ -98,8 +99,11 @@ test('magie : présentation, caractéristique bonus (reconnue ou non), rôles, 4
   assert.match(modifier('magie', feu, { barre4_texte: 'Une 4ème barre' }).corps.erreur, /n’en a pas/);
   assert.equal(modifier('magie', { id: 'magies/magie-du-sang' }, { barre4_texte: 'Elle possède un maximum de 12 Sang et la régénère de 2 par tour.' }).statut, 200);
   assert.deepEqual({ ...ligne("SELECT barre4_max, barre4_regen FROM magie WHERE id = 'magies/magie-du-sang'") }, { barre4_max: 12, barre4_regen: 2 });
-  assert.equal(modifier('magie_role', { magie_id: feu.id, rang: 1 }, { role_brut: 'SOIN' }).statut, 200);
-  assert.match(modifier('magie_role', { magie_id: feu.id, rang: 1 }, { role_brut: 'MAGIE' }).corps.erreur, /Rôle « MAGIE »/);
+  // les rôles des magies sont supprimés (R237 (7), migration 0117) : la table reste, vide, et ne se crée pas depuis le site ; la modification d'un rôle
+  // (journal d'avant la mise à jour) est refusée sans rien écrire
+  assert.equal(ligne('SELECT count(*) AS n FROM magie_role').n, 0);
+  assert.equal(modifier('magie_role', { magie_id: feu.id, rang: 1 }, { role_brut: 'SOIN' }).statut, 404);
+  assert.equal(ligne('SELECT count(*) AS n FROM magie_role').n, 0);
   assert.equal(modifier('magie_resistance', { magie_id: feu.id }, { cible_brut: 'x' }).statut, 400, 'relations entre magies : pas modifiables');
 });
 
@@ -116,4 +120,30 @@ test('corps d’une page de magie qui n’a pas la forme de l’importeur : le l
   } finally {
     db.prepare('UPDATE page SET corps_md = ? WHERE id = ?').run(corps, vent);
   }
+});
+
+test('spécialisation magique (R236 (1)) : nom, description et remarque se modifient ; magie, ordre, clé et identifiant non ; le rattachement d’un sort non plus', () => {
+  const sp = ligne('SELECT * FROM magie_specialisation ORDER BY id LIMIT 1');
+  const r = modifier('magie_specialisation', { id: sp.id }, { nom: 'NOM TÉMOIN', description: 'Une description témoin.', remarque: 'Une remarque témoin.' });
+  assert.equal(r.statut, 200, JSON.stringify(r.corps));
+  const apres = ligne('SELECT * FROM magie_specialisation WHERE id = ?', sp.id);
+  assert.deepEqual([apres.nom, apres.description, apres.remarque], ['NOM TÉMOIN', 'Une description témoin.', 'Une remarque témoin.']);
+  // l'identifiant, la magie et l'ordre ne bougent pas (identifiants figés) : un nom corrigé ne change ni l'adresse ni l'ordre des deux spécialisations ;
+  // la clé du nom suit le nom, comme partout (db:check : X_cle = normalize(X))
+  assert.deepEqual([apres.id, apres.magie_id, apres.ordre, apres.nom_cle], [sp.id, sp.magie_id, sp.ordre, normalize('NOM TÉMOIN')]);
+  for (const colonne of ['magie_id', 'ordre', 'nom_cle', 'id']) {
+    const refus = modifier('magie_specialisation', { id: sp.id }, { [colonne]: sp[colonne] === 1 ? 2 : 'autre' });
+    assert.equal(refus.statut, 400, `${colonne} : ${JSON.stringify(refus.corps)}`);
+  }
+  assert.equal(modifier('magie_specialisation', { id: sp.id }, { nom: '' }).statut >= 400, true, 'le nom reste obligatoire');
+  assert.equal(ligne('SELECT nom FROM magie_specialisation WHERE id = ?', sp.id).nom, 'NOM TÉMOIN');
+  // le rattachement d'un sort à sa spécialisation ne se modifie pas, comme son niveau (la colonne n'est pas dans TABLES.sort)
+  const sort = ligne('SELECT id, specialisation_id FROM sort WHERE specialisation_id IS NOT NULL ORDER BY id LIMIT 1');
+  const autre = ligne('SELECT id FROM magie_specialisation WHERE id <> ? AND magie_id = ?', sort.specialisation_id, sort.specialisation_id.split('#')[0]).id;
+  assert.equal(modifier('sort', { id: sort.id }, { specialisation_id: autre }).statut, 400);
+  assert.equal(modifier('sort', { id: sort.id }, { niveau: 1 }).statut, 400);
+  assert.equal(ligne('SELECT specialisation_id FROM sort WHERE id = ?', sort.id).specialisation_id, sort.specialisation_id);
+  // ni création ni suppression depuis le site
+  assert.equal(enregistrer([{ op: 'supprimer', entite: 'magie_specialisation', cle: { id: sp.id } }]).statut >= 400, true);
+  assert.equal(ligne('SELECT count(*) AS n FROM magie_specialisation WHERE id = ?', sp.id).n, 1);
 });

@@ -1,4 +1,4 @@
-// Le script de l'onglet Accessoires de /ressources/equipement/ (src/scripts/accessoires.mjs), exécuté dans un faux navigateur, pour la malédiction
+// Le script de la page Accessoires, /ressources/accessoires/ (src/scripts/accessoires.mjs), exécuté dans un faux navigateur, pour la malédiction
 // (décision R94 : « Si à n'importe quel étape "Malédiction" est choisi, on relance tout l'item à partir de l'étape 2 (on garde le même emplacement) Dans
 // le 2em roll si on retombe à nouveau sur "Malédiction", l'objet est DETRUIT et tombe en poussière. ») : « Tirer un accessoire » relance depuis l'étape 2
 // avec le même emplacement et détruit à la seconde malédiction ; le dé d'un tableau suit la même transition (lib/accessoires-generateur.mjs#apresUnJet),
@@ -64,7 +64,7 @@ async function charger(recherche = '') {
   const tirerTout = el('button', { 'data-acc-tout-tirer': '' });
   const effacer = el('button', { 'data-acc-effacer': '' });
   const racine = el('div', { 'data-accessoires': '' }, tirerTout, effacer, ...Object.values(sections), produit);
-  let url = new URL(`/ressources/equipement/${recherche}#accessoires`, 'http://site/');
+  let url = new URL(`/ressources/accessoires/${recherche}`, 'http://site/');
   const fenetre = new EventTarget();
   pageOuverte = fenetre;
   Object.assign(globalThis, {
@@ -110,6 +110,11 @@ async function charger(recherche = '') {
       fenetre.dispatchEvent(new Event('pagehide'));
       return url.search;
     },
+    /** L'ancre de l'adresse, écrite comme en quittant la page. */
+    ancre: () => {
+      fenetre.dispatchEvent(new Event('pagehide'));
+      return url.hash;
+    },
   };
 }
 
@@ -144,6 +149,15 @@ function detruire(p) {
   avecLesJets([D4.collier, D100.attaque, D20.malediction, D100.malediction], p.tirerTout);
   assert.deepEqual(p.classes(), { maudit: true, detruit: true });
 }
+
+test('l’ancre d’un onglet d’effets (#effets-…) quitte l’adresse, sans ancre de page à sa place (une page à elle depuis le 2026-10-29) ; une autre ancre reste', async () => {
+  const p = await charger('#effets-attaque');
+  p.cliquer(p.anneau);
+  assert.equal(p.ancre(), '', 'plus d’onglet « #accessoires » à rouvrir');
+  const q = await charger('#acc-monture');
+  q.cliquer(q.anneau);
+  assert.equal(q.ancre(), '#acc-monture');
+});
 
 test('« Tirer un accessoire » : une malédiction rend maudit et relance depuis l’étape 2, l’emplacement tiré une seule fois', async () => {
   const p = await charger();

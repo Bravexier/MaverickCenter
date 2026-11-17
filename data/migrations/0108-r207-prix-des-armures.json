@@ -1,0 +1,622 @@
+{
+ "migration": "0108-r207-prix-des-armures",
+ "decision": "R207",
+ "description": "Décision R207 (1) E6, suite de la 0105 : le prix des 18 armures de la grille dont le prix écrit s'écartait de la formule (les « 18 autres » de R93 ; registre 0105, `prix_d_armure_hors_formule`) devient le prix calculé (avis de game-design du 2026-11-07). `valeurs` : une entrée par cellule changée (table, clé, cellule du classeur, colonne, avant, après) ; `textes` : les lignes du corps de ressources/armures remplacées. Ce ne sont pas des corrections d'orthographe : rien sous `corrections` ; le rapprochement du classeur « Ressources et Craft » les admet par les `voulus` de tools/sources/ignorer/ressources-et-craft.json.",
+ "formule": "prix = armure_emplacement 'armure-complete' (cout_rf / 100) + constante 'armure.unites_par_materiau' x (prix_rf / 100 du matériau 1 + prix_rf / 100 du matériau 2)",
+ "valeurs": [
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-chitine-laiton"
+   },
+   "nom": "Armure Chitine/Laiton",
+   "cellule": "Ressources et Craft › Armures › EX43",
+   "colonne": "prix",
+   "avant": 630,
+   "apres": 640,
+   "decision": "R207 (1), R93"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-chitine-laiton"
+   },
+   "nom": "Armure Chitine/Laiton",
+   "cellule": "Ressources et Craft › Armures › EX43",
+   "colonne": "prix_brut",
+   "avant": "630",
+   "apres": "640",
+   "decision": "R207 (1), R93"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-chitine-or"
+   },
+   "nom": "Armure Chitine/Or",
+   "cellule": "Ressources et Craft › Armures › FE43",
+   "colonne": "prix",
+   "avant": 690,
+   "apres": 700,
+   "decision": "R207 (1), R93"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-chitine-or"
+   },
+   "nom": "Armure Chitine/Or",
+   "cellule": "Ressources et Craft › Armures › FE43",
+   "colonne": "prix_brut",
+   "avant": "690",
+   "apres": "700",
+   "decision": "R207 (1), R93"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-chitine-titane"
+   },
+   "nom": "Armure Chitine/Titane",
+   "cellule": "Ressources et Craft › Armures › FL43",
+   "colonne": "prix",
+   "avant": 1290,
+   "apres": 1300,
+   "decision": "R207 (1), R93"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-chitine-titane"
+   },
+   "nom": "Armure Chitine/Titane",
+   "cellule": "Ressources et Craft › Armures › FL43",
+   "colonne": "prix_brut",
+   "avant": "1 290",
+   "apres": "1 300",
+   "decision": "R207 (1), R93"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-chitine-maverium"
+   },
+   "nom": "Armure Chitine/Maverium",
+   "cellule": "Ressources et Craft › Armures › FS43",
+   "colonne": "prix",
+   "avant": 2490,
+   "apres": 2500,
+   "decision": "R207 (1), R93"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-chitine-maverium"
+   },
+   "nom": "Armure Chitine/Maverium",
+   "cellule": "Ressources et Craft › Armures › FS43",
+   "colonne": "prix_brut",
+   "avant": "2 490",
+   "apres": "2 500",
+   "decision": "R207 (1), R93"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-mythril-complet"
+   },
+   "nom": "Armure Mythril complète",
+   "cellule": "Ressources et Craft › Armures › BY50",
+   "colonne": "prix",
+   "avant": 2400,
+   "apres": 2410,
+   "decision": "R207 (1), R93"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-mythril-complet"
+   },
+   "nom": "Armure Mythril complète",
+   "cellule": "Ressources et Craft › Armures › BY50",
+   "colonne": "prix_brut",
+   "avant": "2 400",
+   "apres": "2 410",
+   "decision": "R207 (1), R93"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-acier-complet"
+   },
+   "nom": "Armure Acier complète",
+   "cellule": "Ressources et Craft › Armures › CM64",
+   "colonne": "prix",
+   "avant": 240,
+   "apres": 250,
+   "decision": "R207 (1), R93"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-acier-complet"
+   },
+   "nom": "Armure Acier complète",
+   "cellule": "Ressources et Craft › Armures › CM64",
+   "colonne": "prix_brut",
+   "avant": "240",
+   "apres": "250",
+   "decision": "R207 (1), R93"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-fer-noir-complet"
+   },
+   "nom": "Armure Fer Noir complète",
+   "cellule": "Ressources et Craft › Armures › CT71",
+   "colonne": "prix",
+   "avant": 420,
+   "apres": 430,
+   "decision": "R207 (1), R93"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-fer-noir-complet"
+   },
+   "nom": "Armure Fer Noir complète",
+   "cellule": "Ressources et Craft › Armures › CT71",
+   "colonne": "prix_brut",
+   "avant": "420",
+   "apres": "430",
+   "decision": "R207 (1), R93"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-fer-noir-vif-argent"
+   },
+   "nom": "Armure Fer Noir/Vif-Argent",
+   "cellule": "Ressources et Craft › Armures › DV71",
+   "colonne": "prix",
+   "avant": 2210,
+   "apres": 2020,
+   "decision": "R207 (1), R93"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-fer-noir-vif-argent"
+   },
+   "nom": "Armure Fer Noir/Vif-Argent",
+   "cellule": "Ressources et Craft › Armures › DV71",
+   "colonne": "prix_brut",
+   "avant": "2 210",
+   "apres": "2 020",
+   "decision": "R207 (1), R93"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-corne-bronze"
+   },
+   "nom": "Armure Corne/Bronze",
+   "cellule": "Ressources et Craft › Armures › EQ78",
+   "colonne": "prix",
+   "avant": 800,
+   "apres": 700,
+   "decision": "R207 (1), R93"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-corne-bronze"
+   },
+   "nom": "Armure Corne/Bronze",
+   "cellule": "Ressources et Craft › Armures › EQ78",
+   "colonne": "prix_brut",
+   "avant": "800",
+   "apres": "700",
+   "decision": "R207 (1), R93"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-corne-laiton"
+   },
+   "nom": "Armure Corne/Laiton",
+   "cellule": "Ressources et Craft › Armures › EX78",
+   "colonne": "prix",
+   "avant": 830,
+   "apres": 730,
+   "decision": "R207 (1), R93"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-corne-laiton"
+   },
+   "nom": "Armure Corne/Laiton",
+   "cellule": "Ressources et Craft › Armures › EX78",
+   "colonne": "prix_brut",
+   "avant": "830",
+   "apres": "730",
+   "decision": "R207 (1), R93"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-corne-or"
+   },
+   "nom": "Armure Corne/Or",
+   "cellule": "Ressources et Craft › Armures › FE78",
+   "colonne": "prix",
+   "avant": 890,
+   "apres": 790,
+   "decision": "R207 (1), R93"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-corne-or"
+   },
+   "nom": "Armure Corne/Or",
+   "cellule": "Ressources et Craft › Armures › FE78",
+   "colonne": "prix_brut",
+   "avant": "890",
+   "apres": "790",
+   "decision": "R207 (1), R93"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-corne-titane"
+   },
+   "nom": "Armure Corne/Titane",
+   "cellule": "Ressources et Craft › Armures › FL78",
+   "colonne": "prix",
+   "avant": 1490,
+   "apres": 1390,
+   "decision": "R207 (1), R93"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-corne-titane"
+   },
+   "nom": "Armure Corne/Titane",
+   "cellule": "Ressources et Craft › Armures › FL78",
+   "colonne": "prix_brut",
+   "avant": "1 490",
+   "apres": "1 390",
+   "decision": "R207 (1), R93"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-corne-maverium"
+   },
+   "nom": "Armure Corne/Maverium",
+   "cellule": "Ressources et Craft › Armures › FS78",
+   "colonne": "prix",
+   "avant": 2690,
+   "apres": 2590,
+   "decision": "R207 (1), R93"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-corne-maverium"
+   },
+   "nom": "Armure Corne/Maverium",
+   "cellule": "Ressources et Craft › Armures › FS78",
+   "colonne": "prix_brut",
+   "avant": "2 690",
+   "apres": "2 590",
+   "decision": "R207 (1), R93"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-cuivre-bronze"
+   },
+   "nom": "Armure Cuivre/Bronze",
+   "cellule": "Ressources et Craft › Armures › EQ85",
+   "colonne": "prix",
+   "avant": 860,
+   "apres": 760,
+   "decision": "R207 (1), R93"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-cuivre-bronze"
+   },
+   "nom": "Armure Cuivre/Bronze",
+   "cellule": "Ressources et Craft › Armures › EQ85",
+   "colonne": "prix_brut",
+   "avant": "860",
+   "apres": "760",
+   "decision": "R207 (1), R93"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-cuivre-laiton"
+   },
+   "nom": "Armure Cuivre/Laiton",
+   "cellule": "Ressources et Craft › Armures › EX85",
+   "colonne": "prix",
+   "avant": 890,
+   "apres": 790,
+   "decision": "R207 (1), R93"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-cuivre-laiton"
+   },
+   "nom": "Armure Cuivre/Laiton",
+   "cellule": "Ressources et Craft › Armures › EX85",
+   "colonne": "prix_brut",
+   "avant": "890",
+   "apres": "790",
+   "decision": "R207 (1), R93"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-cuivre-or"
+   },
+   "nom": "Armure Cuivre/Or",
+   "cellule": "Ressources et Craft › Armures › FE85",
+   "colonne": "prix",
+   "avant": 950,
+   "apres": 850,
+   "decision": "R207 (1), R93"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-cuivre-or"
+   },
+   "nom": "Armure Cuivre/Or",
+   "cellule": "Ressources et Craft › Armures › FE85",
+   "colonne": "prix_brut",
+   "avant": "950",
+   "apres": "850",
+   "decision": "R207 (1), R93"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-cuivre-titane"
+   },
+   "nom": "Armure Cuivre/Titane",
+   "cellule": "Ressources et Craft › Armures › FL85",
+   "colonne": "prix",
+   "avant": 1550,
+   "apres": 1450,
+   "decision": "R207 (1), R93"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-cuivre-titane"
+   },
+   "nom": "Armure Cuivre/Titane",
+   "cellule": "Ressources et Craft › Armures › FL85",
+   "colonne": "prix_brut",
+   "avant": "1 550",
+   "apres": "1 450",
+   "decision": "R207 (1), R93"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-cuivre-maverium"
+   },
+   "nom": "Armure Cuivre/Maverium",
+   "cellule": "Ressources et Craft › Armures › FS85",
+   "colonne": "prix",
+   "avant": 2750,
+   "apres": 2650,
+   "decision": "R207 (1), R93"
+  },
+  {
+   "table": "armure",
+   "cle": {
+    "id": "ressources/armures#armure:armure-cuivre-maverium"
+   },
+   "nom": "Armure Cuivre/Maverium",
+   "cellule": "Ressources et Craft › Armures › FS85",
+   "colonne": "prix_brut",
+   "avant": "2 750",
+   "apres": "2 650",
+   "decision": "R207 (1), R93"
+  }
+ ],
+ "textes": [
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armures"
+   },
+   "col": "corps_md",
+   "decision": "R207 (1)",
+   "avant": "| Chitine | Laiton | Armure Chitine/Laiton | 630 | Lourd | +10AP +13AM | 3 |  | Frappe |",
+   "apres": "| Chitine | Laiton | Armure Chitine/Laiton | 640 | Lourd | +10AP +13AM | 3 |  | Frappe |"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armures"
+   },
+   "col": "corps_md",
+   "decision": "R207 (1)",
+   "avant": "| Chitine | Or | Armure Chitine/Or | 690 | Lourd | +17AP +6AM | 3 | Estoc | Taille |",
+   "apres": "| Chitine | Or | Armure Chitine/Or | 700 | Lourd | +17AP +6AM | 3 | Estoc | Taille |"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armures"
+   },
+   "col": "corps_md",
+   "decision": "R207 (1)",
+   "avant": "| Chitine | Titane | Armure Chitine/Titane | 1 290 | Lourd | +18AP +8AM | 3 | Taille | Frappe |",
+   "apres": "| Chitine | Titane | Armure Chitine/Titane | 1 300 | Lourd | +18AP +8AM | 3 | Taille | Frappe |"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armures"
+   },
+   "col": "corps_md",
+   "decision": "R207 (1)",
+   "avant": "| Chitine | Maverium | Armure Chitine/Maverium | 2 490 | Lourd | +25AP +21AM | 3 | Estoc/Taille | x2 Frappe |",
+   "apres": "| Chitine | Maverium | Armure Chitine/Maverium | 2 500 | Lourd | +25AP +21AM | 3 | Estoc/Taille | x2 Frappe |"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armures"
+   },
+   "col": "corps_md",
+   "decision": "R207 (1)",
+   "avant": "| Mythril | Mythril | Armure Mythril complète | 2 400 | Léger | +16AP +20AM | 4 | Taille | Frappe |",
+   "apres": "| Mythril | Mythril | Armure Mythril complète | 2 410 | Léger | +16AP +20AM | 4 | Taille | Frappe |"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armures"
+   },
+   "col": "corps_md",
+   "decision": "R207 (1)",
+   "avant": "| Acier | Acier | Armure Acier complète | 240 | Intermédiaire | +12AP | 3 | Taille | Frappe |",
+   "apres": "| Acier | Acier | Armure Acier complète | 250 | Intermédiaire | +12AP | 3 | Taille | Frappe |"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armures"
+   },
+   "col": "corps_md",
+   "decision": "R207 (1)",
+   "avant": "| Fer Noir | Fer Noir | Armure Fer Noir complète | 420 | Intermédiaire | +10AP +4AM | 3 | Estoc | Frappe |",
+   "apres": "| Fer Noir | Fer Noir | Armure Fer Noir complète | 430 | Intermédiaire | +10AP +4AM | 3 | Estoc | Frappe |"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armures"
+   },
+   "col": "corps_md",
+   "decision": "R207 (1)",
+   "avant": "| Fer Noir | Vif Argent | Armure Fer Noir/Vif-Argent | 2 210 | Intermédiaire | +15AP +12AM | 3 | Estoc/Taille | x2 Frappe |",
+   "apres": "| Fer Noir | Vif Argent | Armure Fer Noir/Vif-Argent | 2 020 | Intermédiaire | +15AP +12AM | 3 | Estoc/Taille | x2 Frappe |"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armures"
+   },
+   "col": "corps_md",
+   "decision": "R207 (1)",
+   "avant": "| Corne/Os | Bronze | Armure Corne/Bronze | 800 | Lourd | +14AP +6AM | 3 |  | Frappe |",
+   "apres": "| Corne/Os | Bronze | Armure Corne/Bronze | 700 | Lourd | +14AP +6AM | 3 |  | Frappe |"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armures"
+   },
+   "col": "corps_md",
+   "decision": "R207 (1)",
+   "avant": "| Corne/Os | Laiton | Armure Corne/Laiton | 830 | Lourd | +13AP +12AM | 3 | x2 Frappe | x2 Estoc |",
+   "apres": "| Corne/Os | Laiton | Armure Corne/Laiton | 730 | Lourd | +13AP +12AM | 3 | x2 Frappe | x2 Estoc |"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armures"
+   },
+   "col": "corps_md",
+   "decision": "R207 (1)",
+   "avant": "| Corne/Os | Or | Armure Corne/Or | 890 | Lourd | +20AP +5AM | 3 | x2 Frappe | Estoc/Taille |",
+   "apres": "| Corne/Os | Or | Armure Corne/Or | 790 | Lourd | +20AP +5AM | 3 | x2 Frappe | Estoc/Taille |"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armures"
+   },
+   "col": "corps_md",
+   "decision": "R207 (1)",
+   "avant": "| Corne/Os | Titane | Armure Corne/Titane | 1 490 | Lourd | +21AP +7AM | 3 | Taille/Frappe | x2 Estoc |",
+   "apres": "| Corne/Os | Titane | Armure Corne/Titane | 1 390 | Lourd | +21AP +7AM | 3 | Taille/Frappe | x2 Estoc |"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armures"
+   },
+   "col": "corps_md",
+   "decision": "R207 (1)",
+   "avant": "| Corne/Os | Maverium | Armure Corne/Maverium | 2 690 | Lourd | +28AP +20AM | 3 | Taille | Estoc |",
+   "apres": "| Corne/Os | Maverium | Armure Corne/Maverium | 2 590 | Lourd | +28AP +20AM | 3 | Taille | Estoc |"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armures"
+   },
+   "col": "corps_md",
+   "decision": "R207 (1)",
+   "avant": "| Cuivre | Bronze | Armure Cuivre/Bronze | 860 | Lourd | +8AP +12AM | 3 | x2 Estoc | x2 Frappe |",
+   "apres": "| Cuivre | Bronze | Armure Cuivre/Bronze | 760 | Lourd | +8AP +12AM | 3 | x2 Estoc | x2 Frappe |"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armures"
+   },
+   "col": "corps_md",
+   "decision": "R207 (1)",
+   "avant": "| Cuivre | Laiton | Armure Cuivre/Laiton | 890 | Lourd | +7AP +18AM | 2 |  | Frappe |",
+   "apres": "| Cuivre | Laiton | Armure Cuivre/Laiton | 790 | Lourd | +7AP +18AM | 2 |  | Frappe |"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armures"
+   },
+   "col": "corps_md",
+   "decision": "R207 (1)",
+   "avant": "| Cuivre | Or | Armure Cuivre/Or | 950 | Lourd | +14AP +11AM | 2 | Estoc | Taille |",
+   "apres": "| Cuivre | Or | Armure Cuivre/Or | 850 | Lourd | +14AP +11AM | 2 | Estoc | Taille |"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armures"
+   },
+   "col": "corps_md",
+   "decision": "R207 (1)",
+   "avant": "| Cuivre | Titane | Armure Cuivre/Titane | 1 550 | Lourd | +15AP +13AM | 3 | Taille | Frappe |",
+   "apres": "| Cuivre | Titane | Armure Cuivre/Titane | 1 450 | Lourd | +15AP +13AM | 3 | Taille | Frappe |"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armures"
+   },
+   "col": "corps_md",
+   "decision": "R207 (1)",
+   "avant": "| Cuivre | Maverium | Armure Cuivre/Maverium | 2 750 | Lourd | +22AP +26AM | 3 | Estoc/Taille | x2 Frappe |",
+   "apres": "| Cuivre | Maverium | Armure Cuivre/Maverium | 2 650 | Lourd | +22AP +26AM | 3 | Estoc/Taille | x2 Frappe |"
+  }
+ ]
+}

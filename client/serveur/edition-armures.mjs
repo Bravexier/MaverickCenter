@@ -7,13 +7,18 @@
 // et les quatre cases d'une amélioration de bouclier (coût en RO, coût en matériaux, AP, cran ; lib/armure-champs.mjs#CASES_D_AMELIORATION_DE_BOUCLIER),
 // sont saisis ; la défense écrite et le coût et l'effet écrits d'une amélioration de bouclier en sont refaits (gardés tels qu'écrits tant qu'ils se
 // lisent exactement en ces valeurs). Un lot du journal noté avant (défense ou coût et effet saisis en texte) : ancienneEcritureDesArmures.
+// Depuis la décision R207 (1), E6 (migrations 0105, 0108) : le type, l'AP, l'AM et le prix d'une armure de la grille, l'AP, l'AM et le prix d'un bouclier
+// se calculent d'après les matériaux (+ le coût de fabrication pour le prix) ; ils ne se saisissent plus (une armure particulière garde les siens, R80)
+// et suivent leurs entrées (suivreLesValeursCalculees).
 // Ni création ni suppression : la fiche de personnage cite les armures, les pièces, les formes et les améliorations. Les matériaux se modifient sur la
 // page « Composants » (décision R62 : serveur/edition-composants.mjs).
 // Les outils communs du service (refus, synchroniser…) sont donnés par serveur/edition.mjs (domainesDesArmures), sans import en retour.
 import {
   ameliorationDeBouclierExacte, analyserAmeliorationDeProtection, CASES_D_AMELIORATION_DE_BOUCLIER, colonnesDeLArmure, colonnesDuBouclier, coutDeLaPiece,
-  defenseExacte, degatsDeLArmure, forceDuPoids, prixDeLaForme, textesDeBouclierEcrits, totalDesAmeliorationsDeProtection, TYPES_D_ARMURE,
+  defenseEcrite, defenseExacte, degatsDeLArmure, forceDuPoids, prixDeLaForme, textesDeBouclierEcrits, totalDesAmeliorationsDeProtection, TYPES_D_ARMURE,
 } from '../src/lib/armure-champs.mjs';
+import { nombre } from '../src/lib/armure-forge.mjs';
+import { valeursCalculees } from '../src/lib/armures-db.mjs';
 import { corpsDesArmuresApres, ErreurCorpsArmures, pageDeLaLigne } from '../src/lib/corps-armures.mjs';
 import { TABLES } from '../src/lib/edition-modele.mjs';
 import { lireLigne } from './edition-journal.mjs';
@@ -39,6 +44,141 @@ export function suivreLeCorpsDesArmures(ctx, table, avant, apres, ErreurEdition)
 }
 
 /**
+ * Le prix écrit (prix_brut) d'une armure de la grille recalculé : le format de la colonne, celui du classeur et des migrations 0105 et 0108 (« 640 »,
+ * « 2 500 » : milliers séparés par une espace, virgule décimale) ; null sans prix.
+ */
+export const prixEcritDeLArmure = (prix) => (prix === null ? null : nombre(prix));
+
+/**
+ * Le prix écrit (prix_brut) d'un bouclier recalculé : le format de la colonne, celui du classeur et de la migration 0105 (« 12 », « 112,5 », « 1207,5 » :
+ * aucun séparateur de milliers, virgule décimale, arrondi au Ricken de fer) ; null sans prix. Lu par nombreEcrit (lib/armure-champs.mjs) comme l'autre.
+ */
+export const prixEcritDuBouclier = (prix) => (prix === null ? null : String(Math.round(prix * 100) / 100).replace('.', ','));
+
+/**
+ * Les lignes dont une colonne calculée d'après les matériaux n'est plus celle de la formule (décision R207 (1), E6 ; formules : lib/armure-forge.mjs, entrées
+ * lues par lib/armures-db.mjs#valeursCalculees) : [{ table, ligne (telle qu'en base), valeurs (les colonnes à écrire) }] — le type, l'AP, l'AM et le prix
+ * des armures de la grille, l'AP, l'AM et le prix des boucliers, avec la défense écrite (stats_brut, defense_brut, refaite par defenseEcrite) et le prix
+ * écrit (prix_brut ; vide quand un prix de matériau manque), dans le format de la donnée en place (prixEcritDeLArmure, prixEcritDuBouclier). Une
+ * valeur qui ne change pas n'est pas écrite. Un type que les matériaux ne donnent pas laisse celui en place (la colonne n'admet pas NULL).
+ */
+function changementsCalcules(db) {
+  const { armures, boucliers } = valeursCalculees(db);
+  const sortie = [];
+  for (const a of db.prepare("SELECT * FROM armure WHERE sorte = 'combinaison' ORDER BY ordre").all()) {
+    const v = armures.get(a.id);
+    const valeurs = {};
+    if (v.type !== null && v.type !== a.type) valeurs.type = v.type;
+    if (v.ap !== a.ap || v.am !== a.am) Object.assign(valeurs, { ap: v.ap, am: v.am, stats_brut: defenseEcrite(v.ap, v.am, a.stats_brut) });
+    if (v.prix !== a.prix) Object.assign(valeurs, { prix: v.prix, prix_brut: prixEcritDeLArmure(v.prix) });
+    if (Object.keys(valeurs).length) sortie.push({ table: 'armure', ligne: a, valeurs });
+  }
+  for (const b of db.prepare('SELECT * FROM bouclier ORDER BY id').all()) {
+    const v = boucliers.get(b.id);
+    const valeurs = {};
+    if (v.ap !== b.ap || v.am !== b.am) Object.assign(valeurs, { ap: v.ap, am: v.am, defense_brut: defenseEcrite(v.ap, v.am, b.defense_brut) });
+    if (v.prix !== b.prix) Object.assign(valeurs, { prix: v.prix, prix_brut: prixEcritDuBouclier(v.prix) });
+    if (Object.keys(valeurs).length) sortie.push({ table: 'bouclier', ligne: b, valeurs });
+  }
+  return sortie;
+}
+
+/**
+ * Les colonnes calculées d'après les matériaux (décision R207 (1), E6 : changementsCalcules) ne se saisissent pas (ARMURE.colonnes, TABLES) : elles
+ * suivent ce dont elles se calculent, appelé après la modification d'un matériau (prix de sa ressource, type : serveur/edition-composants.mjs), du coût
+ * de « Armure Complète » (armure_emplacement) ou du prix d'une forme de bouclier (bouclier_classe). Seules les lignes dont une valeur change sont écrites,
+ * notées au lot comme le reste, et la ligne du corps de leur page suit. Au rejeu, valeursCalculeesParLeLot refait le même calcul après chaque lot.
+ */
+export function suivreLesValeursCalculees(ctx, ErreurEdition) {
+  for (const { table, ligne, valeurs } of changementsCalcules(ctx.db)) {
+    suivreLeCorpsDesArmures(ctx, table, ligne, ctx.w.modifier(table, { id: ligne.id }, valeurs), ErreurEdition);
+  }
+}
+
+/**
+ * Les tables des entrées du calcul (décision R207 (1)) : un lot qui en écrit une peut changer les valeurs calculées (prix d'un matériau dans `ressource`,
+ * type dans `materiau` et `materiau_armure`, AP et AM des matières, coût de « Armure Complète », prix d'une forme, constante des unités).
+ * scripts/mise-a-jour-github.mjs#tablesDuLot en recopie la règle (TABLES_DES_ENTREES_DU_CALCUL, TABLES_DES_VALEURS_CALCULEES : comparées par
+ * test/serveur-edition-armures.test.mjs).
+ */
+export const TABLES_DES_ENTREES_DU_CALCUL = Object.freeze([
+  'ressource', 'materiau', 'materiau_armure', 'materiau_bouclier', 'armure_emplacement', 'bouclier_classe', 'constante_equipement',
+]);
+/** Les tables que le recalcul écrit au rejeu, au-delà du journal : armure, bouclier, et page (le corps des pages Armures et Bouclier qui en suit). */
+export const TABLES_DES_VALEURS_CALCULEES = Object.freeze(['armure', 'bouclier', 'page']);
+
+/**
+ * Après chaque lot rejoué qui écrit une entrée du calcul (edition-journal.mjs#rejouer : `apresLeLot`, dans le lot et annulé avec lui ; serveur/edition.mjs
+ * #rejouerLeJournal) : les colonnes calculées qui ne sont plus celles de la formule sont refaites, hors journal (un lot noté avant la décision R207 qui
+ * change le prix d'un matériau ne note pas les armures et les boucliers qui en suivent ; un lot noté depuis les note, et rien ne reste à refaire). Rend
+ * ces écritures ({ lot, rang, table, cle, operation: 'modifier', avant, apres, calculees: true }) : recalculerLesPages en refait la ligne du corps des pages,
+ * et leurs tables vont dans `tablesCompletees`. `lot` : ses modifications, telles que le journal les note (table_nom).
+ */
+export function valeursCalculeesParLeLot(db, lot) {
+  if (!lot.length || !lot.some((m) => TABLES_DES_ENTREES_DU_CALCUL.includes(m.table_nom ?? m.table))) return [];
+  const { lot_id: lotId, rang } = lot.at(-1);
+  const ecrites = [];
+  for (const { table, ligne, valeurs } of changementsCalcules(db)) {
+    const colonnes = Object.keys(valeurs); // des colonnes de changementsCalcules, jamais une saisie
+    db.prepare(`UPDATE "${table}" SET ${colonnes.map((c) => `"${c}" = ?`).join(', ')} WHERE id = ?`).run(...colonnes.map((c) => valeurs[c]), ligne.id);
+    ecrites.push({
+      lot: lotId, rang, table, cle: { id: ligne.id }, operation: 'modifier', avant: Object.fromEntries(colonnes.map((c) => [c, ligne[c]])), apres: valeurs,
+      calculees: true,
+    });
+  }
+  return ecrites;
+}
+
+/** Les colonnes calculées (décision R207 (1)) qu'un ancien lot pouvait écrire directement : celles d'une armure de la grille et d'un bouclier. */
+const ECRITES_AVANT_R203 = Object.freeze({ armure: ['type', 'ap', 'am', 'prix', 'prix_brut'], bouclier: ['ap', 'am', 'prix', 'prix_brut'] });
+
+/**
+ * Un lot noté avant la décision R207 (1) qui écrit directement une colonne calculée (adaptateur de edition-journal.mjs#rejouer, comme
+ * serveur/edition.mjs#ecrituresFigees) : le type, l'AP, l'AM ou le prix d'une armure de la grille, l'AP, l'AM ou le prix d'un bouclier, à une valeur que
+ * les règles n'ont pas, sans écrire aucune entrée du calcul (TABLES_DES_ENTREES_DU_CALCUL : un lot du service d'aujourd'hui note ces colonnes avec le
+ * matériau ou le coût qui les change). Une forme ancienne sans équivalent : `conflit`, avec sa raison ; son lot entier est en conflit au rejeu (service,
+ * mise à jour, db:appliquer-edition), et sur la page « Mise à jour » la modification n'a que le choix 2 (la règle livrée). Une valeur déjà dans les règles
+ * passe (« intégrée ») ; une armure particulière (R80) n'est pas visée. Le lot de chaque modification est lu une fois dans `modification` de `db`.
+ */
+export function ecrituresDesValeursCalculees(db) {
+  const parLot = new Map();
+  const journal = Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'modification'").get());
+  const ecritUneEntree = (lot) => {
+    if (!journal) return false;
+    if (!parLot.has(lot)) {
+      parLot.set(lot, Boolean(db.prepare(`SELECT 1 FROM modification WHERE lot_id = ? AND table_nom IN (${TABLES_DES_ENTREES_DU_CALCUL.map(() => '?').join(', ')}) LIMIT 1`)
+        .get(lot, ...TABLES_DES_ENTREES_DU_CALCUL)));
+    }
+    return parLot.get(lot);
+  };
+  const raison = (table) => `noté avant la décision R207 (1) : ${table === 'armure'
+    ? 'le type, l’AP, l’AM et le prix d’une armure de la grille se calculent d’après ses deux matériaux'
+    : 'l’AP, l’AM et le prix d’un bouclier se calculent d’après sa forme et sa matière'} et ne se saisissent plus ; à refaire sur le site de dev, `
+    + 'par les matériaux (page Composants) ou le coût de fabrication';
+  return (m) => {
+    const colonnes = ECRITES_AVANT_R203[m.table_nom];
+    if (!colonnes || m.operation !== 'modifier' || m.conflit || m.sansEffet) return m;
+    const apres = jsonOuNull(m.apres) ?? {};
+    const cle = jsonOuNull(m.cle);
+    const ligne = cle && lireLigne(db, m.table_nom, cle);
+    if (!ligne || (m.table_nom === 'armure' && ligne.sorte !== 'combinaison')) return m;
+    if (!colonnes.some((c) => c in apres && (ligne[c] ?? null) !== (apres[c] ?? null)) || ecritUneEntree(m.lot_id)) return m;
+    return { ...m, conflit: raison(m.table_nom) };
+  };
+}
+
+/** Les colonnes d'une armure de la grille calculées d'après ses deux matériaux (décision R207 (1), E6) : elles ne se saisissent pas. */
+export const COLONNES_CALCULEES_DE_LA_GRILLE = Object.freeze(['type', 'ap', 'am', 'prix_brut']);
+/**
+ * Les colonnes d'un bouclier calculées d'après sa forme et sa matière (décision R207 (1), E6) : dans TABLES pour que leurs cases en lecture suivent la
+ * ligne renvoyée, elles ne se saisissent pas (une valeur renvoyée telle qu'en place passe, une valeur changée est refusée).
+ */
+export const COLONNES_CALCULEES_DU_BOUCLIER = Object.freeze(['ap', 'am', 'prix_brut']);
+
+/** Les colonnes calculées que `valeurs` change par rapport à la ligne en place `avant` (une valeur renvoyée telle qu'en place n'en est pas une). */
+const calculeesChangees = (colonnes, valeurs, avant) => colonnes.filter((c) => c in valeurs && (valeurs[c] ?? null) !== (avant[c] ?? null));
+
+/**
  * Les domaines de la page des armures : { domaines: { table: { colonnes, deriver } }, amelioration: { colonnes, deriver } } (voir
  * serveur/edition.mjs#DOMAINES ; `amelioration` est le domaine des améliorations d'armure et de bouclier, que serveur/edition.mjs choisit par la cible
  * de la ligne, celles d'arme restant à serveur/edition-armes.mjs).
@@ -56,6 +196,14 @@ export function domainesDesArmures({ refus, ErreurEdition, synchroniser }) {
 
   const ARMURE = {
     colonnes(_ctx, ligne, valeurs, avant) {
+      // décision R207 (1), E6 : le type, l'AP, l'AM et le prix d'une armure de la grille se calculent d'après ses deux matériaux (suivreLesValeursCalculees) ;
+      // une valeur renvoyée telle qu'en place passe (une autre case de la ligne se modifie), une valeur changée est refusée. Une armure particulière
+      // garde les siennes, saisies (R80)
+      const calculees = avant.sorte === 'combinaison' ? calculeesChangees(COLONNES_CALCULEES_DE_LA_GRILLE, valeurs, avant) : [];
+      if (calculees.length) {
+        throw refus(`${avant.nom} : ${calculees.map((c) => `« ${TABLES.armure.colonnes[c].libelle} »`).join(', ')} d’une armure de la grille se calculent d’après ses deux `
+          + 'matériaux (décision R207) : modifiez les matériaux sur la page Composants, ou le coût de fabrication de l’armure complète.');
+      }
       if (!TYPES_D_ARMURE.includes(ligne.type)) throw refus(`${avant.nom} : type d’armure inconnu (${ligne.type}).`);
       // la grille écrit une résistance et une faiblesse, une armure particulière un effet : chacune garde la forme de sa case
       if (avant.sorte === 'particuliere' && (('resistance_brut' in valeurs && valeurs.resistance_brut) || ('faiblesse_brut' in valeurs && valeurs.faiblesse_brut))) {
@@ -85,7 +233,11 @@ export function domainesDesArmures({ refus, ErreurEdition, synchroniser }) {
       }
       return { cout_rf: cout };
     },
-    deriver: (ctx, avant, apres) => suivreLeCorps(ctx, 'armure_emplacement', avant, apres),
+    deriver(ctx, avant, apres) {
+      suivreLeCorps(ctx, 'armure_emplacement', avant, apres);
+      // le coût de « Armure Complète » entre dans le prix des armures de la grille (R93, R207 (1))
+      if ((avant.cout_rf ?? null) !== (apres.cout_rf ?? null)) suivreLesValeursCalculees(ctx, ErreurEdition);
+    },
   };
 
   const BOUCLIER_CLASSE = {
@@ -94,11 +246,24 @@ export function domainesDesArmures({ refus, ErreurEdition, synchroniser }) {
       if (prix === null) throw refus(`${avant.nom} : le prix d’une forme est un nombre de RO (« 2,5 »).`);
       return { prix };
     },
-    deriver: (ctx, avant, apres) => suivreLeCorps(ctx, 'bouclier_classe', avant, apres),
+    deriver(ctx, avant, apres) {
+      suivreLeCorps(ctx, 'bouclier_classe', avant, apres);
+      // le prix d'une forme est le coût de fabrication de ses boucliers (R207 (1), choix de game-design : il fait foi devant « 250 RF / Classe »)
+      if (avant.prix !== apres.prix) suivreLesValeursCalculees(ctx, ErreurEdition);
+    },
   };
 
   const BOUCLIER = {
-    colonnes: (_ctx, ligne, valeurs, avant) => prixLisible(valeurs, ligne, colonnesDuBouclier(ligne), avant),
+    colonnes(_ctx, ligne, valeurs, avant) {
+      // décision R207 (1), E6 : l'AP, l'AM et le prix d'un bouclier se calculent d'après sa forme et sa matière (suivreLesValeursCalculees) ; une valeur
+      // renvoyée telle qu'en place passe (le nom ou le poids se modifie), une valeur changée est refusée
+      const calculees = calculeesChangees(COLONNES_CALCULEES_DU_BOUCLIER, valeurs, avant);
+      if (calculees.length) {
+        throw refus(`${avant.nom} : ${calculees.map((c) => `« ${TABLES.bouclier.colonnes[c].libelle} »`).join(', ')} d’un bouclier se calculent d’après sa forme et `
+          + 'sa matière (décision R207) : modifiez la matière sur la page Composants, ou le prix de la forme.');
+      }
+      return prixLisible(valeurs, ligne, colonnesDuBouclier(ligne), avant);
+    },
     deriver: (ctx, avant, apres) => suivreLeCorps(ctx, 'bouclier', avant, apres),
   };
 

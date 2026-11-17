@@ -22,10 +22,10 @@
 // dev. Seul le volume reste borné : le portrait d'une fiche est résumé comme toute image (ci-dessous), jamais rendu entier. /api/v1/ ne change pas
 // (jamais une table des sections 13 et 14 : lib/ressources.mjs).
 // Le serveur de dev reste ouvert (réponse du propriétaire du 2026-10-15 : « Le serveur dev restera. Il servira toujours pour modifier les règles
-// par ceux qui en auront l'accès. » ; qui y a accès se réglera avec la connexion Discord). Sa base vivante est copiée de celle de production à sa
-// première installation (MAVERICK_BASE_TEST=conservee, deploy/vps/README.md) : cette route y sert donc une copie des fiches, des comptes et des
-// groupes de la production, sans les règles de visibilité de /api/personnages/ (v_personnage_visible) ; une fiche créée ou supprimée sur le dev ne
-// part jamais en production (docs/api.md, « Contenu des tables » ; docs/feuille-de-route.md, réponses du 2026-10-15).
+// par ceux qui en auront l'accès. » ; qui y a accès se réglera avec la connexion Discord). Sa base vivante est la sienne : une installation ne la
+// remplace jamais (R274, deploy/installateur/README.md) ; à l'origine, la copie des fiches, des comptes et des groupes de la production que
+// l'installateur de test a posée sur demande. Cette route sert ce qu'elle contient, sans les règles de visibilité de /api/personnages/
+// (v_personnage_visible) ; une fiche créée ou supprimée sur le dev ne part jamais en production (docs/api.md, « Contenu des tables » ; docs/feuille-de-route.md, réponses du 2026-10-15).
 //
 // Version de la base (versionDeLaBase). Coût fixe, aucune lecture de table : une seule instruction (préparée une fois par connexion) lit
 // PRAGMA schema_version (une table, un index, une vue créés ou retirés), PRAGMA data_version (une écriture validée par une AUTRE connexion sur le même

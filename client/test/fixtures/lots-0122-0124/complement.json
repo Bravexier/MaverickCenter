@@ -1,0 +1,374 @@
+{
+ "0122": {
+  "commit": "3911cd57",
+  "couvertes": [
+   {
+    "table": "regles_onglet_entree",
+    "cle": {
+     "id": "page:guide/la-montee-de-niveau"
+    },
+    "operation": "supprimer",
+    "avant": {
+     "id": "page:guide/la-montee-de-niveau",
+     "onglet_id": "exploration",
+     "rang": 1,
+     "page_id": "guide/la-montee-de-niveau",
+     "libelle": null,
+     "adresse": null
+    }
+   },
+   {
+    "table": "page_source",
+    "cle": {
+     "page_id": "guide/la-montee-de-niveau",
+     "ordre": 0
+    },
+    "operation": "supprimer",
+    "avant": {
+     "page_id": "guide/la-montee-de-niveau",
+     "ordre": 0,
+     "source_id": "ref:google-doc-creer-sa-fiche-de-personnage"
+    }
+   },
+   {
+    "table": "page_source",
+    "cle": {
+     "page_id": "guide/la-montee-de-niveau",
+     "ordre": 1
+    },
+    "operation": "supprimer",
+    "avant": {
+     "page_id": "guide/la-montee-de-niveau",
+     "ordre": 1,
+     "source_id": "google-doc:1PMmFVmKZspSTXJp-y_on5LoprFu_KHxCp34a9kSTFgA"
+    }
+   },
+   {
+    "table": "page_source",
+    "cle": {
+     "page_id": "guide/la-montee-de-niveau",
+     "ordre": 2
+    },
+    "operation": "supprimer",
+    "avant": {
+     "page_id": "guide/la-montee-de-niveau",
+     "ordre": 2,
+     "source_id": "ref:google-sheet-fiche-personnage-maverick-auto-v15-2-2-onglet-bdd"
+    }
+   },
+   {
+    "table": "page_source",
+    "cle": {
+     "page_id": "guide/la-montee-de-niveau",
+     "ordre": 3
+    },
+    "operation": "supprimer",
+    "avant": {
+     "page_id": "guide/la-montee-de-niveau",
+     "ordre": 3,
+     "source_id": "google-sheet:1tDuJpoVVqMtRXBi0WKgH6lwzdQXVdNWPZVLFbdbFqY0"
+    }
+   },
+   {
+    "table": "page_source",
+    "cle": {
+     "page_id": "guide/la-montee-de-niveau",
+     "ordre": 4
+    },
+    "operation": "supprimer",
+    "avant": {
+     "page_id": "guide/la-montee-de-niveau",
+     "ordre": 4,
+     "source_id": "ref:decisions-du-proprietaire-r2-r3-r16-r26-r27-r44-et-r73-docs-decisions-regles-md"
+    }
+   },
+   {
+    "table": "mot_cle_categorie",
+    "cle": {
+     "mot_cle_id": 172,
+     "categorie_id": 5
+    },
+    "operation": "supprimer",
+    "avant": {
+     "mot_cle_id": 172,
+     "categorie_id": 5
+    }
+   },
+   {
+    "table": "source",
+    "cle": {
+     "id": "ref:decisions-du-proprietaire-r2-r3-r16-r26-r27-r44-et-r73-docs-decisions-regles-md"
+    },
+    "operation": "supprimer",
+    "avant": {
+     "id": "ref:decisions-du-proprietaire-r2-r3-r16-r26-r27-r44-et-r73-docs-decisions-regles-md",
+     "nature": "libelle",
+     "texte": "Décisions du propriétaire R2, R3, R16, R26, R27, R44 et R73 (docs/decisions-regles.md)",
+     "url": null,
+     "genre": null,
+     "google_id": null,
+     "fichier": null,
+     "onglets": null
+    }
+   }
+  ],
+  "numeros": {},
+  "calculees": {}
+ },
+ "0123": {
+  "commit": "42631d80",
+  "couvertes": [
+   {
+    "table": "regles_onglet_entree",
+    "cle": {
+     "id": "page:guide/les-neuf-alignements"
+    },
+    "operation": "supprimer",
+    "avant": {
+     "id": "page:guide/les-neuf-alignements",
+     "onglet_id": "fiche-de-personnage",
+     "rang": 23,
+     "page_id": "guide/les-neuf-alignements",
+     "libelle": null,
+     "adresse": null
+    }
+   },
+   {
+    "table": "page_source",
+    "cle": {
+     "page_id": "guide/les-neuf-alignements",
+     "ordre": 0
+    },
+    "operation": "supprimer",
+    "avant": {
+     "page_id": "guide/les-neuf-alignements",
+     "ordre": 0,
+     "source_id": "ref:google-doc-regle-du-jeu-guide-pour-mj-maverick"
+    }
+   },
+   {
+    "table": "page_source",
+    "cle": {
+     "page_id": "guide/les-neuf-alignements",
+     "ordre": 1
+    },
+    "operation": "supprimer",
+    "avant": {
+     "page_id": "guide/les-neuf-alignements",
+     "ordre": 1,
+     "source_id": "google-doc:17VxGUwjzEZWElwIYVaXvaaumqFM4yKnO1C7uhVyc9iM"
+    }
+   },
+   {
+    "table": "alias",
+    "cle": {
+     "page_id": "guide/les-neuf-alignements",
+     "ordre": 0
+    },
+    "operation": "supprimer",
+    "avant": {
+     "page_id": "guide/les-neuf-alignements",
+     "ordre": 0,
+     "texte": "Loyal Bon",
+     "cle": "loyal-bon"
+    }
+   },
+   {
+    "table": "alias",
+    "cle": {
+     "page_id": "guide/les-neuf-alignements",
+     "ordre": 1
+    },
+    "operation": "supprimer",
+    "avant": {
+     "page_id": "guide/les-neuf-alignements",
+     "ordre": 1,
+     "texte": "Loyal Neutre",
+     "cle": "loyal-neutre"
+    }
+   },
+   {
+    "table": "alias",
+    "cle": {
+     "page_id": "guide/les-neuf-alignements",
+     "ordre": 2
+    },
+    "operation": "supprimer",
+    "avant": {
+     "page_id": "guide/les-neuf-alignements",
+     "ordre": 2,
+     "texte": "Loyal Mauvais",
+     "cle": "loyal-mauvais"
+    }
+   },
+   {
+    "table": "alias",
+    "cle": {
+     "page_id": "guide/les-neuf-alignements",
+     "ordre": 3
+    },
+    "operation": "supprimer",
+    "avant": {
+     "page_id": "guide/les-neuf-alignements",
+     "ordre": 3,
+     "texte": "Neutre Bon",
+     "cle": "neutre-bon"
+    }
+   },
+   {
+    "table": "alias",
+    "cle": {
+     "page_id": "guide/les-neuf-alignements",
+     "ordre": 4
+    },
+    "operation": "supprimer",
+    "avant": {
+     "page_id": "guide/les-neuf-alignements",
+     "ordre": 4,
+     "texte": "Neutre Mauvais",
+     "cle": "neutre-mauvais"
+    }
+   },
+   {
+    "table": "alias",
+    "cle": {
+     "page_id": "guide/les-neuf-alignements",
+     "ordre": 5
+    },
+    "operation": "supprimer",
+    "avant": {
+     "page_id": "guide/les-neuf-alignements",
+     "ordre": 5,
+     "texte": "Chaotique Bon",
+     "cle": "chaotique-bon"
+    }
+   },
+   {
+    "table": "alias",
+    "cle": {
+     "page_id": "guide/les-neuf-alignements",
+     "ordre": 6
+    },
+    "operation": "supprimer",
+    "avant": {
+     "page_id": "guide/les-neuf-alignements",
+     "ordre": 6,
+     "texte": "Chaotique Neutre",
+     "cle": "chaotique-neutre"
+    }
+   },
+   {
+    "table": "alias",
+    "cle": {
+     "page_id": "guide/les-neuf-alignements",
+     "ordre": 7
+    },
+    "operation": "supprimer",
+    "avant": {
+     "page_id": "guide/les-neuf-alignements",
+     "ordre": 7,
+     "texte": "Chaotique Mauvais",
+     "cle": "chaotique-mauvais"
+    }
+   }
+  ],
+  "numeros": {
+   "mot_cle_421": 421,
+   "mot_cle_422": 422,
+   "mot_cle_423": 423,
+   "mot_cle_424": 424,
+   "mot_cle_425": 425,
+   "mot_cle_426": 426,
+   "mot_cle_427": 427,
+   "mot_cle_428": 428,
+   "mot_cle_429": 429
+  },
+  "calculees": {}
+ },
+ "0124": {
+  "commit": "57f6bf39",
+  "couvertes": [
+   {
+    "table": "regles_onglet_entree",
+    "cle": {
+     "id": "page:guide/fiche-accessoires-et-ceinture"
+    },
+    "operation": "supprimer",
+    "avant": {
+     "id": "page:guide/fiche-accessoires-et-ceinture",
+     "onglet_id": "fiche-de-personnage",
+     "rang": 11,
+     "page_id": "guide/fiche-accessoires-et-ceinture",
+     "libelle": null,
+     "adresse": null
+    }
+   },
+   {
+    "table": "page_source",
+    "cle": {
+     "page_id": "guide/fiche-accessoires-et-ceinture",
+     "ordre": 0
+    },
+    "operation": "supprimer",
+    "avant": {
+     "page_id": "guide/fiche-accessoires-et-ceinture",
+     "ordre": 0,
+     "source_id": "ref:google-doc-creer-sa-fiche-de-personnage"
+    }
+   },
+   {
+    "table": "page_source",
+    "cle": {
+     "page_id": "guide/fiche-accessoires-et-ceinture",
+     "ordre": 1
+    },
+    "operation": "supprimer",
+    "avant": {
+     "page_id": "guide/fiche-accessoires-et-ceinture",
+     "ordre": 1,
+     "source_id": "google-doc:1PMmFVmKZspSTXJp-y_on5LoprFu_KHxCp34a9kSTFgA"
+    }
+   },
+   {
+    "table": "mot_cle_categorie",
+    "cle": {
+     "mot_cle_id": 136,
+     "categorie_id": 5
+    },
+    "operation": "supprimer",
+    "avant": {
+     "mot_cle_id": 136,
+     "categorie_id": 5
+    }
+   },
+   {
+    "table": "mot_cle_categorie",
+    "cle": {
+     "mot_cle_id": 136,
+     "categorie_id": 7
+    },
+    "operation": "supprimer",
+    "avant": {
+     "mot_cle_id": 136,
+     "categorie_id": 7
+    }
+   },
+   {
+    "table": "alias",
+    "cle": {
+     "page_id": "guide/fiche-accessoires-et-ceinture",
+     "ordre": 0
+    },
+    "operation": "supprimer",
+    "avant": {
+     "page_id": "guide/fiche-accessoires-et-ceinture",
+     "ordre": 0,
+     "texte": "Fiche de personnage : Accessoires et Ceinture",
+     "cle": "fiche-de-personnage-accessoires-et-ceinture"
+    }
+   }
+  ],
+  "numeros": {},
+  "calculees": {}
+ }
+}

@@ -6,9 +6,14 @@
 // races de HYBRIDES_SANS_CLASSE_RACIALE (décision R14 du propriétaire) et de celles qu'on a créées hybrides depuis le site de dev avant de leur
 // donner leur classe raciale (mot-clé « race hybride », TAG_RACE_HYBRIDE). Que les races hybrides à classe raciale aient 3 magies innées est un
 // constat de l'import, pas une règle (décision R30) : test/races-magies-content.test.mjs le garde comme effectif de l'import.
+// Les mots-clés d'une page se lisent par leur id (`data.mots_cles` : lib/wiki.ts, lib/pages-db.mjs#motsClesDesPages), jamais par leur écriture : un
+// mot-clé renommé sur le site de dev ne change la nature d'aucune race (décision R195).
 import { normalize } from './text.mjs';
 
-const isRacialClass = (entry) => entry.id.startsWith('classes/') && (entry.data.tags ?? []).some((t) => normalize(t) === 'hybride-animal');
+/** L'id du mot-clé des classes raciales (catégorie « Classe Hybride Animal » : lib/classe-champs.mjs#MOT_CLE_DE_CATEGORIE). */
+const MOT_CLE_CLASSE_RACIALE = 'hybride-animal';
+const porte = (entry, id) => (entry.data?.mots_cles ?? []).includes(id);
+const isRacialClass = (entry) => entry.id.startsWith('classes/') && porte(entry, MOT_CLE_CLASSE_RACIALE);
 const baseName = (title) => normalize(title);
 
 /**
@@ -18,12 +23,16 @@ const baseName = (title) => normalize(title);
 export const HYBRIDES_SANS_CLASSE_RACIALE = new Set(['races/drassahthac']);
 
 /**
- * Ordre d'affichage des races, races pures puis hybrides (demande du propriétaire, liste de /races/). Ce n'est pas
- * l'ordre de l'onglet « Race » de la fiche (race.ordre dans la base). Une race absente de la liste vient après, par titre.
+ * Ordre figé des races, races pures puis hybrides (demande du propriétaire, ancienne liste de /races/) : celui de la fiche (lib/fiche-regles.mjs) et de
+ * /magies/ (lib/magie-relations.mjs#racesOfMagie), qui ne bougent pas (réponse du propriétaire « /races/ suit, le reste figé »). Ce n'est ni l'ordre de
+ * l'onglet « Race » de la fiche (race.ordre dans la base) ni celui de la liste des races, qui se réordonne sur le site de dev (race.rang_liste,
+ * migration 0092 : menu latéral des races, /races/, tableau des magies innées ; lib/races-db.mjs#comparerRangsDeListe, passé à groupRaces). Une race
+ * absente de la liste vient après, par titre. Fongoïde et Gémidien (décision R239, migration 0120) : à la fin des races pures.
  */
 export const ORDRE_DES_RACES = [
   // pures
   'humain', 'nain', 'elfe-forestier', 'elfe-dore', 'elfe-argente', 'elfe-noir', 'farfadet', 'felfe', 'majin', 'hujin', 'drakos', 'lamia', 'mort-vivant',
+  'fongoide', 'gemidien',
   // hybrides
   'drassahthac', 'orios', 'fenrir', 'kitsune', 'olwman', 'rokh', 'namazu', 'minotaure', 'satyre', 'medusain', 'jackalope', 'marcass', 'anansi', 'goleois',
 ].map((slug) => `races/${slug}`);
@@ -42,11 +51,12 @@ export function raceOfClass(entries, cls) {
 }
 
 /**
- * Mot-clé (normalisé) d'une race hybride créée depuis le site de dev avant sa classe raciale (lib/edition-modele.mjs#MOT_CLE_RACE_HYBRIDE, demande du
- * propriétaire : « à la création d'une classe raciale, on doit sélectionner une race hybride qui n'en a pas déjà »).
+ * L'id (figé) du mot-clé d'une race hybride créée depuis le site de dev avant sa classe raciale (créé avec la première, écrit
+ * lib/edition-modele.mjs#MOT_CLE_RACE_HYBRIDE ; demande du propriétaire : « à la création d'une classe raciale, on doit sélectionner une race hybride
+ * qui n'en a pas déjà »).
  */
 export const TAG_RACE_HYBRIDE = 'race-hybride';
-const marqueeHybride = (race) => (race.data?.tags ?? []).some((t) => normalize(t) === TAG_RACE_HYBRIDE);
+const marqueeHybride = (race) => porte(race, TAG_RACE_HYBRIDE);
 
 /** @returns {'hybride' | 'pure'} */
 export const raceKind = (entries, race) =>
@@ -70,20 +80,21 @@ const rang = (race) => {
 };
 const byOrdre = (a, b) => rang(a) - rang(b) || a.data.title.localeCompare(b.data.title, 'fr');
 
-/** Races dans l'ordre de la liste /races/ (ORDRE_DES_RACES, pures puis hybrides) ; une race absente de la liste vient après, par titre. */
+/** Races dans l'ordre figé ORDRE_DES_RACES (pures puis hybrides : la fiche, /magies/) ; une race absente de la liste vient après, par titre. */
 export const dansLOrdreDesRaces = (races) => [...races].sort(byOrdre);
 
 /**
- * Range les races en groupes (pures puis hybrides, chacun avec sa nature, dont la page pose la classe de couleur), chacun dans l'ordre de
- * ORDRE_DES_RACES ; un groupe vide est omis.
+ * Range les races en groupes (pures puis hybrides, chacun avec sa nature, dont la page pose la classe de couleur) ; un groupe vide est omis. Chaque
+ * groupe dans l'ordre `ordre` (un comparateur de deux entrées) : celui de la liste des races pour le menu latéral, /races/ et le tableau des magies
+ * innées (lib/races.ts#ordreDeLaListeDesRaces : race.rang_liste, migration 0092) ; sans lui, l'ordre figé ORDRE_DES_RACES.
  * `entries` contient les pages de races ET de classes (les classes servent à reconnaître les hybrides).
  */
-export function groupRaces(entries) {
+export function groupRaces(entries, ordre = byOrdre) {
   const races = entries.filter((e) => e.id.startsWith('races/'));
   return RACE_GROUPS.map((g) => ({
     key: g.key,
     label: g.label,
     nature: g.kind,
-    entries: races.filter((r) => raceKind(entries, r) === g.kind).sort(byOrdre),
+    entries: races.filter((r) => raceKind(entries, r) === g.kind).sort(ordre),
   })).filter((g) => g.entries.length > 0);
 }

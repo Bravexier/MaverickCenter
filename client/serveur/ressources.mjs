@@ -24,7 +24,8 @@
 //                                                         par table touchée (colonnes de TABLES seulement) ; If-Match facultatif : égal à la version,
 //                                                         les valeurs lues partent en `avant` ; périmé : 409 { erreur, element, extensions, version }
 //   DELETE /api/v1/<res>/<cle>/                           supprime (ENTITES, avec les retraits des fiches : R42) → { supprime, adresse, lot, fiches } ;
-//                                                         If-Match facultatif (409 si périmé : la suppression emporte les enfants, leur version compte)
+//                                                         If-Match facultatif (409 si périmé : la suppression emporte les enfants, leur version compte) ;
+//                                                         `?forcer=1` (ou `{ "forcer": true }`) : un mot-clé mentionné, supprimé en forçant (R223)
 //   GET|POST /api/v1/<res>/<cle>/<enfant>/               sous-ressource : la liste (mêmes paramètres), la création (le parent vient de l'adresse)
 //   GET|PATCH|DELETE /api/v1/<res>/<cle>/<enfant>/<c>/   une ligne de la sous-ressource
 //   POST   /api/v1/<res>/<cle>/<action>/                  une action du registre sur l'élément (fusionner un mot-clé dans un autre…)
@@ -44,14 +45,14 @@
 // Chaque écriture réussie est notée au journal du service : « api v1 : <MÉTHODE> <adresse> → lot <id> » (catégorie edition), avec le nombre de fiches
 // adaptées, jamais leurs noms.
 // N'importe que node: et des modules de client/ (serveur/livraison.mjs#modulesDuServeur).
-import { ENTITES, ErreurValeur, TABLES, ligneSansImage, valeurDuChamp } from '../src/lib/edition-modele.mjs';
+import { CHAMPS_HORS_COLONNES, ENTITES, ErreurValeur, TABLES, TABLES_FIGEES, ligneSansImage, valeurDuChamp } from '../src/lib/edition-modele.mjs';
 import {
   actionDe, capacitesDe, champFige, cleDuSegment, colonneFigee, enfantDe, MODULES, operationDe, RESSOURCES, ressourceDe, segmentDeCle, tablesDe,
   tablesModifiables,
 } from '../src/lib/ressources.mjs';
 import { TABLES_DES_NOTES } from '../src/lib/tables-de-la-base.mjs';
 import { normalize } from '../src/lib/text.mjs';
-import { ErreurEdition, enregistrer, listes } from './edition.mjs';
+import { ErreurEdition, enregistrer, listes, raisonDuGel } from './edition.mjs';
 import { ErreurHttp, empreinteCourte, entierDeLAdresse, etiquetteCorrespond, etiquettesDe, reponseVersionnee, segmentDecode } from './partage.mjs';
 import { cleDe, lireLigne, structure, TABLES_INTERDITES } from './edition-journal.mjs';
 import { descriptionOpenApi } from './openapi.mjs';
@@ -201,6 +202,49 @@ export const TRADUCTIONS = {
       },
     },
   },
+  // les catégories d'un mot-clé (décision R232 ; permis sur un mot-clé verrouillé, R232 (11)) : la liste réécrite par l'opération `categories_mot_cle`,
+  // qui recalcule les clés et réécrit les textes
+  categories_mot_cle: {
+    POST: {
+      table: 'mot_cle_categorie',
+      champs: { categorie_id: { type: 'entier', libelle: 'Catégorie posée sur le mot-clé (son identifiant)', requis: true, min: 1 } },
+      traduire({ db, parent, valeurs }) {
+        const motCle = parent.ligne.id;
+        const avant = selectionner(db, 'SELECT categorie_id FROM mot_cle_categorie WHERE mot_cle_id = ?', motCle).map((l) => l.categorie_id);
+        if (avant.includes(valeurs.categorie_id)) throw new ErreurApi(409, 'Le mot-clé porte déjà cette catégorie.');
+        return { operations: [{ op: 'categories_mot_cle', mot_cle: motCle, categories: [...avant, valeurs.categorie_id], avant }], cle: { categorie_id: valeurs.categorie_id } };
+      },
+    },
+    DELETE: {
+      table: 'mot_cle_categorie',
+      traduire({ db, parent, ligne }) {
+        const motCle = parent.ligne.id;
+        const avant = selectionner(db, 'SELECT categorie_id FROM mot_cle_categorie WHERE mot_cle_id = ?', motCle).map((l) => l.categorie_id);
+        return { operations: [{ op: 'categories_mot_cle', mot_cle: motCle, categories: avant.filter((c) => c !== ligne.categorie_id), avant }] };
+      },
+    },
+  },
+  // les synonymes d'un mot-clé (décision R233 ; refusés sur un mot-clé verrouillé, R233 (6)) : la liste réécrite par l'opération `synonymes_mot_cle` ;
+  // un synonyme ajouté vient à la fin
+  synonymes_mot_cle: {
+    POST: {
+      table: 'mot_cle_synonyme',
+      champs: { libelle: { type: 'ligne', libelle: 'Synonyme ajouté (à la fin)', requis: true } },
+      traduire({ db, parent, valeurs }) {
+        const motCle = parent.ligne.id;
+        const avant = selectionner(db, 'SELECT libelle FROM mot_cle_synonyme WHERE mot_cle_id = ? ORDER BY ordre, id', motCle).map((l) => l.libelle);
+        return { operations: [{ op: 'synonymes_mot_cle', mot_cle: motCle, synonymes: [...avant, valeurs.libelle], avant }] };
+      },
+    },
+    DELETE: {
+      table: 'mot_cle_synonyme',
+      traduire({ db, parent, ligne }) {
+        const motCle = parent.ligne.id;
+        const avant = selectionner(db, 'SELECT libelle FROM mot_cle_synonyme WHERE mot_cle_id = ? ORDER BY ordre, id', motCle).map((l) => l.libelle);
+        return { operations: [{ op: 'synonymes_mot_cle', mot_cle: motCle, synonymes: avant.filter((s) => s !== ligne.libelle), avant }] };
+      },
+    },
+  },
   valeurs_de_capacite: {
     // décision R69 : seule une valeur qui n'est pas la valeur commune de l'emplacement s'écrit ; la valeur commune (ou rien) retire la ligne
     POST: {
@@ -233,9 +277,19 @@ export const TRADUCTIONS = {
   fusionner_mots_cles: {
     ACTION: {
       table: 'mot_cle',
-      champs: { dans: { type: 'ligne', libelle: 'Le mot-clé qui reçoit les pages (son identifiant)', requis: true } },
+      champs: { dans: { type: 'entier', libelle: 'Le mot-clé qui reçoit les pages (son identifiant entier, migration 0113)', requis: true, min: 1 } },
       traduire({ ligne, valeurs }) {
         return { operations: [{ op: 'fusionner_mots_cles', mot_cle: ligne.id, dans: valeurs.dans }] };
+      },
+    },
+  },
+  ordonner: {
+    // l'ordre du menu latéral d'un onglet des Règles, d'un bloc (serveur/edition-plan.mjs) : l'onglet est l'élément de l'adresse
+    ACTION: {
+      table: 'regles_onglet',
+      champs: { ids: { type: 'categories', libelle: 'Les identifiants de toutes les entrées du menu, dans le nouvel ordre', requis: true } },
+      traduire({ ligne, valeurs }) {
+        return { operations: [{ op: 'ordonner', onglet: ligne.id, ids: valeurs.ids }] };
       },
     },
   },
@@ -642,15 +696,22 @@ function exempleAccepte(db, vue, ligne, parent = null) {
   }
 }
 
-/** Un exemple de ligne d'une ressource pour la documentation : la première dans l'ordre par défaut de sa liste qu'accepte son PATCH (null : aucune). */
+/**
+ * Un exemple de ligne d'une ressource pour la documentation : la première dans l'ordre par défaut de sa liste qu'accepte son PATCH (null : aucune),
+ * de préférence une ligne qui n'est pas gelée (serveur/edition.mjs#raisonDuGel : un mot-clé verrouillé, R218, R219) ; si toutes le sont (les monnaies,
+ * R219 (3)), la première, marquée `gelee` (son PATCH serait refusé en 409 : la description ne le propose pas tel quel, serveur/openapi.mjs).
+ */
 function exempleDe(db, vue) {
   try {
     const params = new URLSearchParams({ limite: '200' });
+    let gelee = null;
     for (const element of lister(db, vue, params).elements) {
       const ligne = trouver(db, vue, element.cle);
-      if (ligne && exempleAccepte(db, vue, ligne)) return exempleDeLigne(vue, ligne);
+      if (!ligne || !exempleAccepte(db, vue, ligne)) continue;
+      if (!raisonDuGel(vue.table, ligne)) return exempleDeLigne(vue, ligne);
+      gelee ??= ligne;
     }
-    return null;
+    return gelee ? { ...exempleDeLigne(vue, gelee), gelee: true } : null;
   } catch {
     return null;
   }
@@ -713,10 +774,15 @@ function ressourceDecrite(db, r, { lesListes, exemples }) {
     recherche: vue.recherche,
     tri: vue.tri,
     capacites,
+    // une table figée (lib/edition-modele.mjs#TABLES_FIGEES : les monnaies, décision R219 (3)) : ses écritures répondent 409, la raison
+    ...(TABLES_FIGEES[r.table] ? { figee: TABLES_FIGEES[r.table] } : {}),
     colonnes: colonnesDecrites(db, r.table, capacites.modifier && ecrites.has(r.table), lesListes, { o: r, parOperation: patch?.champs }),
     extensions: (r.extensions ?? []).map((e) => ({
       table: e.table, parent: e.parent, colonnes: colonnesDecrites(db, e.table, capacites.modifier && !patch && ecrites.has(e.table), lesListes),
     })),
+    // les clés que le PATCH accepte en plus des colonnes (lib/edition-modele.mjs#CHAMPS_HORS_COLONNES : la magie d'un don qui passe à « Variable », R181)
+    ...(capacites.modifier && !patch && ecrites.has(r.table) && CHAMPS_HORS_COLONNES[r.table]
+      ? { hors_colonnes: Object.entries(CHAMPS_HORS_COLONNES[r.table]).map(([nom, champ]) => champDecrit(nom, champ, lesListes)) } : {}),
     creation: creationDecrite(db, r, lesListes),
     suppression: suppressionDecrite(r),
     ...(patch ? { modification: { operation: patch.op } } : {}),
@@ -900,12 +966,19 @@ function modifier(db, service, vue, ligne, corps, etiquettes, parent, adresse) {
   if (t) return ecrireParOperation(db, service, vue, 'PATCH', { t, corps, ligne, parent, adresse, etiquettes });
   const valeurs = objetAttendu(corps, `Modifier ${vue.objet.nom.toLowerCase()}`);
   if (!Object.keys(valeurs).length) throw new ErreurApi(400, 'Aucune colonne à modifier.');
+  // une ligne gelée (une monnaie, décision R219 (3) ; un mot-clé verrouillé ne l'est plus : seule sa suppression est refusée) : 409 quelle que soit la colonne, comme le service le refuse
+  // (serveur/edition.mjs#raisonDuGel) ; avant le contrôle des colonnes, qui dirait 400 pour une colonne hors de TABLES (le nom d'une monnaie, `verrou`)
+  const gelee = vue.enfant ? null : raisonDuGel(vue.table, ligne);
+  if (gelee) throw new ErreurApi(409, gelee);
   const ecrites = tablesModifiables(vue.objet);
   const extensions = vue.enfant ? [] : vue.ressource.extensions ?? [];
   const parTable = new Map();
+  // une clé hors colonnes de la table principale (lib/edition-modele.mjs#CHAMPS_HORS_COLONNES : la magie d'un don qui passe à « Variable », R181) :
+  // passée telle quelle au service d'édition, qui la contrôle
+  const horsColonnes = vue.enfant ? {} : CHAMPS_HORS_COLONNES[vue.table] ?? {};
   const ajouter = (table, colonne, v) => {
     if (!ecrites.includes(table)) throw new ErreurApi(400, `${table} : en lecture seule ici (rien ne s’y modifie par l’API).`);
-    if (!TABLES[table].colonnes[colonne]) {
+    if (!TABLES[table].colonnes[colonne] && !(table === vue.table && Object.hasOwn(horsColonnes, colonne))) {
       throw new ErreurApi(400, `« ${colonne} » ne se modifie pas (${table} : ${Object.keys(TABLES[table].colonnes).join(', ')}).`);
     }
     const figee = table === vue.table ? colonneFigee(vue.objet, colonne, ligne) : null;
@@ -916,7 +989,7 @@ function modifier(db, service, vue, ligne, corps, etiquettes, parent, adresse) {
     const extension = extensions.find((e) => e.table === k);
     if (extension && v && typeof v === 'object' && !Array.isArray(v)) {
       for (const [c, x] of Object.entries(v)) ajouter(k, c, x);
-    } else if (vue.colonnes.includes(k)) ajouter(vue.table, k, v);
+    } else if (vue.colonnes.includes(k) || Object.hasOwn(horsColonnes, k)) ajouter(vue.table, k, v);
     else {
       const noms = extensions.map((e) => e.table);
       throw new ErreurApi(400, `« ${k} » : ni une colonne de ${vue.table}${noms.length ? `, ni une extension (${noms.join(', ')})` : ''}.`);
@@ -932,7 +1005,7 @@ function modifier(db, service, vue, ligne, corps, etiquettes, parent, adresse) {
     const op = { op: 'modifier', table, cle: cleDe(db, table, ligneDeTable), valeurs: v };
     if (etiquettes) {
       const lue = ligneSansImage(table, ligneDeTable);
-      op.avant = Object.fromEntries(Object.keys(v).map((c) => [c, lue[c] ?? null]));
+      op.avant = Object.fromEntries(Object.keys(v).filter((c) => c in lue).map((c) => [c, lue[c] ?? null]));
     }
     operations.push(op);
   }
@@ -952,8 +1025,26 @@ function modifier(db, service, vue, ligne, corps, etiquettes, parent, adresse) {
   return json(200, { ...d, lot: resultat.lot, fiches: resultat.fiches }, { ETag: `"${d.version}"` });
 }
 
-/** DELETE : l'entité de suppression de la vue, avec sa clé (cleSuppression, sinon la clé primaire de la ligne) ; ou l'opération du lot du DELETE. */
-function supprimer(db, service, vue, ligne, etiquettes, parent, adresse) {
+/**
+ * Le forçage d'un DELETE (décision R223 : la suppression forcée d'un mot-clé mentionné, serveur/edition-chronologie.mjs#MOT_CLE) : `?forcer=1` (ou
+ * `true`), ou `{ "forcer": true }` dans le corps ; `0`, `false` ou absent : pas de forçage. Rend true, false, ou une réponse 400 : une autre valeur, ou
+ * un forçage demandé ailleurs que sur un mot-clé (l'entité de suppression `mot_cle`).
+ */
+function forcageDuDelete(vue, params, corps) {
+  const enParametre = params.has('forcer') ? params.get('forcer') : undefined;
+  const dansLeCorps = corps && typeof corps === 'object' && !Array.isArray(corps) && 'forcer' in corps ? corps.forcer : undefined;
+  if (enParametre !== undefined && !['1', 'true', '0', 'false'].includes(enParametre)) return erreur(400, '« forcer » vaut 1 (ou true), ou 0 (ou false).');
+  if (dansLeCorps !== undefined && typeof dansLeCorps !== 'boolean') return erreur(400, '« forcer » vaut true ou false.');
+  const forcer = enParametre === '1' || enParametre === 'true' || dansLeCorps === true;
+  if (forcer && vue.objet.ecriture?.supprimer !== 'mot_cle') return erreur(400, '« forcer » ne vaut que pour la suppression d’un mot-clé (décision R223).');
+  return forcer;
+}
+
+/**
+ * DELETE : l'entité de suppression de la vue, avec sa clé (cleSuppression, sinon la clé primaire de la ligne) ; ou l'opération du lot du DELETE.
+ * `forcer` : la suppression forcée d'un mot-clé (forcageDuDelete ; `forcer: true` de l'opération du lot).
+ */
+function supprimer(db, service, vue, ligne, etiquettes, parent, adresse, { forcer = false } = {}) {
   const t = traductionDe(vue.objet, 'DELETE');
   if (t) return ecrireParOperation(db, service, vue, 'DELETE', { t, ligne, parent, adresse, etiquettes });
   if (etiquettes) {
@@ -962,7 +1053,8 @@ function supprimer(db, service, vue, ligne, etiquettes, parent, adresse) {
   }
   const ecriture = vue.objet.ecriture;
   const cle = ecriture.cleSuppression ? Object.fromEntries(Object.entries(ecriture.cleSuppression).map(([ce, cl]) => [ce, ligne[cl]])) : cleDe(db, vue.table, ligne);
-  const resultat = ecrire(db, service, { methode: 'DELETE', adresse, page: pageDuLot(vue), operations: [{ op: 'supprimer', entite: ecriture.supprimer, cle }] });
+  const operation = { op: 'supprimer', entite: ecriture.supprimer, cle, ...(forcer ? { forcer: true } : {}) };
+  const resultat = ecrire(db, service, { methode: 'DELETE', adresse, page: pageDuLot(vue), operations: [operation] });
   return json(200, { supprime: vue.cle.length ? segmentDeCle(ligne, vue.cle) : null, adresse, lot: resultat.lot, fiches: resultat.fiches });
 }
 
@@ -1107,7 +1199,9 @@ function router(requete, service, segments, params, refusEcriture, methode) {
     return reponseVersionnee(entetes, d.version, (cache) => json(200, d, cache));
   }
   if (methode === 'PATCH') return modifier(db, service, vue, ligne, corps, etiquettes, parentDeLaVue, adresse);
-  return supprimer(db, service, vue, ligne, etiquettes, parentDeLaVue, adresse);
+  const forcer = forcageDuDelete(vue, params, corps);
+  if (typeof forcer !== 'boolean') return forcer;
+  return supprimer(db, service, vue, ligne, etiquettes, parentDeLaVue, adresse, { forcer });
 }
 
 /** Un segment d'adresse décodé pour un message (tel quel s'il est mal encodé). */

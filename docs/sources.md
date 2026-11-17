@@ -124,6 +124,34 @@ Le chemin utilisé est en deux temps, rejouable :
    `status: draft` et une entrée `sources:` qui désigne l'onglet d'origine. Ces `.md` sont un dossier de travail (fabriqué depuis la base
    par `npm run db:export-pages`, ignoré par git) : après l'extracteur, `npm run db:sync-pages` recopie les pages modifiées dans `data/rows`, qui est ce qu'on commite.
 
+**Les étiquettes (`tags:`) qu'écrit un extracteur** ne sont posées que si un mot-clé du glossaire a la même écriture (`tools/db/maverick.py#mot_cle` :
+un import n'en crée jamais). Un mot-clé créé plus tard peut donc faire poser par le prochain import une étiquette qui ne l'était pas : la liste commune
+`tools/db/homonymes.py` dit celles que les extracteurs n'écrivent pas. `MAGIES_HOMONYMES` : la magie homonyme d'un mot-clé d'un autre sens (« corruption »,
+« sang ») ; `ETIQUETTES_NON_POSEES` : les étiquettes des mots-clés venus du Lexique (migration 0090) Bouclier, Pièce élémentaire et Amélioration
+(`equipement.py`), Tour (`divers-craft.py`), Mode Hyper et Mode Super (`annexes-magie.py` ; Mode Hyper n'a plus de page où se poser depuis le retrait
+de `guide/liste-des-effets-mode-hyper`, décision R187 : l'importeur ignore l'onglet « Mode Hyper », dont les textes, les constantes et les effets restent
+en base), exclues de l'import par la décision R183 (11). Test :
+`client/test/importeurs-etiquettes.test.mjs`, qui rejoue les trois extracteurs sur les instantanés de `sources/raw/classeurs/`.
+
+**Les mots-clés dont le site se sert** (`client/src/lib/mots-cles.mjs#MOTS_CLES_PROTEGES` : catégories et colonnes de classe, `classe`,
+`capacite-de-classe`, `race`, `metier`, `codex`, étiquettes de sort…) se posent par leur id, jamais par leur écriture, qu'un autre mot-clé pourrait
+prendre. Depuis la migration 0113 (R232), l'id d'un mot-clé est un entier figé ; sa clé (`mot_cle.cle`, celle que citent les balises `{{…}}` et les
+adresses) est recalculée à chaque renommage ou changement de catégorie (le slug du libellé, suivi des catégories qui distinguent un homonyme) ; le
+libellé n'est plus unique, et une écriture que portent plusieurs homonymes est ambiguë (il faut écrire la clé). Les synonymes d'un mot-clé
+(`mot_cle_synonyme`, migration 0115, R233 ; l'ancienne abréviation en est un) mènent aussi à lui. `tools/db/maverick.py#MOTS_CLES_PROTEGES` donne à
+chaque protégé l'id entier de son mot-clé, et l'extracteur écrit dans `tags:` l'écriture courante du mot-clé de cet id : son libellé, ou sa clé s'il a
+des homonymes (`maverick.py#libelle_protege`, vocabulaire `data/rows/mot_cle.sql`, option `--vocabulaire` de `classes.py`, `races.py` et
+`relations-races.py` ; `Vocabulaire.protege` de `codex.py`, qui écrit le libellé). Cette écriture ne mène qu'à lui (la clé est unique, et un libellé
+écrit est la clé de son mot-clé), et rien n'est écrit s'il n'est pas au vocabulaire. `maverick.py#mot_cle`, lui, retrouve un mot-clé par son écriture
+(`trouver_mot_cle` : la clé, le libellé, un synonyme, une clé quittée, puis une écriture que le site de dev a fait quitter) : `db:sync-pages` relit
+aussi les `tags:` qu'écrit `db:export-pages`, où l'écriture d'origine d'un protégé peut être devenue celle d'un autre mot-clé. La liste Python
+(`maverick.py#MOTS_CLES_PROTEGES`) recopie celle du site : `client/test/mots-cles-python.test.mjs` les compare.
+
+**Les ancres figées qu'écrit un extracteur** : `annexes-magie.py` termine chaque intertitre d'état de `guide/liste-des-alterations-d-etat` par
+` {#<ancre>}` (`## Agrippé {#aggripe}`, `docs/content-guide.md`, « Ancres figées des intertitres »), l'ancre étant le segment après `#etat:` de l'id de
+la ligne `etat`, lue dans sa table `ANCRES_DES_ETATS` (nom tel que le classeur l'écrit → ancre), jamais recalculée du nom ; un nom absent de la table
+arrête l'import (test : `client/test/annexes-magie-notes.test.mjs`).
+
 Obtenir les données d'un classeur, par ordre de préférence :
 
 1. **Connecteur Google Sheets** (session Claude, autorisation « Sheets » complète) : `get_spreadsheet` avec `includeGridData`,
@@ -146,7 +174,9 @@ Obtenir les données d'un classeur, par ordre de préférence :
    « Commentaire résolu de la cellule … » ; une capacité de classe porte sa note en ligne, « Note de cellule : … ») et leur `--verifier` recompte chaque note depuis le dump : une note absente, dupliquée, tronquée ou
    déplacée fait échouer la vérification. Un dump produit sans les notes (ancien convertisseur) est refusé par `invocations.py` au lieu d'effacer
    les notes déjà écrites (`--accepter-notes-retirees` pour une suppression voulue). Le fil de 26 commentaires ancré en `Sommaire!A1` du classeur
-   de magie n'est rattaché à aucune page (listé par `annexes-magie.py`). `corriger-dump.py` corrige le champ `note`, pas encore `threads`.
+   de magie n'est rattaché à aucune page (listé par `annexes-magie.py`). Les notes et les fils d'un onglet ignoré par `annexes-magie.py` (« Statistiques »,
+   R86 ; « Mode Hyper (Magie) », R184 (9) ; « Mode Hyper » de « Mode hyper et co », R187) sont annoncés, pas rendus : ceux des deux onglets dont la base
+   garde les données sont relevés par le rapprochement (`note_cellule`). `corriger-dump.py` corrige le champ `note`, pas encore `threads`.
 
 **Coquilles et fautes d'orthographe** : les classeurs en contiennent (« Chasseur prime » pour « Chasseur de primes ») et le propriétaire du
 projet demande de les corriger. Une correction n'est jamais faite dans une page générée (la prochaine importation l'écraserait) mais dans le
@@ -186,19 +216,25 @@ retirera alors (`docs/feuille-de-route.md`, réponses du 2026-10-16) ; d'ici là
      corrections d'orthographe des migrations (tout `data/migrations/*.json` qui a une liste `corrections` ; celles de la ligne, et celles des lignes dont
      elle a été tirée : ligne visée par une clé étrangère, entité d'une note, page de l'entité) et appliqué `tools/sheets/corrections.json`. Une ligne qui
      cite aussi un autre classeur se lit dans les deux instantanés ; si l'autre source n'en a pas (un Google Doc), ce qui ne se lit pas est « à relire »
-     (listé, pas compté). Une colonne typée qui a sa `*_brut` se contrôle par elle ; une énumération (`CHECK … IN (…)`) n'est pas comparée ;
+     (listé, pas compté). Une valeur qui porte des balises du glossaire (« {{corruption|CR}} », R233) se lit sans elles (`texteSansBalises` : le texte
+     écrit, sinon la ref). Une colonne typée qui a sa `*_brut` se contrôle par elle ; une énumération (`CHECK … IN (…)`) n'est pas comparée ;
    - **classeur → base** : chaque cellule non vide est citée par au moins une ligne ou rangée dans le registre (`regles`) ; et **chaque mot d'une cellule
      citée** se lit dans les valeurs des lignes qui la citent (libellés des lignes visées par leurs clés étrangères compris, jamais leurs identifiants ni
      leur provenance) : sinon le classeur dit quelque chose que la base n'a pas ;
    - **notes et fils de commentaires** : les mêmes dans le classeur et dans `note_cellule` (et `commentaire_orphelin`).
    Une colonne modifiée par le site de dev **et** dont la cellule a changé (ou une ligne supprimée par le site dont la cellule a changé) est un
    **conflit** : présenté avec les deux valeurs, jamais tranché sans le propriétaire (R83) ; sa réponse s'inscrit dans le registre (`conflits`).
+   Une ligne supprimée par le site (notée dans `historique_modification`) dont les cellules n'ont pas changé n'est jamais un écart : elle est listée à
+   part (« Lignes supprimées par le site de dev »), et ce qui serait « pour mémoire » sur une ligne intacte (casse seule, à relire ailleurs) le reste
+   pour une ligne supprimée ou une colonne modifiée par le site, jamais un conflit. Les libellés des lignes visées par une clé étrangère se lisent eux
+   aussi dans leur état d'import.
    Le registre d'un classeur, `tools/sources/ignorer/<classeur>.json` (forme décrite en tête de `rapprocher.mjs` ; une section inconnue est une
    erreur), ne contient que des entrées **justifiées** (une `raison` chacune) : `regles` (cellules qu'aucune ligne ne cite : titres, statistiques d'usage,
    consignes de navigation ; `nom_d_onglet` pour une bannière qui écrit le nom de son onglet), `libelles` (intitulés de mise en page d'une cellule citée,
    bornés par un motif de la cellule : « Lvl » de « Lvl 5 »), `copies` (plage qui recopie une autre plage, de ce classeur ou d'un autre : vérifiée à
    chaque passage, un écart dès qu'elle diverge), `derivees` (colonnes que l'import calcule, avec le test qui les garantit), `voulus` (écart voulu hors
-   des registres d'orthographe : décision R…, migration de données), `commentaires` (commentaires du classeur que l'import écarte), `conflits`. Une
+   des registres d'orthographe : décision R…, migration de données ; `avant` et `apres` en texte, un nombre aussi : l'`apres` d'une colonne numérique
+   se lit alors si la cellule écrit son `avant`), `commentaires` (commentaires du classeur que l'import écarte), `conflits`. Une
    entrée qui ne couvre plus rien est un écart (à retirer). Jamais une cellule qui porte une règle, un chiffre de jeu ou du lore pour faire baisser le
    compte. Le test fait échouer la CI au moindre écart d'un classeur `rapproche`, avec le relevé complet.
 

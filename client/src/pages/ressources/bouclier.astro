@@ -1,0 +1,22 @@
+---
+import Base from '../../layouts/Base.astro';
+import EquipementPage from '../../components/equipement/EquipementPage.astro';
+import ArmuresPage from '../../components/armures/ArmuresPage.astro';
+import { chargerArmures, contexteDesArmures } from '../../lib/armures-db.mjs';
+import { pageDeLEquipement } from '../../lib/equipement.mjs';
+import { panneauRendu } from '../../lib/equipement-rendu';
+import { ouvrirBase } from '../../lib/donnees.mjs';
+
+// /ressources/bouclier/ (rubrique Équipement du menu, « Boucliers » ; une page à elle depuis le 2026-10-29, « Cinq pages séparées », à l'adresse de
+// l'ancienne page « Bouclier » : lib/equipement.mjs) : rendue depuis la base (components/armures/ArmuresPage.astro, vue `boucliers`), son panneau de
+// règles en tête (lib/equipement-rendu.ts). Modifiable sur le site de dev (src/scripts/edition/armures.mjs, src/scripts/edition/panneaux.mjs).
+const page = pageDeLEquipement('boucliers')!;
+const db = ouvrirBase();
+const regles = await panneauRendu(db, page.id);
+---
+
+<Base title={page.nom} description="Boucliers : une forme et une matière font un bouclier, poids, améliorations et liste complète triable." edition={page.chemin}>
+  <EquipementPage id={page.id}>
+    <ArmuresPage armures={chargerArmures(db)} contexte={contexteDesArmures(db)} vue="boucliers" regles={regles} />
+  </EquipementPage>
+</Base>

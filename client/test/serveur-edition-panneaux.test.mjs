@@ -37,7 +37,7 @@ function nouvelle() {
   const db = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(racine, `b${(compteur += 1)}`) }).chemin);
   const service = { base: () => db, etat: () => ({}), edition: true };
   const appel = (methode, chemin, corps) => traiter({ methode, chemin, entetes: { 'content-type': 'application/json' }, corps: corps && JSON.stringify(corps) }, service);
-  const enregistrer = (operations) => appel('POST', '/api/edition/', { page: 'ressources/equipement/', operations });
+  const enregistrer = (operations) => appel('POST', '/api/edition/', { page: 'ressources/armes/', operations });
   return { db, enregistrer };
 }
 const ok = (r) => {
@@ -104,7 +104,10 @@ test('le texte d’un bloc (Markdown sûr) et le titre d’une tuile ; jamais de
   const cle = (b) => ({ panneau_id: p.id, rang: b.rang });
   const modifier = (b, valeurs, avant) => enregistrer([{ op: 'modifier', table: 'panneau_regles_bloc', cle: cle(b), valeurs, ...(avant ? { avant } : {}) }]);
   const lire = (b) => db.prepare('SELECT * FROM panneau_regles_bloc WHERE panneau_id = ? AND rang = ?').get(p.id, b.rang);
-  ok(modifier(texte, { texte: `${texte.texte}\n\nUne phrase **ajoutée** et un [[ressources/composants|lien]].` }, { texte: texte.texte }));
+  // un lien (migration 0098) : la balise d'un mot-clé (celui des composants, ou un autre de la base : le site de dev supprime des mots-clés)
+  // (une balise cite la clé : migration 0113, décision R232 (3))
+  const motCle = db.prepare("SELECT cle FROM mot_cle ORDER BY cle = 'composants' DESC, url IS NULL, id LIMIT 1").get().cle;
+  ok(modifier(texte, { texte: `${texte.texte}\n\nUne phrase **ajoutée** et un {{${motCle}|lien}}.` }, { texte: texte.texte }));
   assert.match(lire(texte).texte, /Une phrase \*\*ajoutée\*\*/);
   assert.equal(modifier(texte, { texte: 'Du <script>alert(1)</script>' }).statut, 400, 'HTML brut');
   assert.equal(modifier(texte, { texte: '[lien](javascript:alert(1))' }).statut, 400, 'lien non sûr');

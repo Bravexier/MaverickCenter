@@ -1,4 +1,4 @@
-// Extension de l'éditeur pour les onglets Armures et Boucliers de /ressources/equipement/ (components/armures/ArmuresPage.astro) — demande du
+// Extension de l'éditeur pour les pages Armures et Boucliers (/ressources/armures/, /ressources/bouclier/) (components/armures/ArmuresPage.astro) — demande du
 // propriétaire (2026-10-15) : la page des armures et des boucliers « Modifiable tout de suite », comme celle des armes (« Quand le mode Edition est
 // lancé, il n'est pas possible de "sélectionner" […] mais tous les tableaux sont visibles »).
 //   - en mode modification : tous les tableaux des deux onglets s'ouvrent (sauf les règles) et les fiches se ferment (styles/armures/armures.css cache les

@@ -3,8 +3,9 @@
 // plus faire échouer tools/db/races_onglet.py --verifier (donc la mise à jour) ; une race que le site n'a pas touchée reste contrôlée comme à l'import.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { cpSync, readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, cpSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { appliquerJournal } from '../scripts/db-appliquer-edition.mjs';
@@ -12,7 +13,11 @@ import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { journalExporte } from '../serveur/edition-journal.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
+import { corpsDeRace, etatDeRace } from '../src/lib/corps-races.mjs';
+import { cheminDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { remettreLesCorpsDeLa0119 } from './aide-migration-0119.mjs';
+import { TEXTES_DE_LA_0120 } from './aide-races-0120.mjs';
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
 const sansPython = spawnSync('python3', ['--version']).error ? 'python3 absent' : false;
@@ -50,13 +55,39 @@ test('R31 : liste changée sans la phrase, phrase réécrite sans la liste (mêm
   assert.equal(v.status, 0, v.stdout + v.stderr);
   assert.match(v.stdout, /conformes aux pages/);
 
-  // une race que le site n'a pas touchée reste contrôlée comme à l'import : sa liste modifiée hors du site est un écart
-  const fichier = join(rows, 'race_magie_onglet.sql');
+  // une race que le site n'a pas touchée reste contrôlée comme à l'import : sa liste modifiée hors du site est un écart. Sur les lignes de la base
+  // dans son état d'import (aide-base-d-import.mjs, exportées par tools/db/maverick.py#exporter) : le site de dev peut avoir touché la phrase ou la
+  // liste de chaque race, une race « non touchée » ne se suppose pas dans data/rows.
+  // La migration 0119 a réécrit les pages de race (« Classes accessibles », R238 (1)) après le site : leur corps garde, dans la base d'import, les
+  // modifications du site que race_onglet et race_don n'ont plus. Ils sont remis à « import + 0119 » dans une copie (aide-migration-0119.mjs).
+  // Le corps d'une race que la 0120 a réécrit après le site (Modes Hyper de l'Elfe argenté et du Felfe, R237 (12)) est ensuite recalculé depuis
+  // ses tables (lib/corps-races.mjs, comme le service le fait à chaque modification).
+  const baseImport = join(tmp, 'import.db');
+  copyFileSync(cheminDImport(), baseImport);
+  const ecriture = new DatabaseSync(baseImport);
+  const courante = new DatabaseSync(cheminBase({ sansExemples: false }), { readOnly: true });
+  try {
+    remettreLesCorpsDeLa0119(ecriture, courante, { prefixe: 'races/' });
+    for (const raceId of new Set(TEXTES_DE_LA_0120.filter((t) => t.table === 'mode_hyper_effet').map((t) => t.cle.id.replace(/^onglet_race:/, '')))) {
+      const { corps_md: corps } = ecriture.prepare('SELECT corps_md FROM page WHERE id = ?').get(raceId);
+      ecriture.prepare('UPDATE page SET corps_md = ? WHERE id = ?').run(corpsDeRace(corps, etatDeRace((q, ...p) => ecriture.prepare(q).all(...p), raceId)), raceId);
+    }
+  } finally {
+    ecriture.close();
+    courante.close();
+  }
+  const rowsDImport = join(tmp, 'rows-import');
+  const exporter = spawnSync('python3', ['-I', '-c', 'import sqlite3, sys; sys.path.insert(0, sys.argv[1]); import maverick as T; T.exporter(sqlite3.connect(sys.argv[2]), sys.argv[3])',
+    join(RACINE, 'tools', 'db'), baseImport, rowsDImport], { encoding: 'utf8' });
+  assert.equal(exporter.status, 0, exporter.stderr);
+  const temoin = verifier(rowsDImport);
+  assert.equal(temoin.status, 0, temoin.stdout + temoin.stderr);
+  const fichier = join(rowsDImport, 'race_magie_onglet.sql');
   const lignes = readFileSync(fichier, 'utf8').split('\n');
   const kitsune = lignes.findIndex((l) => l.includes("VALUES ('races/kitsune'"));
   assert.ok(kitsune > 0, 'le Kitsune a une liste d’onglet');
   writeFileSync(fichier, lignes.filter((_, i) => i !== kitsune).join('\n'));
-  const ecart = verifier(rows);
+  const ecart = verifier(rowsDImport);
   assert.equal(ecart.status, 1, ecart.stdout + ecart.stderr);
   assert.match(ecart.stdout, /race_magie_onglet : /);
 });

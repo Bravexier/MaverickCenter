@@ -9,10 +9,8 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
 import * as M from '../src/lib/fiche-moteur.mjs';
-import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import {
   CASES_CARACTERISTIQUES, CASES_COMPETENCES, CASES_POSTURES, CASES_RESISTANCES, DONS, EMPLACEMENTS_DU_MODELE, LONGUEUR_MAX_D_UNE_CASE, MAITRISES,
   MARQUEUR_DES_NOTES, ORDINATEUR, REMPLISSAGE_DE_ATTEINT, TITRE_DE_L_INVENTAIRE, casesDesDes, casesDuDon, decouperAdresse,
@@ -31,11 +29,14 @@ import { coutEnUneCase } from '../src/lib/sort-cout.mjs';
 import { modesAuNm, valeurAuNm } from '../src/lib/sort-maitrise.mjs';
 import { zonesDuClasseur } from '../src/lib/tableur-ecriture.mjs';
 import { recollerLeTexte, sansLaCoupure, tientDans } from '../src/lib/tableur-mesure.mjs';
+import { reglesDImport } from './aide-base-d-import.mjs';
 
 // les coûts que la migration 0063 a répartis (décision R105) et leur écriture dans le classeur
 const REPARTIS = new Map(JSON.parse(readFileSync(new URL('../../data/migrations/0063-cout-secondaire.json', import.meta.url), 'utf8')).repartis.map((r) => [r.id, r]));
 
-const regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(ouvrirBase({ sansExemples: false })))); // tel que la page le reçoit
+// les fiches d'essai choisissent dons, armes et matériaux par leur nom ou une valeur de règle, et le moteur lit ses règles dans les textes : l'export
+// s'épingle sur l'état d'import de la base (le site de dev réécrit librement noms, textes et valeurs ; test/aide-base-d-import.mjs)
+const regles = reglesDImport(); // tel que la page le reçoit
 const DATE = '15/10/2026';
 const xpDuNiveau = (n) => regles.niveaux.find((l) => l.niveau === n).xp_min;
 const trouve = (liste, critere, quoi) => {
@@ -168,21 +169,23 @@ function ficheRiche() {
   const attendus = M.gainsAttendus(regles, NIVEAU_RICHE);
   f.gains_chakra = Math.floor(attendus.points / 3);
   f.gains_sante = attendus.points - f.gains_chakra + 3 * attendus.des.length;
-  // 25 sorts des deux magies, des NM dont certains d'un livre ; les NM du MJ, pour toute la fiche (décision R118)
-  f.sorts = M.sortsPossibles(regles, f).slice(0, 25).map((s, i) => {
-    const total = i % 4;
-    const livre = total >= 1 && i % 3 === 0 ? 1 : 0;
-    return { sort_id: s.id, rang: i + 1, niveau_maitrise: total, nm_livre: livre };
-  });
+  // 25 sorts des deux magies, des NM dont certains d'un livre, plus un livre d'un sort non choisi (en attente, décision R169) ; les NM du MJ, pour
+  // toute la fiche (décision R118)
+  // une spécialisation choisie par magie (décision R236 (8)) : sans elle, le bi-magie n'a que les sorts communs et aucun livre en attente
+  f.specialisations_magie = [f.magie_innee_id, f.magie_acquise_id].map((id) => regles.magies.find((m) => m.id === id))
+    .filter((m) => m?.specialisations?.length).map((m) => ({ magie_id: m.id, specialisation_id: m.specialisations[0].id }));
+  f.sorts = M.sortsPossibles(regles, f).slice(0, 25).map((s, i) => ({ sort_id: s.id, rang: i + 1, niveau_maitrise: i % 4 }));
+  const enAttente = M.sortsDesLivres(regles, f).find((s) => !f.sorts.some((x) => x.sort_id === s.id));
+  f.livres_sorts = [...f.sorts.filter((x, i) => x.niveau_maitrise >= 1 && i % 3 === 0).map((x) => x.sort_id), enAttente.id].map((sort_id, i) => ({ sort_id, rang: i + 1 }));
   f.nm_mj = 3;
   return f;
 }
 
-/** Humain au Potentiel Illimité (l'Archimage imposé, décision R23), +1 à l'Intelligence au choix, niveau 5. */
+/** Humain au Potentiel Illimité (l'Archimage en classe 1, choisie : elle n'est plus imposée, R238 (5)), +1 à l'Intelligence au choix, niveau 5. */
 function fichePotentiel() {
   const f = { ...ficheVide('Ysolde'), race_id: 'races/humain', ethnie_id: 'races/humain#ethnie:humain-toundra', magie_innee_id: 'magies/potentiel-illimite', caracteristique_magie_id: 'intelligence', xp: xpDuNiveau(5) };
-  f.classes = M.classesSelonLaMagieInnee(regles, f);
-  f.sorts = M.sortsPossibles(regles, f).slice(0, 3).map((s, i) => ({ sort_id: s.id, rang: i + 1, niveau_maitrise: 1, nm_livre: 0 }));
+  f.classes = M.classesSelonLaMagieInnee(regles, { ...f, classes: [{ rang: 1, classe_id: 'classes/archimage', specialite_id: null }] });
+  f.sorts = M.sortsPossibles(regles, f).slice(0, 3).map((s, i) => ({ sort_id: s.id, rang: i + 1, niveau_maitrise: 1 }));
   return f;
 }
 
@@ -508,7 +511,7 @@ test('fiche riche : sorts (titre, magies, 20 lignes au NM du sort avec les acces
   const e = M.emplacementsDeSorts(regles, f);
   const nm = M.maitriseDesSorts(regles, f);
   assert.ok(nm.mj > 0);
-  assert.equal(c[S.titre], `LISTE DE SORTS — ${e.total} emplacements · NPM ${M.npmMax(regles, f)} au plus · NM ${nm.comptes}/${nm.disponibles} + ${nm.mj} du MJ`);
+  assert.equal(c[S.titre], `LISTE DE SORTS — ${e.total} emplacements · NPM ${M.npmDesSorts(regles, f)} au plus · NM ${nm.comptes}/${nm.disponibles} + ${nm.mj} du MJ`);
   assert.equal(c[S.magieInnee], nomDe('magies', riche.magie_innee_id));
   assert.equal(c[S.magieAcquise], nomDe('magies', riche.magie_acquise_id));
   const acc = M.accessoiresDesSorts(regles, f);
@@ -555,14 +558,18 @@ test('une rangée par sort : type et effets écrits sur plusieurs lignes dans le
   const [magie, sorts] = [...parMagie].sort((x, y) => y[1].length - x[1].length)[0];
   assert.ok(sorts.some((x) => /\n/.test(x.type ?? '')) && sorts.some((x) => /\n/.test(x.effets ?? '')), magie);
   const f = { ...ficheVide('Une ligne'), race_id: 'races/humain', ethnie_id: 'races/humain#ethnie:humain-central', magie_innee_id: magie, xp: xpDuNiveau(10),
-    sorts: sorts.slice(0, 20).map((x, i) => ({ sort_id: x.id, rang: i + 1, niveau_maitrise: 1, nm_livre: 0 })) };
+    sorts: sorts.slice(0, 20).map((x, i) => ({ sort_id: x.id, rang: i + 1, niveau_maitrise: 1 })) };
   const v = cellulesDeLaFiche(regles, f, { date: DATE }).cellules;
   const col = ORDINATEUR.sorts.colonnes;
   f.sorts.forEach((l, i) => {
     const sort = M.trouver(regles.sorts, l.sort_id);
     const r = ORDINATEUR.sorts.lignes[i];
     const auNm = (ch) => valeurAuNm(sort[ch] ?? null, sort.bonus, ch, 1) ?? '';
-    for (const ch of ['type', 'cout', 'portee', 'zone']) assert.equal(String(v[`${col[ch]}${r}`] ?? ''), uneLigne(auNm(ch)), `${sort.nom} : ${ch}`);
+    for (const ch of ['type', 'cout', 'portee', 'zone']) {
+      // le coût porte aussi le coût secondaire, dans l'écriture du classeur (R244)
+      const attendu = ch === 'cout' ? coutEnUneCase(auNm(ch), sort.cout_secondaire ?? null) : auNm(ch);
+      assert.equal(String(v[`${col[ch]}${r}`] ?? ''), uneLigne(attendu), `${sort.nom} : ${ch}`);
+    }
     const description = String(v[`${col.description}${r}`] ?? '');
     assert.ok(!description.includes('\n'), sort.nom);
     // chaque ligne du D/S/B et des effets, dans l'ordre, séparée de la suivante par « · »
@@ -654,9 +661,9 @@ test('fiche riche : la note — notes du joueur, marqueur, puis ce qui n’a pas
   assert.deepEqual(note.valeur(K.caracteristiqueMagie), [], 'la Nécromancie a sa caractéristique');
   assert.ok(riche.gains_sante && riche.gains_chakra);
   assert.deepEqual(lireGains(note.valeur(K.gains)[0]), { gains_sante: riche.gains_sante, gains_chakra: riche.gains_chakra });
-  // les livres de sort ; les NM du MJ, ceux de la fiche (décision R118)
-  const livres = riche.sorts.filter((s) => s.nm_livre);
-  assert.ok(livres.length);
+  // les livres de sort, celui d'un sort non choisi compris (décision R169) ; les NM du MJ, ceux de la fiche (décision R118)
+  const livres = riche.livres_sorts;
+  assert.ok(livres.length > 1 && livres.some((l) => !riche.sorts.some((x) => x.sort_id === l.sort_id)));
   assert.deepEqual(lireNmOfferts(note.valeur(K.nmOfferts)[0]), livres.map((s) => ({ nom: nomDe('sorts', s.sort_id), livre: 1, cadeau: 0 })));
   assert.deepEqual(note.valeur(K.nmMj), [String(riche.nm_mj)]);
   // les choix de maîtrise (décision R148) : la maîtrise au choix du Guerrier et celle du Mage ; ARME DE MONSTRES n'est pas une option (R45) : pas écrite
@@ -962,7 +969,7 @@ test('fiche vide : rien d’inventé, les libellés du modèle restent', () => {
   assert.deepEqual(note.lues.map((l) => l.nom), ['export', 'biClasse']);
 });
 
-test('Potentiel Illimité : l’Archimage imposé, la caractéristique au choix dans la note, pas de 4ᵉ barre', () => {
+test('Potentiel Illimité : l’Archimage choisie (plus imposée, R238 (5)), la caractéristique au choix dans la note, pas de 4ᵉ barre', () => {
   const pi = fichePotentiel();
   const e = cellulesDeLaFiche(regles, pi, { date: DATE });
   verifierLesAdresses(e);
@@ -1092,10 +1099,12 @@ test('mise en forme de la note et des lignes : relue telle qu’écrite', () => 
   assert.equal(lireGains('santé 10, santé 3'), null, 'deux fois la santé');
   assert.equal(lireGains('beaucoup'), null);
   assert.deepEqual(lireGains(''), { gains_sante: 0, gains_chakra: 0 });
-  const sorts = regles.sorts.slice(0, 3).map((s, i) => ({ sort_id: s.id, niveau_maitrise: 3, nm_livre: i === 1 ? 0 : 1 }));
-  assert.equal(texteDesNmOfferts(regles, sorts), `${nomDe('sorts', sorts[0].sort_id)} (livre 1) ; ${nomDe('sorts', sorts[2].sort_id)} (livre 1)`, 'les livres seuls (décision R118)');
-  assert.deepEqual(lireNmOfferts(texteDesNmOfferts(regles, sorts)), [sorts[0], sorts[2]].map((s) => ({ nom: nomDe('sorts', s.sort_id), livre: 1, cadeau: 0 })));
-  assert.equal(texteDesNmOfferts(regles, [{ sort_id: regles.sorts[0].id, niveau_maitrise: 2 }]), '');
+  // les livres de la fiche, dans l'ordre de l'entraînement, sur un sort choisi ou non (décision R169)
+  const sorts = regles.sorts.slice(0, 3).map((s) => ({ sort_id: s.id, niveau_maitrise: 3 }));
+  const avecLivres = { sorts: sorts.slice(0, 2), livres_sorts: [{ sort_id: sorts[2].sort_id, rang: 2 }, { sort_id: sorts[0].sort_id, rang: 1 }] };
+  assert.equal(texteDesNmOfferts(regles, avecLivres), `${nomDe('sorts', sorts[0].sort_id)} (livre 1) ; ${nomDe('sorts', sorts[2].sort_id)} (livre 1)`, 'les livres seuls (décision R118)');
+  assert.deepEqual(lireNmOfferts(texteDesNmOfferts(regles, avecLivres)), [sorts[0], sorts[2]].map((s) => ({ nom: nomDe('sorts', s.sort_id), livre: 1, cadeau: 0 })));
+  assert.equal(texteDesNmOfferts(regles, { sorts: [{ sort_id: regles.sorts[0].id, niveau_maitrise: 2 }] }), '');
   // un classeur d'avant la décision R118 : les NM du MJ sort par sort
   assert.deepEqual(lireNmOfferts('Boule de feu (livre 1, MJ 2) ; Rayon d’Aurora (MJ 1)'), [{ nom: 'Boule de feu', livre: 1, cadeau: 2 }, { nom: 'Rayon d’Aurora', livre: 0, cadeau: 1 }]);
   assert.deepEqual(lireNmOfferts('Sort (rituel) (livre 1)'), [{ nom: 'Sort (rituel)', livre: 1, cadeau: 0 }]);

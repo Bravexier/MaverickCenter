@@ -11,21 +11,40 @@
 import { CATEGORIES_DE_MONSTRE, EPOQUES_SAISIE, OUI_NON, PORTEES_SAISIE, STATS_VARIABLES, TABLES } from './edition-modele.mjs';
 import { MAINS } from './arme-champs.mjs';
 import { CASES_D_AMELIORATION_DE_BOUCLIER } from './armure-champs.mjs';
-import { ONGLETS_DE_L_EQUIPEMENT, SOUS_ONGLETS_DE_LA_CEINTURE } from './equipement.mjs';
+import { PAGES_DE_L_EQUIPEMENT, SOUS_ONGLETS_DE_LA_CEINTURE } from './equipement.mjs';
 import { FAMILLES_DE_LA_CEINTURE } from './ceinture-db.mjs';
 import { texteSansBalises, vocabulaireDesMotsCles } from './mots-cles-balises.mjs';
 import { ordonnerBlocs } from './panneaux-regles-db.mjs';
-import { TABLES_DES_NOTES } from './tables-de-la-base.mjs';
+import { TABLES_DERIVEES, TABLES_DES_NOTES, TABLES_HORS_REGLES } from './tables-de-la-base.mjs';
 import { sensDuChangement } from './notes-de-version-sens.mjs';
 import { resumeDuPortrait } from './portrait.mjs';
 import { ORDRE_DES_RACES } from './race-kinds.mjs';
-import { DECOUVRIR, LIENS_ET_RENCONTRE, PAGES_ABSORBEES, placeDansLeGuide } from './livres.mjs';
+import { DECOUVRIR, LIENS_ET_RENCONTRE, PAGES_ABSORBEES, PAGES_RETIREES, placeDansLeGuide } from './livres.mjs';
 
 /**
  * La page du plan où se range une page du guide : elle-même, ou celle qui l'absorbe (lib/livres.mjs#PAGES_ABSORBEES) — une page fusionnée dans une autre
- * n'est plus dans le plan, et la production l'a encore : retirée, elle se range avec la page qui l'a reçue, pas dans les Règles avancées.
+ * n'est plus dans le plan, et la production l'a encore : retirée, elle se range avec la page qui l'a reçue (« Résistance/Faiblesse Magie » avec
+ * « Résistances et faiblesses », R184 (7)), pas sous « Pages retirées ».
  */
 const pageDuPlan = (id) => (Object.hasOwn(PAGES_ABSORBEES, id) ? PAGES_ABSORBEES[id] : id);
+/**
+ * La rubrique des pages qui n'ont plus de place dans le plan, après celles du guide : une page retirée dont le contenu se lit ailleurs
+ * (lib/livres.mjs#PAGES_RETIREES : le Lexique, migration 0090), une page supprimée sans renvoi (lib/livres.mjs#PAGES_SUPPRIMEES : R184 (9), migration 0091), toute
+ * page que le plan ne range nulle part (placeDansLeGuide : rubrique null).
+ */
+export const PAGES_RETIREES_DU_GUIDE = 'Pages retirées';
+/**
+ * Où une ligne de note d'une page du guide se range : { rubrique, rang, ordre } de lib/livres.mjs#placeDansLeGuide — Découvrir (rang 0), les onglets des
+ * Règles dans leur ordre (le plan installé, celui de la base de dev : lib/plan-des-regles-db.mjs, R184 et R185), le Guide du MJ —, une page absorbée à
+ * la place de celle qui l'absorbe (pageDuPlan) ; une page retirée (PAGES_RETIREES), ou que le plan ne range nulle part (supprimée, ou toute page d'un
+ * onglet quand la base n'a pas encore de plan), sous « Pages retirées », après toutes les rubriques (choix du leader-technique, lot R184).
+ */
+function placeDeLaPage(id) {
+  const retiree = { rubrique: PAGES_RETIREES_DU_GUIDE, rang: Number.MAX_SAFE_INTEGER, ordre: null };
+  if (Object.hasOwn(PAGES_RETIREES, id)) return retiree;
+  const place = placeDansLeGuide(pageDuPlan(id));
+  return place.rubrique === null ? retiree : place;
+}
 
 /** Domaines de la liste, dans l'ordre d'affichage, avec leur titre. */
 export const DOMAINES = [
@@ -43,6 +62,7 @@ export const DOMAINES = [
   { id: 'composants', titre: 'Composants' },
   { id: 'chronologie', titre: 'Chronologie' },
   { id: 'mots-cles', titre: 'Mots-clés' },
+  { id: 'autres-tables', titre: 'Autres tables' },
 ];
 
 /**
@@ -57,14 +77,15 @@ export { TABLES_DES_NOTES };
 
 /** Tables que les appelants doivent lire dans chaque base (celles qui manquent dans une base sont simplement absentes). */
 export const TABLES_LUES = [
-  'sort', 'magie', 'magie_role', 'mode_hyper_effet', 'classe', 'categorie_classe', 'specialite', 'capacite', 'race', 'race_onglet', 'race_don',
+  'sort', 'magie', 'magie_role', 'magie_specialisation', 'mode_hyper_effet', 'classe', 'categorie_classe', 'specialite', 'capacite', 'race', 'race_onglet', 'race_don',
   'race_don_tableau_colonne', 'race_don_tableau_cellule', 'race_magie', 'race_magie_onglet', 'peuple', 'relation_peuple', 'echelle_relation',
   'metier', 'caracteristique', 'page', 'monstre_groupe', 'monstre_espece', 'monstre', 'monstre_rubrique', 'monstre_espece_bloc', 'monstre_butin',
   'monstre_capacite_commune', 'monstre_capacite', 'monstre_capacite_valeur',
   'arme', 'arme_famille', 'arme_type', 'materiau_arme', 'ressource', 'amelioration_equipement', 'gemme', 'bois', 'ingredient_alchimie', 'monnaie', 'materiau',
   'armure', 'armure_emplacement', 'bouclier_classe', 'bouclier', 'bouclier_poids',
-  'evenement', 'evenement_extrait', 'evenement_categorie', 'categorie_chronologie', 'mot_cle', 'panneau_regles', 'panneau_regles_bloc', 'composant_onglet',
-  'potion', 'niveau_alchimie', 'annonce',
+  'evenement', 'evenement_extrait', 'evenement_categorie', 'categorie_chronologie', 'mot_cle', 'categorie_mot_cle', 'mot_cle_synonyme', 'mot_cle_categorie',
+  'panneau_regles', 'panneau_regles_bloc',
+  'composant_onglet', 'potion', 'niveau_alchimie', 'annonce', 'regles_onglet', 'regles_onglet_entree',
 ];
 
 /** Les ressources de la page des composants, par genre (dans l'ordre de la page), et leur groupe dans la note. */
@@ -121,6 +142,11 @@ const DEFINITIONS = [
     groupe: (r, x) => x.nom('magie', r.magie_id), entite: (r) => `Rôle ${r.rang}`, ordre: (r, x) => [x.ordre('magie', r.magie_id), r.rang],
   },
   {
+    // R236 (1) : les deux spécialisations d'une magie (nom, description, remarque), listées sous leur magie
+    table: 'magie_specialisation', domaine: 'magies', cle: ['id'], colonnes: colonnesDe('magie_specialisation'), genre: 'Spécialisation',
+    groupe: (r, x) => x.nom('magie', r.magie_id), entite: (r) => r.nom, ordre: (r, x) => [x.ordre('magie', r.magie_id), r.ordre ?? 0],
+  },
+  {
     // capacité Mode Hyper : seules les versions affichées par les pages (onglet de la magie, onglet de la race) se modifient
     table: 'mode_hyper_effet', domaine: (r) => (r.version === 'onglet_race' ? 'races' : 'magies'), cle: ['id'], genre: 'Capacité Mode Hyper',
     filtre: (r) => r.version === 'onglet_magie' || r.version === 'onglet_race', colonnes: colonnesDe('mode_hyper_effet'),
@@ -147,7 +173,8 @@ const DEFINITIONS = [
     ordre: (r, x) => [...x.ordreClasse(r.classe_id), 2, r.niveau ?? 0, r.ligne ?? 0, r.rang ?? 0, r.nom],
   },
   {
-    table: 'race', domaine: 'races', cle: ['id'], colonnes: colonnesDe('race'), genre: 'Race',
+    // la place d'une race dans la liste (rang_liste, migration 0092) n'est pas listée race par race : comparerOrdreDesRaces la dit en une ligne
+    table: 'race', domaine: 'races', cle: ['id'], colonnes: colonnesDe('race').filter((c) => c.colonne !== 'rang_liste'), genre: 'Race',
     groupe: (r) => r.nom, entite: (r) => r.nom, ordre: (r, x) => [x.ordreRace(r.id), 0],
   },
   {
@@ -178,11 +205,12 @@ const DEFINITIONS = [
   {
     table: 'page', domaine: 'guide', cle: ['id'], colonnes: colonnesDe('page'), genre: 'Page du guide',
     filtre: (r) => r.type === 'guide' && r.statut !== 'example',
-    // rangée par rubrique du plan du site (lib/livres.mjs : « Découvrir », « Les bases », « Règles avancées », « Guide du MJ »), dans l'ordre du plan
-    // (une page fusionnée dans une autre : à la place de celle qui l'absorbe, pageDuPlan)
-    groupe: (r) => placeDansLeGuide(pageDuPlan(r.id)).rubrique,
+    // rangée par rubrique du plan du site (lib/livres.mjs : « Découvrir », les onglets des Règles — « Fiche de personnage », « Mécaniques générales »,
+    // « Les combats », « Exploration » : le plan de la base, R184 et R185 —, « Guide du MJ »), dans l'ordre du plan
+    // (une page fusionnée dans une autre : à la place de celle qui l'absorbe ; une page retirée : « Pages retirées » ; placeDeLaPage)
+    groupe: (r) => placeDeLaPage(r.id).rubrique,
     entite: (r) => r.titre, ordre: (r) => {
-      const place = placeDansLeGuide(pageDuPlan(r.id));
+      const place = placeDeLaPage(r.id);
       return [place.rang, place.ordre ?? 999, r.titre];
     },
   },
@@ -301,6 +329,8 @@ const DEFINITIONS = [
     groupe: () => 'Formes de bouclier', entite: (r) => r.nom, ordre: (r) => [4, r.classe ?? 0],
   },
   {
+    // l'AP, l'AM et le prix d'un bouclier (dans TABLES, en lecture : décision R207 (1), E6, calculés d'après sa forme et sa matière) sont listés quand
+    // une matière ou une forme les change, ce sont des règles du jeu (la défense écrite en est refaite, pas listée)
     table: 'bouclier', domaine: 'armures', cle: ['id'], colonnes: colonnesDe('bouclier'), genre: 'Bouclier',
     groupe: (r, x) => x.nom('bouclier_classe', r.classe_id), entite: (r) => r.nom,
     ordre: (r, x) => [5, x.ligne('bouclier_classe', r.classe_id)?.classe ?? 0, r.nom],
@@ -316,7 +346,7 @@ const DEFINITIONS = [
     filtre: (r) => r.cible === 'bouclier', groupe: () => 'Améliorations de bouclier', entite: (r) => `Amélioration +${r.niveau}`, ordre: (r) => [7, r.niveau],
     valeur: (colonne, v) => (colonne === 'cout_materiaux' || colonne === 'bonus_cran' ? ouiNon(v) : v),
   },
-  // les panneaux de règles en tête des onglets de /ressources/equipement/ (migration 0056) : un panneau sous le nom de son onglet (son titre ; l'ordre
+  // les panneaux de règles en tête des pages de l'équipement (migration 0056) : un panneau sous le nom de sa page (son titre ; l'ordre
   // de ses blocs : comparerOrdreDesBlocs), puis ses blocs dans l'ordre de lecture, nommés par leur titre de tuile, sinon par leurs premiers mots
   // (nomDuBloc) ; leur place (`ordre`) n'est pas listée bloc par bloc ; un bloc d'un panneau ajouté ou retiré est dit par le panneau (`suit`)
   {
@@ -397,10 +427,16 @@ const DEFINITIONS = [
     table: 'categorie_chronologie', domaine: 'chronologie', cle: ['id'], colonnes: colonnesDe('categorie_chronologie'), genre: 'Catégorie',
     groupe: () => 'Catégories', entite: (r) => r.libelle, ordre: (r) => [-1, r.libelle_cle], resume: (n) => `${n} catégories de la chronologie`,
   },
-  // le vocabulaire des mots-clés (migration 0043, /recherche/ sur le site de dev) : ajouté, renommé, retiré (de toutes les pages)
+  // le vocabulaire des mots-clés (migration 0043, le Glossaire sur le site de dev) : ajouté, renommé, retiré (de toutes les pages) ; ordonné par clé
+  // (migration 0113 : le libellé n'est plus unique)
   {
     table: 'mot_cle', domaine: 'mots-cles', cle: ['id'], colonnes: colonnesDe('mot_cle'), genre: 'Mot-clé',
-    groupe: () => null, entite: (r) => r.libelle, ordre: (r) => [r.libelle_cle], resume: (n) => `${n} mots-clés`,
+    groupe: () => null, entite: (r) => r.libelle, ordre: (r) => [r.cle ?? r.libelle_cle ?? ''], resume: (n) => `${n} mots-clés`,
+  },
+  // les catégories des mots-clés (migration 0113, décision R232 (5)) : ajoutée, renommée, retirée
+  {
+    table: 'categorie_mot_cle', domaine: 'mots-cles', cle: ['id'], colonnes: colonnesDe('categorie_mot_cle'), genre: 'Catégorie',
+    groupe: () => 'Catégories', entite: (r) => r.libelle, ordre: (r) => [-1, r.libelle_cle], resume: (n) => `${n} catégories de mots-clés`,
   },
 ];
 
@@ -408,16 +444,16 @@ const DEFINITIONS = [
  * Le nom de l'onglet d'un panneau de règles (son id est l'ancre de l'onglet ou du sous-onglet : lib/equipement.mjs ; un sous-onglet de la ceinture :
  * « Ceinture › Bâtons magiques »), sinon son id ; et sa place parmi les onglets (un sous-onglet : celle de l'onglet Ceinture).
  */
-const ONGLET_DE_LA_CEINTURE = ONGLETS_DE_L_EQUIPEMENT.find((o) => o.id === 'ceinture');
+const ONGLET_DE_LA_CEINTURE = PAGES_DE_L_EQUIPEMENT.find((o) => o.id === 'ceinture');
 const ongletDuPanneau = (id) => {
-  const onglet = ONGLETS_DE_L_EQUIPEMENT.find((o) => o.id === id);
+  const onglet = PAGES_DE_L_EQUIPEMENT.find((o) => o.id === id);
   if (onglet) return onglet.nom;
   const sous = SOUS_ONGLETS_DE_LA_CEINTURE.find((o) => o.id === id);
   return sous ? `${ONGLET_DE_LA_CEINTURE?.nom ?? 'Ceinture'} › ${sous.nom}` : String(id);
 };
 const rangDuPanneau = (id) => {
-  const i = ONGLETS_DE_L_EQUIPEMENT.findIndex((o) => o.id === (SOUS_ONGLETS_DE_LA_CEINTURE.some((s) => s.id === id) ? ONGLET_DE_LA_CEINTURE?.id : id));
-  return i < 0 ? ONGLETS_DE_L_EQUIPEMENT.length : i;
+  const i = PAGES_DE_L_EQUIPEMENT.findIndex((o) => o.id === (SOUS_ONGLETS_DE_LA_CEINTURE.some((s) => s.id === id) ? ONGLET_DE_LA_CEINTURE?.id : id));
+  return i < 0 ? PAGES_DE_L_EQUIPEMENT.length : i;
 };
 
 /** Le tableau de l'onglet Ceinture d'une potion (sa ligne de la table potion) : « Ceinture › Fioles » (lib/ceinture-db.mjs#FAMILLES_DE_LA_CEINTURE). */
@@ -445,7 +481,7 @@ export function premiersMots(markdown, vocabulaire = null, n = MOTS_DU_NOM) {
     .replace(/\[\[([^\]]+)\]\]/g, '$1')
     .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
     .replace(/<(https?:[^>\s]+)>/g, '$1')
-    .replace(/\{couleur:[a-z]+\}/g, ' ')
+    .replace(/\{couleur:[^}\s]+\}/g, ' ')
     .replace(/<br\s*\/?>/gi, ' ')
     .replace(/^[ \t]*(?:#{1,6}[ \t]+|>[ \t]?|[-+*][ \t]+|\d+[.)][ \t]+)/gm, '')
     .replace(/(?<!\\)(?:\*+|~~|`+)/g, '')
@@ -465,7 +501,7 @@ const ordreDEvenement = (e) => [EPOQUES_SAISIE.findIndex((x) => x.valeur === e.e
 function contexte(ref, dev) {
   const index = (base) => ({
     ...Object.fromEntries(['magie', 'classe', 'specialite', 'race', 'categorie_classe', 'peuple', 'caracteristique', 'monstre_espece', 'monstre',
-      'arme_famille', 'arme_type', 'ressource', 'evenement', 'categorie_chronologie', 'mot_cle', 'page', 'monstre_capacite_commune', 'bouclier_classe',
+      'arme_famille', 'arme_type', 'ressource', 'evenement', 'categorie_chronologie', 'mot_cle', 'categorie_mot_cle', 'page', 'monstre_capacite_commune', 'bouclier_classe',
       'bouclier_poids', 'panneau_regles', 'niveau_alchimie']
       .map((t) => [t, parId(lignesDe(base, t))])),
     // la ligne de potion d'une ressource (consommables de l'onglet Ceinture) : clé ressource_id
@@ -484,7 +520,7 @@ function contexte(ref, dev) {
   }
   // les mots-clés des deux bases (dev d'abord), sans leurs définitions : une balise du glossaire se lit par son texte ou son libellé (nomDuBloc)
   const vocabulaire = vocabulaireDesMotsCles([...d.mot_cle.values(), ...[...r.mot_cle.values()].filter((m) => !d.mot_cle.has(m.id))]
-    .map((m) => ({ id: m.id, libelle: m.libelle, libelle_cle: m.libelle_cle, description: '' })));
+    .map((m) => ({ id: m.id, libelle: m.libelle, cle: m.cle ?? m.libelle_cle, description: '' })));
   const entetes = (base) => indexer(lignesDe(base, 'race_don_tableau_colonne'), ['race_id', 'rang']);
   const cellules = (base) => indexer(lignesDe(base, 'race_don_tableau_cellule'), ['race_id', 'ligne', 'colonne']);
   const tetes = [entetes(dev), entetes(ref)];
@@ -508,9 +544,16 @@ function contexte(ref, dev) {
       const c = ligne('classe', id);
       return [ligne('categorie_classe', c?.categorie_id)?.ordre ?? 0, c?.ordre ?? 0];
     },
+    /**
+     * La place d'une race dans la note : celle de la liste des races (rang_liste, migration 0092 : le menu latéral et /races/), lue dans dev d'abord ;
+     * à défaut (une race sans rang, ou une base d'avant la 0092 : une race retirée que seule la production a), l'ordre du code (ORDRE_DES_RACES),
+     * puis après toutes, par race.ordre.
+     */
     ordreRace: (id) => {
+      const l = ligne('race', id);
+      if (typeof l?.rang_liste === 'number') return l.rang_liste;
       const i = ORDRE_DES_RACES.indexOf(id);
-      return i < 0 ? ORDRE_DES_RACES.length + (ligne('race', id)?.ordre ?? 0) : i;
+      return i < 0 ? 1000 + (l?.ordre ?? 0) : i + 1;
     },
     /**
      * Le nom d'un bloc de panneau de règles : le titre d'une tuile, sinon ses premiers mots entre guillemets (« Toutes les armes ont de base… ») ; une
@@ -563,12 +606,15 @@ function comparerTable(def, ref, dev, x) {
   }
   for (const [k, r] of b) {
     const avant = a.get(k);
-    const base = decrire(r);
+    // décrite (groupe, entité, ordre) seulement si elle donne une ligne : une entité inchangée n'est jamais rangée (une page du guide inchangée ne
+    // demande pas le plan des onglets, lib/livres.mjs#placeDansLeGuide)
+    let decrite = null;
+    const base = () => (decrite ??= decrire(r));
     if (!avant) {
       if (def.detail || def.suit?.(r, x)) continue; // dit par l'entité qui la porte
       if (def.vide?.(r)) continue; // une ligne vide, absente de la production : rien n'est ajouté
       // une table absente de la production (schéma plus ancien) : l'entité existait peut-être, mais pas ce contenu ; on le dit ajouté
-      sortie.push(ligneDeNote({ ...base, champ: refRows ? null : def.genre, nature: 'ajoute', avant: null, apres: def.entite(r, x) }));
+      sortie.push(ligneDeNote({ ...base(), champ: refRows ? null : def.genre, nature: 'ajoute', avant: null, apres: def.entite(r, x) }));
       continue;
     }
     def.colonnes.forEach(({ colonne, libelle }, i) => {
@@ -578,7 +624,7 @@ function comparerTable(def, ref, dev, x) {
       const v2 = lire(r[colonne], r);
       if (pareil(v1, v2)) return;
       const nature = texte(v1) === null ? 'ajoute' : texte(v2) === null ? 'retire' : 'modifie';
-      sortie.push(ligneDeNote({ ...base, ordre: [...base.ordre, i], champ: libelle, colonne, nature, avant: v1, apres: v2 }));
+      sortie.push(ligneDeNote({ ...base(), ordre: [...base().ordre, i], champ: libelle, colonne, nature, avant: v1, apres: v2 }));
     });
   }
   for (const [k, r] of a) {
@@ -658,6 +704,43 @@ function comparerCategoriesDesEvenements(ref, dev, x) {
 }
 
 /**
+ * Les synonymes et les catégories d'un mot-clé (migrations 0113, 0115 ; décisions R232, R233), dits en une ligne chacun par mot-clé présent des deux
+ * côtés quand ils changent : « Synonymes : IC, Action bonus → IC » (dans leur ordre), « Catégories : Règles → Règles, Combat » (par leur nom, dans l'ordre
+ * de leur id). Un mot-clé ajouté ou retiré est dit par la table mot_cle. Neutre (R29 : un texte libre, un classement).
+ */
+function comparerSynonymesEtCategoriesDesMotsCles(ref, dev, x) {
+  const sortie = [];
+  const listes = [
+    { table: 'mot_cle_synonyme', champ: 'Synonymes', lire: (rows) => [...rows].sort((p, q) => p.ordre - q.ordre || p.id - q.id).map((l) => [l.mot_cle_id, l.libelle]) },
+    { table: 'mot_cle_categorie', champ: 'Catégories', lire: (rows) => [...rows].sort((p, q) => p.categorie_id - q.categorie_id).map((l) => [l.mot_cle_id, x.nom('categorie_mot_cle', l.categorie_id)]) },
+  ];
+  for (const { table, champ, lire } of listes) {
+    const a = lignesDe(ref, table);
+    const b = lignesDe(dev, table);
+    if (!a || !b) continue;
+    const parMotCle = (rows) => {
+      const m = new Map();
+      for (const [id, nom] of lire(rows)) (m.get(id) ?? m.set(id, []).get(id)).push(nom);
+      return m;
+    };
+    const avant = parMotCle(a);
+    const apres = parMotCle(b);
+    for (const id of new Set([...avant.keys(), ...apres.keys()])) {
+      if (!x.dans('ref', 'mot_cle', id) || !x.dans('dev', 'mot_cle', id)) continue;
+      const v1 = avant.get(id)?.join(', ') || null;
+      const v2 = apres.get(id)?.join(', ') || null;
+      if (v1 === v2) continue;
+      const m = x.ligne('mot_cle', id);
+      sortie.push(ligneDeNote({
+        def: { table }, domaine: 'mots-cles', groupe: null, entite: m.libelle, ordre: [m.cle ?? '', champ], champ, colonne: null,
+        nature: v1 ? (v2 ? 'modifie' : 'retire') : 'ajoute', avant: v1, apres: v2, cle: { mot_cle_id: id },
+      }));
+    }
+  }
+  return sortie;
+}
+
+/**
  * L'ordre des blocs d'un panneau de règles (migration 0056), dit en une ligne par panneau quand les blocs présents des deux côtés ne se lisent plus dans
  * le même ordre : « Ordre des blocs : Dague · Arme de jet → Arme de jet · Dague », de la première à la dernière place qui diffère. La colonne `ordre`
  * n'est pas listée bloc par bloc : une tuile insérée en tête repousse les suivantes sans changer leur ordre de lecture (son ajout le dit, rien d'autre),
@@ -695,6 +778,99 @@ function comparerOrdreDesBlocs(ref, dev, x) {
     }));
   }
   return sortie;
+}
+
+/**
+ * La partie d'une suite qui change d'ordre entre deux listes des mêmes éléments (`avant`, `apres` : des clés, dans leur ordre, réduites aux éléments
+ * des deux côtés), de la première à la dernière place qui diffère : { avant, apres } (les clés de ces places), ou null si l'ordre est le même.
+ */
+function partieDeplacee(avant, apres) {
+  let debut = 0;
+  while (debut < avant.length && avant[debut] === apres[debut]) debut += 1;
+  if (debut === avant.length) return null;
+  let fin = avant.length - 1;
+  while (fin > debut && avant[fin] === apres[fin]) fin -= 1;
+  return { avant: avant.slice(debut, fin + 1), apres: apres.slice(debut, fin + 1) };
+}
+
+/** Le libellé d'une entrée du menu d'un onglet des Règles : le titre de sa page (dev d'abord), son libellé sinon (un lien, une entrée « bientôt »). */
+const nomDEntree = (e, x) => (e.page_id ? x.ligne('page', e.page_id)?.titre ?? e.page_id : e.libelle ?? e.id);
+
+/**
+ * Le plan des Règles (tables regles_onglet, regles_onglet_entree : migration 0091 ; lot de l'édition des menus), dit en deux sortes de lignes, au domaine
+ * du guide, sous l'onglet :
+ *   - une page qui change d'onglet : « Onglet : Les combats → Exploration », sur la page (déplacée dans l'autre onglet), rangée comme elle ;
+ *   - l'ordre d'un menu, une ligne par onglet dont les entrées présentes des deux côtés ne se lisent plus dans le même ordre : « Ordre du menu : A · B →
+ *     B · A », de la première à la dernière place qui diffère (comme l'ordre des blocs d'un panneau). Une entrée ajoutée (une page créée) ou retirée (une
+ *     page supprimée, ou partie dans un autre onglet) ne compte pas : sa page le dit.
+ * Rien tant que la production n'a pas le plan.
+ */
+function comparerPlanDesRegles(ref, dev, x) {
+  const a = lignesDe(ref, 'regles_onglet_entree');
+  const b = lignesDe(dev, 'regles_onglet_entree');
+  if (!a || !b) return [];
+  const onglets = new Map([...(lignesDe(ref, 'regles_onglet') ?? []), ...(lignesDe(dev, 'regles_onglet') ?? [])].map((o) => [o.id, o]));
+  const titreDOnglet = (id) => onglets.get(id)?.titre ?? id;
+  const rangDOnglet = (id) => onglets.get(id)?.ordre ?? 0;
+  const sortie = [];
+  const avantParId = new Map(a.map((e) => [e.id, e]));
+  for (const e of b) {
+    const avant = avantParId.get(e.id);
+    if (!e.page_id || !avant || avant.onglet_id === e.onglet_id) continue;
+    const page = x.ligne('page', e.page_id);
+    const place = placeDeLaPage(e.page_id);
+    sortie.push(ligneDeNote({
+      def: { table: 'regles_onglet_entree' }, domaine: 'guide', groupe: place.rubrique, entite: page?.titre ?? e.page_id,
+      ordre: [place.rang, place.ordre ?? 999, page?.titre ?? e.page_id, 0], champ: 'Onglet', colonne: null, nature: 'modifie',
+      avant: titreDOnglet(avant.onglet_id), apres: titreDOnglet(e.onglet_id), cle: { id: e.id },
+    }));
+  }
+  const parOnglet = (rows) => {
+    const m = new Map();
+    for (const e of [...rows].sort((p, q) => p.rang - q.rang || (p.id < q.id ? -1 : p.id > q.id ? 1 : 0))) (m.get(e.onglet_id) ?? m.set(e.onglet_id, []).get(e.onglet_id)).push(e);
+    return m;
+  };
+  const menusAvant = parOnglet(a);
+  for (const [onglet, entrees] of parOnglet(b)) {
+    const avant = menusAvant.get(onglet);
+    if (!avant) continue;
+    const ici = new Set(entrees.map((e) => e.id));
+    const la = new Set(avant.map((e) => e.id));
+    const partie = partieDeplacee(avant.filter((e) => ici.has(e.id)).map((e) => e.id), entrees.filter((e) => la.has(e.id)).map((e) => e.id));
+    if (!partie) continue;
+    const parId = new Map([...avant, ...entrees].map((e) => [e.id, e]));
+    const dire = (ids) => ids.map((id) => nomDEntree(parId.get(id), x)).join(' · ');
+    sortie.push(ligneDeNote({
+      def: { table: 'regles_onglet_entree' }, domaine: 'guide', groupe: titreDOnglet(onglet), entite: `Menu « ${titreDOnglet(onglet)} »`,
+      ordre: [rangDOnglet(onglet), -1], champ: 'Ordre du menu', colonne: null, nature: 'modifie', avant: dire(partie.avant), apres: dire(partie.apres),
+      cle: { onglet_id: onglet },
+    }));
+  }
+  return sortie;
+}
+
+/**
+ * L'ordre de la liste des races (race.rang_liste, migration 0092 : le menu latéral des races, /races/ et le tableau des magies innées), en une ligne
+ * quand les races des deux côtés ne s'y lisent plus dans le même ordre : « Ordre de la liste : Nain · Humain → Humain · Nain » (de la première à la
+ * dernière place qui diffère ; tri `rang_liste IS NULL, rang_liste, nom`). Une race ajoutée ou retirée est dite par la table race. Rien tant que la
+ * production n'a pas la colonne.
+ */
+function comparerOrdreDesRaces(ref, dev) {
+  const a = lignesDe(ref, 'race');
+  const b = lignesDe(dev, 'race');
+  if (!a?.length || !b?.length || !('rang_liste' in a[0]) || !('rang_liste' in b[0])) return [];
+  const trier = (rows) => [...rows].sort((p, q) => Number(p.rang_liste === null) - Number(q.rang_liste === null) || (p.rang_liste ?? 0) - (q.rang_liste ?? 0)
+    || (p.nom < q.nom ? -1 : p.nom > q.nom ? 1 : 0));
+  const ici = new Set(b.map((r) => r.id));
+  const la = new Set(a.map((r) => r.id));
+  const partie = partieDeplacee(trier(a).filter((r) => ici.has(r.id)).map((r) => r.id), trier(b).filter((r) => la.has(r.id)).map((r) => r.id));
+  if (!partie) return [];
+  const noms = new Map([...a, ...b].map((r) => [r.id, r.nom]));
+  const dire = (ids) => ids.map((id) => noms.get(id)).join(' · ');
+  return [ligneDeNote({
+    def: { table: 'race' }, domaine: 'races', groupe: null, entite: 'Liste des races', ordre: [-1], champ: 'Ordre de la liste', colonne: null,
+    nature: 'modifie', avant: dire(partie.avant), apres: dire(partie.apres), cle: {},
+  })];
 }
 
 /** Relations entre peuples : « <peuple> voit <peuple> : Neutre → Haine » (sens R12 : la ligne voit la colonne). */
@@ -741,6 +917,101 @@ const comparerOrdres = (p, q) => {
 };
 
 /**
+ * Les tables que la comparaison décrit (TABLES_LUES) et celles qu'elle ne compare pas : hors des règles (fiches, journal, notes), dérivées (lien,
+ * lien_candidat) et index de recherche (page_fts, entite_fts et leurs tables internes), que la fabrication de la base ajoute ou retire d'elle-même.
+ */
+export const TABLES_SANS_COMPARAISON = Object.freeze([...TABLES_HORS_REGLES, ...TABLES_DERIVEES]);
+export const estUneTableAutre = (nom) => !TABLES_LUES.includes(nom) && !TABLES_SANS_COMPARAISON.includes(nom) && !nom.startsWith('sqlite_')
+  && !/^(page|entite)_fts(_|$)/.test(nom);
+
+/** Au-delà de ce nombre de lignes d'écart dans une table, la note les compte au lieu de les lister. */
+const LIGNES_PAR_TABLE = 40;
+
+/**
+ * Les autres tables de contenu (celles que DEFINITIONS ne décrit pas) : lignes ajoutées, retirées ou changées sur les colonnes communes, et
+ * « structure changée » dit à part. `ref` / `dev` = { <table>: { colonnes: string[], cle: string[], lignes: object[] } } (lireAutresTables).
+ */
+function comparerAutresTables(ref, dev) {
+  if (!ref || !dev) return [];
+  const sortie = [];
+  const tables = [...new Set([...Object.keys(ref), ...Object.keys(dev)])].filter(estUneTableAutre).sort();
+  const ligne = (table, i, entite, champ, nature, avant, apres, cle = {}, colonne = null) => sortie.push({
+    domaine: 'autres-tables', groupe: table, entite, champ, nature, avant: texte(avant), apres: texte(apres), sens: 'neutre', parties: null,
+    table_nom: table, cle: cleTriee(cle), colonne, ordre: [i, entite],
+  });
+  tables.forEach((table, i) => {
+    const a = ref[table];
+    const b = dev[table];
+    if (!a || !b) {
+      ligne(table, i, `Table ${table}`, null, a ? 'retire' : 'ajoute', a ? `${a.lignes.length} ligne(s)` : null, b ? `${b.lignes.length} ligne(s)` : null);
+      return;
+    }
+    const communes = b.colonnes.filter((c) => a.colonnes.includes(c));
+    const ajoutees = b.colonnes.filter((c) => !a.colonnes.includes(c));
+    const retirees = a.colonnes.filter((c) => !b.colonnes.includes(c));
+    if (ajoutees.length || retirees.length) {
+      ligne(table, i, `Table ${table}`, 'Structure changée', 'modifie', retirees.length ? `colonnes retirées : ${retirees.join(', ')}` : null,
+        ajoutees.length ? `colonnes ajoutées : ${ajoutees.join(', ')}` : null);
+    }
+    const cle = (b.cle.length && b.cle.every((c) => communes.includes(c)) ? b.cle : communes);
+    const cleDe = (r) => cle.map((c) => String(r[c])).join('\u0000');
+    const index = (rows) => new Map(rows.map((r) => [cleDe(r), r]));
+    const [ma, mb] = [index(a.lignes), index(b.lignes)];
+    const entiteDe = (r) => (cle.length === 1 ? String(r[cle[0]]) : cle.map((c) => r[c]).join(' · ')) || '—';
+    const cleObjet = (r) => Object.fromEntries(cle.map((c) => [c, r[c]]));
+    const changees = [];
+    for (const [k, r] of mb) {
+      const avant = ma.get(k);
+      if (!avant) continue;
+      const champs = communes.filter((c) => !pareil(avant[c], r[c]));
+      if (champs.length) changees.push({ r, avant, champs });
+    }
+    const nouvelles = [...mb].filter(([k]) => !ma.has(k)).map(([, r]) => r);
+    const perdues = [...ma].filter(([k]) => !mb.has(k)).map(([, r]) => r);
+    if (nouvelles.length + perdues.length + changees.length > LIGNES_PAR_TABLE) {
+      if (nouvelles.length) ligne(table, i, `${nouvelles.length} ligne(s) ajoutée(s)`, null, 'ajoute', null, null);
+      if (perdues.length) ligne(table, i, `${perdues.length} ligne(s) retirée(s)`, null, 'retire', null, null);
+      if (changees.length) ligne(table, i, `${changees.length} ligne(s) changée(s)`, null, 'modifie', null, null);
+      return;
+    }
+    for (const r of nouvelles) ligne(table, i, entiteDe(r), null, 'ajoute', null, null, cleObjet(r));
+    for (const r of perdues) ligne(table, i, entiteDe(r), null, 'retire', null, null, cleObjet(r));
+    for (const { r, avant, champs } of changees) {
+      for (const c of champs) ligne(table, i, entiteDe(r), c, 'modifie', avant[c], r[c], cleObjet(r), c);
+    }
+  });
+  return sortie;
+}
+
+/** Les identifiants des pages d'exemple de l'une ou l'autre base. */
+const pagesDExemple = (ref, dev) => new Set([ref, dev].flatMap((b) => b?.tables?.page ?? []).filter((p) => p.statut === 'example').map((p) => p.id));
+
+/**
+ * Les autres tables sans ce qui tient aux pages d'exemple (`statut = 'example'`, comme les pages comparées plus haut) : la copie de master garde
+ * ses exemples (db-build sans --sans-exemples), le site de dev les masque (HIDE_EXAMPLES=1). Sont écartées, de chaque côté, les lignes d'une colonne
+ * `page_id` qui vise un exemple (de l'une ou l'autre base), et les `source` que seules des pages d'exemple citent (`page_source`).
+ */
+function autresSansExemples(ref, dev, exemples) {
+  if (!exemples.size) return [ref, dev];
+  const sans = (autres) => {
+    if (!autres) return autres;
+    const citees = new Map(); // source_id -> au moins une page hors exemple la cite ?
+    for (const r of autres.page_source?.lignes ?? []) citees.set(r.source_id, (citees.get(r.source_id) ?? false) || !exemples.has(r.page_id));
+    const sortie = {};
+    for (const [nom, t] of Object.entries(autres)) {
+      const parPage = t.colonnes.includes('page_id');
+      const parSource = nom === 'source' && t.cle.length === 1;
+      sortie[nom] = !parPage && !parSource ? t : {
+        ...t,
+        lignes: t.lignes.filter((r) => !(parPage && exemples.has(r.page_id)) && !(parSource && citees.get(r[t.cle[0]]) === false)),
+      };
+    }
+    return sortie;
+  };
+  return [sans(ref), sans(dev)];
+}
+
+/**
  * La liste des modifications de la production (`ref`) à la dev (`dev`) : [{ domaine, groupe, entite, champ, nature, avant, apres, sens, parties,
  * table_nom, cle, colonne, rang }], dans l'ordre d'affichage (domaine, groupe, entité, champ). `ref` / `dev` = { tables: { <table>: lignes[] } }
  * pour les tables de TABLES_LUES (une table absente d'une base : undefined).
@@ -752,7 +1023,11 @@ export function comparerBases(ref, dev) {
     ...comparerMagiesInnees(ref, dev, x),
     ...comparerRelations(ref, dev, x),
     ...comparerCategoriesDesEvenements(ref, dev, x),
+    ...comparerSynonymesEtCategoriesDesMotsCles(ref, dev, x),
     ...comparerOrdreDesBlocs(ref, dev, x),
+    ...comparerPlanDesRegles(ref, dev, x),
+    ...comparerOrdreDesRaces(ref, dev),
+    ...comparerAutresTables(...autresSansExemples(ref?.autres, dev?.autres, pagesDExemple(ref, dev))),
   ];
   const rangDomaine = (d) => DOMAINES.findIndex((x_) => x_.id === d);
   lignes.sort((p, q) => rangDomaine(p.domaine) - rangDomaine(q.domaine) || comparerOrdres(p.ordre, q.ordre));

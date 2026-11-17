@@ -1,0 +1,26 @@
+---
+// Le texte de la page « Pièces élémentaires » sur les pages Armes et Armures (réponse du propriétaire du 2026-10-29 : « Fusionner dans Armes et
+// Armures » ; la page n'est plus construite) : un `<details>` replié sous le panneau de règles, présenté comme lui (`.preg` : deux colonnes à partir de
+// 64rem ; styles/equipement/equipement.css), titré par le titre de la page ; son id est l'ancre où mènent les liens de la page (lib/equipement.mjs :
+// « ressources/pieces-elementaires » → ressources/armes/#pieces-elementaires). Le texte est celui de la base, trié par lib/pieces-elementaires.mjs
+// (les parties de l'autre page retirées) et rendu au build (lib/equipement-rendu.ts#piecesElementairesRendues). En lecture seule sur le site de dev :
+// pas de `data-panneau-regles` (src/scripts/edition/panneaux.mjs ne le touche pas). Rien sans texte. Une adresse qui vise le bloc, ou un élément qu'il
+// contient, l'ouvre au chargement et sur hashchange (src/scripts/pieces-elementaires.mjs, sans import, assez court pour qu'Astro l'écrive en ligne).
+interface Props {
+  texte: { id: string; titre: string; html: string } | null | undefined;
+}
+const { texte } = Astro.props;
+---
+
+{
+  texte && (
+    <details class="preg preg--pieces-elementaires" id={texte.id}>
+      <summary class="preg__titre">{texte.titre}</summary>
+      <div class="prose preg__corps preg-bloc__texte" set:html={texte.html} />
+    </details>
+  )
+}
+
+<script>
+  import '../../scripts/pieces-elementaires.mjs';
+</script>

@@ -1,25 +1,23 @@
 // L'éditeur de texte en place du mode modification (contenteditable + barre d'outils), partagé par le texte du guide et du Codex (edition/guide.mjs), les
 // descriptions de la chronologie (edition/chronologie.mjs) et les blocs des panneaux de règles (edition/panneaux.mjs) : la sélection dans les zones
-// modifiables, les commandes de mise en forme, les liens (vers une page du wiki : [[cible|texte]], ou une adresse web ; retirer un lien), les mots-clés du
+// modifiables, les commandes de mise en forme, les liens (vers une page : par un mot-clé qui y mène, sa balise ; ou une adresse web ; retirer un lien), les mots-clés du
 // glossaire (ces zones sont des textes mis en forme : lib/mots-cles-balises.mjs), une petite boîte de saisie, et la barre d'outils.
 // Les mots-clés du glossaire s'y lisent et s'y modifient en balises écrites, comme dans le Markdown (demande du propriétaire du 2026-10-17 : « Quand je
 // passe en mode édition le texte devrai remettre le texte en mode Markdown […] je ne vois pas {{Recharge Longue}} ») : à l'entrée, chaque mot-clé rendu
-// redevient « {{id}} », « {{id|texte}} » ou « {{id:}} » (lib/markdown-edition.mjs#baliseEcrite), que l'on peut aussi taper ; les outils (outilsDesMotsCles ;
-// demande du 2026-10-16) écrivent la balise du mot-clé choisi : le texte choisi devient « {{id}} » s'il est son libellé, « {{id|texte}} » sinon, la
-// définition « {{id:}} » ; le curseur dans une balise, ils en changent le mot-clé. Le texte d'une zone n'est rendu (gras, infobulle) qu'une fois enregistré.
-// La barre d'outils se tient à gauche de l'écran, à la hauteur de la zone où est le curseur (demande du 2026-10-17 : hauteurDeLaBarre).
+// redevient « {{clé}} », « {{clé|texte}} » ou « {{clé:}} » (lib/markdown-edition.mjs#baliseEcrite), que l'on peut aussi taper ; les outils (outilsDesMotsCles ;
+// demande du 2026-10-16) écrivent la balise du mot-clé choisi : le texte choisi devient « {{clé}} » s'il est son libellé, « {{clé|texte}} » sinon, la
+// définition « {{clé:}} » ; le curseur dans une balise, ils en changent le mot-clé. Le texte d'une zone n'est rendu (gras, infobulle) qu'une fois enregistré.
+// La barre d'outils se range dans le bloc flottant du crayon (`.ed-cote`, edition/editeur.mjs), juste au-dessus de lui, partout où elle sert (demande du
+// propriétaire du 2026-11-13 : « Le menu d'édition devrait être présent directement au dessus du bouton d'édition partout où il est utilisé »).
 // Le HTML d'une zone est réécrit en Markdown par lib/markdown-edition.mjs (versMarkdown) ; ce module ne touche qu'au DOM.
 import { arbreDuDom, baliseEcrite } from '../../lib/markdown-edition.mjs';
-import { cheminDePage } from '../../lib/metiers.mjs';
 import { lireBalises, motCleDeLaRef } from '../../lib/mots-cles-balises.mjs';
 import { normalize } from '../../lib/text.mjs';
 import { vocabulaireVivant } from './mots-cles-vivants.mjs';
 
 const echapper = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 /** Les mots-clés rendus (lib/mots-cles-balises.mjs#htmlDeLaBalise) qu'une zone montre en balises écrites en mode modification. */
-const MOTS_CLES_RENDUS = 'strong.mot-cle[data-mot-cle], b.mot-cle[data-mot-cle], span.mot-cle-definition[data-mot-cle]';
-/** L'écran assez large pour la barre d'outils à gauche (styles/edition/edition.css, même seuil) ; plus étroit, elle reste en haut. */
-const BARRE_A_GAUCHE = '(min-width: 48rem)';
+const MOTS_CLES_RENDUS = 'strong.mot-cle[data-mot-cle], b.mot-cle[data-mot-cle], a.mot-cle[data-mot-cle], span.mot-cle-definition[data-mot-cle]';
 const libelleDePage = (p) => `${p.titre} — ${p.id}`;
 
 /**
@@ -79,16 +77,52 @@ export const pageChoisie = (pages, saisie) =>
   pages.find((p) => libelleDePage(p) === saisie || p.id === saisie) ?? pages.filter((p) => normalize(p.titre) === normalize(saisie)).at(0) ?? null;
 export { libelleDePage };
 
-const libelleDeMotCle = (m) => `${m.libelle} — ${m.id}`;
+const libelleDeMotCle = (m) => `${m.libelle} — ${m.cle}`;
 /** Le mot-clé choisi dans les suggestions (« Libellé — id »), par son id ou par son écriture ; null sinon. */
 const motCleChoisi = (vocabulaire, saisie) =>
   vocabulaire.liste.find((m) => libelleDeMotCle(m) === saisie) ?? motCleDeLaRef(vocabulaire, saisie.replace(/\s+—\s+[a-z0-9-]+$/, '')) ?? null;
 
 /**
+ * Le mot-clé du glossaire à choisir (petite boîte, suggestions du vocabulaire vivant ; `filtre` : ceux qui sont proposés et acceptés), puis
+ * `poser(mot-clé)`.
+ */
+export async function choisirUnMotCle(ed, { titre, aide, valeur = '', bouton, poser, filtre = () => true }) {
+  let vocabulaire;
+  try {
+    vocabulaire = await vocabulaireVivant(ed);
+  } catch (e) {
+    return ed.annoncer(`Glossaire indisponible : ${e.message}`, 'erreur');
+  }
+  demander(ed, {
+    titre, aide, libelle: 'Mot-clé', valeur, bouton, suggestions: vocabulaire.liste.filter(filtre).map(libelleDeMotCle),
+    valider(saisie) {
+      const m = motCleChoisi(vocabulaire, saisie);
+      if (!m || !filtre(m)) throw new Error('Mot-clé introuvable : choisissez-le dans la liste (un mot-clé se crée sur la page Glossaire, en mode modification).');
+      return () => poser(m);
+    },
+  });
+}
+
+/**
+ * La balise écrite (lireBalises) autour du texte choisi [debut, fin[ de `texte`, ou du curseur (debut === fin) ; null sinon. Le curseur juste avant
+ * « {{ » ou juste après « }} » n'y est pas : il insère à côté.
+ */
+export function baliseAuCurseur(texte, debut, fin = debut) {
+  const vide = debut === fin;
+  return lireBalises(texte).find((x) => (vide ? x.debut < debut && debut < x.fin : x.debut <= debut && fin <= x.fin)) ?? null;
+}
+
+/** Le texte choisi tel qu'une balise peut le porter (ni accolades ni retours à la ligne) ; null s'il est vide. */
+export const texteDeLaBalise = (choisi) => String(choisi ?? '').replace(/[{}\n]+/g, ' ').replace(/\s+/g, ' ').trim() || null;
+
+/** La balise du mot-clé `m` pour le texte écrit `ecrit` : « {{clé}} » (aucun texte, ou son libellé), « {{clé|texte}} » sinon. */
+export const baliseDuMotCle = (m, ecrit) => (ecrit === null || ecrit === m.libelle ? `{{${m.cle}}}` : `{{${m.cle}|${ecrit}}}`);
+
+/**
  * Les barres d'outils de la page, une par éditeur en place (`{ el, aLeCurseur }`) : quand une page en a plusieurs (le texte de Bienvenue,
  * edition/guide.mjs, et l'annonce de l'encart « Notre prochaine rencontre IRL » sous lui, edition/annonces.mjs), une seule se montre — celle de l'éditeur
- * où est le curseur, sinon la dernière qui l'a eu, sinon la première posée — : les autres sont cachées (`hidden`), sans quoi elles se poseraient
- * l'une sur l'autre à gauche de l'écran.
+ * où est le curseur, sinon la dernière qui l'a eu, sinon la première posée — : les autres sont cachées (`hidden`), sans quoi elles s'empileraient
+ * au-dessus du crayon.
  */
 const BARRES = new Set();
 let barreMontree = null;
@@ -104,9 +138,9 @@ export function choisirLaBarre(barres = BARRES) {
 /**
  * Un éditeur en place sur les zones que rend `zones()` (éléments contenteditable) : la sélection n'est prise en compte que dans une zone. Rend les outils
  * de mise en forme et de lien, et `barre(ed, groupes, etiquette)` qui dessine une barre d'outils (groupes : [[nom, [[etiquette, titre, action(ed),
- * classe?]]]]).
+ * classe?]]]]). `aLeCurseur()` : où la barre se dit avoir le curseur, à la place des zones (la barre des saisies, edition/saisies.mjs).
  */
-export function editeurEnPlace(zones) {
+export function editeurEnPlace(zones, { aLeCurseur = null } = {}) {
   const dansUneZone = (noeud) => {
     const el = noeud?.nodeType === 1 ? noeud : noeud?.parentElement;
     return el ? zones().find((m) => m.contains(el)) ?? null : null;
@@ -154,44 +188,26 @@ export function editeurEnPlace(zones) {
     commande(ed, 'formatBlock', cible);
   }
 
-  /** Pose (ou change) un lien vers une page du wiki sur le texte choisi : il s'écrira [[cible|texte]]. */
-  async function lienWiki(ed) {
+  /**
+   * Lie le texte choisi à une page par un mot-clé qui y mène (migration 0098 ; réponse du propriétaire : « une balise dont le mot-clé a une URL est un
+   * lien ») : le choix parmi les mots-clés qui ont une adresse, puis le texte devient sa balise, comme l'outil « Mot-clé » (motCle) ; le curseur dans une
+   * balise, change son mot-clé. Un lien vers une page s'écrit donc toujours par un mot-clé (le service convertit un [[…]] saisi : serveur/edition.mjs) ;
+   * une page sans mot-clé se lie après en avoir créé un sur /regles/glossaire/ (adresse comprise).
+   */
+  async function lienMotCle(ed) {
     const r = plage();
     if (!r) return ed.annoncer('Choisissez d’abord le texte à lier (ou placez le curseur là où le lien doit aller).');
-    let pages;
-    try {
-      pages = await pagesDuWiki(ed);
-    } catch (e) {
-      return ed.annoncer(`Liste des pages indisponible : ${e.message}`, 'erreur');
-    }
-    const existant = proche(r, 'a, span.wikilink');
-    const actuelle = existant?.dataset.cible ? pages.find((p) => p.id === existant.dataset.cible || normalize(p.titre) === normalize(existant.dataset.cible)) : null;
-    demander(ed, {
-      titre: existant ? 'Changer le lien' : 'Lien vers une page du wiki',
-      aide: 'Tapez quelques lettres du titre puis choisissez la page. Le texte choisi reste le texte du lien.',
-      libelle: 'Page',
-      valeur: actuelle ? libelleDePage(actuelle) : '',
-      suggestions: pages.map(libelleDePage),
+    const autour = baliseAutour(r);
+    await choisirUnMotCle(ed, {
+      titre: autour ? 'Changer le mot-clé du lien' : 'Lien par un mot-clé',
+      aide: 'Tapez quelques lettres du mot-clé puis choisissez-le : seuls ceux qui mènent à une page sont proposés. Le texte choisi devient sa balise, « {{clé}} » (le libellé du mot-clé) ou « {{clé|texte}} » (un autre texte) : une fois enregistré, c’est un lien vers sa page, en gras. Une page sans mot-clé : créez-le d’abord sur le Glossaire, avec son lien.',
+      valeur: autour?.balise.ref ?? '',
       bouton: 'Lier',
-      valider(saisie) {
-        const page = pageChoisie(pages, saisie);
-        if (!page) throw new Error('Page introuvable : choisissez-la dans la liste.');
-        const href = `${(ed.base || '/').replace(/\/?$/, '/')}${cheminDePage(page.id)}`;
-        return () => {
-          if (existant) {
-            const lien = document.createElement('a');
-            lien.className = 'wikilink';
-            lien.dataset.cible = page.id;
-            lien.href = href;
-            lien.append(...existant.childNodes);
-            existant.replaceWith(lien);
-          } else {
-            restaurer(r);
-            const texte = r.toString().trim() || page.titre;
-            document.execCommand('insertHTML', false, `<a class="wikilink" data-cible="${echapper(page.id)}" href="${echapper(href)}">${echapper(texte)}</a>`);
-          }
-          ed.marquerModifie();
-        };
+      filtre: (m) => Boolean(m.url),
+      poser(m) {
+        const ecriture = baliseDuMotCle(m, autour ? (autour.balise.complet ? null : autour.balise.texte) : texteDeLaBalise(r.toString()));
+        if (autour) remplacerLaBalise(ed, autour, ecriture);
+        else insererLaBalise(ed, r, ecriture);
       },
     });
   }
@@ -250,8 +266,7 @@ export function editeurEnPlace(zones) {
   function baliseAutour(r) {
     const n = r.startContainer;
     if (n?.nodeType !== 3 || r.endContainer !== n || !dansUneZone(n)) return null;
-    const vide = r.collapsed ?? r.startOffset === r.endOffset;
-    const b = lireBalises(n.nodeValue).find((x) => (vide ? x.debut < r.startOffset && r.startOffset < x.fin : x.debut <= r.startOffset && r.endOffset <= x.fin));
+    const b = baliseAuCurseur(n.nodeValue, r.startOffset, r.collapsed ? r.startOffset : r.endOffset);
     return b ? { noeud: n, balise: b } : null;
   }
 
@@ -268,27 +283,9 @@ export function editeurEnPlace(zones) {
     ed.marquerModifie();
   }
 
-  /** Le mot-clé du glossaire à choisir (petite boîte, suggestions du vocabulaire vivant), puis `poser(mot-clé)`. */
-  async function choisirUnMotCle(ed, { titre, aide, valeur = '', bouton, poser }) {
-    let vocabulaire;
-    try {
-      vocabulaire = await vocabulaireVivant(ed);
-    } catch (e) {
-      return ed.annoncer(`Glossaire indisponible : ${e.message}`, 'erreur');
-    }
-    demander(ed, {
-      titre, aide, libelle: 'Mot-clé', valeur, bouton, suggestions: vocabulaire.liste.map(libelleDeMotCle),
-      valider(saisie) {
-        const m = motCleChoisi(vocabulaire, saisie);
-        if (!m) throw new Error('Mot-clé introuvable : choisissez-le dans la liste (un mot-clé se crée sur la page Recherche, en mode modification).');
-        return () => poser(m);
-      },
-    });
-  }
-
   /**
-   * Le texte choisi devient la balise d'un mot-clé du glossaire : « {{id}} » (son libellé : le texte affiché le suivra), « {{id|texte}} » (un autre
-   * texte) ; le curseur dans une balise, change son mot-clé et garde son texte écrit (le mode complet devient « {{id}} »).
+   * Le texte choisi devient la balise d'un mot-clé du glossaire, par sa clé : « {{clé}} » (son libellé : le texte affiché le suivra), « {{clé|texte}} » (un autre
+   * texte) ; le curseur dans une balise, change son mot-clé et garde son texte écrit (le mode complet devient « {{clé}} »).
    */
   async function motCle(ed) {
     const r = plage();
@@ -296,31 +293,30 @@ export function editeurEnPlace(zones) {
     const autour = baliseAutour(r);
     await choisirUnMotCle(ed, {
       titre: autour ? 'Changer le mot-clé' : 'Mot-clé du glossaire',
-      aide: 'Tapez quelques lettres du mot-clé puis choisissez-le. Le texte choisi devient sa balise, « {{id}} » (le libellé du mot-clé) ou « {{id|texte}} » (un autre texte) : une fois enregistré, il s’affiche en gras, avec la définition du mot-clé en infobulle.',
+      aide: 'Tapez quelques lettres du mot-clé puis choisissez-le. Le texte choisi devient sa balise, « {{clé}} » (le libellé du mot-clé) ou « {{clé|texte}} » (un autre texte) : une fois enregistré, il s’affiche en gras, avec la définition du mot-clé en infobulle.',
       valeur: autour?.balise.ref ?? '',
       bouton: 'Poser',
       poser(m) {
-        const ecrit = autour ? (autour.balise.complet ? null : autour.balise.texte) : r.toString().replace(/[{}\n]+/g, ' ').replace(/\s+/g, ' ').trim() || null;
-        const ecriture = ecrit === null || ecrit === m.libelle ? `{{${m.id}}}` : `{{${m.id}|${ecrit}}}`;
+        const ecriture = baliseDuMotCle(m, autour ? (autour.balise.complet ? null : autour.balise.texte) : texteDeLaBalise(r.toString()));
         if (autour) remplacerLaBalise(ed, autour, ecriture);
         else insererLaBalise(ed, r, ecriture);
       },
     });
   }
 
-  /** Écrit la balise du mode complet d'un mot-clé, « {{id:}} » (« Libellé : définition », venue du glossaire) ; le curseur dans une balise, la remplace. */
+  /** Écrit la balise du mode complet d'un mot-clé, « {{clé:}} » (« Libellé : définition », venue du glossaire) ; le curseur dans une balise, la remplace. */
   async function definition(ed) {
     const r = plage();
     if (!r) return ed.annoncer('Placez d’abord le curseur là où la définition doit aller.');
     const autour = baliseAutour(r);
     await choisirUnMotCle(ed, {
       titre: 'Définition d’un mot-clé',
-      aide: 'Sa balise « {{id:}} » s’écrit au curseur : une fois enregistré, le libellé du mot-clé et sa définition s’affichent tels que le glossaire les écrit (« Libellé : définition ») et la suivront quand elle changera.',
+      aide: 'Sa balise « {{clé:}} » s’écrit au curseur : une fois enregistré, le libellé du mot-clé et sa définition s’affichent tels que le glossaire les écrit (« Libellé : définition ») et la suivront quand elle changera.',
       valeur: autour?.balise.ref ?? '',
       bouton: 'Insérer',
       poser(m) {
-        if (autour) remplacerLaBalise(ed, autour, `{{${m.id}:}}`);
-        else insererLaBalise(ed, r, `{{${m.id}:}}`);
+        if (autour) remplacerLaBalise(ed, autour, `{{${m.cle}:}}`);
+        else insererLaBalise(ed, r, `{{${m.cle}:}}`);
       },
     });
   }
@@ -356,35 +352,20 @@ export function editeurEnPlace(zones) {
     return { element: el, ajouter };
   }
 
-  /** La zone où est le curseur, sinon la dernière qui l'a eu, sinon la première à l'écran (ou la première tout court) ; null s'il n'y en a pas. */
-  let derniere = null;
-  function zoneSuivie() {
-    const sel = getSelection();
-    const ici = sel?.rangeCount ? dansUneZone(sel.getRangeAt(0).startContainer) : null;
-    const toutes = zones();
-    if (ici) derniere = ici;
-    else if (!toutes.includes(derniere)) derniere = null;
-    return derniere ?? toutes.find((z) => {
-      const r = z.getBoundingClientRect();
-      return r.bottom > 0 && r.top < innerHeight;
-    }) ?? toutes[0] ?? null;
-  }
-
   /**
-   * Place la barre `el` à la hauteur de la zone suivie (zoneSuivie, hauteurDeLaBarre) à chaque mouvement du curseur, saisie, défilement (d'un panneau
-   * aussi) ou redimensionnement, une fois par image, tant qu'elle est dans la page ; sous 48rem (BARRE_A_GAUCHE), la feuille de style la garde en haut de
-   * l'écran. Hors d'un navigateur (tests), rien.
+   * Range la barre `el` au-dessus du crayon : une fois dans la page (l'extension l'ajoute au `body`), elle passe en tête du bloc flottant `.ed-cote`
+   * (edition.css l'y dessine) ; puis, à chaque mouvement du curseur, la barre à montrer est choisie (choisirLaBarre), une fois par image, tant qu'elle
+   * est dans la page. Hors d'un navigateur (tests), rien.
    */
   function suivreLaZone(el) {
-    if (typeof window === 'undefined' || typeof matchMedia !== 'function') return;
-    const large = matchMedia(BARRE_A_GAUCHE);
+    if (typeof window === 'undefined' || typeof requestAnimationFrame !== 'function') return;
     const arret = new AbortController();
     let posee = false; // la barre a été dans la page : sortie (fin du mode modification), elle ne suit plus rien
     let prevue = false;
-    const inscrite = { el, aLeCurseur: () => {
+    const inscrite = { el, aLeCurseur: aLeCurseur ?? (() => {
       const sel = getSelection();
       return Boolean(sel?.rangeCount && dansUneZone(sel.getRangeAt(0).startContainer));
-    } };
+    }) };
     BARRES.add(inscrite);
     const placer = () => {
       prevue = false;
@@ -397,23 +378,17 @@ export function editeurEnPlace(zones) {
         return;
       }
       posee = true;
+      const cote = document.querySelector('.ed-cote');
+      if (cote && el.parentElement !== cote) cote.prepend(el);
       choisirLaBarre();
-      if (el.hidden) return; // une autre barre se montre : celle-ci attend le curseur dans ses zones
-      const zone = large.matches ? zoneSuivie() : null;
-      if (!zone) el.style.removeProperty('top');
-      else el.style.top = `${Math.round(hauteurDeLaBarre(zone.getBoundingClientRect(), el.offsetHeight, innerHeight))}px`;
     };
     const planifier = () => {
       if (prevue) return;
       prevue = true;
       requestAnimationFrame(placer);
     };
-    const { signal } = arret;
-    document.addEventListener('selectionchange', planifier, { signal });
-    document.addEventListener('input', planifier, { signal });
-    addEventListener('scroll', planifier, { capture: true, passive: true, signal });
-    addEventListener('resize', planifier, { signal });
-    large.addEventListener('change', planifier, { signal });
+    document.addEventListener('selectionchange', planifier, { signal: arret.signal });
+    document.addEventListener('focusin', planifier, { signal: arret.signal }); // le curseur entré dans une saisie (edition/saisies.mjs)
     planifier();
   }
 
@@ -439,7 +414,7 @@ export function editeurEnPlace(zones) {
     }, { signal });
   }
 
-  return { plage, restaurer, proche, commande, bloc, lienWiki, lienWeb, retirerLien, motCle, definition, barre, rendreModifiable };
+  return { plage, restaurer, proche, commande, bloc, lienMotCle, lienWeb, retirerLien, motCle, definition, barre, rendreModifiable };
 }
 
 /** Le groupe « Mots-clés » d'une barre d'outils (barre(ed, groupes, …)) pour l'éditeur en place `texte` (editeurEnPlace) : mot-clé, définition. */
@@ -448,12 +423,3 @@ export const outilsDesMotsCles = (texte) => ['Mots-clés', [
   ['Mot-clé', 'Mettre le texte choisi en mot-clé du glossaire : sa balise s’écrit dans le texte (gras, définition en infobulle une fois enregistré)', texte.motCle],
   ['Définition', 'Insérer la balise de la définition d’un mot-clé du glossaire (« Libellé : définition » une fois enregistré)', texte.definition],
 ]];
-
-/**
- * Le haut de la barre d'outils, en px depuis le haut de l'écran, pour la zone `{ top }` (getBoundingClientRect), une barre haute de `hauteur` et un
- * écran haut de `ecran` : le haut de la zone, ramené dans l'écran (le haut de la zone passé au-dessus : en haut de l'écran ; trop bas : la barre remonte
- * pour y tenir entière), à `marge` de ses bords ; une barre plus haute que l'écran se tient en haut et défile (edition.css).
- */
-export function hauteurDeLaBarre(zone, hauteur, ecran, marge = 8) {
-  return Math.max(marge, Math.min(zone.top, ecran - hauteur - marge));
-}

@@ -12,7 +12,8 @@ navigateur ──▶ nginx (mot de passe du site) ──┬──▶ site/      
 **Pas de comptes** : quiconque a le mot de passe du site lit et écrit les prétirés (un prétiré n'est à personne et tout le monde
 le voit : `v_personnage_visible`). Une fiche de joueur n'est ni listée ni lisible par l'API des personnages ; elle viendra avec la connexion
 Discord. Sur le site de dev seulement, le menu « DB » de la page Debug lit pourtant toute la base vivante, fiches comprises (décision du
-propriétaire du 2026-10-15 ; le serveur de dev reste ouvert à ceux qui y auront accès : [`api.md`](api.md), « Contenu des tables »).
+propriétaire du 2026-10-15 ; le serveur de dev reste ouvert à ceux qui y auront accès : [`api.md`](api.md), « Contenu des tables »). Sur le site de dev,
+un second mot de passe, posé par le propriétaire, protège les écritures et la mise à jour ; la lecture des pages reste libre (« Accès au site de dev »).
 
 ## Le code
 
@@ -21,8 +22,12 @@ propriétaire du 2026-10-15 ; le serveur de dev reste ouvert à ceux qui y auron
 | `client/serveur/index.mjs` | Point d'entrée livré (variables d'environnement ci-dessous) |
 | `client/serveur/service.mjs` | Serveur HTTP (`node:http`), surveillance des fichiers, arrêt propre |
 | `client/serveur/api.mjs` | Routes : une requête lue → une réponse (JSON, sauf l'image d'un portrait et un classeur), sans réseau (testé directement) ; `POST /api/classeur/` et `GET /api/tipeee/` rendent une promesse, que `service.mjs` attend |
+| `client/serveur/acces.mjs`, `acces-routes.mjs` | L'accès au site de dev : le réglage (`secrets/acces.json`), les sessions, les essais ratés, la commande de l'hôte ; le classement de chaque route (ouverte, lecture, écriture) que la porte de `traiter` consulte (« Accès au site de dev », plus bas) |
 | `client/serveur/fiches.mjs` | Une fiche ↔ les lignes de la section 13 de `data/schema.sql` ; contrôles ; résumé pour la recherche |
 | `client/serveur/base-vivante.mjs` | Création et renouvellement de la base vivante, archives |
+| `client/serveur/structure-sur-place.mjs` | Un changement de structure appliqué à la base en place (migrations livrées, essai sur une copie, migrations reçues par une base refaite) : « Changement de structure appliqué sur place », ci-dessous ; pas encore branché sur la vraie base |
+| `client/serveur/essai-de-structure.mjs` | L'essai d'une livraison avant son installation : les demandes de l'installateur dans `db/essai-de-structure/`, l'essai sur une copie, la réponse et le dernier résultat (`GET /api/debug/structure/`) : « Essai avant installation », ci-dessous |
+| `client/serveur/essai-dans-l-ombre.mjs` | L'essai dans l'ombre : à chaque installation du site de dev, la base d'avant migrée sur place comparée à la base refaite, le rapport (`db/essai-de-structure/ombre.json`, `GET /api/debug/structure/`, champ `ombre`) : « Essai dans l'ombre », ci-dessous |
 | `client/serveur/classeur.mjs` | « Importer (en ligne) » de la fiche : le téléchargement d'une feuille Google Sheets partagée par lien (`POST /api/classeur/`, ci-dessous), la seule sortie du service vers une adresse que donne le visiteur (« Hébergement ») |
 | `client/serveur/tipeee.mjs` | La partie « Bienvenue » de Tipeee relue en direct (`GET /api/tipeee/`, ci-dessous) : cache, une requête à la fois, dernier texte gardé (`db/tipeee.json`), repli sur l'instantané livré avec le site ; l'extraction du texte est pure, `client/src/lib/tipeee.mjs` |
 | `client/serveur/maintenance.mjs` | « Maintenance en cours » pendant une vraie mise à jour : annonce, dossier partagé, état de ce serveur (ci-dessous) |
@@ -45,19 +50,39 @@ ne l'emporte pas.
 | Fichier | Contenu |
 | --- | --- |
 | `db/vivante.db` | Copie de la base des règles publiée par le site (`site/donnees/maverick.db`), plus ce que le service écrit (section 13 : utilisateurs, fiches, groupes) |
-| `db/vivante.json` | Empreinte SHA-256 des règles dont elle est faite, version du schéma, date |
-| `db/archives/` | Les 5 dernières bases remplacées qui avaient des lignes de la section 13 |
+| `db/vivante.json` | Empreinte SHA-256 du fichier des règles dont elle est faite (`regles`), leur empreinte logique (`logique`), la version de la logique de reconstruction (`reconstruction`), la version du service qui la fait tourner (`version`), version du schéma, date |
+| `db/archives/` | Les 5 dernières bases remplacées qui avaient des lignes de la section 13, `vivante-<horodatage>-v<version>.db` (la version du service qui faisait tourner la base ; `-inconnue` si on ne la sait pas ; les anciennes `vivante-<horodatage>.db` se comptent et se purgent avec elles) |
+| `db/source` | Seulement sur une base source (posé par `deploy/installateur/bascule.sh`) : la base n'est plus jamais refaite depuis les règles, elle est migrée sur place (« Base source (lot 8) », plus bas) |
 | `db/metriques/` | Seulement sans dossier des métriques réglé (NAS, `npm run serveur`) : la base des métriques de l'instance (« Métriques et volume », plus bas) ; l'installateur de test ne la copie ni ne l'efface |
 
 Pourquoi une copie des règles : les fiches citent les règles (race, classe, sorts…) par clés étrangères, et les contrôles (`v_personnage_controle`,
 `v_personnage_niveau`) les joignent ; tout doit être dans la même base SQLite.
 
-**Quand une livraison change les règles**, le service le voit (empreinte différente) et refait la base vivante : nouvelle copie des règles, puis
+**Quand refait-on la base vivante ?** Quand ce que le fichier des règles apporte change, pas quand ses octets changent (lot 5 du chantier de la base de dev, R274).
+- Comparaison rapide d'abord : le SHA-256 du fichier est celui de `vivante.json` (`regles`) et la version de la logique de reconstruction est la même : rien n'est
+  calculé de plus, rien n'est refait.
+- Sinon, le service copie le fichier et en calcule l'**empreinte logique** (`serveur/empreintes.mjs#empreinteLogique`) : le SQL de tout le schéma (tables de fiches et du
+  journal comprises : une colonne de plus à `personnage` fait refaire la base), `user_version`, et les lignes de toutes les tables hors fiches et journal — contenu, notes,
+  historique **et tables calculées** (une table calculée qui change fait refaire la base, sinon la production garderait des liens périmés ; le plein texte est lu par ses colonnes,
+  pas par ses tables d'ombre). Même empreinte que `vivante.json` (`logique`) : la base est déjà faite de ce contenu, elle est **gardée telle quelle** (fiches intactes, ni archive ni
+  rejeu) et seul `regles` est mis à jour ; le service le note (`base vivante gardée : …`) et l'évènement `empreinte_logique` donne la durée du calcul (≈ 0,3 s).
+- **Dans le doute, elle est refaite** : pas d'empreinte gardée (`vivante.json` d'avant ce réglage, ou calcul en échec), schéma, ligne ou version différents. Un `vivante.json` sans
+  `reconstruction` (écrit avant ce réglage) garde l'ancienne règle, sur les octets du fichier seulement, puis reçoit les deux champs à la reconstruction suivante.
+- `VERSION_DE_LA_RECONSTRUCTION` (`serveur/base-vivante.mjs`) est à **augmenter de 1** quand ce que `preparerBaseVivante` fait d'une base d'avant change sans que les règles changent
+  (conversion, retrait R42, armure R165, ligne écartée, table ou colonne retirée, rejeu, contrôle des fiches) ; sinon ce changement ne s'appliquerait qu'à la livraison suivante des règles.
+  Augmentée, la base est refaite même si le fichier est le même.
+- `db:build` est déterministe octet pour octet (deux constructions de la même arborescence, avec la même version de Node : même SHA-256) ; le fichier change donc de contenu quand
+  `data/rows`, le schéma ou `data/derive.sql` changent. Il ne changeait d'octets sans changer de contenu que par une version de Node ou de SQLite : c'est ce cas, seul, que ce réglage
+  épargne à la production.
+- L'archive d'une reconstruction (avant toute reconstruction qui remplace une base qui avait des fiches ou un journal, comme avant) porte la version que `vivante.json` gardait pour
+  la base remplacée (`version` : celle du service qui l'a faite, tenue à jour à chaque démarrage).
+
+**Quand une livraison change les règles**, le service le voit (empreinte logique différente) et refait la base vivante : nouvelle copie des règles, puis
 toutes les lignes de la section 13 y sont recopiées colonne par colonne (une colonne ajoutée prend sa valeur par défaut), et le journal de l'édition
 est rejoué (site de dev, ci-dessous). Un **don, une spécialité (avec les dons choisis qui en dépendent), un sort, un métier ou une arme** que les nouvelles
 règles n'ont plus est alors **retiré des fiches** qui l'utilisent, avec une note datée dans chacune (décisions R42, R52, « Fiches de personnage (R42) »
 ci-dessous) ; `/api/etat` en donne la liste (`base.retraits` : `{ le, fiches }`, la dernière liste non vide, datée, gardée dans `vivante.json` par les
-reconstructions qui ne retirent rien et au redémarrage). **Toute autre ligne qui ne passe pas** — une fiche cite une race, une classe, une magie… qui
+reconstructions qui ne retirent rien et au redémarrage). Deux cas de plus, notés de la même façon (décision R238, mise à jour de Décembre) : un **don qui change de spécialité en gardant son identifiant** (`capacites/cuirasse-appui`, de Vindicatif à Protecteur) est retiré des fiches qui avaient la spécialité d'avant (note « a changé de spécialité dans les règles », `cas: 'deplace'` ; `serveur/fiches-retraits.mjs#retirerLesManquants`, comparé à l'ancienne base ; une fiche d'une autre spécialité n'est pas touchée), et un **point de maîtrise de ligne de classe imposé qui devient à choisir** (l'Archimage, `classes/archimage#maitrise-arme:2` : « 1 maîtrise de Bâton » devenue une arme de contact au choix) ne retire rien — le choix est en attente, R148 — mais ajoute une ligne datée (nature `maitrise_imposee`, `maitrisesDevenuesAChoisir`), une seule fois. **Toute autre ligne qui ne passe pas** — une fiche cite une race, une classe, une magie… qui
 n'existe plus (y compris un don, une spécialité ou un sort dont la classe ou la magie a disparu : un sort d'une magie supprimée chez un Potentiel
 Illimité, un don d'une classe supprimée sur une fiche qui n'a pas la classe, qui ne sont pas retirés), une colonne remplie a disparu du schéma (sauf
 une colonne que les règles retirent exprès, `COLONNES_RETIREES` de `fiche-format.mjs` : le `statut` des fiches, migration 0038, perdu sans bloquer), une
@@ -84,6 +109,8 @@ texte : `entrainementEnLignes`), et l'acquis saisi de `personnage_competence` (a
 calcule). Sur une base d'avant 0062 (reconstruction échouée), une fiche se lit avec des listes `entrainements` et `acquis_choix` vides et s'enregistre
 sans elles (une liste non vide est refusée), l'acquis d'avant à 0. Depuis la migration 0066 (décision R118), les NM du MJ de chaque sort
 (`personnage_sort.nm_cadeau`) deviennent ceux de la fiche, `personnage.nm_mj`, leur somme ; le NM de chaque sort ne change pas, rien n'est noté.
+Depuis la migration 0082 (décision R169), le livre d'un sort (`personnage_sort.nm_livre` = 1) devient une ligne de `personnage_livre_sort`, rangée
+dans l'ordre de la liste des sorts (comme la migration et `livresDesSorts`) ; le NM du sort ne change pas, rien n'est noté.
 Depuis la migration 0076 (refonte des maîtrises d'armes, décisions R148 à R153), `personnage_maitrise_arme` (les dés par famille) et l'arme choisie
 d'un choix d'acquis (`personnage_acquis_choix.arme_famille_id`, R119, retirée par R152) ne sont plus recopiées : **« Tout remettre à choisir »**
 (R153), aucun choix de maîtrise n'est posé (`personnage_maitrise_choix` reste vide ; les familles imposées par les classes et les dons comptent
@@ -139,7 +166,7 @@ d'avant les retraits et les conversions (les gains niveau par niveau compris).
 refaite en 0045 (sans `personnage_progression`, toute lecture de fiche échoue) et refuse de la reconstruire (`gains_sante` et `gains_chakra`,
 obligatoires, sont toujours remplis, même à 0). Il faut lui rendre l'archive faite à la reconstruction 0045 : la plus récente de `db/archives/` qui
 a encore la table `personnage_progression`, **copiée à part avant tout** (seules les `ARCHIVES_GARDEES` = 5 dernières sont gardées : au-delà,
-chaque reconstruction efface la plus ancienne ; l'installateur de test remplace le contenu de `db/`). **De même pour la migration 0055** : le service
+chaque reconstruction efface la plus ancienne). **De même pour la migration 0055** : le service
 d'avant ne relit pas une base refaite en 0055 (sans `personnage_armure`, toute lecture de fiche échoue) et refuse de la reconstruire (les colonnes
 `personnage.armure_*` remplies n'existent pas dans ses règles) ; l'archive à rendre est la plus récente qui a encore la table `personnage_armure`
 (sous 0045 aussi : celle qui a encore `personnage_progression`), et l'armure et la solidité des parties saisies depuis sont perdues avec le reste.
@@ -152,6 +179,148 @@ règles en attente (journal de l'édition). Sauvegarder d'abord la base en place
 **Sauvegarde** : `db/` est la seule donnée du serveur qui ne se reconstruit pas. La copier avec `sqlite3 db/vivante.db ".backup sauvegarde.db"`
 (cohérente même pendant une écriture), ou copier le dossier `db/` pendant que le conteneur « serveur » est arrêté. `data/rows` garde les tables de la section 13 **vides** : aucune
 fiche réelle dans git ni dans `/donnees/maverick.db` (le service refuse une base des règles qui en contient).
+
+### Changement de structure appliqué sur place
+
+Lot 7 du chantier « la base du site de dev devient la source de vérité » (R274, R275 ; plan : `docs/chantier-base-de-dev.md`). Code : `serveur/structure-sur-place.mjs` ;
+tests : `serveur-structure-sur-place`, `serveur-structure-sur-place-reconstruction`. **Sans le marqueur `db/source`** (« Base source (lot 8) », plus bas), rien ne migre la base
+vivante au démarrage, qui reste refaite depuis les règles puis rejouée depuis le journal (« Quand refait-on la base vivante ? ») : le module sert alors à deux choses seulement, l'**essai** (sur une
+copie) et la **note des migrations reçues** par une base refaite. **Avec lui**, le service migre sa vraie base sur place à son démarrage.
+
+- **Livré.** Chaque `data/migrations/NNNN-<nom>.sql` (les registres `.json` se joignent un à un) et `data/schema.sql` sont copiés dans `dist/_serveur/data/` (`livraison.mjs#fichiersDeStructure`, `FICHIERS_JOINTS`) :
+  ils comptent dans l'empreinte du code. `lireLesMigrations` rend pour chacune son numéro, son fichier, son SQL et le sha256 des octets du `.sql`. Dossier absent : `null`, sans erreur.
+- **Appliquer** (`appliquerSurPlace`, les garde-fous de `tools/db/maverick.py#migrer`). Les migrations de numéro > `PRAGMA user_version`, **d'un seul bloc** : les numéros se suivent un à un ; une migration qui porte `BEGIN`, `COMMIT`, `END`, `ROLLBACK`
+  ou `PRAGMA` est refusée ; la **sauvegarde** d'abord (`VACUUM INTO`, `structure-<instant>-v<version>.db` ; l'option `sauvegarde` est obligatoire, `false` pour un essai sur une copie) ; `foreign_keys` coupées pendant le bloc
+  puis rétablies, `PRAGMA foreign_key_check` vide après chaque migration ; `user_version` posé ; le schéma obtenu comparé à `schema.sql` (`comparerLesSchemas`, portage de `comparer_schemas` : tables, colonnes dans l'ordre, index, vues) ;
+  une ligne `migration_recue` en mode `sur_place` par migration (version du site notée si elle est X.Y.Z, sinon NULL). Au moindre écart : `ROLLBACK` complet et une `ErreurStructure` qui dit la migration, l'étape
+  (`suite`, `interdit`, `execution`, `cles_etrangeres`, `schema`, `schema_attendu`, `notes`, `sauvegarde`) et la raison.
+- **Essayer** (`essayerSurUneCopie`, `essayerEnArrierePlan` : un fil à part, un essai à la fois). Une copie `VACUUM INTO` de la base (ouverte en lecture seule), une seconde pour l'état d'avant ; l'application sur la première, sans sauvegarde ; le bilan ; les deux copies
+  **toujours effacées** (`purgerLesEssaisDeStructure` retire celles d'un service arrêté en plein essai, à l'ouverture du service ; l'appel de `essayerEnArrierePlan` avant une installation : « Essai avant installation », plus bas ; l'essai à chaque installation : « Essai dans l'ombre », plus bas). **La remise du bilan à la relecture est faite par la CI** : `scripts/controler-les-migrations.mjs` applique les migrations d'une PR à la base de sa version de départ, remplie, par `appliquerSurPlace` et `bilanDesTables`, et écrit le bilan par migration dans le résumé du job (`docs/flux-git.md`, « Règles des migrations (lot 7) »). Le bilan est un JSON : `verdict` (`accepte`, `refuse`, `a_jour`, `indisponible`), `versions`, `migrations`, `tables`
+  (`creees` et `retirees` avec leurs lignes, `renommees` { de, vers } — même contenu et mêmes colonnes sous un autre nom —, `modifiees` par table { `ajoutees`, `retirees`, `modifiees` comparées par clé primaire, `colonnes_ajoutees`,
+  `colonnes_retirees`, `structure_changee` }, `inchangees` : les tables d'empreinte identique, par `serveur/empreintes.mjs#empreinteDeLaTable`, fiches et journal compris), `objets` (index, vues, déclencheurs créés, retirés, modifiés), `totaux`.
+  Un refus rend `refuse` et `refus` { migration, etape, raison, details }. Les tables virtuelles (plein texte) n'y comptent pas : elles se recalculent.
+- **Migrations reçues par une base refaite** (`noterLesMigrationsRecues`, appelée par `preparerBaseVivante`, `VERSION_DE_LA_RECONSTRUCTION` inchangée : la production porte les fiches des joueurs, on ne refait pas la base pour noter une table). Après chaque reconstruction, chaque migration livrée de numéro <= `user_version` que `migration_recue` ne note pas encore y
+  entre en mode `reconstruction` (version du site X.Y.Z, sinon NULL). Une ligne déjà notée (`sur_place` comprise) n'est jamais réécrite ; si le fichier livré a changé depuis, l'écart est dit au journal du service. Une ligne dont le numéro dépasse la version
+  de la base refaite (retour à une version plus ancienne) est retirée. Migrations non livrées : rien n'est noté, sans erreur, et le journal le dit. Une erreur d'écriture de la table n'arrête pas la reconstruction : la base refaite est gardée, l'erreur va au journal et dans `migrations.erreur` du résultat (son affichage sur la page Debug viendra avec les PR suivantes du lot 7).
+  **Table vide** : une base qui n'a pas encore été refaite depuis cette migration n'a pas de lignes ; la table se remplit à la prochaine reconstruction naturelle (règles ou contenu changés). D'ici là, une table vide veut dire « migrations <= `user_version` présumées reçues ». `appliquerSurPlace` retire d'abord, dans son bloc, les lignes de numéro > `user_version`. Les lignes de `migration_recue` ne comptent pas pour décider d'archiver la base vivante.
+
+#### Base source (lot 8)
+
+Lot 8 du chantier (« Bascule 1 : la base du site de dev fait foi » ; garde-fous 5, 6 et 7 du plan). Code : `serveur/base-source.mjs`, `serveur/service.mjs`,
+`deploy/installateur/installateur.sh`, `deploy/installateur/bascule.sh`, `scripts/constat-de-bascule.mjs` ; tests : `serveur-base-source`, `installateur-base-source`, `bascule`,
+`bascule-constat`. **Rien ne pose le marqueur hors de `bascule.sh`**, que le propriétaire lance le jour de la bascule : sans lui, tout fonctionne comme avant.
+
+- **Le marqueur** est un **fichier**, `db/source`, dans le dossier de la base vivante (jamais un réglage ni une variable) ; son contenu est indicatif (`format=maverick-source/1`, `pose_le`,
+  `version`, `empreinte` du contenu de la base au constat, `sauvegarde` nommée). Le service le relit à chaque préparation de la base ; `bascule.sh` le pose, puis relance le service.
+- **Jamais refaite depuis les règles.** Avec le marqueur, ni le démarrage ni la surveillance du fichier des règles ne refont la base (journal : « base des règles changée : la base est la
+  source (db/source), elle n'est pas refaite ») : pas de rejeu du journal, pas d'`integrerLivrees`, pas d'archive de reconstruction, pas d'essai dans l'ombre (sans objet). **Base absente** :
+  le service **ne démarre pas** (`ATTENTION base source absente : <chemin>, la restaurer depuis une sauvegarde, jamais depuis le dépôt`, puis sortie de code 1 : `index.mjs`) ; retirée
+  pendant qu'il tourne, elle n'est pas recréée, `/api/etat` dit l'erreur et toute écriture répond 503.
+- **Structure, avant toute écriture** (`preparerBaseSource`). Les migrations livrées (`_serveur/data/`) de numéro > `user_version` sont **essayées sur une copie** (`essayerSurUneCopie`, copies
+  dans `db/essai-de-structure/`, toujours effacées), puis **appliquées sur place** (`appliquerSurPlace`, sauvegarde `structure-<instant>-v<version>.db` dans `db/archives/`, les 5 plus récentes
+  gardées) ; ensuite la structure, migrée ou non, est comparée au `schema.sql` livré, `user_version` comprise (`ecartsAvecLeSchema`). Migrations ou schéma non livrés, essai refusé, application
+  en échec (le `ROLLBACK` laisse la base telle qu'elle était) ou structure différente (une publication plus ancienne que la base, par exemple) : le service **ne démarre pas**, la raison au
+  journal (catégorie `base`, préfixe `ATTENTION`) et l'évènement `base_source` dans les métriques (`erreur` : l'étape `absente`, `non_livrees`, `essai`, `application`, `schema` ; le numéro de
+  migration ; jamais un texte). Réussie : `base_source` (`appliquees`, `avant`, `apres`, `sauvegarde`) et « structure : base source migrée sur place, version A → B ». Une base remplacée
+  pendant que le service tourne (une restauration) repasse par les mêmes contrôles ; refusée, elle reste fermée.
+- **`vivante.json`** garde `version` (celle du service), `schema`, `source: true` et `sur_place` : la dernière application (`le`, `avant`, `apres`, `migrations` [{ numero, fichier }],
+  `sauvegarde`, `essai_ms`, `duree_ms`). **`/api/etat`** : `base.source` (le marqueur présent ou non) et `base.sur_place` (`null` sans application). **`GET /api/debug/structure/`** ajoute
+  `base_source` : `{ source, sur_place }` (le format `maverick-essai-etat/1` ne change pas ; la page Debug l'affiche en tête du bloc « Structure de la base », menu DB : `lib/debug-structure.mjs#htmlDeLaBaseSource`).
+- **Mise à jour** : avec le marqueur, « Effectuer la mise à jour », la Simulation et « Copier vers le dépôt » figent un paquet (« Mise à jour depuis la base source (lot 8) »).
+- **Lots de changements** : avec le marqueur, `POST /api/edition/lots/` donne `ouvertHorsEdition: true` à `controlerLeLot` (`serveur/api.mjs#traiterLots`) : un lot vaut pour toutes les tables de
+  contenu, celles que le service d'édition ne sait pas écrire passant par la voie générique du journal ; `LOT_OUVERT_AUX_TABLES_HORS_EDITION` reste `false`, le défaut du module pur.
+- **Installateur** : avec `db/source`, `--copier-base-prod` est refusé, une publication plus ancienne que la `version=` de `VERSION` aussi (avant toute écriture) ; un refus de l'essai de la
+  structure arrête l'installation (« Essai avant installation »). Une instance sans `VERSION` lisible (une base restaurée avant la première installation) s'installe.
+- **Le jour J** (`bascule.sh`, livré par l'installateur de test à la racine de l'instance ; `deploy/installateur/README.md`) : `geler` (fichier `GELER` et service arrêté : l'annonce de
+  maintenance n'arrête pas les écritures), `constat` (dans le conteneur du service, `docker compose run` : `scripts/constat-de-bascule.mjs`, livré dans `_serveur/scripts/`, compare table de contenu
+  par table de contenu l'attestation de la production, la base vivante du site de dev et son fichier des règles ; hors compte : tables propres au site et calculées, pages d'exemple ; il ne sort
+  que des noms de tables et des comptes ; `EGALITE` ou la liste, code 0 ou 1), `sauvegarder` (copie `nuit` par `copie.sh`, gardée sous `<sauvegardes>/<instance>/nommees/bascule-1-<date>`,
+  envoyée par `envoi.sh` avec l'étiquette `nommees,bascule-1-<date>`, gardée sans limite), `poser` (refusé sans constat `EGALITE` de moins d'une heure fait pendant ce gel ni sauvegarde
+  nommée réussie depuis ; relance le service et lit `/api/etat` dans le conteneur), `retirer` (le marqueur est renommé `db/source-retire-<date>`, rien n'est effacé ; service relancé), `etat`,
+  `copies` et `restaurer` (plus bas).
+
+#### Restauration de la base du site de dev
+
+Code : `deploy/installateur/bascule.sh` (`copies`, `restaurer`) ; test : `bascule`. Les copies sont celles des sauvegardes automatiques (« Sauvegardes automatiques ») ; restic n'est appelé que
+pour une copie extérieure, avec les accès de l'envoi (`/etc/maverick-sauvegardes`, jamais en argument). Trois temps :
+
+1. **Remettre la copie** : `restaurer --copie <type>/<nom>|derniere` (locale) ou `--exterieure <id>|latest` (restic, étiquette `inst-dev`, rendue dans `<sauvegardes>/.restauration.*`, effacé
+   ensuite ; refusée, avant toute écriture, si ce n'est pas une copie du site de dev : chemin `…/dev/<type>/<nom>` et `INSTANCE=dev` dans son `copie.meta`). Sous le verrou des sauvegardes (aucune copie pendant ce temps). La copie est contrôlée avant tout geste (`PRAGMA integrity_check`, et chaque table de `vivante.db` compte les
+   lignes notées dans son `comptes.tsv`) ; refusée, rien n'est touché. Puis `GELER` (s'il manque), service arrêté, `vivante.db` (et ses `-journal`, `-wal`, `-shm`) et `vivante.json` renommés dans
+   `<dev>/var/avant-restauration-<date>/` (même disque, rien n'est effacé), la copie posée d'un coup (fichier provisoire, puis renommé), le service relancé, `GELER` retiré s'il l'a posé, et
+   `/api/etat` lu dans le conteneur. `db/source` n'est pas touché : avec lui, le service essaie puis applique sur place les migrations livrées que la copie n'a pas (« Base source (lot 8) ») ;
+   s'il les refuse, il ne démarre pas, la base d'avant reste dans `var/`.
+2. **La remonter au dernier paquet livré.** Le report se refait seul : `serveur/paquet.mjs#actualiser` (à chaque `GET /api/mise-a-jour/`, et par la minuterie tant que le dernier lancement a
+   moins de 4 h) reporte la note de tout paquet de `db/mise-a-jour/` dont la base n'a pas la note et que la production publie (`noteLivree`). Conditions : le fichier du paquet est encore là
+   (les 3 plus récents sont gardés, et tout paquet de mise à jour non reporté dans la base où se fait la purge) ; la production publie la note de ce lot. **Limite** : le report n'apporte que
+   la note, l'historique et l'état `integree` des modifications ; il ne remet pas le contenu. Un paquet figé **après** la copie a livré à la production un contenu que la base restaurée n'a
+   pas : `restaurer` le signale (« ATTENTION le paquet … a été figé après cette copie », d'après la date du fichier), et `reporterPaquet` **refuse** alors le report (rien n'est écrit ;
+   « ERREUR mise à jour : report de la note… » au journal et `erreur_report` dans le lancement, retenté à chaque suivi) : un lot que le paquet a versé dans l'historique n'est ni dans
+   le journal (`modification_lot`) ni dans l'historique de la base. Critère sûr (chaque lot versé venait du journal de la base source) et d'une requête par lot ; des empreintes de
+   tables ne conviendraient pas, la base ayant pu changer depuis le paquet. Le contenu du paquet est alors à refaire sur le site de dev, sa note disant quoi.
+3. **Rejouer les lots écrits depuis** : rien ne le fait. Les modifications et lots de changements écrits après la copie ne sont que dans la base gardée à part (`var/avant-restauration-*`),
+   si elle se lit encore ; la copie horaire (prise chaque heure où la base a changé) borne la perte à une heure d'écritures, la copie extérieure de nuit à une journée. Les numéros donnés
+   depuis la copie (`numero_donne`) peuvent être redonnés par la base restaurée.
+
+#### Répétition de la mise à jour de la production
+
+Code : `deploy/installateur/repetition-prod.sh` (posé par l'installateur de test à la racine de l'instance, comme `bascule.sh`), `scripts/repetition-prod.mjs` (livré dans `_serveur/scripts/`) ;
+test : `repetition-prod`. Avant la dernière mise à jour par l'ancien circuit (lot 8), il joue sur une **copie** ce que le service de la production fera de sa base en recevant le contenu du
+site de dev, autant de fois qu'on veut, sans jamais toucher à la production.
+
+- **La copie** : la base vivante de la production lue en lecture seule (`sqlite3 .backup`, comme `copie.sh`) ou, avec `--depuis-la-sauvegarde`, sa dernière copie locale ; avec sa `vivante.json`.
+  Dossier de travail `<dev>/var/repetition-prod.*` (700), refusé sans la place de 4 fois la base de la production plus celle du site de dev plus 64 Mio ; effacé à la fin (`--garder` le garde).
+- **Dans un conteneur du code du site de dev** (`docker compose run --rm --no-deps -T` du service `serveur` de son instance, dossier de travail monté sur `/repetition`) : le contenu à venir est
+  l'extrait de la base du site de dev (`serveur/extrait.mjs#fabriquerExtrait` : tables de contenu, modifications en attente versées dans l'historique) ; puis `preparerBaseVivante` en mode
+  production (sans essai dans l'ombre) sur la copie. Écarts avec le vrai fichier des règles : les tables calculées (liens, recherche) sont celles de la base du site de dev, et la vue
+  `extrait_meta` s'y ajoute ; aucun n'entre dans le contrôle des fiches.
+- **Rapport, des comptes seulement** (une valeur citée par un problème est masquée : `« … »`) : `PASSERA` (code 0) ou `REFUSEE` (code 1 : la production garderait sa base, son nouveau service
+  tournerait sur elle ; les problèmes par table et colonne, avec leur nombre de lignes) ; schémas avant et après ; fiches avant et après ; lignes des tables de fiches qui changent ; fiches
+  adaptées par nature (`ORDRE_DES_NATURES` : fiches et éléments, d'après l'évènement `retraits_fiches` de `preparerBaseVivante`, qui porte `natures`) ; contrôle de la base refaite (intégrité,
+  clés rompues des fiches et du contenu) ; taille de l'archive ; tables en « chute anormale » pour la copie horaire suivante (seuils `CHUTE_POURCENT` et `CHUTE_MIN_LIGNES` des sauvegardes :
+  la copie sera mise de côté jusqu'à `copie.sh accepter prod`) ; durées et place. Code 2 : répétition impossible.
+
+#### Essai avant installation
+
+Avant de remplacer le site, l'installateur fait essayer les migrations qu'il livre **par le service en place**, sur une copie de la vraie base : un seul programme touche la base à la fois, et ce n'est jamais l'installateur. Code : `serveur/essai-de-structure.mjs` (service),
+`deploy/installateur/installateur.sh` (`essayer_la_structure`) ; tests : `serveur-essai-de-structure`, `installateur-essai-de-structure`. Les deux instances le font, la production comprise ; aucun geste du propriétaire, `docker-compose.yml` ne change (la demande passe par `db/`, déjà monté dans le conteneur).
+
+- **Protocole** (tout sous `db/essai-de-structure/` de l'instance ; l'installateur n'y touche qu'à sa propre demande, et nulle part ailleurs dans `db/`).
+  - L'installateur pose `demande-<version>-<pid>/` **d'un coup** (dossier provisoire `.depot-<pid>`, puis `mv`) : `demande.json` (`{ format: 'maverick-essai-demande/1', version, tag, deposee_le }`), `migrations/*.sql` et `schema.sql` **de la livraison** (extraits dans son dossier de travail, pas encore posés dans `site/`).
+  - Le service accuse : `accuse.json` (`{ format: 'maverick-essai-accuse/1', recu_le, rang }`) dès qu'il voit la demande, même si un autre essai tourne (un seul à la fois, dans l'ordre des noms). L'installateur sait alors qu'un service lui répond.
+  - Puis il essaie, avec **les migrations et le `schema.sql` de la demande** (pas les siens), sur une copie de sa base vivante (`VACUUM INTO`, base ouverte en lecture seule ; `essayerEnArrierePlan`), et écrit `resultat.json` dans le dossier de la demande : le bilan `maverick-structure/1` (`verdict` : `accepte`, `refuse`, `a_jour`, `indisponible`) plus `demande` { nom, version, deposee_le }, `essaye_le`, `instance` (`prod` ou `dev`) et `resume` (une phrase, jamais un nom de fiche). Chaque fichier est écrit d'un coup (fichier provisoire, puis renommé). Le JSON est indenté de deux espaces, `verdict` et `resume` au premier niveau : le shell de l'installateur les lit avec `sed`, sans JSON.
+  - Le même résultat est gardé dans `db/essai-de-structure/dernier.json`, journalisé (catégorie `base`, « structure : essai de la livraison … » ; niveau `avertissement` pour un refus ou un essai indisponible) et noté dans les métriques (évènement `structure_essai` : verdict, version, nombre de migrations ; jamais le texte du refus).
+  - Les copies d'un essai (`structure-essai-*.db`, dans ce même dossier) sont **toujours effacées** : à la fin de l'essai, même en échec, et à l'ouverture du service. Sans la place de deux copies plus une marge (3 × la base + 64 Mio), l'essai n'est pas lancé : `indisponible`, raison dite. Une demande abandonnée (un installateur tué) est retirée au bout d'une heure, à l'ouverture et à chaque passage ; seuls les noms `demande-…` et `.depot-<pid>` peuvent être retirés, jamais un autre fichier ni dossier. Si le fil de l'essai meurt, le service efface aussitôt les copies qu'il a laissées (un seul essai tourne à la fois).
+- **Ce que fait l'installateur** (avant la synchronisation du site ; jamais pour une première installation — pas de `VERSION` ni de `db/vivante.db` —, ni avec `--copier-base-prod`). Il attend `accuse.json` au plus `MAVERICK_ESSAI_ACCUSE_S` (20 s) puis `resultat.json` jusqu'à `MAVERICK_ESSAI_DELAI_S` (120 s, compté depuis le dépôt), en regardant chaque seconde. Il écrit le verdict dans `installation.log`, retire sa demande, et :
+  - **pas de réponse** (service arrêté, version du service sans cet essai : aucun accusé), délai dépassé, réponse illisible, `indisponible`, `a_jour` : noté, **l'installation continue** ;
+  - **refus** : noté (`ATTENTION essai de la structure REFUSÉ…`), l'installation continue, **sauf si `db/source` existe** : il s'arrête alors avant d'avoir rien installé (code 1, `site/` et `VERSION` intacts). `db/source` est le marqueur du lot 8 (garde-fou 6 du plan : la base de l'instance est la source de vérité ; « Base source (lot 8) », plus haut) : seul `bascule.sh` le pose, le jour de la bascule ; avant, ce refus n'est jamais déclenché.
+  - Le dossier `essai-de-structure/` ne compte pas pour un `db/` rempli (`--copier-base-prod` reste permise dans un `db/` qui n'a que lui et `metriques/`) et n'est jamais copié de la production.
+- **Surveillance.** Un `readdir` de `db/essai-de-structure/` toutes les 3 s (`INTERVALLE_DES_DEMANDES_MS`, au plus l'intervalle de la surveillance des fichiers ; dossier absent : rien d'autre à faire), sans `fs.watch` (un dossier monté depuis l'hôte n'en garantit pas les évènements). Le travail lourd tourne dans un fil à part, un essai à la fois : sur la base de développement du dépôt (25 Mio), un essai prend environ 0,7 s de CPU et 50 Mio de disque le temps de l'essai, une fois par installation. Une demande déjà répondue (`resultat.json`) n'est jamais refaite après un redémarrage. La base vivante n'est pas en WAL : pendant le `VACUUM INTO` de l'essai, une écriture du service attend la fin de la copie (quelques dizaines de millisecondes pour la taille actuelle, 31 Mio ; le même verrou que la sauvegarde horaire `.backup`). Au-delà de `busy_timeout` (5 s, vers 3 Gio), l'écriture échouerait.
+- **Page Debug.** `GET /api/debug/structure/` (site de dev, classe `lecture`, `Cache-Control: no-store`) : `{ format: 'maverick-essai-etat/1', en_cours: { demande, version, depuis } | null, en_attente, dernier, ombre }` (`ombre` : l'essai dans l'ombre, « Essai dans l'ombre » plus bas) ; `dernier` est le contenu de `dernier.json` (`null` tant qu'aucun essai n'a eu lieu, relu du disque : il survit à un redémarrage). Le format est stable : l'affichage de la page s'appuie sur lui.
+
+#### Essai dans l'ombre
+
+Quatrième PR du lot 7. Le circuit **ne change pas** : la base du site de dev est toujours refaite depuis les règles, puis le journal est rejoué (« Quand refait-on la base vivante ? »). À chaque **installation**, le service prouve en plus, sur les vraies données du site de dev, que **migrer la base sur place donnerait la bonne base** : c'est ce que le lot 8 mettra en service. Code : `serveur/essai-dans-l-ombre.mjs` ; tests : `serveur-essai-dans-l-ombre`. Aucun geste du propriétaire, `docker-compose.yml` ne change.
+
+- **Quand.** Site de dev seulement (`edition` : la production n'en fait jamais, et sa `vivante.json` reste telle qu'avant). Quand `preparerBaseVivante` **refait une base qui existait** ET que le site ou la base a changé de version (`uneInstallation` : la `version` de `vivante.json` n'est pas celle du service qui démarre, ou son `schema` n'est pas la `user_version` de la base refaite) : une installation, jamais une simple relance (mêmes versions, règles ou contenu changés) ni une première création. Une version « inconnue » ne permet pas de conclure.
+- **Les deux copies.** Juste avant que la base refaite remplace l'ancienne (tout est synchrone : aucune écriture ne passe entre les deux), `preparerBaseVivante` donne la main à `ombre.preparer` : la base d'**avant** (`VACUUM INTO`, base ouverte en lecture seule) et la base **refaite** (copie du fichier neuf, fermé) vont dans `db/essai-de-structure/` (`structure-essai-<pid>-<uuid>-ombre-avant.db` et `-ombre-apres.db`). Même contrôle de place que l'essai avant installation (3 × la base + 64 Mio) : sans elle, rien n'est copié, l'essai est `indisponible`. Coût au démarrage, base du dépôt (30 Mio) : environ 0,1 s, une fois par installation.
+- **L'essai** (`comparerDansLOmbre`, un fil à part lancé **après l'ouverture du service**, jamais pendant son démarrage ; **un seul à la fois**, dans la même file que l'essai avant installation : `executerEnArrierePlan`). Les migrations livrées (`_serveur/data/`) sont appliquées **en place** à la copie d'avant (`appliquerSurPlace`, sans sauvegarde) : c'est la base « migrée sur place ». La base refaite n'est ouverte qu'en lecture seule. Comparaison de **structure** (`comparerLesSchemas`, plus la `user_version`), puis **table par table** (`bilanDesTables` : l'empreinte de `serveur/empreintes.mjs`, puis les lignes `ajoutees` (la base refaite en a plus), `retirees` (elle en a moins) et `modifiees` par clé primaire). Les copies sont **toujours effacées** (fin de l'essai, même en échec ; ouverture du service ; `purgerLesEssaisDeStructure` ; une purge d'un essai avant installation raté les laisse à leur essai). **Rien n'est écrit dans la vraie base** : l'essai ne la connaît pas, il ne voit que ses copies. Un essai qui échoue (fil mort, panne, disque) n'arrête ni le site ni l'installation : il rend `indisponible`, dit sur la page Debug. Coût, base du dépôt : environ 0,7 s de CPU dans le fil, 60 Mio de disque le temps de l'essai, une fois par installation.
+- **Les empreintes des règles d'avant.** Avec l'essai, `vivante.json` garde `tables_regles` : l'empreinte (16 premiers caractères) de chaque table de **contenu** des règles dont la base est faite, calculée à la reconstruction **avant** le rejeu du journal (`empreinteLogique` la rend déjà : aucun calcul de plus). Le rapport compare celles d'avant à celles de la livraison. À la **première installation** qui suit ce changement, `vivante.json` ne les a pas : la catégorie vaut `inconnu`, et le rapport le dit (`regles_d_avant: 'inconnues'`).
+- **Rapport** (`ombre.json`, écrit d'un coup ; format `maverick-ombre/1`) : `verdict`, `resume` (une phrase, jamais un nom de fiche ni une valeur), `fait_le`, `instance`, `version` { avant, apres } (du site), `schema` { avant, apres } (de `vivante.json`), `versions` { avant (la base d'avant), migree, refaite } (`user_version`), `migrations` [{ numero, fichier }] (celles appliquées), `regles_d_avant` (`connues` ou `inconnues`), `structure` { identique, ecarts (au plus 20 phrases) }, `tables` (les seules tables qui **diffèrent**, les plus graves d'abord : `table`, `classe`, `categorie`, `gravite`, `ajoutees`, `retirees`, `modifiees`, `raison`), `chiffres` { `tables_comparees`, `tables_identiques`, `tables_differentes`, `par_categorie` { <catégorie> : { tables, ajoutees, retirees, modifiees } } }, `duree_ms` ; `refuse` ajoute `refus` { migration, fichier, etape, raison, details } et `retour_arriere` ; `indisponible` ajoute `raison`.
+- **Catégories d'une table qui diffère** (d'après `lib/tables-de-la-base.mjs`, jamais d'après son nom) :
+
+| Catégorie | `gravite` | Sens |
+| --- | --- | --- |
+| `structure` | `grave` | colonnes (ou leur ordre) différentes, table présente d'un côté seulement ou renommée |
+| `propre_au_site` | `grave` | fiches, comptes, groupes, journal, brouillon de la note : la migration sur place doit les garder tels quels |
+| `inattendu` | `grave` | table de contenu dont les règles n'ont **pas** changé et qui diffère pourtant, ou table que le classement ne connaît pas |
+| `livre_par_le_depot` | `attendu` | table de contenu dont les règles ont changé dans la livraison : le contenu arrive par le dépôt, ce que le lot 8 supprimera |
+| `inconnu` | `attendu` | table de contenu, faute d'empreintes d'avant : on ne sait pas si le dépôt l'a changée |
+| `calculee` | `ignore` | table calculée par le build (liens, recherche plein texte) : comptée, jamais jugée |
+| `ignoree` | `ignore` | `migration_recue`, dont le mode diffère par construction (`reconstruction` contre `sur_place`) |
+
+- **Verdicts.** `identique` : aucune différence (les tables `ignoree` ne comptent pas). `attendu` : seulement des `livre_par_le_depot`, `inconnu` ou `calculee` ; tant que le contenu arrive par le dépôt (jusqu'au lot 8), c'est le meilleur résultat d'une livraison qui change des règles. `ecart` : un écart de schéma (ou de `user_version`), une table `structure`, `propre_au_site` ou `inattendu` : la migration sur place ne donne pas la base que le circuit refait. `refuse` : l'application sur place a été refusée (garde-fous d'`appliquerSurPlace` : migration, étape, raison). `indisponible` : pas de base d'avant, pas de place, migrations ou `schema.sql` non livrés, panne du fil. Limite : une table que le dépôt a changée **et** qu'une migration a réécrite est rangée `livre_par_le_depot` : l'essai ne sépare pas les deux.
+- **Journal, métriques, Debug.** Journal (catégorie `base`, « structure : essai dans l'ombre de la livraison … » ; niveau `avertissement`, préfixe `ATTENTION`, pour `ecart`, `refuse` et `indisponible`) ; évènement `structure_ombre` (verdict, version, migrations, étape d'un refus, nombres de tables ; jamais un texte). `GET /api/debug/structure/` ajoute `ombre` : `{ en_cours: { version, depuis, etat: 'en_attente' | 'en_cours' } | null, dernier: <ombre.json> | null }` (`null` partout sans l'essai : la production ne répond pas à cette route). Le format `maverick-essai-etat/1` ne change pas, le champ s'ajoute.
 
 ## L'API
 
@@ -172,14 +341,26 @@ Les adresses finissent par « / », comme celles du site : en développement, As
 service (qui accepte les deux formes).
 
 **Une fiche en JSON** (`fiche-format.mjs`) : les colonnes de `personnage` à la racine, sous leur nom ; une liste par table de détail
-(`classes`, `caracteristiques`, `competences`, `entrainements`, `acquis_choix`, `resistance_choix`, `metier_bonus`, `capacites`, `sorts`, `maitrise_choix`, `armes`,
-`armure_parties`, `accessoires`, `inventaire`, `ceinture`), chaque ligne avec les colonnes de sa table sans `personnage_id` ; et `version`. Une page restée ouverte qui envoie encore
+(`classes`, `caracteristiques`, `competences`, `entrainements`, `acquis_choix`, `resistance_choix`, `metier_bonus`, `capacites`, `dons_obtenus`, `sorts`, `livres_sorts`, `maitrise_choix`, `armes`,
+`armure_parties`, `accessoires`, `inventaire`, `ceinture`, `actions_usage`), chaque ligne avec les colonnes de sa table sans `personnage_id` ; et `version`.
+`specialisations_magie` (`[{ magie_id, specialisation_id }]`, décision R236, migration 0118) : la spécialisation magique choisie pour chaque magie de la fiche ; une
+seule par magie (`400` « une seule spécialisation par magie de la fiche »), de cette magie (clé étrangère composée : `400` « n’existe pas dans les règles » sinon) ;
+une ligne = un choix fait, aucune ligne = choix en attente ; celle d'un mono-magie ou d'un Potentiel Illimité s'enregistre, sans effet. Les contrôles
+`sort_hors_specialisation` et `specialisation_hors_magie` du bi-magie sont ceux de `v_personnage_controle`.
+`dons_obtenus` (`[{ source, entree_id }]`, décision R181, migration 0088) : l'entrée du tableau du Mage Bleu (`classe_annexe_entree`) qu'obtient chaque
+don « Variable » (`source`) ; un choix par don (`400` « un don « Variable » n’obtient qu’une entrée ») et une entrée une seule fois par fiche (`400`
+« … chaque entrée ne se prend qu’une fois (décision R181) ») ; une entrée hors de la liste du don, ou d'un don qui n'est plus acquis, s'enregistre et
+est signalée (`v_personnage_controle`). Une page restée ouverte qui envoie encore
 `bouclier_materiaux` (avant la migration 0060) voit sa liste convertie en matière du bouclier, les autres matériaux notés (avec les nouvelles clés du
 bouclier : `409`) ; des accessoires avec un nom, un effet hors table ou un emplacement Ceinture ou Autre sont convertis de même (`sansPartiesRetirees`) ;
 un texte `entrainement` (avant la migration 0062) devient des lignes de texte de `entrainements` (une par ligne du texte ; avec des lignes déjà là :
 `409`) et l'`acquis` d'une compétence n'est plus repris, noté, daté, dans les notes (décision R104 : l'Acquis se calcule) ; des `sorts[].nm_cadeau`
 (avant la migration 0066) donnent leur somme à `nm_mj` (décision R118 : les NM du MJ valent pour toute la fiche ; avec `nm_mj` et un `nm_cadeau`
-positif : `409`, `nmDuMjAvecCadeaux`) ; une liste `maitrises_armes` (les dés par famille, avant la migration 0076) et l'`arme_famille_id` d'un choix
+positif : `409`, `nmDuMjAvecCadeaux`) ; des `sorts[].nm_livre` (avant la migration 0082) donnent les livres de la fiche, `livres_sorts`
+(`[{ sort_id, rang }]`, un par sort à 1, dans l'ordre de la liste : décision R169, `livresDesSorts` ; avec `livres_sorts` et un `nm_livre` à 1 :
+`409`, `livresAvecLivresDesSorts`) ; le `niveau_maitrise` d'un sort reste son NM, toutes origines comprises. Un livre se note sur n'importe quel sort,
+choisi ou non (R169 : sur un sort non choisi, il est en attente, son NM n'est pas utilisé) ; un par sort (R26 : `400` « en double (sort_id) ») ;
+une liste `maitrises_armes` (les dés par famille, avant la migration 0076) et l'`arme_famille_id` d'un choix
 d'acquis sont retirées et notées en une ligne datée (R153, comme la base vivante ; aucun choix posé), et, envoyées avec `maitrise_choix` (une page
 d'avant qui a repris une réponse), refusées : `409`, `maitrisesAvecChoix`. L'armure (décision R165) : la fiche enregistrée (l'envoi, avec les
 colonnes qu'il ne change pas) qui porte une armure **et** une armure élémentaire (l'« élément » d'une page d'avant) est **convertie** comme à la
@@ -216,7 +397,7 @@ colonne de sa ligne (`armes[].durabilite`, R74) ; l'entraînement, des lignes (u
 - **Refus** (`400`, rien n'est écrit) : `{ erreur, problemes: [...] }`, un message par problème, en français (« caracteristiques[0] : valeur
   hors des bornes (base >= 1) », « « race_id » : « races/x » n'existe pas dans les règles (race) », champ inconnu…). Une colonne que les règles ont
   retirée (`COLONNES_RETIREES` de `fiche-format.mjs` : `statut`, migration 0038 ; `entrainement` et `competences[].acquis`, 0062 ; `sorts[].nm_cadeau`,
-  0066 ; `acquis_choix[].arme_famille_id`, 0076 ; `armes[].amelioration_elementaire_id`, 0081 ; convertis plus haut)
+  0066 ; `acquis_choix[].arme_famille_id`, 0076 ; `armes[].amelioration_elementaire_id`, 0081 ; `sorts[].nm_livre`, 0082 ; convertis plus haut)
 n'est pas un champ inconnu : elle est ignorée (fichier exporté avant).
   La clé d'une table retirée non plus (`TABLES_RETIREES`, `sansPartiesRetirees`) : une `progression` reçue (page restée ouverte, fichier d'avant la
   migration 0045) devient `gains_sante` et `gains_chakra` quand la fiche ne les porte pas. Avec eux, une `progression` vide est jetée sans rien
@@ -232,11 +413,15 @@ n'est pas un champ inconnu : elle est ignorée (fichier exporté avant).
   valeur (des gains, une solidité saisis) est **refusée**, « champ inconnu » (`400`) : rien n'est écrit, rien n'est perdu sans
   le dire. De même pour les colonnes des migrations 0055 (l'armure), 0060 (le bouclier : `bouclier_materiau_id`, `bouclier_amelioration_id`,
   `bouclier_solidite`), 0061 (`symbiose_magie_id`, la magie de la posture Symbiose) et 0066 (`nm_mj`, les NM du MJ : à 0 ignoré, une autre valeur
-  refusée ; la page convertissant elle-même les `nm_cadeau` lus en `nm_mj`, une fiche qui a des NM du MJ ne s'enregistre pas sur cette base) ; sur une
+  refusée ; la page convertissant elle-même les `nm_cadeau` lus en `nm_mj`, une fiche qui a des NM du MJ ne s'enregistre pas sur cette base), 0084
+  (`mode_hyper`, `mode_hyper_100`, `mode_hyper_semaine`, le Mode Hyper activable, R172 : décochés et compteur au maximum ignorés, un autre état refusé),
+  0086 (`prepare_hyper`, `prepare_cent` de `personnage_sort`, un sort préparé en Mode Hyper ou au Mode Hyper 100 %, R172 : à 0 ignorés, à 1 refusés) et
+  0089 (`prepare_critique` de `personnage_sort`, la réussite critique figée du sort préparé, R182 : vide ignorée, notée refusée) ; sur une
   base d'avant 0060, la page convertit elle-même la fiche lue (accessoires d'avant, matériaux du bouclier) et note, datés, ce qu'elle perd. Une table de la fiche que la base n'a pas encore
   (`personnage_armure_partie`, 0055 ; `personnage_entrainement` et `personnage_acquis_choix`, 0062 ; `personnage_resistance_choix`, 0069, la
   résistance au choix du Drakos orange, liste `resistance_choix` ; `personnage_maitrise_choix`, 0076, liste `maitrise_choix`, les anciens dés laissés
-  intacts pour la reconstruction suivante) se lit vide, et une liste non vide pour elle est
+  intacts pour la reconstruction suivante ; `personnage_livre_sort`, 0082, liste `livres_sorts` : un livre ne s'enregistre pas sur cette base ; `personnage_action_usage`, 0085, liste
+  `actions_usage` ; `personnage_don_obtenu`, 0088, liste `dons_obtenus` ; `personnage_specialisation_magie`, 0118, liste `specialisations_magie`, la spécialisation magique choisie par magie, R236) se lit vide, et une liste non vide pour elle est
   refusée (« pas encore dans cette base, ses lignes seraient perdues ») ; une colonne retirée qu'une base d'avant exige encore (`statut`,
   `competences[].acquis`) y prend sa valeur de départ.
 - **Contrôles** : les règles de `v_personnage_controle` enfreintes sont rendues avec chaque fiche ; toute fiche est contrôlée, même inachevée, et
@@ -265,36 +450,57 @@ toutes les modifications de la page **d'un bloc** puis repasse en lecture ; déc
 
 | Pages | Champs, et ce que la base recalcule |
 | --- | --- |
-| Guide | Titre et texte : éditeur en place (paragraphes, titres, citations, listes, gras, italique, barré, liens vers une page du wiki ou une adresse, tableaux, lignes, colonnes et couleur des cases), réécrit en Markdown (`lib/markdown-edition.mjs`) ; les blocs tirés de la base restent à leur place ; un ancien titre devient un alias ; un texte qui ajoute du HTML brut ou un lien non sûr (autre que http(s), mailto ou une adresse du site) est refusé, par le service puis par la mise à jour (lot reçu, puis corps des pages et texte des blocs de la chronologie et des panneaux de règles après le rejeu : `lib/markdown-sur.mjs`, `scripts/mise-a-jour-regles.mjs#texteNonSurApresLeRejeu`) et par le rapatriement (`npm run db:appliquer-edition`, après son rejeu : rien n'est écrit) |
-| Races | Chaque case de l'onglet (présentation, histoire, valeurs de départ, avantages, dons et leur tableau, capacité Mode Hyper…), magies innées, relations entre peuples (déplacer ou ajouter une race ou une ethnie dans le tableau d'une race) ; créer une race (pure ou hybride) ou un peuple |
-| Magies | Présentation, description, explication, rôles, Mode Hyper ; chaque case de chaque sort (type, mode, NM et états recalculés : `lib/sort-analyse.mjs` ; une ligne peut avoir un effet de NM dans plusieurs colonnes). La table des relations entre magies ne se modifie pas |
+| Guide | Titre, résumé (une ligne, obligatoire ; pas celui d'une page du Codex : `400`) et texte : éditeur en place (paragraphes, titres, citations, listes, gras, italique, barré, liens vers une page du wiki ou une adresse, tableaux, lignes, colonnes et couleur des cases), réécrit en Markdown (`lib/markdown-edition.mjs`) ; les blocs tirés de la base restent à leur place ; un ancien titre devient un alias ; un texte qui ajoute du HTML brut ou un lien non sûr (autre que http(s), mailto ou une adresse du site) est refusé, par le service puis par la mise à jour (lot reçu, puis corps des pages et texte des blocs de la chronologie et des panneaux de règles après le rejeu : `lib/markdown-sur.mjs`, `scripts/mise-a-jour-regles.mjs#texteNonSurApresLeRejeu`) et par le rapatriement (`npm run db:appliquer-edition`, après son rejeu : rien n'est écrit) ; un texte qui retire, renomme ou double une ancre figée d'intertitre (`## Texte {#ancre}`, `docs/content-guide.md`, « Ancres figées des intertitres ») est refusé (`400` qui nomme l'ancre ; tout texte Markdown de `TABLES`, `/api/v1/` et résolution d'un conflit compris : `serveur/edition.mjs#modifier`, `lib/ancres-figees.mjs#raisonDesAncresRompues`), une ancre ajoutée ou l'intertitre renommé qui garde la sienne passent |
+| Races | Chaque case de l'onglet (présentation, histoire, valeurs de départ, avantages, dons et leur tableau, capacité Mode Hyper…), magies innées (une liste vide est refusée, `400` « Magies innées : une race a au moins une magie innée possible. » : décision R210 ; rien ne change, ni la liste de l'onglet ni la matrice ; la création d'une race n'est pas visée), relations entre peuples (déplacer ou ajouter une race ou une ethnie dans le tableau d'une race) ; créer une race (pure ou hybride ; en fin de la liste des races : `race.rang_liste` = le plus grand + 1, migration `0092`) ou un peuple ; l'ordre de la liste des races (ligne suivante) |
+| Plan des Règles et liste des races | Lot de l'édition des menus (« changer l'ordre des menu latéraux (par un glisser déposer) », « ajouter / supprimer une page » ; réponses « Règles + Races », « Oui, par une liste », « Pages des Règles », « Titre, onglet, résumé », « Refus si citée, puis 404 » ; `serveur/edition-plan.mjs`). **Ordre d'un menu** : l'opération `ordonner` `{ onglet, ids }` (tous les identifiants des entrées du menu d'un onglet des Règles, pages, liens et entrées « bientôt », dans le nouvel ordre ; une autre liste : `409` avec `attendus`, la liste de la base) ou `{ races: 'pures' \| 'hybrides', ids }` (tous les identifiants d'un groupe de la liste des races, `lib/races-db.mjs#racesParNature` : la règle des hybrides de `race-kinds.mjs`) ; les rangs qu'occupait la liste sont redonnés dans le nouvel ordre (une race sans rang en reçoit un après tous), seules les lignes qui changent de rang sont écrites et notées. **Onglet d'une page** : `modifier` de `regles_onglet_entree.onglet_id` ; la page passe en fin du menu cible (son `rang` recalculé) ; refusé avant écriture pour la page d'ouverture d'un onglet (`409` : l'ouverture et l'ordre des onglets sont fixes, réponse « Non, fixe »), un lien ou une entrée « bientôt » (`400`). **Créer une page des Règles** : entité `page_des_regles` (table `page`) — `titre`, `onglet_id` (liste `onglets`), `resume` obligatoires, `bientot` facultatif ; adresse `/regles/<normalize(titre)>/`, figée ; un titre qui est déjà le nom d'une page (titre, slug, alias : `cle_page`) : `409` ; un identifiant déjà employé (page, journal, historique, `PAGES_SUPPRIMEES`, `PAGES_ABSORBEES`, `PAGES_RETIREES`, `NOMS_RESERVES`, id d'onglet) : suffixe `-2`, `-3`… ; corps « À compléter. », statut `draft`, famille `docs`, source « Site de dev › édition du … » (`FAMILLE_DES_PAGES_DU_SITE.guide`, comme `tools/db/pages_md.py`) ; son entrée en fin du menu de l'onglet, ou, avec `bientot` (l'id d'une entrée « bientôt » de cet onglet, dont le libellé est le titre), à sa place : l'entrée « bientôt » supprimée et la page insérée au même rang, dans le même lot. **Supprimer une page des Règles** (`supprimer` de `page_des_regles`, après confirmation) : refus avant toute écriture — `404` inconnue, `400` hors des quatre onglets (Découvrir, Guide du MJ…), `409` protégée (`details.raisons`, `lib/pages-protegees.mjs#raisonsDeProtection`, la seule source : clé étrangère sans cascade vers `page`, famille autre que `docs`, ouverture d'onglet, page nommée par `lib/livres.mjs` — création du personnage, « Par où commencer ? », page qui en absorbe une, rubriques sous la page ; pas la cible d'un renvoi d'une ancienne adresse, qui mène alors à la 404 (R185, P6) —, `PAGES_LUES_PAR_LE_CODE`, bloc `<!-- guide:… -->`), `409` citée (`details.citations`, `lib/citations-db.mjs` : `[[…]]` des textes de la base, liens écrits `/regles/<slug>/` et `guide/<slug>`, légende d'un bloc de la chronologie, balise d'un mot-clé qui mène à la page et ce mot-clé, migration `0098` ; pas la table `lien`, périmée sur le site de dev ; une page d'exemple ne bloque pas), `409` quand un mot-clé verrouillé y mène (décision R221 : son adresse ne se vide pas, `details.mots_cles_verrouilles`) ; puis son entrée de menu, puis la page (`supprimerPage`, qui refuse elle aussi une page `guide/…` protégée) ; son adresse donne la 404. Une contrainte vérifiée au `COMMIT` (la clé différée de la page d'ouverture) : `422`. La page lit le plan vivant par `GET /api/edition/plan/` |
+| Magies | Présentation, description, explication, Mode Hyper ; nom, description et remarque des deux spécialisations de chaque magie (`magie_specialisation`, R236 (1) : ni création, ni suppression, ni changement d'ordre ; le rattachement d'un sort à sa spécialisation, comme son niveau, ne se modifie pas ; aucune dérivation, le corps de la page ne les dit pas) ; chaque case de chaque sort (type, mode, NM et états recalculés : `lib/sort-analyse.mjs` ; une ligne peut avoir un effet de NM dans plusieurs colonnes). Les rôles des magies sont supprimés (R237 (7), migration 0117) : la table `magie_role` reste, vide, et son traitement (`MAGIE_ROLE`, `corps-magies.mjs#poserRole`) reste inerte ; la modification d'un rôle d'un vieux journal est refusée (404). La table des relations entre magies ne se modifie pas |
 | Classes | Tous les champs (maîtrises, inventaire, spécialités, dons : tables de détail recalculées, `lib/classe-champs.mjs` ; les sources de maîtrise d'arme des lignes de maîtrise et des dons, et les NM gagnés d'un don, refaites par `lib/maitrise-arme.mjs` : `serveur/edition-maitrises.mjs`, décisions R148 à R151, R154 ; refus 409 quand un don qui suit « l'arme déterminée avant » laisserait sa classe sans exactement une maîtrise au choix, R151 ; refus 409 d'une maîtrise que le lecteur ne lit pas, ligne typée d'une classe ou points de maîtrise d'arme dans l'effet d'un don, avec la phrase qui la cite : choix du propriétaire du 2026-10-23, « Refuser à la saisie » ; de même, un effet de don qui a plus d'une part à choisir, « le site ne sait garder qu'un seul choix de familles par don » : la fiche range ses choix par source et numéro du point) ; créer une classe dans une catégorie ; une classe raciale se crée pour une race hybride qui n'en a pas encore ; créer et supprimer une spécialité (avec son don de spécialité du niveau 10) ou un don (D11, ci-dessous) |
 | Codex | Titre et texte des pages tirées du Google Doc « CODEX Maverick » (`lib/edition-modele.mjs#texteDePageModifiable` ; pas la description des relations entre les peuples, tirée du classeur des races), avec l'éditeur du guide (toute la page est un seul morceau de texte) ; `tools/docs/codex.py --verifier` contrôle une page que le site a modifiée dans son état d'import, et une nouvelle écriture des pages la garde telle quelle (docs/codex.md) |
 | Bestiaire | Les monstres (`docs/bestiaire.md`, « Modifier le bestiaire ») : les champs de la carte ouverte (nom, catégorie, type, alignement, échelle, description de la créature (R65), texte de chaque rubrique ; de l'espèce : nom, échelles, description, lieu, complément, blocs, cases de butin ; du groupe d'espèces, « Ottar » : nom et description, R64 ; les capacités : nom et description d'une capacité commune, pour toutes ses cartes, son préfixe et la liste de sorts d'un « Lanceur de sorts » sur la carte, la valeur de chaque « {N} » au curseur, ajout et retrait d'une capacité, décisions R66 à R69) ; ajouter un monstre (une carte dans une espèce, rubriques vides) ou une espèce, supprimer une carte ou une espèce sans carte ; bornes des échelles, écriture de la catégorie, lieux de rencontre, valeurs typées et tables de détail d'une carte recalculés par les fonctions de l'extraction (`lib/monstre-champs.mjs`, `serveur/edition-bestiaire.mjs`) ; le portrait d'une carte ou d'une espèce sans carte (choisi, recadré ou retiré comme sur la fiche de personnage, `src/scripts/portrait.mjs` ; enregistré tout de suite, seul dans son lot ; cadrage gardé dans l'image par le service) ; le curseur d'échelle de la carte et les infobulles du butin refaits avec la carte (rendus `monstre-echelle`, `monstre-butin` : le tableau de l'introduction et le glossaire du butin viennent de `GET /api/edition/listes/`, `echellesDePuissance`, `objetsDuButin`, `renvoisAuxDegatsMoyens`). Les créatures invoquées ne se modifient pas ici |
-| Armes | onglet Armes de `/ressources/equipement/` (« tout peut être éditable à l'instar des autres pages ») : hors mode modification, les familles se rangent dans deux menus à onglets (« Armes de mêlée », « Armes à distance », `categorie` de la famille, R127) ; en mode modification, rien ne se sélectionne et les onglets restent affichés (« Je veux les onglets aussi », 2026-10-23), un panneau ouvert par menu ; le nom, le dé et l'en-tête de coût d'une famille se modifient dans l'en-tête de son tableau (l'onglet suit), « + Nouvelle famille » sous la barre de chaque menu en crée une de ce menu, insérée aussitôt avec son onglet ; l'onglet choisi est écrit dans l'adresse, `#famille-<id>` (`docs/content-guide.md`, « Armes »). Chaque arme (sauf les armes de monstres) : nom, mains, compétence (une écriture de l'onglet), type, coût, effet, description, arme de départ, remarque (l'étoile ★ à côté du nom, refaite à l'enregistrement ; vidée, elle part : R91) ; dé, bonus, portée, solidité, provenance, types de dégâts et minimums de caractéristique en sont recalculés (`lib/arme-champs.mjs`, rejoué sur toute la base), les colonnes tirées se réaffichent après l'enregistrement. Ajouter une arme (famille, nom, catégorie, type, effet… : à la fin du tableau de sa famille, et la page défile jusqu'à elle ; `famille_id` peut valoir « @i », la famille créée par l'opération i du même lot) ou la supprimer (retirée des fiches qui l'ont, avec une note datée : R52, comme R42). Chaque famille (un onglet, décision R159 ; table `arme_famille`, sauf ARME DE MONSTRES, refusée `400` : R45) : nom, dé (forme contrôlée `D<n>` ou `D<n>/D<n>…`, comme `D6/D8/D10` du Pugilat : `edition-modele.mjs#DE_DE_FAMILLE`, saisi en minuscules ou avec des espaces il est remis en forme) et en-tête de la colonne de coût (« Coût », « Coût en plus/moins », « Coût en plus/moins (unité) » : `COUTS_DE_FAMILLE`) ; le bandeau écrit (`libelle_brut`) est refait (« NOM - dé » et la note d'après le dé gardée, `lib/corps-armes.mjs#libelleDeFamille` ; un bandeau qui ne commence pas par « nom - dé » : `409`), l'identifiant, la catégorie et le nom de lecture (`nom_lecture`, migration 0077) ne changent jamais. Le dé d'une famille dont la note écrit des dés selon la Force (le Pugilat : « D6 1-2 Force, D8 3-4 Force, D10 5 Force », que la fiche lit, `maitrise-arme.mjs#desSelonLaForce`) ne se change pas sur le site (`400` ; limite technique, pas une règle : la page afficherait le nouveau dé, la fiche resterait sur les paliers) ; son nom et son en-tête de coût, si. Créer une famille (entité `arme_famille` : nom, dé, catégorie `contact` ou `distance`, posée une fois, en-tête de coût ; identifiant tiré du nom puis figé, suffixe `-2`… s'il a déjà servi ; dernier rang, maîtrisable, nom de lecture = nom de création ; une ligne `page_entite`) ; aucune ne se supprime. Refusés : un nom vide, avec une virgule ou un « : » (`400` : le classeur exporté s'en sert pour séparer les choix de maîtrise, limite technique), un nom déjà pris (`409` : le nom ou le nom de lecture d'une autre famille, au singulier près et pour chaque nom séparé par « / », ou un nom que R138 rattache à une famille, « Hast », « Bâton », « Arme jet », « Masse » : « 1 maîtrise Épée » deviendrait ambigu), un renommage ou une création qui changerait la lecture d'une source de maîtrise existante (`409` avec la liste dans `sources` : `edition-maitrises.mjs#sourcesChangeesParLesFamilles`). Une famille créée entre d'office dans les maîtrises au choix de sa catégorie et dans celles qui proposent toutes les familles (R119, R127, R150, R151) : les sources de toutes les classes et de tous les dons sont refaites et notées au journal (`sourcesRefaitesPourLesFamilles`) ; les « sauf » et les lignes nommées se lisent aussi par le nom de lecture (`lib/maitrise-arme.mjs#famillesDuNom`), un renommage ne change donc aucune source. Les matériaux sont en lecture (décision R62 : ils se modifient sur la page « Composants », la page des armes suit), les armes élémentaires aussi (décision R167 : listées dans le tableau de leur famille ; leur source est la page « Pièces élémentaires », choix du leader-technique), comme le type élémentaire d'une famille (`type_elementaire_id`, hors de `TABLES` ; une famille créée n'a aucune arme élémentaire, il reste NULL : R167). Chaque amélioration d'arme (un seul tableau pour l'arme du catalogue et l'arme élémentaire, R167) : coût matériel et effet (le coût élémentaire de la ligne est en lecture ; la ligne TOTAL du coût matériel est refaite dans la base et le corps Markdown ; la page ne l'affiche plus depuis le 2026-10-16). Le corps Markdown de la page suit, ligne à ligne, remarques comprises (une entrée « **Remarque de l’arme « Nom »** : … » sous le tableau de la famille, à la place de celles de l'importeur : `lib/corps-armes.mjs`, `serveur/edition-armes.mjs`) ; une famille renommée ou au dé changé : le titre de sa section (son bandeau échappé, comparé exactement) et sa puce des armes de départ ; son en-tête de coût changé : la première ligne de son tableau ; créée : sa section à la fin du corps (les sections des familles sont les dernières), en-tête sans arme |
-| Armures et boucliers | onglets Armures et Boucliers de `/ressources/equipement/` (refaite « de la même manière que les Armes », « Modifiable tout de suite », 2026-10-15) : en mode modification, rien ne se sélectionne, les fiches se ferment et tous les tableaux des deux onglets s'ouvrent. Chaque armure : nom, type, AP et AM (chacun dans sa case, demande du propriétaire du 2026-10-17 ; vide = pas de bonus), solidité, résistance et faiblesse (une armure de la grille) ou effet et prix (une armure particulière ; le prix d'une armure de la grille est calculé, la fabrication + 6 unités de chaque matériau : décision R93, il ne se modifie plus sur la page) ; le prix, la défense écrite (`stats_brut`, refaite depuis l'AP et l'AM, gardée telle qu'écrite tant qu'elle se lit exactement en eux) et les résistances et faiblesses (`armure_degats`) en sont recalculés (`lib/armure-champs.mjs`, rejoué sur toute la base). Le coût de fabrication de l'armure complète (dans la phrase du prix, onglet Armures ; les prix de la liste et la fiche le suivent) et celui du bouclier (sous les formes) : les deux lignes du tableau FABRICATION que la page affiche encore (le coût en RF suit ; les autres lignes, les pièces, ne sont plus affichées depuis R93 et ne se modifient que par `/api/v1/emplacements-d-armure/`), forme de bouclier (nom, prix), bouclier préfabriqué (nom, AP et AM chacun dans sa case, prix, poids au choix parmi la liste : décision R92 ; la défense écrite `defense_brut` suit), poids de bouclier (nom, Force ; la Force minimum suit ; leur tableau ne s'affiche qu'en mode modification et sans JavaScript), amélioration d'armure (coût, effet écrits ; RO, matériaux, AP, AM et crans en sont tirés) ou de bouclier (quatre cases, demande du propriétaire du 2026-10-17 : coût en RO, coût en matériaux Oui / Non — 1 matériau, R76 —, AP supplémentaire, +1 cran de solidité Oui / Non ; le coût et l'effet écrits en sont refaits) ; chaque cible refuse les cases de l'autre ; la ligne TOTAL est refaite dans la base et le corps Markdown, la page ne l'affiche plus. Un lot noté avant (défense, coût ou effet d'une amélioration de bouclier saisis en texte) ne se rejoue que si la ligne après lui a un texte qui se lit exactement en ses cases (règles + lots du journal qui passent + lui) ; sinon il passe en conflit expliqué, sans compter pour les lots suivants (`serveur/edition-armures.mjs#ancienneEcritureDesArmures`). Refusés : un prix qui écrit un nombre illisible (« 2050 RO » ; « ???? » ou une case vide disent que la source ne le donne pas), un coût de pièce sans « N RF » (hors « / Classe » du bouclier), un nom d'armure sans lettre ni chiffre, un type hors de la liste. Ni création ni suppression (les fiches de personnage les citent). Les matériaux sont en lecture (R62). Le corps Markdown des pages « Armures » et « Bouclier » suit, ligne à ligne (`lib/corps-armures.mjs`, `serveur/edition-armures.mjs`) |
-| Panneaux de règles | en tête de chaque onglet ou sous-onglet de `/ressources/equipement/` qui sert une page du wiki (Armes, Armures, Boucliers, Accessoires, et Bâtons magiques dans l'onglet Ceinture, qui n'en a pas : ses règles sont le texte du guide, modifiable sur la page du guide) (`docs/content-guide.md`, « Panneaux de règles » ; migration `0056` ; « Il faudrait que ce champ texte soit modifiable sur son titre, et son contenu. Son contenu peut d'ailleurs inclure des tuiles génériques (toujours insérables / modifiables en mode édition) », 2026-10-16) : en mode modification, chaque panneau s'ouvre et reste ouvert (un clic, une espace ou Entrée dans son `<summary>` ne le replient pas). Son titre (`panneau_regles.titre`, un champ commun dans le `<summary>`) ; le texte de chaque bloc et le contenu de chaque tuile, modifiés en place avec l'éditeur de la chronologie (Texte, Mise en page, Liens ; Markdown sûr, `lib/markdown-sur.mjs`, comme le guide : refusé par le service, dans un lot reçu et après le rejeu de la mise à jour ou du rapatriement ; un texte n'est envoyé que si son Markdown relu diffère de celui relu à l'entrée en mode modification, pas du texte de la base, que l'éditeur réécrit en apostrophes typographiques), le titre d'une tuile (un champ ; refusé sur un bloc de texte, `400`) ; sous chaque bloc, « ↑ » et « ↓ » (deux blocs échangent leurs ordres, `panneau_regles_bloc.ordre`, envoyés avec « Enregistrer » : `lib/panneaux-regles-db.mjs#ordresApresDeplacement`), « Supprimer » (à l'enregistrement, après confirmation ; le dernier bloc d'un panneau ne se supprime pas, `409`), « + Texte » et « + Tuile » (créés tout de suite après ce bloc : entité `panneau_regles_bloc`, champ `apres` = le rang du bloc après lequel l'insérer, vide = à la fin ; les blocs suivants sont repoussés d'une place, chaque décalage noté au journal : `ordresApresInsertion`). Un bloc créé prend un rang jamais employé (table, journal et historique). Le corps des pages « Armes »… (`page.corps_md`) n'est plus que la trace de l'import : jamais touché. Surcouche : une ligne de bloc modifiée depuis la construction refait son bloc (s'il a changé de texte, d'après son empreinte `data-preg-empreinte`) dans le navigateur, avec `lib/chronologie-rendu.mjs#htmlDuTexte` (HTML : `lib/panneaux-regles-rendu.mjs`, le même qu'au build) : **les icônes de monnaie n'y sont qu'au build suivant** (le texte reste « 100 Ro ») ; le bloc est remis à sa place de lecture, ou retiré. Service : `serveur/edition-panneaux.mjs` ; page : `src/scripts/edition/panneaux.mjs` |
+| Armes | page Armes, `/ressources/armes/` (« tout peut être éditable à l'instar des autres pages ») : un menu latéral à gauche liste les familles, une seule liste sans titres de groupe (« Liste unique », 2026-11-05) : celles de mêlée puis celles à distance (`categorie` de la famille, R127), et un seul tableau est affiché, celui de la famille choisie ; en mode modification, rien ne se sélectionne, le menu reste et un seul tableau est affiché (comme les onglets d'avant : « Je veux les onglets aussi », 2026-10-23) ; le nom, le dé et l'en-tête de coût d'une famille se modifient dans l'en-tête de son tableau (son entrée du menu suit), un seul « + Nouvelle famille », en bas du menu (« Un seul bouton en bas », 2026-11-05), en crée une, dont le formulaire demande la catégorie, mêlée ou distance, fixée à la création (R159), insérée aussitôt avec son entrée et son tableau à la fin des familles de sa catégorie ; la famille choisie est écrite dans l'adresse, `#famille-<id>` (`docs/content-guide.md`, « Armes »). Chaque arme (sauf les armes de monstres) : nom, mains, compétence (une écriture de l'onglet), type, coût, effet, description, arme de départ, remarque (l'étoile ★ à côté du nom, refaite à l'enregistrement ; vidée, elle part : R91) ; dé, bonus, portée, solidité, provenance, types de dégâts et minimums de caractéristique en sont recalculés (`lib/arme-champs.mjs`, rejoué sur toute la base), les colonnes tirées se réaffichent après l'enregistrement. Une arme a toujours au moins 1 cran propre (décision R194) : un effet qui lui en donnerait moins (« 0 seul cran », ou un « −N crans » qui ramène la base sous 1) est refusé, `400`, à la création comme à la modification, `/api/v1/` comprise (`lib/arme-champs.mjs#refusDesCransPropres`, sans plancher) ; au rejeu, un lot qui le ferait passe en conflit, choix 2 seul (`serveur/edition.mjs#armesSansCranPropre`, comme les colonnes figées). Ajouter une arme (famille, nom, catégorie, type, effet… : à la fin du tableau de sa famille, et la page défile jusqu'à elle ; `famille_id` peut valoir « @i », la famille créée par l'opération i du même lot) ou la supprimer (retirée des fiches qui l'ont, avec une note datée : R52, comme R42). Chaque famille (une entrée du menu et un tableau, décision R159 ; table `arme_famille`, sauf ARME DE MONSTRES, refusée `400` : R45) : nom, dé (forme contrôlée `D<n>` ou `D<n>/D<n>…`, comme `D6/D8/D10` du Pugilat : `edition-modele.mjs#DE_DE_FAMILLE`, saisi en minuscules ou avec des espaces il est remis en forme) et en-tête de la colonne de coût (« Coût », « Coût en plus/moins », « Coût en plus/moins (unité) » : `COUTS_DE_FAMILLE`) ; le bandeau écrit (`libelle_brut`) est refait (« NOM - dé » et la note d'après le dé gardée, `lib/corps-armes.mjs#libelleDeFamille` ; un bandeau qui ne commence pas par « nom - dé » : `409`), l'identifiant, la catégorie et le nom de lecture (`nom_lecture`, migration 0077) ne changent jamais. Le dé d'une famille dont la note écrit des dés selon la Force (le Pugilat : « D6 1-2 Force, D8 3-4 Force, D10 5 Force », que la fiche lit, `maitrise-arme.mjs#desSelonLaForce`) ne se change pas sur le site (`400` ; limite technique, pas une règle : la page afficherait le nouveau dé, la fiche resterait sur les paliers) ; son nom et son en-tête de coût, si. Créer une famille (entité `arme_famille` : nom, dé, catégorie `contact` ou `distance`, posée une fois, en-tête de coût ; identifiant tiré du nom puis figé, suffixe `-2`… s'il a déjà servi ; dernier rang, maîtrisable, nom de lecture = nom de création ; une ligne `page_entite`) ; aucune ne se supprime. Refusés : un nom vide, avec une virgule ou un « : » (`400` : le classeur exporté s'en sert pour séparer les choix de maîtrise, limite technique), un nom déjà pris (`409` : le nom ou le nom de lecture d'une autre famille, au singulier près et pour chaque nom séparé par « / », ou un nom que R138 rattache à une famille, « Hast », « Bâton », « Arme jet », « Masse » : « 1 maîtrise Épée » deviendrait ambigu), un renommage ou une création qui changerait la lecture d'une source de maîtrise existante (`409` avec la liste dans `sources` : `edition-maitrises.mjs#sourcesChangeesParLesFamilles`). Une famille créée entre d'office dans les maîtrises au choix de sa catégorie et dans celles qui proposent toutes les familles (R119, R127, R150, R151) : les sources de toutes les classes et de tous les dons sont refaites et notées au journal (`sourcesRefaitesPourLesFamilles`) ; les « sauf » et les lignes nommées se lisent aussi par le nom de lecture (`lib/maitrise-arme.mjs#famillesDuNom`), un renommage ne change donc aucune source. Les matériaux sont en lecture (décision R62 : ils se modifient sur la page « Composants », la page des armes suit), les armes élémentaires aussi (décision R167 : listées dans le tableau de leur famille ; leur source est la page « Pièces élémentaires », choix du leader-technique), comme le type élémentaire d'une famille (`type_elementaire_id`, hors de `TABLES` ; une famille créée n'a aucune arme élémentaire, il reste NULL : R167). Chaque amélioration d'arme (un seul tableau pour l'arme du catalogue et l'arme élémentaire, R167) : coût matériel et effet (le coût élémentaire de la ligne est en lecture ; la ligne TOTAL du coût matériel est refaite dans la base et le corps Markdown ; la page ne l'affiche plus depuis le 2026-10-16). Le corps Markdown de la page suit, ligne à ligne, remarques comprises (une entrée « **Remarque de l’arme « Nom »** : … » sous le tableau de la famille, à la place de celles de l'importeur : `lib/corps-armes.mjs`, `serveur/edition-armes.mjs`) ; une famille renommée ou au dé changé : le titre de sa section (son bandeau échappé, comparé exactement) et sa puce des armes de départ ; son en-tête de coût changé : la première ligne de son tableau ; créée : sa section à la fin du corps (les sections des familles sont les dernières), en-tête sans arme |
+| Armures et boucliers | pages Armures et Boucliers, `/ressources/armures/` et `/ressources/bouclier/` (refaite « de la même manière que les Armes », « Modifiable tout de suite », 2026-10-15) : en mode modification, rien ne se sélectionne, les fiches se ferment et tous les tableaux des deux onglets s'ouvrent. Chaque armure : nom, solidité, résistance et faiblesse (une armure de la grille) ; type, AP et AM (chacun dans sa case, demande du propriétaire du 2026-10-17 ; vide = pas de bonus), effet et prix d'une armure particulière (R80). **Le type, l'AP, l'AM et le prix d'une armure de la grille se calculent d'après ses deux matériaux** (décision R207 (1), E6, migrations `0105`, `0108` : le type le plus lourd des deux, la somme de leurs AP et AM, R75, et « Armure Complète » + `constante_equipement` « armure.unites_par_materiau » (6) unités de chaque matériau au prix de la page Composants, R93) : une valeur changée est refusée (`400`, `serveur/edition-armures.mjs#COLONNES_CALCULEES_DE_LA_GRILLE` ; renvoyée telle qu'en place, elle passe ; `/api/v1/` : `colonnesFigees`) ; le prix, la défense écrite (`stats_brut`, refaite depuis l'AP et l'AM, gardée telle qu'écrite tant qu'elle se lit exactement en eux) et les résistances et faiblesses (`armure_degats`) en sont recalculés (`lib/armure-champs.mjs`, rejoué sur toute la base). Le coût de fabrication de l'armure complète (dans la phrase du prix, onglet Armures ; les prix de la liste et la fiche le suivent) et celui du bouclier (sous les formes) : les deux lignes du tableau FABRICATION que la page affiche encore (le coût en RF suit ; les autres lignes, les pièces, ne sont plus affichées depuis R93 et ne se modifient que par `/api/v1/emplacements-d-armure/`), forme de bouclier (nom, prix : le coût de fabrication de ses boucliers), bouclier préfabriqué (nom, poids au choix parmi la liste : décision R92 ; **son AP, son AM et son prix se calculent** d'après sa forme et sa matière, décision R207 (1) : classe × AP ou AM de la matière, classe × prix de la matière + prix de la forme, `bouclier_classe.prix` ; dans `TABLES` pour que leurs cases en lecture suivent la ligne renvoyée, comme ceux de la grille, mais une valeur changée est refusée, `400`, `serveur/edition-armures.mjs#COLONNES_CALCULEES_DU_BOUCLIER` ; renvoyée telle qu'en place, elle passe ; `/api/v1/` : `colonnesFigees` ; la défense écrite `defense_brut` et le prix écrit suivent), poids de bouclier (nom, Force ; la Force minimum suit ; leur tableau ne s'affiche qu'en mode modification et sans JavaScript), amélioration d'armure (coût, effet écrits ; RO, matériaux, AP, AM et crans en sont tirés) ou de bouclier (quatre cases, demande du propriétaire du 2026-10-17 : coût en RO, coût en matériaux Oui / Non — 1 matériau, R76 —, AP supplémentaire, +1 cran de solidité Oui / Non ; le coût et l'effet écrits en sont refaits) ; chaque cible refuse les cases de l'autre ; la ligne TOTAL est refaite dans la base et le corps Markdown, la page ne l'affiche plus. Un lot noté avant (défense, coût ou effet d'une amélioration de bouclier saisis en texte) ne se rejoue que si la ligne après lui a un texte qui se lit exactement en ses cases (règles + lots du journal qui passent + lui) ; sinon il passe en conflit expliqué, sans compter pour les lots suivants (`serveur/edition-armures.mjs#ancienneEcritureDesArmures`). Refusés : un prix qui écrit un nombre illisible (« 2050 RO » ; « ???? » ou une case vide disent que la source ne le donne pas), un coût de pièce sans « N RF » (hors « / Classe » du bouclier), un nom d'armure sans lettre ni chiffre, un type hors de la liste. Ni création ni suppression (les fiches de personnage les citent). Les matériaux sont en lecture (R62). **Recalcul (R207 (1))** : quand le prix d'un matériau ou son type (page Composants), le coût de « Armure Complète » ou le prix d'une forme changent, le service refait le type, l'AP, l'AM et le prix de toute la grille et de tous les boucliers (formules `lib/armure-forge.mjs`, entrées `lib/armures-db.mjs#valeursCalculees`, écritures `serveur/edition-armures.mjs#suivreLesValeursCalculees`) : seules les lignes qui changent sont écrites et notées au lot, avec leur défense et leur prix écrits au format de leur colonne (armure : « 2 530 », milliers séparés, `prixEcritDeLArmure` ; bouclier : « 112,5 », « 1207,5 », sans séparateur de milliers comme le classeur et la migration `0105`, `prixEcritDuBouclier` ; vide si un prix de matériau manque ; un prix qui ne change pas n'est pas réécrit), et leur ligne du corps. Au rejeu, le même calcul est refait après chaque lot qui écrit une de ses entrées (`valeursCalculeesParLeLot`, hors journal) et un ancien lot qui écrit directement une colonne calculée passe en conflit, choix 2 seul (`ecrituresDesValeursCalculees`) : paragraphe des adaptateurs du rejeu. « 250 RF / Classe » (ligne « Bouclier » de FABRICATION) n'est qu'une autre écriture du prix des formes : `db:check` avertit quand une forme ne vaut plus classe × ce montant (`avertissements`, `lib/armures-db.mjs#ecartsDeFabricationDuBouclier` ; le prix d'un bouclier suit `bouclier_classe.prix`). Les notes de version listent l'AP, l'AM et le prix d'un bouclier qui changent. Le corps Markdown des pages « Armures » et « Bouclier » suit, ligne à ligne (`lib/corps-armures.mjs`, `serveur/edition-armures.mjs`) |
+| Panneaux de règles | en tête de chaque page de l'équipement (rubrique Équipement) ou sous-onglet qui sert une page du wiki (Armes, Armures, Boucliers, Accessoires, et Bâtons magiques dans la page Ceinture, qui n'en a pas : ses règles sont le texte du guide, modifiable sur la page du guide) (`docs/content-guide.md`, « Panneaux de règles » ; migration `0056` ; « Il faudrait que ce champ texte soit modifiable sur son titre, et son contenu. Son contenu peut d'ailleurs inclure des tuiles génériques (toujours insérables / modifiables en mode édition) », 2026-10-16) : en mode modification, chaque panneau s'ouvre et reste ouvert (un clic, une espace ou Entrée dans son `<summary>` ne le replient pas). Son titre (`panneau_regles.titre`, un champ commun dans le `<summary>`) ; le texte de chaque bloc et le contenu de chaque tuile, modifiés en place avec l'éditeur de la chronologie (Texte, Mise en page, Liens ; Markdown sûr, `lib/markdown-sur.mjs`, comme le guide : refusé par le service, dans un lot reçu et après le rejeu de la mise à jour ou du rapatriement ; un texte n'est envoyé que si son Markdown relu diffère de celui relu à l'entrée en mode modification, pas du texte de la base, que l'éditeur réécrit en apostrophes typographiques), le titre d'une tuile (un champ ; refusé sur un bloc de texte, `400`) ; sous chaque bloc, « ↑ » et « ↓ » (deux blocs échangent leurs ordres, `panneau_regles_bloc.ordre`, envoyés avec « Enregistrer » : `lib/panneaux-regles-db.mjs#ordresApresDeplacement`), « Supprimer » (à l'enregistrement, après confirmation ; le dernier bloc d'un panneau ne se supprime pas, `409`), « + Texte » et « + Tuile » (créés tout de suite après ce bloc : entité `panneau_regles_bloc`, champ `apres` = le rang du bloc après lequel l'insérer, vide = à la fin ; les blocs suivants sont repoussés d'une place, chaque décalage noté au journal : `ordresApresInsertion`). Un bloc créé prend un rang jamais employé (table, journal et historique). Le corps des pages « Armes »… (`page.corps_md`) n'est plus que la trace de l'import : jamais touché. Surcouche : une ligne de bloc modifiée depuis la construction refait son bloc (s'il a changé de texte, d'après son empreinte `data-preg-empreinte`) dans le navigateur, avec `lib/chronologie-rendu.mjs#htmlDuTexte` (HTML : `lib/panneaux-regles-rendu.mjs`, le même qu'au build ; Markdown rendu par la chaîne du build, monnaies en icônes comprises) ; le bloc est remis à sa place de lecture, ou retiré. Service : `serveur/edition-panneaux.mjs` ; page : `src/scripts/edition/panneaux.mjs` |
 | Accueil (encart « Notre prochaine rencontre IRL ») | `/`, ancre `#prochaine-rencontre`, sur l'accueil (`components/accueil/LiensEtRencontre.astro` ; demande du propriétaire du 2026-10-18 : titre fixe, annonce modifiable sur le site de dev ; la page Liens qui le portait est supprimée le 2026-10-22 ; sous le texte de Bienvenue jusqu'au 2026-10-23, « Ces 3 blocs auraient plus leur place dans l'onglet d'acceuil. » ; l'accueil propose donc le mode modification, page `accueil` au journal) : le texte de l'annonce (table `annonce`, migration `0068-annonces`) se modifie en place (`src/scripts/edition/annonces.mjs` ; la barre d'outils des panneaux de règles : texte, mise en page, liens, mots-clés) ; vide, la zone s'ouvre vide, le texte d'attente en filigrane ; vidée, elle repart à NULL (« Aucune rencontre annoncée pour le moment. ») ; Markdown sûr et balises canoniques comme le guide (`serveur/edition.mjs#ANNONCE`), contrôlé aussi par la mise à jour (`TEXTES_EN_MARKDOWN`, `texteNonSurApresLeRejeu`) ; ni création ni suppression ; note de version : domaine Guide, groupe Découvrir, « Accueil › Notre prochaine rencontre IRL » |
-| Composants | `/ressources/composants/` (`docs/content-guide.md`, « Composants ») : monnaies, matériaux, gemmes, bois, ingrédients d'alchimie (fruits compris), objets de l'onglet « Équipement inventaire », un onglet par tableau. Le titre et la note de chaque onglet (table `composant_onglet`, migration `0057` ; demande du propriétaire du 2026-10-17 : « modifiables et directement liées en base » ; titre obligatoire, note vidée = NULL ; ni création ni suppression : un onglet par tableau). Chaque case se modifie (prix en RF, CONVERTISSEUR, type, marque majeur et affinité d'un ingrédient recalculés : `lib/composants-champs.mjs`) ; ajouter dans chaque tableau (une gemme ou un bois pour une magie qui n'en a pas, jamais pour le Potentiel Illimité : décision R160, ni gemme, ni bois, ni bâton magique, ni pièce élémentaire ; les listes `magiesSansGemme` et `magiesSansBois` ne le proposent pas, le service le refuse en `422` « Le Potentiel Illimité n’a ni gemme, ni bois, ni bâton magique, ni pièce élémentaire (décision R160). », et la base aussi, migration `0078`, dont l'erreur est traduite par le même message ; la seule liste de ces magies : `lib/edition-modele.mjs#MAGIES_SANS_OBJET_PAR_MAGIE`) ; supprimer ce que rien d'autre ne cite (refus 409 qui nomme les règles qui le citent) ; un objet supprimé reste dans l'inventaire et la ceinture des fiches sous son nom, sans lien au catalogue (`ressource_id` = NULL), avec une note datée (décision R60 ; aussi à la reconstruction de la base vivante, `fiches-retraits.mjs#OBJETS_AU_CATALOGUE`). Les valeurs des monnaies ne se modifient pas (R61) ; les matériaux ne se modifient qu'ici (R62 : type, prix recopié dans `materiau_arme`, effets sur une arme). Le corps des pages qui écrivent ces composants suit (`lib/corps-composants.mjs`, `serveur/edition-composants.mjs`) |
-| Consommables de la ceinture | sous-onglet Consommables de l'onglet Ceinture de `/ressources/equipement/` (`docs/content-guide.md`, « Ceinture » ; « Les tableaux des consommables devrai pouvoir aussi être modifiées . (sauf pour les champ calculés) », 2026-10-17) : les quatre cases saisies de chaque potion, par l'éditeur commun — nom et prix (`ressource` de genre `potion` : `nom_cle` et prix en RF recalculés ; un nom qui ne diffère d'un autre palier de la même page que par la casse, les accents ou les signes est refusé, 409), niveau (`potion.niveau_id`, liste `niveauxDAlchimie`) et effet (`potion.effet` : ses altérations d'état `potion_etat` refaites, `lib/potion-etats.mjs`) ; le tableau du palier dans la page de la potion suit (`lib/corps-potions.mjs`, aussi au rejeu : `recalculerLesPages`) ; une description de potion est refusée (l'onglet n'en montre pas) ; ni création ni suppression ; en lecture : couleur de la ligne, valeur en RF, titre et résumé d'un groupe, carquois et sacs (page « Composants »), bâtons (`serveur/edition-consommables.mjs`, `ressourcesParGenre` : une autre ressource reste au domaine des composants) |
+| Composants | `/ressources/composants/` (`docs/content-guide.md`, « Composants ») : monnaies, matériaux, gemmes, bois, ingrédients d'alchimie (fruits compris), objets de l'onglet « Équipement inventaire », un onglet par tableau. Le titre et la note de chaque onglet (table `composant_onglet`, migration `0057` ; demande du propriétaire du 2026-10-17 : « modifiables et directement liées en base » ; titre obligatoire, note vidée = NULL ; ni création ni suppression : un onglet par tableau). Chaque case se modifie (prix en RF, CONVERTISSEUR, type, marque majeur et affinité d'un ingrédient recalculés : `lib/composants-champs.mjs`) ; ajouter dans chaque tableau (une gemme ou un bois pour une magie qui n'en a pas, jamais pour le Potentiel Illimité : décision R160, ni gemme, ni bois, ni bâton magique, ni pièce élémentaire ; les listes `magiesSansGemme` et `magiesSansBois` ne le proposent pas, le service le refuse en `422` « Le Potentiel Illimité n’a ni gemme, ni bois, ni bâton magique, ni pièce élémentaire (décision R160). », et la base aussi, migration `0078`, dont l'erreur est traduite par le même message ; la seule liste de ces magies : `lib/edition-modele.mjs#MAGIES_SANS_OBJET_PAR_MAGIE`) ; supprimer ce que rien d'autre ne cite (refus 409 qui nomme les règles qui le citent) ; un objet supprimé reste dans l'inventaire et la ceinture des fiches sous son nom, sans lien au catalogue (`ressource_id` = NULL), avec une note datée (décision R60 ; aussi à la reconstruction de la base vivante, `fiches-retraits.mjs#OBJETS_AU_CATALOGUE`). **L'onglet Monnaie est figé** (décision R219 (3) : « Ni création, ni modification, ni suppression dans l'onglet Monnaie » ; R195 (2) et R197 abandonnées) : le service refuse en `409`, avec la raison, la création d'une monnaie, la modification de toute colonne et la suppression (`lib/edition-modele.mjs#TABLES_FIGEES`, `serveur/edition.mjs#raisonDuGel`, avant tout contrôle des valeurs ; `/api/v1/monnaies/` compris) ; `TABLES.monnaie` et `ENTITES.monnaie` restent, pour le rejeu d'un lot ancien, qui passe (R220 (1), « Rejeu du journal »), sauf un renommage, en conflit comme avant (le nom, figé par R193 et hors de `TABLES`, et la valeur, R61 : `serveur/edition.mjs#COLONNES_FIGEES`, `ecrituresFigees`) ; les matériaux ne se modifient qu'ici (R62 : type, suivi par `materiau_armure.type`, prix recopié dans `materiau_arme` quand le prix de la ressource change, jamais pour une autre colonne ; un prix ou un type changé refait le type, l'AP, l'AM et le prix des armures de la grille et des boucliers, décision R207 (1) : ligne « Armures et boucliers » ; lu par `lib/composants-champs.mjs#prixEnRf`, espace des milliers compris, que `lib/arme-champs.mjs` réemploie ; effets sur une arme). Le corps des pages qui écrivent ces composants suit (`lib/corps-composants.mjs`, `serveur/edition-composants.mjs`) |
+| Consommables de la ceinture | sous-onglet Consommables de la page Ceinture, `/ressources/objets-a-la-ceinture/` (`docs/content-guide.md`, « Ceinture » ; « Les tableaux des consommables devrai pouvoir aussi être modifiées . (sauf pour les champ calculés) », 2026-10-17) : les quatre cases saisies de chaque potion, par l'éditeur commun — nom et prix (`ressource` de genre `potion` : `nom_cle` et prix en RF recalculés ; un nom qui ne diffère d'un autre palier de la même page que par la casse, les accents ou les signes est refusé, 409), niveau (`potion.niveau_id`, liste `niveauxDAlchimie`) et effet (`potion.effet` : ses altérations d'état `potion_etat` refaites, `lib/potion-etats.mjs`) ; le tableau du palier dans la page de la potion suit (`lib/corps-potions.mjs`, aussi au rejeu : `recalculerLesPages`) ; une description de potion est refusée (l'onglet n'en montre pas) ; ni création ni suppression ; en lecture : couleur de la ligne, valeur en RF, titre et résumé d'un groupe, carquois et sacs (page « Composants »), bâtons (`serveur/edition-consommables.mjs`, `ressourcesParGenre` : une autre ressource reste au domaine des composants) |
 | Métiers | Ajouter, modifier, supprimer (retiré des fiches qui l'ont, avec une note : R42) ; bonus (et leur compétence ou l'initiative, décision R33), objets de départ (R35) et recettes recalculés (`lib/metier-champs.mjs`) ; artisanat en trois champs, texte et deux listes de caractéristiques (R34 : « Artisanat possible » en est recalculé, une seule caractéristique est refusée, sans texte elles partent) ; corps de la page (`lib/corps-metiers.mjs` : un champ réécrit en entier, paragraphes compris, ses liens `[[…]]` gardés tant que leur texte reste écrit) ; filtres et tri par colonne |
 | Chronologie | Chaque événement (`/chronologie/<id>/`, [`chronologie.md`](chronologie.md), « Modifier la chronologie ») : date (époque, année, année de fin ; l'événement prend sa place d'après elle), titre, portée et lieu d'un Impact, catégories (cases à cocher, plusieurs au choix ; opération `categories`), descriptions (blocs modifiés en place avec l'éditeur du guide — leur rendu dans le navigateur, `lib/chronologie-rendu.mjs`, redonne le Markdown du build, `test/chronologie-rendu.test.mjs` —, leur lien vers une page du wiki ; en ajouter, en retirer, une au moins) ; créer un événement (« + Nouvel événement », affiché sur `/chronologie/?evenement=<id>` jusqu'à la version suivante du site) ou le supprimer (avec ses blocs et ses catégories) ; le bouton « Catégories » : créer, renommer, supprimer une catégorie (`categorie_chronologie` : id figé, écriture unique, jamais `sans-categorie` ; supprimée, elle quitte ses événements), enregistré d'un bloc à part. La frise et l'événement affiché sont refaits d'après la base vivante au chargement (`GET /api/edition/chronologie/`). Service : `serveur/edition-chronologie.mjs` ; page : `src/scripts/edition/chronologie.mjs` |
-| Mots-clés | Le glossaire (migration `0056`, `docs/content-guide.md`, « Mots-clés (glossaire) ») sur la page Recherche (`/recherche/`, extension `src/scripts/edition/mots-cles.mjs`), en mode modification : la liste relue dans la base vivante (`GET /api/edition/mots-cles/`, définitions comprises), chaque libellé modifiable, la **définition** de chaque mot-clé (`mot_cle.description` : champ commun, protégés compris ; vidée, `NULL`), la balise à copier (`{{id}}`), « Fusionner dans… » et « Supprimer » mis en file et envoyés avec « Enregistrer » (ordre du lot : fusions, suppressions, renommages : `lib/mots-cles-edition.mjs`, confirmés une fois avec ce qu'ils retirent), « + Ajouter un mot-clé » créé tout de suite, avec sa définition ; un renommage vers l'écriture d'un autre mot-clé propose la fusion (`fusionner_mots_cles`, sinon `409`). Créer, renommer, fusionner et supprimer un mot-clé du vocabulaire (`mot_cle`, migration `0043`) ; une suppression le retire de toutes les pages qui le portent (clé étrangère `ON DELETE CASCADE`, et le service les retire d'abord pour le journal ; les événements de la chronologie n'ont pas d'étiquette mais des catégories) et de **tous les textes qui le citent** (chaque balise devient son texte simple, « Libellé : définition » pour le mode complet : colonnes « ligne », « texte », « markdown » des tables de `TABLES`, définitions des autres mots-clés comprises, chacune par une modification ordinaire du lot, dérivations et journal compris : `serveur/edition.mjs#reecrireLesBalises`) ; une fusion recible ses balises (leur texte gardé). Renommer ne change aucun texte (les balises citent l'id : un texte de case garde le texte écrit de ses balises, un texte mis en forme montre le nouveau libellé). Les mots-clés qui rangent les pages du site (catégories des classes, « classe », « race », « race hybride », « capacité de classe », « métier », « codex » : `lib/mots-cles.mjs#MOTS_CLES_PROTEGES`), et « Sort grenade » (décision R114) et « Sort fer » (décision R164), que la fiche lit, ne se suppriment, ne se renomment (pas même leur casse : les règles lisent leur écriture exacte), ne se fusionnent ni ne se créent seuls (`409`, avec la raison) ; leur définition se modifie. Un mot-clé qui étiquette un sort (`sort_mot_cle`, migrations `0067` et `0079`) ne se supprime ni ne se fusionne, dans un sens ou l'autre (`409`, avec les sorts qu'il étiquette : `serveur/edition-chronologie.mjs#verifierSansSort` ; la clé étrangère, sans cascade, le refuserait aussi). Une page créée depuis le site (race, classe, métier, don) ne porte que ces mots-clés-là (`motCleDe` ne crée plus de mot-clé libre ; une fiche de don : « capacité de classe » seul). Son identifiant est figé. Un renommage, une fusion ou un retrait sur une page du Codex la fait compter comme « modifiée par le site » par `tools/docs/codex.py` (gardée telle quelle, ses mots-clés non comparés au document) |
+| Mots-clés | Le glossaire (migration `0056`, `docs/content-guide.md`, « Mots-clés (glossaire) ») sur la page Glossaire (`/regles/glossaire/`, extension `src/scripts/edition/mots-cles.mjs`), en mode modification : la liste relue dans la base vivante (`GET /api/edition/mots-cles/`, définitions comprises, avec le verrou et les mentions de chacun, et `refus_du_forcage` : la raison pour laquelle sa suppression forcée serait refusée, `null` si elle passerait — `serveur/edition.mjs#refusDesForcages`), chaque libellé modifiable sauf ceux des mots-clés verrouillés (ci-dessous), la **définition** de chaque mot-clé (`mot_cle.description` : champ commun ; vidée, `NULL`), ses **synonymes** (`mot_cle_synonyme`, migration `0115`, décision R233 : l'abréviation en est devenue un ; opération `{ op: 'synonymes_mot_cle', mot_cle, synonymes: [écritures], avant? }`, la liste dans l'ordre ; refusée sur un mot-clé verrouillé, `409`, R233 (6) ; un synonyme refusé : `400` pour son écriture — ni lettre ni chiffre, espace autour, `{`, `}`, `|`, saut de ligne, `:` final, le libellé du mot-clé lui-même —, `409` quand il s'écrit comme le libellé, un synonyme ou la clé d'un autre mot-clé, et pour un mot-clé créé ou renommé vers le synonyme d'un autre ; le refus porte `champ: "synonymes"` ou `"libelle"` et, en `409`, `mot_cle` : l'autre ; `serveur/edition-mots-cles.mjs#refuserLesSynonymes`, la règle de `db:check`, `lib/mots-cles-balises.mjs#fautesDuSynonyme`), ses **catégories** (`mot_cle_categorie`, migration `0113`, décision R232 ; opération `{ op: 'categories_mot_cle', mot_cle, categories: [ids], avant? }`, permise sur un mot-clé verrouillé, R232 (11)), sa **clé** calculée (`mot_cle.cle`, aucune route ne l'écrit : le slug du libellé, suivi pour un homonyme des slugs de ses catégories non communes à tous ses homonymes ; recalculée après chaque renommage, changement de catégorie, création, suppression ou fusion, et renommage de catégorie, `serveur/edition-mots-cles.mjs#recalculerLesCles`, la règle de `lib/mots-cles-cles.mjs#clesDesMotsCles` ; une clé qui change est écrite, la clé quittée notée dans `mot_cle_ancienne_cle`, retirée de cette table quand elle redevient courante, et chaque balise qui la citait réécrite dans tous les textes, définitions verrouillées comprises, chaque ligne notée au journal ; refus `409` : un homonyme sans catégorie qui le distingue de chacun des autres, `champ: "categories"`, une clé déjà prise, `champ: "libelle"`, `mots_cles` : les ids en cause), les **catégories des mots-clés** (`categorie_mot_cle`, décision R232 (5) : création, `{ op: 'creer', entite: 'categorie_mot_cle', valeurs: { libelle } }`, l'id suivant ; renommage par `modifier`, libellé unique, `409` sinon, qui recalcule les clés ; suppression d'une catégorie vide seulement, `409` avec `mots_cles` sinon), son **lien** et sa **couleur** (`mot_cle.url`, `mot_cle.couleur`, migration `0098` : les liens des textes devenus des balises ; vidés, `NULL` ; écrits à la création seulement s'ils sont donnés ; le lien : une adresse interne, relative à la racine du site et sans le préfixe de déploiement, `/races/drakos/`, `/metiers/#metier-mineur`, dont le chemin est celui d'une page qui n'est pas d'exemple, d'une rubrique ou d'une route fixe, lu dans la base vivante, `lib/adresses-db.mjs#adressesDuSite`, l'ancre et la requête non vérifiées ; la couleur : `#rrggbb`, écrite en minuscules, ou `<famille>:<id>` d'une couleur de la palette, `classe:melee` ; refus `400` avec `champ: "url"` ou `champ: "couleur"`, jamais `409` : `serveur/edition.mjs#refuserLeLien`, `#refuserLaCouleur`, `lib/mots-cles-liens.mjs#fauteDeLUrl`, `lib/palette-css.mjs#fauteDeLaCouleur`, les règles de `db:check`), son **icône** (`mot_cle.icone`, migration `0116`, décision R235 : `NULL` ou `<famille>:<id>` d'une icône de **la seule liste des icônes du site**, `lib/icones.mjs#ICONES`, les trois monnaies (`monnaie:rf`, `monnaie:ro`, `monnaie:pp`, remplies par la migration), les trois types de dégâts physiques (`degats:taille`, `degats:estoc`, `degats:frappe`) et les quinze magies (`magie:<clé>`, `magie:feu`, `magie:espace-temps`…), ces dernières seulement à choisir sur le site de dev (2026-11-14, « Liste seulement » : aucune n'est posée) ; choisie dans la liste `icones` de `GET /api/edition/listes/`, que `GET /api/edition/mots-cles/` rend aussi ; vidée, `NULL` ; hors de la liste, `400` avec `champ: "icone"`, `serveur/edition.mjs#refuserLIcone`, la règle de `db:check` ; couverte par le verrou, R235 (5) ; un dessin du site, pas une ligne : une monnaie supprimée ne la vide pas ; `monnaie_id` reste), la balise à copier (`{{clé}}`), « Fusionner dans… » et « Supprimer » mis en file et envoyés avec « Enregistrer », confirmés une fois avec ce qu'ils retirent (ordre du lot, `lib/mots-cles-edition.mjs#operationsDuVocabulaire` : les fusions ; les suppressions, les forcées après les autres ; les catégories des mots-clés, avant les renommages, pour qu'un homonyme ait déjà ses catégories distinctives ; les renommages, champs et catégories renommées ; les synonymes, après les renommages, un synonyme pouvant prendre une écriture qu'un renommage libère ; enfin les catégories supprimées), « + Ajouter un mot-clé » créé tout de suite, avec sa définition, son lien, sa couleur, ses catégories et ses synonymes, sa clé calculée ; un renommage vers l'écriture d'un autre mot-clé sans catégorie qui l'en distingue propose la fusion (`fusionner_mots_cles`, sinon `409`). Créer, renommer, fusionner et supprimer un mot-clé du vocabulaire (`mot_cle`, migration `0043`) ; **un mot-clé ne se supprime que si rien ne le mentionne** (décision R196 : « Le mot clé n'est supprimable que si cette liste est vide » ; la cascade d'avant, qui le retirait des pages et réécrivait ses balises en texte, est abandonnée) : une page qui le porte (`page_tag`) ou une balise `{{…}}` qui le cite (par sa clé, son libellé, un synonyme ou une clé quittée : `lib/mots-cles-balises.mjs#motCleDeLaRef`, sans égard à la casse) dans un texte de la base (`lib/mots-cles-db.mjs#textesDeLaBase` : corps d'une page, effet d'un don, description d'une compétence, définition d'un autre mot-clé, bloc d'un événement… ; pas sa propre définition, son lien ni sa couleur ; un prix « 100 RO » n'est pas une balise), **pages d'exemple comprises**, refusent la suppression : `409` avec `mentions`, la liste des endroits (`[{ table, cle, colonne, comment: 'etiquette' | 'balise', page: { id, titre } | null, libelle, exemple }]` : nommés par la page qui montre le texte — la page elle-même, la page de la ligne par `page_entite` ou l'id de la ligne, « Chronologie › <événement> », « Mot-clé « <libellé> » » pour la définition d'un autre mot-clé —, sinon par leur table et leur ligne ; `lib/mentions-des-mots-cles.mjs`, que le Glossaire reprendra pour son menu déroulant), rien n'est écrit ; le `409` porte aussi `refus_du_forcage` (ci-dessous) ; une suppression acceptée sans mention n'écrit que la ligne de `mot_cle`. `/api/v1/mots-cles/<id>/` (`DELETE`) passe par le même chemin. **La suppression forcée** (décision R223 ; `{ op: 'supprimer', entite: 'mot_cle', cle: { id }, forcer: true }`, `DELETE /api/v1/mots-cles/<id>/?forcer=1` ou le corps `{ "forcer": true }`) ne lève que le refus des mentions. Sont refusés en `409`, dans cet ordre et avant toute écriture : un mot-clé verrouillé (R218 (3)) ; qui étiquette un sort (R196 (3)) ; qui est le mot-clé d'un type de dégâts ou d'une magie (`references`, ci-dessous) ; cité par une balise de la définition d'un mot-clé verrouillé (R222 (1), par sa clé, son libellé, un synonyme ou une clé quittée : `mots_cles_verrouilles`, une définition verrouillée n'est jamais réécrite) ; dont le lien mène, sans ancre, à une page de la base (décision R223 (7) : la page serait supprimée, ce point est reporté ; `url` et `page` dans le refus ; `lib/adresses-db.mjs#pageDeLAdresse`, hors pages d'exemple : les routes fixes qui sont aussi des pages, `/ressources/armes/`, `/armures/`, sont refusées) ; un lien qui a une ancre (`/metiers/#metier-mineur`), ou qui ne mène à aucune page de la base (une route fixe sans page, `/fiche/`, `/recherche/`, une rubrique, `/races/`), est épargné et disparaît avec le mot-clé ; mentionné là où le site ne sait pas remplacer la balise (`mentions_bloquantes` : une table figée, une page qui ne se modifie pas ici, une colonne hors du modèle qu'aucune colonne de sa ligne ne refait ; `serveur/edition.mjs#mentionsQueLeSiteNeReecritPas`). Sinon, dans le même lot et par le chemin normal d'une modification (`serveur/edition.mjs#remplacerLesMentions` : opération « modifier », dérivations, journal), chaque mention de `mentionsDe` est remplacée, pages d'exemple comprises : chaque balise qui le cite, quelle que soit sa forme (`{{clé}}`, `{{clé|texte}}`, `{{clé:}}`) et l'écriture de sa ref, devient **son texte affiché, en texte simple, sans lien** (réponse du propriétaire, « Le texte affiché » : `{{clé}}` et `{{clé:}}` donnent le libellé, `{{clé|texte}}` le texte écrit, « les {{elfe|elfes}} » devient « les elfes » ; une ref écrite autrement que la clé montre ce qu'elle montrait, telle que tapée (R233 (10)) ; `lib/mots-cles-balises.mjs#remplacerParLeTexteAffiche`, la règle tenue par `texteQuiRemplaceLaBalise` ; échappé dans un texte mis en forme, `|` compris sur une ligne de tableau, et en tête de ligne pour ne devenir ni liste, ni titre, ni citation, `echapperDebutDeLigne` ; une balise dans un code reste), chaque étiquette de page est retirée, une colonne dérivée que ses tables ne refont pas (le corps d'une page d'exemple typée) est réécrite comme au rejeu ; puis la ligne de `mot_cle`. S'il reste une mention après le remplacement, `409` (`mentions_bloquantes`) et le lot entier est annulé : aucune balise orpheline. Le résumé du lot dit le nombre de mentions remplacées et d'étiquettes retirées. Sans mention, forcer n'écrit rien de plus, mais la suppression est marquée forcée au résumé du lot et se rejoue forcée (« Rejeu du journal »). `forcer` qui n'est pas un booléen : `400` ; sur une autre entité que `mot_cle`, au service comme sur `/api/v1/` : `400`. Refusés aussi, conditions nécessaires : les mots-clés verrouillés, même sans mention, ceux qui étiquettent un sort et ceux que la base cite (ci-dessous) ; ceux que le rejeu des migrations `0090` et `0098` vise se suppriment comme les autres (décision R211 : le rejeu d'un lot ancien écrit alors du texte simple, « Rejeu du journal ») ; une fusion recible ses balises (leur texte gardé) ; la cible garde son lien, sa couleur et son icône, prend ceux de la source qu'elle n'a pas (une modification notée au journal), sauf une cible verrouillée, qui ne prend rien, et le résumé du lot dit ce qu'elle garde ou ne prend pas. **La fusion transmet tout** (décision R233 (11), « Oui, tout transmettre » ; `serveur/edition-mots-cles.mjs#recevoirLaFusion`) : les synonymes de la source s'ajoutent, dans leur ordre, à la suite de ceux de la cible, sauf ceux que R233 (4) refuse (le libellé de la cible, un synonyme qu'elle a déjà, le libellé, la clé ou le synonyme d'un autre mot-clé : écartés, et le résumé du lot les nomme avec leur raison) ; **un mot-clé qui a des synonymes ne se fusionne pas dans un mot-clé verrouillé** (réponse du propriétaire, « Refuser la fusion » : « On ne peut pas fusionner un mot-clé dans un mot-clé verrouillé qui a des synonymes à recevoir. » ; `409` avec `champ: "synonymes"`, avant toute écriture ; le rejeu ne le contrôle pas, R219 (6)), et un mot-clé sans synonyme s'y fusionne (R219 (4)) en ne lui transmettant que ses clés ; la clé de la source et ses clés quittées deviennent des clés quittées de la cible (`mot_cle_ancienne_cle` : une ancienne adresse ou balise mène à la cible) ; un mot-clé créé ou renommé ensuite sous l'une de ces clés la prend, et le renvoi vers la cible disparaît (R233 (11), « Le nouveau la prend »). **Les lignes filles d'un mot-clé supprimé ou fusionné** (`mot_cle_categorie`, `mot_cle_synonyme`, `mot_cle_ancienne_cle` : `serveur/edition-mots-cles.mjs#TABLES_DES_FILLES_DU_MOT_CLE`, `retirerLesFillesDuMotCle`) sont **notées au journal** avant lui (retirées, ou reportées sur la cible d'une fusion), aussi par la résolution d'un lot en conflit (`edition-conflits.mjs#avantLaSuppression`) : la cascade du schéma n'en retire plus rien hors du journal, que la mise à jour refuserait (code 4) ; un lot noté avant se rejoue clés coupées, et `tablesCompletees` comme `tablesDuLot` permettent ces tables. Renommer garde l'id ; quand la clé change (le libellé, ou les catégories d'un homonyme), elle est recalculée et la ref de chaque balise qui la citait réécrite (plus haut ; une balise écrite par un synonyme ou un autre texte garde son texte, tel que tapé, R233 (10) ; une balise sans texte d'un texte mis en forme montre le nouveau libellé). **Le verrou** (`mot_cle.verrou`, migration `0110`, décisions R218 et R219) : un mot-clé verrouillé (`1`) ne se modifie pas (aucun champ : libellé, définition, synonymes, lien, couleur, icône ; ses catégories se changent, R232 (11), et sa clé suit), ne se supprime pas, même quand rien ne le mentionne, et ne se fusionne pas dans un autre (la fusion le supprimerait) : `409`, avec une raison qui cite R218 et R219 (`serveur/edition.mjs#raisonDuGel`, avant tout contrôle des valeurs ; `serveur/edition-chronologie.mjs#verifierNonVerrouille` ; `lib/mots-cles.mjs#estVerrouille`, `RAISON_DU_VERROU`). Il se pose encore sur une page et s'en retire (une page créée ou supprimée par le service), se cite par une balise, et reçoit la fusion d'un autre mot-clé, sans en prendre le lien ni la couleur. **Une définition verrouillée n'est pas réécrite** (décision R222 (1)) : la fusion d'un mot-clé qu'une balise `{{…}}` de la définition d'un mot-clé verrouillé cite (par sa clé, son libellé, un synonyme ou une clé quittée), celle de la cible comprise, est refusée en `409`, avant toute écriture, avec `mots_cles_verrouilles` (`[{ id, libelle }]` : `serveur/edition.mjs#definitionsVerrouilleesQuiCitent`, `reecrireLesBalises` ne réécrit aucun texte gelé) ; cité ailleurs seulement (une page, une définition non verrouillée), il se fusionne et ses balises y sont reciblées ; un mot écrit sans balise n'est pas une citation ; le rejeu, lui, fait la fusion (R219 (6)). **Une page vers laquelle mène un mot-clé verrouillé ne se supprime pas** sur le site (décision R221 : un métier par son ancre, `/metiers/#metier-mineur`, la fiche d'un don, une page des Règles) : `409` qui nomme le mot-clé et cite R221, avec `mots_cles_verrouilles` (`lib/citations-db.mjs#motsClesVerrouillesQuiYMenent`) ; son adresse n'est jamais vidée. Sont verrouillés à la migration : les mots-clés qui mènent à une page (`url`), ceux des monnaies (RF, RO, PP) et ceux dont le site se sert. Aucune route n'écrit `verrou` (pas dans `TABLES` ni `ENTITES` : `400`, `409` sur un mot-clé verrouillé) ; il ne change que par une migration (R218 (4) : « seul un admin », à venir). Un mot-clé créé vaut `0`, même avec un lien (R219 (5)). Les mots-clés qui rangent les pages du site (catégories des classes, « classe », « race », « race hybride », « capacité de classe », « métier », « codex » : `lib/mots-cles.mjs#MOTS_CLES_PROTEGES`), et « Sort grenade » (décision R114) et « Sort fer » (décision R164), que la fiche lit, sont verrouillés : le verrou remplace leur refus propre (R219 (2) ; `MOTS_CLES_PROTEGES` ne sert plus qu'à les identifier). Le site les reconnaît à leur id entier (`lib/mots-cles-proteges.mjs#IDS_DES_MOTS_CLES_PROTEGES`, migration 0113), jamais à leur écriture (décision R195 ; `page_tag.tag_id` ; les pages construites reçoivent leurs noms en `data.mots_cles`, `lib/wiki.ts`, `lib/pages-db.mjs#motsClesDesPages`, lus par `lib/class-groups.mjs`, `lib/race-kinds.mjs`, `lib/classe-magique.mjs`, `lib/races-db.mjs`, `lib/fiche-regles.mjs`). Un mot-clé créé ou renommé peut prendre l'écriture qu'un tel mot-clé n'a pas (ou plus) : il garde son propre id (`creerMotCle` ne donne jamais l'id d'un mot-clé dont le site se sert). « Race hybride », absent des règles, est créé verrouillé avec la première race hybride, sous l'id suivant, et se reconnaît à sa clé `race-hybride` tant que `lib/mots-cles-proteges.mjs` ne lui donne pas d'id (`motCleDe` ; décision R220 (2)) ; si un autre mot-clé s'écrit déjà « race hybride » sans catégorie distinctive, la création de la race est refusée (`409`). Un mot-clé que la base cite par clé étrangère (migration `0125`, demande du propriétaire de lier les valeurs fermées au glossaire : `type_degats.mot_cle_id` pour taille, estoc et frappe, `magie.mot_cle_id`) compte comme une mention (`comment: 'reference'`, la page de la magie la nomme) et ne se supprime pas, simple ou forcée, par analogie avec R223 (5) : `409` avec `references` (`serveur/edition-chronologie.mjs#verifierSansReference`), sans l'erreur brute de la base ; `refus_du_forcage` le dit au Glossaire. Sa fusion reporte la référence sur la cible (une modification de `type_degats` ou de `magie` notée au journal avant la suppression de la source, `edition-mots-cles.mjs#reporterLesReferences`) ; deux mots-clés cités chacun par une magie ne se fusionnent pas (un mot-clé par magie : `409`, `references`). Au rejeu, la suppression d'un mot-clé cité reste en conflit (R196 : mention) et une fusion se rejoue avec sa référence reportée. Un mot-clé qui étiquette un sort (`sort_mot_cle`, migrations `0067` et `0079`) ne se supprime ni ne se fusionne, dans un sens ou l'autre (`409`, avec les sorts qu'il étiquette : `serveur/edition-chronologie.mjs#verifierSansSort` ; la clé étrangère, sans cascade, le refuserait aussi). Une page créée depuis le site (race, classe, métier, don) ne porte que ces mots-clés-là, désignés par leur id (`motCleDe` ne crée plus de mot-clé libre ; une fiche de don : `capacite-de-classe` seul). Son identifiant est figé. Un renommage, une fusion ou un retrait sur une page du Codex la fait compter comme « modifiée par le site » par `tools/docs/codex.py` (gardée telle quelle, ses mots-clés non comparés au document) |
+
+**Valeurs fermées liées au glossaire** (migration `0125`) : un type de dégâts (`type_degats`) et une magie (`magie.mot_cle_id`) s'affichent comme une balise. Une seule fonction les résout, `lib/mots-cles-des-valeurs.mjs#liensDesValeursFermees(db)` : `{ degats: { taille, estoc, frappe, physique, sonore, feu, eau, glace }, magies: { <id de magie> } }`, chaque valeur un lien `{ id, cle, libelle, description, couleur, classe, url, icone, texte, magie_id }` (le mot-clé que la balise cite, `{{cle}}` ou `{{cle|texte}}`) ou `null` sans mot-clé (physique, sonore). `texte` : le nom court d'une magie (« Feu » ; `feu`, `eau` et `glace` suivent leur magie), `null` pour taille, estoc, frappe (la page garde son libellé). Les lecteurs de la base le rendent en champ `liens` (`chargerArmes`, `chargerArmures`, `chargerMonstres`, `chargerInvocations`, `chargerMagies`, `chargerReglesDeFiche`) ; aucune table ni route n'en change, les colonnes qui portent ces valeurs gardent leurs identifiants.
 
 **Balises du glossaire** (migration `0056`, `lib/mots-cles-balises.mjs`) : toute valeur texte d'un lot (un champ de `CHAMPS_DE_TEXTE` :
-« ligne », « texte » ou « markdown », d'une modification ou d'une création, API `/api/v1/` comprise) est enregistrée sous sa **forme canonique**, l'id
-du mot-clé pour ref, selon la colonne (`lib/edition-modele.mjs#typeDeTexte`) — un texte mis en forme (« markdown ») : `{{id}}` (le texte affiché suit le
-libellé ; le libellé écrit en texte y revient), `{{id|texte}}` pour un autre texte (« \| » sur une ligne de tableau Markdown), `{{id:}}` ; une balise
-dans un code y reste telle quelle ; un texte de case (« ligne », « texte ») : `{{id|texte}}` toujours (le texte écrit, sinon le libellé du moment), le
+« ligne », « texte » ou « markdown », d'une modification ou d'une création, API `/api/v1/` comprise) est enregistrée sous sa **forme canonique**, la
+clé du mot-clé pour ref (`mot_cle.cle`, migration 0113, décision R232 (3) : « Les balises et les adresses citent la clé »), selon la colonne (`lib/edition-modele.mjs#typeDeTexte`) — un texte mis en forme (« markdown ») : `{{clé}}` (le texte affiché suit le
+libellé ; le libellé écrit en texte y revient), `{{clé|texte}}` pour un autre texte (« \| » sur une ligne de tableau Markdown), `{{clé:}}` ; une balise
+dans un code y reste telle quelle ; un texte de case (« ligne », « texte ») : `{{clé|texte}}` toujours (le texte écrit, sinon le libellé du moment), le
 mode complet refusé (`400`, « le mode complet ne s'écrit que dans un texte mis en forme ») — avant les dérivations : c'est elle que voient les
-découpages (qui lisent le texte sans balises sans le vocabulaire : `texteSansBalises`) et que note le journal. Une balise dont la ref (id ou écriture)
-n'est pas un mot-clé, ou dont la ref est à la fois l'id d'un mot-clé et l'écriture d'un autre (`ambiguiteDe` : préciser l'id voulu), est refusée
+découpages (qui lisent le texte sans balises sans le vocabulaire : `texteSansBalises`) et que note le journal. La ref saisie est la clé, le libellé
+(quand un seul mot-clé le porte) ou un synonyme du mot-clé (`mot_cle_synonyme`, migration 0115, décision R233 ; l'ancienne abréviation en est un), en
+toute casse ; le texte affiché est exactement ce qui a été tapé (R233 (10), « Garder la casse tapée, incluant les synonymes et abréviations » :
+`{{solidité}}` → `{{solidite|solidité}}`, `{{ic}}` → `{{instant-cast|ic}}`, `{{Action rapide}}` → `{{instant-cast|Action rapide}}` ; la clé, ou le
+libellé écrit à l'identique, suit le libellé ; R183 (2), une abréviation écrite comme la base l'écrit, est abandonnée pour les nouvelles saisies). Une balise dont la ref n'est pas
+un mot-clé, ou dont la ref est le libellé de plusieurs homonymes (R232 (4) : `ambiguiteDe`, la clé est à écrire ; le refus porte `refs` et
+`homonymes`, leurs clés), est refusée
 (`400`, la ref citée), sauf si la valeur en place l'avait déjà (un texte d'avant la suppression de son mot-clé se modifie encore). `db:check` lit les
 balises de toutes les colonnes de texte des règles et des pages (`lib/mots-cles-db.mjs#textesDeLaBase` : ni les sections 13 à 15, ni les tables dérivées
 `lien` et `lien_candidat`, que le build refait, ni les traces gardées telles quelles — notes de cellule, écarts, corrections, commentaires orphelins,
-alias, sources — : `lib/tables-de-la-base.mjs`) et refuse une ref qui n'est pas un id et une forme
+alias, sources — : `lib/tables-de-la-base.mjs`) et refuse une ref qui n'est pas une clé et une forme
 non canonique pour la colonne (`formesNonCanoniques`, la règle de `formeCanonique` : une balise écrite autrement, espaces ou séparateur compris, sauf
-le libellé écrit en texte dans un texte mis en forme, `{{id|Libellé}}`). Le HTML que
+le libellé écrit en texte dans un texte mis en forme, `{{clé|Libellé}}`). **Liens** (migration `0098`, `lib/mots-cles-liens.mjs`) : un lien vers une
+page du site s'écrit par la balise d'un mot-clé qui porte son adresse. Un `[[cible]]`, `[[cible|texte]]` ou `[texte](/adresse)` qu'une saisie AJOUTE
+à un texte (colonnes « ligne », « texte », « markdown » ; hors code ; un lien externe reste permis, comme `/#lien-discord`, gardé par la migration :
+`LIENS_GARDES`) devient la balise, son texte affiché gardé, du seul mot-clé qui mène à l'adresse visée (celle de la page qu'un `[[…]]` désigne, résolu
+comme le site, ou l'adresse écrite ; même adresse ancre comprise, sinon le même chemin : `motsClesDeLAdresse`), avant la forme canonique
+(`serveur/edition.mjs#texteSansLiens`) ; aucun mot-clé, plusieurs, une cible introuvable ou ambiguë : `400` avec `champ` et `liens`, qui renvoie au
+Glossaire (`/regles/glossaire/`). Un lien ajouté dont le texte affiché est vide, ou n'est pas un texte simple (une marque Markdown, une balise HTML ou
+du glossaire, un saut de ligne : `TEXTE_DE_LIEN_NON_SIMPLE`), est refusé de même (`400` avec `champ` et `liens`) : le message demande d'écrire la
+balise du mot-clé qui mène à la page avec un texte simple (`{{clé}}` ou `{{clé|texte}}`). Une page d'exemple garde ses liens. `db:check` refuse un lien de mot-clé mal écrit ou qui ne mène à aucune adresse du
+site, une couleur inconnue de la palette, et tout `[[…]]` ou lien Markdown interne hors code dans ces textes (sauf pages d'exemple et `LIENS_GARDES`).
+`GET /api/edition/mots-cles/` donne le lien, la couleur et la classe de chaque mot-clé (`classeDuMotCle` : `couleur-<famille>-<id>`, ou
+`couleur-mot-cle-<id>` pour une couleur écrite) et la feuille de ces classes (`css`, `lib/palette-css.mjs#cssDesMotsCles`). Une balise dont le mot-clé
+mène à une page la cite (`lib/citations-db.mjs`, `comment: "balise"`), comme le mot-clé lui-même (`comment: "mot-cle"`) : la page ne se supprime pas
+tant qu'ils restent ; `db:derive` en tire les lignes de `lien` (vue `lien_page`). Le HTML que
 pose l'éditeur après le chargement (rendus des champs, cartes rendues par le service, frise, descriptions) a ses balises rendues d'après le vocabulaire
 **vivant**, comme le middleware du build, et les bulles et libellés de la page le suivent (`src/scripts/edition/mots-cles-vivants.mjs` : une définition
 modifiée se voit avant le build suivant) ; l'éditeur en place (guide, Codex, chronologie, panneaux de règles) montre chaque mot-clé en sa balise écrite (`lib/markdown-edition.mjs#baliseEcrite`,
@@ -306,13 +512,13 @@ Ce qui suit aussi, pour que les outils du dépôt acceptent les modifications ra
 `page_source` ; `tools/db/pages_md.py` la rattache à la famille de son type), et une page supprimée emporte sa source si plus rien ne la cite ; les
 champs structurés d'une page (`page.donnees`) s'écrivent comme `json.dumps` des importeurs (`lib/json-python.mjs`) ; les magies innées d'une race à
 liste d'onglet gardent l'ordre de l'onglet (une magie ajoutée va à la fin) ; les altérations d'état d'un sort (`sort_etat`) sont relues dans les cases
-modifiées (`lib/sort-etats.mjs`, la règle de l'importeur, qui redonne les lignes des 322 sorts) ; un sort renommé l'est aussi dans les panneaux
+modifiées (`lib/sort-etats.mjs`, la règle de l'importeur, qui redonne les lignes de tous les sorts) ; un sort renommé l'est aussi dans les panneaux
 « Effet "…" » des créatures (`creature_effet`) et le titre de ce panneau dans leur page ; un peuple créé a sa case diagonale « Même peuple ».
 
-Le **corps des pages typées** (et leur résumé), qui sert à la recherche (`page_fts`), aux `[[liens]]` et à `races_onglet.py --verifier`, est refait
+Le **corps des pages typées** (et leur résumé), qui sert à la recherche (`page_fts`), aux liens (`lien`) et à `races_onglet.py --verifier`, est refait
 depuis les tables à chaque modification, avec le rendu de leur importeur : morceaux d'une page de magie (`lib/corps-magies.mjs` : présentation, rôles,
 Mode Hyper, ligne, notes et texte d'un sort), sections de l'onglet d'une race et listes des classes et magies accessibles (`lib/corps-races.mjs` ; les
-citations de la fiche V15.2.2 restent), page entière d'une classe ou d'un don (`lib/corps-classes.mjs`), champs d'un métier (`lib/corps-metiers.mjs`) ;
+citations de la fiche V15.2.2 restent), page entière d'une classe ou d'un don (`lib/corps-classes.mjs`), champs d'un métier (`lib/corps-metiers.mjs` ; depuis la migration `0098`, le corps est exactement le rendu de la ligne, il n'y a plus de lien du maillage à reposer) ;
 une valeur de l'onglet d'une race s'enregistre sous la forme que `races_onglet.py` relit, et une forme qu'il ne saurait pas relire est refusée
 (`422` : identifiant d'un don changé — seule la graphie de son étiquette ou de son nom peut changer —, remarque d'un don sans note de cellule dans
 l'onglet, nom de don sans rubrique « Nom », titre du tableau du Mort-vivant, Mode Hyper sans nom) ; la note de cellule d'un don du Médusain
@@ -327,7 +533,8 @@ Les créations sont **mises en file** (une carte « sera créé à l'enregistrem
 suppressions et les champs (ordre : champs, suppressions de spécialités, créations, suppressions de dons : `operationsDuLot`) ; une création sur une
 ligne en file la cite par « @i » (l'opération i du lot, `ctx.crees`). Les conséquences (« Duelliste deviendra un don reçu sans choix. », « Contact
 deviendra un choix… », « La spécialité ÉPÉISTE emporte… ») sont confirmées avant l'envoi. Rien n'est inventé : un don n'a que ce qu'on saisit (nom,
-type parmi les cinq mots que `analyserTypeDeDon` reconnaît, précision, effet, niveau) ; le reste applique des règles déjà écrites :
+type parmi les cinq mots que `analyserTypeDeDon` reconnaît, précision, effet, niveau, et pour un don « Variable » la magie qu'il vise) ; le reste
+applique des règles déjà écrites :
 
 - **place** : une option reprend la ligne, le niveau et la spécialité de son choix (rang suivant) ; sans option, une nouvelle ligne « à la fin de son
   niveau » (`placeNouvelleLigne` : entre la dernière ligne de niveau ≤ N et la première de niveau > N de sa portée, sur un numéro qu'aucun don de la
@@ -348,14 +555,49 @@ type parmi les cinq mots que `analyserTypeDeDon` reconnaît, précision, effet, 
   spécialité ou d'une autre classe, nombre de la limite du type trop grand (`400`) ; plus de place, titre pris, troisième spécialité, et l'Archimage —
   ses spécialités sont lues dans ses dons de niveau 10, ses deux dons « miroirs » (Élémentaliste, Occultiste) ne se suppriment pas et leur choix ne
   reçoit pas d'option — (`409`). Le refus d'une création commence par le nom saisi (« « Botte » : … ») : il désigne la carte de la file. Une ligne
-  qu'une fiche de personnage cite n'est plus refusée : elle est retirée de la fiche (R42, ci-dessous).
+  qu'une fiche de personnage cite n'est plus refusée : elle est retirée de la fiche (R42, ci-dessous) ;
+- **don « Variable »** (décision R181 ; réponse du propriétaire : « Demander la magie ») : sa création demande la magie qu'il vise, « Magie innée » ou
+  « Magie acquise » (champ `magie`, `don_magie` pour le don d'une spécialité : `lib/edition-modele.mjs#MAGIES_D_UN_DON_VARIABLE`), et écrit sa ligne
+  `capacite_variable`, notée au journal ; sans elle : `400` qui cite R181 ; donnée pour un autre type : `400` (`serveur/edition.mjs#magieDuDonVariable`).
+  Un type changé ensuite (réponse du propriétaire « Demander ou retirer », R192 : « Passer à « Variable » demande la magie (innée ou acquise) ; quitter
+  « Variable » retire le lien à la magie. ») passe par l'opération `modifier` de `capacite` (`type_brut`, don d'une spécialité compris), avec la clé
+  hors colonnes `magie` dans les mêmes `valeurs` (`lib/edition-modele.mjs#CHAMPS_HORS_COLONNES`, `serveur/edition.mjs#suivreLaMagieDuDon`) :
+  passer à « Variable » sans `magie` valide est refusé (`400` qui cite R181, rien d'écrit), avec elle la ligne est insérée, notée dans le même lot que
+  le type ; quitter « Variable » (type vidé compris) supprime la ligne, notée (ligne `avant` complète), et refuse une `magie` envoyée (`400`) ; sur un
+  don déjà « Variable », `magie` (type envoyé ou non) modifie la ligne, et une modification sans `magie` la garde. Même règle par `PATCH /api/v1/`.
+  La résolution d'un lot en conflit n'exige rien (le lot porte ses lignes `capacite_variable`) mais retire celle d'un don qui n'est plus « Variable » ;
+  le rejeu rejoue les lignes du journal telles quelles. Les choix de don obtenu des fiches (`personnage_don_obtenu`) d'un don qui quitte « Variable »
+  ou qui change de magie visée (innée ↔ acquise) sont **retirés des fiches avec une note datée**, comme pour un don supprimé (R42 ; réponses du
+  propriétaire « Retirés avec une note », R192 : « Le choix est retiré des fiches avec une note datée, comme pour un don supprimé (R42). ») : à la fin d'un
+  lot (`enregistrer`, quelle que soit l'opération, `PATCH /api/v1/` compris) et de la résolution d'un lot en conflit (`resoudreLeConflit`), la magie de
+  chaque don « Variable » lue au début de la transaction est comparée à celle d'après (`serveur/fiches-retraits.mjs#retirerLesChoixDesDonsChanges`) ;
+  à la reconstruction de la base vivante (livraison, rejeu du journal), celle de l'ancienne base à celle des nouvelles règles (`retirerLesManquants`).
+  Un don resté « Variable » sur la même magie ne touche rien. Ligne de note : cas `type` ou `magie` de `lib/fiche-format.mjs#ligneDeRetrait` ;
+  `fiches` de la réponse ; `v_personnage_controle` ne signale plus ces choix (`don_obtenu_source_perdue`, `don_obtenu_hors_liste`), il peut
+  demander d'en refaire un (`don_obtenu_a_choisir`).
+  Sur la page de la classe (`src/scripts/edition/classes.mjs`, `lib/dons-edition.mjs#champDeLaMagieDuDon`) : dans le formulaire d'un don ou d'une
+  spécialité, « Magie liée » ne s'affiche et n'est exigée que pour le type « Variable » (cachée et non envoyée sinon) ; sous le type d'un don existant,
+  un choix de la magie s'affiche quand le type saisi est « Variable » — exigé quand le don y passe, « inchangée » ou sa magie actuelle (`variables` de
+  l'état de la classe : `{ [id du don]: 'innee' | 'acquise' }`, chaque don « Variable » de la classe et de ses spécialités,
+  `serveur/edition.mjs#donneesDeClasse`) sinon — et part en `magie` dans l'opération `modifier` du don (`#avecLaMagieDuDon`).
 
 La fiche d'un don créé (`capacites/<slug>`) a pour seule source sa provenance, son seul mot-clé « capacité de classe » (depuis la migration 0056 : ni
 la classe ni la spécialité, et renommer une spécialité ne touche plus aux mots-clés), son corps et son résumé tirés de sa ligne ; ses champs structurés (`page.donnees` : classe, spécialité, niveau, nature,
 rang, ligne, type, choix exclusifs) sont **une colonne dérivée** (`donneesDeDon`, qui redonne les 660 fiches de l'import à l'octet près), refaite à
 chaque écriture et au rejeu pour tous les dons de la classe touchée : une livraison qui change un voisin (spécialité renommée, type) ne met plus une
-création en conflit. Une suppression retire, dans l'ordre des clés étrangères, les notes de cellule du don, sa ligne, puis sa fiche (mots-clés,
-sources, entités rattachées, source orpheline). `POST /api/edition/classe/` donne l'état vivant de la classe (spécialités, dons, choix, fiches qui
+création en conflit. Un don dont la fiche est encore citée (le mot-clé dont l'adresse y mène, une balise de ce mot-clé, un lien écrit) ne se
+supprime pas, ni sa spécialité : `409` qui liste les citations, comme une page des Règles, et on retire d'abord ces liens
+(`serveur/edition.mjs#refuserSiLesFichesSontCitees`, choix du chef technique : l'adresse d'un mot-clé ne se vide pas en douce). De même, un métier dont l'ancre (`/metiers/#metier-<id>`) est l'adresse d'un mot-clé ne se supprime pas : `409` qui nomme le ou les mots-clés (`mots_cles`, `citations`), `/api/v1/` comprise ; on change ou on vide d'abord leur lien (`serveur/edition.mjs#refuserSiUnMotCleYMene`), sauf celui d'un mot-clé verrouillé, qui ne change pas : le métier, comme la fiche d'un don ou une page des Règles vers laquelle mène un mot-clé verrouillé, ne se supprime pas (décision R221 : `409` qui le dit, `mots_cles_verrouilles`). Une suppression retire, dans l'ordre des clés étrangères, les notes de cellule du don, ses sources de maîtrise d'arme, ses
+règles en données (`TABLES_DES_REGLES_DU_DON` : `capacite_variable`, `capacite_npm_plafond`, `capacite_condition_emplacements`, les tables qui le citent en
+`ON DELETE CASCADE`, comparées au schéma par `test/serveur-edition-regles-du-don.test.mjs` ; réponse du propriétaire : « Autoriser et journaliser »), sa
+ligne, puis sa fiche (mots-clés, sources, entités rattachées, source orpheline), **tout noté au journal** : la cascade du schéma n'en retire plus rien hors
+du journal, que la mise à jour refuserait (fichier hors des tables du lot, code 4). Un lot noté avant (la suppression du don seule) se rejoue clés coupées :
+la cascade retire ces lignes, et `tablesCompletees` (comme `scripts/mise-a-jour-github.mjs#tablesDuLot`) les permet. Résolution d'un lot en conflit : les
+règles d'un don supprimé sont notées avant lui (`edition-conflits.mjs#avantLaSuppression`) ; une règle que les règles livrées ont changée depuis, dans
+un lot qui supprime aussi son don, n'a **pas de choix à elle** : elle quitte les conflits pour les modifications du lot, « suit son don » (la page « Mise à jour » le nomme, et dit « Aucun choix à faire » à un lot qui n'a
+plus d'autre conflit : `lib/conflits-rendu.mjs#issueDeLaSaine`, `#htmlDuLot`)
+(issue `suit_le_don`, `edition-conflits.mjs#suiventLeDon`) — retirée et notée avec le don s'il part (modification saine ou choix 1), gardée telle que les
+règles livrées l'écrivent s'il reste (choix 2) ; jamais une règle sans son don ni un don sans sa règle (réponse du chef technique, lot « Défauts du code »). `POST /api/edition/classe/` donne l'état vivant de la classe (spécialités, dons, choix, fiches qui
 les citent, qui en seront retirées) : la page en tire ce qu'elle propose (`permissions`) et, quand la disposition a changé depuis la construction (l'empreinte
 `data-ed-structure` de la page diffère de celle de l'état vivant : `empreinteDeStructure`, `doitRedessiner` — une simple modification de champ est
 appliquée en place), redessine ses dons, ses spécialités, sa navigation (groupe « Dons par spécialité », liens « Spécialités » et « Dons ») et le
@@ -374,9 +616,21 @@ fiches », « Il en va de même pour les sorts ou métiers supprimés » ; une a
 une spécialité, un métier ou une arme qu'une fiche utilise le **retire de la fiche**, qui reste : la ligne `personnage_capacite` (ou `personnage_arme`, avec
 la composition et l'amélioration de cet emplacement ; une arme élémentaire, qui ne se supprime pas, n'est jamais visée) part, `personnage_classe.specialite_id`
 passe à `NULL` (la classe reste) avec les dons choisis de la spécialité, `personnage.metier_id` passe à `NULL` avec les bonus « A OU B » que la fiche
-y avait choisis (`personnage_metier_bonus`) (un sort, que le site ne supprime pas
-encore, partirait de `personnage_sort` ; à la reconstruction, les quatre sont retirés, sauf un don, une spécialité ou un sort dont la classe ou la
-magie a disparu aussi : celle-ci reste un blocage, hors R42). Le retrait se fait **dans le même lot**, avant la suppression
+y avait choisis (`personnage_metier_bonus`) (la spécialisation magique choisie par une fiche, `personnage_specialisation_magie`, partie `specialisations_magie`
+(R236, migration 0118 ; la clé étrangère est composée, spécialisation et magie, sans `ON DELETE`), part de même, la magie redevient « à choisir » : le
+site ne supprime pas les spécialisations (28, par migration), le retrait se fait donc à la reconstruction, quand le couple n'existe plus dans les nouvelles
+règles, avec sa ligne « la spécialisation magique « LICHE » (magie Nécromancie) n’existe plus dans les règles… » ; `retirerDesFiches` sait aussi la retirer
+d'une liste `specialisations`) (un sort, que le site ne supprime pas
+encore, partirait de `personnage_sort` avec son livre, `personnage_livre_sort`, même sur une fiche qui n'a que le livre : décision R169, la clé n'a pas
+d'`ON DELETE` ; la ligne de note le dit, « 2 NM sur cette fiche dont 1 de livre », « livre de sort en attente, sort hors de la liste » ;
+à la reconstruction, les quatre sont retirés, sauf un don, une spécialité ou un sort dont la classe ou la
+magie a disparu aussi : celle-ci reste un blocage, hors R42). Un don « Variable » du Mage Bleu supprimé emporte le don obtenu de la fiche
+(`personnage_don_obtenu`, décision R181 ; les deux clés n'ont pas d'`ON DELETE`), qu'elle ait le don dans ses choix ou non, avec sa ligne : « le don
+obtenu « Moteur thermique » (par le don « Mimétisme », classe Mage Bleu, magie Feu) n’est plus obtenu : le don qui le donnait n’existe plus dans les
+règles » ; à la reconstruction, une entrée du tableau disparue aussi (« … n’existe plus dans les règles »), sauf si la classe a disparu. Un don qui
+quitte « Variable » ou change de magie visée emporte de même le don obtenu des fiches (cas `type` : « … n’est plus obtenu : le don qui le donnait n’est
+plus un don « Variable » » ; cas `magie` : « … vise maintenant la magie acquise du personnage », réponses du propriétaire « Retirés avec une note », R192 ;
+`retirerLesChoixDesDonsChanges`, après les écritures du lot, ci-dessus « don « Variable » »). Le retrait se fait **dans le même lot**, avant la suppression
 de la règle, **en SQL direct** : jamais au journal (`TABLES_INTERDITES` contient toute la section 13 : une écriture de fiche par le rédacteur du lot
 est refusée), donc jamais dans `data/rows` ni dans le résumé du lot (qui va dans l'historique et la note de version : ni nom ni compte de fiches) ;
 un lot refusé annule aussi les retraits. Chaque fiche touchée reçoit **une ligne datée par élément** à la fin de ses notes (« NOTE », BA53 ; le
@@ -404,21 +658,24 @@ règle sans rendre l'élément à la fiche ; la date de la note est le jour UTC 
 **Le journal** (section 14 de `data/schema.sql` : `modification_lot`, `modification`) : le service écrit chaque ligne touchée (avant, après) dans la
 même transaction que la modification (`serveur/edition-journal.mjs`). Une saisie envoie la valeur qu'elle a lue (`avant`) : si la base a changé
 depuis, `409` et rien n'est écrit. Les pages étant statiques, chacune demande au chargement les lignes modifiées depuis sa construction
-(`GET /api/edition/en-attente/`) et les réaffiche (pour une page du guide : l'aperçu HTML noté avec le texte, assaini) ; une race ou une classe
+(`GET /api/edition/en-attente/`) et les réaffiche (pour une page du guide : l'aperçu HTML noté avec le texte, assaini ; sans aperçu, le texte actuel rendu dans le navigateur, ci-dessous « Limites ») ; une race ou une classe
 créée a sa page provisoire sur la page 404 du site de dev, jusqu'à la livraison suivante.
 
 **Quand une livraison change les règles**, la base vivante est refaite (ci-dessus) et le journal y est **rejoué**, lot par lot : une modification
-déjà présente dans les nouvelles règles passe « intégrée », un lot qui contredit les nouvelles règles passe « conflit » en entier (rien n'en est
-réappliqué) ; `/api/etat/` compte les modifications `en_attente` et `conflit` (celles des lots à résoudre seulement, et `lots_en_conflit` :
-un lot résolu garde ses lignes `conflit` comme trace), affichées à côté du crayon. Un lot en conflit se résout sur la page « Mise à jour »
-(« Lots du journal en conflit », plus bas). L'ordre de rejeu (`ORDRE_DE_REJEU` :
+déjà présente dans les nouvelles règles passe « intégrée » ; un champ que les règles ont changé depuis se **fusionne à trois voies** (« Fusion à trois
+voies », dans « Mise à jour », plus bas) ; un lot dont le seul souci est une fusion ambiguë est **gardé** (la valeur du site écrite et en place,
+le lot « conflit », à résoudre), un lot qui contredit autrement les nouvelles règles (ligne supprimée, référence rompue, contrainte, forme ancienne)
+passe « conflit » en entier (rien n'en est réappliqué) ; `/api/etat/` compte les modifications `en_attente` et `conflit` (celles des lots à résoudre
+seulement, et `lots_en_conflit` : un lot résolu garde ses lignes `conflit` comme trace), affichées à côté du crayon. Un lot en conflit se résout sur
+la page « Mise à jour » (« Lots du journal en conflit », plus bas). L'ordre de rejeu (`ORDRE_DE_REJEU` :
 instant du lot, puis son identifiant, puis le rang) est le même pour le service, `db:appliquer-edition` et la mise à jour des règles ; l'instant
 est à la seconde, l'identifiant d'un lot commence par l'instant à la milliseconde et un compteur (`nouveauLot`) : deux lots de la même seconde
 se rejouent dans l'ordre où ils ont été enregistrés. Une colonne qui vaut déjà ce qu'une modification plus récente de la même ligne y écrit est
 « déjà là » (deux lots sur la même colonne, une ligne créée puis modifiée) — sauf si elle vaut encore ce que la modification avait trouvé (`avant`) :
 elle n'est alors pas faite et se fait (A → B → A : un lot suivant peut compter sur B, un nom de catégorie ou de mot-clé libéré, une date intermédiaire ;
-les lots déjà livrés, eux, ne sont jamais rejoués). **Point fixe** : un lot en conflit le reste — la reconstruction suivante ne le relit pas, le
-journal exporté (mise à jour, `db:appliquer-edition`) ne l'emporte pas. Le rejeu se fait donc par passes : chaque lot tombé en conflit est écarté et
+les lots déjà livrés, eux, ne sont jamais rejoués). **Point fixe** : dans un rejeu, un lot en conflit le reste — le journal exporté (mise à jour,
+`db:appliquer-edition`) ne l'emporte pas ; la reconstruction suivante de la base vivante le réévalue (un lot pas encore résolu ; un lot résolu
+jamais, sa résolution est un lot à elle). Le rejeu se fait donc par passes : chaque lot tombé en conflit est écarté et
 la passe recommence sans lui (ni parmi les modifications « plus récentes » d'une ligne, ni parmi les lignes fantômes), jusqu'à ce qu'une passe n'en
 écarte plus. Le résultat est celui des seuls lots qui passent : la reconstruction suivante et le rejeu du journal exporté le redonnent, sans conflit
 nouveau (`test/serveur-edition-rejeu-fantomes.test.mjs`, dont les scénarios des revues adverses). Une ligne créée puis supprimée par le journal en
@@ -427,19 +684,54 @@ de la chronologie lié à la page d'un métier créé puis supprimé) ne met pas
 attente jusqu'à la livraison et sont réévaluées à chaque rejeu. À la fin d'une passe, un fantôme qu'une référence cite encore (le lot qui retirait la
 citation est en conflit ; une clé étrangère qui ne vise pas la clé primaire, comme `capacite(specialite_id, classe_id)`, est comparée aux valeurs de
 ses insertions) est écarté : la passe recommence avec sa ligne rejouée comme une autre — créée, modifiée, et supprimée seulement si plus rien ne la
-cite. Aucune référence n'est jamais laissée rompue, et une création dont la suppression est en conflit existe entière. Le service ne vide le
+cite. Aucune référence n'est jamais laissée rompue, et une création dont la suppression est en conflit existe entière. Un lien non plus : une page
+des Règles (`guide/…`) qu'un lot supprime (rejouée « appliquée » : pas une page que les règles n'ont déjà plus) alors qu'un texte qui reste la cite (le lot qui retirait la citation est en conflit, ou les règles livrées la
+citent depuis ; citations de `lib/citations-db.mjs`, la page retirée gardant pour la résolution son titre, les alias que le lot lui retire et son
+adresse, que cite un mot-clé qui y mène et ses balises, hors pages d'exemple et colonnes dérivées) met son lot en conflit, avec la raison (`serveur/edition.mjs#liensRompusParLeLot`, dans `apresLeLot`) ; de même, comme le service les refuse, la fiche
+d'un don (`capacites/…`, supprimée avec lui ou sa spécialité) que l'on cite encore, et un métier dont l'ancre est encore l'adresse d'un mot-clé
+(`PAGES_GARDEES_AU_REJEU` : sa ligne et ce qui la compose n'ont aussi que le choix 2) ; sur la page
+« Mise à jour », sa suppression et celles de ce qui la décrit n'ont que le choix 2 tant que le lien reste, et un choix 1 qui le casserait est refusé
+(`409`) : résolu d'abord le lot qui retirait le lien, elle passe. Une ancre figée non plus : un lot noté avant la garde des ancres qui en retire,
+renomme ou double une que les règles ont (même reçue depuis, migration `0100`) est une forme ancienne sans équivalent, son lot en conflit avec la
+raison qui nomme l'ancre, et sur la page « Mise à jour » le choix 2 seul (`serveur/edition.mjs#ecrituresQuiRompentLesAncres`, dans l'adaptateur du
+rejeu comme `ecrituresFigees`). Le service ne vide le
 dictionnaire des sources que de ses orphelins (`supprimerPage`) : rejouée alors qu'une page la cite encore (sa suppression est en conflit), la
 suppression d'une source n'est pas faite (`siOrphelines`). Un bloc de description de la chronologie, ou d'un panneau de règles, ne reprend jamais le
-rang d'un bloc supprimé (`serveur/edition.mjs#rangLibre`, commun aux deux : table, journal et historique). Supprimer un mot-clé (`mot_cle`) rejoue aussi les `ON DELETE CASCADE` de `page_tag`, que la mise à jour
+rang d'un bloc supprimé (`serveur/edition.mjs#rangLibre`, commun aux deux : table, journal et historique). Une suppression ancienne d'un mot-clé
+qu'un endroit mentionne encore dans la base où elle est rejouée (décision R196 ; un lot noté avant R196, quand la cascade réécrivait les textes du site
+de dev, ou des règles livrées qui le citent depuis) met son lot en conflit, avec la raison qui nomme ces endroits, sans rien écrire ; sur la page
+« Mise à jour », cette suppression n'a que le choix 2, comme les colonnes figées (l'examen du lot refait le même calcul :
+`serveur/edition-conflits.mjs#examiner`, par `OUTILS_DE_RESOLUTION` ; un choix 1 referait la cascade) (crochet `avantLeLot` de `rejouer`, sur la base telle que le lot la trouve :
+`serveur/edition.mjs#motsClesEncoreMentionnes`, les mentions de `lib/mentions-des-mots-cles.mjs` hors de ce que le lot retire ou réécrit lui-même, des
+colonnes dérivées, refaites depuis leurs tables, et des pages d'exemple, absentes du site de dev construit sans elles, où elles ne bloquaient pas la
+suppression ; une fusion n'est pas visée). **Une suppression forcée se rejoue forcée** (décision R223 (6)). Le rejeu la reconnaît au marqueur que le service pose en tête du résumé du lot (`modification_lot.resume`) : « [suppression forcée R223 : id, …] » pour chaque mot-clé supprimé en forçant, avec ou sans mention, et « [fusion des mots-clés : source > cible, …] » pour chaque fusion (`serveur/edition.mjs#marqueursDuLot`, `marqueursDuResume`, `suppressionForcee`, `cibleDeLaFusion`). Les ids d'un marqueur d'après la migration 0113 sont des entiers ; ceux d'un lot d'avant (sa ligne de `mot_cle` nomme le mot-clé par un id texte : `lotDAvantLa0113`) se traduisent par la correspondance de la migration (`registreDes0113`), même l'ancien id « 400 », qui n'est pas l'id entier 400. Le marqueur est gardé entier hors de la troncature du résumé (`terminer(…, { entete })`), neutralisé dans le résumé de chaque opération (un nom saisi ne peut pas l'écrire : `neutraliserLeMarqueur`), et repris en tête par la résolution d'un conflit (`separerLeMarqueur`) ; le journal le porte partout où il va (export, rapatriement, mise à jour). Rien n'est deviné à ce que le lot écrit : une fusion dont la source n'était portée que par des pages qui portaient déjà la cible se rejoue en fusion (ses balises reçues depuis citent la cible), et un lot d'avant R223, cascade d'avant R196 comprise, n'est jamais forcé (il garde son conflit de R196) ; la cible d'une fusion ancienne, sans marqueur, se lit à ce que le lot reporte (`cibleReportee`). Une suppression forcée n'est jamais en conflit pour ses mentions, et celles qui sont présentes au rejeu (textes reçus depuis, pages d'exemple, définitions verrouillées : le verrou n'y est pas contrôlé, comme pour la fusion) deviennent leur texte affiché, après le lot (`balisesRetireesParLeLot`, puis `balisesDesColonnesDerivees`) ; les réécritures que le lot note se rejouent comme toute modification (elles passent sur un texte inchangé). Le rejeu ne contrôle ni le verrou des mots-clés ni le gel des monnaies (décisions R219 (6), R220 (1)) : un lot ancien qui modifiait ou supprimait un mot-clé désormais verrouillé, ou qui créait, modifiait (abréviation, remarque) ou supprimait une monnaie, passe ; la résolution d'un conflit non plus (`OUTILS_DE_RESOLUTION.modifier` : choix 1 et 2 ; le choix 3, une valeur saisie, n'est pas offert sur une ligne gelée, « Lots du journal en conflit ») ; « race hybride » créé par un lot noté avant la migration 0110 (son insertion, ou le mot-clé à créer d'un lot d'avant la 0043) l'est verrouillé, comme aujourd'hui (R220 (2), `raceHybrideVerrouillee`) ; seul le renommage d'une monnaie reste en conflit (R193, `COLONNES_FIGEES`). Supprimer un mot-clé (`mot_cle`) rejoue aussi les `ON DELETE CASCADE` de `page_tag` (les pages d'exemple), que la mise à jour
 des règles a donc le droit d'écrire ; et, pendant de cette cascade, au même moment (dans son lot, annulé avec lui : `apresLeLot` de `rejouer`,
 `balisesRetireesParLeLot`), un mot-clé que le lot supprime ou fusionne quitte les balises de **tous les textes** de la base où il est rejoué (colonnes de
-texte des règles et des pages, `textesDeLaBase` : pages d'exemple et textes que le site de dev n'avait pas compris) — retirées (leur texte simple), ou
+texte des règles et des pages, `textesDeLaBase` : pour une suppression, il ne reste là que les pages d'exemple ; pour une fusion ou une suppression
+forcée, aussi les textes que le site de dev n'avait pas) — retirées (leur texte simple ; leur texte affiché pour une suppression forcée), ou
 reciblées pour une fusion dont la cible se reconnaît aux étiquettes ou aux balises que le lot a reportées (`cibleReportee`) — : un lot suivant qui
 modifie un de ces textes (le site de dev l'a lu ainsi réécrit, sa base vivante refaite par le même rejeu) le retrouve tel qu'il l'a lu, et passe. Les
 colonnes dérivées (corps et résumé des pages typées) sont refaites ensuite depuis leurs tables (`recalculerLesPages`, qui reçoit ces réécritures comme
 des lignes rejouées), puis ce qu'il y reste est retiré (`balisesDesColonnesDerivees` : pages d'exemple ; une colonne dérivée n'est jamais comparée au
 rejeu). Tables comptées dans `tablesCompletees`, `page` comprise (le job GitHub de la mise à jour les permet de même : `tablesDuLot`, d'après les
-fichiers de `data/rows` qui ont une balise, `tablesAvecBalises`, et `page`). Un lot noté avant la migration 0056 (le glossaire) qui pose sur une page l'étiquette d'un
+fichiers de `data/rows` qui ont une balise, `tablesAvecBalises`, et `page`). Un lot noté avant la migration 0090 (« CR » fondu dans « Corruption »,
+R183 (3)) est lu comme la migration a réécrit les règles (`ancienneEcritureDesFusions`, d'après `FUSIONS_DE_MIGRATION`, avant l'adaptateur du
+glossaire) : dans `avant` comme dans `apres`, `{{cr|…` et `{{cr\|…` deviennent `{{corruption|…`, `{{cr}}` devient `{{corruption|CR}}`, `{{cr:}}` et
+`{{cr :}}` deviennent `{{corruption:}}`, et les étiquettes vers `cr` (`page_tag`, `sort_mot_cle`, clé comprise) citent `corruption` (une insertion qui
+doublerait une étiquette déjà là est sans effet) : ni balise que `db:check` refuserait, ni faux conflit sur un texte que la migration a reciblé. Une
+écriture sur la ligne `cr` elle-même (renommage, définition, suppression) n'est pas reportée sur `corruption` (la migration y a déjà fondu la définition ;
+un libellé reporté écraserait le sien) : le lot est en conflit (« la ligne n'existe plus dans les règles »), comme pour un mot-clé que les règles ont
+fusionné, et se résout sur `/mise-a-jour/`. Un lot noté avant la migration 0098 (les liens devenus des balises) est lu comme la migration a réécrit
+les règles (`ancienneEcritureDesLiens`, après `ancienneEcritureDesFusions`) : dans `avant` comme dans `apres`, chaque `[[…]]` ou `[texte](/…)` d'une
+colonne de `textesDeLaBase` devient la balise que la migration a écrite (`lib/liens-en-mots-cles.mjs#convertirLesLiens` avec la table du registre
+`data/migrations/0098-liens-en-mots-cles.json`, `tableDesLiensDeLa0098` ; le registre est joint au service livré, `serveur/livraison.mjs#FICHIERS_JOINTS`),
+et le texte simple que la migration a balisé sur l'Alchimiste et l'Apothicaire (`artisanat_texte`, `artisanat_brut`) l'est de même ; une page
+d'exemple et un lien inconnu du registre restent tels quels. Un mot-clé que vise l'un de ces deux adaptateurs se supprime dès que rien ne le mentionne
+(décision R211, « Les rendre supprimables ») : rejoué sur des règles qui ne l'ont plus, un lot ancien écrit du texte simple — la balise de `cr` devient
+son texte écrit, sinon « CR » (`lib/mots-cles-balises.mjs#retirerLeMotCle`), une étiquette vers `cr` est sans effet, quand `corruption` n'existe plus ;
+le lien qui menait à un mot-clé du registre supprimé devient son texte affiché, et le texte simple de l'Alchimiste ou de l'Apothicaire n'est pas
+balisé —, jamais une balise vers un mot-clé absent. Une définition d'un lot d'avant 0090 sur un des mots-clés dont la migration a complété la définition (ou
+changé le libellé : « Classe », « Métier ») est un vrai conflit : les deux côtés ont écrit le même texte. Un lot noté avant la migration 0056 (le glossaire) qui pose sur une page l'étiquette d'un
 mot-clé absent et non protégé (la fiche d'un don créé par l'ancien code portait celle de sa classe), crée un mot-clé non protégé sans définition ou
 renomme un mot-clé que les règles n'ont plus est rejoué **sans effet** (`ancienneEcritureDuGlossaire`, `sansEffet` de l'adaptateur : « intégrée », rien
 d'écrit), comme ce qui suit dans le journal la même ligne ou ce mot-clé (une étiquette retirée, déplacée vers lui, un renommage) ; rien d'autre de son
@@ -457,7 +749,22 @@ s'explique pas — rien n'en est écrit, ni dans les règles ni dans l'historiqu
 noté avant la migration 0075 (décision R155 : la « Double résistance » devenue la Grande résistance) : l'adaptateur (`ancienneEcritureDesResistances`,
 `serveur/edition-bestiaire.mjs`) traduit le sens `double_resistance` en `grande_resistance` (`monstre_defense` : clé, `avant`, `apres` ;
 `monstre_rubrique.rubrique`), et met en conflit explicite un lot qui note un titre d'avant 0075 (« … ÷4 », « … x4 » : seule la suppression d'une carte
-en note un). Un lot
+en note un). Un lot noté avant la migration 0103 (décision R205 (3) : l'état « Gelé » s'écrit « Gel ») : l'adaptateur (`ancienneEcritureDuGel`,
+`serveur/edition.mjs`) reconnaît un lot dont un `avant` écrit encore « Gelé » dans un texte que la migration a réécrit (`TEXTES_DU_GEL` : résistances
+des magies, rubriques et capacités communes du bestiaire, accessoires, maladies, Mage Bleu et sa page) ou une cible `gele` de `monstre_defense`, là où la ligne attendue ne
+l'écrit pas (celle que les lots précédents du journal, adaptés, ont laissée, sinon celle des règles : un `avant` « Gelé » qu'un lot noté après la
+0103 a retapé est la ligne attendue, son lot passe tel quel au lieu de tomber en faux conflit), et réécrit chacune de ses modifications sur ces textes comme la migration (`ecritureDuGel` : « Gelé » → « Gel », « gelé N » → « gel N » ; `avant` et
+`apres` ; cible « Gel », clé `gel`) ; un lot sans cette trace passe tel quel, un emploi adjectival (« sol gelé ») n'est jamais touché. Les
+colonnes calculées d'après les matériaux (décision R207 (1), E6 : type, AP, AM et prix d'une armure de la grille ; AP, AM et prix d'un bouclier) :
+un ancien lot qui en écrit une directement, à une valeur que les règles n'ont pas, sans écrire aucune entrée du calcul (`TABLES_DES_ENTREES_DU_CALCUL` :
+prix d'un matériau, types, AP et AM des matières, coût de « Armure Complète », prix d'une forme, constante des unités ; un lot du service d'aujourd'hui
+note ces colonnes avec l'entrée qui les change), est une forme ancienne sans équivalent : l'adaptateur (`ecrituresDesValeursCalculees`,
+`serveur/edition-armures.mjs`) le met en conflit avec sa raison, et sur la page « Mise à jour » il n'a que le choix 2, comme `COLONNES_FIGEES` ; une
+valeur déjà dans les règles passe, une armure particulière (R80) n'est pas visée. Après chaque lot rejoué qui écrit une entrée du calcul, le crochet
+`apresLeLot` refait, hors journal, les colonnes calculées qui ne sont plus à la formule (`valeursCalculeesParLeLot` : un lot noté avant R207 qui change
+le prix d'un matériau ne note pas ses armures ni ses boucliers), et la ligne du corps des pages Armures et Bouclier ; `armure`, `bouclier` et `page`
+vont dans `tablesCompletees`, et `scripts/mise-a-jour-github.mjs#tablesDuLot` suit la même règle (`TABLES_DES_ENTREES_DU_CALCUL`,
+`TABLES_DES_VALEURS_CALCULEES`, recopiées). Un lot
 noté avant la migration 0063 qui écrit le coût d'un sort en une case, comme le classeur (« 12 + 3 âmes ») : l'adaptateur (`ancienneEcritureDuCout`,
 `serveur/edition.mjs`, décision R105) le rejoue en deux colonnes, « Coût » et « Coût secondaire », par la règle de la migration
 (`lib/sort-cout.mjs#repartirLeCout`), son `avant` comme son `apres`, colonnes typées relues ; un coût qui ne se répartit pas (l'un des 26 que le
@@ -482,7 +789,9 @@ celles de toutes les classes et de tous les dons qu'il ne note pas, et la résol
 2026-10-23) : un lot déjà noté se rejoue, ce qui ne se lit pas n'y donne aucune part, et une valeur ainsi notée perd son choix 1 à l'examen d'un lot
 en conflit (« l'édition refuse aujourd'hui cette valeur »). Rejouée clés
 étrangères coupées (base vivante refaite, mise à jour des règles), une suppression applique d'abord les `ON DELETE CASCADE` du schéma (`lien`,
-`lien_candidat` : les `[[liens]]` d'une page supprimée), sans les noter, comme SQLite le fait dans la base vivante ; sinon supprimer une page qui a des
+`lien_candidat` : les `[[liens]]` d'une page supprimée) et les `ON DELETE SET NULL` (une monnaie supprimée par un lot ancien : `mot_cle.monnaie_id`
+passe à `NULL`, le mot-clé reste ; `edition-journal.mjs#supprimerLesCascades`), sans les noter, comme SQLite le fait dans la base vivante ; `tablesCompletees`
+et `scripts/mise-a-jour-github.mjs#tablesDuLot` permettent alors `mot_cle` ; sinon supprimer une page qui a des
 liens mettait le lot en conflit (`serveur-base-vivante`). Chaque lot contrôle les clés étrangères des tables qu'il touche et de celles qui les citent,
 **sauf celles des fiches** (`horsControleParLot` : la section 13, recopiée avant le rejeu) : une fiche peut citer un don, une spécialité ou une classe
 qu'un lot suivant crée, et mettait en conflit un lot antérieur sans rapport qui touchait la même table ; `transferer` retire ensuite des fiches les dons,
@@ -504,24 +813,370 @@ main ; un lot déjà dans l'historique n'est pas repris), puis les tables du jou
 « intégrées » sur le site de dev. Le site est la source des données qu'il modifie (ci-dessous, « Mise à jour ») : les tests ne s'arrêtent plus sur
 une valeur que le site a changée.
 
+Un lot noté par un site de dev d'avant la migration 0113 nomme ses mots-clés par leur ancien id texte : le rejeu le lit en id entier
+(`ancienneEcritureDesIds`), et la trace versée aussi (`traceDAujourdhui`, serveur/edition.mjs : registre de la 0113, puis clé, puis clé quittée ;
+`libelle_cle` devient `cle` ; id inconnu laissé tel quel). `npm run db:appliquer-edition -- --reparer-traces` refait cette mise à jour sur les traces
+déjà versées (idempotent ; seul `historique_modification.sql` change).
+
+**Nature de chaque trace** (migration 0127, lot 6 du chantier de la base de dev, garde-fou 11). `modification_lot` et `historique_modification` portent
+`nature` (`saisie`, `source`, `decision`, `migration`, `code`) et `decision` (le numéro « R275 », présent si et seulement si la nature est `decision`). La
+nature est celle du **lot** ; chaque ligne de l'historique reprend celle de son lot. Le service écrit `saisie` pour tout lot de l'éditeur
+(`edition-journal.mjs#ouvrirLot`). Dans la résolution d'un conflit, seule la **reprise** d'un lot gardé (`edition-conflits.mjs#resoudreUnLotGarde`) garde la
+nature et le numéro du lot repris ; le lot des choix 2 et 3 et l'ancienne forme (lots annulés) passent par `ouvrirLot` et écrivent `saisie` (choix voulu : c'est
+un clic sur le site). Le report vers l'historique (`serveur/historique.mjs#historiser`,
+`scripts/mise-a-jour-regles.mjs`, l'extrait) ne change pas la nature. Le journal exporté (`maverick-edition/1`) porte `nature` et `decision` sur chaque
+lot ; `chargerJournal` lit un journal téléchargé avant la 0127, sans ces champs, comme une `saisie` (`edition-journal.mjs#natureDuLot`, qui refuse une
+nature inconnue ou un numéro de décision mal placé en nommant le lot). Test : `serveur-edition-nature-des-traces`.
+**L'état d'origine** (`lib/historique-site.mjs`, lu par les tests, `db:check`, le rapprochement des classeurs : `historiqueSite`, `lireHistorique`, `defaireLeSite` de
+`test/aide-base-d-import.mjs`) ne défait que les traces de nature `saisie` et `decision` (`NATURES_DEFAITES`) : un réimport d'une source, une migration ou un recalcul du code
+(`source`, `migration`, `code`) font partie du contenu de référence. Un historique sans colonne `nature` (base d'avant la 0127) se lit comme des saisies ; `valeursDAvant` (les noms
+qu'une ligne a portés) lit toutes les natures. Tests : `historique-site`, `aide-base-d-import`.
+
 | Requête | Réponse |
 | --- | --- |
 | `GET /api/edition/en-attente/` | Lignes modifiées depuis la construction des pages (`{ lignes: [{ table, cle, creee, ligne, apercu? }] }`) |
 | `POST /api/edition/lignes/` | `{ lignes: [{ table, cle }] }` → la ligne actuelle de chacune (passage en mode modification) |
-| `GET /api/edition/listes/` | Listes des formulaires (compétences, catégories de classe, races hybrides sans classe raciale…) |
+| `GET /api/edition/listes/` | Listes des formulaires (compétences, catégories de classe, races hybrides sans classe raciale, onglets des Règles `onglets: [{ valeur, libelle }]`…) |
 | `GET /api/edition/pages/` | Les pages du wiki (`id`, `titre`) : cibles d'un lien posé dans le texte du guide |
-| `GET /api/edition/mots-cles/` | `{ motsCles: [{ id, libelle, libelle_cle, description, pages, protege }] }` : le glossaire dans la base vivante (`description` : la définition telle qu'enregistrée, `NULL` tant qu'il n'est pas décrit ; `pages` : le nombre de pages qui le portent) (vue `v_mot_cle` et `mot_cle` ; `protege` : la raison qui interdit de le supprimer ou d'en changer la clé, sinon `null`) |
+| `GET /api/edition/mots-cles/` | `{ motsCles: [{ id, libelle, cle, description, url, couleur, classe, pages, verrou, monnaie_id, synonymes, categories, anciennes_cles, mentions, refus_du_forcage }], categories: [{ id, libelle, libelle_cle, mots_cles }], css }` : le glossaire dans la base vivante (`id` : l'entier figé, migration 0113 ; `cle` : la clé que citent les balises et les adresses, R232 ; `synonymes` : leurs écritures dans l'ordre, R233 ; `categories` : les ids de ses catégories ; `anciennes_cles` : les clés qu'il a quittées ; `monnaie_id` : la monnaie dont c'est le mot-clé ; `description` : la définition telle qu'enregistrée, `NULL` tant qu'il n'est pas décrit ; `url`, `couleur` : le lien et la couleur, migration `0098`, `NULL` sans eux ; `classe` : la classe de sa couleur, `lib/mots-cles-liens.mjs#classeDuMotCle`, `null` sans couleur ; `pages` : le nombre de pages qui le portent) (`lib/mots-cles-db.mjs#motsClesDeLaBase` ; `verrou` : `1` si le mot-clé est verrouillé, décisions R218 et R219, `0` sinon, ce qu'il permet encore : `lib/mots-cles.mjs#RAISON_DU_VERROU` ; `mentions` : ce qui le mentionne, la forme du `409` d'une suppression, `[]` sans mention, pour tous en un passage, `lib/mentions-des-mots-cles.mjs#mentionsDesMotsCles`, environ 60 ms sur la base du lot) ; `css` : la feuille des classes des mots-clés colorés (`lib/palette-css.mjs#cssDesMotsCles` : la page la réécrit sans importer la palette) |
+| `GET /api/edition/plan/` | `{ onglets: [{ id, titre, ordre, ouverture, entrees: [{ id, sorte, rang, page_id, titre, libelle, adresse, protection, citations, supprimable }] }], races: { pures: [{ id, nom, rang_liste }], hybrides: [...] } }` : le plan vivant des Règles (`serveur/edition-plan.mjs#planVivant`) — les onglets dans l'ordre, leurs entrées dans l'ordre du menu (`sorte` : `page`, `lien` ou `bientot` ; `titre` : celui de la page ; `libelle` : celui d'un lien ou d'une entrée « bientôt » ; `adresse` : relative à la racine du site) ; pour une page, `protection` (les raisons de `lib/pages-protegees.mjs`, `[]` si rien ne la protège), `citations` (`lib/citations-db.mjs`, celles des pages d'exemple marquées `exemple`) et `supprimable` ; `null`, `null`, `false` pour un lien ou une entrée « bientôt » —, et les races de chaque groupe dans l'ordre de la liste (`rang_liste`, puis le nom) |
 | `GET /api/edition/chronologie/` | `{ evenements: [...], categories: [...] }` : les événements dans l'ordre de lecture, avec leur date, leur portée et leurs catégories, et les catégories avec leur nombre d'événements (la frise refaite au chargement, la gestion des catégories) |
 | `POST /api/edition/evenement/` | `{ evenement }` → l'événement, ses blocs (texte, lien, titre de la page liée) et ses catégories ; `404` s'il n'existe pas (ou plus) |
 | `POST /api/edition/race/` | `{ race }` → magies innées et relations de la race dans la base vivante |
-| `POST /api/edition/classe/` | `{ classe }` → spécialités, dons, choix et fiches qui les citent (qui en seront retirées), dans la base vivante (D11) |
+| `POST /api/edition/classe/` | `{ classe }` → spécialités, dons, choix et fiches qui les citent (qui en seront retirées), et `variables` (la magie, `innee` ou `acquise`, de chaque don « Variable » de la classe : R181), dans la base vivante (D11) |
 | `POST /api/edition/bestiaire/` | `{ connues, logo }` → l'ordre des lignes du tableau des monstres (`ordre` : leurs identifiants) et, pour celles que la page n'a pas (`connues`), la ligne et la carte en HTML (`lib/bestiaire-rendu.mjs`, comme la page construite, sauf le lien du nom, qui mène à la carte dans la page (`#carte-…`) : un monstre créé depuis la construction n'a pas de page ; le logo à la place du portrait, que le mode modification charge ensuite) ; `{ capacites: [ids des cartes] }` → `{ capacites: { id: html } }` : le bloc des capacités de ces cartes (`htmlDesCapacitesDeLaCarte`), après une modification de leurs capacités ou d'une capacité commune qu'elles ont (décision R66) |
 | `POST /api/edition/portrait/` | `{ table, cle }` → le portrait d'une carte de monstre ou d'une espèce, en entier (`portrait` : data URL, ou null) et son cadrage. Les autres réponses (lignes lues, en attente, d'un lot, d'un conflit) ne donnent d'une image que `{ image: true, empreinte, resume }` (`lib/edition-modele.mjs#ligneSansImage`) : 700 000 caractères par image |
-| `POST /api/edition/` | `{ page, operations: [...] }` → applique un lot d'un bloc (`modifier`, `creer`, `supprimer`, `relations`, `magies_innees`, `categories`, `fusionner_mots_cles` : `serveur/edition.mjs` ; `valeurs_de_capacite` : les valeurs « {N} » d'une capacité de monstre pour une carte, décision R69, `serveur/edition-bestiaire.mjs`) ; rend `{ lot, modifications, crees, lignes, fiches }` (`fiches` : les fiches de personnage dont le lot a retiré un élément, R42) |
-| `GET /api/edition/journal/` | Le journal des modifications en attente, et des « intégrées » des lots que les règles n'ont pas encore reçus (`maverick-edition/1`), en pièce jointe |
+| `POST /api/edition/` | `{ page, operations: [...] }` → applique un lot d'un bloc (`modifier`, `creer`, `supprimer`, `relations`, `magies_innees`, `categories`, `fusionner_mots_cles` : `serveur/edition.mjs` ; `ordonner` : `serveur/edition-plan.mjs` ; `valeurs_de_capacite` : les valeurs « {N} » d'une capacité de monstre pour une carte, décision R69, `serveur/edition-bestiaire.mjs`) ; rend `{ lot, modifications, crees, lignes, fiches }` (`fiches` : les fiches de personnage dont le lot a retiré un élément, R42) |
+| `GET /api/edition/journal/` | Le journal des modifications en attente, et des « intégrées » des lots que les règles n'ont pas encore reçus (`maverick-edition/1` ; chaque lot porte sa `nature` et sa `decision`), en pièce jointe |
+| `GET /api/edition/extrait/` | L'extrait du contenu (un fichier SQLite) : ci-dessous, « Extrait du contenu et attestation de la production » ; `…/extrait/meta/` : son méta en JSON |
+| `GET`, `POST /api/edition/lots/`, `GET /api/edition/lots/<id>/`, `POST …/<id>/{essai,appliquer,refuser,annuler}/`, `GET …/<id>/annulation/`, `POST /api/edition/lots/recalcul/` | Les lots de changements : déposer une proposition, la lire, refaire son essai à blanc, l'appliquer, la refuser ou l'annuler d'un clic, aperçu de l'annulation, « tout recalculer » (ci-dessous, « Lots de changements (service) ») |
 
 **Pas de comptes** : quiconque a le mot de passe du site de dev peut modifier les règles (le journal n'a pas d'auteur :
 `modification_lot.auteur_id` attend la connexion Discord). Mêmes protections d'écriture que les fiches (JSON, `Sec-Fetch-Site`).
+
+### Lots de changements (format)
+
+Lot 6 du chantier de la base de dev (R274, R275). Un **lot de changements** est un fichier d'opérations pour changer ce que le site ne sait pas écrire : le
+décrit et le valide `client/src/lib/lot-de-changements.mjs` (module pur, sans base ni navigateur). Il n'écrit rien : le dépôt, l'essai à blanc, l'application
+d'un bloc et les numéros sont le service (section suivante) ; l'annulation d'un lot et « tout recalculer » suivent (lot 6, PR 3).
+
+```json
+{ "titre": "…", "nature": "decision", "decision": "R275", "auteur": "…",
+  "operations": [ { "table": "…", "cle": { "id": 12 }, "operation": "modifier", "avant": { "colonne": "ancienne" }, "apres": { "colonne": "nouvelle" } } ] }
+```
+
+- **En-tête** : `titre` (lisible, 200 caractères au plus), `nature` (`source`, `decision`, `migration` ou `code` ; `saisie` est refusée, un lot n'étant pas une
+  saisie du site), `decision` (« R… », si et seulement si la nature est `decision`), `auteur` (libre, facultatif), `format` (facultatif, `maverick-lot/1`).
+  Une clé inconnue est refusée (une faute de frappe ne passe pas en silence).
+- **Opérations**, dans l'ordre (le rang d'un message d'erreur est la place dans la liste, à partir de 1) : `table`, `cle` (l'objet de **toute** la clé
+  primaire), `operation` (`inserer`, `modifier`, `supprimer`), `avant` (les valeurs attendues des colonnes touchées ; la ligne **entière** pour `supprimer` ;
+  absent pour `inserer`), `apres` (les valeurs écrites ; absent pour `supprimer`) : la forme de `avant` / `apres` d'une ligne de `modification`. Une insertion
+  porte sa clé dans `apres` ; une modification ne touche pas la clé et change chaque colonne qu'elle nomme.
+- **Contrôles** (`controlerLeLot` : toutes les erreurs d'un coup, avec le rang à corriger) : table existante et de classe « contenu » (`lib/tables-de-la-base.mjs`),
+  hors notes de version, historique et journal ; colonnes existantes ; clé complète ; cohérence `avant` / `apres` / opération ; jamais deux opérations sur la
+  même ligne, sauf deux `modifier` de colonnes différentes. La structure des tables (colonnes, clé) est fournie par l'appelant (`PRAGMA table_info`).
+- **Éteint hors de l'édition** : un lot est refusé pour une table que le service d'édition ne sait pas écrire (les tables de `TABLES` et d'`ENTITES`, `lib/edition-modele.mjs`,
+  la seule liste : `tablesDeLEdition`), tant que `LOT_OUVERT_AUX_TABLES_HORS_EDITION` vaut `false` ; elle passe à `true` au lot 8, avec l'accord du propriétaire.
+- **Valeurs attendues** (`comparerAvecLaBase(lot, lireLigne)`) : par opération, `applicable` ou `changee` (ligne déjà là pour une insertion, absente ou de valeur
+  changée pour le reste), avec `raison` et, pour une valeur, `ecarts` (`colonne`, `attendue`, `actuelle`). Le site prime : une opération `changee` n'est pas écrite,
+  elle est listée. C'est la base de l'essai à blanc.
+
+- **Numéro à donner** : la clé entière d'une insertion (table à clé simple de type entier) s'écrit `{ "$numero": "a" }` ; le même jeton se réutilise ensuite
+  dans `apres` (ou dans la clé d'une insertion à clé composée) d'une opération **suivante** du même lot. Un jeton se donne une fois, n'entre jamais dans `avant`
+  ni dans la clé d'une modification ou d'une suppression. `donnerLesNumeros(lot, depart)` rend le lot résolu : numéros consécutifs par table et colonne, dans
+  l'ordre des opérations ; `depart` est le plus haut numéro connu (le service le calcule : ci-dessous).
+
+Tests : `lot-de-changements`, `lot-de-changements-numeros`, `serveur-edition-nature-des-traces`.
+
+### Lots de changements (service)
+
+Décision du propriétaire (R275, question 4 a) : « Chaque lot attend votre clic sur le site de dev, avec un aperçu avant et après. » Code :
+`serveur/edition-lots.mjs` (les routes, dans `serveur/api.mjs#traiterLots`), `serveur/edition.mjs#appliquerUnLot` (l'hôte de l'application),
+`serveur/controles-du-contenu.mjs` (les contrôles de `db:check`). Tables : `lot_de_changements` et `numero_donne` (migration 0128). Une session de Claude **dépose**
+une proposition avec la **clé de lecture** ; rien n'est écrit dans le contenu. Le propriétaire l'**applique** ou la **refuse** (mot de passe). Aucune clé
+d'écriture n'existe pour les sessions. Sans mot de passe posé, le site se comporte comme avant.
+
+| Route | Classe d'accès | Rôle |
+| --- | --- | --- |
+| `GET /api/edition/lots/` | lecture | Les propositions, la plus récente d'abord (résumé : état, verdict de l'essai) |
+| `POST /api/edition/lots/` | proposition | Le lot (`maverick-lot/1`) : contrôlé par `controlerLeLot` (400 avec le rang de l'opération à corriger : `erreurs`), enregistré « propose », essayé à blanc ; `201` avec l'essai |
+| `GET /api/edition/lots/<id>/` | lecture | Le contenu déposé, l'essai (aperçu avant et après), le bilan |
+| `POST /api/edition/lots/<id>/essai/` | proposition | Refait l'essai (n'écrit que `essai` et `essaye_le`) |
+| `POST /api/edition/lots/<id>/appliquer/` | écriture | `{ verrous_ouverts?: ["R…"] }` : l'application d'un bloc (le clic du propriétaire) |
+| `POST /api/edition/lots/<id>/refuser/` | écriture | L'état « refuse » : rien n'est écrit, la proposition reste |
+| `GET /api/edition/lots/<id>/annulation/` | lecture | L'aperçu de l'annulation d'un lot appliqué, calculé sur une copie (rien n'est écrit) : par ligne du lot du journal, `remise`, `gardee` (avec la valeur trouvée), `deja` |
+| `POST /api/edition/lots/<id>/annuler/` | écriture | `{ verrous_ouverts?: ["R…"] }` : « Annuler ce lot » d'un bloc (le clic du propriétaire) |
+| `POST /api/edition/lots/recalcul/` | proposition | « Tout recalculer » : dépose les écarts des colonnes dérivées comme un lot de nature `code` (`201 { lot, recalcul }` ; `200` sans lot quand rien ne diffère) |
+
+La classe **proposition** (`serveur/acces-routes.mjs`) a la porte de la lecture (la clé OU le mot de passe) pour les deux seules routes qui écrivent sans toucher au
+contenu : elles n'écrivent que `lot_de_changements`. Appliquer et refuser, qui décident, demandent le mot de passe. En production : `403` avant tout.
+
+**Essai à blanc.** Une copie de la base vivante (`VACUUM INTO`, dans `<dossier de la base>/essais/`, supprimée à la fin même en cas d'échec ; jamais la base elle-même), dans
+un fil à part (le service ne s'arrête pas ; un essai à la fois). Le lot y est appliqué par **le même code** que l'application, puis les contrôles du contenu de
+`db:check` (`controlerLeContenu`) avant et après : seuls les problèmes **qui naissent du lot** comptent (`problemes_nouveaux` ; ceux d'avant sont gardés dans
+`problemes_avant` pour le contrôle de l'application). Résultat enregistré dans `lot_de_changements.essai` : `verdict` (`applicable`, `verrous`, `a_corriger`,
+`rien_a_ecrire`, `en_echec`), `comptes`, `verrous_a_ouvrir`, `numeros` (provisoires) et, par opération, `etat` : `applicable` ; `changee` (la valeur a bougé : `ecarts`
+avec la valeur trouvée) ; `verrouillee` (`decisions`) ; `refusee` (`message`, le rang est celui de l'opération) ; chacune avec son `apercu` (table et ligne par leur
+nom, chaque colonne par son libellé, valeur d'avant et d'après ; `lib/libelles-de-la-base.mjs`).
+
+**Application** (`appliquerUnLot`) : dans **une** transaction et sous le même verrou d'écrivain que `POST /api/edition/` (`BEGIN IMMEDIATE`). La comparaison est refaite au
+clic (`comparerAvecLaBase` : une valeur changée entre-temps n'est pas écrite, listée avec la valeur trouvée dans `bilan` : le site prime) ; chaque opération est écrite
+**par le service d'édition dès que la table lui est connue** (`traduire`) : « modifier » pour les colonnes de `TABLES`, « supprimer » par l'entité de la table
+(ses refus comprennent liens rompus, fiches R42…) ; une colonne que le service ne sait pas écrire, sur une table qu'il connaît, passe par le journal (voie générique :
+`ecrire_modifier`, `ecrire_inserer`, `ecrire_supprimer`, jamais dans `OPERATIONS` : aucune route ne les joint), jugée par l'essai et par `db:check`. Le service ne crée pas
+la ligne d'une table qu'il crée lui-même (identifiant tiré du nom, page, clés recalculées) : l'insertion y est refusée, sauf un **mot-clé** : le service le CRÉE (`creer` de l'entité : id suivant,
+clé de la règle R232, adresse, couleur et icône contrôlées), `verrou` à 1 s'écrit ensuite sous le gel (colonne tenue, R218 (4) : le propriétaire ouvre R218 au clic) et le lot **vérifie** que la ligne
+créée est celle qu'il décrit (`verifier_ligne` : identifiant donné à l'application, clé ; sinon 409) ; ses catégories sont des lignes de `mot_cle_categorie`, opérations du lot à part. Une entité sans
+suppression (R159) n'est pas supprimée. Une opération que le service accepte sans rien écrire est refusée. Le journal : un `modification_lot` à la nature, au numéro de décision et au titre du lot
+(`resume`), ses `modification` « en_attente » comme une saisie (le rapatriement et la mise à jour les reprennent). `lot_de_changements` passe à « applique »
+(`lot_id`, `decide_le`, `verrous_ouverts`, `bilan` : opérations écrites ou changées, numéros donnés) dans la même transaction. Refus (409, rien n'est écrit, le lot reste
+« propose ») : l'essai a des opérations refusées ou des problèmes nés du lot, une opération est refusée au clic, un contrôle du contenu échoue après les écritures
+(rejoué dans la transaction), un verrou n'est pas ouvert, ou rien ne reste à écrire.
+
+**Verrous des décisions.** Ce que le service refuse au nom d'une décision cite son numéro (« décision R219 ») : `decisionsCitees` le lit du message, sans liste recopiée. Un
+refus qui cite un numéro et que le **gel** (`ctx.gel === false` : mots-clés verrouillés, monnaies ; R218, R219, comme au rejeu) lève est « verrouillée » à l'essai
+(`decisions`) ; à l'application, il est refusé sauf si **tous** ses numéros sont dans `verrous_ouverts` (donné au clic), qui est alors enregistré. L'opération s'écrit alors
+sous un gel ouvert pour elle seule. Un refus qui cite un numéro mais que le gel ne lève pas (une règle : R105, R181…) reste « refusée ». Rien ne change pour l'édition ordinaire :
+`enregistrer` n'est pas touché, le gel reste fermé.
+
+**Numéros.** Le numéro d'un jeton = 1 + le plus haut de : le plafond de `numero_donne`, le maximum de la colonne, le plus haut trouvé dans `modification` et
+`historique_modification` pour cette table (`plusHautNumero`, `serveur/edition-journal.mjs`) ; le plafond est monté dans la même transaction (`INSERT … ON CONFLICT … max`). Un
+numéro n'est donc jamais redonné, même après une suppression, une annulation ou une base restaurée sans `numero_donne`. L'édition ordinaire donne ses numéros entiers
+(`idSuivant` des mots-clés, de leurs synonymes et catégories, `serveur/edition-mots-cles.mjs`) par **la même fonction** (`donnerUnNumero`) : l'id est 1 + le plus haut numéro connu
+(et, pour un mot-clé, `mot_cle_ancienne_cle` et le registre de la migration 0113) et le plafond monte dans la transaction du lot ; seuls des numéros plus hauts sont possibles.
+Le rejeu d'un ancien journal (`ancienneEcritureDesIds`) calcule un numéro sans le réserver (`monter: false`). Une base d'avant la migration 0128 (sans `numero_donne`) s'en passe.
+
+**Annuler ce lot** (`annuler`, `previsualiserLAnnulation` ; plan : « remet une valeur seulement si elle vaut encore ce que le lot a écrit »). Pour un lot « applique ». La source est le lot du
+journal (`lot_id` : `modification`, à défaut `historique_modification`), ramené à son **effet net** par ligne de table (`lib/lot-de-changements.mjs#effetNetDuLot` : le service
+écrit plusieurs fois la même ligne) puis jugé (`jugerLAnnulation`) : une colonne qui vaut encore ce que le lot a écrit reprend son `avant` (`remise`) ; si elle a sa valeur d'avant,
+`deja` ; sinon `gardee`, listée avec la valeur trouvée (le site prime). Une ligne **insérée** par le lot n'est supprimée que si elle vaut encore, en entier, ce qu'il a inséré ; une ligne
+**supprimée** n'est réinsérée (à l'identique, `restaurer` : pas de refus des colonnes tenues par le service) que si elle est encore absente. Ordre : les lignes retirées d'abord
+(la dernière retirée en premier), puis les colonnes changées (dans l'ordre du lot), enfin les lignes créées (la dernière créée en premier). Écriture par le service d'édition dès qu'il
+connaît la colonne (`traduire`, comme l'application) : ce qu'il recalcule seul (la clé d'un mot-clé après son libellé, la page d'un métier) est déjà revenu quand on arrive à la ligne qui le
+note (`deja`). Une colonne dérivée d'une page typée, que le service refuse d'écrire, passe par le journal. La comparaison est **refaite à chaque ligne** sur l'état du moment ; l'aperçu
+(`GET …/annulation/`, classe lecture) est calculé par **le même code** sur une copie `VACUUM INTO` dans un fil à part (un à la fois, avec les essais), rien n'est enregistré ; il rend
+`verdict` (`applicable`, `verrous`, `refusee`, `rien_a_remettre`), `comptes`, `verrous_a_ouvrir`, les opérations avec leur aperçu avant et après (`ecarts` des valeurs gardées) et les
+problèmes du contenu nés de l'annulation. Le clic (`POST …/annuler/`, mot de passe) : une transaction sous le verrou de l'édition, contrôles du contenu rejoués (le calcul « avant » se fait
+au clic, environ une seconde), un lot du journal `Annulation de « … »` de **la même nature et du même numéro de décision** que le lot annulé (titre neutralisé comme à l'application), puis
+`lot_de_changements` passe à « annule » (`annule_le`, `annulation_lot_id`, `bilan.annulation` : le bilan d'application est gardé). Les verrous de décision se rouvrent au clic
+(`verrous_ouverts`). Refus (409, rien n'est écrit, le lot reste « applique ») : rien à remettre (tout a changé depuis, ou est déjà revenu), une ligne refusée par le service, un verrou
+non ouvert, un contrôle du contenu qui échoue, un lot du journal en conflit ou qui n'y est plus. Les numéros donnés restent dans `numero_donne`. Limite connue : annuler un
+renommage de mot-clé laisse la clé que le renommage avait posée en clé quittée (un renvoi, R233 (11)), que le service tient lui-même.
+
+**Tout recalculer** (`recalculerTout`, classe `proposition`). Après un changement de code, le corps, le résumé et les `donnees` des pages que le code dérive des tables et que
+`recalculerLesPages` refait sans qu'on lui dise ce qui a changé — races, classes, fiches de dons, métiers (`TYPES_DE_PAGES_RECALCULEES`) — sont refaits **sur une copie** et comparés à
+ce qui est stocké ; les écarts sont **déposés comme un lot de nature `code`** (une opération `modifier` par page : la valeur stockée en `avant`, la valeur recalculée en `apres`), essayé à
+blanc et appliqué d'un clic comme tout lot (R275 : rien n'entre sans le clic du propriétaire). Aucun écart : `200`, aucun lot. Les pages des magies, armes, armures, composants et potions
+ne se refont qu'à partir d'une modification précise (le rendu remplace la ligne touchée) : elles ne sont pas recalculées d'un bloc ; les clés des mots-clés et les colonnes calculées des
+armures (R207) sont tenues par le service et ne sont pas non plus dans ce recalcul.
+
+**La page « Mise à jour »** (`src/scripts/mise-a-jour.mjs`, rendu pur `src/lib/lots-rendu.mjs`, lot 6 PR 4) : la section « Lots de changements proposés », entre les listes de la note en préparation
+et les lignes en conflit, sur le site de dev seulement (`GET /api/edition/lots/` répond `403` en production, `404` sans le service : la section reste cachée ; une autre erreur est dite). Pour
+chaque proposition à décider : le titre, la date et l'auteur, la décision citée, le résultat de l'essai en une phrase (prêt ; N valeurs ont changé depuis et ne seront pas écrites ; à corriger :
+ligne N du lot…), l'aperçu dépliable par ligne de la base (le nom, les colonnes par leur libellé, « avant » et « après » ; deux longs textes par leurs différences), une case par décision à ouvrir
+(« J'accepte d'ouvrir ce que la décision R… verrouille » : « Appliquer » reste inactif tant qu'elle n'est pas cochée, le clic envoie `verrous_ouverts`), puis « Appliquer » (confirmation, puis le bilan :
+écrit, gardé parce que la valeur avait changé), « Refuser » (confirmation) et « Refaire l'essai ». Un `409` est dit avec la ligne à corriger et le lot est relu. Les dix lots appliqués les plus récents
+montrent leur bilan et « Annuler ce lot » : un clic affiche d'abord l'aperçu de l'annulation (remis, déjà comme avant, gardé avec la valeur trouvée), le bouton « Oui, annuler ce lot » l'exécute. Les
+refusés et les annulés sont dans un historique replié. « Tout recalculer » (`POST …/recalcul/`) dépose le lot et l'affiche, ou dit qu'il n'y a rien à recalculer. Le mot de passe est demandé par
+`scripts/acces.mjs` (rien à faire dans la page). Le détail (GET `…/<id>/`) n'est lu que pour les lots à décider et les appliqués récents. Tests : `lots-rendu` (module pur), `mise-a-jour-lots` (le script dans
+un faux navigateur), `lots-rendu-service` (le rendu sur ce que rend le vrai service).
+
+**Éteint hors de l'édition** : `controlerLeLot` refuse au dépôt une table que le service ne sait pas écrire (jusqu'au lot 8).
+
+### Lots de changements (épreuve)
+
+L'épreuve d'entrée du lot 6 (R274, R275 ; plan : « refaire les migrations 0122 à 0124 sous forme de lots, sur une copie, et retrouver la même base »). Code : `serveur/epreuve-des-lots.mjs`
+et `scripts/epreuve-des-lots.mjs` (`npm run db:epreuve-lots`, dans `client/`, sur une copie de la base des règles (`--regles`, `var/maverick.db` par défaut), environ une minute ; sortie : le partage, la comparaison table par table, les annulations).
+Test : `epreuve-lots-0122-0124` ; lots : `client/test/fixtures/lots-0122-0124/` (`0122.json`, `0123.json`, `0124.json`, `complement.json`).
+
+- **Fabriqués une fois** (`epreuve-des-lots.mjs fabriquer`, avec l'historique git ; le test ne le lit pas) : pour chaque migration, la base du commit parent de celui qui l'a ajoutée et celle de ce commit sont
+  bâties depuis `data/rows` (les migrations 0122, 0123 et 0124 ne se suivent pas dans une même base : un rapatriement de l'édition passe entre la 0122 et la 0123) ; la migration rejouée en SQL sur l'avant doit
+  redonner l'après (sinon rien n'est écrit) ; la différence, table de contenu par table de contenu, devient un lot (modifier, puis insérer parents d'abord, puis supprimer enfants d'abord, un mot-clé avant la page
+  qu'il ouvre : R221). `nature` `migration` (0122, 0123) ou `decision` R272 (0124, que sa migration cite). Les clés entières insérées sont des numéros à donner (`mot_cle_421` : le jeton garde le numéro de la
+  migration). `complement.json` : les lignes que le service retire **lui-même** avec une entité supprimée (page : entrée de menu, alias, étiquettes, sources de page ; mot-clé : catégories, synonymes, clés
+  quittées ; `COUVERT_PAR_L_ENTITE`), que le lot ne porte pas (la ligne serait déjà partie : 404), et que l'épreuve vérifie par la comparaison. Les tables calculées (`lien`, `lien_candidat`) ne sont pas dans un lot.
+- **Refaite sur une copie** : la base des règles, les trois migrations défaites en SQL direct (avec ce qui a été posé APRÈS elles sur les lignes qu'elles ont créées : des saisies du site, comme des catégories ajoutées à des mots-clés créés par la 0123, ou une migration suivante) = la base
+  d'**avant** ; la **référence** = l'avant, le SQL des migrations rejoué ; le **service** = l'avant, chaque lot déposé, essayé et appliqué par `edition-lots.mjs`, les verrous de l'essai ouverts (le clic). Les tables
+  de contenu se comparent une à une (hors notes de version) ; les numéros donnés par le service diffèrent de ceux de la migration (le plus haut numéro d'aujourd'hui est plus haut) : comparés **modulo ces numéros**.
+- **Le partage.** (a) passe aujourd'hui par un lot ; (b) est refusé : table que le service d'édition ne sait pas écrire (`hors_edition`, le lot reste éteint jusqu'au lot 8) ; (c) est refusé par le service **même
+  une fois les tables ouvertes** (ses règles : une page protégée, un mot-clé qui y mène…). La partie (b) ne s'applique que par l'option de test `ouvertHorsEdition` de `controlerLeLot` (jamais une route : le lot
+  entier est refusé au dépôt, `400`) ; ce que le service refuse alors est écarté du lot, listé, et expliqué dans la comparaison.
+- **Résultat.** Même base, table par table, modulo les numéros donnés et la ligne (c). 0122 : 10 opérations, (a) 6 (5 pages, 1 mot-clé ; la suppression de la page, comptée avec les pages, est en réalité refusée par le service dans la partie (a) seule, faute des opérations (b) : elle est alors citée par une ligne de « Constante de règle » et ouvre un onglet) ; (b) 3, `regle_constante`, `regles_onglet`, `mot_cle_ancienne_cle` ; (c) 1 : la
+  page `guide/la-montee-de-niveau` est protégée par le service (elle porte le bloc « niveaux » tiré de la base), donc elle et ce que le service emporte avec elle (5 `page_source`, 1 `source`, 1 entrée de menu) restent ;
+  verrous R218, R219. 0123 : 21 opérations, (a) 12 (les neuf mots-clés créés par le service, `mot_cle` modifié, 2 pages), (b) 9 `mot_cle_categorie` ; refaite en entier ; verrou R218. 0124 : 7 opérations, (a) 5 (la suppression de `guide/fiche-accessoires-et-ceinture` y est aussi refusée sans les (b) : citée par une « Constante de règle »), (b) 2
+  (`regle_constante`, `mot_cle_ancienne_cle`) ; refaite en entier avec les (b) ; verrous R218, R219. La liste (b) est épinglée par table par le test : quand le lot 8 ouvre une table, sa ligne en sort.
+- **Annuler** (garde-fou 11), chaque lot sur une copie de la base juste après lui, dans l'ordre inverse : la 0122 s'annule et la base d'avant revient (toutes les tables égales) ; la 0123 est refusée par le service (le
+  corps de « Alignement » perdrait ses ancres figées `{#…}` : elles ne se retirent pas) et la 0124 aussi (l'ancienne adresse `/regles/fiche-inventaire-sac-a-dos/` n'est plus celle d'aucune page : R272). Le lot
+  reste appliqué ; le service ne remet pas ce qu'il ne saurait pas écrire aujourd'hui.
+- **Ajouté pour l'épreuve** : une clé composée reprend le numéro qu'une insertion précédente a donné (`mot_cle_categorie` d'un mot-clé du même lot ; `controlerLeLot`, `donnerLesNumeros`) ; l'insertion d'un mot-clé
+  passe par la création du service (ci-dessus). Rien ne change pour l'édition ordinaire.
+
+Tests : `serveur-edition-lots` (dépôt avec la clé sans écriture dans le contenu, copie, application en bloc, changée entre-temps, refus avec rang, contrôles du contenu, verrou refusé
+puis ouvert, numéros, table hors édition, édition ordinaire inchangée), `serveur-edition-lots-annulation` (remise, valeur gardée, insertion et suppression, aperçu sur copie, numéros jamais
+rendus, nature du journal d'annulation, rien à remettre, verrous, classes d'accès, tout recalculer), `lot-de-changements-annulation` (effet net et jugement, module pur),
+`serveur-edition-numeros` (`idSuivant`, `donnerUnNumero`), `lot-de-changements-numeros`, `serveur-acces-routes`, `serveur-edition-lots-mot-cle` (un mot-clé créé par un lot), `epreuve-lots-0122-0124` (l'épreuve).
+
+## Extrait du contenu et attestation de la production
+
+Lot 5 du chantier « la base du site de dev devient la source de vérité » (`docs/chantier-base-de-dev.md`, R274, R275 (3)) : les sessions de Claude lisent le
+vrai contenu du site de dev, sans fiche ni compte ; la production dit d'elle-même, sans nom ni fiche, où elle en est.
+
+**Le classement des tables** (`src/lib/tables-de-la-base.mjs#classeDeLaTable`, garde-fou 9). Toute table de la base est de l'une de trois classes ; une table
+que le classement ne connaît pas rend `null`, et le test `tables-de-la-base` échoue : une migration qui ajoute une table l'ajoute à la liste de sa classe.
+- **contenu** : les règles (sections 0 à 10 de `data/schema.sql` : `TABLES_DE_REGLES`), les notes de version et l'historique des modifications (section 15) ;
+- **propre au site** : les fiches, comptes et groupes (section 13), le journal de l'édition et le brouillon de la note (section 14) — vides dans tout fichier qui sort ;
+- **calculée** : les tables dérivées (`lien`, `lien_candidat`), la recherche plein texte (`page_fts`, `entite_fts`, avec leurs tables d'ombre) et les tables internes de SQLite.
+
+**Les empreintes** (`serveur/empreintes.mjs#empreintesDuContenu`) : le SHA-256 de chaque table de contenu, puis une empreinte globale (noms et empreintes des
+tables). Elles ne dépendent ni de l'ordre des lignes (lues triées par clé primaire, puis par toutes les colonnes, en comparaison binaire) ni de l'ordre des
+colonnes (prises par nom, avec leur type, `NOT NULL` et rang dans la clé) ni des octets du fichier : deux bases au même contenu ont les mêmes empreintes.
+Chaque valeur porte son type (NULL, entier, réel, texte, binaire). Une table propre au site, calculée ou inconnue n'y entre jamais.
+
+**L'extrait** (`serveur/extrait.mjs`, site de dev seulement). Un fichier SQLite **neuf** (jamais la base vivante copiée puis vidée : aucune page libre héritée) :
+le schéma de la base vivante ; les tables de contenu recopiées depuis elle, donc avec les modifications du site ; les tables propres au site **vides** (le service
+refuse le fichier si l'une contient une ligne ; une table inconnue du classement n'est jamais recopiée) ; les tables calculées recopiées **telles que la base vivante
+les porte** (le service ne les recalcule pas : après une édition, `lien` et la recherche plein texte peuvent retarder sur le contenu, jamais l'inverse) ; les
+modifications en attente du journal versées dans `historique_modification` **sans leur auteur**, version `NULL` (garde-fou 10 ; la règle de `db:appliquer-edition` :
+`serveur/historique.mjs#historiser`, un lot en conflit n'est pas versé) ; une vue `extrait_meta` (format, date UTC de fabrication, version du site, schéma,
+empreinte globale). Les fiches, comptes, groupes et le journal n'y sont pas : un test cherche leurs noms sentinelles dans chaque octet.
+
+Il est **refait une fois par changement**, pas à chaque téléchargement : rangé dans `db/extrait/` (`extrait.db` et `extrait.json`, le méta qui fait foi : date,
+version du site, schéma, empreinte globale et de chaque table, lignes des tables calculées, taille et SHA-256 du fichier), réutilisé tant que la **clé de
+changement** (`extrait.mjs#cleDeChangement`) ne bouge pas. Elle bouge avec la base vivante refaite (`vivante.json` : empreinte logique des règles, schéma, `refaite_le`) et avec le
+journal de l'édition — un lot de plus, une modification qui change d'état (en attente, intégrée, en conflit), un lot résolu, abandonné — parce que tout écrit de
+contenu passe par lui (`enregistrer`, résolution d'un conflit) ; jamais avec une fiche, un compte ou un groupe. Quelques requêtes sur le journal, jamais le contenu.
+Le premier téléchargement qui suit un changement fabrique l'extrait **dans un fil à part** (`Worker` du même module : le service reste libre), une seule fabrication à
+la fois (les demandes simultanées l'attendent), écriture atomique (`rename`, le méta en dernier).
+
+| Requête | Réponse |
+| --- | --- |
+| `GET /api/edition/extrait/` | Le fichier SQLite (`application/vnd.sqlite3`, en pièce jointe) ; `ETag` = son SHA-256, `X-Extrait-Fabrique-Le` ; `304` sur `If-None-Match` ; `403` hors du site de dev ; `503` sans base |
+| `GET /api/edition/extrait/meta/` | Le méta (`extrait.json`) : `format`, `fabrique_le`, `version_du_site`, `schema`, `empreinte`, `tables` (`{ empreinte, lignes }` par table), `calculees`, `modifications_versees`, `fichier` (`octets`, `sha256`), `duree_ms`… |
+
+**La commande** : `cd client && npm run db:extrait` (`scripts/db-extrait.mjs`) télécharge l'extrait depuis `https://dev.maverick-jdr.com` (`--url` ou `MAVERICK_EXTRAIT_URL`),
+dans `var/extrait/` (ignoré par git ; `--dossier`) : `maverick-dev.db` et `maverick-dev.json`. Une clé de lecture facultative (la variable `MAVERICK_EXTRAIT_CLE` seulement : une option `--cle` est refusée, la clé ne va jamais dans la ligne de commande ; sans mot de passe posé sur le site de dev, elle est inutile) part dans l'en-tête `X-Maverick-Cle` (« Accès au site de dev » : `Authorization` n'arrive jamais au service). Elle vérifie le SHA-256 du fichier, puis l'empreinte de **chaque** table
+contre le méta (`ecartsAvecLeMeta`), pose le fichier par `rename` (rien n'est écrit si l'un ne concorde pas), ne retélécharge pas un extrait déjà à jour, et affiche **la date de
+l'extrait** : chaque analyse la cite. Les sessions de Claude lisent ce fichier en lecture seule (`node:sqlite`, comme `interroger-la-base`), jamais les fiches ni les comptes.
+
+**L'attestation de la production** (`serveur/attestation.mjs`). Au démarrage du service, après la préparation de la base vivante, après chaque reconstruction (aussi
+quand elle échoue), et toutes les heures (`INTERVALLE_DE_L_ATTESTATION_MS`, option `attestation.intervalle` de `demarrerService` ; la dernière préparation redite telle quelle :
+une fiche enregistrée depuis le démarrage compte avant qu'un paquet ne soit jugé), la production écrit par `rename` `<dossier des métriques>/attestation-prod.json` — le dossier que les deux instances se partagent sur le VPS
+(`MAVERICK_DOSSIER_METRIQUES`, déjà monté dans les deux : aucun réglage de `deploy/`). Le site de dev n'en écrit pas (option `attestation` de `demarrerService` : `publier`
+par défaut sans l'édition ; `false` : ni écriture ni lecture). Elle contient : `version` (`service`, `code`), `schema`, `base_vivante` (`empreinte` globale et `tables`
+par table, du contenu de la base vivante), `regles_publiees` (`empreinte` globale du contenu de `site/donnees/maverick.db`), `preparation` (`appliquee`, **le nombre** de
+`problemes`, jamais leur texte, `refaite_le`, `regles`), `citations` (pour chaque élément de règle cité par une fiche — clé étrangère d'une table de fiche vers une table
+de contenu — `{ table, id, fiches }` : le nombre de fiches **distinctes** qui le citent, une clé composée donnant un id « a+b ») et `duree_ms`. Ni nom ni identifiant de fiche, de
+compte ou de groupe. Un échec d'écriture est noté au journal du service (`ERREUR attestation`) et n'empêche rien : le service démarre, les fiches ne sont que lues.
+
+**Côté site de dev** : `GET /api/mise-a-jour/` porte `etat_production` (`attestation.mjs#etatDeLaProduction`), la comparaison de l'attestation au contenu que la production
+publie (`/production`, `MAVERICK_PRODUCTION` : son `_serveur/version.json` et l'empreinte de son `donnees/maverick.db`, gardée par signature du fichier : rien ne se recalcule à
+chaque requête) :
+
+```json
+{ "etat": "a_jour" | "pas_appliquee" | "inconnue", "raison": null | "version" | "contenu" | "preparation" | "en_cours" | "absente" | "illisible" | "production_illisible" | "non_configuree",
+  "message": "…", "version_publiee": "0.4.79", "version_attestee": "0.4.78", "attestee_le": "2026-11-14T10:00:00Z", "problemes": 0, "tables_differentes": [] }
+```
+
+`pas_appliquee` : la production n'a pas appliqué sa dernière mise à jour (`version` : elle tourne sur une autre version que celle qu'elle publie ; `contenu` : sa base vivante
+n'a pas le contenu publié, `tables_differentes` les nomme ; `preparation` : la préparation de sa base a échoué). `inconnue` : sans alerte — `en_cours` (la version ou le contenu diffère, mais le fichier publié a changé il y a moins de `TOLERANCE_DE_LA_MISE_A_JOUR_MS` = 10 minutes et est plus neuf que l'attestation : la production applique sa mise à jour), ou l'attestation est absente (la production ne
+l'écrit qu'après sa prochaine livraison) ou illisible, ou la production n'est pas lisible depuis ce site.
+
+## Fabriquer le site depuis un fichier de contenu
+
+Lot 9 du chantier « la base du site de dev devient la source de vérité » (`docs/chantier-base-de-dev.md`, PR 1 sur 4) : le site se fabrique depuis un fichier de contenu,
+sans `data/rows`. Ce sont les briques de l'atelier du site de dev (PR 3) ; **le build par défaut ne change pas** : sans variable, `npm run build` reconstruit la base depuis `data/rows`
+et produit le même site qu'avant.
+
+- **`MAVERICK_CONTENU=<fichier SQLite>`** (`src/lib/contenu-fourni.mjs`) : un extrait du contenu (« Extrait du contenu et attestation de la production », ci-dessus). Posée, tout ce qui
+  lit la base au build en lit **une copie** (`lib/donnees.mjs#ouvrirBase`, passée par `db-derive.mjs`, avec `--sans-exemples` si `HIDE_EXAMPLES=1` ; `scripts/db-export-pages.mjs`) ; le fichier
+  fourni n'est jamais modifié, `trouverRacine` n'exige plus `data/rows`, et la base de référence de la production (`scripts/db-reference.mjs`, lue dans git) n'est pas construite. Un fichier
+  introuvable est une erreur, jamais un repli sur `data/rows`.
+- **`npm run build:depuis-contenu -- --contenu <fichier> [--sortie <dossier>] [--mesure <fichier.json>]`** (`scripts/fabriquer-depuis-contenu.mjs`, logique : `serveur/fabrication-depuis-contenu.mjs`) :
+  1. *controle* : le fichier est copié dans un dossier de travail, puis contrôlé (`serveur/fichier-de-contenu.mjs`, avec le classement de `lib/tables-de-la-base.mjs` et les empreintes de
+     `serveur/empreintes.mjs`) : SQLite lisible, structure (`user_version`) du `data/schema.sql` livré, toutes les tables du contenu présentes, aucune ligne dans une table propre au site
+     (fiches, comptes, groupes, journal : l'extrait en garde les tables, vides) ni dans une table inconnue, empreinte annoncée (`extrait_meta`) égale à celle des tables. Le message nomme la table,
+     jamais une valeur ;
+  2. *pages* : `db-export-pages` écrit les pages du wiki depuis la copie, **dans le vrai `client/src/content/wiki/`** (fabriqué et ignoré par git, comme au `prebuild`) : après une
+     fabrication depuis un extrait, `db:pages-check` peut être rouge à tort en local jusqu'au prochain `npm run build` ou `db:export-pages` ;
+  3. *derive* (« en deux temps », le mode par défaut) : `db-derive` dérive une autre copie dans **son propre processus** (`--sans-exemples` si `HIDE_EXAMPLES=1`) ;
+  4. *build* : `astro build` vers `--sortie` (défaut `client/dist`), `MAVERICK_CONTENU` pointant sur la copie dérivée et la variable interne `MAVERICK_CONTENU_DERIVE`
+     (`complete` ou `sans-exemples`) disant à `ouvrirBase` de la copier telle quelle, pour cette variante seulement (une autre est une erreur). `--en-un-temps` garde l'ancien chemin
+     (`ouvrirBase` dérive dans le processus d'Astro, sans étape *derive*) ; le JSON de mesure porte `mode` (`deux-temps` ou `en-un-temps`). Les deux sites produits sont identiques (`comparer-sites`).
+     Astro vide son dossier de sortie : le script refuse un dossier qui contient le code, ou qui n'est ni vide ni un site déjà fabriqué, même interrompu (il porte `_astro` et une page : `index.html`,
+     `404.html` ou `_serveur`) ; une seule trace au milieu de fichiers étrangers ne suffit pas.
+  `--mesure` écrit un JSON `maverick-fabrication/1` : durée de chaque étape et totale, mémoire (pic de chaque processus Node et leur cumul, au total et par étape : `scripts/mesure-memoire.mjs`,
+  chargé par `NODE_OPTIONS` dans les processus des étapes 2 à 4, `process.resourceUsage().maxRSS`), taille et nombre de fichiers du dossier produit, version, schéma et empreinte du contenu. Un échec
+  sort en code 1, nomme l'étape et écrit quand même la mesure (`statut: "echec"`). Une limite de la mesure : sous Linux, le `maxRSS` d'un processus lancé par un gros processus
+  reprend la taille de son parent au moment du `fork` (un enfant vide d'un parent de 1,2 Go rapporte 1,17 Go) ; `db-derive` lancé par Astro paraissait donc peser ~570 Mo, contre ~90 Mo seul.
+  En deux temps, chaque processus naît du petit script de fabrication : les chiffres sont fidèles, et le pic réel est celui d'Astro (~1,4 Go sur l'extrait d'essai de 31 Mo).
+- **`npm run comparer-sites -- <dossier-a> <dossier-b> [--json <fichier>] [--exemples <n>]`** (`scripts/comparer-sites.mjs`, logique : `serveur/comparaison-de-sites.mjs`) : empreinte sha256 de
+  chaque fichier ; identiques, différents, seulement dans A, seulement dans B, listes plafonnées (20 exemples par défaut), nombres exacts. Code 0 si les sites sont équivalents. À part, `variables` :
+  ce que la fabrication fait varier d'elle-même sans que le contenu change. Mesuré en fabriquant deux fois le même extrait : les deux sites sont identiques octet pour octet (les noms d'assets
+  suivent leur contenu, aucune date n'entre dans une page). Entre un site fabriqué depuis un extrait et celui que GitHub livre depuis `data/rows`, ne varient que la base publiée
+  `donnees/maverick.db` (mêmes lignes de contenu et mêmes tables calculées, autre forme de fichier : la vue `extrait_meta`, la disposition des pages) et `donnees/reference.db` / `.json` (lue dans git).
+  Une règle de plus n'entre qu'après une mesure ; aucune ne cache un fichier dont le contenu diffère.
+- **Ce que le kit doit porter** : `client/` et ses `node_modules`, `data/schema.sql`, `data/derive.sql`, `data/migrations/` (le schéma, et les registres `.json` que lisent `lib/archives.mjs`,
+  `lib/noms-d-avant-des-migrations.mjs`), `sources/sources.json` et `sources/tipeee/bienvenue.json` (la page Archives et l'accueil les lisent). Ni `data/rows`, ni git. Chaque installateur de **test** l'emporte (`deploy/installateur/kit.mjs`, `fabriquer.mjs --kit`, posé par l'installateur dans `<instance>/atelier/kit/` hors de `site/` ; `deploy/installateur/README.md`, « Le kit de l'atelier ») : sans contenu (contrôle de `kit.mjs`), modules natifs de la libc de l'image `kit.json#image` seulement, et l'installation continue sans kit si la place manque. Le `node_modules` du kit ne doit contenir aucun lien vers un autre dossier : un lien vers le `node_modules` d'un autre arbre fait lire ses modules par leur chemin réel, les duplique, et change la disposition des assets du site fabriqué.
+
+## Atelier du site de dev
+
+Lot 9 du chantier « la base du site de dev devient la source de vérité » (`docs/chantier-base-de-dev.md`, PR 3 sur 4) : après chaque installation du site de dev, un **atelier** fabrique un site témoin
+depuis l'extrait du contenu de la base de dev, dans un conteneur Docker sans réseau, le compare au `site/` que GitHub a livré, et mesure (durée, mémoire, écarts). **Rien de ce qui est servi ne change.** Il n'existe
+que sur l'instance de test, et seulement après le geste du propriétaire (`deploy/vps/README.md`, « Atelier du site de dev ») : avant, l'installateur pose le kit et la marque, rien ne les consomme, et le service rapporte
+« atelier non installé » (le service ne voit rien de l'atelier avant le geste : le montage des rapports n'existe pas encore). Dossier des rapports monté mais sans kit, ou production : « pas d'atelier ». **La production ne change pas** : le `docker-compose.yml` livré, commun aux deux instances, ne dit rien de l'atelier.
+
+**Qui fait quoi (garde-fou 20 du plan : aucun programme root n'obéit à une demande venue du site de dev).**
+- *Le service* (`serveur/atelier.mjs`, jamais root) fabrique et tient à jour l'extrait du contenu de l'atelier dans le **dépôt de l'atelier**, `<instance>/atelier/depot/` (`/atelier-depot` dans le service) : `contenu-<version>.db`
+  et `contenu.json` (`serveur/extrait.mjs#fabriquerExtrait` : sans fiche, sans compte, sans journal). Le dépôt est créé par root au geste du propriétaire, hors de `db/`, et monté en lecture-écriture par le `docker-compose.override.yml` que le geste écrit : le
+  service ne peut ni le renommer ni le remplacer (point de montage), donc **la source que root monte ensuite dans le conteneur est un chemin fixé par root, jamais un chemin que le service peut changer en lien**. L'extrait est refait tout de suite après une nouvelle
+  version et, pour un contenu qui change (les saisies du site), après un délai de 10 minutes. Avant le geste, le service ne voit pas `/atelier-depot` : il ne fabrique rien et rapporte « atelier non installé » ; un ancien extrait sous `db/essai-de-structure/atelier/` est
+  effacé au premier passage. Il **lit** les rapports de root, montés en lecture seule par la même surcharge (`MAVERICK_ATELIER=/atelier`, `./atelier/rapports:/atelier:ro` ; première ligne `# maverick-atelier : …` : lui seul le reconnaît, le retire avec `--retirer` et respecte
+  un fichier du même nom qu'il n'a pas écrit ; l'installateur ne le pose, ne le livre et ne l'efface jamais), un fichier à la fois, borné en taille, validé champ par champ (une liste blanche), jamais un lien suivi. De `<instance>/atelier/`, le service ne voit
+  que `depot` et `rapports` (un test le vérifie) : ni le kit, ni le travail, ni la sortie, ni `outils/`, ni la marque ; `site/`, qu'il voit en lecture seule, est aussi monté en lecture seule dans le conteneur.
+- *Root* (`deploy/installateur/atelier/`) : `lancer.sh` (systemd), `installer.sh` (le geste), `lib.sh`. Le déclencheur est la **marque** `atelier/declencheur/marque`, posée par l'installateur de test (root, livraison GitHub) dans un
+  dossier que le service ne voit pas ; le service ne peut rien déclencher. Root n'écrit jamais dans `db/`, `metriques/` ni `maintenance/`, et **n'ouvre jamais un fichier d'un dossier que le service ou le conteneur peut toucher** : le service est root de conteneur avec `CAP_MKNOD`, il peut poser dans le dépôt une FIFO (root resterait bloqué), un nœud de
+  périphérique (root lirait l'hôte) ou un lien. Sur l'extrait, root ne fait donc que des `stat` : fichier régulier, ni lien, ni FIFO, ni périphérique, taille plausible (refus sans attente). **C'est le conteneur, sans privilège, qui l'ouvre** (`outils/conteneur.sh`, monté en lecture seule) :
+  le dépôt y est monté en lecture seule sur `/contenu` ; un nœud de périphérique y est interdit par Docker, une FIFO ou un fichier irrégulier est refusé (code 73), la taille est plafonnée (74), la copie vers `/travail` se fait sous `timeout` (75). Le démon Docker ne monte jamais
+  un dossier que le service peut désigner : la source est `<instance>/atelier/depot`, fixée par root. Ce que le conteneur a écrit (`fabrication.json`, `comparaison.json`) n'est copié par root qu'**après la suppression du conteneur** (plus rien ne peut changer le type du
+  fichier), seulement s'il est régulier (ni FIFO, ni périphérique, ni lien), sous `timeout`, avec un plafond de 256 Ko ; c'est le service qui les lit. Le nom de l'extrait porte la version de la marque : root l'attend par ce nom (au plus 5 minutes), sans lire son contenu.
+- *Le conteneur* : image de `kit.json#image` (expression stricte, `docker pull` seulement si elle manque), `--network none`, `--read-only`, `--cap-drop ALL`, `--security-opt no-new-privileges`, `--user 65534:65534`, `--pids-limit 1024`,
+  `--cpus` (1), `--cpu-shares 128`, `--memory` = `--memory-swap` (aucun échange), `--oom-score-adj 500` (le premier à partir), `--cgroup-parent maverick-atelier.slice` (la tranche systemd posée par le geste : `CPUWeight=20`, `IOWeight=20`, la production passe devant). Le kit, le `site/` livré, le dépôt de l'extrait et `conteneur.sh` sont montés en lecture seule ; le travail (copie du kit : le build écrit
+  `src/content/wiki`, `.astro`, `node_modules/.vite`), la sortie et les résultats sont dans `atelier/`, donnés à 65534, jamais dans `site/`. Il lance `build:depuis-contenu` puis `comparer-sites` (variables `HIDE_EXAMPLES=1`, `SITE_MODE=test`,
+  `SITE_TAG` comme la CI ; `SITE_GOOGLE_CLIENT_ID` à régler, sinon le bouton « Exporter » est la seule différence). Le script de root tourne sous `nice` 19 et `ionice` idle (unité systemd).
+
+**Une fabrication à la fois** (`flock`) ; les marques qui arrivent pendant une fabrication se fondent (jusqu'à trois tours, la dernière version compte). **Mémoire** relevée avant chaque fabrication (`/proc/meminfo`) : plafond = min(maximum réglé
+2,5 Go, `MemAvailable` / 2) ; refus si le plafond est sous le besoin (1,5 Go ; le pic mesuré est d'environ 1,4 Go) ou si la marge laissée à la production (`MemAvailable` − plafond) est sous max(1 Go, 25 % de `MemTotal`). **Disque** : refus sous
+2 Go libres, et l'espace libre est relevé **pendant** la fabrication : sous le minimum, le conteneur est arrêté et le rapport le dit (`issue: "echec"`, `motif: "disque_insuffisant"`). Un refus est une mesure (le rapport porte les chiffres relevés), un conteneur arrêté par manque de mémoire (`OOMKilled`) aussi (`issue: "oom"`), un dépassement du délai (1800 s) aussi ; jamais de relance silencieuse. Seule la dernière
+sortie est gardée, le travail est effacé.
+
+**Rapports** : `atelier/rapports/<AAAAMMJJ-HHMMSS>/` (40 gardés ; root en est propriétaire) : `rapport.json` (`maverick-atelier/1`, écrit par root : date, versions de l'installation et du kit, taille du serveur — `nproc`, `MemTotal`, `MemAvailable`, disque total et
+libre, charge —, réglages, plafond et marge, issue et motif, durée, code de sortie, pic de mémoire du conteneur et sa source — `memory.peak` du cgroup v2, à défaut `memory.current` échantillonné, à défaut `docker stats` —, temps processeur, place du
+kit, du travail et de la sortie), `fabrication.json` (`maverick-fabrication/1`) et `comparaison.json` (`maverick-comparaison/1`), produits dans le conteneur. À la racine de `rapports/` : `kit.json` (copie, posée par l'installateur), `installe.json` (le geste), `en-cours.json`
+(une fabrication tourne). Le service les rend sous `GET /api/debug/atelier/` (`maverick-atelier-etat/1` ; états `pas_d_atelier`, `non_installe`, `en_attente`, `en_cours`, `rapport` ; forme et mise en forme pure : `src/lib/debug-atelier.mjs`),
+note chaque rapport nouveau au journal (catégorie `service`) et aux métriques (évènements `atelier_extrait`, `atelier_fabrication`).
+
+**La journée type** (lot 9, PR 4 ; le même geste unique la pose, il n'y a pas de second geste). Deux minuteurs systemd, déclenchés par l'horloge et jamais par le site de dev, lancent la même fabrication sous une autre *origine* (`lancer.sh --origine`) :
+`maverick-atelier-nuit.timer` à 04:30 (après la sauvegarde de 03:30 ; origine `nuit`, elle remplace le contrôle de nuit jusqu'au lot 10) et `maverick-atelier-jour.timer` toutes les 20 minutes entre 8 h et 20 h (origine `journee_type`). Ce dernier n'ajoute une fabrication que si
+**les trois** conditions sont réunies : la fenêtre de mesure est ouverte (`--jours-de-mesure`, 1 jour par défaut, compté depuis le geste ou sa relance), la journée en compte moins de 10 (toutes origines confondues : la nuit et les livraisons comptent aussi ; le jour compté est le jour UTC, donc une livraison entre minuit et 1 h ou 2 h, heure de Paris, compte pour la veille), la dernière date de plus de 40 minutes ; sinon il ne fait rien, sans rapport. Une marque de livraison
+garde l'origine `livraison`. Toutes passent par le même chemin (verrou, refus de mémoire et de disque, plafonds). **Plafond du jour** (`--max-par-jour`, 12 par défaut) : il compte toutes les origines, livraisons comprises, par jour UTC ; au-delà, plus aucune fabrication ce jour-là et un seul
+rapport court le dit (`motif: "plafond_du_jour"`, qui n'est pas une fabrication). On garde 40 rapports (de quoi couvrir une journée pleine), dans le dossier à root.
+
+*La sonde* (pendant chaque fabrication, `lancer.sh`, root) : des requêtes en lecture seule sur `127.0.0.1` aux ports des deux instances (prod : le `.env` du dossier voisin `maverick-center` ou `--dossier-prod` ; site de dev : le `.env` de l'instance), vers deux cibles publiques valables sur les deux : une
+page statique (`/`, nginx) et une route de lecture de l'API (`/api/personnages/`, la liste des prétirés, qui ne fait que lire la base) ; `/api/debug/` répond 403 en production. Au plus une requête par seconde et par instance, délai de 5 s ; chaque requête porte le User-Agent `maverick-atelier-sonde/1` (`UA_SONDE`, `serveur/metriques.mjs`) : le service des deux instances (le même code en production) ne la compte dans aucune métrique de requêtes (ni comptes, ni durées, ni mémoire des requêtes, ni navigateurs), et seulement ce User-Agent exact ; un autre est mesuré comme avant. Sans cela, la sonde ajouterait 60 à 200 requêtes à `/api/personnages/` par fabrication ; une référence d'environ 30 s avant la fabrication, la fabrication,
+puis environ 30 s après. Trois mauvaises réponses de suite de la production (erreur, code hors 2xx et 3xx, ou plus de 2 s) arrêtent la sonde aussitôt, sans insister. nginx exige le mot de passe interne : root lit `/etc/caddy/maverick.env` (à root, 600 : `MAVERICK_ACCES_NORMAL`, `MAVERICK_ACCES_TEST`) et le passe à
+`curl -K -` par l'entrée standard (jamais dans la ligne de commande) ; sans lui, la réponse 401 de nginx seul est comptée bonne et le rapport dit `authentifie: false` (ce qui mesure nginx, pas le service). **Garde-fou 20** : root ne garde que le code HTTP et le temps (`-o /dev/null`, `-w`), jamais un corps de réponse ; le `.env`
+d'une instance n'est lu que s'il est un fichier régulier non lien, à root, hors de tout dossier monté en écriture dans un conteneur (`docker ps`, `docker inspect`) — sinon « sonde impossible » pour cette instance (`env_monte`). Le rapport (`sonde`, `maverick-sonde/1`) donne, par instance et par phase (`reference`, `fabrication`, `apres`) : n, médiane, 95e centile,
+maximum, erreurs (centiles au rang le plus proche). La durée d'un rapport est celle du conteneur, sans la référence ni l'après.
+
+*Le bilan* (`bilan`, `maverick-atelier-bilan/1`, `src/lib/atelier-bilan.mjs`, calculé à chaque lecture d'après les rapports des 24 dernières heures) : fabrications par origine, refus, échecs, taille du serveur, pic de mémoire maximal, durée médiane et maximale, temps processeur, disque, effet sur la production (95e centile et médiane
+pendant les fabrications contre la référence : la référence est la médiane des références, « pendant » est le pire des 95e centiles de chaque fabrication). **Verdict** : `tient` (aucun refus ni échec, et un 95e centile de la production pendant les fabrications sous 2 fois la référence ou sous 1 s) ; `tient_tout_juste` (un refus ou un
+échec étranger à la capacité, des mauvaises réponses isolées, un 95e centile au-delà du seuil mais pas grave) ; `ne_tient_pas` (refus de mémoire, de marge ou de disque, arrêt par manque de mémoire ou de disque, délai dépassé, sonde arrêtée parce que la production répondait mal, 95e centile à plus de 5 fois la référence et au-delà de 2 s, plus de 5 % de mauvaises
+réponses) ; `journee_incomplete` (moins de 10 fabrications, rien de grave) ; `inconnu` (aucune fabrication, effet sur la production non mesuré, ou plus de la moitié des fabrications en échec pour une autre raison que la capacité). Les seuils (2 fois, 1 s, 10 fabrications, 5 fois, 2 s, 5 %) sont des constantes du module, exposées dans le bilan (`seuils`) : un choix technique, réglable là.
+Cette PR livre ce qui fait tourner la journée seule sur le serveur ; le geste du propriétaire n'est pas encore fait, la mesure attend.
+
+**Livraison** : l'installateur de test pose `atelier/installer.sh` et `atelier/outils/{lancer,lib}.sh` (`deploy/installateur/kit-pose.sh`), jamais ailleurs : le kit, le travail, la sortie, les rapports et les réglages ne sont jamais touchés, et seuls
+les fichiers d'`outils/` qui ne sont plus livrés sont retirés. Le geste (`installer.sh`) écrit `docker-compose.override.yml` puis relance « docker compose up -d » dans le dossier de l'instance : **le service du site de dev redémarre quelques secondes**, le site reste servi ; `--retirer` supprime le fichier et le relance de même.
+Tests : `deploy-atelier` (les scripts, dans un monde factice), `serveur-atelier`, `debug-atelier`.
 
 ## API REST `/api/v1/` et page Debug (site de dev)
 
@@ -554,6 +1209,7 @@ tourne (5 fichiers de 10 Mo par conteneur : « Métriques et volume », plus bas
 | `GET /api/debug/journal/` | `{ processus, entrees, dernier, capacite, perdues }` : les entrées qui suivent `?depuis=<n>`, filtrées par `?niveau=`, `?categorie=` (une valeur, « a,b » ou répétée), `?q=` (texte, sans accents ni majuscules) et `?limite=` ; `dernier` = le curseur de la relève suivante, `perdues` = les entrées sorties de la mémoire. `403` hors du site de dev, `503` sans journal |
 | `GET /api/debug/tables/`, `GET /api/debug/tables/<nom>/` | Les tables et vues de la base vivante (`{ tables: [{ nom, genre, lignes }] }`), puis une page des lignes de l'une d'elles, en lecture seule : toutes, fiches, comptes et groupes de la section 13 compris (décision du propriétaire du 2026-10-15 : « Il faut tout rendre ouvert. Ce qui est fermé c'est que la base du serveur de prod. ») ; images et textes longs résumés ; `ETag`, `304` sur `If-None-Match` : [`api.md`](api.md), « Contenu des tables ». `403` hors du site de dev |
 | `GET /api/debug/base/` | `{ version }` : la version de la base vivante, qui change dès qu'une écriture est validée (coût fixe, aucune table lue ; `Cache-Control: no-store`) ; une relève (toutes les 2 s, menu « DB » ouvert) : ni au journal ni dans la mémoire des requêtes. `403` hors du site de dev, `503` sans base |
+| `GET /api/debug/structure/` | `{ format, en_cours, en_attente, dernier }` : le dernier essai d'une livraison sur une copie de la base vivante, avant son installation (« Essai avant installation », plus haut) ; `Cache-Control: no-store` |
 
 **Page Debug** (`/debug/`, menu Outils, site de dev seulement : absente du menu d'un build `SITE_MODE=prod`, où la page ne dit qu'une phrase, et de
 la version portable) : quatre menus déroulants, **tous fermés par défaut**, dans l'ordre voulu par le propriétaire (2026-10-15) — « Système »
@@ -581,9 +1237,24 @@ champ libre des admins. Tant qu'aucune livraison n'a eu lieu, deux notes d'exemp
 la première vraie mise à jour les retire.
 
 **Sur le site de dev** (`MAVERICK_EDITION=1`) : au-dessus, la note **en préparation**, calculée par le service à chaque visite
-(`GET /api/mise-a-jour/`) : la base de la **production** (référence : la base de master, construite au build à côté de celle du site,
-`site/donnees/reference.db` et `reference.json`, `scripts/db-reference.mjs`) comparée à la base vivante (règles de dev + modifications du site).
-Seuls les champs que le site modifie sont comparés (`lib/edition-modele.mjs#TABLES`) : le reste en est dérivé (depuis la migration `0043`, la chronologie
+(`GET /api/mise-a-jour/`) : la base de la **production** comparée à la base vivante (règles de dev + modifications du site). Référence, dans cet ordre
+(`serveur/notes-de-version.mjs#lireReference`, lot 3 du chantier de la base de dev, R274) : **le contenu que la production publie** — le dossier `site/`
+de son instance, monté en lecture seule sur `/production` (`MAVERICK_PRODUCTION` ; `donnees/maverick.db` et `_serveur/version.json`, donc ses règles et sa
+version, sans fiche ni compte : la base des fiches reste fermée) ; à défaut (dossier non monté, base ou version illisible), la **copie de master tirée du
+dépôt** (`site/donnees/reference.db` et `reference.json`, `scripts/db-reference.mjs`, `MAVERICK_REFERENCE` : un repli seulement). La page dit laquelle
+sert, et pourquoi la production ne sert pas : dossier non monté, sans base, version absente de `version.json`, base illisible (une base à moitié
+copiée, que le calcul de la note ne peut pas lire : repli sur la copie du dépôt, jamais une erreur de la page) ou **base de ce site même** (le même
+fichier, même périphérique et même inode que `MAVERICK_REGLES` : le dev ne se compare pas à lui-même). Sur le VPS le montage est celui de
+`docker-compose.yml` (`../maverick-center/site` par défaut, `MAVERICK_DOSSIER_PRODUCTION` dans `.env`, posé par `instances.sh`) : une installation qui
+change le `docker-compose.yml` demande de lancer `docker compose up -d` dans le dossier de l'instance, une fois. Les tables de contenu que la
+comparaison ne décrit pas (domaine « Autres tables ») sont comparées sur leurs colonnes communes : lignes ajoutées, retirées ou changées (au-delà de 40
+par table : leur nombre), « structure changée » à part ; ni les fiches, le journal et les notes, ni ce que la fabrication calcule elle-même (`lien`,
+`lien_candidat`, `page_fts`, `entite_fts`) n'y entrent, ni les lignes qui tiennent à une page d'exemple (`statut = 'example'` : la copie de master les
+garde, le site de dev les masque ; les `source` que seules des pages d'exemple citent comprises). Ces lignes sont **affichées mais ne comptent pas
+dans « à livrer »** (`lignesALivrer`) : le workflow n'écrit pas encore les « Autres tables » dans la note (`mise-a-jour-regles.mjs#lireTables`, sans
+`autres`), si bien qu'une mise à jour dont seules ces lignes diffèrent, sans modification en attente ni texte, reste refusée (« Rien à livrer »). Juste
+après une mise à jour réussie, la comparaison ne montre aucun écart.
+Hors ce domaine, seuls les champs que le site modifie sont comparés (`lib/edition-modele.mjs#TABLES`) : le reste en est dérivé (depuis la migration `0043`, la chronologie
 (événements, descriptions, catégories) et le vocabulaire des mots-clés en sont : domaines « Chronologie » et « Mots-clés » ; les catégories d'un événement sont comparées comme un ensemble ; depuis la migration `0056`, les panneaux de règles de la page « Équipement » : domaine « Équipement », un panneau sous le nom de son onglet, un bloc par son titre de tuile, sinon ses premiers mots (« Toutes les armes ont de base… »), ou le libellé du mot-clé d'une tuile qui n'est qu'une balise ; la place des blocs n'est pas listée bloc par bloc : une ligne « Ordre des blocs » par panneau quand les blocs qu'il garde ne se lisent plus dans le même ordre, de la première à la dernière place qui change (`comparerOrdreDesBlocs` ; une tuile insérée ou un bloc retiré n'est dit que par son ajout ou son retrait)). Une ligne qui n'existe qu'avec une
 autre (la rubrique d'une carte de monstre, une case de butin, un bloc d'une espèce) n'est listée que pour un champ modifié : son ajout ou son retrait est
 dit par la carte ou l'espèce qui la porte ; un contenu entièrement absent de la production (le Codex et le bestiaire à leur première livraison) tient en
@@ -661,7 +1332,8 @@ note dans les règles est vidé. Le serveur normal reçoit la nouvelle note avec
 
 **États du lancement** (`db/mise-a-jour/etat.json`, `serveur/notes-de-version.mjs`) : `envoi` → `lance` → `en_cours` → `fusionne` (le lot est
 dans dev : étape « Fusion dans dev » du job `livrer` réussie, ou sa note arrivée dans les règles) → `termine` (run réussi, ou la référence
-— master — porte la version de sa note : jamais par la seule arrivée de la note dans dev). Un échec **avant** dev donne `echec` (annulable) ;
+porte la version de sa note — celle de la production installée, à défaut celle de la copie de master : jamais par la seule arrivée de la note dans dev ;
+sans jeton, `manuel` : aucun suivi du run, `fusionne` dure jusqu'à l'installation par le cron des installateurs, ou jusqu'à `DUREE_MAX_RUN`). Un échec **avant** dev donne `echec` (annulable) ;
 **après**, `echec_livraison` : le lot est dans dev, il ne s'annule plus, on relance son run (« Re-run all jobs » : il reprend à la livraison) ou on
 fusionne sa PR de livraison, et une nouvelle mise à jour attend (le script de rejeu refuse aussi, code 7, d'écraser la note d'un autre lot
 pas encore livrée). Sans jeton : `manuel`. Annulé : `annule`. Simulation : `simulation_reussie` / `simulation_echouee`. Garanties :
@@ -683,7 +1355,7 @@ tient le texte figé, ou ce lot, pas encore dans dev, s'annule encore (`liberabl
 
 **Le site est la source** des données qu'il modifie (décision du propriétaire) : toute modification rapatriée dans `data/rows` (par ce bouton,
 avec la version qui la livre, ou par `npm run db:appliquer-edition`, version vide) est gardée, ligne par ligne, dans `historique_modification`
-(lot, rang, date, table, clé, opération, avant, après). `client/src/lib/historique-site.mjs` le relit (`historiqueSite(db)`) : `creee`,
+(lot, rang, date, table, clé, opération, avant, après, et la nature du lot avec son numéro de décision, migration 0127). `client/src/lib/historique-site.mjs` le relit (`historiqueSite(db)`) : `creee`,
 `supprimee`, `modifiee`, `touchee` disent ce que le site a fait d'une ligne ou d'une colonne ; `valeurDImport`, `ligneDImport`, `lignesDImport`
 et `effectifDImport` redonnent l'état d'avant toute édition (l'historique rejoué à l'envers ; clé = colonnes de la clé primaire, comme le
 journal). Les tests s'en servent ainsi :
@@ -732,20 +1404,94 @@ git checkout -- ../data/rows                                                    
 `tools/db/races_onglet.py --verifier` ignore une race créée depuis le site (son onglet cite « Site de dev › … », pas le classeur). Une migration
 qui renomme une colonne doit aussi renommer ses clés dans `avant` / `apres` de `historique_modification`.
 
+**Fusion à trois voies** (demande du propriétaire : « j'aimerai que les modification apporté sur le site prime sur celle qui peuvent être faites
+"sous le radar" par le code et le dev. Si n'importe quel élément est modifiée à la fois par une modification manuelle et par une modification par le
+code et la livraison d'un build, je site essaye de faire un merge automatique entre les deux. Quand un conflit est trop ambigüe seulement là il est
+listé dans l'onglet mise à jour avec à gauche "modification sur site" et à droite "modification du code". » ; réponses : « Pendant qu'un conflit ambigu
+attend son choix, la page du site affiche LA MODIFICATION DU SITE », « Une valeur courte non fusionnable (nombre, case à cocher, nom, choix dans une
+liste) modifiée des deux côtés : LISTÉE EN CONFLIT (la valeur du site reste affichée en attendant) »). Au rejeu (`edition-journal.mjs#evaluerUne`), une
+colonne que les règles ont changée depuis (elle ne vaut ni l'`avant` de la modification, ni déjà sa valeur) se fusionne : base = `avant`, site =
+`apres`, code = la valeur des règles (`lib/fusion-trois-voies.mjs#fusionner`, module pur).
+- **Texte long** : une colonne de `TABLES` de type `texte` ou `markdown`, et le corps d'une page (`lib/edition-modele.mjs#colonneFusionnable`,
+  `TYPES_FUSIONNABLES` : lu dans le modèle, pas une liste de colonnes). Fusion ligne par ligne, puis mot à mot dans un passage que les deux côtés ont
+  touché (une balise du glossaire compte pour un mot) ; deux changements séparés par au moins une ligne, ou un mot qui n'est pas un blanc, inchangé
+  se gardent tous les deux ; deux changements qui se recouvrent ou se touchent, différents, sont **ambigus** (comme `git merge` : l'ordre de deux ajouts
+  au même endroit ne se devine pas ; une page réécrite et un paragraphe ajouté au bout aussi). Fins de ligne lues « \n » ; au-delà de 1,5 million de
+  cases de comparaison, ambigu. **Toute autre valeur est courte** (nombre, case, nom, choix d'une liste) : jamais fusionnée.
+- **Sans recouvrement** : la valeur fusionnée est écrite, le lot reste en attente, sans conflit. Le site qui ne change rien de plus que le code :
+  la valeur des règles reste. Le même `evaluerUne` sert la base vivante, `db:appliquer-edition` et la mise à jour des règles : le journal exporté
+  se rejoue sur `data/rows` avec la même fusion.
+- **Ambigu** (base vivante du site de dev seulement : `rejouerLeJournal(…, { garderLeSite })`, posé par `base-vivante.mjs#transferer`) : si c'est
+  le seul souci du lot, il est **gardé** — la valeur du site est écrite et reste (la page la montre : `lignesEnAttente` compte ses lignes) ; pour un
+  texte, c'est la fusion où **les passages en conflit prennent le côté du site et le reste est fusionné** : les changements du code ailleurs sont gardés
+  (`fusionner(…).siteGagne` ; réponse du propriétaire du 12 novembre : « Les garder (Recommandé) » — le choix 1 ne tranche que les passages en
+  conflit) ; une valeur courte : la valeur du site. Le lot
+  passe « conflit » (listé sur la page, pas exporté), et la trace de chacune de ses lignes (`detail` : la phrase « … autrement, la valeur du site
+  reste en place », puis, après un saut de ligne, `{"reprise": …}`, `edition-journal.mjs#MARQUE_DE_REPRISE`, `lireLaTrace`) garde ce que le rejeu a
+  écrit et, pour chaque champ gardé, `{ base, site, code, passages, siteGagne, codeGagne, provenance }` : la valeur du code n'est plus dans la base. Les lots suivants du
+  même champ se rejouent sur la valeur du site, sans cascade ; ils restent en attente mais ne partent qu'après la résolution du lot gardé
+  (`edition-journal.mjs#lotsRetenus`, de proche en proche ; `journalExporte` les laisse et les liste dans `retenus`). Le bilan du rejeu compte les
+  lignes d'un lot gardé dans `conflits`, et dans `gardees` (clé présente seulement s'il y en a). Les autres conflits (ligne supprimée, insertion
+  qui existe déjà, référence rompue, contrainte, forme ancienne, refus communs au rejeu) annulent leur lot comme avant ; un lot qui a aussi l'un
+  d'eux est annulé en entier, ses champs ambigus en conflit « colonnes » ordinaire.
+- **Réévaluation** : avec `garderLeSite`, les lots en conflit pas encore résolus sont rejoués avec les autres à chaque reconstruction (un lot annulé
+  d'une base vivante d'avant cette règle devient gardé, fusionné ou sain : rien ne reste perdu) ; un lot résolu ne l'est jamais. `preparerBaseVivante(…,
+  { garderLeSite: false })` refait une base d'avant (réservé aux tests de la résolution des lots annulés).
+
 **Lots du journal en conflit** (demande du propriétaire du 2026-10-22 : « Après les listes de modifications, montrer les lignes en conflits.
 1. Pour chaque conflit, montrer les deux versions 2. Laisser le choix entre 1, 2, ou 3 pour saisir à la main ce qui remplace les deux. » ;
-`serveur/edition-conflits.mjs`, site de dev seulement). Un lot passe « conflit » au rejeu (ci-dessus, « Édition des règles ») en entier, avec un
-seul message, et n'est plus rejoué : il ne part jamais avec une mise à jour (`figerLot` → `journalExporte` : en attente et intégrées seulement),
-reste sur le site de dev sans rien bloquer (la note en préparation le compte : `en_conflit`, `{ lots, modifications }`) et se résout contre les
-règles d'aujourd'hui, même après une livraison.
+`serveur/edition-conflits.mjs`, site de dev seulement). Un lot passe « conflit » au rejeu (ci-dessus, « Édition des règles »), gardé (la valeur du
+site en place, ci-dessus) ou annulé en entier, avec un seul message : il ne part jamais avec une mise à jour (`figerLot` → `journalExporte` : en
+attente et intégrées seulement, hors lots retenus), reste sur le site de dev sans rien bloquer (la note en préparation le compte : `en_conflit`,
+`{ lots, modifications }`) et se résout contre les règles d'aujourd'hui, même après une livraison. **La note en préparation** ne montre que ce qui
+partira (réponse du propriétaire du 12 novembre : « Les retirer (Recommandé) ») : ses lignes sont calculées sur la base vivante dont les lots gardés
+pas encore résolus et les lots retenus derrière eux sont défaits, dans un savepoint toujours annulé (`serveur/notes-de-version.mjs#tablesQuiPartiront`,
+`edition-journal.mjs#defaireLesLotsEnSuspens`), et `en_attente` ne compte pas les lots retenus ; ils y apparaissent après la résolution.
+
+- **Un lot gardé** (`garde: true`, `edition-conflits.mjs#examinerUnLotGarde`, `resoudreUnLotGarde`) : un conflit par champ gardé (genre `champ`,
+  ou `hors_modele`), **version 1 = la modification du site** (ce lot, en place), **version 2 = la modification du code** (la valeur gardée dans
+  la trace), `avant` = ce que le site avait trouvé, `passages` (les passages en conflit d'un texte : `{ base, site, code }`), `provenance_1`
+  (`{ genre: 'site', lot, fait_le, resume }`), `provenance_2` (`{ genre: 'regles' }` les règles livrées, ou `{ genre: 'regles_et_site', lot, … }`
+  quand un lot plus ancien du même rejeu avait déjà écrit ce champ, fusionné avec le code), `actuelle` (null, ou la valeur de la base quand un lot
+  plus récent l'a changée depuis, avec sa `provenance`), `lots_suivants` (`{ lot, fait_le, resume }`), `valeur_1` et `valeur_2` (`{ genre:
+  'valeur', valeur }` : la valeur que laisse chaque choix ; `valeur_2` null si le choix 2 est refusé). Choix 1 : garder la valeur en place (les
+  passages en conflit côté site, le reste fusionné ; rien n'est écrit) ; 2, symétrique : les passages en conflit côté code, les changements du site
+  hors conflit gardés (`codeGagne` ; une valeur courte : celle du code), les lots suivants du même champ refaits dessus par la même fusion (`refus_2` si l'un ne s'y fusionne pas —
+  avec `refus_2_lot` : `{ lot, fait_le, resume }` de ce lot —, ou si l'éditeur la refuse aujourd'hui : une ancre figée retirée…, sans `refus_2_lot`) ; 3 : une valeur saisie (pas sur une ligne gelée, une image ni une colonne hors
+  du modèle). Les autres lignes du lot sont ses saines (`fusionnees`, `fusionnees_libelles` : ses colonnes fusionnées sans conflit). La résolution
+  écrit, dans une transaction, **la reprise du lot** (`<lot>-reprise`, « Reprise du lot X (conflit résolu) : … ») : un lot normal du journal à la place
+  du lot gardé dans l'ordre du rejeu (même `fait_le`, son id le suit), qui note ce que le rejeu avait écrit à partir des règles (`avant` = la valeur
+  du code) ; rejoué sur `data/rows`, il redonne la base vivante, et les lots suivants passent après lui. Puis, pour les choix 2 et 3, un lot écrit
+  par l'éditeur sur la base telle qu'elle est (« Résolution du conflit du lot X : … », `nouveau_lot`). Le lot gardé est marqué résolu (`resolu_par` =
+  la reprise), ses lignes restent `conflit` comme trace. Réponse : `reprise` en plus.
+- **Ordre des résolutions** (bug du lot de 03:17 résolu avant celui de 03:16) : un conflit qu'un lot plus ancien, en conflit et pas résolu, touche
+  aussi (même table, même clé, même colonne, ou la ligne entière) est bloqué : `bloque` (`{ lot, fait_le, resume, raison }`, null sinon ; le lot :
+  `bloque` vrai si l'un l'est), et la résolution répond `409` (`details.bloque`). Un choix 1 d'un lot annulé qui écraserait la valeur d'un lot plus
+  récent du site de dev (la provenance de la version 2, une résolution comptant à la place du lot qu'elle résout) est retiré (`refus_1`, avec
+  `refus_1_lot` : `{ lot, fait_le, resume }` ; un refus de l'éditeur n'en a pas). Les phrases (`refus_1`, `refus_2`, `bloque.raison`, le message du
+  `409`) gardent leur forme « Le lot du <fait_le> (« <résumé> »)… » ; les champs structurés servent la page. Tout résumé du diagnostic (`resume` d'un
+  lot, des provenances, des lots suivants, des blocages, des lots résolus et retenus) est sans les marqueurs du rejeu ni l'id du lot qu'une résolution
+  reprend (« Résolution du conflit du lot <id> : » et « Reprise du lot <id> (conflit résolu) : » retirés : `edition-conflits.mjs#resumeVu` ; `resout`
+  d'une provenance donne ce lot).
 
 - **Le diagnostic** (`GET /api/mise-a-jour/conflits/`) est recalculé à chaque demande sur la base vivante (règles livrées + lots rejoués depuis),
   dans un savepoint **toujours annulé** — exception assumée à « lecture seule quand rien n'est écrit » : même connexion, `traiter` synchrone. Le lot
   y est rejoué sans s'arrêter au premier conflit (`edition-journal.mjs#parcourirUnLot`, même adaptateur que le rejeu), par passes comme le rejeu :
   une modification abandonnée d'office (ci-dessous) est laissée de côté à la passe suivante. Chaque modification saine est dite (`reappliquee`,
-  `deja_la`, `derivee`, `sans_effet`, avec ses colonnes si une autre colonne de la même ligne est en conflit). Chaque conflit porte la
+  `deja_la`, `derivee`, `sans_effet`, avec ses colonnes si une autre colonne de la même ligne est en conflit), ainsi qu'une règle en données d'un don
+  que le lot supprime aussi (`suit_le_don`, avec `don` : le libellé du don ; sans choix, elle suit celui du don, voir « Édition des règles », dons). Chaque conflit porte la
   **version 1** (ce que le site de dev avait écrit : la valeur du lot, et l'aperçu HTML d'une page du guide), la **version 2** (ce que disent les
-  règles livrées : la valeur de la base vivante, ou « ligne supprimée »), ce que le site avait trouvé (`avant`) et les choix permis. Genres : `champ`
+  règles livrées : la valeur de la base vivante, ou « ligne supprimée »), ce que le site avait trouvé (`avant`) et les choix permis, et (lot annulé)
+  `garde: false`, `provenance_1`, `provenance_2` (d'où vient la valeur actuelle : `regles`, `site` — un lot en attente plus récent ou plus ancien —
+  ou `resolution`, avec `lot`, `fait_le`, `resume`, et `resout` pour une résolution : `edition-conflits.mjs#provenanceActuelle`), `passages` (deux
+  textes : les passages en conflit de leur fusion), `valeur_1` et `valeur_2` (la valeur que laisse chaque choix) et `bloque`. Un texte long ambigu
+  d'un lot annulé se résout comme celui d'un lot gardé (décision du leader-technique, la réponse du propriétaire « Les garder » valant pour eux) :
+  choix 1, les passages en conflit côté site et le reste fusionné ; choix 2, côté code, les changements du site hors conflit gardés (écrits par
+  l'éditeur) ; une valeur courte : version 1, ou la valeur actuelle. La page (`lib/conflits-rendu.mjs#titreDeLaVersion`) les titre « modifiée sur le site
+  de dev (ce lot, du …) » et d'après `provenance_2` ; un lot gardé (`garde` vrai), « modification sur le site » à gauche (la version 1 ; la page du
+  site affiche en attendant le choix `valeur_1` : les passages en conflit côté site, le reste fusionné) et « modification du code » à droite (la
+  version 2), deux textes réduits à leurs passages en conflit (`passages`) ; de deux textes, elle ne montre que les différences mot à mot, les passages identiques repliés autour d'une ligne de contexte
+  (`lib/diff-replie.mjs`, demande du propriétaire du 2026-11-07), les deux versions entières dans un bloc fermé. Genres : `champ`
   (une colonne de `TABLES`, id « rang:colonne » ; choix 1, 2, 3 — une image : 1, 2 — ; `saisie` = le champ de `TABLES`, qui fixe le type de la
   valeur saisie), `hors_modele` (une colonne hors du modèle : valeurs brutes, 1 ou 2), `insertion` (la ligne existe déjà, autrement : 1 ou 2),
   `suppression` (la ligne a changé depuis : 1 la supprime, 2 la garde), `ligne_supprimee` (la ligne n'existe plus : seul 2, la version 1 reste
@@ -753,7 +1499,9 @@ règles d'aujourd'hui, même après une livraison.
   équivalent, clé étrangère rompue — rattachée à la modification qui écrit la ligne qui cite, ou à la suppression qui la cause —, écriture refusée,
   erreur après le lot : la raison, et seul 2, abandonner l'opération). La version 1 d'un champ est passée par l'éditeur : refusée aujourd'hui
   (Markdown sûr, bloc inconnu, balise d'un mot-clé disparu, titre déjà pris), le choix 1 disparaît et `refus_1` dit pourquoi ; une colonne saine
-  que l'éditeur refuse devient un conflit (2 ou 3). Une ligne de détail (bonus d'un métier…) n'est jamais un conflit à elle : elle suit sa source.
+  que l'éditeur refuse devient un conflit (2 ou 3). Sur une ligne gelée (un mot-clé verrouillé, une monnaie : `raisonDuGel`), le choix 3 disparaît
+  et `refus_3` dit pourquoi : une valeur saisie serait une modification nouvelle, que le verrou vise (R218 (3), R219 (6), R220 (1)) ; envoyé quand
+  même, il est refusé en `409`. Les choix 1 et 2 restent. Une ligne de détail (bonus d'un métier…) n'est jamais un conflit à elle : elle suit sa source.
   Les lignes des sources de maîtrise d'arme (`maitrise_arme_part`, `maitrise_arme_part_famille`, `capacite_nm_gagne`) ne sont même pas parcourues :
   ni conflit ni modification saine, elles sont refaites par le lecteur après les choix (ci-dessous).
   **Les noms** (demande du propriétaire du 2026-10-23, quand « metier_bonus » et « alias » ressortaient sous leur nom technique : « Un vrai nom
@@ -807,31 +1555,107 @@ règles d'aujourd'hui, même après une livraison.
   un lot noté avant 0076 (un don créé sans ses parts), un don créé que les règles ont aussi, gardé au choix 1, ou une ligne de maîtrise recopiée
   au choix 1 finissent tels que le lecteur les lit (décisions R148 à R151, R154) ; un don ou une ligne de maîtrise supprimés perdent leurs parts
   avant eux, au journal (`sourcesAvantLaSuppression`), pas par la cascade du schéma (`serveur-edition-conflits-maitrises`). Une suppression gardée retire des fiches ce qu'elle leur ôte
-  (R42, R52, R60), avec la note datée (`fiches` de la réponse). L'ancien lot est marqué (`resolu_le`, `resolu_par` = le nouveau lot, `resolution`
+  (R42, R52, R60), avec la note datée (`fiches` de la réponse) ; un don que la résolution fait quitter « Variable » ou changer de magie, ses dons obtenus
+  (R181, « Retirés avec une note », R192). L'ancien lot est marqué (`resolu_le`, `resolu_par` = le nouveau lot, `resolution`
   = les choix : migration `0072`), jamais effacé : ses lignes restent `conflit`, avec leur `detail`, comme trace ; tout au choix 2 sans rien de
   sain : aucun lot écrit, `resolu_par` reste NULL. Un second appel répond `409`. Le nouveau lot se rejoue sans conflit sur `data/rows` (son
   `avant` est la base vivante) ; une résolution faite pendant un lancement part avec la mise à jour suivante.
-- **Limites** : un conflit sur une colonne qu'un lot plus récent a aussi écrite se résout contre la base vivante (qui porte le lot plus récent) ;
+- **Limites** : un conflit d'un lot annulé sur une colonne qu'un lot plus récent a aussi écrite se résout contre la base vivante (qui porte le lot
+  plus récent ; son choix 1 est retiré ; il devient gardé à la reconstruction suivante) ;
+  la note en préparation défait les lots en suspens colonne par colonne (une colonne dérivée revient à sa valeur notée) ; une page du guide dont le
+  corps a été fusionné, ou gardé avec un changement du code ailleurs, n'a plus d'aperçu HTML (il ne décrit plus le texte en place : la modification
+  réécrite au rejeu perd son `apercu`, `lignesEnAttente` ne le rend pas pour un lot gardé) ; la page du site de dev (`edition/guide.mjs`, mode
+  modification) rend alors elle-même le texte actuel de la base dans le navigateur (`lib/markdown-rendu.mjs`, même chaîne que le build : [[liens]] sur
+  les pages de la base vivante `GET /api/edition/pages/`, couleurs de case, monnaies, ancres figées, anciennes adresses du guide ; `etatDuTexte`),
+  assaini comme un aperçu (`htmlSur`), et le corps redevient modifiable en place. Écarts voulus : un `[[alias]]` qui n'est ni un titre ni un slug ne
+  mène à rien (la route ne donne pas les alias), pas de coloration du code. Le message « il s'affichera à la prochaine mise à jour du site » ne
+  reste que si le rendu échoue (service injoignable) ou si le texte actuel ne se découpe pas comme la page (blocs `<!-- guide:… -->`) ;
   une création résolue ne rend pas aux fiches ce que R42 leur a retiré à sa suppression ; le corps d'une page typée gardé au choix 2 est celui des
   règles (refait depuis les tables, jamais depuis la version 1).
 
 | Requête | Réponse |
 | --- | --- |
-| `GET /api/mise-a-jour/` | La note en préparation : `reference`, `version_dev`, `version_cible` (selon la case « Version majeure »), `version_mineure`, `version_majeure`, `en_attente`, `en_conflit` (`{ lots, modifications }` à résoudre), `lignes`, `bilan`, `brouillon` (dont `majeure`), `lancement`, `github`, `confirmation` |
+| `GET /api/mise-a-jour/` | La note en préparation : `reference`, `version_dev`, `version_cible` (selon la case « Version majeure »), `version_mineure`, `version_majeure`, `en_attente`, `en_conflit` (`{ lots, modifications }` à résoudre), `lignes`, `bilan`, `brouillon` (dont `majeure`), `lancement`, `github`, `confirmation`, `etat_production` (la production a-t-elle appliqué sa dernière mise à jour : « Extrait du contenu et attestation de la production », ci-dessus), `base_source` (le marqueur `db/source` : vrai, « Copier vers le dépôt » existe) et, avec lui, `confirmation_copie` |
 | `POST /api/mise-a-jour/brouillon/` | `{ texte, avant }` → le champ libre enregistré (`409` s'il a changé entre-temps ou si un lot est figé) |
 | `POST /api/mise-a-jour/majeure/` | `{ majeure }` (`true` ou `false`) → la case « Version majeure » enregistrée, et la note en préparation à sa nouvelle version cible ; rien n'est déclenché (`409` si un lot est figé) |
 | `POST /api/mise-a-jour/lancer/` | `{ confirmation, simulation?, version_cible? }` → fige le lot et déclenche le workflow (`simulation: true` : simulation de mise à jour, rien n'est poussé ; `version_cible` : celle que la page a montrée, `409` si une autre partirait, case « Version majeure » changée depuis un autre onglet) → `202`, `{ lancement }` (`etat` : `envoi`, `lance`, `en_cours`, `termine`, `echec`, `erreur`, `manuel`, `annule`, `simulation_reussie`, `simulation_echouee`) |
 | `POST /api/mise-a-jour/liberer/` | Annule un lancement qui n'est pas parti, a échoué ou se lance à la main : le texte redevient modifiable (annulé pendant l'envoi : le run parti quand même est annulé sur GitHub) |
 | `GET /api/mise-a-jour/lancement/` | L'état du lancement (le run GitHub est relu au plus toutes les 20 s) |
-| `GET /api/mise-a-jour/lots/<lot>/` | Le lot figé, octet pour octet (le workflow le télécharge et vérifie son empreinte) |
-| `GET /api/mise-a-jour/conflits/` | `{ lots: [{ lot, fait_le, page_id, resume, detail, detail_lisible, empreinte, saines: [{ rang, table, cle, operation, libelle, issue, colonnes?, colonnes_libelles? }], conflits: [{ id, rang, table, cle, operation, libelle, colonne, colonne_libelle, genre, raison, raison_lisible, version_1, version_2, avant, apercu, choix_possibles, refus_1?, refus_2?, saisie }] }], resolus: [{ lot, fait_le, resume, resolu_le, resolu_par, resolution }] }` (une version : `{ genre: 'valeur' \| 'ligne' \| 'valeurs' \| 'suppression' \| 'absente', valeur }`, images résumées) |
-| `POST /api/mise-a-jour/conflits/` | `{ lot, empreinte, choix: { "<id>": { choix: 1 \| 2 \| 3, valeur? } } }` → `{ lot, nouveau_lot, modifications, lignes, fiches, resolution }` ; `400`, `404`, `409` (`lot` : le diagnostic à jour), `422` |
+| `GET /api/mise-a-jour/lots/<lot>/` | Le lot figé, octet pour octet (le workflow le télécharge et vérifie son empreinte) ; avec la base source, le paquet (`application/vnd.sqlite3`) |
+| `POST /api/mise-a-jour/copier/` | Base source seulement : `{ confirmation }` (`confirmation_copie` de `GET /api/mise-a-jour/`) → « Copier vers le dépôt » : `202 { lancement, github }` ; `409` sans le marqueur, ou refus avant l'envoi (« Mise à jour depuis la base source (lot 8) ») |
+| `GET /api/mise-a-jour/conflits/` | `{ lots: [{ lot, fait_le, page_id, resume, garde, bloque, detail, detail_lisible, empreinte, saines: [{ rang, table, cle, operation, libelle, issue, colonnes?, colonnes_libelles?, fusionnees?, fusionnees_libelles? }], conflits: [{ id, rang, table, cle, operation, libelle, colonne, colonne_libelle, genre, garde, raison, raison_lisible, version_1, version_2, avant, provenance_1, provenance_2, actuelle?, passages, lots_suivants?, valeur_1?, valeur_2?, apercu, choix_possibles, refus_1?, refus_1_lot?, refus_2?, refus_2_lot?, saisie, refus_3?, bloque }] }], resolus: [{ lot, fait_le, resume, resolu_le, resolu_par, resolution }], retenus: [{ lot, fait_le, resume, derriere }] }` (une version : `{ genre: 'valeur' \| 'ligne' \| 'valeurs' \| 'suppression' \| 'absente', valeur }`, images résumées) |
+| `POST /api/mise-a-jour/conflits/` | `{ lot, empreinte, choix: { "<id>": { choix: 1 \| 2 \| 3, valeur? } } }` → `{ lot, nouveau_lot, reprise?, modifications, lignes, fiches, resolution }` ; `400`, `404`, `409` (`lot` : le diagnostic à jour ; `bloque` : un lot plus ancien à résoudre d'abord), `422` |
 
 **Mise en place** (une fois) : le secret `MISE_A_JOUR_TOKEN` du dépôt (jeton fine-grained d'un administrateur, ce dépôt seulement : *Contents*,
 *Pull requests* et *Workflows* en écriture ; le jeton d'un workflow ne déclenche ni la CI ni `livraison.yml` ; seul le job `livrer` le reçoit)
 et, sur le serveur de test, le fichier `secrets/github-actions-token` (jeton fine-grained, ce dépôt seulement : *Actions* en écriture), pas à
 pas dans [`deploy/vps/README.md`](../deploy/vps/README.md). Chaque mise à jour consomme environ quatre passages de la CI (préparation, PR,
 livraison, publication) en minutes GitHub Actions ; une simulation, un seul (la préparation).
+
+### Mise à jour depuis la base source (lot 8)
+
+PR B du lot 8 (« Bascule 1 : la base du site de dev fait foi », `docs/chantier-base-de-dev.md`, garde-fous 4, 8, 9, 10 et 14 ; question 9). Code : `serveur/paquet.mjs`,
+`serveur/notes-de-version.mjs` (`controlerLeLancement`, `lireLot`), `serveur/api.mjs` (`figerUnPaquet`), `scripts/mise-a-jour-paquet.mjs`, `scripts/mise-a-jour-github.mjs`,
+`.github/workflows/mise-a-jour.yml` ; tests : `serveur-paquet`, `mise-a-jour-paquet`. **Tout est éteint sans le marqueur `db/source`** (« Base source (lot 8) ») : le lot figé du
+journal, son rejeu et la note écrite par GitHub restent ceux décrits plus haut, à l'identique.
+
+**Le paquet.** Avec le marqueur, « Effectuer la mise à jour » et la Simulation (`POST /api/mise-a-jour/lancer/`), et « Copier vers le dépôt » (`POST /api/mise-a-jour/copier/`),
+figent un **paquet** au lieu d'un lot : un fichier SQLite **neuf**, fabriqué dans un fil à part comme l'extrait (`fabriquerExtrait` : le schéma de la base source, ses tables de
+contenu, les tables calculées telles quelles, les tables propres au site **vides** — ni fiche, ni compte, ni groupe, ni journal —, les modifications en attente versées dans
+`historique_modification` avec leur nature, sans auteur). Le service y écrit ensuite :
+- mise à jour et simulation : la **note de version** de la version en préparation (`version_cible` de la page, X+1.0 case « Version majeure » cochée ; la page envoie celle
+  qu'elle a montrée, `409` si une autre partirait), calculée comme avant (la base publiée par la production comparée au contenu du paquet, plan des Règles du paquet), avec le
+  champ libre ; les notes d'exemple retirées ; les lignes d'historique versées prennent la version de cette note. La date de la note est celle du jour (UTC) ;
+- copie : rien de plus. Ses lignes d'historique gardent une version vide (la règle de `db:appliquer-edition`), et ses modifications **restent en attente** dans la base source.
+
+Une vue `paquet_meta` le décrit (`format` `maverick-paquet/1`, `id` du lot, `mode` `mise-a-jour` | `simulation` | `copie`, `version`, `depuis`, `majeure`, `fabrique_le`,
+`version_du_site`, `schema`, `empreinte` du contenu, `lots` versés, `modifications`, `lignes` de la note, `tables_de_contenu`). Il est rangé dans `db/mise-a-jour/<lot>.db`
+(un paquet à moitié fait, `.<lot>.db.neuf`, est effacé ; au-delà des 3 plus récents, `PAQUETS_GARDES`, les paquets sont effacés, sauf un paquet de mise à jour pas
+encore reporté), son SHA-256 est l'`empreinte` du lancement, et il est servi **octet pour octet** à la même adresse qu'un lot,
+`GET /api/mise-a-jour/lots/<lot>/` (classe ouverte, comme avant : le job `preparer` n'a aucun secret ; l'adresse ne sert que le lancement en cours). **La base source n'est
+pas écrite** (garde-fou 8 : « préparée, pas livrée ») : seul `note_version_brouillon.lot`, le verrou du texte, est posé quand le paquet est prêt — jamais pour une copie, dont
+le texte libre reste à la prochaine note. Mêmes états, mêmes verrous et même cadence que le lot figé (`controlerLeLancement` : mot de confirmation, place libre, aucun lot
+figé, 2 minutes et 8 par 24 h, « Rien à livrer » sauf pour une copie) ; un seul paquet en fabrication à la fois (`409`) ; le texte ou la case « Version majeure » changés pendant la
+fabrication font refuser (`409`, relancer). Le lancement porte en plus `paquet: true`, `mode`, `copie`, `octets`, `lignes`. Une copie ne met rien en maintenance
+(`maintenance.mjs#annonceDuLancement`), n'a pas de `version_cible`, et son mot de confirmation est `COPIER VERS LE DEPOT` (`confirmation_copie`).
+
+**Refus avant l'envoi**, pour les trois modes, avant tout déclenchement : l'attestation de la production doit décrire le contenu qu'elle publie (`etatDeLaProduction` : `a_jour`) ;
+absente, illisible ou périmée (version ou contenu différents, livraison en cours) : `409`, `refus: { raison: 'attestation', etat, raison_production, message }`, rien n'est fabriqué.
+**Un élément de règle retiré qu'une fiche de la production utilise ne fait jamais refuser** (décision R280, question 9 du plan) : la production adapte la fiche
+à l'installation et le note dans ses notes, comme dans l'ancien circuit (« Quand une livraison change les règles », plus haut : retraits R42 et suites, `serveur/fiches-retraits.mjs#RETRAITS`).
+Le paquet porte le même contenu que l'ancien lot une fois rejoué : à l'étape 1, la production reçoit toujours ses règles par `data/rows` et refait sa base comme avant.
+Limite, inchangée elle aussi : une race, une classe, une magie… retirée (hors des tables de `RETRAITS`) n'est pas retirée des fiches ; la production garde alors sa base d'avant, et l'onglet du site de dev le dit (« pas appliquée »). Aucun retrait automatique n'est décidé pour ces éléments (question ouverte au propriétaire).
+
+L'attestation est réécrite toutes les heures (ses `citations` informent, elles ne font plus refuser).
+
+**Le workflow.** Le service envoie l'entrée `copie: 'true'` pour une copie seulement (un lancement d'avant ne change pas). Le job `preparer` reconnaît un paquet à son en-tête
+SQLite (`estUnPaquet`), vérifie l'empreinte, lit `paquet_meta` (`lirePaquet`) et refuse un mode qui ne correspond pas aux entrées, dans les deux sens (`verifierSimulation`,
+`verifierCopie` ; `essai` et `copie` ensemble : refusés). Il le pose dans l'artefact (`paquet.db` au lieu de `lot.json`), puis lance `scripts/mise-a-jour-paquet.mjs` au lieu du
+rejeu, qui **recontrôle** et tire `data/rows` du paquet :
+1. le lot et le mode attendus ; la structure (`user_version` du fichier et de sa vue) égale à `data/rows/VERSION` (code 5) ; la note de ce lot, à la version que donnent dev et
+   master (`versionDeLivraison`, comme le bot ; code 6), aucune pour une copie ;
+2. aucune ligne dans une table ni de contenu ni calculée (fiches, comptes, groupes, journal, brouillon ; code 2) ;
+3. ni HTML brut ni lien non sûr **ajouté** par rapport à `data/rows` (pages, annonces, blocs : `texteNonSurApresLeRejeu`, la règle du rejeu ; code 3) ;
+4. `data/rows` réécrit par l'exporteur des importeurs, dans une copie d'abord ; toute table changée doit être une table de contenu du paquet, et avoir au moins une **trace
+   nouvelle** dans `historique_modification` (une ligne `(lot_id, rang)` absente de celui de `data/rows`), ou en découler comme au rejeu d'un lot (`tablesDuLot` sur ces
+   traces : sources de maîtrise, règles du don, armures calculées, filles et balises d'un mot-clé retiré) ; les tables des notes en sont exemptées. La table `page` se juge
+   page par page (`pagesSansTrace`) : la trace de sa ligne, un mot-clé retiré, ou — pour une page typée que le code refait depuis ses tables, seulement sur ses colonnes
+   dérivées (`edition.mjs#colonneDerivee`) — une trace d'une autre table ; une page libre (guide, lore) changée sans la trace de sa ligne est refusée (code 4, tables et pages nommées) ;
+5. seuls les fichiers changés sont écrits. Puis les mêmes `CONTROLES` qu'aujourd'hui, le même commit, le même artefact.
+
+La liste blanche du job `livrer` est alors celle des **tables de contenu du paquet** (`tables_de_contenu`, couvertes par l'empreinte de l'entrée), plus les tables des notes ;
+en plus, `livrer` **réexporte le paquet** (`tools/db/exporter.py`, Python et sa bibliothèque standard seulement, aucun npm) dans un dossier temporaire et compare octet pour
+octet les `data/rows/*.sql` du commit de l'artefact à cet export (`verifierContrePaquet`) : mêmes fichiers des deux côtés, même contenu ; tout écart (un fichier retiré compris) est un refus net, rien n'est poussé. Le reste de `livrer` ne change pas. Une copie : commit et PR « Copie du contenu du site de dev vers le dépôt (lot …) », corps du commit `Copie : <id>` (jamais `Lot : <id>`,
+si bien qu'une copie dans `dev` ne bloque aucune mise à jour : `lotsEnAttente`), fusion dans `dev` seulement ; l'étape « Livraison vers master » est sautée
+(`if: ${{ !inputs.copie }}`) et le script la refuse de toute façon (`etat: 'copie'`). Le contenu copié part en production avec la prochaine livraison `dev` → `master`.
+
+**Report après la confirmation** (`paquet.mjs#actualiser`, appelé à la place d'`actualiserLancement` par la page et par la minuterie du service). Quand la base publiée par la
+production porte la note d'un paquet rangé (celui du lancement, ou un plus ancien que la production n'avait pas encore installé quand un autre lancement a pris la place) (`noteLivree` ; la copie de master seulement si la production n'est pas configurée sur ce site), le service écrit dans **sa** base, d'une
+transaction (`reporterPaquet`) : la note, ses lignes et l'historique du paquet (une ligne déjà là sans version prend celle de la note), les notes d'exemple retirées, les
+modifications livrées passées `integree` (`integrerLivrees`), le brouillon de ce lot vidé (`viderBrouillonLivre`) ; puis l'état `termine` (`reporte_le`, `report`).
+Idempotent : une note déjà là n'est pas réécrite (un redémarrage entre le report et l'état). Un échec garde l'état, dit `erreur_report`, et se retente au prochain suivi.
+Une copie n'écrit **rien** dans la base source, ni à son installation : ses modifications restent en attente ; la mise à jour suivante les verse avec sa version, et la ligne de
+`data/rows` versée sans version par la copie prend alors cette version. La note reste juste : elle compare la production au contenu, pas au journal.
 
 ## Maintenance pendant une mise à jour
 
@@ -851,7 +1675,7 @@ grisé** et inerte. L'écran disparaît **dès que c'est terminé, pour chaque s
 
 Le site de dev **suit la mise à jour sans personne sur sa page** (ses pages renvoient vers `/maintenance/`) : sa minuterie (`MAVERICK_INTERVALLE`)
 relit le run GitHub (au plus toutes les 20 s, tant qu'il est dans les états suivis et sans nouvelles depuis moins de 3 h) et ce que disent les
-règles (`actualiserLancement` : note arrivée → `fusionne`, version livrée sur master → `termine`), puis republie l'annonce ; sans minuterie
+règles (`actualiserLancement` : note arrivée → `fusionne`, version installée en production → `termine`), puis republie l'annonce ; sans minuterie
 (`npm run serveur`), c'est l'interrogation de la page de maintenance qui le fait. Un « Re-run » d'une livraison échouée repasse le lancement
 `fusionne` : les deux sites se referment.
 
@@ -865,6 +1689,82 @@ le VPS, `deploy/vps/instances.sh` crée `/srv/maverick-center/maintenance` et po
 dans le `.env` du serveur de test ; puis `docker compose up -d` dans les deux dossiers ([`deploy/vps/README.md`](../deploy/vps/README.md)). Sans ce
 réglage, le site de dev se met en maintenance d'après son seul lancement et la production jamais.
 
+## Accès au site de dev
+
+Décision du propriétaire (R275, question 2, option b) : « Un mot de passe pour modifier et pour lancer une mise à jour ; la lecture reste ouverte. »
+L'option c (« un mot de passe pour tout le site ») est le même réglage avec une autre **portée**, même mot de passe, une seule saisie. Chantier :
+[`chantier-base-de-dev.md`](chantier-base-de-dev.md), lot 4. Code : `serveur/acces.mjs` (réglage, sessions, essais), `serveur/acces-routes.mjs` (le
+classement des routes), la porte unique au début de `traiter` (`serveur/api.mjs`). Tests : `serveur-acces`, `serveur-acces-routes`, `deploy-acces`.
+
+**Sans réglage, rien ne change** : la mise à jour, la Simulation, l'édition et `/api/v1/` répondent comme avant. Le service ne lit le réglage que sur le
+site de dev (`MAVERICK_EDITION=1`) : la production n'est jamais concernée, ni l'installateur, ni la CI.
+
+**Le réglage** est le fichier `secrets/acces.json` de l'instance (le dossier `secrets/`, déjà monté en lecture seule sur `/secrets` pour le jeton GitHub ;
+`MAVERICK_ACCES_FICHIER` en dit un autre, sinon `acces.json` à côté de `MAVERICK_GITHUB_JETON_FICHIER`). Aucun secret en clair : l'empreinte **scrypt** du
+mot de passe (avec son sel), l'empreinte **SHA-256** de la clé de lecture, un **secret de session**, la portée (`ecriture` ou `tout`). Le service le relit
+quand le fichier change (date, inode, taille) : rien à redémarrer. Absent : ouvert. Illisible ou invalide : le site de dev reste **fermé** (aucune connexion
+possible, ligne au journal) jusqu'à ce que la commande de l'hôte le refasse. Les comparaisons se font à temps constant.
+
+**Qui peut quoi** : chaque route est classée dans `serveur/acces-routes.mjs`. Une route que la table ne nomme pas est fermée comme une écriture ; le test
+`serveur-acces-routes` compare la table aux routes d'en-tête d'`api.mjs` et au code de l'aiguillage : **une route nouvelle non classée fait échouer la
+suite**.
+
+| Classe | Ce qu'il faut | Routes |
+| --- | --- | --- |
+| ouverte | rien | `GET /api/etat/` (sans la liste des fiches adaptées), `/api/maintenance/`, `/api/tipeee/`, `POST /api/classeur/`, `POST /api/metriques/page/` ; les prétirés en lecture (`GET /api/personnages/`, `…/<id>/`, `…/<id>/portrait/` : jamais une fiche de joueur) ; ce que les pages lisent pour montrer la base vivante : `GET /api/edition/{en-attente,listes,pages,mots-cles,chronologie,plan}/` et `POST /api/edition/{lignes,race,classe,bestiaire,portrait,evenement}/` (`classe` sans les libellés de fiches) ; la note en préparation et l'état du lancement `GET /api/mise-a-jour/` et `…/lancement/` (la page les relève sans connexion) ; le lot figé `GET /api/mise-a-jour/lots/<uuid>/` ; `/api/acces/` |
+| lecture | la clé de lecture **ou** le mot de passe | `GET /api/edition/journal/`, `GET /api/edition/extrait/` et `…/extrait/meta/` (l'extrait du contenu : ni fiche, ni compte, ni journal), `GET /api/mise-a-jour/conflits/` (les lots en conflit), tout `GET /api/debug/…` (le contenu des tables : fiches, comptes et groupes compris), tout `GET /api/v1/…` |
+| proposition | la clé de lecture **ou** le mot de passe | `POST /api/edition/lots/` et `POST …/lots/<id>/essai/` : déposer une proposition de lot de changements et refaire son essai ; elles n'écrivent que `lot_de_changements` (la proposition, son essai sur une copie), jamais le contenu |
+| écriture | le mot de passe (session) | `POST /api/edition/` (un lot), `POST …/lots/<id>/appliquer/` et `…/refuser/` (le clic du propriétaire sur un lot de changements), `POST /api/maintenance/lever/`, `POST /api/mise-a-jour/{brouillon,majeure,lancer,liberer,conflits,copier}/` (« Effectuer la mise à jour », la Simulation et « Copier vers le dépôt »), les prétirés en écriture (`POST`, `PUT`, `DELETE /api/personnages/…`), tout `POST`, `PATCH`, `PUT`, `DELETE /api/v1/…` |
+
+La clé de lecture ne permet jamais d'écrire dans le contenu (elle dépose une proposition, qui attend le clic du propriétaire). Le lot figé reste ouvert : le workflow `mise-a-jour.yml` (job `preparer`) ne joint que cette route du site de dev,
+sans aucun secret ajouté côté GitHub ; l'adresse est à capacité (uuid aléatoire, lot sans fiche ni compte, contenu publié de toute façon dans la PR). Aucune
+clé d'écriture n'est donnée à GitHub ni aux sessions.
+
+**Où passent les secrets** : le service ne voit jamais l'en-tête `Authorization` (Caddy y met le mot de passe interne de nginx, nginx l'efface). La clé de
+lecture voyage donc dans **`X-Maverick-Cle`**, ou son second nom **`X-Maverick-Key`** (le formulaire sûr qui remet la clé aux sessions de Claude n'accepte
+qu'un nom d'en-tête finissant par `key`, `token`…) ; aucun autre en-tête, jamais l'adresse (que le journal note). Caddy et nginx transmettent ces deux
+en-têtes tels quels. La session du navigateur voyage dans le cookie **`maverick_acces`**.
+Aucun des deux n'est dans le journal, les métriques (seuls `Referer`, `Host` et `User-Agent` sont lus), l'état ou la page Debug.
+
+**Connexion** (`/api/acces/`, toujours ouverte, mêmes refus que les écritures : JSON, requête d'une page de ce site) :
+- `GET` → `{ protege, portee, connecte, droit, expire_le }` ; `droit` : `ecriture` (session du mot de passe), `lecture` (clé), `aucun`. Sans réglage :
+  `{ protege: false, portee: null, connecte: false, droit: 'ecriture', expire_le: null }`.
+- `POST { mot_de_passe }` → 200 avec le même état et le cookie `maverick_acces=v1.<expiration>.<HMAC-SHA256>` : `HttpOnly`, `SameSite=Strict`, `Path=/api/`,
+  `Secure` pour un nom d'hôte (nginx réécrit `X-Forwarded-Proto` en `http` derrière Caddy : le service ne voit jamais `https`, il juge d'après l'hôte, comme `adressePublique`), **sans date** (il part avec le navigateur ; le jeton expire à 12 h). 401 mot de passe faux, **429** après 5 essais ratés d'une même
+  source (première adresse de `X-Forwarded-For`, jamais notée) ou 60 au total sur 10 minutes (`attente_s`), 400 corps invalide, 409 sans mot de passe posé.
+- `DELETE` → ferme la session : le cookie est retiré du navigateur, sous `/api/` et sous `/`, **sans révoquer le jeton** (valable jusqu'à 12 h pour qui l'aurait copié ;
+  relancer `acces.sh` renouvelle le secret de session et ferme toutes les sessions).
+- `GET /api/acces/verifier/` → 204 si la requête a au moins la lecture (cookie ou clé), 401 sinon : pour le `forward_auth` de Caddy (portée `tout`).
+- Un refus de la porte est un **401** `{ erreur, acces }` : `acces: 'cle'` (la clé de lecture ou le mot de passe) pour une route de lecture, `'mot_de_passe'`
+  pour une écriture ou une route inconnue.
+- Changer le mot de passe ou la portée renouvelle le secret de session : toutes les sessions ouvertes tombent, au prochain appel.
+
+**Portée `tout`** (option c, non activée) : chaque route ouverte qui n'est pas indispensable passe en lecture ; restent ouvertes la connexion
+(`/api/acces/…`) et le lot figé. Les pages sont servies par nginx : elles ne se ferment que si Caddy interroge `/api/acces/verifier/` avant de les servir.
+La ligne est écrite, en commentaire et sans effet, dans `deploy/vps/Caddyfile` (`forward_auth` + exceptions : `/api/acces/*`, le lot figé, `/connexion/*`,
+`/_astro/*`, `robots.txt`) ; elle n'a jamais été essayée sur un serveur, et la page `/connexion/` vers laquelle renvoyer un visiteur sans session reste à
+écrire le jour où l'option c est choisie. Le cookie prend alors `Path=/` et `SameSite=Lax` (un lien venu d'ailleurs arrive connecté).
+
+**Le geste du propriétaire** : `sudo sh /srv/maverick-center-test/acces/acces.sh` (livré par l'installateur dans le dossier de l'instance, comme
+`sauvegarde/`, remplacé à chaque installation ; `secrets/` n'est jamais touché). Sans option : deux saisies du mot de passe, sans écho (10 caractères au
+moins) ; il est haché par le service lui-même (`docker exec -i … node`, entrée standard : jamais un argument de commande, jamais un fichier, rien exigé de
+l'hôte), le fichier est posé en 600 dans `secrets/` (700), et la première fois la **clé de lecture** s'affiche une seule fois à l'écran (jamais hors d'un
+terminal). Changer le mot de passe garde la clé et ferme les sessions. Options : `--cle` (une clé neuve, l'ancienne cesse de marcher), `--portee
+ecriture|tout`, `--etat` (sans secret), `--retirer` (retour à l'ouvert). Elle refuse la production (`MAVERICK_EDITION=1` absent du `.env`) et n'a pas besoin
+de l'ancien mot de passe : un mot de passe perdu se remplace, ou la protection se retire, par la même commande. Elle ne change ni `docker-compose.yml`, ni
+`nginx.conf`, ni le Caddyfile actif.
+
+**Dans le navigateur** (pages, tech-front) : la lecture des pages ne demande rien. Une écriture ou une page de lecture protégée qui reçoit un 401 demande le
+mot de passe **une fois** (`POST /api/acces/`) ; le cookie accompagne ensuite chaque appel de la visite. Un seul script, `src/scripts/acces.mjs`
+(posé dans l'en-tête par `components/Acces.astro` depuis `layouts/Base.astro`, absent de la version portable), enveloppe `fetch` pour les adresses
+`/api/…` : sur un 401 portant `acces`, une petite fenêtre (`<dialog>`, champ `password`, `autocomplete="current-password"`) demande le mot de passe, le
+poste, puis rejoue l'appel ; des appels refusés en même temps partagent la même fenêtre, une session expirée (12 h) redemande, 401 et 429 (`attente_s`)
+se disent dans la fenêtre. Annuler rend le 401 d'origine à la page ; une lecture refusée dans les 60 s qui suivent ne rouvre pas la fenêtre (les
+relèves de la page Debug). Jamais de demande pour `/api/acces/`, la balise des pages ni la relève de la maintenance. Un `<a download>` du service
+(journal de l'édition, exports de Debug) passe par `fetch` puis s'enregistre. Une fois connecté, « Connecté · Se déconnecter » apparaît dans le pied de
+page (`sessionStorage`, confirmé par `GET /api/acces/`). L'option c n'y change rien : même mot de passe, même cookie, même fenêtre. Test :
+`test/acces-navigateur.test.mjs`.
+
 ## Hébergement
 
 Deux conteneurs dans chaque `docker-compose.yml`, celui des [installateurs](../deploy/installateur/README.md) (serveur normal et serveur de test,
@@ -876,9 +1776,9 @@ Deux conteneurs dans chaque `docker-compose.yml`, celui des [installateurs](../d
 - **serveur** (`node:22-alpine`) exécute `site/_serveur/serveur/index.mjs` ; aucun port publié (seul nginx l'atteint). Variables :
   `MAVERICK_REGLES` (base des règles, `/site/donnees/maverick.db`), `MAVERICK_DB` (dossier de la base vivante, `/db`), `HOST`, `PORT` (8787),
   `MAVERICK_INTERVALLE` (surveillance, 15 000 ms), `MAVERICK_EDITION` (`1` : édition des règles ouverte, serveur de test seulement) ; page
-  « Mise à jour » du serveur de test : `MAVERICK_REFERENCE` (base de la production, `/site/donnees/reference.db`), `MAVERICK_ADRESSE_PUBLIQUE`
+  « Mise à jour » du serveur de test : `MAVERICK_PRODUCTION` (`/production`, site de la production en lecture seule), `MAVERICK_REFERENCE` (repli : copie de master, `/site/donnees/reference.db`), `MAVERICK_ADRESSE_PUBLIQUE`
   (`https://dev.<domaine>`, sinon l'hôte de la requête), `MAVERICK_GITHUB_JETON_FICHIER` (`/secrets/github-actions-token`, dossier `secrets/` de
-  l'instance monté en lecture seule), `MAVERICK_DEPOT` (`Bravexier/MaverickCenter`) ; les deux serveurs : `MAVERICK_MAINTENANCE` (`/maintenance`,
+  l'instance monté en lecture seule), `MAVERICK_ACCES_FICHIER` (réglage de l'accès, `/secrets/acces.json` par défaut : « Accès au site de dev », ci-dessus), `MAVERICK_DEPOT` (`Bravexier/MaverickCenter`) ; les deux serveurs : `MAVERICK_MAINTENANCE` (`/maintenance`,
   dossier partagé de l'annonce de maintenance, ci-dessus), `MAVERICK_DOSSIER_METRIQUES` (`/metriques`), `MAVERICK_INSTANCE` (`prod` ou `dev`),
   `MAVERICK_METRIQUES_PAGES` (`1` par défaut) et `MAVERICK_METRIQUES_BRUTES` (`0` par défaut) : « Métriques et volume », ci-dessous ;
   `MAVERICK_TIPEEE` (`0` : Tipeee jamais relu) et `MAVERICK_TIPEEE_CACHE_MIN` (360 par défaut), absents des `docker-compose.yml` (valeurs par
@@ -891,8 +1791,8 @@ pour ne pas agir au milieu d'une copie) :
 
 1. `site/_serveur/version.json` : une nouvelle version du service s'arrête (code 0) et Docker la relance (`restart: unless-stopped`) ;
 2. `site/donnees/maverick.db` : de nouvelles règles refont la base vivante (ci-dessus) ;
-3. `db/vivante.db` : remplacée par l'installateur du serveur de test (copie de la production), elle est rouverte. L'installateur remplace le
-   **contenu** de `db/`, pas le dossier, qui est monté dans le conteneur.
+3. `db/vivante.db` : remplacée de l'extérieur (une restauration, ou la copie de la production que l'installateur de test pose sur demande, dans un
+   `db/` vide), elle est rouverte. Une installation ne vide ni ne remplace jamais `db/` (R274) ; le dossier est monté dans le conteneur.
 
 Seul un changement de `docker-compose.yml` ou de `nginx.conf` demande `docker compose up -d` (l'installateur le signale ; sur le NAS, voir
 `deploy/README.md`).
@@ -960,8 +1860,9 @@ qui grossit sur le serveur.
   | Autre instance posée par un installateur | `metriques/` du dossier de l'instance (créé par Docker) | Non : le site de dev ne voit la production que si son `.env` donne `MAVERICK_DOSSIER_METRIQUES=<dossier du serveur normal>/metriques` |
   | NAS (`deploy/docker-compose.yml`) et `npm run serveur` | `db/metriques/` (défaut du service : `<dossier de la base vivante>/metriques/`) | Non (une seule instance) |
 
-- **L'installateur de test** remplace le contenu de `db/` par une copie de celui du serveur normal : les métriques n'y sont pas quand le dossier est
-  réglé, et `db/metriques/` (défaut) n'est **ni copié** de la production **ni effacé** du test, ni compté comme une base (`MAVERICK_BASE_TEST=conservee`).
+- **L'installateur de test** ne touche jamais à `db/`, sauf pour y poser, sur demande (`--copier-base-prod`) et dans un `db/` vide, une copie de celui du
+  serveur normal : les métriques n'y sont pas quand le dossier est réglé, et `db/metriques/` (défaut) n'est **jamais copié** de la production, jamais
+  effacé du test, et ne compte pas pour une base (un `db/` qui ne contient que lui est vide).
   `client/test/installateur.test.mjs` le vérifie.
 - **Mesure des pages par le navigateur** (`POST /api/metriques/page/`) : acceptée sur les deux instances, chacune dans son fichier ; l'interrupteur
   pour plus tard est `MAVERICK_METRIQUES_PAGES=0` dans le `.env` de l'instance, puis `docker compose up -d` (la balise reçoit alors `403`).
@@ -1087,7 +1988,7 @@ exactement la taille du disque. Deux mesures, **avec les mêmes clés** :
 | `site-autres` | Autres fichiers du site | Polices, textes… ; l'hôte y ajoute le reste du dossier de l'instance (`docker-compose.yml`, `nginx.conf`, `.env`, scripts, dossiers) | Oui | Oui |
 | `docker` | Docker (images et conteneurs) | Le dossier de Docker (`docker info` : `DockerRootDir`, `/var/lib/docker`), sans changer de disque, moins les journaux des conteneurs | — | Oui |
 | `journaux` | Journaux | Journaux des conteneurs (`*-json.log*`), `/var/log` (journal de systemd, Caddy), journaux des scripts de l'instance (`*.log`) | — | Oui |
-| `installations` | Installations et copies | Restes d'une installation (`.installation.*`, `.db.copie.*`), téléchargements de `mise-a-jour.sh` et `update-site.sh` (`/tmp/maverick-*`), installateurs copiés à la main (`/root`, `/home/*`) | — | Oui |
+| `installations` | Installations et copies | Restes d'une installation (`.installation.*`, `.db.copie.*`), téléchargements de `mise-a-jour.sh` et `update-site.sh` (`/tmp/maverick-*`), installateurs copiés à la main (`/root`, `/home/*`), copies locales des sauvegardes automatiques (`/srv/maverick-sauvegardes`) | — | Oui |
 | `autres` | Système et autres | La place prise que rien de ce qui précède n'explique (système, paquets, Caddy… ; côté service sans relevé de l'hôte, aussi Docker, les journaux et l'autre instance) | Oui | Oui |
 | `reserve` | Réservé au système | La réserve du système de fichiers : blocs libres gardés pour root (ext4 : 5 % par défaut), que `df` ne compte ni dans *Used* ni dans *Avail* (`statfs` : `bfree − bavail`) ; à part, pour que la place occupée de la jauge soit celle de `df` (*Used*) | Oui | Oui |
 | `libre` | Libre | La place disponible (`df` : *Avail*, `statfs` : `bavail`) | Oui | Oui |
@@ -1143,9 +2044,10 @@ journald).
 | Images Docker | `/var/lib/docker/` | `nginx:1.27-alpine` (~50 Mo) et `node:22-alpine` (~160 Mo), partagées par les deux instances | Oui : jamais retirées automatiquement ; après un `docker compose pull`, l'ancienne image reste : `docker image prune` |
 | Installateurs téléchargés par `mise-a-jour.sh` | `$TMPDIR` (`/tmp/maverick-mise-a-jour.*`), puis extraits dans `<instance>/.installation.<pid>/` | ~20 Mo, puis ~145 Mo extraits, **pendant l'installation seulement** (les deux instances peuvent s'installer dans les mêmes 5 minutes : ~330 Mo de pointe) | Oui : effacés à la fin ; restent seulement après un arrêt brutal (coupure, `kill -9`) : voir les commandes ci-dessous |
 | Installateurs copiés à la main | `~/maverick-center-*-install.sh` | ~20 Mo chacun | **Non** : à effacer après l'installation |
-| Copie de la base par l'installateur de test | `/srv/maverick-center-test/db/` (et `.db.copie.<pid>/` pendant la copie) | Le `db/` du serveur normal, archives comprises (≤ ~150 Mo), le double pendant la copie | Oui : avec `MAVERICK_BASE_TEST=conservee` (VPS), à la première installation seulement |
+| Copie de la base par l'installateur de test | `/srv/maverick-center-test/db/` (et `.db.copie.<pid>/` pendant la copie) | Le `db/` du serveur normal, archives comprises (≤ ~150 Mo), le double pendant la copie | Oui : jamais sans `--copier-base-prod`, refusée si `db/` n'est pas vide |
 | Journaux des scripts | `mise-a-jour.log`, `update.log` ; `installation.log` | Les deux premiers tournent au-delà de 200 Ko ; `installation.log` : ~5 lignes par installation | `installation.log` non borné, ~0,2 Mo par an |
 | Sauvegardes à la main | `/root/vivante-*.db` (`deploy/vps/README.md`, « Sauvegardes ») | Une base vivante chacune | **Non** : à faire tourner ou à sortir du serveur |
+| Sauvegardes automatiques | `/srv/maverick-sauvegardes/` (copies locales, cache de restic) ; `<instance>/installateur-courant/` (un installateur, ~20 Mo) | 24 horaires et 7 de nuit par instance, ~une base vivante chacune (les archives, identiques d'une copie à l'autre, sont des liens durs) | Oui : plafond de 4 Go et 3 Go libres au moins (`reglages.env`), au-delà plus rien n'est écrit et l'alerte le dit (« Sauvegardes automatiques ») |
 | Système | journal de systemd (Caddy, mises à jour automatiques), `/var/cache/apt` | journald se borne seul (10 % du disque, 4 Gio au plus) | Oui ; `journalctl --vacuum-size=200M`, `apt-get clean` pour en reprendre |
 
 **Voir l'espace libre sur le VPS** (la page Debug le montre aussi, mesuré par le service : `GET /api/debug/systeme/`, `disque` et `fichiers`, et
@@ -1167,6 +2069,64 @@ ls -d /srv/maverick-center*/.installation.* /srv/maverick-center*/.db.copie.* /t
 La dernière ligne liste ce qu'une installation interrompue ou une installation à la main a laissé : à effacer (`sudo rm -rf …`) quand aucune
 installation ne tourne (pas de `.installation.lock` ni de `.mise-a-jour.lock` dans le dossier de l'instance).
 
+### Sauvegardes automatiques
+
+Chantier « la base du site de dev devient la source de vérité » (`docs/chantier-base-de-dev.md`, lot 1 ; décisions R274, R275). Scripts dans
+`deploy/installateur/sauvegarde/`, livrés dans le dossier `sauvegarde/` de chaque instance par son installateur (le site de dev les met à jour à chaque fusion dans
+`dev`), exécutés en root par trois minuteurs systemd (`maverick-sauvegarde-horaire`, `-nuit`, `-essai`) que pose **une commande** (`sauvegarde/installer.sh`, mode
+d'emploi et restauration : `deploy/vps/README.md`, « Sauvegardes »). Le lanceur (`/usr/local/lib/maverick-center/maverick-sauvegarde-lanceur.sh`) refuse des
+scripts qu'un autre que root pourrait modifier.
+
+| Script | Rôle |
+| --- | --- |
+| `copie.sh horaire\|nuit` | Copie la base des deux instances dans `/srv/maverick-sauvegardes/<instance>/{horaire,nuit}/<AAAAMMJJ-HHMMSS>/` (root 700) : chaque base SQLite par `.backup` (connexion en lecture seule : le contenu de `db/` n'est jamais modifié et rien n'y est créé — une base WAL sans `-wal` est ouverte « immutable », sans écrivain à gêner ; seul un `-wal` resté sans `-shm` après un arrêt brutal doit être rouvert par SQLite), les autres fichiers tels quels (lien dur sur le fichier identique de la copie précédente), `comptes.tsv` (lignes de chaque table), `copie.meta`. L'horaire ne copie que si `db/` a changé (noms, tailles et dates de modification) |
+| `envoi.sh` | Envoie la dernière copie saine et le dernier installateur à un dépôt restic chiffré (S3), applique la rétention, contrôle le dépôt |
+| `essai.sh` | Restaure la dernière copie extérieure dans un conteneur Docker jetable (image `ubuntu:24.04`, système de fichiers en lecture seule, seulement le binaire restic, les deux fichiers d'accès et un dossier de sortie vide), puis contrôle `integrity_check` et le nombre de lignes de chaque table contre `comptes.tsv` |
+| `installer.sh` | Le geste : minuteurs, dossiers, saisie et essai du stockage, clé de chiffrement (6 mots de `mots.txt`), premier envoi, premier essai |
+
+**Seuils** (`/etc/maverick-sauvegardes/reglages.env`, ou variable `MAVERICK_SAUV_<NOM>` ; défauts) : `PLAFOND_MO=4096` (place des copies locales, les deux instances),
+`LIBRE_MIN_MO=3072` (libre du disque après une copie), `HORAIRES_GARDEES=24`, `NUITS_GARDEES=7`, `SUSPECTES_GARDEES=3`, `CHUTE_POURCENT=20` et `CHUTE_MIN_LIGNES=20` (une
+table qui avait au moins 20 lignes dans la copie précédente et en perd plus de 20 % est une chute anormale, alerte ; une table disparue compte pour 100 %), `JOURS_GARDES=30`,
+`VERSIONS_DE="prod dev"` (instances dont chaque version est gardée sans limite à l'extérieur), `CONTROLE_DONNEES=5%`. Un réglage se lit « retirer le `#` » : valeur éventuellement entre guillemets, commentaire de fin admis ; illisible (pas un entier, nom d'instance inconnu), il est dit sur la sortie d'erreur, listé dans `locale.reglages_illisibles` de l'état, fait sortir la copie en code 3 et la valeur par défaut est prise. Chaque instance est traitée dans son propre processus : un arrêt inattendu de l'une est noté en alerte `erreur_interne`, sa copie provisoire est effacée, l'autre est copiée. En alerte (chute, intégrité, copie impossible), la
+copie va dans `suspectes/`, les copies saines ne sont ni remplacées ni tournées ; les copies mises de côté ne sont jamais envoyées à l'extérieur ; `copie.sh accepter <instance>` fait d'une baisse voulue la nouvelle référence. Plafond
+atteint : les plus anciennes copies partent d'abord (jamais les deux dernières horaires, ni les deux dernières de nuit), sinon rien n'est écrit (alerte `plafond` ou `disque_plein`).
+
+**Extérieur** : dépôt restic ; une copie chaque nuit par instance (étiquettes `inst-<instance>`, `horaire`|`nuit`, et `version` + l'étiquette de version quand elle a changé depuis le
+dernier envoi : `--keep-tag version` les garde sans limite) ; `forget --keep-within-daily 30d --keep-monthly unlimited --keep-tag version` par instance, puis `prune` ; `check` chaque
+nuit, avec `--read-data-subset` le dimanche. La dernière copie d'un groupe est toujours gardée par restic, quelle que soit la règle. Les installateurs sont gardés par `mise-a-jour.sh`
+(`<instance>/installateur-courant/`, un seul : celui de la livraison installée). Aucun secret en argument ni dans l'état : les accès sont dans l'environnement du processus, la clé de
+chiffrement dans un fichier (`RESTIC_PASSWORD_FILE`).
+
+**État pour la page Debug** : `<dossier des métriques>/sauvegardes.json` (`format` 1, `644`, remplacé d'un coup comme `volume-hote.json`, sans secret : dates, tailles, nombres, codes courts),
+écrit à chaque passage des scripts. Si le dossier des métriques réglé (`MAVERICK_DIR_METRIQUES`, `<normal>/metriques`) n'existe pas (un VPS où `instances.sh` n'a pas été relancé depuis les
+métriques), il est écrit là où le service de chaque instance lit ses métriques (`lib.sh#metriques_de_l_instance`) : le dossier que son conteneur monte sur son dossier des métriques
+(`docker inspect` de `<MAVERICK_CONTENEUR>-serveur` : `MAVERICK_DOSSIER_METRIQUES`, sinon `<MAVERICK_DB>/metriques`), créé s'il manque ; sans conteneur, celui que son `.env` désigne s'il existe. Le service le lit (`serveur/metriques.mjs#lireSauvegardes`, champ par champ, sans rien reprendre d'inconnu) et l'expose dans `GET /api/debug/systeme/`,
+champ `sauvegardes` (`null` sans fichier : NAS, développement), pour les deux instances quelle que soit celle qu'on regarde :
+
+```json
+{ "disponible": true, "raison": null, "instant": "2026-11-14T12:07:00Z", "age_s": 1800,
+  "locale": { "plafond_octets": 0, "occupe_octets": 0, "part_plafond": 0.02, "libre_min_octets": 0, "disque_libre_octets": 0,
+              "horaires_gardees": 24, "nuits_gardees": 7, "chute_pourcent": 20, "chute_min_lignes": 20, "reglages_illisibles": ["PLAFOND_MO"] },
+  "instances": { "prod": { "copies": 12, "occupe_octets": 0, "etat": "ok|alerte|ancienne|sans_copie",
+      "derniere_copie": { "le": "…Z", "age_s": 7200, "type": "horaire|nuit", "octets": 0, "lignes": 0 },
+      "derniere_verification": { "le": "…Z", "age_s": 1800, "resultat": "copiee|inchangee|alerte|refusee|sans_base" },
+      "alerte": { "le": "…Z", "age_s": 0, "code": "chute_de_lignes|integrite|copie_impossible|plafond|disque_plein|base_absente|erreur_interne", "detail": "…", "en_cours": true } },
+    "dev": { "…": "…" } },
+  "exterieur": { "active": true,
+    "dernier_envoi": { "le": "…Z", "age_s": 0, "ok": true, "code": null, "instances": ["prod", "dev"] },
+    "dernier_controle": { "le": "…Z", "age_s": 0, "ok": true, "donnees_relues": false },
+    "dernier_essai": { "le": "…Z", "age_s": 0, "ok": true, "code": null, "duree_s": 41, "instances": { "prod": "ok", "dev": "ok" } } },
+  "alertes": [ { "niveau": "info|avertissement|erreur", "message": "…" } ] }
+```
+
+`disponible: false` (avec `raison`) si le fichier est illisible, d'un autre format ou de plus de 64 Kio ; `derniere_copie`, `derniere_verification`, `alerte`, `dernier_*` valent `null` tant qu'ils n'existent pas.
+`etat` : `alerte` (alerte de copie en cours), `ancienne` (aucune copie depuis plus de 26 h), `sans_copie`, sinon `ok`. Codes de l'envoi : `restic_absent`, `cle_refusee`, `depot_absent`,
+`depot_inaccessible`, `envoi_echoue`, `retention_echouee`, `controle_echoue` ; de l'essai : `docker_absent`, `restic_absent`, `image_absente`, `restauration_echouee`, `copie_introuvable`, `integrite`,
+`comptes_differents`, `copie_incomplete`. Les alertes (`alertes`, aussi ajoutées à celles de l'état du système) : erreur pour une alerte de copie en cours, une copie vieille de plus de 26 h, un envoi
+raté ou vieux de plus de 36 h, un essai de restauration raté, un contrôle du dépôt raté ; avertissement quand l'état n'est plus réécrit depuis 3 h (minuteur arrêté), au-delà de 80 % du plafond, sous
+l'espace libre minimal, ou sans essai de restauration depuis 40 jours ; information quand l'envoi hors du serveur n'est pas activé. Tests : `deploy-sauvegardes`, `deploy-sauvegardes-installer`,
+`serveur-metriques-sauvegardes`, `mise-a-jour` (installateur gardé).
+
 ## Développement
 
 ```bash
@@ -1179,19 +2139,68 @@ Les tests (`npm test`) : `serveur-base-vivante` (création, reprise des fiches, 
 refus, conflit de versions, serveur HTTP réel et sa surveillance), `serveur-armure-elementaire` et `serveur-poids-portable` (l'armure de R165 :
 textes contre la migration 0080, reconstruction et enregistrement ; le poids portable lu dans la base comparé au moteur de la fiche sur toute la
 base, l'armure trop lourde retirée à la reconstruction, joueurs compris, et à l'enregistrement, idempotence), `serveur-edition*` et `serveur-edition-journal` (édition : chaque domaine,
-journal, rejeu), `serveur-tipeee` et `tipeee` (la partie « Bienvenue » de Tipeee : extraction du texte, réponse d'exemple, cache, une requête pour des appels simultanés, Tipeee injoignable, repère absent, réponse trop grosse, redémarrage, repli, route, livraison de l'instantané), `serveur-edition-conflits` (lots en conflit : diagnostic, choix 1, 2 et 3, nouveau lot, ancien marqué résolu, rejeu suivant sans conflit), `serveur-notes-de-version` (page Mise à jour : routes, lot figé, faux GitHub), `notes-de-version` et `notes-de-version-sens`
+journal, rejeu), `serveur-tipeee` et `tipeee` (la partie « Bienvenue » de Tipeee : extraction du texte, réponse d'exemple, cache, une requête pour des appels simultanés, Tipeee injoignable, repère absent, réponse trop grosse, redémarrage, repli, route, livraison de l'instantané), `serveur-edition-conflits` (lots en conflit : diagnostic, choix 1, 2 et 3, nouveau lot, ancien marqué résolu, rejeu suivant sans conflit), `serveur-edition-fusion` (fusion à trois voies au rejeu, lots gardés, pas de cascade, lots retenus, réévaluation, résolution d'un lot gardé, ordre des résolutions, fixture `conflits-diagnostic-garde.json`), `fusion-trois-voies` (le module pur), `serveur-notes-de-version` (page Mise à jour : routes, lot figé, faux GitHub), `notes-de-version` et `notes-de-version-sens`
 (liste et couleurs), `mise-a-jour-regles` (lot appliqué à data/rows : conflit, liste blanche), `mise-a-jour-github` (le workflow),
 `mise-a-jour-simulation` (le lot synthétique de la CI, l'état « note en attente », le job `simulation-de-mise-a-jour`), `serveur-maintenance`
 (annonce, deux serveurs qui rouvrent chacun à sa version, fin sans livraison, levée, plafond, minuterie, adresse de retour), `db-appliquer-edition` (rapatriement dans data/rows, versé dans l’historique), `historique-site` (ce que le site a changé, état d’import), `serveur-livraison` (modules livrés, service livré démarré tel quel,
-`docker-compose.yml` et `nginx.conf` cohérents), `installateur` (contenu de `db/` remplacé, dossier gardé, métriques jamais copiées ni effacées),
+`docker-compose.yml` et `nginx.conf` cohérents), `installateur` (`db/` jamais vidé ni remplacé, copie de la production sur demande dans un `db/` vide seulement, métriques jamais copiées ni effacées),
 `serveur-metriques`, `serveur-metriques-http`, `serveur-metriques-bornes` et `serveur-metriques-disque` (métriques : routes normalisées, agrégats,
 quantiles, rétention, deux instances, vraies requêtes HTTP, croissance et projections, cardinalité et plafond, répartition du disque, relevé de
 l'hôte, réserve de root), `debug-metriques` et `debug-balise` (rendus de la page
 Debug, balise des pages), `deploy-vps` (`instances.sh` : dossiers partagés de la maintenance et des métriques, une instance par fichier, minuteur du relevé de l'hôte) et
 `deploy-volume` (rotation des journaux Docker, métriques montées hors de `db/`, mesure des pages active par défaut, `volume.sh` exécuté sur une
-arborescence factice : clés et classement du service, chaque octet compté une fois, cette section fidèle au code), `ressources-registre`, `serveur-api-v1` et
+arborescence factice : clés et classement du service, chaque octet compté une fois, cette section fidèle au code), `serveur-extrait`, `serveur-attestation` et `db-extrait` (l'extrait du contenu : aucune trace d'une fiche, empreintes, modifications versées, une fabrication par changement,
+route ; l'attestation de la production et son état côté dev ; la commande de téléchargement), `ressources-registre`, `serveur-api-v1` et
 `api-doc` (API REST `/api/v1/`, [`api.md`](api.md)), `journal-du-service` et `debug-page` (page Debug) ; `site-html` contrôle `dist/_serveur/`
 après le build, le script de maintenance de chaque page (exécuté dans un faux navigateur) et `/maintenance/`.
+
+### Contrôle par mutation
+
+Une modification faite sur le site de dev ne fait jamais échouer la suite (demande du propriétaire, `CLAUDE.md`, « Pas de texte figé »). Le contrôle
+par mutation le vérifie : il modifie la base **par le service d'édition**, comme le site, puis passe les tests. C'est un outil à la main, en fin d'un
+lot qui touche des tests sur la base réelle ; il n'est pas dans la CI.
+
+```bash
+cd client
+npm run mutation -- <variante> [options] [fichiers de test…]   # toute la suite par défaut ; ex. : npm run mutation -- suppressions metiers-html guide
+```
+
+Il travaille dans une copie jetable, jamais dans le dépôt (`scripts/mutation.mjs`) :
+1. un clone git partagé du dépôt (HEAD, branche et `origin/*` : `test/aide-mise-a-jour.mjs` et `scripts/mise-a-jour-regles.mjs` lisent
+   `git show HEAD:…`, `scripts/db-reference.mjs` lit `origin/master`), qui reçoit l'arbre courant non commité (fichiers suivis et nouveaux) ;
+   `node_modules` y est un lien ;
+2. un journal produit par `serveur/edition.mjs#enregistrer` (`scripts/mutation-variantes.mjs` : validations, refus, protections et dérivations
+   comme sur le site ; un lot par ligne, un refus est un résultat compté) ;
+3. le journal rapatrié dans le `data/rows` de la copie (`db:appliquer-edition`), la base et les pages refaites, `db:check` (un échec est noté
+   au bilan), le site construit si un test `*-html` est lancé ;
+4. les tests, avec un rapporteur qui relève les échecs (`scripts/mutation-rapporteur.mjs`) ;
+5. le bilan : `<dossier>/bilan.json` (mutations faites et refusées par table ou entité, rapatriement, tests en échec), résumé à l'écran, journaux de
+   chaque étape dans `<dossier>/journaux/` (`tests-detail.log` : la sortie complète des tests). La copie est effacée à la fin, le dossier reste.
+
+| Variante | Ce que le site de dev modifie |
+| --- | --- |
+| `temoin` | rien (journal vide) : les échecs de la copie elle-même, à retrancher de ceux d'une variante |
+| `textes` | toute la prose modifiable réécrite, structure gardée (liens, balises, ancres figées, code, nombres) ; titre et résumé des pages du guide et du Codex |
+| `noms` | `textes`, plus les intertitres renommés, la prose réduite et tous les autres textes modifiables (noms, effets) suffixés |
+| `valeurs` | toutes les valeurs de règle modifiables : entiers, réels, listes de choix, colonnes `*_brut` et textes structurés (nombres et dés décalés) |
+| `adresses` | les adresses des pages supprimées, absorbées ou retirées (`lib/livres.mjs`) écrites dans un texte de chaque colonne de prose |
+| `suppressions` | toute ligne que le site permet de supprimer (`ENTITES` à `suppression` de `lib/edition-modele.mjs` ; pages des Règles : celles des menus), les plus dépendantes d'abord, en passes répétées tant qu'une passe en supprime ; refus (pages protégées ou citées, mots-clés protégés ou mentionnés, R196, ressources citées…) comptés |
+
+| Option | Effet |
+| --- | --- |
+| `--dossier <d>` | dossier de travail (défaut : un dossier neuf `maverick-mutation-*` sous le dossier temporaire du système) |
+| `--garder` | garder la copie (`<dossier>/depot`) pour y relancer un test à la main (`cd <dossier>/depot/client && node --test test/<fichier>`) |
+| `--build`, `--sans-build` | construire le site ou non (défaut : seulement si un test `*-html` est lancé, toute la suite comprise) |
+| `--sans-tests` | s'arrêter après la base, les pages et le build |
+| `--journal <f>` | rapatrier ce journal au lieu d'en produire un (rejouer un passage) |
+| `--entites a,b` | `suppressions` : seulement ces entités |
+| `--une-sur n` | `suppressions` : une ligne sur n de chaque entité (la première, puis toutes les n) au lieu de toutes |
+| `--exclure t,t.col` | `textes`, `noms`, `valeurs`, `adresses` : tables, colonnes ou pages (par leur id) laissées intactes |
+
+`suppressions` vide des tables entières (tous les métiers, monstres, événements…) : un cas extrême ; `--une-sur 2` garde la moitié des lignes, le
+cas courant du site. Code de sortie : 0 si les tests passent, 1 sinon. Un test qui tombe sous mutation est trop strict s'il lit un texte, une valeur ou une ligne que le
+site modifie (skill `tests-conventions`) ; s'il tombe parce que le site se comporte mal après la modification, c'est le site qu'il faut corriger. Test
+de l'outil : `mutation` (parties pures ; le passage complet est l'outil lui-même).
 
 ## Suite
 

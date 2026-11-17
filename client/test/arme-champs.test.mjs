@@ -10,15 +10,17 @@ import {
   competencesDArme, coutEnRo, decouperCategorieDArme, decouperNomDArme, durabiliteDeLArme, ECRITURES_DE_COMPETENCE, nomBrutDArme, prixEnRf, prixEnRo,
   totalDesAmeliorations,
 } from '../src/lib/arme-champs.mjs';
+import { prixEnRf as prixEnRfDUneRessource } from '../src/lib/composants-champs.mjs';
+import { baseDImport } from './aide-base-d-import.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const caracteristiques = db.prepare('SELECT id, nom FROM caracteristique').all();
 const types = new Map(db.prepare('SELECT * FROM arme_type').all().map((t) => [t.id, t]));
 const armes = db.prepare('SELECT * FROM arme WHERE effet IS NOT NULL ORDER BY id').all();
-const solidite = db.prepare("SELECT valeur FROM constante_equipement WHERE id = 'arme.solidite_base'").get().valeur;
 
 test('chaque arme (hors armes de monstres, sans effet) : ses colonnes typées se refont depuis ses cellules', () => {
-  assert.ok(armes.length > 100);
+  // plus de cent à l'import ; sur l'état courant, toutes celles de la base (le site de dev en supprime)
+  assert.ok(baseDImport().prepare('SELECT count(*) AS n FROM arme WHERE effet IS NOT NULL').get().n > 100, 'à l’import');
   for (const a of armes) {
     const colonnes = colonnesDeLArme(a, types.get(a.type_id), caracteristiques, a);
     for (const [c, v] of Object.entries(colonnes)) assert.equal(v, a[c] ?? null, `${a.id} › ${c}`);
@@ -46,12 +48,14 @@ test('nom et compétence : la cellule Nom se découpe en nom + mains, la Catégo
   }
   assert.equal(nomBrutDArme('Flamberge', 'deux'), 'Flamberge\n(deux mains)');
   assert.equal(nomBrutDArme('Katana', null), 'Katana');
-  const fauchon = db.prepare("SELECT * FROM arme WHERE nom = 'Fauchon'").get();
-  if (fauchon) {
-    const c = colonnesDeLArme({ ...fauchon, mains: 'une', type_id: 'masse' }, types.get('masse'), caracteristiques, fauchon);
-    assert.equal(c.nom_brut, 'Fauchon\n(une main)');
-    assert.equal(c.categorie_brut, `Masse\n${fauchon.competence_brut}`);
-  }
+  // une arme changée de mains et de type se réécrit : le Fauchon de l'import (test/aide-base-d-import.mjs), lu par son identifiant (le site de dev en
+  // modifie librement les champs)
+  const imp = baseDImport();
+  const fauchon = imp.prepare("SELECT * FROM arme WHERE id = 'ressources/armes#arme:epees:fauchon'").get();
+  const masse = imp.prepare("SELECT * FROM arme_type WHERE id = 'masse'").get();
+  const c = colonnesDeLArme({ ...fauchon, mains: 'une', type_id: 'masse' }, masse, imp.prepare('SELECT id, nom FROM caracteristique').all(), fauchon);
+  assert.equal(c.nom_brut, `${fauchon.nom}\n(une main)`);
+  assert.equal(c.categorie_brut, `${masse.nom}\n${fauchon.competence_brut}`);
 });
 
 test('compétences (décision R48, corrigée) : Lourde, Légère, les deux, Arc, Arc / Légère, Arbalète ; ids, noms et caractéristiques de la table competence', () => {
@@ -95,11 +99,27 @@ test('effets supplémentaires : l’effet sans les clauses montrées dans une au
   assert.equal(durabiliteDeLArme(analyserEffetDArme('Dégâts frappe'), 2), 2);
 });
 
-test('durabilité de l’arme nue : celle de la vue v_arme (2 crans de base, règle de l’onglet)', () => {
-  const vue = new Map(db.prepare('SELECT id, solidite_sans_composition FROM v_arme').all().map((v) => [v.id, v.solidite_sans_composition]));
-  for (const a of armes) assert.equal(durabiliteDeLArme(a, solidite), vue.get(a.id), a.id);
+test('durabilité de l’arme nue : celle de la vue v_arme (2 crans de base, règle de l’onglet), jamais moins de 1 (R51, R74)', () => {
+  const durabilites = (base) => {
+    const solidite = base.prepare("SELECT valeur FROM constante_equipement WHERE id = 'arme.solidite_base'").get().valeur;
+    const vue = new Map(base.prepare('SELECT id, solidite_sans_composition FROM v_arme').all().map((v) => [v.id, v.solidite_sans_composition]));
+    const lignes = base.prepare('SELECT * FROM arme ORDER BY id').all();
+    assert.equal(vue.size, lignes.length, 'une ligne de v_arme par arme');
+    return lignes.map((a) => ({ id: a.id, moteur: durabiliteDeLArme(a, solidite), vue: vue.get(a.id) }));
+  };
+  // à l'import (test/aide-base-d-import.mjs) et aujourd'hui (le site de dev modifie librement crans et base) : le moteur et la vue disent la même
+  // durabilité, plancher de R51 compris (migration 0099 ; le plancher lui-même s'essaie sous 1 dans test/db-0099-solidite-et-tableau-du-sort.test.mjs)
+  for (const [base, quand] of [[baseDImport(), 'import'], [db, 'aujourd’hui']]) {
+    for (const d of durabilites(base)) {
+      assert.equal(d.vue, d.moteur, `${quand} : ${d.id}`);
+      assert.ok(d.vue >= 1, `${quand} : ${d.id}`);
+    }
+  }
 });
 
+// Le prix : la colonne materiau_arme.prix_rf est la lecture de sa cellule prix_brut par arme-champs.mjs#prixEnRf (aucune égalité avec le prix de la
+// ressource). Défaut du code hors lot : le service recopie le prix de la ressource (« 1 000 RF / 10 RO ») et le lit par composants-champs.mjs#prixEnRf,
+// qui comprend le séparateur de milliers que arme-champs.mjs#prixEnRf ignore.
 test('matériaux : bonus, cran de solidité, effet secondaire et prix se refont depuis les cellules ; le prix en RO ignore le RF', () => {
   const lignes = db.prepare('SELECT * FROM materiau_arme ORDER BY ordre').all();
   assert.ok(lignes.length >= 14);
@@ -110,6 +130,21 @@ test('matériaux : bonus, cran de solidité, effet secondaire et prix se refont 
   }
   assert.equal(prixEnRo('100 RF / 10 RO'), 10);
   assert.equal(prixEnRo('200 RO'), 200);
+});
+
+test('prix d’un matériau d’arme : lu comme celui de sa ressource (R62), espace des milliers compris (espace, insécable, fine insécable)', () => {
+  for (const espace of [' ', '\u00a0', '\u202f']) {
+    const prix = `1${espace}000 RF / 10 RO`;
+    assert.equal(prixEnRf(prix), 1000, JSON.stringify(prix));
+    assert.equal(prixEnRf(prix), prixEnRfDUneRessource(prix), JSON.stringify(prix));
+    assert.equal(prixEnRo(`1${espace}200 RO`), 1200, JSON.stringify(espace));
+  }
+  // RF et RO en désaccord (un zéro oublié) : null, comme l'importeur ; le RO seul ; le RF seul
+  assert.equal(prixEnRf('100 RF / 10 RO'), null);
+  assert.equal(prixEnRf('8 000 RF / 80 RO'), 8000);
+  assert.equal(prixEnRf('0,5 RO'), 50);
+  assert.equal(prixEnRf('250 RF'), 250);
+  assert.equal(prixEnRo('250 RF'), null);
 });
 
 test('améliorations d’arme : coût (RO, matériaux) et effet (dégâts, crans) se refont ; la ligne TOTAL se refait depuis les niveaux', () => {

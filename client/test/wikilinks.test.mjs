@@ -112,8 +112,12 @@ test('remarkWikilinks ne signale pas les liens manquants des pages status: examp
 });
 
 test('resolve : un titre contenant « / » reste résolu ; un id qualifié inconnu ne l\'est pas', () => {
-  const idx = buildIndex([{ id: 'guide/resistance-faiblesse-magie', type: 'guide', slug: 'resistance-faiblesse-magie', title: 'Résistance/Faiblesse Magie', aliases: [] }]);
-  assert.equal(resolve(idx, 'Résistance/Faiblesse Magie').entry.id, 'guide/resistance-faiblesse-magie');
-  assert.equal(resolve(idx, 'guide/resistance-faiblesse-magie').entry.id, 'guide/resistance-faiblesse-magie');
+  // « Résistance/Faiblesse Magie » : l'alias de « Résistances et faiblesses », qui a absorbé la page de ce titre (R184)
+  const idx = buildIndex([{ id: 'guide/resistances-et-faiblesses', type: 'guide', slug: 'resistances-et-faiblesses', title: 'Résistances et faiblesses',
+    aliases: ['Résistance/Faiblesse Magie', 'Résistance/Faiblesses magique'] }]);
+  assert.equal(resolve(idx, 'Résistance/Faiblesse Magie').entry.id, 'guide/resistances-et-faiblesses');
+  assert.equal(resolve(idx, 'Résistance/Faiblesses magique').entry.id, 'guide/resistances-et-faiblesses');
+  assert.equal(resolve(idx, 'guide/resistances-et-faiblesses').entry.id, 'guide/resistances-et-faiblesses');
+  assert.equal(resolve(idx, 'guide/resistance-faiblesse-magie'), null, 'l’id d’une page absorbée : plus une page (son adresse est renvoyée par la page 404)');
   assert.equal(resolve(idx, 'guide/inconnu'), null);
 });

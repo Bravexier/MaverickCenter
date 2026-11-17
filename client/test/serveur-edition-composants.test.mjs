@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
-import { rejouerLeJournal } from '../serveur/edition.mjs';
+import { enregistrer as enregistrerSansRoute, rejouerLeJournal } from '../serveur/edition.mjs';
 import { chargerJournal, journalExporte } from '../serveur/edition-journal.mjs';
 import { prixEnRf } from '../src/lib/composants-champs.mjs';
 import {
@@ -16,13 +16,16 @@ import {
 import { OBJETS_AU_CATALOGUE, retirerLesManquants } from '../serveur/fiches-retraits.mjs';
 import { ficheVide, TABLES_FICHES } from '../src/lib/fiche-format.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
-import { ENTITES, TABLES } from '../src/lib/edition-modele.mjs';
+import { ENTITES, TABLES, TABLES_FIGEES } from '../src/lib/edition-modele.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { POTENTIEL_ILLIMITE } from '../src/lib/potentiel-illimite.mjs';
+import { cheminDImport, lotsAvant } from './aide-base-d-import.mjs';
 
 const racine = dossierTemporaire('edition-composants');
 let compteur = 0;
-const vivante = () => ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(racine, `b${(compteur += 1)}`) }).chemin);
+// les règles de l'import (test/aide-base-d-import.mjs) : les composants, gemmes et monnaies du jeu (RO, PP) que les essais visent, que le site de dev
+// peut supprimer
+const vivante = () => ouvrirBaseVivante(preparerBaseVivante({ regles: cheminDImport({ garder: lotsAvant('0105') }), dossier: join(racine, `b${(compteur += 1)}`) }).chemin);
 const db = vivante();
 const service = { base: () => db, etat: () => ({}), edition: true };
 const enregistrer = (operations, base = db) =>
@@ -63,21 +66,26 @@ test('une ressource qui n’est pas un composant (un livre) ne se modifie pas ic
 });
 
 test('gemme : prix modifiés (en RF recalculés), nom et description ; ses lignes des bâtons et des accessoires suivent, effets d’accessoire compris', () => {
-  const g = ligne("SELECT r.*, g.* FROM gemme g JOIN ressource r ON r.id = g.ressource_id WHERE r.nom_cle = 'ambre'");
-  ok(enregistrer([{ op: 'modifier', table: 'gemme', cle: { ressource_id: g.ressource_id }, valeurs: { prix_commune_brut: '55 RO', quart_parfaite_brut: '60 Ro' } }]));
+  // cherchées par identifiant, nommées comme la base les nomme (le site de dev peut renommer une gemme, une magie, changer un prix)
+  const g = ligne("SELECT r.*, g.* FROM gemme g JOIN ressource r ON r.id = g.ressource_id WHERE r.id = 'ressources/baton-magique#gemme:ambre'");
+  const grenat = ligne("SELECT nom FROM ressource WHERE id = 'ressources/baton-magique#gemme:grenat'").nom;
+  const tete = (page) => lignesDe(page).find((l) => l.split(' | ')[1] === g.nom).split(' | ')[0]; // la case de la magie, avant la gemme
+  const [teteBatons, teteAccessoires] = [tete(PAGE_DES_BATONS), tete(PAGE_DES_ACCESSOIRES)];
+  const [ro, quart] = g.prix_commune_rf === 5500 ? [56, 61] : [55, 60];
+  ok(enregistrer([{ op: 'modifier', table: 'gemme', cle: { ressource_id: g.ressource_id }, valeurs: { prix_commune_brut: `${ro} RO`, quart_parfaite_brut: `${quart} Ro` } }]));
   const apres = ligne('SELECT * FROM gemme WHERE ressource_id = ?', g.ressource_id);
-  assert.deepEqual([apres.prix_commune_rf, apres.quart_parfaite_rf], [5500, 6000]);
-  assert.ok(lignesDe(PAGE_DES_BATONS).some((l) => l.startsWith(`| Terre | ${g.nom} |`) && l.includes('| 55 RO |')));
-  assert.ok(lignesDe(PAGE_DES_ACCESSOIRES).some((l) => l.startsWith(`| Terre | ${g.nom} |`) && l.includes('| 60 Ro |')));
+  assert.deepEqual([apres.prix_commune_rf, apres.quart_parfaite_rf], [ro * 100, quart * 100]);
+  assert.ok(lignesDe(PAGE_DES_BATONS).some((l) => l.startsWith(`${teteBatons} | ${g.nom} |`) && l.includes(`| ${ro} RO |`)));
+  assert.ok(lignesDe(PAGE_DES_ACCESSOIRES).some((l) => l.startsWith(`${teteAccessoires} | ${g.nom} |`) && l.includes(`| ${quart} Ro |`)));
   const nom = nomLibre('Ambre essai');
   ok(enregistrer([{ op: 'modifier', table: 'ressource', cle: { id: g.ressource_id }, valeurs: { nom } }]));
-  assert.ok(lignesDe(PAGE_DES_BATONS).some((l) => l.startsWith(`| Terre | ${nom} |`)));
-  assert.ok(corps(PAGE_DES_ACCESSOIRES).includes(`${nom} + Grenat`), 'la combinaison « Ambre + Grenat » d’un effet suit');
-  assert.ok(!/\| Ambre \+ /.test(corps(PAGE_DES_ACCESSOIRES)));
+  assert.ok(lignesDe(PAGE_DES_BATONS).some((l) => l.startsWith(`${teteBatons} | ${nom} |`)));
+  assert.ok(corps(PAGE_DES_ACCESSOIRES).includes(`${nom} + ${grenat}`), 'la combinaison « Ambre + Grenat » d’un effet suit');
+  assert.ok(!corps(PAGE_DES_ACCESSOIRES).includes(`| ${g.nom} + `));
 });
 
 test('matériau : prix et description dans les tableaux des armures et des boucliers ; renommé, aussi la page des armes et la monture', () => {
-  const m = ligne("SELECT * FROM ressource WHERE genre = 'materiau' AND nom_cle = 'mythril'");
+  const m = ligne("SELECT * FROM ressource WHERE id = 'ressources/armures#materiau:mythril'");
   ok(enregistrer([{ op: 'modifier', table: 'ressource', cle: { id: m.id }, valeurs: { prix_brut: '210 RO', description: 'Description d’essai.' } }]));
   for (const id of [PAGE_DES_ARMURES, PAGE_DES_BOUCLIERS]) {
     assert.ok(lignesDe(id).some((l) => l.startsWith(`| ${m.nom} | 210 RO | Description d’essai. |`)), id);
@@ -89,7 +97,8 @@ test('matériau : prix et description dans les tableaux des armures et des boucl
 });
 
 test('ingrédient : type et affinité refont type, majeur et affinité (créée si nouvelle) ; sa ligne de la liste d’ingrédients suit', () => {
-  const i = ligne("SELECT r.nom, i.* FROM ingredient_alchimie i JOIN ressource r ON r.id = i.ressource_id WHERE i.categorie = 'amplificateur' AND i.majeur = 1 ORDER BY i.ressource_id LIMIT 1");
+  // un amplificateur (majeur à l'import ; le site de dev peut changer son type)
+  const i = ligne("SELECT r.nom, i.* FROM ingredient_alchimie i JOIN ressource r ON r.id = i.ressource_id WHERE i.categorie = 'amplificateur' ORDER BY i.majeur DESC, i.ressource_id LIMIT 1");
   ok(enregistrer([{ op: 'modifier', table: 'ingredient_alchimie', cle: { ressource_id: i.ressource_id }, valeurs: { type_brut: 'Baie (majeur)', affinite_brut: 'Vitesse + Santé + Coma' } }]));
   const apres = ligne('SELECT * FROM ingredient_alchimie WHERE ressource_id = ?', i.ressource_id);
   assert.deepEqual([apres.type, apres.majeur, apres.affinite_id], ['Baie', 1, 'coma+sante+vitesse']);
@@ -99,23 +108,38 @@ test('ingrédient : type et affinité refont type, majeur et affinité (créée 
   assert.equal(enregistrer([{ op: 'modifier', table: 'ingredient_alchimie', cle: catalyseur, valeurs: { type_brut: 'Fruit (majeur)' } }]).statut, 400, 'seul un amplificateur est majeur');
 });
 
-test('monnaie (décision R61) : sa valeur ne se modifie pas, l’abréviation du RF, du RO et de la PP non plus ; une monnaie créée a sa ligne du CONVERTISSEUR ; l’unité ne se supprime pas', () => {
-  for (const id of ['rf', 'ro', 'pp']) {
-    assert.equal(enregistrer([{ op: 'modifier', table: 'monnaie', cle: { id }, valeurs: { valeur_rf: 7 } }]).statut, 400, `${id} : valeur`);
-    assert.equal(enregistrer([{ op: 'modifier', table: 'monnaie', cle: { id }, valeurs: { abreviation: 'XX' } }]).statut, 400, `${id} : abréviation`);
+test('monnaie : l’onglet est figé (décision R219 (3)), ni création, ni modification d’une colonne, ni suppression (409, la raison) ; le nom reste hors de TABLES (R193)', () => {
+  assert.ok(!('nom' in TABLES.monnaie.colonnes), 'le nom n’est plus une colonne modifiable');
+  assert.ok(TABLES_FIGEES.monnaie, 'la table est figée');
+  const refuse = (r, quoi) => {
+    assert.equal(r.statut, 409, `${quoi} : ${JSON.stringify(r.corps)}`);
+    assert.match(r.corps.erreur, /décision R219/, quoi);
+  };
+  const avant = db.prepare('SELECT * FROM monnaie ORDER BY id').all();
+  const pageAvant = corps(PAGE_DE_L_INVENTAIRE);
+  for (const { id, nom } of avant) {
+    for (const valeurs of [{ abreviation: `XX${process.pid}` }, { valeur_rf: 7 }, { nom: `${nom} taillée` }, { remarque: 'Essai.' }]) {
+      refuse(enregistrer([{ op: 'modifier', table: 'monnaie', cle: { id }, valeurs }]), `${id} ${JSON.stringify(valeurs)}`);
+    }
+    refuse(enregistrer([{ op: 'supprimer', entite: 'monnaie', cle: { id } }]), `${id} : suppression`);
   }
-  const pp = ligne("SELECT nom FROM monnaie WHERE id = 'pp'").nom;
-  ok(enregistrer([{ op: 'modifier', table: 'monnaie', cle: { id: 'pp' }, valeurs: { nom: `${pp} taillée` } }]));
-  assert.ok(lignesDe(PAGE_DE_L_INVENTAIRE).includes(`- ${pp} taillée : PP`), 'la liste MONNAIE suit le nom');
-  ok(enregistrer([{ op: 'modifier', table: 'monnaie', cle: { id: 'pp' }, valeurs: { nom: pp } }]));
-  assert.equal(enregistrer([{ op: 'supprimer', entite: 'monnaie', cle: { id: 'rf' } }]).statut, 409);
-  const r = enregistrer([{ op: 'creer', entite: 'monnaie', valeurs: { nom: `Ricken d’argent ${process.pid}`, abreviation: `RA${process.pid}`, valeur_rf: 10 } }]);
-  ok(r);
-  const id = r.corps.crees[0].id;
+  refuse(enregistrer([{ op: 'creer', entite: 'monnaie', valeurs: { nom: `Ricken d’argent ${process.pid}`, abreviation: `RA${process.pid}`, valeur_rf: 10 } }]), 'création');
+  assert.equal(enregistrer([{ op: 'supprimer', entite: 'monnaie', cle: { id: `inconnue-${process.pid}` } }]).statut, 404, 'une monnaie inconnue : 404 d’abord');
+  assert.deepEqual(db.prepare('SELECT * FROM monnaie ORDER BY id').all(), avant, 'rien n’a changé');
+  assert.equal(corps(PAGE_DE_L_INVENTAIRE), pageAvant);
+});
+
+test('monnaie : un lot écrit avant le gel (R219, `gel` faux : un lot ancien du journal, que le rejeu laisse passer, R220 (1)) — une monnaie créée a sa ligne du CONVERTISSEUR, son abréviation le suit, elle se supprime ; l’unité jamais', () => {
+  const ancien = (operations) => enregistrerSansRoute(db, { page: 'ressources/composants/', operations }, { gel: false });
+  assert.throws(() => ancien([{ op: 'supprimer', entite: 'monnaie', cle: { id: 'rf' } }]), (e) => e.statut === 409, 'l’unité ne se supprime pas');
+  const id = ancien([{ op: 'creer', entite: 'monnaie', valeurs: { nom: `Ricken d’argent ${process.pid}`, abreviation: `RA${process.pid}`, valeur_rf: 10 } }]).crees[0].id;
   assert.equal(ligne('SELECT convertisseur_brut FROM monnaie WHERE id = ?', id).convertisseur_brut, `1 RA${process.pid} : 10 RF`);
   assert.ok(lignesDe(PAGE_DE_L_INVENTAIRE).includes(`- 1 RA${process.pid} : 10 RF`));
-  ok(enregistrer([{ op: 'supprimer', entite: 'monnaie', cle: { id } }]));
-  assert.ok(!corps(PAGE_DE_L_INVENTAIRE).includes(`RA${process.pid}`));
+  ancien([{ op: 'modifier', table: 'monnaie', cle: { id }, valeurs: { abreviation: `RB${process.pid}` } }]);
+  assert.ok(lignesDe(PAGE_DE_L_INVENTAIRE).includes(`- 1 RB${process.pid} : 10 RF`), 'le CONVERTISSEUR suit l’abréviation');
+  ancien([{ op: 'supprimer', entite: 'monnaie', cle: { id } }]);
+  assert.ok(!corps(PAGE_DE_L_INVENTAIRE).includes(`RB${process.pid}`));
+  // le rejeu du journal (test « rejeu du journal (livraison) », plus bas) refait ces lots sur des règles neuves
 });
 
 test('composant créé à la fin de son tableau (ligne de l’onglet), puis supprimé : il quitte l’onglet, et l’inventaire d’une fiche le garde sous son nom', () => {
@@ -143,11 +167,11 @@ test('composant créé à la fin de son tableau (ligne de l’onglet), puis supp
 });
 
 test('un composant cité par d’autres règles ne se supprime pas (un matériau des armures, une gemme d’accessoire)', () => {
-  const fer = ligne("SELECT id FROM ressource WHERE genre = 'materiau' AND nom_cle = 'fer'");
+  const fer = ligne("SELECT id FROM ressource WHERE id = 'ressources/armures#materiau:fer'");
   const r = enregistrer([{ op: 'supprimer', entite: 'materiau', cle: { ressource_id: fer.id } }]);
   assert.equal(r.statut, 409);
   assert.match(r.corps.erreur ?? JSON.stringify(r.corps), /armure/);
-  const grenat = ligne("SELECT id FROM ressource WHERE genre = 'gemme' AND nom_cle = 'grenat'");
+  const grenat = ligne("SELECT id FROM ressource WHERE id = 'ressources/baton-magique#gemme:grenat'");
   assert.equal(enregistrer([{ op: 'supprimer', entite: 'gemme', cle: grenat }]).statut, 409);
 });
 
@@ -167,6 +191,7 @@ function magieDEssai(base) {
   copier('page', { ...base.prepare('SELECT * FROM page WHERE id = ?').get(POTENTIEL_ILLIMITE), id, slug, titre: nom, titre_cle: `magie-d-essai-${process.pid}` });
   copier('magie', {
     ...base.prepare('SELECT * FROM magie WHERE id = ?').get(POTENTIEL_ILLIMITE), id, nom, nom_cle: `magie-d-essai-${process.pid}`,
+    mot_cle_id: null, // un mot-clé par magie (index unique magie_mot_cle, migration 0125) : la copie n'a pas celui du Potentiel Illimité
     ordre: base.prepare('SELECT max(ordre) AS m FROM magie').get().m + 1,
   });
   return id;
@@ -241,15 +266,15 @@ test('ingrédient créé à la fin de sa catégorie (sa ligne de la liste d’in
   assert.equal(ligne('SELECT 1 FROM ressource WHERE id = ?', idI), undefined);
 });
 
-test('ni HTML brut ni lien non sûr dans les pages qui écrivent un composant ; le RF et le RO gardent leur abréviation et leur valeur', () => {
+test('ni HTML brut ni lien non sûr dans les pages qui écrivent un composant ; le RF et le RO gardent leur abréviation et leur valeur (R61, R219)', () => {
   const objet = ligne("SELECT id FROM ressource WHERE page_id = ? AND section = 'MATOS AVENTURES' ORDER BY id LIMIT 1", PAGE_DE_L_INVENTAIRE);
   const r = enregistrer([{ op: 'modifier', table: 'ressource', cle: objet, valeurs: { description: '<img src=x onerror=alert(1)>' } }]);
   assert.equal(r.statut, 400, JSON.stringify(r.corps));
   assert.ok(!corps(PAGE_DE_L_INVENTAIRE).includes('onerror'));
-  for (const [id, valeurs] of [['ro', { valeur_rf: 1000 }], ['ro', { abreviation: 'RX' }], ['rf', { abreviation: 'RFX' }]]) {
-    assert.equal(enregistrer([{ op: 'modifier', table: 'monnaie', cle: { id }, valeurs }]).statut, 400, `${id} ${JSON.stringify(valeurs)}`);
+  // l'onglet Monnaie est figé (R219 (3)) : 409 avant tout contrôle de la colonne
+  for (const [id, valeurs] of [['ro', { valeur_rf: 1000 }], ['ro', { abreviation: 'RX' }], ['rf', { abreviation: 'RFX' }], ['ro', { nom: 'Ricken d’or' }]]) {
+    assert.equal(enregistrer([{ op: 'modifier', table: 'monnaie', cle: { id }, valeurs }]).statut, 409, `${id} ${JSON.stringify(valeurs)}`);
   }
-  ok(enregistrer([{ op: 'modifier', table: 'monnaie', cle: { id: 'ro' }, valeurs: { nom: 'Ricken d’or' } }]));
 });
 
 test('OBJETS_AU_CATALOGUE : exactement les tables des fiches qui citent une ressource ; à la reconstruction, l’objet d’une ressource disparue reste sous son nom', () => {
@@ -272,7 +297,7 @@ test('OBJETS_AU_CATALOGUE : exactement les tables des fiches qui citent une ress
 });
 
 test('matériau (décision R62) : type d’après l’armure (sa fiche d’armure suit), « Autres » refusé pour un matériau d’armure ; créé avec son type, puis supprimé', () => {
-  const titane = ligne("SELECT r.id, r.nom, m.type FROM ressource r JOIN materiau m ON m.ressource_id = r.id WHERE r.nom_cle = 'titane'");
+  const titane = ligne("SELECT r.id, r.nom, m.type FROM ressource r JOIN materiau m ON m.ressource_id = r.id WHERE r.id = 'ressources/armures#materiau:titane'");
   const autre = titane.type === 'Lourd' ? 'Intermédiaire' : 'Lourd';
   ok(enregistrer([{ op: 'modifier', table: 'materiau', cle: { ressource_id: titane.id }, valeurs: { type: autre } }]));
   assert.equal(ligne('SELECT type FROM materiau_armure WHERE ressource_id = ?', titane.id).type, autre, 'la fiche d’armure suit');

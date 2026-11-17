@@ -1,13 +1,18 @@
 #!/usr/bin/env node
-// Maillage automatique des pages du wiki (voir src/lib/autolink.mjs pour les règles).
+// Maillage automatique des pages du wiki (voir src/lib/autolink.mjs pour les règles) : les mentions d'un mot-clé à adresse (migration 0098) deviennent
+// sa balise, {{id}} ou {{id|texte}} ; jamais un [[lien]].
 //   node scripts/autolink.mjs            aperçu : n'écrit rien, affiche statistiques et exemples
-//   node scripts/autolink.mjs --write    applique les liens dans src/content/wiki/**/*.md
-//   --verbose                            liste tous les liens proposés ; --max <n> : limite par page (25 par défaut)
+//   node scripts/autolink.mjs --write    applique les balises dans src/content/wiki/**/*.md (puis npm run db:sync-pages)
+//   --verbose                            liste toutes les balises proposées ; --max <n> : limite par page (25 par défaut)
 // Idempotent. Ne modifie jamais le frontmatter ; ignore les pages `status: example` et celles que l’édition refait depuis les tables (TYPES_SANS_MAILLAGE).
+// Les mots-clés et leurs adresses sont lus dans la base reconstruite depuis data/rows (lib/donnees.mjs#ouvrirBase) ; le maillage n'en crée jamais.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { aMailler, autolink, buildTerms } from '../src/lib/autolink.mjs';
+import { indexDesAdresses, pageDeLAdresse } from '../src/lib/adresses-db.mjs';
+import { aMailler, autolink, buildTerms, ciblesDuVocabulaire } from '../src/lib/autolink.mjs';
+import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { scanContent } from '../src/lib/wikilinks.mjs';
 
 const contentDir = fileURLToPath(new URL('../src/content/wiki', import.meta.url));
@@ -22,7 +27,13 @@ const ignore = readFileSync(fileURLToPath(new URL('./autolink-ignore.txt', impor
   .split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('#'));
 
 const pages = scanContent(contentDir, { includeExamples: false });
-const { terms, ambiguous } = buildTerms(pages, { ignore });
+// chaque mot-clé à adresse, et la page où elle mène (comme la table dérivée `lien`, scripts/db-derive.mjs)
+const db = ouvrirBase({ sansExemples: false });
+const adresses = indexDesAdresses(db);
+const motsCles = motsClesDeLaBase(db);
+const pageDuMotCle = new Map(motsCles.filter((m) => m.url).map((m) => [m.id, pageDeLAdresse(adresses, m.url)]));
+const { cibles, sansMotCle } = ciblesDuVocabulaire(motsCles, pages, pageDuMotCle);
+const { terms, ambiguous } = buildTerms(cibles, { ignore });
 
 const incoming = new Map();
 const samples = [];
@@ -42,17 +53,19 @@ for (const page of pages.filter(aMailler)) {
   totalLinks += result.links.length;
   for (const link of result.links) {
     incoming.set(link.id, (incoming.get(link.id) ?? 0) + 1);
-    if (verbose || samples.length < 40) samples.push(`${page.id}:${link.line}  « ${link.text} » → ${link.id}`);
+    if (verbose || samples.length < 40) samples.push(`${page.id}:${link.line}  « ${link.text} » → {{${link.id}}}${link.page ? ` (${link.page})` : ''}`);
   }
   if (write) writeFileSync(file, head + result.body);
 }
 
 console.log(`${write ? 'APPLIQUÉ' : 'APERÇU (rien n’est écrit ; relancez avec --write)'}`);
-console.log(`${pages.length} pages · ${terms.length} termes utilisables · ${ambiguous.length} titre(s) ambigu(s) ignoré(s)`);
-console.log(`${totalLinks} lien(s) dans ${changedFiles} page(s)`);
+console.log(`${pages.length} pages · ${cibles.length} mot(s)-clé(s) à adresse · ${terms.length} termes utilisables · ${ambiguous.length} écriture(s) ambiguë(s) ignorée(s)`);
+console.log(`${sansMotCle.length} page(s) sans mot-clé qui y mène (pas de balise vers elles ; le maillage n'en crée pas)`);
+console.log(`${totalLinks} balise(s) dans ${changedFiles} page(s)`);
 const top = [...incoming.entries()].sort((a, b) => b[1] - a[1]).slice(0, 12);
-console.log('\nPages les plus liées :');
+console.log('\nMots-clés les plus posés :');
 for (const [id, n] of top) console.log(`  ${String(n).padStart(4)}  ${id}`);
 console.log(`\n${verbose ? 'Tous les liens' : 'Exemples (40 premiers ; --verbose pour tout)'} :`);
 for (const s of samples) console.log('  ' + s);
-if (ambiguous.length) console.log('\nTitres ambigus ignorés :', ambiguous.join(', '));
+if (ambiguous.length) console.log('\nÉcritures ambiguës ignorées :', ambiguous.join(', '));
+if (verbose && sansMotCle.length) console.log('\nPages sans mot-clé :', sansMotCle.join(', '));

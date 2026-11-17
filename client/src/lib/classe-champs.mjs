@@ -89,14 +89,17 @@ export function analyserTypeDeDon(typeBrut) {
   };
 }
 
-/** Le mot-clé de page d'une classe selon sa catégorie (pages classes/… : c'est lui que lib/class-groups.mjs lit pour ranger la classe). */
+/**
+ * L'id (figé) du mot-clé de page d'une classe selon sa catégorie (pages classes/… : c'est lui que lib/class-groups.mjs lit pour ranger la classe ;
+ * écrits « càc », « distance », « magique », « hybride », « hybride animal », « spéciale » à l'import, renommables sans effet : décision R195).
+ */
 export const MOT_CLE_DE_CATEGORIE = {
-  'classe-physique-corps-a-corps': 'càc',
+  'classe-physique-corps-a-corps': 'cac',
   'classe-physique-distance': 'distance',
   'classe-magique': 'magique',
   'classe-hybride': 'hybride',
-  'classe-hybride-animal': 'hybride animal',
-  'classe-speciale': 'spéciale',
+  'classe-hybride-animal': 'hybride-animal',
+  'classe-speciale': 'speciale',
 };
 
 /** La catégorie des classes raciales (classe « Hybride Animal » qui porte le nom de sa race). */

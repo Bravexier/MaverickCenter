@@ -128,6 +128,15 @@ export function coutDeLaPiece(coutBrut) {
 }
 
 /**
+ * Le coût de fabrication d'un bouclier par classe, en Ricken de fer : « 250 RF / Classe » → 250 ; null sans « N RF / Classe ». Le prix d'un bouclier
+ * suit bouclier_classe.prix (décision R207 (1)) ; ce montant n'en est qu'une autre écriture, comparée par db:check (lib/armures-db.mjs#ecartsDeFabricationDuBouclier).
+ */
+export function coutParClasseDuBouclier(coutBrut) {
+  const m = /(\d[\d\s  ]*)\s*RF\s*\/\s*classe\b/i.exec(String(texteSansBalises(coutBrut ?? '')));
+  return m ? Number(m[1].replace(/[\s  ]/g, '')) : null;
+}
+
+/**
  * Une amélioration d'armure ou de bouclier (tableau AMÉLIORATION des onglets) : { cout_ro, cout_materiaux, bonus_ap, bonus_am, bonus_cran }.
  *   - le coût : « 100 », « 100 + 1 Matériau », « 1000 » (RO : en-tête « Coût(RO) ») — les nombres d'un terme sans « Matériau » font le RO, un terme
  *     « N Matériau(x) » les matériaux ;

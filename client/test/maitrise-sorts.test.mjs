@@ -5,6 +5,9 @@
 // de texte est couverte par une ligne ; (3) les représentations d'une même donnée (colonne, lignes typées, vue SQL, fonction JavaScript) se disent la même chose.
 // Le site de dev est la source des sorts qu'il modifie (décision du propriétaire) : les effectifs et les cas cités de la migration se lisent sur les lignes
 // d'avant ses modifications (historique_modification, lib/historique-site.mjs) ; l'état courant est contrôlé par les garanties (1) à (3).
+// La migration 0117 (Magie V10, R237) a réécrit, créé ou supprimé des sorts : leurs lignes ne sont plus celles de la 0004. Les effectifs et les cas
+// de la 0004 se lisent donc dans son registre (fichier figé), et l'état d'import est comparé au registre sur les sorts que la 0117 n'a pas touchés
+// (test/aide-migration-0117.mjs, lu dans le SQL de la migration, sans liste écrite à la main).
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -15,7 +18,9 @@ import { texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
 import { chargerMagies } from '../src/lib/magies-db.mjs';
 import { bonusDeMaitrise, COLONNES_NM } from '../src/lib/sort-analyse.mjs';
 import { coutDeSort, valeurDeSort } from '../src/lib/sort-format.mjs';
+import { analyserType } from '../src/lib/sort-analyse.mjs';
 import { applications, marquerBonus, ORDRE_CHAMPS_NM, sansBonus, texteDeBonus, valeurAuNm } from '../src/lib/sort-maitrise.mjs';
+import { sortsDontLa0117ReecritLes, sortsNouveauxDeLa0117, sortsReecritsParLa0117 } from './aide-migration-0117.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const magies = chargerMagies(db);
@@ -33,7 +38,19 @@ const sortsImport = historique.lignesDImport('sort');
 const enModele = (b) => ({ champ: b.champ, rang: b.rang, nature: b.nature, texteBrut: b.texte_brut, contexte: b.contexte, incrementBrut: b.increment_brut,
   incrementEntier: b.increment_entier, pasNm: b.pas_nm, seuilNm: b.seuil_nm });
 const ordreDeLecture = (a, b) => ORDRE_CHAMPS_NM.indexOf(a.champ) - ORDRE_CHAMPS_NM.indexOf(b.champ) || a.rang - b.rang;
-const bonusDImport = (nom) => lignesImport.filter((l) => slug(l.sort_id) === nom).sort(ordreDeLecture).map(enModele);
+// le registre de la 0004 (lignes telles qu'elle les a écrites) ; 0006 (noms à trancher) a corrigé ensuite un nom dans le contexte de certaines lignes
+// (« Purée de pois ») : le registre est projeté sur ces corrections
+const registre = JSON.parse(readFileSync(join(trouverRacine(), 'data', 'migrations', '0004-bonus-maitrise.json'), 'utf8'));
+const noms0006 = JSON.parse(readFileSync(join(trouverRacine(), 'data', 'migrations', '0006-orthographe-noms.json'), 'utf8')).corrections
+  .filter((c) => c.table === 'sort_bonus_maitrise' && c.col === 'contexte');
+const projete = (l) => noms0006.filter((c) => c.cle.sort_id === l.sort_id && c.cle.champ === l.champ && c.cle.rang === l.rang)
+  .reduce((x, c) => ({ ...x, contexte: x.contexte.replaceAll(c.avant, c.apres) }), l);
+const bonus0004 = registre.bonus.map(projete);
+// les sorts dont la 0117 a réécrit (ou supprimé) les lignes de bonus, ou de mode
+const bonusReecrits = sortsDontLa0117ReecritLes('sort_bonus_maitrise');
+const modesReecrits = sortsDontLa0117ReecritLes('sort_mode');
+/** Les bonus d'un sort tels que la 0004 les a écrits (registre), au format de lib/magies-db.mjs. */
+const bonusDImport = (nom) => bonus0004.filter((l) => slug(l.sort_id) === nom).sort(ordreDeLecture).map(enModele);
 const idDe = (nom) => [...sorts.keys()].find((id) => slug(id) === nom);
 /** Le sort n'a pas été réécrit par le site sur ces colonnes : ses exemples de l'import valent encore pour l'état courant. */
 const intact = (nom, ...colonnes) => !colonnes.some((c) => historique.modifiee('sort', { id: idDe(nom) }, c));
@@ -46,7 +63,9 @@ const occurrences = (texte, sous) => {
 };
 
 test('chaque ligne recopie une expression exacte de la cellule de son sort, dans la colonne indiquée (rien n’est inventé)', () => {
-  assert.equal(lignesImport.length, 352, 'à l’import (migration 0004)');
+  assert.equal(registre.bonus.length, 352, 'migration 0004 (registre)');
+  assert.equal(lignesImport.filter((l) => !bonusReecrits.has(l.sort_id)).length, bonus0004.filter((l) => !bonusReecrits.has(l.sort_id)).length,
+    'à l’import : les lignes de la 0004 sur les sorts que la 0117 n’a pas réécrits');
   // aujourd'hui : exactement les expressions que le découpage de l'édition trouve dans les cellules (lib/sort-analyse.mjs, rejoué sur toute la base)
   let trouvees = 0;
   for (const s of sorts.values()) for (const [champ, colonne] of Object.entries(COLONNES_NM)) trouvees += bonusDeMaitrise(champ, s[colonne]).length;
@@ -82,17 +101,21 @@ test('toute mention de NM écrite dans une des sept colonnes de texte est couver
 });
 
 test('répartition : 352 bonus sur 319 sorts ; trois sorts n’écrivent aucun NM et n’ont ni ligne ni « Bonus Maîtrise »', () => {
-  // à l'import (migration 0004)
+  // migration 0004 (registre)
   const parCle = {};
-  for (const l of lignesImport) parCle[`${l.champ}:${l.nature}`] = (parCle[`${l.champ}:${l.nature}`] ?? 0) + 1;
+  for (const l of bonus0004) parCle[`${l.champ}:${l.nature}`] = (parCle[`${l.champ}:${l.nature}`] ?? 0) + 1;
   assert.deepEqual(parCle, {
     'cout:par_nm': 56, 'dsb:par_nm': 83, 'effets:palier': 44, 'effets:par_nm': 43, 'effets:texte': 1, 'portee:par_nm': 44,
     'remarque:palier': 2, 'type:palier': 69, 'type:par_nm': 3, 'zone:palier': 2, 'zone:par_nm': 5,
   });
-  assert.equal(new Set(lignesImport.map((l) => l.sort_id)).size, 319);
-  const sans = sortsImport.filter((s) => s.bonus_maitrise === null).map((s) => slug(s.id)).sort();
-  assert.deepEqual(sans, ['inhalation-magique', 'pour-moi', 'vision-magique']);
-  for (const id of sans) assert.equal(lignesImport.filter((l) => slug(l.sort_id) === id).length, 0);
+  assert.equal(new Set(bonus0004.map((l) => l.sort_id)).size, 319);
+  // à l'import, sur les sorts que la 0117 n'a ni créés ni réécrits (leur « Bonus Maîtrise » est celui de la 0004)
+  const touches = new Set([...sortsReecritsParLa0117(['bonus_maitrise']), ...bonusReecrits, ...sortsNouveauxDeLa0117()]);
+  const SANS_0004 = ['inhalation-magique', 'pour-moi', 'vision-magique'];
+  const garde = sortsImport.filter((s) => !touches.has(s.id));
+  const sans = garde.filter((s) => s.bonus_maitrise === null).map((s) => slug(s.id)).sort();
+  assert.deepEqual(sans, SANS_0004.filter((n) => garde.some((s) => slug(s.id) === n)));
+  for (const id of SANS_0004) assert.equal(bonus0004.filter((l) => slug(l.sort_id) === id).length, 0);
   // aujourd'hui : un sort n'a aucune ligne ⇔ pas de « Bonus Maîtrise » ⇔ aucune de ses sept cases ne mentionne de NM
   const avecLignes = new Set(lignes.map((l) => l.sort_id));
   for (const s of sorts.values()) {
@@ -131,7 +154,7 @@ test('cas connus : IC à 3 NM, coût et portée par NM, effet supplémentaire à
   assert.deepEqual(lire('metronome'), [['effets', 'texte', 'Les NM sont utiles pour le sort aléatoire', null, null, null, null]]);
   assert.deepEqual(lire('force-agile').filter((b) => b[0] === 'effets'), [['effets', 'palier', '1NM = +3 dégâts', 1, null, null, null]]);
   assert.deepEqual(lire('alea-negatif').map((b) => [b[0], b[1], b[3]]), [['remarque', 'palier', 3]], 'la note de cellule porte le palier');
-  const tiret = lignesImport.map(enModele).filter((b) => b.texteBrut.includes('–'));
+  const tiret = bonus0004.map(enModele).filter((b) => b.texteBrut.includes('–'));
   assert.ok(tiret.length >= 2 && tiret.every((b) => b.incrementEntier === -1 && b.incrementBrut === '–1'), 'le « – » de la source est conservé et vaut -1');
   // « /3NM » collé à une proposition en toutes lettres = palier à 3 NM (lecture des trois grenades voisines)
   assert.deepEqual(lire('grenade-cryogenique'), [['effets', 'palier', 'Si jet de vigueur raté = Inflige gel 1/3NM', 3, null, null, null]]);
@@ -145,8 +168,9 @@ test('mode séparé du type : mode_brut = le texte entre parenthèses de la colo
     if (groupes.length) avecMode += 1;
     const modes = db.prepare('SELECT mode, libelle, fois FROM sort_mode WHERE sort_id = ? ORDER BY rang').all(s.id);
     const conditionnels = groupes.filter((g) => /NM/.test(g));
-    const base = groupes.filter((g) => !/NM/.test(g)).flatMap((g) => g.split(/\s*\/\s*(?=\p{L})/u).map((x) => x.trim()));
-    assert.deepEqual(modes.map((m) => m.libelle), base, `${slug(s.id)} : modes de base`);
+    // les modes de base : ceux que l'édition reconnaît (IC, IC x N, Imparable, Inesquivable) ; un autre groupe (« (Réaction) », 0117) reste dans mode_brut
+    const base = analyserType(s.type_brut).modes;
+    assert.deepEqual(modes.map((m) => [m.mode, m.libelle, m.fois]), base.map((m) => [m.mode, m.libelle, m.fois]), `${slug(s.id)} : modes de base`);
     // chaque condition de NM du type est une ligne de bonus (champ 'type') qui la contient
     const bonusType = lignes.filter((l) => l.sort_id === s.id && l.champ === 'type');
     assert.equal(bonusType.length, conditionnels.length, `${slug(s.id)} : une ligne de bonus par condition de NM du type`);
@@ -157,11 +181,11 @@ test('mode séparé du type : mode_brut = le texte entre parenthèses de la colo
     assert.equal(!!s.inesquivable, modes.some((m) => m.mode === 'inesquivable'), `${slug(s.id)} : inesquivable`);
   }
   assert.equal(avecMode, [...sorts.values()].filter((s) => s.mode_brut !== null).length);
-  // à l'import (migration 0004) : 126 sorts avec un mode, 59 modes de base
-  assert.equal(sortsImport.filter((s) => s.mode_brut !== null).length, 126);
+  // migration 0004 (registre) : 126 sorts avec un mode, 59 modes de base ; l'état d'import est comparé au registre par le dernier test
+  assert.equal(Object.keys(registre.mode_brut).length, 126);
+  assert.equal(registre.modes.length, 59);
   const modesImport = historique.lignesDImport('sort_mode');
-  assert.equal(modesImport.length, 59);
-  assert.deepEqual(modesImport.filter((m) => m.fois !== null).sort((a, b) => a.libelle.localeCompare(b.libelle)).map((r) => [r.libelle, r.fois]), [['IC x 2', 2], ['IC x 3', 3]]);
+  assert.deepEqual(registre.modes.filter((m) => m.fois !== null).sort((a, b) => a.libelle.localeCompare(b.libelle)).map((r) => [r.libelle, r.fois]), [['IC x 2', 2], ['IC x 3', 3]]);
   const modeBrut = (nom) => historique.valeurDImport('sort', { id: idDe(nom) }, 'mode_brut');
   const modes = (nom) => modesImport.filter((m) => m.sort_id === idDe(nom)).sort((a, b) => a.rang - b.rang).map((m) => m.libelle);
   assert.equal(modeBrut('rune-arcane'), 'IC x 1/NM');
@@ -219,23 +243,20 @@ test('à l’écran : chaque bonus d’une cellule de coût, portée, zone ou D/
     }
   }
   assert.equal(pastilles, lignes.filter((l) => ['cout', 'portee', 'zone', 'dsb'].includes(l.champ)).length);
-  assert.equal(lignesImport.filter((l) => ['cout', 'portee', 'zone', 'dsb'].includes(l.champ)).length, 190, 'à l’import');
+  assert.equal(bonus0004.filter((l) => ['cout', 'portee', 'zone', 'dsb'].includes(l.champ)).length, 190, 'migration 0004 (registre)');
   const dsb = historique.valeurDImport('sort', { id: idDe('boule-de-feu') }, 'dsb_brut');
   assert.deepEqual(marquerBonus(valeurDeSort(dsb, { liste: true }).lignes, bonusDImport('boule-de-feu'), 'dsb'), [[{ texte: '2d6 dégâts', modif: false }, { texte: '+1d6/NM', modif: true, nm: true }]]);
 });
 
-test('migration 0004 : le registre JSON décrit exactement les lignes de la base (modes et bonus) d’avant les modifications du site', () => {
-  const registre = JSON.parse(readFileSync(join(trouverRacine(), 'data', 'migrations', '0004-bonus-maitrise.json'), 'utf8'));
+test('migration 0004 : le registre JSON décrit exactement les lignes de la base (modes et bonus) d’avant les modifications du site, hors sorts réécrits par la 0117', () => {
   assert.equal(registre.migration, '0004-bonus-maitrise');
-  assert.equal(registre.bonus.length, lignesImport.length);
-  assert.equal(registre.modes.length, historique.effectifDImport('sort_mode'));
   const cle = (l) => `${l.sort_id}|${l.champ}|${l.rang}|${l.nature}|${l.texte_brut}|${l.contexte}`;
-  // 0006 (noms à trancher) a corrigé ensuite un nom dans le contexte de certaines lignes (« Purée de pois ») : le registre décrit les lignes d'avant
-  const noms0006 = JSON.parse(readFileSync(join(trouverRacine(), 'data', 'migrations', '0006-orthographe-noms.json'), 'utf8')).corrections
-    .filter((c) => c.table === 'sort_bonus_maitrise' && c.col === 'contexte');
-  const projete = (l) => noms0006.filter((c) => c.cle.sort_id === l.sort_id && c.cle.champ === l.champ && c.cle.rang === l.rang)
-    .reduce((x, c) => ({ ...x, contexte: x.contexte.replaceAll(c.avant, c.apres) }), l);
-  assert.deepEqual(registre.bonus.map(projete).map(cle).sort(), lignesImport.map(cle).sort());
+  const garde = (l) => !bonusReecrits.has(l.sort_id);
+  assert.ok(lignesImport.filter(garde).length > 0, 'des lignes de la 0004 que la 0117 n’a pas réécrites');
+  assert.deepEqual(bonus0004.filter(garde).map(cle).sort(), lignesImport.filter(garde).map(cle).sort());
+  const cleMode = (m) => `${m.sort_id}|${m.rang}|${m.mode}|${m.libelle}|${m.fois}`;
+  const gardeMode = (m) => !modesReecrits.has(m.sort_id);
+  assert.deepEqual(registre.modes.filter(gardeMode).map(cleMode).sort(), historique.lignesDImport('sort_mode').filter(gardeMode).map(cleMode).sort());
 });
 
 test('valeur à N NM sur tous les sorts (fiche de personnage) : plus aucune expression « /NM » lisible, la valeur de base à 0 NM, jamais de case vidée', () => {

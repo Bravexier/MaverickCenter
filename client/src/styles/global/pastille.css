@@ -1,8 +1,9 @@
 /* Pastille de couleur : pilule bordée et teintée, point de couleur, nom en gras, légère élévation au survol.
-   Un seul dessin pour les classes (/classes/), les races (/races/) et la carte des magies (/magies/) ; la couleur est --p, posée par chaque page
-   (carte des magies : la classe de la magie, `.couleur-magie-<id>` : --couleur, lib/palette-css.mjs).
+   Un seul dessin pour les classes (/classes/), les races (/races/), la carte des magies (/magies/) et le panneau latéral des pages de magie
+   (components/magie/MagiePage.astro) ; la couleur est --p, posée par chaque page (carte et panneau des magies : la classe de la magie,
+   `.couleur-magie-<id>` : --couleur, lib/palette-css.mjs).
    Les pages ne gardent que ce qui leur est propre (taille, position). */
-.classe-pastille, .race-pastille, .magies-orbite__noeud {
+.classe-pastille, .race-pastille, .magies-orbite__noeud, .magies-panneau__lien {
   position: relative;
   display: flex;
   align-items: center;
@@ -23,8 +24,9 @@
 .classe-pastille { --p: var(--cla); }
 .race-pastille { --p: var(--rac); }
 .magies-orbite__noeud { --p: var(--couleur); }
+.magies-panneau__lien { --p: var(--couleur); }
 .classe-pastille, .race-pastille { min-height: 2.6rem; padding: 0.4rem 0.9rem; }
-.classe-pastille__point, .race-pastille__point, .magies-orbite__pastille {
+.classe-pastille__point, .race-pastille__point, .magies-orbite__pastille, .magies-panneau__point {
   flex: 0 0 0.65rem;
   width: 0.65rem;
   height: 0.65rem;
@@ -35,15 +37,17 @@
 .classe-pastille__point { --p: var(--cla); }
 .race-pastille__point { --p: var(--rac); }
 .magies-orbite__pastille { --p: var(--couleur); }
-.classe-pastille__nom, .race-pastille__nom, .magies-orbite__nom { overflow-wrap: anywhere; }
+.magies-panneau__point { --p: var(--couleur); }
+.classe-pastille__nom, .race-pastille__nom, .magies-orbite__nom, .magies-panneau__nom { overflow-wrap: anywhere; }
 .classe-pastille:hover, .classe-pastille:focus-visible, .classe-pastille[data-ouverte],
 .race-pastille:hover, .race-pastille:focus-visible, .race-pastille[data-ouverte],
-.magies-orbite__noeud:hover, .magies-orbite__noeud:focus-visible {
+.magies-orbite__noeud:hover, .magies-orbite__noeud:focus-visible,
+.magies-panneau__lien:hover, .magies-panneau__lien:focus-visible, .magies-panneau__lien[aria-current='page'] {
   outline: 2px solid var(--p);
   outline-offset: 3px;
   box-shadow: 0 5px 18px color-mix(in srgb, var(--p) 25%, transparent);
   transform: translateY(-2px);
 }
 @media (prefers-reduced-motion: reduce) {
-  .classe-pastille, .race-pastille, .magies-orbite__noeud { transition: none; }
+  .classe-pastille, .race-pastille, .magies-orbite__noeud, .magies-panneau__lien { transition: none; }
 }

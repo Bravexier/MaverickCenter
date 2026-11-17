@@ -8,8 +8,8 @@ user-invocable: false
 
 ## Politique de relecture
 
-- **Les scripts d'abord.** Ce qui se vérifie mécaniquement ne se relit pas : `node --test test/instructions-claude.test.mjs` (instructions), `git diff --check`, les tests choisis par `npm run test:cible` (`choisir-les-tests`). Le jugement est réservé à ce qu'un script ne voit pas.
-- **Une relecture complète par lot, puis des relectures courtes** : limitées au diff de la correction, et aux constats **bloquants** seulement. Les remarques de style ou de forme d'un tour suivant ne déclenchent pas un nouveau tour : elles vont dans la synthèse.
+- **Les scripts d'abord.** Ce qui se vérifie mécaniquement ne se relit pas : `git diff --check`, et les tests choisis par `npm run test:cible` (`choisir-les-tests`), dont `instructions-claude` pour les instructions. Tu les passes toi-même, une seule fois, dans le même tour que la relecture (`controles-avant-rendu`) : les auteurs ne les lancent pas. Le jugement est réservé à ce qu'un script ne voit pas.
+- **Une relecture complète par lot, puis des relectures courtes** : limitées au diff de la correction, et aux constats **bloquants** seulement ; elles ne relancent que les tests en échec et ceux du diff (`--fichiers`), jamais toute la sélection. Les remarques de style ou de forme d'un tour suivant ne déclenchent pas un nouveau tour : elles vont dans la synthèse.
 - **Tu es ton propre relecteur dans le circuit court** (`leader-technique`) : cette grille, appliquée à ton diff, sans appeler `tech-qualite`.
 
 ## La grille
@@ -22,7 +22,8 @@ Relis d'un regard neuf, sans la conclusion attendue : `git diff origin/dev...HEA
   - Bugs, cas limites (vide, `NULL`, premier et dernier, casse et accents passés par `normalize`), erreurs de bornes.
   - Une valeur déduite au lieu d'être lue dans la base ou dans une source (règle d'or).
 - **Tests** (`tests-conventions`).
-  - Une logique nouvelle sans test, un test qui épingle une valeur de l'import sans `historique-site`.
+  - Une logique nouvelle sans test, un test qui épingle une valeur de l'import sans `historique-site` ni `aide-base-d-import`.
+  - Un test du lot fige-t-il un texte ou une valeur modifiable sur le site de dev (prose, nom, coût, dés…) sur l'état courant, ou cherche-t-il par nom plutôt que par id ? (`CLAUDE.md` « Pas de texte figé »)
   - Un test sauté, un test qui ne peut pas échouer.
 - **Invariants.**
   - Ceux du skill de la zone, et `site-version-portable` (module partagé par deux scripts de page, `src/lib` qui touche au navigateur).

@@ -10,14 +10,18 @@ import { HYBRIDES_SANS_CLASSE_RACIALE } from '../src/lib/race-kinds.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 
-test('aucune colonne de texte d’aucune table ne contient « (classe) »', () => {
+// Plus aucune exception : R191 admettait « (classe) » dans le libellé des mots-clés ; la décision R232 (4) la remplace (les 13 mots-clés « X (classe) »
+// redeviennent « X », avec la catégorie Classe ; leur clé, « x-classe », les distingue de leur race). Aucune colonne n'est admise.
+const ADMISES = new Set();
+
+test('R232 (4) : aucune colonne de texte d’aucune table ne contient « (classe) », libellé des mots-clés compris', () => {
   // hors section 15 (notes de version, historique des modifications du site) : des traces, qui citent la production d'avant la livraison (master
   // peut précéder la migration 0009) et les valeurs au moment de chaque modification (lib/notes-de-version.mjs#TABLES_DES_NOTES)
   const tables = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name NOT GLOB '*_fts*'").all().map((r) => r.name)
     .filter((t) => !TABLES_DES_NOTES.includes(t));
   const trouves = [];
   for (const t of tables) {
-    for (const c of db.prepare(`PRAGMA table_info("${t}")`).all().filter((c) => /TEXT/i.test(c.type))) {
+    for (const c of db.prepare(`PRAGMA table_info("${t}")`).all().filter((c) => /TEXT/i.test(c.type) && !ADMISES.has(`${t}.${c.name}`))) {
       const n = db.prepare(`SELECT count(*) AS n FROM "${t}" WHERE "${c.name}" LIKE '%(classe)%'`).get().n;
       if (n) trouves.push(`${t}.${c.name} : ${n}`);
     }

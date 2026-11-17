@@ -8,7 +8,8 @@
 --   * Noms en français, singulier, snake_case, ASCII sans accent (termes universels en anglais : id, slug). `nom` = libellé court, `titre` = titre de page.
 --   * Clés primaires TEXT lisibles et STABLES entre deux imports (jamais d'auto-incrément) : une page = '<type>/<slug>' ; une entité qui a SA page
 --     réutilise l'id de la page ; une sous-entité = '<id de la page>#<sorte>:<slug>' ; un référentiel garde sa clé courte ('force', 'ro', 'epee').
---     Exceptions assumées : clés numériques naturelles (niveau_global.niveau, initiative_agilite.agilite…) : le nombre EST la clé.
+--     Exceptions assumées : clés numériques naturelles (niveau_global.niveau, initiative_agilite.agilite…) : le nombre EST la clé ; les mots-clés
+--     et leurs catégories (mot_cle.id, categorie_mot_cle.id : entier attribué à la création, décision du propriétaire, migration 0113).
 --   * Tables STRICT, clés étrangères (PRAGMA foreign_keys = ON à CHAQUE connexion : SQLite ne le mémorise pas), CHECK pour les énumérations,
 --     index sur toute colonne servant de filtre.
 --   * Absent = NULL. Jamais de valeur par défaut inventée : l'importeur écrit toujours explicitement ce qu'il sait.
@@ -22,7 +23,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 81;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 129;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -107,35 +108,167 @@ CREATE TABLE alias (
 CREATE INDEX alias_cle   ON alias (cle);
 
 -- Vocabulaire des mots-clés, devenu un glossaire : un mot-clé = son id, son libellé et sa définition (migrations 0043 et 0056). Demandes du
--- propriétaire : sur /recherche/, en mode modification, « supprimer / ajouter / modifier des mots clés » ; une suppression le retire de tous les
+-- propriétaire : en mode modification, « supprimer / ajouter / modifier des mots clés » (page Glossaire, /regles/glossaire/) ; une suppression le retire de tous les
 -- endroits qui le citent (0043 : les pages qui le portent, page_tag, par ON DELETE CASCADE) ; le 2026-10-16, la refonte en glossaire (0056) :
 -- `description` est la définition, texte simple, balises du glossaire comprises (forme canonique) ; NULL : pas encore décrit. Dans un texte
 -- (corps d'une page, bloc d'un panneau de règles, définition…), le mot-clé n'est jamais repéré tout seul : une balise explicite le cite, « {{<ref>}} » (le mot-clé en gras, sa définition en infobulle),
 -- « {{<ref>|<texte>}} » (un autre texte affiché) ou « {{<ref>:}} » (« mode complet » : le libellé, « : », la définition) ; <ref> est l'id ou
 -- l'écriture du mot-clé, le service enregistre la forme canonique par l'id (« {{<id>|<texte>}} », « {{<id>:}} ») ; le rendu est celui du site.
+-- Depuis la migration 0113, la forme canonique cite la clé (mot_cle.cle) ; depuis la 0115, <ref> peut aussi être un synonyme (mot_cle_synonyme).
 -- Ces balises ne sont PAS des clés étrangères : à la suppression d'un mot-clé, le service les retire des textes (à la fusion, il les recible vers
 -- le mot-clé qui reçoit) par le chemin normal d'une modification, et db:check contrôle qu'aucune ne vise un mot-clé absent (règle du site).
 -- Depuis 0056, le vocabulaire ne garde que les mots-clés dont le site se sert pour ranger ses pages (client/src/lib/mots-cles.mjs#MOTS_CLES_PROTEGES)
 -- et ceux du glossaire ; les autres ont été retirés des pages. Un mot-clé existe ici même sans page (créé sur le site de dev). Il est posé sur les
 -- pages (page_tag) et, en étiquette, sur les sorts (sort_mot_cle, migration 0067 : décision R114 ; sans cascade : un mot-clé qui étiquette un sort
--- ne se supprime pas) ; les événements de la chronologie ont leurs catégories (categorie_chronologie). id = normalize(libelle) à la création, puis
--- FIGÉ : un renommage ne change que `libelle` (et `libelle_cle`), les liens restent ; un id n'est jamais réutilisé (historique du site), sauf ceux
+-- ne se supprime pas) ; les événements de la chronologie ont leurs catégories (categorie_chronologie). Jusqu'à la migration 0113 (plus bas) :
+-- id = normalize(libelle) à la création, puis FIGÉ : un renommage ne change que `libelle` (et `libelle_cle`), les liens restent ; un id n'est jamais réutilisé (historique du site), sauf ceux
 -- des 400 mots-clés que la migration 0056 a retirés, qui peuvent resservir (une nouvelle entrée du glossaire « Feu » reprend `feu`, et l'ancienne
 -- adresse /recherche/?mot-cle=feu mène à elle : voulu). libelle_cle = normalize(libelle) : les écritures « espace/temps », « espace temps » et
 -- « espace-temps » sont UN seul mot-clé. Pas de provenance : dictionnaire partagé (comme `source`).
 -- Le vocabulaire est celui du site de dev (le service le crée et le modifie : serveur/edition.mjs) : un import ne CRÉE jamais de mot-clé (0056). Les
 -- importeurs (tools/db/maverick.py#mot_cle, pages_md.py) cherchent un libellé par libelle_cle et ne posent qu'un mot-clé qui existe (une écriture
 -- inconnue n'est pas posée : db:sync-pages la signale) ; aucun import ne supprime un mot-clé, ni ne repose une écriture que le site a renommée,
--- fusionnée ou supprimée (historique_modification : tools/db/maverick.py#mot_cle).
+-- fusionnée ou supprimée (historique_modification : tools/db/maverick.py#mot_cle). Le 2026-11-05, le Lexique du guide (page « Lexique », retirée)
+-- est devenu des mots-clés (migration 0090, demande du propriétaire : « Toutes les informations comprises dedans doivent être converties en
+-- mot-clés ») : une entrée = un mot-clé, un doublon fusionné dans le mot-clé existant (id gardé), un renvoi (« voir … ») = une définition qui cite
+-- l'autre mot-clé ; l'abréviation que l'entrée écrivait (« AM », « INI ») était la colonne `abreviation`, devenue un synonyme (migration 0115,
+-- R233 (7) : mot_cle_synonyme). « CR » y a rejoint « Corruption » (réponse du propriétaire : « Fusionner dans Corruption ») : l'id `cr` n'existe
+-- plus, « CR » est un synonyme de `corruption`.
+-- Le 2026-11-06, les liens des textes sont devenus des balises (migration 0098, générée par client/scripts/liens-en-mots-cles.mjs ; réponses du
+-- propriétaire : `couleur` et `url`, « NULL par défaut, ajoutées en dernier », « URL interne seulement » ; les [[…]] et les liens Markdown internes
+-- [texte](/…) deviennent des balises ; un mot-clé par page visée, libellé = titre de la page, url = son adresse, sans définition ni abréviation ; un
+-- mot-clé existant de même écriture garde id et définition et ne reçoit que l'url, « alignement », « artisanat », « bouclier », « ceinture »,
+-- « codex » (« Le mot-clé existant prend l'URL ») ; 13 pages ou routes fondues dans un mot-clé existant qui prend leur url, sans mot-clé nouveau,
+-- les balises gardant le texte affiché (« Fusionner dans l'existant » : « posture », « mode-hyper », « classe », « race », « metier », « tenaille »,
+-- « des »… : client/scripts/liens-en-mots-cles.mjs#FUSIONS_DANS_L_EXISTANT) ; « il ne faut pas de changement par rapport à avant en terme de résultat. Tu feras donc en sorte
+-- que le mot clé reprenne la couleur de la page d'avant » ; « Un mot-clé par page colorée » ; une route sans page (/fiche/, /magies/…) a le mot-clé
+-- du libellé de son menu ; homonymes race/classe : « La race garde le nom », la classe prenait le suffixe de classe, retiré par R232 (4)).
+-- Les pages d'exemple gardent leurs liens ; lib/liens-en-mots-cles.mjs#convertirLesLiens convertit un texte avec la table du registre de la migration.
+-- Le 2026-11-08, identifiant entier, clé et catégories (migration 0113, demande du propriétaire : « ID devrait être un nombre ou un GUID », « Libelle
+-- ne devrai pas être unique », « Libelle_cle devrai être renommée Key », « la table Keyword_category qui liste toutes les catégories possibles de
+-- mots clés » ; réponses : un entier auto-incrémenté ; noms français mot_cle, categorie_mot_cle, cle ; les 13 classes raciales suffixées de R191
+-- redeviennent « X » avec la catégorie Classe). `id` est un entier attribué à la création, jamais réutilisé ni changé ; les 407 mots-clés d'avant ont reçu 1 à 407
+-- dans l'ordre de leur ancien id texte, les 40 ajoutés par les migrations 0111 et 0112 de dev après les autres (registre
+-- data/migrations/0113-mots-cles-id-entier.json). `cle` remplace libelle_cle : c'est ce que citent les
+-- balises « {{<cle>}} » et l'adresse /recherche/?mot-cle=<cle>, et elle SUIT le libellé et les catégories (réponse du propriétaire : chaque renommage
+-- ou changement de catégorie réécrit les textes qui citent le mot-clé). Règle (réponse du propriétaire) : sans homonyme, cle = normalize(libelle) ;
+-- des homonymes (même normalize(libelle)) ont chacun au moins une catégorie propre face à chacun des autres (refusés : un homonyme sans catégorie,
+-- ou dont les catégories sont incluses dans celles d'un autre), et chacun a pour clé normalize(libelle) suivi, après un tiret, du normalize du
+-- libellé de chacune de SES catégories qui n'est pas commune à tous ses homonymes, dans l'ordre croissant de l'id de catégorie (« namazu-race »,
+-- « namazu-classe ») ; une clé déjà prise est refusée. Refus du service et de db:check ; référence de la règle :
+-- tools/db/maverick.py#cles_des_mots_cles. Aucun écart admis depuis la migration 0114 (catégories assignées, R232 (7) : les 13 races homonymes
+-- des classes raciales, sans catégorie à la 0113, ont reçu Race et la clé « x-race », la classe garde « x-classe »). Le libellé
+-- n'est plus unique : une écriture que portent plusieurs homonymes est ambiguë, la saisie écrit alors la clé. Une clé quittée (renommage,
+-- catégorie changée, ancien id texte) mène encore au mot-clé par mot_cle_ancienne_cle.
 CREATE TABLE mot_cle (
-  id          TEXT    NOT NULL PRIMARY KEY CHECK (length(id) > 0 AND id NOT GLOB '*[^a-z0-9-]*' AND id NOT GLOB '*--*' AND id NOT GLOB '-*' AND id NOT GLOB '*-'),
-  libelle     TEXT    NOT NULL CHECK (length(libelle) > 0),      -- l'écriture affichée partout (pages, /recherche/, balises du glossaire)
-  libelle_cle TEXT    NOT NULL UNIQUE CHECK (length(libelle_cle) > 0 AND libelle_cle NOT GLOB '*[^a-z0-9-]*' AND libelle_cle NOT GLOB '*--*' AND libelle_cle NOT GLOB '-*' AND libelle_cle NOT GLOB '*-'),
-                                                                 -- normalize(libelle) ; client/scripts/db-check.mjs le vérifie
-  description TEXT    CHECK (description IS NULL OR length(description) > 0)   -- la définition du glossaire : texte simple, balises du glossaire
+  id          INTEGER NOT NULL PRIMARY KEY CHECK (id >= 1),             -- entier attribué à la création (le suivant), FIGÉ, jamais réutilisé (migration 0113)
+  libelle     TEXT    NOT NULL CHECK (length(libelle) > 0),      -- l'écriture affichée partout (pages, /recherche/, balises du glossaire) ; pas unique (0113)
+  cle         TEXT    NOT NULL UNIQUE CHECK (length(cle) > 0 AND cle NOT GLOB '*[^a-z0-9-]*' AND cle NOT GLOB '*--*' AND cle NOT GLOB '-*' AND cle NOT GLOB '*-'),
+                                                                 -- la clé citée par les balises et les adresses : normalize(libelle), suivi des
+                                                                 -- catégories qui distinguent un homonyme (règle plus haut) ; recalculée à chaque
+                                                                 -- renommage ou changement de catégorie ; client/scripts/db-check.mjs la vérifie.
+                                                                 -- Migration 0113 (remplace libelle_cle, à sa place)
+  description TEXT    CHECK (description IS NULL OR length(description) > 0),  -- la définition du glossaire : texte simple, balises du glossaire
                                                                  -- comprises (forme canonique) ; NULL : pas encore décrit (absent = NULL) ;
                                                                  -- migration 0056, ajoutée en dernier
+  couleur     TEXT    CHECK (couleur IS NULL OR couleur GLOB '#[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]' OR (couleur GLOB '[a-z]*:[a-z0-9]*' AND couleur NOT GLOB '*[^a-z0-9:-]*' AND couleur NOT GLOB '*[^a-z]*:*' AND couleur NOT GLOB '*:*:*' AND couleur NOT GLOB '*--*' AND couleur NOT GLOB '*-')),
+                                                                 -- la couleur du mot-clé : une référence « <famille>:<id> » d'une couleur de la palette
+                                                                 -- (lib/palette-css.mjs#FAMILLES_DE_LA_PALETTE ; id = celui de sa classe CSS,
+                                                                 -- lib/palette-css.mjs#idDeCouleur : « magie:sang », « classe:melee », « race:pure »,
+                                                                 -- « partie:creer ») ou « #rrggbb » (minuscules) ; NULL : aucune. Que la référence nomme
+                                                                 -- une couleur de la palette ne se lit pas en SQL. Migration 0098, ajoutée en dernier
+  url         TEXT    CHECK (url IS NULL OR (url GLOB '/*' AND url NOT GLOB '//*' AND url NOT GLOB '*[^!-~]*' AND instr(url, '\') = 0)),
+                                                                 -- l'adresse où mène le mot-clé : interne seulement, relative à la racine du site, sans le
+                                                                 -- préfixe de déploiement (« /races/humain/ », « /metiers/#metier-mineur », « /fiche/ ») ;
+                                                                 -- ni « //hôte », ni espace, ni caractère hors ASCII imprimable, ni « \ ». NULL : aucune.
+                                                                 -- Migration 0098, ajoutée en dernier
+  verrou      INTEGER NOT NULL DEFAULT 0 CHECK (verrou IN (0,1)),  -- 1 : le mot-clé est verrouillé (décisions R218, R219) ; le site de dev n'en modifie aucun champ
+                                                                 -- (libellé, définition, synonymes (R233 (6)), adresse, couleur) et ne le supprime pas, ni par
+                                                                 -- fusion dans un autre ; il se pose, se cite et reçoit une fusion. Aucune route n'écrit
+                                                                 -- verrou : il ne change que par une migration (« seul un admin », à venir). 0 par défaut :
+                                                                 -- un mot-clé créé plus tard n'est pas verrouillé (R219 (5)), sauf race-hybride (R220 (2)).
+                                                                 -- Le rejeu du journal ne le contrôle pas (R219 (6)). Migration 0110, ajoutée en dernier
+  monnaie_id  TEXT    UNIQUE REFERENCES monnaie(id) ON DELETE SET NULL,
+                                                                 -- la monnaie dont c'est le mot-clé (« ricken-de-fer » -> 'rf') ; NULL : aucune. Avant la
+                                                                 -- 0113, un mot-clé de monnaie avait pour id celui de sa monnaie (R183 : reconnu à cet
+                                                                 -- id, jamais à son abréviation) : ce lien est cette colonne. Aucune route ne l'écrit.
+                                                                 -- Supprimer la monnaie (le rejeu d'un ancien lot, R220 (1)) garde le mot-clé, qui n'est
+                                                                 -- plus celui d'une monnaie (SET NULL). Migration 0113, ajoutée en dernier
+  icone       TEXT    CHECK (icone IS NULL OR (icone GLOB '[a-z]*:[a-z0-9]*' AND icone NOT GLOB '*[^a-z0-9:-]*' AND icone NOT GLOB '*[^a-z]*:*' AND icone NOT GLOB '*:*:*' AND icone NOT GLOB '*--*' AND icone NOT GLOB '*-'))
+                                                                 -- l'icône du mot-clé (demande du propriétaire, 2026-11-08 : « tu peux mettre une colonne
+                                                                 -- supplémentaire avec "icone" […] Pour le moment, seul les monnaies vont l'utiliser ») :
+                                                                 -- une référence « <famille>:<id> » d'une icône du site, sur le modèle de `couleur` ;
+                                                                 -- famille « monnaie », id = celui de la monnaie dans MONNAIES_DU_JEU
+                                                                 -- (lib/monnaies.mjs#MONNAIES_DU_JEU : 'monnaie:rf', 'monnaie:ro', 'monnaie:pp', dessin
+                                                                 -- de la classe piece--<id>, styles/global/monnaies.css) ; NULL : aucune. Choisie sur le
+                                                                 -- site de dev dans la liste des icônes du site ; le CHECK ne lit que la forme, que la
+                                                                 -- référence nomme une icône du site se vérifie par client/scripts/db-check.mjs et le
+                                                                 -- service. C'est un dessin, pas une donnée : une monnaie supprimée ne la vide pas.
+                                                                 -- Affichée avec le libellé (glossaire, infobulle, balises), comme les monnaies (R63).
+                                                                 -- Migration 0116 (remplie pour les trois mots-clés de monnaie), ajoutée en dernier
 ) STRICT;
+
+
+-- Les catégories des mots-clés (migration 0113, demande du propriétaire : « la table Keyword_category qui liste toutes les catégories possibles de
+-- mots clés (ID + libelle) », « Il sera possible d'en ajouter par la suite ») : un vocabulaire géré sur le site de dev (ajout, renommage, suppression
+-- d'une catégorie vide). Les 11 premières, dans l'ordre des réponses du propriétaire (ids 1 à 11) : Règles, Magie, Race, Combat, Fiche de personnage,
+-- Classe, Équipement, Événement, Objet légendaire, puis Métier et Bestiaire. id entier attribué à la création, figé, jamais réutilisé. Deux catégories n'ont jamais la même
+-- écriture (libelle_cle, comme categorie_chronologie) : le normalize du libellé entre dans la clé d'un mot-clé homonyme (mot_cle.cle).
+CREATE TABLE categorie_mot_cle (
+  id          INTEGER NOT NULL PRIMARY KEY CHECK (id >= 1),
+  libelle     TEXT    NOT NULL UNIQUE CHECK (length(libelle) > 0),
+  libelle_cle TEXT    NOT NULL UNIQUE CHECK (length(libelle_cle) > 0 AND libelle_cle NOT GLOB '*[^a-z0-9-]*' AND libelle_cle NOT GLOB '*--*' AND libelle_cle NOT GLOB '-*' AND libelle_cle NOT GLOB '*-')
+                                                     -- normalize(libelle) ; client/scripts/db-check.mjs le vérifie
+) STRICT;
+
+-- Les catégories d'un mot-clé (« La colonne Category des Keyword serai une liste des ID » ; table de liaison, choix du leader-technique). Un mot-clé
+-- supprimé retire ses lignes (ON DELETE CASCADE) ; une catégorie qui range encore un mot-clé ne se supprime pas (RESTRICT). Pas d'ordre : la clé d'un
+-- homonyme lit ses catégories dans l'ordre de leur id. À la migration 0113, seules les 13 classes raciales ont la catégorie Classe ; la migration
+-- 0114 a assigné celles des mots-clés existants (R232 (7) : « l'équipe viens en assigner en fonction de la pertinence » ; liste de game-design et de
+-- worldbuilding, registre data/migrations/0114-mots-cles-categories-assignees.json).
+CREATE TABLE mot_cle_categorie (
+  mot_cle_id   INTEGER NOT NULL REFERENCES mot_cle(id) ON DELETE CASCADE,
+  categorie_id INTEGER NOT NULL REFERENCES categorie_mot_cle(id) ON DELETE RESTRICT,
+  PRIMARY KEY (mot_cle_id, categorie_id)
+) STRICT, WITHOUT ROWID;
+CREATE INDEX mot_cle_categorie_categorie ON mot_cle_categorie (categorie_id);   -- les mots-clés d'une catégorie ; contrôle du RESTRICT
+
+-- Les clés qu'un mot-clé a quittées (migration 0113 ; « une correspondance des anciennes clés est bienvenue ») : une balise d'un ancien lot du journal
+-- ou une ancienne adresse /recherche/?mot-cle=<clé> mène encore à lui. La clé courante (mot_cle.cle) se cherche d'abord, puis celle-ci. À la migration,
+-- les anciens ids texte qui ne sont pas la nouvelle clé : 'pp', 'rf', 'ro', 'attaque-et-defense', 'attaquer-et-se-defendre',
+-- 'reussites-echecs-et-critiques' (la clé suit le libellé : « pierre-precieuse », « se-defendre »…) ; à la 0114, les
+-- 13 clés des races devenues « x-race » (« orios »…) ; le service y ajoute la
+-- clé quittée à chaque renommage ou changement de catégorie, et retire celle qui redevient la clé courante d'un mot-clé. Supprimer le mot-clé retire
+-- ses lignes (ON DELETE CASCADE). La correspondance figée des 407 anciens ids, pour le rejeu des lots d'avant la 0113, est le registre
+-- data/migrations/0113-mots-cles-id-entier.json.
+CREATE TABLE mot_cle_ancienne_cle (
+  cle        TEXT    NOT NULL PRIMARY KEY CHECK (length(cle) > 0 AND cle NOT GLOB '*[^a-z0-9-]*' AND cle NOT GLOB '*--*' AND cle NOT GLOB '-*' AND cle NOT GLOB '*-'),
+  mot_cle_id INTEGER NOT NULL REFERENCES mot_cle(id) ON DELETE CASCADE
+) STRICT, WITHOUT ROWID;
+CREATE INDEX mot_cle_ancienne_cle_mot_cle ON mot_cle_ancienne_cle (mot_cle_id);
+
+-- Les synonymes d'un mot-clé (décision R233, migration 0115 ; demande du propriétaire : « Il faudra aussi prévoir plieurs labelles secondaires pour
+-- les cas des tages avec des synonymes (exemple : Action bonus / Action rapide / Instant Cast) ») : ses libellés secondaires (aucun, un ou
+-- plusieurs). Ils servent à la saisie d'une balise, à la recherche et à l'affichage (« Aussi appelé », R233 (8)) ; la clé du mot-clé n'en dépend
+-- pas (R232 (2)). Une balise saisie par un synonyme s'enregistre « {{<clé>|<synonyme>}} » et affiche le synonyme (R233 (2)) ; le libellé principal
+-- reste celui de l'infobulle, du Glossaire et des étiquettes (R233 (3)). L'abréviation (colonne mot_cle.abreviation, migrations 0090 à 0114,
+-- R183 (2)) est un synonyme parmi d'autres (R233 (7)) : ses 20 valeurs sont devenues le premier synonyme (ordre 0) de leur mot-clé ; la table
+-- monnaie garde la sienne. « Action bonus » et « Action rapide », mots-clés qui renvoyaient à « Instant Cast », y sont fondus et en sont les
+-- synonymes, après « IC » (R233 (5)) ; leurs clés mènent à lui par mot_cle_ancienne_cle. Le verrou du mot-clé (R218) couvre ses synonymes
+-- (R233 (6)). Unicité (R233 (4)) : deux synonymes, du même mot-clé ou de deux, n'ont jamais la même écriture normalisée (libelle_cle UNIQUE) ;
+-- le reste de la règle (un synonyme n'égale, après normalize, ni le libellé ni la clé d'un autre mot-clé, ni le libellé de son propre mot-clé)
+-- compare au libellé d'un mot-clé, qui n'a pas de colonne normalisée : client/scripts/db-check.mjs et le service le vérifient. Supprimer le
+-- mot-clé retire ses synonymes (ON DELETE CASCADE).
+CREATE TABLE mot_cle_synonyme (
+  id          INTEGER NOT NULL PRIMARY KEY CHECK (id >= 1),          -- entier attribué à la création, figé
+  mot_cle_id  INTEGER NOT NULL REFERENCES mot_cle(id) ON DELETE CASCADE,
+  libelle     TEXT    NOT NULL CHECK (length(libelle) > 0),          -- l'écriture telle qu'enregistrée (« AM », « Nat. », « Action bonus »)
+  libelle_cle TEXT    NOT NULL UNIQUE CHECK (length(libelle_cle) > 0 AND libelle_cle NOT GLOB '*[^a-z0-9-]*' AND libelle_cle NOT GLOB '*--*' AND libelle_cle NOT GLOB '-*' AND libelle_cle NOT GLOB '*-'),
+                                                     -- normalize(libelle) ; client/scripts/db-check.mjs le vérifie
+  ordre       INTEGER NOT NULL CHECK (ordre >= 0)    -- rang parmi les synonymes du mot-clé (0 = premier) ; sans UNIQUE, pour échanger deux places
+                                                     -- dans un même lot : à égalité, l'id départage
+) STRICT;
+CREATE INDEX mot_cle_synonyme_mot_cle ON mot_cle_synonyme (mot_cle_id, ordre);   -- les synonymes d'un mot-clé, dans l'ordre ; contrôle de la cascade
 
 -- Mots-clés d'une page (frontmatter `tags`, dans l'ordre) : l'écriture est celle du vocabulaire (mot_cle.libelle ; jusqu'à la migration 0043, chaque page
 -- gardait la sienne). Supprimer un mot-clé retire ses lignes (ON DELETE CASCADE : le service les note une à une ; au rejeu du journal, clés coupées, la
@@ -144,12 +277,12 @@ CREATE TABLE mot_cle (
 CREATE TABLE page_tag (
   page_id TEXT    NOT NULL REFERENCES page(id) ON DELETE CASCADE,
   ordre   INTEGER NOT NULL CHECK (ordre >= 0),       -- rang dans la liste `tags:` (un mot-clé supprimé laisse un trou : l'ordre des autres ne change pas)
-  tag_id  TEXT    NOT NULL REFERENCES mot_cle(id) ON DELETE CASCADE,
+  tag_id  INTEGER NOT NULL REFERENCES mot_cle(id) ON DELETE CASCADE,   -- mot_cle.id (entier depuis la migration 0113)
   PRIMARY KEY (page_id, ordre),
   UNIQUE (page_id, tag_id)
 ) STRICT;
 
-CREATE INDEX page_tag_tag ON page_tag (tag_id);      -- /recherche/?mot-cle=<id> : toutes les pages d'un mot-clé
+CREATE INDEX page_tag_tag ON page_tag (tag_id);      -- /recherche/?mot-cle=<cle> : toutes les pages d'un mot-clé
 
 -- Provenance au niveau de la page : une entrée de frontmatter `sources` = une ligne (texte exact).
 -- Deux natures : une URL (https://docs.google.com/…) ou un libellé (« Google Sheet « Invocation », onglet « Appel aux golems » »).
@@ -179,6 +312,10 @@ CREATE INDEX page_source_source ON page_source (source_id);
 
 -- Lien page -> entité typée. Chaque importeur de domaine écrit ses lignes (test de complétude : db:check). Convention d'id : l'entité qui a SA
 -- page réutilise l'id de la page (principale = 1) ; une sous-entité a l'id '<id de la page qui la contient>#<sorte>:<slug>' (principale = 0).
+-- Exception : les postures (« guide/postures#posture:… », ids figés) sont rattachées à guide/les-postures, qui affiche leur tableau, depuis le retrait de
+-- la page guide/postures (migration 0094). De même, les trois textes du Mode Hyper (mode_texte, « guide/liste-des-effets-mode-hyper#texte:… », ids
+-- figés) sont rattachés à guide/le-mode-hyper depuis le retrait de la page « Liste des effets mode hyper » (migration 0095). db:check contrôle leur
+-- page par la table de ces préfixes retirés (client/serveur/controles-du-contenu.mjs#PAGES_DES_PREFIXES_RETIRES).
 -- `entite_table` n'est pas une clé étrangère (SQLite ne vise pas une table variable) : db:check vérifie que (entite_table, entite_id) existe.
 CREATE TABLE page_entite (
   entite_table TEXT    NOT NULL CHECK (length(entite_table) > 0 AND entite_table NOT GLOB '*[^a-z_]*'),   -- 'magie', 'sort', 'classe', 'race'…
@@ -191,14 +328,16 @@ CREATE TABLE page_entite (
 CREATE INDEX page_entite_page ON page_entite (page_id);   -- une entité se cherche par la clé primaire (entite_table, entite_id) : pas d'index sur entite_id seul (migration 0073)
 CREATE UNIQUE INDEX page_entite_principale ON page_entite (page_id) WHERE principale = 1;   -- au plus une entité principale par page
 
--- Panneaux de règles : l'encart replié en tête de chaque onglet de /ressources/equipement/ (migration 0056). Demandes du propriétaire du 2026-10-16,
--- pour les onglets Armes, Armures, Boucliers, Bâtons magiques et Accessoires : sans chapeau (la première phrase n'est plus répétée au-dessus du
+-- Panneaux de règles : l'encart replié en tête de chaque page de l'équipement (migration 0056). Pages /ressources/armes/, /ressources/armures/,
+-- /ressources/bouclier/, /ressources/accessoires/, et sous-onglet Bâtons magiques (#batons-magiques) de la page Ceinture /ressources/objets-a-la-ceinture/
+-- (client/src/lib/equipement.mjs#PAGES_SERVIES_PAR_L_EQUIPEMENT) ; jusqu'au 2026-10-29, les onglets de la page /ressources/equipement/, éclatée en ces
+-- pages. Demandes du propriétaire du 2026-10-16, pour les onglets Armes, Armures, Boucliers, Bâtons magiques et Accessoires : sans chapeau (la première phrase n'est plus répétée au-dessus du
 -- panneau), un titre et un contenu qui se modifient sur le site de dev, un contenu qui peut comprendre des tuiles (insérées et modifiées en mode
 -- modification). À la création, le texte des blocs est COPIÉ, jamais réécrit, des règles que le site tirait du corps de la page (page.corps_md, qui
 -- reste tel quel : la trace de l'import, pour la recherche) ; depuis, le site de dev en est la source. Pas de provenance (origine, source_ref :
 -- feuille de route, retirées à la 1.0).
 CREATE TABLE panneau_regles (
-  id      TEXT NOT NULL PRIMARY KEY CHECK (length(id) > 0 AND id NOT GLOB '*[^a-z0-9-]*' AND id NOT GLOB '*--*' AND id NOT GLOB '-*' AND id NOT GLOB '*-'),   -- l'ancre de son onglet
+  id      TEXT NOT NULL PRIMARY KEY CHECK (length(id) > 0 AND id NOT GLOB '*[^a-z0-9-]*' AND id NOT GLOB '*--*' AND id NOT GLOB '-*' AND id NOT GLOB '*-'),   -- l'id de sa page ou de son sous-onglet
                                                      -- ('armes', 'armures', 'boucliers', 'batons-magiques', 'accessoires')
   titre   TEXT NOT NULL CHECK (length(titre) > 0),   -- le titre du panneau replié
   page_id TEXT NOT NULL REFERENCES page(id)          -- la page dont le texte se lit (contexte des [[liens]], recherche) : 'ressources/armes'…
@@ -250,6 +389,50 @@ CREATE TABLE annonce (
   texte TEXT CHECK (texte IS NULL OR length(texte) > 0)   -- Markdown des pages, balises du glossaire comprises ; NULL : rien d'annoncé (le texte d'attente s'affiche)
 ) STRICT;
 
+-- Plan des onglets de la rubrique Règles (migration 0091, décisions R184 et R185 : « Fiche de personnage », « Mécaniques générales », « Les combats »,
+-- « Exploration », après Découvrir et L'univers, que le site écrit lui-même) : un onglet, son titre, sa place et la page qu'il ouvre. Son menu latéral
+-- est la liste de ses entrées (regles_onglet_entree), dans l'ordre de `rang`. Liste fermée, que l'édition du site de dev ne modifie pas : elle n'en
+-- crée ni n'en retire, et l'ordre des onglets comme leur page d'ouverture sont fixes (choix du propriétaire, lot de l'édition des menus : « Non,
+-- fixe ») ; seules leurs entrées se modifient. La page d'ouverture est une entrée page de l'onglet (clé étrangère composée vers regles_onglet_entree,
+-- vérifiée à la fin de la transaction : un onglet et ses entrées s'écrivent ensemble) : déplacer cette page dans un autre onglet, ou la supprimer, est
+-- refusé tant qu'une autre page n'ouvre pas l'onglet. Pas de provenance (origine, source_ref : feuille de route, retirées à la 1.0).
+CREATE TABLE regles_onglet (
+  id                TEXT    NOT NULL PRIMARY KEY CHECK (length(id) > 0 AND id NOT GLOB '*[^a-z0-9-]*' AND id NOT GLOB '*--*' AND id NOT GLOB '-*' AND id NOT GLOB '*-'),
+                                                       -- 'fiche-de-personnage', 'mecaniques-generales', 'combats', 'exploration'
+  titre             TEXT    NOT NULL CHECK (length(titre) > 0),   -- le nom de l'onglet (« Les combats »)
+  ordre             INTEGER NOT NULL CHECK (ordre >= 1),          -- place parmi ces onglets (1 = le premier après L'univers) ; pas UNIQUE, pour qu'un
+                                                                  -- réordonnancement puisse échanger deux ordres dans un même lot (à égalité, l'id)
+  ouverture_page_id TEXT    NOT NULL,                             -- la page montrée à l'adresse de l'onglet, qui n'est pas forcément la première du menu
+                                                                  -- (« Fiche de personnage » ouvre sur guide/creer-son-personnage)
+  FOREIGN KEY (id, ouverture_page_id) REFERENCES regles_onglet_entree (onglet_id, page_id) DEFERRABLE INITIALLY DEFERRED
+) STRICT;
+
+-- Une entrée du menu latéral d'un onglet des Règles, à sa place (`rang`). Trois sortes, exactement une par ligne :
+--   * une page (`page_id`, une page `guide/…`) : son titre est celui de la page ; id 'page:<id de la page>' ; une page n'est que dans un onglet (UNIQUE) ;
+--   * un lien vers une adresse du site qui n'est pas une page du guide (`libelle` et `adresse`) : « Artisanat » (regles/artisanat/), id 'lien:<adresse
+--     sans la barre finale>' ;
+--   * une entrée grisée « bientôt » (`libelle` seul) : une puce du propriétaire sans texte encore (R184 (1)) ; aucune aujourd'hui, id 'bientot:<clé>'.
+-- `rang` n'est pas UNIQUE dans l'onglet (comme panneau_regles_bloc.ordre) : SQLite contrôle une contrainte UNIQUE ligne par ligne, et un déplacement
+-- par glisser-déposer renumérote plusieurs entrées dans un même lot ; à égalité, l'id départage. Retirer une page retire son entrée (ON DELETE CASCADE),
+-- sauf la page d'ouverture d'un onglet (regles_onglet). Les entrées se modifient par l'édition du site de dev (choix du propriétaire, lot de l'édition
+-- des menus) : leur ordre par glisser-déposer (entrées « bientôt » comprises), l'onglet d'une page, une page des Règles créée (en fin de menu, ou à la
+-- place d'une entrée « bientôt » qu'elle remplit) ou supprimée. Pas de provenance (origine, source_ref : feuille de route, retirées à la 1.0).
+CREATE TABLE regles_onglet_entree (
+  id        TEXT    NOT NULL PRIMARY KEY CHECK (length(id) > 0),
+  onglet_id TEXT    NOT NULL REFERENCES regles_onglet(id),
+  rang      INTEGER NOT NULL CHECK (rang >= 1),           -- place dans le menu latéral de l'onglet (1 = en haut)
+  page_id   TEXT    UNIQUE REFERENCES page(id) ON DELETE CASCADE,   -- la page de l'entrée ; NULL : un lien ou une entrée « bientôt »
+  libelle   TEXT    CHECK (libelle IS NULL OR length(libelle) > 0), -- le texte d'un lien ou d'une entrée « bientôt » ; NULL pour une page (son titre)
+  adresse   TEXT    CHECK (adresse IS NULL OR (adresse GLOB '[a-z0-9]*/' AND adresse NOT GLOB '*[^a-z0-9/-]*' AND adresse NOT GLOB '*//*')),
+                                                          -- l'adresse d'un lien, sans la base ni la barre initiale ('regles/artisanat/') ; NULL sinon
+  CHECK ((page_id IS NULL) = (libelle IS NOT NULL)),      -- une page, ou un libellé
+  CHECK (adresse IS NULL OR libelle IS NOT NULL),         -- un lien a son libellé
+  CHECK (CASE WHEN page_id IS NULL THEN id GLOB 'lien:?*' OR id GLOB 'bientot:?*' ELSE id = 'page:' || page_id END),   -- 'page:<id de la page>', 'lien:…', 'bientot:…'
+  CHECK (id NOT GLOB 'lien:*' OR adresse IS NOT NULL),
+  CHECK (id NOT GLOB 'bientot:*' OR (adresse IS NULL AND page_id IS NULL)),
+  UNIQUE (onglet_id, page_id)                             -- cible de la clé étrangère de la page d'ouverture (regles_onglet)
+) STRICT;
+
 -- ====================================================================================================================
 -- 2. RÈGLES DE LA FICHE : caractéristiques, compétences, niveaux, constantes, postures (famille « fiche »)
 -- Ce que le générateur de fiche lit : `npm run db:export-rules` (design.md, §8) en tire client/src/data/rules.json par des SELECT simples.
@@ -277,8 +460,9 @@ CREATE TABLE competence (
   ordre              INTEGER NOT NULL UNIQUE CHECK (ordre BETWEEN 1 AND 30),   -- ordre de la fiche (blocs de 5 par caractéristique)
   libelle_fiche      TEXT    NOT NULL UNIQUE,               -- « Arme Lourde (F) » tel qu'écrit dans la cellule
   description        TEXT,                                  -- phrase du guide « Compétences » (italiques retirés, [[liens]] conservés) ;
-                                                            -- NULL quand le guide ne décrit pas cette compétence (Calme : le guide écrit « Prouesse »,
-                                                            -- voir ecart_source)
+                                                            -- NULL quand le guide ne décrit pas cette compétence. Calme : le guide décrit
+                                                            -- « Prouesse », son ancien nom (décision R204, migration 0102) : sa phrase est celle de
+                                                            -- Calme ; l'écart des deux noms reste dans ecart_source
   origine            TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'fiche'),
   source_ref         TEXT    NOT NULL CHECK (length(source_ref) > 0),
   remarque TEXT   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
@@ -348,6 +532,9 @@ CREATE TABLE seuil_niveau (
 -- classeur, `texte` = la phrase telle qu'écrite) ou un facteur écrit dans une formule de la fiche (nature 'formule', `texte` = le
 -- fragment de formule). Le chargeur vérifie que `texte` figure bien dans la cellule ou la page citée. Les règles qui restent du
 -- texte sont dans les pages (corps_md).
+-- Les douze constantes `mode_hyper.*` et `mode_hyper_100.*` (classeur « Mode hyper et co ») sont rattachées à guide/le-mode-hyper depuis le retrait de
+-- la page « Liste des effets mode hyper » (migration 0095) : leur phrase se lit dans la cellule citée (mode_texte.texte, ou la cellule du tableau
+-- pour les dégâts et le soin), pas dans le corps de la page.
 CREATE TABLE regle_constante (
   id         TEXT    NOT NULL PRIMARY KEY,                   -- 'caracteristique.base_min', 'competence.acquis_max_par_point_caracteristique'…
   valeur     INTEGER NOT NULL,
@@ -401,13 +588,15 @@ CREATE TABLE type_don (
 
 -- ▸ POSTURES DE COMBAT
 -- Six postures. Trois textes coexistent : le tableau de la fiche (Personnage!BA16:BR25, versions courtes), la page « Tableau Posture »
--- du Google Doc de la fiche et la page « Postures » du guide MJ. Ils diffèrent par endroits (voir ecart_source).
+-- du Google Doc de la fiche et la page « Postures » du Google Doc « Guide pour MJ ». Ils diffèrent par endroits (voir ecart_source).
+-- La page du wiki qui transcrivait celle du guide MJ (guide/postures) est retirée (migration 0094, demande du propriétaire : un doublon de
+-- guide/les-postures) ; les ids gardent son préfixe (identifiants figés) et page_entite rattache les postures à guide/les-postures.
 CREATE TABLE posture (
   id          TEXT    NOT NULL PRIMARY KEY CHECK (id GLOB 'guide/postures#posture:*'),
-  nom         TEXT    NOT NULL UNIQUE CHECK (length(nom) > 0),                       -- « Offensif » (titre de la page « Postures »)
-  ordre       INTEGER NOT NULL UNIQUE CHECK (ordre >= 1),    -- ordre de la page « Postures »
+  nom         TEXT    NOT NULL UNIQUE CHECK (length(nom) > 0),                       -- « Offensif » (titre de la page « Postures » du guide MJ)
+  ordre       INTEGER NOT NULL UNIQUE CHECK (ordre >= 1),    -- ordre de la page « Postures » du guide MJ
   libelle_fiche TEXT  NOT NULL UNIQUE,                       -- libellé du tableau de la fiche : « OFFENSIF », « DEFENSIF »
-  description TEXT    NOT NULL,                              -- paragraphe de présentation de la page « Postures » (avant « Ses effets sont : »)
+  description TEXT    NOT NULL,                              -- paragraphe de présentation de la page « Postures » du guide MJ (avant « Ses effets sont : »)
   origine     TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'fiche'),
   source_ref  TEXT    NOT NULL CHECK (length(source_ref) > 0),
   remarque TEXT   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
@@ -428,6 +617,24 @@ CREATE TABLE posture_effet (
   CHECK ((version = 'fiche') = (intitule IS NULL))
 ) STRICT, WITHOUT ROWID;
 
+-- Jets sur lesquels compte un bonus de réussite critique lié à une posture (décision R180, migration 0087). Une ligne = une compétence où le bonus
+-- compte. `bonus` dit d'où vient le bonus :
+--   'posture'         : l'effet de la posture elle-même (« +5% à la réussite critique », posture_effet) : Offensif sur Arc, Arbalète, Arme légère,
+--                       Arme lourde, Magie et Concentration (« Le +5 % de l'Offensive ne compte que pour les jets d'attaque (Arc, Arbalète, Arme
+--                       légère, Arme lourde, Magie, Concentration). ») ; Défensif sur Esquive et Parade (« quand on esquive ou pare », R180 (4),
+--                       confirmé par R182 (2)). Liste propre au critique : le −10 % de l'Offensif reste sur ses cinq compétences (R100,
+--                       lib/posture-texte.mjs#COMPETENCES_D_ATTAQUE).
+--   La valeur 'don_de_posture' (un don passif écrit « (Posture X) », « Sci du Crit » : les six jets de l'Offensif, choix provisoire de R180) est
+--   retirée par la décision R182 (migration 0089, Q90) : Sci du Crit ne compte que pour les jets d'attaque faits avec une arme de contact (R151,
+--   R127), jamais sur un sort ; il dépend de l'arme utilisée (R128) et n'est donc que mentionné sur la fiche, jamais compté : aucune ligne ne le dit.
+-- Les nombres du critique (base 5, paliers 96 et 103, +2 et +5, plafond 15) sont dans regle_constante ('critique.*').
+CREATE TABLE posture_critique (
+  posture_id    TEXT NOT NULL REFERENCES posture(id),
+  bonus         TEXT NOT NULL CHECK (bonus IN ('posture')),
+  competence_id TEXT NOT NULL REFERENCES competence(id),
+  PRIMARY KEY (posture_id, bonus, competence_id)
+) STRICT, WITHOUT ROWID;
+
 -- ====================================================================================================================
 -- 3. MAGIES ET SORTS (famille « magies »)
 -- id d'une magie = id de sa page ; id d'un sort = '<id de la magie>#sort:<slug du nom>'. Les dieux (`dieu`) sont dans la section 5.
@@ -439,7 +646,8 @@ CREATE TABLE magie (
   nom                   TEXT    NOT NULL UNIQUE CHECK (length(nom) > 0),    -- nom court tel qu'écrit dans les listes de résistances et d'incompatibilités :
                                                     -- 'Sang', 'Espace/Temps', 'Potentiel Illimité' (onglet « Magie » de la fiche)
   nom_cle               TEXT    NOT NULL UNIQUE CHECK (nom_cle NOT GLOB '*[^a-z0-9-]*' AND nom_cle NOT GLOB '*--*' AND nom_cle NOT GLOB '-*' AND nom_cle NOT GLOB '*-'),    -- normalize(nom) comme text.mjs : 'sang', 'espace-temps', 'potentiel-illimite'
-  onglet                TEXT    NOT NULL,           -- nom exact de l'onglet du classeur V8 (le dump tronque 'Potentiel illimité (magie diffi')
+  onglet                TEXT    NOT NULL,           -- nom exact de l'onglet du classeur de la magie (V8, puis le classeur de Décembre depuis la migration 0117 :
+                                                    -- « EspaceTemps » ; le dump tronque 'Potentiel illimité (magie diffi')
   ordre                 INTEGER NOT NULL UNIQUE CHECK (ordre >= 1),   -- rang de l'onglet dans le classeur (1 = Potentiel illimité)
   banniere              TEXT,                       -- texte d'avertissement de la bannière d'en-tête (Potentiel : « MAGIE DIFFICILE A JOUER !! »)
   description           TEXT,                       -- texte d'introduction (A4), paragraphes séparés par des lignes vides
@@ -461,10 +669,16 @@ CREATE TABLE magie (
   remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   mono_magie            INTEGER NOT NULL CHECK (mono_magie IN (0, 1)),   -- 1 = « Mono-magie uniquement » : ne se combine avec aucune autre magie, sauf pour les
                                                     -- ethnies de magie_ethnie_secondaire (décision R15 du propriétaire : Potentiel Illimité et Corruption ; migration 0010)
+  -- Mot-clé du glossaire de la magie (« Magie du Feu » pour « Feu » ; migration 0125, demande du propriétaire du 2026-11-14 : les champs à valeur
+  -- fermée liés aux mots-clés du glossaire, « Si ils existent! ») : le site affiche le nom court de la magie avec l'infobulle de ce mot-clé (choix du
+  -- propriétaire). Pas de cascade, comme sort_mot_cle : la clé étrangère refuse de supprimer le mot-clé d'une magie. NULL : aucun mot-clé
+  mot_cle_id            INTEGER REFERENCES mot_cle(id),
   CHECK ((barre4_ressource IS NULL) = (barre4_texte IS NULL))
 ) STRICT;
 
 CREATE INDEX magie_caracteristique ON magie (caracteristique_id) WHERE caracteristique_id IS NOT NULL;
+
+CREATE UNIQUE INDEX magie_mot_cle ON magie (mot_cle_id) WHERE mot_cle_id IS NOT NULL;   -- deux magies n'ont jamais le même mot-clé (migration 0125)
 
 -- Rôles de la magie (bloc « ROLES » : trois cellules, de gauche à droite). `rang` = position dans l'onglet ; la source ne dit
 -- pas que le premier rôle est « principal » : ne pas l'interpréter.
@@ -488,13 +702,20 @@ CREATE INDEX magie_role_role ON magie_role (role);
 --   cible_type = 'magie' : cible_magie_id renseigné (liste de noms de magies).
 --   cible_type = 'etat'  : cible_etat_id renseigné. La source écrit « Gelé » et « Pétrification » là où la liste des
 --                          altérations dit « Gel » et « Pétrifié » : le rapprochement est fait par l'importeur (table
---                          d'alias explicite) ; cible_brut garde l'écriture d'origine.
+--                          d'alias explicite) ; cible_brut garde l'écriture d'origine, sauf « Gelé », écrit « Gel » depuis la
+--                          décision R205 (migration 0103, registre 0103-r205-etat-gel.json).
 -- Les lignes 'etat' sont, d'après la fiche (spécification resist.total-etat), l'image des lignes 'magie' par la colonne
 -- « Magie Liée » de la liste des altérations ; elles sont conservées parce que la source les écrit.
+--   cible_type = 'physique' : cible_physique renseigné, un des trois types de dégâts physiques (estoc, taille, frappe : le vocabulaire de
+--                          creature_attaque_type). Décision R174 (migration 0083) : le malus « Surtension corporelle » du Potentiel Illimité
+--                          (magie.explication : « Surtension corporelle (Vulnérabilité contre les dégâts physiques ») est un palier personnel,
+--                          un cran de moins à chacun des trois types (sens 'vulnerabilite', rangs 1 à 3 : estoc, taille, frappe) ; cible_brut
+--                          garde ce texte, le même sur les trois lignes. Ses crans s'additionnent comme ceux d'une magie (resistance_palier, R155) ;
+--                          leur annulation en Mode Hyper (R172, R174) n'est pas une donnée de cette table.
 CREATE TABLE magie_resistance (
   magie_id        TEXT    NOT NULL REFERENCES magie(id),
   sens            TEXT    NOT NULL CHECK (sens IN ('resistance', 'vulnerabilite')),
-  cible_type      TEXT    NOT NULL CHECK (cible_type IN ('magie', 'etat')),
+  cible_type      TEXT    NOT NULL CHECK (cible_type IN ('magie', 'etat', 'physique')),
   rang            INTEGER NOT NULL CHECK (rang >= 1),
   cible_magie_id  TEXT    REFERENCES magie(id),
   cible_etat_id   TEXT    REFERENCES etat(id),
@@ -502,11 +723,16 @@ CREATE TABLE magie_resistance (
   origine         TEXT    NOT NULL REFERENCES famille(id)
     CHECK (origine = 'magies'),
   source_ref      TEXT    NOT NULL CHECK (length(source_ref) > 0),
+  cible_physique  TEXT    CHECK (cible_physique IN ('estoc', 'taille', 'frappe')),   -- 'physique' : type de dégâts physiques visé (R174)
   PRIMARY KEY (magie_id, sens, cible_type, rang),
   UNIQUE (magie_id, sens, cible_magie_id),
   UNIQUE (magie_id, sens, cible_etat_id),
-  CHECK ((cible_type = 'magie' AND cible_magie_id IS NOT NULL AND cible_etat_id IS NULL)
-      OR (cible_type = 'etat'  AND cible_etat_id  IS NOT NULL AND cible_magie_id IS NULL))
+  UNIQUE (magie_id, sens, cible_physique),
+  -- exactement une cible renseignée, celle de cible_type
+  CONSTRAINT magie_resistance_une_cible CHECK (
+         (cible_type = 'magie'    AND cible_magie_id IS NOT NULL AND cible_etat_id  IS NULL AND cible_physique IS NULL)
+      OR (cible_type = 'etat'     AND cible_etat_id  IS NOT NULL AND cible_magie_id IS NULL AND cible_physique IS NULL)
+      OR (cible_type = 'physique' AND cible_physique IS NOT NULL AND cible_magie_id IS NULL AND cible_etat_id  IS NULL))
 ) STRICT, WITHOUT ROWID;
 
 CREATE INDEX magie_resistance_cible_magie ON magie_resistance (cible_magie_id, sens) WHERE cible_magie_id IS NOT NULL;
@@ -561,24 +787,34 @@ CREATE TABLE magie_dieu (
 
 CREATE INDEX magie_dieu_dieu ON magie_dieu (dieu_id);
 
--- Tableau « AMELIORATION CADAVERIQUE » de la Nécromancie (13 lignes : nom, effet). Le nom est celui d'une amélioration
--- d'invocation ; le lien avec le bestiaire (invocations « Zombi », « Momie »…) n'est pas dans la source : non modélisé.
-CREATE TABLE amelioration_cadaverique (
-  id         TEXT    NOT NULL PRIMARY KEY,          -- '<magie.id>#amelioration:<slug du nom>'
-  magie_id   TEXT    NOT NULL REFERENCES magie(id),
-  rang       INTEGER NOT NULL CHECK (rang >= 1),    -- ordre du tableau : colonne de gauche (D) puis de droite (T), de haut en bas
-  nom        TEXT    NOT NULL CHECK (length(nom) > 0),
-  effet      TEXT    NOT NULL,
-  origine    TEXT    NOT NULL REFERENCES famille(id)
-    CHECK (origine = 'magies'),
-  source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0),
+-- Le tableau « AMELIORATION CADAVERIQUE » de la Nécromancie (table amelioration_cadaverique, 13 lignes) est supprimé par la migration 0117
+-- (décision R237 (7) : « Supprimés du site : les améliorations cadavériques »), avec le sort « Amélioration Cadavérique ».
+
+-- SPÉCIALISATIONS MAGIQUES (décision R236 (1), migration 0117, classeur de Décembre « Nouveauté mise à jour Décembre », onglets 03 à 16) : deux par
+-- magie, sauf le Potentiel Illimité (28). Chacune porte les sorts de NPM 3, 4 et 5 d'un des deux tableaux « SPÉCIALISATION <nom> » de l'onglet
+-- (sort.specialisation_id) ; les sorts de NPM 1 et 2 restent communs à la magie. Qui y a accès (mono-magie : les deux ; bi-magie : une par magie,
+-- R236 (2), (3)) est une règle de la fiche, pas une donnée de cette table.
+CREATE TABLE magie_specialisation (
+  id          TEXT    NOT NULL PRIMARY KEY,          -- '<magie.id>#specialisation:<nom_cle à la création>' ; figé : un renommage change nom et nom_cle, jamais l'id
+  magie_id    TEXT    NOT NULL REFERENCES magie(id),
+  ordre       INTEGER NOT NULL CHECK (ordre IN (1, 2)),   -- 1 = tableau de gauche de l'onglet, 2 = tableau de droite
+  nom         TEXT    NOT NULL CHECK (length(nom) > 0),   -- tel qu'écrit dans le bandeau, en capitales (« SANGUILONANT », « DÉFERLANTE »)
+  nom_cle     TEXT    NOT NULL CHECK (nom_cle NOT GLOB '*[^a-z0-9-]*' AND nom_cle NOT GLOB '*--*' AND nom_cle NOT GLOB '-*' AND nom_cle NOT GLOB '*-'),   -- normalize(nom)
+  description TEXT,                                  -- texte sous le bandeau, tel qu'écrit ; NULL = aucun
+  origine     TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'magies'),
+  source_ref  TEXT    NOT NULL CHECK (length(source_ref) > 0),   -- « Nouveauté mise à jour Décembre › Sang › M70:AK73 » (bandeau et description)
   remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
-  UNIQUE (magie_id, rang),
-  UNIQUE (magie_id, nom)
+  UNIQUE (magie_id, ordre),
+  UNIQUE (magie_id, nom_cle),
+  CHECK (substr(id, 1, length(magie_id) + 16) = magie_id || '#specialisation:')
 ) STRICT;
 
--- SORT : une ligne par sort de la table des sorts (14 magies x 23 sorts = 322 ; Potentiel Illimité n'a pas de table propre :
--- il pioche dans les 14 autres, règle de la fiche, hors de ce domaine)
+-- Cible de la clé étrangère composée de personnage_specialisation_magie (migration 0118) : une spécialisation de CETTE magie, comme specialite (id, classe_id)
+CREATE UNIQUE INDEX magie_specialisation_id_magie ON magie_specialisation (id, magie_id);
+
+-- SORT : une ligne par sort des tables de sorts du classeur de Décembre (migration 0117, R237 : 14 magies x 30 sorts = 420 ; ils étaient 23 par
+-- magie dans le classeur V8). Par magie : 10 sorts communs (NPM 1 et 2), puis 10 par spécialisation (NPM 3 à 5). Potentiel Illimité n'a pas de table
+-- propre : il pioche dans les 14 autres, règle de la fiche, hors de ce domaine.
 CREATE TABLE sort (
   id                    TEXT    NOT NULL PRIMARY KEY,   -- '<magie.id>#sort:<clé du nom à l'import>' ; gelé : un renommage change nom et nom_cle, jamais l'id (0006)
   magie_id              TEXT    NOT NULL REFERENCES magie(id),
@@ -586,7 +822,8 @@ CREATE TABLE sort (
   nom_cle               TEXT    NOT NULL CHECK (nom_cle NOT GLOB '*[^a-z0-9-]*' AND nom_cle NOT GLOB '*--*' AND nom_cle NOT GLOB '-*' AND nom_cle NOT GLOB '*-'),               -- normalize(nom) comme text.mjs : 'boule-de-sang' ; recherche d'un sort par son nom
   niveau                INTEGER NOT NULL CHECK (niveau BETWEEN 1 AND 5),   -- colonne « Niveau » : niveau de PUISSANCE du sort
                                                         -- (palier 1 à 5), à ne pas confondre avec le niveau de maîtrise (NM, 0 à 3)
-  ordre                 INTEGER NOT NULL CHECK (ordre >= 1),   -- rang dans la table de l'onglet (1 à 23) ; l'ordre de lecture
+  ordre                 INTEGER NOT NULL CHECK (ordre >= 1),   -- rang dans la magie, l'ordre de lecture (migration 0117) : 1 à 10 le tableau commun,
+                                                               -- 11 à 20 la spécialisation de gauche (ordre 1), 21 à 30 celle de droite (ordre 2)
   -- Type ------------------------------------------------------------------------------------------------------------
   type_brut             TEXT    NOT NULL,               -- « Amplification (IC pour 3 NM) », « Attaque\n(Imparable) »… tel qu'écrit
   ic_direct             INTEGER NOT NULL CHECK (ic_direct IN (0, 1)),   -- 1 = le type contient « (IC) » (Instant Cast, voir legende_sort)
@@ -600,7 +837,10 @@ CREATE TABLE sort (
   -- « 5% santé par tour »…) ou une précision du coût (décision R106, migration 0065 : la canalisation, « Par tour », « Par tour et par cible », « Par
   -- jour » ; « Pour 1 barrière », « Par taille créée », « Par NPM de la créature invoquée »…). Le classeur les écrivait dans une seule case (« 3 + 1 Sang »,
   -- « 3xN/tour ») : lib/sort-cout.mjs#repartirLeCout, puis les réponses du propriétaire (registre 0065-couts-des-sorts-tranches.json).
-  cout_brut             TEXT    NOT NULL,               -- « 3 », « 55 (-5/NM) », « 0 », « X », « N/A »
+  cout_brut             TEXT    NOT NULL,               -- « 3 », « 55 (-5/NM) », « 0 », « X », « N/A » ; les coûts du classeur de Décembre que
+                                                        -- repartirLeCout ne sait pas lire (« 8xN/tour », « 5/boule ») sont répartis par la décision R244
+                                                        -- (migration 0117) ; Projectile arcanique (« *4 / projectile ») : « 4/projectile » et son coût
+                                                        -- secondaire, décision R251 (migration 0118 ; le calcul par projectile est celui de la fiche, R248)
   cout_chakra           INTEGER CHECK (cout_chakra >= 0),   -- la consommation de chakra quand la forme est « N » ou « N (-k/NM) » ; sinon NULL
   cout_ressource        TEXT    CHECK (cout_ressource IN ('sang', 'ame')),   -- ressource de la 4ème barre quand le coût secondaire est « M Sang » ou « M âme(s) »
   cout_ressource_valeur INTEGER CHECK (cout_ressource_valeur >= 0),          -- sa quantité ; NULL si « X » ou absente
@@ -616,12 +856,14 @@ CREATE TABLE sort (
                                                         -- 'unique' = « 1 » (une seule case/cible) ; 'rectangle' = « NxM » ou « Rectangle … » ;
                                                         -- 'autre' = texte non reconnu (voir zone_brut)
   zone_taille           INTEGER CHECK (zone_taille >= 0),   -- premier nombre de « Cercle de N », « Ligne de N », « Carré … N », « Croix de N », « N cibles »
-  -- Dégâts / Soin / Bonus (colonne « D/S/B »)
+  -- D/S/B : D = Dégâts, S = Soin (R205), B non défini (colonne « D/S/B »)
   dsb_brut              TEXT,                           -- NULL quand la cellule vaut « / » (la fiche la traite comme vide)
   -- Effets
-  effets                TEXT,                           -- colonne « Effets secondaires » (jamais vide dans les 322 sorts)
+  effets                TEXT,                           -- colonne « Effets secondaires »
   texte_niveau5         TEXT,                           -- texte du pied d'onglet (« Textes des sorts de niveau 5 ») titré du nom de ce sort ;
-                                                        -- NULL quand l'onglet n'en porte pas (ou quand le titre est sans texte)
+                                                        -- NULL quand l'onglet n'en porte pas (ou quand le titre est sans texte). Classeur de Décembre : un
+                                                        -- titre qui n'est plus un sort est rattaché au sort de niveau 5 de sa spécialisation (R237 (9)) ; les six
+                                                        -- textes de Glace et de Terre, absents de ce classeur, restent (R243 (1)) et citent le V8 dans source_ref
   origine               TEXT    NOT NULL REFERENCES famille(id)
     CHECK (origine = 'magies'),
   source_ref            TEXT    NOT NULL CHECK (length(source_ref) > 0), -- « Magie Maverick V8 › Sang › AL4:BR6 »
@@ -635,6 +877,11 @@ CREATE TABLE sort (
   -- Colonne ajoutée par la migration 0063 (décision R105) : la colonne « Coût secondaire » des tables de sorts. Elle n'écrit pas d'expression de NM (le
   -- bonus de NM du coût est dans « Coût » : sort_bonus_maitrise n'a pas de champ pour elle, le service et db:check refusent un NM ici)
   cout_secondaire       TEXT    CHECK (cout_secondaire IS NULL OR (length(cout_secondaire) > 0 AND cout_secondaire = trim(cout_secondaire))),   -- « 1 Sang », « 2 âmes », « X Sang », « 20% PV », « Par tour et par cible », « Pour 1 barrière » ; NULL = pas de second coût
+  -- Colonne ajoutée par la migration 0117 (décision R236 (1)) : la spécialisation dont le tableau porte le sort ; NULL = sort commun (NPM 1 et 2).
+  -- Le CHECK garde qu'elle est de la magie du sort (préfixe de son id figé) et qu'elle ne porte que des sorts de NPM 3 à 5. Que chaque sort de
+  -- NPM 3 à 5 en ait une n'est pas un CHECK (le contrôle est à db:check).
+  specialisation_id     TEXT    REFERENCES magie_specialisation(id)
+    CHECK (specialisation_id IS NULL OR (niveau >= 3 AND substr(specialisation_id, 1, length(magie_id) + 16) = magie_id || '#specialisation:')),
   UNIQUE (magie_id, ordre),
   UNIQUE (magie_id, nom),
   -- le typé suit toujours le brut (la valeur typée n'est jamais une valeur saisie : le service la recalcule avec lib/sort-analyse.mjs, que
@@ -666,6 +913,8 @@ CREATE INDEX sort_cout_chakra  ON sort (cout_chakra) WHERE cout_chakra IS NOT NU
 CREATE INDEX sort_zone_forme   ON sort (zone_forme);                                  -- « sorts de zone »
 
 CREATE INDEX sort_portee       ON sort (portee_nature, portee_valeur);
+
+CREATE INDEX sort_specialisation ON sort (specialisation_id) WHERE specialisation_id IS NOT NULL;   -- « les sorts d'une spécialisation » ; clé étrangère
 
 -- Types d'un sort : « Attaque/ Entrave (Imparable) » = deux types. Les parenthèses sont retirées avant de couper sur « / ».
 -- `libelle` garde l'écriture d'origine (« Entave » pour deux sorts : faute de frappe de la source, rapprochée de 'entrave').
@@ -775,11 +1024,29 @@ CREATE INDEX sort_etat_etat ON sort_etat (etat_id, relation);
 -- et « Sort fer » (décision R164), dont il se sert (client/src/lib/mots-cles.mjs#MOTS_CLES_PROTEGES).
 CREATE TABLE sort_mot_cle (
   sort_id     TEXT NOT NULL REFERENCES sort(id),
-  mot_cle_id  TEXT NOT NULL REFERENCES mot_cle(id),
+  mot_cle_id  INTEGER NOT NULL REFERENCES mot_cle(id),   -- mot_cle.id (entier depuis la migration 0113)
   PRIMARY KEY (sort_id, mot_cle_id)
 ) STRICT, WITHOUT ROWID;
 
 CREATE INDEX sort_mot_cle_mot_cle ON sort_mot_cle (mot_cle_id);   -- « les sorts grenades » : tous les sorts qui portent un mot-clé
+
+-- Types de dégâts : une ligne par valeur fermée des colonnes de type de dégâts (arme_degats.type_degats, arme_elementaire_type_degats.type_degats,
+-- armure_degats.type_degats, personnage_arme.type_degats_choisi, magie_resistance.cible_physique, invocation_resistance.cible_degat,
+-- creature_capacite_resistance.cible_degat, creature_attaque_type.type), et ce qui la lie au glossaire (migration 0125, demande du propriétaire du
+-- 2026-11-14 : « les armes et armures référencera leur type ou résistance (taille, estoc et frappe) via ce mot clé », « Si ils existent! »).
+-- Ces colonnes gardent leur valeur et leur CHECK, sans clé étrangère vers cette table (choix du propriétaire : leurs données et leur format ne
+-- changent pas). Pas de libellé ici : le mot-clé (ou la magie) donne le nom affiché.
+--   mot_cle_id : le mot-clé du type (Taille, Estoc, Frappe) ; NULL quand le glossaire n'en a pas (physique, sonore). Pas de cascade, comme
+--                sort_mot_cle : la clé étrangère refuse de supprimer un mot-clé qui définit un type de dégâts.
+--   magie_id   : feu, eau, glace (attaques de créature) se lient à la magie du même nom (choix du propriétaire), comme creature_attaque_type.magie_id ;
+--                leur mot-clé est celui de la magie (magie.mot_cle_id). Renseignée pour ces trois-là seulement, et jamais avec mot_cle_id.
+CREATE TABLE type_degats (
+  id          TEXT    NOT NULL PRIMARY KEY CHECK (id IN ('taille', 'estoc', 'frappe', 'physique', 'sonore', 'feu', 'eau', 'glace')),
+  mot_cle_id  INTEGER REFERENCES mot_cle(id),
+  magie_id    TEXT    REFERENCES magie(id),
+  CHECK ((id IN ('feu', 'eau', 'glace')) = (magie_id IS NOT NULL)),
+  CHECK (magie_id IS NULL OR mot_cle_id IS NULL)
+) STRICT;
 
 -- Fils de commentaires du Sommaire ancrés en A1 : commentaires de cellules supprimées, sans sort identifiable (certains portent
 -- des textes de règle). Conservés tels quels, sans rattachement inventé.
@@ -812,7 +1079,8 @@ CREATE TABLE legende_sort (
   source_ref  TEXT NOT NULL CHECK (length(source_ref) > 0)
 ) STRICT;
 
--- Règles de magie qui valent pour toutes les magies (Sommaire!A31 : « Règle spéciale pour sort niveau 5 »).
+-- Règles de magie qui valent pour toutes les magies (Sommaire!A31 du classeur V8 : « Règle spéciale pour sort niveau 5 », gardée par R237 (7) ;
+-- Sommaire!AP1 du classeur de Décembre : « CHOSES A SAVOIR », les spécialisations, R236, migration 0117, titre = sa première ligne).
 CREATE TABLE regle_magie (
   id           TEXT    NOT NULL PRIMARY KEY,         -- 'magies#regle:<slug du titre>' ('magies#regle:regle-speciale-pour-sort-niveau-5')
   titre        TEXT    NOT NULL,                     -- début du texte jusqu'à « : »
@@ -822,6 +1090,16 @@ CREATE TABLE regle_magie (
     CHECK (origine = 'magies'),
   source_ref   TEXT    NOT NULL CHECK (length(source_ref) > 0)
 ) STRICT;
+
+-- Plafond de puissance magique (NPM) des sorts d'un personnage de cette magie innée (décision R188, migration 0097) : le Potentiel Illimité, 3 (son
+-- bloc « Explication » : « ne pouvoir atteindre que le niveau 3 de puissance magique maximum »). Il s'ajoute à la table des niveaux (R16) : NPM des sorts
+-- = min(puissance magique du niveau, plafond) ; un don acquis peut le relever (capacite_npm_plafond). Il ne borne que le choix des sorts (règle
+-- sort_puissance de v_personnage_controle ; lib/fiche-regles.mjs, `magies[].npm_plafond`), jamais la Symbiose, les invocations ni le multiplicateur des
+-- emplacements de sorts (R188 (2)). Une magie sans ligne n'a pas de plafond. Valeur de la décision, jamais relue d'un texte ; le site de dev ne l'écrit pas.
+CREATE TABLE magie_npm_plafond (
+  magie_id     TEXT    NOT NULL PRIMARY KEY REFERENCES magie(id),
+  npm          INTEGER NOT NULL CHECK (npm BETWEEN 1 AND 5)
+) STRICT, WITHOUT ROWID;
 
 -- ====================================================================================================================
 -- 4. ANNEXES DES MAGIES : états, résistances, météo, modes hyper et super (famille « annexes »)
@@ -867,8 +1145,8 @@ CREATE TABLE etat (
 
 CREATE INDEX etat_type ON etat (type);
 
--- Magie(s) liée(s) d'une altération : 13 altérations sur 20 en ont (Surcharge Magique : deux, Arcane et Corruption).
--- Les 7 autres ont « / » dans la source et aucune ligne ici.
+-- Magie(s) liée(s) d'une altération : 14 altérations sur 21 en ont (Surcharge Magique : deux, Arcane et Corruption ; Somnolence, « Ombre (Songe) » :
+-- l'Ombre, la spécialisation SONGE restant dans magie_liee_brut, migration 0117). Les 7 autres ont « / » dans la source et aucune ligne ici.
 CREATE TABLE etat_magie (
   etat_id    TEXT    NOT NULL REFERENCES etat(id),
   magie_id   TEXT    NOT NULL REFERENCES magie(id),
@@ -950,6 +1228,9 @@ CREATE INDEX meteo_effet_element ON meteo_effet (element_magie_id, degats) WHERE
 
 -- Textes d'explication du classeur « Mode hyper et co » (Mode Hyper!AA1, AA14, AA30 ; Mode Super!AI1) : cellule entière, telle quelle.
 -- Les chiffres qu'ils contiennent (niveau 2, 10 %, durée = niveau ÷ 2…) sont aussi dans regle_constante.
+-- Les trois textes du Mode Hyper gardent le préfixe de la page « Liste des effets mode hyper » (guide/liste-des-effets-mode-hyper, identifiants
+-- figés : les registres de corrections les citent) ; la page est retirée (migration 0095, demande du propriétaire : un doublon de guide/le-mode-hyper)
+-- et ils sont rattachés à guide/le-mode-hyper. Le dernier CHECK n'admet que cette exception.
 CREATE TABLE mode_texte (
   id         TEXT    NOT NULL PRIMARY KEY CHECK (instr(id, '#texte:') > 0),   -- '<page>#texte:<normalize(intitule)>' (db:check recalcule la fin)
   mode       TEXT    NOT NULL CHECK (mode IN ('hyper', 'super')),
@@ -961,7 +1242,8 @@ CREATE TABLE mode_texte (
   source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0),
   remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   UNIQUE (mode, rang),
-  CHECK (substr(id, 1, length(page_id) + 7) = page_id || '#texte:')
+  CHECK (substr(id, 1, length(page_id) + 7) = page_id || '#texte:'
+      OR (page_id = 'guide/le-mode-hyper' AND id GLOB 'guide/liste-des-effets-mode-hyper#texte:*'))
 ) STRICT;
 
 CREATE INDEX mode_texte_page ON mode_texte (page_id);
@@ -997,7 +1279,8 @@ CREATE TABLE mode_super_objet (
 --   version 'onglet_magie'   : classeur V8, bloc « Capacité Mode Hyper » de chaque onglet de magie (15 magies : mono, bi ou forme complète) ;
 --   version 'fiche'          : fiche auto V15.2.2 : Magie!V2:W16 (15 magies mono / bi), Personnage!BI32 (« Effets de base »), Race!W (races) ;
 --   version 'onglet_race'    : classeur « Les races », bloc « Capacité Mode Hyper » de l'onglet de chaque race (décision du propriétaire : PRIME
---                              sur 'fiche' pour les races ; migration 0007, `nom` = nom de la capacité, `libelle` = nom de l'onglet).
+--                              sur 'fiche' pour les races ; migration 0007, `nom` = nom de la capacité, `libelle` = nom de l'onglet) ; Fongoïde et
+--                              Gémidien : onglets 21 et 22 de la mise à jour de Décembre (migration 0120, R239 ; rang 28 et 29, après l'index du classeur).
 --   portee 'general' : effet commun (libelle = « Général » ou le titre de l'encadré) ; 'magie' : une magie ; 'duo' : un couple de magies
 --   (version 'magie_masque') ; 'race' : une race (variante NULL : la source n'en distingue pas).
 --   variante 'mono' / 'bi' : colonnes « Mono magie » / « Bi magie » ; 'mono_et_bi' : cellule fusionnée sur les deux ; 'forme_complete' : Potentiel
@@ -1149,7 +1432,7 @@ CREATE TABLE categorie_classe (
   CHECK (am_base IS NULL OR note IS NOT NULL)
 ) STRICT;
 
--- CLASSE : une ligne par onglet de classe (39)
+-- CLASSE : une ligne par onglet de classe (41 : les 39 du classeur V7, le Boxeur et le Porte-étendard de la migration 0119, décision R238 (1))
 CREATE TABLE classe (
   id                 TEXT    NOT NULL PRIMARY KEY REFERENCES page(id),   -- = id de la page (entité typée qui a SA page)
   nom                TEXT    NOT NULL UNIQUE CHECK (length(nom) > 0),    -- nom de l'onglet = nom dans le Sommaire (« Cuirassé », « Orios ») = titre de la page.
@@ -1179,9 +1462,9 @@ CREATE TABLE classe (
   origine            TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'classes'),
   source_ref         TEXT    NOT NULL CHECK (length(source_ref) > 0), -- onglet + zones lues (départ, à savoir, description) + cellule du Sommaire
   remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
-  magie_innee_id     TEXT    REFERENCES magie(id),  -- magie innée qui RÉSERVE et IMPOSE la classe : sans elle on ne prend pas la classe, avec elle la classe est
-                                                 -- la classe 1. Archimage : Potentiel Illimité (« CHOSE A SAVOIR » de son onglet, décision R23, migration 0015) ;
-                                                 -- NULL pour les autres classes. Contrôlé par v_personnage_controle (classe_reservee, classe_imposee)
+  magie_innee_id     TEXT    REFERENCES magie(id),  -- magie innée qui RÉSERVE la classe : sans elle on ne prend pas la classe (elle ne l'impose plus, décision
+                                                 -- R238 (5), migration 0119). Archimage : Potentiel Illimité (« CHOSE A SAVOIR » de son onglet, décision R23, migration 0015) ;
+                                                 -- NULL pour les autres classes. Contrôlé par v_personnage_controle (classe_reservee)
   magie_innee_exclue_id TEXT  REFERENCES magie(id)   -- magie innée qui FERME la classe, à tous les rangs. Mage Bleu : Potentiel Illimité (« CHOSE A SAVOIR » de son
                                                  -- onglet : « Un potentiel illimité ne peut pas avoir cette classe. », décision R25, migration 0020) ; NULL pour les autres.
                                                  -- Contrôlé par v_personnage_controle (classe_exclue)
@@ -1214,7 +1497,7 @@ CREATE TABLE specialite (
   CHECK (substr(id, 1, length(classe_id) + 12) = classe_id || '#specialite:')
 ) STRICT;
 
--- CAPACITÉ (aptitude) : une ligne par page `capacites/<slug>` (660). Une aptitude du classeur = cellule « Lvl N » + nom + bloc d'effet + cellule de type.
+-- CAPACITÉ (aptitude) : une ligne par page `capacites/<slug>` (694 depuis la migration 0119, 660 avant). Une aptitude du classeur = cellule « Lvl N » + nom + bloc d'effet + cellule de type.
 -- Les choix « l'un OU l'autre » ne sont pas un attribut : ils se lisent dans la mise en page (view v_capacite_exclusive) :
 --   nature = 'classe'     : colonne P de l'onglet (Lvl 1, Lvl 5, Lvl 20) ; specialite_id NULL ; reçue sans choix.
 --   nature = 'specialite' : le cartouche « Lvl 10 » qui porte le nom de la spécialité ; les DEUX cartouches sont sur la même ligne et s'excluent.
@@ -1434,17 +1717,84 @@ CREATE TABLE classe_annexe (
 
 CREATE INDEX classe_annexe_libelle ON classe_annexe (libelle_cle);
 
+-- Les entrées du tableau libre, une par ligne « (Type) Nom. Effet » du texte d'une ligne de classe_annexe (décision R181, migration 0088 : « Il devra
+-- choisir l'un dons disponible en bas de la fiche de la classe du mage bleu, limité sa magie innée (sauf mention contraire) pour le don "secondaire". »).
+-- Mage Bleu : 54 entrées, 3 ou 4 par magie (Arcane et Espace/Temps en ont 3). Découpage sans rien réécrire : la ligne de la source est exactement
+-- type_brut || ' ' || nom || '. ' || effet, et les lignes d'une même ligne de classe_annexe, jointes par un saut de ligne dans l'ordre de `rang`,
+-- redonnent son texte (test/db-r181-dons-variables.test.mjs). Le texte parle de « cette créature » : il est cité tel quel. La magie d'une entrée est
+-- celle de sa ligne (classe_annexe.magie_id), jamais recopiée ici. R67 laisse ce tableau à part des capacités de monstre communes.
+-- id = '<classe_id>#entree:<libelle_cle de la ligne>:<normalize(nom) à la création>' (« classes/mage-bleu#entree:sang:temeraire »), figé : un nom
+-- corrigé garde son id. Les choix des fiches : personnage_don_obtenu.
+CREATE TABLE classe_annexe_entree (
+  id             TEXT    NOT NULL PRIMARY KEY CHECK (length(id) > 0),
+  classe_id      TEXT    NOT NULL,
+  annexe_rang    INTEGER NOT NULL,                                   -- la ligne du tableau (classe_annexe.rang), donc sa magie
+  rang           INTEGER NOT NULL CHECK (rang >= 1),                 -- position de l'entrée dans le texte de la ligne, de haut en bas
+  nom            TEXT    NOT NULL CHECK (length(nom) > 0),           -- tel qu'écrit, entre la parenthèse et le premier « . » : « Attrape-moi ! », « 25h »
+  nom_cle        TEXT    NOT NULL CHECK (nom_cle NOT GLOB '*[^a-z0-9-]*' AND nom_cle NOT GLOB '*--*' AND nom_cle NOT GLOB '-*' AND nom_cle NOT GLOB '*-'),   -- normalize(nom)
+  type           TEXT    NOT NULL CHECK (type IN ('passif', 'actif', 'action', 'reaction')),   -- premier mot de type_brut, sans accent ni casse (comme capacite.type)
+  type_brut      TEXT    NOT NULL CHECK (length(type_brut) > 0),     -- l'en-tête tel qu'écrit, parenthèses comprises : « (Actif 2 fois/combat) », « (Passif] » (Terre)
+  limite_brute   TEXT,                                               -- la limite de l'en-tête, telle qu'écrite : « 2 fois/combat », « 1 fois/tour » ; NULL sans limite
+  limite_nombre  INTEGER CHECK (limite_nombre >= 1),                 -- N de « N fois/période » (comme capacite.limite_nombre) ; NULL pour toute autre forme
+  limite_periode TEXT,                                               -- période de cette limite, telle qu'écrite (« combat », « tour ») ; NULL avec limite_nombre
+  effet          TEXT    NOT NULL CHECK (length(effet) > 0),         -- le reste de la ligne, tel qu'écrit (« cette créature »…)
+  origine        TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'classes'),
+  source_ref     TEXT    NOT NULL CHECK (length(source_ref) > 0),    -- la plage de la ligne du tableau (celle de classe_annexe)
+  remarque       TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
+  FOREIGN KEY (classe_id, annexe_rang) REFERENCES classe_annexe (classe_id, rang),
+  UNIQUE (classe_id, annexe_rang, rang),
+  CHECK ((limite_nombre IS NULL) = (limite_periode IS NULL)),
+  CHECK (limite_nombre IS NULL OR limite_brute IS NOT NULL)
+) STRICT, WITHOUT ROWID;
+
+-- La liste d'un don « Variable » (capacite.type = 'variable' ; décision R181, migration 0088) : le don obtient une entrée du tableau libre de sa classe
+-- (classe_annexe_entree), sur la ligne de la magie que son texte vise. `magie` : 'innee' (« lié à sa magie innée » : Mimétisme, Mime, Principale,
+-- Ultime raison) ou 'acquise' (« lié à sa magie acquise » : Secondaire, la « mention contraire » de R181 ; sans magie acquise, il ne se choisit pas :
+-- règle don_obtenu_sans_magie_acquise de v_personnage_controle). Écrite par la migration d'après le texte du don, relu par
+-- test/db-r181-dons-variables.test.mjs. Le site de dev l'écrit, noté au journal : à la création d'un don « Variable » (réponse du propriétaire
+-- « Demander la magie » : la magie est exigée, serveur/edition.mjs#magieDuDonVariable) et au changement de type (« Demander ou retirer » : passer à
+-- « Variable » demande la magie, quitter « Variable » retire la ligne, serveur/edition.mjs#suivreLaMagieDuDon). Quand un don quitte « Variable » ou
+-- que sa magie visée change (innée ↔ acquise), l'entrée qu'il a obtenue est retirée des fiches (personnage_don_obtenu), avec une note datée, comme pour
+-- un don supprimé (R42 ; décision R192 (3) : serveur/fiches-retraits.mjs#retirerLesChoixDesDonsChanges).
+CREATE TABLE capacite_variable (
+  capacite_id  TEXT    NOT NULL PRIMARY KEY REFERENCES capacite(id) ON DELETE CASCADE,
+  magie        TEXT    NOT NULL CHECK (magie IN ('innee', 'acquise'))
+) STRICT, WITHOUT ROWID;
+
+-- Plafond de NPM qu'un don acquis relève (décision R188, migration 0097) : « Semi-complet » de l'Archimage, 4 (« Permet d'utiliser les sorts de lvl 4 de
+-- puissance. »). N'a d'effet que si la magie innée du personnage a un plafond (magie_npm_plafond) : plafond effectif = max(plafond de la magie innée,
+-- plafonds des dons acquis, v_personnage_don_acquis) ; il relève le plafond sans ouvrir un NPM que le niveau n'ouvre pas (R188 (1) : min avec la puissance
+-- magique du niveau, R16). Règle sort_puissance de v_personnage_controle ; lib/fiche-regles.mjs, `classes[].dons[].npm_plafond`. Écrite par la migration,
+-- jamais relue du texte du don ; le site de dev ne l'écrit pas, mais un don supprimé sur le site retire sa ligne, notée au journal
+-- (serveur/edition.mjs#retirerDon, qui appelle serveur/edition.mjs#retirerLesReglesDuDon).
+CREATE TABLE capacite_npm_plafond (
+  capacite_id  TEXT    NOT NULL PRIMARY KEY REFERENCES capacite(id) ON DELETE CASCADE,
+  npm          INTEGER NOT NULL CHECK (npm BETWEEN 1 AND 5)
+) STRICT, WITHOUT ROWID;
+
+-- Dons acquis qui comptent comme une condition de plus dans le nombre d'emplacements de sorts, exactement comme une magie acquise (décision R189, migration
+-- 0097) : « Grimoire » de l'Archimage (« Permet de débloquer les emplacements de sorts de magie acquise. »). Il ne donne pas de seconde magie (R176) : ni
+-- Mode Hyper, ni Symbiose, ni palier NPM 5 réservé aux personnages sans magie acquise. Lu par le moteur seulement (lib/fiche-regles.mjs,
+-- `classes[].dons[].condition_emplacements` ; lib/fiche-moteur.mjs#emplacementsDeSorts) : aucune règle de v_personnage_controle (aucun contrôle ne compte
+-- les emplacements). Écrite par la migration, jamais relue du texte du don ; le site de dev ne l'écrit pas, mais un don supprimé sur le site retire sa
+-- ligne, notée au journal (serveur/edition.mjs#retirerDon, qui appelle serveur/edition.mjs#retirerLesReglesDuDon).
+CREATE TABLE capacite_condition_emplacements (
+  capacite_id  TEXT    NOT NULL PRIMARY KEY REFERENCES capacite(id) ON DELETE CASCADE
+) STRICT, WITHOUT ROWID;
+
 -- ====================================================================================================================
 -- 7. RACES, ETHNIES, ACCESSIBILITÉS (famille « races »)
 -- id d'une race = id de sa page ; id d'une ethnie = '<id de la race>#ethnie:<slug>'. Les valeurs de départ viennent de la fiche V15.2.2 ;
 -- l'onglet de la race du classeur « Les races » PRIME (décision du propriétaire) : l'importeur races le lira au lot 4 (écarts dans ecart_source).
 -- ====================================================================================================================
 
--- RACE : une ligne par race (27 dans les cinq onglets du classeur ; le guide dit « 23 disponibles », voir design.md §12)
+-- RACE : une ligne par race (29 : les 27 des cinq onglets du classeur, plus Fongoïde et Gémidien, races pures de la mise à jour de Décembre, décision
+-- R239, migration 0120 ; le guide dit « 23 disponibles », voir design.md §12). La fiche V15.2.2 n'a pas ces deux races : leurs colonnes de la fiche sont NULL.
 CREATE TABLE race (
   id              TEXT    NOT NULL PRIMARY KEY REFERENCES page(id),   -- = id de la page 'races/<slug>'
   nom             TEXT    NOT NULL UNIQUE CHECK (length(nom) > 0),    -- « Race » col. A, identique dans les 5 onglets, l'index et le titre de la page : 'Elfe noir', « Drassah'thac »
-  ordre           INTEGER NOT NULL UNIQUE CHECK (ordre >= 1),   -- rang dans l'onglet « Race » (1 = Humain) : c'est l'ordre d'affichage de la fiche
+  ordre           INTEGER NOT NULL UNIQUE CHECK (ordre >= 1),   -- rang dans l'onglet « Race » (1 = Humain) : c'est l'ordre d'affichage de la fiche ;
+                                              -- Fongoïde 13 et Gémidien 14, à la fin des races pures, les suivantes décalées de 2 (migration 0120)
   presentation    TEXT,                       -- phrase de présentation du classeur « Les races » (première feuille, col. B) ; NULL si absente
   -- Valeurs de départ (onglet « Race », col. B à F, H, I). La source les écrit en flottant (10.0) : entiers.
   sante           INTEGER,                    -- « Santé » : PV de départ apportés par la race
@@ -1467,6 +1817,12 @@ CREATE TABLE race (
   remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
   mono_magie      INTEGER NOT NULL CHECK (mono_magie IN (0, 1)),   -- 1 = « Une seule magie autorisé » (inconvénients de l'onglet de la race) : pas de magie
                                               -- acquise, quelle que soit l'innée (décision R28 du propriétaire : la Lamia ; migration 0022)
+  rang_liste      INTEGER CHECK (rang_liste IS NULL OR rang_liste >= 1),   -- ordre du menu latéral des races, de la liste /races/ et du tableau des
+                                              -- magies innées en bas de /races/ (migration 0092 ; réponse du propriétaire) ; distinct de `ordre`. La fiche
+                                              -- et /magies/ gardent l'ordre du code (client/src/lib/race-kinds.mjs#ORDRE_DES_RACES). NULL : pas encore
+                                              -- rangée, en fin de liste, par nom. Pas UNIQUE : un réordonnancement renumérote plusieurs races dans un même
+                                              -- lot (à égalité, le nom). Valeur d'import : celle de ORDRE_DES_RACES, pures puis hybrides, de 1 à 27 ;
+                                              -- la migration 0120 range Fongoïde (14) et Gémidien (15) à la fin des pures et décale les hybrides de 2 (1 à 29).
   CHECK ((don_base_nom IS NULL) = (don_base_type IS NULL) AND (don_base_nom IS NULL) = (don_base_effets IS NULL)),
   CHECK (don_base_nom IS NULL OR don_base_brut IS NOT NULL)
 ) STRICT;
@@ -1503,7 +1859,8 @@ CREATE TABLE race_restriction_carac (
 
 CREATE INDEX race_restriction_carac_carac ON race_restriction_carac (caracteristique_id, operateur, valeur);
 
--- ETHNIE : une ligne par ligne de l'onglet « Bonus Race » (96) : sous-race, origine ou variété d'une race
+-- ETHNIE : une ligne par ligne de l'onglet « Bonus Race » (96) : sous-race, origine ou variété d'une race ; plus les ethnies uniques « Fongoïde » et
+-- « Gémidien » (décision R239 (3), migration 0120 : sans don d'ethnie, descriptif NULL, race_brut = le nom de la race)
 -- (« Elfe Noir Charbon », « Drakos Rouge », « Mort-Vivant Eau », « Orios de Terre »…). La clé de la source est le nom (col. B).
 CREATE TABLE ethnie (
   id          TEXT    NOT NULL PRIMARY KEY,   -- '<race.id>#ethnie:<slug>'
@@ -1580,7 +1937,9 @@ CREATE INDEX ethnie_resistance_magie  ON ethnie_resistance (cible_magie_id, vale
 
 CREATE INDEX ethnie_resistance_etat   ON ethnie_resistance (cible_etat_id, valeur)  WHERE cible_etat_id  IS NOT NULL;
 
--- RACE_CLASSE : matrice « Accessibilité de Classe » : 27 races x 39 classes = 1 053 lignes (712 à 1, 341 à 0).
+-- RACE_CLASSE : matrice « Accessibilité de Classe » : 27 races x 39 classes = 1 053 lignes (712 à 1, 341 à 0) ; plus les colonnes 40 (Boxeur) et 41
+-- (Porte-étendard), absentes de la fiche, ouvertes à toutes les races (décision R238 (1), migration 0119) ; plus Fongoïde et Gémidien (décision R239 (4),
+-- migration 0120 : comme les races pures, le Fongoïde sans Barde ni Parleur ; Boxeur et Porte-étendard ouverts) : 29 x 41 = 1 189 lignes (820 à 1, 369 à 0).
 -- 26 classes générales (colonnes B à AA) + 13 classes raciales (AB à AN). La légende 0/1 n'est pas écrite dans le classeur :
 -- 1 = accessible est la lecture de la source (le « 1 » d'Orios sur la classe Orios et le « Classe possible : Orios » de Race!G14 la confirment).
 -- AUCUNE formule du classeur ne lit cet onglet (donnée d'information) ; voir design.md §12 pour ses contradictions avec la fiche.
@@ -1600,7 +1959,8 @@ CREATE TABLE race_classe (
 
 CREATE INDEX race_classe_classe ON race_classe (classe_id, accessible);   -- « races qui peuvent prendre la classe X »
 
--- RACE_MAGIE : matrice « Accessibilité Magie » : 27 races x 15 magies = 405 lignes (245 à 1, 160 à 0). Une case corrigée par le propriétaire :
+-- RACE_MAGIE : matrice « Accessibilité Magie » : 27 races x 15 magies = 405 lignes (245 à 1, 160 à 0), plus Fongoïde (14 à 1, sans le Potentiel Illimité)
+-- et Gémidien (13 à 1, ni Potentiel Illimité ni Corruption) de la migration 0120 (décision R239) : 435 lignes (272 à 1). Une case corrigée par le propriétaire :
 -- Lamia × Corruption, à 0 dans la fiche (E24), vaut 1 (décision R22, migration 0013 ; source_ref le dit).
 -- Selon les formules de la fiche, elle ne restreint que la magie INNÉE (BDD!D2 -> liste de Personnage!S2) ; la liste des magies
 -- acquises ne la lit pas. Elle remplace le champ de frontmatter `magies_innees` des pages de race.
@@ -1624,7 +1984,8 @@ CREATE INDEX race_magie_magie ON race_magie (magie_id, accessible);       -- « 
 -- V15.2.2 (tables race, ethnie, race_restriction_carac…) en est un dérivé fait à la main, pas toujours à jour, dont les écarts ne sont plus affichés. Les pages
 -- de race du site sont rendues depuis ces tables (lib/races-db.mjs). Textes tels qu'écrits : paragraphes séparés par une ligne vide, retours à la ligne et
 -- puces « - » conservés ; un nombre n'est typé que s'il est écrit en chiffres. Lignes tirées des pages races/<slug> par tools/db/races_onglet.py (preuve :
--- chaque section se réécrit à l'identique avec le code de tools/sheets/races.py, l'importeur qui a lu les onglets).
+-- chaque section se réécrit à l'identique avec le code de tools/sheets/races.py, l'importeur qui a lu les onglets) ; Fongoïde et Gémidien : onglets 21 et
+-- 22 de la mise à jour de Décembre, écrits par la migration 0120 (leur page est le rendu de leurs seules tables, lib/corps-races.mjs#corpsDeRaceCreee).
 -- RACE_ONGLET : une ligne par race.
 CREATE TABLE race_onglet (
   race_id              TEXT    NOT NULL PRIMARY KEY REFERENCES race(id),
@@ -1789,15 +2150,22 @@ CREATE TABLE invocation (
                                             -- les effets des sorts (« voir invocation ») et par le texte de l'onglet (« le sort
                                             -- « Appel aux golems » »). NULL = rapprochement non établi.
   texte_general TEXT,                       -- texte général de l'onglet (AJ3, AP3, Z3), tel qu'écrit, paragraphes séparés par une ligne vide
-  tableau_titre TEXT,                       -- titre du tableau posé à droite des cartes (AP40 de « Animation des morts » : « TABLEAU "AMELIORATION CADAVERIQUE" »),
-                                            -- NULL = aucun. Le CONTENU de ce tableau (13 lignes) est la table amelioration_cadaverique du domaine magies : le même
-                                            -- tableau figure dans les deux classeurs (identité vérifiée à l'import) ; une seule copie, pas de doublon ici.
+  tableau_titre TEXT,                       -- titre d'un tableau posé à droite des cartes ; NULL = aucun. Le seul (AP40 de « Animation des morts » :
+                                            -- « TABLEAU "AMELIORATION CADAVERIQUE" », contenu dans la table amelioration_cadaverique) est retiré avec
+                                            -- cette table par la migration 0117 (décision R237 (7) : les améliorations cadavériques sont supprimées du site).
   origine       TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'bestiaire'),
   source_ref    TEXT    NOT NULL CHECK (length(source_ref) > 0),
-  remarque TEXT    -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
+  remarque TEXT,   -- remarque ou information supplémentaire (texte libre, vide par défaut) ; reprend les notes de cellule du classeur de la ligne
+  tableau_sort_id TEXT REFERENCES sort(id) CHECK (tableau_sort_id IS NULL OR tableau_titre IS NOT NULL)
+                                            -- le sort dont le tableau est aussi celui de l'invocation (décision R130 : « Amélioration cadavérique » de la
+                                            -- Nécromancie, qui sacrifie l'invocation), par son id figé : un renommage du sort sur le site de dev ne coupe
+                                            -- pas le lien. Rempli par la migration 0099 depuis le nom entre guillemets de tableau_titre, cherché par nom_cle
+                                            -- dans la magie du sort de l'invocation ; NULL = aucun tableau, ou nom non résolu. Le site ne l'écrit pas.
+                                            -- Aucune ligne depuis la migration 0117 (R237 (7) : le sort « Amélioration cadavérique » est supprimé).
 ) STRICT;
 
 CREATE INDEX invocation_sort ON invocation (sort_id) WHERE sort_id IS NOT NULL;
+CREATE INDEX invocation_tableau_sort ON invocation (tableau_sort_id) WHERE tableau_sort_id IS NOT NULL;
 
 -- Capacités communes d'une invocation : la liste « ▸ Toutes ces créatures ont ceci en capacité commune » du texte général
 -- (golems : Inerte, Élémentaire ; non-morts : Non-Mort, Élémentaire). Une ligne = un élément de la liste « - Nom. Texte ».
@@ -2266,8 +2634,9 @@ CREATE TABLE monstre_butin (
 -- MONSTRE : une carte « NOM   Créature échelle N » ; « Type | Alignement | Catégorie » sur la ligne suivante.
 -- Valeurs typées seulement quand l'écriture est sans ambiguïté (sinon NULL ; la rubrique garde le texte) :
 --   sante / chakra / barriere : la ligne « Santé : 70  Chakra : 0  Barrière : 0 » (pas les valeurs « EP 1 : 20 … » d'une carte qui varie selon l'échelle) ;
---   armure_physique / armure_magique : « 4 armure physique / 2 armure magique » ou « 4 AP / 2 AM » (PAS « 0 points d'armure / 8 résistance magique » :
---     le rapprochement de ces mots avec l'armure physique et magique est une question au propriétaire, docs/bestiaire.md) ;
+--   armure_physique / armure_magique : « 4 armure physique / 2 armure magique » ou « 4 AP / 2 AM » ; « points d'armure » et « résistance magique » sont
+--     les anciens noms de l'AP et de l'AM (décision R209 (5) : la migration 0106 les a réécrits, lib/monstre-champs.mjs#defense lit aussi l'ancienne
+--     écriture) ; NULL sans nombre (« ? », « ∞ », une valeur par EP) ;
 --   vitesse_sol / vitesse_nage : « 4 cases sol / 4 cases nage ».
 CREATE TABLE monstre (
   id              TEXT    NOT NULL PRIMARY KEY,
@@ -2596,7 +2965,7 @@ CREATE INDEX materiau_arme_bonus ON materiau_arme (bonus_degats);
 CREATE TABLE materiau_armure (
   ressource_id  TEXT    NOT NULL PRIMARY KEY REFERENCES ressource(id),
   type          TEXT    NOT NULL CHECK (type IN ('Léger', 'Intermédiaire', 'Lourd')),
-  prix          REAL    CHECK (prix IS NULL OR prix >= 0),   -- « Prix : 1,5 » -> 1.5 ; l'unité n'est pas écrite dans la fiche (RO d'après le recoupement avec « Prix matériaux », à confirmer)
+  prix          REAL    CHECK (prix IS NULL OR prix >= 0),   -- « Prix : 1,5 » -> 1.5 ; l'unité n'est pas écrite dans la fiche : RO (R207 (2), « Il y a un tableau pour ça »)
   prix_brut     TEXT,
   stats_brut    TEXT    NOT NULL,                     -- « +2AP +4AM »
   ap            INTEGER,                              -- N de « +NAP » ; NULL si « AP » n'est pas écrit (la fiche compte 0)
@@ -2818,7 +3187,9 @@ CREATE TABLE baton_magique (
 ) STRICT;
 
 -- Métiers (Google Doc « MÉTIER » : une page par métier, 72). `bonus_brut`, `artisanat_brut`, `equipement_brut`, `avantage_brut` sont les
--- quatre champs de la page, tels qu'écrits (liens [[…]] et échappements Markdown retirés). Artisanat (décision R34) : un texte libre (ce que le
+-- quatre champs de la page, tels qu'écrits (liens [[…]] et échappements Markdown retirés ; depuis la migration 0098, le lien « alchimie primitive »
+-- d'Alchimiste et d'Apothicaire y est la balise du mot-clé de sa page, « {{alchimie-primitive|alchimie primitive}} », dans `artisanat_brut` comme
+-- dans `artisanat_texte`, et le corps de leur page la rend : lib/corps-metiers.mjs#corpsDeMetier). Artisanat (décision R34) : un texte libre (ce que le
 -- métier fabrique, `artisanat_texte`) et deux caractéristiques (`test_carac_1_id`, `test_carac_2_id`) ; la compétence d'artisanat vaut 10 × la
 -- première + 10 × la seconde (regle_constante 'metier.artisanat_par_point_caracteristique'). Sur le site de dev, ce sont ces trois colonnes qui se
 -- modifient ; `artisanat_brut`, `test_brut` et `peut_fabriquer` en sont recalculés.
@@ -3081,6 +3452,10 @@ CREATE TABLE armure_emplacement (
 
 -- Armures : 231 combinaisons de deux matières (grille matière x matière de l'onglet Armures) + 11 armures particulières
 -- (vêtements, cottes de mailles, armure montagne, armures de familiers).
+-- Décision R207 (1), E6 (migration 0105) : le type, l'AP, l'AM et le prix d'une combinaison se calculent d'après ses deux matériaux : type = le plus
+-- lourd (materiau_armure.type) ; ap, am = la somme de ceux des deux matériaux (R75) ; prix = « Armure Complète » (armure_emplacement 'armure-complete')
+-- + constante_equipement 'armure.unites_par_materiau' (6) x le prix de chaque matériau (ressource, R62 ; R93). Une armure particulière garde ses
+-- valeurs écrites (R80). Registres : data/migrations/0105-r207-armures-boucliers-et-fabrication.json (AP, AM), 0108-r207-prix-des-armures.json (prix).
 CREATE TABLE armure (
   id               TEXT    NOT NULL PRIMARY KEY,      -- 'ressources/armures#armure:peau-peau', '…#armure:cuir-peau', '…#armure:tenue-du-flagelleur'
   sorte            TEXT    NOT NULL CHECK (sorte IN ('combinaison', 'particuliere')),
@@ -3089,7 +3464,7 @@ CREATE TABLE armure (
   materiau_ligne_id    TEXT REFERENCES ressource(id), -- combinaison : matière en tête de ligne de la grille
   materiau_colonne_id  TEXT REFERENCES ressource(id), -- combinaison : matière en tête de colonne
   type             TEXT    NOT NULL CHECK (type IN ('Vêtement', 'Léger', 'Intermédiaire', 'Lourd', 'Familier')),
-  prix             REAL    CHECK (prix IS NULL OR prix >= 0),   -- « Prix : 2 050 » -> 2050.0 ; « ???? » -> NULL ; unité non écrite
+  prix             REAL    CHECK (prix IS NULL OR prix >= 0),   -- « Prix : 2 050 » -> 2050.0 ; « ???? » -> NULL ; en RO (R79, R207 (2))
   prix_brut        TEXT,
   stats_brut       TEXT    NOT NULL,                  -- « +10AP +14AM », « Aucune »
   ap               INTEGER,                           -- N de « +NAP » ; NULL si AP n'est pas écrit (« Aucune » aussi) : la fiche compte 0
@@ -3188,12 +3563,15 @@ CREATE TABLE bouclier_poids (
 
 -- Boucliers préfabriqués (100 : 5 classes x 20 matériaux). Le poids de chacun est la couleur de fond de sa case dans l'onglet (vert Léger, jaune Moyen,
 -- orange Lourd, rouge Très lourd : décision R92, migration 0054) ; la liste des poids elle-même n'est pas reliée aux classes : aucun lien n'est déduit.
+-- Décision R207 (1), E6 (migration 0105) : ap, am = classe x AP ou AM du matériau (materiau_bouclier) ; prix = classe x prix du matériau (ressource, R62)
+-- + le prix de sa forme (bouclier_classe.prix, RO par classe : « Coût (RO) : 2,5 / Classe » ; R49, R79). « 250 RF / Classe » d'armure_emplacement
+-- 'bouclier' n'en est qu'une autre écriture.
 CREATE TABLE bouclier (
   id            TEXT    NOT NULL PRIMARY KEY,         -- 'ressources/bouclier#bouclier:ecu:fer-noir'
   classe_id     TEXT    NOT NULL REFERENCES bouclier_classe(id),
   materiau_id   TEXT    NOT NULL REFERENCES ressource(id),
   nom           TEXT    NOT NULL CHECK (length(nom) > 0),                     -- « Bocle Corne » (sic : la matière s'écrit Corne/Os ailleurs)
-  prix          REAL    CHECK (prix IS NULL OR prix >= 0),   -- NULL si « Prix : » est vide (Bouclier Rond Argent)
+  prix          REAL    CHECK (prix IS NULL OR prix >= 0),   -- en RO (R79) ; « Prix : » vide du Bouclier Rond Argent : le prix calculé (R207, migration 0105)
   prix_brut     TEXT,
   defense_brut  TEXT    NOT NULL,                     -- « +20AP +25AM »
   ap            INTEGER,
@@ -3604,6 +3982,10 @@ CREATE TABLE lien_candidat (
 -- Recherche plein texte. Accents et casse ignorés ; l'apostrophe sépare deux mots (« l'alchimiste » = « l » + « alchimiste »).
 -- Colonnes : titre, alias (écritures séparées par des retours à la ligne), tag (libellés), resume, texte (corps sans
 -- Markdown : [[a|b]] -> b, caractères # > * _ ` | retirés — même nettoyage que search-index.json.ts, sans la coupe à 4000).
+-- Titre, résumé et texte tels qu'ils s'affichent : chaque balise du glossaire devient son texte affiché, « {{orios}} » -> « Orios »
+-- (lib/mots-cles-balises.mjs#texteSansBalises) ; l'id d'un mot-clé n'est pas indexé. Les marques qui ne s'affichent pas ne s'indexent pas : lignes
+-- `::: onglets` et `:::` d'un groupe d'onglets (lib/markdown-onglets.mjs#sansMarquesDOnglets), ancre figée et couleur d'un intertitre
+-- (lib/ancres-figees.mjs#sansAncresFigees).
 -- Pondération conseillée (reprend search.mjs : titre 6, alias 5, mots-clés 4, résumé 2, texte 1) :
 --     ORDER BY bm25(page_fts, 0, 6, 5, 4, 2, 1)       -- le 0 = page_id (colonne non indexée)
 CREATE VIRTUAL TABLE page_fts USING fts5(
@@ -3645,12 +4027,16 @@ CREATE VIEW lien_page AS
 CREATE VIEW lien_a_creer AS
   SELECT page_id, position, cible, ancre, etat FROM lien WHERE etat <> 'resolu';
 
--- Le vocabulaire des mots-clés et les pages qui les portent (page /recherche/ du site de dev : un mot-clé supprimé est retiré de nb_pages pages),
--- avec sa définition (glossaire, migration 0056).
+-- Le vocabulaire des mots-clés et les pages qui les portent (page Glossaire du site de dev, /regles/glossaire/ : un mot-clé supprimé est retiré de
+-- nb_pages pages), avec sa définition (glossaire, migration 0056), sa couleur et son adresse (migration 0098) ; id entier et clé (migration 0113 :
+-- `cle` remplace libelle_cle ; les catégories sont dans mot_cle_categorie) ; sans l'abréviation (migration 0115 : devenue un synonyme,
+-- mot_cle_synonyme).
 CREATE VIEW v_mot_cle AS
-  SELECT m.id, m.libelle, m.libelle_cle,
+  SELECT m.id, m.libelle, m.cle,
     (SELECT count(*) FROM page_tag t WHERE t.tag_id = m.id) AS nb_pages,
-    m.description                                                          -- la définition du glossaire (migration 0056 ; NULL : pas encore décrit)
+    m.description,                                                         -- la définition du glossaire (migration 0056 ; NULL : pas encore décrit)
+    m.couleur,                                                             -- la référence de couleur (migration 0098 ; NULL : aucune)
+    m.url                                                                  -- l'adresse interne où mène le mot-clé (migration 0098 ; NULL : aucune)
   FROM mot_cle m;
 
 -- Relation d'incompatibilité symétrique : (a, b) est présent dans les deux sens dès que l'un des deux cite l'autre.
@@ -3676,7 +4062,7 @@ CREATE VIEW v_sort_bonus_au_nm AS
 --   '>' est strict (« > 2 » = au moins 3), '<' est strict (« < 4 » = au plus 3), '=' fixe la valeur ;
 --   le minimum ne descend jamais sous 1 et le maximum ne monte jamais au-dessus de 4 (« minimum de 1 et maximum de 4 de
 --   manière générale », guide/fiche-caracteristiques) ; sans restriction : 1 à 4.
--- La vue produit une ligne par (race, caracteristique) : 27 x 6 = 162. Les bornes portent sur la BASE saisie, avant le bonus de la
+-- La vue produit une ligne par (race, caracteristique) : 29 x 6 = 174. Les bornes portent sur la BASE saisie, avant le bonus de la
 -- magie innée (règle de la fiche, hors de ce domaine). operateur/valeur sont NULL quand la race n'a pas de restriction.
 CREATE VIEW v_race_carac_borne AS
   SELECT r.id AS race_id, c.id AS caracteristique_id, rr.operateur, rr.valeur,
@@ -3772,8 +4158,12 @@ CREATE VIEW v_creature_meme_bloc AS
   FROM creature a JOIN creature b ON b.bloc_id = a.bloc_id AND b.id <> a.id;
 
 -- Arme avec les valeurs « effectives » : portée écrite dans l'effet, sinon portée par défaut du type (BDD!AF de la fiche) ;
--- solidité de l'arme nue (2 crans de base, règle de l'onglet, corrigée par « 1 seul cran » / « ±1 cran » de l'effet : sans matériau ni amélioration) ;
--- libellés de famille et de type.
+-- solidité de l'arme nue (2 crans de base, règle de l'onglet, corrigée par « 1 seul cran » / « ±1 cran » de l'effet : sans matériau ni amélioration),
+-- jamais moins de 1 (décision R51 : « il est impossible de descendre à moins de 1 », sur la valeur fixée comme sur la valeur corrigée ; la même que
+-- lib/arme-champs.mjs#durabiliteDeLArme, migration 0099). Ce plancher n'est plus qu'une sécurité : une arme a toujours au moins 1 cran propre
+-- (décision R194 (1) : l'édition, l'API v1 et le rejeu refusent un effet qui en donnerait moins, lib/arme-champs.mjs#refusDesCransPropres,
+-- serveur/edition.mjs#armesSansCranPropre) ; le plancher de R51 joue sur le total, arme + matériau + amélioration (R194 (2),
+-- lib/arme-forge.mjs#forgerArme) ; libellés de famille et de type.
 CREATE VIEW v_arme AS
   SELECT a.id, a.nom, f.nom AS famille, t.nom AS type, a.competence_brut, a.mains, a.cout_ro,
          a.de, a.de_faces, COALESCE(a.bonus_degats, 0) AS bonus_degats_ou_0,
@@ -3781,7 +4171,8 @@ CREATE VIEW v_arme AS
          COALESCE(a.portee_min, t.portee_min) AS portee_min_effective,
          COALESCE(a.portee_max, t.portee_max) AS portee_max_effective,
          CASE WHEN a.portee_min IS NULL THEN 'type' ELSE 'effet' END AS portee_source,
-         COALESCE(a.solidite_fixee, k.valeur + COALESCE(a.solidite_delta, 0)) AS solidite_sans_composition,
+         CASE WHEN COALESCE(a.solidite_fixee, k.valeur + COALESCE(a.solidite_delta, 0)) < 1 THEN 1
+              ELSE COALESCE(a.solidite_fixee, k.valeur + COALESCE(a.solidite_delta, 0)) END AS solidite_sans_composition,
          a.ignore_ap, a.recharge, a.provenance, a.depart_possible, a.effet
   FROM arme a
   JOIN arme_famille f ON f.id = a.famille_id
@@ -3826,9 +4217,10 @@ CREATE VIEW v_potion AS
   JOIN ressource r ON r.id = p.ressource_id
   JOIN niveau_alchimie n ON n.id = p.niveau_id;
 
--- Objets à la ceinture (décision R81 ; onglet « Ceinture » de la page /ressources/equipement/, d'abord la page /ressources/objets-a-la-ceinture/) :
--- les objets du catalogue que l'onglet liste parmi ceux qu'un personnage met dans les 3 emplacements de sa ceinture (guide « Fiche de personnage :
--- Accessoires et Ceinture », dont la liste est « non exhaustive » : « Voyez avec votre mj »). Une ligne par objet, `famille` :
+-- Objets à la ceinture (décision R81 ; page « Ceinture » /ressources/objets-a-la-ceinture/, onglet « Ceinture » de /ressources/equipement/ jusqu'au 2026-10-29) :
+-- les objets du catalogue que la page liste parmi ceux qu'un personnage met dans les 3 emplacements de sa ceinture (guide « Fiche de personnage :
+-- Accessoires et Ceinture », dont la liste est « non exhaustive » : « Voyez avec votre mj » ; section Ceinture dans la page « Inventaire/Sac à dos »
+-- depuis la migration 0124, décision R272). Une ligne par objet, `famille` :
 --   'fiole', 'philtre', 'remede', 'primitive', 'huile' : toutes les potions (table potion, famille de leur recette ; la panacée est un remède) ;
 --   'contenant' : les carquois, sacs de bombes et sacs de pierres du matériel (« Les carquois, sac de bombe ou sac de pierre DOIVENT être mis dans la
 --                 ceinture pour être utilisés ») : une ressource 'materiel' dont la clé du nom (normalize(nom)) écrit l'un d'eux ;
@@ -4130,7 +4522,7 @@ CREATE TABLE personnage (
   armure_amelioration_id TEXT   REFERENCES amelioration_equipement(id),
   armure_elementaire_id TEXT    REFERENCES armure_elementaire(id),
   armure_amelioration_elementaire_id TEXT REFERENCES amelioration_equipement(id),
-  -- Bouclier porté (décision R96, migration 0060 : « Forme + matière », comme l'onglet Boucliers de /ressources/equipement/ et la décision R78) : la
+  -- Bouclier porté (décision R96, migration 0060 : « Forme + matière », comme la page Boucliers /ressources/bouclier/ et la décision R78) : la
   -- forme (bouclier_classe_id, plus haut) et la matière donnent le bouclier de la liste (table bouclier, UNIQUE (classe_id, materiau_id)) : son AP,
   -- son AM, son poids (R92) ; sa solidité est celle de la matière ; son amélioration +1 à +5 (cible 'bouclier', R76 : AP et crans de solidité) ;
   -- `bouclier_solidite` : sa solidité du moment, de 0 (cassé) au maximum (la matière et les crans de l'amélioration, calculé par la page, pas ici),
@@ -4147,6 +4539,16 @@ CREATE TABLE personnage (
   -- ils s'ajoutent aux NM gagnés par les niveaux (v_niveau.niveaux_maitrise_cumul), sans être liés à un sort ; contrôlés par les règles sort_nm_max et
   -- sorts_nm_total de v_personnage_controle. Jusqu'à 0066, ils se notaient sort par sort (personnage_sort.nm_cadeau, décision R26).
   nm_mj                 INTEGER NOT NULL DEFAULT 0 CHECK (nm_mj >= 0),   -- NM donnés par le MJ, pour toute la fiche (R118)
+  -- Mode Hyper et Mode Hyper 100 % du moment (décision R172, migration 0084) : deux cases activables comme une posture (posture_id), à côté des postures
+  -- de la page /fiche/ ; 1 = actif. Le Mode Hyper 100 % n'est actif qu'avec le Mode Hyper (contrainte nommée personnage_mode_hyper_100_avec_mode_hyper :
+  -- le Mode Hyper décoché le décoche). Les niveaux qui les débloquent (2 et 10) sont des règles, lues par lib/fiche-moteur.mjs#modeHyperDe, pas ici.
+  -- mode_hyper_semaine : le compteur « une fois par semaine », les utilisations qui restent dans la semaine du jeu, consommé à l'activation et remonté
+  -- seulement à la main (R172) ; NULL = non suivi, au maximum, comme les jauges du moment (sante_actuelle…). Le dépassement de durée (R161) n'est pas
+  -- appliqué.
+  mode_hyper            INTEGER NOT NULL DEFAULT 0 CHECK (mode_hyper IN (0, 1)),
+  mode_hyper_100        INTEGER NOT NULL DEFAULT 0 CHECK (mode_hyper_100 IN (0, 1))
+                          CONSTRAINT personnage_mode_hyper_100_avec_mode_hyper CHECK (mode_hyper_100 = 0 OR mode_hyper = 1),
+  mode_hyper_semaine    INTEGER CHECK (mode_hyper_semaine IS NULL OR mode_hyper_semaine >= 0),
   CHECK ((nature = 'pretire') = (proprietaire_id IS NULL)),   -- un prétiré n'est à personne ; la fiche d'un joueur a son propriétaire
   CHECK (nature = 'joueur' OR visibilite = 'tous'),           -- « Les prétirés sont visibles par tous »
   CHECK (magie_acquise_id IS NULL OR magie_acquise_id <> magie_innee_id)
@@ -4177,6 +4579,20 @@ CREATE TABLE personnage_classe (
 
 CREATE INDEX personnage_classe_classe ON personnage_classe (classe_id);
 
+-- Spécialisation magique choisie (décision R236, migration 0118) : une ligne par magie de la fiche dont la spécialisation est choisie ; aucune ligne =
+-- pas encore choisie. Seul le bi-magie choisit (R236 (3) : une par magie) ; le mono-magie a les deux (R236 (2)) et le Potentiel Illimité les sorts des
+-- deux spécialisations de chaque magie (R236 (7)) : une ligne de leur fiche est gardée, sans effet. Le choix reste modifiable (R236 (6), comme
+-- personnage_classe.specialite_id). Contrôlé par v_personnage_controle (sort_hors_specialisation, specialisation_hors_magie).
+CREATE TABLE personnage_specialisation_magie (
+  personnage_id      TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
+  magie_id           TEXT    NOT NULL REFERENCES magie(id),
+  specialisation_id  TEXT    NOT NULL,
+  PRIMARY KEY (personnage_id, magie_id),
+  FOREIGN KEY (specialisation_id, magie_id) REFERENCES magie_specialisation (id, magie_id)   -- une spécialisation de CETTE magie
+) STRICT, WITHOUT ROWID;
+
+CREATE INDEX personnage_specialisation_magie_specialisation ON personnage_specialisation_magie (specialisation_id);
+
 -- Valeur de base de chaque caractéristique (E18, M18, U18, E19, M19, U19), choisie dans les bornes de la race (v_race_carac_borne) ; le total suit
 -- seuil_niveau 'caracteristiques_total' (décision R3 : exactement). Le point de la magie innée (G18…) et les bonus d'accessoires se calculent.
 CREATE TABLE personnage_caracteristique (
@@ -4202,8 +4618,9 @@ CREATE TABLE personnage_competence (
 -- « Entraînement » (L42 du modèle ordinateur ; décision R104, migration 0062, qui remplace personnage.entrainement, un texte libre : décision R71) :
 -- des lignes qu'on ajoute, chacune un entraînement de compétence — la compétence et ses points (« Vous ne pouvez monter que 15 compétences maximum
 -- grâce à cette case et à hauteur maximum 10% de bonus » : constantes entrainement.competences_max, entrainement.bonus_max_pct, contrôlées par
--- v_personnage_controle), qui s'ajoutent à l'Acquis — ou un texte libre (« dons évènementiels »). Les livres de sort restent dans
--- personnage_sort.nm_livre (« sans changer le calcul ») ; la page les montre avec l'entraînement (le curseur de NM du sort part alors de 1 : R118).
+-- v_personnage_controle), qui s'ajoutent à l'Acquis — ou un texte libre (« dons évènementiels »). Les livres de sort sont dans personnage_livre_sort
+-- (décision R169, migration 0082 ; jusque-là la colonne personnage_sort.nm_livre) ; la page les montre avec l'entraînement (le curseur de NM d'un sort
+-- choisi qui a son livre part de 1 : R118).
 CREATE TABLE personnage_entrainement (
   personnage_id  TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
   rang           INTEGER NOT NULL CHECK (rang >= 1),
@@ -4284,17 +4701,33 @@ CREATE TABLE personnage_capacite (
 
 CREATE INDEX personnage_capacite_capacite ON personnage_capacite (capacite_id);
 
+-- Don obtenu par un don « Variable » du Mage Bleu (décision R181, migration 0088 ; pas de case dans la fiche auto V15.2.2) : une ligne par don
+-- « Variable » (capacite_variable) qui a son choix : `source`, l'id du don, et `entree_id`, l'entrée du tableau libre de la classe
+-- (classe_annexe_entree) qu'il obtient. Un choix par don (clé primaire) ; « chaque entrée ne se prend qu'une fois » (R181) : une entrée par fiche
+-- (UNIQUE). Rien d'autre n'est refusé ici, car la magie et le niveau changent : la bonne liste (sa magie innée, ou acquise pour Secondaire) et le don
+-- encore acquis sont des règles de v_personnage_controle (don_obtenu_hors_liste, don_obtenu_source_perdue), qui signalent un choix gardé sans effet,
+-- comme les maîtrises (R148). « (Ne peut pas être changé une fois choisi) » n'est qu'un rappel (R181) : le choix reste modifiable.
+CREATE TABLE personnage_don_obtenu (
+  personnage_id  TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
+  source         TEXT    NOT NULL REFERENCES capacite(id),               -- le don « Variable » (capacite_variable.capacite_id)
+  entree_id      TEXT    NOT NULL REFERENCES classe_annexe_entree(id),   -- l'entrée obtenue
+  PRIMARY KEY (personnage_id, source),
+  UNIQUE (personnage_id, entree_id)
+) STRICT, WITHOUT ROWID;
+
+CREATE INDEX personnage_don_obtenu_source ON personnage_don_obtenu (source);   -- « les fiches qui ont ce don » (retrait d'un don, R42)
+
 -- « LISTE DE SORTS » (AA55:AY74) : sorts de la magie innée ou acquise, avec leur niveau de maîtrise (« NM », AY). Un NM vient d'un niveau (au plus niveau
 -- global − 1 sur un sort, BDD!BB6, et au plus les NM gagnés en tout), d'un livre de sort (un seul par sort, lié à ce sort : page « Livre / Parchemin ») ou
 -- d'un cadeau du MJ ; un sort a au plus 3 NM en tout (regle_constante 'sort.nm_max', décision R26). Type, coût, portée, zone et effets se lisent dans `sort`.
+-- Le livre de sort se note à part, indépendamment de la liste (personnage_livre_sort, décision R169, migration 0082, qui retire la colonne nm_livre) : un
+-- sort choisi qui a son livre compte ce NM dans niveau_maitrise, mais pas dans le décompte des NM (décision R118, migration 0066 ; les NM du MJ sont ceux
+-- de la fiche, personnage.nm_mj).
 CREATE TABLE personnage_sort (
   personnage_id      TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
   sort_id            TEXT    NOT NULL REFERENCES sort(id),
   rang               INTEGER NOT NULL CHECK (rang >= 1),   -- ligne de la liste sur la fiche
-  niveau_maitrise    INTEGER NOT NULL CHECK (niveau_maitrise >= 0),   -- NM du sort, toutes origines comprises (un curseur de 0 à 3 sur la fiche : R118)
-  -- dont le NM d'un livre de sort (un par sort au plus ; migration 0021), noté dans l'entraînement : le sort a alors au moins 1 NM, et ce NM ne compte
-  -- pas dans le décompte des NM (décision R118, migration 0066 ; les NM du MJ sont ceux de la fiche, personnage.nm_mj)
-  nm_livre           INTEGER NOT NULL DEFAULT 0 CHECK (nm_livre IN (0, 1) AND nm_livre <= niveau_maitrise),   -- dont le NM d'un livre de sort (noté dans l'entraînement)
+  niveau_maitrise    INTEGER NOT NULL CHECK (niveau_maitrise >= 0),   -- NM du sort, toutes origines comprises, livre compris (un curseur de 0 à 3 sur la fiche : R118)
   -- Sort préparé (décision R115, migration 0067 : « Le don niveau 1 (et son équivalent mage vert) permettrai de choisir le sort qui est préparé et de
   -- noter le résultat du jet de magie si réussi » ; pas de case dans la fiche auto V15.2.2) : un des sorts de la fiche, chargé par « Préparation » (Mage
   -- Rouge : « Permet de charger un sort d'attaque lvl1 ou lvl2 le premier tour… ») ou « Chargement » (Mage Vert), un seul par fiche (index
@@ -4303,9 +4736,35 @@ CREATE TABLE personnage_sort (
   -- tous les autres. Le résultat du jet de magie (un D100, de 1 à 100 ; NULL tant qu'il n'est pas noté) et la posture (NULL quand aucune n'était
   -- choisie : personnage.posture_id NULL) n'existent que sur le sort préparé : « Lâcher le sort » remet `prepare` à 0 et les deux à NULL. Un sort retiré
   -- des fiches (R42) part avec sa ligne, préparation comprise.
+  -- Sort préparé en Mode Hyper (décision R172, migration 0086 : « un sort préparé pendant le Mode Hyper 100 % reste "préparé au 100 %", même après la
+  -- sortie du 100 % », « Aussi le +15/+7 » ; réponse à Q82 pour le Mode Hyper normal : « Oui : 2d6+20 ») : la posture de préparation ne peut pas le
+  -- dire, deux cases le disent, comme personnage.mode_hyper et mode_hyper_100 (migration 0084). prepare_hyper = 1 : préparé pendant le Mode Hyper, le
+  -- sort garde le +15 (ou +7) du Mode Hyper ; prepare_cent = 1 : préparé pendant le Mode Hyper 100 %, il garde en plus le cumul des postures sans
+  -- inconvénients et le +10 du 100 %. Dans les deux cas jusqu'au lancer, à « Lâcher le sort » ou à une nouvelle préparation (R115), même une fois le
+  -- Mode Hyper (ou le 100 %) terminé. Comme le jet et la posture, elles n'existent que sur le sort préparé (contraintes nommées
+  -- personnage_sort_prepare_hyper_avec_prepare et personnage_sort_prepare_cent_avec_prepare_hyper) : « Lâcher le sort » les remet à 0, une nouvelle
+  -- préparation les réécrit selon le moment. Ce que vaut le sort se calcule (lib/fiche-moteur.mjs), rien n'en est stocké.
+  -- Réussite critique du sort préparé (décision R182, migration 0089, Q91 : « c'est le critique au moment de la préparation qui va taper quand le sort
+  -- est relaché ») : le jet se fait et se note à la préparation, la cible se défend contre ce nombre. prepare_critique = N de « Réussite critique : 1 à
+  -- N (figée à la préparation) », la plage de critique de Concentration au moment de la préparation (posture, score du moment et sources permanentes de
+  -- R180), enregistrée à la préparation, jamais recalculée ; NULL tant qu'elle n'est pas notée (une fiche d'avant 0089 la garde NULL). Comme le jet,
+  -- seulement sur le sort préparé (personnage_sort_prepare_critique_avec_prepare) : « Lâcher le sort » la remet à NULL. Bornes
+  -- (personnage_sort_prepare_critique_bornes) : de 1, regle_constante 'critique.plancher' (décision R203, migration 0101 : la plage ne descend
+  -- jamais sous « 1 à 1 » ; des accessoires maudits qui retirent de la réussite critique, R180 et R54, la ramènent au plus à 1 à 1, le moteur
+  -- borne le bonus total : une plage calculée sous 1 n'existe plus, la préparation n'est donc jamais refusée pour elle), à 15, regle_constante
+  -- 'critique.plafond' ; un CHECK ne lit pas une autre table, les bornes sont écrites ici et test/db-r182-critique-du-sort-prepare.test.mjs compare
+  -- le plafond à regle_constante (une constante changée demande une migration). « Double coup » (niveau 20) : seul le premier relâchement peut être un critique, les suivants sont fixés à 40 de réussite
+  -- (un rappel de la fiche, rien n'est stocké).
   prepare            INTEGER NOT NULL DEFAULT 0 CHECK (prepare IN (0, 1)),   -- 1 = le sort préparé de la fiche (R115)
   prepare_jet        INTEGER CHECK (prepare_jet IS NULL OR (prepare = 1 AND prepare_jet BETWEEN 1 AND 100)),   -- jet de magie (D100)
   prepare_posture_id TEXT    REFERENCES posture(id) CHECK (prepare_posture_id IS NULL OR prepare = 1),   -- posture du moment de la préparation
+  prepare_hyper      INTEGER NOT NULL DEFAULT 0 CHECK (prepare_hyper IN (0, 1))
+                       CONSTRAINT personnage_sort_prepare_hyper_avec_prepare CHECK (prepare_hyper = 0 OR prepare = 1),   -- 1 = préparé en Mode Hyper (R172)
+  prepare_cent       INTEGER NOT NULL DEFAULT 0 CHECK (prepare_cent IN (0, 1))
+                       CONSTRAINT personnage_sort_prepare_cent_avec_prepare_hyper CHECK (prepare_cent = 0 OR prepare_hyper = 1),   -- 1 = préparé au 100 % (R172)
+  prepare_critique   INTEGER
+                       CONSTRAINT personnage_sort_prepare_critique_avec_prepare CHECK (prepare_critique IS NULL OR prepare = 1)
+                       CONSTRAINT personnage_sort_prepare_critique_bornes CHECK (prepare_critique IS NULL OR prepare_critique BETWEEN 1 AND 15),   -- N de « 1 à N », figé (R182)
   PRIMARY KEY (personnage_id, sort_id),
   UNIQUE (personnage_id, rang)
 ) STRICT, WITHOUT ROWID;
@@ -4313,6 +4772,25 @@ CREATE TABLE personnage_sort (
 CREATE INDEX personnage_sort_sort ON personnage_sort (sort_id);
 
 CREATE UNIQUE INDEX personnage_sort_prepare ON personnage_sort (personnage_id) WHERE prepare = 1;   -- un seul sort préparé par fiche (R115)
+
+-- Livres de sort lus (ligne « Livre de sort » de l'entraînement, décision R104 ; décision R169, migration 0082 : « on peux apprendre n'importe quel
+-- "entainement" livre de sort pour n'importe quel sort de sa magie, même si on l'a pas sélectionné. Son NM ne sera juste pas utilisé si le sort n'est pas
+-- choisi. »). Page « Livre / Parchemin » (classeur « Ressources et craft ») : « le NM obtenu par un livre reste lié au sort concerné […] Si un personnage
+-- retire un sort auquel est lié un NM provenant d'un livre, ce NM est mis en attente tant que le sort n'est pas réintégré dans la liste du personnage.
+-- Une fois le sort repris, le NM est automatiquement réactivé. C'est qu'un seul NM par sort obtenable par les livres. » Un livre par sort au plus (clé
+-- primaire ; décision R26). Le livre se note indépendamment de la liste des sorts (personnage_sort) : sur un sort non choisi, il est en attente, son NM
+-- n'est pas utilisé et le décompte des NM ne change pas ; sur un sort choisi, son NM est compris dans personnage_sort.niveau_maitrise sans compter dans
+-- le décompte (décision R118 : règles sort_nm_max et sorts_nm_total de v_personnage_controle) ; le sort retiré de la liste, le livre reste. Jusqu'à la
+-- migration 0082, la colonne personnage_sort.nm_livre (0 ou 1), sur un sort choisi seulement.
+CREATE TABLE personnage_livre_sort (
+  personnage_id  TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
+  sort_id        TEXT    NOT NULL REFERENCES sort(id),
+  rang           INTEGER NOT NULL CHECK (rang >= 1),   -- ordre des livres dans l'entraînement de la fiche
+  PRIMARY KEY (personnage_id, sort_id),
+  UNIQUE (personnage_id, rang)
+) STRICT, WITHOUT ROWID;
+
+CREATE INDEX personnage_livre_sort_sort ON personnage_livre_sort (sort_id);
 
 -- « Maîtrise d'armes » (AA2:AV7 de la fiche auto : des dés saisis par famille, jusqu'à la migration 0076, table personnage_maitrise_arme) : depuis la
 -- décision R148 (« la valeur ne sera plus des sliders mais une valeur calculée », migration 0076), plus rien ne se saisit par famille. Les points de
@@ -4408,7 +4886,8 @@ CREATE TABLE personnage_inventaire (
 
 -- La ceinture (demande du propriétaire, migration 0031) : ses 3 emplacements d'objets rapides, utilisables en IC (guide « Fiche de personnage :
 -- Accessoires et Ceinture » : « La ceinture […] possède 3 emplacements d'objets rapides », « Les objets dans la ceinture ne peuvent pas dépasser le
--- nombre de 3 ») ; un objet par emplacement, au catalogue (`ressource_id`) ou non, et sa quantité (les flèches d'un carquois…).
+-- nombre de 3 » ; section Ceinture dans la page « Inventaire/Sac à dos » depuis la migration 0124, décision R272) ; un objet par emplacement, au
+-- catalogue (`ressource_id`) ou non, et sa quantité (les flèches d'un carquois…).
 CREATE TABLE personnage_ceinture (
   personnage_id  TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
   rang           INTEGER NOT NULL CHECK (rang BETWEEN 1 AND 3),   -- l'emplacement
@@ -4416,6 +4895,24 @@ CREATE TABLE personnage_ceinture (
   quantite       INTEGER NOT NULL CHECK (quantite >= 0),          -- 0 : un carquois ou un sac de projectiles vide (décision R89, migration 0052)
   ressource_id   TEXT    REFERENCES ressource(id),
   PRIMARY KEY (personnage_id, rang)
+) STRICT, WITHOUT ROWID;
+
+-- Compteurs d'usage des actions (décision R173, migration 0085 : « Il faudrait lister toutes les actions utilisables […]. Il faudrai pouvoir les
+-- sélectionner pour les "consommer" (et griser si plus utilisable). Un bouton "fin de combat" permet de remettre tous les compteur X/combat au maximum.
+-- Le compteur 1/ jour / semainee lui ne peut que remonter manuellement. » ; « les compteurs s'enregistrent avec la fiche »). Une ligne par action à
+-- limite lisible dont le compteur est entamé : `action_id`, la clé de l'action fabriquée par le moteur de la fiche (lib/fiche-moteur.mjs : un don de
+-- classe, le don de base de la race, l'effet d'un accessoire, une capacité d'une arme élémentaire, un effet de l'armure élémentaire, une entrée du tableau du Mage Bleu obtenue
+-- par un don « Variable » (`entree:<id>`, décision R181) ; un don présent dans
+-- deux classes d'un bi-classé a un compteur par identifiant de don) ; pas de clé étrangère : l'action dépend de l'équipement porté et de l'état de la
+-- fiche, et une clé sans action correspondante est ignorée par la page. `restants` : les utilisations qui restent (entier >= 0 ; 0 = action grisée).
+-- Une ligne absente = compteur au maximum, comme personnage.mode_hyper_semaine NULL (R172) : le maximum est une règle (limite lue dans le texte du don,
+-- de l'accessoire, de l'arme ou de l'armure), jamais stocké. « Fin de combat » remonte au maximum les compteurs « par combat », les autres ne remontent
+-- qu'à la main (R173).
+CREATE TABLE personnage_action_usage (
+  personnage_id  TEXT    NOT NULL REFERENCES personnage(id) ON DELETE CASCADE,
+  action_id      TEXT    NOT NULL CHECK (length(action_id) > 0),   -- clé de l'action du moteur de la fiche (sans clé étrangère)
+  restants       INTEGER NOT NULL CHECK (restants >= 0),           -- utilisations restantes ; ligne absente = au maximum
+  PRIMARY KEY (personnage_id, action_id)
 ) STRICT, WITHOUT ROWID;
 
 -- Groupe de jeu : la table d'un one-shot (« OS ») ou d'une campagne. Ses membres voient les fiches qui y sont inscrites.
@@ -4467,7 +4964,8 @@ CREATE VIEW v_personnage_metier_bonus AS
 -- Dons acquis d'une fiche (décision R32, migration 0076) : le miroir de lib/fiche-moteur.mjs#donsAcquis. Pour chaque classe prise qui a des niveaux
 -- (niveau de classe >= 1, v_personnage_niveau ; la seconde d'un mono-classe n'en a qu'au niveau global 11, R2), ses dons jusqu'au niveau de classe
 -- atteint, de sa spécialité quand ils en ont une (celle de la fiche), et, pour un don à choix (nature 'choix'), seulement s'il est choisi
--- (personnage_capacite). Sert aux sources de maîtrise d'arme (R148) et aux NM gagnés des dons (R154).
+-- (personnage_capacite). Sert aux sources de maîtrise d'arme (R148), aux NM gagnés des dons (R154), aux dons « Variable » du Mage Bleu (R181) et
+-- au plafond de NPM relevé par un don (R188).
 CREATE VIEW v_personnage_don_acquis AS
   SELECT pc.personnage_id, pc.rang AS classe_rang, pc.classe_id, c.id AS capacite_id
   FROM personnage_classe pc
@@ -4577,8 +5075,8 @@ CREATE VIEW v_groupe_controle AS
 
 -- Contrôle d'une fiche : une ligne par règle enfreinte (vide = fiche conforme pour ces règles). `regle` est une clé stable ; `detail` dit quoi.
 -- Seules des règles écrites dans la base sont vérifiées (matrices de la fiche, onglets, guide, décisions R2, R3, R8, R11, R15, R16, R20, R23, R24, R25, R26, R33, R45, R73, R95, R96,
--- R100, R104, R118, les maîtrises d'armes de R148 à R151, R154, l'armure de R165 et les armes élémentaires de R167) ; ce qui
--- demande le moteur (bonus de classe, d'équipement, nombre de sorts, plafond de NPM du Potentiel Illimité, poids d'armure portable de R165) n'est pas ici. Toute fiche est
+-- R100, R104, R118, les maîtrises d'armes de R148 à R151, R154, l'armure de R165, les armes élémentaires de R167, les dons « Variable » de R181, le plafond
+-- de NPM de R188, la santé du Potentiel Illimité de R225 et les spécialisations magiques de R236) ; ce qui demande le moteur (bonus de classe, d'équipement, nombre de sorts, poids d'armure portable de R165) n'est pas ici. Toute fiche est
 -- contrôlée, même inachevée : il n'y a plus de statut (demande du propriétaire, migration 0038) ; une ligne signale, elle n'empêche pas d'enregistrer.
 CREATE VIEW v_personnage_controle AS
   -- Race : classe accessible (matrice « Accessibilité de Classe », décision R8)
@@ -4596,16 +5094,10 @@ CREATE VIEW v_personnage_controle AS
   FROM personnage p
   WHERE p.magie_innee_id IS NULL
   UNION ALL
-  -- Classe réservée à une magie innée, qui l'impose en classe 1 (classe.magie_innee_id ; l'Archimage et le Potentiel Illimité, décision R23)
+  -- Classe réservée à une magie innée, qui ne l'impose plus (classe.magie_innee_id ; l'Archimage et le Potentiel Illimité, décisions R23 et R238 (5))
   SELECT pc.personnage_id, 'classe_reservee', pc.classe_id
   FROM personnage_classe pc JOIN classe c ON c.id = pc.classe_id JOIN personnage p ON p.id = pc.personnage_id
   WHERE c.magie_innee_id IS NOT NULL AND c.magie_innee_id IS NOT p.magie_innee_id
-  UNION ALL
-  SELECT p.id, 'classe_imposee', c.id
-  FROM personnage p
-  JOIN classe c ON c.magie_innee_id = p.magie_innee_id
-  JOIN personnage_classe pc ON pc.personnage_id = p.id AND pc.rang = 1
-  WHERE pc.classe_id <> c.id
   UNION ALL
   -- Classe que ferme la magie innée, à tous les rangs (classe.magie_innee_exclue_id ; le Mage Bleu et le Potentiel Illimité, décision R25)
   SELECT pc.personnage_id, 'classe_exclue', pc.classe_id
@@ -4723,6 +5215,20 @@ CREATE VIEW v_personnage_controle AS
   WHERE p.gains_sante + p.gains_chakra NOT BETWEEN v.points_attributs_cumul + v.de_attributs_min_cumul
                                                AND v.points_attributs_cumul + v.de_attributs_max_cumul
   UNION ALL
+  -- Santé du Potentiel Illimité (décision R225, migration 0111) : avec le Potentiel Illimité en magie innée, au plus N santé par niveau sur les points
+  -- d'attributs (regle_constante potentiel_illimite.sante_max_par_niveau ; les niveaux atteints dont niveau_global.points_attributs est renseigné), le
+  -- dé bonus des niveaux qui en donnent un en plus, à son plus grand résultat (v_niveau.de_attributs_max_cumul). Signalé, jamais rogné ; la somme
+  -- reste la règle gains_niveau. Détail : « santé / plafond »
+  SELECT n.personnage_id, 'gains_sante_potentiel', p.gains_sante || ' / ' || (r.valeur * (SELECT count(*) FROM niveau_global g
+           WHERE g.niveau <= n.niveau_global AND g.points_attributs IS NOT NULL) + v.de_attributs_max_cumul)
+  FROM v_personnage_niveau n
+  JOIN personnage p ON p.id = n.personnage_id
+  JOIN v_niveau v ON v.niveau = n.niveau_global
+  JOIN regle_constante r ON r.id = 'potentiel_illimite.sante_max_par_niveau'
+  WHERE p.magie_innee_id = 'magies/potentiel-illimite'
+    AND p.gains_sante > r.valeur * (SELECT count(*) FROM niveau_global g WHERE g.niveau <= n.niveau_global AND g.points_attributs IS NOT NULL)
+                        + v.de_attributs_max_cumul
+  UNION ALL
   -- Classes : la 2e existe exactement quand elle a des niveaux (R2) ; une spécialité se choisit au niveau de classe 10 (BDD!I2, J2)
   SELECT n.personnage_id, 'classe_2_manquante', CAST(n.niveau_classe_2 AS TEXT)
   FROM v_personnage_niveau n
@@ -4760,41 +5266,72 @@ CREATE VIEW v_personnage_controle AS
   -- au plus niveau global − 1 sur un sort (BDD!BB6) et au plus les NM gagnés en tout ; au-delà, ils viennent d'un livre ou du MJ (décision R24). Depuis la
   -- décision R118 (migration 0066), les NM du MJ sont ceux de la fiche (personnage.nm_mj), pas d'un sort : les NM d'un sort sans celui de son livre
   -- comptent, au plus niveau global − 1 plus les NM du MJ sur un sort, au plus les NM gagnés plus ceux du MJ en tout (tant qu'un niveau donne un NM, la
-  -- seconde règle implique la première, qui nomme le sort)
+  -- seconde règle implique la première, qui nomme le sort). Le livre d'un sort (personnage_livre_sort, décision R169, migration 0082) n'est ôté que
+  -- d'un sort choisi (une ligne de personnage_sort, jointe par la clé primaire du livre : jamais deux lignes) qui a au moins 1 NM (comme
+  -- lib/fiche-moteur.mjs#nmDuSort : jamais moins de 0 NM comptés) ; le livre d'un sort non choisi, en attente, ne change rien. Plafond de NPM (décision
+  -- R188, migration 0097) : une magie innée qui en a un (magie_npm_plafond : le Potentiel Illimité, 3) borne aussi le NPM du sort, relevé par un don acquis
+  -- (capacite_npm_plafond, v_personnage_don_acquis : « Semi-complet », 4) ; NPM au plus min(puissance du niveau, max de ces plafonds)
   SELECT ps.personnage_id, 'sort_hors_magie', ps.sort_id
   FROM personnage_sort ps JOIN sort s ON s.id = ps.sort_id JOIN personnage p ON p.id = ps.personnage_id
   WHERE s.magie_id <> COALESCE(p.magie_innee_id, '') AND s.magie_id <> COALESCE(p.magie_acquise_id, '')
     AND COALESCE(p.magie_innee_id, '') <> 'magies/potentiel-illimite'
+  UNION ALL
+  -- Spécialisations magiques (décision R236, migration 0118) : seul le bi-magie (une magie acquise, une magie innée autre que le Potentiel Illimité)
+  -- choisit, une spécialisation par magie (R236 (3), personnage_specialisation_magie). Un sort d'une de ses magies qui a une spécialisation (NPM 3 à 5)
+  -- hors de celle choisie pour cette magie, ou sans choix, est signalé (sort_hors_specialisation) ; une spécialisation choisie pour une magie qui n'est
+  -- ni son innée ni son acquise aussi (specialisation_hors_magie). Mono-magie (R236 (2) : les deux spécialisations) et Potentiel Illimité (R236 (7) :
+  -- celles de chaque magie) : jamais signalés, leurs lignes gardées sans effet. Le choix reste modifiable (R236 (6)) : signalé, jamais refusé
+  SELECT ps.personnage_id, 'sort_hors_specialisation', ps.sort_id
+  FROM personnage_sort ps JOIN sort s ON s.id = ps.sort_id JOIN personnage p ON p.id = ps.personnage_id
+  WHERE s.specialisation_id IS NOT NULL
+    AND p.magie_acquise_id IS NOT NULL AND COALESCE(p.magie_innee_id, '') <> 'magies/potentiel-illimite'
+    AND s.magie_id IN (COALESCE(p.magie_innee_id, ''), p.magie_acquise_id)
+    AND NOT EXISTS (SELECT 1 FROM personnage_specialisation_magie m
+                    WHERE m.personnage_id = ps.personnage_id AND m.magie_id = s.magie_id AND m.specialisation_id = s.specialisation_id)
+  UNION ALL
+  SELECT m.personnage_id, 'specialisation_hors_magie', m.specialisation_id
+  FROM personnage_specialisation_magie m JOIN personnage p ON p.id = m.personnage_id
+  WHERE p.magie_acquise_id IS NOT NULL AND COALESCE(p.magie_innee_id, '') <> 'magies/potentiel-illimite'
+    AND m.magie_id <> COALESCE(p.magie_innee_id, '') AND m.magie_id <> p.magie_acquise_id
   UNION ALL
   SELECT ps.personnage_id, 'sort_puissance', ps.sort_id || ' : NPM ' || s.niveau
   FROM personnage_sort ps
   JOIN sort s ON s.id = ps.sort_id
   JOIN personnage p ON p.id = ps.personnage_id
   JOIN v_personnage_niveau n ON n.personnage_id = ps.personnage_id
+  LEFT JOIN magie_npm_plafond mp ON mp.magie_id = p.magie_innee_id
   WHERE s.niveau > (SELECT MAX(g.puissance_magique) FROM niveau_global g
                     WHERE g.niveau <= n.niveau_global AND (p.magie_acquise_id IS NULL OR g.puissance_magique_note IS NULL))
+     OR (s.niveau > mp.npm
+         AND NOT EXISTS (SELECT 1 FROM v_personnage_don_acquis a JOIN capacite_npm_plafond c ON c.capacite_id = a.capacite_id
+                         WHERE a.personnage_id = ps.personnage_id AND c.npm >= s.niveau))
   UNION ALL
   SELECT ps.personnage_id, 'sort_nm_plafond', ps.sort_id || ' = ' || ps.niveau_maitrise
   FROM personnage_sort ps
   WHERE ps.niveau_maitrise > (SELECT r.valeur FROM regle_constante r WHERE r.id = 'sort.nm_max')
   UNION ALL
-  SELECT ps.personnage_id, 'sort_nm_max', ps.sort_id || ' = ' || (ps.niveau_maitrise - ps.nm_livre)
+  SELECT ps.personnage_id, 'sort_nm_max', ps.sort_id || ' = ' || (ps.niveau_maitrise - CASE WHEN l.sort_id IS NULL OR ps.niveau_maitrise = 0 THEN 0 ELSE 1 END)
   FROM personnage_sort ps
+  LEFT JOIN personnage_livre_sort l ON l.personnage_id = ps.personnage_id AND l.sort_id = ps.sort_id
   JOIN personnage p ON p.id = ps.personnage_id
   JOIN v_personnage_niveau n ON n.personnage_id = ps.personnage_id
-  WHERE ps.niveau_maitrise - ps.nm_livre > n.niveau_global - (SELECT r.valeur FROM regle_constante r WHERE r.id = 'sort.nm_ecart_niveau_global') + p.nm_mj
+  WHERE ps.niveau_maitrise - CASE WHEN l.sort_id IS NULL OR ps.niveau_maitrise = 0 THEN 0 ELSE 1 END > n.niveau_global - (SELECT r.valeur FROM regle_constante r WHERE r.id = 'sort.nm_ecart_niveau_global') + p.nm_mj
   UNION ALL
   -- NM gagnés : ceux des niveaux (v_niveau.niveaux_maitrise_cumul), plus ceux qu'écrit un don acquis (« Gagne 4 niveaux de maîtrise (NM). » de
   -- l'Ocultomancien : capacite_nm_gagne, v_personnage_don_acquis ; décision R154, migration 0076), plus ceux du MJ ; sort_nm_max ne les lit pas.
   -- Détail : « comptés / des niveaux », puis « + N des dons » et « + N du MJ » quand il y en a
-  SELECT n.personnage_id, 'sorts_nm_total', (SELECT SUM(ps.niveau_maitrise - ps.nm_livre) FROM personnage_sort ps WHERE ps.personnage_id = n.personnage_id) || ' / '
+  SELECT n.personnage_id, 'sorts_nm_total', (SELECT SUM(ps.niveau_maitrise - CASE WHEN l.sort_id IS NULL OR ps.niveau_maitrise = 0 THEN 0 ELSE 1 END) FROM personnage_sort ps
+                                             LEFT JOIN personnage_livre_sort l ON l.personnage_id = ps.personnage_id AND l.sort_id = ps.sort_id
+                                             WHERE ps.personnage_id = n.personnage_id) || ' / '
          || v.niveaux_maitrise_cumul || CASE WHEN d.nm > 0 THEN ' + ' || d.nm || ' des dons' ELSE '' END
          || CASE WHEN p.nm_mj > 0 THEN ' + ' || p.nm_mj || ' du MJ' ELSE '' END
   FROM v_personnage_niveau n JOIN v_niveau v ON v.niveau = n.niveau_global JOIN personnage p ON p.id = n.personnage_id
   JOIN (SELECT q.id AS personnage_id, COALESCE((SELECT SUM(g.nm) FROM v_personnage_don_acquis a JOIN capacite_nm_gagne g ON g.capacite_id = a.capacite_id
                                                 WHERE a.personnage_id = q.id), 0) AS nm
         FROM personnage q) d ON d.personnage_id = n.personnage_id
-  WHERE (SELECT SUM(ps.niveau_maitrise - ps.nm_livre) FROM personnage_sort ps WHERE ps.personnage_id = n.personnage_id) > v.niveaux_maitrise_cumul + d.nm + p.nm_mj
+  WHERE (SELECT SUM(ps.niveau_maitrise - CASE WHEN l.sort_id IS NULL OR ps.niveau_maitrise = 0 THEN 0 ELSE 1 END) FROM personnage_sort ps
+         LEFT JOIN personnage_livre_sort l ON l.personnage_id = ps.personnage_id AND l.sort_id = ps.sort_id
+         WHERE ps.personnage_id = n.personnage_id) > v.niveaux_maitrise_cumul + d.nm + p.nm_mj
   UNION ALL
   -- Bouclier (décision R96) : une forme et une matière ; la matière, l'amélioration ou la solidité n'existent qu'avec la forme, et la forme attend sa matière
   SELECT p.id, 'bouclier_manquant', COALESCE(p.bouclier_materiau_id, p.bouclier_amelioration_id, CAST(p.bouclier_solidite AS TEXT))
@@ -4876,6 +5413,44 @@ CREATE VIEW v_personnage_controle AS
   SELECT m.personnage_id, 'maitrise_plafond', m.arme_famille_id || ' = ' || m.points || ' / ' || m.points_comptes
   FROM v_personnage_maitrise_arme m
   WHERE m.points > m.points_comptes
+  UNION ALL
+  -- Dons « Variable » du Mage Bleu (décision R181) : un don acquis (v_personnage_don_acquis) de capacite_variable obtient une entrée du tableau libre
+  -- de sa classe (classe_annexe_entree), sur la ligne de sa magie innée, ou acquise pour Secondaire (capacite_variable.magie). Don qui vise la magie
+  -- acquise sans magie acquise : il ne se choisit pas (détail : le don)
+  SELECT a.personnage_id, 'don_obtenu_sans_magie_acquise', a.capacite_id
+  FROM v_personnage_don_acquis a
+  JOIN capacite_variable v ON v.capacite_id = a.capacite_id
+  JOIN personnage p ON p.id = a.personnage_id
+  WHERE v.magie = 'acquise' AND p.magie_acquise_id IS NULL
+  UNION ALL
+  -- Don acquis sans choix, quand sa liste garde une entrée que la fiche n'a pas prise (« chaque entrée ne se prend qu'une fois ») : sans entrée libre
+  -- (une magie à 3 entrées pour 4 dons « Variable », question Q96 ; une magie absente ou sans ligne), rien n'est exigé (détail : le don)
+  SELECT a.personnage_id, 'don_obtenu_a_choisir', a.capacite_id
+  FROM v_personnage_don_acquis a
+  JOIN capacite_variable v ON v.capacite_id = a.capacite_id
+  JOIN personnage p ON p.id = a.personnage_id
+  WHERE NOT EXISTS (SELECT 1 FROM personnage_don_obtenu o WHERE o.personnage_id = a.personnage_id AND o.source = a.capacite_id)
+    AND EXISTS (SELECT 1 FROM classe_annexe x JOIN classe_annexe_entree e ON e.classe_id = x.classe_id AND e.annexe_rang = x.rang
+                WHERE x.classe_id = a.classe_id
+                  AND x.magie_id = CASE v.magie WHEN 'innee' THEN p.magie_innee_id ELSE p.magie_acquise_id END
+                  AND NOT EXISTS (SELECT 1 FROM personnage_don_obtenu o WHERE o.personnage_id = a.personnage_id AND o.entree_id = e.id))
+  UNION ALL
+  -- Un choix relève d'une seule règle : d'un don qui n'est plus acquis (classe, spécialité, niveau, don à choix perdus) ou qui n'est pas un don
+  -- « Variable », don_obtenu_source_perdue (gardé sans effet, comme maitrise_source_perdue) ; sinon, d'une entrée hors de la liste du don (autre classe,
+  -- autre magie, magie visée absente), don_obtenu_hors_liste. Détail : « source = entrée »
+  SELECT o.personnage_id, 'don_obtenu_source_perdue', o.source || ' = ' || o.entree_id
+  FROM personnage_don_obtenu o
+  WHERE NOT EXISTS (SELECT 1 FROM v_personnage_don_acquis a JOIN capacite_variable v ON v.capacite_id = a.capacite_id
+                    WHERE a.personnage_id = o.personnage_id AND a.capacite_id = o.source)
+  UNION ALL
+  SELECT o.personnage_id, 'don_obtenu_hors_liste', o.source || ' = ' || o.entree_id
+  FROM personnage_don_obtenu o
+  JOIN v_personnage_don_acquis a ON a.personnage_id = o.personnage_id AND a.capacite_id = o.source
+  JOIN capacite_variable v ON v.capacite_id = a.capacite_id
+  JOIN personnage p ON p.id = o.personnage_id
+  WHERE NOT EXISTS (SELECT 1 FROM classe_annexe_entree e JOIN classe_annexe x ON x.classe_id = e.classe_id AND x.rang = e.annexe_rang
+                    WHERE e.id = o.entree_id AND x.classe_id = a.classe_id
+                      AND x.magie_id = CASE v.magie WHEN 'innee' THEN p.magie_innee_id ELSE p.magie_acquise_id END)
   UNION ALL
   -- Équipement : chaque amélioration vise le bon genre d'objet ; celle d'une arme, du catalogue ou élémentaire, est une ligne du tableau fondu des armes
   -- (cible 'arme' : décision R167, migration 0081)
@@ -4977,9 +5552,17 @@ CREATE TABLE modification_lot (
   resolu_par TEXT    REFERENCES modification_lot(id) CHECK (resolu_par IS NULL OR (resolu_le IS NOT NULL AND resolu_par <> id)),
                                                                      -- le lot normal qui reprend celui-ci ; NULL : pas résolu, ou tous les choix ont
                                                                      -- abandonné (rien à écrire). Sans index : petite table, lue par id
-  resolution TEXT    CHECK ((resolution IS NULL) = (resolu_le IS NULL) AND (resolution IS NULL OR (json_valid(resolution) AND json_type(resolution) = 'array')))
+  resolution TEXT    CHECK ((resolution IS NULL) = (resolu_le IS NULL) AND (resolution IS NULL OR (json_valid(resolution) AND json_type(resolution) = 'array'))),
                                                                      -- les choix faits : [{"rang": n, "colonne": "corps_md" | null, "choix": 1 | 2 | 3}] ;
                                                                      -- la valeur saisie au choix 3 est dans le nouveau lot, pas ici
+  nature     TEXT    NOT NULL DEFAULT 'saisie' CHECK (nature IN ('saisie', 'source', 'decision', 'migration', 'code')),
+                                                                     -- d'où vient le lot (migration 0127, R275) : 'saisie' = fait sur le site de dev ;
+                                                                     -- 'source' = réimport d'une source ; 'decision' = application d'une décision du
+                                                                     -- propriétaire (son numéro dans `decision`) ; 'migration' = changement de données du
+                                                                     -- dépôt ; 'code' = recalcul après un changement de code
+  decision   TEXT    CHECK ((nature = 'decision') = (decision IS NOT NULL) AND (decision IS NULL OR (decision GLOB 'R[0-9]*' AND decision NOT GLOB 'R*[^0-9]*')))
+                                                                     -- numéro de la décision appliquée (« R275 », docs/decisions-regles.md) ;
+                                                                     -- présent si et seulement si nature = 'decision'
 ) STRICT;
 
 -- Une ligne de table touchée par un lot. `cle` = la clé primaire de la ligne ({"id": "metiers/forgeron"}) ; `avant` / `apres` = les colonnes
@@ -5008,6 +5591,69 @@ CREATE TABLE modification (
 CREATE INDEX modification_etat ON modification (etat);
 CREATE INDEX modification_ligne ON modification (table_nom, cle);
 
+-- Un lot de changements déposé par une session de Claude (lot 6 du chantier « la base du site de dev devient la source de vérité », R274, R275 ;
+-- migration 0128 ; format : client/src/lib/lot-de-changements.mjs). Le dépôt n'écrit rien dans le contenu : le service l'essaie à blanc sur une
+-- copie, puis le propriétaire l'applique ou le refuse. L'application écrit les tables et un lot du journal (`lot_id`, de la nature du lot) d'un seul
+-- bloc ; une valeur changée entre-temps n'est pas écrite. « Annuler ce lot » écrit un autre lot du journal (`annulation_lot_id`). Une proposition
+-- n'est jamais effacée. Sans index sur `etat` : petite table, lue par id ou en entier.
+CREATE TABLE lot_de_changements (
+  id                TEXT    NOT NULL PRIMARY KEY CHECK (length(id) > 0),   -- UUID tiré par le service
+  depose_le         TEXT    NOT NULL CHECK (depose_le GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9]Z'),
+  titre             TEXT    NOT NULL CHECK (length(titre) > 0),            -- l'en-tête du lot (`contenu`), recopié au dépôt : le résumé au journal
+  nature            TEXT    NOT NULL CHECK (nature IN ('source', 'decision', 'migration', 'code')),
+                                                                           -- celle de modification_lot.nature, jamais 'saisie' (un lot n'est pas une
+                                                                           -- saisie du site) ; recopiée de l'en-tête, comme `decision`
+  decision          TEXT    CHECK (decision IS NULL OR (decision GLOB 'R[0-9]*' AND decision NOT GLOB 'R*[^0-9]*')),
+                                                                           -- numéro de la décision appliquée (« R275 ») ; présent ssi nature = 'decision'
+  auteur            TEXT    CHECK (auteur IS NULL OR length(auteur) > 0),  -- texte libre de l'en-tête ; NULL : non dit
+  contenu           TEXT    NOT NULL CHECK (json_valid(contenu) AND json_type(contenu) = 'object'
+                                   AND coalesce(json_type(contenu, '$.operations'), '') = 'array'),
+                                                                           -- le lot tel que déposé (en-tête et operations)
+  etat              TEXT    NOT NULL CHECK (etat IN ('propose', 'applique', 'refuse', 'annule')),
+  essai             TEXT    CHECK (essai IS NULL OR (json_valid(essai) AND json_type(essai) = 'object')),
+                                                                           -- le dernier essai à blanc (aperçu, contrôles) ; NULL : jamais essayé
+  essaye_le         TEXT    CHECK (essaye_le IS NULL OR essaye_le GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9]Z'),
+  decide_le         TEXT    CHECK (decide_le IS NULL OR decide_le GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9]Z'),
+                                                                           -- instant de l'application ou du refus ; NULL ssi etat = 'propose'
+  lot_id            TEXT    REFERENCES modification_lot(id),               -- le lot du journal écrit à l'application ; présent ssi appliqué ou annulé
+  verrous_ouverts   TEXT    CHECK (verrous_ouverts IS NULL OR (json_valid(verrous_ouverts) AND json_type(verrous_ouverts) = 'array'
+                                   AND json_type(verrous_ouverts, '$[0]') IS NOT NULL)),
+                                                                           -- les numéros « R… » que le propriétaire a accepté d'ouvrir au clic
+                                                                           -- d'application ; NULL : aucun verrou ouvert
+  annule_le         TEXT    CHECK (annule_le IS NULL OR annule_le GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9]Z'),
+  annulation_lot_id TEXT    REFERENCES modification_lot(id),               -- le lot du journal qui annule celui-ci ; présent ssi etat = 'annule'
+  bilan             TEXT    CHECK (bilan IS NULL OR (json_valid(bilan) AND json_type(bilan) = 'object')),
+                                                                           -- ce que l'application a fait : opérations écrites, valeurs changées
+                                                                           -- entre-temps et non écrites (avec la valeur trouvée au clic), numéros
+                                                                           -- donnés ; NULL ssi proposé ou refusé
+  CHECK ((nature = 'decision') = (decision IS NOT NULL)),
+  CHECK ((essai IS NULL) = (essaye_le IS NULL)),
+  CHECK ((etat = 'propose') = (decide_le IS NULL)),
+  CHECK ((etat IN ('applique', 'annule')) = (lot_id IS NOT NULL)),
+  CHECK ((etat = 'annule') = (annule_le IS NOT NULL)),
+  CHECK ((etat = 'annule') = (annulation_lot_id IS NOT NULL)),
+  CHECK ((etat IN ('applique', 'annule')) = (bilan IS NOT NULL)),
+  CHECK (verrous_ouverts IS NULL OR etat IN ('applique', 'annule')),
+  CHECK (annulation_lot_id IS NULL OR annulation_lot_id <> lot_id),
+  CHECK (essaye_le IS NULL OR essaye_le >= depose_le),
+  CHECK (decide_le IS NULL OR decide_le >= depose_le),
+  CHECK (annule_le IS NULL OR annule_le >= decide_le)
+) STRICT;
+-- un lot du journal n'est écrit que par une application ou une annulation (index aussi des clés étrangères)
+CREATE UNIQUE INDEX lot_de_changements_lot ON lot_de_changements (lot_id);
+CREATE UNIQUE INDEX lot_de_changements_annulation ON lot_de_changements (annulation_lot_id);
+
+-- Le plus haut numéro jamais donné, par table et colonne de clé entière (lot 6 du chantier, garde-fou 11 : « Un numéro n'est jamais redonné, même
+-- par un lot ou après une restauration » ; migration 0128). Jamais diminué : le service le monte quand il donne un numéro (application d'un lot).
+-- Le numéro suivant dépasse le maximum de ce plafond, de la table et des traces du journal (`modification`) et de l'historique
+-- (`historique_modification`) : une ligne retirée, un lot annulé ou une base restaurée ne font pas redonner un numéro.
+CREATE TABLE numero_donne (
+  table_nom TEXT    NOT NULL CHECK (length(table_nom) > 0 AND table_nom NOT GLOB '*[^a-z0-9_]*'),
+  colonne   TEXT    NOT NULL CHECK (length(colonne) > 0 AND colonne NOT GLOB '*[^a-z0-9_]*'),
+  plafond   INTEGER NOT NULL CHECK (plafond >= 0),
+  PRIMARY KEY (table_nom, colonne)
+) STRICT;
+
 -- La note de version en préparation sur le site de dev (page /mise-a-jour/ : le champ libre que les admins remplissent, en plus de la liste
 -- calculée ; migration 0023). Une seule ligne. `lot` : le lot figé quand « Effectuer la mise à jour » est lancé (son texte part avec lui) ; la
 -- ligne est vidée quand une livraison apporte la note de version de ce lot (client/serveur/base-vivante.mjs).
@@ -5018,6 +5664,27 @@ CREATE TABLE note_version_brouillon (
   lot         TEXT    CHECK (lot IS NULL OR length(lot) > 0),
   majeure     INTEGER CHECK (majeure IS NULL OR majeure = 1)         -- la case « Version majeure » (migration 0070) : 1 = cochée, la prochaine mise à jour
                                                                      -- est la X+1.0 (PR de livraison avec [V: X+1]) ; NULL = décochée ; part avec le lot
+) STRICT;
+
+-- Ce que la base a reçu : une ligne par migration data/migrations/NNNN-<nom>.sql reçue par CETTE base (lot 7 du chantier « la base du site de dev
+-- devient la source de vérité », R274, R275 ; migration 0129). Propre à chaque base : data/rows la garde VIDE (la base du dépôt ne reçoit rien), le
+-- service remplit celle de sa base vivante, jamais dans un extrait ni un paquet (lib/tables-de-la-base.mjs#TABLES_DU_JOURNAL). Une ligne n'est jamais
+-- réécrite : une migration reçue l'est une fois, sur place ou par une reconstruction. Sans index : petite table, lue par numéro ou en entier.
+CREATE TABLE migration_recue (
+  numero          INTEGER NOT NULL PRIMARY KEY CHECK (numero >= 1),        -- le NNNN du fichier (« 129 » pour 0129-…)
+  fichier         TEXT    NOT NULL CHECK (fichier GLOB '[0-9][0-9][0-9][0-9]-?*.sql' AND fichier NOT GLOB '*[^a-z0-9.-]*'
+                                          AND CAST(substr(fichier, 1, 4) AS INTEGER) = numero),
+                                                                           -- nom du fichier dans data/migrations/ (« 0129-migrations-recues.sql »)
+  empreinte       TEXT    NOT NULL CHECK (length(empreinte) = 64 AND empreinte NOT GLOB '*[^0-9a-f]*'),
+                                                                           -- sha256 du fichier SQL reçu, octets tels quels, en hexadécimal minuscule :
+                                                                           -- une migration fusionnée ne se modifie plus, un écart se voit
+  recue_le        TEXT    NOT NULL CHECK (recue_le GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]T[0-2][0-9]:[0-5][0-9]:[0-5][0-9]Z'),
+  mode            TEXT    NOT NULL CHECK (mode IN ('reconstruction', 'sur_place')),
+                                                                           -- 'reconstruction' : base refaite depuis le dépôt à une version qui la
+                                                                           -- contient ; 'sur_place' : appliquée par le service à la base en place
+  version_du_site TEXT    CHECK (version_du_site IS NULL OR (version_du_site GLOB '[0-9]*.[0-9]*.[0-9]*'
+                                 AND version_du_site NOT GLOB '*[^0-9.]*' AND version_du_site NOT GLOB '*.*.*.*'))
+                                                                           -- version X.Y.Z du site qui l'a reçue (client/package.json) ; NULL : non dite
 ) STRICT;
 
 -- ====================================================================================================================
@@ -5041,7 +5708,7 @@ CREATE TABLE note_version (
 
 -- Une ligne de la liste calculée : une modification d'un champ d'une entité entre la production et la nouvelle version. `domaine` range la ligne
 -- (sorts, magies, classes et leurs dons, races, métiers, guide, Codex, bestiaire : migration 0032 ; armes : 0034 ; composants : 0040 ; chronologie, mots-clés : 0043 ;
--- armures et boucliers : 0046 ; équipement, les panneaux de règles des onglets de /ressources/equipement/ : 0056), `groupe` et `entite` la nomment (« Lumière » › « Flash »), au nom qu'elle porte
+-- armures et boucliers : 0046 ; équipement, les panneaux de règles des pages de l'équipement : 0056), `groupe` et `entite` la nomment (« Lumière » › « Flash »), au nom qu'elle porte
 -- dans la nouvelle version (l'ancien pour une entité retirée). `sens` : la couleur (vert, rouge, gris) d'après les critères du propriétaire
 -- (client/src/lib/notes-de-version.mjs) ; `parties` : le détail quand une case se lit en morceaux (valeur de base, expression de NM), chacun avec son sens.
 -- `table_nom`, `cle`, `colonne` : la trace de la ligne de la base d'où elle vient.
@@ -5080,6 +5747,11 @@ CREATE TABLE historique_modification (
   operation   TEXT    NOT NULL CHECK (operation IN ('inserer', 'modifier', 'supprimer')),
   avant       TEXT    CHECK (avant IS NULL OR (json_valid(avant) AND json_type(avant) = 'object')),
   apres       TEXT    CHECK (apres IS NULL OR (json_valid(apres) AND json_type(apres) = 'object')),
+  nature      TEXT    NOT NULL DEFAULT 'saisie' CHECK (nature IN ('saisie', 'source', 'decision', 'migration', 'code')),
+                                                                     -- celle du lot (modification_lot.nature, migration 0127) ; les lignes d'avant
+                                                                     -- la 0127 sont des saisies du site de dev
+  decision    TEXT    CHECK ((nature = 'decision') = (decision IS NOT NULL) AND (decision IS NULL OR (decision GLOB 'R[0-9]*' AND decision NOT GLOB 'R*[^0-9]*'))),
+                                                                     -- celle du lot (modification_lot.decision)
   PRIMARY KEY (lot_id, rang),
   CHECK ((operation = 'inserer') = (avant IS NULL)),
   CHECK ((operation = 'supprimer') = (apres IS NULL))

@@ -1,0 +1,552 @@
+{
+ "migration": "0112-r231-attaquer-et-se-defendre",
+ "decisions": [
+  "R231"
+ ],
+ "description": "Réécriture des pages « Attaquer » (guide/attaquer-et-se-defendre) et « Se défendre » (guide/attaque-et-defense), renvois des autres pages et mots-clés de la fiche (décision R231, 2026-11-08). `textes` : une entrée par texte réécrit, dans l'ordre de la migration ; `avant` et `apres` sont la valeur entière (titre, résumé et corps des deux pages, définition de defense-partielle, libellés) ou le fragment qui change (présent une seule fois dans la valeur d'avant). Ce ne sont pas des corrections d'orthographe d'un classeur : le registre ne les range pas sous `corrections` (tools/sources/rapprocher.mjs). `mots_cles_crees` : les mots-clés ajoutés (`url_du_cahier` : l'adresse que le cahier de game-design donnait, non posée) ; `mots_cles_colores` : les existants qui prennent une couleur ; `renvois` : la page que vise chaque renvoi réécrit.",
+ "textes": [
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/attaquer-et-se-defendre"
+   },
+   "col": "titre",
+   "decision": "R231 (1)",
+   "avant": "Attaquer et se défendre",
+   "apres": "Attaquer"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/attaquer-et-se-defendre"
+   },
+   "col": "resume",
+   "decision": "R231 (1)",
+   "avant": "Le jet d’attaque, la parade et l’esquive, la défense partielle qui divise les dégâts par deux, les coups visés et les situations qui changent la donne.",
+   "apres": "Le jet d’attaque et la compétence qui le porte, la réussite et l’échec critiques, une arme dans chaque main, les armes à part, les coups visés et les situations qui renforcent une attaque."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/attaquer-et-se-defendre"
+   },
+   "col": "corps_md",
+   "decision": "R231 (1)",
+   "avant": "Un coup se joue en deux jets de D100 : celui de l’attaquant pour toucher, puis, si sa posture le lui permet, celui de la cible pour se défendre. Si le coup passe, il reste à compter les dégâts (voir {{degats|Les dégâts}}).\n\n## Attaquer\n\n### Le jet d’attaque\n\nL’attaquant lance un D100 et doit faire son score ou moins dans la compétence qui sert à l’attaque :\n\n- **avec une arme**, la compétence de l’arme, que donne la colonne *Compétence* de la page des {{armes|armes}} : *Arme Légère* (Agilité), *Arme Lourde* (Force), *Arc* (Force) ou *Arbalète* (Perception) ; certaines armes en écrivent deux (Lourde / Légère, Arc / Légère) : le joueur choisit alors celle des deux qui sert ;\n- **avec un sort**, la compétence *Magie* (Intelligence) ; les mages rouge, bleu et vert lancent les leurs avec *Concentration* (Volonté).\n\nDeux résultats sortent de l’ordinaire :\n\n- **Réussite critique (1 à 5)** : les dégâts de l’attaque, bonus compris, sont doublés, et la cible ne peut bloquer le coup que par une réussite critique égale ou plus basse que celle de l’attaquant. La posture offensive l’élargit à 1 à 10 sur les six jets d’attaque, *Concentration* comprise ; d’autres bonus (un score au-delà de 95 %, un don, un sort, la tenaille…) l’élargissent encore, sans jamais dépasser 1 à 15 (voir {{reussir-une-action}}).\n- **Échec critique (96 à 100)** : la cible peut riposter par une attaque d’opportunité, ou désarmer l’attaquant si c’est possible ; le MJ peut aussi en décider autrement.\n\n### Une arme dans chaque main\n\nAvec une arme de mêlée dans chaque main, chaque attaque subit un malus :\n\n- **−20 %** pour la main directrice (l’arme 1 de la fiche), **−40 %** pour la main secondaire ;\n- ce malus est divisé par deux pour la main qui tient une dague, et divisé par deux pour un personnage de la classe {{bimane}} ; les deux se cumulent.\n\n*Exemple : un Bimane qui tient une épée et une dague attaque à −10 % de chaque main.*\n\nCela ne vaut que pour deux armes de mêlée : l’arc, l’arbalète, les armes de jet et les bombes n’y entrent pas.\n\n### Quelques armes à part\n\n- **La dague** : un coup réussi à la dague impose un malus de 10 % à la défense de l’adversaire (20 % avec la lame secrète).\n- **Les armes de jet** : on peut en lancer deux en sacrifiant son déplacement et son action (ou utiliser deux fois la fronde).\n- **Le {{mordhau}}** : prendre son arme par la lame pour frapper avec le manche donne des dégâts de frappe à une arme qui n’en fait pas, au risque de l’abîmer (voir {{lequipement}}).\n\n## Se défendre\n\n### Parer ou esquiver\n\nAttaquée, la cible peut tenter :\n\n- une **parade**, avec son arme ou son bouclier : compétence *Parade* (Force) ;\n- une **esquive** : compétence *Esquive* (Agilité).\n\nC’est un jet de D100, possible seulement si sa posture le permet et qu’il lui reste des défenses pour le tour. Pour bloquer entièrement le coup, deux conditions : **réussir son jet, et faire un résultat égal ou inférieur à celui de l’attaquant.** Au D100, un meilleur résultat est un résultat plus bas.\n\n*Exemple : l’attaquant touche avec un résultat de 30. La cible réussit sa parade avec un résultat de 25 : 25 est plus bas que 30, le coup est entièrement bloqué.*\n\n| Résultat de la défense | Ce qui se passe |\n| --- | --- |\n| Réussie, avec un résultat égal ou inférieur à celui de l’attaque | Le coup est entièrement bloqué. |\n| Réussie, mais avec un résultat supérieur à celui de l’attaque | **Défense partielle** : les dégâts finaux sont divisés par 2. Si c’est une parade au bouclier, ses AP ou son AM comptent à ce moment-là. |\n| Ratée, même avec un résultat inférieur à celui de l’attaque | La défense échoue : les dégâts sont entiers. |\n\nLà encore, les critiques changent tout :\n\n- **Réussite critique en défense** : une contre-attaque est possible, ou désarmer l’adversaire ; le MJ peut aussi imaginer autre chose. La posture défensive l’élargit, jamais au-delà de 1 à 15 (voir {{posture|Les postures}}).\n- **Échec critique en défense** : l’AP et l’AM de la cible ne comptent pas, et l’attaquant ajoute +8 à ses dégâts (ou autre chose, au choix du MJ).\n\n### Combien de défenses par tour ?\n\nCela dépend de la posture du moment : certaines n’en permettent aucune, d’autres un nombre limité par tour, et la posture défensive les permet sans limite, mais au-delà de deux parades ou esquives, chaque défense y fait baisser la réussite de la suivante. Les chiffres de chaque posture sont dans {{posture|Les postures}}.\n\nLa posture défensive permet aussi l’**intervention** : parer ou esquiver le coup à la place d’un allié adjacent.\n\nLes boss, pensés pour affronter une équipe de quatre joueurs, ont plus de parades et d’esquives que les autres en posture neutre, de vigilance ou de symbiose (voir {{posture|Les postures}}).\n\n### Les attaques de zone\n\n- Pour esquiver une attaque de zone, il faut en sortir : l’Esquive perd 5 % par case à parcourir, et l’on ne peut pas parcourir plus de cases que sa vitesse. Un personnage qui a 4 de vitesse ne peut donc pas esquiver une zone qui s’étend sur 5 cases ou plus.\n- La parade n’est pas concernée.\n- Quand deux personnages sont pris dans la même zone, l’un ne peut pas protéger l’autre, même en posture défensive.\n\n## Viser une partie du corps\n\nViser la tête, un bras ou une jambe plutôt que le corps est plus difficile : chaque zone a son malus pour toucher. En échange, le coup y porte un effet en plus, propre à la zone ; le corps, lui, n’a ni malus ni effet. Le malus et l’effet de chaque zone sont dans le tableau « Localisation des dégâts » de {{attaque-et-defense}}.\n\n- Pour un personnage gaucher, les effets du côté droit et du côté gauche sont inversés.\n- Ce tableau est pensé pour les humanoïdes : face à un monstre, le MJ peut en réattribuer les zones selon son anatomie (pour un scorpion, la « tête » peut être sa queue).\n\n## Les situations qui changent la donne\n\nLe détail de chacune est dans {{tenaille|La prise en tenaille et zone d’influence}}, {{attaque-dopportunite|Les attaques d'opportunité}}, {{attaque-discrete|Les attaques discrètes}} et {{embuscade|L’embuscade}}.\n\n- **La prise en tenaille.** Un ennemi encerclé au corps à corps par des alliés placés sur des cases opposées (devant et derrière, ou à gauche et à droite) est en tenaille : à deux, +4 aux dégâts ; à trois, encore +4 ; à quatre, en plus, +5 % de réussite critique pour les alliés (jamais au-delà de 1 à 15) et −10 % au jet de défense de la cible. Les effets se cumulent.\n- **L’attaque d’opportunité.** Une attaque offerte quand un adversaire rate son attaque contre vous sur un échec critique, quand il sort de votre zone d’influence (sauf si c’est vous qui l’y forcez), ou quand un don de votre classe le permet. Une seule par tour et par joueur, sauf don qui en permet plus. Ce doit être une action simple : un coup avec une arme déjà dégainée et à portée, ou un sort d’attaque ; pas de sort qui n’attaque pas, de sort de niveau 5, de déplacement, de potion ni d’arme à dégainer. Sa victime ne peut ni parer ni esquiver, sauf en posture défensive.\n- **L’attaque discrète.** Frapper une cible qui ne vous voit pas venir ajoute un dé aux dégâts (2d6 à la dague deviennent 3d6). Il faut passer en mode discret (trois actions rapides, deux pour un {{voleur|voleur}}), réussir un jet de *Ruse*, et qu’aucun ennemi ne vous voie clairement. La cible tente alors un jet d’*Observation* ou de *Distinction* : si elle fait mieux que votre jet de discrétion, la discrétion est perdue, et le dé en plus avec elle. À ne pas confondre avec l’attaque sournoise, qui vient d’une classe.\n- **L’embuscade.** Vous consommez l’action de votre tour pour attendre un ennemi, et lui porter une attaque d’opportunité dès qu’il entre dans la zone voulue : à une distance égale à la vitesse divisée par 2 avec une arme de corps à corps (on fonce alors sur lui), à la portée de l’arme avec une arme à distance, à la portée du sort avec la magie. Posture, déplacement et actions rapides restent possibles pendant ce tour. Contrairement aux autres attaques d’opportunité, la victime d’une embuscade peut parer ou esquiver ; et la posture de vigilance déjoue l’embuscade.\n",
+   "apres": "Une attaque se joue en deux jets de {{des|D100}} : celui de l’attaquant, qui fait l’objet de cette page, puis, si sa {{posture|posture}} le lui permet, celui de la cible pour se défendre (voir {{attaque-et-defense}}). Si le coup passe, il reste à compter les dégâts (voir {{degats|Les dégâts}}).\n\n## Le jet d’attaque {#jet-d-attaque}\n\nL’attaquant lance un {{des|D100}} et doit faire son {{score|score}} ou moins dans la {{competence|compétence}} qui sert à l’attaque : c’est son {{jet-dattaque|jet d’attaque}}. Entre parenthèses, la {{caracteristiques|caractéristique}} dont dépend la compétence.\n\n- **avec une arme**, la compétence de l’arme, que donne la colonne *Compétence* de la page des {{armes|armes}} : {{arme-legere}} ({{agilite}}), {{arme-lourde}} ({{force}}), {{arc}} ({{force}}) ou {{arbalete}} ({{perception}}) ; certaines armes en écrivent deux (Lourde / Légère, Arc / Légère) : le joueur choisit alors celle des deux qui sert ;\n- **avec un sort**, la compétence {{magie-competence|Magie}} ({{intelligence}}) ; les {{mage-rouge|mages rouge}}, {{mage-bleu|bleu}} et {{mage-vert|vert}} lancent les leurs avec {{concentration}} ({{volonte}}).\n\nLa posture de l’attaquant joue aussi sur son jet et sur ses dégâts (voir {{posture|Les postures}}).\n\n## Les critiques en attaque {#critiques-en-attaque}\n\nDeux résultats sortent de l’ordinaire :\n\n- **{{reussite-critique}} (1 à 5)** : les dégâts de l’attaque, bonus compris, sont doublés, et seule une réussite critique de la cible peut alors arrêter le coup, entièrement ou en partie (voir {{attaque-et-defense}}). La {{posture|posture offensive}} l’élargit à 1 à 10 sur les six jets d’attaque, *Concentration* comprise ; d’autres bonus (un score au-delà de 95 %, un don, un sort, la tenaille…) l’élargissent encore, sans jamais dépasser 1 à 15 (voir {{reussir-une-action}}).\n- **{{echec-critique}} (96 à 100)** : la cible bénéficie d’une {{attaque-dopportunite|attaque d’opportunité}}, ou peut désarmer l’attaquant si c’est possible ; le {{maitre-du-jeu|MJ}} peut aussi en décider autrement.\n\n## Une arme dans chaque main {#une-arme-dans-chaque-main}\n\nAvec une arme de mêlée dans chaque main ({{ambidextrie|ambidextrie}}), chaque attaque subit un malus :\n\n- **−20 %** pour la main directrice (l’arme 1 de la {{fiche-de-personnage|fiche}}), **−40 %** pour la main secondaire ;\n- ce malus est divisé par deux pour la main qui tient une dague, et divisé par deux pour un personnage de la classe {{bimane}} ; les deux se cumulent.\n\n*Exemple : un Bimane qui tient une épée et une dague attaque à −10 % de chaque main.*\n\nCela ne vaut que pour deux armes de mêlée : l’arc, l’arbalète, les armes de jet et les bombes n’y entrent pas.\n\n## Quelques armes à part\n\n- **La dague** : un coup réussi à la dague impose un malus de 10 % au {{jet-de-defense|jet de défense}} de l’adversaire (20 % avec la lame secrète).\n- **Les armes de jet** : on peut en lancer deux en sacrifiant son déplacement et son action (ou utiliser deux fois la fronde).\n- **Le {{mordhau}}** : prendre son arme par la lame pour frapper avec le manche donne des dégâts de frappe à une arme qui n’en fait pas, au risque de l’abîmer (voir {{lequipement}}).\n\n## Viser une partie du corps {#localisation-des-degats}\n\nViser la tête, un bras ou une jambe plutôt que le corps est plus difficile : chaque zone a son malus pour toucher. En échange, le coup y porte un effet en plus, propre à la zone ; le corps, lui, n’a ni malus ni effet (voir {{localisation-des-degats}}). Une attaque non ciblée touche par défaut le torse, sauf indication contraire du MJ.\n\n| **Zone touchée** | **Malus pour toucher** | **Effet** |\n| :-: | :-: | :-: |\n| **Tête** | -25% | Le coup inflige **+10 {{degats\\|dégâts}}** |\n| **Corps** | 0% | Aucun effet |\n| **Bras droit** | -18% | **-15%** au prochain test d’attaque avec une arme |\n| **Bras gauche** | -18% | **-5%** au prochain test (peu importe lequel) |\n| **Jambe droite** | -12% | **-1 {{vitesse\\|vitesse}}** au prochain tour |\n| **Jambe gauche** | -12% | **-4 {{initiative\\|initiative}}** au prochain tour |\n\n- **Personnage gaucher :** les effets entre bras droit / bras gauche et jambe droite / jambe gauche sont **inversés**.\n- **Humanoïde par défaut :** ce tableau est pensé pour les créatures humanoïdes.\n- **Adaptation pour monstres :** le MJ peut réassigner certaines zones pour coller à l’anatomie de la créature. *Exemple : pour un scorpion, la « tête » correspondait à sa **queue**, et donc le malus et l’effet s’y appliquaient.*\n\n## Les situations qui changent la donne\n\nLe détail de chacune est dans {{tenaille|La prise en tenaille et zone d’influence}}, {{attaque-dopportunite|Les attaques d'opportunité}}, {{attaque-discrete|Les attaques discrètes}} et {{embuscade|L’embuscade}}.\n\n- **La prise en tenaille.** Un ennemi encerclé au corps à corps par des alliés placés sur des cases opposées (devant et derrière, ou à gauche et à droite) est en tenaille : à deux, +4 aux dégâts ; à trois, encore +4 ; à quatre, en plus, +5 % de réussite critique pour les alliés (jamais au-delà de 1 à 15) et −10 % au jet de défense de la cible. Les effets se cumulent.\n- **L’attaque d’opportunité.** Une attaque offerte quand un adversaire rate son attaque contre vous sur un échec critique, quand il sort de votre {{zone-dinfluence|zone d’influence}} (sauf si c’est vous qui l’y forcez), ou quand un don de votre classe le permet. Une seule par tour et par joueur, sauf don qui en permet plus. Ce doit être une action simple : un coup avec une arme déjà dégainée et à portée, ou un sort d’attaque ; pas de sort qui n’attaque pas, de sort de niveau 5, de déplacement, de potion ni d’arme à dégainer. Pour la défense de sa victime, voir {{attaque-et-defense}}.\n- **L’attaque discrète.** Frapper une cible qui ne vous voit pas venir ajoute un dé aux dégâts (2d6 à la dague deviennent 3d6). Il faut passer en mode discret (trois {{action-rapide|actions rapides}}, deux pour un {{voleur|voleur}}), réussir un jet de {{ruse}}, et qu’aucun ennemi ne vous voie clairement. La cible tente alors un jet d’{{observation}} ou de {{distinction}} : si elle fait mieux que votre jet de discrétion, la discrétion est perdue, et le dé en plus avec elle. À ne pas confondre avec l’attaque sournoise, qui vient d’une classe.\n- **L’embuscade.** Vous consommez l’{{action|action}} de votre tour pour attendre un ennemi, et lui porter une attaque d’opportunité dès qu’il entre dans la zone voulue : à une distance égale à la {{vitesse|vitesse}} divisée par 2 avec une arme de corps à corps (on fonce alors sur lui), à la {{portee|portée}} de l’arme avec une arme à distance, à la portée du sort avec la magie. Posture, déplacement et actions rapides restent possibles pendant ce tour. Ce que peut faire la victime est dans {{attaque-et-defense}}.\n"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/attaque-et-defense"
+   },
+   "col": "titre",
+   "decision": "R231 (1)",
+   "avant": "Attaque et Défense",
+   "apres": "Se défendre"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/attaque-et-defense"
+   },
+   "col": "resume",
+   "decision": "R231 (1)",
+   "avant": "Quand une attaque est prodiguée, un jet de D100 est nécessaire pour réussir l'action (il faut faire son score ou moins pour réussir).",
+   "apres": "La parade et l’esquive, la défense partielle qui divise les dégâts par deux, les critiques en défense, le nombre de défenses par tour, l’intervention, les attaques qu’on ne peut pas parer et les attaques de zone."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/attaque-et-defense"
+   },
+   "col": "corps_md",
+   "decision": "R231 (1)",
+   "avant": "## Attaque\n\nQuand une attaque est prodiguée, un jet de D100 est nécessaire pour réussir l'action (il faut faire son score ou moins pour réussir).\n\n**Cas particuliers :**\n\nLors d'une réussite critique (score au dé = 1 - 5 de base, voir {{reussites-echecs-et-critiques}}), les dégâts de base seront doublés ! La défense doit faire une réussite critique égale ou plus basse pour réussir à bloquer un tel coup.\n\nLors d'un échec critique (score au dé = 96 - 100), la cible bénéficie d'une attaque d'opportunité ou bien peut désarmer la cible (si c’est possible), ou autre idée du mj.\n\n## Défense\n\nLors d'une parade ou esquive, un jet de D100 est nécessaire pour réussir l'action mais deux conditions doivent être réunies pour bloquer totalement l'attaque : doit réussir son jet de parade ou esquive ET doit faire un résultat égal ou plus bas que celui de l'attaquant !\n\nSi le test de parade/esquive est réussi mais le score n'est pas meilleur que celui de l'attaquant : les dégâts finaux sont divisés par 2. Si jamais une parade est faite avec un bouclier, les AP ou AM du bouclier s'appliquent à ce moment-là.\n\nSi le test de parade/esquive est raté malgré un meilleur score, le test est quand même échoué donc dégâts normaux.\n\n**Cas particuliers :**\n\nLors d'une réussite critique, une contre-attaque est possible (dans la mesure du possible) ou une autre idée du MJ.\n\nLors d'un échec critique, les AP et AM ne sont pas pris en compte dans les dégâts et l'agresseur inflige un bonus de +8 dégâts ou une autre idée du MJ.\n\nLors d’une attaque de zone, l’Esquive a un malus de 5% par case parcourue pour échapper à l’attaque, le maximum de cases correspond à {{la-vitesse-et-la-portee|la vitesse}} du personnage (Un personnage à 4 de vitesse ne pourra pas esquiver une zone qui s’étend à 5 cases ou plus). La parade n’est pas concernée.\n\nEncore par rapport aux attaques de zone, une personne ne peut pas protéger quelqu’un à côté d’elle si les deux sont dans l’attaque de zone, malgré la posture de défense.\n\n## Localisation des dégâts\n\n| **Zone touchée** | **Malus pour toucher** | **Effet** |\n| :-: | :-: | :-: |\n| **Tête** | -25% | Le coup inflige **+10 dégâts** |\n| **Corps** | 0% | Aucun effet |\n| **Bras droit** | -18% | **-15%** au prochain test d’attaque avec une arme |\n| **Bras gauche** | -18% | **-5%** au prochain test (peu importe lequel) |\n| **Jambe droite** | -12% | **-1 vitesse** au prochain tour |\n| **Jambe gauche** | -12% | **-4 initiative** au prochain tour |\n\n## Règles supplémentaires\n\n- **Personnage gaucher :** les effets entre bras droit / bras gauche et jambe droite / jambe gauche sont **inversés**.\n- **Humanoïde par défaut :** ce tableau est pensé pour les créatures humanoïdes.\n- **Adaptation pour monstres :** n’hésite pas à réassigner certaines zones pour coller à l’anatomie de la créature.\n\n  **Exemple :** pour un scorpion, la « tête » correspondait à sa **queue**, et donc le malus/effet s’y appliquaient.\n",
+   "apres": "Quand un coup est porté (voir {{attaquer-et-se-defendre}}), la cible peut se défendre si sa {{posture|posture}} le permet et s’il lui reste des défenses pour le tour. Cette page dit comment, et ce qu’il en coûte.\n\n## Parer ou esquiver {#parer-ou-esquiver}\n\nAttaquée, la cible peut tenter :\n\n- une {{parade|parade}}, avec son arme ou son {{bouclier|bouclier}} : {{competence|compétence}} *Parade* ({{force}}) ;\n- une {{esquive|esquive}} : compétence *Esquive* ({{agilite}}).\n\nC’est son {{jet-de-defense|jet de défense}}, un {{des|D100}}. Pour bloquer entièrement le coup, deux conditions : **réussir son jet** (faire son {{score|score}} ou moins), **et faire un résultat égal ou inférieur à celui de l’attaquant.** Au D100, un {{meilleur-resultat|meilleur résultat}} est un résultat plus bas.\n\n| Résultat de la défense | Ce qui se passe |\n| --- | --- |\n| Réussie, avec un résultat égal ou inférieur à celui de l’attaque | Le coup est entièrement bloqué. |\n| Réussie, mais avec un résultat supérieur à celui de l’attaque | **{{defense-partielle}}** : les dégâts finaux sont divisés par 2 (voir {{degats\\|Les dégâts}}). Si c’est une parade au bouclier, ses {{armure-physique\\|AP}} ou son {{armure-magique\\|AM}} comptent à ce moment-là. |\n| Ratée, même avec un résultat inférieur à celui de l’attaque | La défense échoue : les dégâts sont entiers. |\n\n*Exemple : l’attaque touche avec un résultat de 42, et la cible a 60 % en Esquive. Sur 42 ou moins, esquive totale ; de 43 à 60, esquive partielle ; sur 61 et plus, l’esquive échoue.*\n\n## Les critiques en défense {#critiques-en-defense}\n\n- **Contre une {{reussite-critique|réussite critique}} de l’attaquant**, seule une réussite critique de la défense compte : un résultat critique égal ou inférieur à celui de l’attaquant bloque entièrement le coup ; un résultat critique supérieur à celui de l’attaquant donne une {{defense-partielle|défense partielle}} ; tout autre résultat est un échec, avec des dégâts entiers, même si le jet est réussi.\n\n  *Exemple : l’attaquant fait une réussite critique sur 3, et la plage de réussite critique de la défense va de 1 à 5. Sur 1, 2 ou 3, le coup est entièrement bloqué ; sur 4 ou 5 (ou plus si sa plage de critique est plus large), défense partielle ; au-delà, la défense échoue.*\n- **Réussite critique en défense** : une contre-attaque est possible (dans la mesure du possible), ou désarmer l’adversaire ; le {{maitre-du-jeu|MJ}} peut aussi imaginer autre chose. La {{posture|posture défensive}} l’élargit, jamais au-delà de 1 à 15 (voir {{posture|Les postures}} et {{reussites-echecs-et-critiques}}).\n- **{{echec-critique}} en défense** : l’{{armure-physique|AP}} et l’{{armure-magique|AM}} de la cible ne comptent pas, et l’attaquant ajoute +8 à ses dégâts (ou autre chose, au choix du MJ).\n\n## Combien de défenses par tour ? {#defenses-par-tour}\n\nCela dépend de la posture du moment : certaines n’en permettent aucune, d’autres un nombre limité par tour, et la posture défensive les permet sans limite, mais au-delà de deux parades ou esquives, chaque défense y fait baisser la réussite de la suivante. Les chiffres de chaque posture sont dans {{posture|Les postures}}.\n\nLa posture défensive permet aussi l’{{intervention|intervention}} : parer ou esquiver le coup à la place d’un allié adjacent.\n\nLes {{boss|boss}}, pensés pour affronter une équipe de quatre joueurs, ont plus de parades et d’esquives que les autres en posture neutre, de vigilance ou de symbiose (voir {{posture|Les postures}}).\n\n## Quand la défense est impossible ou gênée {#defense-impossible}\n\n- **L’{{attaque-dopportunite|attaque d’opportunité}}** : sa victime ne peut ni parer ni esquiver, sauf en posture défensive.\n- **L’{{embuscade|embuscade}}** : contrairement aux autres attaques d’opportunité, sa victime peut parer ou esquiver ; et la posture de vigilance déjoue l’embuscade.\n- **Ce qui gêne la défense** : un coup réussi à la dague (−10 % au jet de défense, −20 % avec la lame secrète) et la {{tenaille|prise en tenaille}} à quatre (−10 % au jet de défense de la cible) ; voir {{attaquer-et-se-defendre}}.\n\n## Les attaques de zone {#attaques-de-zone}\n\n- Pour esquiver une attaque de zone, il faut en sortir : l’{{esquive}} perd 5 % par case à parcourir, et l’on ne peut pas parcourir plus de cases que sa {{la-vitesse-et-la-portee|vitesse}}. Un personnage qui a 4 de vitesse ne peut donc pas esquiver une zone qui s’étend sur 5 cases ou plus.\n- La parade n’est pas concernée.\n- Quand deux personnages sont pris dans la même zone, l’un ne peut pas protéger l’autre, même en posture défensive.\n"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/initiative"
+   },
+   "col": "corps_md",
+   "decision": "R231",
+   "avant": "(voir le tableau « Localisation des dégâts » de {{attaque-et-defense}})",
+   "apres": "(voir le tableau « Localisation des dégâts » de {{attaquer-et-se-defendre}})"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/initiative"
+   },
+   "col": "resume",
+   "decision": "R231",
+   "avant": "(voir le tableau « Localisation des dégâts » de Attaque et Défense)",
+   "apres": "(voir le tableau « Localisation des dégâts » de Attaquer)"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-equipement"
+   },
+   "col": "corps_md",
+   "decision": "R231",
+   "avant": "**seulement lors d’une parade partielle** (voir {{attaquer-et-se-defendre}})",
+   "apres": "**seulement lors d’une parade partielle** (voir {{attaque-et-defense}})"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/le-tour-de-jeu"
+   },
+   "col": "corps_md",
+   "decision": "R231",
+   "avant": "autant de fois que sa posture le lui permet (voir {{attaquer-et-se-defendre}})",
+   "apres": "autant de fois que sa posture le lui permet (voir {{attaque-et-defense}})"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/les-degats"
+   },
+   "col": "corps_md",
+   "decision": "R231",
+   "avant": "la cible n’a pas su l’arrêter entièrement (voir {{attaquer-et-se-defendre}})",
+   "apres": "la cible n’a pas su l’arrêter entièrement (voir {{attaque-et-defense}})"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/reussir-une-action"
+   },
+   "col": "corps_md",
+   "decision": "R231",
+   "avant": "(voir le tableau « Localisation des dégâts » de {{attaque-et-defense}})",
+   "apres": "(voir le tableau « Localisation des dégâts » de {{attaquer-et-se-defendre}})"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/reussir-une-action"
+   },
+   "col": "corps_md",
+   "decision": "R231",
+   "avant": "- Les coups visés, la défense et les cas particuliers du combat : {{attaquer-et-se-defendre}}.",
+   "apres": "- Les coups visés et les attaques : {{attaquer-et-se-defendre}} ; la défense : {{attaque-et-defense}}."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/reussites-echecs-et-critiques"
+   },
+   "col": "corps_md",
+   "decision": "R226 (1), R231 (2)",
+   "avant": "la cible ne peut bloquer le coup que par une réussite critique meilleure que celle de l’attaquant",
+   "apres": "seule une réussite critique de la cible peut alors arrêter le coup, entièrement ou en partie (voir {{attaque-et-defense}})"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/la-magie-en-jeu"
+   },
+   "col": "corps_md",
+   "decision": "R226 (1), R231 (2)",
+   "avant": "la cible ne peut l’arrêter que par une réussite critique meilleure",
+   "apres": "seule une réussite critique de la cible peut l’arrêter, entièrement ou en partie (voir {{attaque-et-defense}})"
+  },
+  {
+   "table": "mot_cle",
+   "cle": {
+    "id": "reussite-critique"
+   },
+   "col": "description",
+   "decision": "R231 (4), R199 (4)",
+   "avant": "en attaque, les dégâts de base sont doublés",
+   "apres": "en attaque, les dégâts, bonus fixes compris, sont doublés"
+  },
+  {
+   "table": "mot_cle",
+   "cle": {
+    "id": "defense-partielle"
+   },
+   "col": "description",
+   "decision": "R231 (2)",
+   "avant": "Une parade ou une esquive réussie, mais moins bonne que l’attaque. Les dégâts sont divisés par 2. Si c’est une parade partielle faite au bouclier, ses AP et son AM comptent : c’est le seul cas où ils comptent.",
+   "apres": "Une parade ou une esquive réussie, mais moins bonne que l’attaque. Les dégâts sont divisés par 2. Si c’est une parade partielle faite au bouclier, ses AP et son AM comptent : c’est le seul cas où ils comptent. Contre une réussite critique, seule une défense critique peut être partielle."
+  },
+  {
+   "table": "mot_cle",
+   "cle": {
+    "id": "attaquer-et-se-defendre"
+   },
+   "col": "libelle",
+   "decision": "R231 (1)",
+   "avant": "Attaquer et se défendre",
+   "apres": "Attaquer"
+  },
+  {
+   "table": "mot_cle",
+   "cle": {
+    "id": "attaque-et-defense"
+   },
+   "col": "libelle",
+   "decision": "R231 (1)",
+   "avant": "Attaque et Défense",
+   "apres": "Se défendre"
+  }
+ ],
+ "mots_cles_crees": [
+  {
+   "id": "arc",
+   "libelle": "Arc",
+   "couleur": "caracteristique:force",
+   "url": null,
+   "competence": "arc"
+  },
+  {
+   "id": "arme-lourde",
+   "libelle": "Arme Lourde",
+   "couleur": "caracteristique:force",
+   "url": null,
+   "competence": "arme-lourde"
+  },
+  {
+   "id": "athletisme",
+   "libelle": "Athlétisme",
+   "couleur": "caracteristique:force",
+   "url": null,
+   "competence": "athletisme"
+  },
+  {
+   "id": "stabilite",
+   "libelle": "Stabilité",
+   "couleur": "caracteristique:force",
+   "url": null,
+   "competence": "stabilite"
+  },
+  {
+   "id": "calme",
+   "libelle": "Calme",
+   "couleur": "caracteristique:volonte",
+   "url": null,
+   "competence": "calme"
+  },
+  {
+   "id": "concentration",
+   "libelle": "Concentration",
+   "couleur": "caracteristique:volonte",
+   "url": null,
+   "competence": "concentration"
+  },
+  {
+   "id": "fermete",
+   "libelle": "Fermeté",
+   "couleur": "caracteristique:volonte",
+   "url": null,
+   "competence": "fermete"
+  },
+  {
+   "id": "survie",
+   "libelle": "Survie",
+   "couleur": "caracteristique:volonte",
+   "url": null,
+   "competence": "survie"
+  },
+  {
+   "id": "vigueur",
+   "libelle": "Vigueur",
+   "couleur": "caracteristique:volonte",
+   "url": null,
+   "competence": "vigueur"
+  },
+  {
+   "id": "connaissance",
+   "libelle": "Connaissance",
+   "couleur": "caracteristique:intelligence",
+   "url": null,
+   "competence": "connaissance"
+  },
+  {
+   "id": "magie-competence",
+   "libelle": "Magie (compétence)",
+   "couleur": "caracteristique:intelligence",
+   "url": null,
+   "competence": "magie"
+  },
+  {
+   "id": "medecine",
+   "libelle": "Médecine",
+   "couleur": "caracteristique:intelligence",
+   "url": null,
+   "competence": "medecine"
+  },
+  {
+   "id": "psychologie",
+   "libelle": "Psychologie",
+   "couleur": "caracteristique:intelligence",
+   "url": null,
+   "competence": "psychologie"
+  },
+  {
+   "id": "vie-en-nature",
+   "libelle": "Vie en nature",
+   "couleur": "caracteristique:intelligence",
+   "url": null,
+   "competence": "vie-en-nature"
+  },
+  {
+   "id": "arbalete",
+   "libelle": "Arbalète",
+   "couleur": "caracteristique:perception",
+   "url": null,
+   "competence": "arbalete"
+  },
+  {
+   "id": "distinction",
+   "libelle": "Distinction",
+   "couleur": "caracteristique:perception",
+   "url": null,
+   "competence": "distinction"
+  },
+  {
+   "id": "observation",
+   "libelle": "Observation",
+   "couleur": "caracteristique:perception",
+   "url": null,
+   "competence": "observation"
+  },
+  {
+   "id": "orientation",
+   "libelle": "Orientation",
+   "couleur": "caracteristique:perception",
+   "url": null,
+   "competence": "orientation"
+  },
+  {
+   "id": "sabotage",
+   "libelle": "Sabotage",
+   "couleur": "caracteristique:perception",
+   "url": null,
+   "competence": "sabotage"
+  },
+  {
+   "id": "diplomatie",
+   "libelle": "Diplomatie",
+   "couleur": "caracteristique:social",
+   "url": null,
+   "competence": "diplomatie"
+  },
+  {
+   "id": "dressage",
+   "libelle": "Dressage",
+   "couleur": "caracteristique:social",
+   "url": null,
+   "competence": "dressage"
+  },
+  {
+   "id": "intimidation",
+   "libelle": "Intimidation",
+   "couleur": "caracteristique:social",
+   "url": null,
+   "competence": "intimidation"
+  },
+  {
+   "id": "manipulation",
+   "libelle": "Manipulation",
+   "couleur": "caracteristique:social",
+   "url": null,
+   "competence": "manipulation"
+  },
+  {
+   "id": "negociation",
+   "libelle": "Négociation",
+   "couleur": "caracteristique:social",
+   "url": null,
+   "competence": "negociation"
+  },
+  {
+   "id": "arme-legere",
+   "libelle": "Arme Légère",
+   "couleur": "caracteristique:agilite",
+   "url": null,
+   "competence": "arme-legere"
+  },
+  {
+   "id": "equilibre",
+   "libelle": "Équilibre",
+   "couleur": "caracteristique:agilite",
+   "url": null,
+   "competence": "equilibre"
+  },
+  {
+   "id": "reflexe",
+   "libelle": "Réflexe",
+   "couleur": "caracteristique:agilite",
+   "url": null,
+   "competence": "reflexe"
+  },
+  {
+   "id": "ruse",
+   "libelle": "Ruse",
+   "couleur": "caracteristique:agilite",
+   "url": null,
+   "competence": "ruse"
+  },
+  {
+   "id": "force",
+   "libelle": "Force",
+   "couleur": "caracteristique:force",
+   "url": null,
+   "caracteristique": "force"
+  },
+  {
+   "id": "volonte",
+   "libelle": "Volonté",
+   "couleur": "caracteristique:volonte",
+   "url": null,
+   "caracteristique": "volonte"
+  },
+  {
+   "id": "intelligence",
+   "libelle": "Intelligence",
+   "couleur": "caracteristique:intelligence",
+   "url": null,
+   "caracteristique": "intelligence"
+  },
+  {
+   "id": "perception",
+   "libelle": "Perception",
+   "couleur": "caracteristique:perception",
+   "url": null,
+   "caracteristique": "perception"
+  },
+  {
+   "id": "social",
+   "libelle": "Social",
+   "couleur": "caracteristique:social",
+   "url": null,
+   "caracteristique": "social"
+  },
+  {
+   "id": "agilite",
+   "libelle": "Agilité",
+   "couleur": "caracteristique:agilite",
+   "url": null,
+   "caracteristique": "agilite"
+  },
+  {
+   "id": "jet-dattaque",
+   "libelle": "Jet d’attaque",
+   "couleur": null,
+   "url": null,
+   "url_du_cahier": "/regles/attaquer-et-se-defendre/#jet-d-attaque"
+  },
+  {
+   "id": "jet-de-defense",
+   "libelle": "Jet de défense",
+   "couleur": null,
+   "url": null,
+   "url_du_cahier": "/regles/attaque-et-defense/#parer-ou-esquiver"
+  },
+  {
+   "id": "ambidextrie",
+   "libelle": "Ambidextrie",
+   "couleur": null,
+   "url": null,
+   "url_du_cahier": "/regles/attaquer-et-se-defendre/#une-arme-dans-chaque-main"
+  },
+  {
+   "id": "localisation-des-degats",
+   "libelle": "Localisation des dégâts",
+   "couleur": null,
+   "url": null,
+   "url_du_cahier": "/regles/attaquer-et-se-defendre/#localisation-des-degats"
+  },
+  {
+   "id": "meilleur-resultat",
+   "libelle": "Meilleur résultat",
+   "couleur": null,
+   "url": null,
+   "url_du_cahier": null
+  }
+ ],
+ "mots_cles_colores": [
+  {
+   "id": "parade",
+   "couleur": "caracteristique:force"
+  },
+  {
+   "id": "esquive",
+   "couleur": "caracteristique:agilite"
+  }
+ ],
+ "renvois": [
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/initiative"
+   },
+   "col": "corps_md",
+   "apres": "(voir le tableau « Localisation des dégâts » de {{attaquer-et-se-defendre}})",
+   "vers": "guide/attaquer-et-se-defendre"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-equipement"
+   },
+   "col": "corps_md",
+   "apres": "**seulement lors d’une parade partielle** (voir {{attaque-et-defense}})",
+   "vers": "guide/attaque-et-defense"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/le-tour-de-jeu"
+   },
+   "col": "corps_md",
+   "apres": "autant de fois que sa posture le lui permet (voir {{attaque-et-defense}})",
+   "vers": "guide/attaque-et-defense"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/les-degats"
+   },
+   "col": "corps_md",
+   "apres": "la cible n’a pas su l’arrêter entièrement (voir {{attaque-et-defense}})",
+   "vers": "guide/attaque-et-defense"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/reussir-une-action"
+   },
+   "col": "corps_md",
+   "apres": "(voir le tableau « Localisation des dégâts » de {{attaquer-et-se-defendre}})",
+   "vers": "guide/attaquer-et-se-defendre"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/reussites-echecs-et-critiques"
+   },
+   "col": "corps_md",
+   "apres": "seule une réussite critique de la cible peut alors arrêter le coup, entièrement ou en partie (voir {{attaque-et-defense}})",
+   "vers": "guide/attaque-et-defense"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/la-magie-en-jeu"
+   },
+   "col": "corps_md",
+   "apres": "seule une réussite critique de la cible peut l’arrêter, entièrement ou en partie (voir {{attaque-et-defense}})",
+   "vers": "guide/attaque-et-defense"
+  }
+ ],
+ "ecarts": [
+  "competence vigueur : sa phrase finit sans ponctuation, un point la sépare de la caractéristique"
+ ]
+}

@@ -3,6 +3,7 @@
 // journal. Ici les métiers ; les autres domaines ont leur fichier serveur-edition-<domaine>.test.mjs.
 // La base vivante part des règles de data/rows, où le site de dev a pu créer, modifier ou supprimer des métiers : les essais portent sur des métiers
 // créés par le test (noms absents de la base) ou lus dans la base, jamais sur une valeur écrite en dur.
+import { IDS_DES_MOTS_CLES_PROTEGES } from '../src/lib/mots-cles-proteges.mjs';
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -13,6 +14,7 @@ import { journalExporte } from '../serveur/edition-journal.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { decouperBonus } from '../src/lib/metier-champs.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { adresseDeLaPage } from '../src/lib/adresses-db.mjs';
 import { annonceDesFiches, attributEd, lireAttributEd, valeurDuChamp } from '../src/lib/edition-modele.mjs';
 import { jourDuRetrait, TABLES_FICHES } from '../src/lib/fiche-format.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
@@ -189,7 +191,8 @@ test('créer un métier : page (titre, résumé, corps, mot-clé), ligne metier,
   assert.deepEqual(lignes('SELECT texte, competence_id FROM metier_bonus WHERE metier_id = ? ORDER BY rang', id).map((b) => [b.texte, b.competence_id]),
     decouperBonus('+3% Calme, +2% Fermeté', competences).map((b) => [b.texte, b.competence_id]));
   assert.deepEqual(lignes('SELECT texte FROM metier_objet_depart WHERE metier_id = ?', id).map((o) => o.texte), ['Canne']);
-  assert.equal(ligne('SELECT m.libelle FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id WHERE t.page_id = ?', id).libelle, 'métier');
+  // le mot-clé protégé se reconnaît à son id (lib/mots-cles-proteges.mjs, migration 0113 ; décision R195) : son libellé peut changer (« Métier », R183)
+  assert.equal(ligne('SELECT t.tag_id FROM page_tag t WHERE t.page_id = ?', id).tag_id, IDS_DES_MOTS_CLES_PROTEGES.metier);
   assert.equal(ligne("SELECT principale FROM page_entite WHERE entite_table = 'metier' AND entite_id = ?", id).principale, 1);
   assert.ok(appel('GET', '/api/edition/en-attente/').corps.lignes.some((l) => l.table === 'metier' && l.creee && l.cle.id === id));
 
@@ -227,6 +230,31 @@ test('R42 — supprimer un métier cité par une fiche : retiré de la fiche ave
   assert.ok(!exporte.some((m) => TABLES_FICHES.includes(m.table)), 'rien des fiches dans le journal à rapatrier');
   assert.match(journal.at(-1), /^édition : lot .+ ; 1 fiche\(s\) de personnage adaptée\(s\)$/);
   assert.ok(!journal.at(-1).includes('Essai'), 'le journal du service compte les fiches sans les nommer');
+});
+
+test('supprimer un métier dont l’ancre est l’adresse d’un mot-clé : 409 qui nomme le mot-clé (service et /api/v1/), rien d’écrit ; le lien vidé, il se supprime', () => {
+  const id = creerMetier({ nom: 'Métier d’une adresse', description: 'Un métier d’essai.' });
+  const nom = ligne('SELECT nom FROM metier WHERE id = ?', id).nom;
+  let libelle = 'Essai adresse de métier';
+  for (let i = 2; ligne('SELECT 1 FROM mot_cle WHERE cle = ?', normalize(libelle)); i += 1) libelle = `Essai adresse de métier ${i}`;
+  const cree = enregistrer([{ op: 'creer', entite: 'mot_cle', valeurs: { libelle, url: adresseDeLaPage(id) } }], 'regles/glossaire/');
+  assert.equal(cree.statut, 200, JSON.stringify(cree.corps));
+  const motCle = cree.corps.crees[0].id;
+  assert.equal(ligne('SELECT url FROM mot_cle WHERE id = ?', motCle).url, `/metiers/#metier-${id.slice('metiers/'.length)}`);
+  const refus = enregistrer([{ op: 'supprimer', entite: 'metier', cle: { id } }]);
+  assert.equal(refus.statut, 409, JSON.stringify(refus.corps));
+  assert.ok(refus.corps.erreur.includes(`« ${nom} » est l’adresse du mot-clé « ${libelle} »`), refus.corps.erreur);
+  assert.deepEqual(refus.corps.mots_cles, [motCle]);
+  const v1 = appel('DELETE', `/api/v1/metiers/${encodeURIComponent(id)}/`);
+  assert.equal(v1.statut, 409, JSON.stringify(v1.corps));
+  assert.deepEqual(v1.corps.mots_cles, [motCle], 'le même refus par l’API REST');
+  for (const t of ['metier', 'page']) assert.equal(ligne(`SELECT count(*) AS n FROM ${t} WHERE id = ?`, id).n, 1, `${t} : rien d’écrit`);
+  // le lien du mot-clé vidé : le métier se supprime
+  assert.equal(enregistrer([{ op: 'modifier', table: 'mot_cle', cle: { id: motCle }, valeurs: { url: '' } }], 'regles/glossaire/').statut, 200);
+  const s = enregistrer([{ op: 'supprimer', entite: 'metier', cle: { id } }]);
+  assert.equal(s.statut, 200, JSON.stringify(s.corps));
+  assert.equal(ligne('SELECT count(*) AS n FROM metier WHERE id = ?', id).n, 0);
+  assert.equal(enregistrer([{ op: 'supprimer', entite: 'mot_cle', cle: { id: motCle } }], 'regles/glossaire/').statut, 200);
 });
 
 test('lignes lues pour le mode modification, listes, journal à rapatrier', () => {

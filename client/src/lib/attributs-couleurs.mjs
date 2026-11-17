@@ -4,8 +4,8 @@
 // (Sang ou nécromancie) » : lib/fiche-moteur.mjs#attributsDe, styles/fiche/fiche.css), et les potions d'essence 4ᵉ barre celle de la Nécromancie
 // (lib/alchimie-couleurs.mjs#MAGIE_DE_L_AFFINITE). Une seule source (demande du propriétaire du
 // 2026-10-22 : « Partout il faut utiliser Que les couleurs du site. […] Aucune couleur en dur. ») : chaque page les reçoit en propriétés CSS
-// (`--attribut-<clé>`, cssDesAttributs, posées par layouts/Base.astro), que lisent styles/fiche/fiche.css et styles/bestiaire/carte.css ; l'onglet
-// Ceinture de la page Équipement en tire la couleur des potions dont l'essence est un attribut (lib/alchimie-couleurs.mjs). Repère visuel sans valeur
+// (`--attribut-<clé>`, cssDesAttributs, posées par layouts/Base.astro), que lisent styles/fiche/fiche.css et styles/bestiaire/carte.css ; la page
+// Ceinture en tire la couleur des potions dont l'essence est un attribut (lib/alchimie-couleurs.mjs). Repère visuel sans valeur
 // de règle.
 // Sans dépendance : importé au build (pages, modules de rendu, tests) et par le service (lib/ceinture-db.mjs, pour la note de version).
 

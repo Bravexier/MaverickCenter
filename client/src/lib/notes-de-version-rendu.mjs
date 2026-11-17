@@ -10,7 +10,7 @@ export const echapper = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ENTITE
 
 export const TITRES_DOMAINES = {
   sorts: 'Sorts', magies: 'Magies', classes: 'Classes', races: 'Races', metiers: 'Métiers', guide: 'Guide', codex: 'Codex', bestiaire: 'Bestiaire', armes: 'Armes',
-  armures: 'Armures et boucliers', equipement: 'Équipement', composants: 'Composants', chronologie: 'Chronologie', 'mots-cles': 'Mots-clés',
+  armures: 'Armures et boucliers', equipement: 'Équipement', composants: 'Composants', chronologie: 'Chronologie', 'mots-cles': 'Mots-clés', 'autres-tables': 'Autres tables',
 }; // les domaines de lib/notes-de-version.mjs#DOMAINES, dans leur ordre (test/notes-de-version.test.mjs) : ce module n'importe rien
 const ORDRE_DOMAINES = Object.keys(TITRES_DOMAINES);
 const LIBELLES_SENS = { amelioration: 'amélioration', affaiblissement: 'affaiblissement', neutre: '' };
@@ -95,28 +95,34 @@ export function diffMots(avant, apres) {
   return sortie;
 }
 
-const htmlDuDiff = (diff) =>
-  diff.map((d) => (d.type === 'egal' ? echapper(d.texte) : d.type === 'retire' ? `<del>${echapper(d.texte)}</del>` : `<ins>${echapper(d.texte)}</ins>`)).join('');
+// `texte` : le HTML d'un texte cité (echapper par défaut ; la page publiée passe lib/monnaies.mjs#htmlAvecMonnaies, décisions R61 et R63 : les montants
+// convertis partout, notes de version comprises, le texte cité restant tel quel en base). Ce module n'importe pas monnaies.mjs : scripts/mise-a-jour.mjs
+// l'importe, scripts/accessoires.mjs importe monnaies.mjs, et deux scripts de page n'importent jamais le même module (skill site-version-portable) ;
+// la note en préparation du site de dev, rendue par ce script, reste donc échappée. Un montant que le détail mot à mot coupe (« 620 » → « 640 »
+// avant « RO ») perd sa décomposition : l'abréviation seule devient sa pièce.
+const htmlDuDiff = (diff, texte = echapper) =>
+  diff.map((d) => (d.type === 'egal' ? texte(d.texte) : d.type === 'retire' ? `<del>${texte(d.texte)}</del>` : `<ins>${texte(d.texte)}</ins>`)).join('');
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 // Markdown simple du champ libre
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 
-function enLigne(texte) {
-  return echapper(texte)
+function enLigne(ligne, texte = echapper) {
+  return texte(ligne)
     .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, (_, t, url) => `<a href="${url}" rel="noopener noreferrer">${t}</a>`)
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
     .replace(/(^|[^*])\*([^*\s][^*]*)\*/g, '$1<em>$2</em>');
 }
 
 /** Le champ libre des admins en HTML : paragraphes (ligne vide), listes « - », gras, italique, liens http(s) ; rien d'autre ne passe. */
-export function htmlDuTexteLibre(texte) {
+export function htmlDuTexteLibre(texte, { texte: html = echapper } = {}) {
+  const enLigneHtml = (l) => enLigne(l, html);
   const blocs = String(texte ?? '').replace(/\r\n?/g, '\n').trim().split(/\n{2,}/).filter((b) => b.trim());
   return blocs
     .map((b) => {
       const lignes = b.split('\n');
-      if (lignes.every((l) => /^\s*[-*]\s+/.test(l))) return `<ul>${lignes.map((l) => `<li>${enLigne(l.replace(/^\s*[-*]\s+/, ''))}</li>`).join('')}</ul>`;
-      return `<p>${lignes.map(enLigne).join('<br>')}</p>`;
+      if (lignes.every((l) => /^\s*[-*]\s+/.test(l))) return `<ul>${lignes.map((l) => `<li>${enLigneHtml(l.replace(/^\s*[-*]\s+/, ''))}</li>`).join('')}</ul>`;
+      return `<p>${lignes.map(enLigneHtml).join('<br>')}</p>`;
     })
     .join('');
 }
@@ -127,32 +133,32 @@ export function htmlDuTexteLibre(texte) {
 
 const classeSens = (sens) => `nv-sens nv-sens--${sens ?? 'neutre'}`;
 const titreSens = (sens) => (LIBELLES_SENS[sens] ? ` title="${LIBELLES_SENS[sens]}"` : '');
-const valeur = (v) => (v === null || v === undefined || v === '' ? '<span class="nv-vide">—</span>' : echapper(v));
+const valeur = (v, texte = echapper) => (v === null || v === undefined || v === '' ? '<span class="nv-vide">—</span>' : texte(v));
 
 /** Une valeur courte : l'ancienne barrée, la nouvelle à côté, dans la couleur du sens. */
-function avantApres(avant, apres, sens) {
-  const ancien = avant === null || avant === undefined ? '' : `<del>${valeur(avant)}</del> `;
-  const nouveau = apres === null || apres === undefined ? '<ins class="nv-retire">retiré</ins>' : `<ins>${valeur(apres)}</ins>`;
+function avantApres(avant, apres, sens, texte = echapper) {
+  const ancien = avant === null || avant === undefined ? '' : `<del>${valeur(avant, texte)}</del> `;
+  const nouveau = apres === null || apres === undefined ? '<ins class="nv-retire">retiré</ins>' : `<ins>${valeur(apres, texte)}</ins>`;
   return `<span class="${classeSens(sens)}"${titreSens(sens)}>${ancien}<span class="nv-fleche" aria-hidden="true">→</span> ${nouveau}</span>`;
 }
 
-function htmlDuChamp(l) {
-  const nom = `<span class="nv-champ__nom">${echapper(l.champ)}</span>`;
+function htmlDuChamp(l, texte = echapper) {
+  const nom = `<span class="nv-champ__nom">${texte(l.champ)}</span>`;
   if (estLong(l.avant) || estLong(l.apres)) {
     const diff = l.avant && l.apres ? diffMots(l.avant, l.apres) : null;
     const corps = diff
-      ? `<div class="nv-diff">${htmlDuDiff(diff)}</div>`
-      : `<div class="nv-diff">${l.avant ? `<del>${echapper(l.avant)}</del>` : ''}${l.apres ? `<ins>${echapper(l.apres)}</ins>` : ''}</div>`;
+      ? `<div class="nv-diff">${htmlDuDiff(diff, texte)}</div>`
+      : `<div class="nv-diff">${l.avant ? `<del>${texte(l.avant)}</del>` : ''}${l.apres ? `<ins>${texte(l.apres)}</ins>` : ''}</div>`;
     const etat = l.nature === 'ajoute' ? 'ajouté' : l.nature === 'retire' ? 'retiré' : 'modifié';
     return `<details class="nv-champ nv-champ--long ${classeSens(l.sens)}"${titreSens(l.sens)}><summary>${nom} <span class="nv-etat">${etat}</span></summary>${corps}</details>`;
   }
   if (l.parties?.length) {
     const parties = l.parties
-      .map((p) => `${LIBELLES_PARTIES[p.partie] ? `<span class="nv-partie">${LIBELLES_PARTIES[p.partie]}</span> ` : ''}${avantApres(p.avant, p.apres, p.sens)}`)
+      .map((p) => `${LIBELLES_PARTIES[p.partie] ? `<span class="nv-partie">${LIBELLES_PARTIES[p.partie]}</span> ` : ''}${avantApres(p.avant, p.apres, p.sens, texte)}`)
       .join(' <span class="nv-sep">·</span> ');
     return `<span class="nv-champ">${nom} ${parties}</span>`;
   }
-  return `<span class="nv-champ">${nom} ${avantApres(l.avant, l.apres, l.sens)}</span>`;
+  return `<span class="nv-champ">${nom} ${avantApres(l.avant, l.apres, l.sens, texte)}</span>`;
 }
 
 const regrouper = (lignes, cle) => {
@@ -165,13 +171,13 @@ const regrouper = (lignes, cle) => {
   return m;
 };
 
-function htmlDeLEntite(entite, lignes) {
+function htmlDeLEntite(entite, lignes, texte = echapper) {
   const entiere = lignes.find((l) => l.champ === null);
   if (entiere) {
     const etat = entiere.nature === 'ajoute' ? '<span class="nv-badge nv-badge--ajout">ajouté</span>' : '<span class="nv-badge nv-badge--retrait">retiré</span>';
-    return `<li class="nv-entite"><span class="nv-entite__nom">${echapper(entite)}</span> ${etat}</li>`;
+    return `<li class="nv-entite"><span class="nv-entite__nom">${texte(entite)}</span> ${etat}</li>`;
   }
-  return `<li class="nv-entite"><span class="nv-entite__nom">${echapper(entite)}</span> : ${lignes.map(htmlDuChamp).join(' ')}</li>`;
+  return `<li class="nv-entite"><span class="nv-entite__nom">${texte(entite)}</span> : ${lignes.map((l) => htmlDuChamp(l, texte)).join(' ')}</li>`;
 }
 
 /** Nombre de lignes par sens. */
@@ -183,9 +189,9 @@ export function compter(lignes) {
 
 /**
  * La liste des modifications en HTML. `lignes` = celles de lib/notes-de-version.mjs#comparerBases ou de la table note_version_ligne (même forme) ;
- * `ouvert` : domaines dépliés (sinon repliés au-delà de `plafond` lignes).
+ * `ouvert` : domaines dépliés (sinon repliés au-delà de `plafond` lignes) ; `texte` : le HTML d'un texte cité (htmlDuDiff).
  */
-export function htmlDeLaListe(lignes, { plafond = 40, niveau = 3 } = {}) {
+export function htmlDeLaListe(lignes, { plafond = 40, niveau = 3, texte = echapper } = {}) {
   if (!lignes.length) return '<p class="nv-aucune">Aucune modification des règles.</p>';
   const parDomaine = regrouper(lignes, (l) => l.domaine);
   const domaines = [...parDomaine.keys()].sort((a, b) => ORDRE_DOMAINES.indexOf(a) - ORDRE_DOMAINES.indexOf(b));
@@ -195,8 +201,8 @@ export function htmlDeLaListe(lignes, { plafond = 40, niveau = 3 } = {}) {
       const n = compter(lesLignes);
       const groupes = [...regrouper(lesLignes, (l) => l.groupe ?? '').entries()]
         .map(([groupe, deGroupe]) => {
-          const entites = [...regrouper(deGroupe, (l) => l.entite).entries()].map(([e, ls]) => htmlDeLEntite(e, ls)).join('');
-          return `<div class="nv-groupe">${groupe ? `<h${niveau + 1} class="nv-groupe__titre">${echapper(groupe)}</h${niveau + 1}>` : ''}<ul class="nv-entites">${entites}</ul></div>`;
+          const entites = [...regrouper(deGroupe, (l) => l.entite).entries()].map(([e, ls]) => htmlDeLEntite(e, ls, texte)).join('');
+          return `<div class="nv-groupe">${groupe ? `<h${niveau + 1} class="nv-groupe__titre">${texte(groupe)}</h${niveau + 1}>` : ''}<ul class="nv-entites">${entites}</ul></div>`;
         })
         .join('');
       const resume = `<span class="nv-domaine__titre">${echapper(TITRES_DOMAINES[d] ?? d)}</span> <span class="nv-compte">${lesLignes.length} modification${lesLignes.length > 1 ? 's' : ''}${n.amelioration ? ` · <span class="nv-sens--amelioration">${n.amelioration} amélioration${n.amelioration > 1 ? 's' : ''}</span>` : ''}${n.affaiblissement ? ` · <span class="nv-sens--affaiblissement">${n.affaiblissement} affaiblissement${n.affaiblissement > 1 ? 's' : ''}</span>` : ''}</span>`;
@@ -209,18 +215,54 @@ const DATE = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', y
 /** « 1 octobre 2026 » d'une date AAAA-MM-JJ. */
 export const dateLisible = (iso) => (iso ? DATE.format(new Date(`${iso}T00:00:00Z`)) : '');
 
-/** Une note de version publiée : en-tête (version, date, depuis), champ libre, liste. */
-export function htmlDeLaNote(note, lignes, { niveau = 2 } = {}) {
+/** Une note de version publiée : en-tête (version, date, depuis), champ libre, liste. `texte` : le HTML d'un texte cité (htmlDuDiff). */
+export function htmlDeLaNote(note, lignes, { niveau = 2, texte = echapper } = {}) {
   const exemple = note.exemple ? '<p class="nv-exemple" role="note">Donnée d’exemple (lorem ipsum) : elle disparaîtra à la première vraie mise à jour.</p>' : '';
   const depuis = note.depuis ? ` <span class="nv-depuis">depuis la V${echapper(note.depuis)}</span>` : '';
   // une note sans liste mais avec un texte (la V0.2 : « Import initial depuis les sources historiques », migration 0028) : le texte dit tout,
   // sans « Aucune modification des règles » en dessous
-  const liste = lignes.length || !note.texte ? htmlDeLaListe(lignes, { niveau: niveau + 1 }) : '';
+  const liste = lignes.length || !note.texte ? htmlDeLaListe(lignes, { niveau: niveau + 1, texte }) : '';
   return `<article class="nv-note" id="v${echapper(note.version.replace('.', '-'))}">
     <h${niveau} class="nv-note__titre">Version ${echapper(note.version)} <span class="nv-date">${echapper(dateLisible(note.publiee_le))}</span>${depuis}</h${niveau}>
-    ${exemple}${note.texte ? `<div class="nv-texte">${htmlDuTexteLibre(note.texte)}</div>` : ''}
+    ${exemple}${note.texte ? `<div class="nv-texte">${htmlDuTexteLibre(note.texte, { texte })}</div>` : ''}
     ${liste}
   </article>`;
+}
+
+/**
+ * Ce que la page montre de `etat_production` (GET /api/mise-a-jour/ : la production a-t-elle appliqué sa dernière mise à jour ?), ou null (rien).
+ * `niveau` : `alerte` (seulement `pas_appliquee`) ou `discret` (`inconnue`, `a_jour`) ; `message` : le texte du service ; `lignes` : les versions
+ * publiée et attestée, la date d'attestation ; `tables` : les tables au contenu différent (`alerte` seulement). Une réponse sans le champ (ancien
+ * service), un état inconnu ou un champ de mauvais type ne cassent rien : ils ne montrent rien. Pur : le script
+ * de la page bâtit les nœuds par `textContent`.
+ * @param {unknown} etat `etat_production` de la réponse
+ * @returns {{ niveau: 'alerte' | 'discret', message: string, lignes: string[], tables: string[] } | null}
+ */
+export function affichageDeLaProduction(etat) {
+  if (!etat || typeof etat !== 'object') return null;
+  const chaine = (v) => (typeof v === 'string' ? v.trim() : '');
+  const message = chaine(etat.message);
+  const version = (v) => chaine(v);
+  const publiee = version(etat.version_publiee);
+  const attestee = version(etat.version_attestee);
+  const jour = /^\d{4}-\d{2}-\d{2}/.exec(chaine(etat.attestee_le))?.[0];
+  const le = jour && !Number.isNaN(Date.parse(`${jour}T00:00:00Z`)) ? dateLisible(jour) : '';
+  if (etat.etat === 'pas_appliquee') {
+    const tables = Array.isArray(etat.tables_differentes) ? etat.tables_differentes.filter((t) => typeof t === 'string' && t) : [];
+    const lignes = [
+      publiee ? `Version publiée par la production : V${publiee}` : '',
+      attestee ? `Dernière version attestée par la production : V${attestee}${le ? `, le ${le}` : ''}` : '',
+    ].filter(Boolean);
+    return { niveau: 'alerte', message, lignes, tables };
+  }
+  if (etat.etat === 'inconnue') return message ? { niveau: 'discret', message, lignes: [], tables: [] } : null;
+  if (etat.etat === 'a_jour') {
+    const v = attestee || publiee;
+    const dit = message || (v ? `La production a appliqué la version ${v}` : '');
+    if (!dit) return null;
+    return { niveau: 'discret', message: le ? `${dit.replace(/\.$/, '')}, attestée le ${le}.` : dit, lignes: [], tables: [] };
+  }
+  return null;
 }
 
 /** États d'un lot entré dans dev ou livré : « libérer » n'y fait que vider le texte qu'il tient encore (serveur/notes-de-version.mjs#libererLot). */
@@ -231,15 +273,125 @@ const LOT_DANS_DEV = ['fusionne', 'echec_livraison', 'termine'];
  * « Dernière simulation » ne parle que de la version en préparation — un lancement d'une autre version (la livraison précédente, terminée) n'y
  * apparaît plus. Il reste tant qu'il pèse sur la page, quelle que soit sa version : il bloque un nouveau lancement (`occupe`), tient le texte
  * figé (`brouillon.lot`), ou son lot, toujours servi au workflow, peut être annulé (`liberable` hors lot déjà dans dev : un lot livré resté sans
- * nouvelles 3 h est `liberable` pour toujours, et n'a plus rien à libérer une fois le texte rendu) ; sans lui, la page ne dirait plus pourquoi.
+ * nouvelles 3 h est `liberable` pour toujours, et n'a plus rien à libérer une fois le texte rendu) ; sans lui, la page ne dirait plus pourquoi. Une copie
+ * vers le dépôt (`mode: 'copie'`, sans version cible) reste affichée : c'est le dernier lancement, et aucune version ne la périme.
  * @param {{ lancement?: { lot?: string, version_cible?: string, etat?: string } | null, version_cible?: string, occupe?: boolean, liberable?: boolean, brouillon?: { lot?: string | null } | null }} donnees réponse de GET /api/mise-a-jour/
  */
 export function lancementAffiche({ lancement, version_cible: versionCible, occupe = false, liberable = false, brouillon = null }) {
   if (!lancement) return null;
   if (lancement.version_cible === versionCible) return lancement;
+  // une copie vers le dépôt (base source) n'a pas de version cible : elle ne parle d'aucune version en préparation, et c'est le dernier lancement
+  if (modeDuLancement(lancement) === 'copie') return lancement;
   const tientLeTexte = Boolean(brouillon?.lot) && brouillon.lot === lancement.lot;
   const annulable = liberable && !LOT_DANS_DEV.includes(lancement.etat);
   return occupe || tientLeTexte || annulable ? lancement : null;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+// Base source (lot 8) : « Copier vers le dépôt », refus avant l'envoi, lancement d'un paquet
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+// Rien de cela ne paraît sans le marqueur `db/source` : `GET /api/mise-a-jour/` porte alors `base_source: false`, et ces fonctions ne sont pas appelées
+// (ou rendent ce que la page disait déjà). Texte pur : le script de la page le pose par `textContent` ou le passe par `echapper`.
+
+/** La phrase qui dit ce que fait « Copier vers le dépôt » (à côté des boutons, et dans sa confirmation). */
+export const PHRASE_DE_LA_COPIE = 'Refait les pages du site de dev avec le contenu du jour, sans rien livrer en production.';
+
+/**
+ * Faut-il montrer « Copier vers le dépôt » ? Seulement quand le service dit `base_source: true` et donne le mot à taper (`confirmation_copie`) ; une
+ * réponse d'avant (sans l'un ou l'autre) laisse la page comme elle était. Rend le mot, ou null.
+ * @param {{ base_source?: unknown, confirmation_copie?: unknown } | null | undefined} donnees réponse de GET /api/mise-a-jour/
+ */
+export function motDeLaCopie(donnees) {
+  if (donnees?.base_source !== true) return null;
+  const mot = donnees.confirmation_copie;
+  return typeof mot === 'string' && mot.trim() ? mot : null;
+}
+
+/** Le mode d'un lancement : `copie`, `simulation` ou `mise-a-jour` (le champ `mode` du service, sinon ses drapeaux : un lancement d'avant n'a pas de `mode`). */
+export function modeDuLancement(lancement) {
+  const mode = lancement?.mode;
+  if (mode === 'copie' || mode === 'simulation' || mode === 'mise-a-jour') return mode;
+  return lancement?.copie ? 'copie' : lancement?.simulation ? 'simulation' : 'mise-a-jour';
+}
+
+/**
+ * L'en-tête de l'encart du dernier lancement : { titre, precision }. « Dernier lancement » ou « Dernière simulation » (version cible et date) ; « Dernière
+ * copie » (la date seule : une copie n'a pas de version cible).
+ */
+export function enteteDuLancement(lancement) {
+  const mode = modeDuLancement(lancement);
+  const date = String(lancement?.lance_le ?? '');
+  if (mode === 'copie') return { titre: 'Dernière copie', precision: date };
+  return { titre: mode === 'simulation' ? 'Dernière simulation' : 'Dernier lancement', precision: `V${lancement?.version_cible ?? '?'}, ${date}` };
+}
+
+/** Ce que dit l'encart d'un lancement de copie, état par état ; un état absent d'ici se lit comme celui des autres lancements. */
+export const ETATS_DE_LA_COPIE = {
+  envoi: 'Copie préparée, envoi à GitHub…',
+  lance: 'Workflow déclenché sur GitHub : en attente de démarrage.',
+  en_cours: 'Copie en cours sur GitHub (PR vers dev, tests, fusion dans dev).',
+  fusionne: 'Le contenu du site de dev est fusionné dans dev ; la fin du travail sur GitHub est en cours.',
+  termine: 'Copie terminée : le contenu du site de dev est fusionné dans dev. Rien n’a été livré en production ; il y partira avec la prochaine livraison dev → master.',
+  echec: 'La copie a échoué sur GitHub avant d’entrer dans dev : rien n’a été fusionné. Le journal du workflow dit pourquoi ; vous pouvez annuler ce lancement.',
+  annule: 'Copie annulée.',
+};
+
+const nombreOuNull = (v) => (Number.isFinite(v) && v >= 0 ? v : null);
+const pluriel = (n, un, plusieurs) => `${n} ${n > 1 ? plusieurs : un}`;
+
+/**
+ * La phrase de fin d'une mise à jour faite depuis la base source : « reporté le … » quand la note et l'historique ont été reportés dans la base
+ * (`reporte_le`, `report`), avec ce qui a été reporté ; sinon, que le report attend l'installation par la production. Vide pour tout autre lancement.
+ */
+export function phraseDuReport(lancement) {
+  const l = lancement ?? {};
+  if (!l.paquet || modeDuLancement(l) !== 'mise-a-jour' || l.etat !== 'termine') return '';
+  if (!l.reporte_le) return 'Mise à jour terminée : fusionnée dans dev puis livrée sur master. La note de version sera reportée dans la base du site de dev quand la production aura installé cette version.';
+  const jour = /^\d{4}-\d{2}-\d{2}/.exec(String(l.reporte_le))?.[0];
+  const le = jour && !Number.isNaN(Date.parse(`${jour}T00:00:00Z`)) ? ` le ${dateLisible(jour)}` : '';
+  const historique = nombreOuNull(l.report?.historique);
+  const integrees = nombreOuNull(l.report?.integrees);
+  const comptes = [
+    historique === null ? '' : pluriel(historique, 'trace d’historique', 'traces d’historique'),
+    integrees === null ? '' : pluriel(integrees, 'modification livrée', 'modifications livrées'),
+  ].filter(Boolean).join(', ');
+  return `Mise à jour terminée : livrée sur master, puis reportée${le} dans la base du site de dev (note de version et historique${comptes ? ` : ${comptes}` : ''}).`;
+}
+
+/**
+ * Le texte d'un état de lancement. `etats` : la table de la page (état → texte) pour les lancements ordinaires ; une copie et une mise à jour depuis la
+ * base source ont les leurs.
+ */
+export function texteDeLEtat(lancement, etats) {
+  const mode = modeDuLancement(lancement);
+  const etat = lancement?.etat;
+  if (mode === 'copie' && Object.hasOwn(ETATS_DE_LA_COPIE, etat)) return ETATS_DE_LA_COPIE[etat];
+  const report = phraseDuReport(lancement);
+  if (report) return report;
+  return etats?.[etat] ?? String(etat ?? '');
+}
+
+/** L'erreur du report de la note dans la base (`erreur_report`), à dire sous l'état ; vide sans erreur. */
+export function erreurDuReport(lancement) {
+  const e = lancement?.erreur_report;
+  return typeof e === 'string' && e.trim() ? `Le report de la note dans la base du site de dev a échoué (il sera retenté) : ${e.trim()}` : '';
+}
+
+/**
+ * Ce que la page dit d'un refus avant l'envoi (`409 { erreur, refus }` de « Effectuer la mise à jour », de la Simulation et de « Copier vers le
+ * dépôt ») : { texte, lignes } — une phrase (`lignes` vide). Jamais un nom de fiche (le service n'en donne pas). Sans `refus`
+ * lisible, null : la page dit alors le message d'erreur du service.
+ *   - attestation : le `message` du service (seul refus : un élément retiré qu'une fiche utilise ne fait jamais refuser, décision R280).
+ * @param {unknown} refus `refus` du corps de la réponse
+ * @returns {{ texte: string, lignes: string[] } | null}
+ */
+export function messageDuRefus(refus) {
+  if (!refus || typeof refus !== 'object') return null;
+  if (refus.raison === 'attestation') {
+    const message = typeof refus.message === 'string' ? refus.message.trim() : '';
+    return message ? { texte: message, lignes: [] } : null;
+  }
+  return null;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------

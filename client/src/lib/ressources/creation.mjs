@@ -15,7 +15,9 @@ export const RESSOURCES = [
       'valeurs de départ, avantages, inconvénients, don de base ; ses dons raciaux, son tableau de dons, ses bornes de caractéristiques et ses matrices ' +
       'd’accès de la fiche en sous-ressources ; une race créée reçoit « À compléter. » et 0, rien n’est déduit (ni magie innée, ni classe accessible : ses ' +
       'magies innées se posent ensuite par la matrice, sous-ressource acces-aux-magies), et le service lui crée aussi son peuple du même nom dans la ' +
-      'matrice « Relation entre les races », avec sa case « Même peuple » face à lui-même ; une race ne se supprime pas.',
+      'matrice « Relation entre les races », avec sa case « Même peuple » face à lui-même ; sa place dans la liste des races (`rang_liste`, migration ' +
+      '0092 : menu latéral, /races/, tableau des magies innées ; pas l’ordre de la fiche) se modifie, une race créée la prend en fin de liste ; une race ' +
+      'ne se supprime pas.',
     table: 'race',
     extensions: [{ table: 'race_onglet', parent: { race_id: 'id' } }],
     enfants: [
@@ -78,8 +80,8 @@ export const RESSOURCES = [
         description:
           'Les magies innées que l’onglet de la race limite (le Nain et les races hybrides à classe raciale), dans l’ordre où il les cite ; la liste prime sur ' +
           'la matrice de la fiche (décisions R11, R31) ; une magie s’y ajoute à la fin (POST) ou s’en retire (DELETE) par l’opération `magies_innees` du ' +
-          'site de dev, seulement pour une race dont l’onglet limite déjà ses magies (sinon : la matrice, acces-aux-magies) ; retirer la dernière rend la ' +
-          'main à la matrice.',
+          'site de dev, seulement pour une race dont l’onglet limite déjà ses magies (sinon : la matrice, acces-aux-magies) ; la dernière ne se retire pas ' +
+          '(400 : une race a au moins une magie innée possible, décision R210).',
         operations: { POST: 'magies_innees', DELETE: 'magies_innees' },
       },
       {
@@ -93,7 +95,7 @@ export const RESSOURCES = [
           'La ligne de la race dans la matrice « Accessibilité Magie » de la fiche auto (une case par magie, 1 = accessible en magie innée), qui fait foi quand ' +
           'l’onglet ne limite pas (décision R8) : une case se modifie (PATCH { accessible: 0 | 1 }) par l’opération `magies_innees` du site de dev, ' +
           'seulement pour une race dont l’onglet ne limite pas ses magies (sinon : magies-innees-de-l-onglet) — c’est ainsi qu’une race créée reçoit ses ' +
-          'magies innées.',
+          'magies innées ; la dernière case accessible ne se ferme pas (400 : une race a au moins une magie innée possible, décision R210).',
         operations: { PATCH: 'magies_innees' },
       },
       {
@@ -169,6 +171,17 @@ export const RESSOURCES = [
         tri: 'rang',
         description: 'Le tableau sans titre sous les dons de l’onglet du Mage Bleu (une ligne par magie, son libellé et son texte) ; en lecture seule.',
       },
+      {
+        cle: 'entrees-du-tableau',
+        nom: 'Entrée du tableau annexe de la classe',
+        noms: 'Entrées du tableau annexe de la classe',
+        table: 'classe_annexe_entree',
+        parent: { classe_id: 'id' },
+        tri: 'annexe_rang',
+        description:
+          'Les entrées du tableau du bas de l’onglet du Mage Bleu, une par « (Type) Nom. Effet » d’une ligne, citées sans rien réécrire, avec leur type et ' +
+          'leur limite d’usage : la liste des dons « Variable » (décision R181, migration 0088) ; en lecture seule.',
+      },
     ],
     derivees: [
       { table: 'classe_maitrise_arme', parent: { classe_id: 'id' } },
@@ -202,10 +215,21 @@ export const RESSOURCES = [
     description:
       'Les dons de classe (« capacités » du classeur, une page chacun) : niveau, type, effet et remarque ; les choix « l’un OU l’autre » se lisent dans leur ' +
       'place sur l’onglet (ligne, rang, nature), qui ne se modifie pas ; un don créé se place à la fin de son niveau ou en option d’un choix (niveaux 1, 5, 10, ' +
-      '15, 20 : R44), un don supprimé est retiré des fiches avec une note datée (R42).',
+      '15, 20 : R44), un don supprimé est retiré des fiches avec une note datée (R42) et emporte ses règles en données (magie d’un don « Variable », ' +
+      'plafond de NPM, condition d’emplacements) ; un don de type « Variable » se crée avec la magie qu’il vise (`magie` : magie innée ou acquise, R181), ' +
+      'refusée pour un autre type ; un PATCH qui fait passer son type à « Variable » la demande aussi (`magie`), un type qui quitte « Variable » la retire.',
     table: 'capacite',
     // les NM de sorts gagnés que le texte du don écrit (« Gagne 4 niveaux de maîtrise (NM). », décision R154), lus par lib/maitrise-arme.mjs
-    derivees: [{ table: 'capacite_nm_gagne', parent: { capacite_id: 'id' } }],
+    // la magie que vise un don « Variable » (capacite_variable, décision R181, migration 0088 : écrite par la migration d'après le texte du don ; pour un
+    // don « Variable » créé, d'après le champ `magie` de sa création, « Demander la magie » : serveur/edition.mjs#magieDuDonVariable ; pour un type changé,
+    // « Demander ou retirer », R192 : la clé `magie` du PATCH, serveur/edition.mjs#suivreLaMagieDuDon) ; le plafond de NPM
+    // qu'un don relève (capacite_npm_plafond, R188) et les dons qui comptent comme une condition d'emplacements de sorts (capacite_condition_emplacements,
+    // R189) : migration 0097, écrits par la migration seulement (jamais lus dans le texte du don). Un don supprimé les retire, notées au journal
+    // (serveur/edition.mjs#retirerLesReglesDuDon)
+    derivees: [
+      { table: 'capacite_nm_gagne', parent: { capacite_id: 'id' } }, { table: 'capacite_variable', parent: { capacite_id: 'id' } },
+      { table: 'capacite_npm_plafond', parent: { capacite_id: 'id' } }, { table: 'capacite_condition_emplacements', parent: { capacite_id: 'id' } },
+    ],
     liste: ['id', 'nom', 'classe_id', 'specialite_id', 'niveau', 'nature', 'type_brut'],
     recherche: ['nom'],
     tri: 'classe_id',

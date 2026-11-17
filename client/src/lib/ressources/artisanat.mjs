@@ -21,9 +21,8 @@ export const RESSOURCES = [
     noms: 'Monnaies',
     description:
       'Les monnaies de l’onglet « Équipement inventaire » (MONNAIE et CONVERTISSEUR) : nom, abréviation, valeur en RF (le Ricken de fer est l’unité, ' +
-      'valeur 1) et ligne du convertisseur telle qu’écrite (recalculée par le service) ; le nom et l’abréviation se modifient, sauf l’abréviation du ' +
-      'RF, du RO et de la PP (celle des prix écrits) ; la valeur se donne à la création et ne se modifie pas (décision R61) ; une monnaie se crée ' +
-      '(identifiant tiré de l’abréviation) et se supprime, sauf l’unité.',
+      'valeur 1) et ligne du convertisseur telle qu’écrite. L’onglet Monnaie est figé (décision R219) : une monnaie ne se crée (POST), ne se modifie ' +
+      '(PATCH, toute colonne) ni ne se supprime (DELETE) depuis le site, 409 avec la raison ; seules les lectures restent.',
     table: 'monnaie',
     liste: ['id', 'nom', 'abreviation', 'valeur_rf', 'convertisseur_brut'],
     recherche: ['nom', 'abreviation'],

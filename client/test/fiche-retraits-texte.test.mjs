@@ -32,11 +32,15 @@ test('descriptionDuRetrait : don, spécialité (et ses dons choisis), sort (NPM,
   assert.equal(descriptionDuRetrait({ ...lame, dons: ['A', 'B', 'C'] }), 'la spécialité « LAME COURBE » (classe Bretteur des dunes, avec les dons choisis « A », « B » et « C »)');
 
   const boule = { nature: 'sort', id: 'magies/magie-du-feu#sort:boule-de-feu', nom: 'Boule de feu', magie: 'Feu', npm: 2 };
-  assert.equal(descriptionDuRetrait({ ...boule, nm: 0, nm_livre: 0 }), 'le sort « Boule de feu » (magie Feu, NPM 2)');
-  assert.equal(descriptionDuRetrait({ ...boule, nm: 2, nm_livre: 0 }), 'le sort « Boule de feu » (magie Feu, NPM 2, 2 NM sur cette fiche)');
+  assert.equal(descriptionDuRetrait({ ...boule, nm: 0, livre: false, choisi: true }), 'le sort « Boule de feu » (magie Feu, NPM 2)');
+  assert.equal(descriptionDuRetrait({ ...boule, nm: 2, livre: false, choisi: true }), 'le sort « Boule de feu » (magie Feu, NPM 2, 2 NM sur cette fiche)');
   // les NM du MJ sont ceux de la fiche (décision R118) : ils restent quand le sort part, la description ne les cite pas
-  assert.equal(descriptionDuRetrait({ ...boule, nm: 2, nm_livre: 1 }), 'le sort « Boule de feu » (magie Feu, NPM 2, 2 NM sur cette fiche dont 1 de livre)');
-  assert.equal(descriptionDuRetrait({ ...boule, nm: 1, nm_livre: 1 }), 'le sort « Boule de feu » (magie Feu, NPM 2, 1 NM sur cette fiche dont 1 de livre)');
+  assert.equal(descriptionDuRetrait({ ...boule, nm: 2, livre: true, choisi: true }), 'le sort « Boule de feu » (magie Feu, NPM 2, 2 NM sur cette fiche dont 1 de livre)');
+  assert.equal(descriptionDuRetrait({ ...boule, nm: 1, livre: true, choisi: true }), 'le sort « Boule de feu » (magie Feu, NPM 2, 1 NM sur cette fiche dont 1 de livre)');
+  // décision R169 : le livre part avec le sort ; sur un sort choisi sans NM, ou hors de la liste, il était en attente
+  assert.equal(descriptionDuRetrait({ ...boule, nm: 0, livre: true, choisi: true }), 'le sort « Boule de feu » (magie Feu, NPM 2, livre de sort en attente)');
+  assert.equal(descriptionDuRetrait({ ...boule, nm: null, livre: true, choisi: false }),
+    'le sort « Boule de feu » (magie Feu, NPM 2, livre de sort en attente, sort hors de la liste)');
 
   assert.equal(descriptionDuRetrait({ nature: 'metier', id: 'metiers/forgeron', nom: 'Forgeron' }), 'le métier « Forgeron »');
   assert.equal(descriptionDuRetrait({ nature: 'metier', id: 'metiers/forgeron', nom: null }), 'le métier « metiers/forgeron »');
@@ -156,10 +160,31 @@ test('arme d’avant la migration 0081 (décision R167) : devenue l’arme élé
   assert.ok(retraitsDesNotes(ligneDeRetrait(d, jour)).length === 1, 'une ligne de retrait, comptée par la page');
 });
 
-test('ordreDesRetraits : métier, spécialité, don, sort, puis par nom ; l’arme élémentaire de R167 après les armes de R52 ; l’armure de R165 après les pièces d’armure de R95 ; les maîtrises d’armes d’avant la refonte en dernier (R153)', () => {
+test('décision R181 : le don obtenu d’un don « Variable » — l’entrée et le don qui l’obtenait ; l’entrée supprimée ou le don supprimé', () => {
+  const jour = '2026-10-30T12:00:00Z';
+  const d = { nature: 'don_obtenu', id: 'classes/mage-bleu#entree:feu:moteur-thermique', nom: 'Moteur thermique', don: 'Mimétisme', classe: 'Mage Bleu', magie: 'Feu', cas: 'entree' };
+  assert.equal(descriptionDuRetrait(d), 'le don obtenu « Moteur thermique » (par le don « Mimétisme », classe Mage Bleu, magie Feu)');
+  assert.equal(ligneDeRetrait(d, jour), `[30/10/2026] ${PREFIXE_DE_RETRAIT}le don obtenu « Moteur thermique » (par le don « Mimétisme », classe Mage Bleu, magie Feu) n’existe plus dans les règles. Choisissez autre chose ou adaptez la fiche à la nouvelle règle.`);
+  assert.equal(ligneDeRetrait({ ...d, cas: 'don' }, jour), `[30/10/2026] ${PREFIXE_DE_RETRAIT}le don obtenu « Moteur thermique » (par le don « Mimétisme », classe Mage Bleu, magie Feu) n’est plus obtenu : le don qui le donnait n’existe plus dans les règles. Adaptez la fiche à la nouvelle règle.`);
+  // les noms inconnus : l'identifiant de l'entrée, rien d'autre
+  assert.equal(descriptionDuRetrait({ nature: 'don_obtenu', id: d.id, nom: null, don: null, classe: null, magie: null }), `le don obtenu « ${d.id} »`);
+  assert.ok(retraitsDesNotes(ligneDeRetrait(d, jour)).length === 1, 'une ligne de retrait, comptée par la page');
+});
+
+test('décision R236 : la spécialisation magique choisie qu’une livraison retire — son nom et sa magie ; juste après la spécialité de classe', () => {
+  const jour = '2026-11-12T12:00:00Z';
+  const d = { nature: 'specialisation_magie', id: 'magies/x#specialisation:y', nom: 'LICHE', magie: 'Nécromancie' };
+  assert.equal(descriptionDuRetrait(d), 'la spécialisation magique « LICHE » (magie Nécromancie)');
+  assert.equal(ligneDeRetrait(d, jour), `[12/11/2026] ${PREFIXE_DE_RETRAIT}la spécialisation magique « LICHE » (magie Nécromancie) n’existe plus dans les règles. Choisissez autre chose ou adaptez la fiche à la nouvelle règle.`);
+  // les noms inconnus : l'identifiant, rien d'autre
+  assert.equal(descriptionDuRetrait({ nature: 'specialisation_magie', id: d.id, nom: null, magie: null }), `la spécialisation magique « ${d.id} »`);
+  assert.ok(retraitsDesNotes(ligneDeRetrait(d, jour)).length === 1, 'une ligne de retrait, comptée par la page');
+});
+
+test('ordreDesRetraits : métier, spécialité, don, don obtenu (R181), sort, puis par nom ; l’arme élémentaire de R167 après les armes de R52 ; l’armure de R165 après les pièces d’armure de R95 ; un point de maîtrise devenu à choisir (R238 (4)), puis les maîtrises d’armes d’avant la refonte en dernier (R153)', () => {
   assert.deepEqual([...ORDRE_DES_NATURES], [
-    'metier', 'specialite', 'capacite', 'sort', 'arme', 'arme_elementaire', 'objet', 'piece_armure', 'armure_transformee', 'armure_familier', 'armure_magie_absente',
-    'armure_trop_lourde', 'materiau_bouclier', 'accessoire', 'acquis', 'maitrises_armes',
+    'metier', 'specialite', 'specialisation_magie', 'capacite', 'don_obtenu', 'sort', 'arme', 'arme_elementaire', 'objet', 'piece_armure', 'armure_transformee', 'armure_familier', 'armure_magie_absente',
+    'armure_trop_lourde', 'materiau_bouclier', 'accessoire', 'acquis', 'maitrise_imposee', 'maitrises_armes',
   ]);
   const elements = [
     { nature: 'sort', id: 's2', nom: 'Zéphyr' }, { nature: 'sort', id: 's1', nom: 'Aura' }, { nature: 'capacite', id: 'k2', nom: 'Don 10' },

@@ -1,4 +1,4 @@
-// Une arme forgée (onglet Armes de /ressources/equipement/, demande du propriétaire) : l'arme, son matériau et son amélioration ajustent ses dégâts, sa solidité et
+// Une arme forgée (page Armes (/ressources/armes/), demande du propriétaire) : l'arme, son matériau et son amélioration ajustent ses dégâts, sa solidité et
 // son coût. Règles de la page « Armes » : « tous les bonus se cumulent une fois l'arme forgée (exemple : une claymore en cuivre donne un bonus aux dégâts
 // de +10 car le cuivre donne +5 aux dégâts et la claymore donne aussi +5) » ; « 1 Matériau + Le coût de l'arme + Particularité de l'arme = PRIX FINAL » ;
 // le prix d'un matériau est celui en RO (« Ignore le prix en RF, il n'est plus d'actualité »). Une amélioration +N demande les coûts des niveaux 1 à N
@@ -11,6 +11,12 @@
 
 /** Solidité minimale d'une arme, en crans (décision R51). */
 export const DURABILITE_MIN = 1;
+
+/**
+ * Le matériau par défaut d'une arme (décision R49 : « son matériau (par défaut le fer) ») : la ressource « Fer » du tableau des matériaux d'arme, par
+ * son identifiant figé. Jamais par son nom ni son nom_cle : le site de dev renomme une ressource (nom_cle recalculé) sans changer son id.
+ */
+export const MATERIAU_PAR_DEFAUT = 'ressources/armures#materiau:fer';
 
 /** Un nombre écrit à la française : « 1 220 ». */
 export const nombre = (n) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');

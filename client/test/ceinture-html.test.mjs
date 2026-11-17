@@ -1,10 +1,11 @@
-// Onglet « Ceinture » de la page /ressources/equipement/ construite (dist/ ; demande du propriétaire, 2026-10-16 : « revoir intégralement la page des
+// La page Ceinture construite, /ressources/objets-a-la-ceinture/ (dist/ ; une page à elle depuis le 2026-10-29, « Cinq pages séparées », à l'adresse de
+// l'ancienne page « Objets à la ceinture » ; avant, l'onglet Ceinture de la page « Équipement » ; demande du propriétaire, 2026-10-16 : « revoir intégralement la page des
 // objets à la ceinture, renommer l'onglet en "Ceinture" et le mettre dans les onglets de équipement », des sous-onglets « plutôt que la recherche
 // actuel », « dans l'ordre Consommable / Carquois / Bâton magiques », les consommables dans l'ordre fioles, remèdes, philtres, huiles, alchimie
 // primitive, et les couleurs des tableaux des sources ; le 2026-10-22 : un onglet par famille de consommables, et « Partout il faut utiliser Que les
 // couleurs du site […] Aucune couleur en dur ») : rendu depuis la base (lib/ceinture-db.mjs, vue v_objet_ceinture : décisions R81 et R82), trois
 // sous-onglets et leurs panneaux dans l'ordre, les onglets des familles de consommables, une ligne par objet sur la couleur de la règle du site, des liens qui mènent
-// à des pages et des ancres qui existent, les monnaies en icônes (R63), les règles de la ceinture ; plus de recherche ni de page à part. Le tableau des
+// à des pages et des ancres qui existent, les monnaies en icônes (R63), les règles de la ceinture ; plus de recherche. Le tableau des
 // bâtons (le troisième sous-onglet) : test/equipement-html.test.mjs. Se saute sans dist/ (npm run build) ; la CI le lance après le build.
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
@@ -21,12 +22,12 @@ import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { cheminDePage } from '../src/lib/metiers.mjs';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
-const fichier = join(dist, 'ressources', 'equipement', 'index.html');
+const fichier = join(dist, 'ressources', 'objets-a-la-ceinture', 'index.html');
 const present = existsSync(fichier);
 const options = present ? {} : { skip: 'site non construit (npm run build)' };
 const html = present ? readFileSync(fichier, 'utf8') : '';
 const main = html.slice(html.indexOf('<main'), html.indexOf('</main>'));
-const onglet = main.slice(main.indexOf('<section class="equipement-panneau ceinture" id="ceinture"'), main.indexOf('<section class="equipement-panneau" id="accessoires"'));
+const onglet = main.slice(main.indexOf('<section class="equipement-panneau ceinture" id="ceinture"'));
 const objets = present ? chargerObjetsDeCeinture(ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' })) : null;
 const tableau = (famille) => objets.tableaux.find((t) => t.famille === famille);
 /** Le panneau d'un sous-onglet : de son <section> au suivant (ou à la fin de l'onglet). */
@@ -57,9 +58,9 @@ test('l’onglet Ceinture : ses trois sous-onglets dans l’ordre, chacun un lie
     assert.equal(/\bis-active\b/.test(classes), id === SOUS_ONGLETS_DE_LA_CEINTURE[0].id, `${id} : ouvert au départ ou non`);
     assert.ok(onglet.includes(`<h3 class="ceinture-panneau__titre" id="titre-${id}">`), `${id} : son titre`);
   }
-  // l'ancienne page n'est plus construite, ni dans le menu ; son adresse mène à l'onglet par la page 404 (test/equipement.test.mjs)
-  assert.ok(!existsSync(join(dist, 'ressources', 'objets-a-la-ceinture')), 'pas de page /ressources/objets-a-la-ceinture/');
-  assert.ok(!html.includes('ressources/objets-a-la-ceinture/'), 'aucun lien vers l’ancienne page');
+  // la page est à l'adresse de l'ancienne page « Objets à la ceinture » (identifiants figés), plus de page « Équipement » (test/equipement-html.test.mjs)
+  assert.ok(!existsSync(join(dist, 'ressources', 'equipement')), 'pas de page /ressources/equipement/');
+  assert.ok(html.includes('<a href="/ressources/objets-a-la-ceinture/" aria-current="page">Ceinture</a>'), 'son entrée du menu, courante');
 });
 
 test('mode modification (site de dev) : les quatre cases saisies de chaque potion, et rien d’autre de l’onglet hors du panneau de règles des bâtons', options, () => {
@@ -107,8 +108,9 @@ test('consommables : un onglet par famille, dans l’ordre Fioles, Remèdes, Phi
   // les carquois et sacs : le tableau repliable de leur sous-onglet
   assert.deepEqual([...panneau('ceinture-carquois').matchAll(/<details class="tableau ceint-tableau" id="([^"]+)" open>/g)].map((m) => m[1]), ['objets-contenant']);
   assert.ok(!panneau(ONGLET_DES_BATONS).includes('ceint-tableau'), 'les bâtons ont leur tableau (lib/batons-rendu.mjs)');
-  // trois groupes d'onglets imbriqués sur la page : la page, la ceinture, ses consommables (components/Onglets.astro : chacun sa barre)
-  assert.deepEqual([...main.matchAll(/data-onglets="([^"]+)"/g)].map((m) => m[1]).filter((n) => ['Équipement', 'Ceinture', 'Consommables'].includes(n)), ['Équipement', 'Ceinture', 'Consommables']);
+  // deux groupes d'onglets imbriqués sur la page Ceinture (une page à elle depuis le 2026-10-29, plus d'onglets de page « Équipement ») : la ceinture,
+  // ses consommables (components/Onglets.astro : chacun sa barre)
+  assert.deepEqual([...main.matchAll(/data-onglets="([^"]+)"/g)].map((m) => m[1]).filter((n) => ['Équipement', 'Ceinture', 'Consommables'].includes(n)), ['Ceinture', 'Consommables']);
 });
 
 test('consommables : un tableau par page de potion, deux ou trois côte à côte (demande du propriétaire, 2026-10-17), sur le gabarit commun', options, () => {
@@ -166,8 +168,26 @@ test('une ligne par objet de la vue (sauf les bâtons), aux ancres uniques ; le 
   }
 });
 
-/** Les règles des feuilles en ligne de la page : Map(classe → { propriété: valeur }) pour chaque `.classe{…}` d'une balise <style>. */
-const reglesDeLaPage = () => new Map([...html.matchAll(/<style>([\s\S]*?)<\/style>/g)].flatMap((m) => [...m[1].matchAll(/\.([a-z0-9-]+)\{([^{}]*)\}/g)])
+/** La surface et le texte des deux thèmes (styles/global/base.css : `:root`, `:root[data-theme="dark"]`). */
+const THEMES = (() => {
+  const base = readFileSync(fileURLToPath(new URL('../src/styles/global/base.css', import.meta.url)), 'utf8');
+  const bloc = (sel) => base.slice(base.indexOf(`${sel} {`), base.indexOf('}', base.indexOf(`${sel} {`)));
+  const jeton = (corps, nom) => corps.match(new RegExp(`\\n\\s*${nom}: (#[0-9a-f]{6});`))?.[1];
+  return Object.fromEntries([['clair', ':root'], ['sombre', ':root[data-theme="dark"]']]
+    .map(([theme, sel]) => [theme, { surface: jeton(bloc(sel), '--surface'), texte: jeton(bloc(sel), '--text') }]));
+})();
+/** `color-mix(in srgb, <couleur> <part>, <fond>)`, comme le navigateur le calcule. */
+const melange = (couleur, fond, part) => {
+  const canaux = (hex) => hex.slice(1).match(/../g).map((x) => parseInt(x, 16));
+  const [c, f] = [canaux(couleur), canaux(fond)];
+  return `#${c.map((v, i) => Math.round(v * part + f[i] * (1 - part)).toString(16).padStart(2, '0')).join('')}`;
+};
+
+/**
+ * Les règles des feuilles en ligne de la page : Map(classe → { propriété: valeur }) pour chaque `.classe{…}` d'une balise <style>, attributs compris
+ * (`<style data-couleurs-mots-cles>`, la feuille des mots-clés colorés de layouts/Base.astro, sur chaque page).
+ */
+const reglesDeLaPage = () => new Map([...html.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].flatMap((m) => [...m[1].matchAll(/\.([a-z0-9-]+)\{([^{}]*)\}/g)])
   .map(([, classe, corps]) => [classe, Object.fromEntries(corps.split(';').filter(Boolean).map((d) => d.split(':')))]));
 
 test('chaque potion sur la couleur de la règle du site (son essence, ou la caractéristique d’un philtre, au niveau de son palier) ; les carquois et sacs sans couleur', options, () => {
@@ -182,6 +202,13 @@ test('chaque potion sur la couleur de la règle du site (son essence, ou la cara
     if (c) {
       assert.deepEqual(regles.get(classeDePotion(c)), { '--ligne-fond': c.fond, '--ligne-texte': c.texte }, `${p.id} : la classe ${classeDePotion(c)}`);
       assert.ok(contraste(c.fond, c.texte) >= CONTRASTE_MINIMAL, p.id);
+      // la ligne : le texte du thème sur le fond du thème teinté de la couleur (12 %, 20 % au survol : styles/global/tableaux.css), dans les deux thèmes
+      for (const [theme, { surface, texte }] of Object.entries(THEMES)) {
+        for (const part of [0.12, 0.2]) {
+          const fond = melange(c.fond, surface, part);
+          assert.ok(contraste(texte, fond) >= CONTRASTE_MINIMAL, `${p.id}, ${theme} à ${part * 100} % : ${texte} sur ${fond} = ${contraste(texte, fond).toFixed(2)}`);
+        }
+      }
     }
   }
   // plus aucune potion neutre : les deux pages d'essence Anti (sans couleur dans le Doc ni sur le site) ont la couleur que le propriétaire leur a
@@ -252,7 +279,7 @@ const reglesDuThemeSombre = (css) => {
 const declarations = (corps) => new Map(corps.split(';').map((d) => d.split(':')).filter((d) => d.length > 1)
   .map(([p, ...v]) => [p.trim(), v.join(':').trim()]));
 
-test('les cartes en Vide (Huile rage, Remède enragé) : lignes du dégradé du blanc avec un texte foncé, en thème sombre comme en clair', options, () => {
+test('les cartes en Vide (Huile rage, Remède enragé) : leurs lignes dans le dégradé du blanc (liseré, teinte) au texte foncé de la classe, en thème sombre comme en clair', options, () => {
   // demande du propriétaire du 2026-10-23, après « Le remède enragé est de la couleur du Vide » et « L'huile rage devrai être couleur du Vide » :
   // « Dans le screen que je t'ai envoyé les lignes ne sont pas affiché blanches. (du moins pas dans le monde sombre) » ; puis, à « Faut-il un palier
   // visible entre Apprenti et Avancé ? » : « Dégradé visible » (lib/alchimie-couleurs.mjs#NUANCES_D_UNE_BASE_BLANCHE)
@@ -275,14 +302,15 @@ test('les cartes en Vide (Huile rage, Remède enragé) : lignes du dégradé du 
     }
     assert.equal(new Set(fonds).size, fonds.length, `${page} : chaque palier a sa teinte (${fonds.join(', ')})`);
   }
-  // le thème sombre ne touche ni à la ligne colorée ni à ses couleurs, ni au fond ou au texte des cases d'un tableau : la ligne garde en sombre le fond
-  // et le texte de sa classe
+  // le thème sombre ne touche ni à la ligne colorée ni à ses couleurs, ni au fond ou au texte des cases d'un tableau ; depuis la demande du propriétaire
+  // du 2026-10-29 (« Je ne veux plus de ligne entièrement colorées de la couleur de la magie ») la ligne n'est plus sur sa couleur : le fond du thème
+  // teinté de la couleur de sa classe, le texte du thème, le liseré de la couleur (styles/global/tableaux.css, test/tableaux.test.mjs)
   const css = feuillesDeLaPage().join('\n');
   const ligne = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter(([, sel]) => /tr\.ligne-couleur\s*>\s*\*\s*$/.test(sel.trim()))
     .map(([, , corps]) => declarations(corps)).find((d) => d.has('background'));
   assert.ok(ligne, 'la règle de la ligne colorée (tableaux.css)');
-  assert.equal(ligne.get('background'), 'var(--ligne-fond)');
-  assert.equal(ligne.get('color'), 'var(--ligne-texte)');
+  assert.equal(ligne.get('background'), 'color-mix(in srgb, var(--ligne-fond) 12%, var(--surface))');
+  assert.equal(ligne.get('color'), 'var(--text)');
   const sombres = reglesDuThemeSombre(css);
   assert.ok(sombres.length > 0, 'les règles du thème sombre sont lues');
   const touche = /ligne-couleur|--ligne-(?:fond|texte)|couleur-potion-|couleur-magie-|--couleur(?:-texte)?\s*:|ceint-|ceinture/;
@@ -308,12 +336,16 @@ test('les liens mènent à des pages construites et à des ancres qui existent (
       assert.ok(pages.get(page).includes(`id="${ancre}"`), `ancre absente : ${lien}`);
     }
   }
-  // les liens vers la page même (les onglets des familles, les bombes de l'onglet Armes)
+  // les liens vers la page même (les onglets des familles) ; les bombes, sur la page Armes (une page à elle depuis le 2026-10-29)
   const ancres = [...new Set([...onglet.matchAll(/href="#([^"]+)"/g)].map((m) => m[1]))];
   for (const a of ancres) assert.ok(main.includes(`id="${a}"`), `ancre absente de la page : #${a}`);
-  assert.ok(ancres.includes('famille-bombes'), 'les bombes, dans l’onglet Armes');
+  assert.ok(liens.includes('/ressources/armes/#famille-bombes') && !ancres.includes('famille-bombes'), 'les bombes, sur la page Armes');
   for (const p of objets.tableaux.filter((t) => t.pages).flatMap((t) => t.pages)) assert.ok(liens.includes(`/${p.id}/`), `la page ${p.id}`);
-  assert.ok(liens.includes(`/${cheminDePage('guide/l-equipement')}`) && liens.includes(`/${cheminDePage('guide/fiche-accessoires-et-ceinture')}`), 'les pages du guide');
+  // les pages du guide d'où viennent les règles, quand la page les montre : la section se rattache par l'ancre figée de son intertitre
+  // (lib/ancres-figees.mjs ; lib/ceinture-db.mjs#ANCRE_DES_REGLES, #ANCRE_DE_LA_REFERENCE), que le renommage de l'intertitre sur le site de dev ne change pas
+  if (objets.regles.ceinture || objets.regles.reference) {
+    for (const s of [objets.sources.chapitre, objets.sources.reference].filter(Boolean)) assert.ok(liens.includes(`/${cheminDePage(s.id)}`), `la page du guide ${s.id}`);
+  }
 });
 
 test('les prix et les textes écrivent les monnaies en icônes, jamais en abréviations (R63)', options, () => {
@@ -329,5 +361,6 @@ test('les règles : la ceinture (guide, et le texte de la source en dépliable),
   assert.ok(regles.length > 0 === Boolean(objets.regles.ceinture || objets.regles.reference), 'les règles, repliées');
   assert.equal(regles.includes('class="prose ceinture-regles__texte"'), Boolean(objets.regles.ceinture));
   assert.equal(/<details class="ceinture-regles__detail">[\s\S]*<\/details>/.test(regles), Boolean(objets.regles.reference), 'le texte de la source, en dépliable');
-  for (const s of [objets.sources.chapitre, objets.sources.reference]) if (s) assert.ok(regles.includes(`>${s.titre.replace(/'/g, '&#39;')}</a>`) || regles.includes(`>${s.titre}</a>`), s.id);
+  // le titre courant de chaque page d'où viennent les règles, quand la page les montre
+  for (const s of [objets.sources.chapitre, objets.sources.reference]) if (s && regles.length) assert.ok(regles.includes(`>${s.titre.replace(/'/g, '&#39;')}</a>`) || regles.includes(`>${s.titre}</a>`), s.id);
 });

@@ -1,0 +1,41 @@
+---
+name: zone-edition-lots
+description: "Lots de changements du site de dev (R274, R275) : lib/lot-de-changements.mjs, serveur/edition-lots.mjs, appliquerUnLot, essai à blanc, verrous des décisions, numéros donnés, annulation d'un lot, « tout recalculer », contrôles du contenu. À charger avant de lire, modifier ou relire ce code. La page qui les montre : skill zone-mise-a-jour."
+paths: ["client/src/lib/lot-de-changements.mjs", "client/serveur/edition-lots.mjs", "client/serveur/controles-du-contenu.mjs", "client/test/lot-de-changements*.test.mjs", "client/test/serveur-edition-lots*.test.mjs", "client/serveur/epreuve-des-lots.mjs", "client/scripts/epreuve-des-lots.mjs", "client/test/epreuve-lots-*.test.mjs", "client/test/fixtures/lots-*/**", "client/test/serveur-edition-numeros.test.mjs", "client/test/controles-du-contenu.test.mjs"]
+user-invocable: false
+---
+# Lots de changements (site de dev)
+
+## Fichiers
+- `lib/lot-de-changements.mjs` : module pur, format `maverick-lot/1` ; livré avec le service (`serveur-livraison`).
+- `serveur/edition-lots.mjs` (déposer, lister, lire, essayer, appliquer, refuser), `appliquerUnLot` de `serveur/edition.mjs`, `serveur/controles-du-contenu.mjs` (les contrôles de `db:check`).
+- Le service d'édition, le journal et son rejeu : skills `zone-edition`, `zone-edition-rejeu`. La page qui montre les lots : skill `zone-mise-a-jour`.
+
+## À lire
+- `docs/serveur.md`, « Lots de changements (format) » et « Lots de changements (service) » : routes, essai à blanc, application, verrous, numéros, annulation, « tout recalculer ». Plan : `docs/chantier-base-de-dev.md`.
+
+## Choix du propriétaire
+- R274 : la base du site de dev est la source de vérité.
+- R275 (question 4 a) : « Chaque lot attend votre clic sur le site de dev, avec un aperçu avant et après. » Un lot n'écrit jamais le contenu d'office, « tout recalculer » compris.
+
+## Invariants
+- `controlerLeLot` reçoit la structure de la base en paramètre ; `comparerAvecLaBase` rend pour chaque opération `applicable` ou `changee` (la valeur a bougé : elle n'est pas écrite, le site prime).
+- Un lot ne porte jamais la nature `saisie` (liste des natures : skill `base-sqlite-migrations`, migration 0127). Il refuse les tables de trace (`note_version`, `note_version_ligne`, `historique_modification`) et toute table hors `tablesDeLEdition()` (lue dans `edition-modele.mjs`, jamais recopiée), sauf sur une base source (`db/source`, skill `zone-service`) : la route (`api.mjs#traiterLots`) donne alors `ouvertHorsEdition: true` à `controlerLeLot`, et un lot vaut pour toutes les tables de contenu (celles que l'édition ne sait pas écrire passent par la voie générique du journal). `LOT_OUVERT_AUX_TABLES_HORS_EDITION` reste `false` (le défaut du module pur, des tests et de l'épreuve) : aucune autre route ne l'ouvre. Sur une table connue de l'édition, toute colonne passe : le plan vise « toute colonne que le site ne sait pas écrire ».
+- `edition.mjs#appliquerUnLot` ouvre le même `BEGIN IMMEDIATE` qu'`enregistrer` (choix des fiches, notes R42, nature et décision du lot du journal). La voie générique `OPERATIONS_DU_LOT` (`ecrire_modifier`, `ecrire_inserer`, `ecrire_supprimer`) n'est jamais dans `OPERATIONS` ni jointe par une route (une opération inconnue y reste refusée). Une colonne que le service connaît (`TABLES`) s'écrit par son opération ; la voie générique ne sert que pour les autres. L'insertion est refusée dans une table que le service crée lui-même (`ENTITES`), sauf le mot-clé (ci-dessous) ; la suppression d'une entité sans suppression aussi (R159).
+- Insertion d'un mot-clé (`traduireLaCreationDUnMotCle`, `edition-lots.mjs`) : le service le crée (id suivant, clé R232), puis `verifier_ligne` (`OPERATIONS_DU_LOT`, jamais jointe par une route) vérifie que la ligne créée est celle que le lot décrit, sinon 409. `verrou` à 1 passe par la colonne tenue (R218, ouverte au clic). Une clé composée reprend un jeton `$numero` déjà donné dans le lot. Test : `serveur-edition-lots-mot-cle`.
+- Suppression d'une page : par le service, qui emporte ses lignes dépendantes (le lot ne les porte pas : la ligne serait déjà partie) ; un mot-clé verrouillé qui mène à une page est supprimé avant elle (R221).
+- Essai à blanc sur une copie `VACUUM INTO`, supprimée ensuite : `db:check` (`controlerLeContenu`) avant et après, seuls les problèmes nés du lot comptent ; l'application rejoue ces contrôles dans la transaction.
+- Une valeur changée entre-temps n'est pas écrite (le site prime) et est listée. Si tout a changé, le lot reste proposé : pas de `modification_lot` vide.
+- Verrous : un refus du service qui cite un `R…` et que `gel` lève est « verrouillée » ; il ne s'applique que si le numéro est dans `verrous_ouverts` au clic (aujourd'hui R218, R219, R232 (2)). `COLONNES_TENUES_PAR_LE_SERVICE` (`mot_cle.verrou`, `cle`, `monnaie_id`) refuse la voie générique sous le même gel.
+- Numéros : `donnerUnNumero` (`edition-journal.mjs`, avec `plusHautNumero` et `monterLePlafond`), une seule règle pour les lots (jeton `{"$numero": …}`) et l'édition des mots-clés (`idSuivant`, skill `zone-mots-cles-service`) : 1 + max(plafond de `numero_donne`, MAX de la colonne, journal, historique), plafond monté dans la même transaction ; jamais redonné. Pour `mot_cle` : aussi `mot_cle_ancienne_cle` et le registre 0113. Le rejeu d'un ancien journal calcule sans réserver (`monter: false`).
+- Annulation (`annulerLeLot` ; `lib/lot-de-changements.mjs#effetNetDuLot`, `jugerLAnnulation`) : le lot du journal est ramené à son effet net ; une valeur n'est remise que si elle vaut encore ce que le lot a écrit (sinon gardée et listée : le site prime). Une insertion n'est supprimée que si elle est intacte ; une suppression est réinsérée à l'identique (`ecrire_inserer` avec `restaurer`, colonnes tenues par le service comprises) seulement si la ligne est absente. Aperçu `GET …/annulation/` sur une copie (Worker), rien n'est écrit ; clic `POST …/annuler/` sous le même `BEGIN IMMEDIATE`, contrôles rejoués. Le journal d'annulation a la nature et la décision du lot ; le résumé est dans `bilan.annulation`. Rien à remettre : 409, le lot reste appliqué. Une annulation ne rend jamais un numéro. Une annulation que refusent les contrôles du contenu (anciens textes fautifs) reste refusée (choix du `leader-technique`).
+- Tout recalculer : `recalculerTout` (`POST /api/edition/lots/recalcul/`) dépose un lot de nature `code`. Périmètre : `TYPES_DE_PAGES_RECALCULEES` (races, classes, fiches de dons, métiers). `traduire` envoie une colonne dérivée d'une page typée par la voie générique du journal.
+- Accès : déposer et refaire l'essai demandent la clé ou le mot de passe, appliquer, refuser et annuler le mot de passe (R275 ; skill `zone-service`) ; en production, 403.
+
+## Épreuve
+- `serveur/epreuve-des-lots.mjs`, commande `npm run db:epreuve-lots` (`client/scripts/epreuve-des-lots.mjs` : `fabriquer` une fois avec git, `refaire` sur une copie). Lots : `client/test/fixtures/lots-0122-0124/` ; `complement.json` porte les lignes que l'entité emporte (`COUVERT_PAR_L_ENTITE`). Détail : `docs/serveur.md`, « Lots de changements (épreuve) ».
+- Partage : (a) passe par un lot ; (b) reste hors édition sans base source (appliqué seulement par l'option de test `ouvertHorsEdition`, liste épinglée par table) ; (c) refusé par le service même ouvert (la page protégée « La montée de niveau », bloc « niveaux »). Comparaison modulo les numéros donnés.
+- L'annulation des lots 0123 et 0124 est refusée par les gardes du service (ancres figées, adresse R272) et le test l'épingle : ne rien relâcher.
+
+## Tests
+- `lot-de-changements` (module pur), `lot-de-changements-numeros`, `lot-de-changements-annulation`, `serveur-edition-lots`, `serveur-edition-lots-annulation`, `serveur-edition-numeros`, `controles-du-contenu`, `epreuve-lots-0122-0124` (long, environ une minute). Nature et décision d'un lot du journal : `serveur-edition-nature-des-traces` (skill `zone-edition-rejeu`).

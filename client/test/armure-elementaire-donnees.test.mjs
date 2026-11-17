@@ -12,6 +12,7 @@ import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { POIDS_DES_ARMURES, valeurDuPoids } from '../src/lib/fiche-format.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
+import { texteDImport } from './aide-base-d-import.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const regles = chargerReglesDeFiche(db);
@@ -39,8 +40,8 @@ test('R165 : regles.json donne les armures élémentaires (ordre des colonnes pu
   const effets = tous('SELECT armure_elementaire_id, texte FROM armure_elementaire_effet ORDER BY armure_elementaire_id, rang');
   const attendues = tous('SELECT id, nom, categorie, magie_id, ap, am, ordre FROM armure_elementaire ORDER BY ordre, id')
     .map((a) => ({ ...a, nom: texteSansBalises(a.nom), effets: effets.filter((e) => e.armure_elementaire_id === a.id).map((e) => texteSansBalises(e.texte)) }));
-  // `sorts` (R102) et `resistances` (R166 : test/fiche-resistances-armure-elementaire.test.mjs) sont lus de ces effets
-  assert.deepEqual(regles.armures_elementaires.map(({ sorts: _s, resistances: _r, ...a }) => a), attendues);
+  // `sorts` (R102), `resistances` (R166 : test/fiche-resistances-armure-elementaire.test.mjs) et `actions` (R173 : test/limite-texte.test.mjs) sont lus de ces effets
+  assert.deepEqual(regles.armures_elementaires.map(({ sorts: _s, resistances: _r, actions: _a, ...a }) => a), attendues);
   assert.equal(regles.armures_elementaires.length, 56, '4 poids × 14 magies (Q99:EE138)');
   assert.ok(!regles.armures_elementaires.some((a) => a.magie_id === PI), 'aucune pour le Potentiel Illimité');
   // la teinte de chaque magie (le fond d'une armure élémentaire dans la liste) : sa classe de la palette
@@ -95,7 +96,16 @@ test('R165 : l’onglet Armures reçoit les 56 armures élémentaires (par magie
   assert.deepEqual(e.magies.map((m) => m.nom), ['Sang', 'Arcane', 'Corruption', 'Espace/Temps', 'Vide', 'Nécromancie', 'Feu', 'Eau', 'Glace', 'Terre', 'Vent', 'Foudre', 'Lumière', 'Ombre']);
   const gemmes = new Map(tous('SELECT g.magie_id, g.ressource_id AS id, r.nom FROM gemme g JOIN ressource r ON r.id = g.ressource_id').map((g) => [g.magie_id, { id: g.id, nom: g.nom }]));
   for (const m of e.magies) assert.deepEqual(m.gemme, gemmes.get(m.id) ?? null, m.id);
-  assert.equal(e.magies.find((m) => m.id === 'magies/magie-du-feu').gemme.nom, 'Rubis', '« Rubis pour le Feu » (R165 (2))');
+  // « Rubis pour le Feu » (R165 (2)) : la gemme se cherche par son id (figé) ; son nom, que le site peut changer (ressource.nom), se lit à l'import
+  const RUBIS = 'ressources/baton-magique#gemme:rubis';
+  // (la gemme se supprime sur le site de dev, page des composants : le Feu n'a plus de gemme, cas admis et vérifié ; sa magie, elle, ne se modifie pas)
+  const gemmeDuFeu = e.magies.find((m) => m.id === 'magies/magie-du-feu').gemme;
+  if (gemmeDuFeu) assert.equal(gemmeDuFeu.id, RUBIS, '« Rubis pour le Feu » (R165 (2))');
+  else {
+    const h = historiqueSite(db);
+    assert.ok(h.supprimee('gemme', { ressource_id: RUBIS }) || h.supprimee('ressource', { id: RUBIS }), 'le Feu sans gemme sans que le site de dev ait supprimé le Rubis');
+  }
+  assert.equal(texteDImport('ressource', { id: RUBIS }, 'nom'), 'Rubis', '« Rubis pour le Feu » (R165 (2)), à l’import');
   assert.deepEqual(armures.ameliorations.armure_elementaire, tous("SELECT * FROM amelioration_equipement WHERE cible = 'armure_elementaire' ORDER BY niveau"));
   assert.equal(armures.totaux.armure_elementaire, db.prepare("SELECT total_brut FROM amelioration_total WHERE cible = 'armure_elementaire'").get()?.total_brut ?? null);
   assert.equal(e.solidite_base, regles.constantes['piece_elementaire.solidite_base']);

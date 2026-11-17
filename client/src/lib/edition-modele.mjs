@@ -7,12 +7,12 @@
 // note datée : décisions R42, R52, annonceDesFiches), espèce et carte de monstre, capacité d'une carte, capacité de monstre commune, composant, gemme,
 // bois, ingrédient et monnaie (s'ils ne sont cités par aucune autre règle), événement, bloc de description, catégorie (retirée de ses événements),
 // mot-clé (retiré de tout ce qui le porte ou le cite), bloc d'un panneau de règles (pas le dernier de son panneau).
-// Un texte (CHAMPS_DE_TEXTE : champ ligne, texte ou markdown) peut citer un mot-clé du glossaire par une balise (« {{id}} », « {{id|texte}} », « {{id:}} » :
-// lib/mots-cles-balises.mjs) : le service l'enregistre sous sa forme canonique, qui dépend de la colonne (typeDeTexte : « {{id}} » dans un texte mis en
-// forme, « {{id|texte}} » toujours dans un texte de case, le mode complet refusé), et refuse une balise qui ne cite aucun mot-clé (serveur/edition.mjs).
+// Un texte (CHAMPS_DE_TEXTE : champ ligne, texte ou markdown) peut citer un mot-clé du glossaire par une balise (« {{clé}} », « {{clé|texte}} », « {{clé:}} » :
+// lib/mots-cles-balises.mjs) : le service l'enregistre sous sa forme canonique, qui dépend de la colonne (typeDeTexte : « {{clé}} » dans un texte mis en
+// forme, « {{clé|texte}} » toujours dans un texte de case, le mode complet refusé), et refuse une balise qui ne cite aucun mot-clé (serveur/edition.mjs).
 // Colonnes modifiables sans création ni suppression : celles des armures, des pièces d'armure, des formes, des poids et des boucliers préfabriqués, et des
-// améliorations d'armure et de bouclier (page des armures, serveur/edition-armures.mjs ; l'AP et l'AM d'une armure et d'un bouclier sont deux cases, la
-// défense écrite en est refaite : demande du propriétaire, 2026-10-17) ; celles des potions (consommables de l'onglet Ceinture,
+// améliorations d'armure et de bouclier (page des armures, serveur/edition-armures.mjs ; l'AP et l'AM d'une armure particulière sont deux cases, la
+// défense écrite en est refaite : demande du propriétaire, 2026-10-17 ; ceux d'une armure de la grille et d'un bouclier se calculent, R207 (1)) ; celles des potions (consommables de l'onglet Ceinture,
 // serveur/edition-consommables.mjs) ; le texte d'une annonce (l'encart « Notre prochaine rencontre IRL » sur l'accueil, migration 0068).
 // Fonctions et constantes pures, sans dépendance (sauf lib/dons-edition.mjs, lib/portrait.mjs, lib/arme-champs.mjs, lib/armure-champs.mjs et
 // lib/potentiel-illimite.mjs, purs eux aussi) : partagées par le service, les gabarits Astro et le script des pages (src/scripts/edition.mjs).
@@ -36,6 +36,14 @@ export { NIVEAUX_DE_DON, NIVEAU_DES_SPECIALITES, SPECIALITES_MAX, TYPES_DE_DON_S
  *   reel     nombre (décimales permises) ;
  *   categories des identifiants de catégories de la chronologie (`categorie_chronologie.id`), sans doublon, dans l'ordre donné : liste JSON, ou texte
  *            « id1, id2 » ; leur existence est contrôlée par le service (formulaire « Nouvel événement ») ;
+ *   ids      des identifiants entiers (les catégories d'un mot-clé, `categorie_mot_cle.id`, migration 0113), sans doublon, croissants : liste JSON, ou
+ *            texte « 1, 2 » ; leur existence est contrôlée par le service (création d'un mot-clé) ;
+ *   ecritures des écritures sur une ligne (les synonymes d'un mot-clé, migration 0115, décision R233), sans doublon, dans l'ordre donné : liste JSON, ou
+ *            texte « a, b » ; leur forme et leur unicité sont contrôlées par le service (lib/mots-cles-balises.mjs#fautesDuSynonyme) ;
+ *   adresse  une adresse interne du site, sur une ligne (mot_cle.url, migration 0098 : « /races/elfe/ », relative à la racine, sans le préfixe de
+ *            déploiement ; sa forme et la page visée sont contrôlées par le service, lib/mots-cles-liens.mjs#fauteDeLUrl) ; jamais un texte à balises ;
+ *   couleur  une couleur, sur une ligne (mot_cle.couleur, migration 0098 : « #rrggbb », écrite en minuscules, ou « <famille>:<id> » d'une couleur de la
+ *            palette, contrôlée par le service, lib/palette-css.mjs#fauteDeLaCouleur) ; jamais un texte à balises ;
  *   image    une image en data URL (WebP, JPEG ou PNG, PORTRAIT_MAX caractères au plus, base64 complet et en-tête lisible : lib/portrait.mjs) ;
  *            jamais une saisie de l'éditeur commun (une extension la choisit et la recadre : src/scripts/edition/bestiaire.mjs) ; les réponses de
  *            l'édition (lignes lues, en attente, d'un lot, d'un conflit) n'en donnent que l'empreinte (ligneSansImage), l'image entière passe par
@@ -155,6 +163,19 @@ export function typeDeTexte(table, colonne) {
   return TABLES[table]?.colonnes[colonne]?.type === 'markdown' ? 'markdown' : 'texte';
 }
 
+/**
+ * Types de champ d'un texte long, que le rejeu du journal fusionne à trois voies avec les règles livrées (lib/fusion-trois-voies.mjs ; demande du
+ * propriétaire : « je site essaye de faire un merge automatique entre les deux ») : paragraphes et lignes. Une `ligne` (un nom, un libellé), un nombre,
+ * un choix… est une valeur courte, jamais fusionnée.
+ */
+export const TYPES_FUSIONNABLES = Object.freeze(['texte', 'markdown']);
+
+/** La colonne est-elle un texte long fusionnable : un champ de TABLES d'un type de TYPES_FUSIONNABLES, ou le corps d'une page (typeDeTexte) ? */
+export function colonneFusionnable(table, colonne) {
+  if (table === 'page' && colonne === 'corps_md') return true;
+  return TYPES_FUSIONNABLES.includes(TABLES[table]?.colonnes[colonne]?.type);
+}
+
 export const TABLES = {
   metier: {
     libelle: 'Métier',
@@ -192,6 +213,16 @@ export const TABLES = {
     libelle: 'Rôle de magie',
     colonnes: { role_brut: { type: 'ligne', libelle: 'Rôle', requis: true } },
   },
+  // Spécialisations d'une magie (R236 (1), migration 0117) : nom, description et remarque, comme une spécialité de classe. Le rattachement d'un sort
+  // (sort.specialisation_id), comme son niveau, ne se modifie pas ; l'ordre (1 ou 2) et l'identifiant non plus ; ni création ni suppression (28, par migration).
+  magie_specialisation: {
+    libelle: 'Spécialisation magique',
+    colonnes: {
+      nom: { type: 'ligne', libelle: 'Nom', requis: true },
+      description: { type: 'texte', libelle: 'Description' },
+      remarque: { type: 'texte', libelle: 'Remarque' },
+    },
+  },
   mode_hyper_effet: {
     libelle: 'Capacité Mode Hyper',
     colonnes: {
@@ -203,7 +234,13 @@ export const TABLES = {
   // les magies innées et les relations entre peuples ont leurs opérations (`magies_innees`, `relations`)
   race: {
     libelle: 'Race',
-    colonnes: { presentation: { type: 'texte', libelle: 'Présentation' } },
+    colonnes: {
+      presentation: { type: 'texte', libelle: 'Présentation' },
+      // la place de la race dans le menu latéral des races, la liste /races/ et le tableau des magies innées (migration 0092 ; réponse du propriétaire
+      // « /races/ suit, le reste figé ») : réordonnée par glisser-déposer dans son groupe (opération `ordonner`, serveur/edition-plan.mjs) ; pas
+      // UNIQUE ; la fiche et /magies/ gardent l'ordre du code (lib/race-kinds.mjs#ORDRE_DES_RACES), race.ordre celui de l'onglet « Race »
+      rang_liste: { type: 'entier', libelle: 'Rang dans la liste des races', min: 1 },
+    },
   },
   race_onglet: {
     libelle: 'Onglet de la race',
@@ -373,7 +410,7 @@ export const TABLES = {
       texte: { type: 'ligne', libelle: 'Butin possible', requis: true },
     },
   },
-  // Armes (onglet de /ressources/equipement/, demande du propriétaire : « tout peut être éditable à l'instar des autres pages ») : les cellules de l'onglet « Armes » ;
+  // Armes (page /ressources/armes/, demande du propriétaire : « tout peut être éditable à l'instar des autres pages ») : les cellules de l'onglet « Armes » ;
   // le service en tire les colonnes typées (dé, bonus, portée, solidité, provenance…), les types de dégâts et les minimums de caractéristique
   // (lib/arme-champs.mjs), et suit le corps de la page (lib/corps-armes.mjs). Pas les armes de monstres (absentes de la page).
   arme: {
@@ -445,7 +482,7 @@ export const TABLES = {
       affinite_brut: { type: 'ligne', libelle: 'Affinité (« Santé », « Santé + Chakra »)', requis: true },
     },
   },
-  // Consommables (sous-onglet Consommables de l'onglet Ceinture de /ressources/equipement/ ; demande du propriétaire, 2026-10-17 : « Les tableaux des
+  // Consommables (sous-onglet Consommables de la page Ceinture, /ressources/objets-a-la-ceinture/ ; demande du propriétaire, 2026-10-17 : « Les tableaux des
   // consommables devrai pouvoir aussi être modifiées . (sauf pour les champ calculés) ») : le niveau et l'effet d'une potion (son nom et son prix : sa
   // ressource, colonnes de `ressource`) ; le service en refait les altérations d'état de l'effet (potion_etat) et suit le corps de la page de la potion
   // (serveur/edition-consommables.mjs). Ni création ni suppression.
@@ -456,13 +493,16 @@ export const TABLES = {
       effet: { type: 'texte', libelle: 'Effet', requis: true },
     },
   },
-  // les monnaies (MONNAIE et CONVERTISSEUR de l'onglet) : le nom et l'abréviation ; la valeur en RF ne se modifie pas (demande du propriétaire, décision
-  // R61 : « Les valeurs ne sont effectivement pas modifiables. Elles servent de valeur utile pour les calculs et de potentiel tooltip »), elle se donne à
-  // la création
+  // les monnaies (MONNAIE et CONVERTISSEUR de l'onglet) : l'onglet est figé (décision R219 (3) : « Ni création, ni modification, ni suppression dans
+  // l'onglet Monnaie » ; TABLES_FIGEES, ci-dessous : le service refuse en 409). L'abréviation reste dans TABLES pour le rejeu d'un lot ancien qui
+  // l'écrivait (il passe : R220 (1)) et pour la résolution d'un conflit. Avant R219 : l'abréviation se modifiait (sauf celle du RF, du RO et de la PP,
+  // R61) ; la valeur en RF ne se modifie pas (demande du propriétaire, décision R61 : « Les valeurs ne sont effectivement pas modifiables. Elles servent de valeur utile pour les
+  // calculs et de potentiel tooltip »), elle se donne à la création ; le nom non plus (réponse du propriétaire : « Figer les noms », R193 ; les noms du RF, du RO
+  // et de la PP sont ceux des infobulles, lib/monnaies.mjs#MONNAIES_DU_JEU), il se donne à la création. Un lot du journal noté avant ce choix qui renomme
+  // une monnaie est en conflit au rejeu (serveur/edition.mjs#ecrituresFigees)
   monnaie: {
     libelle: 'Monnaie',
     colonnes: {
-      nom: { type: 'ligne', libelle: 'Nom', requis: true },
       abreviation: { type: 'ligne', libelle: 'Abréviation', requis: true },
     },
   },
@@ -500,7 +540,7 @@ export const TABLES = {
       bonus_cran: { type: 'choix', libelle: '+1 cran de solidité (bouclier)', choix: OUI_SEUL, libelleVide: 'Non' },
     },
   },
-  // Armures et boucliers (onglets de /ressources/equipement/, demande du propriétaire, 2026-10-15 : « Modifiable tout de suite ») : les cases des onglets « Armures » et
+  // Armures et boucliers (pages /ressources/armures/ et /ressources/bouclier/, demande du propriétaire, 2026-10-15 : « Modifiable tout de suite ») : les cases des onglets « Armures » et
   // « Bouclier » ; le service en tire les colonnes typées (prix, AP, AM, coût en RF, Force minimum) et les résistances et faiblesses d'une armure
   // (lib/armure-champs.mjs), et suit le corps des pages (lib/corps-armures.mjs). Ni création ni suppression (les fiches de personnage citent armures,
   // pièces, formes et améliorations) ; les matériaux se modifient sur la page « Composants » (décision R62).
@@ -510,7 +550,9 @@ export const TABLES = {
       nom: { type: 'ligne', libelle: 'Nom', requis: true },
       type: { type: 'choix', libelle: 'Type', requis: true, choix: TYPES_D_ARMURE.map((t) => ({ valeur: t, libelle: t })) },
       // l'armure physique et l'armure magique, deux cases (demande du propriétaire, 2026-10-17 : « C'est en base que les deux devraient être séparées et
-      // donc éditable aussi ») ; vide : pas de bonus. La défense écrite (`stats_brut`) en est refaite par le service (lib/armure-champs.mjs#defenseEcrite)
+      // donc éditable aussi ») ; vide : pas de bonus. La défense écrite (`stats_brut`) en est refaite par le service (lib/armure-champs.mjs#defenseEcrite).
+      // Type, AP, AM et prix d'une armure de la grille se calculent d'après ses deux matériaux (décision R207 (1), E6) : le service ne les accepte que pour
+      // une armure particulière (R80 ; serveur/edition-armures.mjs#COLONNES_CALCULEES_DE_LA_GRILLE)
       ap: { type: 'entier', libelle: 'AP (armure physique ; vide : aucune)' },
       am: { type: 'entier', libelle: 'AM (armure magique ; vide : aucune)' },
       solidite: { type: 'entier', libelle: 'Solidité (crans)', requis: true, min: 0 },
@@ -538,14 +580,15 @@ export const TABLES = {
       prix_brut: { type: 'ligne', libelle: 'Prix (RO : « 2,5 »)', requis: true },
     },
   },
-  // un bouclier préfabriqué (une forme et une matière, décision R78) : son nom, sa défense et son prix tels qu'écrits, et son poids (la couleur de sa
-  // case dans l'onglet : décision R92, migration 0054 ; un des poids de la liste, lib/armures-db.mjs#poidsDeBouclier, obligatoire : chaque case de
-  // la source a une couleur)
+  // un bouclier préfabriqué (une forme et une matière, décision R78) : son nom et son poids (la couleur de sa case dans l'onglet : décision R92, migration
+  // 0054 ; un des poids de la liste, lib/armures-db.mjs#poidsDeBouclier, obligatoire : chaque case de la source a une couleur). Son AP, son AM et son prix
+  // se calculent d'après sa forme et sa matière (décision R207 (1), E6) : ils restent ici pour que leurs cases (`data-ed-lecture`) suivent la ligne
+  // renvoyée, comme ceux de l'armure de la grille, mais le service refuse une valeur changée (serveur/edition-armures.mjs#COLONNES_CALCULEES_DU_BOUCLIER)
+  // et les refait quand la matière (page Composants) ou le prix de la forme change (serveur/edition-armures.mjs#suivreLesValeursCalculees)
   bouclier: {
     libelle: 'Bouclier',
     colonnes: {
       nom: { type: 'ligne', libelle: 'Nom', requis: true },
-      // l'AP et l'AM, deux cases comme pour une armure (demande du propriétaire, 2026-10-17) ; la défense écrite (`defense_brut`) en est refaite
       ap: { type: 'entier', libelle: 'AP (armure physique ; vide : aucune)' },
       am: { type: 'entier', libelle: 'AM (armure magique ; vide : aucune)' },
       prix_brut: { type: 'ligne', libelle: 'Prix (RO : « 202,5 »)' },
@@ -590,17 +633,35 @@ export const TABLES = {
     libelle: 'Catégorie',
     colonnes: { libelle: { type: 'ligne', libelle: 'Catégorie', requis: true } },
   },
-  // le vocabulaire des mots-clés, le glossaire (/recherche/ en mode modification ; migration 0056) : renommer un mot-clé ne réécrit aucun texte (son id
-  // reste ; une balise d'un texte de case, « {{id|texte}} », garde le texte écrit, une balise d'un texte mis en forme, « {{id}} », montre le nouveau
-  // libellé) ; vers l'écriture d'un autre mot-clé : refusé, la page propose de les fusionner
-  // (opération `fusionner_mots_cles`) ; les mots-clés dont le site se sert ne se renomment pas (lib/mots-cles.mjs#MOTS_CLES_PROTEGES), mais leur
-  // définition se modifie ; une définition vidée : NULL (pas encore décrit)
+  // le vocabulaire des mots-clés, le glossaire (page Glossaire /regles/glossaire/ en mode modification ; migration 0056) : renommer un mot-clé garde
+  // son id ; sa clé, recalculée (décision R232 (2) : lib/mots-cles-cles.mjs), est réécrite dans chaque balise qui la cite, et l'ancienne est gardée
+  // (mot_cle_ancienne_cle : serveur/edition-mots-cles.mjs) ; le texte écrit d'une balise ne change pas (« {{clé|texte}} » dans un texte de case), une
+  // balise sans texte d'un texte mis en forme (« {{clé}} ») montre le nouveau libellé ; un libellé n'est plus unique (migration
+  // 0113) : un homonyme sans catégorie propre face à chacun des autres, ou dont la clé serait prise, est refusé (409) ; tous les champs d'un mot-clé
+  // non verrouillé se modifient, libellé compris (décision R195 : le site reconnaît les siens à leur id, lib/mots-cles.mjs#MOTS_CLES_PROTEGES) ; un
+  // mot-clé verrouillé (`verrou` = 1, migration 0110, décisions R218, R219 : ceux à adresse, des monnaies et dont le site se sert) n'en modifie aucun
+  // (serveur/edition.mjs#raisonDuGel : 409), ni ses synonymes (R233 (6) : opération `synonymes_mot_cle`) ; ses catégories, si (R232 (11) : opération
+  // `categories_mot_cle`) ; `verrou`, `cle` et `monnaie_id` ne sont pas ici : aucune route ne les écrit (R218 (4) ; la clé est calculée) ; une
+  // définition vidée : NULL (pas encore décrit) ; l'adresse et la couleur (migration 0098 : les liens devenus des mots-clés) : vidées, NULL ; une
+  // adresse interne qui mène à une page du site, une couleur écrite ou de la palette (serveur/edition.mjs#refuserLeLien, #refuserLaCouleur : 400) ;
+  // l'icône (migration 0116, décision R235) : une icône de la liste du site (lib/icones.mjs#ICONES, la liste « icones » de GET /api/edition/listes/ ;
+  // serveur/edition.mjs#refuserLIcone : 400, `champ: 'icone'`), vidée NULL ; couverte par le verrou (R235 (5))
   mot_cle: {
     libelle: 'Mot-clé',
     colonnes: {
       libelle: { type: 'ligne', libelle: 'Mot-clé', requis: true },
       description: { type: 'texte', libelle: 'Définition' },
+      url: { type: 'adresse', libelle: 'Lien' },
+      couleur: { type: 'couleur', libelle: 'Couleur' },
+      icone: { type: 'choix', libelle: 'Icône', liste: 'icones' },
     },
+  },
+  // les catégories des mots-clés (migration 0113, décision R232 (5) : « sur le site de dev, une catégorie s'ajoute, se renomme, et se supprime si elle
+  // est vide ») : un libellé unique (deux catégories ne s'écrivent pas de la même façon : libelle_cle) ; renommée, elle recalcule la clé des
+  // mots-clés homonymes qui la portent (serveur/edition-mots-cles.mjs)
+  categorie_mot_cle: {
+    libelle: 'Catégorie de mot-clé',
+    colonnes: { libelle: { type: 'ligne', libelle: 'Catégorie', requis: true } },
   },
   // Panneaux de règles (migration 0056 ; demande du propriétaire, 2026-10-16 : « Il faudrait que ce champ texte soit modifiable sur son titre, et son
   // contenu. Son contenu peut d'ailleurs inclure des tuiles génériques (toujours insérables / modifiables en mode édition) ») : le titre d'un panneau
@@ -632,6 +693,21 @@ export const TABLES = {
     colonnes: {
       titre: { type: 'ligne', libelle: 'Titre', requis: true },
       corps_md: { type: 'markdown', libelle: 'Texte', requis: true },
+      // le résumé d'une page du guide (sommaires, recherche ; demandé à la création d'une page des Règles) : pas celui d'une page du Codex (sa première
+      // phrase, tirée du document) ni d'une page typée (refait depuis ses tables) : serveur/edition.mjs#PAGE le refuse
+      resume: { type: 'ligne', libelle: 'Résumé', requis: true },
+    },
+  },
+  // Le menu latéral d'un onglet des Règles (migration 0091, R184, R185 ; lot de l'édition des menus, demandes du propriétaire « changer l'ordre des menu
+  // latéraux (par un glisser déposer) », « Oui, par une liste ») : l'onglet d'une page (une liste « Onglet » : la page passe en fin du menu de l'autre
+  // onglet ; refusé pour une page d'ouverture d'onglet, un lien ou une entrée « bientôt ») et sa place (`rang`, jamais unique : à égalité, l'id) ; l'ordre
+  // d'un menu se donne d'un bloc par l'opération `ordonner` ; une entrée naît et part avec sa page (ENTITES.page_des_regles) ; serveur/edition-plan.mjs.
+  // Les onglets eux-mêmes (regles_onglet : ordre, titre, page d'ouverture) sont fixes (réponse « Non, fixe »)
+  regles_onglet_entree: {
+    libelle: 'Entrée du menu d’un onglet des Règles',
+    colonnes: {
+      onglet_id: { type: 'choix', libelle: 'Onglet', requis: true, liste: 'onglets' },
+      rang: { type: 'entier', libelle: 'Place dans le menu', requis: true, min: 1 },
     },
   },
 };
@@ -652,13 +728,48 @@ export const texteDePageModifiable = (type, premiereSource) => type === 'guide' 
  * et des messages (« Nouvelle spécialité »), par défaut « Nouveau <libellé> ».
  */
 const champsDe = (table, colonnes) => Object.fromEntries(colonnes.map((c) => [c, TABLES[table].colonnes[c]]));
+/**
+ * La magie que vise un don « Variable » (décision R181 : la magie innée du personnage, ou sa magie acquise pour « Secondaire » ; table capacite_variable,
+ * CHECK magie IN ('innee', 'acquise')), demandée à la création d'un don de type « Variable » (réponse du propriétaire : « Demander la magie ») ; les
+ * libellés sont ceux des fiches de règles (« Magie innée », « Magie acquise »). Le service l'exige pour un don « Variable » et la refuse pour un autre
+ * type (serveur/edition.mjs#magieDuDonVariable). Aussi quand le type d'un don existant change (réponse du propriétaire : « Demander ou retirer », R192) :
+ * CHAMPS_HORS_COLONNES.capacite.magie.
+ */
+export const MAGIES_D_UN_DON_VARIABLE = Object.freeze([
+  Object.freeze({ valeur: 'innee', libelle: 'Magie innée' }),
+  Object.freeze({ valeur: 'acquise', libelle: 'Magie acquise' }),
+]);
+const CHAMP_DE_LA_MAGIE_D_UN_DON_VARIABLE = Object.freeze({
+  type: 'choix', libelle: 'Magie liée (don « Variable »)', choix: MAGIES_D_UN_DON_VARIABLE,
+  aide: 'Seulement pour un don de type « Variable », et alors obligatoire à sa création ou quand son type y passe : la liste de ses dons est celle de cette magie du personnage (R181).',
+});
+/**
+ * Les clés qu'une opération « modifier » accepte dans ses `valeurs` en plus des colonnes de TABLES : elles ne s'écrivent pas dans la ligne, le domaine du
+ * service les lit (serveur/edition.mjs#modifier). `capacite.magie` : la magie que vise un don dont le type passe à « Variable » (décision R181 ; réponse
+ * du propriétaire « Demander ou retirer », R192 : « Passer à « Variable » demande la magie (innée ou acquise) ; quitter « Variable » retire le lien à la
+ * magie. ») ; serveur/edition.mjs#suivreLaMagieDuDon. L'API /api/v1/ les accepte au PATCH de la ressource de la table.
+ */
+export const CHAMPS_HORS_COLONNES = Object.freeze({
+  capacite: Object.freeze({ magie: CHAMP_DE_LA_MAGIE_D_UN_DON_VARIABLE }),
+});
 /** Nature d'une race (demande du propriétaire : une race hybride peut être créée avant sa classe raciale ; lib/race-kinds.mjs). */
 const NATURES_DE_RACE = [
   { valeur: 'pure', libelle: 'Race pure' },
   { valeur: 'hybride', libelle: 'Race hybride (elle aura sa classe raciale)' },
 ];
-/** Le mot-clé d'une race hybride créée depuis le site : il la range parmi les hybrides tant qu'elle n'a pas sa classe raciale. */
+/** L'écriture d'origine du mot-clé d'une race hybride créée depuis le site (créé avec la première, sous l'id lib/race-kinds.mjs#TAG_RACE_HYBRIDE, par lequel il la range parmi les hybrides tant qu'elle n'a pas sa classe raciale ; son libellé se modifie : décision R195). */
 export const MOT_CLE_RACE_HYBRIDE = 'race hybride';
+
+/**
+ * Les tables figées sur le site de dev : table → la raison, telle que le refus du service la dit (409 : serveur/edition.mjs#raisonDuGel, création,
+ * modification de toute colonne, suppression ; l'API v1 comprise). Les monnaies (décision R219 (3) : « Ni création, ni modification, ni suppression dans
+ * l'onglet Monnaie »). Leur entrée de TABLES et d'ENTITES reste, pour le rejeu du journal, qui ne les contrôle pas (R220 (1) : un lot ancien qui
+ * écrivait l'onglet passe ; le renommage, lui, reste en conflit, R193, serveur/edition.mjs#COLONNES_FIGEES). L'onglet n'en offre aucun contrôle en mode
+ * modification.
+ */
+export const TABLES_FIGEES = Object.freeze({
+  monnaie: 'l’onglet Monnaie est figé, ni création, ni modification, ni suppression depuis le site (décision R219)',
+});
 
 export const ENTITES = {
   metier: {
@@ -829,9 +940,13 @@ export const ENTITES = {
     table: 'monnaie',
     libelle: 'monnaie',
     nouveau: 'Nouvelle monnaie',
+    // ni création ni suppression depuis le site : l'onglet est figé (décision R219 (3), TABLES_FIGEES : 409) ; l'entité reste pour le rejeu du
+    // journal (R220 (1)) et pour que l'API v1 réponde 409 avec la raison (POST, DELETE de /api/v1/monnaies/)
     suppression: true,
     champs: {
-      ...champsDe('monnaie', ['nom', 'abreviation']),
+      // le nom se donne ici une fois pour toutes (« Figer les noms », R193 : il n'est plus dans TABLES.monnaie)
+      nom: { type: 'ligne', libelle: 'Nom', requis: true },
+      ...champsDe('monnaie', ['abreviation']),
       valeur_rf: { type: 'entier', libelle: 'Valeur en RF', requis: true, min: 2 },
     },
   },
@@ -848,6 +963,7 @@ export const ENTITES = {
       description: { type: 'texte', libelle: 'Description' },
       don_nom: { type: 'ligne', libelle: 'Nom du don de spécialité (niveau 10)', requis: true },
       don_type: { type: 'choix', libelle: 'Type du don de spécialité', requis: true, choix: TYPES_DE_DON_SAISIE },
+      don_magie: CHAMP_DE_LA_MAGIE_D_UN_DON_VARIABLE,
       don_precision: { type: 'ligne', libelle: 'Précision du type (« 2 fois/combat »)' },
       don_effet: { type: 'texte', libelle: 'Effet du don de spécialité', aide: 's’il dit « considérer comme classe magique », la spécialité donne +4 AM (R7)' },
     },
@@ -887,8 +1003,13 @@ export const ENTITES = {
     suppression: true,
     champs: { libelle: { type: 'ligne', libelle: 'Catégorie', requis: true } },
   },
-  // un mot-clé du glossaire (/recherche/), son libellé et sa définition ; supprimé, il est retiré de toutes les pages qui le portent et de tous les textes
-  // qui le citent (sa balise devient son texte simple ; sauf les mots-clés dont le site se sert : lib/mots-cles.mjs)
+  // un mot-clé du glossaire (page Glossaire /regles/glossaire/), son libellé, sa définition, ses catégories (migration 0113 : un homonyme en a qui le
+  // distinguent, décision R232 (9)) et ses synonymes (migration 0115, R233) ; son id est le suivant (jamais réutilisé) et sa clé calculée
+  // (serveur/edition-mots-cles.mjs) ; il ne se supprime que si rien ne le
+  // mentionne (décision R196 : serveur/edition-chronologie.mjs#MOT_CLE, lib/mentions-des-mots-cles.mjs), sauf suppression forcée (`forcer: true` de
+  // l'opération, décision R223 : ses balises remplacées par leur texte affiché), et s'il n'est pas verrouillé (décisions R218, R219, forçage compris) ;
+  // son adresse, sa couleur (migration 0098) et son icône (migration 0116, R235), écrites seulement si elles sont données ; créé non verrouillé, même avec une adresse (R219 (5) : `verrou`
+  // n'est pas un champ, serveur/edition.mjs#creerMotCle), sauf `race-hybride` créé par le service avec la première race hybride (R220 (2))
   mot_cle: {
     table: 'mot_cle',
     libelle: 'mot-clé',
@@ -897,7 +1018,20 @@ export const ENTITES = {
     champs: {
       libelle: { type: 'ligne', libelle: 'Mot-clé', requis: true },
       description: { type: 'texte', libelle: 'Définition' },
+      url: { type: 'adresse', libelle: 'Lien' },
+      couleur: { type: 'couleur', libelle: 'Couleur' },
+      icone: { type: 'choix', libelle: 'Icône', liste: 'icones' },
+      categories: { type: 'ids', libelle: 'Catégories' },
+      synonymes: { type: 'ecritures', libelle: 'Synonymes' },
     },
+  },
+  // une catégorie des mots-clés (décision R232 (5)) : elle ne se supprime que vide (aucun mot-clé ne la porte : 409 sinon)
+  categorie_mot_cle: {
+    table: 'categorie_mot_cle',
+    libelle: 'catégorie de mot-clé',
+    nouveau: 'Nouvelle catégorie de mot-clé',
+    suppression: true,
+    champs: { libelle: { type: 'ligne', libelle: 'Catégorie', requis: true } },
   },
   // un bloc d'un panneau de règles (« + Texte », « + Tuile » sous un bloc, en mode modification) : inséré après le bloc de rang `apres` (les blocs suivants
   // décalés d'une place), sinon à la fin ; un titre seulement sur une tuile ; rang tiré une fois (le plus grand + 1, journal et historique compris), jamais
@@ -915,6 +1049,22 @@ export const ENTITES = {
       apres: { type: 'entier', libelle: 'Après le bloc de rang (vide : à la fin)', min: 1 },
     },
   },
+  // une page des Règles (lot de l'édition des menus et des pages, réponses du propriétaire « Pages des Règles », « Titre, onglet, résumé ») : titre, onglet
+  // et résumé obligatoires, le texte (« À compléter. ») s'écrit ensuite en place ; adresse tirée du titre (normalize) puis figée, /regles/<slug>/ ; en
+  // fin du menu de l'onglet, ou à la place d'une entrée « bientôt » qu'elle remplit (`bientot` : son id ; titre = son libellé, onglet = le sien) ;
+  // supprimée seulement si rien ne la protège (lib/pages-protegees.mjs) ni ne la cite (lib/citations-db.mjs) : serveur/edition-plan.mjs
+  page_des_regles: {
+    table: 'page',
+    libelle: 'page des Règles',
+    nouveau: 'Nouvelle page des Règles',
+    suppression: true,
+    champs: {
+      titre: { type: 'ligne', libelle: 'Titre', requis: true },
+      onglet_id: { type: 'choix', libelle: 'Onglet', requis: true, liste: 'onglets' },
+      resume: { type: 'ligne', libelle: 'Résumé', requis: true },
+      bientot: { type: 'ligne', libelle: 'Entrée « bientôt » remplie (vide : en fin de menu)' },
+    },
+  },
   // un don de classe (« capacité », D11) : sa place vient du bouton (classe, spécialité, ou le don `avec` dont il devient une option : même ligne, même
   // niveau, même spécialité) ; sans `avec`, une nouvelle ligne à la fin de son niveau (lib/dons-edition.mjs#placeNouvelleLigne). `specialite_id` et
   // `avec` acceptent « @i » : la spécialité ou le don créé par l'opération i du même lot.
@@ -930,6 +1080,7 @@ export const ENTITES = {
       niveau: { type: 'choix', libelle: 'Niveau de classe', choix: NIVEAUX_DE_DON.map((n) => ({ valeur: String(n), libelle: `Niveau ${n}` })) },
       nom: { type: 'ligne', libelle: 'Nom du don', requis: true },
       type: { type: 'choix', libelle: 'Type', requis: true, choix: TYPES_DE_DON_SAISIE },
+      magie: CHAMP_DE_LA_MAGIE_D_UN_DON_VARIABLE,
       precision: { type: 'ligne', libelle: 'Précision du type (« 2 fois/combat »)' },
       effet: { type: 'texte', libelle: 'Effet' },
     },
@@ -948,6 +1099,21 @@ export class ErreurValeur extends Error {
  * Texte : fins de ligne unifiées, espaces de bord retirées ; un champ vidé vaut `vide` s'il est défini, sinon NULL (absent = NULL).
  */
 export function valeurDuChamp(champ, brute, nom = champ.libelle) {
+  if (champ.type === 'ids') {
+    const liste = Array.isArray(brute) ? brute : brute === null || brute === undefined ? [] : String(brute).split(',').map((v) => v.trim()).filter(Boolean);
+    const ids = liste.map((v) => (typeof v === 'number' ? v : /^\d+$/.test(String(v).trim()) ? Number(String(v).trim()) : NaN));
+    if (!ids.every((v) => Number.isInteger(v) && v >= 1)) throw new ErreurValeur(`« ${nom} » : identifiants entiers attendus`);
+    if (champ.requis && !ids.length) throw new ErreurValeur(`« ${nom} » : valeur obligatoire`);
+    return [...new Set(ids)].sort((a, b) => a - b);
+  }
+  if (champ.type === 'ecritures') {
+    const liste = Array.isArray(brute) ? brute : brute === null || brute === undefined ? [] : String(brute).split(',');
+    if (!liste.every((v) => typeof v === 'string')) throw new ErreurValeur(`« ${nom} » : écritures attendues`);
+    const ecritures = [];
+    for (const v of liste.map((x) => x.replace(/\s+/g, ' ').trim()).filter(Boolean)) if (!ecritures.includes(v)) ecritures.push(v);
+    if (champ.requis && !ecritures.length) throw new ErreurValeur(`« ${nom} » : valeur obligatoire`);
+    return ecritures;
+  }
   if (champ.type === 'categories') {
     const liste = Array.isArray(brute) ? brute : String(brute ?? '').split(',');
     if (!liste.every((v) => typeof v === 'string')) throw new ErreurValeur(`« ${nom} » : identifiants de catégories attendus`);
@@ -990,13 +1156,15 @@ export function valeurDuChamp(champ, brute, nom = champ.libelle) {
   }
   if (brute !== null && brute !== undefined && typeof brute !== 'string' && typeof brute !== 'number') throw new ErreurValeur(`« ${nom} » : texte attendu`);
   let texte = String(brute ?? '').replace(/\r\n?/g, '\n');
-  if (champ.type === 'ligne' || champ.type === 'choix') texte = texte.replace(/\s*\n\s*/g, ' ');
+  if (['ligne', 'choix', 'adresse', 'couleur'].includes(champ.type)) texte = texte.replace(/\s*\n\s*/g, ' ');
   texte = champ.type === 'markdown' ? texte.replace(/\s+$/, '') : texte.trim();
   if (champ.type === 'choix' && champ.choix && texte !== '' && !champ.choix.some((c) => c.valeur === texte)) throw new ErreurValeur(`« ${nom} » : valeur hors de la liste`);
   if (texte === '') {
     if (champ.requis) throw new ErreurValeur(`« ${nom} » : valeur obligatoire`);
     return champ.vide ?? null;
   }
+  // une couleur écrite « #RRGGBB » s'enregistre en minuscules (le CHECK de mot_cle.couleur) ; une référence de la palette reste telle quelle
+  if (champ.type === 'couleur' && /^#[0-9a-f]{6}$/i.test(texte)) return texte.toLowerCase();
   return texte;
 }
 

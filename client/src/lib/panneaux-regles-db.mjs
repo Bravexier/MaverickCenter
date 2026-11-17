@@ -1,6 +1,6 @@
 // Panneaux de règles (migration 0056 ; demande du propriétaire, 2026-10-16 : « refaçonner tous les encarts de début des onglets des équipements. La
 // première ligne serait à supprimer et intégrer dans le panneau déroulant. Il faudrait que ce champ texte soit modifiable sur son titre, et son contenu.
-// Son contenu peut d'ailleurs inclure des tuiles génériques ») : l'encart replié en tête d'un onglet (aujourd'hui, les cinq de /ressources/equipement/),
+// Son contenu peut d'ailleurs inclure des tuiles génériques ») : l'encart replié en tête d'une page de l'équipement (aujourd'hui, Armes, Armures, Boucliers, Accessoires et le sous-onglet Bâtons magiques de la Ceinture),
 // un titre et des blocs dans l'ordre de lecture — du texte, qui suit les colonnes du panneau, ou une tuile au titre facultatif. Tables panneau_regles et
 // panneau_regles_bloc (section 1 de data/schema.sql), remplies par la migration des règles que le site tirait du corps des pages ; depuis, le site de dev
 // en est la source (serveur/edition-panneaux.mjs). Le rendu : lib/panneaux-regles-rendu.mjs, components/equipement/PanneauDeRegles.astro.

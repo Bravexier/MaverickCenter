@@ -56,6 +56,8 @@ test('niveau et catégorie déduits des lignes que le service écrit déjà (ser
     ['création du prétiré elfe-1', 'fiches', 'info'],
     ['modification du prétiré elfe-1', 'fiches', 'info'],
     ['édition : lot 12 (3 ligne(s)) depuis races/elfe ; 1 fiche(s) adaptée(s) (R42)', 'edition', 'info'],
+    ['lots : proposition 0f0e annulée (lot 1a2b, 3 ligne(s) remise(s), 1 gardée(s) : changée(s) depuis)', 'edition', 'info'],
+    ['lots : recalcul déposé en proposition 0f0e (4 page(s) écartée(s) sur 839, essai : applicable)', 'edition', 'info'],
     ['mise à jour : lot abc figé (4 modification(s), V0.3)', 'mise-a-jour', 'info'],
     ['simulation de mise à jour : lot abc figé (4 modification(s), V0.3)', 'mise-a-jour', 'info'],
     ['mise à jour (simulation) : workflow déclenché pour le lot abc', 'mise-a-jour', 'info'],
@@ -82,7 +84,7 @@ test('les appels journal(…) écrits avant la page Debug sont tous rangés : «
   // rangé par la suite du message (la requête : « http »)
   const dossier = new URL('../serveur/', import.meta.url);
   const debuts = [];
-  for (const nom of ['service.mjs', 'api.mjs', 'notes-de-version.mjs']) {
+  for (const nom of ['service.mjs', 'api.mjs', 'notes-de-version.mjs', 'extrait.mjs', 'base-vivante.mjs']) {
     const code = readFileSync(new URL(nom, dossier), 'utf8');
     for (const m of code.matchAll(/journal\??\.?\(\s*(?:\w+\s*\?\s*)?[`'"]([^`'"$]*)/g)) {
       if (m[1].replace(/^(ERREUR|ATTENTION|AVERTISSEMENT)\b/, '').trim()) debuts.push([nom, m[1]]);

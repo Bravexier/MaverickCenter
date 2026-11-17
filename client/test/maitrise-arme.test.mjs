@@ -3,6 +3,7 @@
 // d'un don (R154). Entrées synthétiques qui imitent le classeur, puis toute la base : les effectifs et les formes de
 // l'import se lisent dans son état d'import (lib/historique-site.mjs), l'état courant se contrôle par des invariants.
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
@@ -11,6 +12,7 @@ import {
 } from '../src/lib/maitrise-arme.mjs';
 import { texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
 
+const registre0119 = JSON.parse(readFileSync(new URL('../../data/migrations/0119-classes-materiaux-d12.json', import.meta.url), 'utf8'));
 const db = ouvrirBase({ sansExemples: false });
 const historique = historiqueSite(db);
 
@@ -180,14 +182,17 @@ test('points de maîtrise d’un don (R32, R148) : la somme signée de ses parts
   }
 });
 
-test('les 66 lignes typées de classe_maitrise_arme à l’import (R148, R151) : 29 nommées sur une famille maîtrisable, 34 au choix, 3 réparties à 1 par famille', () => {
+test('les lignes typées de classe_maitrise_arme à l’import (R148, R151) : les nommées sur une famille maîtrisable, les au choix, les réparties à 1 par famille — chacune lue comme sa forme', () => {
   const familles = famillesDe(historique.lignesDImport('arme_famille'));
   const lues = historique.lignesDImport('classe_maitrise_arme').filter((l) => l.nombre !== null)
     .sort((a, b) => (a.classe_id < b.classe_id ? -1 : a.classe_id > b.classe_id ? 1 : a.rang - b.rang))
     .map((l) => ({ l, r: lireLigneDeClasse(l, familles) }));
-  assert.equal(lues.length, 66);
+  // l'effectif et la répartition se lisent à l'import (migration 0119 comprise : Boxeur, Porte-étendard, Archimage au choix), pas dans le test
+  const typees = historique.lignesDImport('classe_maitrise_arme').filter((l) => l.nombre !== null);
+  assert.equal(lues.length, typees.length);
   const deForme = (forme) => lues.filter(({ r }) => r.forme === forme);
-  assert.deepEqual([deForme('nommee').length, deForme('au_choix').length, deForme('repartie').length], [29, 34, 3]);
+  assert.deepEqual(['nommee', 'au_choix', 'repartie'].map((f) => deForme(f).length), ['nommee', 'au_choix', 'repartie'].map((f) => typees.filter((l) => l.forme === f).length));
+  assert.equal(deForme('nommee').length + deForme('au_choix').length + deForme('repartie').length, lues.length, 'aucune autre forme');
   for (const { l, r } of lues) {
     assert.equal(r.non_lues, undefined, `${l.classe_id} : ${l.brut}`);
     assert.equal(r.parts.length, 1, l.classe_id);
@@ -227,10 +232,15 @@ test('lignes de classe_maitrise_arme de la base : chacune se lit, une famille ma
   }
 });
 
-test('les 77 dons à l’import, par forme (R150, R151) : 50 à répartir, 5 sans destination, 2 à limite, 9 nommés, 2 nommés plus contact, 3 par catégorie, 5 « arme déterminée avant », l’Épéiste', () => {
+test('les 77 dons du classeur à l’import (hors ceux de la migration 0119, lus à part), par forme (R150, R151) : 50 à répartir, 5 sans destination, 2 à limite, 9 nommés, 2 nommés plus contact, 3 par catégorie, 5 « arme déterminée avant », l’Épéiste', () => {
   const familles = famillesDe(historique.lignesDImport('arme_famille'));
-  const lus = parId(historique.lignesDImport('capacite')).map((d) => ({ d, r: lireDon(d.effet, familles) })).filter(({ r }) => r);
-  assert.equal(lus.length, 77);
+  const tous = parId(historique.lignesDImport('capacite')).map((d) => ({ d, r: lireDon(d.effet, familles) })).filter(({ r }) => r);
+  // les dons que la migration 0119 a créés (Boxeur, Porte-étendard : registre) se lisent à part ; les autres sont ceux du classeur, épinglés ci-dessous
+  const nouveaux = new Set(Object.values(registre0119.classes.nouvelles).flatMap((k) => k.dons));
+  const lus = tous.filter(({ d }) => !nouveaux.has(d.id));
+  const lusDesNouveaux = tous.filter(({ d }) => nouveaux.has(d.id));
+  assert.ok(lusDesNouveaux.length > 0 && lusDesNouveaux.every(({ r }) => r.forme === 'a_repartir'), 'leurs points de maîtrise sont à répartir (R150)');
+  assert.equal(lus.length, 77, 'dons du classeur');
   const ids = (forme) => lus.filter(({ r }) => r.forme === forme).map(({ d }) => d.id);
   const compte = Object.fromEntries(['a_repartir', 'sans_destination', 'a_repartir_limite', 'nommee', 'nommee_et_categorie', 'categorie', 'suit', 'nommee_et_retrait']
     .map((forme) => [forme, ids(forme).length]));

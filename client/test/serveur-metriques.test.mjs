@@ -11,7 +11,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import {
   alertesDu, BALISE, BORNES_MS, CLASSES, classeDe, creerMetriques, empreinteDePile, estUnSuivi, instanceDuService, methodeNormalisee, navigateurDe,
-  PAGES_PAR_HEURE, pageDuReferent, quantile, quantileDetaille, RETENTION, ROUTE_INCONNUE, routeNormalisee, SEUILS, statistiques,
+  PAGES_PAR_HEURE, pageDuReferent, quantile, quantileDetaille, RETENTION, ROUTE_INCONNUE, routeNormalisee, SEUILS, statistiques, UA_SONDE,
 } from '../serveur/metriques.mjs';
 import { creerMesureSql, normaliserSql } from '../serveur/metriques-sql.mjs';
 import { RESSOURCES } from '../src/lib/ressources.mjs';
@@ -71,6 +71,13 @@ test('routes d’api.mjs : chaque adresse de son en-tête a un gabarit sans iden
     '/api/edition/': '/api/edition/',
     '/api/edition/lignes/': '/api/edition/lignes/',
     '/api/mise-a-jour/lots/0f0e2c1a-1111-2222-3333-444455556666/': '/api/mise-a-jour/lots/{lot}/',
+    // lots de changements : jamais l'identifiant du lot, le recalcul garde son nom (une adresse fixe)
+    '/api/edition/lots/': '/api/edition/lots/',
+    '/api/edition/lots/0f0e2c1a-1111-2222-3333-444455556666/': '/api/edition/lots/{lot}/',
+    '/api/edition/lots/0f0e2c1a-1111-2222-3333-444455556666/annulation/': '/api/edition/lots/{lot}/annulation/',
+    '/api/edition/lots/0f0e2c1a-1111-2222-3333-444455556666/annuler/': '/api/edition/lots/{lot}/annuler/',
+    '/api/edition/lots/0f0e2c1a-1111-2222-3333-444455556666/appliquer/': '/api/edition/lots/{lot}/appliquer/',
+    '/api/edition/lots/recalcul/': '/api/edition/lots/recalcul/',
     '/api/mise-a-jour/lancer/': '/api/mise-a-jour/lancer/',
     '/api/mise-a-jour/majeure/': '/api/mise-a-jour/majeure/',
     '/api/mise-a-jour/conflits/': '/api/mise-a-jour/conflits/',
@@ -95,7 +102,7 @@ test('routes d’api.mjs : chaque adresse de son en-tête a un gabarit sans iden
   };
   for (const [a, r] of Object.entries(attendues)) assert.equal(routeNormalisee(a), r, a);
   for (const a of ['/', '/api/', '/autre/api/etat/', '/api/inconnue/', '/api/etat/x/', '/api/personnages//', '/api/personnages/a/b/', '/api/personnages/a/portrait/b/',
-    '/api/edition/inconnue/', '/api/edition/lignes/x/', '/api/mise-a-jour/lots/', '/api/mise-a-jour/lots/a/b/', '/api/debug/', '/api/debug/autre/',
+    '/api/edition/inconnue/', '/api/edition/lignes/x/', '/api/edition/lots/a/b/c/', '/api/edition/lots/a/inconnue/', '/api/mise-a-jour/lots/', '/api/mise-a-jour/lots/a/b/', '/api/debug/', '/api/debug/autre/',
     '/api/debug/metriques/autre/', '/api/debug/base/x/', '/api/metriques/', '/api/metriques/page/x/', '/api/classeur/x/', '/api/classeur/1AbCdEfGhIjKlMnOpQrStUvWxYz/edit/', '/api/tipeee/x/', '/api/v1/inconnue/', '/api/v1/openapi.json/x', '/api/v1/metiers/x/inconnu/',
     '/api/v1/metiers/x/y/z/w/', '', null]) {
     assert.equal(routeNormalisee(a), ROUTE_INCONNUE, String(a));
@@ -148,6 +155,25 @@ test('méthodes gardées ; relèves (suivi) : réussies seulement', () => {
   assert.equal(estUnSuivi('POST', '/api/metriques/page/', 204), true);
   assert.equal(estUnSuivi('POST', '/api/metriques/page/', 400), false);
   assert.equal(estUnSuivi('GET', '/api/etat/', 200), false);
+});
+
+test('la sonde de l’atelier (son User-Agent exact) n’entre dans aucune métrique de requêtes ; tout autre User-Agent est mesuré comme avant', () => {
+  const m = creerMetriques({ dossier: dossierNeuf(), instance: 'dev', intervalle: 0, memoireRequetes: 100 });
+  try {
+    const sonde = m.debut('GET', '/api/personnages/', { host: 'site', 'user-agent': UA_SONDE });
+    assert.equal(sonde, null, 'aucune mesure pour la sonde');
+    assert.equal(m.fin(sonde, { statut: 200 }), null, 'et sa fin ne compte rien (le service passe la mesure à fin)');
+    // des User-Agent voisins ne sont pas écartés : seul le texte exact l'est
+    for (const ua of [`${UA_SONDE} `, UA_SONDE.toUpperCase(), `${UA_SONDE}x`, 'maverick-atelier-sonde', CHROME, '']) {
+      requete(m, { adresse: '/api/personnages/', entetes: { 'user-agent': ua } });
+    }
+    requete(m, { adresse: '/api/personnages/', entetes: { 'user-agent': undefined } });
+    const l = m.lire({ periode: '1h' });
+    assert.equal(l.global.n, 7, 'sept requêtes mesurées, la sonde n’en fait pas une huitième');
+    assert.equal(m.requetes({}).requetes.length, 7);
+  } finally {
+    m.arreter();
+  }
 });
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
@@ -674,7 +700,7 @@ test('état du système : processus, disque, fichiers mesurés, échantillons, v
     for (let i = 0; i < 30; i++) requete(m, { adresse: `/api/v1/metiers/m${i}/` });
     m.echantillonner();
     const s = m.systeme({});
-    assert.deepEqual(Object.keys(s), ['instance', 'instances', 'maintenant', 'periode', 'processus', 'disque', 'fichiers', 'echantillons', 'evenements', 'volume', 'alertes', 'panne', 'perdues']);
+    assert.deepEqual(Object.keys(s), ['instance', 'instances', 'maintenant', 'periode', 'processus', 'disque', 'fichiers', 'echantillons', 'evenements', 'volume', 'alertes', 'sauvegardes', 'panne', 'perdues']);
     for (const c of ['version', 'code', 'node', 'pid', 'depuis', 'duree_s', 'rss', 'tas_utilise', 'tas_total', 'externe', 'cpu_utilisateur_pct', 'cpu_systeme_pct',
       'boucle_p50_ms', 'boucle_p99_ms', 'boucle_max_ms', 'charge']) assert.ok(c in s.processus, c);
     assert.equal(s.processus.version, '0.3.2');

@@ -10,6 +10,7 @@ import {
   ATTRIBUT_DE_CIBLE, CHAMPS_DU_CORPS, artisanatBrut, caracteristiquesDuTest, corpsDeMetier, decouperArtisanat, decouperBonus, decouperEquipement, echapperMarkdown, famillesDeRecette,
   remplacerChampDuCorps, resumeDeDescription, testDArtisanat,
 } from '../src/lib/metier-champs.mjs';
+import { baseDImport } from './aide-base-d-import.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const metiers = db.prepare('SELECT m.*, p.resume, p.corps_md FROM metier m JOIN page p ON p.id = m.id ORDER BY m.id').all();
@@ -91,15 +92,17 @@ test('résumé de la page : la première phrase de la description', () => {
 });
 
 test('corps de la page : remplacer un champ ne touche qu’à sa ligne ; un métier créé a les cinq champs dans l’ordre', () => {
-  const alchimiste = metiers.find((m) => m.id === 'metiers/alchimiste');
+  // le corps de l'Alchimiste à l'import (une fonction pure essayée sur un vrai corps ; le site de dev supprime des métiers)
+  const alchimiste = baseDImport().prepare("SELECT corps_md FROM page WHERE id = 'metiers/alchimiste'").get();
   const corps = remplacerChampDuCorps(alchimiste.corps_md, 'Bonus', '+4% Connaissance');
   assert.match(corps, /^\*\*Bonus :\*\* \+4% Connaissance$/m);
   assert.equal(corps.replace(/^\*\*Bonus :\*\*.*$/m, ''), alchimiste.corps_md.replace(/^\*\*Bonus :\*\*.*$/m, ''), 'le lien [[Alchimie primitive]] reste');
   assert.match(remplacerChampDuCorps(alchimiste.corps_md, 'Avantage possible', null), /^\*\*Avantage possible :\*\*$/m);
   assert.equal(echapperMarkdown('Test [FORCE + VOLONTÉ] *x*'), 'Test \\[FORCE + VOLONTÉ\\] \\*x\\*');
   // les métiers dont aucun champ n'a de lien se réécrivent à l'identique (crochets du test échappés comme dans la source)
+  // (tous ceux de la base ; soixante-dix au moins à l'import : le site de dev supprime des métiers)
   const sansLien = metiers.filter((m) => !m.corps_md.includes('[['));
-  assert.ok(sansLien.length >= 70);
+  assert.ok(baseDImport().prepare("SELECT count(*) AS n FROM metier m JOIN page p ON p.id = m.id WHERE instr(p.corps_md, '[[') = 0").get().n >= 70);
   for (const m of sansLien) assert.equal(corpsDeMetier(m), m.corps_md.replace(/^\n/, ''), m.id);
   assert.deepEqual(CHAMPS_DU_CORPS.map((c) => c.colonne), ['description', 'bonus_brut', 'artisanat_brut', 'equipement_brut', 'avantage_brut']);
 });

@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { ORDRE_DES_RACES } from '../src/lib/race-kinds.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { horsDeLa0120, RACES_DE_LA_0120 } from './aide-races-0120.mjs';
 
 const racine = fileURLToPath(new URL('../../', import.meta.url));
 const client = fileURLToPath(new URL('../', import.meta.url));
@@ -53,7 +54,10 @@ test('la base contient les domaines : pages, magies et sorts, classes et capacit
   assert.equal(n('type_page'), 10);
   // effectifs de l'import : le site de dev, source des données qu'il modifie, peut créer des races, des classes… (lib/historique-site.mjs)
   const historique = historiqueSite(db);
-  for (const [table, effectif] of [['magie', 15], ['sort', 322], ['classe', 39], ['capacite', 660], ['race', 27], ['invocation', 3], ['creature', 63]]) {
+  // classes et dons : les comptes du registre de la migration 0119 (R238 : Boxeur et Porte-étendard, Cuirassé V2), qui les a écrits
+  const comptes0119 = JSON.parse(readFileSync(join(racine, 'data', 'migrations', '0119-classes-materiaux-d12.json'), 'utf8')).comptes;
+  for (const [table, effectif] of [['magie', 15], ['sort', 420], ['magie_specialisation', 28], ['classe', comptes0119.classe], ['capacite', comptes0119.capacite],
+    ['race', 27 + RACES_DE_LA_0120.size], ['invocation', 3], ['creature', 63]]) {
     assert.equal(historique.effectifDImport(table), effectif, `${table} : effectif de l'import`);
   }
   // cohérence de l'état courant
@@ -62,12 +66,17 @@ test('la base contient les domaines : pages, magies et sorts, classes et capacit
   assert.equal(n('race'), pagesDuType('races'), 'une ligne race par page de race');
   assert.equal(n('race_onglet'), n('race'), 'chaque race a son onglet');
   assert.equal(n('magie'), pagesDuType('magies'), 'une ligne magie par page de magie');
-  // décision R1 (27 races et non 23) : les 27 races de la liste du propriétaire sont là ; une race créée depuis le site ne la contredit pas
-  assert.equal(ORDRE_DES_RACES.length, 27);
+  // décision R1 (27 races et non 23) : les 27 races de la liste du propriétaire sont là, plus Fongoïde et Gémidien (décision R239, migration 0120) ; une
+  // race créée depuis le site ne la contredit pas
+  assert.equal(historique.lignesDImport('race').filter((r) => horsDeLa0120(r.id)).length, 27, 'décision R1 : 27 races à l’import du classeur');
+  assert.equal(historique.effectifDImport('race'), 29, 'décision R239 : 29 races');
   const races = new Set(db.prepare('SELECT id FROM race').all().map((r) => r.id));
   for (const id of ORDRE_DES_RACES) assert.ok(races.has(id), `décision R1 : ${id}`);
   for (const t of ['ressource', 'recette', 'arme', 'armure', 'metier', 'etat', 'peuple', 'note_cellule', 'ecart_source']) assert.ok(n(t) > 0, `${t} est rempli`);
-  assert.equal(n('correction'), 1, 'la correction du Mercenaire est tracée');
+  // la correction du Mercenaire est tracée (classeur de classes) ; les corrections du classeur de Décembre (dump `magie-v10`, R10, migration 0117) ont la leur
+  assert.equal(db.prepare("SELECT count(*) AS n FROM correction WHERE dump = 'classes-v7'").get().n, 1, 'la correction du Mercenaire est tracée');
+  assert.ok(db.prepare("SELECT count(*) AS n FROM correction WHERE dump = 'magie-v10'").get().n > 0, 'les corrections du classeur de Décembre sont tracées');
+  assert.equal(n('correction'), db.prepare("SELECT count(*) AS n FROM correction WHERE dump IN ('classes-v7', 'magie-v10')").get().n, 'aucune autre source de correction');
   // la correction orthographique est bien dans les lignes typées, l'ancien texte n'y est plus (sauf si le site de dev a supprimé le don qui la portait :
   // D11, db:check l'ignore alors)
   if (!historique.supprimee('capacite', { id: 'capacites/mercenaire-chasseur-de-primes' })) assert.ok(db.prepare("SELECT 1 FROM classe WHERE nom LIKE '%Chasseur de primes%' OR id LIKE '%chasseur-de-primes%' LIMIT 1").get() || db.prepare("SELECT 1 FROM capacite WHERE id LIKE '%chasseur-de-primes%' LIMIT 1").get());

@@ -11,17 +11,17 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { enregistrerFiche } from '../serveur/fiches.mjs';
-import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { libelleDuControle, LIBELLES_DES_CONTROLES } from '../src/lib/fiche-controles.mjs';
 import { ficheVide, sansPartiesRetirees } from '../src/lib/fiche-format.mjs';
 import * as M from '../src/lib/fiche-moteur.mjs';
-import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { partiesDeLArme } from '../src/lib/fiche-tableur-export.mjs';
 import { texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { baseDImport, cheminDImport, reglesDImport } from './aide-base-d-import.mjs';
 
-const db = ouvrirBase({ sansExemples: false });
-const regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(db))); // tel que la page le reçoit
+// les règles (textes et valeurs que le site de dev modifie librement) : épinglées sur leur état d'import (test/aide-base-d-import.mjs)
+const db = baseDImport();
+const regles = reglesDImport(); // tel que la page le reçoit
 const script = readFileSync(new URL('../src/scripts/fiche.mjs', import.meta.url), 'utf8');
 const css = readFileSync(new URL('../src/styles/fiche/fiche.css', import.meta.url), 'utf8');
 
@@ -62,7 +62,10 @@ test('R167 : la liste propose les armes élémentaires de la magie innée puis d
   assert.match(bloc, /poserTeinte\(choixDArme, teinteDe\(element\)\);\n\s*attribut\(choixDArme, 'data-couleur', Boolean\(element\)\);/);
   assert.match(bloc, /composition\.disabled = !x \|\| Boolean\(element\);/);
   assert.doesNotMatch(bloc, /champ\('Élément'|Amélioration de l’élément'/);
-  assert.match(css, /\.fiche \.objet select\[data-couleur\] \{ background-color: var\(--c\); color: var\(--texte-sur-c\);/);
+  // fermée, la liste (dessinée par le site : src/scripts/liste-choix.mjs, qui recopie `data-couleur` et la teinte du <select> caché sur son bouton) prend
+  // le fond de la magie de l'arme élémentaire choisie
+  assert.match(bloc, /listeDeChoix\(choixDArme, \{ cle: `arme-\$\{rang\}` \}\)/);
+  assert.match(css, /\.fiche \.liste-choix__bouton\[data-couleur\] \{ background-color: var\(--c\); color: var\(--texte-sur-c\);/);
 });
 
 test('R167 : choisir une arme élémentaire vide le matériau sans remettre l’amélioration à zéro ; revenir au catalogue reprend le fer (R49)', () => {
@@ -162,7 +165,10 @@ test('R167 : Symbiose — l’arme élémentaire de sa magie reste utilisable av
 
 test('R167 : un sort « Fer » d’un autre élément que l’arme élémentaire portée est signalé (rien de compté) ; du même élément, ou sur une arme du catalogue, rien', () => {
   const fers = regles.sorts.filter((s) => s.fer);
-  assert.equal(fers.length, 13);
+  // les sorts Fer se comptent par leur étiquette (R164), Fer brillant de l'Arcane compris (R237 (2)) : un par magie, jamais le Potentiel Illimité
+  assert.equal(fers.length, regles.sorts.filter((s) => s.mots_cles?.includes('sort-fer')).length);
+  assert.equal(new Set(fers.map((s) => s.magie_id)).size, fers.length, 'un par magie');
+  assert.ok(fers.some((s) => s.magie_id === 'magies/magie-de-larcane'));
   const ferSanglant = fers.find((s) => s.magie_id === SANG);
   const ferBrulant = fers.find((s) => s.magie_id === FEU);
   const sorts = [{ sort_id: ferSanglant.id, rang: 1, niveau_maitrise: 0 }, { sort_id: ferBrulant.id, rang: 2, niveau_maitrise: 0 }];
@@ -185,7 +191,7 @@ test('R167 : un sort « Fer » d’un autre élément que l’arme élémentaire
 test('R167 : contrôle arme_elementaire_hors_magie (vue v_personnage_controle, par le service) : une arme élémentaire d’une magie que le personnage n’a pas, libellée ; ses magies, rien', (t) => {
   assert.ok(LIBELLES_DES_CONTROLES.arme_elementaire_hors_magie);
   assert.notEqual(libelleDuControle('arme_elementaire_hors_magie'), 'arme_elementaire_hors_magie');
-  const vivante = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: dossierTemporaire('armes-elementaires', { t }) }).chemin);
+  const vivante = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminDImport(), dossier: dossierTemporaire('armes-elementaires', { t }) }).chemin);
   try {
     const regle = (f) => enregistrerFiche(vivante, f).controles.filter((c) => c.regle === 'arme_elementaire_hors_magie').map((c) => c.detail);
     const feu = elementaire('epee', FEU);

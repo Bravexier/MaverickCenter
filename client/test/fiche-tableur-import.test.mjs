@@ -10,8 +10,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { ouvrirBase, trouverRacine } from '../src/lib/donnees.mjs';
-import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
+import { trouverRacine } from '../src/lib/donnees.mjs';
 import * as M from '../src/lib/fiche-moteur.mjs';
 import { attributsDe, competencesDe, degatsDArme, maitriseDArme, trouver } from '../src/lib/fiche-moteur.mjs';
 import { valeurAuNm } from '../src/lib/sort-maitrise.mjs';
@@ -28,8 +27,14 @@ import {
 } from '../src/lib/fiche-tableur-export.mjs';
 import { entrainementEnLignes, ficheVide, ligneDeRetrait, PREFIXE_DE_RETRAIT, sansPartiesRetirees } from '../src/lib/fiche-format.mjs';
 import { analyserXml, enfantNomme, enfantsNommes, texteDe } from '../src/lib/xml-mini.mjs';
+import { baseDImport, reglesDImport } from './aide-base-d-import.mjs';
+import { casDeSantePotentiel, MAGIE_POTENTIEL } from './aide-sante-potentiel.mjs';
 
-const regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(ouvrirBase({ sansExemples: false })))); // tel que la page le reçoit
+// les fiches auto (Lucien, Louise) et les classeurs écrits ici nomment dons, sorts, armes et matériaux tels que l'import les a nommés, et le moteur lit
+// ses règles dans les textes : la lecture s'épingle sur l'état d'import de la base (le site de dev réécrit librement noms, textes et valeurs ;
+// test/aide-base-d-import.mjs). ficheDuClasseur retrouve dons et sorts par leur nom : un don renommé sur le site ne se reconnaît plus dans un classeur
+// écrit avant (question au propriétaire).
+const regles = reglesDImport(); // tel que la page le reçoit
 
 const grille = (qui) => JSON.parse(readFileSync(new URL(`./fixtures/fiche-auto-${qui}.json`, import.meta.url), 'utf8')).values;
 const LUCIEN = grille('lucien');
@@ -181,6 +186,14 @@ test('case NOTE : notes du joueur avant le marqueur, lignes « Clé : valeur » 
   assert.deepEqual(r.nonRepris, ['NM offerts : « Boule de feu » illisible', 'NM du MJ : « deux » illisible', 'Gains de niveau : « niv. 2 : beaucoup » illisibles']);
   // les NM du MJ, pour toute la fiche (décision R118)
   assert.equal(ficheDuClasseur(regles, ordinateur({ BA54: `${MARQUEUR_DES_NOTES}\nNM du MJ : 2` })).fiche.nm_mj, 2);
+  // décision R169 : un livre de sort sur un sort qui n'est pas dans la liste (ici, aucun sort ni magie) est repris, en attente ; seul un sort inconnu des
+  // règles est perdu ; un second livre du même sort aussi (R26)
+  const livres = ficheDuClasseur(regles, ordinateur({ BA54: `${MARQUEUR_DES_NOTES}\nNM offerts : Boule de feu (livre 1) ; Sort imaginaire (livre 1) ; Boule de feu (livre 1)` }));
+  const bouleDeFeu = 'magies/magie-du-feu#sort:boule-de-feu';
+  assert.deepEqual([livres.fiche.sorts, livres.fiche.livres_sorts], [[], [{ sort_id: bouleDeFeu, rang: 1 }]]);
+  assert.deepEqual(M.livresDe(regles, livres.fiche).map((l) => [l.sort_id, l.enAttente]), [[bouleDeFeu, true]]);
+  assert.deepEqual(livres.nonRepris, ['NM offerts : « Sort imaginaire » (livre 1, MJ 0) introuvable dans les règles',
+    'NM offerts : « Boule de feu » (livre 1) : un seul livre par sort (décision R26)']);
 
   // la case « Entraînement » de la fiche auto : les bonus d'entraînement (guide « Fiche de personnage : Capacités/Dons »), « 2 Magie | 10 Concentration »
   // ou « Magie 2 | Concentration 10 » (« % » permis)
@@ -357,7 +370,8 @@ function verifierLeCommun(values, r) {
   const magies = [f.magie_innee_id, f.magie_acquise_id].filter(Boolean);
   const ecrits = AUTO.sorts.lignes.filter((l) => v(`AA${l}`)).map((l) => [v(`AA${l}`), Number(v(`AY${l}`) || 0)])
     .map(([nom, nm]) => [selon(regles.sorts.filter((s) => magies.includes(s.magie_id)), nom), nm]).filter(([s]) => s.length === 1);
-  assert.deepEqual(f.sorts.map((s) => [s.sort_id, s.niveau_maitrise, s.nm_livre, s.rang]), ecrits.map(([[s], nm], i) => [s.id, nm, 0, i + 1]));
+  assert.deepEqual(f.sorts.map((s) => [s.sort_id, s.niveau_maitrise, s.rang]), ecrits.map(([[s], nm], i) => [s.id, nm, i + 1]));
+  assert.deepEqual(f.livres_sorts, [], 'aucun livre : la fiche auto ne le dit pas');
   assert.equal(f.nm_mj, 0, 'la fiche auto n’écrit pas de NM du MJ');
   assert.ok(f.sorts.length >= 1);
   // inventaire : colonne par colonne, les lignes nommées ; la ressource de ce nom exact (comme la page)
@@ -689,10 +703,11 @@ test('modèle ordinateur : une fiche écrite par la page dans l’ancienne écri
   assert.deepEqual([f.gains_sante, f.gains_chakra], [30, 36]);
   // le NM du MJ d'un sort (« MJ 1 », écrit avant la décision R118) : un NM du MJ de la fiche
   assert.deepEqual(f.sorts, [
-    { sort_id: sortDe('Feu', 'Boule de feu').id, rang: 1, niveau_maitrise: 3, nm_livre: 1 },
-    { sort_id: sortDe('Feu', 'Fer brûlant').id, rang: 2, niveau_maitrise: 1, nm_livre: 0 },
-    { sort_id: sortDe('Feu', 'Cautérisation').id, rang: 3, niveau_maitrise: 2, nm_livre: 0 },
+    { sort_id: sortDe('Feu', 'Boule de feu').id, rang: 1, niveau_maitrise: 3 },
+    { sort_id: sortDe('Feu', 'Fer brûlant').id, rang: 2, niveau_maitrise: 1 },
+    { sort_id: sortDe('Feu', 'Cautérisation').id, rang: 3, niveau_maitrise: 2 },
   ]);
+  assert.deepEqual(f.livres_sorts, [{ sort_id: sortDe('Feu', 'Boule de feu').id, rang: 1 }], 'le livre de la Boule de feu, noté à part (décision R169)');
   assert.equal(f.nm_mj, 1);
   // R167 : l'arme élémentaire, sans matériau, au niveau de l'ancienne amélioration de l'élément ; l'effet en plus gardé, l'effet du catalogue de l'arme
   // d'origine reconnu (pas de l'effet en plus)
@@ -899,7 +914,7 @@ test('anciennes graphies : retrouvées par le dernier segment de l’identifiant
   const vagueDeCadavres = regles.sorts.find((s) => s.id.endsWith(':vague-de-cadavre'));
   const pavois = regles.boucliers.find((b) => b.id === 'pavoi');
   const athee = regles.dieux.find((d) => d.id === 'atheiste');
-  for (const [nom, ancien] of [[bordeaux.nom, 'Drakos Bordeau'], [contrecoup.nom, 'Contre coup'], [vagueDeCadavres.nom, 'Vague de cadavre'], [pavois.nom, 'Pavoi'], [athee.nom, 'Athéiste']]) {
+  for (const [nom, ancien] of [[bordeaux.nom, 'Drakos Bordeau'], [contrecoup.nom, 'Contre coup'], [pavois.nom, 'Pavoi'], [athee.nom, 'Athéiste']]) {
     assert.notEqual(cle(nom), cle(ancien), `${ancien} n’est plus le nom de la base`);
   }
   const guerrier = classe('Guerrier');
@@ -911,11 +926,29 @@ test('anciennes graphies : retrouvées par le dernier segment de l’identifiant
   assert.deepEqual([f.ethnie_id, f.dieu_choisi_id, f.bouclier_classe_id], [bordeaux.id, athee.id, pavois.id]);
   assert.deepEqual(f.capacites, [{ capacite_id: contrecoup.id }]);
   assert.deepEqual(r.nonRepris, []);
+  // « Vague de cadavre » : un sort trouvé par le dernier segment de son identifiant, quel que soit son nom actuel
   r = ficheDuClasseur(regles, ordinateur({ I2: 'Humain', S2: magie('Nécromancie').nom, AA55: 'Vague de cadavre', AY55: 1 }));
   assert.deepEqual(r.fiche.sorts.map((s) => s.sort_id), [vagueDeCadavres.id]);
   assert.deepEqual(r.nonRepris, []);
   // « Magie de la Nécromancie » : le nom de la page de la magie
   assert.equal(ficheDuClasseur(regles, ordinateur({ S2: 'Magie de la Nécromancie' })).fiche.magie_innee_id, magie('Nécromancie').id);
+});
+
+test('R238 (5), R23, R25 : un Potentiel Illimité du classeur garde sa classe 1 (plus d’Archimage imposée) ; l’Archimage d’un autre est écartée, le Mage Bleu du Potentiel Illimité aussi', () => {
+  const [guerrier, archimage, mageBleu] = [classe('Guerrier'), classe('Archimage'), classe('Mage Bleu')];
+  const pi = { I2: 'Humain', S2: magie('Potentiel Illimité').nom, W8: 10, G9: 1 };
+  let r = ficheDuClasseur(regles, ordinateur({ ...pi, A9: guerrier.nom }));
+  assert.deepEqual(r.fiche.classes.map((c) => [c.rang, c.classe_id]), [[1, guerrier.id]], 'la classe 1 du classeur reste, aucune Archimage imposée');
+  assert.ok(!r.nonRepris.some((x) => /Classe 1/.test(x)), 'rien de perdu');
+  r = ficheDuClasseur(regles, ordinateur({ ...pi, A9: archimage.nom }));
+  assert.deepEqual(r.fiche.classes.map((c) => [c.rang, c.classe_id]), [[1, archimage.id]], 'l’Archimage en classe 1 reste');
+  // l'Archimage d'un personnage qui n'est pas du Potentiel Illimité (réservée, R23) et le Mage Bleu d'un Potentiel Illimité (fermé, R25) sont écartés et dits
+  r = ficheDuClasseur(regles, ordinateur({ I2: 'Humain', S2: 'Feu', A9: archimage.nom, G9: 1 }));
+  assert.deepEqual(r.fiche.classes, []);
+  assert.ok(r.nonRepris.some((x) => /Classe 1/.test(x) && /fermée par la magie innée/.test(x)), r.nonRepris.join(' | '));
+  r = ficheDuClasseur(regles, ordinateur({ ...pi, A9: mageBleu.nom }));
+  assert.deepEqual(r.fiche.classes, []);
+  assert.ok(r.nonRepris.some((x) => /Classe 1/.test(x) && /fermée par la magie innée/.test(x)), r.nonRepris.join(' | '));
 });
 
 test('homonymes : un don cherché dans sa classe, « Vague déferlante » départagée par ce qu’écrit sa ligne, deux armes du même nom', () => {
@@ -942,7 +975,8 @@ test('homonymes : un don cherché dans sa classe, « Vague déferlante » dépar
   // coupée avant ce qui les distingue, plus rien ne le fait
   const corruption = vagues.find((s) => s.id.includes('corruption'));
   const d = description(corruption, 1);
-  assert.match(d.split('\n').at(-1), /^Si CR = /);
+  const arcane = vagues.find((s) => s !== corruption);
+  assert.ok(!description(arcane, 1).includes(d.split('\n').at(-1)), 'la dernière ligne de la Corruption distingue les deux sorts');
   r = ficheDuClasseur(regles, ordinateur({ ...pi, AA55: corruption.nom, AY55: 1, AM55: `${d.slice(0, d.lastIndexOf('\n') + 6)}…` }));
   assert.deepEqual(r.fiche.sorts.map((x) => x.sort_id), [corruption.id], '« Si CR… »');
   r = ficheDuClasseur(regles, ordinateur({ ...pi, AA55: corruption.nom, AY55: 1, AM55: `${d.slice(0, d.indexOf('\n') + 12)} …` }));
@@ -1410,6 +1444,50 @@ test('gains de niveau d’un classeur qui ne les écrit pas (décision R73) : ma
   assert.equal(M.gainsDeNiveau(regles, r.fiche).hors, false);
   const page = ficheDuClasseur(regles, ordinateur({ ...humain, D14: `10 / ${sansO.sante + 40}`, K14: `${sansO.chakra + 21} / ${sansO.chakra + 21}`, BA54: `${MARQUEUR_DES_NOTES}\nBi-classé : non` }));
   assert.deepEqual([page.fiche.gains_sante, page.fiche.gains_chakra, page.remarques], [0, 0, []], 'un classeur de la page sans ligne de gains : aucun');
+});
+
+test('R225, R230 (2) : gains déduits d’un tableur de Potentiel Illimité inné au-delà du plafond de santé : dits « à vérifier », ni refusés ni réécrits ; à la limite, ou pour une autre magie innée, rien', () => {
+  // le plafond et les cas (sous, à la limite, au-dessus ; niveaux 1, 4 et 5) se lisent dans la base d'import (test/aide-sante-potentiel.mjs : la donnée
+  // potentiel_illimite.sante_max_par_niveau, les niveaux et les dés) ; le moteur (santeDuPotentiel) les suit (test/fiche-sante-potentiel.test.mjs)
+  const cas = casDeSantePotentiel(baseDImport());
+  assert.ok(cas.some((c) => c.signale) && cas.some((c) => !c.signale && c.gains_sante === c.plafond), 'des cas au-dessus et à la limite');
+  const pi = trouver(regles.magies, MAGIE_POTENTIEL);
+  const autre = regles.magies.find((m) => m.id !== MAGIE_POTENTIEL);
+  const MARQUE = 'au-delà du plafond de';
+  const importe = (magieInnee, c) => {
+    // modèle ordinateur fait à la main (sans le marqueur de la page : les gains se déduisent des maximums), au niveau du cas
+    const cases = { I2: 'Humain', S2: magieInnee.nom, A9: classe('Mage').nom, G9: 10, W8: 5, S11: String(c.xp) };
+    const lu = ficheDuClasseur(regles, ordinateur(cases)).fiche;
+    const sans = attributsDe(regles, { ...lu, gains_sante: 0, gains_chakra: 0 });
+    // le chakra complète la santé jusqu'au total à saisir quand il le peut : le seul écart qui reste est celui du plafond
+    const chakra = Math.max(0, M.gainsDeNiveau(regles, { ...lu, gains_sante: 0, gains_chakra: 0 }).min - c.gains_sante);
+    const r = ficheDuClasseur(regles, ordinateur({ ...cases, D14: `1 / ${sans.sante + c.gains_sante}`, K14: `${sans.chakra + chakra} / ${sans.chakra + chakra}` }));
+    const remarque = r.remarques.filter((x) => x.startsWith('Gains de niveau déduits des maximums du classeur'));
+    assert.equal(remarque.length, 1, r.remarques.join('\n'));
+    return { r, remarque: remarque[0] };
+  };
+  for (const c of cas) {
+    const quoi = `niveau ${c.niveau}, santé ${c.gains_sante} (plafond ${c.plafond})`;
+    const { r, remarque } = importe(pi, c);
+    assert.equal(r.fiche.magie_innee_id, MAGIE_POTENTIEL, quoi);
+    assert.deepEqual([r.fiche.gains_sante, M.gainsDeNiveau(regles, r.fiche).niveau], [c.gains_sante, c.niveau], `${quoi} : repris tel quel`);
+    const signalement = `santé ${MARQUE} ${pi.nom} (${c.gains_sante} / au plus ${c.plafond})`;
+    assert.equal(remarque.includes(signalement), c.signale, `${quoi} : ${remarque}`);
+    assert.equal(remarque.includes(MARQUE), c.signale, `${quoi} : ${remarque}`);
+    if (c.signale) assert.ok(remarque.endsWith(`${signalement}, à vérifier`), remarque);
+    // la plage des deux totaux (R73) reste dite à part, et seulement quand elle est dépassée
+    assert.equal(remarque.includes('hors du total à saisir'), M.gainsDeNiveau(regles, r.fiche).hors, `${quoi} : ${remarque}`);
+    // une autre magie innée, au-dessus du plafond du Potentiel Illimité : rien
+    const a = importe(autre, c);
+    assert.deepEqual([a.r.fiche.magie_innee_id, a.r.fiche.gains_sante], [autre.id, c.gains_sante], quoi);
+    assert.ok(!a.remarque.includes(MARQUE), `${autre.nom}, ${quoi} : ${a.remarque}`);
+  }
+  // le même verdict que le moteur, appelé directement (gainsDesMaximums suit gainsDeNiveau().potentiel)
+  const c = cas.find((x) => x.signale && x.niveau > 1);
+  const f = { ...importe(pi, c).r.fiche, gains_sante: 0, gains_chakra: 0 };
+  const sans = attributsDe(regles, f);
+  assert.ok(gainsDesMaximums(regles, f, sans.sante + c.plafond + 1, sans.chakra).remarque.includes(`(${c.plafond + 1} / au plus ${c.plafond})`));
+  assert.ok(!gainsDesMaximums(regles, f, sans.sante + c.plafond, sans.chakra).remarque.includes(MARQUE));
 });
 
 test('cases de 32 767 caractères faites surtout d’espaces : l’import reste linéaire (moins de 5 s pour une dizaine de cases)', () => {

@@ -1,0 +1,259 @@
+// La réussite critique sur la fiche de personnage (décision R180, « Nerf de la réussite critique ») : le palier lu sur le score du moment (de 96 à 102 %,
+// +2 ; à partir de 103 %, +5 au total ; sans borne haute), le +5 de l'Offensif sur ses six jets d'attaque et celui du Défensif sur Esquive et Parade
+// (posture_critique), cumulés au Mode Hyper 100 % (R172), le don de posture (« (Posture Offensif) Augmente la réussite critique de +5% », Sci du Crit,
+// lu dans son texte comme « ... Brutale », R164 ; seulement mentionné, jamais compté, depuis R182 (3) : test/fiche-critique-sort-prepare.test.mjs),
+// l'accessoire « peu importe le jet », le plafond de 1 à 15 (base comprise), et l'infobulle du score. Seulement ce qui joue en permanence (R128, Q88 décidée : (a)). Les nombres viennent de regle_constante, les
+// compétences de posture_critique : le test les lit dans la base, jamais en dur, sauf les exemples de la décision.
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import { lecteurDAcquis } from '../src/lib/acquis-texte.mjs';
+import { critiqueDeLAccessoire, critiqueDuDon } from '../src/lib/critique-texte.mjs';
+import { ficheVide } from '../src/lib/fiche-format.mjs';
+import * as M from '../src/lib/fiche-moteur.mjs';
+import { COMPETENCES_D_ATTAQUE, effetDePosture } from '../src/lib/posture-texte.mjs';
+import { baseDImport, reglesDImport } from './aide-base-d-import.mjs';
+
+// les règles (textes et valeurs que le site de dev modifie librement) : épinglées sur leur état d'import (test/aide-base-d-import.mjs)
+const db = baseDImport();
+const regles = reglesDImport(); // tel que la page le reçoit
+const lignes = (sql, ...p) => db.prepare(sql).all(...p).map((l) => ({ ...l }));
+const POSTURE = (slug) => `guide/postures#posture:${slug}`;
+const xpDuNiveau = (n) => regles.niveaux.find((l) => l.niveau === n).xp_min;
+const SCI_DU_CRIT = 'capacites/martiale-sci-du-crit';
+const ACCESSOIRE = 'ressources/accessoires#effet:jet-de-de:13';
+const fiche = (x = {}) => ({ ...ficheVide('Essai'), race_id: 'races/humain', magie_innee_id: 'magies/magie-du-feu', ...x });
+/** Martiale, Héros, niveau 15, avec Sci du Crit (« Choix » du niveau 15). */
+const heros = (x = {}) => fiche({
+  xp: xpDuNiveau(15), classes: [{ rang: 1, classe_id: 'classes/martiale', specialite_id: 'classes/martiale#specialite:heros' }],
+  capacites: [{ capacite_id: SCI_DU_CRIT }], ...x,
+});
+/** La fiche, chaque compétence de `scores` portée à ce score de fiche (hors posture) par ses points naturels. */
+const avecScores = (f, scores) => {
+  const sans = Object.fromEntries(M.competencesDe(regles, { ...f, competences: [] }).map((c) => [c.id, c.score]));
+  return { ...f, competences: Object.entries(scores).map(([id, s]) => ({ competence_id: id, naturel: s - sans[id] })) };
+};
+const competence = (f, id) => M.competencesDe(regles, f).find((c) => c.id === id);
+const origines = (c) => c.critique.origines.map((o) => [o.origine, o.valeur]);
+const deLaBase = (posture, bonus) => lignes('SELECT competence_id FROM posture_critique WHERE posture_id = ? AND bonus = ? ORDER BY competence_id', POSTURE(posture), bonus)
+  .map((r) => r.competence_id);
+const constante = (id) => db.prepare('SELECT valeur FROM regle_constante WHERE id = ?').get(id).valeur;
+
+test('R180 : les constantes et les jets de la réussite critique viennent de la base', () => {
+  for (const id of ['critique.base', 'critique.palier_1_score_min', 'critique.palier_1_bonus', 'critique.palier_2_score_min', 'critique.palier_2_bonus', 'critique.plafond',
+    'critique.plancher']) {
+    assert.equal(regles.constantes[id], constante(id), id);
+  }
+  for (const p of regles.postures) {
+    const slug = p.id.split(':').at(-1);
+    // R182 (3) : plus de compétences d'un don de posture (Sci du Crit n'est que mentionné)
+    assert.deepEqual(p.critique, { posture: deLaBase(slug, 'posture') }, p.nom);
+  }
+  // Offensif : ses six jets (Concentration en plus des cinq compétences d'attaque de R100, dont le −10 ne change pas) ; Défensif : Esquive et Parade
+  const offensif = regles.postures.find((p) => p.id === POSTURE('offensif')).critique.posture;
+  assert.deepEqual([...offensif].sort(), [...COMPETENCES_D_ATTAQUE, 'concentration'].sort());
+  assert.deepEqual(COMPETENCES_D_ATTAQUE, ['arc', 'arbalete', 'arme-legere', 'arme-lourde', 'magie']);
+  assert.deepEqual(regles.postures.find((p) => p.id === POSTURE('defensif')).critique.posture, ['esquive', 'parade']);
+});
+
+test('R180 : lectures — les lignes de réussite critique des postures, le don de posture, l’accessoire ; rien d’autre', () => {
+  // les deux lignes du tableau de la fiche (Offensif rang 2, Défensif rang 5), rejouées sur toute la base
+  const critiques = lignes("SELECT posture_id, rang, texte FROM posture_effet WHERE version = 'fiche' ORDER BY posture_id, rang")
+    .filter((l) => effetDePosture(l.texte)?.cible === 'critique')
+    .map((l) => [l.posture_id.split(':')[1], l.rang, effetDePosture(l.texte).valeur]);
+  assert.deepEqual(critiques, [['defensif', 5, 5], ['offensif', 2, 5]]);
+  assert.deepEqual(effetDePosture('+5% à la réussite critique'), { cible: 'critique', valeur: 5 });
+  assert.deepEqual(effetDePosture('+5% à la RC à la défense'), { cible: 'critique', valeur: 5 });
+  assert.deepEqual(effetDePosture('+5% à la réussite critique avec une défense'), { cible: 'critique', valeur: 5 });
+  // le Focus « +10% à la réussite » reste un bonus de compétence
+  assert.equal(effetDePosture('+10% à la réussite').cible, 'competences');
+
+  // dons : « (Posture X) » en tête, puis « Augmente la réussite critique de +N% » ; rejoué sur tous les dons de classe et de race
+  assert.deepEqual(critiqueDuDon('(Posture Offensif)\nAugmente la réussite critique de +5%.'), { postures: ['offensif'], valeur: 5 });
+  assert.deepEqual(critiqueDuDon('(Posture Défensif/Neutre)\nAugmente la réussite critique de +3%.'), { postures: ['défensif', 'neutre'], valeur: 3 });
+  assert.equal(critiqueDuDon('Augmente la réussite critique de +5%.'), null, 'sans posture en tête');
+  const donsLus = [
+    ...lignes('SELECT id, effet AS texte FROM capacite'), ...lignes('SELECT id, texte FROM race_don'),
+  ].filter((d) => critiqueDuDon(d.texte)).map((d) => d.id);
+  assert.ok(donsLus.includes(SCI_DU_CRIT), 'Sci du Crit est lu');
+  assert.deepEqual(regles.classes.flatMap((c) => c.dons).find((d) => d.id === SCI_DU_CRIT).critique, { postures: ['offensif'], valeur: 5 });
+  // ce qui ne joue pas en permanence (Q88 : (a)) n'est jamais lu : dons actifs, « prochaine attaque », arme utilisée, situation
+  for (const id of ['capacites/guerrier-tout-ou-rien', 'capacites/moine-prend-ca', 'capacites/archer-coup-mortel', 'capacites/marcass-hache-fetiche',
+    'capacites/kitsune-cest-pour-moi', 'capacites/moine-vive-dieu', 'capacites/parleur-bonimenteur', 'capacites/clerc-saint-combattant']) {
+    const d = db.prepare('SELECT effet FROM capacite WHERE id = ?').get(id);
+    assert.ok(d, id);
+    assert.equal(critiqueDuDon(d.effet), null, id);
+  }
+  for (const d of regles.classes.flatMap((c) => c.dons)) if (d.critique) assert.equal(d.type, 'passif', d.id);
+  // acquis-texte (R104) écarte toujours la réussite critique des acquis
+  const lire = lecteurDAcquis(lignes('SELECT id, nom, caracteristique_id FROM competence'));
+  assert.deepEqual(lire(db.prepare('SELECT effet FROM capacite WHERE id = ?').get(SCI_DU_CRIT).effet), []);
+
+  // accessoires : « Augmente la réussite critique de N%, peu importe le jet. », rejoué sur tous les effets
+  const accessoires = lignes('SELECT id, libelle FROM accessoire_effet').filter((a) => critiqueDeLAccessoire(a.libelle) !== null).map((a) => a.id);
+  assert.ok(accessoires.includes(ACCESSOIRE));
+  assert.equal(regles.accessoires.find((a) => a.id === ACCESSOIRE).critique, critiqueDeLAccessoire(db.prepare('SELECT libelle FROM accessoire_effet WHERE id = ?').get(ACCESSOIRE).libelle));
+  assert.equal(critiqueDeLAccessoire('Augmente la réussite critique de 1%, peu importe le jet.'), 1);
+});
+
+test('R180 (1) : le palier se lit sur le score du moment — 95 : 0 ; 96 et 102 : +2 ; 103, 115 et 120 : +5', () => {
+  const k = { id: 'medecine' };
+  for (const [score, attendu] of [[95, 0], [96, 2], [102, 2], [103, 5], [115, 5], [120, 5]]) {
+    const c = M.critiqueDe(regles, null, k, score);
+    assert.equal(c.bonus, attendu, `score ${score}`);
+    assert.equal(c.plage, 5 + attendu, `score ${score}`);
+  }
+  // par la fiche : sans posture, sur tout jet
+  for (const [score, attendu] of [[95, 0], [96, 2], [102, 2], [103, 5], [115, 5], [120, 5]]) {
+    const c = competence(avecScores(fiche(), { medecine: score }), 'medecine');
+    assert.deepEqual([c.scoreDuMoment, c.critique.bonus], [score, attendu], `score ${score}`);
+  }
+  assert.deepEqual(M.lignesDuCritique(competence(avecScores(fiche(), { medecine: 100 }), 'medecine').critique),
+    ['Réussite critique : +2 % (1 à 7)', '+2 % (score de 96 à 102 %)']);
+  assert.deepEqual(M.lignesDuCritique(competence(avecScores(fiche(), { medecine: 95 }), 'medecine').critique), [], 'rien sans bonus');
+});
+
+test('R180 : l’exemple du propriétaire — 113 sur une compétence d’attaque en Offensif donne 103, +5 de palier et +5 d’Offensif : « +10 % (1 à 15) »', () => {
+  const f = avecScores(fiche({ posture_id: POSTURE('offensif') }), { 'arme-legere': 113 });
+  const c = competence(f, 'arme-legere');
+  assert.deepEqual([c.score, c.posture, c.scoreDuMoment], [113, -10, 103]);
+  assert.deepEqual(origines(c), [['palier', 5], ['posture', 5]]);
+  assert.deepEqual([c.critique.bonus, c.critique.plage, c.critique.rogne], [10, 15, 0]);
+  assert.deepEqual(M.lignesDuCritique(c.critique), [
+    'Réussite critique : +10 % (1 à 15)', '+5 % (score de 103 % et plus)', '+5 % (posture Offensif)',
+  ]);
+  // le score de la fiche (tableur) ne change pas
+  assert.equal(competence(avecScores(fiche(), { 'arme-legere': 113 }), 'arme-legere').score, 113);
+});
+
+test('R180 : le Focus (+10 %) fait passer 93 à 103 et donne le palier de +5', () => {
+  const sans = competence(avecScores(fiche(), { medecine: 93 }), 'medecine');
+  assert.deepEqual([sans.scoreDuMoment, sans.critique.bonus], [93, 0]);
+  const focus = competence(avecScores(fiche({ posture_id: POSTURE('focus') }), { medecine: 93 }), 'medecine');
+  assert.deepEqual([focus.scoreDuMoment, focus.critique.bonus], [103, 5]);
+  assert.deepEqual(origines(focus), [['palier', 5]]);
+});
+
+test('R180 (4) : le Défensif ne donne son +5 qu’à Esquive et Parade', () => {
+  const cs = M.competencesDe(regles, fiche({ posture_id: POSTURE('defensif') }));
+  for (const c of cs) {
+    const attendu = ['esquive', 'parade'].includes(c.id) ? [['posture', 5]] : [];
+    assert.deepEqual(origines(c), attendu, c.id);
+  }
+  assert.deepEqual(M.lignesDuCritique(cs.find((c) => c.id === 'parade').critique), ['Réussite critique : +5 % (1 à 10)', '+5 % (posture Défensif)']);
+});
+
+test('R180 (3) : en Offensif, les six jets ont +5 ; Concentration sans le −10 ; Médecine rien', () => {
+  const cs = Object.fromEntries(M.competencesDe(regles, fiche({ posture_id: POSTURE('offensif') })).map((c) => [c.id, c]));
+  for (const c of Object.values(cs)) {
+    const six = [...COMPETENCES_D_ATTAQUE, 'concentration'].includes(c.id);
+    assert.deepEqual(origines(c), six ? [['posture', 5]] : [], c.id);
+  }
+  assert.deepEqual([cs.concentration.posture, cs.concentration.critique.bonus], [0, 5]);
+  assert.deepEqual([cs.medecine.posture, cs.medecine.critique.bonus], [0, 0]);
+  assert.deepEqual([cs.arc.posture, cs.arc.critique.bonus], [-10, 5]);
+});
+
+test('R180, R172 : le Mode Hyper 100 % cumule l’Offensif et le Défensif, sans le −10', () => {
+  const f = avecScores(fiche({ xp: xpDuNiveau(10), mode_hyper: 1, mode_hyper_100: 1, posture_id: POSTURE('neutre') }), { arc: 93 });
+  assert.ok(M.postureDuMoment(regles, f).cent);
+  const cs = Object.fromEntries(M.competencesDe(regles, f).map((c) => [c.id, c]));
+  // Arc : 93 + 10 du Focus, sans le −10 de l'Offensif (un inconvénient) = 103 : palier +5, Offensif +5
+  assert.deepEqual([cs.arc.posture, cs.arc.scoreDuMoment], [10, 103]);
+  assert.deepEqual(origines(cs.arc), [['palier', 5], ['posture', 5]]);
+  assert.deepEqual(M.lignesDuCritique(cs.arc.critique), [
+    'Réussite critique : +10 % (1 à 15)', '+5 % (score de 103 % et plus)', '+5 % (posture Offensif, Mode Hyper 100 %)',
+  ]);
+  for (const id of ['esquive', 'parade']) assert.deepEqual(origines(cs[id]), [['posture', 5]], id);
+  assert.deepEqual(origines(cs.concentration), [['posture', 5]]);
+  assert.deepEqual(origines(cs.medecine), []);
+});
+
+test('R182 (3), Q90 : Sci du Crit ne compte plus dans le total, ni en Offensif ni au Mode Hyper 100 % ; les six jets gardent le +5 de l’Offensif seul', () => {
+  const offensif = Object.fromEntries(M.competencesDe(regles, heros({ posture_id: POSTURE('offensif') })).map((c) => [c.id, c]));
+  for (const id of deLaBase('offensif', 'posture')) assert.deepEqual(origines(offensif[id]), [['posture', 5]], id);
+  assert.deepEqual(M.lignesDuCritique(offensif.concentration.critique), ['Réussite critique : +5 % (1 à 10)', '+5 % (posture Offensif)']);
+  assert.deepEqual(origines(offensif.medecine), []);
+  for (const slug of [null, 'offensif', 'neutre', 'defensif', 'focus']) {
+    for (const c of M.competencesDe(regles, heros({ posture_id: slug && POSTURE(slug) }))) {
+      assert.ok(!c.critique.origines.some((o) => o.nom === 'Sci du Crit'), `${slug} : ${c.id}`);
+    }
+  }
+  const cent = competence(heros({ mode_hyper: 1, mode_hyper_100: 1 }), 'arc');
+  assert.deepEqual(origines(cent), [['posture', 5]]);
+});
+
+test('R180 (4) : l’accessoire « peu importe le jet » ajoute son +1 à toutes les compétences', () => {
+  const f = fiche({ accessoires: [{ emplacement: 'collier', accessoire_effet_id: ACCESSOIRE, valeur: null, maudit: 0 }] });
+  for (const c of M.competencesDe(regles, f)) assert.deepEqual(origines(c), [['accessoire', 1]], c.id);
+  assert.deepEqual(M.lignesDuCritique(competence(f, 'medecine').critique), ['Réussite critique : +1 % (1 à 6)', '+1 % (Accessoire : Collier)']);
+});
+
+test('R180 (4), R54 : l’accessoire maudit a l’effet contraire — −1 % de réussite critique, affiché puisque le bonus n’est pas nul', () => {
+  const f = fiche({ accessoires: [{ emplacement: 'collier', accessoire_effet_id: ACCESSOIRE, valeur: null, maudit: 1 }] });
+  for (const c of M.competencesDe(regles, f)) assert.deepEqual(origines(c), [['accessoire', -1]], c.id);
+  const c = competence(f, 'medecine').critique;
+  assert.equal(c.bonus, -1);
+  assert.equal(c.plage, 4);
+  const lignes = M.lignesDuCritique(c);
+  assert.deepEqual(lignes, ['Réussite critique : -1 % (1 à 4)', '-1 % (Accessoire : Collier)']);
+});
+
+test('R180 (2), R182 (3) : le plafond — palier 5 + Offensif 5 + deux accessoires 1 donnent +12 ramené à +10 (1 à 15) ; Sci du Crit mentionné hors du total et du plafond', () => {
+  const accessoires = ['bague-1', 'bague-2'].map((emplacement) => ({ emplacement, accessoire_effet_id: ACCESSOIRE, valeur: null, maudit: 0 }));
+  const f = avecScores(heros({ posture_id: POSTURE('offensif'), accessoires }), { 'arme-lourde': 120 });
+  const c = competence(f, 'arme-lourde');
+  assert.equal(c.scoreDuMoment, 110);
+  assert.deepEqual(origines(c), [['palier', 5], ['posture', 5], ['accessoire', 1], ['accessoire', 1]]);
+  assert.deepEqual([c.critique.brut, c.critique.bonus, c.critique.rogne, c.critique.plage], [12, 10, 2, 15]);
+  assert.deepEqual(M.lignesDuCritique(c.critique), [
+    'Réussite critique : +10 % (1 à 15)', '+5 % (score de 103 % et plus)', '+5 % (posture Offensif)', '+1 % (Accessoire : Bague 1)', '+1 % (Accessoire : Bague 2)',
+    'Plafond : +12 % ramené à +10 % (jamais plus de 1 à 15)',
+    'Sci du Crit : +5 % avec une arme de contact (non compté)',
+  ]);
+  // sans Sci du Crit, le même total : la mention n'y entre pas
+  const sans = competence(avecScores(heros({ posture_id: POSTURE('offensif'), accessoires, capacites: [] }), { 'arme-lourde': 120 }), 'arme-lourde');
+  assert.deepEqual([sans.critique.brut, sans.critique.bonus, sans.critique.plage, sans.critique.mentions], [12, 10, 15, []]);
+});
+
+test('R203, Q97 : le plancher — six accessoires maudits sur Concentration à 60 % ramènent le bonus à la plage « 1 à 1 » ; à 103 %, rien ne change', () => {
+  const emplacements = ['chef', 'collier', 'bracelet-1', 'bracelet-2', 'bague-1', 'bague-2'];
+  const accessoires = emplacements.map((emplacement) => ({ emplacement, accessoire_effet_id: ACCESSOIRE, valeur: null, maudit: 1 }));
+  const malus = -regles.accessoires.find((a) => a.id === ACCESSOIRE).critique; // R54 : l'effet contraire
+  const [base, plancher, plafond, palier2] = ['critique.base', 'critique.plancher', 'critique.plafond', 'critique.palier_2_bonus'].map((id) => constante(id));
+  assert.ok(base + 6 * malus < plancher, 'l’exemple de la décision descend bien sous le plancher');
+
+  // sans posture, Concentration à 60 % (aucun palier) : brut −6, plage « 1 à 1 » (et non « 1 à −1 »)
+  const bas = competence(avecScores(fiche({ accessoires }), { concentration: 60 }), 'concentration');
+  assert.equal(bas.scoreDuMoment, 60);
+  assert.deepEqual(origines(bas), emplacements.map(() => ['accessoire', malus]));
+  const c = bas.critique;
+  assert.deepEqual([c.brut, c.rogne, c.releve, c.bonus, c.plage, c.plancher], [6 * malus, 0, plancher - base - 6 * malus, plancher - base, plancher, plancher]);
+  const lignesBas = M.lignesDuCritique(c);
+  assert.equal(lignesBas[0], `Réussite critique : ${plancher - base} % (1 à ${plancher})`);
+  assert.equal(lignesBas.at(-1), `Plancher : ${6 * malus} % ramené à ${plancher - base} % (jamais moins de 1 à ${plancher})`);
+  assert.ok(!lignesBas.some((l) => l.startsWith('Plafond')));
+
+  // à 103 % (le second palier), les mêmes accessoires : le plancher ne joue pas (1 à 4 à l'import)
+  const haut = competence(avecScores(fiche({ accessoires }), { concentration: 103 }), 'concentration').critique;
+  const attendue = base + palier2 + 6 * malus;
+  assert.ok(attendue >= plancher && attendue <= plafond);
+  assert.deepEqual([haut.brut, haut.rogne, haut.releve, haut.bonus, haut.plage], [palier2 + 6 * malus, 0, 0, palier2 + 6 * malus, attendue]);
+  assert.ok(!M.lignesDuCritique(haut).some((l) => l.startsWith('Plancher')));
+
+  // le sort préparé fige la plage du moment (R182 (4)) : jamais sous le plancher
+  for (const k of regles.competences) {
+    const f = avecScores(fiche({ accessoires }), { [k.id]: 1 });
+    const p = M.competencesDe(regles, f).find((x) => x.id === k.id).critique?.plage;
+    if (p !== undefined) assert.ok(p >= plancher, k.id);
+  }
+  const prepa = M.critiqueAlaPreparation(regles, avecScores(fiche({ accessoires }), { [regles.sort_prepare.competence_id]: 60 }));
+  assert.equal(prepa, plancher);
+});
+
+test('R180 : une compétence à deux croix (inutilisable, R19) n’a pas de réussite critique', () => {
+  const k = regles.competences.find((x) => x.id === 'arc');
+  const f = heros({ posture_id: POSTURE('offensif'), caracteristiques: [{ caracteristique_id: k.caracteristique_id, base: 4, croix: 2 }] });
+  const c = competence(f, 'arc');
+  assert.deepEqual([c.score, c.critique], [null, null]);
+  assert.deepEqual(M.lignesDuCritique(c.critique), []);
+});

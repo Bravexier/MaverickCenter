@@ -1,0 +1,2603 @@
+{
+  "migration": "0113-mots-cles-id-entier",
+  "description": "Correspondance figée des 407 mots-clés de la version 112 (base de dev : ses migrations 0111 et 0112 en ont ajouté 40) : ancien id texte -> id entier (1 à 367 pour les 367 de la version 110, dans l'ordre binaire de l'ancien id ; 368 à 407 pour les 40 de dev, de même) et clé à la migration ; libelleAvant pour les 13 classes raciales dont le suffixe « (classe) » est retiré (catégorie Classe). Sert au rejeu des lots du journal d'avant la 0113 (balises et clés de ligne qui nomment un mot-clé par son ancien id) : contrairement à mot_cle_ancienne_cle, elle ne suit ni les renommages ni les changements de catégorie postérieurs. `textes` : les balises réécrites vers la clé, celles des trois anciens ids de dev qui ne sont pas leur clé (attaque-et-defense, attaquer-et-se-defendre, reussites-echecs-et-critiques).",
+  "motsCles": [
+    {
+      "ancienId": "400",
+      "id": 1,
+      "cle": "400",
+      "libelle": "400"
+    },
+    {
+      "ancienId": "academie-de-larcane",
+      "id": 2,
+      "cle": "academie-de-larcane",
+      "libelle": "Académie de l’arcane"
+    },
+    {
+      "ancienId": "accessoires",
+      "id": 3,
+      "cle": "accessoires",
+      "libelle": "Accessoires"
+    },
+    {
+      "ancienId": "acquis",
+      "id": 4,
+      "cle": "acquis",
+      "libelle": "Acquis"
+    },
+    {
+      "ancienId": "action",
+      "id": 5,
+      "cle": "action",
+      "libelle": "Action"
+    },
+    {
+      "ancienId": "action-bonus",
+      "id": 6,
+      "cle": "action-bonus",
+      "libelle": "Action bonus"
+    },
+    {
+      "ancienId": "action-rapide",
+      "id": 7,
+      "cle": "action-rapide",
+      "libelle": "Action rapide"
+    },
+    {
+      "ancienId": "alchimie",
+      "id": 8,
+      "cle": "alchimie",
+      "libelle": "Alchimie"
+    },
+    {
+      "ancienId": "alchimie-primitive",
+      "id": 9,
+      "cle": "alchimie-primitive",
+      "libelle": "Alchimie primitive"
+    },
+    {
+      "ancienId": "alignement",
+      "id": 10,
+      "cle": "alignement",
+      "libelle": "Alignement"
+    },
+    {
+      "ancienId": "alteration-detat",
+      "id": 11,
+      "cle": "alteration-detat",
+      "libelle": "Altération d’état"
+    },
+    {
+      "ancienId": "ame",
+      "id": 12,
+      "cle": "ame",
+      "libelle": "Âme"
+    },
+    {
+      "ancienId": "amelioration",
+      "id": 13,
+      "cle": "amelioration",
+      "libelle": "Amélioration"
+    },
+    {
+      "ancienId": "anansi",
+      "id": 14,
+      "cle": "anansi",
+      "libelle": "Anansi"
+    },
+    {
+      "ancienId": "anansi-classe",
+      "id": 15,
+      "cle": "anansi-classe",
+      "libelle": "Anansi",
+      "libelleAvant": "Anansi (classe)"
+    },
+    {
+      "ancienId": "anna",
+      "id": 16,
+      "cle": "anna",
+      "libelle": "Anna"
+    },
+    {
+      "ancienId": "arbaletrier",
+      "id": 17,
+      "cle": "arbaletrier",
+      "libelle": "Arbalétrier"
+    },
+    {
+      "ancienId": "archer",
+      "id": 18,
+      "cle": "archer",
+      "libelle": "Archer"
+    },
+    {
+      "ancienId": "archimage",
+      "id": 19,
+      "cle": "archimage",
+      "libelle": "Archimage"
+    },
+    {
+      "ancienId": "armes",
+      "id": 20,
+      "cle": "armes",
+      "libelle": "Armes"
+    },
+    {
+      "ancienId": "armure-magique",
+      "id": 21,
+      "cle": "armure-magique",
+      "libelle": "Armure magique"
+    },
+    {
+      "ancienId": "armure-physique",
+      "id": 22,
+      "cle": "armure-physique",
+      "libelle": "Armure physique"
+    },
+    {
+      "ancienId": "armures",
+      "id": 23,
+      "cle": "armures",
+      "libelle": "Armures"
+    },
+    {
+      "ancienId": "armurier",
+      "id": 24,
+      "cle": "armurier",
+      "libelle": "Armurier"
+    },
+    {
+      "ancienId": "artisanat",
+      "id": 25,
+      "cle": "artisanat",
+      "libelle": "Artisanat"
+    },
+    {
+      "ancienId": "attaque-discrete",
+      "id": 26,
+      "cle": "attaque-discrete",
+      "libelle": "Attaque discrète"
+    },
+    {
+      "ancienId": "attaque-dopportunite",
+      "id": 27,
+      "cle": "attaque-dopportunite",
+      "libelle": "Attaque d’opportunité"
+    },
+    {
+      "ancienId": "attaque-et-defense",
+      "id": 28,
+      "cle": "se-defendre",
+      "libelle": "Se défendre"
+    },
+    {
+      "ancienId": "attaque-gratuite",
+      "id": 29,
+      "cle": "attaque-gratuite",
+      "libelle": "Attaque gratuite"
+    },
+    {
+      "ancienId": "attaquer-et-se-defendre",
+      "id": 30,
+      "cle": "attaquer",
+      "libelle": "Attaquer"
+    },
+    {
+      "ancienId": "attributs",
+      "id": 31,
+      "cle": "attributs",
+      "libelle": "Attributs"
+    },
+    {
+      "ancienId": "aurora",
+      "id": 32,
+      "cle": "aurora",
+      "libelle": "Aurora"
+    },
+    {
+      "ancienId": "balogne",
+      "id": 33,
+      "cle": "balogne",
+      "libelle": "Balogne"
+    },
+    {
+      "ancienId": "barde",
+      "id": 34,
+      "cle": "barde",
+      "libelle": "Barde"
+    },
+    {
+      "ancienId": "bardiche-du-bourreau-dechire",
+      "id": 35,
+      "cle": "bardiche-du-bourreau-dechire",
+      "libelle": "Bardiche du Bourreau déchiré"
+    },
+    {
+      "ancienId": "barrage-argente",
+      "id": 36,
+      "cle": "barrage-argente",
+      "libelle": "Barrage Argenté"
+    },
+    {
+      "ancienId": "barriere",
+      "id": 37,
+      "cle": "barriere",
+      "libelle": "Barrière"
+    },
+    {
+      "ancienId": "baton-de-la-destruction",
+      "id": 38,
+      "cle": "baton-de-la-destruction",
+      "libelle": "Bâton de la destruction"
+    },
+    {
+      "ancienId": "baton-magique",
+      "id": 39,
+      "cle": "baton-magique",
+      "libelle": "Bâton magique"
+    },
+    {
+      "ancienId": "battlemap",
+      "id": 40,
+      "cle": "battlemap",
+      "libelle": "Battlemap"
+    },
+    {
+      "ancienId": "bauc",
+      "id": 41,
+      "cle": "bauc",
+      "libelle": "Bauc"
+    },
+    {
+      "ancienId": "bestiaire",
+      "id": 42,
+      "cle": "bestiaire",
+      "libelle": "Bestiaire"
+    },
+    {
+      "ancienId": "biclassage",
+      "id": 43,
+      "cle": "biclassage",
+      "libelle": "Biclassage"
+    },
+    {
+      "ancienId": "bienvenue-dans-maverick",
+      "id": 44,
+      "cle": "bienvenue-dans-maverick",
+      "libelle": "Bienvenue dans Maverick"
+    },
+    {
+      "ancienId": "bimane",
+      "id": 45,
+      "cle": "bimane",
+      "libelle": "Bimane"
+    },
+    {
+      "ancienId": "blessure-et-mort",
+      "id": 46,
+      "cle": "blessure-et-mort",
+      "libelle": "Blessure et mort"
+    },
+    {
+      "ancienId": "bois-du-printemps",
+      "id": 47,
+      "cle": "bois-du-printemps",
+      "libelle": "Bois du printemps"
+    },
+    {
+      "ancienId": "boss",
+      "id": 48,
+      "cle": "boss",
+      "libelle": "Boss"
+    },
+    {
+      "ancienId": "bouclier",
+      "id": 49,
+      "cle": "bouclier",
+      "libelle": "Bouclier"
+    },
+    {
+      "ancienId": "brock",
+      "id": 50,
+      "cle": "brock",
+      "libelle": "Brock"
+    },
+    {
+      "ancienId": "cac",
+      "id": 51,
+      "cle": "cac",
+      "libelle": "càc"
+    },
+    {
+      "ancienId": "camnau",
+      "id": 52,
+      "cle": "camnau",
+      "libelle": "Camnau"
+    },
+    {
+      "ancienId": "campagne",
+      "id": 53,
+      "cle": "campagne",
+      "libelle": "Campagne"
+    },
+    {
+      "ancienId": "capacite-de-classe",
+      "id": 54,
+      "cle": "capacite-de-classe",
+      "libelle": "capacité de classe"
+    },
+    {
+      "ancienId": "capse",
+      "id": 55,
+      "cle": "capse",
+      "libelle": "Capse"
+    },
+    {
+      "ancienId": "caracteristiques",
+      "id": 56,
+      "cle": "caracteristiques",
+      "libelle": "Caractéristiques"
+    },
+    {
+      "ancienId": "carte-de-combat",
+      "id": 57,
+      "cle": "carte-de-combat",
+      "libelle": "Carte de combat"
+    },
+    {
+      "ancienId": "ceinture",
+      "id": 58,
+      "cle": "ceinture",
+      "libelle": "Ceinture"
+    },
+    {
+      "ancienId": "celsius",
+      "id": 59,
+      "cle": "celsius",
+      "libelle": "Celsius"
+    },
+    {
+      "ancienId": "chakra",
+      "id": 60,
+      "cle": "chakra",
+      "libelle": "Chakra"
+    },
+    {
+      "ancienId": "champicer",
+      "id": 61,
+      "cle": "champicer",
+      "libelle": "Champicer"
+    },
+    {
+      "ancienId": "champieu",
+      "id": 62,
+      "cle": "champieu",
+      "libelle": "Champieu"
+    },
+    {
+      "ancienId": "chapelle-des-os",
+      "id": 63,
+      "cle": "chapelle-des-os",
+      "libelle": "Chapelle des Os"
+    },
+    {
+      "ancienId": "chargement-mage-vert",
+      "id": 64,
+      "cle": "chargement-mage-vert",
+      "libelle": "Chargement (Mage Vert)"
+    },
+    {
+      "ancienId": "chronologie",
+      "id": 65,
+      "cle": "chronologie",
+      "libelle": "Chronologie"
+    },
+    {
+      "ancienId": "classe",
+      "id": 66,
+      "cle": "classe",
+      "libelle": "Classe"
+    },
+    {
+      "ancienId": "classe-magique",
+      "id": 67,
+      "cle": "classe-magique",
+      "libelle": "Classe magique"
+    },
+    {
+      "ancienId": "classe-raciale",
+      "id": 68,
+      "cle": "classe-raciale",
+      "libelle": "Classe raciale"
+    },
+    {
+      "ancienId": "clerc",
+      "id": 69,
+      "cle": "clerc",
+      "libelle": "Clerc"
+    },
+    {
+      "ancienId": "cloche-dor",
+      "id": 70,
+      "cle": "cloche-dor",
+      "libelle": "Cloche d’or"
+    },
+    {
+      "ancienId": "codex",
+      "id": 71,
+      "cle": "codex",
+      "libelle": "codex"
+    },
+    {
+      "ancienId": "collines-humides",
+      "id": 72,
+      "cle": "collines-humides",
+      "libelle": "Collines humides"
+    },
+    {
+      "ancienId": "coma",
+      "id": 73,
+      "cle": "coma",
+      "libelle": "Coma"
+    },
+    {
+      "ancienId": "compagnie-du-fer-noir",
+      "id": 74,
+      "cle": "compagnie-du-fer-noir",
+      "libelle": "Compagnie du Fer Noir"
+    },
+    {
+      "ancienId": "competence",
+      "id": 75,
+      "cle": "competence",
+      "libelle": "Compétence"
+    },
+    {
+      "ancienId": "composants",
+      "id": 76,
+      "cle": "composants",
+      "libelle": "Composants"
+    },
+    {
+      "ancienId": "confrerie-du-sang",
+      "id": 77,
+      "cle": "confrerie-du-sang",
+      "libelle": "Confrérie du Sang"
+    },
+    {
+      "ancienId": "corruption",
+      "id": 78,
+      "cle": "corruption",
+      "libelle": "Corruption"
+    },
+    {
+      "ancienId": "cout-secondaire",
+      "id": 79,
+      "cle": "cout-secondaire",
+      "libelle": "Coût secondaire"
+    },
+    {
+      "ancienId": "couturier",
+      "id": 80,
+      "cle": "couturier",
+      "libelle": "Couturier"
+    },
+    {
+      "ancienId": "creature-invoquee",
+      "id": 81,
+      "cle": "creature-invoquee",
+      "libelle": "Créature invoquée"
+    },
+    {
+      "ancienId": "creer-son-personnage",
+      "id": 82,
+      "cle": "creer-son-personnage",
+      "libelle": "Créer son personnage"
+    },
+    {
+      "ancienId": "croc-du-volcan",
+      "id": 83,
+      "cle": "croc-du-volcan",
+      "libelle": "Croc du Volcan"
+    },
+    {
+      "ancienId": "croix",
+      "id": 84,
+      "cle": "croix",
+      "libelle": "Croix"
+    },
+    {
+      "ancienId": "cuirasse",
+      "id": 85,
+      "cle": "cuirasse",
+      "libelle": "Cuirassé"
+    },
+    {
+      "ancienId": "defense-partielle",
+      "id": 86,
+      "cle": "defense-partielle",
+      "libelle": "Défense partielle"
+    },
+    {
+      "ancienId": "degats",
+      "id": 87,
+      "cle": "degats",
+      "libelle": "Dégâts"
+    },
+    {
+      "ancienId": "des",
+      "id": 88,
+      "cle": "des",
+      "libelle": "Dés"
+    },
+    {
+      "ancienId": "dieu-choisi",
+      "id": 89,
+      "cle": "dieu-choisi",
+      "libelle": "Dieu choisi"
+    },
+    {
+      "ancienId": "dieu-inne",
+      "id": 90,
+      "cle": "dieu-inne",
+      "libelle": "Dieu inné"
+    },
+    {
+      "ancienId": "dimitri",
+      "id": 91,
+      "cle": "dimitri",
+      "libelle": "Dimitri"
+    },
+    {
+      "ancienId": "distance",
+      "id": 92,
+      "cle": "distance",
+      "libelle": "distance"
+    },
+    {
+      "ancienId": "dombourg",
+      "id": 93,
+      "cle": "dombourg",
+      "libelle": "Dombourg"
+    },
+    {
+      "ancienId": "don",
+      "id": 94,
+      "cle": "don",
+      "libelle": "Don"
+    },
+    {
+      "ancienId": "don-de-base",
+      "id": 95,
+      "cle": "don-de-base",
+      "libelle": "Don de base"
+    },
+    {
+      "ancienId": "donjon-pas-bon",
+      "id": 96,
+      "cle": "donjon-pas-bon",
+      "libelle": "Donjon Pas bon"
+    },
+    {
+      "ancienId": "double-coup-mage-rouge",
+      "id": 97,
+      "cle": "double-coup-mage-rouge",
+      "libelle": "Double coup (Mage Rouge)"
+    },
+    {
+      "ancienId": "double-coup-mage-vert",
+      "id": 98,
+      "cle": "double-coup-mage-vert",
+      "libelle": "Double coup (Mage Vert)"
+    },
+    {
+      "ancienId": "dragon",
+      "id": 99,
+      "cle": "dragon",
+      "libelle": "Dragon"
+    },
+    {
+      "ancienId": "drakos",
+      "id": 100,
+      "cle": "drakos",
+      "libelle": "Drakos"
+    },
+    {
+      "ancienId": "drassah",
+      "id": 101,
+      "cle": "drassah",
+      "libelle": "Drassah"
+    },
+    {
+      "ancienId": "drassahthac",
+      "id": 102,
+      "cle": "drassahthac",
+      "libelle": "Drassah'thac"
+    },
+    {
+      "ancienId": "eaunoire",
+      "id": 103,
+      "cle": "eaunoire",
+      "libelle": "Eaunoire"
+    },
+    {
+      "ancienId": "echec-critique",
+      "id": 104,
+      "cle": "echec-critique",
+      "libelle": "Échec critique"
+    },
+    {
+      "ancienId": "echelle-de-puissance",
+      "id": 105,
+      "cle": "echelle-de-puissance",
+      "libelle": "Échelle de puissance"
+    },
+    {
+      "ancienId": "eglise-du-sel",
+      "id": 106,
+      "cle": "eglise-du-sel",
+      "libelle": "Église du Sel"
+    },
+    {
+      "ancienId": "eirnn",
+      "id": 107,
+      "cle": "eirnn",
+      "libelle": "Eirnn"
+    },
+    {
+      "ancienId": "elfe-argente",
+      "id": 108,
+      "cle": "elfe-argente",
+      "libelle": "Elfe argenté"
+    },
+    {
+      "ancienId": "elfe-dore",
+      "id": 109,
+      "cle": "elfe-dore",
+      "libelle": "Elfe doré"
+    },
+    {
+      "ancienId": "elfe-forestier",
+      "id": 110,
+      "cle": "elfe-forestier",
+      "libelle": "Elfe forestier"
+    },
+    {
+      "ancienId": "elfe-noir",
+      "id": 111,
+      "cle": "elfe-noir",
+      "libelle": "Elfe noir"
+    },
+    {
+      "ancienId": "embuscade",
+      "id": 112,
+      "cle": "embuscade",
+      "libelle": "Embuscade"
+    },
+    {
+      "ancienId": "empire-argente",
+      "id": 113,
+      "cle": "empire-argente",
+      "libelle": "Empire Argenté"
+    },
+    {
+      "ancienId": "empire-humain",
+      "id": 114,
+      "cle": "empire-humain",
+      "libelle": "Empire Humain"
+    },
+    {
+      "ancienId": "emplacement-de-sort",
+      "id": 115,
+      "cle": "emplacement-de-sort",
+      "libelle": "Emplacement de sort"
+    },
+    {
+      "ancienId": "entrainement",
+      "id": 116,
+      "cle": "entrainement",
+      "libelle": "Entraînement"
+    },
+    {
+      "ancienId": "eoline",
+      "id": 117,
+      "cle": "eoline",
+      "libelle": "Éoline"
+    },
+    {
+      "ancienId": "episir",
+      "id": 118,
+      "cle": "episir",
+      "libelle": "Épisir"
+    },
+    {
+      "ancienId": "erisia",
+      "id": 119,
+      "cle": "erisia",
+      "libelle": "Erisia"
+    },
+    {
+      "ancienId": "esquive",
+      "id": 120,
+      "cle": "esquive",
+      "libelle": "Esquive"
+    },
+    {
+      "ancienId": "etape-1-imaginer-son-personnage-et-choisir-sa-race",
+      "id": 121,
+      "cle": "etape-1-imaginer-son-personnage-et-choisir-sa-race",
+      "libelle": "Étape 1 : imaginer son personnage et choisir sa race"
+    },
+    {
+      "ancienId": "etape-2-choisir-ses-magies",
+      "id": 122,
+      "cle": "etape-2-choisir-ses-magies",
+      "libelle": "Étape 2 : choisir ses magies"
+    },
+    {
+      "ancienId": "etape-3-choisir-sa-classe",
+      "id": 123,
+      "cle": "etape-3-choisir-sa-classe",
+      "libelle": "Étape 3 : choisir sa classe"
+    },
+    {
+      "ancienId": "etape-4-repartir-caracteristiques-et-competences",
+      "id": 124,
+      "cle": "etape-4-repartir-caracteristiques-et-competences",
+      "libelle": "Étape 4 : répartir caractéristiques et compétences"
+    },
+    {
+      "ancienId": "etape-5-choisir-ses-premiers-sorts",
+      "id": 125,
+      "cle": "etape-5-choisir-ses-premiers-sorts",
+      "libelle": "Étape 5 : choisir ses premiers sorts"
+    },
+    {
+      "ancienId": "etape-6-finaliser-son-personnage",
+      "id": 126,
+      "cle": "etape-6-finaliser-son-personnage",
+      "libelle": "Étape 6 : finaliser son personnage"
+    },
+    {
+      "ancienId": "ethnie",
+      "id": 127,
+      "cle": "ethnie",
+      "libelle": "Ethnie"
+    },
+    {
+      "ancienId": "evravonie",
+      "id": 128,
+      "cle": "evravonie",
+      "libelle": "Evravonie"
+    },
+    {
+      "ancienId": "excalibur",
+      "id": 129,
+      "cle": "excalibur",
+      "libelle": "Excalibur"
+    },
+    {
+      "ancienId": "faiblesse",
+      "id": 130,
+      "cle": "faiblesse",
+      "libelle": "Faiblesse"
+    },
+    {
+      "ancienId": "farfadet",
+      "id": 131,
+      "cle": "farfadet",
+      "libelle": "Farfadet"
+    },
+    {
+      "ancienId": "felfe",
+      "id": 132,
+      "cle": "felfe",
+      "libelle": "Felfe"
+    },
+    {
+      "ancienId": "fenrir",
+      "id": 133,
+      "cle": "fenrir",
+      "libelle": "Fenrir"
+    },
+    {
+      "ancienId": "fenrir-classe",
+      "id": 134,
+      "cle": "fenrir-classe",
+      "libelle": "Fenrir",
+      "libelleAvant": "Fenrir (classe)"
+    },
+    {
+      "ancienId": "fiche-de-personnage",
+      "id": 135,
+      "cle": "fiche-de-personnage",
+      "libelle": "Fiche de personnage"
+    },
+    {
+      "ancienId": "fiche-de-personnage-accessoires-et-ceinture",
+      "id": 136,
+      "cle": "fiche-de-personnage-accessoires-et-ceinture",
+      "libelle": "Fiche de personnage : Accessoires et Ceinture"
+    },
+    {
+      "ancienId": "fiche-de-personnage-armure-defense-bouclier",
+      "id": 137,
+      "cle": "fiche-de-personnage-armure-defense-bouclier",
+      "libelle": "Fiche de personnage : Armure/Défense/Bouclier"
+    },
+    {
+      "ancienId": "fiche-de-personnage-experience-niveau-global",
+      "id": 138,
+      "cle": "fiche-de-personnage-experience-niveau-global",
+      "libelle": "Fiche de personnage : Expérience/Niveau global"
+    },
+    {
+      "ancienId": "fiche-de-personnage-inventaire-sac-a-dos",
+      "id": 139,
+      "cle": "fiche-de-personnage-inventaire-sac-a-dos",
+      "libelle": "Fiche de personnage : Inventaire/Sac à dos"
+    },
+    {
+      "ancienId": "fiche-de-personnage-maitrise-darme-et-armes",
+      "id": 140,
+      "cle": "fiche-de-personnage-maitrise-darme-et-armes",
+      "libelle": "Fiche de personnage : Maîtrise d’arme et Armes"
+    },
+    {
+      "ancienId": "fiche-de-personnage-tableau-posture",
+      "id": 141,
+      "cle": "fiche-de-personnage-tableau-posture",
+      "libelle": "Fiche de personnage : Tableau Posture"
+    },
+    {
+      "ancienId": "flagelleur",
+      "id": 142,
+      "cle": "flagelleur",
+      "libelle": "Flagelleur"
+    },
+    {
+      "ancienId": "foret-colossale",
+      "id": 143,
+      "cle": "foret-colossale",
+      "libelle": "Forêt colossale"
+    },
+    {
+      "ancienId": "foret-de-lete",
+      "id": 144,
+      "cle": "foret-de-lete",
+      "libelle": "Forêt de l’été"
+    },
+    {
+      "ancienId": "forgeron",
+      "id": 145,
+      "cle": "forgeron",
+      "libelle": "Forgeron"
+    },
+    {
+      "ancienId": "formule-des-degats",
+      "id": 146,
+      "cle": "formule-des-degats",
+      "libelle": "Formule des dégâts"
+    },
+    {
+      "ancienId": "foudre-etincelante",
+      "id": 147,
+      "cle": "foudre-etincelante",
+      "libelle": "Foudre étincelante"
+    },
+    {
+      "ancienId": "frappeur",
+      "id": 148,
+      "cle": "frappeur",
+      "libelle": "Frappeur"
+    },
+    {
+      "ancienId": "glossaire",
+      "id": 149,
+      "cle": "glossaire",
+      "libelle": "Glossaire"
+    },
+    {
+      "ancienId": "goleois",
+      "id": 150,
+      "cle": "goleois",
+      "libelle": "Goleois"
+    },
+    {
+      "ancienId": "goleois-classe",
+      "id": 151,
+      "cle": "goleois-classe",
+      "libelle": "Goleois",
+      "libelleAvant": "Goleois (classe)"
+    },
+    {
+      "ancienId": "grelon",
+      "id": 152,
+      "cle": "grelon",
+      "libelle": "Grelon"
+    },
+    {
+      "ancienId": "grenadier",
+      "id": 153,
+      "cle": "grenadier",
+      "libelle": "Grenadier"
+    },
+    {
+      "ancienId": "guerisseurs-silencieux",
+      "id": 154,
+      "cle": "guerisseurs-silencieux",
+      "libelle": "Guérisseurs silencieux"
+    },
+    {
+      "ancienId": "guerrier",
+      "id": 155,
+      "cle": "guerrier",
+      "libelle": "Guerrier"
+    },
+    {
+      "ancienId": "guide-pour-mj-maverick",
+      "id": 156,
+      "cle": "guide-pour-mj-maverick",
+      "libelle": "Guide pour MJ - Maverick"
+    },
+    {
+      "ancienId": "hache-du-bourreau-dechire",
+      "id": 157,
+      "cle": "hache-du-bourreau-dechire",
+      "libelle": "Hache du Bourreau déchiré"
+    },
+    {
+      "ancienId": "hujin",
+      "id": 158,
+      "cle": "hujin",
+      "libelle": "Hujin"
+    },
+    {
+      "ancienId": "humain",
+      "id": 159,
+      "cle": "humain",
+      "libelle": "Humain"
+    },
+    {
+      "ancienId": "hybride",
+      "id": 160,
+      "cle": "hybride",
+      "libelle": "hybride"
+    },
+    {
+      "ancienId": "hybride-animal",
+      "id": 161,
+      "cle": "hybride-animal",
+      "libelle": "hybride animal"
+    },
+    {
+      "ancienId": "initiative",
+      "id": 162,
+      "cle": "initiative",
+      "libelle": "Initiative"
+    },
+    {
+      "ancienId": "instant-cast",
+      "id": 163,
+      "cle": "instant-cast",
+      "libelle": "Instant Cast"
+    },
+    {
+      "ancienId": "intervention",
+      "id": 164,
+      "cle": "intervention",
+      "libelle": "Intervention"
+    },
+    {
+      "ancienId": "jackalope",
+      "id": 165,
+      "cle": "jackalope",
+      "libelle": "Jackalope"
+    },
+    {
+      "ancienId": "jackalope-classe",
+      "id": 166,
+      "cle": "jackalope-classe",
+      "libelle": "Jackalope",
+      "libelleAvant": "Jackalope (classe)"
+    },
+    {
+      "ancienId": "kitsune",
+      "id": 167,
+      "cle": "kitsune",
+      "libelle": "Kitsune"
+    },
+    {
+      "ancienId": "kitsune-classe",
+      "id": 168,
+      "cle": "kitsune-classe",
+      "libelle": "Kitsune",
+      "libelleAvant": "Kitsune (classe)"
+    },
+    {
+      "ancienId": "la-confrerie-des-brandes-sacrileges",
+      "id": 169,
+      "cle": "la-confrerie-des-brandes-sacrileges",
+      "libelle": "La Confrérie des Brandes Sacrilèges"
+    },
+    {
+      "ancienId": "la-magie-en-jeu",
+      "id": 170,
+      "cle": "la-magie-en-jeu",
+      "libelle": "La magie en jeu"
+    },
+    {
+      "ancienId": "la-main-sanglante",
+      "id": 171,
+      "cle": "la-main-sanglante",
+      "libelle": "La main sanglante"
+    },
+    {
+      "ancienId": "la-montee-de-niveau",
+      "id": 172,
+      "cle": "la-montee-de-niveau",
+      "libelle": "La montée de niveau"
+    },
+    {
+      "ancienId": "la-pointe-de-sang",
+      "id": 173,
+      "cle": "la-pointe-de-sang",
+      "libelle": "La pointe de sang"
+    },
+    {
+      "ancienId": "la-vitesse-et-la-portee",
+      "id": 174,
+      "cle": "la-vitesse-et-la-portee",
+      "libelle": "La Vitesse et la Portée"
+    },
+    {
+      "ancienId": "lame-seuil",
+      "id": 175,
+      "cle": "lame-seuil",
+      "libelle": "Lame-Seuil"
+    },
+    {
+      "ancienId": "lamia",
+      "id": 176,
+      "cle": "lamia",
+      "libelle": "Lamia"
+    },
+    {
+      "ancienId": "lance-du-bourreau-dechire",
+      "id": 177,
+      "cle": "lance-du-bourreau-dechire",
+      "libelle": "Lance du Bourreau déchiré"
+    },
+    {
+      "ancienId": "lanceur",
+      "id": 178,
+      "cle": "lanceur",
+      "libelle": "Lanceur"
+    },
+    {
+      "ancienId": "lancier",
+      "id": 179,
+      "cle": "lancier",
+      "libelle": "Lancier"
+    },
+    {
+      "ancienId": "le-tour-de-jeu",
+      "id": 180,
+      "cle": "le-tour-de-jeu",
+      "libelle": "Le tour de jeu"
+    },
+    {
+      "ancienId": "lequipement",
+      "id": 181,
+      "cle": "lequipement",
+      "libelle": "L’équipement"
+    },
+    {
+      "ancienId": "les-actions-et-mouvements",
+      "id": 182,
+      "cle": "les-actions-et-mouvements",
+      "libelle": "Les Actions et mouvements"
+    },
+    {
+      "ancienId": "les-belladones-fleurissantes",
+      "id": 183,
+      "cle": "les-belladones-fleurissantes",
+      "libelle": "Les Belladones Fleurissantes"
+    },
+    {
+      "ancienId": "les-civilisations",
+      "id": 184,
+      "cle": "les-civilisations",
+      "libelle": "Les Civilisations"
+    },
+    {
+      "ancienId": "les-divinites",
+      "id": 185,
+      "cle": "les-divinites",
+      "libelle": "Les Divinités"
+    },
+    {
+      "ancienId": "les-embaumeurs",
+      "id": 186,
+      "cle": "les-embaumeurs",
+      "libelle": "Les embaumeurs"
+    },
+    {
+      "ancienId": "les-exaltes",
+      "id": 187,
+      "cle": "les-exaltes",
+      "libelle": "Les Exaltés"
+    },
+    {
+      "ancienId": "les-flammes-bleues",
+      "id": 188,
+      "cle": "les-flammes-bleues",
+      "libelle": "Les Flammes Bleues"
+    },
+    {
+      "ancienId": "les-guerisseurs",
+      "id": 189,
+      "cle": "les-guerisseurs",
+      "libelle": "Les Guérisseurs"
+    },
+    {
+      "ancienId": "les-impacts-mineur-et-majeur",
+      "id": 190,
+      "cle": "les-impacts-mineur-et-majeur",
+      "libelle": "Les Impacts mineur et majeur"
+    },
+    {
+      "ancienId": "les-jardiniers-mycillis",
+      "id": 191,
+      "cle": "les-jardiniers-mycillis",
+      "libelle": "Les Jardiniers Mycillis"
+    },
+    {
+      "ancienId": "les-neuf-alignements",
+      "id": 192,
+      "cle": "les-neuf-alignements",
+      "libelle": "Les neuf alignements"
+    },
+    {
+      "ancienId": "les-outils-legendaires-uniques",
+      "id": 193,
+      "cle": "les-outils-legendaires-uniques",
+      "libelle": "Les Outils Légendaires, Uniques"
+    },
+    {
+      "ancienId": "les-pieges",
+      "id": 194,
+      "cle": "les-pieges",
+      "libelle": "Les pièges"
+    },
+    {
+      "ancienId": "les-portes",
+      "id": 195,
+      "cle": "les-portes",
+      "libelle": "Les portes"
+    },
+    {
+      "ancienId": "les-races-non-jouable",
+      "id": 196,
+      "cle": "les-races-non-jouable",
+      "libelle": "Les races non-jouable"
+    },
+    {
+      "ancienId": "liste-des-alterations-detat",
+      "id": 197,
+      "cle": "liste-des-alterations-detat",
+      "libelle": "Liste des altérations d'état"
+    },
+    {
+      "ancienId": "livre-parchemin",
+      "id": 198,
+      "cle": "livre-parchemin",
+      "libelle": "Livre/Parchemin"
+    },
+    {
+      "ancienId": "londolor",
+      "id": 199,
+      "cle": "londolor",
+      "libelle": "Londolor"
+    },
+    {
+      "ancienId": "lordre-de-lacier",
+      "id": 200,
+      "cle": "lordre-de-lacier",
+      "libelle": "L’Ordre de l’acier"
+    },
+    {
+      "ancienId": "lunivers",
+      "id": 201,
+      "cle": "lunivers",
+      "libelle": "L’univers"
+    },
+    {
+      "ancienId": "maclier",
+      "id": 202,
+      "cle": "maclier",
+      "libelle": "Maclier"
+    },
+    {
+      "ancienId": "mage",
+      "id": 203,
+      "cle": "mage",
+      "libelle": "Mage"
+    },
+    {
+      "ancienId": "mage-bleu",
+      "id": 204,
+      "cle": "mage-bleu",
+      "libelle": "Mage Bleu"
+    },
+    {
+      "ancienId": "mage-rouge",
+      "id": 205,
+      "cle": "mage-rouge",
+      "libelle": "Mage Rouge"
+    },
+    {
+      "ancienId": "mage-vert",
+      "id": 206,
+      "cle": "mage-vert",
+      "libelle": "Mage Vert"
+    },
+    {
+      "ancienId": "magie-acquise",
+      "id": 207,
+      "cle": "magie-acquise",
+      "libelle": "Magie acquise"
+    },
+    {
+      "ancienId": "magie-de-la-corruption",
+      "id": 208,
+      "cle": "magie-de-la-corruption",
+      "libelle": "Magie de la Corruption"
+    },
+    {
+      "ancienId": "magie-de-la-foudre",
+      "id": 209,
+      "cle": "magie-de-la-foudre",
+      "libelle": "Magie de la Foudre"
+    },
+    {
+      "ancienId": "magie-de-la-glace",
+      "id": 210,
+      "cle": "magie-de-la-glace",
+      "libelle": "Magie de la Glace"
+    },
+    {
+      "ancienId": "magie-de-la-lumiere",
+      "id": 211,
+      "cle": "magie-de-la-lumiere",
+      "libelle": "Magie de la Lumière"
+    },
+    {
+      "ancienId": "magie-de-la-necromancie",
+      "id": 212,
+      "cle": "magie-de-la-necromancie",
+      "libelle": "Magie de la Nécromancie"
+    },
+    {
+      "ancienId": "magie-de-la-terre",
+      "id": 213,
+      "cle": "magie-de-la-terre",
+      "libelle": "Magie de la Terre"
+    },
+    {
+      "ancienId": "magie-de-larcane",
+      "id": 214,
+      "cle": "magie-de-larcane",
+      "libelle": "Magie de l'Arcane"
+    },
+    {
+      "ancienId": "magie-de-leau",
+      "id": 215,
+      "cle": "magie-de-leau",
+      "libelle": "Magie de l'Eau"
+    },
+    {
+      "ancienId": "magie-de-lespace-temps",
+      "id": 216,
+      "cle": "magie-de-lespace-temps",
+      "libelle": "Magie de l'Espace/Temps"
+    },
+    {
+      "ancienId": "magie-de-lombre",
+      "id": 217,
+      "cle": "magie-de-lombre",
+      "libelle": "Magie de l'Ombre"
+    },
+    {
+      "ancienId": "magie-du-feu",
+      "id": 218,
+      "cle": "magie-du-feu",
+      "libelle": "Magie du Feu"
+    },
+    {
+      "ancienId": "magie-du-sang",
+      "id": 219,
+      "cle": "magie-du-sang",
+      "libelle": "Magie du Sang"
+    },
+    {
+      "ancienId": "magie-du-vent",
+      "id": 220,
+      "cle": "magie-du-vent",
+      "libelle": "Magie du Vent"
+    },
+    {
+      "ancienId": "magie-du-vide",
+      "id": 221,
+      "cle": "magie-du-vide",
+      "libelle": "Magie du Vide"
+    },
+    {
+      "ancienId": "magie-innee",
+      "id": 222,
+      "cle": "magie-innee",
+      "libelle": "Magie innée"
+    },
+    {
+      "ancienId": "magies",
+      "id": 223,
+      "cle": "magies",
+      "libelle": "Magies"
+    },
+    {
+      "ancienId": "magique",
+      "id": 224,
+      "cle": "magique",
+      "libelle": "magique"
+    },
+    {
+      "ancienId": "maitre-du-jeu",
+      "id": 225,
+      "cle": "maitre-du-jeu",
+      "libelle": "Maître du jeu"
+    },
+    {
+      "ancienId": "maitrise-darme",
+      "id": 226,
+      "cle": "maitrise-darme",
+      "libelle": "Maîtrise d’arme"
+    },
+    {
+      "ancienId": "majin",
+      "id": 227,
+      "cle": "majin",
+      "libelle": "Majin"
+    },
+    {
+      "ancienId": "maladie",
+      "id": 228,
+      "cle": "maladie",
+      "libelle": "Maladie"
+    },
+    {
+      "ancienId": "marais-fangeux",
+      "id": 229,
+      "cle": "marais-fangeux",
+      "libelle": "Marais fangeux"
+    },
+    {
+      "ancienId": "marais-vert",
+      "id": 230,
+      "cle": "marais-vert",
+      "libelle": "Marais vert"
+    },
+    {
+      "ancienId": "marcass",
+      "id": 231,
+      "cle": "marcass",
+      "libelle": "Marcass"
+    },
+    {
+      "ancienId": "marcass-classe",
+      "id": 232,
+      "cle": "marcass-classe",
+      "libelle": "Marcass",
+      "libelleAvant": "Marcass (classe)"
+    },
+    {
+      "ancienId": "maroquinier",
+      "id": 233,
+      "cle": "maroquinier",
+      "libelle": "Maroquinier"
+    },
+    {
+      "ancienId": "martiale",
+      "id": 234,
+      "cle": "martiale",
+      "libelle": "Martiale"
+    },
+    {
+      "ancienId": "medecin-sans-frontiere",
+      "id": 235,
+      "cle": "medecin-sans-frontiere",
+      "libelle": "Médecin sans frontière"
+    },
+    {
+      "ancienId": "medusain",
+      "id": 236,
+      "cle": "medusain",
+      "libelle": "Médusain"
+    },
+    {
+      "ancienId": "medusain-classe",
+      "id": 237,
+      "cle": "medusain-classe",
+      "libelle": "Médusain",
+      "libelleAvant": "Médusain (classe)"
+    },
+    {
+      "ancienId": "mercenaire",
+      "id": 238,
+      "cle": "mercenaire",
+      "libelle": "Mercenaire"
+    },
+    {
+      "ancienId": "meteo",
+      "id": 239,
+      "cle": "meteo",
+      "libelle": "Météo"
+    },
+    {
+      "ancienId": "metier",
+      "id": 240,
+      "cle": "metier",
+      "libelle": "Métier"
+    },
+    {
+      "ancienId": "mineur",
+      "id": 241,
+      "cle": "mineur",
+      "libelle": "Mineur"
+    },
+    {
+      "ancienId": "minotaure",
+      "id": 242,
+      "cle": "minotaure",
+      "libelle": "Minotaure"
+    },
+    {
+      "ancienId": "minotaure-classe",
+      "id": 243,
+      "cle": "minotaure-classe",
+      "libelle": "Minotaure",
+      "libelleAvant": "Minotaure (classe)"
+    },
+    {
+      "ancienId": "mirada",
+      "id": 244,
+      "cle": "mirada",
+      "libelle": "Mirada"
+    },
+    {
+      "ancienId": "mode-hyper",
+      "id": 245,
+      "cle": "mode-hyper",
+      "libelle": "Mode Hyper"
+    },
+    {
+      "ancienId": "mode-super",
+      "id": 246,
+      "cle": "mode-super",
+      "libelle": "Mode Super"
+    },
+    {
+      "ancienId": "moine",
+      "id": 247,
+      "cle": "moine",
+      "libelle": "Moine"
+    },
+    {
+      "ancienId": "mont-cendre",
+      "id": 248,
+      "cle": "mont-cendre",
+      "libelle": "Mont cendré"
+    },
+    {
+      "ancienId": "monts-couloirs",
+      "id": 249,
+      "cle": "monts-couloirs",
+      "libelle": "Monts Couloirs"
+    },
+    {
+      "ancienId": "mora",
+      "id": 250,
+      "cle": "mora",
+      "libelle": "Mora"
+    },
+    {
+      "ancienId": "mordhau",
+      "id": 251,
+      "cle": "mordhau",
+      "libelle": "Mordhau"
+    },
+    {
+      "ancienId": "morfot",
+      "id": 252,
+      "cle": "morfot",
+      "libelle": "Morfot"
+    },
+    {
+      "ancienId": "mort-vivant",
+      "id": 253,
+      "cle": "mort-vivant",
+      "libelle": "Mort-vivant"
+    },
+    {
+      "ancienId": "mrode",
+      "id": 254,
+      "cle": "mrode",
+      "libelle": "Mrode"
+    },
+    {
+      "ancienId": "nain",
+      "id": 255,
+      "cle": "nain",
+      "libelle": "Nain"
+    },
+    {
+      "ancienId": "namazu",
+      "id": 256,
+      "cle": "namazu",
+      "libelle": "Namazu"
+    },
+    {
+      "ancienId": "namazu-classe",
+      "id": 257,
+      "cle": "namazu-classe",
+      "libelle": "Namazu",
+      "libelleAvant": "Namazu (classe)"
+    },
+    {
+      "ancienId": "naturel",
+      "id": 258,
+      "cle": "naturel",
+      "libelle": "Naturel"
+    },
+    {
+      "ancienId": "negatif-maximal",
+      "id": 259,
+      "cle": "negatif-maximal",
+      "libelle": "Négatif maximal"
+    },
+    {
+      "ancienId": "niveau-de-classe",
+      "id": 260,
+      "cle": "niveau-de-classe",
+      "libelle": "Niveau de classe"
+    },
+    {
+      "ancienId": "niveau-de-maitrise",
+      "id": 261,
+      "cle": "niveau-de-maitrise",
+      "libelle": "Niveau de maîtrise"
+    },
+    {
+      "ancienId": "niveau-de-puissance-magique",
+      "id": 262,
+      "cle": "niveau-de-puissance-magique",
+      "libelle": "Niveau de puissance magique"
+    },
+    {
+      "ancienId": "niveau-global",
+      "id": 263,
+      "cle": "niveau-global",
+      "libelle": "Niveau global"
+    },
+    {
+      "ancienId": "notix",
+      "id": 264,
+      "cle": "notix",
+      "libelle": "Notix"
+    },
+    {
+      "ancienId": "oceane",
+      "id": 265,
+      "cle": "oceane",
+      "libelle": "Océane"
+    },
+    {
+      "ancienId": "ocultomancien",
+      "id": 266,
+      "cle": "ocultomancien",
+      "libelle": "Ocultomancien"
+    },
+    {
+      "ancienId": "olwman",
+      "id": 267,
+      "cle": "olwman",
+      "libelle": "Olwman"
+    },
+    {
+      "ancienId": "olwman-classe",
+      "id": 268,
+      "cle": "olwman-classe",
+      "libelle": "Olwman",
+      "libelleAvant": "Olwman (classe)"
+    },
+    {
+      "ancienId": "one-shot",
+      "id": 269,
+      "cle": "one-shot",
+      "libelle": "One shot"
+    },
+    {
+      "ancienId": "onir",
+      "id": 270,
+      "cle": "onir",
+      "libelle": "Onir"
+    },
+    {
+      "ancienId": "ordre-de-gardecroc",
+      "id": 271,
+      "cle": "ordre-de-gardecroc",
+      "libelle": "Ordre de Gardecroc"
+    },
+    {
+      "ancienId": "ordre-de-la-glace-rouge",
+      "id": 272,
+      "cle": "ordre-de-la-glace-rouge",
+      "libelle": "Ordre de la Glace Rouge"
+    },
+    {
+      "ancienId": "ordre-de-la-mort",
+      "id": 273,
+      "cle": "ordre-de-la-mort",
+      "libelle": "Ordre de la mort"
+    },
+    {
+      "ancienId": "ordre-des-abeilles",
+      "id": 274,
+      "cle": "ordre-des-abeilles",
+      "libelle": "Ordre des Abeilles"
+    },
+    {
+      "ancienId": "ordre-du-brai",
+      "id": 275,
+      "cle": "ordre-du-brai",
+      "libelle": "Ordre du brai"
+    },
+    {
+      "ancienId": "ordre-solaire",
+      "id": 276,
+      "cle": "ordre-solaire",
+      "libelle": "Ordre Solaire"
+    },
+    {
+      "ancienId": "origine-du-monde",
+      "id": 277,
+      "cle": "origine-du-monde",
+      "libelle": "Origine du monde"
+    },
+    {
+      "ancienId": "orios",
+      "id": 278,
+      "cle": "orios",
+      "libelle": "Orios"
+    },
+    {
+      "ancienId": "orios-classe",
+      "id": 279,
+      "cle": "orios-classe",
+      "libelle": "Orios",
+      "libelleAvant": "Orios (classe)"
+    },
+    {
+      "ancienId": "parade",
+      "id": 280,
+      "cle": "parade",
+      "libelle": "Parade"
+    },
+    {
+      "ancienId": "parleur",
+      "id": 281,
+      "cle": "parleur",
+      "libelle": "Parleur"
+    },
+    {
+      "ancienId": "personnage-joueur",
+      "id": 282,
+      "cle": "personnage-joueur",
+      "libelle": "Personnage joueur"
+    },
+    {
+      "ancienId": "personnage-non-joueur",
+      "id": 283,
+      "cle": "personnage-non-joueur",
+      "libelle": "Personnage non joueur"
+    },
+    {
+      "ancienId": "piece-elementaire",
+      "id": 284,
+      "cle": "piece-elementaire",
+      "libelle": "Pièce élémentaire"
+    },
+    {
+      "ancienId": "plaine-brillante",
+      "id": 285,
+      "cle": "plaine-brillante",
+      "libelle": "Plaine brillante"
+    },
+    {
+      "ancienId": "plaines-seches",
+      "id": 286,
+      "cle": "plaines-seches",
+      "libelle": "Plaines sèches"
+    },
+    {
+      "ancienId": "plateau-tonnerre",
+      "id": 287,
+      "cle": "plateau-tonnerre",
+      "libelle": "Plateau Tonnerre"
+    },
+    {
+      "ancienId": "points-dexperience",
+      "id": 288,
+      "cle": "points-dexperience",
+      "libelle": "Points d’expérience"
+    },
+    {
+      "ancienId": "portee",
+      "id": 289,
+      "cle": "portee",
+      "libelle": "Portée"
+    },
+    {
+      "ancienId": "posture",
+      "id": 290,
+      "cle": "posture",
+      "libelle": "Posture"
+    },
+    {
+      "ancienId": "potentiel-illimite",
+      "id": 291,
+      "cle": "potentiel-illimite",
+      "libelle": "Potentiel illimité"
+    },
+    {
+      "ancienId": "pp",
+      "id": 292,
+      "cle": "pierre-precieuse",
+      "libelle": "Pierre précieuse"
+    },
+    {
+      "ancienId": "preparation-mage-rouge",
+      "id": 293,
+      "cle": "preparation-mage-rouge",
+      "libelle": "Préparation (Mage Rouge)"
+    },
+    {
+      "ancienId": "pretire",
+      "id": 294,
+      "cle": "pretire",
+      "libelle": "Prétiré"
+    },
+    {
+      "ancienId": "prise-en-tenaille",
+      "id": 295,
+      "cle": "prise-en-tenaille",
+      "libelle": "Prise en tenaille"
+    },
+    {
+      "ancienId": "pugiliste",
+      "id": 296,
+      "cle": "pugiliste",
+      "libelle": "Pugiliste"
+    },
+    {
+      "ancienId": "puissance-magique",
+      "id": 297,
+      "cle": "puissance-magique",
+      "libelle": "Puissance magique"
+    },
+    {
+      "ancienId": "race",
+      "id": 298,
+      "cle": "race",
+      "libelle": "race"
+    },
+    {
+      "ancienId": "race-pure",
+      "id": 299,
+      "cle": "race-pure",
+      "libelle": "Race pure"
+    },
+    {
+      "ancienId": "rater-ses-sortileges",
+      "id": 300,
+      "cle": "rater-ses-sortileges",
+      "libelle": "Rater ses sortilèges"
+    },
+    {
+      "ancienId": "recharge-longue",
+      "id": 301,
+      "cle": "recharge-longue",
+      "libelle": "Recharge longue"
+    },
+    {
+      "ancienId": "recharge-tres-longue",
+      "id": 302,
+      "cle": "recharge-tres-longue",
+      "libelle": "Recharge très longue"
+    },
+    {
+      "ancienId": "regles-des-metiers",
+      "id": 303,
+      "cle": "regles-des-metiers",
+      "libelle": "Règles des métiers"
+    },
+    {
+      "ancienId": "relations-entre-les-races",
+      "id": 304,
+      "cle": "relations-entre-les-races",
+      "libelle": "Relations entre les races"
+    },
+    {
+      "ancienId": "remede",
+      "id": 305,
+      "cle": "remede",
+      "libelle": "Remède"
+    },
+    {
+      "ancienId": "republique-forestier",
+      "id": 306,
+      "cle": "republique-forestier",
+      "libelle": "République Forestier"
+    },
+    {
+      "ancienId": "republique-noire",
+      "id": 307,
+      "cle": "republique-noire",
+      "libelle": "République Noire"
+    },
+    {
+      "ancienId": "resistance",
+      "id": 308,
+      "cle": "resistance",
+      "libelle": "Résistance"
+    },
+    {
+      "ancienId": "resistances-et-faiblesses",
+      "id": 309,
+      "cle": "resistances-et-faiblesses",
+      "libelle": "Résistances et faiblesses"
+    },
+    {
+      "ancienId": "reussir-une-action",
+      "id": 310,
+      "cle": "reussir-une-action",
+      "libelle": "Réussir une action"
+    },
+    {
+      "ancienId": "reussite-critique",
+      "id": 311,
+      "cle": "reussite-critique",
+      "libelle": "Réussite critique"
+    },
+    {
+      "ancienId": "rf",
+      "id": 312,
+      "cle": "ricken-de-fer",
+      "libelle": "Ricken de fer"
+    },
+    {
+      "ancienId": "ro",
+      "id": 313,
+      "cle": "ricken-dor",
+      "libelle": "Ricken d’or"
+    },
+    {
+      "ancienId": "rokh",
+      "id": 314,
+      "cle": "rokh",
+      "libelle": "Rokh"
+    },
+    {
+      "ancienId": "rokh-classe",
+      "id": 315,
+      "cle": "rokh-classe",
+      "libelle": "Rokh",
+      "libelleAvant": "Rokh (classe)"
+    },
+    {
+      "ancienId": "ruines-rouges",
+      "id": 316,
+      "cle": "ruines-rouges",
+      "libelle": "Ruines Rouges"
+    },
+    {
+      "ancienId": "sang",
+      "id": 317,
+      "cle": "sang",
+      "libelle": "Sang"
+    },
+    {
+      "ancienId": "sante",
+      "id": 318,
+      "cle": "sante",
+      "libelle": "Santé"
+    },
+    {
+      "ancienId": "satyre",
+      "id": 319,
+      "cle": "satyre",
+      "libelle": "Satyre"
+    },
+    {
+      "ancienId": "satyre-classe",
+      "id": 320,
+      "cle": "satyre-classe",
+      "libelle": "Satyre",
+      "libelleAvant": "Satyre (classe)"
+    },
+    {
+      "ancienId": "saugnane",
+      "id": 321,
+      "cle": "saugnane",
+      "libelle": "Saugnane"
+    },
+    {
+      "ancienId": "scenario-one-shot",
+      "id": 322,
+      "cle": "scenario-one-shot",
+      "libelle": "Scénario one shot"
+    },
+    {
+      "ancienId": "score",
+      "id": 323,
+      "cle": "score",
+      "libelle": "Score"
+    },
+    {
+      "ancienId": "selcalibur",
+      "id": 324,
+      "cle": "selcalibur",
+      "libelle": "Selcalibur"
+    },
+    {
+      "ancienId": "sentrainer",
+      "id": 325,
+      "cle": "sentrainer",
+      "libelle": "S’entraîner"
+    },
+    {
+      "ancienId": "seraphe",
+      "id": 326,
+      "cle": "seraphe",
+      "libelle": "Séraphe"
+    },
+    {
+      "ancienId": "seraphin",
+      "id": 327,
+      "cle": "seraphin",
+      "libelle": "Séraphin"
+    },
+    {
+      "ancienId": "signe-des-pirates",
+      "id": 328,
+      "cle": "signe-des-pirates",
+      "libelle": "Signe des pirates"
+    },
+    {
+      "ancienId": "situation-actuelle",
+      "id": 329,
+      "cle": "situation-actuelle",
+      "libelle": "Situation actuelle"
+    },
+    {
+      "ancienId": "soir-matin",
+      "id": 330,
+      "cle": "soir-matin",
+      "libelle": "Soir-matin"
+    },
+    {
+      "ancienId": "solidite",
+      "id": 331,
+      "cle": "solidite",
+      "libelle": "Solidité"
+    },
+    {
+      "ancienId": "sort-fer",
+      "id": 332,
+      "cle": "sort-fer",
+      "libelle": "Sort fer"
+    },
+    {
+      "ancienId": "sort-grenade",
+      "id": 333,
+      "cle": "sort-grenade",
+      "libelle": "Sort grenade"
+    },
+    {
+      "ancienId": "speciale",
+      "id": 334,
+      "cle": "speciale",
+      "libelle": "spéciale"
+    },
+    {
+      "ancienId": "specialite",
+      "id": 335,
+      "cle": "specialite",
+      "libelle": "Spécialité"
+    },
+    {
+      "ancienId": "sprint",
+      "id": 336,
+      "cle": "sprint",
+      "libelle": "Sprint"
+    },
+    {
+      "ancienId": "super-gemme",
+      "id": 337,
+      "cle": "super-gemme",
+      "libelle": "Super Gemme"
+    },
+    {
+      "ancienId": "temple-de-la-foudre",
+      "id": 338,
+      "cle": "temple-de-la-foudre",
+      "libelle": "Temple de la Foudre"
+    },
+    {
+      "ancienId": "temple-de-la-glace",
+      "id": 339,
+      "cle": "temple-de-la-glace",
+      "libelle": "Temple de la Glace"
+    },
+    {
+      "ancienId": "temple-de-la-lumiere",
+      "id": 340,
+      "cle": "temple-de-la-lumiere",
+      "libelle": "Temple de la Lumière"
+    },
+    {
+      "ancienId": "temple-de-la-terre",
+      "id": 341,
+      "cle": "temple-de-la-terre",
+      "libelle": "Temple de la Terre"
+    },
+    {
+      "ancienId": "temple-de-leau",
+      "id": 342,
+      "cle": "temple-de-leau",
+      "libelle": "Temple de l’Eau"
+    },
+    {
+      "ancienId": "temple-de-lespace-temps",
+      "id": 343,
+      "cle": "temple-de-lespace-temps",
+      "libelle": "Temple de l’Espace/Temps"
+    },
+    {
+      "ancienId": "temple-de-lombre",
+      "id": 344,
+      "cle": "temple-de-lombre",
+      "libelle": "Temple de l’Ombre"
+    },
+    {
+      "ancienId": "temple-de-vent",
+      "id": 345,
+      "cle": "temple-de-vent",
+      "libelle": "Temple de Vent"
+    },
+    {
+      "ancienId": "temple-du-feu",
+      "id": 346,
+      "cle": "temple-du-feu",
+      "libelle": "Temple du Feu"
+    },
+    {
+      "ancienId": "temple-du-savoir",
+      "id": 347,
+      "cle": "temple-du-savoir",
+      "libelle": "Temple du Savoir"
+    },
+    {
+      "ancienId": "temple-noir",
+      "id": 348,
+      "cle": "temple-noir",
+      "libelle": "Temple noir"
+    },
+    {
+      "ancienId": "temples-cultes-guildes",
+      "id": 349,
+      "cle": "temples-cultes-guildes",
+      "libelle": "Temples/Cultes/Guildes"
+    },
+    {
+      "ancienId": "tenaille",
+      "id": 350,
+      "cle": "tenaille",
+      "libelle": "Tenaille"
+    },
+    {
+      "ancienId": "terre-grise",
+      "id": 351,
+      "cle": "terre-grise",
+      "libelle": "Terre grise"
+    },
+    {
+      "ancienId": "tisseurs-de-soi",
+      "id": 352,
+      "cle": "tisseurs-de-soi",
+      "libelle": "Tisseurs de soi"
+    },
+    {
+      "ancienId": "tofrom",
+      "id": 353,
+      "cle": "tofrom",
+      "libelle": "Tofrom"
+    },
+    {
+      "ancienId": "tounne",
+      "id": 354,
+      "cle": "tounne",
+      "libelle": "Tounne"
+    },
+    {
+      "ancienId": "tour",
+      "id": 355,
+      "cle": "tour",
+      "libelle": "Tour"
+    },
+    {
+      "ancienId": "tour-de-charge",
+      "id": 356,
+      "cle": "tour-de-charge",
+      "libelle": "Tour de charge"
+    },
+    {
+      "ancienId": "tueur",
+      "id": 357,
+      "cle": "tueur",
+      "libelle": "Tueur"
+    },
+    {
+      "ancienId": "umbro",
+      "id": 358,
+      "cle": "umbro",
+      "libelle": "Umbro"
+    },
+    {
+      "ancienId": "un-maitre-du-jeu",
+      "id": 359,
+      "cle": "un-maitre-du-jeu",
+      "libelle": "Un maître du Jeu"
+    },
+    {
+      "ancienId": "vampires-primordiaux",
+      "id": 360,
+      "cle": "vampires-primordiaux",
+      "libelle": "Vampires primordiaux"
+    },
+    {
+      "ancienId": "ville-oeil",
+      "id": 361,
+      "cle": "ville-oeil",
+      "libelle": "Ville-Oeil"
+    },
+    {
+      "ancienId": "vitesse",
+      "id": 362,
+      "cle": "vitesse",
+      "libelle": "Vitesse"
+    },
+    {
+      "ancienId": "voleur",
+      "id": 363,
+      "cle": "voleur",
+      "libelle": "Voleur"
+    },
+    {
+      "ancienId": "volt",
+      "id": 364,
+      "cle": "volt",
+      "libelle": "Volt"
+    },
+    {
+      "ancienId": "vulnerabilite",
+      "id": 365,
+      "cle": "vulnerabilite",
+      "libelle": "Vulnérabilité"
+    },
+    {
+      "ancienId": "xendown",
+      "id": 366,
+      "cle": "xendown",
+      "libelle": "Xendown"
+    },
+    {
+      "ancienId": "zone-dinfluence",
+      "id": 367,
+      "cle": "zone-dinfluence",
+      "libelle": "Zone d’influence"
+    },
+    {
+      "ancienId": "agilite",
+      "id": 368,
+      "cle": "agilite",
+      "libelle": "Agilité"
+    },
+    {
+      "ancienId": "ambidextrie",
+      "id": 369,
+      "cle": "ambidextrie",
+      "libelle": "Ambidextrie"
+    },
+    {
+      "ancienId": "arbalete",
+      "id": 370,
+      "cle": "arbalete",
+      "libelle": "Arbalète"
+    },
+    {
+      "ancienId": "arc",
+      "id": 371,
+      "cle": "arc",
+      "libelle": "Arc"
+    },
+    {
+      "ancienId": "arme-legere",
+      "id": 372,
+      "cle": "arme-legere",
+      "libelle": "Arme Légère"
+    },
+    {
+      "ancienId": "arme-lourde",
+      "id": 373,
+      "cle": "arme-lourde",
+      "libelle": "Arme Lourde"
+    },
+    {
+      "ancienId": "athletisme",
+      "id": 374,
+      "cle": "athletisme",
+      "libelle": "Athlétisme"
+    },
+    {
+      "ancienId": "calme",
+      "id": 375,
+      "cle": "calme",
+      "libelle": "Calme"
+    },
+    {
+      "ancienId": "concentration",
+      "id": 376,
+      "cle": "concentration",
+      "libelle": "Concentration"
+    },
+    {
+      "ancienId": "connaissance",
+      "id": 377,
+      "cle": "connaissance",
+      "libelle": "Connaissance"
+    },
+    {
+      "ancienId": "diplomatie",
+      "id": 378,
+      "cle": "diplomatie",
+      "libelle": "Diplomatie"
+    },
+    {
+      "ancienId": "distinction",
+      "id": 379,
+      "cle": "distinction",
+      "libelle": "Distinction"
+    },
+    {
+      "ancienId": "dressage",
+      "id": 380,
+      "cle": "dressage",
+      "libelle": "Dressage"
+    },
+    {
+      "ancienId": "equilibre",
+      "id": 381,
+      "cle": "equilibre",
+      "libelle": "Équilibre"
+    },
+    {
+      "ancienId": "fermete",
+      "id": 382,
+      "cle": "fermete",
+      "libelle": "Fermeté"
+    },
+    {
+      "ancienId": "force",
+      "id": 383,
+      "cle": "force",
+      "libelle": "Force"
+    },
+    {
+      "ancienId": "intelligence",
+      "id": 384,
+      "cle": "intelligence",
+      "libelle": "Intelligence"
+    },
+    {
+      "ancienId": "intimidation",
+      "id": 385,
+      "cle": "intimidation",
+      "libelle": "Intimidation"
+    },
+    {
+      "ancienId": "jet-dattaque",
+      "id": 386,
+      "cle": "jet-dattaque",
+      "libelle": "Jet d’attaque"
+    },
+    {
+      "ancienId": "jet-de-defense",
+      "id": 387,
+      "cle": "jet-de-defense",
+      "libelle": "Jet de défense"
+    },
+    {
+      "ancienId": "localisation-des-degats",
+      "id": 388,
+      "cle": "localisation-des-degats",
+      "libelle": "Localisation des dégâts"
+    },
+    {
+      "ancienId": "magie-competence",
+      "id": 389,
+      "cle": "magie-competence",
+      "libelle": "Magie (compétence)"
+    },
+    {
+      "ancienId": "manipulation",
+      "id": 390,
+      "cle": "manipulation",
+      "libelle": "Manipulation"
+    },
+    {
+      "ancienId": "medecine",
+      "id": 391,
+      "cle": "medecine",
+      "libelle": "Médecine"
+    },
+    {
+      "ancienId": "meilleur-resultat",
+      "id": 392,
+      "cle": "meilleur-resultat",
+      "libelle": "Meilleur résultat"
+    },
+    {
+      "ancienId": "negociation",
+      "id": 393,
+      "cle": "negociation",
+      "libelle": "Négociation"
+    },
+    {
+      "ancienId": "observation",
+      "id": 394,
+      "cle": "observation",
+      "libelle": "Observation"
+    },
+    {
+      "ancienId": "orientation",
+      "id": 395,
+      "cle": "orientation",
+      "libelle": "Orientation"
+    },
+    {
+      "ancienId": "perception",
+      "id": 396,
+      "cle": "perception",
+      "libelle": "Perception"
+    },
+    {
+      "ancienId": "psychologie",
+      "id": 397,
+      "cle": "psychologie",
+      "libelle": "Psychologie"
+    },
+    {
+      "ancienId": "reflexe",
+      "id": 398,
+      "cle": "reflexe",
+      "libelle": "Réflexe"
+    },
+    {
+      "ancienId": "reussites-echecs-et-critiques",
+      "id": 399,
+      "cle": "reussites-echecs-critiques",
+      "libelle": "Réussites / échecs / critiques"
+    },
+    {
+      "ancienId": "ruse",
+      "id": 400,
+      "cle": "ruse",
+      "libelle": "Ruse"
+    },
+    {
+      "ancienId": "sabotage",
+      "id": 401,
+      "cle": "sabotage",
+      "libelle": "Sabotage"
+    },
+    {
+      "ancienId": "social",
+      "id": 402,
+      "cle": "social",
+      "libelle": "Social"
+    },
+    {
+      "ancienId": "stabilite",
+      "id": 403,
+      "cle": "stabilite",
+      "libelle": "Stabilité"
+    },
+    {
+      "ancienId": "survie",
+      "id": 404,
+      "cle": "survie",
+      "libelle": "Survie"
+    },
+    {
+      "ancienId": "vie-en-nature",
+      "id": 405,
+      "cle": "vie-en-nature",
+      "libelle": "Vie en nature"
+    },
+    {
+      "ancienId": "vigueur",
+      "id": 406,
+      "cle": "vigueur",
+      "libelle": "Vigueur"
+    },
+    {
+      "ancienId": "volonte",
+      "id": 407,
+      "cle": "volonte",
+      "libelle": "Volonté"
+    }
+  ],
+  "textes": [
+    {
+      "table": "page",
+      "cle": {
+        "id": "guide/attaque-et-defense"
+      },
+      "col": "corps_md",
+      "avant": "{{attaquer-et-se-defendre}}",
+      "apres": "{{attaquer}}",
+      "compte": 2
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "guide/attaque-et-defense"
+      },
+      "col": "corps_md",
+      "avant": "{{reussites-echecs-et-critiques}}",
+      "apres": "{{reussites-echecs-critiques}}",
+      "compte": 1
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "guide/attaquer-et-se-defendre"
+      },
+      "col": "corps_md",
+      "avant": "{{attaque-et-defense}}",
+      "apres": "{{se-defendre}}",
+      "compte": 4
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "guide/guide-pour-mj-maverick"
+      },
+      "col": "corps_md",
+      "avant": "{{attaque-et-defense|",
+      "apres": "{{se-defendre|",
+      "compte": 1
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "guide/initiative"
+      },
+      "col": "corps_md",
+      "avant": "{{attaquer-et-se-defendre}}",
+      "apres": "{{attaquer}}",
+      "compte": 1
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "guide/l-equipement"
+      },
+      "col": "corps_md",
+      "avant": "{{attaque-et-defense}}",
+      "apres": "{{se-defendre}}",
+      "compte": 1
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "guide/l-equipement"
+      },
+      "col": "corps_md",
+      "avant": "{{attaquer-et-se-defendre}}",
+      "apres": "{{attaquer}}",
+      "compte": 1
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "guide/la-magie-en-jeu"
+      },
+      "col": "corps_md",
+      "avant": "{{attaque-et-defense}}",
+      "apres": "{{se-defendre}}",
+      "compte": 1
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "guide/le-tour-de-jeu"
+      },
+      "col": "corps_md",
+      "avant": "{{attaque-et-defense}}",
+      "apres": "{{se-defendre}}",
+      "compte": 1
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "guide/les-degats"
+      },
+      "col": "corps_md",
+      "avant": "{{attaque-et-defense}}",
+      "apres": "{{se-defendre}}",
+      "compte": 1
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "guide/les-degats"
+      },
+      "col": "corps_md",
+      "avant": "{{attaquer-et-se-defendre}}",
+      "apres": "{{attaquer}}",
+      "compte": 1
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "guide/reussir-une-action"
+      },
+      "col": "corps_md",
+      "avant": "{{attaque-et-defense}}",
+      "apres": "{{se-defendre}}",
+      "compte": 1
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "guide/reussir-une-action"
+      },
+      "col": "corps_md",
+      "avant": "{{attaquer-et-se-defendre}}",
+      "apres": "{{attaquer}}",
+      "compte": 2
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "guide/reussites-echecs-et-critiques"
+      },
+      "col": "corps_md",
+      "avant": "{{attaque-et-defense}}",
+      "apres": "{{se-defendre}}",
+      "compte": 1
+    }
+  ]
+}

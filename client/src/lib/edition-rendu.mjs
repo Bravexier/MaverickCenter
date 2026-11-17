@@ -247,15 +247,15 @@ export const RENDUS = {
   'evenement-date': (_valeur, ligne) => echapperHtml(libelleDeDate(ligne)),
   'evenement-date-courte': (_valeur, ligne) => echapperHtml(dateCourte(ligne)),
   'evenement-portee': (valeur) => htmlDeLaPortee(valeur),
-  // Armes (lib/armes-rendu.mjs : les cellules des tableaux de l'onglet Armes de /ressources/equipement/, des matériaux et des améliorations) : ctx.competences,
+  // Armes (lib/armes-rendu.mjs : les cellules des tableaux de la page Armes (/ressources/armes/), des matériaux et des améliorations) : ctx.competences,
   // ctx.caracteristiques, ctx.typesDArmes, ctx.soliditeDesArmes (listes du service)
   ...RENDUS_DES_ARMES,
-  // Armures et boucliers (lib/armures-rendu.mjs : les cellules des tableaux des onglets Armures et Boucliers de /ressources/equipement/) : défense, prix, type, solidité, résistances,
+  // Armures et boucliers (lib/armures-rendu.mjs : les cellules des tableaux des pages Armures et Boucliers (/ressources/armures/, /ressources/bouclier/)) : défense, prix, type, solidité, résistances,
   // coût d'une pièce, coût et effet d'une amélioration
   ...RENDUS_DES_ARMURES,
   // Composants (lib/composants-rendu.mjs : les cellules des tableaux de /ressources/composants/) : prix, description, valeur d'une monnaie, catégorie d'un fruit
   ...RENDUS_DES_COMPOSANTS,
-  // Consommables de l'onglet Ceinture de /ressources/equipement/ (lib/ceinture-rendu.mjs : les cases d'une potion ; son prix : « composant-prix ») : niveau
+  // Consommables de la page Ceinture (/ressources/objets-a-la-ceinture/) (lib/ceinture-rendu.mjs : les cases d'une potion ; son prix : « composant-prix ») : niveau
   // d'alchimie (ctx.niveauxDAlchimie, liste du service), effet
   ...RENDUS_DE_LA_CEINTURE,
 };

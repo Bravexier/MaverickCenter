@@ -3,19 +3,18 @@
 // cran uni (`regles.armures[].solidite_uni = 1`) et à 0 (lib/fiche-moteur.mjs#armureCassee). Une armure à six parties ne l'est jamais : seules ses parties
 // à 0 perdent leur AP et leur AM (R108), même toutes à 0 ; une armure élémentaire non plus (décision R165 : l'armure de la fiche, à six parties ; tant que
 // la question Q57 est ouverte, aucun de ses effets n'est retiré pour une partie à 0). Les armures du cahier (Robe de mage, Armure montagne) sont prises par leur identifiant ; leurs bonus, leur solidité, ceux
-// de l'armure élémentaire et les dégâts des sorts sont lus dans les règles de la page (l'état courant de la base), jamais figés ici.
+// de l'armure élémentaire et les dégâts des sorts sont lus dans les règles de la page (la base dans son état d'import), jamais figés ici.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
 import * as M from '../src/lib/fiche-moteur.mjs';
-import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { CLES_DE_LA_NOTE, cellulesDeLaFiche, ligneDeNote } from '../src/lib/fiche-tableur-export.mjs';
 import { valeurAuNm } from '../src/lib/sort-maitrise.mjs';
+import { reglesDImport } from './aide-base-d-import.mjs';
 
-const db = ouvrirBase({ sansExemples: false });
-const regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(db))); // tel que la page le reçoit
+// les règles (textes et valeurs que le site de dev modifie librement) : épinglées sur leur état d'import (test/aide-base-d-import.mjs)
+const regles = reglesDImport(); // tel que la page le reçoit
 const entier = (v) => (Number.isFinite(Number(v)) ? Number(v) : 0); // comme le moteur : une valeur vide vaut 0
 const ARMURE = (slug) => `ressources/armures#armure:${slug}`;
 const robe = regles.armures.find((a) => a.id === ARMURE('robe-de-mage'));

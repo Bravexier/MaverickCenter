@@ -11,12 +11,14 @@ import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { rejouerLeJournal } from '../serveur/edition.mjs';
 import { chargerJournal, nouveauLot } from '../serveur/edition-journal.mjs';
-import { coutEnUneCase as coutDeLaCaseDuCorps, morceauxDuCorpsDeMagie } from '../src/lib/corps-magies.mjs';
-import { cheminBase, ouvrirBase, trouverRacine } from '../src/lib/donnees.mjs';
+import { coutEnUneCase as coutDeLaCaseDuCorps, morceauxDuCorpsDeMagie, sansEchappement } from '../src/lib/corps-magies.mjs';
+import { ouvrirBase, trouverRacine } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { analyserCout, mentionneUnNm } from '../src/lib/sort-analyse.mjs';
 import { coutEnUneCase, ecritUnSecondCout, repartirLeCout } from '../src/lib/sort-cout.mjs';
+import { baseDImport, cheminDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { coutsNonRepartisDeLa0117, sortsNouveauxDeLa0117, sortsReecritsParLa0117 } from './aide-migration-0117.mjs';
 
 const RACINE = trouverRacine();
 const registre = JSON.parse(readFileSync(join(RACINE, 'data', 'migrations', '0063-cout-secondaire.json'), 'utf8'));
@@ -24,6 +26,11 @@ const tranches = JSON.parse(readFileSync(join(RACINE, 'data', 'migrations', '006
 const db = ouvrirBase({ sansExemples: false });
 const historique = historiqueSite(db);
 const sorts = db.prepare('SELECT * FROM sort ORDER BY id').all();
+// R237 (1), migration 0117 : le classeur de Décembre fait foi ; un sort qu'elle supprime ou dont elle réécrit le coût n'est plus celui que décrivent les registres
+// de 0063 et 0065 (leur répartition reste vérifiée sur tous les autres)
+const reecritsPar0117 = sortsReecritsParLa0117(['cout_brut', 'cout_secondaire', 'nom']);
+const nonRepartisPar0117 = coutsNonRepartisDeLa0117();
+const nouveauxPar0117 = sortsNouveauxDeLa0117();
 const dImport = (id, colonne) => historique.valeurDImport('sort', { id }, colonne);
 /**
  * Les deux coûts d'un sort à l'import. L'historique garde un lot du site de dev tel que le journal l'a noté (docs/serveur.md : « Le journal stocké
@@ -88,6 +95,7 @@ test('registre de 0063 : chaque coût réparti l’est par la règle, et la base
     assert.ok(!vus.has(r.id), `${r.id} : deux fois`);
     vus.add(r.id);
     assert.deepEqual(repartirLeCout(r.avant), { cout_brut: r.cout_brut, cout_secondaire: r.cout_secondaire }, `${r.id} : ${r.avant}`);
+    if (reecritsPar0117.has(r.id)) continue;
     assert.deepEqual(coutsDImport(r.id), { cout_brut: r.cout_brut, cout_secondaire: r.cout_secondaire }, `${r.id} : Coût et Coût secondaire`);
     assert.equal(dImport(r.id, 'nom'), r.nom, `${r.id} : nom du registre`);
     const s = sorts.find((x) => x.id === r.id);
@@ -112,6 +120,7 @@ test('0065 (décision R106) : les 26 coûts que 0063 laissait en attente sont tr
     assert.ok(!repartis.has(t.id), `${t.id} : réparti et en attente`);
     assert.deepEqual([t.avant, t.nom], [a.cout, a.nom], `${t.id} : écriture du classeur`);
     assert.equal(repartirLeCout(a.cout), null, `${t.id} : « ${a.cout} » se répartirait`);
+    if (reecritsPar0117.has(t.id)) continue;
     // la réponse, telle qu'écrite : la base l'écrit à l'orthographe près (champ « orthographe », qui dit ce qui change) ; son « Cout » quand elle en donne un
     assert.ok(t.orthographe || t.cout_secondaire === null || t.reponse.includes(t.cout_secondaire), `${t.id} : « ${t.cout_secondaire} » n'est pas dans la réponse`);
     const coutDonne = /\bCout\s*:?\s*(N\/A|X|\d+)/.exec(t.reponse);
@@ -132,7 +141,7 @@ test('0065 (décision R106) : les 26 coûts que 0063 laissait en attente sont tr
   // à l'import (après les migrations), un autre sort n'a qu'un coût de chakra (le coût secondaire, s'il n'a pas été touché par un lot noté avant
   // 0063 : son ajout y est écrit dans « Coût », l'historique n'a pas de ligne pour « Coût secondaire »)
   for (const s of sorts) {
-    if (repartis.has(s.id) || attente.has(s.id) || historique.creee('sort', { id: s.id })) continue;
+    if (repartis.has(s.id) || attente.has(s.id) || reecritsPar0117.has(s.id) || nonRepartisPar0117.has(s.id) || nouveauxPar0117.has(s.id) || historique.creee('sort', { id: s.id })) continue;
     assert.match(dImport(s.id, 'cout_brut'), COUT_REPARTI, `${s.id} : « ${dImport(s.id, 'cout_brut')} »`);
     if (!historique.modifiee('sort', { id: s.id }, 'cout_brut')) assert.equal(dImport(s.id, 'cout_secondaire'), null, s.id);
   }
@@ -156,18 +165,22 @@ test('corps Markdown des pages de magie : la case « Coût » écrit les deux co
     for (const s of sorts.filter((x) => x.magie_id === m.id)) {
       const cases = lignes[s.ordre - 1];
       const attendu = coutEnUneCase(s.cout_brut, s.cout_secondaire);
-      assert.ok(cases[3] === attendu || cases[3] === `${attendu}.0`, `${s.id} : « ${cases[3]} » au lieu de « ${attendu} »`);
+      // le corps échappe le Markdown (« \*4 / projectile »)
+      const ecrit = sansEchappement(cases[3]);
+      assert.ok(ecrit === attendu || ecrit === `${attendu}.0`, `${s.id} : « ${cases[3]} » au lieu de « ${attendu} »`);
       vues += 1;
     }
   }
-  assert.equal(vues, 322);
+  assert.equal(vues, sorts.length);
 });
 
 // --- Service (site de dev) et rejeu du journal ------------------------------------------------------------------------------------------------
 
 const racine = dossierTemporaire('cout-secondaire');
 let compteur = 0;
-const vivante = () => ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(racine, `b${(compteur += 1)}`) }).chemin);
+// les bases vivantes partent de l'état d'import (test/aide-base-d-import.mjs) : le site de dev modifie librement coûts et textes des sorts, les exemples
+// ci-dessous (un sort de chaque forme) y sont lus
+const vivante = () => ouvrirBaseVivante(preparerBaseVivante({ regles: cheminDImport(), dossier: join(racine, `b${(compteur += 1)}`) }).chemin);
 const base = vivante();
 const service = { base: () => base, etat: () => ({}), edition: true };
 const modifier = (cle, valeurs) => traiter({
@@ -175,9 +188,10 @@ const modifier = (cle, valeurs) => traiter({
   corps: JSON.stringify({ page: 'magies/x', operations: [{ op: 'modifier', table: 'sort', cle, valeurs }] }),
 }, service);
 const lire = (id, b = base) => ({ ...b.prepare('SELECT cout_brut, cout_secondaire, cout_chakra, cout_ressource, cout_ressource_valeur FROM sort WHERE id = ?').get(id) });
-// lus dans la base (le site de dev est la source de ce qu'il modifie) : un sort à chakra et âmes, un sans chakra (Sang seul), deux sans second coût,
-// un dont le coût secondaire est une précision (décision R106 : « Par tour et par cible »)
-const premier = (f) => sorts.find(f)?.id ?? null;
+// lus dans la base d'import : un sort à chakra et âmes, un sans chakra (Sang seul), deux sans second coût, un dont le coût secondaire est une précision
+// (décision R106 : « Par tour et par cible »)
+const sortsDImport = baseDImport().prepare('SELECT * FROM sort ORDER BY id').all();
+const premier = (f) => sortsDImport.find(f)?.id ?? null;
 const NECRO = premier((s) => /^[1-9]\d*$/.test(s.cout_brut) && /^\d+ âmes?$/.test(s.cout_secondaire ?? ''));
 const SANS_CHAKRA = premier((s) => s.cout_brut === '0' && /^\d+ Sang$/.test(s.cout_secondaire ?? ''));
 const SIMPLE = premier((s) => /^[1-9]\d*$/.test(s.cout_brut) && s.cout_secondaire === null);

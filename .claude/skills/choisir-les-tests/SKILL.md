@@ -1,21 +1,25 @@
 ---
 name: choisir-les-tests
-description: "Politique de tests du dépôt : ne lancer que les tests pertinents pour ce qui a changé (npm run test:cible), un seul jeu de tests sur le recouvrement après un simple rebase, la suite entière laissée à la CI ; comment affiner la sélection quand elle se trompe. À charger avant de lancer des tests pour un lot, un correctif ou un rebase."
+description: "Politique de tests du dépôt : un seul passage par lot, par tech-qualite, en fin de lot ; seuls les tests pertinents (npm run test:cible) ; reprises limitées aux échecs et au diff de la correction ; recouvrement après un rebase ; suite entière laissée à la CI. À charger avant de lancer des tests pour un lot, un correctif ou un rebase."
 user-invocable: false
 ---
 
 # Choisir les tests à lancer
 
-**Principe.** La CI lance toujours la suite entière : c'est le filet. En local, un agent ne lance que les tests qui couvrent ce qui a changé (demande du propriétaire). La sélection se fait par `npm run test:cible` (depuis `client/`), jamais à la main fichier par fichier, sauf pour un test que l'on est en train d'écrire.
+**Principe.** La CI lance toujours la suite entière : c'est le filet. En local, les tests ne passent qu'**une fois par lot, par `tech-qualite`, en fin de lot**, quand tous les auteurs ont rendu et avant la validation du `leader-technique` (demande du propriétaire : relancer les mêmes tests à chaque passage coûtait 10 à 35 minutes). Il lance seulement ceux qui couvrent ce qui a changé, par `npm run test:cible` (depuis `client/`) sur tout le diff du lot, avec les contrôles de `controles-avant-rendu`, dans le même tour que la relecture.
+
+- **Les auteurs** (`tech-front`, `tech-back`, `tech-db`, `tech-sources`) ne lancent que le fichier de test qu'ils écrivent ou corrigent (`node --test test/<fichier>`), jamais `npm test` ni `test:cible`. `tech-skills` ne lance aucun test.
+- **Un même test ne se relance pas** sans qu'un fichier qu'il couvre ait changé, ou si son échec venait de l'environnement (ex. `node_modules` absent), une fois celui-ci réparé : seuls les fichiers en échec se relancent.
 
 ## Quoi lancer
 
 | Situation | Commande |
 | --- | --- |
-| Fonctionnalité ou correctif | `npm run test:cible` : les tests des fichiers modifiés (imports transitifs, tests qui citent le fichier, règles de `scripts/tests-cibles-regles.mjs`). Un correctif commence par un test qui échoue, puis la sélection. |
+| Fin de lot (par `tech-qualite`) | `npm run test:cible` : les tests des fichiers modifiés (imports transitifs, tests qui citent le fichier, règles de `scripts/tests-cibles-regles.mjs`). Un correctif commence par un test qui échoue (écrit par son auteur), puis la sélection. |
+| **Après une correction** | Seulement les tests en échec et ceux du diff de la correction : `npm run test:cible -- --fichiers <fichiers corrigés>`. Jamais toute la sélection. |
 | Voir sans lancer | `npm run test:cible -- --liste`, et `--pourquoi <test>` pour la raison d'un choix. |
-| **Simple rebase** (conflit sur Git) | `npm run test:cible -- --apres-rebase` : un seul jeu de tests, sur le **recouvrement** (fichiers que la base a changés et que le lot touche aussi). Recouvrement vide : aucun test, seulement l'absence de marqueurs de conflit. Un conflit résolu à la main : ajoute `--fichiers <ces fichiers>`. La pointe d'avant le rebase est `ORIG_HEAD` ; si une autre opération l'a déplacé depuis (la dernière opération n'était pas ce rebase), donne-la : `--avant <réf>`. |
-| Rendu changé : un `.astro`, un style (`src/styles/**`) ou `public/**` | La sélection choisit tous les tests qui lisent `dist/` (règle `rendu`). Sans build ils se sautent : elle dit « lancer `npm run build` avant ». Lance donc `npm run build` d'abord. |
+| **Simple rebase** (conflit sur Git) | `tech-publication` ne lance rien : il donne le **recouvrement** (fichiers que la base a changés et que le lot touche aussi) par `npm run test:cible -- --apres-rebase --liste`. Vide : il pousse, seule l'absence de marqueurs de conflit se vérifie. Son rapport donne aussi la pointe d'avant le rebase (`ORIG_HEAD` n'est plus fiable plus tard) et les fichiers résolus à la main. Sinon `tech-qualite` passe ce seul jeu : `npm run test:cible -- --apres-rebase --avant <sha> [--fichiers <fichiers résolus à la main>]`. |
+| Rendu changé : un `.astro`, un style (`src/styles/**`) ou `public/**` | La sélection choisit tous les tests qui lisent `dist/` (règle `rendu`). Sans build ils se sautent : elle dit « lancer `npm run build` avant ». `tech-qualite` lance donc `npm run build` d'abord. |
 | `client/package.json`, verrou npm, `astro.config.mjs`, `.nvmrc`, `tsconfig.json` | Toujours la suite entière (règle `outillage`). |
 | Fichier qu'aucune règle ne couvre | La sélection lance la suite entière et dit d'ajouter une règle. |
 | Instructions (`.claude/`, `CLAUDE.md`, `docs/equipe.md`) | `npm run test:cible`, comme ailleurs : d'autres tests lisent ces fichiers (pour `CLAUDE.md`, 5 tests, dont `debug-schema` et `instructions-claude`). |
@@ -23,9 +27,11 @@ user-invocable: false
 
 La suite entière (`npm run test:cible -- --tout` ou `npm test`) n'est lancée que pour un changement d'infrastructure de test, ou si la sélection le demande.
 
+**Circuit court.** Le `leader-technique` fait ce passage lui-même, une seule fois, à la fin, juste avant de relire : aucun passage intermédiaire.
+
 ## Le rapport
 
-Il donne : les fichiers considérés, le nombre de tests choisis et pourquoi (la sélection l'affiche), le résultat. Jamais un test sauté ou désactivé pour obtenir du vert.
+Celui de `tech-qualite`. Il donne : les fichiers considérés, le nombre de tests choisis et pourquoi (la sélection l'affiche), le résultat. Jamais un test sauté ou désactivé pour obtenir du vert.
 
 ## Affiner la politique
 

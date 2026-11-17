@@ -56,6 +56,33 @@ dev.{$MAVERICK_DOMAINE:maverick-jdr.com} {
 	# Serveur de test : jamais de copie gardée par le navigateur (on y modifie les règles, la page doit toujours être celle du serveur).
 	header Cache-Control "no-store"
 
+	# Accès au site de dev (R275) : le mot de passe pour modifier et lancer une mise à jour se pose avec « sudo sh /srv/maverick-center-test/acces/acces.sh »
+	# et c'est le service qui le demande (docs/serveur.md, « Accès au site de dev ») : rien à changer ici. Le service ne voit jamais l'en-tête Authorization
+	# ci-dessous (nginx l'efface) : la clé de lecture des sessions de Claude passe par X-Maverick-Cle ou X-Maverick-Key, que Caddy transmet tels quels.
+	#
+	# OPTION c, NON ACTIVÉE (« un mot de passe pour tout le site ») : le jour où le propriétaire la choisit, poser la portée avec
+	# « sudo sh /srv/maverick-center-test/acces/acces.sh --portee tout », puis remplacer le « handle { … } » ci-dessous par ce qui suit (même mot de passe, une
+	# seule saisie : le cookie de session est alors posé pour tout le site ; jamais essayé ici : à relire et à tester sur le serveur avant de s'y fier) :
+	#
+	#	@ouvert path /api/acces/* /api/mise-a-jour/lots/* /connexion/* /_astro/* /robots.txt
+	#	handle @ouvert {
+	#		reverse_proxy 127.0.0.1:8081 {
+	#			header_up Authorization "Basic {$MAVERICK_ACCES_TEST}"
+	#		}
+	#	}
+	#	handle {
+	#		forward_auth 127.0.0.1:8081 {
+	#			uri /api/acces/verifier/
+	#			header_up Authorization "Basic {$MAVERICK_ACCES_TEST}"
+	#		}
+	#		reverse_proxy 127.0.0.1:8081 {
+	#			header_up Authorization "Basic {$MAVERICK_ACCES_TEST}"
+	#		}
+	#	}
+	#
+	# /api/mise-a-jour/lots/* reste ouvert : le workflow GitHub y télécharge le lot figé (adresse à uuid aléatoire, ni fiche ni compte). Un visiteur sans
+	# session reçoit le 401 du service (JSON) : la page /connexion/ vers laquelle le renvoyer reste à écrire (tech-front) quand l'option c est choisie.
+
 	handle {
 		reverse_proxy 127.0.0.1:8081 {
 			header_up Authorization "Basic {$MAVERICK_ACCES_TEST}"

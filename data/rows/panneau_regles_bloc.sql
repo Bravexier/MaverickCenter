@@ -20,7 +20,7 @@ On ne peut pas avoir deux accessoires qui ont le même effet.
 Dans le cas d''une malédiction, on relance les dés au début des étapes et l''effet sera le contraire de ce qui est indiqué à la base (exemple : +1 force devient -1 force)');
 INSERT INTO panneau_regles_bloc (panneau_id, rang, ordre, tuile, titre, texte) VALUES ('armes', 1, 1, 0, NULL, 'Toutes les armes ont de base 2 crans de {{solidite|solidité}},  les armes de corps à corps non spécifiées n''ont que 1 de portée
 
-Pour fabriquer une arme, il faut avoir un lingot , un peu de bois, un fourneau, une enclume et être le métier forgeron (le métier n''est pas obligatoire mais il est recommandé car il permet d''esquiver un énorme malus de 40% à la fabrication). Les caractéristiques Force et Intelligence seront utilisées lors du test d''artisanat.
+Pour fabriquer une arme, il faut avoir un lingot , un peu de bois, un fourneau, une enclume et être le métier forgeron (le métier n''est pas obligatoire mais il est recommandé car il permet d''esquiver un énorme malus de 40% à la fabrication). Les caractéristiques Force et Volonté seront utilisées lors du test d''artisanat.
 
 Pour recycler ou reforger une arme, le métier de forgeron est INDISPENSABLE.
 
@@ -55,7 +55,7 @@ Ces objets peuvent être portés à la ceinture ou dans un emplacement d''arme p
 Exemple : Impossible de cumuler un bâton magique 1 feu et un bâton magique foudre 2 car ils amplifient la même chose.
 
 Le porteur agit ainsi comme une sorte de source d''énergie pour le bâton, sans ça, le bâton est inutilisable.');
-INSERT INTO panneau_regles_bloc (panneau_id, rang, ordre, tuile, titre, texte) VALUES ('batons-magiques', 2, 2, 1, 'Comment fabriquer un bâton magique ?', 'Morceau du bon bois + La bonne gemme + Test de Volonté + Intelligence = Bâton élémentaire vierge');
+INSERT INTO panneau_regles_bloc (panneau_id, rang, ordre, tuile, titre, texte) VALUES ('batons-magiques', 2, 2, 1, 'Comment fabriquer un bâton magique ?', 'Morceau du bon bois + La bonne gemme + Test de Perception + Volonté = Bâton élémentaire vierge');
 INSERT INTO panneau_regles_bloc (panneau_id, rang, ordre, tuile, titre, texte) VALUES ('boucliers', 1, 1, 0, NULL, 'Un bouclier a besoin d''autant de matériaux que sa classe indique (classe 4 = 4 matériaux) et bien entendu les bonus (sauf solidité) s''additionnent entre les matériaux.
 
 Les matériaux n''ont pas les mêmes stats pour les boucliers par rapport aux armures.

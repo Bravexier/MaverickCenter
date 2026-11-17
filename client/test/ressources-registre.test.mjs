@@ -11,8 +11,10 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { lireSchema } from '../src/lib/schema-doc.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { baseDImport } from './aide-base-d-import.mjs';
 import { ENTITES, TABLES } from '../src/lib/edition-modele.mjs';
-import { capacitesDe, defautsDuRegistre, HORS_RESSOURCE, MODULES, OPERATIONS_DU_LOT, RESSOURCES, tablesDe, tablesModifiables } from '../src/lib/ressources.mjs';
+import { capacitesDe, defautsDuRegistre, HORS_RESSOURCE, MODULES, OPERATIONS_DU_LOT, RESSOURCES, TABLES_SANS_ECRITURE_DIRECTE, tablesDe, tablesModifiables } from '../src/lib/ressources.mjs';
+import { outilsDesMotsCles } from '../serveur/edition-mots-cles.mjs';
 import { domainesDeLaChronologie } from '../serveur/edition-chronologie.mjs';
 import { operationsDuBestiaire } from '../serveur/edition-bestiaire.mjs';
 
@@ -130,7 +132,14 @@ test('registre : chaque ligne d’un enfant, d’une dérivée ou d’une extens
 
 test('registre : tout ce que le site de dev sait déjà écrire est joignable par l’API (TABLES modifiables, ENTITES créées et supprimées, opérations du lot)', { skip: Boolean(seulModule) }, () => {
   const modifiables = new Set(RESSOURCES.flatMap((r) => [...tablesModifiables(r), ...(r.enfants ?? []).flatMap(tablesModifiables)]));
-  assert.deepEqual(Object.keys(TABLES).filter((t) => !modifiables.has(t)), [], 'tables de TABLES sans ressource qui les modifie');
+  assert.deepEqual(Object.keys(TABLES).filter((t) => !modifiables.has(t) && !Object.hasOwn(TABLES_SANS_ECRITURE_DIRECTE, t)), [], 'tables de TABLES sans ressource qui les modifie');
+  // les exceptions : des tables de TABLES, rangées dans une ressource en lecture seule (le menu d'un onglet des Règles), jamais modifiables par l'API
+  for (const t of Object.keys(TABLES_SANS_ECRITURE_DIRECTE)) {
+    assert.ok(TABLES[t], `${t} : une table de TABLES`);
+    assert.ok(!modifiables.has(t), `${t} : aucune ressource ne la modifie`);
+    const objets = RESSOURCES.flatMap((r) => [r, ...(r.enfants ?? [])]).filter((o) => o.table === t);
+    assert.ok(objets.length && objets.every((o) => o.lectureSeule && !capacitesDe(o).modifier && !capacitesDe(o).creer && !capacitesDe(o).supprimer), `${t} : en lecture seule`);
+  }
   const ecritures = RESSOURCES.flatMap((r) => [r, ...(r.enfants ?? [])]).map((r) => r.ecriture ?? {});
   const creees = new Set(ecritures.map((e) => e.creer).filter(Boolean));
   const supprimees = new Set(ecritures.map((e) => e.supprimer).filter(Boolean));
@@ -147,11 +156,12 @@ test('registre : tout ce que le site de dev sait déjà écrire est joignable pa
   assert.ok(declaration, 'const OPERATIONS = { … }; sur une ligne de serveur/edition.mjs');
   const morceaux = declaration.split(/,(?![^(]*\))/).map((m) => m.trim()).filter(Boolean);
   const etalees = morceaux.filter((m) => m.startsWith('...'));
-  assert.deepEqual(etalees, ['...CHRONOLOGIE.operations', '...operationsDuBestiaire({ refus, ErreurEdition, provenance })'], 'une autre source d’opérations : à lire ici');
+  assert.deepEqual(etalees, ['...CHRONOLOGIE.operations', '...MOTS_CLES.operations', '...operationsDuBestiaire({ refus, ErreurEdition, provenance })'], 'une autre source d’opérations : à lire ici');
   const outils = { refus: () => {}, ErreurEdition: Error, provenance: () => '', idDejaEmploye: () => false, motCleDe: () => null };
   const operations = [
     ...morceaux.filter((m) => !m.startsWith('...')).map((m) => m.split(':')[0].trim()),
     ...Object.keys(domainesDeLaChronologie(outils).operations),
+    ...Object.keys(outilsDesMotsCles(outils).operations),
     ...Object.keys(operationsDuBestiaire(outils)),
   ];
   assert.deepEqual(operations.filter((o) => !['modifier', 'creer', 'supprimer'].includes(o)).sort(), [...OPERATIONS_DU_LOT].sort(), 'OPERATIONS_DU_LOT = les opérations du service hors TABLES et ENTITES');
@@ -174,16 +184,20 @@ test('registre : jamais une table des fiches, du journal ni des notes de version
 
 test('registre : les descriptions citent la base telle qu’écrite (noms, décisions), sans rien ajouter', () => {
   const r = (cle) => RESSOURCES.find((x) => x.cle === cle);
+  // les descriptions sont des textes du code, écrits d'après l'import : leurs noms se comparent à la base d'import (le site de dev peut renommer un
+  // emplacement ou un sort dans la base courante ; test/aide-base-d-import.mjs)
+  const dImport = baseDImport();
   // les emplacements d'armure, chacun tel qu'écrit (« Jambe Droit », coquille de la source comprise)
-  const emplacements = db.prepare('SELECT nom FROM armure_emplacement ORDER BY ordre').all().map((x) => x.nom);
+  const emplacements = dImport.prepare('SELECT nom FROM armure_emplacement ORDER BY ordre').all().map((x) => x.nom);
   assert.ok(emplacements.length >= 8);
   for (const nom of emplacements) assert.ok(r('emplacements-d-armure').description.includes(`« ${nom} »`), nom);
-  // le sort qui invoque les non-morts et son invocation, sous leurs noms de la base
-  const cadaverique = r('ameliorations-cadaveriques').description;
-  const sort = /le sort « ([^»]+) »/.exec(cadaverique)?.[1];
-  const invocation = /l’invocation s’appelle « ([^»]+) »/.exec(cadaverique)?.[1];
-  assert.ok(db.prepare("SELECT 1 FROM sort WHERE nom = ? AND magie_id = 'magies/magie-de-la-necromancie'").get(sort), `sort « ${sort} »`);
-  assert.ok(db.prepare('SELECT 1 FROM invocation WHERE nom = ?').get(invocation), `invocation « ${invocation} »`);
+  // R236 (1) : la description des spécialisations dit leur nombre, celui de la base d'import (28 par la 0117 ; ni création ni suppression sur le site)
+  const nSpecialisations = dImport.prepare('SELECT COUNT(*) AS n FROM magie_specialisation').get().n;
+  assert.ok(nSpecialisations > 0);
+  assert.ok(r('specialisations-de-magie').description.includes(`Les ${nSpecialisations} spécialisations`));
+  assert.match(r('specialisations-de-magie').description, /R236 \(1\)/);
+  // R237 (7) : le tableau cadavérique est retiré avec sa table
+  assert.equal(r('ameliorations-cadaveriques'), undefined);
   // R67 : les capacités des créatures invoquées et les bonus du Mage Bleu restent à part ; elle ne parle pas des dons de classe
   const r67 = readFileSync(new URL('../../docs/decisions-regles.md', import.meta.url), 'utf8').split('\n').find((l) => l.startsWith('| R67 |'));
   assert.match(r67, /Mage Bleu/);

@@ -191,7 +191,10 @@ jobs:
       - name: Fabriquer l'installateur
         id: fabrication
         run: |
-          fichier=$(node deploy/installateur/fabriquer.mjs --mode "$MODE" --site client/dist --tag "$TAG" --version "$VERSION" --sha "$SHA" --sortie "$RUNNER_TEMP/installateurs")
+          # Serveur de test seulement : le kit de l'atelier (le code et ses node_modules, sans aucun contenu : deploy/installateur/kit.mjs). Les node_modules de « npm ci » sont déjà là.
+          kit=""
+          if [ "$MODE" = test ]; then kit="--kit ."; fi
+          fichier=$(node deploy/installateur/fabriquer.mjs --mode "$MODE" --site client/dist --tag "$TAG" --version "$VERSION" --sha "$SHA" --sortie "$RUNNER_TEMP/installateurs" $kit)
           sh "$fichier" --verifier
           echo "fichier=$fichier" >> "$GITHUB_OUTPUT"
 
@@ -210,7 +213,7 @@ jobs:
             usage="Installe ou met à jour le site de production. La base vivante de l'instance (dossier db/) n'est jamais touchée."
           else
             titre="Serveur de test $TAG"; dossier=/srv/maverick-center-test; options="--prerelease --latest=false"
-            usage="Installe ou met à jour le serveur de test et remplace sa base (db/) par une copie, à cet instant, de celle de la production."
+            usage="Installe ou met à jour le serveur de test. Sa base vivante (dossier db/) n'est jamais touchée ; la base de la production n'y est copiée que sur demande (option --copier-base-prod, dans un db/ vide)."
           fi
           {
             echo "Installateur **${MODE}** de Maverick Center : \`${TAG}\` (version ${VERSION}, commit ${SHA:0:7}, ${TYPE})."

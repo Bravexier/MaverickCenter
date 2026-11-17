@@ -21,6 +21,7 @@ const SURCOUCHES = [
   { fichier: 'styles/global/infobulles.css', media: '', selecteur: '.bulle', raison: 'une bulle flotte par-dessus la page (components/Infobulles.astro), la carte d’une créature invoquée comprise' },
   { fichier: 'styles/debug/schema.css', media: '', selecteur: '.schema-contenu__defilement', raison: 'le contenu d’une table, dans une fenêtre modale (<dialog>)' },
   { fichier: 'styles/chronologie/chronologie.css', media: '@media (max-width: 56rem)', selecteur: 'html.js .chrono--evenement .frise.est-ouverte .frise__liste', raison: 'la frise en tiroir par-dessus la page (téléphone)' },
+  { fichier: 'styles/classe/menu.css', media: '@media (max-width: 56rem)', selecteur: 'html.js .classe-cadre .classes-menu.est-ouvert', raison: 'le menu des classes en tiroir par-dessus la page (téléphone), comme la frise' },
   { fichier: 'styles/armes/armes.css', media: ETROIT_ARMES, selecteur: 'html.js .armes-vue.est-ouverte .armes-cote', raison: 'le panneau de l’arme en plein écran (écran étroit)' },
   { fichier: 'styles/armures/armures.css', media: ETROIT_ARMES, selecteur: 'html.js .armures-vue.est-ouverte .armures-cote', raison: 'le panneau de l’armure en plein écran (écran étroit)' },
   { fichier: 'styles/bestiaire/bestiaire.css', media: '@media (max-width: 70rem)', selecteur: 'html.js .bcartes', raison: 'la carte d’un monstre en plein écran (écran étroit)' },

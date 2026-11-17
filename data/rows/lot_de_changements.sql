@@ -1,0 +1,1 @@
+-- data/rows/lot_de_changements.sql : export déterministe, une instruction par ligne, triée par (id). NE PAS ÉDITER À LA MAIN.

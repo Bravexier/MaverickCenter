@@ -26,6 +26,10 @@ export const NOMS_DES_TABLES = Object.freeze({
   page_entite: 'Entité d’une page',
   page_source: 'Source de la page',
   page_tag: 'Mot-clé de la page',
+  // les catégories, les synonymes et les clés quittées d'un mot-clé (migrations 0113 à 0115, décisions R232, R233) : les noms de leurs sous-ressources
+  mot_cle_categorie: 'Catégorie du mot-clé',
+  mot_cle_synonyme: 'Synonyme du mot-clé',
+  mot_cle_ancienne_cle: 'Ancienne clé du mot-clé',
   source: 'Source',
   // magies et sorts (section 3)
   sort_bonus_maitrise: 'Bonus de maîtrise du sort',
@@ -36,6 +40,12 @@ export const NOMS_DES_TABLES = Object.freeze({
   evenement_categorie: 'Catégorie de l’événement',
   // classes (section 6)
   classe_annexe: 'Tableau annexe de la classe',
+  // le tableau du Mage Bleu découpé en entrées, et la magie que vise chaque don « Variable » (migration 0088, décision R181) : lus seulement
+  classe_annexe_entree: 'Entrée du tableau annexe de la classe',
+  capacite_variable: 'Magie visée par le don « Variable »',
+  // le plafond de NPM relevé par un don (R188) et les dons qui comptent comme une condition d'emplacements de sorts (R189), migration 0097 : lus seulement
+  capacite_npm_plafond: 'Plafond de NPM relevé par le don',
+  capacite_condition_emplacements: 'Condition d’emplacements de sorts du don',
   classe_maitrise_arme: 'Maîtrise d’arme de la classe',
   classe_maitrise_armure: 'Maîtrise d’armure de la classe',
   classe_objet_depart: 'Objet de départ de la classe',
@@ -88,7 +98,6 @@ export const NOMS_DES_TABLES = Object.freeze({
   // les tables qui citent une table écrite par l'édition (jamais écrites par elle : une suppression du lot peut y rompre une référence)
   accessoire_effet_gemme: 'Gemme de l’effet d’accessoire',
   accessoire_monture: 'Monture d’accessoire',
-  amelioration_cadaverique: 'Amélioration cadavérique',
   arme_elementaire: 'Arme élémentaire',
   armure_elementaire: 'Armure élémentaire',
   baton_magique: 'Bâton magique',
@@ -107,6 +116,8 @@ export const NOMS_DES_TABLES = Object.freeze({
   magie_dieu: 'Dieu de la magie',
   magie_ethnie_secondaire: 'Ethnie à magie secondaire',
   magie_incompatibilite: 'Incompatibilité de magie',
+  // le plafond de NPM des sorts d'un personnage de cette magie innée (R188, migration 0097) : lu seulement
+  magie_npm_plafond: 'Plafond de NPM de la magie innée',
   magie_resistance: 'Résistance ou vulnérabilité de magie',
   materiau_bouclier: 'Matériau de bouclier',
   meteo_effet: 'Effet de météo',
@@ -116,7 +127,11 @@ export const NOMS_DES_TABLES = Object.freeze({
   recette_ingredient: 'Élément de recette',
   recette_produit: 'Produit de recette',
   regle_constante: 'Constante de règle',
+  // un onglet des Règles (migration 0091, R184), cité par son menu latéral (regles_onglet_entree, dans TABLES : son nom vient de là) ; fixe
+  regles_onglet: 'Onglet des Règles',
   sort_mot_cle: 'Étiquette du sort',
+  // les types de dégâts à valeur fermée (migration 0125) : leur mot-clé ou leur magie, lus seulement
+  type_degats: 'Type de dégâts',
   // les fiches de personnage (section 13) qui citent une table écrite : jamais écrites par l'édition des règles
   personnage: 'Fiche de personnage',
   personnage_accessoire: 'Accessoire du personnage',
@@ -125,10 +140,13 @@ export const NOMS_DES_TABLES = Object.freeze({
   personnage_capacite: 'Don de classe choisi du personnage',
   personnage_ceinture: 'Objet de la ceinture du personnage',
   personnage_classe: 'Classe du personnage',
+  personnage_don_obtenu: 'Don obtenu du personnage',
   personnage_inventaire: 'Objet de l’inventaire du personnage',
+  personnage_livre_sort: 'Livre de sort du personnage',
   personnage_maitrise_choix: 'Maîtrise d’arme choisie du personnage',
   personnage_resistance_choix: 'Résistance choisie du personnage',
   personnage_sort: 'Sort du personnage',
+  personnage_specialisation_magie: 'Spécialisation magique du personnage',
 });
 
 /** Le nom d'une colonne qui garde le même sens dans toutes les tables (une clé étrangère : la table citée). */
@@ -203,6 +221,7 @@ export const COLONNES_COMMUNES = Object.freeze({
   source_id: 'Source',
   specialite_id: 'Spécialité',
   tag_id: 'Mot-clé',
+  mot_cle_id: 'Mot-clé',
 });
 
 /** Un registre à deux niveaux, gelé en entier. */
@@ -238,6 +257,13 @@ export const NOMS_DES_COLONNES = geler({
   bouclier_poids: { force_min: 'Force minimale' },
   capacite: { ligne: 'Ligne', limite_nombre: 'Nombre d’utilisations', limite_periode: 'Période des utilisations' },
   capacite_nm_gagne: { capacite_id: 'Don de classe', nm: 'NM de sorts gagnés' },
+  capacite_variable: { capacite_id: 'Don « Variable »', magie: 'Magie visée' },
+  capacite_npm_plafond: { capacite_id: 'Don de classe', npm: 'Plafond de NPM' },
+  capacite_condition_emplacements: { capacite_id: 'Don de classe' },
+  classe_annexe_entree: {
+    annexe_rang: 'Ligne du tableau annexe', type_brut: 'Type (tel qu’écrit)', limite_brute: 'Limite (telle qu’écrite)', limite_nombre: 'Nombre d’utilisations',
+    limite_periode: 'Période des utilisations', effet: 'Effet',
+  },
   classe: {
     categorie_id: 'Catégorie de classe', bouclier_classe_max: 'Classe de bouclier maximale', chose_a_savoir_lien: 'Lien de la chose à savoir',
     description_titre: 'Titre de la présentation', magie_innee_id: 'Magie innée qui réserve la classe', magie_innee_exclue_id: 'Magie innée qui ferme la classe',
@@ -248,6 +274,8 @@ export const NOMS_DES_COLONNES = geler({
     classe_max: 'Classe de bouclier maximale',
   },
   classe_objet_depart: { texte: 'Objet (tel qu’écrit)' },
+  // une constante d'équipement (lue par le calcul des armures, décision R207 (1) : `armure.unites_par_materiau`, une entrée du calcul) : l'unité du nombre
+  constante_equipement: { unite: 'Unité' },
   ecart_source: { source_a: 'Source A', valeur_a: 'Valeur A', source_b: 'Source B', valeur_b: 'Valeur B', detail: 'Détail' },
   evenement_extrait: { section: 'Section de la page', date_brut: 'Date (telle qu’écrite)' },
   gemme: {
@@ -260,6 +288,7 @@ export const NOMS_DES_COLONNES = geler({
     onglet: 'Onglet', caracteristique_id: 'Caractéristique bonus (reconnue)', barre4_ressource: 'Ressource de la 4ème barre', barre4_max: 'Maximum de la 4ème barre',
     barre4_regen: 'Régénération de la 4ème barre', incompatibilite_note: 'Note de magie non compatible', mono_magie: 'Mono-magie',
   },
+  magie_npm_plafond: { npm: 'Plafond de NPM' },
   magie_role: { role: 'Rôle (reconnu)' },
   maitrise_arme_part: {
     source_id: 'Source de maîtrise d’arme', capacite_id: 'Don de classe', classe_rang: 'Numéro de la ligne de la classe', points: 'Points de maîtrise',
@@ -285,9 +314,15 @@ export const NOMS_DES_COLONNES = geler({
   monstre_espece_bloc: { titre: 'Titre du bloc' },
   monstre_espece_lieu: { lieu: 'Lieu' },
   monstre_rubrique: { rubrique: 'Rubrique' },
+  // le verrou d'un mot-clé (migration 0110, décisions R218, R219) : hors de TABLES, aucune route ne l'écrit ; un lot ancien peut le porter
+  mot_cle: { verrou: 'Verrou', cle: 'Clé', monnaie_id: 'Monnaie' },
+  mot_cle_synonyme: { libelle: 'Synonyme', ordre: 'Rang' },
+  mot_cle_ancienne_cle: { cle: 'Ancienne clé' },
   note_cellule: { cellule: 'Cellule', repond_a: 'Répond à' },
-  page: { type: 'Rubrique du wiki', slug: 'Adresse', resume: 'Résumé', donnees: 'Données', statut: 'Statut' },
+  page: { type: 'Rubrique du wiki', slug: 'Adresse', donnees: 'Données', statut: 'Statut' },
   page_entite: { principale: 'Page principale' },
+  personnage_don_obtenu: { source: 'Don « Variable »', entree_id: 'Entrée obtenue' },
+  personnage_specialisation_magie: { specialisation_id: 'Spécialisation magique' },
   panneau_regles_bloc: { tuile: 'Genre du bloc' },
   potion_etat: { action: 'Action' },
   race: {
@@ -298,12 +333,14 @@ export const NOMS_DES_COLONNES = geler({
   race_don: { slug: 'Identifiant court', forme: 'Forme', ethnie_id: 'Ethnie de la fiche' },
   race_don_tableau_cellule: { ligne: 'Ligne', colonne: 'Colonne' },
   race_onglet: { onglet: 'Onglet', dons_rubrique: 'Rubrique des dons', dons_rubrique_nom: 'Colonne du nom du don', dons_rubrique_don: 'Colonne du don' },
+  regles_onglet: { ouverture_page_id: 'Page d’ouverture' },
+  regles_onglet_entree: { adresse: 'Adresse du lien' },
   relation_peuple: { ligne_peuple_id: 'Peuple qui voit', colonne_peuple_id: 'Peuple vu', echelle_id: 'Niveau de relation' },
   sort: {
     ic_direct: 'IC', ic_nm_min: 'IC à partir du NM', imparable: 'Imparable', inesquivable: 'Inesquivable', cout_chakra: 'Coût en chakra',
     cout_ressource: 'Ressource du coût secondaire', cout_ressource_valeur: 'Quantité du coût secondaire', portee_nature: 'Nature de la portée',
     portee_valeur: 'Portée (nombre)', zone_forme: 'Forme de la zone', zone_taille: 'Taille de la zone', mode_brut: 'Mode (tel qu’écrit)',
-    bonus_maitrise: 'Bonus de maîtrise',
+    bonus_maitrise: 'Bonus de maîtrise', specialisation_id: 'Spécialisation (NPM 3 à 5)',
   },
   sort_bonus_maitrise: {
     champ: 'Colonne de la source', texte_brut: 'Expression (telle qu’écrite)', contexte: 'Contexte', increment_brut: 'Incrément (tel qu’écrit)',

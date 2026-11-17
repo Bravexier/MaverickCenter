@@ -15,10 +15,18 @@
 //   h.lignesDImport('classe', lignes?)         les lignes d'avant toute édition : insérées retirées, supprimées remises, valeurs « avant » rétablies
 //   h.effectifDImport('capacite')              le nombre de ces lignes
 //   h.lignesRemaniees('capacite', ['nature'])  les lignes créées ou supprimées par le site, ou dont il a réécrit ces colonnes
+//   valeursDAvant(db, 'sort', 'nom')           les noms qu'une ligne a portés avant l'actuel (Map(texte de clé → [noms])) : une fiche écrite avant un
+//                                              renommage se relit (lib/fiche-regles.mjs, `noms_d_avant`)
+//
+// Nature des traces (R275, migration 0127) : seules les traces de nature `saisie` (faites sur le site de dev) et `decision` (une décision du propriétaire
+// appliquée par un lot) sont « le site » que ces fonctions défont pour retrouver l'état d'origine. Les natures `source`, `migration` et `code` sont des
+// changements du contenu de référence (réimport d'une source, migration, recalcul après un changement de code) : elles font partie de l'import, jamais
+// défaites. Un historique sans colonne `nature` (base d'avant la 0127) se lit comme des saisies. `valeursDAvant` lit toutes les natures (un ancien nom
+// reste un ancien nom, d'où qu'il vienne).
 //
 // Clé d'une ligne : l'objet des colonnes de clé primaire, dans l'ordre de la clé (comme cleDe de serveur/edition-journal.mjs, qui écrit le journal,
 // et comme `cle` des registres des migrations 0005 et 0006). Ordre de lecture : (fait_le, lot_id, rang).
-// Sans dépendance (ni node:, ni Astro) : le module reçoit une base node:sqlite ouverte. Utilisé par les tests et par scripts/db-check.mjs.
+// Sans dépendance (ni node:, ni Astro) : le module reçoit une base node:sqlite ouverte. Utilisé par les tests, par scripts/db-check.mjs et par lib/fiche-regles.mjs (valeursDAvant).
 
 const structures = new WeakMap(); // db -> Map(table -> { colonnes, cle } | null)
 
@@ -56,24 +64,81 @@ export const texteDeCle = (db, table, ligne) => JSON.stringify(cleDeLigne(db, ta
 
 const lireJson = (t) => (t === null || t === undefined ? null : JSON.parse(t));
 
-/** Les modifications de historique_modification dans l'ordre (fait_le, lot_id, rang) ; [] pour une base qui n'a pas la table. */
-export function lireHistorique(db) {
+/** Les natures d'une trace que le site « défait » pour retrouver l'état d'origine : une saisie, une décision du propriétaire (R275). */
+export const NATURES_DEFAITES = Object.freeze(['saisie', 'decision']);
+
+/**
+ * Les modifications de historique_modification dans l'ordre (fait_le, lot_id, rang) ; [] pour une base qui n'a pas la table. Chacune porte sa `nature` (une
+ * base d'avant la migration 0127, sans cette colonne : `saisie`) et sa `decision` (R…, ou null).
+ * @param {import('node:sqlite').DatabaseSync} db
+ * @param {{ natures?: readonly string[] | null }} [options] les natures lues : par défaut `NATURES_DEFAITES` (ce que le site défait) ; `null` : toutes
+ */
+export function lireHistorique(db, { natures = NATURES_DEFAITES } = {}) {
   const existe = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'historique_modification'").get();
   if (!existe) return [];
+  const avecNature = db.prepare('PRAGMA table_info("historique_modification")').all().some((c) => c.name === 'nature');
+  const colonnes = avecNature ? 'nature, decision' : "'saisie' AS nature, NULL AS decision";
   return db
-    .prepare('SELECT lot_id, rang, fait_le, resume, version, table_nom, cle, operation, avant, apres FROM historique_modification ORDER BY fait_le, lot_id, rang')
+    .prepare(`SELECT lot_id, rang, fait_le, resume, version, table_nom, cle, operation, avant, apres, ${colonnes} FROM historique_modification ORDER BY fait_le, lot_id, rang`)
     .all()
+    .filter((m) => natures === null || natures.includes(m.nature))
     .map((m) => {
       const cle = cleDeLigne(db, m.table_nom, JSON.parse(m.cle));
       return {
-        lot: m.lot_id, rang: m.rang, faitLe: m.fait_le, resume: m.resume, version: m.version ?? null, table: m.table_nom,
+        lot: m.lot_id, rang: m.rang, faitLe: m.fait_le, resume: m.resume, version: m.version ?? null, table: m.table_nom, nature: m.nature, decision: m.decision ?? null,
         cle, texte: JSON.stringify(cle), operation: m.operation, avant: lireJson(m.avant), apres: lireJson(m.apres),
       };
     });
 }
 
 /**
+ * Les modifications du journal de la base vivante (table `modification`, section 14 de data/schema.sql) pas encore rapatriées dans data/rows
+ * (`etat` 'en_attente' : ni intégrées, donc absentes de historique_modification, ni en conflit, donc appliquées), dans l'ordre (fait_le du lot, lot,
+ * rang), sous la forme de lireHistorique ; [] pour une base sans journal (data/rows le garde vide).
+ */
+function lireJournalEnAttente(db) {
+  const existe = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'modification'").get();
+  if (!existe) return [];
+  return db
+    .prepare(`SELECT m.lot_id, m.rang, l.fait_le, m.table_nom, m.cle, m.operation, m.avant, m.apres FROM modification m JOIN modification_lot l ON l.id = m.lot_id
+              WHERE m.etat = 'en_attente' ORDER BY l.fait_le, m.lot_id, m.rang`)
+    .all()
+    .map((m) => {
+      const cle = cleDeLigne(db, m.table_nom, JSON.parse(m.cle));
+      return { lot: m.lot_id, rang: m.rang, faitLe: m.fait_le, table: m.table_nom, cle, texte: JSON.stringify(cle), operation: m.operation, avant: lireJson(m.avant), apres: lireJson(m.apres) };
+    });
+}
+
+/**
+ * Les valeurs qu'une colonne a portées avant sa valeur actuelle, ligne par ligne, d'après historique_modification puis le journal de la base vivante pas
+ * encore rapatrié (lireJournalEnAttente : le site de dev lui-même) : Map(texte de la clé (texteDeCle) → [valeurs, de la plus ancienne à la plus
+ * récente]), sans doublon, sans null, sans la dernière valeur écrite (l'actuelle). Une ligne que le site n'a jamais renommée n'y est pas. Pour retrouver
+ * une ligne par un nom qu'elle a porté : une fiche écrite avant un renommage sur le site de dev (lib/fiche-regles.mjs, `noms_d_avant` ;
+ * lib/fiche-tableur-import.mjs). L'identifiant, figé, ne change jamais ; seul le nom se cherche ainsi.
+ */
+export function valeursDAvant(db, table, colonne) {
+  const suites = new Map(); // texte de clé -> valeurs dans l'ordre
+  for (const e of [...lireHistorique(db, { natures: null }), ...lireJournalEnAttente(db)]) {
+    if (e.table !== table) continue;
+    const valeurs = [];
+    if (e.operation === 'inserer' && e.apres && colonne in e.apres) valeurs.push(e.apres[colonne]);
+    else if (e.operation === 'modifier' && e.apres && colonne in e.apres) valeurs.push(e.avant?.[colonne], e.apres[colonne]);
+    if (!valeurs.length) continue;
+    if (!suites.has(e.texte)) suites.set(e.texte, []);
+    suites.get(e.texte).push(...valeurs);
+  }
+  const resultat = new Map();
+  for (const [texte, valeurs] of suites) {
+    const actuelle = valeurs.at(-1);
+    const avant = [...new Set(valeurs.filter((v) => v !== null && v !== undefined && v !== actuelle))];
+    if (avant.length) resultat.set(texte, avant);
+  }
+  return resultat;
+}
+
+/**
  * L'historique d'une base, prêt à interroger (voir l'en-tête du module). Lu une fois : à refaire si la base change.
+ * Seules les traces que le site défait (`NATURES_DEFAITES`) y comptent : une trace `source`, `migration` ou `code` est le contenu de référence.
  * @param {import('node:sqlite').DatabaseSync} db
  */
 export function historiqueSite(db) {
@@ -94,14 +159,40 @@ export function historiqueSite(db) {
     const c = cleDeLigne(db, table, cle);
     return db.prepare(`SELECT * FROM "${table}" WHERE ${s.cle.map((k) => `"${k}" = ?`).join(' AND ')}`).get(...Object.values(c)) ?? null;
   };
-  /** La ligne d'avant toute édition, rejouée à l'envers depuis `actuelle` (null : absente) ; null si elle n'existait pas à l'import. */
+  // Toutes les traces, de toute nature, dans l'ordre. La valeur d'import d'une cellule est l'`avant` de la première trace défaisable (saisie, décision) qui la touche ;
+  // si une trace `source`, `migration` ou `code` l'a écrite APRÈS elle, c'est l'`apres` de la dernière de ces traces (le contenu de référence a le dernier mot,
+  // comme `defaireLeSite` de test/aide-base-d-import.mjs, qui ne défait pas une cellule que la trace n'a plus laissée). Sans trace défaisable : rien à défaire.
+  const parTableToutes = new Map(); // table -> Map(texte de clé -> traces dans l'ordre)
+  for (const e of lireHistorique(db, { natures: null })) {
+    if (!parTableToutes.has(e.table)) parTableToutes.set(e.table, new Map());
+    const lignes = parTableToutes.get(e.table);
+    if (!lignes.has(e.texte)) lignes.set(e.texte, []);
+    lignes.get(e.texte).push(e);
+  }
+  const operationsToutes = (table, cle) => parTableToutes.get(table)?.get(texteDeCle(db, table, cle)) ?? [];
+  const defaisable = (o) => NATURES_DEFAITES.includes(o.nature);
+  const touche = (o, colonne) => o.operation === 'supprimer' || (o.operation === 'modifier' && colonne in o.avant);
+  /** La valeur d'import d'une colonne (`ops` : toutes les natures) : { trouvee: false } sans trace défaisable qui la touche. */
+  const valeurDeLaColonne = (ops, colonne) => {
+    const i = ops.findIndex((o) => defaisable(o) && touche(o, colonne));
+    if (i < 0) return { trouvee: false };
+    let valeur = ops[i].avant[colonne] ?? null;
+    for (const o of ops.slice(i + 1)) if (!defaisable(o) && o.operation !== 'supprimer' && o.apres && colonne in o.apres) valeur = o.apres[colonne] ?? null;
+    return { trouvee: true, valeur };
+  };
+  /** La ligne d'avant toute édition, rejouée à l'envers depuis `actuelle` (null : absente) ; null si elle n'existait pas à l'import. `ops` : toutes les natures. */
   const versLImport = (ops, actuelle) => {
     let ligne = actuelle ? { ...actuelle } : null;
     for (let i = ops.length - 1; i >= 0; i -= 1) {
       const o = ops[i];
+      if (!defaisable(o)) continue; // source, migration, code : le contenu de référence
       if (o.operation === 'inserer') ligne = null;
       else if (o.operation === 'supprimer') ligne = { ...o.avant };
       else if (ligne) ligne = { ...ligne, ...o.avant }; // absente alors que modifiée : effacée hors du site, rien à reconstruire
+    }
+    if (ligne) for (const c of Object.keys(ligne)) {
+      const v = valeurDeLaColonne(ops, c);
+      if (v.trouvee) ligne[c] = v.valeur;
     }
     return ligne;
   };
@@ -135,21 +226,21 @@ export function historiqueSite(db) {
   const valeurDImport = (table, cle, colonne, actuelle) => {
     const ops = operations(table, cle);
     if (ops.length && ops[0].operation === 'inserer') return undefined;
-    const premiere = ops.find((o) => o.operation === 'supprimer' || (o.operation === 'modifier' && colonne in o.avant));
-    if (premiere) return premiere.avant[colonne] ?? null;
+    const v = valeurDeLaColonne(operationsToutes(table, cle), colonne);
+    if (v.trouvee) return v.valeur;
     if (actuelle !== undefined) return actuelle;
     const ligne = lireActuelle(table, cle);
     return ligne ? ligne[colonne] : undefined;
   };
   /** La ligne entière telle que l'import l'a laissée ; null si le site l'a créée (ou si elle n'existe pas). */
-  const ligneDImport = (table, cle) => versLImport(operations(table, cle), lireActuelle(table, cle));
+  const ligneDImport = (table, cle) => versLImport(operationsToutes(table, cle), lireActuelle(table, cle));
   /**
    * Les lignes d'avant toute édition du site : `lignes` (par défaut toute la table, SELECT *) dont l'historique est rejoué à l'envers. Les lignes
    * gardent leur ordre ; une ligne supprimée par le site est remise à la fin.
    */
   const lignesDImport = (table, lignes) => {
     const actuelles = lignes ?? (structureDe(db, table) ? db.prepare(`SELECT * FROM "${table}"`).all() : []);
-    const historique = parTable.get(table);
+    const historique = parTableToutes.get(table);
     if (!historique) return actuelles.map((l) => ({ ...l }));
     const vues = new Set();
     const resultat = [];

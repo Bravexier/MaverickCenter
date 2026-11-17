@@ -12,6 +12,7 @@
 // `chargerBestiaire` reçoit la base ouverte par lib/donnees.mjs (build) ; module sans dépendance navigateur ni Astro.
 import { echellesEcrites, magiesDesCibles as tableDesCibles, RENVOI_AUX_DEGATS_MOYENS } from './monstre-champs.mjs';
 import { coutEnUneCase } from './sort-cout.mjs';
+import { liensDesValeursFermees } from './mots-cles-des-valeurs.mjs';
 import { normalize } from './text.mjs';
 
 /** Libellés des catégories de monstre (colonne `categorie`). */
@@ -108,7 +109,12 @@ const echellesDe = (brut, min, max) => {
   return min === null || max === null ? [] : Array.from({ length: max - min + 1 }, (_, k) => String(min + k));
 };
 
-/** Les monstres du Bestiaire 2.0 : { lignes, facettes, regles, echelles, glossaire, elements, especes } (`elements` : les noms des magies, décision R57). */
+/**
+ * Les monstres du Bestiaire 2.0 : { lignes, facettes, regles, echelles, glossaire, elements, especes, liens } (`elements` : les noms des magies, décision R57 ; `liens` :
+ * { degats, magies }, lib/mots-cles-des-valeurs.mjs#liensDesValeursFermees, migration 0125 : le mot-clé du glossaire de chaque type de dégâts — taille, estoc,
+ * frappe, et feu, eau, glace, ceux de leur magie : creature_attaque_type.type, creature_capacite_resistance.cible_degat — et de chaque magie, `liens.magies[magie_id]`,
+ * `texte` : son nom court ; null sans mot-clé).
+ */
 export function chargerMonstres(db) {
   const all = (sql) => db.prepare(sql).all();
   const especes = all('SELECT * FROM monstre_espece ORDER BY ordre');
@@ -265,6 +271,7 @@ export function chargerMonstres(db) {
     elements: all('SELECT nom FROM magie ORDER BY ordre').map((m) => m.nom),
     // la couleur des vulnérabilités et résistances : la magie qui va avec chaque cible
     magiesDesCibles: magiesDesCibles(db),
+    liens: liensDesValeursFermees(db),
   };
 }
 
@@ -354,6 +361,9 @@ export function donneesNpm(c, { fpvsia, bonus, attaques, ressources, capacites, 
   };
 }
 
+/** Une cible de résistance ou de vulnérabilité d'une créature : { nom (son texte affiché), cible_type, cible_magie_id, cible_degat } (ids null hors de leur type). */
+const cibleDeDefense = (x) => ({ nom: x.cible, cible_type: x.cible_type, cible_magie_id: x.cible_magie_id ?? null, cible_degat: x.cible_degat ?? null });
+
 /**
  * Les créatures invoquées (section 8) : { lignes, tableaux, facettes, invocations }. `lignes` : une par créature (sa carte) ; `tableaux` : un par invocation
  * (demande du propriétaire : « Fait 3 tableaux. Un tableau Appel aux Golem et un Animation des morts sous le même modèle, et déroulable. Il faudra mettre
@@ -394,7 +404,7 @@ export function chargerInvocations(db) {
   const memeBloc = regrouper(all('SELECT v.creature_id, c.id, c.nom FROM v_creature_meme_bloc v JOIN creature c ON c.id = v.autre_creature_id'), 'creature_id');
   const defenses = regrouper(
     all(
-      `SELECT r.creature_id, r.sens, r.cible_type, r.cible_brut, r.cible_degat, r.provenance, r.npm_min, mc.nom AS cible_magie, e.nom AS cible_etat, mv.nom AS via_magie
+      `SELECT r.creature_id, r.sens, r.cible_type, r.cible_brut, r.cible_degat, r.cible_magie_id, r.provenance, r.npm_min, mc.nom AS cible_magie, e.nom AS cible_etat, mv.nom AS via_magie
        FROM v_creature_resistance r LEFT JOIN magie mc ON mc.id = r.cible_magie_id LEFT JOIN etat e ON e.id = r.cible_etat_id LEFT JOIN magie mv ON mv.id = r.via_magie_id
        ORDER BY r.creature_id, r.provenance, r.sens, r.cible_brut`,
     ),
@@ -431,6 +441,8 @@ export function chargerInvocations(db) {
       // les mêmes, par identifiant (la fiche : les combinaisons à la portée du personnage)
       magiesDuBlocIds: (magiesDuBloc.get(c.bloc_id) ?? []).map((m) => m.id),
       magies: sesMagies.map((m) => m.nom),
+      // les mêmes, par identifiant (la page d'une magie) : `liens.magies[id]` (migration 0125, lib/mots-cles-des-valeurs.mjs) les lie à leur mot-clé
+      magiesIds: sesMagies.map((m) => m.id),
       sante: c.sante_brut,
       chakra: c.chakra_brut,
       barriere: c.barriere_brut,
@@ -460,6 +472,10 @@ export function chargerInvocations(db) {
         magie,
         resiste: liste.filter((x) => x.sens === 'resistance').map((x) => x.cible),
         vulnerable: liste.filter((x) => x.sens === 'vulnerabilite').map((x) => x.cible),
+        // les mêmes cibles, avec leur type (`cible_type` : magie, degat, etat…) et leur identifiant (`cible_magie_id`, `cible_degat`) : le rendu les lie par id
+        // (lib/valeurs-fermees-rendu.mjs#htmlDeLaCible) plutôt que par leur nom court
+        resisteCibles: liste.filter((x) => x.sens === 'resistance').map(cibleDeDefense),
+        vulnerableCibles: liste.filter((x) => x.sens === 'vulnerabilite').map(cibleDeDefense),
       })),
       // le filtre « Magie » (les magies de la créature : celles de sa combinaison, ou celle du sort qui l'invoque)
       magiesCles: unique(sesMagies.map((m) => ec.magie.noter(m.nom))),
@@ -485,6 +501,8 @@ export function chargerInvocations(db) {
           npm: b.npm,
           // les magies de la combinaison, dans l'ordre de la marge ; une seule : le bloc « mono » (« Terre + Terre » en a deux, la même)
           magies: magiesDuBlocNoms,
+          // les mêmes, par identifiant (`liens.magies[id]`, migration 0125)
+          magiesIds: cases[0].magiesDuBlocIds,
           mono: magiesDuBlocNoms.length === 1,
           cases,
           // filtre : la seule colonne filtrable affichée, la magie (« Inutile de filtrer par les colonnes non affichées ») ; pas de tri : l'ordre du classeur
@@ -501,29 +519,8 @@ export function chargerInvocations(db) {
   });
   const lignesDesTableaux = tableaux.flatMap((t) => t.lignes);
   const facettes = [{ cle: 'magie', libelle: 'Magie', options: optionsDeFacette(lignesDesTableaux, 'magie', ec.magie.m, ordreDesMagies) }];
-  return { lignes, tableaux, facettes, invocations: invocations.map(versInvocation) };
-}
-
-/**
- * Le tableau d'une invocation (invocation.tableau_titre : « TABLEAU "AMÉLIORATION CADAVÉRIQUE" », la table amelioration_cadaverique de la magie de son sort)
- * est aussi celui du sort de cette magie qui porte le nom écrit entre guillemets (« Amélioration cadavérique » : « Sacrifie l'invocation pour des
- * amplifications pendant 3 tours (voir invocations) ») : demande du propriétaire, « avoir toutes les améliorations visibles en fonction de l'invocation
- * sacrifiée » (décision R130). Map(id du sort -> { titre, nom (le nom entre guillemets), invocationId, invocation, magieId, lignes: [{ nom, effet }] }),
- * pour les pages de magie (lib/magies-db.mjs) et la fiche (lib/fiche-regles.mjs).
- */
-export function tableauxDesSorts(db) {
-  const tableaux = new Map();
-  const invocations = db
-    .prepare('SELECT i.id, i.nom, i.tableau_titre, s.magie_id FROM invocation i JOIN sort s ON s.id = i.sort_id WHERE i.tableau_titre IS NOT NULL ORDER BY i.ordre')
-    .all();
-  for (const i of invocations) {
-    const nom = /["“«]\s*([^"”»]+?)\s*["”»]/.exec(i.tableau_titre)?.[1];
-    const sort = nom ? db.prepare('SELECT id FROM sort WHERE magie_id = ? AND nom_cle = ?').get(i.magie_id, normalize(nom)) : null;
-    if (!sort) continue;
-    const lignes = db.prepare('SELECT nom, effet FROM amelioration_cadaverique WHERE magie_id = ? ORDER BY rang').all(i.magie_id);
-    tableaux.set(sort.id, { titre: i.tableau_titre, nom, invocationId: i.id, invocation: i.nom, magieId: i.magie_id, lignes });
-  }
-  return tableaux;
+  // `liens` : comme chargerMonstres (invocation_resistance.cible_degat, magies des combinaisons)
+  return { lignes, tableaux, facettes, invocations: invocations.map(versInvocation), liens: liensDesValeursFermees(db) };
 }
 
 /** Le bestiaire entier, pour la page. */

@@ -24,16 +24,39 @@
 //   POST /api/edition/lignes/       { lignes: [{ table, cle }] } → la ligne actuelle de chacune (passage en mode modification)
 //   GET  /api/edition/listes/       listes des formulaires (compétences, catégories de classe, races hybrides…)
 //   GET  /api/edition/pages/        les pages du wiki (id, titre) : cibles d'un lien posé dans le texte du guide
-//   GET  /api/edition/mots-cles/    le vocabulaire des mots-clés, avec leurs pages et ceux dont le site se sert (/recherche/ en mode modification)
+//   GET  /api/edition/mots-cles/    le vocabulaire des mots-clés (/regles/glossaire/ en mode modification) : id entier, clé, synonymes, catégories et
+//                                   clés quittées (R232, R233), leurs pages, leur lien, leur couleur et sa classe, leur verrou, leurs mentions (R196) et le
+//                                   refus prévu de leur suppression forcée (`refus_du_forcage`, R223) ; les catégories des mots-clés (`categories`) ; la
+//                                   feuille des classes de couleur (`css` : migration 0098)
 //   GET  /api/edition/chronologie/  les événements de la chronologie dans l'ordre de lecture avec leurs catégories, et les catégories (surcouche de la frise)
+//   GET  /api/edition/plan/         le plan vivant des Règles (onglets, page d'ouverture, entrées de chaque menu ; pour chaque page : sa protection et
+//                                   ses citations) et les races par groupe dans l'ordre de leur liste — serveur/edition-plan.mjs#planVivant
 //   POST /api/edition/race/         { race } → magies innées et relations de la race, dans la base vivante
-//   POST /api/edition/classe/       { classe } → spécialités, dons, choix et fiches qui les citent (ajout et suppression depuis sa page)
+//   POST /api/edition/classe/       { classe } → spécialités, dons, choix, fiches qui les citent et magie des dons « Variable » (ajout et suppression depuis sa page)
 //   POST /api/edition/bestiaire/    { connues, logo } → l'ordre des lignes du tableau des monstres, et la ligne et la carte de celles que la page n'a pas
 //   POST /api/edition/evenement/    { evenement } → un événement de la chronologie, ses blocs de description et ses catégories, dans la base vivante
 //   POST /api/edition/portrait/     { table, cle } → le portrait d'une carte de monstre ou d'une espèce, en entier, et son cadrage (les autres réponses
 //                                   de l'édition ne donnent d'une image que son empreinte : ligneSansImage ; le journal la porte en entier)
 //   POST /api/edition/              { page, operations } → applique un lot d'un bloc et le note au journal
+//   GET  /api/edition/extrait/      l'extrait du contenu : un fichier SQLite neuf (règles, notes de version, historique avec les modifications en attente ;
+//                                   ni fiche, ni compte, ni journal), refait au premier téléchargement qui suit un changement (serveur/extrait.mjs ; ETag, 304) ;
+//                                   GET /api/edition/extrait/meta/ : son méta en JSON (date, version du site, empreinte de chaque table) — `npm run db:extrait`
 //   GET  /api/edition/journal/      le journal des modifications en attente, à rapatrier dans data/rows (npm run db:appliquer-edition)
+// Lots de changements (R274, R275 ; serveur/edition-lots.mjs), site de dev seulement : une session de Claude DÉPOSE une proposition (rien n'est écrit dans le
+// contenu), le propriétaire l'applique ou la refuse d'un clic :
+//   GET  /api/edition/lots/                    les propositions, la plus récente d'abord (résumé : état, verdict de l'essai)
+//   POST /api/edition/lots/                    le lot (maverick-lot/1 : titre, nature, decision, operations) → contrôle du format, état « propose », essai à blanc
+//                                              sur une copie ; la réponse (une promesse) porte la proposition avec son essai ; 400 dit l'opération à corriger
+//   GET  /api/edition/lots/<id>/               une proposition : contenu déposé, essai (aperçu avant et après), bilan
+//   POST /api/edition/lots/<id>/essai/         refait l'essai (n'écrit que `essai`) → la proposition
+//   POST /api/edition/lots/<id>/appliquer/     { verrous_ouverts? } → écrit le lot d'un bloc par le service d'édition (mot de passe) ; 409 dit ce qui le refuse
+//   POST /api/edition/lots/<id>/refuser/       refuse la proposition (mot de passe) ; rien n'est écrit dans le contenu
+//   GET  /api/edition/lots/<id>/annulation/    l'aperçu de l'annulation d'un lot appliqué, calculé sur une copie (la réponse est une promesse ; rien n'est écrit) :
+//                                              par ligne du lot du journal, « remise » si la valeur vaut encore ce que le lot a écrit, « gardée » sinon
+//   POST /api/edition/lots/recalcul/           « tout recalculer » : les écarts entre les colonnes dérivées stockées (corps des pages de races, classes, dons, métiers) et ce que le
+//                                              code d'aujourd'hui en dérive, calculés sur une copie et DÉPOSÉS comme un lot de nature « code » (essai à blanc, clic du propriétaire :
+//                                              comme tout lot) ; la réponse (une promesse) porte { lot, recalcul } (lot null sans écart ; rien n'est écrit dans le contenu)
+//   POST /api/edition/lots/<id>/annuler/       { verrous_ouverts? } → remet `avant` là où la valeur vaut encore ce que le lot a écrit, d'un bloc (mot de passe) ; 409 dit ce qui le refuse
 // Page « Mise à jour », sur le site de dev seulement (même garde) — serveur/notes-de-version.mjs :
 //   GET  /api/mise-a-jour/              la note en préparation : modifications production → dev (calculées), brouillon, état du lancement
 //   POST /api/mise-a-jour/brouillon/    { texte, avant } → enregistre le champ libre des admins
@@ -45,7 +68,10 @@
 //   POST /api/mise-a-jour/liberer/      { lot } → annule ce lancement s'il n'est pas parti, a échoué avant dev, ou se lance à la main : le brouillon
 //                                       redevient modifiable, le lot n'est plus servi (et son run est annulé sur GitHub)
 //   GET  /api/mise-a-jour/lancement/    état du lancement (suivi du run GitHub)
-//   GET  /api/mise-a-jour/lots/<id>/    un lot figé, tel quel (le workflow le télécharge et vérifie son empreinte)
+//   POST /api/mise-a-jour/copier/       { confirmation } → base source seulement (lot 8) : « Copier vers le dépôt », un paquet sans note de version, le même
+//                                       workflow avec l'entrée `copie` (fusion dans dev seulement) → 202 { lancement, github } ; 409 hors base source
+//   GET  /api/mise-a-jour/lots/<id>/    un lot figé, tel quel (le workflow le télécharge et vérifie son empreinte) ; avec la base source, le paquet
+//                                       (SQLite, serveur/paquet.mjs)
 //   GET  /api/mise-a-jour/conflits/     les lots du journal en conflit à résoudre, chacun avec ses modifications saines et ses conflits (version 1 = le
 //                                       site de dev, version 2 = les règles livrées, choix permis) ; les lots résolus — serveur/edition-conflits.mjs
 //   POST /api/mise-a-jour/conflits/     { lot, empreinte, choix: { "<id>": { choix: 1 | 2 | 3, valeur? } } } → résout le lot : un nouveau lot du journal
@@ -69,6 +95,12 @@
 //                                   { table, genre, colonnes, total, limite, decalage, tri, ordre, lignes } (images et textes longs résumés) ; toutes les
 //                                   tables et vues, fiches (section 13) comprises (décision du propriétaire du 2026-10-15 : « Il faut tout rendre
 //                                   ouvert. Ce qui est fermé c'est que la base du serveur de prod. ») ; ETag (empreinte du corps), 304 sur If-None-Match
+//   GET  /api/debug/atelier/        l'atelier du site de dev (serveur/atelier.mjs) : { format: 'maverick-atelier-etat/1', etat, message, kit, installe, extrait, en_cours, dernier,
+//                                   historique, resume } (forme : src/lib/debug-atelier.mjs), Cache-Control: no-store ; 503 sans atelier ; 403 en production
+//   GET  /api/debug/structure/      le dernier essai d'une livraison sur une copie de la base (serveur/essai-de-structure.mjs) : { format, en_cours, en_attente,
+//                                   dernier, ombre } ; `dernier` : le bilan `maverick-structure/1` (verdict, versions, migrations, tables…) et `demande`, `essaye_le`,
+//                                   `instance`, `resume`, ou null (aucun essai depuis que le dossier existe) ; `ombre` : { en_cours, dernier } de l'essai dans l'ombre
+//                                   (serveur/essai-dans-l-ombre.mjs, rapport `maverick-ombre/1`), null sans lui ; Cache-Control: no-store
 //   GET  /api/debug/base/           { version } : la version de la base vivante, qui change à chaque écriture validée (coût fixe, aucune table lue) ;
 //                                   la page la relève toutes les 2 s, menu « DB » ouvert, pour suivre les tables en direct (une relève : ni au journal
 //                                   du service ni dans la mémoire des requêtes)
@@ -77,21 +109,33 @@
 //   POST /api/metriques/page/       { page, ttfb_ms, dom_ms, charge_ms, lcp_ms } (navigator.sendBeacon : Content-Type application/json ou text/plain,
 //                                   2 Kio au plus, Sec-Fetch-Site same-origin, sinon Origin du même hôte) → 204 ; 400 invalide, 413 trop gros,
 //                                   429 trop de balises cette minute
+// Accès au site de dev (serveur/acces.mjs ; docs/serveur.md, « Accès au site de dev » ; R275). Sans réglage posé (secrets/acces.json), rien ne change.
+// Avec un réglage, sur le site de dev seulement, chaque route est classée (serveur/acces-routes.mjs : ouverte, lecture, ecriture) ; refus : 401
+// { erreur, acces: 'cle' | 'mot_de_passe' } (« cle » : la clé de lecture, en-tête X-Maverick-Cle ou X-Maverick-Key, OU le mot de passe) :
+//   GET  /api/acces/                { protege, portee, connecte, droit, expire_le } : où en est ce visiteur (droit : ecriture | lecture | aucun) ; toujours ouverte
+//   POST /api/acces/                { mot_de_passe } → ouvre une session (cookie HttpOnly, 12 h) ; 401 mot de passe faux, 429 trop d'essais, 409 sans mot de passe posé
+//   DELETE /api/acces/              ferme la session (retire le cookie)
+//   GET  /api/acces/verifier/       204 si la requête a au moins le droit de lecture (clé ou session), 401 sinon : pour un forward_auth de Caddy (portée « tout »)
 // Les adresses finissent par « / », comme celles du site (en développement, Astro refuse une adresse sans « / » finale avant de la transmettre) ;
 // le service accepte aussi la forme sans « / ». La chaîne de requête (« ?q=… ») vient dans `requete.recherche`, ou à la suite du chemin.
 //
 // Pas de comptes : quiconque a le mot de passe du site (nginx) lit et écrit les prétirés. Les écritures exigent un corps JSON
 // (Content-Type: application/json) et refusent une requête qu'un navigateur dit venir d'un autre site (Sec-Fetch-Site) : un formulaire ou un
 // script d'un autre site ne peut pas écrire à la place de quelqu'un de connecté.
-import { ErreurEdition, donneesDeClasse, donneesDeRace, enregistrer, lignesDuBestiaire, listes, lireLignes, pagesDuWiki, portraitDe } from './edition.mjs';
+import {
+  ErreurEdition, donneesDeClasse, donneesDeRace, enregistrer, lignesDuBestiaire, listes, lireLignes, pagesDuWiki, portraitDe, refusDesForcages,
+} from './edition.mjs';
 import { ligneSansImage } from '../src/lib/edition-modele.mjs';
 import { journalExporte, lignesEnAttente } from './edition-journal.mjs';
 import { conflitsDuJournal, resoudreLeConflit } from './edition-conflits.mjs';
-import { chronologieVivante, donneesDEvenement, vocabulaire } from './edition-chronologie.mjs';
+import { chronologieVivante, donneesDEvenement, vocabulaireEtFeuille } from './edition-chronologie.mjs';
+import { planVivant } from './edition-plan.mjs';
+import * as lots from './edition-lots.mjs';
 import {
-  actualiserLancement, CONFIRMATION, enregistrerBrouillon, enregistrerMajeure, ErreurNotes, estLiberable, figerLot, leverMaintenance, libererLot, lireLot,
-  lireReference, noteEnPreparation, occupe,
+  CONFIRMATION, enregistrerBrouillon, enregistrerMajeure, ErreurNotes, estLiberable, figerLot, leverMaintenance, libererLot, lireLot,
+  lignesALivrer, lireReference, noteEnPreparation, occupe,
 } from './notes-de-version.mjs';
+import { actualiser, CONFIRMATION_COPIE, figerPaquet } from './paquet.mjs';
 import { ErreurFiche, controlesDe, enregistrerFiche, lireFiche, listerFiches, niveauDe, portraitDeFiche, supprimerFiche } from './fiches.mjs';
 import { CHAMP_VERSION } from '../src/lib/fiche-format.mjs';
 import { instant } from './instant.mjs';
@@ -100,7 +144,10 @@ import { BALISE, ErreurMetriques } from './metriques.mjs';
 import { ErreurTables, lireTable, listerTables, versionDeLaBase, versionDuContenu } from './debug-tables.mjs';
 import { ErreurClasseur } from './classeur.mjs';
 import { TYPE_XLSX } from '../src/lib/google-sheets.mjs';
-import { reponseVersionnee, segmentDecode } from './partage.mjs';
+import { etiquetteCorrespond, etiquettesDe, reponseVersionnee, segmentDecode } from './partage.mjs';
+import { ErreurExtrait } from './extrait.mjs';
+import { etatDeLaProduction } from './attestation.mjs';
+import { COOKIE, MOT_DE_PASSE_MAX, connexionSecurisee, cookiesDeSession } from './acces.mjs';
 
 export const PREFIXE = '/api/';
 /** Taille maximale d'un corps de requête (une fiche fait quelques kilo-octets). */
@@ -174,9 +221,29 @@ export function traiter(requete, service) {
   const [ressource, brut, ...reste] = morceaux;
   const permis = (...methodes) => (methodes.includes(methode) ? null : json(405, { erreur: `Méthode ${methode} non permise ici.` }, { Allow: methodes.join(', ') }));
 
+  // accès au site de dev : une seule porte, avant toute route (serveur/acces-routes.mjs classe chacune ; une route inconnue demande le mot de passe).
+  // Sans réglage (ou hors du site de dev), `controler` rend null : rien ne change.
+  const acces = service.edition ? service.acces ?? null : null;
+  if (acces) {
+    const interdit = acces.controler({ methode, chemin, entetes });
+    if (interdit) return interdit;
+  }
+  // un appelant sans droit de lecture (route ouverte) ne reçoit jamais la liste des fiches adaptées (`retraits` de l'état, qui nomme des fiches) ni leurs
+  // libellés : `service.etat()` rend l'état masqué pour toute la suite, donc aussi dans les 503 « base indisponible » des routes ouvertes
+  const lecture = () => !acces || acces.droit(entetes).droit !== 'aucun';
+  if (acces && !lecture()) {
+    const entier = service;
+    service = { ...entier, etat: () => {
+      const etat = entier.etat();
+      // `erreur` (pourquoi la base vivante n'a pas pu se refaire) peut citer une fiche : réservée à la lecture, comme `retraits`
+      return etat?.base ? { ...etat, base: { ...etat.base, retraits: null, erreur: etat.base.erreur ? 'La base vivante est en erreur (le détail demande la clé de lecture ou le mot de passe).' : null } } : etat;
+    } };
+  }
+
+  if (ressource === 'acces') return traiterAcces(requete, service, acces, brut, reste, permis);
   if (ressource === 'etat' && brut === undefined) return permis('GET') ?? json(200, service.etat());
   if (ressource === 'maintenance') return traiterMaintenance(requete, service, brut, reste, permis);
-  if (ressource === 'edition') return traiterEdition(requete, service, brut, reste, permis);
+  if (ressource === 'edition') return traiterEdition(requete, service, brut, reste, permis, lecture);
   if (ressource === 'mise-a-jour') return traiterMiseAJour(requete, service, brut, reste, permis);
   if (ressource === 'v1') return traiterApiV1(requete, service, { segments: morceaux.slice(1), params, refusEcriture });
   if (ressource === 'debug') return traiterDebug(requete, service, brut, reste, permis, params);
@@ -287,10 +354,130 @@ function traiterTipeee(service, brut, reste, permis) {
   return service.tipeee.lire().then((r) => json(200, r));
 }
 
+/**
+ * GET /api/edition/extrait/ (le fichier SQLite de l'extrait du contenu, ses octets) et GET /api/edition/extrait/meta/ (son méta en JSON) : site de dev
+ * seulement (403 ailleurs, avant tout). L'extrait est fabriqué au premier appel qui suit un changement du contenu (serveur/extrait.mjs) : la réponse
+ * est une PROMESSE. ETag = l'empreinte du fichier : 304 sans le relire si l'appelant l'a déjà.
+ */
+function traiterExtrait(requete, service, reste, permis) {
+  if (reste.length > 1 || (reste.length === 1 && reste[0] !== 'meta')) return erreur(404, 'Adresse inconnue.');
+  const refus = permis('GET');
+  if (refus) return refus;
+  if (!service.extrait) return erreur(503, 'L’extrait du contenu n’est pas disponible sur ce service.');
+  const echec = (e) => {
+    if (e instanceof ErreurExtrait) return erreur(e.statut, e.message);
+    throw e;
+  };
+  if (reste[0] === 'meta') return service.extrait.meta().then((meta) => json(200, meta), echec);
+  return service.extrait.meta().then((meta) => {
+    const cache = { ETag: `"${meta.fichier.sha256}"`, 'Cache-Control': 'private, no-cache', 'X-Extrait-Fabrique-Le': meta.fabrique_le };
+    const connues = etiquettesDe(requete.entetes?.['if-none-match']);
+    if (connues && etiquetteCorrespond(connues, meta.fichier.sha256)) return { statut: 304, corps: null, brut: '', entetes: cache };
+    return service.extrait.lire().then(({ meta: lue, octets }) => ({
+      statut: 200,
+      corps: null,
+      brut: octets,
+      entetes: { ...cache, ETag: `"${lue.fichier.sha256}"`, 'X-Extrait-Fabrique-Le': lue.fabrique_le, 'Content-Type': 'application/vnd.sqlite3',
+        'Content-Disposition': 'attachment; filename="maverick-extrait.db"' },
+    }));
+  }).catch(echec);
+}
+
+const FORME_D_UN_LOT = /^[0-9a-f-]{36}$/;
+
+/** POST /api/edition/lots/recalcul/ : « tout recalculer » (serveur/edition-lots.mjs#recalculerTout), classe `proposition` : il dépose un lot de nature « code », rien de plus. */
+function traiterLeRecalcul(requete, service, permis) {
+  const refus = permis('POST');
+  if (refus) return refus;
+  const { refus: indisponible } = baseOuRefus(service, 'La base n’est pas disponible pour le moment.');
+  if (indisponible) return indisponible;
+  const { refus: interdit } = lireEcriture(requete);
+  if (interdit) return interdit;
+  const options = { enArrierePlan: service.lots?.enArrierePlan !== false };
+  const echec = (e) => {
+    if (e instanceof ErreurEdition) return erreur(e.statut, e.message, e.details);
+    throw e;
+  };
+  try {
+    return lots.recalculerTout(service.base, options).then(({ lot, recalcul }) => {
+      service.journal?.(lot ? `lots : recalcul déposé en proposition ${lot.id} (${recalcul.ecarts} page(s) écartée(s) sur ${recalcul.pages_examinees}, essai : ${lot.verdict ?? '?'})` : `lots : recalcul sans écart (${recalcul.pages_examinees} page(s) examinée(s))`);
+      return json(lot ? 201 : 200, { lot, recalcul });
+    }, echec);
+  } catch (e) {
+    return echec(e);
+  }
+}
+
+/**
+ * Les routes /api/edition/lots/… (lots de changements, serveur/edition-lots.mjs ; site de dev seulement, 403 ailleurs avant tout). Le dépôt, l'essai et
+ * l'aperçu d'une annulation rendent une PROMESSE (ils tournent dans un fil à part : une copie de la base et les contrôles du contenu) ; lire, appliquer, refuser et annuler
+ * répondent aussitôt.
+ * `service.lots.enArrierePlan === false` : l'essai dans le fil du service (les tests). `service.source()` vrai (la base source, lot 8) : le dépôt ouvre le lot aux
+ * tables de contenu hors édition (`ouvertHorsEdition` de `controlerLeLot`).
+ */
+function traiterLots(requete, service, reste, permis) {
+  if (!service.edition) return erreur(403, 'Les lots de changements ne s’ouvrent que sur le site de dev.');
+  const [id, action, ...suite] = reste;
+  if (id === 'recalcul' && action === undefined) return traiterLeRecalcul(requete, service, permis);
+  if (suite.length || (id !== undefined && !FORME_D_UN_LOT.test(id)) || (action !== undefined && !['essai', 'appliquer', 'refuser', 'annuler', 'annulation'].includes(action))) return erreur(404, 'Adresse inconnue.');
+  const refus = permis(...(id === undefined ? ['GET', 'POST'] : action === undefined || action === 'annulation' ? ['GET'] : ['POST']));
+  if (refus) return refus;
+  const { db, refus: indisponible } = baseOuRefus(service, 'La base n’est pas disponible pour le moment.');
+  if (indisponible) return indisponible;
+  const echec = (e) => {
+    if (e instanceof ErreurEdition) return erreur(e.statut, e.message, e.details);
+    throw e;
+  };
+  const options = { enArrierePlan: service.lots?.enArrierePlan !== false };
+  if (requete.methode === 'GET') {
+    try {
+      if (action === 'annulation') return lots.previsualiserLAnnulation(service.base, id, options).then((apercu) => json(200, apercu), echec);
+      return json(200, id === undefined ? { lots: lots.lister(db) } : lots.lire(db, id));
+    } catch (e) {
+      return echec(e);
+    }
+  }
+  const { valeur, refus: interdit } = lireEcriture(requete);
+  if (interdit) return interdit;
+  try {
+    if (id === undefined) {
+      // la base source (db/source, lot 8 : serveur/base-source.mjs) : un lot vaut pour toutes les tables de contenu, hors édition comprises (la voie générique du
+      // journal) ; sans elle, le défaut du module (LOT_OUVERT_AUX_TABLES_HORS_EDITION, faux) : seules les tables de l'édition
+      const controle = service.source?.() ? { ouvertHorsEdition: true } : {};
+      return lots.deposer(service.base, valeur, { ...options, controle }).then((lot) => {
+        service.journal?.(`lots : proposition ${lot.id} déposée (${lot.operations} opération(s), essai : ${lot.verdict ?? '?'})`);
+        return json(201, lot);
+      }, echec);
+    }
+    if (action === 'essai') return lots.essayerLaProposition(service.base, id, options).then((lot) => json(200, lot), echec);
+    if (action === 'refuser') {
+      const lot = lots.refuser(db, id);
+      service.journal?.(`lots : proposition ${id} refusée`);
+      return json(200, lot);
+    }
+    const t0 = performance.now();
+    if (action === 'annuler') {
+      const lot = lots.annuler(db, id, valeur);
+      const annulation = lot.bilan?.annulation;
+      service.journal?.(`lots : proposition ${id} annulée (lot ${lot.annulation_lot_id}, ${annulation?.remises ?? 0} ligne(s) remise(s), ${annulation?.gardees ?? 0} gardée(s) : changée(s) depuis)`);
+      service.evenement?.('lot_edition', { duree_ms: performance.now() - t0, detail: { lot: lot.annulation_lot_id, operations: annulation?.operations?.length ?? 0, modifications: annulation?.remises ?? 0, page: null, fiches_adaptees: 0 } });
+      return json(200, lot);
+    }
+    const lot = lots.appliquer(db, id, valeur);
+    service.journal?.(`lots : proposition ${id} appliquée (lot ${lot.lot_id}, ${lot.bilan?.ecrites ?? 0} opération(s) écrite(s), ${lot.bilan?.changees ?? 0} changée(s) entre-temps)`);
+    service.evenement?.('lot_edition', { duree_ms: performance.now() - t0, detail: { lot: lot.lot_id, operations: lot.operations, modifications: lot.bilan?.ecrites ?? 0, page: null, fiches_adaptees: 0 } });
+    return json(200, lot);
+  } catch (e) {
+    return echec(e);
+  }
+}
+
 /** Les routes /api/edition/… (site de dev seulement). */
-function traiterEdition(requete, service, action, reste, permis) {
+function traiterEdition(requete, service, action, reste, permis, lecture = () => true) {
   if (!service.edition) return erreur(403, 'L’édition des règles n’est ouverte que sur le site de dev.');
-  if (reste.length || !['en-attente', 'lignes', 'listes', 'pages', 'mots-cles', 'chronologie', 'journal', 'race', 'classe', 'bestiaire', 'portrait', 'evenement', undefined].includes(action)) {
+  if (action === 'extrait') return traiterExtrait(requete, service, reste, permis);
+  if (action === 'lots') return traiterLots(requete, service, reste, permis);
+  if (reste.length || !['en-attente', 'lignes', 'listes', 'pages', 'mots-cles', 'chronologie', 'plan', 'journal', 'race', 'classe', 'bestiaire', 'portrait', 'evenement', undefined].includes(action)) {
     return erreur(404, 'Adresse inconnue.');
   }
   const refus = action === undefined || ['lignes', 'race', 'classe', 'bestiaire', 'portrait', 'evenement'].includes(action) ? permis('POST') : permis('GET');
@@ -301,8 +488,9 @@ function traiterEdition(requete, service, action, reste, permis) {
   if (action === 'en-attente') return json(200, { lignes: lignesEnAttente(db).map((l) => ({ ...l, ligne: ligneSansImage(l.table, l.ligne) })) });
   if (action === 'listes') return json(200, listes(db));
   if (action === 'pages') return json(200, { pages: pagesDuWiki(db) });
-  if (action === 'mots-cles') return json(200, { motsCles: vocabulaire(db) });
+  if (action === 'mots-cles') return json(200, vocabulaireEtFeuille(db, { refusDesForcages }));
   if (action === 'chronologie') return json(200, chronologieVivante(db));
+  if (action === 'plan') return json(200, planVivant(db));
   if (action === 'journal') {
     const jour = new Date().toISOString().slice(0, 10);
     return json(200, journalExporte(db), { 'Content-Disposition': `attachment; filename="journal-edition-${jour}.json"` });
@@ -312,7 +500,8 @@ function traiterEdition(requete, service, action, reste, permis) {
   return repondre(ErreurEdition, () => {
     if (action === 'lignes') return json(200, { lignes: lireLignes(db, valeur?.lignes) });
     if (action === 'race') return json(200, donneesDeRace(db, valeur?.race));
-    if (action === 'classe') return json(200, donneesDeClasse(db, valeur?.classe));
+    // les libellés de fiches (un prétiré par son nom, un joueur par un numéro) ne se montrent qu'avec la lecture : la page n'en tire que la confirmation d'une suppression
+    if (action === 'classe') return json(200, lecture() ? donneesDeClasse(db, valeur?.classe) : { ...donneesDeClasse(db, valeur?.classe), fiches: {} });
     if (action === 'bestiaire') return json(200, lignesDuBestiaire(db, valeur));
     if (action === 'portrait') return json(200, portraitDe(db, valeur));
     if (action === 'evenement') {
@@ -348,23 +537,37 @@ function parametres(params, noms) {
  *   GET /api/debug/tables/ et /api/debug/tables/<nom>/ : le contenu des tables de la base vivante, en lecture seule, toutes les tables et vues
  *     (serveur/debug-tables.mjs) ; le contenu d'une table porte son ETag (versionDuContenu : l'empreinte du JSON du corps) et répond 304 sans corps
  *     à un If-None-Match qui la contient ;
- *   GET /api/debug/base/ : { version } de la base vivante (debug-tables.mjs#versionDeLaBase), Cache-Control: no-store.
+ *   GET /api/debug/base/ : { version } de la base vivante (debug-tables.mjs#versionDeLaBase), Cache-Control: no-store ;
+ *   GET /api/debug/atelier/ : l'état de l'atelier du site de dev (serveur/atelier.mjs : l'extrait de son contenu, les rapports de fabrication lus en lecture seule),
+ *     Cache-Control: no-store ;
+ *   GET /api/debug/structure/ : l'état de l'essai d'une livraison avant son installation (serveur/essai-de-structure.mjs) et de l'essai dans l'ombre (`ombre` :
+ *     serveur/essai-dans-l-ombre.mjs), Cache-Control: no-store.
  * En production, tout répond 403 : c'est la base du serveur de prod qui reste fermée (décisions du propriétaire du 2026-10-15).
  */
 function traiterDebug(requete, service, action, reste, permis, params) {
   if (!service.edition) {
     const quoi = action === 'journal' ? 'Le journal du service ne se lit'
       : action === 'tables' ? 'Le contenu des tables ne se lit'
-        : action === 'base' ? 'La version de la base ne se lit' : 'Les métriques ne se lisent';
+        : action === 'base' ? 'La version de la base ne se lit' : action === 'structure' ? 'L’essai de structure ne se lit' : action === 'atelier' ? 'L’atelier ne se lit' : 'Les métriques ne se lisent';
     // décision du propriétaire (2026-10-15) : en production, la base ne s'ouvre que par les pages du site
     return erreur(403, `${quoi} que sur le site de dev (page Debug).`);
   }
   const metriques = action === 'metriques' && (!reste.length || (reste.length === 1 && ['requetes', 'export'].includes(reste[0])));
   const tables = action === 'tables' && reste.length <= 1;
   const base = action === 'base' && !reste.length;
-  if (!(action === 'journal' && !reste.length) && !metriques && !(action === 'systeme' && !reste.length) && !tables && !base) return erreur(404, 'Adresse inconnue.');
+  const structure = action === 'structure' && !reste.length;
+  const atelier = action === 'atelier' && !reste.length;
+  if (!(action === 'journal' && !reste.length) && !metriques && !(action === 'systeme' && !reste.length) && !tables && !base && !structure && !atelier) return erreur(404, 'Adresse inconnue.');
   const refus = permis('GET');
   if (refus) return refus;
+  if (atelier) {
+    if (!service.atelier) return erreur(503, 'L’atelier n’est pas disponible sur ce service.');
+    return json(200, service.atelier.lire(), { 'Cache-Control': 'no-store' });
+  }
+  if (structure) {
+    if (!service.essaiDeStructure) return erreur(503, 'L’essai de structure n’est pas disponible sur ce service.');
+    return json(200, service.essaiDeStructure.lire(), { 'Cache-Control': 'no-store' });
+  }
   if (tables || base) {
     const { db, refus: indisponible } = baseOuRefus(service, 'La base n’est pas disponible pour le moment.');
     if (indisponible) return indisponible;
@@ -442,6 +645,56 @@ export function memeOrigine(entetes) {
   }
 }
 
+/** L'état d'accès de ce visiteur, pour les pages : { protege, portee, connecte, droit, expire_le }. */
+function etatDAcces(acces, entetes) {
+  if (!acces?.protege()) return { protege: false, portee: null, connecte: false, droit: 'ecriture', expire_le: null };
+  const d = acces.droit(entetes);
+  return { protege: true, portee: acces.portee(), connecte: d.session, droit: d.droit, expire_le: d.expire_s ? new Date(d.expire_s * 1000).toISOString() : null };
+}
+
+/** Une requête qui vient d'une page de ce site (Sec-Fetch-Site) ; la déconnexion n'a pas de corps JSON, seul ce garde-fou lui sert. */
+function memeSite(entetes) {
+  const site = String(entetes['sec-fetch-site'] ?? '').toLowerCase();
+  return !site || site === 'same-origin' || site === 'none';
+}
+
+/**
+ * Les routes /api/acces/… (serveur/acces.mjs) : se connecter (POST { mot_de_passe } : cookie de session), se déconnecter (DELETE), savoir où l'on en est
+ * (GET) et la vérification d'un mandataire (GET …/verifier/ : 204 ou 401, sans corps utile). Toujours ouvertes (la porte ne les arrête pas) ; sans réglage
+ * posé, ou hors du site de dev, il n'y a rien à ouvrir : GET dit « pas protégé », POST et DELETE rendent 409.
+ */
+function traiterAcces(requete, service, acces, action, reste, permis) {
+  const entetes = requete.entetes ?? {};
+  if (reste.length || ![undefined, 'verifier'].includes(action)) return erreur(404, 'Adresse inconnue.');
+  if (action === 'verifier') {
+    const refus = permis('GET');
+    if (refus) return refus;
+    if (!acces || acces.droit(entetes).droit !== 'aucun') return { statut: 204, corps: null, entetes: {} };
+    return json(401, { erreur: 'Accès refusé : la clé de lecture ou le mot de passe est nécessaire.', acces: 'cle' });
+  }
+  const refus = permis('GET', 'POST', 'DELETE');
+  if (refus) return refus;
+  if (requete.methode === 'GET') return json(200, etatDAcces(acces, entetes));
+  if (!acces?.protege()) return erreur(409, 'Aucun mot de passe n’est posé sur ce serveur : il n’y a rien à ouvrir.');
+  const securise = connexionSecurisee(entetes);
+  if (requete.methode === 'DELETE') {
+    if (!memeSite(entetes)) return erreur(403, 'Requête refusée : elle ne vient pas d’une page de ce site.');
+    return json(200, etatDAcces(acces, {}), { 'Set-Cookie': cookiesDeSession(null, { portee: acces.portee(), securise }) });
+  }
+  const { valeur, refus: interdit } = lireEcriture(requete);
+  if (interdit) return interdit;
+  const mot = valeur?.mot_de_passe;
+  if (typeof mot !== 'string' || !mot || mot.length > MOT_DE_PASSE_MAX) return erreur(400, 'Corps attendu : { mot_de_passe } (un texte).');
+  const r = acces.connecter(mot, entetes);
+  if (r.ok) {
+    const connecte = etatDAcces(acces, { cookie: `${COOKIE}=${r.jeton}` });
+    return json(200, connecte, { 'Set-Cookie': cookiesDeSession(r.jeton, { portee: acces.portee(), securise }) });
+  }
+  if (r.raison === 'limite') return json(429, { erreur: 'Trop d’essais refusés : attendez avant de réessayer.', acces: 'mot_de_passe', attente_s: r.attente_s }, { 'Retry-After': String(r.attente_s) });
+  if (r.raison === 'ferme') return erreur(503, 'Le réglage d’accès de ce serveur est illisible : refaites-le avec la commande acces.sh.', { acces: 'mot_de_passe' });
+  return erreur(401, 'Mot de passe incorrect.', { acces: 'mot_de_passe' });
+}
+
 const sansMaintenance = { active: false };
 
 /**
@@ -496,6 +749,44 @@ function traiterConflits(requete, service, db) {
   });
 }
 
+/**
+ * POST /api/mise-a-jour/lancer/ avec la base source, et POST /api/mise-a-jour/copier/ (lot 8 : serveur/paquet.mjs) : le paquet est fabriqué dans un fil à part,
+ * la réponse est une PROMESSE. 202 { lancement, github } ; 409 { erreur, refus? } (refus avant l'envoi : `refus.raison` = `attestation` ou `citations`,
+ * avec `elements`, `fiches` et `tables` [{ table, elements, fiches }]) ; « copier » sans la base source : 409.
+ */
+function figerUnPaquet(requete, service, db, { copie, valeur, versionDev, github, maintenant, t0 }) {
+  if (copie && !service.source?.()) return erreur(409, '« Copier vers le dépôt » n’existe qu’avec la base source (marqueur db/source).');
+  const mode = copie ? 'copie' : valeur?.simulation === true ? 'simulation' : 'mise-a-jour';
+  const note = copie ? null : noteEnPreparation(db, { reference: service.reference, versionDev });
+  if (!copie && valeur?.version_cible !== undefined && valeur.version_cible !== note.version_cible) {
+    return erreur(409, `La version en préparation est maintenant la V${note.version_cible} (la page montrait la V${valeur.version_cible}) : rechargez la page.`, { version_cible: note.version_cible });
+  }
+  const config = service.reference && typeof service.reference === 'object' ? service.reference : {};
+  return figerPaquet(db, service.dossier, {
+    mode, versionDev, versionCible: note?.version_cible ?? null, instant: maintenant, confirmation: valeur?.confirmation, adresse: adressePublique(service, requete.entetes ?? {}),
+    etat: github.configure ? 'envoi' : 'manuel', aLivrer: note ? lignesALivrer(note.lignes) : null, reference: lireReference(service.reference),
+    production: { attestations: service.attestations ?? null, production: config.production ?? null, propre: config.propre ?? null },
+    ...(service.limites ? { limites: service.limites } : {}), ...(service.paquetEnArrierePlan === false ? { enArrierePlan: false } : {}),
+  }).then((lancement) => {
+    const quoi = copie ? 'copie vers le dépôt' : lancement.simulation ? 'simulation de mise à jour' : 'mise à jour';
+    service.journal?.(`${quoi} : paquet ${lancement.lot} figé (${lancement.modifications} modification(s)${copie ? '' : `, V${lancement.version_cible}`}, ${lancement.octets} octets)`);
+    service.evenement?.('mise_a_jour', {
+      duree_ms: performance.now() - t0,
+      detail: { etape: 'figer', lot: lancement.lot, paquet: true, mode, simulation: Boolean(lancement.simulation), modifications: lancement.modifications ?? null, version_cible: lancement.version_cible ?? null, etat: lancement.etat },
+    });
+    service.maintenance?.();
+    if (github.configure) service.github.declencher().then(() => service.maintenance?.()).catch(() => {});
+    return json(202, { lancement, github });
+  }, (e) => {
+    if (!(e instanceof ErreurNotes)) throw e;
+    if (e.details?.refus) {
+      service.journal?.(`mise à jour : paquet refusé avant l’envoi (${e.details.refus.raison})`);
+      service.evenement?.('mise_a_jour', { detail: { etape: 'refus', mode, raison: e.details.refus.raison, elements: e.details.refus.elements ?? null, fiches: e.details.refus.fiches ?? null } });
+    }
+    return erreur(e.statut, e.message, e.details);
+  });
+}
+
 /** Les routes /api/mise-a-jour/… (site de dev seulement). */
 function traiterMiseAJour(requete, service, action, reste, permis) {
   if (!service.edition) return erreur(403, 'La page Mise à jour ne se prépare que sur le site de dev.');
@@ -506,9 +797,12 @@ function traiterMiseAJour(requete, service, action, reste, permis) {
     if (!/^[0-9a-f-]{36}$/.test(reste[0])) return erreur(404, 'Lot introuvable.');
     // seul le lot du lancement actuel, toujours en jeu, est servi : un lot annulé, remplacé ou de simulation finie ne peut plus être livré
     const lot = lireLot(service.dossier, reste[0]);
-    return lot === null ? erreur(410, 'Lot introuvable, annulé ou remplacé : il ne peut plus être livré.') : { statut: 200, corps: null, brut: lot, entetes: {} };
+    if (lot === null) return erreur(410, 'Lot introuvable, annulé ou remplacé : il ne peut plus être livré.');
+    // le paquet de la base source (serveur/paquet.mjs) : un fichier SQLite, servi octet pour octet
+    const entetes = Buffer.isBuffer(lot) ? { 'Content-Type': 'application/vnd.sqlite3', 'Content-Disposition': `attachment; filename="paquet-${reste[0]}.db"` } : {};
+    return { statut: 200, corps: null, brut: lot, entetes };
   }
-  if (reste.length || ![undefined, 'brouillon', 'majeure', 'lancer', 'liberer', 'lancement', 'conflits'].includes(action)) return erreur(404, 'Adresse inconnue.');
+  if (reste.length || ![undefined, 'brouillon', 'majeure', 'lancer', 'liberer', 'lancement', 'conflits', 'copier'].includes(action)) return erreur(404, 'Adresse inconnue.');
   const refus = action === 'conflits' ? permis('GET', 'POST') : action === undefined || action === 'lancement' ? permis('GET') : permis('POST');
   if (refus) return refus;
   const { db, refus: indisponible } = baseOuRefus(service, 'La base n’est pas disponible pour le moment.');
@@ -519,11 +813,18 @@ function traiterMiseAJour(requete, service, action, reste, permis) {
   const maintenant = instant();
   if (action === undefined || action === 'lancement') {
     service.github?.suivre().catch(() => {}); // en arrière-plan : la réponse suivante aura l'état à jour
-    const lancement = actualiserLancement(db, service.dossier, { reference: lireReference(service.reference) });
+    // (un paquet de la base source : sa note reportée dans la base quand la production la publie, serveur/paquet.mjs#actualiser)
+    const lancement = actualiser(db, service.dossier, { reference: lireReference(service.reference), journal: service.journal ?? (() => {}) });
     // mêmes règles que le service pour la page : annulable, et place occupée (un nouveau lancement serait refusé)
     const regles = { liberable: estLiberable(lancement, maintenant), occupe: occupe(lancement, maintenant) };
     if (action === 'lancement') return json(200, { lancement, ...regles, github });
-    return json(200, { ...noteEnPreparation(db, { reference: service.reference, versionDev }), lancement, ...regles, github, confirmation: CONFIRMATION });
+    // `etat_production` : la production a-t-elle appliqué sa dernière mise à jour ? (son attestation comparée à ce qu'elle publie : serveur/attestation.mjs)
+    const reference = service.reference && typeof service.reference === 'object' ? service.reference : {};
+    const etat_production = etatDeLaProduction({ dossier: service.attestations ?? null, production: reference.production ?? null, propre: reference.propre ?? null });
+    // `base_source` : le marqueur db/source (lot 8) — « Effectuer la mise à jour » fige alors un paquet, et « Copier vers le dépôt » existe
+    const baseSource = Boolean(service.source?.());
+    return json(200, { ...noteEnPreparation(db, { reference: service.reference, versionDev }), lancement, ...regles, github, confirmation: CONFIRMATION, etat_production,
+      base_source: baseSource, ...(baseSource ? { confirmation_copie: CONFIRMATION_COPIE } : {}) });
   }
   const interdit = refusEcriture(requete.entetes ?? {});
   if (interdit) return interdit;
@@ -545,6 +846,7 @@ function traiterMiseAJour(requete, service, action, reste, permis) {
       return json(200, { lancement, liberable: estLiberable(lancement, maintenant), occupe: occupe(lancement, maintenant) });
     }
     const t0 = performance.now();
+    if (action === 'copier' || service.source?.()) return figerUnPaquet(requete, service, db, { copie: action === 'copier', valeur, versionDev, github, maintenant, t0 });
     const note = noteEnPreparation(db, { reference: service.reference, versionDev });
     // la version que la page a montrée (et confirmée) doit être celle qui partirait : la case « Version majeure » cochée ou décochée depuis un
     // autre onglet (ou une nouvelle version de master) ne fait jamais partir une autre version que celle qu'on a vue
@@ -554,7 +856,7 @@ function traiterMiseAJour(requete, service, action, reste, permis) {
     // sans jeton GitHub sur ce serveur : le lot est figé quand même, la page dit comment lancer le workflow à la main
     const lancement = figerLot(db, service.dossier, {
       versionDev, versionCible: note.version_cible, instant: maintenant, confirmation: valeur?.confirmation, adresse: adressePublique(service, requete.entetes ?? {}),
-      etat: github.configure ? 'envoi' : 'manuel', simulation: valeur?.simulation === true, aLivrer: note.lignes ? note.lignes.length : null,
+      etat: github.configure ? 'envoi' : 'manuel', simulation: valeur?.simulation === true, aLivrer: lignesALivrer(note.lignes),
       ...(service.limites ? { limites: service.limites } : {}),
     });
     service.journal?.(`${lancement.simulation ? 'simulation de mise à jour' : 'mise à jour'} : lot ${lancement.lot} figé (${lancement.modifications} modification(s), V${note.version_cible})`);

@@ -7,15 +7,14 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { enregistrerFiche, lireFiche } from '../serveur/fiches.mjs';
-import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
 import { armesApresChoix, attaqueADeuxArmes, choixEnAttente, degatsDArme, donDeBase, durabiliteDArme, durabiliteMaxDArme, maitrisesParFamille, modeHyperDe } from '../src/lib/fiche-moteur.mjs';
 import { forgerArme } from '../src/lib/arme-forge.mjs';
-import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { cheminDImport, reglesDImport } from './aide-base-d-import.mjs';
 
-const db = ouvrirBase({ sansExemples: false });
-const regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(db))); // tel que la page le reçoit
+// les règles (textes et valeurs que le site de dev modifie librement) : épinglées sur leur état d'import (test/aide-base-d-import.mjs)
+const regles = reglesDImport(); // tel que la page le reçoit
 const xpDuNiveau = (n) => regles.niveaux.find((l) => l.niveau === n).xp_min;
 const arme = (famille, nom) => {
   const a = regles.armes.find((x) => x.famille_id === famille && x.nom === nom);
@@ -185,7 +184,7 @@ test('choix à faire : l’ethnie d’une race choisie qui en a', () => {
 
 test('portrait et ceinture (migration 0031) : enregistrés par le service avec la fiche, relus tels quels ; la base borne le cadrage et la ceinture', (t) => {
   const racine = dossierTemporaire('refonte', { t });
-  const vivante = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: racine }).chemin);
+  const vivante = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminDImport(), dossier: racine }).chemin);
   const image = `data:image/webp;base64,${'A'.repeat(2000)}`;
   const fiche = {
     ...archer(2), portrait: image, portrait_x: 0.4, portrait_y: 0.25, portrait_zoom: 1.8,

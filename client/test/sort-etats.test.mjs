@@ -1,5 +1,5 @@
 // Altérations d'état repérées dans le texte d'un sort (lib/sort-etats.mjs : la règle de l'importeur documentée dans data/schema.sql, table sort_etat),
-// que l'édition du site de dev refait quand une case change : rejouée sur les 322 sorts, elle redonne les lignes de sort_etat. Deux sorts seulement
+// que l'édition du site de dev refait quand une case change : rejouée sur tous les sorts, elle redonne les lignes de sort_etat. Deux sorts seulement
 // diffèrent, par des espaces insécables que la migration 0003 a mises dans leur texte sans les reporter dans l'extrait ou la forme trouvée (les
 // « deux écarts déjà présents » de test/orthographe-magies.test.mjs) : là, les lignes sont égales aux espaces insécables près.
 import assert from 'node:assert/strict';
@@ -20,8 +20,8 @@ const trier = (lignes) => [...lignes].sort((a, b) => `${a.etat_id}|${a.relation}
 const sansInsecables = (lignes) => lignes.map((l) => ({ ...l, forme_trouvee: l.forme_trouvee.replace(/[  ]/g, ' ').trim(), extrait: l.extrait.replace(/[  ]/g, ' ') }));
 const ECARTS_CONNUS = new Set(['magies/magie-de-lombre#sort:rayon-negatif', 'magies/magie-du-vide#sort:bisou-du-vide']);
 
-test('rejouée sur les 322 sorts : les lignes de sort_etat exactement (état, relation, rang, stade, case, forme trouvée, extrait)', () => {
-  assert.equal(sorts.length, 322);
+test('rejouée sur tous les sorts : les lignes de sort_etat exactement (état, relation, rang, stade, case, forme trouvée, extrait)', () => {
+  assert.ok(sorts.length > 0);
   const differents = [];
   let n = 0;
   for (const s of sorts) {

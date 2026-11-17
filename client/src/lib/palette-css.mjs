@@ -33,6 +33,8 @@
 //   - materiau : lib/materiaux-couleurs.mjs#COULEURS_DES_MATERIAUX (fin de ressource.id : fer, fer-noir…), plus `par-defaut` (COULEUR_NEUTRE : un
 //     matériau sans couleur dans l'onglet) ; la ligne d'un matériau de l'onglet Armes, sa pastille dans la fiche de l'arme et sur la page Composants ;
 //   - arme : lib/equipement-couleurs.mjs#COULEURS_DES_ARMES (depart : le bleu des armes de départ, sans texte : une nuance et un filet) ;
+//   - degats : lib/equipement-couleurs.mjs#COULEURS_DES_DEGATS (taille, estoc, frappe : les types de dégâts physiques), sans texte : le liseré des
+//     pastilles de type des armes, des résistances et des faiblesses des armures, et le dessin de l'icône `degats:<id>` d'un mot-clé (lib/icones.mjs) ;
 //   - armure : lib/equipement-couleurs.mjs#COULEURS_DES_TYPES (le type d'une armure ou d'une matière : « Léger » → leger), plus `par-defaut`
 //     (COULEUR_SANS_TYPE) ;
 //   - poids : lib/equipement-couleurs.mjs#COULEURS_DES_POIDS (bouclier_poids.id, décision R92), plus `par-defaut` (COULEUR_SANS_TYPE) ; la pastille du
@@ -41,21 +43,24 @@
 //     `par-defaut` : un niveau absent (« Niveau ? », ligne vide) ne porte aucune classe ; les pastilles des niveaux, les lignes d'effet et de monture,
 //     l'encart de l'accessoire créé ;
 //   - partie : lib/parties-couleurs.mjs#COULEURS_DES_PARTIES (l'id d'une partie de l'ancien guide, lib/livres.mjs#PARTIES : decouvrir, creer, jouer,
-//     progresser, plus-loin), sans `par-defaut` : une page sans partie (Règles avancées, Guide du MJ) ne porte aucune classe et garde l'accent du site ;
-//     les pages de Découvrir et des Bases, leurs cartes « Par où commencer ? » de l'accueil, les groupes du sommaire des Bases, les quatre zones de la
-//     fiche. Un texte blanc est posé sur ces couleurs (aplats du guide et de la fiche) : leur famille porte un texte.
+//     progresser, plus-loin), sans `par-defaut` : une page sans partie (les onglets des Règles hors création du personnage, Guide du MJ) ne porte aucune
+//     classe et garde l'accent du site ; les pages de Découvrir et de la création du personnage, les cartes « Par où commencer ? » de l'accueil, les
+//     quatre zones de la fiche. Un texte blanc est posé sur ces couleurs (aplats du guide et de la fiche) : leur famille porte un texte.
 //   - genre, don : lib/genres-couleurs.mjs (sort_type.type, capacite.type), sans `par-defaut` (listes fermées) : les étiquettes des genres de sort
 //     des pages des magies et des types de don des pages de classe.
+//   - case : lib/cases-couleurs.mjs#COULEURS_DES_CASES (rouge, orange…, les couleurs « {couleur:x} » des cases de tableau du Markdown des pages, que
+//     pose lib/markdown-couleurs.mjs et que relit l'éditeur), sans `par-defaut` : la case mêle la couleur à la surface, texte du site (sans texte).
 // L'id d'une classe est la clé du module de sa règle passée par text.mjs#normalize (« chakra+sante » → « chakra-sante ») : il ne change pas quand le nom
 // affiché change.
 //
 // Où la feuille est émise (le poids de chaque page) : les familles que beaucoup de pages posent (FAMILLES_DE_CHAQUE_PAGE : magies, attributs,
-// caractéristiques, affinités) et les seconds rangs des magies sont posés sur chaque page par layouts/Base.astro (cssDeLaPalette) ; les familles d'une
+// caractéristiques, affinités, cases de tableau : toute page qui rend du Markdown, et l'éditeur en place ; types de dégâts : l'icône d'un mot-clé, dans ses
+// bulles) et les seconds rangs des magies sont posés sur chaque page par layouts/Base.astro (cssDeLaPalette) ; les familles d'une
 // zone (FAMILLES_DES_ZONES : postures, alignements, catégories de classe, races, paliers, Mode Hyper, neutre, matériaux, armes de départ, types
 // d'armure, poids des boucliers, niveaux des accessoires, parties du guide) et les seconds rangs des caractéristiques ne le sont que par le composant des
 // pages qui les posent (cssDesFamilles, cssDesSecondsRangs : le bloc « postures » du guide, la fiche (FAMILLES_DE_LA_FICHE), l'onglet Armes, les onglets
 // Armures et Boucliers, l'onglet Accessoires, la page Composants, /classes/ et les pages de classe, /races/ et les pages de race, le mode modification
-// qui dessine une race ou une classe créée, une page de Découvrir ou des Bases, l'accueil et le sommaire des Bases), comme les combinaisons des potions
+// qui dessine une race ou une classe créée, une page de Découvrir, l'accueil), comme les combinaisons des potions
 // (cssDesPotions).
 //
 // Deux couleurs d'une même famille sur un même élément (dégradé de l'innée vers l'acquise, créature ou cible à deux magies, trait d'une relation entre
@@ -64,7 +69,7 @@
 // deux porte toujours les deux classes, la seconde de la même couleur quand il n'en a qu'une (classesDeDeuxMagies, classesDeDeuxCaracteristiques) : il
 // n'hérite jamais du second rang d'un parent.
 //
-// Une potion (onglet Ceinture de la page Équipement) : sa classe de combinaison `.couleur-potion-<famille>-<id>-n<rang>` (classeDePotion) pose
+// Une potion (page Ceinture, /ressources/objets-a-la-ceinture/) : sa classe de combinaison `.couleur-potion-<famille>-<id>-n<rang>` (classeDePotion) pose
 // `--ligne-fond` et `--ligne-texte` (la ligne colorée du gabarit commun, styles/global/tableaux.css), calculés par lib/alchimie-couleurs.mjs#couleurDePotion
 // depuis la couleur de sa classe de base ; components/ceinture/CeinturePanneau.astro n'émet que celles de ses lignes (cssDesPotions).
 //
@@ -81,10 +86,12 @@ import { CLASS_COLORS, groupeDeCouleur } from './class-groups.mjs';
 import { RACE_COLORS } from './race-kinds.mjs';
 import { COULEURS_DES_PALIERS, COULEURS_DU_MODE_HYPER } from './fiche-couleurs.mjs';
 import { COULEURS_DES_MATERIAUX, cleDeMateriau } from './materiaux-couleurs.mjs';
-import { COULEUR_SANS_TYPE, COULEURS_DES_ARMES, COULEURS_DES_POIDS, COULEURS_DES_TYPES } from './equipement-couleurs.mjs';
+import { COULEUR_SANS_TYPE, COULEURS_DES_ARMES, COULEURS_DES_DEGATS, COULEURS_DES_POIDS, COULEURS_DES_TYPES } from './equipement-couleurs.mjs';
 import { COULEURS_DES_NIVEAUX } from './accessoires-couleurs.mjs';
 import { COULEURS_DES_PARTIES } from './parties-couleurs.mjs';
 import { COULEURS_DES_GENRES, COULEURS_DES_TYPES_DE_DON } from './genres-couleurs.mjs';
+import { COULEURS_DES_CASES } from './cases-couleurs.mjs';
+import { lireLaCouleurEcrite } from './couleurs-ecrites.mjs';
 import { normalize } from './text.mjs';
 
 /** L'id de la classe d'une couleur inconnue de sa famille (magie : COULEUR_PAR_DEFAUT ; caractéristique, posture, alignement, neutre : COULEUR_NEUTRE). */
@@ -109,20 +116,27 @@ export const FAMILLES_DE_LA_PALETTE = Object.freeze({
   arme: COULEURS_DES_ARMES,
   armure: Object.freeze({ ...COULEURS_DES_TYPES, [PAR_DEFAUT]: COULEUR_SANS_TYPE }),
   poids: Object.freeze({ ...COULEURS_DES_POIDS, [PAR_DEFAUT]: COULEUR_SANS_TYPE }),
+  degats: COULEURS_DES_DEGATS,
   niveau: COULEURS_DES_NIVEAUX,
   partie: COULEURS_DES_PARTIES,
   genre: COULEURS_DES_GENRES,
   don: COULEURS_DES_TYPES_DE_DON,
+  case: COULEURS_DES_CASES,
 });
 
-/** Les familles posées sur chaque page (layouts/Base.astro : cssDeLaPalette), celles que beaucoup de pages posent. */
-export const FAMILLES_DE_CHAQUE_PAGE = Object.freeze(['magie', 'attribut', 'caracteristique', 'affinite']);
+/**
+ * Les familles posées sur chaque page (layouts/Base.astro : cssDeLaPalette), celles que beaucoup de pages posent ; `case` : les cases de tableau du
+ * Markdown, sur toute page qui en rend (wiki, guide, Codex, chronologie, panneaux de règles, accueil) et dans l'éditeur en place, qui les pose au navigateur ;
+ * `degats` : les trois types de dégâts physiques, pour l'icône d'un mot-clé (lib/icones.mjs, `couleur-degats-<id>`), que montrent les bulles du Glossaire de
+ * n'importe quelle page, comme les magies (les pastilles des onglets Armes, Armures et Boucliers la lisent aussi).
+ */
+export const FAMILLES_DE_CHAQUE_PAGE = Object.freeze(['magie', 'attribut', 'caracteristique', 'affinite', 'case', 'degats']);
 /**
  * Les familles d'une zone, émises par le composant des pages qui les posent (cssDesFamilles) : `posture` (le bloc « postures » du guide, la fiche),
  * `alignement`, `palier`, `mode`, `neutre` (la fiche), `classe` (/classes/, les pages de classe, la fiche, la page d'une classe créée sur le site de
  * dev), `race` (/races/, les pages de race, la fiche, la page d'une race créée), `materiau` (l'onglet Armes, la page Composants), `arme` (l'onglet
  * Armes), `armure` (les onglets Armures et Boucliers), `poids` (l'onglet Boucliers, la fiche), `niveau` (l'onglet Accessoires), `partie` (une page de
- * Découvrir ou des Bases, l'accueil, le sommaire des Bases, la fiche), `genre` (les pages des magies), `don` (les pages de classe).
+ * Découvrir, l'accueil, la fiche), `genre` (les pages des magies), `don` (les pages de classe).
  */
 export const FAMILLES_DES_ZONES = Object.freeze(['posture', 'alignement', 'classe', 'race', 'palier', 'mode', 'neutre', 'materiau', 'arme', 'armure', 'poids', 'niveau', 'partie', 'genre', 'don']);
 
@@ -134,12 +148,14 @@ export const FAMILLES_DE_LA_FICHE = Object.freeze(['posture', 'alignement', 'cla
 
 /**
  * Les familles sur la couleur desquelles aucun texte n'est posé en fond : `palier` (le trait de 3 px d'une ligne de résistance de la fiche), `arme` (le
- * bleu des armes de départ : une nuance sur la surface, un filet et, mêlé au texte du site, la couleur de la phrase des règles ; styles/armes/armes.css). Le seuil de lisibilité de 4,5:1 vaut pour un texte : leur fond reste la
+ * bleu des armes de départ : une nuance sur la surface, un filet et, mêlé au texte du site, la couleur de la phrase des règles ; styles/armes/armes.css),
+ * `degats` (le liseré des pastilles Taille, Estoc et Frappe ; styles/equipement/equipement.css). Le seuil de lisibilité de 4,5:1 vaut pour un texte : leur fond reste la
  * couleur de leur règle, sans correction (test/palette-css.test.mjs ne mesure le contraste que des familles qui portent un texte). `genre` et `don`
  * (étiquettes des genres de sort et des types de don) : un fond pâle et un texte calculés depuis la couleur (styles/magie/sorts.css,
- * styles/classe/dons.css), mesurés à part ; jamais un texte sur la couleur pure.
+ * styles/classe/dons.css), mesurés à part ; jamais un texte sur la couleur pure. `case` (les cases de tableau du Markdown) : la couleur mêlée à 26 % à
+ * la surface, sous le texte du site (styles/global/wiki.css), mesurée à part dans les deux thèmes.
  */
-export const FAMILLES_SANS_TEXTE = Object.freeze(['palier', 'arme', 'genre', 'don']);
+export const FAMILLES_SANS_TEXTE = Object.freeze(['palier', 'arme', 'degats', 'genre', 'don', 'case']);
 
 /**
  * Le fond d'une classe : la couleur de sa règle, rendue lisible (alchimie-couleurs.mjs#lisible) quand sa famille porte un texte : inchangée quand son
@@ -228,6 +244,9 @@ export const classeDuTypeDArmure = (type) => classeOuParDefaut('armure', type);
 /** La classe d'un poids de bouclier (bouclier_poids.id : « tres-lourd » → « couleur-poids-tres-lourd ») ; `par-defaut` pour un poids sans couleur. */
 export const classeDuPoids = (id) => classeOuParDefaut('poids', id);
 
+/** La classe d'un type de dégâts physiques (« taille » → « couleur-degats-taille ») ; null pour un type inconnu (aucune couleur : le liseré de la pastille). */
+export const classeDeDegats = (type) => classeDeCouleur('degats', type);
+
 /** La classe du niveau d'un effet ou d'une monture de l'onglet Accessoires (1 → « couleur-niveau-1 ») ; null pour un niveau absent ou inconnu (aucune couleur). */
 export const classeDeNiveau = (niveau) => classeDeCouleur('niveau', String(niveau ?? ''));
 
@@ -235,8 +254,8 @@ export const classeDeNiveau = (niveau) => classeDeCouleur('niveau', String(nivea
 export const FAMILLE_DES_PARTIES = 'partie';
 
 /**
- * La classe d'une partie de l'ancien guide (lib/livres.mjs#PARTIES : « creer » → « couleur-partie-creer ») : celle d'une page de Découvrir ou des Bases
- * (lib/livres.mjs#partieDeLaPage), d'un groupe du sommaire des Bases, d'une zone de la fiche ; null pour une partie absente ou inconnue (aucune couleur :
+ * La classe d'une partie de l'ancien guide (lib/livres.mjs#PARTIES : « creer » → « couleur-partie-creer ») : celle d'une page de Découvrir
+ * (lib/livres.mjs#partieDeLaPage), d'une zone de la fiche ; null pour une partie absente ou inconnue (aucune couleur :
  * l'accent du site).
  */
 export const classeDePartie = (id) => classeDeCouleur(FAMILLE_DES_PARTIES, id ?? '');
@@ -246,6 +265,12 @@ export const classeDeGenre = (type) => classeDeCouleur('genre', type ?? '');
 
 /** La classe d'un type de don (capacite.type : « reaction » → « couleur-don-reaction ») ; null si inconnu. */
 export const classeDeTypeDeDon = (type) => classeDeCouleur('don', type ?? '');
+
+/**
+ * La classe de la couleur d'une case de tableau (« {couleur:vert} » → « couleur-case-vert ») ; null si inconnue. Le même nom que
+ * lib/markdown-edition.mjs#classeDeCouleurDeCase, que le plugin remark et l'éditeur posent sans importer ce module (testé).
+ */
+export const classeDeCase = (id) => classeDeCouleur('case', id ?? '');
 
 /** La classe neutre (COULEUR_NEUTRE) : ce que la fiche montre sans couleur de règle (magie acquise « Aucune », objet de départ, ethnie sans race). */
 export const CLASSE_NEUTRE = classeDeCouleur('neutre', PAR_DEFAUT);
@@ -291,10 +316,34 @@ export const cssDesSecondsRangs = (famille) => secondsRangs(famille).map((c) => 
 export const cssDeLaPalette = () => cssDesFamilles(FAMILLES_DE_CHAQUE_PAGE) + cssDesSecondsRangs('magie');
 
 /**
- * La feuille des parties du guide (famille `partie`, d'une zone) : celle qu'émettent une page de Découvrir ou des Bases, l'accueil et le sommaire des Bases
- * (la fiche l'émet avec ses autres familles, FAMILLES_DE_LA_FICHE).
+ * La feuille des parties du guide (famille `partie`, d'une zone) : celle qu'émettent une page de Découvrir et l'accueil (la fiche l'émet avec ses
+ * autres familles, FAMILLES_DE_LA_FICHE).
  */
 export const cssDesParties = () => cssDesFamilles([FAMILLE_DES_PARTIES]);
+
+/**
+ * La feuille des couleurs écrites d'un texte Markdown (`{couleur:x}` d'une case ou d'un onglet : lib/couleurs-ecrites.mjs) : pour chaque valeur de `valeurs`,
+ * la règle de sa classe `.couleur-<famille>-<id>{--couleur:…;--couleur-texte:…}` pour une couleur d'une famille d'une zone (celles de FAMILLES_DE_CHAQUE_PAGE
+ * et les sept noms d'avant, famille `case`, sont déjà sur chaque page) ; pour une couleur écrite « #rrggbb », `.couleur-ecrite-<rrggbb>` (le fond rendu
+ * lisible, le texte de texteSurCouleur, comme une couleur des règles ou celle d'un mot-clé : cssDesMotsCles). Une référence que la palette ne connaît pas n'a
+ * pas de règle (l'élément reste neutre). Une règle par classe, dans l'ordre des valeurs. Émise par components/SupportDuMarkdown.astro, réécrite au besoin par
+ * le mode modification (scripts/edition/couleurs.mjs).
+ */
+export function cssDesCouleursEcrites(valeurs) {
+  const regles = new Map();
+  for (const v of valeurs ?? []) {
+    const lue = lireLaCouleurEcrite(v);
+    if (!lue || regles.has(lue.classe)) continue;
+    if (lue.genre === 'ecrite') {
+      const fond = lisible(lue.valeur);
+      regles.set(lue.classe, `.${lue.classe}{--couleur:${fond};--couleur-texte:${texteSurCouleur(fond)}}`);
+    } else if (lue.genre === 'reference') {
+      const c = couleurDeReference(lue.valeur);
+      if (c && !FAMILLES_DE_CHAQUE_PAGE.includes(c.famille)) regles.set(c.classe, `.${c.classe}{--couleur:${c.fond};--couleur-texte:${c.texte}}`);
+    }
+  }
+  return [...regles.values()].join('');
+}
 
 /** Les classes que la palette pose sur chaque page (familles de chaque page et seconds rangs des magies). */
 export const classesDeLaPalette = () =>
@@ -332,3 +381,53 @@ export const classeDEvenement = (id) => `couleur-evenement-${idDeCouleur(id)}`;
  */
 export const cssDesEvenements = (couleurs) =>
   [...(couleurs ?? [])].map(([id, fond]) => `.${classeDEvenement(id)}{--couleur:${fond};--couleur-texte:${texteSurCouleur(fond)}}`).join('');
+
+/**
+ * La couleur de la palette qu'une référence de mot-clé nomme (« classe:melee », « magie:espace-temps » : migration 0098, mot_cle.couleur ; id = celui de
+ * sa classe, idDeCouleur de la clé du module) : { famille, cle, classe, fond, texte } (couleursDeLaPalette), ou null si la palette ne la connaît pas.
+ */
+export function couleurDeReference(reference) {
+  const m = /^([a-z]+):([a-z0-9-]+)$/.exec(String(reference ?? ''));
+  if (!m || !Object.hasOwn(FAMILLES_DE_LA_PALETTE, m[1])) return null;
+  return couleursDeLaPalette([m[1]]).find((c) => idDeCouleur(c.cle) === m[2]) ?? null;
+}
+
+/**
+ * La faute de la couleur d'un mot-clé (mot_cle.couleur, migration 0098), ou null : « #rrggbb » en minuscules, ou une référence « <famille>:<id> » que
+ * la palette connaît (couleurDeReference). Ici et non dans lib/mots-cles-liens.mjs : elle lit la palette, qu'un script de page n'importe jamais.
+ */
+export function fauteDeLaCouleur(couleur) {
+  if (typeof couleur !== 'string' || !couleur) return 'une couleur est attendue';
+  if (/^#[0-9a-f]{6}$/.test(couleur)) return null;
+  if (/^#[0-9a-fA-F]{6}$/.test(couleur)) return 'une couleur écrite s’écrit en minuscules (« #rrggbb »)';
+  const m = /^([a-z]+):([a-z0-9]+(?:-[a-z0-9]+)*)$/.exec(couleur);
+  if (!m) return 'une couleur s’écrit « #rrggbb » ou « <famille>:<id> » d’une couleur du site (« classe:melee », « magie:feu »)';
+  if (!Object.hasOwn(FAMILLES_DE_LA_PALETTE, m[1])) return `« ${m[1]} » n’est pas une famille de couleurs du site (${Object.keys(FAMILLES_DE_LA_PALETTE).join(', ')})`;
+  if (!couleurDeReference(couleur)) return `la famille « ${m[1]} » n’a pas de couleur « ${m[2]} »`;
+  return null;
+}
+
+/**
+ * La feuille des mots-clés colorés (migration 0098) d'après [{ id, couleur }] (lib/mots-cles-db.mjs#motsClesDeLaBase, GET /api/edition/mots-cles/) :
+ * pour une couleur écrite, la règle de sa classe `.couleur-mot-cle-<id>{--couleur:…;--couleur-texte:…}` (le fond rendu lisible, le texte de
+ * texteSurCouleur, comme une couleur des règles) ; pour une référence d'une famille d'une zone (FAMILLES_DES_ZONES), la règle de sa classe de la
+ * palette (les familles de FAMILLES_DE_CHAQUE_PAGE sont déjà sur chaque page, cssDeLaPalette) ; une référence inconnue n'a pas de règle. Une règle par
+ * classe, dans l'ordre des mots-clés. Émise par la mise en page (tech-front), réécrite par le site de dev quand le vocabulaire change.
+ */
+export function cssDesMotsCles(motsCles) {
+  const regles = new Map();
+  for (const m of motsCles ?? []) {
+    const couleur = m?.couleur;
+    if (typeof couleur !== 'string' || !couleur) continue;
+    if (/^#[0-9a-f]{6}$/.test(couleur)) {
+      const classe = `couleur-mot-cle-${m.id}`;
+      const fond = lisible(couleur);
+      if (!regles.has(classe)) regles.set(classe, `.${classe}{--couleur:${fond};--couleur-texte:${texteSurCouleur(fond)}}`);
+      continue;
+    }
+    const c = couleurDeReference(couleur);
+    if (!c || FAMILLES_DE_CHAQUE_PAGE.includes(c.famille) || regles.has(c.classe)) continue;
+    regles.set(c.classe, `.${c.classe}{--couleur:${c.fond};--couleur-texte:${c.texte}}`);
+  }
+  return [...regles.values()].join('');
+}

@@ -26,6 +26,7 @@
 //     erreurs 5xx avec l'empreinte de leur pile, purge) ;
 //   - les pages vues mesurées par le navigateur (POST /api/metriques/page/ : temps jusqu'au premier octet, DOMContentLoaded, chargement, LCP), ouverte
 //     sur les deux instances (décision du propriétaire), fermée par MAVERICK_METRIQUES_PAGES=0.
+// Écartée : la sonde de l'atelier (User-Agent exact UA_SONDE) n'est jamais mesurée (60 à 200 requêtes par fabrication fausseraient les comptes et les durées).
 // JAMAIS : adresse IP, corps, chaîne de requête, identifiant de fiche, Authorization ou cookie, User-Agent entier.
 //
 // Agrégats persistés (tables ci-dessous) : par heure × route × méthode (et par tranche de 5 minutes, gardée 2 jours, pour la période « 1h ») : n,
@@ -98,6 +99,12 @@ export const RETENTION = Object.freeze({
 export const INTERVALLE_VERSEMENT = 60_000;
 /** Purge (rétention) et VACUUM incrémental : une fois par jour. */
 export const INTERVALLE_PURGE = 86_400_000;
+/**
+ * Le User-Agent de la sonde de l'atelier (deploy/installateur/atelier/lib.sh#SONDE_AGENT) : ses requêtes ne sont pas mesurées (ce texte exact, rien d'autre ;
+ * la production exécute le même code, et un autre User-Agent est mesuré comme avant).
+ */
+export const UA_SONDE = 'maverick-atelier-sonde/1';
+
 /** Requêtes gardées en mémoire, une à une (site de dev : GET /api/debug/metriques/requetes/). */
 export const CAPACITE_REQUETES = 2000;
 /** Bornes de la mémoire tant que la base ne reçoit rien (panne) : au-delà, les plus anciennes entrées sont perdues (comptées). */
@@ -256,8 +263,8 @@ export const ROUTE_INCONNUE = '/api/{inconnue}';
 /** Méthodes gardées telles quelles ; toute autre devient « AUTRE ». */
 export const METHODES = Object.freeze(['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']);
 
-const ACTIONS_EDITION = new Set(['en-attente', 'lignes', 'listes', 'pages', 'mots-cles', 'chronologie', 'journal', 'race', 'classe', 'bestiaire', 'portrait', 'evenement']);
-const ACTIONS_MISE_A_JOUR = new Set(['brouillon', 'majeure', 'lancer', 'liberer', 'lancement', 'conflits']);
+const ACTIONS_EDITION = new Set(['en-attente', 'lignes', 'listes', 'pages', 'mots-cles', 'chronologie', 'plan', 'journal', 'extrait', 'race', 'classe', 'bestiaire', 'portrait', 'evenement']);
+const ACTIONS_MISE_A_JOUR = new Set(['brouillon', 'majeure', 'lancer', 'liberer', 'lancement', 'conflits', 'copier']);
 const V1 = new Map(RESSOURCES.map((r) => [r.cle, { enfants: new Set((r.enfants ?? []).map((e) => e.cle)), actions: new Set((r.actions ?? []).map((a) => a.cle)) }]));
 
 /** La méthode HTTP gardée : l'une de METHODES, sinon « AUTRE ». */
@@ -300,18 +307,28 @@ export function routeNormalisee(adresse) {
       return seul(3) && c === 'portrait' ? r('personnages', '{id}', 'portrait') : ROUTE_INCONNUE;
     case 'edition':
       if (seul(1)) return r('edition');
+      if (b === 'extrait' && seul(3)) return c === 'meta' ? r('edition', 'extrait', 'meta') : ROUTE_INCONNUE;
+      // lots de changements : la liste, un lot (`{lot}`), et ses actions (dont l'aperçu de l'annulation, en lecture)
+      if (b === 'lots') {
+        if (seul(2)) return r('edition', 'lots');
+        if (seul(3)) return c === 'recalcul' ? r('edition', 'lots', 'recalcul') : r('edition', 'lots', '{lot}');
+        return seul(4) && ['essai', 'appliquer', 'refuser', 'annuler', 'annulation'].includes(d) ? r('edition', 'lots', '{lot}', d) : ROUTE_INCONNUE;
+      }
       return seul(2) && ACTIONS_EDITION.has(b) ? r('edition', b) : ROUTE_INCONNUE;
     case 'mise-a-jour':
       if (seul(1)) return r('mise-a-jour');
       if (b === 'lots') return seul(3) ? r('mise-a-jour', 'lots', '{lot}') : ROUTE_INCONNUE;
       return seul(2) && ACTIONS_MISE_A_JOUR.has(b) ? r('mise-a-jour', b) : ROUTE_INCONNUE;
     case 'debug':
-      if (seul(2) && (b === 'journal' || b === 'systeme' || b === 'metriques' || b === 'tables' || b === 'base')) return r('debug', b);
+      if (seul(2) && (b === 'journal' || b === 'systeme' || b === 'metriques' || b === 'tables' || b === 'base' || b === 'structure' || b === 'atelier')) return r('debug', b);
       // le contenu d'une table (serveur/debug-tables.mjs) : un gabarit, quel que soit le nom demandé (connu ou non)
       if (seul(3) && b === 'tables') return r('debug', 'tables', '{table}');
       return seul(3) && b === 'metriques' && (c === 'requetes' || c === 'export') ? r('debug', 'metriques', c) : ROUTE_INCONNUE;
     case 'metriques':
       return seul(2) && b === 'page' ? r('metriques', 'page') : ROUTE_INCONNUE;
+    case 'acces':
+      if (seul(1)) return r('acces');
+      return seul(2) && b === 'verifier' ? r('acces', 'verifier') : ROUTE_INCONNUE;
     case 'classeur':
       return seul(1) ? r('classeur') : ROUTE_INCONNUE;
     case 'tipeee':
@@ -1110,6 +1127,147 @@ export function comptesAvecLHote(comptes, hote) {
 }
 
 /**
+ * L'état des sauvegardes automatiques (deploy/installateur/sauvegarde/ : `sauvegardes.json` du dossier des métriques, format 1 ; docs/serveur.md,
+ * « Sauvegardes automatiques »). Écrit par les scripts de copie, d'envoi et d'essai de restauration, lu ici pour la page Debug ; ne porte aucun secret
+ * (dates, tailles, nombres, codes courts) et n'est de toute façon lu que champ par champ, jamais renvoyé tel quel.
+ */
+export const ETAT_SAUVEGARDES = Object.freeze({
+  fichier: 'sauvegardes.json', format: 1, taille_max: 65_536,
+  perime_ms: 3 * 3_600_000, // l'état n'a pas été réécrit depuis 3 h : le minuteur horaire ne tourne plus
+  copie_ancienne_ms: 26 * 3_600_000, // aucune copie (la copie de nuit est faite même si rien n'a changé) depuis plus de 26 h
+  envoi_ancien_ms: 36 * 3_600_000, // aucun envoi extérieur réussi depuis plus de 36 h
+  essai_ancien_ms: 40 * 86_400_000, // aucun essai de restauration depuis plus de 40 jours (il est mensuel)
+  part_plafond: 0.8, // part du plafond de place des copies locales qui déclenche l'avertissement
+});
+
+const ageSecondes = (ms, maintenant) => Math.max(0, Math.round((maintenant - ms) / 1000));
+const entierPositif = (v) => (Number.isFinite(Number(v)) && v !== null && v !== '' && Number(v) >= 0 ? Math.round(Number(v)) : null);
+const courte = (v, max) => (typeof v === 'string' && v.trim() ? v.replace(/[\u0000-\u001f]/g, ' ').slice(0, max) : null);
+const duree = (s) => (s < 5400 ? `${Math.max(1, Math.round(s / 60))} min` : s < 172_800 ? `${Math.round(s / 3600)} h` : `${Math.round(s / 86_400)} jours`);
+
+/**
+ * L'état des sauvegardes vu par la page Debug, d'après `sauvegardes.json` : rend null sans fichier (NAS, développement), sinon
+ * { disponible, raison, instant, age_s, locale, instances, exterieur, alertes } — `disponible` faux avec sa `raison` si le fichier est illisible,
+ * d'un autre format ou trop gros. Chaque date devient { le, age_s } (âge en secondes à `maintenant`) ; `instances.<nom>.etat` vaut `ok`, `alerte`
+ * (une alerte de copie en cours), `ancienne` (aucune copie depuis plus de 26 h) ou `sans_copie` ; `locale.part_plafond` est la part du plafond prise.
+ * Seuls les champs connus sont repris, bornés : un champ ajouté au fichier n'arrive jamais jusqu'à l'API.
+ */
+export function lireSauvegardes(chemin, { maintenant = Date.now() } = {}) {
+  let texte;
+  try {
+    if (statSync(chemin).size > ETAT_SAUVEGARDES.taille_max) return { disponible: false, raison: 'état des sauvegardes trop gros', alertes: [] };
+    texte = readFileSync(chemin, 'utf8');
+  } catch {
+    return null;
+  }
+  const refus = (raison) => ({ disponible: false, raison, alertes: [] });
+  let r;
+  try {
+    r = JSON.parse(texte);
+  } catch {
+    return refus('état des sauvegardes illisible (JSON invalide)');
+  }
+  if (!r || typeof r !== 'object' || r.format !== ETAT_SAUVEGARDES.format) return refus(`état des sauvegardes d’un format inconnu (${r?.format ?? '?'})`);
+  const quand = (iso) => {
+    const ms = Date.parse(iso);
+    return Number.isFinite(ms) ? { le: isoMs(ms), age_s: ageSecondes(ms, maintenant), ms } : null;
+  };
+  const sans = (d) => (d ? { le: d.le, age_s: d.age_s } : null);
+  const instant = quand(r.instant);
+  const l = r.locale && typeof r.locale === 'object' ? r.locale : {};
+  const plafond = entierPositif(l.plafond_octets);
+  const occupe = entierPositif(l.occupe_octets);
+  const locale = {
+    plafond_octets: plafond, occupe_octets: occupe, part_plafond: plafond && occupe !== null ? Math.round((occupe / plafond) * 10_000) / 10_000 : null,
+    libre_min_octets: entierPositif(l.libre_min_octets), disque_libre_octets: entierPositif(l.disque_libre_octets),
+    horaires_gardees: entierPositif(l.horaires_gardees), nuits_gardees: entierPositif(l.nuits_gardees),
+    chute_pourcent: entierPositif(l.chute_pourcent), chute_min_lignes: entierPositif(l.chute_min_lignes),
+    // les réglages de reglages.env que les scripts n'ont pas pu lire (la valeur par défaut est alors prise) : leurs noms
+    reglages_illisibles: String(l.reglages_illisibles ?? '').split(/\s+/).filter((x) => /^[A-Z_]{1,30}$/.test(x)).slice(0, 12),
+  };
+  const instances = {};
+  for (const [nomInstance, i] of Object.entries(r.instances && typeof r.instances === 'object' ? r.instances : {})) {
+    if (!NOM_D_INSTANCE.test(nomInstance) || !i || typeof i !== 'object') continue;
+    const copie = i.derniere_copie && typeof i.derniere_copie === 'object' ? quand(i.derniere_copie.le) : null;
+    const verif = i.derniere_verification && typeof i.derniere_verification === 'object' ? quand(i.derniere_verification.le) : null;
+    const al = i.alerte && typeof i.alerte === 'object' ? quand(i.alerte.le) : null;
+    const enCours = Boolean(al && i.alerte.en_cours === true);
+    instances[nomInstance] = {
+      copies: entierPositif(i.copies) ?? 0, occupe_octets: entierPositif(i.occupe_octets) ?? 0,
+      derniere_copie: copie ? { ...sans(copie), type: courte(i.derniere_copie.type, 20), octets: entierPositif(i.derniere_copie.octets), lignes: entierPositif(i.derniere_copie.lignes) } : null,
+      derniere_verification: verif ? { ...sans(verif), resultat: courte(i.derniere_verification.resultat, 30) } : null,
+      alerte: al ? { ...sans(al), code: courte(i.alerte.code, 40), detail: courte(i.alerte.detail, 200), en_cours: enCours } : null,
+      etat: enCours ? 'alerte' : !copie ? 'sans_copie' : maintenant - copie.ms > ETAT_SAUVEGARDES.copie_ancienne_ms ? 'ancienne' : 'ok',
+    };
+  }
+  const e = r.exterieur && typeof r.exterieur === 'object' ? r.exterieur : {};
+  const envoi = e.dernier_envoi && typeof e.dernier_envoi === 'object' ? quand(e.dernier_envoi.le) : null;
+  const controle = e.dernier_controle && typeof e.dernier_controle === 'object' ? quand(e.dernier_controle.le) : null;
+  const essai = e.dernier_essai && typeof e.dernier_essai === 'object' ? quand(e.dernier_essai.le) : null;
+  const liste = (v) => String(v ?? '').split(/\s+/).map((x) => courte(x, 60)).filter(Boolean).slice(0, 8);
+  const exterieur = {
+    active: e.active === true,
+    dernier_envoi: envoi ? { ...sans(envoi), ok: e.dernier_envoi.ok === true, code: courte(e.dernier_envoi.code, 40), instances: liste(e.dernier_envoi.instances) } : null,
+    dernier_controle: controle ? { ...sans(controle), ok: e.dernier_controle.ok === true, donnees_relues: e.dernier_controle.donnees_relues === true } : null,
+    dernier_essai: essai ? {
+      ...sans(essai), ok: e.dernier_essai.ok === true, code: courte(e.dernier_essai.code, 40), duree_s: entierPositif(e.dernier_essai.duree_s),
+      // « prod:ok dev:integrite » → { prod: 'ok', dev: 'integrite' }
+      instances: Object.fromEntries(liste(e.dernier_essai.instances).map((x) => x.split(':')).filter(([nomI, v]) => NOM_D_INSTANCE.test(nomI ?? '') && v)),
+    } : null,
+  };
+  const etat = {
+    disponible: true, raison: null, instant: instant ? instant.le : null, age_s: instant ? instant.age_s : null, locale, instances, exterieur, alertes: [],
+  };
+  etat.alertes = alertesDesSauvegardes(etat, { instantMs: instant?.ms ?? null, maintenant, envoiMs: envoi?.ms ?? null, essaiMs: essai?.ms ?? null });
+  return etat;
+}
+
+/**
+ * Les alertes de l'état des sauvegardes (lireSauvegardes) : [{ niveau, message }]. Erreur : une alerte de copie en cours (chute de lignes, copie
+ * impossible, plafond), aucune copie depuis plus de 26 h, un envoi extérieur raté ou plus vieux que 36 h, un essai de restauration raté, un contrôle
+ * du dépôt raté. Avertissement : l'état n'est plus réécrit (minuteur arrêté), le plafond est atteint à plus de 80 %, l'espace libre est sous son
+ * minimum, aucun essai de restauration depuis plus de 40 jours. Information : l'envoi hors du serveur n'est pas activé.
+ */
+export function alertesDesSauvegardes(s, { instantMs = null, maintenant = Date.now(), envoiMs = null, essaiMs = null } = {}) {
+  const liste = [];
+  if (!s?.disponible) return liste;
+  const E = ETAT_SAUVEGARDES;
+  if (instantMs !== null && maintenant - instantMs > E.perime_ms) {
+    liste.push({ niveau: 'avertissement', message: `Sauvegardes : l’état n’a pas été mis à jour depuis ${duree(ageSecondes(instantMs, maintenant))} — les minuteurs maverick-sauvegarde-*.timer ne tournent plus (systemctl list-timers).` });
+  }
+  for (const [nom, i] of Object.entries(s.instances)) {
+    if (i.etat === 'alerte') {
+      liste.push({ niveau: 'erreur', message: `Sauvegardes (${nom}) : ${i.alerte.code} — ${i.alerte.detail || 'voir le journal du minuteur'} ; la dernière bonne copie est gardée${i.derniere_copie ? ` (il y a ${duree(i.derniere_copie.age_s)})` : ''}.` });
+    } else if (i.etat === 'ancienne') {
+      liste.push({ niveau: 'erreur', message: `Sauvegardes (${nom}) : aucune copie depuis ${duree(i.derniere_copie.age_s)}.` });
+    }
+  }
+  if (s.locale.reglages_illisibles.length) {
+    liste.push({ niveau: 'avertissement', message: `Sauvegardes : réglage(s) illisible(s) dans reglages.env (${s.locale.reglages_illisibles.join(', ')}) ; la valeur par défaut est prise.` });
+  }
+  const { part_plafond: part, libre_min_octets: min, disque_libre_octets: libre } = s.locale;
+  if (part !== null && part >= E.part_plafond) {
+    liste.push({ niveau: 'avertissement', message: `Sauvegardes : les copies locales prennent ${Math.round(part * 100)} % de leur plafond de place.` });
+  }
+  if (min !== null && libre !== null && libre < min) {
+    liste.push({ niveau: 'avertissement', message: 'Sauvegardes : l’espace libre du disque est sous le minimum réservé aux copies ; les nouvelles copies sont refusées tant qu’il n’est pas rendu.' });
+  }
+  const x = s.exterieur;
+  if (!x.active) {
+    liste.push({ niveau: 'info', message: 'Sauvegardes : l’envoi chiffré hors du serveur n’est pas activé ; une panne du serveur emporterait aussi les copies locales.' });
+    return liste;
+  }
+  if (!x.dernier_envoi) liste.push({ niveau: 'avertissement', message: 'Sauvegardes : aucun envoi hors du serveur encore fait.' });
+  else if (!x.dernier_envoi.ok) liste.push({ niveau: 'erreur', message: `Sauvegardes : le dernier envoi hors du serveur a échoué (${x.dernier_envoi.code ?? 'cause inconnue'}).` });
+  else if (envoiMs !== null && maintenant - envoiMs > E.envoi_ancien_ms) liste.push({ niveau: 'erreur', message: `Sauvegardes : aucun envoi hors du serveur depuis ${duree(x.dernier_envoi.age_s)}.` });
+  if (x.dernier_controle && !x.dernier_controle.ok) liste.push({ niveau: 'erreur', message: 'Sauvegardes : le contrôle du dépôt chiffré hors du serveur a trouvé un défaut.' });
+  if (x.dernier_essai && !x.dernier_essai.ok) liste.push({ niveau: 'erreur', message: `Sauvegardes : le dernier essai de restauration a échoué (${x.dernier_essai.code ?? 'cause inconnue'}).` });
+  else if (!x.dernier_essai) liste.push({ niveau: 'avertissement', message: 'Sauvegardes : aucun essai de restauration encore fait.' });
+  else if (essaiMs !== null && maintenant - essaiMs > E.essai_ancien_ms) liste.push({ niveau: 'avertissement', message: `Sauvegardes : aucun essai de restauration depuis ${duree(x.dernier_essai.age_s)}.` });
+  return liste;
+}
+
+/**
  * Les colonnes d'image de la base vivante : celles de lib/edition-modele.mjs#colonnesImage (portraits des cartes et des espèces du bestiaire) et le
  * « portrait » des tables de la section 13 (fiches de personnages) — seulement celles que la base a. [{ table, colonne }].
  */
@@ -1209,10 +1367,12 @@ function lignesParJour(db, t, maintenantS, age) {
  * qui grossissent, boucle d'événements lente (p99), mémoire au-delà de 80 % de la limite connue, réponses 5xx de la dernière heure, panne de la
  * base des métriques, requêtes brutes gardées, collecte restreinte (`restriction` = { raison, depuis } : PLAFOND_METRIQUES_OCTETS ou disque bas) ;
  * répartition du disque (`repartition` = { depasse, partiel, hote }) : fichiers comptés au-delà de la place prise (ramenés à elle dans la jauge),
- * parcours arrêté à sa borne, relevé de l'hôte présent mais écarté (périmé, illisible, autre disque).
+ * parcours arrêté à sa borne, relevé de l'hôte présent mais écarté (périmé, illisible, autre disque) ; sauvegardes automatiques (`sauvegardes` =
+ * lireSauvegardes : ses alertes, alertesDesSauvegardes, ou une information si le fichier d'état est inutilisable).
  */
 export function alertesDu({
   disque = null, processus = null, volume = {}, erreursRecentes = 0, panne = null, brutes = false, croissanceArchives = null, repartition = null, restriction = null,
+  sauvegardes = null,
 } = {}) {
   const liste = [];
   const gio = (o) => `${(o / 1024 ** 3).toFixed(1)} Gio`;
@@ -1264,6 +1424,8 @@ export function alertesDu({
   if (limite && processus.rss > SEUILS.memoire_part * limite) liste.push({ niveau: 'avertissement', message: `Mémoire : ${mio(processus.rss)} sur ${mio(limite)} (plus de ${SEUILS.memoire_part * 100} %).` });
   if (erreursRecentes) liste.push({ niveau: 'avertissement', message: `${erreursRecentes} réponse(s) 5xx dans la dernière heure.` });
   if (brutes) liste.push({ niveau: 'info', message: `Les requêtes brutes sont gardées ${RETENTION.requetes_brutes} jours (MAVERICK_METRIQUES_BRUTES=1) : environ 145 octets par requête.` });
+  if (sauvegardes?.disponible) liste.push(...sauvegardes.alertes);
+  else if (sauvegardes) liste.push({ niveau: 'info', message: `Sauvegardes : ${sauvegardes.raison}.` });
   return liste;
 }
 
@@ -1525,6 +1687,8 @@ export function creerMetriques({
    * jamais gardés tels quels).
    */
   function debut(methode, adresse, entetes = {}) {
+    // la sonde de l'atelier (UA_SONDE, exactement) n'entre pas dans les métriques : 60 à 200 requêtes par fabrication fausseraient les temps et les comptes
+    if (entetes['user-agent'] === UA_SONDE) return null;
     enCours += 1;
     if (enCours > simultaneesMax) simultaneesMax = enCours;
     const chemin = cheminSeul(adresse);
@@ -2493,6 +2657,8 @@ export function creerMetriques({
         };
       }
       const vol = volume(src, maintenantS);
+      // les sauvegardes automatiques (VPS : deploy/installateur/sauvegarde/), les deux instances ; null sans fichier d'état (NAS, développement)
+      const sauvegardes = lireSauvegardes(join(dossier, ETAT_SAUVEGARDES.fichier), { maintenant: maintenantMs });
       const liste = echantillons(src, depuis, p.duree === null || p.duree > 86_400);
       const recents = echantillons(src, maintenantS - 3600, false);
       // archives : la taille d'il y a au moins six jours, comparée à celle d'aujourd'hui
@@ -2512,8 +2678,9 @@ export function creerMetriques({
           disque, processus, volume: vol, erreursRecentes: recents.reduce((n, e) => n + (e.erreurs_5xx ?? 0), 0), panne: src.propre ? panne : null,
           brutes: src.propre ? Boolean(brutes) && !restriction : vol.brutes === true, croissanceArchives,
           repartition: repartition ? { depasse: repartition.depasse, partiel: repartition.partiel, hote: repartition.hote ?? null } : null,
-          restriction: src.propre ? restriction : restrictionDe(src),
+          restriction: src.propre ? restriction : restrictionDe(src), sauvegardes,
         }),
+        sauvegardes,
         ...(src.propre ? { panne, perdues } : {}),
       };
     });

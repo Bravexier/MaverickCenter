@@ -5,19 +5,26 @@
 //   HOST, PORT       adresse d'écoute                         (défaut : 127.0.0.1:8787 ; 0.0.0.0 dans le conteneur)
 //   MAVERICK_INTERVALLE  surveillance des fichiers, en ms     (défaut : 15000)
 //   MAVERICK_EDITION     1 = édition des règles depuis les pages et page « Mise à jour » (site de dev SEULEMENT ; défaut : fermée)
-//   MAVERICK_REFERENCE   base de production à laquelle la page « Mise à jour » compare la base dev (défaut : site/donnees/reference.db)
+//   MAVERICK_PRODUCTION  dossier du site de la PRODUCTION, monté en lecture seule (donnees/maverick.db et _serveur/version.json : ses règles, sans fiche ni
+//                        compte) ; la page « Mise à jour » compare la base dev à ce contenu, et à défaut à la copie ci-dessous
+//   MAVERICK_REFERENCE   repli de la page « Mise à jour » quand la production n'est pas lisible : la copie de master tirée du dépôt (défaut : site/donnees/reference.db)
 //   MAVERICK_GITHUB_JETON_FICHIER  fichier du jeton GitHub (permission Actions seulement) qui déclenche le workflow de mise à jour
+//   MAVERICK_ACCES_FICHIER  réglage de l'accès au site de dev (mot de passe pour modifier, clé de lecture : serveur/acces.mjs ; défaut : acces.json à côté du
+//                        jeton GitHub, donc secrets/acces.json de l'instance) ; absent, rien n'est protégé ; sans effet sans MAVERICK_EDITION=1
 //   MAVERICK_DEPOT       dépôt GitHub (défaut : Bravexier/MaverickCenter) ; MAVERICK_ADRESSE_PUBLIQUE : adresse du site de dev (https://…)
 //   MAVERICK_MAINTENANCE dossier partagé de l'annonce de maintenance pendant une mise à jour (serveur/maintenance.mjs), le même pour les deux
 //                        serveurs : le site de dev l'écrit, chacun la lit (défaut : aucun)
 //   MAVERICK_TIPEEE      0 = la partie « Bienvenue » de Tipeee n'est jamais relue (GET /api/tipeee/ sert le dernier texte connu ; défaut : relue)
 //   MAVERICK_TIPEEE_CACHE_MIN  durée du cache de Tipeee, en minutes (défaut : 360) — serveur/tipeee.mjs ; l'instantané livré avec le site (premier
 //                        repli) est _serveur/sources/tipeee/bienvenue.json (serveur/livraison.mjs)
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { demarrerService } from './service.mjs';
 import { reglagesTipeee } from './tipeee.mjs';
 
 const ici = (relatif) => fileURLToPath(new URL(relatif, import.meta.url));
+// Le service peut refuser de démarrer (une base source absente, refusée par l'essai de ses migrations ou d'une autre structure que la livraison : serveur/base-source.mjs) :
+// la raison est déjà au journal ; la sortie non nulle le dit à Docker.
 const service = await demarrerService({
   regles: process.env.MAVERICK_REGLES || ici('../../donnees/maverick.db'),
   dossier: process.env.MAVERICK_DB || ici('../../../db/'),
@@ -25,13 +32,18 @@ const service = await demarrerService({
   port: Number(process.env.PORT || 8787),
   intervalle: Number(process.env.MAVERICK_INTERVALLE || 15000),
   edition: process.env.MAVERICK_EDITION === '1',
-  reference: process.env.MAVERICK_REFERENCE || ici('../../donnees/reference.db'),
+  // la production d'abord (son dossier monté en lecture seule, MAVERICK_PRODUCTION), puis la copie tirée du dépôt (site/donnees/reference.db)
+  reference: { production: process.env.MAVERICK_PRODUCTION || null, depot: process.env.MAVERICK_REFERENCE || ici('../../donnees/reference.db') },
   jetonFichier: process.env.MAVERICK_GITHUB_JETON_FICHIER || null,
+  acces: process.env.MAVERICK_ACCES_FICHIER || (process.env.MAVERICK_GITHUB_JETON_FICHIER ? join(dirname(process.env.MAVERICK_GITHUB_JETON_FICHIER), 'acces.json') : null),
   depot: process.env.MAVERICK_DEPOT || 'Bravexier/MaverickCenter',
   adresse: process.env.MAVERICK_ADRESSE_PUBLIQUE || null,
   maintenance: process.env.MAVERICK_MAINTENANCE || null,
   fichierVersion: ici('../version.json'),
   tipeee: reglagesTipeee(process.env, ici('../sources/tipeee/bienvenue.json')),
+}).catch((e) => {
+  console.error(`service des personnages non démarré : ${e?.message ?? e}`);
+  process.exit(1);
 });
 
 for (const signal of ['SIGTERM', 'SIGINT']) {

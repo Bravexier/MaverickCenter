@@ -69,7 +69,9 @@ test('verifierLot : format, identifiant, journal, texte, case « Version majeure
   const touche = (table) => ({ journal: { format: 'maverick-edition/1', lots: [{ id: 'l', fait_le: 'x', resume: 'r', modifications: [{ rang: 1, table, cle: {}, operation: 'modifier', avant: {}, apres: {} }] }] } });
   for (const casse of [{ format: 'x' }, { id: '../x' }, { journal: { format: 'x', lots: [] } }, { texte: 3 }, { majeure: 'oui' }, { majeure: 1 },
     touche('personnage'), touche('utilisateur_role'),
-    touche('note_version'), touche('modification')]) {
+    touche('note_version'), touche('modification'),
+    // nature et numéro de décision d'un lot (0127)
+    ...[{ nature: 'import' }, { nature: 'decision' }, { nature: 'saisie', decision: 'R275' }].map((n) => ({ journal: { format: 'maverick-edition/1', lots: [{ id: 'l', fait_le: 'x', resume: 'r', ...n, modifications: [] }] } }))]) {
     assert.throws(() => verifierLot({ ...lot(), ...casse }), (e) => e instanceof ErreurMiseAJour && e.code === 2, JSON.stringify(casse));
   }
 });
@@ -94,7 +96,8 @@ test('le lot appliqué : la note écrite, le journal historisé, seuls les fichi
   assert.deepEqual(notes.filter((n) => n.version === ATTENDUE), [nouvelle]);
   assert.ok(notes.every((n) => n.exemple === 0), 'les notes d’exemple (lorem ipsum) sont retirées');
   assert.deepEqual(notes.filter((n) => n.version !== ATTENDUE), notesAvant, 'les vraies notes déjà livrées restent');
-  const forgeron = lire("SELECT champ, avant, apres FROM note_version_ligne WHERE table_nom = 'metier' AND entite = 'Forgeron'");
+  // l'entité nommée comme la base la nomme (le site de dev peut renommer le métier : cherché par identifiant)
+  const forgeron = lire("SELECT champ, avant, apres FROM note_version_ligne WHERE table_nom = 'metier' AND entite = (SELECT nom FROM metier WHERE id = 'metiers/forgeron')");
   assert.ok(forgeron.some((l) => l.champ === 'Bonus' && l.apres === BONUS), JSON.stringify(forgeron));
   // les lignes du journal du lot (l'historique peut déjà contenir des modifications livrées ou rapatriées avant)
   const lots = journal.lots.map((l) => `'${l.id}'`).join(', ');
@@ -107,6 +110,21 @@ test('le lot appliqué : la note écrite, le journal historisé, seuls les fichi
   assert.equal(encore.version, ATTENDUE);
   assert.match(readFileSync(join(rows, 'note_version.sql'), 'utf8'), /Texte corrigé\./);
   assert.doesNotMatch(readFileSync(join(rows, 'note_version.sql'), 'utf8'), /gagne/);
+});
+
+test('nature des traces (0127) : la nature du lot et son numéro de décision suivent chaque ligne de l’historique ; un journal sans nature vaut « saisie »', () => {
+  const ids = journal.lots.map((l) => `'${l.id}'`).join(', ');
+  const cas = [
+    [{ nature: 'decision', decision: 'R275' }, { nature: 'decision', decision: 'R275' }],
+    [{ nature: 'migration' }, { nature: 'migration', decision: null }],
+    [{ nature: undefined, decision: undefined }, { nature: 'saisie', decision: null }], // un journal d'avant la 0127
+  ];
+  for (const [champs, attendu] of cas) {
+    const rows = copie(`rows-nature-${attendu.nature}-${attendu.decision}`);
+    appliquerMiseAJour({ ...lot(), journal: { ...journal, lots: journal.lots.map((l) => ({ ...l, ...champs })) } }, { rows, reference: 'HEAD', date: '2026-10-11', versionDev: VERSION_DEV });
+    const natures = baseDe(rows)(`SELECT DISTINCT nature, decision FROM historique_modification WHERE lot_id IN (${ids})`);
+    assert.deepEqual(natures, [attendu], JSON.stringify(champs));
+  }
 });
 
 test('un lot « majeure » (case « Version majeure » de la page) : la note est la version X+1.0', () => {

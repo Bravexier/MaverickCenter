@@ -8,7 +8,10 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { classeDeMagie, cssDeLaPalette, cssDesFamilles } from '../src/lib/palette-css.mjs';
+import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { htmlDeLIcone } from '../src/lib/mots-cles-balises.mjs';
 import { RACE_COLORS } from '../src/lib/race-kinds.mjs';
+import { racesParNature } from '../src/lib/races-db.mjs';
 
 const dossier = fileURLToPath(new URL('../dist/races/', import.meta.url));
 const present = existsSync(dossier);
@@ -21,11 +24,20 @@ const pages = present
       .filter((p) => p.html.includes('class="race-hero"'))
   : [];
 const page = (slug) => pages.find((p) => p.slug === slug)?.html ?? '';
+// L'ordre de la liste des races (race.rang_liste, migration 0092 ; réponse du propriétaire « /races/ suit, le reste figé ») : le menu latéral des races,
+// /races/ et le tableau des magies innées le suivent ; il se réordonne sur le site de dev, l'état courant de la base fait foi (lib/races-db.mjs#racesParNature,
+// la règle du service ; sa valeur d'import, l'ancien ORDRE_DES_RACES : test/db-rang-des-races.test.mjs)
+const base = ouvrirBase();
+const groupesDeLaBase = racesParNature(base);
+const echapper = (t) => String(t).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/'/g, '&#39;');
+const slugsDe = (groupe) => groupesDeLaBase[groupe].map((r) => r.id.slice('races/'.length));
 const ids = (html) => [...html.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]);
 const main = (html) => html.slice(html.indexOf('<main'), html.indexOf('</main>'));
+// le nombre de races de la base (R1 : 27 ; R239 : 29 avec Fongoïde et Gémidien ; le site de dev en crée) : jamais écrit ici
+const NOMBRE_DE_RACES = base.prepare('SELECT count(*) AS n FROM race').get().n;
 
-test('27 pages de race rendues par le gabarit', options, () => {
-  assert.equal(pages.length, 27);
+test('une page de race rendue par le gabarit pour chaque race de la base', options, () => {
+  assert.equal(pages.length, NOMBRE_DE_RACES);
 });
 
 test('chaque identifiant est unique ; les liens de la navigation mènent à une section de la page', options, () => {
@@ -61,7 +73,19 @@ test('sections de l’onglet : présentation, histoire, avantages, dons, Mode Hy
     assert.ok(!main(html).includes('Classes accessibles') && !main(html).includes('Classes non accessibles'), `${slug} : liste des classes`);
     assert.equal((html.match(/class="race-stat[ "]/g) ?? []).length, 5, `${slug} : 5 valeurs de départ`);
   }
-  assert.match(page('drakos'), /<dt>Santé de départ<\/dt>\s*<dd[^>]*>13<\/dd>/);
+  // la santé de départ du Drakos : celle de la base (le site de dev la modifie)
+  const sante = base.prepare("SELECT sante_depart FROM race_onglet WHERE race_id = 'races/drakos'").get().sante_depart;
+  assert.match(page('drakos'), new RegExp(`<dt>Santé de départ</dt>\\s*<dd[^>]*>${sante}</dd>`));
+});
+
+// Sous « Capacité Mode Hyper », le lien mène à la page « Le mode hyper » (R187 : la « Liste des effets mode hyper » est supprimée, ses renvois visent
+// cette page, qui porte le tableau des capacités de toutes les races).
+test('Mode Hyper : le lien sous le titre mène à « Le Mode Hyper » (R187), plus à la liste supprimée', options, () => {
+  for (const { slug, html } of pages) {
+    const section = html.slice(html.indexOf('<section class="race-section" id="mode-hyper"'), html.indexOf('</section>', html.indexOf('id="mode-hyper"')));
+    assert.match(section, /<h2 id="mode-hyper-titre">Capacité Mode Hyper<\/h2>\s*<p class="muted"><a href="[^"]*\/regles\/le-mode-hyper\/">Le Mode Hyper<\/a><\/p>/, slug);
+    assert.ok(!html.includes('liste-des-effets-mode-hyper') && !html.includes('Liste des effets mode hyper'), `${slug} : un renvoi à la liste supprimée`);
+  }
 });
 
 test('relations : Elfe noir en deux blocs (Charbon, Salé), la matrice entre ses peuples ; une race sans peuple le dit', options, () => {
@@ -103,15 +127,12 @@ const pastillesDe = (html) =>
     .map((m) => ({ slug: m[1], attributs: m[2], nom: m[3].replace(/&#39;/g, "'") }));
 const nomsDe = (html) => pastillesDe(html).map((p) => p.nom);
 
-test('liste des races : deux groupes de pastilles, pures puis hybrides, dans l’ordre du propriétaire', options, () => {
+test('liste des races : deux groupes de pastilles, pures puis hybrides, chacun dans l’ordre de la liste (race.rang_liste)', options, () => {
   assert.match(liste, /class="races-pastilles"/);
   assert.ok(liste.indexOf('id="pures"') < liste.indexOf('id="hybrides"'));
-  assert.deepEqual(nomsDe(colonne('pures')), [
-    'Humain', 'Nain', 'Elfe forestier', 'Elfe doré', 'Elfe argenté', 'Elfe noir', 'Farfadet', 'Felfe', 'Majin', 'Hujin', 'Drakos', 'Lamia', 'Mort-vivant',
-  ]);
-  assert.deepEqual(nomsDe(colonne('hybrides')), [
-    "Drassah'thac", 'Orios', 'Fenrir', 'Kitsune', 'Olwman', 'Rokh', 'Namazu', 'Minotaure', 'Satyre', 'Médusain', 'Jackalope', 'Marcass', 'Anansi', 'Goleois',
-  ]);
+  assert.deepEqual(pastillesDe(colonne('pures')).map((p) => p.slug), slugsDe('pures'));
+  assert.deepEqual(pastillesDe(colonne('hybrides')).map((p) => p.slug), slugsDe('hybrides'));
+  assert.equal(slugsDe('pures').length + slugsDe('hybrides').length, NOMBRE_DE_RACES);
 });
 
 test('liste des races : chaque groupe dans la couleur du bandeau des pages de race, avec le nombre de ses races', options, () => {
@@ -134,7 +155,10 @@ test('liste des races : l’accroche de chaque race en infobulle ; ni magies ni 
     const html = colonne(id);
     for (const p of pastillesDe(html)) {
       const bulle = p.attributs.match(/data-bulle="([^"]+)" aria-describedby="\1" title="([^"]+)"/);
-      assert.ok(bulle, `${p.slug} : infobulle`);
+      // une race sans présentation (Fongoïde et Gémidien, R239 ; une race créée sur le site) n'a pas d'infobulle : bulle présente ⇔ présentation présente
+      const presentation = base.prepare('SELECT presentation FROM race WHERE id = ?').get(`races/${p.slug}`)?.presentation;
+      assert.equal(Boolean(bulle), Boolean(presentation?.trim()), `${p.slug} : infobulle si et seulement si la race a une présentation`);
+      if (!bulle) continue;
       assert.match(html, new RegExp(`<span class="bulle" role="tooltip" id="${bulle[1]}" hidden>`), `${p.slug} : bulle cachée`);
     }
     assert.ok(!html.includes('Magies innées'), `${id} : pas de magies innées`);
@@ -142,29 +166,63 @@ test('liste des races : l’accroche de chaque race en infobulle ; ni magies ni 
     const liens = [...html.matchAll(/<a\b[^>]*href="([^"]+)"/g)].map((m) => m[1]);
     assert.ok(liens.length > 0 && liens.every((h) => /\/races\/[^/]+\/$/.test(h)), `${id} : seulement les liens vers les races`);
   }
-  assert.match(colonne('hybrides'), /title="Les semi-renards, une race à la beauté et au narcissisme sans égal"/);
+  // l'accroche du Kitsune : le résumé de sa page dans la base (le site de dev le réécrit)
+  const accroche = base.prepare("SELECT resume FROM page WHERE id = 'races/kitsune'").get().resume;
+  assert.ok(pastillesDe(colonne('hybrides')).find((p) => p.slug === 'kitsune').attributs.includes(`title="${echapper(accroche)}"`), `kitsune : « ${accroche} »`);
 });
 
-test('magies innées d’une race : chaque pastille dans la couleur de sa magie, par la classe de la magie (lib/palette-css.mjs), sans style', options, () => {
+// Une magie y est affichée par son nom court, liée au mot-clé de sa magie (migration 0125, demande du propriétaire « si ils existent » : lib/valeurs-fermees-rendu.mjs) :
+// en gras, sa définition en infobulle (la bulle `mot-cle-<clé>` posée par le middleware) ; sans mot-clé, le nom nu. Le mot-clé est lu par l'id de la magie dans la
+// base courante (le site de dev change les clés), jamais écrit ici. Le mot-clé peut avoir une icône (mot_cle.icone, R235 (3), posée ou retirée sur le
+// site de dev) : le nom est alors suivi d'une espace et de son dessin (lib/mots-cles-balises.mjs#avecLIcone), lu dans la base courante lui aussi.
+const magiesDeLaBase = new Map(base.prepare('SELECT g.id, g.nom, m.cle, m.icone FROM magie g LEFT JOIN mot_cle m ON m.id = g.mot_cle_id').all().map((g) => [g.id, g]));
+const sansBalises = (h) => h.replace(/<[^>]+>/g, '').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+// le HTML sans les icônes des mots-clés (le dessin et l'espace qui le précède), pour en lire le nom
+const DESSINS = [...new Set(base.prepare('SELECT icone FROM mot_cle WHERE icone IS NOT NULL').all().map((m) => htmlDeLIcone(m.icone)).filter(Boolean))];
+const sansIcones = (h) => DESSINS.reduce((x, d) => x.replaceAll(` ${d}`, ''), h);
+function verifierLaMagieLiee(ou, slugDeLaMagie, interieur) {
+  const g = magiesDeLaBase.get(`magies/${slugDeLaMagie}`);
+  assert.ok(g, `${ou} : une magie de la base`);
+  const dessin = g.cle ? htmlDeLIcone(g.icone) : '';
+  if (dessin) assert.ok(interieur.endsWith(` ${dessin}</strong>`), `${ou} : l'icône du mot-clé après le nom, dans sa balise`);
+  else assert.equal(sansIcones(interieur), interieur, `${ou} : sans icône du mot-clé, aucune icône`);
+  assert.equal(sansBalises(sansIcones(interieur)), g.nom, `${ou} : le nom court`);
+  if (g.cle) {
+    assert.match(interieur, new RegExp(`^<strong class="mot-cle[ "][^>]*data-mot-cle="${g.cle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}"`), `${ou} : le mot-clé de la magie`);
+    assert.doesNotMatch(interieur, /<a\b/, `${ou} : jamais un lien dans un lien`);
+  } else assert.doesNotMatch(interieur, /<strong|<a\b/, `${ou} : sans mot-clé, le nom nu`);
+}
+
+test('magies innées d’une race : chaque pastille dans la couleur de sa magie, par la classe de la magie (lib/palette-css.mjs), sans style ; le nom est le mot-clé de la magie', options, () => {
   let pastilles = 0;
+  let liees = 0;
   for (const { slug, html } of pages) {
-    const puces = [...html.matchAll(/<a class="chip race-magie (couleur-magie-[\w-]+)" href="[^"]*\/magies\/[^"]+\/">([^<]+)<\/a>/g)];
-    for (const [, classe, nom] of puces) assert.equal(classe, classeDeMagie(nom), `${slug} : ${nom}`);
+    const puces = [...html.matchAll(/<a class="chip race-magie (couleur-magie-[\w-]+)" href="[^"]*\/magies\/([^"/]+)\/">(.*?)<\/a>/g)];
+    for (const [, classe, magie, interieur] of puces) {
+      assert.equal(classe, classeDeMagie(sansBalises(sansIcones(interieur))), `${slug} : ${magie}`);
+      verifierLaMagieLiee(`${slug} : ${magie}`, magie, interieur);
+      if (interieur.startsWith('<strong')) liees += 1;
+    }
     assert.ok(puces.every(([, classe]) => cssDeLaPalette().includes(`.${classe}{`)), `${slug} : des classes de la palette`);
     assert.doesNotMatch(html, /class="chip race-magie[^"]*"[^>]*style=/, `${slug} : aucune pastille en style`);
+    // les magies non disponibles : même rendu, sans la couleur
+    for (const [, magie, interieur] of html.matchAll(/<a class="chip" href="[^"]*\/magies\/([^"/]+)\/">(.*?)<\/a>/g)) verifierLaMagieLiee(`${slug} : ${magie} (non disponible)`, magie, interieur);
     pastilles += puces.length;
   }
   assert.ok(pastilles > 100, `${pastilles} pastilles`);
-  assert.match(page('nain'), /<a class="chip race-magie couleur-magie-feu" href="\/magies\/magie-du-feu\/">Feu<\/a>/);
+  // des pastilles liées dès que des magies ont un mot-clé (le site de dev peut les retirer toutes : alors aucune)
+  assert.ok([...magiesDeLaBase.values()].every((g) => !g.cle) || liees > 0, 'des pastilles liées quand des magies ont un mot-clé');
 });
 
 // Le tableau des magies innées de toutes les races, en bas de /races/ (components/magie/TableauMagiesInnees.astro) : il remplace /races-et-magies/.
-test('liste des races : tableau des magies innées en bas de page, races dans l’ordre des listes, magies dans l’ordre du classeur et dans leur couleur', options, () => {
+test('liste des races : tableau des magies innées en bas de page, races dans l’ordre des listes (race.rang_liste), magies dans l’ordre du classeur et dans leur couleur', options, () => {
   assert.ok(!liste.includes('races-et-magies'), 'plus de lien vers l’ancienne page');
   const debut = liste.indexOf('<section id="magies-innees"');
   assert.ok(debut > liste.indexOf('id="hybrides"'), 'après les deux listes');
   const tableau = liste.slice(debut);
-  assert.deepEqual([...tableau.matchAll(/<span class="tableau-magies__vertical">([^<]+)<\/span>/g)].map((m) => m[1]), [
+  const entetes = [...tableau.matchAll(/<a href="[^"]*\/magies\/([^"/]+)\/"[^>]*><span class="tableau-magies__vertical">(.*?)<\/span><\/a>/g)];
+  for (const [, magie, interieur] of entetes) verifierLaMagieLiee(`en-tête ${magie}`, magie, interieur);
+  assert.deepEqual([...sansIcones(tableau).matchAll(/<span class="tableau-magies__vertical">(.*?)<\/span>/g)].map((m) => sansBalises(m[1])), [
     'Potentiel Illimité', 'Sang', 'Arcane', 'Corruption', 'Espace/Temps', 'Vide', 'Nécromancie', 'Feu', 'Eau', 'Glace', 'Terre', 'Vent', 'Foudre', 'Lumière', 'Ombre', 'Total',
   ]);
   // colonnes, en-têtes et pastilles dans la couleur de leur magie : sa classe (lib/palette-css.mjs), jamais un style
@@ -175,6 +233,7 @@ test('liste des races : tableau des magies innées en bas de page, races dans l�
   assert.doesNotMatch(tableau.slice(0, tableau.indexOf('</table>')), /style=/, 'aucun style dans le tableau');
   const lignes = [...tableau.matchAll(/<th scope="row" class="tableau-magies__nom"><a href="[^"]*\/races\/([^/"]+)\/">([^<]+)<\/a><\/th>(.*?)<\/tr>/g)].filter((m) => m[1] !== 'exemple-race');
   assert.deepEqual(lignes.map((m) => m[2].replace(/&#39;/g, "'")), [...nomsDe(colonne('pures')), ...nomsDe(colonne('hybrides'))]);
+  assert.deepEqual(lignes.map((m) => m[1]), [...slugsDe('pures'), ...slugsDe('hybrides')], 'l’ordre de la liste des races');
   const pastilles = (slug) => (lignes.find((m) => m[1] === slug)[3].match(/class="tableau-magies__point couleur-magie-[\w-]+"/g) ?? []).length;
   assert.equal(pastilles('humain'), 15);
   assert.equal(pastilles('nain'), 5);
@@ -189,4 +248,54 @@ test('liste des races : tableau des magies innées en bas de page, races dans l�
 test('pages de race : le lien « Voir le tableau » mène au tableau de /races/', options, () => {
   for (const { slug, html } of pages) assert.ok(!html.includes('races-et-magies'), slug);
   assert.match(page('orios'), /href="[^"]*\/races\/#magies-innees">Voir le tableau de toutes les races et de leurs magies</);
+});
+
+// Demande du propriétaire : « Je veux comme pour chronologie, et les bases, un menu latéral qui récapitule toutes les races sur le menu d'une race
+// ouverte. » (components/race/MenuDesRaces.astro, sur le menu latéral commun des Bases :
+// components/guide/MenuLateral.astro, ses classes `lateral*` et sa feuille).
+test('pages de race : à gauche le menu latéral de toutes les races (une seule liste, pures puis hybrides, ordre de la liste, la race ouverte marquée), à droite la page', options, () => {
+  const attendu = [...slugsDe('pures'), ...slugsDe('hybrides')];
+  for (const { slug, html } of pages) {
+    const m = main(html);
+    const nav = m.match(/<nav class="lateral-menu" aria-label="Races">([\s\S]*?)<\/nav>/);
+    assert.ok(nav, `${slug} : menu des races`);
+    assert.ok(m.indexOf('<nav class="lateral-menu"') < m.indexOf('<div class="lateral-page">'), `${slug} : le menu à gauche, la page à droite`);
+    assert.match(nav[1], /<details class="lateral-menu__repli" open data-lateral-repli>/, `${slug} : ouvert sans JavaScript`);
+    assert.match(nav[1], /<p class="lateral-menu__titre"><a href="[^"]*\/races\/">Races<\/a><\/p>/, `${slug} : titre lié à /races/`);
+    // réponse du propriétaire : « Une seule liste » (sans titre de groupe, comme le menu des Bases)
+    assert.equal((nav[1].match(/<ol class="lateral-menu__liste"[ >]/g) ?? []).length, 1, `${slug} : une seule liste`);
+    assert.ok(!nav[1].includes('lateral-menu__groupe') && !nav[1].includes('Races pures'), `${slug} : sans titre de groupe`);
+    const entrees = [...nav[1].matchAll(/<a class="lateral-menu__lien" href="[^"]*\/races\/([^/"]+)\/"( aria-current="page")?>/g)]
+      .filter((e) => e[1] !== 'exemple-race');
+    assert.deepEqual(entrees.map((e) => e[1]), attendu, `${slug} : toutes les races, dans l'ordre`);
+    assert.deepEqual(entrees.filter((e) => e[2]).map((e) => e[1]), [slug], `${slug} : seule la race ouverte est marquée`);
+    // le fil d'Ariane et le gabarit dans la colonne de la page
+    const droite = m.slice(m.indexOf('<div class="lateral-page">'));
+    assert.match(droite, /<p class="muted"><a href="[^"]*\/">Accueil<\/a> › <a href="[^"]*\/races\/">Races<\/a>/, `${slug} : fil d'Ariane à droite`);
+    assert.ok(droite.includes('class="race-hero"'), `${slug} : gabarit à droite`);
+  }
+});
+
+// Lot de l'édition des menus (« changer l'ordre des menu latéraux (par un glisser déposer) », réponse « Règles + Races ») : le menu latéral des races porte,
+// pour le mode modification du site de dev (src/scripts/edition/menus.mjs), le menu (`data-ed-menu="races"`) et, sur chaque race, son id, son rang dans la
+// liste et son groupe (`data-ed-entree`, `data-ed-rang`, `data-ed-groupe` : une race reste dans le sien) ; rien ne change à l'affichage
+test('pages de race : le menu latéral porte l’id, le rang (race.rang_liste) et le groupe de chaque race, pour le glisser-déposer du site de dev', options, () => {
+  const rangs = new Map([...groupesDeLaBase.pures, ...groupesDeLaBase.hybrides].map((r) => [r.id, r.rang_liste]));
+  const groupes = new Map([...groupesDeLaBase.pures.map((r) => [r.id, 'pures']), ...groupesDeLaBase.hybrides.map((r) => [r.id, 'hybrides'])]);
+  for (const { slug, html } of pages) {
+    const nav = main(html).match(/<nav class="lateral-menu" aria-label="Races">([\s\S]*?)<\/nav>/)[1];
+    assert.match(nav, /<ol class="lateral-menu__liste" data-ed-menu="races">/, `${slug} : le menu`);
+    const lignes = [...nav.matchAll(/<li([^>]*)><a class="lateral-menu__lien" href="[^"]*\/races\/([^/"]+)\/"/g)].filter((m) => m[2] !== 'exemple-race');
+    assert.equal(lignes.length, NOMBRE_DE_RACES, slug);
+    for (const [, attributs, race] of lignes) {
+      const id = `races/${race}`;
+      const attribut = (nom) => attributs.match(new RegExp(` ${nom}="([^"]*)"`))?.[1];
+      assert.equal(attribut('data-ed-entree'), id, `${slug} : ${race}`);
+      assert.equal(attribut('data-ed-groupe'), groupes.get(id), `${slug} : ${race}`);
+      assert.equal(attribut('data-ed-rang'), rangs.get(id) === null ? undefined : String(rangs.get(id)), `${slug} : ${race}`);
+    }
+    // les pures d'abord, d'un bloc, puis les hybrides : un groupe est contigu (le glisser-déposer le borne)
+    const suite = lignes.map((m) => m[1].match(/data-ed-groupe="([^"]+)"/)[1]);
+    assert.deepEqual(suite, [...suite].sort((a, b) => (a === b ? 0 : a === 'pures' ? -1 : 1)), `${slug} : groupes contigus`);
+  }
 });

@@ -1,6 +1,6 @@
-// Panneaux de règles (migration 0056 ; lib/panneaux-regles-db.mjs, lib/panneaux-regles-rendu.mjs) : un panneau par page du wiki que sert
-// /ressources/equipement/ (son id = l'ancre de l'onglet ou du sous-onglet de cette page, sa page : lib/equipement.mjs#PAGES_SERVIES_PAR_L_EQUIPEMENT ;
-// l'onglet Ceinture, qui ne sert pas de page, n'en a pas), ses blocs dans l'ordre de lecture (ordre, puis rang), la place d'un bloc inséré et les ordres après un déplacement
+// Panneaux de règles (migration 0056 ; lib/panneaux-regles-db.mjs, lib/panneaux-regles-rendu.mjs) : un panneau par page du wiki que servent les
+// pages de l'équipement (son id = l'id de la page de l'équipement ou du sous-onglet Bâtons magiques, sa page : lib/equipement.mjs#PAGES_SERVIES_PAR_L_EQUIPEMENT ;
+// la page Ceinture, qui ne sert pas de page du wiki, n'en a pas), ses blocs dans l'ordre de lecture (ordre, puis rang), la place d'un bloc inséré et les ordres après un déplacement
 // (le service et le mode modification s'en servent), le HTML d'un bloc (texte, tuile, titre échappé, champ du mode modification), et la copie de
 // l'import : chaque bloc de texte se lit mot pour mot dans le corps de sa page tel que l'import l'a laissé, sauf les tuiles qui ne sont qu'une balise du
 // glossaire. L'état courant (le site de dev modifie les panneaux) se contrôle par des invariants ; l'import par lib/historique-site.mjs.
@@ -9,21 +9,29 @@ import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { lireAttributEd } from '../src/lib/edition-modele.mjs';
-import { ONGLETS_DE_L_EQUIPEMENT, PAGES_SERVIES_PAR_L_EQUIPEMENT } from '../src/lib/equipement.mjs';
+import { PAGES_DE_L_EQUIPEMENT, PAGES_SERVIES_PAR_L_EQUIPEMENT } from '../src/lib/equipement.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
 import { chargerPanneau, chargerPanneaux, ordonnerBlocs, ordresApresDeplacement, ordresApresInsertion } from '../src/lib/panneaux-regles-db.mjs';
 import { ancreDuPanneau, empreinteDuTexte, htmlDesBlocs, htmlDuBloc } from '../src/lib/panneaux-regles-rendu.mjs';
+import { ecrituresReecrites } from './aide-textes-reecrits.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const historique = historiqueSite(db);
+// Les fragments que les migrations de R207 ont réécrits (registres `textes` : une entrée par remplacement, `avant` présent une fois dans la valeur
+// d'avant) : la 0105 change le test du Forgeron dans le bloc 1 du panneau Armes et dans le corps de ressources/armes, celui de l'Enchanteur dans le corps
+// de ressources/baton-magique, la 0109 dans le bloc 2 du panneau Bâtons magiques ; la 0108 des prix d'armure. La valeur d'import d'une cellule que le
+// site a modifiée est celle d'avant la migration, celle d'une cellule intacte celle d'après : chaque côté se lit sous l'une ou l'autre écriture, sans
+// figer le texte.
+/** Les écritures d'une cellule : telle quelle, et réécrite par les registres de R207 (test/aide-textes-reecrits.mjs). */
+const ecrituresR203 = ecrituresReecrites('0105-r207-armures-boucliers-et-fabrication', '0108-r207-prix-des-armures', '0109-r207-panneau-des-batons');
 
-test('un panneau par page servie de /ressources/equipement/ : (id, page_id) de panneau_regles = (ancre, page) de PAGES_SERVIES_PAR_L_EQUIPEMENT', () => {
+test('un panneau par page du wiki servie par les pages de l’équipement : (id, page_id) de panneau_regles = (ancre, page) de PAGES_SERVIES_PAR_L_EQUIPEMENT', () => {
   const lignes = db.prepare('SELECT id, page_id FROM panneau_regles ORDER BY id').all().map((l) => [l.id, l.page_id]);
   assert.deepEqual(lignes, PAGES_SERVIES_PAR_L_EQUIPEMENT.map((o) => [o.ancre, o.page]).sort(([a], [b]) => a.localeCompare(b)));
-  // le sous-onglet des bâtons de l'onglet Ceinture a le sien ; l'onglet Ceinture, qui ne sert pas de page du wiki, n'en a pas (ses règles : le guide)
+  // le sous-onglet des bâtons de la page Ceinture a le sien ; la page Ceinture, qui ne sert pas de page du wiki, n'en a pas (ses règles : le guide)
   assert.ok(lignes.some(([id]) => id === 'batons-magiques'));
-  assert.ok(ONGLETS_DE_L_EQUIPEMENT.some((o) => o.id === 'ceinture' && o.page === null) && !lignes.some(([id]) => id === 'ceinture'));
+  assert.ok(PAGES_DE_L_EQUIPEMENT.some((o) => o.id === 'ceinture' && o.page === null) && !lignes.some(([id]) => id === 'ceinture'));
   assert.deepEqual(chargerPanneaux(db).map((p) => p.id), lignes.map(([id]) => id));
   for (const [, page] of lignes) assert.ok(db.prepare('SELECT 1 FROM page WHERE id = ?').get(page), `${page} : la page du panneau existe`);
 });
@@ -66,8 +74,11 @@ test('l’import : chaque bloc se lit mot pour mot dans le corps de sa page tel 
   for (const b of blocs) {
     if (/^\{\{[a-z0-9-]+:?\}\}$/.test(b.texte)) continue; // une tuile de balise seule ({{mot:}}, ou {{mot}} si le dev l'a réécrite)
     const page = panneaux.find((p) => p.id === b.panneau_id).page_id;
-    // une balise du glossaire posée après la copie (« 2 crans de {{solidite|solidité}} », migration 0058) se lit par son texte écrit
-    assert.ok(historique.valeurDImport('page', { id: page }, 'corps_md').includes(texteSansBalises(b.texte)), `${b.panneau_id} ${b.rang} : copié de ${page}`);
+    // une balise du glossaire posée après la copie (« 2 crans de {{solidite|solidité}} », migration 0058) se lit par son texte écrit ; un fragment
+    // réécrit par une migration de R207 (« Force et Volonté », R207 (3)) s'admet sous l'une ou l'autre écriture, de chaque côté
+    const corps = ecrituresR203('page', { id: page }, 'corps_md', historique.valeurDImport('page', { id: page }, 'corps_md'));
+    const bloc = ecrituresR203('panneau_regles_bloc', { panneau_id: b.panneau_id, rang: b.rang }, 'texte', b.texte).map((t) => texteSansBalises(t));
+    assert.ok(corps.some((c) => bloc.some((t) => c.includes(t))), `${b.panneau_id} ${b.rang} : copié de ${page}`);
   }
 });
 

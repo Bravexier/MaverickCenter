@@ -1,48 +1,83 @@
-// Extension de l'éditeur : le glossaire des mots-clés sur /recherche/ (pages/recherche.astro) — demandes du propriétaire : « en mode édition seulement »,
-// « supprimer / ajouter / Modifier des mots clés. Une suppression d'un mot clé le supprimera de tous les endroits qui le référencent » ; puis (2026-10-16,
-// migration 0056) « Le mot-clé aura son ID, son texte et une description ».
-//   - au chargement (surcouche) : la liste relue dans la base vivante (GET /api/edition/mots-cles/ : le site construit est en retard sur le site de dev),
-//     définitions et bulles comprises (mots-cles-vivants.mjs suit le vocabulaire relu) ;
-//   - au crayon (debut) : une liste de gestion — pour chaque mot-clé, la balise à copier (« {{id}} »), son libellé modifiable (champ commun :
-//     mot_cle.libelle), sa définition (mot_cle.description), ses pages (leur nombre), « Fusionner dans… » et « Supprimer » (mis en file, envoyés avec
-//     « Enregistrer ») ; un mot-clé dont le site se sert (lib/mots-cles.mjs) n'a ni saisie du libellé ni bouton, sa raison est écrite, mais sa définition
-//     se modifie ; « + Ajouter un mot-clé » le crée tout de suite, avec sa définition ;
+// Extension de l'éditeur : le glossaire des mots-clés sur /regles/glossaire/ (pages/regles/glossaire.astro ; réponses du propriétaire du 2026-11-06, Q6
+// et Q7 : toute la gestion du vocabulaire, jusque-là sur /recherche/, est sur le Glossaire, plus l'adresse et la couleur) — demandes du propriétaire :
+// « en mode édition seulement », « supprimer / ajouter / Modifier des mots clés » ; puis (2026-10-16, migration 0056) « Le mot-clé aura son ID, son
+// texte et une description » ; depuis les migrations 0113 à 0115 (décisions R232, R233, R234 : réponse T6, « l'édition dans la ligne » du tableau), ses
+// catégories et ses synonymes, et la gestion des catégories elles-mêmes.
+//   - au chargement (surcouche) : le tableau relu dans la base vivante (GET /api/edition/mots-cles/ : le site construit est en retard sur le site de dev),
+//     définitions, bulles et feuille des couleurs comprises (mots-cles-vivants.mjs suit le vocabulaire relu et réécrit la feuille avec `css`) ;
+//   - au crayon (debut) : le tableau de gestion, une ligne (un <tbody>) par mot-clé, dans les colonnes du tableau — ses noms : la balise à copier
+//     (« {{clé}} »), son libellé (mot_cle.libelle ; décision R195 : modifiable pour tout mot-clé) et ses synonymes (R233 : une liste
+//     ordonnée, une écriture par ligne), précédés de son icône (R235 : un choix dans la liste des icônes du
+//     site, en première colonne) ; ses catégories (R232 (5) : une case à cocher par catégorie, choix
+//     multiple ; aussi pour un mot-clé verrouillé, R232 (11)) ; son adresse (mot_cle.url, migration 0098 : une balise de ce mot-clé est un lien vers elle ;
+//     vidée, NULL) ; le menu déroulant des endroits qui le mentionnent (décision R196 (2), `mentions` du service : lib/mentions-des-mots-cles.mjs) et ses
+//     outils, « Fusionner dans… » et « Supprimer » (mis en file, envoyés avec « Enregistrer » ; « Supprimer » seulement quand rien ne le mentionne,
+//     R196) ; un mot-clé mentionné, à la place de « Supprimer », « Forcer la suppression » (décision R223 : mis en file comme les autres, confirmé avec ce
+//     qu'il remplace), sauf quand le service prévoit de refuser le forçage (`refus_du_forcage`) : une note « Suppression forcée impossible » dit pourquoi
+//     (en infobulle, et au bas du menu des mentions) ; puis, dans la ligne de dessous, sa couleur (mot_cle.couleur : la liste des couleurs du site,
+//     groupées par famille, et le cercle d'une autre couleur, editeur.mjs#controleDeCouleur ; réponses Q3, Q4) et sa définition (mot_cle.description) ;
+//     un mot-clé verrouillé (mot_cle.verrou = 1, migration 0110 ; décisions R218, R219 (7)) a son cadenas, la raison en infobulle, ni « Supprimer » ni
+//     « Fusionner dans… » ; tous ses champs restent modifiables (demande du propriétaire : « Seule leur suppression est bloquée. »), il reste une
+//     cible de fusion et garde son menu des mentions ; au-dessus du tableau, « + Ajouter un mot-clé » (créé tout de suite, non verrouillé, R219 (5), avec
+//     sa définition, son adresse, sa couleur, ses catégories et ses synonymes : ENTITES.mot_cle) et la gestion des catégories (R232 (5) : chacune
+//     renommable, « Supprimer » pour une catégorie vide, mis en file ; « + Ajouter une catégorie », créée tout de suite) ; ce que le service refuse (400 :
+//     synonyme, adresse ou couleur mal écrite ; 409 : homonyme sans catégorie distinctive, clé ou synonyme déjà pris, suppression d'un mot-clé verrouillé, mot-clé
+//     mentionné, refus du forçage, catégorie non vide ; `champ`) l'est comme tout refus du lot ;
 //   - à l'enregistrement (verifier) : ce que le service ne pourrait pas jouer est refusé avant toute question (noms échangés en boucle, mot-clé qui reçoit
-//     une fusion et serait supprimé) ; un renommage vers une écriture qui reste prise après le lot propose la fusion ; suppressions et fusions sont
-//     confirmées une fois, avec ce qu'elles retirent ; (operations) fusions et suppressions passent avant les renommages, chacun dans un ordre que le
-//     service accepte (lib/mots-cles-edition.mjs) ;
-//   - en sortant (fin, après un enregistrement aussi) : la liste relue dans la base vivante.
-// La page (src/scripts/recherche.mjs) relit la liste à l'évènement « recherche:mots-cles » (detail.gestion : la liste de gestion est affichée) ; chaque
-// mot-clé y est un <li data-id data-cle data-n data-libelle data-definition> (data-n : ses pages). Les catégories des événements de la chronologie se
-// gèrent sur /chronologie/.
+//     une fusion et serait supprimé) ; un renommage vers l'écriture d'un mot-clé gardé, sans catégorie qui les distingue (R232 (9)), propose la fusion ;
+//     suppressions et fusions sont confirmées une fois ; (operations) l'ordre du lot que le service accepte (lib/mots-cles-edition.mjs#operationsDuVocabulaire :
+//     fusions, suppressions, catégories des mots-clés avant les renommages, synonymes, catégories supprimées) ;
+//   - en sortant (fin, après un enregistrement aussi) : le tableau relu dans la base vivante.
+// Hors du mode modification, rien ne montre le verrou (R219 (7)).
+// La page (src/scripts/glossaire.mjs : les filtres) relit le tableau à l'évènement « glossaire:mots-cles » (detail.gestion : le tableau de gestion est
+// affiché ; detail.categories : les catégories des mots-clés, [{ id, libelle }], pour la liste du filtre) ; chaque mot-clé y est un <tbody data-id
+// data-cle data-n data-libelle data-synonymes data-categories data-definition data-url data-couleur> (absents sans valeur), la ligne de lecture le HTML de
+// la page construite (lib/mots-cles-balises.mjs#htmlDeLaLigneDuGlossaire), dont les balises de la définition sont rendues par mots-cles-vivants.mjs dès
+// qu'elle est posée. Le titre de la page où mène l'adresse d'un mot-clé (la colonne Lien, R234 (2)) : `titre_du_lien` du service (null : l'adresse
+// brute). Les catégories des événements de la chronologie
+// se gèrent sur /chronologie/.
 import { attributEd, cleDeLigne, ENTITES } from '../../lib/edition-modele.mjs';
-import { parLibelle, raisonDeProtection } from '../../lib/mots-cles.mjs';
+import { estVerrouille, parLibelle } from '../../lib/mots-cles.mjs';
 import {
-  cibleSaisie, ciblesDeFusion, compteDesElements, confirmationDesRetraits, erreurDesRetraits, examinerLesRenommages, operationsDuVocabulaire,
+  ceQueRemplaceLeForcage, cibleSaisie, ciblesDeFusion, compteDesElements, confirmationDesRetraits, ecrituresDesCibles, endroitsDesMentions,
+  erreurDesRetraits, examinerLesRenommages, forcageOffert, fusionOfferte, INFOBULLE_DU_VERROU, operationsDesListes, operationsDuVocabulaire,
+  raisonSansForcage, suppressionDeCategorieOfferte, suppressionOfferte, synonymesSaisis,
 } from '../../lib/mots-cles-edition.mjs';
+import { COLONNES_DU_GLOSSAIRE, htmlDeLaLigneDuGlossaire } from '../../lib/mots-cles-balises.mjs';
+import { cheminDePage } from '../../lib/metiers.mjs';
 import { definirLeVocabulaire } from './mots-cles-vivants.mjs';
 
-let vocabulaire = null; // [{ id, libelle, libelle_cle, description, pages, protege }] de la base vivante ; null : pas encore lu
+// [{ id, libelle, cle, description, url, couleur, pages, verrou, monnaie_id, synonymes, categories, mentions, … }] de la base vivante ; null : pas lu
+let vocabulaire = null;
+let categories = []; // [{ id, libelle, libelle_cle, mots_cles }] : les catégories des mots-clés (GET /api/edition/mots-cles/)
 const suppressions = new Set();
+const forcages = new Set(); // suppressions forcées (« Forcer la suppression », décision R223)
 const fusions = new Map(); // source → cible (« Fusionner dans… »)
+const categoriesSupprimees = new Set(); // catégories vides à supprimer (R232 (5))
 let renommagesEnFusion = new Map(); // source → cible : renommages acceptés en fusion (verifier), envoyés par operations
 let lectures = 0; // la dernière lecture du vocabulaire demandée
-let session = 0; // le passage en mode modification en cours (une lecture finie après la sortie ne dessine pas la liste de gestion)
+let session = 0; // le passage en mode modification en cours (une lecture finie après la sortie ne dessine pas la gestion)
 
-const racine = () => document.querySelector('[data-recherche]');
-const liste = () => document.getElementById('liste-mots-cles');
-const annoncerLaListe = (gestion) => document.dispatchEvent(new CustomEvent('recherche:mots-cles', { detail: { gestion } }));
-const retires = () => new Set([...suppressions, ...fusions.keys()]);
+const tableau = () => document.getElementById('liste-mots-cles');
+const lignes = () => [...(tableau()?.querySelectorAll('tbody[data-id]') ?? [])];
+const ligneDe = (id) => lignes().find((t) => t.dataset.id === String(id)) ?? null;
+const annoncerLeTableau = (gestion) => document.dispatchEvent(new CustomEvent('glossaire:mots-cles', {
+  detail: { gestion, categories: categories.map((c) => ({ id: c.id, libelle: c.libelle })) },
+}));
+const retires = () => new Set([...suppressions, ...forcages, ...fusions.keys()]);
 const motCle = (id) => vocabulaire?.find((m) => m.id === id) ?? null;
 
 /** Relit le vocabulaire dans la base vivante ; vrai si cette lecture est la dernière demandée et a réussi. */
 async function relire(ed) {
   const n = ++lectures;
   try {
-    const { motsCles } = await ed.appel('GET', 'edition/mots-cles/');
+    const r = await ed.appel('GET', 'edition/mots-cles/');
     if (n !== lectures) return false;
-    vocabulaire = motsCles;
-    definirLeVocabulaire(motsCles); // les mots-clés et les bulles de la page suivent (définitions modifiées)
+    vocabulaire = r.motsCles;
+    if (Array.isArray(r.categories)) categories = r.categories;
+    // la liste des icônes du site (décision R235), que le choix de l'icône lit (ed.listes.icones, aussi donnée par GET /api/edition/listes/)
+    if (Array.isArray(r.icones) && ed.listes && !ed.listes.icones) ed.listes.icones = r.icones;
+    definirLeVocabulaire(r.motsCles, { css: r.css }); // les mots-clés, les bulles et la feuille des couleurs de la page suivent
     return true;
   } catch (e) {
     if (n === lectures) ed.annoncer(`La liste des mots-clés du site de dev n’a pas pu être lue : ${e.message}`, 'erreur');
@@ -50,103 +85,136 @@ async function relire(ed) {
   }
 }
 
-/** Les attributs que lit la page (src/scripts/recherche.mjs) : id, écriture, nombre de pages, libellé, définition. */
-function decrire(li, m) {
-  Object.assign(li.dataset, { id: m.id, cle: m.libelle_cle, n: String(m.pages), libelle: m.libelle });
-  if (m.description) li.dataset.definition = m.description;
-  else delete li.dataset.definition;
+/** La page où mène l'adresse du mot-clé `m` (`page_du_lien`, `titre_du_lien` du service : lib/mots-cles-db.mjs#pagesDesLiens) ; null sinon. */
+const lienDe = (m) => (m.url && m.titre_du_lien ? { page: m.page_du_lien ?? '', titre: m.titre_du_lien } : null);
+
+/** Remplace les lignes du tableau (ses <tbody>) par `html`, ou par les éléments `corps`. */
+function remplacerLesLignes({ html = null, corps = null }) {
+  const t = tableau();
+  if (!t) return;
+  for (const tbody of t.querySelectorAll('tbody')) tbody.remove();
+  if (html !== null) t.insertAdjacentHTML('beforeend', html);
+  if (corps) t.append(...corps);
 }
 
 /**
- * La liste de lecture (comme la page construite, avec les comptes et les définitions de la base vivante) : un lien /recherche/?mot-cle=<id> par mot-clé,
- * l'infobulle de sa définition quand il en a une (sa bulle : mots-cles-vivants.mjs).
+ * Le tableau de lecture (comme la page construite, avec les mentions, les catégories, les définitions, les adresses et les couleurs de la base vivante) :
+ * la ligne de chaque mot-clé (lib/mots-cles-balises.mjs#htmlDeLaLigneDuGlossaire ; les balises de sa définition : mots-cles-vivants.mjs).
  */
-function dessinerLaLecture() {
-  const ul = liste();
-  if (!ul || !vocabulaire) return;
-  ul.removeAttribute('data-gestion');
-  ul.className = 'tags';
-  const lien = racine().dataset.lienMotCle;
-  const lignes = vocabulaire.map((m) => {
-    const li = document.createElement('li');
-    decrire(li, m);
-    const a = document.createElement('a');
-    a.className = 'badge';
-    a.href = `${lien}${encodeURIComponent(m.id)}`;
-    a.textContent = m.pages > 0 ? `${m.libelle} (${m.pages})` : m.libelle;
-    if (m.description) {
-      a.dataset.bulle = `mot-cle-${m.id}`;
-      a.setAttribute('aria-describedby', `mot-cle-${m.id}`);
-    }
-    li.append(a);
-    return li;
-  });
-  ul.replaceChildren(...lignes);
-  annoncerLaListe(false);
+function dessinerLaLecture(ed) {
+  const t = tableau();
+  if (!t || !vocabulaire) return;
+  t.removeAttribute('data-gestion');
+  const options = { base: ed?.base || '/', categories };
+  remplacerLesLignes({ html: vocabulaire.map((m) => htmlDeLaLigneDuGlossaire({ ...m, lien: lienDe(m) }, options)).join('') });
+  annoncerLeTableau(false);
 }
 
+const element = (tag, classe, texte) => {
+  const e = document.createElement(tag);
+  if (classe) e.className = classe;
+  if (texte !== undefined) e.textContent = texte;
+  return e;
+};
 const bouton = (texte, classe) => {
-  const b = document.createElement('button');
+  const b = element('button', classe, texte);
   b.type = 'button';
-  b.className = classe;
-  b.textContent = texte;
   return b;
 };
 
-/** Remet chaque ligne de la liste de gestion dans l'état de la file : supprimée, fusionnée, ou rien ; boutons permis ou non. */
+/**
+ * Remet chaque ligne du tableau de gestion dans l'état de la file : supprimée (forcée ou non), fusionnée, ou rien ; boutons permis ou non ; la saisie
+ * du libellé, des synonymes et des catégories d'un mot-clé qui disparaît, désactivée. Une ligne verrouillée n'a aucun bouton ; une ligne mentionnée a
+ * « Fusionner dans… » et, si le service ne le refuse pas, « Forcer la suppression » (R196, R223). Puis les catégories en file.
+ */
 function etatDesLignes() {
-  for (const li of liste()?.querySelectorAll('li.ed-mot-cle') ?? []) {
-    const { id } = li.dataset;
-    const suppression = li.querySelector('.ed-mot-cle__supprimer');
-    const fusion = li.querySelector('.ed-mot-cle__fusionner');
-    if (!suppression || !fusion) continue; // mot-clé protégé
-    const supprime = suppressions.has(id);
+  for (const t of lignes()) {
+    if (!t.classList.contains('ed-mot-cle')) continue;
+    const id = Number(t.dataset.id);
+    const suppression = t.querySelector('.ed-mot-cle__supprimer');
+    const forcage = t.querySelector('.ed-mot-cle__forcer');
+    const fusion = t.querySelector('.ed-mot-cle__fusionner');
+    if (!fusion) continue; // mot-clé verrouillé
+    const force = forcages.has(id);
+    const supprime = suppressions.has(id) || force;
     const cible = fusions.get(id);
-    li.classList.toggle('ed-supprime', supprime);
-    li.classList.toggle('ed-fusionne', Boolean(cible));
-    suppression.setAttribute('aria-pressed', String(supprime));
-    suppression.textContent = supprime ? 'Sera supprimé — annuler' : 'Supprimer';
-    suppression.disabled = Boolean(cible);
+    t.classList.toggle('ed-supprime', supprime);
+    t.classList.toggle('ed-fusionne', Boolean(cible));
+    if (suppression) {
+      suppression.setAttribute('aria-pressed', String(supprime));
+      suppression.textContent = supprime ? 'Sera supprimé — annuler' : 'Supprimer';
+      suppression.disabled = Boolean(cible);
+    }
+    if (forcage) {
+      forcage.setAttribute('aria-pressed', String(force));
+      forcage.textContent = force ? 'Sera supprimé en forçant — annuler' : 'Forcer la suppression';
+      forcage.disabled = Boolean(cible);
+    }
     fusion.setAttribute('aria-pressed', String(Boolean(cible)));
     fusion.textContent = cible ? `Sera fusionné dans « ${motCle(cible)?.libelle ?? cible} » — annuler` : 'Fusionner dans…';
     fusion.disabled = supprime;
-    const saisie = li.querySelector('.ed-saisie');
-    if (saisie) saisie.disabled = supprime || Boolean(cible);
+    for (const saisie of t.querySelectorAll('.ed-saisie, .ed-mot-cle__synonymes-saisie, .ed-mot-cle__categorie input')) saisie.disabled = supprime || Boolean(cible);
   }
+  const portees = categoriesPortees();
+  for (const li of document.querySelectorAll('li.ed-categorie-mot-cle')) {
+    const supprimer = li.querySelector('.ed-categorie-mot-cle__supprimer');
+    if (!supprimer) continue;
+    const id = Number(li.dataset.id);
+    const c = categories.find((x) => x.id === id);
+    const n = portees ? (portees.get(id) ?? 0) : Number(c?.mots_cles ?? 0);
+    const offerte = suppressionDeCategorieOfferte({ mots_cles: n });
+    if (!offerte) categoriesSupprimees.delete(id); // cochée de nouveau : la suppression en file tombe
+    const enFile = categoriesSupprimees.has(id);
+    li.querySelector('.ed-categorie-mot-cle__compte').textContent = `${n} mot${n > 1 ? 's' : ''}-clé${n > 1 ? 's' : ''}`;
+    li.classList.toggle('ed-supprime', enFile);
+    supprimer.disabled = !offerte;
+    supprimer.title = offerte ? 'Aucun mot-clé ne la porte : la retirer (à l’enregistrement)'
+      : `Portée par ${n} mot${n > 1 ? 's' : ''}-clé${n > 1 ? 's' : ''} : décochez-la d’abord (une catégorie ne se supprime que vide, décision R232 (5))`;
+    supprimer.setAttribute('aria-pressed', String(enFile));
+    supprimer.textContent = enFile ? 'Sera supprimée — annuler' : 'Supprimer';
+  }
+}
+
+/**
+ * Le nombre de mots-clés qui portent chaque catégorie d'après les cases cochées du tableau de gestion (Map(id → n)), sans les mots-clés qui
+ * disparaissent (supprimés, fusionnés) : une catégorie décochée partout devient supprimable dans le même lot (les catégories des mots-clés partent
+ * avant les catégories supprimées, `operationsDuVocabulaire`). null hors du tableau de gestion : le compte lu dans la base sert.
+ */
+function categoriesPortees() {
+  if (!tableau()?.hasAttribute('data-gestion')) return null;
+  const sortants = retires();
+  const portees = new Map();
+  for (const [id, s] of saisiesDesListes()) {
+    if (sortants.has(id)) continue;
+    for (const c of s.categories ?? []) portees.set(c, (portees.get(c) ?? 0) + 1);
+  }
+  return portees;
 }
 
 /** La petite boîte « Fusionner « X » dans… » : une saisie avec les autres mots-clés en suggestions ; `choisir(cible)` à la validation. */
 function demanderLaCible(m, choisir) {
   const cibles = ciblesDeFusion(vocabulaire, m.id, { retires: retires() });
-  const dialogue = document.createElement('dialog');
-  dialogue.className = 'ed-dialogue';
+  const ecritures = ecrituresDesCibles(cibles);
+  const dialogue = element('dialog', 'ed-dialogue');
   dialogue.setAttribute('data-mots-cles-bruts', ''); // les textes du mode modification : tels qu'écrits (mots-cles-vivants.mjs)
   const form = document.createElement('form');
   form.method = 'dialog';
-  const titre = document.createElement('h2');
-  titre.textContent = `Fusionner « ${m.libelle} » dans…`;
-  const aide = document.createElement('p');
-  aide.className = 'ed-aide';
-  aide.textContent = `Ses pages (${compteDesElements(m)}) porteront le mot-clé choisi, puis « ${m.libelle} » disparaîtra (à l’enregistrement). Les mots-clés dont le site se sert ne sont pas proposés.`;
+  const titre = element('h2', '', `Fusionner « ${m.libelle} » dans…`);
+  const aide = element('p', 'ed-aide', `Ses pages (${compteDesElements(m)}) porteront le mot-clé choisi, puis « ${m.libelle} » disparaîtra (à l’enregistrement).`);
   const label = document.createElement('label');
-  const libelle = document.createElement('span');
-  libelle.className = 'ed-libelle';
-  libelle.textContent = 'Mot-clé qui le remplace *';
-  const saisie = document.createElement('input');
-  saisie.className = 'ed-saisie';
+  const libelle = element('span', 'ed-libelle', 'Mot-clé qui le remplace *');
+  const saisie = element('input', 'ed-saisie');
   saisie.required = true;
   saisie.autocomplete = 'off';
   saisie.setAttribute('list', 'ed-cibles-de-fusion');
   const suggestions = document.createElement('datalist');
   suggestions.id = 'ed-cibles-de-fusion';
-  suggestions.append(...cibles.map((c) => new Option(compteDesElements(c), c.libelle)));
+  suggestions.append(...cibles.map((c) => new Option(compteDesElements(c), ecritures.get(c.id))));
   label.append(libelle, saisie, suggestions);
-  const erreur = document.createElement('p');
-  erreur.className = 'ed-erreur';
+  const erreur = element('p', 'ed-erreur');
   erreur.setAttribute('role', 'alert');
   erreur.hidden = true;
-  const boutons = document.createElement('div');
-  boutons.className = 'ed-boutons';
+  const boutons = element('div', 'ed-boutons');
   const annuler = bouton('Annuler', '');
   const valider = bouton('Choisir', '');
   valider.type = 'submit';
@@ -160,7 +228,7 @@ function demanderLaCible(m, choisir) {
     e.preventDefault();
     const cible = cibleSaisie(cibles, saisie.value);
     if (!cible) {
-      erreur.textContent = 'Choisissez un mot-clé de la liste (ni lui-même, ni un mot-clé dont le site se sert, ni un mot-clé qui disparaît).';
+      erreur.textContent = 'Choisissez un mot-clé de la liste (ni lui-même, ni un mot-clé qui disparaît ; un homonyme par sa clé).';
       erreur.hidden = false;
       return;
     }
@@ -170,140 +238,361 @@ function demanderLaCible(m, choisir) {
   dialogue.showModal();
 }
 
+// Le cadenas d'un mot-clé verrouillé (décision R219 (7)) : une icône au trait, du même dessin que le crayon de l'éditeur (editeur.mjs#CRAYON)
+const CADENAS = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
+
 /**
- * Une ligne de la liste de gestion : la balise à copier, le libellé (saisie commune, sauf mot-clé protégé), ses pages, la définition (saisie commune,
- * pour tous), puis les boutons ou la raison de la protection.
+ * Le menu déroulant des endroits qui mentionnent le mot-clé (décision R196 (2) : « un menu déroulant qui liste toutes les pages qui mentionne le mot clé
+ * en question ») : une page en lien (lib/metiers.mjs#cheminDePage), un texte qu'aucune page ne montre par son nom ; null quand le service ne donne pas
+ * les mentions.
+ */
+function menuDesMentions(ed, m) {
+  const endroits = endroitsDesMentions(m);
+  if (!endroits) return null;
+  const menu = element('details', 'ed-mot-cle__mentions');
+  if (!endroits.length) menu.dataset.vide = '';
+  const resume = element('summary', '', endroits.length ? `${endroits.length} ${endroits.length > 1 ? 'mentions' : 'mention'}` : 'Aucune mention');
+  const ul = document.createElement('ul');
+  for (const x of endroits) {
+    const li = document.createElement('li');
+    if (x.page) {
+      const a = element('a', '', x.libelle);
+      a.href = `${ed?.base || '/'}${cheminDePage(x.page)}`;
+      li.append(a);
+    } else {
+      li.textContent = x.libelle;
+    }
+    if (x.exemple) li.dataset.exemple = '';
+    ul.append(li);
+  }
+  menu.append(resume, ul);
+  // la raison pour laquelle le forçage n'est pas offert (décision R223 : `refus_du_forcage`), lisible aussi au toucher, où l'infobulle ne s'ouvre pas
+  const raison = raisonSansForcage(m);
+  if (raison) menu.append(element('p', 'ed-mot-cle__sans-forcage-raison', `Suppression forcée impossible : ${raison}`));
+  return menu;
+}
+
+/**
+ * Met en file (ou retire de la file) la suppression du mot-clé `m`, forcée ou non (`file` : suppressions ou forcages) ; un mot-clé qui doit recevoir une
+ * fusion en attente ne se supprime pas.
+ */
+function basculerLaSuppression(ed, m, file) {
+  if (file.delete(m.id)) {
+    etatDesLignes();
+    return;
+  }
+  const recoit = [...fusions].find(([, cible]) => cible === m.id);
+  if (recoit) {
+    ed.annoncer(`« ${m.libelle} » doit recevoir « ${motCle(recoit[0])?.libelle} » (fusion en attente) : annulez cette fusion avant de le supprimer.`, 'erreur');
+    return;
+  }
+  file.add(m.id);
+  ed.marquerModifie();
+  etatDesLignes();
+}
+
+/** Les cases à cocher des catégories d'un mot-clé (R232 (5) : choix multiple ; `cochees` : ses ids) ; un changement marque la page modifiée. */
+function casesDesCategories(ed, cochees) {
+  const fieldset = element('fieldset', 'ed-mot-cle__categories-choix');
+  fieldset.setAttribute('aria-label', 'Catégories');
+  for (const c of categories) fieldset.append(caseDeCategorie(ed, c, cochees.includes(c.id)));
+  return fieldset;
+}
+function caseDeCategorie(ed, c, cochee) {
+  const label = element('label', 'ed-mot-cle__categorie');
+  const caseACocher = document.createElement('input');
+  caseACocher.type = 'checkbox';
+  caseACocher.value = String(c.id);
+  caseACocher.checked = cochee;
+  caseACocher.addEventListener('change', () => {
+    ed.marquerModifie();
+    etatDesLignes(); // le compte des catégories et leur « Supprimer »
+  });
+  label.append(caseACocher, ` ${c.libelle}`);
+  return label;
+}
+
+/**
+ * Une ligne du tableau de gestion (un <tbody>, les colonnes du tableau de lecture) : ses noms (la balise à copier, le libellé, la liste ordonnée de ses
+ * synonymes), ses catégories (cases à cocher), son adresse, ses outils — le menu des mentions (R196 (2)) et, pour un mot-clé verrouillé, le cadenas
+ * (R219 (7)), sinon « Fusionner dans… » et, s'il n'est mentionné nulle part, « Supprimer » ; mentionné, « Forcer la suppression », ou la note qui dit
+ * pourquoi le service la refuserait (R223) — ; dessous, sur toute la largeur, sa couleur et sa définition (saisies communes).
  */
 function ligneDeGestion(ed, m) {
-  const li = document.createElement('li');
-  li.className = 'ed-mot-cle';
-  // la balise à copier, son aide et la définition telle qu'enregistrée (balises comprises) : telles qu'écrites, jamais rendues (mots-cles-vivants.mjs)
-  li.setAttribute('data-mots-cles-bruts', '');
-  decrire(li, m);
-  const balise = document.createElement('code');
-  balise.className = 'ed-mot-cle__balise';
-  balise.textContent = `{{${m.id}}}`;
-  balise.title = `À écrire dans un texte pour citer ce mot-clé (en gras, sa définition en infobulle) ; « {{${m.id}|texte}} » pour un autre texte affiché, « {{${m.id}:}} » pour « Libellé : définition »`;
-  const nom = document.createElement('span');
-  nom.className = 'ed-mot-cle__nom';
-  nom.textContent = m.libelle;
-  const compte = document.createElement('span');
-  compte.className = 'ed-mot-cle__compte';
-  compte.textContent = compteDesElements(m);
-  const definition = document.createElement('span');
-  definition.className = 'ed-mot-cle__definition';
-  definition.dataset.ed = attributEd('mot_cle', { id: m.id }, 'description');
-  definition.textContent = m.description ?? '';
-  li.append(balise, nom, compte, definition);
-  if (m.protege) {
-    li.classList.add('ed-mot-cle--protege');
-    const raison = document.createElement('span');
-    raison.className = 'ed-mot-cle__protege';
-    raison.textContent = `Protégé : il ${m.protege} (sa définition se modifie).`;
-    li.append(raison);
-    return li;
+  const t = element('tbody', 'ed-mot-cle');
+  // la balise à copier, son aide, les synonymes et la définition telle qu'enregistrée (balises comprises) : tels qu'écrits, jamais rendus
+  // (mots-cles-vivants.mjs)
+  t.setAttribute('data-mots-cles-bruts', '');
+  Object.assign(t.dataset, { id: String(m.id), cle: m.cle, libelle: m.libelle });
+  if (m.description) t.dataset.definition = m.description;
+  if (m.synonymes?.length) t.dataset.synonymes = JSON.stringify(m.synonymes);
+  if (m.categories?.length) t.dataset.categories = JSON.stringify(m.categories);
+  const verrouille = estVerrouille(m);
+  // chaque champ, une saisie commune ; vide : NULL (sauf le libellé, requis)
+  const champ = (classe, colonne, valeur) => {
+    const span = element('span', classe, valeur ?? '');
+    span.dataset.ed = attributEd('mot_cle', { id: m.id }, colonne);
+    return span;
+  };
+  const ligne = element('tr', 'ed-mot-cle__ligne');
+  // l'icône (décision R235 : un choix dans la liste des icônes du site, ed.listes.icones ; vidée, NULL ; modifiable aussi sur un mot-clé verrouillé)
+  const icone = element('td', 'ed-mot-cle__icone-case');
+  icone.append(champ('ed-mot-cle__icone', 'icone', m.icone));
+  const noms = element('th', 'ed-mot-cle__noms');
+  noms.setAttribute('scope', 'row');
+  const balise = element('code', 'ed-mot-cle__balise', `{{${m.cle}}}`);
+  balise.title = `À écrire dans un texte pour citer ce mot-clé (en gras, sa définition en infobulle) ; « {{${m.cle}|texte}} » pour un autre texte affiché, `
+    + `« {{${m.cle}:}} » pour « Libellé : définition »${m.synonymes?.length ? ` ; « {{${m.synonymes[0]}}} » pour un synonyme, qu’elle affiche` : ''}`;
+  // les synonymes : une liste ordonnée, une écriture par ligne (R233 ; réponse T6)
+  const synonymes = element('label', 'ed-mot-cle__synonymes');
+  const saisieDesSynonymes = element('textarea', 'ed-mot-cle__synonymes-saisie');
+  saisieDesSynonymes.rows = Math.max(1, Math.min(4, (m.synonymes?.length ?? 0) + 1));
+  saisieDesSynonymes.value = (m.synonymes ?? []).join('\n');
+  saisieDesSynonymes.addEventListener('input', () => ed.marquerModifie());
+  synonymes.append(element('span', 'ed-libelle', 'Synonymes (un par ligne)'), saisieDesSynonymes);
+  noms.append(balise, champ('ed-mot-cle__nom', 'libelle', m.libelle), synonymes);
+  const cats = element('td', 'ed-mot-cle__categories');
+  cats.append(casesDesCategories(ed, m.categories ?? []));
+  const lien = element('td', 'ed-mot-cle__lien-case');
+  lien.append(champ('ed-mot-cle__lien', 'url', m.url));
+  const outils = element('td', 'ed-mot-cle__outils');
+  const compte = element('span', 'ed-mot-cle__compte', compteDesElements(m));
+  outils.append(compte);
+  const mentions = menuDesMentions(ed, m);
+  if (mentions) outils.append(mentions);
+  ligne.append(icone, noms, cats, lien, outils);
+  const suite = element('tr', 'ed-mot-cle__suite');
+  const definition = element('td', 'ed-mot-cle__suite-case');
+  definition.setAttribute('colspan', String(COLONNES_DU_GLOSSAIRE.length));
+  definition.append(champ('ed-mot-cle__couleur', 'couleur', m.couleur), champ('ed-mot-cle__definition', 'description', m.description));
+  suite.append(definition);
+  t.append(ligne, suite);
+  if (verrouille) {
+    t.classList.add('ed-mot-cle--verrouille');
+    t.setAttribute('data-verrou', '');
+    const cadenas = element('span', 'ed-mot-cle__verrou');
+    cadenas.setAttribute('role', 'img');
+    cadenas.setAttribute('aria-label', INFOBULLE_DU_VERROU);
+    cadenas.title = INFOBULLE_DU_VERROU;
+    cadenas.innerHTML = CADENAS;
+    outils.append(cadenas);
+    return t;
   }
-  nom.dataset.ed = attributEd('mot_cle', { id: m.id }, 'libelle');
-  const outils = document.createElement('span');
-  outils.className = 'ed-mot-cle__outils';
-  const fusion = bouton('Fusionner dans…', 'ed-outil ed-mot-cle__fusionner');
-  fusion.setAttribute('aria-pressed', 'false');
-  fusion.title = 'Ses pages portent un autre mot-clé, puis il disparaît (à l’enregistrement)';
-  fusion.addEventListener('click', () => {
-    if (fusions.delete(m.id)) {
-      etatDesLignes();
-      return;
-    }
-    // un mot-clé qui en reçoit un autre peut être fusionné à son tour : la file part dans l'ordre (« A » dans « X », puis « X » dans « Y ») ; un mot-clé
-    // déjà en file (supprimé ou fusionné) n'est jamais proposé comme cible (ciblesDeFusion)
-    demanderLaCible(m, (cible) => {
-      fusions.set(m.id, cible.id);
-      ed.marquerModifie();
-      etatDesLignes();
+  if (fusionOfferte(m)) {
+    const fusion = bouton('Fusionner dans…', 'ed-outil ed-mot-cle__fusionner');
+    fusion.setAttribute('aria-pressed', 'false');
+    fusion.title = 'Ses pages portent un autre mot-clé, puis il disparaît (à l’enregistrement)';
+    fusion.addEventListener('click', () => {
+      if (fusions.delete(m.id)) {
+        etatDesLignes();
+        return;
+      }
+      // un mot-clé qui en reçoit un autre peut être fusionné à son tour : la file part dans l'ordre (« A » dans « X », puis « X » dans « Y ») ; un mot-clé
+      // déjà en file (supprimé ou fusionné) n'est jamais proposé comme cible (ciblesDeFusion)
+      demanderLaCible(m, (cible) => {
+        fusions.set(m.id, cible.id);
+        ed.marquerModifie();
+        etatDesLignes();
+      });
     });
-  });
-  const suppression = bouton('Supprimer', 'ed-outil ed-outil--danger ed-mot-cle__supprimer');
-  suppression.setAttribute('aria-pressed', 'false');
-  suppression.title = 'Le retirer de toutes les pages qui le portent, puis du vocabulaire (à l’enregistrement)';
-  suppression.addEventListener('click', () => {
-    if (suppressions.delete(m.id)) {
-      etatDesLignes();
-      return;
+    outils.append(fusion);
+  }
+  if (suppressionOfferte(m)) {
+    const suppression = bouton('Supprimer', 'ed-outil ed-outil--danger ed-mot-cle__supprimer');
+    suppression.setAttribute('aria-pressed', 'false');
+    suppression.title = 'Le retirer du vocabulaire (à l’enregistrement)';
+    suppression.addEventListener('click', () => basculerLaSuppression(ed, m, suppressions));
+    outils.append(suppression);
+  }
+  if (forcageOffert(m)) {
+    const forcage = bouton('Forcer la suppression', 'ed-outil ed-outil--danger ed-mot-cle__forcer');
+    forcage.setAttribute('aria-pressed', 'false');
+    forcage.title = `Le supprimer malgré ses mentions (à l’enregistrement, décision R223) : ${ceQueRemplaceLeForcage(m).texte}`;
+    forcage.addEventListener('click', () => basculerLaSuppression(ed, m, forcages));
+    outils.append(forcage);
+  } else {
+    const raison = raisonSansForcage(m);
+    if (raison) {
+      const note = element('span', 'ed-mot-cle__sans-forcage', 'Suppression forcée impossible');
+      note.setAttribute('tabindex', '0'); // l'infobulle s'ouvre aussi au clavier
+      note.title = raison;
+      outils.append(note);
     }
-    const recoit = [...fusions].find(([, cible]) => cible === m.id);
-    if (recoit) {
-      ed.annoncer(`« ${m.libelle} » doit recevoir « ${motCle(recoit[0])?.libelle} » (fusion en attente) : annulez cette fusion avant de le supprimer.`, 'erreur');
-      return;
+  }
+  return t;
+}
+
+/** Les lignes des saisies du mot-clé `m` (celles du vocabulaire lu : libellé, définition, adresse et couleur telles qu'enregistrées : NULL ou texte). */
+const ligneDesSaisies = (m) => ({
+  id: m.id, libelle: m.libelle, cle: m.cle, description: m.description ?? null, url: m.url ?? null, couleur: m.couleur ?? null, icone: m.icone ?? null,
+});
+
+/** Le tableau de gestion (mode modification) : une ligne par mot-clé du vocabulaire, saisies montées par l'éditeur. */
+function dessinerLaGestion(ed) {
+  const t = tableau();
+  if (!t || !vocabulaire) return;
+  for (const m of vocabulaire) ed.lignes?.set(cleDeLigne('mot_cle', { id: m.id }), ligneDesSaisies(m));
+  t.setAttribute('data-gestion', '');
+  const corps = vocabulaire.map((m) => ligneDeGestion(ed, m));
+  remplacerLesLignes({ corps });
+  ed.monterChamps(t);
+  dessinerLesCategories(ed);
+  etatDesLignes();
+  annoncerLeTableau(true);
+}
+
+/**
+ * La gestion des catégories des mots-clés (décision R232 (5) : « une catégorie s'ajoute, se renomme, et se supprime si elle est vide »), au-dessus du
+ * tableau : chacune en saisie commune (son libellé : categorie_mot_cle.libelle), le nombre de mots-clés qui la portent (d'après les cases cochées),
+ * « Supprimer » permis quand elle est vide (mis en file), désactivé avec sa raison sinon ; « + Ajouter une catégorie », visible à côté de
+ * « + Ajouter un mot-clé », la crée tout de suite.
+ */
+function dessinerLesCategories(ed) {
+  const bloc = document.querySelector('.ed-categories-mots-cles');
+  const ul = bloc?.querySelector('ul');
+  if (!ul) return;
+  for (const c of categories) ed.lignes?.set(cleDeLigne('categorie_mot_cle', { id: c.id }), { id: c.id, libelle: c.libelle, libelle_cle: c.libelle_cle });
+  ul.replaceChildren(...categories.map((c) => ligneDeCategorie(ed, c)));
+  bloc.querySelector('summary').textContent = `Catégories des mots-clés (${categories.length})`;
+  ed.monterChamps(ul);
+}
+function ligneDeCategorie(ed, c) {
+  const li = element('li', 'ed-categorie-mot-cle');
+  li.dataset.id = String(c.id);
+  const nom = element('span', 'ed-categorie-mot-cle__nom', c.libelle);
+  nom.dataset.ed = attributEd('categorie_mot_cle', { id: c.id }, 'libelle');
+  const n = Number(c.mots_cles ?? 0);
+  li.append(nom, element('span', 'ed-categorie-mot-cle__compte', `${n} mot${n > 1 ? 's' : ''}-clé${n > 1 ? 's' : ''}`));
+  // « Supprimer » sur chaque catégorie, permis seulement quand aucun mot-clé ne la porte plus (R232 (5)) : état et raison posés par etatDesLignes
+  const supprimer = bouton('Supprimer', 'ed-outil ed-outil--danger ed-categorie-mot-cle__supprimer');
+  supprimer.setAttribute('aria-pressed', 'false');
+  supprimer.disabled = !suppressionDeCategorieOfferte(c);
+  supprimer.addEventListener('click', () => {
+    if (!categoriesSupprimees.delete(c.id)) {
+      categoriesSupprimees.add(c.id);
+      ed.marquerModifie();
     }
-    suppressions.add(m.id);
-    ed.marquerModifie();
     etatDesLignes();
   });
-  outils.append(fusion, suppression);
-  li.append(outils);
+  li.append(supprimer);
   return li;
 }
 
-/** La liste de gestion (mode modification) : une ligne par mot-clé du vocabulaire, saisies montées par l'éditeur. */
-function dessinerLaGestion(ed) {
-  const ul = liste();
-  if (!ul || !vocabulaire) return;
-  // les lignes des saisies : celles du vocabulaire qu'on vient de lire (libellé, écriture, définition telle qu'enregistrée : NULL ou texte)
-  for (const m of vocabulaire) ed.lignes?.set(cleDeLigne('mot_cle', { id: m.id }), { id: m.id, libelle: m.libelle, libelle_cle: m.libelle_cle, description: m.description ?? null });
-  ul.setAttribute('data-gestion', '');
-  ul.className = 'ed-mots-cles';
-  ul.replaceChildren(...vocabulaire.map((m) => ligneDeGestion(ed, m)));
-  ed.monterChamps(ul);
+/** Une catégorie créée : ajoutée à la liste, à la gestion des catégories et, non cochée, aux cases de chaque mot-clé (sans redessiner le tableau). */
+function ajouterLaCategorie(ed, ligne) {
+  const c = { id: ligne.id, libelle: ligne.libelle, libelle_cle: ligne.libelle_cle, mots_cles: 0 };
+  categories = [...categories.filter((x) => x.id !== c.id), c].sort((a, b) => a.id - b.id);
+  ed.lignes?.set(cleDeLigne('categorie_mot_cle', { id: c.id }), { id: c.id, libelle: c.libelle, libelle_cle: c.libelle_cle });
+  const ul = document.querySelector('.ed-categories-mots-cles ul');
+  if (ul) {
+    const li = ligneDeCategorie(ed, c);
+    li.classList.add('ed-nouveau');
+    ul.append(li);
+    ed.monterChamps(li);
+    document.querySelector('.ed-categories-mots-cles summary').textContent = `Catégories des mots-clés (${categories.length})`;
+  }
+  for (const f of document.querySelectorAll('.ed-mot-cle__categories-choix')) f.append(caseDeCategorie(ed, c, false));
   etatDesLignes();
-  annoncerLaListe(true);
+  annoncerLeTableau(Boolean(tableau()?.hasAttribute('data-gestion')));
 }
 
-/** Un mot-clé créé : ajouté au vocabulaire et, en mode modification, à sa place dans la liste de gestion. */
-function ajouter(ed, ligne) {
-  const m = { id: ligne.id, libelle: ligne.libelle, libelle_cle: ligne.libelle_cle, description: ligne.description ?? null, pages: 0, protege: raisonDeProtection(ligne.libelle_cle) };
+/**
+ * Un mot-clé créé : ajouté au vocabulaire et, en mode modification, à sa place dans le tableau de gestion ; il n'est pas verrouillé (décision R219 (5)),
+ * rien ne le mentionne encore ; ses catégories et ses synonymes sont ceux du formulaire (`valeurs`).
+ */
+function ajouter(ed, ligne, valeurs = {}) {
+  const m = {
+    ...ligneDesSaisies(ligne), pages: 0, verrou: 0, monnaie_id: null, mentions: [],
+    categories: [...(valeurs.categories ?? [])].map(Number).sort((a, b) => a - b), synonymes: [...(valeurs.synonymes ?? [])], anciennes_cles: [],
+  };
   vocabulaire = [...(vocabulaire ?? []).filter((x) => x.id !== m.id), m].sort(parLibelle);
   ed.lignes?.set(cleDeLigne('mot_cle', { id: m.id }), { ...ligne });
-  const ul = liste();
-  if (!ed.enEdition || !ul?.hasAttribute('data-gestion')) return null;
-  const li = ligneDeGestion(ed, m);
-  li.classList.add('ed-nouveau');
+  const t = tableau();
+  if (!ed.enEdition || !t?.hasAttribute('data-gestion')) return null;
+  const corps = ligneDeGestion(ed, m);
+  corps.classList.add('ed-nouveau');
   const suivant = vocabulaire[vocabulaire.indexOf(m) + 1];
-  ul.insertBefore(li, suivant ? ul.querySelector(`li[data-id="${CSS.escape(suivant.id)}"]`) : null);
-  ed.monterChamps(li);
-  annoncerLaListe(true);
-  return li;
+  t.insertBefore(corps, suivant ? ligneDe(suivant.id) : null);
+  ed.monterChamps(corps);
+  annoncerLeTableau(true);
+  return corps;
 }
+
+/** Les catégories et les synonymes saisis dans le tableau de gestion : Map(id → { categories: [ids], synonymes: [écritures] }). */
+function saisiesDesListes() {
+  const saisies = new Map();
+  for (const t of lignes()) {
+    if (!t.classList.contains('ed-mot-cle')) continue;
+    const cases = t.querySelectorAll('.ed-mot-cle__categorie input');
+    const synonymes = t.querySelector('.ed-mot-cle__synonymes-saisie');
+    saisies.set(Number(t.dataset.id), {
+      categories: [...cases].filter((c) => c.checked).map((c) => Number(c.value)),
+      ...(synonymes ? { synonymes: synonymesSaisis(synonymes.value) } : {}),
+    });
+  }
+  return saisies;
+}
+
+/** Les champs du formulaire de création d'un mot-clé (ENTITES.mot_cle) : ses catégories en cases à cocher, ses synonymes un par ligne. */
+const champsDeCreation = () => Object.entries(ENTITES.mot_cle.champs).map(([nom, c]) => {
+  if (c.type === 'ids') {
+    return { nom, libelle: c.libelle, type: 'categories', choix: categories.map((x) => ({ id: x.id, libelle: x.libelle })), vide: 'Aucune catégorie pour l’instant : « + Ajouter une catégorie », au-dessus du tableau.' };
+  }
+  if (c.type === 'ecritures') return { nom, libelle: `${c.libelle} (un par ligne)`, type: 'texte' };
+  // `liste` : celle des icônes (ed.listes.icones, GET /api/edition/listes/ ; décision R235), que le formulaire lit pour un choix
+  return { nom, libelle: c.libelle, type: c.type, requis: c.requis, ...(c.liste ? { liste: c.liste } : {}), ...(c.choix ? { choix: c.choix } : {}) };
+});
 
 export const motsCles = {
   nom: 'mots-cles',
-  actif: (doc) => Boolean(doc.querySelector('[data-recherche]')),
+  actif: (doc) => Boolean(doc.querySelector('[data-glossaire]')),
 
   async surcouche(ed) {
-    if ((await relire(ed)) && !ed.enEdition) dessinerLaLecture();
+    if ((await relire(ed)) && !ed.enEdition) dessinerLaLecture(ed);
   },
 
   debut(ed) {
     const n = ++session;
-    const outils = document.createElement('div');
-    outils.className = 'ed-outils ed-outils-mots-cles';
+    const outils = element('div', 'ed-outils ed-outils-mots-cles');
     const nouveau = bouton('+ Ajouter un mot-clé', 'ed-outil');
     nouveau.addEventListener('click', () =>
       ed.formulaire({
         titre: ENTITES.mot_cle.nouveau,
-        aide: 'Le mot-clé est créé tout de suite dans la base du site de dev, sans page qui le porte ; un texte le cite ensuite par sa balise (« {{id}} »).',
-        champs: Object.entries(ENTITES.mot_cle.champs).map(([nom, c]) => ({ nom, libelle: c.libelle, type: c.type, requis: c.requis })),
-        valider: async (valeurs) => {
+        aide: 'Le mot-clé est créé tout de suite dans la base du site de dev, sans page qui le porte ; un texte le cite ensuite par sa balise (« {{clé}} »). '
+          + 'Un homonyme d’un mot-clé existant demande une catégorie qui l’en distingue.',
+        champs: champsDeCreation(),
+        valider: async (brutes) => {
+          const valeurs = { ...brutes, synonymes: synonymesSaisis(brutes.synonymes) };
           const r = await ed.appel('POST', 'edition/', { page: ed.page, operations: [{ op: 'creer', entite: 'mot_cle', valeurs }] });
           const ligne = r.lignes.find((l) => l.table === 'mot_cle' && l.ligne)?.ligne;
           if (!ligne) return;
-          ajouter(ed, ligne)?.scrollIntoView({ block: 'center' });
+          ajouter(ed, ligne, valeurs)?.scrollIntoView({ block: 'center' });
           definirLeVocabulaire(vocabulaire);
-          ed.annoncer(`Mot-clé créé : ${ligne.libelle} (balise « {{${ligne.id}}} »).`);
+          relire(ed); // la feuille des couleurs du service (un mot-clé créé avec sa couleur), la clé de ses homonymes
+          ed.annoncer(`Mot-clé créé : ${ligne.libelle} (balise « {{${ligne.cle ?? ligne.id}}} »).`);
         },
       }),
     );
-    outils.append(nouveau);
-    liste()?.before(outils);
+    // la gestion des catégories (R232 (5)) : « + Ajouter une catégorie » à côté de « + Ajouter un mot-clé », la liste repliée dessous
+    const blocCategories = element('details', 'ed-categories-mots-cles');
+    blocCategories.append(element('summary', '', 'Catégories des mots-clés'), element('ul', 'ed-categories-mots-cles__liste'));
+    const nouvelle = bouton('+ Ajouter une catégorie', 'ed-outil');
+    nouvelle.addEventListener('click', () =>
+      ed.formulaire({
+        titre: ENTITES.categorie_mot_cle.nouveau,
+        aide: 'La catégorie est créée tout de suite dans la base du site de dev ; elle se coche ensuite sur les mots-clés qu’elle range.',
+        champs: Object.entries(ENTITES.categorie_mot_cle.champs).map(([nom, c]) => ({ nom, libelle: c.libelle, type: c.type, requis: c.requis })),
+        valider: async (valeurs) => {
+          const r = await ed.appel('POST', 'edition/', { page: ed.page, operations: [{ op: 'creer', entite: 'categorie_mot_cle', valeurs }] });
+          const ligne = r.lignes.find((l) => l.table === 'categorie_mot_cle' && l.ligne)?.ligne;
+          if (!ligne) return;
+          ajouterLaCategorie(ed, ligne);
+          ed.annoncer(`Catégorie créée : ${ligne.libelle}.`);
+        },
+      }),
+    );
+    outils.append(nouveau, nouvelle, blocCategories);
+    tableau()?.closest('.tableau')?.before(outils);
     // le vocabulaire relu au crayon : les saisies partent de la base vivante telle qu'elle est maintenant
     relire(ed).then((lu) => {
       if (lu && ed.enEdition && n === session) dessinerLaGestion(ed);
@@ -313,38 +602,50 @@ export const motsCles = {
   verifier(ed, editeurs) {
     renommagesEnFusion = new Map();
     if (!vocabulaire) return null;
-    const impossible = erreurDesRetraits(vocabulaire, { suppressions, fusions });
+    const impossible = erreurDesRetraits(vocabulaire, { suppressions, forcages, fusions });
     if (impossible) return `Non enregistré : ${impossible}`;
     const renommages = [...editeurs.values()]
       .filter((e) => e.info.table === 'mot_cle' && e.info.colonne === 'libelle' && e.controle.value !== e.original)
       .map((e) => ({ id: e.info.cle.id, avant: e.original, libelle: e.controle.value.trim() }));
-    const { erreur, aFusionner } = examinerLesRenommages(vocabulaire, renommages, { retires: retires() });
+    const saisies = saisiesDesListes();
+    const categoriesSaisies = new Map([...saisies].map(([id, s]) => [id, s.categories]));
+    const { erreur, aFusionner } = examinerLesRenommages(vocabulaire, renommages, { retires: retires(), categories: categoriesSaisies });
     if (erreur) return erreur;
     for (const r of aFusionner) {
       const cible = motCle(r.dans);
-      const question = `« ${r.libelle} » s’écrit comme « ${cible.libelle} » : fusionner « ${r.avant} » dans « ${cible.libelle} » ?\n`
+      const question = `« ${r.libelle} » s’écrit comme « ${cible.libelle} », sans catégorie qui les distingue : fusionner « ${r.avant} » dans « ${cible.libelle} » ?\n`
         + `Ses pages (${compteDesElements(motCle(r.id) ?? {})}) porteront « ${cible.libelle} », puis « ${r.avant} » disparaîtra.`;
-      if (!confirm(question)) return `Non enregistré : « ${r.libelle} » s’écrit comme le mot-clé « ${cible.libelle} ». Choisissez une autre écriture, ou acceptez de les fusionner.`;
+      if (!confirm(question)) {
+        return `Non enregistré : « ${r.libelle} » s’écrit comme le mot-clé « ${cible.libelle} ». Donnez à chacun une catégorie qui le distingue de l’autre `
+          + '(décision R232 (9)), choisissez une autre écriture, ou acceptez de les fusionner.';
+      }
       renommagesEnFusion.set(r.id, r.dans);
     }
-    const question = confirmationDesRetraits(vocabulaire, { suppressions, fusions });
+    const question = confirmationDesRetraits(vocabulaire, { suppressions, forcages, fusions });
     if (question && !confirm(question)) return 'Enregistrement annulé : rien n’a été envoyé.';
     return null;
   },
 
   operations(_ed, operations) {
-    return operationsDuVocabulaire(operations, { suppressions, fusions: new Map([...fusions, ...renommagesEnFusion]), vocabulaire: vocabulaire ?? [] });
+    const toutesLesFusions = new Map([...fusions, ...renommagesEnFusion]);
+    const sortants = new Set([...suppressions, ...forcages, ...toutesLesFusions.keys()]);
+    return operationsDuVocabulaire(operations, {
+      suppressions, forcages, fusions: toutesLesFusions, vocabulaire: vocabulaire ?? [], categoriesSupprimees,
+      listes: vocabulaire ? operationsDesListes(vocabulaire, saisiesDesListes(), { retires: sortants }) : undefined,
+    });
   },
 
   fin(ed) {
     session += 1;
     suppressions.clear();
+    forcages.clear();
     fusions.clear();
+    categoriesSupprimees.clear();
     renommagesEnFusion = new Map();
     document.querySelector('.ed-outils-mots-cles')?.remove();
-    dessinerLaLecture(); // tout de suite, puis avec ce que l'enregistrement a changé
+    dessinerLaLecture(ed); // tout de suite, puis avec ce que l'enregistrement a changé
     relire(ed).then((lu) => {
-      if (lu && !ed.enEdition) dessinerLaLecture();
+      if (lu && !ed.enEdition) dessinerLaLecture(ed);
     });
   },
 };

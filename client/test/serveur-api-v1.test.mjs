@@ -17,6 +17,7 @@ import { demarrerService } from '../serveur/service.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { ENTITES, TABLES } from '../src/lib/edition-modele.mjs';
 import { ficheVide, TABLES_FICHES } from '../src/lib/fiche-format.mjs';
+import { emplacements } from '../src/lib/monstre-champs.mjs';
 import { capacitesDe, MODULES, RESSOURCES, segmentDeCle, tablesDe } from '../src/lib/ressources.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
@@ -204,9 +205,17 @@ test('les exemples de la description servent tels quels (un client qui les enver
     return enfant ? r.enfants.find((e) => e.cle === enfant).table : r.table;
   };
   let lectures = 0;
+  // une table figée (catalogue `figee` : les monnaies, décision R219 (3)) : son PATCH, refusé en 409 quelle que soit la ligne, n'a pas de clé d'exemple
+  const figees = new Set(ok(appel('GET', '/api/v1/')).ressources.filter((x) => x.figee).map((x) => x.cle));
+  assert.ok(figees.has('monnaies'), [...figees].join());
   for (const op of operationsDe(spec).filter((o) => /^\/v1\/[a-z]/.test(o.chemin) && o.chemin !== '/v1/openapi.json' && ['GET', 'PATCH'].includes(o.methode))) {
     const valeurs = { path: Object.fromEntries(op.parametres.filter((p) => p.dans === 'path').map((p) => [p.nom, p.exemple])) };
     const r = requeteDe(op, { valeurs, corps: op.corps?.exemple ?? '' });
+    if (op.methode === 'PATCH' && figees.has(op.chemin.split('/')[2]) && !op.chemin.split('/')[4]) {
+      assert.ok(r.erreurs.length, `${op.id} : pas de clé d’exemple`);
+      assert.match(op.description, /Refusé \(409\) : .*décision R219/, op.id);
+      continue;
+    }
     if (r.erreurs.length) {
       // seule une table encore vide n'a pas de ligne d'exemple (les catégories de la chronologie, créées sur le site de dev)
       assert.equal(ligne(`SELECT count(*) AS n FROM "${tableDe(op.chemin)}"`).n, 0, `${op.id} : ${r.erreurs.join(' ')}`);
@@ -579,7 +588,7 @@ test('opérations du lot (registre `operations`, `actions`) : chaque traduction 
   assert.deepEqual(c.ressources.find((r) => r.cle === 'mots-cles').actions.map((a) => [a.cle, a.operation, a.champs.map((x) => x.nom).join()]), [['fusion', 'fusionner_mots_cles', 'dans']]);
 });
 
-test('opérations du lot : une race créée par l’API reçoit ses magies innées par la matrice (acces-aux-magies) ; une race que l’onglet limite, par sa liste', () => {
+test('opérations du lot : une race créée par l’API reçoit ses magies innées par la matrice (acces-aux-magies) ; une race que l’onglet limite, par sa liste ; R210 : jamais aucune', () => {
   const race = ok(appel('POST', '/api/v1/races/', { nom: nomLibre('Race de l’API v1', 'race', 'races'), nature: 'pure' }), 201);
   // comme le dit la description de « races » : son peuple du même nom et sa case « Même peuple »
   const peuple = ligne('SELECT * FROM peuple WHERE race_id = ?', race.element.id);
@@ -599,6 +608,15 @@ test('opérations du lot : une race créée par l’API reçoit ses magies inné
   const refus = appel('POST', `${race.adresse}magies-innees-de-l-onglet/`, { magie_id: magie });
   assert.equal(refus.statut, 409);
   assert.match(refus.corps.erreur, /acces-aux-magies/);
+  // décision R210 : une race a forcément des magies innées possibles ; retirer sa seule magie accessible est refusé (400), rien ne change
+  const matriceAvant = lignes('SELECT magie_id, accessible, valeur_brut FROM race_magie WHERE race_id = ? ORDER BY magie_id', race.element.id);
+  const vide = appel('PATCH', caseDeLaMatrice, { accessible: 0 });
+  assert.equal(vide.statut, 400, JSON.stringify(vide.corps));
+  assert.match(vide.corps.erreur, /au moins une magie innée/);
+  assert.deepEqual(lignes('SELECT magie_id, accessible, valeur_brut FROM race_magie WHERE race_id = ? ORDER BY magie_id', race.element.id), matriceAvant, 'rien d’écrit');
+  // avec une autre magie accessible, la première se retire
+  const seconde = ligne('SELECT id FROM magie WHERE id <> ? ORDER BY ordre LIMIT 1', magie).id;
+  ok(appel('PATCH', `${race.adresse}acces-aux-magies/${seg(seconde)}/`, { accessible: 1 }));
   ok(appel('PATCH', caseDeLaMatrice, { accessible: 0 }));
   assert.equal(ligne('SELECT accessible FROM race_magie WHERE race_id = ? AND magie_id = ?', race.element.id, magie).accessible, 0);
 
@@ -647,7 +665,14 @@ test('opérations du lot : une case de la matrice des relations change de niveau
 });
 
 test('opérations du lot : une valeur propre d’une capacité de monstre (R69) se modifie, revient à la valeur commune (retirée), se repose ; les catégories d’un événement se posent et se retirent', () => {
-  const v = ligne('SELECT * FROM monstre_capacite_valeur ORDER BY monstre_id, rang, numero LIMIT 1');
+  const premiere = () => ligne('SELECT * FROM monstre_capacite_valeur ORDER BY monstre_id, rang, numero LIMIT 1');
+  if (!premiere()) {
+    // le site de dev a pu retirer toutes les valeurs propres (capacité ou description commune changée) : l'API en pose une, sur le premier emplacement
+    const place = lignes('SELECT mc.monstre_id, mc.rang, c.description FROM monstre_capacite mc JOIN monstre_capacite_commune c ON c.id = mc.capacite_commune_id ORDER BY mc.monstre_id, mc.rang')
+      .find((x) => emplacements(x.description).length);
+    ok(appel('POST', `/api/v1/monstres/${seg(place.monstre_id)}/valeurs-de-capacites/`, { rang: place.rang, numero: 1, valeur: emplacements(place.description)[0] + 1 }), 201);
+  }
+  const v = premiere();
   const valeurs = `/api/v1/monstres/${seg(v.monstre_id)}/valeurs-de-capacites/`;
   const adresse = `${valeurs}${v.rang},${v.numero}/`;
   assert.equal(ok(appel('PATCH', adresse, { valeur: v.valeur + 1 })).element.valeur, v.valeur + 1);
@@ -693,6 +718,23 @@ test('action « fusion » d’un mot-clé : le renommage vers l’écriture d’
   assert.equal(appel('GET', a.adresse).statut, 404);
   assert.equal(appel('POST', refus.corps.action.adresse, refus.corps.action.corps).statut, 404, 'le mot-clé fusionné n’existe plus');
   ok(appel('DELETE', b.adresse));
+});
+
+test('R196 : DELETE d’un mot-clé mentionné (une balise dans la définition d’un autre) → 409 avec `mentions`, rien d’écrit ; sans mention, il se supprime', () => {
+  const a = ok(appel('POST', '/api/v1/mots-cles/', { libelle: `Mot-clé cité de l’API ${Date.now()}` }), 201);
+  // la balise cite la clé (migration 0113)
+  const b = ok(appel('POST', '/api/v1/mots-cles/', { libelle: `Mot-clé qui cite de l’API ${Date.now()}`, description: `Voir {{${a.element.cle}}}.` }), 201);
+  const definition = ligne('SELECT description FROM mot_cle WHERE id = ?', b.element.id).description;
+  assert.ok(definition.includes(`{{${a.element.cle}`), definition);
+  const refus = appel('DELETE', a.adresse);
+  assert.equal(refus.statut, 409, JSON.stringify(refus.corps));
+  assert.match(refus.corps.erreur, /R196/);
+  assert.deepEqual(refus.corps.mentions.map((m) => [m.table, m.cle, m.colonne, m.comment]), [['mot_cle', { id: b.element.id }, 'description', 'balise']]);
+  assert.ok(ligne('SELECT 1 FROM mot_cle WHERE id = ?', a.element.id), 'rien d’écrit');
+  assert.equal(ligne('SELECT description FROM mot_cle WHERE id = ?', b.element.id).description, definition, 'la balise reste, plus de cascade');
+  ok(appel('DELETE', b.adresse));
+  ok(appel('DELETE', a.adresse));
+  assert.equal(appel('GET', a.adresse).statut, 404);
 });
 
 test('colonnes figées (registre `colonnesFigees`, `champsFiges`) : ce que la page Composants ne montre pas, ou que le service refuse toujours, n’est ni annoncé modifiable ni accepté', () => {

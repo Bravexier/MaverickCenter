@@ -22,6 +22,7 @@ db.exec('PRAGMA foreign_keys = ON');
 
 const INSTANT = '2026-10-09T12:00:00Z';
 const un = (sql, ...p) => db.prepare(sql).get(...p);
+// les noms que la migration écrit dans les notes, lus par identifiant (le site de dev renomme armures, parties et magies)
 const nom = (table, id) => un(`SELECT nom FROM ${table} WHERE id = ?`, id).nom;
 const amelioration = (cible, niveau) => un('SELECT id FROM amelioration_equipement WHERE cible = ? AND niveau = ?', cible, niveau).id;
 const elementaire = (magie, categorie) => un('SELECT id FROM armure_elementaire WHERE magie_id = ? AND categorie = ?', magie, categorie).id;
@@ -74,7 +75,7 @@ test('R165 : l’élément devient l’armure, avec son amélioration ; l’armu
     armure_id: null, armure_amelioration_id: null, armure_elementaire_id: FEU, armure_amelioration_elementaire_id: amelioration('armure_elementaire', 3),
     notes: undefined, modifie_le: undefined, parties: {},
   });
-  assert.equal(sansDate(e.notes), `Mon texte\n[date] Retrait (règles modifiées) : l’armure « ${nom('armure', GRILLE)} » (amélioration +2, solidité Casque 1, Torse 0) `
+  assert.equal(sansDate(e.notes), `Mon texte\n[date] Retrait (règles modifiées) : l’armure « ${nom('armure', GRILLE)} » (amélioration +2, solidité ${nom('armure_emplacement', 'casque')} 1, ${nom('armure_emplacement', 'torse')} 0) `
     + `est devenue l’armure élémentaire « ${nom('armure_elementaire', FEU)} » (amélioration +3) de la fiche, remise à sa solidité maximum : une armure `
     + 'transformée par une pièce élémentaire n’a plus rien de l’armure d’origine. Adaptez la fiche.');
   assert.equal(retraitsDesNotes(e.notes).length, 1, 'une ligne de retrait, comptée par la page /fiche/');
@@ -89,11 +90,11 @@ test('R165 : une armure élémentaire d’une magie que le personnage n’a pas,
     `[date] Retrait (règles modifiées) : l’armure « ${nom('armure', GRILLE)} » est devenue l’armure élémentaire « ${nom('armure_elementaire', VENT)} » de la fiche, `
       + 'remise à sa solidité maximum : une armure transformée par une pièce élémentaire n’a plus rien de l’armure d’origine. Adaptez la fiche.',
     `[date] Retrait (règles modifiées) : l’armure élémentaire « ${nom('armure_elementaire', VENT)} » n’est plus portée : le personnage n’a pas la magie de cette `
-      + 'armure (Vent). Adaptez la fiche.',
+      + `armure (${nom('magie', 'magies/magie-du-vent')}). Adaptez la fiche.`,
   ].join('\n'));
   const f = etat('familier');
   assert.deepEqual([...ARMURE.map((c) => f[c]), f.parties], [null, null, null, null, {}]);
-  assert.equal(sansDate(f.notes), `Ligne\n[date] Retrait (règles modifiées) : l’armure « ${nom('armure', FAMILIER)} » (solidité Armure Complète 1) n’est plus `
+  assert.equal(sansDate(f.notes), `Ligne\n[date] Retrait (règles modifiées) : l’armure « ${nom('armure', FAMILIER)} » (solidité ${nom('armure_emplacement', 'armure-complete')} 1) n’est plus `
     + 'portée : une armure de familier ne se porte pas sur une fiche de personnage. Adaptez la fiche.');
   assert.deepEqual([...reglesDArmure('autre-magie'), ...reglesDArmure('familier')], []);
 });

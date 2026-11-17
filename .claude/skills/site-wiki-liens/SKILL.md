@@ -1,7 +1,7 @@
 ---
 name: site-wiki-liens
-description: "Pages du wiki fabriquées depuis la base (client/src/content/wiki), index et résolution des [[liens]] (wikilinks.mjs, wiki.ts), adresses /<type>/<slug>/ et renvois de la page 404, HIDE_EXAMPLES, Markdown d'Astro 7, maillage. À charger avant de lire, modifier ou relire ces fichiers."
-paths: ["client/astro.config.mjs", "client/src/content.config.ts", "client/src/lib/wikilinks.mjs", "client/src/lib/wiki.ts", "client/src/lib/types.mjs", "client/src/lib/autolink.mjs", "client/src/pages/?type?/**", "client/src/pages/pages.astro", "client/src/pages/404.astro", "client/scripts/db-export-pages.mjs", "client/scripts/autolink*", "client/test/wikilinks.test.mjs", "client/test/autolink.test.mjs", "client/test/site-html.test.mjs"]
+description: "Pages du wiki fabriquées depuis la base (client/src/content/wiki), index et résolution des [[liens]] des pages d'exemple (wikilinks.mjs, wiki.ts), adresses /<type>/<slug>/ et renvois de la page 404, HIDE_EXAMPLES, Markdown d'Astro 7, maillage. À charger avant de lire, modifier ou relire ces fichiers."
+paths: ["client/astro.config.mjs", "client/src/content.config.ts", "client/src/lib/wikilinks.mjs", "client/src/lib/wikilinks-resolution.mjs", "client/src/lib/wiki.ts", "client/src/lib/types.mjs", "client/src/lib/autolink.mjs", "client/src/pages/?type?/**", "client/src/pages/pages.astro", "client/src/pages/404.astro", "client/scripts/db-export-pages.mjs", "client/scripts/autolink*", "client/test/wikilinks.test.mjs", "client/test/autolink.test.mjs", "client/test/site-html.test.mjs"]
 user-invocable: false
 ---
 # Pages du wiki et liens
@@ -11,12 +11,12 @@ user-invocable: false
 ## Fichiers
 
 - `client/src/content/wiki/<type>/*.md` : les pages du wiki (types dans `src/lib/types.mjs`).
-- `client/src/lib/wikilinks.mjs` : index des pages (`scanContent`, `buildIndex`), résolution des `[[liens]]` (`resolve`, `extractLinks`), plugin remark (`remarkWikilinks`).
-- `client/src/lib/wiki.ts` : chargement des pages (`loadWiki`) et graphe (liens sortants, rétroliens).
+- `client/src/lib/wikilinks.mjs` : index des pages (`scanContent`), plugin remark (`remarkWikilinks`) ; il importe `yaml` et réexporte `buildIndex`, `resolve`, `extractLinks`, définis dans `lib/wikilinks-resolution.mjs` (sans dépendance : le service, sans paquet npm, les emploie, `lib/citations-db.mjs`). Une logique de liens utile au service va dans `wikilinks-resolution.mjs`, jamais dans `wikilinks.mjs`.
+- `client/src/lib/wiki.ts` : chargement des pages (`loadWiki`) et graphe (liens sortants, rétroliens ; plus rien ne les affiche).
 - `client/src/content.config.ts` : la collection `wiki` et son `generateId`.
 - `client/astro.config.mjs` : processeur Markdown et index des liens du plugin.
 - `client/src/pages/[type]/` : une page à `/<type>/<slug>/` ; `client/src/pages/pages.astro` : l'index alphabétique.
-- `client/src/pages/404.astro` : renvois des anciennes adresses.
+- `client/src/pages/404.astro` : renvois des anciennes adresses (`data-renvois` : le guide ; `data-eclatees` : les pages éclatées).
 
 ## À lire
 
@@ -30,22 +30,26 @@ user-invocable: false
 - Astro 7 utilise Sätteri comme processeur Markdown par défaut, qui n'exécute pas les plugins remark. `astro.config.mjs` force `unified()` de `@astrojs/markdown-remark` pour le plugin des `[[liens]]` (et ceux des couleurs de case et des monnaies) : ne pas le retirer.
 - L'index des liens du plugin est lu une fois au démarrage (`scanContent`) ; les pages (`wiki.ts`) sont rechargées par Astro. Les deux doivent rester d'accord sur l'id d'une page (`<type>/<slug>`, d'où `generateId` dans `content.config.ts`). Après l'ajout d'un nouveau fichier de contenu, relancer `npm run dev`.
 - `HIDE_EXAMPLES=1` filtre les pages d'exemple (`status: example`) à deux endroits qui doivent rester d'accord : `scanContent` (index des liens, dans `astro.config.mjs`) et `loadWiki` (`src/lib/wiki.ts`). La base ouverte au build (`lib/donnees.mjs#ouvrirBase`) le suit aussi. `HIDE_EXAMPLES=1 npm run build` donne la version à montrer.
-- Les liens `[[…]]` cassés produisent un avertissement `[wikilinks]` au build.
+- Un lien vers une page est la balise d'un mot-clé à adresse (skill `zone-mots-cles-liens`) : les `[[…]]` ne restent que dans les pages d'exemple et la section 15, d'où le plugin remark gardé ; cassés, ils produisent un avertissement `[wikilinks]` au build.
 - Astro met le rendu Markdown en cache dans `client/node_modules/.astro/` (clé = contenu du fichier). Après une modification du plugin des `[[liens]]` sans toucher aux pages, supprimer ce dossier avant de reconstruire, sinon l'ancien rendu est réutilisé (la CI repart de zéro).
 
 ## Adresses (demande du propriétaire)
 
 - Plus de préfixe `/wiki/`. Une page est à `/<type>/<slug>/` (`src/pages/[type]/`). Un métier n'a pas de page : sa ligne de `/metiers/` (skill `zone-metiers`, `cheminDePage`).
 - L'index alphabétique (« Index du wiki », « Pages à créer ») est à `/pages/`. Le dossier `src/content/wiki/`, la collection `wiki` et `lib/wiki.ts` gardent leur nom.
-- Le pied d'une page (`components/PiedDePage.astro`) : mots-clés, pages mentionnées, rétroliens ; plus de sources (seulement sur `/archives/`, réponse du propriétaire du 2026-10-22).
+- Le pied d'une page (`components/PiedDePage.astro`) : mots-clés seulement, plus de rétroliens sur aucune page (demande du propriétaire, 2026-11-05 : « Supprime ces colonnes de toutes les pages. Elles polluent l'affichage pour rien. ») ; plus de sources (seulement sur `/archives/`, réponse du propriétaire du 2026-10-22).
 - Une ancienne adresse `/wiki/…` est renvoyée vers la nouvelle par la page 404 (`legacyWikiRedirect`, `lib/nav.mjs`, testé dans `test/nav.test.mjs`).
-- Une page `guide/…` est à l'adresse que lui donne le plan du site (`lib/livres.mjs`, skill `zone-guide`), jamais sous `/guide/`. Ses anciennes adresses `/guide/…` sont renvoyées par la page 404 : renvois calculés au build (`lib/metiers.mjs#renvoisDuGuide`), passés au script par `data-renvois` (`nav.mjs` n'importe pas le plan).
+- Une page `guide/…` est à l'adresse que lui donne `lib/livres.mjs` (skill `zone-guide`), jamais sous `/guide/` : `/regles/<slug>/` pour une page des onglets des Règles, **sans le plan** (`adresseDuGuide`), car la chaîne de l'édition du navigateur, qui ne reçoit pas le plan de la base, la calcule aussi. Ses anciennes adresses (`/guide/…`, `/regles/avancees/…`, `/decouvrir/<étape>/`) sont renvoyées par la page 404 d'après des listes figées (`PAGES_ECLATEES_DU_GUIDE`, `ADRESSES_DU_PLAN_PRECEDENT`, `PAGES_ABSORBEES`) : renvois calculés au build (`lib/metiers.mjs#renvoisDuGuide`), passés au script par `data-renvois` (`nav.mjs` n'importe pas le plan). `lib/wiki.ts` installe le plan de la base dès son chargement (`installerLePlan`).
+- Une page éclatée en plusieurs (l'ancienne `/ressources/equipement/`, `/ressources/pieces-elementaires/`) mène à la page de son ancre ou de sa requête : `data-eclatees` (`RENVOIS_DES_PAGES_ECLATEES`), `adresseDeRenvoi`. Un lien Markdown écrit vers elle est redirigé au rendu (`lib/guide-rendu.ts`, adresse écrite gardée en `data-lien-ecrit`). Les `[[liens]]` du wiki vers `ressources/pieces-elementaires` mènent tous à `ressources/armes/#pieces-elementaires` (« Garder Armes pour tous » ; `lib/metiers.mjs#adresseDePage`) ; les anciennes ancres de section de `/ressources/pieces-elementaires/#…`, elles, vont à la page de leur section (armure et vêtement à Armures, le reste à Armes). Règles : skill `zone-equipement`.
 
 ## Maillage automatique
 
 `npm run autolink` (aperçu) ou `npm run autolink -- --write` (écrit dans les `.md` fabriqués, à faire suivre de `npm run db:sync-pages`). Règles, exclusions (`TYPES_SANS_MAILLAGE` de `src/lib/autolink.mjs`, `client/scripts/autolink-ignore.txt`) : `docs/content-guide.md`, « Maillage automatique ».
+- Il pose `{{clé}}` ou `{{clé|texte}}` d'un mot-clé à adresse (`ciblesDuVocabulaire`), jamais un `[[…]]`, et ne crée jamais de mot-clé : une page sans mot-clé qui y mène n'est pas une cible.
+- `TYPES_SANS_MAILLAGE` comprend `metiers` (corps = rendu de sa ligne) et `lore` (réécrit à l'identique par `codex.py` et `relations-races.py`).
+- Il reste un outil d'aperçu, relu avant `--write` (choix du leader-technique).
 
 ## Tests
 
-- `test/wikilinks.test.mjs`, `test/autolink.test.mjs`, `test/nav.test.mjs` (`legacyWikiRedirect`).
+- `test/wikilinks.test.mjs`, `test/autolink.test.mjs`, `test/nav.test.mjs` (`legacyWikiRedirect`, pages éclatées).
 - `test/site-html.test.mjs` contrôle le site construit (adresses sans `/wiki/`) ; la CI le lance après le build.

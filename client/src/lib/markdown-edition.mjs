@@ -1,16 +1,31 @@
 // Éditeur visuel du guide (site de dev, src/scripts/edition/guide.mjs) : le texte d'une page se modifie en place (texte, liens, mise en page, tableaux
 // et couleur de leurs cases : demande du propriétaire), puis cet HTML est réécrit en Markdown, le format des pages (page.corps_md).
-// Ici, sans dépendance navigateur ni Astro (dépendance : lib/mots-cles-balises.mjs) : un arbre simple { type: 'texte', valeur } | { type: 'element', nom,
-// attributs, enfants } (le script le tire du DOM, les tests d'un HTML analysé) → Markdown, dans les écritures du site : liens [[cible|texte]] (attribut
+// Ici, sans dépendance navigateur ni Astro (dépendances : lib/mots-cles-balises.mjs, lib/ancres-figees.mjs, lib/icones.mjs) : un arbre simple { type: 'texte', valeur }
+// | { type: 'element', nom, attributs, enfants } (le script le tire du DOM, les tests d'un HTML analysé) → Markdown, dans les écritures du site : liens [[cible|texte]] (attribut
 // data-cible posé par lib/wikilinks.mjs), tableaux GFM, couleur de case « {couleur:vert} » en tête de case (lib/markdown-couleurs.mjs), mots-clés du
-// glossaire (lib/mots-cles-balises.mjs : un `strong.mot-cle` redevient sa balise avec le texte qu'il montre, « {{id|texte}} » — le service la ramène à
+// glossaire (lib/mots-cles-balises.mjs : un `strong.mot-cle` (ou `a.mot-cle`, un mot-clé à adresse) redevient sa balise avec le texte qu'il montre, « {{id|texte}} » — le service la ramène à
 // « {{id}} » quand ce texte est le libellé du mot-clé, la forme canonique d'un texte mis en forme —, le mode complet `span.mot-cle-definition` « {{id:}} »,
-// « | » échappé dans une case de tableau). test/markdown-edition.test.mjs rejoue l'aller-retour Markdown → HTML → Markdown → HTML sur toutes les pages
-// du guide : le rendu ne change pas.
-import { lireUneBalise } from './mots-cles-balises.mjs';
+// « | » échappé dans une case de tableau), ancre figée d'un intertitre « {#ancre} » (`data-ancre-figee`, lib/ancres-figees.mjs).
+// test/markdown-edition.test.mjs rejoue l'aller-retour Markdown → HTML → Markdown → HTML sur toutes les pages du guide : le rendu ne change pas.
+import { ANCRE_FIGEE } from './ancres-figees.mjs';
+import { classeDeLaCouleurEcrite, classesDeCase, COULEURS_DE_CASE, lireLaCouleurEcrite, marqueDeLaCouleur } from './couleurs-ecrites.mjs';
+import { ICONES } from './icones.mjs';
+import { echapperDebutDeLigne, lireUneBalise } from './mots-cles-balises.mjs';
+import { htmlDuGroupe, MARQUE_D_OUVERTURE, MARQUE_DE_FERMETURE, NIVEAU_DES_ONGLETS } from './onglets-groupe.mjs';
 
-/** Couleurs de case permises (une classe CSS par couleur : styles/global/wiki.css). */
-export const COULEURS_DE_CASE = ['rouge', 'orange', 'jaune', 'vert', 'bleu', 'violet', 'gris'];
+/**
+ * Les sept noms de couleur de case d'avant (lib/couleurs-ecrites.mjs, qui les garde : le navigateur reçoit ce module, aucune couleur ici) ; une case ou un
+ * onglet peut maintenant porter toute couleur d'un mot-clé du glossaire (« famille:id », « #rrggbb »).
+ */
+export { COULEURS_DE_CASE };
+
+/**
+ * La classe de la palette d'une couleur écrite (« vert » → « couleur-case-vert », « alignement:loyal-bon » → « couleur-alignement-loyal-bon », « #rrggbb » →
+ * « couleur-ecrite-rrggbb » : lib/couleurs-ecrites.mjs), ou null si elle n'est pas lisible. Posée avec `data-couleur` par le plugin remark
+ * (lib/markdown-couleurs.mjs), l'aperçu assaini (htmlSur) et l'éditeur du guide (scripts/edition/guide.mjs, par classList) ; le Markdown ne l'écrit
+ * jamais : versMarkdown ne relit que `data-couleur`.
+ */
+export const classeDeCouleurDeCase = classeDeLaCouleurEcrite;
 
 const BLOCS = new Set(['p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'blockquote', 'pre', 'hr', 'table', 'section', 'article', 'figure']);
 const IGNORES = new Set(['script', 'style', 'button', 'select', 'textarea', 'input', 'colgroup']);
@@ -21,7 +36,10 @@ const estElement = (n) => n?.type === 'element';
 const estBloc = (n) => estElement(n) && BLOCS.has(n.nom);
 const ignore = (n) => estElement(n) && (IGNORES.has(n.nom) || attribut(n, 'data-ed-ignorer') !== null);
 const ID_DE_MOT_CLE = /^[a-z0-9-]+$/;
-const estUnMotCle = (n) => (n.nom === 'strong' || n.nom === 'b') && classes(n).includes('mot-cle') && ID_DE_MOT_CLE.test(attribut(n, 'data-mot-cle') ?? '');
+// un mot-clé rendu : `strong.mot-cle`, ou `a.mot-cle` quand il a une adresse (migration 0098 : lib/mots-cles-balises.mjs#htmlDeLaBalise)
+const estUnMotCle = (n) => (n.nom === 'strong' || n.nom === 'b' || n.nom === 'a') && classes(n).includes('mot-cle') && ID_DE_MOT_CLE.test(attribut(n, 'data-mot-cle') ?? '');
+/** La classe de la couleur d'un mot-clé rendu (lib/mots-cles-liens.mjs#classeDuMotCle), gardée par l'aperçu ; null sans elle. */
+const classeDeCouleur = (n) => classes(n).find((c) => /^couleur-[a-z0-9]+(?:-[a-z0-9]+)+$/.test(c)) ?? null;
 const estUneDefinition = (n) => n.nom === 'span' && classes(n).includes('mot-cle-definition') && ID_DE_MOT_CLE.test(attribut(n, 'data-mot-cle') ?? '');
 
 /**
@@ -66,10 +84,6 @@ export function echapperTexte(texte, { tableau = false } = {}) {
   return t;
 }
 
-/** Échappe ce qui ferait d'un début de ligne un titre, une citation, une liste ou une règle. */
-const echapperDebutDeLigne = (ligne) =>
-  ligne.replace(/^(\s*)(#{1,6}\s|>|[-+*]\s|(\d+)([.)])\s)/, (tout, espaces, marque, chiffres, point) =>
-    chiffres ? `${espaces}${chiffres}\\${point} ` : `${espaces}\\${marque}`).replace(/^(\s*)(-{3,}|={3,})\s*$/, '$1\\$2');
 
 /** Le texte en ligne d'une suite de nœuds (gras, italique, code, liens, sauts de ligne) ; `tableau` : dans une case. */
 function enLigne(noeuds, o = {}) {
@@ -202,7 +216,8 @@ function tableau(n, o) {
   const ecrireCase = (c) => {
     const couleur = attribut(c, 'data-couleur');
     const contenu = sansSautsDeBord(enLigne(c.enfants ?? [], { ...o, tableau: true }).trim());
-    return `${couleur && COULEURS_DE_CASE.includes(couleur) ? `{couleur:${couleur}} ` : ''}${contenu}`.trim();
+    const marque = marqueDeLaCouleur(couleur);
+    return `${marque ? `${marque} ` : ''}${contenu}`.trim();
   };
   const ligne = (cases) => `| ${Array.from({ length: largeur }, (_, i) => (cases[i] ? ecrireCase(cases[i]) : '')).join(' | ')} |`;
   const [tete, ...corps] = lignes[0].entete ? lignes : [{ cases: [] }, ...lignes];
@@ -220,11 +235,57 @@ function liste(n, o, profondeur, alterne = false) {
   const sorties = items.map((li) => {
     const marque = ordonnee ? `${numero++}${alterne ? ')' : '.'} ` : alterne ? '* ' : '- ';
     const retrait = ' '.repeat(marque.length);
-    const corps = blocs(li.enfants ?? [], o, profondeur + 1, { serre: !lache }).replace(/^\n+/, '');
+    const corps = blocs(li.enfants ?? [], o, profondeur + 1, { serre: !lache, marqueParente: ordonnee ? null : marque.trim() }).replace(/^\n+/, '');
     const [premiere = '', ...suite] = corps.split('\n');
     return `${marque}${premiere}${suite.map((l) => (l ? `\n${retrait}${l}` : '\n')).join('')}`;
   });
   return sorties.join(lache ? '\n\n' : '\n');
+}
+
+/** Le texte d'un onglet d'après sa barre (`nav`, ignorée de l'éditeur mais relue ici) : le libellé du lien qui mène au panneau `id`, ou ''. */
+function libelleDeLaBarre(groupe, id) {
+  const cherche = (n) => {
+    if (!estElement(n)) return null;
+    if (n.nom === 'a' && attribut(n, 'href') === `#${id}`) return texteBrut({ ...n, attributs: {} }).replace(/\s+/g, ' ').trim();
+    for (const c of n.enfants ?? []) {
+      const t = cherche(c);
+      if (t !== null) return t;
+    }
+    return null;
+  };
+  for (const c of groupe.enfants ?? []) if (estElement(c) && c.nom === 'nav') return cherche(c) ?? '';
+  return '';
+}
+
+/**
+ * Un groupe d'onglets (`div[data-onglets-md]`, lib/markdown-onglets.mjs) réécrit « ::: onglets » … « ::: » : le texte au-dessus de la barre, puis, par
+ * panneau (`section`), son intertitre en `###` avec sa marque de couleur `{couleur:…}` (attribut `data-couleur` du panneau) et son ancre figée, puis son
+ * contenu. La barre est refaite par le rendu, jamais écrite ; un panneau dont l'intertitre a disparu (ou n'est plus le premier bloc) reprend le texte de son
+ * lien de la barre, pour ne rien perdre. Un `###` du contenu s'écrit `####` (bloc).
+ */
+function groupeEnMarkdown(n, o, profondeur) {
+  const enfants = (n.enfants ?? []).filter((c) => !ignore(c));
+  const panneaux = enfants.filter((c) => estElement(c) && c.nom === 'section');
+  const intro = enfants.filter((c) => !(estElement(c) && c.nom === 'section'));
+  const parties = [];
+  const avant = blocs(intro, o, profondeur);
+  if (avant.trim()) parties.push(avant);
+  for (const p of panneaux) {
+    const marque = marqueDeLaCouleur(attribut(p, 'data-couleur'));
+    const contenu = (p.enfants ?? []).filter((c) => !ignore(c));
+    const premier = morceaux(contenu)[0];
+    const titre = premier && estElement(premier) && /^h[1-6]$/.test(premier.nom) ? premier : null;
+    const reste = titre ? contenu.slice(contenu.indexOf(titre) + 1) : contenu;
+    let texte = titre ? sansSautsDeBord(enLigne(titre.enfants ?? [], o).trim()) : '';
+    if (!texte) texte = echapperTexte(libelleDeLaBarre(n, attribut(p, 'id') ?? ''));
+    const ancre = titre ? attribut(titre, 'data-ancre-figee') : null;
+    const neuve = ancre && ANCRE_FIGEE.test(ancre) && !o.ancresEcrites.has(ancre);
+    if (neuve) o.ancresEcrites.add(ancre);
+    const ligne = `${'#'.repeat(NIVEAU_DES_ONGLETS)} ${marque ? `${marque} ` : ''}${texte}${neuve ? ` {#${ancre}}` : ''}`.trimEnd();
+    const corps = blocs(reste, { ...o, dansUnOnglet: true }, profondeur);
+    parties.push(corps.trim() ? `${ligne}\n\n${corps}` : ligne);
+  }
+  return [MARQUE_D_OUVERTURE, ...parties, MARQUE_DE_FERMETURE].join('\n\n');
 }
 
 function bloc(n, o, profondeur, alterne = false) {
@@ -234,8 +295,17 @@ function bloc(n, o, profondeur, alterne = false) {
     case 'h3':
     case 'h4':
     case 'h5':
-    case 'h6':
-      return `${'#'.repeat(Number(n.nom[1]))} ${sansSautsDeBord(enLigne(n.enfants ?? [], o).trim())}`;
+    case 'h6': {
+      // une ancre figée (lib/ancres-figees.mjs, posée par remarkAncresFigees) se réécrit au bout de la ligne : renommer l'intertitre la garde. Une
+      // seule fois par texte : un intertitre coupé en deux dans l'éditeur (le navigateur recopie les attributs sur la seconde moitié) la laisse à la première
+      const ancre = attribut(n, 'data-ancre-figee');
+      const neuve = ancre && ANCRE_FIGEE.test(ancre) && !o.ancresEcrites.has(ancre);
+      if (neuve) o.ancresEcrites.add(ancre);
+      const marque = neuve ? ` {#${ancre}}` : '';
+      // dans un onglet, un `###` ouvrirait un autre onglet à la relecture : un sous-titre de même niveau s'écrit un cran plus bas
+      const niveau = o.dansUnOnglet && n.nom === 'h3' ? NIVEAU_DES_ONGLETS + 1 : Number(n.nom[1]);
+      return `${'#'.repeat(niveau)} ${sansSautsDeBord(enLigne(n.enfants ?? [], o).trim())}${marque}`;
+    }
     case 'ul':
     case 'ol':
       return liste(n, o, profondeur, alterne);
@@ -255,6 +325,7 @@ function bloc(n, o, profondeur, alterne = false) {
     case 'section':
     case 'article':
     case 'figure': {
+      if (n.nom === 'div' && attribut(n, 'data-onglets-md') !== null) return groupeEnMarkdown(n, o, profondeur);
       if (n.nom !== 'p' && (n.enfants ?? []).some(estBloc)) return blocs(n.enfants ?? [], o, profondeur);
       return sansSautsDeBord(enLigne(n.enfants ?? [], o).trim()).split('\n').map(echapperDebutDeLigne).join('\n');
     }
@@ -263,17 +334,31 @@ function bloc(n, o, profondeur, alterne = false) {
   }
 }
 
-function blocs(enfants, o, profondeur = 0, { serre = false } = {}) {
+/**
+ * `marqueParente` : la marque (« - » ou « * ») de l'item de liste à puces dont ces blocs sont le contenu. Un premier bloc qui est une liste à puces ou
+ * un filet s'écrit sur la ligne de cette marque : il prend l'autre caractère, sinon une ligne faite de la même marque répétée (« - - - », « * * * »,
+ * « - --- », par ex. une liste imbriquée à item vide) serait relue comme un filet <hr>, pas comme des listes.
+ */
+function blocs(enfants, o, profondeur = 0, { serre = false, marqueParente = null } = {}) {
   const sorties = [];
   let precedent = null;
   let alterne = false;
   for (const n of morceaux(enfants)) {
-    // deux listes de même sorte qui se suivent (« - » puis « * » dans une page du Codex) : la seconde prend l'autre marque
+    const premier = sorties.length === 0 && marqueParente !== null && estElement(n);
+    if (premier && n.nom === 'hr') {
+      sorties.push(marqueParente === '-' ? '***' : '---');
+      alterne = false;
+      precedent = n;
+      continue;
+    }
+    // deux listes de même sorte qui se suivent (« - » puis « * » dans une page du Codex) : la seconde prend l'autre marque ; la première liste à
+    // puces d'un item à puces prend la marque que l'item n'a pas
     const suit = estElement(n) && (n.nom === 'ul' || n.nom === 'ol') && precedent?.nom === n.nom;
-    const t = bloc(n, o, profondeur, suit && !alterne);
+    const alt = premier && n.nom === 'ul' ? marqueParente === '-' : suit && !alterne;
+    const t = bloc(n, o, profondeur, alt);
     if (t.trim() === '') continue;
     sorties.push(t);
-    alterne = suit && !alterne;
+    alterne = alt;
     precedent = n;
   }
   return sorties.join(serre ? '\n' : '\n\n');
@@ -284,7 +369,7 @@ function blocs(enfants, o, profondeur = 0, { serre = false } = {}) {
  * déploiement retiré, comme les liens Markdown du guide s'écrivent : « /races/ »).
  */
 export function versMarkdown(enfants, { lienRelatif } = {}) {
-  return `${blocs(enfants, { lienRelatif }).replace(/\n{3,}/g, '\n\n').trim()}\n`;
+  return `${blocs(enfants, { lienRelatif, ancresEcrites: new Set() }).replace(/\n{3,}/g, '\n\n').trim()}\n`;
 }
 
 /** Un arbre simple d'après un nœud du DOM (navigateur) : texte, ou élément avec ses attributs et ses enfants. */
@@ -297,6 +382,32 @@ export function arbreDuDom(noeud) {
 }
 
 const MARQUEUR = /^<!--\s*guide:([a-z-]+)\s*-->[ \t]*$/gm;
+
+/**
+ * Ce que l'éditeur du guide fait d'une ligne `page` en attente (GET /api/edition/en-attente/ : { creee, apercu? }) pour la page affichée, qui a
+ * `morceaux` morceaux de texte : 'apercu' (l'aperçu envoyé avec la dernière modification, un HTML par morceau, se pose à leur place), 'perime' (le texte
+ * a changé sans aperçu utilisable : il ne se modifie pas ici avant la reconstruction du site) ou null (rien à faire : aucun texte changé, ou une page
+ * CRÉÉE sur le site de dev sans aperçu, que edition/nouvelles.mjs a dessinée depuis son texte actuel : son « À compléter. » se modifie en place).
+ */
+export function etatDeLApercu(enAttente, morceaux) {
+  if (!enAttente || !('apercu' in enAttente)) return null;
+  if (Array.isArray(enAttente.apercu)) return enAttente.apercu.length === morceaux ? 'apercu' : 'perime';
+  return enAttente.creee ? null : 'perime';
+}
+
+/**
+ * Ce que la page du guide montre du texte d'une ligne `page` en attente (`ligne.corps_md` : le texte actuel de la base) : 'apercu' (celui que le navigateur a
+ * envoyé, etatDeLApercu), 'vivant' (le texte actuel, rendu dans le navigateur comme au build — lib/markdown-rendu.mjs — quand l'aperçu manque : texte fusionné
+ * au rejeu, conflit résolu, lot ancien ; ou qu'il ne correspond plus aux morceaux de la page ; ou page créée sur le site de dev), 'perime' (aucun rendu
+ * possible : le texte actuel ne se découpe pas comme la page, il s'affichera à la prochaine mise à jour) ou null (rien à faire : aucun texte changé).
+ */
+export function etatDuTexte(enAttente, morceaux) {
+  const quoi = etatDeLApercu(enAttente, morceaux);
+  if (quoi === 'apercu' || !enAttente || !('apercu' in enAttente)) return quoi;
+  const corps = enAttente.ligne?.corps_md;
+  const aligne = typeof corps === 'string' && decouperCorps(corps).filter((m) => m.visible).length === morceaux;
+  return aligne ? 'vivant' : quoi;
+}
 
 /**
  * Le corps d'une page coupé en morceaux de texte et marqueurs de bloc, SANS rien perdre (contrairement à lib/guide.mjs#morceauxDuChapitre) :
@@ -356,7 +467,10 @@ function attributsSurs(n, nom) {
   // un mot-clé du glossaire (lib/mots-cles-balises.mjs#htmlDeLaBalise) : sa classe, son id, sa balise et sa bulle (celle de la page), rien d'autre
   if (estUnMotCle(n) || estUneDefinition(n)) {
     const id = attribut(n, 'data-mot-cle');
-    garder('class', estUnMotCle(n) ? 'mot-cle' : 'mot-cle-definition');
+    const couleur = classeDeCouleur(n);
+    const classe = estUnMotCle(n) ? 'mot-cle' : 'mot-cle-definition';
+    garder('class', couleur ? `${classe} ${couleur}` : classe);
+    if (nom === 'a' && ADRESSE_SURE.test(attribut(n, 'href') ?? '')) garder('href', attribut(n, 'href'));
     garder('data-mot-cle', id);
     if (estUnMotCle(n) && attribut(n, 'data-bulle') === `mot-cle-${id}`) {
       garder('data-bulle', `mot-cle-${id}`);
@@ -366,18 +480,27 @@ function attributsSurs(n, nom) {
     if (lireUneBalise(attribut(n, 'data-balise') ?? '')) garder('data-balise', attribut(n, 'data-balise'));
     return a.join('');
   }
-  if ((nom === 'strong' || nom === 'span') && ['mot-cle-definition__nom', 'mot-cle-definition__texte'].some((c) => classes(n).includes(c))) {
+  if ((nom === 'strong' || nom === 'span' || nom === 'a') && ['mot-cle-definition__nom', 'mot-cle-definition__texte'].some((c) => classes(n).includes(c))) {
     garder('class', classes(n).includes('mot-cle-definition__nom') ? 'mot-cle-definition__nom' : 'mot-cle-definition__texte');
+    if (nom === 'a' && ADRESSE_SURE.test(attribut(n, 'href') ?? '')) garder('href', attribut(n, 'href'));
     return a.join('');
   }
   if (/^h[1-6]$/.test(nom) && /^[a-z0-9-]+$/.test(attribut(n, 'id') ?? '')) garder('id', attribut(n, 'id'));
+  // l'ancre figée d'un intertitre (lib/ancres-figees.mjs) : versMarkdown la réécrit en « {#ancre} »
+  if (/^h[1-6]$/.test(nom) && ANCRE_FIGEE.test(attribut(n, 'data-ancre-figee') ?? '')) garder('data-ancre-figee', attribut(n, 'data-ancre-figee'));
   if (nom === 'ol' && /^\d+$/.test(attribut(n, 'start') ?? '')) garder('start', attribut(n, 'start'));
   if (nom === 'code') {
     const langue = classes(n).find((c) => /^language-[a-z0-9-]+$/.test(c));
     if (langue) garder('class', langue);
   }
   if (nom === 'td' || nom === 'th') {
-    if (COULEURS_DE_CASE.includes(attribut(n, 'data-couleur'))) garder('data-couleur', attribut(n, 'data-couleur'));
+    // la couleur d'une case : son nom, et la classe de la palette recalculée depuis lui (jamais celle reçue)
+    const couleur = attribut(n, 'data-couleur');
+    const lue = lireLaCouleurEcrite(couleur);
+    if (lue) {
+      garder('data-couleur', lue.valeur);
+      garder('class', classesDeCase(lue.valeur).join(' '));
+    }
     const align = alignement(n);
     if (align) garder('align', align);
   }
@@ -401,11 +524,43 @@ function attributsSurs(n, nom) {
       if (attribut(n, 'aria-label')) garder('aria-label', attribut(n, 'aria-label'));
       garder('data-monnaie', attribut(n, 'data-monnaie'));
     }
+    // une autre icône du site (lib/icones.mjs : dégâts, magies ; un mot-clé la porte) : ses classes et son nom, recalculés d'après la liste, jamais reçus
+    const autre = nom === 'span' ? ICONES.find((i) => i.famille !== 'monnaie' && i.classe.split(' ').every((c) => classes(n).includes(c))) : null;
+    if (autre) {
+      garder('class', autre.classe);
+      garder('role', 'img');
+      garder('aria-label', autre.libelle);
+    }
   }
   if (nom === 'a' && ADRESSE_SURE.test(attribut(n, 'href') ?? '')) garder('href', attribut(n, 'href'));
   // l'adresse écrite d'un lien du guide (versMarkdown la relit) : l'aperçu la garde, une seconde modification ne la perd pas
   if (nom === 'a' && LIEN_ECRIT.test(attribut(n, 'data-lien-ecrit') ?? '')) garder('data-lien-ecrit', attribut(n, 'data-lien-ecrit'));
   return a.join('');
+}
+
+/**
+ * Le HTML assaini d'un groupe d'onglets : la barre est refaite d'après les panneaux (elle est ignorée de l'éditeur, qui ne la tient pas à jour), les
+ * identifiants, les couleurs et les classes recalculés (jamais repris du texte reçu), l'onglet ouvert gardé. Le même HTML que le rendu du site
+ * (lib/onglets-groupe.mjs#htmlDuGroupe) : l'aperçu garde donc ses onglets, qui fonctionnent.
+ */
+function groupeSur(n) {
+  const enfants = (n.enfants ?? []).filter((c) => !ignore(c));
+  const panneaux = enfants.filter((c) => estElement(c) && c.nom === 'section');
+  const intro = enfants.filter((c) => !(estElement(c) && c.nom === 'section'));
+  const pris = new Set();
+  const onglets = panneaux.map((p, i) => {
+    const demande = attribut(p, 'id') ?? '';
+    let id = /^[\p{L}\p{N}][\p{L}\p{N}-]*$/u.test(demande) ? demande : `onglet-${i + 1}`;
+    for (let k = 2; pris.has(id); k++) id = `${demande || `onglet-${i + 1}`}-${k}`;
+    pris.add(id);
+    const lue = lireLaCouleurEcrite(attribut(p, 'data-couleur'));
+    const titre = (p.enfants ?? []).find((c) => estElement(c) && /^h[1-6]$/.test(c.nom));
+    const nom = (titre ? texteBrut(titre) : libelleDeLaBarre(n, demande)).replace(/\s+/g, ' ').trim();
+    return { id, couleur: lue?.valeur ?? null, classe: lue?.classe ?? null, titre: nom || id, html: htmlSur(p.enfants ?? []), ouvert: classes(p).includes('is-active') };
+  });
+  if (!onglets.length) return htmlSur(intro);
+  const ouverts = onglets.flatMap((o, i) => (o.ouvert ? [i] : []));
+  return htmlDuGroupe({ intro: htmlSur(intro), onglets, actif: ouverts.length === 1 ? ouverts[0] : 0 });
 }
 
 /**
@@ -418,6 +573,7 @@ export function htmlSur(enfants) {
     .map((n) => {
       if (n.type === 'texte') return echapper(n.valeur);
       if (!estElement(n) || ignore(n) || n.nom === 'img') return '';
+      if (n.nom === 'div' && attribut(n, 'data-onglets-md') !== null) return groupeSur(n);
       const nom = GARDES[n.nom];
       if (!nom) return htmlSur(n.enfants ?? []);
       if (VIDES.has(nom)) return `<${nom}>`;

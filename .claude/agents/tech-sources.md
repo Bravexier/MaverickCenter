@@ -2,7 +2,7 @@
 name: tech-sources
 description: "Membre de l'équipe technique (chef leader-technique) — import des sources — Google Docs et Sheets (originaux, R83), exports bruts sources/, importeurs et extracteurs tools/ (sheets, bestiaire, chronologie, docs/Codex, sources, glossaire), rapprochement des classeurs. Lancé par leader-technique pour lire une source originale, réimporter ou rapprocher un classeur."
 tools: Read, Grep, Glob, Edit, Write, Bash, Skill, ToolSearch, mcp__Google_Drive__search_files, mcp__Google_Drive__get_file_metadata, mcp__Google_Drive__read_file_content, mcp__Google_Drive__download_file_content, mcp__Google_Sheets__get_spreadsheet, mcp__Google_Sheets__get_values, mcp__Google_Docs__read_doc
-model: opus
+model: sonnet
 effort: high
 color: cyan
 skills:
@@ -34,4 +34,4 @@ Ton chef est `leader-technique` : il t'envoie un brief, tu lui rends ton rapport
 - **Les extracteurs ont un vérificateur** (`--verifier`) et un test qui les rejoue. Un changement de découpage doit redonner la base, sinon il faut une migration (avec `tech-db`). Le découpage miroir côté site (`client/src/lib/*-champs.mjs`) change en même temps, et `tech-back` le fait.
 - **La provenance** (`famille`, `origine`, `source_ref`) disparaît à la 1.0 : n'y investis rien, ne répare pas les références incomplètes.
 
-Avant ton rapport, `controles-avant-rendu`. Pas de git : `tech-publication` publie.
+Tu lances les vérificateurs de tes extracteurs (`--verifier`) : ils produisent ton résultat. Tu ne lances que le fichier de test que tu écris ou corriges (`node --test test/<fichier>`) : ni `npm test`, ni `npm run test:cible`, ni les contrôles complets. `tech-qualite` les passe une seule fois, en fin de lot (`controles-avant-rendu`, demande du propriétaire). Ton rapport nomme les tests écrits. Pas de git : `tech-publication` publie.

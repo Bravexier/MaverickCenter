@@ -9,15 +9,17 @@ import { after, test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { rejouerLeJournal } from '../serveur/edition.mjs';
-import { cheminBase } from '../src/lib/donnees.mjs';
+import { cheminDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const racine = dossierTemporaire('rejeu-capacites');
 let compteur = 0;
 const ouvertes = [];
 after(() => ouvertes.forEach((b) => b.isOpen && b.close()));
+// les règles dans leur état d'import (test/aide-base-d-import.mjs) : des cartes ont des valeurs propres de capacité (R69), que le site de dev peut toutes
+// retirer de la base courante (demande du propriétaire : les tests ne dépendent pas de ce que le site modifie)
 const vivante = () => {
-  const b = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(racine, `b${(compteur += 1)}`) }).chemin);
+  const b = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminDImport(), dossier: join(racine, `b${(compteur += 1)}`) }).chemin);
   ouvertes.push(b);
   return b;
 };

@@ -1,0 +1,1581 @@
+{
+ "migration": "0103-r205-etat-gel",
+ "decision": "R205",
+ "description": "Décision R205 (3) : l'état « Gel » s'écrit « Gel » dans les textes de règles modifiables qui l'écrivaient « Gelé ». `corrections` : une entrée par ligne et colonne réécrite ; `avant` et `apres` sont la valeur entière, ou pour classe_annexe.texte et le corps de la page classes/mage-bleu le fragment qui change (présent une fois). Le rapprochement d'un classeur les défait (tools/sources/rapprocher.mjs, registres `corrections` des migrations). `derivees` : les lignes de monstre_defense recalculées depuis les rubriques (lib/monstre-champs.mjs#valeursDeLaCarte). `motifs` : les écritures remplacées ; tout autre « gelé » (adjectif, « Cerveau gelé », Codex, historique) reste.",
+ "motifs": [
+  {
+   "motif": "« Gelé » seul (mot entier : ni « Gelée », ni « Gelés »), majuscule",
+   "remplacement": "« Gel »",
+   "exemples": [
+    "Eau, Glace, Confusion, Gelé",
+    "Résistance Glace et Gelé",
+    "résister à Gelé.",
+    "“Gelé 1”"
+   ]
+  },
+  {
+   "motif": "« gelé N » (minuscule suivie d’un stade)",
+   "remplacement": "« gel N »",
+   "exemples": [
+    "“gelé 1”",
+    "\"gelé 1\""
+   ]
+  }
+ ],
+ "corrections": [
+  {
+   "table": "magie_resistance",
+   "cle": {
+    "magie_id": "magies/magie-de-la-glace",
+    "sens": "resistance",
+    "cible_type": "etat",
+    "rang": 1
+   },
+   "col": "cible_brut",
+   "avant": "Gelé",
+   "apres": "Gel",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "magie_resistance",
+   "cle": {
+    "magie_id": "magies/magie-de-la-necromancie",
+    "sens": "vulnerabilite",
+    "cible_type": "etat",
+    "rang": 1
+   },
+   "col": "cible_brut",
+   "avant": "Gelé",
+   "apres": "Gel",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "magie_resistance",
+   "cle": {
+    "magie_id": "magies/magie-du-feu",
+    "sens": "resistance",
+    "cible_type": "etat",
+    "rang": 2
+   },
+   "col": "cible_brut",
+   "avant": "Gelé",
+   "apres": "Gel",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "magie_resistance",
+   "cle": {
+    "magie_id": "magies/magie-du-sang",
+    "sens": "vulnerabilite",
+    "cible_type": "etat",
+    "rang": 1
+   },
+   "col": "cible_brut",
+   "avant": "Gelé",
+   "apres": "Gel",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "magie_resistance",
+   "cle": {
+    "magie_id": "magies/magie-du-vent",
+    "sens": "resistance",
+    "cible_type": "etat",
+    "rang": 3
+   },
+   "col": "cible_brut",
+   "avant": "Gelé",
+   "apres": "Gel",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-bordeaux#carte:blob-bordeaux",
+    "rang": 7
+   },
+   "col": "texte",
+   "avant": "Nécromancie, Glace, Gelé, Poison, Paralysie",
+   "apres": "Nécromancie, Glace, Gel, Poison, Paralysie",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-bordeaux#carte:blob-du-sang",
+    "rang": 7
+   },
+   "col": "texte",
+   "avant": "Nécromancie, Glace, Gelé, Poison, Paralysie",
+   "apres": "Nécromancie, Glace, Gel, Poison, Paralysie",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-bordeaux#carte:blob-grenade",
+    "rang": 7
+   },
+   "col": "texte",
+   "avant": "Nécromancie, Glace, Gelé, Poison, Paralysie",
+   "apres": "Nécromancie, Glace, Gel, Poison, Paralysie",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-cyan#carte:blob-cyan",
+    "rang": 9
+   },
+   "col": "texte",
+   "avant": "Contrôle mentale, Saignement, Gelé, Surdité",
+   "apres": "Contrôle mentale, Saignement, Gel, Surdité",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-cyan#carte:blob-de-la-glace",
+    "rang": 9
+   },
+   "col": "texte",
+   "avant": "Contrôle mentale, Saignement, Gelé, Surdité",
+   "apres": "Contrôle mentale, Saignement, Gel, Surdité",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-cyan#carte:blob-menthe",
+    "rang": 9
+   },
+   "col": "texte",
+   "avant": "Contrôle mentale, Saignement, Gelé, Surdité",
+   "apres": "Contrôle mentale, Saignement, Gel, Surdité",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-vert-fonce#carte:blob-corossol",
+    "rang": 8
+   },
+   "col": "texte",
+   "avant": "Eau, Glace, Confusion, Gelé",
+   "apres": "Eau, Glace, Confusion, Gel",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-vert-fonce#carte:blob-de-la-necromancie",
+    "rang": 7
+   },
+   "col": "texte",
+   "avant": "Eau, Glace, Confusion, Gelé",
+   "apres": "Eau, Glace, Confusion, Gel",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/blob-vert-fonce#carte:blob-vert-fonce",
+    "rang": 7
+   },
+   "col": "texte",
+   "avant": "Eau, Glace, Confusion, Gelé",
+   "apres": "Eau, Glace, Confusion, Gel",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/carcalanche#carte:carcalanche-du-blizzard",
+    "rang": 9
+   },
+   "col": "texte",
+   "avant": "Poison, Maladie, Couardise, Peur, Fatigue, Saignement, Gelé",
+   "apres": "Poison, Maladie, Couardise, Peur, Fatigue, Saignement, Gel",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/carcalanche#carte:carcalanche-du-froid",
+    "rang": 9
+   },
+   "col": "texte",
+   "avant": "Poison, Maladie, Couardise, Peur, Fatigue, Saignement, Gelé",
+   "apres": "Poison, Maladie, Couardise, Peur, Fatigue, Saignement, Gel",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/carcalanche#carte:carcalanche-du-givre",
+    "rang": 9
+   },
+   "col": "texte",
+   "avant": "Poison, Maladie, Couardise, Peur, Fatigue, Saignement, Gelé",
+   "apres": "Poison, Maladie, Couardise, Peur, Fatigue, Saignement, Gel",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/charcabe#carte:charcabe-brule",
+    "rang": 8
+   },
+   "col": "texte",
+   "avant": "Feu, Terre, Glace, Pétrification, Gelé",
+   "apres": "Feu, Terre, Glace, Pétrification, Gel",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/charcabe#carte:charcabe-carbonise",
+    "rang": 8
+   },
+   "col": "texte",
+   "avant": "Feu, Terre, Glace, Pétrification, Gelé",
+   "apres": "Feu, Terre, Glace, Pétrification, Gel",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/charcabe#carte:charcabe-vitrifie",
+    "rang": 8
+   },
+   "col": "texte",
+   "avant": "Feu, Terre, Glace, Pétrification, Gelé",
+   "apres": "Feu, Terre, Glace, Pétrification, Gel",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/collecteur#carte:collecteur",
+    "rang": 9
+   },
+   "col": "texte",
+   "avant": "Feu, Eau, Glace, Brûlure, Gelé",
+   "apres": "Feu, Eau, Glace, Brûlure, Gel",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/collecteur#carte:collecteur-puissant",
+    "rang": 9
+   },
+   "col": "texte",
+   "avant": "Feu, Eau, Glace, Brûlure, Gelé",
+   "apres": "Feu, Eau, Glace, Brûlure, Gel",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/collecteur#carte:collecteur-titan",
+    "rang": 9
+   },
+   "col": "texte",
+   "avant": "Feu, Eau, Glace, Brûlure, Gelé",
+   "apres": "Feu, Eau, Glace, Brûlure, Gel",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/corbeau-agressif#carte:corbeau-agressif-du-feu",
+    "rang": 8
+   },
+   "col": "texte",
+   "avant": "Feu, Terre, Glace, Pétrification, Gelé",
+   "apres": "Feu, Terre, Glace, Pétrification, Gel",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/corbeau-agressif#carte:corbeau-agressif-noir",
+    "rang": 8
+   },
+   "col": "texte",
+   "avant": "Feu, Terre, Glace, Pétrification, Gelé",
+   "apres": "Feu, Terre, Glace, Pétrification, Gel",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/corbeau-agressif#carte:corbeau-agressif-rouge",
+    "rang": 8
+   },
+   "col": "texte",
+   "avant": "Feu, Terre, Glace, Pétrification, Gelé",
+   "apres": "Feu, Terre, Glace, Pétrification, Gel",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/crieur-osseux#carte:crieur-osseux",
+    "rang": 8
+   },
+   "col": "texte",
+   "avant": "Vent, Glace, Feu, Gelé, Brûlure",
+   "apres": "Vent, Glace, Feu, Gel, Brûlure",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/crieur-osseux#carte:gueulard-osseux",
+    "rang": 8
+   },
+   "col": "texte",
+   "avant": "Vent, Glace, Feu, Gelé, Brûlure",
+   "apres": "Vent, Glace, Feu, Gel, Brûlure",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/crieur-osseux#carte:hurleur-osseux",
+    "rang": 8
+   },
+   "col": "texte",
+   "avant": "Vent, Glace, Feu, Gelé, Brûlure",
+   "apres": "Vent, Glace, Feu, Gel, Brûlure",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/fourbraise#carte:fourbraise-chevaleresse",
+    "rang": 7
+   },
+   "col": "texte",
+   "avant": "Nécromancie, Glace, Gelé, Poison",
+   "apres": "Nécromancie, Glace, Gel, Poison",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/fourbraise#carte:fourbraise-soldat",
+    "rang": 7
+   },
+   "col": "texte",
+   "avant": "Nécromancie, Glace, Gelé, Poison",
+   "apres": "Nécromancie, Glace, Gel, Poison",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/golem-dargile#carte:golem-dargile-iii",
+    "rang": 9
+   },
+   "col": "texte",
+   "avant": "Brûlure, Confusion, Surdité, Pétrification, Paralysie, Gelé, Poison, Maladie",
+   "apres": "Brûlure, Confusion, Surdité, Pétrification, Paralysie, Gel, Poison, Maladie",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/golem-de-bois#carte:golem-de-bois-i",
+    "rang": 7
+   },
+   "col": "texte",
+   "avant": "Feu, Glace, Foudre, Sang, Brûlure, Gelé, Paralysie, Saignement",
+   "apres": "Feu, Glace, Foudre, Sang, Brûlure, Gel, Paralysie, Saignement",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/golem-de-bois#carte:golem-de-bois-ii",
+    "rang": 7
+   },
+   "col": "texte",
+   "avant": "Feu, Glace, Foudre, Sang, Brûlure, Gelé, Paralysie, Saignement",
+   "apres": "Feu, Glace, Foudre, Sang, Brûlure, Gel, Paralysie, Saignement",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/golem-de-bois#carte:golem-de-bois-iii",
+    "rang": 7
+   },
+   "col": "texte",
+   "avant": "Feu, Glace, Foudre, Sang, Brûlure, Gelé, Paralysie, Saignement",
+   "apres": "Feu, Glace, Foudre, Sang, Brûlure, Gel, Paralysie, Saignement",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/golem-de-chair#carte:golem-de-chair-i",
+    "rang": 7
+   },
+   "col": "texte",
+   "avant": "Nécromancie, Glace, Poison, Gelé",
+   "apres": "Nécromancie, Glace, Poison, Gel",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/golem-de-chair#carte:golem-de-chair-ii",
+    "rang": 7
+   },
+   "col": "texte",
+   "avant": "Nécromancie, Glace, Poison, Gelé",
+   "apres": "Nécromancie, Glace, Poison, Gel",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/golem-de-chair#carte:golem-de-chair-iii",
+    "rang": 7
+   },
+   "col": "texte",
+   "avant": "Nécromancie, Glace, Poison, Gelé",
+   "apres": "Nécromancie, Glace, Poison, Gel",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/golem-de-fer#carte:golem-de-fer-i",
+    "rang": 7
+   },
+   "col": "texte",
+   "avant": "Feu, Eau, Glace, Foudre, Confusion, Brûlure, Gelé, Paralysie",
+   "apres": "Feu, Eau, Glace, Foudre, Confusion, Brûlure, Gel, Paralysie",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/golem-de-fer#carte:golem-de-fer-ii",
+    "rang": 7
+   },
+   "col": "texte",
+   "avant": "Eau, Glace, Foudre, Confusion, Gelé, Paralysie",
+   "apres": "Eau, Glace, Foudre, Confusion, Gel, Paralysie",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/golem-de-fer#carte:golem-de-fer-iii",
+    "rang": 7
+   },
+   "col": "texte",
+   "avant": "Eau, Glace, Foudre, Confusion, Gelé, Paralysie",
+   "apres": "Eau, Glace, Foudre, Confusion, Gel, Paralysie",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/golem-de-glace#carte:golem-de-glace-i",
+    "rang": 9
+   },
+   "col": "texte",
+   "avant": "Glace, Gelé, Saignement, Poison",
+   "apres": "Glace, Gel, Saignement, Poison",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/golem-de-glace#carte:golem-de-glace-ii",
+    "rang": 9
+   },
+   "col": "texte",
+   "avant": "Glace, Gelé, Saignement, Poison",
+   "apres": "Glace, Gel, Saignement, Poison",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/golem-de-glace#carte:golem-de-glace-iii",
+    "rang": 9
+   },
+   "col": "texte",
+   "avant": "Glace, Gelé, Saignement, Poison",
+   "apres": "Glace, Gel, Saignement, Poison",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/golem-de-magma#carte:golem-de-magma-i",
+    "rang": 9
+   },
+   "col": "texte",
+   "avant": "Brûlure, Pétrification, Gelé",
+   "apres": "Brûlure, Pétrification, Gel",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/golem-de-magma#carte:golem-de-magma-ii",
+    "rang": 9
+   },
+   "col": "texte",
+   "avant": "Brûlure, Pétrification, Gelé",
+   "apres": "Brûlure, Pétrification, Gel",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/golem-de-magma#carte:golem-de-magma-iii",
+    "rang": 9
+   },
+   "col": "texte",
+   "avant": "Brûlure, Pétrification, Gelé",
+   "apres": "Brûlure, Pétrification, Gel",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/golem-de-pain#carte:golem-de-pain-i",
+    "rang": 7
+   },
+   "col": "texte",
+   "avant": "Eau, Glace, Nécromancie, Confusion, Gelé, Poison",
+   "apres": "Eau, Glace, Nécromancie, Confusion, Gel, Poison",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/golem-de-pain#carte:golem-de-pain-ii",
+    "rang": 7
+   },
+   "col": "texte",
+   "avant": "Eau, Glace, Nécromancie, Confusion, Gelé, Poison",
+   "apres": "Eau, Glace, Nécromancie, Confusion, Gel, Poison",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/golem-de-pain#carte:golem-de-pain-iii",
+    "rang": 7
+   },
+   "col": "texte",
+   "avant": "Eau, Glace, Nécromancie, Confusion, Gelé, Poison",
+   "apres": "Eau, Glace, Nécromancie, Confusion, Gel, Poison",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/golem-de-rouage#carte:golem-de-rouage-i",
+    "rang": 7
+   },
+   "col": "texte",
+   "avant": "Vide, Eau, Glace, Enragé, Confusion, Gelé",
+   "apres": "Vide, Eau, Glace, Enragé, Confusion, Gel",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/golem-de-rouage#carte:golem-de-rouage-ii",
+    "rang": 7
+   },
+   "col": "texte",
+   "avant": "Vide, Eau, Glace, Enragé, Confusion, Gelé",
+   "apres": "Vide, Eau, Glace, Enragé, Confusion, Gel",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/golem-de-rouage#carte:golem-de-rouage-iii",
+    "rang": 7
+   },
+   "col": "texte",
+   "avant": "Vide, Eau, Glace, Enragé, Confusion, Gelé",
+   "apres": "Vide, Eau, Glace, Enragé, Confusion, Gel",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/golem-osseux#carte:golem-osseux-i",
+    "rang": 7
+   },
+   "col": "texte",
+   "avant": "Glace, Eau, Frappe, Gelé, Confusion",
+   "apres": "Glace, Eau, Frappe, Gel, Confusion",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/golem-osseux#carte:golem-osseux-ii",
+    "rang": 7
+   },
+   "col": "texte",
+   "avant": "Glace, Eau, Frappe, Gelé, Confusion",
+   "apres": "Glace, Eau, Frappe, Gel, Confusion",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/golem-osseux#carte:golem-osseux-iii",
+    "rang": 7
+   },
+   "col": "texte",
+   "avant": "Glace, Eau, Frappe, Gelé, Confusion",
+   "apres": "Glace, Eau, Frappe, Gel, Confusion",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/irapullum#carte:irapullum",
+    "rang": 7
+   },
+   "col": "texte",
+   "avant": "Feu, Nécromancie, Glace, Brûlure, Poison, Gelé",
+   "apres": "Feu, Nécromancie, Glace, Brûlure, Poison, Gel",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/irapullum#carte:irapullum-sanglant",
+    "rang": 7
+   },
+   "col": "texte",
+   "avant": "Feu, Nécromancie, Glace, Brûlure, Poison, Gelé",
+   "apres": "Feu, Nécromancie, Glace, Brûlure, Poison, Gel",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/irapullum#carte:irapullum-vorace",
+    "rang": 7
+   },
+   "col": "texte",
+   "avant": "Feu, Nécromancie, Glace, Brûlure, Poison, Gelé",
+   "apres": "Feu, Nécromancie, Glace, Brûlure, Poison, Gel",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/masse-empoisonneuse#carte:masse-empoisonneuse",
+    "rang": 7
+   },
+   "col": "texte",
+   "avant": "Eau, Glace, Confusion, Gelé",
+   "apres": "Eau, Glace, Confusion, Gel",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/moustique-bordeaux#carte:moustique-bordeaux",
+    "rang": 7
+   },
+   "col": "texte",
+   "avant": "Nécromancie, Glace, Gelé, Poison",
+   "apres": "Nécromancie, Glace, Gel, Poison",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/moustique-bordeaux#carte:moustique-du-sang",
+    "rang": 7
+   },
+   "col": "texte",
+   "avant": "Nécromancie, Glace, Gelé, Poison",
+   "apres": "Nécromancie, Glace, Gel, Poison",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/moustique-bordeaux#carte:moustique-sanguin",
+    "rang": 7
+   },
+   "col": "texte",
+   "avant": "Nécromancie, Glace, Gelé, Poison",
+   "apres": "Nécromancie, Glace, Gel, Poison",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/ogre#carte:ogre",
+    "rang": 9
+   },
+   "col": "texte",
+   "avant": "Guerrier : Nécromancie, Feu, Glace, Poison, Brûlure, Gelé\nMage : Nécromancie, Poison",
+   "apres": "Guerrier : Nécromancie, Feu, Glace, Poison, Brûlure, Gel\nMage : Nécromancie, Poison",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/ogre#carte:ogre",
+    "rang": 10
+   },
+   "col": "texte",
+   "avant": "Guerrier : Eau, Vent, Foudre, Confusion, Surdité, Paralysie\nMage : Glace, Feu, Foudre, Gelé, Brûlure, Paralysie",
+   "apres": "Guerrier : Eau, Vent, Foudre, Confusion, Surdité, Paralysie\nMage : Glace, Feu, Foudre, Gel, Brûlure, Paralysie",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/ogre#carte:ogre-abominable",
+    "rang": 9
+   },
+   "col": "texte",
+   "avant": "Guerrier : Nécromancie, Feu, Glace, Poison, Brûlure, Gelé\nMage : Nécromancie, Poison",
+   "apres": "Guerrier : Nécromancie, Feu, Glace, Poison, Brûlure, Gel\nMage : Nécromancie, Poison",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/ogre#carte:ogre-abominable",
+    "rang": 10
+   },
+   "col": "texte",
+   "avant": "Guerrier : Eau, Vent, Foudre, Confusion, Surdité, Paralysie\nMage : Glace, Feu, Foudre, Gelé, Brûlure, Paralysie",
+   "apres": "Guerrier : Eau, Vent, Foudre, Confusion, Surdité, Paralysie\nMage : Glace, Feu, Foudre, Gel, Brûlure, Paralysie",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/ogre#carte:ogre-superieur",
+    "rang": 9
+   },
+   "col": "texte",
+   "avant": "Guerrier : Nécromancie, Feu, Glace, Poison, Brûlure, Gelé\nMage : Nécromancie, Poison",
+   "apres": "Guerrier : Nécromancie, Feu, Glace, Poison, Brûlure, Gel\nMage : Nécromancie, Poison",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/ogre#carte:ogre-superieur",
+    "rang": 10
+   },
+   "col": "texte",
+   "avant": "Guerrier : Eau, Vent, Foudre, Confusion, Surdité, Paralysie\nMage : Glace, Feu, Foudre, Gelé, Brûlure, Paralysie",
+   "apres": "Guerrier : Eau, Vent, Foudre, Confusion, Surdité, Paralysie\nMage : Glace, Feu, Foudre, Gel, Brûlure, Paralysie",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/os-du-froid#carte:os-du-blizzard",
+    "rang": 9
+   },
+   "col": "texte",
+   "avant": "Poison, Maladie, Enragé, Peur, Aveuglement, Fatigue, Saignement, Gelé, Estoc",
+   "apres": "Poison, Maladie, Enragé, Peur, Aveuglement, Fatigue, Saignement, Gel, Estoc",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/os-du-froid#carte:os-du-froid",
+    "rang": 9
+   },
+   "col": "texte",
+   "avant": "Poison, Maladie, Enragé, Peur, Aveuglement, Fatigue, Saignement, Gelé, Estoc",
+   "apres": "Poison, Maladie, Enragé, Peur, Aveuglement, Fatigue, Saignement, Gel, Estoc",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/os-du-froid#carte:os-du-givre",
+    "rang": 9
+   },
+   "col": "texte",
+   "avant": "Poison, Maladie, Enragé, Peur, Aveuglement, Fatigue, Saignement, Gelé, Estoc",
+   "apres": "Poison, Maladie, Enragé, Peur, Aveuglement, Fatigue, Saignement, Gel, Estoc",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/potirobuste#carte:potirobuste-sergent",
+    "rang": 8
+   },
+   "col": "texte",
+   "avant": "Feu, Glace, Terre, Lumière, Brûlure, Gelé, Pétrification, Aveuglement",
+   "apres": "Feu, Glace, Terre, Lumière, Brûlure, Gel, Pétrification, Aveuglement",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/potirobuste#carte:potirobuste-soldat",
+    "rang": 8
+   },
+   "col": "texte",
+   "avant": "Feu, Glace, Terre, Lumière, Brûlure, Gelé, Pétrification, Aveuglement",
+   "apres": "Feu, Glace, Terre, Lumière, Brûlure, Gel, Pétrification, Aveuglement",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/potirodeur#carte:potirodeur-malin",
+    "rang": 8
+   },
+   "col": "texte",
+   "avant": "Vent, Glace, Feu, Lumière, Surdité, Gelé, Brûlure, Aveuglement",
+   "apres": "Vent, Glace, Feu, Lumière, Surdité, Gel, Brûlure, Aveuglement",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/potirodeur#carte:potirodeur-vicieux",
+    "rang": 8
+   },
+   "col": "texte",
+   "avant": "Vent, Glace, Feu, Lumière, Surdité, Gelé, Brûlure, Aveuglement",
+   "apres": "Vent, Glace, Feu, Lumière, Surdité, Gel, Brûlure, Aveuglement",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/rat#carte:rat-gris",
+    "rang": 7
+   },
+   "col": "texte",
+   "avant": "Eau, Glace, Confusion, Gelé",
+   "apres": "Eau, Glace, Confusion, Gel",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/rat#carte:rat-noir",
+    "rang": 7
+   },
+   "col": "texte",
+   "avant": "Eau, Glace, Confusion, Gelé",
+   "apres": "Eau, Glace, Confusion, Gel",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/rat#carte:rat-putride",
+    "rang": 7
+   },
+   "col": "texte",
+   "avant": "Eau, Glace, Confusion, Gelé",
+   "apres": "Eau, Glace, Confusion, Gel",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/soldat-de-fer#carte:general-de-fer",
+    "rang": 7
+   },
+   "col": "texte",
+   "avant": "Paralysie, Gelé, Brûlure, Pétrification",
+   "apres": "Paralysie, Gel, Brûlure, Pétrification",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/soldat-de-fer#carte:lieutenant-de-fer",
+    "rang": 7
+   },
+   "col": "texte",
+   "avant": "Paralysie, Gelé, Brûlure, Pétrification",
+   "apres": "Paralysie, Gel, Brûlure, Pétrification",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/soldat-de-fer#carte:soldat-de-fer",
+    "rang": 7
+   },
+   "col": "texte",
+   "avant": "Paralysie, Gelé, Brûlure, Pétrification",
+   "apres": "Paralysie, Gel, Brûlure, Pétrification",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/squelette-mauvais#carte:squelette-mauvais-colerique",
+    "rang": 7
+   },
+   "col": "texte",
+   "avant": "Lumière, Terre, Feu, Glace, Pétrification, Brûlure, Gelé",
+   "apres": "Lumière, Terre, Feu, Glace, Pétrification, Brûlure, Gel",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/squelette-mauvais#carte:squelette-mauvais-determine",
+    "rang": 7
+   },
+   "col": "texte",
+   "avant": "Lumière, Terre, Feu, Glace, Pétrification, Brûlure, Gelé",
+   "apres": "Lumière, Terre, Feu, Glace, Pétrification, Brûlure, Gel",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/squelette-mauvais#carte:squelette-mauvais-puissant",
+    "rang": 7
+   },
+   "col": "texte",
+   "avant": "Lumière, Terre, Feu, Glace, Pétrification, Brûlure, Gelé",
+   "apres": "Lumière, Terre, Feu, Glace, Pétrification, Brûlure, Gel",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/zompi#carte:zompi",
+    "rang": 8
+   },
+   "col": "texte",
+   "avant": "Vent, Glace, Feu, Surdité, Gelé, Brûlure",
+   "apres": "Vent, Glace, Feu, Surdité, Gel, Brûlure",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/zompi#carte:zompi-claqueur",
+    "rang": 8
+   },
+   "col": "texte",
+   "avant": "Vent, Glace, Feu, Surdité, Gelé, Brûlure",
+   "apres": "Vent, Glace, Feu, Surdité, Gel, Brûlure",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_rubrique",
+   "cle": {
+    "monstre_id": "monstres/zompi#carte:zompiceps",
+    "rang": 8
+   },
+   "col": "texte",
+   "avant": "Vent, Glace, Feu, Surdité, Gelé, Brûlure",
+   "apres": "Vent, Glace, Feu, Surdité, Gel, Brûlure",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "accessoire_effet",
+   "cle": {
+    "id": "ressources/accessoires#effet:defense:15"
+   },
+   "col": "libelle",
+   "avant": "Résistance Glace et Gelé",
+   "apres": "Résistance Glace et Gel",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "maladie",
+   "cle": {
+    "id": "ressources/maladie#maladie:alteratis-cyan"
+   },
+   "col": "effets",
+   "avant": "-20% de chance de résister à Gelé.",
+   "apres": "-20% de chance de résister à Gel.",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_capacite_commune",
+   "cle": {
+    "id": "element-glace"
+   },
+   "col": "description",
+   "avant": "L’arme de cette créature possède 30% de chance d’obliger un jet de vigueur à l’adversaire pour ne pas qu’il prenne “gelé 1”. L’arme peut taper dans l’élément associé.",
+   "apres": "L’arme de cette créature possède 30% de chance d’obliger un jet de vigueur à l’adversaire pour ne pas qu’il prenne “gel 1”. L’arme peut taper dans l’élément associé.",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_capacite_commune",
+   "cle": {
+    "id": "element-glace-2"
+   },
+   "col": "description",
+   "avant": "L’élément d’attaque de cette créature est la Glace avec 25% de chance d’obliger un jet de vigueur à la cible, si elle rate, elle prend “Gelé 1”.",
+   "apres": "L’élément d’attaque de cette créature est la Glace avec 25% de chance d’obliger un jet de vigueur à la cible, si elle rate, elle prend “Gel 1”.",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "monstre_capacite_commune",
+   "cle": {
+    "id": "element-glace-3"
+   },
+   "col": "description",
+   "avant": "L’arme de cette créature possède 30% de chance d’obliger un jet de vigueur à l’adversaire pour ne pas qu’il prenne “gelé 1”. L’arme peut taper dans l’élément associé et ses sorts de glace infligent également un bonus de +3 aux dégâts.",
+   "apres": "L’arme de cette créature possède 30% de chance d’obliger un jet de vigueur à l’adversaire pour ne pas qu’il prenne “gel 1”. L’arme peut taper dans l’élément associé et ses sorts de glace infligent également un bonus de +3 aux dégâts.",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "classe_annexe",
+   "cle": {
+    "classe_id": "classes/mage-bleu",
+    "rang": 9
+   },
+   "col": "texte",
+   "avant": "prenne \"gelé 1\"",
+   "apres": "prenne \"gel 1\"",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "classe_annexe_entree",
+   "cle": {
+    "id": "classes/mage-bleu#entree:glace:attaque-glacante"
+   },
+   "col": "effet",
+   "avant": "La prochaine attaque réussie obligera le jet de vigueur à l'adversaire pour ne pas qu'il prenne \"gelé 1\".",
+   "apres": "La prochaine attaque réussie obligera le jet de vigueur à l'adversaire pour ne pas qu'il prenne \"gel 1\".",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "classes/mage-bleu"
+   },
+   "col": "corps_md",
+   "avant": "prenne \"gelé 1\"",
+   "apres": "prenne \"gel 1\"",
+   "nature": "nom",
+   "raison": "R205 : le nom de l’état est « Gel » (« Il faut écrire \"Gel\" », réponse du propriétaire, 2026-11-07)."
+  }
+ ],
+ "derivees": {
+  "monstre_defense": {
+   "cible": {
+    "avant": "Gelé",
+    "apres": "Gel"
+   },
+   "cible_cle": {
+    "avant": "gele",
+    "apres": "gel"
+   },
+   "lignes": [
+    {
+     "monstre_id": "monstres/blob-bordeaux#carte:blob-bordeaux",
+     "sens": "vulnerabilite",
+     "rang": 3
+    },
+    {
+     "monstre_id": "monstres/blob-bordeaux#carte:blob-du-sang",
+     "sens": "vulnerabilite",
+     "rang": 3
+    },
+    {
+     "monstre_id": "monstres/blob-bordeaux#carte:blob-grenade",
+     "sens": "vulnerabilite",
+     "rang": 3
+    },
+    {
+     "monstre_id": "monstres/blob-cyan#carte:blob-cyan",
+     "sens": "immunite",
+     "rang": 3
+    },
+    {
+     "monstre_id": "monstres/blob-cyan#carte:blob-de-la-glace",
+     "sens": "immunite",
+     "rang": 3
+    },
+    {
+     "monstre_id": "monstres/blob-cyan#carte:blob-menthe",
+     "sens": "immunite",
+     "rang": 3
+    },
+    {
+     "monstre_id": "monstres/blob-vert-fonce#carte:blob-corossol",
+     "sens": "vulnerabilite",
+     "rang": 4
+    },
+    {
+     "monstre_id": "monstres/blob-vert-fonce#carte:blob-de-la-necromancie",
+     "sens": "vulnerabilite",
+     "rang": 4
+    },
+    {
+     "monstre_id": "monstres/blob-vert-fonce#carte:blob-vert-fonce",
+     "sens": "vulnerabilite",
+     "rang": 4
+    },
+    {
+     "monstre_id": "monstres/carcalanche#carte:carcalanche-du-blizzard",
+     "sens": "immunite",
+     "rang": 7
+    },
+    {
+     "monstre_id": "monstres/carcalanche#carte:carcalanche-du-froid",
+     "sens": "immunite",
+     "rang": 7
+    },
+    {
+     "monstre_id": "monstres/carcalanche#carte:carcalanche-du-givre",
+     "sens": "immunite",
+     "rang": 7
+    },
+    {
+     "monstre_id": "monstres/charcabe#carte:charcabe-brule",
+     "sens": "resistance",
+     "rang": 5
+    },
+    {
+     "monstre_id": "monstres/charcabe#carte:charcabe-carbonise",
+     "sens": "resistance",
+     "rang": 5
+    },
+    {
+     "monstre_id": "monstres/charcabe#carte:charcabe-vitrifie",
+     "sens": "resistance",
+     "rang": 5
+    },
+    {
+     "monstre_id": "monstres/collecteur#carte:collecteur",
+     "sens": "vulnerabilite",
+     "rang": 5
+    },
+    {
+     "monstre_id": "monstres/collecteur#carte:collecteur-puissant",
+     "sens": "vulnerabilite",
+     "rang": 5
+    },
+    {
+     "monstre_id": "monstres/collecteur#carte:collecteur-titan",
+     "sens": "vulnerabilite",
+     "rang": 5
+    },
+    {
+     "monstre_id": "monstres/corbeau-agressif#carte:corbeau-agressif-du-feu",
+     "sens": "resistance",
+     "rang": 5
+    },
+    {
+     "monstre_id": "monstres/corbeau-agressif#carte:corbeau-agressif-noir",
+     "sens": "resistance",
+     "rang": 5
+    },
+    {
+     "monstre_id": "monstres/corbeau-agressif#carte:corbeau-agressif-rouge",
+     "sens": "resistance",
+     "rang": 5
+    },
+    {
+     "monstre_id": "monstres/crieur-osseux#carte:crieur-osseux",
+     "sens": "resistance",
+     "rang": 4
+    },
+    {
+     "monstre_id": "monstres/crieur-osseux#carte:gueulard-osseux",
+     "sens": "resistance",
+     "rang": 4
+    },
+    {
+     "monstre_id": "monstres/crieur-osseux#carte:hurleur-osseux",
+     "sens": "resistance",
+     "rang": 4
+    },
+    {
+     "monstre_id": "monstres/fourbraise#carte:fourbraise-chevaleresse",
+     "sens": "vulnerabilite",
+     "rang": 3
+    },
+    {
+     "monstre_id": "monstres/fourbraise#carte:fourbraise-soldat",
+     "sens": "vulnerabilite",
+     "rang": 3
+    },
+    {
+     "monstre_id": "monstres/golem-dargile#carte:golem-dargile-iii",
+     "sens": "immunite",
+     "rang": 6
+    },
+    {
+     "monstre_id": "monstres/golem-de-bois#carte:golem-de-bois-i",
+     "sens": "vulnerabilite",
+     "rang": 6
+    },
+    {
+     "monstre_id": "monstres/golem-de-bois#carte:golem-de-bois-ii",
+     "sens": "vulnerabilite",
+     "rang": 6
+    },
+    {
+     "monstre_id": "monstres/golem-de-bois#carte:golem-de-bois-iii",
+     "sens": "vulnerabilite",
+     "rang": 6
+    },
+    {
+     "monstre_id": "monstres/golem-de-chair#carte:golem-de-chair-i",
+     "sens": "vulnerabilite",
+     "rang": 4
+    },
+    {
+     "monstre_id": "monstres/golem-de-chair#carte:golem-de-chair-ii",
+     "sens": "vulnerabilite",
+     "rang": 4
+    },
+    {
+     "monstre_id": "monstres/golem-de-chair#carte:golem-de-chair-iii",
+     "sens": "vulnerabilite",
+     "rang": 4
+    },
+    {
+     "monstre_id": "monstres/golem-de-fer#carte:golem-de-fer-i",
+     "sens": "vulnerabilite",
+     "rang": 7
+    },
+    {
+     "monstre_id": "monstres/golem-de-fer#carte:golem-de-fer-ii",
+     "sens": "vulnerabilite",
+     "rang": 5
+    },
+    {
+     "monstre_id": "monstres/golem-de-fer#carte:golem-de-fer-iii",
+     "sens": "vulnerabilite",
+     "rang": 5
+    },
+    {
+     "monstre_id": "monstres/golem-de-glace#carte:golem-de-glace-i",
+     "sens": "immunite",
+     "rang": 2
+    },
+    {
+     "monstre_id": "monstres/golem-de-glace#carte:golem-de-glace-ii",
+     "sens": "immunite",
+     "rang": 2
+    },
+    {
+     "monstre_id": "monstres/golem-de-glace#carte:golem-de-glace-iii",
+     "sens": "immunite",
+     "rang": 2
+    },
+    {
+     "monstre_id": "monstres/golem-de-magma#carte:golem-de-magma-i",
+     "sens": "immunite",
+     "rang": 3
+    },
+    {
+     "monstre_id": "monstres/golem-de-magma#carte:golem-de-magma-ii",
+     "sens": "immunite",
+     "rang": 3
+    },
+    {
+     "monstre_id": "monstres/golem-de-magma#carte:golem-de-magma-iii",
+     "sens": "immunite",
+     "rang": 3
+    },
+    {
+     "monstre_id": "monstres/golem-de-pain#carte:golem-de-pain-i",
+     "sens": "vulnerabilite",
+     "rang": 5
+    },
+    {
+     "monstre_id": "monstres/golem-de-pain#carte:golem-de-pain-ii",
+     "sens": "vulnerabilite",
+     "rang": 5
+    },
+    {
+     "monstre_id": "monstres/golem-de-pain#carte:golem-de-pain-iii",
+     "sens": "vulnerabilite",
+     "rang": 5
+    },
+    {
+     "monstre_id": "monstres/golem-de-rouage#carte:golem-de-rouage-i",
+     "sens": "vulnerabilite",
+     "rang": 6
+    },
+    {
+     "monstre_id": "monstres/golem-de-rouage#carte:golem-de-rouage-ii",
+     "sens": "vulnerabilite",
+     "rang": 6
+    },
+    {
+     "monstre_id": "monstres/golem-de-rouage#carte:golem-de-rouage-iii",
+     "sens": "vulnerabilite",
+     "rang": 6
+    },
+    {
+     "monstre_id": "monstres/golem-osseux#carte:golem-osseux-i",
+     "sens": "vulnerabilite",
+     "rang": 4
+    },
+    {
+     "monstre_id": "monstres/golem-osseux#carte:golem-osseux-ii",
+     "sens": "vulnerabilite",
+     "rang": 4
+    },
+    {
+     "monstre_id": "monstres/golem-osseux#carte:golem-osseux-iii",
+     "sens": "vulnerabilite",
+     "rang": 4
+    },
+    {
+     "monstre_id": "monstres/irapullum#carte:irapullum",
+     "sens": "vulnerabilite",
+     "rang": 6
+    },
+    {
+     "monstre_id": "monstres/irapullum#carte:irapullum-sanglant",
+     "sens": "vulnerabilite",
+     "rang": 6
+    },
+    {
+     "monstre_id": "monstres/irapullum#carte:irapullum-vorace",
+     "sens": "vulnerabilite",
+     "rang": 6
+    },
+    {
+     "monstre_id": "monstres/masse-empoisonneuse#carte:masse-empoisonneuse",
+     "sens": "vulnerabilite",
+     "rang": 4
+    },
+    {
+     "monstre_id": "monstres/moustique-bordeaux#carte:moustique-bordeaux",
+     "sens": "vulnerabilite",
+     "rang": 3
+    },
+    {
+     "monstre_id": "monstres/moustique-bordeaux#carte:moustique-du-sang",
+     "sens": "vulnerabilite",
+     "rang": 3
+    },
+    {
+     "monstre_id": "monstres/moustique-bordeaux#carte:moustique-sanguin",
+     "sens": "vulnerabilite",
+     "rang": 3
+    },
+    {
+     "monstre_id": "monstres/os-du-froid#carte:os-du-blizzard",
+     "sens": "immunite",
+     "rang": 8
+    },
+    {
+     "monstre_id": "monstres/os-du-froid#carte:os-du-froid",
+     "sens": "immunite",
+     "rang": 8
+    },
+    {
+     "monstre_id": "monstres/os-du-froid#carte:os-du-givre",
+     "sens": "immunite",
+     "rang": 8
+    },
+    {
+     "monstre_id": "monstres/potirobuste#carte:potirobuste-sergent",
+     "sens": "resistance",
+     "rang": 6
+    },
+    {
+     "monstre_id": "monstres/potirobuste#carte:potirobuste-soldat",
+     "sens": "resistance",
+     "rang": 6
+    },
+    {
+     "monstre_id": "monstres/potirodeur#carte:potirodeur-malin",
+     "sens": "resistance",
+     "rang": 6
+    },
+    {
+     "monstre_id": "monstres/potirodeur#carte:potirodeur-vicieux",
+     "sens": "resistance",
+     "rang": 6
+    },
+    {
+     "monstre_id": "monstres/rat#carte:rat-gris",
+     "sens": "vulnerabilite",
+     "rang": 4
+    },
+    {
+     "monstre_id": "monstres/rat#carte:rat-noir",
+     "sens": "vulnerabilite",
+     "rang": 4
+    },
+    {
+     "monstre_id": "monstres/rat#carte:rat-putride",
+     "sens": "vulnerabilite",
+     "rang": 4
+    },
+    {
+     "monstre_id": "monstres/soldat-de-fer#carte:general-de-fer",
+     "sens": "vulnerabilite",
+     "rang": 2
+    },
+    {
+     "monstre_id": "monstres/soldat-de-fer#carte:lieutenant-de-fer",
+     "sens": "vulnerabilite",
+     "rang": 2
+    },
+    {
+     "monstre_id": "monstres/soldat-de-fer#carte:soldat-de-fer",
+     "sens": "vulnerabilite",
+     "rang": 2
+    },
+    {
+     "monstre_id": "monstres/squelette-mauvais#carte:squelette-mauvais-colerique",
+     "sens": "vulnerabilite",
+     "rang": 7
+    },
+    {
+     "monstre_id": "monstres/squelette-mauvais#carte:squelette-mauvais-determine",
+     "sens": "vulnerabilite",
+     "rang": 7
+    },
+    {
+     "monstre_id": "monstres/squelette-mauvais#carte:squelette-mauvais-puissant",
+     "sens": "vulnerabilite",
+     "rang": 7
+    },
+    {
+     "monstre_id": "monstres/zompi#carte:zompi",
+     "sens": "resistance",
+     "rang": 5
+    },
+    {
+     "monstre_id": "monstres/zompi#carte:zompi-claqueur",
+     "sens": "resistance",
+     "rang": 5
+    },
+    {
+     "monstre_id": "monstres/zompi#carte:zompiceps",
+     "sens": "resistance",
+     "rang": 5
+    }
+   ]
+  }
+ }
+}

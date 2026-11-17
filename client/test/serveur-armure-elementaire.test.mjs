@@ -13,16 +13,18 @@ import { test } from 'node:test';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { enregistrerFiche, lireFiche } from '../serveur/fiches.mjs';
 import { noterLesRetraits, nouveauxRetraitsDeFiches, retirerLesArmuresHorsRegle } from '../serveur/fiches-retraits.mjs';
-import { cheminBase } from '../src/lib/donnees.mjs';
 import {
   armureTransformee, COLONNES_DE_L_ARMURE_DE_BASE, COLONNES_DE_L_ARMURE_ELEMENTAIRE, descriptionDuRetrait, deuxArmures, EMPLACEMENTS_D_ARMURE, ligneDeRetrait,
   NATURES_DE_L_ARMURE, ORDRE_DES_NATURES, partiesEnTexte, POIDS_DES_ARMURES, POIDS_PORTABLE_MAX, retraitsDesNotes, sansPartiesRetirees, TYPE_FAMILIER, valeurDuPoids,
 } from '../src/lib/fiche-format.mjs';
+import { cheminDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { rejouerLaMigration } from './aide-migration-rejouee.mjs';
 
 const dossier = dossierTemporaire('r165-service');
-const REGLES = cheminBase({ sansExemples: false });
+// les règles dans leur état d'import (test/aide-base-d-import.mjs) : la migration 0080 rejouée écrit les noms de l'import, que le service doit
+// redire (« solidité Torse 2 ») ; le site de dev peut renommer un emplacement ou une armure dans la base courante (demande du propriétaire)
+const REGLES = cheminDImport();
 const INSTANT = '2026-10-09T12:00:00Z';
 const lecture = new DatabaseSync(REGLES, { readOnly: true });
 const un = (sql, ...p) => lecture.prepare(sql).get(...p);

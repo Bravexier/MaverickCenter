@@ -1,5 +1,5 @@
 {
-  "$comment": "Corrections appliquées à l'export du Google Doc « CODEX Maverick » (sources/raw/1tH-T9k-a3sADBtKWHxcuMcN94_VA8-Zo2BTzee9O7Tg.md, qui reste tel quel) avant son découpage en pages par tools/docs/codex.py. Seulement ce qu'une décision du propriétaire ou une correction déjà faite dans toute la base impose (le Codex n'a pas encore eu sa relecture orthographique, décision R10) : chaque entrée donne le texte avant et après, le nombre d'occurrences attendu dans l'export (le script s'arrête s'il diffère) et sa raison. « mot » : le texte avant n'est remplacé que s'il n'est ni précédé ni suivi d'une lettre.",
+  "$comment": "Corrections appliquées à l'export du Google Doc « CODEX Maverick » (sources/raw/1tH-T9k-a3sADBtKWHxcuMcN94_VA8-Zo2BTzee9O7Tg.md, qui reste tel quel) avant son découpage en pages par tools/docs/codex.py. Seulement ce qu'une décision du propriétaire ou une correction déjà faite dans toute la base impose (le Codex n'a pas encore eu sa relecture orthographique, décision R10) : chaque entrée donne le texte avant et après, le nombre d'occurrences attendu dans l'export (le script s'arrête s'il diffère) et sa raison. « mot » : le texte avant n'est remplacé que s'il n'est ni précédé ni suivi d'une lettre. « migration » : la même correction a été faite en base par cette migration de données (data/migrations/<migration>.json) ; --verifier l'applique aussi à l'état d'import d'une page que le site de dev a modifiée avant la migration (son texte d'import garde l'ancienne graphie).",
   "version": 1,
   "document": "CODEX Maverick",
   "corrections": [
@@ -31,6 +31,38 @@
       "occurrences": 1,
       "nature": "orthographe",
       "raison": "Expression « purée de pois » (brouillard épais) ; « poix » est la résine ; même correction que la migration 0006. Le nom de lieu « Les Brumes de Poix » n'est pas touché."
+    },
+    {
+      "avant": "dieu de la Terre",
+      "migration": "0121-maj-decembre-suites",
+      "apres": "Dieu de la Terre",
+      "occurrences": 9,
+      "nature": "majuscule",
+      "raison": "Décision R266 (3) : « Dieu de la Terre », majuscule à « Dieu », partout, Codex compris (exception explicite à « un texte copié n'est pas réécrit », limitée à trois graphies) ; migration 0121 pour les pages déjà en base."
+    },
+    {
+      "avant": "Dieu de la terre",
+      "migration": "0121-maj-decembre-suites",
+      "apres": "Dieu de la Terre",
+      "occurrences": 1,
+      "nature": "majuscule",
+      "raison": "Décision R266 (3) : « Dieu de la Terre » (le titre de Dimitri, d'où son résumé et le sommaire des divinités) ; migration 0121."
+    },
+    {
+      "avant": "Mort fertile",
+      "migration": "0121-maj-decembre-suites",
+      "apres": "Mort Fertile",
+      "occurrences": 1,
+      "nature": "majuscule",
+      "raison": "Décision R266 (2) : « Mort Fertile », deux majuscules, comme les autres occurrences du Codex ; migration 0121."
+    },
+    {
+      "avant": "super gemme",
+      "migration": "0121-maj-decembre-suites",
+      "apres": "Super Gemme",
+      "occurrences": 2,
+      "nature": "majuscule",
+      "raison": "Décision R266 (1) : « Super Gemme », deux majuscules, sans trait d'union, comme le titre du Codex ; migration 0121."
     }
   ]
 }

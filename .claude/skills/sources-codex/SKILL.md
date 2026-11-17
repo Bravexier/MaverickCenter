@@ -27,12 +27,16 @@ user-invocable: false
 - Le texte est copié, jamais réécrit (coquilles, majuscules, formulations du document ; seule la forme Markdown change). Seules exceptions : les corrections
   du registre `codex-corrections.json`, limitées à ce qu'impose une décision ou une correction déjà faite dans toute la base (décision R21 « Eaunoire » ;
   « ect » → « etc. » comme 0005, « purée de poix » → « purée de pois » comme 0006). Chaque entrée a son nombre d'occurrences attendu.
+- Exception R266 : « Super Gemme », « Mort Fertile » et « Dieu de la Terre » sont corrigés dans le Codex, limités à ces trois graphies (skill `base-orthographe`). La migration 0121 a réécrit les pages en base ; leurs entrées du registre portent `migration`, et `--verifier` les applique aussi à l'état d'import des pages que le site avait modifiées avant elle (`graphies_de_migration`). `codex.test.mjs` met à part ces pages dans ses lectures de `baseDImport()`.
 - L'export dans `sources/raw/` reste tel quel ; les corrections se font dans le script, avant le découpage.
 - `--verifier` relit l'export ligne par ligne, par un code qui ne partage pas le découpage.
 - Le site de dev est la source de ce qu'il modifie. Les pages du Codex se modifient sur le site de dev comme celles du guide (titre, texte ;
   `lib/edition-modele.mjs#texteDePageModifiable`). Une page modifiée est contrôlée par `--verifier` dans son état d'import (`historique_modification`,
   `pages_du_site`), et `codex.py` la garde telle quelle à l'écriture.
-- Un import ne crée jamais de mot-clé : le script n'écrit que les mots-clés du vocabulaire (`--vocabulaire`, `vocabulaire()`), chaque page ne porte que « codex ».
+- Un import ne crée jamais de mot-clé : le script n'écrit que les mots-clés du vocabulaire (`--vocabulaire`, `vocabulaire()` → `Vocabulaire`), chaque page ne porte que « codex », posé par l'id entier de `maverick.py#MOTS_CLES_PROTEGES` (`MOT_CLE_DU_CODEX`, libellé courant par `Vocabulaire.protege`, jamais retrouvé par son écriture) ; le mot-clé à adresse d'une page n'est jamais posé en étiquette (`Vocabulaire.etiquette`).
+- Un renvoi (sommaires, « Voir aussi ») est la balise du mot-clé dont l'adresse mène à la page (`/lore/<slug>/`, sans ancre) : s'il n'y en a pas exactement un, le renvoi est écrit en texte simple et signalé (`Codex.lien`). `{{clé}}` quand le texte est le libellé d'import du mot-clé, `{{clé|texte}}` sinon (`mot_cle.cle`) ; un renommage sur le site réécrit les balises qui citent la clé (R232 (3)) ; jamais un `[[…]]` (`db:check`). Détail : `docs/codex.md`.
+- `--verifier` refait le découpage avec le vocabulaire de l'état d'import (`codex.py` `Vocabulaire.defaire_le_site` : l'historique du site rejoué à l'envers), pas celui d'aujourd'hui : un mot-clé que le site crée, supprime (R196) ou dont il change l'adresse ne change pas les renvois écrits à l'import. L'écriture garde le vocabulaire courant.
+- `--verifier` lit un état d'import d'avant la 0098 en convertissant ses `[[…]]` comme le script les écrit (`liens_en_balises`).
 - Le script n'écrit que dans `lore/`, refuse d'écraser une page qui ne vient pas du document et signale, sans les supprimer, les pages qu'il ne produit plus.
 
 ## Nouvel export
@@ -46,6 +50,6 @@ user-invocable: false
 - La relecture orthographique du Codex (R10) reste à faire, par une migration de données avec son registre (skill `base-orthographe`).
 
 ## Tests
-- `client/test/codex.test.mjs`.
+- `client/test/codex.test.mjs`. Son vocabulaire d'essai a des ids entiers et une `cle` ; l'id de « codex » vient de `IDS_DES_MOTS_CLES_PROTEGES`, un autre mot-clé de la base se trouve par le registre de la 0113. Un renommage se simule avec la réécriture des pages qui le citent, notée au journal (R232 (3)). Un test qui simule une édition de page part de son état d'import (titre, texte, alias), pas du `.md` courant (le site peut modifier les 116 pages) ; les liens se résolvent comme le site (`lib/wikilinks-resolution.mjs`, slug compris), sur la base d'import (`test/aide-base-d-import.mjs`).
 - `client/test/eaunoire.test.mjs` : R21 dans la base (migration `0012-eaunoire`, nom corrigé partout, identifiant inchangé, le sort « Eau noire » garde le sien).
-- L'aller-retour de l'éditeur sur les pages du Codex : `client/test/markdown-edition.test.mjs` (skill `zone-edition`).
+- L'aller-retour de l'éditeur sur les pages du Codex : `client/test/markdown-edition.test.mjs` (skill `zone-edition-texte`).

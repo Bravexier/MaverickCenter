@@ -1,4 +1,4 @@
-// Rendu HTML des lignes de l'onglet « Ceinture » de la page /ressources/equipement/ (components/ceinture/CeinturePanneau.astro ; données :
+// Rendu HTML des lignes de la page Ceinture (/ressources/objets-a-la-ceinture/) (components/ceinture/CeinturePanneau.astro ; données :
 // lib/ceinture-db.mjs) : les potions du sous-onglet Consommables, un tableau par page (« Fiole rouge » et ses paliers ; demande du propriétaire,
 // 2026-10-17 : « Les tableaux des fioles sont trop larrges Mettre de coté 2 ou 3 tableaux serai plus lisible »), et les carquois et sacs du
 // sous-onglet Carquois. Plus de recherche (demande du propriétaire, 2026-10-16 : des sous-onglets « plutôt que la recherche actuel ») : aucune ligne
@@ -8,7 +8,7 @@
 // il ajoute une nouvelle couleur au site en se basant sur celle du classeur. Aucune couleur en dur. » ; lib/alchimie-couleurs.mjs : la couleur que le
 // propriétaire a choisie pour sa page (COULEURS_CHOISIES_PAR_PAGE, 2026-10-23), sinon l'affinité de son essence, ou la caractéristique d'un philtre,
 // nuancée selon son niveau) : la ligne colorée du gabarit commun des tableaux (`ligne-couleur`, `--ligne-fond` et `--ligne-texte` :
-// styles/global/tableaux.css), le texte le plus lisible sur le fond (« Privilégé la lisibilité. ») ; une potion sans couleur (essence Anti, hors des
+// styles/global/tableaux.css : depuis le 2026-10-29, le fond du thème teinté de la couleur, son filet et son liseré, le texte du thème) ; une potion sans couleur (essence Anti, hors des
 // pages choisies) resterait neutre, sans classe de couleur. Les carquois et sacs n'ont pas de couleur. La ligne ne porte qu'une classe, jamais de couleur ni de style
 // (choix du propriétaire du 2026-10-22, « Module JS → classe » et « Règle de calcul ») : celle de sa combinaison (base et niveau,
 // lib/palette-css.mjs#classeDePotion), que components/ceinture/CeinturePanneau.astro émet pour les lignes qu'il affiche.

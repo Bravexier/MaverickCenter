@@ -1,0 +1,115 @@
+// Les adresses du site lues dans la base (lib/adresses-db.mjs, migration 0098 : où l'adresse d'un mot-clé peut mener, et à quelle page) :
+// ADRESSES_FIXES d'accord avec les routes de src/pages, adressesDuSite (pages qui ne sont pas d'exemple, rubriques, routes fixes), chaque adresse du
+// registre de la migration permise, la page de chaque adresse (celle du registre).
+//   node --test test/adresses-db.test.mjs
+import assert from 'node:assert/strict';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join, relative, sep } from 'node:path';
+import { test } from 'node:test';
+import { fileURLToPath } from 'node:url';
+import { ADRESSE_DU_GLOSSAIRE, ADRESSES_FIXES, adresseDeLaPage, adressesDuSite, indexDesAdresses, pageDeLAdresse } from '../src/lib/adresses-db.mjs';
+import { cheminDeLAdresse, fauteDeLUrl, REGISTRE_DES_LIENS } from '../src/lib/mots-cles-liens.mjs';
+import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { baseDImport, lotsAvant } from './aide-base-d-import.mjs';
+import { TYPES } from '../src/lib/types.mjs';
+import { fonduParLa0122, retireeParLa0122 } from './aide-migration-0122.mjs';
+import { fonduParLa0124, repriseDeLAdresseParLa0124, retireeParLa0124 } from './aide-migration-0124.mjs';
+
+const RACINE = fileURLToPath(new URL('../../', import.meta.url));
+const PAGES = fileURLToPath(new URL('../src/pages/', import.meta.url));
+const REGISTRE = JSON.parse(readFileSync(join(RACINE, REGISTRE_DES_LIENS), 'utf8'));
+/** Les pages retirées par une migration postérieure à la 0098 et l'adresse que cette migration donne au mot-clé qui y menait (lues dans son registre). */
+const REPRISES_APRES_0098 = ['0123-fusion-pages-alignement'].flatMap((nom) => {
+  const r = JSON.parse(readFileSync(join(RACINE, 'data', 'migrations', `${nom}.json`), 'utf8'));
+  return r.pages_retirees.flatMap((p) => r.mots_cles_modifies.filter((u) => u.col === 'url' && cheminDeLAdresse(u.avant) === `/regles/${p.id.slice('guide/'.length)}/`)
+    .map((u) => ({ id: p.id, contenu_dans: p.contenu_dans, avant: u.avant, apres: u.apres })));
+});
+
+/** Les pages du site de dev seulement (et la page 404) : aucun mot-clé n'y mène. */
+const HORS_DES_ADRESSES = ['/404/', '/debug/', '/maintenance/', '/mise-a-jour/'];
+/**
+ * Les adresses fixes que leur page n'a pas encore (tolérées tant que leur fichier manque ; une fois la page créée, elle sort d'ici) : aucune depuis la
+ * page du Glossaire (pages/regles/glossaire.astro).
+ */
+const A_VENIR = [];
+
+/** Les routes statiques de src/pages (fichiers .astro sans paramètre) : « /x/ » pour x.astro et x/index.astro. */
+function routesStatiques(dossier = PAGES) {
+  const routes = [];
+  for (const e of readdirSync(dossier, { withFileTypes: true })) {
+    const chemin = join(dossier, e.name);
+    if (e.isDirectory()) routes.push(...routesStatiques(chemin));
+    else if (e.name.endsWith('.astro') && !chemin.includes('[')) {
+      const rel = relative(PAGES, chemin).split(sep).join('/').replace(/\.astro$/, '').replace(/(^|\/)index$/, '');
+      routes.push(rel ? `/${rel}/` : '/');
+    }
+  }
+  return routes.sort();
+}
+
+test('ADRESSES_FIXES : chaque route statique de src/pages (hors site de dev et 404), chaque rubrique d’un type, rien d’autre', () => {
+  const statiques = routesStatiques();
+  assert.ok(statiques.includes('/fiche/') && statiques.includes('/regles/artisanat/'), statiques.join(' '));
+  assert.ok(statiques.includes(ADRESSE_DU_GLOSSAIRE), 'la page du Glossaire (pages/regles/glossaire.astro)');
+  for (const r of statiques) if (!HORS_DES_ADRESSES.includes(r)) assert.ok(ADRESSES_FIXES.includes(r), `${r} : une route du site absente de ADRESSES_FIXES`);
+  const rubriques = Object.keys(TYPES).map((t) => `/${t}/`);
+  for (const a of ADRESSES_FIXES) {
+    assert.ok(statiques.includes(a) || rubriques.includes(a) || A_VENIR.includes(a), `${a} : ni route statique, ni rubrique (pages/[type]/index.astro)`);
+  }
+  assert.deepEqual([...ADRESSES_FIXES].sort(), [...new Set(ADRESSES_FIXES)].sort(), 'sans doublon');
+  for (const r of HORS_DES_ADRESSES) assert.ok(!ADRESSES_FIXES.includes(r), r);
+});
+
+test('adressesDuSite : les routes fixes, les rubriques, le chemin de chaque page qui n’est pas d’exemple (sans ancre)', () => {
+  const db = ouvrirBase({ sansExemples: false });
+  const adresses = adressesDuSite(db);
+  for (const a of ADRESSES_FIXES) assert.ok(adresses.has(a), a);
+  for (const { id } of db.prepare('SELECT id FROM type_page').all()) assert.ok(adresses.has(`/${id}/`), id);
+  const pages = db.prepare('SELECT id, statut FROM page').all();
+  for (const p of pages.filter((x) => x.statut !== 'example')) assert.ok(adresses.has(cheminDeLAdresse(adresseDeLaPage(p.id))), p.id);
+  for (const a of adresses) assert.ok(!a.includes('#') && a.startsWith('/') && a.endsWith('/'), a);
+  // une page d'exemple n'est pas une adresse du site (elle n'est pas sur le site livré)
+  const exemples = pages.filter((x) => x.statut === 'example').map((x) => cheminDeLAdresse(adresseDeLaPage(x.id)));
+  const reelles = new Set(pages.filter((x) => x.statut !== 'example').map((x) => cheminDeLAdresse(adresseDeLaPage(x.id))));
+  const seulementExemples = exemples.filter((a) => !reelles.has(a) && !ADRESSES_FIXES.includes(a));
+  assert.ok(seulementExemples.length > 0);
+  for (const a of seulementExemples) assert.ok(!adresses.has(a), a);
+});
+
+test('migration 0098 : chaque adresse du registre est permise, et mène à la page du registre', () => {
+  // la base telle que la migration l'a laissée : le site de dev supprime depuis des pages que le registre vise (sur l'état courant, un mot-clé à
+  // adresse mène à une page : db:check)
+  const db = baseDImport({ garder: lotsAvant('0098') });
+  const adresses = adressesDuSite(db);
+  const index = indexDesAdresses(db);
+  assert.ok(REGISTRE.motsCles.length >= 273);
+  for (const m of REGISTRE.motsCles) {
+    // la page « La montée de niveau » et son mot-clé, retirés et fondu depuis par la migration 0122 (son registre : aide-migration-0122.mjs)
+    if (retireeParLa0122(m.page) || fonduParLa0122(m.id)) continue;
+    // la page « Accessoires et Ceinture » et son mot-clé, retirés et fondu depuis par la migration 0124 (R272, registre : aide-migration-0124.mjs)
+    if (retireeParLa0124(m.page) || fonduParLa0124(m.id)) continue;
+    // une page du registre retirée depuis par une migration (0123 : « Les neuf alignements », fondue dans « Alignement ») : son mot-clé prend
+    // l'adresse que cette migration fixe (registre `mots_cles_modifies`, ancienne adresse = celle du registre), qui mène à la page qui l'accueille
+    // l'adresse que la 0124 (R272) donne à la page de l'inventaire (renommée, comme R228) : registre `mots_cles_modifies`
+    const reprise = REPRISES_APRES_0098.find((r) => r.id === m.page && r.avant === m.url) ?? repriseDeLAdresseParLa0124(m);
+    const url = reprise?.apres ?? m.url;
+    assert.equal(fauteDeLUrl(url, adresses), null, `${m.id} : ${url}`);
+    if (m.page) assert.equal(pageDeLAdresse(index, url), reprise?.contenu_dans ?? m.page, `${m.id} : ${url}`);
+  }
+});
+
+test('pageDeLAdresse : même adresse ancre comprise, sinon le chemin d’une page sans ancre ; une rubrique, une route sans page, une adresse inconnue : null', () => {
+  // les pages de l'import (le Mineur, le Drakos, une race d'exemple) : le site de dev supprime des métiers
+  const db = baseDImport();
+  const index = indexDesAdresses(db);
+  assert.equal(pageDeLAdresse(index, '/metiers/#metier-mineur'), 'metiers/mineur');
+  assert.equal(pageDeLAdresse(index, '/metiers/?tri=nom#metier-mineur'), 'metiers/mineur', 'requête ignorée');
+  assert.equal(pageDeLAdresse(index, '/metiers/#metier-inconnu'), null);
+  assert.equal(pageDeLAdresse(index, '/races/drakos/#peuples'), 'races/drakos');
+  assert.equal(pageDeLAdresse(index, '/races/drakos'), 'races/drakos', 'barre finale');
+  for (const a of ['/fiche/', '/magies/', '/races/inconnue/', '', null, 'https://exemple.org/races/drakos/']) assert.equal(pageDeLAdresse(index, a), null, String(a));
+  // une page d'exemple n'a une adresse que dans l'index qui les garde
+  const exemple = db.prepare("SELECT id FROM page WHERE statut = 'example' AND type = 'races' ORDER BY id").get().id;
+  assert.equal(pageDeLAdresse(index, adresseDeLaPage(exemple)), null);
+  assert.equal(pageDeLAdresse(indexDesAdresses(db, { exemples: true }), adresseDeLaPage(exemple)), exemple);
+});

@@ -11,25 +11,35 @@ import { groupesDeChoix, typeDeDon } from './classe-dons.mjs';
 import { ditClasseMagique } from './classe-magique.mjs';
 import { COULEURS_ALIGNEMENTS } from './caracteristiques-postures.mjs';
 import { effetDePosture } from './posture-texte.mjs';
+import { armureNaturelleEcrite, effetsDuModeHyper } from './mode-hyper-texte.mjs';
 import { CLASS_GROUPS, classCategory } from './class-groups.mjs';
 import { competencesDArme, durabiliteDeLArme, porteeDeLArme } from './arme-champs.mjs';
-import { DURABILITE_MIN } from './arme-forge.mjs';
+import { DURABILITE_MIN, MATERIAU_PAR_DEFAUT } from './arme-forge.mjs';
 import { BATON_A_REGLER, contenanceEcrite, effetsDeBaton, exemplairesDeCeintureEcrits, nomDeBaton, sacSansForceEcrit } from './ceinture-texte.mjs';
-import { bonusDeDegatsEcrit } from './degats-texte.mjs';
+import { bonusDeDegatsEcrit, DONS_SANS_DEGATS } from './degats-texte.mjs';
+import { effetDeBouclierEcrit } from './bouclier-texte.mjs';
 import { bonusDeSortsEcrits, preparationEcrite } from './sort-bonus-texte.mjs';
-import { lecteurDAcquis } from './acquis-texte.mjs';
-import { chargerInvocations, tableauxDesSorts } from './bestiaire-db.mjs';
+import { DONS_SANS_ACQUIS, lecteurDAcquis } from './acquis-texte.mjs';
+import { critiqueDeLAccessoire, critiqueDuDon, critiqueDuPremierCoup } from './critique-texte.mjs';
+import { chargerInvocations } from './bestiaire-db.mjs';
+import { liensDesValeursFermees } from './mots-cles-des-valeurs.mjs';
 import { FAMILLES_DES_SAUF, desSelonLaForce, famillesAuChoix, idDeSourceDeClasse } from './maitrise-arme.mjs';
 import { ORDRE_DES_RACES, raceKind } from './race-kinds.mjs';
 import { lecteurDeResistances } from './resistance-texte.mjs';
+import { genreDeLaPeriode, limiteEcrite, seBriseEcrit, typeDActionEcrit } from './limite-texte.mjs';
 import {
   CLASSE_NEUTRE, classeDAlignement, classeDUneClasse, classeDeCaracteristique, classeDeMagie, classeDePalier, classeDePosture, classeDeRace,
   classeDeSecondeMagie, classeDuModeHyper, classeDuPoids,
 } from './palette-css.mjs';
 import { normalize } from './text.mjs';
+import { valeursDAvant } from './historique-site.mjs';
+import { nomsDAvantDesMigrations } from './noms-d-avant-des-migrations.mjs';
 import { chargerVocabulaire } from './mots-cles-db.mjs';
+import { nomDuProtege } from './mots-cles-proteges.mjs';
+import { motsClesDesPages } from './pages-db.mjs';
 import { texteSansBalises, vocabulaireDesMotsCles } from './mots-cles-balises.mjs';
 import { valeurDuPoids } from './fiche-format.mjs';
+import { CHAMPS_DU_CORPS } from './corps-metiers.mjs';
 
 const vocabulaires = new WeakMap(); // base -> vocabulaire des mots-clés
 const vocabulaireDe = (db) => {
@@ -53,10 +63,14 @@ const parCle = (rows, cle, valeur = (r) => r) => {
   return m;
 };
 
-/** Entrées minimales (id, titre, tags) des pages de races et de classes : pour réutiliser raceKind et la couleur de la catégorie (classeDUneClasse), comme /races/ et /classes/. */
+/**
+ * Entrées minimales (id, titre, noms des mots-clés protégés) des pages de races et de classes : pour réutiliser raceKind et la couleur de la catégorie
+ * (classeDUneClasse), comme /races/ et /classes/ ; les mots-clés reconnus par leur id (lib/pages-db.mjs#motsClesDesPages : décision R195, un renommage
+ * ne change rien).
+ */
 function entreesDesPages(db) {
-  const tags = parCle(lignes(db, "SELECT t.page_id, m.libelle FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id WHERE t.page_id LIKE 'classes/%' OR t.page_id LIKE 'races/%' ORDER BY t.page_id, t.ordre"), 'page_id', (r) => r.libelle);
-  return lignes(db, "SELECT id, titre FROM page WHERE type IN ('classes', 'races')").map((p) => ({ id: p.id, data: { title: p.titre, tags: tags.get(p.id) ?? [] } }));
+  const motsCles = motsClesDesPages(db);
+  return lignes(db, "SELECT id, titre FROM page WHERE type IN ('classes', 'races')").map((p) => ({ id: p.id, data: { title: p.titre, mots_cles: motsCles.get(p.id) ?? [] } }));
 }
 
 // Les « sauf » d'une maîtrise au choix écrits autrement que le bandeau de leur famille (décision R138), rattachés dans lib/maitrise-arme.mjs avec la
@@ -74,6 +88,17 @@ const CONSTANTES = [
   // inventaire et ceinture (décisions R88, R89, migration 0048)
   'inventaire.colonnes_de_depart', 'inventaire.lignes_par_colonne', 'inventaire.colonnes_max', 'inventaire.emplacements_force_2',
   'inventaire.emplacements_force_3', 'inventaire.emplacements_force_4', 'inventaire.force_tout_l_inventaire', 'ceinture.exemplaires_par_emplacement',
+  // le Mode Hyper activable (décision R172) : ses bonus (R5 : « 15/7 »), sa consommation par tour, son coût de sortie du Mode Hyper 100 % (arrondis à
+  // l'inférieur, R175), son usage « 1 fois toutes les semaines » ; telles qu'écrites par le classeur « Mode hyper et co », onglet Mode Hyper (rattachées à la
+  // page « Le mode hyper » depuis le retrait de la « Liste des effets mode hyper », décision R187)
+  'mode_hyper.degats_physique', 'mode_hyper.degats_magie_mono', 'mode_hyper.degats_magie_bi', 'mode_hyper.soin_magique',
+  'mode_hyper.conso_chakra_pct_max_par_tour', 'mode_hyper.usage_par_semaine', 'mode_hyper_100.degats_bonus', 'mode_hyper_100.cout_chakra_pct_max',
+  // la réussite critique (décision R180, migration 0087) : sa base, les deux paliers du score du moment (le second, bonus total), son plafond (base comprise),
+  // et son plancher (décision R203, migration 0101 : la plage ne descend jamais sous « 1 à 1 », le bonus total y est ramené)
+  'critique.base', 'critique.palier_1_score_min', 'critique.palier_1_bonus', 'critique.palier_2_score_min', 'critique.palier_2_bonus', 'critique.plafond',
+  'critique.plancher',
+  // la santé au plus par niveau d'un Potentiel Illimité inné (décision R225, migration 0111 : lib/fiche-moteur.mjs#santeDuPotentiel)
+  'potentiel_illimite.sante_max_par_niveau',
 ];
 
 /** @param {import('node:sqlite').DatabaseSync} db */
@@ -126,7 +151,8 @@ function reglesDeLaBase(db) {
 
   // Résistances (tableau « Résistance / Faiblesse » de la fiche auto V15.2.2, demande du propriétaire) : les six paliers (Personnage!BA2:BI12), les
   // altérations d'état, et ce que les dons écrivent en toutes lettres (lib/resistance-texte.mjs) : les cibles sont les magies et les altérations, sous
-  // leur nom et sous les écritures que les importeurs leur ont rapprochées (magie_resistance, ethnie_resistance : « Gelé », « Pétrification »).
+  // leur nom et sous les écritures que les importeurs leur ont rapprochées (magie_resistance, ethnie_resistance : « Pétrification » ; l'état « Gel » s'écrit
+  // « Gel » depuis la décision R205, migration 0103).
   // `multiplicateur` : celui des dégâts subis (« dégâts subis ÷2 » : 0,5), que le calcul des dégâts reçus applique (décision R98)
   const resistance_paliers = lignes(db, 'SELECT id, libelle, valeur_min, valeur_max, multiplicateur, effet_brut FROM resistance_palier ORDER BY ordre')
     // `classe` : la classe de la couleur du palier (lib/palette-css.mjs, famille `palier` ; null pour un palier sans couleur), jamais un hex
@@ -135,7 +161,10 @@ function reglesDeLaBase(db) {
   const lireResistances = lecteurDeResistances([
     ...lignes(db, 'SELECT id, nom FROM magie').map((m) => ({ type: 'magie', id: m.id, nom: m.nom })),
     ...etats.map((e) => ({ type: 'etat', id: e.id, nom: e.nom })),
+    // les cibles physiques (décision R174) n'y vont pas : leur cible_brut est une phrase (« Surtension corporelle (Vulnérabilité… »), pas le nom
+    // d'une cible qu'un don écrirait, et le lecteur ne reconnaît que des magies et des altérations
     ...lignes(db, `SELECT DISTINCT cible_type AS type, COALESCE(cible_magie_id, cible_etat_id) AS id, cible_brut AS nom FROM magie_resistance
+                   WHERE cible_type IN ('magie', 'etat')
                    UNION SELECT DISTINCT cible_type, COALESCE(cible_magie_id, cible_etat_id), cible_brut FROM ethnie_resistance`),
   ]);
   /** `resistances` d'un don quand son texte en écrit (ou en laisse au choix) ; rien sinon, pour garder regles.json léger. */
@@ -176,9 +205,15 @@ function reglesDeLaBase(db) {
       // ses bonus d'acquis (« Magie, Concentration, Survie = 5% d'acquis » : lib/acquis-texte.mjs, décision R104)
       const sorts = bonusDeSortsEcrits(d.texte);
       const acquis = horsDuTableau(lireAcquis(d.texte));
+      // l'armure naturelle qu'il écrit (« +2 Armure magique (+2 tous les 5 niveaux) » : lib/mode-hyper-texte.mjs), dans l'armure de base de la fiche et
+      // gardée par l'effet de Mode Hyper qui la nomme (décisions R172, Marcass : « Oui, le compter » ; R177 : « Oui, toujours »)
+      const armure = armureNaturelleEcrite(d.texte);
+      // son bonus de réussite critique dans une posture (« (Posture X) Augmente la réussite critique de +N% » : lib/critique-texte.mjs, décision R180)
+      const critique = critiqueDuDon(d.texte);
       return {
         id: d.id, forme: d.forme, nom: d.nom, etiquette: d.etiquette, texte: d.texte, ethnie_id: d.ethnie_id, ...resistancesEcrites(resistancesDuTexte(d.texte)),
-        ...(sorts.length ? { sorts } : {}), ...(acquis.length ? { acquis } : {}),
+        ...(sorts.length ? { sorts } : {}), ...(acquis.length ? { acquis } : {}), ...(armure.length ? { armure_naturelle: armure } : {}),
+        ...(critique ? { critique } : {}),
       };
     });
   const colonnesDuTableau = parCle(lignes(db, 'SELECT race_id, rang, libelle FROM race_don_tableau_colonne ORDER BY race_id, rang'), 'race_id');
@@ -241,13 +276,16 @@ function reglesDeLaBase(db) {
     FROM race r JOIN race_onglet o ON o.race_id = r.id`)
     .sort((a, b) => rangDeRace(a.id) - rangDeRace(b.id) || a.nom.localeCompare(b.nom, 'fr'))
     .map((r) => {
-      const entree = entrees.find((e) => e.id === r.id) ?? { id: r.id, data: { title: r.nom, tags: [] } };
+      const entree = entrees.find((e) => e.id === r.id) ?? { id: r.id, data: { title: r.nom, mots_cles: [] } };
       const nature = raceKind(entrees, entree);
       return {
         // sa couleur : la classe de sa nature (lib/palette-css.mjs, famille `race`, celle de /races/ et des pages de race), jamais un hex
         id: r.id, nom: r.nom, nature, classe: classeDeRace(nature),
         sante: r.sante_depart, chakra: r.chakra_depart, barriere: r.barriere_bonus ?? 0, vitesse_sol: r.vitesse_sol, vitesse_nage: r.vitesse_nage,
         ap: r.ap ?? 0, am: r.am ?? 0, don_base: r.don_base, mono_magie: r.mono_magie === 1,
+        // le don de base lu comme une action (décision R173 : « Méditation (Action 3 fois/jour) » de l'onglet, R13 ; lib/limite-texte.mjs, dans le texte,
+        // jamais par son nom) : { type, limite } ; absent quand le texte n'écrit pas d'action
+        ...(typeDActionEcrit(r.don_base) ? { don_base_action: { type: typeDActionEcrit(r.don_base), limite: limiteEcrite(r.don_base) } } : {}),
         classes: accesClasses.get(r.id) ?? [],
         magies: magiesOnglet.get(r.id) ?? magiesMatrice.get(r.id) ?? [],
         bornes: Object.fromEntries((bornes.get(r.id) ?? []).map((b) => [b.caracteristique_id, [b.minimum, b.maximum]])),
@@ -270,10 +308,28 @@ function reglesDeLaBase(db) {
   const secondaires = parCle(lignes(db, 'SELECT magie_id, ethnie_id FROM magie_ethnie_secondaire WHERE ethnie_id IS NOT NULL'), 'magie_id', (r) => r.ethnie_id);
   // Ses résistances et vulnérabilités : les listes de la page de la magie (magie_resistance, classeur V8), magies et altérations d'état, un cran
   // chacune ; et l'altération qui lui est liée (etat_magie), à laquelle un don « … à la magie innée et son altération d'état » donne un cran.
-  const resistancesDeMagie = parCle(lignes(db, `SELECT magie_id, sens, cible_type, COALESCE(cible_magie_id, cible_etat_id) AS cible_id FROM magie_resistance
-                                                 ORDER BY magie_id, sens, cible_type, rang`), 'magie_id',
+  // Les types de dégâts physiques aussi (décision R174, cible_type « physique ») : `{ type: 'physique', id: 'estoc' | 'taille' | 'frappe', crans }`,
+  // l'id étant celui de DEGATS_PHYSIQUES (lib/fiche-moteur.mjs) ; aujourd'hui les trois vulnérabilités du Potentiel Illimité (« Surtension corporelle »),
+  // un palier personnel dont l'annulation en Mode Hyper (R172, R174) n'est pas une donnée de la table.
+  const resistancesDeMagie = parCle(lignes(db, `SELECT magie_id, sens, cible_type, COALESCE(cible_magie_id, cible_etat_id, cible_physique) AS cible_id
+                                                 FROM magie_resistance ORDER BY magie_id, sens, cible_type, rang`), 'magie_id',
     (r) => ({ type: r.cible_type, id: r.cible_id, crans: r.sens === 'resistance' ? 1 : -1 }));
-  const etatDeMagie = new Map(lignes(db, 'SELECT magie_id, etat_id FROM etat_magie').map((r) => [r.magie_id, r.etat_id]));
+  // Une magie peut avoir deux altérations liées depuis la 0117 (l'Ombre : Peur, et Somnolence pour la spécialisation SONGE). Le cran d'un don « … à la
+  // magie innée et son altération d'état » va à celle qui a une résistance : la Peur, jamais la Somnolence, qui n'en a pas « comme les altérations
+  // physiques » (décision R250, MAJ-G9). Elle se reconnaît en base, sans dépendre de l'ordre des altérations : une altération que visent les listes
+  // `magie_resistance` (cible_type « etat », en résistance ou en vulnérabilité) ; aucune ligne de la fiche ne porte donc la Somnolence.
+  const etatDeMagie = new Map();
+  for (const r of lignes(db, `SELECT em.magie_id, em.etat_id FROM etat_magie em JOIN etat e ON e.id = em.etat_id
+                              WHERE em.etat_id IN (SELECT cible_etat_id FROM magie_resistance WHERE cible_type = 'etat') ORDER BY e.ordre`)) {
+    if (!etatDeMagie.has(r.magie_id)) etatDeMagie.set(r.magie_id, r.etat_id);
+  }
+  // plafond de NPM des sorts d'un personnage de cette magie innée (magie_npm_plafond : décision R188, migration 0097 ; le Potentiel Illimité)
+  const npmPlafondDesMagies = new Map(lignes(db, 'SELECT magie_id, npm FROM magie_npm_plafond').map((r) => [r.magie_id, r.npm]));
+  // les deux spécialisations de chaque magie, hors le Potentiel Illimité (magie_specialisation : décision R236, migration 0117), dans l'ordre du tableau
+  // de la page (`ordre`, 1 puis 2) : { id, nom, ordre, description }, le nom tel qu'écrit ; la fiche en tire le choix du bi-magie
+  // (personnage_specialisation_magie) ; `description` (magie_specialisation.description, null sans texte) : l'infobulle de sa pastille (décision R260 (3))
+  const specialisationsDesMagies = parCle(lignes(db, 'SELECT id, magie_id, nom, ordre, description FROM magie_specialisation ORDER BY magie_id, ordre'), 'magie_id',
+    (x) => ({ id: x.id, nom: x.nom, ordre: x.ordre, description: x.description ?? null }));
   const magies = lignes(db, `
     SELECT id, nom, caracteristique_id, caracteristique_brut, sante_offerte, chakra_offert, mono_magie, barre4_ressource, barre4_max, explication FROM magie ORDER BY ordre`)
     .map((m) => ({
@@ -288,6 +344,11 @@ function reglesDeLaBase(db) {
       // l'explication de la magie, telle qu'écrite (magie.explication ; null sinon) : le moteur y lit ce qui borne le poids portable (décision R165 (6),
       // Potentiel Illimité : « Impossible de porter des armures lourdes ou boucliers lourds même si la classe vous le permet »), dans le texte
       explication: m.explication ?? null,
+      // le plafond de NPM des sorts qu'il choisit quand c'est sa magie innée (magie_npm_plafond, décision R188) : NPM des sorts = min(puissance magique du
+      // niveau, max(ce plafond, `npm_plafond` des dons acquis)) ; il ne borne que le choix des sorts (R188 (2)) ; null sans plafond
+      npm_plafond: npmPlafondDesMagies.get(m.id) ?? null,
+      // ses spécialisations magiques (R236 (1)) : deux, aucune pour le Potentiel Illimité
+      specialisations: specialisationsDesMagies.get(m.id) ?? [],
     }));
 
   const dieux = lignes(db, 'SELECT id, nom FROM dieu ORDER BY ordre_choix IS NULL, ordre_choix, nom');
@@ -300,9 +361,14 @@ function reglesDeLaBase(db) {
     for (const r of rows ?? []) ajouter((rangs[r.rang - 1] ??= creer(r)), r);
     return rangs.filter(Boolean);
   };
-  const metiers = lignes(db, 'SELECT id, nom, artisanat_texte, test_carac_1_id, test_carac_2_id FROM metier ORDER BY nom COLLATE NOCASE')
+  // `apport` : ce que le métier apporte, ses champs de /metiers/ tels qu'écrits dans la base (libellés de CHAMPS_DU_CORPS, sans la description ; un
+  // champ vide omis) ; l'infobulle de son option dans la liste Métier de la fiche (demande du propriétaire)
+  const CHAMPS_D_APPORT = CHAMPS_DU_CORPS.filter((c) => c.colonne !== 'description');
+  const metiers = lignes(db, `SELECT id, nom, artisanat_texte, test_carac_1_id, test_carac_2_id, ${CHAMPS_D_APPORT.map((c) => c.colonne).join(', ')}
+    FROM metier ORDER BY nom COLLATE NOCASE`)
     .map((m) => ({
       id: m.id, nom: m.nom,
+      apport: CHAMPS_D_APPORT.filter((c) => m[c.colonne]).map((c) => ({ libelle: c.libelle, texte: m[c.colonne] })),
       bonus: parRang(bonusDesMetiers.get(m.id), (r) => ({ rang: r.rang, texte: r.texte, valeur: r.valeur, unite: r.unite, options: [] }),
         (rang, r) => rang.options.push({ competence_id: r.competence_id, attribut: r.attribut })),
       artisanat: m.artisanat_texte ? { texte: m.artisanat_texte, caracteristiques: m.test_carac_1_id ? [m.test_carac_1_id, m.test_carac_2_id] : [] } : null,
@@ -311,16 +377,19 @@ function reglesDeLaBase(db) {
 
   // Classes : apport de départ, catégorie et couleur de /classes/ ; classe magique par sa catégorie ou l'Archimage (R6), spécialité magique quand
   // son don de niveau 10 dit « considérer comme classe magique » (R7) ; dons à choix rangés en groupes (v_capacite_exclusive, comme la page de la classe) ;
-  // magie innée qui réserve et impose la classe (classe.magie_innee_id : l'Archimage et le Potentiel Illimité, décision R23), ou qui la ferme
+  // magie innée qui réserve la classe (classe.magie_innee_id : l'Archimage et le Potentiel Illimité, décision R23 ; plus imposée, R238 (5)), ou qui la ferme
   // (classe.magie_innee_exclue_id : le Mage Bleu et le Potentiel Illimité, décision R25) ; maîtrises d'armes de la classe (classe_maitrise_arme, avec
   // leur source et leurs parts : décisions R148 à R151) ; ses dons, pour le rappel des dons débloqués (demande du propriétaire), avec les parts de
-  // maîtrise d'arme que donne chacun (`maitrise`, maitrise_arme_part : ses points, R32, R148) et ses NM de sorts gagnés (`nm_gagnes`, R154).
-  // bonus de dégâts d'arme qu'écrit un don passif (lib/degats-texte.mjs : pastille des dégâts des armes, demande du propriétaire) ; rien sinon
+  // maîtrise d'arme que donne chacun (`maitrise`, maitrise_arme_part : ses points, R32, R148), ses NM de sorts gagnés (`nm_gagnes`, R154), le plafond de
+  // NPM qu'il relève (`npm_plafond`, R188) et s'il compte comme une condition d'emplacements de sorts (`condition_emplacements`, R189).
+  // bonus de dégâts d'arme qu'écrit un don passif (lib/degats-texte.mjs : pastille des dégâts des armes, demande du propriétaire), sauf DONS_SANS_DEGATS ; rien sinon
   // et ses bonus de sorts (coût, dégâts, soin, portée : lib/sort-bonus-texte.mjs, décision R102)
   const degatsEcrits = (d) => {
-    const b = d.type === 'passif' ? bonusDeDegatsEcrit(d.effet) : null;
+    const b = d.type === 'passif' && !DONS_SANS_DEGATS.includes(d.id) ? bonusDeDegatsEcrit(d.effet) : null;
     const sorts = d.type === 'passif' ? bonusDeSortsEcrits(d.effet) : [];
-    return { ...(b ? { degats: b } : {}), ...(sorts.length ? { sorts } : {}) };
+    // ce qu'il fait du bouclier porté (Bouclier d'attaque, Bouragé, Mur du Boxeur : lib/bouclier-texte.mjs, décisions R255, R267)
+    const bouclier = d.type === 'passif' ? effetDeBouclierEcrit(d.effet) : null;
+    return { ...(b ? { degats: b } : {}), ...(sorts.length ? { sorts } : {}), ...(bouclier ? { bouclier } : {}) };
   };
   // Familles d'armes : dé, paliers selon la Force (Pugilat), si une maîtrise peut s'y mettre (décision R45), contact ou distance (arme_famille.categorie,
   // décision R127 : « Arc / arbalète / arme de jet ou Bombe sont bien les 4 types d'armes à distance »), et les compétences que donnent ses armes (R48 :
@@ -348,8 +417,27 @@ function reglesDeLaBase(db) {
   const amMagique = db.prepare("SELECT am_base FROM categorie_classe WHERE id = 'classe-magique'").get()?.am_base;
   if (!amMagique) throw new Error('categorie_classe « classe-magique » : am_base absent');
   const alternatives = parCle(lignes(db, 'SELECT capacite_id, autre_id FROM v_capacite_exclusive'), 'capacite_id', (r) => r.autre_id);
-  const capacites = parCle(lignes(db, 'SELECT id, classe_id, specialite_id, niveau, nature, ligne, rang, nom, type, type_brut, effet, remarque FROM capacite'), 'classe_id');
-  const specialites = parCle(lignes(db, 'SELECT id, classe_id, rang, nom FROM specialite ORDER BY classe_id, rang'), 'classe_id');
+  // les noms d'avant un renommage sur le site de dev (lib/historique-site.mjs#valeursDAvant), des dons et des sorts, par id (clé primaire `id` des deux
+  // tables) ; `nomsDAvant` rend { noms_d_avant } sans le nom actuel, ou rien
+  // plus ceux que des migrations ont changés en gardant l'identifiant (registres de data/migrations : R237 (4) et (11), lib/noms-d-avant-des-migrations.mjs)
+  const deMigrations = nomsDAvantDesMigrations();
+  const parId = (table) => {
+    const noms = new Map([...valeursDAvant(db, table, 'nom')].map(([cle, n]) => [JSON.parse(cle).id, n]));
+    for (const [id, anciens] of deMigrations.get(table) ?? []) noms.set(id, [...new Set([...(noms.get(id) ?? []), ...anciens])]);
+    return noms;
+  };
+  const nomsDAvantDesDons = parId('capacite');
+  const nomsDAvantDesSorts = parId('sort');
+  const nomsDAvant = (noms, x) => {
+    const avant = (noms.get(x.id) ?? []).filter((n) => n !== x.nom);
+    return avant.length ? { noms_d_avant: avant } : {};
+  };
+  const capacites = parCle(lignes(db, `SELECT id, classe_id, specialite_id, niveau, nature, ligne, rang, nom, type, type_brut, limite_nombre, limite_periode, effet, remarque
+                                        FROM capacite`), 'classe_id');
+  const specialites = parCle(lignes(db, 'SELECT id, classe_id, rang, nom, description FROM specialite ORDER BY classe_id, rang'), 'classe_id');
+  // le texte de présentation d'une classe ou d'une spécialité (infobulle d'une tuile de choix), tel qu'en base, sans les balises du glossaire comme tout
+  // texte de ces règles (chargerReglesDeFiche : le texte affiché) ; null sans texte
+  const texte = (v) => (typeof v === 'string' && v !== '' ? v : null);
   // Les sources de maîtrise d'arme (décisions R148 à R151), lues dans leurs tables de règles (maitrise_arme_part, maitrise_arme_part_famille : écrites par
   // lib/maitrise-arme.mjs, rejouées par test/maitrise-arme-sources.test.mjs ; rien n'est relu des textes ici) : les parts de chaque source, dans l'ordre
   // de son texte, { rang, genre ('imposee' | 'choix' | 'suit'), points (signés : le −1 de l'Épéiste), famille (la famille imposée, sinon null), options
@@ -380,6 +468,24 @@ function reglesDeLaBase(db) {
     if (n !== 1) throw new Error(`maitrise_arme_part : ${p.source_id} suit la maîtrise au choix de ${p.classe_id}, qui en a ${n} (une seule attendue, R151)`);
   }
   const nmGagnes = new Map(lignes(db, 'SELECT capacite_id, nm FROM capacite_nm_gagne').map((r) => [r.capacite_id, r.nm]));
+  // Plafond de NPM qu'un don acquis relève (capacite_npm_plafond : décision R188, migration 0097 ; « Semi-complet » de l'Archimage), seulement pour une
+  // magie innée qui a un plafond (`magies[].npm_plafond`) ; dons qui comptent comme une condition de plus dans les emplacements de sorts, comme une magie
+  // acquise (capacite_condition_emplacements : décision R189 ; « Grimoire »). Valeurs de la base, jamais relues du texte du don
+  const npmPlafondDesDons = new Map(lignes(db, 'SELECT capacite_id, npm FROM capacite_npm_plafond').map((r) => [r.capacite_id, r.npm]));
+  const conditionsDEmplacements = new Set(lignes(db, 'SELECT capacite_id FROM capacite_condition_emplacements').map((r) => r.capacite_id));
+  // Dons « Variable » du Mage Bleu (décision R181, migration 0088) : la magie que vise chaque don (capacite_variable.magie : 'innee', ou 'acquise' pour
+  // Secondaire), et les entrées du tableau du bas de l'onglet de sa classe (classe_annexe_entree), dans l'ordre du tableau (une ligne par magie, puis
+  // l'ordre du texte) : { id, magie_id (celle de sa ligne, classe_annexe.magie_id), rang (dans sa ligne), nom, type ('passif', 'actif', 'action',
+  // 'reaction'), type_brut (l'en-tête tel qu'écrit, « (Actif 2 fois/combat) »), limite ({ nombre, periode, genre } comme celle d'un don, R173 :
+  // genreDeLaPeriode ; null sans limite « N fois/période »), effet } ; textes tels qu'en base, sans balises. Rien n'est relu des textes ici
+  const magiesVisees = new Map(lignes(db, 'SELECT capacite_id, magie FROM capacite_variable').map((r) => [r.capacite_id, r.magie]));
+  const entreesDesClasses = parCle(lignes(db, `SELECT e.classe_id, e.id, x.magie_id, e.rang, e.nom, e.type, e.type_brut, e.limite_nombre, e.limite_periode, e.effet
+      FROM classe_annexe_entree e JOIN classe_annexe x ON x.classe_id = e.classe_id AND x.rang = e.annexe_rang ORDER BY e.classe_id, x.rang, e.rang`), 'classe_id',
+  (e) => ({
+    id: e.id, magie_id: e.magie_id, rang: e.rang, nom: e.nom, type: e.type, type_brut: e.type_brut,
+    limite: e.limite_nombre !== null && e.limite_periode ? { nombre: e.limite_nombre, periode: e.limite_periode, genre: genreDeLaPeriode(e.limite_periode) } : null,
+    effet: e.effet,
+  }));
   // une maîtrise au choix porte ses familles (`au_choix` : familles, null si son « sauf » ne se lit pas ; décision R119) ; chaque ligne, sa source
   // (`source` : lib/maitrise-arme.mjs#idDeSourceDeClasse, l'identifiant que la fiche enregistre dans personnage_maitrise_choix) et ses parts
   const maitrises = parCle(lignes(db, 'SELECT classe_id, rang, brut, nombre, forme, categorie, sauf_cle FROM classe_maitrise_arme WHERE nombre IS NOT NULL ORDER BY classe_id, rang'), 'classe_id',
@@ -394,22 +500,28 @@ function reglesDeLaBase(db) {
   const maitrisesArmures = parCle(lignes(db, "SELECT classe_id, rang, brut, poids_min, poids_max FROM classe_maitrise_armure WHERE objet = 'armure' ORDER BY classe_id, rang"),
     'classe_id', (r) => ({ rang: r.rang, brut: r.brut, poids_min: r.poids_min, poids_max: r.poids_max, valeur_max: valeurDuPoids(r.poids_max) }));
   const classes = lignes(db, `
-    SELECT c.id, c.nom, c.sante_depart, c.chakra_depart, c.barriere_depart, c.categorie_id, c.magie_innee_id, c.magie_innee_exclue_id, k.libelle AS categorie, k.am_base
+    SELECT c.id, c.nom, c.sante_depart, c.chakra_depart, c.barriere_depart, c.categorie_id, c.magie_innee_id, c.magie_innee_exclue_id, k.libelle AS categorie, k.am_base,
+           c.description
     FROM classe c JOIN categorie_classe k ON k.id = c.categorie_id ORDER BY c.ordre`)
     .map((c) => {
       const dons = capacites.get(c.id) ?? [];
-      const entree = entrees.find((e) => e.id === c.id) ?? { id: c.id, data: { title: c.nom, tags: [] } };
+      const entree = entrees.find((e) => e.id === c.id) ?? { id: c.id, data: { title: c.nom, mots_cles: [] } };
       const parSpecialite = (specialiteId) =>
         groupesDeChoix(dons.filter((d) => d.nature === 'choix' && d.specialite_id === specialiteId).map((d) => ({ ...d, alternatives: alternatives.get(d.id) ?? [] })))
           .filter((g) => g.options.length > 1)
           .map((g) => ({ niveau: g.niveau, specialite_id: specialiteId, options: g.options.map((o) => ({ id: o.id, nom: o.nom, type: o.type })) }));
       const specialitesDeLaClasse = (specialites.get(c.id) ?? []).map((s) => {
         const cartouche = dons.find((d) => d.nature === 'specialite' && d.specialite_id === s.id);
-        return { id: s.id, nom: s.nom, rang: s.rang, magique: ditClasseMagique(cartouche?.effet) };
+        return {
+          id: s.id, nom: s.nom, rang: s.rang, magique: ditClasseMagique(cartouche?.effet),
+          description: texte(s.description),
+        };
       });
       return {
         // sa couleur : la classe de sa catégorie de /classes/ (lib/palette-css.mjs, famille `classe`, celle des pages de classe), jamais un hex
         id: c.id, nom: c.nom, categorie: c.categorie, classe: classeDUneClasse(entree),
+        // son texte de présentation, tel qu'en base (sans les balises du glossaire ; null sans texte) : l'infobulle de sa tuile
+        description: texte(c.description),
         // colonne de /classes/ (Parleur sous « Spéciales ») et son rang de gauche à droite
         groupe: (({ key, label }) => ({ key, label, ordre: CLASS_GROUPS.findIndex((g) => g.key === key) }))(classCategory(entree) ?? { key: 'speciales', label: 'Spéciales' }),
         magique: (c.am_base ?? 0) > 0 || c.id === 'classes/archimage',
@@ -419,21 +531,43 @@ function reglesDeLaBase(db) {
         choix: [null, ...specialitesDeLaClasse.map((s) => s.id)].flatMap(parSpecialite).sort((a, b) => a.niveau - b.niveau),
         maitrises: maitrises.get(c.id) ?? [],
         maitrise_armures: maitrisesArmures.get(c.id) ?? [],
+        // les entrées que ses dons « Variable » font obtenir (décision R181 : le tableau du bas de l'onglet du Mage Bleu) ; absente pour une classe sans tableau
+        ...(entreesDesClasses.has(c.id) ? { entrees: entreesDesClasses.get(c.id) } : {}),
         dons: [...dons].sort((a, b) => a.niveau - b.niveau || a.ligne - b.ligne || a.rang - b.rang).map((d) => ({
           id: d.id, nom: d.nom, nature: d.nature, niveau: d.niveau, specialite_id: d.specialite_id, type: d.type, effet: d.effet,
+          // les noms qu'il a portés avant un renommage sur le site de dev (historique_modification) : une fiche écrite avant se relit
+          // (lib/fiche-tableur-import.mjs) ; absent pour un don jamais renommé
+          ...nomsDAvant(nomsDAvantDesDons, d),
           // ce que la cellule de type écrit entre parenthèses (« 2 fois/combat », « 3 tours de recharge »), tel quel, comme la page de la classe
           precision: typeDeDon(d.type_brut).precision,
+          // sa limite d'usage, lue dans son type (capacite.limite_nombre, limite_periode : « Actif (2 fois/combat) ») et son genre (décision R173 :
+          // lib/limite-texte.mjs#genreDeLaPeriode : `combat`, remis par « Fin de combat » ; `manuel`, remonté à la main ; `rappel`) ; absente sans limite lue
+          ...(d.limite_nombre !== null && d.limite_periode
+            ? { limite: { nombre: d.limite_nombre, periode: d.limite_periode, genre: genreDeLaPeriode(d.limite_periode) } } : {}),
           ...resistancesEcrites(resistancesDuTexte(d.effet, d.remarque)), ...degatsEcrits(d),
           // ses parts de maîtrise d'arme (maitrise_arme_part : décisions R148, R150, R151) et ses NM de sorts gagnés (capacite_nm_gagne : R154), quand il en a
           ...(partsDesSources.has(d.id) ? { maitrise: { parts: partsDesSources.get(d.id) } } : {}),
           ...(nmGagnes.has(d.id) ? { nm_gagnes: nmGagnes.get(d.id) } : {}),
+          // un don « Variable » (décision R181) : la magie que vise sa liste, 'innee' ou 'acquise' (capacite_variable) ; absente pour un autre don
+          ...(magiesVisees.has(d.id) ? { magie_visee: magiesVisees.get(d.id) } : {}),
+          // le plafond de NPM qu'il relève (capacite_npm_plafond : R188) et s'il compte comme une condition d'emplacements de sorts
+          // (capacite_condition_emplacements : R189) ; absents pour un autre don
+          ...(npmPlafondDesDons.has(d.id) ? { npm_plafond: npmPlafondDesDons.get(d.id) } : {}),
+          ...(conditionsDEmplacements.has(d.id) ? { condition_emplacements: true } : {}),
           // exemplaires du même objet sur un emplacement de ceinture que le don permet (« Permet d'avoir 4 fois… », Mercenaire « Organisé » ; décision R89)
           ...(exemplairesDeCeintureEcrits(d.effet) ? { exemplaires_ceinture: exemplairesDeCeintureEcrits(d.effet) } : {}),
           ...(sacSansForceEcrit(d.effet) ? { sac_sans_force: true } : {}),
           // ses bonus d'acquis (« +7% Magie, +7% Médecine », « +7% Arme légères OU lourdes » : un choix ; décision R104)
-          ...(() => { const acquis = horsDuTableau(lireAcquis(d.effet)); return acquis.length ? { acquis } : {}; })(),
+          // (sauf les dons de DONS_SANS_ACQUIS : « Posture inébranlable », un texte seul, R255 (5) ; ces dons restent un passif écrit)
+          ...(() => { const acquis = DONS_SANS_ACQUIS.includes(d.id) ? [] : horsDuTableau(lireAcquis(d.effet)); return acquis.length ? { acquis } : {}; })(),
           // le sort qu'il permet de préparer (« Préparation », « Chargement » : décision R115, lib/sort-bonus-texte.mjs#preparationEcrite)
           ...(() => { const preparation = preparationEcrite(d.effet); return preparation ? { preparation } : {}; })(),
+          // son bonus de réussite critique dans une posture, s'il est passif (« (Posture Offensif) Augmente la réussite critique de +5% », Sci du Crit :
+          // lib/critique-texte.mjs, décision R180 ; un don actif ne joue pas en permanence, R128)
+          ...(() => { const critique = d.type === 'passif' ? critiqueDuDon(d.effet) : null; return critique ? { critique } : {}; })(),
+          // le critique du sort qu'il relâche plusieurs fois, écrit dans sa remarque (« Dans le cas d'un critique, ce sera que pour le premier coup, les
+          // prochains c'est fixé à 40 de réussite. », Double coup : lib/critique-texte.mjs, décision R182 (5)) : un rappel du bloc « Sort préparé »
+          ...(() => { const premier = critiqueDuPremierCoup(d.remarque); return premier ? { critique_premier_coup: premier } : {}; })(),
         })),
       };
     });
@@ -451,13 +585,20 @@ function reglesDeLaBase(db) {
   const attaques = new Set(lignes(db, "SELECT DISTINCT sort_id FROM sort_type WHERE type = 'attaque'").map((t) => t.sort_id));
   // ses types (sort_type : attaque, soin, amplification, protection…), pour les bonus du moment qui n'en visent que certains (décisions R101, R102)
   const typesDesSorts = parCle(lignes(db, 'SELECT sort_id, type FROM sort_type ORDER BY sort_id, type'), 'sort_id', (t) => t.type);
-  // ses étiquettes (sort_mot_cle, migration 0067 : décision R114, « Sort grenade » ; migration 0079 : décision R164, « Sort fer »), dans l'ordre de leur libellé normalisé (`libelle_cle`) : les bonus écrits pour « les sorts
-  // "grenades" » visent les sorts qui la portent, jamais un sort par son nom (lib/sort-bonus-texte.mjs#ETIQUETTES_DES_SORTS)
-  const etiquettesDesSorts = parCle(lignes(db, `SELECT e.sort_id, e.mot_cle_id FROM sort_mot_cle e JOIN mot_cle m ON m.id = e.mot_cle_id
-    ORDER BY e.sort_id, m.libelle_cle, e.mot_cle_id`), 'sort_id', (e) => e.mot_cle_id);
-  const sorts = lignes(db, 'SELECT id, magie_id, nom, niveau, type_brut, cout_brut, cout_secondaire, portee_brut, zone_brut, dsb_brut, effets, remarque FROM sort ORDER BY magie_id, niveau, ordre')
+  // ses étiquettes (sort_mot_cle, migration 0067 : décision R114, « Sort grenade » ; migration 0079 : décision R164, « Sort fer »), par leur nom de
+  // mot-clé protégé (lib/mots-cles-proteges.mjs : reconnu à son id entier, migration 0113 ; l'id d'un mot-clé que le site ne lit pas), dans l'ordre de
+  // leur clé : les bonus écrits pour « les sorts "grenades" » visent les sorts qui la portent, jamais un sort par son nom
+  // (lib/sort-bonus-texte.mjs#ETIQUETTES_DES_SORTS)
+  const etiquettesDesSorts = parCle(lignes(db, `SELECT e.sort_id, e.mot_cle_id AS id, m.cle FROM sort_mot_cle e JOIN mot_cle m ON m.id = e.mot_cle_id
+    ORDER BY e.sort_id, m.cle, e.mot_cle_id`), 'sort_id', (e) => nomDuProtege(e) ?? e.id);
+  const sorts = lignes(db, 'SELECT id, magie_id, nom, niveau, specialisation_id, type_brut, cout_brut, cout_secondaire, portee_brut, zone_brut, dsb_brut, effets, remarque FROM sort ORDER BY magie_id, niveau, ordre')
     .map((s) => ({
-      id: s.id, magie_id: s.magie_id, nom: s.nom, niveau: s.niveau, type: s.type_brut, cout: s.cout_brut, portee: s.portee_brut, zone: s.zone_brut, dsb: s.dsb_brut, effets: s.effets, remarque: s.remarque,
+      id: s.id, magie_id: s.magie_id, nom: s.nom, niveau: s.niveau,
+      // la spécialisation magique dont le tableau porte le sort (R236 (1), sort.specialisation_id : NPM 3 à 5) ; null pour un sort commun (NPM 1 et 2)
+      specialisation_id: s.specialisation_id ?? null,
+      type: s.type_brut, cout: s.cout_brut, portee: s.portee_brut, zone: s.zone_brut, dsb: s.dsb_brut, effets: s.effets, remarque: s.remarque,
+      // les noms qu'il a portés avant un renommage sur le site de dev (comme les dons) ; absent pour un sort jamais renommé
+      ...nomsDAvant(nomsDAvantDesSorts, s),
       // le second coût (âmes, Sang… : décision R105) ou sa précision (« Par tour » : R106), sans expression de NM ; absent quand le sort n'en a pas
       ...(s.cout_secondaire ? { cout_secondaire: s.cout_secondaire } : {}),
       modes: modesDesSorts.get(s.id) ?? [],
@@ -472,7 +613,8 @@ function reglesDeLaBase(db) {
       ...(etiquettesDesSorts.get(s.id)?.includes('sort-fer') ? { fer: true } : {}),
     }));
 
-  // Postures (sélecteur de la page, demande du propriétaire) : les six, dans l'ordre de la page « Postures », leur couleur et leurs effets du tableau de la fiche.
+  // Postures (sélecteur de la page, demande du propriétaire) : les six, dans l'ordre de la page « Postures » du Doc « Guide pour MJ » (posture.ordre ; la page
+  // du site qui les montre est « Les postures », depuis le retrait de la page « Postures », décision R187), leur couleur et leurs effets du tableau de la fiche.
   // Avantages et inconvénients (décision R47, migration 0031) : `inconvenients` = les rangs des lignes du tableau de la fiche qui sont des inconvénients
   // (posture_effet.inconvenient), les autres sont des avantages ; `ordre_postures` : l'ordre des cases sur la fiche (demande du propriétaire : Offensif,
   // Neutre, Défensif, puis Focus, Vigilance, Symbiose).
@@ -480,6 +622,10 @@ function reglesDeLaBase(db) {
   const lignesDePosture = lignes(db, "SELECT posture_id, rang, texte, inconvenient FROM posture_effet WHERE version = 'fiche' ORDER BY posture_id, rang");
   const effetsDePosture = parCle(lignesDePosture, 'posture_id', (r) => r.texte);
   const inconvenientsDePosture = parCle(lignesDePosture.filter((r) => r.inconvenient === 1), 'posture_id', (r) => r.rang);
+  // les compétences où compte le bonus de réussite critique de la posture elle-même (décision R180, table posture_critique : Offensif, ses six jets
+  // d'attaque ; Défensif, Esquive et Parade) ; un don écrit pour une posture (Sci du Crit) n'y a plus de ligne : il n'est que mentionné (R182, Q90)
+  const critiqueDesPostures = parCle(lignes(db, 'SELECT posture_id, bonus, competence_id FROM posture_critique ORDER BY posture_id, bonus, competence_id'), 'posture_id');
+  const critiqueDe = (id, bonus) => (critiqueDesPostures.get(id) ?? []).filter((r) => r.bonus === bonus).map((r) => r.competence_id);
   const postures = lignes(db, 'SELECT id, nom FROM posture ORDER BY ordre')
     .map((p) => ({
       // sa couleur : la classe de la posture (lib/palette-css.mjs ; famille d'une zone, émise par pages/fiche/index.astro), jamais un hex
@@ -487,30 +633,45 @@ function reglesDeLaBase(db) {
       inconvenients: inconvenientsDePosture.get(p.id) ?? [],
       // ce que chaque ligne change aux valeurs de la fiche (décision R100 : lib/posture-texte.mjs), au même rang que `effets` ; null = affichée seulement
       chiffres: (effetsDePosture.get(p.id) ?? []).map(effetDePosture),
+      critique: { posture: critiqueDe(p.id, 'posture') },
     }));
 
-  // Mode Hyper et Mode Hyper 100 % (demande du propriétaire : leurs cases à côté des postures, quand ils sont débloqués) : les niveaux et le Mode Hyper 100 %
-  // tels qu'écrits par la page « Liste des effets mode hyper » (« se débloque au niveau 2 », « n'est disponible qu'au niveau 10 ») ; les effets de base de la
-  // fiche (mode_hyper_effet version 'fiche', valeurs retenues par la décision R5) ; l'effet de chaque magie (onglet de la magie, comme sa page) et de chaque race
-  // (onglet de la race, décision R13).
-  const pageHyper = sansBalises(db, db.prepare("SELECT corps_md FROM page WHERE id = 'guide/liste-des-effets-mode-hyper'").get()?.corps_md ?? '');
-  const niveauHyper = /se d[ée]bloque au niveau (\d+)/.exec(pageHyper)?.[1];
-  const sectionCent = /## Mode Hyper 100 ?%\s*\n([\s\S]*?)(?=\n## |$)/.exec(pageHyper)?.[1] ?? '';
-  const niveauCent = /disponible qu['’]au niveau (\d+)/.exec(sectionCent)?.[1];
-  if (!niveauHyper || !niveauCent) throw new Error('page « Liste des effets mode hyper » : niveaux du Mode Hyper et du Mode Hyper 100 % introuvables');
+  // Mode Hyper et Mode Hyper 100 % (demande du propriétaire : leurs cases à côté des postures, quand ils sont débloqués), lus en base, jamais dans le texte
+  // d'une page (décision R187 (4) : « La fiche garde les mêmes valeurs et les mêmes textes ») : les niveaux, constantes de regle_constante tirées des textes
+  // du classeur « Mode hyper et co » (`mode_hyper.niveau_deblocage` : « se débloque au niveau 2 de personnage », AA1 ; `mode_hyper.niveau_100` : « n'est
+  // disponible qu'au niveau 10 de personnage », AA30) ; les puces du Mode Hyper 100 % et sa phrase « En revanche, … », lues dans son texte d'explication
+  // (mode_texte, cellule AA30 entière : ses ids gardent le préfixe de la page « Liste des effets mode hyper », retirée par la migration 0095, identifiants
+  // figés) ; les effets de base de la fiche (mode_hyper_effet version 'fiche', valeurs retenues par la décision R5) ; l'effet de chaque magie (onglet de la
+  // magie, comme sa page) et de chaque race (onglet de la race, décision R13).
+  const niveauDuMode = (id) => {
+    const r = db.prepare('SELECT valeur FROM regle_constante WHERE id = ?').get(id);
+    if (!r) throw new Error(`regle_constante « ${id} » absente de la base : niveau du Mode Hyper introuvable (décision R187)`);
+    return r.valeur;
+  };
+  const TEXTE_DU_CENT = 'guide/liste-des-effets-mode-hyper#texte:mode-hyper-100';
+  const texteDuCent = lignes(db, 'SELECT texte FROM mode_texte WHERE id = ?', TEXTE_DU_CENT)[0]?.texte;
+  if (!texteDuCent) throw new Error(`mode_texte « ${TEXTE_DU_CENT} » absent de la base : texte du Mode Hyper 100 % introuvable (décision R187)`);
+  const effetsDuCent = [...texteDuCent.matchAll(/^- (.+)$/gm)].map((m) => m[1].trim());
+  if (!effetsDuCent.length) throw new Error(`mode_texte « ${TEXTE_DU_CENT} » : aucun effet du Mode Hyper 100 % (puces « - … ») dans son texte`);
+  const effetsHyperDesMagies = lignes(db, "SELECT magie_id, variante, effet FROM mode_hyper_effet WHERE version = 'onglet_magie' AND portee = 'magie'");
   const mode_hyper = {
-    niveau: Number(niveauHyper),
+    niveau: niveauDuMode('mode_hyper.niveau_deblocage'),
     effets: lignes(db, "SELECT effet FROM mode_hyper_effet WHERE version = 'fiche' AND portee = 'general' ORDER BY rang").map((r) => r.effet),
-    magies: Object.fromEntries([...parCle(lignes(db, "SELECT magie_id, variante, effet FROM mode_hyper_effet WHERE version = 'onglet_magie' AND portee = 'magie'"), 'magie_id')]
+    magies: Object.fromEntries([...parCle(effetsHyperDesMagies, 'magie_id')]
       .map(([id, rows]) => [id, Object.fromEntries(rows.map((r) => [r.variante, r.effet]))])),
-    races: Object.fromEntries(lignes(db, "SELECT race_id, nom, effet FROM mode_hyper_effet WHERE version = 'onglet_race'").map((r) => [r.race_id, { nom: r.nom, effet: r.effet }])),
+    // ce que l'effet de chaque magie change aux valeurs de la fiche (décision R172 : lib/mode-hyper-texte.mjs, lu dans le texte, jamais par le nom),
+    // par variante comme `magies` ; [] pour un effet seulement affiché
+    chiffres_magies: Object.fromEntries([...parCle(effetsHyperDesMagies, 'magie_id')]
+      .map(([id, rows]) => [id, Object.fromEntries(rows.map((r) => [r.variante, effetsDuModeHyper(r.effet)]))])),
+    races: Object.fromEntries(lignes(db, "SELECT race_id, nom, effet FROM mode_hyper_effet WHERE version = 'onglet_race'")
+      .map((r) => [r.race_id, { nom: r.nom, effet: r.effet, chiffres: effetsDuModeHyper(r.effet) }])),
     // la couleur des deux cases : la classe du mode (lib/palette-css.mjs, famille `mode`), jamais un hex
     classe: classeDuModeHyper('hyper'),
     cent: {
       classe: classeDuModeHyper('cent'),
-      niveau: Number(niveauCent),
-      effets: [...sectionCent.matchAll(/^- (.+)$/gm)].map((m) => m[1].trim()),
-      suite: /^En revanche, (.+)$/m.exec(sectionCent)?.[1]?.trim() ?? null,
+      niveau: niveauDuMode('mode_hyper.niveau_100'),
+      effets: effetsDuCent,
+      suite: /^En revanche, (.+)$/m.exec(texteDuCent)?.[1]?.trim() ?? null,
     },
   };
 
@@ -547,10 +708,16 @@ function reglesDeLaBase(db) {
     })(),
     // « tous les bonus se cumulent une fois l'arme forgée » (page « Armes ») : celui de la composition et de l'amélioration ; de même les crans de solidité
     // de la composition et de l'amélioration (`cran_solidite`, `bonus_cran` : décisions R51, R74)
-    materiaux_armes: lignes(db, 'SELECT ressource_id, bonus_degats, cran_solidite FROM materiau_arme ORDER BY ordre')
-      .map((m) => ({ id: m.ressource_id, nom: nomDeRessource(m.ressource_id), bonus_degats: m.bonus_degats, cran_solidite: m.cran_solidite })),
-    // le matériau d'une arme choisie, par défaut (décision R49 : « son matériau (par défaut le fer) ») : le fer du tableau des matériaux d'arme
-    materiau_arme_defaut: db.prepare("SELECT m.ressource_id AS id FROM materiau_arme m JOIN ressource r ON r.id = m.ressource_id WHERE r.nom_cle = 'fer'").get()?.id ?? null,
+    // `effet_secondaire` : l'effet écrit du matériau en plus de ses dégâts (« +1d de dégâts contre les non-morts »), tel qu'écrit, montré parmi les passifs de
+    // l'arme portée (décision R173, réponse du propriétaire : « Oui, dans ce lot D »), jamais lu par un calcul ; absent sans effet secondaire
+    materiaux_armes: lignes(db, 'SELECT ressource_id, bonus_degats, cran_solidite, effet_secondaire FROM materiau_arme ORDER BY ordre')
+      .map((m) => ({
+        id: m.ressource_id, nom: nomDeRessource(m.ressource_id), bonus_degats: m.bonus_degats, cran_solidite: m.cran_solidite,
+        ...(m.effet_secondaire?.trim() ? { effet_secondaire: m.effet_secondaire } : {}),
+      })),
+    // le matériau d'une arme choisie, par défaut (décision R49 : « son matériau (par défaut le fer) ») : le fer du tableau des matériaux d'arme, par son id
+    // figé (arme-forge.mjs#MATERIAU_PAR_DEFAUT), jamais par son nom ; null si le site de dev l'a retiré du tableau
+    materiau_arme_defaut: db.prepare('SELECT ressource_id AS id FROM materiau_arme WHERE ressource_id = ?').get(MATERIAU_PAR_DEFAUT)?.id ?? null,
     // `bonus_ap`, `bonus_am` : l'AP et l'AM d'une amélioration d'armure, d'armure élémentaire ou de bouclier, ceux du niveau choisi (décisions R76, R77)
     // et son coût, tel qu'écrit (`cout`) et en gemmes (cout_gemmes, cout_gemmes_qualite : « commune », « raffinee », « parfaite ») ou en pièces élémentaires
     // (cout_pieces_elementaires) : le tableau d'amélioration des armures élémentaires (décision R165 (2) ; les gemmes sont celles de la magie, table gemme).
@@ -573,7 +740,9 @@ function reglesDeLaBase(db) {
     armes_elementaires: lignes(db, `SELECT e.id, e.nom, e.type_id, e.magie_id, m.nom AS magie, e.bonus_degats, e.capacite_nom, e.capacite_mode, e.capacite_texte
                                     FROM arme_elementaire e JOIN magie m ON m.id = e.magie_id ORDER BY e.ordre`)
       .map(({ magie, ...e }) => ({ id: e.id, nom: e.nom, type_id: e.type_id, magie_id: e.magie_id, classe: classeDeMagie(magie), bonus_degats: e.bonus_degats,
-        capacite_nom: e.capacite_nom, capacite_mode: e.capacite_mode, capacite_texte: e.capacite_texte })),
+        capacite_nom: e.capacite_nom, capacite_mode: e.capacite_mode, capacite_texte: e.capacite_texte,
+        // la limite d'usage qu'écrit sa capacité (décision R173 : lib/limite-texte.mjs, « (2 fois/combat) ») ; absente sans limite écrite
+        ...(limiteEcrite(e.capacite_texte) ? { capacite_limite: limiteEcrite(e.capacite_texte) } : {}) })),
     // Types des armes élémentaires (arme_elementaire_type, décision R167 : « Dé et portée : ceux de son type », arme_type), dans l'ordre des en-têtes de
     // l'onglet : le dé du type (`de`, null pour le Pugilat) et ses paliers selon la Force (`de_selon_force`, lib/maitrise-arme.mjs#desSelonLaForce sur
     // arme_type.de_regle, comme regles.familles_armes[].de_selon_force) ; la portée du type (« N » ou « N - M », comme regles.armes[].portee) ; `ignore_ap`
@@ -608,9 +777,11 @@ function reglesDeLaBase(db) {
       // (décisions R157, R158 : « Cassée, l'armure ne donne plus aucun de ses effets, bonus comme malus, jusqu'à sa réparation » — l'initiative, la vitesse et
       // les croix qu'écrit l'effet, « +3 INI », « -5 INI, 1 Croix en AGI », ne sont pas lus ; un effet qu'on lira un jour devra cesser, comme l'acquis, quand
       // l'armure à cran uni est à 0 : lib/fiche-moteur.mjs#armureCassee. Le malus de la catégorie Lourd, lui, reste : « Non, elle pèse toujours », R158)
+      // `effet` : son texte tel qu'écrit, montré seulement (l'infobulle de son option dans la liste Armure : lib/fiche-moteur.mjs#infobulleDArmure ;
+      // demande du propriétaire), jamais lu par un calcul ; absent quand l'armure n'en a pas
       return lignes(db, 'SELECT id, nom, type, ap, am, solidite, solidite_uni, effet FROM armure ORDER BY ordre').map(({ effet, ...a }) => {
         const acquis = horsDuTableau(lireAcquis(effet));
-        return { ...a, degats: degats.get(a.id) ?? [], ...(acquis.length ? { acquis } : {}) };
+        return { ...a, degats: degats.get(a.id) ?? [], ...(acquis.length ? { acquis } : {}), ...(effet?.trim() ? { effet } : {}) };
       });
     })(),
     // la magie de chaque armure élémentaire (armure_elementaire.magie_id) : la fiche auto écrit l'élément d'une armure par le nom de sa magie, l'import en
@@ -623,15 +794,25 @@ function reglesDeLaBase(db) {
     // `resistances` (décisions R165, R166 : « Le compter dans ce lot ») : les crans et immunités qu'écrivent ses effets, lus comme ceux des dons
     // (lib/resistance-texte.mjs, avec l'option `immunites` des armures élémentaires seulement : « … et immunité à la brûlure ») ; l'Arcane et la
     // Corruption tels qu'écrits (la colonne Arcane donne la Corruption, et l'inverse) ; absent quand ses effets n'en écrivent pas
+    // `actions` (décision R173 : « les effets "(Action)" et "(Réaction)" de l'armure élémentaire portée » ; réponse du propriétaire à Q79, « Deviennent des
+    // actions » : aussi les effets « (actif) » et ceux qui écrivent une limite d'usage, « (1 fois par combat) ») : pour chaque effet qui écrit un type
+    // (lib/limite-texte.mjs#typeDActionEcrit) ou une limite (limiteEcrite), lus dans le texte, { rang (armure_elementaire_effet.rang), index (dans
+    // `effets`), type (null sans type écrit), limite (null sans limite écrite) } ; absent quand aucun effet n'en écrit (les autres effets sont des
+    // passifs, montrés tels qu'écrits)
     armures_elementaires: (() => {
-      const effets = parCle(lignes(db, 'SELECT armure_elementaire_id, texte FROM armure_elementaire_effet ORDER BY armure_elementaire_id, rang'), 'armure_elementaire_id', (r) => r.texte);
+      const lignesDEffets = parCle(lignes(db, 'SELECT armure_elementaire_id, rang, texte FROM armure_elementaire_effet ORDER BY armure_elementaire_id, rang'),
+        'armure_elementaire_id', (r) => ({ rang: r.rang, texte: r.texte }));
       return lignes(db, 'SELECT id, nom, categorie, magie_id, ap, am, ordre FROM armure_elementaire ORDER BY ordre, id')
         .map((a) => {
-          const sorts = (effets.get(a.id) ?? []).flatMap(bonusDeSortsEcrits);
-          const lues = (effets.get(a.id) ?? []).map((t) => lireResistances(t, { immunites: true }));
+          const effets = (lignesDEffets.get(a.id) ?? []).map((e) => e.texte);
+          const sorts = effets.flatMap(bonusDeSortsEcrits);
+          const lues = effets.map((t) => lireResistances(t, { immunites: true }));
+          const actions = (lignesDEffets.get(a.id) ?? []).flatMap((e, index) => (typeDActionEcrit(e.texte) || limiteEcrite(e.texte)
+            ? [{ rang: e.rang, index, type: typeDActionEcrit(e.texte), limite: limiteEcrite(e.texte) }] : []));
           return {
-            ...a, effets: effets.get(a.id) ?? [], ...(sorts.length ? { sorts } : {}),
+            ...a, effets, ...(sorts.length ? { sorts } : {}),
             ...resistancesEcrites({ effets: lues.flatMap((l) => l.effets), choix: lues.some((l) => l.choix) }),
+            ...(actions.length ? { actions } : {}),
           };
         });
     })(),
@@ -644,8 +825,8 @@ function reglesDeLaBase(db) {
     boucliers_formes_matieres: lignes(db, 'SELECT id, classe_id, materiau_id, nom, ap, am, poids_id FROM bouclier ORDER BY classe_id, materiau_id'),
     poids_bouclier: lignes(db, 'SELECT id, nom, force_min FROM bouclier_poids ORDER BY ordre')
       .map((p) => ({ ...p, classe: classeDuPoids(p.id) })),
-    // accessoires : l'effet, et ce qu'il change sur la fiche (accessoire_effet_cible, décision R54 : lib/fiche-moteur.mjs#effetsDesAccessoires) ; `usage` : rappelé
-    // sous les dons de race (« (Action) » ou usage compté) ; `propriete_nom` : le nom de sa propriété (accessoire_propriete.nom, « Attributs »), écrit par la
+    // accessoires : l'effet, et ce qu'il change sur la fiche (accessoire_effet_cible, décision R54 : lib/fiche-moteur.mjs#effetsDesAccessoires) ; `usage` :
+    // un effet activable (« (Action) » ou usage compté), listé parmi les actions de la fiche (décision R173 : lib/fiche-moteur.mjs#actionsDeLaFiche) ; `propriete_nom` : le nom de sa propriété (accessoire_propriete.nom, « Attributs »), écrit par la
     // fiche en tableur
     // `propriete_ordre` : l'ordre des propriétés (accessoire_propriete.ordre), celui des groupes de la liste des effets (décision R97)
     accessoires: lignes(db, `SELECT e.id, e.propriete_id, p.nom AS propriete_nom, p.ordre AS propriete_ordre, e.libelle, e.caracteristique_id, e.niveau, e.bonus_min,
@@ -655,6 +836,13 @@ function reglesDeLaBase(db) {
         id: a.id, propriete: a.propriete_id, propriete_nom: a.propriete_nom, propriete_ordre: a.propriete_ordre, libelle: a.libelle, caracteristique_id: a.caracteristique_id, niveau: a.niveau, min: a.bonus_min, max: a.bonus_max,
         valeur: a.bonus_valeur, cible: a.bonus_cible, malediction: a.malediction === 1, usage: a.usage,
         effets: (ciblesDesAccessoires.get(a.id) ?? []),
+        // un effet activable (`usage`, décision R173) : la limite d'usage qu'il écrit (lib/limite-texte.mjs : « (1 fois par combat) », « (1 semaine de
+        // recharge) ») et « l'objet se brise après » (`se_brise` : l'accessoire quitte son emplacement dès qu'il est utilisé) ; absents sinon
+        ...(a.usage && limiteEcrite(a.libelle) ? { limite: limiteEcrite(a.libelle) } : {}),
+        ...(a.usage && seBriseEcrit(a.libelle) ? { se_brise: true } : {}),
+        // « Augmente la réussite critique de 1%, peu importe le jet. » : un bonus de réussite critique sur toutes les compétences (décision R180 :
+        // lib/critique-texte.mjs) ; absent sinon
+        ...(critiqueDeLAccessoire(a.libelle) !== null ? { critique: critiqueDeLAccessoire(a.libelle) } : {}),
       })),
     ressources: lignes(db, 'SELECT id, nom, genre FROM ressource ORDER BY nom COLLATE NOCASE'),
     // la ceinture (décisions R81, R89) : les objets du catalogue qui y vont (v_objet_ceinture), avec la contenance écrite d'un carquois ou d'un sac
@@ -675,14 +863,16 @@ function reglesDeLaBase(db) {
     // « Organisé » (« un inventaire équivalent à 5 de Force, quelque soit la force du personnage » : lib/fiche-moteur.mjs#donDuSacSansForce)
     sac: { quantite_max: 99, force_avec_le_don: 5 },
     // le sort préparé (décision R115 : « noter le résultat du jet de magie si réussi », « le jet de magie (le D100) » ; des valeurs de la décision, comme le
-    // sac, que le CHECK de personnage_sort.prepare_jet garde aussi) : le jet se note de 1 à 100 (lib/fiche-moteur.mjs#sortsApresLeJet)
-    sort_prepare: { jet_min: 1, jet_max: 100 },
+    // sac, que le CHECK de personnage_sort.prepare_jet garde aussi) : le jet se note de 1 à 100 (lib/fiche-moteur.mjs#sortsApresLeJet) ; la compétence
+    // dont la plage de réussite critique est figée à la préparation (décision R182 (4) : « la plage de critique de Concentration » ; guide, « La magie en
+    // jeu » : « Les mages rouge, bleu et vert lancent les leurs avec *Concentration* » ; personnage_sort.prepare_critique, lib/fiche-moteur.mjs#sortsApresPreparation)
+    sort_prepare: { jet_min: 1, jet_max: 100, competence_id: 'concentration' },
   };
 
   // Les invocations (décision R130 : « avoir la liste des invocations possibles pour les sorts qui invoquent des créatures », « adapter le monstre invoqué en
   // fonction de ses NPM ») : par sort qui invoque, ses créatures dans l'ordre du classeur, leurs magies de marge (la première est celle du sort), le NPM d'une
   // marionnette, ce qui change avec le NPM (lib/creature-npm.mjs, `donneesNpm`), leurs capacités (« (NPM n) » : `npm`) et les effets d'un sacrifice
-  // (« Effet "Manteau noir" » : `sort_id` du sort qui sacrifie) ; et les tableaux qu'un sort désigne par son nom (« Amélioration cadavérique »).
+  // (« Effet "Manteau noir" » : `sort_id` du sort qui sacrifie). Le tableau « Amélioration cadavérique » est retiré (R237 (7), migration 0117).
   const { tableaux: tableauxDInvocation } = chargerInvocations(db);
   const invocations = tableauxDInvocation.filter((t) => t.invocation.sortId).map((t) => ({
     id: t.invocation.id,
@@ -701,7 +891,6 @@ function reglesDeLaBase(db) {
       effets: c.effets.map((e) => ({ libelle: e.libelle, sort_id: e.sort_id, texte: e.texte })),
     })),
   }));
-  const tableaux_de_sacrifice = [...tableauxDesSorts(db)].map(([sortId, t]) => ({ sort_id: sortId, invocation_id: t.invocationId, lignes: t.lignes }));
 
   // couleur de la pastille de l'alignement (demande du propriétaire : celle de son titre dans le guide pour MJ, lib/caracteristiques-postures.mjs) : sa
   // classe de la palette (famille d'une zone, émise par pages/fiche/index.astro), par nom ; `alignement_par_defaut` : celle d'un alignement inconnu
@@ -714,12 +903,17 @@ function reglesDeLaBase(db) {
 
   return {
     constantes, am_classe_magique: amMagique, niveaux, caracteristiques, caracteristique_par_defaut, competences, initiative, races, ethnies, magies, dieux, metiers, classes, sorts, postures,
-    ordre_postures, mode_hyper, ambidextrie, resistance_paliers, etats, alignements, alignement_par_defaut, race_par_nature, neutre, invocations, tableaux_de_sacrifice, ...equipement,
+    ordre_postures, mode_hyper, ambidextrie, resistance_paliers, etats, alignements, alignement_par_defaut, race_par_nature, neutre, invocations, ...equipement,
+    // le mot-clé du glossaire de chaque type de dégâts et de chaque magie (lib/mots-cles-des-valeurs.mjs, migration 0125) : { degats, magies }, null sans mot-clé
+    liens: liensDesValeursFermees(db),
   };
 }
 
 // ------------------------------------------------------------------------------------------------------------------ aide du champ « Entraînement »
-/** La page du guide qui dit où se notent les bonus d'entraînement et leurs limites (« S’entraîner et exercer un métier », Les bases ; décision R71). */
+/**
+ * La page du guide qui dit où se notent les bonus d'entraînement et leurs limites (décision R71) : « S’entraîner », onglet Exploration des Règles
+ * (« S’entraîner et exercer un métier » jusqu'à R184, qui en a tiré « Exercer un métier » : sa section « Ses limites » est restée ici, id figé).
+ */
 export const PAGE_DE_L_ENTRAINEMENT = 'guide/s-entrainer-et-exercer-un-metier';
 
 /**

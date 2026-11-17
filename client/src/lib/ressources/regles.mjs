@@ -130,8 +130,8 @@ export const RESSOURCES = [
     nom: 'Posture',
     noms: 'Postures',
     description:
-      'Les six postures de combat (page « Postures » du guide), leur libellé dans le tableau de la fiche et leur présentation ; leurs effets en ' +
-      'sous-ressource ; en lecture seule.',
+      'Les six postures de combat (page « Les postures » du guide), leur libellé dans le tableau de la fiche et leur présentation ; leurs effets et les ' +
+      'compétences de leur réussite critique (R180) en sous-ressources ; en lecture seule.',
     table: 'posture',
     enfants: [
       {
@@ -144,7 +144,19 @@ export const RESSOURCES = [
         description:
           'Les effets d’une posture dans les trois textes qui coexistent (version « fiche » : tableau de la fiche auto, chaque ligne marquée avantage ' +
           'ou inconvénient, décision R47 ; « guide_fiche » : page « Tableau Posture » du Google Doc de la fiche ; « guide_mj » : page « Postures » du ' +
-          'guide MJ).',
+          'Doc « Guide pour MJ »).',
+      },
+      {
+        cle: 'competences-du-critique',
+        nom: 'Compétence du critique',
+        noms: 'Compétences du critique',
+        table: 'posture_critique',
+        parent: { posture_id: 'id' },
+        tri: 'bonus',
+        description:
+          'Les compétences sur lesquelles compte le bonus de réussite critique de la posture elle-même (« posture » : l’Offensif sur ses six ' +
+          'jets d’attaque, le Défensif sur Esquive et Parade), décision R180. Un don « (Posture …) » (Sci du Crit) n’y a pas de ligne : il ne ' +
+          'compte qu’avec une arme de contact et n’est que mentionné sur la fiche (décision R182).',
       },
     ],
     liste: ['id', 'nom', 'ordre', 'libelle_fiche'],
@@ -240,7 +252,7 @@ export const RESSOURCES = [
     noms: 'Textes d’explication des modes',
     description:
       'Les textes d’explication du classeur « Mode hyper et co » (onglets Mode Hyper et Mode Super), cellule entière telle quelle, avec la page du guide ' +
-      'qui les présente ; en lecture seule (ces pages du guide se modifient comme pages, et leur identifiant suit l’intitulé).',
+      'qui les présente ; en lecture seule (ces pages du guide se modifient comme pages ; leur identifiant, figé, garde la page et l’intitulé de leur import).',
     table: 'mode_texte',
     libelle: 'intitule',
     liste: ['id', 'mode', 'rang', 'intitule', 'page_id'],

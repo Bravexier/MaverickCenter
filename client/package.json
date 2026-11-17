@@ -1,6 +1,6 @@
 {
   "name": "maverick-center-client",
-  "version": "0.4.0",
+  "version": "0.4.105",
   "private": true,
   "type": "module",
   "engines": {
@@ -9,6 +9,8 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
+    "build:depuis-contenu": "node --no-warnings scripts/fabriquer-depuis-contenu.mjs",
+    "comparer-sites": "node --no-warnings scripts/comparer-sites.mjs",
     "preview": "astro preview",
     "serveur": "node --disable-warning=ExperimentalWarning serveur/dev.mjs",
     "test": "node --test \"test/*.test.mjs\"",
@@ -26,11 +28,22 @@
     "prebuild": "node --no-warnings scripts/db-export-pages.mjs",
     "pretest": "node --no-warnings scripts/db-export-pages.mjs",
     "db:migrate": "python3 -I ../tools/db/migrer.py",
-    "db:appliquer-edition": "node --no-warnings scripts/db-appliquer-edition.mjs"
+    "db:appliquer-edition": "node --no-warnings scripts/db-appliquer-edition.mjs",
+    "db:extrait": "node --no-warnings scripts/db-extrait.mjs",
+    "db:epreuve-lots": "node --no-warnings scripts/epreuve-des-lots.mjs refaire",
+    "db:controler-migrations": "node --no-warnings scripts/controler-les-migrations.mjs",
+    "mutation": "node --no-warnings scripts/mutation.mjs"
   },
   "dependencies": {
     "@astrojs/markdown-remark": "^7.3.1",
     "astro": "^7.3.5",
+    "github-slugger": "^2.0.0",
+    "rehype-stringify": "^10.0.1",
+    "remark-gfm": "^4.0.1",
+    "remark-parse": "^11.0.0",
+    "remark-rehype": "^11.1.2",
+    "remark-smartypants": "^3.0.3",
+    "unified": "^11.0.5",
     "yaml": "^2.9.1"
   }
 }

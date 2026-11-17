@@ -1,7 +1,8 @@
 // Extension de l'éditeur : les panneaux de règles (components/equipement/PanneauDeRegles.astro, migration 0056 ; demande du propriétaire, 2026-10-16 :
 // « Il faudrait que ce champ texte soit modifiable sur son titre, et son contenu. Son contenu peut d'ailleurs inclure des tuiles génériques (toujours
-// insérables / modifiables en mode édition) »). Service : serveur/edition-panneaux.mjs. Active dès qu'un panneau est dans la page (aujourd'hui les cinq de
-// /ressources/equipement/, à côté des extensions armes.mjs et armures.mjs, qui ne les touchent pas).
+// insérables / modifiables en mode édition) »). Service : serveur/edition-panneaux.mjs. Active dès qu'un panneau est dans la page (aujourd'hui sur les cinq
+// pages de l'équipement, /ressources/armes/…, à côté des extensions armes.mjs et armures.mjs, qui ne les touchent pas ; pas le texte de la page
+// « Pièces élémentaires » des pages Armes et Armures, en lecture : components/equipement/PiecesElementaires.astro).
 //   - en mode modification : chaque panneau s'ouvre et reste ouvert (un clic, une espace ou Entrée dans son `<summary>` ne le replie pas : son titre y est
 //     un champ commun, `data-ed`) ; le texte de chaque bloc et le contenu de chaque tuile se modifient en place (texte-en-place.mjs, la barre d'outils de
 //     la chronologie : Texte, Mise en page, Liens, Mots-clés ; HTML → Markdown par lib/markdown-edition.mjs#versMarkdown), le titre d'une tuile est un champ commun ;
@@ -12,8 +13,8 @@
 //   - quitter sans enregistrer : les textes et l'ordre d'avant reviennent (un bloc créé pendant la session reste : il est dans la base) ;
 //   - surcouche (le site construit est en retard sur le site de dev) : chaque ligne d'un bloc modifiée depuis la construction (lignes en attente, et celles
 //     d'un enregistrement) refait son bloc d'après la base vivante quand son texte a changé (empreinte `data-preg-empreinte` ; HTML :
-//     lib/panneaux-regles-rendu.mjs#htmlDuBloc, Markdown rendu par lib/chronologie-rendu.mjs#htmlDuTexte — sans les icônes de monnaie, que seul le build
-//     pose), le place à son ordre de lecture, ou le retire ; le titre d'un panneau ou d'une tuile suit par l'éditeur commun (son `data-ed`). Un bloc à
+//     lib/panneaux-regles-rendu.mjs#htmlDuBloc, Markdown rendu par lib/chronologie-rendu.mjs#htmlDuTexte, comme au build, monnaies en
+//     icônes comprises), le place à son ordre de lecture, ou le retire ; le titre d'un panneau ou d'une tuile suit par l'éditeur commun (son `data-ed`). Un bloc à
 //     refaire quand le mode modification a commencé pendant le rendu (la liste des pages du wiki se lit sur le réseau) n'est pas remplacé sous la saisie :
 //     il l'est à la sortie du mode modification, sauf si une ligne plus récente l'a refait entre-temps (`etat.differees`).
 // Exécutée dans un faux navigateur par test/edition-panneaux.test.mjs (les ordres eux-mêmes : lib/panneaux-regles-db.mjs, test/panneaux-regles.test.mjs).
@@ -25,9 +26,11 @@ import { arbreDuDom, versMarkdown } from '../../lib/markdown-edition.mjs';
 import { cheminDePage } from '../../lib/metiers.mjs';
 import { ordresApresDeplacement } from '../../lib/panneaux-regles-db.mjs';
 import { empreinteDuTexte, htmlDuBloc } from '../../lib/panneaux-regles-rendu.mjs';
+import { brancherLesOnglets, outilsDesOnglets } from './onglets.mjs';
+import { outilsDesTableaux } from './tableaux.mjs';
 import { editeurEnPlace, outilsDesMotsCles, pageChoisie, pagesDuWiki } from './texte-en-place.mjs';
 
-/** Ce que le build fait au HTML d'un bloc, par panneau (src/pages/ressources/equipement.astro), refait ici pour un bloc rendu dans le navigateur. */
+/** Ce que le build fait au HTML d'un bloc, par panneau (lib/equipement-rendu.ts, src/pages/ressources/armes.astro…), refait ici pour un bloc rendu dans le navigateur. */
 const RETOUCHES = { armes: avecPhraseDesArmesDeDepart };
 
 const etat = {
@@ -94,6 +97,8 @@ async function appliquerAuPanneau(ed, details, cle, ligne) {
 // --- Mode modification ----------------------------------------------------------------------------------------------------------------------------
 
 const texte = editeurEnPlace(() => etat.panneaux.flatMap((p) => p.blocs.filter((b) => !b.retire).map((b) => b.zone)));
+const tableaux = outilsDesTableaux(texte, () => etat.panneaux.flatMap((p) => p.blocs.filter((b) => !b.retire).map((b) => b.zone)));
+const onglets = outilsDesOnglets(texte, () => etat.panneaux.flatMap((p) => p.blocs.filter((b) => !b.retire).map((b) => b.zone)));
 const OUTILS = [
   ['Texte', [
     ['G', 'Gras (Ctrl+B)', (ed) => texte.commande(ed, 'bold'), 'ed-gras'],
@@ -103,14 +108,17 @@ const OUTILS = [
   ]],
   ['Mise en page', [
     ['¶', 'Paragraphe', (ed) => texte.bloc(ed, 'p')],
+    ['Sous-titre', 'Sous-titre (les onglets en font un groupe)', (ed) => texte.bloc(ed, 'h3')],
     ['• Liste', 'Liste à puces', (ed) => texte.commande(ed, 'insertUnorderedList')],
     ['1. Liste', 'Liste numérotée', (ed) => texte.commande(ed, 'insertOrderedList')],
   ]],
   ['Liens', [
-    ['Lien page', 'Lien vers une page du wiki', texte.lienWiki],
+    ['Lien page', 'Lier le texte à une page par un mot-clé qui y mène', texte.lienMotCle],
     ['Lien web', 'Lien vers une adresse web', texte.lienWeb],
     ['Sans lien', 'Retirer le lien (le texte reste)', texte.retirerLien],
   ]],
+  tableaux.groupe,
+  onglets.groupe,
   outilsDesMotsCles(texte),
 ];
 
@@ -226,6 +234,7 @@ function monterLeBloc(ed, p, el) {
   if (!ligne || !zone) return null;
   const b = { el, zone, rang, ligne, sauvegarde: zone.innerHTML, retire: false, initial: '', outils: null };
   texte.rendreModifiable(ed, zone, etat.abandon.signal);
+  tableaux.brancher(zone, etat.abandon.signal);
   b.initial = markdownDe(ed, zone);
   b.outils = outilsDuBloc(ed, p, b);
   el.append(b.outils);
@@ -260,6 +269,7 @@ export const panneaux = {
   /** Une ligne d'un bloc changée depuis la construction (au chargement) ou par un enregistrement : son bloc suit (hors mode modification). */
   ligne(ed, table, cle, ligne) {
     if (table !== 'panneau_regles_bloc' || ed.enEdition) return;
+    brancherLesOnglets(); // un texte refait ici peut avoir des onglets : ils s'ouvrent au clic
     etat.differees.delete(cleDeLigne(table, cle)); // celle-ci est plus récente qu'une ligne remise à plus tard
     const details = lesPanneaux().find((d) => d.dataset.panneauRegles === cle?.panneau_id);
     if (details) appliquerAuPanneau(ed, details, cle, ligne).catch((e) => ed.annoncer(`Un panneau de règles n’a pas pu être refait : ${e.message}`, 'erreur'));
@@ -281,6 +291,9 @@ export const panneaux = {
     if (!etat.panneaux.length) return;
     document.execCommand('defaultParagraphSeparator', false, 'p');
     etat.barre = texte.barre(ed, OUTILS, 'Mise en forme des règles').element;
+    onglets.ajouterLaCouleur(ed, etat.barre, etat.abandon.signal);
+    tableaux.ajouterLaCouleur(ed, etat.barre, etat.abandon.signal);
+    brancherLesOnglets();
     document.body.append(etat.barre);
   },
 

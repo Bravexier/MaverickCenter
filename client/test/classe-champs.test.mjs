@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { idDuProtege } from '../src/lib/mots-cles-proteges.mjs';
 import {
   analyserTypeDeDon, bouclierMax, decouperInventaire, decouperMaitriseArme, decouperMaitriseArmure, MOT_CLE_DE_CATEGORIE,
 } from '../src/lib/classe-champs.mjs';
@@ -13,10 +14,10 @@ const classes = db.prepare('SELECT * FROM classe ORDER BY id').all();
 const objets = db.prepare('SELECT id, nom_cle FROM objet_depart').all();
 const sans = (l, ...colonnes) => l.map((x) => Object.fromEntries(Object.entries(x).filter(([c]) => !colonnes.includes(c))));
 
-test('39 classes, 660 dons à l’import (le site peut en créer : les contrôles suivants portent sur toutes les lignes en place)', () => {
+test('41 classes, 694 dons à l’import (le site peut en créer : les contrôles suivants portent sur toutes les lignes en place)', () => {
   const historique = historiqueSite(db);
-  assert.equal(historique.effectifDImport('classe'), 39);
-  assert.equal(historique.effectifDImport('capacite'), 660);
+  assert.equal(historique.effectifDImport('classe'), 41);
+  assert.equal(historique.effectifDImport('capacite'), 694);
 });
 
 test('maîtrise des armes : classe_maitrise_arme ligne pour ligne', () => {
@@ -38,7 +39,7 @@ test('inventaire de départ : classe_objet_depart, objet du glossaire compris', 
   for (const c of classes) assert.deepEqual(decouperInventaire(c.inventaire_depart, objets), enPlace.all(c.id).map((l) => ({ ...l })), c.id);
 });
 
-test('type d’un don : type et limite de capacite pour les 660 dons', () => {
+test('type d’un don : type et limite de capacite pour les 694 dons', () => {
   for (const k of db.prepare('SELECT id, type_brut, type, limite_nombre, limite_periode FROM capacite').all()) {
     if (k.type_brut === null) continue;
     assert.deepEqual(analyserTypeDeDon(k.type_brut), { type: k.type, limite_nombre: k.limite_nombre, limite_periode: k.limite_periode }, `${k.id} : ${k.type_brut}`);
@@ -47,7 +48,9 @@ test('type d’un don : type et limite de capacite pour les 660 dons', () => {
 
 test('mot-clé de page de chaque catégorie : celui des classes en place', () => {
   for (const c of classes) {
-    const tag = db.prepare('SELECT m.libelle FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id WHERE t.page_id = ? AND t.ordre = 1').get(c.id)?.libelle;
-    assert.equal(MOT_CLE_DE_CATEGORIE[c.categorie_id], tag, c.id);
+    // par son id (décision R195 : son libellé se modifie sur le site de dev) : l'id entier du mot-clé protégé que nomme la catégorie (migration 0113,
+    // lib/mots-cles-proteges.mjs#idDuProtege)
+    const tag = db.prepare('SELECT tag_id FROM page_tag WHERE page_id = ? AND ordre = 1').get(c.id)?.tag_id;
+    assert.equal(idDuProtege(MOT_CLE_DE_CATEGORIE[c.categorie_id]), tag, c.id);
   }
 });

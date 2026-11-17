@@ -1,0 +1,1023 @@
+{
+  "migration": "0121-maj-decembre-suites",
+  "decisions": [
+    "R254 (3)",
+    "R255 (7)",
+    "R258 (4)",
+    "R258 (7)",
+    "R268",
+    "R259",
+    "R264",
+    "R265",
+    "R266",
+    "R10",
+    "R239"
+  ],
+  "constats": {
+    "sort_fer": {
+      "mot_cle_id": 332,
+      "decision": "R258 (4)",
+      "constat": "La description du mot-clé « Sort fer » n'écrit aucun nombre de sorts : rien à changer ; 14 sorts portent le mot-clé (sort_mot_cle)."
+    },
+    "materiau_arme.ressource_id": "Un matériau est une seule ressource (table ressource), définie sur la page où sa liste la décrit : 13 matériaux d'arme sont aussi des matériaux d'armure (ressources/armures#materiau:…), l'Os seul est propre aux armes (ressources/armes#materiau:os). Pas une anomalie."
+  },
+  "corrections": [
+    {
+      "table": "capacite",
+      "cle": {
+        "id": "capacites/boxeur-posture-inebran"
+      },
+      "col": "nom",
+      "avant": "Posture inébran",
+      "apres": "Posture inébranlable",
+      "n": 1,
+      "nature": "nom",
+      "raison": "Le nom est complété (R255 (7)).",
+      "decision": "R255 (7)"
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "capacites/boxeur-posture-inebran"
+      },
+      "col": "titre",
+      "avant": "Posture inébran (Boxeur)",
+      "apres": "Posture inébranlable (Boxeur)",
+      "n": 1,
+      "nature": "nom",
+      "raison": "Le titre de la page du don suit son nom (R255 (7)).",
+      "decision": "R255 (7)"
+    },
+    {
+      "table": "capacite",
+      "cle": {
+        "id": "capacites/boxeur-boupact"
+      },
+      "col": "effet",
+      "avant": "divise par 2 donné",
+      "apres": "divise par 2 l'AP donné",
+      "n": 1,
+      "nature": "mot manquant",
+      "raison": "X37 : « divise par 2 l’AP donné par l’armure » (R255 (7)).",
+      "decision": "R255 (7)"
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "capacites/boxeur-boupact"
+      },
+      "col": "resume",
+      "avant": "divise par 2 donné",
+      "apres": "divise par 2 l'AP donné",
+      "n": 1,
+      "nature": "mot manquant",
+      "raison": "X37 : « divise par 2 l’AP donné par l’armure » (R255 (7)).",
+      "decision": "R255 (7)"
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "capacites/boxeur-boupact"
+      },
+      "col": "corps_md",
+      "avant": "divise par 2 donné",
+      "apres": "divise par 2 l'AP donné",
+      "n": 1,
+      "nature": "mot manquant",
+      "raison": "X37 : « divise par 2 l’AP donné par l’armure » (R255 (7)).",
+      "decision": "R255 (7)"
+    },
+    {
+      "table": "capacite",
+      "cle": {
+        "id": "capacites/boxeur-bouclier-dattaque"
+      },
+      "col": "effet",
+      "avant": "de AP+AM",
+      "apres": "d'AP+AM",
+      "n": 1,
+      "nature": "élision",
+      "raison": "Élision devant une voyelle (R255 (7)).",
+      "decision": "R255 (7)"
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "capacites/boxeur-bouclier-dattaque"
+      },
+      "col": "resume",
+      "avant": "de AP+AM",
+      "apres": "d'AP+AM",
+      "n": 1,
+      "nature": "élision",
+      "raison": "Élision devant une voyelle (R255 (7)).",
+      "decision": "R255 (7)"
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "capacites/boxeur-bouclier-dattaque"
+      },
+      "col": "corps_md",
+      "avant": "de AP+AM",
+      "apres": "d'AP+AM",
+      "n": 1,
+      "nature": "élision",
+      "raison": "Élision devant une voyelle (R255 (7)).",
+      "decision": "R255 (7)"
+    },
+    {
+      "table": "capacite",
+      "cle": {
+        "id": "capacites/boxeur-endurouille"
+      },
+      "col": "effet",
+      "avant": "altérations d'états",
+      "apres": "altérations d'état",
+      "n": 1,
+      "nature": "grammaire",
+      "raison": "« altérations d’état » (R255 (7)) ; les sorts « alea-negatif » et « dissipation » ne sont pas visés.",
+      "decision": "R255 (7)"
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "capacites/boxeur-endurouille"
+      },
+      "col": "resume",
+      "avant": "altérations d'états",
+      "apres": "altérations d'état",
+      "n": 1,
+      "nature": "grammaire",
+      "raison": "« altérations d’état » (R255 (7)) ; les sorts « alea-negatif » et « dissipation » ne sont pas visés.",
+      "decision": "R255 (7)"
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "capacites/boxeur-endurouille"
+      },
+      "col": "corps_md",
+      "avant": "altérations d'états",
+      "apres": "altérations d'état",
+      "n": 1,
+      "nature": "grammaire",
+      "raison": "« altérations d’état » (R255 (7)) ; les sorts « alea-negatif » et « dissipation » ne sont pas visés.",
+      "decision": "R255 (7)"
+    },
+    {
+      "table": "monstre_capacite_commune",
+      "cle": {
+        "id": "immateriel"
+      },
+      "col": "description",
+      "avant": "(armes) ,",
+      "apres": "(armes),",
+      "n": 1,
+      "nature": "espace",
+      "raison": "Pas d’espace avant la virgule (R10 ; R268 : coquille absente du texte montré au propriétaire).",
+      "decision": "R268"
+    },
+    {
+      "table": "creature_capacite",
+      "cle": {
+        "id": "bestiaire/fantome#capacite:immateriel"
+      },
+      "col": "texte",
+      "avant": "(armes) ,",
+      "apres": "(armes),",
+      "n": 1,
+      "nature": "espace",
+      "raison": "Pas d’espace avant la virgule (R10 ; R268 : coquille absente du texte montré au propriétaire).",
+      "decision": "R268"
+    },
+    {
+      "table": "creature_capacite",
+      "cle": {
+        "id": "bestiaire/golem-darcane#capacite:immateriel"
+      },
+      "col": "texte",
+      "avant": "(armes) ,",
+      "apres": "(armes),",
+      "n": 1,
+      "nature": "espace",
+      "raison": "Pas d’espace avant la virgule (R10 ; R268 : coquille absente du texte montré au propriétaire).",
+      "decision": "R268"
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "bestiaire/fantome"
+      },
+      "col": "corps_md",
+      "avant": "(armes) ,",
+      "apres": "(armes),",
+      "n": 1,
+      "nature": "espace",
+      "raison": "Pas d’espace avant la virgule (R10 ; R268 : coquille absente du texte montré au propriétaire).",
+      "decision": "R268"
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "bestiaire/golem-darcane"
+      },
+      "col": "corps_md",
+      "avant": "(armes) ,",
+      "apres": "(armes),",
+      "n": 1,
+      "nature": "espace",
+      "raison": "Pas d’espace avant la virgule (R10 ; R268 : coquille absente du texte montré au propriétaire).",
+      "decision": "R268"
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "bestiaire/poupee-terrestre"
+      },
+      "col": "resume",
+      "avant": "dieu de la Terre",
+      "apres": "Dieu de la Terre",
+      "n": 1,
+      "nature": "majuscule",
+      "raison": "R266 (3) : « Dieu de la Terre », majuscule à « Dieu ».",
+      "decision": "R266"
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "bestiaire/poupee-terrestre"
+      },
+      "col": "corps_md",
+      "avant": "dieu de la Terre",
+      "apres": "Dieu de la Terre",
+      "n": 1,
+      "nature": "majuscule",
+      "raison": "R266 (3) : « Dieu de la Terre », majuscule à « Dieu ».",
+      "decision": "R266"
+    },
+    {
+      "table": "creature",
+      "cle": {
+        "id": "bestiaire/poupee-terrestre"
+      },
+      "col": "description",
+      "avant": "dieu de la Terre",
+      "apres": "Dieu de la Terre",
+      "n": 1,
+      "nature": "majuscule",
+      "raison": "R266 (3) : « Dieu de la Terre », majuscule à « Dieu ».",
+      "decision": "R266"
+    },
+    {
+      "table": "monstre_espece",
+      "cle": {
+        "id": "monstres/elementaire-de-la-terre"
+      },
+      "col": "description",
+      "avant": "dieu de la terre",
+      "apres": "Dieu de la Terre",
+      "n": 1,
+      "nature": "majuscule",
+      "raison": "R266 (3) : « Dieu de la Terre », majuscule à « Dieu ».",
+      "decision": "R266"
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "lore/camnau"
+      },
+      "col": "corps_md",
+      "avant": "dieu de la Terre",
+      "apres": "Dieu de la Terre",
+      "n": 3,
+      "nature": "majuscule",
+      "raison": "R266 (3) : « Dieu de la Terre », majuscule à « Dieu ».",
+      "decision": "R266"
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "lore/eoline"
+      },
+      "col": "corps_md",
+      "avant": "dieu de la Terre",
+      "apres": "Dieu de la Terre",
+      "n": 1,
+      "nature": "majuscule",
+      "raison": "R266 (3) : « Dieu de la Terre », majuscule à « Dieu ».",
+      "decision": "R266"
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "lore/foret-colossale"
+      },
+      "col": "corps_md",
+      "avant": "dieu de la Terre",
+      "apres": "Dieu de la Terre",
+      "n": 3,
+      "nature": "majuscule",
+      "raison": "R266 (3) : « Dieu de la Terre », majuscule à « Dieu ».",
+      "decision": "R266"
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "lore/londolor"
+      },
+      "col": "corps_md",
+      "avant": "dieu de la Terre",
+      "apres": "Dieu de la Terre",
+      "n": 1,
+      "nature": "majuscule",
+      "raison": "R266 (3) : « Dieu de la Terre », majuscule à « Dieu ».",
+      "decision": "R266"
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "lore/temple-de-la-terre"
+      },
+      "col": "corps_md",
+      "avant": "dieu de la Terre",
+      "apres": "Dieu de la Terre",
+      "n": 1,
+      "nature": "majuscule",
+      "raison": "R266 (3) : « Dieu de la Terre », majuscule à « Dieu ».",
+      "decision": "R266"
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "lore/dimitri"
+      },
+      "col": "resume",
+      "avant": "Dieu de la terre",
+      "apres": "Dieu de la Terre",
+      "n": 1,
+      "nature": "majuscule",
+      "raison": "R266 (3) : « Dieu de la Terre », majuscule à « Dieu ».",
+      "decision": "R266"
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "lore/dimitri"
+      },
+      "col": "corps_md",
+      "avant": "Dieu de la terre",
+      "apres": "Dieu de la Terre",
+      "n": 1,
+      "nature": "majuscule",
+      "raison": "R266 (3) : « Dieu de la Terre », majuscule à « Dieu ».",
+      "decision": "R266"
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "lore/les-divinites"
+      },
+      "col": "corps_md",
+      "avant": "Dieu de la terre",
+      "apres": "Dieu de la Terre",
+      "n": 1,
+      "nature": "majuscule",
+      "raison": "R266 (3) : « Dieu de la Terre », majuscule à « Dieu ».",
+      "decision": "R266"
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "lore/foret-colossale"
+      },
+      "col": "corps_md",
+      "avant": "Mort fertile",
+      "apres": "Mort Fertile",
+      "n": 1,
+      "nature": "majuscule",
+      "raison": "R266 (2) : « Mort Fertile », deux majuscules.",
+      "decision": "R266"
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "lore/super-gemme"
+      },
+      "col": "corps_md",
+      "avant": "super gemme",
+      "apres": "Super Gemme",
+      "n": 2,
+      "nature": "majuscule",
+      "raison": "R266 (1) : « Super Gemme », deux majuscules, sans trait d’union, comme le titre du Codex.",
+      "decision": "R266"
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "guide/liste-des-effets-mode-super"
+      },
+      "col": "corps_md",
+      "avant": "Super gemme",
+      "apres": "Super Gemme",
+      "n": 1,
+      "nature": "majuscule",
+      "raison": "R266 (1) : « Super Gemme », deux majuscules, sans trait d’union, comme le titre du Codex.",
+      "decision": "R266"
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "guide/liste-des-effets-mode-super"
+      },
+      "col": "corps_md",
+      "avant": "super gemme",
+      "apres": "Super Gemme",
+      "n": 1,
+      "nature": "majuscule",
+      "raison": "R266 (1) : « Super Gemme », deux majuscules, sans trait d’union, comme le titre du Codex.",
+      "decision": "R266"
+    },
+    {
+      "table": "mode_super_objet",
+      "cle": {
+        "id": "guide/liste-des-effets-mode-super#objet:super-gemme"
+      },
+      "col": "nom",
+      "avant": "Super gemme",
+      "apres": "Super Gemme",
+      "n": 1,
+      "nature": "majuscule",
+      "raison": "R266 (1) : « Super Gemme », deux majuscules, sans trait d’union, comme le titre du Codex.",
+      "decision": "R266"
+    },
+    {
+      "table": "mode_super_objet",
+      "cle": {
+        "id": "guide/liste-des-effets-mode-super#objet:super-gemme"
+      },
+      "col": "description",
+      "avant": "super gemme",
+      "apres": "Super Gemme",
+      "n": 1,
+      "nature": "majuscule",
+      "raison": "R266 (1) : « Super Gemme », deux majuscules, sans trait d’union, comme le titre du Codex.",
+      "decision": "R266"
+    },
+    {
+      "table": "race_onglet",
+      "cle": {
+        "race_id": "races/gemidien"
+      },
+      "col": "description_generale",
+      "avant": "super-gemme",
+      "apres": "Super Gemme",
+      "n": 1,
+      "nature": "majuscule",
+      "raison": "R266 (1) : « Super Gemme », deux majuscules, sans trait d’union, comme le titre du Codex.",
+      "decision": "R266"
+    },
+    {
+      "table": "race_onglet",
+      "cle": {
+        "race_id": "races/gemidien"
+      },
+      "col": "histoire",
+      "avant": "supers-gemmes",
+      "apres": "Super Gemmes",
+      "n": 2,
+      "nature": "majuscule",
+      "raison": "R266 (1) : « Super Gemme », deux majuscules, sans trait d’union, comme le titre du Codex. Pluriel : « Super Gemmes ».",
+      "decision": "R266"
+    },
+    {
+      "table": "race_onglet",
+      "cle": {
+        "race_id": "races/gemidien"
+      },
+      "col": "histoire",
+      "avant": "Super gemme",
+      "apres": "Super Gemme",
+      "n": 1,
+      "nature": "majuscule",
+      "raison": "R266 (1) : « Super Gemme », deux majuscules, sans trait d’union, comme le titre du Codex.",
+      "decision": "R266"
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "races/gemidien"
+      },
+      "col": "corps_md",
+      "avant": "super-gemme",
+      "apres": "Super Gemme",
+      "n": 1,
+      "nature": "majuscule",
+      "raison": "R266 (1) : « Super Gemme », deux majuscules, sans trait d’union, comme le titre du Codex.",
+      "decision": "R266"
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "races/gemidien"
+      },
+      "col": "corps_md",
+      "avant": "supers-gemmes",
+      "apres": "Super Gemmes",
+      "n": 2,
+      "nature": "majuscule",
+      "raison": "R266 (1) : « Super Gemme », deux majuscules, sans trait d’union, comme le titre du Codex. Pluriel : « Super Gemmes ».",
+      "decision": "R266"
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "races/gemidien"
+      },
+      "col": "corps_md",
+      "avant": "Super gemme",
+      "apres": "Super Gemme",
+      "n": 1,
+      "nature": "majuscule",
+      "raison": "R266 (1) : « Super Gemme », deux majuscules, sans trait d’union, comme le titre du Codex.",
+      "decision": "R266"
+    }
+  ],
+  "cles": [
+    {
+      "table": "capacite",
+      "cle": {
+        "id": "capacites/boxeur-posture-inebran"
+      },
+      "col": "nom_cle",
+      "avant": "posture-inebran",
+      "apres": "posture-inebranlable"
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "capacites/boxeur-posture-inebran"
+      },
+      "col": "titre_cle",
+      "avant": "posture-inebran-boxeur",
+      "apres": "posture-inebranlable-boxeur"
+    }
+  ],
+  "textes": [
+    {
+      "table": "classe",
+      "cle": {
+        "id": "classes/archimage"
+      },
+      "col": "chose_a_savoir",
+      "avant": "si vous n'êtes pas du potentiel illimité et est imposée quand vous êtes du potentiel illimité.",
+      "apres": "si vous n'êtes pas du potentiel illimité.",
+      "n": 1,
+      "decision": "R254 (3)",
+      "raison": "La fin « et est imposée quand vous êtes du potentiel illimité » est retirée (R238 (5) a retiré l’imposition) ; la classe reste réservée au Potentiel Illimité (R23)."
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "classes/archimage"
+      },
+      "col": "corps_md",
+      "avant": "si vous n'êtes pas du potentiel illimité et est imposée quand vous êtes du potentiel illimité.",
+      "apres": "si vous n'êtes pas du potentiel illimité.",
+      "n": 1,
+      "decision": "R254 (3)",
+      "raison": "La fin « et est imposée quand vous êtes du potentiel illimité » est retirée (R238 (5) a retiré l’imposition) ; la classe reste réservée au Potentiel Illimité (R23)."
+    },
+    {
+      "table": "materiau_arme",
+      "cle": {
+        "ressource_id": "ressources/armures#materiau:argent"
+      },
+      "col": "effet_brut",
+      "avant": "contre les non-morts.",
+      "apres": "contre les {{non-mort|non-morts}}.",
+      "n": 1,
+      "decision": "R258 (7)",
+      "raison": "Balise du mot-clé sur les mots du texte, sans le réécrire."
+    },
+    {
+      "table": "materiau_arme",
+      "cle": {
+        "ressource_id": "ressources/armures#materiau:argent"
+      },
+      "col": "effet_secondaire",
+      "avant": "contre les non-morts.",
+      "apres": "contre les {{non-mort|non-morts}}.",
+      "n": 1,
+      "decision": "R258 (7)",
+      "raison": "Balise du mot-clé sur les mots du texte, sans le réécrire."
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "ressources/armes"
+      },
+      "col": "corps_md",
+      "avant": "contre les non-morts.",
+      "apres": "contre les {{non-mort\\|non-morts}}.",
+      "n": 1,
+      "decision": "R258 (7)",
+      "raison": "Tableau des matériaux : la même balise (« \\| » dans une case)."
+    },
+    {
+      "table": "materiau_arme",
+      "cle": {
+        "ressource_id": "ressources/armes#materiau:os"
+      },
+      "col": "effet_brut",
+      "avant": "contre les bêtes.",
+      "apres": "contre les {{bete|bêtes}}.",
+      "n": 1,
+      "decision": "R258 (7)",
+      "raison": "Balise du mot-clé sur les mots du texte, sans le réécrire."
+    },
+    {
+      "table": "materiau_arme",
+      "cle": {
+        "ressource_id": "ressources/armes#materiau:os"
+      },
+      "col": "effet_secondaire",
+      "avant": "contre les bêtes.",
+      "apres": "contre les {{bete|bêtes}}.",
+      "n": 1,
+      "decision": "R258 (7)",
+      "raison": "Balise du mot-clé sur les mots du texte, sans le réécrire."
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "ressources/armes"
+      },
+      "col": "corps_md",
+      "avant": "contre les bêtes.",
+      "apres": "contre les {{bete\\|bêtes}}.",
+      "n": 1,
+      "decision": "R258 (7)",
+      "raison": "Tableau des matériaux : la même balise (« \\| » dans une case)."
+    },
+    {
+      "table": "materiau_arme",
+      "cle": {
+        "ressource_id": "ressources/armures#materiau:laiton"
+      },
+      "col": "effet_brut",
+      "avant": "créatures mécaniques ou inertes",
+      "apres": "créatures {{mecanique|mécaniques}} ou inertes",
+      "n": 1,
+      "decision": "R258 (7)",
+      "raison": "Balise du mot-clé sur les mots du texte, sans le réécrire."
+    },
+    {
+      "table": "materiau_arme",
+      "cle": {
+        "ressource_id": "ressources/armures#materiau:laiton"
+      },
+      "col": "effet_secondaire",
+      "avant": "créatures mécaniques ou inertes",
+      "apres": "créatures {{mecanique|mécaniques}} ou inertes",
+      "n": 1,
+      "decision": "R258 (7)",
+      "raison": "Balise du mot-clé sur les mots du texte, sans le réécrire."
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "ressources/armes"
+      },
+      "col": "corps_md",
+      "avant": "créatures mécaniques ou inertes",
+      "apres": "créatures {{mecanique\\|mécaniques}} ou inertes",
+      "n": 1,
+      "decision": "R258 (7)",
+      "raison": "Tableau des matériaux : la même balise (« \\| » dans une case)."
+    },
+    {
+      "table": "materiau_arme",
+      "cle": {
+        "ressource_id": "ressources/armures#materiau:or"
+      },
+      "col": "effet_brut",
+      "avant": "contre les démons.",
+      "apres": "contre les {{demon|démons}}.",
+      "n": 1,
+      "decision": "R258 (7)",
+      "raison": "Balise du mot-clé sur les mots du texte, sans le réécrire."
+    },
+    {
+      "table": "materiau_arme",
+      "cle": {
+        "ressource_id": "ressources/armures#materiau:or"
+      },
+      "col": "effet_secondaire",
+      "avant": "contre les démons.",
+      "apres": "contre les {{demon|démons}}.",
+      "n": 1,
+      "decision": "R258 (7)",
+      "raison": "Balise du mot-clé sur les mots du texte, sans le réécrire."
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "ressources/armes"
+      },
+      "col": "corps_md",
+      "avant": "contre les démons.",
+      "apres": "contre les {{demon\\|démons}}.",
+      "n": 1,
+      "decision": "R258 (7)",
+      "raison": "Tableau des matériaux : la même balise (« \\| » dans une case)."
+    },
+    {
+      "table": "materiau_arme",
+      "cle": {
+        "ressource_id": "ressources/armures#materiau:vif-argent"
+      },
+      "col": "effet_brut",
+      "avant": "les êtres immatériels.",
+      "apres": "les êtres {{immateriel|immatériels}}.",
+      "n": 1,
+      "decision": "R258 (7)",
+      "raison": "Balise du mot-clé sur les mots du texte, sans le réécrire."
+    },
+    {
+      "table": "materiau_arme",
+      "cle": {
+        "ressource_id": "ressources/armures#materiau:vif-argent"
+      },
+      "col": "effet_secondaire",
+      "avant": "les êtres immatériels.",
+      "apres": "les êtres {{immateriel|immatériels}}.",
+      "n": 1,
+      "decision": "R258 (7)",
+      "raison": "Balise du mot-clé sur les mots du texte, sans le réécrire."
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "ressources/armes"
+      },
+      "col": "corps_md",
+      "avant": "les êtres immatériels.",
+      "apres": "les êtres {{immateriel\\|immatériels}}.",
+      "n": 1,
+      "decision": "R258 (7)",
+      "raison": "Tableau des matériaux : la même balise (« \\| » dans une case)."
+    },
+    {
+      "table": "materiau_arme",
+      "cle": {
+        "ressource_id": "ressources/armures#materiau:titane"
+      },
+      "col": "effet_brut",
+      "avant": "Avantage contre les effets de désarmement.",
+      "apres": "{{avantage|Avantage}} contre les {{desarmement|effets de désarmement}}.",
+      "n": 1,
+      "decision": "R258 (7)",
+      "raison": "Balise du mot-clé sur les mots du texte, sans le réécrire."
+    },
+    {
+      "table": "materiau_arme",
+      "cle": {
+        "ressource_id": "ressources/armures#materiau:titane"
+      },
+      "col": "effet_secondaire",
+      "avant": "Avantage contre les effets de désarmement.",
+      "apres": "{{avantage|Avantage}} contre les {{desarmement|effets de désarmement}}.",
+      "n": 1,
+      "decision": "R258 (7)",
+      "raison": "Balise du mot-clé sur les mots du texte, sans le réécrire."
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "ressources/armes"
+      },
+      "col": "corps_md",
+      "avant": "Avantage contre les effets de désarmement.",
+      "apres": "{{avantage\\|Avantage}} contre les {{desarmement\\|effets de désarmement}}.",
+      "n": 1,
+      "decision": "R258 (7)",
+      "raison": "Tableau des matériaux : la même balise (« \\| » dans une case)."
+    },
+    {
+      "table": "monstre_capacite_commune",
+      "cle": {
+        "id": "anti-barriere"
+      },
+      "col": "description",
+      "avant": "L’arme de cette créature possède la même propriété que le maverium, il casse la {{barriere|barrière}} au moindre dégâts infligés.",
+      "apres": "L'arme de la créature a la nouvelle propriété du Maverium : +1 dé de dégâts contre une cible qui n'a pas ou plus de {{barriere|barrière}}.",
+      "n": 1,
+      "decision": "R259",
+      "raison": "Texte de l’option retenue (MAJ-O11), « barrière » balisé."
+    },
+    {
+      "table": "capacite",
+      "cle": {
+        "id": "capacites/arbaletrier-pre-mythril"
+      },
+      "col": "effet",
+      "avant": "Un carreau spécial qui ignore complètement la {{barriere|barrière}} de la cible.",
+      "apres": "Le carreau a la nouvelle propriété du Mythril : +1 dé de dégâts s'il touche une {{barriere|barrière}}.",
+      "n": 1,
+      "decision": "R259",
+      "raison": "Texte de l’option retenue (MAJ-O11), « barrière » balisé."
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "capacites/arbaletrier-pre-mythril"
+      },
+      "col": "resume",
+      "avant": "Un carreau spécial qui ignore complètement la {{barriere|barrière}} de la cible.",
+      "apres": "Le carreau a la nouvelle propriété du Mythril : +1 dé de dégâts s'il touche une {{barriere|barrière}}.",
+      "n": 1,
+      "decision": "R259",
+      "raison": "Texte de l’option retenue (MAJ-O11), « barrière » balisé."
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "capacites/arbaletrier-pre-mythril"
+      },
+      "col": "corps_md",
+      "avant": "Un carreau spécial qui ignore complètement la {{barriere|barrière}} de la cible.\n",
+      "apres": "Le carreau a la nouvelle propriété du Mythril : +1 dé de dégâts s'il touche une {{barriere|barrière}}.\n",
+      "n": 1,
+      "decision": "R259",
+      "raison": "Texte de l’option retenue (MAJ-O11), « barrière » balisé."
+    },
+    {
+      "table": "race_onglet",
+      "cle": {
+        "race_id": "races/fongoide"
+      },
+      "col": "description_generale",
+      "avant": "le Dieu de la Terre s'est",
+      "apres": "le {{dimitri|Dieu de la Terre}} s'est",
+      "n": 1,
+      "decision": "R265",
+      "raison": "Lien posé sur les mots de l’onglet (mot-clé à adresse), sans phrase de plus.",
+      "mot_cle_id": 91
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "races/fongoide"
+      },
+      "col": "corps_md",
+      "avant": "le Dieu de la Terre s'est",
+      "apres": "le {{dimitri|Dieu de la Terre}} s'est",
+      "n": 1,
+      "decision": "R265",
+      "raison": "Le corps de la page redit l’onglet.",
+      "mot_cle_id": 91
+    },
+    {
+      "table": "race_onglet",
+      "cle": {
+        "race_id": "races/fongoide"
+      },
+      "col": "histoire",
+      "avant": "l'époque du Premier Champignon.",
+      "apres": "l'époque du {{champicer|Premier Champignon}}.",
+      "n": 1,
+      "decision": "R265",
+      "raison": "Lien posé sur les mots de l’onglet (mot-clé à adresse), sans phrase de plus.",
+      "mot_cle_id": 61
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "races/fongoide"
+      },
+      "col": "corps_md",
+      "avant": "l'époque du Premier Champignon.",
+      "apres": "l'époque du {{champicer|Premier Champignon}}.",
+      "n": 1,
+      "decision": "R265",
+      "raison": "Le corps de la page redit l’onglet.",
+      "mot_cle_id": 61
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "guide/l-univers"
+      },
+      "col": "corps_md",
+      "avant": "**27 races**",
+      "apres": "**29 races**",
+      "n": 1,
+      "decision": "R239",
+      "raison": "Le nombre de races de la base (29 avec le Fongoïde et le Gémidien)."
+    },
+    {
+      "table": "page",
+      "cle": {
+        "id": "guide/choisir-sa-race"
+      },
+      "col": "corps_md",
+      "avant": "{{race|27 races}}",
+      "apres": "{{race|29 races}}",
+      "n": 1,
+      "decision": "R239",
+      "raison": "Le nombre de races de la base (29 avec le Fongoïde et le Gémidien), seul le nombre change (demande du leader-technique)."
+    }
+  ],
+  "mots_cles": [
+    {
+      "id": 410,
+      "libelle": "Non-mort",
+      "cle": "non-mort",
+      "categorie_id": 11,
+      "decision": "R258 (7), R268",
+      "description_de": {
+        "table": "monstre_capacite_commune",
+        "id": "non-mort",
+        "col": "description"
+      }
+    },
+    {
+      "id": 411,
+      "libelle": "Bête",
+      "cle": "bete",
+      "categorie_id": 11,
+      "decision": "R258 (7), R268",
+      "description": null
+    },
+    {
+      "id": 412,
+      "libelle": "Mécanique",
+      "cle": "mecanique",
+      "categorie_id": 11,
+      "decision": "R258 (7), R268",
+      "description": null
+    },
+    {
+      "id": 413,
+      "libelle": "Démon",
+      "cle": "demon",
+      "categorie_id": 11,
+      "decision": "R258 (7), R268",
+      "description": null
+    },
+    {
+      "id": 414,
+      "libelle": "Immatériel",
+      "cle": "immateriel",
+      "categorie_id": 11,
+      "decision": "R258 (7), R268",
+      "description_de": {
+        "table": "monstre_capacite_commune",
+        "id": "immateriel",
+        "col": "description"
+      }
+    },
+    {
+      "id": 415,
+      "libelle": "Désarmement",
+      "cle": "desarmement",
+      "categorie_id": 4,
+      "decision": "R258 (7), R268",
+      "description": "Tout sort, don ou capacité qui fait perdre son arme au porteur."
+    },
+    {
+      "id": 416,
+      "libelle": "Avantage",
+      "cle": "avantage",
+      "categorie_id": 4,
+      "decision": "R258 (7), R268",
+      "description": "On lance deux fois le même jet et on ignore le jet le plus défavorable au lanceur.",
+      "homonyme_non_capte": "capacites/porte-etendard-avantage"
+    }
+  ],
+  "evenements": [
+    {
+      "id": "gemidiens",
+      "titre": "Apparition des Gémidiens",
+      "annee": 70,
+      "rang": 79,
+      "page_id": "races/gemidien",
+      "section": "Présentation",
+      "texte": "Cette race est apparu la première fois en 70.",
+      "date_brut": "en 70",
+      "decision": "R264"
+    },
+    {
+      "id": "fongoides",
+      "titre": "Apparition des Fongoïdes",
+      "annee": 80,
+      "rang": 80,
+      "page_id": "races/fongoide",
+      "section": "Présentation",
+      "texte": "Selon la lignée première, cette race est apparu sous la forme humanoïde la première fois en l'an 80.",
+      "date_brut": "en l'an 80",
+      "decision": "R264"
+    }
+  ]
+}

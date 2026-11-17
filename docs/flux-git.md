@@ -72,23 +72,23 @@ résolvent seuls. Même chose si le hotfix modifie `.github/workflows/` et que l
 l'historique des fusions (une refusion faite par *squash* laisserait `master` hors de `dev`, et la livraison suivante serait refusée).
 
 **Une `feature/<nom>` ou `hotfix/<nom>` en conflit avec sa base se rebase, on n'y fusionne jamais la base** (demande du propriétaire) :
-`git fetch --prune origin`, `git rebase origin/dev` (ou `origin/master`), résoudre, puis `git push --force-with-lease --force-if-includes`. La PR n'est fusionnée qu'une fois
+`git fetch --prune origin`, `git rebase origin/dev` (ou `origin/master`), résoudre, puis `git fetch --prune origin` et `git push --force-with-lease origin <branche>` (`-u` au premier push) : le push forcé de sa propre branche après un rebase est toujours autorisé (choix du propriétaire, 2026-10-29), jamais sur `dev`, `master` ni la branche d'un autre, jamais `--force` ou `-f` seuls ; sans `--force-if-includes`, forme absente de la liste autorisée de `.claude/settings.json`. La PR n'est fusionnée qu'une fois
 sans conflit et la CI verte. Seule exception, la refusion de `master` dans `dev` décrite plus haut : elle doit rester une fusion (le bot vérifie que
 `master` est dans l'historique de `dev`).
 
 **Juste après le dernier commit, et avant chaque push, on se remet à jour sur la base, par défaut** (demande du propriétaire ; skill
 `resoudre-un-conflit`) : `git fetch --prune origin` ; si `origin/dev` (ou `origin/master` pour un hotfix) a bougé depuis le départ de la branche
-(`git merge-base --is-ancestor origin/dev HEAD` échoue), `git rebase` sur elle, résoudre les conflits aussitôt, relancer les contrôles que le rebase
-touche (`npm run test:cible -- --apres-rebase` dans `client/` : les seuls tests du recouvrement, fichiers que la base a changés et que le lot touche
-aussi, plus `--fichiers` pour un conflit résolu à la main ; recouvrement vide, seulement l'absence de marqueurs de conflit ; skill
-`choisir-les-tests`), puis pousser (`git push --force-with-lease --force-if-includes` si la branche était déjà poussée). Même sans conflit : la PR est ainsi
+(`git merge-base --is-ancestor origin/dev HEAD` échoue), `git rebase` sur elle, résoudre les conflits aussitôt, donner le recouvrement
+sans rien lancer (`npm run test:cible -- --apres-rebase --liste` dans `client/` : fichiers que la base a changés et que le lot touche aussi, plus
+`--fichiers` pour un conflit résolu à la main ; skill `choisir-les-tests`) ; s'il n'est pas vide, `tech-qualite` passe ce seul jeu (`--avant <pointe
+d'avant le rebase>`), un seul passage de tests par lot (demande du propriétaire), puis pousser (`git fetch --prune origin` puis `git push --force-with-lease origin <branche>` si la branche était déjà poussée, même règle que ci-dessus). Même sans conflit : la PR est ainsi
 toujours testée sur la base du moment. Une PR ouverte se corrige ensuite automatiquement jusqu'à sa fusion (CI rouge, conflit, revue ; skill
 `corriger-une-pr`).
 
 **Ordre de passage** (skill `publier-une-branche`, « L'ordre de passage ») : parmi les PR ouvertes vers `dev` dont les fichiers se recoupent, le
 numéro croissant ; une PR sans recouvrement n'attend personne. Seule exception : une demande explicite et urgente du propriétaire fait passer une PR
 en tête. La session principale impose l'ordre par un commentaire sur chaque PR concernée. À son tour, chaque PR fait un seul rebase sur `dev` à jour,
-puis `npm run test:cible -- --apres-rebase`, le push, la CI et la fusion ; pas de rebase « pour suivre `dev` » pendant l'attente.
+puis le recouvrement (`--apres-rebase --liste`, passé par `tech-qualite` s'il n'est pas vide), le push, la CI et la fusion ; pas de rebase « pour suivre `dev` » pendant l'attente.
 
 **L'état de la branche en une commande** (lecture seule, après `git fetch --prune origin`) : `node tools/flux-git/etat-branche.mjs [--base <réf>] [--json]`
 dit l'avance et le retard sur la base, les commits de `origin/<branche>` absents en local, si un rebase est nécessaire ou interdit (branche de
@@ -119,14 +119,16 @@ serveur à cette forme. Seule la toute première livraison de test s'est appelé
 
 - **Serveur de test** (`maverick-center-test`, port 8081, bandeau « Serveur de dev » sur chaque page — il renvoie à la page « Mise à jour », qui
   liste les modifications en cours —, `[TEST]` dans le titre de l'onglet).
-  À chaque installation, **sa base est remplacée par une copie de celle du serveur normal prise à cet instant** (dossier `db/` de l'instance de
-  production ; avec `sqlite3`, chaque base SQLite est copiée par `.backup`, donc cohérente même si la production écrit), sauf avec
-  `MAVERICK_BASE_TEST=conservee` (le réglage du VPS : copie à la première installation seulement). Rien de ce qui est fait en test ne revient en
+  Une installation **ne vide ni ne remplace jamais sa base** (dossier `db/`, décision R274 : la base du site de dev fait foi, ses saisies
+  n'existent nulle part ailleurs) ; `mise-a-jour.sh` refuse en outre une livraison plus ancienne que celle installée. La copie de la base du serveur
+  normal (dossier `db/` de l'instance de production ; avec `sqlite3`, chaque base SQLite est copiée par `.backup`, donc cohérente même si la
+  production écrit) ne se fait que sur demande (`--copier-base-prod`), dans un `db/` vide. Rien de ce qui est fait en test ne revient en
   production par la base : les modifications des règles y vont par la page « Mise à jour ».
 - **Serveur normal** : le site réellement utilisé (`maverick-center`, port 8080). Une installation remplace le site, **jamais la base vivante** (`db/`).
 
-La copie est faite par l'installateur, sur le serveur, au moment où il s'exécute : GitHub n'a pas accès à la base de production, et elle ne doit pas
-quitter le serveur. La base vivante (`db/`) est celle du service des personnages ([`serveur.md`](serveur.md)) : les prétirés, puis, avec la
+Quand elle est demandée, la copie est faite par l'installateur, sur le serveur, au moment où il s'exécute : GitHub n'a pas accès à la base de production, et elle ne passe jamais par GitHub.
+Elle ne quitte le serveur que par la sauvegarde automatique de nuit (décision R275), **chiffrée**, vers un stockage d'un autre fournisseur que l'hébergeur, dont le propriétaire
+garde la clé (`deploy/vps/README.md`, « Sauvegardes »). La base vivante (`db/`) est celle du service des personnages ([`serveur.md`](serveur.md)) : les prétirés, puis, avec la
 connexion Discord, les utilisateurs et leurs fiches ; la base des règles du site (`/donnees/`), elle, est reconstruite depuis `data/rows` à chaque version.
 La mise à jour automatique de chaque instance est `mise-a-jour.sh`. Détails : [`deploy/installateur/README.md`](../deploy/installateur/README.md).
 Republier une branche sans changer sa version : *Actions → Version et livraison → Run workflow* (une étiquette `…-rebuild.N`).
@@ -134,6 +136,44 @@ Republier une branche sans changer sa version : *Actions → Version et livraiso
 **La 1.0 reste le signal du propriétaire** : l'ouverture à tout le Discord (et non plus aux seuls MJ et administrateurs), avec la connexion par
 Discord (identification et utilisateurs, voir [`feuille-de-route.md`](feuille-de-route.md)) ; on y passe par une livraison `dev` → `master`
 portant `[V: X+1]`, à la demande du propriétaire : à la main, ou par la case « Version majeure » de la page « Mise à jour » du site de dev (plus bas).
+
+## Règles des migrations (lot 7)
+
+Lot 7 du chantier « la base du site de dev devient la source de vérité » (R274, R275 ; plan : `docs/chantier-base-de-dev.md`). Le job `controle-des-migrations` de `ci.yml` les fait respecter à chaque PR (et à chaque push sur `master` ou `dev`) ; `npm run db:controler-migrations -- --base origin/dev` les lance à la main, depuis `client/` (`--resume <fichier.md>` ajoute le bilan à un fichier, `--sans-essai` ne passe que les règles). Code : `client/scripts/controler-les-migrations*.mjs` ; test : `scripts-controler-les-migrations`. Sortie 0 (admis), 1 (une règle violée : le fichier, la règle, quoi faire), 2 (dépôt, base de comparaison ou outil illisible, erreur inattendue).
+
+Les fichiers de `data/migrations/` sont comparés à ceux de `git merge-base <base> HEAD` (la base est la branche visée sur une PR, le commit d'avant sur un push, sinon le premier parent), l'arbre étant celui du dossier de travail :
+
+- **`figee`.** Une migration fusionnée (`.sql` ou registre `.json`) ne se modifie plus, ne se renomme pas, ne se supprime pas. Une migration ne s'annule pas : on en écrit une autre. **`numero`** : une migration nouvelle prend un numéro après la dernière fusionnée, un fichier par numéro. **`interdit`** : ni `BEGIN`, `COMMIT`, `ROLLBACK` ni `PRAGMA` (le service ouvre la transaction).
+- **`structure`** (numéros > 0129). Une migration qui porte du DDL (`CREATE`, `ALTER`, `DROP`) est « de structure » : son DML ne déplace ou ne recopie que des colonnes (`INSERT … SELECT`, `UPDATE … SET colonne = expression de colonnes`), et ses littéraux sont des codes (`^[a-z0-9_.-]{1,40}$`, comme `'migration'`), des identifiants à `/` (`'races/x'`, minuscules, 80 caractères au plus), des chemins JSON (`'$.nom'`, `'$[0].x'`), des formats de `strftime` (`'%Y-%m-%dT%H:%M:%SZ'`), des nombres, `NULL` ou `''`. Deux définitions remplissent pourtant des lignes et suivent la même règle : `ALTER TABLE … ADD COLUMN … DEFAULT '<texte>'` (toutes les lignes existantes) et `CREATE TABLE … AS SELECT '<texte>'`. Les littéraux des autres définitions (`CHECK`, `DEFAULT` d'un `CREATE TABLE` neuf, vues, déclencheurs) ne comptent pas. Du texte de règle avec du DDL : refus, à scinder en deux migrations (la structure, puis les données). Une migration sans DDL est « de données » : permise, signalée dans le résumé (« cesse à la bascule du lot 8 »).
+- **`renommage`.** `ALTER TABLE … RENAME TO` et `RENAME COLUMN` exigent, dans la même migration, un `UPDATE` de `modification` (le journal), `historique_modification`, `lot_de_changements` et `numero_donne`, qui cite l'ancien et le nouveau nom : ces tables gardent des noms de tables et de colonnes. Une table recopiée sous un nom provisoire puis renommée (`x__NNNN`) n'est pas un renommage.
+- **`base-remplie`.** La base de la version dont part la PR est reconstruite (`git archive` de `data/schema.sql` et `data/rows`, `db-build`) et remplie (`scripts/base-remplie-lib.mjs` : fiches, journal, historique, lot déposé, plafond de numéro), puis les migrations nouvelles lui sont appliquées par `appliquerSurPlace`, le code du service, sur une copie jetable. Sont refusés : un schéma obtenu différent de `data/schema.sql`, une clé étrangère rompue, une ligne retirée des fiches, du journal, de l'historique ou des notes de version, une table de ces classes retirée. Sans migration nouvelle, la base n'est pas reconstruite. **Vers `master`** (PR ou push), le job ne passe que les règles (`--sans-essai`) : la base de `master` est ancienne, et son `data/rows` a changé hors migrations depuis, de sorte que le rejeu des migrations y refuserait à tort ; chaque migration a déjà été essayée sur `dev`.
+
+Le résumé du job (`$GITHUB_STEP_SUMMARY`) donne, par migration nouvelle : sa nature, par table les lignes ajoutées, retirées et modifiées, et le nombre de tables à l'empreinte inchangée (liste repliée). Le job est à part, parallèle aux autres : il lui faut l'historique complet (`fetch-depth: 0`) et aucun paquet npm.
+
+## Contenu écrit à la main (lot 8)
+
+Garde-fou 12 du chantier (`docs/chantier-base-de-dev.md`) : une fois la base du site de dev devenue la source, le contenu n'entre plus dans le dépôt que par le
+workflow de mise à jour. Job `controle-du-contenu-ecrit` de `ci.yml`, sur chaque PR ; code : `client/scripts/controler-le-contenu-ecrit.mjs` (lecture du dépôt)
+et `controler-le-contenu-ecrit-lib.mjs` (règles pures) ; test : `scripts-controler-le-contenu-ecrit`. Sortie 0 (éteint, ou rien de refusé), 1 (un refus : la règle
+et quoi faire), 2 (usage ou dépôt illisible).
+
+- **Interrupteur** : `tools/flux-git/bascule-1.json`, `{ "actif": false }`. Il se lit dans **`origin/dev`**, jamais dans la PR contrôlée : la PR qui le passe à
+  `true` passe elle-même (dev l'a encore à `false`), et une PR ne peut pas s'en exempter en l'éteignant dans sa branche. Éteint (ou fichier absent), le job passe
+  vert sans rien lire d'autre et le résumé le dit.
+- **`ecrit-a-la-main`** (PR vers `dev` qui change `data/rows/`) : chaque commit de la PR qui touche `data/rows/` doit être celui du workflow de mise à jour —
+  branche `feature/mise-a-jour-regles-…`, auteur et commiteur `github-actions[bot]`, une ligne `Lot : <uuid>` ou `Copie : <uuid>`, rien hors de `data/rows/`.
+  Les commits sont lus de la base de la PR à sa tête (`github.event.pull_request.head.sha`), une fusion comparée à son premier parent. Limite : l'identité
+  d'un commit se déclare ; le contrôle arrête l'erreur et l'oubli, pas une falsification voulue. **Exception** : une PR qui ajoute une migration de
+  **structure** peut changer `data/rows/<t>.sql`, seulement pour les tables que ses migrations nomment (`CREATE`, `ALTER`, `DROP TABLE <t>`, les deux noms
+  d'un renommage, la cible d'un `INSERT … SELECT` : `tablesDeLaStructure`) ; toute autre table reste refusée. Ce contrôle ne juge que les noms : l'égalité
+  exacte de l'export est déjà prouvée par `controle-des-migrations` (base remplie migrée), qu'il est recommandé de rendre obligatoire.
+- **`donnees`** (PR vers `dev`) : une migration ajoutée sans DDL (`controler-les-migrations-lib.mjs#analyserUneMigration`) est refusée ; la structure reste.
+- **`correctif-urgent`** (PR `hotfix/<nom>` vers `master`) : rien dans `data/rows/`, `data/migrations/` ni `data/schema.sql`. La livraison `dev` → `master`
+  n'est pas concernée.
+
+Le jour de la bascule : une PR vers `dev` passe `actif` à `true`. Le job n'est pas un check requis (`.github/rulesets/`, `CHECKS_REQUIS` de
+`client/scripts/mise-a-jour-github.mjs`) : un refus rend la PR rouge, ce qui arrête la fusion automatique des sessions ; le rendre obligatoire suit le même
+chemin que `controle-des-migrations` (ajouter son nom aux deux fichiers de règles et à `CHECKS_REQUIS`, puis réappliquer les règles sur GitHub).
 
 ## Au quotidien
 
@@ -172,7 +212,10 @@ protégée ni la branche par défaut).
 livraison `dev` → `master`, fusionnée de même (étape « Livraison vers master » ; son titre porte `[V: X+1]` seulement si la case « Version
 majeure » de la page était cochée quand le lot a été figé : la livraison fait alors la `X+1.0.0`). Les bots font ensuite leur travail habituel
 (versions, étiquettes, installateurs). Une seule mise à jour à la fois attend sa livraison : tant que celle d'un autre lot est dans `dev` sans être
-sur `master`, le workflow refuse d'en commencer une autre.
+sur `master`, le workflow refuse d'en commencer une autre. Avec la base source (marqueur `db/source`, lot 8 ; `docs/serveur.md`, « Mise à jour depuis la
+base source (lot 8) »), le lot est un paquet SQLite dont le job `preparer` tire `data/rows`, et que le job `livrer` réexporte (Python, sans npm) pour exiger que
+chaque `data/rows/*.sql` du commit en soit la copie octet pour octet ; « Copier vers le dépôt » (entrée `copie`) n'ouvre que la PR vers
+`dev` (commit « Copie : <id> », jamais « Lot : ») : son contenu part en production avec la livraison `dev` → `master` suivante.
 
 ## Mise en place (une seule fois, par le propriétaire)
 

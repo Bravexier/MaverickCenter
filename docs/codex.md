@@ -42,6 +42,17 @@ Carte & lieux reste « bientôt » (E6 de la [feuille de route](feuille-de-route
 - Résumé : le sous-titre d'une divinité, sinon la première phrase de la page.
 - Mots-clés : « codex », la partie (divinité, faction, civilisation…), la magie d'un temple (nom de la magie dans la base), le continent.
 - Le renvoi « Voir “Temple du Vent” » (Mrode) devient un lien vers « Temple de Vent », le titre de la section des temples.
+- **Les liens sont des balises de mots-clés** (migration 0098 : « tous les liens deviendront des mots-clés et tous les mots-clés deviendront des liens »).
+  Un renvoi (sommaires, « Voir aussi », renvoi du document) s'écrit avec la balise du mot-clé dont l'adresse (`mot_cle.url`) mène à la page visée,
+  `/lore/<slug>/` sans ancre, citée par sa clé (`mot_cle.cle`, migration 0113) : `{{clé}}` quand le texte affiché est son libellé d'import (celui
+  d'avant un renommage sur le site ; un renommage réécrit les balises qui le citent, journal compris, R232 (3) : ces pages sont contrôlées dans leur
+  état d'import), `{{clé|texte}}` sinon (`{{temple-de-vent|Temple du Vent}}`) ; jamais un
+  `[[…]]`, que `db:check` refuse. Un import ne crée jamais de mot-clé : sans **exactement un** mot-clé pour la page, le renvoi est écrit en texte simple
+  et le script le signale (« renvoi sans mot-clé, écrit en texte simple », à l'écriture et au `--verifier`) ; il se répare en donnant l'adresse à un
+  mot-clé sur le site de dev, puis en relançant le script (`Codex.lien`). Le mot-clé d'une page (« Mrode », « Erisia », « Glossaire », créés par la
+  0098) n'est jamais posé comme étiquette de partie (`Vocabulaire.etiquette`) : les pages ne gardent que « codex ».
+- L'état d'import d'une page modifiée par le site, relu dans l'historique, peut dater d'avant la 0098 : `--verifier` y lit ses `[[…]]` comme le script
+  les écrit aujourd'hui (`liens_en_balises`), comme la migration a converti la page de la base.
 - Un nouvel export : le remplacer dans `sources/raw/`, puis `python3 -I tools/docs/codex.py`, `--verifier`, `npm run db:sync-pages` (depuis `client/`).
   Puis la chronologie, qui cite le texte des pages : `node tools/chronologie/chronologie.mjs --verifier` ; un extrait à reprendre se corrige dans
   `tools/chronologie/evenements.json`, puis une migration écrite par `--sql` ([`chronologie.md`](chronologie.md)).
@@ -62,8 +73,13 @@ telle que le site l'a laissée, et `--verifier` signale alors si le document a c
 vocabulaire géré sur le site (migration 0043, page Recherche) : une page dont un mot-clé a été renommé, fusionné ou retiré sur le site compte aussi comme
 modifiée (gardée telle quelle à l'écriture, ses mots-clés non comparés au document : sinon l'ancienne écriture reviendrait). Depuis la migration 0056
 (glossaire), un import ne crée jamais de mot-clé : le script n'écrit que les mots-clés du vocabulaire (`data/rows/mot_cle.sql`, option `--vocabulaire` ;
-`vocabulaire()`, même règle que `tools/db/maverick.py#mot_cle`), dans son écriture ; les étiquettes de partie (« divinité », « faction »…) ne sont plus
-dans le vocabulaire, chaque page ne porte que « codex ».
+`vocabulaire()` → `Vocabulaire`, même règle que `tools/db/maverick.py#mot_cle`), dans son écriture ; les étiquettes de partie (« divinité », « faction »…) ne sont plus
+dans le vocabulaire, chaque page ne porte que « codex », posé par son id (`MOT_CLE_DU_CODEX`, `Vocabulaire.protege` : l'id entier que lui donne
+`tools/db/maverick.py#MOTS_CLES_PROTEGES`, migration 0113, écrit avec son libellé courant, jamais le mot-clé qui aurait pris l'écriture « codex » ;
+`docs/sources.md`). `--verifier` refait le découpage attendu avec le vocabulaire **de l'état d'import**
+(`Vocabulaire(…, etat_d_import=True)` : l'historique du site rejoué à l'envers sur `mot_cle`) : un mot-clé que le site a supprimé (R196 : seulement
+s'il n'est mentionné nulle part), créé ou déplacé (adresse changée) ne change pas les renvois que l'import a écrits (par ex. deux mots-clés pour une
+page, renvoi en texte simple, dont l'un est supprimé). L'écriture des pages garde le vocabulaire courant (une balise ne cite qu'un mot-clé qui existe).
 
 ## Corrections appliquées (`tools/docs/codex-corrections.json`)
 
@@ -73,6 +89,10 @@ L'export reste tel quel ; le script corrige, avant le découpage, **seulement** 
 - **Décision R21** : « le Démon d'Eau Noire » (2 fois) et « Eaunoir » (18 fois) deviennent « Eaunoire » ; le document écrit lui-même 3 fois « Eaunoire ».
   La page s'appelle « Eaunoire », alias « Eaunoir ».
 - « ect » → « etc. » (comme la migration `0005`), « purée de poix » → « purée de pois » (comme `0006`).
+- **Décision R266** (migration `0121-maj-decembre-suites`, exception explicite à « un texte copié n'est pas réécrit », limitée à trois graphies) : « dieu de la
+  Terre » (9 fois) et « Dieu de la terre » (1 fois, le titre de Dimitri) → « Dieu de la Terre » ; « Mort fertile » (1) → « Mort Fertile » ; « super gemme » (2)
+  → « Super Gemme ». Ces quatre entrées portent la clé `migration` : `--verifier` les applique aussi à l'état d'import d'une page que le site de dev avait
+  modifiée avant la migration (son texte d'import garde l'ancienne graphie : `graphies_de_migration`, comme `liens_en_balises` pour la 0098).
 
 La relecture orthographique du Codex (décision R10) reste à faire, par une migration de données avec son registre, comme `0005` pour le reste de la base.
 

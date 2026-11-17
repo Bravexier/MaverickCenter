@@ -86,10 +86,11 @@ début ou de fin de ligne inattendus. Le script s'arrête, sans écrire la page,
 dump garde alors une cellule avec v = "" : une note ne se rattache à aucun texte), cellule hors de la table des sorts (colonnes AL à
 BR, sorts de 3 lignes), sort sans nom. Les onglets non publiés par cette famille (Sommaire, Altération détats, Météo, Statistiques,
 Mode Hyper (Magie), ceux du même classeur que les 15 ci-dessus) ne peuvent pas porter de NOTE : le script s'arrête et dit lequel
-(rien n'est écrit). Leurs FILS ne sont pas rendus : le rapport les liste pour qu'une autre famille les prenne (annexes-magie.py
-reprend celui du Mode Hyper, M43 ; les 26 fils orphelins du Sommaire, A1, et les 2 des Statistiques, BH27 et AR52, n'ont pas de
-page). Le dump est recoupé avec le .xlsx d'origine quand il est lu (formats de nombre, ci-dessous) : un dump qui n'a pas les notes
-et les fils du classeur (produit avec une ancienne version de xlsx_to_json.py) arrête le script au lieu d'effacer les notes des pages.
+(rien n'est écrit). Leurs FILS ne sont pas rendus : le rapport les liste pour qu'une autre famille les prenne (aucun n'a de page :
+les 26 fils orphelins du Sommaire, A1, les 2 des Statistiques, BH27 et AR52, et celui du Mode Hyper (Magie), M43, dont la page
+guide/mode-hyper-magie est supprimée par la décision R184 (9)). Le dump est recoupé avec le .xlsx d'origine quand il est lu
+(formats de nombre, ci-dessous) : un dump qui n'a pas les notes et les fils du classeur (produit avec une ancienne version de
+xlsx_to_json.py) arrête le script au lieu d'effacer les notes des pages.
 Copie de contrôle (--exporter-commentaires) : tirée des cellules brutes du dump par expected_comments (jamais des pages), après le même
 recoupement avec le .xlsx, elle donne pour chaque note et chaque fil cité (116 aujourd'hui : 85 notes, 31 fils) la page, l'onglet, le
 genre, la cellule, la colonne, le sort et les lignes du commentaire. Elle est committée (client/test/fixtures/magies-commentaires.json)

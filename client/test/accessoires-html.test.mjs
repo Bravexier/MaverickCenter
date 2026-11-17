@@ -1,5 +1,5 @@
-// Onglet Accessoires de la page /ressources/equipement/ construite (dist/ ; avant, la page /ressources/accessoires/ : test/equipement-html.test.mjs pour
-// la page et ses onglets) : le générateur d'accessoire (demande du propriétaire) — pas de tableau Markdown, les règles en tête,
+// La page Accessoires construite, /ressources/accessoires/ (dist/ ; une page à elle depuis le 2026-10-29, « Cinq pages séparées » ; avant, l'onglet
+// Accessoires de la page « Équipement » : test/equipement-html.test.mjs pour le cadre des pages) : le générateur d'accessoire (demande du propriétaire) — pas de tableau Markdown, les règles en tête,
 // un tableau par étape avec une case au dé, un tableau d'effets par propriété dans son onglet, la compétence en une ligne par compétence (bonus d'acquis
 // au curseur), la monture, l'encart de l'accessoire créé ; les lignes d'effet et de monture dans la couleur de leur niveau (la classe du niveau, émise
 // par l'onglet) ; pas de tableau des gemmes,
@@ -14,15 +14,17 @@ import { bulleDeGemme, chargerAccessoires, cleDeRessource } from '../src/lib/acc
 import { cleDEffet, gemmesAuChoix } from '../src/lib/accessoires-generateur.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { classeDeMagie, classeDeNiveau, cssDeLaPalette, cssDesFamilles } from '../src/lib/palette-css.mjs';
+import { verifierLeTexteDuPanneau } from './aide-texte-affiche.mjs';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
-const fichier = join(dist, 'ressources', 'equipement', 'index.html');
+const fichier = join(dist, 'ressources', 'accessoires', 'index.html');
 const present = existsSync(fichier);
 const options = present ? {} : { skip: 'site non construit (npm run build)' };
 const html = present ? readFileSync(fichier, 'utf8') : '';
-// le panneau de l'onglet Accessoires, le dernier de la page (components/equipement/EquipementPage.astro)
+// le panneau de la page Accessoires (components/equipement/EquipementPage.astro)
 const main = html.slice(html.indexOf('<section class="equipement-panneau" id="accessoires"'), html.indexOf('</main>'));
-const a = present ? chargerAccessoires(ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' })) : null;
+const db = present ? ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' }) : null;
+const a = present ? chargerAccessoires(db) : null;
 
 test('pas de tableau Markdown : le gabarit du générateur, avec les règles de l’onglet', options, () => {
   assert.ok(main.length > 1000, 'le panneau de l’onglet Accessoires');
@@ -36,13 +38,14 @@ test('pas de tableau Markdown : le gabarit du générateur, avec les règles de 
   assert.match(main, /data-acc-tout-tirer/);
 });
 
-test('malédiction (décision R94) : l’aide du générateur dit la relance depuis l’étape 2, même emplacement, et la destruction à la seconde', options, () => {
+test('malédiction (décision R94) : l’aide du générateur dit la relance depuis l’étape 2, même emplacement, et la destruction à la seconde', options, async () => {
   const aide = main.match(/<span class="acc-aide acc-aide--malediction">([^<]+)<\/span>/)?.[1] ?? '';
   assert.match(aide, /depuis l’étape 2/);
   assert.match(aide, /même emplacement/);
   assert.match(aide, /une seconde le détruit/);
-  // le texte des règles (copie de la source) n'est pas réécrit (le script, lui : test/accessoires-script.test.mjs)
-  assert.ok(main.includes('on relance les dés au début des étapes'), 'les règles de l’onglet, telles qu’écrites');
+  // le texte des règles de l'onglet (le site de dev le réécrit, le vide) : celui de la base, rendu comme au build (test/aide-texte-affiche.mjs ; le
+  // script, lui : test/accessoires-script.test.mjs)
+  await verifierLeTexteDuPanneau(main, db, 'accessoires', 'les règles de l’onglet');
 });
 
 test('une case au dé par tableau des étapes : identité, propriété, chaque propriété à effets ; pas la monture', options, () => {

@@ -2,11 +2,19 @@ import { getCollection, type CollectionEntry } from 'astro:content';
 import { buildIndex, extractLinks, resolve } from './wikilinks.mjs';
 import { TYPES } from './types.mjs';
 import { cheminDePage } from './metiers.mjs';
+import { ouvrirBase } from './donnees.mjs';
+import { installerLePlan } from './livres.mjs';
+import { chargerPlanDesRegles } from './plan-des-regles-db.mjs';
+import { avecLesMotsCles, motsClesDesPages } from './pages-db.mjs';
 
 export type WikiEntry = CollectionEntry<'wiki'>;
 export type TypeKey = keyof typeof TYPES;
 
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+
+// Le plan des onglets des Règles (tables regles_onglet et regles_onglet_entree, R184) : installé dans lib/livres.mjs, qui n'importe rien, dès que ce
+// module se charge, avant toute route ou composant qui range une page (menu latéral, fil d'Ariane, verifierLePlan, placeDansLeGuide).
+installerLePlan(chargerPlanDesRegles(ouvrirBase()));
 
 /** URL absolue (avec le préfixe de déploiement) d'un chemin du site. */
 export const url = (path = '') => `${base}/${path.replace(/^\//, '')}`;
@@ -20,7 +28,10 @@ let cache: ReturnType<typeof compute> | undefined;
 
 async function compute() {
   const hideExamples = process.env.HIDE_EXAMPLES === '1';
-  const entries = (await getCollection('wiki', ({ data }) => !(hideExamples && data.status === 'example'))).sort(byTitle);
+  // chaque page avec ses mots-clés par id (`data.mots_cles`, lus dans page_tag) : les règles qui rangent les classes et les races les lisent par leur
+  // id, jamais par l'écriture du `tags:` (décision R195 : un mot-clé renommé ne déplace aucune page ; lib/pages-db.mjs#motsClesDesPages)
+  const pages = await getCollection('wiki', ({ data }) => !(hideExamples && data.status === 'example'));
+  const entries = (avecLesMotsCles(pages, motsClesDesPages(ouvrirBase())) as (WikiEntry & { data: { mots_cles: string[] } })[]).sort(byTitle);
   const byId = new Map(entries.map((e) => [e.id, e]));
   const index = buildIndex(
     entries.map((e) => ({ id: e.id, type: typeOf(e), slug: slugOf(e), title: e.data.title, aliases: e.data.aliases })),

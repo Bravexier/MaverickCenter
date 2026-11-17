@@ -12,6 +12,7 @@ import { ancreDeComposant } from '../src/lib/composants-rendu.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { attributEd, lireAttributEd } from '../src/lib/edition-modele.mjs';
 import { classeDeMateriau, cssDesFamilles } from '../src/lib/palette-css.mjs';
+import { baseDImport } from './aide-base-d-import.mjs';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
 const fichier = join(dist, 'ressources', 'composants', 'index.html');
@@ -20,6 +21,10 @@ const options = present ? {} : { skip: 'site non construit (npm run build)' };
 const html = present ? readFileSync(fichier, 'utf8') : '';
 const main = html.slice(html.indexOf('<main'), html.indexOf('</main>'));
 const c = present ? chargerComposants(ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' })) : null;
+// les matériaux par leur id (le site de dev les renomme)
+const FER = 'ressources/armures#materiau:fer';
+const OS = 'ressources/armes#materiau:os';
+const MYTHRIL = 'ressources/armures#materiau:mythril';
 const echapper = (t) => String(t).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/'/g, '&#39;');
 
 /** Le panneau d'un tableau (son onglet ouvert ou non). */
@@ -44,13 +49,18 @@ test('un onglet par tableau, dans l’ordre de la base : monnaie, matériaux, ge
   assert.ok(main.includes('<section class="tableau comp-tableau composants-panneau is-active" id="monnaie"'), 'son panneau aussi');
   assert.ok(!/<details class="[^"]*comp-tableau/.test(main), 'plus de tableaux repliables');
   assert.ok(html.includes('data-edition'), 'la page se modifie sur le site de dev');
-  // plus d'entrée au menu (2026-10-18 : « Composants en Artisanat ok ») : la page est dans le sommaire de l'Artisanat, la rubrique Règles ouverte
-  assert.match(html, /data-group="regles" aria-pressed="true" aria-current="true"/, 'la page ouvre les Règles');
+  // plus d'entrée au menu (2026-10-18 : « Composants en Artisanat ok ») : la page est dans le sommaire de l'Artisanat ; la rubrique Équipement ouverte
+  // (toute page de ressources/ l'ouvre, lib/nav.mjs ; R184 : la page reste dans l'Équipement)
+  assert.match(html, /data-group="equipement" aria-pressed="true" aria-current="true"/, 'la page ouvre l’Équipement');
   assert.match(readFileSync(join(dist, 'regles', 'artisanat', 'index.html'), 'utf8'), /<a href="\/ressources\/composants\/">Composants<\/a>/, 'dans l’Artisanat');
-  // l'Artisanat, son sommaire, est son fil d'Ariane et l'entrée courante du menu (la rubrique « Ressources » n'existe plus)
+  // l'Artisanat, son sommaire, est son fil d'Ariane ; il n'est plus une entrée du menu du site (R184 : une entrée du menu latéral de l'onglet
+  // Exploration des Règles) : aucune entrée marquée
   assert.ok(main.includes('<p class="muted"><a href="/">Accueil</a> › <a href="/regles/artisanat/">Artisanat</a></p>'), 'fil d’Ariane vers l’Artisanat');
-  assert.ok(html.includes('<a href="/regles/artisanat/" aria-current="true">Artisanat</a>'), 'l’entrée Artisanat du menu marquée courante');
-  assert.ok(!html.includes('href="/ressources/"'), 'aucun lien vers l’ancienne rubrique Ressources');
+  assert.ok(!html.includes('<a href="/regles/artisanat/" aria-current'), 'plus d’entrée Artisanat au menu du site');
+  assert.doesNotMatch(html, /<a href="[^"]*" aria-current="true">/, 'aucune entrée du menu marquée');
+  // un seul lien vers /ressources/ : l'entrée Autres du menu Équipement (« sous menu-autres », 2026-10-29), aucun dans la page
+  assert.equal(html.split('href="/ressources/"').length - 1, 1, 'un seul lien vers /ressources/');
+  assert.ok(html.includes('<a href="/ressources/">Autres</a>'), 'celui de l’entrée Autres du menu');
   assert.ok(!html.includes('aria-current="page"'), 'la page n’est pas une entrée du menu');
 });
 
@@ -76,7 +86,9 @@ test('une ligne par composant, avec son entité ; aucun consommable (potion, liv
   ];
   assert.deepEqual(lignes, attendues);
   assert.equal(new Set(lignes).size, lignes.length, 'ancres uniques');
-  assert.ok(c.fruits.length > 0 && c.fruits.every((f) => f.type === 'Fruit'), 'la table des fruits');
+  // la table des fruits : les ingrédients de type « Fruit », un type que le site de dev modifie ; à l'import, elle n'est pas vide
+  assert.ok(c.fruits.every((f) => f.type === 'Fruit'), 'la table des fruits');
+  assert.ok(chargerComposants(baseDImport()).fruits.length > 0, 'la table des fruits, à l’import');
   assert.ok(!main.includes('#potion:') && !main.includes('#livre:'), 'pas de consommable');
 });
 
@@ -84,7 +96,7 @@ test('les champs du mode modification se relisent ; un composant cité ne se sup
   const eds = [...main.matchAll(/data-ed(?:-lecture)?="([^"]+)"/g)].map((m) => m[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&#39;/g, "'"));
   assert.ok(eds.length > 500);
   for (const e of eds) assert.ok(lireAttributEd(e), e);
-  const fer = c.materiaux.find((m) => m.nom_cle === 'fer');
+  const fer = c.materiaux.find((m) => m.id === FER);
   assert.ok(main.includes(echapper(attributEd('ressource', { id: fer.id }, 'prix_brut'))));
   assert.ok(fer.citations.length > 0);
   assert.match(main, new RegExp(`id="${ancreDeComposant(fer.id)}"[^>]*data-citee="Cité par : [^"]*armures`));
@@ -92,8 +104,17 @@ test('les champs du mode modification se relisent ; un composant cité ne se sup
   assert.ok(main.includes(echapper(attributEd('gemme', { ressource_id: gemme.id }, 'quart_parfaite_brut'))));
 });
 
+test('décision R219 (3) : l’onglet Monnaie est figé — dans son panneau, seuls le titre et la note de l’onglet se modifient, le symbole suit la base en lecture', options, () => {
+  const p = panneau('monnaie');
+  assert.ok(p.includes('data-monnaie='), 'le panneau des monnaies');
+  const eds = [...p.matchAll(/data-ed="([^"]+)"/g)].map((m) => lireAttributEd(m[1].replace(/&quot;/g, '"').replace(/&amp;/g, '&').replace(/&#39;/g, "'")));
+  assert.deepEqual([...new Set(eds.map((e) => e.table))], ['composant_onglet'], 'aucune case d’une monnaie ne se modifie');
+  for (const m of c.monnaies) assert.ok(p.includes(`data-ed-lecture="${echapper(attributEd('monnaie', { id: m.id }, 'abreviation'))}"`), `${m.id} : son symbole suit la base`);
+});
+
 test('les monnaies en icônes dans les tables (décision R61) : plus d’abréviation dans une case de tableau ; le type de chaque matériau (R62)', options, () => {
-  for (const page of ['ressources/composants', 'ressources/equipement-inventaire', 'ressources/livre-parchemin', 'ressources/equipement']) {
+  for (const page of ['ressources/composants', 'ressources/equipement-inventaire', 'ressources/livre-parchemin', 'ressources/armes', 'ressources/armures',
+    'ressources/bouclier', 'ressources/objets-a-la-ceinture', 'ressources/accessoires']) {
     const h = readFileSync(join(dist, ...page.split('/'), 'index.html'), 'utf8');
     const cases = [...h.matchAll(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/g)].map((m) => m[1].replace(/<[^>]+>/g, ''));
     const restes = cases.filter((c) => /(?<![\p{L}\p{N}])(R[OoFf]|PP)(?![\p{L}\p{N}])/u.test(c));
@@ -101,8 +122,14 @@ test('les monnaies en icônes dans les tables (décision R61) : plus d’abrévi
     assert.match(h, /class="piece piece--(rf|ro|pp)" role="img"/, `${page} : les icônes`);
   }
   for (const m of c.materiaux) assert.ok(['Léger', 'Intermédiaire', 'Lourd', 'Autres'].includes(m.type), m.nom);
-  assert.equal(c.materiaux.find((m) => m.nom_cle === 'os')?.type, 'Autres');
-  assert.match(main, /<td class="comp-type" data-ed="[^"]*materiau[^"]*">Léger<\/td>/);
+  // l'Os en « Autres » (R62, migration 0041) : un type que le site de dev modifie, lu à l'import (test/aide-base-d-import.mjs)
+  assert.equal(chargerComposants(baseDImport()).materiaux.find((m) => m.id === OS)?.type, 'Autres');
+  // chaque matériau montre son type courant, modifiable
+  const materiaux = panneau('materiaux');
+  for (const m of c.materiaux) {
+    const debut = materiaux.indexOf(`id="${ancreDeComposant(m.id)}"`);
+    assert.match(materiaux.slice(debut, materiaux.indexOf('</tr>', debut)), new RegExp(`<td class="comp-type" data-ed="[^"]*materiau[^"]*">${m.type}</td>`), `${m.nom} : son type`);
+  }
 });
 
 test('les matériaux : leur fabrication (la recette du tableau MATÉRIAUX des onglets « Armures » et « Bouclier », qui a quitté la page « Équipement »), en lecture', options, () => {
@@ -120,7 +147,7 @@ test('les matériaux : leur fabrication (la recette du tableau MATÉRIAUX des on
   assert.ok(t.includes('10 minerais de Mythril + Fourneau de Séraphin'), 'la fabrication du Mythril');
   assert.ok(!/<td class="comp-fabrication"[^>]*data-ed/.test(t), 'la fabrication ne se modifie pas');
   // la description (« les grands textes ») y est déjà : celle de la ressource, la même que l'ancien tableau des armures
-  const mythril = c.materiaux.find((m) => m.nom_cle === 'mythril');
+  const mythril = c.materiaux.find((m) => m.id === MYTHRIL);
   assert.ok(mythril?.description && t.includes(echapper(mythril.description).replace(/\n/g, '<br>')), 'la description du Mythril');
   // la couleur de chaque matériau (celle de l'onglet « Armes ») : sa pastille porte la classe du matériau (lib/palette-css.mjs, famille `materiau` ;
   // `par-defaut` pour un matériau sans couleur), jamais un style ; la page émet la feuille de la famille

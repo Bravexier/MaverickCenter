@@ -1,12 +1,16 @@
 ---
 import tableauxCss from '../../styles/magie/tableaux.css?raw';
 import { accessMatrix } from '../../lib/magie-relations.mjs';
-import { ordreDesMagies } from '../../lib/magies';
+import { loadMagies, ordreDesMagies } from '../../lib/magies';
+import { htmlDeLaMagie } from '../../lib/valeurs-fermees-rendu.mjs';
+import { lienDeLaMagie } from '../../lib/mots-cles-des-valeurs.mjs';
 import { groupRaces } from '../../lib/race-kinds.mjs';
+import { ordreDeLaListeDesRaces } from '../../lib/races';
 import { classeDeMagie } from '../../lib/palette-css.mjs';
 import { entryHref, type WikiEntry } from '../../lib/wiki';
 
-// Tableau race × magie innée, en bas de /races/ : lignes = races pures puis hybrides, dans l'ordre de la liste (lib/race-kinds.mjs#groupRaces),
+// Tableau race × magie innée, en bas de /races/ : lignes = races pures puis hybrides, dans l'ordre de la liste (lib/race-kinds.mjs#groupRaces sur
+// race.rang_liste, lib/races.ts#ordreDeLaListeDesRaces : réponse du propriétaire « /races/ suit, le reste figé »),
 // sans ligne de séparation entre les deux (demande du propriétaire),
 // colonnes = magies dans l'ordre du classeur, teintées de leur couleur (la classe de la magie, lib/palette-css.mjs) ; une pastille de cette couleur dans
 // chaque case où la race peut avoir la magie. En-têtes verticaux et largeur fixe : le tableau tient sans défilement horizontal (styles/magie/tableaux.css).
@@ -16,7 +20,10 @@ interface Props {
 const { entries } = Astro.props;
 const access = accessMatrix(entries, ordreDesMagies());
 const rowOf = new Map(access.races.map((race, i) => [race.id, i]));
-const lignes = groupRaces(entries).flatMap((g) => g.entries.filter((r) => rowOf.has(r.id)));
+const lignes = groupRaces(entries, ordreDeLaListeDesRaces()).flatMap((g) => g.entries.filter((r) => rowOf.has(r.id)));
+// l'en-tête d'une magie : son nom court lié à son mot-clé du glossaire (migration 0125 : gras, définition en infobulle, qui remplace l'infobulle du nom de la
+// page) ; sans mot-clé, le nom nu
+const liens = loadMagies().liens;
 const classe = (m: WikiEntry) => classeDeMagie(m.data.nom_court);
 ---
 
@@ -35,7 +42,7 @@ const classe = (m: WikiEntry) => classeDeMagie(m.data.nom_court);
             <th scope="col" class="tableau-magies__coin">Race</th>
             {access.magies.map((m) => (
               <th scope="col" class={`tableau-magies__entete ${classe(m)}`}>
-                <a href={entryHref(m)} title={m.data.title}><span class="tableau-magies__vertical">{m.data.nom_court}</span></a>
+                <a href={entryHref(m)} title={lienDeLaMagie(liens, m.id) ? undefined : m.data.title}><span class="tableau-magies__vertical"><Fragment set:html={htmlDeLaMagie(liens, m.id, m.data.nom_court!)} /></span></a>
               </th>
             ))}
             <th scope="col" class="tableau-magies__entete tableau-magies__entete--total"><span class="tableau-magies__vertical">Total</span></th>

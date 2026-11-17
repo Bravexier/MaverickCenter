@@ -134,12 +134,13 @@ flowchart LR
 - **Déjà là** : les catalogues typés (section 9 : armes, armures, boucliers, matériaux, améliorations, pièces élémentaires, accessoires, gemmes, bâtons
   magiques…) ; les pages des Ressources, rendues depuis leur Markdown ; dans `/fiche/`, le bloc équipement (armes, armure, bouclier, accessoires,
   inventaire, objets de départ du métier). Manquent ([`character-generator.md`](character-generator.md)) : les effets d'équipement dans les calculs (AP/AM
-  des pièces, bonus des améliorations, résistances des objets). La ceinture a son onglet dans « Équipement » (d'abord une page, 2026-10-15 ; l'onglet « Ceinture »
-  depuis le 2026-10-16, décisions R81 et R82 : potions, huiles, carquois et sacs, bâtons magiques ; le bouclier n'y va pas, son emplacement est dans l'armure).
+  des pièces, bonus des améliorations, résistances des objets). La ceinture a sa page dans la rubrique Équipement (d'abord une page, 2026-10-15 ; l'onglet « Ceinture »
+  de la page « Équipement » du 2026-10-16 au 2026-10-29, puis de nouveau une page, `/ressources/objets-a-la-ceinture/` ; décisions R81 et R82 : potions,
+  huiles, carquois et sacs, bâtons magiques ; le bouclier n'y va pas, son emplacement est dans l'armure).
 - **Portée** (réponse du propriétaire, 2026-10-11) : une refonte **visuelle** et de l'**intégration à la fiche**, où il y a aujourd'hui des ratés ; les
   règles de l'équipement ne changent pas.
 - **Étapes proposées** : (1) les pages des Ressources refaites et rendues depuis les tables (un tableau par catalogue, comme `/metiers/`), modifiables sur
-  le site de dev ; (2) la ceinture (en place : l'onglet « Ceinture » de `/ressources/equipement/`, vue `v_objet_ceinture` ; restent la modification sur le site
+  le site de dev ; (2) la ceinture (en place : la page Ceinture, `/ressources/objets-a-la-ceinture/`, vue `v_objet_ceinture` ; restent la modification sur le site
   de dev, qui doit faire suivre les pages des potions et du bâton ; dans la fiche, le sac selon la Force et la ceinture tirée du sac : décisions R88, R89) ; (3) dans la fiche, les ratés corrigés un par un (chacun relevé avec le propriétaire, chacun son test), le
   choix dans le catalogue et les effets codés en données, un effet à la fois, cité et testé (`lib/fiche-moteur.mjs`) : un effet non codé reste affiché en
   texte et n'est pas compté ; (4) poids, prix et bourse, si les sources les donnent.
@@ -150,7 +151,7 @@ flowchart LR
   propriété (1d100 en 8 plages, dont Malédiction de 96 à 100 : `accessoire_propriete`), effet selon la propriété (`accessoire_effet`, gemmes
   `accessoire_effet_gemme`), montures (`accessoire_monture`) ; une fiche garde un accessoire avec sa valeur tirée et sa case « Malédiction » (`personnage_accessoire`).
 - **À faire** : un module pur `lib/generateur-accessoire.mjs` qui rejoue ces tables avec un tirage à graine (le même tirage se rejoue, comme prévu pour la
-  simulation) et montre chaque jet ; une page (aujourd'hui l'onglet Accessoires de Règles › Équipement) ; « Ajouter à la fiche » vers `personnage_accessoire`. Une ligne vide
+  simulation) et montre chaque jet ; une page (aujourd'hui la page Accessoires de la rubrique Équipement, `/ressources/accessoires/`) ; « Ajouter à la fiche » vers `personnage_accessoire`. Une ligne vide
   de la source donne « ligne vide dans la source », jamais un effet inventé ; tests contre les tables.
 
 ### E5 — Chronologie (jalon B)
@@ -179,7 +180,7 @@ La connexion est décidée plus bas (« Authentification : Discord ») ; cette l
 
 - **Discord uniquement** : ni adresse électronique ni mot de passe ; le mot de passe partagé du site disparaît.
 - **Deux statuts d'abord** (réponse du propriétaire, 2026-10-11) : **touriste** — pas connecté, ou connecté sans être membre du serveur Discord —, en
-  lecture seule « en surface » (à terme, les rubriques Découvrir et Règles du menu seulement : réponse du propriétaire du 2026-10-18) ; **joueur** — membre du serveur Discord. À chaque connexion, le service vérifie l'appartenance au serveur (portée OAuth
+  lecture seule « en surface » (à terme, les rubriques Règles et Personnage du menu seulement : réponse du propriétaire du 2026-10-29, avant Découvrir et Règles le 2026-10-18) ; **joueur** — membre du serveur Discord. À chaque connexion, le service vérifie l'appartenance au serveur (portée OAuth
   `guilds.members.read`) ; le bot (E10) la tient à jour entre deux connexions, et qui quitte le serveur redevient touriste.
 - **Rôles MJ, éditeur, administrateur** : plus tard (réponse du propriétaire), d'après des rôles Discord à choisir ; une correspondance de configuration
   (identifiant de rôle Discord → `mj`, `editeur`, `admin`) en tirera `utilisateur_role`.
@@ -290,14 +291,24 @@ de dev, table `annonce`).
    élémentaires, Livres & Parchemins), **Espace joueur** (Fiche de personnage, Personnages ; Groupes d'aventures, Table de jeu et Chroniques à venir),
    **Espace MJ** (Guide du MJ ; Fiches de PNJ et scénarios, Groupes de jeu à venir), **Codex**, **Outils**. La rubrique « Ressources » et l'entrée
    « Guide » disparaissent (`client/src/lib/nav.mjs`).
+   **Depuis le 2026-10-29, sept rubriques** : **Règles** (l'ancienne Découvrir : Découvrir, L'univers, Créer son personnage, Rejoindre une partie, puis
+   Les bases et Règles avancées ; plus d'entrée Liens, tout est sur l'accueil), **Personnage** (l'ancienne Règles : Races, Magies, Classes, Métiers,
+   Familiers), **Équipement** (« Entre le nouvellement créé "Personnage" et "Espace Joueur" il faudra un nouveau menu : "Equipement" » : Armes, Armures,
+   Boucliers, Ceinture, Accessoires, « Cinq pages séparées » aux adresses d'avant la page « Équipement », libellés « Comme les onglets (pluriel) » ;
+   puis Artisanat, Livres & Parchemins et Autres), **Espace joueur**, **Espace MJ**, **Codex**, **Outils**. Plus d'entrée « Pièces élémentaires » (« Le
+   sous-menu "pièce élémentaire" et sa page associé seront supprimées »). Pages `/ressources/…` hors menu (réponse du 2026-10-29) : « Famillier devrai
+   être dans Personnage, Le reste dans equipement (sous menu-autres pour commencer) » (sic) : Familiers (`/ressources/familiers/`) au Personnage ;
+   « Autres » mène à la liste de toutes les pages de ressources, `/ressources/`, en attendant que le propriétaire range les autres pages.
 2. **Visibilité** : « Pour l'instant comme les menus ne sont pas prêt rien n'est caché mais tout de même ils ne verront à terme que les 2 premiers
    onglets » ; « Tu fait comme si de rien n'était pour l'instant. On verra les caches. » (sic ; le site n'est utilisé que par deux personnes avant une
-   version testable en petit comité). À terme, les non-membres (touristes, E7) ne verront que **Découvrir** et **Règles** ; aujourd'hui, rien n'est
-   caché ni filtré, Espace joueur et Espace MJ compris. C'est la réponse à la question ouverte 1 (« Lecture en surface »).
+   version testable en petit comité). À terme, les non-membres (touristes, E7) ne verront que les deux premières rubriques : **Règles et Personnage**
+   depuis le menu en sept rubriques (réponse du propriétaire du 2026-10-29), avant **Découvrir** et **Règles** ; aujourd'hui, rien n'est caché ni
+   filtré, Espace joueur et Espace MJ compris. C'est la réponse à la question ouverte 1 (« Lecture en surface »).
 3. **Ressources** : « Composants en Artisanat ok. Pieces élémentaires seront ammenée directement dans armes et armures . Livre et parchemin seront dans
-   la partie consommable (ceinture) j'ai oublié de les mentionner. Laisse les visible dans le 2 pour l'instant » (sic) : Composants est sous Règles ›
-   Artisanat (`/regles/artisanat/`) ; Pièces élémentaires et Livres & Parchemins restent pour l'instant deux entrées des Règles. **À faire plus tard** : intégrer les Pièces élémentaires
-   aux onglets Armes et Armures de l'Équipement, les Livres & Parchemins aux consommables de l'onglet Ceinture.
+   la partie consommable (ceinture) j'ai oublié de les mentionner. Laisse les visible dans le 2 pour l'instant » (sic) : Composants est sous
+   Artisanat (`/regles/artisanat/`). **Fait le 2026-10-29** : les Pièces élémentaires sont fusionnées dans Armes et Armures (« Fusionner dans Armes et
+   Armures » : leur texte, lu dans la base, sur les pages `/ressources/armes/` et `/ressources/armures/` ; la page n'est plus construite, elle reste
+   dans la base) ; Livres & Parchemins est une entrée de la rubrique Équipement (demande du 2026-10-29), pas encore dans les consommables de la Ceinture.
 4. **Liens** (`/decouvrir/liens/`) : « https://discord.gg/GMGBnjzfMk », le serveur Discord « L'univers de Maverick » (déjà cité par les sources de
    « Bienvenue »), et « Maverick JDR sur Tipeee » (https://fr.tipeee.com/maverickjdr), donné par le propriétaire avec son plan du 2026-10-16
    (« un ensemble de liens, sur le discord […] et le https://fr.tipeee.com/maverickjdr »).
@@ -328,7 +339,7 @@ en tête du sommaire `/regles/`), après Découvrir ; « Créer son personnage �
 ### Questions encore ouvertes
 
 1. **Lecture « en surface »** : quelles pages un touriste voit-il, et lesquelles demandent d'être joueur (E7) ? — *Répondue le 2026-10-18* (ci-dessus) :
-   à terme, Découvrir et Règles seulement ; rien n'est caché aujourd'hui.
+   à terme, Règles et Personnage seulement (menu en sept rubriques, 2026-10-29 ; Découvrir et Règles avant) ; rien n'est caché aujourd'hui.
 2. **Ratés de l'équipement** : lesquels, dans la fiche (E3) ?
 3. **Fiches existantes** : les fiches Google des joueurs (V15.2.2) sont-elles importées automatiquement ou ressaisies dans `/fiche/` (E8) ?
 4. **Visibilité** : tickets (E11) et statistiques (E12) visibles de tous les membres, ou des administrateurs seulement ? Les prétirés et les fiches

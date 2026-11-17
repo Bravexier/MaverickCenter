@@ -1,24 +1,48 @@
 ---
 import Base from '../../layouts/Base.astro';
+import MenuLateral from './MenuLateral.astro';
 import PageDuGuide from './PageDuGuide.astro';
-import { verifierLePlan } from '../../lib/livres.mjs';
+import { menuLateralDe, verifierLePlan } from '../../lib/livres.mjs';
 import { texteDePageModifiable } from '../../lib/edition-modele.mjs';
-import { loadWiki, typeOf, type WikiEntry } from '../../lib/wiki';
+import { cheminDePage } from '../../lib/metiers.mjs';
+import { loadWiki, typeOf, url, type WikiEntry } from '../../lib/wiki';
 
 // Une page du guide à l'adresse que lui donne le plan du site (lib/livres.mjs ; routes pages/decouvrir/, pages/regles/, pages/mj/) : une page simple
-// (PageDuGuide : fil d'Ariane, titre, texte et blocs, mots-clés, rétroliens ; les sources ne s'affichent que sur /archives/), quelle que soit sa
-// rubrique. Le plan est contrôlé contre les pages chargées (verifierLePlan : le build s'arrête sur une page absente, nommée deux fois, ou absorbée
-// par une autre et toujours là).
-// Mode modification du site de dev (demande du propriétaire) : titre et texte modifiables (src/scripts/edition/guide.mjs).
+// (PageDuGuide : fil d'Ariane, titre, texte et blocs, mots-clés ; les sources ne s'affichent que sur /archives/), quelle que soit sa rubrique ; une
+// page d'un onglet des Règles à côté du menu latéral de son onglet (MenuLateral, sur le modèle de la chronologie : lib/livres.mjs#menuLateralDe, le plan
+// de la base, R184 ; l'entrée de l'onglet du menu du site marquée, `entree`, d'après le plan et non l'adresse). Le plan est contrôlé contre les pages
+// chargées (verifierLePlan : le build s'arrête sur une page absente, nommée deux fois, rangée nulle part, ou absorbée par une autre et toujours là).
+// `ouverture` : l'adresse d'un onglet (/regles/<onglet>/) ou des Règles (/regles/ : le premier onglet ; pages/regles/[...page].astro,
+// pages/regles/index.astro), qui montre la page d'ouverture de l'onglet ; pour ne pas faire deux pages du même texte aux yeux des moteurs de
+// recherche, elle désigne l'adresse propre de cette page comme canonique (<link rel="canonical">). Son titre est celui de l'onglet.
+// Mode modification du site de dev (demande du propriétaire) : titre, résumé et texte modifiables (src/scripts/edition/guide.mjs), adresses des onglets
+// comprises ; le menu latéral (ordre, onglet de la page, ajout et suppression d'une page : src/scripts/edition/menus.mjs).
 interface Props {
   entry: WikiEntry;
+  ouverture?: boolean;
 }
-const { entry } = Astro.props;
+const { entry, ouverture = false } = Astro.props;
 const { entries } = await loadWiki();
 verifierLePlan(entries);
 const modifiable = texteDePageModifiable(typeOf(entry), entry.data.sources[0]) && entry.data.status !== 'example';
+const menu = menuLateralDe(entry.id, entries);
 ---
 
-<Base title={entry.data.title} description={entry.data.summary} edition={modifiable ? entry.id : undefined}>
-  <PageDuGuide entry={entry} entries={entries} modifiable={modifiable} />
+<Base
+  title={ouverture && menu ? menu.rubrique.titre : entry.data.title}
+  description={entry.data.summary}
+  edition={modifiable ? entry.id : undefined}
+  entree={menu ? menu.rubrique.chemin : undefined}
+  couleurPropre
+>
+  {ouverture && <link slot="tete" rel="canonical" href={url(cheminDePage(entry.id))} />}
+  {
+    menu ? (
+      <MenuLateral rubrique={menu.rubrique} pages={menu.pages} entry={entry} edition={menu.edition}>
+        <PageDuGuide entry={entry} entries={entries} modifiable={modifiable} />
+      </MenuLateral>
+    ) : (
+      <PageDuGuide entry={entry} entries={entries} modifiable={modifiable} />
+    )
+  }
 </Base>

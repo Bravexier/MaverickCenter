@@ -1,37 +1,33 @@
 ---
-import EntryList from './EntryList.astro';
-import { loadWiki, url, type WikiEntry } from '../lib/wiki';
+import { url, type WikiEntry } from '../lib/wiki';
 import { ouvrirBase } from '../lib/donnees.mjs';
-import { idDuMotCle } from '../lib/mots-cles-db.mjs';
+import { chargerVocabulaire, idDuMotCle } from '../lib/mots-cles-db.mjs';
 import { PARAMETRE_MOT_CLE } from '../lib/recherche-mots-cles.mjs';
 
-// Le pied d'une page du wiki (pages/[type]/[slug].astro, components/guide/PageDuGuide.astro) : ses mots-clés, les pages qu'elle mentionne et celles
-// qui la mentionnent (rétroliens, lib/wiki.ts). Plus de sources : elles ne s'affichent que sur /archives/ (réponse du propriétaire du 2026-10-22 :
-// « Plus de sources ailleurs que dans les archives. On va épurer un peu ce qui est redondant. ») ; `sources:` reste dans le front matter et la base
-// (page_source, source), que les Archives lisent.
+// Le pied d'une page du wiki (pages/[type]/[slug].astro, components/guide/PageDuGuide.astro) : ses mots-clés, rien d'autre.
+// Plus de rétroliens (« Cette page mentionne » / « Mentionnée par ») sur aucune page (demande du propriétaire du 2026-11-05 : « Supprime ces colonnes
+// de toutes les pages. Elles polluent l'affichage pour rien. ») ; le graphe des liens (lib/wiki.ts, vue lien_page) n'est plus affiché nulle part.
+// Plus de sources : elles ne s'affichent que sur /archives/ (réponse du propriétaire du 2026-10-22 : « Plus de sources ailleurs que dans les archives.
+// On va épurer un peu ce qui est redondant. ») ; `sources:` reste dans le front matter et la base (page_source, source), que les Archives lisent.
 interface Props {
   entry: WikiEntry;
 }
 const { entry } = Astro.props;
-const { outgoing, incoming } = await loadWiki();
-const mentions = outgoing.get(entry.id) ?? [];
-const mentionedBy = incoming.get(entry.id) ?? [];
+// chaque écriture du `tags:` (le libellé, ou la clé d'un homonyme : lib/mots-cles-db.mjs) mène au mot-clé qu'elle désigne : sa clé dans l'adresse, son
+// libellé à l'écran (décision R232 (4) : plus de suffixe « (classe) », R191 remplacée) ; une écriture que le vocabulaire n'a pas reste telle quelle
+const db = ouvrirBase();
+const parId = new Map(chargerVocabulaire(db).map((m) => [m.id, m]));
+const etiquettes = entry.data.tags.map((tag: string) => {
+  const m = parId.get(idDuMotCle(db, tag));
+  return { cle: m?.cle ?? tag, libelle: m?.libelle ?? tag };
+});
 ---
 
 {
-  /* Chaque mot-clé mène à la liste de ses pages et événements sur /recherche/ (?mot-cle=<id> : l'id figé du vocabulaire, lib/mots-cles-db.mjs) */
-  entry.data.tags.length > 0 && (
+  /* Chaque mot-clé mène à la liste de ses pages et événements sur /recherche/ (?mot-cle=<clé> : décision R232 (3), lib/recherche-mots-cles.mjs) */
+  etiquettes.length > 0 && (
     <ul class="tags" aria-label="Mots-clés">
-      {entry.data.tags.map((tag) => <li><a class="badge" href={`${url('recherche/')}?${PARAMETRE_MOT_CLE}=${encodeURIComponent(idDuMotCle(ouvrirBase(), tag))}`}>{tag}</a></li>)}
+      {etiquettes.map((t) => <li><a class="badge" href={`${url('recherche/')}?${PARAMETRE_MOT_CLE}=${encodeURIComponent(t.cle)}`}>{t.libelle}</a></li>)}
     </ul>
-  )
-}
-
-{
-  (mentions.length > 0 || mentionedBy.length > 0) && (
-    <div class="linked-pages">
-      {mentions.length > 0 && (<section><h2>Cette page mentionne</h2><EntryList entries={mentions} /></section>)}
-      {mentionedBy.length > 0 && (<section><h2>Mentionnée par</h2><EntryList entries={mentionedBy} /></section>)}
-    </div>
   )
 }

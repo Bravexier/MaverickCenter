@@ -41,8 +41,8 @@ import { ARMURE_ENTIERE, PARTIES_DE_FICHE, gainsDeLaProgression } from './fiche-
 import {
   EMPLACEMENTS_ACCESSOIRES, accessoiresDesSorts, acquisChoixGardes, alignementDe, artisanatDe, bouclierDe, attaqueADeuxArmes, attributsDe, bonusDuMetier, budgetCaracteristiques,
   caracteristiquesCompletes, caracteristiquesDe, choixEnAttente, classesDe, competencesDe, degatsDArme, donDeBase, donsAcquis, donsDeRace, durabiliteDArme,
-  armureParPartie, emplacementsDeSorts, maitriseDesSorts, maitrisesParFamille, modeHyperDe, nmDuSort, npmMax, partiesDeLArmure, progressionXp, resistancesDe, sortPrepare,
-  sourcesDeMaitrise, trouver, valeursDuMoment, armeDeLaLigne, typeDegatsChoisi, typesDeDegats,
+  armureParPartie, emplacementsDeSorts, livresDe, maitriseDesSorts, maitrisesParFamille, modeHyperDe, nmDuSort, npmDesSorts, partiesDeLArmure, progressionXp, resistancesDe, sortPrepare,
+  sourcesDeMaitrise, trouver, valeursDuMoment, armeDeLaLigne, typeDegatsChoisi, typesDeDegats, actionsDeLaFiche, donsVariables,
 } from './fiche-moteur.mjs';
 import {
   CASES_CARACTERISTIQUES, CASES_COMPETENCES, CASES_POSTURES, CASES_RESISTANCES, DONS, EMPLACEMENTS_DU_MODELE, LONGUEUR_MAX_D_UNE_CASE, MAITRISES,
@@ -67,6 +67,12 @@ export const CLES_DE_LA_NOTE = Object.freeze({
   nmMj: 'NM du MJ',
   // le sort préparé (décision R115) : « <sort> (jet 57, posture Offensif) » ; le modèle n'a pas de case pour lui (texteDuSortPrepare, lireSortPrepare)
   sortPrepare: 'Sort préparé',
+  // le Mode Hyper du moment et le compteur « une fois par semaine » (décision R172, migration 0084) : « actif, 100 %, semaine 0/1 » ; le modèle n'a pas de
+  // case pour eux (texteDuModeHyper, lireModeHyper)
+  modeHyper: 'Mode Hyper',
+  // un compteur entamé d'une action (décision R173, migration 0085 : personnage_action_usage) : « <action> (<source>) 1/2 [<clé>] », un par action ; le
+  // modèle n'a pas de case pour eux (texteDuCompteurDAction, lireCompteurDAction)
+  compteurAction: 'Compteur d\'action',
   donsClasse1: 'Dons de classe 1 (suite)',
   donsClasse2: 'Dons de classe 2 (suite)',
   sorts: 'Sorts (suite)',
@@ -78,6 +84,12 @@ export const CLES_DE_LA_NOTE = Object.freeze({
   // la sienne dans sa case) : « <source> : <famille>, <famille>, ? » (texteDesChoixDeMaitrise, lireChoixDeMaitrise) ; avant les acquis au choix, dont
   // l'arme choisie suit la maîtrise au choix de la classe (R152)
   maitriseChoix: 'Maîtrise d\'arme au choix',
+  // l'entrée qu'obtient un don « Variable » du Mage Bleu (décision R181, personnage_don_obtenu) : « <don> (<classe>) : <entrée> (<magie>) »
+  // (texteDuDonObtenu, lireDonObtenu), un par choix, gardés sans effet compris ; avant les acquis au choix
+  donObtenu: 'Don obtenu',
+  // la spécialisation magique choisie pour une magie (décision R236, personnage_specialisation_magie) : « <magie> : <spécialisation> » (texteDeLaSpecialisation,
+  // lireSpecialisation), une par magie choisie ; le modèle n'a pas de case pour elle (il date d'avant la Magie V10)
+  specialisationMagique: 'Spécialisation magique',
   // un choix d'acquis d'un don (décision R104) : « <don> : <compétence> » (« X ou Y »), « <don> : Arc 6, Calme 4 » (« à répartir au choix »),
   // « <don> : <compétence> (<famille d'armes>) » (l'arme choisie, décision R119 : « Flétrisseur (Tueur) : Arme Légère (DAGUES) » ; la famille est celle
   // de la maîtrise au choix de la classe du don, calculée, décision R152 : l'import ne la relit pas)
@@ -350,12 +362,12 @@ export function lireGains(texte) {
 }
 
 /**
- * Les NM offerts des sorts de la fiche, ceux de leurs livres : « Boule de feu (livre 1) ; Brasier (livre 1) » ; vide quand aucun. Les NM du MJ sont ceux
- * de la fiche (décision R118 : ligne « NM du MJ » de la note) ; un classeur d'avant les écrit ici, sort par sort (« Brasier (livre 1, MJ 2) »).
+ * Les NM offerts de la fiche, ceux de ses livres de sort, dans l'ordre de l'entraînement : « Boule de feu (livre 1) ; Brasier (livre 1) » ; vide quand
+ * aucun. Un livre sur un sort qui n'est pas choisi s'écrit de même (décision R169 : il attend, livresDe). Les NM du MJ sont ceux de la fiche (décision
+ * R118 : ligne « NM du MJ » de la note) ; un classeur d'avant les écrit ici, sort par sort (« Brasier (livre 1, MJ 2) »).
  */
-export function texteDesNmOfferts(regles, sorts) {
-  return (sorts ?? []).map((ligne) => [ligne, nmDuSort(ligne).livre]).filter(([, livre]) => livre)
-    .map(([ligne, livre]) => `${nomDe(regles.sorts, ligne.sort_id)} (livre ${livre})`).join(SEPARATEUR_DE_LISTE);
+export function texteDesNmOfferts(regles, fiche) {
+  return livresDe(regles, fiche).map((l) => `${nomDe(regles.sorts, l.sort_id)} (livre 1)`).join(SEPARATEUR_DE_LISTE);
 }
 
 /** [{ nom, livre, cadeau }] d'un texte de texteDesNmOfferts (`cadeau` : les NM du MJ d'un classeur d'avant la décision R118) ; null si un morceau ne se lit pas (l'import le dit). */
@@ -376,36 +388,150 @@ export function lireNmOfferts(texte) {
 }
 
 /**
- * Le sort préparé (décision R115 ; lib/fiche-moteur.mjs#sortPrepare), dans la note : « Boule de feu (jet 57, posture Offensif) » ; sans jet (« si
- * réussi ») ni posture (aucune n'était cochée), le nom seul.
+ * Les mots du Mode Hyper d'un sort préparé (décision R172) dans sa ligne de la note : « Mode Hyper », « Mode Hyper 100 % » ; et ceux de sa plage de
+ * réussite critique figée (décision R182 (4)) : « critique 1 à 12 ».
+ */
+export const MOTS_DU_SORT_PREPARE = Object.freeze({ hyper: 'Mode Hyper', cent: 'Mode Hyper 100 %', critique: 'critique 1 à' });
+
+/**
+ * Le sort préparé (décision R115 ; lib/fiche-moteur.mjs#sortPrepare), dans la note : « Boule de feu (jet 57, posture Offensif) », et, préparé en Mode
+ * Hyper ou au Mode Hyper 100 % (décision R172), « (jet 57, posture Offensif, Mode Hyper) » ou « (jet 57, Mode Hyper 100 %) » ; sa plage de réussite
+ * critique figée à la préparation (décision R182 (4), `prepare_critique`), « (jet 57, posture Offensif, critique 1 à 12) » ; sans jet (« si réussi »)
+ * ni posture (aucune n'était cochée) ni Mode Hyper ni plage (une fiche d'avant), le nom seul.
  */
 export function texteDuSortPrepare(prepare) {
-  const parts = [prepare.jet === null || prepare.jet === undefined ? null : `jet ${prepare.jet}`, prepare.posture ? `posture ${prepare.posture.nom}` : null].filter(Boolean);
+  const parts = [
+    prepare.jet === null || prepare.jet === undefined ? null : `jet ${prepare.jet}`, prepare.posture ? `posture ${prepare.posture.nom}` : null,
+    prepare.cent ? MOTS_DU_SORT_PREPARE.cent : prepare.hyper ? MOTS_DU_SORT_PREPARE.hyper : null,
+    prepare.critique === null || prepare.critique === undefined ? null : `${MOTS_DU_SORT_PREPARE.critique} ${prepare.critique}`,
+  ].filter(Boolean);
   return `${prepare.sort.nom}${parts.length ? ` (${parts.join(', ')})` : ''}`;
 }
 
 /**
- * { nom, jet, posture } d'un texte de texteDuSortPrepare (`jet` : un nombre ou null ; `posture` : le nom écrit ou null). Des parenthèses finales qui ne
- * disent ni un jet ni une posture font partie du nom.
+ * { nom, jet, posture, hyper, cent, critique } d'un texte de texteDuSortPrepare (`jet` : un nombre ou null ; `posture` : le nom écrit ou null ; `hyper`,
+ * `cent` : préparé en Mode Hyper, au Mode Hyper 100 % — qui l'est aussi en Mode Hyper —, décision R172 ; `critique` : le N de « critique 1 à N », la plage
+ * figée à la préparation, décision R182, ou null). Des parenthèses finales qui ne disent ni un jet, ni une posture, ni le Mode Hyper, ni une plage font
+ * partie du nom.
  */
 export function lireSortPrepare(texte) {
   const brut = String(texte ?? '').trim();
   const m = /^(.*\S)\s*\(([^()]*)\)$/.exec(brut);
   if (m) {
-    const lu = { nom: m[1].trim(), jet: null, posture: null };
+    const lu = { nom: m[1].trim(), jet: null, posture: null, hyper: false, cent: false, critique: null };
     const parts = m[2].split(',').map((x) => x.trim()).filter(Boolean);
     let lisible = parts.length > 0;
     for (const part of parts) {
       const jet = /^jet\s+(\d+)$/i.exec(part);
       const posture = /^posture\s+(.+)$/i.exec(part);
+      const hyper = /^mode\s+hyper(\s+100\s*%)?$/i.exec(part);
+      const critique = /^critique\s+1\s+[àa]\s+(\d+)$/i.exec(part);
       if (jet && lu.jet === null) lu.jet = Number(jet[1]);
       else if (posture && lu.posture === null) lu.posture = posture[1].trim();
+      else if (hyper && !lu.hyper) Object.assign(lu, { hyper: true, cent: Boolean(hyper[1]) });
+      else if (critique && lu.critique === null) lu.critique = Number(critique[1]);
       else lisible = false;
     }
     if (lisible) return lu;
   }
-  return { nom: brut, jet: null, posture: null };
+  return { nom: brut, jet: null, posture: null, hyper: false, cent: false, critique: null };
 }
+
+/** Les mots de la ligne « Mode Hyper » de la note (décision R172) : son état, le Mode Hyper 100 %, le compteur de la semaine (« semaine 0/1 »). */
+export const MOTS_DU_MODE_HYPER = Object.freeze({ actif: 'actif', inactif: 'inactif', cent: '100 %', semaine: 'semaine' });
+
+/**
+ * Le Mode Hyper de la fiche dans la note (décision R172) : « actif », « actif, 100 % », « inactif, semaine 0/1 »… (`hyper` : modeHyperDe) ; '' quand il
+ * n'y a rien à noter (inactif, compteur au maximum).
+ */
+export function texteDuModeHyper(hyper) {
+  if (!hyper) return '';
+  const s = hyper.semaine && hyper.semaine.restantes < hyper.semaine.max ? `${MOTS_DU_MODE_HYPER.semaine} ${hyper.semaine.restantes}/${hyper.semaine.max}` : null;
+  if (!hyper.actif && !s) return '';
+  return [hyper.actif ? MOTS_DU_MODE_HYPER.actif : MOTS_DU_MODE_HYPER.inactif, hyper.cent.actif ? MOTS_DU_MODE_HYPER.cent : null, s].filter(Boolean).join(', ');
+}
+
+/**
+ * { mode_hyper, mode_hyper_100, semaine (les utilisations qui restent, ou null : non écrit) } d'un texte de texteDuModeHyper ; null s'il ne se lit pas
+ * en entier.
+ */
+export function lireModeHyper(texte) {
+  const parts = String(texte ?? '').split(',').map((x) => x.trim().toLowerCase()).filter(Boolean);
+  const etat = parts.shift();
+  if (etat !== MOTS_DU_MODE_HYPER.actif && etat !== MOTS_DU_MODE_HYPER.inactif) return null;
+  const lu = { mode_hyper: etat === MOTS_DU_MODE_HYPER.actif ? 1 : 0, mode_hyper_100: 0, semaine: null };
+  for (const part of parts) {
+    const semaine = /^semaine\s+(\d+)\s*(?:\/\s*\d+)?$/.exec(part);
+    if (/^100\s*%$/.test(part) && lu.mode_hyper && !lu.mode_hyper_100) lu.mode_hyper_100 = 1;
+    else if (semaine && lu.semaine === null) lu.semaine = Number(semaine[1]);
+    else return null;
+  }
+  return lu;
+}
+
+/**
+ * La ligne « Compteur d'action » d'un compteur entamé (décision R173 ; actionsDeLaFiche) : « <nom> (<source>) <restants>/<max> [<clé>] » ; le nom et la
+ * source se lisent, la clé (cleDAction) est ce que l'import relit. '' sans compteur entamé.
+ */
+export function texteDuCompteurDAction(action) {
+  const c = action?.compteur;
+  if (!c || c.restants >= c.max) return '';
+  return `${action.nom}${action.source ? ` (${action.source})` : ''} ${c.restants}/${c.max} [${action.cle}]`;
+}
+
+/** { cle, restants } d'un texte de texteDuCompteurDAction ; null s'il ne se lit pas (« N/M » puis la clé entre crochets, en fin de ligne). */
+export function lireCompteurDAction(texte) {
+  const m = /(?:^|\s)(\d+)\s*\/\s*\d+\s*\[([^\]\s]+)\]\s*$/.exec(String(texte ?? ''));
+  return m ? { cle: m[2], restants: Number(m[1]) } : null;
+}
+
+/**
+ * La ligne « Don obtenu » d'un choix d'un don « Variable » du Mage Bleu (décision R181) : « <don> (<classe>) : <entrée> (<magie de l'entrée>) » —
+ * « Mimétisme (Mage Bleu) : Moteur thermique (Feu) » ; les noms tels que les règles les écrivent, relus par lireDonObtenu.
+ */
+export const texteDuDonObtenu = ({ don, classe, entree, magie }) => `${don} (${classe})${SEPARATEUR_DE_CLE}${entree} (${magie})`;
+
+/** { don, classe, entree, magie } d'un texte de texteDuDonObtenu ; null s'il ne se lit pas (« : » puis un nom et sa parenthèse de chaque côté). */
+export function lireDonObtenu(texte) {
+  const t = String(texte ?? '').trim();
+  const i = t.indexOf(SEPARATEUR_DE_CLE);
+  if (i <= 0) return null;
+  const parenthese = (x) => {
+    const y = x.trim();
+    const o = y.lastIndexOf('(');
+    return o > 0 && y.endsWith(')') && y.slice(0, o).trim() && y.slice(o + 1, -1).trim() ? [y.slice(0, o).trim(), y.slice(o + 1, -1).trim()] : null;
+  };
+  const avant = parenthese(t.slice(0, i));
+  const apres = parenthese(t.slice(i + SEPARATEUR_DE_CLE.length));
+  return avant && apres ? { don: avant[0], classe: avant[1], entree: apres[0], magie: apres[1] } : null;
+}
+
+/**
+ * La ligne « Spécialisation magique » d'une magie dont la spécialisation est choisie (décision R236) : « <magie> : <spécialisation> » — « Nécromancie :
+ * LICHE » ; les noms tels que les règles les écrivent, relus par lireSpecialisation (la magie, puis la spécialisation parmi les siennes).
+ */
+export const texteDeLaSpecialisation = ({ magie, specialisation }) => `${magie}${SEPARATEUR_DE_CLE}${specialisation}`;
+
+/** { magie, specialisation } d'un texte de texteDeLaSpecialisation ; null s'il ne se lit pas (un nom de chaque côté du premier « : »). */
+export function lireSpecialisation(texte) {
+  const t = String(texte ?? '').trim();
+  const i = t.indexOf(SEPARATEUR_DE_CLE);
+  if (i <= 0) return null;
+  const magie = t.slice(0, i).trim();
+  const specialisation = t.slice(i + SEPARATEUR_DE_CLE.length).trim();
+  return magie && specialisation ? { magie, specialisation } : null;
+}
+
+/**
+ * Les spécialisations magiques choisies de la fiche (`specialisations_magie`) en noms : { magie, specialisation }, dans l'ordre des magies des règles,
+ * une par magie. Un choix dont la magie ou la spécialisation n'est plus dans les règles n'est pas écrit. Celui d'un mono-magie ou d'un Potentiel Illimité
+ * (sans effet, R236) est écrit comme les autres : la note garde ce que la fiche garde.
+ */
+export const specialisationsChoisies = (regles, f) => (regles.magies ?? []).flatMap((m) => {
+  const choix = (f.specialisations_magie ?? []).find((x) => x?.magie_id === m.id);
+  const s = choix && (m.specialisations ?? []).find((x) => x.id === choix.specialisation_id);
+  return s ? [{ magie: m.nom, specialisation: s.nom }] : [];
+});
 
 /** Un point d'une source de maîtrise pas encore choisi, dans la ligne « Maîtrise d'arme au choix » (comme « → ? » d'un accessoire). */
 export const POINT_A_CHOISIR = '?';
@@ -1150,17 +1276,18 @@ export function cellulesDeLaFiche(regles, fiche, { date = 'JJ/MM/AAAA', zones = 
     ecrire(cases.effet, texte, RELUE);
   });
 
-  // sorts : titre, magies, une ligne par sort dans l'ordre de la fiche (au NM du sort, comme construireSorts) ; seuls le nom et le NM sont relus
+  // sorts : titre, magies, une ligne par sort dans l'ordre de la fiche (au NM du sort, comme construireSorts) ; seuls le nom et le NM sont relus. « NPM … au
+  // plus » : le NPM des sorts (npmDesSorts : sous le plafond de la décision R188), comme « sorts jusqu'au NPM » de la page
   const emplacements = emplacementsDeSorts(regles, f);
   const nmDeLaFiche = maitriseDesSorts(regles, f);
-  ecrire(O.sorts.titre, `LISTE DE SORTS — ${emplacements.total} emplacement${emplacements.total > 1 ? 's' : ''} · NPM ${npmMax(regles, f)} au plus · NM ${nmDeLaFiche.comptes}/${nmDeLaFiche.disponibles}${nmDeLaFiche.mj ? ` + ${nmDeLaFiche.mj} du MJ` : ''}`);
+  ecrire(O.sorts.titre, `LISTE DE SORTS — ${emplacements.total} emplacement${emplacements.total > 1 ? 's' : ''} · NPM ${npmDesSorts(regles, f)} au plus · NM ${nmDeLaFiche.comptes}/${nmDeLaFiche.disponibles}${nmDeLaFiche.mj ? ` + ${nmDeLaFiche.mj} du MJ` : ''}`);
   if (innee) ecrire(O.sorts.magieInnee, innee.nom);
   if (acquise) ecrire(O.sorts.magieAcquise, acquise.nom);
   const acc = accessoiresDesSorts(regles, f);
   const sortsEnSuite = [];
   f.sorts.forEach((ligne, i) => {
     const sort = trouver(regles.sorts, ligne.sort_id);
-    const nm = nmDuSort(ligne).total;
+    const nm = nmDuSort(ligne, f).total;
     if (i >= PLACES_SORTS) {
       sortsEnSuite.push(texteDeSortEnSuite(sort?.nom ?? ligne.sort_id, nm));
       return;
@@ -1212,10 +1339,13 @@ export function cellulesDeLaFiche(regles, fiche, { date = 'JJ/MM/AAAA', zones = 
   if (innee && !innee.caracteristique_id && f.caracteristique_magie_id) noter(K.caracteristiqueMagie, nomDe(regles.caracteristiques, f.caracteristique_magie_id));
   if (f.symbiose_magie_id) noter(K.symbioseMagie, nomDe(regles.magies, f.symbiose_magie_id));
   noter(K.gains, texteDesGains(f));
-  noter(K.nmOfferts, texteDesNmOfferts(regles, f.sorts));
+  noter(K.nmOfferts, texteDesNmOfferts(regles, f));
   if (entier(f.nm_mj) > 0) noter(K.nmMj, String(entier(f.nm_mj)));
   const prepare = sortPrepare(regles, f);
   if (prepare) noter(K.sortPrepare, texteDuSortPrepare(prepare));
+  noter(K.modeHyper, texteDuModeHyper(hyper));
+  // les compteurs entamés des actions (décision R173), dans l'ordre de la liste de la page
+  for (const action of actionsDeLaFiche(regles, f)) noter(K.compteurAction, texteDuCompteurDAction(action));
   for (const [cle_, valeur] of accessoiresSansCase) noter(cle_, valeur);
   noter(K.donsClasse1, donsEnSuite[1].join(SEPARATEUR_DE_LISTE));
   noter(K.donsClasse2, donsEnSuite[2].join(SEPARATEUR_DE_LISTE));
@@ -1228,6 +1358,18 @@ export function cellulesDeLaFiche(regles, fiche, { date = 'JJ/MM/AAAA', zones = 
     const t = texteDesChoixDeMaitrise(regles, source);
     if (t) noter(K.maitriseChoix, t);
   }
+  // les entrées qu'obtiennent les dons « Variable » du Mage Bleu (décision R181), dans l'ordre de la fiche, puis les choix gardés sans effet d'un don qui
+  // n'est plus acquis ; une entrée inconnue des règles n'est pas écrite
+  const variables = donsVariables(regles, f);
+  const nomDeMagie = (e) => nomDe(regles.magies, e.magie_id);
+  for (const d of variables.dons) {
+    if (d.choisie) noter(K.donObtenu, texteDuDonObtenu({ don: d.don.nom, classe: d.classe.nom, entree: d.choisie.nom, magie: nomDeMagie(d.choisie) }));
+  }
+  for (const p of variables.perdus) {
+    if (p.don && p.classe && p.entree) noter(K.donObtenu, texteDuDonObtenu({ don: p.don.nom, classe: p.classe.nom, entree: p.entree.nom, magie: nomDeMagie(p.entree) }));
+  }
+  // les spécialisations magiques choisies (décision R236), une par magie dans l'ordre des règles : le tableur de la V15.2.2 n'a pas de case pour elles
+  for (const x of specialisationsChoisies(regles, f)) noter(K.specialisationMagique, texteDeLaSpecialisation(x));
   // ceux d'une armure cassée compris (décisions R157, R158) : gardés comme à l'enregistrement (acquisChoixGardes)
   for (const c of acquisChoixGardes(regles, f)) {
     const choisi = c.repartition ? c.parts.map((x) => `${nomDe(regles.competences, x.competence_id)} ${x.valeur}`).join(', ') : c.choisi && nomDe(regles.competences, c.choisi);

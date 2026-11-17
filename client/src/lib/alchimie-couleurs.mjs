@@ -1,4 +1,4 @@
-// Couleur d'une potion (sous-onglet Consommables de l'onglet « Ceinture » de la page /ressources/equipement/) : une RÈGLE du site, jamais une couleur
+// Couleur d'une potion (sous-onglet Consommables de la page Ceinture (/ressources/objets-a-la-ceinture/)) : une RÈGLE du site, jamais une couleur
 // relevée ligne par ligne (demande du propriétaire du 2026-10-22 : « Partout il faut utiliser Que les couleurs du site. Si le site n'a pas de règle il
 // ajoute une nouvelle couleur au site en se basant sur celle du classeur. Aucune couleur en dur. » ; puis, pour le texte : « Privilégé la lisibilité. »).
 //
@@ -30,7 +30,7 @@
 // suivante du site (l'éditeur réécrit les cases de la ligne, pas sa classe).
 // Couleurs sous forme de classes (choix du propriétaire du 2026-10-22, « Règle de calcul ») : la base d'une potion est une classe du site
 // (`base` : { famille, cle }, la classe `.couleur-<famille>-<cle>` de lib/palette-css.mjs) ; la nuance du niveau et le fond lisible se calculent depuis
-// elle, et la page Équipement n'émet la classe d'une combinaison (lib/palette-css.mjs#classeDePotion) que pour les potions qu'elle affiche.
+// elle, et la page Ceinture n'émet la classe d'une combinaison (lib/palette-css.mjs#classeDePotion) que pour les potions qu'elle affiche.
 // Sans dépendance (modules purs : attributs-couleurs.mjs, sort-format.mjs, caracteristiques-postures.mjs) ; importé par lib/ceinture-db.mjs,
 // lib/palette-css.mjs et les tests.
 import { couleurDAttribut } from './attributs-couleurs.mjs';

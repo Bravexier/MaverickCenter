@@ -10,6 +10,7 @@ import {
   corpsAvecMonnaies, corpsDuComposantApres, PAGE_DE_L_INVENTAIRE, PAGE_DES_ACCESSOIRES, PAGE_DES_ARMURES, PAGE_DES_BATONS, PAGE_DES_BOUCLIERS,
   PAGE_DES_INGREDIENTS, sectionDeLInventaire,
 } from '../src/lib/corps-composants.mjs';
+import { baseDImport } from './aide-base-d-import.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const corps = (id) => db.prepare('SELECT corps_md FROM page WHERE id = ?').get(id).corps_md;
@@ -30,11 +31,16 @@ test('MONNAIE et CONVERTISSEUR se refont à l’identique ; le convertisseur de 
   assert.equal(corpsAvecMonnaies(corps(PAGE_DE_L_INVENTAIRE), monnaies), corps(PAGE_DE_L_INVENTAIRE));
   const unite = monnaies.find((m) => m.valeur_rf === 1);
   for (const m of monnaies) assert.equal(convertisseurDeMonnaie(m, unite.abreviation), m.convertisseur_brut, m.id);
+  // l'unité seule (les autres supprimées sur le site de dev) : CONVERTISSEUR vidé, puis les monnaies remises : le corps revient à l'octet près
+  const seule = corpsAvecMonnaies(corps(PAGE_DE_L_INVENTAIRE), [unite]);
+  assert.doesNotMatch(seule.slice(seule.indexOf('### CONVERTISSEUR'), seule.indexOf('\n## ', seule.indexOf('### CONVERTISSEUR'))), /^- /m, 'convertisseur vide');
+  assert.equal(corpsAvecMonnaies(corpsAvecMonnaies(seule, [unite]), monnaies), corps(PAGE_DE_L_INVENTAIRE));
 });
 
 test('chaque objet de l’onglet « Équipement inventaire » retrouve sa ligne (prix, description)', () => {
+  // tous ceux de la base (le site de dev en supprime) ; quatre-vingt-cinq au moins à l'import
   const objets = db.prepare('SELECT * FROM ressource WHERE page_id = ?').all(PAGE_DE_L_INVENTAIRE);
-  assert.ok(objets.length >= 85);
+  assert.ok(baseDImport().prepare('SELECT count(*) AS n FROM ressource WHERE page_id = ?').get(PAGE_DE_L_INVENTAIRE).n >= 85, 'à l’import');
   for (const r of objets) allerRetour(PAGE_DE_L_INVENTAIRE, 'ressource', r, { prix_brut: 'zz', ...(sectionDeLInventaire(r).description ? { description: 'zz' } : {}) });
 });
 

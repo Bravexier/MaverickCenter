@@ -12,10 +12,12 @@ import { classeDAlignement, classeDePartie, cssDesFamilles, FAMILLES_DE_LA_FICHE
 
 // Fiche de personnage (demande du propriétaire) : création et modification d'un PRÉTIRÉ sur le même écran (/fiche/, /fiche/?id=<id>). Quatre zones,
 // sans cadre ni titre visibles (demandes du propriétaire) : I. l'identité (portrait, nom, surnom, origine, race, magies, classes, alignement, niveau seul) ; II. ce qu'on veut toujours
-// à portée (attributs, caractéristiques et compétences, sorts et le sort préparé (R115), dons débloqués et entraînement (R71), armes avec leur solidité (R74), les trois emplacements de la ceinture) ; III. ce qui
-// dépend de la situation (posture, initiative et vitesses, armure avec la défense totale et les dégâts reçus (R98), accessoires (R97), inventaire juste en
+// à portée (attributs — et, sur leur 2ᵉ ligne, AP, AM, initiative, vitesses et dégâts reçus (R98, R171) —, caractéristiques et compétences, sorts et le
+// sort préparé (R115), armes avec leur solidité (R74), les trois emplacements de la ceinture, les actions avec leurs compteurs puis les passifs (R173)) ; III. ce qui
+// dépend de la situation (posture, armure, accessoires (R97), inventaire juste en
 // dessous (demande du propriétaire du 2026-10-17), bouclier (R96), résistances et faiblesses) ; IV. ce qui se règle et se suit, en onglets (progression et
-// XP, choix — dont les maîtrises d'armes, demande du propriétaire du 2026-10-23 —, notes et événements, contrôle des règles). Compacte (demandes du
+// XP, choix — dont les maîtrises d'armes, demande du propriétaire du 2026-10-23 —, entraînement (R104, demande du propriétaire du 2026-10-29), notes
+// et événements, contrôle des règles). Compacte (demandes du
 // propriétaire) : les choix (race, ethnie, magies, classes, spécialités) dans des menus déroulants, caractéristiques, compétences et valeurs du moment
 // en curseurs. Les règles viennent
 // de la base (/fiche/regles.json, lib/fiche-regles.mjs), les calculs de lib/fiche-moteur.mjs, l'enregistrement du service des personnages (/api/,
@@ -81,17 +83,36 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
     <section class:list={['fiche-zone fiche-zone--identite', classeDeZone('identite')]} id="zone-identite" aria-labelledby="titre-zone-identite">
       <h2 class="fiche-zone__titre" id="titre-zone-identite"><span class="fiche-zone__numero" aria-hidden="true">I</span>Identité</h2>
       <div class="fiche-etape identite" id="etape-identite">
-        {/* portrait (demande du propriétaire) : le logo en attendant une image ; une image choisie se recadre (src/scripts/fiche.mjs#construirePortrait) */}
-        <figure class="portrait" id="portrait">
-          <div class="portrait__cadre">
-            <img class="portrait__image" id="portrait-image" src={url('logo.webp')} data-defaut={url('logo.webp')} alt="Portrait du personnage (logo en attendant une image)" width="512" height="512" />
-          </div>
-          <figcaption class="portrait__actions">
-            <label class="fiche-bouton-fichier"><input type="file" id="portrait-fichier" accept="image/*" hidden /><span role="button" tabindex="0" id="portrait-choisir">Choisir une image</span></label>
-            <button type="button" id="portrait-recadrer" hidden>Recadrer</button>
-            <button type="button" class="retirer" id="portrait-retirer" hidden aria-label="Retirer le portrait" title="Retirer le portrait">✕</button>
-          </figcaption>
-        </figure>
+        {/* à gauche, le portrait puis l'alignement dessous (demande du propriétaire du 2026-11-13) */}
+        <div class="identite__gauche">
+          {/* portrait (demande du propriétaire) : le logo en attendant une image ; une image choisie se recadre (src/scripts/fiche.mjs#construirePortrait) */}
+          <figure class="portrait" id="portrait">
+            <div class="portrait__cadre">
+              <img class="portrait__image" id="portrait-image" src={url('logo.webp')} data-defaut={url('logo.webp')} alt="Portrait du personnage (logo en attendant une image)" width="512" height="512" />
+            </div>
+            <figcaption class="portrait__actions">
+              <label class="fiche-bouton-fichier"><input type="file" id="portrait-fichier" accept="image/*" hidden /><span role="button" tabindex="0" id="portrait-choisir">Choisir une image</span></label>
+              <button type="button" id="portrait-recadrer" hidden>Recadrer</button>
+              <button type="button" class="retirer" id="portrait-retirer" hidden aria-label="Retirer le portrait" title="Retirer le portrait">✕</button>
+            </figcaption>
+          </figure>
+          {/* alignement (demande du propriétaire) : une jauge à deux bornes par axe, Loi/Chaos puis Bien/Mal, chaque borne avec son score modifiable,
+              cinq crans entre elles (cransDAlignement : calés sur la pastille), et l'alignement qui en résulte dessous */}
+          <fieldset class="alignement">
+            <legend>Alignement</legend>
+            <span class="alignement__axe">
+              <label><span>Loyal</span><input type="number" min="0" step="1" data-champ="alignement_loyal" data-entier aria-label="Loyal" /></label>
+              <span class="alignement__jauge" id="alignement-jauge-loi" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+              <label><input type="number" min="0" step="1" data-champ="alignement_chaotique" data-entier aria-label="Chaotique" /><span>Chaotique</span></label>
+            </span>
+            <span class="alignement__axe">
+              <label><span>Bon</span><input type="number" min="0" step="1" data-champ="alignement_bon" data-entier aria-label="Bon" /></label>
+              <span class="alignement__jauge" id="alignement-jauge-bien" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+              <label><input type="number" min="0" step="1" data-champ="alignement_mauvais" data-entier aria-label="Mauvais" /><span>Mauvais</span></label>
+            </span>
+            <output class={`alignement__resultat teinte-palette ${classeDAlignement('Neutre')}`} id="alignement-resultat" aria-live="polite">Neutre</output>
+          </fieldset>
+        </div>
 
         <div class="identite__corps">
           <div class="identite__tete">
@@ -102,19 +123,9 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
           <div class="identite__ligne">
             <label class="fiche-champ"><span>Surnom</span><input data-champ="surnom" maxlength="120" autocomplete="off" /></label>
             <label class="fiche-champ"><span>Lieu d’origine</span><input data-champ="lieu_origine" maxlength="120" autocomplete="off" /></label>
-            {/* alignement (demande du propriétaire) : les quatre scores serrés, axe Loi/Chaos puis axe Bien/Mal, et l'alignement qui en résulte à côté */}
-            <fieldset class="alignement">
-              <legend>Alignement</legend>
-              <span class="alignement__axe">
-                <label title="Loyal"><span aria-hidden="true">L</span><input type="number" min="0" step="1" data-champ="alignement_loyal" data-entier aria-label="Loyal" /></label>
-                <label title="Chaotique"><span aria-hidden="true">C</span><input type="number" min="0" step="1" data-champ="alignement_chaotique" data-entier aria-label="Chaotique" /></label>
-              </span>
-              <span class="alignement__axe">
-                <label title="Bon"><span aria-hidden="true">B</span><input type="number" min="0" step="1" data-champ="alignement_bon" data-entier aria-label="Bon" /></label>
-                <label title="Mauvais"><span aria-hidden="true">M</span><input type="number" min="0" step="1" data-champ="alignement_mauvais" data-entier aria-label="Mauvais" /></label>
-              </span>
-              <output class={`alignement__resultat teinte-palette ${classeDAlignement('Neutre')}`} id="alignement-resultat" aria-live="polite">Neutre</output>
-            </fieldset>
+            {/* le métier, facultatif, à droite du lieu d'origine (demande du propriétaire du 2026-11-13) ; ce qu'il donne et ses choix sont dans le cadre
+                « Choix » */}
+            <label class="choix-liste"><span class="choix__etiquette">Métier</span><select data-champ="metier_id" id="metiers"><option value="">Sans métier (facultatif)</option></select></label>
           </div>
 
           {/* race, magies, classes : trois colonnes de menus déroulants ; le panneau d'un menu s'étend sur les trois */}
@@ -122,12 +133,18 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
             <div class="identite__colonne" aria-label="Race">
               <details class="choix" id="choix-race"><summary><span class="choix__etiquette">Race</span><span class="choix__valeur" id="valeur-race"></span></summary><div class="choix__panneau"><div id="races" class="groupes-pastilles"></div></div></details>
               <details class="choix" id="choix-ethnie" hidden><summary><span class="choix__etiquette">Ethnie</span><span class="choix__valeur" id="valeur-ethnie"></span></summary><div class="choix__panneau"><ul id="ethnies" class="pastilles"></ul></div></details>
-              {/* le métier, facultatif, sous l'ethnie (demande du propriétaire) ; ce qu'il donne et ses choix sont dans le cadre « Choix » */}
-              <label class="choix-liste"><span class="choix__etiquette">Métier</span><select data-champ="metier_id" id="metiers"><option value="">Sans métier (facultatif)</option></select></label>
             </div>
             <div class="identite__colonne" aria-label="Magies">
-              <details class="choix" id="choix-magie-innee"><summary><span class="choix__etiquette">Magie innée</span><span class="choix__valeur" id="valeur-magie-innee"></span></summary><div class="choix__panneau"><ul id="magies-innees" class="pastilles"></ul></div></details>
-              <details class="choix" id="choix-magie-acquise"><summary><span class="choix__etiquette">Magie acquise</span><span class="choix__valeur" id="valeur-magie-acquise"></span></summary><div class="choix__panneau"><ul id="magies-acquises" class="pastilles"></ul></div></details>
+              {/* chaque magie, sa spécialisation à côté, montrée pour un bi-magie seul (décision R236 (3) ; demande du propriétaire du 2026-11-13) ;
+                  remplie par src/scripts/fiche.mjs#construireSpecialisationsDeLIdentite */}
+              <div class="identite__paire">
+                <details class="choix" id="choix-magie-innee"><summary><span class="choix__etiquette">Magie innée</span><span class="choix__valeur" id="valeur-magie-innee"></span></summary><div class="choix__panneau"><ul id="magies-innees" class="pastilles"></ul></div></details>
+                <details class="choix" id="choix-specialisation-innee" hidden><summary><span class="choix__etiquette">Spécialisation</span><span class="choix__valeur" id="valeur-specialisation-innee"></span></summary><div class="choix__panneau"><ul id="specialisation-innee" class="pastilles"></ul></div></details>
+              </div>
+              <div class="identite__paire">
+                <details class="choix" id="choix-magie-acquise"><summary><span class="choix__etiquette">Magie acquise</span><span class="choix__valeur" id="valeur-magie-acquise"></span></summary><div class="choix__panneau"><ul id="magies-acquises" class="pastilles"></ul></div></details>
+                <details class="choix" id="choix-specialisation-acquise" hidden><summary><span class="choix__etiquette">Spécialisation</span><span class="choix__valeur" id="valeur-specialisation-acquise"></span></summary><div class="choix__panneau"><ul id="specialisation-acquise" class="pastilles"></ul></div></details>
+              </div>
               <div class="identite__dieux">
                 <p class="fiche-champ"><span>Dieu inné</span><strong id="dieu-inne">—</strong></p>
                 <label class="fiche-champ"><span>Dieu choisi</span><select data-champ="dieu_choisi_id" id="dieux"><option value="">—</option></select></label>
@@ -136,10 +153,15 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
             <div class="identite__colonne" aria-label="Classes">
               {/* une case « Bi-classé » (demande du propriétaire) : décochée, mono-classe (la seconde classe vient au niveau 11, décision R2) */}
               <label class="fiche-coche identite__bi"><input type="checkbox" id="bi-classe" /> Bi-classé</label>
-              <details class="choix" id="choix-classe-1"><summary><span class="choix__etiquette" id="titre-classe-1">Classe</span><span class="choix__valeur" id="valeur-classe-1"></span></summary><div class="choix__panneau"><div id="classe-1" class="groupes-pastilles groupes-pastilles--classes"></div></div></details>
-              <details class="choix" id="choix-specialite-1" hidden><summary><span class="choix__etiquette" id="titre-specialite-1">Spécialité</span><span class="choix__valeur" id="valeur-specialite-1"></span></summary><div class="choix__panneau"><ul id="specialite-1" class="pastilles"></ul></div></details>
-              <details class="choix" id="choix-classe-2" hidden><summary><span class="choix__etiquette" id="titre-classe-2">Seconde classe</span><span class="choix__valeur" id="valeur-classe-2"></span></summary><div class="choix__panneau"><div id="classe-2" class="groupes-pastilles groupes-pastilles--classes"></div></div></details>
-              <details class="choix" id="choix-specialite-2" hidden><summary><span class="choix__etiquette" id="titre-specialite-2">Spécialité</span><span class="choix__valeur" id="valeur-specialite-2"></span></summary><div class="choix__panneau"><ul id="specialite-2" class="pastilles"></ul></div></details>
+              {/* chaque classe, sa spécialité à côté (demande du propriétaire du 2026-11-13) */}
+              <div class="identite__paire">
+                <details class="choix" id="choix-classe-1"><summary><span class="choix__etiquette" id="titre-classe-1">Classe</span><span class="choix__valeur" id="valeur-classe-1"></span></summary><div class="choix__panneau"><div id="classe-1" class="groupes-pastilles groupes-pastilles--classes"></div></div></details>
+                <details class="choix" id="choix-specialite-1" hidden><summary><span class="choix__etiquette" id="titre-specialite-1">Spécialité</span><span class="choix__valeur" id="valeur-specialite-1"></span></summary><div class="choix__panneau"><ul id="specialite-1" class="pastilles"></ul></div></details>
+              </div>
+              <div class="identite__paire">
+                <details class="choix" id="choix-classe-2" hidden><summary><span class="choix__etiquette" id="titre-classe-2">Seconde classe</span><span class="choix__valeur" id="valeur-classe-2"></span></summary><div class="choix__panneau"><div id="classe-2" class="groupes-pastilles groupes-pastilles--classes"></div></div></details>
+                <details class="choix" id="choix-specialite-2" hidden><summary><span class="choix__etiquette" id="titre-specialite-2">Spécialité</span><span class="choix__valeur" id="valeur-specialite-2"></span></summary><div class="choix__panneau"><ul id="specialite-2" class="pastilles"></ul></div></details>
+              </div>
             </div>
           </div>
         </div>
@@ -158,6 +180,15 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
               <div id="attributs-barres" class="attributs"></div>
               <div id="attributs-corruption" class="attributs-corruption"></div>
             </div>
+            {/* la 2ᵉ ligne (demande du propriétaire, 2026-10-29 : « une 2em ligne où tu y déplacera : les AP / AM / Vitesse et initiative , ainsi que
+                l'interface pour les dégâts reçu ») : l'AP et l'AM totaux sur la partie touchée (décision R98), l'initiative, la vitesse et la nage en
+                tuiles, puis les dégâts reçus (décisions R98, R171 : type et élément, cases de la barrière, « Appliquer » ;
+                src/scripts/fiche.mjs#construireDefense) */}
+            <div class="attributs-ligne2">
+              <ul id="defense-tuiles" class="defense__tuiles" aria-label="Armure totale"></ul>
+              <ul id="attributs-pastilles" class="fiche-resume attributs-pastilles" aria-label="Initiative et vitesses"></ul>
+            </div>
+            <div id="defense" class="defense"></div>
           </div>
         </section>
 
@@ -181,7 +212,7 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
               <div id="armes" class="equipement equipement--armes"></div>
             </div>
           </section>
-          {/* la ceinture : 3 emplacements d'objets rapides, utilisables en IC (guide « Fiche de personnage : Accessoires et Ceinture ») ; chacun prend un objet
+          {/* la ceinture : 3 emplacements d'objets rapides, utilisables en IC (section « Ceinture » de la page « Inventaire/Sac à dos » du guide, R272) ; chacun prend un objet
               du sac, qui le quitte, et se règle par « Utiliser », « Remplir » et « Ranger » (décision R89) ; l'aide est refaite par le script d'après les règles,
               un nom refusé (absent du sac) dit pourquoi dans #ceinture-refus */}
           <section class="fiche-etape" id="etape-ceinture" aria-labelledby="titre-ceinture">
@@ -194,6 +225,16 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
               <p class="fiche-aide" id="ceinture-aide">3 emplacements d’objets rapides, utilisables en IC ; les carquois, sacs de bombes ou de pierres doivent être à la ceinture pour servir.</p>
             </div>
           </section>
+          {/* les actions utilisables, juste sous la ceinture (décision R173) : dons de classe Action, Actif et Réaction, don de base de la race, effets
+              d'accessoire activables, capacités des armes élémentaires et effets de l'armure élémentaire portées ; le nom d'une action à compteur la
+              consomme, « Fin de combat » remet au maximum les compteurs par combat ; refaites par src/scripts/fiche.mjs#construireActions */}
+          <section class="fiche-etape" id="etape-actions" aria-labelledby="titre-actions">
+            <h3 id="titre-actions">Actions</h3>
+            <div class="fiche-etape__corps">
+              <ul id="actions" class="dons-liste actions-liste" aria-labelledby="titre-actions"></ul>
+              <p class="actions__pied"><button type="button" id="fin-de-combat" title="Remet au maximum les compteurs « par combat » (ceux par jour, semaine… ne remontent qu’à la main) et lâche le sort préparé">Fin de combat</button></p>
+            </div>
+          </section>
         </div>
 
         <section class="fiche-etape zp-sorts" id="etape-sorts" aria-labelledby="titre-sorts">
@@ -203,28 +244,25 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
             <div class="fiche-defile"><table class="fiche-table fiche-table--sorts" id="sorts"></table></div>
             {/* le sort préparé (décision R115, présentation validée par le propriétaire) : avec « Préparation » (Mage Rouge) ou « Chargement » (Mage
                 Vert), un seul des sorts que le don autorise, le jet de magie (D100), la posture du moment enregistrée à la préparation, et « Lâcher le
-                sort » qui remet tout à zéro ; refait par src/scripts/fiche.mjs#construireSortPrepare */}
+                sort » qui remet tout à zéro ; refait par src/scripts/fiche.mjs#construireSortPrepare. Sous les champs (décision R182) : la plage de
+                réussite critique figée à la préparation, sans verdict sur le jet, et le rappel de « Double coup » quand le personnage l'a */}
             <div class="sort-prepare" id="sort-prepare-bloc" hidden>
               <div class="fiche-entete-bloc"><h4 class="fiche-sous-titre" id="titre-sort-prepare">Sort préparé</h4><p class="fiche-aide" id="sort-prepare-aide"></p></div>
               <div class="sort-prepare__champs" id="sort-prepare" role="group" aria-labelledby="titre-sort-prepare"></div>
+              <p class="sort-prepare__critique" id="sort-prepare-critique" aria-live="polite" hidden></p>
+              <p class="fiche-aide sort-prepare__rappel" id="sort-prepare-rappel" hidden></p>
             </div>
           </div>
         </section>
 
-        {/* rappel des dons (demande du propriétaire) : ceux de la race (don de base d'abord), puis ceux des classes, débloqués au niveau atteint */}
-        <section class="fiche-etape zp-dons" id="etape-dons" aria-labelledby="titre-dons">
-          <h3 id="titre-dons">Dons débloqués</h3>
+        {/* les passifs, juste après les actions (décision R173 ; ils remplacent les « Dons débloqués ») : ceux de la race (sans le don de base, une
+            action), puis les dons de classe débloqués qui ne sont pas des actions, puis l'équipement, ses effets tels qu'écrits */}
+        <section class="fiche-etape zp-dons" id="etape-passifs" aria-labelledby="titre-passifs">
+          <h3 id="titre-passifs">Passifs</h3>
           <div class="fiche-etape__corps">
             <div><h4 class="fiche-sous-titre">Dons raciaux</h4><ul id="dons-race" class="dons-liste" aria-label="Dons de la race"></ul></div>
-            {/* « Entraînement » (décision R104) : des lignes qu'on ajoute — une compétence et ses points (dans l'Acquis), un livre de sort (son NM), un
-                texte libre (« dons évènementiels ») */}
-            <div class="dons-entrainement">
-              <h4 class="fiche-sous-titre" id="titre-entrainement">Entraînement</h4>
-              <ul id="entrainement" class="entrainement" aria-labelledby="titre-entrainement"></ul>
-              <p class="entrainement__ajouts" id="entrainement-ajouts"></p>
-              <p class="fiche-aide" id="entrainement-aide">{entrainement && <Fragment><cite>{entrainement.titre}</cite> : « {entrainement.texte} » </Fragment>}Les points d’une compétence s’ajoutent à son acquis ; un livre de sort lui donne un NM, qui ne compte pas dans le décompte des NM ; un texte libre note un don évènementiel ou ce que le MJ accorde.</p>
-            </div>
             <div><h4 class="fiche-sous-titre">Dons de classe</h4><div id="dons-classes" class="dons-classes"></div></div>
+            <div><h4 class="fiche-sous-titre">Équipement</h4><ul id="passifs-equipement" class="dons-liste" aria-label="Effets de l’équipement porté"></ul></div>
             {/* les bonus d'acquis « X ou Y » des dons débloqués (décision R104) : la compétence se choisit ici */}
             <div id="acquis-choix-bloc" hidden><h4 class="fiche-sous-titre" id="titre-acquis-choix">Acquis à choisir</h4><ul id="acquis-choix" class="acquis-choix" aria-labelledby="titre-acquis-choix"></ul></div>
             <div id="acquis-non-comptes-bloc" hidden><h4 class="fiche-sous-titre" id="titre-acquis-non-comptes">Bonus d’acquis non comptés</h4><ul id="acquis-non-comptes" class="acquis-non-comptes" aria-labelledby="titre-acquis-non-comptes"></ul></div>
@@ -251,9 +289,7 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
           <section class="fiche-etape" id="etape-armure" aria-labelledby="titre-armure">
             <h3 id="titre-armure">Armure</h3>
             <div class="fiche-etape__corps">
-              {/* la défense totale (AP, AM ; le bouclier à part : compté en parade partielle) et les dégâts reçus (décision R98 : src/scripts/fiche.mjs#construireDefense) */}
-              <div id="defense" class="defense"></div>
-              {/* une armure complète, son amélioration et son élément, puis la solidité de chacune de ses parties (décision R95) */}
+              {/* la défense totale et les dégâts reçus sont dans la 2ᵉ ligne des attributs (zone II) ; une armure complète, son amélioration et son élément, puis la solidité de chacune de ses parties (décision R95) */}
               <div id="armures" class="equipement"></div>
             </div>
           </section>
@@ -281,12 +317,6 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
         </div>
 
         <div class="zs-droite">
-          <section class="fiche-etape" id="etape-mouvement" aria-labelledby="titre-mouvement">
-            <h3 id="titre-mouvement">Initiative et vitesses</h3>
-            <div class="fiche-etape__corps">
-              <ul id="attributs-pastilles" class="fiche-resume attributs-pastilles" aria-label="Initiative et vitesses"></ul>
-            </div>
-          </section>
           <section class="fiche-etape" id="etape-resistances" aria-labelledby="titre-resistances">
             <h3 id="titre-resistances">Résistances et faiblesses</h3>
             <div class="fiche-etape__corps">
@@ -311,6 +341,7 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
         <div class="parametres__onglets">
           <a class="onglet is-active" id="onglet-progression" href="#etape-progression">Progression</a>
           <a class="onglet" id="onglet-choix" href="#etape-choix">Choix <span class="onglet__compte onglet__compte--attente" id="choix-compte" hidden></span></a>
+          <a class="onglet" id="onglet-entrainement" href="#etape-entrainement">Entraînement</a>
           <a class="onglet" id="onglet-jeu" href="#etape-jeu">Notes et événements</a>
           <a class="onglet" id="onglet-controles" href="#etape-controles">Contrôle <span class="onglet__compte" id="controles-compte" hidden></span></a>
         </div>
@@ -332,12 +363,14 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
                 <button type="button" id="xp-annuler">Annuler</button>
               </form>
             </div>
-            {/* gains de niveau (décision R73) : deux totaux, santé et chakra ; le total attribué et le total à saisir, l'aide (src/scripts/fiche.mjs#construireProgression) */}
+            {/* gains de niveau (décision R73) : deux totaux, santé et chakra ; le total attribué et le total à saisir, l'aide (src/scripts/fiche.mjs#construireProgression) ;
+                 pour un Potentiel Illimité inné seulement, la santé attribuée et son plafond (décision R225 : `gains-sante-potentiel`, caché sinon) */}
             <div><h4 class="fiche-sous-titre">Gains de niveau</h4><p class="fiche-aide" id="progression-aide"></p>
               <div id="progression" class="gains">
                 <label class="gains__champ gains__champ--sante"><span>Santé</span><input type="number" min="0" step="1" inputmode="numeric" data-champ="gains_sante" data-entier id="gains-sante" /></label>
                 <label class="gains__champ gains__champ--chakra"><span>Chakra</span><input type="number" min="0" step="1" inputmode="numeric" data-champ="gains_chakra" data-entier id="gains-chakra" /></label>
                 <output class="gains__total" id="gains-total" for="gains-sante gains-chakra"></output>
+                <output class="gains__total" id="gains-sante-potentiel" for="gains-sante" hidden></output>
               </div>
             </div>
           </div>
@@ -370,7 +403,13 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
             <div class="parametres__pile">
               {/* la spécialité de chaque classe qui y a droit, aussi choisie ici (demande du propriétaire : « le doubler dans le menu de choix ») */}
               <div id="choix-specialites" class="choix-specialites" hidden></div>
+              {/* la spécialisation de chaque magie d'un bi-magie (décision R236 (3)), dès que le NPM des sorts atteint le seuil ; remplie par
+                  src/scripts/fiche.mjs#construireChoixSpecialisationsMagie */}
+              <div id="choix-specialisations-magie" class="choix-specialites" hidden></div>
               <div><h4 class="fiche-sous-titre">Dons de classe à choisir</h4><div id="dons" class="fiche-etape__dons"></div></div>
+              {/* l'entrée qu'obtient chaque don « Variable » du Mage Bleu (décision R181) : une entrée du tableau du bas de la classe, de la magie innée (ou
+                  acquise pour Secondaire), chacune une seule fois ; remplis par src/scripts/fiche.mjs#construireDonsObtenus */}
+              <div id="dons-obtenus-bloc" hidden><h4 class="fiche-sous-titre">Dons obtenus (dons « Variable »)</h4><div id="dons-obtenus" class="fiche-etape__dons"></div></div>
             </div>
             {/* les maîtrises d'armes, sur toute la largeur du panneau, sous les deux piles (demande du propriétaire du 2026-10-23 : « La partie maitrise
                 d'arme vont déscendre dans l'encart des "choix" ») ; leur rendu ne change pas (décision R148, variante A de la maquette retenue par le
@@ -391,6 +430,19 @@ if (!client && process.env.SITE_GOOGLE_CLIENT_ID?.trim()) console.warn('[fiche] 
                 </div>
               </div>
             </div>
+          </div>
+        </section>
+
+        {/* « Entraînement » (décision R104), dans son onglet, juste après « Choix » (demande du propriétaire du 2026-10-29 : « Le tableau d'entrainement
+            devrait être dans un onglet à part à coté des choix. ») : des lignes qu'on ajoute — une compétence et ses points (dans l'Acquis), un livre de
+            sort (son NM ; sur n'importe quel sort des magies du personnage, en attente tant que le sort n'est pas choisi : décision R169), un texte
+            libre (« dons évènementiels ») ; remplies par src/scripts/fiche.mjs#construireEntrainement */}
+        <section class="fiche-etape parametres__panneau" id="etape-entrainement" aria-labelledby="titre-entrainement">
+          <h3 class="parametres__titre" id="titre-entrainement">Entraînement</h3>
+          <div class="fiche-etape__corps entrainement-panneau">
+            <ul id="entrainement" class="entrainement" aria-labelledby="titre-entrainement"></ul>
+            <p class="entrainement__ajouts" id="entrainement-ajouts"></p>
+            <p class="fiche-aide" id="entrainement-aide">{entrainement && <Fragment><cite>{entrainement.titre}</cite> : « {entrainement.texte} » </Fragment>}Les points d’une compétence s’ajoutent à son acquis ; un livre de sort donne un NM à son sort, qui ne compte pas dans le décompte des NM, et attend tant que le sort n’est pas choisi ; un texte libre note un don évènementiel ou ce que le MJ accorde.</p>
           </div>
         </section>
 

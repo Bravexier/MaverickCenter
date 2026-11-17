@@ -6,6 +6,14 @@
 // Node seulement (la base est ouverte par lib/donnees.mjs au build). Une requête par table, puis assemblage en mémoire.
 import { celluleDeNoteDuDon } from './corps-races.mjs';
 import { HYBRIDES_SANS_CLASSE_RACIALE, TAG_RACE_HYBRIDE } from './race-kinds.mjs';
+import { nomDuProtege } from './mots-cles-proteges.mjs';
+import { etiquettesDesPages } from './pages-db.mjs';
+
+/**
+ * Les pages qui portent le mot-clé « race hybride » (TAG_RACE_HYBRIDE), reconnu par son id, ou par sa clé tant qu'il n'en a pas
+ * (lib/mots-cles-proteges.mjs#nomDuProtege ; décision R195 : jamais par son écriture) : Set de page_id.
+ */
+export const pagesDeLaRaceHybride = (db) => new Set(etiquettesDesPages(db).filter((t) => nomDuProtege(t) === TAG_RACE_HYBRIDE).map((t) => t.page_id));
 import { blocsDeTexte } from './sort-format.mjs';
 
 const apres = (id, separateur) => id.slice(id.indexOf(separateur) + separateur.length);
@@ -45,8 +53,8 @@ export function chargerRaces(db) {
     all("SELECT id, race_id, nom, effet FROM mode_hyper_effet WHERE version = 'onglet_race' AND portee = 'race'").map((h) => [h.race_id, h]),
   );
   const onglets = new Map(all('SELECT * FROM race_onglet').map((o) => [o.race_id, o]));
-  // races créées hybrides depuis le site de dev, avant leur classe raciale (même règle que lib/race-kinds.mjs#raceKind)
-  const marqueesHybrides = new Set(db.prepare('SELECT t.page_id FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id WHERE m.libelle_cle = ?').all(TAG_RACE_HYBRIDE).map((t) => t.page_id));
+  // races créées hybrides depuis le site de dev, avant leur classe raciale (même règle que lib/race-kinds.mjs#raceKind : le mot-clé par son id, R195)
+  const marqueesHybrides = pagesDeLaRaceHybride(db);
 
   const races = new Map();
   for (const r of all('SELECT * FROM race ORDER BY ordre')) {
@@ -62,6 +70,9 @@ export function chargerRaces(db) {
       slug,
       nom: r.nom,
       ordre: r.ordre,
+      // place dans la liste des races (menu latéral, /races/, tableau des magies innées : migration 0092) ; null = pas encore rangée, en fin de liste,
+      // par nom (comparerRangsDeListe). La fiche et /magies/ gardent ORDRE_DES_RACES (lib/race-kinds.mjs), race.ordre reste l'ordre de l'onglet « Race »
+      rangListe: r.rang_liste ?? null,
       presentation: r.presentation,
       onglet: o?.onglet ?? null,
       // valeurs de départ de l'onglet (« DONNÉES »)
@@ -125,4 +136,35 @@ export function chargerRaces(db) {
       echelle: all('SELECT id, libelle, ordre FROM echelle_relation ORDER BY ordre'),
     },
   };
+}
+
+/**
+ * L'ordre de la liste des races (migration 0092, réponse du propriétaire « /races/ suit, le reste figé » : le menu latéral des races, la liste /races/
+ * et le tableau des magies innées en bas de /races/) : `rang_liste` croissant, une race sans rang (NULL : créée sur le site de dev avant d'être
+ * rangée) en fin de liste, puis le nom à égalité — comme `ORDER BY rang_liste IS NULL, rang_liste, nom`. Pour trier des races de chargerRaces
+ * (`{ rangListe, nom }`) ; la fiche et /magies/ gardent ORDRE_DES_RACES (lib/race-kinds.mjs).
+ */
+export const comparerRangsDeListe = (a, b) =>
+  Number(a.rangListe === null || a.rangListe === undefined) - Number(b.rangListe === null || b.rangListe === undefined)
+  || (a.rangListe ?? 0) - (b.rangListe ?? 0) || (a.nom < b.nom ? -1 : a.nom > b.nom ? 1 : 0);
+
+/**
+ * Les races de la base en deux groupes, dans l'ordre de la liste (comparerRangsDeListe) : { pures, hybrides }, chacune { id, nom, rang_liste }. Une race
+ * est hybride si elle a sa classe raciale (catégorie « Classe Hybride Animal », même nom), si c'est une exception du propriétaire (le Drassah'thac,
+ * décision R14) ou si elle a été créée hybride sur le site de dev avant sa classe raciale (mot-clé « race hybride ») : la règle de chargerRaces et de
+ * lib/race-kinds.mjs#raceKind. Lu par le service (l'opération `ordonner` d'un groupe, GET /api/edition/plan/). Une base d'avant la migration 0092
+ * (sans la colonne) : `rang_liste` null partout.
+ * @param {import('node:sqlite').DatabaseSync} db
+ */
+export function racesParNature(db) {
+  const avecRang = db.prepare('PRAGMA table_info(race)').all().some((c) => c.name === 'rang_liste');
+  const raciales = new Set(db.prepare("SELECT nom_cle FROM classe WHERE categorie_id = 'classe-hybride-animal'").all().map((c) => c.nom_cle));
+  const marquees = pagesDeLaRaceHybride(db);
+  const groupes = { pures: [], hybrides: [] };
+  for (const r of db.prepare(`SELECT id, nom, ${avecRang ? 'rang_liste' : 'NULL AS rang_liste'} FROM race`).all()) {
+    const hybride = raciales.has(apres(r.id, '/')) || HYBRIDES_SANS_CLASSE_RACIALE.has(r.id) || marquees.has(r.id);
+    groupes[hybride ? 'hybrides' : 'pures'].push({ id: r.id, nom: r.nom, rang_liste: r.rang_liste });
+  }
+  const ordre = (a, b) => comparerRangsDeListe({ rangListe: a.rang_liste, nom: a.nom }, { rangListe: b.rang_liste, nom: b.nom });
+  return { pures: groupes.pures.sort(ordre), hybrides: groupes.hybrides.sort(ordre) };
 }

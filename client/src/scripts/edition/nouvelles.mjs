@@ -5,20 +5,27 @@
 //   - l'adresse d'une entité créée tombe sur la page 404 du site : on y dessine sa page à partir de la base vivante, avec ses champs modifiables
 //     (les mêmes attributs `data-ed` que les gabarits), pour la compléter ; une classe créée y reçoit aussi ses spécialités et ses dons (D11 :
 //     src/scripts/edition/classes.mjs) ;
-//   - l'adresse d'un don créé (sa fiche n'existe pas encore) mène à son ancre sur la page de sa classe.
+//   - l'adresse d'un don créé (sa fiche n'existe pas encore) mène à son ancre sur la page de sa classe ;
+//   - une page des Règles créée (lot de l'édition des menus : « + Ajouter une page », « Créer la page » d'une entrée « bientôt » ; edition/menus.mjs) :
+//     à son adresse /regles/<slug>/, sa page comme PageDuGuide.astro, à côté du menu latéral de son onglet (MenuLateral.astro, d'après le plan vivant,
+//     GET /api/edition/plan/) — fil d'Ariane, titre modifiable, son texte (un morceau, « À compléter. ») et un bandeau « Page créée sur le site de dev » ;
+//     l'extension `guide` prend ensuite le relais (titre, résumé, texte en place), `menus` le menu (ordre, onglet, suppression).
+import menuLateralCss from '../../styles/guide/menu-lateral.css?raw';
+import guideBlocsCss from '../../styles/guide/blocs.css?raw';
 import raceBaseCss from '../../styles/race/base.css?raw';
 import racePageCss from '../../styles/race/page.css?raw';
 import raceRelationsCss from '../../styles/race/relations.css?raw';
 import classeBaseCss from '../../styles/classe/base.css?raw';
 import classePageCss from '../../styles/classe/page.css?raw';
-import { CLASS_GROUPS } from '../../lib/class-groups.mjs';
+import { CLASS_GROUPS, groupeDesMotsCles } from '../../lib/class-groups.mjs';
 import { attributEd, ENTITES } from '../../lib/edition-modele.mjs';
 import { echapperHtml } from '../../lib/edition-rendu.mjs';
+import { entreesDuPlanVivant, htmlDUneEntree } from '../../lib/ordre-des-menus.mjs';
 // la couleur d'une race ou d'une classe créée : la classe de sa nature ou de sa catégorie, comme les gabarits (familles `race` et `classe`, émises avec
 // la page dessinée : la page 404 ne les a pas) ; l'éditeur peut importer la palette (hors version portable : skill ui-couleurs)
 import { classeDUneClasse, classeDeRace, cssDesFamilles } from '../../lib/palette-css.mjs';
+import { nomDuProtege } from '../../lib/mots-cles-proteges.mjs';
 import { TAG_RACE_HYBRIDE } from '../../lib/race-kinds.mjs';
-import { normalize } from '../../lib/text.mjs';
 
 const ed_ = (table, cle, colonne) => echapperHtml(attributEd(table, cle, colonne));
 const estPage404 = () => Boolean(document.querySelector('#introuvable'));
@@ -27,16 +34,20 @@ const idDeLAdresse = (base) => decodeURIComponent(location.pathname.slice(base.l
 
 const lignesDe = (lignes, table) => lignes.filter((l) => l.table === table && l.ligne);
 /**
- * Les mots-clés d'une page créée, d'après les lignes en attente : page_tag ne garde que l'id du mot-clé (vocabulaire `mot_cle`, migration 0043) ;
- * son écriture et sa clé viennent d'une ligne mot_cle en attente (mot-clé créé avec la page) ou de la liste du service (`motsCles`). [{ libelle, cle }]
+ * Les mots-clés d'une page créée, d'après les lignes en attente : page_tag ne garde que l'id du mot-clé (vocabulaire `mot_cle`, migration 0043), par
+ * lequel la nature d'une race et la catégorie d'une classe se lisent (décision R195 : jamais par l'écriture ; le nom protégé d'un mot-clé,
+ * lib/mots-cles-proteges.mjs#nomDuProtege, d'après son id entier, migration 0113, ou la clé de `race-hybride`) ; son libellé et sa clé viennent d'une
+ * ligne mot_cle en attente (mot-clé créé avec la page) ou de la liste du service (`motsCles`). [{ id, libelle, cle, nom (protégé, ou null) }]
  */
 function motsClesDeLaPage(lignes, id, vocabulaire = []) {
   const connus = new Map([...vocabulaire.map((m) => [m.id, m]), ...lignesDe(lignes, 'mot_cle').map((l) => [l.cle.id, l.ligne])]);
   return lignesDe(lignes, 'page_tag')
     .filter((l) => l.ligne.page_id === id)
     .sort((a, b) => a.ligne.ordre - b.ligne.ordre)
-    .map((l) => connus.get(l.ligne.tag_id) ?? { libelle: l.ligne.tag_id, libelle_cle: l.ligne.tag_id })
-    .map((m) => ({ libelle: m.libelle, cle: m.libelle_cle }));
+    .map((l) => {
+      const m = { id: l.ligne.tag_id, libelle: connus.get(l.ligne.tag_id)?.libelle ?? String(l.ligne.tag_id), cle: connus.get(l.ligne.tag_id)?.cle ?? null };
+      return { ...m, nom: nomDuProtege(m) };
+    });
 }
 const champsDe = (entite) => Object.entries(ENTITES[entite].champs).map(([nom, c]) => ({ nom, libelle: c.libelle, type: c.type, requis: c.requis, choix: c.choix, liste: c.liste }));
 
@@ -45,7 +56,7 @@ function pageDeRace(lignes, id, vocabulaire) {
   const race = lignesDe(lignes, 'race').find((l) => l.cle.id === id)?.ligne;
   const onglet = lignesDe(lignes, 'race_onglet').find((l) => l.cle.race_id === id)?.ligne;
   if (!race) return null;
-  const hybride = motsClesDeLaPage(lignes, id, vocabulaire).some((m) => m.cle === TAG_RACE_HYBRIDE);
+  const hybride = motsClesDeLaPage(lignes, id, vocabulaire).some((m) => m.nom === TAG_RACE_HYBRIDE);
   const r = (c) => ed_('race', { id }, c);
   const o = (c) => ed_('race_onglet', { race_id: id }, c);
   const stat = (libelle, c) => `<div class="race-stat"><dt>${libelle}</dt><dd data-ed="${o(c)}"></dd></div>`;
@@ -79,8 +90,9 @@ function pageDeRace(lignes, id, vocabulaire) {
 function pageDeClasse(lignes, id, vocabulaire) {
   const classe = lignesDe(lignes, 'classe').find((l) => l.cle.id === id)?.ligne;
   if (!classe) return null;
-  const tags = motsClesDeLaPage(lignes, id, vocabulaire).map((m) => m.libelle);
-  const couleur = classeDUneClasse({ id, data: { tags } });
+  const motsCles = motsClesDeLaPage(lignes, id, vocabulaire);
+  // la catégorie d'une classe se lit par les noms protégés de ses mots-clés (`data.mots_cles`, comme lib/pages-db.mjs#motsClesDesPages)
+  const couleur = classeDUneClasse({ id, data: { mots_cles: motsCles.map((m) => m.nom).filter(Boolean) } });
   const c = (col) => ed_('classe', { id }, col);
   const stat = (libelle, col) => `<div class="classe-stat"><dt>${libelle}</dt><dd data-ed="${c(col)}"></dd></div>`;
   const carte = (titre, col, rendu, balise = 'p') => `<article class="depart-carte" data-ed-cadre="${balise}"><h3>${titre}</h3><${balise} data-ed="${c(col)}"${rendu ? ` data-ed-rendu="${rendu}"` : ''}></${balise}></article>`;
@@ -90,7 +102,7 @@ function pageDeClasse(lignes, id, vocabulaire) {
     html: `<p class="muted"><a href="#">Classes</a></p>
     <div class="classe ${couleur}" data-ed-classe="${echapperHtml(id)}">
       <header class="classe-hero">
-        <p class="classe-hero__surtitre">${echapperHtml(tags.find((t) => t !== 'classe') ?? 'Classe')}</p>
+        <p class="classe-hero__surtitre">${echapperHtml(motsCles.find((m) => m.nom !== 'classe')?.libelle ?? 'Classe')}</p>
         <h1>${echapperHtml(classe.nom)}</h1>
         <dl class="classe-stats">${stat('Santé de départ', 'sante_depart')}${stat('Chakra de départ', 'chakra_depart')}${stat('Barrière de départ', 'barriere_depart')}</dl>
       </header>
@@ -109,11 +121,59 @@ function pageDeClasse(lignes, id, vocabulaire) {
   };
 }
 
+// --- Page des Règles créée --------------------------------------------------------------------------------------------------------------------
+/**
+ * Le texte d'une page créée, avant la construction : ses paragraphes, en texte brut, le temps que l'extension `guide` (qui suit) le remplace par son aperçu
+ * ou, sans aperçu, par le texte rendu comme au build (guide.mjs#surcouche, lib/markdown-rendu.mjs) ; il reste tel quel si ce rendu échoue (« À compléter. »).
+ */
+const paragraphes = (corps) => String(corps ?? '').split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean).map((p) => `<p>${echapperHtml(p)}</p>`).join('') || '<p></p>';
+
+/** Une page des Règles créée (`guide/<slug>`, adresse regles/<slug>/), à côté du menu de son onglet ; null si le plan vivant ne la range pas. */
+function pageDesRegles(ed, page, plan) {
+  const id = page.cle.id;
+  const onglet = plan.onglets.find((o) => o.entrees.some((e) => e.page_id === id));
+  if (!onglet) return null;
+  const chemin = `${ed.base}regles/${onglet.id}/`;
+  const entrees = entreesDuPlanVivant(plan, { onglet: onglet.id }).map((e) => htmlDUneEntree(e, { base: ed.base, courante: e.page === id })).join('');
+  const titre = echapperHtml(page.ligne.titre);
+  return {
+    css: [menuLateralCss, guideBlocsCss].join('\n'),
+    titre: page.ligne.titre,
+    html: `<div class="lateral">
+      <nav class="lateral-menu" aria-label="${echapperHtml(onglet.titre)}">
+        <details class="lateral-menu__repli" open data-lateral-repli>
+          <summary class="lateral-menu__resume"><span class="lateral-menu__resume-rubrique">${echapperHtml(onglet.titre)}</span><span class="lateral-menu__resume-page">${titre}</span></summary>
+          <p class="lateral-menu__titre"><a href="${echapperHtml(chemin)}">${echapperHtml(onglet.titre)}</a></p>
+          <ol class="lateral-menu__liste" data-ed-menu="onglet:${echapperHtml(onglet.id)}">${entrees}</ol>
+        </details>
+      </nav>
+      <div class="lateral-page"><div class="guide-reference">
+        <p class="muted guide-fil"><a href="${echapperHtml(ed.base)}">Accueil</a> › <a href="${echapperHtml(chemin)}">${echapperHtml(onglet.titre)}</a></p>
+        <h1 id="guide-titre"><span data-ed="${ed_('page', { id }, 'titre')}">${titre}</span></h1>
+        <p class="banner" role="note">Page créée sur le site de dev : elle sera construite comme les autres à la prochaine version du site, une fois le journal des
+          modifications rapatrié. Écrivez-la ici (crayon) : titre, résumé et texte.</p>
+        <div class="guide-corps" data-ed-corps="${echapperHtml(id)}"><div class="prose" data-ed-morceau>${paragraphes(page.ligne.corps_md)}</div></div>
+      </div></div>
+    </div>`,
+  };
+}
+
 const PAGES = { races: pageDeRace, classes: pageDeClasse };
 
-function dessinerPage(ed, lignes) {
+async function dessinerPage(ed, lignes) {
   const id = idDeLAdresse(ed.base);
   const type = id.split('/')[0];
+  // une page des Règles créée : regles/<slug> est la page guide/<slug> (lib/livres.mjs#adresseDuGuide : adresses à plat)
+  const regle = type === 'regles' && /^regles\/[a-z0-9-]+$/.test(id)
+    && lignes.find((l) => l.table === 'page' && l.cle.id === `guide/${id.slice('regles/'.length)}` && l.ligne);
+  if (regle) {
+    const rendu = pageDesRegles(ed, regle, await ed.appel('GET', 'edition/plan/'));
+    if (!rendu) return false;
+    poserLaPage(ed, rendu);
+    ed.page = regle.cle.id;
+    for (const l of lignes) if (l.ligne) ed.appliquerLigne(l.table, l.cle, l.ligne);
+    return true;
+  }
   // un don créé : sa fiche sera construite à la prochaine version du site ; d'ici là, son ancre sur la page de sa classe
   const don = type === 'capacites' && lignes.find((l) => l.table === 'capacite' && l.cle.id === id && l.ligne);
   if (don) {
@@ -130,15 +190,20 @@ function dessinerPage(ed, lignes) {
   if (!page || !PAGES[type]) return false;
   const rendu = PAGES[type](lignes, id, ed.listes.motsCles);
   if (!rendu) return false;
+  poserLaPage(ed, rendu);
+  document.querySelector('main .muted a')?.setAttribute('href', `${ed.base}${type}/`);
+  ed.page = id;
+  for (const l of lignes) if (l.ligne) ed.appliquerLigne(l.table, l.cle, l.ligne);
+  return true;
+}
+
+/** La page dessinée à la place du message de la 404 : sa feuille, son HTML, son titre d'onglet du navigateur. */
+function poserLaPage(ed, rendu) {
   const style = document.createElement('style');
   style.textContent = rendu.css;
   document.head.append(style);
   document.querySelector('main').innerHTML = rendu.html;
-  document.querySelector('main .muted a')?.setAttribute('href', `${ed.base}${type}/`);
   document.title = document.title.replace('Page introuvable', rendu.titre);
-  ed.page = id;
-  for (const l of lignes) if (l.ligne) ed.appliquerLigne(l.table, l.cle, l.ligne);
-  return true;
 }
 
 // --- Listes /races/ et /classes/ --------------------------------------------------------------------------------------------------------------
@@ -153,9 +218,8 @@ function pastilleDeRace(ed, race, hybride) {
   if (compte) compte.textContent = String(groupe.children.length);
 }
 
-function pastilleDeClasse(ed, classe, tags) {
-  const cles = tags.map(normalize);
-  const groupe = CLASS_GROUPS.find((g) => g.tags.some((t) => cles.includes(normalize(t)))) ?? CLASS_GROUPS.at(-1);
+function pastilleDeClasse(ed, classe, motsCles) {
+  const groupe = groupeDesMotsCles(motsCles) ?? CLASS_GROUPS.at(-1);
   const liste = document.querySelector(`.classes-groupe#${groupe.key} .classes-groupe__liste`);
   if (!liste || document.querySelector(`[data-ed-classe="${CSS.escape(classe.id)}"]`)) return;
   const li = document.createElement('li');
@@ -193,18 +257,18 @@ export const nouvelles = {
   nom: 'nouvelles',
   actif: (doc) => Boolean(doc.querySelector('#introuvable, .races-pastilles, .classes-pastilles')),
 
-  surcouche(ed, lignes) {
-    if (estPage404()) dessinerPage(ed, lignes);
+  async surcouche(ed, lignes) {
+    if (estPage404()) await dessinerPage(ed, lignes);
     if (document.querySelector('.classes-pastilles')) {
       for (const l of lignesDe(lignes, 'classe')) {
         if (!l.creee) continue;
-        pastilleDeClasse(ed, l.ligne, motsClesDeLaPage(lignes, l.cle.id, ed.listes.motsCles).map((m) => m.libelle));
+        pastilleDeClasse(ed, l.ligne, motsClesDeLaPage(lignes, l.cle.id, ed.listes.motsCles).map((m) => m.nom).filter(Boolean));
       }
     }
     if (document.querySelector('.races-pastilles')) {
       for (const l of lignesDe(lignes, 'race')) {
         if (!l.creee) continue;
-        const hybride = motsClesDeLaPage(lignes, l.cle.id, ed.listes.motsCles).some((m) => m.cle === TAG_RACE_HYBRIDE);
+        const hybride = motsClesDeLaPage(lignes, l.cle.id, ed.listes.motsCles).some((m) => m.nom === TAG_RACE_HYBRIDE);
         pastilleDeRace(ed, l.ligne, hybride);
       }
     }

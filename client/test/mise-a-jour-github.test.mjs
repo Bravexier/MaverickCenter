@@ -18,9 +18,10 @@ import {
   changementsNonIndexes, chercherLotDejaFusionne, corpsDePR, creerBundle, enteteAuthentification, enveloppeGit, environnementGit, etatDesChecks,
   fichiersModifies, fusionDansDev, gitLocal, horodatage, horsListe, importerCommit, lireDiffTree, lirePhase, lireStatut, livraisonVersMaster,
   lotsEnAttente, messageAttendu, messageDeFin, neutraliserMarqueur, neutraliserReferences, noteDuCorps, nomDeBranche, pourCommandeDeWorkflow,
-  preparer, sousCommandeGit, tablesAvecBalises, tablesDuLot, TABLES_DES_SOURCES_DE_MAITRISE, verifierCommit, verifierEntrees, verifierPreparation, verifierSimulation,
+  preparer, sousCommandeGit, tablesAvecBalises, tablesDuLot, TABLES_DES_FILLES_DU_MOT_CLE, TABLES_DES_SOURCES_DE_MAITRISE, verifierCommit, verifierEntrees, verifierPreparation, verifierSimulation,
 } from '../scripts/mise-a-jour-github.mjs';
 import { TABLES_DES_SOURCES } from '../serveur/edition-maitrises.mjs';
+import { TABLES_DES_FILLES_DU_MOT_CLE as FILLES_DU_SERVICE } from '../serveur/edition-mots-cles.mjs';
 import { TABLES_DE_LA_NOTE as TABLES_DU_SCRIPT } from '../scripts/mise-a-jour-regles.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
@@ -1043,8 +1044,13 @@ describe('fonctions pures', () => {
     // ce que le rejeu écrit au-delà du journal (serveur/edition.mjs#rejouerLeJournal) : la cascade d'un mot-clé supprimé (pages d'exemple), le mot-clé
     // d'une ligne page_tag notée avant la migration 0043
     const lot = (...modifications) => ({ journal: { lots: [{ modifications }] } });
-    assert.deepEqual(tablesDuLot(lot({ table: 'mot_cle', operation: 'supprimer', avant: { id: 'demo' }, apres: null })), ['mot_cle', 'page', 'page_tag'],
-      'la cascade de page_tag, et les pages typées refaites depuis les lignes dont les balises sont retirées');
+    // (et ses lignes filles, qu'un lot noté avant ne notait pas : catégories, synonymes, clés quittées, la même liste que le service)
+    assert.deepEqual(TABLES_DES_FILLES_DU_MOT_CLE, FILLES_DU_SERVICE);
+    assert.deepEqual(tablesDuLot(lot({ table: 'mot_cle', operation: 'supprimer', avant: { id: 9001 }, apres: null })),
+      ['mot_cle', 'mot_cle_ancienne_cle', 'mot_cle_categorie', 'mot_cle_synonyme', 'page', 'page_tag'],
+      'la cascade de page_tag et des lignes filles, et les pages typées refaites depuis les lignes dont les balises sont retirées');
+    // une monnaie supprimée (un lot ancien, R220 (1)) : son ON DELETE SET NULL vide mot_cle.monnaie_id (migration 0113)
+    assert.deepEqual(tablesDuLot(lot({ table: 'monnaie', operation: 'supprimer', avant: { id: 'po' }, apres: null })), ['monnaie', 'mot_cle']);
     assert.deepEqual(tablesDuLot(lot({ table: 'mot_cle', operation: 'modifier', avant: { libelle: 'a' }, apres: { libelle: 'b' } })), ['mot_cle']);
     assert.deepEqual(tablesDuLot(lot({ table: 'page_tag', operation: 'inserer', avant: null, apres: { page_id: 'p', ordre: 1, tag_id: 'x', libelle: 'X' } })), ['mot_cle', 'page_tag']);
     assert.deepEqual(tablesDuLot(lot({ table: 'page_tag', operation: 'inserer', avant: null, apres: { page_id: 'p', ordre: 1, tag_id: 'x' } })), ['page_tag']);
@@ -1065,7 +1071,7 @@ describe('fonctions pures', () => {
       return ['arme', 'page'];
     };
     assert.deepEqual(tablesDuLot(lot({ table: 'mot_cle', operation: 'supprimer', avant: { id: 'demo' }, apres: null }), { tablesAvecBalises: balises }),
-      ['arme', 'mot_cle', 'page', 'page_tag']);
+      ['arme', 'mot_cle', ...TABLES_DES_FILLES_DU_MOT_CLE, 'page', 'page_tag'].sort());
     assert.deepEqual(tablesDuLot(lot({ table: 'mot_cle', operation: 'modifier', avant: { libelle: 'a' }, apres: { libelle: 'b' } }), { tablesAvecBalises: balises }), ['mot_cle']);
     assert.equal(lues, 1, 'git grep seulement pour un lot qui retire un mot-clé');
     const appels = [];
@@ -1409,13 +1415,15 @@ describe('.github/workflows/mise-a-jour.yml', () => {
   const etape = (job, predicat) => job.steps.find(predicat);
   const parNom = (job, nom) => job.steps.find((s) => s.name === nom);
 
-  test('déclenché seulement à la main (workflow_dispatch) avec lot, empreinte, adresse et essai ; le run porte le lot', () => {
+  test('déclenché seulement à la main (workflow_dispatch) avec lot, empreinte, adresse, essai et copie ; le run porte le lot', () => {
     assert.equal(wf.name, 'Mise à jour des règles');
     assert.deepEqual(Object.keys(wf.on), ['workflow_dispatch']);
     const entrees = wf.on.workflow_dispatch.inputs;
-    assert.deepEqual(Object.keys(entrees), ['lot', 'empreinte', 'adresse', 'essai']);
+    assert.deepEqual(Object.keys(entrees), ['lot', 'empreinte', 'adresse', 'essai', 'copie']);
     for (const nom of ['lot', 'empreinte', 'adresse']) assert.deepEqual([entrees[nom].type, entrees[nom].required], ['string', true], nom);
     assert.deepEqual([entrees.essai.type, entrees.essai.default], ['boolean', false]);
+    // « Copier vers le dépôt » (lot 8 : un paquet de la base source sans note) : décochée par défaut, un lancement d'avant reste une mise à jour
+    assert.deepEqual([entrees.copie.type, entrees.copie.default], ['boolean', false]);
     assert.match(wf['run-name'], /\$\{\{ inputs\.lot \}\}/, 'le service retrouve son run par le lot dans le nom');
   });
 
@@ -1461,7 +1469,7 @@ describe('.github/workflows/mise-a-jour.yml', () => {
     assert.equal(script.id, 'preparer');
     assert.ok(!('GH_TOKEN' in script.env) && !('GITHUB_TOKEN_LECTURE' in script.env), 'aucun jeton pour le script de preparer');
     assert.equal(script.env.HOTE_ATTENDU, "${{ vars.MISE_A_JOUR_HOTE || 'dev.maverick-jdr.com' }}", 'un seul hôte permis, même sans la variable');
-    for (const [variable, entree] of [['LOT', 'lot'], ['EMPREINTE', 'empreinte'], ['ADRESSE', 'adresse'], ['ESSAI', 'essai']]) {
+    for (const [variable, entree] of [['LOT', 'lot'], ['EMPREINTE', 'empreinte'], ['ADRESSE', 'adresse'], ['ESSAI', 'essai'], ['COPIE', 'copie']]) {
       assert.equal(script.env[variable], `\${{ inputs.${entree} }}`);
     }
     const envoi = etape(jobPreparer, (s) => s.uses?.startsWith('actions/upload-artifact@'));
@@ -1490,13 +1498,15 @@ describe('.github/workflows/mise-a-jour.yml', () => {
     assert.deepEqual(reception.with, { name: NOM_ARTEFACT, path: dev.env.ARTEFACT });
     assert.deepEqual([dev.id, dev.run], ['dev', 'node client/scripts/mise-a-jour-github.mjs --phase dev']);
     assert.deepEqual([master.id, master.run], ['master', 'node client/scripts/mise-a-jour-github.mjs --phase master']);
-    assert.ok(!master.if, 'la livraison suit une fusion réussie (succès par défaut)');
+    // la livraison suit une fusion réussie (une condition sans fonction d'état garde success()) ; jamais pour une copie vers le dépôt (lot 8)
+    assert.equal(master.if, '${{ !inputs.copie }}');
+    assert.ok(!dev.if, 'la fusion dans dev a lieu pour une copie aussi');
     for (const s of [dev, master]) {
       assert.equal(s.env.GH_TOKEN, '${{ secrets.MISE_A_JOUR_TOKEN }}');
       assert.equal(s.env.GITHUB_TOKEN_LECTURE, '${{ github.token }}');
       assert.equal(s.env.ARTEFACT, '${{ runner.temp }}/mise-a-jour-preparation');
       assert.equal(s.env.HOTE_ATTENDU, "${{ vars.MISE_A_JOUR_HOTE || 'dev.maverick-jdr.com' }}");
-      for (const [variable, entree] of [['LOT', 'lot'], ['EMPREINTE', 'empreinte'], ['ADRESSE', 'adresse'], ['ESSAI', 'essai']]) assert.equal(s.env[variable], `\${{ inputs.${entree} }}`);
+      for (const [variable, entree] of [['LOT', 'lot'], ['EMPREINTE', 'empreinte'], ['ADRESSE', 'adresse'], ['ESSAI', 'essai'], ['COPIE', 'copie']]) assert.equal(s.env[variable], `\${{ inputs.${entree} }}`);
     }
     const rang = (s) => jobLivrer.steps.indexOf(s);
     assert.ok(rang(checkout) < rang(reception) && rang(reception) < rang(dev) && rang(dev) < rang(master));

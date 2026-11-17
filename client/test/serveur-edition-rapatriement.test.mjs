@@ -1,5 +1,6 @@
 // Ce que le site de dev a modifié revient dans data/rows (npm run db:appliquer-edition, « Effectuer la mise à jour ») sans casser les outils des
-// pages : une page créée par le site a sa provenance (source « Site de dev › … », que tools/db/pages_md.py rattache à la famille de son type), le JSON
+// pages : une page créée par le site (métier, race, classe, don, page des Règles) a sa provenance (source « Site de dev › … », que tools/db/pages_md.py
+// rattache à la famille de son type : une page du guide à `docs`), le JSON
 // des champs structurés d'une page (page.donnees) est écrit comme l'écrivent les importeurs (une page réécrite sans changement reste identique), et
 // des lots enregistrés dans la même seconde sont rejoués dans leur ordre par db:appliquer-edition comme par la mise à jour des règles.
 import assert from 'node:assert/strict';
@@ -16,6 +17,7 @@ import { enregistrer, FAMILLE_DES_PAGES_DU_SITE } from '../serveur/edition.mjs';
 import { journalExporte } from '../serveur/edition-journal.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { jsonCommePython } from '../src/lib/json-python.mjs';
+import { normalize } from '../src/lib/text.mjs';
 import { emettrePage, lirePages } from '../src/lib/pages-db.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { copieSansNoteEnAttente, versionALaRevision } from './aide-mise-a-jour.mjs';
@@ -56,14 +58,19 @@ const lot = (operations, { instant = new Date((horloge += 1000)).toISOString().r
 };
 
 const noms = { metier: nomLibre('metier', 'Métier d’essai'), race: nomLibre('race', 'Race d’essai'), classe: nomLibre('classe', 'Classe d’essai'), jetable: nomLibre('metier', 'Métier jetable') };
+// une page des Règles (serveur/edition-plan.mjs) : un titre que ne porte aucune page (titre, slug, alias)
+noms.regles = 'Page des Règles d’essai';
+for (let i = 2; lire('SELECT 1 FROM cle_page WHERE cle = ?', normalize(noms.regles)); i += 1) noms.regles = `Page des Règles d’essai ${i}`;
 const crees = lot([
   { op: 'creer', entite: 'metier', valeurs: { nom: noms.metier, description: 'Il essaie.', bonus_brut: '+3% Calme' } },
   { op: 'creer', entite: 'race', valeurs: { nom: noms.race, nature: 'hybride', presentation: 'Une race d’essai.' } },
   { op: 'creer', entite: 'classe', valeurs: { nom: noms.classe, categorie_id: 'classe-magique' } },
+  { op: 'creer', entite: 'page_des_regles', valeurs: { titre: noms.regles, onglet_id: 'exploration', resume: 'Une page des Règles d’essai.' } },
 ]).crees.map((c) => c.id);
+assert.ok(crees[3].startsWith('guide/'));
 // un don créé dans la classe créée (D11) : sa fiche capacites/… est de la famille des classes, sa seule source est sa provenance
 crees.push(lot([{ op: 'creer', entite: 'capacite', valeurs: { classe_id: crees[2], niveau: '1', nom: 'Don d’essai', type: 'Passif', effet: 'Il essaie aussi.' } }]).crees[0].id);
-assert.ok(crees[3].startsWith('capacites/'));
+assert.ok(crees[4].startsWith('capacites/'));
 // un métier créé un autre jour puis supprimé : sa source (« Site de dev › édition du 2026-10-12 ») n'est plus citée, elle part avec lui — sauf si de
 // vraies modifications de ce jour-là la citaient déjà (la simulation de mise à jour de la CI, lancée le 2026-10-12) : l'état d'avant est lu
 const SOURCE_JETABLE = 'ref:site-de-dev-edition-du-2026-10-12';

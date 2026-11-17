@@ -47,7 +47,7 @@ test('R42 — renommer le métier, la spécialité, le don et le sort d’un pr�
   const cree = appel('POST', '/api/personnages/', {
     ...ficheVide('Témoin des renommages'), notes: 'Notes du joueur.', metier_id: metier, magie_innee_id: sort.magie_id,
     classes: [{ rang: 1, classe_id: classe, specialite_id: spec }], capacites: [{ capacite_id: don }],
-    sorts: [{ sort_id: sort.id, rang: 1, niveau_maitrise: 0, nm_livre: 0 }],
+    sorts: [{ sort_id: sort.id, rang: 1, niveau_maitrise: 0 }],
   });
   assert.equal(cree.statut, 201, JSON.stringify(cree.corps));
   const id = cree.corps.personnage.id;

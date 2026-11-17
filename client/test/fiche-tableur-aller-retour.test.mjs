@@ -25,9 +25,12 @@ import { feuilleDeGrille, ficheDuClasseur, REMARQUE_MAITRISES_CSV } from '../src
 import { chargerFilRouge, FIL_ROUGE } from '../src/lib/guide-fil-rouge.mjs';
 import { ecrireXlsx, zonesDuClasseur } from '../src/lib/tableur-ecriture.mjs';
 import { lireClasseur } from '../src/lib/tableur-lecture.mjs';
+import { baseDImport, reglesDImport } from './aide-base-d-import.mjs';
 
-const db = ouvrirBase({ sansExemples: false });
-const regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(db))); // tel que la page le reçoit
+// le tableur lit et écrit les noms, et le moteur lit ses règles dans les textes : tout est épinglé sur l'état d'import de la base (le site de dev
+// réécrit librement noms, textes et valeurs ; test/aide-base-d-import.mjs) ; le test « aujourd’hui » refait la chaîne sur la base courante
+const db = baseDImport();
+let regles = reglesDImport(); // tel que la page le reçoit
 const DATE = '15/10/2026';
 const MODELE = await modeleXlsx();
 const LOGO = partiesDuModele().get('xl/media/image1.png');
@@ -54,13 +57,19 @@ function commeLaPage(fiche) {
   // les maîtrises d'armes (décision R148) : la famille de chaque point à choisir d'une source acquise, parmi ses options ; plus de dés par famille
   f.maitrise_choix = M.maitriseChoixValables(regles, f);
   delete f.maitrises_armes;
+  // les dons obtenus des dons « Variable » du Mage Bleu (décision R181) : un par don, une entrée une fois, les choix gardés sans effet compris
+  f.dons_obtenus = M.donsObtenusValables(regles, f);
   f.armes = M.armesValables(regles, f);
   // rangés dans l'ordre ; le sort préparé garde sa marque, son jet et sa posture, les autres n'en ont pas (décision R115)
   f.sorts = M.sortsAEnregistrer(regles, f);
+  // les livres de sort (décision R169) : un par sort, rangés
+  f.livres_sorts = M.livresAEnregistrer(f);
   f.bouclier_solidite = M.soliditeDuBouclierAEcrire(regles, f, f.bouclier_solidite);
   f.inventaire = f.inventaire.filter((o) => o.nom && o.nom.trim()).map((o, i) => ({ ...o, nom: o.nom.trim(), rang: i + 1 }));
   f.accessoires = f.accessoires.filter((a) => a.accessoire_effet_id);
   f.ceinture = f.ceinture.filter((o) => o.nom && o.nom.trim()).map((o) => ({ ...o, nom: o.nom.trim() }));
+  // les compteurs entamés des actions (décision R173) : ceux d'une action de la fiche, sous leur maximum
+  f.actions_usage = M.actionsUsageValables(regles, f);
   return f;
 }
 
@@ -105,6 +114,8 @@ function canonique(fiche) {
     metier_bonus: (a, b) => a.rang - b.rang,
     capacites: (a, b) => a.capacite_id.localeCompare(b.capacite_id),
     maitrise_choix: (a, b) => a.source.localeCompare(b.source) || a.rang - b.rang,
+    dons_obtenus: (a, b) => a.source.localeCompare(b.source),
+    specialisations_magie: (a, b) => a.magie_id.localeCompare(b.magie_id),
     armes: (a, b) => a.rang - b.rang,
     armure_parties: parCle('emplacement_id', emplacementsArmure),
     accessoires: parCle('emplacement', emplacementsAccessoire),
@@ -240,13 +251,21 @@ function ficheRiche() {
   // les gains de niveau, deux totaux (décision R73)
   f.gains_sante = 37;
   f.gains_chakra = 54;
-  f.sorts = M.sortsPossibles(regles, f).slice(0, 26).map((s, i) => ({ sort_id: s.id, rang: i + 1, niveau_maitrise: i % 4, nm_livre: i % 4 >= 1 && i % 3 === 0 ? 1 : 0 }));
+  // une spécialisation choisie par magie (décision R236 (8)) : sans elle, le bi-magie n'a que les sorts communs et aucun livre en attente
+  f.specialisations_magie = [f.magie_innee_id, f.magie_acquise_id].map((id) => regles.magies.find((m) => m.id === id))
+    .filter((m) => m?.specialisations?.length).map((m) => ({ magie_id: m.id, specialisation_id: m.specialisations[0].id }));
+  f.sorts = M.sortsPossibles(regles, f).slice(0, 26).map((s, i) => ({ sort_id: s.id, rang: i + 1, niveau_maitrise: i % 4 }));
+  // des livres, dont un d'un sort qui n'est pas choisi (en attente, décision R169)
+  const enAttente = M.sortsDesLivres(regles, f).find((s) => !f.sorts.some((x) => x.sort_id === s.id));
+  f.livres_sorts = [...f.sorts.filter((x, i) => x.niveau_maitrise >= 1 && i % 3 === 0).map((x) => x.sort_id), enAttente.id].map((sort_id, i) => ({ sort_id, rang: i + 1 }));
   // les NM du MJ, pour toute la fiche (décision R118)
   f.nm_mj = 2;
+  // le Mode Hyper et le Mode Hyper 100 % actifs, l'utilisation de la semaine consommée (décision R172) : dans la note
+  Object.assign(f, { mode_hyper: 1, mode_hyper_100: 1, mode_hyper_semaine: 0 });
   return f;
 }
 
-/** Bi-classe au Potentiel Illimité (l'Archimage imposé en classe 1, R23), la caractéristique de la magie au choix, sorts de plusieurs magies. */
+/** Bi-classe au Potentiel Illimité (l'Archimage en classe 1 : R238 (5), plus imposé mais permis), la caractéristique de la magie au choix, sorts de plusieurs magies. */
 function ficheBiPotentiel() {
   const f = {
     ...ficheVide('Ysolde'), race_id: 'races/humain', ethnie_id: 'races/humain#ethnie:humain-toundra', magie_innee_id: 'magies/potentiel-illimite',
@@ -258,7 +277,10 @@ function ficheBiPotentiel() {
   const possibles = M.sortsPossibles(regles, f);
   const magies = [...new Set(possibles.map((s) => s.magie_id))];
   const unNom = (s) => possibles.filter((x) => x.nom === s.nom).length === 1;
-  f.sorts = magies.slice(0, 6).flatMap((m) => possibles.filter((s) => s.magie_id === m && unNom(s)).slice(0, 2)).map((s, i) => ({ sort_id: s.id, rang: i + 1, niveau_maitrise: i % 3, nm_livre: 0 }));
+  f.sorts = magies.slice(0, 6).flatMap((m) => possibles.filter((s) => s.magie_id === m && unNom(s)).slice(0, 2)).map((s, i) => ({ sort_id: s.id, rang: i + 1, niveau_maitrise: i % 3 }));
+  // un livre d'un sort d'une autre magie, au-delà du NPM accessible, qui n'est pas choisi (le Potentiel Illimité : toutes les magies, décision R169)
+  const seul = (s) => regles.sorts.filter((x) => x.nom === s.nom).length === 1;
+  f.livres_sorts = [{ sort_id: M.sortsDesLivres(regles, f).find((s) => s.niveau > M.npmMax(regles, f) && seul(s)).id, rang: 1 }];
   f.nm_mj = 1;
   return f;
 }
@@ -356,7 +378,7 @@ function ficheDuMageRouge() {
     capacites: [{ capacite_id: 'capacites/mage-rouge-charge-lente' }],
   };
   f.sorts = M.sortsPossibles(regles, f).filter((s) => s.magie_id === 'magies/magie-du-feu').slice(0, 6)
-    .map((s, i) => ({ sort_id: s.id, rang: i + 1, niveau_maitrise: 0, nm_livre: 0 }));
+    .map((s, i) => ({ sort_id: s.id, rang: i + 1, niveau_maitrise: 0 }));
   assert.ok(f.sorts.some((s) => s.sort_id === BOULE_DE_FEU), 'Boule de feu parmi les sorts');
   f.sorts = f.sorts.map((s) => (s.sort_id === BOULE_DE_FEU ? { ...s, prepare: 1, prepare_jet: 57, prepare_posture_id: 'guide/postures#posture:offensif' } : s));
   return f;
@@ -370,7 +392,7 @@ test('sort préparé (décision R115) : le sort, son jet de magie et sa posture 
   const r = await verifier(f, 'sort préparé');
   const preparees = (cellules) => lignesDeLaNote(cellules).filter((l) => l.nom === 'sortPrepare').map((l) => l.valeur);
   assert.deepEqual(preparees(r.cellules), ['Boule de feu (jet 57, posture Offensif)']);
-  assert.deepEqual(r.fiche.sorts.filter((s) => s.prepare === 1), [{ sort_id: BOULE_DE_FEU, rang: commeLaPage(f).sorts.find((s) => s.prepare === 1).rang, niveau_maitrise: 0, nm_livre: 0, prepare: 1, prepare_jet: 57, prepare_posture_id: 'guide/postures#posture:offensif' }]);
+  assert.deepEqual(r.fiche.sorts.filter((s) => s.prepare === 1), [{ sort_id: BOULE_DE_FEU, rang: commeLaPage(f).sorts.find((s) => s.prepare === 1).rang, niveau_maitrise: 0, prepare: 1, prepare_jet: 57, prepare_posture_id: 'guide/postures#posture:offensif', prepare_hyper: 0, prepare_cent: 0, prepare_critique: null }]);
   // préparé sans jet (« si réussi ») ni posture (aucune n'était cochée) : le nom seul
   const sansJet = { ...f, sorts: f.sorts.map((s) => (s.prepare ? { ...s, prepare_jet: null, prepare_posture_id: null } : s)) };
   assert.deepEqual(preparees((await verifier(sansJet, 'sort préparé sans jet ni posture')).cellules), ['Boule de feu']);
@@ -403,11 +425,162 @@ test('sort préparé (décision R115) : le sort, son jet de magie et sa posture 
   assert.deepEqual(deux.nonRepris, [`Sort préparé : « ${nomDeLAutre} (jet 12) » : un seul sort préparé par fiche (décision R115)`]);
   assert.deepEqual(deux.fiche.sorts.filter((s) => s.prepare === 1).map((s) => [s.sort_id, s.prepare_jet]), [[BOULE_DE_FEU, 57]]);
   // la lecture de la ligne : des parenthèses qui ne disent ni un jet ni une posture font partie du nom
-  assert.deepEqual(lireSortPrepare('Boule de feu (posture Focus, jet 3)'), { nom: 'Boule de feu', jet: 3, posture: 'Focus' });
-  assert.deepEqual(lireSortPrepare('Mur (de glace)'), { nom: 'Mur (de glace)', jet: null, posture: null });
-  assert.deepEqual(lireSortPrepare('Boule de feu'), { nom: 'Boule de feu', jet: null, posture: null });
+  const rien = { hyper: false, cent: false, critique: null };
+  assert.deepEqual(lireSortPrepare('Boule de feu (posture Focus, jet 3)'), { nom: 'Boule de feu', jet: 3, posture: 'Focus', ...rien });
+  assert.deepEqual(lireSortPrepare('Mur (de glace)'), { nom: 'Mur (de glace)', jet: null, posture: null, ...rien });
+  assert.deepEqual(lireSortPrepare('Boule de feu'), { nom: 'Boule de feu', jet: null, posture: null, ...rien });
 });
 
+test('sort préparé en Mode Hyper ou au Mode Hyper 100 % (décision R172, Q82) : « (jet N, posture X, Mode Hyper) », « (jet N, Mode Hyper 100 %) », relus avec leurs deux cases cohérentes, point fixe', async () => {
+  const f = ficheDuMageRouge();
+  const preparees = (cellules) => lignesDeLaNote(cellules).filter((l) => l.nom === 'sortPrepare').map((l) => l.valeur);
+  const prepare = (fiche) => fiche.sorts.filter((s) => s.prepare === 1).map((s) => [s.sort_id, s.prepare_hyper, s.prepare_cent]);
+  const avec = (hyper, cent) => ({ ...f, sorts: f.sorts.map((s) => (s.prepare ? { ...s, prepare_hyper: hyper, prepare_cent: cent } : s)) });
+  const hyper = await verifier(avec(1, 0), 'sort préparé en Mode Hyper');
+  assert.deepEqual(preparees(hyper.cellules), ['Boule de feu (jet 57, posture Offensif, Mode Hyper)']);
+  assert.deepEqual(prepare(hyper.fiche), [[BOULE_DE_FEU, 1, 0]]);
+  const cent = await verifier(avec(1, 1), 'sort préparé au Mode Hyper 100 %');
+  assert.deepEqual(preparees(cent.cellules), ['Boule de feu (jet 57, posture Offensif, Mode Hyper 100 %)']);
+  assert.deepEqual(prepare(cent.fiche), [[BOULE_DE_FEU, 1, 1]]);
+  // sa plage de réussite critique figée à la préparation (décision R182 (4), prepare_critique) : « critique 1 à N », relue telle quelle, même sous la base
+  // (1 à 4 : accessoire maudit, R180) ; hors de 1 à 1 … 1 à 15 (critique.plafond), perdue et dite
+  const critique = await verifier({ ...avec(1, 0), sorts: avec(1, 0).sorts.map((s) => (s.prepare ? { ...s, prepare_critique: 12 } : s)) }, 'sort préparé avec sa plage figée');
+  assert.deepEqual(preparees(critique.cellules), ['Boule de feu (jet 57, posture Offensif, Mode Hyper, critique 1 à 12)']);
+  assert.deepEqual(critique.fiche.sorts.filter((s) => s.prepare === 1).map((s) => s.prepare_critique), [12]);
+  const maudit = await verifier({ ...avec(1, 0), sorts: avec(1, 0).sorts.map((s) => (s.prepare ? { ...s, prepare_critique: 4 } : s)) }, 'sort préparé sous la base');
+  assert.deepEqual(maudit.fiche.sorts.filter((s) => s.prepare === 1).map((s) => s.prepare_critique), [4]);
+  const a = await allerRetour(f);
+  const note = a.cellules[ORDINATEUR.note].replace('Sort préparé : Boule de feu (jet 57, posture Offensif)', 'Sort préparé : Boule de feu (jet 57, critique 1 à 16)');
+  const classeur = await lireClasseur(await ecrireXlsx(MODELE, { cellules: { ...a.cellules, [ORDINATEUR.note]: note }, remplis: a.remplis, alignements: a.alignements, descriptionImage: 'logo', titre: f.nom }), { nom: 'essai.xlsx' });
+  const hors = ficheDuClasseur(regles, classeur.feuille('Personnage'), { nomFichier: 'essai.xlsx', date: DATE, logo: LOGO, empreintePortrait: null });
+  assert.deepEqual(hors.nonRepris, ['Sort préparé : « Boule de feu (jet 57, critique 1 à 16) » : réussite critique « 1 à 16 » hors des plages possibles (de « 1 à 1 » à « 1 à 15 »)']);
+  assert.ok(hors.fiche.sorts.every((s) => !s.prepare && s.prepare_critique == null));
+  // le bas des plages est la constante critique.plancher (décision R203 : jamais sous « 1 à 1 »), lue dans les règles : un plancher d'essai plus haut
+  // (sous le plafond) refuse une plage qu'il ne couvre plus, et le message le dit
+  const plancher = regles.constantes['critique.plafond'] - 1;
+  const sous = await lireClasseur(await ecrireXlsx(MODELE, {
+    cellules: { ...a.cellules, [ORDINATEUR.note]: note.replace('critique 1 à 16', `critique 1 à ${plancher - 1}`) }, remplis: a.remplis, alignements: a.alignements,
+    descriptionImage: 'logo', titre: f.nom,
+  }), { nom: 'essai.xlsx' });
+  const reglesDEssai = { ...regles, constantes: { ...regles.constantes, 'critique.plancher': plancher } };
+  assert.deepEqual(ficheDuClasseur(reglesDEssai, sous.feuille('Personnage'), { nomFichier: 'essai.xlsx', date: DATE, logo: LOGO, empreintePortrait: null }).nonRepris,
+    [`Sort préparé : « Boule de feu (jet 57, critique 1 à ${plancher - 1}) » : réussite critique « 1 à ${plancher - 1} » hors des plages possibles `
+      + `(de « 1 à ${plancher} » à « 1 à ${regles.constantes['critique.plafond']} »)`]);
+  assert.equal(regles.constantes['critique.plancher'], db.prepare("SELECT valeur FROM regle_constante WHERE id = 'critique.plancher'").get().valeur, 'R203 : lue dans la base');
+  // la lecture : « Mode Hyper 100 % » vaut aussi le Mode Hyper ; un seul Mode Hyper par ligne
+  assert.deepEqual(lireSortPrepare('Boule de feu (jet 57, Mode Hyper)'), { nom: 'Boule de feu', jet: 57, posture: null, hyper: true, cent: false, critique: null });
+  assert.deepEqual(lireSortPrepare('Boule de feu (Mode Hyper 100 %)'), { nom: 'Boule de feu', jet: null, posture: null, hyper: true, cent: true, critique: null });
+  assert.deepEqual(lireSortPrepare('Boule de feu (critique 1 à 12)'), { nom: 'Boule de feu', jet: null, posture: null, hyper: false, cent: false, critique: 12 });
+  assert.deepEqual(lireSortPrepare('Boule de feu (Mode Hyper, Mode Hyper 100 %)').nom, 'Boule de feu (Mode Hyper, Mode Hyper 100 %)');
+});
+
+
+test('compteurs d’actions (décision R173) : chaque compteur entamé dans la note (« Compteur d’action »), relu tel quel, point fixe ; une clé que la fiche n’a pas est dite', async () => {
+  const xp = regles.niveaux.find((n) => n.niveau === 5).xp_min;
+  const f = {
+    ...ficheVide('Lyre R173'), race_id: 'races/humain', ethnie_id: 'races/humain#ethnie:humain-toundra', magie_innee_id: 'magies/magie-du-feu', xp,
+    classes: [{ rang: 1, classe_id: 'classes/barde', specialite_id: null }],
+    accessoires: [{ emplacement: 'chef', accessoire_effet_id: 'ressources/accessoires#effet:jet-de-de:5', maudit: 0 }],
+    actions_usage: [
+      { action_id: 'race:don-de-base:races/humain', restants: 1 }, { action_id: 'capacites:inconnue', restants: 0 },
+      { action_id: 'capacite:capacites/barde-prestation', restants: 0 }, { action_id: 'accessoire:chef:ressources/accessoires#effet:jet-de-de:5', restants: 0 },
+    ],
+  };
+  const page = commeLaPage(f);
+  assert.equal(page.actions_usage.length, 3, 'la clé orpheline part (actionsUsageValables)');
+  const r = await allerRetour(page);
+  assert.deepEqual(r.nonRepris, []);
+  const notes = lignesDeLaNote(r.cellules).filter((l) => l.nom === 'compteurAction').map((l) => l.valeur);
+  assert.deepEqual(notes, [
+    'Méditation (Humain) 1/3 [race:don-de-base:races/humain]', 'Prestation (Barde) 0/2 [capacite:capacites/barde-prestation]',
+    'Accessoire : Chef 0/1 [accessoire:chef:ressources/accessoires#effet:jet-de-de:5]',
+  ]);
+  assert.deepEqual(canonique(r.fiche).actions_usage, canonique(page).actions_usage);
+  const encore = await allerRetour(commeLaPage(r.fiche));
+  assert.deepEqual(canonique(encore.fiche).actions_usage, canonique(r.fiche).actions_usage, 'point fixe');
+  // une ligne d'une action que la fiche n'a pas (l'accessoire retiré) : dite, pas reprise
+  const sans = await allerRetour(commeLaPage({ ...f, accessoires: [] }));
+  const cellules = { ...sans.cellules, [ORDINATEUR.note]: `${sans.cellules[ORDINATEUR.note]}\nCompteur d'action : Accessoire : Chef 0/1 [accessoire:chef:ressources/accessoires#effet:jet-de-de:5]` };
+  const classeur = await lireClasseur(await ecrireXlsx(MODELE, { cellules, remplis: sans.remplis, alignements: sans.alignements, descriptionImage: 'logo', titre: f.nom }), { nom: 'essai.xlsx' });
+  const relu = ficheDuClasseur(regles, classeur.feuille('Personnage'), { nomFichier: 'essai.xlsx', date: DATE, logo: LOGO, empreintePortrait: null });
+  assert.deepEqual(relu.nonRepris, ['Compteur d’action : « Accessoire : Chef 0/1 [accessoire:chef:ressources/accessoires#effet:jet-de-de:5] » : la fiche n’a pas cette action']);
+  assert.deepEqual(relu.fiche.actions_usage.map((u) => u.action_id), ['race:don-de-base:races/humain', 'capacite:capacites/barde-prestation']);
+});
+
+test('dons « Variable » du Mage Bleu (décision R181) : une ligne « Don obtenu » par choix, avant « Acquis au choix », relue ; choix gardé sans effet compris ; un nom introuvable est dit', async () => {
+  const ENTREE = (magie, nom) => `classes/mage-bleu#entree:${magie}:${nom}`;
+  const DON = (nom) => `capacites/mage-bleu-${nom}`;
+  // niveau global 4 (niveau de classe 8) : Mimétisme acquis ; une entrée notée pour Mime, pas acquis (gardée sans effet) ; « Attaque glaçante » entamée
+  const f = commeLaPage({
+    ...ficheVide('Givre R181'), race_id: 'races/humain', ethnie_id: 'races/humain#ethnie:humain-toundra', magie_innee_id: 'magies/magie-de-la-glace',
+    xp: xpDuNiveau(4), classes: [{ rang: 1, classe_id: 'classes/mage-bleu', specialite_id: null }],
+    dons_obtenus: [{ source: DON('mimetisme'), entree_id: ENTREE('glace', 'attaque-glacante') }, { source: DON('mime'), entree_id: ENTREE('glace', 'peau-froide') }],
+    actions_usage: [{ action_id: `entree:${ENTREE('glace', 'attaque-glacante')}`, restants: 1 }],
+  });
+  assert.equal(f.actions_usage.length, 1, 'le compteur de l’entrée obtenue s’enregistre');
+  const r = await verifier(f, 'dons « Variable »');
+  const lues = lignesDeLaNote(r.cellules);
+  assert.deepEqual(lues.filter((l) => l.nom === 'donObtenu').map((l) => l.valeur), [
+    'Mimétisme (Mage Bleu) : Attaque glaçante (Glace)', 'Mime (Mage Bleu) : Peau froide (Glace)',
+  ]);
+  assert.deepEqual(lues.filter((l) => l.nom === 'compteurAction').map((l) => l.valeur), [`Attaque glaçante (Mimétisme (Mage Bleu)) 1/2 [entree:${ENTREE('glace', 'attaque-glacante')}]`]);
+  const noms = lues.map((l) => l.nom);
+  assert.ok(noms.lastIndexOf('donObtenu') < noms.indexOf('acquisChoix') || !noms.includes('acquisChoix'), 'avant les acquis au choix');
+  // un nom introuvable, une entrée déjà obtenue : dits (nonRepris), jamais rapprochés
+  const note = r.cellules[ORDINATEUR.note];
+  const cellules = { ...r.cellules, [ORDINATEUR.note]: `${note}\nDon obtenu : Principale (Mage Bleu) : Attaque glacante bis (Glace)\nDon obtenu : Ultime raison (Mage Bleu) : Peau froide (Glace)\nDon obtenu : Mimétisme (Mage Rouge) : Peau froide (Glace)` };
+  const classeur = await lireClasseur(await ecrireXlsx(MODELE, { cellules, remplis: r.remplis, alignements: r.alignements, descriptionImage: 'logo', titre: f.nom }), { nom: 'essai.xlsx' });
+  const relu = ficheDuClasseur(regles, classeur.feuille('Personnage'), { nomFichier: 'essai.xlsx', date: DATE, logo: LOGO, empreintePortrait: null });
+  assert.deepEqual(relu.nonRepris, [
+    'Don obtenu « Principale (Mage Bleu) : Attaque glacante bis (Glace) » : « Attaque glacante bis » introuvable parmi les entrées de Glace du tableau de Mage Bleu',
+    'Don obtenu « Ultime raison (Mage Bleu) : Peau froide (Glace) » : entrée déjà obtenue par un autre don (une seule fois, décision R181)',
+    'Don obtenu « Mimétisme (Mage Rouge) : Peau froide (Glace) » : aucun don « Variable » de ce nom dans les classes des règles',
+  ]);
+  assert.deepEqual(canonique(relu.fiche).dons_obtenus, canonique(f).dons_obtenus);
+});
+
+test('spécialisations magiques (décision R236) : une ligne « Spécialisation magique » par magie choisie, relue ; une magie sans choix n’en a pas ; un nom introuvable ou un doublon est dit', async () => {
+  // deux magies qui ont leurs deux spécialisations (jamais le Potentiel Illimité) ; magies et spécialisations par id, leurs noms lus dans les règles
+  // (une paire compatible : la magie acquise ne doit pas être refusée par l'innée)
+  const avecDeux = regles.magies.filter((m) => m.specialisations.length === 2 && !m.mono_magie);
+  const A = avecDeux[0];
+  const B = avecDeux.find((m) => m !== A && !A.incompatibles.includes(m.id) && !m.incompatibles.includes(A.id));
+  assert.ok(A && B, 'deux magies compatibles');
+  const f = commeLaPage({
+    ...ficheVide('Bi-magie R236'), race_id: 'races/humain', ethnie_id: 'races/humain#ethnie:humain-toundra', magie_innee_id: A.id, magie_acquise_id: B.id,
+    specialisations_magie: [{ magie_id: B.id, specialisation_id: B.specialisations[1].id }, { magie_id: A.id, specialisation_id: A.specialisations[0].id }],
+  });
+  const r = await verifier(f, 'spécialisations magiques');
+  const lues = lignesDeLaNote(r.cellules);
+  // dans l'ordre des magies des règles, une ligne par choix : « <magie> : <spécialisation> » telle que les règles l'écrivent
+  const dansLOrdre = regles.magies.filter((m) => m === A || m === B).map((m) => `${m.nom} : ${(m === A ? A : B).specialisations[m === A ? 0 : 1].nom}`);
+  assert.deepEqual(lues.filter((l) => l.nom === 'specialisationMagique').map((l) => l.valeur), dansLOrdre);
+  assert.deepEqual(canonique(r.fiche).specialisations_magie, canonique(f).specialisations_magie);
+  // aucun choix (en attente) : aucune ligne ; le choix d'un mono-magie est écrit et relu comme les autres (sans effet, R236 (2))
+  const attente = await verifier(commeLaPage({ ...f, specialisations_magie: [] }), 'choix en attente');
+  assert.equal(lignesDeLaNote(attente.cellules).filter((l) => l.nom === 'specialisationMagique').length, 0);
+  const mono = await verifier(commeLaPage({ ...f, magie_acquise_id: null, specialisations_magie: [{ magie_id: A.id, specialisation_id: A.specialisations[1].id }] }), 'mono-magie');
+  assert.equal(lignesDeLaNote(mono.cellules).filter((l) => l.nom === 'specialisationMagique').length, 1);
+  // un nom introuvable, une spécialisation d'une autre magie, un second choix pour la même magie : dits (nonRepris), jamais rapprochés
+  const lireAvec = async (lignes) => {
+    const cellules = { ...r.cellules, [ORDINATEUR.note]: `${r.cellules[ORDINATEUR.note]}\n${lignes.join('\n')}` };
+    const classeur = await lireClasseur(await ecrireXlsx(MODELE, { cellules, remplis: r.remplis, alignements: r.alignements, descriptionImage: 'logo', titre: f.nom }), { nom: 'essai.xlsx' });
+    return ficheDuClasseur(regles, classeur.feuille('Personnage'), { nomFichier: 'essai.xlsx', date: DATE, logo: LOGO, empreintePortrait: null });
+  };
+  const relu = await lireAvec([
+    `Spécialisation magique : Magie inconnue ${A.nom} : ${A.specialisations[0].nom}`,
+    `Spécialisation magique : ${A.nom} : ${B.specialisations[0].nom}`,
+    `Spécialisation magique : ${A.nom} : ${A.specialisations[1].nom}`,
+    'Spécialisation magique : sans séparateur',
+  ]);
+  assert.deepEqual(relu.nonRepris, [
+    `Spécialisation magique « Magie inconnue ${A.nom} : ${A.specialisations[0].nom} » : aucune magie de ce nom dans les règles`,
+    `Spécialisation magique « ${A.nom} : ${B.specialisations[0].nom} » : « ${B.specialisations[0].nom} » introuvable parmi les spécialisations de ${A.nom}`,
+    `Spécialisation magique « ${A.nom} : ${A.specialisations[1].nom} » : cette magie a déjà sa spécialisation (une par magie, décision R236)`,
+    'Spécialisation magique « sans séparateur » : illisible (une magie, puis une de ses spécialisations)',
+  ]);
+  assert.deepEqual(canonique(relu.fiche).specialisations_magie, canonique(f).specialisations_magie, 'les choix lus d’abord sont gardés');
+});
 
 test('armes élémentaires (décision R167) : nom, niveau, solidité et type physique choisi de la bombe reviennent tels quels, point fixe', async () => {
   const bombe = regles.armes_elementaires.find((a) => a.type_id === 'bombe' && a.magie_id === 'magies/magie-du-feu');
@@ -685,6 +858,13 @@ test('bouclier cassé (décision R108) : 0 AP et 0 AM écrits, sa solidité « 0
   assert.deepEqual([r.cellules[ORDINATEUR.bouclier.ap], r.cellules[ORDINATEUR.bouclier.am]], [0, 0]);
 });
 
+test('santé du moment négative (décision R171 : « Peut devenir négative ») : « -13 / M » écrite, relue telle quelle, point fixe', async () => {
+  const f = { ...ficheRiche(), sante_actuelle: -13 };
+  const r = await verifier(f, 'santé négative');
+  assert.equal(r.fiche.sante_actuelle, -13);
+  assert.match(String(r.cellules[ORDINATEUR.sante]), /^-13 \/ \d+$/);
+});
+
 test('bi-classe au Potentiel Illimité : relue telle quelle, point fixe', async () => {
   await verifier(ficheBiPotentiel(), 'Potentiel Illimité');
 });
@@ -700,6 +880,24 @@ test('les personnages fil rouge du guide : relus tels quels, point fixe', async 
       classes: [{ rang: 1, classe_id: choix.classe, specialite_id: null }],
     };
     await verifier(f, p.id);
+  }
+});
+
+test('aujourd’hui (la base courante, noms, textes et valeurs du site de dev compris) : les personnages fil rouge relus tels quels, point fixe', async () => {
+  const dImport = regles;
+  const courante = ouvrirBase({ sansExemples: false });
+  regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(courante)));
+  try {
+    for (const p of chargerFilRouge(courante)) {
+      const choix = FIL_ROUGE.find((x) => x.id === p.id);
+      const f = {
+        ...ficheVide(p.titre), race_id: choix.race, ethnie_id: choix.ethnie, magie_innee_id: choix.magie,
+        classes: [{ rang: 1, classe_id: choix.classe, specialite_id: null }],
+      };
+      await verifier(f, p.id);
+    }
+  } finally {
+    regles = dImport;
   }
 });
 

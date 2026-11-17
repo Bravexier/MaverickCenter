@@ -10,9 +10,10 @@ import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { A_COMPLETER } from '../serveur/edition.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
+import { nomDuProtege } from '../src/lib/mots-cles-proteges.mjs';
 import { chargerRaces } from '../src/lib/races-db.mjs';
 import { relationsDeRace } from '../src/lib/race-relations.mjs';
-import { raceKind } from '../src/lib/race-kinds.mjs';
+import { raceKind, TAG_RACE_HYBRIDE } from '../src/lib/race-kinds.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
@@ -72,13 +73,15 @@ test('créer une race hybride : page (mot-clé « race hybride »), race, onglet
   assert.equal(race.ordre, ordre, 'à la suite des races de la base');
   assert.equal(ligne('SELECT histoire FROM race_onglet WHERE race_id = ?', ID_LYCAN).histoire, A_COMPLETER);
   assert.equal(ligne('SELECT description_generale FROM race_onglet WHERE race_id = ?', ID_LYCAN).description_generale, 'Les loups-garous.');
-  assert.deepEqual(lignes('SELECT m.libelle FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id WHERE t.page_id = ? ORDER BY t.ordre', ID_LYCAN).map((t) => t.libelle), ['race', 'race hybride']);
+  // par leur id (décision R195 : leur libellé se modifie) ; « race hybride » créé avec la première race hybride, sous son id
+  // (des noms protégés : lib/mots-cles-proteges.mjs#nomDuProtege, l'id entier de la migration 0113, ou la clé pour « race-hybride », créé sans id fixé)
+  assert.deepEqual(lignes('SELECT m.id, m.cle FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id WHERE t.page_id = ? ORDER BY t.ordre', ID_LYCAN).map(nomDuProtege), ['race', TAG_RACE_HYBRIDE]);
   assert.equal(ligne('SELECT count(*) AS n FROM race_magie WHERE race_id = ? AND accessible = 0', ID_LYCAN).n, ligne('SELECT count(*) AS n FROM magie').n);
   assert.equal(ligne('SELECT count(*) AS n FROM race_classe WHERE race_id = ?', ID_LYCAN).n, ligne('SELECT count(*) AS n FROM classe').n);
   assert.equal(ligne('SELECT race_id FROM peuple WHERE id = ?', PEUPLE_LYCAN).race_id, ID_LYCAN);
   const races = chargerRaces(db);
   assert.equal(races.races.get(ID_LYCAN).hybride, true, 'lib/races-db.mjs');
-  const entree = { id: ID_LYCAN, data: { title: LYCAN, tags: ['race', 'race hybride'] } };
+  const entree = { id: ID_LYCAN, data: { title: LYCAN, mots_cles: ['race', TAG_RACE_HYBRIDE] } };
   assert.equal(raceKind([entree], entree), 'hybride', 'lib/race-kinds.mjs');
   assert.equal(enregistrer([{ op: 'creer', entite: 'race', valeurs: { nom: LYCAN, nature: 'pure' } }]).statut, 409);
   assert.equal(enregistrer([{ op: 'creer', entite: 'race', valeurs: { nom: 'Autre', nature: 'mixte' } }]).statut, 400);
@@ -93,6 +96,27 @@ test('magies innées : la matrice de la fiche (R8), ou la liste de l’onglet qu
   assert.equal(nain.statut, 200, JSON.stringify(nain.corps));
   assert.deepEqual(lignes("SELECT magie_id FROM race_magie_onglet WHERE race_id = 'races/nain'").map((m) => m.magie_id), ['magies/magie-du-feu']);
   assert.equal(enregistrer([{ op: 'magies_innees', race: 'races/nain', magies: ['magies/inconnue'] }]).statut, 400);
+});
+
+test('R210 : une liste de magies innées vide est refusée (400, avec son message) ; ni la liste de l’onglet, ni la matrice, ni la page ne changent', () => {
+  // le Nain (liste d'onglet, R11) et une race sans liste d'onglet, qui lit la matrice de la fiche (R8 : choisie par id dans l'état courant) ; l'état
+  // est lu avant d'écrire
+  const sansListe = ligne(`SELECT r.id FROM race r WHERE NOT EXISTS (SELECT 1 FROM race_magie_onglet o WHERE o.race_id = r.id)
+    AND EXISTS (SELECT 1 FROM race_magie m WHERE m.race_id = r.id AND m.accessible = 1) ORDER BY r.id LIMIT 1`).id;
+  const etat = (race) => ({
+    onglet: lignes('SELECT * FROM race_magie_onglet WHERE race_id = ? ORDER BY rang', race).map((l) => ({ ...l })),
+    matrice: lignes('SELECT * FROM race_magie WHERE race_id = ? ORDER BY magie_id', race).map((l) => ({ ...l })),
+    page: ligne('SELECT donnees, corps_md FROM page WHERE id = ?', race),
+  });
+  for (const race of ['races/nain', sansListe]) {
+    const avant = etat(race);
+    assert.ok(avant.onglet.length || avant.matrice.some((m) => m.accessible === 1), `${race} : des magies innées possibles`);
+    const r = enregistrer([{ op: 'magies_innees', race, magies: [] }]);
+    assert.equal(r.statut, 400, JSON.stringify(r.corps));
+    assert.equal(r.corps.erreur, 'operations[0] : Magies innées : une race a au moins une magie innée possible.');
+    assert.deepEqual(etat(race), avant, `${race} : rien n’a changé`);
+  }
+  assert.ok(!lignes('SELECT 1 FROM race_magie_onglet WHERE race_id = ?', sansListe).length, 'la race sans liste n’en reçoit pas');
 });
 
 test('relations entre peuples : placer une race dans un niveau (case créée ou changée), retirer une case ; le tableau de la race suit', () => {

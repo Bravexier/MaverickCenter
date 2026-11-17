@@ -17,6 +17,7 @@
 // 2. Classeur -> base : chaque cellule non vide est citée par au moins une ligne, ou rangée dans le registre (`regles`, `copies`) avec sa raison ; et
 //    chaque mot d'une cellule citée se lit dans les valeurs des lignes qui la citent (sinon le classeur dit quelque chose que la base n'a pas), sauf les
 //    libellés de mise en page déclarés (`libelles`).
+// Une valeur de la base qui porte des balises du glossaire (« {{corruption|CR}} », R233) se lit sans elles (`texteSansBalises` : le texte écrit, sinon la ref).
 // LIMITES (le contrôle est par ligne, pas par colonne : `source_ref` cite les cellules d'une ligne, pas celle de chaque colonne) : un nombre de la ligne est
 // accepté s'il se lit dans N'IMPORTE LAQUELLE de ses cellules, un morceau de texte s'il est contenu dans ses cellules, un mot d'une cellule s'il est
 // dans N'IMPORTE LAQUELLE de ses colonnes. Ne se voient donc pas : une valeur changée en une autre que la même ligne écrit déjà ailleurs (une barrière
@@ -37,7 +38,8 @@
 //   libelles  [{ mots?: "regex d'un mot", valeurs?: "regex de la cellule", onglets?, plages?, raison }]  libellés de mise en page d'une cellule citée :
 //             les mots qui répondent à `mots` (tous si `mots` manque) d'une cellule dont la valeur répond à `valeurs` (« ^Lvl \d+$ » : « Lvl » seul) ;
 //   voulus    [{ table, cle: { … }, colonne, avant, apres, raison }]                       écarts voulus hors des registres d'orthographe (décision R…,
-//             migration de données) : `avant` est l'écriture du classeur, `apres` celle de la base ;
+//             migration de données) : `avant` est l'écriture du classeur, `apres` celle de la base (en texte ; pour une colonne numérique, le
+//             nombre écrit en texte : « 17 » -> « 16 ») ;
 //   conflits  [{ table, cle, colonne, garder: "site" | "classeur", valeur_classeur, decide_le, raison }]  décisions du propriétaire (la valeur retenue
 //             compte dans les deux sens) ;
 //   copies    [{ onglet, plage, de: { classeur?, onglet, plage }, raison }]                   plage qui recopie une autre plage (même suite de valeurs non
@@ -49,6 +51,7 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { historiqueSite } from '../../client/src/lib/historique-site.mjs';
+import { texteSansBalises } from '../../client/src/lib/mots-cles-balises.mjs';
 
 const RACINE = resolve(fileURLToPath(new URL('../../', import.meta.url)));
 const REGISTRE_DES_CLASSEURS = resolve(RACINE, 'sources', 'raw', 'classeurs', 'registre.json');
@@ -330,6 +333,9 @@ export function rapprocher(db, {
   };
   for (const cs of registresDOrthographe()) for (const c of cs) inscrire(c, c.col);
   for (const v of voulus) inscrire(v, v.colonne);
+  // Les écarts voulus seuls, par (table, clé, colonne) : un nombre de la base se lit aussi par eux (pas par les registres d'orthographe).
+  const voulusParColonne = new Map();
+  for (const v of voulus) ajouter(voulusParColonne, cleK(v.table, cleDeCorrection(v), v.colonne), v);
   // Identifiants des documents Google remplacés par ceux des copies (migration 0014, registre `copies` : avant -> apres) : un lien du classeur original
   // vers un autre document, recopié dans la base, cite la copie.
   const chemin0014 = resolve(RACINE, 'data', 'migrations', '0014-sources-copies-drive.json');
@@ -361,13 +367,17 @@ export function rapprocher(db, {
     }
     return res;
   };
-  // Le libellé d'une ligne visée par une clé étrangère (« Évitée » pour `echelle_id` = 'evitee'), pour le vocabulaire.
+  // Le libellé d'une ligne visée par une clé étrangère (« Évitée » pour `echelle_id` = 'evitee'), pour le vocabulaire : dans son état d'import quand la
+  // colonne visée est sa clé primaire (une ligne visée que le site de dev a supprimée ou renommée garde son libellé d'import).
   const libellesVises = new Map();
   const libellesDe = (table, colonne, v) => {
     const k = `${table}|${colonne}|${v}`;
     if (!libellesVises.has(k)) {
       const cols = db.prepare(`PRAGMA table_info("${table}")`).all().map((c) => c.name).filter((c) => LIBELLES_DE_CIBLE.test(c));
-      const l = cols.length ? db.prepare(`SELECT ${cols.map((c) => `"${c}"`).join(', ')} FROM "${table}" WHERE "${colonne}" = ?`).get(v) : null;
+      const parCle = pkDe(table).length === 1 && pkDe(table)[0] === colonne;
+      const lue = !cols.length ? null : parCle ? h.ligneDImport(table, { [colonne]: v })
+        : db.prepare(`SELECT ${cols.map((c) => `"${c}"`).join(', ')} FROM "${table}" WHERE "${colonne}" = ?`).get(v);
+      const l = lue && Object.fromEntries(cols.map((c) => [c, lue[c] ?? null]));
       libellesVises.set(k, l ? Object.values(l).filter((x) => x !== null) : []);
     }
     return libellesVises.get(k);
@@ -496,6 +506,8 @@ export function rapprocher(db, {
       const heritees = correctionsHeritees(t.name, ligne);
       // Un écart d'une ligne qui cite aussi une source sans instantané (un Google Doc) est « à relire » : la valeur peut venir de cette source.
       const signaler = (ecart, liste) => (ailleurs.size ? R.aRelire.push({ ...ecart, ailleurs: [...ailleurs].join(' ; ') }) : liste.push(ecart));
+      // Le rangement d'un écart, marqué « pour mémoire » quand il ne compte pas (casse seule, ou à relire ailleurs).
+      const rangement = (f, pourMemoire = false) => Object.assign(f, { pourMemoire: pourMemoire || ailleurs.size > 0 });
 
       // Une colonne : la valeur d'import doit se lire dans les cellules (ou, si le propriétaire a tranché un conflit pour le classeur, la valeur actuelle).
       const verifier = (c, lire) => {
@@ -514,19 +526,25 @@ export function rapprocher(db, {
         if (attendue === null || attendue === undefined || attendue === '') return;
         const ecart = lire(attendue);
         if (!ecart) return;
-        if (modifiee && !d) R.conflits.push({ ligne: ident, colonne: c.name, classeur: tout.slice(0, 200), import: importee, site: courante });
+        // Un écart « pour mémoire » (casse seule, valeur à relire dans une source sans instantané) ne dit pas que la cellule a changé : il est rangé
+        // comme pour une ligne intacte, jamais en conflit (une ligne supprimée ou une colonne modifiée par le site de dev est un choix du site).
+        if (ecart.pourMemoire) ecart();
+        else if (modifiee && !d) R.conflits.push({ ligne: ident, colonne: c.name, classeur: tout.slice(0, 200), import: importee, site: courante });
         else if (!actuelle && !d) R.conflits.push({ ligne: ident, colonne: c.name, classeur: tout.slice(0, 200), import: importee, site: null, note: 'ligne supprimée par le site de dev' });
         else ecart();
       };
       for (const c of textes) {
-        verifier(c, (attendue) => {
+        verifier(c, (ecrite) => {
+          // La base peut porter des balises du glossaire (« {{corruption|CR}} », migration 0117, R233) que le classeur n'a pas : on compare le texte
+          // qu'elles montrent (`texteSansBalises` sans vocabulaire : le texte écrit, sinon la ref), comme les découpages des importeurs.
+          const attendue = texteSansBalises(ecrite);
           const propres = corrections.get(cleK(t.name, cleLigne, c.name)) ?? [];
           // Une valeur d'un caractère (« 0 », « x ») : égale à l'une des cellules (corrections et écarts voulus défaits).
           if (comparable(attendue).length < 2) {
             // … ou un jeton entier d'une cellule (« Prix : 4 », « 40% »).
             const jeton = (v) => new RegExp(`(?:^|[^\\p{L}\\p{N}])${comparable(v).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?:$|[^\\p{L}\\p{N}])`, 'u').test(tout);
             const lue = [attendue, sansCorrections(attendue, propres, heritees)].some((v) => valeursDesCellules.has(comparable(v)) || jeton(v));
-            return lue ? null : () => signaler({ ligne: ident, colonne: c.name, absent: [String(attendue)], cellules: tout.slice(0, 300) }, R.ecarts);
+            return lue ? null : rangement(() => signaler({ ligne: ident, colonne: c.name, absent: [String(attendue)], cellules: tout.slice(0, 300) }, R.ecarts));
           }
           // Une valeur JSON (`donnees`) : ses feuilles, pas son écriture (les clés ne sont pas dans le classeur).
           const json = feuillesJson(attendue);
@@ -542,14 +560,17 @@ export function rapprocher(db, {
           if (!absents.length) return null;
           // Une valeur que l'import a normalisée (« Combat » -> « combat ») ne diffère que par la casse : listée à part, pas un écart.
           const vraiment = absents.filter((m) => !toutMinuscules.includes(m.toLowerCase()));
-          return () => {
+          return rangement(() => {
             if (!vraiment.length) R.casse.push({ ligne: ident, colonne: c.name, valeur: absents.join(' ‖ ').slice(0, 120) });
             else signaler({ ligne: ident, colonne: c.name, absent: vraiment.slice(0, 3), cellules: tout.slice(0, 300) }, R.ecarts);
-          };
+          }, !vraiment.length);
         });
       }
+      // Un nombre se lit dans les cellules ; ou c'est l'`apres` d'un écart voulu de sa colonne (`voulus`, nombres écrits en texte) dont l'`avant` s'y lit.
+      const voulusDe = (col) => (voulusParColonne.get(cleK(t.name, cleLigne, col)) ?? []).filter((v) => v.avant !== '' && Number.isFinite(Number(v.avant)) && Number.isFinite(Number(v.apres)));
       for (const c of nombres) {
-        verifier(c, (attendue) => (lus.has(Number(attendue)) ? null : () => signaler({ ligne: ident, colonne: c.name, valeur: attendue, cellules: tout.slice(0, 200) }, R.nombres)));
+        const lu = (attendue) => lus.has(Number(attendue)) || voulusDe(c.name).some((v) => Number(v.apres) === Number(attendue) && lus.has(Number(v.avant)));
+        verifier(c, (attendue) => (lu(attendue) ? null : rangement(() => signaler({ ligne: ident, colonne: c.name, valeur: attendue, cellules: tout.slice(0, 200) }, R.nombres))));
       }
     }
     for (const [cleTexte, l] of actuelles) {

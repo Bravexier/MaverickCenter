@@ -129,7 +129,15 @@ export function corpsAvecMonnaies(corps, monnaies) {
     const sousTitre = lignes.findIndex((l, i) => i > debut && i < fin && /^#/.test(l));
     if (sousTitre > 0) fin = sousTitre;
     const premiere = lignes.findIndex((l, i) => i > debut && i < fin && l.startsWith('- '));
-    if (premiere < 0) throw new ErreurCorpsComposants(`liste introuvable : ${titre}`);
+    if (premiere < 0) {
+      // une liste vidée (le CONVERTISSEUR quand l'unité reste seule, après des monnaies supprimées) : ses puces reviennent après le dernier texte de
+      // la section (son titre, ou les commentaires qui le suivent), une ligne vide entre les deux, comme à l'import
+      if (!puces.length) return;
+      let dernier = debut;
+      for (let i = debut + 1; i < fin; i++) if (lignes[i].trim()) dernier = i;
+      lignes.splice(dernier + 2, 0, ...puces);
+      return;
+    }
     let derniere = premiere;
     while (derniere + 1 < fin && lignes[derniere + 1].startsWith('- ')) derniere++;
     lignes.splice(premiere, derniere - premiere + 1, ...puces);

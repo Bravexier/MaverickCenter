@@ -2,11 +2,16 @@
 // des gemmes, des matériaux, la monnaie, et l'ensemble des tables de l'onglet "équipement inventaire". […] chaque élément est modifiable en édition,
 // supprimable, ajoutable ») : les domaines des tables ressource, gemme et monnaie pour serveur/edition.mjs (DOMAINES).
 //   - ce que la base tire des cellules (prix en RF, ligne du CONVERTISSEUR) est recalculé (lib/composants-champs.mjs), jamais saisi ;
+//   - un matériau modifié (prix, type) refait ce qui s'en calcule : le type, l'AP, l'AM et le prix des armures de la grille et des boucliers (décision
+//     R207 (1), E6 : serveur/edition-armures.mjs#suivreLesValeursCalculees) ; le type de sa fiche d'armure (materiau_armure) le suit (R62) ;
 //   - le corps des pages qui écrivent ces composants suit (lib/corps-composants.mjs : « Équipement inventaire », armures, boucliers, bâtons, accessoires ;
 //     le nom d'un matériau, aussi la page des armes : serveur/edition-armes.mjs#suivreLeMateriauRenomme) ;
 //   - un composant se crée dans un tableau de la page (id tiré du nom une fois, puis figé et jamais réutilisé) ; il ne se supprime que si aucune autre
 //     règle ne le cite (armure, bouclier, recette, effet d'accessoire… : le refus les nomme) ; une fiche de personnage qui l'a dans son inventaire ou sa
 //     ceinture le garde sous son nom, sans lien au catalogue (serveur/fiches-retraits.mjs#detacherDesFiches).
+//   - les monnaies sont figées (décision R219 (3)) : serveur/edition.mjs refuse leur création, leur modification et leur suppression (409,
+//     lib/edition-modele.mjs#TABLES_FIGEES) avant ce domaine, qui ne sert plus qu'à la résolution d'un conflit d'un lot ancien (le rejeu, lui, recopie
+//     les lignes du journal : R220 (1)) et aux dérivations.
 // Les outils communs du service (refus, synchroniser…) sont donnés par serveur/edition.mjs (domainesDesComposants), sans import en retour.
 import { convertisseurDeMonnaie, PRIX_DE_GEMME, prixDeGemmeEnRf, prixEnRf } from '../src/lib/composants-champs.mjs';
 import {
@@ -20,6 +25,7 @@ import { normalize } from '../src/lib/text.mjs';
 import { lireLigne } from './edition-journal.mjs';
 import { corpsOuRefus } from './edition-corps.mjs';
 import { suivreLeCorpsDesArmes, suivreLeMateriauRenomme } from './edition-armes.mjs';
+import { suivreLesValeursCalculees } from './edition-armures.mjs';
 import { detacherDesFiches } from './fiches-retraits.mjs';
 
 const ORIGINE = 'equipement';
@@ -99,12 +105,16 @@ export function domainesDesComposants({ refus, ErreurEdition, synchroniser, prov
     deriver(ctx, avant, apres) {
       if (avant.genre === 'materiau') {
         suivreLeMateriauRenomme(ctx, avant, apres, ErreurEdition);
-        // décision R62 : la page « Composants » est la seule source ; le prix d'un matériau d'arme est recopié dans materiau_arme (et sa ligne du corps des armes)
-        const ma = lireLigne(ctx.db, 'materiau_arme', { ressource_id: avant.id });
+        // décision R62 : la page « Composants » est la seule source ; le prix d'un matériau d'arme est recopié dans materiau_arme (et sa ligne du corps des
+        // armes) quand le prix de la ressource CHANGE, jamais pour une autre colonne (description, nom) : materiau_arme garde sinon sa propre écriture (les
+        // RO de l'onglet Armes sont ceux de la ressource, R49 ; seuls des RF diffèrent, un zéro oublié dans la source)
+        const ma = avant.prix_brut !== apres.prix_brut ? lireLigne(ctx.db, 'materiau_arme', { ressource_id: avant.id }) : null;
         if (ma && (ma.prix_brut !== apres.prix_brut || ma.prix_rf !== apres.prix_rf)) {
           const nouvelle = ctx.w.modifier('materiau_arme', { ressource_id: avant.id }, { prix_brut: apres.prix_brut, prix_rf: apres.prix_rf });
           suivreLeCorpsDesArmes(ctx, 'materiau_arme', ma, nouvelle, ErreurEdition);
         }
+        // décision R207 (1), E6 : le prix des armures de la grille et des boucliers de ce matériau suit son prix (serveur/edition-armures.mjs)
+        if ((avant.prix_rf ?? null) !== (apres.prix_rf ?? null)) suivreLesValeursCalculees(ctx, ErreurEdition);
       }
       suivreLesPages(ctx, 'ressource', avant, apres);
     },
@@ -157,7 +167,11 @@ export function domainesDesComposants({ refus, ErreurEdition, synchroniser, prov
     deriver(ctx, avant, apres) {
       if (avant.type === apres.type) return;
       const fiche = lireLigne(ctx.db, 'materiau_armure', { ressource_id: apres.ressource_id });
-      if (fiche) ctx.w.modifier('materiau_armure', { ressource_id: apres.ressource_id }, { type: apres.type });
+      if (fiche) {
+        ctx.w.modifier('materiau_armure', { ressource_id: apres.ressource_id }, { type: apres.type });
+        // décision R207 (1), E6 : le type des armures de la grille de ce matériau (le plus lourd des deux) suit (serveur/edition-armures.mjs)
+        suivreLesValeursCalculees(ctx, ErreurEdition);
+      }
       suivreLesPages(ctx, 'materiau', avant, apres);
     },
     /** Un matériau (id de la page des armures, comme les autres) : sa ressource et son type ; ni fiche d'armure, de bouclier ou d'arme (rien n'en est déduit). */

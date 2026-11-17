@@ -1,0 +1,10 @@
+---
+// L'accès au site de dev, côté navigateur (R275 option b : un mot de passe pour modifier et lancer une mise à jour, la lecture reste ouverte) :
+// un script, inclus une fois par layouts/Base.astro, dans l'en-tête, pour qu'il s'exécute AVANT les scripts de page (modules différés, dans l'ordre du
+// document). La balise donne l'adresse du service ; le script (src/scripts/acces.mjs, qui n'importe rien) enveloppe `fetch` pour ces adresses.
+import { url } from '../lib/wiki';
+---
+<meta name="maverick-api" content={url('api/')} />
+<script>
+  import '../scripts/acces.mjs';
+</script>

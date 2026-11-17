@@ -3,15 +3,34 @@
 // tout texte échappé, champ libre réduit à un Markdown simple, marqueur [V: X+1] jamais repris). Le sens (couleur) a son propre fichier :
 // notes-de-version-sens.test.mjs.
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { planifier } from '../../tools/flux-git/regles.mjs';
-import { bilan, comparerBases, DOMAINES, TABLES_DES_NOTES, TABLES_LUES, trierVersions, versionCourte, versionDeLivraison } from '../src/lib/notes-de-version.mjs';
+import {
+  bilan, comparerBases, DOMAINES, PAGES_RETIREES_DU_GUIDE, TABLES_DES_NOTES, TABLES_LUES, trierVersions, versionCourte, versionDeLivraison,
+} from '../src/lib/notes-de-version.mjs';
+import { installerLePlan, ongletsDesRegles, PAGES_ABSORBEES, PAGES_RETIREES, PAGES_SUPPRIMEES } from '../src/lib/livres.mjs';
 import { TABLES } from '../src/lib/edition-modele.mjs';
 import {
   TITRES_DOMAINES, diffMots, echapper, htmlDeLaListe, htmlDeLaNote, htmlDuTexteLibre, lancementAffiche, markdownDeLaNote, neutraliserMarqueur,
 } from '../src/lib/notes-de-version-rendu.mjs';
 import { htmlAvecMotsCles, pageAvecMotsCles } from '../src/lib/mots-cles-balises.mjs';
+import { htmlAvecMonnaies } from '../src/lib/monnaies.mjs';
+
+/**
+ * Un plan des onglets des Règles d'essai (lib/plan-des-regles-db.mjs#chargerPlanDesRegles, R184 et R185), installé pour tout le fichier : les pages
+ * du guide des bases synthétiques s'y rangent (lib/livres.mjs#placeDansLeGuide). Les vrais titres des onglets, quelques pages du vrai plan.
+ */
+installerLePlan([
+  { id: 'fiche-de-personnage', titre: 'Fiche de personnage', ouverture: 'guide/creer-son-personnage',
+    entrees: [{ page: 'guide/creer-son-personnage' }, { page: 'guide/choisir-sa-race' }] },
+  { id: 'mecaniques-generales', titre: 'Mécaniques générales', ouverture: 'guide/reussir-une-action',
+    entrees: [{ page: 'guide/reussir-une-action' }, { page: 'guide/resistances-et-faiblesses' }, { page: 'guide/meteo' }] },
+  { id: 'combats', titre: 'Les combats', ouverture: 'guide/le-tour-de-jeu', entrees: [{ page: 'guide/le-tour-de-jeu' }] },
+  { id: 'exploration', titre: 'Exploration', ouverture: 'guide/la-montee-de-niveau',
+    entrees: [{ page: 'guide/la-montee-de-niveau' }, { libelle: 'Artisanat', adresse: 'regles/artisanat/' }] },
+]);
 
 const magies = [
   { id: 'magies/feu', nom: 'Feu', ordre: 1, description: 'Brûle.' },
@@ -39,7 +58,7 @@ function bases() {
       echelle_relation: [{ id: 'neutre', libelle: 'Neutre' }, { id: 'haine', libelle: 'Haine' }],
       relation_peuple: [{ ligne_peuple_id: 'peuples/humain', colonne_peuple_id: 'peuples/elfe', echelle_id: 'neutre' }],
       page: [
-        // une page du livre « Les bases » (lib/livres.mjs) : rangée sous le titre du livre
+        // une page de l'onglet « Les combats » (le plan installé) : rangée sous le titre de l'onglet
         { id: 'guide/le-tour-de-jeu', type: 'guide', statut: 'canon', titre: 'Combat', corps_md: 'Un tour dure six secondes.', donnees: null },
         { id: 'guide/exemple', type: 'guide', statut: 'example', titre: 'Exemple', corps_md: 'a', donnees: null },
         { id: 'races/humain', type: 'races', statut: 'canon', titre: 'Humain', corps_md: 'a', donnees: null },
@@ -79,7 +98,7 @@ test('comparerBases : un champ par ligne, entités ajoutées et retirées, domai
     'races | Elfe | Elfe | Présentation | ajoute',
     'metiers |  | Alchimiste | (entité) | ajoute',
     'metiers |  | Forgeron | Bonus | modifie',
-    'guide | Les bases | Combat | Texte | modifie',
+    'guide | Les combats | Combat | Texte | modifie',
   ]);
   assert.deepEqual(lignes.map((l) => l.rang), lignes.map((_, i) => i + 1));
   const flash = lignes.filter((l) => l.entite === 'Flash');
@@ -102,7 +121,7 @@ test('comparerBases : un champ par ligne, entités ajoutées et retirées, domai
   assert.equal(b.total, lignes.length);
   assert.equal(b.amelioration + b.affaiblissement + b.neutre, b.total);
   assert.deepEqual(b.parDomaine, { sorts: 6, races: 3, metiers: 2, guide: 1 });
-  assert.deepEqual(DOMAINES.map((d) => d.id), ['sorts', 'magies', 'classes', 'races', 'metiers', 'guide', 'codex', 'bestiaire', 'armes', 'armures', 'equipement', 'composants', 'chronologie', 'mots-cles']);
+  assert.deepEqual(DOMAINES.map((d) => d.id), ['sorts', 'magies', 'classes', 'races', 'metiers', 'guide', 'codex', 'bestiaire', 'armes', 'armures', 'equipement', 'composants', 'chronologie', 'mots-cles', 'autres-tables']);
 });
 
 test('le rendu de la note a le titre de chaque domaine, dans l’ordre de DOMAINES (un domaine sans titre s’afficherait brut, en tête de liste)', () => {
@@ -147,14 +166,17 @@ test('composants (migration 0040) : monnaie, objet de l’onglet sous son tablea
     gemme: [gemme('x#gemme:rubis', '40 RO')],
   } };
   const dev = { tables: {
-    monnaie: [{ id: 'pp', nom: 'Pierre précieuse taillée', abreviation: 'PP', valeur_rf: 100000 }],
+    monnaie: [{ id: 'pp', nom: 'Pierre précieuse taillée', abreviation: 'PPT', valeur_rf: 100000 }],
     ressource: [r('x#materiel:briquet', 'materiel', 'Briquet', { section: 'MATOS AVENTURES', prix_brut: '12 RO' }), r('x#gemme:rubis', 'gemme', 'Rubis'),
       r('x#gemme:quartz', 'gemme', 'Quartz'), r('x#potion:petite', 'potion', 'Petite fiole rouge', { prix_brut: '2 RO' })],
     gemme: [gemme('x#gemme:rubis', '45 RO'), gemme('x#gemme:quartz', '1 RO')],
   } };
   const lignes = comparerBases(ref, dev).filter((l) => l.domaine === 'composants');
   const de = (entite, champ = null) => lignes.find((l) => l.entite === entite && l.champ === champ);
-  assert.deepEqual([de('Pierre précieuse taillée', 'Nom').avant, de('Pierre précieuse taillée', 'Nom').apres], ['Pierre précieuse', 'Pierre précieuse taillée']);
+  // le nom d'une monnaie est figé (« Figer les noms », R193 : hors de TABLES.monnaie) : un nom changé autrement (migration) n'est pas une ligne de la
+  // note, la monnaie est nommée par celui de dev ; l'abréviation, modifiable, l'est
+  assert.ok(!lignes.some((l) => l.table_nom === 'monnaie' && l.champ === 'Nom'), 'R193 : le nom d’une monnaie n’est pas listé');
+  assert.deepEqual([de('Pierre précieuse taillée', 'Abréviation').avant, de('Pierre précieuse taillée', 'Abréviation').apres], ['PP', 'PPT']);
   assert.equal(de('Briquet', 'Prix (« 2 RO », « 100 RF / 1 RO »)').groupe, 'Matos › MATOS AVENTURES');
   assert.equal(de('Rubis', 'Prix de la gemme commune (« 50 RO »)').apres, '45 RO');
   assert.equal(lignes.filter((l) => l.entite === 'Quartz').length, 1, 'la gemme créée : une ligne (sa ressource), pas une de plus pour ses prix');
@@ -288,17 +310,106 @@ test('comparerBases : bases identiques → rien ; espaces et fins de ligne ne co
   assert.deepEqual(comparerBases(ref, dev), []);
 });
 
-test('guide : une page fusionnée dans une autre (lib/livres.mjs#PAGES_ABSORBEES), retirée, se range à la place de la page qui l’absorbe, pas dans les Règles avancées', () => {
+test('guide : une page fusionnée dans une autre (lib/livres.mjs#PAGES_ABSORBEES), retirée, se range à la place de la page qui l’absorbe ; les onglets dans leur ordre', () => {
+  assert.equal(PAGES_ABSORBEES['guide/resistance-faiblesse-magie'], 'guide/resistances-et-faiblesses', 'R184 (7)');
   const page = (id, titre) => ({ id, type: 'guide', statut: 'draft', titre, corps_md: 'Texte.', donnees: null });
-  const ref = { tables: { page: [page('guide/creer-son-personnage', 'Créer son personnage'), page('guide/choisir-sa-race', 'Étape 1'), page('guide/le-jeu-de-role', 'Le jeu de rôle'), page('guide/meteo', 'Météo')] } };
-  const dev = { tables: { page: [page('guide/creer-son-personnage', 'Créer son personnage'), page('guide/meteo', 'Météo')] } };
+  const ref = { tables: { page: [page('guide/creer-son-personnage', 'Créer son personnage'), page('guide/le-jeu-de-role', 'Le jeu de rôle'),
+    page('guide/resistance-faiblesse-magie', 'Résistance/Faiblesse Magie'), page('guide/le-tour-de-jeu', 'Le tour de jeu')] } };
+  const dev = { tables: { page: [page('guide/creer-son-personnage', 'Créer son personnage'), page('guide/choisir-sa-race', 'Étape 1'),
+    page('guide/resistances-et-faiblesses', 'Résistances et faiblesses'), page('guide/le-tour-de-jeu', 'Le tour de jeu')] } };
   const lignes = comparerBases(ref, dev).filter((l) => l.table_nom === 'page');
-  assert.deepEqual(lignes.map((l) => [l.entite, l.nature, l.groupe]), [['Le jeu de rôle', 'retire', 'Découvrir'], ['Étape 1', 'retire', 'Découvrir']],
-    'Bienvenue (rang 0 de Découvrir) puis Créer son personnage (rang 2)');
-  // une page des Règles avancées retirée y reste
-  delete dev.tables.page[1];
-  dev.tables.page = dev.tables.page.filter(Boolean);
-  assert.equal(comparerBases(ref, dev).find((l) => l.entite === 'Météo').groupe, 'Règles avancées');
+  assert.deepEqual(lignes.map((l) => [l.entite, l.nature, l.groupe]), [
+    ['Le jeu de rôle', 'retire', 'Découvrir'],
+    ['Étape 1', 'ajoute', 'Fiche de personnage'],
+    ['Résistance/Faiblesse Magie', 'retire', 'Mécaniques générales'],
+    ['Résistances et faiblesses', 'ajoute', 'Mécaniques générales'],
+  ], 'Bienvenue (Découvrir, rang 0), puis les onglets dans l’ordre du plan ; la page absorbée à la place de « Résistances et faiblesses »');
+});
+
+test('guide : une page qui n’a plus de place dans le plan (PAGES_RETIREES, PAGES_SUPPRIMEES, ou que le plan ne range nulle part) se range sous « Pages retirées », après le Guide du MJ', () => {
+  assert.ok(Object.hasOwn(PAGES_RETIREES, 'guide/lexique'));
+  assert.ok(PAGES_SUPPRIMEES.includes('guide/aide-memoire'), 'R184 (9)');
+  const page = (id, titre) => ({ id, type: 'guide', statut: 'draft', titre, corps_md: 'Texte.', donnees: null });
+  const ref = { tables: { page: [page('guide/lexique', 'Lexique'), page('guide/meteo', 'Météo'), page('guide/un-maitre-du-jeu', 'Un maître du jeu'),
+    page('guide/aide-memoire', 'Aide-mémoire'), page('guide/hors-du-plan', 'Hors du plan')] } };
+  const dev = { tables: { page: [] } };
+  const lignes = comparerBases(ref, dev).filter((l) => l.table_nom === 'page');
+  assert.deepEqual(lignes.map((l) => [l.entite, l.nature, l.groupe]), [
+    ['Météo', 'retire', 'Mécaniques générales'], ['Un maître du jeu', 'retire', 'Guide du MJ'],
+    ['Aide-mémoire', 'retire', PAGES_RETIREES_DU_GUIDE], ['Hors du plan', 'retire', PAGES_RETIREES_DU_GUIDE], ['Lexique', 'retire', PAGES_RETIREES_DU_GUIDE],
+  ]);
+  // modifiée (une note d'avant son retrait) : même rubrique
+  const avant = { tables: { page: [page('guide/lexique', 'Lexique')] } };
+  const modifiee = { tables: { page: [{ ...page('guide/lexique', 'Lexique'), corps_md: 'Autre texte.' }] } };
+  assert.equal(comparerBases(avant, modifiee).find((l) => l.entite === 'Lexique').groupe, PAGES_RETIREES_DU_GUIDE);
+  // plus aucune rubrique de l'ancien plan
+  assert.ok(!lignes.some((l) => ['Les bases', 'Règles avancées'].includes(l.groupe)));
+});
+
+test('plan des Règles et liste des races (lot de l’édition des menus) : une ligne par menu dont l’ordre change, « Onglet » d’une page déplacée, l’ordre des races en une ligne', () => {
+  const page = (id, titre) => ({ id, type: 'guide', statut: 'draft', titre, corps_md: 'Texte.', donnees: null });
+  const onglets = [
+    { id: 'mecaniques-generales', titre: 'Mécaniques générales', ordre: 2, ouverture_page_id: 'guide/reussir-une-action' },
+    { id: 'combats', titre: 'Les combats', ordre: 3, ouverture_page_id: 'guide/le-tour-de-jeu' },
+  ];
+  const entree = (onglet, rang, pageId, libelle = null) => ({ id: pageId ? `page:${pageId}` : `bientot:${libelle}`, onglet_id: onglet, rang, page_id: pageId, libelle, adresse: null });
+  const race = (id, nom, rang) => ({ id, nom, ordre: rang, presentation: null, rang_liste: rang });
+  const pages = [page('guide/reussir-une-action', 'Réussir une action'), page('guide/resistances-et-faiblesses', 'Résistances et faiblesses'),
+    page('guide/meteo', 'Météo'), page('guide/le-tour-de-jeu', 'Le tour de jeu'), page('guide/initiative', 'Initiative')];
+  const ref = { tables: {
+    page: pages, regles_onglet: onglets,
+    regles_onglet_entree: [entree('mecaniques-generales', 1, 'guide/reussir-une-action'), entree('mecaniques-generales', 2, 'guide/resistances-et-faiblesses'),
+      entree('mecaniques-generales', 3, 'guide/meteo'), entree('mecaniques-generales', 4, null, 'Plus tard'), entree('combats', 1, 'guide/le-tour-de-jeu'),
+      entree('combats', 2, 'guide/initiative')],
+    race: [race('races/humain', 'Humain', 1), race('races/nain', 'Nain', 2), race('races/elfe', 'Elfe', 3)],
+  } };
+  const dev = { tables: {
+    page: [...pages, page('guide/nouvelle', 'Nouvelle page')], regles_onglet: onglets,
+    // « Mécaniques générales » réordonnée (la Météo partie dans « Les combats ») ; « Les combats » garde son ordre, la Météo et une page créée à la fin
+    regles_onglet_entree: [entree('mecaniques-generales', 2, 'guide/reussir-une-action'), entree('mecaniques-generales', 1, 'guide/resistances-et-faiblesses'),
+      entree('mecaniques-generales', 4, null, 'Plus tard'), entree('combats', 1, 'guide/le-tour-de-jeu'), entree('combats', 2, 'guide/initiative'),
+      entree('combats', 3, 'guide/meteo'), entree('combats', 4, 'guide/nouvelle')],
+    race: [race('races/humain', 'Humain', 2), race('races/nain', 'Nain', 1), race('races/elfe', 'Elfe', 3), race('races/neuve', 'Neuve', 4)],
+  } };
+  // le plan installé est celui de la base de dev (serveur/notes-de-version.mjs#noteEnPreparation) ; celui du fichier est remis à la fin
+  const plan = ongletsDesRegles();
+  installerLePlan(dev.tables.regles_onglet.map((o) => ({ id: o.id, titre: o.titre, ouverture: o.ouverture_page_id,
+    entrees: dev.tables.regles_onglet_entree.filter((e) => e.onglet_id === o.id).sort((a, b) => a.rang - b.rang).map((e) => (e.page_id ? { page: e.page_id } : { bientot: e.libelle })) })));
+  try {
+    const cle = (l) => `${l.domaine} | ${l.groupe ?? ''} | ${l.entite} | ${l.champ ?? '(entité)'} | ${l.nature} | ${l.avant ?? ''} → ${l.apres ?? ''}`;
+    assert.deepEqual(comparerBases(ref, dev).map(cle), [
+      'races |  | Liste des races | Ordre de la liste | modifie | Humain · Nain → Nain · Humain',
+      'races | Neuve | Neuve | (entité) | ajoute |  → Neuve',
+      'guide | Mécaniques générales | Menu « Mécaniques générales » | Ordre du menu | modifie | Réussir une action · Résistances et faiblesses → Résistances et faiblesses · Réussir une action',
+      'guide | Les combats | Météo | Onglet | modifie | Mécaniques générales → Les combats',
+      'guide | Les combats | Nouvelle page | (entité) | ajoute |  → Nouvelle page',
+    ]);
+    // rien quand l'ordre ne change pas (rangs renumérotés compris) ; rien tant que la production n'a pas le plan ni la colonne rang_liste
+    const renumerote = structuredClone(ref);
+    renumerote.tables.regles_onglet_entree.forEach((e) => { e.rang *= 10; });
+    renumerote.tables.race.forEach((r) => { r.rang_liste += 5; });
+    assert.deepEqual(comparerBases(ref, renumerote), []);
+    const ancienne = { tables: { page: pages, race: ref.tables.race.map(({ rang_liste: _r, ...r }) => r) } };
+    assert.deepEqual(comparerBases(ancienne, { tables: { ...dev.tables, page: pages, race: dev.tables.race.slice(0, 3) } }), []);
+  } finally {
+    installerLePlan(plan);
+  }
+});
+
+test('guide : une page inchangée n’est jamais rangée (la comparaison ne demande pas le plan pour elle)', () => {
+  // un processus neuf, sans plan installé : ranger une page y lèverait « le plan des onglets des Règles n’est pas installé »
+  const script = `
+    import { comparerBases } from ${JSON.stringify(new URL('../src/lib/notes-de-version.mjs', import.meta.url).href)};
+    const page = { id: 'guide/meteo', type: 'guide', statut: 'draft', titre: 'Météo', corps_md: 'Texte.', donnees: null };
+    const egales = comparerBases({ tables: { page: [page] } }, { tables: { page: [{ ...page }] } }).length;
+    let changee;
+    try { comparerBases({ tables: { page: [page] } }, { tables: { page: [{ ...page, corps_md: 'Autre.' }] } }); } catch (e) { changee = e.message; }
+    console.log(JSON.stringify({ egales, changee }));`;
+  const r = spawnSync(process.execPath, ['--no-warnings', '--input-type=module', '-e', script], { encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stderr);
+  const { egales, changee } = JSON.parse(r.stdout);
+  assert.equal(egales, 0);
+  assert.match(changee, /le plan des onglets des Règles n’est pas installé/, 'une page changée, elle, se range par le plan');
 });
 
 test('guide : l’annonce de l’encart IRL (migration 0068) vide n’est pas listée ; écrite, vidée ou changée, son texte se lit', () => {
@@ -509,6 +620,26 @@ test('rendu : une balise posée autour d’un texte existant se rend dans le dé
   assert.ok(!page.replace(/<[^>]+>/g, '').includes('{{'), 'aucune balise brute dans le texte visible');
 });
 
+test('rendu : les montants des textes cités convertis par `texte` (htmlAvecMonnaies, R61, R63), échappés sans lui ; aucune abréviation visible', () => {
+  const long = 'Chaque étape se paie en RO. *Exemple : l’espadon revient à 620 RO, ou à 1 220 RO si l’on achète aussi le titane.* Texte assez long pour être replié.';
+  const lignes = [
+    { domaine: 'armes', groupe: 'Améliorations', entite: 'Amélioration +1', champ: 'Coût en RO (bouclier)', nature: 'modifie', avant: '500', apres: '50', sens: 'neutre' },
+    { domaine: 'guide', groupe: 'Chapitre', entite: 'Forge', champ: 'Texte', nature: 'modifie', avant: long, apres: long.replace('620', '640'), sens: 'neutre' },
+    { domaine: 'guide', groupe: 'Chapitre', entite: 'Monnaies', champ: 'Texte', nature: 'ajoute', avant: null, apres: '- **Monnaies** : le Ricken d’or (RO). 1 RO = 100 RF, et 1 PP = 1 000 RO.', sens: 'neutre' },
+  ];
+  const visible = (html) => html.replace(/<[^>]+>/g, ' ');
+  const abreviation = /(?<![\p{L}\p{N}])(R[Oo]|R[Ff]|PP)(?![\p{L}\p{N}])/u;
+  // sans `texte` : échappé, tel qu'avant (le script de la page de dev, qui n'importe pas monnaies.mjs)
+  assert.match(visible(htmlDeLaListe(lignes)), abreviation);
+  const html = htmlDeLaListe(lignes, { texte: htmlAvecMonnaies });
+  assert.doesNotMatch(visible(html), abreviation, visible(html));
+  assert.match(html, /class="montant"/, 'un montant décomposé');
+  assert.match(html, /class="nv-champ__nom">Coût en <span[^>]*class="piece piece--ro"/, 'le nom du champ aussi');
+  const note = htmlDeLaNote({ version: '0.4', publiee_le: '2026-10-01', texte: 'Tout coûte 10 RO.' }, lignes, { texte: htmlAvecMonnaies });
+  assert.doesNotMatch(visible(note), abreviation);
+  assert.match(htmlDuTexteLibre('Tout coûte **10 RO**.', { texte: htmlAvecMonnaies }), /<strong><span class="montant"/);
+});
+
 test('champ libre : paragraphes, listes, gras, italique, liens http(s) ; rien d’autre ne passe', () => {
   assert.equal(htmlDuTexteLibre('Ligne 1\nLigne 2\n\n- un\n- *deux*'), '<p>Ligne 1<br>Ligne 2</p><ul><li>un</li><li><em>deux</em></li></ul>');
   assert.equal(htmlDuTexteLibre('[Discord](https://discord.gg/abc)'), '<p><a href="https://discord.gg/abc" rel="noopener noreferrer">Discord</a></p>');
@@ -706,4 +837,27 @@ test('équipement : les consommables de l’onglet Ceinture (2026-10-17) — nom
   ]);
   dev.tables.ressource[0].description = 'Jamais montrée.';
   assert.equal(comparerBases(ref, dev).length, 4);
+});
+
+test('mots-clés (R232, R233) : les synonymes et les catégories d’un mot-clé changés sur le site de dev, une ligne chacun, neutre ; un mot-clé ajouté les dit lui-même', () => {
+  const motCle = (id, libelle, cle) => ({ id, libelle, cle, description: null, url: null, couleur: null, verrou: 0, monnaie_id: null });
+  const ref = { tables: {
+    mot_cle: [motCle(1, 'Instant Cast', 'instant-cast'), motCle(2, 'Feu', 'feu')],
+    categorie_mot_cle: [{ id: 1, libelle: 'Règles', libelle_cle: 'regles' }, { id: 4, libelle: 'Combat', libelle_cle: 'combat' }],
+    mot_cle_synonyme: [{ id: 1, mot_cle_id: 1, libelle: 'IC', libelle_cle: 'ic', ordre: 0 }, { id: 2, mot_cle_id: 1, libelle: 'Action bonus', libelle_cle: 'action-bonus', ordre: 1 }],
+    mot_cle_categorie: [{ mot_cle_id: 1, categorie_id: 1 }],
+  } };
+  const dev = structuredClone(ref);
+  dev.tables.mot_cle_synonyme = [{ id: 1, mot_cle_id: 1, libelle: 'IC', libelle_cle: 'ic', ordre: 0 }];
+  dev.tables.mot_cle_categorie = [{ mot_cle_id: 1, categorie_id: 4 }, { mot_cle_id: 1, categorie_id: 1 }, { mot_cle_id: 2, categorie_id: 4 }];
+  dev.tables.mot_cle.push(motCle(3, 'Glace', 'glace'));
+  dev.tables.mot_cle_synonyme.push({ id: 3, mot_cle_id: 3, libelle: 'GL', libelle_cle: 'gl', ordre: 0 });
+  const lignes = comparerBases(ref, dev).filter((l) => l.domaine === 'mots-cles');
+  const vue = (l) => [l.entite, l.champ, l.nature, l.avant, l.apres, l.sens];
+  assert.deepEqual(lignes.filter((l) => l.champ === 'Synonymes').map(vue), [['Instant Cast', 'Synonymes', 'modifie', 'IC, Action bonus', 'IC', 'neutre']]);
+  assert.deepEqual(lignes.filter((l) => l.champ === 'Catégories').map(vue).sort(), [
+    ['Feu', 'Catégories', 'ajoute', null, 'Combat', 'neutre'], ['Instant Cast', 'Catégories', 'modifie', 'Règles', 'Règles, Combat', 'neutre'],
+  ]);
+  assert.ok(lignes.some((l) => l.entite === 'Glace' && l.nature === 'ajoute' && l.champ === null), 'le mot-clé ajouté');
+  assert.ok(!lignes.some((l) => l.entite === 'Glace' && l.champ === 'Synonymes'), 'ses synonymes ne sont pas dits à part');
 });

@@ -24,6 +24,15 @@
       "etat": "en_cours"
     },
     {
+      "titre": "Nouveauté mise à jour Décembre",
+      "fichier": "magie-maverick-v10.json",
+      "ignorer": "tools/sources/ignorer/magie-maverick-v10.json",
+      "instantane_le": "2026-11-12",
+      "sha256_xlsx": "e89fc4be757f53700444d89964804551232bf63d76bfd354f5599258d37d5353",
+      "voie": "pièce jointe du propriétaire du 2026-11-12, original Google non lu (Magie V10, décisions R236 et R237) ; ni identifiant Drive ni date de modification",
+      "etat": "en_cours"
+    },
+    {
       "titre": "Ressources et Craft",
       "fichier": "ressources-et-craft.json",
       "ignorer": "tools/sources/ignorer/ressources-et-craft.json",

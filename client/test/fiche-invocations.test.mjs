@@ -2,10 +2,12 @@
 // sacrifie une invocation. Les invocations se lisent dans la base ; les tests suivent ses invariants (le site de dev peut modifier les créatures).
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import * as bestiaire from '../src/lib/bestiaire-db.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
 import * as M from '../src/lib/fiche-moteur.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
+import { baseDImport, reglesDImport } from './aide-base-d-import.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(db))); // tel que la page le reçoit
@@ -74,7 +76,7 @@ test('creaturesDuSort : une marionnette (une créature par NPM) est à la porté
   assert.equal(M.creaturesDuSort(regles, fiche(), regles.sorts.find((s) => !regles.invocations.some((i) => i.sort_id === s.id))), null);
 });
 
-test('sacrificeDuSort : l’effet de la carte sacrifiée (« Manteau noir »), le tableau entier (« Amélioration cadavérique »), rien pour un autre sort', () => {
+test('sacrificeDuSort : l’effet de la carte sacrifiée (« Manteau noir »), rien pour un autre sort ; le tableau « Amélioration cadavérique » est retiré (R237 (7), migration 0117)', () => {
   const effets = db.prepare('SELECT sort_id, count(*) AS n FROM creature_effet WHERE sort_id IS NOT NULL GROUP BY sort_id').all();
   assert.ok(effets.length > 0);
   for (const e of effets) {
@@ -83,15 +85,16 @@ test('sacrificeDuSort : l’effet de la carte sacrifiée (« Manteau noir »), l
     assert.equal(r.lignes.length, e.n);
     for (const x of r.lignes) assert.ok(x.creature.id && x.texte);
   }
-  assert.ok(regles.tableaux_de_sacrifice.length > 0);
-  for (const t of regles.tableaux_de_sacrifice) {
-    const r = M.sacrificeDuSort(regles, t.sort_id);
-    assert.equal(r.type, 'tableau');
-    assert.equal(r.lignes.length, db.prepare('SELECT count(*) AS n FROM amelioration_cadaverique a JOIN sort s ON s.magie_id = a.magie_id WHERE s.id = ?').get(t.sort_id).n);
-    // le sort porte le nom écrit dans le titre du tableau de son invocation
-    const titre = db.prepare('SELECT tableau_titre FROM invocation WHERE id = ?').get(t.invocation_id).tableau_titre;
-    const nom = db.prepare('SELECT nom FROM sort WHERE id = ?').get(t.sort_id).nom;
-    assert.equal(titre.toLocaleLowerCase('fr').includes(nom.toLocaleLowerCase('fr')), true, `${titre} / ${nom}`);
+  // plus de branche « tableau » : ni dans les règles de la fiche, ni dans le bestiaire (G1 de game-design), ni dans la base
+  for (const [r0, base, quand] of [[reglesDImport(), baseDImport(), 'import'], [regles, db, 'aujourd’hui']]) {
+    assert.equal('tableaux_de_sacrifice' in r0, false, quand);
+    assert.equal(base.prepare("SELECT count(*) AS n FROM sqlite_master WHERE name = 'amelioration_cadaverique'").get().n, 0, quand);
+    assert.equal(base.prepare('SELECT count(*) AS n FROM invocation WHERE tableau_sort_id IS NOT NULL OR tableau_titre IS NOT NULL').get().n, 0, quand);
+    // un sort qui invoque sans rien donner au sacrifice
+    const sacrifie = (id) => r0.invocations.some((i) => i.creatures.some((c) => c.effets.some((e) => e.sort_id === id)));
+    const sansSacrifice = r0.invocations.find((i) => !sacrifie(i.sort_id));
+    assert.ok(sansSacrifice, quand);
+    assert.equal(M.sacrificeDuSort(r0, sansSacrifice.sort_id), null, quand);
   }
-  assert.equal(M.sacrificeDuSort(regles, regles.invocations[0].sort_id), null);
+  assert.equal(bestiaire.tableauxDesSorts, undefined, 'tableauxDesSorts est retiré');
 });

@@ -57,6 +57,7 @@ Le propriétaire n'aime pas que la donnée des magies « soit un script » : la 
 | Sous-entité d'une page | `<id de la page>#<sorte>:<slug>` | `magies/magie-du-sang#sort:annulation` |
 | Référentiel | clé courte | `force`, `ro`, `epee` |
 | Clé naturelle numérique | le nombre | `niveau_global.niveau` |
+| Mot-clé, catégorie de mot-clé, synonyme d'un mot-clé (exception, décision du propriétaire, migrations 0113 et 0115) | entier attribué à la création, jamais réutilisé ; balises et adresses citent `mot_cle.cle`, qui suit le libellé et les catégories (clé quittée : `mot_cle_ancienne_cle` ; catégories assignées aux mots-clés existants : migration 0114, R232 (7)) ; un synonyme (`mot_cle_synonyme`, R233) n'entre pas dans la clé | `mot_cle.id` = 66, `cle` = `classe` |
 | Clé composite (54 tables) | colonnes de la clé primaire ; **dans les adresses génériques** (`entite_id`) elles sont jointes par `\|` | `seuil_niveau` : `puissance_magique_max\|17` |
 
 Limite assumée : un identifiant contient un nom (slug). Renommer dans la source change l'identifiant. Cas réel : la correction « Chasseur prime » → « Chasseur de primes »
@@ -107,11 +108,11 @@ vierge (Python et Node). Les 131 tables de base sont **toutes non vides** une fo
 | 0 | Registre des importeurs | 1 | 10 | `famille` |
 | 1 | Pages, liens, mots-clés, sources | 8 | 9 684 | `type_page`, `page` (991), `alias`, `mot_cle`, `page_tag`, `source`, `page_source`, `page_entite` |
 | 2 | Règles de la fiche (`fiche`) | 11 | 202 | `caracteristique`, `competence` (30), `niveau_global`, `seuil_niveau`, `regle_constante`, `posture`, `posture_effet` |
-| 3 | Magies et sorts (`magies`) | 14 | 1 276 | `magie` (15), `sort` (322), `sort_type`, `sort_etat`, `magie_resistance`, `magie_incompatibilite`, `amelioration_cadaverique`, `regle_magie` |
-| 4 | Annexes des magies (`annexes`) | 14 | 1 257 | `etat` (20), `etat_stade`, `resistance_magie`, `resistance_duo`, `meteo`, `mode_super_objet`, `mode_hyper_effet` (246, cinq lectures fusionnées) |
+| 3 | Magies et sorts (`magies`) | 14 | 1 276 | `magie` (15), `magie_specialisation` (28, migration 0117), `sort` (420 depuis la migration 0117, 322 avant), `sort_type`, `sort_etat`, `magie_resistance`, `magie_incompatibilite`, `regle_magie` (`amelioration_cadaverique` retirée par la migration 0117, R237 (7)) |
+| 4 | Annexes des magies (`annexes`) | 14 | 1 257 | `etat` (21 depuis la migration 0117), `etat_stade`, `resistance_magie`, `resistance_duo`, `meteo`, `mode_super_objet`, `mode_hyper_effet` (246, cinq lectures fusionnées) |
 | 5 | Dieux | 1 | 28 | `dieu` |
-| 6 | Classes (`classes`) | 7 | 1 050 | `classe` (39), `specialite` (78), `capacite` (**660 : une ligne par page `capacites/*`**), `objet_depart`, `classe_objet_depart` |
-| 7 | Races (`races`) | 9 | 6 514 | `race` (27), `ethnie` (96), `race_classe` (1 053), `race_magie` (405), `peuple` (69), `relation_peuple` (4 761), `echelle_relation` |
+| 6 | Classes (`classes`) | 7 | 1 050 | `classe` (41 depuis la migration 0119, 39 avant), `specialite` (82), `capacite` (**694 depuis la migration 0119, 660 avant : une ligne par page `capacites/*`**), `objet_depart`, `classe_objet_depart` |
+| 7 | Races (`races`) | 9 | 6 684 | `race` (29 depuis la migration 0120, 27 avant), `ethnie` (98, 96 avant), `race_classe` (1 189 depuis les migrations 0119 et 0120, 1 053 avant), `race_magie` (435, 405 avant), `peuple` (69), `relation_peuple` (4 761), `echelle_relation` |
 | 8 | Bestiaire (`bestiaire`) | 15 | 1 124 | `invocation`, `creature` (63), `creature_attaque`, `creature_capacite`, `creature_capacite_sort` (liens vers `sort`) |
 | 9 | Équipement, ressources, craft, métiers (`equipement`, `craft`, `docs`) | 49 | 4 460 | `ressource` (553), `recette`, `potion`, `arme` (161), `armure` (242), `bouclier`, `accessoire_*`, `familier`, `metier` (72), `maladie` |
 | 10 | Transversal | 3 | 283 | `note_cellule` (171), `ecart_source` (111), `correction` (1) |
@@ -178,7 +179,7 @@ un réimport incomplet est refusé et rien ne bouge.
 | `page_fts` | `db-derive.mjs` | titre, alias, mots-clés, résumé, corps |
 | `entite_fts` | `data/derive.sql` (SQL pur, idempotent) | 33 types d'entités typées |
 
-`db-derive.mjs` refuse de calculer si une clé stockée (`titre_cle`, `alias.cle`, `mot_cle.libelle_cle`, les `*_cle` des entités typées) diffère de `normalize()` du site : la copie Python ne peut pas dériver en silence. Option `--sans-exemples` : voir §8.2.
+`db-derive.mjs` refuse de calculer si une clé stockée (`titre_cle`, `alias.cle`, `categorie_mot_cle.libelle_cle`, `mot_cle_synonyme.libelle_cle`, les `*_cle` des entités typées ; `mot_cle.cle` suit sa propre règle, `tools/db/maverick.py#cles_des_mots_cles`, que `db:check` vérifie) diffère de `normalize()` du site : la copie Python ne peut pas dériver en silence. Option `--sans-exemples` : voir §8.2.
 
 ### 4.4 Corrections orthographiques
 
@@ -371,9 +372,22 @@ NULL avant la connexion Discord) et `modification` (une ligne touchée : table, 
 que la modification**, sans déclencheur SQL caché ; elles restent **vides dans `data/rows`** et ne vivent que dans la base vivante du site de dev.
 Quand de nouvelles règles arrivent, le journal est rejoué sur elles (une modification déjà présente est « intégrée », un lot contredit passe
 « conflit » en entier ; il se résout sur `/mise-a-jour/`, migration `0072-resolution-des-conflits` : `resolu_le`, `resolu_par` — le nouveau lot normal
-qui reprend ce qui est gardé — et `resolution` — les choix 1, 2 ou 3 —, ses lignes restant « conflit » comme trace) ; `npm run db:appliquer-edition` le rejoue de même sur `data/rows`, que l'export déterministe réécrit (relecture et
+qui reprend ce qui est gardé — et `resolution` — les choix 1, 2 ou 3 —, ses lignes restant « conflit » comme trace). Chaque lot porte sa
+**nature** (migration `0127-nature-des-traces`, R275) : `saisie` (faite sur le site de dev, valeur par défaut), `source` (réimport d'une source),
+`decision` (application d'une décision du propriétaire, dont le numéro `R…` va dans `decision`, obligatoire pour elle seule), `migration`
+(changement de données du dépôt) ou `code` (recalcul après un changement de code) ; `historique_modification` reprend `nature` et `decision` de
+son lot. `npm run db:appliquer-edition` le rejoue de même sur `data/rows`, que l'export déterministe réécrit (relecture et
 comparaison par git). Voir `docs/serveur.md`, « Édition ». Restent à décider avec le propriétaire : l'état `brouillon / validé` (relecture avant
 publication), l'auteur (connexion Discord) et le moment où la base devient canonique (les classeurs, une archive).
+
+Toujours en section 14, trois tables propres à chaque base, vides dans `data/rows` et classées « propres au site »
+(`client/src/lib/tables-de-la-base.mjs`, jamais dans un extrait ni un paquet ; la base vivante les recopie à la reconstruction,
+`serveur/base-vivante.mjs#TABLES_VIVANTES`) : `lot_de_changements` et `numero_donne` (migration `0128-lots-de-changements`, lot 6 du chantier
+`docs/chantier-base-de-dev.md`), et `migration_recue` (migration `0129-migrations-recues`, lot 7 : « Une table note ce que la base a reçu »).
+Celle-ci a une ligne par migration reçue par CETTE base : `numero` (clé, le NNNN du fichier), `fichier` (son nom, dont le préfixe vaut `numero`),
+`empreinte` (sha256 des octets du fichier SQL, hexadécimal minuscule : une migration fusionnée ne se modifie plus, un écart se voit), `recue_le`
+(UTC), `mode` (`reconstruction` : base refaite depuis le dépôt à une version qui la contient ; `sur_place` : appliquée par le service à la base en
+place) et `version_du_site` (X.Y.Z, facultative). La base du dépôt ne « reçoit » rien : c'est le service qui remplit la table de sa base vivante.
 
 ### 10.4 Portabilité vers PostgreSQL
 
@@ -447,18 +461,18 @@ Détail et exemples dans les documents par domaine livrés avec la conception (`
 
 | Domaine | Question | Comportement actuel |
 | --- | --- | --- |
-| Règles | « Calme » ou « Prouesse » (compétence de Volonté) ; puissance magique 5 au niveau 16 ou 17 ; plafond de caractéristique aux niveaux 5, 10, 15 ; total à répartir = égalité ou maximum ; sens des deux « croix » ; entraînement 10 % par compétence ou au total | Les deux sources gardées (`ecart_source`) ; aucune règle appliquée |
+| Règles | ~~« Calme » ou « Prouesse » (compétence de Volonté)~~ (**tranché**, décisions R4 et R204 : Calme, « Prouesse » est son ancien nom et sa phrase du guide est la description de Calme, migration 0102) ; puissance magique 5 au niveau 16 ou 17 ; ~~plafond de caractéristique aux niveaux 5, 10, 15~~ (**tranché**, décision R202 : toujours 4 au plus, 5 avec le +1 d'une magie innée) ; total à répartir = égalité ou maximum ; sens des deux « croix » ; entraînement 10 % par compétence ou au total | Les deux sources gardées (`ecart_source`) ; aucune règle appliquée |
 | Règles | Quelle version du mode hyper fait foi (classeur « Mode hyper et co », onglet masqué V8, fiche, onglets de magie ; +15 / +7 ou +10 / +5) | Cinq lectures dans `mode_hyper_effet`, aucune préférée |
 | Magies | ~~Corruption : la phrase « mono magie uniquement » est-elle la règle, ou la liste de la fiche (Arcane, Sang, Espace/Temps)~~ (**tranché**, décision R15 : mono-magie, excepté Elfe Noir Charbon et Felfe Noir) ; ~~Arcane/Corruption : résistance à elles-mêmes (fiche) ou à l'autre (V8, guide)~~ (**tranché**, décision R90 : chacune résiste à l'autre, la matrice de la fiche est retirée par la migration 0051) | Les paires de la fiche + la phrase (`incompatibilite_note`, gardée comme trace) ; `magie.mono_magie` (migration 0010) ; résistances V8 seules (R90 ; la matrice de la fiche et ses écarts retirés par 0051) |
-| Magies | « D/S/B » non développé dans les sources ; coût nu = chakra (lecture du guide) ; noms d'états (« Gelé » / « Gel ») | `dsb_brut` seul ; 32 sorts sans chakra écrit = `NULL` ; table d'alias explicite dans l'importeur |
+| Magies | « D/S/B » non développé dans les sources (**tranché en partie**, décision R205 : D = Dégâts, S = Soin ; le B reste ouvert) ; coût nu = chakra (lecture du guide) ; ~~sorts sans chakra écrit~~ (**tranché**, décision R205 : certains sorts ne demandent pas de chakra ou y sont soumis à conditions ; R105 et R106 restent) ; ~~noms d'états (« Gelé » / « Gel »)~~ (**tranché**, décision R205 : « Gel », migration 0103) | `dsb_brut` seul ; sans chakra écrit = `NULL` (le compte « 32 » d'origine est périmé) ; table d'alias explicite dans l'importeur ; « Gelé » réécrit « Gel » dans les textes de règles modifiables (registre `0103-r205-etat-gel.json`) |
 | Magies | 26 fils de commentaires orphelins (cellules supprimées, certains textes sont des règles) ; dieux : 28 noms, 16 reliés à une magie | `commentaire_orphelin` sans rattachement ; 16 dieux chargés |
-| Classes | Valeurs par niveau absentes (seul le niveau 1 est donné) ; « Don de départ » = niveau 1 ? ; les choix 10/15/20 dépendent-ils de la spécialité ? | `*_depart` ; rattachement à la spécialité si les colonnes sont sous sa bannière ; Archimage : cartouches = choix, spécialité `NULL` (décision du propriétaire) |
+| Classes | Valeurs par niveau absentes (seul le niveau 1 est donné) ; ~~« Don de départ » = niveau 1 ?~~ (**tranché**, décision R202 : oui) ; ~~les choix 10/15/20 dépendent-ils de la spécialité ?~~ (**tranché**, décision R202 : oui) | `*_depart` ; rattachement à la spécialité si les colonnes sont sous sa bannière ; Archimage : cartouches = choix, spécialité `NULL` (décision du propriétaire) |
 | Classes | Objets de départ non rattachés au glossaire (16 options sur 210, « Corde (5m) ») ; AM des classes magiques (liste en dur de la fiche contre catégorie du classeur) | Texte conservé ; `am_base` sur la catégorie, pas de booléen `magique` |
 | Races | 27 races (onglets) ou 23 (guide) ; fautes de saisie de la fiche (« Felfle », « Satyre » avec espace) ; bonus d'ethnie issu de formules (faux positif probable : Elfe forestier Forêt +3 AP) ; matrices d'accessibilité contredisant la fiche | 27 races, aucun drapeau `disponible` inventé ; valeurs du classeur reproduites, `race_brut` gardé, écarts signalés |
 | Races | Capacité hyper : deux versions (fiche, guide) divergent pour 8 races ; « Divers » non typé (« Peut voler »…) ; bornes de caractéristique effectives | Versions gardées côte à côte ; texte conservé |
-| Bestiaire | Sigle FPVSIA non défini (« NPM » = niveau de puissance magique, et le « EP » des marionnettes en est une faute du classeur : décision R53) ; combinaison de deux magies pour les résistances (6 créatures contradictoires) ; « Golem d'Argile » sans créature ; 6 sorts cités sur 105 introuvables sous ce nom (3 variantes évidentes : « Veilliessement »…) | Lecture proposée stockée en constante de l'importeur ; `sort_id` `NULL` ; les variantes évidentes sont des **candidates au registre de corrections** |
-| Équipement | 9 prix de matière incohérents (RF/RO) ; deux listes de kits d'alchimie ; tests de fabrication en conflit (Forgeron, Enchanteur) ; coquilles de gemmes (alias fermé de 16 lignes) ; 4 noms portés par deux ressources | Valeurs conservées ; `ecart_source` ; deux lignes distinctes |
-| Équipement | Unité des prix d'armure et de bouclier ; effets de potion, d'accessoire, de familier gardés en texte (« Récupère 2d8 + 5 santé ») | Colonne `prix` sans unité ; texte (structurer = lot « règles en données », §10.5) |
+| Bestiaire | ~~Sigle FPVSIA non défini~~ (**tranché**, décision R209 : Force, Perception, Volonté, Social, Intelligence, Agilité) (« NPM » = niveau de puissance magique, et le « EP » des marionnettes en est une faute du classeur : décision R53) ; combinaison de deux magies pour les résistances (6 créatures contradictoires) ; ~~« Golem d'Argile » sans créature~~ (**tranché**, décision R209 : un monstre du Bestiaire 2.0, `monstres/golem-dargile`) ; 6 sorts cités sur 105 introuvables sous ce nom (3 variantes évidentes : « Veilliessement »…) | Lecture proposée stockée en constante de l'importeur ; `sort_id` `NULL` ; les variantes évidentes sont des **candidates au registre de corrections** |
+| Équipement | 9 prix de matière incohérents (RF/RO) ; deux listes de kits d'alchimie ; ~~tests de fabrication en conflit (Forgeron, Enchanteur)~~ (**tranché**, décision R207 : le Doc « MÉTIER » fait foi, Forgeron Force + Volonté, Enchanteur Perception + Volonté, migration 0105) ; coquilles de gemmes (alias fermé de 16 lignes) ; 4 noms portés par deux ressources | Valeurs conservées ; `ecart_source` ; deux lignes distinctes |
+| Équipement | ~~Unité des prix d'armure et de bouclier~~ (**tranché**, décisions R79 et R207 : RO, calculés d'après les matériaux, migrations 0105 et 0108) ; effets de potion, d'accessoire, de familier gardés en texte (« Récupère 2d8 + 5 santé ») | Colonne `prix` en RO ; texte (structurer = lot « règles en données », §10.5) |
 
 ---
 

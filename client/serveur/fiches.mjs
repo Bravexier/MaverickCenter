@@ -5,8 +5,8 @@
 // n'a plus de statut « validé » qui les rendait bloquantes : demande du propriétaire, migration 0038).
 import { randomUUID } from 'node:crypto';
 import {
-  armuresAvecArmure, bouclierAvecMatiere, entrainementAvecLignes, CHAMP_VERSION, COLONNES_DU_SERVICE, COLONNES_RETIREES, PARTIES_DE_FICHE, ficheVide, maitrisesAvecChoix,
-  nmDuMjAvecCadeaux, progressionAvecGains, sansPartiesRetirees,
+  armuresAvecArmure, bouclierAvecMatiere, entrainementAvecLignes, CHAMP_VERSION, COLONNES_DU_SERVICE, COLONNES_RETIREES, PARTIES_DE_FICHE, ficheVide, livresAvecLivresDesSorts,
+  maitrisesAvecChoix, nmDuMjAvecCadeaux, progressionAvecGains, sansPartiesRetirees,
 } from '../src/lib/fiche-format.mjs';
 import { cadrageDe, dimensionsDuPortrait, empreinte, estUnPortrait, octetsDuPortrait, styleDuCadrage } from '../src/lib/portrait.mjs';
 import { clesRompues } from './base-vivante.mjs';
@@ -28,13 +28,14 @@ const DEPART_DES_COLONNES_RETIREES_DE_DETAIL = Object.freeze({ personnage_compet
  * (gains de niveau en deux totaux, R73 ; durabilité d'une arme, R74 ; son entraînement en texte, R71, retiré par la migration 0062 :
  * COLONNES_RETIREES), de la migration 0055 (l'armure de la fiche, R95), de la migration 0060 (le bouclier forme + matière, R96) et de la migration
  * 0061 (la magie de la Symbiose, R100), de la migration 0081 (le type de dégâts choisi d'une arme élémentaire, R167), de la migration 0066 (les NM du MJ de la fiche, R118) et de la migration 0067 (le sort préparé, son jet et sa
- * posture, R115) et de la migration 0071 (la magie d'une résistance au choix, R137). L'arme choisie d'un choix d'acquis (R119, migration 0067) n'en est
+ * posture, R115) et de la migration 0071 (la magie d'une résistance au choix, R137), et de la migration 0084 (le Mode Hyper, le Mode Hyper 100 % et le compteur de la semaine, R172), et de la migration 0086 (un sort préparé en Mode Hyper ou au Mode Hyper 100 %, R172, Q82), et de la migration 0089 (la réussite critique figée du sort préparé, R182). L'arme choisie d'un choix d'acquis (R119, migration 0067) n'en est
  * plus : la migration 0076 l'a retirée (R152, COLONNES_RETIREES).
  * Quand le service retombe sur sa base d'avant (reconstruction échouée, docs/serveur.md), la page à jour les envoie quand même (ficheVide met les gains à 0) :
  * une de ces colonnes que la base n'a pas est ignorée tant qu'elle ne porte rien (sa valeur de départ, ou vide : null, « "" ») ; autrement, « champ
  * inconnu » (ce qu'elle porte serait perdu). De même une table de la fiche que la base n'a pas encore (personnage_armure_partie, 0055 ;
  * personnage_entrainement et personnage_acquis_choix, 0062 ; personnage_resistance_choix, 0069, la résistance au choix du Drakos orange, R124 ;
- * personnage_maitrise_choix, 0076, les choix de maîtrise d'armes, R148 : partiesDeLaBase) se lit vide, et une liste non vide pour elle est refusée.
+ * personnage_maitrise_choix, 0076, les choix de maîtrise d'armes, R148 ; personnage_livre_sort, 0082, les livres de sort, R169 ; personnage_action_usage, 0085, les compteurs d'actions, R173 ; personnage_don_obtenu, 0088,
+ * les dons obtenus des dons « Variable » du Mage Bleu, R181 ; personnage_specialisation_magie, 0118, la spécialisation magique choisie par magie, R236 : partiesDeLaBase) se lit vide, et une liste non vide pour elle est refusée.
  */
 export const DEPART_DES_COLONNES_AJOUTEES = Object.freeze({
   personnage: Object.freeze({
@@ -43,9 +44,10 @@ export const DEPART_DES_COLONNES_AJOUTEES = Object.freeze({
     bouclier_materiau_id: null, bouclier_amelioration_id: null, bouclier_solidite: null,
     symbiose_magie_id: null,
     nm_mj: 0,
+    mode_hyper: 0, mode_hyper_100: 0, mode_hyper_semaine: null,
   }),
   personnage_arme: Object.freeze({ durabilite: null, type_degats_choisi: null }),
-  personnage_sort: Object.freeze({ prepare: 0, prepare_jet: null, prepare_posture_id: null }),
+  personnage_sort: Object.freeze({ prepare: 0, prepare_jet: null, prepare_posture_id: null, prepare_hyper: 0, prepare_cent: 0, prepare_critique: null }),
   personnage_resistance_choix: Object.freeze({ magie_id: null }),
 });
 
@@ -62,7 +64,7 @@ export const PAGE_D_AVANT = 'La page vient d’une version précédente du site 
   + 'l’armure est une seule armure complète, avec la solidité de chacune de ses parties ; le bouclier a une forme et une matière ; '
   + 'les accessoires n’ont plus que six emplacements, sans nom ni effet hors table ; l’entraînement se note en lignes et l’acquis se calcule ; '
   + 'les NM du MJ se notent pour toute la fiche, à côté de la limite des NM, et plus sort par sort ; les maîtrises d’armes se choisissent '
-  + 'désormais par source, une famille par point à choisir, et leurs dés se calculent).';
+  + 'désormais par source, une famille par point à choisir, et leurs dés se calculent ; un livre de sort se note à part de la liste des sorts).';
 
 /** Au plus tant de lignes par liste (une fiche en a quelques dizaines) : un envoi aberrant est refusé avant d'écrire. */
 export const LIGNES_MAX = 500;
@@ -253,8 +255,18 @@ function valeurDeCellule(v, ou, problemes) {
   return null;
 }
 
-/** Index uniques partiels qui ne nomment que la fiche (« UNIQUE constraint failed: <table>.personnage_id ») : ce qu'ils refusent. */
-const UNIQUES_DE_LA_FICHE = Object.freeze({ 'personnage_sort.personnage_id': 'un seul sort préparé par fiche (décision R115)' });
+/**
+ * Clés uniques d'une table de la fiche dont « en double (…) » ne dit pas la règle, par leurs colonnes telles que SQLite les nomme : ce qu'elles
+ * refusent. Un index unique partiel qui ne nomme que la fiche (« UNIQUE constraint failed: personnage_sort.personnage_id ») ; les dons obtenus des dons
+ * « Variable » du Mage Bleu (décision R181, migration 0088 : un choix par don, clé primaire ; « chaque entrée ne se prend qu'une fois », UNIQUE).
+ */
+const UNIQUES_DE_LA_FICHE = Object.freeze({
+  'personnage_sort.personnage_id': 'un seul sort préparé par fiche (décision R115)',
+  'personnage_specialisation_magie.personnage_id, personnage_specialisation_magie.magie_id': 'une seule spécialisation par magie de la fiche (décision R236)',
+  'personnage_don_obtenu.personnage_id, personnage_don_obtenu.source': 'un don « Variable » n’obtient qu’une entrée (décision R181)',
+  'personnage_don_obtenu.personnage_id, personnage_don_obtenu.entree_id':
+    'cette entrée du tableau du Mage Bleu est déjà obtenue par un autre don « Variable » de la fiche : chaque entrée ne se prend qu’une fois (décision R181)',
+});
 
 /**
  * Les CHECK d'une table de la fiche qui disent une règle de forme, par leur texte (tel que SQLite le rend) : ce qu'ils refusent. personnage_arme
@@ -265,6 +277,15 @@ const CHECKS_DE_LA_FICHE = Object.freeze({
   '(arme_id IS NULL) <> (arme_elementaire_id IS NULL)': 'une arme est une arme du catalogue (arme_id) ou une arme élémentaire (arme_elementaire_id), l’une des deux (décision R167)',
   'materiau_id IS NULL OR arme_id IS NOT NULL': 'une arme élémentaire n’a pas de matériau (décision R167)',
   'type_degats_choisi IS NULL OR arme_elementaire_id IS NOT NULL': 'un type de dégâts ne se choisit que sur une arme élémentaire (décision R167)',
+  // un sort préparé en Mode Hyper ou au 100 % (migration 0086, contraintes nommées : SQLite donne leur nom)
+  personnage_sort_prepare_hyper_avec_prepare: 'seul le sort préparé se prépare en Mode Hyper (décision R172)',
+  personnage_sort_prepare_cent_avec_prepare_hyper: 'un sort préparé au Mode Hyper 100 % l’est aussi en Mode Hyper (décision R172)',
+  // la réussite critique figée du sort préparé (migration 0089, contraintes nommées)
+  personnage_sort_prepare_critique_avec_prepare: 'seul le sort préparé a une réussite critique figée à sa préparation (décision R182)',
+  // la plage ne descend jamais sous « 1 à 1 » (décision R203) : le moteur y ramène le bonus total, une préparation n'est donc jamais refusée pour une
+  // plage calculée sous 1 ; seule une valeur envoyée hors des bornes l'est
+  personnage_sort_prepare_critique_bornes: 'la réussite critique figée d’un sort préparé (1 à N) a un N de 1 à 15 : jamais sous « 1 à 1 » (décision R203), '
+    + 'jamais au-delà du plafond (décisions R180, R182)',
 });
 
 /** Message d’une contrainte de la base, en français (exporté pour les tests). */
@@ -276,8 +297,8 @@ export function expliquer(message) {
     return CHECKS_DE_LA_FICHE[texte] ?? `valeur hors des bornes (${texte})`;
   }
   if ((m = /^UNIQUE constraint failed: (.+)$/.exec(message))) {
-    // un index unique partiel sur la seule fiche (personnage_sort_prepare, migration 0067) : SQLite ne nomme que personnage_id
-    if (UNIQUES_DE_LA_FICHE[m[1].trim()]) return UNIQUES_DE_LA_FICHE[m[1].trim()];
+    // un index unique partiel sur la seule fiche (personnage_sort_prepare, migration 0067) : SQLite ne nomme que personnage_id ; une clé qui dit une règle (R181)
+    if (Object.hasOwn(UNIQUES_DE_LA_FICHE, m[1].trim())) return UNIQUES_DE_LA_FICHE[m[1].trim()];
     const noms = m[1].split(',').map((c) => c.trim());
     const cols = noms.map((c) => c.replace(/^\w+\./, '')).filter((c) => c !== 'personnage_id');
     // un autre index sur la seule fiche : sa table, plutôt que « en double () »
@@ -336,7 +357,8 @@ function verifierForme(db, entree, problemes) {
  * l'armure (armuresAvecArmure) : refus 409. Une liste `bouclier_materiaux` (avant la migration 0060) donne la matière du bouclier (R96 ; avec les
  * nouvelles clés du bouclier, bouclierAvecMatiere : refus 409), et les accessoires d'avant (nom, effet hors table, Ceinture, Autre) sont convertis (R97).
  * Des sorts qui portent leurs NM du MJ (`nm_cadeau`, avant la migration 0066) donnent les NM du MJ de la fiche (R118) ; avec `nm_mj` et des NM du MJ
- * sur un sort (nmDuMjAvecCadeaux) : refus 409. Des maîtrises d'avant la migration 0076 (`maitrises_armes`, l'arme choisie d'un choix d'acquis) sont notées
+ * sur un sort (nmDuMjAvecCadeaux) : refus 409. Des sorts qui portent leur livre (`nm_livre`, avant la migration 0082) donnent les livres de la fiche,
+ * `livres_sorts` (R169 : livresDesSorts) ; avec `livres_sorts` et un livre sur un sort (livresAvecLivresDesSorts) : refus 409. Des maîtrises d'avant la migration 0076 (`maitrises_armes`, l'arme choisie d'un choix d'acquis) sont notées
  * en une ligne datée, aucun choix posé (R153) ; avec les choix de maîtrise `maitrise_choix` (maitrisesAvecChoix) : refus 409. Des armes d'avant la
  * migration 0081 (un élément posé sur une arme du catalogue, `amelioration_elementaire_id`) prennent la forme de la décision R167 (une arme du catalogue
  * OU une arme élémentaire, un seul niveau d'amélioration : armesDAvant), ce qu'elles perdent noté, daté. Les choix de maîtrise
@@ -353,7 +375,7 @@ function verifierForme(db, entree, problemes) {
 export function enregistrerFiche(db, recue, { id = null, maintenant = new Date(), poidsPortable = undefined } = {}) {
   const problemes = [];
   if (progressionAvecGains(recue) || armuresAvecArmure(recue) || bouclierAvecMatiere(recue) || entrainementAvecLignes(recue) || nmDuMjAvecCadeaux(recue)
-    || maitrisesAvecChoix(recue)) {
+    || maitrisesAvecChoix(recue) || livresAvecLivresDesSorts(recue)) {
     throw new ErreurFiche(409, PAGE_D_AVANT);
   }
   const nomDans = (table) => (x) => db.prepare(`SELECT nom FROM "${table}" WHERE id = ?`).get(x)?.nom ?? null;

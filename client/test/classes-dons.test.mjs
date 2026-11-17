@@ -1,6 +1,6 @@
 // Pages de classe : les dons (table `capacite`) disposés comme l'onglet (lib/classe-dons.mjs) et la lecture de la base (lib/classes-db.mjs).
 //   - fonctions pures sur des dons synthétiques : type et précision, groupes de choix, étages du plateau, lignes du tableau du Mage Bleu ;
-//   - la base réelle : 39 classes, chaque don placé une fois et une seule, les choix sont ceux de la vue v_capacite_exclusive (la disposition
+//   - la base réelle : 41 classes, chaque don placé une fois et une seule, les choix sont ceux de la vue v_capacite_exclusive (la disposition
 //     de l'onglet), exemples du propriétaire (Barde, Archimage), rien ne vient d'un tableau Markdown.
 // Le site de dev est la source des classes et des dons qu'il modifie (décision du propriétaire) : les effectifs et les valeurs citées de l'import se lisent
 // dans historique_modification (lib/historique-site.mjs) : les formes et les exemples de l'onglet se contrôlent sur les lignes de l'import (assemblées comme
@@ -114,13 +114,13 @@ const classesRemaniees = new Set([
   ...historique.lignesRemaniees('specialite').map((l) => classeDeLaLigne('specialite', l)),
 ].filter(Boolean));
 
-test('39 classes (à l’import), dans l’ordre du Sommaire ; 660 dons ; les quatre types de don du guide', () => {
+test('41 classes (à l’import, Boxeur et Porte-étendard compris : R238 (1)), dans l’ordre du Sommaire ; 694 dons ; les quatre types de don du guide', () => {
   assert.equal(classes.size, compte('classe'));
-  assert.equal(historique.effectifDImport('classe'), 39);
+  assert.equal(historique.effectifDImport('classe'), 41);
   const ordres = [...classes.values()].map((c) => c.ordre);
   assert.deepEqual(ordres, [...ordres].sort((a, b) => a - b));
   assert.equal([...classes.values()].reduce((n, c) => n + c.dons.length, 0), compte('capacite'));
-  assert.equal(historique.effectifDImport('capacite'), 660);
+  assert.equal(historique.effectifDImport('capacite'), 694);
   assert.deepEqual(typesDon.map((t) => t.nom), ['Passif', 'Actif', 'Action', 'Réaction']);
 });
 
@@ -164,9 +164,9 @@ function formeDeLOnglet(c) {
   }
 }
 
-test('38 classes (toutes sauf l’Archimage) : deux dons reçus sans choix en haut (niveaux 1 et 5), les deux spécialités, un don au niveau 20 en bas', (t) => {
+test('40 classes (toutes sauf l’Archimage) : deux dons reçus sans choix en haut (niveaux 1 et 5), les deux spécialités, un don au niveau 20 en bas', (t) => {
   const importees = historique.lignesDImport('classe').filter((c) => c.id !== 'classes/archimage');
-  assert.equal(importees.length, 38, 'à l’import');
+  assert.equal(importees.length, 40, 'à l’import');
   for (const c of importees) formeDeLOnglet({ id: c.id, ...classeDImport(c.id) });
   for (const c of classes.values()) {
     if (c.id === 'classes/archimage') continue;

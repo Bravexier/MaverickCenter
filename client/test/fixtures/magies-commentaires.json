@@ -1,14 +1,14 @@
 {
-  "classeur": "Magie Maverick V8",
-  "fichier": "1fF2buZjbCm3xdQ-Qa8vRecxj03do3hsE8_k_cfYnIR0",
-  "regenerer": "python3 -I tools/sheets/magies.py --dump <magie-v8.json avec notes> --exporter-commentaires client/test/fixtures/magies-commentaires.json",
+  "classeur": "Nouveauté mise à jour Décembre (Magie V10)",
+  "fichier": "pièce jointe du propriétaire « Nouveauté mise à jour Décembre.xlsx » (R237 (12)), instantané sources/raw/classeurs/magie-maverick-v10.json",
+  "regenerer": "tirée des lignes note_cellule (entite_table = sort) de la migration 0117 que les pages citent sous « Note de la cellule … » (les autres sont citées sous « Remarque du sort », test/magies-notes.test.mjs), dans l'ordre des sorts de chaque page ; à régénérer par tech-sources depuis le classeur de Décembre (tools/sheets/magies.py --exporter-commentaires) quand l'extracteur lit ce classeur",
   "contrat": "une entrée par note ou par fil cité dans les pages ; `lignes` = les lignes du commentaire, sans blancs de bord de ligne ni lignes vides en tête et en queue, lignes vides intermédiaires conservées (voir magies.py)",
   "entrees": [
     {
       "page": "magie-du-sang",
       "onglet": "Sang",
       "genre": "Note",
-      "cellule": "BJ13",
+      "cellule": "AT49",
       "colonne": "Effets secondaires",
       "sort": "Annulation",
       "lignes": [
@@ -20,20 +20,8 @@
     {
       "page": "magie-du-sang",
       "onglet": "Sang",
-      "genre": "Commentaire résolu",
-      "cellule": "BJ13",
-      "colonne": "Effets secondaires",
-      "sort": "Annulation",
-      "lignes": [
-        "Inutile contre les infirmités, la fatigue, les croix, les altérations d'états.",
-        "Ne marche pas sur les effets magie niveau 3 ou plus"
-      ]
-    },
-    {
-      "page": "magie-du-sang",
-      "onglet": "Sang",
       "genre": "Note",
-      "cellule": "BJ16",
+      "cellule": "AT52",
       "colonne": "Effets secondaires",
       "sort": "Attirance",
       "lignes": [
@@ -44,9 +32,9 @@
       "page": "magie-du-sang",
       "onglet": "Sang",
       "genre": "Note",
-      "cellule": "BJ22",
+      "cellule": "AT58",
       "colonne": "Effets secondaires",
-      "sort": "Fer Sanglant",
+      "sort": "Fer sanglant",
       "lignes": [
         "Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas prendre Saignement au stade 1"
       ]
@@ -54,19 +42,8 @@
     {
       "page": "magie-du-sang",
       "onglet": "Sang",
-      "genre": "Commentaire résolu",
-      "cellule": "BJ25",
-      "colonne": "Effets secondaires",
-      "sort": "Sang Garde",
-      "lignes": [
-        "NB : Jet de défense désigne les jets d'Esquive ET de Parade"
-      ]
-    },
-    {
-      "page": "magie-du-sang",
-      "onglet": "Sang",
       "genre": "Note",
-      "cellule": "BJ34",
+      "cellule": "AC75",
       "colonne": "Effets secondaires",
       "sort": "Saignée forcée",
       "lignes": [
@@ -77,18 +54,7 @@
       "page": "magie-du-sang",
       "onglet": "Sang",
       "genre": "Note",
-      "cellule": "BJ37",
-      "colonne": "Effets secondaires",
-      "sort": "Morsure aspirante",
-      "lignes": [
-        "Ne marche pas si c'est la barrière qui encaisse le coup"
-      ]
-    },
-    {
-      "page": "magie-du-sang",
-      "onglet": "Sang",
-      "genre": "Note",
-      "cellule": "BJ40",
+      "cellule": "BK81",
       "colonne": "Effets secondaires",
       "sort": "Coagulation",
       "lignes": [
@@ -98,19 +64,8 @@
     {
       "page": "magie-du-sang",
       "onglet": "Sang",
-      "genre": "Commentaire résolu",
-      "cellule": "BJ40",
-      "colonne": "Effets secondaires",
-      "sort": "Coagulation",
-      "lignes": [
-        "La cible doit saigner. La carapace est fixée au sol."
-      ]
-    },
-    {
-      "page": "magie-du-sang",
-      "onglet": "Sang",
       "genre": "Note",
-      "cellule": "BJ43",
+      "cellule": "BK84",
       "colonne": "Effets secondaires",
       "sort": "Renfermement",
       "lignes": [
@@ -121,7 +76,7 @@
       "page": "magie-du-sang",
       "onglet": "Sang",
       "genre": "Note",
-      "cellule": "BJ67",
+      "cellule": "BK99",
       "colonne": "Effets secondaires",
       "sort": "Proportion démesurée",
       "lignes": [
@@ -129,34 +84,12 @@
       ]
     },
     {
-      "page": "magie-du-sang",
-      "onglet": "Sang",
-      "genre": "Commentaire résolu",
-      "cellule": "BJ67",
-      "colonne": "Effets secondaires",
-      "sort": "Proportion démesurée",
-      "lignes": [
-        "Le bonus en force casse les limites de la carac (oui oui, on peut monter à 7 de force temporairement)"
-      ]
-    },
-    {
       "page": "magie-de-larcane",
       "onglet": "Arcane",
       "genre": "Note",
-      "cellule": "BJ7",
+      "cellule": "AT51",
       "colonne": "Effets secondaires",
-      "sort": "Charge d'énergie",
-      "lignes": [
-        "30 chakra maximum en 1 fois"
-      ]
-    },
-    {
-      "page": "magie-de-larcane",
-      "onglet": "Arcane",
-      "genre": "Note",
-      "cellule": "BJ10",
-      "colonne": "Effets secondaires",
-      "sort": "Rune Arcane",
+      "sort": "Rune arcane",
       "lignes": [
         "Ne se cumule avec \"Rune Arcane multiple\""
       ]
@@ -165,7 +98,7 @@
       "page": "magie-de-larcane",
       "onglet": "Arcane",
       "genre": "Note",
-      "cellule": "BJ16",
+      "cellule": "AT57",
       "colonne": "Effets secondaires",
       "sort": "Forge-Magie",
       "lignes": [
@@ -181,7 +114,18 @@
       "page": "magie-de-larcane",
       "onglet": "Arcane",
       "genre": "Note",
-      "cellule": "BJ37",
+      "cellule": "AC86",
+      "colonne": "Effets secondaires",
+      "sort": "Rune arcane multiple",
+      "lignes": [
+        "Ne se cumule avec \"Rune Arcane\""
+      ]
+    },
+    {
+      "page": "magie-de-larcane",
+      "onglet": "Arcane",
+      "genre": "Note",
+      "cellule": "BK83",
       "colonne": "Effets secondaires",
       "sort": "Laser de chakra",
       "lignes": [
@@ -189,32 +133,10 @@
       ]
     },
     {
-      "page": "magie-de-larcane",
-      "onglet": "Arcane",
-      "genre": "Note",
-      "cellule": "BJ40",
-      "colonne": "Effets secondaires",
-      "sort": "Pillage défensif",
-      "lignes": [
-        "Le regain ne peut être effectif que si c'est la barrière ennemie qui est touchée."
-      ]
-    },
-    {
-      "page": "magie-de-larcane",
-      "onglet": "Arcane",
-      "genre": "Note",
-      "cellule": "BJ43",
-      "colonne": "Effets secondaires",
-      "sort": "Rune Arcane multiple",
-      "lignes": [
-        "Ne se cumule avec \"Rune Arcane\""
-      ]
-    },
-    {
       "page": "magie-de-la-corruption",
       "onglet": "Corruption",
       "genre": "Note",
-      "cellule": "BJ10",
+      "cellule": "AT51",
       "colonne": "Effets secondaires",
       "sort": "Verrouillage Simple",
       "lignes": [
@@ -227,9 +149,9 @@
       "page": "magie-de-la-corruption",
       "onglet": "Corruption",
       "genre": "Note",
-      "cellule": "BJ13",
+      "cellule": "AT54",
       "colonne": "Effets secondaires",
-      "sort": "Verrouillage Visible",
+      "sort": "Verrouille Visible",
       "lignes": [
         "Si la cible est dans la posture indiquée à ce moment-là, il doit changer de posture de suite.",
         "",
@@ -240,7 +162,7 @@
       "page": "magie-de-la-corruption",
       "onglet": "Corruption",
       "genre": "Note",
-      "cellule": "BJ28",
+      "cellule": "AT69",
       "colonne": "Effets secondaires",
       "sort": "Pétrole",
       "lignes": [
@@ -251,9 +173,9 @@
       "page": "magie-de-la-corruption",
       "onglet": "Corruption",
       "genre": "Note",
-      "cellule": "BJ34",
+      "cellule": "AC80",
       "colonne": "Effets secondaires",
-      "sort": "Mine noire",
+      "sort": "Mine poisseuse",
       "lignes": [
         "Elle peut se voir mais seulement avec un jet d'observation/distinction réussi en posture vigilance et seulement à portée de vue (Score de perception)"
       ]
@@ -262,7 +184,7 @@
       "page": "magie-de-la-corruption",
       "onglet": "Corruption",
       "genre": "Note",
-      "cellule": "BJ37",
+      "cellule": "AC83",
       "colonne": "Effets secondaires",
       "sort": "Laser noir",
       "lignes": [
@@ -273,7 +195,7 @@
       "page": "magie-de-la-corruption",
       "onglet": "Corruption",
       "genre": "Note",
-      "cellule": "BJ55",
+      "cellule": "BK98",
       "colonne": "Effets secondaires",
       "sort": "Verrouillage Magique",
       "lignes": [
@@ -286,7 +208,7 @@
       "page": "magie-de-la-corruption",
       "onglet": "Corruption",
       "genre": "Note",
-      "cellule": "BJ58",
+      "cellule": "BK101",
       "colonne": "Effets secondaires",
       "sort": "Verrouillage Physique",
       "lignes": [
@@ -297,9 +219,9 @@
     },
     {
       "page": "magie-de-lespace-temps",
-      "onglet": "TempsEspace",
+      "onglet": "EspaceTemps",
       "genre": "Note",
-      "cellule": "BJ7",
+      "cellule": "AT42",
       "colonne": "Effets secondaires",
       "sort": "Téléportation",
       "lignes": [
@@ -312,31 +234,20 @@
     },
     {
       "page": "magie-de-lespace-temps",
-      "onglet": "TempsEspace",
+      "onglet": "EspaceTemps",
       "genre": "Note",
-      "cellule": "BJ10",
+      "cellule": "AT54",
       "colonne": "Effets secondaires",
-      "sort": "Portail",
-      "lignes": [
-        "Maximum 4 portails reliés entre eux à la fois, pour retirer un portail, pas de jet est nécessaire mais il faut consommer la moitié du chakra."
-      ]
-    },
-    {
-      "page": "magie-de-lespace-temps",
-      "onglet": "TempsEspace",
-      "genre": "Note",
-      "cellule": "BJ19",
-      "colonne": "Effets secondaires",
-      "sort": "Fer Temporel",
+      "sort": "Fer temporel",
       "lignes": [
         "Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas être fatigué au stade 1"
       ]
     },
     {
       "page": "magie-de-lespace-temps",
-      "onglet": "TempsEspace",
+      "onglet": "EspaceTemps",
       "genre": "Note",
-      "cellule": "BJ28",
+      "cellule": "AT63",
       "colonne": "Effets secondaires",
       "sort": "Inversion",
       "lignes": [
@@ -349,11 +260,11 @@
     },
     {
       "page": "magie-de-lespace-temps",
-      "onglet": "TempsEspace",
+      "onglet": "EspaceTemps",
       "genre": "Note",
-      "cellule": "BJ31",
+      "cellule": "AT66",
       "colonne": "Effets secondaires",
-      "sort": "Frappe Temporelle",
+      "sort": "Main de la momie",
       "lignes": [
         "Possible de le faire sur un allié, l'allié ne prendra pas les dégâts.",
         "",
@@ -362,87 +273,20 @@
     },
     {
       "page": "magie-de-lespace-temps",
-      "onglet": "TempsEspace",
-      "genre": "Commentaire résolu",
-      "cellule": "BJ31",
-      "colonne": "Effets secondaires",
-      "sort": "Frappe Temporelle",
-      "lignes": [
-        "Possible de le faire sur un allié, l'allié ne prendra pas les dégâts."
-      ]
-    },
-    {
-      "page": "magie-de-lespace-temps",
-      "onglet": "TempsEspace",
+      "onglet": "EspaceTemps",
       "genre": "Note",
-      "cellule": "BJ34",
+      "cellule": "AC89",
       "colonne": "Effets secondaires",
-      "sort": "État antérieur",
-      "lignes": [
-        "Pour les armures, il faut faire le sort sur CHAQUE morceau."
-      ]
-    },
-    {
-      "page": "magie-de-lespace-temps",
-      "onglet": "TempsEspace",
-      "genre": "Note",
-      "cellule": "BJ46",
-      "colonne": "Effets secondaires",
-      "sort": "Horloge aspirante",
-      "lignes": [
-        "Si c'est la barrière, la barrière est vampirisée.",
-        "Si c'est les points de vie, c'est les points de vie qui sont vampirisés"
-      ]
-    },
-    {
-      "page": "magie-de-lespace-temps",
-      "onglet": "TempsEspace",
-      "genre": "Note",
-      "cellule": "BJ49",
-      "colonne": "Effets secondaires",
-      "sort": "Célérité",
-      "lignes": [
-        "Un boss qui a naturellement 2 tours, n'aura qu'un seul tour avec deux actions."
-      ]
-    },
-    {
-      "page": "magie-de-lespace-temps",
-      "onglet": "TempsEspace",
-      "genre": "Commentaire résolu",
-      "cellule": "BJ49",
-      "colonne": "Effets secondaires",
-      "sort": "Célérité",
-      "lignes": [
-        "Permet d'avoir 2 tours en 1, ça implique d'avoir 2 initiatives donc de jeter 2 fois un dé d'initiative."
-      ]
-    },
-    {
-      "page": "magie-de-lespace-temps",
-      "onglet": "TempsEspace",
-      "genre": "Note",
-      "cellule": "BJ52",
-      "colonne": "Effets secondaires",
-      "sort": "Grenade Distordue",
+      "sort": "Grenade distordue",
       "lignes": [
         "Si le lanceur est dans la zone d'action de la grenade, il peut décider de ne pas être téléporté."
       ]
     },
     {
       "page": "magie-de-lespace-temps",
-      "onglet": "TempsEspace",
-      "genre": "Commentaire résolu",
-      "cellule": "BJ58",
-      "colonne": "Effets secondaires",
-      "sort": "Téléport parfait",
-      "lignes": [
-        "Sert uniquement hors combat !"
-      ]
-    },
-    {
-      "page": "magie-de-lespace-temps",
-      "onglet": "TempsEspace",
+      "onglet": "EspaceTemps",
       "genre": "Note",
-      "cellule": "BJ61",
+      "cellule": "AC95",
       "colonne": "Effets secondaires",
       "sort": "Image diffuse",
       "lignes": [
@@ -453,9 +297,9 @@
     },
     {
       "page": "magie-de-lespace-temps",
-      "onglet": "TempsEspace",
+      "onglet": "EspaceTemps",
       "genre": "Note",
-      "cellule": "BJ70",
+      "cellule": "AC101",
       "colonne": "Effets secondaires",
       "sort": "Distorsion",
       "lignes": [
@@ -463,10 +307,32 @@
       ]
     },
     {
+      "page": "magie-de-lespace-temps",
+      "onglet": "EspaceTemps",
+      "genre": "Note",
+      "cellule": "BK74",
+      "colonne": "Effets secondaires",
+      "sort": "État antérieur",
+      "lignes": [
+        "Pour les armures, il faut faire le sort sur CHAQUE morceau."
+      ]
+    },
+    {
+      "page": "magie-de-lespace-temps",
+      "onglet": "EspaceTemps",
+      "genre": "Note",
+      "cellule": "BK86",
+      "colonne": "Effets secondaires",
+      "sort": "Célérité",
+      "lignes": [
+        "Un boss qui a naturellement 2 tours, n'aura qu'un seul tour avec deux actions."
+      ]
+    },
+    {
       "page": "magie-du-vide",
       "onglet": "Vide",
       "genre": "Note",
-      "cellule": "BJ7",
+      "cellule": "AT42",
       "colonne": "Effets secondaires",
       "sort": "Télékinésie",
       "lignes": [
@@ -481,26 +347,10 @@
     {
       "page": "magie-du-vide",
       "onglet": "Vide",
-      "genre": "Commentaire résolu",
-      "cellule": "BJ7",
-      "colonne": "Effets secondaires",
-      "sort": "Télékinésie",
-      "lignes": [
-        "La taille de l'objet n'est pas infinie, il faut un certain niveau de magie pour certains objets",
-        "Magie 1 = TP",
-        "Magie 2 = P",
-        "Magie 3 = N",
-        "Magie 4 = G",
-        "Magie 5 = TG"
-      ]
-    },
-    {
-      "page": "magie-du-vide",
-      "onglet": "Vide",
       "genre": "Note",
-      "cellule": "BJ19",
+      "cellule": "AT54",
       "colonne": "Effets secondaires",
-      "sort": "Fer Vide",
+      "sort": "Fer vide",
       "lignes": [
         "Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas prendre Rage au stade 1"
       ]
@@ -509,9 +359,9 @@
       "page": "magie-du-vide",
       "onglet": "Vide",
       "genre": "Note",
-      "cellule": "BJ25",
+      "cellule": "AT60",
       "colonne": "Effets secondaires",
-      "sort": "Poing du vide",
+      "sort": "Poing implosif",
       "lignes": [
         "La cible est attirée d'une case seulement si elle rate totalement son jet de défense ou si elle est dans l'incapacité de se défendre."
       ]
@@ -520,7 +370,7 @@
       "page": "magie-du-vide",
       "onglet": "Vide",
       "genre": "Note",
-      "cellule": "BJ31",
+      "cellule": "AT66",
       "colonne": "Effets secondaires",
       "sort": "Dissipation",
       "lignes": [
@@ -532,30 +382,8 @@
     {
       "page": "magie-du-vide",
       "onglet": "Vide",
-      "genre": "Commentaire résolu",
-      "cellule": "BJ31",
-      "colonne": "Effets secondaires",
-      "sort": "Dissipation",
-      "lignes": [
-        "Les buff niveau 5 ne peuvent pas être annulés par ce sort."
-      ]
-    },
-    {
-      "page": "magie-du-vide",
-      "onglet": "Vide",
       "genre": "Note",
-      "cellule": "BJ34",
-      "colonne": "Effets secondaires",
-      "sort": "Sablier du Vide",
-      "lignes": [
-        "Les ennemis peuvent se défendre contre le coup du sablier."
-      ]
-    },
-    {
-      "page": "magie-du-vide",
-      "onglet": "Vide",
-      "genre": "Note",
-      "cellule": "BJ43",
+      "cellule": "AC74",
       "colonne": "Effets secondaires",
       "sort": "Aspect vide",
       "lignes": [
@@ -565,31 +393,19 @@
     {
       "page": "magie-du-vide",
       "onglet": "Vide",
-      "genre": "Commentaire résolu",
-      "cellule": "BJ43",
+      "genre": "Note",
+      "cellule": "BK74",
       "colonne": "Effets secondaires",
-      "sort": "Aspect vide",
+      "sort": "Sablier du vide",
       "lignes": [
-        "L'équipement le devient aussi donc les attaques et sorts ne fonctionnent pas, SEULES les armes spectrales fonctionnent dans cet état."
+        "Les ennemis peuvent se défendre contre le coup du sablier."
       ]
     },
     {
       "page": "magie-du-vide",
       "onglet": "Vide",
       "genre": "Note",
-      "cellule": "BJ46",
-      "colonne": "Effets secondaires",
-      "sort": "Toucher du Vide",
-      "lignes": [
-        "Si c'est la barrière, la barrière est vampirisée.",
-        "Si c'est les points de vie, c'est les points de vie qui sont vampirisés"
-      ]
-    },
-    {
-      "page": "magie-du-vide",
-      "onglet": "Vide",
-      "genre": "Note",
-      "cellule": "BJ49",
+      "cellule": "BK86",
       "colonne": "Effets secondaires",
       "sort": "Aléa négatif",
       "lignes": [
@@ -620,74 +436,10 @@
       ]
     },
     {
-      "page": "magie-du-vide",
-      "onglet": "Vide",
-      "genre": "Note",
-      "cellule": "BJ67",
-      "colonne": "Effets secondaires",
-      "sort": "Métronome",
-      "lignes": [
-        "Ne peut pas être relancé.",
-        "Le mage noir et blanc peuvent le faire mais ça dépendra de la nature du premier sort."
-      ]
-    },
-    {
-      "page": "magie-du-vide",
-      "onglet": "Vide",
-      "genre": "Commentaire résolu",
-      "cellule": "BJ67",
-      "colonne": "Effets secondaires",
-      "sort": "Métronome",
-      "lignes": [
-        "Ne peut pas être relancé."
-      ]
-    },
-    {
-      "page": "magie-de-la-necromancie",
-      "onglet": "Nécromancie",
-      "genre": "Commentaire résolu",
-      "cellule": "AX7",
-      "colonne": "Coût",
-      "sort": "Animation de mort",
-      "lignes": [
-        "Niveau 1 : 3 CK + 1 âme",
-        "Niveau 2 : 6 CK + 2 âmes",
-        "Niveau 3 : 12 CK + 3 âmes",
-        "Niveau 4 : 24 CK + 4 âmes",
-        "Niveau 5 : 48 CK + 5 âmes"
-      ]
-    },
-    {
       "page": "magie-de-la-necromancie",
       "onglet": "Nécromancie",
       "genre": "Note",
-      "cellule": "BJ7",
-      "colonne": "Effets secondaires",
-      "sort": "Animation de mort",
-      "lignes": [
-        "Chaque niveau de puissance de la créature invoquée double de le coût précédent pour l'invoquer.",
-        "",
-        "Les familiers et invocations ne peuvent pas utiliser ce sort."
-      ]
-    },
-    {
-      "page": "magie-de-la-necromancie",
-      "onglet": "Nécromancie",
-      "genre": "Commentaire résolu",
-      "cellule": "BJ7",
-      "colonne": "Effets secondaires",
-      "sort": "Animation de mort",
-      "lignes": [
-        "Pour voir les morts-vivants possibles https://maverick-jdr.fandom.com/fr/wiki/Mort-Vivant_(Invocation)",
-        "",
-        "Chaque niveau de puissance de la créature invoquée double de le coût précédent pour l'invoquer."
-      ]
-    },
-    {
-      "page": "magie-de-la-necromancie",
-      "onglet": "Nécromancie",
-      "genre": "Note",
-      "cellule": "BJ16",
+      "cellule": "AT54",
       "colonne": "Effets secondaires",
       "sort": "Détection de vie",
       "lignes": [
@@ -700,9 +452,9 @@
       "page": "magie-de-la-necromancie",
       "onglet": "Nécromancie",
       "genre": "Note",
-      "cellule": "BJ31",
+      "cellule": "AT69",
       "colonne": "Effets secondaires",
-      "sort": "Fer Toxique",
+      "sort": "Fer toxique",
       "lignes": [
         "Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas être empoisonné au stade 1"
       ]
@@ -711,7 +463,7 @@
       "page": "magie-de-la-necromancie",
       "onglet": "Nécromancie",
       "genre": "Note",
-      "cellule": "BJ40",
+      "cellule": "AC83",
       "colonne": "Effets secondaires",
       "sort": "Prison d'os",
       "lignes": [
@@ -722,53 +474,18 @@
       "page": "magie-de-la-necromancie",
       "onglet": "Nécromancie",
       "genre": "Note",
-      "cellule": "BJ43",
+      "cellule": "AC104",
       "colonne": "Effets secondaires",
-      "sort": "Forge de ses morts",
-      "lignes": [
-        "Cette arme est considérée comme Spectrale.",
-        "Arme Spectrale = Peut toucher l'immatériel et ignore les AP."
-      ]
-    },
-    {
-      "page": "magie-de-la-necromancie",
-      "onglet": "Nécromancie",
-      "genre": "Commentaire résolu",
-      "cellule": "BJ43",
-      "colonne": "Effets secondaires",
-      "sort": "Forge de ses morts",
-      "lignes": [
-        "Cette arme est considérée comme Spectrale.",
-        "Arme Spectrale = Peut toucher l'immatériel et ignore les PA."
-      ]
-    },
-    {
-      "page": "magie-de-la-necromancie",
-      "onglet": "Nécromancie",
-      "genre": "Note",
-      "cellule": "BJ70",
-      "colonne": "Effets secondaires",
-      "sort": "Résurrection Noire",
+      "sort": "Résurrection noire",
       "lignes": [
         "Est considérée comme morte tant que la cible n'a pas bu 1 super fiole de soin par jour sur 1 mois. Ou alors qu'une résurrection est appliquée sur lui."
-      ]
-    },
-    {
-      "page": "magie-de-la-necromancie",
-      "onglet": "Nécromancie",
-      "genre": "Commentaire résolu",
-      "cellule": "BJ70",
-      "colonne": "Effets secondaires",
-      "sort": "Résurrection Noire",
-      "lignes": [
-        "Est considéré comme mort tant que la cible n'a pas bu 1 fiole par jour sur 5 jours. Ou alors qu'une résurrection est appliquée sur lui."
       ]
     },
     {
       "page": "magie-du-feu",
       "onglet": "Feu",
       "genre": "Note",
-      "cellule": "BJ19",
+      "cellule": "AT51",
       "colonne": "Effets secondaires",
       "sort": "Fer brûlant",
       "lignes": [
@@ -776,34 +493,12 @@
       ]
     },
     {
-      "page": "magie-du-feu",
-      "onglet": "Feu",
-      "genre": "Commentaire résolu",
-      "cellule": "BJ19",
-      "colonne": "Effets secondaires",
-      "sort": "Fer brûlant",
-      "lignes": [
-        "Si 5 ou moins avec une arme sous ce sort, inflige brûlure au stade 1"
-      ]
-    },
-    {
-      "page": "magie-du-feu",
-      "onglet": "Feu",
-      "genre": "Note",
-      "cellule": "BJ58",
-      "colonne": "Effets secondaires",
-      "sort": "Rai solaire",
-      "lignes": [
-        "Peut prendre un tour de concentration pour donner un bonus de +10 dégâts."
-      ]
-    },
-    {
       "page": "magie-de-leau",
       "onglet": "Eau",
       "genre": "Note",
-      "cellule": "BJ19",
+      "cellule": "AT50",
       "colonne": "Effets secondaires",
-      "sort": "Fer Humide",
+      "sort": "Fer humide",
       "lignes": [
         "Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas être confus au stade 1"
       ]
@@ -812,7 +507,7 @@
       "page": "magie-de-leau",
       "onglet": "Eau",
       "genre": "Note",
-      "cellule": "BJ43",
+      "cellule": "AC79",
       "colonne": "Effets secondaires",
       "sort": "Courant salvateur",
       "lignes": [
@@ -824,19 +519,8 @@
     {
       "page": "magie-de-leau",
       "onglet": "Eau",
-      "genre": "Commentaire résolu",
-      "cellule": "BJ55",
-      "colonne": "Effets secondaires",
-      "sort": "Dissolution",
-      "lignes": [
-        "Totalement insensible aux dégâts physiques et magiques qui ne sont pas une vulnérabilité. Permet de bénéficier d'une invisibilité quand vous êtes dans l'eau."
-      ]
-    },
-    {
-      "page": "magie-de-leau",
-      "onglet": "Eau",
       "genre": "Note",
-      "cellule": "BJ67",
+      "cellule": "BK94",
       "colonne": "Effets secondaires",
       "sort": "Larmes d'Océane",
       "lignes": [
@@ -849,7 +533,7 @@
       "page": "magie-de-la-glace",
       "onglet": "Glace",
       "genre": "Note",
-      "cellule": "BJ19",
+      "cellule": "AT51",
       "colonne": "Effets secondaires",
       "sort": "Fer froid",
       "lignes": [
@@ -860,7 +544,7 @@
       "page": "magie-de-la-glace",
       "onglet": "Glace",
       "genre": "Note",
-      "cellule": "BJ28",
+      "cellule": "AT60",
       "colonne": "Effets secondaires",
       "sort": "Lien de gel",
       "lignes": [
@@ -873,7 +557,19 @@
       "page": "magie-de-la-glace",
       "onglet": "Glace",
       "genre": "Note",
-      "cellule": "BJ43",
+      "cellule": "AC95",
+      "colonne": "Effets secondaires",
+      "sort": "Exécution froide",
+      "lignes": [
+        "La victime ne peut rien faire dans cet état, il faut à tout prix que le lanceur rate un jet de concentration ou bien qu'il soit interrompu.",
+        "Dans le cas d'un boss qui se fait enfermer, il peut lutter contre avec des jets d'athlétisme, concentration, vigueur, etc... le mj a le choix. Le lanceur devra faire un meilleur jet que la cible pour ne pas qu'il sorte du cercueil."
+      ]
+    },
+    {
+      "page": "magie-de-la-glace",
+      "onglet": "Glace",
+      "genre": "Note",
+      "cellule": "BK77",
       "colonne": "Effets secondaires",
       "sort": "Gel profond",
       "lignes": [
@@ -884,7 +580,7 @@
       "page": "magie-de-la-glace",
       "onglet": "Glace",
       "genre": "Note",
-      "cellule": "BJ46",
+      "cellule": "BK80",
       "colonne": "Effets secondaires",
       "sort": "Mur de glace",
       "lignes": [
@@ -892,47 +588,10 @@
       ]
     },
     {
-      "page": "magie-de-la-glace",
-      "onglet": "Glace",
-      "genre": "Note",
-      "cellule": "BJ67",
-      "colonne": "Effets secondaires",
-      "sort": "Exécution froide",
-      "lignes": [
-        "La victime ne peut rien faire dans cet état, il faut à tout prix que le lanceur rate un jet de concentration ou bien qu'il soit interrompu.",
-        "Dans le cas d'un boss qui se fait enfermer, il peut lutter contre avec des jets d'athlétisme, concentration, vigueur, etc... le mj a le choix. Le lanceur devra faire un meilleur jet que la cible pour ne pas qu'il sorte du cercueil."
-      ]
-    },
-    {
-      "page": "magie-de-la-terre",
-      "onglet": "Terre",
-      "genre": "Commentaire résolu",
-      "cellule": "BJ10",
-      "colonne": "Effets secondaires",
-      "sort": "Peau de pierre",
-      "lignes": [
-        "Peut se cumuler avec Armure de Roche."
-      ]
-    },
-    {
-      "page": "magie-de-la-terre",
-      "onglet": "Terre",
-      "genre": "Commentaire résolu",
-      "cellule": "BJ13",
-      "colonne": "Effets secondaires",
-      "sort": "Appel aux Golems",
-      "lignes": [
-        "Pour voir les golems possibles ",
-        "",
-        "",
-        "Chaque niveau de puissance de la créature invoquée double de le coût précédent pour l'invoquer."
-      ]
-    },
-    {
       "page": "magie-de-la-terre",
       "onglet": "Terre",
       "genre": "Note",
-      "cellule": "BJ16",
+      "cellule": "AT48",
       "colonne": "Effets secondaires",
       "sort": "Racine soignante",
       "lignes": [
@@ -943,7 +602,7 @@
       "page": "magie-de-la-terre",
       "onglet": "Terre",
       "genre": "Note",
-      "cellule": "BJ22",
+      "cellule": "AT54",
       "colonne": "Effets secondaires",
       "sort": "Fer Raffiné",
       "lignes": [
@@ -953,92 +612,8 @@
     {
       "page": "magie-de-la-terre",
       "onglet": "Terre",
-      "genre": "Commentaire résolu",
-      "cellule": "BJ25",
-      "colonne": "Effets secondaires",
-      "sort": "Arbre fertilisant",
-      "lignes": [
-        "La cible doit être vivante."
-      ]
-    },
-    {
-      "page": "magie-de-la-terre",
-      "onglet": "Terre",
-      "genre": "Commentaire résolu",
-      "cellule": "BJ28",
-      "colonne": "Effets secondaires",
-      "sort": "Infection",
-      "lignes": [
-        "Les dégâts de l'infection ne sont pas élémentaires"
-      ]
-    },
-    {
-      "page": "magie-de-la-terre",
-      "onglet": "Terre",
-      "genre": "Commentaire résolu",
-      "cellule": "BJ31",
-      "colonne": "Effets secondaires",
-      "sort": "Cuirasse de roche",
-      "lignes": [
-        "Peut se cumuler avec Peau de Pierre."
-      ]
-    },
-    {
-      "page": "magie-de-la-terre",
-      "onglet": "Terre",
       "genre": "Note",
-      "cellule": "BJ34",
-      "colonne": "Effets secondaires",
-      "sort": "Barrière rocheuse",
-      "lignes": [
-        "Si jamais un coup physique ou magique est encaissé par la protection, elle doit faire plus que la tolérance de cette dernière pour la briser.",
-        "",
-        "Si elle fait moins, le coup est annulé et la protection se recharge pour le prochain coup",
-        "",
-        "Si elle fait plus, la protection est brisée et l'intégralité du coup est encaissée.",
-        "",
-        "Les AP ne sont pas comptées quand les dégâts sont faits à la protection."
-      ]
-    },
-    {
-      "page": "magie-de-la-terre",
-      "onglet": "Terre",
-      "genre": "Commentaire résolu",
-      "cellule": "BJ34",
-      "colonne": "Effets secondaires",
-      "sort": "Barrière rocheuse",
-      "lignes": [
-        "Corps de pierre : Double les PA, diminue la vitesse de 1 et les adversaires ont +15% de chance avec un jet de défense.",
-        "Compatible avec Armure de roche et peau de pierre mais ils doivent avoir été lancés avant."
-      ]
-    },
-    {
-      "page": "magie-de-la-terre",
-      "onglet": "Terre",
-      "genre": "Commentaire résolu",
-      "cellule": "BJ37",
-      "colonne": "Effets secondaires",
-      "sort": "Alourdissement",
-      "lignes": [
-        "Équivalent à pétrifié 3 mais la victime ne peut pas prendre de dégâts sous le magma."
-      ]
-    },
-    {
-      "page": "magie-de-la-terre",
-      "onglet": "Terre",
-      "genre": "Note",
-      "cellule": "BJ40",
-      "colonne": "Effets secondaires",
-      "sort": "Sable changeant",
-      "lignes": [
-        "Le Terrain sable divise par 2 le déplacement, empêche le sprint et fait perdre un tour si jamais on saute."
-      ]
-    },
-    {
-      "page": "magie-de-la-terre",
-      "onglet": "Terre",
-      "genre": "Note",
-      "cellule": "BJ43",
+      "cellule": "AC74",
       "colonne": "Effets secondaires",
       "sort": "Frappe racine",
       "lignes": [
@@ -1049,7 +624,7 @@
       "page": "magie-de-la-terre",
       "onglet": "Terre",
       "genre": "Note",
-      "cellule": "BJ64",
+      "cellule": "AC95",
       "colonne": "Effets secondaires",
       "sort": "Terre Maudite",
       "lignes": [
@@ -1060,7 +635,18 @@
       "page": "magie-de-la-terre",
       "onglet": "Terre",
       "genre": "Note",
-      "cellule": "BJ70",
+      "cellule": "BK77",
+      "colonne": "Effets secondaires",
+      "sort": "Sable changeant",
+      "lignes": [
+        "Le Terrain sable divise par 2 le déplacement, empêche le sprint et fait perdre un tour si jamais on saute."
+      ]
+    },
+    {
+      "page": "magie-de-la-terre",
+      "onglet": "Terre",
+      "genre": "Note",
+      "cellule": "BK95",
       "colonne": "Effets secondaires",
       "sort": "Corps de Maverium",
       "lignes": [
@@ -1068,32 +654,10 @@
       ]
     },
     {
-      "page": "magie-de-la-terre",
-      "onglet": "Terre",
-      "genre": "Commentaire résolu",
-      "cellule": "BJ70",
-      "colonne": "Effets secondaires",
-      "sort": "Corps de Maverium",
-      "lignes": [
-        "Corps de Maverium permet d'ignorer tous les dégâts possibles quelle que soit leur puissance. Comme corps de pierre, tous les organes internes sont solidifiés et ne fonctionnent pas temporairement (comme un golem, pas besoin)"
-      ]
-    },
-    {
-      "page": "magie-de-la-terre",
-      "onglet": "Terre",
-      "genre": "Commentaire résolu",
-      "cellule": "BJ70",
-      "colonne": "Effets secondaires",
-      "sort": "Corps de Maverium",
-      "lignes": [
-        "Corps de Maverium : Invincible temporairement, diminue la vitesse de 1 et les adversaires ont +15% de chance avec un jet de défense."
-      ]
-    },
-    {
       "page": "magie-du-vent",
       "onglet": "Vent",
       "genre": "Note",
-      "cellule": "BJ16",
+      "cellule": "AT48",
       "colonne": "Effets secondaires",
       "sort": "Propulsion",
       "lignes": [
@@ -1104,7 +668,7 @@
       "page": "magie-du-vent",
       "onglet": "Vent",
       "genre": "Note",
-      "cellule": "BJ25",
+      "cellule": "AT57",
       "colonne": "Effets secondaires",
       "sort": "Fer éolien",
       "lignes": [
@@ -1115,7 +679,7 @@
       "page": "magie-du-vent",
       "onglet": "Vent",
       "genre": "Note",
-      "cellule": "BJ28",
+      "cellule": "AT60",
       "colonne": "Effets secondaires",
       "sort": "Feuille morte",
       "lignes": [
@@ -1123,23 +687,12 @@
       ]
     },
     {
-      "page": "magie-du-vent",
-      "onglet": "Vent",
-      "genre": "Note",
-      "cellule": "BJ43",
-      "colonne": "Effets secondaires",
-      "sort": "Tornade",
-      "lignes": [
-        "Réussir à sortir vous fait prendre quand même 5d6 dégâts. Ne pas réussir à sortir vous fait voler et tomber par terre."
-      ]
-    },
-    {
       "page": "magie-de-la-foudre",
       "onglet": "Foudre",
       "genre": "Note",
-      "cellule": "BJ19",
+      "cellule": "AT51",
       "colonne": "Effets secondaires",
-      "sort": "Fer Foudroyant",
+      "sort": "Fer foudroyant",
       "lignes": [
         "Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas être paralysé au stade 1"
       ]
@@ -1148,7 +701,7 @@
       "page": "magie-de-la-foudre",
       "onglet": "Foudre",
       "genre": "Note",
-      "cellule": "BJ25",
+      "cellule": "AT57",
       "colonne": "Effets secondaires",
       "sort": "Colonne Tesla",
       "lignes": [
@@ -1158,19 +711,8 @@
     {
       "page": "magie-de-la-foudre",
       "onglet": "Foudre",
-      "genre": "Commentaire résolu",
-      "cellule": "AT28",
-      "colonne": "Type",
-      "sort": "Chargeur",
-      "lignes": [
-        "Peut être lancé 3 fois dans le même tour."
-      ]
-    },
-    {
-      "page": "magie-de-la-foudre",
-      "onglet": "Foudre",
       "genre": "Note",
-      "cellule": "BJ43",
+      "cellule": "BK77",
       "colonne": "Effets secondaires",
       "sort": "Dysfonctionnement",
       "lignes": [
@@ -1178,47 +720,12 @@
       ]
     },
     {
-      "page": "magie-de-la-foudre",
-      "onglet": "Foudre",
-      "genre": "Commentaire résolu",
-      "cellule": "BJ43",
-      "colonne": "Effets secondaires",
-      "sort": "Dysfonctionnement",
-      "lignes": [
-        "C'est un équivalent de \"Confus\" pour les créatures mécaniques."
-      ]
-    },
-    {
-      "page": "magie-de-la-foudre",
-      "onglet": "Foudre",
-      "genre": "Note",
-      "cellule": "BJ70",
-      "colonne": "Effets secondaires",
-      "sort": "Manteau de Volt",
-      "lignes": [
-        "Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas être paralysé au stade 1"
-      ]
-    },
-    {
       "page": "magie-de-la-lumiere",
       "onglet": "Lumière",
       "genre": "Note",
-      "cellule": "BJ10",
+      "cellule": "AT51",
       "colonne": "Effets secondaires",
-      "sort": "Champ de Force",
-      "lignes": [
-        "Le champ de force reste tant qu'aucun coup n'a été pris. Il disparaît après l'attaque ennemie. Il va réduire les dégâts AVANT l'armure.",
-        "",
-        "La surcharge peut être amplifiée avec 20 chakra maximum"
-      ]
-    },
-    {
-      "page": "magie-de-la-lumiere",
-      "onglet": "Lumière",
-      "genre": "Note",
-      "cellule": "BJ19",
-      "colonne": "Effets secondaires",
-      "sort": "Fer Lumineux",
+      "sort": "Fer lumineux",
       "lignes": [
         "Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas être aveuglé au stade 1"
       ]
@@ -1227,9 +734,9 @@
       "page": "magie-de-la-lumiere",
       "onglet": "Lumière",
       "genre": "Note",
-      "cellule": "BJ25",
+      "cellule": "AT57",
       "colonne": "Effets secondaires",
-      "sort": "Énergie Solaire",
+      "sort": "Énergie solaire",
       "lignes": [
         "10% lors de neutre",
         "20% lors de grand soleil.",
@@ -1237,62 +744,10 @@
       ]
     },
     {
-      "page": "magie-de-la-lumiere",
-      "onglet": "Lumière",
-      "genre": "Commentaire résolu",
-      "cellule": "BG31",
-      "colonne": "D/S/B",
-      "sort": "Flash",
-      "lignes": [
-        "Ce sort repose sur une existence des yeux, les créatures aveugles ne sont pas affectées par ce sort."
-      ]
-    },
-    {
-      "page": "magie-de-la-lumiere",
-      "onglet": "Lumière",
-      "genre": "Note",
-      "cellule": "BJ43",
-      "colonne": "Effets secondaires",
-      "sort": "Croisade lumineuse",
-      "lignes": [
-        "Liste des amplifications :",
-        "- Permet d'encaisser le prochain sort d'ombre (sauf niveau 5)",
-        "- Immunise à la peur pendant 3 tours.",
-        "- Immunise aux effets négatifs pour le tour.",
-        "- Immunise contre les altérations d'état niveau 1 pour 2 tours"
-      ]
-    },
-    {
-      "page": "magie-de-la-lumiere",
-      "onglet": "Lumière",
-      "genre": "Commentaire résolu",
-      "cellule": "BJ43",
-      "colonne": "Effets secondaires",
-      "sort": "Croisade lumineuse",
-      "lignes": [
-        "Liste des amplifications :",
-        "- Permet d'encaisser le prochain sort d'ombre (sauf niveau 5)",
-        "- Immunise à la peur pendant 3 tours.",
-        "- Immunise aux effets négatifs pour le tour.",
-        "- Immunise contre les altérations d'état niveau 1 pour 2 tours"
-      ]
-    },
-    {
-      "page": "magie-de-la-lumiere",
-      "onglet": "Lumière",
-      "genre": "Commentaire résolu",
-      "cellule": "BJ70",
-      "colonne": "Effets secondaires",
-      "sort": "Louange d'Aurora",
-      "lignes": [
-        "Le sort peut être utilisé sur un allié qui n'est pas dans le coma."
-      ]
-    },
-    {
       "page": "magie-de-lombre",
       "onglet": "Ombre",
       "genre": "Note",
-      "cellule": "BJ10",
+      "cellule": "AT42",
       "colonne": "Effets secondaires",
       "sort": "Marionnette de l'ombre",
       "lignes": [
@@ -1303,7 +758,7 @@
       "page": "magie-de-lombre",
       "onglet": "Ombre",
       "genre": "Note",
-      "cellule": "BJ25",
+      "cellule": "AT57",
       "colonne": "Effets secondaires",
       "sort": "Lame d’ombre",
       "lignes": [
@@ -1314,9 +769,9 @@
       "page": "magie-de-lombre",
       "onglet": "Ombre",
       "genre": "Note",
-      "cellule": "BJ31",
+      "cellule": "AT63",
       "colonne": "Effets secondaires",
-      "sort": "Fer Obscur",
+      "sort": "Fer obscur",
       "lignes": [
         "Si coup critique avec une arme sous ce sort, oblige un jet de vigueur pour ne pas prendre Peur au stade 1"
       ]
@@ -1325,7 +780,7 @@
       "page": "magie-de-lombre",
       "onglet": "Ombre",
       "genre": "Note",
-      "cellule": "BJ40",
+      "cellule": "AC77",
       "colonne": "Effets secondaires",
       "sort": "Amplification sombre",
       "lignes": [
@@ -1336,20 +791,7 @@
       "page": "magie-de-lombre",
       "onglet": "Ombre",
       "genre": "Note",
-      "cellule": "BJ46",
-      "colonne": "Effets secondaires",
-      "sort": "Ombre Menaçante",
-      "lignes": [
-        "L'ombre reste 3 tours.",
-        "",
-        "Le jet de fermeté se relance tous les débuts de tour."
-      ]
-    },
-    {
-      "page": "magie-de-lombre",
-      "onglet": "Ombre",
-      "genre": "Note",
-      "cellule": "BJ55",
+      "cellule": "AC89",
       "colonne": "Effets secondaires",
       "sort": "Défaite annoncée",
       "lignes": [
@@ -1360,18 +802,7 @@
       "page": "magie-de-lombre",
       "onglet": "Ombre",
       "genre": "Note",
-      "cellule": "BJ61",
-      "colonne": "Effets secondaires",
-      "sort": "Pire ami",
-      "lignes": [
-        "Pire ami possède les caractéristiques et compétences de la cible et possède 1/4 de sa santé totale."
-      ]
-    },
-    {
-      "page": "magie-de-lombre",
-      "onglet": "Ombre",
-      "genre": "Note",
-      "cellule": "BJ64",
+      "cellule": "AC95",
       "colonne": "Effets secondaires",
       "sort": "Chaîne de l'entrave",
       "lignes": [
@@ -1388,9 +819,9 @@
       "page": "magie-de-lombre",
       "onglet": "Ombre",
       "genre": "Note",
-      "cellule": "BJ70",
+      "cellule": "AC98",
       "colonne": "Effets secondaires",
-      "sort": "Frappe Négative",
+      "sort": "Frappe négative",
       "lignes": [
         "Donne un effet négatif selon la santé restante parmi les suivants (les effets sont cumulatifs) :",
         "",
@@ -1404,7 +835,31 @@
         "",
         "Santé à 20% = Le sort inflige + 40 dégâts"
       ]
+    },
+    {
+      "page": "magie-de-lombre",
+      "onglet": "Ombre",
+      "genre": "Note",
+      "cellule": "BK80",
+      "colonne": "Effets secondaires",
+      "sort": "Ombre Menaçante",
+      "lignes": [
+        "L'ombre reste 3 tours.",
+        "",
+        "Le jet de fermeté se relance tous les débuts de tour."
+      ]
+    },
+    {
+      "page": "magie-de-lombre",
+      "onglet": "Ombre",
+      "genre": "Note",
+      "cellule": "BK92",
+      "colonne": "Effets secondaires",
+      "sort": "Pire ami",
+      "lignes": [
+        "Pire ami possède les caractéristiques et compétences de la cible et possède 1/4 de sa santé totale."
+      ]
     }
   ],
-  "corrections": "Copie tenue à jour avec les corrections orthographiques de data/migrations/0003-orthographe-magies.sql et les noms corrigés par 0006-orthographe-noms.sql : les lignes et les noms de sorts cités ici sont ceux des notes après correction."
+  "corrections": "Les lignes et les noms de sorts cités ici sont ceux des notes après la migration 0117 (corrections R10 du classeur de Décembre comprises). Le classeur de Décembre n'a aucun fil de commentaire (R243 (2)) : toutes les entrées sont des notes."
 }

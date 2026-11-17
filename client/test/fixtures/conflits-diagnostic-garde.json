@@ -1,0 +1,203 @@
+{
+ "lots": [
+  {
+   "lot": "lot-1",
+   "fait_le": "2026-11-12T10:00:00Z",
+   "page_id": "metiers/forgeron",
+   "resume": "Métier Forgeron : Description, Équipement supplémentaire",
+   "garde": true,
+   "detail": "lot lot-1 : metier {\"id\":\"metiers/forgeron\"} : les règles ont changé description, equipement_brut autrement, la valeur du site reste en place",
+   "detail_lisible": "Métier « Forgeron » : les règles ont changé « Description », « Équipement supplémentaire » autrement, la valeur du site reste en place",
+   "empreinte": "…",
+   "saines": [
+    {
+     "rang": 2,
+     "table": "metier_objet_depart",
+     "cle": {
+      "metier_id": "metiers/forgeron",
+      "rang": 2,
+      "option": 1
+     },
+     "operation": "supprimer",
+     "libelle": "Objet de départ du métier « Forgeron », n° 2, option 1",
+     "issue": "reappliquee"
+    },
+    {
+     "rang": 3,
+     "table": "metier_objet_depart",
+     "cle": {
+      "metier_id": "metiers/forgeron",
+      "rang": 1,
+      "option": 1
+     },
+     "operation": "modifier",
+     "libelle": "Objet de départ du métier « Forgeron », n° 1, option 1",
+     "issue": "reappliquee"
+    },
+    {
+     "rang": 4,
+     "table": "page",
+     "cle": {
+      "id": "metiers/forgeron"
+     },
+     "operation": "modifier",
+     "libelle": "Page « Forgeron »",
+     "issue": "reappliquee"
+    }
+   ],
+   "conflits": [
+    {
+     "rang": 1,
+     "table": "metier",
+     "cle": {
+      "id": "metiers/forgeron"
+     },
+     "operation": "modifier",
+     "libelle": "Métier « Forgeron »",
+     "raison": "les règles ont changé description autrement, la valeur du site reste en place",
+     "raison_lisible": "les règles ont changé « Description » autrement, la valeur du site reste en place",
+     "id": "1:description",
+     "colonne": "description",
+     "colonne_libelle": "Description",
+     "genre": "champ",
+     "garde": true,
+     "version_1": {
+      "genre": "valeur",
+      "valeur": "Premier paragraphe du métier (essai de fusion).\n\nDeuxième paragraphe réécrit sur le site.\n\nTroisième paragraphe du métier (essai de fusion)."
+     },
+     "version_2": {
+      "genre": "valeur",
+      "valeur": "Premier paragraphe du métier (essai de fusion).\n\nDeuxième paragraphe réécrit par le code.\n\nTroisième paragraphe du métier (essai de fusion)."
+     },
+     "avant": {
+      "genre": "valeur",
+      "valeur": "Premier paragraphe du métier (essai de fusion).\n\nDeuxième paragraphe du métier (essai de fusion).\n\nTroisième paragraphe du métier (essai de fusion)."
+     },
+     "provenance_1": {
+      "genre": "site",
+      "lot": "lot-1",
+      "fait_le": "2026-11-12T10:00:00Z",
+      "resume": "Métier Forgeron : Description, Équipement supplémentaire"
+     },
+     "provenance_2": {
+      "genre": "regles"
+     },
+     "actuelle": {
+      "genre": "valeur",
+      "valeur": "Premier paragraphe du métier (essai de fusion).\n\nDeuxième paragraphe réécrit sur le site.\n\nTroisième paragraphe réécrit sur le site.",
+      "provenance": {
+       "genre": "site",
+       "lot": "lot-2",
+       "fait_le": "2026-11-12T10:00:00Z",
+       "resume": "Métier Forgeron : Description"
+      }
+     },
+     "passages": [
+      {
+       "base": "Deuxième paragraphe du métier (essai de fusion).\n",
+       "site": "Deuxième paragraphe réécrit sur le site.\n",
+       "code": "Deuxième paragraphe réécrit par le code.\n"
+      }
+     ],
+     "valeur_1": {
+      "genre": "valeur",
+      "valeur": "Premier paragraphe du métier (essai de fusion).\n\nDeuxième paragraphe réécrit sur le site.\n\nTroisième paragraphe réécrit sur le site."
+     },
+     "valeur_2": {
+      "genre": "valeur",
+      "valeur": "Premier paragraphe du métier (essai de fusion).\n\nDeuxième paragraphe réécrit par le code.\n\nTroisième paragraphe réécrit sur le site."
+     },
+     "lots_suivants": [
+      {
+       "lot": "lot-2",
+       "fait_le": "2026-11-12T10:00:00Z",
+       "resume": "Métier Forgeron : Description"
+      }
+     ],
+     "apercu": null,
+     "choix_possibles": [
+      1,
+      2,
+      3
+     ],
+     "saisie": {
+      "type": "texte",
+      "libelle": "Description",
+      "vide": ""
+     },
+     "bloque": null
+    },
+    {
+     "rang": 1,
+     "table": "metier",
+     "cle": {
+      "id": "metiers/forgeron"
+     },
+     "operation": "modifier",
+     "libelle": "Métier « Forgeron »",
+     "raison": "les règles ont changé equipement_brut autrement, la valeur du site reste en place",
+     "raison_lisible": "les règles ont changé « Équipement supplémentaire » autrement, la valeur du site reste en place",
+     "id": "1:equipement_brut",
+     "colonne": "equipement_brut",
+     "colonne_libelle": "Équipement supplémentaire",
+     "genre": "champ",
+     "garde": true,
+     "version_1": {
+      "genre": "valeur",
+      "valeur": "Enclume (site)"
+     },
+     "version_2": {
+      "genre": "valeur",
+      "valeur": "Tenailles (code)"
+     },
+     "avant": {
+      "genre": "valeur",
+      "valeur": "Marteau (essai de fusion)"
+     },
+     "provenance_1": {
+      "genre": "site",
+      "lot": "lot-1",
+      "fait_le": "2026-11-12T10:00:00Z",
+      "resume": "Métier Forgeron : Description, Équipement supplémentaire"
+     },
+     "provenance_2": {
+      "genre": "regles"
+     },
+     "actuelle": null,
+     "passages": [],
+     "valeur_1": {
+      "genre": "valeur",
+      "valeur": "Enclume (site)"
+     },
+     "valeur_2": {
+      "genre": "valeur",
+      "valeur": "Tenailles (code)"
+     },
+     "lots_suivants": [],
+     "apercu": null,
+     "choix_possibles": [
+      1,
+      2,
+      3
+     ],
+     "saisie": {
+      "type": "ligne",
+      "libelle": "Équipement supplémentaire",
+      "vide": "Rien"
+     },
+     "bloque": null
+    }
+   ],
+   "bloque": false
+  }
+ ],
+ "resolus": [],
+ "retenus": [
+  {
+   "lot": "lot-2",
+   "fait_le": "2026-11-12T10:00:00Z",
+   "resume": "Métier Forgeron : Description",
+   "derriere": "lot-1"
+  }
+ ]
+}

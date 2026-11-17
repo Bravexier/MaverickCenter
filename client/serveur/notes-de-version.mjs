@@ -9,13 +9,15 @@
 // L'état du lancement est gardé dans db/mise-a-jour/etat.json : le service redémarre pendant le processus (nouvelle version livrée sur dev).
 // Node seulement (node:…), sans dépendance.
 import { randomUUID } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import { bilan, comparerBases, TABLES_LUES, versionDeLivraison } from '../src/lib/notes-de-version.mjs';
+import { installerLePlan } from '../src/lib/livres.mjs';
+import { bilan, comparerBases, estUneTableAutre, TABLES_LUES, versionDeLivraison } from '../src/lib/notes-de-version.mjs';
+import { chargerPlanDesRegles } from '../src/lib/plan-des-regles-db.mjs';
 import { signature } from './base-vivante.mjs';
 import { ErreurHttp, sha256 } from './partage.mjs';
-import { journalExporte } from './edition-journal.mjs';
+import { defaireLesLotsEnSuspens, journalExporte, lotGardeEnSuspens, lotsRetenus } from './edition-journal.mjs';
 import { compterLesConflits } from './edition-conflits.mjs';
 
 const DOSSIER_LOTS = 'mise-a-jour';
@@ -35,23 +37,96 @@ export const DUREE_MAX_RUN = 3 * 3_600_000;
 export class ErreurNotes extends ErreurHttp {}
 
 /** Les tables de `noms` qui existent dans la base, lues entières : { tables: { nom: lignes[] } }. */
-export function lireTables(db, noms = TABLES_LUES) {
+export function lireTables(db, noms = TABLES_LUES, { autres = false } = {}) {
   const existantes = new Set(db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all().map((t) => t.name));
   const tables = {};
   for (const t of noms) if (existantes.has(t)) tables[t] = db.prepare(`SELECT * FROM "${t}"`).all().map((r) => ({ ...r }));
-  return { tables };
+  return autres ? { tables, autres: lireAutresTables(db, existantes) } : { tables };
 }
 
-/** La base de référence (production) et sa version : { disponible, chemin, version, commit } (reference.json à côté de la base). */
-export function lireReference(chemin) {
-  if (!chemin || !existsSync(chemin)) return { disponible: false, chemin: chemin ?? null, version: null, commit: null };
+/** Les autres tables de contenu (que la comparaison ne décrit pas) : { <table>: { colonnes, cle, lignes } }. */
+export function lireAutresTables(db, existantes = null) {
+  const noms = existantes ?? new Set(db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all().map((t) => t.name));
+  const sortie = {};
+  for (const t of [...noms].filter(estUneTableAutre)) {
+    const infos = db.prepare(`PRAGMA table_info("${t}")`).all();
+    sortie[t] = {
+      colonnes: infos.map((c) => c.name), cle: infos.filter((c) => c.pk > 0).sort((p, q) => p.pk - q.pk).map((c) => c.name),
+      lignes: db.prepare(`SELECT * FROM "${t}"`).all().map((r) => Object.fromEntries(Object.entries(r).map(([c, v]) => [c, v instanceof Uint8Array
+        ? `binaire ${sha256(v).slice(0, 8)} (${v.length} octets)` : v]))),
+    };
+  }
+  return sortie;
+}
+
+/** Où la production publie son contenu, vu du service de dev (dossier monté en lecture seule : le site de la production, sans fiche ni compte). */
+const BASE_DE_PRODUCTION = ['donnees', 'maverick.db'];
+const VERSION_DE_PRODUCTION = ['_serveur', 'version.json'];
+
+/** Les deux chemins sont-ils le même fichier (même périphérique et même inode : un montage en lecture seule du fichier de ce site compris) ? */
+function memeFichier(a, b) {
+  try {
+    const [x, y] = [statSync(a, { bigint: true }), statSync(b, { bigint: true })];
+    return x.dev === y.dev && x.ino === y.ino;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Le contenu publié par la production est-il lisible (fichier présent, ouvrable, version connue) ? { chemin, version } ou { raison }.
+ * `propre` : la base des règles de ce site ; une « production » qui est ce même fichier (mauvais montage) ne sert pas : le dev se comparerait à lui-même.
+ */
+export function productionPubliee(dossier, propre = null) {
+  const chemin = join(dossier, ...BASE_DE_PRODUCTION);
+  if (!existsSync(chemin)) return { raison: 'le dossier de la production est monté, mais sans sa base (donnees/maverick.db)' };
+  if (propre && memeFichier(chemin, propre)) return { raison: 'le dossier de la production est celui de ce site de dev (même base) : il ne peut pas servir de référence' };
+  let version = null;
+  try {
+    version = JSON.parse(readFileSync(join(dossier, ...VERSION_DE_PRODUCTION), 'utf8')).version ?? null;
+  } catch {
+    return { raison: 'le dossier de la production est monté, mais sa version est illisible (_serveur/version.json)' };
+  }
+  if (!version) return { raison: 'le dossier de la production ne dit pas sa version (_serveur/version.json)' };
+  try {
+    const db = new DatabaseSync(chemin, { readOnly: true });
+    try {
+      db.prepare("SELECT count(*) FROM sqlite_master").get();
+    } finally {
+      db.close();
+    }
+  } catch (e) {
+    return { raison: `la base publiée par la production est illisible (${String(e.message).slice(0, 120)})` };
+  }
+  return { chemin, version };
+}
+
+/**
+ * La base de référence (production) et sa version : { disponible, chemin, version, commit, source, raison }.
+ * `reference` : un chemin (base + reference.json à côté, tirée du dépôt : la copie de GitHub) ou { production, depot, propre } — le dossier de la
+ * production monté en lecture seule (lot 3 du chantier de la base de dev ; R274) d'abord, puis la copie de GitHub tant que ce dossier n'est pas monté,
+ * lisible, ni distinct de ce site (`propre` : la base des règles de ce site, que la production ne peut pas être).
+ * `source` dit laquelle sert : 'production' ou 'depot' ; `raison`, pourquoi la production ne sert pas (quand elle est configurée).
+ */
+export function lireReference(reference) {
+  const { production = null, depot = null, propre = null } = reference && typeof reference === 'object' ? reference : { depot: reference };
+  let raison = null;
+  if (production) {
+    if (!existsSync(production)) raison = 'le dossier de la production n’est pas monté';
+    else {
+      const lue = productionPubliee(production, propre);
+      if (lue.chemin) return { disponible: true, chemin: lue.chemin, version: lue.version, commit: null, source: 'production', raison: null };
+      raison = lue.raison;
+    }
+  }
+  if (!depot || !existsSync(depot)) return { disponible: false, chemin: depot ?? null, version: null, commit: null, source: null, raison };
   let info = {};
   try {
-    info = JSON.parse(readFileSync(chemin.replace(/\.db$/, '.json'), 'utf8'));
+    info = JSON.parse(readFileSync(depot.replace(/\.db$/, '.json'), 'utf8'));
   } catch {
     // version inconnue : la liste reste calculable
   }
-  return { disponible: true, chemin, version: info.version ?? null, commit: info.commit ?? null };
+  return { disponible: true, chemin: depot, version: info.version ?? null, commit: info.commit ?? null, source: 'depot', raison };
 }
 
 const cacheReference = new Map(); // chemin -> { cle, tables } : la référence ne change qu'avec une nouvelle version du site
@@ -61,7 +136,7 @@ function tablesDeReference(chemin) {
   if (deja && deja.cle === cle) return deja.tables;
   const db = new DatabaseSync(chemin, { readOnly: true });
   try {
-    const tables = lireTables(db);
+    const tables = lireTables(db, TABLES_LUES, { autres: true });
     cacheReference.set(chemin, { cle, tables });
     return tables;
   } finally {
@@ -70,7 +145,7 @@ function tablesDeReference(chemin) {
 }
 
 /** Le brouillon de la note (champ libre et case « Version majeure ») : { texte, modifie_le, lot, majeure }. */
-function lireBrouillon(db) {
+export function lireBrouillon(db) {
   const b = db.prepare('SELECT texte, modifie_le, lot, majeure FROM note_version_brouillon WHERE id = 1').get();
   return { texte: b?.texte ?? null, modifie_le: b?.modifie_le ?? null, lot: b?.lot ?? null, majeure: b?.majeure === 1 };
 }
@@ -106,17 +181,46 @@ export function enregistrerMajeure(db, { majeure } = {}) {
 }
 
 /**
+ * La référence et ses tables lues. Une base de production à moitié copiée (copie non atomique de l'installateur) peut s'ouvrir sans se lire : la copie
+ * du dépôt sert alors, comme production absente (`raison` le dit) ; sans elle non plus, la référence est dite absente. Jamais une erreur de la page.
+ */
+function referenceEtTables(reference) {
+  const ref = lireReference(reference);
+  if (!ref.disponible) return { ref, tables: null };
+  try {
+    return { ref, tables: tablesDeReference(ref.chemin) };
+  } catch (e) {
+    const raison = `la base de la référence est illisible (${String(e.message).slice(0, 120)})`;
+    if (ref.source === 'production' && reference.depot) {
+      const repli = referenceEtTables({ production: null, depot: reference.depot });
+      return { ref: { ...repli.ref, raison }, tables: repli.tables };
+    }
+    return { ref: { ...ref, disponible: false, version: null, commit: null, source: null, raison }, tables: null };
+  }
+}
+
+/**
+ * Le nombre de lignes de la note qui comptent pour « Rien à livrer » : celles que le workflow écrit dans la note (scripts/mise-a-jour-regles.mjs :
+ * lireTables sans `autres`). Les lignes « Autres tables » restent affichées sur la page mais ne comptent pas, jusqu'à un lot ultérieur.
+ */
+export const lignesALivrer = (lignes) => (lignes ? lignes.filter((l) => l.domaine !== 'autres-tables').length : null);
+
+/**
  * La note en préparation : référence (production), versions (la cible selon la case « Version majeure », et les deux possibles), lignes calculées
  * et leur bilan, brouillon.
  * @param {import('node:sqlite').DatabaseSync} db base vivante
  */
 export function noteEnPreparation(db, { reference, versionDev }) {
-  const ref = lireReference(reference);
+  const { ref, tables: tablesDeLaReference } = referenceEtTables(reference);
   const brouillon = lireBrouillon(db);
   const versionMineure = versionDeLivraison(versionDev, ref.version);
   const versionMajeure = versionDeLivraison(versionDev, ref.version, { majeure: true });
-  // modifications du site en attente : ce que le lot emporterait
-  const enAttente = db.prepare("SELECT count(*) AS n FROM modification WHERE etat = 'en_attente'").get().n;
+  // modifications du site en attente : ce que le lot emporterait (sans les lots retenus derrière un lot gardé : ils partent après sa résolution) ;
+  // sans lot gardé en suspens (le cas courant : la note est relue toutes les 15 s), rien n'est relu du journal entier
+  const enSuspens = lotGardeEnSuspens(db);
+  const retenus = enSuspens ? lotsRetenus(db) : new Map();
+  const enAttente = db.prepare(`SELECT count(*) AS n FROM modification WHERE etat = 'en_attente' AND lot_id NOT IN (SELECT value FROM json_each(?))`)
+    .get(JSON.stringify([...retenus.keys()])).n;
   // les lots en conflit à résoudre ne partent pas avec la mise à jour (figerLot → journalExporte : en attente et intégrées seulement) ; ils restent sur le
   // site de dev, non bloquants, et se résolvent sur la page (GET /api/mise-a-jour/conflits/) ; le compte est celui de /api/etat, écrit une seule fois
   const enConflit = compterLesConflits(db);
@@ -125,8 +229,29 @@ export function noteEnPreparation(db, { reference, versionDev }) {
     version_majeure: versionMajeure, en_attente: enAttente, en_conflit: enConflit, brouillon,
   };
   if (!ref.disponible) return { ...commun, lignes: null, bilan: null };
-  const lignes = comparerBases(tablesDeReference(ref.chemin), lireTables(db));
+  // les pages du guide se rangent par le plan des onglets des Règles de la base vivante (R184, R185 ; lib/livres.mjs#placeDansLeGuide), relu à chaque
+  // calcul : une livraison refait la base vivante, et son plan avec elle
+  installerLePlan(chargerPlanDesRegles(db));
+  const lignes = comparerBases(tablesDeLaReference, enSuspens ? tablesQuiPartiront(db, retenus) : lireTables(db, TABLES_LUES, { autres: true }));
   return { ...commun, lignes, bilan: bilan(lignes) };
+}
+
+/**
+ * Les tables de la base vivante telles que la mise à jour les livrerait : sans ce qu'ont écrit les lots gardés pas encore résolus ni les lots retenus
+ * derrière eux (edition-journal.mjs#defaireLesLotsEnSuspens), défaits dans un savepoint toujours annulé (exception assumée à la lecture seule, comme le
+ * diagnostic des conflits). Réponse du propriétaire (note en préparation) : « Les retirer » — la note ne montre que ce qui partira vraiment ; ces
+ * modifications y apparaissent après la résolution du conflit.
+ */
+function tablesQuiPartiront(db, retenus) {
+  db.exec('SAVEPOINT note_sans_les_lots_en_suspens');
+  try {
+    db.exec('PRAGMA defer_foreign_keys = ON');
+    defaireLesLotsEnSuspens(db, retenus);
+    return lireTables(db, TABLES_LUES, { autres: true });
+  } finally {
+    db.exec('ROLLBACK TO note_sans_les_lots_en_suspens');
+    db.exec('RELEASE note_sans_les_lots_en_suspens');
+  }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
@@ -135,8 +260,10 @@ export function noteEnPreparation(db, { reference, versionDev }) {
 //
 // États du lancement (db/mise-a-jour/etat.json) :
 //   envoi        lot figé, déclenchement du workflow en cours           lance / en_cours   run déclenché / en cours sur GitHub
-//   fusionne     le lot est dans dev (étape « Fusion dans dev » réussie, ou sa note est arrivée dans les règles), livraison master pas finie
-//   termine      livré sur master (run réussi, ou la référence — master — porte la version de sa note)
+//   fusionne     le lot est dans dev (étape « Fusion dans dev » réussie, ou sa note est arrivée dans les règles), pas encore installé en production ;
+//                en lancement `manuel` (aucun suivi du run), il dure jusqu'à l'installation par le cron des installateurs, ou jusqu'à DUREE_MAX_RUN
+//   termine      livré : run réussi (suivi par le jeton), ou la référence porte la version de sa note — celle de la production installée
+//                (`_serveur/version.json` de son site : après l'installation, pas à la fusion sur master), à défaut celle de la copie de master
 //   echec        run en échec AVANT d'entrer dans dev : rien n'a été fusionné, le lancement peut être annulé
 //   echec_livraison  run en échec APRÈS la fusion dans dev : le lot est dans dev, pas sur master ; on le reprend (Re-run sur GitHub, il reprend à
 //                la livraison) ou on fusionne la PR de livraison à la main — une nouvelle mise à jour attend (le workflow la refuse : code 7)
@@ -178,7 +305,7 @@ export function lireLancement(dossier) {
   }
 }
 
-function ecrireLancement(dossier, etat) {
+export function ecrireLancement(dossier, etat) {
   mkdirSync(dossierLots(dossier), { recursive: true });
   const chemin = join(dossierLots(dossier), FICHIER_LANCEMENT);
   writeFileSync(`${chemin}.tmp`, `${JSON.stringify(etat, null, 2)}\n`);
@@ -190,7 +317,7 @@ function ecrireLancement(dossier, etat) {
  * Met à jour l'état du lancement SEULEMENT s'il porte toujours le lot `lot` et l'un des états `si` : un suivi en arrière-plan ou un déclenchement
  * qui revient après une annulation (ou après qu'un autre lot a pris la place) ne réécrit jamais un état plus récent. Rend l'état actuel.
  */
-function modifierLancement(dossier, lot, si, changement) {
+export function modifierLancement(dossier, lot, si, changement) {
   const actuel = lireLancement(dossier);
   if (!actuel || actuel.lot !== lot || (si && !si.includes(actuel.etat))) return actuel;
   return ecrireLancement(dossier, { ...actuel, ...changement(actuel) });
@@ -215,13 +342,22 @@ export function estLiberable(l, instant) {
 }
 
 const fichierLot = (dossier, id, suffixe = '') => join(dossierLots(dossier), `${id}${suffixe}.json`);
+/**
+ * Le paquet d'un lancement depuis la base source (lot 8 : serveur/paquet.mjs) : un fichier SQLite, `<id>.db`, à côté des lots figés. `suffixe` : celui
+ * d'un paquet retiré (`.annule`, `.simulation`).
+ */
+export const fichierPaquet = (dossier, id, suffixe = '') => join(dossierLots(dossier), `${id}${suffixe}.db`);
+/** Le dossier des lots figés et des paquets (db/mise-a-jour/). */
+export const dossierDesLots = (dossier) => dossierLots(dossier);
 
-/** Retire le lot du service (il n'est plus téléchargeable) : renommé, gardé pour l'enquête. */
+/** Retire le lot du service (il n'est plus téléchargeable) : renommé, gardé pour l'enquête ; le paquet d'un lancement depuis la base source aussi. */
 function retirerLot(dossier, id, suffixe) {
-  try {
-    renameSync(fichierLot(dossier, id), fichierLot(dossier, id, suffixe));
-  } catch {
-    // déjà retiré
+  for (const [de, vers] of [[fichierLot(dossier, id), fichierLot(dossier, id, suffixe)], [fichierPaquet(dossier, id), fichierPaquet(dossier, id, suffixe)]]) {
+    try {
+      renameSync(de, vers);
+    } catch {
+      // déjà retiré, ou absent (un lot figé n'a pas de paquet, un paquet n'a pas de lot figé)
+    }
   }
 }
 
@@ -234,7 +370,8 @@ export function lireLot(dossier, id) {
   const l = lireLancement(dossier);
   if (!l || l.lot !== id || LOT_RETIRE.includes(l.etat)) return null;
   try {
-    return readFileSync(fichierLot(dossier, id), 'utf8');
+    // le paquet d'un lancement depuis la base source (serveur/paquet.mjs) : ses octets tels quels (un Buffer), que son empreinte couvre
+    return l.paquet ? readFileSync(fichierPaquet(dossier, id)) : readFileSync(fichierLot(dossier, id), 'utf8');
   } catch {
     return null;
   }
@@ -249,8 +386,39 @@ export function lireLot(dossier, id) {
  * mise à jour sans rien à livrer est refusée.
  */
 export function figerLot(db, dossier, { versionDev, versionCible, instant, confirmation, adresse, etat = 'envoi', simulation = false, aLivrer = null,
-  limites = { delai: DELAI_ENTRE_LANCEMENTS, parJour: LANCEMENTS_PAR_JOUR } }) {
-  if (confirmation !== CONFIRMATION) throw new ErreurNotes(400, `Confirmation attendue : tapez « ${CONFIRMATION} ».`);
+  limites = LIMITES_DES_LANCEMENTS }) {
+  const { recents } = controlerLeLancement(db, dossier, { instant, confirmation, adresse, simulation, aLivrer, limites });
+  const id = randomUUID();
+  const journal = journalExporte(db);
+  for (const lot of journal.lots) for (const m of lot.modifications) delete m.apercu;
+  const brouillon = lireBrouillon(db);
+  const lot = {
+    format: 'maverick-mise-a-jour/1', id, cree_le: instant, version_dev: versionDev, version_cible: versionCible, simulation: Boolean(simulation),
+    majeure: brouillon.majeure, texte: brouillon.texte, journal,
+  };
+  const texte = `${JSON.stringify(lot)}\n`;
+  mkdirSync(dossierLots(dossier), { recursive: true });
+  writeFileSync(fichierLot(dossier, id), texte);
+  db.prepare(`INSERT INTO note_version_brouillon (id, texte, modifie_le, lot) VALUES (1, NULL, NULL, ?)
+              ON CONFLICT (id) DO UPDATE SET lot = excluded.lot`).run(id);
+  return ecrireLancement(dossier, {
+    lot: id, empreinte: sha256(texte), lance_le: instant, version_cible: versionCible, majeure: brouillon.majeure,
+    modifications: journal.lots.reduce((n, l) => n + l.modifications.length, 0), adresse: `${adresse}/api/mise-a-jour/lots/${id}/`,
+    etat, simulation: Boolean(simulation), run: null, erreur: null, suivi_le: null, lancements_recents: recents,
+  });
+}
+
+/** Le délai minimal entre deux lancements et le plafond par 24 h (le bouton n'a pas d'authentification) : figerLot et serveur/paquet.mjs#figerPaquet. */
+export const LIMITES_DES_LANCEMENTS = Object.freeze({ delai: DELAI_ENTRE_LANCEMENTS, parJour: LANCEMENTS_PAR_JOUR });
+
+/**
+ * Les contrôles d'un lancement, communs au lot figé (figerLot) et au paquet de la base source (serveur/paquet.mjs#figerPaquet) : le mot de confirmation
+ * (`attendue`), la place libre, aucun lot déjà figé, la cadence (`limites`), « Rien à livrer » pour une vraie mise à jour (`rienARefuser` : faux pour une
+ * copie vers le dépôt), l'adresse publique. Lève une ErreurNotes ; rend { precedent, recents } (les lancements des 24 dernières heures).
+ */
+export function controlerLeLancement(db, dossier, { instant, confirmation, adresse, simulation = false, aLivrer = null, limites = LIMITES_DES_LANCEMENTS,
+  attendue = CONFIRMATION, rienARefuser = true }) {
+  if (confirmation !== attendue) throw new ErreurNotes(400, `Confirmation attendue : tapez « ${attendue} ».`);
   const precedent = lireLancement(dossier);
   if (occupe(precedent, instant)) {
     const message = precedent.etat === 'echec_livraison'
@@ -273,28 +441,11 @@ export function figerLot(db, dossier, { versionDev, versionCible, instant, confi
     throw new ErreurNotes(429, `Déjà ${recents.length} lancements en 24 h (au plus ${limites.parJour}) : réessayez plus tard.`);
   }
   const enAttente = db.prepare("SELECT count(*) AS n FROM modification WHERE etat = 'en_attente'").get().n;
-  if (!simulation && aLivrer === 0 && enAttente === 0 && !lireBrouillon(db).texte) {
+  if (rienARefuser && !simulation && aLivrer === 0 && enAttente === 0 && !lireBrouillon(db).texte) {
     throw new ErreurNotes(400, 'Rien à livrer : aucune différence avec la production, aucune modification en attente, pas de texte.');
   }
   if (!adresse || !/^https?:\/\/[^/\s]+$/.test(adresse)) throw new ErreurNotes(500, 'Adresse publique du site de dev inconnue (MAVERICK_ADRESSE_PUBLIQUE).');
-  const id = randomUUID();
-  const journal = journalExporte(db);
-  for (const lot of journal.lots) for (const m of lot.modifications) delete m.apercu;
-  const brouillon = lireBrouillon(db);
-  const lot = {
-    format: 'maverick-mise-a-jour/1', id, cree_le: instant, version_dev: versionDev, version_cible: versionCible, simulation: Boolean(simulation),
-    majeure: brouillon.majeure, texte: brouillon.texte, journal,
-  };
-  const texte = `${JSON.stringify(lot)}\n`;
-  mkdirSync(dossierLots(dossier), { recursive: true });
-  writeFileSync(fichierLot(dossier, id), texte);
-  db.prepare(`INSERT INTO note_version_brouillon (id, texte, modifie_le, lot) VALUES (1, NULL, NULL, ?)
-              ON CONFLICT (id) DO UPDATE SET lot = excluded.lot`).run(id);
-  return ecrireLancement(dossier, {
-    lot: id, empreinte: sha256(texte), lance_le: instant, version_cible: versionCible, majeure: brouillon.majeure,
-    modifications: journal.lots.reduce((n, l) => n + l.modifications.length, 0), adresse: `${adresse}/api/mise-a-jour/lots/${id}/`,
-    etat, simulation: Boolean(simulation), run: null, erreur: null, suivi_le: null, lancements_recents: recents,
-  });
+  return { precedent, recents };
 }
 
 /**
@@ -339,9 +490,12 @@ export function leverMaintenance(dossier, { lot, instant }) {
 }
 
 /**
- * Ce que les règles du site (la base vivante, refaite à chaque version) et la référence (master) disent du lancement : sa note est-elle arrivée
- * (le lot est dans dev), et livrée sur master (la référence porte la version de sa note) ? Termine aussi les simulations. Rend l'état.
- * `reference` : lireReference(…) (sa version : celle de master quand ce site a été construit).
+ * Ce que les règles du site (la base vivante, refaite à chaque version) et la référence disent du lancement : sa note est-elle arrivée (le lot est
+ * dans dev), et livrée (la référence porte la version de sa note) ? Termine aussi les simulations. Rend l'état.
+ * `reference` : lireReference(…). Sa version est celle de la production installée (`_serveur/version.json` de son site) : « terminé » par la
+ * référence attend donc l'installation, après la livraison sur master ; sans production lisible, celle de la copie de master du dépôt (repli). En
+ * lancement `manuel` (aucun jeton, donc aucun suivi du run : seule la référence peut le terminer), « fusionné » dure jusqu'à cette installation
+ * (cron des installateurs) ou jusqu'à DUREE_MAX_RUN.
  */
 export function actualiserLancement(db, dossier, { reference = null } = {}) {
   const l = lireLancement(dossier);
@@ -351,6 +505,8 @@ export function actualiserLancement(db, dossier, { reference = null } = {}) {
     if (l.etat === 'echec') return terminerSimulation(db, dossier, l, 'simulation_echouee');
     return l;
   }
+  // un paquet de la base source (lot 8) : sa note n'entre dans la base qu'après la confirmation de la production (serveur/paquet.mjs#actualiser)
+  if (l.paquet) return l;
   const aNote = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'note_version'").get();
   const note = aNote ? db.prepare('SELECT version, texte FROM note_version WHERE lot = ? AND exemple = 0').get(l.lot) : null;
   if (!note) return l;
@@ -412,7 +568,8 @@ export function creerGithub({ dossier, depot, lireJeton, fetch: f = globalThis.f
           method: 'POST',
           // les entrées d'un workflow_dispatch sont des chaînes ; « essai » est l'entrée booléenne du workflow : la simulation de mise à jour,
           // qui applique et contrôle le lot sans rien pousser (le lot porte aussi `simulation` : le workflow refuse un désaccord)
-          body: JSON.stringify({ ref: 'dev', inputs: { lot: l.lot, empreinte: l.empreinte, adresse: l.adresse, essai: l.simulation ? 'true' : 'false' }, return_run_details: true }),
+          // « copie » (lot 8 : « Copier vers le dépôt », un paquet de la base source) n'est envoyée que pour une copie : un lancement d'avant reste identique
+          body: JSON.stringify({ ref: 'dev', inputs: { lot: l.lot, empreinte: l.empreinte, adresse: l.adresse, essai: l.simulation ? 'true' : 'false', ...(l.copie ? { copie: 'true' } : {}) }, return_run_details: true }),
         });
         if (r.status !== 200 && r.status !== 204) throw new Error(`GitHub a répondu ${r.status} : ${(await r.text()).slice(0, 300)}`);
         const details = r.status === 200 ? await r.json() : {};

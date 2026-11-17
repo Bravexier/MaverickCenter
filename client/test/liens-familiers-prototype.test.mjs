@@ -7,6 +7,7 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { TABLES_DES_NOTES } from '../src/lib/notes-de-version.mjs';
+import { baseDImport } from './aide-base-d-import.mjs';
 
 const racine = (chemin) => fileURLToPath(new URL(`../../${chemin}`, import.meta.url));
 const lire = (chemin) => readFileSync(racine(chemin), 'utf8');
@@ -34,9 +35,13 @@ test('base : aucune colonne de texte ne cite plus « Familiers » ni « Prototyp
 test('Mage Bleu : plus de lien sous « CHOSE A SAVOIR », le texte reste', () => {
   const classe = db.prepare("SELECT chose_a_savoir, chose_a_savoir_lien FROM classe WHERE id = 'classes/mage-bleu'").get();
   assert.equal(classe.chose_a_savoir_lien, null);
-  assert.match(classe.chose_a_savoir, /Cette classe commence avec un gros familier\.$/);
   assert.equal(db.prepare('SELECT count(*) AS n FROM classe WHERE chose_a_savoir_lien IS NOT NULL').get().n, 0);
-  const page = db.prepare("SELECT corps_md FROM page WHERE id = 'classes/mage-bleu'").get().corps_md;
+  assert.doesNotMatch(db.prepare("SELECT corps_md FROM page WHERE id = 'classes/mage-bleu'").get().corps_md, /Lien hypertexte/);
+  // le texte tel que la migration 0019 l'a laissé : à l'import (« Chose à savoir » est modifiable sur le site de dev, source de ce qu'il modifie, et la
+  // page de la classe en est refaite)
+  const imp = baseDImport();
+  assert.match(imp.prepare("SELECT chose_a_savoir FROM classe WHERE id = 'classes/mage-bleu'").get().chose_a_savoir, /Cette classe commence avec un gros familier\.$/);
+  const page = imp.prepare("SELECT corps_md FROM page WHERE id = 'classes/mage-bleu'").get().corps_md;
   assert.ok(page.includes('Cette classe commence avec un gros familier.\n\n## Don de départ'), 'la ligne « Lien hypertexte… » est retirée');
 });
 

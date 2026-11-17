@@ -14,7 +14,8 @@ const ligneBrute = new Map(db.prepare('SELECT * FROM metier').all().map((m) => [
 // vérifiés sur la page tant que le site n'a pas réécrit la colonne
 const historique = historiqueSite(db);
 const dImport = (id, colonne) => historique.valeurDImport('metier', { id }, colonne);
-const intact = (id, colonne) => !historique.modifiee('metier', { id }, colonne);
+// (présent et non réécrit : le site de dev supprime aussi des métiers)
+const intact = (id, colonne) => ligneBrute.has(id) && !historique.modifiee('metier', { id }, colonne);
 
 test('un métier est une page du type metiers, sauf la page des règles', () => {
   assert.equal(estUnMetier('metiers/forgeron'), true);
@@ -29,9 +30,9 @@ test('un lien vers un métier mène à sa ligne du tableau ; les autres pages ga
   assert.equal(cheminDePage('metiers/forgeron'), 'metiers/#metier-forgeron');
   assert.deepEqual(adresseDePage(PAGE_DES_REGLES), { chemin: `${PAGE_DES_REGLES}/`, ancre: '' });
   assert.equal(cheminDePage('races/elfe'), 'races/elfe/');
-  // les pages « Armes », « Armures », « Bouclier », « Bâton magique » et « Accessoires » sont les onglets de la page « Équipement » (2026-10-16) :
-  // elles ne sont pas construites (test/equipement.test.mjs)
-  assert.equal(cheminDePage('ressources/bouclier'), 'ressources/equipement/#boucliers');
+  // les pages « Armes », « Armures », « Bouclier », « Bâton magique » et « Accessoires » sont servies par les pages de l'équipement (2026-10-29) :
+  // la route du wiki ne les construit pas (test/equipement.test.mjs)
+  assert.equal(cheminDePage('ressources/bouclier'), 'ressources/bouclier/');
   assert.equal(pageSansAdresse('ressources/bouclier'), true);
   assert.equal(pageSansAdresse('ressources/armures'), true);
   assert.equal(pageSansAdresse('ressources/accessoires'), true);

@@ -7,23 +7,28 @@ import { test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { journalExporte } from '../serveur/edition-journal.mjs';
-import { cheminBase } from '../src/lib/donnees.mjs';
 import { decouperCorps, recomposerCorps } from '../src/lib/markdown-edition.mjs';
+import { normalize } from '../src/lib/text.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { cheminDImport } from './aide-base-d-import.mjs';
 
 const racine = dossierTemporaire('edition-guide');
-const { chemin } = preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(racine, 'db') });
+// les règles de l'import (test/aide-base-d-import.mjs) : les essais citent des mots-clés (« nain ») et des pages que le site de dev peut supprimer
+const { chemin } = preparerBaseVivante({ regles: cheminDImport(), dossier: join(racine, 'db') });
 const db = ouvrirBaseVivante(chemin);
 const service = { base: () => db, etat: () => ({}), edition: true };
 const appel = (methode, chemin_, corps) => traiter({ methode, chemin: chemin_, entetes: { 'content-type': 'application/json' }, corps: corps && JSON.stringify(corps) }, service);
 const enregistrer = (operations) => appel('POST', '/api/edition/', { page: 'guide/bienvenue', operations });
 const page = (id) => db.prepare('SELECT * FROM page WHERE id = ?').get(id);
+// le titre en place avant les essais (celui de l'import, « Bienvenue dans Maverick », ou celui que le site de dev lui a donné depuis)
+const TITRE_AVANT = page('guide/bienvenue').titre;
 
 test('texte d’un chapitre : morceaux de texte remplacés autour des blocs tirés de la base, aperçu noté et rendu en attente', () => {
   const avant = page('guide/bienvenue').corps_md;
   // le premier morceau de texte réécrit, les autres (s'il y en a, entre des blocs) tels quels ; plus de bloc « sommaire » dans Bienvenue (2026-10-18)
   const visibles = decouperCorps(avant).filter((m) => m.visible).length;
-  const corps = recomposerCorps(avant, ['## MaverickJDR ?\n\nUn texte **neuf** et un lien vers les [[races/nain|nains]].\n', ...Array(visibles - 1).fill(null)]);
+  // le lien vers une page s'écrit par la balise du mot-clé qui y mène (migration 0098)
+  const corps = recomposerCorps(avant, ['## MaverickJDR ?\n\nUn texte **neuf** et un lien vers les {{nain|nains}}.\n', ...Array(visibles - 1).fill(null)]);
   assert.doesNotMatch(corps, /<!-- guide:sommaire -->/);
   const apercu = ['<h2>MaverickJDR ?</h2><p>Un texte <strong>neuf</strong>…</p>', ...Array.from({ length: visibles - 1 }, (_, i) => `<p>${i}</p>`)];
   const r = enregistrer([{ op: 'modifier', table: 'page', cle: { id: 'guide/bienvenue' }, valeurs: { corps_md: corps }, avant: { corps_md: avant }, apercu }]);
@@ -41,9 +46,14 @@ test('titre changé : clé de titre recalculée, l’ancien titre devient un ali
   const p = page('guide/bienvenue');
   assert.equal(p.titre, 'Bienvenue à Maverick');
   assert.equal(p.titre_cle, 'bienvenue-a-maverick');
+  // les autres noms de la page : celui de l'import (« Guide du joueur ») et l'ancien titre, ajouté au renommage (d'autres, d'un renommage fait sur le site
+  // de dev, peuvent y être)
   const alias = db.prepare("SELECT texte, cle FROM alias WHERE page_id = 'guide/bienvenue' ORDER BY ordre").all().map((a) => a.texte);
-  assert.deepEqual(alias, ['Guide du joueur', 'Bienvenue dans Maverick']);
-  assert.equal(db.prepare("SELECT page_id FROM cle_page WHERE cle = 'bienvenue-dans-maverick'").get().page_id, 'guide/bienvenue');
+  assert.ok(alias.includes('Guide du joueur'), JSON.stringify(alias));
+  if (TITRE_AVANT !== p.titre) {
+    assert.equal(alias.at(-1), TITRE_AVANT, 'l’ancien titre, dernier autre nom');
+    assert.equal(db.prepare('SELECT page_id FROM cle_page WHERE cle = ?').get(normalize(TITRE_AVANT)).page_id, 'guide/bienvenue');
+  }
   // un titre qui est déjà le nom d'une autre page rendrait les liens ambigus
   const refus = enregistrer([{ op: 'modifier', table: 'page', cle: { id: 'guide/bienvenue' }, valeurs: { titre: 'Humain' } }]);
   assert.equal(refus.statut, 409);
@@ -70,14 +80,15 @@ test('refus : page hors du guide et du Codex, bloc inconnu, texte vide, aperçu 
 });
 
 test('chapitre à plusieurs morceaux de texte : seul celui qui change est réécrit, les blocs restent à leur place', () => {
-  // Créer son personnage (qui absorbe les six étapes de la création) : ses blocs fil rouge, magies, compétences…
-  const avant = page('guide/creer-son-personnage').corps_md;
+  // l'étape 6 de la création (une page à elle depuis R184) : ses blocs initiative, fil rouge des attributs, types de don
+  const ID = 'guide/finaliser-son-personnage';
+  const avant = page(ID).corps_md;
   const morceaux = avant.split(/<!-- guide:[a-z-]+ -->/).filter((t) => t.trim()).length;
   assert.ok(morceaux >= 2);
   const corps = recomposerCorps(avant, [null, 'Deuxième morceau réécrit.']);
   const apercu = Array.from({ length: morceaux }, (_, i) => `<p>${i}</p>`);
-  assert.equal(enregistrer([{ op: 'modifier', table: 'page', cle: { id: 'guide/creer-son-personnage' }, valeurs: { corps_md: corps }, apercu }]).statut, 200);
-  const apres = page('guide/creer-son-personnage').corps_md;
+  assert.equal(enregistrer([{ op: 'modifier', table: 'page', cle: { id: ID }, valeurs: { corps_md: corps }, apercu }]).statut, 200);
+  const apres = page(ID).corps_md;
   assert.deepEqual(apres.match(/<!-- guide:[a-z-]+ -->/g), avant.match(/<!-- guide:[a-z-]+ -->/g));
   assert.match(apres, /Deuxième morceau réécrit\./);
   assert.equal(apres.split(/<!-- guide:[a-z-]+ -->/)[0], avant.split(/<!-- guide:[a-z-]+ -->/)[0]);
@@ -100,7 +111,7 @@ test('pages du wiki, cibles d’un lien posé dans le texte : toutes sauf les ex
 test('page du Codex (lore tiré du Google Doc « CODEX Maverick ») : titre et texte modifiés comme une page du guide, ni HTML brut ni lien non sûr', () => {
   const id = 'lore/eaunoire';
   const avant = page(id);
-  const corps = `${avant.corps_md.trimEnd()}\n\nUn paragraphe ajouté depuis le site de dev, avec un lien vers les [[races/nain|nains]].\n`;
+  const corps = `${avant.corps_md.trimEnd()}\n\nUn paragraphe ajouté depuis le site de dev, avec un lien vers les {{nain|nains}}.\n`;
   const r = appel('POST', '/api/edition/', { page: id, operations: [{ op: 'modifier', table: 'page', cle: { id }, valeurs: { corps_md: corps, titre: 'Eaunoire la déesse' }, avant: { corps_md: avant.corps_md } }] });
   assert.equal(r.statut, 200, JSON.stringify(r.corps));
   assert.equal(page(id).corps_md, corps);

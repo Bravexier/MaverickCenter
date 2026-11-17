@@ -7,13 +7,13 @@ import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import {
-  adresseAvecMotCle, comptesDesMotsCles, elementsDuMotCle, motCleDeLAdresse, motsClesAffiches, motsClesDeLElement, PARAMETRE_MOT_CLE, vueDuMotCle,
+  adresseAvecMotCle, comptesDesMotsCles, idDeLaCle, elementsDuMotCle, motCleDeLAdresse, motsClesAffiches, motsClesDeLElement, PARAMETRE_MOT_CLE, vueDuMotCle,
 } from '../src/lib/recherche-mots-cles.mjs';
 import {
   cibleSaisie, ciblesDeFusion, compteDesElements, confirmationDesRetraits, erreurDesRetraits, examinerLesRenommages, operationsDuVocabulaire,
 } from '../src/lib/mots-cles-edition.mjs';
 import { chargerVocabulaire, idDuMotCle } from '../src/lib/mots-cles-db.mjs';
-import { MOTS_CLES_PROTEGES } from '../src/lib/mots-cles.mjs';
+import { MOTS_CLES_PROTEGES, RAISONS_DES_MOTS_CLES_PROTEGES } from '../src/lib/mots-cles.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { normalize } from '../src/lib/text.mjs';
 
@@ -53,40 +53,61 @@ test('élément ↔ mot-clé : les pages portent leurs mots-clés ; un événeme
   assert.deepEqual(elementsDuMotCle(index, 'sans-categorie'), [], 'plus de valeur réservée');
 });
 
-test('vue d’un mot-clé : son libellé et ses pages ; un id que le vocabulaire n’a pas « n’existe plus »', () => {
+test('vue d’un mot-clé : son libellé, ses synonymes et ses pages ; un id que le vocabulaire n’a pas « n’existe plus »', () => {
   const libelles = new Map([['peuple', 'Peuple'], ['magie', 'magie'], ['vide', 'Vide']]);
   const v = vueDuMotCle(index, 'peuple', libelles);
-  assert.deepEqual(Object.keys(v).sort(), ['definition', 'existe', 'libelle', 'pages']);
+  assert.deepEqual(Object.keys(v).sort(), ['definition', 'existe', 'libelle', 'pages', 'synonymes']);
   assert.equal(v.existe, true);
   assert.equal(v.libelle, 'Peuple');
   assert.deepEqual(v.pages.map((e) => e.title), ['Elfe', 'Nain']);
   assert.deepEqual(vueDuMotCle(index, 'supprime', libelles), { existe: false }, 'supprimé ou fusionné depuis');
   assert.deepEqual(vueDuMotCle(index, 'sans-categorie', libelles), { existe: false }, '« Sans catégorie » n’est plus un choix de la recherche');
-  assert.deepEqual(vueDuMotCle(index, 'vide', libelles), { existe: true, libelle: 'Vide', definition: '', pages: [] }, 'un mot-clé sans page visible existe');
+  assert.deepEqual(vueDuMotCle(index, 'vide', libelles), { existe: true, libelle: 'Vide', synonymes: [], definition: '', pages: [] }, 'un mot-clé sans page visible existe');
   // le glossaire (migration 0056) : la définition avec le libellé
   const glossaire = new Map([['vide', { libelle: 'Vide', definition: 'Rien dedans.' }], ['peuple', { libelle: 'Peuple', definition: null }]]);
-  assert.deepEqual(vueDuMotCle(index, 'vide', glossaire), { existe: true, libelle: 'Vide', definition: 'Rien dedans.', pages: [] });
+  assert.deepEqual(vueDuMotCle(index, 'vide', glossaire), { existe: true, libelle: 'Vide', synonymes: [], definition: 'Rien dedans.', pages: [] });
   assert.equal(vueDuMotCle(index, 'peuple', glossaire).definition, '', 'pas encore décrit');
+  // les synonymes (migration 0115, R233 : « Aussi appelé ») ; le nom affiché vient de la page construite (lib/mots-cles-balises.mjs#htmlDeLaPastille)
+  const synonymes = new Map([['armure-magique', { libelle: 'Armure magique', synonymes: ['AM'], definition: 'x' }]]);
+  assert.deepEqual(vueDuMotCle(index, 'armure-magique', synonymes), { existe: true, libelle: 'Armure magique', synonymes: ['AM'], definition: 'x', pages: [] });
 });
 
-test('liste des mots-clés : filtrée par l’écriture (pas l’id), sans ceux qui n’ont aucun élément visible, sauf en mode modification', () => {
+test('adresse : une clé, ou une clé quittée, mène à l’id du mot-clé (R232 (3) : idDeLaCle)', () => {
+  const motsCles = [{ id: 14, cle: 'orios-race', anciennes_cles: ['orios'] }, { id: 15, cle: 'orios-classe' }];
+  assert.equal(idDeLaCle(motsCles, 'orios-race'), 14);
+  assert.equal(idDeLaCle(motsCles, 'orios'), 14, 'une clé quittée');
+  assert.equal(idDeLaCle(motsCles, 'orios-classe'), 15);
+  assert.equal(idDeLaCle(motsCles, 'absente'), null);
+  assert.equal(idDeLaCle(motsCles, null), null);
+});
+
+test('liste des mots-clés : filtrée par le libellé et les synonymes (pas l’id ni la clé), sans ceux qui n’ont aucun élément visible, sauf en mode modification', () => {
   const motsCles = [
-    { id: 'feu', cle: 'feu', n: 3 },
-    { id: 'magie-du-feu', cle: 'magie-du-feu', n: 1 },
-    { id: 'demo', cle: 'demo', n: 0 },
-    { id: 'aide', cle: 'aide-de-jeu', n: 2 }, // renommé : l'id reste, l'écriture change
+    { id: 1, libelle: 'Feu', n: 3 },
+    { id: 2, libelle: 'Magie du feu', n: 1 },
+    { id: 3, libelle: 'Démo', n: 0 },
+    { id: 4, libelle: 'Aide de jeu', n: 2 },
   ];
   const ids = (liste) => liste.map((m) => m.id);
-  assert.deepEqual(ids(motsClesAffiches(motsCles, '')), ['feu', 'magie-du-feu', 'aide']);
-  assert.deepEqual(ids(motsClesAffiches(motsCles, '', { tous: true })), ['feu', 'magie-du-feu', 'demo', 'aide']);
-  assert.deepEqual(ids(motsClesAffiches(motsCles, 'FEU')), ['feu', 'magie-du-feu']);
-  assert.deepEqual(ids(motsClesAffiches(motsCles, 'jeu')), ['aide'], 'l’écriture');
-  assert.deepEqual(ids(motsClesAffiches(motsCles, 'aide de')), ['aide']);
+  assert.deepEqual(ids(motsClesAffiches(motsCles, '')), [1, 2, 4]);
+  assert.deepEqual(ids(motsClesAffiches(motsCles, '', { tous: true })), [1, 2, 3, 4]);
+  assert.deepEqual(ids(motsClesAffiches(motsCles, 'FEU')), [1, 2]);
+  assert.deepEqual(ids(motsClesAffiches(motsCles, 'jeu')), [4], 'le libellé');
+  assert.deepEqual(ids(motsClesAffiches(motsCles, 'aide de')), [4]);
   assert.deepEqual(ids(motsClesAffiches(motsCles, 'demo')), []);
-  assert.deepEqual(ids(motsClesAffiches(motsCles, 'démo', { tous: true })), ['demo']);
+  assert.deepEqual(ids(motsClesAffiches(motsCles, 'démo', { tous: true })), [3]);
+  // les synonymes (R233 (1)) : « AM » trouve « Armure magique », quelle que soit la casse ; un mot cherché ne se lit pas à cheval sur deux écritures
+  const avecSynonymes = [...motsCles, { id: 5, libelle: 'Armure magique', synonymes: ['AM'], n: 0 }, { id: 6, libelle: 'Nature', synonymes: ['Nat.'], n: 1 },
+    { id: 7, libelle: 'Orios', cle: 'orios-race', synonymes: [], n: 1 }];
+  assert.deepEqual(ids(motsClesAffiches(avecSynonymes, 'AM', { tous: true })), [5]);
+  assert.deepEqual(ids(motsClesAffiches(avecSynonymes, 'am')), [], 'sans page visible : hors du mode modification');
+  assert.deepEqual(ids(motsClesAffiches(avecSynonymes, 'nat.')), [6]);
+  assert.deepEqual(ids(motsClesAffiches(avecSynonymes, 'magique am', { tous: true })), [5], 'un mot dans le libellé, l’autre dans un synonyme');
+  assert.deepEqual(ids(motsClesAffiches(avecSynonymes, 'equeam', { tous: true })), [], 'jamais à cheval');
+  assert.deepEqual(ids(motsClesAffiches(avecSynonymes, 'race', { tous: true })), [], 'la clé d’un homonyme n’est pas cherchée');
 });
 
-test('le vocabulaire de la base : chaque mot-clé des pages y a son id, retrouvé par son écriture', () => {
+test('le vocabulaire de la base : chaque mot-clé des pages y a son id, retrouvé par son libellé (s’il est seul à le porter) ou par sa clé', () => {
   const db = ouvrirBase();
   const vocabulaire = chargerVocabulaire(db);
   // depuis la migration 0056, un glossaire : les mots-clés dont le site se sert et ceux du glossaire, chacun avec sa définition (NULL : pas encore
@@ -94,35 +115,37 @@ test('le vocabulaire de la base : chaque mot-clé des pages y a son id, retrouv�
   assert.ok(vocabulaire.length > 0, `${vocabulaire.length} mots-clés`);
   assert.ok(vocabulaire.every((m) => m.description === null || (typeof m.description === 'string' && m.description !== '')), 'une définition, ou NULL, pour chacun');
   assert.ok(vocabulaire.some((m) => m.description === null), 'un mot-clé pas encore décrit : NULL');
-  assert.deepEqual(vocabulaire.map((m) => m.libelle_cle), vocabulaire.map((m) => normalize(m.libelle)), 'libelle_cle = normalize(libelle)');
-  const ids = new Set(vocabulaire.map((m) => m.id));
-  const tags = db.prepare('SELECT m.libelle, m.id FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id').all();
+  assert.ok(vocabulaire.every((m) => Number.isInteger(m.id) && typeof m.cle === 'string'), 'un id entier et une clé (migration 0113)');
+  const homonymes = (libelle) => vocabulaire.filter((m) => normalize(m.libelle) === normalize(libelle)).length > 1;
+  const tags = db.prepare('SELECT m.libelle, m.cle, m.id FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id').all();
   assert.ok(tags.length > 0, 'des pages portent encore des mots-clés (ceux dont le site se sert)');
-  for (const t of tags) assert.equal(idDuMotCle(db, t.libelle), t.id, t.libelle);
-  for (const t of tags) assert.equal(idDuMotCle(db, t.libelle.toUpperCase()), t.id, 'même écriture, sans la casse');
-  assert.ok(ids.has(idDuMotCle(db, vocabulaire[0].libelle)));
-  assert.equal(idDuMotCle(db, 'Écriture absente du vocabulaire'), 'ecriture-absente-du-vocabulaire', 'à défaut : l’ancienne clé');
+  for (const t of tags) {
+    assert.equal(idDuMotCle(db, t.cle), t.id, t.cle);
+    assert.equal(idDuMotCle(db, t.libelle.toUpperCase()), homonymes(t.libelle) ? null : t.id, `${t.libelle} : sans la casse ; ambigu pour des homonymes`);
+  }
+  assert.equal(idDuMotCle(db, 'Écriture absente du vocabulaire'), null, 'une écriture inconnue : aucun');
 });
 
 // --- Mode modification (lib/mots-cles-edition.mjs) ----------------------------------------------------------------------------------------------
-// le vocabulaire du service (GET /api/edition/mots-cles/) : { id, libelle, libelle_cle, pages, protege }, sans événement
-const v = (id, libelle, pages = 0, protege = null) => ({ id, libelle, libelle_cle: normalize(libelle), pages, protege });
+// le vocabulaire du service (GET /api/edition/mots-cles/) : { id, libelle, libelle_cle, pages, verrou }, sans événement (`verrou` : migration 0110,
+// décisions R218, R219)
+const v = (id, libelle, pages = 0, verrou = 0) => ({ id, libelle, libelle_cle: normalize(libelle), pages, verrou });
 const vocabulaire = [
   v('aide', 'aide', 3),
   v('guide', 'guide', 5),
   v('feu', 'Feu', 2),
-  v('magique', 'Magique', 12, 'range les classes dans la colonne « Magiques » de /classes/'),
+  v('magique', 'Magique', 12, 1),
   v('peuple', 'peuple', 1),
 ];
 
-test('fusion : ni lui-même, ni un mot-clé protégé, ni un mot-clé qui disparaît dans le lot ; la saisie désigne une cible par son écriture', () => {
+test('fusion : ni lui-même, ni un mot-clé qui disparaît dans le lot ; un mot-clé verrouillé est une cible (R219 (4)) ; la saisie désigne une cible par son écriture', () => {
   const ids = (l) => l.map((m) => m.id);
-  assert.deepEqual(ids(ciblesDeFusion(vocabulaire, 'aide')), ['guide', 'feu', 'peuple']);
-  assert.deepEqual(ids(ciblesDeFusion(vocabulaire, 'aide', { retires: new Set(['guide']) })), ['feu', 'peuple']);
+  assert.deepEqual(ids(ciblesDeFusion(vocabulaire, 'aide')), ['guide', 'feu', 'magique', 'peuple']);
+  assert.deepEqual(ids(ciblesDeFusion(vocabulaire, 'aide', { retires: new Set(['guide']) })), ['feu', 'magique', 'peuple']);
   const cibles = ciblesDeFusion(vocabulaire, 'aide');
   assert.equal(cibleSaisie(cibles, 'FEU')?.id, 'feu');
   assert.equal(cibleSaisie(cibles, ' guide ')?.id, 'guide');
-  assert.equal(cibleSaisie(cibles, 'Magique'), null, 'protégé');
+  assert.equal(cibleSaisie(cibles, 'Magique')?.id, 'magique', 'verrouillé : il reçoit la fusion d’un autre');
   assert.equal(cibleSaisie(cibles, 'aide'), null, 'lui-même');
   assert.equal(cibleSaisie(cibles, ''), null);
   assert.equal(cibleSaisie(cibles, 'inconnu'), null);
@@ -132,12 +155,13 @@ test('fusion : ni lui-même, ni un mot-clé protégé, ni un mot-clé qui dispar
   assert.equal(compteDesElements(undefined), '0 page', 'un mot-clé inconnu du vocabulaire lu');
 });
 
-test('renommages : vers l’écriture d’un autre mot-clé, la fusion est proposée ; écriture vide, protégée ou prise deux fois : refus', () => {
+test('renommages : vers l’écriture d’un autre mot-clé, verrouillé ou non, la fusion est proposée ; écriture vide ou prise deux fois : refus', () => {
   assert.deepEqual(examinerLesRenommages(vocabulaire, [{ id: 'aide', avant: 'aide', libelle: 'Aide de jeu' }]), { aFusionner: [] });
   assert.deepEqual(examinerLesRenommages(vocabulaire, [{ id: 'aide', avant: 'aide', libelle: 'Aide' }]), { aFusionner: [] }, 'la casse seule');
   assert.deepEqual(examinerLesRenommages(vocabulaire, [{ id: 'aide', avant: 'aide', libelle: 'Guide' }]).aFusionner, [{ id: 'aide', avant: 'aide', libelle: 'Guide', dans: 'guide' }]);
   assert.match(examinerLesRenommages(vocabulaire, [{ id: 'aide', avant: 'aide', libelle: ' !? ' }]).erreur, /au moins une lettre/);
-  assert.match(examinerLesRenommages(vocabulaire, [{ id: 'aide', avant: 'aide', libelle: 'magique' }]).erreur, /dont le site se sert.*Magiques/);
+  assert.deepEqual(examinerLesRenommages(vocabulaire, [{ id: 'aide', avant: 'aide', libelle: 'magique' }]).aFusionner, [{ id: 'aide', avant: 'aide', libelle: 'magique', dans: 'magique' }],
+    'vers un mot-clé verrouillé : la fusion (R219 (4))');
   assert.match(
     examinerLesRenommages(vocabulaire, [{ id: 'aide', avant: 'aide', libelle: 'Nouveau' }, { id: 'peuple', avant: 'peuple', libelle: 'nouveau' }]).erreur,
     /tous deux renommés/,
@@ -147,7 +171,7 @@ test('renommages : vers l’écriture d’un autre mot-clé, la fusion est propo
   assert.deepEqual(examinerLesRenommages(vocabulaire, [{ id: 'aide', avant: 'aide', libelle: 'Guide' }], { retires: new Set(['aide']) }), { aFusionner: [] });
 });
 
-test('le lot : fusions, puis suppressions, puis renommages (sans ceux des mots-clés qui disparaissent) ; une confirmation qui dit ce qui est retiré', () => {
+test('le lot : fusions, puis suppressions, puis renommages (sans ceux des mots-clés qui disparaissent) ; une confirmation qui dit ce que fait chaque retrait', () => {
   const renommer = (id, libelle) => ({ op: 'modifier', table: 'mot_cle', cle: { id }, valeurs: { libelle }, avant: { libelle: id } });
   const ops = operationsDuVocabulaire([renommer('aide', 'Guide'), renommer('peuple', 'Peuples'), renommer('feu', 'Feux')], {
     suppressions: new Set(['feu']),
@@ -161,7 +185,8 @@ test('le lot : fusions, puis suppressions, puis renommages (sans ceux des mots-c
   assert.deepEqual(operationsDuVocabulaire([renommer('peuple', 'Peuples')], {}), [renommer('peuple', 'Peuples')]);
   assert.equal(confirmationDesRetraits(vocabulaire, { suppressions: new Set(), fusions: new Map() }), null);
   const message = confirmationDesRetraits(vocabulaire, { suppressions: new Set(['feu']), fusions: new Map([['aide', 'guide']]) });
-  assert.match(message, /^- « Feu » sera retiré de 2 pages et des textes qui le citent \(sa balise y devient son texte\), puis supprimé\.$/m);
+  // R196 : un mot-clé ne se supprime que si rien ne le mentionne, plus rien n'est retiré des pages ni des textes
+  assert.match(message, /^- « Feu » sera supprimé\.$/m);
   assert.match(message, /^- « aide » sera fusionné dans « guide » : ses pages \(3 pages\) et les textes qui le citent porteront « guide », puis « aide » disparaîtra\.$/m);
   assert.doesNotMatch(message, /événement/, 'plus d’événement : ils ont des catégories');
 });
@@ -224,15 +249,19 @@ test('fusions et suppressions : un mot-clé qui reçoit une fusion n’est pas s
   assert.deepEqual(ids(ops), ['aide⇒guide', 'peuple⇒guide', 'guide⇒feu'], '« guide » reçoit les autres avant de partir');
 });
 
-test('mots-clés protégés : la liste de lib/mots-cles.mjs est faite d’écritures (normalize)', () => {
-  for (const cle of MOTS_CLES_PROTEGES.keys()) assert.equal(cle, normalize(cle));
+test('mots-clés protégés : la liste de lib/mots-cles.mjs est faite d’ids entiers (migration 0113 ; décision R195), leurs noms de la forme normalize', () => {
+  for (const id of MOTS_CLES_PROTEGES.keys()) assert.ok(Number.isInteger(id), String(id));
+  for (const nom of RAISONS_DES_MOTS_CLES_PROTEGES.keys()) assert.equal(nom, normalize(nom));
 });
 
 // --- Scripts de page --------------------------------------------------------------------------------------------------------------------------------
 test('le script de /recherche/ n’importe que lib/recherche-mots-cles.mjs et lib/search.mjs, qu’aucun autre script de page n’importe', () => {
   const imports = (chemin) => [...readFileSync(chemin, 'utf8').matchAll(/^import\s[^;]*?from '([^']+)';$/gm)].map((m) => m[1]);
   assert.deepEqual(imports(new URL('../src/scripts/recherche.mjs', import.meta.url)), ['../lib/recherche-mots-cles.mjs', '../lib/search.mjs']);
+  // ni lib/mots-cles.mjs (la chaîne de l'édition) ni lib/monnaies.mjs (seul src/scripts/accessoires.mjs l'importe) : le nom et la définition
+  // rendus (abréviation, icône d'une monnaie) viennent de la page construite
   assert.deepEqual(imports(new URL('../src/lib/recherche-mots-cles.mjs', import.meta.url)), ['./search.mjs'], 'rien de lourd dans le navigateur (pas lib/mots-cles.mjs)');
+  assert.deepEqual(imports(new URL('../src/lib/search.mjs', import.meta.url)), ['./text.mjs'], 'search.mjs : normalize seul');
   const scripts = new URL('../src/scripts/', import.meta.url);
   for (const nom of readdirSync(scripts, { recursive: true }).filter((n) => n.endsWith('.mjs') && n !== 'recherche.mjs')) {
     assert.deepEqual(imports(new URL(nom, scripts)).filter((m) => /\/(recherche-mots-cles|search)\.mjs$/.test(m)), [], nom);

@@ -3,7 +3,7 @@ import { etatHref, idBulle } from '../../lib/magies';
 import { infobulleDEtat } from '../../lib/sort-format.mjs';
 
 // Pastille d'une altération d'état, avec son infobulle (type, magie liée, effet de chaque stade). Le texte affiché est celui de la source
-// (« brûlure », « Gelé ») ; la bulle n'est faite que d'éléments « en ligne » (span) : la pastille est posée dans un paragraphe, où un bloc fermerait le <p>.
+// (« brûlure », « Pétrification » ; l'état s'écrit « Gel », décision R205) ; la bulle n'est faite que d'éléments « en ligne » (span) : la pastille est posée dans un paragraphe, où un bloc fermerait le <p>.
 // Le lien mène à la section de l'altération sur la page « Liste des altérations d'état ».
 interface Props {
   etat: { id: string; nom: string; pageId: string; typeBrut: string; magiesLiees: { nom: string }[]; stades: { stade: number | null; effet: string }[] };

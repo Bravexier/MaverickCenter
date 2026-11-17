@@ -50,7 +50,9 @@ export function lecteurDuPoidsPortable(db) {
   const lireVocabulaire = () => {
     if (vocabulaire === null) {
       const table = db.prepare("SELECT 1 FROM main.sqlite_master WHERE type = 'table' AND name = 'mot_cle'").get();
-      vocabulaire = table ? db.prepare('SELECT id, libelle, libelle_cle FROM main.mot_cle').all().map((m) => ({ ...m })) : [];
+      // la clé (migration 0113 ; libelle_cle avant) : les balises la citent ; une colonne lue par PRAGMA, jamais écrite à partir d'un lot
+      const cle = table && db.prepare('PRAGMA main.table_info(mot_cle)').all().some((c) => c.name === 'cle') ? 'cle' : 'libelle_cle AS cle';
+      vocabulaire = table ? db.prepare(`SELECT id, libelle, ${cle} FROM main.mot_cle`).all().map((m) => ({ ...m })) : [];
     }
     return vocabulaire;
   };

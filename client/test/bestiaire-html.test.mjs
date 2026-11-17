@@ -13,6 +13,7 @@ import { echellesEcrites, objetDuButin } from '../src/lib/monstre-champs.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 import { ecartsDeLaDescription, tuilesDeCapacites } from './aide-bestiaire.mjs';
+import { baseDImport } from './aide-base-d-import.mjs';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
 const fichier = join(dist, 'bestiaire', 'index.html');
@@ -279,13 +280,19 @@ test('glossaire du butin (demande du propriétaire : « retirer le glossaire du 
   const ids = new Set([...main.matchAll(/ id="([^"]+)"/g)].map((m) => m[1]));
   const declencheurs = [...main.matchAll(/<button type="button" class="bobjet" data-bulle="([^"]+)" aria-describedby="\1">/g)].map((m) => m[1]);
   for (const d of declencheurs) assert.ok(ids.has(d), d);
-  const { monstres } = chargerBestiaire(db);
-  const attendus = monstres.lignes.reduce(
-    (n, l) => n + l.espece.butin.flatMap((t) => [t.ennemi_simple, t.mini_boss, t.boss]).filter((t) => t && objetDuButin(t, glossaire, monstres.elements)).length,
-    0,
-  );
-  assert.equal(declencheurs.length, attendus);
-  assert.ok(attendus > 0, `${attendus} cases de butin à infobulle`);
+  const citantes = (base, objets) => {
+    const { monstres } = chargerBestiaire(base);
+    return monstres.lignes.reduce(
+      (n, l) => n + l.espece.butin.flatMap((t) => [t.ennemi_simple, t.mini_boss, t.boss]).filter((t) => t && objetDuButin(t, objets, monstres.elements)).length,
+      0,
+    );
+  };
+  assert.equal(declencheurs.length, citantes(db, glossaire));
+  // une case cite un objet par son nom (lib/bestiaire : objetDuButin), que le site de dev réécrit librement, comme les cases : des citations, il y en a
+  // dans l'état d'import de la base (test/aide-base-d-import.mjs)
+  const dImport = baseDImport();
+  const n = citantes(dImport, dImport.prepare('SELECT id, nom, texte FROM monstre_butin_objet ORDER BY rang').all());
+  assert.ok(n > 0, `${n} cases de butin à infobulle à l’import`);
 });
 
 test('curseur d’échelle (demande du propriétaire) : sur chaque carte à plusieurs échelles et sur elles seules ; la carte ne montre que l’échelle choisie', options, () => {

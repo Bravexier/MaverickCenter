@@ -61,7 +61,7 @@ describe('règles pures', () => {
     const ref = 'origin/feature/x';
     const reecrite = etatDeLaDistante({ distants: [c('a', true), c('b')], connus: new Set([c('b').sha]), nonPousses: 2, ref });
     assert.deepEqual([reecrite.aReprendre.length, reecrite.remplaces.length, reecrite.reecrite], [0, 2, true]);
-    assert.match(reecrite.conseil, /push --force-with-lease --force-if-includes/);
+    assert.match(reecrite.conseil, /git push --force-with-lease origin <branche>/);
     const suggestion = etatDeLaDistante({ distants: [c('s')], connus: new Set(), nonPousses: 0, ref });
     assert.equal(suggestion.aReprendre[0].commande, 'git rebase origin/feature/x');
     const lesDeux = etatDeLaDistante({ distants: [c('a', true), c('s')], connus: new Set(), nonPousses: 1, ref });
@@ -207,7 +207,7 @@ describe('le script sur un dépôt jetable', () => {
     const e = d.etat();
     assert.deepEqual(e.distante.aReprendre, [], 'l\'ancien commit poussé n\'est pas à reprendre');
     assert.equal(e.distante.reecrite, true);
-    assert.match(d.texte(), /branche réécrite par un rebase : git push --force-with-lease --force-if-includes attendu/);
+    assert.match(d.texte(), /branche réécrite par un rebase : git fetch --prune origin, puis git push --force-with-lease origin <branche> attendu/);
     assert.doesNotMatch(d.texte(), /à reprendre d'abord/);
     assert.equal(e.recouvrement.genre, 'du dernier rebase');
     assert.deepEqual(e.recouvrement.fichiers, ['a.txt']);

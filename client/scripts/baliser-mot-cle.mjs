@@ -36,8 +36,9 @@ import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.
 import { journalExporte } from '../serveur/edition-journal.mjs';
 import { TABLES, texteDePageModifiable } from '../src/lib/edition-modele.mjs';
 import { baliserLeMot, ecrituresDuMot, ecrituresDuMotDans, sansLesBalisesDuMot } from '../src/lib/glossaire-balisage.mjs';
+import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
+import { motCleDeLaRef } from '../src/lib/mots-cles-balises.mjs';
 import { SENS_DEFENSE } from '../src/lib/monstre-champs.mjs';
-import { normalize } from '../src/lib/text.mjs';
 
 const CLIENT = fileURLToPath(new URL('../', import.meta.url));
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
@@ -214,13 +215,15 @@ export function baliser(mots, { rows = join(RACINE, 'data', 'rows') } = {}) {
       // les mots-clés, sur la page du glossaire (comme « + Mot-clé » de /recherche/ en mode modification)
       const motsCles = [];
       for (const m of mots) {
-        const existant = db.prepare('SELECT id, libelle FROM mot_cle WHERE libelle_cle = ?').get(normalize(m.libelle));
-        let id = existant?.id;
-        if (!id) {
+        // le mot-clé de cette écriture (sa clé, ou son libellé quand un seul mot-clé le porte : lib/mots-cles-balises.mjs#motCleDeLaRef, la règle des balises),
+        // sinon créé ; les balises citent sa clé (mot_cle.cle, migration 0113) : `id` est ici la clé que l'outil écrit
+        const existant = motCleDeLaRef(motsClesDeLaBase(db), m.libelle);
+        let numero = existant?.id;
+        if (!numero) {
           const r = enregistrer({ page: 'recherche', operations: [{ op: 'creer', entite: 'mot_cle', valeurs: { libelle: m.libelle, description: m.description } }] });
-          id = r.crees[0].id;
+          numero = r.crees[0].id;
         }
-        const libelle = db.prepare('SELECT libelle FROM mot_cle WHERE id = ?').get(id).libelle;
+        const { libelle, cle: id } = db.prepare('SELECT libelle, cle FROM mot_cle WHERE id = ?').get(numero);
         const mot = { id, libelle, motif: m.motif, casse: m.casse === true, noms: nomsAvecLeMot(db, m.motif, m.casse === true), exclus: exclusDe(m.exclus),
           contextes: contextesDe(m.contextes), horsDe: m.horsDe ?? [], sauf: m.sauf ?? [], cree: !existant,
           usage: { exclus: new Set(), contextes: new Set(), horsDe: new Set(), sauf: new Set() } };

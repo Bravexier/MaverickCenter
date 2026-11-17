@@ -36,7 +36,7 @@ site : la palette en classes »), `lib/chronologie-db.mjs`
 (chargeur, choix du filtre), `components/chronologie/Chronologie.astro` (la mise en page, les chevrons et leur script qui suit le filtre, les gestes),
 `Frise.astro` (la frise, le filtre et son script, le défilement) et `ChronologieEvenement.astro` (la page d'un événement), `styles/chronologie/chronologie.css`
 (inséré en `?raw`), `pages/chronologie/index.astro` et `[slug].astro`. Site de dev : `serveur/edition-chronologie.mjs` (service), `src/scripts/edition/chronologie.mjs`
-(l'extension de l'éditeur), `lib/chronologie-rendu.mjs` (rendu d'un événement dans le navigateur, pour la surcouche). Tests : `client/test/chronologie.test.mjs`
+(l'extension de l'éditeur), `lib/chronologie-rendu.mjs` (rendu d'un événement dans le navigateur, pour la surcouche : la chaîne Markdown du build, typographie comprise, comparée au build par `chronologie-rendu.test.mjs`). Tests : `client/test/chronologie.test.mjs`
 (logique et base), `chronologie-html.test.mjs` (site construit), `chronologie-filtre.test.mjs` (scripts du filtre et des chevrons, en faux navigateur),
 `serveur-edition-chronologie.test.mjs` (le service).
 
@@ -74,7 +74,7 @@ les range.
   (texte tel qu'écrit) et l'expression de date à surligner.
 - **L'outil** `tools/chronologie/chronologie.mjs` résout le registre contre le texte des pages de la base : un extrait est le texte de la page **copié** de
   son début à sa fin (`page.corps_md`, Markdown compris), jamais réécrit ; `--sql` a écrit les INSERT de la migration 0035, `--verifier` compare le registre
-  aux pages et aux lignes **telles que l'import les a laissées**. Depuis la migration 0043, le site de dev est la source de la chronologie : le registre
+  aux pages et aux lignes **telles que l'import les a laissées**, hors les deux événements de la migration 0121 (R264, Gémidiens et Fongoïdes), lus dans son registre. Depuis la migration 0043, le site de dev est la source de la chronologie : le registre
   n'est plus que la trace de l'import, on ne s'en sert plus pour la réécrire.
 - **Les contrôles** (`test/chronologie.test.mjs`) rejouent la résolution sur les pages **telles que l'import les a laissées** (`lib/historique-site.mjs`) et
   la comparent aux lignes ; la liste « Les Impacts mineur et majeur » doit être reprise en entier (un événement par ligne, titre, année, portée et lieu tels

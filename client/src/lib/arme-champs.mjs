@@ -1,6 +1,6 @@
 // Champs de l'onglet « Armes » du classeur « Ressources et Craft » et ce que la base en tire (tables arme, arme_degats, arme_prerequis,
 // materiau_arme, amelioration_equipement, amelioration_total) : les découpages de l'importeur, réécrits ici pour l'édition depuis le site de dev
-// (client/serveur/edition.mjs) et pour l'onglet Armes de /ressources/equipement/ (demande du propriétaire : un tableau par famille, les colonnes
+// (client/serveur/edition.mjs) et pour la page Armes (/ressources/armes/) (demande du propriétaire : un tableau par famille, les colonnes
 // Dégâts, Type de dégâts, Solidité, Effets supplémentaires et Origine tirées de l'effet). Un test les rejoue sur toutes les armes, tous les
 // matériaux et toutes les améliorations d'arme de la base : ils doivent redonner exactement les colonnes typées et les tables de détail en place
 // (test/arme-champs.test.mjs).
@@ -14,8 +14,9 @@
 // Les balises du glossaire des mots-clés (« {{recharge-longue|Recharge longue}} », lib/mots-cles-balises.mjs) ne changent rien au découpage : chaque clause
 // est lue sans elles (son texte simple : « Recharge longue » donne la recharge longue), et reste écrite avec elles dans les effets supplémentaires (le mot-clé
 // en gras dans le tableau) ; une virgule dans une balise ne coupe pas la clause.
-// Fonctions pures, sans dépendance (sauf text.mjs et mots-cles-balises.mjs) : partagées par le service, les gabarits et le rendu du mode modification
-// (lib/edition-rendu.mjs).
+// Fonctions pures, sans dépendance (sauf text.mjs, mots-cles-balises.mjs et composants-champs.mjs, pour la lecture d'un prix) : partagées par le
+// service, les gabarits et le rendu du mode modification (lib/edition-rendu.mjs).
+import { montantEcrit, prixEnRf } from './composants-champs.mjs';
 import { texteSansBalises } from './mots-cles-balises.mjs';
 import { normalize } from './text.mjs';
 
@@ -283,28 +284,45 @@ export const porteeDeLArme = (arme) =>
   arme.portee_min === null || arme.portee_min === undefined ? '1' : arme.portee_min === arme.portee_max ? String(arme.portee_min) : `${arme.portee_min}-${arme.portee_max}`;
 
 /**
- * Solidité de l'arme nue, en crans : « 1 seul cran » de son effet, sinon la base de l'onglet (2) corrigée de « ±N cran » (vue v_arme) ; jamais moins de
- * 1 (décision R51).
+ * Les crans propres d'une arme (décision R194), bruts, sans plancher : « 1 seul cran » de son effet (`solidite_fixee`), sinon la base de l'onglet
+ * (`constante_equipement` « arme.solidite_base », 2) corrigée de « ±N cran » (`solidite_delta`).
  */
-export const durabiliteDeLArme = (arme, base) => Math.max(1, arme.solidite_fixee ?? base + (arme.solidite_delta ?? 0));
+export const cransPropresDeLArme = (arme, base) => arme.solidite_fixee ?? base + (arme.solidite_delta ?? 0);
+
+/** Le minimum des crans propres d'une arme (décision R194 (1) : « Aucun type d'arme ne peut être 0 »). */
+export const CRANS_PROPRES_MIN = 1;
+
+/**
+ * Le refus de R194 pour une arme (une ligne avec `nom`, `solidite_fixee`, `solidite_delta`, tirées de son effet), ou null : une arme a toujours au moins 1 cran
+ * propre ; une modification de son effet qui la mettrait sous 1 est refusée (service d'édition, API v1) ou mise en conflit (rejeu du journal).
+ */
+export function refusDesCransPropres(arme, base) {
+  const crans = cransPropresDeLArme(arme, base);
+  if (crans >= CRANS_PROPRES_MIN) return null;
+  return `« ${arme.nom} » : son effet lui donnerait ${crans} cran${Math.abs(crans) > 1 ? 's' : ''} de solidité ; une arme a toujours au moins ${CRANS_PROPRES_MIN} cran propre (décision R194).`;
+}
+
+/**
+ * Solidité de l'arme nue, en crans (cransPropresDeLArme) ; ramenée à 1 au moins par sécurité seulement : d'après R194, une arme a toujours au moins 1
+ * cran propre (le service refuse un effet qui l'en priverait), ce plancher ne joue donc pas. Le plancher de R51 (« jamais moins de 1 ») est celui du
+ * total, arme + matériau + amélioration (lib/arme-forge.mjs#forgerArme).
+ */
+export const durabiliteDeLArme = (arme, base) => Math.max(1, cransPropresDeLArme(arme, base));
 
 // ---------------------------------------------------------------------------------------------------------------------------------- matériaux, améliorations
 
-/** Prix d'un matériau en RO (demande du propriétaire : « Ignore le prix en RF, il n'est plus d'actualité ») : N de « … N RO » ; null sans RO. */
-export function prixEnRo(prixBrut) {
-  const m = /(\d+(?:[.,]\d+)?)\s*RO\b/i.exec(String(texteSansBalises(prixBrut ?? '')));
-  return m ? Number(m[1].replace(',', '.')) : null;
-}
+/**
+ * Prix d'un matériau en RO (demande du propriétaire : « Ignore le prix en RF, il n'est plus d'actualité ») : N de « … N RO », lu à la française comme
+ * tout prix (« 1 000 RO » → 1000 : lib/composants-champs.mjs#montantEcrit) ; null sans RO.
+ */
+export const prixEnRo = (prixBrut) => montantEcrit(prixBrut, 'RO');
 
-/** materiau_arme.prix_rf, comme l'importeur : RO × 100 ; le RF seul s'il est le seul écrit ; null quand RF et RO sont écrits et se contredisent. */
-export function prixEnRf(prixBrut) {
-  const texte = String(texteSansBalises(prixBrut ?? ''));
-  const rf = /(\d+)\s*RF\b/i.exec(texte);
-  const ro = prixEnRo(texte);
-  if (rf && ro !== null) return Number(rf[1]) === ro * 100 ? Number(rf[1]) : null;
-  if (rf) return Number(rf[1]);
-  return ro === null ? null : Math.round(ro * 100);
-}
+/**
+ * materiau_arme.prix_rf, comme l'importeur : RO × 100 ; le RF seul s'il est le seul écrit ; null quand RF et RO sont écrits et se contredisent. La même
+ * lecture que le prix de la ressource (lib/composants-champs.mjs#prixEnRf, séparateur des milliers compris) : la ressource est la source unique du prix
+ * d'un matériau (décision R62), que le service recopie dans materiau_arme quand il change (serveur/edition-composants.mjs, RESSOURCE.deriver).
+ */
+export { prixEnRf };
 
 /** Effet d'un matériau d'arme → { bonus_degats, cran_solidite, effet_secondaire } (« Dégâts +N pour l'arme », « ±N cran de solidité », le reste). */
 export function analyserEffetDeMateriau(effetBrut) {

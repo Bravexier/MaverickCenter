@@ -9,7 +9,7 @@
 //   - quitter sans enregistrer : le texte d'avant revient ;
 //   - surcouche (le site construit est en retard sur le site de dev) : une ligne de l'annonce modifiée depuis la construction (lignes en attente, et celles
 //     d'un enregistrement) refait sa zone d'après la base vivante quand son texte a changé (empreinte `data-annonce-empreinte` ; HTML :
-//     lib/annonces.mjs#contenuDeLAnnonce, Markdown rendu par lib/chronologie-rendu.mjs#htmlDuTexte — sans les icônes de monnaie, que seul le build pose) ;
+//     lib/annonces.mjs#contenuDeLAnnonce, Markdown rendu par lib/chronologie-rendu.mjs#htmlDuTexte, comme au build, monnaies en icônes comprises) ;
 //     pas sous la saisie : à la sortie du mode modification.
 // Exécutée dans un faux navigateur par test/edition-annonces.test.mjs.
 import { contenuDeLAnnonce, empreinteDeLAnnonce } from '../../lib/annonces.mjs';
@@ -17,6 +17,8 @@ import { htmlDuTexte } from '../../lib/chronologie-rendu.mjs';
 import { cleDeLigne } from '../../lib/edition-modele.mjs';
 import { arbreDuDom, versMarkdown } from '../../lib/markdown-edition.mjs';
 import { cheminDePage } from '../../lib/metiers.mjs';
+import { brancherLesOnglets, outilsDesOnglets } from './onglets.mjs';
+import { outilsDesTableaux } from './tableaux.mjs';
 import { editeurEnPlace, outilsDesMotsCles, pageChoisie, pagesDuWiki } from './texte-en-place.mjs';
 
 const etat = {
@@ -58,6 +60,8 @@ async function appliquer(ed, zone, ligne) {
 }
 
 const texte = editeurEnPlace(() => etat.annonces.map((a) => a.zone));
+const tableaux = outilsDesTableaux(texte, () => etat.annonces.map((a) => a.zone));
+const onglets = outilsDesOnglets(texte, () => etat.annonces.map((a) => a.zone));
 const OUTILS = [
   ['Texte', [
     ['G', 'Gras (Ctrl+B)', (ed) => texte.commande(ed, 'bold'), 'ed-gras'],
@@ -67,14 +71,17 @@ const OUTILS = [
   ]],
   ['Mise en page', [
     ['¶', 'Paragraphe', (ed) => texte.bloc(ed, 'p')],
+    ['Sous-titre', 'Sous-titre (les onglets en font un groupe)', (ed) => texte.bloc(ed, 'h3')],
     ['• Liste', 'Liste à puces', (ed) => texte.commande(ed, 'insertUnorderedList')],
     ['1. Liste', 'Liste numérotée', (ed) => texte.commande(ed, 'insertOrderedList')],
   ]],
   ['Liens', [
-    ['Lien page', 'Lien vers une page du wiki', texte.lienWiki],
+    ['Lien page', 'Lier le texte à une page par un mot-clé qui y mène', texte.lienMotCle],
     ['Lien web', 'Lien vers une adresse web', texte.lienWeb],
     ['Sans lien', 'Retirer le lien (le texte reste)', texte.retirerLien],
   ]],
+  tableaux.groupe,
+  onglets.groupe,
   outilsDesMotsCles(texte),
 ];
 
@@ -87,6 +94,7 @@ export const annonces = {
   /** Une ligne d'une annonce changée depuis la construction (au chargement) ou par un enregistrement : sa zone suit (hors mode modification). */
   ligne(ed, table, cle, ligne) {
     if (table !== 'annonce' || ed.enEdition) return;
+    brancherLesOnglets(); // un texte refait ici peut avoir des onglets : ils s'ouvrent au clic
     etat.differees.delete(cle?.id); // celle-ci est plus récente qu'une ligne remise à plus tard
     const zone = lesZones().find((z) => z.dataset.annonce === cle?.id);
     if (zone) appliquer(ed, zone, ligne).catch((e) => ed.annoncer(`Une annonce n’a pas pu être refaite : ${e.message}`, 'erreur'));
@@ -103,12 +111,16 @@ export const annonces = {
       // vide : la zone s'ouvre vide, le texte d'attente en filigrane (il n'est pas le texte de l'annonce)
       if (!ligne.texte) zone.innerHTML = '<p><br></p>';
       texte.rendreModifiable(ed, zone, etat.abandon.signal);
+      tableaux.brancher(zone, etat.abandon.signal);
       a.initial = markdownDe(ed, zone);
       etat.annonces.push(a);
     }
     if (!etat.annonces.length) return;
     document.execCommand('defaultParagraphSeparator', false, 'p');
     etat.barre = texte.barre(ed, OUTILS, 'Mise en forme de l’annonce').element;
+    onglets.ajouterLaCouleur(ed, etat.barre, etat.abandon.signal);
+    tableaux.ajouterLaCouleur(ed, etat.barre, etat.abandon.signal);
+    brancherLesOnglets();
     document.body.append(etat.barre);
   },
 

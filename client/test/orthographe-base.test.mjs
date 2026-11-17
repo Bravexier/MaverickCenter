@@ -12,6 +12,10 @@ import { ouvrirBase, trouverRacine } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { TABLES_DES_NOTES } from '../src/lib/notes-de-version.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { baseDImport } from './aide-base-d-import.mjs';
+import { textesReecrits } from './aide-textes-reecrits.mjs';
+import { ecrituresDuTexte } from './aide-ecritures-du-lien.mjs';
+import { ouLitLa0124 } from './aide-migration-0124.mjs';
 
 const racine = trouverRacine();
 const dossier = join(racine, 'data', 'migrations');
@@ -22,6 +26,12 @@ const db = ouvrirBase({ sansExemples: false });
 const historique = historiqueSite(db);
 // 0006 (noms à trancher) a corrigé ensuite des noms dans certaines de ces cellules : on y lit le texte de 0005 en défaisant ces renommages
 const noms0006 = JSON.parse(readFileSync(join(dossier, '0006-orthographe-noms.json'), 'utf8')).corrections;
+// Une migration postérieure qui réécrit par fragments une phrase que 0005 a corrigée (registre `textes` de la 0111, R224 (1) : les copies corrigées là où
+// elles contredisent une décision ; de la 0121, R254 (3) : la fin « et est imposée quand… » de l'Archimage retirée) : la correction est admise retirée
+// quand le fragment réécrit la contenait et que la réécriture est en place
+const REECRITURES_POSTERIEURES = textesReecrits('0111-relecture-des-regles-contre-les-decisions', '0121-maj-decembre-suites');
+const reecriteApres = (c, v) => REECRITURES_POSTERIEURES.some((t) => t.table === c.table && t.col === c.col && JSON.stringify(t.cle) === JSON.stringify(c.cle)
+  && t.avant.includes(c.apres) && !t.apres.includes(c.apres) && v.includes(t.apres));
 const avant0006 = (c, texte) => noms0006.filter((n) => n.table === c.table && n.col === c.col && JSON.stringify(n.cle) === JSON.stringify(c.cle))
   .reduceRight((t, n) => t.replaceAll(n.apres, n.avant), texte);
 
@@ -86,8 +96,41 @@ test('registre : ni adresse ni lien [[…]] touchés ; un nom ne change que d’
 const RETIREES = [
   { migration: '0055-armure-une-armure-six-parties.sql', table: 'page', cle: { id: 'ressources/armures' }, col: 'corps_md', apres: 'armure en' },
   { migration: '0055-armure-une-armure-six-parties.sql', table: 'page', cle: { id: 'ressources/armures' }, col: 'corps_md', apres: '2 lingots de fer fassent l' },
+  // décision R231 (« J'aimerai ré écrire les deux pages »), migration 0112 : le corps de « Se défendre » (guide/attaque-et-defense) est réécrit en entier
+  ...['deux conditions doivent', 'être réunies pour', 'Esquive a un', 'case parcourue pour'].map((apres) => (
+    { migration: '0112-r231-attaquer-et-se-defendre.sql', table: 'page', cle: { id: 'guide/attaque-et-defense' }, col: 'corps_md', apres })),
+  // décision R237 (7) (MAJ-X3 : « Améliorations cadavériques » supprimées du site), migration 0117 : le corps de « Animation des morts » est réécrit en
+  // entier (UPDATE page SET corps_md = '…' WHERE id = '…'), sans le tableau des améliorations cadavériques : son titre et ses lignes, où étaient toutes
+  // les corrections de la page (chacune est vérifiée absente du corps réécrit)
+  { migration: '0117-magies-v10-specialisations.sql', table: 'page', cle: { id: 'bestiaire/animation-des-morts' }, col: 'corps_md', celluleReecrite: true },
+  // décision R237 (1) (MAJ-X1 : « tous ses changements s'appliquent », dont les stades 3 de la Paralysie et de la Surdité), migration 0117 : l'effet du
+  // stade 3 de la Paralysie est réécrit en entier par le classeur de Décembre, sans la phrase corrigée
+  { migration: '0117-magies-v10-specialisations.sql', table: 'etat_stade', cle: { etat_id: 'guide/liste-des-alterations-d-etat#etat:paralysie', rang: 3 }, col: 'effet',
+    apres: 'Le résultat d', celluleReecrite: true },
 ];
-const retiree = (c) => RETIREES.find((r) => r.table === c.table && r.col === c.col && JSON.stringify(r.cle) === JSON.stringify(c.cle) && r.apres === c.apres);
+/** La migration réécrit la cellule entière : « UPDATE <table> SET <col> = '…' WHERE <clé> = … [AND …]; » (les ids n'ont aucun caractère spécial d'expression). */
+const celluleReecritePar = (migration, { table, col, cle }) => new RegExp(`^UPDATE ${table} SET ${col} = '(?:[^']|'')*' WHERE ${Object.entries(cle)
+  .map(([k, v]) => `${k} = ${typeof v === 'number' ? v : `'${v}'`}`).join(' AND ')};$`, 'm')
+  .test(readFileSync(join(dossier, migration), 'utf8'));
+// Corrections d'une cellule vidée depuis par une migration, sur décision du propriétaire : R237 (7) (« Améliorations cadavériques » supprimées du site),
+// migration 0117, qui met à NULL le titre du tableau de l'invocation « Animation des morts » (UPDATE invocation SET … tableau_titre = NULL … WHERE id = '…')
+const VIDEES = [{ migration: '0117-magies-v10-specialisations.sql', table: 'invocation', cle: { id: 'bestiaire/animation-des-morts' }, col: 'tableau_titre' }];
+const videe = (c) => VIDEES.find((r) => r.table === c.table && r.col === c.col && JSON.stringify(r.cle) === JSON.stringify(c.cle));
+const videePar = ({ migration, table, col, cle }) => new RegExp(`^UPDATE ${table} SET (?:[^\n]*?, )?${col} = NULL(?:, [^\n]*?)? WHERE id = '${cle.id}';$`, 'm')
+  .test(readFileSync(join(dossier, migration), 'utf8'));
+// Corrections d'une ligne supprimée depuis par une migration, sur décision du propriétaire : R237 (7) (« les météos Saccage temporel et Zone vide »
+// supprimées du site), migration 0117 (« DELETE FROM <table> WHERE <colonne> IN ('…', …); ») : la ligne n'est plus dans la base
+const SUPPRESSIONS = [
+  { migration: '0117-magies-v10-specialisations.sql', table: 'meteo', colonne: 'id' },
+  { migration: '0117-magies-v10-specialisations.sql', table: 'meteo_effet', colonne: 'meteo_id' },
+];
+/** Les valeurs de `colonne` des lignes que la migration supprime de `table`. */
+const supprimeesDe = ({ migration, table, colonne }) => {
+  const m = new RegExp(`^DELETE FROM ${table} WHERE ${colonne} (?:= ('[^']*')|IN \\(([^)]*)\\));$`, 'm').exec(readFileSync(join(dossier, migration), 'utf8'));
+  return new Set([...(m?.[1] ?? m?.[2] ?? '').matchAll(/'([^']*)'/g)].map((x) => x[1]));
+};
+const supprimee = (c) => SUPPRESSIONS.find((r) => r.table === c.table && supprimeesDe(r).has(c.cle[r.colonne]));
+const retiree = (c) => RETIREES.find((r) => r.table === c.table && r.col === c.col && JSON.stringify(r.cle) === JSON.stringify(c.cle) && ((r.celluleReecrite && !r.apres) || r.apres === c.apres));
 // Corrections dont la valeur a changé depuis par une migration de données, sur décision du propriétaire : décision R155 (« Grande faiblesse :
 // multiplier par 3 (pas 4) Sensibilité : multiplier par 4 (pas 8) »), migration 0074. La graphie corrigée (« subis ») reste : la migration part du
 // texte corrigé (la garde de son UPDATE) et écrit la nouvelle valeur.
@@ -106,20 +149,90 @@ const FONDUES = [
     dans: { id: 'ressources/armes#amelioration:arme:10' } },
 ];
 const fondue = (c) => FONDUES.find((r) => r.table === c.table && JSON.stringify(r.cle) === JSON.stringify(c.cle));
+// Corrections dans lesquelles une décision du propriétaire a inséré des mots depuis : décision R180 (« [Mode Hyper] Lumière Toutes les amplification
+// deviennent des IC en plus de tout le reste »), migration 0087 : « une protection est » devient « une protection ou une amplification est ». La
+// graphie corrigée reste : les mots corrigés sont dans la nouvelle phrase, dans le même ordre. (La page « Liste des effets mode hyper », que le site
+// de dev avait modifiée, gardait « une protection est » ; elle est retirée depuis : migration 0095, ci-dessous.)
+const INSEREES = ['classeur_modes', 'fiche'].map((v) => ({
+  table: 'mode_hyper_effet', cle: { id: `${v}:magies/magie-de-la-lumiere:bi` }, col: 'effet',
+  decision: 'R180', apres: 'une protection est', maintenant: 'une protection ou une amplification est',
+}));
+const inseree = (c) => INSEREES.find((r) => r.table === c.table && r.col === c.col && JSON.stringify(r.cle) === JSON.stringify(c.cle) && r.apres === c.apres);
+// Corrections d'une page retirée depuis par une migration, sur décision du propriétaire : R184 (9) (« Mode Hyper (Magie) », « En résumé » supprimées)
+// et R184 (7), R185 (3) (« Résistance/Faiblesse Magie » et « Les situations avancées » absorbées : leur texte, déplacé tel quel par db:sync-pages,
+// est dans d'autres pages, sauf les doublons retirés), migration 0091 (nouveau plan des pages de règles). La page n'est plus dans la base ; la
+// migration la nomme dans son « DELETE FROM page ». De même, à la demande du propriétaire (2026-11-06) : « Postures » (doublon de « Les postures »),
+// migration 0094 ; « Liste des effets mode hyper » (doublon de « Le Mode Hyper », R187), migration 0095. Les corrections des autres lignes restent
+// contrôlées, dont celles des textes du Mode Hyper (mode_texte, ids figés « guide/liste-des-effets-mode-hyper#texte:… »).
+const PAGES_RETIREES = [
+  { migration: '0091-r184-plan-des-regles.sql',
+    pages: ['guide/en-resume-deroulement-d-un-tour', 'guide/mode-hyper-magie', 'guide/resistance-faiblesse-magie', 'guide/situations-avancees'] },
+  { migration: '0094-retrait-pages-doublons-des-combats.sql', pages: ['guide/postures'] },
+  { migration: '0095-retrait-liste-des-effets-mode-hyper.sql', pages: ['guide/liste-des-effets-mode-hyper'] },
+];
+const pageRetiree = (c) => c.table === 'page' && PAGES_RETIREES.some((r) => r.pages.includes(c.cle.id));
+/** Les ids que le « DELETE FROM page » d'une migration retire : « WHERE id IN ('…', …) » ou « WHERE id = '…' ». */
+const supprimeesPar = (migration) => {
+  const sql = readFileSync(join(dossier, migration), 'utf8');
+  const m = sql.match(/^DELETE FROM page WHERE id IN \(([^)]*)\);$/m)?.[1] ?? sql.match(/^DELETE FROM page WHERE id = ('[^']*');$/m)?.[1] ?? '';
+  return [...m.matchAll(/'([^']*)'/g)].map((x) => x[1]);
+};
+// Corrections d'une phrase retirée depuis d'une page restée, sur décision du propriétaire : R184 (7) (« Supprime tous les doublons. Là où il y avais la
+// liste des résistances et faiblesses renvoie désormais à cette nouvelle page »), retouche E12 de la spécification de game-design (db:sync-pages, même
+// lot que la migration 0091) : la phrase sur les crans de « Fiche de personnage : Tableau Résistances/Faiblesses » est retirée, son lien « ici » vise
+// la page « Résistances et faiblesses ». Le renvoi se lit tel que la 0091 l'a écrit, ou avec la balise que la migration 0098 a faite de son lien
+// (test/aide-ecritures-du-lien.mjs ; mots-clés de la base d'import, comme la cellule lue par valeurDImport).
+const DOUBLONS_R184 = [{ table: 'page', cle: { id: 'guide/fiche-tableau-resistances-faiblesses' }, col: 'corps_md',
+  renvoi: 'tout est indiqué [[guide/resistances-et-faiblesses|ici]].', phrase: 'Ce que vous devez savoir c’est que les résistances et faiblesses communiquent' }];
+const doublonR184 = (c) => DOUBLONS_R184.find((r) => r.table === c.table && r.col === c.col && JSON.stringify(r.cle) === JSON.stringify(c.cle));
+const dansLOrdre = (mots, phrase) => { let i = 0; for (const m of phrase.split(' ')) if (m === mots[i]) i++; return i === mots.length; };
 
 test('base : chaque correction est faite (le texte corrigé est dans sa cellule, aux noms corrigés par 0006 près)', () => {
-  for (const r of RETIREES) assert.ok(corrections.some((c) => retiree(c) === r), `${r.apres} : une correction du registre`);
+  for (const r of SUPPRESSIONS) assert.ok(corrections.some((c) => supprimee(c) === r), `${r.table} : une correction du registre sur une ligne supprimée`);
+  for (const r of VIDEES) assert.ok(corrections.some((c) => videe(c) === r), `${r.table} ${r.col} : une correction du registre`);
+  for (const r of RETIREES) assert.ok(corrections.some((c) => retiree(c) === r), `${r.apres ?? r.cle.id} : une correction du registre`);
   for (const r of CHANGEES) assert.ok(corrections.some((c) => changee(c) === r), `${r.apres} : une correction du registre`);
   for (const f of FONDUES) assert.match(readFileSync(join(dossier, f.migration), 'utf8'), /WHERE a\.cible <> 'arme_elementaire';/, `${f.migration} : fond la ligne`);
+  for (const r of INSEREES) {
+    assert.ok(corrections.some((c) => inseree(c) === r), `${r.table} ${JSON.stringify(r.cle)} « ${r.apres} » : une correction du registre`);
+    assert.ok(dansLOrdre(r.apres.split(' '), r.maintenant), `${r.maintenant} : garde les mots corrigés, dans l'ordre`);
+  }
+  for (const { migration, pages } of PAGES_RETIREES) {
+    const supprimees = supprimeesPar(migration);
+    for (const id of pages) {
+      assert.ok(supprimees.includes(id), `${id} : supprimée par ${migration}`);
+      assert.equal(db.prepare('SELECT count(*) AS n FROM page WHERE id = ?').get(id).n, 0, `${id} : absente de la base`);
+      assert.ok(corrections.some((c) => pageRetiree(c) && c.cle.id === id), `${id} : une correction du registre`);
+    }
+  }
   for (const c0 of corrections) {
+    if (pageRetiree(c0)) continue;
     const f = fondue(c0);
-    const c = f ? { ...c0, cle: f.dans } : c0;
+    // le texte de « Accessoires et Ceinture », passé tel quel dans « Inventaire/Sac à dos » par la migration 0124 (R272) : lu dans cette page
+    const c = f ? { ...c0, cle: f.dans } : ouLitLa0124(c0);
+    const sp = supprimee(c);
+    if (sp) {
+      assert.equal(valeur(c), undefined, `${c.table} ${JSON.stringify(c.cle)} : supprimée par ${sp.migration}`);
+      continue;
+    }
+    const vd = videe(c);
+    if (vd) {
+      assert.ok(videePar(vd), `${c.table} ${JSON.stringify(c.cle)} ${c.col} : vidée par ${vd.migration}`);
+      assert.equal(valeur(c), undefined, `${c.table} ${JSON.stringify(c.cle)} ${c.col} : vide à l'import`);
+      continue;
+    }
     const v = valeur(c);
     assert.ok(typeof v === 'string', `${c.table} ${JSON.stringify(c.cle)} : ligne absente de la base`);
     const r = retiree(c);
     if (r) {
-      assert.ok(readFileSync(join(dossier, r.migration), 'utf8').includes(c.apres), `${c.apres} : dans le texte que ${r.migration} retire`);
+      if (r.celluleReecrite) assert.ok(celluleReecritePar(r.migration, c), `${c.table} ${JSON.stringify(c.cle)} : cellule réécrite en entier par ${r.migration}`);
+      else assert.ok(readFileSync(join(dossier, r.migration), 'utf8').includes(c.apres), `${c.apres} : dans le texte que ${r.migration} retire`);
       assert.ok(!v.includes(c.apres), `${c.apres} : retiré de la base`);
+      continue;
+    }
+    const d = doublonR184(c);
+    if (d && !v.includes(c.apres)) {
+      assert.ok(ecrituresDuTexte(baseDImport(), d.renvoi).some((f) => v.includes(f)) && !v.includes(d.phrase), `${c.table} ${JSON.stringify(c.cle)} : la phrase en double retirée, le renvoi en place (R184 (7))`);
       continue;
     }
     const n = changee(c);
@@ -128,7 +241,12 @@ test('base : chaque correction est faite (le texte corrigé est dans sa cellule,
       assert.equal(v, n.maintenant, `${c.table} ${JSON.stringify(c.cle)} : la valeur de ${n.migration}`);
       continue;
     }
-    assert.ok(v.includes(c.apres) || avant0006(c, v).includes(c.apres), `${c.table} ${JSON.stringify(c.cle)} ${c.col} : « ${c.apres} » absent (corrigé à partir de « ${c.avant} »)`);
+    const i = inseree(c);
+    if (i) {
+      assert.ok(v.includes(i.maintenant) && !v.includes(c.avant), `${c.table} ${JSON.stringify(c.cle)} : « ${i.maintenant} » (décision ${i.decision}), sans « ${c.avant} »`);
+      continue;
+    }
+    assert.ok(v.includes(c.apres) || avant0006(c, v).includes(c.apres) || reecriteApres(c, v), `${c.table} ${JSON.stringify(c.cle)} ${c.col} : « ${c.apres} » absent (corrigé à partir de « ${c.avant} »)`);
   }
 });
 

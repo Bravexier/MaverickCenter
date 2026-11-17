@@ -16,9 +16,11 @@ import {
 } from '../src/lib/fiche-moteur.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { baseDImport, reglesDImport } from './aide-base-d-import.mjs';
 
-const db = ouvrirBase({ sansExemples: false });
-const regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(db))); // tel que la page le reçoit
+// les règles (textes et valeurs que le site de dev modifie librement) : épinglées sur leur état d'import (test/aide-base-d-import.mjs)
+const db = baseDImport();
+const regles = reglesDImport(); // tel que la page le reçoit
 const nomDe = (id) => regles.ressources.find((r) => r.id === id).nom;
 const contenant = regles.ceinture.objets.find((o) => o.famille === 'contenant' && o.contenance);
 const potion = regles.ceinture.objets.find((o) => o.famille === 'fiole');
@@ -74,13 +76,16 @@ test('lectures de texte : la contenance de chaque carquois ou sac, les exemplair
   const sansForce = capacitesDImport.filter((c) => sacSansForceEcrit(c.effet));
   assert.deepEqual(sansForce.map((c) => c.nom), ['Organisé']);
   assert.equal(exemplairesDeCeintureEcrits(sansForce[0].effet), 4);
-  // l'état courant, cohérent : une contenance que le texte n'écrit plus est absente, jamais fausse ; la page reçoit chaque objet de la vue, une fois
-  for (const c of regles.ceinture.objets.filter((o) => o.famille === 'contenant')) {
-    assert.ok(c.contenance === null || (Number.isInteger(c.contenance) && c.contenance > 0), nomDe(c.ressource_id));
+  // l'état courant (la base telle que le site de dev l'a laissée), cohérent : une contenance que le texte n'écrit plus est absente, jamais fausse ; la
+  // page reçoit chaque objet de la vue, une fois
+  const courante = ouvrirBase({ sansExemples: false });
+  const courantes = chargerReglesDeFiche(courante);
+  for (const c of courantes.ceinture.objets.filter((o) => o.famille === 'contenant')) {
+    assert.ok(c.contenance === null || (Number.isInteger(c.contenance) && c.contenance > 0), c.ressource_id);
   }
-  for (const d of regles.classes.flatMap((c) => c.dons)) if ('exemplaires_ceinture' in d) assert.ok(Number.isInteger(d.exemplaires_ceinture) && d.exemplaires_ceinture > 0);
-  assert.equal(regles.ceinture.objets.length + regles.ceinture.batons.length, db.prepare('SELECT COUNT(*) AS n FROM v_objet_ceinture').get().n);
-  assert.equal(new Set(regles.ceinture.batons.map((b) => b.nom)).size, regles.ceinture.batons.length, 'un nom par bâton');
+  for (const d of courantes.classes.flatMap((c) => c.dons)) if ('exemplaires_ceinture' in d) assert.ok(Number.isInteger(d.exemplaires_ceinture) && d.exemplaires_ceinture > 0);
+  assert.equal(courantes.ceinture.objets.length + courantes.ceinture.batons.length, courante.prepare('SELECT COUNT(*) AS n FROM v_objet_ceinture').get().n);
+  assert.equal(new Set(courantes.ceinture.batons.map((b) => b.nom)).size, courantes.ceinture.batons.length, 'un nom par bâton');
 });
 
 test('ceinture : 3 exemplaires par emplacement, 4 avec « Organisé », 1 pour un bâton, la contenance d’un carquois ; le sac de Force 5 avec ce don (R88, R89)', () => {

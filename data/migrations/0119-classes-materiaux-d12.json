@@ -1,0 +1,1112 @@
+{
+ "$comment": "Registre de la migration 0119-classes-materiaux-d12 (lot 3 de la mise à jour de Décembre). `textes` : chaque remplacement d'un fragment (avant -> après), avec sa décision ; `materiaux` : les colonnes de materiau_arme réécrites ; pas de clé `corrections` (tools/sources/rapprocher.mjs la lit comme de l'orthographe) : les 26 coquilles R10 sont dans tools/sheets/corrections.json, section magie-v10 (miroir : table correction).",
+ "migration": "0119-classes-materiaux-d12",
+ "decisions": [
+  "R10",
+  "R23",
+  "R25",
+  "R42",
+  "R127",
+  "R148",
+  "R224",
+  "R237",
+  "R238",
+  "R241",
+  "R252"
+ ],
+ "classeur": {
+  "titre": "Nouveauté mise à jour Décembre",
+  "fichier": "sources/raw/classeurs/magie-maverick-v10.json",
+  "sha256_xlsx": "e89fc4be757f53700444d89964804551232bf63d76bfd354f5599258d37d5353",
+  "onglets": [
+   "Porte-étendard",
+   "Boxeur",
+   "Cuirassé V2"
+  ]
+ },
+ "classes": {
+  "nouvelles": {
+   "classes/boxeur": {
+    "ordre": 13,
+    "categorie_id": "classe-physique-corps-a-corps",
+    "specialites": [
+     "classes/boxeur#specialite:carcasse-rouillee",
+     "classes/boxeur#specialite:percuteur"
+    ],
+    "dons": [
+     "capacites/boxeur-bouclier-dattaque",
+     "capacites/boxeur-mur",
+     "capacites/boxeur-carcasse-rouillee",
+     "capacites/boxeur-percuteur",
+     "capacites/boxeur-armure-vivante",
+     "capacites/boxeur-poids-mort",
+     "capacites/boxeur-bourage",
+     "capacites/boxeur-bouquilibre",
+     "capacites/boxeur-etourdissement",
+     "capacites/boxeur-endurouille",
+     "capacites/boxeur-boupact",
+     "capacites/boxeur-bousee",
+     "capacites/boxeur-posture-inebran",
+     "capacites/boxeur-posture-durgence",
+     "capacites/boxeur-boucassant",
+     "capacites/boxeur-bouvasteur",
+     "capacites/boxeur-egide-dassaut"
+    ]
+   },
+   "classes/porte-etendard": {
+    "ordre": 14,
+    "categorie_id": "classe-physique-corps-a-corps",
+    "specialites": [
+     "classes/porte-etendard#specialite:chef-de-guerre",
+     "classes/porte-etendard#specialite:stratege-de-bataille"
+    ],
+    "dons": [
+     "capacites/porte-etendard-motivation",
+     "capacites/porte-etendard-chef-resiliant",
+     "capacites/porte-etendard-chef-de-guerre",
+     "capacites/porte-etendard-stratege-de-bataille",
+     "capacites/porte-etendard-provoc-du-porteur",
+     "capacites/porte-etendard-chef-agile",
+     "capacites/porte-etendard-avantage",
+     "capacites/porte-etendard-faille",
+     "capacites/porte-etendard-repli",
+     "capacites/porte-etendard-chef-fort",
+     "capacites/porte-etendard-reagir",
+     "capacites/porte-etendard-decontenance",
+     "capacites/porte-etendard-contre-les-laches",
+     "capacites/porte-etendard-chef-malin",
+     "capacites/porte-etendard-premiere-ligne",
+     "capacites/porte-etendard-coordination",
+     "capacites/porte-etendard-au-dela-des-limites"
+    ]
+   }
+  },
+  "ordre": "Boxeur 13, Porte-étendard 14 (fin de la colonne « Classe Physique Corps à Corps », R238 (1)) ; ordre >= 13 avant la migration : +2 (Archer 15 … Archimage 41) ; Parleur 11 inchangé (R238 (3) : l'affichage ne change pas).",
+  "race_classe": "Les 27 races de la base, accessible = 1 (R238 (1), MAJ-R7 « Comme les races pures ») ; ordre 40 (Boxeur) et 41 (Porte-étendard) : colonnes après les 39 de la fiche V15.2.2, comme une classe créée sur le site (serveur/edition.mjs). Fongoïde et Gémidien (lot des races, R239) absents.",
+  "pages": "Corps des deux pages de classe par lib/corps-classes.mjs (nombres « 8.0 », comme les 39 pages en place) plutôt que tools/sheets/classes.py du plan ; dons : corps, résumés et donnees identiques au plan."
+ },
+ "cuirasse": {
+  "supprime": "capacites/cuirasse-large",
+  "deplace": {
+   "id": "capacites/cuirasse-appui",
+   "avant": "Vindicatif, niveau 15, ligne 36, rang 1",
+   "apres": "Protecteur, niveau 20, ligne 43, rang 2"
+  },
+  "cree": "capacites/cuirasse-ecrasant",
+  "nanochakra": "1d8 santé -> 1d8 barrière (25!X30)",
+  "armure_depart": {
+   "avant": "Armure de Fer/Bronze, Bouclier Rond Corail",
+   "apres": "Armure de Cellulose/Argent, Écu de bois",
+   "case": "25!G11"
+  },
+  "aucune_fuite": "Casse « +1 Vitesse » gardée (entrée optionnelle du plan écartée : la base est gardée) ; seul son choix exclusif (page.donnees) suit Écrasant.",
+  "page_source_supprimees": [
+   {
+    "page_id": "capacites/cuirasse-large",
+    "ordre": 0,
+    "source_id": "ref:google-sheet-classe-maverick-v7-onglet-cuirasse"
+   },
+   {
+    "page_id": "capacites/cuirasse-large",
+    "ordre": 1,
+    "source_id": "google-sheet:1Pyg4GSUlFrvNaTg3bi6uXlehg1MuRHmkyfPO6s5K72I"
+   }
+  ]
+ },
+ "parleur": {
+  "categorie_id": {
+   "avant": "classe-physique-corps-a-corps",
+   "apres": "classe-speciale"
+  },
+  "mot_cle_de_page": {
+   "avant": 51,
+   "apres": 334
+  }
+ },
+ "archimage": {
+  "source_id": "classes/archimage#maitrise-arme:2",
+  "avant": {
+   "brut": "1 maîtrise de Bâton",
+   "forme": "nommee",
+   "part": "imposee baton-de-combat"
+  },
+  "apres": {
+   "brut": "1 maîtrise arme de contact au choix",
+   "forme": "au_choix",
+   "categorie": "contact",
+   "part": "choix",
+   "familles": [
+    "epees",
+    "dagues",
+    "masse-marteau",
+    "hache",
+    "lance-arme-dhast",
+    "pugilat",
+    "baton-de-combat"
+   ]
+  }
+ },
+ "potentiel_illimite": {
+  "vue": "v_personnage_controle : règle classe_imposee retirée (classe_reservee, classe_exclue gardées)",
+  "explication": "« - Classe unique = Archimage. » retirée"
+ },
+ "fiches": {
+  "large": "R42 : retiré des fiches à la livraison (serveur/fiches-retraits.mjs#retirerLesManquants, id absent de capacite), note datée.",
+  "appui": "R238 (2), MAJ-C7 : à retirer des fiches dont la spécialité du Cuirassé est Vindicatif (l'ancien emplacement), note datée ; le joueur rechoisit entre Écrasant et Aucune fuite. L'id reste : rien ne le retire aujourd'hui (code du service à écrire).",
+  "archimage": "R238 (4), MAJ-C10, R148 : le point Bâton imposé part ; aucune ligne personnage_maitrise_choix pour la source classes/archimage#maitrise-arme:2 : le choix est en attente (maitrise_a_choisir) ; la note datée est à écrire par le service."
+ },
+ "materiaux": [
+  {
+   "ressource_id": "ressources/armures#materiau:acier",
+   "effet_brut": {
+    "avant": "Dégâts +2 pour l'arme",
+    "apres": "Dégâts +2 pour l'arme\nUne fois par combat, permet de relancer les dés de dégâts, mais le second résultat doit être conservé."
+   },
+   "effet_secondaire": {
+    "avant": null,
+    "apres": "Une fois par combat, permet de relancer les dés de dégâts, mais le second résultat doit être conservé."
+   },
+   "cran_solidite": {
+    "avant": null,
+    "apres": null
+   }
+  },
+  {
+   "ressource_id": "ressources/armures#materiau:fer-noir",
+   "effet_brut": {
+    "avant": "Dégâts +3 pour l'arme\n1d4 de {{corruption|corruption}} à chaque coup qui touche",
+    "apres": "Dégâts +3 pour l'arme\nSi la cible ne possède pas de {{corruption|corruption}}, lui inflige 4 points de {{corruption|corruption}}. Si elle possède déjà de la {{corruption|corruption}}, inflige +2 dégâts et 2 de {{corruption|corruption}}."
+   },
+   "effet_secondaire": {
+    "avant": "1d4 de {{corruption|corruption}} à chaque coup qui touche",
+    "apres": "Si la cible ne possède pas de {{corruption|corruption}}, lui inflige 4 points de {{corruption|corruption}}. Si elle possède déjà de la {{corruption|corruption}}, inflige +2 dégâts et 2 de {{corruption|corruption}}."
+   },
+   "cran_solidite": {
+    "avant": null,
+    "apres": null
+   }
+  },
+  {
+   "ressource_id": "ressources/armures#materiau:argent",
+   "effet_brut": {
+    "avant": "Dégâts +4 pour l'arme\n+1d de dégâts contre les non-morts",
+    "apres": "Dégâts +4 pour l'arme\n+1 dé de dégâts contre les non-morts."
+   },
+   "effet_secondaire": {
+    "avant": "+1d de dégâts contre les non-morts",
+    "apres": "+1 dé de dégâts contre les non-morts."
+   },
+   "cran_solidite": {
+    "avant": null,
+    "apres": null
+   }
+  },
+  {
+   "ressource_id": "ressources/armures#materiau:cuivre",
+   "effet_brut": {
+    "avant": "Dégâts +5 pour l'arme",
+    "apres": "Dégâts +5 pour l'arme\nLes {{sort-fer|sorts de type « Fer »}} appliqués à l'arme durent un tour supplémentaire, soit 4 tours au lieu de 3."
+   },
+   "effet_secondaire": {
+    "avant": null,
+    "apres": "Les {{sort-fer|sorts de type « Fer »}} appliqués à l'arme durent un tour supplémentaire, soit 4 tours au lieu de 3."
+   },
+   "cran_solidite": {
+    "avant": null,
+    "apres": null
+   }
+  },
+  {
+   "ressource_id": "ressources/armes#materiau:os",
+   "effet_brut": {
+    "avant": "Dégâts +6 pour l'arme",
+    "apres": "Dégâts +6 pour l'arme\n+1 dé de dégâts contre les bêtes."
+   },
+   "effet_secondaire": {
+    "avant": null,
+    "apres": "+1 dé de dégâts contre les bêtes."
+   },
+   "cran_solidite": {
+    "avant": null,
+    "apres": null
+   }
+  },
+  {
+   "ressource_id": "ressources/armures#materiau:laiton",
+   "effet_brut": {
+    "avant": "Dégâts +7 pour l'arme\ndégâts doublés contre la {{barriere|barrière}}",
+    "apres": "Dégâts +7 pour l'arme\n+1 dé de dégâts contre les créatures mécaniques ou inertes."
+   },
+   "effet_secondaire": {
+    "avant": "dégâts doublés contre la {{barriere|barrière}}",
+    "apres": "+1 dé de dégâts contre les créatures mécaniques ou inertes."
+   },
+   "cran_solidite": {
+    "avant": null,
+    "apres": null
+   }
+  },
+  {
+   "ressource_id": "ressources/armures#materiau:or",
+   "effet_brut": {
+    "avant": "Dégâts +8 pour l'arme\n+1d de dégâts contre les démons",
+    "apres": "Dégâts +8 pour l'arme\n+1 dé de dégâts contre les démons."
+   },
+   "effet_secondaire": {
+    "avant": "+1d de dégâts contre les démons",
+    "apres": "+1 dé de dégâts contre les démons."
+   },
+   "cran_solidite": {
+    "avant": null,
+    "apres": null
+   }
+  },
+  {
+   "ressource_id": "ressources/armures#materiau:vif-argent",
+   "effet_brut": {
+    "avant": "Dégâts +6 pour l'arme\nTouche l'immatériel",
+    "apres": "Dégâts +6 pour l'arme\nPermet de toucher les êtres immatériels."
+   },
+   "effet_secondaire": {
+    "avant": "Touche l'immatériel",
+    "apres": "Permet de toucher les êtres immatériels."
+   },
+   "cran_solidite": {
+    "avant": null,
+    "apres": null
+   }
+  },
+  {
+   "ressource_id": "ressources/armures#materiau:mythril",
+   "effet_brut": {
+    "avant": "Dégâts +8 pour l'arme\nPasse {{barriere|barrière}}",
+    "apres": "Dégâts +8 pour l'arme\nSi l'arme touche une {{barriere|barrière}}, elle inflige +1 dé de dégâts."
+   },
+   "effet_secondaire": {
+    "avant": "Passe {{barriere|barrière}}",
+    "apres": "Si l'arme touche une {{barriere|barrière}}, elle inflige +1 dé de dégâts."
+   },
+   "cran_solidite": {
+    "avant": null,
+    "apres": null
+   }
+  },
+  {
+   "ressource_id": "ressources/armures#materiau:titane",
+   "effet_brut": {
+    "avant": "Dégâts +9 pour l'arme\n+1 cran de solidité",
+    "apres": "Dégâts +9 pour l'arme\nAvantage contre les effets de désarmement."
+   },
+   "effet_secondaire": {
+    "avant": null,
+    "apres": "Avantage contre les effets de désarmement."
+   },
+   "cran_solidite": {
+    "avant": 1,
+    "apres": null
+   }
+  },
+  {
+   "ressource_id": "ressources/armures#materiau:maverium",
+   "effet_brut": {
+    "avant": "Dégâts +10 pour l'arme\nCasse {{barriere|barrière}}",
+    "apres": "Dégâts +10 pour l'arme\nSi la créature ne possède pas ou plus de {{barriere|barrière}}, l'arme inflige +1 dé de dégâts."
+   },
+   "effet_secondaire": {
+    "avant": "Casse {{barriere|barrière}}",
+    "apres": "Si la créature ne possède pas ou plus de {{barriere|barrière}}, l'arme inflige +1 dé de dégâts."
+   },
+   "cran_solidite": {
+    "avant": null,
+    "apres": null
+   }
+  }
+ ],
+ "textes": [
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/cuirasse-nanochakra"
+   },
+   "col": "corps_md",
+   "decision": "R238 (2)",
+   "avant": "Chaque attaque ennemie bloquée complètement permet de récupérer 1d8 santé.",
+   "apres": "Chaque attaque ennemie bloquée complètement permet de récupérer 1d8 barrière."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "capacites/cuirasse-nanochakra"
+   },
+   "col": "resume",
+   "decision": "R238 (2)",
+   "avant": "Chaque attaque ennemie bloquée complètement permet de récupérer 1d8 santé.",
+   "apres": "Chaque attaque ennemie bloquée complètement permet de récupérer 1d8 barrière."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "classes/cuirasse"
+   },
+   "col": "corps_md",
+   "decision": "R238 (2)",
+   "avant": "Armure de Fer/Bronze, Bouclier Rond Corail",
+   "apres": "Armure de Cellulose/Argent, Écu de bois"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "classes/parleur"
+   },
+   "col": "corps_md",
+   "decision": "R238 (3)",
+   "avant": "**Catégorie** : Classe Physique Corps à Corps",
+   "apres": "**Catégorie** : Classe spéciale"
+  },
+  {
+   "table": "classe",
+   "cle": {
+    "id": "classes/archimage"
+   },
+   "col": "maitrise_arme",
+   "decision": "R238 (4)",
+   "avant": "- 1 maîtrise de Bâton",
+   "apres": "- 1 maîtrise arme de contact au choix"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "classes/archimage"
+   },
+   "col": "corps_md",
+   "decision": "R238 (4)",
+   "avant": "- 1 maîtrise de Bâton",
+   "apres": "- 1 maîtrise arme de contact au choix"
+  },
+  {
+   "table": "magie",
+   "cle": {
+    "id": "magies/potentiel-illimite"
+   },
+   "col": "explication",
+   "decision": "R238 (5)",
+   "avant": "\n- Classe unique = Archimage.\n",
+   "apres": "\n"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "magies/potentiel-illimite"
+   },
+   "col": "corps_md",
+   "decision": "R238 (5)",
+   "avant": "- Classe unique = Archimage.\n- Surtension corporelle (Vulnérabilité contre les dégâts physiques, ne peut mettre plus de 5 Santé lors de la répartition des points lors du passage de niveau global).",
+   "apres": "- Surtension corporelle (Vulnérabilité contre les dégâts physiques, ne peut mettre plus de 5 Santé lors de la répartition des points lors du passage de niveau global)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/l-univers"
+   },
+   "col": "corps_md",
+   "decision": "R238 (1)",
+   "avant": "**39 classes** et **78 spécialités**",
+   "apres": "**41 classes** et **82 spécialités**"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/choisir-sa-classe"
+   },
+   "col": "corps_md",
+   "decision": "R238 (5)",
+   "avant": "en magie innée, il impose l’Archimage comme première classe (une classe réservée à lui seul), et il ne peut jamais prendre le Mage Bleu.",
+   "apres": "en magie innée, il peut prendre l’Archimage (une classe réservée à lui seul) sans y être obligé, et il ne peut jamais prendre le Mage Bleu."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "races/anansi"
+   },
+   "col": "corps_md",
+   "decision": "R238 (1)",
+   "avant": "Nombre : 27 sur 39.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Anansi",
+   "apres": "Nombre : 29 sur 41.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Anansi, Boxeur, Porte-étendard"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "races/drakos"
+   },
+   "col": "corps_md",
+   "decision": "R238 (1)",
+   "avant": "Nombre : 26 sur 39.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur",
+   "apres": "Nombre : 28 sur 41.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Boxeur, Porte-étendard"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "races/drassahthac"
+   },
+   "col": "corps_md",
+   "decision": "R238 (1)",
+   "avant": "Nombre : 26 sur 39.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur",
+   "apres": "Nombre : 28 sur 41.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Boxeur, Porte-étendard"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "races/elfe-argente"
+   },
+   "col": "corps_md",
+   "decision": "R238 (1)",
+   "avant": "Nombre : 26 sur 39.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur",
+   "apres": "Nombre : 28 sur 41.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Boxeur, Porte-étendard"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "races/elfe-dore"
+   },
+   "col": "corps_md",
+   "decision": "R238 (1)",
+   "avant": "Nombre : 26 sur 39.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur",
+   "apres": "Nombre : 28 sur 41.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Boxeur, Porte-étendard"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "races/elfe-forestier"
+   },
+   "col": "corps_md",
+   "decision": "R238 (1)",
+   "avant": "Nombre : 26 sur 39.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur",
+   "apres": "Nombre : 28 sur 41.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Boxeur, Porte-étendard"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "races/elfe-noir"
+   },
+   "col": "corps_md",
+   "decision": "R238 (1)",
+   "avant": "Nombre : 26 sur 39.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur",
+   "apres": "Nombre : 28 sur 41.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Boxeur, Porte-étendard"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "races/farfadet"
+   },
+   "col": "corps_md",
+   "decision": "R238 (1)",
+   "avant": "Nombre : 26 sur 39.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur",
+   "apres": "Nombre : 28 sur 41.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Boxeur, Porte-étendard"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "races/felfe"
+   },
+   "col": "corps_md",
+   "decision": "R238 (1)",
+   "avant": "Nombre : 26 sur 39.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur",
+   "apres": "Nombre : 28 sur 41.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Boxeur, Porte-étendard"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "races/fenrir"
+   },
+   "col": "corps_md",
+   "decision": "R238 (1)",
+   "avant": "Nombre : 27 sur 39.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Fenrir",
+   "apres": "Nombre : 29 sur 41.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Fenrir, Boxeur, Porte-étendard"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "races/goleois"
+   },
+   "col": "corps_md",
+   "decision": "R238 (1)",
+   "avant": "Nombre : 27 sur 39.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Goleois",
+   "apres": "Nombre : 29 sur 41.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Goleois, Boxeur, Porte-étendard"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "races/hujin"
+   },
+   "col": "corps_md",
+   "decision": "R238 (1)",
+   "avant": "Nombre : 26 sur 39.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur",
+   "apres": "Nombre : 28 sur 41.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Boxeur, Porte-étendard"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "races/humain"
+   },
+   "col": "corps_md",
+   "decision": "R238 (1)",
+   "avant": "Nombre : 26 sur 39.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur",
+   "apres": "Nombre : 28 sur 41.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Boxeur, Porte-étendard"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "races/jackalope"
+   },
+   "col": "corps_md",
+   "decision": "R238 (1)",
+   "avant": "Nombre : 27 sur 39.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Jackalope",
+   "apres": "Nombre : 29 sur 41.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Jackalope, Boxeur, Porte-étendard"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "races/kitsune"
+   },
+   "col": "corps_md",
+   "decision": "R238 (1)",
+   "avant": "Nombre : 27 sur 39.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Kitsune",
+   "apres": "Nombre : 29 sur 41.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Kitsune, Boxeur, Porte-étendard"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "races/lamia"
+   },
+   "col": "corps_md",
+   "decision": "R238 (1)",
+   "avant": "Nombre : 26 sur 39.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur",
+   "apres": "Nombre : 28 sur 41.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Boxeur, Porte-étendard"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "races/majin"
+   },
+   "col": "corps_md",
+   "decision": "R238 (1)",
+   "avant": "Nombre : 26 sur 39.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur",
+   "apres": "Nombre : 28 sur 41.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Boxeur, Porte-étendard"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "races/marcass"
+   },
+   "col": "corps_md",
+   "decision": "R238 (1)",
+   "avant": "Nombre : 27 sur 39.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Marcass",
+   "apres": "Nombre : 29 sur 41.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Marcass, Boxeur, Porte-étendard"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "races/medusain"
+   },
+   "col": "corps_md",
+   "decision": "R238 (1)",
+   "avant": "Nombre : 24 sur 39.\n\nLancier, Martiale, Moine, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Médusain",
+   "apres": "Nombre : 26 sur 41.\n\nLancier, Martiale, Moine, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Médusain, Boxeur, Porte-étendard"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "races/minotaure"
+   },
+   "col": "corps_md",
+   "decision": "R238 (1)",
+   "avant": "Nombre : 27 sur 39.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Minotaure",
+   "apres": "Nombre : 29 sur 41.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Minotaure, Boxeur, Porte-étendard"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "races/mort-vivant"
+   },
+   "col": "corps_md",
+   "decision": "R238 (1)",
+   "avant": "Nombre : 26 sur 39.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur",
+   "apres": "Nombre : 28 sur 41.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Boxeur, Porte-étendard"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "races/nain"
+   },
+   "col": "corps_md",
+   "decision": "R238 (1)",
+   "avant": "Nombre : 26 sur 39.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur",
+   "apres": "Nombre : 28 sur 41.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Boxeur, Porte-étendard"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "races/namazu"
+   },
+   "col": "corps_md",
+   "decision": "R238 (1)",
+   "avant": "Nombre : 27 sur 39.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Namazu",
+   "apres": "Nombre : 29 sur 41.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Namazu, Boxeur, Porte-étendard"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "races/olwman"
+   },
+   "col": "corps_md",
+   "decision": "R238 (1)",
+   "avant": "Nombre : 27 sur 39.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Olwman",
+   "apres": "Nombre : 29 sur 41.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Olwman, Boxeur, Porte-étendard"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "races/orios"
+   },
+   "col": "corps_md",
+   "decision": "R238 (1)",
+   "avant": "Nombre : 27 sur 39.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Orios",
+   "apres": "Nombre : 29 sur 41.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Orios, Boxeur, Porte-étendard"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "races/rokh"
+   },
+   "col": "corps_md",
+   "decision": "R238 (1)",
+   "avant": "Nombre : 27 sur 39.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Rokh",
+   "apres": "Nombre : 29 sur 41.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Rokh, Boxeur, Porte-étendard"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "races/satyre"
+   },
+   "col": "corps_md",
+   "decision": "R238 (1)",
+   "avant": "Nombre : 27 sur 39.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Satyre",
+   "apres": "Nombre : 29 sur 41.\n\nGuerrier, Cuirassé, Lancier, Martiale, Moine, Frappeur, Voleur, Tueur, Mercenaire, Pugiliste, Parleur, Bimane, Archer, Arbalétrier, Lanceur, Grenadier, Mage, Barde, Mage Rouge, Mage Bleu, Mage Vert, Clerc, Maclier, Ocultomancien, Archimage, Flagelleur, Satyre, Boxeur, Porte-étendard"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armes"
+   },
+   "col": "corps_md",
+   "decision": "R241 (1)",
+   "avant": "| Acier | 200 RF / 20 RO | Dégâts +2 pour l'arme |",
+   "apres": "| Acier | 200 RF / 20 RO | Dégâts +2 pour l'arme<br>Une fois par combat, permet de relancer les dés de dégâts, mais le second résultat doit être conservé. |"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armes"
+   },
+   "col": "corps_md",
+   "decision": "R241 (1)",
+   "avant": "| Fer noir | 350 RF / 35 RO | Dégâts +3 pour l'arme<br>1d4 de {{corruption\\|corruption}} à chaque coup qui touche |",
+   "apres": "| Fer noir | 350 RF / 35 RO | Dégâts +3 pour l'arme<br>Si la cible ne possède pas de {{corruption\\|corruption}}, lui inflige 4 points de {{corruption\\|corruption}}. Si elle possède déjà de la {{corruption\\|corruption}}, inflige +2 dégâts et 2 de {{corruption\\|corruption}}. |"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armes"
+   },
+   "col": "corps_md",
+   "decision": "R241 (1)",
+   "avant": "| Argent | 350 RF / 35 RO | Dégâts +4 pour l'arme<br>+1d de dégâts contre les non-morts |",
+   "apres": "| Argent | 350 RF / 35 RO | Dégâts +4 pour l'arme<br>+1 dé de dégâts contre les non-morts. |"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armes"
+   },
+   "col": "corps_md",
+   "decision": "R241 (1)",
+   "avant": "| Cuivre | 400 RF / 40 RO | Dégâts +5 pour l'arme |",
+   "apres": "| Cuivre | 400 RF / 40 RO | Dégâts +5 pour l'arme<br>Les {{sort-fer\\|sorts de type « Fer »}} appliqués à l'arme durent un tour supplémentaire, soit 4 tours au lieu de 3. |"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armes"
+   },
+   "col": "corps_md",
+   "decision": "R241 (1)",
+   "avant": "| Os | 800 RF / 80 RO | Dégâts +6 pour l'arme |",
+   "apres": "| Os | 800 RF / 80 RO | Dégâts +6 pour l'arme<br>+1 dé de dégâts contre les bêtes. |"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armes"
+   },
+   "col": "corps_md",
+   "decision": "R241 (1)",
+   "avant": "| Laiton | 900 RF / 90 RO | Dégâts +7 pour l'arme<br>dégâts doublés contre la {{barriere\\|barrière}} |",
+   "apres": "| Laiton | 900 RF / 90 RO | Dégâts +7 pour l'arme<br>+1 dé de dégâts contre les créatures mécaniques ou inertes. |"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armes"
+   },
+   "col": "corps_md",
+   "decision": "R241 (1)",
+   "avant": "| Or | 100 RO | Dégâts +8 pour l'arme<br>+1d de dégâts contre les démons |",
+   "apres": "| Or | 100 RO | Dégâts +8 pour l'arme<br>+1 dé de dégâts contre les démons. |"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armes"
+   },
+   "col": "corps_md",
+   "decision": "R241 (1)",
+   "avant": "| Vif argent | 300 RO | Dégâts +6 pour l'arme<br>Touche l'immatériel |",
+   "apres": "| Vif argent | 300 RO | Dégâts +6 pour l'arme<br>Permet de toucher les êtres immatériels. |"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armes"
+   },
+   "col": "corps_md",
+   "decision": "R241 (1)",
+   "avant": "| Mythril | 200 RO | Dégâts +8 pour l'arme<br>Passe {{barriere\\|barrière}} |",
+   "apres": "| Mythril | 200 RO | Dégâts +8 pour l'arme<br>Si l'arme touche une {{barriere\\|barrière}}, elle inflige +1 dé de dégâts. |"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armes"
+   },
+   "col": "corps_md",
+   "decision": "R241 (1)",
+   "avant": "| Titane | 200 RO | Dégâts +9 pour l'arme<br>+1 cran de solidité |",
+   "apres": "| Titane | 200 RO | Dégâts +9 pour l'arme<br>Avantage contre les effets de désarmement. |"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/armes"
+   },
+   "col": "corps_md",
+   "decision": "R241 (1)",
+   "avant": "| Maverium | 400 RO | Dégâts +10 pour l'arme<br>Casse {{barriere\\|barrière}} |",
+   "apres": "| Maverium | 400 RO | Dégâts +10 pour l'arme<br>Si la créature ne possède pas ou plus de {{barriere\\|barrière}}, l'arme inflige +1 dé de dégâts. |"
+  },
+  {
+   "table": "mot_cle",
+   "cle": {
+    "id": 37
+   },
+   "col": "description",
+   "decision": "R241 (3)",
+   "avant": " Certains matériaux d’arme la contrent : le Mythril passe à travers, le Maverium la brise à son contact.",
+   "apres": ""
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/finaliser-son-personnage"
+   },
+   "col": "corps_md",
+   "decision": "R241 (3)",
+   "avant": " Le mythril la traverse, et le maverium la brise à son contact.",
+   "apres": ""
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/fiche-attributs"
+   },
+   "col": "corps_md",
+   "decision": "R241 (3), R224 (1)",
+   "avant": " colossales MAIS ... il existe des matériaux pour les armes qui sont capables de contrer cette peau magique comme le Mythril qui est capable de passer à travers la {{barriere|barrière}}, mais aussi le Maverium, qui lui, casse la {{barriere|barrière}} à son contact (donc un simple coup d'une arme de Maverium est capable de détruire instantanément la plus colossale des {{barriere|barrières}})",
+   "apres": " colossales."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/les-degats"
+   },
+   "col": "corps_md",
+   "decision": "R241 (3)",
+   "avant": " ; mais certains matériaux d’arme la contrent, comme le **Mythril**, qui passe à travers, ou le **Maverium**, qui la brise à son contact, si colossale soit-elle. Une arme de **Laiton**, elle, fait des dégâts doublés contre la {{barriere|barrière}} (voir l’onglet {{composants|Matériaux}} des composants).",
+   "apres": ". Une arme de **Mythril** inflige +1 dé de dégâts si elle touche une barrière ; une arme de **Maverium**, +1 dé de dégâts si la créature ne possède pas ou plus de barrière (voir l’onglet {{composants|Matériaux}} des composants)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/les-degats"
+   },
+   "col": "corps_md",
+   "decision": "R241 (3)",
+   "avant": " Contre une arme de Laiton, ces deux effets se compensent ; une arme de Maverium, elle, casse la barrière sans tenir compte du Médusain.",
+   "apres": ""
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/les-degats"
+   },
+   "col": "corps_md",
+   "decision": "R241 (3)",
+   "avant": "« Passe la barrière » (Mythril, sorts qui l’ignorent), « Casse la barrière » (Maverium), « Dégâts doublés contre la barrière » (Laiton),",
+   "apres": "« Passe la barrière » (sorts qui l’ignorent), « Casse la barrière », « Dégâts doublés contre la barrière »,"
+  },
+  {
+   "table": "posture_effet",
+   "cle": {
+    "posture_id": "guide/postures#posture:focus",
+    "version": "guide_fiche",
+    "rang": 3
+   },
+   "col": "texte",
+   "decision": "R252 (4)",
+   "avant": "plus haut que le D20)",
+   "apres": "plus haut que le D12)"
+  },
+  {
+   "table": "posture_effet",
+   "cle": {
+    "posture_id": "guide/postures#posture:focus",
+    "version": "guide_mj",
+    "rang": 3
+   },
+   "col": "texte",
+   "decision": "R252 (4)",
+   "avant": "plus haut que le D20)",
+   "apres": "plus haut que le D12)"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/fiche-tableau-posture"
+   },
+   "col": "corps_md",
+   "decision": "R252 (4)",
+   "avant": "plus haut que le D20)",
+   "apres": "plus haut que le D12)"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/les-postures"
+   },
+   "col": "corps_md",
+   "decision": "R252 (1)",
+   "avant": "D4, D6, D8, D10, D12, puis D20, jamais au-delà.",
+   "apres": "D4, D6, D8, D10, puis D12, jamais au-delà."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/les-degats"
+   },
+   "col": "corps_md",
+   "decision": "R252 (1)",
+   "avant": "D4, D6, D8, D10, D12, puis D20, jamais au-delà.",
+   "apres": "D4, D6, D8, D10, puis D12, jamais au-delà."
+  }
+ ],
+ "coquilles_r10": [
+  {
+   "onglet": "Boxeur",
+   "cellule": "AM17",
+   "avant": "Description Carcasse rouillé",
+   "apres": "Description Carcasse rouillée"
+  },
+  {
+   "onglet": "Boxeur",
+   "cellule": "P5",
+   "avant": "un dégâts bonus",
+   "apres": "un dégât bonus"
+  },
+  {
+   "onglet": "Boxeur",
+   "cellule": "P12",
+   "avant": "Les boucliers donne +2AP",
+   "apres": "Les boucliers donnent +2AP"
+  },
+  {
+   "onglet": "Boxeur",
+   "cellule": "A30",
+   "avant": "Réduit le dégâts",
+   "apres": "Réduit les dégâts"
+  },
+  {
+   "onglet": "Boxeur",
+   "cellule": "H30",
+   "avant": "être déplacer",
+   "apres": "être déplacé"
+  },
+  {
+   "onglet": "Boxeur",
+   "cellule": "X30",
+   "avant": "avec les bouclier par",
+   "apres": "avec les boucliers par"
+  },
+  {
+   "onglet": "Boxeur",
+   "cellule": "AE30",
+   "avant": "Une attaque réussi",
+   "apres": "Une attaque réussie"
+  },
+  {
+   "onglet": "Boxeur",
+   "cellule": "AE30",
+   "avant": "désaventage",
+   "apres": "désavantage"
+  },
+  {
+   "onglet": "Boxeur",
+   "cellule": "X37",
+   "avant": "l'attaque réussi :",
+   "apres": "l'attaque réussit :"
+  },
+  {
+   "onglet": "Boxeur",
+   "cellule": "AE37",
+   "avant": "Une attaque réussi",
+   "apres": "Une attaque réussie"
+  },
+  {
+   "onglet": "Boxeur",
+   "cellule": "AE37",
+   "avant": "une malus",
+   "apres": "un malus"
+  },
+  {
+   "onglet": "Boxeur",
+   "cellule": "X44",
+   "avant": "ignore 1AP",
+   "apres": "ignorent 1AP"
+  },
+  {
+   "onglet": "Boxeur",
+   "cellule": "AE44",
+   "avant": "Une attaque réussi",
+   "apres": "Une attaque réussie"
+  },
+  {
+   "onglet": "Boxeur",
+   "cellule": "G11",
+   "avant": "Écu bois",
+   "apres": "Écu de bois"
+  },
+  {
+   "onglet": "Porte-étendard",
+   "cellule": "A7",
+   "avant": "  (sauf",
+   "apres": " (sauf"
+  },
+  {
+   "onglet": "Porte-étendard",
+   "cellule": "A7",
+   "avant": "sauf hast)",
+   "apres": "sauf Hast)"
+  },
+  {
+   "onglet": "Porte-étendard",
+   "cellule": "D23",
+   "avant": "+2 point de maîtrise",
+   "apres": "+2 points de maîtrise"
+  },
+  {
+   "onglet": "Porte-étendard",
+   "cellule": "AA23",
+   "avant": "+2 point de maîtrise",
+   "apres": "+2 points de maîtrise"
+  },
+  {
+   "onglet": "Porte-étendard",
+   "cellule": "X17",
+   "avant": "STRATEGE",
+   "apres": "STRATÈGE"
+  },
+  {
+   "onglet": "Porte-étendard",
+   "cellule": "P5",
+   "avant": "tout les jets",
+   "apres": "tous les jets"
+  },
+  {
+   "onglet": "Porte-étendard",
+   "cellule": "A30",
+   "avant": "à côté lui",
+   "apres": "à côté de lui"
+  },
+  {
+   "onglet": "Porte-étendard",
+   "cellule": "X30",
+   "avant": "au dessus",
+   "apres": "au-dessus"
+  },
+  {
+   "onglet": "Porte-étendard",
+   "cellule": "A44",
+   "avant": "armes à distances",
+   "apres": "armes à distance"
+  },
+  {
+   "onglet": "Porte-étendard",
+   "cellule": "C36",
+   "avant": "Repli ! ",
+   "apres": "Repli !"
+  },
+  {
+   "onglet": "Porte-étendard",
+   "cellule": "Z36",
+   "avant": "Réagir ! ",
+   "apres": "Réagir !"
+  },
+  {
+   "onglet": "Cuirassé V2",
+   "cellule": "A37",
+   "avant": "attaque à moins",
+   "apres": "attaque a moins"
+  },
+  {
+   "onglet": "Porte-étendard",
+   "cellule": "G11",
+   "avant": "Armure de fer complet",
+   "apres": "Armure de fer complète"
+  }
+ ],
+ "comptes": {
+  "classe": 41,
+  "specialite": 82,
+  "capacite": 694,
+  "race_classe": 1107,
+  "gardes": 87,
+  "correction_magie_v10": 72
+ },
+ "ecarts_au_plan": [
+  "classes/boxeur : corps_md de lib/corps-classes.mjs",
+  "classes/porte-etendard : corps_md de lib/corps-classes.mjs"
+ ],
+ "provenance": "Les 37 pages créées (2 classes, 34 dons, Écrasant) ont une ligne page_source vers une source par onglet (« Classeur « Nouveauté mise à jour Décembre », onglet « … » », = page.source_ref) : tools/db/pages_md.py#origine_migration en tire leur famille (classes) ; sans elle, db:pages-check et db:sync-pages échouent.",
+ "espaces_r10": [
+  {
+   "table": "classe",
+   "cle": {
+    "id": "classes/porte-etendard"
+   },
+   "col": "description",
+   "cellule": "Porte-étendard AM2",
+   "avant": "l'adversité. \n",
+   "apres": "l'adversité.\n",
+   "nature": "espace",
+   "note": "Espace de fin de ligne de la cellule, retirée (R10) ; pas encore dans tools/sheets/corrections.json."
+  }
+ ]
+}

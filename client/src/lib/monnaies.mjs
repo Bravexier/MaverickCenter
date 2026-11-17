@@ -9,8 +9,10 @@
 // s'accordent pas restent deux. L'écriture d'origine reste dans `data-montant`, que le mode modification relit.
 // Utilisé par les rendus des pages (lib/armes-rendu.mjs, lib/composants-rendu.mjs, components/accessoires/), par le plugin remark des cases de tableau
 // (lib/markdown-monnaies.mjs) et par le mode modification (lib/markdown-edition.mjs relit une icône en son abréviation). Dessins : styles/global/monnaies.css.
-// Une balise du glossaire des mots-clés (« {{id|10 RO}} », lib/mots-cles-balises.mjs) reste entière, telle qu'écrite : aucun montant n'y est lu (le
-// middleware la rend ensuite ; comme une pastille d'état, lib/sort-format.mjs#morceauxAvecEtats).
+// Une balise du glossaire des mots-clés (« {{id|10 RO}} », lib/mots-cles-balises.mjs) reste entière, telle qu'écrite, dans le texte que lisent ces
+// fonctions : aucun montant n'y est lu ici (le middleware la rend ensuite ; comme une pastille d'état, lib/sort-format.mjs#morceauxAvecEtats). Au rendu
+// de la balise, son texte affiché passe à son tour par htmlAvecMonnaies : un montant écrit dans une balise se décompose comme ailleurs (décision R183,
+// point 12 : « Décomposer comme ailleurs » ; lib/mots-cles-balises.mjs#htmlDeLaBalise).
 // Fonctions pures, sans dépendance.
 
 /** Les trois monnaies, par abréviation : identifiant (table monnaie), nom, valeur en RF, classe de l'icône. */

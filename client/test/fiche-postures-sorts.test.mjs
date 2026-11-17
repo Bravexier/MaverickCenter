@@ -6,16 +6,16 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { effetsDeBaton } from '../src/lib/ceinture-texte.mjs';
-import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
 import * as M from '../src/lib/fiche-moteur.mjs';
-import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { effetDePosture } from '../src/lib/posture-texte.mjs';
 import { bonusDeSortsEcrits } from '../src/lib/sort-bonus-texte.mjs';
 import { valeurAuNm } from '../src/lib/sort-maitrise.mjs';
+import { baseDImport, reglesDImport } from './aide-base-d-import.mjs';
 
-const db = ouvrirBase({ sansExemples: false });
-const regles = JSON.parse(JSON.stringify(chargerReglesDeFiche(db))); // tel que la page le reçoit
+// les règles (textes et valeurs que le site de dev modifie librement) : épinglées sur leur état d'import (test/aide-base-d-import.mjs)
+const db = baseDImport();
+const regles = reglesDImport(); // tel que la page le reçoit
 const lignes = (sql, ...p) => db.prepare(sql).all(...p).map((l) => ({ ...l }));
 const fiche = (x = {}) => ({ ...ficheVide('Essai'), race_id: 'races/humain', magie_innee_id: 'magies/magie-du-feu', ...x });
 const POSTURE = (slug) => `guide/postures#posture:${slug}`;
@@ -27,10 +27,11 @@ test('posture-texte (R100) : chaque ligne du tableau des postures de la fiche es
   const lues = Object.fromEntries(lignes("SELECT posture_id, rang, texte FROM posture_effet WHERE version = 'fiche' ORDER BY posture_id, rang")
     .map((l) => [`${l.posture_id.split(':')[1]}:${l.rang}`, effetDePosture(l.texte)?.cible ?? null]));
   assert.deepEqual(lues, {
-    'defensif:1': null, 'defensif:2': 'armure', 'defensif:3': null, 'defensif:4': null, 'defensif:5': null, 'defensif:6': 'degats_diviseur',
+    // « +5% à la RC à la défense » (Défensif) et « +5% à la réussite critique » (Offensif) : la réussite critique (décision R180, test/fiche-critique.test.mjs)
+    'defensif:1': null, 'defensif:2': 'armure', 'defensif:3': null, 'defensif:4': null, 'defensif:5': 'critique', 'defensif:6': 'degats_diviseur',
     'focus:1': 'competences', 'focus:2': 'cran_des_sorts', 'focus:3': null, 'focus:4': null,
     'neutre:1': 'competences', 'neutre:2': null,
-    'offensif:1': 'degats_maximum', 'offensif:2': null, 'offensif:3': 'competences', 'offensif:4': null,
+    'offensif:1': 'degats_maximum', 'offensif:2': 'critique', 'offensif:3': 'competences', 'offensif:4': null,
     'symbiose:1': 'symbiose_sorts', 'symbiose:2': 'symbiose_am', 'symbiose:3': 'symbiose_immunite', 'symbiose:4': 'armes_inutilisables', 'symbiose:5': null, 'symbiose:6': 'une_seule_magie',
     'vigilance:1': 'competences', 'vigilance:2': 'initiative', 'vigilance:3': null, 'vigilance:4': null, 'vigilance:5': null, 'vigilance:6': null,
   });
@@ -367,8 +368,12 @@ test('lireDegatsDeSort / ecrireDegatsDeSort : les écritures sans ambiguïté, e
     assert.equal(M.ecrireDegatsDeSort(l), espaces(v).replace(/^soigne/i, 'Soigne'), `${s.id} : ${v}`);
   }
   assert.ok(lus > 120, `${lus} D/S/B lus`);
-  assert.deepEqual([4, 6, 8, 10, 12, 20, 7].map((f) => M.deMonte(f, 1)), [6, 8, 10, 12, 20, 20, 7]);
+  // R252 : aucune montée ne dépasse le D12 ; un D20 de nature reste D20 (monté ou non) ; les baisses ne changent pas (D20 − 1 cran → D12)
+  assert.deepEqual([4, 6, 8, 10, 12, 20, 7].map((f) => M.deMonte(f, 1)), [6, 8, 10, 12, 12, 20, 7]);
   assert.deepEqual([M.deMonte(6, 2), M.deMonte(4, -1), M.deMonte(8, -1)], [10, 4, 6]);
+  assert.deepEqual([M.deMonte(10, 1), M.deMonte(12, 1), M.deMonte(10, 2), M.deMonte(8, 5), M.deMonte(6, 2)], [12, 12, 12, 12, 10], 'R252 (1) : D10 + 1, D12 + 1, D10 + 2');
+  assert.deepEqual([M.deMonte(20, 0), M.deMonte(20, 1), M.deMonte(20, 2)], [20, 20, 20], 'R252 (2) : un D20 de nature reste D20, une montée ne le change pas');
+  assert.deepEqual([M.deMonte(20, -1), M.deMonte(20, -2), M.deMonte(12, -1), M.deMonte(4, -3)], [12, 10, 10, 4], 'R252 (3) : les baisses partent de l’échelle entière');
 });
 
 test('sortDuMoment (R102) : Focus monte le dé d’un cran, Offensif prend le maximum, Défensif divise par 2 ; les bonus fixes des dons, accessoires, bâtons et armure élémentaire', () => {
@@ -381,6 +386,16 @@ test('sortDuMoment (R102) : Focus monte le dé d’un cran, Offensif prend le ma
   const cran = regles.accessoires.find((a) => a.effets?.some((e) => e.cible === 'cran_des_sorts'));
   const avecCran = fiche({ posture_id: POSTURE('focus'), accessoires: [{ emplacement: 'chef', accessoire_effet_id: cran.id, valeur: null, maudit: 0 }] });
   assert.equal(M.sortDuMoment(regles, avecCran, boule, auNm(boule)).dsb.texte, '2d10 dégâts');
+  // R252 : le D12 est le plafond d'une montée, cumulée ou non (un sort aux dés d10 : Focus + accessoire = deux crans = d12 ; un sort aux dés d12 ne bouge pas)
+  // un sort aux dés d10 de l'import, et le même écrit en d12 (aucun sort d'import n'est en d12 : sort d'essai)
+  const d10 = regles.sorts.find((s) => { const l = M.lireDegatsDeSort(auNm(s).dsb); return l?.nature === 'degats' && l.faces === 10 && l.nombre; });
+  assert.ok(d10, 'un sort aux dés d10 existe à l’import');
+  const d12 = { ...d10, dsb: '2d12 dégâts' };
+  const facesDuSort = (f, s) => M.lireDegatsDeSort(M.sortDuMoment(regles, f, s, auNm(s)).dsb.texte)?.faces;
+  const focus = fiche({ posture_id: POSTURE('focus') });
+  assert.deepEqual([facesDuSort(fiche(), d10), facesDuSort(focus, d10), facesDuSort(avecCran, d10)], [10, 12, 12], 'D10 : Focus → D12, Focus + accessoire → D12 aussi');
+  assert.deepEqual([facesDuSort(focus, d12), facesDuSort(avecCran, d12)], [12, 12], 'D12 : une montée ne le change pas');
+  assert.deepEqual([facesDuSort(fiche(), boule), facesDuSort(avecCran, boule)], [6, 10], 'D6 : Focus + accessoire → D10');
   // un dé au maximum (« 3D6+4 » → « 2D6+6+4 ») ; sans effet en Offensif
   const max = regles.accessoires.find((a) => a.effets?.some((e) => e.cible === 'de_maximum'));
   const deMax = (x = {}) => fiche({ ...x, accessoires: [{ emplacement: 'chef', accessoire_effet_id: max.id, valeur: null, maudit: 0 }] });
@@ -436,8 +451,8 @@ test('sortDuMoment (R102) : le coût réduit par les dons (Économe, « réduits
     assert.deepEqual([z.texte, z.corruption], ['0', null], s.id);
   }
   // un coût qui n'est pas un nombre ne change pas (la réduction est dite non comptée) : « X » (au choix), « N/A » d'un coût qui n'est pas un pourcentage
-  // du chakra maximum (« Aléatoire » : décision R106)
-  const nonChiffres = [regles.sorts.find((s) => s.cout === 'X'), regles.sorts.find((s) => s.cout === 'N/A' && s.cout_secondaire === 'Aléatoire')];
+  // du chakra maximum (décision R106 ; coût secondaire sans « % »)
+  const nonChiffres = [regles.sorts.find((s) => s.cout === 'X'), regles.sorts.find((s) => s.cout === 'N/A' && s.cout_secondaire && !/%/.test(s.cout_secondaire))];
   for (const choix of nonChiffres) {
     assert.ok(choix, 'un sort au coût non chiffré');
     const v = M.sortDuMoment(regles, fiche(ceinture('Bâton magique Arcane, niveau 1')), choix, auNm(choix));
@@ -457,7 +472,10 @@ test('sortDuMoment (R129) : le coût d’un sort qui augmente avec l’utilisati
   assert.deepEqual(M.multiplicateurDuCout(animation), { unite: 'Par NPM de la créature invoquée', creature: true, npm: true });
   assert.deepEqual(M.multiplicateurDuCout(manteau), { unite: 'Par NPM de la créature sacrifiée', creature: true, npm: false }, 'sacrifiée : Économe garde le NPM du sort');
   assert.deepEqual(M.multiplicateurDuCout(charge), { unite: 'Pour 1 dégât supplémentaire', creature: false, npm: false });
-  for (const s of regles.sorts.filter((x) => M.multiplicateurDuCout(x))) assert.match(s.cout_secondaire, /^(Par (?!tour|jour)|Pour 1 )/i, s.nom);
+  // (un coût qui monte à chaque unité, « +K au coût de chaque <unité> supplémentaire » : R248, test/r236-fiche-specialisations.test.mjs)
+  for (const s of regles.sorts.filter((x) => M.multiplicateurDuCout(x))) {
+    assert.match(s.cout_secondaire, M.multiplicateurDuCout(s).progressif ? /^\+\s*\d+ au coût de chaque /i : /^(Par (?!tour|jour)|Pour 1 )/i, s.nom);
+  }
   for (const s of regles.sorts.filter((x) => /^Par (tour|jour)/i.test(x.cout_secondaire ?? ''))) assert.equal(M.multiplicateurDuCout(s), null, s.nom);
   assert.equal(M.multiplicateurDuCout(sortNomme('magies/magie-de-larcane', 'Échange')), null, 'Échange : « 3CK = 2BA/3NM », en attente du propriétaire');
   // l'exemple du propriétaire : un Ocultomancien (Économe) avec un bâton d'Arcane de rang 3, ici au niveau 12 (puissance magique 4)
@@ -569,9 +587,10 @@ test('sortDuMoment (R102) : soins (Focus, bâton de Lumière, accessoire +1d), p
   // amplifications (réponse « Compter où c'est chiffré ») : « +8 dégâts » + Sang 3, « +5AP, +10AM » + Glace 3 (AM) ou Terre 3 (AP)
   const fer = regles.sorts.find((s) => s.types.includes('amplification') && s.dsb === '+8 dégâts');
   assert.equal(M.sortDuMoment(regles, fiche(ceinture('Bâton magique Sang, niveau 3')), fer, auNm(fer)).dsb.texte, '+11 dégâts');
-  const armure = regles.sorts.find((s) => s.types.includes('amplification') && s.dsb === '+5AP, +10AM');
-  assert.equal(M.sortDuMoment(regles, fiche(ceinture('Bâton magique Glace, niveau 3')), armure, auNm(armure)).dsb.texte, '+5AP, +13AM');
-  assert.equal(M.sortDuMoment(regles, fiche(ceinture('Bâton magique Terre, niveau 3')), armure, auNm(armure)).dsb.texte, '+8AP, +10AM');
+  const armure = regles.sorts.find((s) => s.types.includes('amplification') && /^\+\d+AP, \+\d+AM$/.test(s.dsb));
+  const [, ap, am] = armure.dsb.match(/^\+(\d+)AP, \+(\d+)AM$/).map(Number);
+  assert.equal(M.sortDuMoment(regles, fiche(ceinture('Bâton magique Glace, niveau 3')), armure, auNm(armure)).dsb.texte, `+${ap}AP, +${am + 3}AM`);
+  assert.equal(M.sortDuMoment(regles, fiche(ceinture('Bâton magique Terre, niveau 3')), armure, auNm(armure)).dsb.texte, `+${ap + 3}AP, +${am}AM`);
   // ce que les bâtons ne chiffrent pas : rappelé
   const necro = M.sortDuMoment(regles, fiche(ceinture('Bâton magique Nécromancie, niveau 1')), fer, auNm(fer));
   assert.deepEqual(necro.rappels, [{ nom: 'Bâton magique Nécromancie, niveau 1', texte: 'Invocation +5 santé' }]);
@@ -661,6 +680,8 @@ test('sort-bonus-texte (R102) : les bonus de sorts des dons de classe et de race
     'races/elfe-dore#don:sang-dore': 'degats:3 soin:3',
     'races/farfadet#don:farfadet-maritime-forets-proches-de-leau': 'cran:1',
     'races/felfe#don:felfe-argente': 'degats:1+1/5 global',
+    // Gémidien, « Gemmoïde » (R239, migration 0120) : « +3 dégâts (+2/5 niveau global) », lu comme R110 : 3 + 2 × ⌊niveau global ÷ 5⌋ (R253 (2) ; test/r253-gemmoide-ordre-des-races.test.mjs)
+    'races/gemidien#don:gemmoide': 'degats:3+2/5 global',
   });
   // chaque armure élémentaire nomme sa magie (« +4 dégâts avec les sorts de l'Eau ») : elle seule ; et deux autres effets chiffrés
   for (const e of regles.armures_elementaires) {

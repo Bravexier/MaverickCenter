@@ -8,6 +8,8 @@
 .chip { display: inline-block; padding: 0.1rem 0.7rem; border-radius: var(--radius-pill); border: 1px solid var(--border); background: var(--bg); color: var(--text); text-decoration: none; font-size: var(--fs-lg); }
 a.chip { color: var(--accent); }
 a.chip:hover { background: var(--accent-soft); }
+/* un mot-clé du glossaire dans une pastille (migration 0125 : une magie, un type de dégâts de la page d'une magie) : le texte de la pastille, pas sa propre teinte */
+.chip .mot-cle[class*='couleur-'] { color: inherit; }
 .chip--fort { border-color: var(--good); }
 .chip--faible { border-color: var(--danger); }
 .chip--incompatible { border-style: dashed; border-color: var(--muted); }

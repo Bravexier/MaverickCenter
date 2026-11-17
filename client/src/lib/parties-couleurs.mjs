@@ -7,8 +7,10 @@
 
 /**
  * Les couleurs des parties de l'ancien guide (clé = l'id de la partie, celui de lib/livres.mjs#PARTIES), assez foncées pour un texte blanc dessus. Elles
- * colorent les groupes de Découvrir et des Bases (leurs pages, leurs cartes « Par où commencer ? » de l'accueil, leurs groupes dans le sommaire des Bases)
- * et les quatre zones de la fiche de personnage (pages/fiche/index.astro). Une couleur d'interface du site, d'aucune source.
+ * colorent les pages de Découvrir et de la création du personnage (lib/livres.mjs#PAGES_DE_LA_CREATION : « creer »), leurs cartes « Par où
+ * commencer ? » de l'accueil, et les quatre zones de la fiche de personnage (pages/fiche/index.astro). Une couleur d'interface du site, d'aucune
+ * source. Les autres pages des onglets des Règles n'en ont pas (l'accent du site, réponse du propriétaire du 2026-11-05 : « Accent du site ») ;
+ * « plus-loin » ne colore donc plus aucune page (elle reste une partie de l'ancien guide, lib/livres.mjs#PARTIES).
  */
 export const COULEURS_DES_PARTIES = Object.freeze({
   decouvrir: '#2a6f97',

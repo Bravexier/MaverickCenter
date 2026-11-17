@@ -161,7 +161,8 @@ test('base vivante refaite par une livraison : un lot en attente noté sans sa p
   const regles = `${dossier()}.db`;
   copyFileSync(REGLES, regles);
   const livraison = new DatabaseSync(regles);
-  livraison.exec("UPDATE metier SET description = description || ' (livraison)' WHERE id = 'metiers/acrobate'");
+  // une livraison sans rapport avec le lot (la remarque d'un sort : une table que le site de dev ne vide pas, il ne supprime pas de sort)
+  livraison.exec("UPDATE sort SET remarque = coalesce(remarque, '') || ' (livraison)' WHERE id = (SELECT id FROM sort ORDER BY id LIMIT 1)");
   livraison.close();
   const r = preparerBaseVivante({ regles, dossier: premiere });
   assert.equal(r.refaite, true);

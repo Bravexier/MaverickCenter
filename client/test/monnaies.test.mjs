@@ -68,6 +68,8 @@ test('le plugin remark : texte courant et cases, nombres seuls d’une colonne �
 });
 
 test('le plugin remark : une balise du glossaire des mots-clés reste entière, aucun montant n’y est lu (texte courant comme colonne « (RO) », « \\| » d’une case compris)', () => {
+  // le passage Markdown seulement : la balise y reste entière ; son texte affiché se décompose ensuite, au rendu de la balise (R183 (12), « Décomposer
+  // comme ailleurs » : lib/mots-cles-balises.mjs#htmlDeLaBalise, test/mots-cles-balises.test.mjs)
   const md = 'Le {{prix-fixe|10 RO}} coûte 5 RO.\n\n| Objet | Coût(RO) |\n| --- | --- |\n| Arc | {{prix-fixe\\|12}} |\n| Épée | 12 |\n';
   const arbre = unified().use(remarkParse).use(remarkGfm).parse(md);
   remarkMonnaies()(arbre);

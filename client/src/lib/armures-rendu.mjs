@@ -1,4 +1,4 @@
-// Rendu HTML des cellules des onglets Armures et Boucliers de /ressources/equipement/ (components/armures/) : le même HTML sert à la page construite
+// Rendu HTML des cellules des pages Armures et Boucliers (/ressources/armures/, /ressources/bouclier/) (components/armures/) : le même HTML sert à la page construite
 // et au mode modification du site de dev (lib/edition-rendu.mjs : une cellule modifiée se réaffiche depuis sa ligne de la base). Les valeurs dont la
 // fiche de l'armure ou du bouclier forgé a besoin (AP, AM, solidité, prix, coût et effet d'une amélioration) sont posées en attributs `data-…` sur
 // l'élément rendu : le script de la page les lit au moment de la sélection (src/scripts/armures.mjs), si bien qu'une cellule réécrite après un
@@ -11,15 +11,17 @@ import { attributEd } from './edition-modele.mjs';
 import { htmlAvecMonnaies, htmlDeMontant } from './monnaies.mjs';
 import { cleDeMateriau } from './materiaux-couleurs.mjs';
 import { RENDUS_DES_ARMES } from './armes-rendu.mjs';
-import { classeDuPoids, classeDuTypeDArmure } from './palette-css.mjs';
+import { classeDeDegats, classeDuPoids, classeDuTypeDArmure } from './palette-css.mjs';
+import { htmlDuTypeDeDegats } from './valeurs-fermees-rendu.mjs';
 
 const ENTITES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 const e = (texte) => String(texte ?? '').replace(/[&<>"']/g, (c) => ENTITES[c]);
 const VIDE = '<span class="vide" aria-label="aucun">—</span>';
 const attribut = (nom, valeur) => (valeur === null || valeur === undefined ? '' : ` data-${nom}="${e(valeur)}"`);
 
-// Les couleurs des types d'armure (et de matière) et des poids de bouclier sont dans lib/equipement-couleurs.mjs (la règle) ; ce rendu ne pose que leur
-// classe (lib/palette-css.mjs : classeDuTypeDArmure, classeDuPoids ; familles `armure` et `poids`, émises par components/armures/ArmuresPage.astro),
+// Les couleurs des types d'armure (et de matière), des poids de bouclier et des types de dégâts sont dans lib/equipement-couleurs.mjs (la règle) ; ce rendu ne
+// pose que leur classe (lib/palette-css.mjs : classeDuTypeDArmure, classeDuPoids, classeDeDegats ; familles `armure`, `poids` et `degats`, émises par
+// components/armures/ArmuresPage.astro),
 // jamais une couleur ni un style : le même HTML pour la page construite et le mode modification (choix du propriétaire, « Module JS → classe »).
 
 /** Libellés des types de dégâts (comme ceux des armes). */
@@ -77,12 +79,15 @@ export function htmlDuPoids(p) {
     + `${force === null ? '' : ` title="${e(`Requiert ${force} Force minimum`)}"`}>${e(p.nom)}</span>`;
 }
 
-/** Les résistances ou faiblesses d'une armure (« x2 Frappe », « Estoc/Taille ») en pastilles, « ×2 » compris. */
-export function htmlDesDegats(valeur, sens) {
+/**
+ * Les résistances ou faiblesses d'une armure (« x2 Frappe », « Estoc/Taille ») en pastilles, « ×2 » compris ; le type de chaque pastille est lié à son mot-clé du
+ * glossaire quand `liens` (lib/mots-cles-des-valeurs.mjs, ctx.liens) en donne un (migration 0125), nu sinon.
+ */
+export function htmlDesDegats(valeur, sens, liens = null) {
   const lignes = sens === 'faiblesse' ? degatsDeLArmure(null, valeur) : degatsDeLArmure(valeur, null);
   if (!lignes.length) return String(valeur ?? '').trim() ? `<span class="pdgt-texte">${e(valeur)}</span>` : VIDE;
   return lignes
-    .map((l) => `<span class="pdgt pdgt--${l.type_degats}"${l.multiplicateur ? ` title="${e(`${LIBELLES_DES_DEGATS[l.type_degats]} ×${l.multiplicateur} (« x${l.multiplicateur} » de la source)`)}"` : ''}>${l.multiplicateur ? `<b>×${l.multiplicateur}</b> ` : ''}${LIBELLES_DES_DEGATS[l.type_degats]}</span>`)
+    .map((l) => `<span class="pdgt pdgt--${l.type_degats} ${classeDeDegats(l.type_degats)}"${l.multiplicateur ? ` title="${e(`${LIBELLES_DES_DEGATS[l.type_degats]} ×${l.multiplicateur} (« x${l.multiplicateur} » de la source)`)}"` : ''}>${l.multiplicateur ? `<b>×${l.multiplicateur}</b> ` : ''}${htmlDuTypeDeDegats(liens, l.type_degats, LIBELLES_DES_DEGATS[l.type_degats])}</span>`)
     .join(' ');
 }
 
@@ -131,8 +136,8 @@ export const RENDUS_DES_ARMURES = {
       ? ' <span class="psol__uni" title="Cran de solidité uni : si un cran de solidité est perdu, c’est toute l’armure qui est abîmée">uni</span>' : '';
     return `<span class="psol" data-solidite="${n}">${n}${uni}</span>`;
   },
-  'armure-resistance': (valeur) => htmlDesDegats(valeur, 'resistance'),
-  'armure-faiblesse': (valeur) => htmlDesDegats(valeur, 'faiblesse'),
+  'armure-resistance': (valeur, _ligne, ctx = {}) => htmlDesDegats(valeur, 'resistance', ctx.liens),
+  'armure-faiblesse': (valeur, _ligne, ctx = {}) => htmlDesDegats(valeur, 'faiblesse', ctx.liens),
   'armure-effet': (valeur) => (String(valeur ?? '').trim() ? `<span class="armure-effet">${e(valeur)}</span>` : VIDE),
   // un coût du tableau FABRICATION de l'onglet (« Armure Complète », compté dans le prix des armures de la grille : décision R93 ; « Bouclier »,
   // « 250 RF / Classe », sous les formes de l'onglet Boucliers) : tel qu'écrit, en RO dans `data-ro` (null pour « 250 RF / Classe »)
@@ -202,26 +207,31 @@ export function htmlDeLigneDeMateriau(m, role) {
 
 /**
  * La ligne d'une armure de la liste (une combinaison de deux matières, ou une armure particulière) : son nom (bouton : sélectionner l'armure), ses
- * matières, son type, sa défense, sa solidité, ses résistances et faiblesses (ou son effet) et son prix ; chaque champ porte son `data-ed`, sauf le
- * prix d'une combinaison : il est calculé, la fabrication de l'armure complète + 6 unités de chaque matériau (décision R93 : `a.prix_calcule`, le prix
- * écrit dans la grille n'est plus lu), et le script de la page le refait quand un prix de matériau ou la fabrication change (src/scripts/armures.mjs).
+ * matières, son type, sa défense, sa solidité, ses résistances et faiblesses (ou son effet) et son prix ; chaque champ porte son `data-ed`, sauf, pour
+ * une combinaison (la grille), ce qui se calcule d'après ses deux matériaux (décision R207 (1), E6) : le type, l'AP et l'AM (`data-ed-lecture` : le
+ * service les refuse, il les recalcule ; la case suit la ligne qu'il renvoie) et le prix, la fabrication de l'armure complète + `unites` unités de chaque
+ * matériau (décision R93 : `a.prix_calcule`, égal à `a.prix`), que le script de la page refait quand un prix de matériau ou la fabrication change
+ * (src/scripts/armures.mjs). Une armure particulière garde ses valeurs écrites, modifiables (R80).
  * `a` : la ligne de la table armure (avec `m1`, `m2`, `prix_calcule` pour une combinaison : lib/armures-db.mjs).
  */
 export function htmlDeLigneDArmure(a, ctx = {}) {
   const cle = { id: a.id };
   const champ = (classe, colonne, nom) => `<td class="${classe}" data-ed="${ed('armure', cle, colonne)}" data-ed-rendu="${nom}">${rendu(nom, a[colonne], a, ctx)}</td>`;
   const particuliere = a.sorte === 'particuliere';
+  // une valeur calculée d'une armure de la grille (décision R207 (1), E6) : en lecture, elle suit la ligne que le service renvoie
+  const calcule = (classe, colonne, nom) => `<td class="${classe}" data-ed-lecture="${ed('armure', cle, colonne)}" data-ed-rendu="${nom}">${rendu(nom, a[colonne], a, ctx)}</td>`;
+  const caseDe = particuliere ? champ : calcule;
   return `<tr class="armure${particuliere ? ' armure--particuliere' : ''}" id="${ancreDArmure(a.id)}" data-armure="${e(a.id)}"${particuliere ? ' data-particuliere="1"' : `${attribut('m1', a.m1)}${attribut('m2', a.m2)}`}>`
     + `<th scope="row" class="armure__nom"><span data-ed="${ed('armure', cle, 'nom')}" data-ed-cible=".armure__choisir"><button type="button" class="armure__choisir" aria-pressed="false">${e(a.nom)}</button></span>`
     + (a.remarque ? `<span class="armure__remarque" title="${e(a.remarque)}" aria-label="${e(`Remarque : ${a.remarque}`)}">★</span>` : '')
     + '</th>'
     + (particuliere ? '' : `<td class="armure__materiaux">${htmlDesMateriauxDeLArmure(a, ctx)}</td>`)
-    + champ('armure__type', 'type', 'armure-type')
+    + caseDe('armure__type', 'type', 'armure-type')
     // AP et AM en deux colonnes (demande du propriétaire, 2026-10-16 : « Pour les tableaux des armures j'aimerai séparer les colonnes d'AP et d'AM »),
-    // comme la liste des boucliers, chacune modifiable dans sa case (2026-10-17 : « C'est en base que les deux devraient être séparées et donc éditable
-    // aussi ») ; la défense écrite (stats_brut) en est refaite par le service
-    + champ('armure__ap', 'ap', 'protection-ap')
-    + champ('armure__am', 'am', 'protection-am')
+    // comme la liste des boucliers, chacune dans sa case (2026-10-17 : « C'est en base que les deux devraient être séparées et donc éditable aussi ») ;
+    // modifiables pour une armure particulière, la défense écrite (stats_brut) en est refaite par le service ; calculées pour la grille (R207 (1))
+    + caseDe('armure__ap', 'ap', 'protection-ap')
+    + caseDe('armure__am', 'am', 'protection-am')
     + champ('armure__solidite', 'solidite', 'armure-solidite')
     + (particuliere
       ? champ('armure__effet', 'effet', 'armure-effet')
@@ -272,9 +282,10 @@ export function htmlDeLigneDeForme(f) {
 
 /**
  * La ligne d'un bouclier préfabriqué de la liste (un seul tableau, triable : demande du propriétaire, 2026-10-16) : son nom (bouton : choisir ce
- * bouclier), sa forme (nom en lecture, suit son renommage ; « Classe N »), sa matière, son AP et son AM (deux colonnes : « Sépare donc les AP des AM » ;
- * chacune modifiable dans sa case, 2026-10-17 ; la défense écrite en est refaite), sa solidité (celle de la matière : décision R78), son poids (la
- * couleur de sa case dans l'onglet : décision R92) et son prix. `b` : la ligne de la table bouclier (avec `matiere`, la clé de sa matière) ; `matiere` :
+ * bouclier), sa forme (nom en lecture, suit son renommage ; « Classe N »), sa matière, son AP et son AM (deux colonnes : « Sépare donc les AP des AM »),
+ * sa solidité (celle de la matière : décision R78), son poids (la couleur de sa case dans l'onglet : décision R92, modifiable) et son prix. L'AP, l'AM
+ * et le prix se calculent d'après la forme et la matière (décision R207 (1), E6 : lib/armure-forge.mjs#defenseDuBouclier, #prixDuBouclier) : en lecture
+ * (`data-ed-lecture`, le service les refuse et les recalcule ; la case suit la ligne qu'il renvoie). `b` : la ligne de la table bouclier (avec `matiere`, la clé de sa matière) ; `matiere` :
  * la matière ({ nom, type, ligne }) ; `forme` : la ligne de bouclier_classe ; `ordre` : le rang de la ligne dans l'onglet (`data-ordre`, l'ordre sans
  * tri) ; `ctx` : le contexte des rendus (ctx.poidsDeBouclier : lib/armures-db.mjs#contexteDesArmures), comme pour une armure.
  */
@@ -290,10 +301,10 @@ export function htmlDeLigneDeBouclier(b, matiere, { forme = null, ordre = null }
       ? `<span data-ed-lecture="${ed('bouclier_classe', { id: forme.id }, 'nom')}">${e(forme.nom)}</span> <span class="bouclier__classe">${e(forme.categorie_brut)}</span>`
       : VIDE}</td>`
     + `<td class="bouclier__matiere">${matiere ? htmlDeMateriau(matiere.nom, matiere.type) : VIDE}</td>`
-    + `<td class="bouclier__ap" data-ed="${ed('bouclier', cle, 'ap')}" data-ed-rendu="protection-ap">${rendu('protection-ap', b.ap, b)}</td>`
-    + `<td class="bouclier__am" data-ed="${ed('bouclier', cle, 'am')}" data-ed-rendu="protection-am">${rendu('protection-am', b.am, b)}</td>`
+    + `<td class="bouclier__ap" data-ed-lecture="${ed('bouclier', cle, 'ap')}" data-ed-rendu="protection-ap">${rendu('protection-ap', b.ap, b)}</td>`
+    + `<td class="bouclier__am" data-ed-lecture="${ed('bouclier', cle, 'am')}" data-ed-rendu="protection-am">${rendu('protection-am', b.am, b)}</td>`
     + `<td class="bouclier__solidite"><span class="psol" data-solidite="${solidite}" title="Solidité de la matière (décision R78)">${solidite}</span></td>`
     + `<td class="bouclier__poids" data-ed="${ed('bouclier', cle, 'poids_id')}" data-ed-rendu="bouclier-poids">${rendu('bouclier-poids', b.poids_id, b, ctx)}</td>`
-    + `<td class="bouclier__prix" data-ed="${ed('bouclier', cle, 'prix_brut')}" data-ed-rendu="protection-prix">${rendu('protection-prix', b.prix_brut, b)}</td>`
+    + `<td class="bouclier__prix" data-ed-lecture="${ed('bouclier', cle, 'prix_brut')}" data-ed-rendu="protection-prix">${rendu('protection-prix', b.prix_brut, b)}</td>`
     + '</tr>';
 }

@@ -21,6 +21,7 @@ import { FAMILLES_DE_LA_PALETTE, classeDAffinite, classeDAttribut, classeDeCoule
 import { chargerObjetsDeCeinture } from '../src/lib/ceinture-db.mjs';
 import { chargerBatons } from '../src/lib/batons-db.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { baseDImport } from './aide-base-d-import.mjs';
 
 const db = ouvrirBase();
 const lire = (chemin) => readFileSync(new URL(`../${chemin}`, import.meta.url), 'utf8');
@@ -242,18 +243,20 @@ test('des potions de la base : l’essence de leur recette et la couleur qui en 
   }
   assert.equal(couleurDePotion({ essence: 'anti', niveau: 2 }), null, 'Anti, hors des pages choisies : neutre');
   // les quatre paliers de la Fiole verte foncée : la Nécromancie, nuancée à leur niveau (demande du propriétaire du 2026-10-23)
+  // le niveau d'une potion se modifie sur le site de dev : celui des paliers se lit à l'import (test/aide-base-d-import.mjs), la nuance suit le niveau courant
+  const rangDImport = (id) => baseDImport().prepare('SELECT n.rang FROM potion p JOIN niveau_alchimie n ON n.id = p.niveau_id WHERE p.ressource_id = ?').get(id).rang;
   for (const [palier, rang] of [['fiole-verte-foncee-moyenne', 2], ['super-fiole-verte-foncee', 3], ['mega-fiole-verte-foncee', 4], ['ultime-fiole-verte-foncee', 5]]) {
     const x = de(`ressources/fiole-verte-fonce#potion:${palier}`);
-    assert.equal(x.niveau_rang, rang, palier);
-    assert.equal(classeDePotion(x.couleur), `couleur-potion-magie-necromancie-n${rang}`, palier);
+    assert.equal(rangDImport(x.id), rang, palier);
+    assert.equal(classeDePotion(x.couleur), `couleur-potion-magie-necromancie-n${x.niveau_rang}`, palier);
   }
   // l'ultime philtre n'écrit pas « compétences de Force » (« +1 Force ») : sa page la lui donne ; à l'import, les autres paliers la nomment
   const historique = historiqueSite(db);
   const caracteristiques = db.prepare('SELECT id, nom FROM caracteristique').all();
-  const page = de('ressources/philtre-du-puissant#potion:ultime-philtre-du-puissant').page;
+  const ultime = de('ressources/philtre-du-puissant#potion:ultime-philtre-du-puissant');
   const aLImport = (x) => caracteristiqueDesCompetences(historique.valeurDImport('potion', { ressource_id: x.id }, 'effet', x.effet), caracteristiques);
-  assert.equal(aLImport(page.potions.find((x) => x.niveau_rang === 5)), null, 'l’ultime ne la nomme pas');
-  assert.deepEqual([...new Set(page.potions.filter((x) => x.niveau_rang < 5).map(aLImport))], ['force'], 'les autres paliers nomment la Force');
+  assert.equal(aLImport(ultime), null, 'l’ultime ne la nomme pas');
+  assert.deepEqual([...new Set(ultime.page.potions.filter((x) => x.id !== ultime.id).map(aLImport))], ['force'], 'les autres paliers nomment la Force');
 });
 
 test('les couleurs choisies par le propriétaire, page par page (2026-10-23) : la magie qu’il nomme, avant l’essence ; une autre page de même essence garde la sienne', () => {

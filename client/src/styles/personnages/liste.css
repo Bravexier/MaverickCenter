@@ -1,6 +1,6 @@
 /* Chargé uniquement depuis pages/personnages.astro (?raw) : la recherche des personnages. Filtres en tête, puis la liste : un en-tête dont chaque
-   colonne, sauf le portrait, se trie (bouton, flèche du sens), et une ligne par personnage (portrait, nom, race, magies, niveau : demande du
-   propriétaire), tout entière un lien vers la fiche (le nom n'a pas l'air d'un lien), bordée de la couleur de la magie innée, en dégradé vers l'acquise
+   colonne, sauf le portrait, se trie (bouton, flèche du sens), et une ligne par personnage (portrait, nom, race, magies, classes, niveau :
+   demandes du propriétaire), tout entière un lien vers la fiche (le nom n'a pas l'air d'un lien), bordée de la couleur de la magie innée, en dégradé vers l'acquise
    en bi-magie (--magie-1, --magie-2 de .perso--magie, lues dans les classes de la palette que pose src/scripts/personnages.mjs : la classe de
    l'innée, --couleur, et la classe de second rang de l'acquise, --couleur-2, lib/palette-css.mjs). L'en-tête et les lignes ont le même gabarit de colonnes (--colonnes,
    sans piste qui dépende du contenu) et la même largeur de contenu (marge de l'en-tête = bordure + marge d'une ligne) : leurs colonnes s'alignent.
@@ -24,12 +24,12 @@
 .personnages-filtres .actions { display: flex; align-items: end; }
 .personnages-compte { margin: 0; color: var(--muted); }
 
-/* La liste : 5 colonnes, le même gabarit pour l'en-tête et chaque ligne */
+/* La liste : 6 colonnes, le même gabarit pour l'en-tête et chaque ligne */
 .personnages-liste {
   --portrait: 3.5rem;
   --bord: 3px;
   --marge: 0.55rem;
-  --colonnes: var(--portrait) minmax(0, 2fr) minmax(0, 1.2fr) minmax(0, 1.6fr) 4.5rem;
+  --colonnes: var(--portrait) minmax(0, 2fr) minmax(0, 1.2fr) minmax(0, 1.6fr) minmax(0, 2fr) 4.5rem;
   display: grid;
   row-gap: 0.45rem;
 }
@@ -92,7 +92,7 @@
 .perso:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
 .perso .col { min-width: 0; overflow-wrap: anywhere; }
 .perso .col--nom { font-weight: 700; font-size: 1.02rem; }
-.perso .col--race, .perso .col--magies { color: var(--muted); }
+.perso .col--race, .perso .col--magies, .perso .col--classes { color: var(--muted); }
 .perso .col--niveau { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
 /* « Niveau » devant le nombre, pour qui lit la ligne sans la voir (nom du lien) */
 .perso .hors-ecran { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
@@ -112,16 +112,17 @@
 
 .personnages-vide { padding: 1rem; color: var(--muted); }
 
-/* Petit écran : les boutons de tri en une rangée (tous gardés) ; une ligne : portrait à gauche, puis le nom, la race et les magies l'un sous
-   l'autre, le niveau à droite */
+/* Petit écran : les boutons de tri en une rangée (tous gardés) ; une ligne : portrait à gauche, puis le nom, la race, les magies et les
+   classes l'un sous l'autre, le niveau à droite */
 @media (max-width: 40rem) {
   .personnages-tete { display: flex; flex-wrap: wrap; gap: 0.2rem 1rem; }
   .personnages-tete .col--portrait { display: none; }
   .personnages-tete .col--niveau { flex-direction: row; text-align: left; }
-  .perso { grid-template-columns: var(--portrait) minmax(0, 1fr) auto; grid-template-rows: auto auto auto; column-gap: 0.7rem; row-gap: 0.05rem; }
-  .perso__portrait { grid-column: 1; grid-row: 1 / span 3; }
+  .perso { grid-template-columns: var(--portrait) minmax(0, 1fr) auto; grid-template-rows: auto auto auto auto; column-gap: 0.7rem; row-gap: 0.05rem; }
+  .perso__portrait { grid-column: 1; grid-row: 1 / span 4; }
   .perso .col--nom { grid-column: 2; grid-row: 1; }
   .perso .col--race { grid-column: 2; grid-row: 2; font-size: var(--fs-md); }
   .perso .col--magies { grid-column: 2; grid-row: 3; font-size: var(--fs-md); }
-  .perso .col--niveau { grid-column: 3; grid-row: 1 / span 3; }
+  .perso .col--classes { grid-column: 2; grid-row: 4; font-size: var(--fs-md); }
+  .perso .col--niveau { grid-column: 3; grid-row: 1 / span 4; }
 }

@@ -95,6 +95,8 @@ et signalée sur la sortie d'erreur).
 """
 import argparse
 import contextlib
+import functools
+import importlib.util
 import io
 import json
 import os
@@ -438,6 +440,17 @@ def yaml_list(items):
     return "[" + ", ".join(yaml_str(i) for i in items) + "]"
 
 
+@functools.lru_cache(maxsize=None)
+def etiquettes_non_posees():
+    """tools/db/homonymes.py#ETIQUETTES_NON_POSEES (décision R183 (11) : étiquettes d'un mot-clé de la migration 0090 que l'import n'écrit pas),
+    chargé par son chemin : `python3 -I`."""
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "db", "homonymes.py")
+    spec = importlib.util.spec_from_file_location("homonymes", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.ETIQUETTES_NON_POSEES
+
+
 # --------------------------------------------------------------------------------------------------------------------
 # Phrases dont le lien est retiré et commentaires de cellule (lus dans le dump)
 # --------------------------------------------------------------------------------------------------------------------
@@ -478,7 +491,8 @@ def comment_lines(entries):
 # --------------------------------------------------------------------------------------------------------------------
 
 def page(slug, title, tab, tags, body, aliases=(), summary=None):
-    return {"slug": slug, "title": title, "aliases": list(aliases), "tags": list(tags), "summary": summary,
+    tags = [t for t in tags if t not in etiquettes_non_posees()]   # R183 (11) : « tour »
+    return {"slug": slug, "title": title, "aliases": list(aliases), "tags": tags, "summary": summary,
             "tab": tab, "body": body}
 
 

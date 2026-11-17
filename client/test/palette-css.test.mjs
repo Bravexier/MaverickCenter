@@ -11,11 +11,13 @@ import { ouvrirBase } from '../src/lib/donnees.mjs';
 import {
   CLASSE_DES_ARMES_DE_DEPART, CLASSE_NEUTRE, FAMILLES_DE_CHAQUE_PAGE, FAMILLES_DE_LA_FICHE, FAMILLES_SANS_TEXTE, FAMILLES_DE_LA_PALETTE, FAMILLES_DES_ZONES,
   MAGIE_PAR_DEFAUT, PAR_DEFAUT, classeDAffinite, classeDAlignement, classeDeMateriau, classeDuPoids, classeDuTypeDArmure,
-  classeDAttribut, classeDUneClasse, classeDeCaracteristique, classeDeCategorie, classeDeCouleur, classeDeMagie, classeDePalier, classeDePosture,
+  classeDAttribut, classeDUneClasse, classeDeCaracteristique, classeDeCategorie, classeDeCouleur, classeDeDegats, classeDeMagie, classeDePalier, classeDePosture,
   classeDeNiveau, classeDePartie, classeDePotion, cssDesParties, classeDeRace, classeDeSecondeCaracteristique, classeDeSecondeMagie, classeDuModeHyper, classesDeDeuxCaracteristiques,
   classesDeDeuxMagies, classesDeLaPalette, couleursDeLaPalette, cssDeLaPalette, cssDesEvenements, cssDesFamilles, cssDesPotions, cssDesSecondsRangs, idDeCouleur,
-  secondsRangs, secondsRangsDesMagies, classeDEvenement, classeDeGenre, classeDeTypeDeDon,
+  secondsRangs, secondsRangsDesMagies, classeDEvenement, classeDeGenre, classeDeTypeDeDon, classeDeCase,
 } from '../src/lib/palette-css.mjs';
+import { COULEURS_DES_CASES } from '../src/lib/cases-couleurs.mjs';
+import { COULEURS_DE_CASE, classeDeCouleurDeCase, htmlSur, versMarkdown } from '../src/lib/markdown-edition.mjs';
 import { COULEURS_DES_GENRES, COULEURS_DES_TYPES_DE_DON } from '../src/lib/genres-couleurs.mjs';
 import { TYPES_DE_SORT } from '../src/lib/sort-analyse.mjs';
 import { TYPES_DE_DON } from '../src/lib/classe-champs.mjs';
@@ -31,12 +33,14 @@ import { CLASS_COLORS, CLASS_GROUPS, classColor } from '../src/lib/class-groups.
 import { RACE_COLORS } from '../src/lib/race-kinds.mjs';
 import { COULEURS_DES_PALIERS, COULEURS_DU_MODE_HYPER } from '../src/lib/fiche-couleurs.mjs';
 import { COULEURS_DES_MATERIAUX } from '../src/lib/materiaux-couleurs.mjs';
-import { COULEUR_SANS_TYPE, COULEURS_DES_ARMES, COULEURS_DES_POIDS, COULEURS_DES_TYPES } from '../src/lib/equipement-couleurs.mjs';
+import { COULEUR_SANS_TYPE, COULEURS_DES_ARMES, COULEURS_DES_DEGATS, COULEURS_DES_POIDS, COULEURS_DES_TYPES } from '../src/lib/equipement-couleurs.mjs';
+import { LIBELLES_DES_DEGATS } from '../src/lib/arme-champs.mjs';
 import { COULEURS_DES_NIVEAUX } from '../src/lib/accessoires-couleurs.mjs';
 import { COULEURS_DES_PARTIES } from '../src/lib/parties-couleurs.mjs';
-import { PARTIES, partieDeLaPage, RUBRIQUES_DU_GUIDE, RUBRIQUES_SOUS_LA_PAGE } from '../src/lib/livres.mjs';
+import { DECOUVRIR, PAGES_DE_LA_CREATION, PARTIES, partieDeLaPage, RUBRIQUES_SOUS_LA_PAGE } from '../src/lib/livres.mjs';
 import { COULEUR_AUJOURDHUI, COULEUR_INCONNUE, couleursDesEvenements } from '../src/lib/chronologie-couleurs.mjs';
 import { chargerChronologie } from '../src/lib/chronologie-db.mjs';
+import { baseDImport } from './aide-base-d-import.mjs';
 
 const lire = (chemin) => readFileSync(new URL(`../${chemin}`, import.meta.url), 'utf8');
 const HEX = /(?<!&)#[0-9a-f]{6}\b|(?<!&)#[0-9a-f]{3}\b/gi;
@@ -44,9 +48,9 @@ const HEX = /(?<!&)#[0-9a-f]{6}\b|(?<!&)#[0-9a-f]{3}\b/gi;
 const regles = (css) => new Map([...css.matchAll(/\.([a-z0-9-]+)\{([^}]*)\}/g)].map(([, classe, corps]) =>
   [classe, Object.fromEntries(corps.split(';').filter(Boolean).map((d) => d.split(':')))]));
 
-test('dix-neuf familles, chacune lue dans le module de sa règle : magies, attributs, caractéristiques, affinités sans autre règle, postures, alignements, catégories de classe, races, paliers de résistance, Mode Hyper, neutre, matériaux, armes de départ, types d’armure, poids des boucliers, niveaux des accessoires, parties du guide, genres de sort, types de don (et la couleur par défaut de sept d’entre elles)', () => {
+test('vingt et une familles, chacune lue dans le module de sa règle : magies, attributs, caractéristiques, affinités sans autre règle, postures, alignements, catégories de classe, races, paliers de résistance, Mode Hyper, neutre, matériaux, armes de départ, types d’armure, poids des boucliers, types de dégâts, niveaux des accessoires, parties du guide, genres de sort, types de don, cases de tableau (et la couleur par défaut de sept d’entre elles)', () => {
   assert.deepEqual(Object.keys(FAMILLES_DE_LA_PALETTE), ['magie', 'attribut', 'caracteristique', 'affinite', 'posture', 'alignement', 'classe', 'race', 'palier', 'mode', 'neutre',
-    'materiau', 'arme', 'armure', 'poids', 'niveau', 'partie', 'genre', 'don']);
+    'materiau', 'arme', 'armure', 'poids', 'degats', 'niveau', 'partie', 'genre', 'don', 'case']);
   assert.equal(MAGIE_PAR_DEFAUT, PAR_DEFAUT);
   assert.deepEqual(FAMILLES_DE_LA_PALETTE.magie, { ...COULEURS_DES_MAGIES, [PAR_DEFAUT]: COULEUR_PAR_DEFAUT });
   assert.equal(FAMILLES_DE_LA_PALETTE.attribut, COULEURS_DES_ATTRIBUTS);
@@ -70,6 +74,11 @@ test('dix-neuf familles, chacune lue dans le module de sa règle : magies, attri
   assert.deepEqual(FAMILLES_DE_LA_PALETTE.armure, { ...COULEURS_DES_TYPES, [PAR_DEFAUT]: COULEUR_SANS_TYPE });
   assert.deepEqual(FAMILLES_DE_LA_PALETTE.poids, { ...COULEURS_DES_POIDS, [PAR_DEFAUT]: COULEUR_SANS_TYPE });
   assert.deepEqual(Object.keys(COULEURS_DES_ARMES), ['depart'], 'le bleu des armes de départ');
+  // les types de dégâts physiques : les clés sont celles de LIBELLES_DES_DEGATS (arme-champs.mjs), la valeur reste dans le module de la règle
+  assert.equal(FAMILLES_DE_LA_PALETTE.degats, COULEURS_DES_DEGATS);
+  assert.deepEqual(Object.keys(COULEURS_DES_DEGATS), Object.keys(LIBELLES_DES_DEGATS));
+  assert.deepEqual(Object.keys(COULEURS_DES_DEGATS).map(classeDeDegats), ['couleur-degats-taille', 'couleur-degats-estoc', 'couleur-degats-frappe']);
+  assert.equal(classeDeDegats('inconnu'), null, 'sans classe par défaut : un type inconnu n’a aucune couleur');
   // lot des accessoires : les couleurs des niveaux (celles de l'onglet du classeur) restent dans leur module, une famille à elles même quand une valeur
   // est celle d'un type d'armure ou d'une magie (« Garder séparées ») ; pas de `par-defaut` (un niveau absent ne porte aucune couleur)
   assert.equal(FAMILLES_DE_LA_PALETTE.niveau, COULEURS_DES_NIVEAUX);
@@ -79,8 +88,9 @@ test('dix-neuf familles, chacune lue dans le module de sa règle : magies, attri
   // reçoit), une par partie du plan, même clé ; pas de `par-defaut` (une page sans partie ne porte aucune classe : l'accent du site)
   assert.equal(FAMILLES_DE_LA_PALETTE.partie, COULEURS_DES_PARTIES);
   assert.deepEqual(Object.keys(COULEURS_DES_PARTIES), PARTIES.map((p) => p.id), 'une couleur par partie du plan');
+  // (« plus-loin » ne colore plus aucune page depuis le 2026-11-05 : les Bases ont l'accent du site, « Accent du site » ; elle reste une partie de l'ancien guide)
   assert.deepEqual(COULEURS_DES_PARTIES, { decouvrir: '#2a6f97', creer: '#2e7d4f', jouer: '#b03030', progresser: '#6a4a9c', 'plus-loin': '#5a6470' }, 'les valeurs d’avant le lot');
-  assert.ok(RUBRIQUES_DU_GUIDE.every((r) => r.groupes.every((g) => Object.hasOwn(COULEURS_DES_PARTIES, g.partie))), 'chaque groupe du plan, la partie d’une couleur');
+  assert.ok([...DECOUVRIR.groupes, PAGES_DE_LA_CREATION].every((g) => Object.hasOwn(COULEURS_DES_PARTIES, g.partie)), 'chaque groupe du plan, la partie d’une couleur');
   assert.ok(!Object.hasOwn(COULEURS_DES_PARTIES, PAR_DEFAUT));
   assert.deepEqual(Object.keys(COULEURS_DES_TYPES), ['Léger', 'Intermédiaire', 'Lourd'], 'les trois types de la légende de la grille');
   assert.deepEqual(Object.keys(CLASS_COLORS), CLASS_GROUPS.map((g) => g.key), 'une couleur par catégorie de /classes/');
@@ -105,7 +115,7 @@ test('dix-neuf familles, chacune lue dans le module de sa règle : magies, attri
   }
   // chaque famille est émise sur chaque page ou par les pages de sa zone, jamais les deux
   assert.deepEqual([...FAMILLES_DE_CHAQUE_PAGE, ...FAMILLES_DES_ZONES].sort(), Object.keys(FAMILLES_DE_LA_PALETTE).sort());
-  assert.deepEqual(FAMILLES_DE_CHAQUE_PAGE, ['magie', 'attribut', 'caracteristique', 'affinite']);
+  assert.deepEqual(FAMILLES_DE_CHAQUE_PAGE, ['magie', 'attribut', 'caracteristique', 'affinite', 'case', 'degats']);
   assert.deepEqual(FAMILLES_DES_ZONES, ['posture', 'alignement', 'classe', 'race', 'palier', 'mode', 'neutre', 'materiau', 'arme', 'armure', 'poids', 'niveau', 'partie', 'genre', 'don']);
   // la fiche : les familles d'une zone qu'elle pose, sans celles des onglets de l'équipement hors le poids du bouclier ; plus les parties du guide (ses
   // quatre zones)
@@ -138,12 +148,15 @@ test('le nom d’une classe : « couleur-<famille>-<id> », l’id = la clé du 
   // lot des catégories de classe, des races et du reste de la fiche
   assert.equal(classeDeCategorie('melee'), 'couleur-classe-melee');
   assert.equal(classeDeCategorie('non-classees'), null, 'pas une catégorie de couleur : une section des Spéciales');
-  assert.equal(classeDUneClasse({ id: 'classes/guerrier', data: { tags: ['classe', 'càc'] } }), 'couleur-classe-melee');
-  assert.equal(classeDUneClasse({ id: 'classes/parleur', data: { tags: ['classe', 'càc'] } }), 'couleur-classe-speciales', 'exception du Parleur');
-  assert.equal(classeDUneClasse({ id: 'classes/x', data: { tags: [] } }), 'couleur-classe-speciales', 'non classée : sous « Spéciales », comme classColor');
-  for (const tags of [['càc'], ['distance'], ['magique'], ['hybride animal'], ['hybride'], []]) {
-    const entree = { id: 'classes/x', data: { tags } };
-    assert.equal(FAMILLES_DE_LA_PALETTE.classe[classeDUneClasse(entree).slice('couleur-classe-'.length)], classColor(entree), tags.join());
+  // les mots-clés d'une classe par leur id (`data.mots_cles` : décision R195)
+  assert.equal(classeDUneClasse({ id: 'classes/guerrier', data: { mots_cles: ['classe', 'cac'] } }), 'couleur-classe-melee');
+  // R238 (3) : plus d'exception pour le Parleur, « Classe spéciale » en base ; la catégorie ne vient que du mot-clé
+  assert.equal(classeDUneClasse({ id: 'classes/parleur', data: { mots_cles: ['classe', 'speciale'] } }), 'couleur-classe-speciales');
+  assert.equal(classeDUneClasse({ id: 'classes/parleur', data: { mots_cles: ['classe', 'cac'] } }), 'couleur-classe-melee', 'aucune exception par identifiant');
+  assert.equal(classeDUneClasse({ id: 'classes/x', data: { mots_cles: [] } }), 'couleur-classe-speciales', 'non classée : sous « Spéciales », comme classColor');
+  for (const ids of [['cac'], ['distance'], ['magique'], ['hybride-animal'], ['hybride'], []]) {
+    const entree = { id: 'classes/x', data: { mots_cles: ids } };
+    assert.equal(FAMILLES_DE_LA_PALETTE.classe[classeDUneClasse(entree).slice('couleur-classe-'.length)], classColor(entree), ids.join());
   }
   assert.equal(classeDeRace('pure'), 'couleur-race-pure');
   assert.equal(classeDeRace('hybride'), 'couleur-race-hybride');
@@ -163,16 +176,18 @@ test('le nom d’une classe : « couleur-<famille>-<id> », l’id = la clé du 
   // lot des accessoires : un niveau absent ou inconnu n'a pas de classe (pas de `par-defaut`), comme il n'avait pas de couleur
   assert.deepEqual([1, '5', null, undefined, 6].map(classeDeNiveau), ['couleur-niveau-1', 'couleur-niveau-5', null, null, null]);
   assert.notEqual(classeDeNiveau(1), classeDuTypeDArmure('Léger'), 'la même valeur, deux classes');
-  // lot des parties du guide : la classe d'une partie (une page de Découvrir ou des Bases, un groupe du sommaire, une zone de la fiche) ; une page sans
-  // partie (Règles avancées, Guide du MJ) n'a pas de classe (pas de `par-defaut`), comme elle n'avait pas de couleur
+  // lot des parties du guide : la classe d'une partie (une page de Découvrir ou de la création du personnage, une zone de la fiche) ; une page sans
+  // partie (les autres pages des onglets des Règles, Guide du MJ) n'a pas de classe (pas de `par-defaut`), comme elle n'avait pas de couleur
   assert.deepEqual(['decouvrir', 'creer', 'jouer', 'progresser', 'plus-loin', null, undefined, 'inconnue'].map(classeDePartie),
     ['couleur-partie-decouvrir', 'couleur-partie-creer', 'couleur-partie-jouer', 'couleur-partie-progresser', 'couleur-partie-plus-loin', null, null, null]);
-  assert.equal(classeDePartie(partieDeLaPage('guide/rejoindre-une-partie')), 'couleur-partie-jouer');
+  assert.equal(classeDePartie(partieDeLaPage('guide/creer-son-personnage')), 'couleur-partie-creer');
+  assert.equal(classeDePartie(partieDeLaPage('guide/premiers-sorts')), 'couleur-partie-creer', 'une étape de la création : la couleur de « creer » (R184)');
+  assert.equal(classeDePartie(partieDeLaPage('guide/les-degats')), null, 'une page des onglets des Règles : l’accent du site (« Accent du site », 2026-11-05)');
   assert.equal(classeDePartie(partieDeLaPage('guide/meteo')), null, 'une page de référence');
   const classes = couleursDeLaPalette().map((c) => c.classe);
   assert.equal(classes.length, Object.values(FAMILLES_DE_LA_PALETTE).reduce((n, f) => n + Object.keys(f).length, 0));
   assert.equal(new Set(classes).size, classes.length, 'une classe par couleur');
-  for (const c of classes) assert.match(c, /^couleur-(?:magie|attribut|caracteristique|affinite|posture|alignement|classe|race|palier|mode|neutre|materiau|arme|armure|poids|niveau|partie|genre|don)-[a-z0-9]+(?:-[a-z0-9]+)*$/);
+  for (const c of classes) assert.match(c, /^couleur-(?:magie|attribut|caracteristique|affinite|posture|alignement|classe|race|palier|mode|neutre|materiau|arme|armure|poids|degats|niveau|partie|genre|don|case)-[a-z0-9]+(?:-[a-z0-9]+)*$/);
 });
 
 test('pas de recopie : une affinité qui est un attribut ou une magie garde la classe de cet attribut ou de cette magie ; Anti et Démon n’en ont pas', () => {
@@ -205,7 +220,7 @@ test('la valeur de chaque classe est celle de sa règle (rendue lisible), et son
   assert.equal(COULEURS_DES_MATERIAUX.titane, '#3c78d8', 'la couleur de référence reste dans son module');
   // une famille dont la couleur ne porte pas de texte (le trait d'un palier de résistance ; le bleu des armes de départ, une nuance et un filet) n'est
   // pas corrigée : le seuil de 4,5:1 vaut pour un texte ; la grande vulnérabilité garde #e53935 (4,4:1 au mieux), les armes de départ #3c78d8
-  assert.deepEqual(FAMILLES_SANS_TEXTE, ['palier', 'arme', 'genre', 'don']);
+  assert.deepEqual(FAMILLES_SANS_TEXTE, ['palier', 'arme', 'degats', 'genre', 'don', 'case']);
   assert.equal(couleursDeLaPalette(['arme']).find((c) => c.cle === 'depart').fond, '#3c78d8');
   assert.equal(couleursDeLaPalette(['palier']).find((c) => c.cle === 'grande_vulnerabilite').fond, '#e53935');
   assert.ok(contraste('#e53935', texteSurCouleur('#e53935')) < CONTRASTE_MINIMAL, 'elle serait corrigée si elle portait un texte');
@@ -281,7 +296,7 @@ test('les combinaisons des potions : la base (une classe du site) et le niveau ;
 test('aucune couleur écrite dans le module de la palette ; la palette posée sur chaque page par layouts/Base.astro, d’un poids borné ; les familles d’une zone émises par leurs pages', () => {
   assert.deepEqual(lire('src/lib/palette-css.mjs').match(HEX) ?? [], []);
   assert.match(lire('src/layouts/Base.astro'), /<style is:inline set:html=\{cssDeLaPalette\(\)\}><\/style>/);
-  // le poids ajouté à chaque page : environ 3,4 ko aujourd'hui (38 classes et les 16 de second rang des magies) ; au-delà de 4 ko, revoir la manière de
+  // le poids ajouté à chaque page : environ 3,9 ko aujourd'hui (48 classes, dont les 7 des cases de tableau et les 3 des types de dégâts, et les 16 de second rang des magies) ; au-delà de 4 ko, revoir la manière de
   // l'émettre. Toutes les familles et tous les seconds rangs sur chaque page le dépasseraient : c'est pourquoi les familles d'une zone n'y sont pas.
   assert.ok(cssDeLaPalette().length < 4000, `${cssDeLaPalette().length} octets`);
   const tout = cssDesFamilles(Object.keys(FAMILLES_DE_LA_PALETTE)) + cssDesSecondsRangs('magie') + cssDesSecondsRangs('caracteristique');
@@ -311,11 +326,11 @@ test('aucune couleur écrite dans le module de la palette ; la palette posée su
   // les niveaux des accessoires : l'onglet Accessoires seul
   assert.match(lire('src/components/accessoires/AccessoiresPage.astro'), /const couleurs = cssDesFamilles\(\['niveau'\]\);[^]*<style is:inline set:html=\{couleurs\}><\/style>/);
   assert.doesNotMatch(lire('src/layouts/Base.astro'), /'niveau'/, 'pas sur chaque page');
-  // les parties du guide : une page de Découvrir ou des Bases (seulement si elle en pose une), le sommaire (seulement si un groupe en pose une : celui des
-  // Bases), l'accueil (ses cartes) et la fiche (ses zones, avec ses autres familles d'une zone) ; jamais sur chaque page
+  // les parties du guide : une page de Découvrir (seulement si elle en pose une), l'accueil (ses cartes) et la fiche (ses zones, avec ses autres familles
+  // d'une zone) ; jamais sur chaque page. Plus le sommaire : ses groupes n'ont plus de couleur (Les bases, sans groupes depuis le 2026-11-05)
   assert.equal(cssDesParties(), cssDesFamilles(['partie']));
-  assert.match(lire('src/components/guide/PageDuGuide.astro'), /\{couleur && <style is:inline set:html=\{cssDesParties\(\)\}><\/style>\}/);
-  assert.match(lire('src/components/guide/Sommaire.astro'), /const enCouleur = groupes\.some\(\(g\) => g\.classe\);[^]*\{enCouleur && <style is:inline set:html=\{cssDesParties\(\)\}><\/style>\}/);
+  assert.match(lire('src/components/guide/PageDuGuide.astro'), /\{couleur\?\.startsWith\('couleur-partie-'\) && <style is:inline set:html=\{cssDesParties\(\)\}><\/style>\}/);
+  assert.doesNotMatch(lire('src/components/guide/Sommaire.astro'), /cssDesParties|classe/, 'le sommaire : plus de couleur de partie');
   assert.match(lire('src/pages/index.astro'), /<style is:inline set:html=\{cssDesParties\(\)\}><\/style>/);
   assert.ok(FAMILLES_DE_LA_FICHE.includes('partie') && FAMILLES_DES_ZONES.includes('partie') && !FAMILLES_DE_CHAQUE_PAGE.includes('partie'));
   assert.doesNotMatch(lire('src/layouts/Base.astro'), /'partie'/, 'pas sur chaque page');
@@ -327,19 +342,23 @@ test('aucune couleur écrite dans le module de la palette ; la palette posée su
 
 const construit = existsSync(new URL('../dist/index.html', import.meta.url));
 test('la palette dans les pages construites', construit ? {} : { skip: 'site non construit (npm run build)' }, () => {
+  // la page construite, sans la feuille des mots-clés colorés (sur chaque page depuis la migration 0098 : les familles d'une zone qu'un mot-clé nomme ;
+  // test « mots-clés colorés » plus bas) : ce qui suit vérifie où chaque page émet les familles qu'elle pose
   const page = (rel) => {
     const construite = new URL(`../dist/${rel}`, import.meta.url);
     assert.ok(existsSync(construite), `page construite : ${rel}`);
-    return readFileSync(construite, 'utf8');
+    const html = readFileSync(construite, 'utf8');
+    assert.equal(html.split('<style data-couleurs-mots-cles>').length - 1, 1, `${rel} : la feuille des mots-clés colorés`);
+    return html.replace(/<style data-couleurs-mots-cles>[^<]*<\/style>/, '');
   };
-  for (const rel of ['index.html', 'ressources/equipement/index.html', 'fiche/index.html', 'regles/les-postures/index.html']) {
+  for (const rel of ['index.html', 'ressources/armes/index.html', 'fiche/index.html', 'regles/les-postures/index.html']) {
     assert.ok(page(rel).includes(`<style>${cssDeLaPalette()}</style>`), `dans la page construite : ${rel}`);
   }
   // les familles d'une zone : sur les pages qui les posent, et seulement là
   assert.ok(page('fiche/index.html').includes(`<style>${cssDesFamilles(FAMILLES_DE_LA_FICHE)}</style>`), 'postures, alignements… et poids : la fiche');
   assert.ok(page('regles/les-postures/index.html').includes(`<style>${cssDesFamilles(['posture'])}</style>`), 'postures : la page du guide');
-  assert.ok(page('ressources/equipement/index.html').includes(`<style>${cssDesSecondsRangs('caracteristique')}</style>`), 'seconds rangs : l’onglet Armes');
-  for (const rel of ['index.html', 'ressources/equipement/index.html']) assert.ok(!page(rel).includes('.couleur-posture-'), `${rel} : pas de postures`);
+  assert.ok(page('ressources/armes/index.html').includes(`<style>${cssDesSecondsRangs('caracteristique')}</style>`), 'seconds rangs : la page Armes');
+  for (const rel of ['index.html', 'ressources/armes/index.html']) assert.ok(!page(rel).includes('.couleur-posture-'), `${rel} : pas de postures`);
   // les catégories de classe et les races : sur leurs listes et leurs pages, et seulement là (et la fiche)
   assert.ok(page('classes/index.html').includes(`<style>${cssDesFamilles(['classe'])}</style>`), 'classes : la liste');
   assert.ok(page('classes/guerrier/index.html').includes(`<style>${cssDesFamilles(['classe', 'don'])}</style>`), 'classes et types de don : la page d’une classe');
@@ -348,21 +367,25 @@ test('la palette dans les pages construites', construit ? {} : { skip: 'site non
   for (const rel of ['index.html', 'classes/index.html', 'races/humain/index.html']) assert.ok(!/\.couleur-(?:genre|don)-/.test(page(rel)), `${rel} : ni genres ni types`);
   for (const rel of ['races/index.html', 'races/humain/index.html']) assert.ok(page(rel).includes(`<style>${cssDesFamilles(['race'])}</style>`), `races : ${rel}`);
   for (const rel of ['index.html', 'magies/index.html']) assert.ok(!/\.couleur-(?:classe|race|palier|mode|neutre)-/.test(page(rel)), `${rel} : pas de ces familles`);
-  // les matériaux, les armes de départ, les types d'armure et les poids : l'équipement, les composants (matériaux), la fiche (poids)
-  const equipement = page('ressources/equipement/index.html');
-  assert.ok(equipement.includes(`<style>${cssDesFamilles(['materiau', 'arme'])}</style>`) && equipement.includes(`<style>${cssDesFamilles(['armure', 'poids'])}</style>`), 'l’équipement');
+  // les matériaux, les armes de départ, les types d'armure et les poids : les pages Armes, Armures et Boucliers, les composants (matériaux), la fiche (poids)
+  assert.ok(page('ressources/armes/index.html').includes(`<style>${cssDesFamilles(['materiau', 'arme'])}</style>`), 'la page Armes');
+  // les types de dégâts sont dans la feuille de chaque page (icône d'un mot-clé) : la page Armes ne les émet pas une seconde fois
+  for (const c of couleursDeLaPalette(['degats'])) assert.equal(page('ressources/armes/index.html').split(`.${c.classe}{`).length - 1, 1, `${c.classe} : une seule règle`);
+  for (const rel of ['ressources/armures/index.html', 'ressources/bouclier/index.html']) assert.ok(page(rel).includes(`<style>${cssDesFamilles(['armure', 'poids'])}</style>`), rel);
   assert.ok(page('ressources/composants/index.html').includes(`<style>${cssDesFamilles(['materiau'])}</style>`), 'les composants');
   assert.ok(!/\.couleur-(?:materiau|arme|armure)-/.test(page('fiche/index.html')), 'la fiche : le poids seulement');
   for (const rel of ['index.html', 'magies/index.html']) assert.ok(!/\.couleur-(?:materiau|arme|armure|poids)-/.test(page(rel)), `${rel} : pas de ces familles`);
-  // les niveaux des accessoires : l'onglet Accessoires de l'équipement, et seulement là
-  assert.ok(equipement.includes(`<style>${cssDesFamilles(['niveau'])}</style>`), 'les niveaux : l’onglet Accessoires');
-  for (const rel of ['index.html', 'magies/index.html', 'fiche/index.html', 'ressources/composants/index.html']) assert.ok(!/\.couleur-niveau-/.test(page(rel)), `${rel} : pas des niveaux`);
-  // les parties du guide : l'accueil, le sommaire des Bases, une page de Découvrir ou des Bases (la fiche : avec ses familles, ci-dessus) ; ni une page de
-  // référence du guide, ni une autre page
-  for (const rel of ['index.html', 'regles/index.html', 'decouvrir/index.html', 'regles/les-postures/index.html']) {
+  // les niveaux des accessoires : la page Accessoires, et seulement là
+  assert.ok(page('ressources/accessoires/index.html').includes(`<style>${cssDesFamilles(['niveau'])}</style>`), 'les niveaux : la page Accessoires');
+  for (const rel of ['index.html', 'magies/index.html', 'fiche/index.html', 'ressources/composants/index.html', 'ressources/armes/index.html']) assert.ok(!/\.couleur-niveau-/.test(page(rel)), `${rel} : pas des niveaux`);
+  // les parties du guide : l'accueil, une page de Découvrir ou de la création du personnage (la fiche : avec ses familles, ci-dessus) ; ni les autres
+  // pages des onglets des Règles (l'accent du site depuis le 2026-11-05 : « Accent du site »), ni le Guide du MJ, ni une autre page
+  for (const rel of ['index.html', 'decouvrir/index.html', 'regles/creer-son-personnage/index.html', 'regles/premiers-sorts/index.html', 'regles/index.html',
+    'regles/fiche-de-personnage/index.html']) {
     assert.ok(page(rel).includes(`<style>${cssDesFamilles(['partie'])}</style>`), `les parties : ${rel}`);
   }
-  for (const rel of ['magies/index.html', 'ressources/equipement/index.html', 'regles/avancees/index.html', 'mj/index.html']) assert.ok(!/\.couleur-partie-[a-z-]+\{/.test(page(rel)), `${rel} : pas des parties`);
+  for (const rel of ['magies/index.html', 'ressources/armes/index.html', 'regles/les-postures/index.html', 'regles/combats/index.html', 'regles/meteo/index.html',
+    'mj/index.html']) assert.ok(!/\.couleur-partie-[a-z-]+\{/.test(page(rel)), `${rel} : pas des parties`);
 });
 
 /** Le corps de la règle CSS d'un sélecteur (écrit tel quel, au début d'une ligne), sans les retours à la ligne. */
@@ -474,8 +497,12 @@ test('les feuilles lisent les propriétés que posent les classes : bâtons (cei
   assert.ok(pastille.includes(`color: var(${texte});`), pastille);
   assert.ok(!/--g\b|--g-texte/.test(equipement), 'plus de --g ni de --g-texte');
   assert.deepEqual(couleursEcrites(pastille), [], 'la pastille n’écrit que le noir de mélange de son liseré');
-  // la ligne colorée du gabarit commun lit les propriétés des combinaisons
-  assert.match(lire('src/styles/global/tableaux.css'), new RegExp(`:where\\(\\.table-donnees\\) tr\\.ligne-couleur > \\* \\{ background: var\\(${ligneFond}\\); color: var\\(${ligneTexte}\\); \\}`));
+  // la ligne colorée du gabarit commun lit les propriétés des combinaisons : la couleur teinte le fond du thème et fait le filet et le liseré, le texte
+  // de la classe borde le liseré ; le texte de la ligne est celui du thème (demande du propriétaire, 2026-10-29 ; test/tableaux.test.mjs)
+  const gabarit = lire('src/styles/global/tableaux.css');
+  assert.ok(regleDe(gabarit, ':where(.table-donnees) tr.ligne-couleur > *').includes(`background: color-mix(in srgb, var(${ligneFond}) 12%, var(--surface)); color: var(--text);`));
+  assert.ok(regleDe(gabarit, ':where(.table-donnees) tr.ligne-couleur').includes(
+    `--ligne-lisere: inset 4px 0 0 var(${ligneFond}), inset 5px 0 0 color-mix(in srgb, var(${ligneTexte}) 35%, var(${ligneFond}));`));
   // les fichiers de l'onglet Ceinture n'écrivent aucune couleur, hors l'exception du mélange
   for (const f of ['src/styles/ceinture/ceinture.css', 'src/components/ceinture/CeinturePanneau.astro', 'src/components/ceinture/BatonsMagiques.astro']) {
     assert.deepEqual(couleursDuFichier(f), [], f);
@@ -543,6 +570,9 @@ test('les feuilles des magies lisent les propriétés que posent les classes : p
   dans('src/styles/magie/creatures.css', 'button.creature__bouton--magie', `--creature-1: var(${fond}); --creature-2: var(${second});`);
   dans('src/styles/global/pastille.css', '.magies-orbite__noeud', `--p: var(${fond});`);
   dans('src/styles/global/pastille.css', '.magies-orbite__pastille', `--p: var(${fond});`);
+  // le panneau latéral des pages de magie : les mêmes pastilles que la carte (demande du propriétaire du 2026-11-05)
+  dans('src/styles/global/pastille.css', '.magies-panneau__lien', `--p: var(${fond});`);
+  dans('src/styles/global/pastille.css', '.magies-panneau__point', `--p: var(${fond});`);
   // la carte : le trait prend --couleur ou --couleur-2 de ses classes, selon la magie survolée
   const carte = lire('src/components/magie/MagiesConstellation.astro');
   assert.ok(carte.includes(`.magies-relation.avec-\${k} { --c: var(${fond});`) && carte.includes(`.magies-relation.seconde-\${k} { --c: var(${second}); }`), 'règles du survol');
@@ -684,7 +714,7 @@ const FICHIERS_DU_LOT_DES_PARTIES = [
 const FICHIERS_DU_LOT_DES_ARCHIVES_ET_DE_LA_MISE_A_JOUR = [
   'src/styles/archives/archives.css', 'src/pages/archives.astro', 'src/lib/archives.mjs',
   'src/styles/mise-a-jour/mise-a-jour.css', 'src/pages/mise-a-jour.astro', 'src/scripts/mise-a-jour.mjs', 'src/lib/notes-de-version.mjs',
-  'src/lib/notes-de-version-sens.mjs', 'src/lib/notes-de-version-rendu.mjs', 'src/lib/conflits-rendu.mjs',
+  'src/lib/notes-de-version-sens.mjs', 'src/lib/notes-de-version-rendu.mjs', 'src/lib/conflits-rendu.mjs', 'src/lib/lots-rendu.mjs',
   'src/styles/maintenance/maintenance.css', 'src/pages/maintenance.astro', 'src/scripts/maintenance.mjs', 'src/lib/maintenance-retour.mjs',
 ];
 /** Les feuilles où `--c`, `--c1`, `--c2`, `--c-texte` et `--texte-sur-c` sont les variables de la palette (tirées de la classe : `.fiche .teinte-palette`, `.guide-carac`…). */
@@ -698,7 +728,7 @@ const FEUILLES_DES_CLASSES_ET_RACES = /^src\/styles\/(?:classe|race)\//;
  * Mode Hyper de la fiche et du guide) ; et, dans les feuilles des classes et des races, celles de leur catégorie ou de leur nature (`var(--cla…)`,
  * `var(--rac…)`, `var(--hero-1)`, `var(--hero-2)`) ; et partout, celles qui lisent un jeton de ce lot posé sur une bannière ou un aplat foncé
  * (`var(--texte-sur-fonce)`, `var(--fond-banniere)` : un `color: #fff` remis là se verrait), le bleu des armes de départ tiré de sa classe
- * (`var(--depart…)`), les jetons du lot des matériaux, des armes et des armures (`var(--degats-…)`, `var(--defense-ap|am)`, `var(--ombre-fiche)`) et ceux
+ * (`var(--depart…)`), les jetons du lot des matériaux, des armes et des armures (`var(--defense-ap|am)`, `var(--ombre-fiche)`) et ceux
  * du lot des accessoires (`var(--maudit)`, `var(--maudit-texte)`, `var(--maudit-choisi)`, `var(--ombre-encart)`) et de la chronologie (`var(--ombre-evenement)`,
  * `var(--ombre-barre-du-bas)`, `var(--ombre-poignee)`, `var(--ombre-tiroir)`, `var(--voile-tiroir)`) et des parties du guide (`var(--sommaire-couleur)`,
  * `var(--guide…)`, `var(--etape…)`) et des archives et de la mise à jour (`var(--doc-google…)`, `var(--sheet-google…)`, `var(--amelioration…)`,
@@ -713,7 +743,7 @@ const reglesQuiLisentLaPalette = () => readdirSync(new URL('../src/styles/', imp
     .filter(([, , corps]) => /var\(--(?:couleur(?:-texte|-2)?|mag(?:-[a-z]+)?)[,)]/.test(corps)
       || (FEUILLES_DES_VARIABLES_DE_LA_PALETTE.has(`src/styles/${n}`) && /var\(--(?:c|c1|c2|c-texte|texte-sur-c)[,)]/.test(corps))
       || (FEUILLES_DES_CLASSES_ET_RACES.test(`src/styles/${n}`) && /var\(--(?:cla|rac)(?:-[a-z]+)?[,)]|var\(--hero-[12]\)/.test(corps))
-      || /var\(--(?:texte-sur-fonce|fond-banniere|depart(?:-[a-z]+)*|degats-[a-z]+|defense-a[pm]|ombre-fiche|maudit(?:-texte|-choisi)?|ombre-encart|ombre-evenement|ombre-barre-du-bas|ombre-poignee|ombre-tiroir|voile-tiroir|sommaire-couleur|guide(?:-[a-z]+)?|etape(?:-[a-z]+)?|(?:doc|sheet)-google(?:-fond)?|(?:amelioration|affaiblissement)(?:-fond)?|texte-sur-good)[,)]/.test(corps))
+      || /var\(--(?:texte-sur-fonce|fond-banniere|depart(?:-[a-z]+)*|defense-a[pm]|ombre-fiche|maudit(?:-texte|-choisi)?|ombre-encart|ombre-evenement|ombre-barre-du-bas|ombre-poignee|ombre-tiroir|voile-tiroir|sommaire-couleur|guide(?:-[a-z]+)?|etape(?:-[a-z]+)?|(?:doc|sheet)-google(?:-fond)?|(?:amelioration|affaiblissement)(?:-fond)?|texte-sur-good)[,)]/.test(corps))
     .map(([, selecteur, corps]) => ({ fichier: `src/styles/${n}`, selecteur: selecteur.trim().replace(/\s+/g, ' '), corps })));
 test('aucune couleur écrite dans les fichiers des lots faits (ni dans les règles de ces lots des feuilles partagées), hors le noir et le blanc de mélange', () => {
   for (const f of [...FICHIERS_DU_LOT_DES_MAGIES, ...FICHIERS_DU_LOT_DES_CARACTERISTIQUES, ...FICHIERS_DU_LOT_DES_CLASSES_ET_RACES, ...FICHIERS_DU_LOT_DES_ARMES_ET_ARMURES,
@@ -725,12 +755,12 @@ test('aucune couleur écrite dans les fichiers des lots faits (ni dans les règl
   for (const attendue of ['src/styles/fiche/fiche.css .fiche[data-magie] .fiche-etape', 'src/styles/personnages/liste.css .perso--magie',
     'src/styles/classe/page.css .annexe-classe__carte--magie', 'src/styles/equipement/equipement.css .acc-gemme', 'src/styles/magie/sorts.css .npm__badge',
     // les règles des magies qui ne lisent que les variables de leur feuille (`--c` de la fiche, sur la couleur d'un sort)
-    'src/styles/fiche/fiche.css .fiche .fiche-table--sorts select[data-couleur]', 'src/styles/fiche/fiche.css .fiche .invocation-choix',
+    'src/styles/fiche/fiche.css .fiche .liste-choix__bouton[data-couleur]', 'src/styles/fiche/fiche.css .fiche .liste-choix__option.teinte-palette', 'src/styles/fiche/fiche.css .fiche .invocation-choix',
     'src/styles/fiche/fiche.css .resistance', 'src/styles/fiche/fiche.css .resistance--magie',
     // lot des caractéristiques, postures et alignements
     'src/styles/fiche/fiche.css .carac', 'src/styles/fiche/fiche.css .carac__nom', 'src/styles/fiche/fiche.css .competences__groupe',
     'src/styles/fiche/fiche.css .competences__groupe thead th', 'src/styles/fiche/fiche.css .alignement__resultat', 'src/styles/fiche/fiche.css .fiche .posture-carte',
-    'src/styles/fiche/fiche.css .invocation-carte__carac', 'src/styles/fiche/fiche.css .fiche .sort-prepare select[data-couleur], .sort-prepare__posture[data-couleur]',
+    'src/styles/fiche/fiche.css .invocation-carte__carac', 'src/styles/fiche/fiche.css .sort-prepare__posture[data-couleur]',
     'src/styles/guide/blocs.css .guide-carac', 'src/styles/guide/blocs.css .guide-competences__groupe', 'src/styles/guide/blocs.css .guide-posture',
     'src/styles/guide/blocs.css .guide-posture__nom', 'src/styles/bestiaire/carte.css .bcarac', 'src/styles/armes/armes.css .arme-comp',
     'src/styles/metier/tableau.css .metier-cible, .metier-carac',
@@ -745,17 +775,18 @@ test('aucune couleur écrite dans les fichiers des lots faits (ni dans les règl
     // lot des matériaux, des armes de départ, des types d'armure et des poids des boucliers
     'src/styles/armes/armes.css .materiau', 'src/styles/armes/armes.css .arme-fiche__materiau', 'src/styles/armes/armes.css .armes',
     'src/styles/armes/armes.css .armes__phrase-depart', 'src/styles/armes/armes.css .arme--depart > .arme__nom, .arme--depart + .arme-suite > .arme-suite__marge',
-    'src/styles/armes/armes.css .arme-dgt--frappe',
-    // les armes élémentaires (R167) : leurs lignes sur le fond de leur magie, sa pastille dans la fiche de l'arme
-    'src/styles/armes/armes.css .arme--elementaire > *, .arme-suite--elementaire > *', 'src/styles/armes/armes.css .arme-fiche__magie',
+    // les armes élémentaires (R167) : leurs lignes teintées de leur magie (demande du propriétaire du 2026-10-29), sa pastille dans la ligne et dans la
+    // fiche de l'arme
+    'src/styles/armes/armes.css .arme--elementaire, .arme-suite--elementaire', 'src/styles/armes/armes.css .arme--elementaire .arme-dgt--magie',
+    'src/styles/armes/armes.css .arme-fiche__magie',
     'src/styles/armures/armures.css .pmat__nom', 'src/styles/armures/armures.css .ptype, .pmat-pastille, .ppoids',
     'src/styles/armures/armures.css .poids__nom', 'src/styles/armures/armures.css .pdef__ap', 'src/styles/armures/armures.css .pdef__am',
-    'src/styles/armures/armures.css .pdgt--frappe', 'src/styles/composants/composants.css .comp-teinte', 'src/styles/equipement/equipement.css .arme-dgt--taille, .pdgt--taille',
+    'src/styles/composants/composants.css .comp-teinte', "src/styles/equipement/equipement.css :is(.arme-dgt, .pdgt)[class*='couleur-degats-']",
     'src/styles/equipement/equipement.css .arme-fiche, .pfiche', "src/styles/fiche/fiche.css .bouclier__tuile[data-poids]",
     // lot des niveaux des accessoires
-    "src/styles/accessoires/accessoires.css .acc-niveau-pastille[class*='couleur-niveau-']", "src/styles/accessoires/accessoires.css .acc-ligne[class*='couleur-niveau-'] > *",
-    "src/styles/accessoires/accessoires.css .acc-ligne[class*='couleur-niveau-'] > .acc-jet", "src/styles/accessoires/accessoires.css .acc-produit[class*='couleur-niveau-']",
-    "src/styles/accessoires/accessoires.css .acc :where(.acc-ligne[class*='couleur-niveau-']) .acc-de--acquis", 'src/styles/accessoires/accessoires.css .acc-produit',
+    "src/styles/accessoires/accessoires.css .acc-niveau-pastille[class*='couleur-niveau-']", "src/styles/accessoires/accessoires.css .acc-ligne[class*='couleur-niveau-']",
+    "src/styles/accessoires/accessoires.css .acc-ligne[class*='couleur-niveau-'] .acc-ligne__niveau, html.js .acc-ligne.acc-competence[class*='couleur-niveau-'] [data-acc-niveau]",
+    "src/styles/accessoires/accessoires.css .acc-produit[class*='couleur-niveau-']", 'src/styles/accessoires/accessoires.css .acc-produit',
     'src/styles/accessoires/accessoires.css .acc-ligne--malediction > *', 'src/styles/accessoires/accessoires.css .acc-produit.est-maudit',
     'src/styles/accessoires/accessoires.css .acc-produit.est-detruit .acc-produit__titre', 'src/styles/accessoires/accessoires.css .acc-produit__sur strong',
     "src/styles/accessoires/accessoires.css .acc-produit[class*='couleur-niveau-'] .acc-produit__sur strong",
@@ -765,14 +796,15 @@ test('aucune couleur écrite dans les fichiers des lots faits (ni dans les règl
     "src/styles/chronologie/chronologie.css .frise__evenement[class*='couleur-evenement-']", "src/styles/chronologie/chronologie.css .frise__barre[class*='couleur-evenement-']",
     "src/styles/chronologie/chronologie.css .frise__morceau[class*='couleur-evenement-']", 'src/styles/chronologie/chronologie.css .chrono-page',
     "src/styles/chronologie/chronologie.css html.js .frise-voile:not([hidden])",
-    // lot des parties du guide
-    "src/styles/global/wiki.css .sommaire[class*='couleur-partie-']", 'src/styles/global/wiki.css .sommaire--couleur > h2',
-    "src/styles/guide/blocs.css .guide-reference[class*='couleur-partie-']", 'src/styles/guide/blocs.css .guide-rubriques__lien:hover, .guide-rubriques__lien:focus-visible',
+    // lot des parties du guide (les règles du sommaire des Bases, retirées avec ses groupes le 2026-11-05)
+    "src/styles/guide/blocs.css .guide-reference.guide-reference--couleur", 'src/styles/guide/blocs.css .guide-rubriques__lien:hover, .guide-rubriques__lien:focus-visible',
     "src/styles/fiche/fiche.css .fiche-zone[class*='couleur-partie-']", 'src/styles/fiche/fiche.css .sort-prepare__marque',
     // lot des archives et de la mise à jour
     'src/styles/archives/archives.css .archive__genre--doc', 'src/styles/archives/archives.css .archive__genre--sheet',
     'src/styles/mise-a-jour/mise-a-jour.css .nv-badge--ajout', 'src/styles/mise-a-jour/mise-a-jour.css .nv-diff del',
-    'src/styles/mise-a-jour/mise-a-jour.css .nv-dev button.nv-principal, .nv-dialogue button.nv-principal']) {
+    'src/styles/mise-a-jour/mise-a-jour.css .nv-dev button.nv-principal, .nv-dialogue button.nv-principal',
+    // lot des cases de tableau
+    "src/styles/global/wiki.css :is(td, th).case-coloree.case-coloree"]) {
     assert.ok(regles.some((r) => `${r.fichier} ${r.selecteur}` === attendue), `règle choisie : ${attendue}`);
   }
   // plus rien hors du lot dans ces règles (l'ombre de l'infobulle et l'échelle des relations sont passées aux jetons au lot des restes) : chacune entière
@@ -794,7 +826,7 @@ test('aucune couleur écrite dans les fichiers des lots faits (ni dans les règl
   assert.doesNotMatch(fiche, /--c-texte: \$\{|setProperty\('--c-texte'|--texte-sur-c: \$\{p/, 'aucune variable de ces couleurs posée');
   for (const attendu of [
     "el('div', { class: ['carac', ...teinteDe(k)].join(' ') }", "el('div', { class: ['competences__groupe', ...teinteDe(k)].join(' ') }",
-    "class: ['posture-carte', ...teinteDe(p)].join(' ')", 'poserTeinte(posture, teinteDe(p?.posture));',
+    "class: ['posture-carte', ...teinteDe(p)].join(' ')", 'poserTeinte(posture, teinteDe(couleur));',
     'poserTeinte(sortie, teinteDe(regles.alignements?.[a.nom] ?? regles.alignement_par_defaut));', 'teinte: caracDe(o.competence_id)',
     "class: ['invocation-carte__carac', ...teinteDe(carac ?? regles.caracteristique_par_defaut)].join(' ')",
   ]) assert.ok(fiche.includes(attendu), attendu);
@@ -849,12 +881,15 @@ test('les classes de ce lot posées par les pages, l’éditeur et la fiche : de
     assert.doesNotMatch(lire(f), /--couleur-(?:classe|texte-classe|race)|style=\{?`?["']?--c/, f);
   }
   assert.match(lire('src/components/classes/ClassesPastilles.astro'), /<section class=\{`classes-groupe \$\{classeDeCategorie\(group\.key\)\}`\} id=\{group\.key\}>/);
-  assert.match(lire('src/components/classes/ClassePage.astro'), /const couleur = classeDUneClasse\(entry\);[^]*<div class=\{`classe \$\{couleur\}`\}/);
+  // la page d'une classe ou d'une race : la couleur du mot-clé coloré qui y mène, sinon celle de sa catégorie ou de sa nature (migration 0098, réponse Q5
+  // du propriétaire : lib/couleur-de-la-page.mjs#classeDeLaPage, une classe de la palette ou d'un mot-clé)
+  assert.match(lire('src/components/classes/ClassePage.astro'), /const couleur = classeDeLaPageDuSite\(entryHref\(entry\), classeDUneClasse\(entry\), \{ base: import\.meta\.env\.BASE_URL \}\);[^]*<div class=\{`classe \$\{couleur\}`\}/);
   assert.match(lire('src/components/race/RacesPastilles.astro'), /<section class=\{`races-groupe \$\{classeDeRace\(group\.nature\)\}`\} id=\{group\.key\}>/);
-  assert.match(lire('src/components/race/RacePage.astro'), /<div class=\{`race race--\$\{hybride \? 'hybride' : 'pure'\} \$\{classeDeRace\(hybride \? 'hybride' : 'pure'\)\}`\}>/);
+  assert.match(lire('src/components/race/RacePage.astro'), /const couleur = classeDeLaPageDuSite\(entryHref\(entry\), classeDeRace\(hybride \? 'hybride' : 'pure'\), \{ base: import\.meta\.env\.BASE_URL \}\);[^]*<div class=\{`race race--\$\{hybride \? 'hybride' : 'pure'\} \$\{couleur\}`\}>/);
   const nouvelles = lire('src/scripts/edition/nouvelles.mjs');
   assert.ok(nouvelles.includes(`<div class="race race--\${hybride ? 'hybride' : 'pure'} \${classeDeRace(hybride ? 'hybride' : 'pure')}">`), 'race créée');
-  assert.ok(nouvelles.includes('const couleur = classeDUneClasse({ id, data: { tags } });') && nouvelles.includes('<div class="classe ${couleur}" data-ed-classe='), 'classe créée');
+  // la catégorie d'une classe créée se lit par les noms protégés de ses mots-clés (lib/mots-cles-proteges.mjs#nomDuProtege : migration 0113, ids entiers)
+  assert.ok(nouvelles.includes('const couleur = classeDUneClasse({ id, data: { mots_cles: motsCles.map((m) => m.nom).filter(Boolean) } });') && nouvelles.includes('<div class="classe ${couleur}" data-ed-classe='), 'classe créée');
   // le script de la fiche : chaque pastille, groupe et choix fait pose une classe (teinteDe), jamais `--c` en style ni une couleur reçue ou écrite
   const fiche = lire('src/scripts/fiche.mjs');
   assert.doesNotMatch(fiche, /style: `--c|--texte-sur-c: \$\{|\bcouleur: (?:'#|r\.couleur|race|k\.couleur|c\.classe)|\.couleur \?\?|#6b5a45|#8a7a66/, 'aucune couleur de race, de classe ni de neutre');
@@ -884,8 +919,32 @@ test('les feuilles des matériaux, des armes, des armures et des boucliers lisen
   dans('src/styles/armes/armes.css', '.materiau', `--ligne-fond: var(${fond}); --ligne-texte: var(${texte});`);
   dans('src/styles/armes/armes.css', '.arme-fiche__materiau', `background: var(${fond}); color: var(${texte});`);
   dans('src/styles/armes/armes.css', '.armes', `--depart: var(${fond});`);
-  // les armes élémentaires (R167) : leurs deux lignes et la pastille de leur magie dans la fiche, la classe de la magie (couleur-magie-<id>)
-  dans('src/styles/armes/armes.css', '.arme--elementaire > *, .arme-suite--elementaire > *', `background: var(${fond}); color: var(${texte});`);
+  // les armes élémentaires (R167) : leurs deux lignes (le fond du thème teinté de leur magie, le filet et le liseré de sa couleur, le texte du thème :
+  // demande du propriétaire du 2026-10-29), la pastille de leur magie dans la ligne et dans la fiche, la classe de la magie (couleur-magie-<id>)
+  const armes = lire('src/styles/armes/armes.css');
+  dans('src/styles/armes/armes.css', '.arme--elementaire, .arme-suite--elementaire', [`--elem-teinte: color-mix(in srgb, var(${fond}) 12%, var(--surface));`,
+    `--elem-filet: color-mix(in srgb, var(${fond}) 60%, var(--border));`, `--elem-bord: color-mix(in srgb, var(${texte}) 35%, var(${fond}));`]);
+  dans('src/styles/armes/armes.css', '.arme--elementaire > *, .arme-suite--elementaire > *', 'background: var(--elem-teinte);');
+  dans('src/styles/armes/armes.css', '.arme--elementaire > .arme__nom, .arme-suite--elementaire > .arme-suite__marge', `box-shadow: inset 4px 0 0 var(${fond}), inset 5px 0 0 var(--elem-bord);`);
+  dans('src/styles/armes/armes.css', '.arme--elementaire .arme-dgt--magie', `background: var(${fond}); color: var(${texte});`);
+  const surLeTexteDeLaClasse = [...armes.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+    .filter(([, sel, corps]) => /--elementaire/.test(sel) && !/arme-dgt--magie/.test(sel) && corps.includes(`color: var(${texte})`)).map(([, sel]) => sel.trim());
+  assert.deepEqual(surLeTexteDeLaClasse, [], 'aucune case d’une arme élémentaire dans le texte de la classe (seule la pastille de sa magie)');
+  // le texte adouci d'une arme élémentaire (mains, cases vides) : une part du texte du thème mêlé au texte adouci, lisible (4,5:1) sur la teinte de
+  // chaque magie, au repos et survolée ou choisie, dans les deux thèmes
+  const [, partDouce] = regleDe(armes, '.arme--elementaire :is(.arme__mains, .vide)').match(/color: color-mix\(in srgb, var\(--text\) (\d+)%, var\(--muted\)\);/) ?? [];
+  assert.ok(partDouce, 'le texte adouci des armes élémentaires');
+  const [, forte] = regleDe(armes, '.arme--elementaire, .arme-suite--elementaire').match(/--elem-teinte-forte: color-mix\(in srgb, var\(--couleur\) (\d+)%, var\(--surface\)\);/) ?? [];
+  assert.ok(forte, 'la teinte d’une arme survolée ou choisie');
+  for (const b of blocsDuTheme().filter((x) => [':root', ':root[data-theme="dark"]'].includes(x.sel))) {
+    const doux = surFond(b.valeur('--text'), b.valeur('--muted'), Number(partDouce) / 100);
+    for (const c of couleursDeLaPalette(['magie'])) {
+      for (const p of [12, Number(forte)]) {
+        const f = surFond(c.fond, b.valeur('--surface'), p / 100);
+        assert.ok(contraste(doux, f) >= CONTRASTE_MINIMAL, `${b.sel}, ${c.classe} à ${p} % : ${doux} sur ${f} = ${contraste(doux, f).toFixed(2)}`);
+      }
+    }
+  }
   dans('src/styles/armes/armes.css', '.arme-fiche__magie', `background: var(${fond}); color: var(${texte});`);
   // le bleu des armes de départ (famille sans texte : FAMILLES_SANS_TEXTE) : aucune règle qui le lit ne pose le texte de sa classe, et la classe posée sur
   // `.armes` ne s'hérite pas sous lui (un élément n'a de --couleur que par sa propre classe)
@@ -909,19 +968,22 @@ test('les feuilles des matériaux, des armes, des armures et des boucliers lisen
   // les couleurs d'interface sans règle : des jetons du thème, avec leur valeur d'avant (styles/global/base.css ; « Thème reste, Debug à part »)
   const theme = lire('src/styles/global/base.css');
   const jeton = (nom) => theme.match(new RegExp(`\\n {2}${nom}: ([^;]+);`))?.[1];
-  assert.deepEqual(['--degats-taille', '--degats-estoc', '--degats-frappe', '--defense-ap', '--defense-am', '--ombre-fiche'].map(jeton),
-    ['#c0392b', '#2471a3', '#7d6608', '#7d6608', '#2471a3', '0 6px 14px -12px rgb(0 0 0 / 0.4)']);
+  assert.deepEqual(['--defense-ap', '--defense-am', '--ombre-fiche'].map(jeton), ['#7d6608', '#2471a3', '0 6px 14px -12px rgb(0 0 0 / 0.4)']);
   dans('src/styles/armures/armures.css', '.pdef__ap', ['color-mix(in srgb, var(--defense-ap) 16%, var(--surface))', 'color-mix(in srgb, var(--defense-ap) 40%, var(--border))']);
   dans('src/styles/armures/armures.css', '.pdef__am', ['color-mix(in srgb, var(--defense-am) 14%, var(--surface))', 'color-mix(in srgb, var(--defense-am) 40%, var(--border))']);
-  for (const [f, s] of [['src/styles/armes/armes.css', '.arme-dgt--frappe'], ['src/styles/armures/armures.css', '.pdgt--frappe']]) dans(f, s, 'var(--degats-frappe)');
-  dans('src/styles/equipement/equipement.css', '.arme-dgt--taille, .pdgt--taille', 'var(--degats-taille)');
-  dans('src/styles/equipement/equipement.css', '.arme-dgt--estoc, .pdgt--estoc', 'var(--degats-estoc)');
+  // les types de dégâts Taille, Estoc et Frappe : une famille de la palette (`degats`), plus des jetons du thème ; une seule règle, sur la pastille qui
+  // porte la classe, lit sa couleur (le même liseré à 45 % qu'avant, pour les trois types)
+  dans('src/styles/equipement/equipement.css', ":is(.arme-dgt, .pdgt)[class*='couleur-degats-']", `border-color: color-mix(in srgb, var(${fond}) 45%, var(--border));`);
   dans('src/styles/equipement/equipement.css', '.arme-fiche, .pfiche', 'box-shadow: var(--ombre-fiche);');
-  assert.doesNotMatch(lire('src/styles/equipement/equipement.css'), /--degats-(?:taille|estoc):/, 'la page ne les écrit plus');
+  assert.doesNotMatch(theme, /--degats-/, 'plus de jeton du thème : la couleur d’un type de dégâts est celle de sa classe');
+  for (const f of ['src/styles/armes/armes.css', 'src/styles/armures/armures.css', 'src/styles/equipement/equipement.css']) {
+    assert.doesNotMatch(lire(f), /--degats-|\.(?:arme-dgt|pdgt)--(?:taille|estoc|frappe)\b/, `${f} : plus de règle par type`);
+  }
 });
 
 test('les classes de ce lot posées par les rendus, les scripts des onglets et la fiche : des noms de la palette, jamais une couleur ni un style', async () => {
   const { htmlDuPoids, htmlDeMateriau, htmlDeLigneDeMateriau, RENDUS_DES_ARMURES } = await import('../src/lib/armures-rendu.mjs');
+  const { htmlDesTypesDeDegatsElementaires, RENDUS_DES_ARMES } = await import('../src/lib/armes-rendu.mjs');
   const { htmlDeLigneDeMateriau: ligneDeComposant } = await import('../src/lib/composants-rendu.mjs');
   // les rendus (les mêmes pour la page construite et le mode modification) : la classe, jamais un style
   const rendus = [
@@ -932,7 +994,17 @@ test('les classes de ce lot posées par les rendus, les scripts des onglets et l
     [htmlDeLigneDeMateriau({ ligne: { ressource_id: 'ressources/armures#materiau:fer', ap: 5, am: 0, solidite: 3 }, cle: 'fer', nom: 'Fer', type: 'Lourd', prix: '1 RO' }, 'matiere'), 'couleur-armure-lourd'],
     [ligneDeComposant({ id: 'ressources/armures#materiau:fer-noir', nom: 'Fer noir', type: 'Lourd', citations: [] }), 'couleur-materiau-fer-noir'],
     [ligneDeComposant({ id: 'ressources/armures#materiau:nouveau', nom: 'Nouveau', type: 'Autres', citations: [] }), `couleur-materiau-${PAR_DEFAUT}`],
+    // les pastilles des types de dégâts : la classe de leur type (armes du catalogue, résistances et faiblesses des armures, types physiques d'une arme élémentaire)
+    [RENDUS_DES_ARMES['arme-types-degats']('Dégâts frappe/taille, Arme lourde'), 'couleur-degats-frappe'],
+    [RENDUS_DES_ARMES['arme-types-degats']('Dégâts frappe/taille, Arme lourde'), 'couleur-degats-taille'],
+    [RENDUS_DES_ARMURES['armure-resistance']('x2 Frappe'), 'couleur-degats-frappe'],
+    [RENDUS_DES_ARMURES['armure-faiblesse']('Estoc/Taille'), 'couleur-degats-estoc'],
+    [RENDUS_DES_ARMURES['armure-faiblesse']('Estoc/Taille'), 'couleur-degats-taille'],
+    [htmlDesTypesDeDegatsElementaires({ magie_id: 'magies/magie-du-feu', magie: 'Feu' }, { types_degats: ['estoc', 'taille'] }), 'couleur-degats-estoc'],
+    [htmlDesTypesDeDegatsElementaires({ magie_id: 'magies/magie-du-feu', magie: 'Feu' }, { types_degats: ['estoc', 'taille'] }), 'couleur-degats-taille'],
   ];
+  // la pastille de la magie d'une arme élémentaire n'a pas de classe de dégâts : elle lit la couleur de la ligne, rien d'autre
+  assert.doesNotMatch(htmlDesTypesDeDegatsElementaires({ magie_id: 'magies/magie-du-feu', magie: 'Feu' }, { types_degats: [] }), /couleur-degats-/);
   for (const [html, classe] of rendus) {
     assert.ok(html.includes(` ${classe}"`) || html.includes(` ${classe} `), `${classe} dans ${html.slice(0, 120)}`);
     assert.doesNotMatch(html, /\bstyle="/, html.slice(0, 120));
@@ -987,39 +1059,58 @@ test('les feuilles de l’onglet Accessoires lisent les propriétés que posent 
     return regle;
   };
   const NIVEAU = "[class*='couleur-niveau-']";
-  // les pastilles des niveaux, les lignes d'effet et de monture, l'encart : le fond et le texte de la classe
+  // les pastilles des niveaux (légende de l'étape 3, niveau d'une ligne) : le fond et le texte de la classe ; les lignes d'effet, de compétence et de
+  // monture : le fond du thème teinté de la couleur, le filet et le liseré de la couleur, le texte du thème ; l'encart : le fond teinté, le cadre et le
+  // liseré de la couleur (demande du propriétaire, 2026-10-29 : « Je ne veux plus de ligne entièrement colorées »)
   dans(`.acc-niveau-pastille${NIVEAU}`, `background: var(${fond}); color: var(${texte});`);
-  dans(`.acc-ligne${NIVEAU} > *`, `background: var(${fond}); color: var(${texte});`);
-  dans(`.acc-ligne${NIVEAU} .acc-remarque`, `color: var(${texte});`);
-  dans(`.acc-produit${NIVEAU}`, [`background: var(${fond}); color: var(${texte});`, `border-color: color-mix(in srgb, var(${fond}) 60%, #000);`]);
-  // les champs, le dé et les cases d'une ligne sur la couleur de son niveau : le texte de la classe, un liseré qui en est tiré, un voile de blanc de mélange
-  dans(`:where(.acc-ligne${NIVEAU}) .acc-acquis__curseur`, `accent-color: var(${texte});`);
-  dans(`:where(.acc-ligne${NIVEAU}) .acc-gemme-choix input`, `accent-color: var(${texte});`);
-  dans(`:where(.acc-ligne${NIVEAU}) .acc-acquis__saisie`, [`border-color: color-mix(in srgb, var(${texte}) 35%, transparent);`, 'background: color-mix(in srgb, #fff 70%, transparent);', `color: var(${texte});`]);
-  dans(`.acc :where(.acc-ligne${NIVEAU}) .acc-de--acquis`, ['background: color-mix(in srgb, #fff 55%, transparent);', `color: var(${texte});`, `border-color: color-mix(in srgb, var(${texte}) 35%, transparent);`]);
-  dans(`.acc :where(.acc-ligne${NIVEAU}) .acc-de--acquis:hover`, 'background: color-mix(in srgb, #fff 85%, transparent);');
+  dans(`.acc-ligne${NIVEAU} .acc-ligne__niveau, html.js .acc-ligne.acc-competence${NIVEAU} [data-acc-niveau]`, `background: var(${fond}); color: var(${texte});`);
+  dans(`.acc-ligne${NIVEAU}`, [`--acc-teinte: color-mix(in srgb, var(${fond}) 12%, var(--surface));`, `--acc-filet: color-mix(in srgb, var(${fond}) 60%, var(--border));`,
+    `--acc-lisere: inset 4px 0 0 var(${fond}), inset 5px 0 0 color-mix(in srgb, var(${texte}) 35%, var(${fond}));`]);
+  const cases = dans(`.acc-ligne${NIVEAU} > *`, ['background: var(--acc-teinte);', 'border-top: 1px solid var(--acc-filet);', 'border-bottom: 1px solid var(--acc-filet);']);
+  assert.doesNotMatch(cases, /\bcolor:/, 'le texte du thème, plus celui de la classe');
+  dans(`.acc-ligne${NIVEAU} > :first-child`, 'box-shadow: var(--acc-lisere);');
+  dans(`html.js .acc tr.acc-ligne${NIVEAU}:hover, .acc tr.acc-ligne[data-choix]${NIVEAU}.est-choisi`, `--acc-teinte: color-mix(in srgb, var(${fond}) 20%, var(--surface));`);
+  dans(`.acc-produit${NIVEAU}`, [`background: color-mix(in srgb, var(${fond}) 8%, var(--surface));`, `border-color: color-mix(in srgb, var(${fond}) 60%, var(--border));`,
+    `box-shadow: inset 4px 0 0 var(${fond}), var(--ombre-encart);`]);
+  // les champs d'une ligne dans la couleur de son niveau : le curseur dans le texte du thème, la case saisie sur la surface, bordée du filet de la ligne ;
+  // le dé et les cases à cocher, ceux des autres lignes
+  dans(`:where(.acc-ligne${NIVEAU}) .acc-acquis__curseur`, 'accent-color: var(--text);');
+  dans(`:where(.acc-ligne${NIVEAU}) .acc-acquis__saisie`, ['border-color: var(--acc-filet);', 'background: var(--surface);', 'color: var(--text);']);
+  assert.doesNotMatch(css, /\.acc-de--acquis(?::hover)? \{[^}]*(?:#fff|--couleur)/, 'le dé d’une ligne n’a plus de voile ni la couleur du niveau');
+  assert.doesNotMatch(css, /\.acc-gemme-choix input \{[^}]*--couleur/, 'les cases des gemmes au choix n’ont plus la couleur du niveau');
   // chaque règle qui lit la couleur d'un niveau ne la lit que sur un élément qui porte la classe d'un niveau (une gemme porte celle de sa magie, dont
   // --couleur s'hériterait), hors l'infobulle d'une gemme, qui porte la classe de sa magie
   const regles = [...css.replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter(([, , corps]) => /var\(--couleur/.test(corps));
-  assert.ok(regles.length >= 10, `${regles.length} règles`);
+  assert.ok(regles.length >= 6, `${regles.length} règles`);
   for (const [, selecteur] of regles) {
     const sel = selecteur.trim();
     if (sel === '.bulle--gemme') continue;
     assert.ok(sel.includes(NIVEAU), `${sel} : lue sur l’élément qui porte la classe d’un niveau`);
   }
   assert.doesNotMatch(css, /--niv\b|--sur-niveau|\[style/, 'plus de --niv, de --sur-niveau ni de sélecteur sur le style');
-  // le texte adouci (la colonne du jet, les intitulés de l'encart) : une part du texte de la classe, lue dans la feuille ; lisible (4,5:1) sur chaque
-  // niveau, comme le texte plein (« Privilégé la lisibilité. »)
-  const [, part] = dans(`.acc-ligne${NIVEAU} > .acc-jet`, `transparent)`).match(new RegExp(`color: color-mix\\(in srgb, var\\(${texte}\\) (\\d+)%, transparent\\);`)) ?? [];
+  // le texte adouci de la colonne du jet, sur une ligne teintée : une part du texte du thème mêlé au texte adouci du thème, lue dans la feuille ; lisible
+  // (4,5:1) sur la teinte de chaque niveau, au repos, au survol et choisie, dans les deux thèmes ; les intitulés de l'encart (texte adouci du thème)
+  // aussi, sur sa teinte (« Privilégé la lisibilité. »)
+  const [, part] = dans(`.acc-ligne${NIVEAU} > .acc-jet`, 'var(--muted))').match(/color: color-mix\(in srgb, var\(--text\) (\d+)%, var\(--muted\)\);/) ?? [];
   assert.ok(part, 'le texte adouci de la colonne du jet');
-  dans(`.acc-produit${NIVEAU} :is(.acc-produit__sur, .acc-produit__sous, dt, .acc-produit__note)`, `color: color-mix(in srgb, var(${texte}) ${part}%, transparent);`);
   const niveaux = couleursDeLaPalette(['niveau']);
   assert.deepEqual(niveaux.map((c) => c.classe), ['couleur-niveau-1', 'couleur-niveau-2', 'couleur-niveau-3', 'couleur-niveau-4', 'couleur-niveau-5']);
+  const deuxThemes = blocsDuTheme().filter((x) => [':root', ':root[data-theme="dark"]'].includes(x.sel));
+  assert.equal(deuxThemes.length, 2);
   for (const c of niveaux) {
     assert.equal(c.fond, COULEURS_DES_NIVEAUX[c.cle], `${c.classe} : la couleur de l’onglet, inchangée (déjà lisible)`);
-    assert.equal(c.texte, '#171210', `${c.classe} : le texte foncé de la règle du site`);
-    const doux = surFond(c.texte, c.fond, Number(part) / 100);
-    assert.ok(contraste(c.fond, doux) >= CONTRASTE_MINIMAL, `${c.classe} : texte adouci ${doux} sur ${c.fond} = ${contraste(c.fond, doux).toFixed(2)}`);
+    assert.equal(c.texte, '#171210', `${c.classe} : le texte foncé de la règle du site (les pastilles)`);
+    assert.ok(contraste(c.fond, c.texte) >= CONTRASTE_MINIMAL, `${c.classe} : la pastille`);
+    for (const b of deuxThemes) {
+      const doux = surFond(b.valeur('--text'), b.valeur('--muted'), Number(part) / 100);
+      for (const teinte of [12, 20]) {
+        const f = surFond(c.fond, b.valeur('--surface'), teinte / 100);
+        assert.ok(contraste(b.valeur('--text'), f) >= CONTRASTE_MINIMAL, `${b.sel}, ${c.classe} à ${teinte} % : texte`);
+        assert.ok(contraste(doux, f) >= CONTRASTE_MINIMAL, `${b.sel}, ${c.classe} à ${teinte} % : texte adouci ${doux} sur ${f} = ${contraste(doux, f).toFixed(2)}`);
+      }
+      const encart = surFond(c.fond, b.valeur('--surface'), 0.08);
+      assert.ok(contraste(b.valeur('--muted'), encart) >= CONTRASTE_MINIMAL, `${b.sel}, encart ${c.classe} : intitulés ${b.valeur('--muted')} sur ${encart}`);
+    }
   }
   // les couleurs d'interface sans règle : des jetons du thème, avec leur valeur d'avant (styles/global/base.css ; « Thème reste, Debug à part »)
   const theme = lire('src/styles/global/base.css');
@@ -1032,7 +1123,8 @@ test('les feuilles de l’onglet Accessoires lisent les propriétés que posent 
   // le violet d'un accessoire maudit (réponses du propriétaire du 2026-10-23 : « Plus clair en sombre (Recommandé) », « Violet assombri (Recommandé) ») :
   //   - en texte sur le fond de la page : la référence en clair, un violet plus clair dans les deux blocs du thème sombre (préférence du système et choix
   //     du site), lisible sur la surface et le fond sombres ;
-  //   - sur un fond de niveau (clair dans les deux thèmes) : la référence (jamais la valeur sombre) assombrie par le calcul, lisible sur les cinq niveaux ;
+  //   - sur l'encart teinté d'un niveau (demande du propriétaire du 2026-10-29 : plus de fond plein) : le violet d'une ligne « MALÉDICTION » choisie
+  //     (--maudit-choisi : en sombre, le violet clair encore éclairci ; en clair, la référence), lisible sur les cinq niveaux dans les deux thèmes ;
   //   - le cadre pointillé de l'encart maudit ne porte pas de texte : la référence, non corrigée.
   const reference = jeton('--maudit');
   const sombres = [...theme.matchAll(/\n {2,4}--maudit-texte: (#[0-9a-f]{6});/g)].map((m) => m[1]);
@@ -1046,11 +1138,7 @@ test('les feuilles de l’onglet Accessoires lisent les propriétés que posent 
   dans('.acc-ligne--malediction > *', 'color: var(--maudit-texte);');
   dans('.acc-produit__sur strong', 'color: var(--maudit-texte);');
   dans('.acc-produit.est-detruit .acc-produit__titre', 'color: color-mix(in srgb, var(--maudit-texte) 70%, var(--text));');
-  const [, partSombre] = dans(`.acc-produit${NIVEAU} .acc-produit__sur strong`, '#000)').match(/color: color-mix\(in srgb, var\(--maudit\) (\d+)%, #000\);/) ?? [];
-  assert.ok(partSombre, 'sur un fond de niveau : la référence assombrie');
-  const assombri = surFond(reference, '#000000', Number(partSombre) / 100);
-  for (const c of niveaux) assert.ok(contraste(assombri, c.fond) >= CONTRASTE_MINIMAL, `violet assombri ${assombri} sur ${c.classe} (${c.fond}) = ${contraste(assombri, c.fond).toFixed(2)}`);
-  assert.ok(contraste(surFond(sombres[0], '#000000', Number(partSombre) / 100), niveaux.at(-1).fond) < CONTRASTE_MINIMAL, 'parti de la valeur sombre, le calcul ne suffirait pas');
+  dans(`.acc-produit${NIVEAU} .acc-produit__sur strong`, 'color: var(--maudit-choisi);');
   dans('.acc-produit.est-maudit', 'border: 2px dashed var(--maudit);');
   // une ligne « MALÉDICTION » choisie (réponse du propriétaire du 2026-10-23 : « Plus clair sur la ligne choisie (Recommandé) ») : en sombre, le violet du
   // texte encore éclairci par le calcul (dans les deux blocs sombres), lisible sur le fond de la ligne choisie, calculé comme la feuille l'écrit ; en
@@ -1076,8 +1164,20 @@ test('les feuilles de l’onglet Accessoires lisent les propriétés que posent 
   }
   const fondChoisiClair = surFond(clair.valeur('--accent'), clair.valeur('--surface'), Number(partAcc) / 100);
   assert.ok(contraste(reference, fondChoisiClair) >= CONTRASTE_MINIMAL, `en clair : ${reference} sur ${fondChoisiClair}`);
+  // le mot « Maudit » sur l'encart teinté de chaque niveau (8 %) : en sombre, le violet éclairci de --maudit-choisi (le violet du texte n'y suffirait pas
+  // partout) ; en clair, la référence
+  for (const b of blocsSombres) {
+    const violet = surFond(b.valeur('--maudit-texte'), '#ffffff', eclaircis[0] / 100);
+    const fonds = niveaux.map((c) => surFond(c.fond, b.valeur('--surface'), 0.08));
+    for (const f of fonds) assert.ok(contraste(violet, f) >= CONTRASTE_MINIMAL, `${b.sel} : « Maudit » ${violet} sur l’encart ${f} = ${contraste(violet, f).toFixed(2)}`);
+    assert.ok(fonds.some((f) => contraste(b.valeur('--maudit-texte'), f) < CONTRASTE_MINIMAL), `${b.sel} : sans l’éclaircir, illisible sur un niveau`);
+  }
+  for (const c of niveaux) {
+    const f = surFond(c.fond, clair.valeur('--surface'), 0.08);
+    assert.ok(contraste(reference, f) >= CONTRASTE_MINIMAL, `en clair : « Maudit » ${reference} sur l’encart ${c.classe} ${f}`);
+  }
   dans('.acc-produit', 'box-shadow: var(--ombre-encart);');
-  dans('html.js .acc tr.acc-ligne:hover > *', 'box-shadow: inset 0 0 0 999px color-mix(in srgb, #000 5%, transparent);');
+  dans(`html.js .acc tr.acc-ligne:not(${NIVEAU}):hover > *`, 'box-shadow: inset 0 0 0 999px color-mix(in srgb, #000 5%, transparent);');
   assert.deepEqual(couleursDuFichier(fichier), [], 'la feuille n’écrit plus que le noir et le blanc de mélange');
 });
 
@@ -1114,7 +1214,7 @@ test('les couleurs des événements de la chronologie : une classe par événeme
   assert.equal(classeDEvenement('flammes-bleues'), 'couleur-evenement-flammes-bleues');
   assert.equal(classeDEvenement('Âge de fer'), 'couleur-evenement-age-de-fer', 'l’id normalisé (idDeCouleur)');
   const evenements = evenementsDeLaBase();
-  assert.ok(evenements.length >= 70, `${evenements.length} événements`);
+  // tous ceux de la base (le site de dev en crée et en supprime) ; soixante-dix au moins à l'import (ci-dessous)
   const couleurs = couleursDesEvenements(evenements);
   const feuille = regles(cssDesEvenements(couleurs));
   // une règle par événement, dans l'ordre de lecture, aux noms uniques et sans caractère à échapper ; la valeur de la règle, jamais corrigée
@@ -1125,8 +1225,14 @@ test('les couleurs des événements de la chronologie : une classe par événeme
   }
   // le blanc de la règle du site (texteSurCouleur : la luminance reste sous son seuil, de justesse : les teintes visent 4,6:1 avec le blanc)
   for (const c of couleurs.values()) assert.equal(texteSurCouleur(c), '#ffffff', c);
-  assert.equal(couleurs.get(evenements.find((e) => e.epoque === 'inconnue').id), COULEUR_INCONNUE);
-  assert.equal(couleurs.get(evenements.find((e) => e.epoque === 'aujourdhui').id), COULEUR_AUJOURDHUI);
+  // les époques à couleur fixe : chaque événement de la base courante qui en a une, et l'import en a de chacune (le site de dev supprime des événements)
+  const evenementsDImport = chargerChronologie(baseDImport());
+  assert.ok(evenementsDImport.length >= 70, `${evenementsDImport.length} événements à l’import`);
+  const couleursDImport = couleursDesEvenements(evenementsDImport);
+  for (const [epoque, couleur] of [['inconnue', COULEUR_INCONNUE], ['aujourdhui', COULEUR_AUJOURDHUI]]) {
+    assert.equal(couleursDImport.get(evenementsDImport.find((e) => e.epoque === epoque).id), couleur, `${epoque}, à l’import`);
+    for (const e of evenements.filter((x) => x.epoque === epoque)) assert.equal(couleurs.get(e.id), couleur, e.id);
+  }
   assert.equal(cssDesEvenements(new Map()), '');
   assert.equal(cssDesEvenements(null), '');
   // pas une famille fixe : ni dans FAMILLES_DE_LA_PALETTE, ni sur chaque page (Base.astro), dont le plafond de 4 ko tient
@@ -1236,7 +1342,10 @@ test('lisibilité de la chronologie dans les deux thèmes, pour chaque événeme
     mesures.push([quoi, r]);
     assert.ok(r >= CONTRASTE_MINIMAL, `${quoi} : ${texte} sur ${fond} = ${r.toFixed(2)}:1`);
   };
-  const couleurs = couleursDesEvenements(evenementsDeLaBase());
+  // les couleurs des événements de la base courante, et celles de son état d'import (test/aide-base-d-import.mjs) : la teinte dépend de l'époque de
+  // chaque événement et de leur nombre, que le site de dev modifie ; l'import garde des teintes de la roue, que vise le contrôle du plus juste
+  const couleurs = new Map([...couleursDesEvenements(chargerChronologie(baseDImport())).entries()].map(([id, c]) => [`${id} (import)`, c]));
+  for (const [id, c] of couleursDesEvenements(evenementsDeLaBase())) couleurs.set(id, c);
   for (const [id, c] of couleurs) {
     // le texte de la classe (--couleur-texte : le blanc) sur l'aplat de l'événement, et sur l'aplat assombri au survol de « Commencer »
     lisible(blanc, c, `${id} : blanc sur la couleur`);
@@ -1294,10 +1403,17 @@ test('les classes des événements posées par la frise, la page et l’éditeur
 });
 
 // Lot des parties du guide (2026-10-23, même demande et mêmes choix de cadrage) : la couleur d'une partie de l'ancien guide passe par la classe de la
-// palette (`couleur-partie-<id>`, famille `partie`, lib/parties-couleurs.mjs#COULEURS_DES_PARTIES) : une page de Découvrir ou des Bases, les cartes de
-// l'accueil, les groupes du sommaire des Bases, les quatre zones de la fiche ; plus aucune couleur dans le plan (lib/livres.mjs).
+// palette (`couleur-partie-<id>`, famille `partie`, lib/parties-couleurs.mjs#COULEURS_DES_PARTIES) : une page de Découvrir, les cartes de l'accueil, les
+// quatre zones de la fiche (plus les pages des Bases ni leur sommaire depuis le 2026-11-05 : « Accent du site ») ; plus aucune couleur dans le plan
+// (lib/livres.mjs).
 
 const PARTIE = "[class*='couleur-partie-']";
+/**
+ * La page du guide qui a une couleur (`.guide-reference--couleur`, posé avec sa classe par components/guide/PageDuGuide.astro) : celle de sa partie, ou
+ * celle du mot-clé coloré qui y mène (migration 0098, lib/couleur-de-la-page.mjs : d'une autre famille, ou écrite) ; blocs.css la lit sur ce repère,
+ * plus sur `[class*='couleur-partie-']`.
+ */
+const PAGE_COLOREE = '.guide-reference--couleur';
 
 test('les feuilles des parties du guide lisent les propriétés que pose la classe, sur l’élément qui la porte ; ses enfants ne l’héritent pas', () => {
   const { fond, texte } = proprietes();
@@ -1314,23 +1430,23 @@ test('les feuilles des parties du guide lisent les propriétés que pose la clas
   // classe : un bloc sans classe propre garde son repli), sous :where() (aucun poids : la classe propre d'un bloc l'emporte)
   const blocs = 'src/styles/guide/blocs.css';
   dans(blocs, '.guide-reference', ['--guide: var(--accent);', '--guide-sur: var(--texte-sur-fonce);']);
-  dans(blocs, `.guide-reference${PARTIE}`, `--guide: var(${fond}); --guide-sur: var(${texte});`);
-  dans(blocs, `:where(.guide-reference${PARTIE}) > *`, `${fond}: initial; ${texte}: initial;`);
+  dans(blocs, `.guide-reference${PAGE_COLOREE}`, `--guide: var(${fond}); --guide-sur: var(${texte});`);
+  dans(blocs, `:where(.guide-reference${PAGE_COLOREE}) > *`, `${fond}: initial; ${texte}: initial;`);
   dans(blocs, '.guide-rubriques__lien:hover,\n.guide-rubriques__lien:focus-visible', 'background: var(--guide); color: var(--guide-sur);');
   assert.doesNotMatch(lire(blocs), /--couleur-partie|color: #fff/, 'plus de --couleur-partie ni de blanc écrit');
   // la seule règle du guide qui lit la couleur sans classe propre est celle de la page ; les blocs ne la lisent que sur l'élément qui porte leur classe
   // (magie, caractéristique, posture) ou leur repli
-  assert.deepEqual(lecteurs(blocs), [`.guide-reference${PARTIE}`, '.guide-magie', '.guide-carac', '.guide-competences__groupe', '.guide-posture']);
+  assert.deepEqual(lecteurs(blocs), [`.guide-reference${PAGE_COLOREE}`, '.guide-magie', '.guide-carac', '.guide-competences__groupe', '.guide-posture']);
   for (const [sel, repli] of [['.guide-magie', `--c: var(${fond}, var(--guide));`], ['.guide-competences__groupe', `--c: var(${fond}, var(--guide));`],
     ['.guide-posture', [`--c: var(${fond}, var(--guide));`, `--c-texte: var(${texte}, var(--text));`]]]) dans(blocs, sel, repli);
-  // l'accueil et le sommaire : la couleur lue sur la carte ou le groupe qui porte la classe, rien d'autre
+  // l'accueil : la couleur lue sur la carte qui porte la classe, rien d'autre ; le sommaire n'en lit plus (Les bases sans groupes depuis le 2026-11-05)
   const accueil = 'src/styles/accueil/accueil.css';
   dans(accueil, `.accueil-debut__carte${PARTIE}`, `--c: var(${fond});`);
   assert.deepEqual(lecteurs(accueil), [`.accueil-debut__carte${PARTIE}`]);
   const wiki = 'src/styles/global/wiki.css';
-  dans(wiki, `.sommaire${PARTIE}`, `--sommaire-couleur: var(${fond});`);
-  dans(wiki, '.sommaire--couleur > h2', 'border-left: 4px solid var(--sommaire-couleur);');
-  assert.deepEqual(lecteurs(wiki), [`.sommaire${PARTIE}`]);
+  assert.doesNotMatch(lire(wiki), /--sommaire-couleur|sommaire--couleur/, 'plus de couleur de groupe dans un sommaire');
+  // (et, depuis le lot 11, la case de tableau, sur la case qui porte la classe de sa couleur)
+  assert.deepEqual(lecteurs(wiki), [":is(td, th).case-coloree.case-coloree"]);
   // la fiche : --etape tirée de la classe de la partie de la zone, sur la zone ; la magie innée (sa classe est sur .fiche, posée par le script) est lue sur
   // .fiche elle-même, avant les zones, et les enfants d'une zone la retrouvent : les cadres (`.fiche[data-magie] .fiche-etape`) et tout élément sans classe
   // propre gardent la magie innée, jamais la couleur de la zone
@@ -1349,14 +1465,15 @@ test('les feuilles des parties du guide lisent les propriétés que pose la clas
   // palier, créature à deux magies) ou sur les cadres (la magie innée de .fiche)
   assert.deepEqual(lecteurs(fiche), ['.fiche', '.fiche[data-magie] .fiche-etape', '.fiche .teinte-palette', `.fiche-zone${PARTIE}`,
     ".attribut[data-a='barre4'][class*='couleur-magie-']", '.posture-carte__magie', ".resistances__table tr[class*='couleur-palier-']", '.fiche .invocation-choix--magie']);
-  assert.deepEqual(lecteurs(blocs).filter((s) => s.includes('couleur-partie')), [`.guide-reference${PARTIE}`], 'le guide : la page seule');
-  // les gabarits posent les classes, jamais un style : ni --couleur-partie, ni --sommaire-couleur, ni --c des cartes, ni --etape
+  assert.deepEqual(lecteurs(blocs).filter((s) => s.includes('guide-reference')), [`.guide-reference${PAGE_COLOREE}`], 'le guide : la page seule');
+  // les gabarits posent les classes, jamais un style : ni --couleur-partie, ni --sommaire-couleur, ni --c des cartes, ni --etape ; la page du guide, la
+  // couleur du mot-clé coloré qui y mène, sinon celle de sa partie (migration 0098, réponse Q5 du propriétaire)
   const page = lire('src/components/guide/PageDuGuide.astro');
-  assert.ok(page.includes('const couleur = classeDePartie(partieDeLaPage(entry.id));'));
+  assert.ok(page.includes('const couleur = classeDeLaPageDuSite(url(ici), classeDePartie(partieDeLaPage(entry.id)), { base: import.meta.env.BASE_URL });'));
   assert.ok(page.includes("<div class:list={['guide-reference', couleur && ['guide-reference--couleur', couleur]]}>"));
   const sommaire = lire('src/components/guide/Sommaire.astro');
-  assert.ok(sommaire.includes("class:list={['sommaire', g.classe && ['sommaire--couleur', g.classe]]}"));
-  assert.ok(lire('src/pages/regles/index.astro').includes('classe: classeDePartie(g.partie),'));
+  assert.ok(sommaire.includes('<section class="sommaire" id={g.id}'), 'un groupe de sommaire, sans classe de partie');
+  assert.doesNotMatch(lire('src/pages/regles/index.astro'), /classeDePartie|cssDesParties/, '/regles/ : l’accent du site');
   const accueilPage = lire('src/pages/index.astro');
   assert.ok(accueilPage.includes("classe: classeDePartie(partieDeLaPage(e.id)),") && accueilPage.includes("<li class:list={['accueil-debut__carte', c.classe]}>"));
   const fichePage = lire('src/pages/fiche/index.astro');
@@ -1382,7 +1499,7 @@ test('lisibilité des parties du guide dans les deux thèmes : le blanc sur leur
   const p = {
     guideTexteSombre: part(blocs, /:root\[data-theme="dark"\] \.guide-reference \{ --guide-texte: color-mix\(in srgb, var\(--guide\) (\d+)%, #fff\); \}/),
     soft: part(blocs, /--guide-soft: color-mix\(in srgb, var\(--guide\) (\d+)%, var\(--surface\)\);/),
-    guideTexteClair: part(blocs, /\.guide-reference\[class\*='couleur-partie-'\] \{[^}]*--guide-texte: color-mix\(in srgb, var\(--guide\) (\d+)%, #000\); \}/),
+    guideTexteClair: part(blocs, /\.guide-reference\.guide-reference--couleur \{[^}]*--guide-texte: color-mix\(in srgb, var\(--guide\) (\d+)%, #000\); \}/),
     info: part(tooltips, /\.info \{ --info: color-mix\(in srgb, var\(--mag\) (\d+)%, var\(--text\)\);/),
     doux: part(fiche, /\.fiche-zone \{\n {2}--etape-doux: color-mix\(in srgb, var\(--etape\) (\d+)%, var\(--surface\)\);/),
     sousTitre: part(fiche, /\.fiche-sous-titre \{[^}]*color: color-mix\(in srgb, var\(--etape\) (\d+)%, var\(--text\)\); \}/),
@@ -1402,7 +1519,7 @@ test('lisibilité des parties du guide dans les deux thèmes : le blanc sur leur
   assert.ok(regleDe(lire(blocs), '.guide-reference').includes('--guide-texte: var(--guide);'), 'sans partie : l’accent du site');
   assert.ok(regleDe(lire(blocs), '.guide-fil-rouge__nom').includes('color: var(--guide-texte);'));
   assert.doesNotMatch(lire(blocs), /\.guide-fil-rouge__nom \{ color:/, 'plus de règle à part pour le thème sombre');
-  assert.ok(lire(blocs).indexOf(`.guide-reference${PARTIE} {`) < lire(blocs).indexOf(':root[data-theme="dark"] .guide-reference {'));
+  assert.ok(lire(blocs).indexOf(`.guide-reference${PAGE_COLOREE} {`) < lire(blocs).indexOf(':root[data-theme="dark"] .guide-reference {'));
   const marque = regleDe(lire(fiche), '.sort-prepare__marque');
   assert.ok(marque.includes('--marque: var(--etape);') && marque.includes('color: var(--marque);'), 'le texte : en clair, la couleur de la zone');
   assert.ok(marque.includes('border: 1px solid var(--etape);'), 'la bordure (sans texte) garde la couleur de la zone, dans les deux thèmes');
@@ -1527,16 +1644,22 @@ test('les archives et la mise à jour : aucune famille de la palette ; leurs cou
   for (const [f, css] of [['archives.css', archives], ['mise-a-jour.css', maj]]) {
     assert.doesNotMatch(css, /:root|prefers-color-scheme|--nv-(?:vert|rouge)/, `${f} : ni bloc du thème, ni variable locale de couleur`);
   }
-  // les quatre boutons principaux sont couverts par la règle : trois boîtes ou boutons du script, « Résoudre ce lot » du rendu des conflits ; la page et ses
+  // les boutons principaux sont couverts par la règle : ceux des boîtes et de la page dans le script, « Résoudre ce lot » du rendu des conflits ; la page et ses
   // boîtes de dialogue sont dans .mise-a-jour (les boîtes y sont ajoutées), la section des conflits dans .nv-dev
   const script = lire('src/scripts/mise-a-jour.mjs');
   const boutons = [...script.matchAll(/<button type="(?:button|submit)" class="nv-principal"[^>]*>([^<]+)<\/button>/g)].map((m) => m[1]);
-  assert.deepEqual(boutons, ['Effectuer la mise à jour', 'Passer en version majeure', 'Lancer la simulation', 'Effectuer la mise à jour']);
-  assert.ok(lire('src/lib/conflits-rendu.mjs').includes('<div class="nv-dev__actions"><button type="submit" class="nv-principal">Résoudre ce lot</button></div>'));
-  assert.equal((script.match(/dialogue\.className = 'nv-dialogue';/g) ?? []).length, 2);
-  assert.equal((script.match(/racine\.append\(dialogue\);/g) ?? []).length, 2);
+  // (« Copier vers le dépôt » : la confirmation de la copie, base source seulement, lot 8)
+  assert.deepEqual(boutons, ['Effectuer la mise à jour', 'Passer en version majeure', 'Lancer la simulation', 'Effectuer la mise à jour', 'Copier vers le dépôt']);
+  // « Résoudre ce lot » : grisé (`disabled`) quand le lot attend un lot plus ancien (`bloque`), la classe du bouton principal dans les deux cas
+  assert.match(lire('src/lib/conflits-rendu.mjs'), /<div class="nv-dev__actions"><button type="submit" class="nv-principal"(?:\$\{bloque \? ' disabled' : ''\})?>Résoudre ce lot<\/button><\/div>/);
+  // … et la confirmation d'un lot de changements (« Appliquer », « Refuser » : le bouton principal est dans lib/lots-rendu.mjs#htmlDeLaConfirmation)
+  // quatre boîtes du script : version majeure, mise à jour ou simulation, lot de changements, copie vers le dépôt (lot 8)
+  assert.equal((script.match(/dialogue\.className = 'nv-dialogue';/g) ?? []).length, 4);
+  assert.equal((script.match(/racine\.append\(dialogue\);/g) ?? []).length, 4);
+  assert.match(lire('src/lib/lots-rendu.mjs'), /<button type="submit" class="nv-principal">\$\{action === 'refuser' \? 'Refuser le lot' : 'Appliquer le lot'\}<\/button>/);
+  assert.match(lire('src/lib/lots-rendu.mjs'), /<button type="button" class="nv-principal" data-nv-appliquer /);
   assert.ok(script.includes("const racine = document.querySelector('[data-mise-a-jour]');") && script.includes("const zone = racine.querySelector('[data-nv-dev]');")
-    && script.includes('zone.append(sectionDesConflits());'));
+    && script.includes('zone.append(sectionDesLots(), sectionDesConflits());'));
   const page = lire('src/pages/mise-a-jour.astro');
   assert.match(page, /<div class="mise-a-jour" data-mise-a-jour [^>]*>\s*<section class="nv-dev" data-nv-dev /);
   // aucune famille ajoutée : les pages n'émettent aucune feuille de la palette (celle de chaque page leur vient de Base.astro), le plafond de 4 ko tenu
@@ -1600,7 +1723,7 @@ test('lisibilité des archives et de la mise à jour dans les deux thèmes : cha
 // même rendu ; le texte posé sur le vert du site prend `--texte-sur-good` partout (réponse du propriétaire du 2026-10-23 à « En thème sombre, d'autres
 // boutons et pastilles du site ont un texte blanc sur le vert du site (#7fcf9b) […] Faut-il appliquer le même choix ici ? » : « Même choix partout
 // (Recommandé) »). Restent, nommés : l'impression et la page Debug (« la page Debug et l'impression ne changent pas »), les teintes des genres de sort et
-// des types de don (en attente d'une réponse du propriétaire), les cases de tableau (lot 11).
+// des types de don (en attente d'une réponse du propriétaire), les cases de tableau (lot 11, passées depuis à la famille `case`, plus bas).
 
 /** Les feuilles que le balayage des restes laisse de côté en entier, avec leur raison. */
 const FEUILLES_LAISSEES_DE_COTE = new Map([
@@ -1610,10 +1733,11 @@ const FEUILLES_LAISSEES_DE_COTE = new Map([
 ]);
 /** Les feuilles dont les blocs `@media print` écrivent le noir et le blanc de l'impression (« l'impression ne change pas ») : ces blocs sont laissés de côté. */
 const IMPRESSION_LAISSEE_DE_COTE = ['src/styles/classe/page.css', 'src/styles/race/page.css', 'src/styles/global/common.css'];
-/** Les règles laissées de côté : [feuille, sélecteur (tel quel, ou un motif), raison]. */
-const REGLES_LAISSEES_DE_COTE = [
-  ['src/styles/global/wiki.css', /^\[data-couleur="[a-z]+"\]$/, 'les couleurs des cases de tableau ({couleur:x}, lib/markdown-couleurs.mjs : lot 11)'],
-];
+/**
+ * Les règles laissées de côté : [feuille, sélecteur (tel quel, ou un motif), raison]. Plus aucune depuis le lot 11 (les cases de tableau, passées à la
+ * famille `case` de la palette) : seules la page Debug et l'impression restent de côté. Une exception future s'y nomme avec sa raison.
+ */
+const REGLES_LAISSEES_DE_COTE = [];
 
 /** L'indice de l'accolade qui ferme celle ouverte en `ouvrante`. */
 const accoladeFermante = (texte, ouvrante) => {
@@ -1714,7 +1838,7 @@ test('les restes : le bandeau du site de dev, l’échelle des relations et l’
       .filter(([, , corps]) => /background: var\(--good\)/.test(corps)).map(([, s, corps]) => ({ regle: `${f} ${s.trim().replace(/\s+/g, ' ')}`, corps })));
   assert.deepEqual(surLeVert.map((r) => r.regle), [
     "src/styles/edition/edition.css .ed-confirmer", "src/styles/edition/edition.css .ed-dialogue button[type='submit']",
-    'src/styles/fiche/fiche.css .onglet__compte[data-ok]', 'src/styles/mise-a-jour/mise-a-jour.css .nv-dev button.nv-principal, .nv-dialogue button.nv-principal',
+    'src/styles/fiche/fiche.css .onglet__compte[data-ok]', "src/styles/global/acces.css .acces-boutons button[type='submit']", 'src/styles/mise-a-jour/mise-a-jour.css .nv-dev button.nv-principal, .nv-dialogue button.nv-principal',
   ]);
   for (const { regle, corps } of surLeVert) assert.match(corps, /color: var\(--texte-sur-good\);/, regle);
   // le compteur des onglets de la fiche dans ses autres états : sur le rouge du site (règles à revoir), --texte-sur-danger (réponse du propriétaire du
@@ -1906,5 +2030,210 @@ test('les étiquettes des genres et des types dans les pages construites : leur 
     }
     assert.doesNotMatch(html, /<span class="(?:genre|don-type)[^"]*"[^>]*style=/, rel);
   }
-  assert.ok(genres > 300 && types > 300, `${genres} genres, ${types} types`);
+  // des centaines de genres (les sorts ne se suppriment pas) ; un type par don des pages de classe (le site de dev supprime des dons : leur nombre
+  // suit la base)
+  assert.ok(genres > 300 && (types > 0 || !ouvrirBase().prepare('SELECT count(*) AS n FROM capacite').get().n), `${genres} genres, ${types} types`);
+});
+
+// Lot 11, les cases de tableau (même demande et mêmes choix de cadrage) : la couleur d'une case du Markdown des pages (« {couleur:vert} »,
+// lib/markdown-couleurs.mjs, modifiable depuis le site de dev) passe par la classe de la palette (`couleur-case-<id>`, famille `case`,
+// lib/cases-couleurs.mjs#COULEURS_DES_CASES), les valeurs d'avant gardées (aucune source ne les donne : « Si le site n'a pas de règle il ajoute une
+// nouvelle couleur au site »). Choix appliqués au nom de la réponse permanente du propriétaire du 2026-10-23 (« Pour toutes tes prochaines questions sur
+// le thème et les palette, considère que je réponds "rcommandé" à chaque fois. ») : une famille à elles, sans rabattre une case sur une autre famille de
+// teinte proche (« Garder séparées ») ; sans texte sur la couleur pure (FAMILLES_SANS_TEXTE), le texte du site sur le mélange à 26 % mesuré dans les deux
+// thèmes ; émise sur chaque page (Base.astro), le plafond de 4 ko tenu ; `data-couleur` et le Markdown inchangés, la classe posée en plus.
+
+/** Les couleurs des cases avant le lot 11 (styles/global/wiki.css : `[data-couleur="…"] { --case: … }`), gardées telles quelles. */
+const CASES_D_AVANT = { rouge: '#c0392b', orange: '#e07b24', jaune: '#d4ac0d', vert: '#2e8b57', bleu: '#2a6fb0', violet: '#7b4fb0', gris: '#8a8a8a' };
+
+test('les cases de tableau : une famille de la palette, les couleurs d’avant, une classe par couleur de l’éditeur, du même nom que celui que pose le Markdown', () => {
+  assert.equal(FAMILLES_DE_LA_PALETTE.case, COULEURS_DES_CASES);
+  assert.deepEqual(COULEURS_DES_CASES, CASES_D_AVANT, 'les valeurs d’avant le lot, inchangées');
+  assert.deepEqual(Object.keys(COULEURS_DES_CASES), COULEURS_DE_CASE, 'les couleurs que l’éditeur écrit et relit, dans le même ordre');
+  assert.ok(!Object.hasOwn(COULEURS_DES_CASES, PAR_DEFAUT), 'pas de `par-defaut` : une case sans couleur connue n’a pas de classe');
+  for (const nom of COULEURS_DE_CASE) {
+    assert.equal(classeDeCase(nom), `couleur-case-${nom}`);
+    assert.equal(classeDeCouleurDeCase(nom), classeDeCase(nom), `${nom} : le nom posé sans la palette (plugin, aperçu, éditeur) est celui de la palette`);
+    assert.ok(classesDeLaPalette().has(classeDeCase(nom)), `${nom} : dans la feuille de chaque page (l’éditeur la pose au navigateur)`);
+  }
+  for (const inconnue of ['noir', 'fuchsia', '', null, undefined]) {
+    assert.equal(classeDeCase(inconnue), null, String(inconnue));
+    assert.equal(classeDeCouleurDeCase(inconnue), null, String(inconnue));
+  }
+  // « Garder séparées » : une famille à elle, même quand une autre a une teinte proche ; aucune autre famille ne la reprend
+  assert.deepEqual(Object.keys(FAMILLES_DE_LA_PALETTE).filter((f) => FAMILLES_DE_LA_PALETTE[f] === COULEURS_DES_CASES), ['case']);
+  // sans texte sur la couleur pure : la valeur de la règle, sans correction de lisibilité
+  assert.ok(FAMILLES_SANS_TEXTE.includes('case'));
+  for (const c of couleursDeLaPalette(['case'])) assert.equal(c.fond, COULEURS_DES_CASES[c.cle], c.classe);
+  // le module de la règle n'importe rien (le navigateur ne reçoit aucune couleur) ; le module que reçoit le navigateur n'en écrit aucune
+  assert.doesNotMatch(lire('src/lib/cases-couleurs.mjs'), /^\s*import\b/m);
+  for (const f of ['src/lib/markdown-edition.mjs', 'src/lib/markdown-couleurs.mjs']) assert.doesNotMatch(lire(f), /^import [^;]*(?:cases-couleurs|palette-css)/m, f);
+  // émission : sur chaque page (toute page qui rend du Markdown, et l'éditeur en place), sous le plafond de 4 ko
+  assert.ok(FAMILLES_DE_CHAQUE_PAGE.includes('case') && !FAMILLES_DES_ZONES.includes('case'));
+  assert.ok(cssDeLaPalette().includes(`.couleur-case-vert{--couleur:${CASES_D_AVANT.vert};`));
+  assert.ok(cssDeLaPalette().length < 4000, `${cssDeLaPalette().length} octets`);
+});
+
+test('les cases de tableau : le texte du site sur le mélange de chaque couleur à la surface, lisible dans les deux thèmes (4,5:1)', () => {
+  const wiki = lire('src/styles/global/wiki.css');
+  const regle = wiki.match(/\n:is\(td, th\)\.case-coloree\.case-coloree \{ background: color-mix\(in srgb, var\(--couleur\) (\d+)%, var\(--surface\)\); \}/);
+  assert.ok(regle, 'la règle des cases dans wiki.css (la part lue dans la feuille)');
+  const part = Number(regle[1]) / 100;
+  assert.equal(part, 0.26, 'la part d’avant le lot');
+  const blocs = blocsDuTheme().filter((b) => b.valeur('--surface') && b.valeur('--text'));
+  assert.equal(blocs.length, 3, 'le thème clair et les deux blocs du thème sombre');
+  const mesures = [];
+  for (const b of blocs) {
+    for (const [nom, couleur] of Object.entries(COULEURS_DES_CASES)) {
+      const fond = surFond(couleur, b.valeur('--surface'), part);
+      const c = contraste(fond, b.valeur('--text'));
+      mesures.push([`${nom}, ${b.sel}`, c]);
+      assert.ok(c >= CONTRASTE_MINIMAL, `${nom} (${b.sel}) : ${b.valeur('--text')} sur ${fond} = ${c.toFixed(2)}`);
+    }
+  }
+  const [quoi, minimum] = mesures.reduce((a, m) => (m[1] < a[1] ? m : a));
+  assert.ok(minimum > 8, `le plus juste : ${quoi}, ${minimum.toFixed(2)}:1`);
+});
+
+test('les cases de tableau : la feuille ne lit que la classe, l’éditeur pose la classe par classList, aucune couleur écrite ; l’aller-retour ignore la classe', () => {
+  for (const f of ['src/styles/global/wiki.css', 'src/styles/edition/edition.css', 'src/scripts/edition/guide.mjs', 'src/scripts/edition/tableaux.mjs', 'src/scripts/edition/onglets.mjs', 'src/lib/markdown-couleurs.mjs', 'src/lib/couleurs-ecrites.mjs', 'src/lib/markdown-edition.mjs']) {
+    assert.deepEqual(couleursDuFichier(f), [], f);
+  }
+  const wiki = lire('src/styles/global/wiki.css').replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.doesNotMatch(wiki, /\[data-couleur|--case\b/, 'plus de règle par attribut ni de variable des cases');
+  const edition = lire('src/styles/edition/edition.css').replace(/\/\*[\s\S]*?\*\//g, '');
+  assert.doesNotMatch(edition, /\.ed-couleur\[class/, 'plus de pastille par couleur de case : le choix de couleur est celui du glossaire (editeur.mjs#controleDeCouleur)');
+  assert.doesNotMatch(edition, /--case\b|\.ed-couleur\[data-couleur\]/);
+  // l'éditeur du guide : la classe de la palette posée et retirée avec le nom, par classList ; ni style, ni import de la palette ou du module des couleurs
+  const guide = lire('src/scripts/edition/guide.mjs');
+  assert.doesNotMatch(guide, /palette-css|cases-couleurs|setProperty|\.style\b/);
+  // la case colorée : ses classes (la marque et celle de la palette) posées et retirées par classList, avec la valeur écrite, dans les outils des tableaux partagés par toutes les barres
+  const tableaux = lire('src/scripts/edition/tableaux.mjs');
+  assert.doesNotMatch(tableaux, /palette-css|cases-couleurs|setProperty|\.style\b/);
+  assert.ok(tableaux.includes('c.classList.add(...classes);'), 'la case colorée');
+  assert.ok(tableaux.includes("if (k === CLASSE_DE_CASE_COLOREE || k.startsWith('couleur-')) c.classList.remove(k);"), 'la couleur d’avant retirée');
+  // l'aller-retour : le Markdown ne relit que `data-couleur`, jamais la classe
+  const td = (attributs, texte = 'x') => ({ type: 'element', nom: 'td', attributs, enfants: [{ type: 'texte', valeur: texte }] });
+  const table = (...cases) => [{ type: 'element', nom: 'table', attributs: {}, enfants: [{ type: 'element', nom: 'tr', attributs: {}, enfants: cases }] }];
+  assert.equal(versMarkdown(table(td({ 'data-couleur': 'vert', class: 'couleur-case-vert' }))), '|  |\n| --- |\n| {couleur:vert} x |\n');
+  assert.equal(versMarkdown(table(td({ class: 'couleur-case-rouge' }))), '|  |\n| --- |\n| x |\n', 'une classe seule ne fait pas une couleur');
+  assert.doesNotMatch(versMarkdown(table(td({ 'data-couleur': 'bleu', class: 'couleur-case-bleu' }))), /couleur-case/);
+  // l'aperçu assaini : la classe recalculée depuis le nom, jamais celle reçue
+  assert.equal(htmlSur(table(td({ 'data-couleur': 'vert', class: 'couleur-case-rouge autre' }))),
+    '<table><tr><td data-couleur="vert" class="case-coloree couleur-case-vert">x</td></tr></table>');
+  assert.equal(htmlSur(table(td({ 'data-couleur': 'noir', class: 'couleur-case-rouge' }))), '<table><tr><td>x</td></tr></table>');
+});
+
+test('la liste ouverte d\'un select suit le thème : option et optgroup ont le fond et le texte du site (Métier de la fiche, select transparent)', () => {
+  const css = lire('src/styles/global/common.css');
+  const regle = css.match(/(?:^|\n)option, optgroup \{([^}]*)\}/)?.[1];
+  assert.ok(regle, 'règle `option, optgroup` absente de common.css');
+  assert.match(regle, /background-color: var\(--surface\)/);
+  assert.match(regle, /(?:^|[;\s])color: var\(--text\)/);
+});
+
+test('les cases de tableau dans les pages construites : jamais `data-couleur` sans sa classe, ni une couleur en style', construit ? {} : { skip: 'site non construit (npm run build)' }, () => {
+  const fichiers = readdirSync(new URL('../dist/', import.meta.url), { recursive: true }).filter((n) => n.endsWith('.html') && !n.startsWith('_serveur'));
+  assert.ok(fichiers.length > 300, `${fichiers.length} pages`);
+  for (const rel of fichiers) {
+    const html = readFileSync(new URL(`../dist/${rel}`, import.meta.url), 'utf8');
+    for (const [balise] of html.matchAll(/<t[dh]\b[^>]*>/g)) {
+      const couleur = balise.match(/\bdata-couleur="([^"]*)"/)?.[1];
+      const classe = balise.match(/\bclass="[^"]*\b(couleur-case-[a-z]+)\b/)?.[1];
+      if (!couleur && !classe) continue;
+      assert.equal(classe, classeDeCase(couleur), `${rel} : ${balise}`);
+      assert.doesNotMatch(balise, /\bstyle=/, `${rel} : ${balise}`);
+    }
+  }
+  // le compte peut être nul (aucune page de la base n'a de case colorée aujourd'hui) : la classe posée au rendu est vérifiée par
+  // test/markdown-edition.test.mjs ; chaque page porte la feuille des sept (celle de chaque page, que l'éditeur en place lit aussi)
+  for (const rel of ['index.html', 'regles/index.html', 'decouvrir/l-univers/index.html', 'chronologie/index.html']) {
+    const html = readFileSync(new URL(`../dist/${rel}`, import.meta.url), 'utf8');
+    for (const nom of COULEURS_DE_CASE) assert.ok(html.includes(`.${classeDeCase(nom)}{--couleur:${COULEURS_DES_CASES[nom]};`), `${rel} : ${nom}`);
+  }
+});
+
+// Lot des mots-clés à adresse et colorés (migration 0098 ; réponses du propriétaire du 2026-11-06, Q5 et Q13 : la balise, la tuile du mode complet,
+// l'habillage de la bulle et la page vers laquelle mène le mot-clé prennent sa couleur ; « il ne faut pas de changement par rapport à avant en terme de
+// résultat »). La feuille des mots-clés colorés est posée sur chaque page par layouts/Base.astro (une couleur écrite, ou une famille d'une zone qu'un
+// mot-clé nomme) : son poids est borné ; les feuilles du lot ne lisent la couleur que sur l'élément qui porte la classe, et n'écrivent aucune couleur.
+test('mots-clés colorés (migration 0098) : la feuille de chaque page, d’un poids borné ; les feuilles du lot lisent la classe, sans couleur écrite', async () => {
+  const { cssDesMotsClesDuSite } = await import('../src/lib/couleur-de-la-page.mjs');
+  const base = lire('src/layouts/Base.astro');
+  assert.match(base, /<style is:inline data-couleurs-mots-cles set:html=\{cssDesMotsClesDuSite\(\)\}><\/style>/);
+  assert.ok(base.indexOf('cssDeLaPalette()') < base.indexOf('cssDesMotsClesDuSite()'), 'après la palette de chaque page');
+  // aujourd'hui (90 mots-clés colorés, chacun dans la couleur de sa page) : 9 classes des familles d'une zone (catégories de classe, natures de race,
+  // parties du guide), environ 0,6 ko ; au-delà de 1,5 ko, revoir la manière de l'émettre
+  const feuille = cssDesMotsClesDuSite();
+  assert.ok(feuille.length < 1500, `${feuille.length} octets`);
+  assert.ok(!/couleur-magie-/.test(feuille), 'les magies : déjà dans la palette de chaque page');
+  // les feuilles du lot : aucune couleur écrite (hors le noir et le blanc de mélange)
+  for (const f of ['src/styles/global/mots-cles.css', 'src/styles/glossaire/glossaire.css', 'src/lib/couleur-de-la-page.mjs', 'src/lib/glossaire-couleurs.mjs',
+    'src/pages/regles/glossaire.astro', 'src/scripts/glossaire.mjs', 'src/lib/glossaire-filtre.mjs']) {
+    assert.deepEqual(couleursDuFichier(f), [], f);
+  }
+  // la couleur lue sur l'élément qui porte la classe du mot-clé : sa balise, la tuile du mode complet, sa bulle, les lignes du Glossaire, <main> d'une page
+  const mots = lire('src/styles/global/mots-cles.css');
+  for (const selecteur of [":is(.mot-cle, .mot-cle-definition)[class*='couleur-']", ".mot-cle-definition[class*='couleur-']", ".bulle[id^='mot-cle-'][class*='couleur-']", 'main.page-coloree']) {
+    assert.ok(regleDe(mots, selecteur).includes('var(--couleur)'), selecteur);
+  }
+  assert.ok(regleDe(mots, ':where(main.page-coloree) > *').includes('--couleur: initial; --couleur-texte: initial;'), 'les enfants de <main> n’en héritent pas');
+  // le tableau du Glossaire (décision R234 (1)) : la ligne colorée du gabarit, tirée de la classe du mot-clé
+  assert.ok(regleDe(lire('src/styles/glossaire/glossaire.css'), '.glossaire-mot > tr').includes('--ligne-fond: var(--couleur); --ligne-texte: var(--couleur-texte);'));
+  // le script du Glossaire n'importe pas la palette : la page lui donne la liste des couleurs (data-couleurs) et émet les feuilles des familles
+  assert.doesNotMatch(lire('src/scripts/glossaire.mjs'), /palette-css|glossaire-couleurs/);
+  assert.match(lire('src/pages/regles/glossaire.astro'), /<style is:inline set:html=\{cssDesFamilles\(FAMILLES_DES_ZONES\)\}><\/style>/);
+});
+
+test('mots-clés colorés (migration 0098) : « rendu identique » — chaque page vers laquelle mène un mot-clé coloré garde la classe qu’elle avait (magie, catégorie de classe, nature de race, partie du guide)', async () => {
+  const { classeDeLaPage } = await import('../src/lib/couleur-de-la-page.mjs');
+  const { decouperLAdresse, motCleDeLaPage } = await import('../src/lib/mots-cles-liens.mjs');
+  const { chargerVocabulaire } = await import('../src/lib/mots-cles-db.mjs');
+  const { racesParNature } = await import('../src/lib/races-db.mjs');
+  const { cheminDePage } = await import('../src/lib/metiers.mjs');
+  const db = ouvrirBase();
+  const vocabulaire = chargerVocabulaire(db);
+  const chemin = (id) => `/${cheminDePage(id).replace(/^\//, '')}`;
+  // la couleur que chaque page avait avant la migration 0098 (celle que son gabarit posait)
+  const avant = [];
+  for (const m of db.prepare('SELECT id, nom FROM magie').all()) avant.push([m.id, classeDeMagie(m.nom)]);
+  // les noms protégés des mots-clés de la page (lib/mots-cles-proteges.mjs#nomDuProtege : ids entiers depuis la migration 0113), comme
+  // lib/pages-db.mjs#motsClesDesPages les donne aux gabarits
+  const { nomDuProtege } = await import('../src/lib/mots-cles-proteges.mjs');
+  const motsCles = (id) => db.prepare('SELECT t.tag_id AS id, m.cle FROM page_tag t JOIN mot_cle m ON m.id = t.tag_id WHERE t.page_id = ? ORDER BY t.ordre').all(id)
+    .map(nomDuProtege).filter(Boolean);
+  for (const p of db.prepare("SELECT id, titre FROM page WHERE type = 'classes' AND statut != 'example'").all()) {
+    avant.push([p.id, classeDUneClasse({ id: p.id, data: { mots_cles: motsCles(p.id), title: p.titre } })]);
+  }
+  const natures = racesParNature(db);
+  for (const r of natures.pures) avant.push([r.id, classeDeRace('pure')]);
+  for (const r of natures.hybrides) avant.push([r.id, classeDeRace('hybride')]);
+  for (const p of db.prepare("SELECT id FROM page WHERE id LIKE 'guide/%'").all()) avant.push([p.id, classeDePartie(partieDeLaPage(p.id))]);
+  let parUnMotCle = 0;
+  for (const [id, classe] of avant) {
+    assert.equal(classeDeLaPage(vocabulaire, chemin(id), classe), classe, `${id} : la même couleur qu’avant`);
+    if (classeDeLaPage(vocabulaire, chemin(id))) parUnMotCle += 1;
+  }
+  // les mots-clés colorés à adresse mènent tous à l'une de ces pages (aucune autre page ne prend de couleur au départ) ; un mot-clé coloré sans adresse
+  // (les compétences et les caractéristiques, R231 (4), migration 0112) ne colore aucune page
+  const pages = new Set(avant.map(([id]) => chemin(id)));
+  const colores = vocabulaire.filter((m) => m.couleur);
+  // quatre-vingt-dix au moins à l'import (migration 0098 ; le site de dev supprime des mots-clés colorés)
+  const coloresDImport = chargerVocabulaire(baseDImport()).filter((m) => m.couleur).length;
+  assert.ok(coloresDImport >= 90, `${coloresDImport} mots-clés colorés à l’import`);
+  assert.ok(parUnMotCle >= Math.min(1, colores.length), `${colores.length} mots-clés colorés, ${parUnMotCle} pages`);
+  // (un mot-clé dont l'adresse a une ancre mène à une section, il ne colore pas la page : réponse du propriétaire, « Ancre = pas de couleur », R271 ;
+  // lib/mots-cles-liens.mjs#motCleDeLaPage)
+  const sansAncre = (m) => !decouperLAdresse(m.url).ancre;
+  // un mot-clé que le site de dev a créé, coloré ou redirigé (source de ce qu'il modifie : les personnages du Lore, 2026-11) peut mener ailleurs ; sa
+  // page prend alors sa couleur (test/glossaire-html.test.mjs, « rendu identique »)
+  const { historiqueSite } = await import('../src/lib/historique-site.mjs');
+  const h = historiqueSite(db);
+  const parLeSite = (m) => h.creee('mot_cle', { id: m.id }) || h.modifiee('mot_cle', { id: m.id }, 'couleur') || h.modifiee('mot_cle', { id: m.id }, 'url');
+  assert.deepEqual(colores.filter((m) => m.url !== null && sansAncre(m) && !pages.has(m.url) && !parLeSite(m)).map((m) => m.id), []);
+  for (const m of colores.filter((x) => x.url !== null && !sansAncre(x))) {
+    const page = m.url.slice(0, m.url.indexOf('#'));
+    const choisi = motCleDeLaPage(vocabulaire, page);
+    assert.ok(!choisi || !decouperLAdresse(choisi.url).ancre, `${m.id} : le mot-clé qui colore ${page} n’a pas d’ancre`);
+  }
 });

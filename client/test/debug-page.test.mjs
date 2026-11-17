@@ -485,12 +485,12 @@ test('site construit : /debug/ selon le mode — quatre menus fermés (Système,
     assert.match(main, /<p class="debug-reservee">Cette page est réservée au serveur de dev\.<\/p>/);
     assert.doesNotMatch(html, /data-debug\b|data-journaux|data-debug-systeme|data-debug-perfs/);
     // ni le menu « DB », ni la structure de la base (JSON), ni sa fenêtre
-    assert.doesNotMatch(html, /data-debug-schema|data-schema-cadre|data-schema-dialogue|schema-contenu/);
+    assert.doesNotMatch(html, /data-debug-schema|data-schema-cadre|data-schema-dialogue|schema-contenu|data-structure/);
     assert.equal(auMenu, false, 'pas au menu en production');
     const accueil = readFileSync(new URL('index.html', dist), 'utf8');
     assert.doesNotMatch(accueil, /href="\/debug\/"/, 'ni au menu de l’accueil');
     const duDebug = readdirSync(new URL('_astro/', dist)).filter((n) => n.endsWith('.js'))
-      .filter((n) => { const code = readFileSync(new URL(`_astro/${n}`, dist), 'utf8'); return ['debug/journal/', 'debug/metriques/', 'debug/systeme/', 'debug/tables/', 'debug/base/'].some((a) => code.includes(a)); });
+      .filter((n) => { const code = readFileSync(new URL(`_astro/${n}`, dist), 'utf8'); return ['debug/journal/', 'debug/metriques/', 'debug/systeme/', 'debug/tables/', 'debug/base/', 'debug/structure/'].some((a) => code.includes(a)); });
     for (const page of [html, accueil]) {
       const charges = [...page.matchAll(/<script[^>]*\ssrc="([^"]+)"/g)].map((m) => m[1].split('/').at(-1));
       assert.deepEqual(charges.filter((n) => duDebug.includes(n)), [], 'un script de la page Debug chargé en production');
@@ -508,6 +508,16 @@ test('site construit : /debug/ selon le mode — quatre menus fermés (Système,
   const ordre = ['data-debug-systeme', 'data-debug-perfs', 'data-debug-journaux', 'data-schema-cadre'].map((m) => main.indexOf(m));
   assert.deepEqual([...ordre].sort((a, b) => a - b), ordre, 'Système, Performances, Journaux, DB');
   assert.equal((main.match(/<details class="debug-bloc /g) ?? []).length, 4, 'quatre menus, rien d’autre');
+  // « Structure de la base » : dans le menu DB (les deux essais de structure du service), lue à l'ouverture et à « Actualiser », sans relève
+  const db = main.slice(main.indexOf('data-schema-cadre'));
+  assert.match(db, /<section class="structure" data-structure /, 'le bloc est dans le menu DB');
+  assert.match(db, /<button type="button" class="structure__actualiser" data-structure-actualiser>/);
+  assert.ok(db.indexOf('data-structure-contenu') > 0 && main.indexOf('data-structure ') > main.indexOf('data-schema-cadre'));
+  // « Fabrication témoin » (lot 9) : de même dans le menu DB, après la structure, avec son bouton « Actualiser »
+  assert.match(db, /<section class="structure atelier" data-atelier /, 'le bloc de l’atelier est dans le menu DB');
+  assert.match(db, /<button type="button" class="structure__actualiser" data-atelier-actualiser>/);
+  assert.ok(db.indexOf('data-atelier-contenu') > db.indexOf('data-structure-contenu'));
+  assert.doesNotMatch(main, /<details class="debug-bloc[^"]*" data-atelier/, 'pas un cinquième menu');
   assert.doesNotMatch(main, /data-debug-testeur|data-testeur|Tester l’API/, 'plus de testeur');
   assert.match(main, /<h2 class="debug-bloc__titre" id="debug-schema-titre">DB<\/h2>\s*<span class="debug-bloc__resume">Schéma de la base : \d+ tables, \d+ vues, \d+ clés étrangères<\/span>/);
   // la jauge de l'espace disque, dans Système
@@ -518,7 +528,8 @@ test('site construit : /debug/ selon le mode — quatre menus fermés (Système,
   const json = main.match(/<script type="application\/json" data-debug-schema>([^<]*)<\/script>/);
   assert.ok(json, 'la structure du schéma, en JSON');
   const structure = JSON.parse(json[1]);
-  assert.equal(structure.tables.filter((t) => t.genre !== 'vue').length, 201);
+  // 221 : les 212 d'avant, plus categorie_mot_cle, mot_cle_categorie, mot_cle_ancienne_cle (migration 0113), mot_cle_synonyme (0115), personnage_specialisation_magie (0118), type_degats (0125), lot_de_changements et numero_donne (0128), migration_recue (0129)
+  assert.equal(structure.tables.filter((t) => t.genre !== 'vue').length, 221);
   assert.equal(structure.tables.filter((t) => t.genre === 'vue').length, 38);
   assert.ok(structure.tables.find((t) => t.nom === 'sort').lignes > 0, 'nombre de lignes du build');
   assert.match(main, /<dialog class="schema-contenu" data-schema-dialogue aria-labelledby="schema-contenu-titre">/);
@@ -534,6 +545,10 @@ test('site construit : /debug/ selon le mode — quatre menus fermés (Système,
   assert.ok(!construits.some((code) => code.includes('v1/openapi.json')), 'plus de testeur (rien ne lit la description OpenAPI)');
   assert.ok(construits.some((code) => code.includes('debug/tables/') && code.includes('debug/base/') && code.includes('data-schema-monde')),
     'le script du schéma dans dist/_astro/ (contenu des tables, et relève de la version de la base pour les suivre)');
-  assert.equal((main.match(/<script type="module"/g) ?? []).length, 2, 'les deux scripts de la page (menus et schéma), aucun module partagé');
+  assert.ok(construits.some((code) => code.includes('debug/structure/') && !code.includes('debug/tables/') && !code.includes('debug/journal/')),
+    'le script de la structure de la base dans dist/_astro/, sans module commun avec les deux autres');
+  assert.ok(construits.some((code) => code.includes('debug/atelier/') && !code.includes('debug/tables/') && !code.includes('debug/journal/') && !code.includes('debug/structure/')),
+    'le script de l’atelier dans dist/_astro/, sans module commun avec les trois autres');
+  assert.equal((main.match(/<script type="module"/g) ?? []).length, 4, 'les quatre scripts de la page (menus, schéma, structure de la base, atelier), aucun module partagé');
   assert.doesNotMatch(main, /<(?:a|button|span|div|input|select|td|th)\b[^>]*\stitle=/, 'jamais d’infobulle native');
 });

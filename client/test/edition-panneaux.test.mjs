@@ -63,7 +63,7 @@ async function monter({ panneaux = null, lignes = null, reponse = () => ({ crees
   const formulaires = [];
   const ed = {
     base: '/',
-    page: 'ressources/equipement/',
+    page: 'ressources/armes/',
     enEdition: false,
     lignes: new Map(),
     annonces: [],

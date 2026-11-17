@@ -2,7 +2,8 @@
 # Mise à jour automatique d'une instance posée par un installateur (docs/flux-git.md et README.md à côté).
 # Chaque fusion dans master publie un installateur du serveur normal (VX.Y, puis VX.Y-hotfix.N), chaque fusion dans dev un
 # installateur du serveur de test (VX.Y.Z, la version de dev). Ce script prend le plus récent pour le mode de l'instance (lu dans son fichier
-# VERSION) et l'exécute s'il n'est pas déjà installé ; le serveur de test reprend alors une copie fraîche de la base du serveur normal.
+# VERSION) et l'exécute s'il n'est pas déjà installé. Aucune installation ne touche à db/ (la base de l'instance, celle du serveur de test
+# comprise). Le serveur de test refuse une livraison plus ancienne que celle installée (--force pour un retour en arrière voulu).
 # (Le paquet du NAS a la sienne : deploy/update-site.sh, qui suit la branche « site », que la livraison ne reconstruit plus.)
 #
 # Connexions SORTANTES uniquement : aucun port à ouvrir.
@@ -10,11 +11,10 @@
 # Jeton GitHub : fichier .github-token dans le dossier de l'instance (droits 600). Jeton « fine-grained » limité à CE dépôt,
 # permission « Contents : Read-only ». Il n'apparaît jamais dans la ligne de commande de curl (donc pas dans `ps`).
 #
-# Usage : sh mise-a-jour.sh [--force]     (--force réinstalle même si la livraison est déjà installée)
+# Usage : sh mise-a-jour.sh [--force]     (--force réinstalle même si la livraison est déjà installée, ou plus ancienne que celle installée : test)
 # Planification toutes les 5 minutes, une par instance, par exemple : */5 * * * * sh /srv/maverick-center/mise-a-jour.sh
 # Réglages facultatifs : fichier mise-a-jour.env à côté du script. MODE (prod ou test ; défaut : celui de VERSION), REPO, GITHUB_API,
-#   BASE_DIR (dossier de l'instance ; défaut : celui du script), TOKEN_FILE, LOG_FILE, DOSSIER_PROD (test : serveur normal dont il
-#   copie la base ; défaut : le dossier voisin « maverick-center »), SANS_BASE_PROD=1 (test sans serveur normal : base vide).
+#   BASE_DIR (dossier de l'instance ; défaut : celui du script), TOKEN_FILE, LOG_FILE.
 # Suspendre les mises à jour (retour à une version précédente, intervention) : créer un fichier GELER dans le dossier de l'instance
 #   (ou GELER=1 dans mise-a-jour.env) ; le supprimer pour reprendre.
 set -eu
@@ -35,7 +35,6 @@ if [ -z "${MODE:-}" ]; then MODE=$(sed -n 's/^mode=//p' "$BASE_DIR/VERSION" 2>/d
 TOKEN_FILE=${TOKEN_FILE:-$BASE_DIR/.github-token}
 LOG_FILE=${LOG_FILE:-$BASE_DIR/mise-a-jour.log}
 LOCK_DIR=${LOCK_DIR:-$BASE_DIR/.mise-a-jour.lock}
-DOSSIER_PROD=${DOSSIER_PROD:-}
 
 FORCE=0
 case "${1:-}" in
@@ -106,15 +105,23 @@ FORME_TEST='^[vV][0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'
 FORME_PROD='^[vV][0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'
 # L'étiquette de version la plus haute parmi celles lues sur l'entrée (une par ligne). L'ordre de la liste de GitHub n'est pas celui des
 # versions (V0.3.99 avant V0.3.100) : on compare X, Y, Z puis le numéro final de la régénération (VX.Y.Z-rebuild.N ; sans suffixe : 0).
+AWK_CLE='function cle(t,  s, p) { s = t; sub(/^[vV]/, "", s); split(s, p, /[^0-9]+/); kx = p[1] + 0; ky = p[2] + 0; kz = p[3] + 0; kw = p[4] + 0 }'
 la_plus_haute() {
-  awk '{
-    s = $0; sub(/^[vV]/, "", s)
-    split(s, p, /[^0-9]+/)
-    x = p[1] + 0; y = p[2] + 0; z = p[3] + 0; w = p[4] + 0
+  awk "$AWK_CLE"'{
+    cle($0); x = kx; y = ky; z = kz; w = kw
     if (!ok || x > bx || (x == bx && (y > by || (y == by && (z > bz || (z == bz && w > bw)))))) {
       ok = 1; best = $0; bx = x; by = y; bz = z; bw = w
     }
   } END { if (ok) print best }'
+}
+# Écrit « plus_ancienne », « egale » ou « plus_recente » : la première étiquette par rapport à la seconde (même clé que la_plus_haute).
+comparer() {
+  awk -v a="$1" -v b="$2" "$AWK_CLE"'BEGIN {
+    cle(a); ax = kx; ay = ky; az = kz; aw = kw
+    cle(b)
+    if (ax != kx) r = ax < kx; else if (ay != ky) r = ay < ky; else if (az != kz) r = az < kz; else if (aw != kw) r = aw < kw; else { print "egale"; exit }
+    print (r ? "plus_ancienne" : "plus_recente")
+  }'
 }
 mode_de_etiquette() {
   if printf '%s\n' "$1" | grep -Eq "$FORME_TEST"; then echo test
@@ -142,24 +149,59 @@ case "$(mode_de_etiquette "$TAG")" in
   *) die "réponse inattendue de GitHub (étiquette « $TAG »)" ;;
 esac
 
+# Le dernier installateur installé est gardé dans installateur-courant/ (un seul : celui de la livraison installée) : l'envoi chiffré de nuit des
+# sauvegardes automatiques le joint à la copie extérieure (deploy/vps/README.md, « Sauvegardes »), de quoi remonter un site à partir de rien.
+GARDE_DIR="$BASE_DIR/installateur-courant"
+GARDE="$GARDE_DIR/maverick-center-$TAG-install.sh"
+garder_installateur() {
+  mkdir -p "$GARDE_DIR" || return 0
+  if cp "$1" "$GARDE_DIR/.nouveau.$$" 2>/dev/null && mv -f "$GARDE_DIR/.nouveau.$$" "$GARDE"; then
+    for ancien in "$GARDE_DIR"/maverick-center-*-install.sh; do
+      [ "$ancien" = "$GARDE" ] || rm -f "$ancien"
+    done
+  else
+    rm -f "$GARDE_DIR/.nouveau.$$"
+    log "Avertissement : l'installateur $TAG n'a pas pu être gardé dans installateur-courant/."
+  fi
+}
+ASSET=$(grep -o '"url": *"[^"]*/releases/assets/[0-9]*"' "$TMP/livraison.json" | head -n 1 | sed 's/^.*: *"//; s/"$//')
+
 INSTALLE=$(sed -n 's/^tag=//p' "$BASE_DIR/VERSION" 2>/dev/null | head -n 1 || true)
 if [ "$FORCE" -eq 0 ] && [ "$INSTALLE" = "$TAG" ] && [ -f "$BASE_DIR/site/index.html" ]; then
+  # À jour : si l'installateur de cette livraison n'est pas gardé (livraison installée à la main), il l'est une fois ; l'installation ne change pas.
+  if [ ! -f "$GARDE" ] && [ -n "$ASSET" ] &&
+    gh_curl -H 'Accept: application/octet-stream' -o "$TMP/installateur.sh" "$ASSET" 2>/dev/null &&
+    sh "$TMP/installateur.sh" --verifier >/dev/null 2>&1; then
+    garder_installateur "$TMP/installateur.sh"
+    log "Installateur $TAG gardé dans installateur-courant/."
+  fi
   log "À jour ($TAG)."
   exit 0
 fi
 
+# Serveur de test : jamais en arrière sans l'avoir demandé (--force). Une livraison plus ancienne que celle installée vient d'une erreur (livraison
+# retirée, étiquette mal posée), pas d'une volonté : le minuteur la réinstallerait toutes les 5 minutes, et le site de dev, source de ce qu'il
+# modifie, doit rester sur la version la plus récente. Production : « latest » est choisi par GitHub, un retour en arrière s'y fait en
+# publiant la version voulue ; pas de contrôle ici.
+# Pas de VERSION ni de tag= : première installation, on installe (une installation ne touche pas à db/).
+if [ "$MODE" = test ] && [ "$FORCE" -eq 0 ] && [ -n "$INSTALLE" ]; then
+  [ "$(mode_de_etiquette "$INSTALLE")" = test ] ||
+    die "l'étiquette installée « $INSTALLE » n'a pas la forme d'une livraison de test (VX.Y.Z) : refus de la comparer à $TAG ; « sh mise-a-jour.sh --force » installe $TAG"
+  if [ "$(comparer "$TAG" "$INSTALLE")" = plus_ancienne ]; then
+    die "la livraison $TAG est plus ancienne que $INSTALLE, déjà installée : refus ; « sh mise-a-jour.sh --force » pour revenir en arrière, ou un fichier GELER pour suspendre les mises à jour"
+  fi
+fi
+
 # Une livraison ne porte qu'un fichier joint : son installateur. On le télécharge par l'API (dépôt privé).
-ASSET=$(grep -o '"url": *"[^"]*/releases/assets/[0-9]*"' "$TMP/livraison.json" | head -n 1 | sed 's/^.*: *"//; s/"$//')
 [ -n "$ASSET" ] || die "la livraison $TAG n'a pas encore d'installateur joint (construction en cours ?)"
 log "Nouvelle livraison $TAG (installée : ${INSTALLE:-aucune}) : téléchargement."
 gh_curl -H 'Accept: application/octet-stream' -o "$TMP/installateur.sh" "$ASSET" || die "téléchargement de l'installateur $TAG impossible"
 sh "$TMP/installateur.sh" --verifier >/dev/null 2>&1 || die "installateur $TAG refusé (archive corrompue ou incomplète) : rien n'a été modifié"
 
-set -- --dossier "$BASE_DIR"
-if [ "$MODE" = test ] && [ -n "$DOSSIER_PROD" ]; then set -- "$@" --dossier-prod "$DOSSIER_PROD"; fi
-if [ "$MODE" = test ] && [ "${SANS_BASE_PROD:-0}" = 1 ]; then set -- "$@" --sans-base-prod; fi
-if sh "$TMP/installateur.sh" "$@" >> "$LOG_FILE" 2>&1; then
+# Aucune option de base : un installateur de test ne copie la production que si on le lui demande à la main (--copier-base-prod).
+if sh "$TMP/installateur.sh" --dossier "$BASE_DIR" >> "$LOG_FILE" 2>&1; then
   log "Installé : $TAG."
+  garder_installateur "$TMP/installateur.sh"
 else
   die "l'installateur $TAG a échoué (détail ci-dessus dans $LOG_FILE)"
 fi

@@ -1,0 +1,36 @@
+/* Le Glossaire (/regles/glossaire/) : les filtres (texte, catégorie : décision R234 (4)), puis le tableau des mots-clés, au gabarit commun
+   (styles/global/tableaux.css : décision R234 (1), « dans le même style que les autres »). Un mot-clé : un <tbody> de deux lignes
+   (lib/mots-cles-balises.mjs#htmlDeLaLigneDuGlossaire) — ses noms, ses catégories, son lien, le menu des pages qui le mentionnent ; puis sa définition,
+   sur toute la largeur (réponse T3 : « dans une ligne en plus au sein de la ligne du tableau »), sans filet entre les deux. Un mot-clé coloré : ses deux
+   lignes sont des lignes colorées du gabarit (`ligne-couleur`), le fond à peine teinté, le liseré de sa couleur (comme les matériaux des armes) ; la
+   couleur est celle de sa classe (`couleur-…` : --couleur, --couleur-texte, lib/palette-css.mjs). Survolées ensemble. Inséré par
+   pages/regles/glossaire.astro (?raw). Aucune couleur écrite (skill ui-couleurs). */
+.glossaire-intro { max-width: 46rem; }
+.glossaire-filtre { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 0.8rem; margin: 0.8rem 0 0.6rem; }
+.glossaire-filtre input { flex: 1 1 16rem; max-width: 32rem; }
+.glossaire-filtre select { max-width: 100%; font: inherit; }
+.glossaire-table > tbody[hidden] { display: none; }
+.glossaire-table > thead th:nth-child(1) { width: 1%; }
+.glossaire-table > thead th:nth-child(2) { width: 30%; }
+.glossaire-table > thead th:nth-child(3) { width: 20%; }
+.glossaire-table > thead th:nth-child(4) { width: 22%; }
+/* l'icône du mot-clé, seule, dans sa colonne étroite, en premier (décision R235 (2)) */
+.glossaire-mot__icone { width: 1%; white-space: nowrap; text-align: center; }
+.glossaire-mot > tr { --ligne-fond: var(--couleur); --ligne-texte: var(--couleur-texte); }
+/* la ligne de la définition prolonge celle du mot-clé : pas de filet entre elles */
+.glossaire-table .glossaire-mot__ligne > * { border-bottom: 0; }
+.glossaire-table .glossaire-mot__suite > * { border-top: 0; padding-top: 0; }
+.glossaire-table .glossaire-mot:hover > tr.ligne-couleur > * { background: color-mix(in srgb, var(--ligne-fond) 20%, var(--surface)); }
+.glossaire-mot__nom { display: block; font-weight: 700; }
+.glossaire-mot__synonymes { display: block; font-size: var(--fs-sm); font-weight: 400; color: var(--muted); }
+.glossaire-mot__vide { color: var(--muted); }
+.glossaire-mot__lien a { overflow-wrap: anywhere; }
+.glossaire-mot__adresse { font-size: var(--fs-sm); }
+/* le menu des pages qui mentionnent le mot-clé (R234 (3)) : sa liste ouverte défile au-delà d'une hauteur (la molette passe à la page au bout : pas
+   d'overscroll-behavior, skill ui-defilement) */
+.glossaire-mot__menu > summary { cursor: pointer; color: var(--muted); white-space: nowrap; }
+.glossaire-mot__menu > ul { max-height: 14rem; overflow: auto; margin: 0.2rem 0 0; padding-left: 1.1rem; font-size: var(--fs-md); }
+.glossaire-mot__menu li[data-exemple] { font-style: italic; }
+.glossaire-mot__definition { white-space: pre-line; font-size: var(--fs-md); }
+.glossaire-mot__definition--vide { color: var(--muted); font-style: italic; }
+.glossaire-voir-aussi { margin-top: 1.5rem; }

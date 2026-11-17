@@ -12,7 +12,7 @@
 // et son effet se modifient ; son coût élémentaire (cout_elementaire_brut, cout_gemmes…) n'est ni saisi ni recalculé.
 // Les outils communs du service (refus, synchroniser…) sont donnés par serveur/edition.mjs (domainesDesArmes), sans import en retour.
 import {
-  analyserCoutDAmelioration, analyserEffetDAmelioration, analyserEffetDArme, analyserEffetDeMateriau, colonnesDeLArme, totalDesAmeliorations,
+  analyserCoutDAmelioration, analyserEffetDAmelioration, analyserEffetDArme, analyserEffetDeMateriau, colonnesDeLArme, refusDesCransPropres, totalDesAmeliorations,
 } from '../src/lib/arme-champs.mjs';
 import { texteDesDesSelonLaForce } from '../src/lib/armes-de-famille.mjs';
 import { CASES_D_AMELIORATION_DE_BOUCLIER } from '../src/lib/armure-champs.mjs';
@@ -96,6 +96,15 @@ export function domainesDesArmes({ refus, ErreurEdition, synchroniser, provenanc
     return famille;
   }
 
+  /** La base des crans propres d'une arme (constante_equipement « arme.solidite_base », que ni le site ni l'API ne modifient). */
+  const baseDesCrans = (db) => db.prepare("SELECT valeur FROM constante_equipement WHERE id = 'arme.solidite_base'").get()?.valeur ?? 2;
+
+  /** R194 : une arme a toujours au moins 1 cran propre ; un effet qui l'en priverait est refusé (400), à la création comme à la modification. */
+  function refuserSansCran(db, arme) {
+    const raison = refusDesCransPropres(arme, baseDesCrans(db));
+    if (raison) throw refus(raison);
+  }
+
   /** Le corps de la page après la modification d'une ligne : sa ligne Markdown réécrite ; un corps sans la forme de l'importeur refuse le lot. */
   const suivreLeCorps = (ctx, table, avant, apres) => suivreLeCorpsDesArmes(ctx, table, avant, apres, ErreurEdition);
 
@@ -107,7 +116,9 @@ export function domainesDesArmes({ refus, ErreurEdition, synchroniser, provenanc
       const type = lireLigne(db, 'arme_type', { id: ligne.type_id });
       if (!type) throw refus(`Type d’arme inconnu : ${ligne.type_id}`);
       const depart = 'depart_possible' in valeurs ? { depart_possible: Number(valeurs.depart_possible) } : {};
-      return { ...colonnesDeLArme({ ...ligne, ...depart }, type, caracteristiques(db), avant), ...depart };
+      const colonnes = colonnesDeLArme({ ...ligne, ...depart }, type, caracteristiques(db), avant);
+      refuserSansCran(db, { ...ligne, ...colonnes });
+      return { ...colonnes, ...depart };
     },
     deriver(ctx, avant, apres) {
       if ((apres.effet ?? null) !== (avant.effet ?? null)) suivreLesDetails(ctx, apres);
@@ -138,7 +149,9 @@ export function domainesDesArmes({ refus, ErreurEdition, synchroniser, provenanc
         depart_possible: Number(valeurs.depart_possible ?? 0), ordre, origine: ORIGINE, source_ref: `${provenance(instant)} › ${valeurs.nom}`,
         remarque: valeurs.remarque ?? null,
       };
-      const arme = w.inserer('arme', { ...ligne, ...colonnesDeLArme(ligne, type, caracteristiques(db)) });
+      const colonnes = colonnesDeLArme(ligne, type, caracteristiques(db));
+      refuserSansCran(db, { ...ligne, ...colonnes });
+      const arme = w.inserer('arme', { ...ligne, ...colonnes });
       w.inserer('page_entite', { entite_table: 'arme', entite_id: id, page_id: PAGE_DES_ARMES, principale: 0, origine: ORIGINE });
       suivreLesDetails(ctx, arme);
       suivreLeCorps(ctx, 'arme', null, arme);
@@ -238,7 +251,7 @@ export function domainesDesArmes({ refus, ErreurEdition, synchroniser, provenanc
     },
     deriver: (ctx, avant, apres) => suivreLeCorps(ctx, 'arme_famille', avant, apres),
     /**
-     * Une famille (un onglet de sa barre, mêlée ou distance : R159) : identifiant tiré du nom une fois (suffixe -2… s'il est pris ou a déjà servi), puis
+     * Une famille (une entrée du menu de la page et un tableau, mêlée ou distance : R159) : identifiant tiré du nom une fois (suffixe -2… s'il est pris ou a déjà servi), puis
      * figé ; au dernier rang ; maîtrisable, sa catégorie posée ici et jamais changée, son nom de lecture celui de sa création (migration 0077) ; sa section
      * à la fin du corps de la page ; les sources de maîtrise d'arme refaites (elle entre dans les choix de sa catégorie et ceux de toutes les familles).
      */

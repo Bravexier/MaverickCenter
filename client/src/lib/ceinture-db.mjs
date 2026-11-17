@@ -1,4 +1,4 @@
-// Onglet « Ceinture » de la page /ressources/equipement/ (demandes du propriétaire : le 2026-10-15, « l'ensemble de tous les objets que les joueurs
+// Page « Ceinture », /ressources/objets-a-la-ceinture/ (l'onglet « Ceinture » de la page /ressources/equipement/ du 2026-10-16 au 2026-10-29 ; demandes du propriétaire : le 2026-10-15, « l'ensemble de tous les objets que les joueurs
 // peuvent placer à la ceinture dans le but de pouvoir les utiliser comme un IC. De plus il faut parler aussi des bâtons magiques » ; le 2026-10-16,
 // « revoir intégralement la page des objets à la ceinture, renommer l'onglet en "Ceinture" et le mettre dans les onglets de équipement », chaque
 // tableau dans ses sous-onglets « plutôt que la recherche actuel », « dans l'ordre Consommable / Carquois / Bâton magiques », les consommables
@@ -6,17 +6,26 @@
 // objets : la vue v_objet_ceinture (décision R81 : toutes les potions et huiles, les carquois, sacs de bombes et sacs de pierres, les bâtons magiques ;
 // pas le bouclier : décision R82 ; la liste du guide reste « non exhaustive »). Les bâtons magiques ont leur sous-onglet, chargé par lib/batons-db.mjs.
 // Les règles affichées sont des textes de la base, rendus par l'onglet : le paragraphe « La ceinture » du chapitre « L'équipement » du guide et la
-// section « Ceinture » de la page de référence (le texte du Google Doc). Chaque potion porte la couleur que lui donne la règle du site
+// section « Ceinture » de la page de référence, « Inventaire/Sac à dos » (le texte du Google Doc). Chaque potion porte la couleur que lui donne la règle du site
 // (lib/alchimie-couleurs.mjs : la couleur que le propriétaire a choisie pour sa page, sinon l'affinité de son essence, ou la caractéristique d'un
 // philtre, nuancée selon son niveau d'alchimie ; demande du propriétaire du 2026-10-22 : « Partout il faut utiliser Que les couleurs du site »).
-// Sans dépendance (sauf lib/equipement.mjs et lib/alchimie-couleurs.mjs, purs) : `chargerObjetsDeCeinture` reçoit la base ouverte par lib/donnees.mjs.
+// Sans dépendance (sauf lib/equipement.mjs, lib/alchimie-couleurs.mjs et lib/ancres-figees.mjs, purs) : `chargerObjetsDeCeinture` reçoit la base ouverte par lib/donnees.mjs.
+import { sectionParAncre } from './ancres-figees.mjs';
 import { AFFINITE_DES_PHILTRES, caracteristiqueDesCompetences, couleurDePotion } from './alchimie-couleurs.mjs';
 import { SOUS_ONGLETS_DE_LA_CEINTURE } from './equipement.mjs';
 
-/** Le chapitre du guide dont la section « La ceinture » donne les règles, et la page de référence qui les détaille. */
+/**
+ * Le chapitre du guide dont la section « La ceinture » donne les règles, et la page de référence qui les détaille. Chaque section se rattache par
+ * l'ancre figée de son intertitre seule (lib/ancres-figees.mjs : `## La ceinture {#la-ceinture}`, posée en base par la migration 0100), que le site
+ * de dev ne change pas quand il renomme l'intertitre. TITRE_… : l'intertitre d'origine, tel que l'import l'écrit (le message du build, le test de
+ * l'import), jamais un repli du rattachement. La page de référence est « Inventaire/Sac à dos » : la section « Ceinture » de l'ancienne page « Accessoires
+ * et Ceinture » y est passée telle quelle, sous la même ancre figée (migration 0124, R272).
+ */
 export const CHAPITRE_DE_LA_CEINTURE = 'guide/l-equipement';
+export const ANCRE_DES_REGLES = 'la-ceinture';
 export const TITRE_DES_REGLES = '## La ceinture';
-export const PAGE_DE_REFERENCE = 'guide/fiche-accessoires-et-ceinture';
+export const PAGE_DE_REFERENCE = 'guide/fiche-inventaire-sac-a-dos';
+export const ANCRE_DE_LA_REFERENCE = 'ceinture';
 export const TITRE_DE_LA_REFERENCE = '## Ceinture';
 
 /** L'id d'un sous-onglet de lib/equipement.mjs, cherché par son id (un sous-onglet renommé ou retiré arrête le chargement, il ne change pas d'ordre en silence). */
@@ -97,8 +106,9 @@ export function chargerObjetsDeCeinture(db) {
   const reference = pageDe(db, PAGE_DE_REFERENCE);
   return {
     regles: {
-      ceinture: chapitre ? sectionDuCorps(chapitre.corps_md, TITRE_DES_REGLES) : null,
-      reference: reference ? sectionDuCorps(reference.corps_md, TITRE_DE_LA_REFERENCE) : null,
+      // l'ancre figée seule : une page qui ne la porte plus n'a plus la section (null), quel que soit le texte de ses intertitres
+      ceinture: chapitre ? sectionParAncre(chapitre.corps_md, ANCRE_DES_REGLES) : null,
+      reference: reference ? sectionParAncre(reference.corps_md, ANCRE_DE_LA_REFERENCE) : null,
     },
     sources: {
       chapitre: chapitre ? { id: chapitre.id, titre: chapitre.titre } : null,

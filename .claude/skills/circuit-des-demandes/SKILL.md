@@ -18,7 +18,7 @@ La session principale ne lance que les trois chefs (`docs/equipe.md`) et leur tr
 
 Une demande mixte est pilotée par le chef du domaine d'origine, qui sollicite les autres. Une simple question dont la réponse est dans le contexte ou dans un fichier connu n'a pas besoin d'un chef.
 
-**Un seul lot qui écrit à la fois** dans l'arbre de travail : deux migrations prendraient le même numéro, et deux `npm test` se gêneraient. Quand deux demandes doivent écrire, la seconde attend la fin de la première. Des analyses en lecture peuvent tourner pendant ce temps.
+**Un seul lot qui écrit à la fois** dans l'arbre de travail : deux migrations prendraient le même numéro, et deux passages de tests se gêneraient. Quand deux demandes doivent écrire, la seconde attend la fin de la première. Des analyses en lecture peuvent tourner pendant ce temps.
 
 ## Circuit d'une règle (demande du propriétaire)
 
@@ -42,7 +42,7 @@ Un rapatriement de l'édition du site de dev n'est pas jugé : le site est la so
 
 - **Cadrer avant de lancer.** Lire juste ce qu'il faut (sections de docs, décisions, `git diff`) pour découper. Le travail lui-même revient à l'équipe. `game-design` et `worldbuilding` n'ont pas Bash : le `leader-technique` leur fournit, dans son rapport, la liste des fichiers changés et `git diff --stat`, et ils lisent les fichiers par Read.
 - **Ne lancer que les membres utiles.** Les tâches dépendantes partent dans l'ordre : le résultat de l'une va dans le brief de la suivante. Les analyses en lecture seule partent en parallèle (plusieurs appels `Agent` dans un même message). Le mode de lancement : puce « Les membres qui passent en arrière-plan ».
-- **Un seul arbre de travail.** Deux membres qui écrivent ou qui lancent des contrôles se suivent, jamais en même temps : `npm test` refabrique les pages du wiki, et `db:build` refait `var/maverick.db`. Si des analystes doivent interroger la base, elle est construite une fois avant de les lancer, ou chacun la construit dans son scratchpad (`interroger-la-base`).
+- **Un seul arbre de travail.** Deux membres qui écrivent ou qui lancent des outils ou des contrôles se suivent, jamais en même temps : le passage de tests refabrique les pages du wiki, et `db:build` refait `var/maverick.db`. Si des analystes doivent interroger la base, elle est construite une fois avant de les lancer, ou chacun la construit dans son scratchpad (`interroger-la-base`).
 - **Écrire un brief autonome :**
   - l'objectif ;
   - le périmètre (fichiers, tables, pages), avec les sections ou plages à lire pour un gros document : `decisions-regles.md` (243 Ko), `content-guide.md` (195 Ko), `serveur.md` (167 Ko) et `character-generator.md` (124 Ko) ne se lisent jamais en entier. On repère les titres par `grep -n '^## '`, puis on lit par plage ; pour les décisions, `docs/decisions-index.md`, puis le numéro par Grep ;
@@ -89,7 +89,7 @@ Tout fichier modifié du dépôt se publie, y compris les registres qu'écrivent
 
 - Un rapport tient en quelques dizaines de lignes : des chemins et des lignes, pas de fichiers recopiés.
 - Une seule relecture complète par `tech-qualite`, à la fin d'un lot, puis des relectures courtes (diff de la correction, constats bloquants seulement : `revue-de-diff`) ; une seule vérification de conformité par le chef qui a commandé.
-- Seulement les tests pertinents (`choisir-les-tests`) ; ce qui se vérifie par un script ne se confie pas à un agent.
+- **Un seul passage de tests par lot** (demande du propriétaire), par `tech-qualite`, en fin de lot, avant la validation du `leader-technique` : les tests pertinents (`choisir-les-tests`) et les contrôles (`controles-avant-rendu`), dans le même tour que la relecture. Les auteurs ne lancent que le test qu'ils écrivent. Les reprises sont limitées aux tests en échec et à ceux du diff de la correction, ou au recouvrement d'un rebase. Ce qui se vérifie par un script ne se confie pas à un agent.
 - Un petit lot ne passe pas par les membres : circuit court du `leader-technique`.
 - La synthèse d'un chef finit par une ligne de suivi : circuit (court ou complet), membres lancés, relances, membres passés en arrière-plan. C'est avec elle que se mesure le coût.
 - Un chef ne refait pas le travail d'un membre. En cas de doute sur un rapport, il relance ce membre avec le point précis.

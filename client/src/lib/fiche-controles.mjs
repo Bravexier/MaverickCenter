@@ -7,7 +7,6 @@ export const LIBELLES_DES_CONTROLES = Object.freeze({
   magie_innee_manquante: 'Magie innée à choisir',
   classe_inaccessible: 'Classe que la race ne permet pas',
   classe_reservee: 'Classe réservée à une autre magie innée',
-  classe_imposee: 'Classe 1 imposée par la magie innée',
   classe_exclue: 'Classe fermée à la magie innée',
   magie_innee_inaccessible: 'Magie innée que la race ne permet pas',
   magies_incompatibles: 'Magie innée et magie acquise incompatibles',
@@ -27,6 +26,8 @@ export const LIBELLES_DES_CONTROLES = Object.freeze({
   metier_bonus_hors_choix: 'Bonus de métier choisi qui n’est pas une option du métier',
   metier_bonus_manquant: 'Bonus de métier à choisir',
   gains_niveau: 'Gains de niveau (santé + chakra) hors du total à saisir',
+  // décision R225 : le détail donne la santé et son plafond calculé (« santé / plafond ») ; la règle elle-même est une donnée, jamais écrite ici
+  gains_sante_potentiel: 'Santé gagnée au-delà du plafond du Potentiel Illimité',
   classe_2_manquante: 'Seconde classe à choisir',
   classe_2_en_trop: 'Seconde classe sans niveau',
   classe_1_manquante: 'Classe à choisir',
@@ -34,6 +35,9 @@ export const LIBELLES_DES_CONTROLES = Object.freeze({
   capacite_hors_classe: 'Don d’une autre classe ou d’une autre spécialité',
   capacites_exclusives: 'Deux dons qui s’excluent',
   sort_hors_magie: 'Sort d’une autre magie',
+  // spécialisations magiques (décision R236 (3), migration 0118) : seul le bi-magie choisit, une par magie ; le détail nomme le sort, ou la spécialisation
+  sort_hors_specialisation: 'Sort d’une spécialisation que le bi-magie n’a pas choisie (une par magie)',
+  specialisation_hors_magie: 'Spécialisation d’une magie que le personnage n’a ni en innée ni en acquise',
   sort_puissance: 'Sort au-dessus de la puissance magique',
   sort_nm_plafond: 'Plus de 3 NM sur un sort',
   sort_nm_max: 'NM au-dessus du maximum sur un sort (niveau − 1, plus les NM du MJ ; le NM d’un livre ne compte pas)',
@@ -60,9 +64,36 @@ export const LIBELLES_DES_CONTROLES = Object.freeze({
   // décision R167 (bombe : « Estoc, Frappe ou Taille au choix ») : un type physique choisi sur une arme dont le type ne se choisit pas, ou qu'elle n'offre
   // pas ; le détail : « rang : type »
   arme_type_degats_choisi: 'Type de dégâts physique choisi hors des choix de l’arme (son type ne se choisit pas, ou elle n’offre pas ce type)',
+  // dons « Variable » du Mage Bleu (décision R181) : l'entrée du tableau du bas de la classe qu'obtient chacun ; le détail nomme le don (« source = entrée »
+  // pour un choix)
+  don_obtenu_sans_magie_acquise: 'Don « Variable » qui vise la magie acquise, sans magie acquise : il ne peut pas être choisi',
+  don_obtenu_a_choisir: 'Don obtenu à choisir (don « Variable » du Mage Bleu)',
+  don_obtenu_source_perdue: 'Don obtenu gardé sans effet : son don « Variable » n’est plus acquis',
+  don_obtenu_hors_liste: 'Don obtenu hors de la liste de son don « Variable » (une entrée de la magie visée)',
   armure_partie_hors_armure: 'Solidité d’une partie que l’armure n’a pas',
   accessoire_valeur: 'Valeur d’accessoire hors de la fourchette de son effet',
 });
 
 /** Libellé d'une règle (la clé elle-même si elle est inconnue : une règle ajoutée à la vue reste visible). */
 export const libelleDuControle = (regle) => LIBELLES_DES_CONTROLES[regle] ?? regle;
+
+/**
+ * La gravité des règles qui ne sont pas des erreurs (la vue ne la porte pas : elle signale, la page dit comment) : `maitrise_plafond`, un
+ * avertissement (décision R170 : « La mention de points de maitrise au delà du plafond ne devrai pas remonter une erreur. Juste un avertissement ,
+ * surtout quand ils sont imposées ») ; toute autre règle, connue ou non, est une erreur.
+ */
+export const GRAVITES_DES_CONTROLES = Object.freeze({ maitrise_plafond: 'avertissement' });
+
+/** Gravité d'une règle : 'avertissement' (GRAVITES_DES_CONTROLES) ou 'erreur'. */
+export const graviteDuControle = (regle) => GRAVITES_DES_CONTROLES[regle] ?? 'erreur';
+
+/**
+ * Les contrôles rendus par le service, rangés pour l'onglet « Contrôle » : les erreurs d'abord, puis les avertissements, chacun avec sa gravité, et
+ * leurs nombres. { erreurs, avertissements, lignes: [{ regle, detail, gravite }] }.
+ */
+export function controlesParGravite(controles) {
+  const lignes = (controles ?? []).map((c) => ({ ...c, gravite: graviteDuControle(c.regle) }));
+  const erreurs = lignes.filter((c) => c.gravite === 'erreur');
+  const avertissements = lignes.filter((c) => c.gravite === 'avertissement');
+  return { erreurs: erreurs.length, avertissements: avertissements.length, lignes: [...erreurs, ...avertissements] };
+}

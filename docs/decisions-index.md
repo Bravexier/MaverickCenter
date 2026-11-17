@@ -2,7 +2,7 @@
 
 Ne lis jamais `docs/decisions-regles.md` en entier : trouve ici le numéro de la décision, puis cherche sa ligne avec Grep (motif `^\| R41 \|`) et ne lis qu'elle.
 
-Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 168 décisions, de R1 à R168, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
+Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 282 décisions, de R1 à R282, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
 
 | Réf. | Sujet | Décision |
 | --- | --- | --- |
@@ -103,7 +103,7 @@ Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas mo
 | R95 | Armures sur la fiche de personnage, après R93 (une armure ne se fabrique p… | La fiche porte une seule armure complète, avec son amé… |
 | R96 | Bouclier sur la fiche de personnage : la fiche portait une forme (classe)… | Forme + matière, comme l'onglet Boucliers : la fiche p… |
 | R97 | Accessoires sur la fiche de personnage : huit emplacements (Chef, Collier,… | Six emplacements : Chef, Collier, Bracelet 1 et 2, Bag… |
-| R98 | Défense et dégâts reçus : la fiche n'affichait ni l'AP ni l'AM totaux, et… | AP et AM totaux dans le bloc Armure : la base (race, e… |
+| R98 | Défense et dégâts reçus : la fiche n'affichait ni l'AP ni l'AM totaux, et… | AP et AM totaux dans le bloc Armure (depuis R171, avec… |
 | R99 | Pièce élémentaire (arme ou armure transformée) : la page « Pièces élémenta… | L'élément remplace tout : pour l'armure, l'AP et l'AM… |
 | R100 | Posture du moment sur la fiche : la fiche affichait les effets de chaque p… | La posture cochée recalcule les valeurs qu'elle chiffr… |
 | R101 | Bâtons magiques sur la fiche : les 42 bâtons (14 magies × 3 niveaux) étaie… | Un bâton se règle dans le sac : le sac propose « Bâton… |
@@ -174,3 +174,117 @@ Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas mo
 | R166 | Crans de résistance des armures élémentaires (suite de R165) : chaque armu… | Les crans de résistance de l'armure élémentaire portée… |
 | R167 | Armes élémentaires (« dans un premier temps que pour les armes » ; les arm… | Une pièce élémentaire transforme l'arme : quels que so… |
 | R168 | Mage Vert (Mage jade), don de niveau 20 « Meilleure attaque ... » : « (Pos… | Le don complète l'un des deux dons de niveau 15 qui co… |
+| R169 | Livre de sort de l'entraînement (R104, R118) : la fiche ne propose un livr… | Un livre de sort s'apprend pour n'importe quel sort de… |
+| R170 | Plafond de maîtrise d'une famille d'armes (R149 : 4 points, 5 dés ; « au-d… | Des points de maîtrise au-delà du plafond ne sont pas… |
+| R171 | Dégâts reçus sur la fiche, suite de R98 : un seul type parmi 17 (Estoc, Ta… | Type et élément : le type est Estoc, Taille, Frappe ou… |
+| R172 | Mode Hyper et Mode Hyper 100 % sur la fiche : ils n'étaient donnés « pour… | Deux cases activables, comme les postures (état enregi… |
+| R173 | Actions et passifs sur la fiche : les dons débloqués étaient listés par or… | Sous la ceinture, la liste des actions utilisables : l… |
+| R174 | Résistances physiques sur la fiche : le tableau des résistances et faibles… | Le tableau des résistances et faiblesses de la fiche g… |
+| R175 | Arrondi des calculs de la fiche : le guide (« Formule des dégâts ») écrit… | On arrondit à l'inférieur, partout : dégâts reçus (R98… |
+| R176 | Potentiel Illimité en magie acquise : des questions de ce lot (livres de s… | Le Potentiel Illimité est toujours la magie innée, mon… |
+| R177 | Don d'ethnie du Marcass « +2 Armure magique (+2 tous les 5 niveaux) » : la… | Ce don s'ajoute en permanence à l'AM de la fiche, pas… |
+| R178 | Mode Hyper du Marcass (« Corps isolant », onglet de la race, R13 : « Les A… | La règle du Marcass en Mode Hyper : ses AP et AM natur… |
+| R179 | Durée d'un sort préparé (R115 : il se lance avec la posture de sa préparat… | Un sort préparé ne demeure que jusqu'à la fin d'un com… |
+| R180 | Nerf de la réussite critique (demande du propriétaire, avec un message du… | (1) Surplus. Un score de compétence de 96 à 102 % donn… |
+| R181 | Dons « Variable » du Mage Bleu (Mimétisme, niveau 1 : « Permet d'avoir un… | La liste est le tableau du bas de la fiche de la class… |
+| R182 | Suite de R180 (réussite critique), questions Q89, Q90, Q91 et lecture du D… | (1) Échec critique : de 96 à 100, c'est toujours un éc… |
+| R183 | Le Lexique converti en mots-clés (demande du propriétaire, 2026-11-05). La… | (1) La page Lexique est supprimée : chaque entrée devi… |
+| R184 | Nouveau plan des pages de règles (demande du propriétaire, 2026-11-06). Le… | (1) Le plan. Les rubriques « Créer son personnage », «… |
+| R185 | Suite de R184 (nouveau plan des pages de règles) : points P1 à P8 de `docs… | (1) Le butin : le MJ demande le jet de butin au joueur… |
+| R186 | Coût en santé du chakra dépensé de force sous 0 (demande du propriétaire,… | Chaque point de chakra dépensé de force sous 0 coûte 3… |
+| R187 | Pages en doublon à retirer : la « Liste des effets mode hyper » et trois p… | (1) La « Liste des effets mode hyper » est supprimée,… |
+| R188 | Puissance magique (NPM) du Potentiel Illimité (question du propriétaire, 2… | Le personnage dont la magie innée est le Potentiel Ill… |
+| R189 | Le passif « Grimoire » de l'Archimage (remarque du propriétaire, 2026-11-0… | « Grimoire » acquis compte comme une condition de plus… |
+| R190 | Le Lexique mène au Glossaire (lot « mots-clés = liens », demande du propri… | `/regles/lexique/` mène à `/regles/glossaire/`, et non… |
+| R191 | Le libellé « (classe) » dans le glossaire (lot « mots-clés = liens », 2026… | « (classe) » est admis dans le libellé des mots-clés (… |
+| R192 | Suite de R181 et de R42 : le don « Variable » modifié sur le site de dev (… | (1) Création : un don « Variable » se crée avec la mag… |
+| R193 | Suite de R61 : le nom d'une monnaie (lot « Défauts du code »). R61 interdi… | Le nom d'une monnaie ne se modifie plus sur le site de… |
+| R194 | Suite de R51 : où joue le plancher de solidité d'une arme (lot « Défauts d… | (1) Une arme a toujours au moins 1 cran propre (sans m… |
+| R195 | Suite de R61 et de R193 : les champs d'un mot-clé, et l'abréviation du RF,… | (1) Tous les champs d'un mot-clé se modifient toujours… |
+| R196 | Suite de R195 : quand un mot-clé se supprime (lot « Tests et suppressions… | (1) Un mot-clé ne se supprime que si rien ne le mentio… |
+| R197 | Suite de R196 : quand une monnaie se supprime (lot « Tests et suppressions… | (1) Une ligne de la table `monnaie` ne se supprime que… |
+| R198 | Les postures : écarts entre le Doc « Guide pour MJ » (MJ-orig), le Doc « C… | (1) Défensif (G1) : le malus de 10 % ne vaut qu'au-del… |
+| R199 | Attaque, défense et dégâts : questions G25 à G28 et G41 de la refonte des… | (1) Défense (G27) : au D100, un meilleur résultat est… |
+| R200 | Le Mode Hyper : questions G7 à G12 de la refonte des pages du guide et P9… | (1) Durée (G8) : ⌊niveau global ÷ 2⌋, toujours à l'inf… |
+| R201 | La barrière : questions G13 et G14 de la refonte des pages du guide (`docs… | (1) G14 : règle universelle : sauf indication contrair… |
+| R202 | Création du personnage et classes : questions du `docs/sql/a-valider.md` §… | (1) Plafond : une caractéristique vaut toujours 4 au p… |
+| R203 | Plancher de la réussite critique (Q97, suite de R180 et R182) : un accesso… | La plage de réussite critique ne descend jamais sous «… |
+| R204 | Calme et sa description (B13, suite de R4) : Calme n'a pas de description… | « Prouesse » est l'ancien nom de Calme : la phrase « F… |
+| R205 | Magies : D/S/B, sorts sans chakra, état « Gel », chakra épuisé, Exécution… | (1) D/S/B : D = Dégâts, S = Soin ; le B est oublié par… |
+| R206 | Créatures invoquées au NPM (suite de R130 ; questions Q35 à Q38 et Q40 de… | (1) Q35 : le « +10% Barrière » vaut par NPM de la créa… |
+| R207 | Armes, armures et artisanat (questions Q57, Q58, Q60 et la 2ᵉ partie de Q6… | (1) E6 : le type, les AP et AM des armures composées (… |
+| R208 | Métiers (points « Métiers » du §2 et G20 à G24 du §6 de `docs/sql/a-valide… | (1) Un objet de départ marqué « (Arme) » va dans l'inv… |
+| R209 | Bestiaire (§2 « Bestiaire » et §4 D4 de `docs/sql/a-valider.md` ; question… | (1) FPVSIA = Force, Perception, Volonté, Social, Intel… |
+| R210 | Magies innées d'une race vidées sur le site de dev (C5, `docs/sql/a-valide… | Une race a forcément des magies innées possibles. Le p… |
+| R211 | Suite de R196 : les mots-clés que visent les rejeux des migrations 0090 et… | (1) Un mot-clé que vise le rejeu des migrations 0090 o… |
+| R212 | Suite de R197 : la bourse des fiches quand une monnaie est supprimée (lot… | (1) La bourse des fiches n'empêche pas la suppression… |
+| R213 | Suite de R197 : l'affichage d'un montant quand une monnaie est supprimée (… | Un montant se décompose avec les monnaies qui restent… |
+| R214 | Suite de R195 (2) : l'abréviation d'une monnaie changée sur le site (lot «… | Changer l'abréviation d'une monnaie la change partout… |
+| R215 | Suite de R212 : le montant d'une case retirée de la bourse (lot « mots-clé… | Le montant d'une case retirée est converti à l'afficha… |
+| R216 | Suite de R212 et de R213 : une monnaie créée sur le site (lot « mots-clés… | Une monnaie créée entre dans la décomposition des mont… |
+| R217 | Suite de R213 : l'infobulle d'une monnaie (lot « mots-clés et monnaies »,… | L'infobulle d'une monnaie ne cite que les monnaies qui… |
+| R218 | Le verrou des mots-clés, à la place des règles des monnaies (demande du pr… | (1) Les règles des monnaies du lot 4 sont abandonnées… |
+| R219 | Suite de R218 : les sept points du verrou laissés ouverts (lot « mots-clés… | (1) « Les pages » : tout mot-clé dont l'adresse (`mot_… |
+| R220 | Suite de R219 : le rejeu des lots anciens de l'onglet Monnaie, et le mot-c… | (1) Au rejeu du journal, un lot ancien qui écrivait l'… |
+| R221 | Suite de R219 : une page vers laquelle mène un mot-clé verrouillé (lot « m… | Une page vers laquelle mène un mot-clé verrouillé ne s… |
+| R222 | Suite de R219 : la fusion d'un mot-clé cité dans une définition verrouillé… | (1) La fusion d'un mot-clé est refusée tant que la déf… |
+| R223 | Suite de R196 : forcer la suppression d'un mot-clé mentionné (demande du p… | (1) Sans forçage, rien ne change : la suppression d'un… |
+| R224 | Relecture des pages des Règles contre les décisions (demande du propriétai… | (1) V1 : les copies de source sont corrigées là où ell… |
+| R225 | Potentiel Illimité : santé au passage de niveau (question V5 de `docs/sql/… | Un personnage dont la magie innée est le Potentiel Ill… |
+| R226 | Combat, postures, Mode Hyper et Mode Super (questions V6 à V9 de `docs/sql… | (1) V6 : en défense, le résultat le plus bas l'emporte… |
+| R227 | Métiers et objets (questions V10 à V12 de `docs/sql/a-valider.md` §10) : (… | (1) V10 : Forgeron pour les armes ; Armurier pour les… |
+| R228 | Adresse de la page du Mode Super (suite de R187 (1) et R226 (4) ; 2026-11-… | La page est servie à `/regles/mode-super/`, exception… |
+| R229 | Renvoi « plus haut » de `guide/jet-de-des` (suite de R224 (2) ; question V… | « Comme expliqué plus haut, » est retiré : la phrase d… |
+| R230 | Suite de R227 (3) et de R225 (2026-11-08). (1) Le texte du Bijoutier dans… | (1) Le texte du Bijoutier est aligné sur R227 (3) : il… |
+| R231 | Réécriture des pages « Attaquer et se défendre » et « Attaque et Défense »… | (1) Partage. `guide/attaquer-et-se-defendre` porte tou… |
+| R232 | Refonte de la table des mots-clés, qui remplace R191 (demande du propriéta… | (1) Identifiant : un entier auto-incrémenté, figé comm… |
+| R233 | Les synonymes d'un mot-clé (libellés secondaires), suite de R232 (demande… | (1) Un mot-clé peut avoir des synonymes (libellés seco… |
+| R234 | Le tableau des mots-clés du Glossaire, suite de R232 et R233 (demande du p… | (1) Le tableau des mots-clés du Glossaire (`/regles/gl… |
+| R235 | L'icône d'un mot-clé, suite de R234 (8) (demande du propriétaire, 2026-11-… | (1) Une colonne `icone` du mot-clé, modifiable sur le… |
+| R236 | Spécialisations magiques (Magie V10, mise à jour de Décembre) (demande du… | (1) Deux spécialisations par magie à partir du NPM 3 (… |
+| R237 | Intégration des magies du classeur de Décembre (Magie V10) à la base (dema… | (1) Le classeur fait foi (le docx est la liste des mod… |
+| R238 | Classes de la mise à jour de Décembre (demande du propriétaire, 2026-11-12… | (1) Boxeur et Porte-étendard : « Classe Physique Corps… |
+| R239 | Races Fongoïde et Gémidien (docx : « Nouvelle race : Fongoïde », « Nouvell… | (1) Deux races de plus, pures : le site en compte 29 (… |
+| R240 | Initiative groupée et initiative individuelle (docx, rubrique « Gameplay »… | Les deux coexistent, au choix du MJ. L'initiative indi… |
+| R241 | Effets secondaires des matériaux d'armes (docx, rubrique « Armes » : « Les… | (1) Les effets secondaires des 13 matériaux cités sont… |
+| R242 | Le bestiaire et les sorts renommés ou supprimés par la mise à jour de Déce… | (1) Les cartes du bestiaire prennent le nouveau nom du… |
+| R243 | Textes d'incantation et remarques des sorts absents du classeur de Décembr… | (1) Les six textes d'incantation de Glace et de Terre… |
+| R244 | Coûts des sorts que le classeur de Décembre écrit sans les répartir (R237… | (1) Même lecture que R106 avec le nouveau chiffre : Ru… |
+| R245 | Affichage des pages de magie V10 (R236 (1)) : la règle « CHOSES A SAVOIR »… | (1) Les phrases de « CHOSES A SAVOIR » sur la Super-ma… |
+| R246 | Nom affiché par la capacité « sort supplémentaire » de la Poupée fulgurant… | La capacité affiche « Boules plasmiques », le nouveau… |
+| R247 | Affichage des pages de magie V10, suite de R245 (1) et (2) : le point d'at… | (1) L'infobulle se pose sur le titre de chacune des de… |
+| R248 | Projectile arcanique : coût et fiche, suite de R244 (3) : la réponse « Var… | (1) La progression fait foi : 1 projectile coûte 4, ch… |
+| R249 | Onglets du Potentiel Illimité : R245 et R247 visent la page d'une magie ;… | Chaque onglet du Potentiel Illimité suit R245 et R247… |
+| R250 | Altération de l'Ombre visée par un don « à la magie innée et son altératio… | Le cran va à la Peur seule. La Somnolence n'a pas de r… |
+| R251 | Texte du coût de Projectile arcanique (suite de R248 ; MAJ-K7 (1)) | Coût : « 4/projectile » (valeur 4) ; coût secondaire :… |
+| R252 | Limite D12 de la montée de la nature des dés (docx « MISE À JOUR - DÉCEMBR… | (1) Aucune montée de la nature d'un dé ne dépasse le D… |
+| R253 | Fongoïde et Gémidien, suite de R239 : rang dans les listes de races et don… | (1) Les deux races vont à la fin des races pures, Fong… |
+| R254 | Classes de Décembre, suite de R238 : Porte-étendard et Archimage. Spéciali… | (1) « EdG » et « BdC » sont les armes « Étendard de gu… |
+| R255 | Boxeur (onglet 24 du classeur de Décembre, R238) : lectures de règles et g… | (1) Exception voulue à R96 : « Bouclier d'attaque », «… |
+| R256 | Vitesses du Fongoïde et du Gémidien (R239) : leurs onglets (21 et 22 du cl… | Fongoïde : vitesse 4 au sol, 4 à la nage. Gémidien : v… |
+| R257 | Limite D12, suite de R252 : montée et baisse mêlées (posture Focus ou acce… | Les crans s'additionnent avant le plafond : la montée… |
+| R258 | Effets secondaires des matériaux d'armes, suite de R241 : lectures (docx,… | (1) « +1 dé de dégâts » : un dé de plus, du même type… |
+| R259 | Capacité de monstre « Anti-barrière » et don « Pré-mythril » de l'Arbalétr… | (1) « Anti-barrière » prend le nouvel effet du Maveriu… |
+| R260 | Fiche, sorts des spécialisations (R236) : trois choix d'affichage : l'info… | (1) L'infobulle d'un sort ajoute le nom de sa spéciali… |
+| R261 | Initiative groupée, suite de R240 : la page `regles/initiative` du site de… | L'initiative groupée est hors de cette mise à jour : l… |
+| R262 | Lore du Fongoïde (onglet 21, AK3, R239) : la Mort Fertile et le retour de… | (1) Le Codex fait foi : la Mort Fertile existe toujour… |
+| R263 | Lore du Gémidien (onglet 22, AK3, R239) : les Super Gemmes : l'onglet dit… | (1) Les Super Gemmes sont actives aujourd'hui, comme l… |
+| R264 | Chronologie : l'apparition des Gémidiens et celle des Fongoïdes : l'onglet… | Deux événements s'ajoutent à la chronologie : l'appari… |
+| R265 | Page du Fongoïde (onglet 21) : le « Premier Champignon » et le « Dieu de l… | (1) Le « Premier Champignon » et le Mycoralis Vitalis… |
+| R266 | Trois graphies du lore de Décembre (`docs/sql/orthographe-a-valider.md`, «… | (1) « Super Gemme » : deux majuscules, sans trait d'un… |
+| R267 | Fiche du Boxeur et du Porte-étendard, suite de R254 et R255 : ce que Mur a… | (1) Mur : toute l'AP et l'AM du bouclier, les +2 de Mu… |
+| R268 | Infobulles des sept mots-clés des matériaux, suite de R258 (7) : aucune so… | Avantage : « On lance deux fois le même jet et on igno… |
+| R269 | Boxeur, suite de R255 et R267 : Égide d'assaut, arrondi de Bouclier d'atta… | (1) Avec Égide d'assaut, Bouclier d'attaque divise (AP… |
+| R270 | Fiche, suite de R260 : casse du nom d'une spécialisation. Le nom est en ca… | Sur la fiche, le nom d'une spécialisation s'écrit avec… |
+| R271 | Couleur d'une page et mot-clé qui mène à une section (lot « fusion des pag… | Un mot-clé dont l'adresse mène à une section (`#…`) ne… |
+| R272 | Page « Accessoires et Ceinture » supprimée, adresse de la page de l'invent… | Les sections « Accessoires » et « Ceinture » passent t… |
+| R273 | « (classe) » dans l’historique des modifications (CI rouge de la simulatio… | L’historique des modifications garde les valeurs telle… |
+| R274 | La base du site de dev devient la source de vérité (2026-11-14, plan `docs… | La base du site de dev fait foi ; le dépôt GitHub ne g… |
+| R275 | Réponses au plan « la base du site de dev devient la source de vérité » (2… | Le plan est accepté et les recommandations des questio… |
+| R276 | Ce que le propriétaire fait lui-même pendant le chantier de la base de dev… | Chaque lot réduit au strict nécessaire ce que le propr… |
+| R277 | Onglets de la page « Alignement » et onglets écrits à la main (demande du… | (1) Deux groupes d'onglets sur la page « Alignement »… |
+| R278 | Les tests de GitHub peuvent lire le contenu du site de dev (2026-11-15, `d… | Oui, pour les tests seulement : cela remplace, pour le… |
+| R279 | Le mot de passe du site de dev est provisoire (2026-11-15, chantier `docs/… | Le mot de passe d'édition du site de dev reste en plac… |
+| R280 | Une mise à jour qui retire un élément utilisé par une fiche de la producti… | Une mise à jour n'est pas refusée parce qu'elle retire… |
+| R281 | Le gel des écritures pendant la bascule 1 (2026-11-15, `docs/chantier-base… | Accepté : pendant la bascule 1, le service du site de… |
+| R282 | Deux contrôles GitHub obligatoires et retrait des vieux installateurs de t… | Accepté : le jour J, `controle-des-migrations` et `con… |

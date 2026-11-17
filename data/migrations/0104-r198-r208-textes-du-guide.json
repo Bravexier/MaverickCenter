@@ -1,0 +1,494 @@
+{
+ "migration": "0104-r198-r208-textes-du-guide",
+ "decisions": [
+  "R198",
+  "R199",
+  "R200",
+  "R201",
+  "R202",
+  "R203",
+  "R204",
+  "R205",
+  "R207",
+  "R208"
+ ],
+ "description": "Textes de nos pages du guide, des mots-clés et des corps de pages typées mis d'accord avec les décisions R198 à R208 (réponses du propriétaire du 2026-11-07). `textes` : une entrée par remplacement, dans l'ordre de la migration ; `avant` et `apres` sont le fragment qui change (présent une seule fois dans la valeur d'avant). Ce ne sont pas des corrections d'orthographe d'un classeur : le registre ne les range pas sous `corrections`, que le rapprochement des classeurs (tools/sources/rapprocher.mjs) lit et hérite aux lignes d'une page. `mots_cles_crees` : les mots-clés ajoutés.",
+ "textes": [
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/les-postures"
+   },
+   "col": "corps_md",
+   "decision": "R198 (6)",
+   "avant": "- Au début de son tour, une fois subis les effets du début du tour (poison, brûlure…), chaque personnage **déclare sa posture, avant de faire quoi que ce soit d’autre** (voir {{le-tour-de-jeu}}).",
+   "apres": "- **On garde sa posture tant qu’on n’en change pas.** C’est au début de son tour, une fois subis les effets du début du tour (poison, brûlure…), et avant de faire quoi que ce soit d’autre, qu’un personnage prend sa posture ou en change (voir {{le-tour-de-jeu}})."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/les-postures"
+   },
+   "col": "corps_md",
+   "decision": "R198 (1)",
+   "avant": "- **Parades et esquives sans limite** : autant de défenses qu’il y a de coups, mais chacune fait baisser de 10 % la réussite de la suivante. Le Doc « Créer sa fiche de personnage » compte ce malus dès la première défense ; le {{guide-pour-mj-maverick|Doc « Guide pour MJ »}} seulement au-delà de deux.",
+   "apres": "- **Parades et esquives sans limite** : autant de défenses qu’il y a de coups, mais au-delà de deux parades ou esquives, chacune fait baisser de 10 % la réussite de la suivante."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/les-postures"
+   },
+   "col": "corps_md",
+   "decision": "R198 (2)",
+   "avant": "- **Provocation** : en échange d’un bon dialogue et d’un jet réussi de *Diplomatie*, d’*Intimidation* ou de *Manipulation*, un adversaire est obligé de n’attaquer que vous pendant 1 tour. (Le Doc « Guide pour MJ » se contente du dialogue **ou** du jet.)",
+   "apres": "- **Provocation** : en échange d’un bon dialogue ou d’un jet réussi de *Diplomatie*, d’*Intimidation* ou de *Manipulation*, un adversaire est obligé de n’attaquer que vous pendant 1 tour."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/les-postures"
+   },
+   "col": "corps_md",
+   "decision": "R198 (5)",
+   "avant": "La posture casse aussi le tour de charge de la capacité *Préparation* du Mage Rouge et Vert.",
+   "apres": "La posture casse aussi le tour de charge des capacités *Préparation* (Mage Rouge) et *Chargement* (Mage Vert)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/les-postures"
+   },
+   "col": "corps_md",
+   "decision": "R198 (3)",
+   "avant": "- **Anticiper l’adversaire** : un jet d’*Observation* (ou de *Distinction*, d’après le Doc « Créer sa fiche de personnage ») donne une information utile sur sa prochaine action ; voyez avec le MJ.",
+   "apres": "- **Anticiper l’adversaire** : un jet d’*Observation* donne une information utile sur sa prochaine action ; voyez avec le MJ."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/les-postures"
+   },
+   "col": "corps_md",
+   "decision": "R198 (3)",
+   "avant": "- **Repérer 1d4 résistance/vulnérabilité**, comme l’écrivent les deux documents : une action rapide (IC) permet de détecter une résistance ou une vulnérabilité de l’ennemi, prise au hasard.",
+   "apres": "- **Repérer 1d4 résistances ou vulnérabilités** : une action rapide (IC) permet de détecter 1d4 résistances ou vulnérabilités de l’ennemi."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/les-postures"
+   },
+   "col": "corps_md",
+   "decision": "R198 (4)",
+   "avant": "- Le Doc « Guide pour MJ » ajoute **un tour d’effet gratuit** aux effets de vos sorts qui durent plusieurs tours ; le Doc « Créer sa fiche de personnage » ne le dit pas.\n",
+   "apres": ""
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/les-postures"
+   },
+   "col": "corps_md",
+   "decision": "R198 (4), R112",
+   "avant": "- *Inconvénient* : **ni armes ni objets**, sauf la Forgemagie (un sort qui crée des armes faites de magie) ; les bâtons magiques restent permis ; le Doc « Guide pour MJ » permet aussi la « Forge de ses morts » et les parchemins.",
+   "apres": "- *Inconvénient* : **ni armes ni objets** : on ne peut que lancer des sorts, et la Forgemagie (qui crée des armes faites de magie) et la « Forge de ses morts » en sont. Les parchemins restent permis, et les effets passifs restent actifs : accessoires, bâtons magiques, armure et bouclier portés."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/attaquer-et-se-defendre"
+   },
+   "col": "corps_md",
+   "decision": "R198 (1)",
+   "avant": "et la posture défensive les permet sans limite, mais chaque défense y fait baisser la réussite de la suivante : dès la première selon le Doc « Créer sa fiche de personnage », au-delà de deux selon le {{guide-pour-mj-maverick|Doc « Guide pour MJ »}}.",
+   "apres": "et la posture défensive les permet sans limite, mais au-delà de deux parades ou esquives, chaque défense y fait baisser la réussite de la suivante."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/le-tour-de-jeu"
+   },
+   "col": "corps_md",
+   "decision": "R198 (6)",
+   "avant": "Il déclare sa posture de combat. Elle décide en grande partie",
+   "apres": "Il prend sa posture de combat, ou change celle qu’il avait : on garde sa posture tant qu’on n’en change pas. Elle décide en grande partie"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/resistances-et-faiblesses"
+   },
+   "col": "corps_md",
+   "decision": "R198 (3)",
+   "avant": "La posture **Vigilance** permet de repérer une résistance ou une vulnérabilité d’un ennemi, prise au hasard.",
+   "apres": "La posture **Vigilance** permet de repérer 1d4 résistances ou vulnérabilités d’un ennemi."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/les-degats"
+   },
+   "col": "corps_md",
+   "decision": "R199 (4)",
+   "avant": "2. **On lance les dés** de l’arme ou du sort, et l’on ajoute leurs bonus.",
+   "apres": "2. **On lance les dés** de l’arme ou du sort, et l’on ajoute leurs bonus, ainsi que les bonus fixes de dégâts : viser la tête (+10), la tenaille (+4), le +8 d’un échec critique en défense, le Mode Hyper… Ils comptent avec les dégâts de base."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/les-degats"
+   },
+   "col": "corps_md",
+   "decision": "R199 (4)",
+   "avant": "D’autres règles ajoutent des dégâts à l’attaque :",
+   "apres": "D’autres règles ajoutent des dégâts à l’attaque. Ils comptent avec les dégâts de base (étape 2) : une réussite critique les double donc aussi."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/attaquer-et-se-defendre"
+   },
+   "col": "corps_md",
+   "decision": "R199 (4)",
+   "avant": "- **Réussite critique (1 à 5)** : les dégâts de base sont doublés,",
+   "apres": "- **Réussite critique (1 à 5)** : les dégâts de l’attaque, bonus compris, sont doublés,"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/attaquer-et-se-defendre"
+   },
+   "col": "corps_md",
+   "decision": "R199 (2)",
+   "avant": "certaines armes en écrivent deux (Lourde / Légère, Arc / Légère) ;",
+   "apres": "certaines armes en écrivent deux (Lourde / Légère, Arc / Légère) : le joueur choisit alors celle des deux qui sert ;"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/attaquer-et-se-defendre"
+   },
+   "col": "corps_md",
+   "decision": "R199 (1)",
+   "avant": "Pour bloquer entièrement le coup, deux conditions : **réussir son jet, et faire un résultat égal ou meilleur que celui de l’attaquant.**\n\n| Résultat de la défense | Ce qui se passe |\n| --- | --- |\n| Réussie, et égale ou meilleure que l’attaque | Le coup est entièrement bloqué. |\n| Réussie, mais moins bonne que l’attaque | **Défense partielle** : les dégâts finaux sont divisés par 2. Si c’est une parade au bouclier, ses AP ou son AM comptent à ce moment-là. |\n| Ratée, même avec un meilleur résultat que l’attaque | La défense échoue : les dégâts sont entiers. |",
+   "apres": "Pour bloquer entièrement le coup, deux conditions : **réussir son jet, et faire un résultat égal ou inférieur à celui de l’attaquant.** Au D100, un meilleur résultat est un résultat plus bas.\n\n*Exemple : l’attaquant touche avec un résultat de 30. La cible réussit sa parade avec un résultat de 25 : 25 est plus bas que 30, le coup est entièrement bloqué.*\n\n| Résultat de la défense | Ce qui se passe |\n| --- | --- |\n| Réussie, avec un résultat égal ou inférieur à celui de l’attaque | Le coup est entièrement bloqué. |\n| Réussie, mais avec un résultat supérieur à celui de l’attaque | **Défense partielle** : les dégâts finaux sont divisés par 2. Si c’est une parade au bouclier, ses AP ou son AM comptent à ce moment-là. |\n| Ratée, même avec un résultat inférieur à celui de l’attaque | La défense échoue : les dégâts sont entiers. |"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/deplacement-ou-sortie-de-la-zone-d-influence"
+   },
+   "col": "corps_md",
+   "decision": "R199 (3)",
+   "avant": "Si un personnage souhaite quitter une zone d'influence, l'adversaire peut effectuer une attaque gratuite contre lui.",
+   "apres": "Si un personnage souhaite quitter une zone d'influence, l'adversaire peut effectuer une {{attaque-dopportunite|attaque d'opportunité}} contre lui, avec ses limites."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/prise-en-tenaille-et-zone-d-influence"
+   },
+   "col": "corps_md",
+   "decision": "R199 (3)",
+   "avant": "la quitter lui permet une attaque gratuite, que le Doc « Guide pour MJ » range aussi parmi les attaques d’opportunité (voir {{attaque-dopportunite|Les attaques d'opportunité}}).",
+   "apres": "la quitter aussi, avec les limites de toute attaque d’opportunité (voir {{attaque-dopportunite|Les attaques d'opportunité}})."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/le-mode-hyper"
+   },
+   "col": "corps_md",
+   "decision": "R200 (2)",
+   "avant": "et sans même consommer de {{chakra|chakra}} ; mais la limite des 10 tours, elle, reste présente ;",
+   "apres": "et sans même consommer de {{chakra|chakra}} ; mais sa durée, elle, reste limitée par le niveau (voir « Ce qu’il coûte ») ;"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/le-mode-hyper"
+   },
+   "col": "corps_md",
+   "decision": "R200 (3)",
+   "avant": "- Le Mode Hyper se nourrit de {{chakra|chakra}} : il en brûle **10 % du maximum à chaque tour**.",
+   "apres": "- Le Mode Hyper se nourrit de {{chakra|chakra}} : il en brûle **10 % du maximum à chaque tour**, à la fin du tour du joueur."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/le-mode-hyper"
+   },
+   "col": "corps_md",
+   "decision": "R200 (1)",
+   "avant": "- Il dure au plus **le niveau global divisé par 2**, en tours,",
+   "apres": "- Il dure au plus **le niveau global divisé par 2, arrondi à l’inférieur**, en tours,"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/le-mode-hyper"
+   },
+   "col": "corps_md",
+   "decision": "R200 (1)",
+   "avant": "pendant 4 tours au plus ; ses sorts, eux, ne lui coûtent rien pendant ce temps.*",
+   "apres": "pendant 4 tours au plus ; ses sorts, eux, ne lui coûtent rien pendant ce temps. Au niveau 9, il durerait aussi 4 tours au plus : 9 ÷ 2 = 4,5, arrondi à 4.*"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/le-mode-hyper"
+   },
+   "col": "corps_md",
+   "decision": "R200 (3), R186",
+   "avant": "chaque point qui manque se paie de **3 points de santé**.",
+   "apres": "chaque point qui manque se paie de **3 points de santé**. Il en va de même des 10 % que le Mode Hyper brûle à la fin du tour : si le {{chakra|chakra}} est épuisé, ce qui manque se paie en santé, 3 points par point de {{chakra|chakra}}, sans toucher la {{barriere|barrière}}."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/le-mode-hyper"
+   },
+   "col": "corps_md",
+   "decision": "R200 (5)",
+   "avant": "\n\nLe classeur des magies garde, dans un onglet masqué, une autre liste des effets du Mode Hyper, aux valeurs différentes : cette liste ne compte pas, ce sont les valeurs données plus haut (+15, et +7 avec deux magies) qui valent.\n",
+   "apres": "\n"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/liste-des-effets-mode-super"
+   },
+   "col": "corps_md",
+   "decision": "R200 (1)",
+   "avant": "au maximum un nombre de tours équivalent au niveau global divisé par 2.",
+   "apres": "au maximum un nombre de tours équivalent au niveau global divisé par 2, arrondi à l'inférieur."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/finaliser-son-personnage"
+   },
+   "col": "corps_md",
+   "decision": "R201 (2)",
+   "avant": "Elle vaut la moitié du {{chakra|chakra}}, plus les bonus de la race et de la classe.",
+   "apres": "Elle vaut la moitié du {{chakra|chakra}}, arrondie à l’inférieur, plus les bonus de la race et de la classe."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/les-degats"
+   },
+   "col": "corps_md",
+   "decision": "R201 (2)",
+   "avant": "qui vaut la moitié du {{chakra|chakra}} total (plus ce qu’offrent certaines races et classes)",
+   "apres": "qui vaut la moitié du {{chakra|chakra}} total, arrondie à l’inférieur (plus ce qu’offrent certaines races et classes)"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/finaliser-son-personnage"
+   },
+   "col": "corps_md",
+   "decision": "R202 (6)",
+   "avant": "À la création, lancez 1D20 : le résultat est votre or de départ.",
+   "apres": "À la création, lancez 1D20 : le résultat est votre or de départ, en Ricken d’or (RO)."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/la-montee-de-niveau"
+   },
+   "col": "corps_md",
+   "decision": "R202 (8)",
+   "avant": "et dit ce que le personnage a à répartir.\n",
+   "apres": "et dit ce que le personnage a à répartir. L’expérience que rapporte une aventure n’a pas de valeur prédéfinie : c’est le MJ qui la décide.\n"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/reussites-echecs-et-critiques"
+   },
+   "col": "corps_md",
+   "decision": "R203",
+   "avant": "Mais **la réussite critique ne dépasse jamais 1 à 15, toutes sources ensemble** (posture, score, dons, sorts, armes, accessoires, tenaille).",
+   "apres": "Mais **la réussite critique ne dépasse jamais 1 à 15, toutes sources ensemble** (posture, score, dons, sorts, armes, accessoires, tenaille). À l’autre bout, elle **ne descend jamais sous 1 à 1**, même quand des accessoires maudits la réduisent."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/fiche-competences"
+   },
+   "col": "corps_md",
+   "decision": "R204",
+   "avant": "*Prouesse (Volonté) :*",
+   "apres": "*Calme (Volonté) :*"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "magies/magie-de-la-glace"
+   },
+   "col": "corps_md",
+   "decision": "R205 (3)",
+   "avant": "- **Résistance altération d'état** : Gelé, Poison, Saignement",
+   "apres": "- **Résistance altération d'état** : Gel, Poison, Saignement"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "magies/magie-de-la-necromancie"
+   },
+   "col": "corps_md",
+   "decision": "R205 (3)",
+   "avant": "- **Vulnérabilité altération d'état** : Gelé, Confusion",
+   "apres": "- **Vulnérabilité altération d'état** : Gel, Confusion"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "magies/magie-du-feu"
+   },
+   "col": "corps_md",
+   "decision": "R205 (3)",
+   "avant": "- **Résistance altération d'état** : Brûlure, Gelé, Pétrification",
+   "apres": "- **Résistance altération d'état** : Brûlure, Gel, Pétrification"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "magies/magie-du-sang"
+   },
+   "col": "corps_md",
+   "decision": "R205 (3)",
+   "avant": "- **Vulnérabilité altération d'état** : Gelé, Poison",
+   "apres": "- **Vulnérabilité altération d'état** : Gel, Poison"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "magies/magie-du-vent"
+   },
+   "col": "corps_md",
+   "decision": "R205 (3)",
+   "avant": "altération d'état** : Surdité, Brûlure, Gelé",
+   "apres": "altération d'état** : Surdité, Brûlure, Gel"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/accessoires"
+   },
+   "col": "corps_md",
+   "decision": "R205 (3)",
+   "avant": "| Résistance Glace et Gelé |",
+   "apres": "| Résistance Glace et Gel |"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "ressources/maladie"
+   },
+   "col": "corps_md",
+   "decision": "R205 (3)",
+   "avant": "**Effets** : -20% de chance de résister à Gelé.",
+   "apres": "**Effets** : -20% de chance de résister à Gel."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/equipement-et-butin"
+   },
+   "col": "corps_md",
+   "decision": "R207 (8)",
+   "avant": "Le butin se joue sur le résultat de **3D100** : plus le score est bas, plus la découverte est fabuleuse.",
+   "apres": "Le butin se joue sur le résultat de **3D100**, les trois dés additionnés : plus le total est bas, plus la découverte est fabuleuse."
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/equipement-et-butin"
+   },
+   "col": "corps_md",
+   "decision": "R207 (9)",
+   "avant": "travailleur du cuir ou {{couturier|couturier}}",
+   "apres": "{{maroquinier|maroquinier}} ou {{couturier|couturier}}"
+  },
+  {
+   "table": "page",
+   "cle": {
+    "id": "guide/exercer-un-metier"
+   },
+   "col": "corps_md",
+   "decision": "R208 (6)",
+   "avant": "- **un avantage sur un jet**, quand le métier s’applique à la situation.",
+   "apres": "- **un avantage sur un jet**, quand le métier s’applique à la situation : c’est le MJ qui le décide."
+  },
+  {
+   "table": "mot_cle",
+   "cle": {
+    "id": "zone-dinfluence"
+   },
+   "col": "description",
+   "decision": "R199 (3)",
+   "avant": "Y entrer puis la traverser lui permet une attaque d’opportunité ; la quitter, une attaque gratuite, que le Doc « Guide pour MJ » range aussi parmi les attaques d’opportunité.",
+   "apres": "Y entrer puis la traverser, ou la quitter, lui permet une {{attaque-dopportunite|attaque d’opportunité}}, avec ses limites."
+  },
+  {
+   "table": "mot_cle",
+   "cle": {
+    "id": "attaque-gratuite"
+   },
+   "col": "description",
+   "decision": "R199 (3)",
+   "avant": "L’attaque que permet un adversaire qui quitte votre zone d’influence. Le Doc « Guide pour MJ » range aussi ce cas parmi les attaques d’opportunité (voir {{attaque-dopportunite|Attaque d’opportunité}} et {{zone-dinfluence|Zone d’influence}}).",
+   "apres": "L’attaque que permet un adversaire qui quitte votre {{zone-dinfluence|zone d’influence}} : c’est une {{attaque-dopportunite|attaque d’opportunité}}, avec ses limites."
+  },
+  {
+   "table": "mot_cle",
+   "cle": {
+    "id": "barriere"
+   },
+   "col": "description",
+   "decision": "R201",
+   "avant": "elle vaut la moitié du {{chakra|chakra}} total, plus les bonus de la race et de la classe.",
+   "apres": "elle vaut la moitié du {{chakra|chakra}} total, arrondie à l’inférieur, plus les bonus de la race et de la classe. Sauf indication contraire, elle prend les coups avant la santé."
+  },
+  {
+   "table": "mot_cle",
+   "cle": {
+    "id": "barriere"
+   },
+   "col": "description",
+   "decision": "R201 (1)",
+   "avant": " Le Glossaire du Codex précise qu’elle prend les coups avant la santé, sauf contre-indication.",
+   "apres": ""
+  },
+  {
+   "table": "mot_cle",
+   "cle": {
+    "id": "classe-magique"
+   },
+   "col": "description",
+   "decision": "R202 (3)",
+   "avant": "La seconde spécialité de chaque classe raciale, et celle du Flagelleur, donne elle aussi 4 AM.",
+   "apres": "La seconde spécialité de chaque classe raciale, et celle du Flagelleur, compte elle aussi comme classe magique : elle donne 4 AM et compte comme une condition pour les emplacements de sorts."
+  }
+ ],
+ "mots_cles_crees": [
+  {
+   "id": "maroquinier",
+   "libelle": "Maroquinier",
+   "url": "/metiers/#metier-maroquinier",
+   "page": "metiers/maroquinier",
+   "decision": "R207 (9)"
+  },
+  {
+   "id": "armurier",
+   "libelle": "Armurier",
+   "url": "/metiers/#metier-armurier",
+   "page": "metiers/armurier",
+   "decision": "R207 (4)"
+  }
+ ]
+}

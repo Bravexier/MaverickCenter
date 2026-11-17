@@ -57,6 +57,38 @@ const communes = structure ? tablesCommunes(structure) : [];
             contenu affiché suivent la base vivante : une table dont le nombre de lignes change, et dans la fenêtre du contenu une ligne nouvelle ou
             changée, s’éclairent un instant.
           </p>
+          {/* « Structure de la base » : les deux essais de structure du service (GET <base>api/debug/structure/), lus une fois à la première ouverture
+              puis à chaque « Actualiser », jamais relevés ; rendu pur : lib/debug-structure.mjs, script : scripts/debug-structure.mjs */}
+          <section class="structure" data-structure aria-labelledby="debug-structure-titre">
+            <div class="structure__entete">
+              <h3 id="debug-structure-titre">Structure de la base</h3>
+              <span class="structure__resume" data-structure-resume></span>
+              <button type="button" class="structure__actualiser" data-structure-actualiser>Actualiser</button>
+            </div>
+            <p class="debug-petit">
+              Les essais de structure du service : l’essai avant installation (les migrations d’une livraison sur une copie de la base vivante) et
+              l’essai dans l’ombre (la base migrée sur place comparée à la base refaite, à chaque installation).
+            </p>
+            <div class="structure__contenu" data-structure-contenu>
+              <p class="debug-vide">Chargement à l’ouverture de ce menu…</p>
+            </div>
+          </section>
+          {/* « Fabrication témoin » : l'atelier du site de dev (GET <base>api/debug/atelier/, lot 9), lu une fois à la première ouverture puis à chaque
+              « Actualiser », jamais relevé ; rendu pur : lib/debug-atelier-page.mjs, script : scripts/debug-atelier.mjs */}
+          <section class="structure atelier" data-atelier aria-labelledby="debug-atelier-titre">
+            <div class="structure__entete">
+              <h3 id="debug-atelier-titre">Fabrication témoin</h3>
+              <span class="structure__resume" data-atelier-resume></span>
+              <button type="button" class="structure__actualiser" data-atelier-actualiser>Actualiser</button>
+            </div>
+            <p class="debug-petit">
+              L’atelier du serveur fabrique un site témoin à partir de l’extrait du contenu, pour mesurer ce que la fabrication demande : mémoire, processeurs,
+              durée, disque. Les chiffres du dernier essai aident à choisir le prochain serveur.
+            </p>
+            <div class="structure__contenu" data-atelier-contenu>
+              <p class="debug-vide">Chargement à l’ouverture de ce menu…</p>
+            </div>
+          </section>
           <div class="schema-outils">
             <div class="schema-outils__recherche">
               <label for="schema-recherche">Chercher une table</label>
@@ -145,6 +177,12 @@ const communes = structure ? tablesCommunes(structure) : [];
       <script is:inline type="application/json" data-debug-schema set:html={jsonPourLaPage(structure)}></script>
       <script>
         import '../../scripts/debug-schema.mjs';
+      </script>
+      <script>
+        import '../../scripts/debug-structure.mjs';
+      </script>
+      <script>
+        import '../../scripts/debug-atelier.mjs';
       </script>
     </>
   )

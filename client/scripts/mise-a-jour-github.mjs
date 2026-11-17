@@ -35,6 +35,14 @@
 //        ensuite la version X.Y.0, les étiquettes et la publication. Le marqueur [V: X+1] est le signal du propriétaire : le titre de cette PR
 //        ne le porte que si le lot est `majeure` (la case « Version majeure » de la page, couverte par l'empreinte) — livraison.yml fait alors la
 //        X+1.0.0 —, et la livraison s'arrête si la PR le porte sans que le lot le demande, ou l'inverse.
+//   Paquet de la base source (lot 8, docs/serveur.md « Mise à jour depuis la base source (lot 8) ») : quand le site de dev porte le marqueur db/source, le
+//   lot téléchargé est un PAQUET (un fichier SQLite, serveur/paquet.mjs : la note de version et l'historique y sont déjà écrits, sa vue paquet_meta dit son
+//   lot, son mode et ses tables de contenu). preparer le recontrôle et en tire data/rows (scripts/mise-a-jour-paquet.mjs : aucune ligne propre au site, ni HTML
+//   brut ni lien non sûr ajouté, toute table changée tracée dans l'historique) au lieu de rejouer un journal ; la liste blanche est alors celle des tables de
+//   contenu du paquet, et livrer réexporte le paquet (tools/db/exporter.py : Python, bibliothèque standard seulement, la seule commande hors git de ce job)
+//   pour exiger que chaque data/rows/*.sql du commit en soit la copie octet pour octet (verifierContrePaquet) ; le reste est le même. Entrée « copie » (« Copier vers le dépôt ») : un paquet sans note, qui n'entre que dans dev (étape « Fusion dans
+//   dev ») ; l'étape « Livraison vers master » ne fait rien ; son commit porte « Copie : <id> » (pas « Lot : »), si bien qu'il ne bloque aucune mise à jour.
+//   Le mode du paquet (simulation, copie) doit correspondre aux entrées, dans les deux sens.
 //   Simulation de mise à jour (entrée « essai ») : preparer fait tout, contrôles compris ; livrer vérifie sans effet de bord : artefact, liste
 //   blanche, application sur origin/dev à blanc (rebase compris), `git push --dry-run` authentifié par le jeton (la découverte receive-pack exige
 //   l'écriture sur Contents), lecture des PR avec le jeton, PR de livraison déjà ouverte ; il ne pousse rien, n'ouvre ni ne ferme aucune PR.
@@ -60,7 +68,8 @@
 // et les parties git avec de vrais dépôts temporaires.
 import { spawnSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
-import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { DatabaseSync } from 'node:sqlite';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -76,6 +85,13 @@ export const ETAPES_DE_LIVRER = Object.freeze({ dev: 'Fusion dans dev', master: 
 /** L'artefact que preparer publie et que livrer relit : son nom et ses fichiers. */
 export const NOM_ARTEFACT = 'preparation';
 export const ARTEFACT = Object.freeze({ lot: 'lot.json', commit: 'commit.bundle', preparation: 'preparation.json' });
+/** Le paquet de la base source dans l'artefact, à la place de lot.json (le fichier tel que servi : son empreinte est celle de l'entrée du workflow). */
+export const ARTEFACT_PAQUET = 'paquet.db';
+/** Le début d'un fichier SQLite : un lot téléchargé qui commence ainsi est un paquet (serveur/paquet.mjs#ENTETE_SQLITE). */
+export const ENTETE_SQLITE = 'SQLite format 3\0';
+/** Le format et les modes d'un paquet (serveur/paquet.mjs#FORMAT_PAQUET, MODES_DU_PAQUET, recopiés : ce script n'importe que node: ; le test les compare). */
+export const FORMAT_PAQUET = 'maverick-paquet/1';
+export const MODES_DU_PAQUET = Object.freeze(['mise-a-jour', 'simulation', 'copie']);
 export const FORMAT_PREPARATION = 'maverick-mise-a-jour-preparation/1';
 /** La référence locale du commit préparé (dans le bundle). */
 export const REF_DU_LOT = 'refs/mise-a-jour/lot';
@@ -135,9 +151,17 @@ export const CODES_REGLES = {
   7: 'une autre mise à jour de la même version est dans dev sans être livrée',
 };
 export const ACTIONS_REGLES = { 7: ACTION_LOT_EN_ATTENTE };
+/** Codes de sortie de scripts/mise-a-jour-paquet.mjs (un paquet de la base source). */
+export const CODES_PAQUET = {
+  2: 'paquet illisible ou refusé (forme, lignes propres au site, note de version)',
+  3: 'HTML brut ou lien non sûr ajouté',
+  4: 'une table changée sans trace dans l\'historique',
+  5: 'structure différente de data/rows',
+  6: 'version de la note différente de celle que donnent dev et master',
+};
 /** Heure des noms de branche et date de la note : celle du propriétaire. */
 const FUSEAU = 'Europe/Paris';
-const BOT = { nom: 'github-actions[bot]', courriel: '41898282+github-actions[bot]@users.noreply.github.com' };
+export const BOT = { nom: 'github-actions[bot]', courriel: '41898282+github-actions[bot]@users.noreply.github.com' };
 /** Préfixe des commandes git du job livrer qui pourraient lancer un hook (push, cherry-pick) et du commit de preparer. */
 const SANS_HOOKS = ['-c', 'core.hooksPath=/dev/null'];
 const IDENTITE_DU_BOT = ['-c', `user.name=${BOT.nom}`, '-c', `user.email=${BOT.courriel}`];
@@ -145,7 +169,7 @@ const IDENTITE_DU_BOT = ['-c', `user.name=${BOT.nom}`, '-c', `user.email=${BOT.c
 const SANS_AVIS = new Set(['skipped', 'neutral']);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const SHA = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
-const BRANCHE_DU_WORKFLOW = /^feature\/mise-a-jour-regles-[0-9]{8}-[0-9]{4}(?:-[0-9]+)?$/;
+export const BRANCHE_DU_WORKFLOW = /^feature\/mise-a-jour-regles-[0-9]{8}-[0-9]{4}(?:-[0-9]+)?$/;
 const FICHIER_DE_DATA_ROWS = /^data\/rows\/[A-Za-z0-9_]+\.sql$/;
 
 class ErreurMiseAJourGithub extends Error {
@@ -199,19 +223,77 @@ export function lireLot(octets, { empreinte, lot }, etape = 'lot') {
   return donnees;
 }
 
-/** Télécharge le lot et vérifie son empreinte sur les octets reçus, puis sa forme. Rend { octets, donnees }. */
-async function telechargerLot({ adresse, empreinte, lot }, { fetch }) {
+/** Les octets sont-ils ceux d'un paquet (un fichier SQLite) plutôt que d'un lot figé (JSON) ? */
+export const estUnPaquet = (octets) => Buffer.from(octets).subarray(0, ENTETE_SQLITE.length).toString('latin1') === ENTETE_SQLITE;
+
+/**
+ * Un paquet de la base source (serveur/paquet.mjs) : l'empreinte des octets (celle de l'entrée du workflow), puis sa vue paquet_meta, lue en lecture seule dans
+ * `chemin` (le fichier qui porte ces octets). Rend ses données : { paquet: true, format, id, mode, simulation, copie, majeure, version_cible, tables_de_contenu,
+ * chemin }.
+ */
+export function lirePaquet(octets, chemin, { empreinte, lot }, etape = 'lot') {
+  const calculee = createHash('sha256').update(octets).digest('hex');
+  if (calculee !== empreinte) {
+    throw echec(etape, `empreinte du paquet différente (attendue ${empreinte}, calculée ${calculee}) : ce n'est pas le paquet figé par le site de dev, rien n'est fait`);
+  }
+  let meta;
+  try {
+    const db = new DatabaseSync(chemin, { readOnly: true });
+    try {
+      meta = { ...db.prepare('SELECT format, id, mode, version, majeure, tables_de_contenu FROM paquet_meta').get() };
+    } finally {
+      db.close();
+    }
+  } catch {
+    throw echec(etape, 'paquet illisible (vue paquet_meta attendue)');
+  }
+  let tables;
+  try {
+    tables = JSON.parse(meta.tables_de_contenu);
+  } catch {
+    tables = null;
+  }
+  const ok = meta.format === FORMAT_PAQUET && meta.id === lot && MODES_DU_PAQUET.includes(meta.mode) && [0, 1].includes(meta.majeure)
+    && (meta.mode === 'copie' ? meta.version === null : /^\d+\.\d+$/.test(String(meta.version)))
+    && Array.isArray(tables) && tables.every((t) => typeof t === 'string' && /^[a-z0-9_]+$/.test(t));
+  if (!ok) throw echec(etape, `paquet illisible (format « ${FORMAT_PAQUET} », identifiant du lot, mode, version et tables de contenu attendus)`);
+  return {
+    paquet: true, format: meta.format, id: meta.id, mode: meta.mode, simulation: meta.mode === 'simulation', copie: meta.mode === 'copie', majeure: meta.majeure === 1,
+    version_cible: meta.version, tables_de_contenu: [...tables].sort(), chemin,
+  };
+}
+
+/**
+ * La copie vers le dépôt (entrée « copie ») : le paquet doit le dire, dans les deux sens (un paquet de mise à jour lancé en copie ne serait jamais livré ; une
+ * copie lancée sans l'entrée partirait vers master). Un lot figé (JSON) n'est jamais une copie.
+ */
+export function verifierCopie(donnees, copie) {
+  const enCopie = donnees?.copie === true;
+  if (enCopie && !copie) throw echec('entrees', 'ce paquet a été figé pour « Copier vers le dépôt » : le workflow doit être lancé avec la case « copie » cochée. Rien n\'est fait.');
+  if (!enCopie && copie) throw echec('entrees', 'copie demandée (case « copie » cochée) pour un lot ou un paquet de mise à jour : relancer sans la case, ou « Copier vers le dépôt » depuis la page Mise à jour du site de dev. Rien n\'est fait.');
+}
+
+/** Télécharge le lot et vérifie son empreinte sur les octets reçus, puis sa forme. Rend { octets, donnees } (un paquet : `fichier`, `donnees.paquet`). */
+async function telechargerLot({ adresse, empreinte, lot, artefact }, { fetch }) {
   let r;
   try {
     // Jamais de redirection (vers un autre hôte que celui contrôlé par verifierEntrees) ; délai borné.
     r = await fetch(adresse, {
-      headers: { Accept: 'application/json', 'User-Agent': 'maverick-center-mise-a-jour' }, redirect: 'error', signal: AbortSignal.timeout(DELAI_RESEAU),
+      headers: { Accept: 'application/json, application/vnd.sqlite3', 'User-Agent': 'maverick-center-mise-a-jour' }, redirect: 'error', signal: AbortSignal.timeout(DELAI_RESEAU),
     });
   } catch (e) {
     throw echec('lot', `téléchargement du lot impossible (${e.message}) : le site de dev doit servir ${adresse}`);
   }
   if (r.status !== 200) throw echec('lot', `téléchargement du lot : le site de dev a répondu ${r.status} pour ${adresse}`);
   const octets = Buffer.from(await r.arrayBuffer());
+  if (estUnPaquet(octets)) {
+    // le paquet est posé dans l'artefact tel que reçu, puis lu là (node:sqlite lit un fichier)
+    rmSync(artefact, { recursive: true, force: true });
+    mkdirSync(artefact, { recursive: true });
+    const fichier = join(artefact, ARTEFACT_PAQUET);
+    writeFileSync(fichier, octets);
+    return { octets, donnees: lirePaquet(octets, fichier, { empreinte, lot }), fichier };
+  }
   return { octets, donnees: lireLot(octets, { empreinte, lot }) };
 }
 
@@ -241,10 +323,28 @@ export function verifierSimulation(donnees, essai) {
  * lot : tablesAvecBalises), et `page` (les pages typées refaites depuis les lignes ainsi réécrites : recalculerLesPages) ; une ligne page_tag notée avant
  * la migration 0043 (avec sa colonne `libelle`) peut faire créer son mot-clé ; un lot qui touche une classe ou un don (classe, classe_maitrise_arme,
  * capacite), ou une famille d'armes (arme_famille : décision R159, toutes les sources), voit ses sources de maîtrise d'arme refaites par le lecteur
- * (serveur/edition-maitrises.mjs#sourcesRefaitesParLeLot : TABLES_DES_SOURCES).
+ * (serveur/edition-maitrises.mjs#sourcesRefaitesParLeLot : TABLES_DES_SOURCES) ; un don supprimé par un lot noté avant que ses règles en données ne
+ * le soient (serveur/edition.mjs#retirerLesReglesDuDon) les retire par la cascade de son schéma (TABLES_DES_REGLES_DU_DON) ; un lot qui écrit une entrée
+ * du calcul des armures et des boucliers (décision R207 (1) : TABLES_DES_ENTREES_DU_CALCUL) peut réécrire armures, boucliers et pages
+ * (TABLES_DES_VALEURS_CALCULEES). Un mot-clé supprimé ou fusionné par un lot noté avant que le service ne note ses lignes filles retire aussi, par la
+ * cascade, ses catégories, synonymes et clés quittées (TABLES_DES_FILLES_DU_MOT_CLE) ; une monnaie supprimée vide mot_cle.monnaie_id (ON DELETE SET
+ * NULL, migration 0113).
  */
 // serveur/edition-maitrises.mjs#TABLES_DES_SOURCES, recopiée (test/mise-a-jour-github.test.mjs les compare)
 export const TABLES_DES_SOURCES_DE_MAITRISE = Object.freeze(['maitrise_arme_part', 'maitrise_arme_part_famille', 'capacite_nm_gagne']);
+/**
+ * Les colonnes calculées d'après les matériaux (décision R207 (1)) : un lot qui écrit une de leurs entrées peut faire réécrire, au rejeu, les armures, les
+ * boucliers et le corps de leurs pages (serveur/edition-armures.mjs#valeursCalculeesParLeLot ; mêmes listes que TABLES_DES_ENTREES_DU_CALCUL et
+ * TABLES_DES_VALEURS_CALCULEES, recopiées : comparées par test/serveur-edition-armures.test.mjs).
+ */
+export const TABLES_DES_ENTREES_DU_CALCUL = Object.freeze([
+  'ressource', 'materiau', 'materiau_armure', 'materiau_bouclier', 'armure_emplacement', 'bouclier_classe', 'constante_equipement',
+]);
+export const TABLES_DES_VALEURS_CALCULEES = Object.freeze(['armure', 'bouclier', 'page']);
+// serveur/edition-mots-cles.mjs#TABLES_DES_FILLES_DU_MOT_CLE, recopiée (test/mise-a-jour-github.test.mjs les compare)
+export const TABLES_DES_FILLES_DU_MOT_CLE = Object.freeze(['mot_cle_categorie', 'mot_cle_synonyme', 'mot_cle_ancienne_cle']);
+// serveur/edition.mjs#TABLES_DES_REGLES_DU_DON, recopiée (test/serveur-edition-regles-du-don.test.mjs les compare)
+export const TABLES_DES_REGLES_DU_DON = Object.freeze(['capacite_condition_emplacements', 'capacite_npm_plafond', 'capacite_variable']);
 
 export function tablesDuLot(donnees, { tablesAvecBalises: balises = [] } = {}) {
   const tables = new Set();
@@ -255,11 +355,14 @@ export function tablesDuLot(donnees, { tablesAvecBalises: balises = [] } = {}) {
       if (typeof m.table !== 'string' || !/^[A-Za-z0-9_]+$/.test(m.table)) throw echec('lot', 'lot illisible (nom de table invalide dans le journal)');
       tables.add(m.table);
       if (m.table === 'mot_cle' && m.operation === 'supprimer') {
-        tables.add('page_tag');
+        for (const t of ['page_tag', ...TABLES_DES_FILLES_DU_MOT_CLE]) tables.add(t);
         motCleRetire = true;
       }
+      if (m.table === 'monnaie' && m.operation === 'supprimer') tables.add('mot_cle');
       if (m.table === 'page_tag' && (ancienne(m.avant) || ancienne(m.apres))) tables.add('mot_cle');
       if (['classe', 'classe_maitrise_arme', 'capacite', 'arme_famille'].includes(m.table)) for (const t of TABLES_DES_SOURCES_DE_MAITRISE) tables.add(t);
+      if (m.table === 'capacite' && m.operation === 'supprimer') for (const t of TABLES_DES_REGLES_DU_DON) tables.add(t);
+      if (TABLES_DES_ENTREES_DU_CALCUL.includes(m.table)) for (const t of TABLES_DES_VALEURS_CALCULEES) tables.add(t);
     }
   }
   if (motCleRetire) {
@@ -343,6 +446,10 @@ const messageDeCommit = (version, lot) => `Mise à jour des règles V${version} 
 const corpsDuCommit = (lot, run) => `Lot : ${lot}${run ? `\nRun : ${run}` : ''}\n\nAppliqué par le workflow « Mise à jour des règles » (.github/workflows/mise-a-jour.yml).`;
 /** Le message complet du commit préparé : livrer le recalcule et le compare (aucune ligne « Lot : » d'un autre lot ne peut s'y glisser). */
 export const messageAttendu = (version, lot, run) => `${messageDeCommit(version, lot)}\n\n${corpsDuCommit(lot, run)}`;
+/** La copie vers le dépôt (paquet sans note, lot 8) : son titre de PR, son commit (« Copie : <id> », jamais « Lot : »). */
+const titreCopie = (lot) => `Copie du contenu du site de dev vers le dépôt (lot ${lot.slice(0, 8)})`;
+const corpsDeLaCopie = (lot, run) => `Copie : ${lot}${run ? `\nRun : ${run}` : ''}\n\nCopié par le workflow « Mise à jour des règles » (.github/workflows/mise-a-jour.yml), sans livraison en production.`;
+export const messageAttenduCopie = (lot, run) => `${titreCopie(lot)}\n\n${corpsDeLaCopie(lot, run)}`;
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 // git et contrôles locaux
@@ -446,10 +553,10 @@ function lireJson(chemin) {
   }
 }
 
-function verifierResume(resume) {
-  const ok = resume && /^\d+\.\d+$/.test(String(resume.version)) && Array.isArray(resume.fichiers)
+function verifierResume(resume, { copie = false } = {}) {
+  const ok = resume && (copie ? resume.version === null : /^\d+\.\d+$/.test(String(resume.version))) && Array.isArray(resume.fichiers)
     && resume.fichiers.every((f) => typeof f === 'string' && /^[A-Za-z0-9_]+\.sql$/.test(f)) && typeof resume.markdown === 'string';
-  if (!ok) throw echec('lot', 'résumé de mise-a-jour-regles.mjs illisible (version X.Y, fichiers, markdown attendus)');
+  if (!ok) throw echec('lot', `résumé du script illisible (${copie ? 'version vide' : 'version X.Y'}, fichiers, markdown attendus)`);
 }
 
 /** L'environnement des commandes lancées (mise-a-jour-regles, contrôles) : sans aucun jeton. */
@@ -464,8 +571,9 @@ function environnementSansJeton() {
  * Le lot est-il déjà passé par ce workflow ? Son commit porte « Lot : <id> » ; s'il est sur master, il est livré ; sinon la PR qui l'a fusionné
  * dans dev se lit dans son commit de fusion (« Merge pull request #n from … »). Rend { commit, version, livre, pr } ou null.
  */
-export function chercherLotDejaFusionne(g, lot) {
-  const commits = g(['log', `origin/${DEV}`, '--fixed-strings', `--grep=Lot : ${lot}`, '--format=%H']).sortie.split('\n').map((s) => s.trim()).filter(Boolean);
+export function chercherLotDejaFusionne(g, lot, { copie = false } = {}) {
+  // une copie vers le dépôt porte « Copie : <id> » (lotsEnAttente ne lit que « Lot : » : une copie dans dev ne bloque aucune mise à jour)
+  const commits = g(['log', `origin/${DEV}`, '--fixed-strings', `--grep=${copie ? 'Copie' : 'Lot'} : ${lot}`, '--format=%H']).sortie.split('\n').map((s) => s.trim()).filter(Boolean);
   if (!commits.length) return null;
   const commit = commits.at(-1);
   const sujet = g(['log', '-1', '--format=%s', commit]).sortie.trim();
@@ -526,13 +634,14 @@ export function creerBundle(g, { base, commit, fichier }) {
  * Contrôle la préparation lue dans l'artefact : même lot, même empreinte, même mode (simulation ou non) que les entrées du workflow, état
  * connu ; pour un lot prêt : base et commit, version X.Y, note, fichiers de data/rows, horodatage de la branche.
  */
-export function verifierPreparation(p, { lot, empreinte, essai }) {
-  if (p?.format !== FORMAT_PREPARATION || p.lot !== lot || p.empreinte !== empreinte || p.essai !== Boolean(essai)) {
+export function verifierPreparation(p, { lot, empreinte, essai, copie = false }) {
+  if (p?.format !== FORMAT_PREPARATION || p.lot !== lot || p.empreinte !== empreinte || p.essai !== Boolean(essai) || Boolean(p.copie) !== Boolean(copie)) {
     throw echec('artefact', `préparation illisible ou d'un autre passage (format ${FORMAT_PREPARATION}, même lot, même empreinte et même mode attendus) : relancer tous les jobs du run (Re-run all jobs)`);
   }
   if (!['pret', 'rien', 'reprise', 'deja-livre'].includes(p.etat)) throw echec('artefact', 'préparation illisible (état inconnu)');
   if (p.etat !== 'pret') return p;
-  const ok = SHA.test(String(p.base)) && SHA.test(String(p.commit)) && /^\d+\.\d+$/.test(String(p.version)) && typeof p.markdown === 'string'
+  // une copie vers le dépôt n'a pas de note : ni version, ni Markdown
+  const ok = SHA.test(String(p.base)) && SHA.test(String(p.commit)) && (p.copie ? p.version === null : /^\d+\.\d+$/.test(String(p.version))) && typeof p.markdown === 'string'
     && Array.isArray(p.fichiers) && p.fichiers.length > 0 && p.fichiers.every((f) => typeof f === 'string' && FICHIER_DE_DATA_ROWS.test(f))
     && /^\d{8}-\d{4}$/.test(String(p.quand?.branche));
   if (!ok) throw echec('artefact', 'préparation illisible (base, commit, version X.Y, note, fichiers de data/rows et horodatage attendus)');
@@ -540,20 +649,66 @@ export function verifierPreparation(p, { lot, empreinte, essai }) {
 }
 
 /** Relit l'artefact « preparation » (job livrer). Le lot est vérifié par l'empreinte de l'entrée du workflow. Rend { donnees, tables, preparation }. */
-function lireArtefact(dossier, { g, lot, empreinte, essai }) {
+function lireArtefact(dossier, { g, lot, empreinte, essai, copie = false }) {
   if (!dossier) throw echec('entrees', 'ARTEFACT manquant (dossier de l\'artefact « preparation »)');
+  // un paquet de la base source (paquet.db), sinon un lot figé (lot.json) : l'empreinte de l'entrée du workflow les vérifie l'un comme l'autre
+  const paquet = existsSync(join(dossier, ARTEFACT_PAQUET));
+  const fichier = join(dossier, paquet ? ARTEFACT_PAQUET : ARTEFACT.lot);
   let octets;
   try {
-    octets = readFileSync(join(dossier, ARTEFACT.lot));
+    octets = readFileSync(fichier);
   } catch {
     throw echec('artefact', `artefact « ${NOM_ARTEFACT} » incomplet (${ARTEFACT.lot} absent) : le job preparer l'a-t-il publié ?`);
   }
-  const donnees = lireLot(octets, { empreinte, lot }, 'artefact');
+  const donnees = paquet ? lirePaquet(octets, fichier, { empreinte, lot }, 'artefact') : lireLot(octets, { empreinte, lot }, 'artefact');
   verifierSimulation(donnees, essai);
-  const preparation = verifierPreparation(lireJson(join(dossier, ARTEFACT.preparation)), { lot, empreinte, essai });
-  // les balises du glossaire de la base du commit préparé (le rejeu d'un lot qui retire un mot-clé les réécrit : tablesDuLot)
-  const tables = tablesDuLot(donnees, { tablesAvecBalises: () => (g && preparation.base ? tablesAvecBalises(g, preparation.base) : []) });
+  verifierCopie(donnees, copie);
+  const preparation = verifierPreparation(lireJson(join(dossier, ARTEFACT.preparation)), { lot, empreinte, essai, copie });
+  // un paquet : ses tables de contenu ; un lot : celles de son journal, et les balises du glossaire de la base du commit préparé (le rejeu d'un lot qui
+  // retire un mot-clé les réécrit : tablesDuLot)
+  const tables = paquet ? donnees.tables_de_contenu
+    : tablesDuLot(donnees, { tablesAvecBalises: () => (g && preparation.base ? tablesAvecBalises(g, preparation.base) : []) });
   return { donnees, tables, preparation };
+}
+
+/**
+ * Un paquet (lot 8) : son contenu, réexporté par l'exporteur des importeurs (tools/db/exporter.py : Python, bibliothèque standard seulement, aucun npm) dans
+ * un dossier temporaire, doit être, octet pour octet, chaque data/rows/*.sql du commit `commit` (celui de l'artefact, sur sa base) : un job preparer compromis ne
+ * peut pas faire pousser un contenu que le paquet ne donne pas. Les deux ensembles de fichiers sont égaux et chaque fichier identique : tout écart (contenu,
+ * fichier du paquet absent du commit, fichier du commit absent de l'export) est un refus net. La liste blanche
+ * (verifierCommit) reste en plus. Rend le nombre de fichiers comparés.
+ */
+export function verifierContrePaquet(g, { commit, paquet, temp = null }) {
+  if (!SHA.test(String(commit))) throw echec('paquet', 'commit à comparer au paquet invalide');
+  const dossier = mkdtempSync(join(temp ?? tmpdir(), 'paquet-export-'));
+  try {
+    const r = spawnSync('python3', ['-I', join(RACINE, 'tools', 'db', 'exporter.py'), paquet, '--rows', dossier], { encoding: 'utf8', env: environnementSansJeton() });
+    if (r.status !== 0) {
+      throw echec('paquet', `le paquet ne se réexporte pas (tools/db/exporter.py : ${String(r.stderr || r.stdout || r.error?.message || '').trim().slice(0, 300)}) : rien n'est poussé.`);
+    }
+    // chaque fichier du commit avec l'empreinte git de ses octets (« <mode> blob <objet>\t<chemin> ») : la comparaison porte sur les OCTETS, jamais sur un
+    // texte décodé (deux octets invalides en UTF-8 donneraient le même caractère de remplacement et passeraient pour égaux)
+    const objets = new Map(g(['ls-tree', '-r', '-z', commit, '--', 'data/rows/']).sortie.split('\0').map((l) => /^\d+ blob ([0-9a-f]+)\t(.+)$/.exec(l))
+      .filter((m) => m && FICHIER_DE_DATA_ROWS.test(m[2])).map((m) => [m[2], m[1]]));
+    const fichiers = [...objets.keys()];
+    // les deux ensembles doivent être égaux : un fichier que le paquet donne et que le commit retire (ou l'inverse) est un écart, comme un contenu différent
+    const exportes = readdirSync(dossier).filter((f) => f.endsWith('.sql')).map((f) => `data/rows/${f}`);
+    const dansLeCommit = new Set(fichiers);
+    // l'empreinte git des octets exportés, d'un seul appel, sans filtre (ni fin de ligne ni .gitattributes) : celle qu'aurait le fichier écrit tel quel
+    const communs = fichiers.filter((f) => existsSync(join(dossier, f.slice('data/rows/'.length))));
+    const empreintes = communs.length ? g(['hash-object', '--no-filters', '--', ...communs.map((f) => join(dossier, f.slice('data/rows/'.length)))]).sortie.trim().split('\n') : [];
+    const exporte = new Map(communs.map((f, i) => [f, empreintes[i]]));
+    const ecarts = [
+      ...fichiers.filter((f) => exporte.get(f) !== objets.get(f)),
+      ...exportes.filter((f) => !dansLeCommit.has(f)).map((f) => `${f} (absent du commit)`),
+    ].sort();
+    if (ecarts.length) {
+      throw echec('paquet', `le commit ${commit.slice(0, 7)} ne porte pas ce que le paquet donne : ${ecarts.slice(0, 10).join(', ')}${ecarts.length > 10 ? ` (et ${ecarts.length - 10} autre(s))` : ''}. Rien n'est poussé.`);
+    }
+    return fichiers.length;
+  } finally {
+    rmSync(dossier, { recursive: true, force: true });
+  }
 }
 
 /** Importe le commit du bundle et vérifie qu'il est celui annoncé, avec pour seul parent la base annoncée. */
@@ -779,8 +934,10 @@ async function fermerAnciennesPR(ctx) {
 
 function contexte(entrees, outils, { avecJeton }) {
   const journal = outils.journal ?? (() => {});
-  const e = { essai: false, delais: DELAIS, debut: new Date(), hoteAttendu: null, jeton: null, jetonLecture: null, run: null, ...entrees };
+  const e = { essai: false, copie: false, delais: DELAIS, debut: new Date(), hoteAttendu: null, jeton: null, jetonLecture: null, run: null, ...entrees };
   e.essai = e.essai === true;
+  e.copie = e.copie === true;
+  if (e.essai && e.copie) throw echec('entrees', 'les cases « essai » (simulation) et « copie » ne vont pas ensemble : une copie vers le dépôt n\'a pas de simulation');
   verifierEntrees(e);
   if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(String(e.depot ?? ''))) throw echec('entrees', 'GITHUB_REPOSITORY manquant ou invalide');
   if (avecJeton && !e.jeton) throw echec('entrees', 'GH_TOKEN manquant (secret MISE_A_JOUR_TOKEN)');
@@ -810,20 +967,32 @@ export async function preparer(entrees, outils) {
   const { g, outils: { journal, executer }, lot, run, essai, racine, temp, artefact } = ctx;
   if (!artefact) throw echec('entrees', 'ARTEFACT manquant (dossier de l\'artefact « preparation »)');
 
-  // a. le lot
+  // a. le lot (ou le paquet de la base source)
   journal(`lot ${lot} : téléchargement depuis ${ctx.adresse}`);
-  const { octets, donnees } = await telechargerLot(ctx, outils);
+  const { octets, donnees, fichier: fichierPaquet } = await telechargerLot(ctx, outils);
   verifierSimulation(donnees, essai);
-  // le rejeu part de dev : les balises du glossaire de ses fichiers (un lot qui retire un mot-clé les réécrit : tablesDuLot)
-  const tables = tablesDuLot(donnees, { tablesAvecBalises: () => tablesAvecBalises(ctx.g, `origin/${DEV}`) });
-  const nbModifications = donnees.journal.lots.reduce((n, l) => n + (l.modifications?.length ?? 0), 0);
-  journal(`empreinte vérifiée${essai ? ' (lot de simulation)' : ''} ; ${nbModifications} modification(s) en ${donnees.journal.lots.length} lot(s) ; tables du lot : ${tables.join(', ') || 'aucune'}`);
-  rmSync(artefact, { recursive: true, force: true });
-  mkdirSync(artefact, { recursive: true });
-  writeFileSync(join(artefact, ARTEFACT.lot), octets);
-  const fichierLot = join(temp, `lot-${lot}.json`);
-  writeFileSync(fichierLot, octets);
-  const commun = { format: FORMAT_PREPARATION, lot, empreinte: ctx.empreinte, essai, run };
+  verifierCopie(donnees, ctx.copie);
+  const paquet = donnees.paquet === true;
+  const copie = ctx.copie;
+  let tables;
+  let fichierLot;
+  if (paquet) {
+    // la liste blanche d'un paquet : ses tables de contenu (sa vue paquet_meta, que l'empreinte couvre)
+    tables = donnees.tables_de_contenu;
+    fichierLot = fichierPaquet;
+    journal(`empreinte vérifiée : paquet de la base source (${donnees.mode}${donnees.version_cible ? `, V${donnees.version_cible}` : ''}) ; ${tables.length} table(s) de contenu`);
+  } else {
+    // le rejeu part de dev : les balises du glossaire de ses fichiers (un lot qui retire un mot-clé les réécrit : tablesDuLot)
+    tables = tablesDuLot(donnees, { tablesAvecBalises: () => tablesAvecBalises(ctx.g, `origin/${DEV}`) });
+    const nbModifications = donnees.journal.lots.reduce((n, l) => n + (l.modifications?.length ?? 0), 0);
+    journal(`empreinte vérifiée${essai ? ' (lot de simulation)' : ''} ; ${nbModifications} modification(s) en ${donnees.journal.lots.length} lot(s) ; tables du lot : ${tables.join(', ') || 'aucune'}`);
+    rmSync(artefact, { recursive: true, force: true });
+    mkdirSync(artefact, { recursive: true });
+    writeFileSync(join(artefact, ARTEFACT.lot), octets);
+    fichierLot = join(temp, `lot-${lot}.json`);
+    writeFileSync(fichierLot, octets);
+  }
+  const commun = { format: FORMAT_PREPARATION, lot, empreinte: ctx.empreinte, essai, run, ...(paquet ? { paquet: true, copie } : {}) };
   const publier = (p) => {
     writeFileSync(join(artefact, ARTEFACT.preparation), `${JSON.stringify({ ...commun, ...p }, null, 2)}\n`);
     return { ...commun, ...p };
@@ -831,7 +1000,7 @@ export async function preparer(entrees, outils) {
 
   // b. départ : le dépôt tel que récupéré par actions/checkout (fetch-depth: 0 : dev et master) ; aucun jeton ici pour le rafraîchir
   verifierDepart(g, lot);
-  const deja = chercherLotDejaFusionne(g, lot);
+  const deja = chercherLotDejaFusionne(g, lot, { copie });
   if (deja?.livre) {
     journal(`ce lot est déjà livré sur master (commit ${deja.commit.slice(0, 7)}) : rien à préparer.`);
     return publier({ etat: 'deja-livre', commit: deja.commit, version: deja.version });
@@ -849,27 +1018,34 @@ export async function preparer(entrees, outils) {
   g(['checkout', '--quiet', '-B', branche, `origin/${DEV}`]);
   const client = join(racine, 'client');
   const fichierResume = join(temp, 'resume.json');
-  const regles = executer(process.execPath, ['--no-warnings', join(client, 'scripts', 'mise-a-jour-regles.mjs'), '--lot', fichierLot,
-    '--reference', `origin/${MASTER}`, '--date', quand.jour, '--resume', fichierResume], { cwd: racine, env: environnementSansJeton() });
+  // un paquet : recontrôlé, puis data/rows tiré de lui (mise-a-jour-paquet.mjs) ; un lot : rejoué sur data/rows (mise-a-jour-regles.mjs)
+  const regles = paquet
+    ? executer(process.execPath, ['--no-warnings', join(client, 'scripts', 'mise-a-jour-paquet.mjs'), '--paquet', fichierLot, '--lot', lot, '--mode', donnees.mode,
+      '--reference', `origin/${MASTER}`, '--resume', fichierResume], { cwd: racine, env: environnementSansJeton() })
+    : executer(process.execPath, ['--no-warnings', join(client, 'scripts', 'mise-a-jour-regles.mjs'), '--lot', fichierLot,
+      '--reference', `origin/${MASTER}`, '--date', quand.jour, '--resume', fichierResume], { cwd: racine, env: environnementSansJeton() });
   const resume = lireJson(fichierResume);
   if (regles.code !== 0) {
-    const action = ACTIONS_REGLES[regles.code];
-    throw echec('lot', `le lot ne s'applique pas à dev (mise-a-jour-regles.mjs, code ${regles.code} : ${CODES_REGLES[regles.code] ?? 'erreur'}) : `
+    const action = paquet ? null : ACTIONS_REGLES[regles.code];
+    const script = paquet ? 'mise-a-jour-paquet.mjs' : 'mise-a-jour-regles.mjs';
+    const codes = paquet ? CODES_PAQUET : CODES_REGLES;
+    throw echec('lot', `le ${paquet ? 'paquet' : 'lot'} ne s'applique pas à dev (${script}, code ${regles.code} : ${codes[regles.code] ?? 'erreur'}) : `
       + `${resume?.erreur ?? 'voir le journal ci-dessus'}.${action ? ` ${action}` : ''} Rien n'est poussé.`);
   }
-  verifierResume(resume);
+  verifierResume(resume, { copie });
   const { version } = resume;
+  const quoi = copie ? 'copie vers le dépôt' : `V${version}`;
   const modifies = fichiersModifies(g);
   if (!modifies.length) {
-    journal(`V${version} : aucun fichier de data/rows ne change, rien à livrer (aucune PR).`);
+    journal(`${quoi} : aucun fichier de data/rows ne change, rien à livrer (aucune PR).`);
     return publier({ etat: 'rien', version });
   }
   const refuses = horsListe(modifies, resume.fichiers, tables);
   if (refuses.length) {
-    throw echec('liste', `fichiers hors des tables de la mise à jour : ${refuses.join(', ')} (seuls data/rows/<table>.sql des tables du lot `
+    throw echec('liste', `fichiers hors des tables de la mise à jour : ${refuses.join(', ')} (seuls data/rows/<table>.sql des tables du ${paquet ? 'paquet' : 'lot'} `
       + `[${tables.join(', ') || 'aucune'}] et de la note de version peuvent changer). Rien n'est poussé.`);
   }
-  journal(`V${version} : ${resume.lignes ?? '?'} ligne(s) dans la note ; fichiers changés : ${modifies.join(', ')}`);
+  journal(`${quoi} : ${resume.lignes ?? '?'} ligne(s) dans la note ; fichiers changés : ${modifies.join(', ')}`);
 
   // Ce qui est contrôlé est exactement ce qui sera commité : indexé AVANT les contrôles ; un contrôle qui réécrit ensuite un de ces fichiers
   // (contenu compris), en crée ou en supprime un autre, apparaît hors de l'index et arrête tout.
@@ -893,12 +1069,13 @@ export async function preparer(entrees, outils) {
     throw echec('controles', `les contrôles ont changé des fichiers (${autres.join(', ')}) : rien n'est poussé.`);
   }
 
-  g([...SANS_HOOKS, ...IDENTITE_DU_BOT, 'commit', '--quiet', '--no-verify', '-m', messageDeCommit(version, lot), '-m', corpsDuCommit(lot, run)]);
+  const [sujet, corps] = copie ? [titreCopie(lot), corpsDeLaCopie(lot, run)] : [messageDeCommit(version, lot), corpsDuCommit(lot, run)];
+  g([...SANS_HOOKS, ...IDENTITE_DU_BOT, 'commit', '--quiet', '--no-verify', '-m', sujet, '-m', corps]);
   const commit = revision(g, 'HEAD');
 
   // d. l'artefact : le commit (bundle) et la préparation
   creerBundle(g, { base, commit, fichier: join(artefact, ARTEFACT.commit) });
-  journal(`prêt : V${version}, commit ${commit.slice(0, 7)} sur dev ${base.slice(0, 7)}, contrôles verts ; artefact « ${NOM_ARTEFACT} » pour le job livrer`
+  journal(`prêt : ${quoi}, commit ${commit.slice(0, 7)} sur dev ${base.slice(0, 7)}, contrôles verts ; artefact « ${NOM_ARTEFACT} » pour le job livrer`
     + (essai ? ' (simulation : il le vérifiera sans rien pousser)' : ''));
   return publier({
     etat: 'pret', base, commit, version, depuis: resume.depuis ?? null, lignes: resume.lignes ?? null, fichiers: modifies, markdown: resume.markdown, quand,
@@ -939,7 +1116,10 @@ async function fusionnerLaPR(ctx, { preparation: p, tables }) {
     journal(`poussé : ${branche} (${sha.slice(0, 7)})`);
 
     const pied = `Lot \`${lot}\` appliqué par le workflow « Mise à jour des règles »${run ? ` : ${run}` : ''}.`;
-    const ouverture = await sonder(() => api.post('/pulls', { title: titreDev(p.version), head: branche, base: DEV, body: corpsDePR(p.markdown, pied) }));
+    // une copie vers le dépôt (lot 8) : le contenu du site de dev, sans note de version, qui n'ira en production qu'avec la prochaine livraison
+    const titre = p.copie ? titreCopie(lot) : titreDev(p.version);
+    const texte = p.copie ? `Copie du contenu du site de dev vers le dépôt : ${p.fichiers.length} fichier(s) de data/rows. Aucune note de version ; rien n'est livré en production par ce workflow.` : p.markdown;
+    const ouverture = await sonder(() => api.post('/pulls', { title: titre, head: branche, base: DEV, body: corpsDePR(texte, pied) }));
     if (ouverture.statut !== 201) {
       const supprimee = await supprimerBranche(ctx, branche);
       throw echec('pr-dev', `ouverture de la PR vers dev : GitHub a répondu ${messageGithub(ouverture)} (le jeton MISE_A_JOUR_TOKEN a-t-il Pull requests en écriture ?) ; `
@@ -972,11 +1152,11 @@ async function fusionnerLaPR(ctx, { preparation: p, tables }) {
         raison = `dev a bougé pendant l'attente (${base.slice(0, 7)} → ${String(tete).slice(0, 7)}) : les contrôles ne portent plus sur ce qui serait fusionné.`;
       } else {
         const f = await fusionner(ctx, pr.number, sha, {
-          titre: `Merge pull request #${pr.number} from ${ctx.proprietaire}/${branche}`, message: `${titreDev(p.version)} (lot ${lot})`,
+          titre: `Merge pull request #${pr.number} from ${ctx.proprietaire}/${branche}`, message: p.copie ? titreCopie(lot) : `${titreDev(p.version)} (lot ${lot})`,
         });
         if (f.ok) {
           journal(`PR #${pr.number} fusionnée dans dev (${String(f.sha).slice(0, 7)})`);
-          return { etat: 'fusionne', pr: pr.number, url: pr.html_url, version: p.version, branche, fusion: f.sha };
+          return { etat: 'fusionne', pr: pr.number, url: pr.html_url, version: p.version, branche, fusion: f.sha, ...(p.copie ? { copie: true } : {}) };
         }
         raison = `GitHub a refusé la fusion (${f.statut}${f.message ? ` : ${f.message}` : ''}).`;
       }
@@ -993,16 +1173,21 @@ async function fusionnerLaPR(ctx, { preparation: p, tables }) {
  */
 export async function fusionDansDev(entrees, outils) {
   const ctx = contexte(entrees, outils, { avecJeton: true });
-  const { g, outils: { journal }, lot, essai } = ctx;
-  const { tables, preparation: p } = lireArtefact(ctx.artefact, ctx);
-  journal(`artefact « ${NOM_ARTEFACT} » : lot vérifié par l'empreinte de l'entrée${essai ? ' (lot de simulation)' : ''} ; préparation : ${p.etat}`);
+  const { g, outils: { journal }, lot, essai, copie } = ctx;
+  const { donnees, tables, preparation: p } = lireArtefact(ctx.artefact, ctx);
+  journal(`artefact « ${NOM_ARTEFACT} » : lot vérifié par l'empreinte de l'entrée${essai ? ' (lot de simulation)' : ''}${copie ? ' (copie vers le dépôt)' : ''} ; préparation : ${p.etat}`);
   rafraichir(g);
   verifierDepart(g, lot);
 
-  const deja = chercherLotDejaFusionne(g, lot);
+  const deja = chercherLotDejaFusionne(g, lot, { copie });
   if (deja?.livre) {
     journal(`ce lot est déjà livré sur master (commit ${deja.commit.slice(0, 7)}) : rien à faire.`);
     return { etat: 'deja-livre', commit: deja.commit, version: deja.version };
+  }
+  if (deja && copie) {
+    // une copie déjà dans dev (relance) : rien à refaire, et rien ne part vers master
+    journal(`reprise : cette copie est déjà dans dev (commit ${deja.commit.slice(0, 7)}${deja.pr ? `, PR #${deja.pr}` : ''})`);
+    return { etat: 'fusionne', reprise: true, copie: true, pr: deja.pr, version: null };
   }
   if (deja) {
     if (!deja.pr || !deja.version) {
@@ -1019,15 +1204,20 @@ export async function fusionDansDev(entrees, outils) {
     throw echec('artefact', `la préparation a trouvé ce lot ${p.etat === 'reprise' ? 'dans dev' : 'sur master'}, il n'y est plus : relancer tous les jobs du run (Re-run all jobs).`);
   }
   if (p.etat === 'rien') {
-    journal(`V${p.version} : aucun fichier de data/rows ne change, rien à livrer.`);
+    journal(`${p.version ? `V${p.version}` : 'copie vers le dépôt'} : aucun fichier de data/rows ne change, rien à livrer.`);
     if (essai) return { etat: 'essai', rien: true, version: p.version, verifie: await verifierJeton(ctx, nomDeBranche(horodatage(ctx.debut))), nonVerifie: NON_VERIFIABLE };
     return { etat: 'rien', version: p.version };
   }
 
   // e. le commit de l'artefact, revérifié par git
   importerCommit(g, join(ctx.artefact, ARTEFACT.commit), p);
-  verifierCommit(g, { base: p.base, commit: p.commit, tables, fichiers: p.fichiers, message: messageAttendu(p.version, lot, ctx.run) });
+  verifierCommit(g, { base: p.base, commit: p.commit, tables, fichiers: p.fichiers, message: copie ? messageAttenduCopie(lot, ctx.run) : messageAttendu(p.version, lot, ctx.run) });
   journal(`commit ${p.commit.slice(0, 7)} vérifié : parent ${p.base.slice(0, 7)}, fichiers ${p.fichiers.join(', ')} (tables du lot et de la note de version)`);
+  if (donnees.paquet) {
+    // un paquet : data/rows du commit doit être, fichier par fichier, ce que l'exporteur tire du paquet
+    const n = verifierContrePaquet(g, { commit: p.commit, paquet: donnees.chemin, temp: ctx.temp ?? null });
+    journal(`paquet réexporté : les ${n} fichiers de data/rows du commit sont ceux du paquet, octet pour octet`);
+  }
 
   if (essai) {
     // f à blanc, puis le jeton : rien n'est poussé, aucune PR n'est ouverte ni fermée
@@ -1176,6 +1366,11 @@ export async function livraisonVersMaster(entrees, outils) {
   const ctx = contexte(entrees, outils, { avecJeton: true });
   const { g, outils: { journal }, lot, essai } = ctx;
   const { donnees, preparation: p } = lireArtefact(ctx.artefact, ctx);
+  // une copie vers le dépôt ne va jamais vers master (l'étape est sautée par le workflow ; ici aussi, quoi qu'il arrive)
+  if (ctx.copie) {
+    journal('copie vers le dépôt : rien ne part vers master (le contenu suivra la prochaine livraison dev → master).');
+    return { etat: 'copie' };
+  }
   // la case « Version majeure » de la page, dans le lot (couvert par l'empreinte de l'entrée du workflow) ; absente d'un lot d'avant elle : mineure
   const majeure = donnees.majeure === true;
   rafraichir(g);
@@ -1296,11 +1491,12 @@ export function messageDeFin(phase, r) {
   const communs = {
     rien: '**Rien à livrer** : le lot ne change aucune ligne de data/rows.',
     'deja-livre': '**Déjà livré** : ce lot est sur master, rien n\'a été fait.',
+    copie: '**Copie vers le dépôt** : rien ne part vers master ; le contenu suivra la prochaine livraison dev → master.',
   };
   if (communs[r.etat]) return communs[r.etat];
   if (phase === 'preparer') {
     if (r.etat === 'reprise') return `**Reprise** : ce lot est déjà dans dev (commit ${String(r.commit).slice(0, 7)}) ; le job livrer reprend à la livraison dev → master.`;
-    return `**Préparé** : V${r.version}, ${r.fichiers.length} fichier(s) de data/rows, ${CONTROLES.length} contrôles verts (dont tout le job client de ci.yml) ; `
+    return `**Préparé** : ${r.version ? `V${r.version}` : 'copie vers le dépôt'}, ${r.fichiers.length} fichier(s) de data/rows, ${CONTROLES.length} contrôles verts (dont tout le job client de ci.yml) ; `
       + `commit ${r.commit.slice(0, 7)} sur dev ${r.base.slice(0, 7)}, publié dans l'artefact « ${NOM_ARTEFACT} »${r.essai ? ' (simulation : le job livrer le vérifie sans rien pousser)' : ''}.`;
   }
   if (phase === 'dev') {
@@ -1310,6 +1506,7 @@ export function messageDeFin(phase, r) {
       return simulation(`V${r.version}, artefact et liste blanche vérifiés (${r.fichiers.length} fichier(s)), commit appliqué à blanc sur dev `
         + `(${r.rejoue ? 'dev a bougé : rebase textuel propre' : 'tel quel'}).`);
     }
+    if (r.copie) return `**Copie fusionnée dans dev** — PR #${r.pr ?? '?'}${r.reprise ? ' (passage précédent)' : ''} ; rien ne part vers master.`;
     return `**Fusionné dans dev** : V${r.version} — PR #${r.pr}${r.reprise ? ' (passage précédent)' : ''} ; la livraison vers master suit.`;
   }
   const majeure = r.majeure ? ' (version majeure : [V: X+1])' : '';
@@ -1325,6 +1522,7 @@ async function main() {
   // Une ligne du journal reste une ligne : aucun texte ne peut commencer une commande de workflow (« ::… ») en début de ligne.
   const journal = (texte) => { const ligne = String(texte).replace(/\r?\n|\r/g, ' '); console.log(ligne); ecrire(`- ${ligne}\n`); };
   const essai = env.ESSAI === 'true';
+  const copie = env.COPIE === 'true';
   const serveur = env.GITHUB_SERVER_URL || 'https://github.com';
   const temp = mkdtempSync(join(env.RUNNER_TEMP || tmpdir(), 'mise-a-jour-'));
   let phase = 'preparer';
@@ -1338,7 +1536,7 @@ async function main() {
     }
     ecrire(`### Mise à jour des règles — ${TITRES[phase]}${essai ? ' (simulation)' : ''}\n\n`);
     const entrees = {
-      lot: env.LOT, empreinte: env.EMPREINTE, adresse: env.ADRESSE, essai, depot: env.GITHUB_REPOSITORY, hoteAttendu: env.HOTE_ATTENDU || null,
+      lot: env.LOT, empreinte: env.EMPREINTE, adresse: env.ADRESSE, essai, copie, depot: env.GITHUB_REPOSITORY, hoteAttendu: env.HOTE_ATTENDU || null,
       racine: RACINE, temp, artefact: env.ARTEFACT || null, debut: new Date(), jeton, jetonLecture,
       run: env.GITHUB_RUN_ID ? `${serveur}/${env.GITHUB_REPOSITORY}/actions/runs/${env.GITHUB_RUN_ID}` : null,
     };

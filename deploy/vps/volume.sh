@@ -164,13 +164,17 @@ if [ -d "$DOCKER" ]; then
 fi
 
 # Le reste de l'hôte qu'on sait nommer : journaux du système (journal de systemd, Caddy, mises à jour), téléchargements des mises à jour
-# automatiques, installateurs copiés à la main, sauvegardes de la base vivante faites à la main (deploy/vps/README.md, « Sauvegardes »).
+# automatiques, installateurs copiés à la main, sauvegardes de la base vivante faites à la main et copies des sauvegardes automatiques (deploy/vps/README.md,
+# « Sauvegardes »).
 ajouter journaux "journaux du système" "" "$VARLOG" "$(occupe "$VARLOG")"
 ajouter installations "téléchargements de mise-a-jour.sh et update-site.sh" "" "$TMP_HOTE" \
   "$(occupe "$TMP_HOTE"/maverick-mise-a-jour.* "$TMP_HOTE"/maverick-update.*)"
 ajouter installations "installateurs copiés à la main" "" "$MAISONS" \
   "$(occupe "$RACINE_ROOT"/maverick-center-*-install.sh "$MAISONS"/*/maverick-center-*-install.sh)"
 ajouter base "sauvegardes à la main (vivante-*.db)" "" "$RACINE_ROOT" "$(occupe "$RACINE_ROOT"/vivante-*.db)"
+# Les copies des sauvegardes automatiques (deploy/installateur/sauvegarde/copie.sh) : copies locales de la base des deux instances, cache de restic.
+SAUVEGARDES=${MAVERICK_DIR_SAUVEGARDES:-/srv/maverick-sauvegardes}
+ajouter installations "sauvegardes automatiques (copies locales)" "" "$SAUVEGARDES" "$(occupe "$SAUVEGARDES")"
 
 # ---------------------------------------------------------------------------------------------------------------------------------------------
 # Écriture. « repartition » : les clés dans l'ordre de la jauge ; « autres » = total − libre − réserve − les clés comptées (système, paquets,

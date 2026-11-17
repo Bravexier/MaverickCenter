@@ -6,7 +6,7 @@ user-invocable: false
 ---
 # Fiche : acquis, entraînement, métier
 
-Noyau (fichiers, invariants communs) : skill `zone-fiche`. Détail : `docs/character-generator.md`, « Caractéristiques » (l'acquis), « Dons débloqués » (l'entraînement), « Métier ».
+Noyau (fichiers, invariants communs) : skill `zone-fiche`. Détail : `docs/character-generator.md`, « Caractéristiques » (l'acquis), « Entraînement » (puce de « La page `/fiche/` »), « Métier ».
 
 ## Acquis calculé (R104, migration `0062-fiche-entrainement-acquis`)
 - Plus d'acquis saisi (`personnage_competence.acquis` retirée, `COLONNES_RETIREES`). `competencesDe` le calcule, dans cet ordre (un arbitrage) : l'entraînement (`entrainementDe`), les dons débloqués et l'armure portée (`acquisDesDons`), le métier, puis l'accessoire, rognés au plafond de R41. L'Acquis du métier n'est jamais écrit dans `personnage_competence`.
@@ -18,6 +18,9 @@ Noyau (fichiers, invariants communs) : skill `zone-fiche`. Détail : `docs/chara
 - « à tout jet impliquant la Perception », « à tout test d'Agilité » : un bonus au jet, hors acquis et hors plafond, compté dans le score (R122 : `jet`, `jetDetail` de `competencesDe`).
 - Les « tests d'artisanat » s'ajoutent à `artisanatDe` (R123), rien sans métier.
 - Drakos orange, « parmi les autres » : une compétence et une altération d'état au choix parmi celles des autres lignes du tableau, indépendantes (R124, `personnage_resistance_choix`, `resistanceChoixValables`).
+- `acquis-texte.mjs` écarte toujours « réussite crit » (jamais un acquis) : `lib/critique-texte.mjs` la lit (R180), un seul compte (skill `zone-fiche-situation`).
+- Dons « Chef résiliant », « Chef agile », « Chef fort », « Chef malin » du Porte-étendard (« les alliés ont un bonus de 5% à tous les jets de … »), lus dans leur texte entier : le Porte-étendard en profite lui-même (R267 (2)). Le bonus s'ajoute au jet de chaque compétence nommée, hors acquis et hors plafond (`jet_competence`, `jetsParCompetence`, comme R122 mais par compétence). Hors plafond : le texte dit « bonus à tous les jets » (R122). « Motivation » (Action) reste mentionné (R128).
+- `acquis-texte.mjs#DONS_SANS_ACQUIS` (appliquée par `fiche-regles.mjs`) : liste d'exclusion par identifiant des dons dont le texte ne produit jamais d'acquis : « Posture inébranlable » du Boxeur, une Réaction (2 fois/combat) qui ne joue pas en permanence : texte seul, sans calcul (R255 (5), R128). Il reste un passif écrit. Pendant pour les dégâts : `DONS_SANS_DEGATS` (skill `zone-fiche-equipement`).
 - Ne rien compter d'autre : un bonus d'un cas particulier (situation, condition, falsification de documents au MJ) est seulement mentionné (R128, R123), dans le bloc « Bonus d'acquis non comptés » (`nonComptes`, `RAISONS_DE_L_ACQUIS` de la page).
 
 ## Bonus « de l'arme choisie » (R119, R152)
@@ -27,7 +30,8 @@ Noyau (fichiers, invariants communs) : skill `zone-fiche`. Détail : `docs/chara
 - Le « sauf » est la famille de son bandeau, tel quel ou au singulier, ou celle que R138 rattache à « Hast », « Bâton », « Arme jet », « Masse » (`lib/maitrise-arme.mjs#FAMILLES_DES_SAUF`, réexporté par `lib/fiche-regles.mjs`).
 
 ## Entraînement
-- En lignes dans les dons : `personnage_entrainement` (une compétence et ses points de 0 à 10, ou un texte libre jamais compté ; règles `entrainement_valeur`, `entrainement_competences` ; une ligne à 0 ne compte pas ; deux lignes d'une compétence fusionnées à l'envoi : `entrainementsAEnregistrer`). Un livre de sort reste `personnage_sort.nm_livre` (skill `zone-fiche-sorts`). Son aide est lue dans le guide au build (`aideDeLEntrainement`).
+- Dans son propre onglet « Entraînement » de la zone IV, juste après « Choix », hors du tiroir des choix (demande du propriétaire : « Le tableau d'entrainement devrait être dans un onglet à part à coté des choix. »).
+- En lignes : `personnage_entrainement` (une compétence et ses points de 0 à 10, ou un texte libre jamais compté ; règles `entrainement_valeur`, `entrainement_competences` ; une ligne à 0 ne compte pas ; deux lignes d'une compétence fusionnées à l'envoi : `entrainementsAEnregistrer`). Un livre de sort se note dans `fiche.livres_sorts` (R169, skill `zone-fiche-sorts`). Son aide est lue dans le guide au build (`aideDeLEntrainement`).
 
 ## Fiche d'avant
 - `sansPartiesRetirees` (`lib/fiche-format.mjs`) : entraînement en texte → lignes de texte (`entrainementEnLignes`) ; acquis > 0 → un retrait noté (`acquisRetires`, nature `acquis`). La base vivante fait la même conversion par `COLONNES_CONVERTIES` de `serveur/base-vivante.mjs` quand l'ancienne base a la colonne.
@@ -35,7 +39,8 @@ Noyau (fichiers, invariants communs) : skill `zone-fiche`. Détail : `docs/chara
 ## Métier (R33 à R40)
 - Bonus à l'Acquis de la compétence (affiché « +N », compté dans le score, rogné au plafond R41 : `competencesDe`) ou à l'initiative et aux vitesses (`attributsDe`).
 - Une croix retire 20 à l'artisanat, deux le rendent inutilisable (R39). Un rang à choix se choisit sous le métier (`bonusDuMetier`, `choixDeMetierValables`). La compétence d'artisanat s'affiche (`artisanatDe`).
+- Le menu du métier est une liste du site : l'infobulle de chaque métier donne ce qu'il apporte, colonnes de `/metiers/` (`infobulleDeMetier`, `regles.metiers[].apport`, jamais lu par un calcul).
 - Ses objets de départ entrent dans l'inventaire au choix du métier (`inventaireSelonLeMetier`, `choisirObjetDeMetier`). Page `/metiers/` : skill `zone-metiers`.
 
 ## Tests
-`test/fiche-acquis.test.mjs`, `fiche-arme-choisie`, et `fiche-moteur` (skill `zone-fiche`).
+`test/fiche-acquis.test.mjs` (dont les dons « Chef… », R267 (2)), `fiche-arme-choisie`, et `fiche-moteur` (skill `zone-fiche`).

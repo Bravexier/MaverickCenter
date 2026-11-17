@@ -1,4 +1,4 @@
-// L'infobulle de la pastille du dé d'une famille d'armes (lib/armes-de-famille.mjs ; onglet Armes de /ressources/equipement/) : les paliers selon la
+// L'infobulle de la pastille du dé d'une famille d'armes (lib/armes-de-famille.mjs ; page Armes, /ressources/armes/) : les paliers selon la
 // Force que la note écrit (PUGILAT ; demande du propriétaire, 2026-10-23 : « Juste l'indiquer suffit (en tooltip de la catégorie) »), sinon
 // « Dé de la famille, sauf indication contraire ». La note du Pugilat se lit dans son état d'import (lib/historique-site.mjs) ; l'état courant de
 // chaque famille, par un invariant. Le rendu construit : test/armes-html.test.mjs.

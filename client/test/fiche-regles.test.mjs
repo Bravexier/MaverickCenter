@@ -6,6 +6,7 @@ import { cpSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
+import { IDS_DES_MOTS_CLES_PROTEGES } from '../src/lib/mots-cles-proteges.mjs';
 import { classeDeCaracteristique, classeDePosture } from '../src/lib/palette-css.mjs';
 import { CLASS_COLORS } from '../src/lib/class-groups.mjs';
 import {
@@ -13,15 +14,18 @@ import {
   classeDuModeHyper, classesDeLaPalette, cssDesFamilles,
 } from '../src/lib/palette-css.mjs';
 import { typeDeDon } from '../src/lib/classe-dons.mjs';
+import { DEGATS_PHYSIQUES } from '../src/lib/fiche-moteur.mjs';
 import { ditClasseMagique } from '../src/lib/classe-magique.mjs';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { PAGE_DE_L_ENTRAINEMENT, aideDeLEntrainement, chargerReglesDeFiche, limitesDeLEntrainement } from '../src/lib/fiche-regles.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
+import { genreDeLaPeriode } from '../src/lib/limite-texte.mjs';
 import { porteeDeLArme } from '../src/lib/arme-champs.mjs';
 import { desSelonLaForce } from '../src/lib/maitrise-arme.mjs';
 import { ORDRE_DES_RACES } from '../src/lib/race-kinds.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { reglesDImport } from './aide-base-d-import.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const regles = chargerReglesDeFiche(db);
@@ -122,21 +126,22 @@ test('maîtrises d’armes (décision R32) : celles de chaque classe (classe_mai
 });
 
 test('sources de maîtrise d’arme (décisions R148, R151, R154) : les parts de chaque ligne de classe et de chaque don, lues dans leurs tables ; les NM gagnés ; l’accessoire au choix', () => {
-  const classe = (id) => regles.classes.find((c) => c.id === id);
-  const don = (id) => regles.classes.flatMap((c) => c.dons).find((d) => d.id === id);
+  // les exemples des décisions se lisent dans l'état d'import (test/aide-base-d-import.mjs) : le site de dev modifie librement lignes, dons et points
+  const imp = reglesDImport();
+  const classe = (id) => imp.classes.find((c) => c.id === id);
+  const don = (id) => imp.classes.flatMap((c) => c.dons).find((d) => d.id === id);
   const part = (rang, genre, points, { famille = null, options = [], limite = null } = {}) => ({ rang, genre, points, famille, options, limite });
-  const contact = regles.familles_armes.filter((f) => f.maitrisable && f.categorie === 'contact').map((f) => f.id);
-  const distance = regles.familles_armes.filter((f) => f.maitrisable && f.categorie === 'distance').map((f) => f.id);
+  const contact = imp.familles_armes.filter((f) => f.maitrisable && f.categorie === 'contact').map((f) => f.id);
+  const distance = imp.familles_armes.filter((f) => f.maitrisable && f.categorie === 'distance').map((f) => f.id);
   // les lignes du Guerrier (« 1 maîtrise Épée », « 1 maîtrise dans une arme contact au choix (sauf épée) ») : leur source est l'identifiant que la fiche
   // enregistre (personnage_maitrise_choix.source), les options d'une maîtrise au choix sont ses familles (`au_choix`, R119, R138), dans l'ordre d'arme_famille
-  // (lues dans la base de l'état courant : le site de dev peut modifier ces lignes ; à l'import, ce sont celles-ci)
   const guerrier = classe('classes/guerrier').maitrises;
-  if (guerrier.map((m) => m.brut).join('|') === '1 maîtrise Épée|1 maîtrise dans une arme contact au choix  (sauf épée)') {
-    assert.deepEqual(guerrier.map((m) => ({ source: m.source, parts: m.parts })), [
-      { source: 'classes/guerrier#maitrise-arme:1', parts: [part(1, 'imposee', 1, { famille: 'epees' })] },
-      { source: 'classes/guerrier#maitrise-arme:2', parts: [part(1, 'choix', 1, { options: contact.filter((id) => id !== 'epees') })] },
-    ]);
-  }
+  assert.equal(guerrier.map((m) => m.brut).join('|'), '1 maîtrise Épée|1 maîtrise dans une arme contact au choix  (sauf épée)');
+  assert.deepEqual(guerrier.map((m) => ({ source: m.source, parts: m.parts })), [
+    { source: 'classes/guerrier#maitrise-arme:1', parts: [part(1, 'imposee', 1, { famille: 'epees' })] },
+    { source: 'classes/guerrier#maitrise-arme:2', parts: [part(1, 'choix', 1, { options: contact.filter((id) => id !== 'epees') })] },
+  ]);
+  // aujourd'hui : chaque ligne a sa source, et une maîtrise au choix ses familles
   for (const c of regles.classes) {
     for (const m of c.maitrises) {
       assert.match(m.source, new RegExp(`^${c.id}#maitrise-arme:\\d+$`), m.source);
@@ -145,13 +150,10 @@ test('sources de maîtrise d’arme (décisions R148, R151, R154) : les parts de
   }
   // l'Épéiste (R151) : +2 ÉPÉES et +1 DAGUES imposés, −1 sur la famille de la maîtrise au choix du Guerrier ; ses points en total (R32) restent
   const epeiste = don('capacites/guerrier-epeiste');
-  if (epeiste) {
-    assert.deepEqual(epeiste.maitrise, { parts: [part(1, 'imposee', 2, { famille: 'epees' }), part(2, 'imposee', 1, { famille: 'dagues' }), part(3, 'suit', -1)] });
-    assert.equal(epeiste.maitrise.parts.reduce((n, p) => n + p.points, 0), 2);
-  }
+  assert.deepEqual(epeiste.maitrise, { parts: [part(1, 'imposee', 2, { famille: 'epees' }), part(2, 'imposee', 1, { famille: 'dagues' }), part(3, 'suit', -1)] });
+  assert.equal(epeiste.maitrise.parts.reduce((n, p) => n + p.points, 0), 2);
   // le Ménestrel : un point parmi les 4 familles à distance seulement (R151, R127)
-  const menestrel = don('capacites/barde-menestrel');
-  if (menestrel) assert.deepEqual(menestrel.maitrise, { parts: [part(1, 'choix', 1, { options: distance })] });
+  assert.deepEqual(don('capacites/barde-menestrel').maitrise, { parts: [part(1, 'choix', 1, { options: distance })] });
   assert.equal(distance.length, 4);
   // chaque don a les parts de maitrise_arme_part, et seulement eux ; jamais ARME DE MONSTRES (R45)
   const sources = new Set(db.prepare('SELECT DISTINCT capacite_id FROM maitrise_arme_part WHERE capacite_id IS NOT NULL').all().map((r) => r.capacite_id));
@@ -164,7 +166,8 @@ test('sources de maîtrise d’arme (décisions R148, R151, R154) : les parts de
   // R154 : 4 NM gagnés pour la « Maîtrise » de l'Ocultomancien (« Gagne 4 niveaux de maîtrise (NM). »), et aucun autre don n'en a
   const nm = dons.filter((d) => d.nm_gagnes !== undefined).map((d) => [d.id, d.nm_gagnes]);
   assert.deepEqual(nm, db.prepare('SELECT capacite_id, nm FROM capacite_nm_gagne').all().map((r) => [r.capacite_id, r.nm]));
-  if (don('capacites/ocultomancien-maitrise')?.effet === 'Gagne 4 niveaux de maîtrise (NM).') assert.deepEqual(nm, [['capacites/ocultomancien-maitrise', 4]]);
+  assert.equal(don('capacites/ocultomancien-maitrise').effet, 'Gagne 4 niveaux de maîtrise (NM).', 'à l’import');
+  assert.deepEqual(imp.classes.flatMap((c) => c.dons).filter((d) => d.nm_gagnes !== undefined).map((d) => [d.id, d.nm_gagnes]), [['capacites/ocultomancien-maitrise', 4]]);
   // l'accessoire « Un point de maîtrise d'arme » : un choix (accessoire_effet_cible.choix, migration 0076), sa famille dans personnage_accessoire
   const accessoire = regles.accessoires.flatMap((a) => a.effets).filter((e) => e.cible === 'maitrise_arme');
   assert.deepEqual(accessoire, [{ cible: 'maitrise_arme', cible_id: null, valeur: 1, choix: true }]);
@@ -248,9 +251,9 @@ test('classes : couleurs de /classes/ ; magiques = catégorie Magique et Archima
   for (const c of regles.classes) assert.equal(c.classe, classeDeCategorie(c.groupe.key), c.id);
   const feuille = cssDesFamilles(FAMILLES_DE_LA_FICHE);
   for (const c of regles.classes) assert.ok(feuille.includes(`.${c.classe}{`), `${c.id} : dans la feuille de la fiche`);
-  // la même règle que la page de la classe (class-groups.mjs#groupeDeCouleur : le Parleur, une classe sans catégorie reconnue sous « Spéciales »)
-  assert.equal(classeDUneClasse({ id: 'classes/parleur', data: { tags: ['càc'] } }), 'couleur-classe-speciales');
-  assert.equal(classeDUneClasse({ id: 'classes/inconnue', data: { tags: [] } }), 'couleur-classe-speciales');
+  // la même règle que la page de la classe (class-groups.mjs#groupeDeCouleur : le Parleur, « Classe spéciale » en base (R238 (3)), et une classe sans catégorie reconnue sous « Spéciales »)
+  assert.equal(classeDUneClasse({ id: 'classes/parleur', data: { mots_cles: ['speciale'] } }), 'couleur-classe-speciales');
+  assert.equal(classeDUneClasse({ id: 'classes/inconnue', data: { mots_cles: [] } }), 'couleur-classe-speciales');
   // R6 : magiques = catégorie Magique (la seule qui donne de l'AM) et Archimage ; à l'import, ces neuf classes
   assert.deepEqual(db.prepare('SELECT id FROM categorie_classe WHERE am_base > 0').all().map((k) => k.id), ['classe-magique']);
   const magiquesR6 = (classes) => classes.filter((c) => c.categorie_id === 'classe-magique' || c.id === 'classes/archimage').map((c) => c.nom).sort();
@@ -311,15 +314,17 @@ test('dons de classe : la précision de la cellule de type (limite d’usage « 
 });
 
 test('magies : couleur des pages de magie, mono-magie (R15) et ses exceptions (R20), caractéristique au choix du Potentiel Illimité', () => {
-  const pi = regles.magies.find((m) => m.id === 'magies/potentiel-illimite');
+  // le Potentiel Illimité tel que l'import l'a écrit (test/aide-base-d-import.mjs : le site de dev modifie librement ses valeurs)
+  const imp = reglesDImport();
+  const pi = imp.magies.find((m) => m.id === 'magies/potentiel-illimite');
   assert.equal(pi.mono_magie, true);
   assert.equal(pi.caracteristique_id, null);
   assert.match(pi.caracteristique_brut, /AU CHOIX/);
   // la couleur d'une magie : les noms de ses classes de la palette (lib/palette-css.mjs), jamais un hex
   assert.deepEqual([pi.classe, pi.classe_2], ['couleur-magie-potentiel-illimite', 'couleur-2-magie-potentiel-illimite']);
-  assert.deepEqual(regles.magies.find((m) => m.id === 'magies/magie-de-la-corruption').ethnies_secondaires.sort(),
+  assert.deepEqual(imp.magies.find((m) => m.id === 'magies/magie-de-la-corruption').ethnies_secondaires.sort(),
     ['races/elfe-noir#ethnie:elfe-noir-charbon', 'races/felfe#ethnie:felfe-noir']);
-  assert.ok(regles.magies.every((m) => m.dieux.length >= 1), 'chaque magie a son dieu inné');
+  assert.ok(imp.magies.every((m) => m.dieux.length >= 1), 'chaque magie a son dieu inné');
   const palette = classesDeLaPalette();
   for (const m of regles.magies) {
     assert.deepEqual([m.classe, m.classe_2], [classeDeMagie(m.nom), classeDeSecondeMagie(m.nom)], m.id);
@@ -340,6 +345,29 @@ test('métiers (décisions R33 à R35) : bonus par rang avec leur compétence ou
     if (m.artisanat?.caracteristiques.length) assert.ok(m.artisanat.caracteristiques.every((c) => regles.caracteristiques.some((k) => k.id === c)), m.id);
   }
   assert.ok(regles.metiers.some((m) => m.bonus.some((b) => b.options.some((o) => o.attribut === 'initiative'))), '« +X INI » vers l’initiative');
+});
+
+test('métiers : `apport` (infobulle de la liste Métier, demande du propriétaire) — Bonus, Artisanat, Équipement, Avantage tels qu’écrits dans la base, un champ vide omis, sans la description', () => {
+  const lignes = new Map(db.prepare('SELECT id, bonus_brut, artisanat_brut, equipement_brut, avantage_brut FROM metier').all().map((r) => [r.id, r]));
+  assert.equal(regles.metiers.length, lignes.size);
+  for (const m of regles.metiers) {
+    const r = lignes.get(m.id);
+    const attendu = [['Bonus', r.bonus_brut], ['Artisanat possible', r.artisanat_brut], ['Équipement supplémentaire possible', r.equipement_brut], ['Avantage possible', r.avantage_brut]]
+      .filter(([, texte]) => texte).map(([libelle, texte]) => ({ libelle, texte: texteSansBalises(texte) })); // sans balises de mots-clés, comme tout regles.json
+    assert.deepEqual(m.apport, attendu, m.id);
+  }
+  assert.ok(reglesDImport().metiers.some((m) => m.apport.length === 3), 'un métier sans « Avantage possible » (l’Artisan, à l’import) : la ligne omise');
+});
+
+test('armures : `effet` (infobulle de la liste Armure, demande du propriétaire) — le texte de la base tel qu’écrit, sans balises, absent quand l’armure n’en a pas', () => {
+  const effets = new Map(db.prepare('SELECT id, effet FROM armure').all().map((r) => [r.id, r.effet]));
+  assert.equal(regles.armures.length, effets.size);
+  for (const a of regles.armures) {
+    const texte = effets.get(a.id);
+    if (texte?.trim()) assert.equal(a.effet, texteSansBalises(texte), a.id);
+    else assert.ok(!('effet' in a), `${a.id} : pas d’effet`);
+  }
+  assert.ok(regles.armures.some((a) => a.effet) && regles.armures.some((a) => !a.effet), 'des armures avec et sans effet');
 });
 
 test('postures (sélecteur de la page, demande du propriétaire) : les six de la base dans leur ordre, leur couleur, leurs effets du tableau de la fiche', () => {
@@ -423,8 +451,9 @@ test('armes élémentaires (décision R167, migration 0081) : chaque arme élém
   const enBase = db.prepare(`SELECT e.id, e.nom, e.type_id, e.magie_id, m.nom AS magie, e.bonus_degats, e.capacite_nom, e.capacite_mode, e.capacite_texte
     FROM arme_elementaire e JOIN magie m ON m.id = e.magie_id ORDER BY e.ordre`).all();
   assert.deepEqual(regles.armes_elementaires.map((a) => a.id), enBase.map((a) => a.id), 'l’ordre de arme_elementaire.ordre');
-  for (const [i, a] of regles.armes_elementaires.entries()) {
+  for (const [i, { capacite_limite: _limite, ...a }] of regles.armes_elementaires.entries()) {
     const b = enBase[i];
+    // (`capacite_limite`, la limite d'usage lue dans sa capacité, décision R173 : test/limite-texte.test.mjs)
     assert.deepEqual(a, { id: b.id, nom: texteSansBalises(b.nom), type_id: b.type_id, magie_id: b.magie_id, classe: classeDeMagie(b.magie), bonus_degats: b.bonus_degats,
       capacite_nom: b.capacite_nom === null ? null : texteSansBalises(b.capacite_nom), capacite_mode: b.capacite_mode,
       capacite_texte: b.capacite_texte === null ? null : texteSansBalises(b.capacite_texte) }, b.id);
@@ -479,7 +508,8 @@ test('armes élémentaires (décision R167, migration 0081) : chaque arme élém
 
   // les sorts « Fer » : l'étiquette « Sort fer » (sort_mot_cle 'sort-fer', comme « Sort grenade » de R114), jamais le nom ; chacun d'une magie qui a ses
   // armes élémentaires
-  const fer = db.prepare("SELECT sort_id FROM sort_mot_cle WHERE mot_cle_id = 'sort-fer' ORDER BY sort_id").all().map((r) => r.sort_id);
+  // (par l'id entier du mot-clé protégé, migration 0113 : lib/mots-cles-proteges.mjs ; regles.json en donne le nom protégé)
+  const fer = db.prepare('SELECT sort_id FROM sort_mot_cle WHERE mot_cle_id = ? ORDER BY sort_id').all(IDS_DES_MOTS_CLES_PROTEGES['sort-fer']).map((r) => r.sort_id);
   assert.ok(fer.length > 0);
   assert.deepEqual(regles.sorts.filter((x) => x.fer).map((x) => x.id).sort(), fer);
   assert.ok(regles.sorts.filter((x) => x.fer).every((x) => x.mots_cles.includes('sort-fer')));
@@ -508,9 +538,12 @@ test('résistances (tableau « Résistance / Faiblesse » de la fiche) : les six
     ['Résistance', 1, 1], ['Vulnérabilité', -1, -1], ['Grande vulnérabilité', -2, -2], ['Sensibilité', null, -3]]);
   assert.deepEqual(regles.etats.map((e) => e.id), db.prepare('SELECT id FROM etat ORDER BY ordre').all().map((r) => r.id));
   assert.equal(regles.magies.reduce((n, m) => n + m.resistances.length, 0), compte('magie_resistance'));
+  // chaque cran : une magie, une altération ou un type de dégâts physiques (décision R174 : estoc, taille, frappe, les ids de DEGATS_PHYSIQUES), d'id connu
+  const connus = { magie: regles.magies.map((x) => x.id), etat: regles.etats.map((x) => x.id), physique: DEGATS_PHYSIQUES.map(([id]) => id) };
   for (const m of regles.magies) {
-    for (const r of m.resistances) assert.ok([1, -1].includes(r.crans) && (r.type === 'magie' ? regles.magies : regles.etats).some((x) => x.id === r.id), `${m.nom} : ${r.id}`);
-    const lie = db.prepare('SELECT etat_id FROM etat_magie WHERE magie_id = ?').get(m.id)?.etat_id ?? null;
+    for (const r of m.resistances) assert.ok([1, -1].includes(r.crans) && (connus[r.type] ?? []).includes(r.id), `${m.nom} : ${r.type} ${r.id}`);
+    // deux altérations liées (l'Ombre depuis la 0117) : la première dans l'ordre des altérations
+    const lie = db.prepare('SELECT em.etat_id FROM etat_magie em JOIN etat e ON e.id = em.etat_id WHERE em.magie_id = ? ORDER BY e.ordre LIMIT 1').get(m.id)?.etat_id ?? null;
     assert.equal(m.etat_id, lie, m.nom);
   }
   // un don qui n'écrit rien de tel n'a pas de champ (regles.json reste léger)
@@ -520,20 +553,34 @@ test('résistances (tableau « Résistance / Faiblesse » de la fiche) : les six
   assert.ok(regles.races.find((r) => r.id === 'races/drakos').dons_tableau.lignes.every((l) => l.resistances), 'chaque ligne du Drakos : son cran, ou au choix');
 });
 
+test('décision R174 : le Potentiel Illimité porte ses trois vulnérabilités physiques (estoc, taille, frappe), un cran de moins chacune, et rien d’autre', () => {
+  const pi = regles.magies.find((m) => m.id === 'magies/potentiel-illimite');
+  // R139 : aucune liste de magies ni d'altérations ; R174 : « Surtension corporelle », un palier personnel, −1 cran à chacun des trois types
+  assert.deepEqual(pi.resistances, ['estoc', 'taille', 'frappe'].map((id) => ({ type: 'physique', id, crans: -1 })));
+  // l'export suit la table : autant de crans physiques que de lignes physiques, chacun vers la magie de sa ligne
+  const exportes = regles.magies.flatMap((m) => m.resistances.filter((r) => r.type === 'physique').map((r) => `${m.id}>${r.id}>${r.crans}`));
+  assert.deepEqual(exportes.sort(), db.prepare(`SELECT magie_id || '>' || cible_physique || '>' || CASE sens WHEN 'resistance' THEN 1 ELSE -1 END AS c
+                                                 FROM magie_resistance WHERE cible_type = 'physique'`).all().map((r) => r.c).sort());
+  // le lecteur des textes de dons ne reçoit aucune cible physique : un don n'en gagne pas (aucun effet de type « physique »)
+  const dons = [...regles.races.flatMap((r) => r.dons), ...regles.classes.flatMap((c) => c.dons)];
+  assert.ok(dons.every((d) => !(d.resistances?.effets ?? []).some((e) => e.type === 'physique')));
+});
+
 test('glossaire des mots-clés (D2) : les règles de la fiche lisent les textes comme les découpages — le texte écrit, sinon le libellé, jamais une balise ni une définition', () => {
   const dossier = dossierTemporaire('fiche-balises');
   try {
     const chemin = join(dossier, 'maverick.db');
     cpSync(cheminBase({ sansExemples: false }), chemin);
     const copie = new DatabaseSync(chemin);
-    const motCle = copie.prepare('SELECT id, libelle FROM mot_cle ORDER BY id LIMIT 1').get();
+    const motCle = copie.prepare('SELECT id, cle, libelle FROM mot_cle ORDER BY id LIMIT 1').get();
     const DEFINITION = 'Définition d’essai, que la fiche ne montre jamais.';
     copie.prepare('UPDATE mot_cle SET description = ? WHERE id = ?').run(DEFINITION, motCle.id);
-    // un texte de case (l'effet d'un don) : sa forme canonique « {{id|texte}} » ; et, hors forme canonique, une balise sans texte et le mode complet
+    // un texte de case (l'effet d'un don) : sa forme canonique « {{clé|texte}} » (la clé, R232 (3)) ; et, hors forme canonique, une balise sans texte et
+    // le mode complet
     const don = copie.prepare("SELECT id, effet FROM capacite WHERE effet IS NOT NULL AND instr(effet, '{{') = 0 ORDER BY id LIMIT 1").get();
-    copie.prepare('UPDATE capacite SET effet = ? WHERE id = ?').run(`${don.effet} Essai {{${motCle.id}|texte écrit}}, {{${motCle.id}}} et {{${motCle.id}:}}.`, don.id);
+    copie.prepare('UPDATE capacite SET effet = ? WHERE id = ?').run(`${don.effet} Essai {{${motCle.cle}|texte écrit}}, {{${motCle.cle}}} et {{${motCle.cle}:}}.`, don.id);
     const sort = copie.prepare("SELECT id FROM sort WHERE remarque IS NULL ORDER BY id LIMIT 1").get();
-    copie.prepare('UPDATE sort SET remarque = ? WHERE id = ?').run(`Voir {{${motCle.id}|la remarque}}.`, sort.id);
+    copie.prepare('UPDATE sort SET remarque = ? WHERE id = ?').run(`Voir {{${motCle.cle}|la remarque}}.`, sort.id);
     const lues = chargerReglesDeFiche(copie);
     copie.close();
     const json = JSON.stringify(lues);
@@ -545,4 +592,94 @@ test('glossaire des mots-clés (D2) : les règles de la fiche lisent les textes 
   } finally {
     rmSync(dossier, { recursive: true, force: true });
   }
+});
+
+test('A3 : le texte de présentation de chaque classe et de chaque spécialité (infobulle d’une tuile de choix), tel qu’en base, null sans texte', () => {
+  const lire = (table) => new Map(db.prepare(`SELECT id, description FROM ${table}`).all().map((r) => [r.id, r]));
+  const classes = lire('classe');
+  const specialites = lire('specialite');
+  // le texte écrit, sans les balises du glossaire comme tout texte des règles de la fiche (le texte affiché : jamais réécrit au-delà)
+  const texte = (v) => (v === null || v === undefined || v === '' ? null : texteSansBalises(v));
+  let avec = 0;
+  let sans = 0;
+  for (const c of regles.classes) {
+    assert.equal(c.description, texte(classes.get(c.id).description), c.id);
+    assert.ok(!('description_titre' in c), 'le titre n’est pas exporté : la page ne le lit pas');
+    for (const s of c.specialites) {
+      const ligne = specialites.get(s.id);
+      assert.equal(s.description, texte(ligne.description), s.id);
+      if (s.description === null) sans += 1;
+      else avec += 1;
+    }
+  }
+  assert.ok(avec > 0 && sans > 0, `des spécialités avec texte (${avec}) et sans (${sans}, null)`);
+  assert.equal(avec + sans, compte('specialite'));
+  // le repli de l'infobulle d'une spécialité sans texte (choix du propriétaire) : l'effet du don de son cartouche (capacite.nature = 'specialite'), lu
+  // dans classes[].dons[] ; au plus un cartouche par spécialité, celui de la base
+  const cartouches = db.prepare("SELECT specialite_id, effet FROM capacite WHERE nature = 'specialite'").all();
+  for (const c of regles.classes) {
+    for (const s of c.specialites) {
+      const lus = c.dons.filter((d) => d.nature === 'specialite' && d.specialite_id === s.id);
+      const enBase = cartouches.filter((k) => k.specialite_id === s.id);
+      assert.equal(lus.length, enBase.length, s.id);
+      assert.ok(lus.length <= 1, s.id);
+      if (lus.length) assert.equal(lus[0].effet, enBase[0].effet === null ? null : texteSansBalises(enBase[0].effet), s.id);
+    }
+  }
+});
+
+test('décision R181 : les 54 entrées du tableau du Mage Bleu (classes[].entrees, dans l’ordre du tableau, textes tels qu’en base) et la magie visée de chaque don « Variable » (classes[].dons[].magie_visee)', () => {
+  const sans = (t) => texteSansBalises(t); // regles.json ne porte pas les balises du glossaire
+  const lignes = db.prepare(`SELECT e.classe_id, e.id, x.magie_id, e.rang, e.nom, e.type, e.type_brut, e.limite_nombre, e.limite_periode, e.effet
+    FROM classe_annexe_entree e JOIN classe_annexe x ON x.classe_id = e.classe_id AND x.rang = e.annexe_rang ORDER BY e.classe_id, x.rang, e.rang`).all();
+  assert.equal(lignes.length, 54);
+  const avecEntrees = regles.classes.filter((c) => 'entrees' in c);
+  assert.deepEqual(avecEntrees.map((c) => c.id), ['classes/mage-bleu'], 'seule une classe qui a son tableau porte des entrées');
+  assert.deepEqual(avecEntrees[0].entrees, lignes.map((e) => ({
+    id: e.id, magie_id: e.magie_id, rang: e.rang, nom: sans(e.nom), type: e.type, type_brut: e.type_brut,
+    limite: e.limite_nombre === null ? null : { nombre: e.limite_nombre, periode: e.limite_periode, genre: genreDeLaPeriode(e.limite_periode) },
+    effet: sans(e.effet),
+  })));
+  // « (Actif 2 fois/combat) » : 2 usages remis par « Fin de combat » ; « (Réaction 1 fois/tour) » : un rappel (décision R173, R181)
+  const parId = new Map(avecEntrees[0].entrees.map((e) => [e.id, e]));
+  assert.deepEqual(parId.get('classes/mage-bleu#entree:sang:attaque-saignante').limite, { nombre: 2, periode: 'combat', genre: 'combat' });
+  assert.equal(parId.get('classes/mage-bleu#entree:sang:temeraire').limite, null);
+  assert.deepEqual(parId.get('classes/mage-bleu#entree:lumiere:lumiere-de-force').limite, { nombre: 1, periode: 'tour', genre: genreDeLaPeriode('tour') });
+  // 14 magies (le Mage Bleu n'a jamais le Potentiel Illimité : R25, R176), 3 ou 4 entrées chacune
+  assert.equal(new Set(avecEntrees[0].entrees.map((e) => e.magie_id)).size, 14);
+  const visees = Object.fromEntries(regles.classes.flatMap((c) => c.dons).filter((d) => 'magie_visee' in d).map((d) => [d.id, d.magie_visee]));
+  assert.deepEqual(visees, Object.fromEntries(db.prepare('SELECT capacite_id, magie FROM capacite_variable ORDER BY capacite_id').all().map((r) => [r.capacite_id, r.magie])));
+  // les dons « Variable » et leur magie, à l'import : le site de dev change le type d'un don (quitter « Variable » retire sa ligne de
+  // capacite_variable, R192) ou en crée
+  const viseesDImport = Object.fromEntries(reglesDImport().classes.flatMap((c) => c.dons).filter((d) => 'magie_visee' in d).map((d) => [d.id, d.magie_visee]));
+  assert.deepEqual(viseesDImport, {
+    'capacites/mage-bleu-mime': 'innee', 'capacites/mage-bleu-mimetisme': 'innee', 'capacites/mage-bleu-principale': 'innee',
+    'capacites/mage-bleu-secondaire': 'acquise', 'capacites/mage-bleu-ultime-raison': 'innee',
+  });
+});
+
+test('R236 : chaque magie porte ses spécialisations { id, nom, ordre, description } (deux, aucune pour le Potentiel Illimité) et chaque sort sa spécialisation (null pour un sort commun), comme la base', () => {
+  // (R260 (3) : `description`, le texte de la page de la magie sous le bandeau, sans balise du glossaire — test/fiche-listes-infobulles.test.mjs)
+  const enBase = db.prepare('SELECT id, magie_id, nom, ordre FROM magie_specialisation ORDER BY magie_id, ordre').all();
+  assert.ok(enBase.length > 0, 'la base a des spécialisations');
+  const dansLesRegles = regles.magies.flatMap((m) => m.specialisations.map(({ description, ...x }) => ({ ...x, magie_id: m.id })))
+    .sort((a, b) => (a.magie_id < b.magie_id ? -1 : a.magie_id > b.magie_id ? 1 : a.ordre - b.ordre));
+  assert.deepEqual(dansLesRegles.map((x) => ({ ...x })), enBase.map((x) => ({ ...x })));
+  for (const m of regles.magies) {
+    assert.ok(Array.isArray(m.specialisations), m.id);
+    assert.deepEqual(m.specialisations.map((x) => Object.keys(x).sort()), m.specialisations.map(() => ['description', 'id', 'nom', 'ordre']), m.id);
+    assert.deepEqual(m.specialisations.map((x) => x.ordre), m.specialisations.map((_, i) => i + 1), `${m.id} : dans l'ordre du tableau (1, 2)`);
+  }
+  const aucune = regles.magies.filter((m) => !m.specialisations.length).map((m) => m.id);
+  assert.deepEqual(aucune, ['magies/potentiel-illimite'], 'le Potentiel Illimité (identifiant figé) est le seul sans spécialisation');
+  // les sorts : la colonne de la base, toujours présente ; une spécialisation est de la magie du sort
+  const enBaseDesSorts = new Map(db.prepare('SELECT id, specialisation_id FROM sort').all().map((s) => [s.id, s.specialisation_id]));
+  for (const s of regles.sorts) {
+    assert.ok(Object.hasOwn(s, 'specialisation_id'), `${s.id} : specialisation_id présent`);
+    assert.equal(s.specialisation_id, enBaseDesSorts.get(s.id), s.id);
+    if (s.specialisation_id !== null) {
+      assert.ok(regles.magies.find((m) => m.id === s.magie_id).specialisations.some((x) => x.id === s.specialisation_id), `${s.id} : une spécialisation de sa magie`);
+    }
+  }
+  assert.ok(regles.sorts.some((s) => s.specialisation_id !== null) && regles.sorts.some((s) => s.specialisation_id === null), 'des sorts communs et des sorts de spécialisation');
 });

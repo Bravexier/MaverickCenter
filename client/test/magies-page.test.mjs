@@ -9,10 +9,13 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { chargerInvocations } from '../src/lib/bestiaire-db.mjs';
-import { chargerMagies } from '../src/lib/magies-db.mjs';
+import { ancreDeLEtat, chargerMagies } from '../src/lib/magies-db.mjs';
+import { ancresDuCorps } from '../src/lib/ancres-figees.mjs';
+import { DEGATS_PHYSIQUES } from '../src/lib/fiche-moteur.mjs';
 import { entriesAvecRelationsDeLaBase, relationMatrix } from '../src/lib/magie-relations.mjs';
 import { splitFrontmatter } from '../src/lib/wikilinks.mjs';
 import {
+  ancreDeSpecialisation,
   ancreDeTitre,
   blocsDeTexte,
   coutDeSort,
@@ -23,8 +26,11 @@ import {
   morceauxAvecEtats,
   morceauxAvecLiens,
   nombre,
+  phrasesDesSpecialisations,
+  ID_CHOSES_A_SAVOIR,
   segments,
   sortsParNpm,
+  sortsParSpecialisation,
   couleurDeMagie,
   COULEUR_PAR_DEFAUT,
   texteSurCouleurDeMagie,
@@ -33,6 +39,7 @@ import {
 import { sansBonus } from '../src/lib/sort-maitrise.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { baseDImport, texteDImport } from './aide-base-d-import.mjs';
 
 const textes = (segs) => segs.map((s) => (s.modif ? `(${s.texte})` : s.texte)).join(' ');
 
@@ -222,15 +229,137 @@ const db = ouvrirBase({ sansExemples: false });
 const m = chargerMagies(db);
 const magiesAvecSorts = [...m.magies.values()].filter((x) => x.sorts.length > 0);
 
-test('15 magies : 14 ont 23 sorts (5 par NPM de 1 à 4, 3 au NPM 5), Potentiel Illimité n’en a pas', () => {
+// R236 (1) : les sorts d'une magie sont rangés comme sa page les montre : le tableau commun (NPM 1 et 2, pas de spécialisation), puis ses deux spécialisations
+// (NPM 3 à 5). Pur : aucun nom ni effectif de la base.
+test('sortsParSpecialisation : les sorts communs par NPM, puis chaque spécialisation (dans son ordre) avec les siens par NPM ; l’ordre de lecture est gardé, une spécialisation sans sort n’est pas rendue', () => {
+  const sort = (n, niveau, specialisationId = null) => ({ n, niveau, specialisationId });
+  const sorts = [sort('a', 1), sort('b', 1), sort('c', 2), sort('d', 3, 'sp1'), sort('e', 3, 'sp1'), sort('f', 3, 'sp2'), sort('g', 4, 'sp1'), sort('h', 4, 'sp2'), sort('i', 5, 'sp2')];
+  const rangement = sortsParSpecialisation(sorts, [{ id: 'sp1' }, { id: 'sp2' }]);
+  const noms = (groupes) => groupes.map((g) => [g.niveau, g.sorts.map((x) => x.n)]);
+  assert.deepEqual(noms(rangement.communs), [[1, ['a', 'b']], [2, ['c']]]);
+  assert.deepEqual(rangement.specialisations.map((x) => x.specialisation.id), ['sp1', 'sp2']);
+  assert.deepEqual(noms(rangement.specialisations[0].groupes), [[3, ['d', 'e']], [4, ['g']]]);
+  assert.deepEqual(noms(rangement.specialisations[1].groupes), [[3, ['f']], [4, ['h']], [5, ['i']]]);
+  assert.deepEqual(rangement.specialisations.map((x) => x.total), [3, 3]);
+  // le Potentiel Illimité et les magies sans spécialisation : tout est commun ; un sort au-dessus d'une borne retiré en amont vide une spécialisation, qui disparaît
+  assert.deepEqual(noms(sortsParSpecialisation(sorts.filter((x) => !x.specialisationId), []).communs), [[1, ['a', 'b']], [2, ['c']]]);
+  assert.deepEqual(sortsParSpecialisation(sorts.filter((x) => x.niveau <= 2), [{ id: 'sp1' }, { id: 'sp2' }]).specialisations, []);
+  assert.deepEqual(sortsParSpecialisation([], []), { communs: [], specialisations: [] });
+});
+
+// Ancre figée d'une spécialisation (« Identifiants figés ») : le segment de l'id après `#specialisation:`, jamais `nom` ni `nom_cle`, que le service recalcule au renommage.
+test('ancreDeSpecialisation : le segment de l’identifiant après « #specialisation: » ; elle ne change ni avec le nom ni avec nom_cle', () => {
+  assert.equal(ancreDeSpecialisation('magies/magie-du-feu#specialisation:volcan'), 'volcan');
+  assert.equal(ancreDeSpecialisation('magies/magie-de-la-foudre#specialisation:magnetisme'), 'magnetisme');
+  // une id sans la marque est rendue telle quelle (jamais vide)
+  assert.equal(ancreDeSpecialisation('autre'), 'autre');
+  // sur la base courante : une ancre non vide par spécialisation, unique dans sa magie, égale au segment de l'id (le CHECK du schéma impose le préfixe)
+  const parMagie = new Map();
+  for (const magie of m.magies.values()) {
+    for (const sp of magie.specialisations) {
+      assert.ok(sp.id.startsWith(`${magie.id}#specialisation:`), sp.id);
+      assert.equal(ancreDeSpecialisation(sp.id), sp.id.slice(`${magie.id}#specialisation:`.length));
+      assert.ok(ancreDeSpecialisation(sp.id).length > 0, sp.id);
+      parMagie.set(magie.id, [...(parMagie.get(magie.id) ?? []), ancreDeSpecialisation(sp.id)]);
+    }
+  }
+  for (const [id, ancres] of parMagie) assert.equal(new Set(ancres).size, ancres.length, `${id} : ancres uniques`);
+  assert.ok(parMagie.size > 0);
+});
+
+test('ancre d’une spécialisation : un renommage (nom et nom_cle recalculés) ne la change pas, et les composants la tirent de l’id', () => {
+  const avant = new Map([...m.magies.values()].flatMap((x) => x.specialisations.map((sp) => [sp.id, ancreDeSpecialisation(sp.id)])));
+  const dossier = dossierTemporaire('magies');
+  try {
+    const copie = join(dossier, 'renommage.db');
+    copyFileSync(cheminBase({ sansExemples: false }), copie);
+    const w = new DatabaseSync(copie);
+    // ce que fait le service au renommage (serveur-edition-magies.test.mjs) : le nom et sa clé changent, jamais l'id
+    w.exec("UPDATE magie_specialisation SET nom = 'NOM RENOMME ' || id, nom_cle = 'renomme-' || ordre");
+    w.close();
+    const apres = chargerMagies(new DatabaseSync(copie, { readOnly: true }));
+    const specs = [...apres.magies.values()].flatMap((x) => x.specialisations);
+    assert.equal(specs.length, avant.size);
+    for (const sp of specs) {
+      assert.ok(sp.cle.startsWith('renomme-'), 'la clé a bien changé');
+      assert.ok(sp.nom.startsWith('NOM RENOMME'), 'le nom a bien changé');
+      assert.equal(ancreDeSpecialisation(sp.id), avant.get(sp.id), `${sp.id} : même ancre après renommage`);
+    }
+  } finally {
+    rmSync(dossier, { recursive: true, force: true });
+  }
+  // aucun composant ne bâtit l'ancre sur la clé ni sur le nom
+  for (const f of ['SortsDeSpecialisation', 'MagiePage']) {
+    const source = readFileSync(new URL(`../src/components/magie/${f}.astro`, import.meta.url), 'utf8');
+    assert.match(source, /ancreDeSpecialisation\(/, `${f} : ancre par ancreDeSpecialisation`);
+    assert.doesNotMatch(source, /specialisation\.cle|\bsp\.cle|\bs\.specialisation\.nom_cle/, `${f} : jamais la clé du nom`);
+  }
+});
+
+// R245 (1) (MAJ-A5, MAJ-A6) : de « CHOSES A SAVOIR », seules les puces sur la Super-magie et sur le choix des bi-magie, découpées sans être réécrites.
+test('phrasesDesSpecialisations : seules les puces de la Super-magie et des bi-magie, telles qu’écrites ; rien quand la règle est absente ou n’a plus de telle puce', () => {
+  const regle = (texte) => ({ id: ID_CHOSES_A_SAVOIR, titre: 'Titre', niveau_sort: null, texte });
+  const texte = 'Titre\n\nIntroduction qui parle de bi-magie.\n\n- Premier point.\n\n- Seuls les bi-magie choisissent.\n\n- Etat de "Super-magie" ensuite.\n\n- Dernier point.';
+  assert.deepEqual(phrasesDesSpecialisations([regle(texte)]), { titre: 'Titre', texte: 'Seuls les bi-magie choisissent. Etat de "Super-magie" ensuite.' });
+  assert.equal(phrasesDesSpecialisations([regle('Titre\n\n- Premier point.\n\n- Dernier point.')]), null);
+  assert.equal(phrasesDesSpecialisations([{ id: 'magies#regle:autre', titre: 'x', niveau_sort: 5, texte: '- bi-magie' }]), null);
+  assert.equal(phrasesDesSpecialisations([]), null);
+  // la règle d'un niveau (« sort niveau 5 ») n'est pas touchée : seule la règle sans niveau est lue
+  assert.ok(m.regles.some((r) => r.id === ID_CHOSES_A_SAVOIR && r.niveau_sort === null), 'la règle sans niveau est en base');
+  // sur la base courante (le site de dev peut modifier la cellule) : le titre de la règle, et pas plus de texte que la cellule
+  const courante = phrasesDesSpecialisations(m.regles);
+  if (courante) {
+    const regleCourante = m.regles.find((r) => r.id === ID_CHOSES_A_SAVOIR);
+    assert.equal(courante.titre, regleCourante.titre);
+    assert.ok(courante.texte.length < regleCourante.texte.length);
+  }
+  // à l'import : deux puces sur quatre (version en test, déblocage au NPM 3 et bêta exclus), chacune mot pour mot dans la cellule
+  const dImport = chargerMagies(baseDImport()).regles;
+  const cellule = dImport.find((r) => r.id === ID_CHOSES_A_SAVOIR).texte;
+  const puces = cellule.split(/\r?\n/).filter((l) => /^\s*-\s/.test(l)).map((l) => l.replace(/^\s*-\s+/, '').trim());
+  const phrases = puces.filter((p) => /super-magie|bi-magie/i.test(p));
+  assert.equal(puces.length, 4);
+  assert.deepEqual(phrases.length, 2);
+  assert.equal(phrasesDesSpecialisations(dImport).texte, phrases.join(' '));
+  assert.ok(phrases.every((p) => cellule.includes(p)));
+});
+
+test('15 magies : 14 ont des sorts, rangés en tableau commun (aucune spécialisation) puis en deux spécialisations de leur magie ; le Potentiel Illimité n’en a pas (R236)', () => {
   assert.equal(m.magies.size, 15);
   assert.equal(magiesAvecSorts.length, 14);
-  assert.equal(m.sorts.size, 322);
   for (const magie of magiesAvecSorts) {
-    assert.deepEqual(sortsParNpm(magie.sorts).map((g) => [g.niveau, g.sorts.length]), [[1, 5], [2, 5], [3, 5], [4, 5], [5, 3]], magie.id);
+    const { communs, specialisations } = sortsParSpecialisation(magie.sorts, magie.specialisations);
+    assert.deepEqual(specialisations.map((x) => x.specialisation.id), magie.specialisations.map((x) => x.id), `${magie.id} : ses deux spécialisations, dans l'ordre`);
+    // rien ne se perd ni ne se double : chaque sort est dans le tableau commun ou dans la spécialisation à laquelle la base le rattache
+    const rangés = [...communs.flatMap((g) => g.sorts), ...specialisations.flatMap((x) => x.groupes.flatMap((g) => g.sorts))];
+    assert.deepEqual(rangés.map((s) => s.id).sort(), magie.sorts.map((s) => s.id).sort(), magie.id);
+    assert.ok(communs.every((g) => g.sorts.every((s) => s.specialisationId === null && s.niveau === g.niveau)), `${magie.id} : communs sans spécialisation`);
+    for (const { specialisation, groupes, total } of specialisations) {
+      assert.ok(groupes.every((g) => g.sorts.every((s) => s.specialisationId === specialisation.id && s.niveau === g.niveau)), specialisation.id);
+      assert.equal(total, groupes.reduce((n, g) => n + g.sorts.length, 0), specialisation.id);
+    }
+    for (const groupes of [communs, ...specialisations.map((x) => x.groupes)]) {
+      assert.deepEqual(groupes.map((g) => g.niveau), groupes.map((g) => g.niveau).sort((a, b) => a - b), `${magie.id} : NPM croissants`);
+    }
+  }
+  // à l'import (R236, R237) : 420 sorts, 30 par magie, dans l'ordre 1 à 10 (tableau commun, NPM 1 et 2), 11 à 20 (spécialisation 1), 21 à 30 (spécialisation 2) ;
+  // le site de dev peut ensuite en changer les effectifs (état d'import : test/aide-base-d-import.mjs)
+  const dImport = chargerMagies(baseDImport());
+  assert.equal(dImport.sorts.size, 420);
+  for (const magie of dImport.magies.values()) {
+    if (magie.id === 'magies/potentiel-illimite') continue;
+    const { communs, specialisations } = sortsParSpecialisation(magie.sorts, magie.specialisations);
+    assert.equal(magie.sorts.length, 30, magie.id);
+    assert.deepEqual([communs.map((g) => g.niveau), communs.reduce((n, g) => n + g.sorts.length, 0)], [[1, 2], 10], `${magie.id} : tableau commun`);
+    assert.equal(specialisations.length, 2, magie.id);
+    for (const x of specialisations) assert.deepEqual([x.groupes.map((g) => g.niveau), x.total], [[3, 4, 5], 10], x.specialisation.id);
   }
   assert.equal(m.magies.get('magies/potentiel-illimite').sorts.length, 0);
-  assert.equal(m.magies.get('magies/potentiel-illimite').banniere, 'MAGIE DIFFICILE À JOUER !!');
+  assert.deepEqual(m.magies.get('magies/potentiel-illimite').specialisations, []);
+  // la bannière, un texte modifiable sur le site de dev (source de ce qu'il modifie) : celle de la base, telle quelle ; à l'import, celle du classeur
+  const banniere = db.prepare("SELECT banniere FROM magie WHERE id = 'magies/potentiel-illimite'").get().banniere;
+  assert.equal(m.magies.get('magies/potentiel-illimite').banniere, banniere);
+  assert.equal(texteDImport('magie', { id: 'magies/potentiel-illimite' }, 'banniere'), 'MAGIE DIFFICILE À JOUER !!');
 });
 
 test('identifiants de sort : « <magie>#sort:<slug> », slug unique dans la magie, deux magies peuvent avoir un sort du même nom', () => {
@@ -254,8 +383,10 @@ test('chaque sort : nom, au moins un type, effets secondaires ; aucune cellule n
 });
 
 test('la remarque du sort (note de cellule) vient de sort.remarque : une remarque affichée par sort qui en a une', () => {
-  const avec = db.prepare("SELECT id, remarque FROM sort WHERE remarque IS NOT NULL AND remarque <> ''").all();
-  assert.equal(avec.length, 97);
+  // 109 à l'import (classeur de Décembre, R237) ; le site de dev (source de ce qu'il modifie) peut en écrire, en réécrire ou en vider depuis
+  const remarques = "SELECT id, remarque FROM sort WHERE remarque IS NOT NULL AND remarque <> ''";
+  assert.equal(baseDImport().prepare(remarques).all().length, 109);
+  const avec = db.prepare(remarques).all();
   for (const r of avec) {
     const s = m.sorts.get(r.id);
     const affiche = s.remarque.map((b) => (b.liste ? b.items.join(' ') : b.texte)).join(' ');
@@ -264,8 +395,14 @@ test('la remarque du sort (note de cellule) vient de sort.remarque : une remarqu
       for (const ligne of para.split('\n').map((l) => l.replace(/^[-•]\s+/, '').trim()).filter(Boolean)) assert.ok(affiche.includes(ligne), `${r.id} : « ${ligne} »`);
     }
   }
-  assert.deepEqual(m.sorts.get('magies/magie-du-feu#sort:rai-solaire').remarque, [{ liste: false, texte: 'Peut prendre un tour de concentration pour donner un bonus de +10 dégâts.' }]);
-  assert.equal(m.sorts.get('magies/magie-du-feu#sort:boule-de-feu').remarque.length, 0, 'pas de remarque inventée');
+  // un sort sans remarque n'en affiche aucune ; à l'import, la remarque d'un sort est le texte de la base mis en blocs (Rai solaire du Feu, supprimé par R237 (2),
+  // n'est plus le témoin), Boule de feu n'en a pas
+  for (const s of m.sorts.values()) if (!avec.some((r) => r.id === s.id)) assert.equal(s.remarque.length, 0, `${s.id} : pas de remarque inventée`);
+  const importe = chargerMagies(baseDImport());
+  const temoin = baseDImport().prepare(remarques).all()[0];
+  assert.deepEqual(importe.sorts.get(temoin.id).remarque, blocsDeTexte(temoin.remarque));
+  assert.ok(importe.sorts.get(temoin.id).remarque.length > 0);
+  assert.equal(blocsDeTexte(texteDImport('sort', { id: 'magies/magie-du-feu#sort:boule-de-feu' }, 'remarque')).length, 0, 'pas de remarque inventée');
 });
 
 test('le chargeur ne dépend pas de la table note_cellule (simple trace, appelée à disparaître)', () => {
@@ -277,7 +414,7 @@ test('le chargeur ne dépend pas de la table note_cellule (simple trace, appelé
     w.exec('PRAGMA foreign_keys = OFF; DROP TABLE note_cellule;');
     w.close();
     const sans = chargerMagies(new DatabaseSync(copie, { readOnly: true }));
-    assert.equal(sans.sorts.size, 322);
+    assert.equal(sans.sorts.size, m.sorts.size);
     assert.deepEqual(sans.sorts.get('magies/magie-du-feu#sort:fer-brulant').remarque, m.sorts.get('magies/magie-du-feu#sort:fer-brulant').remarque);
   } finally {
     rmSync(dossier, { recursive: true, force: true });
@@ -285,8 +422,9 @@ test('le chargeur ne dépend pas de la table note_cellule (simple trace, appelé
 });
 
 test('texte du sort de niveau 5 : seuls les sorts qui en ont un le portent', () => {
-  const avec = db.prepare("SELECT id FROM sort WHERE texte_niveau5 IS NOT NULL AND texte_niveau5 <> ''").all().map((r) => r.id);
-  assert.ok(avec.length >= 15);
+  const textes = "SELECT id FROM sort WHERE texte_niveau5 IS NOT NULL AND texte_niveau5 <> ''";
+  assert.ok(baseDImport().prepare(textes).all().length >= 15, 'à l’import (le texte est modifiable sur le site de dev)');
+  const avec = db.prepare(textes).all().map((r) => r.id);
   for (const s of m.sorts.values()) assert.equal(s.incantation !== null, avec.includes(s.id), s.id);
   for (const s of m.sorts.values()) if (s.incantation) assert.equal(s.niveau, 5, `${s.id} : un texte de sort est au NPM 5`);
 });
@@ -303,10 +441,11 @@ test('sorts qui ont leurs propres règles : Animation de mort, Appel aux Golems,
       for (const c of i.creatures) assert.ok(pages.has(c.id), `page de la créature ${c.id}`);
     }
   }
-  const mort = m.sorts.get('magies/magie-de-la-necromancie#sort:animation-de-mort').invoque[0];
-  assert.equal(mort.tableau.lignes.length, 13, 'tableau AMELIORATION CADAVERIQUE avec l’invocation');
-  assert.ok(mort.tableau.lignes.every((a) => a.effets.length >= 1 && a.nom));
-  assert.equal(m.sorts.get('magies/magie-de-la-terre#sort:appel-aux-golems').invoque[0].tableau, null);
+  // R237 (7) : plus de tableau « Amélioration cadavérique » ni d'améliorations sur un sort
+  for (const s of m.sorts.values()) {
+    assert.ok(!('ameliorations' in s), s.id);
+    for (const i of s.invoque) assert.ok(!('tableau' in i), i.id);
+  }
   const manteau = m.sorts.get('magies/magie-de-lombre#sort:manteau-noir');
   assert.equal(manteau.effetsDeCarte.length, 5, 'un effet « Manteau noir » par marionnette (cartes du bestiaire)');
   assert.equal(new Set(manteau.effetsDeCarte.map((e) => e.id)).size, 5);
@@ -317,15 +456,34 @@ test('résistances et vulnérabilités : listes de la base, dans l’ordre de la
   const feu = m.magies.get('magies/magie-du-feu');
   assert.deepEqual(feu.resistances.resistance.magies.map((r) => r.id), ['magies/magie-du-feu', 'magies/magie-de-la-glace', 'magies/magie-de-la-terre']);
   assert.deepEqual(feu.resistances.vulnerabilite.magies.map((r) => r.id), ['magies/magie-de-leau', 'magies/magie-du-vent']);
-  assert.deepEqual(feu.resistances.resistance.etats.map((r) => m.etats.get(r.id).nom), ['Brûlure', 'Gel', 'Pétrifié']);
-  assert.deepEqual(feu.resistances.resistance.etats.map((r) => r.brut), ['Brûlure', 'Gelé', 'Pétrification'], 'écriture de la source gardée (le nom de l’état est dans l’infobulle)');
-  assert.deepEqual(m.magies.get('magies/potentiel-illimite').resistances.resistance, { magies: [], etats: [] }, '« Aucune » = aucune ligne');
+  // les altérations d'état de la Résistance du Feu : celles de la base, par leur id figé, dans l'ordre de la source, chacune sous l'écriture de sa cellule
+  // (`cible_brut`, que le site de dev et les migrations peuvent réécrire : « Gel » depuis la décision R205), jamais sous le nom de l'état (dans l'infobulle)
+  const etatsDuFeu = db.prepare("SELECT cible_etat_id AS id, cible_brut AS brut FROM magie_resistance WHERE magie_id = 'magies/magie-du-feu' AND sens = 'resistance' AND cible_type = 'etat' ORDER BY rang")
+    .all().map((l) => ({ ...l }));
+  assert.ok(etatsDuFeu.length > 0);
+  assert.deepEqual(feu.resistances.resistance.etats.map((r) => r.id), etatsDuFeu.map((l) => l.id));
+  assert.deepEqual(feu.resistances.resistance.etats.map((r) => r.brut), etatsDuFeu.map((l) => l.brut), 'écriture de la source gardée (le nom de l’état est dans l’infobulle)');
+  assert.deepEqual(m.magies.get('magies/potentiel-illimite').resistances.resistance, { magies: [], etats: [], physiques: [] }, '« Aucune » = aucune ligne');
+  assert.deepEqual(feu.resistances.vulnerabilite.physiques, [], 'une magie sans ligne physique : une liste vide');
+  let physiques = 0;
   for (const magie of m.magies.values()) {
     for (const sens of ['resistance', 'vulnerabilite']) {
       for (const r of magie.resistances[sens].magies) assert.ok(m.magies.has(r.id), `${magie.id} : ${r.id}`);
       for (const r of magie.resistances[sens].etats) assert.ok(m.etats.has(r.id), `${magie.id} : ${r.id}`);
+      for (const r of magie.resistances[sens].physiques) assert.ok(DEGATS_PHYSIQUES.some(([id]) => id === r.type) && r.brut, `${magie.id} : ${r.type}`);
+      physiques += magie.resistances[sens].physiques.length;
     }
   }
+  // toutes les lignes physiques de la table sont lues (décision R174)
+  assert.equal(physiques, db.prepare("SELECT count(*) AS n FROM magie_resistance WHERE cible_type = 'physique'").get().n);
+});
+
+test('décision R174 : la page du Potentiel Illimité lit ses trois vulnérabilités physiques (estoc, taille, frappe), la phrase de la source gardée', () => {
+  const pi = m.magies.get('magies/potentiel-illimite');
+  const brut = 'Surtension corporelle (Vulnérabilité contre les dégâts physiques';
+  assert.deepEqual(pi.resistances.vulnerabilite, {
+    magies: [], etats: [], physiques: ['estoc', 'taille', 'frappe'].map((type) => ({ type, brut })),
+  });
 });
 
 test('incompatibilités symétriques ; la phrase libre de la Corruption est gardée telle quelle (trace) ; mono-magie et ethnies d’exception (décision R15)', () => {
@@ -343,28 +501,34 @@ test('incompatibilités symétriques ; la phrase libre de la Corruption est gard
   assert.equal(m.magies.get('magies/potentiel-illimite').incompatibles.length, 14);
 });
 
-test('altération d’état liée à chaque magie (etat_magie) : une pour les 14 magies, Surcharge Magique partagée par l’Arcane et la Corruption, aucune pour le Potentiel Illimité', () => {
+test('altération d’état liée à chaque magie (etat_magie) : au moins une pour les 14 magies, Surcharge Magique partagée par l’Arcane et la Corruption, aucune pour le Potentiel Illimité', () => {
   const nomDe = (magie) => magie.etats.map((id) => m.etats.get(id).nom);
   assert.deepEqual(nomDe(m.magies.get('magies/potentiel-illimite')), []);
   assert.deepEqual(nomDe(m.magies.get('magies/magie-du-feu')), ['Brûlure']);
   assert.deepEqual(nomDe(m.magies.get('magies/magie-de-larcane')), ['Surcharge Magique']);
   assert.deepEqual(nomDe(m.magies.get('magies/magie-de-la-corruption')), ['Surcharge Magique']);
+  // au moins une altération par magie (l'Ombre en a deux depuis le classeur de Décembre : Peur et Somnolence), et chacune cite la magie
   for (const magie of m.magies.values()) {
     if (magie.id === 'magies/potentiel-illimite') continue;
-    assert.equal(magie.etats.length, 1, magie.id);
-    assert.ok(m.etats.get(magie.etats[0]).magiesLiees.some((l) => l.id === magie.id), magie.id);
+    assert.ok(magie.etats.length >= 1, magie.id);
+    for (const id of magie.etats) assert.ok(m.etats.get(id).magiesLiees.some((l) => l.id === magie.id), `${magie.id} : ${id}`);
   }
 });
 
-test('altérations d’état : chaque état a sa section sur la page « Liste des altérations d’état » (l’ancre du lien existe)', () => {
-  const racine = fileURLToPath(new URL('../src/content/wiki/', import.meta.url));
-  const page = readFileSync(join(racine, 'guide', 'liste-des-alterations-d-etat.md'), 'utf8');
-  const titres = new Set([...page.matchAll(/^## (.+?)\s*$/gm)].map((t) => t[1]));
-  assert.equal(m.etats.size, 20);
-  for (const e of m.etats.values()) {
+test('altérations d’état : chaque état a sa section sur la page « Liste des altérations d’état » (l’ancre du lien existe, à l’import)', () => {
+  // le lien d'un état vise l'ancre figée `#<segment de l'id>` (magies-db.mjs#ancreDeLEtat, migration 0100), jamais le nom. À l'import, l'intertitre
+  // qui porte cette ancre a pour texte le nom de l'état ; la marque `{#…}` se lit par lib/ancres-figees.mjs, pas par le texte brut de la ligne. Le
+  // site de dev (source de ce qu'il modifie) peut renommer l'intertitre ou l'état : sur l'état courant, le lien mène seulement à la bonne page.
+  const page = texteDImport('page', { id: 'guide/liste-des-alterations-d-etat' }, 'corps_md');
+  const titreParAncre = new Map(ancresDuCorps(page).filter((a) => a.niveau === 2).map((a) => [a.ancre, a.texte]));
+  const aLImport = chargerMagies(baseDImport());
+  assert.equal(aLImport.etats.size, 21, 'à l’import : 20 états et Somnolence (classeur de Décembre, R237)');
+  for (const e of aLImport.etats.values()) {
     assert.equal(e.pageId, 'guide/liste-des-alterations-d-etat');
-    assert.ok(titres.has(e.nom), `titre « ${e.nom} » sur la page`);
+    assert.equal(titreParAncre.get(ancreDeLEtat(e.id)), e.nom, `intertitre {#${ancreDeLEtat(e.id)}} « ${e.nom} » sur la page`);
   }
+  assert.ok(db.prepare("SELECT 1 FROM page WHERE id = 'guide/liste-des-alterations-d-etat'").get(), 'la page des altérations');
+  for (const e of m.etats.values()) assert.equal(e.pageId, 'guide/liste-des-alterations-d-etat', e.id);
   for (const s of m.sorts.values()) for (const e of s.etats) assert.ok(m.etats.has(e.etatId), `${s.id} : ${e.etatId}`);
 });
 
@@ -374,14 +538,23 @@ test('mode hyper de chaque magie (onglet de la magie) : mono et bi-magie, ou for
 });
 
 test('ressources offertes, rôles et 4ème barre', () => {
-  const sang = m.magies.get('magies/magie-du-sang');
+  // modifiables sur le site de dev (une valeur changée là est une règle changée) : les valeurs de l'import, lues par le même chargeur ; aujourd'hui,
+  // le chargeur rend celles de la base
+  const i = chargerMagies(baseDImport());
+  const sang = i.magies.get('magies/magie-du-sang');
   assert.equal(sang.sante, 10);
   assert.equal(sang.chakra, 0);
   assert.equal(sang.barre4.ressource, 'sang');
-  assert.equal(m.magies.get('magies/magie-du-feu').barre4, null);
-  assert.deepEqual(m.magies.get('magies/magie-du-feu').roles.map((r) => r.brut), ['DÉGÂTS', 'ENTRAVE', 'RENFORCEMENT']);
-  assert.equal(m.magies.get('magies/potentiel-illimite').caracteristique.brut, 'AU CHOIX ou ALÉATOIRE');
-  assert.equal(m.magies.get('magies/magie-du-feu').caracteristique.brut, 'SOCIAL');
+  assert.equal(i.magies.get('magies/magie-du-feu').barre4, null);
+  // R237 (7) : les rôles des magies sont supprimés (plus de ligne, la section n'est pas affichée)
+  for (const magie of i.magies.values()) assert.deepEqual(magie.roles, [], magie.id);
+  assert.equal(i.magies.get('magies/potentiel-illimite').caracteristique.brut, 'AU CHOIX ou ALÉATOIRE');
+  assert.equal(i.magies.get('magies/magie-du-feu').caracteristique.brut, 'SOCIAL');
+  for (const r of db.prepare('SELECT id, sante_offerte, chakra_offert, caracteristique_brut, barre4_texte FROM magie').all()) {
+    const x = m.magies.get(r.id);
+    assert.deepEqual([x.sante, x.chakra, x.caracteristique?.brut ?? null, x.barre4?.texte ?? null], [r.sante_offerte, r.chakra_offert, r.caracteristique_brut || null, r.barre4_texte || null], r.id);
+    assert.deepEqual(x.roles.map((l) => l.brut), db.prepare('SELECT role_brut FROM magie_role WHERE magie_id = ? ORDER BY rang').all(r.id).map((l) => l.role_brut), r.id);
+  }
 });
 
 test('règle spéciale du NPM 5 : lue dans la base, pour l’infobulle du titre du tableau ; la liste des lanceurs, la légende et la source n’y sont plus', () => {
@@ -394,7 +567,7 @@ test('règle spéciale du NPM 5 : lue dans la base, pour l’infobulle du titre 
   assert.ok(!('legende' in m));
 });
 
-test('altérations d’état : de quoi remplir l’infobulle (type, magie liée, effet par stade) pour les 20 états', () => {
+test('altérations d’état : de quoi remplir l’infobulle (type, magie liée, effet par stade) pour tous les états', () => {
   for (const e of m.etats.values()) {
     assert.ok(['Physique', 'Mental'].includes(e.typeBrut), `${e.nom} : type`);
     assert.ok(e.stades.length >= 1, `${e.nom} : au moins un effet de stade`);

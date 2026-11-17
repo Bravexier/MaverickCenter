@@ -1,216 +1,410 @@
 // Le plan des pages du guide (lib/livres.mjs ; demandes du propriétaire, 2026-10-16 puis 2026-10-18 : « éclater le guide », puis « refaire toutes les
 // anciennes pages du guide. Retirer le mécanisme de swipe, et les flèches suivant / précédent et la pagination ») : plus de livre ; Découvrir (une page
-// par entrée du menu), Les bases, les Règles avancées et le Guide du MJ en sommaires ; les adresses de chaque page `guide/…` de la base, plus aucune sous
-// /guide/ ; les pages fusionnées dans une autre ; les renvois des anciennes adresses par la page 404 ; le menu en six rubriques qui s'accorde au plan.
+// par entrée du menu), les onglets des Règles (R184, R185 : plan de la base, installé dans lib/livres.mjs ; un menu latéral par onglet), le Guide du MJ
+// en sommaire ; les adresses de chaque page `guide/…` de la base (à plat sous /regles/, plus aucune sous /guide/) ; les pages fusionnées dans une autre,
+// supprimées, retirées ; les renvois figés des anciennes adresses par la page 404 ; le menu qui s'accorde au plan.
 //   node --test test/livres.test.mjs
 import assert from 'node:assert/strict';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import GithubSlugger from 'github-slugger';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { ancresDuCorps } from '../src/lib/ancres-figees.mjs';
 import {
-  ACCUEIL_DU_GUIDE, ADRESSES_DU_PLAN_PRECEDENT, adresseDeLaPageAbsorbee, ANCRES_DES_PAGES_ABSORBEES, ARTISANAT, adresseDuGuide, DECOUVRIR, estDansDecouvrirOuLesBases, estDuGuideDuMj,
-  filDAriane, groupeDeLaPage, groupesDesBases, groupesDesReglesAvancees, GUIDE_DU_MJ, LES_BASES, NOMS_RESERVES, PAGES_ABSORBEES, PAR_OU_COMMENCER, LIENS_ET_RENCONTRE,
-  PARTIES, pagesDeLaRubrique, partieDeLaPage, placeDansLeGuide, REGLES_AVANCEES, rubriqueDe, RUBRIQUES_DU_GUIDE, RUBRIQUES_SOUS_LA_PAGE, verifierLePlan,
+  ACCUEIL_DU_GUIDE, ADRESSES_DU_PLAN_PRECEDENT, ADRESSES_RENOMMEES_DU_GUIDE, adresseDeLaPageAbsorbee, adresseDeLaPageRetiree, ANCRES_DES_PAGES_ABSORBEES, ARTISANAT, adresseDuGuide, CHEMIN_DES_REGLES,
+  DECOUVRIR, entreesDuMenuLateral, estDansDecouvrir, estDesOnglets, estDuGuideDuMj, filDAriane, GUIDE_DU_MJ, installerLePlan, LIENS_ET_RENCONTRE, menuLateralDe,
+  nomsReserves, NOMS_RESERVES, ongletDe, ongletDuLien, ongletsDesRegles, PAGES_ABSORBEES, PAGES_DE_LA_CREATION, PAGES_ECLATEES_DU_GUIDE, PAGES_RETIREES,
+  PAGES_SUPPRIMEES, PAR_OU_COMMENCER, PARTIES, pagesDeLaRubrique, partieDeLaPage, placeDansLeGuide, planInstalle, RUBRIQUES_SOUS_LA_PAGE, slugDAdresse,
+  verifierLePlan,
 } from '../src/lib/livres.mjs';
 import * as Guide from '../src/lib/guide.mjs';
 import { COULEURS_DES_PARTIES } from '../src/lib/parties-couleurs.mjs';
-import { cheminDePage, estServieASonId, renvoisDuGuide } from '../src/lib/metiers.mjs';
-import { adresseComplete, NAV, activeGroup, nouvelleAdresse } from '../src/lib/nav.mjs';
+import { adresseDePage, cheminDePage, estServieASonId, renvoisDuGuide } from '../src/lib/metiers.mjs';
+import { adresseComplete, adresseDeRenvoi, adresseEclatee, cheminVersUnePageEclatee, NAV, activeGroup, nouvelleAdresse } from '../src/lib/nav.mjs';
+import { RENVOIS_DES_PAGES_ECLATEES } from '../src/lib/equipement.mjs';
+import { chargerPlanDesRegles } from '../src/lib/plan-des-regles-db.mjs';
 import { TYPE_KEYS, TYPES } from '../src/lib/types.mjs';
 import * as Livres from '../src/lib/livres.mjs';
+import { baseDImport } from './aide-base-d-import.mjs';
 
-const db = ouvrirBase({ sansExemples: false });
-// les pages du guide de la base, comme loadWiki les donne aux routes ({ id, data: { title, summary, status } })
-const pagesDuGuide = db.prepare("SELECT id, titre, resume, statut FROM page WHERE type = 'guide' ORDER BY id").all()
+// Le site de dev réécrit les pages du guide (titre, texte, intertitres), les crée, les supprime, et range le menu latéral de chaque onglet (onglet et
+// place de chaque entrée, regles_onglet_entree) : le plan et les renvois figés s'épinglent sur l'état d'import de la base (test/aide-base-d-import.mjs) ;
+// le test « aujourd’hui » contrôle la base courante par invariants (le plan s'installe et tient, chaque renvoi figé mène à une page servie ou à la 404).
+const db = baseDImport();
+/** Les pages du guide d'une base, comme loadWiki les donne aux routes ({ id, data: { title, summary, status } }). */
+const pagesDe = (base) => base.prepare("SELECT id, titre, resume, statut FROM page WHERE type = 'guide' ORDER BY id").all()
   .map((p) => ({ id: p.id, data: { title: p.titre, summary: p.resume ?? undefined, status: p.statut } }));
+const pagesDuGuide = pagesDe(db);
 const ids = pagesDuGuide.map((p) => p.id);
-const groupes = (rubrique) => rubrique.groupes.map((g) => [g.id, g.titre, g.partie, g.pages]);
+const historique = historiqueSite(db); // ce que le site de dev a changé depuis l'import (lib/historique-site.mjs) : rien, dans la base d'import ; le test « aujourd’hui » lit la base courante
+const PLAN = chargerPlanDesRegles(db);
+const installer = () => installerLePlan(PLAN);
+installer();
+const FIXTURE = 'guide/utiliser-ce-wiki';
+const corpsDe = (id) => db.prepare('SELECT corps_md FROM page WHERE id = ?').get(id)?.corps_md;
+/** Les ids des intertitres d'un corps Markdown (github-slugger, comme le rendu ; un rendu par morceau de texte entre deux blocs, comme PageDuGuide). */
+const intertitres = (corps) => corps.split(/^<!--\s*guide:[a-z-]+\s*-->[ \t]*$/m).flatMap((morceau) => {
+  const slugger = new GithubSlugger();
+  return [...morceau.matchAll(/^#{2,6} (.+)$/gm)].map((m) => slugger.slug(m[1].trim()));
+});
+/** Vrai si l'adresse « regles/<slug>/#ancre » (relative à la racine) mène à une page de la base qui a cet intertitre (ou à la page, sans ancre). */
+const meneAUnIntertitre = (adresse) => {
+  const [chemin, ancre] = adresse.split('#');
+  const id = ids.find((i) => cheminDePage(i) === chemin);
+  if (!id) return false;
+  return !ancre || intertitres(corpsDe(id)).includes(ancre);
+};
 
-test('le plan : Découvrir, une page par entrée du menu (2 + 1 + 1), et Les bases (8 + 2 + 2), chaque groupe dans la couleur de son ancienne partie (son id ; aucune couleur écrite dans le plan)', () => {
-  assert.deepEqual(RUBRIQUES_DU_GUIDE.map((r) => [r.id, r.titre, r.chemin, r.accueil]), [
-    ['decouvrir', 'Découvrir', 'decouvrir/', 'guide/bienvenue'], ['bases', 'Les bases', 'regles/', null],
-  ]);
-  assert.deepEqual(groupes(DECOUVRIR), [
-    ['decouvrir', 'Découvrir', 'decouvrir', ['guide/bienvenue', 'guide/l-univers']],
-    ['creer', 'Créer son personnage', 'creer', ['guide/creer-son-personnage']],
-    ['rejoindre', 'Rejoindre une partie', 'jouer', ['guide/rejoindre-une-partie']],
-  ]);
-  assert.deepEqual(groupes(LES_BASES), [
-    ['jouer', 'Jouer', 'jouer', [
-      'guide/reussir-une-action', 'guide/le-tour-de-jeu', 'guide/attaquer-et-se-defendre', 'guide/l-equipement', 'guide/les-degats', 'guide/les-postures',
-      'guide/la-magie-en-jeu', 'guide/blessures-et-etats',
-    ]],
-    ['progresser', 'Progresser', 'progresser', ['guide/la-montee-de-niveau', 'guide/s-entrainer-et-exercer-un-metier']],
-    ['plus-loin', 'Pour aller plus loin', 'plus-loin', ['guide/aide-memoire', 'guide/lexique']],
-  ]);
-  assert.deepEqual(pagesDeLaRubrique(LES_BASES).map((p) => p.ordre), Array.from({ length: 12 }, (_, i) => i), 'une place 0…M − 1 dans chaque rubrique');
-  assert.deepEqual(GUIDE_DU_MJ.pages, ['guide/un-maitre-du-jeu', 'guide/guide-pour-mj-maverick', 'guide/campagne-ou-scenario-one-shot'],
-    '« « Campagne » ou « Scénario one shot » ? » passe dans le Guide du MJ');
-  // les anciennes parties : leurs ids et leurs titres ; leurs couleurs (toujours celles des quatre zones de la fiche) sont dans leur module, une par
-  // partie, posées par leur classe (lib/palette-css.mjs#classeDePartie : test/palette-css.test.mjs) ; le plan, que reçoit le navigateur, n'en a aucune
+test('le plan écrit : Découvrir (Bienvenue, L’univers), la création du personnage dans la couleur « creer », aucune couleur écrite', () => {
+  assert.deepEqual([DECOUVRIR.id, DECOUVRIR.titre, DECOUVRIR.chemin, DECOUVRIR.accueil], ['decouvrir', 'Découvrir', 'decouvrir/', 'guide/bienvenue']);
+  assert.deepEqual(DECOUVRIR.groupes.map((g) => [g.id, g.partie, g.pages]), [['decouvrir', 'decouvrir', ['guide/bienvenue', 'guide/l-univers']]]);
+  assert.deepEqual(pagesDeLaRubrique(DECOUVRIR).map((p) => [p.id, p.ordre]), [['guide/bienvenue', 0], ['guide/l-univers', 1]], 'lu par scripts/mise-a-jour-simulation.mjs');
+  // R184 : « Créer son personnage » quitte Découvrir, introduction de l'onglet Fiche de personnage ; elle et les six étapes (redevenues des pages) gardent
+  // la couleur de la partie « creer » (défaut confirmé par le propriétaire), les autres pages des onglets l'accent du site
+  assert.deepEqual(PAGES_DE_LA_CREATION, {
+    partie: 'creer', pages: ['guide/creer-son-personnage', 'guide/choisir-sa-race', 'guide/choisir-ses-magies', 'guide/choisir-sa-classe',
+      'guide/caracteristiques-et-competences', 'guide/premiers-sorts', 'guide/finaliser-son-personnage'],
+  });
+  for (const id of PAGES_DE_LA_CREATION.pages) assert.equal(partieDeLaPage(id), 'creer', id);
+  assert.equal(partieDeLaPage('guide/l-univers'), 'decouvrir');
+  for (const id of ['guide/les-degats', 'guide/meteo', 'guide/fiche-attributs', 'guide/un-maitre-du-jeu', FIXTURE]) assert.equal(partieDeLaPage(id), null, id);
+  assert.ok(!ids.includes('guide/rejoindre-une-partie') && !ids.includes('guide/lexique'), 'ni « Rejoindre une partie » ni le Lexique');
+  assert.deepEqual(GUIDE_DU_MJ.pages, ['guide/un-maitre-du-jeu', 'guide/guide-pour-mj-maverick', 'guide/campagne-ou-scenario-one-shot']);
+  // les anciennes parties : leurs ids et leurs titres ; leurs couleurs sont dans leur module (test/palette-css.test.mjs) ; le plan, que reçoit le
+  // navigateur, n'en a aucune
   assert.deepEqual(PARTIES.map((p) => [p.id, p.titre]), [['decouvrir', 'Découvrir'], ['creer', 'Créer son personnage'], ['jouer', 'Jouer'], ['progresser', 'Progresser'],
     ['plus-loin', 'Pour aller plus loin']]);
   assert.deepEqual(Object.keys(COULEURS_DES_PARTIES), PARTIES.map((p) => p.id));
-  assert.ok(PARTIES.every((p) => !('couleur' in p)) && RUBRIQUES_DU_GUIDE.every((r) => r.groupes.every((g) => !('couleur' in g) && PARTIES.some((p) => p.id === g.partie))));
   assert.doesNotMatch(readFileSync(new URL('../src/lib/livres.mjs', import.meta.url), 'utf8'), /#[0-9a-f]{3,6}\b/i, 'aucune couleur écrite dans le plan');
-  assert.ok(!('PARTIES' in Guide) && !('couleurDeLaPage' in Livres), 'ni réexportation des parties par guide.mjs, ni couleurDeLaPage');
+  assert.ok(!('PARTIES' in Guide) && !('couleurDeLaPage' in Livres));
   assert.equal(ACCUEIL_DU_GUIDE, 'decouvrir/');
-  assert.equal(partieDeLaPage('guide/creer-son-personnage'), 'creer');
-  assert.equal(partieDeLaPage('guide/rejoindre-une-partie'), 'jouer');
-  assert.equal(partieDeLaPage('guide/les-degats'), 'jouer');
-  assert.equal(partieDeLaPage('guide/meteo'), null, 'une page de référence : l’accent du site');
+  // plus de rubriques écrites « Les bases » ni « Règles avancées » (R184)
+  for (const nom of ['LES_BASES', 'REGLES_AVANCEES', 'RUBRIQUES_DU_GUIDE', 'estDesBases', 'estDesReglesAvancees', 'pagesDesBases', 'pagesDesReglesAvancees',
+    'estDansDecouvrirOuLesBases', 'rubriqueDe']) assert.equal(nom in Livres, false, nom);
 });
 
-test('les pages fusionnées (2026-10-18) : Le jeu de rôle dans Bienvenue, les six étapes dans Créer son personnage ; plus dans la base, ni dans le plan', () => {
+test('R184 : le plan des onglets vient de la base, installé ; sans lui, une fonction qui en a besoin le dit', () => {
+  assert.equal(planInstalle(), true);
+  assert.deepEqual(ongletsDesRegles().map((o) => [o.id, o.titre, o.chemin, o.ouverture, o.rang]), [
+    ['fiche-de-personnage', 'Fiche de personnage', 'regles/fiche-de-personnage/', 'guide/creer-son-personnage', 1],
+    ['mecaniques-generales', 'Mécaniques générales', 'regles/mecaniques-generales/', 'guide/reussir-une-action', 2],
+    ['combats', 'Les combats', 'regles/combats/', 'guide/le-tour-de-jeu', 3],
+    ['exploration', 'Exploration', 'regles/exploration/', 'guide/equipement-et-butin', 4],
+  ]);
+  assert.ok(ongletsDesRegles().every((o) => Object.isFrozen(o) && Object.isFrozen(o.entrees)));
+  // l'Artisanat : une entrée lien d'Exploration (R184 (11)), juste après « Exercer un métier » ; aucune entrée « bientôt » aujourd'hui
+  const exploration = ongletsDesRegles().find((o) => o.id === 'exploration');
+  const i = exploration.entrees.findIndex((e) => e.adresse === ARTISANAT.chemin);
+  assert.deepEqual(exploration.entrees[i], { id: 'lien:regles/artisanat', rang: exploration.entrees[i].rang, libelle: 'Artisanat', adresse: 'regles/artisanat/' });
+  assert.equal(exploration.entrees[i - 1].page, 'guide/exercer-un-metier');
+  assert.equal(ongletDuLien(ARTISANAT.chemin), exploration);
+  assert.equal(ongletDuLien('regles/inconnue/'), null);
+  assert.ok(ongletsDesRegles().every((o) => o.entrees.every((e) => !e.bientot)), 'aucune entrée « bientôt » (R184, bilan)');
+  // sans plan installé : une erreur qui dit quoi faire, jamais un plan vide en silence
+  const module = new URL('../src/lib/livres.mjs', import.meta.url);
+  return import(`${module.href}?sans-plan`).then((sans) => {
+    assert.equal(sans.planInstalle(), false);
+    for (const f of [() => sans.ongletsDesRegles(), () => sans.ongletDe('guide/meteo'), () => sans.filDAriane('guide/meteo'), () => sans.placeDansLeGuide('guide/meteo'),
+      () => sans.menuLateralDe('guide/meteo', pagesDuGuide), () => sans.verifierLePlan(pagesDuGuide)]) {
+      assert.throws(f, /le plan des onglets des Règles n’est pas installé — installerLePlan\(chargerPlanDesRegles\(db\)\)/);
+    }
+    // ce qui ne dépend pas du plan marche sans lui (la chaîne de l'édition du navigateur ne le reçoit pas)
+    assert.equal(sans.adresseDuGuide('guide/meteo'), 'regles/meteo/');
+    assert.equal(sans.partieDeLaPage('guide/premiers-sorts'), 'creer');
+  });
+});
+
+test('installerLePlan contrôle la forme du plan : onglet vide ou nommé deux fois, entrée illisible, page dans deux entrées, ouverture hors de l’onglet', () => {
+  const onglet = (id, entrees, ouverture = entrees.find((e) => e.page)?.page) => ({ id, titre: `Onglet ${id}`, ouverture, entrees });
+  try {
+    assert.throws(() => installerLePlan('non'), /une liste d’onglets est attendue/);
+    assert.throws(() => installerLePlan([onglet('a', [])]), /l’onglet « Onglet a » est vide/);
+    assert.throws(() => installerLePlan([onglet('A b', [{ page: 'guide/x' }])]), /id d’onglet invalide « A b »/);
+    assert.throws(() => installerLePlan([onglet('a', [{ page: 'guide/x' }]), onglet('a', [{ page: 'guide/y' }])]), /l’onglet a est nommé deux fois/);
+    assert.throws(() => installerLePlan([onglet('a', [{ page: 'guide/x', bientot: 'X' }])]), /entrée illisible dans « Onglet a »/);
+    assert.throws(() => installerLePlan([onglet('a', [{ adresse: 'regles/x/' }], 'guide/x')]), /entrée illisible/);
+    assert.throws(() => installerLePlan([onglet('a', [{ page: 'guide/x' }]), onglet('b', [{ page: 'guide/x' }], 'guide/x')]), /guide\/x est dans deux entrées/);
+    assert.throws(() => installerLePlan([onglet('a', [{ page: 'guide/x' }], 'guide/y')]), /guide\/y, ouverte à \/regles\/a\/, n’est pas une page de « Onglet a »/);
+    const plan = installerLePlan([onglet('a', [{ page: 'guide/x' }, { bientot: 'Les donjons' }, { libelle: 'Artisanat', adresse: 'regles/artisanat/' }])]);
+    assert.deepEqual(plan[0].entrees, [{ page: 'guide/x' }, { bientot: 'Les donjons' }, { libelle: 'Artisanat', adresse: 'regles/artisanat/' }]);
+    // l'id et le rang de la ligne, quand le plan les donne (la base), restent : le menu latéral les pose pour le mode modification ; rien d'autre
+    const lu = installerLePlan([onglet('a', [{ id: 'page:guide/x', rang: 3, page: 'guide/x', autre: 1 }, { id: 'bientot:d', rang: 4, bientot: 'D' }, { id: '', rang: 'x', libelle: 'A', adresse: 'regles/a/' }])]);
+    assert.deepEqual(lu[0].entrees, [{ id: 'page:guide/x', rang: 3, page: 'guide/x' }, { id: 'bientot:d', rang: 4, bientot: 'D' }, { libelle: 'A', adresse: 'regles/a/' }]);
+  } finally {
+    installer();
+  }
+});
+
+test('les pages fusionnées dans une autre : Le jeu de rôle dans Bienvenue, Résistance/Faiblesse Magie, Les situations avancées (R184, R185) Les neuf alignements dans Alignement (migration 0123) et Accessoires et Ceinture dans Inventaire/Sac à dos (migration 0124, R272) ; plus dans la base', () => {
   assert.deepEqual(PAGES_ABSORBEES, {
     'guide/le-jeu-de-role': 'guide/bienvenue',
-    'guide/choisir-sa-race': 'guide/creer-son-personnage',
-    'guide/choisir-ses-magies': 'guide/creer-son-personnage',
-    'guide/choisir-sa-classe': 'guide/creer-son-personnage',
-    'guide/caracteristiques-et-competences': 'guide/creer-son-personnage',
-    'guide/premiers-sorts': 'guide/creer-son-personnage',
-    'guide/finaliser-son-personnage': 'guide/creer-son-personnage',
+    'guide/resistance-faiblesse-magie': 'guide/resistances-et-faiblesses',
+    'guide/situations-avancees': 'guide/prise-en-tenaille-et-zone-d-influence',
+    'guide/les-neuf-alignements': 'guide/alignement',
+    'guide/fiche-accessoires-et-ceinture': 'guide/fiche-inventaire-sac-a-dos',
   });
   for (const [ancienne, nouvelle] of Object.entries(PAGES_ABSORBEES)) {
     assert.ok(!ids.includes(ancienne), `${ancienne} : retirée de la base`);
-    assert.ok(ids.includes(nouvelle) && estDansDecouvrirOuLesBases(nouvelle), `${nouvelle} : dans Découvrir`);
+    assert.ok(ids.includes(nouvelle) && (estDansDecouvrir(nouvelle) || estDesOnglets(nouvelle)), `${nouvelle} : rangée`);
   }
-  assert.ok(ids.includes('guide/rejoindre-une-partie'), 'la nouvelle page « Rejoindre une partie »');
-  // chacune mène à l'endroit de la page qui l'absorbe où se lit son contenu : l'id d'un intertitre de cette page (github-slugger, comme le rendu Markdown)
-  assert.deepEqual(Object.keys(ANCRES_DES_PAGES_ABSORBEES), Object.keys(PAGES_ABSORBEES));
-  for (const [ancienne, nouvelle] of Object.entries(PAGES_ABSORBEES)) {
-    const corps = db.prepare('SELECT corps_md FROM page WHERE id = ?').get(nouvelle).corps_md;
-    const slugger = new GithubSlugger();
-    const intertitres = [...corps.matchAll(/^#{2,6} (.+)$/gm)].map((m) => slugger.slug(m[1].trim()));
-    assert.ok(intertitres.includes(ANCRES_DES_PAGES_ABSORBEES[ancienne]), `${ancienne} : #${ANCRES_DES_PAGES_ABSORBEES[ancienne]} absent de ${nouvelle} (${intertitres.join(', ')})`);
-    assert.equal(adresseDeLaPageAbsorbee(ancienne, cheminDePage), `${cheminDePage(nouvelle)}#${ANCRES_DES_PAGES_ABSORBEES[ancienne]}`);
+  // les six étapes de la création (fusionnées du 2026-10-18 à R184) sont redevenues des pages, sous leur id : plus absorbées
+  for (const id of PAGES_DE_LA_CREATION.pages.slice(1)) assert.ok(ids.includes(id) && !Object.hasOwn(PAGES_ABSORBEES, id), id);
+  // une page fusionnée mène à l'intertitre où se lit son contenu, s'il est nommé (github-slugger, comme le rendu Markdown), sinon à la page entière
+  assert.deepEqual(ANCRES_DES_PAGES_ABSORBEES, {
+    'guide/le-jeu-de-role': 'le-jeu-de-rôle-comment-ça-marche-', 'guide/les-neuf-alignements': 'les-neuf-alignements', 'guide/fiche-accessoires-et-ceinture': 'accessoires',
+  });
+  for (const [ancienne, ancre] of Object.entries(ANCRES_DES_PAGES_ABSORBEES)) {
+    // l'intertitre visé : son id de github-slugger, ou son ancre figée (`{#ancre}`, lib/ancres-figees.mjs : elle ne change pas quand l'intertitre est renommé)
+    const corps = corpsDe(PAGES_ABSORBEES[ancienne]);
+    assert.ok(intertitres(corps).includes(ancre) || ancresDuCorps(corps).some((a) => a.ancre === ancre), `${ancienne} : #${ancre} absent`);
   }
-  assert.ok(ids.includes('guide/campagne-ou-scenario-one-shot'), 'la page du MJ reste, dans le Guide du MJ');
+  assert.equal(adresseDeLaPageAbsorbee('guide/le-jeu-de-role', cheminDePage), 'decouvrir/#le-jeu-de-rôle-comment-ça-marche-');
+  assert.equal(adresseDeLaPageAbsorbee('guide/resistance-faiblesse-magie', cheminDePage), 'regles/resistances-et-faiblesses/');
+  assert.equal(adresseDeLaPageAbsorbee('guide/situations-avancees', cheminDePage), 'regles/prise-en-tenaille-et-zone-d-influence/');
+  assert.equal(adresseDeLaPageAbsorbee('guide/les-neuf-alignements', cheminDePage), 'regles/alignement/#les-neuf-alignements');
+  assert.equal(adresseDeLaPageAbsorbee('guide/fiche-accessoires-et-ceinture', cheminDePage), 'regles/inventaire-sac-a-dos/#accessoires');
 });
 
-test('chaque page `guide/…` de la base a une adresse à elle, jamais sous /guide/, et une seule place dans le plan', () => {
-  assert.ok(ids.length >= 55, `${ids.length} pages du guide`);
+/** Vrai si l'adresse `adresse` (relative à la racine, ancre et requête comprises) a `slug` pour un de ses segments (« regles/les-postures/ » n'a pas « postures »). */
+const aPourSegment = (adresse, slug) => adresse.split(/[/?#]/).includes(slug);
+
+test('R184 (9) : les pages supprimées ne sont ni dans la base, ni dans le plan, ni dans aucun renvoi (page 404, R185 (6))', () => {
+  // R184 (9) ; puis, le 2026-11-06, les trois pages retirées par la migration 0094, la « Liste des effets mode hyper » (R187 (1), migration 0095) et
+  // « Altérations d'états et Mode Hyper » (migration 0096), « La montée de niveau » (migration 0122) (tests « 0094 », « R187 », « 0096 » et « 0122 » plus bas)
+  for (const id of ['guide/les-documents-des-regles', 'guide/en-resume-deroulement-d-un-tour', 'guide/aide-memoire', 'guide/mode-hyper-magie',
+    'guide/postures', 'guide/les-boss-et-leurs-postures', 'guide/le-mode-super', 'guide/liste-des-effets-mode-hyper',
+    'guide/alterations-d-etats-et-mode-hyper', 'guide/la-montee-de-niveau', 'guide/fiche-classe']) assert.ok(PAGES_SUPPRIMEES.includes(id), `${id} : dans PAGES_SUPPRIMEES`);
+  assert.equal(new Set(PAGES_SUPPRIMEES).size, PAGES_SUPPRIMEES.length, 'aucune page deux fois');
+  const renvois = renvoisDuGuide(ids);
+  const eclatees = { ...RENVOIS_DES_PAGES_ECLATEES, ...PAGES_ECLATEES_DU_GUIDE };
+  // une page que le site de dev a supprimée (rapatriée dans data/rows, sans migration) est encore dans l'état d'import : elle est absente de la base courante,
+  // le reste (plan, renvois) se lit sur l'état d'import quand une migration l'a retirée
+  const courante = ouvrirBase({ sansExemples: false });
+  const supprimeeParLeSite = (id) => historiqueSite(courante).supprimee('page', { id });
+  for (const id of PAGES_SUPPRIMEES) {
+    const slug = id.slice('guide/'.length);
+    if (ids.includes(id) && supprimeeParLeSite(id)) {
+      assert.equal(courante.prepare('SELECT COUNT(*) AS n FROM page WHERE id = ?').get(id).n, 0, `${id} : supprimée sur le site de dev, absente de la base courante`);
+      continue;
+    }
+    assert.ok(!ids.includes(id), `${id} : plus dans la base`);
+    assert.equal(ongletDe(id), null);
+    assert.equal(placeDansLeGuide(id).rubrique, null, `${id} : rangée nulle part (notes de version : « Pages retirées », lib/notes-de-version.mjs)`);
+    for (const adresse of [`/guide/${slug}/`, `/regles/${slug}/`, `/regles/avancees/${slug}/`, `/decouvrir/${slug}/`]) {
+      assert.equal(adresseDeRenvoi(adresse, { renvois, eclatees }), null, `${adresse} : la page 404, sans renvoi`);
+    }
+    // un segment d'adresse, pas une sous-chaîne : « postures » est dans « les-postures », qui garde ses adresses (2026-11-06)
+    assert.ok(Object.keys(renvois).every((k) => !aPourSegment(k, slug)) && Object.values(renvois).every((v) => !aPourSegment(v, slug)), `${id} : aucun renvoi`);
+    assert.ok(!Object.hasOwn(PAGES_ABSORBEES, id) && !Object.hasOwn(PAGES_RETIREES, id));
+  }
+  assert.ok(!Guide.BLOCS.includes('documents') && !('pagesDeReference' in Guide), 'plus de bloc « documents » (sa page est supprimée)');
+});
+
+test('chaque page `guide/…` de la base a une adresse à elle, jamais sous /guide/ ; à plat sous /regles/ pour les onglets ; une seule place dans le plan (sauf la fixture)', () => {
+  // 67 avant la migration 0122 (La montée de niveau retirée), 66 avant la 0123 (Les neuf alignements fondue dans Alignement),
+  // 65 avant la 0124 (Accessoires et Ceinture fondue dans Inventaire/Sac à dos)
+  assert.ok(ids.length >= 64, `${ids.length} pages du guide`);
   const chemins = ids.map(cheminDePage);
   assert.equal(new Set(chemins).size, chemins.length, 'deux pages à la même adresse');
   for (const [i, id] of ids.entries()) {
     assert.doesNotMatch(chemins[i], /^guide\//, id);
-    assert.match(chemins[i], /^(?:decouvrir|regles|mj)\/(?:[a-z0-9-]+\/)*$/, id);
-    assert.notEqual(chemins[i], LES_BASES.chemin, `${id} : /regles/ est le sommaire des Bases`);
+    assert.match(chemins[i], /^(?:decouvrir\/(?:[a-z0-9-]+\/)?|regles\/[a-z0-9-]+\/|mj\/[a-z0-9-]+\/)$/, id);
     assert.equal(estServieASonId(id), false, `${id} : la route des pages du wiki ne la sert pas`);
-    const places = [estDansDecouvrirOuLesBases(id), estDuGuideDuMj(id), Boolean(groupeDeLaPage(id))].filter(Boolean).length;
-    assert.equal(places, 1, `${id} : une place et une seule`);
+    const places = [estDansDecouvrir(id), estDuGuideDuMj(id), estDesOnglets(id)].filter(Boolean).length;
+    assert.equal(places, id === FIXTURE ? 0 : 1, `${id} : une place et une seule`);
+    // le slug de l'id, sauf une adresse renommée par le propriétaire (ADRESSES_RENOMMEES_DU_GUIDE, R228 : test plus bas)
+    if (estDesOnglets(id)) assert.equal(chemins[i], `regles/${slugDAdresse(id)}/`, `${id} : adresse à plat`);
   }
   assert.equal(cheminDePage('guide/bienvenue'), 'decouvrir/', 'Bienvenue à l’adresse de Découvrir');
-  for (const { id } of pagesDeLaRubrique(DECOUVRIR).slice(1)) assert.equal(cheminDePage(id), `decouvrir/${id.slice('guide/'.length)}/`);
-  for (const { id } of pagesDeLaRubrique(LES_BASES)) assert.equal(cheminDePage(id), `regles/${id.slice('guide/'.length)}/`);
+  assert.equal(cheminDePage('guide/l-univers'), 'decouvrir/l-univers/');
+  assert.equal(cheminDePage('guide/creer-son-personnage'), 'regles/creer-son-personnage/', 'l’introduction de l’onglet Fiche de personnage');
   for (const id of GUIDE_DU_MJ.pages) assert.equal(cheminDePage(id), `mj/${id.slice('guide/'.length)}/`);
-  assert.equal(cheminDePage('guide/rejoindre-une-partie'), 'decouvrir/rejoindre-une-partie/');
-  assert.equal(cheminDePage('guide/reussir-une-action'), 'regles/reussir-une-action/');
-  assert.equal(cheminDePage('guide/meteo'), 'regles/avancees/meteo/');
-  assert.equal(adresseDuGuide('guide/une-page-ajoutee-plus-tard'), 'regles/avancees/une-page-ajoutee-plus-tard/', 'une page nouvelle a toujours une adresse');
+  // la fixture (status: example) : une adresse de repli, sans entrée de menu (aucun onglet « Autre », R185 P7)
+  assert.equal(cheminDePage(FIXTURE), 'regles/utiliser-ce-wiki/');
+  assert.equal(adresseDuGuide('guide/une-page-ajoutee-plus-tard'), 'regles/une-page-ajoutee-plus-tard/', 'une page nouvelle a toujours une adresse');
+  assert.equal(CHEMIN_DES_REGLES, 'regles/');
   assert.equal(cheminDePage('races/elfe'), 'races/elfe/', 'les autres pages ne changent pas');
 });
 
-test('les adresses du plan n’entrent en conflit ni avec un type de page, ni avec une page Astro, ni entre elles', () => {
+test('les adresses du plan n’entrent en conflit ni avec un type de page, ni avec une page Astro, ni avec un onglet, ni entre elles', () => {
   for (const r of ['decouvrir', 'regles', 'mj']) assert.ok(!TYPE_KEYS.includes(r), `${r} est un type de page`);
-  const slugs = RUBRIQUES_DU_GUIDE.flatMap((r) => pagesDeLaRubrique(r).map((p) => p.id.slice('guide/'.length)));
-  for (const nom of NOMS_RESERVES) assert.ok(!slugs.includes(nom), nom);
-  // les pages Astro écrites à côté des pages du plan : exactement les noms réservés et les sommaires (et rien d'autre sous ces chemins)
+  // le Glossaire (pages/regles/glossaire.astro, migration 0098) : aucune page des onglets ne prend son adresse
+  assert.deepEqual(NOMS_RESERVES, ['artisanat', 'avancees', 'glossaire']);
+  assert.deepEqual(nomsReserves(), ['artisanat', 'avancees', 'glossaire', 'fiche-de-personnage', 'mecaniques-generales', 'combats', 'exploration']);
+  const slugs = ids.filter((id) => cheminDePage(id).startsWith('regles/')).map((id) => cheminDePage(id).slice('regles/'.length, -1));
+  for (const nom of nomsReserves()) assert.ok(!slugs.includes(nom), `${nom} : une page prendrait l’adresse réservée /regles/${nom}/`);
+  // les pages Astro écrites à côté des pages du plan : les routes, l'Artisanat, le Glossaire, /regles/ (plus de Règles avancées) ; rien d'autre sous ces chemins
   const pages = new URL('../src/pages/', import.meta.url);
   assert.deepEqual(readdirSync(new URL('decouvrir/', pages)).sort(), ['[...page].astro'], 'plus de page Liens (supprimée le 2026-10-22)');
-  assert.deepEqual(readdirSync(new URL('regles/', pages)).sort(), ['[...page].astro', 'artisanat.astro', 'avancees', 'index.astro']);
-  assert.deepEqual(readdirSync(new URL('regles/avancees/', pages)).sort(), ['index.astro']);
+  assert.deepEqual(readdirSync(new URL('regles/', pages)).sort(), ['[...page].astro', 'artisanat.astro', 'glossaire.astro', 'index.astro'], 'plus de route /regles/avancees/ (R184) ; le Glossaire');
   assert.deepEqual(readdirSync(new URL('mj/', pages)).sort(), ['[...page].astro', 'index.astro']);
   assert.ok(!existsSync(new URL('guide/', pages)), 'pas de route /guide/');
-  assert.deepEqual(NOMS_RESERVES, ['artisanat', 'avancees']);
-  assert.deepEqual([ARTISANAT.chemin, REGLES_AVANCEES.chemin, LES_BASES.chemin], ['regles/artisanat/', 'regles/avancees/', 'regles/']);
+  assert.equal(ARTISANAT.chemin, 'regles/artisanat/');
 });
 
-test('le plan est contrôlé au build : une page absente, une page d’exemple, une page nommée deux fois ou une page absorbée encore là arrête tout', () => {
+test('le plan est contrôlé au build : une page absente, d’exemple, nommée deux fois, rangée nulle part, absorbée, retirée ou supprimée revenue arrête tout', () => {
   assert.equal(verifierLePlan(pagesDuGuide), pagesDuGuide);
   const sans = (id) => pagesDuGuide.filter((p) => p.id !== id);
-  assert.throws(() => verifierLePlan(sans('guide/lexique')), /guide\/lexique \(« Les bases »\) n'existe pas/);
-  assert.throws(() => verifierLePlan(sans('guide/rejoindre-une-partie')), /guide\/rejoindre-une-partie \(« Découvrir »\) n'existe pas/);
-  assert.throws(() => verifierLePlan(sans('guide/meteo')), /guide\/meteo \(groupe « Exploration et voyage »\) n'existe pas/);
+  const avec = (id, status = 'draft') => [...pagesDuGuide, { id, data: { title: id, status } }];
+  assert.throws(() => verifierLePlan(sans('guide/creer-son-personnage')), /guide\/creer-son-personnage \(« Fiche de personnage »\) n'existe pas/);
+  assert.throws(() => verifierLePlan(sans('guide/meteo')), /guide\/meteo \(« Mécaniques générales »\) n'existe pas/);
+  assert.throws(() => verifierLePlan(sans('guide/l-univers')), /guide\/l-univers \(« Découvrir »\) n'existe pas/);
   const exemple = pagesDuGuide.map((p) => (p.id === 'guide/un-maitre-du-jeu' ? { ...p, data: { ...p.data, status: 'example' } } : p));
   assert.throws(() => verifierLePlan(exemple), /guide\/un-maitre-du-jeu \(Guide du MJ\) est une page d'exemple/);
-  const revenue = [...pagesDuGuide, { id: 'guide/premiers-sorts', data: { title: 'Étape 5 : ses premiers sorts', status: 'draft' } }];
-  assert.throws(() => verifierLePlan(revenue), /guide\/premiers-sorts est absorbée par guide\/creer-son-personnage/);
+  // pas d'onglet « Autre » (R185, P7) : une page du guide que le plan ne range pas arrête le build, nommée
+  assert.throws(() => verifierLePlan(avec('guide/une-page-nouvelle')), /plan du guide : guide\/une-page-nouvelle n'est rangée nulle part .*regles_onglet_entree/);
+  assert.doesNotThrow(() => verifierLePlan(avec('guide/une-page-d-exemple', 'example')), 'une page d’exemple non rangée : l’adresse de repli, sans entrée');
+  assert.throws(() => verifierLePlan(avec('guide/situations-avancees')), /guide\/situations-avancees est absorbée par guide\/prise-en-tenaille-et-zone-d-influence/);
+  assert.throws(() => verifierLePlan(avec('guide/lexique')), /guide\/lexique est retirée \(ses adresses mènent à \/regles\/glossaire\/\) et ne doit plus être dans la base/);
+  assert.throws(() => verifierLePlan(avec('guide/aide-memoire')), /guide\/aide-memoire, supprimée \(R184\), est revenue sans place dans le plan/);
   // HIDE_EXAMPLES=1 : sans les pages d'exemple, le plan tient toujours (aucune n'y est nommée)
   assert.doesNotThrow(() => verifierLePlan(pagesDuGuide.filter((p) => p.data.status !== 'example')));
-  // aucune page nommée deux fois, aucun groupe vide
-  const nommees = [...RUBRIQUES_DU_GUIDE.flatMap((r) => r.groupes.flatMap((g) => g.pages)), ...GUIDE_DU_MJ.pages, ...REGLES_AVANCEES.groupes.flatMap((g) => g.pages ?? [])];
-  assert.equal(new Set(nommees).size, nommees.length);
-  assert.ok(RUBRIQUES_DU_GUIDE.every((r) => r.groupes.every((g) => g.pages.length > 0)));
+  // un plan faux : une page dans un onglet et dans Découvrir, un nom réservé, une entrée lien sous /guide/
+  const essai = (onglets, attendu) => {
+    try {
+      installerLePlan(onglets);
+      assert.throws(() => verifierLePlan([...pagesDuGuide, { id: 'guide/artisanat', data: { title: 'x', status: 'draft' } }, { id: 'guide/combats', data: { title: 'x', status: 'draft' } }]), attendu);
+    } finally {
+      installer();
+    }
+  };
+  const avecEntree = (entree, ou = 'combats') => PLAN.map((o) => (o.id === ou ? { ...o, entrees: [...o.entrees, entree] } : o));
+  essai(avecEntree({ page: 'guide/l-univers' }), /guide\/l-univers est nommée deux fois \(« Découvrir », « Les combats »\)/);
+  essai(avecEntree({ page: 'guide/artisanat' }), /guide\/artisanat prend un nom réservé/);
+  essai(avecEntree({ page: 'guide/combats' }, 'exploration'), /guide\/combats prend un nom réservé/);
+  essai(avecEntree({ libelle: 'Vieux', adresse: 'guide/vieux/' }), /l'entrée « Vieux » de « Les combats » mène sous \/guide\//);
 });
 
-test('le sommaire des Bases : ses trois groupes, dans l’ordre du plan, chacun sa partie (sa couleur)', () => {
-  const g = groupesDesBases(pagesDuGuide);
-  assert.deepEqual(g.map((x) => [x.id, x.titre, x.partie, x.pages.map((p) => p.id)]), groupes(LES_BASES));
-  assert.deepEqual(groupesDesBases(pagesDuGuide.filter((p) => !p.id.startsWith('guide/l'))).map((x) => x.id), ['jouer', 'progresser', 'plus-loin'], 'une page absente est sautée');
+test('le menu latéral d’un onglet : ses entrées dans l’ordre du plan (pages, lien, « bientôt »), une page absente sautée ; aucun pour Découvrir, le Guide du MJ, la fixture', () => {
+  const combats = menuLateralDe('guide/les-degats', pagesDuGuide);
+  assert.equal(combats.rubrique, ongletDe('guide/les-degats'));
+  assert.deepEqual([combats.rubrique.titre, combats.rubrique.chemin], ['Les combats', 'regles/combats/']);
+  assert.deepEqual(combats.pages.map((p) => p.id), PLAN.find((o) => o.id === 'combats').entrees.map((e) => e.page));
+  assert.ok(combats.pages.every((p) => p.data.title), 'chaque entrée a son titre (celui de la base)');
+  // Exploration : l'Artisanat, entrée lien, à sa place
+  const exploration = menuLateralDe('guide/les-pieges', pagesDuGuide).pages;
+  assert.deepEqual(exploration.map((e) => e.id ?? e.libelle), PLAN.find((o) => o.id === 'exploration').entrees.map((e) => e.page ?? e.libelle));
+  assert.ok(exploration.some((e) => e.adresse === 'regles/artisanat/'));
+  assert.deepEqual(entreesDuMenuLateral(ongletDe('guide/meteo'), pagesDuGuide.filter((p) => p.id !== 'guide/meteo')).map((p) => p.id).includes('guide/meteo'), false,
+    'une page absente est sautée');
+  // une entrée « bientôt » (aucune aujourd'hui) passe telle quelle : le menu la grise, sans lien (components/guide/MenuLateral.astro)
+  try {
+    installerLePlan(PLAN.map((o) => (o.id === 'exploration' ? { ...o, entrees: [...o.entrees, { bientot: 'Les donjons' }] } : o)));
+    assert.deepEqual(menuLateralDe('guide/les-pieges', pagesDuGuide).pages.at(-1), { bientot: 'Les donjons' });
+  } finally {
+    installer();
+  }
+  for (const id of ['guide/bienvenue', 'guide/l-univers', 'guide/un-maitre-du-jeu', FIXTURE, 'races/elfe']) assert.equal(menuLateralDe(id, pagesDuGuide), null, id);
 });
 
-test('les Règles avancées : tous les groupes dans l’ordre, exactement les pages hors de Découvrir, des Bases et du Guide du MJ', () => {
-  const groupes = groupesDesReglesAvancees(pagesDuGuide);
-  assert.deepEqual(groupes.map((g) => g.titre), [
-    'Magie et Mode Hyper', 'Combat et actions', 'Altérations d’état', 'Alignement', 'Exploration et voyage', 'La fiche de personnage, case par case', 'Autres pages de référence',
-  ]);
-  const dans = groupes.flatMap((g) => g.pages.map((p) => p.id));
-  const attendues = ids.filter((id) => !estDansDecouvrirOuLesBases(id) && !estDuGuideDuMj(id));
-  assert.deepEqual([...dans].sort(), [...attendues].sort());
-  assert.equal(new Set(dans).size, dans.length, 'une page dans un seul groupe');
-  for (const g of groupes) for (const p of g.pages) assert.equal(groupeDeLaPage(p.id).id, g.id, `${p.id} : groupeDeLaPage`);
-  // pièges, portes, météo, « Donjon pas bon » : « dans les règles avancées, pour tout le monde » (2026-10-18)
-  assert.deepEqual(groupes.find((g) => g.id === 'exploration-et-voyage').pages.map((p) => p.id),
-    ['guide/distance-et-voyage', 'guide/meteo', 'guide/les-pieges', 'guide/les-portes', 'guide/donjon-pas-bon']);
-  assert.equal(groupes[0].pages[0].id, 'guide/le-mode-hyper', 'le Mode Hyper en tête de « Magie et Mode Hyper »');
-  const fiche = groupes.find((g) => g.id === 'fiche-de-personnage').pages;
-  assert.ok(fiche.length > 5 && fiche.every((p) => p.id.startsWith('guide/fiche-')), 'les pages « Fiche de personnage : … »');
-  assert.deepEqual(fiche.map((p) => p.data.title), [...fiche.map((p) => p.data.title)].sort((a, b) => a.localeCompare(b, 'fr')), 'ordre des titres');
-  // les documents des règles : leur bloc liste les pages par document, avec leurs liens, ce que /archives/ ne fait pas : une page de référence
-  assert.equal(groupeDeLaPage('guide/les-documents-des-regles').id, 'autres');
-  assert.equal(cheminDePage('guide/les-documents-des-regles'), 'regles/avancees/les-documents-des-regles/');
-  assert.equal(dans.includes('guide/campagne-ou-scenario-one-shot'), false, 'la page du MJ n’est pas une page des Règles avancées');
-  // une page d'exemple (utiliser-ce-wiki) tombe dans « Autres » tant qu'elle est chargée ; sans elle (HIDE_EXAMPLES=1), elle n'y est pas
-  const sansExemples = groupesDesReglesAvancees(pagesDuGuide.filter((p) => p.data.status !== 'example')).flatMap((g) => g.pages);
-  assert.ok(sansExemples.every((p) => p.data.status !== 'example'));
+// Lot de l'édition des menus (« changer l'ordre des menu latéraux (par un glisser déposer) ») : le menu latéral pose l'id et le rang de chaque ligne de
+// regles_onglet_entree (data-ed-entree, data-ed-rang), une par entrée affichée, dans l'ordre ; l'onglet en data-ed-menu (scripts/edition/menus.mjs)
+test('le menu latéral d’un onglet porte, pour le mode modification, l’id et le rang de chaque ligne de regles_onglet_entree, entrée par entrée', () => {
+  for (const onglet of ongletsDesRegles()) {
+    const { pages, edition } = menuLateralDe(onglet.ouverture, pagesDuGuide);
+    assert.equal(edition.menu, `onglet:${onglet.id}`);
+    assert.equal(edition.entrees.length, pages.length, onglet.id);
+    const lignes = db.prepare('SELECT id, rang, page_id, libelle FROM regles_onglet_entree WHERE onglet_id = ? ORDER BY rang, id').all(onglet.id);
+    assert.deepEqual(edition.entrees, lignes.map((l) => ({ id: l.id, rang: l.rang })), onglet.id);
+    pages.forEach((p, i) => assert.equal(edition.entrees[i].id, p.id ? `page:${p.id}` : lignes[i].id, `${onglet.id} : entrée ${i}`));
+  }
+  // une page absente est sautée des deux côtés : les deux listes restent alignées
+  const sansMeteo = pagesDuGuide.filter((p) => p.id !== 'guide/meteo');
+  const onglet = ongletDe('guide/meteo');
+  const { menu, entrees } = Livres.editionDuMenuLateral(onglet, sansMeteo);
+  assert.equal(menu, `onglet:${onglet.id}`);
+  assert.equal(entrees.length, entreesDuMenuLateral(onglet, sansMeteo).length);
+  assert.ok(!entrees.some((e) => e.id === 'page:guide/meteo'));
 });
 
-test('plus de livre : ni précédent ni suivant ; la place d’une page, son fil d’Ariane vers sa rubrique ou son sommaire', () => {
+// R185 (6) (« Page 404 ») : une page des Règles supprimée sur le site de dev (rien ne la protège parce qu'un renvoi figé la vise : lib/pages-protegees.mjs)
+// laisse son ancienne adresse à la 404 ; le plan strict ne s'arrête pas pour elle.
+test('R185 (6) : une cible de renvoi figé absente n’arrête pas le build ; la page 404 et les liens écrits la sautent', () => {
+  // des pages que visent les renvois figés, et que rien ne protège (ni création du personnage, ni ouverture, ni absorption)
+  const cible = 'guide/l-embuscade'; // une section de « Les situations avancées » (PAGES_ECLATEES_DU_GUIDE)
+  const precedente = 'guide/meteo'; // /regles/avancees/meteo/ (ADRESSES_DU_PLAN_PRECEDENT)
+  assert.equal(Livres.pageDuGuideALAdresse(adresseDuGuide(cible)), cible);
+  assert.equal(Livres.pageDuGuideALAdresse('regles/prise-en-tenaille-et-zone-d-influence/#la-prise-en-tenaille'), 'guide/prise-en-tenaille-et-zone-d-influence');
+  assert.equal(Livres.pageDuGuideALAdresse('decouvrir/'), 'guide/bienvenue');
+  assert.equal(Livres.pageDuGuideALAdresse('mj/un-maitre-du-jeu/?a=1'), 'guide/un-maitre-du-jeu');
+  assert.equal(Livres.pageDuGuideALAdresse('ressources/armes/'), null);
+  // toutes les pages là : les objets de PAGES_ECLATEES_DU_GUIDE, inchangés
+  assert.deepEqual(Livres.pagesEclateesDuGuide((id) => ids.includes(id)), PAGES_ECLATEES_DU_GUIDE);
+  assert.equal(Livres.pagesEclateesDuGuide((id) => ids.includes(id))['decouvrir/creer-son-personnage/'], PAGES_ECLATEES_DU_GUIDE['decouvrir/creer-son-personnage/']);
+  // un plan où les deux cibles manquent (pages supprimées : ni dans la base, ni dans le plan)
+  const restants = ids.filter((id) => id !== cible && id !== precedente);
+  const pages = pagesDuGuide.filter((p) => restants.includes(p.id));
+  try {
+    installerLePlan(PLAN.map((o) => ({ ...o, entrees: o.entrees.filter((e) => e.page !== cible && e.page !== precedente) })));
+    assert.equal(verifierLePlan(pages), pages, 'le plan strict tient : une cible de renvoi absente n’est pas une page manquante');
+    // la page 404 : plus de renvoi vers elle, son ancienne adresse reste introuvable
+    const renvois = renvoisDuGuide(restants);
+    assert.equal(Object.hasOwn(renvois, 'regles/avancees/meteo/'), false);
+    const eclatees = { ...RENVOIS_DES_PAGES_ECLATEES, ...Livres.pagesEclateesDuGuide((id) => restants.includes(id)) };
+    const vers = (adresse, hash = '') => adresseDeRenvoi(adresse, { base: '/', renvois, eclatees, hash });
+    assert.equal(vers('/regles/avancees/meteo/'), null, 'la 404');
+    // une ancienne ancre dont la page manque : la page qui garde le reste (`defaut`), l'ancre gardée ; les autres ancres inchangées
+    assert.equal(vers('/guide/situations-avancees/', '#lembuscade'), '/regles/prise-en-tenaille-et-zone-d-influence/#lembuscade');
+    assert.equal(vers('/guide/situations-avancees/', '#les-attaques-discrètes'), '/regles/les-attaques-discretes/');
+    assert.ok(!Object.values(eclatees['guide/situations-avancees/'].anciennesAncres).includes(adresseDuGuide(cible)));
+    // une page éclatée dont la page `defaut` manque : retirée entière (son adresse donne la 404)
+    const sansDefaut = Livres.pagesEclateesDuGuide((id) => id !== 'guide/creer-son-personnage');
+    assert.equal(Object.hasOwn(sansDefaut, 'decouvrir/creer-son-personnage/'), false);
+    assert.ok(Object.hasOwn(sansDefaut, 'guide/situations-avancees/'));
+    // un lien écrit vers l'ancienne adresse : tel qu'écrit (la 404), jamais vers la page supprimée
+    const options = { cheminDe: cheminDePage, existe: (id) => restants.includes(id), accueil: ACCUEIL_DU_GUIDE };
+    assert.equal(Guide.adresseDesAnciensLiens('regles/avancees/meteo/', options), 'regles/avancees/meteo/');
+    assert.equal(Guide.adresseDesAnciensLiens('guide/meteo/#pluie', options), 'guide/meteo/#pluie');
+  } finally {
+    installer();
+  }
+  // lib/guide-rendu.ts et la page 404 lisent la liste filtrée, jamais PAGES_ECLATEES_DU_GUIDE telle quelle
+  const rendu = readFileSync(new URL('../src/lib/guide-rendu.ts', import.meta.url), 'utf8');
+  assert.match(rendu, /\.\.\.pagesEclateesDuGuide\(\(page: string\) => pages\.has\(page\)\)/);
+  assert.doesNotMatch(rendu, /\.\.\.PAGES_ECLATEES_DU_GUIDE/);
+});
+
+test('plus de livre : ni précédent ni suivant ; le fil d’Ariane mène à l’onglet de la page, à Découvrir ou au Guide du MJ', () => {
   for (const nom of ['LIVRES', 'livreDe', 'pagesDuLivre', 'voisinsDansLeLivre', 'suiteDuLivre', 'estDansUnLivre']) assert.equal(nom in Livres, false, nom);
-  const place = rubriqueDe('guide/les-degats');
-  assert.deepEqual([place.rubrique.titre, place.groupe.titre, place.ordre], ['Les bases', 'Jouer', 4]);
-  assert.equal(rubriqueDe('guide/meteo'), null);
   assert.deepEqual(filDAriane('guide/bienvenue'), [{ titre: 'Découvrir', chemin: 'decouvrir/' }]);
-  assert.deepEqual(filDAriane('guide/creer-son-personnage'), [{ titre: 'Découvrir', chemin: 'decouvrir/' }]);
-  assert.deepEqual(filDAriane('guide/la-montee-de-niveau'), [{ titre: 'Les bases', chemin: 'regles/' }, { titre: 'Progresser', chemin: 'regles/#progresser' }]);
-  assert.deepEqual(filDAriane('guide/meteo'), [{ titre: 'Règles avancées', chemin: 'regles/avancees/' }, { titre: 'Exploration et voyage', chemin: 'regles/avancees/#exploration-et-voyage' }]);
+  assert.deepEqual(filDAriane('guide/l-univers'), [{ titre: 'Découvrir', chemin: 'decouvrir/' }]);
+  assert.deepEqual(filDAriane('guide/creer-son-personnage'), [{ titre: 'Fiche de personnage', chemin: 'regles/fiche-de-personnage/' }]);
+  assert.deepEqual(filDAriane('guide/premiers-sorts'), [{ titre: 'Fiche de personnage', chemin: 'regles/fiche-de-personnage/' }]);
+  assert.deepEqual(filDAriane('guide/meteo'), [{ titre: 'Mécaniques générales', chemin: 'regles/mecaniques-generales/' }]);
+  assert.deepEqual(filDAriane('guide/l-embuscade'), [{ titre: 'Les combats', chemin: 'regles/combats/' }]);
+  assert.deepEqual(filDAriane('guide/les-pieges'), [{ titre: 'Exploration', chemin: 'regles/exploration/' }]);
   assert.deepEqual(filDAriane('guide/campagne-ou-scenario-one-shot'), [{ titre: 'Guide du MJ', chemin: 'mj/' }]);
+  assert.deepEqual(filDAriane(FIXTURE), [], 'la fixture : « Accueil » seul');
 });
 
-test('placeDansLeGuide : la rubrique et l’ordre d’une page (notes de version, panneau de la ceinture)', () => {
+test('placeDansLeGuide : la rubrique et l’ordre d’une page (notes de version, panneau de la ceinture) ; rang Découvrir 0, onglets 1 à 4, Guide du MJ 5', () => {
   assert.deepEqual(placeDansLeGuide('guide/bienvenue'), { rubrique: 'Découvrir', rang: 0, ordre: 0 });
-  assert.deepEqual(placeDansLeGuide('guide/rejoindre-une-partie'), { rubrique: 'Découvrir', rang: 0, ordre: 3 });
-  assert.deepEqual(placeDansLeGuide('guide/s-entrainer-et-exercer-un-metier'), { rubrique: 'Les bases', rang: 1, ordre: 9 });
-  assert.deepEqual(placeDansLeGuide('guide/meteo'), { rubrique: 'Règles avancées', rang: 2, ordre: null });
-  assert.deepEqual(placeDansLeGuide('guide/un-maitre-du-jeu'), { rubrique: 'Guide du MJ', rang: 3, ordre: null });
+  assert.deepEqual(placeDansLeGuide('guide/l-univers'), { rubrique: 'Découvrir', rang: 0, ordre: 1 });
+  assert.deepEqual(placeDansLeGuide('guide/fiche-personnage'), { rubrique: 'Fiche de personnage', rang: 1, ordre: 0 });
+  assert.deepEqual(placeDansLeGuide('guide/reussir-une-action'), { rubrique: 'Mécaniques générales', rang: 2, ordre: 0 });
+  assert.deepEqual(placeDansLeGuide('guide/le-tour-de-jeu'), { rubrique: 'Les combats', rang: 3, ordre: 0 });
+  assert.deepEqual(placeDansLeGuide('guide/s-entrainer-et-exercer-un-metier'), { rubrique: 'Exploration', rang: 4, ordre: 0 }, 'première entrée d’Exploration depuis la 0122 (« La montée de niveau » supprimée)');
+  // l'Artisanat compte dans l'ordre du menu : les-pieges vient après lui
+  assert.equal(placeDansLeGuide('guide/les-pieges').ordre, PLAN.find((o) => o.id === 'exploration').entrees.findIndex((e) => e.page === 'guide/les-pieges'));
+  assert.deepEqual(placeDansLeGuide('guide/un-maitre-du-jeu'), { rubrique: 'Guide du MJ', rang: 5, ordre: null });
+  assert.deepEqual(placeDansLeGuide('guide/aide-memoire'), { rubrique: null, rang: null, ordre: null }, 'une page supprimée : nulle part');
+  assert.deepEqual(placeDansLeGuide(FIXTURE), { rubrique: null, rang: null, ordre: null });
 });
 
 test('les pages nommées par le plan : « Par où commencer ? », L’univers et ses rubriques, l’Artisanat, les liens et l’encart de la rencontre', () => {
-  assert.deepEqual(PAR_OU_COMMENCER, ['guide/bienvenue', 'guide/l-univers', 'guide/creer-son-personnage', 'guide/rejoindre-une-partie']);
-  assert.deepEqual(PAR_OU_COMMENCER, pagesDeLaRubrique(DECOUVRIR).map((p) => p.id), 'les quatre pages de Découvrir');
+  // R184 ; défaut confirmé par le propriétaire (R185 (4)) : la troisième carte mène à l'introduction de l'onglet Fiche de personnage
+  assert.deepEqual(PAR_OU_COMMENCER, ['guide/bienvenue', 'guide/l-univers', 'guide/creer-son-personnage']);
+  assert.deepEqual(PAR_OU_COMMENCER.map(cheminDePage), ['decouvrir/', 'decouvrir/l-univers/', 'regles/creer-son-personnage/']);
+  assert.deepEqual(PAR_OU_COMMENCER.map(partieDeLaPage), ['decouvrir', 'decouvrir', 'creer']);
   assert.deepEqual(RUBRIQUES_SOUS_LA_PAGE, { 'guide/l-univers': ['races', 'magies', 'classes'] });
   assert.deepEqual(RUBRIQUES_SOUS_LA_PAGE['guide/l-univers'].map((k) => TYPES[k].label), ['Races', 'Magies', 'Classes']);
   assert.deepEqual(ARTISANAT.pages, ['ressources/composants', 'ressources/alchimie', 'ressources/alchimie-primitive', 'ressources/alchimie-liste-ingredients', 'metiers/regles-des-metiers']);
   const existe = db.prepare('SELECT 1 FROM page WHERE id = ?');
   for (const id of ARTISANAT.pages.slice(1)) assert.ok(existe.get(id), `${id} : page absente`);
-  // sur l'accueil (demande du propriétaire du 2026-10-23 : « Ces 3 blocs auraient plus leur place dans l'onglet d'acceuil. » ; avant, sous le
-  // texte de Bienvenue, et d'abord sur la page Liens, supprimée le 2026-10-22) : Discord et Tipeee, puis l'encart « Notre prochaine rencontre IRL ».
-  // `page` : l'id de l'accueil pour le mode modification (noté au journal), qui n'est pas une page du wiki ; `titre` : celui de pages/index.astro, qui
-  // nomme l'encart dans la note de version (« Accueil › Notre prochaine rencontre IRL »)
+  // sur l'accueil (demande du propriétaire du 2026-10-23 : « Ces 3 blocs auraient plus leur place dans l'onglet d'acceuil. »)
   assert.equal(LIENS_ET_RENCONTRE.page, 'accueil');
-  assert.equal(db.prepare('SELECT 1 FROM page WHERE id = ?').get(LIENS_ET_RENCONTRE.page), undefined, 'pas une page du wiki');
+  assert.equal(existe.get(LIENS_ET_RENCONTRE.page), undefined, 'pas une page du wiki');
   assert.equal(LIENS_ET_RENCONTRE.titre, 'Accueil');
   const accueil = readFileSync(new URL('../src/pages/index.astro', import.meta.url), 'utf8');
   assert.ok(accueil.includes(`<Base title="${LIENS_ET_RENCONTRE.titre}" edition={LIENS_ET_RENCONTRE.page}>`), 'le titre de l’accueil, et son mode modification');
@@ -218,11 +412,8 @@ test('les pages nommées par le plan : « Par où commencer ? », L’univers et
     ['discord', 'Serveur Discord « L’univers de Maverick »', 'https://discord.gg/GMGBnjzfMk'],
     ['tipeee', 'Maverick JDR sur Tipeee', 'https://fr.tipeee.com/maverickjdr'],
   ]);
-  // la présentation du Discord : une constante écrite à l'intégration de la refonte des pages ; celle de Tipeee n'est pas écrite ici, c'est le texte
-  // de Tipeee repris en direct (« La partie « Bienvenue » », « En direct par le serveur ») : la reformulation d'avant a disparu
   const [discord, tipeee] = LIENS_ET_RENCONTRE.liens;
-  assert.equal(typeof discord.presentation, 'string');
-  assert.ok(discord.presentation.length > 50);
+  assert.ok(typeof discord.presentation === 'string' && discord.presentation.length > 50);
   assert.equal(tipeee.presentation, undefined);
   assert.equal(tipeee.tipeee, true);
   assert.deepEqual(LIENS_ET_RENCONTRE.rencontre, {
@@ -231,23 +422,383 @@ test('les pages nommées par le plan : « Par où commencer ? », L’univers et
   assert.ok(db.prepare('SELECT 1 FROM annonce WHERE id = ?').get(LIENS_ET_RENCONTRE.rencontre.annonce), 'l’annonce de l’encart est dans la base (migration 0068)');
 });
 
-test('le menu s’accorde au plan : Découvrir (une entrée par page), Règles (Les bases, Artisanat, Règles avancées), Espace MJ (Guide du MJ)', () => {
+test('le menu s’accorde au plan : Règles (Découvrir, L’univers, puis les onglets), Espace MJ (Guide du MJ) ; chaque page ouvre sa rubrique', () => {
   const rubrique = (cle) => NAV.find((g) => g.key === cle);
-  // plus d'entrée « Liens » (« Plus d'entrée Liens au menu : tout est sur Bienvenue. »)
-  assert.deepEqual(rubrique('decouvrir').items.map((i) => i.path), PAR_OU_COMMENCER.map(cheminDePage));
-  assert.deepEqual(rubrique('decouvrir').items.map((i) => i.label), ['Bienvenue', 'L’univers', 'Créer son personnage', 'Rejoindre une partie']);
-  const regles = rubrique('regles').items.map((i) => i.path);
-  for (const chemin of [LES_BASES.chemin, ARTISANAT.chemin, REGLES_AVANCEES.chemin]) assert.ok(regles.includes(chemin), chemin);
-  assert.deepEqual([rubrique('regles').items[0].label, rubrique('regles').items[0].path], [LES_BASES.titre, LES_BASES.chemin]);
+  assert.deepEqual(rubrique('regles').items.slice(0, 2).map((i) => i.path), DECOUVRIR.groupes[0].pages.map(cheminDePage));
+  // les onglets, puis le Glossaire (une page seule, hors du plan)
+  assert.deepEqual(rubrique('regles').items.slice(2, -1).map((i) => [i.label, i.path]), ongletsDesRegles().map((o) => [o.titre, o.chemin]));
+  assert.equal(rubrique('regles').items.at(-1).path, 'regles/glossaire/');
+  assert.ok(!NAV.some((g) => g.items.some((i) => i.path === ARTISANAT.chemin)), 'l’Artisanat n’est plus au menu du site (menu latéral d’Exploration)');
   assert.ok(rubrique('mj').items.some((i) => i.label === GUIDE_DU_MJ.titre && i.path === GUIDE_DU_MJ.chemin));
-  assert.equal(activeGroup('/').key, 'decouvrir', 'l’accueil ouvre Découvrir');
-  for (const id of ids) {
-    const attendue = estDuGuideDuMj(id) ? 'mj' : rubriqueDe(id)?.rubrique === DECOUVRIR ? 'decouvrir' : 'regles';
-    assert.equal(activeGroup(`/${cheminDePage(id)}`).key, attendue, id);
+  assert.equal(activeGroup('/').key, 'regles', 'l’accueil ouvre les Règles');
+  for (const id of ids) assert.equal(activeGroup(`/${cheminDePage(id)}`).key, estDuGuideDuMj(id) ? 'mj' : 'regles', id);
+  for (const o of ongletsDesRegles()) assert.equal(activeGroup(`/${o.chemin}`).key, 'regles', o.chemin);
+  assert.equal(activeGroup(`/${ARTISANAT.chemin}`).key, 'regles', 'l’Artisanat ouvre les Règles (R184)');
+});
+
+test('une page retirée dont le contenu se lit ailleurs (PAGES_RETIREES) : un lien écrit vers une de ses anciennes adresses mène à sa destination, requête et ancre gardées ; R190 : le Lexique, au Glossaire (réponses du propriétaire du 2026-11-06)', () => {
+  assert.equal(adresseDeLaPageRetiree('regles/lexique/'), 'regles/glossaire/');
+  assert.equal(adresseDeLaPageRetiree('regles/lexique'), 'regles/glossaire/', 'sans barre de fin');
+  assert.equal(adresseDeLaPageRetiree('guide/lexique/#acquis'), 'regles/glossaire/#acquis', 'l’ancre écrite gardée');
+  assert.equal(adresseDeLaPageRetiree('regles/lexique/?q=AM#x'), 'regles/glossaire/?q=AM#x', 'la requête avant l’ancre');
+  assert.equal(adresseDeLaPageRetiree('regles/lexique/', { existe: (id) => id === 'guide/lexique' }), null, 'revenue dans la base : plus de renvoi');
+  for (const autre of ['regles/', 'regles/meteo/', 'regles/lexiques/', 'lexique/', 'recherche/', 'regles/glossaire/', '']) assert.equal(adresseDeLaPageRetiree(autre), null, autre);
+  const options = { cheminDe: cheminDePage, existe: (id) => ids.includes(id), accueil: ACCUEIL_DU_GUIDE };
+  assert.equal(Guide.adresseDesAnciensLiens('guide/lexique/', options), 'regles/glossaire/');
+  assert.equal(Guide.adresseDesAnciensLiens('regles/lexique/#acquis', options), 'regles/glossaire/#acquis');
+  assert.equal(Guide.adresseDesAnciensLiens('regles/meteo/', options), 'regles/meteo/', 'une page du plan : telle qu’écrite');
+  const renvois = renvoisDuGuide(ids);
+  for (const { vers, adresses } of Object.values(PAGES_RETIREES)) {
+    for (const adresse of adresses) assert.equal(renvois[adresse], Guide.adresseDesAnciensLiens(adresse, options), `${adresse} : la page 404 et le lien écrit, même destination`);
+    assert.ok(!ids.some((id) => adresses.includes(cheminDePage(id))) && vers === 'regles/glossaire/', 'aucune page du plan à une adresse retirée');
   }
 });
 
-test('les anciennes adresses mènent à la nouvelle adresse de chaque page (page 404), requête et ancre gardées', () => {
+/** La page 404 : l'adresse où elle renvoie `adresse` (requête et ancre comprises), avec les renvois et les pages éclatées que le build lui donne. */
+const renvoi = (adresse, { search = '', hash = '', base = '/' } = {}) => adresseDeRenvoi(adresse, {
+  base, renvois: renvoisDuGuide(ids), eclatees: { ...RENVOIS_DES_PAGES_ECLATEES, ...PAGES_ECLATEES_DU_GUIDE }, search, hash,
+});
+
+// Migration 0123, demande du propriétaire : « Les pages … /regles/alignement/ et /regles/les-neuf-alignements/ font doublon. Réunis toutes les
+// informations dans la page /regles/alignement/ » : « Les neuf alignements » est fondue dans « Alignement », sous l'intertitre à ancre figée
+// #les-neuf-alignements. Toute ancienne adresse de la page mène à Alignement, l'ancre écrite gardée (celle d'une section, #loyal-bon), sinon à l'intertitre.
+test('Les neuf alignements fondue dans Alignement (migration 0123) : /regles/les-neuf-alignements/, /guide/…, /regles/avancees/… mènent à /regles/alignement/, ancre et requête gardées', () => {
+  const absorbee = 'guide/les-neuf-alignements';
+  assert.equal(PAGES_ABSORBEES[absorbee], 'guide/alignement');
+  assert.ok(ids.includes('guide/alignement') && !ids.includes(absorbee), 'Alignement reste dans la base, la page absorbée n’y est plus');
+  assert.equal(cheminDePage('guide/alignement'), 'regles/alignement/');
+  const options = { cheminDe: cheminDePage, existe: (id) => ids.includes(id), accueil: ACCUEIL_DU_GUIDE };
+  const anciennes = ['regles/les-neuf-alignements/', 'guide/les-neuf-alignements/', 'regles/avancees/les-neuf-alignements/'];
+  assert.ok(Object.keys(ADRESSES_DU_PLAN_PRECEDENT).includes(anciennes[0]), 'l’adresse à plat d’avant, ajoutée aux renvois figés');
+  const renvois = renvoisDuGuide(ids);
+  for (const adresse of anciennes) {
+    assert.equal(renvois[adresse], 'regles/alignement/#les-neuf-alignements', `${adresse} : la page 404 mène à l’intertitre des neuf alignements`);
+    assert.equal(renvoi(`/${adresse}`), '/regles/alignement/#les-neuf-alignements', adresse);
+    // une ancienne ancre de section mène à la même ancre de la page qui l'absorbe : l'ancre écrite l'emporte, la requête reste avant elle
+    assert.equal(renvoi(`/${adresse}`, { hash: '#loyal-bon' }), '/regles/alignement/#loyal-bon', `${adresse}#loyal-bon`);
+    assert.equal(renvoi(`/${adresse}`, { search: '?q=1', hash: '#chaotique-mauvais' }), '/regles/alignement/?q=1#chaotique-mauvais', `${adresse} : requête et ancre`);
+    assert.equal(renvoi(`/${adresse.replace(/\/$/, '')}`, { hash: '#neutre' }), '/regles/alignement/#neutre', `${adresse} sans barre de fin`);
+    assert.equal(renvoi(`/MaverickCenter/${adresse}`, { base: '/MaverickCenter/', hash: '#neutre-bon' }), '/MaverickCenter/regles/alignement/#neutre-bon', `${adresse} sous un sous-chemin`);
+    // un lien Markdown écrit vers l'ancienne adresse (lib/guide.mjs#adresseDesAnciensLiens, rendu du guide) : la même destination que la page 404
+    assert.equal(Guide.adresseDesAnciensLiens(`${adresse}#loyal-bon`, options), 'regles/alignement/#loyal-bon', `${adresse} : lien écrit, ancre gardée`);
+    assert.equal(Guide.adresseDesAnciensLiens(adresse, options), 'regles/alignement/#les-neuf-alignements', `${adresse} : lien écrit sans ancre`);
+  }
+  // la page absorbante supprimée sur le site de dev : plus de renvoi, la 404
+  const sans = ids.filter((id) => id !== 'guide/alignement');
+  assert.equal(renvoisDuGuide(sans)['regles/les-neuf-alignements/'], undefined);
+  assert.equal(Guide.adresseDesAnciensLiens('regles/les-neuf-alignements/#loyal-bon', { ...options, existe: (id) => sans.includes(id) }), 'regles/les-neuf-alignements/#loyal-bon');
+  // l'ancienne adresse n'est plus celle d'une page, et l'id reste réservé (une page créée sur le site ne le reprend pas)
+  assert.ok(!ids.some((id) => cheminDePage(id) === anciennes[0]));
+  // l'intertitre visé existe à l'import : l'ancre figée de la section
+  assert.ok(ancresDuCorps(corpsDe('guide/alignement')).some((a) => a.ancre === 'les-neuf-alignements'));
+});
+
+// Migration 0124, R272 (« Cette page doit être supprimé. Tout lien qui revois vers cette page doit renvoyer vers …/regles/fiche-inventaire-sac-a-dos/ » ;
+// « Renommer l'adresse fiche-inventaire-sac-a-dos (sans le préfixe « fiche- ») et rediriger l'ancienne. Cela déroge à la règle des adresses figées. ») :
+// « Accessoires et Ceinture » est fondue dans « Inventaire/Sac à dos », servie à /regles/inventaire-sac-a-dos/ (id inchangé, comme le Mode Super en R228).
+// Toute ancienne adresse des deux pages mène à la page de l'inventaire ; celle de la page retirée, à l'ancre figée de sa première section.
+test('R272 (migration 0124) : la page de l’inventaire est servie à /regles/inventaire-sac-a-dos/ (id inchangé) ; « Accessoires et Ceinture », fondue dedans, y mène', () => {
+  const gardee = 'guide/fiche-inventaire-sac-a-dos';
+  const absorbee = 'guide/fiche-accessoires-et-ceinture';
+  assert.ok(ids.includes(gardee) && !ids.includes(absorbee), 'la page de l’inventaire reste dans la base, la page absorbée n’y est plus');
+  assert.ok(estDesOnglets(gardee), 'rangée dans un onglet des Règles');
+  assert.equal(PAGES_ABSORBEES[absorbee], gardee);
+  assert.equal(adresseDuGuide(gardee), 'regles/inventaire-sac-a-dos/');
+  assert.equal(cheminDePage(gardee), 'regles/inventaire-sac-a-dos/');
+  assert.equal(Livres.pageDuGuideALAdresse('regles/inventaire-sac-a-dos/#ceinture'), gardee);
+  assert.equal(Livres.pageDuGuideALAdresse('regles/fiche-inventaire-sac-a-dos/'), null, 'l’ancienne adresse ne sert plus aucune page');
+  assert.deepEqual(ids.filter((i) => cheminDePage(i) === 'regles/inventaire-sac-a-dos/'), [gardee]);
+  assert.ok(!ids.includes('guide/inventaire-sac-a-dos') && !nomsReserves().includes('inventaire-sac-a-dos'));
+  // les anciennes adresses : page 404, requête et ancre écrites gardées ; sans ancre, l'ancre figée de la section de la page retirée
+  assert.equal(ADRESSES_DU_PLAN_PRECEDENT['regles/fiche-inventaire-sac-a-dos/'], gardee);
+  assert.equal(ADRESSES_DU_PLAN_PRECEDENT['regles/fiche-accessoires-et-ceinture/'], absorbee);
+  for (const ancienne of ['/regles/fiche-inventaire-sac-a-dos/', '/regles/avancees/fiche-inventaire-sac-a-dos/', `/${gardee}/`]) {
+    assert.equal(renvoi(ancienne), '/regles/inventaire-sac-a-dos/', ancienne);
+    assert.equal(renvoi(ancienne, { search: '?q=1', hash: '#ceinture' }), '/regles/inventaire-sac-a-dos/?q=1#ceinture', `${ancienne} : requête et ancre`);
+  }
+  for (const ancienne of ['/regles/fiche-accessoires-et-ceinture/', '/regles/avancees/fiche-accessoires-et-ceinture/', `/${absorbee}/`]) {
+    assert.equal(renvoi(ancienne), '/regles/inventaire-sac-a-dos/#accessoires', ancienne);
+    assert.equal(renvoi(ancienne, { hash: '#ceinture' }), '/regles/inventaire-sac-a-dos/#ceinture', `${ancienne} : l’ancre écrite l’emporte`);
+    assert.equal(renvoi(ancienne, { search: '?q=1', hash: '#ceinture' }), '/regles/inventaire-sac-a-dos/?q=1#ceinture', `${ancienne} : requête et ancre`);
+  }
+  assert.equal(renvoi('/MaverickCenter/regles/fiche-accessoires-et-ceinture/', { base: '/MaverickCenter/' }), '/MaverickCenter/regles/inventaire-sac-a-dos/#accessoires', 'sous un sous-chemin');
+  assert.equal(renvoi('/regles/inventaire-sac-a-dos/'), null, 'la nouvelle adresse est servie, jamais renvoyée');
+  // les liens Markdown écrits vers elles (lib/guide.mjs#adresseDesAnciensLiens) : la même destination que la page 404
+  const options = { cheminDe: cheminDePage, existe: (i) => ids.includes(i), accueil: ACCUEIL_DU_GUIDE };
+  assert.equal(Guide.adresseDesAnciensLiens('regles/fiche-inventaire-sac-a-dos/#ceinture', options), 'regles/inventaire-sac-a-dos/#ceinture');
+  assert.equal(Guide.adresseDesAnciensLiens('regles/fiche-accessoires-et-ceinture/', options), 'regles/inventaire-sac-a-dos/#accessoires');
+  assert.equal(Guide.adresseDesAnciensLiens('regles/avancees/fiche-accessoires-et-ceinture/#ceinture', options), 'regles/inventaire-sac-a-dos/#ceinture');
+  assert.equal(Guide.adresseDesAnciensLiens('regles/inventaire-sac-a-dos/', options), 'regles/inventaire-sac-a-dos/', 'la nouvelle adresse, telle qu’écrite');
+  // la page de l'inventaire supprimée sur le site de dev : les deux anciennes adresses donnent la 404 (R185 (6))
+  const sans = ids.filter((i) => i !== gardee);
+  for (const adresse of ['regles/fiche-inventaire-sac-a-dos/', 'regles/fiche-accessoires-et-ceinture/']) assert.equal(renvoisDuGuide(sans)[adresse], undefined, adresse);
+  // l'ancre visée existe à l'import : la section « Accessoires », déplacée telle quelle, sous son ancre figée
+  assert.ok(ancresDuCorps(corpsDe(gardee)).some((a) => a.ancre === ANCRES_DES_PAGES_ABSORBEES[absorbee]));
+  // le plan est contrôlé au build : une page guide/inventaire-sac-a-dos prendrait l'adresse de la page de l'inventaire
+  assert.throws(() => verifierLePlan([...pagesDuGuide, { id: 'guide/inventaire-sac-a-dos', data: { title: 'x', status: 'draft' } }]),
+    /guide\/inventaire-sac-a-dos prendrait l'adresse \/regles\/inventaire-sac-a-dos\/, celle de guide\/fiche-inventaire-sac-a-dos/);
+});
+
+// Migration 0094, demande du propriétaire du 2026-11-06 : « Il y a 4 pages à supprimer car inutile ou doublon. * Postures * Les boss et leurs postures
+// * Le mode hyper * Mode super » (« Le mode hyper » reste, a-t-il précisé). Convention R185 (6) (« Page 404 ») : PAGES_SUPPRIMEES, sans renvoi.
+test('0094 (2026-11-06) : « Postures », « Les boss et leurs postures » et « Le Mode Super » supprimées sans renvoi ; « Le Mode Hyper » reste', () => {
+  const supprimees = ['guide/postures', 'guide/les-boss-et-leurs-postures', 'guide/le-mode-super'];
+  for (const id of supprimees) {
+    assert.ok(PAGES_SUPPRIMEES.includes(id), `${id} : dans PAGES_SUPPRIMEES (son id reste réservé, serveur/edition-plan.mjs#idPris)`);
+    assert.ok(!ids.includes(id), `${id} : plus dans la base`);
+    const slug = id.slice('guide/'.length);
+    for (const adresse of [`/regles/${slug}/`, `/guide/${slug}/`, `/regles/avancees/${slug}/`]) assert.equal(renvoi(adresse), null, `${adresse} : la page 404`);
+  }
+  // « Le Mode Hyper » et « Les postures » restent (la « Liste des effets mode hyper », supprimée ensuite : test « R187 » ci-dessous)
+  for (const id of ['guide/le-mode-hyper', 'guide/les-postures']) {
+    assert.ok(ids.includes(id) && !PAGES_SUPPRIMEES.includes(id), `${id} : gardée`);
+  }
+  // « Postures » sort des anciennes Règles avancées (comme « Mode Hyper (Magie) ») : /regles/avancees/postures/ ne mène plus nulle part
+  assert.equal(Object.hasOwn(ADRESSES_DU_PLAN_PRECEDENT, 'regles/avancees/postures/'), false);
+  // l'ancienne section « Les boss et leurs postures » de « Les situations avancées » mène à « ## Les boss » de la page des postures, qui porte son texte
+  const situations = PAGES_ECLATEES_DU_GUIDE['guide/situations-avancees/'];
+  assert.equal(situations.anciennesAncres['les-boss-et-leurs-postures'], 'regles/les-postures/#les-boss');
+  assert.ok(meneAUnIntertitre('regles/les-postures/#les-boss'), '« ## Les boss » dans guide/les-postures');
+  assert.equal(renvoi('/guide/situations-avancees/', { hash: '#les-boss-et-leurs-postures' }), '/regles/les-postures/#les-boss');
+  // les postures gardent leur id sous le préfixe de la page supprimée (identifiants figés) : des entités, pas une page
+  assert.equal(db.prepare("SELECT count(*) AS n FROM posture WHERE id LIKE 'guide/postures#posture:%'").get().n, 6);
+});
+
+// Décision R187 (1) (demande du propriétaire du 2026-11-06 : « Supprime la liste. ») : la « Liste des effets mode hyper » est supprimée (migration 0095),
+// son adresse mène à la page 404 (R185 (6)) ; « Le mode hyper », qui porte maintenant le tableau des effets (bloc mode-hyper, R187 (2)), reste.
+test('R187 (1) : la « Liste des effets mode hyper » supprimée sans renvoi ; « Le Mode Hyper » reste et porte le bloc du Mode Hyper', () => {
+  const id = 'guide/liste-des-effets-mode-hyper';
+  assert.ok(PAGES_SUPPRIMEES.includes(id), 'dans PAGES_SUPPRIMEES (son id reste réservé, serveur/edition-plan.mjs#idPris)');
+  assert.ok(!ids.includes(id), 'plus dans la base');
+  for (const adresse of ['/regles/liste-des-effets-mode-hyper/', '/guide/liste-des-effets-mode-hyper/', '/regles/avancees/liste-des-effets-mode-hyper/']) {
+    assert.equal(renvoi(adresse), null, `${adresse} : la page 404`);
+  }
+  // elle sort des anciennes Règles avancées, comme « Postures » : /regles/avancees/liste-des-effets-mode-hyper/ ne mène plus nulle part
+  assert.equal(Object.hasOwn(ADRESSES_DU_PLAN_PRECEDENT, 'regles/avancees/liste-des-effets-mode-hyper/'), false);
+  const options = { cheminDe: cheminDePage, existe: (page) => ids.includes(page), accueil: ACCUEIL_DU_GUIDE };
+  assert.equal(Guide.adresseDesAnciensLiens('regles/avancees/liste-des-effets-mode-hyper/', options), 'regles/avancees/liste-des-effets-mode-hyper/',
+    'un lien écrit : tel qu’écrit (la 404)');
+  assert.ok(ids.includes('guide/le-mode-hyper') && !PAGES_SUPPRIMEES.includes('guide/le-mode-hyper'));
+  assert.ok(Guide.BLOCS.includes('mode-hyper'), 'le bloc des deux tableaux (lib/guide.mjs#BLOCS)');
+  assert.ok(Guide.morceauxDuChapitre(db.prepare("SELECT corps_md FROM page WHERE id = 'guide/le-mode-hyper'").get().corps_md).some((m) => m.bloc === 'mode-hyper'));
+});
+
+// Migration 0096, demande du propriétaire du 2026-11-06 : « L'onglet suivant est à retirer https://dev.maverick-jdr.com/regles/alterations-d-etats-et-mode-hyper/ ».
+// Convention R185 (6) (« Page 404 ») : PAGES_SUPPRIMEES, sans renvoi ; les pages dont elle était le doublon restent.
+test('0096 (2026-11-06) : « Altérations d’états et Mode Hyper » supprimée sans renvoi ; les pages des altérations et du Mode Hyper restent', () => {
+  const id = 'guide/alterations-d-etats-et-mode-hyper';
+  assert.ok(PAGES_SUPPRIMEES.includes(id), 'dans PAGES_SUPPRIMEES (son id reste réservé, serveur/edition-plan.mjs#idPris)');
+  assert.ok(!ids.includes(id), 'plus dans la base');
+  for (const adresse of ['/regles/alterations-d-etats-et-mode-hyper/', '/guide/alterations-d-etats-et-mode-hyper/',
+    '/regles/avancees/alterations-d-etats-et-mode-hyper/']) {
+    assert.equal(renvoi(adresse), null, `${adresse} : la page 404`);
+  }
+  // elle sort des anciennes Règles avancées, comme « Postures » et la Liste : /regles/avancees/alterations-d-etats-et-mode-hyper/ ne mène plus nulle part
+  assert.equal(Object.hasOwn(ADRESSES_DU_PLAN_PRECEDENT, 'regles/avancees/alterations-d-etats-et-mode-hyper/'), false);
+  const options = { cheminDe: cheminDePage, existe: (page) => ids.includes(page), accueil: ACCUEIL_DU_GUIDE };
+  assert.equal(Guide.adresseDesAnciensLiens('regles/avancees/alterations-d-etats-et-mode-hyper/', options),
+    'regles/avancees/alterations-d-etats-et-mode-hyper/', 'un lien écrit : tel qu’écrit (la 404)');
+  for (const gardee of ['guide/alterations-d-etats', 'guide/liste-des-alterations-d-etat', 'guide/le-mode-hyper']) {
+    assert.ok(ids.includes(gardee) && !PAGES_SUPPRIMEES.includes(gardee), `${gardee} : gardée`);
+  }
+});
+
+// Migration 0122, demande du propriétaire du 2026-11-13 : « Supprime juste le doublon ». Convention R185 (6) (« Page 404 ») : PAGES_SUPPRIMEES, sans renvoi ;
+// la page des règles dont elle était le doublon reste. Exploration s'ouvre sur « Équipement et butin ».
+test('0122 (2026-11-13) : « La montée de niveau » supprimée sans renvoi ; la page des règles du niveau global reste ; Exploration s’ouvre sur l’équipement et le butin', () => {
+  const id = 'guide/la-montee-de-niveau';
+  assert.ok(PAGES_SUPPRIMEES.includes(id), 'dans PAGES_SUPPRIMEES (son id reste réservé, serveur/edition-plan.mjs#idPris)');
+  assert.ok(!ids.includes(id), 'plus dans la base');
+  assert.equal(ongletDe(id), null);
+  for (const adresse of ['/regles/la-montee-de-niveau/', '/guide/la-montee-de-niveau/', '/regles/avancees/la-montee-de-niveau/']) {
+    assert.equal(renvoi(adresse), null, `${adresse} : la page 404`);
+  }
+  assert.equal(Object.hasOwn(ADRESSES_DU_PLAN_PRECEDENT, 'regles/avancees/la-montee-de-niveau/'), false);
+  const options = { cheminDe: cheminDePage, existe: (page) => ids.includes(page), accueil: ACCUEIL_DU_GUIDE };
+  assert.equal(Guide.adresseDesAnciensLiens('regles/la-montee-de-niveau/', options), 'regles/la-montee-de-niveau/', 'un lien écrit : tel qu’écrit (la 404)');
+  assert.ok(ids.includes('guide/fiche-experience-niveau-global') && !PAGES_SUPPRIMEES.includes('guide/fiche-experience-niveau-global'), 'la page du doublon reste');
+  assert.equal(ongletsDesRegles().find((o) => o.id === 'exploration').ouverture, 'guide/equipement-et-butin');
+});
+
+test('R184, R185 : les anciennes adresses figées mènent à la nouvelle adresse de chaque page (page 404, liens écrits), requête et ancre gardées', () => {
+  // /decouvrir/creer-son-personnage/ : l'introduction ; chacune de ses anciennes ancres d'étape (et de leurs sous-intertitres) à la page de l'étape
+  assert.equal(renvoi('/decouvrir/creer-son-personnage/'), '/regles/creer-son-personnage/');
+  assert.equal(renvoi('/decouvrir/creer-son-personnage/', { hash: '#quatre-personnages-pour-exemple' }), '/regles/creer-son-personnage/#quatre-personnages-pour-exemple');
+  assert.equal(renvoi('/decouvrir/creer-son-personnage/', { hash: '#étape-5--choisir-ses-premiers-sorts', search: '?a=1' }), '/regles/premiers-sorts/?a=1');
+  assert.equal(renvoi('/decouvrir/creer-son-personnage/', { hash: '#%C3%A9tape-1--imaginer-son-personnage-et-choisir-sa-race' }), '/regles/choisir-sa-race/', 'ancre encodée');
+  assert.equal(renvoi('/decouvrir/creer-son-personnage/', { hash: '#une-ou-deux-classes--le-biclassage' }), '/regles/choisir-sa-classe/#une-ou-deux-classes--le-biclassage');
+  assert.equal(renvoi('/MaverickCenter/decouvrir/creer-son-personnage/', { base: '/MaverickCenter/', hash: '#les-dons' }), '/MaverickCenter/regles/finaliser-son-personnage/#les-dons');
+  const creer = PAGES_ECLATEES_DU_GUIDE['decouvrir/creer-son-personnage/'];
+  assert.equal(creer.defaut, 'regles/creer-son-personnage/');
+  // les anciennes ancres, relevées au commit 92a123d (un intertitre `##` par étape, ses `###`) : chacune mène à une page qui a l'intertitre visé
+  const anciennes = Object.keys(creer.anciennesAncres);
+  assert.equal(anciennes.length, 22);
+  assert.equal(anciennes.filter((a) => a.startsWith('étape-')).length, 6);
+  for (const [ancre, cible] of Object.entries(creer.anciennesAncres)) assert.ok(meneAUnIntertitre(cible), `#${ancre} → ${cible} : intertitre absent`);
+  // les six étapes : /decouvrir/<étape>/ (2026-10-16 au 2026-10-18) et /guide/<étape>/ (avant) mènent à leur page, plus à « Créer son personnage »
+  for (const id of PAGES_DE_LA_CREATION.pages.slice(1)) {
+    const slug = id.slice('guide/'.length);
+    for (const adresse of [`/decouvrir/${slug}/`, `/guide/${slug}/`]) assert.equal(renvoi(adresse, { hash: '#x' }), `/regles/${slug}/#x`, adresse);
+  }
+  // les Règles avancées : /regles/avancees/ mène au Mode Hyper, chaque ancienne page à sa nouvelle adresse (liste figée)
+  assert.equal(renvoi('/regles/avancees/'), '/regles/le-mode-hyper/');
+  const avancees = Object.entries(ADRESSES_DU_PLAN_PRECEDENT).filter(([a]) => a.startsWith('regles/avancees/') && a !== 'regles/avancees/');
+  // moins « Postures » (migration 0094), la « Liste des effets mode hyper » (R187, migration 0095) et « Altérations d'états et Mode Hyper » (migration
+  // 0096), supprimées le 2026-11-06
+  // (et moins celles que le propriétaire a supprimées depuis : PAGES_SUPPRIMEES, que `ANCIENNES_REGLES_AVANCEES` ne cite plus)
+  assert.ok(avancees.every(([, id]) => !PAGES_SUPPRIMEES.includes(id)), 'aucune ancienne page des Règles avancées n’est une page supprimée');
+  assert.ok(avancees.length >= 30 && avancees.length <= 31, `${avancees.length} : les 37 pages des Règles avancées au commit 92a123d, moins les supprimées (« Les situations avancées » : éclatée, à part)`);
+  for (const [adresse, id] of avancees) {
+    // une page supprimée sur le site de dev (« Formule des dégâts », le 2026-11-06) : son ancienne adresse mène à la page 404, sans renvoi vers une
+    // autre page (réponse du propriétaire : « Page 404 » ; R185 (6))
+    if (historique.supprimee('page', { id })) {
+      assert.ok(!ids.includes(id), `${id} : supprimée par le site, absente de la base`);
+      assert.equal(renvoi(`/${adresse}`, { search: '?q=1', hash: '#a' }), null, `${adresse} : la 404`);
+      assert.equal(renvoi(`/${cheminDePage(id)}`), null, `${cheminDePage(id)} : sa dernière adresse aussi`);
+      continue;
+    }
+    // la page absorbée : sa page, à l'ancre où se lit son contenu ; l'ancre écrite (ici « #a ») l'emporte, la requête reste avant elle
+    const attendue = (Object.hasOwn(PAGES_ABSORBEES, id) ? adresseDeLaPageAbsorbee(id, cheminDePage) : cheminDePage(id)).split('#')[0];
+    assert.equal(renvoi(`/${adresse}`, { search: '?q=1', hash: '#a' }), `/${attendue}?q=1#a`, adresse);
+    assert.ok(ids.includes(id) || Object.hasOwn(PAGES_ABSORBEES, id), `${id} : une page de la base, ou absorbée`);
+  }
+  assert.equal(renvoi('/regles/avancees/meteo/'), '/regles/meteo/');
+  assert.equal(renvoi('/regles/avancees/fiche-attributs/'), '/regles/fiche-attributs/');
+  // les pages absorbées : Résistance/Faiblesse Magie, Les situations avancées (chaque ancienne section à sa page ; le reste à la page de la tenaille, P11)
+  for (const adresse of ['/regles/avancees/resistance-faiblesse-magie/', '/guide/resistance-faiblesse-magie/']) assert.equal(renvoi(adresse), '/regles/resistances-et-faiblesses/', adresse);
+  for (const adresse of ['/regles/avancees/situations-avancees/', '/guide/situations-avancees/']) {
+    assert.equal(renvoi(adresse), '/regles/prise-en-tenaille-et-zone-d-influence/', adresse);
+    assert.equal(renvoi(adresse, { hash: '#lembuscade' }), '/regles/l-embuscade/');
+    assert.equal(renvoi(adresse, { hash: '#la-prise-en-tenaille' }), '/regles/prise-en-tenaille-et-zone-d-influence/#la-prise-en-tenaille');
+    assert.equal(renvoi(adresse, { hash: '#rater-ses-sortil%C3%A8ges' }), '/regles/rater-ses-sortileges/');
+  }
+  const situations = PAGES_ECLATEES_DU_GUIDE['regles/avancees/situations-avancees/'];
+  assert.equal(PAGES_ECLATEES_DU_GUIDE['guide/situations-avancees/'], situations);
+  assert.equal(Object.keys(situations.anciennesAncres).length, 8, 'les huit sections');
+  for (const [ancre, cible] of Object.entries(situations.anciennesAncres)) assert.ok(meneAUnIntertitre(cible), `#${ancre} → ${cible} : absente`);
+  // le jeu de rôle (fusionné dans Bienvenue) ; la page du MJ, dernière de Découvrir avant le 2026-10-18
+  assert.equal(renvoi('/decouvrir/le-jeu-de-role/'), '/decouvrir/#le-jeu-de-rôle-comment-ça-marche-');
+  assert.equal(renvoi('/guide/le-jeu-de-role/', { search: '?a=1', hash: '#lire-les-des' }), '/decouvrir/?a=1#lire-les-des', 'l’ancre de l’ancienne adresse l’emporte');
+  assert.equal(renvoi('/decouvrir/campagne-ou-scenario-one-shot/'), '/mj/campagne-ou-scenario-one-shot/');
+  // les liens Markdown écrits vers une ancienne adresse mènent au même endroit que la page 404 (lib/guide-rendu.ts : pages éclatées d'abord)
+  const options = { cheminDe: cheminDePage, existe: (id) => ids.includes(id), accueil: ACCUEIL_DU_GUIDE };
+  const eclatees = { ...RENVOIS_DES_PAGES_ECLATEES, ...PAGES_ECLATEES_DU_GUIDE };
+  const lienEcrit = (chemin) => {
+    const eclatee = cheminVersUnePageEclatee(chemin, eclatees);
+    return eclatee !== chemin ? eclatee : Guide.adresseDesAnciensLiens(chemin, options);
+  };
+  assert.equal(lienEcrit('regles/avancees/meteo/'), 'regles/meteo/');
+  assert.equal(lienEcrit('regles/avancees/meteo/#la-pluie'), 'regles/meteo/#la-pluie');
+  assert.equal(lienEcrit('regles/avancees/'), 'regles/le-mode-hyper/');
+  assert.equal(lienEcrit('decouvrir/premiers-sorts/'), 'regles/premiers-sorts/');
+  assert.equal(lienEcrit('decouvrir/creer-son-personnage/#étape-2--choisir-ses-magies'), 'regles/choisir-ses-magies/');
+  // sa page supprimée le 2026-11-06 (migration 0094) : la section « Les boss » de la page des postures
+  assert.equal(lienEcrit('guide/situations-avancees/#les-boss-et-leurs-postures'), 'regles/les-postures/#les-boss');
+  assert.equal(lienEcrit('regles/avancees/resistance-faiblesse-magie/'), 'regles/resistances-et-faiblesses/');
+  assert.equal(lienEcrit('decouvrir/le-jeu-de-role/'), 'decouvrir/#le-jeu-de-rôle-comment-ça-marche-');
+  assert.equal(lienEcrit('regles/avancees/mode-hyper-magie/'), 'regles/avancees/mode-hyper-magie/', 'une page supprimée : telle qu’écrite (la 404)');
+  assert.equal(lienEcrit('regles/avancees/postures/'), 'regles/avancees/postures/', 'une page supprimée (0094) : telle qu’écrite (la 404)');
+  assert.equal(adresseEclatee('regles/creer-son-personnage/', eclatees), null, 'la nouvelle adresse n’est pas éclatée');
+});
+
+// R228 (2026-11-08 : « https://dev.maverick-jdr.com/regles/liste-des-effets-mode-super/ à changer en https://dev.maverick-jdr.com/regles/mode-super/ (et
+// le titre aussi) ») : exception voulue aux adresses figées. L'identifiant reste (lu par les tables), seule l'adresse change (ADRESSES_RENOMMEES_DU_GUIDE,
+// une liste du code, que le site de dev ne modifie pas) ; l'ancienne adresse mène à la nouvelle comme les autres anciennes adresses. Aucun texte lu.
+test('R228 : la page du Mode Super est servie à /regles/mode-super/ (id inchangé) ; /regles/liste-des-effets-mode-super/ y mène, requête et ancre gardées', () => {
+  const id = 'guide/liste-des-effets-mode-super';
+  assert.deepEqual(ADRESSES_RENOMMEES_DU_GUIDE, { [id]: 'mode-super', 'guide/fiche-inventaire-sac-a-dos': 'inventaire-sac-a-dos' }); // la seconde : R272, test plus bas
+  assert.ok(ids.includes(id), `${id} : une page de la base, sous son id`);
+  assert.ok(estDesOnglets(id), `${id} : rangée dans un onglet des Règles`);
+  // la nouvelle adresse : la route des Règles (cheminDePage, par pagesSous), le menu latéral et le fil d'Ariane (entryHref), la recherche (adresseDePage)
+  assert.equal(adresseDuGuide(id), 'regles/mode-super/');
+  assert.equal(cheminDePage(id), 'regles/mode-super/');
+  assert.deepEqual(adresseDePage(id), { chemin: 'regles/mode-super/', ancre: '' });
+  assert.deepEqual(filDAriane(id), [{ titre: ongletDe(id).titre, chemin: ongletDe(id).chemin }]);
+  // l'inverse : la nouvelle adresse sert la page, l'ancienne ne sert plus rien ; aucune autre page à l'une ou l'autre
+  assert.equal(Livres.pageDuGuideALAdresse('regles/mode-super/?q=1#objets'), id);
+  assert.equal(Livres.pageDuGuideALAdresse('regles/liste-des-effets-mode-super/'), null);
+  assert.equal(Livres.pageDuGuideALAdresse('regles/meteo/'), 'guide/meteo', 'les autres pages : le slug de l’id');
+  assert.deepEqual(ids.filter((i) => cheminDePage(i) === 'regles/mode-super/'), [id]);
+  assert.deepEqual(ids.filter((i) => cheminDePage(i) === 'regles/liste-des-effets-mode-super/'), []);
+  assert.ok(!ids.includes('guide/mode-super'));
+  assert.ok(!nomsReserves().includes('mode-super'), 'pas un nom réservé');
+  // « Le Mode Super », page supprimée (0094, PAGES_SUPPRIMEES) : un autre segment d'adresse, toujours la 404
+  assert.ok(PAGES_SUPPRIMEES.includes('guide/le-mode-super'));
+  assert.equal(renvoi('/regles/le-mode-super/'), null);
+  // l'ancienne adresse (page 404 et lien écrit) ; celles d'avant qui menaient à la page y mènent toujours
+  assert.equal(ADRESSES_DU_PLAN_PRECEDENT['regles/liste-des-effets-mode-super/'], id);
+  for (const ancienne of ['/regles/liste-des-effets-mode-super/', '/regles/liste-des-effets-mode-super', '/regles/avancees/liste-des-effets-mode-super/', `/${id}/`]) {
+    assert.equal(renvoi(ancienne, { search: '?q=1', hash: '#objets' }), '/regles/mode-super/?q=1#objets', ancienne);
+  }
+  assert.equal(renvoi('/MaverickCenter/regles/liste-des-effets-mode-super/', { base: '/MaverickCenter/' }), '/MaverickCenter/regles/mode-super/', 'sous un sous-chemin');
+  assert.equal(renvoi('/regles/mode-super/'), null, 'la nouvelle adresse est servie, jamais renvoyée');
+  const options = { cheminDe: cheminDePage, existe: (i) => ids.includes(i), accueil: ACCUEIL_DU_GUIDE };
+  assert.equal(Guide.adresseDesAnciensLiens('regles/liste-des-effets-mode-super/#objets', options), 'regles/mode-super/#objets');
+  assert.equal(Guide.adresseDesAnciensLiens('regles/avancees/liste-des-effets-mode-super/', options), 'regles/mode-super/');
+  assert.equal(Guide.adresseDesAnciensLiens('guide/liste-des-effets-mode-super/?a=1', options), 'regles/mode-super/?a=1');
+  assert.equal(Guide.adresseDesAnciensLiens('regles/mode-super/', options), 'regles/mode-super/', 'la nouvelle adresse, telle qu’écrite');
+  // supprimée sur le site de dev : l'ancienne adresse donne la 404 (R185 (6)), un lien écrit reste tel quel
+  const sansLaPage = ids.filter((i) => i !== id);
+  assert.equal(adresseDeRenvoi('/regles/liste-des-effets-mode-super/', { base: '/', renvois: renvoisDuGuide(sansLaPage), eclatees: {} }), null);
+  assert.equal(Guide.adresseDesAnciensLiens('regles/liste-des-effets-mode-super/', { ...options, existe: (i) => sansLaPage.includes(i) }), 'regles/liste-des-effets-mode-super/');
+  // le plan est contrôlé au build : une page guide/mode-super prendrait l'adresse de la page du Mode Super
+  assert.throws(() => verifierLePlan([...pagesDuGuide, { id: 'guide/mode-super', data: { title: 'x', status: 'draft' } }]),
+    /guide\/mode-super prendrait l'adresse \/regles\/mode-super\/, celle de guide\/liste-des-effets-mode-super/);
+});
+
+test('aujourd’hui (la base courante : pages, titres, intertitres et menus modifiés, créés ou supprimés sur le site de dev) : le plan s’installe et tient ; chaque page a une place ; chaque renvoi figé mène à une page servie, ou à la 404', () => {
+  const courante = ouvrirBase({ sansExemples: false });
+  const pages = pagesDe(courante);
+  const presentes = new Set(pages.map((p) => p.id));
+  const supprimees = historiqueSite(courante);
+  try {
+    installerLePlan(chargerPlanDesRegles(courante));
+    assert.equal(verifierLePlan(pages), pages, 'le plan de la base courante tient');
+    for (const { id } of pages) {
+      const places = [estDansDecouvrir(id), estDuGuideDuMj(id), estDesOnglets(id)].filter(Boolean).length;
+      assert.equal(places, id === FIXTURE ? 0 : 1, `${id} : une place et une seule`);
+    }
+    // le menu latéral de chaque onglet : une entrée par ligne de regles_onglet_entree dont la page est là, dans l'ordre des rangs (à égalité, l'id)
+    for (const onglet of ongletsDesRegles()) {
+      const { pages: entrees, edition } = menuLateralDe(onglet.ouverture, pages);
+      const lignes = courante.prepare('SELECT id, rang, page_id FROM regles_onglet_entree WHERE onglet_id = ? ORDER BY rang, id').all(onglet.id)
+        .filter((l) => !l.page_id || presentes.has(l.page_id));
+      assert.deepEqual(edition.entrees, lignes.map((l) => ({ id: l.id, rang: l.rang })), onglet.id);
+      assert.deepEqual(entrees.map((e) => e.id ?? null), lignes.map((l) => l.page_id ?? null), onglet.id);
+    }
+    // les renvois figés (page 404 et liens écrits), là où la page visée est servie : sa page, quel que soit le texte qu'elle porte aujourd'hui ;
+    // une page supprimée sur le site : la 404 (R185 (6)). L'intertitre visé se contrôle sur l'état d'import (tests ci-dessus).
+    const renvois = renvoisDuGuide([...presentes]);
+    const eclatees = { ...RENVOIS_DES_PAGES_ECLATEES, ...Livres.pagesEclateesDuGuide((id) => presentes.has(id)) };
+    const vers = (adresse, hash = '') => adresseDeRenvoi(adresse, { base: '/', renvois, eclatees, hash });
+    const servie = (adresse) => {
+      const id = Livres.pageDuGuideALAdresse(adresse.replace(/^\//, ''));
+      return id === null || presentes.has(id);
+    };
+    for (const [ancienne, r] of Object.entries(PAGES_ECLATEES_DU_GUIDE)) {
+      const page = vers(`/${ancienne}`);
+      assert.ok(page === null ? !presentes.has(Livres.pageDuGuideALAdresse(r.defaut)) : servie(page), `/${ancienne} → ${page}`);
+      for (const ancre of Object.keys(r.anciennesAncres)) {
+        const cible = vers(`/${ancienne}`, `#${ancre}`);
+        assert.ok(cible === null || servie(cible), `/${ancienne}#${ancre} → ${cible}`);
+      }
+    }
+    for (const [adresse, id] of Object.entries(ADRESSES_DU_PLAN_PRECEDENT)) {
+      const cible = vers(`/${adresse}`);
+      if (presentes.has(id)) assert.equal(cible, `/${Object.hasOwn(PAGES_ABSORBEES, id) ? adresseDeLaPageAbsorbee(id, cheminDePage) : cheminDePage(id)}`, adresse);
+      else if (supprimees.supprimee('page', { id })) assert.equal(cible, null, `${adresse} : la 404`);
+      else assert.ok(cible === null || servie(cible), `${adresse} → ${cible}`);
+    }
+    for (const [ancienne, nouvelle] of Object.entries(PAGES_ABSORBEES)) {
+      const cible = vers(`/${ancienne}/`); // /guide/<slug>/
+      assert.ok(presentes.has(nouvelle) ? cible?.startsWith(`/${cheminDePage(nouvelle)}`) : cible === null || servie(cible), `${ancienne} → ${cible}`);
+    }
+  } finally {
+    installer();
+  }
+});
+
+test('les anciennes adresses du guide d’avant (/guide/<slug>/, Liens, Rejoindre une partie, Lexique) : inchangées', () => {
   const renvois = renvoisDuGuide(ids);
   assert.equal(renvois['guide/'], 'decouvrir/');
   assert.deepEqual(Object.values(renvois).filter((c) => c.startsWith('guide/')), [], 'aucune cible sous guide/');
@@ -258,50 +809,35 @@ test('les anciennes adresses mènent à la nouvelle adresse de chaque page (page
     assert.equal(nouvelleAdresse(`/MaverickCenter/${id}/`, '/MaverickCenter/', renvois), `/MaverickCenter${nouvelle}`, `${id} sous un sous-chemin`);
     assert.equal(nouvelleAdresse(`/wiki/${id}/`, '/', renvois), nouvelle, `${id} : depuis /wiki/, un seul saut`);
   }
-  // une page fusionnée : son adresse d'avant l'éclatement (/guide/<slug>/) ET celle du plan précédent (/decouvrir/<slug>/) mènent à la page qui l'absorbe,
-  // à l'ancre où se lit son contenu ; l'ancre de l'ancienne adresse l'emporte
-  for (const [ancienne, nouvelle] of Object.entries(PAGES_ABSORBEES)) {
-    const slug = ancienne.slice('guide/'.length);
-    for (const adresse of [`/guide/${slug}/`, `/decouvrir/${slug}/`]) {
-      assert.equal(nouvelleAdresse(adresse, '/', renvois), `/${cheminDePage(nouvelle)}#${ANCRES_DES_PAGES_ABSORBEES[ancienne]}`, adresse);
-      assert.equal(adresseComplete(nouvelleAdresse(adresse, '/', renvois), '', ''), `/${cheminDePage(nouvelle)}#${ANCRES_DES_PAGES_ABSORBEES[ancienne]}`, `${adresse} : sans ancre`);
-    }
-  }
-  assert.equal(adresseComplete(nouvelleAdresse('/decouvrir/premiers-sorts/', '/', renvois), '?a=1', ''), '/decouvrir/creer-son-personnage/?a=1#étape-5--choisir-ses-premiers-sorts');
-  assert.equal(adresseComplete(nouvelleAdresse('/decouvrir/le-jeu-de-role/', '/', renvois), '?a=1', '#lire-les-des'), '/decouvrir/?a=1#lire-les-des');
-  const cible = nouvelleAdresse('/guide/choisir-sa-classe/', '/', renvois);
-  assert.equal(adresseComplete(cible, '?a=1', '#une-ou-deux-classes--le-biclassage'), '/decouvrir/creer-son-personnage/?a=1#une-ou-deux-classes--le-biclassage');
-  // une page déplacée depuis le plan précédent : la page du MJ, qui était la dernière de Découvrir
-  assert.deepEqual(ADRESSES_DU_PLAN_PRECEDENT, { 'decouvrir/campagne-ou-scenario-one-shot/': 'guide/campagne-ou-scenario-one-shot' });
-  assert.equal(nouvelleAdresse('/decouvrir/campagne-ou-scenario-one-shot/', '/', renvois), '/mj/campagne-ou-scenario-one-shot/');
-  // la page Liens, supprimée le 2026-10-22, menait à Bienvenue ; ses blocs sont sur l'accueil depuis le 2026-10-23 et son ancienne adresse n'est plus
-  // renvoyée nulle part (réponse du propriétaire du 2026-10-23 : « supprimer ce lien ») : la page 404 la dit introuvable
-  for (const adresse of ['/decouvrir/liens/', '/decouvrir/liens', '/guide/liens/']) {
+  // un renvoi ne masque jamais une adresse servie (ni une page, ni un onglet, ni /regles/)
+  for (const id of ids) assert.equal(Object.hasOwn(renvois, cheminDePage(id)), false, `${cheminDePage(id)} : servie, pas renvoyée`);
+  for (const chemin of ['regles/', ...ongletsDesRegles().map((o) => o.chemin), ARTISANAT.chemin]) assert.equal(Object.hasOwn(renvois, chemin), false, chemin);
+  for (const adresse of ['/decouvrir/liens/', '/decouvrir/liens', '/guide/liens/', '/decouvrir/rejoindre-une-partie/', '/guide/rejoindre-une-partie/']) {
     assert.equal(nouvelleAdresse(adresse, '/', renvois), null, `${adresse} : plus de renvoi`);
   }
-  assert.equal(nouvelleAdresse('/MaverickCenter/decouvrir/liens/', '/MaverickCenter/', renvois), null, 'sous un sous-chemin non plus');
-  assert.ok(Object.keys(renvois).every((k) => !k.includes('liens')), 'aucun renvoi de la page Liens');
-  // un renvoi ne masque jamais une adresse servie
-  for (const id of ids) assert.equal(Object.hasOwn(renvois, cheminDePage(id)), false, `${cheminDePage(id)} : servie, pas renvoyée`);
-  assert.equal(Object.hasOwn(renvois, LES_BASES.chemin), false, '/regles/ : le sommaire des Bases');
+  assert.ok(Object.keys(renvois).every((k) => !k.includes('liens') && !k.includes('rejoindre-une-partie')));
+  assert.deepEqual(PAGES_RETIREES, { 'guide/lexique': { vers: 'regles/glossaire/', adresses: ['guide/lexique/', 'regles/lexique/'] } });
+  for (const adresse of ['/regles/lexique/', '/regles/lexique', '/guide/lexique/', '/wiki/guide/lexique/']) assert.equal(nouvelleAdresse(adresse, '/', renvois), '/regles/glossaire/', adresse);
+  assert.equal(adresseComplete(nouvelleAdresse('/regles/lexique/', '/', renvois), '?q=AM', '#acquis'), '/regles/glossaire/?q=AM#acquis');
+  assert.equal(Object.hasOwn(renvoisDuGuide([...ids, 'guide/lexique']), 'regles/lexique/'), false, 'une page retirée revenue : servie, pas renvoyée');
   assert.equal(nouvelleAdresse('/guide/', '/', renvois), '/decouvrir/');
-  assert.equal(nouvelleAdresse('/guide', '/', renvois), '/decouvrir/');
   assert.equal(nouvelleAdresse('/guide/statistiques-resistance-faiblesse/', '/', renvois), '/magies/', 'une page retirée garde son renvoi (PAGES_RENOMMEES)');
   assert.equal(nouvelleAdresse('/guide/inconnue/', '/', renvois), null, 'une page qui n’a jamais existé reste introuvable');
   assert.equal(nouvelleAdresse('/guide/les-postures/', '/'), null, 'sans les renvois du build : rien (nav.mjs ne connaît pas le plan)');
-  assert.equal(adresseComplete(nouvelleAdresse('/guide/', '/', renvois), '', '#bienvenue'), '/decouvrir/#bienvenue');
-  // un renvoi ne mène jamais hors du site
-  assert.equal(nouvelleAdresse('/guide//evil.example/', '/', renvois), null);
+  assert.equal(nouvelleAdresse('/guide//evil.example/', '/', renvois), null, 'jamais hors du site');
 });
 
-test('nav.mjs et livres.mjs n’importent rien (le script de la page 404 importe nav.mjs ; livres.mjs entre dans la chaîne de l’édition)', () => {
+test('nav.mjs et livres.mjs n’importent rien (le script de la page 404 importe nav.mjs ; livres.mjs entre dans la chaîne de l’édition) ; la page 404 reçoit les renvois et les pages éclatées', () => {
   for (const f of ['../src/lib/nav.mjs', '../src/lib/livres.mjs']) {
     const source = readFileSync(new URL(f, import.meta.url), 'utf8');
     assert.doesNotMatch(source, /^\s*(?:import|export\s+[^;]*\sfrom)\s/m, f);
   }
-  // la page 404 écrit les renvois au build et les passe à nouvelleAdresse
   const page404 = readFileSync(new URL('../src/pages/404.astro', import.meta.url), 'utf8');
   assert.match(page404, /data-renvois=\{JSON\.stringify\(renvois\)\}/);
-  assert.match(page404, /nouvelleAdresse\(location\.pathname, base, renvois\)/);
+  assert.match(page404, /const eclatees = \{ \.\.\.RENVOIS_DES_PAGES_ECLATEES, \.\.\.pagesEclateesDuGuide\(\(id: string\) => charges\.has\(id\)\) \};/);
+  assert.match(page404, /data-eclatees=\{JSON\.stringify\(eclatees\)\}/);
+  assert.match(page404, /adresseDeRenvoi\(location\.pathname, \{\s*base, renvois: lire\(introuvable\.dataset\.renvois\), eclatees: lire\(introuvable\.dataset\.eclatees\)/);
   assert.deepEqual([...page404.slice(page404.indexOf('<script>')).matchAll(/^\s*import .* from '([^']+)';$/gm)].map((m) => m[1]), ['../lib/nav.mjs']);
+  // le build installe le plan de la base là où les pages se chargent (lib/wiki.ts), avant toute route
+  assert.match(readFileSync(new URL('../src/lib/wiki.ts', import.meta.url), 'utf8'), /^installerLePlan\(chargerPlanDesRegles\(ouvrirBase\(\)\)\);$/m);
 });

@@ -394,9 +394,13 @@ Gardés tels quels :
 
 #### guide/alterations-d-etats-et-mode-hyper
 
+La page est supprimée (migration `0096-retrait-alterations-d-etats-et-mode-hyper`, demande du propriétaire du 2026-11-06) : les numéros de ligne sont ceux de l'ancienne page, et la phrase n'est plus en base.
+
 - **L7** — « les explications du monde hyper » — « monde » est probablement une coquille pour « mode » (titre de la section : Mode Hyper), mais c'est un autre mot existant. → les explications du mode hyper
 
 #### guide/attaque-et-defense
+
+La page est réécrite (migration `0112-r231-attaquer-et-se-defendre`, décision R231) : le numéro de ligne est celui de l'ancienne page. La phrase est passée dans `guide/attaquer-et-se-defendre`, réécrite par game-design (« la « tête » correspondait à sa **queue**, et donc le malus et l’effet s’y appliquaient ») : l'imparfait reste à trancher.
 
 - **L46** — « la « tête » correspondait à sa **queue**, et donc le malus/effet s’y appliquaient » — Exemple hypothétique à l'imparfait (conditionnel attendu) et verbe pluriel pour « le malus/effet » : choix de lecture. → la « tête » correspondrait à sa **queue**, et donc le malus/effet s’y appliquerait
 
@@ -423,6 +427,8 @@ Gardés tels quels :
 - **L25** — « jamais 2 fois le même » — « le même » peut renvoyer à « IC » (masculin) ou à « actions bonus » (« la même ») : choix de lecture. → jamais 2 fois la même
 
 #### guide/fiche-accessoires-et-ceinture
+
+Texte passé dans `guide/fiche-inventaire-sac-a-dos` (migration 0124, R272) ; les numéros de ligne sont ceux de la page retirée.
 
 - **L9** — « permet une - utilisation plus rapide » — Tiret parasite au milieu de la phrase (reste d'import) : le retirer touche un signe. → permet une utilisation plus rapide
 - **L10** — « allumer des autres objets » — « des autres » devrait être « d'autres » : changement de mot. → allumer d'autres objets
@@ -498,6 +504,8 @@ Gardés tels quels :
 - **L200** — « Résistance Magique annulées » — Accord incohérent : singulier (« Résistance Magique annulée ») ou pluriel (« Résistances Magiques annulées ») ; deux lectures possibles. → Résistance Magique annulée
 
 #### guide/liste-des-effets-mode-hyper
+
+La page est supprimée (R187, migration `0095-retrait-liste-des-effets-mode-hyper`) : les numéros de ligne sont ceux de l'ancienne page. Les quatre phrases restent en base, dans `mode_hyper_effet` (lecture `classeur_modes` : Elfe noir L80, Farfadet L83, Nain L85, Rokh L95). Celles du Farfadet (L83) et du Rokh (L95) sont aussi dans la lecture `onglet_race`, et le tableau de `guide/le-mode-hyper` les affiche.
 
 - **L80** — « pendant tout le monde hyper » — « monde » semble une faute de frappe pour « mode » (cf. L97 « pendant tout le mode hyper »), mais la correction remplace un mot existant par un autre. → pendant tout le mode hyper
 - **L83** — « qui correspond à votre niveau puissance magique » — Antécédent de « qui » incertain (sorts ou magies) ; il manque aussi « de » devant « puissance » (ajout de mot). → qui correspondent à votre niveau de puissance magique
@@ -1245,4 +1253,32 @@ Chaque entrée : endroit — passage — pourquoi on n'a pas corrigé — correc
 - **magie** (`explication`) — « Surtension corporelle (Vulnérabilité contre les dégâts physiques, ne peut mettre plus de 5 Santé lors de la répartition des points lors du passage de niveau global. » — La parenthèse ouverte n'est jamais fermée. L'emplacement de « ) » est incertain. → Soit « physiques) , ne peut mettre… », soit « …niveau global.) » ; à trancher selon la source.
 - **mode hyper (forme_complete)** (`effet`) — « Résistance à la magie et dégâts physiques neutre. » — « neutre » peut s'accorder avec « Résistance » (singulier) ou avec « dégâts physiques » (pluriel : « neutres »). Sens incertain. → Laisser, ou « neutres » si l'adjectif porte sur les dégâts physiques.
 - **page** (`titre`) — « Potentiel illimité » — Casse différente du nom de la magie dans les descriptions (« Potentiel Illimité », forme majoritaire). Peut être voulu pour un titre de page. → Potentiel Illimité
+
+## Mise à jour de Décembre : classes (migration 0119, 2026-11-13)
+
+Classeur « Nouveauté mise à jour Décembre », onglets 23 « Porte-étendard » et 24 « Boxeur » (R238). Les coquilles sûres sont corrigées par la migration (R10, registre `tools/sheets/corrections.json`) ; ce qui suit était laissé tel qu'écrit. **Tout est tranché (R255 (7), 2026-11-13).**
+
+### capacites/boxeur-* (noms)
+
+- **Spécialité Percuteur** — « Bouragé » (Z29), « Bouquilibre » (AG29), « Boupact » (Z36), « Bousée » (AG36), « Boucassant » (Z43), « Bouvasteur » (AG43) — Série de noms en « Bou… ». Décidé (R255 (7)) : jeux de mots voulus, tels quels.
+- **« Posture inébran »** (C43) — Décidé (R255 (7)) : « Posture inébranlable » (identifiant inchangé).
+- **« Endurouille »** (J36) — Décidé (R255 (7)) : voulu, tel quel.
+
+### capacites/boxeur-* (phrases)
+
+- **X37** — « divise par 2 donné par l'armure » — Décidé (R255 (7)) : « divise par 2 l'AP donné par l'armure ».
+- **Élisions** — « de AP+AM » ; « altérations d'états » — Décidé (R255 (7)) : « d'AP+AM » et « altérations d'état », dans les dons du Boxeur seulement.
+
+## Races Fongoïde et Gémidien (mise à jour de Décembre, R239)
+
+Relevé de `worldbuilding` (2026-11-12). Les textes des onglets 21 et 22 du classeur de Décembre sont copiés tels quels, sauf les trois graphies ci-dessous, décidées le 2026-11-13 (R266).
+
+- **Super Gemme(s)** — Quatre graphies en circulation : « Super Gemmes » et « supers-gemmes » (onglets 21 et 22), « Super Gemme » (titre du Codex, page `lore/super-gemme`), « super gemme » (guide). Laquelle retenir ? → Décidé (R266 (1)) : « Super Gemme ». Corrigé partout, Codex et onglets 21 et 22 compris (R266 (4)).
+- **Mort Fertile** — « Mort Fertile » (onglet 21, Codex) et « Mort fertile » (une occurrence du Codex, source des lieux, ligne 6605). Laquelle retenir ? → Décidé (R266 (2)) : « Mort Fertile ». L'occurrence du Codex est corrigée aussi (R266 (4)).
+- **Dieu de la Terre** — « Dieu de la Terre » (onglet 21, A4) et « dieu de la Terre ». Laquelle retenir ? → Décidé (R266 (3)) : « Dieu de la Terre ». Corrigé partout, Codex compris (R266 (4)).
+- **Tempe/Espace** (onglet 21, A58, tableau des magies innées du Fongoïde) — Coquille pour la magie « Espace/Temps ». Notée sans correction : la case ne sert qu'à la liste des magies innées.
+
+## Mise à jour de Décembre : suites (migration 0121, 2026-11-13)
+
+- `0121-maj-decembre-suites` : R255 (7) (« Posture inébranlable », id inchangé, clés recalculées ; « l'AP », « d'AP+AM », « altérations d'état » dans les dons du Boxeur), R10 (« (armes), » d'Immatériel, 5 cellules) et R266 (« Dieu de la Terre », « Super Gemme(s) », « Mort Fertile » : 31 occurrences dans 19 cellules (24 entrées du registre), Codex, onglets 21 et 22, bestiaire et Mode Super compris, hors `historique_modification` et `note_version_ligne`) ; ids, clés et adresses inchangés ; registre `data/migrations/0121-maj-decembre-suites.json`, liste `corrections`.
 

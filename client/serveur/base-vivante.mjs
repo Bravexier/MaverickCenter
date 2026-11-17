@@ -28,10 +28,12 @@ import {
   accessoiresGardes, acquisRetires, armeDAvant, armureDesArmures, COLONNES_DE_L_ARMURE, COLONNES_RETIREES, entrainementEnLignes, maitrisesDAvant, matiereDuBouclier,
   retraitsDeLArmure, retraitsDuBouclier, TABLES_FICHES, TABLES_RETIREES,
 } from '../src/lib/fiche-format.mjs';
-import { TABLES_DU_JOURNAL } from '../src/lib/tables-de-la-base.mjs';
+import { CLASSES_DE_TABLES, TABLES_DU_JOURNAL, classeDeLaTable } from '../src/lib/tables-de-la-base.mjs';
 import { rejouerLeJournal } from './edition.mjs';
 import { instant as ecrireInstant } from './instant.mjs';
 import { sha256 } from './partage.mjs';
+import { empreinteLogique } from './empreintes.mjs';
+import { noterLesMigrationsRecues } from './structure-sur-place.mjs';
 import { noterLesRetraits, nouveauxRetraitsDeFiches, retirerLesArmuresHorsRegle, retirerLesManquants } from './fiches-retraits.mjs';
 import { poidsPortableDeLaBase } from '../src/lib/poids-portable-db.mjs';
 
@@ -251,7 +253,9 @@ function ajouterLesRetraits(db, retraits, parFiche) {
  * (db, { retraits }) lue dans `ancienne`, faite après la copie des fiches. Décision R104 (migration 0062) : `personnage.entrainement`, le texte libre de
  * R71, devient une ligne de texte de l'entraînement (entrainementEnLignes) ; l'acquis saisi d'une compétence (`personnage_competence.acquis`) se perd,
  * noté, daté, dans la fiche (acquisRetires). Décision R118 (migration 0066) : les NM du MJ d'un sort (`personnage_sort.nm_cadeau`) deviennent ceux de
- * la fiche, `personnage.nm_mj`, leur somme (comme la migration et nmDuMjDesSorts) ; le NM de chaque sort, recopié, ne change pas. Décisions R152 et R153
+ * la fiche, `personnage.nm_mj`, leur somme (comme la migration et nmDuMjDesSorts) ; le NM de chaque sort, recopié, ne change pas. Décision R169
+ * (migration 0082) : le livre d'un sort (`personnage_sort.nm_livre` = 1) devient une ligne de personnage_livre_sort, rangée dans l'ordre de la liste
+ * (comme la migration et livresDesSorts) ; le NM du sort ne change pas. Décisions R152 et R153
  * (migration 0076) : l'arme choisie d'un choix d'acquis (`personnage_acquis_choix.arme_famille_id`) se perd, notée sur la ligne des anciennes maîtrises
  * (noterLesMaitrisesDAvant, une seule fois avec la conversion de personnage_maitrise_arme) ; la compétence du choix reste. Décision R167 (migration
  * 0081) : l'amélioration de l'élément d'une arme (`personnage_arme.amelioration_elementaire_id`) devient le niveau de l'arme élémentaire, ou part, notée
@@ -284,6 +288,14 @@ export const COLONNES_CONVERTIES = Object.freeze({
       for (const l of db.prepare('SELECT personnage_id, SUM(nm_cadeau) AS nm FROM ancienne.personnage_sort WHERE nm_cadeau > 0 GROUP BY personnage_id').all()) {
         ecrire.run(l.nm, l.personnage_id);
       }
+    },
+    // décision R169 (migration 0082) : un livre par sort à nm_livre = 1, rangé dans l'ordre de la liste (comme la migration et livresDesSorts)
+    nm_livre: (db) => {
+      db.exec(`INSERT INTO main.personnage_livre_sort (personnage_id, sort_id, rang)
+        SELECT ps.personnage_id, ps.sort_id,
+               (SELECT count(*) FROM ancienne.personnage_sort q WHERE q.personnage_id = ps.personnage_id AND q.nm_livre = 1 AND q.rang <= ps.rang)
+        FROM ancienne.personnage_sort ps
+        WHERE ps.nm_livre = 1`);
     },
   }),
   personnage_acquis_choix: Object.freeze({
@@ -339,6 +351,18 @@ function convertirLesTablesRetirees(db, retraits) {
   return problemes;
 }
 
+/**
+ * La version de la LOGIQUE de reconstruction : à augmenter de 1 chaque fois que ce que `preparerBaseVivante` fait d'une base d'avant change, sans que le
+ * fichier des règles change — une conversion (CONVERSIONS, COLONNES_CONVERTIES), un retrait (R42 : serveur/fiches-retraits.mjs ; R165 : l'armure), une ligne
+ * écartée (LIGNES_ECARTEES), une table ou une colonne retirée (TABLES_RETIREES, COLONNES_RETIREES), le rejeu du journal, un contrôle des fiches. Le service ne
+ * refait la base que si l'empreinte logique des règles (serveur/empreintes.mjs#empreinteLogique) ou cette version a changé depuis la dernière reconstruction
+ * (vivante.json : `logique`, `reconstruction`) : sans l'augmenter, un changement de cette logique ne s'appliquerait qu'à la prochaine livraison des règles.
+ * Une base d'avant ce réglage (vivante.json sans `reconstruction`) garde l'ancienne règle : refaite quand le fichier des règles change.
+ */
+export const VERSION_DE_LA_RECONSTRUCTION = 1;
+// (Pas augmentée pour `migration_recue` : la production porte les fiches des joueurs, on ne refait pas la base pour noter une table. Elle se remplit à la prochaine
+// reconstruction naturelle, quand les règles ou le contenu changent ; d'ici là, une table vide veut dire « migrations <= user_version présumées reçues ».)
+
 export const FICHIER_BASE = 'vivante.db';
 /** À côté de la base : l'empreinte des règles dont elle est faite (refaite quand elle diffère de celle de la base publiée). */
 export const FICHIER_ETAT = 'vivante.json';
@@ -370,8 +394,13 @@ export function signature(chemin) {
 }
 
 /**
- * Contenu de vivante.json ({ regles, schema, refaite_le, retraits? }), null s'il est absent ou illisible. `retraits` : { le, fiches } de la dernière
+ * Contenu de vivante.json ({ regles, logique?, reconstruction?, version?, schema, refaite_le, retraits? }), null s'il est absent ou illisible. `regles` :
+ * l'empreinte SHA-256 du fichier des règles dont la base est faite ; `logique` : leur empreinte logique (serveur/empreintes.mjs#empreinteLogique) ;
+ * `reconstruction` : la VERSION_DE_LA_RECONSTRUCTION de la dernière reconstruction ; `version` : celle du service qui fait tourner la base (« inconnue » si on ne la
+ * sait pas) — les trois absentes d'un état écrit avant ce réglage. `retraits` : { le, fiches } de la dernière
  * reconstruction qui a retiré quelque chose des fiches (R42), gardé par les suivantes qui ne retirent rien ; absent s'il n'y en a jamais eu.
+ * `tables_regles` (site de dev seulement, option `ombre` de `preparerBaseVivante`) : { table de contenu → 16 premiers caractères de son empreinte } dans les
+ * règles dont la base est faite, avant le rejeu du journal : ce que l'essai dans l'ombre compare à celles de la livraison suivante (serveur/essai-dans-l-ombre.mjs).
  */
 export function lireEtat(dossier) {
   try {
@@ -381,7 +410,8 @@ export function lireEtat(dossier) {
   }
 }
 
-function ecrireEtat(dossier, etat) {
+/** Écrit vivante.json d'un coup (fichier provisoire, puis renommé). Exportée pour la base source (serveur/base-source.mjs), qui n'est jamais refaite. */
+export function ecrireEtat(dossier, etat) {
   const provisoire = join(dossier, `.${FICHIER_ETAT}.${process.pid}`);
   writeFileSync(provisoire, `${JSON.stringify(etat, null, 2)}\n`);
   renameSync(provisoire, join(dossier, FICHIER_ETAT));
@@ -442,7 +472,7 @@ function verifierRegles(db) {
  * @param {string} instant ISO 8601 UTC à la seconde
  * @param {(type: string, o: { duree_ms?: number, detail?: object }) => void} [evenement] métriques : durée du rejeu et des retraits
  */
-function transferer(db, ancienne, instant, evenement = null, poidsPortable = undefined) {
+function transferer(db, ancienne, instant, evenement = null, poidsPortable = undefined, garderLeSite = true) {
   let rejeu = null;
   let fiches = [];
   const problemes = [];
@@ -487,7 +517,8 @@ function transferer(db, ancienne, instant, evenement = null, poidsPortable = und
       // le corps des pages typées que le journal touche est refait depuis les tables rejouées (serveur/edition.mjs#rejouerLeJournal)
       if (!problemes.length) {
         const t0 = performance.now();
-        rejeu = rejouerLeJournal(db, {}, { horsControleParLot: TABLES_FICHES });
+        // la valeur du site prime : une fusion ambiguë avec les nouvelles règles la garde, son lot à résoudre (serveur/edition-journal.mjs#rejouer)
+        rejeu = rejouerLeJournal(db, {}, { horsControleParLot: TABLES_FICHES, garderLeSite });
         evenement?.('rejeu', { duree_ms: performance.now() - t0, detail: { lots: rejeu?.lots ?? 0, appliquees: rejeu?.appliquees ?? 0, integrees: rejeu?.integrees ?? 0, conflits: rejeu?.conflits ?? 0 } });
       }
       // le brouillon de la note de version d'un lot que les nouvelles règles ont livré est vidé (son texte est dans note_version)
@@ -502,9 +533,18 @@ function transferer(db, ancienne, instant, evenement = null, poidsPortable = und
         // pour toutes les fiches, lib/poids-portable-db.mjs) sont retirées, à chaque reconstruction (idempotent)
         const portable = poidsPortable === undefined ? poidsPortableDeLaBase(db) : poidsPortable;
         retirerLesArmuresHorsRegle(db, retraits, { poidsPortable: portable });
+        // par nature (ORDRE_DES_NATURES) : les fiches touchées et les éléments retirés, des comptes seulement (la répétition de la mise à jour de la production les dit)
+        const natures = {};
+        for (const { retraits: liste } of retraits.values()) {
+          for (const nature of new Set(liste.map((d) => d.nature))) {
+            natures[nature] ??= { fiches: 0, elements: 0 };
+            natures[nature].fiches += 1;
+            natures[nature].elements += liste.filter((d) => d.nature === nature).length;
+          }
+        }
         fiches = noterLesRetraits(db, retraits, instant);
         // un compte, jamais les noms des fiches
-        evenement?.('retraits_fiches', { duree_ms: performance.now() - t0, detail: { fiches: fiches.length } });
+        evenement?.('retraits_fiches', { duree_ms: performance.now() - t0, detail: { fiches: fiches.length, natures } });
       }
       if (!problemes.length) {
         for (const t of TABLES_VIVANTES) {
@@ -549,22 +589,37 @@ export function viderBrouillonLivre(db) {
   if (b?.lot && db.prepare('SELECT 1 FROM note_version WHERE lot = ?').get(b.lot)) db.exec('DELETE FROM note_version_brouillon');
 }
 
+/** Les empreintes des tables de CONTENU d'une base de règles (lib/tables-de-la-base.mjs), tronquées à 16 caractères : { table → empreinte } (vivante.json, `tables_regles`). */
+function empreintesDesTablesDeContenu(parTable) {
+  const sortie = {};
+  for (const nom of Object.keys(parTable).sort()) if (classeDeLaTable(nom) === CLASSES_DE_TABLES.CONTENU) sortie[nom] = String(parTable[nom]).slice(0, 16);
+  return sortie;
+}
+
 /** Nom d'archive horodaté (l'ordre alphabétique est l'ordre chronologique). */
 const horodatage = (instant) => instant.toISOString().replace(/[:.]/g, '-');
 
-/** Archive la base vivante si elle a des lignes de la section 13 ; garde les ARCHIVES_GARDEES dernières. */
-function archiver(dossier, chemin, instant) {
+/** Le nom d'archive d'une version : sans caractère hors [A-Za-z0-9._+-] (elle entre dans un nom de fichier), « inconnue » quand on ne la sait pas. */
+const versionDansUnNom = (version) => String(version ?? '').replace(/[^A-Za-z0-9._+-]/g, '_').slice(0, 40) || 'inconnue';
+
+/**
+ * Archive la base vivante si elle a des lignes de la section 13 ; garde les ARCHIVES_GARDEES dernières. L'archive porte, après son horodatage (qui reste en
+ * tête : l'ordre alphabétique est l'ordre chronologique), la version du service qui faisait tourner la base : `vivante-<horodatage>-v<version>.db`
+ * (`vivante-<horodatage>-inconnue.db` si on ne la sait pas) ; les archives d'avant (`vivante-<horodatage>.db`) restent comptées et purgées avec elles.
+ */
+function archiver(dossier, chemin, instant, version = null) {
   const db = new DatabaseSync(chemin, { readOnly: true });
   let lignes = 0;
   try {
-    for (const t of TABLES_VIVANTES) if (colonnes(db, 'main', t).length) lignes += compter(db, 'main', t);
+    for (const t of TABLES_VIVANTES) if (t !== 'migration_recue' && colonnes(db, 'main', t).length) lignes += compter(db, 'main', t); // les migrations reçues ne sont pas des données à garder
   } finally {
     db.close();
   }
   if (!lignes) return null;
   const archives = join(dossier, DOSSIER_ARCHIVES);
   mkdirSync(archives, { recursive: true });
-  const fichier = join(archives, `vivante-${horodatage(instant)}.db`);
+  const connue = version !== null && version !== undefined && String(version) !== '' && String(version) !== 'inconnue';
+  const fichier = join(archives, `vivante-${horodatage(instant)}-${connue ? 'v' : ''}${versionDansUnNom(connue ? version : null)}.db`);
   copyFileSync(chemin, fichier);
   const toutes = readdirSync(archives).filter((f) => /^vivante-.+\.db$/.test(f)).sort();
   for (const f of toutes.slice(0, -ARCHIVES_GARDEES)) rmSync(join(archives, f), { force: true });
@@ -573,20 +628,46 @@ function archiver(dossier, chemin, instant) {
 
 /**
  * Prépare la base vivante du dossier `dossier` pour la base des règles `regles` (celle que publie le site) : la crée au premier lancement, la
- * refait quand les règles ont changé, ne touche à rien sinon. Rend { chemin, refaite, archive, empreinte, schema, rejeu, fiches } (rejeu : bilan des
+ * refait quand ce que les règles apportent a changé (leur empreinte LOGIQUE : schéma et lignes, serveur/empreintes.mjs#empreinteLogique — un fichier aux octets
+ * différents mais au même contenu ne la fait pas refaire ; ni la version de reconstruction, VERSION_DE_LA_RECONSTRUCTION, qui la fait refaire quand elle change),
+ * ne touche à rien sinon. `journal` (facultatif) reçoit une note quand l'état de la base ne peut pas être écrit sans que cela change rien (disque plein). `calculerLogique` (facultatif) remplace le calcul de l'empreinte logique (tests : un calcul en échec). `version` : celle du service qui l'appelle (vivante.json la garde ; l'archive d'avant une reconstruction porte celle de la base qu'elle garde). Rend { chemin, refaite, archive, empreinte, schema, rejeu, fiches } (rejeu : bilan des
  * modifications du journal rejouées, null sans base précédente ; fiches : celles dont un élément disparu a été retiré, R42, [] sinon). En cas d'échec,
  * lève une erreur (ErreurBaseVivante quand les fiches ne passent pas) et la base en place reste intacte. `evenement` (facultatif) : les métriques du
  * service (durées du rejeu, des retraits des fiches et de l'archivage). Une armure trop lourde pour le poids portable d'une fiche (décision R165 (6),
  * (7) : serveur/fiches-retraits.mjs#retirerLesArmuresHorsRegle, étape 4) est retirée et notée : le calcul du moteur de la fiche, lu dans la base
  * refaite (lib/poids-portable-db.mjs#poidsPortableDeLaBase). `poidsPortable` (facultatif, (db, id) => 0 à 3 ou null) remplace ce calcul (tests) ;
- * null : pas d'étape du poids.
+ * null : pas d'étape du poids. `garderLeSite` (vrai par défaut) : au rejeu, une fusion ambiguë avec les nouvelles règles garde la valeur du site de dev
+ * (son lot à résoudre sur la page Mise à jour) et les lots en conflit non résolus sont réévalués (serveur/edition-journal.mjs#rejouer, `garder`) ; faux
+ * est réservé aux tests qui refont une base vivante d'avant cette règle (lots annulés en entier au moindre conflit).
+ * La base refaite note les migrations qu'elle porte (serveur/structure-sur-place.mjs#noterLesMigrationsRecues : une ligne « reconstruction » par migration livrée
+ * de numéro <= sa version, jamais réécrite ; les lignes d'une version plus récente que la sienne sont retirées) : `migrations` (facultatif) est le dossier des
+ * migrations livrées (undefined : celui de la livraison ; null : aucune), `version` la version du site, notée si elle est de la forme X.Y.Z (sinon NULL) ; le
+ * résultat porte `migrations` ({ notees, retirees, ecarts, livrees, erreur? } : une note qui échoue est consignée au journal, sans arrêter la reconstruction), null quand la base n'a pas été refaite.
+ * `ombre` (site de dev seulement : serveur/essai-dans-l-ombre.mjs#creerOmbre) : l'essai dans l'ombre. Sur une reconstruction, la base d'avant existant, `ombre.preparer`
+ * reçoit { ancienne, neuve, etat, version, schema, reglesApres } JUSTE AVANT que la base refaite remplace l'ancienne (tout est synchrone : aucune écriture ne passe entre
+ * les deux) et garde les deux copies s'il s'agit d'une installation ; son compte rendu est rendu dans `ombre` du résultat, une erreur n'arrête jamais la reconstruction.
+ * Avec `ombre`, vivante.json garde aussi `tables_regles` (l'empreinte de chaque table de contenu des règles dont la base est faite : le point de comparaison de la livraison suivante).
  */
-export function preparerBaseVivante({ regles, dossier, instant = new Date(), evenement = null, poidsPortable = undefined }) {
+export function preparerBaseVivante({ regles, dossier, instant = new Date(), evenement = null, poidsPortable = undefined, garderLeSite = true, version = null, calculerLogique = empreinteLogique, journal = null, migrations = undefined, ombre = null }) {
   if (!existsSync(regles)) throw new ErreurBaseVivante(`base des règles introuvable : ${regles} (le site est-il installé ?)`);
   mkdirSync(dossier, { recursive: true });
   const chemin = join(dossier, FICHIER_BASE);
   const etat = lireEtat(dossier);
-  if (existsSync(chemin) && etat?.regles && etat.regles === empreinteFichier(regles)) {
+  const connue = existsSync(chemin) && Boolean(etat?.regles);
+  /** Écrit vivante.json quand la base est gardée telle quelle : un disque plein n'y fait jamais échouer la préparation (la base en place sert, l'état se réécrira). */
+  const noterEtat = (nouvel) => {
+    try {
+      ecrireEtat(dossier, nouvel);
+    } catch (e) {
+      journal?.(`base vivante gardée, mais son état n'a pas pu être écrit (${dossier}) : ${e.message}`);
+    }
+  };
+  // la logique de reconstruction a changé depuis la dernière : refaite, même si le fichier des règles est le même (une base d'avant ce réglage n'a pas
+  // `reconstruction` : l'ancienne règle, ci-dessous)
+  const logiqueChangee = connue && etat.reconstruction !== undefined && etat.reconstruction !== VERSION_DE_LA_RECONSTRUCTION;
+  if (connue && !logiqueChangee && etat.regles === empreinteFichier(regles)) {
+    // rien de changé : aucun calcul de plus ; seule la version du service qui la fait tourner est tenue à jour (le nom de la prochaine archive)
+    if (version && etat.version !== version) noterEtat({ ...etat, version });
     return { chemin, refaite: false, archive: null, empreinte: etat.regles, schema: etat.schema ?? null, fiches: [] };
   }
 
@@ -597,29 +678,76 @@ export function preparerBaseVivante({ regles, dossier, instant = new Date(), eve
   let schema;
   let rejeu = null;
   let fiches = [];
+  let recues = null;
+  let reglesApres = null; // { table de contenu → empreinte (16 caractères) } des règles, pour l'essai dans l'ombre
+  let compteRenduDeLOmbre = null;
   const iso = ecrireInstant(instant); // format des colonnes `*_le` : date des notes de retrait et de refaite_le
   try {
     const empreinte = empreinteFichier(neuve); // celle de la copie : les règles peuvent être remplacées pendant qu'on les copie
     const db = new DatabaseSync(neuve);
+    let logique = null;
+    let identique = false;
     try {
+      // Le fichier a changé, pas forcément ce qu'il apporte : si l'empreinte logique (schéma, lignes de toutes les tables hors fiches et journal, calculées
+      // comprises) est celle de la dernière reconstruction, la base vivante en est déjà faite : rien n'est refait (docs/serveur.md, « La base vivante »). Dans
+      // le doute — pas d'empreinte gardée, logique de reconstruction changée, calcul en échec — la base est refaite, comme avant.
+      // la copie est contrôlée AVANT de décider de garder la base : un fichier des règles qui porte une fiche ou un compte, ou abîmé, est une erreur dans tous
+      // les chemins (leurs lignes ne comptent pas dans l'empreinte logique)
       verifierRegles(db);
-      if (existsSync(chemin)) ({ rejeu, fiches } = transferer(db, chemin, iso, evenement, poidsPortable));
-      schema = db.prepare('PRAGMA user_version').get().user_version;
+      const t0 = performance.now();
+      try {
+        const calcul = calculerLogique(db, { exclues: TABLES_VIVANTES });
+        logique = calcul.empreinte;
+        if (ombre && calcul.parTable) reglesApres = empreintesDesTablesDeContenu(calcul.parTable);
+        identique = connue && !logiqueChangee && etat.reconstruction === VERSION_DE_LA_RECONSTRUCTION && Boolean(etat.logique) && etat.logique === logique;
+      } catch {
+        logique = null;
+      }
+      evenement?.('empreinte_logique', { duree_ms: performance.now() - t0, detail: { identique, calculee: logique !== null, connue: Boolean(etat?.logique) } });
+      if (!identique) {
+        if (existsSync(chemin)) ({ rejeu, fiches } = transferer(db, chemin, iso, evenement, poidsPortable, garderLeSite));
+        schema = db.prepare('PRAGMA user_version').get().user_version;
+        // une note qui échoue n'arrête ni la reconstruction ni le site : la base refaite est gardée, l'erreur va au journal et dans le résultat (`migrations.erreur`) ; son affichage sur la page Debug viendra avec les PR suivantes du lot 7
+        try {
+          recues = noterLesMigrationsRecues(db, { migrations, version, instant: iso });
+        } catch (e) {
+          recues = { table: true, livrees: false, notees: 0, retirees: 0, ecarts: [], erreur: String(e?.message ?? e) };
+        }
+      }
     } finally {
       db.close();
     }
+    if (identique) {
+      rmSync(neuve, { force: true });
+      noterEtat({ ...etat, regles: empreinte, ...(version ? { version } : {}) });
+      return { chemin, refaite: false, archive: null, empreinte, schema: etat.schema ?? null, fiches: [], identique: true };
+    }
     if (existsSync(chemin)) {
       const t0 = performance.now();
-      archive = archiver(dossier, chemin, instant);
+      archive = archiver(dossier, chemin, instant, etat?.version);
       if (archive) evenement?.('archive_base_vivante', { duree_ms: performance.now() - t0, detail: { octets: statSync(archive).size } });
+    }
+    if (ombre && existsSync(chemin)) {
+      try {
+        compteRenduDeLOmbre = ombre.preparer({ ancienne: chemin, neuve, etat, version, schema, reglesApres }) ?? null;
+      } catch (e) {
+        compteRenduDeLOmbre = { programme: false, erreur: String(e?.message ?? e).slice(0, 300) };
+      }
     }
     renameSync(neuve, chemin);
     // la dernière liste non vide des fiches adaptées (R42), datée, survit aux reconstructions qui ne retirent rien et au redémarrage du service
     const retraits = fiches.length ? { le: iso, fiches } : etat?.retraits;
-    ecrireEtat(dossier, { regles: empreinte, schema, refaite_le: iso, ...(retraits ? { retraits } : {}) });
-    return { chemin, refaite: true, archive, empreinte, schema, rejeu, fiches };
+    ecrireEtat(dossier, {
+      regles: empreinte, ...(logique ? { logique } : {}), reconstruction: VERSION_DE_LA_RECONSTRUCTION, schema, refaite_le: iso, version: version || 'inconnue', ...(retraits ? { retraits } : {}),
+      ...(ombre && reglesApres ? { tables_regles: reglesApres } : {}),
+    });
+    if (recues?.erreur) journal?.(`ERREUR base vivante : la base refaite est gardée, mais ses migrations reçues ne sont pas notées : ${recues.erreur}`);
+    else if (recues && !recues.livrees) journal?.('base vivante : migrations non livrées avec le service, aucune n’est notée comme reçue par la base refaite');
+    if (recues?.ecarts.length) journal?.(`base vivante : migrations notées dont le fichier livré a changé (une migration fusionnée ne se modifie plus) : ${recues.ecarts.join(', ')}`);
+    return { chemin, refaite: true, archive, empreinte, schema, rejeu, fiches, migrations: recues, ...(compteRenduDeLOmbre ? { ombre: compteRenduDeLOmbre } : {}) };
   } catch (e) {
     rmSync(neuve, { force: true });
+    ombre?.annuler?.();
     throw e;
   }
 }

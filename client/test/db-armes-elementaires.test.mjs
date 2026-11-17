@@ -9,7 +9,9 @@ import { DatabaseSync } from 'node:sqlite';
 import { after, test } from 'node:test';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { idDuProtege } from '../src/lib/mots-cles-proteges.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
+import { baseDImport } from './aide-base-d-import.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const h = historiqueSite(db);
@@ -179,7 +181,8 @@ test('R167 : une arme élémentaire a la solidité d’une pièce élémentaire 
   assert.equal(c.unite, 'crans');
   assert.equal(c.source_ref, 'Ressources et Craft › Pièces élémentaires › A3');
   assert.ok(parCase('Pièces élémentaires', 'A3').includes(c.texte), c.texte);
-  const crans = (n) => db.prepare("SELECT COALESCE(bonus_cran, 0) AS c FROM amelioration_equipement WHERE cible = 'arme' AND niveau = ?").get(n).c;
+  // les crans de la ligne d'amélioration à l'import (bonus_cran est modifiable sur le site de dev : une valeur changée là est une règle changée)
+  const crans = (n) => baseDImport().prepare("SELECT COALESCE(bonus_cran, 0) AS c FROM amelioration_equipement WHERE cible = 'arme' AND niveau = ?").get(n).c;
   assert.deepEqual([4, 5, 9, 10].map((n) => c.valeur + crans(n)), [4, 5, 5, 6]);   // rien au +1…+4, 1 au +5…+9, 2 au +10
   // aucune constante propre aux armes élémentaires (celle de la première version de la migration n'existe pas)
   assert.equal(db.prepare("SELECT count(*) AS n FROM constante_equipement WHERE id = 'arme_elementaire.solidite_base'").get().n, 0);
@@ -192,6 +195,8 @@ const SORTS_FER = [
   ['magies/magie-de-la-lumiere#sort:fer-lumineux', 'Fer Lumineux', 'magies/magie-de-la-lumiere'],
   ['magies/magie-de-la-necromancie#sort:fer-toxique', 'Fer Toxique', 'magies/magie-de-la-necromancie'],
   ['magies/magie-de-la-terre#sort:fer-raffine', 'Fer Raffiné', 'magies/magie-de-la-terre'],
+  // Fer brillant, de l'Arcane : écrit par le classeur de Décembre (migration 0117), étiquette « Sort fer » (R164, R237 (1)-(2))
+  ['magies/magie-de-larcane#sort:fer-brillant', 'Fer brillant', 'magies/magie-de-larcane'],
   ['magies/magie-de-leau#sort:fer-humide', 'Fer Humide', 'magies/magie-de-leau'],
   ['magies/magie-de-lespace-temps#sort:fer-temporel', 'Fer Temporel', 'magies/magie-de-lespace-temps'],
   ['magies/magie-de-lombre#sort:fer-obscur', 'Fer Obscur', 'magies/magie-de-lombre'],
@@ -202,16 +207,21 @@ const SORTS_FER = [
 ];
 
 // Les sorts « Fer » (« Les sorts "fer" sont utilisable sur les armes élémentaire mais il faut évidemment qu'il soit du même élement ») se reconnaissent
-// par leur étiquette « Sort fer » (sort_mot_cle 'sort-fer', décision R164, migration 0079), jamais par leur nom.
-test('R167 : les 13 sorts « Fer » portent l’étiquette « Sort fer » (un par magie, ni l’Arcane ni le Potentiel Illimité)', () => {
-  const marques = tout("SELECT s.id, s.magie_id, s.niveau FROM sort_mot_cle m JOIN sort s ON s.id = m.sort_id WHERE m.mot_cle_id = 'sort-fer' ORDER BY s.id");
-  assert.deepEqual(marques.map((s) => [s.id, h.valeurDImport('sort', { id: s.id }, 'nom'), s.magie_id]), SORTS_FER);
+// par leur étiquette « Sort fer » (sort_mot_cle, mot-clé protégé `sort-fer`, décision R164, migration 0079), jamais par leur nom.
+test('R164, R167, R237 (2) : les sorts « Fer » portent l’étiquette « Sort fer » (un par magie, l’Arcane comprise, jamais le Potentiel Illimité)', () => {
+  // le mot-clé « Sort fer » par l'id que lui donne la liste des protégés (migration 0113 : un id entier figé)
+  const marques = tout('SELECT s.id, s.magie_id, s.niveau FROM sort_mot_cle m JOIN sort s ON s.id = m.sort_id WHERE m.mot_cle_id = ? ORDER BY s.id',
+    idDuProtege('sort-fer'));
+  // par id et par magie (les noms sont ceux du classeur de Décembre, migration 0117, qui en change la casse : ce n'est pas une règle)
+  assert.deepEqual(marques.map((s) => [s.id, s.magie_id]), SORTS_FER.map(([id, , magie]) => [id, magie]));
+  for (const s of marques) assert.match(h.valeurDImport('sort', { id: s.id }, 'nom'), /^Fer /i, s.id);
   assert.ok(marques.every((s) => s.niveau === 2));
   for (const [id] of SORTS_FER) assert.match(h.valeurDImport('sort', { id }, 'type_brut'), /^Amplification/);
   // à l'import, aucun autre sort ne s'appelle « Fer … »
   const autres = h.lignesDImport('sort').filter((s) => /^Fer /i.test(s.nom) && !SORTS_FER.some(([id]) => id === s.id));
   assert.deepEqual(autres.map((s) => s.id), []);
-  assert.deepEqual(marques.filter((s) => ['magies/magie-de-larcane', 'magies/potentiel-illimite'].includes(s.magie_id)), []);
+  assert.deepEqual(marques.filter((s) => s.magie_id === 'magies/potentiel-illimite'), []);
+  assert.equal(new Set(marques.map((s) => s.magie_id)).size, marques.length, 'un par magie');
   // pas de marque dans la table sort : l'étiquette suffit
   assert.ok(!tout("SELECT name FROM pragma_table_info('sort')").some((c) => c.name === 'fer'));
 });

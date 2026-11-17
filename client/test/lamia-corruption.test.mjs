@@ -8,6 +8,7 @@ import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { racesOfMagie } from '../src/lib/magie-relations.mjs';
 import { chargerRaces } from '../src/lib/races-db.mjs';
+import { horsDeLa0120 } from './aide-races-0120.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const historique = historiqueSite(db);
@@ -21,10 +22,10 @@ test('matrice : la case Lamia × Corruption vaut 1, la trace de la fiche est dan
   const { accessible, valeur_brut, source_ref } = historique.ligneDImport('race_magie', cle);
   assert.deepEqual({ accessible, valeur_brut, source_ref }, { accessible: 1, valeur_brut: '1', source_ref: 'Fiche auto V15.2.2 › Accessibilité Magie › E24 (0 dans la fiche ; 1 : décision R22 du propriétaire)' });
   if (!historique.touchee('race_magie', cle)) assert.ok(db.prepare('SELECT 1 FROM v_race_magie_accessible WHERE race_id = ? AND magie_id = ?').get(LAMIA, CORRUPTION));
-  // la matrice est complète (une case par race et par magie) ; à l'import, 245 cases à 1 sur 405
+  // la matrice est complète (une case par race et par magie) ; à l'import du classeur, 245 cases à 1 sur 405 (hors Fongoïde et Gémidien, migration 0120)
   const n = (table) => db.prepare(`SELECT count(*) AS n FROM ${table}`).get().n;
   assert.equal(n('race_magie'), n('race') * n('magie'));
-  const matrice = historique.lignesDImport('race_magie');
+  const matrice = historique.lignesDImport('race_magie').filter((c) => horsDeLa0120(c.race_id));
   assert.deepEqual({ un: matrice.filter((c) => c.accessible === 1).length, n: matrice.length }, { un: 245, n: 405 });
   assert.deepEqual(matrice.filter((c) => c.race_id === LAMIA && c.accessible === 0).map((c) => c.magie_id), ['magies/potentiel-illimite'],
     'la Lamia n’a toujours pas le Potentiel Illimité');

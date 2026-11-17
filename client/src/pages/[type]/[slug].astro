@@ -2,28 +2,31 @@
 import { render } from 'astro:content';
 import Base from '../../layouts/Base.astro';
 import PiedDePage from '../../components/PiedDePage.astro';
+import SupportDuMarkdown from '../../components/SupportDuMarkdown.astro';
 import MagiesDeRace from '../../components/magie/MagiesDeRace.astro';
 import RacesDeMagie from '../../components/magie/RacesDeMagie.astro';
 import MagiePage from '../../components/magie/MagiePage.astro';
 import RacePage from '../../components/race/RacePage.astro';
+import MenuDesRaces from '../../components/race/MenuDesRaces.astro';
 import ClassePage from '../../components/classes/ClassePage.astro';
 import ChoixDeCapacite from '../../components/classes/ChoixDeCapacite.astro';
 import { TYPES } from '../../lib/types.mjs';
-import { classCategory } from '../../lib/class-groups.mjs';
+import { classCategory, groupClasses } from '../../lib/class-groups.mjs';
 import { isMagicalClass } from '../../lib/classe-magique.mjs';
 import { loadMagies } from '../../lib/magies';
 import { loadRaces } from '../../lib/races';
 import { loadClasses } from '../../lib/classes';
 import { raceKind, raceOfClass } from '../../lib/race-kinds.mjs';
 import { estServieASonId } from '../../lib/metiers.mjs';
-import { entryHref, loadWiki, slugOf, typeOf, url, type WikiEntry } from '../../lib/wiki';
+import { entriesOfType, entryHref, loadWiki, slugOf, typeOf, url, type WikiEntry } from '../../lib/wiki';
 import { attributEd, texteDePageModifiable } from '../../lib/edition-modele.mjs';
 
 export async function getStaticPaths() {
   const { entries } = await loadWiki();
   // Seules les pages servies à `<id>/` (lib/metiers.mjs#estServieASonId) : les métiers n'ont pas de page, ce sont les lignes du tableau de /metiers/,
-  // où mènent leurs liens ; les pages « Armes », « Armures », « Bouclier », « Bâton magique » et « Accessoires » sont les onglets de la page
-  // « Équipement », pages/ressources/equipement.astro (lib/metiers.mjs#pageSansAdresse) ; les pages du guide sont rangées par lib/livres.mjs et servies
+  // où mènent leurs liens ; les pages « Armes », « Armures », « Bouclier » et « Accessoires » sont servies par les pages de l'équipement
+  // (pages/ressources/armes.astro…), « Bâton magique » par la page Ceinture, « Pièces élémentaires » par les pages Armes et Armures
+  // (lib/metiers.mjs#pageSansAdresse) ; les pages du guide sont rangées par lib/livres.mjs et servies
   // par pages/decouvrir/, pages/regles/ et pages/mj/ (components/guide/PageDuPlan.astro).
   return entries.filter((entry) => estServieASonId(entry.id))
     .map((entry) => ({ params: { type: typeOf(entry), slug: slugOf(entry) }, props: { entry } }));
@@ -61,7 +64,9 @@ const modifiable = (pageDeTexte || ['races', 'magies', 'classes'].includes(typeO
 const texteModifiable = modifiable && pageDeTexte;
 ---
 
-<Base title={entry.data.title} description={entry.data.summary} edition={modifiable ? entry.id : undefined}>
+<Base title={entry.data.title} description={entry.data.summary} edition={modifiable ? entry.id : undefined} couleurPropre={gabarit}>
+  {/* une page de race tirée de la base : à droite du menu latéral de toutes les races (components/race/MenuDesRaces.astro) ; les autres pages seules */}
+  <MenuDesRaces actif={Boolean(race && races)} entry={entry} entries={entries}>
   <p class="muted"><a href={url()}>Accueil</a> › <a href={url(`${typeOf(entry)}/`)}>{type.label}</a>{
     typeOf(entry) === 'capacites' && classOfAbility && (
       <>
@@ -91,7 +96,7 @@ const texteModifiable = modifiable && pageDeTexte;
     ) : race && races ? (
       <RacePage entry={entry} entries={entries} race={race} races={races} statusNote={statusNote} />
     ) : classe ? (
-      <ClassePage entry={entry} classe={classe} statusNote={statusNote} />
+      <ClassePage entry={entry} classe={classe} groupes={groupClasses(entriesOfType(entries, 'classes'))} statusNote={statusNote} />
     ) : (
       <>
         <h1>
@@ -115,6 +120,7 @@ const texteModifiable = modifiable && pageDeTexte;
         {typeOf(entry) === 'races' && <MagiesDeRace entry={entry} entries={entries} />}
         {typeOf(entry) === 'magies' && <RacesDeMagie entry={entry} entries={entries} />}
 
+        {Content && <SupportDuMarkdown textes={[entry.body]} />}
         {texteModifiable ? (
           <div class="prose" data-ed-corps={entry.id} data-ed-morceau>{Content && <Content />}</div>
         ) : (
@@ -126,4 +132,5 @@ const texteModifiable = modifiable && pageDeTexte;
 
   {/* plus de sources sous une page (réponse du propriétaire du 2026-10-22) : seulement sur /archives/ */}
   <PiedDePage entry={entry} />
+  </MenuDesRaces>
 </Base>

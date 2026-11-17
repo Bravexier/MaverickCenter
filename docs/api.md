@@ -25,10 +25,16 @@ externes ; la page **Debug** du site de dev (menu Outils) n'a plus de testeur de
   d'un ingrédient d'alchimie, la description d'un produit non monétaire) ou qu'il refuse toujours (le prix de la ressource d'une gemme, qui est dans
   son extension) est **figée** dans le registre (`colonnesFigees`, `ecriture.champsFiges`) : non modifiable au catalogue, `400` avec la raison.
 - **Jamais servi** : les tables des fiches de personnages, des comptes et des groupes (section 13 de `data/schema.sql` : elles passent par
-  `/api/personnages/`, dont le JSON d'une fiche, les choix de maîtrise d'armes `maitrise_choix` et les règles de contrôle sont décrits dans
+  `/api/personnages/`, dont le JSON d'une fiche, les choix de maîtrise d'armes `maitrise_choix`, les livres de sort `livres_sorts` (R169) et les règles de contrôle sont décrits dans
   [`serveur.md`](serveur.md), « L'API ») et celles du journal de l'édition (section 14). La section 15 (notes de version, historique des modifications) se lit seulement.
   Une image (portrait d'un monstre ou d'une espèce) n'est jamais rendue en entier : `{ image: true, empreinte, resume }`
   (`edition-modele.mjs#ligneSansImage`) ; l'image entière passe par `POST /api/edition/portrait/`.
+- **Un mot de passe pour écrire, la lecture ouverte** (décision R275, option b ; [`serveur.md`](serveur.md), « Accès au site de dev »). Une fois le mot de
+  passe posé sur le site de dev (commande `acces.sh` de l'hôte ; rien ne change tant qu'il ne l'est pas), chaque route est classée : **toute écriture
+  d'`/api/v1/`** (`POST`, `PATCH`, `DELETE`) demande la **session du mot de passe** (`POST /api/acces/`, cookie `maverick_acces`), et **toute lecture
+  d'`/api/v1/`** (catalogue, description OpenAPI comprises) demande **la clé de lecture** (en-tête `X-Maverick-Cle: mvk_…` ou `X-Maverick-Key: mvk_…`, jamais dans l'adresse) **ou** la
+  session. La clé de lecture ne permet jamais d'écrire. Un refus est un `401` `{ erreur, acces }` : `acces: "cle"` (clé ou mot de passe) pour une lecture,
+  `"mot_de_passe"` pour une écriture.
 - **Pas de comptes** : quiconque a le mot de passe du site de dev lit et écrit (le lot n'a pas d'auteur). Les écritures exigent
   `Content-Type: application/json` (`415` sinon, `DELETE` compris) et refusent une requête qu'un navigateur dit venir d'un autre site
   (`Sec-Fetch-Site`, `403`) ; corps de 1 Mio au plus (`413`).
@@ -57,7 +63,13 @@ Toutes finissent par « / », comme celles du site (en développement, Astro ref
 | `GET` | `/api/debug/systeme/` | Processus, disque et sa répartition par type de données, fichiers, échantillons, évènements, volume des métriques, alertes (page Debug, plus bas) |
 | `GET` | `/api/debug/tables/`, `/api/debug/tables/<nom>/` | Les tables et vues de la base vivante, puis une page des lignes de l'une d'elles (fiches comprises), en lecture seule, avec son `ETag` et `304` sur `If-None-Match` (menu « DB », le schéma de la base, de la page Debug, plus bas) |
 | `GET` | `/api/debug/base/` | La version de la base vivante, qui change à chaque écriture validée : la page Debug la relève pour suivre les tables en direct (plus bas) |
+| `GET` | `/api/debug/structure/` | Le dernier essai d'une livraison sur une copie de la base vivante, avant son installation, et le dernier essai dans l'ombre : `{ format, en_cours, en_attente, dernier, ombre }` (plus bas) |
+| `GET` | `/api/debug/atelier/` | L'**atelier du site de dev** (`docs/serveur.md`, « Atelier du site de dev ») : `{ format: 'maverick-atelier-etat/1', etat, message, version_installee, kit, installe, extrait, en_cours, dernier, historique, bilan, resume }`, forme décrite dans `client/src/lib/debug-atelier.mjs` ; `bilan` : le bilan des dernières 24 h (`maverick-atelier-bilan/1`, `client/src/lib/atelier-bilan.mjs`). `etat` : `pas_d_atelier`, `non_installe`, `en_attente`, `en_cours` ou `rapport`. Les rapports que root écrit sont lus en lecture seule, bornés et validés. `Cache-Control: no-store` ; 503 sans atelier, 403 en production. |
+| `GET` | `/api/edition/extrait/`, `/api/edition/extrait/meta/` | L'extrait du contenu du site (un fichier SQLite neuf : règles, notes de version, historique avec les modifications en attente ; ni fiche, ni compte, ni journal) et son méta (date, empreinte de chaque table) : `npm run db:extrait`, [`serveur.md`](serveur.md#extrait-du-contenu-et-attestation-de-la-production) |
+| `GET`, `POST` | `/api/edition/lots/`, `/api/edition/lots/<id>/`, `…/<id>/essai/`, `…/<id>/appliquer/`, `…/<id>/refuser/`, `…/<id>/annuler/`, `GET …/<id>/annulation/`, `POST /api/edition/lots/recalcul/` | Les lots de changements (R274, R275) : une session dépose une proposition avec la clé de lecture (rien n'est écrit dans le contenu), le propriétaire l'applique, la refuse ou l'annule (mot de passe) ; l'aperçu de l'annulation se lit avec la clé ; « tout recalculer » dépose un lot de nature `code` ; [`serveur.md`](serveur.md), « Lots de changements (service) » |
 | `POST` | `/api/metriques/page/` | La balise des pages vues (mesures du navigateur) : **les deux instances**, hors `/api/v1/` (plus bas) |
+| `GET`, `POST`, `DELETE` | `/api/acces/` | L'accès au site de dev : où en est le visiteur (`protege`, `portee`, `connecte`, `droit`, `expire_le`), se connecter avec le mot de passe (cookie de session), se déconnecter ([`serveur.md`](serveur.md), « Accès au site de dev ») |
+| `GET` | `/api/acces/verifier/` | `204` si la requête a au moins la lecture (clé de lecture ou session), `401` sinon : pour le `forward_auth` d'un mandataire |
 
 `PUT` n'existe pas : `PATCH` modifie les colonnes envoyées, les autres restent.
 
@@ -113,12 +125,15 @@ rien n'est déduit). Réponse `201` : le détail créé, plus `lot` et `fiches`,
 l'adresse (le donner aussi dans le corps avec une autre valeur : `400`).
 
 **Modifier** (`PATCH /api/v1/<ressource>/<clé>/`) : `{ "<colonne>": valeur, "<table d'extension>": { "<colonne>": valeur } }`. Une opération
-`modifier` par table touchée, colonnes de `TABLES` seulement (une autre colonne : `400` qui donne la liste) ; ce qui en dépend est recalculé par le
-service. Une extension absente n'est pas créée (`404`, rien n'est écrit). Réponse `200` : le détail relu, plus `lot` et `fiches`, `ETag`.
+`modifier` par table touchée, colonnes de `TABLES` seulement (une autre colonne : `400` qui donne la liste), plus les clés hors colonnes de la table
+principale (`lib/edition-modele.mjs#CHAMPS_HORS_COLONNES`, décrites par le catalogue sous `hors_colonnes` et par OpenAPI : `magie` d'un don de classe,
+ci-dessous) ; ce qui en dépend est recalculé par le service. Une extension absente n'est pas créée (`404`, rien n'est écrit). Réponse `200` : le détail relu, plus `lot` et `fiches`, `ETag`.
 
 **Supprimer** (`DELETE /api/v1/<ressource>/<clé>/`, corps facultatif) : une opération `supprimer` de l'entité de la ressource → `{ supprime, adresse,
 lot, fiches }`. Ce que d'autres règles citent est refusé (`409`, qui les nomme) ; un don, une spécialité, un métier ou une arme est retiré des fiches
-qui l'ont, avec une note datée (R42, R52) ; un composant reste dans l'inventaire sous son nom (R60) ; `fiches` liste les fiches adaptées.
+qui l'ont, avec une note datée (R42, R52) ; un composant reste dans l'inventaire sous son nom (R60) ; `fiches` liste les fiches adaptées. Un mot-clé
+mentionné se supprime en forçant, `?forcer=1` (ou `true` ; ou le corps `{ "forcer": true }` ; décision R223, plus bas) ; `forcer` ailleurs que sur
+un mot-clé, ou avec une autre valeur : `400`.
 
 **Concurrence** : `If-Match` est facultatif. Égal à la `version` lue (celle de toute la représentation), les valeurs lues partent en `avant` dans le
 lot (le contrôle du mode modification) ; périmé, rien n'est écrit et la réponse `409` rend l'état actuel `{ erreur, element, extensions, version }`,
@@ -131,11 +146,12 @@ pour recommencer.
 | Adresse | Méthodes | Opération | Ce qu'elle fait |
 | --- | --- | --- | --- |
 | `relations-entre-peuples/` | Relations entre peuples | `relation_peuple` | créer, modifier, supprimer | — |
-| `races/<race>/magies-innees-de-l-onglet/` | `POST`, `DELETE` | `magies_innees` | Ajoute une magie à la fin de la liste de l'onglet (`magie_id`), l'en retire — seulement pour une race dont l'onglet limite ses magies (R11 ; sinon `409`) |
-| `races/<race>/acces-aux-magies/<magie>/` | `PATCH` | `magies_innees` | Rend une magie accessible ou non en magie innée (`accessible` : 1 ou 0) dans la matrice de la fiche (R8), pour une race dont l'onglet ne limite pas ses magies (sinon `409`) : c'est ainsi qu'une race créée reçoit ses magies |
+| `races/<race>/magies-innees-de-l-onglet/` | `POST`, `DELETE` | `magies_innees` | Ajoute une magie à la fin de la liste de l'onglet (`magie_id`), l'en retire — seulement pour une race dont l'onglet limite ses magies (R11 ; sinon `409`) ; la dernière ne se retire pas (`400` : une race a au moins une magie innée possible, R210) |
+| `races/<race>/acces-aux-magies/<magie>/` | `PATCH` | `magies_innees` | Rend une magie accessible ou non en magie innée (`accessible` : 1 ou 0) dans la matrice de la fiche (R8), pour une race dont l'onglet ne limite pas ses magies (sinon `409`) : c'est ainsi qu'une race créée reçoit ses magies ; la dernière case accessible ne se ferme pas (`400`, R210) |
 | `evenements/<événement>/categories/` | `POST`, `DELETE` | `categories` | Pose une catégorie sur l'événement (`categorie_id`), l'en retire |
 | `monstres/<carte>/valeurs-de-capacites/` | `POST`, `PATCH`, `DELETE` | `valeurs_de_capacite` | Pose une valeur propre (`rang`, `numero`, `valeur`), la change, l'efface (R69) ; la valeur commune (ou `null`) n'est jamais écrite : elle efface la valeur propre (`element: null` dans la réponse) |
-| `mots-cles/<mot-clé>/fusion/` | `POST` | `fusionner_mots_cles` | Verse les pages du mot-clé dans `dans`, y recible ses balises (« {{id}} » des textes), puis le retire du vocabulaire ; un `PATCH` qui renomme vers l'écriture d'un autre mot-clé répond `409` avec cette action toute prête (`action: { methode, adresse, corps }`) |
+| `onglets-des-regles/<onglet>/ordre/` | `POST` | `ordonner` | L'ordre du menu latéral de l'onglet, d'un bloc : `ids`, tous les identifiants de ses entrées dans le nouvel ordre (`409` si la liste n'est pas exactement celle du menu) ; les rangs qu'occupait le menu sont redonnés, seules les entrées qui changent de place sont écrites |
+| `mots-cles/<mot-clé>/fusion/` | `POST` | `fusionner_mots_cles` | Verse les pages du mot-clé dans `dans` (l'id entier d'un autre), y recible ses balises (« {{cle}} » des textes), puis le retire du vocabulaire (`409` tant que la définition d'un mot-clé verrouillé le cite : R222) ; les clés sont recalculées (un homonyme disparu) ; `dans` reçoit ses synonymes (sauf ceux que R233 (4) refuse ; un mot-clé qui a des synonymes ne se fusionne pas dans un `dans` verrouillé : `409`, `champ: "synonymes"`) et sa clé et ses clés quittées deviennent des clés quittées de `dans` (R233 (11)) |
 
 Les références « @i » d'un lot à plusieurs opérations (créer une spécialité puis son don dans la même requête) restent sur `POST /api/edition/`.
 
@@ -149,12 +165,14 @@ adaptées, jamais leurs noms ; le lot porte la page `api/v1/<ressource>[/<sous-r
 | --- | --- |
 | `200` `201` | Lu, modifié, supprimé ; créé (`Location`) |
 | `304` | `If-None-Match` égal à la version (détail) |
-| `400` | Corps illisible ou qui n'est pas un objet JSON, rien à modifier, colonne ou paramètre inconnu, valeur refusée par le service d'édition (type, bornes, champ obligatoire, balise du glossaire qui ne cite aucun mot-clé : `refs`), `limite` hors bornes |
+| `400` | Corps illisible ou qui n'est pas un objet JSON, rien à modifier, colonne ou paramètre inconnu, valeur refusée par le service d'édition (type, bornes, champ obligatoire, balise du glossaire qui ne cite aucun mot-clé : `refs`, ou un libellé de plusieurs homonymes : `refs`, `homonymes` ; synonyme d'un mot-clé mal écrit : `champ: "synonymes"`, lien ou couleur d'un mot-clé refusés : `champ: "url"`, `champ: "couleur"`, lien saisi qu'aucun mot-clé ne porte : `champ`, `liens`), `limite` hors bornes, `forcer` mal écrit ou hors d'un mot-clé (R223) |
+| `401` | Mot de passe posé sur le site de dev et ni clé de lecture ni session : `{ erreur, acces: "cle" \| "mot_de_passe" }` (`POST /api/acces/` : mot de passe faux) |
 | `403` | Hors du site de dev (tout `/api/v1/`) ; écriture qui vient d'un autre site (`Sec-Fetch-Site`) |
 | `404` | Ressource, sous-ressource ou ligne inconnue (ou hors de la ressource) ; extension absente au `PATCH` |
 | `405` | Méthode que la ressource n'a pas : `Allow` donne la liste exacte, le corps la raison (lecture seule ; ni le service d'édition ni une opération du lot ne le font, et par quelles méthodes la ressource s'écrit) et les `capacites` |
-| `409` | `If-Match` périmé ; refus du service d'édition (élément cité par d'autres règles, mot-clé protégé, dernier bloc d'un événement, maîtrise d'arme illisible dans une classe ou un don, don à plus d'une part de maîtrise à choisir, nom de famille d'armes déjà pris ou qui changerait une maîtrise existante, avec la liste dans `sources` : décision R159…) |
+| `409` | `If-Match` périmé ; refus du service d'édition (élément cité par d'autres règles, mot-clé protégé, dernier bloc d'un événement, maîtrise d'arme illisible dans une classe ou un don, don à plus d'une part de maîtrise à choisir, nom de famille d'armes déjà pris ou qui changerait une maîtrise existante, avec la liste dans `sources` : décision R159 ; synonyme d'un mot-clé qui est le libellé, un synonyme ou la clé d'un autre, ou mot-clé créé ou renommé vers le synonyme d'un autre : `champ: "synonymes"` ou `"libelle"`, `mot_cle` : l'autre ; homonyme sans catégorie distinctive ou clé déjà prise (R232) : `champ: "categories"` ou `"libelle"`, `mots_cles` ; catégorie de mots-clés non vide : `mots_cles` ; mot-clé mentionné : `mentions`, `refus_du_forcage` ; suppression forcée refusée : `mots_cles_verrouilles`, `url` ou `mentions_bloquantes`…) |
 | `413` | Corps de plus de 1 Mio |
+| `429` | `POST /api/acces/` : trop d'essais de mot de passe ratés (`attente_s`) |
 | `415` | Écriture sans `Content-Type: application/json` |
 | `422` | Refusé par la base (contrainte CHECK, UNIQUE, NOT NULL, clé étrangère) ou valeur que les importeurs ne sauraient pas relire ; une gemme ou un bois du Potentiel Illimité (`POST /api/v1/gemmes/`, `POST /api/v1/bois/`) : « Le Potentiel Illimité n’a ni gemme, ni bois, ni bâton magique, ni pièce élémentaire (décision R160). » |
 | `503` | Base vivante indisponible (`/api/etat/` dit pourquoi) |
@@ -163,7 +181,9 @@ Une erreur est toujours `{ "erreur": "<message en français>", … }`, avec les 
 
 ## Exemples (`curl`)
 
-Sur le site de dev, ajouter `-u <utilisateur>:<mot de passe>` (mot de passe du site) ; en développement, le service seul répond sur
+Sur le site de dev, ajouter `-u <utilisateur>:<mot de passe>` (mot de passe du site) ; avec un mot de passe d'accès posé (« Accès au site de dev »), les lectures
+ajoutent `-H "X-Maverick-Cle: $CLE"` (la clé de lecture ; `X-Maverick-Key` vaut aussi) et les écritures passent par la session (`curl -c cookies -X POST …/api/acces/ -H 'Content-Type:
+application/json' -d '{"mot_de_passe":"…"}'`, puis `-b cookies`) ; en développement, le service seul répond sur
 `http://127.0.0.1:8787` (`npm run serveur`) et le site sur `http://localhost:4321` (`npm run dev`, qui lui transmet `/api/`).
 
 ```bash
@@ -195,7 +215,7 @@ la ressource ne prend que les lignes de la table qui passent sa condition.
 | `races/` | Races | `race` | créer, modifier | `dons` (modifier), `colonnes-du-tableau-de-dons` (modifier), `lignes-du-tableau-de-dons`, `cases-du-tableau-de-dons` (modifier), `restrictions-de-caracteristique`, `magies-innees-de-l-onglet` (créer, supprimer), `acces-aux-magies` (modifier), `acces-aux-classes` |
 | `ethnies/` | Ethnies | `ethnie` | lecture seule | `resistances` |
 | `categories-de-classe/` | Catégories de classe | `categorie_classe` | lecture seule | — |
-| `classes/` | Classes | `classe` | créer, modifier | `tableau-annexe` |
+| `classes/` | Classes | `classe` | créer, modifier | `tableau-annexe`, `entrees-du-tableau` |
 | `specialites/` | Spécialités | `specialite` | créer, modifier, supprimer | — |
 | `dons-de-classe/` | Dons de classe | `capacite` | créer, modifier, supprimer | — |
 | `objets-de-depart/` | Objets de départ | `objet_depart` | lecture seule | — |
@@ -213,7 +233,7 @@ la ressource ne prend que les lignes de la table qui passent sa condition.
 | `paliers-d-entrainement/` | Paliers d’entraînement | `entrainement_palier` | lecture seule | — |
 | `bonus-d-initiative/` | Bonus d’initiative | `initiative_agilite` | lecture seule | — |
 | `types-de-don/` | Types de don | `type_don` | lecture seule | — |
-| `postures/` | Postures | `posture` | lecture seule | `effets` |
+| `postures/` | Postures | `posture` | lecture seule | `effets`, `competences-du-critique` |
 | `paliers-de-resistance/` | Paliers de résistance | `resistance_palier` | lecture seule | — |
 | `alterations-d-etat/` | Altérations d’état | `etat` | lecture seule | `magies-liees`, `stades`, `effets-par-palier` |
 | `meteos/` | Météos | `meteo` | lecture seule | `effets` |
@@ -230,7 +250,7 @@ la ressource ne prend que les lignes de la table qui passent sa condition.
 | --- | --- | --- | --- | --- |
 | `magies/` | Magies | `magie` | modifier | `roles` (modifier), `resistances`, `incompatibilites`, `ethnies-secondaires`, `dieux` |
 | `sorts/` | Sorts | `sort` | modifier | `mots-cles` |
-| `ameliorations-cadaveriques/` | Améliorations cadavériques | `amelioration_cadaverique` | lecture seule | — |
+| `specialisations-de-magie/` | Spécialisations magiques | `magie_specialisation` | modifier | — |
 | `regles-de-magie/` | Règles de magie | `regle_magie` | lecture seule | — |
 | `codes-de-la-legende-des-sorts/` | Codes de la légende des sorts | `legende_sort` | lecture seule | — |
 | `invocations/` | Invocations | `invocation` | lecture seule | — |
@@ -319,12 +339,14 @@ la ressource ne prend que les lignes de la table qui passent sa condition.
 
 | Adresse | Élément | Table | Écritures | Sous-ressources |
 | --- | --- | --- | --- | --- |
-| `pages-du-guide/` | Pages du guide | `page` (partie) | modifier | — |
+| `pages-du-guide/` | Pages du guide | `page` (partie) | créer, modifier, supprimer | — |
 | `pages-du-codex/` | Pages du Codex | `page` (partie) | modifier | — |
 | `pages/` | Pages du wiki | `page` (partie) | lecture seule | — |
 | `annonces/` | Annonces | `annonce` | modifier | — |
+| `onglets-des-regles/` | Onglets des Règles | `regles_onglet` | lecture seule | `entrees` |
 | `alias-des-pages/` | Alias des pages | `alias` | lecture seule | — |
-| `mots-cles/` | Mots-clés | `mot_cle` | créer, modifier, supprimer | `pages` |
+| `mots-cles/` | Mots-clés | `mot_cle` | créer, modifier, supprimer | `pages`, `categories` (créer, supprimer), `synonymes` (créer, supprimer), `anciennes-cles` |
+| `categories-de-mots-cles/` | Catégories de mots-clés | `categorie_mot_cle` | créer, modifier, supprimer | — |
 | `sources/` | Sources | `source` | lecture seule | `pages` |
 | `entites-des-pages/` | Entités des pages | `page_entite` | lecture seule | — |
 | `types-de-page/` | Rubriques du wiki | `type_page` | lecture seule | — |
@@ -336,13 +358,76 @@ la ressource ne prend que les lignes de la table qui passent sa condition.
 | `notes-de-version/` | Notes de version | `note_version` | lecture seule | `lignes` |
 | `historique/` | Historique des modifications | `historique_modification` | lecture seule | — |
 
+`onglets-des-regles/` est le plan de la rubrique Règles (migration 0091, décisions R184 et R185) : les quatre onglets qui suivent Découvrir et
+L'univers, chacun avec sa page d'ouverture, et leur menu latéral en sous-ressource `entrees` (une page du guide, un lien comme « Artisanat », ou une
+entrée « bientôt »), dans l'ordre de `rang`. Les onglets sont fixes (ordre, titre, page d'ouverture : réponse du propriétaire « Non, fixe ») ;
+leur menu se modifie sur le site de dev (lot de l'édition des menus, `serveur/edition-plan.mjs`), mais la sous-ressource `entrees` reste en lecture
+seule ici (choix du leader-technique ; `lib/ressources.mjs#TABLES_SANS_ECRITURE_DIRECTE`, bien que `regles_onglet_entree` soit dans `TABLES`) :
+l'ordre d'un menu passe par l'action `ordre` de l'onglet, et une entrée naît et part avec sa page des Règles, créée (`POST pages-du-guide/` :
+`titre`, `onglet_id`, `resume`, et `bientot` pour remplir une entrée « bientôt ») ou supprimée (`DELETE pages-du-guide/<page>/` : `409` pour une
+page protégée, avec `raisons`, ou citée, avec `citations` ; `400` pour une page de Découvrir ou du Guide du MJ). Le site lit le plan au build par
+`client/src/lib/plan-des-regles-db.mjs`. Le résumé d'une page du guide (`resume`) se modifie par `PATCH pages-du-guide/<page>/`.
+
+`mots-cles/` (migrations 0113 à 0115, décisions R232 et R233) : l'identifiant est un entier (`/api/v1/mots-cles/163/`), attribué à la création
+(le suivant, jamais réutilisé) ; la clé (`cle`, en lecture seule) est calculée : le slug du libellé, suivi pour un homonyme des slugs de ses
+catégories qui ne sont pas communes à tous ses homonymes ; elle est recalculée à chaque renommage, changement de catégorie, homonyme qui apparaît ou
+disparaît et catégorie renommée, et chaque balise qui la cite est alors réécrite (`anciennes-cles` : les clés quittées, qui mènent encore au
+mot-clé). Le libellé n'est plus unique. `synonymes` remplace l'abréviation : la sous-ressource `synonymes/` les liste dans l'ordre, `POST`
+(`libelle`) en ajoute un à la fin, `DELETE` en retire un (opération `synonymes_mot_cle` ; `409` sur un mot-clé verrouillé, R233 (6)) ; un synonyme
+qui s'écrit comme le libellé, un synonyme ou la clé d'un autre mot-clé est refusé en `409`, comme son propre libellé ou une écriture qui couperait
+une balise en `400` (`champ: "synonymes"`). La sous-ressource `categories/` pose (`POST`, `categorie_id`) ou retire (`DELETE`) une catégorie
+(opération `categories_mot_cle`, permise sur un mot-clé verrouillé, R232 (11)). La création (`POST mots-cles/`) accepte `categories` (identifiants)
+et `synonymes` (écritures). Refusés en `409` : un homonyme sans catégorie qui le distingue de chacun des autres (`champ: "categories"`), une clé
+déjà prise ou un libellé qui s'écrit comme le synonyme d'un autre mot-clé (`champ: "libelle"`). `categories-de-mots-cles/` : une catégorie se crée,
+se renomme (`PATCH`, `libelle` unique, sinon `409`) et ne se supprime que vide (`409` avec `mots_cles` sinon). La ref d'une balise du glossaire peut
+être la clé, le libellé que porte un seul mot-clé, ou un synonyme, quelle que soit la casse (un libellé de plusieurs homonymes : `400`, `refs` et
+`homonymes`) ; elle s'enregistre par la clé, le texte tapé gardé tel quel (« {{ic}} » → « {{instant-cast|ic}} », R233 (10) :
+[`content-guide.md`](content-guide.md), « Mots-clés (glossaire) »). `mots-cles/` liste aussi le lien et la couleur (`url`, `couleur`, migration 0098 ; `?q=`
+cherche dans le lien), qui se donnent à la création et se modifient par `PATCH` (sauf ceux d'un mot-clé verrouillé, plus bas) : le lien, une adresse
+interne relative à la racine du site, sans le préfixe de déploiement, dont le chemin mène à une page du site (`/races/drakos/`,
+`/metiers/#metier-mineur` ; l'ancre et la requête ne sont pas vérifiées) ; la couleur, `#rrggbb` ou `<famille>:<id>` d'une couleur de la palette
+(`classe:melee`) ; refusés en `400` avec `champ: "url"` ou `champ: "couleur"`. L'icône (`icone`, migration 0116, décision R235) se lit, se donne à
+la création et se modifie de même : `null`, ou `<famille>:<id>` d'une icône de la liste du site (`lib/icones.mjs#ICONES` : les trois monnaies
+(`monnaie:rf`, `monnaie:ro`, `monnaie:pp`), les types de dégâts (`degats:taille`, `degats:estoc`, `degats:frappe`) et les magies (`magie:feu`…) ; le catalogue en donne les `valeurs`, la liste `icones` de `GET /api/edition/listes/`), sinon `400` avec
+`champ: "icone"`. Un lien `[[…]]` ou `[texte](/…)` saisi dans un texte devient la balise
+du seul mot-clé qui mène à sa page (sinon `400` avec `champ` et `liens`, [`serveur.md`](serveur.md), « Édition des règles »). Le verrou d'un mot-clé
+(`verrou`, migration 0110, décisions R218 et R219) se lit dans la liste, le détail et le catalogue (colonne non modifiable) ; aucune route ne l'écrit
+(`400` dans un `POST` ou un `PATCH`). Un mot-clé verrouillé (`1` : ceux qui mènent à une page, ceux des monnaies, ceux dont le site se sert) ne se
+modifie pas par `PATCH`, quel que soit le champ, ne se supprime pas par `DELETE`, même sans mention, et ne se fusionne pas dans un autre (action
+`fusion`) : `409`, avec une raison qui cite R218 et R219 ; un autre mot-clé se fusionne dans lui (il garde son lien, sa couleur et son icône ; refusé en `409`, `champ: "synonymes"`, si cet autre a des synonymes), sauf quand la
+définition d'un mot-clé verrouillé (la sienne comprise) cite cet autre par une balise : la fusion est alors refusée en `409`, avant toute écriture,
+avec `mots_cles_verrouilles` (décision R222 ; le rejeu, lui, la fait). Une page vers laquelle mène un mot-clé verrouillé (un métier par son ancre, la
+fiche d'un don, une page des Règles) ne se supprime pas : `DELETE` rend `409` avec `mots_cles_verrouilles` (décision R221). Un mot-clé créé vaut `0`,
+même avec un lien. Un mot-clé non verrouillé se modifie entièrement (décision R195) ; il ne se supprime pas tant qu'une page ou un texte le mentionne
+(R196 : `409` avec `mentions`, la liste des endroits, et `refus_du_forcage`, `null` si la suppression forcée passerait, sinon sa raison), ni ne se
+fusionne s'il étiquette un sort (`409`) ; s'il est le mot-clé d'un type de dégâts ou d'une magie (migration `0125`), il ne se supprime pas, même forcé (`409` avec `references`, comptées parmi les `mentions` avec `comment: "reference"`), et sa fusion reporte la référence sur la cible. **La suppression forcée** (`DELETE /api/v1/mots-cles/<id>/?forcer=1`, décision R223) ne lève que le refus des
+mentions : dans le même lot, chaque balise qui le cite (toute forme, ref par id, écriture ou abréviation, pages d'exemple comprises) devient son
+texte affiché en texte simple, sans lien (le libellé pour `{{id}}` et `{{id:}}`, le texte écrit pour `{{id|texte}}`), chaque étiquette de page est retirée, puis le mot-clé est supprimé ; le résumé du lot compte les mentions
+remplacées. Elle reste refusée en `409`, avant toute écriture, pour un mot-clé verrouillé, qui étiquette un sort, cité par la définition d'un mot-clé
+verrouillé (`mots_cles_verrouilles`), dont le lien mène sans ancre à une page de la base (`url`, `page` ; décision R223 (7), ce cas attend une décision du
+propriétaire ; une ancre, une route sans page comme `/fiche/` ou une rubrique comme `/races/` sont épargnées), ou mentionné là où le site ne sait pas remplacer la balise (`mentions_bloquantes`, aussi quand une mention reste après le remplacement :
+le lot est alors annulé). Sans mention, forcer n'écrit rien de plus (la suppression est marquée forcée au résumé du lot, pour le rejeu). Détail : [`serveur.md`](serveur.md), « Édition des règles », ligne « Mots-clés ».
+
+Les monnaies (`/api/v1/monnaies/`) sont en lecture seule de fait : l'onglet Monnaie est figé (décision R219), `POST`, `PATCH` (toute colonne) et
+`DELETE` rendent `409` avec la raison ; le catalogue le dit (`figee`), et la description OpenAPI ne leur donne ni corps de création ni clé de
+modification d'exemple.
+
 Les tables qui ne sont pas des éléments (tables de détail refaites par le service, vues de recherche, fiches de personnages, journal) sont rangées
 dans `HORS_RESSOURCE` de leur module, avec la raison : `test/ressources-registre.test.mjs` exige que chaque table de `data/schema.sql` soit rangée une
 fois et une seule (ressource, sous-ressource, extension, dérivée ou hors ressource). Ainsi `maitrise_arme_part` et `maitrise_arme_part_famille` (ce que
 donne chaque source de points de maîtrise d'armes, migration 0076) : une source est une ligne de maîtrise d'une classe ou un don, deux parents qu'une
 dérivée ne sait pas porter ; `capacite_nm_gagne` (les NM de sorts gagnés d'un don, R154) est une dérivée de `dons-de-classe/`. Toutes trois sont
 refaites par le service d'édition quand une écriture change une ligne de maîtrise d'une classe ou l'effet d'un don (`serveur/edition-maitrises.mjs`),
-jamais écrites directement.
+jamais écrites directement. `capacite_variable` (la magie que vise un don « Variable » du Mage Bleu, décision R181, migration 0088) est aussi une dérivée de
+`dons-de-classe/` : écrite par la migration, et à la création d'un don de type « Variable » d'après son champ `magie` (`innee` ou `acquise`, « Magie
+innée » / « Magie acquise » ; exigé pour ce type, refusé `400` pour un autre ; `don_magie` pour le don d'une spécialité créée : réponse du propriétaire
+« Demander la magie »), et quand un `PATCH` change le type (réponse du propriétaire « Demander ou retirer », R192) : passer à « Variable » exige la clé
+`magie` dans le même corps (`400` qui cite R181 sans elle, rien d'écrit), quitter « Variable » supprime la ligne (une `magie` envoyée alors : `400`) ;
+sur un don déjà « Variable », `magie` seule change la magie visée. Écrites par la migration seulement (migration 0097) : `capacite_npm_plafond` (le plafond
+de NPM des sorts que relève un don, R188) et `capacite_condition_emplacements` (les dons qui comptent comme une condition d'emplacements de sorts, R189),
+dérivées de `dons-de-classe/`, et `magie_npm_plafond` (le plafond de NPM des sorts d'une magie innée, R188), dérivée de `magies/`. Un don supprimé emporte
+ces trois lignes, notées au journal avant lui (réponse du propriétaire : « Autoriser et journaliser »). Les entrées du tableau du Mage Bleu (`classe_annexe_entree`) sont la sous-ressource `entrees-du-tableau` de `classes/`, en
+lecture seule ; les dons obtenus d'une fiche (`personnage_don_obtenu`) et la spécialisation magique choisie par magie (`personnage_specialisation_magie`, R236) sont des parties de la fiche, hors ressource.
 
 Chaque opération du lot du service est joignable par une ressource (`test/ressources-registre.test.mjs` lit `OPERATIONS` dans
 `serveur/edition.mjs`) ; seuls les lots à plusieurs opérations atomiques (références « @i » : créer une spécialité puis son don dans la même
@@ -413,6 +498,10 @@ l'onglet se voit), relève la version de la base toutes les 2 s et ne relit nomb
    mises à jour, métriques, code, données, images et autres fichiers du site, puis, sur le VPS (relevé de l'hôte, `deploy/vps/volume.sh`), Docker,
    journaux, installations et copies, puis système et autres, réservé au système, libre (détail et règles : [`serveur.md`](serveur.md), « Jauge de
    l'espace disque »). Tailles en unités décimales (Go), comme les hébergeurs.
+   Puis le bloc **Sauvegardes** (`sauvegardes` de la même réponse, `null` sans fichier d'état : une ligne sobre « Pas de sauvegarde automatique sur
+   cette machine ») : par instance (production, site de dev) l'âge et le type de la dernière copie, l'état, l'alerte en cours, la dernière vérification ;
+   la place prise et sa part du plafond ; la copie extérieure (activée ou non, dernier envoi, contrôle du dépôt, dernier essai de restauration). Sont
+   mis en évidence (classe d'alerte) une copie de plus de 26 h, un envoi actif de plus de 36 h et tout échec ; les alertes du service sont déjà dans celles du système.
 2. **Performances** (demande du propriétaire du 2026-10-15 : « isoler les informations de temps de réponse […] voir quels sont les appels les plus
    lents en moyenne ») : choix de l'**instance** (Site de dev ou Production : l'un **ou** l'autre, jamais mélangés — décision du propriétaire ; la
    même liste qu'en tête de Système, les deux se suivent), de la **période** (1 h, 24 h, 7 j, 30 j, 365 j, tout) et du **tri** ; chiffres globaux
@@ -469,6 +558,28 @@ l'onglet se voit), relève la version de la base toutes les 2 s et ne relit nomb
    posée dans la page en JSON (`<script type="application/json" data-debug-schema>`), jamais dans un build `SITE_MODE=prod` ni dans la version
    portable ; les nombres de lignes des boîtes deviennent ceux de la base vivante dès que `GET /api/debug/tables/` répond, puis **suivent la base**
    tant que le menu reste ouvert, comme la fenêtre ouverte (« Suivi en direct », plus bas).
+   **Structure de la base** (bloc en tête du menu DB, lot 7, R274 : « le rapport s'affiche sur la page Debug » ; pas un cinquième menu) : les deux
+   essais de structure du service, lus par **un seul** `GET /api/debug/structure/` à la première ouverture du menu, puis à chaque clic sur
+   « Actualiser » (jamais relevés : la route n'est pas dans `RELEVES_GET`). *Essai avant installation* : verdict (`accepte`, `a_jour`, `refuse`,
+   `indisponible` ; les deux derniers en alerte), version, date, migrations essayées, raison d'un refus, essai en cours ou en attente, et un
+   tableau **replié** des tables qui changent (lignes ajoutées, retirées, modifiées) avec le nombre de tables inchangées. *Essai dans l'ombre* :
+   verdict en toutes lettres (`identique` ok ; `attendu` normal, avec une phrase : le contenu arrive encore par le dépôt jusqu'au lot 8 ; `ecart`,
+   `refuse`, `indisponible` en alerte « À examiner »), versions du site et de la base, migrations, chiffres par catégorie, tableau des tables qui
+   diffèrent (catégorie, gravité, lignes, raison). *Base source* (lot 8, en tête du bloc, d'après `base_source: { source, sur_place }` de la même route) :
+   « Base source : oui » ou « non » et, si le service en donne une, la dernière application des migrations sur place (date, versions de la base,
+   migrations, sauvegarde) ; un service d'avant, sans `base_source`, n'a pas cette partie. `403` (pas le site de dev), `503`, `ombre: null` : un message neutre. Rendu pur :
+   `lib/debug-structure.mjs` ; script : `scripts/debug-structure.mjs` (n'importe que ce module, qu'aucun autre script n'importe) ; test :
+   `debug-structure.test.mjs`.
+   **Fabrication témoin** (bloc suivant, même menu DB, lot 9, un seul `GET /api/debug/atelier/` à l'ouverture puis à « Actualiser », jamais relevé) :
+   la sévérité (`neutre`, `ok`, `attention`, `alerte`) et le message du service s'affichent toujours (« pas d'atelier », « non installé », « en
+   attente » sont des états normaux ; un refus faute de mémoire ou de disque est une mesure, dite avec ses chiffres), puis les lignes qui aident à choisir
+   le prochain serveur (mémoire totale et disponible, plafond appliqué, pic mesuré, processeurs et temps processeur, durée, disque libre, place occupée,
+   écarts avec le site livré) et un historique court des dernières fabrications (origine hors livraison dite ; sonde de la production avant et pendant, avec
+   mention quand elle n'a mesuré que nginx). **En tête** (lot 9, PR 4) : le bilan des dernières 24 h (`etat.bilan`) : verdict en toutes lettres (le serveur tient /
+   tient tout juste / ne tient pas ; « journée incomplète » est neutre et dit combien de fabrications ont eu lieu), phrase, raisons, lignes (serveur, pic de mémoire, durée,
+   processeur, disque, effet sur la production) et, repliés, les seuils du verdict, dits choix techniques réglables (`lib/atelier-bilan.mjs`). `403`, `503` et l'erreur réseau : un message neutre. Mise en forme :
+   `lib/debug-atelier.mjs` (partagé avec le service) ; rendu pur : `lib/debug-atelier-page.mjs` ; script : `scripts/debug-atelier.mjs` (n'importe que ces
+   deux modules, qu'aucun autre script n'importe) ; test : `debug-atelier-page.test.mjs`.
 
 En production (`SITE_MODE=prod`) l'entrée n'est pas au menu et la page ne dit qu'une phrase, sans script ; la version portable ne l'emporte pas.
 La CI construit aussi le site de production et y relance `debug-page` et `site-html` (`ci.yml`, `CONTROLES_DE_LA_CI`).
@@ -489,9 +600,10 @@ propriétaire du 2026-10-15, « Il faut tout rendre ouvert. Ce qui est fermé c'
 méthode que `GET` répond `405` (`Allow: GET`). Code : `serveur/debug-tables.mjs`.
 
 **Le serveur de dev reste ouvert** (réponse du propriétaire du 2026-10-15 : « Le serveur dev restera. Il servira toujours pour modifier les
-règles par ceux qui en auront l'accès. ») ; qui y a accès se réglera avec la connexion Discord (E7). Sa base vivante est une **copie de celle de
-production**, faite à sa première installation puis conservée (`MAVERICK_BASE_TEST=conservee`, [`deploy/vps/README.md`](../deploy/vps/README.md)) :
-ce qu'on y lit des fiches, des comptes et des groupes est cette copie, sans les règles de visibilité de `/api/personnages/` (`v_personnage_visible`).
+règles par ceux qui en auront l'accès. ») ; qui y a accès se réglera avec la connexion Discord (E7). Sa base vivante est la **sienne, que
+l'installateur ne remplace jamais** (R274 ; [`deploy/installateur/README.md`](../deploy/installateur/README.md)) ; à l'origine, la copie de celle de
+production que l'installateur de test pose sur demande (`--copier-base-prod`) : ce qu'on y lit des fiches, des comptes et des groupes est ce
+qu'elle contient, sans les règles de visibilité de `/api/personnages/` (`v_personnage_visible`).
 Une fiche créée ou supprimée sur le site de dev ne part jamais en production (un lot ne porte pas la section 13). Le propriétaire attend une copie
 de la production vers le dev après chaque mise en production, que le serveur de test ne fait pas encore (question 7 de
 [`feuille-de-route.md`](feuille-de-route.md), « Questions encore ouvertes »).
@@ -501,6 +613,8 @@ de la production vers le dev après chaque mise en production, que le serveur de
 | `GET /api/debug/tables/` | `{ tables: [{ nom, genre, lignes }] }` : chaque table et vue de la **base vivante**, dans l'ordre des noms, ses lignes comptées maintenant ; `genre` = `table`, `derivee` (`-- @derivee` de `data/schema.sql`, hors FTS5) ou `vue` ; ni les tables internes de SQLite (`sqlite_…`), ni les tables FTS5 (virtuelles et leurs tables de *shadow*) |
 | `GET /api/debug/tables/<nom>/?limite=1..500&decalage=&tri=<colonne>&ordre=asc\|desc` | `{ table, genre, colonnes: [{ nom, type, pk }], total, limite, decalage, tri, ordre, lignes: [{ <colonne>: valeur }] }` (100 lignes par défaut ; `tri` : `null` sans tri demandé) pour **toute** table ou vue de la liste, celles de la section 13 comprises (fiches de personnages, comptes, groupes, et les vues qui les lisent : `v_personnage_visible`, `v_personnage_controle`…) ; `ETag: "<16 hex>"` (sha256 du JSON du corps) et `Cache-Control: no-cache` ; `304` sans corps (avec l'`ETag`) si `If-None-Match` la contient (liste séparée par des virgules, `W/` toléré) ; `404` pour un nom qui n'est pas **exactement** celui d'une table ou d'une vue de la liste (interne, FTS5, casse, guillemets, « / » encodé…), `400` pour un tri qui n'est pas une colonne, un ordre inconnu, une limite hors de 1..500 ou un décalage qui n'est pas un entier positif (ni l'un ni l'autre n'a d'`ETag`) |
 | `GET /api/debug/base/` | `{ version }` : la **version de la base vivante**, un texte opaque qui change dès qu'une écriture est validée, quelle que soit la table ; `Cache-Control: no-store` ; `405` (`Allow: GET`) pour une autre méthode, `503` sans base, `404` pour `/api/debug/base/<autre>/` |
+| `GET /api/debug/structure/` | `{ format: 'maverick-essai-etat/1', en_cours, en_attente, dernier, ombre }` : l'**essai d'une livraison avant son installation** (`docs/serveur.md`, « Essai avant installation »). `en_cours` : `{ demande, version, depuis }` ou `null` ; `en_attente` : le nombre de demandes en file ; `dernier` : le bilan `maverick-structure/1` du dernier essai (`verdict` : `accepte`, `refuse`, `a_jour` ou `indisponible` ; `versions`, `migrations`, `tables`, `objets`, `totaux`, `refus` { migration, etape, raison, details }, `duree_ms`) plus `demande` { nom, version, deposee_le }, `essaye_le`, `instance` et `resume` (une phrase), ou `null` quand aucun essai n'a eu lieu ; `ombre` : l'**essai dans l'ombre** (`docs/serveur.md`, « Essai dans l'ombre ») `{ en_cours: { version, depuis, etat } | null, dernier }`, où `dernier` est le rapport `maverick-ombre/1` du dernier essai à une installation (`verdict` : `identique`, `attendu`, `ecart`, `refuse` ou `indisponible` ; `resume`, `version`, `versions`, `migrations`, `regles_d_avant`, `structure` { identique, ecarts }, `tables` : les tables qui diffèrent, chacune avec `categorie` (`structure`, `propre_au_site`, `inattendu`, `livre_par_le_depot`, `inconnu`, `calculee`, `ignoree`), `gravite` (`grave`, `attendu`, `ignore`), `ajoutees`, `retirees`, `modifiees` et `raison`, `chiffres`, `duree_ms`), ou `null` quand aucune installation n'a eu lieu ; `Cache-Control: no-store` ; `405` pour une autre méthode, `503` sans le suivi, `404` pour `/api/debug/structure/<autre>/` |
+| `GET /api/debug/atelier/` | `{ format: 'maverick-atelier-etat/1', etat, message, version_installee, kit, installe, extrait, en_cours, dernier, historique, resume }` : l'**atelier du site de dev** (`docs/serveur.md`, « Atelier du site de dev »). `dernier` : le rapport `maverick-atelier/1` de la dernière fabrication (serveur, plafond de mémoire, durée, pic de mémoire du conteneur, place, et les JSON `maverick-fabrication/1` et `maverick-comparaison/1` validés), `historique` : les quarante derniers résumés (avec leur `origine`), `bilan` : fabrications par origine, serveur, pic de mémoire, durées, temps processeur, effet sur la production (sonde), verdict (`tient`, `tient_tout_juste`, `ne_tient_pas`, `journee_incomplete`, `inconnu`), raisons, phrase, seuils. Mise en forme : `client/src/lib/debug-atelier.mjs`. |
 
 Un nom n'entre dans le SQL qu'après avoir été trouvé tel quel dans `PRAGMA table_list` ; une colonne de tri, dans `PRAGMA table_info` ; la route
 n'exécute que des `SELECT` et ces deux `PRAGMA`. Ordre **stable** d'une page à l'autre : la colonne de tri, puis la clé primaire, puis le rowid
@@ -569,7 +683,7 @@ Site de dev seulement : ailleurs, `403` avant tout le reste (comme `/api/debug/j
 | `GET /api/debug/metriques/?instance=dev\|prod&periode=1h\|24h\|7j\|30j\|365j\|tout&tri=moyenne\|mediane\|p95\|p99\|max\|n\|erreurs\|total\|sql` | `{ instance, instances, periode, tri, depuis, jusqua, depuis_horaire, pas, bornes_ms, bornes_page_ms, global: STATS, global_avec_releves: STATS, releves: { n, routes }, routes: [{ route, methode, ...STATS }], serie: [{ debut, n, moyenne_ms, p95_ms, erreurs, erreurs_5xx }], pages: [{ page, n, ttfb_ms, ttfb_p95_ms, dom_ms, dom_p95_ms, charge_ms, charge_p95_ms, lcp_ms, lcp_p95_ms, au_dela }], navigateurs: [{ famille, appareil, n, pages }], origines: [{ page, route, n }], restreintes }` ; `global` et `serie` **sans les relèves automatiques** (`releves` les compte et les nomme, `global_avec_releves` les inclut) ; pages, navigateurs et origines (gardés par heure) depuis `depuis_horaire` ; les 500 pages et origines les plus nombreuses ; `instances` = celles dont le fichier existe ; `restreintes` = `{ raison, depuis }` pendant la restriction (plafond de la base ou disque bas : [`serveur.md`](serveur.md), « Volume estimé des métriques ») ; `404` pour une instance sans fichier, `400` pour une période ou un tri inconnu. Une période de 7 jours et plus, ou une lecture de l'autre instance, est gardée une minute |
 | `GET /api/debug/metriques/requetes/?limite=&route=&route_exacte=&min_ms=&statut=` | `{ instance, capacite, requetes: [{ instant, methode, route, adresse, statut, duree_ms, phases: { corps_ms, traitement_ms, envoi_ms }, octets_entree, octets_sortie, sql: { n, ms, plus_lente: { sql, ms } }, page, navigateur, appareil, simultanees }] }` : les 2 000 dernières requêtes gardées en mémoire du site de dev (les relèves réussies de la page Debug, de la maintenance et la balise n'y sont pas), les plus récentes d'abord ; `route` : le gabarit contient ce texte, `route_exacte` : le gabarit est celui-ci (la liste « Route » de la page) ; `statut` = un code (`404`) ou une classe (`4xx`) ; `adresse` : le chemin, jamais l'identifiant d'une fiche (`/api/personnages/{id}/…`, ou `/api/personnages/…` pour une adresse inconnue dessous) |
 | `GET /api/debug/metriques/export/?instance=&periode=&format=csv\|json` | Les agrégats bruts de la **même fenêtre que la page** (sommes, histogramme `h_le_<borne>ms`, octets, SQL, quantiles et `au_dela`) en pièce jointe (`Content-Disposition: attachment`) : par tranche de 5 minutes pour « 1h » (`pas` du JSON), par heure sinon ; 100 000 lignes au plus, les plus récentes (`X-Export-Tronque: 1` et `tronque` du JSON au-delà) |
-| `GET /api/debug/systeme/?instance=dev\|prod` | `{ instance, instances, maintenant, periode, processus, disque: { dossier, libre, total, utilise, reserve, part_libre, repartition: [{ cle, libelle, octets }], repartition_le, repartition_partielle, repartition_hote }, fichiers, echantillons, evenements, volume: { metriques_octets, taille_logique_octets, croissance_octets_par_jour, croissance_source, croissance_mesuree_octets_par_jour, croissance_mesuree_jours, croissance_estimee_octets_par_jour, debit_ecriture_octets_par_jour, projection_un_an_octets, taille_a_terme_octets, lignes_par_jour, octets_par_ligne, retention, brutes, pages }, alertes: [{ niveau, message }] }` ; `volume` : voir [`serveur.md`](serveur.md), « Volume estimé des métriques » (`brutes` et `pages` d'une autre instance : lus dans son dernier démarrage, `null` s'il ne les dit pas) |
+| `GET /api/debug/systeme/?instance=dev\|prod` | `{ instance, instances, maintenant, periode, processus, disque: { dossier, libre, total, utilise, reserve, part_libre, repartition: [{ cle, libelle, octets }], repartition_le, repartition_partielle, repartition_hote }, fichiers, echantillons, evenements, volume: { metriques_octets, taille_logique_octets, croissance_octets_par_jour, croissance_source, croissance_mesuree_octets_par_jour, croissance_mesuree_jours, croissance_estimee_octets_par_jour, debit_ecriture_octets_par_jour, projection_un_an_octets, taille_a_terme_octets, lignes_par_jour, octets_par_ligne, retention, brutes, pages }, sauvegardes, alertes: [{ niveau, message }] }` ; `volume` : voir [`serveur.md`](serveur.md), « Volume estimé des métriques » (`brutes` et `pages` d'une autre instance : lus dans son dernier démarrage, `null` s'il ne les dit pas) ; `sauvegardes` : `null` sans le fichier d'état du VPS, sinon l'état des copies des deux instances (`serveur.md`, « Sauvegardes automatiques », forme exacte) |
 | `POST /api/metriques/page/` | La balise d'une page vue : `{ page, ttfb_ms, dom_ms, charge_ms, lcp_ms }` (chemin du site seulement, 200 caractères au plus ; une page que le site construit n'a pas est comptée dans `{autres}` ; valeurs de 0 à 120 000 ms ; corps de 2 Kio au plus ; `application/json` ou `text/plain` pour `navigator.sendBeacon` ; `Sec-Fetch-Site` du même site, et sans lui un en-tête `Origin` du même hôte ou aucun) → `204` ; acceptée sur **les deux instances** par défaut (décision du propriétaire : « Active-le aussi en prod dans un premier temps »), chacune dans son fichier, jamais dans la base vivante ; `MAVERICK_METRIQUES_PAGES=0` la ferme (`403`) ; 600 par minute au plus (`429`) |
 
 `STATS` = `{ n, erreurs_4xx, erreurs_5xx, part_304, moyenne_ms, mediane_ms, p95_ms, p99_ms, min_ms, max_ms, ecart_type_ms, total_ms, octets_entree,
