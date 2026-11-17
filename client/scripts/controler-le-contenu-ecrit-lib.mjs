@@ -71,7 +71,6 @@ export function tablesDeLaStructure(migrations = new Map()) {
   }
   return tables;
 }
-const tableDuFichier = (f) => /^data\/rows\/([A-Za-z0-9_]+)\.sql$/.exec(f)?.[1]?.toLowerCase() ?? null;
 const nomDuFichier = (f) => f.replace(/^data\/rows\//, '').replace(/\.sql$/, '');
 
 /**

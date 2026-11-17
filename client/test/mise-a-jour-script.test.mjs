@@ -243,7 +243,6 @@ test('un refus d’attestation dit le message de la production ; la Simulation l
   soumettre(p.dialogue());
   await reponses();
   assert.equal(p.dialogue().querySelector('[data-erreur]').textContent, refus.message);
-  assert.equal(p.dialogue().querySelector('[data-refus]'), null, 'pas de liste pour une attestation');
   // sans `refus` lisible, le message du service est dit tel quel
   const q = await monter({ baseSource: true, refus: { raison: 'autre' } });
   copier(q).dispatchEvent(new Event('click'));

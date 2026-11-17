@@ -774,24 +774,13 @@ function confirmer({ simulation }) {
 }
 
 /**
- * Dit l'erreur d'un lancement dans le dialogue (`erreur` : son `<p data-erreur>`). Un refus avant l'envoi (409 avec `refus` : attestation de la production ou
- * éléments cités par des fiches) se dit en une ou deux phrases et le détail par table, jamais un nom de fiche ; toute autre erreur garde le message du service.
+ * Dit l'erreur d'un lancement dans le dialogue (`erreur` : son `<p data-erreur>`). Un refus avant l'envoi (409 avec `refus` : l'attestation de la production,
+ * le seul depuis R280) se dit par le message du service, en une phrase ; toute autre erreur garde le message du service.
  */
 function direLErreur(erreur, err) {
   const refus = messageDuRefus(err.corps?.refus);
   erreur.textContent = refus ? refus.texte : err.message;
   erreur.hidden = false;
-  let liste = erreur.parentNode?.querySelector?.('[data-refus]');
-  if (liste) liste.remove();
-  if (!refus?.lignes.length) return;
-  liste = document.createElement('ul');
-  liste.setAttribute('data-refus', '');
-  for (const ligne of refus.lignes) {
-    const li = document.createElement('li');
-    li.textContent = ligne;
-    liste.append(li);
-  }
-  erreur.after(liste);
 }
 
 /**
