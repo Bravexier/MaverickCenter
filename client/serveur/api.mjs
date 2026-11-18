@@ -789,7 +789,8 @@ function traiterConflits(requete, service, db) {
 /**
  * POST /api/mise-a-jour/lancer/ avec la base source, et POST /api/mise-a-jour/copier/ (lot 8 : serveur/paquet.mjs) : le paquet est fabriqué dans un fil à part,
  * la réponse est une PROMESSE. 202 { lancement, github } ; 409 { erreur, refus? } (refus avant l'envoi : `refus.raison` = `attestation` ou `citations`,
- * avec `elements`, `fiches` et `tables` [{ table, elements, fiches }]) ; « copier » sans la base source : 409.
+ * avec `elements`, `fiches` et `tables` [{ table, elements, fiches }] ; avec le marqueur db/bascule-2 (lot 11) aussi `code_pas_a_jour`, `code_inconnu` et `contenu` :
+ * `problemes` [{ table, id, regle, message }], `total`) ; « copier » sans la base source : 409.
  */
 function figerUnPaquet(requete, service, db, { copie, valeur, versionDev, github, maintenant, t0 }) {
   if (copie && !service.source?.()) return erreur(409, '« Copier vers le dépôt » n’existe qu’avec la base source (marqueur db/source).');
@@ -804,6 +805,9 @@ function figerUnPaquet(requete, service, db, { copie, valeur, versionDev, github
     etat: github.configure ? 'envoi' : 'manuel', aLivrer: note ? lignesALivrer(note.lignes) : null, reference: lireReference(service.reference),
     production: { attestations: service.attestations ?? null, production: config.production ?? null, propre: config.propre ?? null },
     ...(service.limites ? { limites: service.limites } : {}), ...(service.paquetEnArrierePlan === false ? { enArrierePlan: false } : {}),
+    // la fiche d'identité du paquet (toujours) ; la bascule 2 (marqueur db/bascule-2, éteinte par défaut) : garde du code installé et contrôle du contenu
+    codeDuService: service.codeDuService?.() ?? null,
+    ...(service.bascule2?.() ? { bascule2: true, livraisons: service.github?.etiquettesDeLivraison ? () => service.github.etiquettesDeLivraison() : null } : {}),
   }).then((lancement) => {
     const quoi = copie ? 'copie vers le dépôt' : lancement.simulation ? 'simulation de mise à jour' : 'mise à jour';
     service.journal?.(`${quoi} : paquet ${lancement.lot} figé (${lancement.modifications} modification(s)${copie ? '' : `, V${lancement.version_cible}`}, ${lancement.octets} octets)`);

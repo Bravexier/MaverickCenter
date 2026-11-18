@@ -82,10 +82,17 @@ export function controleNomCle(db, tables, normalize) {
  * @param {import('node:sqlite').DatabaseSync} db la base (lecture seule suffit), clés étrangères activées par l'appelant
  * @param {{ heritees?: Set<string>, types?: object }} [options] `heritees` : les familles « héritées » dont les clés étrangères rompues sont tolérées
  *   (data/heritage.json) ; `types` : le miroir attendu de `type_page` (défaut : lib/types.mjs)
- * @returns {{ problemes: string[], avertissements: string[], bilan: object }} tous les problèmes (db-check n'en montre que 40)
+ * @returns {{ problemes: string[], emplacements: { table: string|null, id: string|null, regle: string }[], avertissements: string[], bilan: object }} tous les problèmes (db-check n’en montre que 40) ; `emplacements[i]` situe `problemes[i]`
  */
 export function controlerLeContenu(db, { heritees = new Set(), types = TYPES } = {}) {
   const problemes = [];
+  // `emplacements[i]` dit où est `problemes[i]` (même rang) : { table, id, regle } ; `table` et `id` valent null quand le contrôle ne vise pas une ligne. Les appelants
+  // qui ne lisent que `problemes` (db-check, les lots) ne voient rien de plus ; la garde du paquet (serveur/paquet.mjs) nomme la table, la ligne et la règle.
+  const emplacements = [];
+  const signaler = (table, id, regle, message) => {
+    problemes.push(message);
+    emplacements.push({ table: table ?? null, id: id === null || id === undefined ? null : String(id), regle });
+  };
   const bilan = {};
   const tables = db.prepare("SELECT name, sql FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'").all();
   const noms = new Set(tables.map((t) => t.name));
@@ -93,10 +100,10 @@ export function controlerLeContenu(db, { heritees = new Set(), types = TYPES } =
   const colonnes = (t) => db.prepare(`PRAGMA table_info("${t}")`).all();
 
   const ic = db.prepare('PRAGMA integrity_check').all();
-  if (!(ic.length === 1 && ic[0].integrity_check === 'ok')) problemes.push(`integrity_check : ${JSON.stringify(ic).slice(0, 200)}`);
+  if (!(ic.length === 1 && ic[0].integrity_check === 'ok')) signaler(null, null, 'integrity_check', `integrity_check : ${JSON.stringify(ic).slice(0, 200)}`);
   // Clés étrangères : celles qui visent une famille encore « héritée » (data/heritage.json) sont tolérées et comptées, les autres sont des problèmes.
   const fkCtl = controleCles(db, tables, heritees);
-  if (fkCtl.violations.length) problemes.push(`foreign_key_check : ${fkCtl.violations.length} liaison(s) rompue(s), p. ex. ${fkCtl.violations[0]}`);
+  if (fkCtl.violations.length) signaler(fkCtl.violations[0].split(' ')[0], null, 'cle_etrangere', `foreign_key_check : ${fkCtl.violations.length} liaison(s) rompue(s), p. ex. ${fkCtl.violations[0]}`);
   bilan.cles_tolerees = fkCtl.tolerees.length;
 
   // Entités adressées sans clé étrangère : la table doit exister (nom contraint par CHECK à [a-z_]+, vérifié présent dans sqlite_master : interpolation sûre).
@@ -111,33 +118,36 @@ export function controlerLeContenu(db, { heritees = new Set(), types = TYPES } =
     let n = 0;
     for (const r of db.prepare(`SELECT DISTINCT entite_table, entite_id FROM ${src}`).all()) {
       n += 1;
-      if (!existe(r.entite_table, r.entite_id)) problemes.push(`${src} : ${r.entite_table}:${r.entite_id} n'existe pas`);
+      if (!existe(r.entite_table, r.entite_id)) signaler(src, `${r.entite_table}:${r.entite_id}`, 'entite_adressee', `${src} : ${r.entite_table}:${r.entite_id} n'existe pas`);
     }
     bilan[`${src}_cibles`] = n;
   }
 
   // Toute colonne `X_cle` vaut normalize(X) (l'ancienne garde ne couvrait que 9 tables sur 25) ; identifiants fondés sur le contenu : recalculés.
   const nc = controleNomCle(db, tables, normalize);
-  problemes.push(...nc.problemes.slice(0, 20));
+  for (const p of nc.problemes.slice(0, 20)) {
+    const m = /^(\S+) (.+?) : /.exec(p);   // « <table> <clé> : … » (controleNomCle)
+    signaler(m?.[1] ?? null, m?.[2] ?? null, 'colonne_cle', p);
+  }
   bilan.colonnes_cle = nc.colonnesVerifiees;
   // mode_texte : la fin de l'id suit l'intitulé ; son début est la page de création, contrôlé par le CHECK du schéma (les trois textes du Mode Hyper
   // gardent le préfixe de la page retirée guide/liste-des-effets-mode-hyper, identifiants figés, migration 0095).
   for (const r of db.prepare('SELECT id, intitule FROM mode_texte').all()) {
-    if (!r.id.endsWith(`#texte:${normalize(r.intitule)}`)) problemes.push(`mode_texte ${r.id} : l'identifiant ne finit pas par #texte:normalize(intitule)`);
+    if (!r.id.endsWith(`#texte:${normalize(r.intitule)}`)) signaler('mode_texte', r.id, 'mode_texte_id', `mode_texte ${r.id} : l'identifiant ne finit pas par #texte:normalize(intitule)`);
   }
   for (const r of db.prepare('SELECT id, empreinte, texte, occurrence FROM commentaire_orphelin').all()) {
     const e = createHash('sha256').update(r.texte, 'utf8').digest('hex').slice(0, 12);
-    if (r.empreinte !== e) problemes.push(`commentaire_orphelin ${r.id} : empreinte ${r.empreinte} != sha256(texte) ${e}`);
+    if (r.empreinte !== e) signaler('commentaire_orphelin', r.id, 'empreinte_du_texte', `commentaire_orphelin ${r.id} : empreinte ${r.empreinte} != sha256(texte) ${e}`);
   }
   // Dérivés internes d'une même ligne : le booléen stocké sur `classe` est celui de ses lignes de maîtrise (la source est une cellule, la table en est la décomposition).
   for (const r of db.prepare(`SELECT c.id, c.bouclier_classe_max AS stocke, (SELECT max(m.classe_max) FROM classe_maitrise_armure m WHERE m.classe_id = c.id) AS calcule FROM classe c`).all()) {
-    if ((r.stocke ?? null) !== (r.calcule ?? null)) problemes.push(`classe ${r.id} : bouclier_classe_max=${r.stocke} != max(classe_maitrise_armure.classe_max)=${r.calcule}`);
+    if ((r.stocke ?? null) !== (r.calcule ?? null)) signaler('classe', r.id, 'bouclier_classe_max', `classe ${r.id} : bouclier_classe_max=${r.stocke} != max(classe_maitrise_armure.classe_max)=${r.calcule}`);
   }
   // La liste des boucliers (onglet Boucliers, R78) a un bouclier pour chaque forme et chaque matière : la fiche de personnage en tire celui qu'elle porte
   // (décision R96, forme + matière ; une fiche dont le couple manque est signalée par la règle bouclier_inconnu de v_personnage_controle).
   for (const r of db.prepare(`SELECT c.id AS classe, m.ressource_id AS matiere FROM bouclier_classe c CROSS JOIN materiau_bouclier m
     WHERE NOT EXISTS (SELECT 1 FROM bouclier b WHERE b.classe_id = c.id AND b.materiau_id = m.ressource_id)`).all()) {
-    problemes.push(`bouclier : pas de bouclier pour la forme ${r.classe} et la matière ${r.matiere} (la fiche ne pourrait pas le porter : R96)`);
+    signaler('bouclier', `${r.classe}|${r.matiere}`, 'bouclier_par_forme_et_matiere', `bouclier : pas de bouclier pour la forme ${r.classe} et la matière ${r.matiere} (la fiche ne pourrait pas le porter : R96)`);
   }
 
   // Complétude de page_entite : une table dont TOUS les id sont des ids de page (ou '<id de page>#…') est une table d'entités rattachées à une page ;
@@ -164,16 +174,16 @@ export function controlerLeContenu(db, { heritees = new Set(), types = TYPES } =
     if (!ids.length) continue;
     const n = ids.filter((i) => pageDuPrefixe(i) !== null).length;
     if (n === 0) continue;                               // référentiel à clé courte : pas d'entité de page
-    if (n !== ids.length) { problemes.push(`${t.name} : ${ids.length - n} ids sur ${ids.length} ne sont pas rattachables à une page (id mixte)`); continue; }
+    if (n !== ids.length) { signaler(t.name, null, 'id_rattachable_a_une_page', `${t.name} : ${ids.length - n} ids sur ${ids.length} ne sont pas rattachables à une page (id mixte)`); continue; }
     tablesEntites.push(t.name);
     let manque = 0;
     for (const i of ids) {
       const e = entites.get(`${t.name}\u0000${i}`);
       const attendue = pageDuPrefixe(i);
-      if (!e) { manque += 1; if (manque <= 3) problemes.push(`page_entite : ${t.name}:${i} manque`); continue; }
-      if (e.page_id !== attendue) problemes.push(`page_entite : ${t.name}:${i} -> ${e.page_id} (attendu ${attendue})`);
+      if (!e) { manque += 1; if (manque <= 3) signaler(t.name, i, 'page_entite_complete', `page_entite : ${t.name}:${i} manque`); continue; }
+      if (e.page_id !== attendue) signaler('page_entite', `${t.name}:${i}`, 'page_entite_juste', `page_entite : ${t.name}:${i} -> ${e.page_id} (attendu ${attendue})`);
     }
-    if (manque > 3) problemes.push(`page_entite : ${t.name} : ${manque} lignes manquantes au total`);
+    if (manque > 3) signaler(t.name, null, 'page_entite_complete', `page_entite : ${t.name} : ${manque} lignes manquantes au total`);
   }
   bilan.tables_entites = tablesEntites.length;
 
@@ -209,13 +219,13 @@ export function controlerLeContenu(db, { heritees = new Set(), types = TYPES } =
         if (!couvre(r.source_ref, c.classeur, c.onglet, c.cellule)) continue;
         couvertes += 1;
         // « avant » hors de « apres » : une correction qui ajoute une lettre en fin de cellule (« dégâts sonore » → « dégâts sonores ») garde « avant » dans « apres »
-        if (txt.some((k) => typeof r[k] === 'string' && r[k].split(c.apres).join('\u0000').includes(c.avant))) problemes.push(`correction ${c.dump}!${c.onglet}!${c.cellule} : « ${c.avant} » figure encore dans ${t.name}`);
+        if (txt.some((k) => typeof r[k] === 'string' && r[k].split(c.apres).join('\u0000').includes(c.avant))) signaler(t.name, `${c.dump}!${c.onglet}!${c.cellule}`, 'correction_tracee', `correction ${c.dump}!${c.onglet}!${c.cellule} : « ${c.avant} » figure encore dans ${t.name}`);
         if (txt.some((k) => typeof r[k] === 'string' && r[k].includes(c.apres))) avecApres += 1;
       }
     }
     if (!couvertes && supprimeesParLeSite.some((s) => couvre(s, c.classeur, c.onglet, c.cellule))) correctionsLignesSupprimees += 1;
-    else if (!couvertes) problemes.push(`correction ${c.dump}!${c.onglet}!${c.cellule} : aucune ligne typée ne couvre la cellule`);
-    else if (!avecApres) problemes.push(`correction ${c.dump}!${c.onglet}!${c.cellule} : « ${c.apres} » ne figure dans aucune ligne qui couvre la cellule`);
+    else if (!couvertes) signaler('correction', `${c.dump}!${c.onglet}!${c.cellule}`, 'correction_tracee', `correction ${c.dump}!${c.onglet}!${c.cellule} : aucune ligne typée ne couvre la cellule`);
+    else if (!avecApres) signaler('correction', `${c.dump}!${c.onglet}!${c.cellule}`, 'correction_tracee', `correction ${c.dump}!${c.onglet}!${c.cellule} : « ${c.apres} » ne figure dans aucune ligne qui couvre la cellule`);
   }
   if (correctionsLignesSupprimees) bilan.corrections_lignes_supprimees = correctionsLignesSupprimees;
 
@@ -237,7 +247,7 @@ export function controlerLeContenu(db, { heritees = new Set(), types = TYPES } =
       if (historique.creee(n.entite_table, cleLigne) || historique.supprimee(n.entite_table, cleLigne)) { ignorees += 1; continue; }
       verifiees += 1;
       const remarques = ligne ? [historique.valeurDImport(n.entite_table, cleLigne, 'remarque', ligne.remarque), ligne.remarque] : [];
-      if (!remarques.some((r) => typeof r === 'string' && r.includes(n.texte.trim()))) problemes.push(`remarque : la note ${n.entite_table}:${n.entite_id} (${n.cellule ?? 'cellule inconnue'}) ne figure pas dans la remarque de sa ligne`);
+      if (!remarques.some((r) => typeof r === 'string' && r.includes(n.texte.trim()))) signaler('note_cellule', `${n.entite_table}:${n.entite_id}`, 'note_dans_la_remarque', `remarque : la note ${n.entite_table}:${n.entite_id} (${n.cellule ?? 'cellule inconnue'}) ne figure pas dans la remarque de sa ligne`);
     }
     bilan.notes_dans_remarque = verifiees;
     if (ignorees) bilan.notes_lignes_du_site = ignorees;
@@ -257,18 +267,18 @@ export function controlerLeContenu(db, { heritees = new Set(), types = TYPES } =
       const lignes = (bonus.get(s.id) ?? []).sort((a, b) => ORDRE_CHAMPS_NM.indexOf(a.champ) - ORDRE_CHAMPS_NM.indexOf(b.champ) || a.rang - b.rang);
       for (const l of lignes) {
         const cellule = texteSansBalises(s[COLONNE[l.champ]]);
-        if (typeof cellule !== 'string' || !cellule.includes(l.contexte) || !l.contexte.includes(l.texte_brut)) problemes.push(`bonus de maîtrise ${s.id} (${l.champ} #${l.rang}) : « ${l.texte_brut} » ne figure pas dans la cellule`);
+        if (typeof cellule !== 'string' || !cellule.includes(l.contexte) || !l.contexte.includes(l.texte_brut)) signaler('sort_bonus_maitrise', `${s.id} (${l.champ} #${l.rang})`, 'bonus_dans_la_cellule', `bonus de maîtrise ${s.id} (${l.champ} #${l.rang}) : « ${l.texte_brut} » ne figure pas dans la cellule`);
       }
-      if ((s.bonus_maitrise ?? null) !== texteDeBonus(lignes)) problemes.push(`bonus de maîtrise ${s.id} : la colonne bonus_maitrise ne suit pas les lignes de sort_bonus_maitrise`);
+      if ((s.bonus_maitrise ?? null) !== texteDeBonus(lignes)) signaler('sort', s.id, 'bonus_maitrise_suit_les_lignes', `bonus de maîtrise ${s.id} : la colonne bonus_maitrise ne suit pas les lignes de sort_bonus_maitrise`);
       // décision R105 (migration 0063) : le bonus de NM du coût est dans « Coût », jamais dans « Coût secondaire », qui n'a pas de champ dans sort_bonus_maitrise ;
       // et le second coût n'est plus écrit dans « Coût » (une écriture qui se répartit sans doute possible : lib/sort-cout.mjs#repartirLeCout)
-      if (s.cout_secondaire !== null && mentionneUnNm(s.cout_secondaire)) problemes.push(`coût secondaire ${s.id} : « ${s.cout_secondaire} » écrit un niveau de maîtrise (il va dans « Coût »)`);
+      if (s.cout_secondaire !== null && mentionneUnNm(s.cout_secondaire)) signaler('sort', s.id, 'cout_secondaire_sans_nm', `coût secondaire ${s.id} : « ${s.cout_secondaire} » écrit un niveau de maîtrise (il va dans « Coût »)`);
       const reparti = repartirLeCout(s.cout_brut);
-      if (reparti) problemes.push(`coût ${s.id} : « ${s.cout_brut} » écrit deux coûts (Coût « ${reparti.cout_brut} », Coût secondaire « ${reparti.cout_secondaire} »)`);
+      if (reparti) signaler('sort', s.id, 'un_seul_cout_par_case', `coût ${s.id} : « ${s.cout_brut} » écrit deux coûts (Coût « ${reparti.cout_brut} », Coût secondaire « ${reparti.cout_secondaire} »)`);
       // les colonnes typées du coût suivent les deux cases (la lecture du service : lib/sort-analyse.mjs#analyserCout)
       const lu = analyserCout(s.cout_brut, s.cout_secondaire);
       if (['cout_chakra', 'cout_ressource', 'cout_ressource_valeur'].some((c) => (s[c] ?? null) !== lu[c])) {
-        problemes.push(`coût ${s.id} : colonnes typées (${s.cout_chakra}, ${s.cout_ressource}, ${s.cout_ressource_valeur}) au lieu de la lecture de « ${s.cout_brut} » et « ${s.cout_secondaire ?? '—'} »`);
+        signaler('sort', s.id, 'colonnes_du_cout', `coût ${s.id} : colonnes typées (${s.cout_chakra}, ${s.cout_ressource}, ${s.cout_ressource_valeur}) au lieu de la lecture de « ${s.cout_brut} » et « ${s.cout_secondaire ?? '—'} »`);
       }
     }
     bilan.sorts_avec_bonus_maitrise = bonus.size;
@@ -279,15 +289,15 @@ export function controlerLeContenu(db, { heritees = new Set(), types = TYPES } =
   // Illimité (qui n'a ni spécialisations ni sorts à lui), et chaque autre magie a exactement ses deux spécialisations (ordre 1 et 2).
   if (noms.has('magie_specialisation') && colonnes('sort').some((c) => c.name === 'specialisation_id')) {
     for (const s of db.prepare('SELECT id, niveau FROM sort WHERE niveau >= 3 AND specialisation_id IS NULL AND magie_id <> ?').all(POTENTIEL_ILLIMITE)) {
-      problemes.push(`sort ${s.id} : un sort de NPM ${s.niveau} doit avoir une spécialisation, il n'en a pas (R236 (1))`);
+      signaler('sort', s.id, 'specialisation_du_sort', `sort ${s.id} : un sort de NPM ${s.niveau} doit avoir une spécialisation, il n'en a pas (R236 (1))`);
     }
     for (const s of db.prepare('SELECT id, niveau FROM sort WHERE specialisation_id IS NOT NULL AND niveau < 3').all()) {
-      problemes.push(`sort ${s.id} : un sort de NPM ${s.niveau} ne doit pas avoir de spécialisation, il en a une (R236 (1))`);
+      signaler('sort', s.id, 'specialisation_du_sort', `sort ${s.id} : un sort de NPM ${s.niveau} ne doit pas avoir de spécialisation, il en a une (R236 (1))`);
     }
     const parMagie = new Map(db.prepare('SELECT magie_id, COUNT(*) AS n FROM magie_specialisation GROUP BY magie_id').all().map((r) => [r.magie_id, r.n]));
     for (const m of db.prepare('SELECT id FROM magie').all()) {
       const attendu = m.id === POTENTIEL_ILLIMITE ? 0 : 2;
-      if ((parMagie.get(m.id) ?? 0) !== attendu) problemes.push(`magie ${m.id} : ${parMagie.get(m.id) ?? 0} spécialisation(s) au lieu de ${attendu} (R236 (1))`);
+      if ((parMagie.get(m.id) ?? 0) !== attendu) signaler('magie', m.id, 'specialisations_de_la_magie', `magie ${m.id} : ${parMagie.get(m.id) ?? 0} spécialisation(s) au lieu de ${attendu} (R236 (1))`);
     }
     bilan.specialisations = [...parMagie.values()].reduce((a, n) => a + n, 0);
   }
@@ -296,7 +306,7 @@ export function controlerLeContenu(db, { heritees = new Set(), types = TYPES } =
   {
     const attendus = Object.entries(types).map(([id, t], i) => [id, t.label, t.singular, t.discord, t.blurb, i + 1]);
     const reels = db.prepare('SELECT id, libelle, singulier, salon_discord, description, ordre FROM type_page ORDER BY ordre').all().map((r) => Object.values(r));
-    if (JSON.stringify(attendus) !== JSON.stringify(reels)) problemes.push('type_page diffère de client/src/lib/types.mjs (même ordre, mêmes libellés) : relancer l\'importeur des types');
+    if (JSON.stringify(attendus) !== JSON.stringify(reels)) signaler('type_page', null, 'miroir_des_types', 'type_page diffère de client/src/lib/types.mjs (même ordre, mêmes libellés) : relancer l\'importeur des types');
     bilan.types_page = reels.length;
   }
 
@@ -321,24 +331,24 @@ export function controlerLeContenu(db, { heritees = new Set(), types = TYPES } =
       try {
         const cles = clesDesMotsCles(motsCles, new Map(categoriesDesMotsCles(db).map((c) => [c.id, c.libelle])));
         for (const m of motsCles) {
-          if (cles.get(m.id) !== m.cle) problemes.push(`mot_cle ${m.id} : la clé « ${m.cle} » n'est pas celle de la règle (« ${cles.get(m.id)} », décision R232)`);
+          if (cles.get(m.id) !== m.cle) signaler('mot_cle', m.id, 'cle_du_mot_cle', `mot_cle ${m.id} : la clé « ${m.cle} » n'est pas celle de la règle (« ${cles.get(m.id)} », décision R232)`);
         }
       } catch (e) {
         if (!(e instanceof HomonymesRefuses)) throw e;
-        for (const f of e.fautes) problemes.push(`mot_cle ${f.ids.join(', ')} (« ${f.base} ») : ${RAISONS[f.raison]} (décision R232)`);
+        for (const f of e.fautes) signaler('mot_cle', f.ids.join(', '), 'homonymes', `mot_cle ${f.ids.join(', ')} (« ${f.base} ») : ${RAISONS[f.raison]} (décision R232)`);
       }
       const courantes = new Set(motsCles.map((m) => m.cle));
-      for (const m of motsCles) for (const a of m.anciennes_cles) if (courantes.has(a)) problemes.push(`mot_cle_ancienne_cle « ${a} » (mot-clé ${m.id}) : c'est la clé courante d'un mot-clé`);
+      for (const m of motsCles) for (const a of m.anciennes_cles) if (courantes.has(a)) signaler('mot_cle_ancienne_cle', a, 'ancienne_cle', `mot_cle_ancienne_cle « ${a} » (mot-clé ${m.id}) : c'est la clé courante d'un mot-clé`);
     }
     let synonymes = 0;
     if (noms.has('mot_cle_synonyme')) {
       for (const s of db.prepare('SELECT id, mot_cle_id, libelle, libelle_cle FROM mot_cle_synonyme ORDER BY id').all()) {
-        if (normalize(s.libelle) !== s.libelle_cle) problemes.push(`mot_cle_synonyme ${s.id} : libelle_cle « ${s.libelle_cle} » n'est pas normalize(« ${s.libelle} »)`);
+        if (normalize(s.libelle) !== s.libelle_cle) signaler('mot_cle_synonyme', s.id, 'cle_du_synonyme', `mot_cle_synonyme ${s.id} : libelle_cle « ${s.libelle_cle} » n'est pas normalize(« ${s.libelle} »)`);
       }
       for (const m of motsCles) {
         m.synonymes.forEach((x, i) => {
           synonymes += 1;
-          for (const f of fautesDuSynonyme(vocabulaire, m, x, { autres: m.synonymes.slice(0, i) })) problemes.push(`mot_cle ${m.id} : le synonyme « ${x} » ne convient pas (${f.raison})`);
+          for (const f of fautesDuSynonyme(vocabulaire, m, x, { autres: m.synonymes.slice(0, i) })) signaler('mot_cle', m.id, 'synonyme', `mot_cle ${m.id} : le synonyme « ${x} » ne convient pas (${f.raison})`);
         });
       }
     }
@@ -351,7 +361,7 @@ export function controlerLeContenu(db, { heritees = new Set(), types = TYPES } =
       for (const r of db.prepare(`SELECT ${cle.map((c) => `${q(c)} AS "k_${c}"`).join(', ')}, ${q(colonne)} AS texte__ FROM "${table}" WHERE instr(${q(colonne)}, '{{') > 0`).all()) {
         balises += lireBalises(r.texte__, { markdown }).length;
         for (const f of formesNonCanoniques(r.texte__, vocabulaire, { markdown })) {
-          problemes.push(`${table}.${colonne} ${cle.map((c) => r[`k_${c}`]).join('|')} : la balise « ${f.balise} » n'est pas sous sa forme canonique (${f.raison})`);
+          signaler(table, cle.map((c) => r[`k_${c}`]).join('|'), 'balise_canonique', `${table}.${colonne} ${cle.map((c) => r[`k_${c}`]).join('|')} : la balise « ${f.balise} » n'est pas sous sa forme canonique (${f.raison})`);
         }
       }
     }
@@ -372,12 +382,12 @@ export function controlerLeContenu(db, { heritees = new Set(), types = TYPES } =
         if (m.url !== null) {
           urls += 1;
           const faute = fauteDeLUrl(m.url, adresses);
-          if (faute) problemes.push(`mot_cle ${m.id} : le lien « ${m.url} » ne convient pas (${faute})`);
+          if (faute) signaler('mot_cle', m.id, 'lien_du_mot_cle', `mot_cle ${m.id} : le lien « ${m.url} » ne convient pas (${faute})`);
         }
         if (m.couleur !== null) {
           couleurs += 1;
           const faute = fauteDeLaCouleur(m.couleur);
-          if (faute) problemes.push(`mot_cle ${m.id} : la couleur « ${m.couleur} » ne convient pas (${faute})`);
+          if (faute) signaler('mot_cle', m.id, 'couleur_du_mot_cle', `mot_cle ${m.id} : la couleur « ${m.couleur} » ne convient pas (${faute})`);
         }
       }
       bilan.liens_mots_cles = urls;
@@ -391,11 +401,11 @@ export function controlerLeContenu(db, { heritees = new Set(), types = TYPES } =
           for (const l of liensDuTexte(r.texte__, { markdown })) {
             if (l.sorte === 'markdown' && lienGarde(l.cible)) continue;
             liensRestes += 1;
-            if (liensRestes <= 20) problemes.push(`${table}.${colonne} ${cle.map((c) => r[`k_${c}`]).join('|')} : le lien « ${l.brut} » s’écrit avec la balise du mot-clé de sa page (migration 0098)`);
+            if (liensRestes <= 20) signaler(table, cle.map((c) => r[`k_${c}`]).join('|'), 'lien_en_balise', `${table}.${colonne} ${cle.map((c) => r[`k_${c}`]).join('|')} : le lien « ${l.brut} » s’écrit avec la balise du mot-clé de sa page (migration 0098)`);
           }
         }
       }
-      if (liensRestes > 20) problemes.push(`liens : ${liensRestes} liens à écrire en balises au total`);
+      if (liensRestes > 20) signaler(null, null, 'lien_en_balise', `liens : ${liensRestes} liens à écrire en balises au total`);
     }
 
     // L'icône d'un mot-clé (migration 0116, décision R235) : NULL, ou une icône de la liste du site (lib/icones.mjs#ICONES, la seule liste ; la règle du
@@ -406,7 +416,7 @@ export function controlerLeContenu(db, { heritees = new Set(), types = TYPES } =
         if (m.icone === null) continue;
         icones += 1;
         const faute = fauteDeLIcone(m.icone);
-        if (faute) problemes.push(`mot_cle ${m.id} : l’icône « ${m.icone} » ne convient pas (${faute})`);
+        if (faute) signaler('mot_cle', m.id, 'icone_du_mot_cle', `mot_cle ${m.id} : l’icône « ${m.icone} » ne convient pas (${faute})`);
       }
       bilan.icones_mots_cles = icones;
     }
@@ -414,11 +424,11 @@ export function controlerLeContenu(db, { heritees = new Set(), types = TYPES } =
 
   // Tables dérivées cohérentes avec leurs sources.
   const n = (sql) => db.prepare(sql).get().n;
-  if (n('SELECT count(*) AS n FROM page_fts') !== n('SELECT count(*) AS n FROM page')) problemes.push('page_fts : une ligne par page attendue');
+  if (n('SELECT count(*) AS n FROM page_fts') !== n('SELECT count(*) AS n FROM page')) signaler('page_fts', null, 'table_derivee', 'page_fts : une ligne par page attendue');
   const liens = n('SELECT count(*) AS n FROM lien');
   bilan.liens = liens;
   bilan.entite_fts = n('SELECT count(*) AS n FROM entite_fts');
-  if (bilan.entite_fts === 0 && n('SELECT count(*) AS n FROM page_entite') > 0) problemes.push('entite_fts vide : data/derive.sql non exécuté');   // vide = normal tant qu'aucun domaine typé n'est porté (lot 1)
+  if (bilan.entite_fts === 0 && n('SELECT count(*) AS n FROM page_entite') > 0) signaler('entite_fts', null, 'table_derivee', 'entite_fts vide : data/derive.sql non exécuté');   // vide = normal tant qu'aucun domaine typé n'est porté (lot 1)
   // Avertissements : ce qui mérite un regard sans rendre la base fausse (le code de sortie ne change pas).
   // Le coût de fabrication d'un bouclier (décision R207 (1), choix de game-design) : le prix d'un bouclier suit bouclier_classe.prix (RO, par forme) ;
   // « 250 RF / Classe » de la ligne « Bouclier » du tableau FABRICATION (armure_emplacement) n'en est qu'une autre écriture, modifiable à part sur le site
@@ -427,5 +437,5 @@ export function controlerLeContenu(db, { heritees = new Set(), types = TYPES } =
   if (noms.has('bouclier_classe') && noms.has('armure_emplacement')) {
     avertissements.push(...ecartsDeFabricationDuBouclier(db));
   }
-  return { problemes, avertissements, bilan };
+  return { problemes, emplacements, avertissements, bilan };
 }
