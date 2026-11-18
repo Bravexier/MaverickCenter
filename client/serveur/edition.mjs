@@ -123,7 +123,7 @@ import {
 import { contexteDesArmes } from '../src/lib/armes-db.mjs';
 import { liensDesValeursFermees } from '../src/lib/mots-cles-des-valeurs.mjs';
 import { poidsDeBouclier } from '../src/lib/armures-db.mjs';
-import { echellesDesCartes, magiesDesCibles, renvoisAuxDegatsMoyens } from '../src/lib/bestiaire-db.mjs';
+import { attaquesDesCartes, echellesDesCartes, magiesDesCibles, renvoisAuxDegatsMoyens } from '../src/lib/bestiaire-db.mjs';
 import {
   libelleDeFiche, magiesDesDonsVariables, noterLesRetraits, nouveauxRetraitsDeFiches, numerosDesFichesDeJoueur, ordreDesLibelles, retirerDesFiches,
   retirerLesChoixDesDonsChanges,
@@ -3840,6 +3840,8 @@ export function listes(db) {
     objetsDuButin: db.prepare('SELECT id, nom, texte FROM monstre_butin_objet ORDER BY rang').all(),
     renvoisAuxDegatsMoyens: renvoisAuxDegatsMoyens(db),
     echellesDesCartes: echellesDesCartes(db),
+    // les attaques des cartes qui ont des types de dégâts (migration 0130, R299) : la rubrique « Dégâts » redessinée garde les types de la page
+    attaquesDesCartes: attaquesDesCartes(db),
     magiesDesCibles: magiesDesCibles(db),
     // la page des armes (lib/armes-rendu.mjs) : types d'armes (champ « Type », dé, règle du dé, portée), solidité de base des armes
     typesDArmes: contexteDesArmes(db).typesDArmes,

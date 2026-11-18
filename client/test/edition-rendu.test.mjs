@@ -11,7 +11,7 @@ import { fromHtml } from 'hast-util-from-html';
 import { toHtml } from 'hast-util-to-html';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { htmlDeLigneDArme } from '../src/lib/armes-rendu.mjs';
-import { echellesDesCartes as lesEchelles, magiesDesCibles as lesMagiesDesCibles, renvoisAuxDegatsMoyens as lesRenvois } from '../src/lib/bestiaire-db.mjs';
+import { attaquesDesCartes as lesAttaques, echellesDesCartes as lesEchelles, magiesDesCibles as lesMagiesDesCibles, renvoisAuxDegatsMoyens as lesRenvois } from '../src/lib/bestiaire-db.mjs';
 import { attributEd, lireAttributEd } from '../src/lib/edition-modele.mjs';
 import { contexteDesArmes } from '../src/lib/armes-db.mjs';
 import { poidsDeBouclier as lesPoidsDeBouclier } from '../src/lib/armures-db.mjs';
@@ -38,6 +38,7 @@ const liens = liensDesValeursFermees(db);
 const poidsDeBouclier = lesPoidsDeBouclier(db);
 const renvoisAuxDegatsMoyens = lesRenvois(db);
 const echellesDesCartes = lesEchelles(db);
+const attaquesDesCartes = lesAttaques(db);
 const magiesDesCibles = lesMagiesDesCibles(db);
 // les niveaux d'alchimie (rendu « potion-niveau » des consommables de l'onglet Ceinture, comme serveur/edition.mjs#listes)
 const niveauxDAlchimie = db.prepare('SELECT id AS valeur, nom AS libelle FROM niveau_alchimie ORDER BY rang').all();
@@ -178,7 +179,7 @@ test('site construit : chaque champ [data-ed] des métiers, des magies, des race
       // les pastilles d'état que la page montre dans le champ, comme le script les relève (src/scripts/edition/editeur.mjs#rendreElement)
       const pastilles = zones(cible).map((z) => ({ forme: texteDe(trouver(z, 'chip--etat')), avant: texteAvant(cible, z), html: toHtml(z) }));
       // les balises du glossaire, que la page construite montre rendues (le middleware ; dans l'éditeur, src/scripts/edition/mots-cles-vivants.mjs)
-      const obtenu = fragment(htmlAvecMotsCles(rendreChamp(rendu, ligne[info.colonne], ligne, { competences, caracteristiques, objets, typesDon, echellesDePuissance, objetsDuButin, magies, renvoisAuxDegatsMoyens, echellesDesCartes, magiesDesCibles, typesDArmes, soliditeDesArmes, poidsDeBouclier, niveauxDAlchimie, pastilles, liens }), vocabulaire).html);
+      const obtenu = fragment(htmlAvecMotsCles(rendreChamp(rendu, ligne[info.colonne], ligne, { competences, caracteristiques, objets, typesDon, echellesDePuissance, objetsDuButin, magies, renvoisAuxDegatsMoyens, echellesDesCartes, attaquesDesCartes, magiesDesCibles, typesDArmes, soliditeDesArmes, poidsDeBouclier, niveauxDAlchimie, pastilles, liens }), vocabulaire).html);
       assert.equal(obtenu, attendu, `${p} : ${info.table} ${JSON.stringify(info.cle)} ${info.colonne} (rendu ${rendu})`);
       parRendu.set(rendu, (parRendu.get(rendu) ?? 0) + 1);
     }

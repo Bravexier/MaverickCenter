@@ -373,9 +373,15 @@ export function htmlDeLEchelle(echelleBrut, categorie, echelles = [], renvoi = f
  * Chacun reçoit la valeur de la colonne et sa ligne de la base.
  */
 export const RENDUS_DU_BESTIAIRE = {
-  // `ctx.echellesDesCartes` (serveur/edition.mjs#listes) : l'échelle écrite de chaque carte, pour une formule « N (+k/mEP) » ou « N (+k/EP) » (décisions R55, R59)
+  // `ctx.echellesDesCartes` (serveur/edition.mjs#listes) : l'échelle écrite de chaque carte, pour une formule « N (+k/mEP) » ou « N (+k/EP) » (décisions R55, R59) ;
+  // `ctx.attaquesDesCartes` et `ctx.liens` : les attaques des cartes qui ont des types de dégâts et les liens du glossaire (R288, R299), pour que la rubrique
+  // « Dégâts » redessinée montre les mêmes types que la page (bestiaire-rendu.mjs#htmlDeCarteMonstre)
   'monstre-rubrique': (valeur, ligne, ctx = {}) =>
-    htmlDeRubrique(ligne?.rubrique, valeur, { echelles: echellesEcrites(ctx.echellesDesCartes?.[ligne?.monstre_id]), magiesDesCibles: ctx.magiesDesCibles ?? {} }),
+    htmlDeRubrique(ligne?.rubrique, valeur, {
+      echelles: echellesEcrites(ctx.echellesDesCartes?.[ligne?.monstre_id]),
+      magiesDesCibles: ctx.magiesDesCibles ?? {},
+      ...(ligne?.rubrique === 'degats' && ctx.attaquesDesCartes?.[ligne?.monstre_id] ? { attaques: ctx.attaquesDesCartes[ligne.monstre_id], liens: ctx.liens ?? null } : {}),
+    }),
   'monstre-categorie': (valeur, ligne) => htmlDeCategorie(valeur, ligne?.categorie_brut),
   // une cellule du tableau : la valeur, ou « — »
   'monstre-cellule': (valeur) => (String(valeur ?? '').trim() ? e(valeur) : '<span class="vide">—</span>'),
