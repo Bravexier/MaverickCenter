@@ -6,12 +6,13 @@
 //   node --test test/deploy-atelier.test.mjs
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
-import { chmodSync, copyFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, symlinkSync, writeFileSync } from 'node:fs';
+import { accessSync, chmodSync, constants, copyFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import YAML from 'yaml';
 import { fabriquer } from '../../deploy/installateur/fabriquer.mjs';
+import { verifierLaSortie } from '../serveur/fabrication-depuis-contenu.mjs';
 import { UA_SONDE } from '../serveur/metriques.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
@@ -442,7 +443,7 @@ test('conteneur.sh, sans privilège : copie l’extrait sous délai, refuse un l
   ecrire(join(lieux.kit, 'client', 'scripts', 'fabriquer-depuis-contenu.mjs'), '// faux');
   ecrire(join(lieux.contenu, 'contenu-0.4.95.db'), 'un extrait');
   // un faux node : enregistre ses arguments et écrit les résultats que le conteneur doit laisser
-  ecrire(join(lieux.bin, 'node'), '#!/bin/sh\necho "$*" >> "$FAKE_NODE_LOG"\ncase "$*" in *fabriquer-depuis-contenu*) echo \'{ "format": "maverick-fabrication/1" }\' > "$RESULTATS/fabrication.json"; exit "${FAKE_NODE_CODE:-0}" ;; *comparer-sites*) echo \'{ "format": "maverick-comparaison/1" }\' > "$RESULTATS/comparaison.json"; exit 1 ;; esac\n');
+  ecrire(join(lieux.bin, 'node'), '#!/bin/sh\necho "$*" >> "$FAKE_NODE_LOG"\ncase "$*" in *fabriquer-depuis-contenu*) prev=; for a in "$@"; do [ "$prev" = --sortie ] && s=$a; prev=$a; done; mkdir -p "$s/_astro"; echo page > "$s/index.html"; echo css > "$s/_astro/a.css"; echo \'{ "format": "maverick-fabrication/1" }\' > "$RESULTATS/fabrication.json"; exit "${FAKE_NODE_CODE:-0}" ;; *comparer-sites*) echo \'{ "format": "maverick-comparaison/1" }\' > "$RESULTATS/comparaison.json"; exit 1 ;; esac\n');
   chmodSync(join(lieux.bin, 'node'), 0o755);
   const lancerLe = (plus = {}) => {
     const t0 = Date.now();
@@ -457,14 +458,26 @@ test('conteneur.sh, sans privilège : copie l’extrait sous délai, refuse un l
   assert.equal(ok.code, 0, ok.out);
   assert.equal(readFileSync(join(lieux.travail, 'contenu.db'), 'utf8'), 'un extrait', 'l’extrait est copié par le conteneur');
   const appels = readFileSync(join(dossier, 'node.log'), 'utf8');
-  assert.match(appels, /fabriquer-depuis-contenu\.mjs --contenu .*\/travail\/contenu\.db --sortie .*\/sortie\/site --mesure .*\/resultats\/fabrication\.json/);
-  assert.match(appels, /comparer-sites\.mjs .*\/site .*\/sortie\/site --json .*\/resultats\/comparaison\.json/);
+  // le site est fabriqué dans le travail (le montage du kit), comparé là, puis copié vers la sortie
+  assert.match(appels, /fabriquer-depuis-contenu\.mjs --contenu .*\/travail\/contenu\.db --sortie .*\/travail\/site --mesure .*\/resultats\/fabrication\.json/);
+  assert.match(appels, /comparer-sites\.mjs .*\/site .*\/travail\/site --json .*\/resultats\/comparaison\.json/);
+  assert.ok(!/--sortie \S*\/sortie\//.test(appels), 'rien n’est fabriqué directement dans la sortie');
+  assert.equal(readFileSync(join(lieux.sortie, 'site', 'index.html'), 'utf8'), 'page\n', 'le site fabriqué est copié vers la sortie');
+  assert.equal(readFileSync(join(lieux.sortie, 'site', '_astro', 'a.css'), 'utf8'), 'css\n');
   assert.ok(existsSync(join(lieux.travail, 'kit', 'client', 'scripts', 'fabriquer-depuis-contenu.mjs')), 'le kit est copié dans le travail');
   assert.ok(existsSync(join(lieux.resultats, 'comparaison.json')));
   // un échec de la fabrication : sa sortie, et pas de comparaison
   rmDossier(join(lieux.resultats, 'comparaison.json'));
   assert.equal(lancerLe({ FAKE_NODE_CODE: '3' }).code, 3);
   assert.ok(!existsSync(join(lieux.resultats, 'comparaison.json')));
+  // une sortie qui n’est pas un dossier : la copie échoue, avec son code et son message
+  rmDossier(lieux.sortie);
+  writeFileSync(lieux.sortie, 'un fichier');
+  const coupee = lancerLe();
+  assert.equal(coupee.code, 76, coupee.out);
+  assert.match(coupee.out, /copie du site fabriqué/);
+  rmDossier(lieux.sortie);
+  mkdirSync(lieux.sortie);
   // un lien à la place du fichier, une FIFO, un fichier vide, un fichier trop gros : 73 ou 74, jamais de blocage
   const fichier = join(lieux.contenu, 'contenu-0.4.95.db');
   rmDossier(fichier);
@@ -486,6 +499,56 @@ test('conteneur.sh, sans privilège : copie l’extrait sous délai, refuse un l
   const bloque = lancerLe({ DELAI_DE_LA_COPIE: '1' });
   assert.equal(bloque.code, 75, bloque.out);
   assert.ok(bloque.ms < 10000, `coupée par le délai (${bloque.ms} ms)`);
+});
+
+const SHM = '/dev/shm';
+const DEUX_MONTAGES = (() => { try { accessSync(SHM, constants.W_OK); return statSync(SHM).dev !== statSync(racine).dev; } catch { return false; } })();
+// Ce que fait Astro : un renommage de .astro/.prerender/_astro/x.css (dans le kit, donc dans le travail) vers <sortie>/_astro/x.css.
+const FAUX_ASTRO = `import { mkdirSync, renameSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+const a = process.argv.slice(2);
+const sortie = a[a.indexOf('--sortie') + 1];
+const prerender = join(process.env.TRAVAIL, 'kit', 'client', '.astro', '.prerender', '_astro');
+mkdirSync(prerender, { recursive: true });
+writeFileSync(join(prerender, 'x.css'), 'css');
+mkdirSync(join(sortie, '_astro'), { recursive: true });
+renameSync(join(prerender, 'x.css'), join(sortie, '_astro', 'x.css'));
+writeFileSync(join(sortie, 'index.html'), 'page');
+writeFileSync(join(process.env.RESULTATS, 'fabrication.json'), '{ "format": "maverick-fabrication/1" }');
+`;
+
+test('conteneur.sh sur deux montages (travail sur le disque, sortie sur un autre système de fichiers) : le renommage d’Astro reste dans le travail, le site est copié vers la sortie', { skip: skip || (!have('timeout') && 'timeout indisponible') || (!DEUX_MONTAGES && `${SHM} absent, non inscriptible ou sur le même périphérique que le dossier temporaire`) }, (t) => {
+  const dossier = dossierTemporaire('deploy-atelier-montages', { t });
+  const shm = dossierTemporaire('deploy-atelier-sortie', { t, dans: SHM });
+  const lieux = { kit: join(dossier, 'kit'), site: join(dossier, 'site'), contenu: join(dossier, 'contenu'), travail: join(dossier, 'travail'), resultats: join(dossier, 'resultats'), sortie: join(shm, 'sortie'), bin: join(dossier, 'bin') };
+  for (const d of Object.values(lieux)) mkdirSync(d, { recursive: true });
+  assert.notEqual(statSync(lieux.travail).dev, statSync(lieux.sortie).dev, 'deux montages distincts');
+  ecrire(join(lieux.kit, 'client', 'scripts', 'fabriquer-depuis-contenu.mjs'), '// faux');
+  ecrire(join(lieux.contenu, 'contenu-0.4.95.db'), 'un extrait');
+  // un faux node qui lance le vrai (process.execPath) : la fabrication fait le renommage d’Astro, la comparaison ne fait rien
+  ecrire(join(dossier, 'faux-astro.mjs'), FAUX_ASTRO);
+  ecrire(join(lieux.bin, 'node'), '#!/bin/sh\ncase "$*" in *fabriquer-depuis-contenu*) exec "$NODE_REEL" "$FAUX_ASTRO" "$@" ;; esac\nexit 0\n');
+  chmodSync(join(lieux.bin, 'node'), 0o755);
+  const env = { PATH: `${lieux.bin}:${process.env.PATH}`, NODE_REEL: process.execPath, FAUX_ASTRO: join(dossier, 'faux-astro.mjs'), KIT: lieux.kit, SITE: lieux.site, CONTENU: lieux.contenu, TRAVAIL: lieux.travail, SORTIE: lieux.sortie, RESULTATS: lieux.resultats, VERSION_INSTALLEE: '0.4.95' };
+  // la disposition de l’ancien script (fabriquer directement dans la sortie) échoue bel et bien : EXDEV
+  const ancien = spawnSync(process.execPath, [join(dossier, 'faux-astro.mjs'), '--sortie', join(lieux.sortie, 'site')], { encoding: 'utf8', env });
+  assert.notEqual(ancien.status, 0, 'renommer d’un montage à l’autre échoue');
+  assert.match(ancien.stderr, /EXDEV/);
+  rmDossier(lieux.sortie); mkdirSync(lieux.sortie);
+  // le script : la fabrication se fait dans le travail, la sortie reçoit une copie
+  const r = spawnSync('sh', [join(SOURCES, 'conteneur.sh')], { encoding: 'utf8', timeout: 30000, env });
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.equal(readFileSync(join(lieux.sortie, 'site', '_astro', 'x.css'), 'utf8'), 'css', 'le fichier renommé par Astro arrive dans la sortie');
+  assert.equal(readFileSync(join(lieux.sortie, 'site', 'index.html'), 'utf8'), 'page');
+  assert.ok(existsSync(join(lieux.travail, 'site', 'index.html')), 'le site a bien été fabriqué dans le travail');
+  assert.ok(existsSync(join(lieux.resultats, 'fabrication.json')));
+});
+
+test('le dossier de sortie de la fabrication (travail/site) passe le contrôle : ni le kit, ni client, ni un dossier qui les contient', () => {
+  const client = '/travail/kit/client';
+  assert.doesNotThrow(() => verifierLaSortie('/travail/site', client));
+  assert.throws(() => verifierLaSortie('/travail/kit', client), /contient le code/);
+  assert.throws(() => verifierLaSortie('/travail', client), /contient le code/);
 });
 
 test('disque : un conteneur dont l’espace libre passe sous le minimum PENDANT la fabrication est arrêté, et c’est une mesure', { skip }, () => {
@@ -963,6 +1026,51 @@ test('la sonde s’arrête aussitôt quand la production répond mal (trois mauv
   assert.equal(appelsDeCurl(m).filter((a) => a.includes(':8080')).length, 3, 'la production n’est plus interrogée une fois la sonde arrêtée');
   assert.equal(appelsDeCurl(m).filter((a) => a.includes(':8081')).length, 2, 'et la sonde est arrêtée tout entière : le site de dev n’a plus reçu de requête après le troisième tour');
   assert.match(r.out, /sonde arrêtée/);
+});
+
+test('la sonde lit MAVERICK_PORT=<port> et MAVERICK_PORT=127.0.0.1:<port> (la forme des instances du serveur), aucun autre hôte', { skip }, () => {
+  const ecrireLesPorts = (m, prod, dev) => {
+    ecrire(join(m.dossier, 'maverick-center', '.env'), `MAVERICK_CONTENEUR=maverick-center\nMAVERICK_PORT=${prod}\n`);
+    ecrire(join(m.instance, '.env'), `MAVERICK_CONTENEUR=maverick-center-test\nMAVERICK_PORT=${dev}\nMAVERICK_EDITION=1\n`);
+  };
+  const urls = (m) => [...new Set(appelsDeCurl(m).map((a) => a.split(' ').pop().replace(/\/(api\/personnages\/)?$/, '')))].sort();
+  // avec l'hôte, comme sur le serveur
+  const avecHote = monde({ sonde: true });
+  ecrireLesPorts(avecHote, '127.0.0.1:8080', '127.0.0.1:8081');
+  lancer(avecHote);
+  const sonde = dernierRapport(avecHote).sonde;
+  assert.equal(sonde.disponible, true);
+  assert.deepEqual([sonde.instances.prod.disponible, sonde.instances.dev.disponible], [true, true]);
+  assert.deepEqual(urls(avecHote), ['http://127.0.0.1:8080', 'http://127.0.0.1:8081']);
+  // un mélange des deux formes
+  const melange = monde({ sonde: true });
+  ecrireLesPorts(melange, '8080', '127.0.0.1:8081');
+  lancer(melange);
+  assert.deepEqual(urls(melange), ['http://127.0.0.1:8080', 'http://127.0.0.1:8081']);
+  // un autre hôte, un port hors limites, un hôte sans port : illisible, et la sonde ne l'interroge pas
+  for (const mauvais of ['0.0.0.0:8080', '192.168.1.5:8080', 'localhost:8080', '127.0.0.1:', '127.0.0.1:8080:9', '127.0.0.1', '70000', '0']) {
+    const m = monde({ sonde: true });
+    ecrireLesPorts(m, mauvais, mauvais);
+    lancer(m);
+    const s = dernierRapport(m).sonde;
+    assert.equal(s.instances.prod.motif, 'port_illisible', mauvais);
+    assert.equal(s.instances.dev.motif, 'port_illisible', mauvais);
+    assert.equal(appelsDeCurl(m).length, 0, mauvais);
+  }
+});
+
+test('la sonde impossible garde le motif de chaque instance dans le rapport (disponible: false, motif général sonde_impossible)', { skip }, () => {
+  const m = monde({ sonde: true });
+  ecrire(join(m.dossier, 'maverick-center', '.env'), 'MAVERICK_PORT=0.0.0.0:8080\n');
+  rmDossier(join(m.instance, '.env'));
+  lancer(m);
+  const sonde = dernierRapport(m).sonde;
+  assert.equal(sonde.format, 'maverick-sonde/1');
+  assert.equal(sonde.disponible, false);
+  assert.equal(sonde.motif, 'sonde_impossible');
+  assert.deepEqual([sonde.instances.prod.disponible, sonde.instances.prod.motif, sonde.instances.prod.phases], [false, 'port_illisible', null]);
+  assert.deepEqual([sonde.instances.dev.disponible, sonde.instances.dev.motif, sonde.instances.dev.phases], [false, 'env_absent', null]);
+  assert.equal(appelsDeCurl(m).length, 0);
 });
 
 test('le .env d’une instance dans un dossier monté en écriture dans un conteneur n’est pas lu : « sonde impossible » pour cette instance', { skip }, () => {

@@ -9,7 +9,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import {
   ANCIEN_DOSSIER_DE_L_EXTRAIT, FICHIER_DU_CONTENU, FORMAT_ETAT_DE_L_ATELIER, RAPPORTS_GARDES, creerAtelier, lireUnRapport, listerLesRapports, nomDeLExtrait, validerLaComparaison,
-  validerLaFabrication, validerLaSonde, validerLeKit, validerLeRapport,
+  messageDErreur, validerLaFabrication, validerLaSonde, validerLeKit, validerLeRapport,
 } from '../serveur/atelier.mjs';
 import { demarrerService } from '../serveur/service.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
@@ -382,4 +382,27 @@ test('l’état porte le bilan des dernières 24 h et la fenêtre de mesure de l
 
 test('on garde assez de rapports pour une journée pleine : 40', () => {
   assert.equal(RAPPORTS_GARDES, 40);
+});
+
+test('le message d’une erreur de fabrication : 1000 caractères ; trop long, le début puis la dernière ligne qui parle d’une erreur (la cause est à la fin de la sortie)', () => {
+  const court = 'build a échoué (code 1) : Error: EXDEV: cross-device link not permitted';
+  assert.equal(messageDErreur(court), court);
+  assert.equal(messageDErreur(42), null);
+  // la cause tombe dans les 1000 premiers caractères : rien n'est déplacé
+  const tot = `build a échoué (code 1) : ${'x'.repeat(100)} Error: la cause\n${'ligne\n'.repeat(400)}`;
+  assert.ok(messageDErreur(tot).startsWith('build a échoué (code 1) : '));
+  assert.ok(messageDErreur(tot).length <= 1000);
+  assert.ok(messageDErreur(tot).includes('Error la cause') || messageDErreur(tot).includes('Error: la cause'));
+  // la cause tombe après les 1000 premiers : le début, puis la dernière ligne d'erreur
+  const tard = `build a échoué (code 1) : début\n${'ligne ordinaire de la sortie\n'.repeat(80)}Error: EXDEV: cross-device link not permitted, rename a vers b\n    at renameSync\n    at suite\n`;
+  const m = messageDErreur(tard);
+  assert.ok(m.length <= 1000);
+  assert.ok(m.startsWith('build a échoué (code 1) : début'));
+  assert.match(m, /EXDEV: cross-device link not permitted, rename a vers b$/);
+  // sans ligne d'erreur : les 1000 premiers
+  assert.equal(messageDErreur('mot '.repeat(600)).length, 1000);
+  // par la validation du rapport
+  const f = validerLaFabrication({ ...FABRICATION, erreur: { etape: 'build', message: tard } });
+  assert.equal(f.erreur.etape, 'build');
+  assert.match(f.erreur.message, /EXDEV/);
 });

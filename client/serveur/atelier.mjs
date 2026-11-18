@@ -62,6 +62,22 @@ export function lireUnJsonBorne(chemin, max) {
 const entier = (v, max = 1e15) => (Number.isSafeInteger(v) && v >= 0 && v <= max ? v : null);
 const nombre = (v, max = 1e9) => (typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= max ? Math.round(v * 100) / 100 : null);
 const texte = (v, n = 120) => (typeof v === 'string' ? v.replace(/[^\p{L}\p{N} .,:;()+@/_'’«»\-–—…=%]/gu, '').trim().slice(0, n) : null);
+/**
+ * Le message d'une erreur de fabrication, 1000 caractères au plus (les lignes jointes par une espace). Quand il est plus long et que la dernière ligne qui parle d'une erreur
+ * (`error`, `Error`, `EXDEV`…) tombe au-delà : le début (l'étape, le code), puis cette ligne — la cause est le plus souvent à la fin de la sortie d'erreur.
+ */
+export function messageDErreur(v, n = 1000) {
+  if (typeof v !== 'string') return null;
+  const lignes = v.split(/\r?\n/).map((l) => texte(l, 1e6)).filter(Boolean);
+  const tout = lignes.join(' ');
+  if (tout.length <= n) return tout;
+  const i = lignes.findLastIndex((l) => /error|EXDEV/i.test(l));
+  if (i < 0) return tout.slice(0, n);
+  const debut = lignes.slice(0, i).join(' ').length + 1;
+  if (debut + lignes[i].length <= n) return tout.slice(0, n);
+  const tete = tout.slice(0, 200).trim();
+  return `${tete} … ${lignes[i]}`.slice(0, n);
+}
 const motif = (v, motifs) => (typeof v === 'string' && motifs.includes(v) ? v : null);
 const date = (v) => (typeof v === 'string' && /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?Z$/.test(v) ? v : null);
 const version = (v) => (typeof v === 'string' && VERSION_VALIDE.test(v) ? v : null);
@@ -112,7 +128,7 @@ export function validerLaFabrication(o) {
       ...memoire(o.memoire),
       par_etape: Object.fromEntries(Object.entries(o.memoire.par_etape ?? {}).slice(0, 8).map(([nom, m]) => [texte(nom, 20) ?? '?', memoire(m)])),
     } : null,
-    erreur: o.erreur ? { etape: texte(o.erreur.etape, 20), message: texte(o.erreur.message, 300) } : null,
+    erreur: o.erreur ? { etape: texte(o.erreur.etape, 20), message: messageDErreur(o.erreur.message) } : null,
   };
 }
 

@@ -90,3 +90,17 @@ test('le module est pur : aucun import, rien du navigateur ni d’Astro (il est 
   assert.ok(!/^\s*import\s/m.test(source));
   assert.ok(!/\b(document|window|localStorage)\b/.test(source.replace(/\/\/.*$/gm, '')));
 });
+
+test('la sonde impossible : le motif de chaque instance est lisible, sans ligne en double', () => {
+  const instance = (motif) => ({ disponible: false, motif, authentifie: false, phases: null });
+  const lignes = lignesDuRapport(rapport({ sonde: { format: 'maverick-sonde/1', disponible: false, motif: 'sonde_impossible', instances: { prod: instance('port_illisible'), dev: instance('env_absent') } } }));
+  const valeur = (libelle) => lignes.filter((l) => l.libelle === libelle).map((l) => l.valeur);
+  assert.deepEqual(valeur('Production pendant la fabrication'), ['sonde impossible (port illisible dans le .env)']);
+  assert.deepEqual(valeur('Site de dev pendant la fabrication'), ['sonde impossible (fichier .env absent)']);
+  assert.equal(valeur('Sonde').length, 1);
+  // sans instances (curl absent) : une seule ligne, sous le libellé historique
+  const sans = lignesDuRapport(rapport({ sonde: { format: 'maverick-sonde/1', disponible: false, motif: 'curl_absent', instances: null } }));
+  assert.deepEqual(sans.filter((l) => /pendant la fabrication/.test(l.libelle)).map((l) => l.valeur), ['sonde impossible (curl absent)']);
+  // un motif inconnu reste affiché tel quel
+  assert.match(lignesDuRapport(rapport({ sonde: { format: 'maverick-sonde/1', disponible: false, motif: 'autre', instances: null } })).at(-1).valeur, /autre/);
+});

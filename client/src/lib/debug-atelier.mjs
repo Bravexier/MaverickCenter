@@ -30,6 +30,12 @@
 
 export const ETATS_DE_L_ATELIER = Object.freeze(['pas_d_atelier', 'non_installe', 'en_attente', 'en_cours', 'rapport']);
 export const ORIGINES = Object.freeze({ livraison: 'livraison', nuit: 'nuit', journee_type: 'journée type' });
+/** Pourquoi la sonde n'a pas pu interroger une instance (rapport.sonde.motif et rapport.sonde.instances.*.motif), en clair. */
+export const MOTIFS_DE_LA_SONDE = Object.freeze({
+  dossier_de_travail: 'dossier de travail de la sonde impossible à créer', curl_absent: 'curl absent', montages_illisibles: 'montages du conteneur illisibles', sonde_impossible: 'aucune instance interrogeable',
+  env_absent: 'fichier .env absent', env_monte: '.env dans un dossier monté en écriture', port_illisible: 'port illisible dans le .env', introuvable: 'dossier de l’instance introuvable',
+});
+const motifDeLaSonde = (m) => (m ? (MOTIFS_DE_LA_SONDE[m] ?? m) : 'raison inconnue');
 export const VERDICTS_DU_BILAN = Object.freeze(['tient', 'tient_tout_juste', 'ne_tient_pas', 'journee_incomplete', 'inconnu']);
 export const ISSUES_DU_RAPPORT = Object.freeze(['fait', 'refus', 'echec', 'oom', 'delai']);
 /** Ce qu'un refus peut dire (le motif du rapport) et la phrase qui le dit. */
@@ -150,11 +156,11 @@ export function lignesDuRapport(r) {
   }
   if (r.sonde) {
     const arret = r.sonde.arretee ? ` — sonde arrêtée : ${r.sonde.arretee.instance === 'prod' ? 'la production' : 'le site de dev'} répondait mal` : '';
-    if (!r.sonde.disponible) lignes.push({ libelle: 'Production pendant la fabrication', valeur: `sonde impossible (${r.sonde.motif ?? 'raison inconnue'})` });
+    if (!r.sonde.disponible) lignes.push({ libelle: r.sonde.instances ? 'Sonde' : 'Production pendant la fabrication', valeur: `sonde impossible (${motifDeLaSonde(r.sonde.motif)})` });
     for (const [instance, nom] of [['prod', 'Production'], ['dev', 'Site de dev']]) {
       const i = r.sonde.instances?.[instance];
       if (!i) continue;
-      if (!i.disponible || !i.phases) { lignes.push({ libelle: `${nom} pendant la fabrication`, valeur: `sonde impossible (${i.motif ?? 'raison inconnue'})` }); continue; }
+      if (!i.disponible || !i.phases) { lignes.push({ libelle: `${nom} pendant la fabrication`, valeur: `sonde impossible (${motifDeLaSonde(i.motif)})` }); continue; }
       const phase = (p) => (p && p.n > 0 ? `médiane ${p.mediane_ms} ms, 95e centile ${p.p95_ms} ms, max ${p.max_ms} ms, ${p.erreurs} erreur(s) sur ${p.n}` : 'aucune mesure');
       lignes.push({ libelle: `${nom} : référence`, valeur: phase(i.phases.reference) });
       lignes.push({ libelle: `${nom} : pendant`, valeur: `${phase(i.phases.fabrication)}${i.authentifie ? '' : ' (réponse de nginx seul : mot de passe interne non lu)'}${instance === 'prod' ? arret : ''}` });

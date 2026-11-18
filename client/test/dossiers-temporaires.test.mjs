@@ -33,6 +33,7 @@ const INTERDITS = [
 /** Exceptions justifiées : fichier, ce qu'il garde, et pourquoi. */
 const EXCEPTIONS = [
   { fichier: 'deploy-volume.test.mjs', quoi: 'chemin /dev/shm', raison: 'un autre système de fichiers (tmpfs) pour une mesure « hors disque » ; le dossier y est créé par l’aide (option dans) et supprimé à la fin du test' },
+  { fichier: 'deploy-atelier.test.mjs', quoi: 'chemin /dev/shm', raison: 'deux montages distincts (tmpfs contre disque) pour reproduire l’EXDEV d’Astro entre le travail et la sortie de l’atelier ; le dossier y est créé par l’aide (option dans) et supprimé à la fin du test' },
 ];
 
 /** Les appels interdits d'un source d'extension `extension` (lignes de commentaire ignorées) : [{ ligne, quoi }]. */
