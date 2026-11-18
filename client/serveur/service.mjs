@@ -29,7 +29,7 @@ import { CORPS_MAX, traiter } from './api.mjs';
 import { creerJournalDuService, estUneReleve } from './journal-du-service.mjs';
 import { instant as maintenant } from './instant.mjs';
 import { DOSSIER_ARCHIVES, FICHIER_BASE, lireEtat, ouvrirBaseVivante, preparerBaseVivante, signature } from './base-vivante.mjs';
-import { ErreurBaseSource, estUneBaseSource, etatDeLaBaseSource, preparerBaseSource } from './base-source.mjs';
+import { ErreurBaseSource, estEnBascule2, estUneBaseSource, etatDeLaBaseSource, preparerBaseSource } from './base-source.mjs';
 import { annonceDuLancement, DUREE_MAX_MAINTENANCE, etatDeMaintenance, lireAnnonce, publierAnnonce } from './maintenance.mjs';
 import { creerGithub, lireLancement, lireReference, sansNouvelles, SUIVIS } from './notes-de-version.mjs';
 import { actualiser } from './paquet.mjs';
@@ -268,6 +268,8 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
   // service) ; avec lui, la base n'est jamais refaite depuis les règles, ses migrations sont appliquées sur place, et un lot de changements vaut pour toutes les tables
   const estSource = () => estUneBaseSource(dossier);
   const sourceAuDemarrage = estSource();
+  // la bascule 2 (lot 11 : le marqueur db/bascule-2, posé plus tard par un script de root) : relue à chaque fois, comme le marqueur de la base source
+  const enBascule2 = () => estEnBascule2(dossier);
   // les copies d'essai d'un lot de changements qu'un arrêt a laissées (serveur/edition-lots.mjs)
   if (edition) {
     try {
@@ -657,7 +659,8 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
           reponse = traiter({ methode: req.method ?? 'GET', chemin: url.pathname, recherche: url.search, entetes: req.headers, corps: Buffer.concat(morceaux).toString('utf8'),
             signal: abandon.signal },
           { base: baseMesuree, etat: decrire, journal, journalDuService: memoire, edition: Boolean(edition), dossier, reference: referenceDuSite, depot, adresse, github,
-            maintenance: maintenanceDemandee, metriques, evenement, classeur, tipeee, extrait, attestations: dossierDesAttestations, acces, essaiDeStructure, atelier, source: estSource });
+            maintenance: maintenanceDemandee, metriques, evenement, classeur, tipeee, extrait, attestations: dossierDesAttestations, acces, essaiDeStructure, atelier, source: estSource,
+            bascule2: enBascule2, codeDuService: () => ({ commit: typeof version.commit === 'string' ? version.commit : null, empreinte: version.empreinte ?? null }) });
         } finally {
           const mesureSql = sql.terminer();
           if (mesure) mesure.sql = mesureSql;

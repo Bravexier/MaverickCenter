@@ -559,6 +559,21 @@ export function creerGithub({ dossier, depot, lireJeton, fetch: f = globalThis.f
   return {
     configure: () => Boolean(lireJeton()),
     annulerRun,
+    /**
+     * Les étiquettes des livraisons publiées du dépôt (les 30 plus récentes, brouillons exclus), comme les lit deploy/installateur/mise-a-jour.sh. Lève une
+     * erreur quand GitHub ne répond pas, répond autre chose que 200, ou qu'il n'y a pas de jeton (`genre: 'jeton'` s'il manque ou est refusé) : la garde du code
+     * installé (serveur/paquet.mjs) la dit « inconnue » et refuse.
+     */
+    async etiquettesDeLivraison() {
+      // sans jeton, ou refusé (401, 403) : `genre: 'jeton'` (le geste est de poser ou renouveler le jeton) ; le reste (réseau, délai, 5xx) : injoignable
+      if (!lireJeton()) throw Object.assign(new Error('aucun jeton GitHub sur ce serveur'), { genre: 'jeton' });
+      const r = await api('/releases?per_page=30');
+      if (r.status === 401 || r.status === 403) throw Object.assign(new Error(`GitHub a répondu ${r.status}`), { genre: 'jeton' });
+      if (r.status !== 200) throw new Error(`GitHub a répondu ${r.status}`);
+      const liste = await r.json();
+      if (!Array.isArray(liste)) throw new Error('GitHub a rendu une liste de livraisons illisible');
+      return liste.filter((l) => l && l.draft !== true && typeof l.tag_name === 'string').map((l) => l.tag_name);
+    },
     /** Déclenche le workflow pour le lancement en état « envoi ». */
     async declencher() {
       const l = lireLancement(dossier);

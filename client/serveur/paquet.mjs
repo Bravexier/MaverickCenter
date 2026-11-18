@@ -30,6 +30,7 @@ import { chargerPlanDesRegles } from '../src/lib/plan-des-regles-db.mjs';
 import { CLASSES_DE_TABLES } from '../src/lib/tables-de-la-base.mjs';
 import { etatDeLaProduction, lireAttestation } from './attestation.mjs';
 import { FICHIER_BASE, integrerLivrees, viderBrouillonLivre } from './base-vivante.mjs';
+import { controlerLeContenu } from './controles-du-contenu.mjs';
 import { empreintesDuContenu, tablesDeLaBase } from './empreintes.mjs';
 import { fabriquerExtrait } from './extrait.mjs';
 import { instant as ecrireInstant } from './instant.mjs';
@@ -56,8 +57,11 @@ const SUFFIXE_NEUF = '.neuf';
  * Fabrique le paquet `destination` d'après la base source `source` (un fichier neuf : fabriquerExtrait, puis la note et la vue `paquet_meta`). Rend son méta :
  * { format, id, mode, version, depuis, lots, modifications, lignes, tables_de_contenu, empreinte, fichier: { octets, sha256 }, duree_ms }.
  * @param {{ source: string, destination: string, production?: string | null, id: string, mode: string, version?: string | null, depuis?: string | null,
- *   date?: string, texte?: string | null, majeure?: boolean, versionDuSite?: string | null, instant?: Date }} o `production` : la base publiée par la production
- *   (référence de la note ; inutile à une copie) ; `date` : AAAA-MM-JJ de la note.
+ *   date?: string, texte?: string | null, majeure?: boolean, versionDuSite?: string | null, instant?: Date, commitDuCode?: string | null,
+ *   empreinteDuCode?: string | null, controleDuContenu?: boolean }} o `production` : la base publiée par la production
+ *   (référence de la note ; inutile à une copie) ; `date` : AAAA-MM-JJ de la note ; `commitDuCode`, `empreinteDuCode` : le code du service qui fabrique le paquet
+ *   (fiche d'identité, `null` en développement) ; `controleDuContenu` : lance controlerLeContenu sur le paquet fini (garde-fou 18, bascule 2 seulement) et rend
+ *   `controle: { total, problemes: [{ table, id, regle, message }] }` (les 20 premiers).
  */
 export function fabriquerPaquet(o) {
   const t0 = performance.now();
@@ -70,6 +74,7 @@ export function fabriquerPaquet(o) {
   const extrait = fabriquerExtrait({ source: o.source, destination: o.destination, version: o.versionDuSite ?? null, instant });
   const db = new DatabaseSync(o.destination);
   let meta;
+  let controle = null;
   try {
     db.exec('PRAGMA foreign_keys = ON');
     db.exec('DROP VIEW IF EXISTS extrait_meta');
@@ -128,18 +133,35 @@ export function fabriquerPaquet(o) {
       format: FORMAT_PAQUET, id: o.id, mode: o.mode, version: avecNote ? o.version : null, depuis: avecNote ? (o.depuis ?? null) : null,
       majeure: avecNote && o.majeure === true, fabrique_le: fabriqueLe, version_du_site: o.versionDuSite ?? null, schema: extrait.schema,
       empreinte: empreintes.global, lots, modifications, lignes, tables_de_contenu: tablesDeContenu,
+      // la fiche d'identité (champs ajoutés au format `maverick-paquet/1`, que ses lecteurs actuels ignorent) : le code qui a fabriqué le paquet, et l'empreinte de chaque table de contenu
+      commit_du_code: o.commitDuCode ?? null, empreinte_du_code: o.empreinteDuCode ?? null,
+      empreintes: Object.fromEntries(Object.entries(empreintes.tables).map(([table, e]) => [table, e.empreinte])),
     };
     db.exec(`CREATE VIEW ${VUE_DU_PAQUET} AS SELECT ${texteSql(meta.format)} AS format, ${texteSql(meta.id)} AS id, ${texteSql(meta.mode)} AS mode,
       ${texteSql(meta.version)} AS version, ${texteSql(meta.depuis)} AS depuis, ${meta.majeure ? 1 : 0} AS majeure, ${texteSql(fabriqueLe)} AS fabrique_le,
       ${texteSql(meta.version_du_site)} AS version_du_site, ${Number(meta.schema)} AS schema, ${texteSql(meta.empreinte)} AS empreinte,
       ${texteSql(JSON.stringify(lots))} AS lots, ${Number(modifications)} AS modifications, ${Number(lignes)} AS lignes,
-      ${texteSql(JSON.stringify(tablesDeContenu))} AS tables_de_contenu`);
+      ${texteSql(JSON.stringify(tablesDeContenu))} AS tables_de_contenu, ${texteSql(meta.commit_du_code)} AS commit_du_code,
+      ${texteSql(meta.empreinte_du_code)} AS empreinte_du_code, ${texteSql(JSON.stringify(meta.empreintes))} AS empreintes`);
     if (db.prepare('PRAGMA freelist_count').get().freelist_count > 0) db.exec('VACUUM');
+    // garde-fou 18 (bascule 2) : le contenu du paquet, dans ce fil, avant qu'il parte (jamais pour un paquet d'avant la bascule 2)
+    if (o.controleDuContenu === true) controle = resumerLeControle(controlerLeContenu(db));
   } finally {
     db.close();
   }
   const octets = readFileSync(o.destination);
-  return { ...meta, fichier: { octets: octets.length, sha256: sha256(octets) }, duree_ms: Math.round(performance.now() - t0) };
+  return { ...meta, fichier: { octets: octets.length, sha256: sha256(octets) }, duree_ms: Math.round(performance.now() - t0), ...(controle ? { controle } : {}) };
+}
+
+/** Le plafond des problèmes nommés dans un refus du contenu (le total reste exact). */
+export const PLAFOND_DES_PROBLEMES = 20;
+
+/** Le bilan de controlerLeContenu qu'un refus porte : le total exact, et les PLAFOND_DES_PROBLEMES premiers (table, identifiant de la ligne, règle, message). */
+function resumerLeControle({ problemes, emplacements }) {
+  return {
+    total: problemes.length,
+    problemes: problemes.slice(0, PLAFOND_DES_PROBLEMES).map((message, i) => ({ table: emplacements[i]?.table ?? null, id: emplacements[i]?.id ?? null, regle: emplacements[i]?.regle ?? null, message })),
+  };
 }
 
 // Le même module sert de fil de travail : la fabrication ne bloque pas le service (comme l'extrait)
@@ -172,7 +194,8 @@ export function lireMetaDuPaquet(chemin) {
   try {
     if (!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'view' AND name = ?").get(VUE_DU_PAQUET)) return null;
     const m = { ...db.prepare(`SELECT * FROM ${VUE_DU_PAQUET}`).get() };
-    return { ...m, majeure: m.majeure === 1, lots: JSON.parse(m.lots), tables_de_contenu: JSON.parse(m.tables_de_contenu) };
+    // `empreintes` (fiche d'identité) : absente d'un paquet fabriqué avant la bascule 2
+    return { ...m, majeure: m.majeure === 1, lots: JSON.parse(m.lots), tables_de_contenu: JSON.parse(m.tables_de_contenu), ...(typeof m.empreintes === 'string' ? { empreintes: JSON.parse(m.empreintes) } : {}) };
   } finally {
     db.close();
   }
@@ -193,6 +216,97 @@ export function attestationUtilisable({ attestations = null, production = null, 
   if (etat.etat === 'a_jour' && lue.attestation) return { attestation: lue.attestation };
   const message = `Refusé avant l’envoi : l’attestation de la production ne décrit pas le contenu qu’elle publie (${etat.message})`;
   return { refus: { raison: 'attestation', etat: etat.etat, raison_production: etat.raison, message } };
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+// Bascule 2 (lot 11, ÉTEINTE sans le marqueur db/bascule-2) : refus avant l'envoi, garde-fous 4 et 18 du chantier
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+
+/** Forme d'une étiquette de livraison de TEST (VX.Y.Z, puis VX.Y.Z-rebuild.N) : celle de deploy/installateur/mise-a-jour.sh (`FORME_TEST`). */
+export const FORME_DE_LIVRAISON_DE_TEST = /^[vV][0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$/;
+/** Le geste qui installe tout de suite la dernière livraison de test (sinon le cron de 5 minutes s'en charge). */
+export const COMMANDE_D_INSTALLATION = 'sudo sh /srv/maverick-center-test/mise-a-jour.sh';
+
+/** Les quatre nombres d'une étiquette (X, Y, Z, numéro de régénération ; 0 sans suffixe) : la clé de `la_plus_haute` du script, qui coupe sur toute suite de non-chiffres. */
+const clesDeVersion = (etiquette) => {
+  const p = String(etiquette).replace(/^[vV]/, '').split(/[^0-9]+/).map((n) => Number(n || 0));
+  return [p[0] ?? 0, p[1] ?? 0, p[2] ?? 0, p[3] ?? 0];
+};
+
+/** Compare deux étiquettes comme `comparer` du script : -1 (a plus ancienne), 0 (égales), 1 (a plus récente). `nombre` : combien de nombres comparer (4 par défaut ; 3 sans la régénération). */
+export function comparerLesEtiquettes(a, b, nombre = 4) {
+  const [ka, kb] = [clesDeVersion(a), clesDeVersion(b)];
+  for (let i = 0; i < nombre; i += 1) if (ka[i] !== kb[i]) return ka[i] < kb[i] ? -1 : 1;
+  return 0;
+}
+
+/** La plus haute des étiquettes de livraison de test de la liste (la première en cas d'égalité, comme le script) ; null s'il n'y en a aucune. */
+export function laPlusHauteLivraisonDeTest(etiquettes) {
+  let haute = null;
+  for (const e of etiquettes) {
+    if (typeof e === 'string' && FORME_DE_LIVRAISON_DE_TEST.test(e) && (haute === null || comparerLesEtiquettes(e, haute) > 0)) haute = e;
+  }
+  return haute;
+}
+
+const versionAffichee = (v) => `V${String(v).replace(/^[vV]/, '')}`;
+
+/**
+ * Garde-fou 4 (pur) : la version du service qui tourne est-elle la plus haute livraison de test publiée ? `version` : celle de `version.json` (« 0.5.15 »),
+ * `etiquettes` : celles des livraisons publiées. Rend { ok: true, derniere } ou { refus: { raison, version_en_cours, derniere_livraison, message } } : `code_pas_a_jour`
+ * (une livraison plus haute est publiée) ou `code_inconnu` (aucune livraison, version illisible, ou version plus haute que toute livraison publiée).
+ * La version d'un service ne dit pas sa régénération (`-rebuild.N`) : sans suffixe, seuls X.Y.Z comptent (sinon une régénération installée ferait refuser pour toujours).
+ */
+export function comparerLeCodeInstalle({ version, etiquettes }) {
+  const derniere = laPlusHauteLivraisonDeTest(etiquettes ?? []);
+  const refus = (raison, message, cause) => ({ refus: { raison, ...(cause ? { cause } : {}), version_en_cours: version ?? null, derniere_livraison: derniere, message: `Refusé avant l’envoi : ${message}` } });
+  if (!derniere) {
+    return refus('code_inconnu', `aucune livraison de test publiée sur GitHub, le site de dev ne peut pas savoir s’il tourne avec le dernier code. Pour lever ce refus : publier la livraison de test, puis réessayer dans 5 minutes.`, 'aucune_livraison');
+  }
+  if (!FORME_DE_LIVRAISON_DE_TEST.test(`V${version ?? ''}`)) {
+    return refus('code_inconnu', `la version du code qui tourne (« ${version ?? 'inconnue'} ») n’a pas la forme d’une livraison de test (X.Y.Z) : le site de dev ne peut pas la comparer à la ${versionAffichee(derniere)}. Pour lever ce refus : installer la livraison avec ${COMMANDE_D_INSTALLATION}.`, 'version_illisible');
+  }
+  const avecRegeneration = String(version).includes('-');
+  const ordre = comparerLesEtiquettes(version, derniere, avecRegeneration ? 4 : 3);
+  if (ordre === 0) return { ok: true, derniere };
+  if (ordre < 0) {
+    return refus('code_pas_a_jour', `le site de dev fait tourner la ${versionAffichee(version)}, mais la dernière livraison de test publiée est la ${versionAffichee(derniere)}. Pour lever ce refus : attendre l’installation de la ${versionAffichee(derniere)} (au plus 5 minutes, le cron la lance), ou lancer ${COMMANDE_D_INSTALLATION} sur le serveur, puis relancer la mise à jour.`);
+  }
+  return refus('code_inconnu', `le site de dev fait tourner la ${versionAffichee(version)}, plus récente que toute livraison de test publiée (la dernière est la ${versionAffichee(derniere)}) : une livraison a sans doute été retirée. Pour lever ce refus : publier la livraison de test de la ${versionAffichee(version)}, puis réessayer dans 5 minutes.`, 'version_en_avance');
+}
+
+/** Le jeton GitHub du site de dev manque ou est refusé (`etiquettesDeLivraison`, notes-de-version.mjs) : un geste différent de celui d'un GitHub injoignable. */
+export const CAUSE_JETON = 'jeton';
+export const CAUSE_INJOIGNABLE = 'injoignable';
+
+/**
+ * Garde-fou 4 : lit les livraisons publiées (`lireLesEtiquettes` : async, rend les étiquettes) puis compare (comparerLeCodeInstalle). Sans lecture possible, refus
+ * `code_inconnu`, jamais un passage, avec la `cause` : `jeton` (pas de client GitHub, pas de jeton, réponse 401 ou 403 : le geste est de poser ou renouveler le
+ * jeton, réessayer ne sert à rien) ou `injoignable` (réseau, délai, erreur de GitHub : réessayer dans 5 minutes).
+ */
+export async function controlerLeCodeInstalle({ version, lireLesEtiquettes }) {
+  let etiquettes;
+  try {
+    if (typeof lireLesEtiquettes !== 'function') throw Object.assign(new Error('GitHub n’est pas configuré sur ce serveur'), { genre: CAUSE_JETON });
+    etiquettes = await lireLesEtiquettes();
+  } catch (e) {
+    const refus = (cause, message) => ({ refus: { raison: 'code_inconnu', cause, version_en_cours: version ?? null, derniere_livraison: null, message: `Refusé avant l’envoi : ${message}` } });
+    if (e?.genre === CAUSE_JETON) {
+      return refus(CAUSE_JETON, `le site de dev ne peut pas lire les livraisons de test publiées sur GitHub (jeton GitHub absent, refusé ou non configuré), donc savoir s’il a installé le dernier code. Pour lever ce refus : poser ou renouveler le jeton GitHub du site de dev (MAVERICK_GITHUB_JETON_FICHIER), puis relancer la mise à jour.`);
+    }
+    const detail = String(e?.message ?? e).slice(0, 200);
+    return refus(CAUSE_INJOIGNABLE, `le site de dev ne peut pas joindre GitHub pour lire les livraisons de test publiées (${detail}), donc savoir s’il a installé le dernier code. Pour lever ce refus : réessayer dans 5 minutes.`);
+  }
+  return comparerLeCodeInstalle({ version, etiquettes });
+}
+
+/** Garde-fou 18 : le refus que porte un contrôle du contenu rouge (`controle` : { total, problemes } de fabriquerPaquet) ; null quand il n'y a aucun problème. */
+export function refusDuContenu(controle) {
+  if (!controle || !(controle.total > 0)) return null;
+  const lignes = controle.problemes.map((p) => `table ${p.table ? `« ${p.table} »` : 'non précisée'}, ligne ${p.id !== null && p.id !== undefined ? `« ${p.id} »` : 'non précisée'}, règle ${p.regle ? `« ${p.regle} »` : 'non précisée'} : ${p.message}`);
+  const reste = controle.total - controle.problemes.length;
+  const message = `Refusé avant l’envoi : le contrôle du contenu du paquet signale ${controle.total} problème(s). Pour lever ce refus : corriger chacune de ces lignes sur le site de dev, puis relancer la mise à jour.\n${lignes.map((l) => `- ${l}`).join('\n')}${reste > 0 ? `\n- … et ${reste} autre(s)` : ''}`;
+  return { raison: 'contenu', total: controle.total, problemes: controle.problemes, message };
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
@@ -217,10 +331,20 @@ function purgerLesPaquetsNeufs(dossierLots) {
  *   aLivrer?: number | null, limites?: object, reference?: object, production?: { attestations?: string | null, production?: string | null, propre?: string | null },
  *   enArrierePlan?: boolean }} o `reference` : lireReference(…) ; `production` : de quoi lire l'attestation (etatDeLaProduction).
  */
-export async function figerPaquet(db, dossier, { mode, versionDev = null, versionCible = null, instant, confirmation, adresse, etat = 'envoi', aLivrer = null,
-  limites = LIMITES_DES_LANCEMENTS, reference = null, production = {}, enArrierePlan = true }) {
-  if (!MODES_DU_PAQUET.includes(mode)) throw new ErreurNotes(400, 'Mode de paquet inconnu.');
+export async function figerPaquet(db, dossier, options) {
+  if (!MODES_DU_PAQUET.includes(options.mode)) throw new ErreurNotes(400, 'Mode de paquet inconnu.');
   if (enFabrication.has(dossier)) throw new ErreurNotes(409, 'Un paquet est déjà en préparation : attendez qu’il soit prêt.');
+  // la place est prise AVANT le premier `await` (la lecture des livraisons de la bascule 2) : deux lancements rapprochés ne fabriquent pas deux paquets ; rendue au refus comme à l'échec
+  enFabrication.add(dossier);
+  try {
+    return await figerLePaquet(db, dossier, options);
+  } finally {
+    enFabrication.delete(dossier);
+  }
+}
+
+async function figerLePaquet(db, dossier, { mode, versionDev = null, versionCible = null, instant, confirmation, adresse, etat = 'envoi', aLivrer = null,
+  limites = LIMITES_DES_LANCEMENTS, reference = null, production = {}, enArrierePlan = true, bascule2 = false, livraisons = null, codeDuService = null }) {
   const copie = mode === 'copie';
   const simulation = mode === 'simulation';
   const { recents } = controlerLeLancement(db, dossier, {
@@ -233,8 +357,12 @@ export async function figerPaquet(db, dossier, { mode, versionDev = null, versio
   // l'attestation d'abord (rien n'est fabriqué si elle ne décrit pas le contenu publié par la production)
   const lue = attestationUtilisable({ ...production, instant: new Date(instant) });
   if (lue.refus) throw new ErreurNotes(409, lue.refus.message, { refus: lue.refus });
+  // bascule 2 (marqueur db/bascule-2, garde-fou 4) : le site de dev doit tourner avec la dernière livraison de test ; « Copier vers le dépôt » n'envoie rien en production
+  if (bascule2 && !copie) {
+    const code = await controlerLeCodeInstalle({ version: versionDev, lireLesEtiquettes: livraisons });
+    if (code.refus) throw new ErreurNotes(409, code.refus.message, { refus: code.refus });
+  }
   const brouillon = lireBrouillon(db);
-  enFabrication.add(dossier);
   const lots = dossierDesLots(dossier);
   const id = randomUUID();
   const neuf = join(lots, `.${id}.db${SUFFIXE_NEUF}`);
@@ -245,8 +373,12 @@ export async function figerPaquet(db, dossier, { mode, versionDev = null, versio
       source: join(dossier, FICHIER_BASE), destination: neuf, production: copie ? null : reference.chemin, id, mode, version: copie ? null : versionCible,
       depuis: !copie && reference.version ? versionCourte(reference.version) : null, date: String(instant).slice(0, 10), texte: copie ? null : brouillon.texte,
       majeure: !copie && brouillon.majeure, versionDuSite: versionDev, instant: new Date(instant),
+      commitDuCode: codeDuService?.commit ?? null, empreinteDuCode: codeDuService?.empreinte ?? null, controleDuContenu: bascule2 && !copie,
     };
     const meta = enArrierePlan ? await fabriquerPaquetEnArrierePlan(options) : fabriquerPaquet(options);
+    // garde-fou 18 (bascule 2) : un contenu rouge ne part pas, la raison dit la table, la ligne et la règle ; rien n'est rangé ni noté (le paquet neuf est effacé plus bas)
+    const refusContenu = refusDuContenu(meta.controle);
+    if (refusContenu) throw new ErreurNotes(409, refusContenu.message, { refus: refusContenu });
     // le texte et la case « Version majeure » sont ceux qui sont partis dans la note (changés pendant la fabrication : on recommence)
     const maintenant = lireBrouillon(db);
     if (!copie && (maintenant.lot || maintenant.texte !== brouillon.texte || maintenant.majeure !== brouillon.majeure)) {
@@ -269,7 +401,6 @@ export async function figerPaquet(db, dossier, { mode, versionDev = null, versio
     });
   } finally {
     rmSync(neuf, { force: true });
-    enFabrication.delete(dossier);
   }
 }
 
