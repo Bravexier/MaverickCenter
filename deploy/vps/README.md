@@ -23,6 +23,8 @@ voient pas, mais les ports 8080 et 8081 ne servent à rien en direct. À la conn
 | `volume.sh` | Répartition du disque par type de données, vue de l'hôte (les deux instances, Docker, journaux, restes d'installation) : `metriques/volume-hote.json`, toutes les 15 minutes (jauge de la page Debug) |
 | `Caddyfile` | `maverick-jdr.com` → 8080, `dev.maverick-jdr.com` → 8081, `www.` → domaine principal |
 
+Changer de serveur (autre hébergeur, serveur plus grand) : [`DEMENAGEMENT.md`](DEMENAGEMENT.md), procédure et scripts de transfert prêts, non joués.
+
 ## Avant de commencer
 
 1. **DNS** (OVH, zone de `maverick-jdr.com`) : des enregistrements **A** (IPv4) et **AAAA** (IPv6) vers le serveur pour le domaine lui-même, `www` et **`dev`**.
