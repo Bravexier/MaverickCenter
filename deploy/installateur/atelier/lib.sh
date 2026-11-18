@@ -13,9 +13,11 @@ PROC=${MAVERICK_ATELIER_PROC:-/proc}
 CGROUP=${MAVERICK_ATELIER_CGROUP:-/sys/fs/cgroup}
 ESSAI=${MAVERICK_ATELIER_ESSAI:-0}
 
-# Valeurs par défaut (kilo-octets, secondes). Plafond de mémoire : 2,5 Go ; besoin : 1,5 Go (le pic mesuré d'une fabrication est d'environ 1,4 Go) ; disque : arrêt sous 2 Go libres.
+# Valeurs par défaut (kilo-octets, secondes). Plafond de mémoire : 2,5 Go ; besoin : 1,1 Go (fabrication complète de l'extrait du jour, mesurée dans un cgroup limité : réussie à 1100 Mo, tuée à 800 Mo ; 1,1 Go est le plus petit plafond essayé qui réussit) ;
+# disque : arrêt sous 2 Go libres. L'ancien besoin par défaut (1,5 Go) n'a jamais été choisi par le propriétaire : le geste ne le reprend pas (installer.sh).
 DEFAUT_MEMOIRE_MAX_KO=2621440
-DEFAUT_BESOIN_KO=1572864
+DEFAUT_BESOIN_KO=1153433
+ANCIEN_DEFAUT_BESOIN_KO=1572864
 DEFAUT_CPUS=1
 DEFAUT_DISQUE_MIN_KO=2097152
 DEFAUT_DELAI_S=1800
@@ -37,6 +39,8 @@ SONDE_LENTEUR_MS=2000
 SONDE_CIBLES='/ /api/personnages/'
 # Plafond de taille de ce que root copie depuis le conteneur (octets) et depuis le service (l'extrait).
 PLAFOND_RESULTAT=262144
+# le journal du conteneur (docker logs) gardé dans le rapport : la fin, 200 Ko au plus
+PLAFOND_JOURNAL=204800
 PLAFOND_EXTRAIT=536870912
 # Le motif de l'image d'une fabrication : celle du kit (node:<version>-bookworm-slim ou -alpine), rien d'autre.
 MOTIF_IMAGE='^node:[0-9]+(\.[0-9]+){0,2}-(bookworm-slim|alpine)$'
@@ -74,20 +78,42 @@ meminfo_ko() { # champ -> kilo-octets
 }
 
 # Le plafond de mémoire d'une fabrication, d'après la mémoire du serveur à l'instant (kilo-octets) :
-#   plafond = min(maximum réglé, MemAvailable / 2) ; marge laissée à la production = MemAvailable - plafond.
-# Refus (MOTIF_REFUS) : « memoire_insuffisante » si le plafond est sous le besoin, « marge_insuffisante » si la marge est sous max(1 Go, 25 % de MemTotal).
-# Variables posées : PLAFOND_KO, MARGE_KO, MOTIF_REFUS (vide : on peut démarrer).
+#   plafond = min(maximum réglé, MemAvailable / 2) ; marge laissée à la production = MemAvailable - plafond (au moins la moitié du disponible) ;
+#   marge minimale = max(1 Go, 25 % de MemTotal).
+# Refus (MOTIF_REFUS) : « memoire_insuffisante » si le plafond est sous le besoin (MemAvailable < 2 × besoin, tant que le maximum réglé n'est pas sous le besoin : le geste le refuse),
+# « marge_insuffisante » si la marge est sous la marge minimale : MemAvailable < min(maximum + marge minimale, 2 × marge minimale) ; baisser le maximum ne la lève que s'il reste au moins
+# le besoin sous MemAvailable - marge minimale, sinon il faut plus de mémoire disponible.
+# Variables posées : PLAFOND_KO, MARGE_KO, MARGE_MINIMALE_KO, MOTIF_REFUS (vide : on peut démarrer).
 calculer_le_plafond() { # total dispo maximum besoin
   PLAFOND_KO=$3
   moitie=$(($2 / 2))
   [ "$moitie" -ge "$PLAFOND_KO" ] || PLAFOND_KO=$moitie
   MARGE_KO=$(($2 - PLAFOND_KO))
-  marge_minimale=$(($1 / 4))
-  [ "$marge_minimale" -ge 1048576 ] || marge_minimale=1048576
+  MARGE_MINIMALE_KO=$(($1 / 4))
+  [ "$MARGE_MINIMALE_KO" -ge 1048576 ] || MARGE_MINIMALE_KO=1048576
   MOTIF_REFUS=''
   if [ "$PLAFOND_KO" -lt "$4" ]; then MOTIF_REFUS=memoire_insuffisante
-  elif [ "$MARGE_KO" -lt "$marge_minimale" ]; then MOTIF_REFUS=marge_insuffisante
+  elif [ "$MARGE_KO" -lt "$MARGE_MINIMALE_KO" ]; then MOTIF_REFUS=marge_insuffisante
   fi
+}
+
+# La phrase de --etat sur la mémoire, d'après calculer_le_plafond (mêmes arguments, plus le geste à donner et le maximum réglé) : les chiffres relevés (Mo) et, en cas de refus,
+# ce qui le lève. Seuil de la mémoire : sous 2 × besoin de mémoire disponible, le plafond (la moitié du disponible) est sous le besoin. Seuil de la marge : sous
+# min(maximum + marge minimale, 2 × marge minimale), la marge laissée est sous la marge minimale.
+dire_la_memoire() { # total dispo besoin geste maximum
+  seuil=$(( (2 * $3 + 1023) / 1024 ))
+  base="$(($2 / 1024)) Mo disponibles sur $(($1 / 1024)) Mo ; marge laissée à la production $((MARGE_KO / 1024)) Mo (au moins $((MARGE_MINIMALE_KO / 1024)) Mo), plafond possible $((PLAFOND_KO / 1024)) Mo, besoin $(($3 / 1024)) Mo"
+  case "$MOTIF_REFUS" in
+    '') printf '%s : la fabrication démarrerait (refus sous %s Mo disponibles).' "$base" "$seuil" ;;
+    memoire_insuffisante) printf '%s : la fabrication serait refusée (memoire_insuffisante). Pour la lever : libérer de la mémoire (il faut au moins %s Mo disponibles), ou baisser le besoin par « sudo sh %s --besoin <taille> » ; risque : un besoin sous ce que la fabrication demande (1,1 Go est le plus petit plafond essayé qui réussit) la fait échouer, le conteneur étant tué au plafond (OOMKilled) : une mesure en échec ; la production garde sa marge.' "$base" "$seuil" "$4" ;;
+    *)
+      seuil_marge=$(( $5 + MARGE_MINIMALE_KO )); [ "$seuil_marge" -le $((2 * MARGE_MINIMALE_KO)) ] || seuil_marge=$((2 * MARGE_MINIMALE_KO))
+      seuil_marge=$(( (seuil_marge + 1023) / 1024 ))
+      printf '%s : la fabrication serait refusée (%s : la marge laissée à la production serait sous le minimum). Pour la lever : libérer de la mémoire (il faut au moins %s Mo disponibles)' "$base" "$MOTIF_REFUS" "$seuil_marge"
+      # baisser le maximum ne lève ce refus que s'il reste au moins le besoin sous MemAvailable - marge minimale
+      if [ $(($2 - MARGE_MINIMALE_KO)) -ge "$3" ]; then printf ', ou baisser le maximum par « sudo sh %s --memoire-max <taille> » avec une taille d'"'"'au plus %s Mo (et d'"'"'au moins le besoin)' "$4" "$(( ($2 - MARGE_MINIMALE_KO) / 1024 ))"; fi
+      printf '.' ;;
+  esac
 }
 
 # Le disque du dossier $1 : DISQUE_TOTAL_KO et DISQUE_LIBRE_KO (df -P : « disponible » pour un utilisateur ordinaire, la réserve de root n'y est pas).

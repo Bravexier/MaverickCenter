@@ -11,6 +11,7 @@ import {
   ANCIEN_DOSSIER_DE_L_EXTRAIT, FICHIER_DU_CONTENU, FORMAT_ETAT_DE_L_ATELIER, RAPPORTS_GARDES, creerAtelier, lireUnRapport, listerLesRapports, nomDeLExtrait, validerLaComparaison,
   messageDErreur, validerLaFabrication, validerLaSonde, validerLeKit, validerLeRapport,
 } from '../serveur/atelier.mjs';
+import { messageDEchec } from '../serveur/fabrication-depuis-contenu.mjs';
 import { demarrerService } from '../serveur/service.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
@@ -384,25 +385,37 @@ test('on garde assez de rapports pour une journée pleine : 40', () => {
   assert.equal(RAPPORTS_GARDES, 40);
 });
 
-test('le message d’une erreur de fabrication : 1000 caractères ; trop long, le début puis la dernière ligne qui parle d’une erreur (la cause est à la fin de la sortie)', () => {
+test('le message d’une erreur de fabrication : 3200 caractères ; trop long, le début puis la dernière ligne qui parle d’une erreur (la cause est à la fin de la sortie)', () => {
   const court = 'build a échoué (code 1) : Error: EXDEV: cross-device link not permitted';
   assert.equal(messageDErreur(court), court);
   assert.equal(messageDErreur(42), null);
-  // la cause tombe dans les 1000 premiers caractères : rien n'est déplacé
-  const tot = `build a échoué (code 1) : ${'x'.repeat(100)} Error: la cause\n${'ligne\n'.repeat(400)}`;
+  // la cause tombe dans les 3200 premiers caractères : rien n'est déplacé
+  const tot = `build a échoué (code 1) : ${'x'.repeat(100)} Error: la cause\n${'ligne\n'.repeat(900)}`;
   assert.ok(messageDErreur(tot).startsWith('build a échoué (code 1) : '));
-  assert.ok(messageDErreur(tot).length <= 1000);
+  assert.ok(messageDErreur(tot).length <= 3200);
   assert.ok(messageDErreur(tot).includes('Error la cause') || messageDErreur(tot).includes('Error: la cause'));
-  // la cause tombe après les 1000 premiers : le début, puis la dernière ligne d'erreur
-  const tard = `build a échoué (code 1) : début\n${'ligne ordinaire de la sortie\n'.repeat(80)}Error: EXDEV: cross-device link not permitted, rename a vers b\n    at renameSync\n    at suite\n`;
+  // la cause tombe après les 3200 premiers : le début, puis la dernière ligne d'erreur
+  const tard = `build a échoué (code 1) : début\n${'ligne ordinaire de la sortie\n'.repeat(200)}Error: EXDEV: cross-device link not permitted, rename a vers b\n    at renameSync\n    at suite\n`;
   const m = messageDErreur(tard);
-  assert.ok(m.length <= 1000);
+  assert.ok(m.length <= 3200);
   assert.ok(m.startsWith('build a échoué (code 1) : début'));
   assert.match(m, /EXDEV: cross-device link not permitted, rename a vers b$/);
-  // sans ligne d'erreur : les 1000 premiers
-  assert.equal(messageDErreur('mot '.repeat(600)).length, 1000);
+  // sans ligne d'erreur : les 3200 premiers
+  assert.equal(messageDErreur('mot '.repeat(1600)).length, 3200);
   // par la validation du rapport
   const f = validerLaFabrication({ ...FABRICATION, erreur: { etape: 'build', message: tard } });
   assert.equal(f.erreur.etape, 'build');
   assert.match(f.erreur.message, /EXDEV/);
+});
+
+test('le message gardé d’un échec de fabrication porte la fin de stderr (l’erreur) même après un très long stdout, et traverse la validation du rapport sans être coupé', () => {
+  const stdout = Array.from({ length: 3000 }, (_, i) => `23:12:58   ├─ /page-${i}/index.html (+2ms)`).join('\n');
+  const stderr = `${'bruit\n'.repeat(500)}TypeError: Cannot read properties of undefined (reading 'trim')\n    at construireReference (db-reference.mjs:23:73)`;
+  const message = messageDEchec('build', { status: 1, stdout, stderr });
+  const f = validerLaFabrication({ ...FABRICATION, erreur: { etape: 'build', message } });
+  assert.match(f.erreur.message, /^build a échoué \(code 1\)/);
+  assert.match(f.erreur.message, /Cannot read properties of undefined \(reading 'trim'\)/, 'l’erreur écrite sur stderr reste dans le message gardé');
+  assert.ok(f.erreur.message.indexOf('stderr') < f.erreur.message.indexOf('stdout'), 'stderr d’abord');
+  assert.match(f.erreur.message, /page-2999/, 'la fin de stdout suit');
+  assert.ok(f.erreur.message.length <= 3200);
 });

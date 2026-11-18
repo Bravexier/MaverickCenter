@@ -16,7 +16,7 @@
 #   6. lance une première fabrication et dit où regarder.
 # Relançable sans dégât : elle reprend les réglages déjà posés (une option ne change que le sien) et ne refait que ce qui manque.
 #   --memoire-max <taille>  plafond de mémoire du conteneur, « 2.5g » par défaut (aussi « 2500m ») ; la fabrication prend aussi au plus la moitié de la mémoire disponible
-#   --besoin <taille>       mémoire dont une fabrication a besoin, « 1.5g » par défaut (le pic mesuré est d'environ 1,4 Go) : en dessous, la fabrication est refusée (et mesurée)
+#   --besoin <taille>       mémoire dont une fabrication a besoin, « 1.1g » par défaut (le plus petit plafond essayé qui réussit) : sous 2 × le besoin de mémoire disponible, la fabrication est refusée (et mesurée)
 #   --cpus <nombre>         processeurs du conteneur, 1 par défaut (« 0.5 », « 2 »)
 #   --disque-min <taille>   espace libre minimal, « 2g » par défaut : en dessous, la fabrication est refusée (et mesurée)
 #   --delai <secondes>      durée maximale d'une fabrication, 1800 par défaut, puis arrêt
@@ -156,7 +156,7 @@ parler_de_l_etat() {
   max=$(champ_du_fichier "$REGLAGES" MEMOIRE_MAX_KO); max=${max:-$DEFAUT_MEMOIRE_MAX_KO}; besoin=$(champ_du_fichier "$REGLAGES" BESOIN_KO); besoin=${besoin:-$DEFAUT_BESOIN_KO}
   if [ -n "$total" ] && [ -n "$dispo" ]; then
     calculer_le_plafond "$total" "$dispo" "$max" "$besoin"
-    echo "Mémoire maintenant : $((dispo / 1024)) Mo disponibles sur $((total / 1024)) Mo ; plafond $((PLAFOND_KO / 1024)) Mo, marge laissée à la production $((MARGE_KO / 1024)) Mo : ${MOTIF_REFUS:-la fabrication démarrerait}."
+    echo "Mémoire maintenant : $(dire_la_memoire "$total" "$dispo" "$besoin" "$ATELIER/installer.sh" "$max")"
   fi
   echo "Page Debug du site de dev, menu DB, bloc « Atelier » ; journal : journalctl -u $UNITE.service."
 }
@@ -182,6 +182,11 @@ repris() { # nom défaut
 }
 : "${MEMOIRE_MAX_KO:=$(repris MEMOIRE_MAX_KO "$DEFAUT_MEMOIRE_MAX_KO")}"
 : "${BESOIN_KO:=$(repris BESOIN_KO "$DEFAUT_BESOIN_KO")}"
+# l'ancien besoin par défaut (1,5 Go) n'a jamais été choisi : repris d'un atelier déjà installé, il passe au nouveau défaut (un --besoin donné à ce geste est toujours respecté)
+if [ -z "$BESOIN" ] && [ "$BESOIN_KO" = "$ANCIEN_DEFAUT_BESOIN_KO" ]; then
+  BESOIN_KO=$DEFAUT_BESOIN_KO
+  echo "== Besoin : l'ancien défaut ($ANCIEN_DEFAUT_BESOIN_KO ko) n'est pas repris ; nouveau défaut $DEFAUT_BESOIN_KO ko (une valeur égale à l'ancien défaut est remplacée par le nouveau à chaque geste sans --besoin : pour garder environ 1,5 Go, donner une autre taille, par exemple --besoin 1.6g)."
+fi
 : "${DISQUE_MIN_KO:=$(repris DISQUE_MIN_KO "$DEFAUT_DISQUE_MIN_KO")}"
 CPUS=${CPUS_DEMANDES:-$(repris CPUS "$DEFAUT_CPUS")}
 DELAI_S=${DELAI:-$(repris DELAI_S "$DEFAUT_DELAI_S")}

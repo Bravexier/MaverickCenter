@@ -74,6 +74,11 @@ case "$cmd" in
       *ExitCode*) echo "\${FAKE_CODE:-0}" ;;
     esac; exit 0 ;;
   kill) touch "$FAKE_DIR/tue"; exit 0 ;;
+  logs)
+    # le journal du conteneur : stdout (FAKE_LOGS) puis stderr (FAKE_LOGS_ERR) ; rien sans ces variables
+    [ -z "\${FAKE_LOGS:-}" ] || cat "$FAKE_LOGS"
+    [ -z "\${FAKE_LOGS_ERR:-}" ] || cat "$FAKE_LOGS_ERR" >&2
+    touch "$FAKE_DIR/logs-fait"; [ ! -f "$FAKE_DIR/rm-fait" ] || touch "$FAKE_DIR/logs-trop-tard"; exit 0 ;;
   rm)
     # le conteneur doit être supprimé AVANT que root ne copie quoi que ce soit de ce qu'il a laissé : à cet instant, le dossier du rapport n'existe pas encore
     if [ -n "\${FAKE_RAPPORTS:-}" ] && ls "$FAKE_RAPPORTS" 2>/dev/null | grep -Eq '^[0-9]{8}-[0-9]{6}$'; then touch "$FAKE_DIR/rm-trop-tard"; fi
@@ -105,7 +110,7 @@ fi
 const FAUX_SYSTEMCTL = '#!/bin/sh\necho "$*" >> "$FAKE_DIR/systemctl.log"\ncase "$1" in is-enabled) echo enabled ;; is-active) echo active ;; esac\nexit 0\n';
 
 /** Un monde : une instance de test avec son atelier (scripts du dépôt, kit, marque, extrait du service), des faux outils et de la mémoire à volonté. */
-function monde({ mode = 'test', total = 8388608, dispo = 6291456, version = '0.4.95', reglages = true, extrait = true, kitVersion = version, image = IMAGE, sonde = false, depuis = 0 } = {}) {
+function monde({ mode = 'test', total = 8388608, dispo = 6291456, besoin = 1153433, version = '0.4.95', reglages = true, extrait = true, kitVersion = version, image = IMAGE, sonde = false, depuis = 0 } = {}) {
   const dossier = join(racine, `monde-${(n += 1)}`);
   const instance = join(dossier, 'instance');
   const atelier = join(instance, 'atelier');
@@ -121,7 +126,7 @@ function monde({ mode = 'test', total = 8388608, dispo = 6291456, version = '0.4
   ecrire(join(atelier, 'kit', 'client', 'package.json'), '{}');
   ecrire(join(atelier, 'declencheur', 'marque'), `version=${version}\ntag=v${version}\ncommit=${'a'.repeat(40)}\n`);
   mkdirSync(join(atelier, 'rapports'), { recursive: true });
-  if (reglages) ecrire(join(atelier, 'reglages.env'), `MEMOIRE_MAX_KO=2621440\nBESOIN_KO=1572864\nCPUS=1\nDISQUE_MIN_KO=2097152\nDELAI_S=1800\nGOOGLE_CLIENT_ID=\nJOURS_DE_MESURE=1\nMAX_PAR_JOUR=12\nMESURE_DEPUIS=${depuis}\n`);
+  if (reglages) ecrire(join(atelier, 'reglages.env'), `MEMOIRE_MAX_KO=2621440\nBESOIN_KO=${besoin}\nCPUS=1\nDISQUE_MIN_KO=2097152\nDELAI_S=1800\nGOOGLE_CLIENT_ID=\nJOURS_DE_MESURE=1\nMAX_PAR_JOUR=12\nMESURE_DEPUIS=${depuis}\n`);
   // la sonde : le port de chaque instance, dans son .env (celui de la production dans le dossier voisin « maverick-center »)
   if (sonde) {
     ecrire(join(instance, '.env'), 'MAVERICK_CONTENEUR=maverick-center-test\nMAVERICK_PORT=8081\nMAVERICK_EDITION=1\n');
@@ -215,33 +220,151 @@ test('une fabrication : le conteneur est durci et plafonné, l’extrait est cop
   assert.match(r.out, /rapport .* : fait/);
 });
 
-test('mémoire : un plafond sous le besoin est refusé avec les chiffres relevés, sans lancer de conteneur', { skip }, () => {
-  const m = monde({ dispo: 2000000 });
-  const r = lancer(m);
-  assert.equal(r.code, 0, r.out);
+// Le serveur du site de dev : 2 processeurs, MemTotal 4 004 532 ko. Besoin par défaut 1,1 Go = 1 153 433 ko (taille_en_ko 1.1g) ; plafond = min(maximum, MemAvailable / 2) ; marge minimale = max(1 Go, 25 % de MemTotal).
+const SERVEUR_TOTAL = 4004532;
+const BESOIN_PAR_DEFAUT = 1153433;
+const lignesDeMemoire = (m) => readFileSync(join(m.faux, 'docker.log'), 'utf8');
+
+test('mémoire : le serveur de 4 Go refusé trois fois (2 990 988 ko disponibles) démarre avec le besoin par défaut (plafond 1 495 494 ko, marge égale) et reste refusé avec l’ancien besoin de 1,5 Go', { skip }, () => {
+  const m = monde({ total: SERVEUR_TOTAL, dispo: 2990988 });
+  assert.equal(lancer(m).code, 0);
   const rapport = dernierRapport(m);
-  assert.equal(rapport.issue, 'refus');
-  assert.equal(rapport.motif, 'memoire_insuffisante');
-  assert.equal(rapport.plafond_ko, 1000000, 'la moitié de la mémoire disponible');
-  assert.equal(rapport.serveur.memoire_disponible_ko, 2000000);
-  assert.equal(rapport.reglages.besoin_ko, 1572864);
-  assert.equal(rapport.memoire.pic_ko, null);
-  assert.equal(lancements(m).length, 0);
-  assert.equal(rapport.fabrication, false);
+  assert.equal(rapport.issue, 'fait');
+  assert.equal(rapport.plafond_ko, 1495494, 'la moitié de la mémoire disponible');
+  assert.equal(rapport.marge_ko, 1495494);
+  assert.ok(rapport.marge_ko >= 1048576, 'au moins la marge minimale');
+  assert.equal(rapport.reglages.besoin_ko, BESOIN_PAR_DEFAUT);
+  assert.equal(lancements(m).length, 1);
+  assert.ok(lignesDeMemoire(m).includes('--memory 1495494k --memory-swap 1495494k'), 'le conteneur est plafonné au plafond calculé');
+
+  const ancien = monde({ total: SERVEUR_TOTAL, dispo: 2990988, besoin: 1572864 });
+  lancer(ancien);
+  assert.equal(dernierRapport(ancien).motif, 'memoire_insuffisante', 'un besoin de 1,5 Go réglé reste en vigueur : le plafond (1 495 494 ko) est dessous');
+  assert.equal(lancements(ancien).length, 0);
 });
 
-test('mémoire : une marge laissée à la production trop petite (moins de max(1 Go, 25 % de la mémoire totale)) est refusée', { skip }, () => {
+test('mémoire : sous 2 × le besoin de mémoire disponible, refus avec les chiffres relevés et sans conteneur ; à la limite exacte, on démarre', { skip }, () => {
+  const limite = 2 * BESOIN_PAR_DEFAUT;
+  assert.equal(limite, 2306866);
+  const sous = monde({ total: SERVEUR_TOTAL, dispo: limite - 1 });
+  assert.equal(lancer(sous).code, 0);
+  const rapport = dernierRapport(sous);
+  assert.equal(rapport.issue, 'refus');
+  assert.equal(rapport.motif, 'memoire_insuffisante');
+  assert.equal(rapport.plafond_ko, BESOIN_PAR_DEFAUT - 1);
+  assert.equal(rapport.serveur.memoire_disponible_ko, limite - 1);
+  assert.equal(rapport.serveur.memoire_totale_ko, SERVEUR_TOTAL);
+  assert.equal(rapport.reglages.besoin_ko, BESOIN_PAR_DEFAUT);
+  assert.equal(rapport.memoire.pic_ko, null);
+  assert.equal(rapport.fabrication, false);
+  assert.equal(lancements(sous).length, 0);
+
+  const pile = monde({ total: SERVEUR_TOTAL, dispo: limite });
+  lancer(pile);
+  assert.equal(dernierRapport(pile).issue, 'fait');
+  assert.equal(dernierRapport(pile).plafond_ko, BESOIN_PAR_DEFAUT);
+});
+
+test('mémoire : une marge laissée à la production trop petite (moins de max(1 Go, 25 % de la mémoire totale)) est refusée, et c’est le maximum réglé qui gouverne le plafond d’un gros serveur', { skip }, () => {
   const m = monde({ total: 16777216, dispo: 6291456 });
   lancer(m);
   const rapport = dernierRapport(m);
   assert.equal(rapport.motif, 'marge_insuffisante');
-  assert.equal(rapport.plafond_ko, 2621440);
+  assert.equal(rapport.plafond_ko, 2621440, 'le maximum réglé (2,5 Go) gouverne');
   assert.equal(rapport.marge_ko, 3670016);
   assert.equal(lancements(m).length, 0);
-  // et le même serveur avec moins de mémoire totale démarre : la marge minimale est de 1 Go
-  const petit = monde({ total: 4194304, dispo: 4000000 });
+  // le même plafond sur un serveur dont la marge minimale est de 1 Go démarre
+  const petit = monde({ total: 4194304, dispo: 6291456 });
   lancer(petit);
   assert.equal(dernierRapport(petit).issue, 'fait');
+  assert.equal(dernierRapport(petit).plafond_ko, 2621440);
+});
+
+test('mémoire : calculer_le_plafond (plafond = min(maximum, disponible / 2), marge = disponible − plafond ≥ la moitié du disponible, refus selon le besoin puis la marge) sur une grille de serveurs', { skip }, () => {
+  const lib = join(SOURCES, 'lib.sh');
+  const cas = [];
+  for (const total of [1000000, SERVEUR_TOTAL, 8388608, 16777216]) for (const dispo of [0, 500000, 2000000, 2306865, 2306866, 2990988, 6291456, 12000000]) for (const maximum of [900000, 2621440, 10000000]) for (const besoin of [BESOIN_PAR_DEFAUT, 1572864]) if (dispo <= total) cas.push([total, dispo, maximum, besoin]);
+  const script = `. "${lib}"\n${cas.map((c) => `calculer_le_plafond ${c.join(' ')}; echo "${c.join(' ')} $PLAFOND_KO $MARGE_KO $MARGE_MINIMALE_KO $MOTIF_REFUS"`).join('\n')}\n`;
+  const r = spawnSync('sh', ['-c', script], { encoding: 'utf8', env: { PATH: process.env.PATH } });
+  assert.equal(r.status, 0, r.stderr);
+  const lignes = r.stdout.trim().split('\n');
+  assert.equal(lignes.length, cas.length);
+  const motifs = new Set();
+  for (const ligne of lignes) {
+    const [total, dispo, maximum, besoin, plafond, marge, minimale, motif = ''] = ligne.split(' ');
+    const [T, D, M, B, P, G, N] = [total, dispo, maximum, besoin, plafond, marge, minimale].map(Number);
+    assert.equal(N, Math.max(1048576, Math.floor(T / 4)), ligne);
+    assert.equal(P, Math.min(M, Math.floor(D / 2)), ligne);
+    assert.equal(G, D - P, ligne);
+    assert.ok(G >= P || P === M, `la production garde au moins la moitié du disponible : ${ligne}`);
+    const attendu = P < B ? 'memoire_insuffisante' : G < N ? 'marge_insuffisante' : '';
+    assert.equal(motif, attendu, ligne);
+    motifs.add(motif);
+  }
+  assert.deepEqual([...motifs].sort(), ['', 'marge_insuffisante', 'memoire_insuffisante'], 'la grille couvre les trois issues');
+});
+
+test('--etat : pour marge_insuffisante, il dit d’abord la mémoire à libérer ; --memoire-max n’est proposé que s’il lève le refus', { skip }, () => {
+  // total 8 388 608 (marge minimale 2 097 152), 3 000 000 disponibles : plafond = disponible / 2, baisser le maximum n'y change rien
+  const seul = monde({ total: 8388608, dispo: 3000000 });
+  const e = installer(seul, ['--etat']);
+  assert.match(e.out, /refusée \(marge_insuffisante/);
+  assert.match(e.out, /libérer de la mémoire \(il faut au moins 4096 Mo disponibles\)/, 'min(maximum + marge minimale, 2 × marge minimale) = 4 194 304 ko');
+  assert.ok(!e.out.includes('--memoire-max'), 'baisser le maximum ne lèverait pas le refus');
+  assert.equal(lancer(seul).code, 0);
+  assert.equal(dernierRapport(seul).motif, 'marge_insuffisante');
+  // un gros maximum réglé sur un serveur où il reste le besoin sous disponible − marge minimale : baisser le maximum lève le refus
+  const large = monde({ total: 16777216, dispo: 6291456 });
+  const l = installer(large, ['--etat']);
+  assert.match(l.out, /marge_insuffisante/);
+  assert.ok(l.out.includes(`sudo sh ${large.atelier}/installer.sh --memoire-max <taille> » avec une taille d'au plus 2048 Mo`), l.out);
+  // la proposition est exacte : avec ce maximum, la fabrication démarre
+  ecrire(join(large.atelier, 'reglages.env'), readFileSync(join(large.atelier, 'reglages.env'), 'utf8').replace('MEMOIRE_MAX_KO=2621440', 'MEMOIRE_MAX_KO=2097152'));
+  lancer(large);
+  assert.equal(dernierRapport(large).issue, 'fait');
+});
+
+test('le besoin par défaut est de 1,1 Go (1 153 433 ko, ce que donne 1.1g) et l’ancien défaut de 1,5 Go (1 572 864 ko) n’est pas repris par le geste', { skip }, () => {
+  const lib = readFileSync(join(SOURCES, 'lib.sh'), 'utf8');
+  assert.match(lib, /^DEFAUT_BESOIN_KO=1153433$/m);
+  assert.match(lib, /^ANCIEN_DEFAUT_BESOIN_KO=1572864$/m);
+  const donne = spawnSync('sh', ['-c', `. "${join(SOURCES, 'lib.sh')}"; taille_en_ko 1.1g`], { encoding: 'utf8', env: { PATH: process.env.PATH } });
+  assert.equal(donne.stdout.trim(), String(BESOIN_PAR_DEFAUT), 'le défaut est ce que donne --besoin 1.1g');
+  const reglagesDe = (m) => readFileSync(join(m.atelier, 'reglages.env'), 'utf8');
+  // un atelier installé avant : BESOIN_KO du réglage est l'ancien défaut, jamais choisi
+  const ancien = monde({ besoin: 1572864 });
+  const r = installer(ancien, ['--sans-fabrication']);
+  assert.equal(r.code, 0, r.out);
+  assert.match(reglagesDe(ancien), /^BESOIN_KO=1153433$/m);
+  assert.match(r.out, /ancien défaut/);
+  // une valeur choisie est reprise telle quelle, et un --besoin donné au geste l'emporte, même égal à l'ancien défaut
+  const choisi = monde({ besoin: 1258291 });
+  assert.equal(installer(choisi, ['--sans-fabrication']).code, 0);
+  assert.match(reglagesDe(choisi), /^BESOIN_KO=1258291$/m);
+  const explicite = monde({ besoin: 1258291 });
+  assert.equal(installer(explicite, ['--sans-fabrication', '--besoin', '1.5g']).code, 0);
+  assert.match(reglagesDe(explicite), /^BESOIN_KO=1572864$/m);
+  assert.equal(installer(explicite, ['--sans-fabrication', '--besoin', '1.6g']).code, 0);
+  assert.match(reglagesDe(explicite), /^BESOIN_KO=1677721$/m);
+  // premier geste, sans réglages : le défaut
+  const neuf = monde({ reglages: false });
+  assert.equal(installer(neuf, ['--sans-fabrication']).code, 0);
+  assert.match(reglagesDe(neuf), /^BESOIN_KO=1153433$/m);
+});
+
+test('--etat dit la mémoire avec les chiffres relevés : démarrage, refus avec le geste qui le lève, ancien besoin repris', { skip }, () => {
+  const demarre = monde({ total: SERVEUR_TOTAL, dispo: 2990988 });
+  const e = installer(demarre, ['--etat']);
+  assert.equal(e.code, 0, e.out);
+  assert.match(e.out, /Mémoire maintenant : 2920 Mo disponibles sur 3910 Mo ; marge laissée à la production 1460 Mo \(au moins 1024 Mo\), plafond possible 1460 Mo, besoin 1126 Mo : la fabrication démarrerait \(refus sous 2253 Mo disponibles\)\./);
+
+  const ancien = monde({ total: SERVEUR_TOTAL, dispo: 2990988, besoin: 1572864 });
+  const a = installer(ancien, ['--etat']);
+  assert.match(a.out, /besoin 1536 Mo : la fabrication serait refusée \(memoire_insuffisante\)/);
+  assert.match(a.out, /libérer de la mémoire \(il faut au moins 3072 Mo disponibles\)/);
+  assert.ok(a.out.includes(`sudo sh ${ancien.atelier}/installer.sh --besoin <taille>`), 'le geste qui lève le refus');
+  assert.match(a.out, /OOMKilled/, 'le risque est dit');
+  assert.equal(readFileSync(join(ancien.atelier, 'reglages.env'), 'utf8').includes('BESOIN_KO=1572864'), true, '--etat n’écrit rien');
 });
 
 test('disque : sous le minimum d’espace libre, la fabrication est refusée (et mesurée) ; le minimum se règle', { skip }, () => {
@@ -434,6 +557,34 @@ test('ce que le conteneur a laissé n’est copié qu’une fois le conteneur su
   const lien = monde();
   lancer(lien, { FAKE_LIEN: '/dev/zero' });
   assert.equal(dernierRapport(lien).comparaison, false);
+});
+
+test('le journal du conteneur (docker logs, stdout et stderr) est gardé dans le rapport avant la suppression du conteneur : la fin, 200 Ko au plus, lisible, hors de la liste blanche du service ; vide, il n’est pas gardé', { skip }, () => {
+  const m = monde();
+  // un très long stdout puis une erreur sur stderr : l'erreur est dans le journal gardé, le début du stdout est coupé
+  ecrire(join(m.faux, 'sortie.txt'), `DEBUT-COUPE\n${'ligne de pages generees\n'.repeat(15000)}FIN-DE-STDOUT\n`);
+  ecrire(join(m.faux, 'erreur.txt'), "TypeError: Cannot read properties of undefined (reading 'trim')\n");
+  const r = lancer(m, { FAKE_LOGS: join(m.faux, 'sortie.txt'), FAKE_LOGS_ERR: join(m.faux, 'erreur.txt'), FAKE_CODE: '1' });
+  assert.equal(r.code, 0, r.out);
+  const [id] = rapportsDe(m);
+  const chemin = join(m.rapports, id, 'journal-du-conteneur.txt');
+  assert.ok(existsSync(chemin), 'le journal est dans le dossier du rapport');
+  const journal = readFileSync(chemin, 'utf8');
+  assert.ok(statSync(chemin).size <= 204800, `plafonné à 200 Ko (${statSync(chemin).size})`);
+  assert.ok(journal.includes('FIN-DE-STDOUT'), 'la fin du stdout');
+  assert.ok(!journal.includes('DEBUT-COUPE'), 'le début coupé');
+  assert.match(journal, /Cannot read properties of undefined \(reading 'trim'\)/, 'stderr y est aussi');
+  assert.equal(statSync(chemin).mode & 0o777, 0o644, 'lisible par le service, jamais en écriture');
+  assert.equal(dernierRapport(m).issue, 'echec');
+  assert.ok(existsSync(join(m.faux, 'logs-fait')) && !existsSync(join(m.faux, 'logs-trop-tard')), 'lu AVANT docker rm');
+  assert.ok(!readdirSync(join(m.rapports, id)).some((x) => x.startsWith('.')), 'aucun fichier provisoire');
+  assert.ok(!readdirSync(m.atelier).some((x) => x.startsWith('.journal')), 'ni dans l’atelier');
+  // le service lit des fichiers nommés (rapport.json, fabrication.json, comparaison.json), jamais une liste de dossier : le journal n'est pas servi
+  assert.ok(!/journal-du-conteneur/.test(readFileSync(new URL('../serveur/atelier.mjs', import.meta.url), 'utf8')), 'serveur/atelier.mjs ne le lit pas');
+  // sans rien sur les sorties : pas de fichier
+  const muet = monde();
+  assert.equal(lancer(muet).code, 0);
+  assert.ok(!existsSync(join(muet.rapports, rapportsDe(muet)[0], 'journal-du-conteneur.txt')));
 });
 
 test('conteneur.sh, sans privilège : copie l’extrait sous délai, refuse un lien, une FIFO, un fichier trop gros ou vide ; puis fabrique et compare', { skip: skip || (!have('timeout') && 'timeout indisponible') }, () => {
