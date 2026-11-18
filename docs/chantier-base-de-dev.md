@@ -35,7 +35,7 @@ Tenu à jour par la PR de chaque lot (état : à faire, en cours, fait ; puis le
 | — | Changements de l'équipe appliqués directement (R291, remplace R275 (4)) ; retraits de race, classe ou magie annoncés avant la livraison (R292) | M | fait : clé de dépôt distincte de la clé de lecture (`acces.sh --cle-de-depot` ; sans elle, dépôt en proposition comme avant), dépôt appliqué aussitôt s'il passe l'essai à blanc et les contrôles, sinon « refuse » avec motifs ; verrous de décision au mot de passe seulement ; « Annuler cette modification » par ligne (ligne de table de l'effet net, dépendances dites) ; page Mise à jour façon notes de version ; alerte `retraits_bloquants` ; propositions déjà déposées laissées en attente | PR `feature/changements-appliques-directement` |
 | 9 | Fabrication témoin sur le serveur : la mesure | L | fait, mesure en attente du geste du propriétaire (fabrication depuis un fichier de contenu, #373 ; kit de l'atelier joint à l'installateur de test, #374 ; atelier du site de dev — extrait, conteneur, rapports, page Debug —, #376 ; la journée type — minuteurs de nuit et du jour, sonde des temps de réponse, bilan de la journée —, #377) | #373, #374, #376, #377 |
 | 10 | Des contrôles qui ne lisent plus le contenu du dépôt | XL | en cours (premier temps : essai mécanique sur un contenu fourni, tri des 444 fichiers, `docs/essai-mecanique-des-tests.md`, #375 ; la CI lit l'extrait du site de dev — job séparé porteur de la clé, artefact chiffré gardé un jour, repli annoncé sur data/rows tant que les secrets `MAVERICK_EXTRAIT_CLE` et `MAVERICK_CONTENU_CHIFFREMENT` manquent —, migrations manquantes appliquées à la copie, essai mécanique étendu, #395 ; les tests lisent le contenu fourni : pages d'exemple tenues dans `data/pages-d-exemple.sql`, base remplie des tests tirée du contenu fourni (`aide-base-de-depart`), 22 fichiers qui lisent le dépôt par nature classés jusqu'au lot 12, passe C et variantes V1 à V4 (saisies fidèles au site) et contrôles de la CI vertes, fragilités corrigées, « Copier vers le dépôt » garde les pages d'exemple, PR `feature/tests-lisent-le-contenu-fourni`) | #375, #395 |
-| 11 | Bascule 2 : mise à jour directe, pages fabriquées sur le serveur | XL | à faire | |
+| 11 | Bascule 2 : mise à jour directe, pages fabriquées sur le serveur | XL | en cours, éteint (préparation sans bascule : section 15 ; serveur actuel trop petit, mesure du 2026-11-18, agrandi à 4 Go ; PR 1 : fiche d'identité du paquet, garde-fous 4, 17 et 18, PR `feature/bascule-2-preparation`) | |
 | 12 | Le dépôt ne garde plus le contenu ; ménage | L | en cours (préparation : inventaire, PR `feature/lot-12-preparation`) | |
 ## 1. Recommandation
 
@@ -296,7 +296,7 @@ Après deux mises à jour réussies par le nouveau circuit. Sortent du dépôt, 
 
 Produit par `cd client && node scripts/inventaire-sortie-du-contenu.mjs --ecrire-docs` (`--verifier` : code 1 si cette section n'est plus à jour ; la sortie complète, avec fichier:ligne de chaque lecteur, est dans `var/inventaire-sortie/`). Rien ne sort encore : on mesure.
 
-Mesure du 2026-11-18, commit `ea8f23ed`, 1739 fichiers suivis. <!--v-->
+Mesure du 2026-11-18, commit `56c1cc95`, 1745 fichiers suivis. <!--v-->
 
 **Chiffres de tête**
 
@@ -311,7 +311,7 @@ Mesure du 2026-11-18, commit `ea8f23ed`, 1739 fichiers suivis. <!--v-->
 | Anciennes migrations de données (.sql et leur registre .json) | `data/migrations/ (celles sans DDL)` | 32 | 3 157 893 |
 | Exports des sources Google | `sources/raw/` | 39 | 9 515 963 |
 | **Total** | | **292** | **35 852 634** |
-| Anciennes publications (GitHub Releases, hors de l'arbre) | 306 publications dont 302 pré-publications | 306 assets | 9 841 662 790 (9,8 Go) | <!--v-->
+| Anciennes publications (GitHub Releases, hors de l'arbre) | 307 publications dont 303 pré-publications | 307 assets | 9 939 240 823 (9,9 Go) | <!--v-->
 
 Migrations de données : 25 `.sql` sans DDL (nature « données » de `controler-les-migrations-lib.mjs#analyserUneMigration`) et 7 registres `.json` de ces migrations. Restent : 104 migrations de structure, dont **88 mêlent DDL et instructions de données** (114 fichiers avec leurs registres, 9,0 Mo, non comptés ci-dessus : `analyserUneMigration` les classe « structure » dès qu'il y a un DDL ; 152 fichiers les citent par leur nom), et 26 registres de migration de structure. Restent aussi `sources/sources.json` (manifeste), `sources/tipeee/` (instantané livré avec le site) et `sources/discord/` (vide).
 
@@ -333,7 +333,7 @@ Migrations de données : 25 `.sql` sans DDL (nature « données » de `controler
 
 Dans `client/test/` : 110 fichiers de test et 24 aides, dont 21 fichiers déjà déclarés « lit le dépôt par nature » (`essai-mecanique-tests.mjs#LIT_LE_DEPOT_PAR_NATURE`). Les 89 autres fichiers de test citent un de ces chemins sans être déclarés dans `LIT_LE_DEPOT_PAR_NATURE` : à trier un à un au lot 12.
 
-Références notées mais non comptées : 183 fichiers citent le dossier `data/migrations/` (il reste, pour la structure), 24 le manifeste `sources/sources.json` (reste), 21 `sources/tipeee/` (reste), 4 `sources/discord/`, 4 les publications GitHub (les nouvelles restent) ; 37 fichiers n'atteignent `data/rows` que par une commande ou un module (`db:build`, `db:sync-pages`, `pages_md`…).
+Références notées mais non comptées : 183 fichiers citent le dossier `data/migrations/` (il reste, pour la structure), 24 le manifeste `sources/sources.json` (reste), 21 `sources/tipeee/` (reste), 4 `sources/discord/`, 7 les publications GitHub (les nouvelles restent) ; 37 fichiers n'atteignent `data/rows` que par une commande ou un module (`db:build`, `db:sync-pages`, `pages_md`…).
 
 Cette section se périme à chaque copie de `data/rows` et à chaque changement des fichiers qui citent ces chemins ; `--verifier` n'est pas branché en CI : on la régénère avant de s'en servir.
 
@@ -687,3 +687,60 @@ C'est tout pour le serveur.
 - **Code mort des refus** (#390) : retiré. À vérifier ensuite : si `lignes: []` et `tables: []` de l'état de la production (`lib/notes-de-version-rendu.mjs`, vers les lignes 258 et 263) servent encore à la page ; sinon, les retirer.
 - **Verrous de décision ouvrables par une proposition** : carte blanche (R283 (1)), pas encore appliqué : ouvrir au clic un refus qui cite une règle demande de vérifier, refus par refus, que la ligne écrite reste lisible par le site.
 - **Une race, une classe ou une magie retirée** (question ouverte 1 du lot 8, R280) : tranchée par R292, le blocage actuel est gardé ; la répétition et la page Mise à jour le disent avant la livraison.
+
+## 15. La bascule 2 : préparation (lot 11)
+
+Préparée à partir du 2026-11-18, **éteinte** : rien ne bascule avant le jour choisi avec vous, et seulement si la mesure de l'atelier est bonne. La procédure du jour J et le retour arrière s'écrivent ici à mesure que les PR arrivent.
+
+### Le serveur d'aujourd'hui ne peut pas fabriquer (relevé du 2026-11-18)
+
+`atelier/installer.sh --etat`, lancé par vous : « Mémoire maintenant : 1324 Mo disponibles sur 1961 Mo ; plafond 662 Mo, marge laissée à la production 662 Mo : memoire_insuffisante. » La fabrication a un pic d'environ 1,4 Go (besoin réglé à 1,5 Go). L'atelier n'est donc pas installé. **Votre décision (2026-11-18)** : agrandir le serveur actuel (Infomaniak) à 2 processeurs, 4 Go de mémoire (environ 3900 Mo vus) et 60 Go de disque ; le déménagement chez OVH est repoussé à plus tard et ne précède plus la bascule 2. La suite suppose **ce serveur de 4 Go et 2 processeurs**. Avec les règles d'origine de l'atelier, il passe à 95 Mo près (calcul ci-dessous) : trop fragile pour une bascule. Les règles sont donc ajustées par une petite PR à part, qui suit celle-ci. La mesure de l'atelier (une journée type) se fait sur le serveur agrandi ; c'est une condition préalable à la bascule 2. Relevé sur le serveur agrandi, le même jour : « Mémoire maintenant : 3328 Mo disponibles sur 3910 Mo ; plafond 1664 Mo, marge laissée à la production 1664 Mo : la fabrication démarrerait. » Les services consomment donc environ 3910 − 3328 = 582 Mo, et le plafond n'est qu'à 128 Mo au-dessus du besoin. L'atelier a été installé avec les règles d'origine, et la mesure d'une journée a commencé.
+
+Le calcul (`deploy/installateur/atelier/lib.sh`, `calculer_le_plafond`). Hypothèse : la production, le site de dev et le système consomment ce qu'ils consomment aujourd'hui, U = 1961 − 1324 = 637 Mo. Sur un serveur de T Mo, la mémoire disponible vaut alors D = T − 637. Le plafond vaut min(2560, D/2) et doit atteindre le besoin (1536 Mo). La marge laissée, D − plafond, doit atteindre max(1024, T/4).
+- **Minimum** : D ≥ 3072, donc T ≥ 3709 Mo. Un serveur vendu « 4 Go » (environ 3900 Mo vus) passe, mais avec 95 Mo de plafond au-dessus du besoin : 190 Mo de plus consommés par les deux sites, et l'atelier refuse. Baisser `--besoin` est déconseillé, car le pic est à 1,4 Go.
+- **Confortable : 6 Go.** Le plafond atteint son maximum (2,5 Go) dès que T ≥ 5757 Mo, soit 1,1 Go au-dessus du pic. 8 Go laissent en plus de la place à la croissance. Disque : 10 Go libres. Processeurs : 2, pour que la production garde un cœur entier (le conteneur en a un, `--cpus 1`).
+- Le déménagement (deux instances, base source et son marqueur, sauvegardes, clés d'accès, minuteurs, DNS) reste un lot à part, repoussé : il n'est pas un préalable de la bascule 2.
+
+### Bon ou pas bon : comment lire le bilan de l'atelier
+
+Le bilan est sur la page Debug (`GET /api/debug/atelier/`, champ `bilan`, calculé sur les 24 dernières heures). On le lit après **une journée type complète** : le geste, puis au moins 10 fabrications dans la journée. Au moins une doit venir d'une livraison (une fusion dans `dev` ce jour-là), une de la nuit, et les autres de la journée type.
+
+**Bon**, si tout ceci est vrai :
+1. `verdict` vaut `tient`. Dans le code, cela veut dire aucun refus ni échec, et un 95e centile de la production pendant les fabrications sous 2 fois la référence, ou sous 1 s.
+2. Aucun refus de mémoire, de marge ou de disque, aucun arrêt `oom`, aucun délai dépassé. Pourquoi : dans la bascule 2, une fabrication refusée veut dire des pages qui ne se refont plus ; un seul refus en conditions normales suffit à dire que le serveur est trop juste.
+3. Le pic de mémoire maximal du conteneur reste **sous 80 % du plafond** relevé. Pourquoi : le contenu grandit (31 Mo d'extrait aujourd'hui), et le pic suit le nombre de pages. 20 % de réserve correspondent à peu près à un an de croissance au rythme du chantier ; c'est une estimation, pas une mesure.
+4. La durée maximale reste **sous 10 minutes** (environ 18 s mesurées sur la machine de l'équipe, mais avec 1 processeur et à basse priorité). Pourquoi : vos pages se refont 10 minutes de calme après vos saisies, plus la fabrication, soit 20 minutes au plus. Au-delà, l'attente se voit.
+5. La comparaison avec le site livré par GitHub ne montre que les écarts connus : `donnees/maverick.db`, `donnees/reference.db` et `.json`, et le bouton « Exporter » sans `--client-google`. Pourquoi : c'est la preuve que le serveur fabrique **le même** site que GitHub ; un seul autre écart est un défaut à corriger avant toute bascule.
+6. Il reste au moins 5 Go de disque libre après la journée. Pourquoi : il faut le double du kit à chaque installation et 2 Go pendant une fabrication, plus la sortie et les sauvegardes.
+
+**Tout juste** (`tient_tout_juste`, ou un seul des points 3, 4 et 6 dépassé de moins de 20 %) : refaire une journée type après le réglage indiqué plus bas. Deux journées « tout juste » de suite comptent comme « pas bon ».
+
+**Pas bon** : `ne_tient_pas`, ou l'un des points 2 et 5 manqué, ou l'un des points 3, 4 et 6 dépassé de plus de 20 %.
+
+**Si c'est « pas bon »** (rien n'est codé pour cela, et rien n'est cassé : le circuit actuel continue) :
+- mémoire (refus, `oom`, pic au-dessus de 80 %) : un serveur plus gros ;
+- durée : `--cpus 2` au geste, si la production reste bonne ;
+- production ralentie : moins de fabrications le jour (`--max-par-jour`), ou fabrications de nuit seulement (les pages du site de dev se refont alors moins vite) ;
+- écart de comparaison : un défaut du code, à corriger puis à remesurer. Aucune bascule tant qu'il reste.
+- Sinon, l'une des voies de repli ci-dessous, qui demande votre décision.
+
+### Les voies de repli (non mesurées)
+
+- **(b) Réduire le pic de mémoire de la fabrication** : fabrication par morceaux, réglages de Node et d'Astro. Pas étudiée : le pic vient d'Astro qui garde tout le site en mémoire pendant le build. Le gain est incertain, et ce serait un chantier de code.
+- **(c) Un fichier d'échange (swap)** sur le serveur actuel : la fabrication passerait peut-être, mais bien plus lentement, et le disque serait chargé pendant que la production répond. Pas mesuré. L'atelier règle aujourd'hui `--memory-swap` égal à `--memory` (aucun échange pour le conteneur) : il faudrait aussi changer ce choix.
+- **(d) Garder la fabrication sur GitHub, à partir de l'extrait chiffré.** Cela **contredit R278**, qui ne permet à GitHub de lire le contenu du site de dev **que pour les tests** (« GitHub ne fabrique pas les pages avec le contenu »), et touche **R274 et E2** (le dépôt et GitHub ne gardent ni ne fabriquent le contenu). Selon R283, ce serait une décision nouvelle de votre part, avec rappel de R278. C'était le modèle B du plan (section 2), noté 5,5/10.
+- **(e) Fabriquer sur une autre machine** à vous : il faudrait que cette machine soit allumée et joignable à chaque mise à jour, avec le kit et l'extrait, et un passage chiffré du site fabriqué vers le serveur. Rien n'existe pour cela.
+
+### Découpe du lot 11 (chaque PR fusionnée éteinte)
+
+Les interrupteurs, tous absents ou éteints par défaut :
+- `tools/flux-git/bascule-2.json` (`"actif": false`), lu dans `origin/dev` par GitHub ;
+- le marqueur `db/bascule-2` pour le service du site de dev ;
+- `atelier/servir` (fichier de root) pour que l'atelier serve ce qu'il fabrique ;
+- `<production>/activation-par-paquet` (fichier de root) pour la production.
+
+1. Le paquet porte sa fiche d'identité (commit du code, empreintes par table). Le bouton est refusé tant que le site de dev n'a pas installé la dernière version (garde-fou 4), ou quand le contenu a un problème, ligne nommée (garde-fou 18). Limite : la « dernière version » est la dernière livraison de test **publiée**, pas le dernier commit de `dev` ; entre une fusion et la publication de sa livraison (quelques minutes), le bouton passe encore. Le commit du code (`commit_du_code`) vaut `null` tant que `version.json` ne le porte pas (PR 4). Les contrôles d'activation de la production sont codés à part, sans appelant (garde-fou 17).
+2. Le gel des écritures sur les deux sites, qui survit à une relance et se lève seul (garde-fou 16) ; le gel des fusions pendant une mise à jour ; les kits et les paquets X.Y.0 dans la sauvegarde hors du serveur (garde-fou 19).
+3. L'atelier sert ce qu'il fabrique sur le site de dev : après un kit, après le calme qui suit vos saisies, ou au bouton (il refait l'extrait ; root le voit à sa ronde, garde-fou 20). Plus la répétition complète du jour J sur des copies.
+4. GitHub ne publie plus que des kits ; le commit de lot sans contenu ; le correctif urgent ne porte que du code.
+5. L'activation en production (pages fabriquées d'avance depuis le paquet, écritures gelées, bascule courte, retour automatique), la reprise si GitHub a livré et que la production a refusé, et la procédure du jour J.

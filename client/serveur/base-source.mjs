@@ -22,6 +22,16 @@ export const SAUVEGARDES_GARDEES = ARCHIVES_GARDEES;
 /** Vrai quand la base vivante de `dossier` est la source (le fichier `source` existe, quel que soit son contenu). */
 export const estUneBaseSource = (dossier) => existsSync(join(dossier, FICHIER_SOURCE));
 
+/**
+ * Le marqueur de la bascule 2 (lot 11 : « mise à jour directe », docs/serveur.md, « Bascule 2 : préparation »), un fichier `bascule-2` du même dossier. Il n'est
+ * posé par rien dans le code : un script de root le posera le jour de la bascule. Absent, les garde-fous de la bascule 2 (code installé, contrôle du contenu du
+ * paquet) ne servent pas et le service fait comme avant.
+ */
+export const FICHIER_BASCULE_2 = 'bascule-2';
+
+/** Vrai quand `dossier` est une base source ET porte le marqueur `bascule-2` (sans la base source, il ne veut rien dire : ignoré). */
+export const estEnBascule2 = (dossier) => estUneBaseSource(dossier) && existsSync(join(dossier, FICHIER_BASCULE_2));
+
 /** Un refus de la base source : `etape` (`absente`, `non_livrees`, `essai`, `application`, `schema`), `details` (lignes de détail, jamais un texte de contenu). */
 export class ErreurBaseSource extends Error {
   constructor(message, { etape, details = [], refus = null } = {}) {
