@@ -121,7 +121,7 @@ Un seul lot écrit à la fois dans l'arbre de travail, sur sa branche créée d'
 - **Économie.** Un agent qui ne touche pas une zone ne paie rien pour elle.
 
 Les skills :
-- `zone-magies`, `zone-races`, `zone-classes`, `zone-metiers`, `zone-bestiaire` ;
+- `zone-magies`, `zone-races`, `zone-classes`, `zone-metiers`, `zone-bestiaire` (et `zone-bestiaire-extraction`, l'extracteur du doc et les corrections de l'import) ;
 - `zone-equipement`, `zone-armes` (et `zone-armes-edition`, le site de dev), `zone-armures`, `zone-accessoires`, `zone-composants`, `zone-ceinture` ;
 - `zone-chronologie`, `zone-guide`, `zone-mots-cles` (et ses sous-skills `zone-mots-cles-service`, ce que le service écrit et refuse sur le vocabulaire ; `zone-mots-cles-liens`, liens et couleurs des mots-clés ; `zone-mots-cles-balisage`, l'outil qui balise un mot), `zone-glossaire`, `zone-recherche` ;
 - `zone-fiche` (noyau, avec ses sous-skills `zone-fiche-tiroir`, `zone-fiche-acquis`, `zone-fiche-sorts`, `zone-fiche-equipement`, `zone-fiche-armure`, `zone-fiche-situation`), `zone-fiche-tableur`, `zone-fiches-base`, `zone-personnages-liste` ;
