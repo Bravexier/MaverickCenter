@@ -142,7 +142,7 @@
    après l'aperçu de l'annulation ; les refusés et les annulés tiennent dans un historique replié. Les couleurs viennent des jetons du thème. */
 .nv-lots { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border); }
 .nv-lots[hidden] { display: none; }
-.nv-lots__titre { margin-top: 0; }
+.nv-lots__corps { padding: 0.3rem 0.9rem 0.6rem; }
 .nv-lots__intro { margin: 0.3rem 0 0.6rem; }
 .nv-lots__sous-titre { margin: 1.2rem 0 0.4rem; }
 .nv-lots__aucun { color: var(--muted); }

@@ -384,7 +384,7 @@ export function htmlDuLot(lot, vue = {}) {
 }
 
 /**
- * La section « Modifications de l'équipe » : en tête l'explication, « Tout recalculer » et « Actualiser » ; puis les propositions encore en attente (seulement
+ * La section « Modifications de l'équipe », repliée sous son titre (un <details> ; le message d'après un clic reste au-dessus) : en tête l'explication, « Tout recalculer » et « Actualiser » ; puis les propositions encore en attente (seulement
  * s'il en reste), les changements appliqués récents (chaque ligne avec « Annuler cette modification »), les dépôts refusés et un historique replié des refusés
  * et des annulés.
  * @param {{ lots?: object[] }} reponse les lots, la plus récente d'abord (chacun avec son détail quand la page l'a lu)
@@ -398,8 +398,12 @@ export function htmlDesLots({ lots = [] } = {}, vue = {}) {
   const archives = lots.filter((l) => (l.etat === 'refuse' && !l.refus) || l.etat === 'annule');
   const message = vue.message ? `<div class="nv-message nv-lots__message${vue.message.erreur ? ' nv-message--erreur' : ''}" data-nv-lots-message role="${vue.message.erreur ? 'alert' : 'status'}"><p>${echapper(vue.message.texte)}</p>`
     + `${vue.message.lignes?.length ? `<ul class="nv-lot__problemes">${vue.message.lignes.map((l) => `<li>${echapper(l)}</li>`).join('')}</ul>` : ''}</div>` : '';
-  const entete = `<h3 class="nv-lots__titre">Modifications de l’équipe</h3>`
-    + `<p class="nv-lots__intro">Ce que l’équipe a changé sur le site est appliqué tout de suite ; vous le retrouvez ici, ligne par ligne, avec la valeur d’avant et celle d’après. « Annuler cette modification » remet une ligne comme avant, après votre confirmation.</p>`
+  // la section se replie sous son titre (demande du propriétaire : elle prenait trop de place), dans le même bloc dépliant que les domaines de la note
+  // au-dessus (`nv-domaine`, lib/notes-de-version-rendu.mjs) : repliée au départ, sauf si une proposition attend son clic
+  const comptes = [attendent.length ? pluriel(attendent.length, 'proposition en attente', 'propositions en attente') : null,
+    appliques.length ? pluriel(appliques.length, 'changement appliqué', 'changements appliqués') : null].filter(Boolean).join(' · ');
+  const resume = `<summary><h3 class="nv-domaine__entete"><span class="nv-domaine__titre">Modifications de l’équipe</span>${comptes ? ` <span class="nv-compte">${echapper(comptes)}</span>` : ''}</h3></summary>`;
+  const entete = `<p class="nv-lots__intro">Ce que l’équipe a changé sur le site est appliqué tout de suite ; vous le retrouvez ici, ligne par ligne, avec la valeur d’avant et celle d’après. « Annuler cette modification » remet une ligne comme avant, après votre confirmation.</p>`
     + `<div class="nv-dev__actions"><button type="button" data-nv-recalcul>Tout recalculer</button><button type="button" data-nv-lots-actualiser>Actualiser</button></div>`
     + `<p class="nv-conflit__aide">« Tout recalculer » sert après un changement de code : il recalcule les pages que le code d’aujourd’hui calcule autrement.</p>`;
   const bloc = (titre, contenu, attribut) => `<div class="nv-lots__groupe" ${attribut}><h4 class="nv-lots__sous-titre">${echapper(titre)}</h4>${contenu}</div>`;
@@ -414,7 +418,8 @@ export function htmlDesLots({ lots = [] } = {}, vue = {}) {
   const historique = archives.length
     ? `<details class="nv-lots__historique" data-nv-ouvert="historique"${vue.ouverts?.has('historique') ? ' open' : ''} data-nv-lots-historique><summary>Historique : refusés et annulés (${archives.length})</summary>`
       + `<ul class="nv-lots__archives">${archives.map(htmlDuLotArchive).join('')}</ul></details>` : '';
-  return `${message}${entete}${attente}${faits}${refus}${historique}`;
+  return `${message}<details class="nv-domaine nv-lots__repli" data-nv-ouvert="section"${vue.ouverts?.has('section') || attendent.length ? ' open' : ''} data-nv-lots-repli>`
+    + `${resume}<div class="nv-lots__corps">${entete}${attente}${faits}${refus}${historique}</div></details>`;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------

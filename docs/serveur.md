@@ -1010,7 +1010,8 @@ signalées. Ces limites sont un lot de suite ; les clés des mots-clés et les c
 armures (R207) sont tenues par le service et ne sont pas non plus dans ce recalcul.
 
 **La page « Mise à jour »** (`src/scripts/mise-a-jour.mjs`, rendu pur `src/lib/lots-rendu.mjs` ; R291) : la section « Modifications de l'équipe » (`[data-nv-lots]`), entre les listes de la note en préparation
-et les lignes en conflit, sur le site de dev seulement (`GET /api/edition/lots/` répond `403` en production, `404` sans le service : la section reste cachée ; une autre erreur est dite). Chaque changement
+et les lignes en conflit, sur le site de dev seulement (`GET /api/edition/lots/` répond `403` en production, `404` sans le service : la section reste cachée ; une autre erreur est dite). Elle tient dans
+le même bloc dépliant que les domaines de la note (`details.nv-domaine`, `[data-nv-lots-repli]`), replié au départ sauf si une proposition attend son clic ; le message d'après un clic reste au-dessus. Chaque changement
 appliqué se lit comme les notes de version, ligne par ligne (`lignes[]` du détail : nom de la ligne, table, colonnes par leur libellé, avant puis après, état : en place, annulée, modifiée depuis,
 comme avant). Une ligne `en_place` et `annulable_seule` porte « Annuler cette modification » : l'aperçu (`GET …/lignes/<n>/annulation/`) s'affiche dans une confirmation (`<dialog>`, une case par
 décision à ouvrir), puis « Oui, annuler cette modification » envoie `POST …/lignes/<n>/annuler/` ; une ligne qui ne s'annule pas seule montre son motif et les lignes dont elle dépend ; un `409` se dit sous

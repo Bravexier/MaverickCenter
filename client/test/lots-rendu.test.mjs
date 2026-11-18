@@ -328,6 +328,19 @@ test('la section : les propositions en attente seulement s’il en reste, les ch
   assert.equal(historique.hasAttribute('open'), false, 'replié');
   assert.deepEqual([...historique.querySelectorAll('[data-nv-lot-id]')].map((a) => a.dataset.nvLotId).sort(), ['a', 'r']);
   assert.equal(historique.querySelectorAll('button').length, 0);
+  // la section entière se replie sous son titre : repliée au départ, ouverte tant qu'une proposition attend son clic ; le message reste au-dessus
+  const repli = (html) => lire(html).querySelector('details[data-nv-lots-repli]');
+  assert.equal(repli(htmlDesLots({ lots: [] })).hasAttribute('open'), false, 'rien à montrer : repliée');
+  assert.equal(repli(htmlDesLots({ lots: appliques })).hasAttribute('open'), false, 'des changements appliqués seulement : repliée');
+  assert.equal(repli(htmlDesLots({ lots: appliques }, { ouverts: new Set(['section']) })).hasAttribute('open'), true, 'dépliée par le propriétaire : elle le reste');
+  assert.equal(repli(htmlDesLots({ lots })).hasAttribute('open'), true, 'une proposition attend : ouverte');
+  assert.equal(repli(htmlDesLots({ lots })).getAttribute('data-nv-ouvert'), 'section');
+  const tout = repli(htmlDesLots({ lots }));
+  assert.equal(tout.querySelectorAll('summary h3').length, 1, 'le titre est ce qui déplie');
+  assert.equal(tout.querySelectorAll('[data-nv-lots-attente], [data-nv-lots-appliques], [data-nv-lots-refus], [data-nv-lots-historique], button[data-nv-recalcul]').length, 5, 'tout le reste est dedans');
+  const avecMessage = lire(htmlDesLots({ lots: appliques }, { message: { texte: 'fait' } }));
+  assert.equal(avecMessage.querySelectorAll('[data-nv-lots-message]').length, 1);
+  assert.equal(avecMessage.querySelectorAll('details[data-nv-lots-repli] [data-nv-lots-message]').length, 0, 'le message se lit même section repliée');
   // ce que le propriétaire a déplié reste ouvert
   const ouvert = lire(htmlDesLots({ lots }, { ouverts: new Set(['historique', 'refus', 'p1:apercu']) }));
   assert.equal(ouvert.querySelector('details[data-nv-lots-historique]').hasAttribute('open'), true);
