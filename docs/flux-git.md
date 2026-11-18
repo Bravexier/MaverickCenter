@@ -179,6 +179,13 @@ Le jour de la bascule : une PR vers `dev` passe `actif` à `true`. Le job est un
 tournent sur toute PR vers `dev` et `master` (`pull_request` sans filtre de branche ni de chemin dans `ci.yml`), y compris les PR « Lot : » et « Copie : »
 du workflow de mise à jour et la livraison `dev` → `master`. Après une modification des fichiers de règles, les réimporter sur GitHub (GitHub ne les lit pas).
 
+## Gel des fusions pendant une mise à jour (lot 11)
+
+Garde-fou 16 de la bascule 2. Job `gel-des-fusions` de `ci.yml`, sur chaque PR vers `dev` et `master` ; code : `client/scripts/gel-des-fusions.mjs` (lit le dépôt et l'API de GitHub, jeton en lecture) et `gel-des-fusions-lib.mjs` (règles pures) ; test : `gel-des-fusions`.
+- **Interrupteur** : `tools/flux-git/bascule-2.json`, `{ "actif": false }`, lu dans `origin/dev` comme `bascule-1.json`. Éteint (ou absent) : vert, sans appeler GitHub.
+- **Allumé** : rouge tant qu'un run du workflow `mise-a-jour.yml` n'est pas fini (en file, en cours, en attente ; un run de plus de 8 h est ignoré). Le message dit le run (numéro, adresse), depuis quand, et le geste : relancer ce job (« Re-run ») quand la mise à jour est finie. Sont exemptées les deux fusions que ce workflow fait lui-même : sa branche `feature/mise-a-jour-regles-…` vers `dev` et la livraison `dev` → `master`. GitHub illisible alors que l'interrupteur est allumé : le job échoue (on ne devine pas qu'aucune mise à jour ne tourne).
+- Le job **n'est pas** un check requis : il le devient seulement par une décision du propriétaire sur les rulesets (`.github/rulesets/` et `CHECKS_REQUIS` de `mise-a-jour-github.mjs`, trois endroits).
+
 ## Contenu lu par les tests (lot 10)
 
 R278 (« Oui, pour les tests seulement ») : les tests et le build de la CI lisent le contenu du **site de dev**, pas la copie du dépôt. Le dépôt ne le garde pas.

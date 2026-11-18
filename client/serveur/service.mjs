@@ -42,6 +42,7 @@ import { creerTipeee } from './tipeee.mjs';
 import { compterLesConflits } from './edition-conflits.mjs';
 import { ecrireAttestation, fabriquerAttestation, INTERVALLE_DE_L_ATTESTATION_MS } from './attestation.mjs';
 import { creerAtelier } from './atelier.mjs';
+import { creerGel } from './gel.mjs';
 import { creerExtrait } from './extrait.mjs';
 import { purgerLesEssais } from './edition-lots.mjs';
 import { creerOmbre } from './essai-dans-l-ombre.mjs';
@@ -270,6 +271,8 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
   const sourceAuDemarrage = estSource();
   // la bascule 2 (lot 11 : le marqueur db/bascule-2, posé plus tard par un script de root) : relue à chaque fois, comme le marqueur de la base source
   const enBascule2 = () => estEnBascule2(dossier);
+  // le gel des écritures (lot 11, garde-fou 16 : serveur/gel.mjs) : le fichier db/gel.json, posé par root (deploy/installateur/gel.sh), relu quand il change ; les deux instances
+  const gel = creerGel({ dossier, instance: nomDInstance, journal, evenement });
   // les copies d'essai d'un lot de changements qu'un arrêt a laissées (serveur/edition-lots.mjs)
   if (edition) {
     try {
@@ -443,6 +446,8 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
       // édition des règles depuis les pages : site de dev seulement (docs/serveur.md, « Édition »)
       edition: Boolean(edition),
       ...(edition ? { modifications } : {}),
+      // le gel des écritures (db/gel.json, non échu) : { pose_le, jusqu_a, motif, geste, illisible, plafonne } ; null sans gel
+      gel: gel.etat(),
       base: {
         disponible: Boolean(etat.db),
         a_jour: Boolean(etat.db) && !etat.erreur,
@@ -569,11 +574,12 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
     const route = mesure?.route ?? routeNormalisee(req.url);
     let envoyee = null; // { statut, octets } de la réponse partie
     let exception = false; // une erreur du traitement (son évènement est déjà noté, avec l'empreinte de la pile)
+    let gelee = false; // une écriture refusée par le gel (503 voulu, pas une panne : ni évènement erreur_5xx ni ligne de la production)
     // chaque requête /api/ au journal (catégorie http, avec ses champs isolés), sans son corps, sur le site de dev ; en production, seulement un
     // échec du service (5xx) ; les relèves du journal, de la version de la base, des métriques et de la maintenance n'y vont pas (journal-du-service.mjs)
     const noterLaRequete = (statut, octets) => {
       const adresse = req.url ?? '/';
-      if (!adresse.startsWith('/api/') || (!edition && statut < 500)) return;
+      if (!adresse.startsWith('/api/') || (!edition && (statut < 500 || gelee))) return;
       const duree = performance.now() - debut;
       journal(`${req.method} ${adresse} ${statut} ${Math.round(duree)} ms`, {
         categorie: 'http', champs: { duree_ms: Math.round(duree * 100) / 100, methode: methodeNormalisee(req.method), route, statut, octets_sortie: octets },
@@ -588,7 +594,7 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
       const octets = envoyee?.octets ?? 0;
       noterLaRequete(statut, octets);
       if (mesure) sansEchec(() => metriques.fin(mesure, { statut, octets_sortie: octets }));
-      if (statut >= 500 && !exception) evenement('erreur_5xx', { detail: { methode: methodeNormalisee(req.method), route, statut } });
+      if (statut >= 500 && !exception && !gelee) evenement('erreur_5xx', { detail: { methode: methodeNormalisee(req.method), route, statut } });
       if (edition && route.startsWith('/api/mise-a-jour/')) suivreLeLancement();
     };
     res.once('finish', terminer);
@@ -660,7 +666,7 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
             signal: abandon.signal },
           { base: baseMesuree, etat: decrire, journal, journalDuService: memoire, edition: Boolean(edition), dossier, reference: referenceDuSite, depot, adresse, github,
             maintenance: maintenanceDemandee, metriques, evenement, classeur, tipeee, extrait, attestations: dossierDesAttestations, acces, essaiDeStructure, atelier, source: estSource,
-            bascule2: enBascule2, codeDuService: () => ({ commit: typeof version.commit === 'string' ? version.commit : null, empreinte: version.empreinte ?? null }) });
+            bascule2: enBascule2, gel, codeDuService: () => ({ commit: typeof version.commit === 'string' ? version.commit : null, empreinte: version.empreinte ?? null }) });
         } finally {
           const mesureSql = sql.terminer();
           if (mesure) mesure.sql = mesureSql;
@@ -668,6 +674,7 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
       } catch (e) {
         reponse = echec(e);
       }
+      if (reponse?.gel === true) gelee = true;
       // une promesse (POST /api/classeur/, GET /api/tipeee/ : les routes asynchrones ; la mesure SQL, synchrone, est déjà prise) : la réponse part
       // quand elle arrive
       if (typeof reponse?.then === 'function') {
@@ -778,6 +785,11 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
         }
       }
       suivreLaMiseAJour();
+      try {
+        gel.verifier(); // un gel posé ou échu se note au journal sans attendre une requête (un `stat`)
+      } catch (e) {
+        journal(`ERREUR gel : ${e?.message ?? e}`, { categorie: 'gel' });
+      }
     }, intervalle);
     minuterie.unref?.();
   }

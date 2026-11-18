@@ -19,7 +19,7 @@
 // reporte dans sa base avec l'historique du paquet, d'une transaction, une seule fois (reporterPaquet), et sort du journal en attente ce qui a été livré.
 // Node seulement (node:…), sans dépendance.
 import { createHash, randomUUID } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync } from 'node:fs';
+import { copyFileSync, existsSync, linkSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -29,7 +29,7 @@ import { comparerBases, versionCourte } from '../src/lib/notes-de-version.mjs';
 import { chargerPlanDesRegles } from '../src/lib/plan-des-regles-db.mjs';
 import { CLASSES_DE_TABLES } from '../src/lib/tables-de-la-base.mjs';
 import { etatDeLaProduction, lireAttestation } from './attestation.mjs';
-import { FICHIER_BASE, integrerLivrees, viderBrouillonLivre } from './base-vivante.mjs';
+import { DOSSIER_ARCHIVES, FICHIER_BASE, integrerLivrees, viderBrouillonLivre } from './base-vivante.mjs';
 import { controlerLeContenu } from './controles-du-contenu.mjs';
 import { empreintesDuContenu, tablesDeLaBase } from './empreintes.mjs';
 import { fabriquerExtrait } from './extrait.mjs';
@@ -521,6 +521,7 @@ export function actualiser(db, dossier, { reference = null, journal = () => {} }
       if (l?.lot === id) modifierLancement(dossier, id, null, () => ({ erreur_report: String(e.message).slice(0, 300) }));
     }
   }
+  garderLesPaquetsLivres(db, dossier, { journal }); // garde-fou 19 : le paquet qui vient d'être reporté (ou un livré d'avant) est gardé (les PAQUETS_LIVRES_GARDES derniers)
   const actuel = lireLancement(dossier);
   if (!actuel?.paquet || actuel.simulation || actuel.copie) return actualiserLancement(db, dossier, { reference });
   if (actuel.reporte_le) return actuel;
@@ -535,8 +536,89 @@ export function actualiser(db, dossier, { reference = null, journal = () => {} }
 /** Combien de paquets garder dans db/mise-a-jour/ (les plus récents) ; un paquet de mise à jour pas encore reporté n'est jamais effacé. */
 export const PAQUETS_GARDES = 3;
 
+/**
+ * Garde-fou 19 de la bascule 2 (docs/chantier-base-de-dev.md, section 9) : les PAQUETS_LIVRES_GARDES derniers paquets de mise à jour LIVRÉS (sa note de version est
+ * dans la base : le paquet X.Y qu'a livré la production) sont gardés sous db/archives/paquets-livres/<X.Y>-<lot>.db, au-delà de l'élagage de PAQUETS_GARDES ; le
+ * plus récent (la plus haute version) n'est jamais retiré. db/archives/ est envoyé par la sauvegarde, comme le reste de db/ (copie.sh : jamais traité comme une
+ * base à contrôler, lien dur d'une copie à l'autre ; envoi.sh : toute la copie), et le service n'y efface que ses archives `vivante-*.db` et `structure-*.db`.
+ * Les plus anciens ne restent que dans l'historique de la sauvegarde hors du serveur (les copies étiquetées par version, `keep-tag version`, gardées sans limite).
+ * Un lien dur (le fichier du paquet n'est jamais modifié, seulement effacé) : aucune place de plus tant que le paquet est dans db/mise-a-jour/, ~31 Mo ensuite
+ * (taille d'un extrait), donc ~310 Mo au plus. Une simulation ou une copie vers le dépôt n'a pas de note : jamais gardée.
+ */
+export const DOSSIER_DES_PAQUETS_LIVRES = 'paquets-livres';
+export const PAQUETS_LIVRES_GARDES = 10;
+export const dossierDesPaquetsLivres = (dossier) => join(dossier, DOSSIER_ARCHIVES, DOSSIER_DES_PAQUETS_LIVRES);
+const ordreDeVersion = (v) => String(v).split('.').map((n) => Number.parseInt(n, 10) || 0);
+/** Du plus récent au plus ancien (« 0.10 » avant « 0.9 » ; « inconnue » en dernier). */
+function plusRecentD_abord(p, q) {
+  const [a, b] = [ordreDeVersion(p.version), ordreDeVersion(q.version)];
+  for (let i = 0; i < Math.max(a.length, b.length); i += 1) if ((a[i] ?? 0) !== (b[i] ?? 0)) return (b[i] ?? 0) - (a[i] ?? 0);
+  return p.nom < q.nom ? 1 : -1;
+}
+
+/**
+ * Garde les paquets de db/mise-a-jour/ dont la note de version est dans la base (livrés), dans la limite des `gardes` plus récents (PAQUETS_LIVRES_GARDES) ; retire
+ * de db/archives/paquets-livres/ ce qui dépasse ; idempotent (un paquet déjà gardé n'est pas refait, un plus ancien que les `gardes` derniers n'est pas repris), et
+ * ne lève jamais (un échec est noté, le paquet reste dans db/mise-a-jour/ tant qu'il n'est pas élagué). Rend les noms des fichiers gardés cette fois.
+ */
+export function garderLesPaquetsLivres(db, dossier, { journal = () => {}, gardes: limite = PAQUETS_LIVRES_GARDES } = {}) {
+  const gardes = [];
+  try {
+    const lots = dossierDesLots(dossier);
+    const dest = dossierDesPaquetsLivres(dossier);
+    const note = db.prepare('SELECT version FROM note_version WHERE lot = ? AND exemple = 0');
+    // ce qui est déjà gardé, et ce que db/mise-a-jour/ livre en plus : les `limite` plus récents des deux
+    const candidats = new Map();
+    if (existsSync(dest)) {
+      for (const nom of readdirSync(dest)) {
+        const m = /^(\d+(?:\.\d+)*|inconnue)-([0-9a-f-]{36})\.db$/.exec(nom);
+        if (m) candidats.set(nom, { nom, version: m[1], source: null });
+      }
+    }
+    if (existsSync(lots)) {
+      for (const f of readdirSync(lots).filter((n) => PAQUET_EN_JEU.test(n))) {
+        const id = f.slice(0, -3);
+        const livre = note.get(id);
+        if (!livre) continue;
+        const version = /^\d+(\.\d+)*$/.test(String(livre.version)) ? String(livre.version) : 'inconnue';
+        const nom = `${version}-${id}.db`;
+        candidats.set(nom, { nom, version, source: candidats.get(nom)?.source ?? join(lots, f) });
+      }
+    }
+    const tries = [...candidats.values()].sort(plusRecentD_abord);
+    for (const { nom, source } of tries.slice(0, Math.max(1, limite))) {
+      if (!source || existsSync(join(dest, nom))) continue;
+      try {
+        mkdirSync(dest, { recursive: true });
+        try {
+          linkSync(source, join(dest, nom));
+        } catch {
+          // un autre système de fichiers, ou pas de lien dur : une copie, écrite à côté puis renommée (jamais un fichier à moitié écrit sous son nom)
+          const provisoire = join(dest, `.${nom}${SUFFIXE_NEUF}`);
+          copyFileSync(source, provisoire);
+          renameSync(provisoire, join(dest, nom));
+        }
+        gardes.push(nom);
+        journal(`mise à jour : le paquet ${nom} est gardé dans db/archives/${DOSSIER_DES_PAQUETS_LIVRES}/ (sauvegarde hors du serveur)`);
+      } catch (e) {
+        journal(`ERREUR mise à jour : le paquet livré ${nom} n’a pas pu être gardé dans db/archives/${DOSSIER_DES_PAQUETS_LIVRES}/ : ${e?.message ?? e}`);
+      }
+    }
+    for (const { nom, source } of tries.slice(Math.max(1, limite))) {
+      if (existsSync(join(dest, nom))) {
+        rmSync(join(dest, nom), { force: true });
+        journal(`mise à jour : le paquet ${nom} sort de db/archives/${DOSSIER_DES_PAQUETS_LIVRES}/ (les ${limite} derniers sont gardés ; les plus anciens restent dans la sauvegarde hors du serveur)`);
+      }
+    }
+  } catch (e) {
+    journal(`ERREUR mise à jour : les paquets livrés n’ont pas pu être passés en revue : ${e?.message ?? e}`);
+  }
+  return gardes;
+}
+
 /** Efface les paquets au-delà des PAQUETS_GARDES plus récents, sauf un paquet de mise à jour dont la note n'est pas encore dans la base (son report l'attend). */
-function purgerLesPaquets(db, dossier) {
+export function purgerLesPaquets(db, dossier) {
+  garderLesPaquetsLivres(db, dossier); // garde-fou 19 : un paquet livré n'est jamais effacé sans avoir été gardé
   const lots = dossierDesLots(dossier);
   const attendus = new Set(paquetsNonReportes(db, dossier));
   const tous = readdirSync(lots).filter((f) => /^[0-9a-f-]{36}(\.[a-z]+)?\.db$/.test(f))

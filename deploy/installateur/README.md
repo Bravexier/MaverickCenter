@@ -20,7 +20,7 @@ Prérequis sur l'hôte : un hôte Docker (Linux), `sh`, `tar`, `gzip`, et `sha25
 
 Une instance = un dossier : `site/` (remplacé à chaque installation, avec le code du service des personnages, `site/_serveur/`), `db/` (base vivante
 du service : utilisateurs, fiches, et ce qu'ils font ; voir [`docs/serveur.md`](../../docs/serveur.md)), `docker-compose.yml` (deux conteneurs : nginx et le service),
-`nginx.conf`, `sauvegarde/` (les scripts des sauvegardes automatiques : copie, envoi chiffré, essai de restauration, `installer.sh` ; remplacé à chaque installation, jamais deux versions ; [`../vps/README.md`](../vps/README.md), « Sauvegardes »), `acces/` (`acces.sh`, la commande du mot de passe du site de dev ; remplacée à chaque installation ; le réglage qu'elle écrit est `secrets/acces.json`, que l'installateur ne touche jamais ; [`../vps/README.md`](../vps/README.md), « 7. Site de dev »), `installateur-courant/` (le dernier installateur installé par `mise-a-jour.sh`, un seul fichier, joint à la copie extérieure de nuit ; l'installateur n'y touche pas), `.env` (port et nom du conteneur, créé une fois, jamais écrasé), `.htpasswd` (mots de passe, jamais touché), `VERSION` (ce qui est
+`nginx.conf`, `gel.sh` (le gel des écritures de l'instance, lancé en root : « Geler les écritures » plus bas), `sauvegarde/` (les scripts des sauvegardes automatiques : copie, envoi chiffré, essai de restauration, `installer.sh` ; remplacé à chaque installation, jamais deux versions ; [`../vps/README.md`](../vps/README.md), « Sauvegardes »), `acces/` (`acces.sh`, la commande du mot de passe du site de dev ; remplacée à chaque installation ; le réglage qu'elle écrit est `secrets/acces.json`, que l'installateur ne touche jamais ; [`../vps/README.md`](../vps/README.md), « 7. Site de dev »), `installateur-courant/` (le dernier installateur installé par `mise-a-jour.sh`, un seul fichier, joint à la copie extérieure de nuit ; l'installateur n'y touche pas), `.env` (port et nom du conteneur, créé une fois, jamais écrasé), `.htpasswd` (mots de passe, jamais touché), `VERSION` (ce qui est
 installé), `installation.log`, et `maintenance/` (créé par Docker : l'annonce « Maintenance en cours » pendant une mise à jour, que le site de dev écrit
 et que chaque serveur lit ; le serveur de test prend celui du serveur normal avec `MAVERICK_DOSSIER_MAINTENANCE=<dossier du serveur normal>/maintenance`
 dans son `.env` — `deploy/vps/instances.sh` le pose —, sinon la production n'est jamais mise en maintenance ; voir [`docs/serveur.md`](../../docs/serveur.md),
@@ -115,6 +115,8 @@ voulu) ; un fichier `GELER` suspend les mises à jour. Attention : un `--force` 
 
 Un fichier `GELER` dans le dossier de l'instance suspend ses mises à jour. Une installation automatique ne touche jamais à `db/` : le serveur de test
 garde sa base.
+Les **trois derniers installateurs installés** sont gardés dans `installateur-courant/` (`INSTALLATEURS_GARDES`, 3 par défaut ; le plus récent n'est jamais retiré) :
+l'envoi chiffré de nuit les joint à la copie extérieure. Place : environ 97 Mo par installateur de test (kit compris) et 35 Mo par installateur de production.
 Un jeton expiré, un problème réseau ou un installateur abîmé n'abîment rien : l'instance reste telle quelle et `mise-a-jour.log` indique l'erreur.
 
 ## Essai de la structure avant l'installation
@@ -171,6 +173,22 @@ posé, le service arrêté, la base en place (`vivante.db`, `vivante.json`) **re
 la copie posée et le service relancé : avec `db/source`, il applique lui-même les migrations à la base restaurée (ou ne démarre pas, la raison au journal).
 Ensuite, le report de la note d'un paquet livré se refait seul (refusé quand la copie est plus ancienne que le paquet : `client/serveur/paquet.mjs#reporterPaquet`), et ce que la copie n'a pas (les lots écrits depuis) reste dans la base gardée à part :
 `docs/serveur.md`, « Restauration de la base du site de dev ».
+
+## Geler les écritures (`gel.sh`, les deux instances)
+
+`gel.sh` est livré à la racine de **chaque** instance (production et serveur de test), remplacé à chaque installation. Lancé en root, il gèle les écritures de
+`/api/` de cette instance (fiches, édition, lots de changements, mise à jour ; les lectures restent ouvertes) :
+
+```bash
+sudo sh /srv/maverick-center/gel.sh poser --duree 90 --motif "bascule de la production"     # production ; …-test/gel.sh pour le serveur de test
+sudo sh /srv/maverick-center/gel.sh etat                                                     # jusqu'à quand, pourquoi, encore combien de minutes
+sudo sh /srv/maverick-center/gel.sh lever                                                    # lève le gel tout de suite
+```
+
+- `--duree` : de 1 à 240 minutes (60 par défaut), `--motif` : le texte que voient ceux dont l'écriture est refusée (`503`). Reposer un gel remplace le précédent.
+- Il écrit `db/gel.json` (en entier à côté, puis renommé ; 644). Le service le prend en compte sans redémarrage, il **tient après une relance** et **se lève seul** à
+  l'échéance. Un fichier illisible tient le gel 2 h au plus. Sans fichier, rien ne change. Détail : `docs/serveur.md`, « Bascule 2 : préparation ».
+- Il ne touche ni la base, ni le service, ni le fichier `GELER` (celui-ci suspend les mises à jour automatiques).
 
 ## Répétition de la mise à jour de la production (`repetition-prod.sh`)
 

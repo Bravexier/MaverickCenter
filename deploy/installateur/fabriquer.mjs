@@ -24,6 +24,8 @@ const FICHIERS_LIVRES = {
   'nginx.conf': join(ICI, '..', 'nginx.conf'),
   'README.md': join(ICI, 'README.md'),
   'mise-a-jour.sh': join(ICI, 'mise-a-jour.sh'),
+  // le gel des écritures (lot 11, garde-fou 16) : à la racine des DEUX instances, production comprise (l'installateur le pose avec bascule.sh et repetition-prod.sh)
+  'gel.sh': join(ICI, 'gel.sh'),
 };
 /**
  * Les scripts que l'hôte exécute, livrés chacun dans son dossier de l'instance : sauvegarde/ (sauvegardes automatiques, deploy/installateur/sauvegarde/,
