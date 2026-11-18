@@ -38,7 +38,11 @@ test('les colonnes de type de dégâts : les huit du lot, et chacune de leurs va
   ], 'une colonne de type de dégâts ajoutée au schéma : ses valeurs ont leur ligne dans type_degats');
   const lignes = new Set(db.prepare('SELECT id FROM type_degats').all().map((l) => l.id));
   const valeurs = new Set([...colonnes.values()].flat());
-  assert.deepEqual([...lignes].sort(), [...valeurs].sort(), 'une ligne par valeur admise, pas une de plus');
+  for (const v of valeurs) assert.ok(lignes.has(v), `${v} : une ligne par valeur admise`);
+  // migration 0130 (R298) : les autres lignes sont les types des attaques de carte (monstre_attaque_type.type, clé étrangère), que le CHECK de
+  // type_degats.id énumère ; le test db-0130-types-des-attaques-de-monstre.test.mjs les éprouve
+  const admis = db.prepare("SELECT sql FROM sqlite_master WHERE name = 'type_degats'").get().sql.match(/CHECK \(id IN \(([^)]*)\)\)/)[1];
+  for (const l of lignes) assert.ok(valeurs.has(l) || admis.includes(`'${l}'`), `${l} : une valeur admise par type_degats`);
   // les données en place : chaque valeur écrite a sa ligne (le CHECK de la colonne le garantit déjà ; la table et le CHECK disent la même liste)
   for (const cle of colonnes.keys()) {
     const [table, colonne] = cle.split('.');
@@ -62,10 +66,12 @@ test('contraintes (base neuve) : magie_id pour feu, eau, glace seulement, jamais
     assert.doesNotThrow(() => poser(id, null, null), id);
     assert.throws(() => poser(id, null, 'magies/essai'), /CHECK/, `${id} : pas de magie`);
   }
-  for (const id of ['feu', 'eau', 'glace']) {
-    assert.doesNotThrow(() => poser(id, null, 'magies/essai'), id);
+  // la magie du même nom (migration 0130 : le CHECK fixe la magie de chaque id ; sans clés étrangères, la magie n'a pas à exister ici)
+  for (const [id, m] of [['feu', 'magies/magie-du-feu'], ['eau', 'magies/magie-de-leau'], ['glace', 'magies/magie-de-la-glace']]) {
+    assert.doesNotThrow(() => poser(id, null, m), id);
     assert.throws(() => poser(id, null, null), /CHECK/, `${id} : sa magie`);
-    assert.throws(() => poser(id, 9001, 'magies/essai'), /CHECK/, `${id} : le mot-clé passe par la magie`);
+    assert.throws(() => poser(id, null, 'magies/essai'), /CHECK/, `${id} : pas une autre magie`);
+    assert.throws(() => poser(id, 9001, m), /CHECK/, `${id} : le mot-clé passe par la magie`);
   }
   assert.throws(() => poser('acide', null, null), /CHECK/);
   // deux magies n'ont jamais le même mot-clé (index unique partiel magie_mot_cle) ; NULL autant qu'il le faut

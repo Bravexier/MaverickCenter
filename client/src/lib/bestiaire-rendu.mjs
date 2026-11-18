@@ -172,8 +172,8 @@ export const empreinteDuPortrait = (portrait) => {
  * les lignes de `monstre_echelle`), la description repliée sous les tags (l'espèce, puis la créature : descriptionsDe), toute la carte rubrique par
  * rubrique, l'espèce (lieu de rencontre, complément, blocs) et le butin (l'objet du
  * glossaire qu'une case cite en infobulle : `glossaire`, les lignes de `monstre_butin_objet` ; `elements`, les noms des magies, décision R57). Une espèce sans carte n'a que sa partie « espèce ».
- * `seule` : la carte de la page du monstre (components/bestiaire/PageMonstre.astro), toujours affichée, sans « Fermer ». */
-export function htmlDeCarteMonstre(l, { logo, adresseDuPortrait = null, echelles = [], glossaire = [], elements = [], magiesDesCibles = {}, seule = false }) {
+ * `liens` : ceux de chargerMonstres, pour lier le type de dégâts de chaque attaque (nu sans eux). `seule` : la carte de la page du monstre (components/bestiaire/PageMonstre.astro), toujours affichée, sans « Fermer ». */
+export function htmlDeCarteMonstre(l, { logo, adresseDuPortrait = null, echelles = [], glossaire = [], elements = [], magiesDesCibles = {}, liens = null, seule = false }) {
   const c = l.carte;
   const k = cles(l);
   const id = `carte-${l.ancre}`;
@@ -204,13 +204,15 @@ export function htmlDeCarteMonstre(l, { logo, adresseDuPortrait = null, echelles
   const echelle = c ? `<div class="bcarte__echelle"${champ('monstre', k.monstre, 'echelle_brut', { rendu: 'monstre-echelle' })}>${htmlDeLEchelle(c.echelle, c.categorie, echelles, renvoieAuxDegatsMoyens(c.rubriques))}</div>` : '';
   // les échelles qu'écrit la carte : une formule « N (+k/mEP) » ou « N (+k/EP) » se calcule à chacune (décisions R55, R59)
   const echellesDeLaCarte = c ? echellesEcrites(c.echelle) : [];
+  // les types de dégâts des attaques (R288, R299) : ceux de la rubrique « Dégâts » qui fait foi pour les attaques (la première, lib/monstre-champs.mjs#valeursDeLaCarte)
+  const rubriqueDesAttaques = c?.rubriques.find((r) => r.rubrique === 'degats');
   const laCarte = c
     ? `<section class="bcarte__section" aria-label="La carte">`
       + `<p class="varie-note"${cadre(!c.variable)}><span${champ('monstre', k.monstre, 'variable', { rendu: 'monstre-variable', ...s })}>${c.variable ? e(PHRASE_VARIABLE) : ''}</span></p>`
       + `<dl class="brubriques">${rubriquesEnHtml(rubriquesAvecCapacites(c.rubriques), (r) => `<div class="brubrique brubrique--${e(r.rubrique)}"><dt>${e(r.titre)}</dt>`
         + (r.rubrique === 'capacites'
           ? `<dd data-capacites-de="${e(l.id)}">${htmlDesCapacitesDeLaCarte(l)}</dd></div>`
-          : `<dd${champ('monstre_rubrique', { monstre_id: l.id, rang: r.rang }, 'texte', { rendu: 'monstre-rubrique', ...s })}>${htmlDeRubrique(r.rubrique, r.texte, { echelles: echellesDeLaCarte, magiesDesCibles })}</dd></div>`))}</dl></section>`
+          : `<dd${champ('monstre_rubrique', { monstre_id: l.id, rang: r.rang }, 'texte', { rendu: 'monstre-rubrique', ...s })}>${htmlDeRubrique(r.rubrique, r.texte, { echelles: echellesDeLaCarte, magiesDesCibles, ...(r === rubriqueDesAttaques ? { attaques: c.attaques, liens } : {}) })}</dd></div>`))}</dl></section>`
     : '';
   const es = l.espece;
   // les intitulés des sections : sous le nom de la carte (h3 dans le tableau, h1 sur la page du monstre)

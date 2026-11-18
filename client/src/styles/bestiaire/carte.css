@@ -88,8 +88,10 @@ html:not(.js) .bcarte__fermer { display: none; }
 .bcarte :is(h2, h4) { margin: 0 0 0.35rem; font-size: 0.98rem; }
 .bcarte p { margin: 0 0 0.45rem; }
 .bcarte__bonus { display: block; margin-top: 0.25rem; font-size: var(--fs-sm); }
-/* le ou les types de dégâts d'une attaque (créature invoquée : lib/valeurs-fermees-rendu.mjs#htmlDesTypesDeLAttaque), sous son texte, discrets comme le bonus */
+/* le ou les types de dégâts d'une attaque (créature invoquée et carte de monstre : lib/valeurs-fermees-rendu.mjs#htmlDesTypesDeLAttaque), sous son texte, discrets comme le bonus */
 .battaque__types { display: block; font-size: var(--fs-sm); }
+/* sur une carte de monstre, les types suivent la ligne de l'attaque, sur la même ligne (le texte de la rubrique garde ses retours à la ligne) */
+.battaque__types--ligne { display: inline; }
 .brubriques { margin: 0; display: grid; gap: 0.5rem; }
 .brubrique { display: grid; gap: 0.15rem; }
 .brubrique dt { font-weight: 700; font-size: var(--fs-xxs); letter-spacing: var(--ls-caps); text-transform: uppercase; color: var(--muted); }
