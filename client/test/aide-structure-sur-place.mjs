@@ -33,7 +33,48 @@ export const schemaDuDepot = () => readFileSync(join(RACINE, 'data', 'schema.sql
 export function baseDesRegles() {
   if (construite) return construite;
   construite = baseDeDepart(join(dossier, 'regles.db'));
+  const db = new DatabaseSync(construite);
+  try {
+    viderLesAjoutsDesMigrations(db);
+  } finally {
+    db.close();
+  }
   return construite;
+}
+
+const NOM_SQL = '["`]?([A-Za-z_][A-Za-z0-9_]*)["`]?';
+/**
+ * Ce qu'une migration ajoute et que `annulerLesMigrations` retire : les colonnes ajoutées ([table, colonne]) et les tables créées qu'elle ne supprime pas
+ * elle-même (une table reconstruite, x_NNNN renommée, n'en est pas : elle garde ses lignes).
+ */
+function ajoutsDeLaMigration(m) {
+  const trouve = (motif) => [...m.sql.matchAll(new RegExp(motif, 'gi'))].map((x) => x.slice(1));
+  const supprimees = new Set(trouve(`DROP\\s+TABLE\\s+(?:IF\\s+EXISTS\\s+)?${NOM_SQL}`).map(([t]) => t));
+  return {
+    trouve,
+    colonnes: trouve(`ALTER\\s+TABLE\\s+${NOM_SQL}\\s+ADD\\s+(?:COLUMN\\s+)?${NOM_SQL}`),
+    tables: trouve(`CREATE\\s+TABLE\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?${NOM_SQL}`).map(([t]) => t).filter((t) => !supprimees.has(t)),
+  };
+}
+
+/**
+ * La base de règles telle que la livraison la refait juste après les migrations depuis `NUMERO` : leurs tables créées vides, leurs colonnes ajoutées à
+ * leur valeur par défaut. Le site de dev peut les avoir remplies depuis (ex. une table de la 0130, remplie par un lot) : `annulerLesMigrations` les
+ * retire de la base d'avant, la migration les rend vides, et la base refaite ne doit pas porter ce que le circuit ne peut pas refaire (essai dans l'ombre :
+ * un verdict `ecart` qui viendrait du contenu du jour, pas du service). Règle générale : aucune table ni colonne nommée.
+ */
+function viderLesAjoutsDesMigrations(db) {
+  db.exec('PRAGMA foreign_keys = OFF');
+  const existe = (nom) => Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(nom));
+  for (const m of migrationsLivrees().filter((x) => x.numero >= NUMERO).reverse()) {
+    const { colonnes, tables } = ajoutsDeLaMigration(m);
+    for (const [table, colonne] of colonnes) {
+      const c = existe(table) && db.prepare('SELECT dflt_value AS defaut FROM pragma_table_info(?) WHERE name = ?').get(table, colonne);
+      if (c) db.exec(`UPDATE "${table}" SET "${colonne}" = ${c.defaut ?? 'NULL'}`);
+    }
+    for (const table of tables) if (existe(table)) db.exec(`DELETE FROM "${table}"`);
+  }
+  db.exec('PRAGMA foreign_keys = ON');
 }
 
 let compteur = 0;
@@ -52,20 +93,18 @@ export function annulerLesMigrations(db) {
   db.exec('PRAGMA foreign_keys = OFF');
   const existe = (type, nom) => Boolean(db.prepare('SELECT 1 FROM sqlite_master WHERE type = ? AND name = ?').get(type, nom));
   const colonnes = (table) => db.prepare('SELECT name FROM pragma_table_info(?)').all(table).map((c) => c.name);
-  const nom = '["`]?([A-Za-z_][A-Za-z0-9_]*)["`]?';
   for (const m of migrationsLivrees().filter((x) => x.numero >= NUMERO).reverse()) {
-    const supprimees = new Set([...m.sql.matchAll(new RegExp(`DROP\\s+TABLE\\s+(?:IF\\s+EXISTS\\s+)?${nom}`, 'gi'))].map((x) => x[1]));
-    const trouve = (motif) => [...m.sql.matchAll(new RegExp(motif, 'gi'))].map((x) => x.slice(1));
-    for (const [colonne, table] of trouve(`ALTER\\s+TABLE\\s+${nom}\\s+ADD\\s+(?:COLUMN\\s+)?${nom}`).map(([t, c]) => [c, t]).reverse()) {
+    const ajouts = ajoutsDeLaMigration(m);
+    for (const [table, colonne] of [...ajouts.colonnes].reverse()) {
       if (existe('table', table) && colonnes(table).includes(colonne)) db.exec(`ALTER TABLE "${table}" DROP COLUMN "${colonne}"`);
     }
     for (const [type, motif] of [['trigger', 'TRIGGER'], ['view', 'VIEW'], ['index', 'INDEX']]) {
-      for (const [objet] of trouve(`CREATE\\s+(?:UNIQUE\\s+)?${motif}\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?${nom}`).reverse()) {
+      for (const [objet] of ajouts.trouve(`CREATE\\s+(?:UNIQUE\\s+)?${motif}\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?${NOM_SQL}`).reverse()) {
         if (existe(type, objet)) db.exec(`DROP ${motif} "${objet}"`);
       }
     }
-    for (const [table] of trouve(`CREATE\\s+TABLE\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?${nom}`).reverse()) {
-      if (!supprimees.has(table) && existe('table', table)) db.exec(`DROP TABLE "${table}"`);
+    for (const table of [...ajouts.tables].reverse()) {
+      if (existe('table', table)) db.exec(`DROP TABLE "${table}"`);
     }
   }
   db.exec('PRAGMA foreign_keys = ON');

@@ -12,6 +12,7 @@ Les jobs sont décrits dans `.github/workflows/ci.yml` (`client`, `simulation-de
 - Seul le job `extrait-du-site-de-dev` porte `MAVERICK_EXTRAIT_CLE`. Il ne lance pas npm et exécute le `db-extrait.mjs` de la branche de base, jamais celui de la PR.
 - L'artefact est chiffré (`MAVERICK_CONTENU_CHIFFREMENT`, openssl aes-256-cbc pbkdf2) et gardé un jour. Le job `client` n'a que la phrase de chiffrement, à l'étape `dechiffrement`.
 - Les étapes `dechiffrement` et `contenu` ne sont pas des contrôles (`CONTROLES_DE_LA_CI` les ignore).
+- `ci.yml` a un `schedule` nocturne (cron `23 3 * * *`) sur `dev`, la branche par défaut : seuls `extrait-du-site-de-dev` et `client` tournent, les autres jobs sont sautés (`github.event_name != 'schedule'`). Un run nocturne rouge signale que le contenu du jour casse un test (`docs/flux-git.md`, « Contenu lu par les tests »).
 - Le repli sur `data/rows` est toujours annoncé (`::warning::` et résumé du job), y compris pour une branche visée autre que `dev`. Un test rouge se lit d'abord avec la source lue (résumé), puis « Rebasez la branche sur dev » si le site de dev a une migration de plus que la branche.
 
 1. **Le journal.** La session principale fournit, par les outils GitHub, le journal du job et l'état du même check sur le dernier commit de `dev`. Garder l'erreur exacte, le test et le fichier.

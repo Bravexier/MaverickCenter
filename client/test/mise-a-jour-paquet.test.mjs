@@ -18,13 +18,15 @@ import {
 } from '../scripts/mise-a-jour-github.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { ENTETE_SQLITE, fabriquerPaquet, FORMAT_PAQUET, MODES_DU_PAQUET } from '../serveur/paquet.mjs';
-import { cheminBase } from '../src/lib/donnees.mjs';
+import { baseDeDepart } from './aide-base-de-depart.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { ROWS, versionLibre } from './aide-mise-a-jour.mjs';
 
 const racine = dossierTemporaire('mise-a-jour-paquet');
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
-const regles = cheminBase({ sansExemples: false });
+// Ce fichier éprouve ce qui s'écrit dans data/rows : la base de départ est celle de data/rows, quel que soit le contenu que lit le reste de la suite
+// (MAVERICK_CONTENU, l'extrait du site de dev, en porte d'autres écarts avec data/rows : le paquet les écrirait tous, et les listes de fichiers changés ne seraient plus celles du lot)
+const regles = baseDeDepart(join(racine, 'regles.db'), { deriver: true, rows: ROWS });
 const { chemin } = preparerBaseVivante({ regles, dossier: join(racine, 'db') });
 const db = ouvrirBaseVivante(chemin);
 after(() => db.close());

@@ -7,7 +7,7 @@ import { existsSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import {
-  compteursDuTest, CONTROLES_PAR_NATURE, controlesDeLaPasse, LIT_LE_DEPOT_PAR_NATURE, trierLesControlesDUnePasse, trierLesPassesDuSite,
+  compteursDuTest, CONTROLES_PAR_NATURE, controlesDeLaPasse, LIT_LE_DEPOT_PAR_NATURE, PASSE_DE_LA_CI, PASSES_DU_SITE, trierLaPasseDeLaCI, trierLesControlesDUnePasse, trierLesPassesDuSite,
 } from '../scripts/essai-mecanique-tests.mjs';
 import { CONTROLES } from '../scripts/mise-a-jour-github.mjs';
 import { TABLES_AJOUTEES, TABLES_VIDEES, VARIANTES } from '../scripts/essai-variantes.mjs';
@@ -179,6 +179,19 @@ test('tri de C : un fichier qui lit le dépôt par nature est rangé à part des
   assert.ok(rubrique > 0, 'la rubrique est écrite');
   assert.ok(md.slice(rubrique).some((l) => l.startsWith('| n.test.mjs | F3 |')));
   assert.ok(md.some((l) => l.includes('p.test.mjs') && l.includes('à retirer')));
+});
+
+test('passe D (la CI) : un fichier classé « par nature » qui casse avec data/rows dans l’arbre est rouge ; hors des passes des variantes ; sans résultat, rien', () => {
+  const m = (lignes) => new Map(lignes.map(([fichier, code]) => [fichier, { fichier, code }]));
+  const parNature = { 'n.test.mjs': { famille: 'F3', raison: 'écrit data/rows' }, 'p.test.mjs': { famille: 'F4', raison: 'vide dans data/rows' } };
+  assert.equal(trierLaPasseDeLaCI(null, () => '', parNature), null);
+  const { passes, md } = trierLaPasseDeLaCI(m([['n.test.mjs', 1], ['p.test.mjs', 0], ['autre.test.mjs', 1]]), () => '', parNature);
+  assert.deepEqual(passes, { mesures: 2, passent: 1, rouges: ['n.test.mjs'] }, 'un fichier non classé n’est pas de cette passe');
+  assert.ok(md.some((l) => l.startsWith('| n.test.mjs |')) && md.some((l) => l.includes('1 rouge(s)')));
+  assert.equal(trierLaPasseDeLaCI(m([['n.test.mjs', 0]]), () => '', parNature).passes.rouges.length, 0);
+  // la passe de la CI n'est pas une variante : elle n'entre ni dans le comptage des valeurs figées ni dans les contrôles du site construit
+  assert.equal(PASSE_DE_LA_CI, 'D');
+  assert.ok(!PASSES_DU_SITE.includes(PASSE_DE_LA_CI));
 });
 
 test('classement « lit le dépôt par nature » : chaque fichier existe dans client/test/, avec une famille F3 à F5 et une raison', () => {

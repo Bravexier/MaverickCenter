@@ -110,6 +110,24 @@ const echellesDe = (brut, min, max) => {
 };
 
 /**
+ * Les types de dégâts de chaque attaque de monstre (migration 0130, R299), dans l'ordre écrit (`rang`) : une Map « monstre_id, U+0000, attaque_rang » vers
+ * [{ type, libelle, magie_id }] ; `magie_id` est celui de type_degats (la magie du même nom, R298) ; une attaque sans ligne n'a pas de type (R300) : rien
+ * n'est déduit de son texte. Une base d'avant la 0130 n'en a pas. Page construite (chargerMonstres) et mode modification (attaquesDesCartes).
+ */
+const typesDesAttaquesDeMonstre = (db) => {
+  const types = new Map();
+  if (!db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'monstre_attaque_type'").get()) return types;
+  const lignes = db.prepare('SELECT t.monstre_id, t.attaque_rang, t.type, t.libelle, d.magie_id FROM monstre_attaque_type t JOIN type_degats d ON d.id = t.type '
+    + 'ORDER BY t.monstre_id, t.attaque_rang, t.rang').all();
+  for (const t of lignes) {
+    const cle = `${t.monstre_id}\u0000${t.attaque_rang}`;
+    if (!types.has(cle)) types.set(cle, []);
+    types.get(cle).push({ type: t.type, libelle: t.libelle, magie_id: t.magie_id });
+  }
+  return types;
+};
+
+/**
  * Les monstres du Bestiaire 2.0 : { lignes, facettes, regles, echelles, glossaire, elements, especes, liens } (`elements` : les noms des magies, décision R57 ; `liens` :
  * { degats, magies }, lib/mots-cles-des-valeurs.mjs#liensDesValeursFermees, migration 0125 : le mot-clé du glossaire de chaque type de dégâts — taille, estoc,
  * frappe, et feu, eau, glace, ceux de leur magie : creature_attaque_type.type, creature_capacite_resistance.cible_degat — et de chaque magie, `liens.magies[magie_id]`,
@@ -127,18 +145,7 @@ export function chargerMonstres(db) {
   const rubriques = regrouper(all('SELECT * FROM monstre_rubrique ORDER BY monstre_id, rang'), 'monstre_id');
   const caracs = regrouper(all('SELECT * FROM monstre_caracteristique ORDER BY monstre_id, rang'), 'monstre_id');
   const attaques = regrouper(all('SELECT * FROM monstre_attaque ORDER BY monstre_id, rang'), 'monstre_id');
-  // les types de dégâts de chaque attaque (migration 0130, R299), dans l'ordre écrit (`rang`) : `magie_id` est celui de type_degats (la magie du même nom, R298) ;
-  // une attaque sans ligne n'a pas de type (R300) : rien n'est déduit de son texte. Une base d'avant la 0130 n'en a pas.
-  const typesDesAttaques = new Map();
-  if (db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'monstre_attaque_type'").get()) {
-    const lignesDesTypes = all('SELECT t.monstre_id, t.attaque_rang, t.type, t.libelle, d.magie_id FROM monstre_attaque_type t JOIN type_degats d ON d.id = t.type '
-      + 'ORDER BY t.monstre_id, t.attaque_rang, t.rang');
-    for (const t of lignesDesTypes) {
-      const cle = `${t.monstre_id}\u0000${t.attaque_rang}`;
-      if (!typesDesAttaques.has(cle)) typesDesAttaques.set(cle, []);
-      typesDesAttaques.get(cle).push({ type: t.type, libelle: t.libelle, magie_id: t.magie_id });
-    }
-  }
+  const typesDesAttaques = typesDesAttaquesDeMonstre(db);
   const capacites = regrouper(all('SELECT * FROM monstre_capacite ORDER BY monstre_id, rang'), 'monstre_id');
   // capacités communes (décision R66) et valeurs propres à une carte (R69)
   const communes = new Map(all('SELECT * FROM monstre_capacite_commune').map((x) => [x.id, x]));
@@ -311,6 +318,20 @@ export const magiesDesCibles = (db) =>
 /** L'échelle écrite de chaque carte ({ id: echelle_brut }), pour le rendu « monstre-rubrique » du mode modification (une formule « N (+k/mEP) » ou « N (+k/EP) »,
  *  décisions R55, R59 : serveur/edition.mjs#listes). */
 export const echellesDesCartes = (db) => Object.fromEntries(db.prepare('SELECT id, echelle_brut FROM monstre ORDER BY id').all().map((r) => [r.id, r.echelle_brut]));
+
+/** Les attaques des cartes qui ont des types de dégâts ({ id de carte: [{ rang, nom, texte, types }] } comme `carte.attaques` de chargerMonstres, toutes les
+ *  attaques de la carte : la n-ième ligne d'attaque du texte est l'attaque de rang n), pour le rendu « monstre-rubrique » du mode modification : la rubrique
+ *  « Dégâts » redessinée garde les types que montre la page (lib/monstre-rendu.mjs#typesParLigne ; serveur/edition.mjs#listes). Une carte sans type n'y est pas. */
+export const attaquesDesCartes = (db) => {
+  const types = typesDesAttaquesDeMonstre(db);
+  const cartes = new Set([...types.keys()].map((k) => k.split('\u0000')[0]));
+  const parCarte = {};
+  for (const a of db.prepare('SELECT monstre_id, rang, nom, texte FROM monstre_attaque ORDER BY monstre_id, rang').all()) {
+    if (!cartes.has(a.monstre_id)) continue;
+    (parCarte[a.monstre_id] ??= []).push({ rang: a.rang, nom: a.nom, texte: a.texte, types: types.get(`${a.monstre_id}\u0000${a.rang}`) ?? [] });
+  }
+  return parCarte;
+};
 
 /** Tableau du butin d'une espèce : [{ rang, score, ennemi_simple, mini_boss, boss }] dans l'ordre des tranches ; une cellule vide reste null. */
 export function tableauDuButin(lignes) {

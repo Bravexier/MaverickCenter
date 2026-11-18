@@ -3,6 +3,7 @@
 //     de dev (la base source : `service.source()`, le lot vaut pour les tables hors édition), son essai à blanc (copie de la base) l'annonce applicable sans rien
 //     écrire, et son application écrit les lignes, au journal ;
 //   - la page lit les types dans l'ordre écrit (lib/bestiaire-db.mjs#chargerMonstres : `attaques[].types` = { type, libelle, magie_id }, `[]` sans type, R300) ;
+//   - le mode modification redessine la rubrique « Dégâts » comme la page, types compris (rendu « monstre-rubrique », liste `attaquesDesCartes` du service) ;
 //   - la carte qui suit son texte (serveur/edition-bestiaire.mjs) : les types d'une attaque ne restent que si chaque libelle est encore écrit dans le texte de
 //     l'attaque du même rang, dans l'ordre ; sinon ils partent, au journal ; une attaque retirée et une carte supprimée les emportent (clé étrangère sans cascade).
 // La carte d'essai est créée par le test, avec son propre texte : aucune valeur du site de dev n'est lue ni figée ; les types d'essai viennent de type_degats
@@ -14,6 +15,8 @@ import { test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { chargerMonstres } from '../src/lib/bestiaire-db.mjs';
+import { rendreChamp } from '../src/lib/edition-rendu.mjs';
+import { htmlDeRubrique } from '../src/lib/monstre-rendu.mjs';
 import { htmlDesTypesDeLAttaque } from '../src/lib/valeurs-fermees-rendu.mjs';
 import { cheminDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
@@ -129,6 +132,33 @@ test('le lot de types : insère les lignes de type_degats absentes et celles de 
   // un lot qui redit une ligne déjà posée : rien à écrire (le site prime), jamais un doublon
   const encore = ok(await m.appel('POST', '/api/edition/lots/', lotDesTypes(m, carte.id, [[1, 'taille', 'taille']])), 201);
   assert.equal(encore.verdict, 'rien_a_ecrire');
+});
+
+test('mode modification : la rubrique « Dégâts » redessinée (rendu monstre-rubrique, listes du service) montre les types de la page, liés ; sans type, le rendu d’avant', async () => {
+  const m = nouvelle();
+  const carte = carteAvecDesAttaques(m, ['Pince - 2d10 dégâts de taille/estoc', 'Éclair - 3d6 dégâts de foudre', 'Morsure - 1d6 dégâts neutres']);
+  const rubrique = { monstre_id: carte.id, rang: rubriqueDesDegats(m, carte.id), rubrique: 'degats' };
+  const texte = m.un('SELECT texte FROM monstre_rubrique WHERE monstre_id = ? AND rang = ?', carte.id, rubrique.rang).texte;
+  const listes = () => JSON.parse(JSON.stringify(ok(m.appel('GET', '/api/edition/listes/'))));
+  const page = () => {
+    const { lignes, liens } = chargerMonstres(m.db);
+    return htmlDeRubrique('degats', texte, { attaques: lignes.find((l) => l.id === carte.id).carte.attaques, liens });
+  };
+  // sans type : le service n'a rien à ajouter, le rendu est celui du texte seul
+  assert.equal(listes().attaquesDesCartes[carte.id], undefined, 'une carte sans type n’est pas dans la liste');
+  assert.equal(rendreChamp('monstre-rubrique', texte, rubrique, listes()), htmlDeRubrique('degats', texte));
+
+  await appliquer(m, lotDesTypes(m, carte.id, [[1, 'taille', 'taille'], [1, 'estoc', 'estoc'], [2, 'foudre', 'foudre']]));
+  const l = listes();
+  assert.deepEqual(l.attaquesDesCartes[carte.id].map((a) => a.rang), carte.attaques.map((a) => a.rang), 'toutes les attaques de la carte, pour compter les lignes comme la page');
+  const rendu = rendreChamp('monstre-rubrique', texte, rubrique, l);
+  assert.equal(rendu, page(), 'le même HTML que la page construite');
+  assert.equal([...rendu.matchAll(/<span class="battaque__types /g)].length, 2, 'deux attaques sur trois ont des types');
+  assert.match(rendu, /Type :<\/span> [^<]*taille[^<]*\/ [^<]*estoc/i, 'les deux types de la première attaque, dans l’ordre');
+  assert.notEqual(rendu, htmlDeRubrique('degats', texte), 'les types ne sont plus perdus');
+  // une autre rubrique de la carte n'est pas touchée par la liste
+  const autre = { ...rubrique, rubrique: 'vulnerabilite' };
+  assert.equal(rendreChamp('monstre-rubrique', 'Feu', autre, l), rendreChamp('monstre-rubrique', 'Feu', autre, { ...l, attaquesDesCartes: {} }));
 });
 
 test('un type hors de la liste, ou une attaque qui n’existe pas, est à corriger à l’essai à blanc : rien n’entre', async () => {

@@ -1,10 +1,16 @@
 name: CI
 
 # Sur chaque PR, et sur master et dev après chaque fusion (les livraisons : livraison.yml ; les règles de branches : garde-branches.yml).
+# Et chaque nuit sur dev (la branche par défaut du dépôt : un déclenchement programmé y lit ce fichier, et checkout, `github.ref_name` et le job d'extrait y valent dev) :
+# le site de dev change sans que le code bouge (le propriétaire applique une proposition, un lot entre), et les tests qui lisent son contenu peuvent tomber sans
+# qu'aucune PR ne le dise (run 44320300043 : six fichiers rouges deux jours après la création des secrets). Seuls l'extrait et le job client y tournent : les
+# autres jobs ne regardent qu'une PR ou un commit.
 on:
   push:
     branches: [master, dev]
   pull_request:
+  schedule:
+    - cron: '23 3 * * *'
 
 jobs:
   # Le contenu du site de dev pour les tests (lot 10 du chantier de la base de dev, R278 : « Oui, pour les tests seulement » ; docs/flux-git.md, « Contenu
@@ -163,6 +169,7 @@ jobs:
   # Quand data/rows porte déjà une note en attente (PR de mise à jour, dev avant la livraison), aucun lot n'est écrit : data/rows est contrôlé tel
   # quel. Installation identique au job client (test/mise-a-jour-simulation.test.mjs épingle le job et ses contrôles).
   simulation-de-mise-a-jour:
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -202,6 +209,7 @@ jobs:
   # sinon le premier parent. Vers `master` (PR ou push) : les règles seules (`--sans-essai`) : l'essai reconstruirait la base de `master`, dont `data/rows` a changé hors migrations
   # depuis, et refuserait à tort ; chaque migration a déjà été essayée sur `dev`.
   controle-des-migrations:
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -255,6 +263,7 @@ jobs:
         run: node --no-warnings scripts/controler-le-contenu-ecrit.mjs --cible "$CIBLE" --source "$SOURCE" --sha "$SHA" --resume "$GITHUB_STEP_SUMMARY"
 
   character-service:
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     defaults:
       run:
