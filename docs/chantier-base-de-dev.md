@@ -385,6 +385,8 @@ Après deux mises à jour réussies par le nouveau circuit. Sortent du dépôt, 
 
 **Réponse** (2026-11-14, R275 (4)) : (a), pour commencer. **Remplacée le 2026-11-18 par R291 : « Direct ».** Un lot déposé par une session et qui passe les contrôles (essai à blanc, refus motivés) entre aussitôt dans la base du site de dev ; la page Mise à jour le montre ligne par ligne, comme les notes de version, avec « Annuler cette modification » (confirmée) sur chaque ligne. Plus de modification en attente. Le dépôt direct demande une **clé de dépôt**, distincte de la clé de lecture (que détient aussi la CI) ; tant qu'elle n'est pas posée (`acces.sh`), le dépôt reste une proposition qui attend le clic.
 
+**Suites tranchées** (2026-11-18, R297, « Ok reco pour tout ») : pas de bouton « Annuler tout » de secours pour un changement au journal illisible (une restauration suffit) ; « Tout recalculer » reste sur la page ; ouvrir un verrou de décision reste réservé au mot de passe, même avec la clé de dépôt.
+
 ### Question 5 — Acceptez-vous que le dépôt garde, le temps du chantier, une copie du contenu écrite par une machine, pour que la base du site de dev fasse foi plus tôt ?
 
 *Bloque le lot : 8.*

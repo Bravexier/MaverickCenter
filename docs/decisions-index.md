@@ -2,7 +2,7 @@
 
 Ne lis jamais `docs/decisions-regles.md` en entier : trouve ici le numéro de la décision, puis cherche sa ligne avec Grep (motif `^\| R41 \|`) et ne lis qu'elle.
 
-Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 296 décisions, de R1 à R296, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
+Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 297 décisions, de R1 à R297, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
 
 | Réf. | Sujet | Décision |
 | --- | --- | --- |
@@ -302,3 +302,4 @@ Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas mo
 | R294 | « Résistance » et « Faiblesse » sur la fiche de personnage (suite de R284… | Oui : sur la fiche de personnage, « Résistance » et «… |
 | R295 | Type de dégâts des attaques des cartes de monstre (suite de R288 : `monstr… | Oui, un lot est fait, mais le type d'une attaque n'est… |
 | R296 | Ce qui sort du dépôt à la fin du chantier (2026-11-18, `docs/chantier-base… | (b) : le lot 12 retire du dépôt les lignes des tables,… |
+| R297 | Suites de R291 (2026-11-18, PR #398, `docs/chantier-base-de-dev.md`, secti… | (1) Pas de bouton « Annuler tout » : un changement au… |
