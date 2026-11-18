@@ -2,7 +2,7 @@
 // migration 0098, un lien est une balise du glossaire, souvent sans texte (« {{orios}} », « {{lequipement}} »), et le mot affiché est le libellé du
 // mot-clé (« Orios », « L’équipement ») ; chaque balise est donc remplacée par son texte affiché (le texte écrit, sinon le libellé ; « Libellé :
 // définition » pour le mode complet : lib/mots-cles-balises.mjs#texteSansBalises), dans le corps, le titre et le résumé. L'id d'un mot-clé n'est pas
-// indexé. Base construite depuis data/rows dans un dossier temporaire, une page d'essai réécrite avant db-derive.
+// indexé. Base construite depuis data/rows (ou le contenu fourni : test/aide-base-de-depart.mjs) dans un dossier temporaire, une page d'essai réécrite avant db-derive.
 //   node --test test/db-derive-recherche.test.mjs
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -11,6 +11,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { normalize } from '../src/lib/text.mjs';
+import { baseDeDepart } from './aide-base-de-depart.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
@@ -21,7 +22,7 @@ const lancer = (script, args) => {
 
 test('page_fts : une page qui cite {{orios}} est trouvée par « Orios » ; une balise s’indexe par son texte affiché, jamais par l’id du mot-clé', (t) => {
   const base = join(dossierTemporaire('derive-recherche', { t }), 'regles.db');
-  lancer('db-build.mjs', ['--out', base]);
+  baseDeDepart(base);
   const db = new DatabaseSync(base);
   // le mot-clé de la race (migration 0098 : celui qui mène à sa page ; verrouillé, son libellé ne change pas sur le site), cité par sa clé (0113)
   const orios = db.prepare("SELECT cle, libelle FROM mot_cle WHERE url = '/races/orios/'").get();
@@ -55,7 +56,7 @@ test('page_fts : une page qui cite {{orios}} est trouvée par « Orios » ; une 
 // l'onglet et son texte, si.
 test('page_fts : les marques d’un groupe d’onglets, d’une ancre figée et d’une couleur d’intertitre ne s’indexent pas', (t) => {
   const base = join(dossierTemporaire('derive-recherche-onglets', { t }), 'regles.db');
-  lancer('db-build.mjs', ['--out', base]);
+  baseDeDepart(base);
   const db = new DatabaseSync(base);
   const page = db.prepare("SELECT id FROM page WHERE statut <> 'example' ORDER BY id LIMIT 1").get().id;
   db.prepare('UPDATE page SET corps_md = ? WHERE id = ?').run(

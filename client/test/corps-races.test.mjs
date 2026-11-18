@@ -14,6 +14,7 @@ import {
 import { cheminBase, ouvrirBase, trouverRacine } from '../src/lib/donnees.mjs';
 import { TABLES } from '../src/lib/edition-modele.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { baseDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
@@ -148,11 +149,14 @@ test('valeurs de départ : les quatre cases de l’onglet changent, AP et AM de 
 });
 
 test('Nain : la liste suit l’onglet (exception gardée), le paragraphe d’écart et la ligne « Magies innées » des écarts suivent la liste et les inconvénients', () => {
-  const avant = etats.get('races/nain');
+  // l'exemple part de l'état d'import du Nain (ses magies innées et son corps se modifient sur le site : opération `magies_innees`)
+  const dImport = baseDImport();
+  const avant = etatDeRace((sql, ...p) => dImport.prepare(sql).all(...p).map((l) => ({ ...l })), 'races/nain');
+  const corpsDImport = dImport.prepare('SELECT corps_md FROM page WHERE id = ?').get('races/nain').corps_md;
   const apres = structuredClone(avant);
   apres.race_magie_onglet = apres.race_magie_onglet.filter((l) => l.magie_id !== 'magies/magie-de-la-foudre');
   apres.race_onglet[0].inconvenients = 'Magie du Feu, Terre, Arcane, Potentiel illimité en inné uniquement.';
-  const c = corpsDeRace(corps.get('races/nain'), apres, avant);
+  const c = corpsDeRace(corpsDImport, apres, avant);
   const magies = sectionDe(c, 'Magies accessibles');
   assert.match(magies, /sauf la liste de cette race, qui suit l'onglet « Nain »/);
   assert.match(magies, /^Nombre : 4 sur 15\.\n\nPotentiel Illimité, Arcane, Feu, Terre\n\nÉcart entre les sources : la matrice « Accessibilité Magie » du Google Sheet « Fiche personnage Maverick Auto V15\.2\.2 » donne 15 sur 15 pour cette race, mais l'onglet « Nain » du Google Sheet « Les races » limite la magie innée à ces 4 magies \(Inconvénient\(s\) : « Magie du Feu, Terre, Arcane, Potentiel illimité en inné uniquement\. »\)\./m);

@@ -14,6 +14,7 @@ import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { fauteDeLIcone, ICONES } from '../src/lib/icones.mjs';
 
 const SCHEMA = readFileSync(new URL('../../data/schema.sql', import.meta.url), 'utf8');
+const MIGRATION = readFileSync(new URL('../../data/migrations/0116-icone-des-mots-cles.sql', import.meta.url), 'utf8');
 const db = ouvrirBase({ sansExemples: false });
 
 test('structure : mot_cle.icone, texte nullable, ajoutée en dernier', () => {
@@ -42,12 +43,17 @@ test('contrainte (base neuve) : « famille:id » en minuscules, ou NULL ; le res
   essai.close();
 });
 
-test('import : chaque mot-clé d’une monnaie a l’icône de sa monnaie, et lui seul en a une', () => {
+// Le site de dev peut poser une icône sur tout mot-clé (essai mécanique, variante V1) : sa saisie laisse sa trace, que l'état d'import défait ; la
+// migration elle-même n'en pose qu'aux mots-clés d'une monnaie.
+test('import : chaque mot-clé d’une monnaie a l’icône de sa monnaie, et lui seul en a une ; la migration n’en pose qu’à eux', () => {
   const motsCles = historiqueSite(db).lignesDImport('mot_cle');
   const deMonnaie = motsCles.filter((m) => m.monnaie_id !== null);
   assert.ok(deMonnaie.length > 0);
   for (const m of deMonnaie) assert.equal(m.icone, `monnaie:${m.monnaie_id}`, `mot-clé ${m.id}`);
   assert.deepEqual(motsCles.filter((m) => m.monnaie_id === null && m.icone !== null).map((m) => m.id), []);
+  // commentaires de ligne entière seulement : le CHECK de la colonne contient « -- »
+  const instructions = MIGRATION.replace(/^\s*--.*$/gm, '').split(';').map((i) => i.replace(/\s+/g, ' ').trim()).filter((i) => /^UPDATE\b/i.test(i));
+  assert.deepEqual(instructions, ["UPDATE mot_cle SET icone = 'monnaie:' || monnaie_id WHERE monnaie_id IS NOT NULL"]);
 });
 
 test('état courant : une icône est NULL ou une icône de la liste du site (lib/icones.mjs#ICONES : monnaies, dégâts, magies ; la règle de db:check)', () => {

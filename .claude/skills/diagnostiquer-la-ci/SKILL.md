@@ -8,6 +8,12 @@ user-invocable: false
 
 Les jobs sont décrits dans `.github/workflows/ci.yml` (`client`, `simulation-de-mise-a-jour`, `controle-des-migrations`, `controle-du-contenu-ecrit`, `character-service`) et dans `garde-branches.yml` (le check `regles-de-branches`, job `pull-request`). Checks requis (R282) : tous sauf `simulation-de-mise-a-jour`. Les règles de branches sont dans `docs/flux-git.md`.
 
+**Le contenu lu par la CI** (R278 ; détail : `docs/flux-git.md`, « Contenu lu par les tests »). Les tests et le build lisent l'extrait du site de dev, pas `data/rows`.
+- Seul le job `extrait-du-site-de-dev` porte `MAVERICK_EXTRAIT_CLE`. Il ne lance pas npm et exécute le `db-extrait.mjs` de la branche de base, jamais celui de la PR.
+- L'artefact est chiffré (`MAVERICK_CONTENU_CHIFFREMENT`, openssl aes-256-cbc pbkdf2) et gardé un jour. Le job `client` n'a que la phrase de chiffrement, à l'étape `dechiffrement`.
+- Les étapes `dechiffrement` et `contenu` ne sont pas des contrôles (`CONTROLES_DE_LA_CI` les ignore).
+- Le repli sur `data/rows` est toujours annoncé (`::warning::` et résumé du job), y compris pour une branche visée autre que `dev`. Un test rouge se lit d'abord avec la source lue (résumé), puis « Rebasez la branche sur dev » si le site de dev a une migration de plus que la branche.
+
 1. **Le journal.** La session principale fournit, par les outils GitHub, le journal du job et l'état du même check sur le dernier commit de `dev`. Garder l'erreur exacte, le test et le fichier.
 2. **Reproduire en local** sur la tête de la branche, en commençant par le **seul fichier de test en échec** (`node --test test/<fichier>`), avec la même commande que le job pour le reste (`npm run build` puis les tests `*-html`, `db:check`…). Une fois la correction faite, seulement les tests en échec et ceux du diff de la correction (`npm run test:cible -- --fichiers <fichiers corrigés>`), pas toute la sélection ni la suite entière.
 3. **Est-ce la PR ?**

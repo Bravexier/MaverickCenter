@@ -2,21 +2,64 @@
 // R274, R278). Chacune est une modification que le propriétaire peut faire sur le site de dev ; un test qui casse dessus fige une valeur modifiable.
 //   V1  des icônes (lib/icones.mjs#ICONES) posées sur des mots-clés de genres variés : quelques-uns par catégorie de mot-clé, par type de page qui les
 //       porte (page_tag), et ceux des magies et des types de dégâts ;
-//   V2  une magie renommée : `nom` et `nom_cle` (normalize), identifiant inchangé ;
-//   V3  une ligne ajoutée dans quelques tables de contenu que le site sait créer (ENTITES « nouveau ») : copie de la dernière ligne, clé nouvelle,
-//       noms suffixés, `*_cle` recalculées, colonnes uniques décalées, rattachée à la même page que son modèle (page_entite non principale, comme le
-//       service : serveur/edition-armes.mjs) ; clés étrangères et CHECK respectés (une ligne refusée est notée, pas forcée) ;
+//   V2  un sort renommé PAR LE SERVICE d'édition (serveur/edition.mjs#enregistrer : validations, dérivations — le corps de la page de sa magie —,
+//       journal), puis versé dans l'historique comme l'extrait le fait (serveur/historique.mjs#historiser), journal vidé : identifiant inchangé.
+//       Pas une magie : magie.nom n'est pas modifiable sur le site (lib/edition-modele.mjs#TABLES.magie) ; une variante qui la renommait figeait à
+//       tort les tests qui lisent une magie par son nom ;
+//   V3  une ligne créée PAR LE SERVICE (opération « creer » de lib/edition-modele.mjs#ENTITES, valeurs tirées de la dernière ligne de la table, noms
+//       suffixés) dans quelques tables que le site sait créer : ses validations (un refus est noté : une troisième spécialité), ses lignes filles et le
+//       corps de la page qui la montre ; puis les magies innées d'une race lue par test/races-html.test.mjs changées d'une magie (opération
+//       `magies_innees`). Chaque lot est versé dans l'historique, journal vidé, comme le fait l'extrait ;
 //   V4  une ligne retirée dans quelques tables que le site sait vider (ENTITES « suppression ») : la première sans dépendant (aucune clé étrangère
 //       vers elle hors ON DELETE CASCADE, aucune page qui lui appartienne (page_entite principale), et pour un mot-clé : non protégé, sans homonyme,
-//       cité par aucun texte) ; son rattachement non principal à une page est retiré avec elle, comme le fait le service.
+//       cité par aucun texte) ; son rattachement non principal à une page est retiré avec elle, comme le fait le service ;
+//   V5  une magie renommée (`nom`, `nom_cle`), en écriture directe avec sa trace : HORS des voies du site aujourd'hui (le service refuse magie.nom, le titre
+//       de sa page et un alias : test/serveur-edition-nom-de-magie.test.mjs) ; informative, elle ne bloque rien.
 // Chaque fonction reçoit la base ouverte en écriture (une copie de l'extrait) et rend un rapport { variante, faites: [...], refusees: [...] }.
+// Comme une saisie du site de dev, chaque ligne écrite laisse sa trace dans historique_modification (nature « saisie », version NULL : ce que l'extrait
+// verse pour une modification du journal, serveur/historique.mjs#historiser), avant et après comme les note le journal (serveur/edition-journal.mjs :
+// la ligne entière pour une insertion ou une suppression, les seules colonnes changées pour une modification) : l'état d'import
+// (lib/historique-site.mjs, test/aide-base-d-import.mjs) défait la variante, comme il défait une vraie saisie.
+import { enregistrer } from '../serveur/edition.mjs';
+import { historiser } from '../serveur/historique.mjs';
+import { ENTITES, journalSansImage } from '../src/lib/edition-modele.mjs';
+import { cleDeLigne } from '../src/lib/historique-site.mjs';
 import { ICONES } from '../src/lib/icones.mjs';
 import { IDS_DES_MOTS_CLES_PROTEGES } from '../src/lib/mots-cles-proteges.mjs';
+import { TABLES_DU_JOURNAL } from '../src/lib/tables-de-la-base.mjs';
 import { normalize } from '../src/lib/text.mjs';
 
 const q = (nom) => `"${String(nom).replace(/"/g, '""')}"`;
 const colonnes = (db, table) => db.prepare(`PRAGMA table_info(${q(table)})`).all();
 const tableExiste = (db, table) => Boolean(db.prepare("SELECT 1 AS x FROM sqlite_master WHERE type = 'table' AND name = ?").get(table));
+
+/**
+ * Le journal d'une variante : un lot de saisies (`essai-mecanique-<variante>`, suffixé s'il existe déjà) dont chaque écriture est versée dans
+ * historique_modification. `inserer(table, ligne)`, `supprimer(table, ligne)` (la ligne entière), `modifier(table, ligne, apres)` (la ligne avant,
+ * les colonnes changées). Une écriture défaite (ROLLBACK TO) défait sa trace avec elle. Sans table d'historique (base très ancienne) : rien n'est noté.
+ */
+export function journalDeLaVariante(db, variante) {
+  if (!tableExiste(db, 'historique_modification')) return { inserer() {}, supprimer() {}, modifier() {} };
+  let lot = `essai-mecanique-${variante}`;
+  for (let n = 2; db.prepare('SELECT 1 AS x FROM historique_modification WHERE lot_id = ?').get(lot); n += 1) lot = `essai-mecanique-${variante}-${n}`;
+  const dernier = db.prepare('SELECT max(fait_le) AS f FROM historique_modification').get().f;
+  const maintenant = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
+  const faitLe = dernier && dernier > maintenant ? dernier : maintenant; // jamais avant une saisie déjà là : l'ordre de lecture est (fait_le, lot_id, rang)
+  const resume = `Essai mécanique des tests : variante ${variante}`;
+  const noter = db.prepare(`INSERT INTO historique_modification (lot_id, rang, fait_le, resume, version, table_nom, cle, operation, avant, apres, nature, decision)
+    VALUES (?, (SELECT coalesce(max(rang), 0) + 1 FROM historique_modification WHERE lot_id = ?), ?, ?, NULL, ?, ?, ?, ?, ?, 'saisie', NULL)`);
+  const json = (table, o) => (o === null ? null : journalSansImage(table, JSON.stringify(o)));
+  const note = (table, ligne, operation, avant, apres) => noter.run(lot, lot, faitLe, resume, table, JSON.stringify(cleDeLigne(db, table, ligne)), operation,
+    json(table, avant), json(table, apres));
+  return {
+    inserer: (table, ligne) => note(table, ligne, 'inserer', null, ligne),
+    supprimer: (table, ligne) => note(table, ligne, 'supprimer', ligne, null),
+    modifier: (table, ligne, apres) => {
+      const changees = Object.keys(apres).filter((c) => ligne[c] !== apres[c]);
+      if (changees.length) note(table, ligne, 'modifier', Object.fromEntries(changees.map((c) => [c, ligne[c]])), Object.fromEntries(changees.map((c) => [c, apres[c]])));
+    },
+  };
+}
 
 /** Les tables où V3 ajoute une ligne (le site de dev sait en créer : lib/edition-modele.mjs#ENTITES, « nouveau »). */
 export const TABLES_AJOUTEES = Object.freeze(['arme', 'specialite', 'evenement', 'monstre_capacite_commune', 'mot_cle', 'categorie_mot_cle']);
@@ -38,11 +81,14 @@ export function v1IconesVariees(db) {
   ajouter(db.prepare('SELECT m.id FROM mot_cle m JOIN magie g ON g.mot_cle_id = m.id WHERE m.icone IS NULL ORDER BY m.id').all(), 'magie');
   if (tableExiste(db, 'type_degats')) ajouter(db.prepare('SELECT m.id FROM mot_cle m JOIN type_degats d ON d.mot_cle_id = m.id WHERE m.icone IS NULL ORDER BY m.id').all(), 'type_degats');
   const poser = db.prepare('UPDATE mot_cle SET icone = ? WHERE id = ?');
+  const journal = journalDeLaVariante(db, 'V1');
   let i = 0;
   for (const [id, groupe] of choisis) {
     const icone = ICONES[i++ % ICONES.length].valeur;
     try {
+      const avant = db.prepare('SELECT * FROM mot_cle WHERE id = ?').get(id);
       poser.run(icone, id);
+      journal.modifier('mot_cle', avant, { icone });
       rapport.faites.push({ table: 'mot_cle', id, groupe, icone });
     } catch (e) {
       rapport.refusees.push({ table: 'mot_cle', id, raison: String(e.message).split('\n')[0] });
@@ -51,86 +97,115 @@ export function v1IconesVariees(db) {
   return rapport;
 }
 
-export function v2MagieRenommee(db) {
-  const rapport = { variante: 'V2', faites: [], refusees: [] };
-  const magie = db.prepare('SELECT id, nom FROM magie ORDER BY id LIMIT 1').get();
-  if (!magie) return { ...rapport, refusees: [{ table: 'magie', raison: 'aucune magie' }] };
-  const nom = `Magie renommée ${magie.id}`;
-  db.prepare('UPDATE magie SET nom = ?, nom_cle = ? WHERE id = ?').run(nom, normalize(nom), magie.id);
-  rapport.faites.push({ table: 'magie', id: magie.id, avant: magie.nom, apres: nom });
-  return rapport;
+/** Le lot d'une variante : `essai-mecanique-<variante>`, suffixé s'il est déjà dans l'historique (un contenu qui porte déjà la variante). */
+function idDuLot(db, variante) {
+  let lot = `essai-mecanique-${variante}`;
+  for (let n = 2; db.prepare('SELECT 1 AS x FROM historique_modification WHERE lot_id = ? UNION SELECT 1 FROM modification_lot WHERE id = ?').get(lot, lot); n += 1) {
+    lot = `essai-mecanique-${variante}-${n}`;
+  }
+  return lot;
 }
 
-/** Les colonnes visées par une clé étrangère de `table` (elles gardent leur valeur : la ligne copiée pointe vers les mêmes parents). */
-const colonnesEtrangeres = (db, table) => new Set(db.prepare(`PRAGMA foreign_key_list(${q(table)})`).all().map((f) => f.from));
+/**
+ * Un lot fait PAR LE SERVICE d'édition (serveur/edition.mjs#enregistrer : validations, dérivations, journal), puis ce que fait l'extrait du site de dev :
+ * le journal versé dans l'historique (serveur/historique.mjs#historiser, nature « saisie »), les tables propres au site vidées. Rend l'id du lot ;
+ * un refus du service lève son erreur (rien n'est écrit).
+ */
+function parLeService(db, variante, page, operations) {
+  const lot = idDuLot(db, variante);
+  const resultat = enregistrer(db, { page, operations }, { id: lot, instant: new Date().toISOString().replace(/\.\d+Z$/, 'Z') });
+  historiser(db);
+  for (const table of ['modification', ...TABLES_DU_JOURNAL.filter((t) => t !== 'modification')]) db.exec(`DELETE FROM "${table}"`); // liste figée du code
+  return { lot, resultat };
+}
 
-/** Les colonnes d'un index unique (hors clé primaire) de `table`. */
-function colonnesUniques(db, table) {
-  const uniques = new Set();
-  for (const i of db.prepare(`PRAGMA index_list(${q(table)})`).all()) {
-    if (!i.unique || i.origin === 'pk') continue;
-    for (const c of db.prepare(`PRAGMA index_info(${q(i.name)})`).all()) if (c.name) uniques.add(c.name);
+/** Les magies innées d'une race comme le service les lit : la liste de son onglet (R11) si elle en a une, sinon la matrice de la fiche (R8). */
+function magiesInneesDe(db, raceId) {
+  const onglet = db.prepare('SELECT magie_id FROM race_magie_onglet WHERE race_id = ? ORDER BY rang').all(raceId).map((l) => l.magie_id);
+  return onglet.length ? onglet : db.prepare('SELECT magie_id FROM race_magie WHERE race_id = ? AND accessible = 1').all(raceId).map((l) => l.magie_id);
+}
+
+/** Les races dont V3 change les magies innées : la première présente (une race que test/races-html.test.mjs lit en particulier). */
+const RACES_DE_V3 = Object.freeze(['races/nain', 'races/orios', 'races/drassahthac', 'races/humain']);
+
+/**
+ * V3, par le service : les magies innées d'une race changent (opération `magies_innees`) : la première magie qu'elle n'a pas s'ajoute, ou, si elle les a
+ * toutes, sa dernière part (jamais une liste vide : R210). Rend { faite } ou { refusee }.
+ */
+function changerLesMagiesInnees(db) {
+  const race = RACES_DE_V3.map((id) => db.prepare('SELECT id FROM race WHERE id = ?').get(id)).find(Boolean);
+  if (!race) return { refusee: { table: 'race_magie', raison: 'aucune race de RACES_DE_V3' } };
+  const avant = magiesInneesDe(db, race.id);
+  const absente = db.prepare('SELECT id FROM magie ORDER BY ordre').all().map((m) => m.id).find((id) => !avant.includes(id));
+  const apres = absente ? [...avant, absente] : avant.slice(0, -1);
+  if (!apres.length) return { refusee: { table: 'race_magie', raison: `${race.id} : une seule magie innée, aucune à ajouter` } };
+  try {
+    const { lot } = parLeService(db, 'V3', race.id, [{ op: 'magies_innees', race: race.id, magies: apres }]);
+    return { faite: { race: race.id, lot, avant, apres } };
+  } catch (e) {
+    return { refusee: { table: 'race_magie', raison: String(e.message).split('\n')[0] } };
   }
-  return uniques;
+}
+
+export function v2SortRenomme(db) {
+  const rapport = { variante: 'V2', faites: [], refusees: [] };
+  db.exec('PRAGMA foreign_keys = ON');
+  const sort = db.prepare('SELECT s.id, s.nom, s.magie_id FROM sort s JOIN magie m ON m.id = s.magie_id ORDER BY m.id, s.id LIMIT 1').get();
+  if (!sort) return { ...rapport, refusees: [{ table: 'sort', raison: 'aucun sort' }] };
+  // un nom toujours nouveau, même sur un contenu déjà renommé (la passe V2 lance aussi le test de cette variante)
+  let nom = `${sort.nom} renommé`;
+  for (let n = 2; db.prepare('SELECT 1 AS x FROM sort WHERE magie_id = ? AND nom = ?').get(sort.magie_id, nom); n += 1) nom = `${sort.nom} renommé ${n}`;
+  let lot;
+  try {
+    ({ lot } = parLeService(db, 'V2', sort.magie_id, [{ op: 'modifier', table: 'sort', cle: { id: sort.id }, valeurs: { nom } }]));
+  } catch (e) {
+    return { ...rapport, refusees: [{ table: 'sort', raison: String(e.message).split('\n')[0] }] };
+  }
+  rapport.faites.push({ table: 'sort', id: sort.id, lot, avant: sort.nom, apres: nom });
+  return rapport;
 }
 
 const NOMS = ['nom', 'titre', 'libelle', 'intitule'];
 
-/** Une copie de la dernière ligne de `table` sous une clé nouvelle : la ligne à insérer, ou null (aucune ligne). */
-function ligneNouvelle(db, table) {
-  const cols = colonnes(db, table);
-  const cle = cols.filter((c) => c.pk > 0);
-  if (!cle.length) return null;
-  const ordre = cle.sort((a, b) => a.pk - b.pk).map((c) => q(c.name)).join(', ');
-  const modele = db.prepare(`SELECT * FROM ${q(table)} ORDER BY ${ordre} DESC LIMIT 1`).get();
-  if (!modele) return null;
-  const ligne = { ...modele };
-  const etrangeres = colonnesEtrangeres(db, table);
-  const uniques = colonnesUniques(db, table);
-  const suivant = (c) => (db.prepare(`SELECT max(${q(c)}) AS m FROM ${q(table)}`).get().m ?? 0) + 1;
-  for (const c of cols) {
-    if (etrangeres.has(c.name)) continue;
-    const entier = /INT/i.test(c.type);
-    if (c.pk > 0 || (uniques.has(c.name) && !NOMS.includes(c.name) && !/(^|_)cle$/.test(c.name))) {
-      if (ligne[c.name] === null) continue;
-      ligne[c.name] = entier ? suivant(c.name) : `${ligne[c.name]}-essai`;
+/**
+ * Les valeurs de création d'une entité (lib/edition-modele.mjs#ENTITES) tirées de la dernière ligne de sa table, son modèle : chaque champ que la ligne
+ * porte (les noms suffixés « essai »), et pour un champ obligatoire qu'elle n'a pas, une valeur d'essai de son type (texte, premier choix, 1).
+ */
+function valeursDeCreation(entite, modele) {
+  const valeurs = {};
+  for (const [c, champ] of Object.entries(entite.champs)) {
+    const v = modele[c];
+    if (v !== undefined && v !== null && v !== '' && !['ids', 'ecritures'].includes(champ.type)) valeurs[c] = NOMS.includes(c) ? `${v} essai` : v;
+    else if (champ.requis) {
+      valeurs[c] = champ.type === 'choix' && champ.choix?.length ? champ.choix[0].valeur : champ.type === 'entier' ? 1 : `Essai ${champ.libelle}`;
     }
   }
-  for (const n of NOMS) {
-    if (typeof ligne[n] !== 'string' || !ligne[n]) continue;
-    ligne[n] = `${ligne[n]} essai`;
-    if (`${n}_cle` in ligne) ligne[`${n}_cle`] = normalize(ligne[n]);
-  }
-  if (table === 'mot_cle' && typeof ligne.libelle === 'string') ligne.cle = normalize(ligne.libelle);
-  return { ligne, modele, cle: cle.map((c) => c.name) };
+  return valeurs;
 }
 
 export function v3LignesAjoutees(db, tables = TABLES_AJOUTEES) {
   const rapport = { variante: 'V3', faites: [], refusees: [] };
   db.exec('PRAGMA foreign_keys = ON');
   for (const table of tables) {
-    if (!tableExiste(db, table)) { rapport.refusees.push({ table, raison: 'table absente' }); continue; }
-    const n = ligneNouvelle(db, table);
-    if (!n) { rapport.refusees.push({ table, raison: 'aucune ligne à copier' }); continue; }
-    const noms = Object.keys(n.ligne);
-    db.exec('SAVEPOINT ajout');
+    const [nom, entite] = Object.entries(ENTITES).find(([, e]) => e.table === table) ?? [];
+    if (!entite || !tableExiste(db, table)) { rapport.refusees.push({ table, raison: 'table absente ou sans création depuis le site' }); continue; }
+    const cle = colonnes(db, table).filter((c) => c.pk > 0).sort((a, b) => a.pk - b.pk).map((c) => c.name);
+    const modele = db.prepare(`SELECT * FROM ${q(table)} ORDER BY ${cle.map(q).join(' DESC, ')} DESC LIMIT 1`).get();
+    if (!modele || cle.length !== 1) { rapport.refusees.push({ table, raison: modele ? 'clé primaire composée' : 'aucune ligne modèle' }); continue; }
+    // par le service (opération « creer ») : ses validations (un refus est noté, jamais forcé : une troisième spécialité, SPECIALITES_MAX), ses lignes
+    // filles (types de dégâts d'une arme, blocs d'un événement), le corps de la page qui la montre ; un lot par création
     try {
-      db.prepare(`INSERT INTO ${q(table)} (${noms.map(q).join(', ')}) VALUES (${noms.map(() => '?').join(', ')})`).run(...noms.map((c) => n.ligne[c]));
-      // rattachée à la page de son modèle quand le modèle y est rattaché sans la posséder (le service fait de même à la création)
-      if (n.cle.length === 1) {
-        const page = db.prepare('SELECT page_id, origine FROM page_entite WHERE entite_table = ? AND entite_id = ? AND principale = 0').get(table, String(n.modele[n.cle[0]]));
-        if (page) {
-          db.prepare('INSERT INTO page_entite (entite_table, entite_id, page_id, principale, origine) VALUES (?, ?, ?, 0, ?)').run(table, String(n.ligne[n.cle[0]]), page.page_id, page.origine);
-        }
-      }
-      db.exec('RELEASE ajout');
-      rapport.faites.push({ table, cle: Object.fromEntries(n.cle.map((c) => [c, n.ligne[c]])) });
+      const { lot, resultat } = parLeService(db, 'V3', null, [{ op: 'creer', entite: nom, valeurs: valeursDeCreation(entite, modele) }]);
+      const cree = resultat.crees.find((c) => c.entite === nom);
+      rapport.faites.push({ table, lot, cle: { [cle[0]]: cree.id } });
     } catch (e) {
-      db.exec('ROLLBACK TO ajout');
-      db.exec('RELEASE ajout');
       rapport.refusees.push({ table, raison: String(e.message).split('\n')[0] });
     }
   }
+  // puis, par le service, les magies innées d'une race (lot à part, versé dans l'historique)
+  const innees = changerLesMagiesInnees(db);
+  if (innees.faite) rapport.faites.push({ table: 'race_magie', operation: 'magies_innees', ...innees.faite });
+  else rapport.refusees.push(innees.refusee);
   return rapport;
 }
 
@@ -163,6 +238,7 @@ const ESSAIS_PAR_TABLE = 25;
 export function v4LignesRetirees(db, tables = TABLES_VIDEES) {
   const rapport = { variante: 'V4', faites: [], refusees: [] };
   db.exec('PRAGMA foreign_keys = ON');
+  const journal = journalDeLaVariante(db, 'V4');
   let textes = null;
   const proteges = new Set(Object.values(IDS_DES_MOTS_CLES_PROTEGES).filter((v) => v !== null));
   for (const table of tables) {
@@ -192,8 +268,14 @@ export function v4LignesRetirees(db, tables = TABLES_VIDEES) {
       db.exec('SAVEPOINT retrait');
       try {
         let enfants = 0;
-        for (const r of refs.filter(enfant)) enfants += Number(db.prepare(`DELETE FROM ${q(r.table)} WHERE ${q(r.from)} = ?`).run(c.id).changes);
+        // chaque ligne retirée est notée, les enfants d'abord (comme le service : serveur/edition-journal.mjs)
+        for (const r of refs.filter(enfant)) {
+          for (const l of db.prepare(`SELECT * FROM ${q(r.table)} WHERE ${q(r.from)} = ?`).all(c.id)) journal.supprimer(r.table, l);
+          enfants += Number(db.prepare(`DELETE FROM ${q(r.table)} WHERE ${q(r.from)} = ?`).run(c.id).changes);
+        }
+        for (const l of db.prepare('SELECT * FROM page_entite WHERE entite_table = ? AND entite_id = ? AND principale = 0').all(table, String(c.id))) journal.supprimer('page_entite', l);
         db.prepare('DELETE FROM page_entite WHERE entite_table = ? AND entite_id = ? AND principale = 0').run(table, String(c.id));
+        journal.supprimer(table, db.prepare(`SELECT * FROM ${q(table)} WHERE ${q(k)} = ?`).get(c.id));
         db.prepare(`DELETE FROM ${q(table)} WHERE ${q(k)} = ?`).run(c.id);
         db.exec('RELEASE retrait');
         fait = { table, cle: { [k]: c.id }, enfants };
@@ -210,5 +292,18 @@ export function v4LignesRetirees(db, tables = TABLES_VIDEES) {
   return rapport;
 }
 
-/** Les variantes, par nom de passe. */
-export const VARIANTES = Object.freeze({ V1: v1IconesVariees, V2: v2MagieRenommee, V3: v3LignesAjoutees, V4: v4LignesRetirees });
+export function v5MagieRenommee(db) {
+  const rapport = { variante: 'V5', faites: [], refusees: [] };
+  const magie = db.prepare('SELECT * FROM magie ORDER BY id LIMIT 1').get();
+  if (!magie) return { ...rapport, refusees: [{ table: 'magie', raison: 'aucune magie' }] };
+  // un nom toujours nouveau, même sur un contenu déjà renommé (la passe V5 lance aussi le test de cette variante)
+  let nom = `Magie renommée ${magie.id}`;
+  for (let n = 2; nom === magie.nom; n += 1) nom = `Magie renommée ${magie.id} (${n})`;
+  db.prepare('UPDATE magie SET nom = ?, nom_cle = ? WHERE id = ?').run(nom, normalize(nom), magie.id);
+  journalDeLaVariante(db, 'V5').modifier('magie', magie, { nom, nom_cle: normalize(nom) });
+  rapport.faites.push({ table: 'magie', id: magie.id, avant: magie.nom, apres: nom });
+  return rapport;
+}
+
+/** Les variantes, par nom de passe (V5 : hors des voies du site, informative). */
+export const VARIANTES = Object.freeze({ V1: v1IconesVariees, V2: v2SortRenomme, V3: v3LignesAjoutees, V4: v4LignesRetirees, V5: v5MagieRenommee });

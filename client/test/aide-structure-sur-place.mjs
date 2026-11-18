@@ -1,8 +1,8 @@
 // Aides des tests du changement de structure sur place (serveur/structure-sur-place.mjs ; lot 7 du chantier de la base de dev) : la base de règles du
-// dépôt (db-build, sans la dérivation : les tables calculées n'y comptent pas), la même ramenée à la version d'avant `NUMERO` (sans `migration_recue` ni rien de ce que les migrations livrées depuis ont ajouté)
+// dépôt (db-build, sans la dérivation : les tables calculées n'y comptent pas ; avec MAVERICK_CONTENU, le contenu fourni : test/aide-base-de-depart.mjs), la même ramenée
+// à la version d'avant `NUMERO` (sans `migration_recue` ni rien de ce que les migrations livrées depuis ont ajouté)
 // et REMPLIE — fiches, journal de l'édition et historique —, et l'état d'une base (empreinte de chaque table, structure, version) pour prouver qu'un refus
 // ne laisse rien. Module sans test propre (n'est pas un *.test.mjs).
-import { spawnSync } from 'node:child_process';
 import { copyFileSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
@@ -10,6 +10,7 @@ import { empreinteDeLaTable } from '../serveur/empreintes.mjs';
 import { trouverRacine } from '../src/lib/donnees.mjs';
 import { OMBRES_DE_RECHERCHE } from '../src/lib/tables-de-la-base.mjs';
 import { remplirUneBase } from '../scripts/base-remplie-lib.mjs';
+import { baseDeDepart } from './aide-base-de-depart.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 export const RACINE = trouverRacine();
@@ -25,12 +26,13 @@ let construite = null;
 /** Le SQL de data/schema.sql (la structure attendue de la version courante). */
 export const schemaDuDepot = () => readFileSync(join(RACINE, 'data', 'schema.sql'), 'utf8');
 
-/** La base de règles construite depuis data/rows (version courante, sans dérivation), une fois par processus : le chemin du fichier (à copier, jamais à écrire). */
+/**
+ * La base de règles construite depuis data/rows, ou tirée du contenu fourni (MAVERICK_CONTENU) — version courante, sans dérivation —, une fois par
+ * processus : le chemin du fichier (à copier, jamais à écrire).
+ */
 export function baseDesRegles() {
   if (construite) return construite;
-  construite = join(dossier, 'regles.db');
-  const r = spawnSync(process.execPath, ['--no-warnings', join(RACINE, 'client', 'scripts', 'db-build.mjs'), '--out', construite], { encoding: 'utf8', cwd: RACINE });
-  if (r.status !== 0) throw new Error(`db-build a échoué : ${r.stderr || r.stdout}`);
+  construite = baseDeDepart(join(dossier, 'regles.db'));
   return construite;
 }
 

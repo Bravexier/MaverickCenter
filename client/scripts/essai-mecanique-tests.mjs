@@ -9,16 +9,22 @@
 //       sous <sortie>/copies/C, modifications en cours recopiées, node_modules par lien) dont data/rows/*.sql est retiré, content/wiki fabriqué depuis
 //       l'extrait. Un échec : un test qui lit encore le contenu du dépôt, ou qui casse sur le vrai contenu du site ;
 //   V1…V4  des variantes de l'extrait, chacune une modification que le propriétaire peut faire sur le site de dev (scripts/essai-variantes.mjs : V1 icônes
-//       sur des mots-clés de genres variés, V2 une magie renommée, V3 des lignes ajoutées, V4 des lignes retirées), chacune dans sa copie jetable comme C.
+//       sur des mots-clés de genres variés, V2 un sort renommé par le service, V3 des lignes ajoutées, V4 des lignes retirées), chacune dans sa copie jetable comme C.
 //       Un fichier qui passe C et casse sur Vn fige une valeur modifiable.
+//   V5  une magie renommée (écriture directe, avec sa trace) : HORS des voies du site aujourd'hui (magie.nom n'est pas modifiable :
+//       test/serveur-edition-nom-de-magie.test.mjs) ; passe informative (PASSES_INFORMATIVES), rangée à part, elle ne bloque rien.
+//   Le tri de C range à part les fichiers qui lisent le dépôt par nature (LIT_LE_DEPOT_PAR_NATURE : l'ancien circuit, les tables des fiches vides dans
+//   data/rows, les outils Python), attendus jusqu'au lot 12 ; le reste des échecs de C est inattendu.
 // Rien n'est jamais commité depuis une copie jetable ; toute la sortie reste sous var/ (ignoré par git).
 //
 // Usage, depuis client/ :
 //   node scripts/essai-mecanique-tests.mjs                          tout : fabrique les contenus, lance toutes les passes (C et V seulement si l'extrait existe), trie
-//   node scripts/essai-mecanique-tests.mjs --fabriquer              seulement les contenus : A et B, et les variantes V1 à V4 si l'extrait existe
-//   node scripts/essai-mecanique-tests.mjs --passe A|B|C|V1|V2|V3|V4 [--fichiers a.test.mjs,b.test.mjs]
-//   node scripts/essai-mecanique-tests.mjs --passe C|V1… --controles   les contrôles du job preparer (scripts/mise-a-jour-github.mjs#CONTROLES : db:build,
-//                                                                      db:check, npm test, build, tests du site construit…) dans la copie jetable de la passe
+//   node scripts/essai-mecanique-tests.mjs --fabriquer              seulement les contenus : A et B, et les variantes V1 à V5 si l'extrait existe
+//   node scripts/essai-mecanique-tests.mjs --passe A|B|C|V1|V2|V3|V4|V5 [--fichiers a.test.mjs,b.test.mjs]
+//   node scripts/essai-mecanique-tests.mjs --passe C|V1…V5 --controles  les contrôles du job preparer (scripts/mise-a-jour-github.mjs#CONTROLES, donc le
+//       job client de ci.yml) dans la copie jetable de la passe, sous MAVERICK_CONTENU = son contenu : build, chaque test du site construit à part (un
+//       test sauté ou vide est rouge), build de test et bandeau, installateur, build de production et ses deux tests, artefact ; `npm test` reste à la
+//       passe elle-même ; db:build et db:check (CONTROLES_PAR_NATURE) sont notés à part et ne rendent pas la passe rouge
 //   node scripts/essai-mecanique-tests.mjs --trier [--ecrire-docs]   refait le tri depuis les journaux déjà écrits (--ecrire-docs : docs/essai-mecanique-des-tests.json, passes A et B)
 //   node scripts/essai-mecanique-tests.mjs --nettoyer               retire les copies jetables (git worktree remove)
 // Options : --extrait <fichier> (défaut var/extrait/maverick-dev.db : `npm run db:extrait`), --parallele N (défaut : nombre de cœurs), --delai SECONDES
@@ -43,7 +49,9 @@ const sortie = resolve(arg('--sortie', join(client, '..', 'var', 'essai-mecaniqu
 const PARALLELE = Number(arg('--parallele', Math.max(1, cpus().length)));
 const DELAI = Number(arg('--delai', 600)) * 1000;
 const EXTRAIT = resolve(arg('--extrait', join(racine, 'var', 'extrait', 'maverick-dev.db')));
-export const PASSES_DU_SITE = ['C', 'V1', 'V2', 'V3', 'V4'];
+export const PASSES_DU_SITE = ['C', 'V1', 'V2', 'V3', 'V4', 'V5'];
+/** Les variantes hors des voies du site : leurs échecs sont rangés à part (« informative »), jamais comptés comme une valeur figée. */
+export const PASSES_INFORMATIVES = Object.freeze(['V5']);
 const FICHIER = {
   A: join(sortie, 'contenu-vrai.db'),
   B: join(sortie, 'contenu-factice.db'),
@@ -136,7 +144,7 @@ export async function fabriquerLesContenus() {
   return rapport;
 }
 
-// ───────────────────────── variantes de l'extrait du site de dev (V1 à V4) ─────────────────────────
+// ───────────────────────── variantes de l'extrait du site de dev (V1 à V5) ─────────────────────────
 function exigerLExtrait() {
   if (!existsSync(EXTRAIT)) throw new Error(`extrait du site de dev introuvable : ${EXTRAIT} (npm run db:extrait, ou --extrait <fichier>)`);
 }
@@ -218,28 +226,94 @@ export function nettoyerLesCopies() {
   git(['worktree', 'prune']);
 }
 
-/** Lance les contrôles du job preparer (CONTROLES de scripts/mise-a-jour-github.mjs) dans la copie jetable de la passe, chacun même si le précédent échoue. */
+/**
+ * Les contrôles du dépôt PAR NATURE : ils reconstruisent la base depuis data/rows, absent d'une copie jetable. Lancés et notés, rangés à part : ils ne
+ * rendent jamais la passe rouge (jusqu'au lot 12, comme LIT_LE_DEPOT_PAR_NATURE).
+ */
+export const CONTROLES_PAR_NATURE = Object.freeze({
+  'npm run db:build': 'reconstruit la base depuis data/rows, absent de la copie',
+  'npm run db:check': 'vérifie la base reconstruite depuis data/rows',
+});
+/** Les contrôles laissés à la passe elle-même : `npm test`, que la passe lance fichier par fichier (`--passe <P>` sans `--controles`). */
+export const CONTROLES_DE_LA_PASSE = Object.freeze(['npm test']);
+const LISTE_DE_TESTS = /^node --test((?: test\/[\w.-]+\.test\.mjs)+)$/;
+
+/**
+ * Les contrôles d'une passe, dans l'ordre de `controles` (scripts/mise-a-jour-github.mjs#CONTROLES : le job preparer, donc exactement le job client de
+ * ci.yml) : sans ceux de la passe (`npm test`) ; une liste de tests du site construit (`node --test test/a test/b…`) éclatée en un contrôle par fichier,
+ * pour un résultat par test (et ses tests sautés comptés) ; les contrôles du dépôt par nature marqués. Pure.
+ * @returns {{ commande: string, origine: string, test?: string, par_nature?: string }[]}
+ */
+export function controlesDeLaPasse(controles) {
+  const liste = [];
+  for (const origine of controles) {
+    if (CONTROLES_DE_LA_PASSE.includes(origine)) continue;
+    const tests = LISTE_DE_TESTS.exec(origine);
+    if (tests) for (const t of tests[1].trim().split(' ')) liste.push({ commande: `node --test ${t}`, origine, test: t.slice('test/'.length) });
+    else liste.push({ commande: origine, origine, ...(Object.hasOwn(CONTROLES_PAR_NATURE, origine) ? { par_nature: CONTROLES_PAR_NATURE[origine] } : {}) });
+  }
+  return liste;
+}
+
+/** Les compteurs d'une sortie de node --test (TAP) : { pass, fail, skipped } (null quand la sortie n'en a pas). */
+export function compteursDuTest(sortieTexte) {
+  const lire = (nom) => {
+    const m = new RegExp(`^# ${nom} (\\d+)$`, 'm').exec(sortieTexte);
+    return m ? Number(m[1]) : null;
+  };
+  return { pass: lire('pass'), fail: lire('fail'), skipped: lire('skipped') };
+}
+
+/**
+ * Lance les contrôles de la passe (controlesDeLaPasse(CONTROLES)) dans sa copie jetable, sous MAVERICK_CONTENU = le contenu de la passe, chacun même si
+ * le précédent échoue : le build, les tests du site construit (un par fichier), le build de test et le contrôle du bandeau, l'installateur, le build de
+ * production et ses deux tests, l'artefact. Écrit <sortie>/controles-<passe>.json ; rend les résultats.
+ */
 export async function controles(passeNom) {
   const { CONTROLES } = await import('./mise-a-jour-github.mjs');
   const cwd = preparerLaCopieJetable(passeNom);
   const dossier = join(sortie, 'journaux', passeNom);
   mkdirSync(dossier, { recursive: true });
   const runner = join(sortie, 'runner', passeNom);
+  const liste = controlesDeLaPasse(CONTROLES);
   const resultats = [];
-  for (const [i, commande] of CONTROLES.entries()) {
+  for (const [i, c] of liste.entries()) {
     rmSync(runner, { recursive: true, force: true });
     mkdirSync(runner, { recursive: true });
     const t0 = Date.now();
     const env = { ...process.env, MAVERICK_CONTENU: FICHIER[passeNom], RUNNER_TEMP: runner };
     delete env.NODE_TEST_CONTEXT;
-    const r = spawnSync('sh', ['-c', commande], { cwd, env, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 });
-    const journal = `controle-${String(i + 1).padStart(2, '0')}.log`;
-    writeFileSync(join(dossier, journal), `$ ${commande}\n${r.stdout ?? ''}${r.stderr ?? ''}`);
-    resultats.push({ commande, code: r.status, ms: Date.now() - t0, journal });
-    console.log(`contrôle ${passeNom} ${i + 1}/${CONTROLES.length} : ${r.status === 0 ? 'ok' : `échec (${r.status})`} — ${commande.slice(0, 80)}`);
+    const r = spawnSync('sh', ['-c', c.commande], { cwd, env, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 });
+    const texte = `${r.stdout ?? ''}${r.stderr ?? ''}`;
+    const journal = `controle-${String(i + 1).padStart(2, '0')}${c.test ? `-${c.test}` : ''}.log`;
+    writeFileSync(join(dossier, journal), `$ ${c.commande}\n${texte}`);
+    resultats.push({ ...c, code: r.status, ms: Date.now() - t0, journal, ...(c.test ? { compteurs: compteursDuTest(texte) } : {}) });
+    console.log(`contrôle ${passeNom} ${i + 1}/${liste.length} : ${r.status === 0 ? 'ok' : `échec (${r.status})`}${c.par_nature ? ' (par nature)' : ''} — ${c.commande.slice(0, 80)}`);
   }
   writeFileSync(join(sortie, `controles-${passeNom}.json`), JSON.stringify(resultats, null, 1));
   return resultats;
+}
+
+/**
+ * Le verdict des contrôles d'une passe (pure) : un contrôle par nature ne compte jamais ; un test du site construit est rouge s'il échoue, s'il ne
+ * passe aucun test ou s'il en saute (le site n'a pas été construit : il ne prouverait rien). Rend { rouges, par_nature, md }.
+ */
+export function trierLesControlesDUnePasse(passeNom, resultats) {
+  const etat = (c) => {
+    if (c.par_nature) return c.code === 0 ? 'ok' : 'par nature';
+    if (c.code !== 0) return `échec (${c.code})`;
+    if (c.test && (!c.compteurs?.pass || c.compteurs?.skipped)) return `sauté ou vide (${c.compteurs?.skipped ?? '?'} sautés, ${c.compteurs?.pass ?? 0} passés)`;
+    return 'ok';
+  };
+  const lignes = resultats.map((c) => ({ ...c, etat: etat(c) }));
+  const rouges = lignes.filter((c) => c.etat !== 'ok' && c.etat !== 'par nature').map((c) => c.test ?? c.commande);
+  const parNature = lignes.filter((c) => c.par_nature).map((c) => ({ commande: c.commande, code: c.code, raison: c.par_nature }));
+  const cellule = (t) => String(t ?? '').replace(/\|/g, '\\|');
+  const md = [`## Contrôles du job preparer, passe ${passeNom}`, '', `${lignes.length - parNature.length - rouges.length}/${lignes.length - parNature.length} au vert`
+    + `${rouges.length ? ` ; rouges : ${rouges.join(', ')}` : ''} ; ${parNature.length} contrôle(s) du dépôt par nature, à part.`, '',
+  '| Contrôle | Test du site | Résultat | Durée | Journal |', '| --- | --- | --- | --- | --- |',
+  ...lignes.map((c) => `| \`${cellule(c.commande.slice(0, 90))}\` | ${c.test ?? ''} | ${c.etat}${c.par_nature ? ` — ${cellule(c.par_nature)}` : ''} | ${Math.round((c.ms ?? 0) / 1000)} s | journaux/${passeNom}/${c.journal} |`), ''];
+  return { rouges, par_nature: parNature, md };
 }
 
 // ───────────────────────── passes ─────────────────────────
@@ -397,21 +471,57 @@ function trierAB(A, B) {
   return { bilan, lignes, familles, md };
 }
 
+/**
+ * Les fichiers de test qui lisent le dépôt PAR NATURE (lot 10, passe C du 2026-11-18 ; docs/essai-mecanique-des-tests.md, « Passe C et variantes ») :
+ * leur échec sur C est attendu jusqu'au lot 12 (data/rows quitte le dépôt, l'ancien circuit est retiré), et le tri les range à part des échecs inattendus.
+ * Familles : F3 les outils de l'ancien circuit, qui écrivent ou relisent data/rows ; F4 les invariants « table des fiches vide dans data/rows » ;
+ * F5 les outils Python qui lisent data/rows. `tests` : les tests du fichier concernés (les autres passent C). Un nom absent de client/test/ fait échouer
+ * test/essai-mecanique.test.mjs.
+ */
+export const LIT_LE_DEPOT_PAR_NATURE = Object.freeze({
+  'db-donnees.test.mjs': { famille: 'F3', raison: 'db:build et db:derive depuis data/rows, puis db:check sur la base construite', tests: '1 à 4, 6 à 9' },
+  'db-pages-du-site.test.mjs': { famille: 'F3', raison: 'db:sync-pages écrit data/rows et le compare à lui-même', tests: 'tous' },
+  'db-appliquer-edition.test.mjs': { famille: 'F3', raison: 'db:appliquer-edition rejoue le journal sur data/rows', tests: 'tous' },
+  'db-appliquer-edition-familles.test.mjs': { famille: 'F3', raison: 'R159 : une famille rapatriée dans data/rows par db:appliquer-edition', tests: 'tous' },
+  'db-appliquer-edition-traces-0113.test.mjs': { famille: 'F3', raison: 'db:appliquer-edition et --reparer-traces sur data/rows', tests: '3, 4' },
+  'serveur-edition-rapatriement.test.mjs': { famille: 'F3', raison: 'rapatriement et réécriture de data/rows (db:appliquer-edition, db:sync-pages)', tests: '1, 3, 4' },
+  'mise-a-jour-paquet.test.mjs': { famille: 'F3', raison: 'la mise à jour et la copie vers le dépôt écrivent data/rows', tests: '2 à 5' },
+  'mise-a-jour-regles.test.mjs': { famille: 'F3', raison: 'la mise à jour des règles écrit data/rows (note, historique, fichiers permis)', tests: '2 à 9' },
+  'mise-a-jour-simulation.test.mjs': { famille: 'F3', raison: 'simulation de la mise à jour sur data/rows', tests: 'tous' },
+  'baliser-mot-cle.test.mjs': { famille: 'F3', raison: 'exception temporaire : copie de data/rows en direct (baliser-mot-cle.test.mjs:103, 145), module tenu par une autre session ; à convertir par test/aide-base-de-depart.mjs quand elle aura fini', tests: '3, 7, 8' },
+  'suppressions-d11.test.mjs': { famille: 'F3', raison: 'suppressions rapatriées dans data/rows, puis tests relancés dessus', tests: 'tous' },
+  'races-magies-innees-liste.test.mjs': { famille: 'F3', raison: 'R31 : races_onglet.py --verifier après rapatriement dans data/rows', tests: '1' },
+  'pages-d-exemple.test.mjs': { famille: 'F3', raison: 'voulu : le fichier des pages d’exemple est comparé à data/rows, dont il est tiré', tests: '1' },
+  'contenu-fourni.test.mjs': { famille: 'F3', raison: 'voulu : sans la variable, le build exige data/rows (vérifié en la retirant)', tests: '2' },
+  'personnages-db.test.mjs': { famille: 'F4', raison: 'les tables des fiches sont vides dans data/rows', tests: '1' },
+  'db-0118-specialisation-de-la-fiche.test.mjs': { famille: 'F4', raison: 'la table de la fiche est vide dans data/rows', tests: '6' },
+  'db-0128-lots-de-changements.test.mjs': { famille: 'F4', raison: 'les tables des lots sont vides dans data/rows', tests: '1' },
+  'db-0129-migrations-recues.test.mjs': { famille: 'F4', raison: 'migration_recue est vide dans data/rows', tests: '1' },
+  'db-r173-compteurs-d-actions.test.mjs': { famille: 'F4', raison: 'R173 : personnage_action_usage vide dans data/rows', tests: '1' },
+  'db-r181-dons-variables.test.mjs': { famille: 'F4', raison: 'R181 : personnage_don_obtenu vide dans data/rows', tests: '4' },
+  'codex.test.mjs': { famille: 'F5', raison: 'tools/docs/codex.py --verifier et l’historique lus dans data/rows', tests: '1, 2, 4, 8' },
+  'races-onglet.test.mjs': { famille: 'F5', raison: 'tools/db/races_onglet.py --verifier relit data/rows', tests: '1' },
+});
+
 const DESCRIPTION_DES_PASSES = {
   C: 'vrai contenu du site de dev, sans data/rows',
   V1: 'icônes sur des mots-clés de genres variés',
-  V2: 'une magie renommée',
+  V2: 'un sort renommé par le service',
   V3: 'des lignes ajoutées',
   V4: 'des lignes retirées',
+  V5: 'une magie renommée, hors des voies du site',
 };
 
 /**
  * Le tri des passes du site de dev : C (un échec = le test lit encore le dépôt, ou casse sur le vrai contenu du site), puis chaque variante, comptée
  * seulement sur les fichiers qui passent C (un échec = le test fige une valeur que le site de dev peut changer). Pure : prend les résultats par passe.
+ * Sur C, un fichier de `parNature` (LIT_LE_DEPOT_PAR_NATURE) qui casse est rangé à part (`par_nature`), hors des échecs inattendus (`cassent`) ; un
+ * fichier de la liste qui passe est signalé (`classes_qui_passent` : à retirer de la liste).
  * @param {Record<string, Map<string, { code: number|string, ms?: number }>>} resultats
  * @param {(passe: string, fichier: string) => string} [lireJournal]
+ * @param {Record<string, { famille: string, raison: string, tests?: string }>} [parNature]
  */
-export function trierLesPassesDuSite(resultats, lireJournal = () => '') {
+export function trierLesPassesDuSite(resultats, lireJournal = () => '', parNature = LIT_LE_DEPOT_PAR_NATURE) {
   const reussi = (r) => r && r.code === 0;
   const C = resultats.C ?? new Map();
   const passes = {};
@@ -424,7 +534,11 @@ export function trierLesPassesDuSite(resultats, lireJournal = () => '') {
   if (resultats.C) {
     const casse = [...C.values()].filter((r) => !reussi(r)).map((r) => r.fichier).sort();
     for (const r of C.values()) noter(r.fichier, 'C', r);
-    passes.C = { mesures: C.size, passent: C.size - casse.length, cassent: casse };
+    const classe = (f) => Object.hasOwn(parNature, f);
+    passes.C = {
+      mesures: C.size, passent: C.size - casse.length, cassent: casse.filter((f) => !classe(f)), par_nature: casse.filter(classe),
+      classes_qui_passent: [...C.values()].filter((r) => reussi(r) && classe(r.fichier)).map((r) => r.fichier).sort(),
+    };
   }
   for (const v of PASSES_DU_SITE.slice(1)) {
     const V = resultats[v];
@@ -437,30 +551,39 @@ export function trierLesPassesDuSite(resultats, lireJournal = () => '') {
       if (C.size && !reussi(C.get(r.fichier))) { sansC += 1; continue; } // déjà compté par C : la variante n'y ajoute rien
       casse.push(r.fichier);
     }
-    passes[v] = { mesures: V.size, figent_une_valeur: casse.sort(), deja_casses_par_C: sansC };
+    passes[v] = PASSES_INFORMATIVES.includes(v)
+      ? { mesures: V.size, informative: true, cassent: casse.sort(), deja_casses_par_C: sansC }
+      : { mesures: V.size, figent_une_valeur: casse.sort(), deja_casses_par_C: sansC };
   }
   const md = [];
   for (const [nom, p] of Object.entries(passes)) {
-    const liste = nom === 'C' ? p.cassent : p.figent_une_valeur;
+    const liste = nom === 'C' || p.informative ? p.cassent : p.figent_une_valeur;
+    const cellule = (t) => String(t ?? '').replace(/\|/g, '\\|');
     md.push(`## Passe ${nom} (${DESCRIPTION_DES_PASSES[nom]})`, '',
-      nom === 'C' ? `${p.passent}/${p.mesures} fichiers passent ; ${liste.length} cassent (lisent encore le dépôt, ou cassent sur le vrai contenu du site).`
-        : `${p.mesures} fichiers mesurés ; ${liste.length} cassent alors qu'ils passent C (figent une valeur modifiable)${p.deja_casses_par_C ? ` ; ${p.deja_casses_par_C} cassent déjà sur C` : ''}.`, '');
-    if (liste.length) md.push('| Fichier | Cause (premier message) |', '| --- | --- |', ...liste.map((f) => `| ${f} | ${(fichiers.get(f).causes?.[nom] ?? '').replace(/\|/g, '\\|')} |`), '');
+      nom === 'C' ? `${p.passent}/${p.mesures} fichiers passent ; ${liste.length} cassent sans être attendus (lisent encore le dépôt, ou cassent sur le vrai contenu du site) ; `
+        + `${p.par_nature.length} lisent le dépôt par nature.`
+        : p.informative ? `Hors des voies du site aujourd'hui : informative, ne bloque rien. ${p.mesures} fichiers mesurés ; ${liste.length} cassent alors qu'ils passent C.`
+          : `${p.mesures} fichiers mesurés ; ${liste.length} cassent alors qu'ils passent C (figent une valeur modifiable)${p.deja_casses_par_C ? ` ; ${p.deja_casses_par_C} cassent déjà sur C` : ''}.`, '');
+    if (liste.length) md.push('| Fichier | Cause (premier message) |', '| --- | --- |', ...liste.map((f) => `| ${f} | ${cellule(fichiers.get(f).causes?.[nom])} |`), '');
+    if (nom === 'C' && p.par_nature.length) {
+      md.push('### Lit le dépôt par nature, jusqu’au lot 12', '', '| Fichier | Famille | Raison | Tests |', '| --- | --- | --- | --- |',
+        ...p.par_nature.map((f) => `| ${f} | ${parNature[f].famille} | ${cellule(parNature[f].raison)} | ${cellule(parNature[f].tests)} |`), '');
+    }
+    if (nom === 'C' && p.classes_qui_passent.length) md.push(`Classés « par nature » mais qui passent C (à retirer de la liste) : ${p.classes_qui_passent.join(', ')}.`, '');
   }
   return { passes, fichiers: [...fichiers.values()].sort((a, b) => a.fichier.localeCompare(b.fichier)), md };
 }
 
-/** Les contrôles du job preparer passés par --controles, par passe. */
+/** Les contrôles du job preparer passés par --controles, par passe : un résultat par contrôle et par test du site construit. */
 function trierLesControles() {
   const md = [];
   const parPasse = {};
   for (const p of PASSES_DU_SITE) {
     const chemin = join(sortie, `controles-${p}.json`);
     if (!existsSync(chemin)) continue;
-    const r = JSON.parse(readFileSync(chemin, 'utf8'));
-    parPasse[p] = r.map(({ commande, code, journal }) => ({ commande, code, journal }));
-    md.push(`## Contrôles du job preparer, passe ${p}`, '', '| Contrôle | Résultat | Journal |', '| --- | --- | --- |',
-      ...r.map((c) => `| \`${c.commande.slice(0, 90).replace(/\|/g, '\\|')}\` | ${c.code === 0 ? 'ok' : `échec (${c.code})`} | journaux/${p}/${c.journal} |`), '');
+    const t = trierLesControlesDUnePasse(p, JSON.parse(readFileSync(chemin, 'utf8')));
+    parPasse[p] = { rouges: t.rouges, par_nature: t.par_nature };
+    md.push(...t.md);
   }
   return { parPasse, md };
 }
@@ -478,7 +601,7 @@ export function trier() {
   const bilan = { ...(ab ? { AB: ab.bilan } : {}), ...site.passes, ...(Object.keys(ctrl.parPasse).length ? { controles: ctrl.parPasse } : {}) };
   writeFileSync(join(sortie, 'tri.json'), JSON.stringify({ bilan, ...(ab ? { fichiers: ab.lignes, familles: ab.familles } : {}), passes_du_site: site.fichiers }, null, 1));
   writeFileSync(join(sortie, 'tri.md'), [`# Essai mécanique des tests — tri (${new Date().toISOString()})`, '', ...(ab?.md ?? []), ...site.md, ...ctrl.md].join('\n'));
-  return { ...(ab ? { AB: ab.bilan } : {}), ...Object.fromEntries(Object.entries(site.passes).map(([k, v]) => [k, k === 'C' ? { mesures: v.mesures, cassent: v.cassent.length } : { mesures: v.mesures, figent_une_valeur: v.figent_une_valeur.length }])) };
+  return { ...(ab ? { AB: ab.bilan } : {}), ...Object.fromEntries(Object.entries(site.passes).map(([k, v]) => [k, k === 'C' ? { mesures: v.mesures, cassent: v.cassent.length, par_nature: v.par_nature.length } : v.informative ? { mesures: v.mesures, informative: true, cassent: v.cassent.length } : { mesures: v.mesures, figent_une_valeur: v.figent_une_valeur.length }])) };
 }
 
 // ───────────────────────── commande ─────────────────────────
@@ -494,16 +617,17 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     console.log(JSON.stringify(await fabriquerLesContenus(), null, 1));
     if (existsSync(EXTRAIT)) console.log(JSON.stringify(await fabriquerLesVariantes(), null, 1));
   } else if (arg('--passe', null) && drapeau('--controles')) {
-    if (!dansUneCopie(arg('--passe'))) throw new Error(`--controles : passe C ou V1 à V4 (pas ${arg('--passe')})`);
+    if (!dansUneCopie(arg('--passe'))) throw new Error(`--controles : passe C ou V1 à V5 (pas ${arg('--passe')})`);
     const r = await controles(arg('--passe'));
-    console.log(`contrôles ${arg('--passe')} : ${r.filter((x) => x.code === 0).length}/${r.length} sans échec`);
+    const t = trierLesControlesDUnePasse(arg('--passe'), r);
+    console.log(`contrôles ${arg('--passe')} : ${t.rouges.length ? `rouges : ${t.rouges.join(', ')}` : 'au vert'} ; ${t.par_nature.length} par nature (à part)`);
   } else if (arg('--passe', null)) {
     console.log(resume(arg('--passe'), await passe(arg('--passe'), fichiers)));
   } else {
     console.log(JSON.stringify(await fabriquerLesContenus(), null, 1));
     const avecLeSite = existsSync(EXTRAIT);
     if (avecLeSite) console.log(JSON.stringify(await fabriquerLesVariantes(), null, 1));
-    else console.log(`passes C et V1 à V4 sautées : extrait du site de dev absent (${EXTRAIT}, npm run db:extrait)`);
+    else console.log(`passes C et V1 à V5 sautées : extrait du site de dev absent (${EXTRAIT}, npm run db:extrait)`);
     for (const n of ['A', 'B', ...(avecLeSite ? PASSES_DU_SITE : [])]) console.log(resume(n, await passe(n, fichiers)));
     console.log(JSON.stringify(trier(), null, 1));
   }

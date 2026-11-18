@@ -68,10 +68,10 @@
 // et les parties git avec de vrais dépôts temporaires.
 import { spawnSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
-import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DEV, MARQUEUR_MAJEURE, MASTER, demandeMajeure, familleDe } from '../../tools/flux-git/regles.mjs';
 
@@ -673,6 +673,42 @@ function lireArtefact(dossier, { g, lot, empreinte, essai, copie = false }) {
   return { donnees, tables, preparation };
 }
 
+/** Les pages d'exemple du dépôt, relatif à la racine (copie de lib/contenu-fourni.mjs#FICHIER_DES_PAGES_D_EXEMPLE : ce script n'importe que node:). */
+export const FICHIER_DES_PAGES_D_EXEMPLE = Object.freeze(['data', 'pages-d-exemple.sql']);
+
+/**
+ * Le paquet `paquet` copié en `destination`, avec les pages d'exemple du dépôt s'il n'en a aucune (le site de dev n'a pas ces fixtures, data/rows les a) :
+ * `<racine>/data/pages-d-exemple.sql` (fabriqué depuis data/rows : scripts/db-pages-d-exemple.mjs), inséré d'un bloc, clés étrangères contrôlées. Le
+ * job preparer (scripts/mise-a-jour-paquet.mjs#appliquerPaquet) en tire data/rows et le job livrer le réexporte (verifierContrePaquet) : les lignes
+ * d'exemple sortent telles que data/rows les porte, aucun fichier ne change pour elles. Elles ne font rien passer d'autre : identiques des deux côtés,
+ * elles ne sont ni une différence ni une excuse ; une page d'exemple qui diffère de data/rows reste une page changée sans trace. Le paquet fourni n'est
+ * jamais modifié. Rend le nombre de pages d'exemple ajoutées (0 : le paquet en avait déjà).
+ */
+export function paquetAvecLesExemples(paquet, destination, { racine = RACINE } = {}) {
+  copyFileSync(paquet, destination);
+  const db = new DatabaseSync(destination);
+  try {
+    db.exec('PRAGMA foreign_keys = ON');
+    const exemples = () => db.prepare("SELECT count(*) AS n FROM page WHERE statut = 'example'").get().n;
+    if (exemples() > 0) return 0;
+    const fichier = join(racine, ...FICHIER_DES_PAGES_D_EXEMPLE);
+    if (!existsSync(fichier)) throw new Error(`${fichier} est introuvable : les pages d'exemple de data/rows ne peuvent pas être gardées`);
+    db.exec('BEGIN');
+    try {
+      db.exec(readFileSync(fichier, 'utf8'));
+      const rompues = db.prepare('PRAGMA foreign_key_check').all();
+      if (rompues.length) throw new Error(`clés étrangères rompues (${[...new Set(rompues.map((r) => r.table))].join(', ')})`);
+      db.exec('COMMIT');
+    } catch (e) {
+      db.exec('ROLLBACK');
+      throw new Error(`les pages d'exemple du dépôt ne s'ajoutent pas au paquet : ${e.message}`);
+    }
+    return exemples();
+  } finally {
+    db.close();
+  }
+}
+
 /**
  * Un paquet (lot 8) : son contenu, réexporté par l'exporteur des importeurs (tools/db/exporter.py : Python, bibliothèque standard seulement, aucun npm) dans
  * un dossier temporaire, doit être, octet pour octet, chaque data/rows/*.sql du commit `commit` (celui de l'artefact, sur sa base) : un job preparer compromis ne
@@ -684,7 +720,20 @@ export function verifierContrePaquet(g, { commit, paquet, temp = null }) {
   if (!SHA.test(String(commit))) throw echec('paquet', 'commit à comparer au paquet invalide');
   const dossier = mkdtempSync(join(temp ?? tmpdir(), 'paquet-export-'));
   try {
-    const r = spawnSync('python3', ['-I', join(RACINE, 'tools', 'db', 'exporter.py'), paquet, '--rows', dossier], { encoding: 'utf8', env: environnementSansJeton() });
+    // le paquet tel que le job preparer l'a exporté : avec les pages d'exemple du dépôt s'il n'en a aucune (paquetAvecLesExemples)
+    const avecExemples = join(mkdtempSync(join(temp ?? tmpdir(), 'paquet-exemples-')), 'paquet.db');
+    try {
+      paquetAvecLesExemples(paquet, avecExemples);
+    } catch (e) {
+      rmSync(dirname(avecExemples), { recursive: true, force: true });
+      throw echec('paquet', `${e.message} : rien n'est poussé.`);
+    }
+    let r;
+    try {
+      r = spawnSync('python3', ['-I', join(RACINE, 'tools', 'db', 'exporter.py'), avecExemples, '--rows', dossier], { encoding: 'utf8', env: environnementSansJeton() });
+    } finally {
+      rmSync(dirname(avecExemples), { recursive: true, force: true });
+    }
     if (r.status !== 0) {
       throw echec('paquet', `le paquet ne se réexporte pas (tools/db/exporter.py : ${String(r.stderr || r.stdout || r.error?.message || '').trim().slice(0, 300)}) : rien n'est poussé.`);
     }

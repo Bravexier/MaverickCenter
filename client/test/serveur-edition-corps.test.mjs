@@ -5,7 +5,7 @@
 // passent ; la recherche (page_fts) trouve la nouvelle valeur et plus l'ancienne.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { cpSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { after, test } from 'node:test';
@@ -22,10 +22,10 @@ import { corpsDeMetier } from '../src/lib/corps-metiers.mjs';
 import { corpsDeRace, corpsDeRaceCreee, etatDeRace } from '../src/lib/corps-races.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { emettrePage, lirePages } from '../src/lib/pages-db.mjs';
+import { copieDesRowsDeDepart } from './aide-base-de-depart.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
-const ROWS = join(RACINE, 'data', 'rows');
 const sansPython = spawnSync('python3', ['--version']).error ? 'python3 absent' : false;
 const tmp = dossierTemporaire('edition-corps');
 
@@ -181,7 +181,7 @@ vivante.close();
 
 // --- le journal rapatrié sur une copie de data/rows ------------------------------------------------------------------------------------------
 const rows = join(tmp, 'rows');
-cpSync(ROWS, rows, { recursive: true });
+copieDesRowsDeDepart(rows);
 const application = appliquerJournal(journal, { rows });
 // les règles livrées contiennent maintenant le journal : le site de dev le rejoue (base-vivante#transferer), tout doit y être « intégré »
 const lireRows = () => Object.fromEntries(readdirSync(rows).map((f) => [f, readFileSync(join(rows, f), 'utf8')]));

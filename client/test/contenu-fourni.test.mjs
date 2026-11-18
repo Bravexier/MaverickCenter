@@ -221,16 +221,17 @@ test('contenu d’une structure plus ancienne que le dépôt : les migrations ma
   const { fichier } = contenuMarque(t);
   const avant = empreinteDuFichier(fichier);
 
-  // directement : la copie reçoit la migration, notée dans migration_recue ; le schéma obtenu est celui du schema.sql du dépôt
+  // directement : la copie reçoit la migration, SANS la noter dans migration_recue (la copie n'est pas une base de site : la base vivante refuse des règles
+  // où cette table n'est pas vide, comme data/rows la garde) ; le schéma obtenu est celui du schema.sql du dépôt
   const dossier = dossierTemporaire('contenu-fourni-migre', { t });
   const copie = join(dossier, 'copie.db');
   copyFileSync(fichier, copie);
   const r = preparerLeContenu(copie, { racine: depot });
-  assert.deepEqual({ ...r, appliquees: r.appliquees.length }, { vue_retiree: true, avant: VERSION_DU_DEPOT, apres: suivante, appliquees: 1 });
+  assert.deepEqual({ ...r, appliquees: r.appliquees.length }, { vue_retiree: true, avant: VERSION_DU_DEPOT, apres: suivante, exemples_ajoutes: 0, appliquees: 1 });
   const db = new DatabaseSync(copie, { readOnly: true });
   assert.equal(db.prepare('PRAGMA user_version').get().user_version, suivante);
   assert.equal(db.prepare("SELECT count(*) AS n FROM sqlite_master WHERE type = 'table' AND name = ?").get(TABLE_D_ESSAI).n, 1);
-  assert.equal(db.prepare('SELECT count(*) AS n FROM migration_recue WHERE numero = ?').get(suivante).n, 1);
+  assert.equal(db.prepare('SELECT count(*) AS n FROM migration_recue').get().n, 0, 'aucune migration notée dans la copie de travail');
   db.close();
 
   // par le build (lib/donnees.mjs#ouvrirBase) : la base lue a la structure du dépôt
@@ -260,7 +261,7 @@ test('même structure : aucune migration lancée, seule la vue est retirée', (t
   const dossier = dossierTemporaire('contenu-fourni-egal', { t });
   const copie = copieDEssai(dossier);
   let migre = false;
-  assert.deepEqual(preparerLaCopie(copie, { racine: RACINE, migrer: () => { migre = true; } }), { vue_retiree: true, avant: VERSION_DU_DEPOT, apres: VERSION_DU_DEPOT });
+  assert.deepEqual(preparerLaCopie(copie, { racine: RACINE, migrer: () => { migre = true; } }), { vue_retiree: true, avant: VERSION_DU_DEPOT, apres: VERSION_DU_DEPOT, exemples_ajoutes: 0 });
   assert.equal(migre, false);
   assert.deepEqual(preparerLaCopie(copie, { racine: RACINE, migrer: () => { migre = true; } }).vue_retiree, false, 'une seconde fois : plus de vue');
 });

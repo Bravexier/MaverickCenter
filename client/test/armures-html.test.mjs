@@ -17,6 +17,7 @@ import { classeDeMagie, classeDuPoids, classeDuTypeDArmure, cssDesFamilles } fro
 import { ameliorationElementaire, coutElementaireEcrit } from '../src/lib/armure-forge.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { htmlDuNomDuMotCle } from '../src/lib/mots-cles-balises.mjs';
 import { attributEd } from '../src/lib/edition-modele.mjs';
 import { ENTETES_DE_DEFENSE, baliseDeLEnteteDeDefense } from '../src/lib/armures-rendu.mjs';
 import { motCleDeLaRef } from '../src/lib/mots-cles-balises.mjs';
@@ -366,12 +367,13 @@ test('R165 (2) : le tableau d’amélioration des armures élémentaires — Auc
   // libellé et adresse lus dans la base : le site de dev les modifie)
   const note = /<p class="tableau__note[^"]*">[\s\S]*?<\/p>/.exec(p.slice(debut, p.indexOf('<table', debut)))?.[0];
   assert.ok(note, 'la note du tableau');
-  const armurier = db.prepare('SELECT libelle, url, cle FROM mot_cle WHERE id = ?').get(idDuMotCleNomme('armurier'));
+  const armurier = db.prepare('SELECT libelle, url, cle, icone FROM mot_cle WHERE id = ?').get(idDuMotCleNomme('armurier'));
   assert.ok(armurier, 'le mot-clé armurier (migration 0104)');
   assert.match(note, armurier.url
     ? new RegExp(`<a class="mot-cle[^"]*" href="[^"]*${armurier.url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}" data-mot-cle="${armurier.cle}"`)
     : new RegExp(`<strong class="mot-cle[^"]*" data-mot-cle="${armurier.cle}"`));
-  assert.ok(note.includes(`>${echapper(armurier.libelle)}</`), 'son libellé');
+  // le libellé est suivi de l'icône du mot-clé quand il en a une (mot_cle.icone, R235 (3), posée ou retirée sur le site de dev)
+  assert.ok(note.includes(`>${htmlDuNomDuMotCle(armurier)}</`), 'son libellé, suivi de son icône s’il en a une');
 });
 
 test('le script de la page n’importe que lib/armure-forge.mjs et lib/armures-tri.mjs, qu’aucun autre script de page n’importe', options, () => {

@@ -25,7 +25,7 @@ import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { attributEd } from '../src/lib/edition-modele.mjs';
 import { desSelonLaForce } from '../src/lib/maitrise-arme.mjs';
 import { chargerPanneau } from '../src/lib/panneaux-regles-db.mjs';
-import { htmlAvecMotsCles, texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
+import { htmlAvecMotsCles, htmlDuNomDuMotCle, texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
 import { idDuMotCleNomme } from './aide-mots-cles.mjs';
@@ -469,12 +469,13 @@ test('R167 : le tableau des améliorations a ses deux colonnes de coût (matéri
   assert.ok(note, 'la note de l’arme élémentaire');
   // décision R207 (4), Q58 : l'amélioration revient au Forgeron, le mot-clé `forgeron` (sa section de /metiers/ quand il a une adresse, libellé et
   // adresse lus dans la base : le site de dev les modifie)
-  const forgeron = base.prepare('SELECT libelle, url, cle FROM mot_cle WHERE id = ?').get(idDuMotCleNomme('forgeron'));
+  const forgeron = base.prepare('SELECT libelle, url, cle, icone FROM mot_cle WHERE id = ?').get(idDuMotCleNomme('forgeron'));
   assert.ok(forgeron, 'le mot-clé forgeron (migration 0104)');
   assert.match(note, forgeron.url
     ? new RegExp(`<a class="mot-cle[^"]*" href="[^"]*${forgeron.url.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}" data-mot-cle="${forgeron.cle}"`)
     : new RegExp(`<strong class="mot-cle[^"]*" data-mot-cle="${forgeron.cle}"`));
-  assert.ok(note.includes(`>${echapper(forgeron.libelle)}</`), 'son libellé');
+  // le libellé est suivi de l'icône du mot-clé quand il en a une (mot_cle.icone, R235 (3), posée ou retirée sur le site de dev)
+  assert.ok(note.includes(`>${htmlDuNomDuMotCle(forgeron)}</`), 'son libellé, suivi de son icône s’il en a une');
   assert.ok(!note.includes('Métier à définir'));
   assert.match(main, /<p class="tableau__note armes-famille__note js-seul armes-materiaux__note-elementaire">Une arme élémentaire n’a pas de matériau\.<\/p>/);
   // la feuille : une seule colonne de coût avec JavaScript (le coût matériel, ou l'élémentaire avec `armes--elementaire`), les deux sans JavaScript et

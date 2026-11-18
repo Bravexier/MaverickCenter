@@ -9,7 +9,7 @@
 //   node --test test/serveur-edition-regles-du-don.test.mjs
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { copyFileSync, cpSync, readFileSync } from 'node:fs';
+import { copyFileSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
@@ -24,8 +24,9 @@ import { chargerJournal, journalExporte } from '../serveur/edition-journal.mjs';
 import { TABLES_DES_SOURCES } from '../serveur/edition-maitrises.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { baseDImport, remettreDepuisLImport } from './aide-base-d-import.mjs';
+import { copieDesRowsDeDepart, rowsDeDepart } from './aide-base-de-depart.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
-import { copieSansNoteEnAttente, ROWS, versionALaRevision } from './aide-mise-a-jour.mjs';
+import { copieSansNoteEnAttente, versionALaRevision } from './aide-mise-a-jour.mjs';
 
 const sansOutils = spawnSync('python3', ['--version']).error ? 'python3 absent' : false;
 const dossier = dossierTemporaire('regles-du-don');
@@ -74,12 +75,12 @@ copyFileSync(cheminBase({ sansExemples: false }), REGLES);
 const RECUES = (() => {
   const db = new DatabaseSync(REGLES);
   try {
-    if (!remettreLesDonsDImport(db)) return ROWS;
+    if (!remettreLesDonsDImport(db)) return rowsDeDepart();
   } finally {
     db.close();
   }
   const rows = join(dossier, 'rows');
-  cpSync(ROWS, rows, { recursive: true });
+  copieDesRowsDeDepart(rows);
   const base = join(dossier, 'rows.db');
   const b = spawnSync(process.execPath, ['--no-warnings', join(RACINE, 'client', 'scripts', 'db-build.mjs'), '--out', base, '--rows', rows], { encoding: 'utf8' });
   assert.equal(b.status, 0, b.stderr || b.stdout);

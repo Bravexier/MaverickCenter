@@ -11,7 +11,7 @@
 //   node --test test/serveur-edition-pages-regles.test.mjs
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { cpSync, mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
@@ -28,10 +28,10 @@ import { emettrePage, lirePages } from '../src/lib/pages-db.mjs';
 import { cheminDePage } from '../src/lib/metiers.mjs';
 import { chargerPlanDesRegles } from '../src/lib/plan-des-regles-db.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { copieDesRowsDeDepart } from './aide-base-de-depart.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
-const ROWS = join(RACINE, 'data', 'rows');
 const sansPython = spawnSync('python3', ['--version']).error ? 'python3 absent' : false;
 const racine = dossierTemporaire('edition-pages-regles');
 let compteur = 0;
@@ -252,7 +252,7 @@ test('rapatriement : le journal rejoué sur data/rows (db:appliquer-edition), pu
   db.close();
 
   const rows = join(racine, 'rapatriement', 'rows');
-  cpSync(ROWS, rows, { recursive: true });
+  copieDesRowsDeDepart(rows);
   const r = appliquerJournal(journal, { rows });
   assert.deepEqual(r.conflits, []);
   assert.equal(r.ecrit, true);

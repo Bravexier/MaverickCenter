@@ -1137,14 +1137,23 @@ et produit le même site qu'avant.
   que `data/schema.sql` reçoit les migrations manquantes de `data/migrations/` (`scripts/db-preparer-contenu.mjs`, lancé dans son propre processus, par le code du service :
   `serveur/structure-sur-place.mjs#appliquerSurPlace`, un seul bloc, clés étrangères contrôlées, schéma obtenu comparé à `data/schema.sql`) : c'est le cas d'une PR qui ajoute une migration
   et lit l'extrait du site de dev, qui ne l'a pas encore reçue ; **plus récente** : erreur « Rebasez la branche sur dev » (le site de dev a reçu une migration que la branche n'a pas).
-  Le fichier fourni garde sa vue et sa structure. À la main : `node scripts/db-preparer-contenu.mjs <copie.db> [--racine <dépôt>]` (jamais sur le fichier fourni : il l'écrit).
+  Le fichier fourni garde sa vue et sa structure. À la main : `node scripts/db-preparer-contenu.mjs <copie.db> [--racine <dépôt>] [--sans-exemples]` (jamais sur le fichier fourni : il l'écrit).
+- **Pages d'exemple** (lot 10) : le site de dev n'a pas les pages `statut = 'example'` (des fixtures, pas du lore), que des tests attendent. Une copie qui n'en a **aucune**, migrations faites,
+  reçoit celles du dépôt, `data/pages-d-exemple.sql` (`scripts/db-preparer-contenu.mjs#injecterLesPagesDExemple` : un seul bloc, clés étrangères contrôlées ; un échec ou un fichier absent
+  est une erreur, jamais un contenu sans exemples en silence), dans le processus de la préparation ; db-derive les traite ensuite comme les autres. Un contenu qui en a déjà n'est pas touché.
+  Pas d'ajout pour la variante qui les retire (`HIDE_EXAMPLES=1` : `ouvrirBase({ sansExemples })`, `db-export-pages`) : le kit de l'atelier, toujours dans cette variante, n'emporte pas ce fichier.
+  Le fichier est exactement ce que `db-derive --sans-exemples` retire d'une base reconstruite depuis `data/rows` (les pages, leurs enfants, les sources qu'elles seules citaient), écrit comme
+  l'exporteur : `node scripts/db-pages-d-exemple.mjs [--verifier]` ; `test/pages-d-exemple.test.mjs` le compare à `data/rows` tant qu'il existe. Le cas « déjà dérivé » (`MAVERICK_CONTENU_DERIVE`) ne change pas.
 - **Essai mécanique des tests** (`scripts/essai-mecanique-tests.mjs`, usage en tête ; variantes : `scripts/essai-variantes.mjs` ; résultat du premier essai : `docs/essai-mecanique-des-tests.md`) :
   chaque fichier de test lancé seul sur un contenu donné. Passes A et B (contenu reconstruit depuis `data/rows`, puis rendu factice), **C** (l'extrait du site de dev, `npm run db:extrait`,
-  sans le dépôt) et **V1 à V4** (variantes mécaniques de l'extrait, chacune une modification que le site de dev permet : icônes sur des mots-clés de genres variés, une magie renommée,
-  des lignes ajoutées, des lignes retirées sans dépendant). C et V tournent dans une **copie jetable** de l'arbre (`git worktree` détaché sous `<sortie>/copies/<passe>`, modifications
+  sans le dépôt) et **V1 à V5** (variantes de l'extrait, chacune une modification que le site de dev permet, notée dans `historique_modification` comme une saisie : V1 icônes sur
+  des mots-clés de genres variés ; V2 un sort renommé **par le service** (`serveur/edition.mjs#enregistrer`, puis `historiser` et le journal vidé, comme l'extrait) ; V3 des lignes créées
+  par le service (opération `creer` ; un refus est noté, jamais forcé) et les magies innées d'une race changées (`magies_innees`) ; V4 des lignes retirées sans dépendant ; **V5** une
+  magie renommée en écriture directe, hors des voies du site aujourd'hui (`test/serveur-edition-nom-de-magie.test.mjs`) : **informative**, rangée à part, elle ne bloque rien). C et V tournent dans une **copie jetable** de l'arbre (`git worktree` détaché sous `<sortie>/copies/<passe>`, modifications
   en cours recopiées, `data/rows/*.sql` retiré, `node_modules` par lien, `content/wiki` fabriqué depuis le contenu de la passe) ; rien n'y est commité, `--nettoyer` les retire. Un échec sur C :
-  le test lit encore le dépôt (ou casse sur le vrai contenu du site) ; sur Vn seulement : il fige une valeur modifiable. `--passe <P> --controles` lance dans la copie les contrôles du job
-  preparer (`scripts/mise-a-jour-github.mjs#CONTROLES`). Tri par passe : `<sortie>/tri.md` et `tri.json`. Toute la sortie reste sous `var/`.
+  le test lit encore le dépôt (ou casse sur le vrai contenu du site) ; sur Vn seulement : il fige une valeur modifiable. Le tri de C range à part les fichiers qui lisent le dépôt par nature
+  (`LIT_LE_DEPOT_PAR_NATURE`). `--passe <P> --controles` lance dans la copie, sous le contenu de la passe, les contrôles du job preparer (`scripts/mise-a-jour-github.mjs#CONTROLES`) :
+  chaque test du site construit à part (sauté ou vide : rouge), `npm test` laissé à la passe, `db:build` et `db:check` à part (`CONTROLES_PAR_NATURE`, jamais rouges). Tri par passe : `<sortie>/tri.md` et `tri.json`. Toute la sortie reste sous `var/`.
 - **`npm run build:depuis-contenu -- --contenu <fichier> [--sortie <dossier>] [--mesure <fichier.json>]`** (`scripts/fabriquer-depuis-contenu.mjs`, logique : `serveur/fabrication-depuis-contenu.mjs`) :
   1. *controle* : le fichier est copié dans un dossier de travail, puis contrôlé (`serveur/fichier-de-contenu.mjs`, avec le classement de `lib/tables-de-la-base.mjs` et les empreintes de
      `serveur/empreintes.mjs`) : SQLite lisible, structure (`user_version`) du `data/schema.sql` livré, toutes les tables du contenu présentes, aucune ligne dans une table propre au site
@@ -1701,6 +1710,12 @@ rejeu, qui **recontrôle** et tire `data/rows` du paquet :
    page par page (`pagesSansTrace`) : la trace de sa ligne, un mot-clé retiré, ou — pour une page typée que le code refait depuis ses tables, seulement sur ses colonnes
    dérivées (`edition.mjs#colonneDerivee`) — une trace d'une autre table ; une page libre (guide, lore) changée sans la trace de sa ligne est refusée (code 4, tables et pages nommées) ;
 5. seuls les fichiers changés sont écrits. Puis les mêmes `CONTROLES` qu'aujourd'hui, le même commit, le même artefact.
+
+**Pages d'exemple** (fixtures `statut = 'example'`, pas du lore) : le site de dev n'en a aucune, `data/rows` les garde. Un paquet qui n'en a aucune est recontrôlé et
+exporté depuis une **copie de travail** qui reçoit celles du dépôt (`data/pages-d-exemple.sql`, `scripts/mise-a-jour-github.mjs#paquetAvecLesExemples`), au job `preparer`
+(`appliquerPaquet`) comme au job `livrer` (`verifierContrePaquet`, qui réexporte la même copie). Identiques à celles de `data/rows`, elles ne changent aucun fichier et
+n'excusent rien : une vraie page changée sans trace reste refusée (code 4) ; le paquet fourni n'est jamais modifié (`test/mise-a-jour-paquet-exemples.test.mjs`).
+Sans cela, « Copier vers le dépôt » depuis le site de dev était refusée (code 4 : les pages d'exemple absentes du paquet, sans trace).
 
 La liste blanche du job `livrer` est alors celle des **tables de contenu du paquet** (`tables_de_contenu`, couvertes par l'empreinte de l'entrée), plus les tables des notes ;
 en plus, `livrer` **réexporte le paquet** (`tools/db/exporter.py`, Python et sa bibliothèque standard seulement, aucun npm) dans un dossier temporaire et compare octet pour
