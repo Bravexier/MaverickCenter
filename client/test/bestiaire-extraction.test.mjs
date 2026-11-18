@@ -19,11 +19,14 @@ const cartes = b.especes.flatMap((e) => e.cartes);
 const db = ouvrirBase({ sansExemples: false });
 const TABLES_MONSTRES = ['monstre_regle', 'monstre_echelle', 'monstre_butin_objet', 'monstre_groupe', 'monstre_capacite_commune', 'monstre_espece', 'monstre_espece_lieu',
   'monstre_espece_bloc', 'monstre_butin', 'monstre', 'monstre_rubrique', 'monstre_caracteristique', 'monstre_attaque', 'monstre_capacite', 'monstre_capacite_valeur', 'monstre_defense'];
+// monstre_attaque_type (migration 0130, R298) : alimentée par un lot de changements du site de dev, jamais par l'extracteur ; elle n'est donc ni rejouée ni
+// comparée ici, et la liste des tables de la section 8 bis la met à part
+const TABLES_DU_SITE = ['monstre_attaque_type'];
 const registre = lireRegistre();
 
 test('l’extraction rejouée sur l’export du doc redonne exactement les tables des monstres de la base, telles que l’import les a laissées', () => {
   const tables = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE 'monstre%' ORDER BY name").all().map((r) => r.name);
-  assert.deepEqual(tables, [...TABLES_MONSTRES].sort(), 'les tables de la section 8 bis');
+  assert.deepEqual(tables, [...TABLES_MONSTRES, ...TABLES_DU_SITE].sort(), 'les tables de la section 8 bis');
   const memoire = new DatabaseSync(':memory:', { enableForeignKeyConstraints: false });
   memoire.exec(readFileSync(new URL('data/schema.sql', racine), 'utf8'));
   memoire.exec(lignesSql(b).join('\n'));

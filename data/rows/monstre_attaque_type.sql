@@ -1,0 +1,1 @@
+-- data/rows/monstre_attaque_type.sql : export déterministe, une instruction par ligne, triée par (monstre_id, attaque_rang, rang). NE PAS ÉDITER À LA MAIN.

@@ -23,7 +23,7 @@
 --     json_valid / json_type, instr, FTS5 (tables dérivées), group_concat (une vue) et PRAGMA sont propres à SQLite ; design.md §10.4 donne leur équivalent. L'export de lignes est du INSERT standard.
 -- ====================================================================================================================
 
-PRAGMA user_version = 129;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
+PRAGMA user_version = 130;   -- version du schéma ; data/rows/VERSION porte la même (voir design.md §10 : migrations)
 
 -- ====================================================================================================================
 -- 0. FAMILLES D'IMPORT
@@ -1036,15 +1036,36 @@ CREATE INDEX sort_mot_cle_mot_cle ON sort_mot_cle (mot_cle_id);   -- « les sort
 -- 2026-11-14 : « les armes et armures référencera leur type ou résistance (taille, estoc et frappe) via ce mot clé », « Si ils existent! »).
 -- Ces colonnes gardent leur valeur et leur CHECK, sans clé étrangère vers cette table (choix du propriétaire : leurs données et leur format ne
 -- changent pas). Pas de libellé ici : le mot-clé (ou la magie) donne le nom affiché.
+-- Migration 0130 (R297) : onze types écrits par les attaques des cartes de monstre (monstre_attaque_type.type, clé étrangère vers cette table),
+-- chacun lié à la magie du même nom : foudre, lumiere, arcane, sang, terre, ombre, corruption, espace-temps, vide, vent, necromancie. La liste
+-- des id ne s'élargit que par migration : un type hors liste sans magie du même nom reste une question au propriétaire (R297).
 --   mot_cle_id : le mot-clé du type (Taille, Estoc, Frappe) ; NULL quand le glossaire n'en a pas (physique, sonore). Pas de cascade, comme
 --                sort_mot_cle : la clé étrangère refuse de supprimer un mot-clé qui définit un type de dégâts.
---   magie_id   : feu, eau, glace (attaques de créature) se lient à la magie du même nom (choix du propriétaire), comme creature_attaque_type.magie_id ;
---                leur mot-clé est celui de la magie (magie.mot_cle_id). Renseignée pour ces trois-là seulement, et jamais avec mot_cle_id.
+--   magie_id   : un type élémentaire se lie à la magie du même nom (choix du propriétaire pour feu, eau, glace, attaques de créature, comme
+--                creature_attaque_type.magie_id ; R297 pour les onze de 0130) ; son mot-clé est celui de la magie (magie.mot_cle_id). Le CHECK
+--                fixe la magie de chaque id (les id de magie sont figés) : NULL pour les autres, jamais avec mot_cle_id.
 CREATE TABLE type_degats (
-  id          TEXT    NOT NULL PRIMARY KEY CHECK (id IN ('taille', 'estoc', 'frappe', 'physique', 'sonore', 'feu', 'eau', 'glace')),
+  id          TEXT    NOT NULL PRIMARY KEY CHECK (id IN ('taille', 'estoc', 'frappe', 'physique', 'sonore', 'feu', 'eau', 'glace',
+                                                         'foudre', 'lumiere', 'arcane', 'sang', 'terre', 'ombre', 'corruption',
+                                                         'espace-temps', 'vide', 'vent', 'necromancie')),
   mot_cle_id  INTEGER REFERENCES mot_cle(id),
   magie_id    TEXT    REFERENCES magie(id),
-  CHECK ((id IN ('feu', 'eau', 'glace')) = (magie_id IS NOT NULL)),
+  CHECK (magie_id IS (CASE id
+    WHEN 'feu'          THEN 'magies/magie-du-feu'
+    WHEN 'eau'          THEN 'magies/magie-de-leau'
+    WHEN 'glace'        THEN 'magies/magie-de-la-glace'
+    WHEN 'foudre'       THEN 'magies/magie-de-la-foudre'
+    WHEN 'lumiere'      THEN 'magies/magie-de-la-lumiere'
+    WHEN 'arcane'       THEN 'magies/magie-de-larcane'
+    WHEN 'sang'         THEN 'magies/magie-du-sang'
+    WHEN 'terre'        THEN 'magies/magie-de-la-terre'
+    WHEN 'ombre'        THEN 'magies/magie-de-lombre'
+    WHEN 'corruption'   THEN 'magies/magie-de-la-corruption'
+    WHEN 'espace-temps' THEN 'magies/magie-de-lespace-temps'
+    WHEN 'vide'         THEN 'magies/magie-du-vide'
+    WHEN 'vent'         THEN 'magies/magie-du-vent'
+    WHEN 'necromancie'  THEN 'magies/magie-de-la-necromancie'
+  END)),
   CHECK (magie_id IS NULL OR mot_cle_id IS NULL)
 ) STRICT;
 
@@ -2729,6 +2750,23 @@ CREATE TABLE monstre_attaque (
   origine    TEXT    NOT NULL REFERENCES famille(id) CHECK (origine = 'monstres'),
   source_ref TEXT    NOT NULL CHECK (length(source_ref) > 0),
   PRIMARY KEY (monstre_id, rang)
+) STRICT, WITHOUT ROWID;
+
+-- Types de dégâts d'une attaque de carte (migration 0130 ; R288, R295, R297 à R299) : zéro, un ou plusieurs par attaque, dans l'ordre où le texte de
+-- l'attaque les écrit (`rang` : « taille/estoc » = taille 1, estoc 2 ; R298). Un type n'est posé que si le texte copié du doc le nomme (R295) : aucune
+-- ligne pour une attaque qui n'en écrit pas, « neutre » ou « élémentaire » (R299) ; la ligne « Arme de la créature » reste du texte (R300).
+-- Le vocabulaire est celui de type_degats (clé étrangère, pas de CHECK recopié) ; son mot-clé ou sa magie s'y lisent (une information à un seul endroit).
+-- Pas de cascade : la carte qui supprime ou refait ses attaques retire d'abord leurs types (au journal), comme ses autres tables de détail.
+--   libelle : l'écriture d'origine du mot dans le texte de l'attaque (« Foudre », « tailles ») ; le nom affiché vient du mot-clé ou de la magie.
+CREATE TABLE monstre_attaque_type (
+  monstre_id   TEXT    NOT NULL,
+  attaque_rang INTEGER NOT NULL,
+  rang         INTEGER NOT NULL CHECK (rang >= 1),
+  type         TEXT    NOT NULL REFERENCES type_degats(id),
+  libelle      TEXT    NOT NULL CHECK (length(libelle) > 0),
+  PRIMARY KEY (monstre_id, attaque_rang, rang),
+  UNIQUE (monstre_id, attaque_rang, type),
+  FOREIGN KEY (monstre_id, attaque_rang) REFERENCES monstre_attaque(monstre_id, rang)
 ) STRICT, WITHOUT ROWID;
 
 -- Capacités de monstre communes (décision R66 : « notées dans des tables à part (pour l'instant juste Nom et Description) histoire de mutualiser les
