@@ -1,19 +1,22 @@
 // Les valeurs fermées liées aux mots-clés du glossaire (migration 0125 ; lib/mots-cles-des-valeurs.mjs#liensDesValeursFermees) : un type de dégâts
 // (taille, estoc, frappe : leur mot-clé ; feu, eau, glace : celui de leur magie) et une magie (son nom court, l'infobulle de son mot-clé) sont rendus par
-// une seule fonction à toutes les pages ; sans mot-clé, null (physique, sonore). Les lignes se lisent par leur lien en base, jamais par un nom ni par un
+// une seule fonction à toutes les pages ; sans mot-clé, null (un type que le site n'a pas lié). Les lignes se lisent par leur lien en base, jamais par un nom ni par un
 // id supposé (le site de dev renomme les mots-clés) ; la fonction suit la base courante, sans cache.
 //   node --test test/mots-cles-des-valeurs.test.mjs
 import assert from 'node:assert/strict';
+import { copyFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { chargerArmes } from '../src/lib/armes-db.mjs';
 import { chargerArmures } from '../src/lib/armures-db.mjs';
 import { chargerInvocations, chargerMonstres } from '../src/lib/bestiaire-db.mjs';
-import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { chargerMagies } from '../src/lib/magies-db.mjs';
 import { lienDeLaMagie, lienDuTypeDeDegats, liensDesValeursFermees } from '../src/lib/mots-cles-des-valeurs.mjs';
 import { htmlDeLaCible, htmlDeLaDefenseDeCreature } from '../src/lib/valeurs-fermees-rendu.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const liens = liensDesValeursFermees(db);
@@ -43,24 +46,57 @@ test('une magie : son mot-clé (id, clé, libellé, définition, couleur) et son
   }
 });
 
-test('un type de dégâts : taille, estoc, frappe par leur mot-clé (texte null : la page garde son libellé) ; feu, eau, glace par celui de leur magie (son nom court) ; sans lien : null', () => {
-  const types = db.prepare('SELECT id, mot_cle_id, magie_id FROM type_degats ORDER BY id').all();
-  assert.deepEqual(Object.keys(liens.degats).sort(), types.map((t) => t.id), 'chaque type de dégâts a sa clé');
-  assert.ok(types.some((t) => t.mot_cle_id !== null) && types.some((t) => t.magie_id !== null) && types.some((t) => t.mot_cle_id === null && t.magie_id === null));
+/** Chaque type de dégâts de `base` rendu comme sa ligne le dit (sa magie, son mot-clé ou rien), selon `liensDeLaBase` ; rend les types lus. */
+function verifierLesTypes(base, liensDeLaBase) {
+  const types = base.prepare('SELECT id, mot_cle_id, magie_id FROM type_degats ORDER BY id').all();
+  assert.deepEqual(Object.keys(liensDeLaBase.degats).sort(), types.map((t) => t.id), 'chaque type de dégâts a sa clé');
   for (const t of types) {
-    const lien = lienDuTypeDeDegats(liens, t.id);
+    const lien = lienDuTypeDeDegats(liensDeLaBase, t.id);
     if (t.magie_id !== null) {
-      assert.deepEqual(lien, lienDeLaMagie(liens, t.magie_id), `${t.id} : le lien de sa magie`);
-      assert.ok(lien === null || lien.texte === db.prepare('SELECT nom FROM magie WHERE id = ?').get(t.magie_id).nom, `${t.id} : le nom court de la magie`);
+      assert.deepEqual(lien, lienDeLaMagie(liensDeLaBase, t.magie_id), `${t.id} : le lien de sa magie`);
+      assert.ok(lien === null || lien.texte === base.prepare('SELECT nom FROM magie WHERE id = ?').get(t.magie_id).nom, `${t.id} : le nom court de la magie`);
     } else if (t.mot_cle_id !== null) {
-      verifierLeLien(lien, t.mot_cle_id, t.id);
+      const m = base.prepare('SELECT * FROM mot_cle WHERE id = ?').get(t.mot_cle_id);
+      assert.ok(m, `${t.id} : le mot-clé existe`);
+      assert.equal(lien.id, m.id, `${t.id} : le mot-clé de sa ligne`);
+      assert.equal(lien.cle, m.cle);
+      assert.equal(lien.libelle, m.libelle);
       assert.equal(lien.texte, null, `${t.id} : la page garde son libellé`);
     } else {
       assert.equal(lien, null, `${t.id} : sans mot-clé, sans lien`);
     }
   }
+  return types;
+}
+
+test('un type de dégâts : taille, estoc, frappe par leur mot-clé (texte null : la page garde son libellé) ; feu, eau, glace par celui de leur magie (son nom court) ; sans lien : null', (t) => {
+  // l'état courant : chaque type est rendu comme sa ligne le dit, quels que soient ceux que le site a liés ou non à un mot-clé
+  const types = verifierLesTypes(db, liens);
+  for (const x of types.filter((y) => y.mot_cle_id !== null)) verifierLeLien(lienDuTypeDeDegats(liens, x.id), x.mot_cle_id, x.id);
   assert.equal(lienDuTypeDeDegats(liens, 'inconnu'), null);
   assert.equal(lienDeLaMagie(null, 'magies/x'), null);
+
+  // les trois cas sur une copie, quel que soit le contenu du jour (le site lie ou délie les types à son gré) : un type sans magie lié à un mot-clé
+  // (texte null), les autres sans mot-clé (null) ; les types d'une magie gardent le lien de leur magie
+  const copie = join(dossierTemporaire('mots-cles-des-valeurs', { t }), 'base.db');
+  copyFileSync(cheminBase({ sansExemples: false }), copie);
+  const b = new DatabaseSync(copie);
+  try {
+    const sansMagie = b.prepare('SELECT id FROM type_degats WHERE magie_id IS NULL ORDER BY id').all().map((r) => r.id);
+    assert.ok(sansMagie.length >= 2, 'des types de dégâts qui ne sont pas ceux d\'une magie (le schéma n\'en nomme que 14 liés)');
+    const motCle = b.prepare('SELECT id FROM mot_cle ORDER BY id LIMIT 1').get();
+    assert.ok(motCle, 'un mot-clé pour le lien');
+    b.exec('UPDATE type_degats SET mot_cle_id = NULL WHERE magie_id IS NULL');
+    b.prepare('UPDATE type_degats SET mot_cle_id = ? WHERE id = ?').run(motCle.id, sansMagie[0]);
+    assert.ok(b.prepare('SELECT 1 FROM type_degats WHERE magie_id IS NOT NULL').get(), 'des types d\'une magie : la branche « lien de sa magie » est couverte');
+    const l = liensDesValeursFermees(b);
+    verifierLesTypes(b, l);
+    assert.equal(l.degats[sansMagie[0]].id, motCle.id, 'lié à un mot-clé : son lien, sans texte');
+    assert.equal(l.degats[sansMagie[0]].texte, null);
+    for (const id of sansMagie.slice(1)) assert.equal(l.degats[id], null, `${id} : sans mot-clé, sans magie : null`);
+  } finally {
+    b.close();
+  }
 });
 
 test('chaque module de lecture rend les liens de la base (une seule résolution) : armes, armures, bestiaire (monstres, invocations), magies, fiche', () => {

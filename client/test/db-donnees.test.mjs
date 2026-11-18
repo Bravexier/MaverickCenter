@@ -20,12 +20,21 @@ const client = fileURLToPath(new URL('../', import.meta.url));
 const rows = join(racine, 'data', 'rows');
 // numéro de version du schéma, lu dans data/schema.sql (un changement de version ne doit pas obliger à retoucher ce test)
 const versionSchema = Number(/PRAGMA user_version = (\d+)/.exec(readFileSync(join(racine, 'data', 'schema.sql'), 'utf8'))[1]);
-const wiki = join(client, 'src', 'content', 'wiki');
-const node = (script, args = []) => spawnSync(process.execPath, ['--no-warnings', join(client, 'scripts', script), ...args], { encoding: 'utf8' });
-const pages = (...args) => spawnSync('python3', ['-I', join(racine, 'tools', 'db', 'pages_md.py'), ...args], { encoding: 'utf8' });
+// Ces tests portent sur data/rows (le dépôt), quel que soit le contenu que lit le reste de la suite : l'environnement des processus lancés n'a pas
+// MAVERICK_CONTENU (l'extrait du site de dev, que la CI pose pour tout le job : lib/contenu-fourni.mjs), et le wiki de comparaison est exporté de data/rows
+// dans un dossier temporaire, jamais lu dans client/src/content/wiki (fabriqué depuis l'extrait sous la variable : il porte les pages que le site a modifiées).
+const envDuDepot = { ...process.env };
+delete envDuDepot.MAVERICK_CONTENU;
+delete envDuDepot.MAVERICK_CONTENU_DERIVE;
+const node = (script, args = []) => spawnSync(process.execPath, ['--no-warnings', join(client, 'scripts', script), ...args], { encoding: 'utf8', env: envDuDepot });
+const pages = (...args) => spawnSync('python3', ['-I', join(racine, 'tools', 'db', 'pages_md.py'), ...args], { encoding: 'utf8', env: envDuDepot });
 const sansPython = spawnSync('python3', ['--version']).error ? 'python3 absent' : false;
 const dir = dossierTemporaire('db-donnees');
 
+// les .md que data/rows produit (db:export-pages sur data/rows) : la référence de db:pages-check et de db:sync-pages
+const wiki = join(dir, 'wiki-de-data-rows');
+const exportDesPages = node('db-export-pages.mjs', ['--out', wiki]);
+if (exportDesPages.status !== 0) throw new Error(`db:export-pages sur data/rows a échoué : ${exportDesPages.stderr || exportDesPages.stdout}`);
 const fichiersMd = (type) => readdirSync(join(wiki, type)).filter((f) => f.endsWith('.md')).length;
 const nbPagesMd = readdirSync(wiki).reduce((n, type) => n + fichiersMd(type), 0);
 
@@ -135,8 +144,8 @@ T.exporter(db, sys.argv[3])
   assert.deepEqual(differents, [], 'export déterministe : relire et réécrire ne change aucun octet');
 });
 
-test('db:pages-check : les pages de data/rows sont celles des .md (sinon : npm run db:sync-pages)', { skip: sansPython }, () => {
-  const r = pages('check');
+test('db:pages-check : les pages de data/rows sont celles des .md que data/rows produit (l’export relu par pages_md.py rend les mêmes pages)', { skip: sansPython }, () => {
+  const r = pages('check', '--wiki', wiki);
   assert.equal(r.status, 0, r.stdout + r.stderr);
   assert.match(r.stdout, /est à jour/);
 });
