@@ -1,0 +1,4 @@
+{
+  "actif": false,
+  "a_lire": "Interrupteur du gel des fusions pendant une mise à jour (lot 11, bascule 2, garde-fou 16 ; docs/flux-git.md, « Gel des fusions pendant une mise à jour »). ÉTEINT : rien ne change. Allumé (actif: true), le job gel-des-fusions de ci.yml est rouge sur toute PR vers dev ou master tant qu'un run de mise-a-jour.yml tourne, sauf pour les fusions de ce workflow lui-même ; il se lit dans origin/dev par client/scripts/gel-des-fusions.mjs, jamais dans la PR contrôlée, comme bascule-1.json."
+}

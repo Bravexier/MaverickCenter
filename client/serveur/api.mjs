@@ -113,6 +113,8 @@
 //   POST /api/metriques/page/       { page, ttfb_ms, dom_ms, charge_ms, lcp_ms } (navigator.sendBeacon : Content-Type application/json ou text/plain,
 //                                   2 Kio au plus, Sec-Fetch-Site same-origin, sinon Origin du même hôte) → 204 ; 400 invalide, 413 trop gros,
 //                                   429 trop de balises cette minute
+// Gel des écritures (serveur/gel.mjs ; docs/serveur.md, « Gel des écritures ») : avec le fichier db/gel.json non échu, toute écriture de /api/ répond 503 (échéance, motif,
+// geste qui lève le gel ; routes exemptées : ROUTES_EXEMPTEES) et /api/etat/ porte `gel` ; les lectures restent ouvertes. Sans fichier, rien ne change.
 // Accès au site de dev (serveur/acces.mjs ; docs/serveur.md, « Accès au site de dev » ; R275). Sans réglage posé (secrets/acces.json), rien ne change.
 // Avec un réglage, sur le site de dev seulement, chaque route est classée (serveur/acces-routes.mjs : ouverte, lecture, ecriture) ; refus : 401
 // { erreur, acces: 'cle' | 'mot_de_passe' } (« cle » : la clé de lecture, en-tête X-Maverick-Cle ou X-Maverick-Key, OU le mot de passe) :
@@ -241,6 +243,21 @@ export function traiter(requete, service) {
       const etat = entier.etat();
       // `erreur` (pourquoi la base vivante n'a pas pu se refaire) peut citer une fiche : réservée à la lecture, comme `retraits`
       return etat?.base ? { ...etat, base: { ...etat.base, retraits: null, erreur: etat.base.erreur ? 'La base vivante est en erreur (le détail demande la clé de lecture ou le mot de passe).' : null } } : etat;
+    } };
+  }
+
+  // le gel des écritures (serveur/gel.mjs, garde-fou 16 de la bascule 2) : un fichier db/gel.json non échu arrête toute écriture (503, avec l'échéance, le motif et
+  // le geste qui le lève) ; les lectures et les routes exemptées passent. Sans fichier, `service.gel` rend null : rien ne change. Le geste est un chemin de l'hôte :
+  // le 503 le tait en production et à un visiteur sans droit de lecture
+  const gele = service.gel?.refus(methode, chemin, { sansGeste: !service.edition || Boolean(acces && !lecture()) });
+  if (gele) return gele;
+  // le geste du gel est un chemin de l'hôte : ni la production (aucun droit de lecture n'y existe) ni un visiteur sans droit de lecture du site de dev ne le reçoivent
+  // dans l'état, comme dans le 503 d'une écriture (ci-dessus)
+  if (!service.edition || (acces && !lecture())) {
+    const entier = service;
+    service = { ...entier, etat: () => {
+      const etat = entier.etat();
+      return etat?.gel ? { ...etat, gel: { ...etat.gel, geste: null } } : etat;
     } };
   }
 

@@ -149,16 +149,20 @@ case "$(mode_de_etiquette "$TAG")" in
   *) die "réponse inattendue de GitHub (étiquette « $TAG »)" ;;
 esac
 
-# Le dernier installateur installé est gardé dans installateur-courant/ (un seul : celui de la livraison installée) : l'envoi chiffré de nuit des
-# sauvegardes automatiques le joint à la copie extérieure (deploy/vps/README.md, « Sauvegardes »), de quoi remonter un site à partir de rien.
+# Les trois derniers installateurs installés sont gardés dans installateur-courant/ (garde-fou 19 de la bascule 2 : de quoi revenir de plusieurs versions en
+# arrière, hors de GitHub) : l'envoi chiffré de nuit des sauvegardes automatiques les joint à la copie extérieure (deploy/vps/README.md, « Sauvegardes »), de quoi
+# remonter un site à partir de rien. Le plus récent (par date de pose) d'abord ; au-delà de INSTALLATEURS_GARDES, les plus anciens sont retirés. Place : ~97 Mo
+# par installateur de test (kit compris), ~35 Mo par installateur de production.
+INSTALLATEURS_GARDES=${INSTALLATEURS_GARDES:-3}
+case "$INSTALLATEURS_GARDES" in ""|*[!0-9]*|0) INSTALLATEURS_GARDES=3 ;; esac
 GARDE_DIR="$BASE_DIR/installateur-courant"
 GARDE="$GARDE_DIR/maverick-center-$TAG-install.sh"
 garder_installateur() {
   mkdir -p "$GARDE_DIR" || return 0
   if cp "$1" "$GARDE_DIR/.nouveau.$$" 2>/dev/null && mv -f "$GARDE_DIR/.nouveau.$$" "$GARDE"; then
-    for ancien in "$GARDE_DIR"/maverick-center-*-install.sh; do
-      [ "$ancien" = "$GARDE" ] || rm -f "$ancien"
-    done
+    # l'installateur qui vient d'être posé n'est jamais retiré ; parmi les autres, les INSTALLATEURS_GARDES - 1 plus récents restent
+    ls -t "$GARDE_DIR"/maverick-center-*-install.sh 2>/dev/null | grep -vxF "$GARDE" | tail -n "+$INSTALLATEURS_GARDES" |
+      while IFS= read -r ancien; do rm -f "$ancien"; done
   else
     rm -f "$GARDE_DIR/.nouveau.$$"
     log "Avertissement : l'installateur $TAG n'a pas pu être gardé dans installateur-courant/."

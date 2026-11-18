@@ -24,7 +24,7 @@
 export const NIVEAUX = ['info', 'avertissement', 'erreur'];
 
 /** Les catégories que le service écrit (dans l'ordre de la liste de la page) ; un appelant peut en donner une autre. */
-export const CATEGORIES = ['service', 'http', 'base', 'fiches', 'edition', 'mise-a-jour', 'maintenance', 'metriques'];
+export const CATEGORIES = ['service', 'http', 'base', 'fiches', 'edition', 'mise-a-jour', 'maintenance', 'gel', 'metriques'];
 
 /** Les champs isolés d'une entrée (requête /api/ : service.mjs), recopiés tels quels s'ils ont le bon type ; tout autre champ donné est ignoré. */
 export const CHAMPS_ISOLES = Object.freeze({ duree_ms: 'number', methode: 'string', route: 'string', statut: 'number', octets_sortie: 'number' });
@@ -47,6 +47,7 @@ const REGLES_DE_CATEGORIE = [
   [/^(édition|lots)\b/i, 'edition'], // « édition : lot … (N ligne(s)) depuis <page> » ; « lots : proposition … déposée, appliquée, refusée, annulée ; recalcul déposé » (api.mjs, lots de changements)
   [/^(simulation de )?mise à jour\b/i, 'mise-a-jour'], // lot figé, workflow déclenché ou annulé (api.mjs, notes-de-version.mjs)
   [/^maintenance\b/i, 'maintenance'], // annonce publiée ou retirée, levée depuis la page, suivi du lancement (service.mjs, api.mjs)
+  [/^gel\b/i, 'gel'], // écritures gelées : posé, échu, levé (serveur/gel.mjs, service.mjs)
   [/^métriques\b/i, 'metriques'], // base des métriques en panne ou de nouveau disponible (serveur/metriques.mjs, service.mjs)
   [/prétiré|^fiches\b/i, 'fiches'], // création, modification, suppression d'un prétiré (api.mjs) ; fiches adaptées aux nouvelles règles (R42)
   [/base vivante|base source|base des règles|^journal des modifications rejoué|^extrait du contenu|^attestation\b|^(ATTENTION |ERREUR )?structure :/i, 'base'], // reconstruction, réouverture, rejeu du journal (service.mjs) ; extrait du contenu (extrait.mjs), attestation de la production (service.mjs), essai d'une livraison (« structure : », essai-de-structure.mjs) et base source (« base source », serveur/base-source.mjs)

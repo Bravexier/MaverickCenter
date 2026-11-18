@@ -29,6 +29,7 @@
 #   installateur-courant/ le dernier installateur installé par mise-a-jour.sh, que l'envoi de nuit joint à la copie extérieure (jamais touché ici)
 #   bascule.sh           (test seulement) le script du jour de la bascule 1 : constat, sauvegarde nommée, pose du marqueur db/source, restauration (remplacé à chaque installation)
 #   repetition-prod.sh   (test seulement) la répétition, sur une copie, de la dernière mise à jour de la production par l'ancien circuit (remplacé à chaque installation)
+#   gel.sh               (production et test) le gel des écritures de l'instance, lancé en root : poser, lever, etat (lot 11, garde-fou 16 ; remplacé à chaque installation)
 #   VERSION              ce qui est installé (étiquette, version, commit, mode, date)
 # Prérequis : sh, tar, gzip, et sha256sum (ou shasum / openssl) pour contrôler l'archive. rsync et sqlite3 sont utilisés s'ils sont présents.
 set -eu
@@ -376,7 +377,8 @@ for f in README.md mise-a-jour.sh; do
 done
 # bascule.sh et repetition-prod.sh (installateur de test seulement) : les scripts du jour de la bascule 1, que le propriétaire lance en root (docs/serveur.md,
 # « Base source (lot 8) » et « Répétition de la mise à jour de la production »).
-for f in bascule.sh repetition-prod.sh; do
+# gel.sh (les deux instances) : le gel des écritures, db/gel.json (docs/serveur.md, « Gel des écritures »).
+for f in bascule.sh repetition-prod.sh gel.sh; do
   if [ -f "$TRAVAIL/$f" ]; then
     cp "$TRAVAIL/$f" "$DOSSIER/.$f.$$" && chmod 755 "$DOSSIER/.$f.$$" && mv -f "$DOSSIER/.$f.$$" "$DOSSIER/$f" ||
       die "impossible de poser $f"

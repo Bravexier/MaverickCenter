@@ -175,7 +175,7 @@ adaptées, jamais leurs noms ; le lot porte la page `api/v1/<ressource>[/<sous-r
 | `429` | `POST /api/acces/` : trop d'essais de mot de passe ratés (`attente_s`) |
 | `415` | Écriture sans `Content-Type: application/json` |
 | `422` | Refusé par la base (contrainte CHECK, UNIQUE, NOT NULL, clé étrangère) ou valeur que les importeurs ne sauraient pas relire ; une gemme ou un bois du Potentiel Illimité (`POST /api/v1/gemmes/`, `POST /api/v1/bois/`) : « Le Potentiel Illimité n’a ni gemme, ni bois, ni bâton magique, ni pièce élémentaire (décision R160). » |
-| `503` | Base vivante indisponible (`/api/etat/` dit pourquoi) |
+| `503` | Base vivante indisponible (`/api/etat/` dit pourquoi) ; ou **écritures gelées** (`db/gel.json`, posé par root : `{ erreur, gel: { pose_le, jusqu_a, motif, geste, illisible, plafonne } }`, `Retry-After`) : toute écriture de `/api/` est refusée jusqu'à l'échéance, les lectures restent ouvertes, `gel` de `GET /api/etat/` dit la même chose (`docs/serveur.md`, « Bascule 2 : préparation ») |
 
 Une erreur est toujours `{ "erreur": "<message en français>", … }`, avec les détails utiles (`methodes`, `element`, `version`…).
 

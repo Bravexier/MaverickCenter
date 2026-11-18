@@ -5,7 +5,7 @@
 // deploy/installateur/fabriquer.mjs) et l'exécute. Nécessite sh, curl, tar et gzip ; sinon ignoré.
 import assert from 'node:assert/strict';
 import { execFile, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { dirname, join } from 'node:path';
 import { after, before, test } from 'node:test';
@@ -434,29 +434,38 @@ test('GELER suspend les mises à jour (retour à une version précédente)', { s
   assert.equal(t.tag(), 'v1.3.1');
 });
 
-test('l’installateur installé est gardé dans installateur-courant/ (un seul, le dernier), pour la copie extérieure des sauvegardes ; une livraison déjà installée le reçoit une fois', { skip }, async () => {
+test('les trois derniers installateurs installés sont gardés dans installateur-courant/ (garde-fou 19), pour la copie extérieure des sauvegardes ; une livraison déjà installée le reçoit une fois', { skip }, async () => {
   publier(livraison('v1.2', { label: 'v1' }));
   const n = nas('installateur-garde');
   assert.equal((await n.run()).code, 0);
   const garde = 'installateur-courant/maverick-center-v1.2-install.sh';
+  const de = (tag) => `installateur-courant/maverick-center-${tag}-install.sh`;
   assert.ok(n.has(garde), 'l’installateur de la livraison installée est gardé');
   assert.equal(spawnSync('sh', [join(n.base, garde), '--verifier'], { encoding: 'utf8' }).status, 0, 'gardé entier : son archive se contrôle');
   assert.ok(!readFileSync(join(n.base, garde), 'latin1').includes(TOKEN));
 
   publier(livraison('v1.3', { label: 'v2' }), livraison('v1.2'));
   assert.equal((await n.run()).code, 0);
-  assert.ok(n.has('installateur-courant/maverick-center-v1.3-install.sh'));
-  assert.ok(!n.has(garde), 'un seul installateur gardé : l’ancien est retiré');
+  assert.ok(n.has(de('v1.3')));
+  assert.ok(n.has(garde), 'l’ancien reste : trois installateurs sont gardés');
+  publier(livraison('v1.4', { label: 'v3' }), livraison('v1.3'), livraison('v1.2'));
+  assert.equal((await n.run()).code, 0);
+  assert.deepEqual(['v1.2', 'v1.3', 'v1.4'].filter((t) => n.has(de(t))), ['v1.2', 'v1.3', 'v1.4']);
+  publier(livraison('v1.5', { label: 'v4' }), livraison('v1.4'), livraison('v1.3'), livraison('v1.2'));
+  assert.equal((await n.run()).code, 0);
+  assert.ok(n.has(de('v1.5')), 'le dernier posé est toujours gardé');
+  assert.deepEqual(['v1.2', 'v1.3', 'v1.4', 'v1.5'].filter((t) => n.has(de(t))), ['v1.3', 'v1.4', 'v1.5'], 'au-delà de trois, le plus ancien est retiré');
+  assert.equal(readdirSync(join(n.base, 'installateur-courant')).filter((f) => f.startsWith('.')).length, 0, 'aucun fichier provisoire laissé');
 
   // une instance à jour qui n'a rien gardé (installation à la main) : téléchargé une fois, sans rien réinstaller
   rmSync(join(n.base, 'installateur-courant'), { recursive: true });
   const avant = state.telechargements;
   const res = await n.run();
   assert.equal(res.code, 0, res.out);
-  assert.match(res.out, /Installateur v1\.3 gardé/);
-  assert.match(res.out, /À jour \(v1\.3\)/);
+  assert.match(res.out, /Installateur v1\.5 gardé/);
+  assert.match(res.out, /À jour \(v1\.5\)/);
   assert.equal(state.telechargements, avant + 1);
-  assert.ok(n.has('installateur-courant/maverick-center-v1.3-install.sh'));
+  assert.ok(n.has('installateur-courant/maverick-center-v1.5-install.sh'));
   assert.equal((await n.run()).code, 0);
   assert.equal(state.telechargements, avant + 1, 'ensuite, plus aucun téléchargement');
 });
