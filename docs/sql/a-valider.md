@@ -1,7 +1,7 @@
 # Ce qu'il reste à valider sur la base de données
 
 Deux listes : les **choix de forme** du schéma (ce que tu peux relire dans [`apercu.md`](apercu.md)) et les **questions de contenu** que les sources ne tranchent pas.
-Les décisions déjà prises sont dans [`../decisions-regles.md`](../decisions-regles.md) (R1 à R290, liste à jour) ; la conception complète est dans [`conception.md`](conception.md) (§2 conventions, §12 points ouverts).
+Les décisions déjà prises sont dans [`../decisions-regles.md`](../decisions-regles.md) (R1 à R295, liste à jour) ; la conception complète est dans [`conception.md`](conception.md) (§2 conventions, §12 points ouverts).
 
 ## 1. Choix de forme du schéma
 
@@ -455,6 +455,10 @@ Demande du propriétaire du 2026-11-14 : lier aux mots-clés du glossaire, « Si
 | GL5 | **Textes libres** (effets, descriptions, colonnes `*_brut`) : y baliser aussi les types de dégâts et les magies ? | **Décidé (R287)** le 2026-11-17 : non touchés |
 | GL6 | **Fiche de personnage** : y lier le type de dégâts choisi et les magies demande des bulles créées dans le navigateur et une pastille en gras à la place des choix (menus, boutons), ce qui change son interface. (a) lier ; (b) laisser la fiche hors lien. Et le résumé « Arme » (« type choisi · amélioration… ») : texte brut ou gras ? | Décidé le 2026-11-14 (« 1) Ta question , ok reco. ») : les commandes de la fiche restent sans lien ; le résumé « Arme » affiche le type de dégâts choisi en gras, avec l'infobulle de son mot-clé |
 | GL7 | **Attaques et cartes de monstre** : la page n'affiche que la ligne brute (texte libre) d'une attaque, et les cibles des cartes de monstre se lisent dans un texte. Ajouter une valeur typée affichée, pour la lier ? | **Décidé (R288)** le 2026-11-17 : oui ; créatures invoquées appliquées, cartes de monstre à appliquer (aucun type dans la base) |
-| GL8 | **Catégorie des mots-clés « Dégâts physiques » et « Sonore »** (créés par R286) : les ranger dans la catégorie « Dégâts » (id 19), comme Taille, Estoc et Frappe ? Recommandation : oui | Sans catégorie ; icône et couleur vides |
+| GL8 | **Catégorie des mots-clés « Dégâts physiques » et « Sonore »** (créés par R286) : les ranger dans la catégorie « Dégâts » (id 19), comme Taille, Estoc et Frappe ? Recommandation : oui | **Décidé (R293)** le 2026-11-18 : oui, rangés dans « Dégâts » (id 19) |
+| GL9 | **Attaques de monstre dont le type n'est pas dans la liste des types de dégâts** (R295 ; 40 attaques du Bestiaire 2.0 : foudre 10, puis lumière, arcane, sang, terre, ombre, corruption, vide, espace/temps, vent, nécromancie). (a) Ajouter ces types à la liste, liés à la magie du même nom quand elle existe ; (b) les laisser sans type. Recommandation : (a) | Sans type ; le texte copié reste affiché |
+| GL10 | **Attaques de monstre à deux types ou plus** (R295 ; 74 attaques : « taille/estoc », « tailles ou estoc ou frappe », « frappe/feu », « Eau et Terre »…). (a) Afficher chaque type écrit, chacun lié ; (b) aucun type, le texte seul. Recommandation : (a) | Sans type ; le texte copié reste affiché |
+| GL11 | **Attaques de monstre sans type ou de type générique** (R295 ; 31 sans type : 28 « Frappe du blob », 3 « Jet de vomi » du Noyé ; 7 « neutre » ou « élémentaire » ; 2 « 3d10 dégâts + 6 dégâts d'estoc » du Molvacier adulte). (a) Pas de type tant que le doc n'en écrit pas ; (b) le propriétaire les donne une à une. Recommandation : (a) | Sans type |
+| GL12 | **Ligne « Arme de la créature : EP… »** de 40 cartes de monstre (« Griffes (Taille), Morsure (Estoc)… », parfois sans type) : elle n'est pas extraite comme attaque. (a) L'extraire en attaques typées ; (b) la laisser en texte. Recommandation : (b) pour ce lot, à reprendre à part | Texte de la carte, sans type |
 
-**Décidé le 2026-11-17** : GL4 (R284) ; les matrices des magies liées (R285) ; GL3 (R286) ; GL5 (R287) ; GL7 (R288) ; GL1 (R289) ; GL2 (R290). Reste ouverte : GL8.
+**Décidé le 2026-11-17** : GL4 (R284) ; les matrices des magies liées (R285) ; GL3 (R286) ; GL5 (R287) ; GL7 (R288) ; GL1 (R289) ; GL2 (R290). **Décidé le 2026-11-18** : GL8 (R293) ; aussi « Résistance » et « Faiblesse » liés sur la fiche (R294) ; un type de dégâts sourcé pour les attaques des cartes de monstre (R295). Restent ouvertes : GL9 à GL12.
