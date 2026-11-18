@@ -394,6 +394,9 @@ export function chargerInvocations(db) {
     all('SELECT id, creature_id, nom, brut, formule_brut, des_nombre, des_faces, bonus_fixe, par_npm FROM creature_attaque ORDER BY creature_id, rang'),
     'creature_id',
   );
+  // les types de dégâts de chaque attaque, tels que la base les porte (creature_attaque_type, dans l'ordre de `rang` : « de taille/estoc » = deux lignes) ;
+  // une attaque sans ligne n'a pas de type (« 6d6 dégâts ») : rien à afficher, rien n'est déduit du texte
+  const typesDesAttaques = regrouper(all('SELECT attaque_id, type, libelle, magie_id FROM creature_attaque_type ORDER BY attaque_id, rang'), 'attaque_id');
   const capacites = regrouper(all('SELECT creature_id, npm_min, etiquette, nom, nom_cle, texte FROM creature_capacite ORDER BY creature_id, rang'), 'creature_id');
   const effets = regrouper(all('SELECT creature_id, libelle, nom, sort_id, texte FROM creature_effet ORDER BY creature_id, rang'), 'creature_id');
   const ressources = regrouper(all('SELECT creature_id, libelle, brut, forme, valeur FROM creature_ressource ORDER BY creature_id, ressource'), 'creature_id');
@@ -450,7 +453,12 @@ export function chargerInvocations(db) {
       vitesse: c.vitesse_brut,
       fpvsia: FPVSIA.map((k) => fpvsia.get(k.id) ?? null),
       bonus: (bonus.get(c.id) ?? []).map((b) => b.texte_brut),
-      attaques: (attaques.get(c.id) ?? []).map((a) => ({ nom: a.nom, brut: a.brut })),
+      // `types` : { type, libelle, magie_id }, dans l'ordre de `rang` ; `liens.degats[type]` (lib/mots-cles-des-valeurs.mjs#lienDuTypeDeDegats) donne le mot-clé
+      attaques: (attaques.get(c.id) ?? []).map((a) => ({
+        nom: a.nom,
+        brut: a.brut,
+        types: (typesDesAttaques.get(a.id) ?? []).map((t) => ({ type: t.type, libelle: t.libelle, magie_id: t.magie_id })),
+      })),
       capacites: caps.map((x) => ({ npm: x.npm_min, etiquette: x.etiquette, nom: x.nom, texte: x.texte })),
       communes: communes.get(c.invocation_id) ?? [],
       effets: effets.get(c.id) ?? [],

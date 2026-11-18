@@ -14,7 +14,8 @@ import { pageAvecMotsCles, texteSansBalises, vocabulaireDesMotsCles } from '../s
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 import { lienDeLaMagie, lienDuTypeDeDegats, liensDesValeursFermees } from '../src/lib/mots-cles-des-valeurs.mjs';
 import {
-  baliseDeLaValeur, htmlDeLaDefenseDeCreature, htmlDeLaMagie, htmlDeLaMagieDeLaPage, htmlDeLaMagieNommee, htmlDeLaValeur, htmlDuTypeDeDegats, lienDeLaMagieNommee,
+  baliseDeLaValeur, htmlDeLaDefenseDeCreature, htmlDeLaMagie, htmlDeLaMagieDeLaPage, htmlDeLaMagieDeTableau, htmlDeLaMagieNommee, htmlDesTypesDeLAttaque, htmlDeLaValeur,
+  htmlDuTypeDeDegats, lienDeLaMagieNommee,
 } from '../src/lib/valeurs-fermees-rendu.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
@@ -148,4 +149,73 @@ test('la magie de la page n’est jamais un lien vers elle-même : son libellé 
     if (lien) assert.ok(htmlDeLaMagieDeLaPage(liens, id, 'Libellé', 'magies/autre').startsWith('{{'), `${id} : liée`);
   }
   assert.equal(htmlDeLaMagieDeLaPage(liens, 'magies/x', 'A<B', 'magies/x'), 'A&lt;B');
+});
+
+test('l’en-tête d’une magie dans un tableau (matrices des relations et race × magie) : son nom court lié à son mot-clé, sans second lien ni second titre ; sans mot-clé, le nom et le titre de la page', () => {
+  for (const [id, lien] of Object.entries(liens.magies)) {
+    const { html, titre } = htmlDeLaMagieDeTableau(liens, id, 'Nom', 'Titre de la page');
+    if (!lien) {
+      assert.equal(html, 'Nom', `${id} : sans mot-clé, le nom nu`);
+      assert.equal(titre, 'Titre de la page', `${id} : sans mot-clé, le titre de la page reste`);
+      continue;
+    }
+    assert.equal(html, htmlDeLaMagie(liens, id, 'Nom'), `${id} : la même balise que partout`);
+    assert.equal(titre, undefined, `${id} : l’infobulle du mot-clé remplace le titre de la page (jamais deux)`);
+    // posé dans le lien de la page, comme TableauRelationsMagies.astro : un seul lien (le middleware n'en pose pas dans un lien), le mot-clé en gras
+    const page = pageAvecMotsCles(`<a href="/magies/x/"><span>${html}</span></a>`, vocabulaire);
+    assert.equal((page.match(/<a[ >]/g) ?? []).length, 1, `${id} : pas de lien dans un lien`);
+    assert.match(page, new RegExp(`class="mot-cle[ "][^>]*data-mot-cle="${lien.cle}"`), `${id} : le mot-clé en gras`);
+    assert.ok(!page.replace(/data-balise="[^"]*"/g, '').includes('{{'), `${id} : aucune balise brute`);
+    assert.equal(texteSansBalises(html, vocabulaire), lien.texte, `${id} : le texte affiché est le nom court`);
+  }
+  assert.deepEqual(htmlDeLaMagieDeTableau(null, 'magies/x', 'A<B', 'T'), { html: 'A&lt;B', titre: 'T' }, 'sans liens : le nom échappé, le titre gardé');
+  assert.deepEqual(htmlDeLaMagieDeTableau(liens, 'magies/inconnue', 'Nom', 'T'), { html: 'Nom', titre: 'T' }, 'une magie inconnue reste nue');
+});
+
+test('les types de dégâts d’une attaque : dans l’ordre, séparés par « / », chacun lié à son mot-clé quand il en a un, nu sinon ; sans type, rien', () => {
+  assert.equal(htmlDesTypesDeLAttaque([], liens), '');
+  assert.equal(htmlDesTypesDeLAttaque(undefined, liens), '');
+  assert.equal(htmlDesTypesDeLAttaque(null, null), '');
+  const tous = Object.keys(liens.degats).map((type) => ({ type, libelle: type, magie_id: null }));
+  assert.ok(tous.length > 0);
+  for (const t of tous) {
+    const nu = htmlDesTypesDeLAttaque([t], null);
+    assert.equal(nu, t.type.charAt(0).toUpperCase() + t.type.slice(1), `${t.type} : sans liens, son libellé nu, en capitale`);
+    const lien = lienDuTypeDeDegats(liens, t.type);
+    const avec = htmlDesTypesDeLAttaque([t], liens);
+    if (!lien) {
+      assert.equal(avec, nu, `${t.type} : sans mot-clé, nu`);
+      continue;
+    }
+    assert.equal(avec, `{{${lien.cle}|${lien.texte ?? nu}}}`, `${t.type} : lié (texte du lien, sinon le libellé)`);
+    const page = pageAvecMotsCles(`<p>${avec}</p>`, vocabulaire);
+    assert.match(page, new RegExp(`class="mot-cle[ "][^>]*data-mot-cle="${lien.cle}"`), `${t.type} : le mot-clé en gras`);
+  }
+  // plusieurs types : l'ordre de la base (rang), un séparateur entre deux
+  const deux = [tous[1] ?? tous[0], tous[0]];
+  assert.equal(htmlDesTypesDeLAttaque(deux, null).split(' / ').length, 2);
+  assert.equal(htmlDesTypesDeLAttaque(deux, null), deux.map((t) => htmlDesTypesDeLAttaque([t], null)).join(' / '), 'l’ordre donné est gardé');
+  // le libellé de la base est celui qui s'affiche (échappé) ; à défaut, le type
+  assert.equal(htmlDesTypesDeLAttaque([{ type: 'inconnu', libelle: 'a<b', magie_id: null }], liens), 'A&lt;b');
+  assert.equal(htmlDesTypesDeLAttaque([{ type: 'inconnu', libelle: null, magie_id: null }], liens), 'Inconnu');
+});
+
+test('une créature invoquée : chaque attaque rend ses types (ceux de la base, liés ou nus) ; sans type, aucun texte de plus', () => {
+  const { lignes, liens: liensInvoquees } = chargerInvocations(db);
+  for (const l of lignes) {
+    for (const a of l.attaques) {
+      const nu = htmlDesTypesDeLAttaque(a.types, null);
+      const lie = htmlDesTypesDeLAttaque(a.types, liensInvoquees);
+      if (!a.types.length) {
+        assert.equal(nu, '', `${l.id} : une attaque sans type n’affiche rien`);
+        assert.equal(lie, '', `${l.id} : une attaque sans type n’affiche rien (liens)`);
+        continue;
+      }
+      assert.ok(!nu.includes('{{'), `${l.id} : sans liens, aucune balise`);
+      assert.equal(nu.split(' / ').length, a.types.length, `${l.id} : un libellé par type`);
+      // le texte affiché d'un type lié est celui de son lien (le nom court d'une magie, que le site de dev renomme), sinon le libellé de la base
+      const attendu = a.types.map((t) => lienDuTypeDeDegats(liensInvoquees, t.type)?.texte ?? htmlDesTypesDeLAttaque([t], null));
+      assert.equal(texteSansBalises(lie, vocabulaire), attendu.join(' / '), `${l.id} : le texte affiché de chaque type`);
+    }
+  }
 });
