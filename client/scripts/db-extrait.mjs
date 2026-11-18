@@ -143,9 +143,18 @@ export function refusDeLaCleEnArgument(args) {
   return args.some((a) => a === '--cle' || a.startsWith('--cle=')) ? 'L’option --cle n’existe plus : la clé de lecture se donne par la variable d’environnement MAVERICK_EXTRAIT_CLE (jamais dans la ligne de commande).' : null;
 }
 
+/**
+ * La clé de dépôt (R291, préfixe `mvd_`) ne va jamais à la CI : elle fait appliquer un lot aussitôt, la CI n'a que la clé de lecture (MAVERICK_EXTRAIT_CLE). Le job qui
+ * télécharge l'extrait la refuse s'il la trouve dans cette variable. Rend le message, ou null.
+ */
+export function refusDeLaCleDeDepotEnCI(env) {
+  return env.GITHUB_ACTIONS === 'true' && String(env.MAVERICK_EXTRAIT_CLE ?? '').trim().startsWith('mvd_')
+    ? 'MAVERICK_EXTRAIT_CLE porte une clé de dépôt (mvd_) : elle fait appliquer un lot aussitôt, la CI ne reçoit que la clé de lecture. Remplacez le secret par la clé de lecture.' : null;
+}
+
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
-  const refus = refusDeLaCleEnArgument(args);
+  const refus = refusDeLaCleEnArgument(args) ?? refusDeLaCleDeDepotEnCI(process.env);
   if (refus) {
     console.error(refus);
     process.exit(1);

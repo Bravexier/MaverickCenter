@@ -42,12 +42,16 @@
 //                                   ni fiche, ni compte, ni journal), refait au premier téléchargement qui suit un changement (serveur/extrait.mjs ; ETag, 304) ;
 //                                   GET /api/edition/extrait/meta/ : son méta en JSON (date, version du site, empreinte de chaque table) — `npm run db:extrait`
 //   GET  /api/edition/journal/      le journal des modifications en attente, à rapatrier dans data/rows (npm run db:appliquer-edition)
-// Lots de changements (R274, R275 ; serveur/edition-lots.mjs), site de dev seulement : une session de Claude DÉPOSE une proposition (rien n'est écrit dans le
-// contenu), le propriétaire l'applique ou la refuse d'un clic :
-//   GET  /api/edition/lots/                    les propositions, la plus récente d'abord (résumé : état, verdict de l'essai)
-//   POST /api/edition/lots/                    le lot (maverick-lot/1 : titre, nature, decision, operations) → contrôle du format, état « propose », essai à blanc
-//                                              sur une copie ; la réponse (une promesse) porte la proposition avec son essai ; 400 dit l'opération à corriger
-//   GET  /api/edition/lots/<id>/               une proposition : contenu déposé, essai (aperçu avant et après), bilan
+// Lots de changements (R274, R275, R291 ; serveur/edition-lots.mjs), site de dev seulement. Tant que la clé de dépôt n'est pas posée, une session de Claude DÉPOSE
+// une proposition (rien n'est écrit dans le contenu) que le propriétaire applique ou refuse d'un clic ; une fois posée, le dépôt par la clé de dépôt ou le mot de
+// passe est APPLIQUÉ aussitôt (R291), et le propriétaire annule le lot ou une seule de ses lignes :
+//   GET  /api/edition/lots/                    les lots, le plus récent d'abord (résumé : état, verdict de l'essai, lignes annulées)
+//   POST /api/edition/lots/                    le lot (maverick-lot/1 : titre, nature, decision, operations ; `verrous_ouverts?` pour le dépôt appliqué) → contrôle du format,
+//                                              essai à blanc sur une copie ; proposition (201, « propose ») ou, avec la clé de dépôt posée, lot appliqué (201, « applique »)
+//                                              ou refusé (409, « refuse », motifs) ; 400 dit l'opération à corriger ; 401 / 403 : la clé de dépôt est nécessaire
+//   GET  /api/edition/lots/<id>/               un lot : contenu déposé, essai (aperçu avant et après), bilan, et pour un lot appliqué ses lignes (état, annulable seule ou non)
+//   GET  /api/edition/lots/<id>/lignes/<n>/annulation/  l'aperçu de l'annulation d'une seule ligne d'un lot appliqué (copie de la base ; rien n'est écrit ; mot de passe)
+//   POST /api/edition/lots/<id>/lignes/<n>/annuler/     { verrous_ouverts? } → remet cette ligne seule, sous le même verrou que le lot entier (mot de passe) ; 409 dit ce qui la refuse
 //   POST /api/edition/lots/<id>/essai/         refait l'essai (n'écrit que `essai`) → la proposition
 //   POST /api/edition/lots/<id>/appliquer/     { verrous_ouverts? } → écrit le lot d'un bloc par le service d'édition (mot de passe) ; 409 dit ce qui le refuse
 //   POST /api/edition/lots/<id>/refuser/       refuse la proposition (mot de passe) ; rien n'est écrit dans le contenu
@@ -112,7 +116,7 @@
 // Accès au site de dev (serveur/acces.mjs ; docs/serveur.md, « Accès au site de dev » ; R275). Sans réglage posé (secrets/acces.json), rien ne change.
 // Avec un réglage, sur le site de dev seulement, chaque route est classée (serveur/acces-routes.mjs : ouverte, lecture, ecriture) ; refus : 401
 // { erreur, acces: 'cle' | 'mot_de_passe' } (« cle » : la clé de lecture, en-tête X-Maverick-Cle ou X-Maverick-Key, OU le mot de passe) :
-//   GET  /api/acces/                { protege, portee, connecte, droit, expire_le } : où en est ce visiteur (droit : ecriture | lecture | aucun) ; toujours ouverte
+//   GET  /api/acces/                { protege, portee, connecte, droit, expire_le } : où en est ce visiteur (droit : ecriture | depot | lecture | aucun) ; toujours ouverte
 //   POST /api/acces/                { mot_de_passe } → ouvre une session (cookie HttpOnly, 12 h) ; 401 mot de passe faux, 429 trop d'essais, 409 sans mot de passe posé
 //   DELETE /api/acces/              ferme la session (retire le cookie)
 //   GET  /api/acces/verifier/       204 si la requête a au moins le droit de lecture (clé ou session), 401 sinon : pour un forward_auth de Caddy (portée « tout »)
@@ -146,7 +150,7 @@ import { ErreurClasseur } from './classeur.mjs';
 import { TYPE_XLSX } from '../src/lib/google-sheets.mjs';
 import { etiquetteCorrespond, etiquettesDe, reponseVersionnee, segmentDecode } from './partage.mjs';
 import { ErreurExtrait } from './extrait.mjs';
-import { etatDeLaProduction } from './attestation.mjs';
+import { etatDeLaProduction, retraitsBloquantsPourLaProduction } from './attestation.mjs';
 import { COOKIE, MOT_DE_PASSE_MAX, connexionSecurisee, cookiesDeSession } from './acces.mjs';
 
 export const PREFIXE = '/api/';
@@ -398,9 +402,11 @@ function traiterLeRecalcul(requete, service, permis) {
     if (e instanceof ErreurEdition) return erreur(e.statut, e.message, e.details);
     throw e;
   };
+  // R291 : la clé de dépôt posée, le dépôt par elle ou par le mot de passe s'applique aussitôt
+  const depot = service.acces?.depot?.(requete.entetes ?? {}) ?? { direct: false };
   try {
-    return lots.recalculerTout(service.base, options).then(({ lot, recalcul }) => {
-      service.journal?.(lot ? `lots : recalcul déposé en proposition ${lot.id} (${recalcul.ecarts} page(s) écartée(s) sur ${recalcul.pages_examinees}, essai : ${lot.verdict ?? '?'})` : `lots : recalcul sans écart (${recalcul.pages_examinees} page(s) examinée(s))`);
+    return lots.recalculerTout(service.base, depot.direct ? { ...options, par: depot.par } : options).then(({ lot, recalcul }) => {
+      service.journal?.(lot ? `lots : recalcul ${lot.etat === 'applique' ? `appliqué aussitôt (${lot.id}, par ${depot.par})` : `déposé en proposition ${lot.id}`} (${recalcul.ecarts} page(s) écartée(s) sur ${recalcul.pages_examinees}, essai : ${lot.verdict ?? '?'})` : `lots : recalcul sans écart (${recalcul.pages_examinees} page(s) examinée(s))`);
       return json(lot ? 201 : 200, { lot, recalcul });
     }, echec);
   } catch (e) {
@@ -419,8 +425,17 @@ function traiterLots(requete, service, reste, permis) {
   if (!service.edition) return erreur(403, 'Les lots de changements ne s’ouvrent que sur le site de dev.');
   const [id, action, ...suite] = reste;
   if (id === 'recalcul' && action === undefined) return traiterLeRecalcul(requete, service, permis);
-  if (suite.length || (id !== undefined && !FORME_D_UN_LOT.test(id)) || (action !== undefined && !['essai', 'appliquer', 'refuser', 'annuler', 'annulation'].includes(action))) return erreur(404, 'Adresse inconnue.');
-  const refus = permis(...(id === undefined ? ['GET', 'POST'] : action === undefined || action === 'annulation' ? ['GET'] : ['POST']));
+  // `…/<id>/lignes/<n>/annulation/` et `…/annuler/` (R291) : une seule ligne du lot ; `quoi` nomme l'action
+  let numero = null;
+  let quoi = action;
+  if (action === 'lignes') {
+    const [n, sous, ...apres] = suite;
+    if (apres.length || !/^[1-9][0-9]{0,6}$/.test(n ?? '') || !['annulation', 'annuler'].includes(sous)) return erreur(404, 'Adresse inconnue.');
+    numero = Number(n);
+    quoi = `ligne-${sous}`;
+  } else if (suite.length) return erreur(404, 'Adresse inconnue.');
+  if ((id !== undefined && !FORME_D_UN_LOT.test(id)) || (quoi !== undefined && !['essai', 'appliquer', 'refuser', 'annuler', 'annulation', 'ligne-annulation', 'ligne-annuler'].includes(quoi))) return erreur(404, 'Adresse inconnue.');
+  const refus = permis(...(id === undefined ? ['GET', 'POST'] : quoi === undefined || quoi === 'annulation' || quoi === 'ligne-annulation' ? ['GET'] : ['POST']));
   if (refus) return refus;
   const { db, refus: indisponible } = baseOuRefus(service, 'La base n’est pas disponible pour le moment.');
   if (indisponible) return indisponible;
@@ -431,7 +446,8 @@ function traiterLots(requete, service, reste, permis) {
   const options = { enArrierePlan: service.lots?.enArrierePlan !== false };
   if (requete.methode === 'GET') {
     try {
-      if (action === 'annulation') return lots.previsualiserLAnnulation(service.base, id, options).then((apercu) => json(200, apercu), echec);
+      if (quoi === 'annulation') return lots.previsualiserLAnnulation(service.base, id, options).then((apercu) => json(200, apercu), echec);
+      if (quoi === 'ligne-annulation') return lots.previsualiserLAnnulation(service.base, id, { ...options, ligne: numero }).then((apercu) => json(200, apercu), echec);
       return json(200, id === undefined ? { lots: lots.lister(db) } : lots.lire(db, id));
     } catch (e) {
       return echec(e);
@@ -444,6 +460,20 @@ function traiterLots(requete, service, reste, permis) {
       // la base source (db/source, lot 8 : serveur/base-source.mjs) : un lot vaut pour toutes les tables de contenu, hors édition comprises (la voie générique du
       // journal) ; sans elle, le défaut du module (LOT_OUVERT_AUX_TABLES_HORS_EDITION, faux) : seules les tables de l'édition
       const controle = service.source?.() ? { ouvertHorsEdition: true } : {};
+      // R291 : la clé de dépôt posée, le dépôt par elle ou par le mot de passe est appliqué aussitôt (un refus enregistre le lot « refuse », 409 avec ses motifs) ;
+      // sinon (clé pas posée, ou aucun réglage d'accès) une proposition qui attend le clic, comme avant
+      const depot = service.acces?.depot?.(requete.entetes ?? {}) ?? { direct: false };
+      if (depot.direct) {
+        const t1 = performance.now();
+        return lots.deposerEtAppliquer(service.base, valeur, { ...options, controle, par: depot.par }).then((lot) => {
+          service.journal?.(`lots : lot ${lot.id} déposé et appliqué aussitôt par ${depot.par} (lot ${lot.lot_id}, ${lot.bilan?.ecrites ?? 0} opération(s) écrite(s), ${lot.bilan?.changees ?? 0} changée(s) entre-temps)`);
+          service.evenement?.('lot_edition', { duree_ms: performance.now() - t1, detail: { lot: lot.lot_id, operations: lot.operations, modifications: lot.bilan?.ecrites ?? 0, page: null, fiches_adaptees: 0 } });
+          return json(201, lot);
+        }, (e) => {
+          if (e instanceof ErreurEdition && e.details?.lot) service.journal?.(`lots : lot ${e.details.lot.id} déposé par ${depot.par} refusé aux contrôles, rien n'est écrit`);
+          return echec(e);
+        });
+      }
       return lots.deposer(service.base, valeur, { ...options, controle }).then((lot) => {
         service.journal?.(`lots : proposition ${lot.id} déposée (${lot.operations} opération(s), essai : ${lot.verdict ?? '?'})`);
         return json(201, lot);
@@ -456,6 +486,13 @@ function traiterLots(requete, service, reste, permis) {
       return json(200, lot);
     }
     const t0 = performance.now();
+    if (quoi === 'ligne-annuler') {
+      const lot = lots.annulerUneLigne(db, id, numero, valeur);
+      const annulation = lot.bilan?.lignes_annulees?.[numero];
+      service.journal?.(`lots : ligne ${numero} du lot ${id} annulée (lot ${annulation?.lot_id}${lot.etat === 'annule' ? ', plus aucune ligne en place : le lot est annulé' : ''})`);
+      service.evenement?.('lot_edition', { duree_ms: performance.now() - t0, detail: { lot: annulation?.lot_id ?? null, operations: 1, modifications: annulation?.colonnes?.length ?? 0, page: null, fiches_adaptees: 0 } });
+      return json(200, lot);
+    }
     if (action === 'annuler') {
       const lot = lots.annuler(db, id, valeur);
       const annulation = lot.bilan?.annulation;
@@ -821,9 +858,11 @@ function traiterMiseAJour(requete, service, action, reste, permis) {
     // `etat_production` : la production a-t-elle appliqué sa dernière mise à jour ? (son attestation comparée à ce qu'elle publie : serveur/attestation.mjs)
     const reference = service.reference && typeof service.reference === 'object' ? service.reference : {};
     const etat_production = etatDeLaProduction({ dossier: service.attestations ?? null, production: reference.production ?? null, propre: reference.propre ?? null });
+    // `retraits_bloquants` (R292) : une race, une classe ou une magie que des fiches de la production citent et que la mise à jour retirerait (la production ne les adapte pas : elle garderait sa base)
+    const retraits_bloquants = retraitsBloquantsPourLaProduction({ dossier: service.attestations ?? null, db, production: reference.production ?? null, propre: reference.propre ?? null });
     // `base_source` : le marqueur db/source (lot 8) — « Effectuer la mise à jour » fige alors un paquet, et « Copier vers le dépôt » existe
     const baseSource = Boolean(service.source?.());
-    return json(200, { ...noteEnPreparation(db, { reference: service.reference, versionDev }), lancement, ...regles, github, confirmation: CONFIRMATION, etat_production,
+    return json(200, { ...noteEnPreparation(db, { reference: service.reference, versionDev }), lancement, ...regles, github, confirmation: CONFIRMATION, etat_production, retraits_bloquants,
       base_source: baseSource, ...(baseSource ? { confirmation_copie: CONFIRMATION_COPIE } : {}) });
   }
   const interdit = refusEcriture(requete.entetes ?? {});

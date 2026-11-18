@@ -32,7 +32,7 @@ Une demande mixte est pilotée par le chef du domaine d'origine, qui sollicite l
 
 Le lore suit le même circuit avec `worldbuilding`. Un travail purement technique part directement à `leader-technique`.
 
-**Une décision de contenu** (valeur, texte, nom, ligne) s'applique par un lot de changements déposé sur le site de dev (skill `modifier-une-page-wiki`), jamais par `data/rows` ni par une migration : il n'entre dans la base qu'au clic du propriétaire (R275 (4)).
+**Une décision de contenu** (valeur, texte, nom, ligne) s'applique par un lot de changements déposé sur le site de dev (skill `modifier-une-page-wiki`), jamais par `data/rows` ni par une migration : il entre aussitôt dans la base s'il passe les contrôles, le propriétaire pouvant annuler chaque ligne (R291) ; sans clé de dépôt posée, il reste une proposition qui attend son clic.
 
 **Contrôle du fond.** Un lot technique peut changer une valeur, un texte ou un nom de règle ou du lore sans venir d'une spécification de `game-design` ou de `worldbuilding` : lot de changements, réimport, texte d'une page. `leader-technique` le soumet alors au chef du domaine. Ce chef fait vérifier le lot (sources, décisions R…) par le membre concerné et rend son verdict : conforme, ou à corriger avec les R… en cause.
 

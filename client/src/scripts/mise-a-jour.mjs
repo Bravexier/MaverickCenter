@@ -15,21 +15,23 @@
 // fois chaque choix fait ; jamais pour un lot qui attend un lot plus ancien : `bloque`) : le service écrit une nouvelle modification du site de dev et
 // marque l'ancien lot résolu. Rendu : lib/conflits-rendu.mjs. La section reste la même d'un rendu de la note à l'autre (le suivi d'un lancement la refait toutes les 15 s) :
 // les choix en cours ne se perdent pas.
-// Avant les conflits, les lots de changements proposés (R275, question 4 a : « Chaque lot attend votre clic sur le site de dev, avec un aperçu avant et
-// après. ») : une session dépose une proposition (GET /api/edition/lots/, serveur/edition-lots.mjs), la page la montre en langage simple avec l'aperçu
-// avant et après, et le clic du propriétaire (mot de passe : scripts/acces.mjs le demande, rien à faire ici) l'applique ou la refuse ; un lot appliqué
-// s'annule d'un clic, après l'aperçu de l'annulation ; « Tout recalculer » dépose le lot des pages que le code d'aujourd'hui calcule autrement. Rendu :
-// lib/lots-rendu.mjs. Rien de cela en production ni sans le service (la lecture des lots répond 403 ou 404 : la section reste cachée).
+// Avant les conflits, les modifications de l'équipe (R291 : « En gros c'est le patchnote mais où je peux choisir chaque ligne que je peux annuler. […] Juste un
+// bout "annuler cette modification" sur chaque ligne du patchnote. ») : une session dépose avec la clé de dépôt (GET /api/edition/lots/, serveur/edition-lots.mjs),
+// la modification est appliquée aussitôt, et la page la montre ligne par ligne ; « Annuler cette modification » ouvre une confirmation avec l'aperçu de ce qu'elle
+// remettrait, puis l'annule (mot de passe : scripts/acces.mjs le demande, rien à faire ici). Les propositions encore en attente (R275, question 4 a) gardent
+// « Appliquer » et « Refuser » ; « Tout recalculer » recalcule les pages que le code d'aujourd'hui calcule autrement. Rendu : lib/lots-rendu.mjs. Rien de cela en
+// production ni sans le service (la lecture des lots répond 403 ou 404 : la section reste cachée). Avant « Effectuer la mise à jour », une alerte dit les races,
+// classes et magies que la mise à jour retirerait alors que des fiches de la production les citent (R292, `retraits_bloquants`).
 // Ce script n'importe que les rendus communs, celui des conflits et celui des lots (aucun autre script de page ne les importe : la version portable
 // refuse un module partagé).
 import {
-  PHRASE_DE_LA_COPIE, affichageDeLaProduction, compter, echapper, enteteDuLancement, erreurDuReport, htmlDeLaListe, htmlDuTexteLibre, lancementAffiche, messageDuRefus,
+  PHRASE_DE_LA_COPIE, affichageDeLaProduction, affichageDesRetraits, compter, echapper, enteteDuLancement, erreurDuReport, htmlDeLaListe, htmlDuTexteLibre, lancementAffiche, messageDuRefus,
   modeDuLancement, motDeLaCopie, texteDeLEtat,
 } from '../lib/notes-de-version-rendu.mjs';
 import { avecDateLisible, corpsDeLaResolution, htmlDesConflits, messageDeResolution } from '../lib/conflits-rendu.mjs';
 import {
-  APPLIQUES_RECENTS, corpsDuClic, htmlDeLaConfirmation, htmlDesLots, lotsAppliques, messageDeLAnnulation, messageDErreur, messageDuBilan,
-  messageDuRecalcul, peutAnnuler, peutAppliquer, verrousDuLot,
+  APPLIQUES_RECENTS, corpsDuClic, htmlDeLaConfirmation, htmlDesLots, lotsAppliques, messageDeLaLigneAnnulee, messageDErreur, messageDuBilan,
+  messageDuRecalcul, peutAnnuler, peutAnnulerLaLigne, peutAppliquer, verrousDuLot,
 } from '../lib/lots-rendu.mjs';
 
 const racine = document.querySelector('[data-mise-a-jour]');
@@ -75,11 +77,11 @@ let suivi = null;
 /** Les lots en conflit : la section (gardée d'un rendu à l'autre), le dernier diagnostic, les listes des champs « choix », les choix en cours. */
 const conflits = { section: null, reponse: null, listes: null, choisis: new Map(), message: '', erreur: '' };
 /**
- * Les lots de changements : la section (gardée d'un rendu à l'autre), la liste lue avec le détail des lots à décider et des appliqués récents, ce que le
- * propriétaire a coché (décisions à ouvrir, par lot ; `annulation:<lot>` pour une annulation), les aperçus d'annulation demandés, les messages, ce qu'il a
+ * Les modifications de l'équipe : la section (gardée d'un rendu à l'autre), la liste lue avec le détail des propositions en attente et des changements appliqués
+ * récents (leurs lignes), ce que le propriétaire a coché (décisions à ouvrir, par proposition), les messages (clés `<lot>` ou `<lot>#<ligne>`), ce qu'il a
  * déplié, le message d'en tête, et un verrou contre le double clic.
  */
-const lots = { section: null, reponse: null, erreur: '', annulations: new Map(), coches: new Map(), messages: new Map(), ouverts: new Set(), toutes: new Set(), message: null, occupe: false };
+const lots = { section: null, reponse: null, erreur: '', coches: new Map(), messages: new Map(), ouverts: new Set(), toutes: new Set(), message: null, occupe: false };
 
 function htmlDuLancement(l, github, liberable) {
   if (!l) return '';
@@ -148,10 +150,12 @@ function rendre() {
     <p class="nv-dev__bilan">${bilan}${bilanDesConflits}</p>
     <div data-nv-production></div>
     <div class="nv-dev__note">${note}</div>
+    <div data-nv-retraits></div>
     ${bouton}
     ${htmlDuLancement(lancementAffiche(d), d.github, d.liberable)}
     <div class="nv-dev__liste">${d.lignes ? htmlDeLaListe(d.lignes, { niveau: 3, plafond: 25 }) : ''}</div>`;
   rendreLEtatDeLaProduction(zone.querySelector('[data-nv-production]'), d.etat_production);
+  rendreLesRetraits(zone.querySelector('[data-nv-retraits]'), d.retraits_bloquants);
   // après les listes, la section des lots de changements puis celle des conflits, les mêmes d'un rendu à l'autre (choix en cours gardés)
   zone.append(sectionDesLots(), sectionDesConflits());
   zone.hidden = false;
@@ -183,7 +187,32 @@ function rendreLEtatDeLaProduction(place, etat) {
   place.append(bloc);
 }
 
-// --- Lots de changements ------------------------------------------------------------------------------------------------------------------------
+/**
+ * R292 : une alerte, avant « Effectuer la mise à jour », quand la mise à jour retirerait des races, classes ou magies que des fiches de la production citent
+ * (la production garderait sa base d'avant). Rien si l'attestation n'est pas lue ou si rien ne bloque. Texte par textContent.
+ */
+function rendreLesRetraits(place, retraits) {
+  const a = place ? affichageDesRetraits(retraits) : null;
+  if (!a) return;
+  const bloc = document.createElement('div');
+  bloc.className = 'nv-retraits';
+  bloc.setAttribute('role', 'alert');
+  const ajouter = (parent, balise, texte, classe) => {
+    const e = document.createElement(balise);
+    if (classe) e.className = classe;
+    e.textContent = texte;
+    parent.append(e);
+    return e;
+  };
+  ajouter(bloc, 'p', a.message || 'Cette mise à jour retire des éléments que des fiches de la production utilisent encore : la production garderait sa version actuelle.', 'nv-message nv-message--erreur');
+  const liste = document.createElement('ul');
+  for (const t of a.elements) ajouter(liste, 'li', t);
+  bloc.append(liste);
+  if (a.total) ajouter(bloc, 'p', a.total, 'nv-message');
+  place.append(bloc);
+}
+
+// --- Modifications de l'équipe ------------------------------------------------------------------------------------------------------------------------
 
 const adresseDuLot = (id, action = '') => `edition/lots/${encodeURIComponent(id)}/${action}`;
 const lotParId = (id) => lots.reponse?.lots?.find((l) => l.id === id) ?? null;
@@ -226,7 +255,7 @@ function sectionDesLots() {
 }
 
 /** L'état de la page pour le rendu (`lib/lots-rendu.mjs`). */
-const vueDesLots = () => ({ coches: lots.coches, annulations: lots.annulations, messages: lots.messages, ouverts: lots.ouverts, toutes: lots.toutes, message: lots.message });
+const vueDesLots = () => ({ coches: lots.coches, messages: lots.messages, ouverts: lots.ouverts, toutes: lots.toutes, message: lots.message });
 
 function rendreLesLots() {
   const section = sectionDesLots();
@@ -241,7 +270,7 @@ function rendreLesLots() {
   section.hidden = false;
 }
 
-/** Lit les lots, puis le détail de ceux qui attendent le clic et des appliqués récents (l'essai, l'aperçu avant et après, le bilan), et les pose. */
+/** Lit les lots, puis le détail de ceux qui attendent le clic (l'essai, l'aperçu avant et après) et des appliqués récents (leurs lignes), et les pose. */
 async function chargerLesLots() {
   let liste;
   try {
@@ -256,12 +285,8 @@ async function chargerLesLots() {
   const aLire = [...liste.filter((l) => l.etat === 'propose'), ...lotsAppliques(liste).slice(0, APPLIQUES_RECENTS)];
   const details = new Map((await Promise.all(aLire.map(async (l) => [l.id, await appel('GET', adresseDuLot(l.id)).catch(() => null)]))));
   lots.reponse = { lots: liste.map((l) => ({ ...l, ...(details.get(l.id) ?? {}) })) };
-  // ce qui ne vaut plus pour l'état d'un lot (annulation demandée d'un lot plus appliqué, cases d'un lot décidé) s'oublie
-  for (const id of [...lots.annulations.keys()]) if (lotParId(id)?.etat !== 'applique') lots.annulations.delete(id);
-  for (const cle of [...lots.coches.keys()]) {
-    const id = cle.replace(/^annulation:/, '');
-    if (lotParId(id)?.etat !== (cle.startsWith('annulation:') ? 'applique' : 'propose')) lots.coches.delete(cle);
-  }
+  // ce qui ne vaut plus pour l'état d'une proposition (cases d'une proposition décidée) s'oublie
+  for (const id of [...lots.coches.keys()]) if (lotParId(id)?.etat !== 'propose') lots.coches.delete(id);
   rendreLesLots();
 }
 
@@ -272,23 +297,20 @@ async function relireUnLot(id, lot = null) {
   lots.reponse = { lots: lots.reponse.lots.map((l) => (l.id === id ? { ...l, ...neuf } : l)) };
 }
 
-/** Une case « J'accepte d'ouvrir ce que la décision R… verrouille » : le bouton qui en dépend s'active ou s'éteint, sans refaire la section. */
+/** Une case « J'accepte d'ouvrir ce que la décision R… verrouille » d'une proposition : « Appliquer » s'active ou s'éteint, sans refaire la section. */
 function cocherUneDecision(caseACocher) {
   const article = caseACocher.closest('[data-nv-lot-id]');
-  const annulation = caseACocher.closest('[data-nv-annulation]');
   const id = article?.dataset.nvLotId;
   if (!id) return;
-  const cle = annulation ? `annulation:${id}` : id;
-  const coches = new Set(lots.coches.get(cle) ?? []);
+  const coches = new Set(lots.coches.get(id) ?? []);
   const decision = caseACocher.getAttribute('data-nv-verrou');
   if (caseACocher.checked) coches.add(decision);
   else coches.delete(decision);
-  lots.coches.set(cle, coches);
-  const verdict = annulation ? peutAnnuler(lots.annulations.get(id)?.apercu, coches) : peutAppliquer(lotParId(id), coches);
-  const zone = annulation ?? article;
-  const bouton = zone.querySelector(annulation ? '[data-nv-confirmer-annulation]' : '[data-nv-appliquer]');
+  lots.coches.set(id, coches);
+  const verdict = peutAppliquer(lotParId(id), coches);
+  const bouton = article.querySelector('[data-nv-appliquer]');
   if (bouton) desactiver(bouton, !verdict.possible);
-  const raison = zone.querySelector('[data-nv-raison]');
+  const raison = article.querySelector('[data-nv-raison]');
   if (raison) {
     raison.textContent = verdict.raison ?? '';
     raison.hidden = verdict.possible;
@@ -304,6 +326,16 @@ function direDansLeLot(id, texte) {
   p.hidden = !texte;
 }
 
+/** Dit quelque chose dans une ligne d'un changement (« Annulation en cours… »), sans refaire la section. */
+function direDansLaLigne(id, n, texte) {
+  const article = [...(lots.section?.querySelectorAll('[data-nv-lot-id]') ?? [])].find((a) => a.dataset.nvLotId === id);
+  const ligne = [...(article?.querySelectorAll('[data-nv-ligne]') ?? [])].find((l) => l.getAttribute('data-nv-ligne') === String(n));
+  const p = ligne?.querySelector('[data-nv-ligne-message]');
+  if (!p) return;
+  p.textContent = texte;
+  p.hidden = !texte;
+}
+
 async function clicSurLesLots(bouton) {
   if (lots.occupe) return;
   if (bouton.hasAttribute('data-nv-toutes')) {
@@ -311,44 +343,58 @@ async function clicSurLesLots(bouton) {
     return rendreLesLots();
   }
   const id = bouton.closest('[data-nv-lot-id]')?.dataset.nvLotId ?? null;
-  const action = ['data-nv-recalcul', 'data-nv-lots-actualiser', 'data-nv-appliquer', 'data-nv-refuser', 'data-nv-essai', 'data-nv-annuler', 'data-nv-confirmer-annulation', 'data-nv-renoncer']
-    .find((a) => bouton.hasAttribute(a));
+  const action = ['data-nv-recalcul', 'data-nv-lots-actualiser', 'data-nv-appliquer', 'data-nv-refuser', 'data-nv-essai', 'data-nv-annuler-ligne'].find((a) => bouton.hasAttribute(a));
   if (!action || (action !== 'data-nv-recalcul' && action !== 'data-nv-lots-actualiser' && !id)) return;
   lots.occupe = true;
   try {
-    if (action !== 'data-nv-renoncer') lots.message = null;
+    lots.message = null;
     if (action === 'data-nv-recalcul') await toutRecalculer();
     else if (action === 'data-nv-lots-actualiser') await chargerLesLots();
     else if (action === 'data-nv-appliquer') await appliquerUnLot(id);
     else if (action === 'data-nv-refuser') await refuserUnLot(id);
     else if (action === 'data-nv-essai') await refaireLEssai(id);
-    else if (action === 'data-nv-annuler') await voirLAnnulation(id);
-    else if (action === 'data-nv-confirmer-annulation') await annulerUnLot(id);
-    else {
-      lots.annulations.delete(id);
-      lots.coches.delete(`annulation:${id}`);
-      rendreLesLots();
-    }
+    else await annulerUneLigne(id, Number(bouton.getAttribute('data-nv-annuler-ligne')));
   } finally {
     lots.occupe = false;
   }
 }
 
-/** Une confirmation (`<dialog>`) avant un clic qui écrit ou décide : vrai si le propriétaire confirme. */
+/**
+ * Une confirmation (`<dialog>`) avant un clic qui écrit ou décide : `{ verrous }` (les décisions cochées dans la boîte) si le propriétaire confirme, sinon null.
+ * Avec un aperçu d'annulation (`options.apercu`), la boîte porte une case par décision à ouvrir et ne confirme que cochées.
+ */
 function confirmerLeClic(options) {
   return new Promise((resoudre) => {
     const dialogue = document.createElement('dialog');
     dialogue.className = 'nv-dialogue';
     dialogue.innerHTML = htmlDeLaConfirmation(options);
     racine.append(dialogue);
+    const coches = new Set();
     let confirme = false;
     dialogue.querySelector('[value="annuler"]').addEventListener('click', () => dialogue.close());
     dialogue.addEventListener('close', () => {
       dialogue.remove();
-      resoudre(confirme);
+      resoudre(confirme ? { verrous: [...coches] } : null);
+    });
+    // les cases d'un aperçu d'annulation : le bouton qui confirme s'active quand chaque décision à ouvrir est cochée
+    dialogue.addEventListener('change', (e) => {
+      const caseACocher = e.target?.closest?.('[data-nv-verrou]');
+      if (!caseACocher || !options.apercu) return;
+      const decision = caseACocher.getAttribute('data-nv-verrou');
+      if (caseACocher.checked) coches.add(decision);
+      else coches.delete(decision);
+      const verdict = peutAnnuler(options.apercu, coches);
+      const bouton = dialogue.querySelector('[data-nv-confirmer-ligne]');
+      if (bouton) desactiver(bouton, !verdict.possible);
+      const raison = dialogue.querySelector('[data-nv-raison]');
+      if (raison) {
+        raison.textContent = verdict.raison ?? '';
+        raison.hidden = verdict.possible;
+      }
     });
     dialogue.querySelector('form').addEventListener('submit', (e) => {
       e.preventDefault();
+      if (options.apercu && !peutAnnuler(options.apercu, coches).possible) return; // une décision à ouvrir n'est pas cochée
       confirme = true;
       dialogue.close();
     });
@@ -417,38 +463,38 @@ async function refaireLEssai(id) {
   rendreLesLots();
 }
 
-/** « Annuler ce lot » : d'abord l'aperçu de l'annulation (ce qui serait remis, déjà comme avant, gardé parce que la valeur a changé) ; rien ne part encore. */
-async function voirLAnnulation(id) {
-  lots.annulations.set(id, { chargement: true });
-  rendreLesLots();
-  try {
-    lots.annulations.set(id, { apercu: await appel('GET', adresseDuLot(id, 'annulation/')) });
-  } catch (e) {
-    lots.annulations.set(id, { erreur: e.message });
-  }
-  rendreLesLots();
-}
-
-/** « Oui, annuler ce lot » : la confirmation de l'aperçu ; le clic part avec les décisions cochées. */
-async function annulerUnLot(id) {
+/**
+ * « Annuler cette modification » (R291) : l'aperçu de ce que l'annulation de cette ligne remettrait (rien n'est écrit), la confirmation, puis le clic part avec les
+ * décisions cochées. Un refus du service (une autre ligne la tient, une valeur a changé, un contrôle échoue) se dit sous la ligne ; rien ne s'annule en silence.
+ */
+async function annulerUneLigne(id, n) {
   const lot = lotParId(id);
-  const apercu = lots.annulations.get(id)?.apercu;
-  const coches = lots.coches.get(`annulation:${id}`) ?? new Set();
-  if (!lot || !apercu || !peutAnnuler(apercu, coches).possible) return;
-  const corps = corpsDuClic(apercu.verrous_a_ouvrir ?? [], coches);
-  lots.messages.delete(id);
-  direDansLeLot(id, 'Envoi…');
+  const ligne = lot?.lignes?.find?.((l) => l.n === n) ?? null;
+  if (!lot || !ligne || !peutAnnulerLaLigne(ligne)) return;
+  const cle = `${id}#${n}`;
+  lots.messages.delete(cle);
+  let apercu;
   try {
-    const r = await appel('POST', adresseDuLot(id, 'annuler/'), corps);
-    lots.annulations.delete(id);
-    lots.coches.delete(`annulation:${id}`);
-    lots.message = messageDeLAnnulation(r, apercu);
+    apercu = await appel('GET', adresseDuLot(id, `lignes/${n}/annulation/`));
   } catch (e) {
-    lots.messages.set(id, messageDErreur(e));
+    lots.messages.set(cle, messageDErreur(e));
     rendreLesLots();
     return;
   }
-  await relireLaPage();
+  const choix = await confirmerLeClic({ action: 'annuler-ligne', lot, ligne, apercu });
+  if (!choix) return;
+  direDansLaLigne(id, n, 'Annulation en cours…');
+  try {
+    await appel('POST', adresseDuLot(id, `lignes/${n}/annuler/`), corpsDuClic(apercu.verrous_a_ouvrir ?? [], new Set(choix.verrous)));
+    lots.message = messageDeLaLigneAnnulee(ligne, apercu);
+  } catch (e) {
+    // 409 : la ligne n'est plus annulable seule ou un contrôle refuse : le changement à jour est relu, avec ce que dit le service
+    lots.messages.set(cle, messageDErreur(e));
+    await relireUnLot(id);
+    rendreLesLots();
+    return;
+  }
+  await relireLaPage(); // la note en préparation compte la modification annulée ; les changements et les conflits sont relus
 }
 
 /** « Tout recalculer » : dépose le lot des pages que le code d'aujourd'hui calcule autrement, et l'affiche ; ou dit qu'il n'y a rien à recalculer. */

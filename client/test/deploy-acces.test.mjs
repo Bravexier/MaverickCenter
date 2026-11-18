@@ -217,3 +217,58 @@ test('l’installateur livre acces/acces.sh (exécutable, remplacé à chaque in
   assert.equal(readFileSync(join(dossier, 'secrets', 'acces.json'), 'utf8'), '{"essai":true}\n');
   assert.equal(readFileSync(livre, 'utf8'), readFileSync(SCRIPT, 'utf8'));
 });
+
+test('R291 : --cle-de-depot pose la clé de dépôt (affichée une seule fois, jamais en clair dans le fichier ni en argument), garde le mot de passe et la clé de lecture ; --etat la dit ; --sans-cle-de-depot revient à l’état sûr', { skip: SANS_BASH }, (t) => {
+  const i = instance(t);
+  const premiere = i.lancer([], { input: saisie(MOT) });
+  const cleDeLecture = i.cleAffichee(premiere.out);
+  const avant = i.reglage();
+  assert.equal(avant.cle_de_depot, null, 'pas de clé de dépôt tant qu’on ne la demande pas : le dépôt reste une proposition');
+  assert.match(i.lancer(['--etat']).out, /Clé de dépôt : non/);
+
+  const r = i.lancer(['--cle-de-depot']);
+  assert.equal(r.code, 0, r.out);
+  const cleDeDepot = /(mvd_[A-Za-z0-9_-]{43})/.exec(r.out)?.[1];
+  assert.ok(cleDeDepot, r.out);
+  assert.equal(r.out.split(cleDeDepot).length, 2, 'la clé de dépôt s’affiche une fois');
+  assert.ok(!r.out.includes(cleDeLecture), 'la clé de lecture n’est pas réaffichée');
+  assert.match(r.out, /APPLIQUE AUSSITÔT/);
+  assert.match(r.out, /ni à la CI ni à GitHub/);
+  const apres = i.reglage();
+  assert.equal(mode(i.fichier), 0o600);
+  assert.ok(!readFileSync(i.fichier, 'utf8').includes(cleDeDepot), 'jamais en clair');
+  assert.equal(apres.cle_de_depot.empreinte, sha(cleDeDepot));
+  assert.deepEqual(apres.cle_de_lecture, avant.cle_de_lecture);
+  assert.deepEqual(apres.mot_de_passe, avant.mot_de_passe);
+  assert.equal(apres.secret_de_session, avant.secret_de_session, 'les sessions ouvertes restent ouvertes');
+  assert.ok(!i.appels().includes(cleDeDepot), 'aucun secret en argument');
+  assert.match(i.lancer(['--etat']).out, /Clé de dépôt : oui/);
+  const acces = creerAcces({ fichier: i.fichier });
+  assert.equal(acces.droit({ 'x-maverick-cle': cleDeDepot }).droit, 'depot');
+  assert.equal(acces.droit({ 'x-maverick-key': cleDeLecture }).droit, 'lecture');
+
+  // changer le mot de passe garde la clé de dépôt ; la refaire invalide l'ancienne
+  i.lancer([], { input: saisie(AUTRE) });
+  assert.equal(i.reglage().cle_de_depot.empreinte, sha(cleDeDepot));
+  const refaite = i.lancer(['--cle-de-depot']);
+  const neuve = /(mvd_[A-Za-z0-9_-]{43})/.exec(refaite.out)?.[1];
+  assert.ok(neuve && neuve !== cleDeDepot);
+  assert.equal(creerAcces({ fichier: i.fichier }).droit({ 'x-maverick-cle': cleDeDepot }).droit, 'aucun');
+
+  const retiree = i.lancer(['--sans-cle-de-depot']);
+  assert.equal(retiree.code, 0, retiree.out);
+  assert.match(retiree.out, /attend votre clic/);
+  assert.equal(i.reglage().cle_de_depot, null);
+  assert.match(i.lancer(['--etat']).out, /Clé de dépôt : non/);
+});
+
+test('R291 : --cle-de-depot sans mot de passe posé est refusé (rien n’est écrit), comme sur la production', { skip: SANS_BASH }, (t) => {
+  const i = instance(t);
+  const r = i.lancer(['--cle-de-depot']);
+  assert.equal(r.code, 1, r.out);
+  assert.ok(!existsSync(i.fichier), 'aucun réglage écrit');
+  assert.match(r.out, /mot de passe/);
+  const prod = instance(t, { edition: false });
+  assert.equal(prod.lancer(['--cle-de-depot']).code, 1);
+  assert.equal(prod.lancer(['--sans-cle-de-depot']).code, 1);
+});

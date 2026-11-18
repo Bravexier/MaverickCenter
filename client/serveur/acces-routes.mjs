@@ -6,12 +6,13 @@
 //   lecture      la clé de lecture (en-tête X-Maverick-Cle ou X-Maverick-Key) OU le mot de passe (cookie de session) : ce qui montre le journal des modifications, la page
 //                Debug et ses tables (fiches, comptes et groupes compris), l'API /api/v1/ en lecture, les lots en conflit de la page « Mise à jour », les lots de
 //                changements déposés ;
-//   proposition  la même porte que `lecture` (la clé de lecture OU le mot de passe), pour la seule route qui ÉCRIT sans toucher au contenu : déposer un lot de
-//                changements (R275, question 4 a) ou refaire son essai. Elle n'écrit que dans `lot_de_changements` (la proposition et son essai à blanc, sur
-//                une copie) ; rien du contenu ne change tant que le propriétaire n'a pas cliqué (« appliquer », classé `ecriture`). Aucune clé d'écriture n'existe :
-//                une session de Claude propose, jamais n'applique ;
-//   ecriture     le mot de passe seul : toute écriture (édition, prétirés, /api/v1/, appliquer ou refuser un lot de changements), « Effectuer la mise à jour », la
-//                simulation, lever la maintenance.
+//   proposition  les routes de DÉPÔT : déposer un lot de changements, refaire son essai, « tout recalculer ». Tant que le réglage ne pose pas de clé de dépôt
+//                (état sûr, R275 (4)), la porte est celle de `lecture` (la clé de lecture OU le mot de passe) et un dépôt n'écrit que dans `lot_de_changements`
+//                (la proposition et son essai à blanc, sur une copie) : rien du contenu ne change avant le clic (« appliquer », classé `ecriture`). Une fois la
+//                clé de dépôt posée (R291, qui remplace R275 (4)), la porte demande la clé de dépôt OU le mot de passe : la clé de lecture, que détient aussi la
+//                CI, ne dépose plus, et le lot déposé est appliqué aussitôt (serveur/acces.mjs#controler, api.mjs#traiterLots) ;
+//   ecriture     le mot de passe seul : toute écriture (édition, prétirés, /api/v1/, appliquer, refuser ou annuler un lot de changements, ou une seule de ses
+//                lignes), « Effectuer la mise à jour », la simulation, lever la maintenance.
 // Une route absente de cette table (inconnue) se classe `ecriture` : fermée par défaut.
 //
 // Portée « tout » (option c du propriétaire, un seul mot de passe pour tout le site) : chaque route `ouverte` qui n'est pas `essentielle` passe en
@@ -49,13 +50,16 @@ const TABLE = [
   // l'extrait du contenu pour les sessions de Claude (serveur/extrait.mjs) : règles, notes et historique ; les tables des fiches, comptes, groupes et du journal y sont vides
   [LECTURE, /^\/api\/edition\/extrait(\/meta)?$/, 'lecture'],
   [['POST'], /^\/api\/edition$/, 'ecriture'],
-  // les lots de changements (serveur/edition-lots.mjs) : se lisent avec la clé ; une session dépose une proposition et refait son essai avec la clé (classe
-  // `proposition` : seule `lot_de_changements` s'écrit) ; appliquer, refuser et annuler, qui décident, demandent le mot de passe
+  // les lots de changements (serveur/edition-lots.mjs) : se lisent avec la clé ; une session dépose (classe `proposition` : la clé de lecture tant que la clé de
+  // dépôt n'est pas posée, puis la clé de dépôt, R291) ; appliquer, refuser et annuler, qui décident, demandent le mot de passe, comme l'aperçu et le clic
+  // d'une annulation ligne par ligne (R291)
   [LECTURE, /^\/api\/edition\/lots(\/[0-9a-f-]{36}(\/annulation)?)?$/, 'lecture'],
   [['POST'], /^\/api\/edition\/lots$/, 'proposition'],
   [['POST'], /^\/api\/edition\/lots\/[0-9a-f-]{36}\/essai$/, 'proposition'],
   [['POST'], /^\/api\/edition\/lots\/recalcul$/, 'proposition'], // « tout recalculer » : dépose un lot de nature « code » (aucune écriture du contenu)
   [['POST'], /^\/api\/edition\/lots\/[0-9a-f-]{36}\/(appliquer|refuser|annuler)$/, 'ecriture'],
+  [LECTURE, /^\/api\/edition\/lots\/[0-9a-f-]{36}\/lignes\/[0-9]+\/annulation$/, 'ecriture'], // l'aperçu d'une seule ligne : une copie de la base, comme un clic
+  [['POST'], /^\/api\/edition\/lots\/[0-9a-f-]{36}\/lignes\/[0-9]+\/annuler$/, 'ecriture'],
   // page « Mise à jour »
   [LECTURE, /^\/api\/mise-a-jour\/lots\/[0-9a-f-]{36}$/, 'ouverte', true],
   // la note en préparation et l'état du lancement s'affichent sans connexion (la page /mise-a-jour/ les relève ; /api/maintenance/, ouverte, donne déjà le

@@ -51,7 +51,7 @@ user-invocable: false
 - Choix du propriétaire (R275) : copie extérieure chiffrée, fiches comprises, chez un autre fournisseur que l'hébergeur, dont il garde la clé ; rétention de 30 jours, plus une copie par mois et une par version sans limite ; envoi chaque nuit ; clé = phrase de 6 mots, réaffichable ; changer de stockage ou d'hébergeur ne demande que la phrase et les accès.
 
 ## Accès au site de dev (`deploy/installateur/acces/`, R275)
-- `acces.sh` est livré dans `<instance>/acces/` comme `sauvegarde/` (`DOSSIERS_DE_SCRIPTS`, remplacé à chaque installation). Geste du propriétaire : `sudo sh /srv/maverick-center-test/acces/acces.sh` (options `--cle`, `--portee ecriture|tout`, `--etat`, `--retirer`). Il refuse la production et pose `secrets/acces.json` en 600. Le mot de passe n'est jamais un argument de commande ni un fichier. Détail : `docs/serveur.md`, « Accès au site de dev ».
+- `acces.sh` est livré dans `<instance>/acces/` comme `sauvegarde/` (`DOSSIERS_DE_SCRIPTS`, remplacé à chaque installation). Geste du propriétaire : `sudo sh /srv/maverick-center-test/acces/acces.sh` (options `--cle`, `--cle-de-depot`, `--sans-cle-de-depot`, `--portee ecriture|tout`, `--etat` qui dit « Clé de dépôt : oui/non », `--retirer`). Il refuse la production et pose `secrets/acces.json` en 600. Le mot de passe n'est jamais un argument de commande ni un fichier. Détail : `docs/serveur.md`, « Accès au site de dev ».
 - Option c (un mot de passe pour tout le site) : le snippet `forward_auth` de `deploy/vps/Caddyfile` reste en commentaire, jamais actif.
 
 ## Essai de structure et contrôle des migrations (R274, R275)
