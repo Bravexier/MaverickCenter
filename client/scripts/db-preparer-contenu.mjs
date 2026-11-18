@@ -12,7 +12,7 @@ import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
-import { appliquerSurPlace, lireLesMigrations } from '../serveur/structure-sur-place.mjs';
+import { appliquerSurPlace, lireLesMigrations, TABLE_DES_MIGRATIONS_RECUES } from '../serveur/structure-sur-place.mjs';
 import { ErreurContenuFourni, FICHIER_DES_PAGES_D_EXEMPLE, preparerLaCopie } from '../src/lib/contenu-fourni.mjs';
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
@@ -27,7 +27,11 @@ export function migrerLaCopie(copie, { racine = RACINE } = {}) {
   const db = new DatabaseSync(copie);
   try {
     db.exec('PRAGMA foreign_keys = ON');
-    return appliquerSurPlace(db, { migrations: livrees.migrations, schema: livrees.schema, sauvegarde: false }).appliquees.map((m) => m.fichier);
+    const appliquees = appliquerSurPlace(db, { migrations: livrees.migrations, schema: livrees.schema, sauvegarde: false }).appliquees.map((m) => m.fichier);
+    // La copie de travail n'est pas une base de site : les migrations qu'elle reçoit ici ne s'y notent pas (`migration_recue` reste comme dans le
+    // contenu fourni ; une base bâtie depuis data/rows l'a vide, et la base vivante refuse des règles où elle ne l'est pas).
+    if (appliquees.length) db.prepare(`DELETE FROM "${TABLE_DES_MIGRATIONS_RECUES}" WHERE numero > ?`).run(Number(appliquees[0].slice(0, 4)) - 1);
+    return appliquees;
   } finally {
     db.close();
   }
