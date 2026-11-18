@@ -6,20 +6,20 @@
 // magie à 3 entrées pour 4 dons « Variable ») : la vue n'exige pas un choix impossible. Les écritures se font dans une COPIE de la base construite,
 // jamais dans var/maverick.db ni dans data/rows.
 import assert from 'node:assert/strict';
-import { copyFileSync, readFileSync } from 'node:fs';
+import { copyFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
 import { baseDImport, cheminDImport } from './aide-base-d-import.mjs';
+import { lignesDuContenu } from './aide-base-de-depart.mjs';
 
 const MAGE_BLEU = 'classes/mage-bleu';
 const SAPHIR = 'classes/mage-bleu#specialite:mage-saphir';
 const DON = (nom) => `capacites/mage-bleu-${nom}`;
 const ENTREE = (magie, nom) => `${MAGE_BLEU}#entree:${magie}:${nom}`;
 const INSTANT = '2026-10-30T12:00:00Z';
-const lire = (chemin) => readFileSync(new URL(`../../${chemin}`, import.meta.url), 'utf8');
 
 // Les 54 entrées, par ligne du tableau (libelle_cle), dans l'ordre du texte : leurs identifiants sont figés (un nom corrigé garde le sien).
 const ENTREES = {
@@ -145,7 +145,7 @@ const obtenir = (db, id, don, entree) => inserer(db, 'personnage_don_obtenu', { 
 const reglesDonObtenu = (db, id) => db.prepare("SELECT regle, detail FROM v_personnage_controle WHERE personnage_id = ? AND regle LIKE 'don_obtenu%' ORDER BY regle, detail")
   .all(id).map((r) => ({ ...r }));
 
-test('R181 : personnage_don_obtenu — clé (fiche, don), une entrée une seule fois par fiche, supprimée avec la fiche, vide dans data/rows', (t) => {
+test('R181 : personnage_don_obtenu — clé (fiche, don), une entrée une seule fois par fiche, supprimée avec la fiche, vide dans le contenu qui fait foi (contenu fourni, sinon data/rows)', (t) => {
   const lecture = ouvrirBase({ sansExemples: false });
   assert.deepEqual(lecture.prepare('PRAGMA table_xinfo(personnage_don_obtenu)').all().map(({ name, type, notnull, pk }) => ({ name, type, notnull, pk })), [
     { name: 'personnage_id', type: 'TEXT', notnull: 1, pk: 1 },
@@ -160,7 +160,8 @@ test('R181 : personnage_don_obtenu — clé (fiche, don), une entrée une seule 
     { table: 'capacite', from: 'source', to: 'id', on_delete: 'NO ACTION' },
   ]);
   assert.equal(lecture.prepare('SELECT count(*) AS n FROM personnage_don_obtenu').get().n, 0);
-  assert.equal(lire('data/rows/personnage_don_obtenu.sql').trim().split('\n').length, 1, 'data/rows : en-tête seul');
+  const { source, lignes } = lignesDuContenu('personnage_don_obtenu');
+  assert.equal(lignes, 0, `aucun don obtenu dans ${source}`);
 
   const db = copie(t);
   mageBleu(db, 'r181-cles', { xp: 11450, specialite: SAPHIR, dons: ['mime'] });

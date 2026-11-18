@@ -21,7 +21,7 @@
     "db:doc": "node --no-warnings scripts/db-doc.mjs",
     "db:build": "node --no-warnings scripts/db-build.mjs && node --no-warnings scripts/db-derive.mjs",
     "db:check": "node --no-warnings scripts/db-check.mjs",
-    "db:sync-pages": "python3 -I ../tools/db/pages_md.py sync",
+    "db:sync-pages": "node --no-warnings scripts/db-sync-pages.mjs",
     "db:pages-check": "python3 -I ../tools/db/pages_md.py check",
     "db:export-pages": "node --no-warnings scripts/db-export-pages.mjs",
     "predev": "node --no-warnings scripts/db-export-pages.mjs",

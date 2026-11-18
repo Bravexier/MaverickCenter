@@ -6,9 +6,9 @@ une instruction `INSERT` par ligne, triées, un fichier par table : un diff git 
 ```bash
 cd client
 npm run db:build         # schéma + lignes + tables dérivées (liens, plein texte) -> var/maverick.db, environ 3 s
-npm run db:check         # contrôles d'intégrité (clés, entités rattachées aux pages, trace des corrections…) : code 1 au moindre problème
-npm run db:pages-check   # les pages de data/rows sont-elles celles des .md ?
-npm run db:sync-pages    # remet à jour data/rows depuis les .md (contenu des pages existantes), puis commiter
+npm run db:check         # contrôles d'intégrité (clés, entités rattachées aux pages, trace des corrections…) : code 1 au moindre problème ; sans base en argument, MAVERICK_CONTENU posée = la copie préparée du contenu fourni, sinon var/maverick.db
+npm run db:pages-check   # les pages de data/rows sont-elles celles des .md ? (pages_md.py check --base <fichier.db> : celles d'une base)
+npm run db:sync-pages -- --lot <lot.json> --titre <titre>   # les .md -> un lot `source` à proposer au site de dev (n'écrit plus data/rows, lot 12)
 ```
 
 ## Ce qui est rempli
@@ -20,11 +20,11 @@ entre sources, trace des corrections orthographiques : voir [`structure.md`](str
 
 | Donnée | Mise à jour | Garde |
 | --- | --- | --- |
-| Contenu des **pages** (titre, résumé, corps, mots-clés, sources) | `npm run db:sync-pages` depuis les `.md` fabriqués (modifiés à la main ou réécrits par un extracteur) | `client/test/db-donnees.test.mjs` échoue si `data/rows` n'est plus celui des `.md` |
+| Contenu des **pages** (titre, résumé, corps, mots-clés, sources) | le site de dev ; un `.md` fabriqué depuis l'extrait (modifié à la main ou réécrit par un extracteur) devient un lot `source` par `npm run db:sync-pages -- --lot … --titre …` (`scripts/db-sync-pages.mjs` : copie de l'extrait, `pages_md.py sync --base`, `lot-de-source.mjs`), proposé au site de dev ; `data/rows` n'est plus écrit (lot 12) | `client/test/db-donnees.test.mjs` échoue si `data/rows` n'est plus celui des `.md` |
 | **Lignes typées** (sorts, capacités, races, créatures, armes…) | ⚠️ lignes validées en séance, produites par des chargeurs de **prototype** qui lisaient les classeurs ; ils ne sont pas dans le dépôt | aucune : si un classeur change, ces lignes ne bougent pas tant que l'importeur de la famille n'est pas porté |
 | **Monstres du « Bestiaire 2.0 »** (tables `monstre_*`, famille `monstres`) | `tools/bestiaire/extraire.mjs` relit l'export texte du doc (`sources/raw/bestiaire-2-0.txt`) ; une nouvelle version du doc = un nouvel export puis une migration ([`../bestiaire.md`](../bestiaire.md)) | `client/test/bestiaire-extraction.test.mjs` échoue si la base n'est plus l'extraction de l'export |
 | **Chronologie** (tables `evenement`, `evenement_extrait`, famille `chronologie`) | le registre `tools/chronologie/evenements.json` (extraits repérés dans les pages du Codex et des races), résolu par `tools/chronologie/chronologie.mjs --sql` en une migration ([`../chronologie.md`](../chronologie.md)) ; un nouvel export du Codex : `--verifier` dit les extraits à reprendre | `client/test/chronologie.test.mjs` échoue si la base n'est plus le registre résolu sur les pages d'import |
-| **Ajout ou retrait d'une page** `docs` ou `exemple` | à la main : créer ou supprimer le `.md` puis `db:sync-pages` | idem |
+| **Ajout ou retrait d'une page** `docs` ou `exemple` | à la main : créer ou supprimer le `.md` puis `db:sync-pages` (un lot `source`) | idem |
 | **Page créée sur le site de dev** (métier, race, classe, capacité, page des Règles `guide/…`) | le site de dev, rapatrié par `db:appliquer-edition` ; sa première source est « Site de dev › édition du AAAA-MM-JJ », sans source Google Doc. `tools/db/pages_md.py#FAMILLE_DES_PAGES_DU_SITE` la rattache à la famille des pages de son type : une page `guide/…` entre en famille `docs` (pas de nouvelle famille : la provenance sera retirée à la 1.0), et passe donc `db:sync-pages`, ajoutée ou retirée | `client/test/db-pages-du-site.test.mjs`, `serveur-edition-rapatriement.test.mjs` |
 | **Ajout ou retrait d'une autre page** (magie, classe, race…) | importeur de sa famille (lots 4 à 10 de [`conception.md`](conception.md) §11) | `db:sync-pages` refuse et le dit |
 
@@ -57,7 +57,9 @@ Les fichiers `client/src/content/wiki/<type>/<slug>.md` **ne sont plus dans git*
 Le format écrit est le sous-ensemble YAML des importeurs (`src/lib/pages-db.mjs`) ; les pages de magies sont écrites octet pour octet comme leur importeur les écrit. Au moment de la bascule, le
 site construit avec ces fichiers fabriqués était identique (`diff -r`, 1 527 pages) à celui construit avec les anciens `.md` committés.
 
-Un `.md` fabriqué qu'on modifie est écrasé au prochain `db:export-pages` tant que `db:sync-pages` n'a pas recopié la modification dans `data/rows`.
+Un `.md` fabriqué qu'on modifie est écrasé au prochain `db:export-pages` : sa modification passe par `db:sync-pages`, qui en tire un lot `source` à proposer au site de dev
+(lot 12 : `pages_md.py sync` n'écrit qu'une base de travail ou une copie de lignes, jamais `data/rows` ; `tools/db/exporter.py` refuse aussi `data/rows`, `--rows <dossier>` exigé ;
+`tools/db/races_onglet.py --verifier --base <fichier.db>` relit une base construite au lieu de `data/rows`).
 
 ## Changer le schéma : `npm run db:migrate`
 

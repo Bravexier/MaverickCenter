@@ -3,6 +3,8 @@
 
     python3 -I tools/db/races_onglet.py --ecrire [--schema-ancien <fichier>]   # (ré)écrit data/migrations/0007-races-onglet.sql depuis les pages de data/rows
     python3 -I tools/db/races_onglet.py --verifier [--rows <dossier>]   # data/rows (déjà migré ; ou une copie) contient exactement ce que l'extraction donne : code 1 sinon
+    python3 -I tools/db/races_onglet.py --verifier --base <fichier.db>   # de même sur une base SQLite (contenu fourni préparé, base construite), ouverte
+                                                                          # en lecture seule, à la version du schéma ; data/rows n'est alors pas lu
 
 Bibliothèque standard uniquement. Les onglets de race n'ont été lus que par tools/sheets/races.py, qui en a écrit les pages `races/<slug>` (corps_md,
 corrigé depuis par les migrations 0005 et 0006) ; aucun dump n'est dans le dépôt. Ce script relit donc ces pages, section par section, et en tire les valeurs de
@@ -423,6 +425,20 @@ def base(rows=ROWS, schema_ancien=None):
         os.unlink(tmp.name)
 
 
+def base_fichier(chemin):
+    """Une base SQLite déjà construite (contenu fourni préparé, base construite par client/src/lib/donnees.mjs), ouverte en lecture seule : rien n'y est
+    écrit. Lot 12 du chantier « base de dev = source de vérité » : la vérification lit la base qui fait foi, data/rows n'est que le repli."""
+    if not os.path.isfile(chemin):
+        raise Arret('%s : base introuvable' % chemin)
+    import sqlite3
+    db = sqlite3.connect('file:%s?mode=ro' % chemin.replace('?', '%3f').replace('#', '%23'), uri=True)
+    v = db.execute('PRAGMA user_version').fetchone()[0]
+    if v != T.version_schema():
+        db.close()
+        raise Arret('%s : structure %d, schéma %d (préparer le contenu ou migrer d\'abord)' % (chemin, v, T.version_schema()))
+    return db
+
+
 def listes_du_site(db):
     """Races dont le site de dev a modifié la liste des magies innées (race_magie_onglet) ou la phrase « Inconvénient(s) » (race_onglet.inconvenients) :
     historique_modification (modifications rapatriées ou livrées). Leur liste fait foi (R31) : elle n'est plus comparée à la phrase."""
@@ -699,11 +715,13 @@ def main(argv):
     argv = [a for a in argv if a not in ('--schema-ancien', ancien)]
     rows = os.path.abspath(argv[argv.index('--rows') + 1]) if '--rows' in argv[:-1] else None
     argv = [a for a in argv if a != '--rows' and (rows is None or os.path.abspath(a) != rows)]
-    if argv not in (['--ecrire'], ['--verifier']) or (rows and argv != ['--verifier']):
-        sys.exit('usage : races_onglet.py --ecrire [--schema-ancien <fichier>] | --verifier [--rows <dossier>]')
+    fichier = os.path.abspath(argv[argv.index('--base') + 1]) if '--base' in argv[:-1] else None
+    argv = [a for a in argv if a != '--base' and (fichier is None or os.path.abspath(a) != fichier)]
+    if argv not in (['--ecrire'], ['--verifier']) or ((rows or fichier) and argv != ['--verifier']) or (rows and fichier):
+        sys.exit('usage : races_onglet.py --ecrire [--schema-ancien <fichier>] | --verifier [--rows <dossier> | --base <fichier.db>]')
     rows = rows or ROWS
     try:
-        db = base(rows=rows, schema_ancien=ancien)
+        db = base_fichier(fichier) if fichier else base(rows=rows, schema_ancien=ancien)
         t = lignes(extraire(db))
     except Arret as e:
         print('arrêt : %s' % e)
@@ -716,7 +734,7 @@ def main(argv):
             fh.write(migration_sql(t))
         print('%s écrite : %s' % (os.path.relpath(MIGRATION, RACINE), ', '.join('%s %d' % (k, len(v)) for k, v in t.items())))
         return 0
-    if T.version_rows(rows) != T.version_schema():
+    if not fichier and T.version_rows(rows) != T.version_schema():
         print('data/rows n\'est pas à la version du schéma : migrer d\'abord (npm run db:migrate)')
         return 1
     ecarts = verifier(db, t)

@@ -37,7 +37,7 @@ Tenu à jour par la PR de chaque lot (état : à faire, en cours, fait ; puis le
 | 10 | Des contrôles qui ne lisent plus le contenu du dépôt | XL | en cours (premier temps : essai mécanique sur un contenu fourni, tri des 444 fichiers, `docs/essai-mecanique-des-tests.md`, #375 ; la CI lit l'extrait du site de dev — job séparé porteur de la clé, artefact chiffré gardé un jour, repli annoncé sur data/rows tant que les secrets `MAVERICK_EXTRAIT_CLE` et `MAVERICK_CONTENU_CHIFFREMENT` manquent —, migrations manquantes appliquées à la copie, essai mécanique étendu, #395 ; les tests lisent le contenu fourni : pages d'exemple tenues dans `data/pages-d-exemple.sql`, base remplie des tests tirée du contenu fourni (`aide-base-de-depart`), 22 fichiers qui lisent le dépôt par nature classés jusqu'au lot 12, passe C et variantes V1 à V4 (saisies fidèles au site) et contrôles de la CI vertes, fragilités corrigées, « Copier vers le dépôt » garde les pages d'exemple, PR `feature/tests-lisent-le-contenu-fourni`) | #375, #395 |
 | — | Déménagement du serveur (préparé, repoussé) | M | préparé, non joué | |
 | 11 | Bascule 2 : mise à jour directe, pages fabriquées sur le serveur | XL | en cours, éteint (préparation sans bascule : section 15 ; serveur actuel trop petit, mesure du 2026-11-18, agrandi à 4 Go ; PR 1 : fiche d'identité du paquet, garde-fous 4, 17 et 18, PR `feature/bascule-2-preparation`) | |
-| 12 | Le dépôt ne garde plus le contenu ; ménage | L | en cours (préparation : inventaire, PR `feature/lot-12-preparation`) | |
+| 12 | Le dépôt ne garde plus le contenu ; ménage | L | en cours (inventaire #404 ; conversions, PR `feature/lot-12-preparation`) | #404 |
 ### Déménagement du serveur (préparé le 2026-11-18, repoussé)
 
 La procédure, les scripts de transfert et de contrôle et leur répétition sont prêts : `deploy/vps/DEMENAGEMENT.md`, jouée sur dossiers jetables par `client/test/deploy-demenagement.test.mjs`. Elle passerait **avant la bascule 2** (lot 11), pour ne pas cumuler deux changements risqués : la bascule 2 fait fabriquer les pages par le serveur, qui doit donc être celui qu'on garde (mesure du lot 9).
@@ -277,6 +277,14 @@ D'abord classer les 395 fichiers de test. Puis, selon votre réponse. Soit un je
 
 **État après ce lot.** Circuit inchangé. Les contrôles savent se passer de la copie du dépôt, qui est encore là.
 
+#### Questions du lot 10 (tranchées, R303)
+
+Le lot 10 a laissé trois questions au propriétaire, transmises par la session de pilotage le 2026-11-18 et posées ainsi ; il a répondu « OK RECO » (R303). Rien à coder.
+
+1. « GitHub construit tout le site depuis ton contenu pendant les tests, sans rien publier. Est-ce couvert par ton accord "pour les tests seulement" (R278) ? Reco oui. » — **Tranchée (R303) : reco acceptée.**
+2. « Le code d'une PR du dépôt pourrait lire la phrase de chiffrement. La clé ne fait que lire. Reco : accepter cette limite. » — **Tranchée (R303) : reco acceptée.**
+3. « Le nom d'une magie reste non modifiable sur le site, comme aujourd'hui (la couleur d'une magie dépend de son nom). Reco oui. » — **Tranchée (R303) : reco acceptée.**
+
 ### Lot 11 — Bascule 2 : mise à jour directe, pages fabriquées sur le serveur
 
 - **Taille** : XL · **Sans regret** : non
@@ -297,60 +305,9 @@ Après deux mises à jour réussies par le nouveau circuit. Sortent du dépôt, 
 
 **État après ce lot.** E2 est vraie : le dépôt ne porte plus que le code, la forme des tables et un jeu d'essai inventé. La cible est atteinte.
 
-<!-- inventaire-lot-12:debut -->
-#### Lot 12 — inventaire de ce qui sort (mesuré)
+#### Lot 12 — inventaire de ce qui sort (mesuré le 2026-11-18)
 
-Produit par `cd client && node scripts/inventaire-sortie-du-contenu.mjs --ecrire-docs` (`--verifier` : code 1 si cette section n'est plus à jour ; la sortie complète, avec fichier:ligne de chaque lecteur, est dans `var/inventaire-sortie/`). Rien ne sort encore : on mesure.
-
-Mesure du 2026-11-18, commit `56c1cc95`, 1745 fichiers suivis. <!--v-->
-
-**Chiffres de tête**
-
-- **35 852 634 octets (35,9 Mo)** sortent de l'arbre (lignes, anciennes migrations de données, exports des sources).
-- **292 fichiers** sortent.
-- **289 fichiers suivis** les lisent encore (dont 218 hors documentation et consignes).
-- Si les migrations qui mêlent DDL et données sortaient aussi (voir plus bas) : **+9 018 545 octets (9,0 Mo)**, **+114 fichiers**.
-
-| Catégorie | Chemins | Fichiers | Octets |
-| --- | --- | ---: | ---: |
-| Lignes des tables | `data/rows/` | 221 | 23 178 778 |
-| Anciennes migrations de données (.sql et leur registre .json) | `data/migrations/ (celles sans DDL)` | 32 | 3 157 893 |
-| Exports des sources Google | `sources/raw/` | 39 | 9 515 963 |
-| **Total** | | **292** | **35 852 634** |
-| Anciennes publications (GitHub Releases, hors de l'arbre) | 307 publications dont 303 pré-publications | 307 assets | 9 939 240 823 (9,9 Go) | <!--v-->
-
-Migrations de données : 25 `.sql` sans DDL (nature « données » de `controler-les-migrations-lib.mjs#analyserUneMigration`) et 7 registres `.json` de ces migrations. Restent : 104 migrations de structure, dont **88 mêlent DDL et instructions de données** (114 fichiers avec leurs registres, 9,0 Mo, non comptés ci-dessus : `analyserUneMigration` les classe « structure » dès qu'il y a un DDL ; 152 fichiers les citent par leur nom), et 26 registres de migration de structure. Restent aussi `sources/sources.json` (manifeste), `sources/tipeee/` (instantané livré avec le site) et `sources/discord/` (vide).
-
-**Qui les lit encore** (fichiers suivis, hors les catégories qui sortent ; un fichier compte une fois par colonne ; motifs et faux positifs : `client/scripts/inventaire-sortie-du-contenu-lib.mjs#MOTIFS`)
-
-| Famille | Fichiers | `data/rows` | Migrations de données (par nom) | `sources/raw` | Exemples |
-| --- | ---: | ---: | ---: | ---: | --- |
-| Code du site (`client/src`) | 15 | 12 | 3 | 0 | `client/src/content.config.ts`, `client/src/lib/archives.mjs`, `client/src/lib/contenu-fourni.mjs`, … |
-| Service (`client/serveur`) | 14 | 14 | 0 | 0 | `client/serveur/api.mjs`, `client/serveur/base-vivante.mjs`, `client/serveur/comparaison-de-sites.mjs`, … |
-| Scripts (`client/scripts`) | 22 | 22 | 0 | 0 | `client/scripts/autolink.mjs`, `client/scripts/baliser-mot-cle.mjs`, `client/scripts/controler-le-contenu-ecrit-lib.mjs`, … |
-| Outils (`tools/`) | 24 | 13 | 7 | 8 | `tools/bestiaire/extraire.mjs`, `tools/build-artifact.mjs`, `tools/chronologie/chronologie.mjs`, … |
-| Tests (`client/test`) | 134 | 113 | 24 | 10 | `client/test/aide-base-d-import.mjs`, `client/test/aide-base-de-depart.mjs`, `client/test/aide-maitrise-arme.mjs`, … |
-| CI (`.github`) | 2 | 2 | 0 | 0 | `.github/workflows/ci.yml`, `.github/workflows/mise-a-jour.yml` |
-| Hébergement (`deploy`) | 2 | 2 | 0 | 2 | `deploy/installateur/README.md`, `deploy/installateur/kit.mjs` |
-| Documentation (`docs`) | 25 | 22 | 13 | 10 | `docs/api.md`, `docs/bestiaire.md`, `docs/chantier-base-de-dev.md`, … |
-| Consignes (`.claude`, `CLAUDE.md`) | 46 | 35 | 7 | 12 | `.claude/agents/explorateur.md`, `.claude/agents/leader-technique.md`, `.claude/agents/tech-db.md`, … |
-| Autres (`data/`, `api/`, configuration…) | 5 | 4 | 2 | 3 | `.gitattributes`, `.gitignore`, `data/pages-d-exemple.sql`, … |
-| **Total** | **289** | | | | |
-
-Dans `client/test/` : 110 fichiers de test et 24 aides, dont 21 fichiers déjà déclarés « lit le dépôt par nature » (`essai-mecanique-tests.mjs#LIT_LE_DEPOT_PAR_NATURE`). Les 89 autres fichiers de test citent un de ces chemins sans être déclarés dans `LIT_LE_DEPOT_PAR_NATURE` : à trier un à un au lot 12.
-
-Références notées mais non comptées : 183 fichiers citent le dossier `data/migrations/` (il reste, pour la structure), 24 le manifeste `sources/sources.json` (reste), 21 `sources/tipeee/` (reste), 4 `sources/discord/`, 7 les publications GitHub (les nouvelles restent) ; 37 fichiers n'atteignent `data/rows` que par une commande ou un module (`db:build`, `db:sync-pages`, `pages_md`…).
-
-Cette section se périme à chaque copie de `data/rows` et à chaque changement des fichiers qui citent ces chemins ; `--verifier` n'est pas branché en CI : on la régénère avant de s'en servir.
-
-Faux positifs connus :
-- `rows-join` attrape aussi `join(tmp, 'rows')` : une copie de travail nommée `rows` (tests, mise à jour), pas `data/rows` lui-même.
-- `rows-chemin` attrape les commentaires, la documentation et les expressions régulières qui nomment `data/rows` sans le lire (le contrôle du contenu écrit à la main, par exemple).
-- `sources-raw-join` attrape `join(x, 'raw')` de toute origine ; `sources-classeurs` attrape `'classeurs'` entre guillemets (autre mot, autre dossier possible).
-- `migrations-nom` ne voit qu'un nom cité en toutes lettres (`0113-mots-cles`) : une migration citée par son seul numéro, ou un nom reconstruit, lui échappe.
-- `migrations-dossier` : le dossier `data/migrations/` reste (les migrations de structure) ; ses lecteurs ne sont pas comptés.
-- `publications-releases` attrape tout `/releases` (les nouvelles publications restent) : ses lecteurs ne sont pas comptés.
-<!-- inventaire-lot-12:fin -->
+Le détail (catégories, qui lit encore quoi, fichier:ligne) est dans `docs/lot-12-inventaire.md`, écrit par `scripts/inventaire-sortie-du-contenu.mjs` seul : mesure datée, régénérée à la demande par le lot 12 ; aucune autre PR n'a à la régénérer. Chiffres de tête à cette date (texte simple, non vérifié) : **35,9 Mo** et **292 fichiers** sortent de l'arbre ; **291 fichiers suivis** les lisent encore.
 
 ## 9. Conditions à réunir avant chaque bascule
 
@@ -687,7 +644,7 @@ C'est tout pour le serveur.
 
 ### Après la bascule 1 : les petits lots
 
-- **Les outils qui écrivaient `data/rows`.** `baliser-mot-cle.mjs` n'a plus `--appliquer` : il part d'une copie de l'extrait du jour (`--base`, défaut `var/extrait/maverick-dev.db`) et écrit un lot de changements (`--lot`, nature et décision données), contrôlé comme au dépôt, à proposer au site de dev (`POST /api/edition/lots/`). Écrivent encore `data/rows` par les chemins permis : le workflow (« Lot : » `mise-a-jour-regles.mjs`, « Copie : » `mise-a-jour-paquet.mjs`) et `db:migrate` (tables nommées par une migration de structure). Hors de ces chemins, refusés par `controle-du-contenu-ecrit` mais encore présents : `db:appliquer-edition` (`db-appliquer-edition.mjs`, dont `reparerLesTracesDeLaBase`), `db:sync-pages` (`tools/db/pages_md.py sync`), `tools/db/exporter.py` ; et, par `db:sync-pages`, ce qui écrit les `.md` du wiki : `client/scripts/autolink.mjs --write` et les importeurs (`tools/sheets/classes.py`, `races.py`, `relations-races.py`, `annexes-magie.py`, `tools/docs/codex.py`). Recommandation : les faire produire un lot de nature `source` (différence entre l'extrait du jour et la base réimportée, comme `baliser-mot-cle`) au premier réimport, plutôt qu'un lot à part maintenant.
+- **Les outils qui écrivaient `data/rows`** (état après la PR 2 du lot 12). `baliser-mot-cle.mjs` n'a plus `--appliquer` : il part d'une copie de l'extrait du jour (`--base`, défaut `var/extrait/maverick-dev.db`) et écrit un lot de changements (`--lot`, nature et décision données), contrôlé comme au dépôt, à proposer au site de dev (`POST /api/edition/lots/`). L'outil générique de ces lots est `scripts/lot-de-source.mjs` (`docs/serveur.md`, « Proposer un réimport ») : depuis l'extrait du jour et une base réimportée, un lot de nature `source`, jamais envoyé par l'outil. Ce qui en dépend : `db:sync-pages` (`scripts/db-sync-pages.mjs`) écrit un lot `source` depuis les `.md`, et `pages_md.py sync` comme `tools/db/exporter.py` refusent d'écrire `data/rows` sans `--rows <copie>` ; `autolink --write` est remplacé par `autolink --lot` ; `reparerLesTracesDeLaBase` et `db:appliquer-edition --reparer-traces` sont retirés (le premier réécrivait `data/rows`) ; `db:appliquer-edition` exige `--rows <copie>` (code 2 sans lui, rien n'est rejoué) et reste, avec le rapatriement du service, jusqu'au jour du lot 12. Écrivent encore `data/rows` par les chemins permis : le workflow (« Lot : » `mise-a-jour-regles.mjs`, « Copie : » `mise-a-jour-paquet.mjs`) et `db:migrate` (tables nommées par une migration de structure). Les importeurs (`tools/sheets/classes.py`, `races.py`, `relations-races.py`, `annexes-magie.py`, `tools/docs/codex.py`) écrivent les `.md` du wiki, que `db:sync-pages` transforme en lot ; leur reprise directe par `lot-de-source` reste à `tech-sources`.
 - **« Tout recalculer »** (#391) : les pages de magie suivent leurs tables. Restes, lot de suite : un rendu du corps entier pour les pages des armes, des armures et boucliers (aujourd'hui seulement signalées « illisibles »), des composants (signalés pour un nom changé seulement) et des potions (ni refaites ni signalées).
 - **Constat des tests** (relecture de #391 par `tech-qualite`, 2026-11-17) : dans la base vivante des tests du service (`test/serveur-edition-lots-annulation.test.mjs`, tirée de la base d'import `test/aide-base-d-import.mjs`, après un premier recalcul appliqué), la page `ressources/armes` est déjà « illisible » sans aucun changement (« ligne introuvable : BÂTON DE COMBAT › Croc d'Obsidienne ») ; `var/maverick.db`, bâti depuis `data/rows`, n'a aucun écart. Non vérifié sur l'extrait du site de dev (clé de lecture absente) : à regarder avant de refaire cette page.
 - **Code mort des refus** (#390) : retiré. À vérifier ensuite : si `lignes: []` et `tables: []` de l'état de la production (`lib/notes-de-version-rendu.mjs`, vers les lignes 258 et 263) servent encore à la page ; sinon, les retirer.

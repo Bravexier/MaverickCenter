@@ -804,8 +804,8 @@ figé de « Effectuer la mise à jour »), puis
 
 ```bash
 cd client
-npm run db:appliquer-edition -- ~/Téléchargements/journal-edition-AAAA-MM-JJ.json   # rejoue le journal sur data/rows (rien d'écrit en cas de conflit)
-npm run db:build && npm run db:check && npm test                                    # puis commit de data/rows (PR vers dev)
+npm run db:appliquer-edition -- ~/Téléchargements/journal-edition-AAAA-MM-JJ.json --rows <copie>   # rejoue le journal sur une COPIE de data/rows (rien d'écrit en cas de conflit) ; --rows est exigé
+# data/rows n'est plus commité à la main (copie du site de dev, écrite par le workflow seul) : la copie sert aux tests de rapatriement
 ```
 
 Les modifications rejouées (réappliquées ou déjà présentes) sont versées dans `historique_modification` avec `version` vide (rapatriées à la
@@ -815,8 +815,8 @@ une valeur que le site a changée.
 
 Un lot noté par un site de dev d'avant la migration 0113 nomme ses mots-clés par leur ancien id texte : le rejeu le lit en id entier
 (`ancienneEcritureDesIds`), et la trace versée aussi (`traceDAujourdhui`, serveur/edition.mjs : registre de la 0113, puis clé, puis clé quittée ;
-`libelle_cle` devient `cle` ; id inconnu laissé tel quel). `npm run db:appliquer-edition -- --reparer-traces` refait cette mise à jour sur les traces
-déjà versées (idempotent ; seul `historique_modification.sql` change).
+`libelle_cle` devient `cle` ; id inconnu laissé tel quel). (Le mode `--reparer-traces` de `db:appliquer-edition`, qui refaisait cette mise à jour sur les traces
+déjà versées dans `data/rows`, est retiré au lot 12 : il réécrivait `data/rows`.)
 
 **Nature de chaque trace** (migration 0127, lot 6 du chantier de la base de dev, garde-fou 11). `modification_lot` et `historique_modification` portent
 `nature` (`saisie`, `source`, `decision`, `migration`, `code`) et `decision` (le numéro « R275 », présent si et seulement si la nature est `decision`). La
@@ -1145,6 +1145,26 @@ et produit le même site qu'avant.
   Pas d'ajout pour la variante qui les retire (`HIDE_EXAMPLES=1` : `ouvrirBase({ sansExemples })`, `db-export-pages`) : le kit de l'atelier, toujours dans cette variante, n'emporte pas ce fichier.
   Le fichier est exactement ce que `db-derive --sans-exemples` retire d'une base reconstruite depuis `data/rows` (les pages, leurs enfants, les sources qu'elles seules citaient), écrit comme
   l'exporteur : `node scripts/db-pages-d-exemple.mjs [--verifier]` ; `test/pages-d-exemple.test.mjs` le compare à `data/rows` tant qu'il existe. Le cas « déjà dérivé » (`MAVERICK_CONTENU_DERIVE`) ne change pas.
+- **`npm run db:check` suit la variable** (lot 12 ; `scripts/db-check.mjs#choisirLaBase`, `test/db-check-contenu.test.mjs`) : sans base en argument et avec `MAVERICK_CONTENU`, il contrôle la **copie préparée**
+  du contenu fourni, par la voie du build (`ouvrirBase` : préparée comme ci-dessus, puis `db-derive`), jamais le fichier fourni ; sans variable, `var/maverick.db` comme avant ; une base donnée en argument l'emporte
+  sur la variable. Le JSON dit la base contrôlée (clé `base` : `origine` = `argument`, `contenu` ou `defaut`, et `chemin`). La CI ne pose pas la variable aux étapes qui lancent `db:check` (le job de simulation
+  de mise à jour et le job preparer de `mise-a-jour.yml` contrôlent `data/rows` qu'ils viennent d'écrire) : rien n'y change, dans ses deux modes.
+- **Proposer un réimport : `scripts/lot-de-source.mjs`** (lot 12 ; `test/lot-de-source.test.mjs`). L'outil générique des importeurs, de `db:sync-pages` et de `scripts/autolink.mjs --lot` : depuis une base réimportée (« après ») et
+  l'extrait du jour du site de dev (« avant », `npm run db:extrait`), il écrit un lot de changements « maverick-lot/1 » **de nature `source`**, de ce qui diffère (tables de contenu :
+  `serveur/epreuve-des-lots.mjs#differences`, `#lotDeLaDifference`), contrôlé comme au dépôt (`lib/lot-de-changements.mjs#controlerLaNature`, `#controlerLeLot`, toutes les tables ouvertes). Il **n'envoie rien** (aucune option d'envoi) :
+  le lot se propose au site de dev par un humain (`POST /api/edition/lots/`, skill `modifier-une-page-wiki`). Ligne de commande :
+  `node scripts/lot-de-source.mjs --apres <base.db> --lot <lot.json> --titre <titre> [--avant <extrait.db>] [--auteur <nom>]` (`--avant` : `var/extrait/maverick-dev.db`) ; code 0 (lot écrit, ou aucune différence : rien n'est écrit),
+  1 (lot refusé, bases incomparables), 2 (usage). API : `lotDeSource(avant, apres, { titre, auteur? })` sur deux bases ouvertes, `ecrireLeLotDeSource({ avant, apres, titre, auteur?, sortie })` sur deux fichiers,
+  `lotDeSourceParModification(avant, modifier, { titre, auteur? })` quand l'outil retouche lui-même une copie (`autolink`) ; chacune rend `{ lot, bilan }` (`lot` : null sans différence ; `bilan` : opérations par table).
+  Les deux bases doivent être comparables : même structure (`user_version`), mêmes pages d'exemple (le site de dev n'en a pas : bâtir l'« après » sans elles, `db-derive --sans-exemples`), l'« avant » de la ligne de commande étant une copie de l'extrait
+  préparée comme celle du build (`db-preparer-contenu.mjs` : migrations du dépôt manquantes, sans exemples) ; une table sans clé primaire qui diffère est refusée. Comme `scripts/baliser-mot-cle.mjs` (qui s'en sert : `lotDesChangements`), le lot ne porte pas les colonnes dérivées
+  (`serveur/edition.mjs#colonneDerivee`, refaites par le service) et range les mots-clés créés d'abord.
+- **Pages modifiées ou réimportées : `npm run db:sync-pages`** (`scripts/db-sync-pages.mjs`, lot 12 ; `test/db-pages-du-site.test.mjs`). Il n'écrit plus `data/rows` :
+  `npm run db:sync-pages -- --lot <lot.json> --titre <titre> [--avant <extrait.db>] [--wiki <dossier>] [--auteur <nom>]` copie l'extrait (préparé, sans exemples), y reporte les `.md` par
+  `tools/db/pages_md.py sync --base <copie>` (mêmes refus qu'avant : page ajoutée ou retirée hors des familles `docs` et `exemple`, provenance changée), puis écrit le lot `source` par
+  `lot-de-source.mjs#ecrireLeLotDeSource`. Les `.md` de départ viennent du même extrait (`MAVERICK_CONTENU=<extrait> npm run db:export-pages`), sinon le lot défait ce que le site a changé.
+  `pages_md.py sync` sans `--base` ni copie de lignes (`--rows <copie>`, pour les tests) est refusé, et `tools/db/exporter.py` refuse `data/rows` (`--rows <dossier>` exigé) : le workflow
+  (`mise-a-jour-regles.mjs`, `mise-a-jour-paquet.mjs`, `mise-a-jour-github.mjs`) exporte dans un dossier de travail puis recopie lui-même ; `db:migrate` passe par `migrer.py`.
 - **Essai mécanique des tests** (`scripts/essai-mecanique-tests.mjs`, usage en tête ; variantes : `scripts/essai-variantes.mjs` ; résultat du premier essai : `docs/essai-mecanique-des-tests.md`) :
   chaque fichier de test lancé seul sur un contenu donné. Passes A et B (contenu reconstruit depuis `data/rows`, puis rendu factice), **C** (l'extrait du site de dev, `npm run db:extrait`,
   sans le dépôt) et **V1 à V5** (variantes de l'extrait, chacune une modification que le site de dev permet, notée dans `historique_modification` comme une saisie : V1 icônes sur

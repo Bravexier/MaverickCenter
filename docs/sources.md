@@ -122,7 +122,8 @@ Le chemin utilisé est en deux temps, rejouable :
 2. **JSON → pages Markdown** : un extracteur déterministe par famille de pages, `tools/sheets/<famille>.py`
    (bibliothèque standard uniquement), qui écrit `client/src/content/wiki/<catégorie>/<slug>.md` avec
    `status: draft` et une entrée `sources:` qui désigne l'onglet d'origine. Ces `.md` sont un dossier de travail (fabriqué depuis la base
-   par `npm run db:export-pages`, ignoré par git) : après l'extracteur, `npm run db:sync-pages` recopie les pages modifiées dans `data/rows`, qui est ce qu'on commite.
+   par `npm run db:export-pages`, ignoré par git) : après l'extracteur, `npm run db:sync-pages -- --lot <lot.json> --titre <titre>` en tire un lot de
+   changements de nature `source`, à proposer au site de dev (circuit d'un importeur, ci-dessous). Aucun extracteur n'écrit `data/rows`.
 
 **Les étiquettes (`tags:`) qu'écrit un extracteur** ne sont posées que si un mot-clé du glossaire a la même écriture (`tools/db/maverick.py#mot_cle` :
 un import n'en crée jamais). Un mot-clé créé plus tard peut donc faire poser par le prochain import une étiquette qui ne l'était pas : la liste commune
@@ -193,6 +194,24 @@ classeur rapproché (`sources/raw/classeurs/`, plus bas), qui est la référence
 Les extracteurs sont relançables, mais **ils écrasent les pages qu'ils génèrent** : retoucher une page à la main
 puis relancer l'extracteur perd la retouche. Passer le statut en `verified` une fois la page relue, et ne plus
 relancer l'extracteur sur ces pages.
+
+### Du fichier source à la base de dev (circuit d'un importeur)
+
+Lot 12 du chantier « base de dev = source de vérité » (R274, R278 ; `docs/chantier-base-de-dev.md`) : un réimport ne s'écrit plus dans `data/rows`
+(copie du site de dev, écrite par le workflow seul). Il se **propose** au site de dev comme un lot de changements de nature `source`. Les importeurs
+`tools/sheets/classes.py`, `races.py`, `relations-races.py`, `annexes-magie.py` et `tools/docs/codex.py` n'écrivent que des `.md` (dans `--out`, par défaut
+`client/src/content/wiki`) ; aucun n'appelle `sync` ni l'exporteur. Le circuit, depuis `client/` :
+
+1. `npm run db:extrait` : l'extrait du jour du site de dev (`var/extrait/maverick-dev.db`, clé de lecture) ;
+2. `MAVERICK_CONTENU=../var/extrait/maverick-dev.db npm run db:export-pages` : les `.md` de départ, ceux du site (sinon le lot défait ce que le site a changé) ;
+3. l'importeur écrit ses `.md` (ses options `--vocabulaire` ; voir ci-dessous) ;
+4. `npm run db:sync-pages -- --lot <lot.json> --titre <titre> [--avant <extrait.db>]` : reporte les `.md` dans une copie de l'extrait et écrit le lot `source` de ce qui
+   diffère (`scripts/lot-de-source.mjs`) ; **il n'envoie rien** ;
+5. un humain propose le lot au site de dev (`POST /api/edition/lots/`, skill `modifier-une-page-wiki`) ; le propriétaire peut l'annuler ligne à ligne (R291).
+
+Le vocabulaire des mots-clés (`--vocabulaire`, `data/rows/mot_cle.sql` par défaut) est une lecture : sans `data/rows`, on l'exporte de l'extrait,
+`python3 -I ../tools/db/exporter.py ../var/extrait/maverick-dev.db --rows <dossier>`, puis `--vocabulaire <dossier>/mot_cle.sql`. Pour `codex.py`, `--base <fichier.db>` lit
+l'historique et le vocabulaire de la base elle-même (le vérificateur : voir `codex.md`). Un test de nature « dépôt » ne lit pas ce circuit : il lui faut `data/rows`.
 
 ### Rapprochement d'un classeur (dans les deux sens)
 

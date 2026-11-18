@@ -2,7 +2,7 @@
 
 Ne lis jamais `docs/decisions-regles.md` en entier : trouve ici le numéro de la décision, puis cherche sa ligne avec Grep (motif `^\| R41 \|`) et ne lis qu'elle.
 
-Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 302 décisions, de R1 à R302, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
+Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 303 décisions, de R1 à R303, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
 
 | Réf. | Sujet | Décision |
 | --- | --- | --- |
@@ -308,3 +308,4 @@ Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas mo
 | R300 | Attaques de monstre sans type ou de type générique (`docs/sql/a-valider.md… | (a) : pas de type tant que le document n'en écrit pas… |
 | R301 | Ligne « Arme de la créature : EP… » de 40 cartes de monstre (`docs/sql/a-v… | (b) : la ligne « Arme de la créature » reste en texte,… |
 | R302 | Application de R294 sur la fiche de personnage (« point 1 (fiche) A ou B,… | B : rien ne change ; le lien de R294 sur la fiche se l… |
+| R303 | Les trois questions laissées par le lot 10 (suite de R278). (1) « GitHub c… | Les trois recommandations sont acceptées : (1) oui ; (… |

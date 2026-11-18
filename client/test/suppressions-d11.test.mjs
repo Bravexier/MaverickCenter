@@ -1,11 +1,11 @@
 // Non-régression (relecture de D11) : les tests qui lisent des spécialités et des dons importés ne cassent pas quand le propriétaire en supprime depuis
 // le site de dev. La PR de « Effectuer la mise à jour » n'est fusionnée que si npm test est vert (scripts/mise-a-jour-github.mjs, CONTROLES_DE_LA_CI) :
 // une suppression légitime ne doit pas bloquer la livraison. Un journal qui supprime une spécialité et un don de chaque forme (ceux que des tests
-// prennent en exemple quand ils existent) est rapatrié sur une copie de data/rows (db:appliquer-edition), puis ces fichiers de test tournent sur cette
+// prennent en exemple quand ils existent) est rapatrié sur une copie des lignes de départ (aide-base-de-depart : data/rows, ou l'export du contenu fourni ; db:appliquer-edition), puis ces fichiers de test tournent sur cette
 // copie (MAVERICK_ROOT : la base qu'ils construisent par lib/donnees.mjs vient de ses lignes).
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { copyFileSync, cpSync, mkdirSync } from 'node:fs';
+import { copyFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -14,12 +14,13 @@ import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.
 import { enregistrer } from '../serveur/edition.mjs';
 import { journalExporte } from '../serveur/edition-journal.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
+import { baseDeDepart, copieDesRowsDeDepart } from './aide-base-de-depart.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
 const CLIENT = join(RACINE, 'client');
 const sansPython = spawnSync('python3', ['--version']).error ? 'python3 absent' : false;
-/** Les fichiers de test qui prennent en exemple des spécialités et des dons importés, lus dans la base construite depuis data/rows. */
+/** Les fichiers de test qui prennent en exemple des spécialités et des dons importés, lus dans la base construite depuis les lignes de la copie. */
 const FICHIERS = ['corps-classes', 'serveur-edition-corps', 'serveur-edition-classes', 'classes-dons', 'potentiel-illimite', 'serveur-edition-rejeu-corps']
   .map((f) => `test/${f}.test.mjs`);
 
@@ -60,15 +61,16 @@ test('une spécialité et un don de chaque forme supprimés depuis le site puis 
   mkdirSync(join(racine, 'client', 'scripts'), { recursive: true });
   mkdirSync(join(racine, 'data'));
   for (const f of ['schema.sql', 'derive.sql']) copyFileSync(join(RACINE, 'data', f), join(racine, 'data', f));
-  cpSync(join(RACINE, 'data', 'rows'), join(racine, 'data', 'rows'), { recursive: true });
+  copieDesRowsDeDepart(join(racine, 'data', 'rows'));
   for (const f of ['db-build.mjs', 'db-derive.mjs', 'db-lib.mjs']) copyFileSync(join(CLIENT, 'scripts', f), join(racine, 'client', 'scripts', f));
   const application = appliquerJournal(journal, { rows: join(racine, 'data', 'rows') });
   assert.equal(application.ecrit, true, JSON.stringify(application.conflits));
 
   const env = { ...process.env, MAVERICK_ROOT: racine, MAVERICK_LIB: join(CLIENT, 'src', 'lib') };
   delete env.NODE_TEST_CONTEXT; // un lanceur de tests à part entière, pas un enfant du lanceur en cours
-  // les enfants lisent les lignes réécrites de ce dépôt, jamais un contenu fourni (lib/contenu-fourni.mjs) : ce test lit data/rows par nature (F3)
-  delete env.MAVERICK_CONTENU;
+  // les enfants lisent les lignes réécrites de ce dépôt de travail, par la voie du contenu fourni (lib/contenu-fourni.mjs) : une base construite depuis ces
+  // lignes (ni data/rows du dépôt, ni l'extrait de la CI) ; le dépôt de travail garde ses lignes pour MAVERICK_ROOT
+  env.MAVERICK_CONTENU = baseDeDepart(join(tmp, 'apres-rapatriement.db'), { rows: join(racine, 'data', 'rows') });
   delete env.MAVERICK_CONTENU_DERIVE;
   const r = spawnSync(process.execPath, ['--no-warnings', '--test', '--test-reporter=tap', ...FICHIERS], { cwd: CLIENT, encoding: 'utf8', env, maxBuffer: 64 * 1024 * 1024 });
   const echecs = r.stdout.split('\n').filter((l) => /^not ok /.test(l) || /^\s+(error|location):/.test(l));

@@ -3,9 +3,9 @@
 Une page = un fichier Markdown `client/src/content/wiki/<catégorie>/<slug>.md`.
 
 > **Ces fichiers ne sont plus dans git** : ils sont fabriqués depuis la base (`data/rows`) par `npm run db:export-pages`, lancé automatiquement avant `dev`, `build` et `test`.
-> Pour modifier une page : éditer son `.md` fabriqué, puis `npm run db:sync-pages` (dans `client/`) et commiter `data/rows`. Pour créer ou supprimer une page à la main, c'est possible
+> Pour modifier une page : éditer son `.md` fabriqué, puis `npm run db:sync-pages -- --lot <lot.json> --titre <titre>` (dans `client/`) : il écrit un lot de changements de nature `source` à proposer au site de dev, jamais `data/rows` (skill `modifier-une-page-wiki`). Pour créer ou supprimer une page à la main, c'est possible
 > pour les familles `docs` (provenance « Google Doc … ») et `exemple` (`status: example`) ; pour les autres (magies, classes, races…), l'importeur de la famille crée ses pages.
-> `npm run autolink -- --write` modifie les `.md` fabriqués : le faire suivre d'un `npm run db:sync-pages`. Voir `docs/sql/remplissage.md`.
+> `npm run autolink -- --lot <lot.json> --titre <titre>` écrit un lot de changements de nature `source` (`--write` est retiré, lot 12) : voir « Maillage automatique » ci-dessous.
 Les catégories sont définies dans `client/src/lib/types.mjs` (`races`, `classes`, `magies`, `bestiaire`, `ressources`,
 `metiers`, `guide`, `lore`, `cartes`) ; chacune correspond à un salon Discord.
 
@@ -2047,10 +2047,12 @@ Le texte du deuxième.
 
 Après un import, `npm run autolink` (depuis `client/`) propose de baliser les mentions d'un **mot-clé à adresse** dans le texte des pages : son
 libellé, ou le titre ou un alias de la page où il mène quand il est le seul mot-clé à y mener. La mention devient `{{clé}}` (le libellé) ou
-`{{clé|texte}}` (forme canonique) ; jamais un `[[…]]`. Les mots-clés et leurs adresses sont lus dans la base reconstruite depuis `data/rows` ; une page
+`{{clé|texte}}` (forme canonique) ; jamais un `[[…]]`. Les mots-clés, leurs adresses et le corps des pages (`page.corps_md`) sont lus dans la base de `lib/donnees.mjs#ouvrirBase` : le contenu fourni
+(`MAVERICK_CONTENU`, l'extrait du jour du site de dev) ou, sans lui, la base reconstruite depuis `data/rows` ; une page
 sans mot-clé n'est pas une cible (le maillage ne crée jamais de mot-clé ; l'aperçu les compte, `--verbose` les liste). **Sans option, il n'écrit
-rien** : il affiche les statistiques et les 40 premières balises ; `npm run autolink -- --write` les applique dans les `.md` fabriqués (puis
-`npm run db:sync-pages`), `-- --verbose` liste tout. Règles (précision d'abord) :
+rien** : il affiche les statistiques et les 40 premières balises. `npm run autolink -- --lot <lot.json> --titre <titre>` écrit les balises en **lot de changements de nature
+`source`** (`scripts/lot-de-source.mjs` : une opération `modifier` sur `page.corps_md` par page maillée), à proposer au site de dev par un humain (`POST /api/edition/lots/`,
+skill `modifier-une-page-wiki`) : l'outil n'envoie rien et n'écrit ni les `.md` ni `data/rows` (`--write` est retiré). `--lot` exige l'extrait du jour, nommé (`--avant <extrait.db>`, sinon `MAVERICK_CONTENU`, sinon `var/extrait/maverick-dev.db` s'il existe ; sinon refus, code 2) : jamais `data/rows` en silence. `-- --verbose` liste tout. Règles (précision d'abord) :
 
 - une seule balise par mot-clé dans une page (une balise déjà écrite compte), jamais vers la page elle-même ni pour un terme de son propre nom ;
 - rien dans le frontmatter, les titres, les tableaux, le code, les balises, liens et URLs existants ;

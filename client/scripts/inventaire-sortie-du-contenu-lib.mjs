@@ -4,7 +4,7 @@
  * migrations de `controler-les-migrations-lib.mjs`.
  *
  * Pur autant que possible : `mesurer` lit l'arbre suivi par git d'une racine, le reste prend des valeurs. Le script est
- * `scripts/inventaire-sortie-du-contenu.mjs` ; le document est `docs/chantier-base-de-dev.md` (section entre les deux marqueurs).
+ * `scripts/inventaire-sortie-du-contenu.mjs` ; le document est `docs/lot-12-inventaire.md`, écrit par le script seul (en-tête, puis la section entre les deux marqueurs).
  */
 import { execFileSync } from 'node:child_process';
 import { lstatSync, readFileSync } from 'node:fs';
@@ -458,7 +458,7 @@ export function rendreLaSection(m) {
   l.push(MARQUEUR_DEBUT);
   l.push('#### Lot 12 — inventaire de ce qui sort (mesuré)');
   l.push('');
-  l.push(`Produit par ${c(COMMANDE)} (\`--verifier\` : code 1 si cette section n'est plus à jour ; la sortie complète, avec fichier:ligne de chaque lecteur, est dans \`var/inventaire-sortie/\`). Rien ne sort encore : on mesure.`);
+  l.push(`Produit par ${c(COMMANDE)} (\`--verifier\` : dit si cette section est périmée, code 0 ; \`--strict\` : code 1 ; la sortie complète, avec fichier:ligne de chaque lecteur, est dans \`var/inventaire-sortie/\`). Rien ne sort encore : on mesure.`);
   l.push('');
   l.push(`Mesure du ${m.mesure.date}, commit ${c(m.mesure.commit ?? 'inconnu')}, ${m.mesure.fichiers_suivis} fichiers suivis.${SUFFIXE_VOLATIL}`);
   l.push('');
@@ -504,13 +504,23 @@ export function rendreLaSection(m) {
   l.push('');
   l.push(`Références notées mais non comptées : ${r.migrations_dossier} fichiers citent le dossier \`data/migrations/\` (il reste, pour la structure), ${r.sources_manifeste} le manifeste \`sources/sources.json\` (reste), ${r.sources_tipeee} \`sources/tipeee/\` (reste), ${r.sources_discord} \`sources/discord/\`, ${r.publications} les publications GitHub (les nouvelles restent) ; ${m.lectures_indirectes_de_rows} fichiers n'atteignent \`data/rows\` que par une commande ou un module (\`db:build\`, \`db:sync-pages\`, \`pages_md\`…).`);
   l.push('');
-  l.push('Cette section se périme à chaque copie de `data/rows` et à chaque changement des fichiers qui citent ces chemins ; `--verifier` n\'est pas branché en CI : on la régénère avant de s\'en servir.');
+  l.push('Cette section se périme à chaque copie de `data/rows` et à chaque changement des fichiers qui citent ces chemins ; `--verifier` informe, `--strict` n\'est branché nulle part : le lot 12 la régénère à la demande, aucune autre PR n\'a à le faire.');
   l.push('');
   l.push('Faux positifs connus :');
   for (const f of m.faux_positifs_connus) l.push(`- ${f}`);
   l.push(MARQUEUR_FIN);
   return l.join('\n');
 }
+
+/** L'en-tête du document de l'inventaire (rien n'y cite un chemin du contenu : il est lu comme le reste du dépôt). */
+export const EN_TETE_DU_DOCUMENT = `# Lot 12 — inventaire de ce qui sort du dépôt
+
+> Mesure datée, régénérée à la demande par le lot 12 ; aucune autre PR n'a à la régénérer. Fichier écrit par \`scripts/inventaire-sortie-du-contenu.mjs\` seul : ne pas l'éditer à la main.
+> Le plan du chantier est dans \`docs/chantier-base-de-dev.md\`.
+`;
+
+/** Le document entier : l'en-tête, puis la section entre ses marqueurs. */
+export const rendreLeDocument = (mesure) => `${EN_TETE_DU_DOCUMENT}\n${rendreLaSection(mesure)}\n`;
 
 /** Remplace le bloc entre les marqueurs. Lève une erreur si les marqueurs manquent ou sont dans le désordre. */
 export function remplacerLaSection(document, section) {

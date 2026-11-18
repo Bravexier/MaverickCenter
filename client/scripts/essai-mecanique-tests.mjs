@@ -482,31 +482,15 @@ function trierAB(A, B) {
  * leur échec sur C est attendu jusqu'au lot 12 (data/rows quitte le dépôt, l'ancien circuit est retiré), et le tri les range à part des échecs inattendus.
  * Familles : F3 les outils de l'ancien circuit, qui écrivent ou relisent data/rows ; F4 les invariants « table des fiches vide dans data/rows » ;
  * F5 les outils Python qui lisent data/rows. `tests` : les tests du fichier concernés (les autres passent C). Un nom absent de client/test/ fait échouer
- * test/essai-mecanique.test.mjs.
+ * test/essai-mecanique.test.mjs. Lot 12 (PR 2) : F4 est vide (l'invariant se vérifie sur le contenu qui fait foi : test/aide-base-de-depart.mjs#lignesDuContenu),
+ * `races-onglet` (races_onglet.py --verifier --base), `db-pages-du-site` (sync dans une base de travail, puis un lot source), `codex` (codex.py --verifier --base) et `races-magies-innees-liste` (rapatriement dans une copie des lignes de départ) en sont sortis.
  */
 export const LIT_LE_DEPOT_PAR_NATURE = Object.freeze({
   'db-donnees.test.mjs': { famille: 'F3', raison: 'db:export-pages, db:build et db:derive depuis data/rows (au chargement du fichier), puis db:check sur la base construite', tests: 'tous' },
-  'db-pages-du-site.test.mjs': { famille: 'F3', raison: 'db:sync-pages écrit data/rows et le compare à lui-même', tests: 'tous' },
-  'db-appliquer-edition.test.mjs': { famille: 'F3', raison: 'db:appliquer-edition rejoue le journal sur data/rows', tests: 'tous' },
-  'db-appliquer-edition-familles.test.mjs': { famille: 'F3', raison: 'R159 : une famille rapatriée dans data/rows par db:appliquer-edition', tests: 'tous' },
-  'db-appliquer-edition-traces-0113.test.mjs': { famille: 'F3', raison: 'db:appliquer-edition et --reparer-traces sur data/rows', tests: '3, 4' },
-  'serveur-edition-rapatriement.test.mjs': { famille: 'F3', raison: 'rapatriement et réécriture de data/rows (db:appliquer-edition, db:sync-pages)', tests: '1, 3, 4' },
   'mise-a-jour-paquet.test.mjs': { famille: 'F3', raison: 'la mise à jour et la copie vers le dépôt écrivent data/rows', tests: '2 à 5' },
   'mise-a-jour-regles.test.mjs': { famille: 'F3', raison: 'la mise à jour des règles écrit data/rows (note, historique, fichiers permis)', tests: '2 à 9' },
-  'mise-a-jour-simulation.test.mjs': { famille: 'F3', raison: 'simulation de la mise à jour sur data/rows', tests: 'tous' },
-  'baliser-mot-cle.test.mjs': { famille: 'F3', raison: 'exception temporaire : copie de data/rows en direct (baliser-mot-cle.test.mjs:103, 145), module tenu par une autre session ; à convertir par test/aide-base-de-depart.mjs quand elle aura fini', tests: '3, 7, 8' },
-  'suppressions-d11.test.mjs': { famille: 'F3', raison: 'suppressions rapatriées dans data/rows, puis tests relancés dessus', tests: 'tous' },
-  'races-magies-innees-liste.test.mjs': { famille: 'F3', raison: 'R31 : races_onglet.py --verifier après rapatriement dans data/rows', tests: '1' },
   'pages-d-exemple.test.mjs': { famille: 'F3', raison: 'voulu : le fichier des pages d’exemple est comparé à data/rows, dont il est tiré', tests: '1' },
   'contenu-fourni.test.mjs': { famille: 'F3', raison: 'voulu : sans la variable, le build exige data/rows (vérifié en la retirant)', tests: '2' },
-  'personnages-db.test.mjs': { famille: 'F4', raison: 'les tables des fiches sont vides dans data/rows', tests: '1' },
-  'db-0118-specialisation-de-la-fiche.test.mjs': { famille: 'F4', raison: 'la table de la fiche est vide dans data/rows', tests: '6' },
-  'db-0128-lots-de-changements.test.mjs': { famille: 'F4', raison: 'les tables des lots sont vides dans data/rows', tests: '1' },
-  'db-0129-migrations-recues.test.mjs': { famille: 'F4', raison: 'migration_recue est vide dans data/rows', tests: '1' },
-  'db-r173-compteurs-d-actions.test.mjs': { famille: 'F4', raison: 'R173 : personnage_action_usage vide dans data/rows', tests: '1' },
-  'db-r181-dons-variables.test.mjs': { famille: 'F4', raison: 'R181 : personnage_don_obtenu vide dans data/rows', tests: '4' },
-  'codex.test.mjs': { famille: 'F5', raison: 'tools/docs/codex.py --verifier et l’historique lus dans data/rows', tests: '1, 2, 4, 8' },
-  'races-onglet.test.mjs': { famille: 'F5', raison: 'tools/db/races_onglet.py --verifier relit data/rows', tests: '1' },
 });
 
 const DESCRIPTION_DES_PASSES = {

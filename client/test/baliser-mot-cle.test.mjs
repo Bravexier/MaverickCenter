@@ -1,6 +1,6 @@
 // L'outil qui pose les balises d'un mot du glossaire dans les textes de la base (scripts/baliser-mot-cle.mjs ; demande du propriétaire du 2026-10-17 :
 // « Transforme dans tous les textes le mot "Chakra" (ou chakra) en mot clé », puis « Barrière ») : les textes qu'il réécrit (ceux que le site de dev
-// modifie, jamais un nom ni une rubrique de carte découpée), puis, sur une copie de data/rows et un mot d'essai, le chemin entier : mot-clé créé par le
+// modifie, jamais un nom ni une rubrique de carte découpée), puis, sur les lignes de départ (aide-base-de-depart : data/rows, ou l’export du contenu fourni) et un mot d’essai, le chemin entier : mot-clé créé par le
 // service, textes réécrits sans que rien ne change à l'écran (le texte sans balises est celui d'avant), lot de changements à proposer au site de dev
 // (bascule 1), journal rejoué sans conflit sur la copie ; puis
 // (2026-10-18 : « Seulement là où il est pertinent ») un second passage qui retire les balises là où le mot n'a plus le sens du mot-clé, et l'entrée de
@@ -8,7 +8,7 @@
 // R143 et R146).
 //   node --test test/baliser-mot-cle.test.mjs
 import assert from 'node:assert/strict';
-import { cpSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -23,10 +23,10 @@ import { GABARIT_DE_CARTE, SENS_DEFENSE } from '../src/lib/monstre-champs.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { spawnSync } from 'node:child_process';
 import { essayerLeLot } from '../serveur/edition-lots.mjs';
+import { copieDesRowsDeDepart, rowsDeDepart } from './aide-base-de-depart.mjs';
 import { extraitDEssai } from './aide-contenu-fourni.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
-const ROWS = fileURLToPath(new URL('../../data/rows', import.meta.url));
 const tmp = dossierTemporaire('baliser');
 
 test('textes réécrits : les champs « texte » et « markdown » du site de dev et quatre phrases d’une ligne ; ni nom, ni titre, ni définition', () => {
@@ -59,7 +59,7 @@ test('noms qui contiennent le mot : avec un autre mot, jamais le mot seul ni le 
 
 test('chemin entier sur une copie de data/rows (mot d’essai) : mot-clé créé, textes balisés sans rien changer à l’écran, lot à proposer, journal sans conflit', () => {
   const mot = { libelle: 'Initiative d’essai', motif: 'initiatives?', description: 'Mot-clé d’essai de test/baliser-mot-cle.test.mjs.', exclus: ['initiative de la cible'] };
-  const { journal, rapport, lot } = baliser([mot], { rows: ROWS, lot: { titre: 'Baliser un mot d’essai', nature: 'code' } });
+  const { journal, rapport, lot } = baliser([mot], { rows: rowsDeDepart(), lot: { titre: 'Baliser un mot d’essai', nature: 'code' } });
   const [m] = rapport.motsCles;
   assert.equal(m.cree, true);
   // le lot de changements à proposer au site de dev (bascule 1, R274, R275 (4)) : le mot-clé inséré avec un numéro à donner, puis les textes réécrits,
@@ -73,7 +73,7 @@ test('chemin entier sur une copie de data/rows (mot d’essai) : mot-clé créé
   assert.ok(modifiees.some((o) => Object.values(o.apres).some((v) => typeof v === 'string' && v.includes(`{{${m.id}`))), 'au moins un texte balisé');
   assert.ok(modifiees.every((o) => Object.keys(o.avant).join() === Object.keys(o.apres).join()));
   assert.ok(!lot.operations.some((o) => o.operation === 'supprimer'), 'baliser ne supprime rien');
-  assert.throws(() => baliser([mot], { rows: ROWS, lot: { titre: 'x', nature: 'decision' } }), /décision|decision/i, 'une décision sans son numéro est refusée');
+  assert.throws(() => baliser([mot], { rows: rowsDeDepart(), lot: { titre: 'x', nature: 'decision' } }), /décision|decision/i, 'une décision sans son numéro est refusée');
   const vocabulaire = [...chargerVocabulaire(ouvrirBase({ sansExemples: false })), { id: m.id, libelle: m.libelle }];
   const lots = journal.lots;
   let comparees = 0;
@@ -100,7 +100,7 @@ test('chemin entier sur une copie de data/rows (mot d’essai) : mot-clé créé
   // l'écriture exclue, si un texte l'écrit encore (le site de dev peut le réécrire), est laissée et dite (lib/glossaire-balisage.mjs, testé à part)
   for (const i of rapport.colonnes.flatMap((c) => c.ignorees).filter((x) => /initiative de la cible/i.test(x.raison))) assert.equal(i.raison, 'écriture exclue « initiative de la cible »');
   const rows = join(tmp, 'rows');
-  cpSync(ROWS, rows, { recursive: true });
+  copieDesRowsDeDepart(rows);
   const r = appliquerJournal(journal, { rows });
   assert.deepEqual(r.conflits, []);
   assert.equal(r.ecrit, true);
@@ -142,7 +142,7 @@ test('second passage (copie de data/rows, mot d’essai) : seules partent les ba
   const mot = { libelle: 'Initiative d’essai bis', motif: 'initiatives?', description: 'Mot-clé d’essai de test/baliser-mot-cle.test.mjs.',
     exclus: { 'écriture d’essai': ['initiative de la cible'] } };
   const rows = join(tmp, 'rows-second-passage');
-  cpSync(ROWS, rows, { recursive: true });
+  copieDesRowsDeDepart(rows);
   // les textes où le mot se lit, posés ici (le site de dev réécrit librement les textes de la base : aucun n'est sûr de dire « initiative ») : une page du
   // guide, et une description de classe au bonus chiffré, chacune lue par son id
   const courante = ouvrirBase({ sansExemples: false });
@@ -193,7 +193,7 @@ test('une écriture exclue ou un contexte qui cite un mot précédent de l’ent
   assert.throws(() => baliser([
     { libelle: 'Initiative d’essai ter', motif: 'initiatives?', description: 'Essai.' },
     { libelle: 'Vitesse d’essai', motif: 'vitesses?', description: 'Essai.', exclus: ['vitesse et initiative'] },
-  ], { rows: ROWS }), /cite « Initiative d’essai ter »/);
+  ], { rows: rowsDeDepart() }), /cite « Initiative d’essai ter »/);
 });
 
 test('entrée de la Corruption : Chakra et Barrière repris (leurs écritures exclues comprises), « CR » écrit avec sa casse (R103, R140), contextes et textes valides', () => {

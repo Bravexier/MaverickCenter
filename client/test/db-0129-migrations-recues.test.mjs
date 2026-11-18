@@ -8,6 +8,7 @@ import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
+import { lignesDuContenu } from './aide-base-de-depart.mjs';
 import { rejouerLaMigration } from './aide-migration-rejouee.mjs';
 import { CLASSES_DE_TABLES, classeDeLaTable, TABLES_DU_JOURNAL } from '../src/lib/tables-de-la-base.mjs';
 import { TABLES_VIVANTES } from '../serveur/base-vivante.mjs';
@@ -49,7 +50,7 @@ function essayer(l) {
   }
 }
 
-test('structure : une table STRICT à la fin de la section 14, « propre au site », recopiée par la base vivante, vide dans data/rows', () => {
+test('structure : une table STRICT à la fin de la section 14, « propre au site », recopiée par la base vivante, vide dans le contenu qui fait foi (contenu fourni, sinon data/rows)', () => {
   const debut14 = SCHEMA.indexOf('-- 14. ÉDITION');
   const debut15 = SCHEMA.indexOf('-- 15. NOTES DE VERSION');
   const section14 = [...SCHEMA.slice(debut14, debut15).matchAll(/^CREATE TABLE (\w+)/gm)].map((m) => m[1]);
@@ -57,7 +58,8 @@ test('structure : une table STRICT à la fin de la section 14, « propre au site
   assert.deepEqual([...TABLES_DU_JOURNAL], section14, 'lib/tables-de-la-base.mjs#TABLES_DU_JOURNAL, dans l’ordre du schéma');
   assert.equal(classeDeLaTable(TABLE), CLASSES_DE_TABLES.PROPRE_AU_SITE, 'jamais dans un extrait ni un paquet');
   assert.ok(TABLES_VIVANTES.includes(TABLE), 'serveur/base-vivante.mjs#TABLES_VIVANTES : recopiée à la reconstruction');
-  assert.doesNotMatch(readFileSync(new URL(`data/rows/${TABLE}.sql`, RACINE), 'utf8'), /INSERT/, 'la base du dépôt ne reçoit rien');
+  const { source, lignes } = lignesDuContenu(TABLE);
+  assert.equal(lignes, 0, `aucune migration reçue dans ${source} : un contenu ne porte pas ce qu’une base a reçu`);
   const db = baseNeuve();
   try {
     assert.equal(db.prepare('SELECT strict FROM pragma_table_list WHERE name = ?').get(TABLE).strict, 1);

@@ -100,6 +100,7 @@ export function buildTerms(cibles, { minChars = 4, ignore = [] } = {}) {
     const [cible] = entry.cibles.values();
     terms.push({
       id: cible.id,
+      ...(cible.cle ? { cle: cible.cle } : {}), // la balise cite la clé (R232 (3)) : sans elle, `autolink` écrirait l'id entier, que db:check et le service refusent
       libelle: cible.libelle,
       page: cible.page ?? null,
       term: entry.term,
