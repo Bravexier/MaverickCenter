@@ -1,8 +1,8 @@
-// Les lots de changements sur la page « Mise à jour » du site de dev (src/scripts/mise-a-jour.mjs, rendu lib/lots-rendu.mjs ; R275, question 4 a : « Chaque lot
-// attend votre clic sur le site de dev, avec un aperçu avant et après. »), le script exécuté dans un faux navigateur contre un faux service : la section avant
-// les conflits, l'aperçu avant et après, les décisions à ouvrir (« Appliquer » inactif tant que la case n'est pas cochée), la confirmation avant d'appliquer
-// (rien n'est envoyé avant elle), le corps du clic, le bilan, l'erreur 409 lisible, « Refuser », « Refaire l'essai », « Annuler ce lot » (l'aperçu d'abord, puis
-// la confirmation), « Tout recalculer », et rien en production ni sans le service. Aucun texte figé : la structure et les données.
+// Les modifications de l'équipe sur la page « Mise à jour » du site de dev (src/scripts/mise-a-jour.mjs, rendu lib/lots-rendu.mjs ; R291 : « Juste un bout "annuler
+// cette modification" sur chaque ligne du patchnote » ; propositions encore en attente : R275, question 4 a), le script exécuté dans un faux navigateur contre un
+// faux service : la section avant les conflits, les lignes d'un changement appliqué avec « Annuler cette modification » (l'aperçu d'abord, la confirmation, rien
+// n'est envoyé avant elle, le corps du clic, le 409 dit sous la ligne), les propositions en attente (aperçu, décisions à ouvrir, confirmation, « Refuser »,
+// « Refaire l'essai »), « Tout recalculer », l'alerte des retraits (R292), et rien en production ni sans le service. Aucun texte figé : la structure et les données.
 //   node --test test/mise-a-jour-lots.test.mjs
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
@@ -20,7 +20,13 @@ const lot = (id, plus = {}) => ({
   id, depose_le: '2026-11-14T10:00:00Z', titre: `Lot ${id}`, nature: 'decision', decision: 'R275', auteur: 'une session', etat: 'propose', decide_le: null, lot_id: null, annule_le: null,
   operations: 1, verdict: 'applicable', essai: essai('applicable', [operation(1, 'applicable')]), bilan: null, verrous_ouverts: null, contenu: { operations: [] }, ...plus,
 });
-const resume = ({ essai: _e, bilan: _b, contenu: _c, verrous_ouverts: _v, ...reste }) => reste;
+const resume = ({ essai: _e, bilan: _b, contenu: _c, verrous_ouverts: _v, lignes: _l, lignes_indisponibles: _i, ...reste }) => reste;
+const ligne = (n, plus = {}) => ({
+  n, table: 'Métiers', ligne: `Ligne ${n}`, genre: 'modifier', colonnes: [colonne('Description', `avant ${n}`, `après ${n}`)],
+  etat: 'en_place', annulable_seule: true, motif: null, depend_de: [], ...plus,
+});
+/** Un changement appliqué aussitôt (clé de dépôt), avec ses lignes. */
+const direct = (id, lignes, plus = {}) => lot(id, { etat: 'applique', decide_le: '2026-11-14T12:00:00Z', lot_id: `L-${id}`, application: { directe: true, par: 'cle_de_depot' }, essai: null, lignes, ...plus });
 
 /**
  * La page construite, le faux service (`routes` : « METHODE chemin » → réponse, ou fonction du corps ; `[statut, corps]` pour une erreur), le script chargé.
@@ -81,8 +87,8 @@ async function monter(lots, extra = {}) {
   return { racine, etat, envois, section, article, clic, dialogue, confirmer, ecritures, cocher };
 }
 
-test('après les listes de la note en préparation et avant les conflits, la section des lots ; le détail est lu pour les lots à décider et les appliqués récents', async () => {
-  const page = await monter([lot('a'), lot('b', { etat: 'refuse' }), lot('c', { etat: 'applique', decide_le: '2026-11-14T12:00:00Z', lot_id: 'L1', bilan: { ecrites: 1, changees: 0, operations: [{ rang: 1, etat: 'ecrite' }] } })]);
+test('après les listes de la note en préparation et avant les conflits, la section des modifications ; le détail est lu pour les propositions en attente et les appliqués récents', async () => {
+  const page = await monter([lot('a'), lot('b', { etat: 'refuse' }), direct('c', [ligne(1)])]);
   const dev = page.racine.querySelector('[data-nv-dev]');
   const s = page.section();
   assert.ok(s && !s.hidden, 'la section');
@@ -98,6 +104,9 @@ test('après les listes de la note en préparation et avant les conflits, la sec
   // l'aperçu avant et après du lot à décider
   assert.equal(page.article('a').querySelectorAll('.nv-lot-ligne').length, 1);
   assert.deepEqual([...page.article('a').querySelectorAll('.nv-version__texte')].map((v) => v.textContent), ['avant 1', 'après 1']);
+  // les lignes du changement appliqué, avec leur bouton
+  assert.equal(page.article('c').querySelectorAll('li.nv-lot-ligne').length, 1);
+  assert.equal(page.article('c').querySelectorAll('button[data-nv-annuler-ligne]').length, 1);
   // aucune écriture au chargement
   assert.equal(page.ecritures().length, 0);
 });
@@ -221,49 +230,113 @@ test('« Refuser » demande confirmation, puis rien n’est écrit : le lot pass
   assert.deepEqual(page.ecritures().map(([k]) => k), ['POST edition/lots/r/refuser/', 'POST edition/lots/e/essai/']);
 });
 
-test('« Annuler ce lot » : l’aperçu de l’annulation d’abord (rien n’est envoyé), puis la confirmation qui l’exécute ; « Renoncer » referme', async () => {
-  const applique = lot('z', { etat: 'applique', decide_le: '2026-11-14T12:00:00Z', lot_id: 'L1', bilan: { ecrites: 1, changees: 0, operations: [{ rang: 1, etat: 'ecrite' }] } });
+test('« Annuler cette modification » : l’aperçu d’abord, la confirmation ensuite (rien n’est envoyé avant) ; « Revenir en arrière » ne change rien ; la ligne annulée est relue', async () => {
   const apercu = {
-    verdict: 'verrous', verrous_a_ouvrir: ['R219'], comptes: { remises: 1, gardees: 1, deja: 0, verrouillees: 0, refusees: 0 },
-    operations: [
-      { rang: 1, genre: 'modifier', etat: 'remise', apercu: { table: 'Métiers', ligne: 'Remise', colonnes: [colonne('Description', 'maintenant', 'avant')] } },
-      { rang: 2, genre: 'modifier', etat: 'gardee', ecarts: [{ colonne: 'c_Description', ecrite: 'écrit', avant: 'avant', trouvee: 'trouvée' }], apercu: { table: 'Métiers', ligne: 'Gardée', colonnes: [colonne('Description', 'trouvée', 'avant')] } },
-    ],
+    verdict: 'applicable', verrous_a_ouvrir: [], ligne: { n: 2 }, comptes: { remises: 1, gardees: 0, deja: 0, verrouillees: 0, refusees: 0 },
+    operations: [{ rang: 2, genre: 'modifier', etat: 'remise', apercu: { table: 'Métiers', ligne: 'Ligne 2', colonnes: [colonne('Description', 'maintenant', 'avant le changement')] } }],
   };
-  const page = await monter([applique], {
-    'GET edition/lots/z/annulation/': apercu,
-    'POST edition/lots/z/annuler/': (corps, etat) => {
-      etat.lots = etat.lots.map((l) => (l.id === 'z' ? { ...l, etat: 'annule', annule_le: '2026-11-14T13:00:00Z', bilan: { ...l.bilan, annulation: { remises: 1, gardees: 1, deja: 0, operations: [{ rang: 2, etat: 'gardee', ecarts: [{ colonne: 'c_Description', ecrite: 'écrit', avant: 'avant', trouvee: 'trouvée' }] }] } } } : l));
+  const page = await monter([direct('z', [ligne(1), ligne(2)])], {
+    'GET edition/lots/z/lignes/2/annulation/': apercu,
+    'POST edition/lots/z/lignes/2/annuler/': (corps, etat) => {
+      etat.lots = etat.lots.map((l) => (l.id === 'z' ? { ...l, lignes: l.lignes.map((x) => (x.n === 2 ? { ...x, etat: 'annulee', annulable_seule: false, annulee: { annule_le: '2026-11-15T09:00:00Z', lot_id: 'L2' } } : x)) } : l));
       return etat.lots[0];
     },
   });
-  assert.equal(page.article('z').querySelectorAll('[data-nv-annulation]').length, 0);
-  await page.clic(page.article('z').querySelector('[data-nv-annuler]'));
-  // l'aperçu est montré ; rien n'est envoyé
-  assert.ok(page.envois.some(([k]) => k === 'GET edition/lots/z/annulation/'));
+  const boutons = () => [...page.article('z').querySelectorAll('button[data-nv-annuler-ligne]')];
+  assert.equal(boutons().length, 2);
+  // le clic : l'aperçu est lu, la confirmation s'ouvre avec ce que l'annulation remettrait ; rien n'est écrit
+  await page.clic(boutons()[1]);
+  assert.ok(page.envois.some(([k]) => k === 'GET edition/lots/z/lignes/2/annulation/'));
+  assert.ok(page.dialogue()?.ouvert, 'la confirmation');
+  assert.equal(page.ecritures().length, 0, 'rien n’est envoyé avant la confirmation');
+  assert.deepEqual([...page.dialogue().querySelectorAll('.nv-version__texte')].map((v) => v.textContent), ['maintenant', 'avant le changement']);
+  // revenir en arrière : la boîte se ferme, rien n'est envoyé
+  page.dialogue().querySelector('[value="annuler"]').dispatchEvent(new Event('click'));
+  await fini();
+  assert.equal(page.dialogue(), null);
   assert.equal(page.ecritures().length, 0);
-  const zone = () => page.article('z').querySelector('[data-nv-annulation]');
-  assert.deepEqual([...zone().querySelectorAll('li.nv-lot-ligne')].map((l) => l.dataset.nvEtatLigne), ['remise', 'gardee']);
-  assert.ok(zone().textContent.includes('trouvée'));
-  // « Renoncer » referme, sans rien envoyer ; on rouvre
-  await page.clic(zone().querySelector('[data-nv-renoncer]'));
-  assert.equal(page.article('z').querySelectorAll('[data-nv-annulation]').length, 0);
-  await page.clic(page.article('z').querySelector('[data-nv-annuler]'));
-  // la décision à ouvrir : la confirmation est inactive jusqu'à la case
-  const confirmation = () => zone().querySelector('[data-nv-confirmer-annulation]');
+  // confirmer : le POST de cette ligne seule, avec la liste (vide) des décisions ouvertes ; la page est relue, la ligne n'a plus de bouton
+  await page.clic(boutons()[1]);
+  await page.confirmer();
+  assert.deepEqual(page.ecritures(), [['POST edition/lots/z/lignes/2/annuler/', { verrous_ouverts: [] }]]);
+  assert.equal(page.dialogue(), null);
+  assert.ok(page.envois.filter(([k]) => k === 'GET mise-a-jour/').length >= 2, 'la note en préparation est relue');
+  assert.deepEqual(boutons().map((b) => b.getAttribute('data-nv-annuler-ligne')), ['1'], 'la ligne annulée n’a plus de bouton');
+  assert.equal(page.article('z').querySelector('li[data-nv-ligne="2"]').dataset.nvEtatLigne, 'annulee');
+  assert.ok(page.section().querySelector('[data-nv-lots-message]').textContent.includes('Ligne 2'), 'le message nomme la ligne annulée');
+});
+
+test('« Annuler cette modification » avec une décision à ouvrir : la boîte porte la case, rien ne part tant qu’elle n’est pas cochée, puis le corps porte la décision cochée', async () => {
+  const apercu = { verdict: 'verrous', verrous_a_ouvrir: ['R219'], comptes: { remises: 1 }, operations: [{ rang: 1, genre: 'modifier', etat: 'remise', apercu: { table: 'Métiers', ligne: 'Ligne 1', colonnes: [colonne('Description', 'a', 'b')] } }] };
+  const page = await monter([direct('v', [ligne(1)])], {
+    'GET edition/lots/v/lignes/1/annulation/': apercu,
+    'POST edition/lots/v/lignes/1/annuler/': (corps, etat) => etat.lots[0],
+  });
+  await page.clic(page.article('v').querySelector('button[data-nv-annuler-ligne]'));
+  const confirmation = () => page.dialogue().querySelector('[data-nv-confirmer-ligne]');
   assert.equal(confirmation().hasAttribute('disabled'), true);
-  await page.clic(confirmation());
-  assert.equal(page.ecritures().length, 0, 'un bouton inactif ne part pas');
-  const caseACocher = zone().querySelector('[data-nv-verrou="R219"]');
-  page.cocher(caseACocher, true);
+  // une confirmation sans la case : rien ne part, la boîte reste ouverte
+  await page.confirmer();
+  assert.equal(page.ecritures().length, 0);
+  assert.ok(page.dialogue()?.ouvert);
+  const caseACocher = page.dialogue().querySelector('[data-nv-verrou="R219"]');
+  const cocherDansLaBoite = (valeur) => {
+    caseACocher.checked = valeur;
+    const e = new Event('change', { cancelable: true });
+    Object.defineProperty(e, 'target', { value: caseACocher });
+    page.dialogue().dispatchEvent(e);
+  };
+  cocherDansLaBoite(true);
   assert.equal(confirmation().hasAttribute('disabled'), false);
-  await page.clic(confirmation());
-  assert.deepEqual(page.ecritures(), [['POST edition/lots/z/annuler/', { verrous_ouverts: ['R219'] }]]);
-  // le lot passe dans l'historique, le message nomme la ligne gardée
-  assert.equal(page.section().querySelectorAll('[data-nv-lots-appliques] [data-nv-lot-id="z"]').length, 0);
-  assert.equal(page.section().querySelectorAll('[data-nv-lots-historique] [data-nv-lot-id="z"]').length, 1);
-  const message = page.section().querySelector('[data-nv-lots-message]');
-  assert.ok(message.textContent.includes('Gardée') && message.textContent.includes('trouvée'));
+  cocherDansLaBoite(false);
+  assert.equal(confirmation().hasAttribute('disabled'), true);
+  cocherDansLaBoite(true);
+  await page.confirmer();
+  assert.deepEqual(page.ecritures(), [['POST edition/lots/v/lignes/1/annuler/', { verrous_ouverts: ['R219'] }]]);
+});
+
+test('une ligne qui ne s’annule pas seule : son motif, pas de bouton, aucune lecture ni écriture ; un aperçu refusé ou un 409 se dit sous la ligne, rien n’est annulé', async () => {
+  const lignes = [ligne(1, { annulable_seule: false, motif: 'Cette ligne ne s’annule pas seule : tenue par une autre.', depend_de: [2] }), ligne(2), ligne(3)];
+  const page = await monter([direct('m', lignes)], {
+    'GET edition/lots/m/lignes/2/annulation/': [409, { erreur: 'Refusé par le service pour l’aperçu' }],
+    'GET edition/lots/m/lignes/3/annulation/': { verdict: 'applicable', verrous_a_ouvrir: [], comptes: { remises: 1 }, operations: [] },
+    'POST edition/lots/m/lignes/3/annuler/': [409, { erreur: 'Ligne 3 refusée : une autre ligne du changement la tient', depend_de: [1] }],
+  });
+  const li = (n) => page.article('m').querySelector(`li[data-nv-ligne="${n}"]`);
+  assert.equal(li(1).querySelectorAll('button').length, 0);
+  assert.ok(li(1).querySelector('[data-nv-motif]').textContent.includes('ne s’annule pas seule'));
+  // l'aperçu refusé : le message est sous la ligne, aucune boîte
+  await page.clic(li(2).querySelector('button[data-nv-annuler-ligne]'));
+  assert.equal(page.dialogue(), null);
+  assert.ok(li(2).querySelector('[data-nv-ligne-message]').textContent.includes('Refusé par le service pour l’aperçu'));
+  assert.equal(page.ecritures().length, 0);
+  // un 409 au clic : son message sous la ligne, le changement relu, la ligne garde son bouton
+  await page.clic(li(3).querySelector('button[data-nv-annuler-ligne]'));
+  await page.confirmer();
+  assert.equal(page.ecritures().length, 1);
+  assert.ok(li(3).querySelector('[data-nv-ligne-message]').textContent.includes('une autre ligne du changement la tient'));
+  assert.equal(li(3).querySelectorAll('button[data-nv-annuler-ligne]').length, 1);
+  assert.equal(li(3).querySelector('[data-nv-ligne-message]').classList.contains('nv-message--erreur'), true);
+});
+
+test('R292 : une alerte avant « Effectuer la mise à jour » quand des éléments retirés sont cités par des fiches de la production ; rien si l’attestation n’est pas lue ou si rien ne bloque ; le texte venu du service ne s’exécute pas', async () => {
+  const piege = '<img src=x onerror=alert(1)>';
+  const retraits = (plus) => ({ 'GET mise-a-jour/': { ...NOTE, retraits_bloquants: { connu: true, attestee_le: '2026-11-17T10:00:00Z', fiches_au_moins: 3, fiches_au_plus: 4, message: 'Un message du service.', elements: [{ table: 'race', id: 'r1', nom: piege, libelle: `Race « ${piege} »`, fiches: 3 }, { table: 'magie', id: 'm1', nom: 'M', libelle: 'Magie « M »', fiches: 1 }], ...plus } } });
+  const page = await monter([], retraits({}));
+  const place = page.racine.querySelector('[data-nv-retraits]');
+  const alerte = place.querySelector('[role="alert"]');
+  assert.ok(alerte, 'l’alerte');
+  assert.equal(alerte.querySelectorAll('li').length, 2, 'un élément par ligne');
+  assert.ok(alerte.textContent.includes('Un message du service.') && alerte.textContent.includes('3') && alerte.textContent.includes(piege), 'le message, le nombre de fiches, le nom tel quel');
+  assert.equal(alerte.querySelectorAll('img').length, 0);
+  // avant le bouton qui lance
+  const dev = page.racine.querySelector('[data-nv-dev]');
+  assert.ok(dev.children.indexOf(place) < dev.children.indexOf(dev.querySelector('[data-nv-lancer]').parentElement), 'avant « Effectuer la mise à jour »');
+  // rien : attestation non lue, aucun élément, champ absent
+  for (const extra of [retraits({ connu: false }), retraits({ elements: [] }), { 'GET mise-a-jour/': NOTE }]) {
+    const sans = await monter([], extra);
+    assert.equal(sans.racine.querySelector('[data-nv-retraits]').children.length, 0);
+  }
 });
 
 test('« Tout recalculer » : rien à recalculer est dit sans lot ; un lot déposé s’affiche parmi ceux à décider', async () => {

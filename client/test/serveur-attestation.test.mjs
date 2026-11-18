@@ -10,7 +10,7 @@ import { test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import {
-  INTERVALLE_DE_L_ATTESTATION_MS, TOLERANCE_DE_LA_MISE_A_JOUR_MS, citationsDesFiches, ecrireAttestation, empreintesDuFichier, etatDeLaProduction, fabriquerAttestation, fichierAttestation, lireAttestation,
+  INTERVALLE_DE_L_ATTESTATION_MS, TOLERANCE_DE_LA_MISE_A_JOUR_MS, retraitsBloquantsPourLaProduction, citationsDesFiches, ecrireAttestation, empreintesDuFichier, etatDeLaProduction, fabriquerAttestation, fichierAttestation, lireAttestation,
 } from '../serveur/attestation.mjs';
 import { demarrerService } from '../serveur/service.mjs';
 import { enregistrerFiche } from '../serveur/fiches.mjs';
@@ -236,6 +236,64 @@ test('GET /api/mise-a-jour/ porte `etat_production` : l’état de la production
   assert.equal(lire().corps.etat_production.etat, 'pas_appliquee');
   // production : la page n'existe pas
   assert.equal(traiter({ methode: 'GET', chemin: '/api/mise-a-jour/', entetes: {} }, { ...service, edition: false }).statut, 403);
+});
+
+test('R292 : une race, une classe ou une magie que des fiches de la production citent et que le site de dev n’a plus est dite avant la livraison (nombres et nom seulement) ; un don, un métier retirés ne le sont pas (la production les adapte)', (t) => {
+  const { dossier, regles, db, poses } = nouvelleBase(t);
+  const metriques = join(dossier, 'metriques');
+  const production = sitePublie(dossier, regles);
+  const propre = join(dossier, 'db', 'vivante.db');
+  // la production a une fiche qui cite une magie et une classe (en plus de la race et du métier des fiches sentinelles)
+  const magie = db.prepare('SELECT id FROM magie ORDER BY id LIMIT 1').get().id;
+  const classe = db.prepare('SELECT id FROM classe ORDER BY id LIMIT 1').get().id;
+  db.prepare('UPDATE personnage SET magie_innee_id = ? WHERE id = ?').run(magie, poses.pretire);
+  db.prepare('INSERT INTO personnage_classe (personnage_id, classe_id, rang) VALUES (?, ?, 1)').run(poses.pretire, classe);
+  ecrire(metriques, db, regles);
+  const citees = citationsDesFiches(db);
+  const fiches = (table, id) => citees.find((c) => c.table === table && c.id === id).fiches;
+  // le contenu du site de dev : la copie des règles, sans ces trois-là (clés étrangères coupées : seule leur présence se lit) et sans le métier cité
+  const dev = join(dossier, 'dev.db');
+  copyFileSync(regles, dev);
+  const contenuDev = new DatabaseSync(dev);
+  contenuDev.exec('PRAGMA foreign_keys = OFF');
+  for (const [table, id] of [['race', poses.race], ['magie', magie], ['classe', classe], ['metier', poses.metier]]) contenuDev.prepare(`DELETE FROM ${table} WHERE id = ?`).run(id);
+  t.after(() => contenuDev.close());
+
+  const r = retraitsBloquantsPourLaProduction({ dossier: metriques, db: contenuDev, production, propre });
+  assert.equal(r.connu, true);
+  assert.deepEqual(r.elements.map((e) => e.table).sort(), ['classe', 'magie', 'race'], 'ni le métier ni un don : la production les adapte (R42, R280)');
+  const race = r.elements.find((e) => e.table === 'race');
+  const nomDeLaRace = db.prepare('SELECT nom FROM race WHERE id = ?').get(poses.race).nom;
+  assert.equal(race.id, poses.race);
+  assert.equal(race.fiches, fiches('race', poses.race));
+  assert.equal(race.nom, nomDeLaRace, 'le nom, lu dans le contenu que la production publie');
+  assert.ok(race.libelle.includes(nomDeLaRace));
+  assert.equal(r.fiches_au_plus, r.elements.reduce((n, e) => n + e.fiches, 0));
+  assert.equal(r.fiches_au_moins, Math.max(...r.elements.map((e) => e.fiches)));
+  assert.match(r.message, /ne s’y appliquerait pas/);
+  assert.ok(r.message.includes(nomDeLaRace));
+  // aucun nom ni identifiant de fiche, de compte ou de groupe
+  const texte = JSON.stringify(r);
+  for (const marque of marquesDesFiches(poses)) assert.ok(!texte.includes(marque), `« ${marque} » ne doit pas sortir`);
+  assert.deepEqual(Object.keys(race), ['table', 'id', 'nom', 'libelle', 'fiches']);
+
+  // la même route que la page : GET /api/mise-a-jour/
+  const service = { base: () => contenuDev, etat: () => ({ version: '1.1.0' }), edition: true, dossier: join(dossier, 'db'), reference: { production, depot: null, propre }, attestations: metriques };
+  const vu = traiter({ methode: 'GET', chemin: '/api/mise-a-jour/', entetes: {} }, { ...service, base: () => contenuDev });
+  assert.equal(vu.statut, 200, JSON.stringify(vu.corps).slice(0, 300));
+  assert.deepEqual(vu.corps.retraits_bloquants.elements.map((e) => e.table).sort(), ['classe', 'magie', 'race']);
+
+  // le site de dev a tout ce que la production cite : rien à dire (connu : on a lu l'attestation)
+  const complet = retraitsBloquantsPourLaProduction({ dossier: metriques, db, production, propre });
+  assert.deepEqual([complet.connu, complet.elements, complet.fiches_au_plus, complet.message], [true, [], 0, '']);
+  // pas d'attestation, ou pas de base : on ne sait pas, sans erreur
+  assert.equal(retraitsBloquantsPourLaProduction({ dossier: join(dossier, 'vide'), db: contenuDev, production, propre }).connu, false);
+  assert.equal(retraitsBloquantsPourLaProduction({ dossier: null, db: contenuDev }).connu, false);
+  assert.equal(retraitsBloquantsPourLaProduction({ dossier: metriques, db: null }).connu, false);
+  // sans le contenu publié par la production, le nom manque : l'identifiant le remplace
+  const sansNom = retraitsBloquantsPourLaProduction({ dossier: metriques, db: contenuDev, production: null });
+  assert.equal(sansNom.elements.find((e) => e.table === 'race').nom, null);
+  assert.ok(sansNom.elements.find((e) => e.table === 'race').libelle.includes(poses.race));
 });
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------------

@@ -9,7 +9,7 @@ user-invocable: false
 ## Fichiers
 - Page : `src/pages/mise-a-jour.astro` (menu Outils), `src/scripts/mise-a-jour.mjs`, `styles/mise-a-jour/`.
 - Notes de version : `lib/notes-de-version.mjs`, `lib/notes-de-version-sens.mjs` (couleurs R29), `lib/notes-de-version-rendu.mjs`.
-- Lots de changements proposés : rendu pur `lib/lots-rendu.mjs`, monté par `src/scripts/mise-a-jour.mjs`.
+- Modifications de l'équipe (lots) : rendu pur `lib/lots-rendu.mjs`, monté par `src/scripts/mise-a-jour.mjs`.
 - Service : `serveur/notes-de-version.mjs` (note en préparation, lot figé, états du lancement), `serveur/paquet.mjs` (paquet, report).
 - Scripts : `scripts/db-reference.mjs` (base de master), `scripts/mise-a-jour-regles.mjs` (rejeu du lot sur `data/rows`), `scripts/mise-a-jour-paquet.mjs` (même rôle pour un paquet), `scripts/mise-a-jour-github.mjs` (phases du workflow), `scripts/mise-a-jour-simulation.mjs` (lot synthétique de la CI).
 - Workflow : `.github/workflows/mise-a-jour.yml` ; job `simulation-de-mise-a-jour` de `ci.yml`.
@@ -38,17 +38,20 @@ user-invocable: false
 ## Circuit actif : paquet et copie (base source, `db/source`)
 Le site de dev porte le marqueur (skill `zone-service`) : toute mise à jour, simulation ou copie passe par un paquet. Sa base n'est jamais refaite : plus de rejeu ni de lot en conflit sur le site de dev. `data/rows` n'est tenu à jour que par ce circuit (copie et mise à jour), et la CI le lit (R278).
 - « Effectuer la mise à jour », la Simulation et « Copier vers le dépôt » figent un **paquet** à la place du lot : `serveur/paquet.mjs`, `fabriquerPaquet` à partir de `fabriquerExtrait` (skill `zone-service-extrait`), servi octet pour octet à `GET /api/mise-a-jour/lots/<lot>/`, ouvert sans clé comme le lot figé. La base source n'est pas écrite (« préparée, pas livrée »).
-- Refus avant l'envoi (409 `refus`) pour une seule raison : attestation de la production absente ou périmée. Un élément retiré que des fiches citent ne fait jamais refuser (R280) : la production adapte la fiche et le note (R42 et suites). Le refus ne dit que des nombres, jamais un nom de fiche.
+- Refus avant l'envoi (409 `refus`) pour une seule raison : attestation de la production absente ou périmée. Un élément retiré que des fiches citent ne fait pas refuser l'envoi (R280) : la production adapte la fiche et le note (R42 et suites), sauf une race, une classe ou une magie, dont la production garde sa base d'avant (R292 ; alerte ci-dessous). Le refus ne dit que des nombres, jamais un nom de fiche.
 - Job `preparer` : `scripts/mise-a-jour-paquet.mjs` recontrôle (codes 2 à 6) et tire `data/rows` du paquet. La table `page` se juge page par page : une page libre changée sans la trace de sa ligne est refusée.
 - Job `livrer` : liste blanche = `tables_de_contenu` du paquet (plus les notes) ; il réexporte le paquet par `python3 -I tools/db/exporter.py` et compare les **empreintes d'octets** (même ensemble de fichiers, jamais un texte décodé) ; toujours ni npm ni `node_modules`. Les constantes recopiées dans `mise-a-jour-github.mjs` sont comparées par le test.
 - Copie (`POST /api/mise-a-jour/copier/`, mot `COPIER VERS LE DEPOT`) : commit « Copie : » (jamais « Lot : »), fusion dans `dev` seulement, jamais l'étape master (`if: !inputs.copie`), aucune maintenance (skill `zone-maintenance`) ; ses modifications restent en attente.
 - Report (`reporterPaquet`) : idempotent, en une transaction, refusé sur une base plus ancienne que le paquet.
 - Page : « Copier vers le dépôt » seulement si `base_source` ; les refus se disent par `messageDuRefus` ; une copie terminée reste dans l'encart (`lancementAffiche`) ; « reportée le … ».
 
-## Lots de changements proposés (R274, R275)
-- R275 (question 4 a) : « Chaque lot attend votre clic sur le site de dev, avec un aperçu avant et après. » Section `[data-nv-lots]` entre les listes de la note en préparation et les conflits, qui restent derniers (`zone.append(sectionDesLots(), sectionDesConflits())`).
-- `charger()` lit `GET edition/lots/` ; 401, 403 ou 404 (production, service sans les lots, mot de passe annulé) cachent la section ; toute autre erreur est dite. Le détail n'est lu que pour les lots à décider et les 10 appliqués les plus récents (`APPLIQUES_RECENTS`).
-- « Appliquer » demande confirmation (`<dialog>`), une case par décision verrouillée : le bouton reste inactif tant qu'elle n'est pas cochée, le clic envoie `verrous_ouverts`. Aussi « Refuser » (confirmation), « Refaire l'essai », « Annuler ce lot » (aperçu, puis « Oui, annuler ce lot ») et « Tout recalculer ». Après un clic, `charger()` relit la note : les modifications du lot y comptent.
+## Modifications de l'équipe (R274, R275, R291, R292)
+- R291 : un lot déposé avec la clé de dépôt est appliqué aussitôt (skill `zone-edition-lots`) ; la page montre les changements ligne par ligne, comme les notes de version. Section `[data-nv-lots]` « Modifications de l'équipe » entre les listes de la note en préparation et les conflits, qui restent derniers (`zone.append(sectionDesLots(), sectionDesConflits())`).
+- `charger()` lit `GET edition/lots/` ; 401, 403 ou 404 (production, service sans les lots, mot de passe annulé) cachent la section ; toute autre erreur est dite. Le détail n'est lu que pour les propositions en attente et les 10 appliqués les plus récents (`APPLIQUES_RECENTS`).
+- Un changement appliqué montre ses lignes (`lignes` du détail), chacune avec « Annuler cette modification » : un clic affiche l'aperçu, puis un `<dialog>` de confirmation (mot de passe, par `scripts/acces.mjs`). Le bouton n'existe que si la ligne est `en_place` et `annulable_seule` ; sinon la page dit le `motif`. Plus d'« Annuler ce lot » sur la page.
+- « Appliquer » et « Refuser » (confirmation ; une case par décision verrouillée, le bouton reste inactif tant qu'elle n'est pas cochée, le clic envoie `verrous_ouverts`) ne servent que les propositions en attente, dans `[data-nv-lots-attente]`, présent seulement s'il en reste (clé de dépôt non posée). Aussi « Refaire l'essai » et « Tout recalculer ». Après un clic, `charger()` relit la note.
+- Un dépôt refusé (`refus`) laisse une trace repliée `[data-nv-lots-refus]`, avec ses motifs.
+- R292 : `retraits_bloquants` (`GET /api/mise-a-jour/`, `attestation.mjs#retraitsBloquantsPourLaProduction`) donne l'alerte `[data-nv-retraits]` avant « Effectuer la mise à jour » (race, classe ou magie retirée qu'une fiche de la production cite : elle garde sa base d'avant) ; rien si `connu` est faux (`notes-de-version-rendu.mjs#affichageDesRetraits`). Test : `notes-de-version-retraits`.
 - Aucun jargon sur la page (ni « nature », ni « opération ») ; toute valeur est échappée.
 
 ## Invariants

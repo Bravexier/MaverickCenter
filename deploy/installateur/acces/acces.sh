@@ -6,8 +6,13 @@
 # Sans option : demande un mot de passe (deux fois, sans écho) et le pose. Le site de dev le demande alors pour modifier une page, enregistrer un
 # prétiré, lancer une mise à jour ou sa simulation, lever la maintenance ; la lecture des pages reste libre. La première fois, la commande fabrique aussi
 # une clé de lecture, affichée UNE SEULE FOIS à l'écran : c'est ce que reçoivent les sessions de Claude (en-tête X-Maverick-Key ou X-Maverick-Cle) pour lire le journal
-# d'édition, la page Debug et l'API /api/v1/. Elle ne permet jamais d'écrire. Changer le mot de passe ferme toutes les sessions ouvertes et garde la clé.
+# d'édition, la page Debug et l'API /api/v1/. Elle n'écrit jamais dans le contenu (au plus, tant que la clé de dépôt n'est pas posée, elle dépose une proposition qui attend
+# votre clic). Changer le mot de passe ferme toutes les sessions ouvertes et garde les clés.
 #   --cle                  refait la clé de lecture et l'affiche une seule fois ; l'ancienne ne marche plus
+#   --cle-de-depot         pose (ou refait) la CLÉ DE DÉPÔT et l'affiche une seule fois (R291). Tant qu'elle n'est pas posée, la clé de lecture dépose une proposition
+#                          qui attend votre clic. Une fois posée, la clé de dépôt (ou le mot de passe) dépose un lot que le site APPLIQUE AUSSITÔT, et la clé de
+#                          lecture ne dépose plus. À donner aux sessions de Claude, jamais à la CI ni à GitHub (qui n'ont que la clé de lecture)
+#   --sans-cle-de-depot    retire la clé de dépôt : retour à l'état sûr (la clé de lecture dépose de nouveau une proposition qui attend le clic)
 #   --portee ecriture|tout « ecriture » (par défaut) : le mot de passe protège les écritures ; « tout » : un seul mot de passe pour tout le site (le
 #                          service demande alors la connexion aussi pour ses lectures ; les pages ne se ferment que si Caddy interroge
 #                          /api/acces/verifier/ : docs/serveur.md, « Accès au site de dev »). Les sessions ouvertes sont fermées
@@ -28,13 +33,15 @@ INSTANCE=${MAVERICK_ACCES_DOSSIER:-$(cd "$ICI/.." && pwd)}
 ESSAI=${MAVERICK_ESSAI:-0}
 SECRETS=$INSTANCE/secrets
 FICHIER=$SECRETS/acces.json
-USAGE="Usage : sudo sh $0 [--cle | --portee ecriture|tout | --etat | --retirer]"
+USAGE="Usage : sudo sh $0 [--cle | --cle-de-depot | --sans-cle-de-depot | --portee ecriture|tout | --etat | --retirer]"
 
 ACTION=mot_de_passe
 PORTEE=''
 while [ $# -gt 0 ]; do
   case "$1" in
     --cle) ACTION=cle; shift ;;
+    --cle-de-depot) ACTION=cle_de_depot; shift ;;
+    --sans-cle-de-depot) ACTION=sans_cle_de_depot; shift ;;
     --etat) ACTION=etat; shift ;;
     --retirer) ACTION=retirer; shift ;;
     --portee) [ $# -ge 2 ] || { echo "$USAGE" >&2; exit 2; }; ACTION=portee; PORTEE=$2; shift 2 ;;
@@ -63,7 +70,9 @@ if [ "$ACTION" = etat ]; then
   portee=$(sed -n 's/.*"portee":"\([a-z]*\)".*/\1/p' "$FICHIER" | head -n 1)
   cle=non
   grep -q '"cle_de_lecture":{' "$FICHIER" && cle=oui
-  echo "Accès : protégé. Portée : ${portee:-inconnue} (ecriture : le mot de passe protège les écritures ; tout : le service demande la connexion aussi pour ses lectures). Clé de lecture : $cle."
+  depot=non
+  grep -q '"cle_de_depot":{' "$FICHIER" && depot=oui
+  echo "Accès : protégé. Portée : ${portee:-inconnue} (ecriture : le mot de passe protège les écritures ; tout : le service demande la connexion aussi pour ses lectures). Clé de lecture : $cle. Clé de dépôt : $depot (oui : un lot déposé avec elle, ou avec le mot de passe, est appliqué aussitôt ; non : un dépôt attend votre clic)."
   exit 0
 fi
 if [ "$ACTION" = retirer ]; then
@@ -101,15 +110,28 @@ afficher_la_cle() { # clé
   echo "=============================================================================================="
   echo "  CLÉ DE LECTURE DU SITE DE DEV (affichée une seule fois) : donnez-la aux sessions de Claude"
   echo "  (en-tête X-Maverick-Key ou X-Maverick-Cle). Elle permet de LIRE (journal d'édition, page Debug, API /api/v1/),"
-  echo "  jamais d'écrire. Le serveur n'en garde que l'empreinte : pour en avoir une autre,"
+  echo "  jamais d'écrire dans le contenu. Le serveur n'en garde que l'empreinte : pour en avoir une autre,"
   echo "  sudo sh $0 --cle  (l'ancienne cesse de marcher)."
   echo
   echo "      $1"
   echo "=============================================================================================="
 }
-lire_la_sortie() { # sortie_de_la_commande → REGLAGE et CLE (variables globales)
+afficher_la_cle_de_depot() { # clé
+  echo "=============================================================================================="
+  echo "  CLÉ DE DÉPÔT DU SITE DE DEV (affichée une seule fois) : donnez-la aux sessions de Claude qui déposent des lots"
+  echo "  (en-tête X-Maverick-Key ou X-Maverick-Cle, le même formulaire que la clé de lecture). Elle permet de LIRE comme la clé de lecture"
+  echo "  ET de déposer un lot de changements que le site APPLIQUE AUSSITÔT (rien n'attend plus votre clic : vous annulez ensuite le lot,"
+  echo "  ou une seule de ses lignes, depuis la page Mise à jour). La clé de lecture ne dépose plus. Ne la donnez ni à la CI ni à GitHub."
+  echo "  Le serveur n'en garde que l'empreinte : sudo sh $0 --cle-de-depot en fait une autre (l'ancienne cesse de marcher),"
+  echo "  sudo sh $0 --sans-cle-de-depot revient au dépôt qui attend votre clic."
+  echo
+  echo "      $1"
+  echo "=============================================================================================="
+}
+lire_la_sortie() { # sortie_de_la_commande → REGLAGE, CLE et CLE_DE_DEPOT (variables globales)
   REGLAGE=$(printf '%s\n' "$1" | sed -n 's/^REGLAGE //p' | head -n 1)
   CLE=$(printf '%s\n' "$1" | sed -n 's/^CLE //p' | head -n 1)
+  CLE_DE_DEPOT=$(printf '%s\n' "$1" | sed -n 's/^CLE_DE_DEPOT //p' | head -n 1)
   [ -n "$REGLAGE" ] || die "le service n'a pas rendu de réglage (sortie inattendue) : rien n'a été modifié"
 }
 
@@ -137,6 +159,20 @@ case "$ACTION" in
     lire_la_sortie "$sortie"
     ecrire_le_reglage "$REGLAGE"
     afficher_la_cle "$CLE"
+    ;;
+  cle_de_depot)
+    exige_un_terminal
+    sortie=$(appeler cle-de-depot </dev/null) || die "le service a refusé : rien n'a été modifié"
+    lire_la_sortie "$sortie"
+    [ -n "$CLE_DE_DEPOT" ] || die "le service n'a pas rendu de clé de dépôt (sortie inattendue) : rien n'a été modifié"
+    ecrire_le_reglage "$REGLAGE"
+    afficher_la_cle_de_depot "$CLE_DE_DEPOT"
+    ;;
+  sans_cle_de_depot)
+    sortie=$(appeler sans-cle-de-depot </dev/null) || die "le service a refusé : rien n'a été modifié"
+    lire_la_sortie "$sortie"
+    ecrire_le_reglage "$REGLAGE"
+    echo "Clé de dépôt retirée : la clé de lecture dépose de nouveau une proposition qui attend votre clic. Rien à redémarrer."
     ;;
   portee)
     sortie=$(appeler portee "$PORTEE" </dev/null) || die "le service a refusé : rien n'a été modifié"

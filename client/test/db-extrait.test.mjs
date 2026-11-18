@@ -12,7 +12,7 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { demarrerService } from '../serveur/service.mjs';
 import {
-  DELAI_PAR_DEFAUT_S, DOSSIER_PAR_DEFAUT, ErreurExtrait, FICHIER, FICHIER_META, delaiDeLaDemande, enteteDeLaCle, refusDeLaCleEnArgument, telechargerExtrait,
+  DELAI_PAR_DEFAUT_S, DOSSIER_PAR_DEFAUT, ErreurExtrait, FICHIER, FICHIER_META, delaiDeLaDemande, enteteDeLaCle, refusDeLaCleDeDepotEnCI, refusDeLaCleEnArgument, telechargerExtrait,
 } from '../scripts/db-extrait.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
@@ -87,6 +87,17 @@ test('télécharge l’extrait du site de dev, le vérifie et l’écrit avec so
   } finally {
     apres.close();
   }
+});
+
+test('R291 : la clé de dépôt (mvd_) n’est jamais acceptée par la CI : le job de l’extrait la refuse sans la répéter, hors CI elle reste utilisable pour lire', () => {
+  assert.match(refusDeLaCleDeDepotEnCI({ GITHUB_ACTIONS: 'true', MAVERICK_EXTRAIT_CLE: 'mvd_secret' }), /clé de dépôt/);
+  assert.equal(refusDeLaCleDeDepotEnCI({ GITHUB_ACTIONS: 'true', MAVERICK_EXTRAIT_CLE: 'mvk_lecture' }), null);
+  assert.equal(refusDeLaCleDeDepotEnCI({ MAVERICK_EXTRAIT_CLE: 'mvd_secret' }), null, 'hors de la CI, une session peut lire avec la clé de dépôt (elle vaut la lecture)');
+  assert.equal(refusDeLaCleDeDepotEnCI({ GITHUB_ACTIONS: 'true' }), null);
+  const r = spawnSync(process.execPath, [fileURLToPath(new URL('../scripts/db-extrait.mjs', import.meta.url))], { encoding: 'utf8', env: { PATH: process.env.PATH, GITHUB_ACTIONS: 'true', MAVERICK_EXTRAIT_CLE: 'mvd_secret' } });
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /clé de dépôt/);
+  assert.ok(!r.stderr.includes('mvd_secret'), 'le message ne répète pas la clé');
 });
 
 test('la clé de lecture ne se donne que par MAVERICK_EXTRAIT_CLE : --cle (seule ou --cle=…) est refusé en le disant', () => {

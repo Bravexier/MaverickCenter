@@ -1,7 +1,7 @@
 // Le rendu des lots de changements (src/lib/lots-rendu.mjs) sur ce que rend VRAIMENT le service (serveur/edition-lots.mjs, base vivante d'un essai) : les noms
 // de champs que le rendu lit (`essai.operations[].apercu`, `bilan`, aperçu de l'annulation) existent, la ligne et la colonne sont dites par les noms du service
-// (jamais par leur nom technique), l'aperçu montre l'avant et l'après de la base, une valeur changée depuis est listée avec la valeur trouvée, une annulation
-// garde ce que le site a changé depuis. Aucune valeur de règle n'est figée : les lignes se prennent par ordre d'id, les textes écrits sont ceux du test.
+// (jamais par leur nom technique), l'aperçu montre l'avant et l'après de la base, une valeur changée depuis est listée avec la valeur trouvée, l'annulation
+// d'une seule ligne (R291 : `lignes` d'un changement appliqué, aperçu et clic par ligne) garde ce que le site a changé depuis. Aucune valeur de règle n'est figée : les lignes se prennent par ordre d'id, les textes écrits sont ceux du test.
 //   node --test test/lots-rendu-service.test.mjs
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
@@ -10,7 +10,7 @@ import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { texteDeValeur } from '../src/lib/conflits-rendu.mjs';
 import { FORMAT_DU_LOT } from '../src/lib/lot-de-changements.mjs';
-import { htmlDesLots, messageDeLAnnulation, messageDErreur, messageDuBilan, peutAnnuler, peutAppliquer, phraseDeLEssai } from '../src/lib/lots-rendu.mjs';
+import { htmlDeLaConfirmation, htmlDesLots, messageDeLaLigneAnnulee, messageDErreur, messageDuBilan, peutAnnuler, peutAnnulerLaLigne, peutAppliquer, phraseDeLEssai } from '../src/lib/lots-rendu.mjs';
 import { cheminDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { el } from './aide-faux-dom.mjs';
@@ -88,34 +88,67 @@ test('une valeur changée depuis l’essai : l’essai la liste avec la valeur t
   assert.equal(bilan.lignes.length, 1);
   assert.ok(bilan.lignes[0].includes(refait.essai.operations[1].apercu.ligne));
   assert.ok(bilan.lignes[0].includes(`valeur du site ${process.pid}`));
+  // R291 : le changement appliqué montre ses lignes, chacune avec son bouton « Annuler cette modification »
   const detail = ok(await m.appel('GET', adresse(lot.id)));
+  assert.ok(Array.isArray(detail.lignes) && detail.lignes.length >= 1, 'les lignes du journal du changement');
+  const ligneA = detail.lignes.find((l) => l.colonnes.some((c) => texteDeValeur(c.apres) === `texte A ${process.pid}`));
+  assert.ok(ligneA, 'la ligne A du changement');
+  assert.equal(ligneA.etat, 'en_place');
+  assert.equal(peutAnnulerLaLigne(ligneA), true);
   const appliquee = lire(htmlDesLots({ lots: [detail] })).querySelector(`[data-nv-lot-id="${lot.id}"]`);
-  assert.equal(appliquee.querySelectorAll('button[data-nv-annuler]').length, 1);
-  assert.equal(appliquee.querySelectorAll('li[data-nv-etat-ligne="changee"]').length, 1, 'le bilan liste la ligne gardée');
-  // l'aperçu de l'annulation : la ligne A est remise
-  const avant = ok(await m.appel('GET', adresse(lot.id, 'annulation/')));
+  assert.equal(appliquee.querySelectorAll('li.nv-lot-ligne').length, detail.lignes.length);
+  assert.equal(appliquee.querySelectorAll('button[data-nv-annuler-ligne]').length, detail.lignes.filter(peutAnnulerLaLigne).length);
+  assert.equal(appliquee.querySelector(`li[data-nv-ligne="${ligneA.n}"] strong`).textContent, ligneA.ligne, 'la ligne par son nom');
+  assert.equal(appliquee.querySelector('[data-nv-annuler]'), null, 'plus d’« Annuler ce lot »');
+  // l'aperçu de l'annulation de la ligne A : elle est remise ; la confirmation le montre
+  const avant = ok(await m.appel('GET', adresse(lot.id, `lignes/${ligneA.n}/annulation/`)));
   assert.equal(peutAnnuler(avant).possible, true);
-  const montre = lire(htmlDesLots({ lots: [detail] }, { annulations: new Map([[lot.id, { apercu: avant }]]) })).querySelector('[data-nv-annulation]');
-  // (le service peut y ajouter une ligne que le recalcul remet seul : « déjà comme avant »)
-  const etats = [...montre.querySelectorAll('li.nv-lot-ligne')].map((l) => l.dataset.nvEtatLigne);
+  const etats = avant.operations.map((o) => o.etat);
   assert.equal(etats[0], 'remise');
-  assert.ok(etats.every((e) => ['remise', 'deja'].includes(e)), etats.join());
-  assert.equal(montre.querySelector('li strong').textContent, avant.operations[0].apercu.ligne);
-  // le site change la ligne A depuis : l'annulation la garde (valeur trouvée) et dit ce qu'elle remet quand même
+  assert.ok(etats.every((e) => ['remise', 'deja'].includes(e)), etats.join()); // (le service peut y ajouter une ligne que le recalcul remet seul : « déjà comme avant »)
+  const confirmation = lire(htmlDeLaConfirmation({ action: 'annuler-ligne', lot: detail, ligne: ligneA, apercu: avant }));
+  assert.equal(confirmation.querySelectorAll('button[type="submit"][data-nv-confirmer-ligne]').length, 1);
+  assert.equal(confirmation.querySelector('li strong').textContent, avant.operations[0].apercu.ligne);
+  // le site change la ligne A depuis : l'annulation la garde (valeur trouvée) et le dit
   m.db.prepare('UPDATE metier SET description = ? WHERE id = ?').run(`encore changée ${process.pid}`, a.id);
-  const apres = ok(await m.appel('GET', adresse(lot.id, 'annulation/')));
-  assert.ok(apres.comptes.gardees >= 1);
-  const gardeeApres = lire(htmlDesLots({ lots: [detail] }, { annulations: new Map([[lot.id, { apercu: apres }]]) })).querySelector('[data-nv-annulation] li[data-nv-etat-ligne="gardee"]');
-  assert.ok(gardeeApres.textContent.includes(`encore changée ${process.pid}`), 'la valeur trouvée');
-  assert.equal(gardeeApres.querySelectorAll('.nv-lot-colonne').length, 0);
-  // le clic : le message nomme ce qui est gardé, par le nom du service
-  const annule = ok(await m.appel('POST', adresse(lot.id, 'annuler/'), {}), 200);
-  assert.equal(annule.etat, 'annule');
-  const message = messageDeLAnnulation(annule, apres);
-  assert.ok(message.lignes.length >= 1);
-  assert.ok(message.lignes.some((l) => l.includes(apres.operations.find((o) => o.etat === 'gardee').apercu.ligne) && l.includes(`encore changée ${process.pid}`)));
-  // une annulation refusée par le service (le lot n'est plus appliqué) : son texte, tel quel
-  const refus = await m.appel('POST', adresse(lot.id, 'annuler/'), {});
+  const apres = ok(await m.appel('GET', adresse(lot.id, `lignes/${ligneA.n}/annulation/`)));
+  const gardees = apres.operations.filter((o) => o.etat === 'gardee' || o.etat === 'refusee' || o.etat === 'deja');
+  assert.ok(apres.verdict === 'rien_a_remettre' || apres.comptes.gardees >= 1 || gardees.length >= 1, JSON.stringify(apres.comptes));
+  // la page relit le changement : la ligne dit qu'elle a changé depuis (le site prime) et perd son bouton
+  const relu = ok(await m.appel('GET', adresse(lot.id)));
+  const ligneRelue = relu.lignes.find((l) => l.n === ligneA.n);
+  assert.equal(ligneRelue.etat, 'modifiee_depuis');
+  assert.equal(peutAnnulerLaLigne(ligneRelue), false);
+  const montree = lire(htmlDesLots({ lots: [relu] })).querySelector(`li[data-nv-ligne="${ligneA.n}"]`);
+  assert.equal(montree.querySelectorAll('button').length, 0);
+  assert.ok(montree.textContent.includes(`encore changée ${process.pid}`), 'la valeur trouvée');
+  // le service refuse l'annulation d'une ligne qui ne s'annule plus seule : son texte, tel quel, et le message du clic nomme ce qu'il a fait
+  const refus = await m.appel('POST', adresse(lot.id, `lignes/${ligneA.n}/annuler/`), {});
   assert.equal(refus.statut, 409);
   assert.equal(messageDErreur({ message: refus.corps.erreur, corps: refus.corps }).texte, refus.corps.erreur);
+  assert.ok(messageDeLaLigneAnnulee(ligneA, avant).texte.includes(ligneA.ligne));
+});
+
+test('annuler une seule ligne de bout en bout : le clic remet la valeur d’avant, la ligne se lit « annulée » sans bouton, une seconde annulation est refusée', async () => {
+  const m = nouvelle();
+  const [a] = metiers(m.db, 1);
+  const lot = ok(await m.appel('POST', '/api/edition/lots/', { format: FORMAT_DU_LOT, titre: 'Lot à annuler', nature: 'code', operations: [modifier(a, `texte A ${process.pid}`)] }), 201);
+  ok(await m.appel('POST', adresse(lot.id, 'appliquer/'), {}));
+  const detail = ok(await m.appel('GET', adresse(lot.id)));
+  const ligne = detail.lignes.find((l) => peutAnnulerLaLigne(l));
+  assert.ok(ligne, 'une ligne annulable seule');
+  const apercu = ok(await m.appel('GET', adresse(lot.id, `lignes/${ligne.n}/annulation/`)));
+  const annule = ok(await m.appel('POST', adresse(lot.id, `lignes/${ligne.n}/annuler/`), {}));
+  assert.ok(annule.bilan?.lignes_annulees?.[ligne.n], 'le service garde l’état de la ligne');
+  assert.equal(m.db.prepare('SELECT description FROM metier WHERE id = ?').get(a.id).description, a.description, 'la valeur d’avant est remise');
+  const relu = ok(await m.appel('GET', adresse(lot.id)));
+  const ligneRelue = relu.lignes.find((l) => l.n === ligne.n);
+  assert.equal(ligneRelue.etat, 'annulee');
+  assert.equal(peutAnnulerLaLigne(ligneRelue), false);
+  assert.ok(messageDeLaLigneAnnulee(ligne, apercu).texte.includes(ligne.ligne));
+  // (le changement reste dans « appliqués » tant qu'une ligne est en place, passe dans l'historique sinon : dans les deux cas, aucun bouton pour cette ligne)
+  const lu = lire(htmlDesLots({ lots: [relu] })).querySelector(`[data-nv-lot-id="${lot.id}"]`);
+  assert.equal(lu.querySelectorAll(`li[data-nv-ligne="${ligne.n}"] button`).length, 0);
+  const encore = await m.appel('POST', adresse(lot.id, `lignes/${ligne.n}/annuler/`), {});
+  assert.equal(encore.statut, 409);
 });

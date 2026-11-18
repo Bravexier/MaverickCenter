@@ -312,6 +312,8 @@ export function routeNormalisee(adresse) {
       if (b === 'lots') {
         if (seul(2)) return r('edition', 'lots');
         if (seul(3)) return c === 'recalcul' ? r('edition', 'lots', 'recalcul') : r('edition', 'lots', '{lot}');
+        // une seule ligne d'un lot : …/lots/<lot>/lignes/<n>/annulation|annuler/
+        if (seul(6) && d === 'lignes') return ['annulation', 'annuler'].includes(s[5]) ? r('edition', 'lots', '{lot}', 'lignes', '{n}', s[5]) : ROUTE_INCONNUE;
         return seul(4) && ['essai', 'appliquer', 'refuser', 'annuler', 'annulation'].includes(d) ? r('edition', 'lots', '{lot}', d) : ROUTE_INCONNUE;
       }
       return seul(2) && ACTIONS_EDITION.has(b) ? r('edition', b) : ROUTE_INCONNUE;

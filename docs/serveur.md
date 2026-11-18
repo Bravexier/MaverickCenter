@@ -892,24 +892,59 @@ Tests : `lot-de-changements`, `lot-de-changements-numeros`, `serveur-edition-nat
 
 Décision du propriétaire (R275, question 4 a) : « Chaque lot attend votre clic sur le site de dev, avec un aperçu avant et après. » Code :
 `serveur/edition-lots.mjs` (les routes, dans `serveur/api.mjs#traiterLots`), `serveur/edition.mjs#appliquerUnLot` (l'hôte de l'application),
-`serveur/controles-du-contenu.mjs` (les contrôles de `db:check`). Tables : `lot_de_changements` et `numero_donne` (migration 0128). Une session de Claude **dépose**
-une proposition avec la **clé de lecture** ; rien n'est écrit dans le contenu. Le propriétaire l'**applique** ou la **refuse** (mot de passe). Aucune clé
-d'écriture n'existe pour les sessions. Sans mot de passe posé, le site se comporte comme avant.
+`serveur/controles-du-contenu.mjs` (les contrôles de `db:check`). Tables : `lot_de_changements` et `numero_donne` (migration 0128). Deux états de l'accès, que choisit
+le propriétaire (R291, qui remplace R275 (4) : « Direct ») :
+
+- **Tant que la clé de dépôt n'est pas posée** (l'état sûr, aussi sans aucun réglage d'accès) : une session **dépose** une proposition avec la **clé de lecture** ; rien n'est
+  écrit dans le contenu ; le propriétaire l'**applique** ou la **refuse** (mot de passe). C'est le comportement de R275 (4a), inchangé.
+- **Une fois la clé de dépôt posée** (`acces.sh --cle-de-depot`, « Accès au site de dev ») : la clé de lecture, que détient aussi la CI, **ne dépose plus** (`403`). La clé de
+  **dépôt** ou le mot de passe déposent, et le lot est **appliqué aussitôt**, sans clic ; le propriétaire **annule** ensuite le lot, ou une seule de ses lignes (« Annuler une seule
+  ligne », ci-dessous). Les propositions déjà déposées restent « propose » et se décident par leurs routes `appliquer` / `refuser` (mot de passe).
+
+Sans mot de passe posé, le site se comporte comme avant.
 
 | Route | Classe d'accès | Rôle |
 | --- | --- | --- |
-| `GET /api/edition/lots/` | lecture | Les propositions, la plus récente d'abord (résumé : état, verdict de l'essai) |
-| `POST /api/edition/lots/` | proposition | Le lot (`maverick-lot/1`) : contrôlé par `controlerLeLot` (400 avec le rang de l'opération à corriger : `erreurs`), enregistré « propose », essayé à blanc ; `201` avec l'essai |
-| `GET /api/edition/lots/<id>/` | lecture | Le contenu déposé, l'essai (aperçu avant et après), le bilan |
+| `GET /api/edition/lots/` | lecture | Les lots, le plus récent d'abord (résumé : état, verdict de l'essai, `application`, `lignes_annulees`, `refus`) |
+| `POST /api/edition/lots/` | proposition | Le lot (`maverick-lot/1`) : contrôlé par `controlerLeLot` (400 avec le rang de l'opération à corriger : `erreurs`), enregistré, essayé à blanc ; `201` avec l'essai (« propose »). **Clé de dépôt posée** : appliqué aussitôt (`201`, « applique »), ou refusé aux contrôles (`409`, « refuse », `motifs`) ; `verrous_ouverts?: ["R…"]` dans le corps (mot de passe seulement) |
+| `GET /api/edition/lots/<id>/` | lecture | Le contenu déposé, l'essai (aperçu avant et après), le bilan ; un lot appliqué ou annulé porte `lignes` (« Annuler une seule ligne ») |
 | `POST /api/edition/lots/<id>/essai/` | proposition | Refait l'essai (n'écrit que `essai` et `essaye_le`) |
 | `POST /api/edition/lots/<id>/appliquer/` | écriture | `{ verrous_ouverts?: ["R…"] }` : l'application d'un bloc (le clic du propriétaire) |
 | `POST /api/edition/lots/<id>/refuser/` | écriture | L'état « refuse » : rien n'est écrit, la proposition reste |
 | `GET /api/edition/lots/<id>/annulation/` | lecture | L'aperçu de l'annulation d'un lot appliqué, calculé sur une copie (rien n'est écrit) : par ligne du lot du journal, `remise`, `gardee` (avec la valeur trouvée), `deja` |
 | `POST /api/edition/lots/<id>/annuler/` | écriture | `{ verrous_ouverts?: ["R…"] }` : « Annuler ce lot » d'un bloc (le clic du propriétaire) |
-| `POST /api/edition/lots/recalcul/` | proposition | « Tout recalculer » : dépose les écarts des colonnes dérivées comme un lot de nature `code` (`201 { lot, recalcul }` ; `200` sans lot quand rien ne diffère) |
+| `GET /api/edition/lots/<id>/lignes/<n>/annulation/` | écriture | L'aperçu de l'annulation d'une seule ligne du lot, sur une copie (rien n'est écrit) |
+| `POST /api/edition/lots/<id>/lignes/<n>/annuler/` | écriture | `{ verrous_ouverts?: ["R…"] }` : « Annuler cette modification » (le clic du propriétaire, après confirmation de la page) |
+| `POST /api/edition/lots/recalcul/` | proposition | « Tout recalculer » : dépose les écarts des colonnes dérivées comme un lot de nature `code` (`201 { lot, recalcul }` ; `200` sans lot quand rien ne diffère) ; avec la clé de dépôt posée, le lot est appliqué aussitôt comme tout dépôt |
 
-La classe **proposition** (`serveur/acces-routes.mjs`) a la porte de la lecture (la clé OU le mot de passe) pour les deux seules routes qui écrivent sans toucher au
-contenu : elles n'écrivent que `lot_de_changements`. Appliquer et refuser, qui décident, demandent le mot de passe. En production : `403` avant tout.
+La classe **proposition** (`serveur/acces-routes.mjs`) est la porte des **dépôts** : déposer, refaire un essai, « tout recalculer ». Tant que la clé de dépôt n'est pas posée, elle a la
+porte de la lecture (la clé OU le mot de passe) et elle n'écrit que `lot_de_changements` ; une fois posée, elle demande **la clé de dépôt OU le mot de passe** : sans rien `401`
+(`acces: "cle_de_depot"`), avec la clé de lecture `403` (« la clé de dépôt est nécessaire »). Appliquer, refuser, annuler (le lot ou une ligne), qui décident, demandent le mot de passe,
+que la clé de dépôt soit posée ou non : la clé de dépôt n'est pas une clé d'écriture. En production : `403` avant tout.
+
+**Dépôt appliqué aussitôt** (R291 ; `edition-lots.mjs#deposerEtAppliquer`, `acces.mjs#depot`). Le service décide au dépôt : le réglage pose une clé de dépôt **et** la requête porte cette clé ou
+le mot de passe → direct ; sinon (clé pas posée, aucun réglage d'accès, tests) → proposition, comme avant (« sans réglage, tout est permis » reste vrai pour le clic, mais le mode
+direct est un choix du réglage). Le chemin est celui du clic : `deposer` (format : `400` motivé, rien n'est enregistré), essai à blanc sur une copie, puis `appliquer` dans une
+transaction, contrôles du contenu rejoués, numéros donnés, lot du journal de la nature et de la décision du lot (ses modifications « en attente » : rien ne part en production sans
+« Effectuer la mise à jour »). `bilan.application = { directe: true, par: 'cle_de_depot' | 'mot_de_passe' }` dit comment le lot est entré (un lot appliqué par le clic du propriétaire n'a pas de `application`). Si l'essai ou l'application refuse (opération refusée, problème du contenu né du lot, verrou pas ouvert, rien à écrire), **rien n'entre** : le lot est
+enregistré « **refuse** » (un arrêt du service ou une erreur inattendue entre le dépôt et la décision le laisse « propose » : le clic du propriétaire le décide) avec ses motifs dans `essai.refus_du_depot` (la base veut un `bilan` vide pour un lot refusé ; `refus` dans la lecture), et la réponse est un `409`
+`{ erreur, lot, motifs }`. Ouvrir un verrou de décision est **réservé au mot de passe** : `verrous_ouverts` du corps (liste de « R… », `verrousDuClic`, retirée du lot déposé) ouvre ce que le gel lève (R218, R219, R232 (2)) et
+est enregistrée dans le lot (`verrous_ouverts`, `bilan.verrous_ouverts`) quand le dépôt vient du mot de passe ; avec la clé de dépôt, un corps qui le porte est refusé (`403`, rien n'est enregistré), et un lot dont
+l'essai rend `verrous` n'est pas appliqué : il est enregistré « refuse », les R… à ouvrir dans `refus.verrous` et les motifs. Un refus de règle (R105, R181…) reste refusé. « Tout recalculer » (`recalculerTout`, `par`) s'aligne : appliqué aussitôt quand le droit le permet.
+
+**Annuler une seule ligne** (R291 : « annuler cette modification » sur chaque ligne du patchnote ; `lignesDuLotApplique`, `annulerUneLigne`, `dependancesDesLignes`). Une **ligne** est une ligne de
+l'effet net du lot (`effetNetDuLot` : une ligne de table avec les colonnes que le lot en a changées, ou la ligne qu'il a créée ou retirée), pas une colonne isolée : le service écrit plusieurs fois
+la même ligne (clé recalculée, page refaite) et remettre une seule colonne laisserait ces recalculs en désaccord. Son numéro `n` est le rang de sa première écriture au journal du lot : stable, jamais
+renuméroté. `GET …/<id>/` d'un lot « applique » ou « annule » porte `lignes` : `{ n, table, ligne, genre ('modifier' | 'inserer' | 'supprimer'), colonnes: [{ colonne, libelle, avant, apres }], etat,
+annulee?, colonnes_modifiees?, annulable_seule, motif, depend_de }` ; `etat` : `en_place` (rien n'y a touché), `annulee` (par son clic, ou par l'annulation du lot entier), `modifiee_depuis` (le site a
+changé une valeur que le lot avait écrite : le site prime), `comme_avant` (déjà revenue à sa valeur d'avant). `annulable_seule` est faux, avec un `motif` en français : lot pas appliqué, ligne déjà
+annulée ou comme avant, tout modifié depuis, ou **une autre ligne du lot encore en place la tient** (`depend_de`) : une insertion que cite une autre ligne (clé étrangère, ex. un mot-clé et son synonyme),
+une suppression dont le parent a été retiré aussi, une page refaite par le site d'après les autres lignes du lot. Ce qui n'est pas lié par une clé étrangère (un renvoi dans un texte) est laissé aux
+contrôles du contenu, qui refusent avec leur motif ; rien n'est annulé en silence. L'aperçu (`GET …/lignes/<n>/annulation/`, sur une copie, mot de passe) et le clic (`POST …/lignes/<n>/annuler/`)
+réutilisent `annulerLeLot` filtré sur la ligne : mêmes règles que le lot entier (une valeur n'est remise que si elle vaut encore ce que le lot a écrit, une insertion n'est supprimée qu'intacte, une
+suppression n'est réinsérée que si la ligne est absente, un numéro n'est jamais rendu), même `BEGIN IMMEDIATE`, contrôles rejoués, verrous par `verrous_ouverts`. Le lot du journal est « Annulation d’une ligne
+de « … » : <ligne> » de la même nature et décision ; `bilan.lignes_annulees[n] = { annule_le, lot_id, colonnes, gardees }` garde l'état ; quand plus aucune ligne n'est en place, le lot passe « annule ».
+Le lot entier reste annulable (les lignes déjà annulées y sont « deja »). Sans migration.
 
 **Essai à blanc.** Une copie de la base vivante (`VACUUM INTO`, dans `<dossier de la base>/essais/`, supprimée à la fin même en cas d'échec ; jamais la base elle-même), dans
 un fil à part (le service ne s'arrête pas ; un essai à la fois). Le lot y est appliqué par **le même code** que l'application, puis les contrôles du contenu de
@@ -966,7 +1001,7 @@ renommage de mot-clé laisse la clé que le renommage avait posée en clé quitt
 **Tout recalculer** (`recalculerTout`, classe `proposition`). Après un changement de code, le corps, le résumé et les `donnees` des pages que le code dérive des tables et que
 `recalculerLesPages` refait sans qu'on lui dise ce qui a changé — races, classes, fiches de dons, métiers (`TYPES_DE_PAGES_RECALCULEES`) — sont refaits **sur une copie** et comparés à
 ce qui est stocké ; les écarts sont **déposés comme un lot de nature `code`** (une opération `modifier` par page : la valeur stockée en `avant`, la valeur recalculée en `apres`), essayé à
-blanc et appliqué d'un clic comme tout lot (R275 : rien n'entre sans le clic du propriétaire). Aucun écart : `200`, aucun lot. Les pages refaites morceau par morceau (magies, armes,
+blanc et traité comme tout dépôt (R291) : appliqué aussitôt avec la clé de dépôt ou le mot de passe quand la clé de dépôt est posée, sinon proposé au clic. Aucun écart : `200`, aucun lot. Les pages refaites morceau par morceau (magies, armes,
 armures et boucliers, composants, consommables de la ceinture : `TABLES_DES_PAGES_PAR_MORCEAUX`) y sont aussi : chaque ligne de leurs tables est rejouée telle quelle (avant = après).
 Une page de magie, dont les morceaux sont repérés par leur place, suit alors ses tables. Les armes, armures et boucliers retrouvent une ligne par son texte : une ligne que le corps
 n'écrit plus comme le code d'aujourd'hui la rend se dit dans `pages_illisibles`, sans que la page soit refaite (il leur faudrait un rendu du corps entier). Les composants retrouvent une
@@ -974,16 +1009,17 @@ ligne par son nom : seul un nom changé y est signalé. Les potions (`corpsDeLaP
 signalées. Ces limites sont un lot de suite ; les clés des mots-clés et les colonnes calculées des
 armures (R207) sont tenues par le service et ne sont pas non plus dans ce recalcul.
 
-**La page « Mise à jour »** (`src/scripts/mise-a-jour.mjs`, rendu pur `src/lib/lots-rendu.mjs`, lot 6 PR 4) : la section « Lots de changements proposés », entre les listes de la note en préparation
-et les lignes en conflit, sur le site de dev seulement (`GET /api/edition/lots/` répond `403` en production, `404` sans le service : la section reste cachée ; une autre erreur est dite). Pour
-chaque proposition à décider : le titre, la date et l'auteur, la décision citée, le résultat de l'essai en une phrase (prêt ; N valeurs ont changé depuis et ne seront pas écrites ; à corriger :
-ligne N du lot…), l'aperçu dépliable par ligne de la base (le nom, les colonnes par leur libellé, « avant » et « après » ; deux longs textes par leurs différences), une case par décision à ouvrir
-(« J'accepte d'ouvrir ce que la décision R… verrouille » : « Appliquer » reste inactif tant qu'elle n'est pas cochée, le clic envoie `verrous_ouverts`), puis « Appliquer » (confirmation, puis le bilan :
-écrit, gardé parce que la valeur avait changé), « Refuser » (confirmation) et « Refaire l'essai ». Un `409` est dit avec la ligne à corriger et le lot est relu. Les dix lots appliqués les plus récents
-montrent leur bilan et « Annuler ce lot » : un clic affiche d'abord l'aperçu de l'annulation (remis, déjà comme avant, gardé avec la valeur trouvée), le bouton « Oui, annuler ce lot » l'exécute. Les
-refusés et les annulés sont dans un historique replié. « Tout recalculer » (`POST …/recalcul/`) dépose le lot et l'affiche, ou dit qu'il n'y a rien à recalculer. Le mot de passe est demandé par
-`scripts/acces.mjs` (rien à faire dans la page). Le détail (GET `…/<id>/`) n'est lu que pour les lots à décider et les appliqués récents. Tests : `lots-rendu` (module pur), `mise-a-jour-lots` (le script dans
-un faux navigateur), `lots-rendu-service` (le rendu sur ce que rend le vrai service).
+**La page « Mise à jour »** (`src/scripts/mise-a-jour.mjs`, rendu pur `src/lib/lots-rendu.mjs` ; R291) : la section « Modifications de l'équipe » (`[data-nv-lots]`), entre les listes de la note en préparation
+et les lignes en conflit, sur le site de dev seulement (`GET /api/edition/lots/` répond `403` en production, `404` sans le service : la section reste cachée ; une autre erreur est dite). Chaque changement
+appliqué se lit comme les notes de version, ligne par ligne (`lignes[]` du détail : nom de la ligne, table, colonnes par leur libellé, avant puis après, état : en place, annulée, modifiée depuis,
+comme avant). Une ligne `en_place` et `annulable_seule` porte « Annuler cette modification » : l'aperçu (`GET …/lignes/<n>/annulation/`) s'affiche dans une confirmation (`<dialog>`, une case par
+décision à ouvrir), puis « Oui, annuler cette modification » envoie `POST …/lignes/<n>/annuler/` ; une ligne qui ne s'annule pas seule montre son motif et les lignes dont elle dépend ; un `409` se dit sous
+la ligne. Il n'y a plus d'« Annuler ce lot » sur la page (la route reste). Les propositions encore en attente (déposées avant R291, ou sans clé de dépôt posée) ont leur bloc à part
+(`[data-nv-lots-attente]`, présent seulement s'il en reste) avec l'aperçu, « Appliquer », « Refuser » et « Refaire l'essai », comme avant. Un dépôt refusé aux contrôles laisse une trace repliée
+(`[data-nv-lots-refus]` : titre, motifs, sans bouton). « Tout recalculer » (`POST …/recalcul/`) dit si le recalcul est appliqué ou proposé. R292 : `retraits_bloquants` de `GET /api/mise-a-jour/`
+donne une alerte (`[data-nv-retraits]`) avant « Effectuer la mise à jour » quand une race, une classe ou une magie citée par une fiche de la production serait retirée. Le mot de passe est demandé par
+`scripts/acces.mjs` (rien à faire dans la page). Tests : `lots-rendu` (module pur), `mise-a-jour-lots` (le script dans un faux navigateur), `lots-rendu-service` (le rendu sur ce que rend le vrai
+service), `notes-de-version-retraits`.
 
 **Éteint hors de l'édition** : `controlerLeLot` refuse au dépôt une table que le service ne sait pas écrire (jusqu'au lot 8).
 
@@ -1593,7 +1629,7 @@ pas encore résolus et les lots retenus derrière eux sont défaits, dans un sav
 
 | Requête | Réponse |
 | --- | --- |
-| `GET /api/mise-a-jour/` | La note en préparation : `reference`, `version_dev`, `version_cible` (selon la case « Version majeure »), `version_mineure`, `version_majeure`, `en_attente`, `en_conflit` (`{ lots, modifications }` à résoudre), `lignes`, `bilan`, `brouillon` (dont `majeure`), `lancement`, `github`, `confirmation`, `etat_production` (la production a-t-elle appliqué sa dernière mise à jour : « Extrait du contenu et attestation de la production », ci-dessus), `base_source` (le marqueur `db/source` : vrai, « Copier vers le dépôt » existe) et, avec lui, `confirmation_copie` |
+| `GET /api/mise-a-jour/` | La note en préparation : `reference`, `version_dev`, `version_cible` (selon la case « Version majeure »), `version_mineure`, `version_majeure`, `en_attente`, `en_conflit` (`{ lots, modifications }` à résoudre), `lignes`, `bilan`, `brouillon` (dont `majeure`), `lancement`, `github`, `confirmation`, `etat_production` (la production a-t-elle appliqué sa dernière mise à jour : « Extrait du contenu et attestation de la production », ci-dessus), `retraits_bloquants` (R292 : les races, classes et magies que des fiches de la production citent et que la mise à jour retirerait : « Un élément de règle retiré… », plus bas), `base_source` (le marqueur `db/source` : vrai, « Copier vers le dépôt » existe) et, avec lui, `confirmation_copie` |
 | `POST /api/mise-a-jour/brouillon/` | `{ texte, avant }` → le champ libre enregistré (`409` s'il a changé entre-temps ou si un lot est figé) |
 | `POST /api/mise-a-jour/majeure/` | `{ majeure }` (`true` ou `false`) → la case « Version majeure » enregistrée, et la note en préparation à sa nouvelle version cible ; rien n'est déclenché (`409` si un lot est figé) |
 | `POST /api/mise-a-jour/lancer/` | `{ confirmation, simulation?, version_cible? }` → fige le lot et déclenche le workflow (`simulation: true` : simulation de mise à jour, rien n'est poussé ; `version_cible` : celle que la page a montrée, `409` si une autre partirait, case « Version majeure » changée depuis un autre onglet) → `202`, `{ lancement }` (`etat` : `envoi`, `lance`, `en_cours`, `termine`, `echec`, `erreur`, `manuel`, `annule`, `simulation_reussie`, `simulation_echouee`) |
@@ -1642,7 +1678,12 @@ absente, illisible ou périmée (version ou contenu différents, livraison en co
 **Un élément de règle retiré qu'une fiche de la production utilise ne fait jamais refuser** (décision R280, question 9 du plan) : la production adapte la fiche
 à l'installation et le note dans ses notes, comme dans l'ancien circuit (« Quand une livraison change les règles », plus haut : retraits R42 et suites, `serveur/fiches-retraits.mjs#RETRAITS`).
 Le paquet porte le même contenu que l'ancien lot une fois rejoué : à l'étape 1, la production reçoit toujours ses règles par `data/rows` et refait sa base comme avant.
-Limite, inchangée elle aussi : une race, une classe, une magie… retirée (hors des tables de `RETRAITS`) n'est pas retirée des fiches ; la production garde alors sa base d'avant, et l'onglet du site de dev le dit (« pas appliquée »). Aucun retrait automatique n'est décidé pour ces éléments (question ouverte au propriétaire).
+Limite, gardée par le propriétaire (**R292**, option C : « le blocage actuel est gardé ») : une race, une classe ou une magie retirée (hors des tables de `RETRAITS`) n'est pas retirée des fiches ; la production garde alors sa base d'avant
+(la mise à jour ne s'applique pas à la production), et l'équipe prévient le propriétaire **avant** de livrer. Aucun retrait automatique pour ces éléments. Ce que le service dit avant la livraison : `GET /api/mise-a-jour/` porte
+`retraits_bloquants` (`attestation.mjs#retraitsBloquantsPourLaProduction`) : `{ connu, attestee_le, elements: [{ table: 'race' | 'classe' | 'magie', id, nom, libelle, fiches }], fiches_au_moins, fiches_au_plus, message }`, d'après les `citations` de
+l'attestation de la production comparées à la base du site de dev ; `fiches` est le nombre de fiches distinctes qui citent l'élément, `fiches_au_moins` (le plus cité) et `fiches_au_plus` (la somme) encadrent le nombre de fiches touchées (une fiche peut citer
+plusieurs éléments retirés) ; `connu: false` : l'attestation n'est pas lue (rien à dire) ; `elements` vide : rien ne bloque. Des nombres et le nom de l'élément (contenu public), jamais une fiche. La répétition (`repetition-prod`, « Répétition de la mise à jour de la production »)
+le dit aussi : `REFUSEE`, avec le problème `personnage.race_id = « … » absent de race (N ligne(s))` par table et colonne (test `repetition-prod`).
 
 L'attestation est réécrite toutes les heures (ses `citations` informent, elles ne font plus refuser).
 
@@ -1731,21 +1772,25 @@ suite**.
 | --- | --- | --- |
 | ouverte | rien | `GET /api/etat/` (sans la liste des fiches adaptées), `/api/maintenance/`, `/api/tipeee/`, `POST /api/classeur/`, `POST /api/metriques/page/` ; les prétirés en lecture (`GET /api/personnages/`, `…/<id>/`, `…/<id>/portrait/` : jamais une fiche de joueur) ; ce que les pages lisent pour montrer la base vivante : `GET /api/edition/{en-attente,listes,pages,mots-cles,chronologie,plan}/` et `POST /api/edition/{lignes,race,classe,bestiaire,portrait,evenement}/` (`classe` sans les libellés de fiches) ; la note en préparation et l'état du lancement `GET /api/mise-a-jour/` et `…/lancement/` (la page les relève sans connexion) ; le lot figé `GET /api/mise-a-jour/lots/<uuid>/` ; `/api/acces/` |
 | lecture | la clé de lecture **ou** le mot de passe | `GET /api/edition/journal/`, `GET /api/edition/extrait/` et `…/extrait/meta/` (l'extrait du contenu : ni fiche, ni compte, ni journal), `GET /api/mise-a-jour/conflits/` (les lots en conflit), tout `GET /api/debug/…` (le contenu des tables : fiches, comptes et groupes compris), tout `GET /api/v1/…` |
-| proposition | la clé de lecture **ou** le mot de passe | `POST /api/edition/lots/` et `POST …/lots/<id>/essai/` : déposer une proposition de lot de changements et refaire son essai ; elles n'écrivent que `lot_de_changements` (la proposition, son essai sur une copie), jamais le contenu |
-| écriture | le mot de passe (session) | `POST /api/edition/` (un lot), `POST …/lots/<id>/appliquer/` et `…/refuser/` (le clic du propriétaire sur un lot de changements), `POST /api/maintenance/lever/`, `POST /api/mise-a-jour/{brouillon,majeure,lancer,liberer,conflits,copier}/` (« Effectuer la mise à jour », la Simulation et « Copier vers le dépôt »), les prétirés en écriture (`POST`, `PUT`, `DELETE /api/personnages/…`), tout `POST`, `PATCH`, `PUT`, `DELETE /api/v1/…` |
+| proposition | la clé de lecture **ou** le mot de passe ; **clé de dépôt posée** (R291) : la clé de dépôt **ou** le mot de passe | `POST /api/edition/lots/`, `POST …/lots/<id>/essai/` et `POST …/lots/recalcul/` : déposer un lot de changements, refaire son essai, « tout recalculer ». Sans clé de dépôt : elles n'écrivent que `lot_de_changements` (la proposition, son essai sur une copie), jamais le contenu. Avec : le lot est appliqué aussitôt ; la clé de lecture est refusée (`403`) |
+| écriture | le mot de passe (session) | `POST /api/edition/` (un lot), `POST …/lots/<id>/appliquer/`, `…/refuser/`, `…/annuler/` et `…/lignes/<n>/annuler/`, `GET …/lignes/<n>/annulation/` (le clic du propriétaire sur un lot de changements ou une de ses lignes), `POST /api/maintenance/lever/`, `POST /api/mise-a-jour/{brouillon,majeure,lancer,liberer,conflits,copier}/` (« Effectuer la mise à jour », la Simulation et « Copier vers le dépôt »), les prétirés en écriture (`POST`, `PUT`, `DELETE /api/personnages/…`), tout `POST`, `PATCH`, `PUT`, `DELETE /api/v1/…` |
 
-La clé de lecture ne permet jamais d'écrire dans le contenu (elle dépose une proposition, qui attend le clic du propriétaire). Le lot figé reste ouvert : le workflow `mise-a-jour.yml` (job `preparer`) ne joint que cette route du site de dev,
+La clé de lecture ne permet jamais d'écrire dans le contenu (elle dépose une proposition, qui attend le clic du propriétaire, tant que la clé de dépôt n'est pas posée ; une fois posée, elle ne dépose plus).
+La **clé de dépôt** (R291) est facultative : posée, elle vaut tout ce que vaut la lecture, plus le dépôt d'un lot **appliqué aussitôt** ; jamais une autre écriture (appliquer, annuler, édition,
+mise à jour : le mot de passe). Le lot figé reste ouvert : le workflow `mise-a-jour.yml` (job `preparer`) ne joint que cette route du site de dev,
 sans aucun secret ajouté côté GitHub ; l'adresse est à capacité (uuid aléatoire, lot sans fiche ni compte, contenu publié de toute façon dans la PR). Aucune
-clé d'écriture n'est donnée à GitHub ni aux sessions.
+clé d'écriture n'est donnée à GitHub ; **la clé de dépôt ne va jamais à la CI** (elle n'a que la clé de lecture, `MAVERICK_EXTRAIT_CLE` ; `db:extrait` refuse une clé `mvd_` quand
+`GITHUB_ACTIONS` est vrai) : c'est la parade au risque que la clé de lecture, que détient la CI, devienne une clé d'écriture. Les sessions de Claude reçoivent la clé de dépôt comme la clé de
+lecture : par le formulaire sûr (en-tête `X-Maverick-Key`).
 
 **Où passent les secrets** : le service ne voit jamais l'en-tête `Authorization` (Caddy y met le mot de passe interne de nginx, nginx l'efface). La clé de
-lecture voyage donc dans **`X-Maverick-Cle`**, ou son second nom **`X-Maverick-Key`** (le formulaire sûr qui remet la clé aux sessions de Claude n'accepte
+lecture et la clé de dépôt (distinguées par leur empreinte) voyagent donc dans **`X-Maverick-Cle`**, ou son second nom **`X-Maverick-Key`** (le formulaire sûr qui remet la clé aux sessions de Claude n'accepte
 qu'un nom d'en-tête finissant par `key`, `token`…) ; aucun autre en-tête, jamais l'adresse (que le journal note). Caddy et nginx transmettent ces deux
 en-têtes tels quels. La session du navigateur voyage dans le cookie **`maverick_acces`**.
 Aucun des deux n'est dans le journal, les métriques (seuls `Referer`, `Host` et `User-Agent` sont lus), l'état ou la page Debug.
 
 **Connexion** (`/api/acces/`, toujours ouverte, mêmes refus que les écritures : JSON, requête d'une page de ce site) :
-- `GET` → `{ protege, portee, connecte, droit, expire_le }` ; `droit` : `ecriture` (session du mot de passe), `lecture` (clé), `aucun`. Sans réglage :
+- `GET` → `{ protege, portee, connecte, droit, expire_le }` ; `droit` : `ecriture` (session du mot de passe), `depot` (clé de dépôt, R291), `lecture` (clé), `aucun`. Sans réglage :
   `{ protege: false, portee: null, connecte: false, droit: 'ecriture', expire_le: null }`.
 - `POST { mot_de_passe }` → 200 avec le même état et le cookie `maverick_acces=v1.<expiration>.<HMAC-SHA256>` : `HttpOnly`, `SameSite=Strict`, `Path=/api/`,
   `Secure` pour un nom d'hôte (nginx réécrit `X-Forwarded-Proto` en `http` derrière Caddy : le service ne voit jamais `https`, il juge d'après l'hôte, comme `adressePublique`), **sans date** (il part avec le navigateur ; le jeton expire à 12 h). 401 mot de passe faux, **429** après 5 essais ratés d'une même
@@ -1754,7 +1799,8 @@ Aucun des deux n'est dans le journal, les métriques (seuls `Referer`, `Host` et
   relancer `acces.sh` renouvelle le secret de session et ferme toutes les sessions).
 - `GET /api/acces/verifier/` → 204 si la requête a au moins la lecture (cookie ou clé), 401 sinon : pour le `forward_auth` de Caddy (portée `tout`).
 - Un refus de la porte est un **401** `{ erreur, acces }` : `acces: 'cle'` (la clé de lecture ou le mot de passe) pour une route de lecture, `'mot_de_passe'`
-  pour une écriture ou une route inconnue.
+  pour une écriture ou une route inconnue, `'cle_de_depot'` (la clé de dépôt ou le mot de passe) pour un dépôt une fois la clé de dépôt posée ; la clé de lecture y reçoit un **403** `{ erreur, acces: 'cle_de_depot' }`
+  (« la clé de dépôt est nécessaire »).
 - Changer le mot de passe ou la portée renouvelle le secret de session : toutes les sessions ouvertes tombent, au prochain appel.
 
 **Portée `tout`** (option c, non activée) : chaque route ouverte qui n'est pas indispensable passe en lecture ; restent ouvertes la connexion
@@ -1768,7 +1814,10 @@ La ligne est écrite, en commentaire et sans effet, dans `deploy/vps/Caddyfile` 
 moins) ; il est haché par le service lui-même (`docker exec -i … node`, entrée standard : jamais un argument de commande, jamais un fichier, rien exigé de
 l'hôte), le fichier est posé en 600 dans `secrets/` (700), et la première fois la **clé de lecture** s'affiche une seule fois à l'écran (jamais hors d'un
 terminal). Changer le mot de passe garde la clé et ferme les sessions. Options : `--cle` (une clé neuve, l'ancienne cesse de marcher), `--portee
-ecriture|tout`, `--etat` (sans secret), `--retirer` (retour à l'ouvert). Elle refuse la production (`MAVERICK_EDITION=1` absent du `.env`) et n'a pas besoin
+ecriture|tout`, `--etat` (sans secret), `--retirer` (retour à l'ouvert), et (R291) **`--cle-de-depot`** : pose (ou refait) la clé de dépôt, affichée une seule fois
+sur un terminal comme la clé de lecture (`CLE_DE_DEPOT` dans la sortie du conteneur ; `mvd_…`, jamais dans le fichier, qui n'en garde que l'empreinte), qui garde le mot de passe, la clé de lecture et les sessions ouvertes ; **`--sans-cle-de-depot`**
+la retire (retour à l'état sûr : la clé de lecture redépose une proposition qui attend le clic). `--etat` dit si la clé de dépôt est posée. Le propriétaire donne ensuite la clé de dépôt aux sessions de Claude par le formulaire
+sûr (en-tête `X-Maverick-Key`), jamais à GitHub ni à la CI. Elle refuse la production (`MAVERICK_EDITION=1` absent du `.env`) et n'a pas besoin
 de l'ancien mot de passe : un mot de passe perdu se remplace, ou la protection se retire, par la même commande. Elle ne change ni `docker-compose.yml`, ni
 `nginx.conf`, ni le Caddyfile actif.
 

@@ -265,6 +265,32 @@ export function affichageDeLaProduction(etat) {
   return null;
 }
 
+/**
+ * L'alerte avant « Effectuer la mise à jour » (R292) : des races, classes ou magies que la mise à jour retire alors que des fiches de la production les
+ * citent ; la production ne les adapte pas, elle garderait sa base d'avant. D'après `retraits_bloquants` de la réponse : rien si `connu` est faux (l'attestation
+ * n'est pas lue), si `elements` est vide, ou si le champ manque (ancien service). Des nombres et le nom de l'élément, jamais une fiche. Pur : le script de la
+ * page bâtit les nœuds par `textContent`.
+ * @param {unknown} retraits `retraits_bloquants` de la réponse
+ * @returns {{ message: string, elements: string[], total: string } | null} `elements` : une ligne par élément (« Race « Nom », citée par 3 fiches ») ; `total` : l'encadrement du nombre de fiches
+ */
+export function affichageDesRetraits(retraits) {
+  if (!retraits || typeof retraits !== 'object' || retraits.connu !== true) return null;
+  const chaine = (v) => (typeof v === 'string' ? v.trim() : '');
+  const entier = (v) => (Number.isInteger(v) && v >= 0 ? v : null);
+  const elements = (Array.isArray(retraits.elements) ? retraits.elements : []).filter((e) => e && typeof e === 'object').map((e) => {
+    const fiches = entier(e.fiches);
+    const nom = chaine(e.libelle) || chaine(e.nom); // `libelle` dit déjà le genre et le nom (« Race « X » »)
+    if (!nom) return '';
+    return `${nom}${fiches === null ? '' : `, citée par ${fiches} fiche${fiches > 1 ? 's' : ''}`}`;
+  }).filter((t) => t.trim());
+  if (!elements.length) return null;
+  const moins = entier(retraits.fiches_au_moins);
+  const plus = entier(retraits.fiches_au_plus);
+  const total = moins === null || plus === null || plus === 0 ? ''
+    : moins === plus ? `Fiches touchées : ${plus}.` : `Fiches touchées : entre ${moins} et ${plus}.`;
+  return { message: chaine(retraits.message), elements, total };
+}
+
 /** États d'un lot entré dans dev ou livré : « libérer » n'y fait que vider le texte qu'il tient encore (serveur/notes-de-version.mjs#libererLot). */
 const LOT_DANS_DEV = ['fusionne', 'echec_livraison', 'termine'];
 
