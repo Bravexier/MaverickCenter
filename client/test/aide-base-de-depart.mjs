@@ -5,7 +5,7 @@
 // retirée, migrations du dépôt manquantes appliquées, pages d'exemple du dépôt ajoutées s'il n'en a aucune) ; les lignes sont l'export de cette copie
 // (tools/db/exporter.py, l'exporteur de « Copier vers le dépôt »), fait une fois par processus. Module sans test propre (n'est pas un *.test.mjs).
 import { spawnSync } from 'node:child_process';
-import { cpSync } from 'node:fs';
+import { cpSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
@@ -70,4 +70,29 @@ export function rowsDeDepart() {
 export function copieDesRowsDeDepart(destination) {
   cpSync(rowsDeDepart(), destination, { recursive: true });
   return destination;
+}
+
+/**
+ * Le nombre de lignes que le contenu qui fait foi porte dans `table`, et d'où il est lu : le contenu fourni (MAVERICK_CONTENU, ouvert en lecture
+ * seule ; une table qu'il n'a pas encore, d'une migration plus récente que lui, n'y porte rien) quand la variable est posée, sinon
+ * data/rows/<table>.sql (exigé, avec l'en-tête de l'exporteur : chaque table a son fichier, même vide). Sert l'invariant « un extrait ou un contenu
+ * fourni ne porte aucune fiche, aucun lot, aucune migration reçue » (garde-fou 9 du chantier, tables « propres au site » des sections 13 et 14).
+ * @param {string} table un nom tiré d'une liste figée du code
+ * @returns {{ source: string, lignes: number }}
+ */
+export function lignesDuContenu(table) {
+  const contenu = contenuFourni();
+  if (contenu) {
+    const db = new DatabaseSync(contenu, { readOnly: true });
+    try {
+      const existe = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(table);
+      return { source: contenu, lignes: existe ? db.prepare(`SELECT count(*) AS n FROM "${table}"`).get().n : 0 };
+    } finally {
+      db.close();
+    }
+  }
+  const chemin = join(ROWS_DU_DEPOT, `${table}.sql`);
+  const lignes = readFileSync(chemin, 'utf8').trim().split('\n');
+  if (!lignes[0].startsWith(`-- data/rows/${table}.sql`)) throw new Error(`${chemin} : l’en-tête de l’exporteur manque`);
+  return { source: chemin, lignes: lignes.length - 1 };
 }

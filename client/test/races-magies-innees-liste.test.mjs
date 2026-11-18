@@ -3,7 +3,7 @@
 // plus faire échouer tools/db/races_onglet.py --verifier (donc la mise à jour) ; une race que le site n'a pas touchée reste contrôlée comme à l'import.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { copyFileSync, cpSync, readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
@@ -15,6 +15,7 @@ import { journalExporte } from '../serveur/edition-journal.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { corpsDeRace, etatDeRace } from '../src/lib/corps-races.mjs';
 import { cheminDImport } from './aide-base-d-import.mjs';
+import { copieDesRowsDeDepart } from './aide-base-de-depart.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { remettreLesCorpsDeLa0119 } from './aide-migration-0119.mjs';
 import { TEXTES_DE_LA_0120 } from './aide-races-0120.mjs';
@@ -47,8 +48,9 @@ test('R31 : liste changée sans la phrase, phrase réécrite sans la liste (mêm
   const journal = journalExporte(db);
   db.close();
 
-  const rows = join(tmp, 'rows');
-  cpSync(join(RACINE, 'data', 'rows'), rows, { recursive: true });
+  // Lot 12 : le rapatriement (db-appliquer-edition.mjs) s'applique à une copie des lignes de départ (data/rows sans MAVERICK_CONTENU, sinon l'export du
+  // contenu fourni), jamais à data/rows ; le vérificateur lit cette copie (`--rows`) : le rapatriement n'existe que sous forme de lignes.
+  const rows = copieDesRowsDeDepart(join(tmp, 'rows'));
   const a = appliquerJournal(journal, { rows });
   assert.equal(a.ecrit, true, JSON.stringify(a.conflits));
   const v = verifier(rows);

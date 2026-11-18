@@ -16,12 +16,13 @@ import { enregistrer } from '../serveur/edition.mjs';
 import { journalExporte } from '../serveur/edition-journal.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { copieDesRowsDeDepart } from './aide-base-de-depart.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
 const tmp = dossierTemporaire('rapatriement');
 const rows = join(tmp, 'data', 'rows');
-cpSync(join(RACINE, 'data', 'rows'), rows, { recursive: true });
+copieDesRowsDeDepart(rows);
 const lire = (dossier) => Object.fromEntries(readdirSync(dossier).map((f) => [f, readFileSync(join(dossier, f), 'utf8')]));
 const avant = lire(rows);
 
@@ -102,7 +103,7 @@ test('une seconde fois : tout est déjà présent (« intégré ») et déjà da
 
 test('conflit (data/rows a changé autrement depuis) : rien n’est écrit, sauf --ignorer-conflits qui écrit (et historise) les autres lots', () => {
   const dossier = join(tmp, 'conflit', 'data', 'rows');
-  cpSync(join(RACINE, 'data', 'rows'), dossier, { recursive: true });
+  copieDesRowsDeDepart(dossier);
   // le bonus du Forgeron change dans data/rows (base reconstruite, ligne modifiée, réexportée par l'exporteur des importeurs)
   const { db: copie, sortie } = construire(dossier);
   copie.prepare("UPDATE metier SET bonus_brut = bonus_brut || ' (autre)' WHERE id = ?").run(FORGERON);
@@ -140,7 +141,7 @@ test('un journal rapatrié une seconde fois ne remet jamais une valeur annulée 
   const j = journalExporte(v);
   v.close();
   const rowsK = join(tmp, 'rows-k');
-  cpSync(join(RACINE, 'data', 'rows'), rowsK, { recursive: true }); // les lignes d'origine (celles de `rows` ont reçu le journal des tests précédents)
+  copieDesRowsDeDepart(rowsK); // les lignes d'origine (celles de `rows` ont reçu le journal des tests précédents)
   const premier = appliquerJournal(j, { rows: rowsK });
   assert.equal(premier.ecrit, true, JSON.stringify(premier));
   const apres = lire(rowsK);
@@ -179,7 +180,7 @@ test('un don créé puis supprimé avant que la base vivante soit refaite (ligne
   v.close();
   assert.deepEqual(lots.filter((l) => j.lots.some((x) => x.id === l)), lots, 'les deux lots sont dans le journal exporté');
   const rowsF = join(tmp, 'rows-f');
-  cpSync(join(RACINE, 'data', 'rows'), rowsF, { recursive: true });
+  copieDesRowsDeDepart(rowsF);
   const res = appliquerJournal(j, { rows: rowsF });
   assert.equal(res.ecrit, true, JSON.stringify(res));
   assert.equal(res.conflits.length, 0);
@@ -217,11 +218,21 @@ test('les monnaies supprimées (le CONVERTISSEUR vidé), puis un mot-clé : rapa
   const j = journalExporte(v);
   v.close();
   const rowsM = join(tmp, 'rows-monnaies');
-  cpSync(join(RACINE, 'data', 'rows'), rowsM, { recursive: true });
+  copieDesRowsDeDepart(rowsM);
   const r = appliquerJournal(j, { rows: rowsM });
   assert.equal(r.ecrit, true, JSON.stringify(r.conflits));
   const { db } = construire(rowsM);
   assert.deepEqual(db.prepare('SELECT id FROM monnaie WHERE valeur_rf <> 1').all(), []);
   assert.equal(db.prepare('SELECT corps_md FROM page WHERE id = ?').get(PAGE).corps_md, duService);
   db.close();
+});
+
+test('la ligne de commande exige `--rows <copie>` : sans lui, refus net (code 2) avant tout rejeu, data/rows n’est pas écrit', () => {
+  const cli = fileURLToPath(new URL('../scripts/db-appliquer-edition.mjs', import.meta.url));
+  for (const args of [[join(tmp, 'journal-absent.json')], [join(tmp, 'journal-absent.json'), '--rows'], [join(tmp, 'journal-absent.json'), '--rows', '--ignorer-conflits']]) {
+    const r = spawnSync(process.execPath, ['--no-warnings', cli, ...args], { encoding: 'utf8' });
+    assert.equal(r.status, 2, args.join(' '));
+    assert.match(r.stderr, /--rows <copie>/);
+    assert.match(r.stderr, /Rien n’a été rejoué|Rien n'a été rejoué/);
+  }
 });

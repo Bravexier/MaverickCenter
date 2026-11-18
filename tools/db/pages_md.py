@@ -3,11 +3,15 @@
 Lit client/src/content/wiki/<type>/<slug>.md avec le sous-ensemble STRICT de YAML que les importeurs écrivent (toute autre forme arrête le chargement),
 déduit la famille d'import d'une page de sa PROVENANCE déclarée (`sources:`, jamais du contenu).
 
-    python3 -I tools/db/pages_md.py check [--rows data/rows] [--wiki <dossier>]   les pages de data/rows sont-elles celles des .md ?  (code 1 sinon)
-    python3 -I tools/db/pages_md.py sync  [--rows data/rows] [--wiki <dossier>]   remet à jour data/rows depuis les .md
+    python3 -I tools/db/pages_md.py check [--rows data/rows | --base <fichier.db>] [--wiki <dossier>]   les pages de la base sont-elles celles des .md ?  (code 1 sinon)
+    python3 -I tools/db/pages_md.py sync  --base <travail.db> [--wiki <dossier>]   remet à jour une BASE DE TRAVAIL depuis les .md (elle seule est écrite)
+    python3 -I tools/db/pages_md.py sync  --rows <copie de lignes> [--wiki <dossier>]   de même dans une copie de lignes (tests) ; jamais data/rows
 
-Les .md de client/src/content/wiki/ sont un PRODUIT du build (fabriqués depuis data/rows par `npm run db:export-pages`, ignorés par git). Pour changer une page à la main :
-modifier son .md puis `db:sync-pages`. Une page ajoutée ou retirée n'est gérée ici que pour les familles `docs` et `exemple` ; sinon c'est l'importeur de la famille.
+Les .md de client/src/content/wiki/ sont un PRODUIT du build (fabriqués par `npm run db:export-pages`, ignorés par git). Lot 12 du chantier « base de dev = source
+de vérité » (R274, R278) : `sync` n'écrit plus data/rows (copie du site de dev, écrite par le workflow seul : contrôle `controle-du-contenu-ecrit`). Il écrit une
+base de travail, copie préparée de l'extrait du site de dev, dont `client/scripts/lot-de-source.mjs` tire un lot de nature `source` à PROPOSER au site de dev ;
+`npm run db:sync-pages` (client/scripts/db-sync-pages.mjs) enchaîne les deux. Les pages d'exemple des .md ne comptent pas face à une base qui n'en a aucune (le site
+de dev n'en a pas). Une page ajoutée ou retirée n'est gérée ici que pour les familles `docs` et `exemple` ; sinon c'est l'importeur de la famille.
 """
 import json
 import os
@@ -183,11 +187,35 @@ def types_du_site(types_mjs=None):
     return json.loads(r.stdout)
 
 
-def pages_differentes(rows, wiki):
+def pages_du_wiki(db, wiki=None):
+    """Les pages des .md de `wiki`, par id, comparables à la base `db` : sans les pages d'exemple quand la base n'en a aucune (une base de travail tirée de
+    l'extrait du site de dev, qui n'en a pas ; les .md fabriqués les portent)."""
+    pages = lire_pages_md(wiki)
+    if not db.execute("SELECT 1 FROM page WHERE statut = 'example' LIMIT 1").fetchone():
+        pages = [p for p in pages if p['statut'] != 'example']
+    return {p['id']: p for p in pages}
+
+
+def ouvrir_base(chemin, ecriture=False):
+    """Une base SQLite déjà construite (base de travail, contenu fourni préparé), à la version du schéma ; en lecture seule sauf `ecriture`."""
+    if not os.path.isfile(chemin):
+        raise RuntimeError(f'{chemin} : base introuvable')
+    import sqlite3
+    uri = 'file:%s%s' % (chemin.replace('?', '%3f').replace('#', '%23'), '' if ecriture else '?mode=ro')
+    db = sqlite3.connect(uri, uri=True, isolation_level=None)
+    db.execute('PRAGMA foreign_keys = ON')
+    v = db.execute('PRAGMA user_version').fetchone()[0]
+    if v != T.version_schema():
+        db.close()
+        raise RuntimeError(f'{chemin} : structure {v}, schéma {T.version_schema()} (préparer la copie : client/scripts/db-preparer-contenu.mjs)')
+    return db
+
+
+def pages_differentes(rows, wiki, db=None):
     """Information (ne modifie rien) : ids des pages de `wiki` dont le contenu (titre, résumé, corps, statut, champs structurés, alias, mots-clés, sources)
-    diffère de `data/rows`, et ids présents d'un seul côté. Fonctionne pour TOUTES les familles (portées ou non) : sert à mesurer la péremption de la référence
-    dorée par rapport au dépôt d'aujourd'hui (design.md §9, revue M3). -> (differentes, seulement_md, seulement_base)"""
-    db = T.reconstruire(':memory:', rows)
+    diffère de `data/rows` (ou de la base `db` quand elle est donnée), et ids présents d'un seul côté. Fonctionne pour TOUTES les familles (portées ou non) :
+    sert à mesurer la péremption de la référence dorée par rapport au dépôt d'aujourd'hui (design.md §9, revue M3). -> (differentes, seulement_md, seulement_base)"""
+    db = db or T.reconstruire(':memory:', rows)
     base = {r[0]: r[1:] for r in db.execute('SELECT id, titre, resume, corps_md, statut, donnees FROM page')}
     liens = {}
     for pid, v in db.execute('SELECT page_id, texte FROM alias ORDER BY page_id, ordre'):
@@ -198,7 +226,7 @@ def pages_differentes(rows, wiki):
         liens.setdefault(('page_tag', pid), []).append(v)
     for pid, texte in db.execute('SELECT ps.page_id, s.texte FROM page_source ps JOIN source s ON s.id = ps.source_id ORDER BY ps.page_id, ps.ordre'):
         liens.setdefault(('source', pid), []).append(texte)
-    md = {p['id']: p for p in lire_pages_md(wiki)}
+    md = pages_du_wiki(db, wiki)
     diff = []
     for pid in sorted(set(md) & set(base)):
         p = md[pid]
@@ -213,15 +241,16 @@ def pages_differentes(rows, wiki):
 FAMILLES_SANS_IMPORTEUR = {'docs', 'exemple'}
 
 
-def rafraichir_pages(rows, wiki=None, mots_cles_ignores=None):
-    """Remet à jour dans `data/rows` le CONTENU des pages (titre, résumé, corps, statut, champs structurés, alias, mots-clés, sources) qui ont changé dans les .md,
+def rafraichir_pages(rows, wiki=None, mots_cles_ignores=None, db=None):
+    """Remet à jour dans une copie de lignes `rows` (ou dans la base de travail `db`, ouverte en écriture, quand elle est donnée : rien n'est alors exporté) le CONTENU des pages (titre, résumé, corps, statut, champs structurés, alias, mots-clés, sources) qui ont changé dans les .md,
     pour TOUTES les familles. Les lignes typées qui se rattachent à une page (`page_entite`, capacités, sorts…) ne sont pas touchées : l'identifiant d'une page ne
     change jamais ici. Un mot-clé de `tags:` absent du vocabulaire, ou ambigu (homonymes, migration 0113 : écrire la clé), n'est pas posé (un import n'en crée pas : migration 0056) : (page, écriture), pour
     toutes les pages des .md, va dans la liste `mots_cles_ignores` si elle est donnée (main les signale). Une page peut être AJOUTÉE ou RETIRÉE seulement si elle est de la famille `docs` ou `exemple` (pas d'importeur typé : leur texte est la source) ;
     pour toute autre famille, c'est l'importeur de la famille qui crée ou retire ses pages. Refuse aussi une page dont la provenance (famille) a changé.
     -> ids des pages mises à jour, ajoutées ou retirées (liste vide : rien à faire, aucun fichier réécrit)."""
-    db = T.reconstruire(':memory:', rows)
-    md = {p['id']: p for p in lire_pages_md(wiki)}
+    exporter = db is None
+    db = db or T.reconstruire(':memory:', rows)
+    md = pages_du_wiki(db, wiki)
     if mots_cles_ignores is not None:
         # toutes les pages, changées ou non : une écriture inconnue ne change rien à data/rows (pages_differentes ne la compte pas), elle se signale
         for pid in sorted(md):
@@ -232,7 +261,7 @@ def rafraichir_pages(rows, wiki=None, mots_cles_ignores=None):
     interdites = [pid for pid in ajoutees if md[pid]['origine'] not in FAMILLES_SANS_IMPORTEUR] + [pid for pid in retirees if base[pid] not in FAMILLES_SANS_IMPORTEUR]
     if interdites:
         raise RuntimeError(f"pages ajoutées ou retirées hors des familles {sorted(FAMILLES_SANS_IMPORTEUR)} ({interdites[:10]}) : elles passent par l'importeur de leur famille, pas par pages_md.py sync")
-    changees, _, _ = pages_differentes(rows, wiki or WIKI)
+    changees, _, _ = pages_differentes(rows, wiki or WIKI, db)
     for pid in changees:
         if md[pid]['origine'] != base[pid]:
             raise RuntimeError(f"{pid} : sa provenance (sources:) la rattache à la famille {md[pid]['origine']!r}, la base dit {base[pid]!r} : importeur de famille requis")
@@ -272,38 +301,73 @@ def rafraichir_pages(rows, wiki=None, mots_cles_ignores=None):
                 raise ValueError(f"collision d'id de source : {s['id']} pour {texte!r}")
             db.execute('INSERT INTO page_source (page_id, ordre, source_id) VALUES (?,?,?)', (pid, i, s['id']))
     db.execute('DELETE FROM source WHERE id NOT IN (SELECT source_id FROM page_source)')
-    violations, _ = T.controle_references(db, T.lire_heritage(os.path.join(rows, '..', 'heritage.json')))
+    heritage = os.path.join(rows, '..', 'heritage.json') if exporter else os.path.join(RACINE, 'data', 'heritage.json')
+    violations, _ = T.controle_references(db, T.lire_heritage(heritage))
     if violations:
         db.execute('ROLLBACK')
         raise RuntimeError(f'références rompues après la mise à jour des pages : {violations[:10]}')
     db.execute('COMMIT')
-    T.exporter(db, rows)
+    if exporter:
+        T.exporter(db, rows)
     return changees + ajoutees + retirees
+
+
+def meme_fichier(a, b):
+    """Vrai si les deux chemins désignent le même fichier ou dossier (liens résolus)."""
+    return os.path.realpath(a) == os.path.realpath(b)
+
+
+USAGE = 'usage : pages_md.py check [--rows data/rows | --base <fichier.db>] [--wiki <dossier>] | sync (--base <travail.db> | --rows <copie>) [--wiki <dossier>]'
+EXTRAIT_DU_JOUR = os.path.join(RACINE, 'var', 'extrait', 'maverick-dev.db')
 
 
 def main(argv):
     if not argv or argv[0] not in ('check', 'sync'):
-        sys.exit('usage : pages_md.py check|sync [--rows data/rows] [--wiki <dossier>]')
+        sys.exit(USAGE)
     option = lambda nom, defaut: argv[argv.index(nom) + 1] if nom in argv else defaut  # noqa: E731
+    if '--rows' in argv and '--base' in argv:
+        sys.exit(USAGE)
+    fichier = option('--base', None)
+    fichier = os.path.abspath(fichier) if fichier else None
     rows = os.path.abspath(option('--rows', ROWS))
     wiki = option('--wiki', None)
+    nom = fichier or 'data/rows' if (fichier or meme_fichier(rows, ROWS)) else rows
     if argv[0] == 'check':
-        differentes, seulement_md, seulement_base = pages_differentes(rows, wiki or WIKI)
+        try:
+            db = ouvrir_base(fichier) if fichier else None
+        except RuntimeError as e:
+            print(f'refusé : {e}')
+            return 1
+        differentes, seulement_md, seulement_base = pages_differentes(rows, wiki or WIKI, db)
         if not (differentes or seulement_md or seulement_base):
-            print('data/rows est à jour : les pages sont celles des .md')
+            print(f'{nom} est à jour : les pages sont celles des .md')
             return 0
-        print(f"data/rows n'est PAS à jour : {len(differentes)} page(s) différente(s) des .md, {len(seulement_md)} seulement en .md, {len(seulement_base)} seulement en base")
+        print(f"{nom} n'est PAS à jour : {len(differentes)} page(s) différente(s) des .md, {len(seulement_md)} seulement en .md, {len(seulement_base)} seulement en base")
         for pid in (differentes + seulement_md + seulement_base)[:30]:
             print('   ', pid)
-        print('-> npm run db:sync-pages (puis commiter data/rows) ; une page ajoutée ou retirée passe par l\'importeur de sa famille')
+        print('-> npm run db:sync-pages -- --lot <lot.json> --titre <titre> (un lot `source` à proposer au site de dev) ; une page ajoutée ou retirée passe par l\'importeur de sa famille')
+        return 1
+    # sync : jamais data/rows (lot 12) ; ni l'extrait du jour ni le contenu fourni eux-mêmes : une COPIE préparée
+    if not fichier and '--rows' not in argv or not fichier and meme_fichier(rows, ROWS):
+        print('refusé : sync n\'écrit plus data/rows (copie du site de dev, écrite par le workflow seul) : npm run db:sync-pages -- --lot <lot.json> --titre <titre> '
+              '(une base de travail tirée de l\'extrait, puis un lot `source` à proposer au site de dev) ; ou --base <copie.db> / --rows <copie de lignes>')
+        return 1
+    fournis = [c for c in (EXTRAIT_DU_JOUR, os.environ.get('MAVERICK_CONTENU', '').strip()) if c]
+    if fichier and any(os.path.exists(c) and meme_fichier(fichier, c) for c in fournis):
+        print(f'refusé : {fichier} est l\'extrait ou le contenu fourni lui-même : travailler sur une copie préparée (client/scripts/db-sync-pages.mjs)')
         return 1
     ignores = []
     try:
-        changees = rafraichir_pages(rows, wiki, ignores)
+        db = ouvrir_base(fichier, ecriture=True) if fichier else None
+        try:
+            changees = rafraichir_pages(rows, wiki, ignores, db)
+        finally:
+            if db:
+                db.close()
     except (RuntimeError, ValueError) as e:
         print(f'refusé : {e}')
         return 1
-    print(f'{len(changees)} page(s) mise(s) à jour (modifiées, ajoutées ou retirées) dans data/rows' if changees else 'data/rows était déjà à jour')
+    print(f'{len(changees)} page(s) mise(s) à jour (modifiées, ajoutées ou retirées) dans {nom}' if changees else f'{nom} était déjà à jour')
     if ignores:
         print(T.signaler_mots_cles_ignores(ignores))
     return 0

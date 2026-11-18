@@ -8,7 +8,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { ouvrirBase, trouverRacine } from '../src/lib/donnees.mjs';
+import { cheminBase, ouvrirBase, trouverRacine } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { magiesOfRace } from '../src/lib/magie-relations.mjs';
 import { raceKind } from '../src/lib/race-kinds.mjs';
@@ -16,6 +16,7 @@ import { avecLesMotsCles, motsClesDesPages } from '../src/lib/pages-db.mjs';
 import { chargerRaces } from '../src/lib/races-db.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { splitFrontmatter } from '../src/lib/wikilinks.mjs';
+import { contenuDuSite } from './aide-base-de-depart.mjs';
 import { horsDeLa0120, RACES_DE_LA_0120 } from './aide-races-0120.mjs';
 
 const racine = trouverRacine();
@@ -37,10 +38,16 @@ const pages = (type) =>
 const entries = avecLesMotsCles([...pages('races'), ...pages('magies'), ...pages('classes')], motsClesDesPages(db));
 const texteDe = (blocs) => blocs.flatMap((b) => ('items' in b ? b.items : [b.texte])).join('\n');
 
+// Lot 12 : la vérification lit la base construite depuis le contenu qui fait foi (le contenu fourni, MAVERICK_CONTENU, sinon data/rows : `--base`) ;
+// sans la variable, le repli de l'outil (data/rows reconstruit par lui-même) est éprouvé aussi.
 test('migration 0007 : les tables de l’onglet se relisent depuis les pages, à l’identique (tools/db/races_onglet.py --verifier)', () => {
-  const r = spawnSync('python3', ['-I', join(racine, 'tools', 'db', 'races_onglet.py'), '--verifier'], { encoding: 'utf8', cwd: racine });
-  assert.equal(r.status, 0, r.stdout + r.stderr);
-  assert.match(r.stdout, /conformes aux pages/);
+  const verifier = (...args) => spawnSync('python3', ['-I', join(racine, 'tools', 'db', 'races_onglet.py'), '--verifier', ...args], { encoding: 'utf8', cwd: racine });
+  const modes = [['--base', cheminBase({ sansExemples: false })], ...(contenuDuSite() ? [] : [[]])];
+  for (const args of modes) {
+    const r = verifier(...args);
+    assert.equal(r.status, 0, `${args.join(' ') || 'data/rows'} : ${r.stdout}${r.stderr}`);
+    assert.match(r.stdout, /conformes aux pages/);
+  }
 });
 
 test('effectifs : 27 onglets, 70 dons, 2 tableaux en panneaux (Drakos 15 x 4, Mort-vivant 12 x 2), 27 capacités Mode Hyper nommées', () => {

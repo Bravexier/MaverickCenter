@@ -35,15 +35,15 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { traiter } from '../serveur/api.mjs';
 import { FICHIER_BASE, ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
-import { colonneDerivee } from '../serveur/edition.mjs';
-import { journalExporte, structure } from '../serveur/edition-journal.mjs';
-import { copierLaBase, differences, lotDeLaDifference } from '../serveur/epreuve-des-lots.mjs';
-import { controlerLaNature, controlerLeLot } from '../src/lib/lot-de-changements.mjs';
+import { journalExporte } from '../serveur/edition-journal.mjs';
+import { copierLaBase } from '../serveur/epreuve-des-lots.mjs';
+import { controlerLaNature } from '../src/lib/lot-de-changements.mjs';
 import { TABLES, texteDePageModifiable } from '../src/lib/edition-modele.mjs';
 import { baliserLeMot, ecrituresDuMot, ecrituresDuMotDans, sansLesBalisesDuMot } from '../src/lib/glossaire-balisage.mjs';
 import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { motCleDeLaRef } from '../src/lib/mots-cles-balises.mjs';
 import { SENS_DEFENSE } from '../src/lib/monstre-champs.mjs';
+import { lotDesChangements } from './lot-de-source.mjs';
 
 const CLIENT = fileURLToPath(new URL('../', import.meta.url));
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
@@ -208,39 +208,8 @@ export const exclusDe = (exclus) => (Array.isArray(exclus) ? exclus : Object.val
 /** Les contextes exclus d'une entrée de `--mots` ({ raison: [expressions régulières] }) : [{ motif, raison }]. */
 const contextesDe = (contextes) => Object.entries(contextes ?? {}).flatMap(([raison, motifs]) => motifs.map((motif) => ({ motif, raison })));
 
-/** La structure d'une table pour contrôler un lot (lib/lot-de-changements.mjs#controlerLeLot) : null pour une table inconnue. */
-const structurePourLeLot = (db) => (table) => {
-  try {
-    const { colonnes, cle } = structure(db, table);
-    return { colonnes, cle };
-  } catch {
-    return null;
-  }
-};
-
-/**
- * Le lot de changements (« maverick-lot/1 ») de ce qui diffère entre `avant` et `apres` (tables de contenu), d'en-tête `entete` ({ titre, nature,
- * decision?, auteur? }), contrôlé comme au dépôt sur une base où le service est la source (toutes les tables ouvertes) : lève une Error qui dit les
- * erreurs, avec leur rang, si le service le refuserait.
- */
-export function lotDesChangements(avant, apres, entete) {
-  const { lot } = lotDeLaDifference(differences(avant, apres), apres, entete);
-  // les mots-clés créés d'abord : lotDeLaDifference range les modifications avant les insertions, or un texte balisé cite la clé d'un mot-clé que le
-  // vocabulaire doit déjà porter (sinon l'essai à blanc refuse : « ne cite aucun mot-clé du vocabulaire »)
-  const motCle = (o) => o.operation === 'inserer' && /^mot_cle(_|$)/.test(o.table);
-  // les colonnes dérivées (corps et résumé des pages typées, `donnees` des fiches de dons : serveur/edition.mjs#colonneDerivee) sont refaites par le service
-  // quand il applique les lignes balisées : le lot ne les porte pas (le service n'écrirait rien, et l'essai refuserait l'opération)
-  const sansDerivees = (o) => {
-    if (o.operation !== 'modifier') return o;
-    const colonnes = Object.keys(o.apres).filter((c) => !colonneDerivee(o.table, o.cle, c));
-    return colonnes.length ? { ...o, avant: Object.fromEntries(colonnes.map((c) => [c, o.avant[c]])), apres: Object.fromEntries(colonnes.map((c) => [c, o.apres[c]])) } : null;
-  };
-  const operations = lot.operations.map(sansDerivees).filter(Boolean);
-  lot.operations = [...operations.filter(motCle), ...operations.filter((o) => !motCle(o))];
-  const { valide, erreurs } = controlerLeLot(lot, { structure: structurePourLeLot(apres), ouvertHorsEdition: true });
-  if (!valide) throw new Error(`lot refusé : ${erreurs.map((e) => `${e.rang ?? 'en-tête'} : ${e.message}`).join(' ; ')}`);
-  return lot;
-}
+/** Le lot de changements de ce qui diffère entre `avant` et `apres` : scripts/lot-de-source.mjs#lotDesChangements (l'outil générique, qu'importent aussi les importeurs). */
+export { lotDesChangements };
 
 /**
  * Balise les mots `mots` ([{ libelle, motif, casse, description, exclus, contextes, horsDe, sauf }]) dans les textes d'une copie de la base `base` (l'extrait

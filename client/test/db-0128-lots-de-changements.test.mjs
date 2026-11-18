@@ -10,6 +10,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
+import { lignesDuContenu } from './aide-base-de-depart.mjs';
 import { rejouerLaMigration } from './aide-migration-rejouee.mjs';
 import { CLASSES_DE_TABLES, classeDeLaTable, TABLES_DU_JOURNAL } from '../src/lib/tables-de-la-base.mjs';
 
@@ -64,7 +65,7 @@ function essayer(ligne) {
   }
 }
 
-test('structure : deux tables STRICT de la section 14, entre le journal et le brouillon de la note, « propres au site », vides dans data/rows', () => {
+test('structure : deux tables STRICT de la section 14, entre le journal et le brouillon de la note, « propres au site », vides dans le contenu qui fait foi (contenu fourni, sinon data/rows)', () => {
   const debut14 = SCHEMA.indexOf('-- 14. ÉDITION');
   const debut15 = SCHEMA.indexOf('-- 15. NOTES DE VERSION');
   const section14 = [...SCHEMA.slice(debut14, debut15).matchAll(/^CREATE TABLE (\w+)/gm)].map((m) => m[1]);
@@ -76,7 +77,8 @@ test('structure : deux tables STRICT de la section 14, entre le journal et le br
     for (const t of TABLES) {
       assert.equal(db.prepare('SELECT strict FROM pragma_table_list WHERE name = ?').get(t).strict, 1, `${t} STRICT`);
       assert.equal(classeDeLaTable(t), CLASSES_DE_TABLES.PROPRE_AU_SITE, t);
-      assert.doesNotMatch(readFileSync(new URL(`data/rows/${t}.sql`, RACINE), 'utf8'), /INSERT/, `data/rows/${t}.sql vide`);
+      const { source, lignes } = lignesDuContenu(t);
+      assert.equal(lignes, 0, `${t} : aucun lot dans ${source}`);
     }
     const cles = db.prepare('SELECT "from" AS colonne, "table" AS parent FROM pragma_foreign_key_list(?) ORDER BY "from"').all('lot_de_changements').map((r) => ({ ...r }));
     assert.deepEqual(cles, [{ colonne: 'annulation_lot_id', parent: 'modification_lot' }, { colonne: 'lot_id', parent: 'modification_lot' }]);

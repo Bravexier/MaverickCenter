@@ -16,13 +16,14 @@ import { journalExporte } from '../serveur/edition-journal.mjs';
 import { ligneDArme, PAGE_DES_ARMES, titreDeSectionDeFamille } from '../src/lib/corps-armes.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { copieDesRowsDeDepart } from './aide-base-de-depart.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { sourcesJustes } from './aide-maitrise-arme.mjs';
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
 const tmp = dossierTemporaire('rapatriement-familles');
 const rows = join(tmp, 'data', 'rows');
-cpSync(join(RACINE, 'data', 'rows'), rows, { recursive: true });
+copieDesRowsDeDepart(rows);
 const lire = (dossier) => Object.fromEntries(readdirSync(dossier).map((f) => [f, readFileSync(join(dossier, f), 'utf8')]));
 
 // sur le site de dev : une famille créée avec une arme (même lot, « @0 »), puis renommée et son dé changé

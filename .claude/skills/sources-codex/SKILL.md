@@ -29,7 +29,7 @@ user-invocable: false
   « ect » → « etc. » comme 0005, « purée de poix » → « purée de pois » comme 0006). Chaque entrée a son nombre d'occurrences attendu.
 - Exception R266 : « Super Gemme », « Mort Fertile » et « Dieu de la Terre » sont corrigés dans le Codex, limités à ces trois graphies (skill `base-orthographe`). La migration 0121 a réécrit les pages en base ; leurs entrées du registre portent `migration`, et `--verifier` les applique aussi à l'état d'import des pages que le site avait modifiées avant elle (`graphies_de_migration`). `codex.test.mjs` met à part ces pages dans ses lectures de `baseDImport()`.
 - L'export dans `sources/raw/` reste tel quel ; les corrections se font dans le script, avant le découpage.
-- `--verifier` relit l'export ligne par ligne, par un code qui ne partage pas le découpage.
+- `--verifier` relit l'export ligne par ligne, par un code qui ne partage pas le découpage. Il (comme l'écriture) lit l'historique et le vocabulaire dans la base (`--base <fichier.db>`), `data/rows` seulement en repli sans `--base` ; `codex.test.mjs` passe `--base` (`cheminBase`).
 - Le site de dev est la source de ce qu'il modifie. Les pages du Codex se modifient sur le site de dev comme celles du guide (titre, texte ;
   `lib/edition-modele.mjs#texteDePageModifiable`). Une page modifiée est contrôlée par `--verifier` dans son état d'import (`historique_modification`,
   `pages_du_site`), et `codex.py` la garde telle quelle à l'écriture.
@@ -42,7 +42,7 @@ user-invocable: false
 ## Nouvel export
 1. Remplacer l'export dans `sources/raw/`.
 2. `python3 -I tools/docs/codex.py`, puis `python3 -I tools/docs/codex.py --verifier`.
-3. Les pages changées se proposent en lot de changements sur le site de dev (nature `source` ; skill `modifier-une-page-wiki`), jamais par `db:sync-pages` ni un commit de `data/rows`.
+3. Les pages changées se proposent en lot de changements sur le site de dev : `npm run db:sync-pages -- --lot <lot.json> --titre <titre>` écrit un lot de nature `source` (l'outil n'envoie rien ; skill `modifier-une-page-wiki`), jamais un commit de `data/rows`.
 4. La chronologie, qui cite le texte des pages : `node tools/chronologie/chronologie.mjs --verifier` (détail : `docs/codex.md`, « Règles du découpage »).
 
 ## Choix du propriétaire

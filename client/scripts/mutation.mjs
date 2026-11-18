@@ -130,7 +130,12 @@ function lancer(o) {
       bilan.mutations = mutations;
       rmSync(join(dossier, 'mutation.db'), { force: true });
     }
-    const app = etape(contexte, 'appliquer', process.execPath, ['--no-warnings', 'scripts/db-appliquer-edition.mjs', journal], { cwd: client });
+    // lot 12 : l'exporteur refuse le data/rows de son propre dépôt (ici la copie jetable) : le rapatriement se fait dans un dossier de travail, recopié ensuite dans la copie
+    const rapatries = join(dossier, 'rows-rapatries');
+    rmSync(rapatries, { recursive: true, force: true });
+    cpSync(join(depot, 'data', 'rows'), rapatries, { recursive: true });
+    const app = etape(contexte, 'appliquer', process.execPath, ['--no-warnings', 'scripts/db-appliquer-edition.mjs', journal, '--rows', rapatries], { cwd: client });
+    cpSync(rapatries, join(depot, 'data', 'rows'), { recursive: true, force: true });
     bilan.rapatriement = app.stdout.trim().split('\n').slice(-6).join('\n');
     etape(contexte, 'db-build', process.execPath, ['--no-warnings', 'scripts/db-build.mjs'], { cwd: client });
     etape(contexte, 'db-derive', process.execPath, ['--no-warnings', 'scripts/db-derive.mjs'], { cwd: client });

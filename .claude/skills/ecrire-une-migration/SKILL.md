@@ -28,4 +28,4 @@ Un changement de structure passe par une migration, et une migration ne porte qu
    - Elle doit passer sur la base remplie du merge-base sans perdre de fiche ni de journal. Avant le push : `npm run db:controler-migrations -- --base origin/dev` (depuis `client/`).
 7. **Le test.** Un test dans `client/test/` épingle la migration (ce qu'elle change, et la décision R… si elle en applique une). `tech-qualite` le relit avec la grille `revue-sql`.
 
-`data/rows` est une copie du site de dev écrite par le workflow (« Lot : », « Copie : ») et, pour les seules tables qu'elle nomme, par `db:migrate` d'une migration de structure : jamais à la main, ni par `db:sync-pages` ou `db:appliquer-edition`.
+`data/rows` est une copie du site de dev écrite par le workflow (« Lot : », « Copie : ») et, pour les seules tables qu'elle nomme, par `db:migrate` d'une migration de structure : jamais à la main ni par un outil (`db:sync-pages` écrit un lot `source`, `db:appliquer-edition` exige `--rows <copie>`).

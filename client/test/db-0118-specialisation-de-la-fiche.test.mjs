@@ -11,6 +11,7 @@ import { after, test } from 'node:test';
 import { POTENTIEL_ILLIMITE } from '../src/lib/potentiel-illimite.mjs';
 import { analyserCout } from '../src/lib/sort-analyse.mjs';
 import { cheminDImport } from './aide-base-d-import.mjs';
+import { lignesDuContenu } from './aide-base-de-depart.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const PROJECTILE_ARCANIQUE = 'magies/magie-de-larcane#sort:projectile-arcanique';
@@ -111,9 +112,9 @@ test('personnage_specialisation_magie : une spécialisation de CETTE magie (clé
   assert.equal(un('SELECT count(*) AS n FROM personnage_specialisation_magie WHERE personnage_id = ?', id).n, 0);
 });
 
-test('data/rows garde la table vide (section 13 : les fiches vivent dans la base du serveur)', () => {
-  const lignes = readFileSync(new URL('../../data/rows/personnage_specialisation_magie.sql', import.meta.url), 'utf8').trim().split('\n');
-  assert.equal(lignes.length, 1, 'en-tête seul');
+test('le contenu qui fait foi (contenu fourni, sinon data/rows) garde la table vide (section 13 : les fiches vivent dans la base du serveur)', () => {
+  const { source, lignes } = lignesDuContenu('personnage_specialisation_magie');
+  assert.equal(lignes, 0, `aucune ligne dans ${source}`);
 });
 
 after(() => db.close());

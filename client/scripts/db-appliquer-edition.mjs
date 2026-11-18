@@ -1,4 +1,4 @@
-// `npm run db:appliquer-edition -- <journal.json> [--ignorer-conflits] [--rows <dossier>]` (dans client/) : rapatrie dans data/rows les modifications
+// `npm run db:appliquer-edition -- <journal.json> --rows <copie> [--ignorer-conflits]` (dans client/ ; `--rows` est exigé depuis le lot 12 : data/rows n'est plus écrit) : rapatrie dans une copie de data/rows les modifications
 // faites sur le site de dev (docs/serveur.md, « Édition »). Le journal se télécharge depuis le site de dev (lien « N modifications à rapatrier » à côté
 // du crayon, GET /api/edition/journal/). Étapes :
 //   1. une base est reconstruite depuis data/rows (scripts/db-build.mjs, dans un dossier temporaire) ;
@@ -12,8 +12,7 @@
 //      déjà présentes, « intégrées ») sont versées dans historique_modification, version NULL (rapatriées à la main ; un lot qui y est déjà n'est pas
 //      repris), les tables du journal sont vidées (elles restent vides dans data/rows) et data/rows est réécrit par l'exporteur des importeurs
 //      (tools/db/exporter.py : même format, octet pour octet).
-// Mode `-- --reparer-traces` : met à l'id entier les traces de mots-clés d'historique_modification qu'un journal d'avant la 0113 y a laissées sous l'ancien id texte.
-// Ensuite : `npm run db:build && npm run db:check`, puis `npm test` et un commit de data/rows. Le site est la source des données qu'il modifie
+// Rien n'est commité de la copie : data/rows est écrit par le workflow seul (R274, R278). Le site est la source des données qu'il modifie
 // (décision du propriétaire) : les tests qui épinglent l'import (effectifs, textes cités) le lisent dans historique_modification
 // (src/lib/historique-site.mjs) et contrôlent la cohérence de l'état courant. Le service, lui, verra ces modifications « intégrées ».
 import { spawnSync } from 'node:child_process';
@@ -23,7 +22,7 @@ import { join, resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 import { integrerLivrees } from '../serveur/base-vivante.mjs';
-import { rejouerLeJournal, traceDAujourdhui } from '../serveur/edition.mjs';
+import { rejouerLeJournal } from '../serveur/edition.mjs';
 import { chargerJournal } from '../serveur/edition-journal.mjs';
 import { historiser } from '../serveur/historique.mjs';
 import { messageDeRefus } from '../src/lib/markdown-sur.mjs';
@@ -90,66 +89,16 @@ export function appliquerJournal(journal, { rows = join(RACINE, 'data', 'rows'),
   }
 }
 
-/**
- * Met en forme d'aujourd'hui les traces de mots-clés déjà dans historique_modification (serveur/edition.mjs#traceDAujourdhui : ids entiers, `cle` à
- * la place de `libelle_cle`) : celles d'un lot noté avant la 0113 que la mise à jour ou db:appliquer-edition a versé tel quel, avant que `historiser`
- * ne les traduise. Idempotent. Rend le nombre de lignes réécrites.
- */
-export function reparerLesTraces(db) {
-  const enTrace = traceDAujourdhui(db);
-  const modifier = db.prepare('UPDATE historique_modification SET cle = ?, avant = ?, apres = ? WHERE lot_id = ? AND rang = ?');
-  let n = 0;
-  for (const h of db.prepare("SELECT lot_id, rang, table_nom, cle, avant, apres FROM historique_modification WHERE table_nom IN ('mot_cle', 'page_tag', 'sort_mot_cle')").all()) {
-    const m = enTrace(h);
-    if (m === h) continue;
-    modifier.run(m.cle, m.avant, m.apres, h.lot_id, h.rang);
-    n += 1;
-  }
-  return n;
-}
-
-/**
- * Mode `--reparer-traces` : reconstruit une base depuis data/rows, y fait reparerLesTraces et réécrit data/rows par l'exporteur (seul historique_modification.sql
- * change). Rend { reparees, ecrit }.
- */
-export function reparerLesTracesDeLaBase({ rows = join(RACINE, 'data', 'rows') } = {}) {
-  const tmp = mkdtempSync(join(tmpdir(), 'maverick-traces-'));
-  try {
-    const chemin = join(tmp, 'base.db');
-    const construction = spawnSync(process.execPath, ['--no-warnings', join(CLIENT, 'scripts', 'db-build.mjs'), '--out', chemin, '--rows', rows], { encoding: 'utf8' });
-    if (construction.status !== 0) throw new Error(`data/rows ne se reconstruit pas : ${construction.stderr || construction.stdout}`);
-    const db = new DatabaseSync(chemin);
-    let reparees;
-    try {
-      reparees = reparerLesTraces(db);
-    } finally {
-      db.close();
-    }
-    if (!reparees) return { reparees, ecrit: false };
-    const exp = spawnSync('python3', ['-I', join(RACINE, 'tools', 'db', 'exporter.py'), chemin, '--rows', rows], { encoding: 'utf8' });
-    if (exp.status !== 0) throw new Error(`export refusé : ${exp.stderr || exp.stdout}`);
-    return { reparees, ecrit: true };
-  } finally {
-    rmSync(tmp, { recursive: true, force: true });
-  }
-}
-
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
-  if (args.includes('--reparer-traces')) {
-    try {
-      const rows = args.includes('--rows') ? resolve(args[args.indexOf('--rows') + 1]) : undefined;
-      const { reparees } = reparerLesTracesDeLaBase({ rows });
-      console.log(`${reparees} trace(s) de mot-clé mise(s) à l’id entier dans historique_modification.`);
-    } catch (e) {
-      console.error(e.message);
-      process.exit(1);
-    }
-    process.exit(0);
-  }
   const fichier = args.find((a) => !a.startsWith('--') && args[args.indexOf(a) - 1] !== '--rows');
+  // lot 12 : data/rows n'est plus écrit par un outil (R274) ; l'exporteur (tools/db/exporter.py) refuse aussi de l'écrire sans `--rows`. Refus net, avant tout rejeu.
+  if (!args.includes('--rows') || !args[args.indexOf('--rows') + 1] || args[args.indexOf('--rows') + 1].startsWith('--')) {
+    console.error('db:appliquer-edition n\'écrit plus data/rows (la base du site de dev fait foi, R274) : donner une copie de travail, `-- <journal.json> --rows <copie>`. Rien n\'a été rejoué.');
+    process.exit(2);
+  }
   if (!fichier) {
-    console.error('usage : npm run db:appliquer-edition -- <journal.json> [--ignorer-conflits] [--rows <dossier>]  |  -- --reparer-traces [--rows <dossier>]');
+    console.error('usage : npm run db:appliquer-edition -- <journal.json> --rows <copie> [--ignorer-conflits]');
     process.exit(2);
   }
   const rows = args.includes('--rows') ? resolve(args[args.indexOf('--rows') + 1]) : undefined;
@@ -168,7 +117,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
       console.error('Rien n’a été écrit : réglez les conflits (ou relancez avec --ignorer-conflits pour écrire les autres lots).');
       process.exit(1);
     }
-    console.log(`data/rows réécrit (${historisees} modification(s) versée(s) dans historique_modification). Ensuite : npm run db:build && npm run db:check, npm test, puis commit de data/rows.`);
+    console.log(`${rows} réécrit (${historisees} modification(s) versée(s) dans historique_modification). Cette copie sert aux tests ; data/rows n'est pas commité à la main.`);
   } catch (e) {
     console.error(e.message);
     process.exit(1);

@@ -9,7 +9,7 @@ import { describe, it, before } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
   MARQUEUR_DEBUT, MARQUEUR_FIN, chercherLesMotifs, classerLesMigrations, extraireLaSection, familleDe, fichiersDeclaresParNature, lirePublications, mesurer,
-  MOTIFS, remplacerLaSection, rendreLaSection, resumerLesPublications, sansLeVolatil, sectionAJour,
+  EN_TETE_DU_DOCUMENT, MOTIFS, remplacerLaSection, rendreLaSection, resumerLesPublications, sansLeVolatil, sectionAJour,
 } from '../scripts/inventaire-sortie-du-contenu-lib.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
@@ -202,28 +202,48 @@ describe('inventaire de ce qui sort du dépôt (lot 12)', () => {
     assert.equal(sectionAJour('sans section', a), false);
   });
 
-  it('le script écrit la section, puis `--verifier` : 0 ; un lecteur de plus : 1 ; réécrite : 0', (t) => {
+  it('le script écrit le document entier ; `--verifier` informe (code 0), `--strict` donne 1 quand la section est périmée', (t) => {
     const copie = dossierTemporaire('inventaire-sortie-script', { t });
     git(copie, 'init', '-q');
     poser(copie, { ...FICHIERS, 'docs/chantier.md': DOCUMENT });
     const base = ['--racine', copie, '--doc', 'docs/chantier.md', '--sans-gh'];
 
-    assert.equal(lancer(...base, '--verifier').status, 1, 'marqueurs vides : pas à jour');
+    const vide = lancer(...base, '--verifier');
+    assert.equal(vide.status, 0, 'informatif : jamais un échec');
+    assert.match(vide.stderr, /périmée/);
+    assert.equal(lancer(...base, '--verifier', '--strict').status, 1, 'marqueurs vides : pas à jour');
     const ecrit = lancer(...base, '--ecrire-docs');
     assert.equal(ecrit.status, 0, ecrit.stderr);
     const texte = readFileSync(join(copie, 'docs/chantier.md'), 'utf8');
+    assert.ok(texte.startsWith(EN_TETE_DU_DOCUMENT), 'le document est écrit en entier par le script');
+    assert.ok(texte.includes('aucune autre PR n\'a à la régénérer'));
     assert.ok(texte.includes('Chiffres de tête'));
-    assert.ok(texte.endsWith('\n\nAprès.\n'));
+    assert.ok(!texte.includes('Avant, data/rows'), 'le contenu précédent n\'est pas gardé');
+    assert.equal(texte.split(MARQUEUR_DEBUT).length, 2, 'une seule section');
     const json = JSON.parse(readFileSync(join(copie, 'var/inventaire-sortie/inventaire.json'), 'utf8'));
     assert.equal(json.chiffres_de_tete.fichiers_qui_sortent, 6);
     assert.equal(json.publications.mesuree, false);
-    assert.equal(lancer(...base, '--verifier').status, 0);
+    const aJour = lancer(...base, '--verifier', '--strict');
+    assert.equal(aJour.status, 0, aJour.stderr);
+    assert.match(aJour.stdout, /à jour/);
 
     poser(copie, { 'client/src/lib/nouveau.mjs': "const d = join(base, 'data', 'rows');\n" });
-    assert.equal(lancer(...base, '--verifier').status, 1);
+    assert.equal(lancer(...base, '--verifier').status, 0, 'périmée : informatif');
+    assert.equal(lancer(...base, '--verifier', '--strict').status, 1);
     assert.equal(lancer(...base, '--ecrire-docs').status, 0);
-    assert.equal(lancer(...base, '--verifier').status, 0);
+    assert.equal(lancer(...base, '--verifier', '--strict').status, 0);
     assert.equal(lancer(...base, '--verifier', '--ecrire-docs').status, 2, 'options incompatibles');
+    assert.equal(lancer(...base, '--strict').status, 2, '--strict va avec --verifier');
+  });
+
+  it('le document par défaut est docs/lot-12-inventaire.md, créé par le script s\'il manque', (t) => {
+    const copie = dossierTemporaire('inventaire-sortie-defaut', { t });
+    git(copie, 'init', '-q');
+    poser(copie, { ...FICHIERS });
+    assert.equal(lancer('--racine', copie, '--sans-gh', '--ecrire-docs').status, 0);
+    const texte = readFileSync(join(copie, 'docs/lot-12-inventaire.md'), 'utf8');
+    assert.ok(texte.startsWith(EN_TETE_DU_DOCUMENT));
+    assert.equal(lancer('--racine', copie, '--sans-gh', '--verifier', '--strict').status, 0);
   });
 
   it('lit les publications : tableaux collés (`--paginate`), tableau de tableaux (`--slurp`), tableau simple', () => {
@@ -269,6 +289,11 @@ describe('inventaire de ce qui sort du dépôt (lot 12)', () => {
       assert.match(r.stderr, /var/);
       assert.ok(!r.stderr.includes('    at '), 'pas de pile');
     }
+    // le contrôle précède toute écriture : avec --ecrire-docs, un --json refusé laisse le document intact
+    const document = readFileSync(join(copie, 'docs/chantier.md'), 'utf8');
+    const refuse = lancer(...base, '--ecrire-docs', '--json', '../ailleurs.json');
+    assert.equal(refuse.status, 2);
+    assert.equal(readFileSync(join(copie, 'docs/chantier.md'), 'utf8'), document, 'le document n’est pas écrit');
     assert.equal(lancer(...base, '--json', 'var/ailleurs/ici.json').status, 0);
     assert.ok(readFileSync(join(copie, 'var/ailleurs/ici.json'), 'utf8').includes('chiffres_de_tete'));
     const sansGit = dossierTemporaire('inventaire-sortie-sans-git', { t });
