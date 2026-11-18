@@ -7,7 +7,80 @@ on:
   pull_request:
 
 jobs:
+  # Le contenu du site de dev pour les tests (lot 10 du chantier de la base de dev, R278 : « Oui, pour les tests seulement » ; docs/flux-git.md, « Contenu
+  # lu par les tests »). Un job à part, node: seulement (pas de npm ci) : le runner reçoit tous les secrets d'un job dès son début, et une étape d'un autre
+  # job (npm, tests de la PR) ne peut pas lire sa mémoire ; c'est le seul job qui reçoit MAVERICK_EXTRAIT_CLE, la clé de lecture du site de dev. Il
+  # n'exécute que client/scripts/db-extrait.mjs de la branche de BASE (dev), tiré par git archive sous $RUNNER_TEMP. L'extrait est chiffré (openssl,
+  # AES-256-CBC, PBKDF2 200 000 tours, phrase MAVERICK_CONTENU_CHIFFREMENT passée par l'environnement, jamais en argument) et seul le fichier chiffré part
+  # en artefact d'un jour (le dépôt est public) ; le sha256 du clair sort du job (ce n'est pas un secret) pour vérifier le déchiffrement. Repli (le job
+  # ne tombe jamais pour cela) : branche visée autre que dev (master : la production a sa propre structure), un des deux secrets absent (PR d'un fork,
+  # secrets pas encore créés), site injoignable après les essais ou délai dépassé ; `disponible` vaut false et `raison` dit pourquoi.
+  extrait-du-site-de-dev:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      disponible: ${{ steps.extrait.outputs.disponible }}
+      raison: ${{ steps.extrait.outputs.raison }}
+      date: ${{ steps.extrait.outputs.date }}
+      sha256: ${{ steps.extrait.outputs.sha256 }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - id: extrait
+        timeout-minutes: 12
+        continue-on-error: true
+        env:
+          MAVERICK_EXTRAIT_CLE: ${{ secrets.MAVERICK_EXTRAIT_CLE }}
+          MAVERICK_CONTENU_CHIFFREMENT: ${{ secrets.MAVERICK_CONTENU_CHIFFREMENT }}
+          BASE: ${{ github.event_name == 'pull_request' && github.base_ref || github.ref_name }}
+        run: |
+          repli() { echo "disponible=false" >> "$GITHUB_OUTPUT"; echo "raison=copie du dépôt (data/rows) : $1" >> "$GITHUB_OUTPUT"; echo "Contenu pour les tests : copie du dépôt (data/rows) : $1." | tee -a "$GITHUB_STEP_SUMMARY"; }
+          if [ "$BASE" != dev ]; then repli "la branche visée est $BASE, pas dev"; exit 0; fi
+          if [ -z "$MAVERICK_EXTRAIT_CLE" ]; then repli "secret MAVERICK_EXTRAIT_CLE absent (PR d’un fork, ou secret pas encore créé)"; exit 0; fi
+          if [ -z "$MAVERICK_CONTENU_CHIFFREMENT" ]; then repli "secret MAVERICK_CONTENU_CHIFFREMENT absent (PR d’un fork, ou secret pas encore créé)"; exit 0; fi
+          base="$RUNNER_TEMP/branche-de-base"
+          clair="$RUNNER_TEMP/extrait"
+          journal="$RUNNER_TEMP/extrait.log"
+          mkdir -p "$base" "$RUNNER_TEMP/chiffre"
+          git fetch --no-tags --depth=1 origin "+refs/heads/dev:refs/remotes/origin/extrait-base"
+          git archive refs/remotes/origin/extrait-base client/scripts client/serveur client/src/lib client/package.json | tar -x -C "$base"
+          for essai in 1 2 3; do
+            if (cd "$base/client" && MAVERICK_EXTRAIT_DELAI=150 timeout 180 node --no-warnings scripts/db-extrait.mjs --dossier "$clair") > "$journal" 2>&1; then
+              date=$(node -e 'const m = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8")); console.log(`${m.fabrique_le} (site ${m.version_du_site ?? "?"}, structure ${m.schema})`)' "$clair/maverick-dev.json")
+              sha=$(sha256sum "$clair/maverick-dev.db" | cut -d ' ' -f 1)
+              openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt -pass env:MAVERICK_CONTENU_CHIFFREMENT -in "$clair/maverick-dev.db" -out "$RUNNER_TEMP/chiffre/maverick-dev.db.enc"
+              rm -rf "$clair"
+              { echo "disponible=true"; echo "raison="; echo "date=$date"; echo "sha256=$sha"; } >> "$GITHUB_OUTPUT"
+              echo "Contenu pour les tests : site de dev, extrait du $date (sha256 $sha), chiffré." | tee -a "$GITHUB_STEP_SUMMARY"
+              exit 0
+            else
+              code=$?
+            fi
+            [ "$code" = 124 ] && echo "délai de 180 s dépassé" >> "$journal"
+            cat "$journal"
+            # 401, 403 : la clé est refusée, reprendre n'y changera rien ; sinon (5xx, réseau, délai) : nouvel essai
+            if grep -qE '\((401|403)\)' "$journal"; then break; fi
+            if [ "$essai" -lt 3 ]; then sleep $((essai * 20)); fi
+          done
+          repli "site de dev injoignable ($(tail -n 1 "$journal" | cut -c1-160))"
+      # seulement le fichier chiffré (le clair a été effacé avant) ; un téléversement raté se lit côté client comme un téléchargement raté : repli
+      - if: steps.extrait.outputs.disponible == 'true'
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: contenu-du-site-de-dev-chiffre
+          path: ${{ runner.temp }}/chiffre/maverick-dev.db.enc
+          retention-days: 1
+          if-no-files-found: error
+
   client:
+    # après l'extrait, quelle que soit son issue (le repli est décidé ici, à l'étape « contenu »)
+    needs: extrait-du-site-de-dev
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -22,6 +95,49 @@ jobs:
           cache: npm
           cache-dependency-path: client/package-lock.json
       - run: npm ci
+      # Le contenu que lisent les tests et le build (R278 ; docs/flux-git.md, « Contenu lu par les tests ») : l'extrait chiffré du job précédent, déchiffré
+      # sous $RUNNER_TEMP (hors de l'arbre suivi) et vérifié par son sha256 ; ce job ne reçoit que la phrase de chiffrement, à la seule étape « dechiffrement ».
+      # L'étape « contenu », sans secret, pose MAVERICK_CONTENU pour tout le job, ou annonce le repli (copie du dépôt, data/rows) : ::warning:: et la raison.
+      # Le résumé du job dit toujours quel contenu a été lu. Ces étapes ne sont pas des contrôles (scripts/mise-a-jour-github.mjs#CONTROLES_DE_LA_CI les ignore).
+      - id: telechargement
+        if: needs.extrait-du-site-de-dev.outputs.disponible == 'true'
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: contenu-du-site-de-dev-chiffre
+          path: ${{ runner.temp }}/contenu-chiffre
+      - id: dechiffrement
+        if: needs.extrait-du-site-de-dev.outputs.disponible == 'true' && steps.telechargement.outcome == 'success'
+        continue-on-error: true
+        env:
+          MAVERICK_CONTENU_CHIFFREMENT: ${{ secrets.MAVERICK_CONTENU_CHIFFREMENT }}
+          ATTENDU: ${{ needs.extrait-du-site-de-dev.outputs.sha256 }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/contenu"
+          clair="$RUNNER_TEMP/contenu/maverick-dev.db"
+          openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -pass env:MAVERICK_CONTENU_CHIFFREMENT -in "$RUNNER_TEMP/contenu-chiffre/maverick-dev.db.enc" -out "$clair"
+          lu=$(sha256sum "$clair" | cut -d ' ' -f 1)
+          if [ "$lu" != "$ATTENDU" ]; then rm -f "$clair"; echo "sha256 du contenu déchiffré : $lu, attendu : $ATTENDU"; exit 1; fi
+      - id: contenu
+        env:
+          DISPONIBLE: ${{ needs.extrait-du-site-de-dev.outputs.disponible }}
+          RAISON: ${{ needs.extrait-du-site-de-dev.outputs.raison }}
+          DATE: ${{ needs.extrait-du-site-de-dev.outputs.date }}
+          RESULTAT: ${{ needs.extrait-du-site-de-dev.result }}
+          TELECHARGEMENT: ${{ steps.telechargement.outcome }}
+          DECHIFFREMENT: ${{ steps.dechiffrement.outcome }}
+        run: |
+          fichier="$RUNNER_TEMP/contenu/maverick-dev.db"
+          if [ "$DISPONIBLE" = true ] && [ "$DECHIFFREMENT" = success ] && [ -f "$fichier" ]; then
+            echo "MAVERICK_CONTENU=$fichier" >> "$GITHUB_ENV"
+            echo "Contenu lu par les tests et le build : site de dev, extrait du $DATE." | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            if [ "$DISPONIBLE" = true ] && [ "$TELECHARGEMENT" != success ]; then raison="copie du dépôt (data/rows) : l’extrait chiffré n’a pas pu être téléchargé"
+            elif [ "$DISPONIBLE" = true ]; then raison="copie du dépôt (data/rows) : déchiffrement de l’extrait impossible, ou sha256 différent"
+            else raison="${RAISON:-copie du dépôt (data/rows) : le job extrait-du-site-de-dev n’a pas abouti ($RESULTAT)}"; fi
+            echo "::warning title=Contenu lu par les tests::$raison"
+            echo "Contenu lu par les tests et le build : $raison." >> "$GITHUB_STEP_SUMMARY"
+          fi
       - run: npm test
       - run: npm run build
       # Contrôles du site construit (câblage des infobulles et des fiches des pages de magie, gabarits des pages de race et de classe, tableau des métiers, page Équipement (armes, armures et boucliers, ceinture et ses bâtons magiques, accessoires), gabarit commun des tableaux, tableaux et pages des monstres du bestiaire, frise de la chronologie, pages du guide, liens et encart de l’accueil, adresses sans /wiki/ et logo, fiche de personnage et recherche des personnages, rendus des champs modifiables du site de dev, page Debug du site de dev) : se sautent tant que dist/ n’existe pas.

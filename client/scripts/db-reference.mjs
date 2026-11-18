@@ -57,14 +57,12 @@ export function integrationReference() {
     hooks: {
       'astro:build:done': ({ dir, logger }) => {
         if (process.env.INLINE_CSS === '1' || process.env.SITE_MODE === 'prod') return;
-        // MAVERICK_CONTENU (fabrication depuis un fichier de contenu, lib/contenu-fourni.mjs) : la référence se lit dans git (master), que le kit n'a pas ;
-        // le site témoin n'en porte pas, ce que la comparaison avec le site livré classe comme attendu
-        if (contenuFourni()) {
-          logger.info('base de référence (production) non construite : le contenu est fourni par MAVERICK_CONTENU');
-          return;
-        }
+        // La référence se lit dans git (les data/rows de master dans l'historique), même quand MAVERICK_CONTENU fournit le contenu du site (la CI qui lit
+        // l'extrait du site de dev, lot 10 : aucun contrôle ne saute à cause de la variable). Sans git ni master (le kit de l'atelier, lib/contenu-fourni.mjs),
+        // le site témoin n'en porte pas, ce que la comparaison avec le site livré classe comme attendu : une information, pas un avertissement.
         const r = construireReference({ sortie: fileURLToPath(new URL('donnees/reference.db', dir)) });
         if (r.chemin) logger.info(`base de référence (production) : ${r.ref} ${r.commit.slice(0, 7)}, version ${r.version}`);
+        else if (contenuFourni()) logger.info(`base de référence (production) non construite (contenu fourni par MAVERICK_CONTENU) : ${r.raison}`);
         else logger.warn(`base de référence (production) absente : ${r.raison}`);
       },
     },

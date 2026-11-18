@@ -2,14 +2,16 @@
 //   node scripts/db-export-pages.mjs [--out <dossier>] [--verifier <dossier-existant>]
 // Lancé automatiquement avant `npm run dev`, `npm run build` et `npm test` (scripts « pre… » de package.json) : les `.md` ne sont plus dans git, la base est la source.
 // --verifier : n'écrit rien ; compare ce que la base produirait au dossier donné (code 1 s'il y a un écart).
-// MAVERICK_CONTENU=<fichier SQLite> : la base est une copie de ce fichier (un extrait du contenu, lib/contenu-fourni.mjs) au lieu d'être reconstruite depuis data/rows.
+// MAVERICK_CONTENU=<fichier SQLite> : la base est une copie de ce fichier (un extrait du contenu, lib/contenu-fourni.mjs) au lieu d'être reconstruite depuis data/rows,
+// préparée comme celle du build (scripts/db-preparer-contenu.mjs : vue de l'extrait retirée, migrations manquantes du dépôt appliquées).
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { contenuFourni, copierLeContenu } from '../src/lib/contenu-fourni.mjs';
+import { contenuDejaDerive, contenuFourni, copierLeContenu } from '../src/lib/contenu-fourni.mjs';
 import { emettrePage, lirePages, ouvrirEnLectureSeule } from '../src/lib/pages-db.mjs';
+import { preparerLeContenu } from './db-preparer-contenu.mjs';
 
 const client = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const racine = resolve(client, '..');
@@ -26,8 +28,12 @@ function executer() {
   try {
     // MAVERICK_CONTENU : les pages viennent d'une copie du fichier de contenu fourni (jamais modifié), sans data/rows
     const contenu = contenuFourni();
-    if (contenu) copierLeContenu(contenu, fichier);
-    else {
+    if (contenu) {
+      copierLeContenu(contenu, fichier);
+      // comme lib/donnees.mjs#ouvrirBase : un fichier déjà dérivé (fabrication en deux temps) se lit tel quel, sans préparation ; la fabrication l'a
+      // contrôlé (serveur/fichier-de-contenu.mjs : structure égale à celle du dépôt) et dérivé, mais il garde sa vue `extrait_meta`, sans effet sur la lecture des pages
+      if (!contenuDejaDerive()) preparerLeContenu(fichier, { racine });
+    } else {
       const r = spawnSync(process.execPath, ['--no-warnings', join(client, 'scripts', 'db-build.mjs'), '--out', fichier], { encoding: 'utf8', cwd: racine });
       if (r.status !== 0) { console.error(`db-build a échoué : ${r.stderr || r.stdout}`); return 1; }
     }
