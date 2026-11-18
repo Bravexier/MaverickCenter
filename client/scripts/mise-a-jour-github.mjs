@@ -116,7 +116,9 @@ const PREFIXE_BRANCHE = 'feature/mise-a-jour-regles-';
 /** Tables de la note de version, toujours écrites par la mise à jour (même liste que scripts/mise-a-jour-regles.mjs, comparée par le test). */
 export const TABLES_DE_LA_NOTE = ['note_version', 'note_version_ligne', 'historique_modification'];
 /**
- * Les contrôles du job « client » de .github/workflows/ci.yml après npm ci, dans l'ordre et à l'identique (le test les compare au fichier) ;
+ * Les contrôles du job « client » de .github/workflows/ci.yml après npm ci, dans l'ordre et à l'identique (le test les compare au fichier ; les étapes
+ * « dechiffrement » et « contenu » de la CI, qui déchiffrent l'extrait du site de dev et posent MAVERICK_CONTENU, n'en sont pas : ce job contrôle data/rows qu'il vient
+ * d'écrire, sans secret) ;
  * le `git fetch` de master qui les précède là-bas est fait ici par actions/checkout (fetch-depth: 0). Lancés par `sh -c` dans client/, avec
  * RUNNER_TEMP = un dossier temporaire du script.
  */

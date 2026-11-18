@@ -1530,11 +1530,52 @@ describe('.github/workflows/mise-a-jour.yml', () => {
 
   test('les contrôles de preparer reprennent tout le job client de ci.yml (même ordre, mêmes commandes)', () => {
     const client = YAML.parse(readFileSync(CI, 'utf8')).jobs.client;
-    const commandes = client.steps.filter((s) => s.run).map((s) => s.run.trim())
-      .filter((c) => c !== 'npm ci' && !c.startsWith('git fetch ')); // npm ci : étape du workflow ; le fetch de master : actions/checkout, fetch-depth: 0
+    // npm ci : étape du workflow ; le fetch de master : actions/checkout, fetch-depth: 0 ; les étapes « dechiffrement » et « contenu » (lot 10, R278)
+    // posent le contenu du site de dev et disent lequel les tests lisent, ce ne sont pas des contrôles (le job preparer contrôle data/rows qu'il vient
+    // d'écrire, sans aucun secret)
+    const commandes = client.steps.filter((s) => s.run && !['dechiffrement', 'contenu'].includes(s.id)).map((s) => s.run.trim())
+      .filter((c) => c !== 'npm ci' && !c.startsWith('git fetch '));
     assert.deepEqual(CONTROLES_DE_LA_CI, commandes);
     assert.deepEqual(CONTROLES.slice(0, 2), ['npm run db:build', 'npm run db:check']);
     assert.ok(client.steps.some((s) => s.run?.startsWith('git fetch ') && s.run.includes('master')), 'ci.yml récupère master (fetch-depth: 0 ici)');
+  });
+
+  test('ci.yml : la clé du site de dev reste dans un job à part, sans npm ; le client ne reçoit que la phrase de chiffrement, à son étape de déchiffrement ; seul le chiffré part en artefact d’un jour (R278)', () => {
+    const { jobs } = YAML.parse(readFileSync(CI, 'utf8'));
+    const texte = readFileSync(CI, 'utf8');
+    const secrets = (j) => [...JSON.stringify(j).matchAll(/secrets\.([A-Z_]+)/g)].map((m) => m[1]);
+    const etapesAvec = (j, secret) => (j.steps ?? []).filter((s) => JSON.stringify(s).includes(`secrets.${secret}`)).map((s) => s.id);
+    // la clé : un seul job, une seule étape, et ce job ne lance pas npm (aucun paquet, aucun code de la PR)
+    assert.deepEqual(Object.entries(jobs).filter(([, j]) => secrets(j).includes('MAVERICK_EXTRAIT_CLE')).map(([nom]) => nom), ['extrait-du-site-de-dev']);
+    assert.equal((texte.match(/secrets\.MAVERICK_EXTRAIT_CLE/g) ?? []).length, 1);
+    const extrait = jobs['extrait-du-site-de-dev'];
+    assert.ok(!extrait.steps.some((s) => /\bnpm\b/.test(s.run ?? '')), 'node: seulement, sans npm');
+    assert.ok(extrait['timeout-minutes'] > 0, 'job borné');
+    assert.deepEqual(Object.keys(extrait.outputs).sort(), ['date', 'disponible', 'raison', 'sha256']);
+    const etape = extrait.steps.find((s) => s.id === 'extrait');
+    assert.match(etape.run, /git archive [^\n]*client\/scripts/, 'le script exécuté est celui de la branche de base');
+    assert.match(etape.run, /openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt -pass env:MAVERICK_CONTENU_CHIFFREMENT/, 'chiffré, phrase par l’environnement');
+    // l'artefact : le chiffré seulement, un jour
+    const televersements = Object.values(jobs).flatMap((j) => (j.steps ?? []).filter((s) => s.uses?.startsWith('actions/upload-artifact') && JSON.stringify(s).includes('contenu-du-site-de-dev')));
+    assert.equal(televersements.length, 1);
+    assert.match(televersements[0].with.path, /\.enc$/, 'le fichier chiffré, jamais le clair');
+    assert.equal(televersements[0].with['retention-days'], 1);
+    // le client : la phrase seule, à l'étape de déchiffrement seule (jamais au niveau du job) ; MAVERICK_CONTENU posé sans secret ; repli annoncé
+    assert.deepEqual(secrets(jobs.client), ['MAVERICK_CONTENU_CHIFFREMENT']);
+    assert.deepEqual(etapesAvec(jobs.client, 'MAVERICK_CONTENU_CHIFFREMENT'), ['dechiffrement']);
+    const dechiffrement = jobs.client.steps.find((s) => s.id === 'dechiffrement');
+    assert.match(dechiffrement.run, /-pass env:MAVERICK_CONTENU_CHIFFREMENT/, 'jamais en argument');
+    assert.match(dechiffrement.run, /sha256sum/, 'le déchiffré est vérifié');
+    assert.equal(jobs.client.needs, 'extrait-du-site-de-dev');
+    assert.match(jobs.client.if, /!cancelled\(\)/, 'le job client tourne aussi quand l’extrait échoue (repli)');
+    const contenu = jobs.client.steps.find((s) => s.id === 'contenu');
+    assert.ok(!JSON.stringify(contenu).includes('secrets.'), 'l’étape qui pose MAVERICK_CONTENU est sans secret');
+    assert.match(contenu.run, /MAVERICK_CONTENU=/);
+    assert.match(contenu.run, /::warning/);
+    assert.equal((contenu.run.match(/GITHUB_STEP_SUMMARY/g) ?? []).length, 2, 'le résumé dit toujours d’où vient le contenu (les deux branches)');
+    assert.ok(jobs.client.steps.indexOf(contenu) < jobs.client.steps.findIndex((s) => s.run === 'npm test'), 'posé avant les tests et le build');
+    assert.doesNotMatch(texte, /set -x/, 'aucune trace des commandes (secrets)');
+    assert.deepEqual(secrets(jobs['simulation-de-mise-a-jour']), [], 'la simulation contrôle data/rows qu’elle vient d’écrire, sans secret, comme le job preparer');
   });
 
   test('le script du job livrer n\'importe que node: et tools/flux-git/regles.mjs, qui n\'importe rien', () => {

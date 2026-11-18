@@ -1093,8 +1093,22 @@ et produit le même site qu'avant.
 
 - **`MAVERICK_CONTENU=<fichier SQLite>`** (`src/lib/contenu-fourni.mjs`) : un extrait du contenu (« Extrait du contenu et attestation de la production », ci-dessus). Posée, tout ce qui
   lit la base au build en lit **une copie** (`lib/donnees.mjs#ouvrirBase`, passée par `db-derive.mjs`, avec `--sans-exemples` si `HIDE_EXAMPLES=1` ; `scripts/db-export-pages.mjs`) ; le fichier
-  fourni n'est jamais modifié, `trouverRacine` n'exige plus `data/rows`, et la base de référence de la production (`scripts/db-reference.mjs`, lue dans git) n'est pas construite. Un fichier
+  fourni n'est jamais modifié, `trouverRacine` n'exige plus `data/rows`. La base de référence de la production (`scripts/db-reference.mjs`) se lit toujours dans git (les `data/rows` de master
+  dans l'historique) : construite comme sans la variable quand git et master sont là (la CI), absente sans eux (le kit), ce que le build dit par une information. Un fichier
   introuvable est une erreur, jamais un repli sur `data/rows`.
+- **La copie est préparée** (lot 10, R278 ; `lib/contenu-fourni.mjs#preparerLaCopie`, appelée par `ouvrirBase` et `db-export-pages`, sauf pour un fichier déjà dérivé) : la vue `extrait_meta`
+  d'un extrait en est retirée (elle n'est pas du schéma : les lecteurs qui listent les vues ou refont un extrait la refusaient) ; un contenu de structure (`user_version`) **plus ancienne**
+  que `data/schema.sql` reçoit les migrations manquantes de `data/migrations/` (`scripts/db-preparer-contenu.mjs`, lancé dans son propre processus, par le code du service :
+  `serveur/structure-sur-place.mjs#appliquerSurPlace`, un seul bloc, clés étrangères contrôlées, schéma obtenu comparé à `data/schema.sql`) : c'est le cas d'une PR qui ajoute une migration
+  et lit l'extrait du site de dev, qui ne l'a pas encore reçue ; **plus récente** : erreur « Rebasez la branche sur dev » (le site de dev a reçu une migration que la branche n'a pas).
+  Le fichier fourni garde sa vue et sa structure. À la main : `node scripts/db-preparer-contenu.mjs <copie.db> [--racine <dépôt>]` (jamais sur le fichier fourni : il l'écrit).
+- **Essai mécanique des tests** (`scripts/essai-mecanique-tests.mjs`, usage en tête ; variantes : `scripts/essai-variantes.mjs` ; résultat du premier essai : `docs/essai-mecanique-des-tests.md`) :
+  chaque fichier de test lancé seul sur un contenu donné. Passes A et B (contenu reconstruit depuis `data/rows`, puis rendu factice), **C** (l'extrait du site de dev, `npm run db:extrait`,
+  sans le dépôt) et **V1 à V4** (variantes mécaniques de l'extrait, chacune une modification que le site de dev permet : icônes sur des mots-clés de genres variés, une magie renommée,
+  des lignes ajoutées, des lignes retirées sans dépendant). C et V tournent dans une **copie jetable** de l'arbre (`git worktree` détaché sous `<sortie>/copies/<passe>`, modifications
+  en cours recopiées, `data/rows/*.sql` retiré, `node_modules` par lien, `content/wiki` fabriqué depuis le contenu de la passe) ; rien n'y est commité, `--nettoyer` les retire. Un échec sur C :
+  le test lit encore le dépôt (ou casse sur le vrai contenu du site) ; sur Vn seulement : il fige une valeur modifiable. `--passe <P> --controles` lance dans la copie les contrôles du job
+  preparer (`scripts/mise-a-jour-github.mjs#CONTROLES`). Tri par passe : `<sortie>/tri.md` et `tri.json`. Toute la sortie reste sous `var/`.
 - **`npm run build:depuis-contenu -- --contenu <fichier> [--sortie <dossier>] [--mesure <fichier.json>]`** (`scripts/fabriquer-depuis-contenu.mjs`, logique : `serveur/fabrication-depuis-contenu.mjs`) :
   1. *controle* : le fichier est copié dans un dossier de travail, puis contrôlé (`serveur/fichier-de-contenu.mjs`, avec le classement de `lib/tables-de-la-base.mjs` et les empreintes de
      `serveur/empreintes.mjs`) : SQLite lisible, structure (`user_version`) du `data/schema.sql` livré, toutes les tables du contenu présentes, aucune ligne dans une table propre au site

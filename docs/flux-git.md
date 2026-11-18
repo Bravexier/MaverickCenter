@@ -179,6 +179,48 @@ Le jour de la bascule : une PR vers `dev` passe `actif` à `true`. Le job est un
 tournent sur toute PR vers `dev` et `master` (`pull_request` sans filtre de branche ni de chemin dans `ci.yml`), y compris les PR « Lot : » et « Copie : »
 du workflow de mise à jour et la livraison `dev` → `master`. Après une modification des fichiers de règles, les réimporter sur GitHub (GitHub ne les lit pas).
 
+## Contenu lu par les tests (lot 10)
+
+R278 (« Oui, pour les tests seulement ») : les tests et le build de la CI lisent le contenu du **site de dev**, pas la copie du dépôt. Le dépôt ne le garde pas.
+
+Deux secrets de dépôt :
+- **`MAVERICK_EXTRAIT_CLE`** : une clé de lecture du site de dev, envoyée dans `X-Maverick-Cle` ;
+- **`MAVERICK_CONTENU_CHIFFREMENT`** : une phrase secrète qui chiffre l'extrait entre deux jobs. Le dépôt est public : un artefact en clair donnerait toute la base à
+  tout compte GitHub.
+
+- **Job `extrait-du-site-de-dev`**, node: seulement, sans `npm` ; `timeout-minutes: 15`. C'est le seul job qui reçoit la clé. Le runner reçoit tous les secrets d'un
+  job dès son début, et une étape d'un même job (npm, tests de la PR) pourrait lire sa mémoire (CVE-2025-30066) : seul un job à part isole la clé.
+  - Il tire par `git archive` le `client/` de **`dev`** (la branche de base) sous `$RUNNER_TEMP`, et exécute ce `db-extrait.mjs`-là.
+  - Trois essais. Chaque essai est borné par `timeout 180` et par `MAVERICK_EXTRAIT_DELAI` (le délai de chaque demande dans `db-extrait.mjs`, 300 s par défaut). Une erreur
+    réseau, un 5xx ou un délai dépassé donne un nouvel essai ; pas sur un 401 ni un 403. L'étape a `timeout-minutes: 12` et `continue-on-error`.
+  - L'extrait est chiffré : `openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt -pass env:MAVERICK_CONTENU_CHIFFREMENT`, phrase jamais en argument. Le clair est
+    effacé, et **seul le fichier chiffré** part en artefact `contenu-du-site-de-dev-chiffre`, gardé un jour (`retention-days: 1`).
+  - Sorties : `disponible`, `raison` (la cause du repli), `date` (date de l'extrait, version du site, structure) et `sha256` (celui du clair, qui n'est pas un secret).
+- **Job `client`** : il attend l'extrait (`needs`), et tourne quelle que soit l'issue de ce job (`!cancelled()`). Après `npm ci` :
+  - `telechargement` récupère l'artefact chiffré ;
+  - `dechiffrement` est la seule étape qui reçoit un secret, la phrase, dans son `env:`. Elle déchiffre sous `$RUNNER_TEMP/contenu/`, hors de l'arbre suivi, et compare
+    le sha256 du clair à celui du job de l'extrait ;
+  - `contenu`, sans secret, pose `MAVERICK_CONTENU` pour tout le job (`npm test` et ses `pre`, les builds, les tests du site construit). Elle écrit dans le résumé
+    « Contenu lu par les tests et le build : site de dev, extrait du <date> ».
+  - Le contenu fourni est préparé comme en local (`docs/serveur.md`, « Fabriquer le site depuis un fichier de contenu ») : une migration ajoutée par la PR est appliquée
+    à la copie ; un site de dev en avance sur la branche fait échouer les tests avec « Rebasez la branche sur dev ».
+  - Ces étapes ne sont pas des contrôles : `CONTROLES_DE_LA_CI` (`scripts/mise-a-jour-github.mjs`) les ignore.
+- **Repli** : la branche visée n'est pas `dev` (PR vers `master` ou push sur `master` : la production a sa propre structure) ; un des deux secrets manque (PR d'un fork, ou
+  secrets pas encore créés) ; le site reste injoignable après les essais, délai compris ; le téléchargement ou le déchiffrement échoue ; ou le sha256 diffère.
+  - Le job `client` lit alors la copie du dépôt (`data/rows`, que le workflow tient égale au site de dev jusqu'au lot 12).
+  - Il émet un `::warning::` et écrit dans le résumé « Contenu lu par les tests et le build : copie du dépôt (data/rows) : <raison> ». Le résumé dit toujours lequel a été lu.
+  - Aucune clé ni phrase dans les journaux, aucun `set -x`.
+- **Ce qui ne change pas** : `simulation-de-mise-a-jour` et le job `preparer` de `mise-a-jour.yml` contrôlent `data/rows` qu'ils viennent d'écrire depuis un lot, sans aucun secret.
+  La base de référence de la production (`scripts/db-reference.mjs`) se lit toujours dans git (les `data/rows` de master), `MAVERICK_CONTENU` posée ou non : `site-html` garde son contrôle.
+- **Mise en place** (par le propriétaire) : créer les deux secrets de dépôt. *Settings → Secrets and variables → Actions → New repository secret* :
+  - `MAVERICK_EXTRAIT_CLE`, valeur : une clé de lecture du site de dev (`docs/serveur.md`, « Accès au site de dev ») ;
+  - `MAVERICK_CONTENU_CHIFFREMENT`, valeur : une longue phrase aléatoire, qui ne sert qu'à cela.
+
+  Sans l'un des deux, la CI reste sur le repli.
+- **Limite connue** : sur `pull_request`, GitHub lit le `ci.yml` de la PR. Une PR de ce dépôt qui modifierait ces jobs pourrait donc lire les secrets (les PR d'un fork ne les
+  reçoivent pas). La relecture d'une PR qui touche `ci.yml` garde ce point. La phrase de chiffrement est au job `client`, où tourne le code de la PR : elle ne protège l'extrait
+  que de l'artefact public, pas de ce code, qui lit de toute façon le contenu en clair. Comme R278 l'a accepté, des morceaux du contenu peuvent apparaître dans le compte rendu d'un test.
+
 ## Au quotidien
 
 ```bash

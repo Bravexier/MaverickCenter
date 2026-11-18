@@ -4,6 +4,7 @@
 //   - adresse : --url, sinon MAVERICK_EXTRAIT_URL, sinon https://dev.maverick-jdr.com ;
 //   - clé de lecture (facultative : sans mot de passe posé sur le site de dev, elle est inutile) : la seule variable MAVERICK_EXTRAIT_CLE, jamais une option de la ligne de commande (la clé se retrouverait dans l'historique et la conversation) ; elle part dans
 //     l'en-tête X-Maverick-Cle (le service ne voit jamais Authorization : Caddy le remplace, nginx le vide ; serveur/acces.mjs) ;
+//   - délai de chaque demande, corps compris : MAVERICK_EXTRAIT_DELAI (secondes ; 300 par défaut) ; dépassé, une erreur qui le dit (la CI se replie) ;
 //   - dossier : --dossier, sinon var/extrait/ (ignoré par git) ; y sont écrits maverick-dev.db (SQLite) et maverick-dev.json (le méta : date, version du site,
 //     empreinte de chaque table).
 // L'empreinte du fichier, puis celle de chaque table de contenu (serveur/empreintes.mjs : le calcul du service), sont vérifiées avant que le fichier ne
@@ -31,11 +32,25 @@ export function enteteDeLaCle(cle) {
   return valeur ? { 'X-Maverick-Cle': valeur } : {};
 }
 
-async function demander(fetch, adresse, entetes) {
+/** Délai d'une demande au site de dev, corps compris (variable MAVERICK_EXTRAIT_DELAI, en secondes) : 300 s par défaut, de quoi lire 30 Mo sur un lien lent. */
+export const DELAI_PAR_DEFAUT_S = 300;
+
+/** Le délai en millisecondes : MAVERICK_EXTRAIT_DELAI (secondes, entier > 0), sinon DELAI_PAR_DEFAUT_S. Une valeur illisible est une erreur. */
+export function delaiDeLaDemande(env = process.env) {
+  const brut = String(env.MAVERICK_EXTRAIT_DELAI ?? '').trim();
+  if (!brut) return DELAI_PAR_DEFAUT_S * 1000;
+  if (!/^[1-9]\d*$/.test(brut)) throw new ErreurExtrait(`MAVERICK_EXTRAIT_DELAI : « ${brut} » n’est pas un nombre de secondes.`);
+  return Number(brut) * 1000;
+}
+
+const estUnDelai = (e) => e?.name === 'TimeoutError' || e?.cause?.name === 'TimeoutError';
+
+async function demander(fetch, adresse, entetes, delai) {
   let reponse;
   try {
-    reponse = await fetch(adresse, { headers: entetes, redirect: 'follow' });
+    reponse = await fetch(adresse, { headers: entetes, redirect: 'follow', signal: AbortSignal.timeout(delai) });
   } catch (e) {
+    if (estUnDelai(e)) throw new ErreurExtrait(`${adresse} : délai de ${delai / 1000} s dépassé (MAVERICK_EXTRAIT_DELAI).`);
     throw new ErreurExtrait(`${adresse} : ${e.cause?.message ?? e.message}`);
   }
   if (reponse.status === 401) throw new ErreurExtrait(`${adresse} : accès refusé (401) — une clé de lecture est demandée (variable MAVERICK_EXTRAIT_CLE).`);
@@ -62,15 +77,28 @@ export function ecartsAvecLeMeta(chemin, meta) {
 
 /**
  * Télécharge l'extrait dans `dossier`. Rend { meta, chemin, telecharge } : `telecharge` faux quand l'extrait déjà là est celui du site.
- * @param {{ url?: string, cle?: string|null, dossier?: string, fetch?: typeof fetch }} [o]
+ * @param {{ url?: string, cle?: string|null, dossier?: string, fetch?: typeof fetch, delai?: number }} [o] `delai` : en millisecondes, par demande, corps compris
  */
-export async function telechargerExtrait({ url = ADRESSE_DU_SITE_DE_DEV, cle = null, dossier = DOSSIER_PAR_DEFAUT, fetch = globalThis.fetch } = {}) {
+export async function telechargerExtrait({ url = ADRESSE_DU_SITE_DE_DEV, cle = null, dossier = DOSSIER_PAR_DEFAUT, fetch = globalThis.fetch, delai = delaiDeLaDemande() } = {}) {
   const base = String(url).replace(/\/+$/, '');
   const entetes = { Accept: 'application/json', ...enteteDeLaCle(cle) };
   mkdirSync(dossier, { recursive: true });
   const chemin = join(dossier, FICHIER);
   const cheminMeta = join(dossier, FICHIER_META);
-  const lireMeta = async () => (await (await demander(fetch, `${base}/api/edition/extrait/meta/`, entetes)).json());
+  // le corps se lit sous le même délai que la demande (le signal la suit jusqu'au bout) : un délai dépassé pendant la lecture dit la même chose
+  const lireCorps = async (adresse, lire) => {
+    try {
+      return await lire();
+    } catch (e) {
+      if (estUnDelai(e)) throw new ErreurExtrait(`${adresse} : délai de ${delai / 1000} s dépassé pendant la lecture (MAVERICK_EXTRAIT_DELAI).`);
+      throw e;
+    }
+  };
+  const lireMeta = async () => {
+    const adresse = `${base}/api/edition/extrait/meta/`;
+    const reponse = await demander(fetch, adresse, entetes, delai);
+    return lireCorps(adresse, () => reponse.json());
+  };
   let meta = await lireMeta();
   // déjà là, et identique : rien à télécharger (l'empreinte du fichier est celle que le site annonce)
   try {
@@ -83,8 +111,8 @@ export async function telechargerExtrait({ url = ADRESSE_DU_SITE_DE_DEV, cle = n
   const provisoire = join(dossier, `.${FICHIER}.${process.pid}`);
   try {
     for (let essai = 0; ; essai += 1) {
-      const reponse = await demander(fetch, `${base}/api/edition/extrait/`, { ...entetes, Accept: 'application/vnd.sqlite3' });
-      const octets = Buffer.from(await reponse.arrayBuffer());
+      const reponse = await demander(fetch, `${base}/api/edition/extrait/`, { ...entetes, Accept: 'application/vnd.sqlite3' }, delai);
+      const octets = Buffer.from(await lireCorps(`${base}/api/edition/extrait/`, () => reponse.arrayBuffer()));
       const empreinte = sha256(octets);
       if (empreinte === meta.fichier.sha256) {
         writeFileSync(provisoire, octets);
