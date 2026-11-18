@@ -36,7 +36,7 @@ Tenu à jour par la PR de chaque lot (état : à faire, en cours, fait ; puis le
 | 9 | Fabrication témoin sur le serveur : la mesure | L | fait, mesure en attente du geste du propriétaire (fabrication depuis un fichier de contenu, #373 ; kit de l'atelier joint à l'installateur de test, #374 ; atelier du site de dev — extrait, conteneur, rapports, page Debug —, #376 ; la journée type — minuteurs de nuit et du jour, sonde des temps de réponse, bilan de la journée —, #377) | #373, #374, #376, #377 |
 | 10 | Des contrôles qui ne lisent plus le contenu du dépôt | XL | en cours (premier temps : essai mécanique sur un contenu fourni, tri des 444 fichiers, `docs/essai-mecanique-des-tests.md`, #375 ; la CI lit l'extrait du site de dev — job séparé porteur de la clé, artefact chiffré gardé un jour, repli annoncé sur data/rows tant que les secrets `MAVERICK_EXTRAIT_CLE` et `MAVERICK_CONTENU_CHIFFREMENT` manquent —, migrations manquantes appliquées à la copie, essai mécanique étendu, #395 ; les tests lisent le contenu fourni : pages d'exemple tenues dans `data/pages-d-exemple.sql`, base remplie des tests tirée du contenu fourni (`aide-base-de-depart`), 22 fichiers qui lisent le dépôt par nature classés jusqu'au lot 12, passe C et variantes V1 à V4 (saisies fidèles au site) et contrôles de la CI vertes, fragilités corrigées, « Copier vers le dépôt » garde les pages d'exemple, PR `feature/tests-lisent-le-contenu-fourni`) | #375, #395 |
 | 11 | Bascule 2 : mise à jour directe, pages fabriquées sur le serveur | XL | à faire | |
-| 12 | Le dépôt ne garde plus le contenu ; ménage | L | à faire | |
+| 12 | Le dépôt ne garde plus le contenu ; ménage | L | en cours (préparation : inventaire, PR `feature/lot-12-preparation`) | |
 ## 1. Recommandation
 
 A, « le serveur fabrique », atteint en deux étapes. Étape 1 : la base du site de dev fait foi, et le dépôt n'en reçoit plus qu'une copie automatique (emprunt au modèle B). Étape 2 : le serveur fabrique les pages, et le dépôt ne porte plus que le code.
@@ -290,6 +290,61 @@ Le paquet X.Y.0 porte sa fiche d'identité : version, lot, numéro de structure,
 Après deux mises à jour réussies par le nouveau circuit. Sortent du dépôt, selon votre réponse : les lignes des tables et leur copie automatique, les anciennes migrations de données, les exports des sources (rangés alors sur le serveur et dans la sauvegarde, lisibles par les sessions), les anciennes publications. Sont retirés : le rapatriement, la fusion à trois voies, la section « Lots en conflit », la référence tirée de git, les outils qui écrivaient les lignes. Le rejeu du journal est gardé, réduit à la restauration. Les adaptateurs des anciennes écritures ne partent que lorsque tout l'ancien journal est versé dans l'historique. La documentation et les consignes sont mises au propre. La version portable se fabrique depuis un extrait ; GitHub la contrôle sur le jeu d'essai.
 
 **État après ce lot.** E2 est vraie : le dépôt ne porte plus que le code, la forme des tables et un jeu d'essai inventé. La cible est atteinte.
+
+<!-- inventaire-lot-12:debut -->
+#### Lot 12 — inventaire de ce qui sort (mesuré)
+
+Produit par `cd client && node scripts/inventaire-sortie-du-contenu.mjs --ecrire-docs` (`--verifier` : code 1 si cette section n'est plus à jour ; la sortie complète, avec fichier:ligne de chaque lecteur, est dans `var/inventaire-sortie/`). Rien ne sort encore : on mesure.
+
+Mesure du 2026-11-18, commit `ea8f23ed`, 1739 fichiers suivis. <!--v-->
+
+**Chiffres de tête**
+
+- **35 852 634 octets (35,9 Mo)** sortent de l'arbre (lignes, anciennes migrations de données, exports des sources).
+- **292 fichiers** sortent.
+- **289 fichiers suivis** les lisent encore (dont 218 hors documentation et consignes).
+- Si les migrations qui mêlent DDL et données sortaient aussi (voir plus bas) : **+9 018 545 octets (9,0 Mo)**, **+114 fichiers**.
+
+| Catégorie | Chemins | Fichiers | Octets |
+| --- | --- | ---: | ---: |
+| Lignes des tables | `data/rows/` | 221 | 23 178 778 |
+| Anciennes migrations de données (.sql et leur registre .json) | `data/migrations/ (celles sans DDL)` | 32 | 3 157 893 |
+| Exports des sources Google | `sources/raw/` | 39 | 9 515 963 |
+| **Total** | | **292** | **35 852 634** |
+| Anciennes publications (GitHub Releases, hors de l'arbre) | 306 publications dont 302 pré-publications | 306 assets | 9 841 662 790 (9,8 Go) | <!--v-->
+
+Migrations de données : 25 `.sql` sans DDL (nature « données » de `controler-les-migrations-lib.mjs#analyserUneMigration`) et 7 registres `.json` de ces migrations. Restent : 104 migrations de structure, dont **88 mêlent DDL et instructions de données** (114 fichiers avec leurs registres, 9,0 Mo, non comptés ci-dessus : `analyserUneMigration` les classe « structure » dès qu'il y a un DDL ; 152 fichiers les citent par leur nom), et 26 registres de migration de structure. Restent aussi `sources/sources.json` (manifeste), `sources/tipeee/` (instantané livré avec le site) et `sources/discord/` (vide).
+
+**Qui les lit encore** (fichiers suivis, hors les catégories qui sortent ; un fichier compte une fois par colonne ; motifs et faux positifs : `client/scripts/inventaire-sortie-du-contenu-lib.mjs#MOTIFS`)
+
+| Famille | Fichiers | `data/rows` | Migrations de données (par nom) | `sources/raw` | Exemples |
+| --- | ---: | ---: | ---: | ---: | --- |
+| Code du site (`client/src`) | 15 | 12 | 3 | 0 | `client/src/content.config.ts`, `client/src/lib/archives.mjs`, `client/src/lib/contenu-fourni.mjs`, … |
+| Service (`client/serveur`) | 14 | 14 | 0 | 0 | `client/serveur/api.mjs`, `client/serveur/base-vivante.mjs`, `client/serveur/comparaison-de-sites.mjs`, … |
+| Scripts (`client/scripts`) | 22 | 22 | 0 | 0 | `client/scripts/autolink.mjs`, `client/scripts/baliser-mot-cle.mjs`, `client/scripts/controler-le-contenu-ecrit-lib.mjs`, … |
+| Outils (`tools/`) | 24 | 13 | 7 | 8 | `tools/bestiaire/extraire.mjs`, `tools/build-artifact.mjs`, `tools/chronologie/chronologie.mjs`, … |
+| Tests (`client/test`) | 134 | 113 | 24 | 10 | `client/test/aide-base-d-import.mjs`, `client/test/aide-base-de-depart.mjs`, `client/test/aide-maitrise-arme.mjs`, … |
+| CI (`.github`) | 2 | 2 | 0 | 0 | `.github/workflows/ci.yml`, `.github/workflows/mise-a-jour.yml` |
+| Hébergement (`deploy`) | 2 | 2 | 0 | 2 | `deploy/installateur/README.md`, `deploy/installateur/kit.mjs` |
+| Documentation (`docs`) | 25 | 22 | 13 | 10 | `docs/api.md`, `docs/bestiaire.md`, `docs/chantier-base-de-dev.md`, … |
+| Consignes (`.claude`, `CLAUDE.md`) | 46 | 35 | 7 | 12 | `.claude/agents/explorateur.md`, `.claude/agents/leader-technique.md`, `.claude/agents/tech-db.md`, … |
+| Autres (`data/`, `api/`, configuration…) | 5 | 4 | 2 | 3 | `.gitattributes`, `.gitignore`, `data/pages-d-exemple.sql`, … |
+| **Total** | **289** | | | | |
+
+Dans `client/test/` : 110 fichiers de test et 24 aides, dont 21 fichiers déjà déclarés « lit le dépôt par nature » (`essai-mecanique-tests.mjs#LIT_LE_DEPOT_PAR_NATURE`). Les 89 autres fichiers de test citent un de ces chemins sans être déclarés dans `LIT_LE_DEPOT_PAR_NATURE` : à trier un à un au lot 12.
+
+Références notées mais non comptées : 183 fichiers citent le dossier `data/migrations/` (il reste, pour la structure), 24 le manifeste `sources/sources.json` (reste), 21 `sources/tipeee/` (reste), 4 `sources/discord/`, 4 les publications GitHub (les nouvelles restent) ; 37 fichiers n'atteignent `data/rows` que par une commande ou un module (`db:build`, `db:sync-pages`, `pages_md`…).
+
+Cette section se périme à chaque copie de `data/rows` et à chaque changement des fichiers qui citent ces chemins ; `--verifier` n'est pas branché en CI : on la régénère avant de s'en servir.
+
+Faux positifs connus :
+- `rows-join` attrape aussi `join(tmp, 'rows')` : une copie de travail nommée `rows` (tests, mise à jour), pas `data/rows` lui-même.
+- `rows-chemin` attrape les commentaires, la documentation et les expressions régulières qui nomment `data/rows` sans le lire (le contrôle du contenu écrit à la main, par exemple).
+- `sources-raw-join` attrape `join(x, 'raw')` de toute origine ; `sources-classeurs` attrape `'classeurs'` entre guillemets (autre mot, autre dossier possible).
+- `migrations-nom` ne voit qu'un nom cité en toutes lettres (`0113-mots-cles`) : une migration citée par son seul numéro, ou un nom reconstruit, lui échappe.
+- `migrations-dossier` : le dossier `data/migrations/` reste (les migrations de structure) ; ses lecteurs ne sont pas comptés.
+- `publications-releases` attrape tout `/releases` (les nouvelles publications restent) : ses lecteurs ne sont pas comptés.
+<!-- inventaire-lot-12:fin -->
 
 ## 9. Conditions à réunir avant chaque bascule
 
