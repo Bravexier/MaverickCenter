@@ -10,7 +10,7 @@ import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { ErreurFabrication, FORMAT_MESURE, lireLesMesures, resumerLaMemoire, verifierLaSortie } from '../serveur/fabrication-depuis-contenu.mjs';
+import { ErreurFabrication, FORMAT_MESURE, lireLesMesures, messageDEchec, resumerLaMemoire, sousPasDuBuild, verifierLaSortie } from '../serveur/fabrication-depuis-contenu.mjs';
 import { verifierLeContenu } from '../serveur/fichier-de-contenu.mjs';
 import { TABLES_DE_CONTENU, TABLES_PROPRES_AU_SITE } from '../src/lib/tables-de-la-base.mjs';
 import { copieDEssai, empreinteDuFichier, listeDuDossier } from './aide-contenu-fourni.mjs';
@@ -109,6 +109,30 @@ test('le contrôle ne modifie pas le fichier', (t) => {
   verifier(fichier);
   assert.equal(empreinteDuFichier(fichier), avant.empreinte);
   assert.deepEqual(listeDuDossier(dossier), avant.liste);
+});
+
+test('le message d’un échec : la fin de stderr d’abord, puis la fin de stdout, étiquetées ; le sous-pas du build se lit dans la sortie d’Astro, sinon il n’est pas inventé', () => {
+  const pages = Array.from({ length: 500 }, (_, i) => `12:00:00   ├─ /p${i}/index.html (+2ms)`).join('\n');
+  const m = messageDEchec('build', { status: 1, stdout: pages, stderr: `${'x'.repeat(5000)}\nTypeError: la cause` });
+  assert.match(m, /^build a échoué \(code 1\), pendant la génération des pages : fin de stderr : …x+\nTypeError: la cause ; fin de stdout : …/);
+  assert.ok(m.indexOf('stderr') < m.indexOf('stdout'));
+  assert.ok(m.length < 3200, 'sous le plafond du rapport (atelier.mjs#messageDErreur)');
+  assert.match(m, /p499\/index\.html/, 'la fin de stdout, pas son début');
+  // l'ordre réel des lignes d'Astro (noms de pages inventés) : les préliminaires portent déjà un « [build] ✓ Completed »
+  const preliminaires = '12:00:00 [build] Collecting build info...\n12:00:01 [build] ✓ Completed in 1.87s.\n12:00:01 [build] Building static entrypoints...\n12:00:03 [build] Rearranging server assets...\n12:00:03 [build] ✓ Completed in 2.1s.\n';
+  const routes = '12:00:03 generating static routes\n';
+  const termine = '12:00:09 ✓ Completed in 17.06s.\n\n12:00:09 [build] ✓ Completed in 18.41s.\n';
+  assert.equal(sousPasDuBuild(`${preliminaires}`), null, 'échec avant les pages : rien n’est dit');
+  assert.equal(sousPasDuBuild(`${preliminaires}${routes}`), 'pendant la génération des pages', 'routes annoncées, aucune page');
+  assert.equal(sousPasDuBuild(`${preliminaires}${routes}${pages}\n`), 'pendant la génération des pages');
+  assert.equal(sousPasDuBuild(`${preliminaires}${routes}${pages}\n12:00:09 ✓ Completed in 17.06s.\n`), null, 'pages finies, build non terminé : pas d’invention');
+  assert.match(sousPasDuBuild(`${preliminaires}${routes}${pages}\n${termine}[mon-integration] suite\n`), /^après le build/);
+  assert.equal(sousPasDuBuild('rien de connu'), null);
+  assert.equal(sousPasDuBuild(undefined), null);
+  // une autre étape n'a pas de sous-pas ; sans sortie, ni étiquette ni deux-points ; le lancement raté dit son erreur
+  assert.equal(messageDEchec('derive', { status: 2, stdout: `${pages}\n✓ Completed in 1s.`, stderr: '' }).includes('pages générées'), false);
+  assert.equal(messageDEchec('pages', { status: 3, stdout: '', stderr: '' }), 'pages a échoué (code 3)');
+  assert.equal(messageDEchec('build', { status: null, error: new Error('spawn ENOENT'), stdout: null, stderr: null }), 'build a échoué (code spawn ENOENT)');
 });
 
 test('la mémoire : pic d’un processus, cumul et détail par étape', () => {

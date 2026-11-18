@@ -12,9 +12,9 @@
 # (fichiers réguliers, plafond de taille, sous `timeout`) APRÈS avoir supprimé le conteneur, donc quand plus rien ne peut les changer ; c'est le service qui les lit.
 #
 # Une seule fabrication à la fois (flock). Les marques qui arrivent pendant une fabrication se fondent : à la fin, la marque est relue et seule la dernière version compte.
-# Avant de démarrer, la mémoire est mesurée (MemTotal, MemAvailable) : plafond = min(maximum réglé, MemAvailable / 2) ; refus si le plafond est sous le besoin, ou si la marge
+# Avant de démarrer, la mémoire est mesurée (MemTotal, MemAvailable) : plafond = min(maximum réglé, MemAvailable / 2) ; refus si le plafond est sous le besoin (1,1 Go par défaut), ou si la marge
 # laissée à la production (MemAvailable - plafond) est sous max(1 Go, 25 % de MemTotal) ; refus aussi sous le minimum d'espace libre. Un refus est une mesure : le rapport
-# dit les chiffres relevés. Un conteneur arrêté par manque de mémoire (OOMKilled) est une mesure aussi : jamais de relance silencieuse.
+# dit les chiffres relevés (disponible, besoin, plafond, marge). Un conteneur arrêté par manque de mémoire (OOMKilled) est une mesure aussi : jamais de relance silencieuse.
 set -eu
 umask 022
 
@@ -466,6 +466,11 @@ fabriquer_pour_la_marque() {
   OOM=$(docker inspect -f '{{.State.OOMKilled}}' "$CID" 2>/dev/null || echo false)
   CODE_SORTIE=$(docker inspect -f '{{.State.ExitCode}}' "$CID" 2>/dev/null || echo '')
   case "$CODE_SORTIE" in ''|*[!0-9]*) CODE_SORTIE='' ;; esac
+  # le journal du conteneur (stdout et stderr, la fin : 200 Ko au plus) est gardé AVANT sa suppression, pour lire l'erreur d'un échec que fabrication.json n'a pas pu porter. Il attend hors du
+  # dossier des rapports (le service ne doit pas voir un rapport sans rapport.json) puis y est posé avec les autres fichiers. Il ne passe jamais par la liste blanche du service (lecture humaine :
+  # sudo tail -c 20000 <rapports>/<id>/journal-du-conteneur.txt) ; rien n'y imprime l'environnement du conteneur.
+  JOURNAL_EN_ATTENTE=$ATELIER/.journal-du-conteneur.$$
+  { timeout 30 docker logs "$CID" 2>&1 | tail -c "$PLAFOND_JOURNAL" > "$JOURNAL_EN_ATTENTE"; } 2>/dev/null || rm -f "$JOURNAL_EN_ATTENTE"
   # le conteneur est supprimé AVANT de toucher à ce qu'il a laissé : plus aucun processus ne peut changer un fichier entre le contrôle de son type et son ouverture
   docker rm -f "$CID" >/dev/null 2>&1 || true
   CID=''
@@ -477,6 +482,12 @@ fabriquer_pour_la_marque() {
   mkdir -p "$dossier"
   copier_un_resultat "$ATELIER/resultats/fabrication.json" "$dossier/fabrication.json" && A_FABRICATION=1 || A_FABRICATION=0
   copier_un_resultat "$ATELIER/resultats/comparaison.json" "$dossier/comparaison.json" && A_COMPARAISON=1 || A_COMPARAISON=0
+  # un journal vide ne s'ajoute pas au rapport
+  if [ -s "$JOURNAL_EN_ATTENTE" ] && [ ! -L "$JOURNAL_EN_ATTENTE" ]; then
+    mv -f "$JOURNAL_EN_ATTENTE" "$dossier/journal-du-conteneur.txt" && chmod 644 "$dossier/journal-du-conteneur.txt" || rm -f "$JOURNAL_EN_ATTENTE"
+  else
+    rm -f "$JOURNAL_EN_ATTENTE"
+  fi
   TRAVAIL_KO=$(ko_de "$ATELIER/travail")
   SORTIE_KO=$(ko_de "$ATELIER/sortie")
   find "$ATELIER/travail" -mindepth 1 -delete 2>/dev/null || true

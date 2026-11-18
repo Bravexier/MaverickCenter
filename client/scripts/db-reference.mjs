@@ -20,19 +20,26 @@ const git = (args, options = {}) => spawnSync('git', args, { cwd: RACINE, encodi
  * `raison` dit pourquoi).
  */
 export function construireReference({ sortie, ref = process.env.MAVERICK_REFERENCE_REF || 'origin/master' } = {}) {
-  const commit = git(['rev-parse', '--verify', '--quiet', `${ref}^{commit}`]).stdout.trim();
+  // jamais d'exception : git absent (image slim du conteneur de l'atelier), tar absent ou construction en échec sont une absence dite
+  const revision = git(['rev-parse', '--verify', '--quiet', `${ref}^{commit}`]);
+  if (revision.error) return { chemin: null, raison: `git absent : ${revision.error.message}` };
+  const commit = String(revision.stdout ?? '').trim();
   if (!commit) return { chemin: null, raison: `${ref} introuvable (git fetch origin master)` };
-  const tmp = mkdtempSync(join(tmpdir(), 'maverick-reference-'));
+  let tmp = null;
   try {
+    tmp = mkdtempSync(join(tmpdir(), 'maverick-reference-'));
     const archive = git(['archive', '--format=tar', commit, 'data', 'client/package.json'], { encoding: 'buffer', maxBuffer: 512 * 1024 * 1024 });
+    if (archive.error) return { chemin: null, raison: `git archive ${ref} : ${archive.error.message}` };
     if (archive.status !== 0) return { chemin: null, raison: `git archive ${ref} : ${String(archive.stderr).trim()}` };
     const tar = spawnSync('tar', ['-x', '-C', tmp], { input: archive.stdout });
+    if (tar.error) return { chemin: null, raison: `tar absent : ${tar.error.message}` };
     if (tar.status !== 0) return { chemin: null, raison: `tar : ${String(tar.stderr).trim()}` };
     mkdirSync(dirname(sortie), { recursive: true });
     const construction = spawnSync(process.execPath, [
       '--no-warnings', join(CLIENT, 'scripts', 'db-build.mjs'), '--out', sortie, '--schema', join(tmp, 'data', 'schema.sql'), '--rows', join(tmp, 'data', 'rows'),
     ], { encoding: 'utf8' });
-    if (construction.status !== 0) return { chemin: null, raison: `base de ${ref} : ${(construction.stderr || construction.stdout).trim().slice(0, 500)}` };
+    if (construction.error) return { chemin: null, raison: `base de ${ref} : ${construction.error.message}` };
+    if (construction.status !== 0) return { chemin: null, raison: `base de ${ref} : ${String(construction.stderr || construction.stdout || '').trim().slice(0, 500)}` };
     let version = null;
     try {
       version = JSON.parse(readFileSync(join(tmp, 'client', 'package.json'), 'utf8')).version ?? null;
@@ -42,8 +49,10 @@ export function construireReference({ sortie, ref = process.env.MAVERICK_REFEREN
     const info = { version, commit, ref };
     writeFileSync(sortie.replace(/\.db$/, '.json'), `${JSON.stringify(info)}\n`);
     return { chemin: sortie, ...info };
+  } catch (e) {
+    return { chemin: null, raison: `construction de la référence : ${e.message}` };
   } finally {
-    rmSync(tmp, { recursive: true, force: true });
+    if (tmp) rmSync(tmp, { recursive: true, force: true });
   }
 }
 
@@ -60,7 +69,16 @@ export function integrationReference() {
         // La référence se lit dans git (les data/rows de master dans l'historique), même quand MAVERICK_CONTENU fournit le contenu du site (la CI qui lit
         // l'extrait du site de dev, lot 10 : aucun contrôle ne saute à cause de la variable). Sans git ni master (le kit de l'atelier, lib/contenu-fourni.mjs),
         // le site témoin n'en porte pas, ce que la comparaison avec le site livré classe comme attendu : une information, pas un avertissement.
-        const r = construireReference({ sortie: fileURLToPath(new URL('donnees/reference.db', dir)) });
+        // La référence n'est jamais une raison de faire échouer un build dont le contenu est fourni (le conteneur de l'atelier n'a pas git) : une exception
+        // inattendue y est un avertissement. Sans contenu fourni (la CI), elle n'est pas masquée.
+        let r;
+        try {
+          r = construireReference({ sortie: fileURLToPath(new URL('donnees/reference.db', dir)) });
+        } catch (e) {
+          if (!contenuFourni()) throw e;
+          logger.warn(`base de référence (production) non construite : ${e.message}`);
+          return;
+        }
         if (r.chemin) logger.info(`base de référence (production) : ${r.ref} ${r.commit.slice(0, 7)}, version ${r.version}`);
         else if (contenuFourni()) logger.info(`base de référence (production) non construite (contenu fourni par MAVERICK_CONTENU) : ${r.raison}`);
         else logger.warn(`base de référence (production) absente : ${r.raison}`);

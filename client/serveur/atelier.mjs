@@ -63,10 +63,10 @@ const entier = (v, max = 1e15) => (Number.isSafeInteger(v) && v >= 0 && v <= max
 const nombre = (v, max = 1e9) => (typeof v === 'number' && Number.isFinite(v) && v >= 0 && v <= max ? Math.round(v * 100) / 100 : null);
 const texte = (v, n = 120) => (typeof v === 'string' ? v.replace(/[^\p{L}\p{N} .,:;()+@/_'’«»\-–—…=%]/gu, '').trim().slice(0, n) : null);
 /**
- * Le message d'une erreur de fabrication, 1000 caractères au plus (les lignes jointes par une espace). Quand il est plus long et que la dernière ligne qui parle d'une erreur
+ * Le message d'une erreur de fabrication, 3200 caractères au plus : la fin de stderr (2000), puis la fin de stdout (1000), `fabrication-depuis-contenu.mjs#messageDEchec` ; les lignes sont jointes par une espace. Quand il est plus long et que la dernière ligne qui parle d'une erreur
  * (`error`, `Error`, `EXDEV`…) tombe au-delà : le début (l'étape, le code), puis cette ligne — la cause est le plus souvent à la fin de la sortie d'erreur.
  */
-export function messageDErreur(v, n = 1000) {
+export function messageDErreur(v, n = 3200) {
   if (typeof v !== 'string') return null;
   const lignes = v.split(/\r?\n/).map((l) => texte(l, 1e6)).filter(Boolean);
   const tout = lignes.join(' ');
