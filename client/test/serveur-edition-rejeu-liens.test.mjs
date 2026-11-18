@@ -24,6 +24,7 @@ import { formesNonCanoniques, lireBalises, vocabulaireDesMotsCles } from '../src
 import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { REGISTRE_DES_LIENS } from '../src/lib/mots-cles-liens.mjs';
 import { baseDImport, lotsAvant, remettreDepuisLImport } from './aide-base-d-import.mjs';
+import { copieDesRowsDeDepart, rowsDeDepart } from './aide-base-de-depart.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
@@ -68,12 +69,12 @@ copyFileSync(cheminBase({ sansExemples: false }), REGLES);
 const ROWS = (() => {
   const db = new DatabaseSync(REGLES);
   try {
-    if (!remettreLeScenario(db)) return join(RACINE, 'data', 'rows');
+    if (!remettreLeScenario(db)) return rowsDeDepart();
   } finally {
     db.close();
   }
   const rows = join(dossier, 'rows');
-  cpSync(join(RACINE, 'data', 'rows'), rows, { recursive: true });
+  copieDesRowsDeDepart(rows);
   const base = join(dossier, 'rows.db');
   const b = spawnSync(process.execPath, ['--no-warnings', join(RACINE, 'client', 'scripts', 'db-build.mjs'), '--out', base, '--rows', rows], { encoding: 'utf8' });
   assert.equal(b.status, 0, b.stderr || b.stdout);

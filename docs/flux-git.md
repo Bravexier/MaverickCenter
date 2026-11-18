@@ -204,6 +204,9 @@ Deux secrets de dépôt :
     « Contenu lu par les tests et le build : site de dev, extrait du <date> ».
   - Le contenu fourni est préparé comme en local (`docs/serveur.md`, « Fabriquer le site depuis un fichier de contenu ») : une migration ajoutée par la PR est appliquée
     à la copie ; un site de dev en avance sur la branche fait échouer les tests avec « Rebasez la branche sur dev ».
+  - Le site de dev n'a pas les pages d'exemple (fixtures, `statut = 'example'`) : la copie de travail reçoit celles du dépôt, `data/pages-d-exemple.sql`, sauf pour
+    `HIDE_EXAMPLES=1` (`docs/serveur.md`, « Pages d'exemple »). Ce fichier, hors de `data/rows/`, n'est pas du contenu : le contrôle `controle-du-contenu-ecrit` ne le vise pas, et
+    il reste quand `data/rows` sortira (lot 12). Il se refait par `node scripts/db-pages-d-exemple.mjs`, depuis `data/rows` ; `test/pages-d-exemple.test.mjs` l'y compare.
   - Ces étapes ne sont pas des contrôles : `CONTROLES_DE_LA_CI` (`scripts/mise-a-jour-github.mjs`) les ignore.
 - **Repli** : la branche visée n'est pas `dev` (PR vers `master` ou push sur `master` : la production a sa propre structure) ; un des deux secrets manque (PR d'un fork, ou
   secrets pas encore créés) ; le site reste injoignable après les essais, délai compris ; le téléchargement ou le déchiffrement échoue ; ou le sha256 diffère.

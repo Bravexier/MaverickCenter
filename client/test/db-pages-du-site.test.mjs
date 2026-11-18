@@ -24,8 +24,11 @@ function copies(t) {
   const copieRows = join(dir, 'rows');
   const copieWiki = join(dir, 'wiki');
   cpSync(rows, copieRows, { recursive: true });
-  const r = spawnSync(process.execPath, ['--no-warnings', join(client, 'scripts', 'db-export-pages.mjs'), '--out', copieWiki],
-    { encoding: 'utf8', env: { ...process.env, ...variablesTemporaires(dir) } });
+  // les pages de data/rows, jamais d'un contenu fourni (MAVERICK_CONTENU : lib/contenu-fourni.mjs) : le cycle compare les pages à la copie des lignes (F3)
+  const env = { ...process.env, ...variablesTemporaires(dir) };
+  delete env.MAVERICK_CONTENU;
+  delete env.MAVERICK_CONTENU_DERIVE;
+  const r = spawnSync(process.execPath, ['--no-warnings', join(client, 'scripts', 'db-export-pages.mjs'), '--out', copieWiki], { encoding: 'utf8', env });
   assert.equal(r.status, 0, r.stderr);
   return { copieRows, copieWiki, args: ['--rows', copieRows, '--wiki', copieWiki] };
 }

@@ -21,6 +21,7 @@ import { journalExporte } from '../serveur/edition-journal.mjs';
 import { TABLES_DES_FILLES_DU_MOT_CLE } from '../serveur/edition-mots-cles.mjs';
 import { motCleDeLaRef } from '../src/lib/mots-cles-balises.mjs';
 import { categoriesDesMotsCles, motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
+import { rowsDeDepart } from './aide-base-de-depart.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { copieSansNoteEnAttente, versionALaRevision } from './aide-mise-a-jour.mjs';
 import { ajouterLesMotsClesDEssai, MOTS_CLES_D_ESSAI } from './aide-mots-cles.mjs';
@@ -40,7 +41,7 @@ function construire(rows, base, { deriver = true } = {}) {
   }
 }
 // une copie de data/rows sans note en attente, avec les mots-clés d'essai, et ses règles
-const ROWS = copieSansNoteEnAttente(join(racine, 'rows'), { versionProduction: versionALaRevision('HEAD') }).rows;
+const ROWS = copieSansNoteEnAttente(join(racine, 'rows'), { rows: rowsDeDepart(), versionProduction: versionALaRevision('HEAD') }).rows;
 ajouterLesMotsClesDEssai(ROWS);
 const REGLES = join(racine, 'regles.db');
 construire(ROWS, REGLES);

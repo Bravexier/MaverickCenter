@@ -43,13 +43,43 @@ Ce qui ne se branche pas, c'est la **nature** de ces tests : ils épinglent le t
 
 ## Reste à faire, en lots
 
-1. **S : branchement propre.** Retirer (ou tolérer) la vue `extrait_meta` à l'ouverture d'un contenu fourni (8 fichiers) ; fabriquer `content/wiki` depuis le contenu fourni (aujourd'hui depuis `data/rows`).
+1. **S : branchement propre.** Fait (lot 10) : la vue `extrait_meta` est retirée de la copie de travail (`lib/contenu-fourni.mjs#preparerLaCopie`), et `content/wiki` se fabrique depuis le contenu fourni (`db-export-pages`) ; voir « Passe C et variantes ».
 2. **M : un jeu d'essai commun**, aux identifiants stables, qui remplace le vrai pour GitHub ; l'essai B en est le prototype.
 3. **M : les familles réglables d'un coup** (~80 fichiers : lignes cherchées par nom, corps Markdown, noms comparés).
 4. **L : les 131 tests d'état d'import**, famille par famille, avec la décision du propriétaire (contrôle du vrai contenu sur le serveur, ou invariant sur le jeu d'essai).
 5. **L : fiche et moteur (41)**, les 70 « valeurs attendues », puis Python (22).
 
 Estimation : environ 130 fichiers demanderont un vrai travail, 80 se règlent par famille, 232 n'ont rien à faire (55 ne lisent pas le contenu, 177 passent déjà, sous réserve du chemin direct ci-dessus).
+
+## Passe C et variantes (lot 10, 2026-11-18)
+
+La passe C lance chaque fichier de test sur l'extrait du site de dev (`var/extrait/maverick-dev.db`), dans une copie jetable de l'arbre **sans** `data/rows/*.sql` (`scripts/essai-mecanique-tests.mjs --passe C`). Premier passage : **58 fichiers sur 486 en échec**, en cinq familles.
+
+- **F1, pages d'exemple absentes** (le site de dev n'en a pas) : la copie de travail d'un contenu qui n'en a aucune reçoit celles du dépôt (`data/pages-d-exemple.sql`, `scripts/db-pages-d-exemple.mjs`). `adresses-db`, `db-liens-en-mots-cles`, `db-r184-plan-des-regles`, `donnees`, `livres`, `mots-cles-liens`, `serveur-edition-liens-rompus`, `serveur-edition-mots-cles-liens`, `serveur-mise-a-jour-production` passent depuis.
+- **F2, une base ou des lignes de départ reconstruites depuis `data/rows`** par une aide ou un test (`db-build`, copie de `data/rows`). Réglé par une aide commune, `test/aide-base-de-depart.mjs` : sans `MAVERICK_CONTENU`, rien ne change ; avec, `baseDeDepart()` prend une copie du contenu fourni préparée par la voie de `ouvrirBase` (`preparerLeContenu`, tables calculées vidées : une base non dérivée), et `rowsDeDepart()` l'export de cette copie (`tools/db/exporter.py`, une fois par processus). Branchées : `aide-structure-sur-place.mjs#baseDesRegles`, `aide-mots-cles.mjs#reglesAvecDesMotsClesDEssai`, et les copies de `data/rows` des tests de rapatriement et de mise à jour (`copieSansNoteEnAttente(…, { rows: rowsDeDepart() })`). Les 22 fichiers branchés passent C et restent verts sans la variable (les 3 autres de la liste de départ, `mots-cles-liens` et les deux `serveur-edition-*-liens*`, ne cassaient que sur F1), ainsi que `bascule-constat`, qui n'avait que `baseDesRegles` contre lui.
+- **F3, l'ancien circuit**, qui écrit ou relit `data/rows` par nature (`db:build`, `db:sync-pages`, `db:appliquer-edition`, mise à jour et copie vers le dépôt, simulation) ;
+- **F4, les invariants « table des fiches vide dans `data/rows` »** ;
+- **F5, les outils Python** qui relisent `data/rows` (`codex.py --verifier`, `races_onglet.py --verifier`).
+
+**Ce qui lit encore le dépôt, et pourquoi.** F3, F4 et F5 sont déclarées dans `LIT_LE_DEPOT_PAR_NATURE` (`scripts/essai-mecanique-tests.mjs`) : fichier, famille, raison en une ligne, tests concernés. Le tri de C les range dans une rubrique « lit le dépôt par nature, jusqu'au lot 12 » (quand `data/rows` quitte le dépôt et que l'ancien circuit est retiré), à part des échecs inattendus ; un fichier classé qui passe C y est signalé, à retirer de la liste. `test/essai-mecanique.test.mjs` vérifie que chaque nom existe dans `client/test/`. Ils sont 22 : 14 en F3 (dont `pages-d-exemple`, test 1, voulu : le fichier des pages d'exemple est comparé à `data/rows`, dont il est tiré ; `baliser-mot-cle`, tests 3, 7 et 8, sur une copie de `data/rows` ; et `contenu-fourni`, test 2, voulu : sans la variable, le build exige `data/rows`), 6 en F4, 2 en F5. `baliser-mot-cle` y est une exception temporaire : il copie `data/rows` en direct, et son module est tenu par une autre session ; il sera converti par `aide-base-de-depart` ensuite. `db-r182-critique-du-sort-prepare` en est sorti : sa lecture de `data/rows/posture_critique.sql` doublait celle de la base.
+
+**Après ce lot**, les passes C et V1 complètes ne font échouer que les 22 fichiers classés par nature.
+
+**Contrôles d'une passe (`--passe <P> --controles`, P = C, V1 à V5).** Les tests du site construit échappent aux passes fichier par fichier : une copie jetable n'a pas de `dist/`. `--controles` lance dans la copie, sous `MAVERICK_CONTENU` = le contenu de la passe, les contrôles du job preparer (`mise-a-jour-github.mjs#CONTROLES`, donc le job client de `ci.yml`) :
+- le build, puis chaque test du site construit, à part : un test sauté ou vide est rouge ;
+- le build de test et le bandeau, l'installateur, puis le build de production et ses deux tests, et l'artefact.
+
+`npm test` reste à la passe elle-même. `db:build` et `db:check` (`CONTROLES_PAR_NATURE`) sont notés à part et ne la rendent pas rouge. Sur C (2026-11-18) : au vert en 205 s, 24 tests du site lancés, aucun test sauté (`races-html` : 15 passés).
+
+**Variantes.** V1 (icônes posées sur des mots-clés de genres variés) a trouvé une valeur figée : `db-0116-icone-des-mots-cles`, « lui seul a une icône ». V1 laisse maintenant la trace de ses saisies : le test vérifie à l'import que chaque mot-clé d'une monnaie a l'icône de sa monnaie, et lui seul, et lit aussi dans la migration qu'elle n'en pose qu'à eux. Il passe V1.
+
+**Des variantes fidèles au site.** Les passes complètes V2 et V3 trouvaient 24 fichiers qui passaient C et cassaient sur une variante (18 sur V2, 6 sur V3). Tous venaient de variantes infidèles (c), aucun d'un défaut du code :
+- **Aucune trace.** Une saisie du site laisse sa trace dans `historique_modification`, et l'état d'import la défait ; les variantes écrivaient sans trace. Chacune note désormais ses écritures comme le journal (`essai-variantes.mjs#journalDeLaVariante` : nature `saisie`, version NULL, la ligne entière pour une insertion ou une suppression, les colonnes changées pour une modification). Réglés ainsi : `bestiaire-extraction`, `db-0121-maj-decembre-suites`, `sources-rapprochement`.
+- **V2 renommait une magie**, ce que le site ne permet pas : `magie.nom` n'est pas modifiable (`lib/edition-modele.mjs#TABLES.magie`), et un test peut alors lire une magie par son nom (`tests-conventions`). V2 renomme désormais un sort **par le service** (`serveur/edition.mjs#enregistrer` : validations, dérivations, journal), puis verse le journal dans l'historique et vide les tables du journal, comme l'extrait (`serveur/historique.mjs#historiser`). Les 18 fichiers de V2 passent. L'ancien renommage d'une magie reste une variante à part, **V5** (écriture directe, avec sa trace) : elle est hors des voies du site aujourd'hui, et le tri la range à part (« informative, ne bloque rien », `PASSES_INFORMATIVES`). La preuve qu'aucune voie du site ne renomme une magie est `test/serveur-edition-nom-de-magie.test.mjs` : le service refuse `magie.nom`, le titre de la page d'une magie (seules les pages du guide et du Codex ont un titre modifiable) et tout alias (ni table du modèle, ni entité).
+- **V3 copiait une ligne en écriture directe**, sans ses filles ni le corps de la page qui la montre, et au-delà de ce que le service permet (une troisième spécialité). V3 crée maintenant chaque ligne **par le service** (opération `creer`, valeurs tirées de la dernière ligne de la table) : un refus est noté, jamais forcé (la spécialité : `SPECIALITES_MAX`). Réglés : `arme-champs`, `chronologie`, puis, sur la passe complète, `capacites-content` (test 4), `corps-armes` (test 1) et `serveur-edition-armes` (test 4).
+- **`corps-classes`, test 4.** Le test exigeait un don pour chaque spécialité ; or le site peut créer une spécialité avant ses dons. Il le vérifie maintenant à l'import ; sur l'état courant, une spécialité est une bannière si et seulement si elle a un don.
+
+`races-html` (tableau des magies innées) lit maintenant dans la base les noms de ses en-têtes et le nombre de ses colonnes. La couleur d'une magie reste tirée de son nom (`lib/palette-css.mjs#classeDeMagie`, `lib/sort-format.mjs#cleDeMagieConnue`). Le site ne peut pas la renommer, mais un renommage par l'import ou par une migration ferait perdre la couleur : à tirer de l'identifiant (proposition à tech-front).
 
 ## Surprises
 

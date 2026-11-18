@@ -4,13 +4,13 @@
 // l'exporteur, triées par clé), dont on construit les règles (db-build, db-derive) : la base vivante, les reconstructions et le rapatriement partent des
 // mêmes lignes. Chaque mot-clé d'essai a une définition (valable que la colonne soit NOT NULL DEFAULT '' ou nullable, CHECK length > 0).
 import { spawnSync } from 'node:child_process';
-import { cpSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { normalize } from '../src/lib/text.mjs';
+import { copieDesRowsDeDepart } from './aide-base-de-depart.mjs';
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
-const ROWS = join(RACINE, 'data', 'rows');
 export const DEFINITION_D_ESSAI = 'Mot-clé d’essai des tests (test/aide-mots-cles.mjs).';
 
 /** Le premier id entier des mots-clés d'essai (migration 0113 : un id entier ; loin après ceux de data/rows, que le site de dev ne rejoint pas). */
@@ -111,12 +111,13 @@ export function ajouterLesMotsClesDEssai(rows) {
 
 /**
  * Des règles (base construite, comme cheminBase de lib/donnees.mjs) tirées d'une copie de data/rows qui a les mots-clés d'essai : { rows, base }.
- * `sansExemples` : sans les pages d'exemple (le site de dev).
+ * Avec MAVERICK_CONTENU, la copie est l'export du contenu fourni (test/aide-base-de-depart.mjs#rowsDeDepart). `sansExemples` : sans les pages
+ * d'exemple (le site de dev).
  */
 export function reglesAvecDesMotsClesDEssai(dossier, { sansExemples = false } = {}) {
   mkdirSync(dossier, { recursive: true });
   const rows = join(dossier, 'rows');
-  cpSync(ROWS, rows, { recursive: true });
+  copieDesRowsDeDepart(rows);
   ajouterLesMotsClesDEssai(rows);
   const base = join(dossier, 'regles.db');
   for (const [script, args] of [['db-build.mjs', ['--out', base, '--rows', rows]], ['db-derive.mjs', [base, ...(sansExemples ? ['--sans-exemples'] : [])]]]) {

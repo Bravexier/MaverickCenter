@@ -4,12 +4,11 @@
 // de même pour les blocs de description de la chronologie et ceux des panneaux de règles (blocNonSur), et après le rejeu du rapatriement
 // (db:appliquer-edition : texteNonSurApresLeRejeu).
 import assert from 'node:assert/strict';
-import { cpSync, readdirSync, readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { createMarkdownProcessor } from '@astrojs/markdown-remark';
-import { fileURLToPath } from 'node:url';
 import { appliquerJournal } from '../scripts/db-appliquer-edition.mjs';
 import {
   BLOCS_EN_MARKDOWN, blocNonSur, ErreurMiseAJour, pageNonSure, TEXTES_EN_MARKDOWN, textesAvantLeRejeu, textesDesBlocs, texteNonSurApresLeRejeu, verifierLot,
@@ -20,6 +19,7 @@ import { journalExporte } from '../serveur/edition-journal.mjs';
 import { chargerPanneau } from '../src/lib/panneaux-regles-db.mjs';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { adresseDangereuse, fragmentsAjoutes, fragmentsDangereux, messageDeRefus } from '../src/lib/markdown-sur.mjs';
+import { copieDesRowsDeDepart } from './aide-base-de-depart.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const processeur = await createMarkdownProcessor({ syntaxHighlight: false });
@@ -230,7 +230,7 @@ test('rapatriement (db:appliquer-edition) : un journal retouché à la main qui 
   assert.throws(() => verifierLot({ format: 'maverick-mise-a-jour/1', id: '11111111-2222-3333-4444-555555555555', texte: null, journal }),
     (e) => e instanceof ErreurMiseAJour && e.code === 2 && new RegExp(`bloc de règles armes#${bloc.rang} : HTML brut`).test(e.message));
   const rows = join(racine, 'rapatriement-rows');
-  cpSync(fileURLToPath(new URL('../../data/rows/', import.meta.url)), rows, { recursive: true });
+  copieDesRowsDeDepart(rows);
   const lire = () => Object.fromEntries(readdirSync(rows).map((f) => [f, readFileSync(join(rows, f), 'utf8')]));
   const avant = lire();
   assert.throws(() => appliquerJournal(journal, { rows }), new RegExp(`journal refusé : bloc de règles armes#${bloc.rang} après le rejeu : HTML brut`));

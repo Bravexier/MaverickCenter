@@ -26,6 +26,7 @@ import { estProtege, MOTS_CLES_PROTEGES } from '../src/lib/mots-cles.mjs';
 import { IDS_DES_MOTS_CLES_PROTEGES as ID } from '../src/lib/mots-cles-proteges.mjs';
 import { lirePages } from '../src/lib/pages-db.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { rowsDeDepart } from './aide-base-de-depart.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { copieSansNoteEnAttente, versionALaRevision } from './aide-mise-a-jour.mjs';
 import { ajouterLesMotsClesDEssai, DEFINITION_D_ESSAI, ETIQUETTE_D_ESSAI, idDEssai, reglesAvecDesMotsClesDEssai } from './aide-mots-cles.mjs';
@@ -987,7 +988,7 @@ test('rapatriement et mise à jour sur data/rows : les pages d’exemple (absent
   verifier(appliquee);
   appliquee.close();
   // « Effectuer la mise à jour » : page_tag.sql change au-delà du journal (exemples) sans être refusé (code 4)
-  const rowsMaj = copieSansNoteEnAttente(join(racine, 'mise-a-jour', 'rows'), { versionProduction: versionALaRevision('HEAD') }).rows;
+  const rowsMaj = copieSansNoteEnAttente(join(racine, 'mise-a-jour', 'rows'), { rows: rowsDeDepart(), versionProduction: versionALaRevision('HEAD') }).rows;
   ajouterLesMotsClesDEssai(rowsMaj);
   const maj = appliquerMiseAJour({ format: 'maverick-mise-a-jour/1', id: '22222222-3333-4444-5555-666666666666', cree_le: '2026-10-14T08:00:00Z', version_dev: '0.2.39', version_cible: '0.3', texte: null, journal },
     { rows: rowsMaj, reference: 'HEAD', date: '2026-10-14', versionDev: '0.2.39' });

@@ -67,6 +67,9 @@ test('une spécialité et un don de chaque forme supprimés depuis le site puis 
 
   const env = { ...process.env, MAVERICK_ROOT: racine, MAVERICK_LIB: join(CLIENT, 'src', 'lib') };
   delete env.NODE_TEST_CONTEXT; // un lanceur de tests à part entière, pas un enfant du lanceur en cours
+  // les enfants lisent les lignes réécrites de ce dépôt, jamais un contenu fourni (lib/contenu-fourni.mjs) : ce test lit data/rows par nature (F3)
+  delete env.MAVERICK_CONTENU;
+  delete env.MAVERICK_CONTENU_DERIVE;
   const r = spawnSync(process.execPath, ['--no-warnings', '--test', '--test-reporter=tap', ...FICHIERS], { cwd: CLIENT, encoding: 'utf8', env, maxBuffer: 64 * 1024 * 1024 });
   const echecs = r.stdout.split('\n').filter((l) => /^not ok /.test(l) || /^\s+(error|location):/.test(l));
   assert.equal(r.status, 0, `${echecs.join('\n')}\n${r.stderr.slice(-2000)}`);
