@@ -296,7 +296,7 @@ Après deux mises à jour réussies par le nouveau circuit. Sortent du dépôt, 
 
 Produit par `cd client && node scripts/inventaire-sortie-du-contenu.mjs --ecrire-docs` (`--verifier` : code 1 si cette section n'est plus à jour ; la sortie complète, avec fichier:ligne de chaque lecteur, est dans `var/inventaire-sortie/`). Rien ne sort encore : on mesure.
 
-Mesure du 2026-11-18, commit `ea8f23ed`, 1739 fichiers suivis. <!--v-->
+Mesure du 2026-11-18, commit `56c1cc95`, 1745 fichiers suivis. <!--v-->
 
 **Chiffres de tête**
 
@@ -311,7 +311,7 @@ Mesure du 2026-11-18, commit `ea8f23ed`, 1739 fichiers suivis. <!--v-->
 | Anciennes migrations de données (.sql et leur registre .json) | `data/migrations/ (celles sans DDL)` | 32 | 3 157 893 |
 | Exports des sources Google | `sources/raw/` | 39 | 9 515 963 |
 | **Total** | | **292** | **35 852 634** |
-| Anciennes publications (GitHub Releases, hors de l'arbre) | 306 publications dont 302 pré-publications | 306 assets | 9 841 662 790 (9,8 Go) | <!--v-->
+| Anciennes publications (GitHub Releases, hors de l'arbre) | 307 publications dont 303 pré-publications | 307 assets | 9 939 240 823 (9,9 Go) | <!--v-->
 
 Migrations de données : 25 `.sql` sans DDL (nature « données » de `controler-les-migrations-lib.mjs#analyserUneMigration`) et 7 registres `.json` de ces migrations. Restent : 104 migrations de structure, dont **88 mêlent DDL et instructions de données** (114 fichiers avec leurs registres, 9,0 Mo, non comptés ci-dessus : `analyserUneMigration` les classe « structure » dès qu'il y a un DDL ; 152 fichiers les citent par leur nom), et 26 registres de migration de structure. Restent aussi `sources/sources.json` (manifeste), `sources/tipeee/` (instantané livré avec le site) et `sources/discord/` (vide).
 
@@ -333,7 +333,7 @@ Migrations de données : 25 `.sql` sans DDL (nature « données » de `controler
 
 Dans `client/test/` : 110 fichiers de test et 24 aides, dont 21 fichiers déjà déclarés « lit le dépôt par nature » (`essai-mecanique-tests.mjs#LIT_LE_DEPOT_PAR_NATURE`). Les 89 autres fichiers de test citent un de ces chemins sans être déclarés dans `LIT_LE_DEPOT_PAR_NATURE` : à trier un à un au lot 12.
 
-Références notées mais non comptées : 183 fichiers citent le dossier `data/migrations/` (il reste, pour la structure), 24 le manifeste `sources/sources.json` (reste), 21 `sources/tipeee/` (reste), 4 `sources/discord/`, 4 les publications GitHub (les nouvelles restent) ; 37 fichiers n'atteignent `data/rows` que par une commande ou un module (`db:build`, `db:sync-pages`, `pages_md`…).
+Références notées mais non comptées : 183 fichiers citent le dossier `data/migrations/` (il reste, pour la structure), 24 le manifeste `sources/sources.json` (reste), 21 `sources/tipeee/` (reste), 4 `sources/discord/`, 7 les publications GitHub (les nouvelles restent) ; 37 fichiers n'atteignent `data/rows` que par une commande ou un module (`db:build`, `db:sync-pages`, `pages_md`…).
 
 Cette section se périme à chaque copie de `data/rows` et à chaque changement des fichiers qui citent ces chemins ; `--verifier` n'est pas branché en CI : on la régénère avant de s'en servir.
 
