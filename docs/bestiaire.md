@@ -216,6 +216,11 @@ la Corruption, porte la seconde en bande), écrite en infobulle. Écritures rapp
 Feu… », « Neige : Glace », « Absorbe(s) Dégâts/Effets = 0 » puis « Feu ») a ses listes de cibles en pastilles, ligne par ligne ; le reste s'affiche
 tel qu'écrit.
 
+**Types de dégâts d'une attaque** (R288, R298, R299). Dans la rubrique « Dégâts », la ligne d'une attaque garde son texte tel qu'écrit, suivi de « Type : »
+et de ses types (`carte.attaques[].types`, table `monstre_attaque_type`), dans l'ordre de rang, séparés par « / », chacun lié à son mot-clé (ou à sa magie
+pour un type élémentaire) ; une attaque sans type n'affiche rien (`lib/monstre-rendu.mjs#htmlDeRubrique`, options `attaques` et `liens` ; test
+`bestiaire-attaques-types-rendu.test.mjs`).
+
 ### Apparence d'une carte à plusieurs échelles
 
 Demandes du propriétaire : santé, chakra et barrière « ne doivent pas afficher l'EP, mais leur titre. De plus ils doivent être en ligne » ; « certains

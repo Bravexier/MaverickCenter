@@ -10,9 +10,11 @@
 // tout texte échappé.
 import { htmlAvecMonnaies } from './monnaies.mjs';
 import { classeDeCaracteristique, classesDeDeuxMagies } from './palette-css.mjs';
-import { avecLeursBalises } from './mots-cles-balises.mjs';
+import { avecLeursBalises, texteSansBalises } from './mots-cles-balises.mjs';
 import { normalize } from './text.mjs';
+import { htmlDesTypesDeLAttaque } from './valeurs-fermees-rendu.mjs';
 import {
+  attaques as attaquesDuTexte,
   attributs,
   avecLesValeurs,
   caracteristiques,
@@ -34,6 +36,10 @@ import {
 const ENTITES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 const e = (texte) => String(texte ?? '').replace(/[&<>"']/g, (c) => ENTITES[c]);
 const SIGLES = { force: ['F', 'Force'], perception: ['P', 'Perception'], volonte: ['V', 'Volonté'], social: ['S', 'Social'], intelligence: ['I', 'Intelligence'], agilite: ['A', 'Agilité'] };
+
+/** Le texte de la rubrique « Dégâts » tel qu'écrit, chaque ligne d'attaque qui a des types les montrant à sa suite (typesParLigne). */
+const htmlDeTexteAvecTypes = (texte, typesDeLaLigne) =>
+  `<span class="texte">${String(texte).split('\n').map((ligne) => `${htmlAvecMonnaies(ligne)}${suiteDeLaLigne(typesDeLaLigne, ligne)}`).join('\n')}</span>`;
 
 /** Un texte tel qu'écrit (retours à la ligne gardés par la feuille de style), ou « — » s'il est vide. */
 const htmlDeTexte = (texte) => (String(texte ?? '').trim() ? `<span class="texte">${htmlAvecMonnaies(texte)}</span>` : '<span class="vide">—</span>');
@@ -58,14 +64,45 @@ const epsDe = (s) => ` data-eps="${s.eps.join(' ')}"`;
 // JavaScript, à l'impression) : l'échelle choisie, la carte a l'apparence d'une carte à une seule échelle (demande du propriétaire)
 const etiquetteDe = (s) => `${s.forme ? `<span class="bforme">${e(s.forme)}</span> ` : ''}<span class="bep">${e(s.etiquette)}</span>`;
 
+/**
+ * Le ou les types de dégâts d'une attaque, à la suite de sa ligne (R288, R298 : chacun lié à son mot-clé, dans l'ordre de rang ; R299 : rien sans type) ;
+ * `typesDeLaLigne` : la fonction de typesParLigne, ou null.
+ */
+const suiteDeLaLigne = (typesDeLaLigne, ligne) => {
+  const html = typesDeLaLigne ? typesDeLaLigne(ligne) : '';
+  return html ? ` <span class="battaque__types battaque__types--ligne"><span class="muted">Type :</span> ${html}</span>` : '';
+};
+
+/**
+ * Les types de dégâts des attaques écrites dans le texte de la rubrique « Dégâts » (`attaques` : `carte.attaques` de lib/bestiaire-db.mjs#chargerMonstres,
+ * { nom, texte, types: [{ type, libelle, magie_id }] } dans l'ordre de rang ; `liens` : ses liens du glossaire) : la fonction qui, d'une ligne du texte, rend
+ * le HTML de ses types (lib/valeurs-fermees-rendu.mjs#htmlDesTypesDeLAttaque), '' pour une ligne qui n'est pas une attaque ou n'a pas de type. Les lignes
+ * se comptent comme à l'extraction (lib/monstre-champs.mjs#attaques : la n-ième ligne d'attaque est l'attaque de rang n), et une ligne n'a de types que si
+ * son nom et son texte sont ceux de l'attaque de la base (une table de détail pas encore refaite ne donne rien). Le texte de l'attaque reste celui du doc.
+ */
+function typesParLigne(texte, attaques, liens) {
+  const files = new Map();
+  let n = 0;
+  for (const ligne of String(texte ?? '').split('\n')) {
+    const [a] = attaquesDuTexte(texteSansBalises(ligne));
+    if (!a) continue;
+    const sienne = attaques[n];
+    n += 1;
+    const cle = ligne.trim();
+    files.set(cle, [...(files.get(cle) ?? []), sienne && sienne.nom === a.nom && sienne.texte === a.texte ? htmlDesTypesDeLAttaque(sienne.types, liens) : '']);
+  }
+  return (ligne) => files.get(ligne.trim())?.shift() ?? '';
+}
+
 /** Les lignes d'un texte écrit par échelle : une ligne d'échelle (son étiquette « EP 2 - 5 », sa valeur), un titre de groupe, une ligne simple. */
-function htmlDesLignes(segments, ligneDEchelle = (s) => `${etiquetteDe(s)} <span class="texte">${e(s.valeur)}</span>`) {
+function htmlDesLignes(segments, ligneDEchelle = (s) => `${etiquetteDe(s)} <span class="texte">${e(s.valeur)}</span>`, typesDeLaLigne = null) {
   return `<span class="bep-lignes">${segments
     .map((s) => {
       if (s.vide) return '<span class="bep-ligne bep-ligne--vide"></span>';
       if (s.titre) return `<span class="bep-ligne bep-ligne--titre">${e(s.titre)}</span>`;
-      if (!s.eps) return `<span class="bep-ligne texte">${e(s.texte)}</span>`;
-      return `<span class="bep-ligne"${epsDe(s)}>${ligneDEchelle(s)}</span>`;
+      if (!s.eps) return `<span class="bep-ligne texte">${e(s.texte)}${suiteDeLaLigne(typesDeLaLigne, s.texte)}</span>`;
+      // une ligne d'attaque précédée d'une étiquette d'échelle (« (Forme) EP 2 - 5 : Pince - 2d4… ») est comptée par l'extraction : elle montre aussi ses types
+      return `<span class="bep-ligne"${epsDe(s)}>${ligneDEchelle(s)}${suiteDeLaLigne(typesDeLaLigne, s.texte)}</span>`;
     })
     .join('')}</span>`;
 }
@@ -105,7 +142,7 @@ function htmlDesTuilesParEchelle(rubrique, segments) {
 }
 
 /** Une rubrique écrite par échelle (lib/monstre-champs.mjs#segmentsParEchelle) : tuiles, cases F.P.V.S.I.A. ou lignes, chacune avec ses échelles. */
-function htmlParEchelle(rubrique, texte) {
+function htmlParEchelle(rubrique, texte, typesDeLaLigne = null) {
   const segments = segmentsParEchelle(texte);
   if (['sante', 'chakra', 'barriere'].includes(rubrique)) return htmlDesTuilesParEchelle(rubrique, segments);
   if (rubrique === 'caracteristiques') {
@@ -114,7 +151,7 @@ function htmlParEchelle(rubrique, texte) {
       return c.length ? `${etiquetteDe(s)} ${htmlDesCaracteristiques(c.map((x) => x.valeur))}` : `${etiquetteDe(s)} <span class="texte">${e(s.valeur)}</span>`;
     });
   }
-  return htmlDesLignes(segments);
+  return htmlDesLignes(segments, undefined, typesDeLaLigne);
 }
 
 /**
@@ -187,12 +224,17 @@ export const htmlDAttention = (texte) =>
 /**
  * HTML d'une rubrique (`monstre_rubrique.rubrique`) d'après son texte ; `echelles` : celles qu'écrit la carte (lib/monstre-champs.mjs#echellesEcrites), pour
  * une formule « N (+k/mEP) » ou « N (+k/EP) » (décisions R55, R59). Ce qui suit un trait du doc va dans un panneau « Attention » (htmlDAttention).
+ * `attaques` et `liens` (rubrique « Dégâts » de la carte seulement) : les attaques de la carte avec leurs types de dégâts (`carte.attaques[].types`) et les
+ * liens du glossaire de chargerMonstres ; chaque ligne d'attaque qui a des types les montre à sa suite (décisions R288, R298, R299 ; typesParLigne).
  */
 export function htmlDeRubrique(rubrique, texte, options = {}) {
   const coupe = apresUnTrait(texte);
   if (coupe) return `${coupe.avant.trim() ? htmlDeRubrique(rubrique, coupe.avant, options) : ''}${htmlDAttention(coupe.apres)}`;
-  const { echelles = [], magiesDesCibles = {} } = options;
-  if (parEchelle(texte)) return htmlParEchelle(rubrique, texte);
+  const { echelles = [], magiesDesCibles = {}, attaques = null, liens = null } = options;
+  // les types de dégâts des attaques (R288, R298, R299) : après la ligne de chaque attaque qui en a, le texte de la ligne restant tel qu'écrit
+  const typesDeLaLigne = rubrique === 'degats' && attaques?.some((a) => a.types?.length) ? typesParLigne(texte, attaques, liens) : null;
+  if (parEchelle(texte)) return htmlParEchelle(rubrique, texte, typesDeLaLigne);
+  if (typesDeLaLigne) return htmlDeTexteAvecTypes(texte, typesDeLaLigne);
   // la formule « N (+k/mEP) » ou « N (+k/EP) » : la défense seulement (décisions R55, R59)
   if (rubrique === 'defense') {
     const groupes = texteParEchelle(texte, echelles);
