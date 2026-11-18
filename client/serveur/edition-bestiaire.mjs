@@ -94,7 +94,7 @@ export function domainesDuBestiaire({ refus, ErreurEdition, synchroniser, proven
   };
 
   /**
-   * Les types de dégâts des attaques d'une carte (monstre_attaque_type, migration 0130, R298) quand ses attaques sont refaites depuis le texte (`attaques` : le
+   * Les types de dégâts des attaques d'une carte (monstre_attaque_type, migration 0130, R299) quand ses attaques sont refaites depuis le texte (`attaques` : le
    * résultat de lib/monstre-champs.mjs#attaques) : la clé étrangère n'a pas de cascade, ils partent donc avant l'attaque qu'ils citent, au journal. Les types d'une
    * attaque ne restent que si chacun de ses libellés est encore écrit dans le texte de l'attaque du même rang, dans l'ordre (R295 : un type n'est posé que si le
    * texte le nomme ; l'invariant de db-0130) ; sinon tous ceux de l'attaque sont retirés, rien n'est deviné d'un texte réécrit. Une attaque retirée perd les siens.

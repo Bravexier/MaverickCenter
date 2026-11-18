@@ -19,7 +19,7 @@ const cartes = b.especes.flatMap((e) => e.cartes);
 const db = ouvrirBase({ sansExemples: false });
 const TABLES_MONSTRES = ['monstre_regle', 'monstre_echelle', 'monstre_butin_objet', 'monstre_groupe', 'monstre_capacite_commune', 'monstre_espece', 'monstre_espece_lieu',
   'monstre_espece_bloc', 'monstre_butin', 'monstre', 'monstre_rubrique', 'monstre_caracteristique', 'monstre_attaque', 'monstre_capacite', 'monstre_capacite_valeur', 'monstre_defense'];
-// monstre_attaque_type (migration 0130, R298) : alimentée par un lot de changements du site de dev, jamais par l'extracteur ; elle n'est donc ni rejouée ni
+// monstre_attaque_type (migration 0130, R299) : alimentée par un lot de changements du site de dev, jamais par l'extracteur ; elle n'est donc ni rejouée ni
 // comparée ici, et la liste des tables de la section 8 bis la met à part
 const TABLES_DU_SITE = ['monstre_attaque_type'];
 const registre = lireRegistre();

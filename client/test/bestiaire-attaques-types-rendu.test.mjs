@@ -1,5 +1,5 @@
-// Les types de dégâts des attaques sur les cartes de monstre (R288 : afficher le type, lié à son mot-clé ; R298 : tous les types écrits, dans l'ordre de rang ;
-// R299 : rien sans type, le texte copié de l'attaque reste affiché) : lib/monstre-rendu.mjs#htmlDeRubrique (rubrique « Dégâts ») et
+// Les types de dégâts des attaques sur les cartes de monstre (R288 : afficher le type, lié à son mot-clé ; R299 : tous les types écrits, dans l'ordre de rang ;
+// R300 : rien sans type, le texte copié de l'attaque reste affiché) : lib/monstre-rendu.mjs#htmlDeRubrique (rubrique « Dégâts ») et
 // lib/bestiaire-rendu.mjs#htmlDeCarteMonstre. Le test construit ses données (carte, types et liens fournis au rendu) : la base n'a pas encore ces types, et le
 // texte d'une attaque ou le type d'une valeur de la source ne sont jamais figés ici (R295 : le type d'une attaque est donné par la source, pas par le code).
 // La lecture des types dans la base : `bestiaire-attaques-types.test.mjs`.
@@ -26,7 +26,7 @@ const SUITE = /<span class="battaque__types battaque__types--ligne"><span class=
 const sansLesTypes = (html) => html.replace(/ <span class="battaque__types battaque__types--ligne"><span class="muted">Type :<\/span> [^<]*<\/span>/g, '');
 const lignesDuRendu = (html) => html.replace(/^<span class="texte">|<\/span>$/g, '').split('\n');
 
-test('une attaque avec types : ses types à la suite de sa ligne, dans l’ordre de rang, un lien par type lié, « / » entre deux (R298)', () => {
+test('une attaque avec types : ses types à la suite de sa ligne, dans l’ordre de rang, un lien par type lié, « / » entre deux (R299)', () => {
   const lignes = lignesDuRendu(htmlDeRubrique('degats', texte, { attaques, liens }));
   assert.equal(lignes.length, 4, 'une ligne par ligne du texte');
   assert.match(lignes[1], /^Premiere - 1d4 dégâts alpha ou beta <span class="battaque__types/);
@@ -44,7 +44,7 @@ test('un type sans mot-clé reste nu ; le type d’une magie est lié par son li
   assert.match(sansLiens[1], /Type :<\/span> Alpha \/ Beta<\/span>$/, 'sans liens, les libellés nus');
 });
 
-test('une attaque sans type n’affiche rien (R299) ; le texte de chaque ligne reste celui écrit', () => {
+test('une attaque sans type n’affiche rien (R300) ; le texte de chaque ligne reste celui écrit', () => {
   const html = htmlDeRubrique('degats', texte, { attaques, liens });
   const lignes = lignesDuRendu(html);
   assert.equal(lignes[0], 'Arme de la créature : à deux mains', 'une ligne qui n’est pas une attaque');

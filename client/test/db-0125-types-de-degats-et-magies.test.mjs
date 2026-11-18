@@ -39,7 +39,7 @@ test('les colonnes de type de dégâts : les huit du lot, et chacune de leurs va
   const lignes = new Set(db.prepare('SELECT id FROM type_degats').all().map((l) => l.id));
   const valeurs = new Set([...colonnes.values()].flat());
   for (const v of valeurs) assert.ok(lignes.has(v), `${v} : une ligne par valeur admise`);
-  // migration 0130 (R297) : les autres lignes sont les types des attaques de carte (monstre_attaque_type.type, clé étrangère), que le CHECK de
+  // migration 0130 (R298) : les autres lignes sont les types des attaques de carte (monstre_attaque_type.type, clé étrangère), que le CHECK de
   // type_degats.id énumère ; le test db-0130-types-des-attaques-de-monstre.test.mjs les éprouve
   const admis = db.prepare("SELECT sql FROM sqlite_master WHERE name = 'type_degats'").get().sql.match(/CHECK \(id IN \(([^)]*)\)\)/)[1];
   for (const l of lignes) assert.ok(valeurs.has(l) || admis.includes(`'${l}'`), `${l} : une valeur admise par type_degats`);

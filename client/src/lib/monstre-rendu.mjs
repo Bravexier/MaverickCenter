@@ -65,7 +65,7 @@ const epsDe = (s) => ` data-eps="${s.eps.join(' ')}"`;
 const etiquetteDe = (s) => `${s.forme ? `<span class="bforme">${e(s.forme)}</span> ` : ''}<span class="bep">${e(s.etiquette)}</span>`;
 
 /**
- * Le ou les types de dégâts d'une attaque, à la suite de sa ligne (R288, R298 : chacun lié à son mot-clé, dans l'ordre de rang ; R299 : rien sans type) ;
+ * Le ou les types de dégâts d'une attaque, à la suite de sa ligne (R288, R299 : chacun lié à son mot-clé, dans l'ordre de rang ; R300 : rien sans type) ;
  * `typesDeLaLigne` : la fonction de typesParLigne, ou null.
  */
 const suiteDeLaLigne = (typesDeLaLigne, ligne) => {
@@ -225,13 +225,13 @@ export const htmlDAttention = (texte) =>
  * HTML d'une rubrique (`monstre_rubrique.rubrique`) d'après son texte ; `echelles` : celles qu'écrit la carte (lib/monstre-champs.mjs#echellesEcrites), pour
  * une formule « N (+k/mEP) » ou « N (+k/EP) » (décisions R55, R59). Ce qui suit un trait du doc va dans un panneau « Attention » (htmlDAttention).
  * `attaques` et `liens` (rubrique « Dégâts » de la carte seulement) : les attaques de la carte avec leurs types de dégâts (`carte.attaques[].types`) et les
- * liens du glossaire de chargerMonstres ; chaque ligne d'attaque qui a des types les montre à sa suite (décisions R288, R298, R299 ; typesParLigne).
+ * liens du glossaire de chargerMonstres ; chaque ligne d'attaque qui a des types les montre à sa suite (décisions R288, R299, R300 ; typesParLigne).
  */
 export function htmlDeRubrique(rubrique, texte, options = {}) {
   const coupe = apresUnTrait(texte);
   if (coupe) return `${coupe.avant.trim() ? htmlDeRubrique(rubrique, coupe.avant, options) : ''}${htmlDAttention(coupe.apres)}`;
   const { echelles = [], magiesDesCibles = {}, attaques = null, liens = null } = options;
-  // les types de dégâts des attaques (R288, R298, R299) : après la ligne de chaque attaque qui en a, le texte de la ligne restant tel qu'écrit
+  // les types de dégâts des attaques (R288, R299, R300) : après la ligne de chaque attaque qui en a, le texte de la ligne restant tel qu'écrit
   const typesDeLaLigne = rubrique === 'degats' && attaques?.some((a) => a.types?.length) ? typesParLigne(texte, attaques, liens) : null;
   if (parEchelle(texte)) return htmlParEchelle(rubrique, texte, typesDeLaLigne);
   if (typesDeLaLigne) return htmlDeTexteAvecTypes(texte, typesDeLaLigne);

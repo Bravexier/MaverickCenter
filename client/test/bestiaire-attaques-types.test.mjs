@@ -41,7 +41,7 @@ test('créatures invoquées : chaque type exposé se résout par `liens.degats` 
   }
 });
 
-// Les cartes de monstre (migration 0130, R298, R299) : `attaques[].types` = les lignes de monstre_attaque_type, dans l'ordre écrit, avec la magie de type_degats ;
+// Les cartes de monstre (migration 0130, R299, R300) : `attaques[].types` = les lignes de monstre_attaque_type, dans l'ordre écrit, avec la magie de type_degats ;
 // `[]` sans ligne. Même forme que les créatures invoquées : le rendu de valeurs-fermees-rendu.mjs lit les deux.
 const monstres = chargerMonstres(db);
 const attaquesDesCartes = Map.groupBy(db.prepare('SELECT monstre_id, rang FROM monstre_attaque ORDER BY monstre_id, rang').all(), (a) => a.monstre_id);

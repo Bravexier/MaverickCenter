@@ -302,6 +302,7 @@ Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas mo
 | R294 | « Résistance » et « Faiblesse » sur la fiche de personnage (suite de R284… | Oui : sur la fiche de personnage, « Résistance » et «… |
 | R295 | Type de dégâts des attaques des cartes de monstre (suite de R288 : `monstr… | Oui, un lot est fait, mais le type d'une attaque n'est… |
 | R296 | Ce qui sort du dépôt à la fin du chantier (2026-11-18, `docs/chantier-base… | (b) : le lot 12 retire du dépôt les lignes des tables,… |
+| R297 | Suites de R291 (2026-11-18, PR #398, `docs/chantier-base-de-dev.md`, secti… | (1) Pas de bouton « Annuler tout » : un changement au… |
 | R298 | Attaques de monstre dont le type n'est pas dans la liste des types de dégâ… | (a) : ces types sont ajoutés à la liste des types de d… |
 | R299 | Attaques de monstre à deux types ou plus (`docs/sql/a-valider.md` §12, GL1… | (a) : une attaque qui écrit deux types ou plus affiche… |
 | R300 | Attaques de monstre sans type ou de type générique (`docs/sql/a-valider.md… | (a) : pas de type tant que le document n'en écrit pas… |

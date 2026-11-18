@@ -1,11 +1,11 @@
--- 0130-types-des-attaques-de-monstre : le type de dégâts des attaques des cartes de monstre, lié au glossaire (décisions R288, R295, R297, R298,
--- R299, R300 du 2026-11-17 et du 2026-11-18). Migration de STRUCTURE seule : elle n'insère aucune ligne. Les types des attaques et les onze lignes
+-- 0130-types-des-attaques-de-monstre : le type de dégâts des attaques des cartes de monstre, lié au glossaire (décisions R288, R295, R298, R299,
+-- R300, R301 du 2026-11-17 et du 2026-11-18). Migration de STRUCTURE seule : elle n'insère aucune ligne. Les types des attaques et les onze lignes
 -- nouvelles de type_degats viennent d'un lot de changements déposé sur le site de dev (R291), un type n'étant posé que si le texte copié du doc le
--- nomme (R295, R299).
---   1. type_degats reconstruite (SQLite ne change pas un CHECK) : onze id de plus, les types que les attaques écrivent hors de la liste (R297 :
+-- nomme (R295, R300).
+--   1. type_degats reconstruite (SQLite ne change pas un CHECK) : onze id de plus, les types que les attaques écrivent hors de la liste (R298 :
 --      « ajoutés à la liste des types de dégâts (`type_degats`), chacun lié à la magie du même nom ») ; le CHECK fixe désormais la magie de chaque
 --      id élémentaire (les trois de 0125 et les onze), NULL pour les autres. Les huit lignes en place sont recopiées telles quelles.
---   2. monstre_attaque_type : zéro, un ou plusieurs types par attaque (monstre_attaque), dans l'ordre écrit (R298) ; clé étrangère vers type_degats,
+--   2. monstre_attaque_type : zéro, un ou plusieurs types par attaque (monstre_attaque), dans l'ordre écrit (R299) ; clé étrangère vers type_degats,
 --      sans cascade (la carte retire les types de ses attaques avant de les supprimer ou de les refaire).
 
 CREATE TABLE type_degats_0130 (

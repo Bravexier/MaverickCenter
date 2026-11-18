@@ -127,8 +127,8 @@ export function chargerMonstres(db) {
   const rubriques = regrouper(all('SELECT * FROM monstre_rubrique ORDER BY monstre_id, rang'), 'monstre_id');
   const caracs = regrouper(all('SELECT * FROM monstre_caracteristique ORDER BY monstre_id, rang'), 'monstre_id');
   const attaques = regrouper(all('SELECT * FROM monstre_attaque ORDER BY monstre_id, rang'), 'monstre_id');
-  // les types de dégâts de chaque attaque (migration 0130, R298), dans l'ordre écrit (`rang`) : `magie_id` est celui de type_degats (la magie du même nom, R297) ;
-  // une attaque sans ligne n'a pas de type (R299) : rien n'est déduit de son texte. Une base d'avant la 0130 n'en a pas.
+  // les types de dégâts de chaque attaque (migration 0130, R299), dans l'ordre écrit (`rang`) : `magie_id` est celui de type_degats (la magie du même nom, R298) ;
+  // une attaque sans ligne n'a pas de type (R300) : rien n'est déduit de son texte. Une base d'avant la 0130 n'en a pas.
   const typesDesAttaques = new Map();
   if (db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'monstre_attaque_type'").get()) {
     const lignesDesTypes = all('SELECT t.monstre_id, t.attaque_rang, t.type, t.libelle, d.magie_id FROM monstre_attaque_type t JOIN type_degats d ON d.id = t.type '

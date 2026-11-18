@@ -1,12 +1,12 @@
-// Les types de dégâts des attaques de monstre (migration 0130, décisions R295, R297, R298, R299) par un lot de changements du site de dev :
-//   - un lot qui insère les lignes de type_degats absentes (avec leur magie, R297) puis les lignes de monstre_attaque_type est déposé par la route comme sur le site
+// Les types de dégâts des attaques de monstre (migration 0130, décisions R295, R298, R299, R300) par un lot de changements du site de dev :
+//   - un lot qui insère les lignes de type_degats absentes (avec leur magie, R298) puis les lignes de monstre_attaque_type est déposé par la route comme sur le site
 //     de dev (la base source : `service.source()`, le lot vaut pour les tables hors édition), son essai à blanc (copie de la base) l'annonce applicable sans rien
 //     écrire, et son application écrit les lignes, au journal ;
-//   - la page lit les types dans l'ordre écrit (lib/bestiaire-db.mjs#chargerMonstres : `attaques[].types` = { type, libelle, magie_id }, `[]` sans type, R299) ;
+//   - la page lit les types dans l'ordre écrit (lib/bestiaire-db.mjs#chargerMonstres : `attaques[].types` = { type, libelle, magie_id }, `[]` sans type, R300) ;
 //   - la carte qui suit son texte (serveur/edition-bestiaire.mjs) : les types d'une attaque ne restent que si chaque libelle est encore écrit dans le texte de
 //     l'attaque du même rang, dans l'ordre ; sinon ils partent, au journal ; une attaque retirée et une carte supprimée les emportent (clé étrangère sans cascade).
 // La carte d'essai est créée par le test, avec son propre texte : aucune valeur du site de dev n'est lue ni figée ; les types d'essai viennent de type_degats
-// (taille, estoc, frappe : ids figés de la 0125), et les onze de R297 absents de la base sont ceux que le lot insère (ids figés par le CHECK de la 0130).
+// (taille, estoc, frappe : ids figés de la 0125), et les onze de R298 absents de la base sont ceux que le lot insère (ids figés par le CHECK de la 0130).
 //   node --test test/serveur-edition-lots-types-attaques.test.mjs
 import assert from 'node:assert/strict';
 import { join } from 'node:path';
@@ -20,7 +20,7 @@ import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const racine = dossierTemporaire('edition-lots-types-attaques');
 const JSON_ = { 'content-type': 'application/json' };
-/** R297 : les onze types ajoutés à la liste, chacun lié à la magie du même nom (ids figés par le CHECK de type_degats). */
+/** R298 : les onze types ajoutés à la liste, chacun lié à la magie du même nom (ids figés par le CHECK de type_degats). */
 const MAGIE_DU_TYPE = {
   foudre: 'magies/magie-de-la-foudre', lumiere: 'magies/magie-de-la-lumiere', arcane: 'magies/magie-de-larcane', sang: 'magies/magie-du-sang',
   terre: 'magies/magie-de-la-terre', ombre: 'magies/magie-de-lombre', corruption: 'magies/magie-de-la-corruption', 'espace-temps': 'magies/magie-de-lespace-temps',
@@ -62,8 +62,8 @@ const attaquesDe = (m, id) => m.tous('SELECT rang, nom, texte FROM monstre_attaq
 const typesDe = (m, id) => m.tous('SELECT attaque_rang, rang, type, libelle FROM monstre_attaque_type WHERE monstre_id = ? ORDER BY attaque_rang, rang', id);
 
 /**
- * Le lot du site de dev : les lignes de type_degats que la base n'a pas encore (R297 : id lié à sa magie) puis `types` ([attaque_rang, type, libelle] dans l'ordre
- * écrit de chaque attaque), nature « decision » R297.
+ * Le lot du site de dev : les lignes de type_degats que la base n'a pas encore (R298 : id lié à sa magie) puis `types` ([attaque_rang, type, libelle] dans l'ordre
+ * écrit de chaque attaque), nature « decision » R298.
  */
 function lotDesTypes(m, id, types) {
   const presents = new Set(m.tous('SELECT id FROM type_degats').map((t) => t.id));
@@ -76,7 +76,7 @@ function lotDesTypes(m, id, types) {
     operations.push({ table: 'monstre_attaque_type', cle: { monstre_id: id, attaque_rang: attaque, rang }, operation: 'inserer',
       apres: { monstre_id: id, attaque_rang: attaque, rang, type, libelle } });
   }
-  return { format: 'maverick-lot/1', titre: `Types des attaques d’essai ${(n += 1)}`, nature: 'decision', decision: 'R297', auteur: 'essai', operations };
+  return { format: 'maverick-lot/1', titre: `Types des attaques d’essai ${(n += 1)}`, nature: 'decision', decision: 'R298', auteur: 'essai', operations };
 }
 
 /** Dépose le lot par la route, vérifie son essai à blanc, puis l'applique d'un clic. */
@@ -90,7 +90,7 @@ async function appliquer(m, lot) {
   return applique;
 }
 
-test('le lot de types : insère les lignes de type_degats absentes et celles de monstre_attaque_type ; essai à blanc sans écriture, journal, clés intactes (R297, R298)', async () => {
+test('le lot de types : insère les lignes de type_degats absentes et celles de monstre_attaque_type ; essai à blanc sans écriture, journal, clés intactes (R298, R299)', async () => {
   const m = nouvelle();
   const carte = carteAvecDesAttaques(m, ['Pince - 2d10 dégâts de taille/estoc', 'Éclair - 3d6 dégâts de foudre', 'Morsure - 1d6 dégâts neutres']);
   assert.equal(carte.attaques.length, 3);
@@ -109,9 +109,9 @@ test('le lot de types : insère les lignes de type_degats absentes et celles de 
   assert.deepEqual(m.tous("SELECT * FROM pragma_foreign_key_check('type_degats')"), []);
   // le journal du lot : une trace par ligne insérée, de la nature et de la décision du lot
   assert.equal(m.un("SELECT count(*) AS n FROM modification WHERE table_nom = 'monstre_attaque_type' AND lot_id = ?", applique.lot_id).n, 3);
-  assert.deepEqual(m.un('SELECT nature, decision FROM modification_lot WHERE id = ?', applique.lot_id), { nature: 'decision', decision: 'R297' });
+  assert.deepEqual(m.un('SELECT nature, decision FROM modification_lot WHERE id = ?', applique.lot_id), { nature: 'decision', decision: 'R298' });
 
-  // la page lit les types dans l'ordre écrit, avec la magie de type_degats ; `[]` pour une attaque sans type (R299)
+  // la page lit les types dans l'ordre écrit, avec la magie de type_degats ; `[]` pour une attaque sans type (R300)
   const { lignes, liens } = chargerMonstres(m.db);
   const sienne = lignes.find((l) => l.id === carte.id);
   assert.deepEqual(sienne.carte.attaques.map((a) => a.nom), carte.attaques.map((a) => a.nom));

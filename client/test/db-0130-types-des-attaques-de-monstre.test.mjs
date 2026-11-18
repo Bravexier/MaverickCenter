@@ -1,8 +1,8 @@
-// Migration data/migrations/0130-types-des-attaques-de-monstre.sql (décisions R288, R295, R297 à R300) : la table monstre_attaque_type (zéro, un ou
-// plusieurs types de dégâts par attaque de carte, dans l'ordre écrit, R298) et type_degats élargie aux onze types que les attaques écrivent hors de la
-// liste, chacun lié à la magie du même nom (R297). Migration de structure seule : les lignes viennent d'un lot de changements du site de dev, un type
+// Migration data/migrations/0130-types-des-attaques-de-monstre.sql (décisions R288, R295, R298 à R301) : la table monstre_attaque_type (zéro, un ou
+// plusieurs types de dégâts par attaque de carte, dans l'ordre écrit, R299) et type_degats élargie aux onze types que les attaques écrivent hors de la
+// liste, chacun lié à la magie du même nom (R298). Migration de structure seule : les lignes viennent d'un lot de changements du site de dev, un type
 // n'étant posé que si le texte copié du doc le nomme (R295 : « le type d'une attaque n'est donné que s'il est sourcé »). Le test ne fige donc aucune
-// ligne : la structure et ses contraintes sur une base neuve, puis, sur l'état courant, les invariants de R295 et R298 (chaque type posé est écrit dans
+// ligne : la structure et ses contraintes sur une base neuve, puis, sur l'état courant, les invariants de R295 et R299 (chaque type posé est écrit dans
 // le texte de son attaque, dans l'ordre des rangs). La correspondance id -> magie est celle du CHECK (ids figés), pas une valeur modifiable.
 //   node --test test/db-0130-types-des-attaques-de-monstre.test.mjs
 import assert from 'node:assert/strict';
@@ -16,7 +16,7 @@ const SCHEMA = readFileSync(new URL('../../data/schema.sql', import.meta.url), '
 const MIGRATION = readFileSync(new URL('../../data/migrations/0130-types-des-attaques-de-monstre.sql', import.meta.url), 'utf8');
 const db = ouvrirBase({ sansExemples: false });
 
-/** R297 : les onze types ajoutés et la magie du même nom de chacun (feu, eau, glace : migration 0125). */
+/** R298 : les onze types ajoutés et la magie du même nom de chacun (feu, eau, glace : migration 0125). */
 const MAGIE_DU_TYPE = {
   feu: 'magies/magie-du-feu', eau: 'magies/magie-de-leau', glace: 'magies/magie-de-la-glace',
   foudre: 'magies/magie-de-la-foudre', lumiere: 'magies/magie-de-la-lumiere', arcane: 'magies/magie-de-larcane', sang: 'magies/magie-du-sang',
@@ -39,7 +39,7 @@ test('migration de structure seule : aucune ligne insérée hors de la recopie d
   assert.doesNotMatch(MIGRATION, /^\s*(UPDATE|DELETE|VALUES)\b/im);
 });
 
-test('type_degats (base neuve) : chaque type élémentaire a la magie du même nom, et elle seule (R297) ; les autres, aucune', () => {
+test('type_degats (base neuve) : chaque type élémentaire a la magie du même nom, et elle seule (R298) ; les autres, aucune', () => {
   const essai = baseNeuve();
   const poser = (id, motCle, magie) => {
     essai.prepare('INSERT INTO type_degats (id, mot_cle_id, magie_id) VALUES (?, ?, ?)').run(id, motCle, magie);
@@ -55,7 +55,7 @@ test('type_degats (base neuve) : chaque type élémentaire a la magie du même n
     assert.doesNotThrow(() => poser(id, null, null), id);
     assert.throws(() => poser(id, null, MAGIE_DU_TYPE.foudre), /CHECK/, `${id} : pas de magie`);
   }
-  // un type hors liste reste une question au propriétaire (R297) : la liste ne s'élargit que par migration
+  // un type hors liste reste une question au propriétaire (R298) : la liste ne s'élargit que par migration
   for (const id of ['neutre', 'elementaire', 'acide', 'Foudre']) assert.throws(() => poser(id, null, null), /CHECK/, id);
   essai.close();
 });
@@ -80,7 +80,7 @@ test('monstre_attaque_type (base neuve) : zéro, un ou plusieurs types par attaq
   for (const rang of [1, 2, 3]) attaque.run(rang);
   essai.exec('PRAGMA foreign_keys = ON');
   const type = essai.prepare("INSERT INTO monstre_attaque_type (monstre_id, attaque_rang, rang, type, libelle) VALUES ('monstres/essai', ?, ?, ?, ?)");
-  // attaque 1 : deux types, dans l'ordre écrit (R298) ; attaque 2 : un type hors de l'ancienne liste (R297) ; attaque 3 : aucun (R299)
+  // attaque 1 : deux types, dans l'ordre écrit (R299) ; attaque 2 : un type hors de l'ancienne liste (R298) ; attaque 3 : aucun (R300)
   type.run(1, 1, 'taille', 'taille');
   type.run(1, 2, 'estoc', 'estoc');
   type.run(2, 1, 'foudre', 'Foudre');
@@ -99,12 +99,12 @@ test('monstre_attaque_type (base neuve) : zéro, un ou plusieurs types par attaq
   essai.close();
 });
 
-test('état d\'import : les quatorze magies que le CHECK lie à un type existent (R297 : « une magie existante du même nom »)', () => {
+test('état d\'import : les quatorze magies que le CHECK lie à un type existent (R298 : « une magie existante du même nom »)', () => {
   const dImport = baseDImport();
   for (const [id, magie] of Object.entries(MAGIE_DU_TYPE)) assert.ok(dImport.prepare('SELECT 1 FROM magie WHERE id = ?').get(magie), `${id} : ${magie}`);
 });
 
-test('état courant (R295, R298) : chaque type posé est écrit dans le texte de son attaque, dans l\'ordre des rangs ; clés intactes', () => {
+test('état courant (R295, R299) : chaque type posé est écrit dans le texte de son attaque, dans l\'ordre des rangs ; clés intactes', () => {
   assert.deepEqual(db.prepare("SELECT * FROM pragma_foreign_key_check('monstre_attaque_type')").all(), []);
   assert.deepEqual(db.prepare("SELECT * FROM pragma_foreign_key_check('type_degats')").all(), []);
   const parAttaque = new Map();

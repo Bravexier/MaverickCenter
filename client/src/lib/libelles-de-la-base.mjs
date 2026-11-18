@@ -62,7 +62,7 @@ export const NOMS_DES_TABLES = Object.freeze({
   // bestiaire (sections 8 et 8 bis)
   creature_effet: 'Effet de créature',
   monstre_attaque: 'Attaque de la carte',
-  // les types de dégâts d'une attaque de carte (migration 0130, R298), cités par la clé (monstre_id, attaque_rang) de l'attaque
+  // les types de dégâts d'une attaque de carte (migration 0130, R299), cités par la clé (monstre_id, attaque_rang) de l'attaque
   monstre_attaque_type: 'Type de dégâts d’une attaque de carte',
   monstre_caracteristique: 'Caractéristique de la carte',
   monstre_defense: 'Défense de la carte',
@@ -132,7 +132,7 @@ export const NOMS_DES_TABLES = Object.freeze({
   // un onglet des Règles (migration 0091, R184), cité par son menu latéral (regles_onglet_entree, dans TABLES : son nom vient de là) ; fixe
   regles_onglet: 'Onglet des Règles',
   sort_mot_cle: 'Étiquette du sort',
-  // les types de dégâts à valeur fermée (migrations 0125 et 0130) : leur mot-clé ou leur magie ; une ligne s'ajoute par un lot de changements (R297)
+  // les types de dégâts à valeur fermée (migrations 0125 et 0130) : leur mot-clé ou leur magie ; une ligne s'ajoute par un lot de changements (R298)
   type_degats: 'Type de dégâts',
   // les fiches de personnage (section 13) qui citent une table écrite : jamais écrites par l'édition des règles
   personnage: 'Fiche de personnage',

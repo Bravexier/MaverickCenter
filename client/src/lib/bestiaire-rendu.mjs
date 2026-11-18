@@ -204,7 +204,7 @@ export function htmlDeCarteMonstre(l, { logo, adresseDuPortrait = null, echelles
   const echelle = c ? `<div class="bcarte__echelle"${champ('monstre', k.monstre, 'echelle_brut', { rendu: 'monstre-echelle' })}>${htmlDeLEchelle(c.echelle, c.categorie, echelles, renvoieAuxDegatsMoyens(c.rubriques))}</div>` : '';
   // les échelles qu'écrit la carte : une formule « N (+k/mEP) » ou « N (+k/EP) » se calcule à chacune (décisions R55, R59)
   const echellesDeLaCarte = c ? echellesEcrites(c.echelle) : [];
-  // les types de dégâts des attaques (R288, R298) : ceux de la rubrique « Dégâts » qui fait foi pour les attaques (la première, lib/monstre-champs.mjs#valeursDeLaCarte)
+  // les types de dégâts des attaques (R288, R299) : ceux de la rubrique « Dégâts » qui fait foi pour les attaques (la première, lib/monstre-champs.mjs#valeursDeLaCarte)
   const rubriqueDesAttaques = c?.rubriques.find((r) => r.rubrique === 'degats');
   const laCarte = c
     ? `<section class="bcarte__section" aria-label="La carte">`

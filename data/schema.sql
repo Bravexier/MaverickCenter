@@ -1036,13 +1036,13 @@ CREATE INDEX sort_mot_cle_mot_cle ON sort_mot_cle (mot_cle_id);   -- « les sort
 -- 2026-11-14 : « les armes et armures référencera leur type ou résistance (taille, estoc et frappe) via ce mot clé », « Si ils existent! »).
 -- Ces colonnes gardent leur valeur et leur CHECK, sans clé étrangère vers cette table (choix du propriétaire : leurs données et leur format ne
 -- changent pas). Pas de libellé ici : le mot-clé (ou la magie) donne le nom affiché.
--- Migration 0130 (R297) : onze types écrits par les attaques des cartes de monstre (monstre_attaque_type.type, clé étrangère vers cette table),
+-- Migration 0130 (R298) : onze types écrits par les attaques des cartes de monstre (monstre_attaque_type.type, clé étrangère vers cette table),
 -- chacun lié à la magie du même nom : foudre, lumiere, arcane, sang, terre, ombre, corruption, espace-temps, vide, vent, necromancie. La liste
--- des id ne s'élargit que par migration : un type hors liste sans magie du même nom reste une question au propriétaire (R297).
+-- des id ne s'élargit que par migration : un type hors liste sans magie du même nom reste une question au propriétaire (R298).
 --   mot_cle_id : le mot-clé du type (Taille, Estoc, Frappe) ; NULL quand le glossaire n'en a pas (physique, sonore). Pas de cascade, comme
 --                sort_mot_cle : la clé étrangère refuse de supprimer un mot-clé qui définit un type de dégâts.
 --   magie_id   : un type élémentaire se lie à la magie du même nom (choix du propriétaire pour feu, eau, glace, attaques de créature, comme
---                creature_attaque_type.magie_id ; R297 pour les onze de 0130) ; son mot-clé est celui de la magie (magie.mot_cle_id). Le CHECK
+--                creature_attaque_type.magie_id ; R298 pour les onze de 0130) ; son mot-clé est celui de la magie (magie.mot_cle_id). Le CHECK
 --                fixe la magie de chaque id (les id de magie sont figés) : NULL pour les autres, jamais avec mot_cle_id.
 CREATE TABLE type_degats (
   id          TEXT    NOT NULL PRIMARY KEY CHECK (id IN ('taille', 'estoc', 'frappe', 'physique', 'sonore', 'feu', 'eau', 'glace',
@@ -2752,9 +2752,9 @@ CREATE TABLE monstre_attaque (
   PRIMARY KEY (monstre_id, rang)
 ) STRICT, WITHOUT ROWID;
 
--- Types de dégâts d'une attaque de carte (migration 0130 ; R288, R295, R297 à R299) : zéro, un ou plusieurs par attaque, dans l'ordre où le texte de
--- l'attaque les écrit (`rang` : « taille/estoc » = taille 1, estoc 2 ; R298). Un type n'est posé que si le texte copié du doc le nomme (R295) : aucune
--- ligne pour une attaque qui n'en écrit pas, « neutre » ou « élémentaire » (R299) ; la ligne « Arme de la créature » reste du texte (R300).
+-- Types de dégâts d'une attaque de carte (migration 0130 ; R288, R295, R298 à R300) : zéro, un ou plusieurs par attaque, dans l'ordre où le texte de
+-- l'attaque les écrit (`rang` : « taille/estoc » = taille 1, estoc 2 ; R299). Un type n'est posé que si le texte copié du doc le nomme (R295) : aucune
+-- ligne pour une attaque qui n'en écrit pas, « neutre » ou « élémentaire » (R300) ; la ligne « Arme de la créature » reste du texte (R301).
 -- Le vocabulaire est celui de type_degats (clé étrangère, pas de CHECK recopié) ; son mot-clé ou sa magie s'y lisent (une information à un seul endroit).
 -- Pas de cascade : la carte qui supprime ou refait ses attaques retire d'abord leurs types (au journal), comme ses autres tables de détail.
 --   libelle : l'écriture d'origine du mot dans le texte de l'attaque (« Foudre », « tailles ») ; le nom affiché vient du mot-clé ou de la magie.
