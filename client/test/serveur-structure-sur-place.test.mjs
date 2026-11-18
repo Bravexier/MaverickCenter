@@ -22,7 +22,7 @@ import {
   ErreurStructure, appliquerSurPlace, bilanDesTables, comparerLesSchemas, essayerEnArrierePlan, essayerSurUneCopie, lireLesMigrations, migrationInterdite,
   migrationsAAppliquer, normaliserLeSql, purgerLesEssaisDeStructure, sauvegarderAvant, versionDuSite,
 } from '../serveur/structure-sur-place.mjs';
-import { NUMERO, RACINE, baseRemplie, etatDeLaBase, etatDuFichier, nouveauChemin, nouveauDossier, schemaDuDepot, tablesDeDonnees } from './aide-structure-sur-place.mjs';
+import { NUMERO, RACINE, baseDesRegles, baseRemplie, etatDeLaBase, etatDuFichier, nouveauChemin, nouveauDossier, schemaDuDepot, tablesDeDonnees } from './aide-structure-sur-place.mjs';
 
 const livre = lireLesMigrations();
 /** La version de la base du dépôt (celle de la dernière migration livrée) : les migrations d'essai portent les numéros qui suivent. */
@@ -358,7 +358,7 @@ test('refus : le schema.sql attendu est absent, d’une autre version, ou ne se 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 // L'essai sur une copie
 // ---------------------------------------------------------------------------------------------------------------------------------------------
-test('essai sur une copie, dans un fil à part : vraie base inchangée (octets), copies effacées, bilan exact de la 0129', async (t) => {
+test('essai sur une copie, dans un fil à part : vraie base inchangée (octets), copies effacées, bilan exact des migrations livrées', async (t) => {
   const { chemin } = baseRemplie({ anterieure: true });
   const dossier = nouveauDossier('essais', t);
   const avant = empreinteFichier(chemin);
@@ -376,7 +376,19 @@ test('essai sur une copie, dans un fil à part : vraie base inchangée (octets),
   assert.deepEqual(bilan.versions, { avant: NUMERO - 1, apres: V });
   assert.deepEqual(bilan.migrations, livrees.map(({ numero, fichier, empreinte }) => ({ numero, fichier, empreinte })));
   // (ce bilan est celui de la 0129 : une migration livrée plus tard qui change des lignes ou des tables ajoute son écart ici)
-  assert.deepEqual(bilan.tables.creees, [{ table: 'migration_recue', lignes: livrees.length }], 'la table créée, avec la ligne que l’application noterait par migration');
+  // les tables créées : `migration_recue` avec la ligne que l'application noterait par migration, et celles que les migrations suivantes créent (vides : une migration est de structure)
+  const dAvant = lire(chemin);
+  const courantes = lire(baseDesRegles());
+  let creees;
+  try {
+    const avantLes = new Set(tablesDeDonnees(dAvant));
+    creees = tablesDeDonnees(courantes).filter((n) => !avantLes.has(n)).sort().map((table) => ({ table, lignes: table === 'migration_recue' ? livrees.length : 0 }));
+  } finally {
+    dAvant.close();
+    courantes.close();
+  }
+  assert.ok(creees.some((c) => c.table === 'migration_recue'));
+  assert.deepEqual(bilan.tables.creees, creees, 'les tables créées, avec la ligne que l’application noterait par migration');
   assert.deepEqual(bilan.tables.retirees, []);
   assert.deepEqual(bilan.tables.renommees, []);
   assert.deepEqual(bilan.tables.modifiees, {}, 'aucune ligne de contenu ne bouge');

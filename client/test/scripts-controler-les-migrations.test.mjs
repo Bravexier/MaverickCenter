@@ -17,7 +17,7 @@ import {
   AVERTISSEMENT_DONNEES, ErreurDeControle, TABLES_QUI_GARDENT_DES_NOMS, analyserUneMigration, decouperLeSql, rendreLeResume, reglesDUneMigration, reglesDesFichiers,
 } from '../scripts/controler-les-migrations-lib.mjs';
 import { dossierTemporaire, variablesTemporaires } from './aide-dossier-temporaire.mjs';
-import { RACINE, baseRemplie, etatDuFichier, schemaDuDepot } from './aide-structure-sur-place.mjs';
+import { NUMERO, RACINE, baseRemplie, etatDuFichier, schemaDuDepot } from './aide-structure-sur-place.mjs';
 
 const SCRIPT = join(dirname(fileURLToPath(import.meta.url)), '..', 'scripts', 'controler-les-migrations.mjs');
 const regles = (violations) => violations.map((v) => v.regle);
@@ -347,11 +347,17 @@ test('script : le code de sortie dit la règle violée (1), la réussite (0) ou 
 });
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
-// Le passage sur la base remplie des règles (version 128, avec ses fiches, son journal et son historique)
+// Le passage sur la base remplie des règles (la version d'avant `NUMERO`, avec ses fiches, son journal et son historique)
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 const migration = (numero, sql) => ({ numero, fichier: `${String(numero).padStart(4, '0')}-essai.sql`, empreinte: 'a'.repeat(64), sql });
-const FICHIER_0129 = '0129-migrations-recues.sql';
-const SQL_0129 = readFileSync(join(RACINE, 'data', 'migrations', FICHIER_0129), 'utf8');
+// Les migrations réelles à appliquer sur la base d'avant : celle qui crée `migration_recue` (NUMERO, calculé) et celles qui la suivent (la base d'avant n'a ni leur
+// structure ni la sienne : test/aide-structure-sur-place.mjs#annulerLesMigrations) ; la dernière livrée fixe la version du schema.sql.
+const REELLES = readdirSync(join(RACINE, 'data', 'migrations')).filter((f) => /^\d{4}-.*\.sql$/.test(f) && Number(f.slice(0, 4)) >= NUMERO).sort()
+  .map((fichier) => ({ numero: Number(fichier.slice(0, 4)), fichier, empreinte: 'a'.repeat(64), sql: readFileSync(join(RACINE, 'data', 'migrations', fichier), 'utf8') }));
+const FICHIER_0129 = REELLES[0].fichier;
+const DERNIERE = REELLES.at(-1).numero;
+/** Les migrations réelles, `extra` (du SQL) ajouté à la première (celle qui crée `migration_recue`). */
+const reellesAvec = (extra) => [{ ...REELLES[0], sql: `${REELLES[0].sql}\n${extra}` }, ...REELLES.slice(1)];
 const schemaA = (version, extra = '') => `${schemaDuDepot().replace(/PRAGMA user_version\s*=\s*\d+;/, `PRAGMA user_version = ${version};`)}\n${extra}\n`;
 
 function essai(t, migrations, schema = schemaDuDepot()) {
@@ -362,31 +368,31 @@ function essai(t, migrations, schema = schemaDuDepot()) {
   return resultat;
 }
 
-test('base remplie : la 0129 sur la base 128 est admise, son bilan crée migration_recue et laisse le reste intact (fiches, journal, historique)', (t) => {
-  const r = essai(t, [migration(129, SQL_0129)]);
+test('base remplie : les migrations livrées depuis la 0129 (qui crée migration_recue) sur la base d’avant sont admises, leur bilan crée migration_recue et laisse le reste intact (fiches, journal, historique)', (t) => {
+  const r = essai(t, REELLES);
   assert.equal(r.verdict, 'accepte');
-  assert.equal(r.avant, 128);
-  assert.equal(r.etapes.length, 1);
+  assert.equal(r.avant, NUMERO - 1);
+  assert.equal(r.etapes.length, REELLES.length);
   const { bilan } = r.etapes[0];
   assert.deepEqual(bilan.tables.creees, [{ table: 'migration_recue', lignes: 0 }]);
-  assert.deepEqual(Object.keys(bilan.tables.modifiees), [], 'aucune autre table ne change');
+  for (const etape of r.etapes) assert.deepEqual(Object.keys(etape.bilan.tables.modifiees), [], `${etape.fichier} : aucune autre table ne change`);
   for (const table of ['personnage', 'groupe', 'utilisateur', 'modification_lot', 'modification', 'historique_modification', 'lot_de_changements', 'numero_donne', 'race']) {
     assert.ok(bilan.tables.inchangees.includes(table), `${table} : empreinte inchangée`);
   }
-  const resume = rendreLeResume({ base: 'origin/dev', mergeBase: 'a'.repeat(40), version: 128, nouvelles: [{ fichier: FICHIER_0129, numero: 129, nature: 'structure' }], violations: [], avertissements: [], essai: { ...r, etapes: [{ ...r.etapes[0], nature: 'structure' }] } });
+  const resume = rendreLeResume({ base: 'origin/dev', mergeBase: 'a'.repeat(40), version: NUMERO - 1, nouvelles: [{ fichier: FICHIER_0129, numero: NUMERO, nature: 'structure' }], violations: [], avertissements: [], essai: { ...r, etapes: [{ ...r.etapes[0], nature: 'structure' }] } });
   assert.ok(resume.includes('migration_recue') && resume.includes('table créée'));
   assert.ok(/<details><summary>\d+ tables? à l’empreinte inchangée<\/summary>/.test(resume));
 });
 
 test('base remplie : une migration qui rompt une clé étrangère est refusée, et la base n’a pas bougé', (t) => {
-  const r = essai(t, [migration(129, `${SQL_0129}\nDELETE FROM race WHERE id = (SELECT race_id FROM personnage WHERE id = 'essai-structure-joueur');`)]);
+  const r = essai(t, reellesAvec("DELETE FROM race WHERE id = (SELECT race_id FROM personnage WHERE id = 'essai-structure-joueur');"));
   assert.equal(r.verdict, 'refuse');
   assert.equal(r.refus.etape, 'cles_etrangeres');
   assert.ok(r.refus.details.some((d) => d.startsWith('personnage → race')), 'la table fautive est dite');
 });
 
 test('base remplie : une migration qui donne un autre schéma que data/schema.sql est refusée', (t) => {
-  const r = essai(t, [migration(129, 'CREATE TABLE essai_faux (id INTEGER NOT NULL PRIMARY KEY) STRICT;')]);
+  const r = essai(t, [migration(NUMERO, 'CREATE TABLE essai_faux (id INTEGER NOT NULL PRIMARY KEY) STRICT;'), ...REELLES.slice(1)]);
   assert.equal(r.verdict, 'refuse');
   assert.equal(r.refus.etape, 'schema');
   assert.ok(r.refus.details.length > 0);
@@ -394,29 +400,30 @@ test('base remplie : une migration qui donne un autre schéma que data/schema.sq
 
 test('base remplie : une migration qui retire des fiches, du journal ou de l’historique est refusée même si le schéma est le bon', (t) => {
   for (const [retrait, table] of [['DELETE FROM historique_modification;', 'historique_modification'], ["DELETE FROM personnage WHERE nature = 'pretire';", 'personnage'], ['DELETE FROM modification;', 'modification']]) {
-    const r = essai(t, [migration(129, `${SQL_0129}\n${retrait}`)]);
+    const r = essai(t, reellesAvec(retrait));
     assert.equal(r.verdict, 'perte', retrait);
     assert.ok(r.pertes.some((p) => p.includes(table)), `${table} est dite perdue`);
   }
 });
 
 test('base remplie : plusieurs migrations nouvelles : un bilan par migration, dans l’ordre, de la version d’avant à la version d’après', (t) => {
-  const r = essai(t, [migration(129, SQL_0129), migration(130, 'CREATE TABLE essai_suite (id INTEGER NOT NULL PRIMARY KEY) STRICT;')], schemaA(130, 'CREATE TABLE essai_suite (id INTEGER NOT NULL PRIMARY KEY) STRICT;'));
+  const suite = 'CREATE TABLE essai_suite (id INTEGER NOT NULL PRIMARY KEY) STRICT;';
+  const r = essai(t, [...REELLES, migration(DERNIERE + 1, suite)], schemaA(DERNIERE + 1, suite));
   assert.equal(r.verdict, 'accepte');
-  assert.deepEqual(r.etapes.map((e) => [e.numero, e.avant, e.apres]), [[129, 128, 129], [130, 129, 130]]);
+  assert.deepEqual(r.etapes.map((e) => [e.numero, e.avant, e.apres]), [...REELLES, { numero: DERNIERE + 1 }].map((m) => [m.numero, m.numero - 1, m.numero]));
   assert.deepEqual(r.etapes[0].bilan.tables.creees.map((x) => x.table), ['migration_recue']);
-  assert.deepEqual(r.etapes[1].bilan.tables.creees.map((x) => x.table), ['essai_suite'], 'la deuxième ne montre que ce qu’elle a changé');
+  assert.deepEqual(r.etapes.at(-1).bilan.tables.creees.map((x) => x.table), ['essai_suite'], 'la dernière ne montre que ce qu’elle a changé');
 });
 
 test('base remplie : une migration de données (UPDATE) montre les lignes modifiées de sa table et rien d’autre', (t) => {
-  const r = essai(t, [migration(129, `${SQL_0129}\nUPDATE race SET nom = nom || ' ' WHERE id = (SELECT min(id) FROM race);`)]);
+  const r = essai(t, reellesAvec("UPDATE race SET nom = nom || ' ' WHERE id = (SELECT min(id) FROM race);"));
   assert.equal(r.verdict, 'accepte');
   assert.deepEqual(r.etapes[0].bilan.tables.modifiees.race, { ajoutees: 0, retirees: 0, modifiees: 1, colonnes_ajoutees: [], colonnes_retirees: [], structure_changee: false });
 });
 
 test('base remplie : rien à appliquer sur une base à jour', (t) => {
   const { chemin } = baseRemplie();
-  const r = essayerSurBaseRemplie({ base: chemin, migrations: [migration(129, SQL_0129)], schema: schemaDuDepot(), dossier: dossierTemporaire('migrations-essai', { t }) });
+  const r = essayerSurBaseRemplie({ base: chemin, migrations: REELLES, schema: schemaDuDepot(), dossier: dossierTemporaire('migrations-essai', { t }) });
   assert.equal(r.verdict, 'a_jour');
 });
 
