@@ -2,7 +2,7 @@
 
 Ne lis jamais `docs/decisions-regles.md` en entier : trouve ici le numéro de la décision, puis cherche sa ligne avec Grep (motif `^\| R41 \|`) et ne lis qu'elle.
 
-Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 293 décisions, de R1 à R295, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
+Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 296 décisions, de R1 à R296, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
 
 | Réf. | Sujet | Décision |
 | --- | --- | --- |
@@ -296,6 +296,9 @@ Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas mo
 | R288 | Type de dégâts des attaques et des cartes de monstre (`docs/sql/a-valider.… | Oui, contre la recommandation : le type de dégâts est… |
 | R289 | Suppression forcée d'un mot-clé lié (`docs/sql/a-valider.md` §12, GL1 ; R2… | Refus gardé : un mot-clé cité par `type_degats` ou par… |
 | R290 | Fusion de Taille, Estoc ou Frappe dans le mot-clé d'une magie (`docs/sql/a… | Rien ne change pour le moment : la fusion reste permis… |
+| R291 | Les changements préparés par l'équipe entrent sans clic dans la base du si… | Direct : remplace R275 (4). Un lot de changements dépo… |
+| R292 | Une race, une classe ou une magie retirée alors qu'une fiche de la product… | C, contre la recommandation : le blocage actuel est ga… |
 | R293 | Catégorie des mots-clés « Dégâts physiques » et « Sonore » (`docs/sql/a-va… | Oui : « Dégâts physiques » et « Sonore » sont rangés d… |
 | R294 | « Résistance » et « Faiblesse » sur la fiche de personnage (suite de R284… | Oui : sur la fiche de personnage, « Résistance » et «… |
 | R295 | Type de dégâts des attaques des cartes de monstre (suite de R288 : `monstr… | Oui, un lot est fait, mais le type d'une attaque n'est… |
+| R296 | Ce qui sort du dépôt à la fin du chantier (2026-11-18, `docs/chantier-base… | (b) : le lot 12 retire du dépôt les lignes des tables,… |
