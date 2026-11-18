@@ -127,6 +127,18 @@ export function chargerMonstres(db) {
   const rubriques = regrouper(all('SELECT * FROM monstre_rubrique ORDER BY monstre_id, rang'), 'monstre_id');
   const caracs = regrouper(all('SELECT * FROM monstre_caracteristique ORDER BY monstre_id, rang'), 'monstre_id');
   const attaques = regrouper(all('SELECT * FROM monstre_attaque ORDER BY monstre_id, rang'), 'monstre_id');
+  // les types de dégâts de chaque attaque (migration 0130, R298), dans l'ordre écrit (`rang`) : `magie_id` est celui de type_degats (la magie du même nom, R297) ;
+  // une attaque sans ligne n'a pas de type (R299) : rien n'est déduit de son texte. Une base d'avant la 0130 n'en a pas.
+  const typesDesAttaques = new Map();
+  if (db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'monstre_attaque_type'").get()) {
+    const lignesDesTypes = all('SELECT t.monstre_id, t.attaque_rang, t.type, t.libelle, d.magie_id FROM monstre_attaque_type t JOIN type_degats d ON d.id = t.type '
+      + 'ORDER BY t.monstre_id, t.attaque_rang, t.rang');
+    for (const t of lignesDesTypes) {
+      const cle = `${t.monstre_id}\u0000${t.attaque_rang}`;
+      if (!typesDesAttaques.has(cle)) typesDesAttaques.set(cle, []);
+      typesDesAttaques.get(cle).push({ type: t.type, libelle: t.libelle, magie_id: t.magie_id });
+    }
+  }
   const capacites = regrouper(all('SELECT * FROM monstre_capacite ORDER BY monstre_id, rang'), 'monstre_id');
   // capacités communes (décision R66) et valeurs propres à une carte (R69)
   const communes = new Map(all('SELECT * FROM monstre_capacite_commune').map((x) => [x.id, x]));
@@ -225,7 +237,8 @@ export function chargerMonstres(db) {
           defense: texteDe('defense'),
           vitesse: texteDe('vitesse'),
           fpvsia: FPVSIA.map((k) => fpvsia.get(k.id) ?? null),
-          attaques: (attaques.get(c.id) ?? []).map((a) => ({ nom: a.nom, texte: a.texte })),
+          // `types` : { type, libelle, magie_id }, dans l'ordre écrit, comme chargerInvocations ; `liens.degats[type]` donne le mot-clé (valeurs-fermees-rendu.mjs#htmlDesTypesDeLAttaque)
+          attaques: (attaques.get(c.id) ?? []).map((a) => ({ rang: a.rang, nom: a.nom, texte: a.texte, types: typesDesAttaques.get(`${c.id}\u0000${a.rang}`) ?? [] })),
           capacites: caps,
           ...colonnes,
           rubriques: r.map((x) => ({ rang: x.rang, rubrique: x.rubrique, titre: x.titre ?? LIBELLES_RUBRIQUES[x.rubrique], texte: x.texte })),

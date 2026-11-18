@@ -28,7 +28,7 @@ const ORIGINE = 'monstres';
 /** Colonnes de `monstre` tirées du texte des rubriques (valeursDeLaCarte). */
 const VALEURS_TYPEES = ['sante', 'chakra', 'barriere', 'armure_physique', 'armure_magique', 'vitesse_sol', 'vitesse_nage'];
 /** Tables de détail d'une carte, puis d'une espèce : vidées (au journal) avant de supprimer la ligne qu'elles citent. */
-const DETAILS_D_UNE_CARTE = ['monstre_defense', 'monstre_capacite_valeur', 'monstre_capacite', 'monstre_attaque', 'monstre_caracteristique', 'monstre_rubrique'];
+const DETAILS_D_UNE_CARTE = ['monstre_defense', 'monstre_capacite_valeur', 'monstre_capacite', 'monstre_attaque_type', 'monstre_attaque', 'monstre_caracteristique', 'monstre_rubrique'];
 const DETAILS_D_UNE_ESPECE = ['monstre_butin', 'monstre_espece_bloc', 'monstre_espece_lieu'];
 /** Le portrait et son cadrage (lib/portrait.mjs), comme personnage.portrait : mêmes colonnes dans monstre et monstre_espece. */
 export const COLONNES_DU_PORTRAIT = ['portrait', 'portrait_x', 'portrait_y', 'portrait_zoom'];
@@ -93,6 +93,30 @@ export function domainesDuBestiaire({ refus, ErreurEdition, synchroniser, proven
     for (const table of tables) synchroniser(ctx, table, filtre, []);
   };
 
+  /**
+   * Les types de dégâts des attaques d'une carte (monstre_attaque_type, migration 0130, R298) quand ses attaques sont refaites depuis le texte (`attaques` : le
+   * résultat de lib/monstre-champs.mjs#attaques) : la clé étrangère n'a pas de cascade, ils partent donc avant l'attaque qu'ils citent, au journal. Les types d'une
+   * attaque ne restent que si chacun de ses libellés est encore écrit dans le texte de l'attaque du même rang, dans l'ordre (R295 : un type n'est posé que si le
+   * texte le nomme ; l'invariant de db-0130) ; sinon tous ceux de l'attaque sont retirés, rien n'est deviné d'un texte réécrit. Une attaque retirée perd les siens.
+   */
+  function suivreLesTypesDesAttaques(ctx, monstreId, attaques) {
+    const enPlace = ctx.db.prepare('SELECT attaque_rang, rang, type, libelle FROM monstre_attaque_type WHERE monstre_id = ? ORDER BY attaque_rang, rang').all(monstreId);
+    if (!enPlace.length) return;
+    const textes = new Map(attaques.map((a) => [a.rang, a.texte]));
+    const gardes = [];
+    for (const [rang, types] of Map.groupBy(enPlace, (t) => t.attaque_rang)) {
+      let depuis = 0;
+      const texte = textes.get(rang);
+      const ecrits = texte !== undefined && types.every((t) => {
+        const place = texte.indexOf(t.libelle, depuis);
+        depuis = place + t.libelle.length;
+        return place >= 0;
+      });
+      if (ecrits) gardes.push(...types.map((t) => ({ ...t })));
+    }
+    synchroniser(ctx, 'monstre_attaque_type', { monstre_id: monstreId }, gardes);
+  }
+
   /** Les valeurs typées d'une carte et ses tables de détail, refaites depuis le texte de toutes ses rubriques (comme l'extraction du doc). */
   function suivreLaCarte(ctx, monstreId) {
     const { db, w } = ctx;
@@ -102,6 +126,7 @@ export function domainesDuBestiaire({ refus, ErreurEdition, synchroniser, proven
     const filtre = { monstre_id: monstreId };
     const communes = (quoi) => ({ origine: ORIGINE, source_ref: sourceDuSite(ctx, quoi) });
     synchroniser(ctx, 'monstre_caracteristique', filtre, v.caracteristiques, communes(RUBRIQUES.caracteristiques));
+    suivreLesTypesDesAttaques(ctx, monstreId, v.attaques);
     synchroniser(ctx, 'monstre_attaque', filtre, v.attaques, communes(RUBRIQUES.degats));
     // pas les capacités : elles ne sont plus le texte d'une rubrique (décision R66 : monstre_capacite, monstre_capacite_commune)
     synchroniser(ctx, 'monstre_defense', filtre, v.defenses, communes('Vulnérabilités, résistances, immunités'));
@@ -509,7 +534,7 @@ export const especesDeMonstres = (db) =>
  */
 export function lignesDuBestiaire(db, { connues, logo, capacites }) {
   const deja = new Set(connues);
-  const { lignes, echelles, glossaire, elements, magiesDesCibles } = chargerMonstres(db);
+  const { lignes, echelles, glossaire, elements, magiesDesCibles, liens } = chargerMonstres(db);
   // le bloc des capacités de ces cartes (après une modification de leurs capacités, ou d'une capacité commune qu'elles ont : décision R66)
   if (capacites) {
     const voulues = new Set(capacites);
@@ -520,6 +545,6 @@ export function lignesDuBestiaire(db, { connues, logo, capacites }) {
     ordre: lignes.map((l) => l.id),
     lignes: lignes.flatMap((l, i) => (deja.has(l.id)
       ? []
-      : [{ id: l.id, ancre: l.ancre, ligne: htmlDeLigneMonstre(l, i), carte: htmlDeCarteMonstre(l, { logo, echelles, glossaire, elements, magiesDesCibles }), portrait: vu(l.portrait) }])),
+      : [{ id: l.id, ancre: l.ancre, ligne: htmlDeLigneMonstre(l, i), carte: htmlDeCarteMonstre(l, { logo, echelles, glossaire, elements, magiesDesCibles, liens }), portrait: vu(l.portrait) }])),
   };
 }

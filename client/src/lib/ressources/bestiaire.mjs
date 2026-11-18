@@ -71,6 +71,7 @@ export const RESSOURCES = [
     derivees: [
       { table: 'monstre_caracteristique', parent: { monstre_id: 'id' } },
       { table: 'monstre_attaque', parent: { monstre_id: 'id' } },
+      { table: 'monstre_attaque_type', parent: { monstre_id: 'id' } },
       { table: 'monstre_defense', parent: { monstre_id: 'id' } },
     ],
     liste: ['id', 'nom', 'espece_id', 'type_brut', 'categorie', 'echelle_brut', 'ep_min', 'ep_max'],

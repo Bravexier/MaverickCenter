@@ -3,7 +3,7 @@
 // déduit de son texte. Le test lit l'état courant de la base : il ne compare que la cohérence entre la page et la table, jamais une valeur précise.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { chargerInvocations } from '../src/lib/bestiaire-db.mjs';
+import { chargerInvocations, chargerMonstres } from '../src/lib/bestiaire-db.mjs';
 import { lienDuTypeDeDegats } from '../src/lib/mots-cles-des-valeurs.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 
@@ -36,6 +36,36 @@ test('créatures invoquées : chaque type exposé se résout par `liens.degats` 
         assert.ok(t.type in liens.degats, `${l.id} : type ${t.type} absent de liens.degats`);
         const lien = lienDuTypeDeDegats(liens, t.type);
         if (t.magie_id !== null) assert.deepEqual(lien, liens.magies[t.magie_id], `${l.id} : ${t.type}`);
+      }
+    }
+  }
+});
+
+// Les cartes de monstre (migration 0130, R298, R299) : `attaques[].types` = les lignes de monstre_attaque_type, dans l'ordre écrit, avec la magie de type_degats ;
+// `[]` sans ligne. Même forme que les créatures invoquées : le rendu de valeurs-fermees-rendu.mjs lit les deux.
+const monstres = chargerMonstres(db);
+const attaquesDesCartes = Map.groupBy(db.prepare('SELECT monstre_id, rang FROM monstre_attaque ORDER BY monstre_id, rang').all(), (a) => a.monstre_id);
+const typesDeLaCarte = db.prepare('SELECT t.type, t.libelle, d.magie_id FROM monstre_attaque_type t JOIN type_degats d ON d.id = t.type WHERE t.monstre_id = ? AND t.attaque_rang = ? ORDER BY t.rang');
+
+test('cartes de monstre : les types de chaque attaque sont ceux de monstre_attaque_type, dans l\'ordre de rang, avec la magie de type_degats ; sans ligne, []', () => {
+  let vues = 0;
+  for (const l of monstres.lignes.filter((x) => x.carte)) {
+    const siennes = attaquesDesCartes.get(l.id) ?? [];
+    assert.equal(l.carte.attaques.length, siennes.length, l.id);
+    l.carte.attaques.forEach((a, k) => {
+      assert.deepEqual(a.types, typesDeLaCarte.all(l.id, siennes[k].rang).map((t) => ({ type: t.type, libelle: t.libelle, magie_id: t.magie_id })), `${l.id} attaque ${siennes[k].rang}`);
+      vues += 1;
+    });
+  }
+  assert.equal(vues, db.prepare('SELECT count(*) AS n FROM monstre_attaque').get().n);
+});
+
+test('cartes de monstre : chaque type exposé se résout par `liens.degats` ; un type d\'une magie a le lien de sa magie', () => {
+  for (const l of monstres.lignes.filter((x) => x.carte)) {
+    for (const a of l.carte.attaques) {
+      for (const t of a.types) {
+        assert.ok(t.type in monstres.liens.degats, `${l.id} : type ${t.type} absent de liens.degats`);
+        if (t.magie_id !== null) assert.deepEqual(lienDuTypeDeDegats(monstres.liens, t.type), monstres.liens.magies[t.magie_id], `${l.id} : ${t.type}`);
       }
     }
   }
