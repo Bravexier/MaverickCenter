@@ -5,6 +5,8 @@
 # monté en lecture seule sur /contenu ; un lien s'y résout DANS le conteneur, une FIFO ou un fichier irrégulier est refusé ou coupé par `timeout`, jamais lu par root.
 # Variables (lancer.sh) : VERSION_INSTALLEE (celle de la marque). Réglages de test seulement : KIT, SITE, CONTENU, TRAVAIL, SORTIE, RESULTATS, DELAI_DE_LA_COPIE.
 # Codes de sortie propres à la copie : 73 (pas un fichier régulier), 74 (trop gros ou vide), 75 (la copie échoue ou dépasse son délai) ; lancer.sh en fait « extrait_refuse ».
+# Le site est fabriqué dans $TRAVAIL/site, sur le MÊME montage que le kit : Astro déplace ses fichiers de .astro/.prerender vers son dossier de sortie par `rename`, impossible
+# d'un montage à l'autre (EXDEV). Il est ensuite copié vers $SORTIE/site (un autre montage) ; code 76 si cette copie échoue. Le site fabriqué est le même, seul son dépôt final change.
 set -u
 KIT=${KIT:-/kit}
 SITE=${SITE:-/site}
@@ -16,6 +18,8 @@ PLAFOND=${PLAFOND_EXTRAIT:-536870912}
 DELAI_DE_LA_COPIE=${DELAI_DE_LA_COPIE:-120}
 
 mkdir -p "$TRAVAIL/kit" "$TRAVAIL/home" "$TRAVAIL/tmp" || exit 70
+FABRIQUE=$TRAVAIL/site
+rm -rf "$FABRIQUE" || exit 70
 
 # 1. l'extrait : un fichier régulier non lien, de la taille attendue, copié sous délai (une FIFO posée après le contrôle bloquerait un `dd` sans `timeout`)
 extrait=$CONTENU/contenu-${VERSION_INSTALLEE:-}.db
@@ -29,10 +33,15 @@ timeout "$DELAI_DE_LA_COPIE" dd if="$extrait" of="$TRAVAIL/contenu.db" iflag=nof
 cp -a "$KIT/." "$TRAVAIL/kit/" || exit 71
 cd "$TRAVAIL/kit/client" || exit 72
 
-# 3. la fabrication, puis la comparaison avec le site livré (son code de sortie ne compte pas : un écart est une mesure)
-node --no-warnings scripts/fabriquer-depuis-contenu.mjs --contenu "$TRAVAIL/contenu.db" --sortie "$SORTIE/site" --mesure "$RESULTATS/fabrication.json"
+# 3. la fabrication (dans le travail, sur le montage du kit), puis la comparaison avec le site livré (son code de sortie ne compte pas : un écart est une mesure)
+node --no-warnings scripts/fabriquer-depuis-contenu.mjs --contenu "$TRAVAIL/contenu.db" --sortie "$FABRIQUE" --mesure "$RESULTATS/fabrication.json"
 code=$?
 if [ "$code" -eq 0 ]; then
-  node --no-warnings scripts/comparer-sites.mjs "$SITE" "$SORTIE/site" --json "$RESULTATS/comparaison.json" > "$RESULTATS/comparaison.txt" 2>&1 || true
+  node --no-warnings scripts/comparer-sites.mjs "$SITE" "$FABRIQUE" --json "$RESULTATS/comparaison.json" > "$RESULTATS/comparaison.txt" 2>&1 || true
+  # 4. le site fabriqué est copié vers la sortie (un autre montage : une copie, jamais un renommage)
+  if ! { rm -rf "$SORTIE/site" && mkdir -p "$SORTIE/site" && cp -a "$FABRIQUE/." "$SORTIE/site/"; }; then
+    echo "conteneur.sh : la copie du site fabriqué vers $SORTIE/site a échoué" >&2
+    exit 76
+  fi
 fi
 exit "$code"

@@ -165,7 +165,8 @@ sonde_lire_le_port() { # dossier_de_l_instance -> le port ; code 1 : pas de .env
     [ -n "$source" ] || continue
     case "$reel/" in "${source%/}"/*) return 2 ;; esac
   done < "$SONDE_DIR/montages-rw"
-  port=$(sed -n 's/^MAVERICK_PORT=\([0-9][0-9]*\)$/\1/p' "$env" | head -n 1)
+  # `MAVERICK_PORT=<port>` ou `MAVERICK_PORT=127.0.0.1:<port>` (la forme des instances du serveur) ; aucun autre hôte
+  port=$(sed -n 's/^MAVERICK_PORT=\(127\.0\.0\.1:\)\{0,1\}\([0-9][0-9]*\)$/\2/p' "$env" | head -n 1)
   case "$port" in ''|*[!0-9]*) return 3 ;; esac
   [ "$port" -ge 1 ] && [ "$port" -le 65535 ] || return 3
   printf '%s' "$port"
@@ -242,10 +243,12 @@ sonde_une_phase() { # phase secondes
 }
 sonde_json() {
   if [ -z "${SONDE_DIR:-}" ] || [ -z "${SONDE_PREPAREE:-}" ]; then printf 'null'; return 0; fi
-  if [ -n "$SONDE_MOTIF" ]; then printf '{ "format": "maverick-sonde/1", "disponible": false, "motif": %s, "instances": null }' "$(json_texte "$SONDE_MOTIF")"; return 0; fi
+  # un motif général (curl absent…) : aucune instance n'a été regardée ; « sonde_impossible » : chaque instance garde son motif (env_absent, env_monte, port_illisible, introuvable)
+  if [ -n "$SONDE_MOTIF" ] && [ "$SONDE_MOTIF" != sonde_impossible ]; then printf '{ "format": "maverick-sonde/1", "disponible": false, "motif": %s, "instances": null }' "$(json_texte "$SONDE_MOTIF")"; return 0; fi
   arret='null'
   if [ -f "$SONDE_DIR/arret-de" ]; then arret="{ \"instance\": $(json_texte "$(cat "$SONDE_DIR/arret-de")"), \"motif\": \"reponses_mauvaises\" }"; fi
-  printf '{ "format": "maverick-sonde/1", "disponible": true, "motif": null, "cibles": ["/", "/api/personnages/"], "delai_s": %s, "arretee": %s, "instances": {' "$SONDE_DELAI_S" "$arret"
+  if [ "$SONDE_MOTIF" = sonde_impossible ]; then disponible=false; motif_general='"sonde_impossible"'; else disponible=true; motif_general=null; fi
+  printf '{ "format": "maverick-sonde/1", "disponible": %s, "motif": %s, "cibles": ["/", "/api/personnages/"], "delai_s": %s, "arretee": %s, "instances": {' "$disponible" "$motif_general" "$SONDE_DELAI_S" "$arret"
   virgule=''
   for etiquette in prod dev; do
     printf '%s "%s": ' "$virgule" "$etiquette"; virgule=','
