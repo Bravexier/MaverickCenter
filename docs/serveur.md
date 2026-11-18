@@ -1711,6 +1711,12 @@ rejeu, qui **recontrôle** et tire `data/rows` du paquet :
    dérivées (`edition.mjs#colonneDerivee`) — une trace d'une autre table ; une page libre (guide, lore) changée sans la trace de sa ligne est refusée (code 4, tables et pages nommées) ;
 5. seuls les fichiers changés sont écrits. Puis les mêmes `CONTROLES` qu'aujourd'hui, le même commit, le même artefact.
 
+**Pages d'exemple** (fixtures `statut = 'example'`, pas du lore) : le site de dev n'en a aucune, `data/rows` les garde. Un paquet qui n'en a aucune est recontrôlé et
+exporté depuis une **copie de travail** qui reçoit celles du dépôt (`data/pages-d-exemple.sql`, `scripts/mise-a-jour-github.mjs#paquetAvecLesExemples`), au job `preparer`
+(`appliquerPaquet`) comme au job `livrer` (`verifierContrePaquet`, qui réexporte la même copie). Identiques à celles de `data/rows`, elles ne changent aucun fichier et
+n'excusent rien : une vraie page changée sans trace reste refusée (code 4) ; le paquet fourni n'est jamais modifié (`test/mise-a-jour-paquet-exemples.test.mjs`).
+Sans cela, « Copier vers le dépôt » depuis le site de dev était refusée (code 4 : les pages d'exemple absentes du paquet, sans trace).
+
 La liste blanche du job `livrer` est alors celle des **tables de contenu du paquet** (`tables_de_contenu`, couvertes par l'empreinte de l'entrée), plus les tables des notes ;
 en plus, `livrer` **réexporte le paquet** (`tools/db/exporter.py`, Python et sa bibliothèque standard seulement, aucun npm) dans un dossier temporaire et compare octet pour
 octet les `data/rows/*.sql` du commit de l'artefact à cet export (`verifierContrePaquet`) : mêmes fichiers des deux côtés, même contenu ; tout écart (un fichier retiré compris) est un refus net, rien n'est poussé. Le reste de `livrer` ne change pas. Une copie : commit et PR « Copie du contenu du site de dev vers le dépôt (lot …) », corps du commit `Copie : <id>` (jamais `Lot : <id>`,
