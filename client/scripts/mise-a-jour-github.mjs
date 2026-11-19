@@ -74,7 +74,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 // tools/ n'est pas dans le kit de l'atelier : ce script ne tourne que dans le workflow (GitHub), jamais dans le kit (ni conteneur.sh ni repetition-bascule-2 ne le lancent).
-import { lireLInterrupteur as lireLInterrupteurDeLaBascule2 } from '../../tools/flux-git/bascule-2.mjs';
+import { lireLInterrupteur as lireLInterrupteurDeLaBascule2 } from '../../tools/flux-git/bascule-2-interrupteur.mjs';
 import { DEV, MARQUEUR_MAJEURE, MASTER, demandeMajeure, familleDe } from '../../tools/flux-git/regles.mjs';
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));

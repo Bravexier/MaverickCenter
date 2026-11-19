@@ -8,7 +8,7 @@ import { appendFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { BRANCHE_DE_L_INTERRUPTEUR, controlerLeContenu, FICHIER_D_IDENTITE, INTERRUPTEUR, INTERRUPTEUR_BASCULE_2, lireLInterrupteur } from './controler-le-contenu-ecrit-lib.mjs';
-import { lireLInterrupteur as lireLaBascule2 } from '../../tools/flux-git/bascule-2.mjs';
+import { lireLInterrupteur as lireLaBascule2 } from '../../tools/flux-git/bascule-2-interrupteur.mjs';
 
 const RACINE_DU_DEPOT = fileURLToPath(new URL('../../', import.meta.url));
 const SEP = '\x1f';
