@@ -14,6 +14,7 @@ user-invocable: false
 - `tools/sources/ignorer/<classeur>.json` : registre justifié par classeur.
 - `client/test/sources-rapprochement.test.mjs` : essais sur la base d'import (voir Tests).
 - `tools/import-gdocs.mjs` : export des Google Docs/Sheets listés dans `sources/sources.json` (`--dry-run`, `--only <id>`), depuis une machine qui a accès à Google.
+- Dossier des exports : `sources/raw/` par défaut ; `MAVERICK_SOURCES_RAW` le remplace (`tools/sources/dossier-des-exports.mjs#dossierDesExports`, lu par `import-gdocs.mjs` et par `rapprocher.mjs` pour `classeurs/registre.json`). Un nouvel export peut aller dans `var/sources-raw/`. R83 : les originaux Google font foi, une archive n'est qu'un instantané daté.
 - `docs/sql/rapprochement-classeurs.md` : écarts relevés.
 - `tools/sources/tipeee.mjs` : l'instantané de la partie « Bienvenue » de Tipeee, `sources/tipeee/bienvenue.json` (`{ url, lu_le, paragraphes }`), tiré
   par le module pur du site `client/src/lib/tipeee.mjs` ; `--verifier`, `--depuis <reponse.json>`. Test : `client/test/sources-tipeee.test.mjs`.

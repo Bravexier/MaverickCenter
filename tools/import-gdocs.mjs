@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Télécharge les Google Docs / Sheets listés dans sources/sources.json vers sources/raw/.
+// Télécharge les Google Docs / Sheets listés dans sources/sources.json vers sources/raw/ (ou le dossier de MAVERICK_SOURCES_RAW).
 //   Docs   -> <id>.md   (export Markdown)
 //   Sheets -> <id>[-<gid>].csv (une feuille par gid ; gid 0 par défaut)
 // Les fichiers doivent être partagés en « Toute personne disposant du lien ».
@@ -7,8 +7,10 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { dossierDesExports } from './sources/dossier-des-exports.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+const dossierExports = dossierDesExports(root); // sources/raw, ou MAVERICK_SOURCES_RAW
 const args = process.argv.slice(2);
 const dryRun = args.includes('--dry-run');
 const only = args.includes('--only') ? args[args.indexOf('--only') + 1] : null;
@@ -33,14 +35,14 @@ async function download({ url, file }) {
   if (!res.ok || type.includes('text/html')) {
     throw new Error(`HTTP ${res.status} (${type || 'sans type'}) — document privé ou introuvable ?`);
   }
-  await writeFile(join(root, 'sources', 'raw', file), body);
+  await writeFile(join(dossierExports, file), body);
   return body.length;
 }
 
 async function main() {
   const manifest = JSON.parse(await readFile(join(root, 'sources', 'sources.json'), 'utf8'));
   const sources = manifest.google.filter((s) => !only || s.id === only);
-  await mkdir(join(root, 'sources', 'raw'), { recursive: true });
+  await mkdir(dossierExports, { recursive: true });
 
   let failures = 0;
   for (const source of sources) {

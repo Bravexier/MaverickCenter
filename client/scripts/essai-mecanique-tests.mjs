@@ -16,6 +16,11 @@
 //   D   ce que lance la CI (job client de ci.yml : `npm test` sous MAVERICK_CONTENU = l'extrait, data/rows PRÉSENT dans l'arbre) pour les seuls fichiers de
 //       LIT_LE_DEPOT_PAR_NATURE : leur échec sur C (data/rows absent) est attendu, le leur sur D ne l'est jamais — c'est le vrai « rouge » de la CI (le run
 //       44320300043 de dev l'a montré : six fichiers rouges que C rangeait à part sans les voir). Un échec de D rend l'essai rouge (`passes.D.rouges`).
+//   S   le dépôt SANS ce qui en sortira au lot 12 (R296 ; passe de fin de lot) : l'extrait pour contenu, dans une copie jetable d'où sont retirés data/rows, les
+//       migrations de données (et leurs registres .json) et sources/raw (les catégories de scripts/inventaire-sortie-du-contenu-lib.mjs ; --avec-mixtes retire aussi
+//       les migrations qui mêlent DDL et données). Tous les fichiers de test, sans rubrique « par nature » : tout échec est ROUGE. C'est le critère de fin du lot 12 :
+//       il s'exécute quand S est verte (docs/chantier-base-de-dev.md, « Le jour J du lot 12 »). Avec --controles : les contrôles de la CI, sans db:build (il lit
+//       data/rows) et avec db:check sur le contenu fourni, eux aussi rouges au moindre échec.
 //   Le tri de C range à part les fichiers qui lisent le dépôt par nature (LIT_LE_DEPOT_PAR_NATURE : l'ancien circuit, les tables des fiches vides dans
 //   data/rows, les outils Python), attendus jusqu'au lot 12 ; le reste des échecs de C est inattendu.
 // Rien n'est jamais commité depuis une copie jetable ; toute la sortie reste sous var/ (ignoré par git).
@@ -23,8 +28,9 @@
 // Usage, depuis client/ :
 //   node scripts/essai-mecanique-tests.mjs                          tout : fabrique les contenus, lance toutes les passes (C et V seulement si l'extrait existe), trie
 //   node scripts/essai-mecanique-tests.mjs --fabriquer              seulement les contenus : A et B, et les variantes V1 à V5 si l'extrait existe
-//   node scripts/essai-mecanique-tests.mjs --passe A|B|C|D|V1|V2|V3|V4|V5 [--fichiers a.test.mjs,b.test.mjs]   (D : par défaut les fichiers de LIT_LE_DEPOT_PAR_NATURE)
-//   node scripts/essai-mecanique-tests.mjs --passe C|V1…V5 --controles  les contrôles du job preparer (scripts/mise-a-jour-github.mjs#CONTROLES, donc le
+//   node scripts/essai-mecanique-tests.mjs --passe A|B|C|D|S|V1|V2|V3|V4|V5 [--fichiers a.test.mjs,b.test.mjs]   (D : par défaut les fichiers de LIT_LE_DEPOT_PAR_NATURE)
+//   node scripts/essai-mecanique-tests.mjs --passe S [--avec-mixtes] [--controles]   (S n'est jamais dans « tout » : elle se lance à part, après l'extrait ; la suite, puis les contrôles)
+//   node scripts/essai-mecanique-tests.mjs --passe C|S|V1…V5 --controles  les contrôles du job preparer (scripts/mise-a-jour-github.mjs#CONTROLES, donc le
 //       job client de ci.yml) dans la copie jetable de la passe, sous MAVERICK_CONTENU = son contenu : build, chaque test du site construit à part (un
 //       test sauté ou vide est rouge), build de test et bandeau, installateur, build de production et ses deux tests, artefact ; `npm test` reste à la
 //       passe elle-même ; db:build et db:check (CONTROLES_PAR_NATURE) sont notés à part et ne rendent pas la passe rouge
@@ -40,6 +46,7 @@ import { cpus } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
+import { cheminsQuiSortent, listerCeQuiSort } from './inventaire-sortie-du-contenu-lib.mjs';
 
 const client = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const racine = resolve(client, '..');
@@ -55,6 +62,8 @@ const EXTRAIT = resolve(arg('--extrait', join(racine, 'var', 'extrait', 'maveric
 export const PASSES_DU_SITE = ['C', 'V1', 'V2', 'V3', 'V4', 'V5'];
 /** Les variantes hors des voies du site : leurs échecs sont rangés à part (« informative »), jamais comptés comme une valeur figée. */
 export const PASSES_INFORMATIVES = Object.freeze(['V5']);
+/** La passe « sans le contenu » du lot 12 : l'extrait pour contenu, dans une copie d'où sortent les lignes, les migrations de données et les exports des sources. */
+export const PASSE_SANS_LE_CONTENU = 'S';
 /** La passe de la CI : l'extrait du site de dev ET data/rows dans l'arbre (ce que voit `npm test` du job client de ci.yml), pour les fichiers classés « par nature ». */
 export const PASSE_DE_LA_CI = 'D';
 const FICHIER = {
@@ -62,9 +71,10 @@ const FICHIER = {
   B: join(sortie, 'contenu-factice.db'),
   C: EXTRAIT,
   [PASSE_DE_LA_CI]: EXTRAIT,
+  [PASSE_SANS_LE_CONTENU]: EXTRAIT,
   ...Object.fromEntries(PASSES_DU_SITE.slice(1).map((v) => [v, join(sortie, `variante-${v}.db`)])),
 };
-const dansUneCopie = (passe) => PASSES_DU_SITE.includes(passe) || passe === PASSE_DE_LA_CI;
+const dansUneCopie = (passe) => PASSES_DU_SITE.includes(passe) || passe === PASSE_DE_LA_CI || passe === PASSE_SANS_LE_CONTENU;
 const passeConnue = (passe) => Object.hasOwn(FICHIER, passe);
 
 // ───────────────────────── fabrication des contenus A et B ─────────────────────────
@@ -186,11 +196,38 @@ const copieDe = (passe) => join(sortie, 'copies', passe);
 const horsDesLignes = (f) => !f.startsWith('data/rows/');
 
 /**
+ * Retire d'une copie de l'arbre ce qui sortira du dépôt au lot 12 : les fichiers des catégories de l'inventaire (`listerCeQuiSort` de `racine`, l'arbre d'origine :
+ * data/rows, migrations de données et leurs registres, sources/raw ; les migrations mixtes seulement avec `avecMixtes`), puis les dossiers que cela vide.
+ * Ne touche jamais `racine`. Rend { retires, absents, octets } (`absents` : listés par l'inventaire mais pas dans la copie).
+ */
+export function retirerLeContenuDeLaCopie({ racine, copie, avecMixtes = false }) {
+  if (resolve(racine) === resolve(copie)) throw new Error('retirerLeContenuDeLaCopie : la copie est l\'arbre d\'origine, on ne retire rien dedans');
+  const liste = listerCeQuiSort({ racine });
+  const octets = new Map([...Object.values(liste).flat()].map((f) => [f.chemin, f.octets]));
+  const bilan = { retires: 0, absents: 0, octets: 0 };
+  const dossiers = new Set();
+  for (const chemin of cheminsQuiSortent(liste, { avecMixtes })) {
+    const cible = join(copie, chemin);
+    if (!existsSync(cible)) { bilan.absents += 1; continue; }
+    rmSync(cible, { force: true });
+    bilan.retires += 1;
+    bilan.octets += octets.get(chemin) ?? 0;
+    for (let d = dirname(chemin); d && d !== '.'; d = dirname(d)) dossiers.add(d);
+  }
+  // les dossiers vidés par le retrait, du plus profond au plus haut (data/rows, sources/raw et ses sous-dossiers ; data/migrations reste : la structure y est)
+  for (const d of [...dossiers].sort((a, b) => b.length - a.length)) {
+    const dossier = join(copie, d);
+    try { if (existsSync(dossier) && readdirSync(dossier).length === 0) rmSync(dossier, { recursive: true }); } catch { /* non vide : il reste */ }
+  }
+  return bilan;
+}
+
+/**
  * La copie jetable de la passe : un git worktree détaché sur HEAD (refait s'il manque), où sont recopiées les modifications en cours de l'arbre (fichiers suivis
  * modifiés ou retirés, fichiers nouveaux non ignorés), data/rows/*.sql retiré, client/node_modules par lien, content/wiki fabriqué depuis le contenu de la passe.
  * Rien n'y est jamais commité. Rend le dossier client/ de la copie.
  */
-export function preparerLaCopieJetable(passe) {
+export function preparerLaCopieJetable(passe, { avecMixtes = drapeau('--avec-mixtes') } = {}) {
   const copie = copieDe(passe);
   if (!existsSync(join(copie, '.git'))) {
     rmSync(copie, { recursive: true, force: true });
@@ -212,7 +249,10 @@ export function preparerLaCopieJetable(passe) {
     } else rmSync(vers, { force: true });
   }
   const lignes = join(copie, 'data', 'rows');
-  if (passe !== PASSE_DE_LA_CI) for (const f of existsSync(lignes) ? readdirSync(lignes) : []) if (f.endsWith('.sql')) rmSync(join(lignes, f)); // D : data/rows reste, comme dans la CI
+  if (passe === PASSE_SANS_LE_CONTENU) {
+    const bilan = retirerLeContenuDeLaCopie({ racine, copie, avecMixtes });
+    console.log(`copie ${passe} : ${bilan.retires} fichiers retirés (${bilan.octets} octets)${avecMixtes ? ', migrations mixtes comprises' : ''}${bilan.absents ? `, ${bilan.absents} listés mais absents de la copie` : ''}`);
+  } else if (passe !== PASSE_DE_LA_CI) for (const f of existsSync(lignes) ? readdirSync(lignes) : []) if (f.endsWith('.sql')) rmSync(join(lignes, f)); // D : data/rows reste, comme dans la CI
   const modules = join(copie, 'client', 'node_modules');
   if (!existsSync(modules)) {
     try { lstatSync(modules); rmSync(modules, { force: true }); } catch { /* absent */ }
@@ -226,7 +266,7 @@ export function preparerLaCopieJetable(passe) {
 }
 
 export function nettoyerLesCopies() {
-  for (const passe of [...PASSES_DU_SITE, PASSE_DE_LA_CI]) {
+  for (const passe of [...PASSES_DU_SITE, PASSE_DE_LA_CI, PASSE_SANS_LE_CONTENU]) {
     if (existsSync(copieDe(passe))) git(['worktree', 'remove', '--force', copieDe(passe)]);
   }
   git(['worktree', 'prune']);
@@ -240,6 +280,8 @@ export const CONTROLES_PAR_NATURE = Object.freeze({
   'npm run db:build': 'reconstruit la base depuis data/rows, absent de la copie',
   'npm run db:check': 'vérifie la base reconstruite depuis data/rows',
 });
+/** Le seul contrôle « par nature » que la passe S ne lance pas : il reconstruit la base depuis data/rows. */
+export const CONTROLE_RETIRE_EN_S = 'npm run db:build';
 /** Les contrôles laissés à la passe elle-même : `npm test`, que la passe lance fichier par fichier (`--passe <P>` sans `--controles`). */
 export const CONTROLES_DE_LA_PASSE = Object.freeze(['npm test']);
 const LISTE_DE_TESTS = /^node --test((?: test\/[\w.-]+\.test\.mjs)+)$/;
@@ -250,13 +292,16 @@ const LISTE_DE_TESTS = /^node --test((?: test\/[\w.-]+\.test\.mjs)+)$/;
  * pour un résultat par test (et ses tests sautés comptés) ; les contrôles du dépôt par nature marqués. Pure.
  * @returns {{ commande: string, origine: string, test?: string, par_nature?: string }[]}
  */
-export function controlesDeLaPasse(controles) {
+export function controlesDeLaPasse(controles, { sansLeContenu = false } = {}) {
   const liste = [];
   for (const origine of controles) {
     if (CONTROLES_DE_LA_PASSE.includes(origine)) continue;
+    // passe S : plus rien « par nature ». db:build lit data/rows, qui n'est plus là : la CI du lot 12 ne le lance plus (non lancé : le tri des contrôles de S le dit) ; db:check suit le
+    // contenu fourni (db-check.mjs#choisirLaBase) et reste un contrôle comme les autres : son échec est rouge.
+    if (sansLeContenu && origine === CONTROLE_RETIRE_EN_S) continue;
     const tests = LISTE_DE_TESTS.exec(origine);
     if (tests) for (const t of tests[1].trim().split(' ')) liste.push({ commande: `node --test ${t}`, origine, test: t.slice('test/'.length) });
-    else liste.push({ commande: origine, origine, ...(Object.hasOwn(CONTROLES_PAR_NATURE, origine) ? { par_nature: CONTROLES_PAR_NATURE[origine] } : {}) });
+    else liste.push({ commande: origine, origine, ...(!sansLeContenu && Object.hasOwn(CONTROLES_PAR_NATURE, origine) ? { par_nature: CONTROLES_PAR_NATURE[origine] } : {}) });
   }
   return liste;
 }
@@ -281,7 +326,7 @@ export async function controles(passeNom) {
   const dossier = join(sortie, 'journaux', passeNom);
   mkdirSync(dossier, { recursive: true });
   const runner = join(sortie, 'runner', passeNom);
-  const liste = controlesDeLaPasse(CONTROLES);
+  const liste = controlesDeLaPasse(CONTROLES, { sansLeContenu: passeNom === PASSE_SANS_LE_CONTENU });
   const resultats = [];
   for (const [i, c] of liste.entries()) {
     rmSync(runner, { recursive: true, force: true });
@@ -315,7 +360,8 @@ export function trierLesControlesDUnePasse(passeNom, resultats) {
   const rouges = lignes.filter((c) => c.etat !== 'ok' && c.etat !== 'par nature').map((c) => c.test ?? c.commande);
   const parNature = lignes.filter((c) => c.par_nature).map((c) => ({ commande: c.commande, code: c.code, raison: c.par_nature }));
   const cellule = (t) => String(t ?? '').replace(/\|/g, '\\|');
-  const md = [`## Contrôles du job preparer, passe ${passeNom}`, '', `${lignes.length - parNature.length - rouges.length}/${lignes.length - parNature.length} au vert`
+  const md = [`## Contrôles du job preparer, passe ${passeNom}`, '',
+    ...(passeNom === PASSE_SANS_LE_CONTENU ? [`\`${CONTROLE_RETIRE_EN_S}\` n'est pas lancé en S (il reconstruit la base depuis data/rows, retiré avec le contenu : la CI du lot 12 ne le lance plus) ; \`npm run db:check\` l'est, sur le contenu fourni, et son échec est rouge.`, ''] : []), `${lignes.length - parNature.length - rouges.length}/${lignes.length - parNature.length} au vert`
     + `${rouges.length ? ` ; rouges : ${rouges.join(', ')}` : ''} ; ${parNature.length} contrôle(s) du dépôt par nature, à part.`, '',
   '| Contrôle | Test du site | Résultat | Durée | Journal |', '| --- | --- | --- | --- | --- |',
   ...lignes.map((c) => `| \`${cellule(c.commande.slice(0, 90))}\` | ${c.test ?? ''} | ${c.etat}${c.par_nature ? ` — ${cellule(c.par_nature)}` : ''} | ${Math.round((c.ms ?? 0) / 1000)} s | journaux/${passeNom}/${c.journal} |`), ''];
@@ -348,7 +394,7 @@ function lancerUn(fichier, passe, cwd = client) {
 }
 
 async function passe(nom, fichiers) {
-  if (!passeConnue(nom)) throw new Error(`passe inconnue : ${nom} (A, B, ${PASSES_DU_SITE.join(', ')}, ${PASSE_DE_LA_CI})`);
+  if (!passeConnue(nom)) throw new Error(`passe inconnue : ${nom} (A, B, ${PASSES_DU_SITE.join(', ')}, ${PASSE_DE_LA_CI}, ${PASSE_SANS_LE_CONTENU})`);
   if (!existsSync(FICHIER[nom])) throw new Error(`contenu de la passe ${nom} absent : ${FICHIER[nom]} (--fabriquer, ou npm run db:extrait pour C)`);
   const cwd = dansUneCopie(nom) ? preparerLaCopieJetable(nom) : client;
   const resultats = [];
@@ -581,11 +627,29 @@ export function trierLaPasseDeLaCI(D, lireJournal = () => '', parNature = LIT_LE
   return { passes: { mesures: mesures.length, passent: mesures.length - rouges.length, rouges }, md };
 }
 
+/**
+ * La passe S (le dépôt sans le contenu qui sort au lot 12) : AUCUNE rubrique « par nature », aucune liste d'exceptions. Tout fichier qui casse est rouge, avec
+ * sa cause (le premier message de son journal) ; la passe est verte quand `rouges` est vide : le critère de fin du lot 12. Pure : prend le résultat de la passe.
+ * @param {Map<string, { fichier: string, code: number|string }>|null} S
+ * @param {(passe: string, fichier: string) => string} [lireJournal]
+ */
+export function trierLaPasseSansLeContenu(S, lireJournal = () => '') {
+  if (!S) return null;
+  const mesures = [...S.values()];
+  const rouges = mesures.filter((r) => r.code !== 0).map((r) => ({
+    fichier: r.fichier, cause: r.code === 'delai' ? 'délai dépassé' : String(signature(lireJournal(PASSE_SANS_LE_CONTENU, r.fichier)).premiere.trim()),
+  })).sort((a, b) => a.fichier.localeCompare(b.fichier));
+  const md = ['## Passe S (le dépôt sans le contenu : ni data/rows, ni migrations de données, ni sources/raw ; l\'extrait du site de dev pour contenu)', '',
+    `${mesures.length - rouges.length}/${mesures.length} fichiers passent ; ${rouges.length} rouge(s). ${rouges.length ? 'Le lot 12 ne s\'exécute pas tant que la passe n\'est pas verte.' : 'Verte : le critère de fin du lot 12 est rempli pour la suite.'}`, ''];
+  if (rouges.length) md.push('| Fichier | Cause (premier message) |', '| --- | --- |', ...rouges.map((r) => `| ${r.fichier} | ${r.cause.replace(/\|/g, '\\|')} |`), '');
+  return { passes: { mesures: mesures.length, passent: mesures.length - rouges.length, rouges }, md };
+}
+
 /** Les contrôles du job preparer passés par --controles, par passe : un résultat par contrôle et par test du site construit. */
 function trierLesControles() {
   const md = [];
   const parPasse = {};
-  for (const p of PASSES_DU_SITE) {
+  for (const p of [...PASSES_DU_SITE, PASSE_SANS_LE_CONTENU]) {
     const chemin = join(sortie, `controles-${p}.json`);
     if (!existsSync(chemin)) continue;
     const t = trierLesControlesDUnePasse(p, JSON.parse(readFileSync(chemin, 'utf8')));
@@ -606,11 +670,13 @@ export function trier() {
   const site = trierLesPassesDuSite(resultats, lireLeJournal);
   const ci = trierLaPasseDeLaCI(lire(PASSE_DE_LA_CI), lireLeJournal);
   if (ci) { site.passes[PASSE_DE_LA_CI] = ci.passes; site.md.push(...ci.md); }
+  const sansContenu = trierLaPasseSansLeContenu(lire(PASSE_SANS_LE_CONTENU), lireLeJournal);
+  if (sansContenu) { site.passes[PASSE_SANS_LE_CONTENU] = sansContenu.passes; site.md.push(...sansContenu.md); }
   const ctrl = trierLesControles();
   const bilan = { ...(ab ? { AB: ab.bilan } : {}), ...site.passes, ...(Object.keys(ctrl.parPasse).length ? { controles: ctrl.parPasse } : {}) };
   writeFileSync(join(sortie, 'tri.json'), JSON.stringify({ bilan, ...(ab ? { fichiers: ab.lignes, familles: ab.familles } : {}), passes_du_site: site.fichiers }, null, 1));
   writeFileSync(join(sortie, 'tri.md'), [`# Essai mécanique des tests — tri (${new Date().toISOString()})`, '', ...(ab?.md ?? []), ...site.md, ...ctrl.md].join('\n'));
-  return { ...(ab ? { AB: ab.bilan } : {}), ...Object.fromEntries(Object.entries(site.passes).map(([k, v]) => [k, k === PASSE_DE_LA_CI ? { mesures: v.mesures, rouges: v.rouges.length } : k === 'C' ? { mesures: v.mesures, cassent: v.cassent.length, par_nature: v.par_nature.length } : v.informative ? { mesures: v.mesures, informative: true, cassent: v.cassent.length } : { mesures: v.mesures, figent_une_valeur: v.figent_une_valeur.length }])) };
+  return { ...(ab ? { AB: ab.bilan } : {}), ...Object.fromEntries(Object.entries(site.passes).map(([k, v]) => [k, k === PASSE_DE_LA_CI || k === PASSE_SANS_LE_CONTENU ? { mesures: v.mesures, rouges: v.rouges.length } : k === 'C' ? { mesures: v.mesures, cassent: v.cassent.length, par_nature: v.par_nature.length } : v.informative ? { mesures: v.mesures, informative: true, cassent: v.cassent.length } : { mesures: v.mesures, figent_une_valeur: v.figent_une_valeur.length }])) };
 }
 
 // ───────────────────────── commande ─────────────────────────
@@ -626,7 +692,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     console.log(JSON.stringify(await fabriquerLesContenus(), null, 1));
     if (existsSync(EXTRAIT)) console.log(JSON.stringify(await fabriquerLesVariantes(), null, 1));
   } else if (arg('--passe', null) && drapeau('--controles')) {
-    if (!PASSES_DU_SITE.includes(arg('--passe'))) throw new Error(`--controles : passe C ou V1 à V5 (pas ${arg('--passe')})`);
+    if (![...PASSES_DU_SITE, PASSE_SANS_LE_CONTENU].includes(arg('--passe'))) throw new Error(`--controles : passe C, S ou V1 à V5 (pas ${arg('--passe')})`);
     const r = await controles(arg('--passe'));
     const t = trierLesControlesDUnePasse(arg('--passe'), r);
     console.log(`contrôles ${arg('--passe')} : ${t.rouges.length ? `rouges : ${t.rouges.join(', ')}` : 'au vert'} ; ${t.par_nature.length} par nature (à part)`);

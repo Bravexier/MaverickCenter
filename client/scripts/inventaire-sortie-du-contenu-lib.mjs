@@ -221,6 +221,48 @@ export function chercherLesMotifs(texte, motifs) {
   return trouves;
 }
 
+/**
+ * Les fichiers d'un commit (jamais l'arbre de travail) : `git ls-tree`, les fichiers ordinaires seulement (les liens et les sous-modules n'ont pas de contenu à ranger).
+ * @returns {{ chemin: string, octets: number }[]} triés par chemin
+ */
+export function listerLesFichiersDuCommit(racine, ref) {
+  verifierLeDepot(racine);
+  const sortie = execFileSync('git', ['-C', racine, 'ls-tree', '-r', '-z', '-l', '--full-tree', ref], { encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 });
+  return sortie.split('\0').filter(Boolean).flatMap((ligne) => {
+    const m = /^(\d+) blob [0-9a-f]+\s+(\d+)\t(.+)$/s.exec(ligne);
+    return m && m[1] !== '120000' ? [{ chemin: m[3], octets: Number(m[2]) }] : [];
+  }).sort((a, b) => (a.chemin < b.chemin ? -1 : a.chemin > b.chemin ? 1 : 0));
+}
+
+/**
+ * Ce qui sortira du dépôt, par catégorie, avec les mêmes règles que la mesure (`classerLesMigrations`, `classerLesFichiers`) : `rows`, `migrations_donnees`,
+ * `sources_raw`, et à part `migrations_mixtes` (DDL et données mêlés : une question ouverte au propriétaire, jamais comptée avec les données). Lu dans le
+ * commit `ref` quand il est donné (l'archivage : jamais l'arbre de travail), sinon dans les fichiers suivis de l'arbre de `racine` (la passe S de l'essai
+ * mécanique, qui travaille sur une copie jetable).
+ * @returns {{ rows: object[], migrations_donnees: object[], migrations_mixtes: object[], sources_raw: object[] }}
+ */
+export function listerCeQuiSort({ racine, ref = null }) {
+  const fichiers = ref ? listerLesFichiersDuCommit(racine, ref) : listerLesFichiersSuivis(racine);
+  const textes = new Map();
+  const chemins = [];
+  for (const f of fichiers) {
+    if (!f.chemin.startsWith('data/migrations/')) continue;
+    chemins.push(f.chemin);
+    if (!f.chemin.endsWith('.sql')) continue;
+    textes.set(f.chemin, ref
+      ? execFileSync('git', ['-C', racine, 'cat-file', 'blob', `${ref}:${f.chemin}`], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 })
+      : readFileSync(join(racine, f.chemin), 'utf8'));
+  }
+  const { categories, restes } = classerLesFichiers(fichiers, classerLesMigrations(textes, chemins));
+  return { rows: categories.rows, migrations_donnees: categories.migrations_donnees, migrations_mixtes: restes.migrations_mixtes, sources_raw: categories.sources_raw };
+}
+
+/** Les chemins qui sortent (triés) : les catégories de `listerCeQuiSort`, les migrations mixtes seulement avec `avecMixtes` (`--avec-mixtes`). */
+export function cheminsQuiSortent(liste, { avecMixtes = false } = {}) {
+  const ids = [...IDS_QUI_SORTENT, ...(avecMixtes ? ['migrations_mixtes'] : [])];
+  return ids.flatMap((id) => liste[id].map((f) => f.chemin)).sort();
+}
+
 /** Lève une erreur claire quand `racine` n'est pas un dépôt git. */
 export function verifierLeDepot(racine) {
   try {
