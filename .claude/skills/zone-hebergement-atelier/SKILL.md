@@ -1,7 +1,7 @@
 ---
 name: zone-hebergement-atelier
 description: "Atelier du site de dev et kit de l'installateur de test : deploy/installateur/atelier/ (installer.sh, lancer.sh, lib.sh), kit.mjs, kit-pose.sh, marque et unité systemd, garde-fou 20, plafonds de mémoire et de disque. À charger avant de lire, modifier ou relire ces fichiers ou leurs tests."
-paths: ["deploy/installateur/atelier/**", "deploy/installateur/kit.mjs", "deploy/installateur/kit-pose.sh", "client/test/deploy-atelier.test.mjs", "client/test/deploy-kit.test.mjs"]
+paths: ["deploy/installateur/atelier/**", "deploy/installateur/kit.mjs", "deploy/installateur/kit-pose.sh", "client/test/deploy-atelier.test.mjs", "client/test/deploy-kit.test.mjs", "client/test/kit-suffit-au-build.test.mjs"]
 user-invocable: false
 ---
 # Atelier du site de dev et kit (`deploy/installateur/atelier/`, `kit*`)
@@ -15,6 +15,7 @@ Le reste de `deploy/` (installateurs, VPS, sauvegardes, accès) : skill `zone-he
 ## Le kit (installateur de test seulement)
 - `fabriquer.mjs --kit` (refusé en prod) le fabrique (`kit.mjs`) et l'emporte ; `kit-pose.sh` est inséré à la ligne `@@KIT@@` du modèle, retirée en prod : le script de prod reste identique à celui d'avant le kit.
 - Il se pose dans `<instance>/atelier/kit/`, hors de `site/` (jamais servi), par renommage, un seul kit gardé.
+- **Tout fichier que lit le build doit être dans `kit.mjs#A_EMPORTER`** : la CI, qui a tout le dépôt, ne voit pas autrement un fichier manquant (la fabrication sur le serveur casserait). Un nouveau fichier lu par le build s'ajoute à `A_EMPORTER`.
 - Aucun contenu (R275, question 6) : un contrôle refuse le kit s'il contient `data/rows`, `sources/raw`, un `.db`, `src/content/wiki` ou un lien qui sort du kit.
 - Élagage selon la règle de npm (`os`, `cpu`, `libc` déclarés par chaque paquet), sans liste de noms.
 - L'image de l'atelier est `kit.json#image`, de la libc du kit : Debian slim (glibc), jamais Alpine (musl) pour un kit fait par GitHub.
@@ -37,4 +38,4 @@ Le reste de `deploy/` (installateurs, VPS, sauvegardes, accès) : skill `zone-he
 - `docker-compose.override.yml` n'est écrit et retiré que par le geste de l'atelier ; l'installateur n'y touche jamais. Le `docker-compose.yml` commun ne parle pas de l'atelier : la production est inchangée.
 
 ## Tests
-- `deploy-kit` (kit, contrôle sans contenu, élagage, pose, script de prod identique), `deploy-atelier` (scripts de l'atelier).
+- `deploy-kit` (kit, contrôle sans contenu, élagage, pose, script de prod identique), `deploy-atelier` (scripts de l'atelier), `kit-suffit-au-build` (le kit fabriqué par `fabriquerLeKit`, lecture seule du dépôt, est décompressé hors du dépôt et sert à un vrai build, `scripts/fabriquer-depuis-contenu.mjs` comme `conteneur.sh` ; un 2ᵉ build, sans ce qui sort du dépôt, donne les mêmes pages).
