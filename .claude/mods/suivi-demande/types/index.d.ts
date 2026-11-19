@@ -35,8 +35,8 @@ export type Demande = {
   ci?: 'en_cours' | 'verte' | 'rouge'
   /** Ce qui est attendu du propriétaire. */
   attente?: string
-  /** Version servie par le site de dev à la fusion. */
-  versionDepart?: string
+  /** Version que le bot a donnée à la PR fusionnée : la demande est installée quand le site de dev la sert. */
+  versionCible?: string
   versionSite?: string
 }
 

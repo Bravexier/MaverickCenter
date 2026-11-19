@@ -1,6 +1,6 @@
 import { expect, mock, test } from 'claude-code/testing'
 
-import { duree, estPlusRecente, reste } from '../hooks/register'
+import { duree, estInstallee, estPlusRecente, reste } from '../hooks/register'
 
 const OUTIL = 'mcp__suivi-demande__suivre'
 const PANNEAU = {
@@ -23,6 +23,10 @@ test('les durées et les versions se comparent', () => {
   expect(estPlusRecente('0.5.34', '0.5.33')).toBe(true)
   expect(estPlusRecente('0.5.33', '0.5.33')).toBe(false)
   expect(estPlusRecente('0.6.0', '0.5.99')).toBe(true)
+  // La version d'une PR fusionnée juste avant ne vaut pas installation.
+  expect(estInstallee('0.5.37', '0.5.38')).toBe(false)
+  expect(estInstallee('0.5.38', '0.5.38')).toBe(true)
+  expect(estInstallee('0.5.40', '0.5.38')).toBe(true)
   expect(
     reste({
       but: 'x',

@@ -18,12 +18,12 @@ Sans cette variable, rien ne se passe : pas d'outil, pas de consigne, pas de pag
 - **Outil `mcp__suivi-demande__suivre`** : la session principale y déclare le but, les sous-tâches et leurs durées estimées, la phase, la branche, la PR, la CI et ce qu'elle attend du propriétaire. Une consigne ajoutée au prompt le lui rappelle ; les agents n'ont pas l'outil.
 - **Relevé automatique** : agents en vie et leur état (toutes les 5 secondes), temps de travail de la session principale, ouverture et fusion d'une PR.
 - **Page** : `page/suivi-demande.html`, publiée par la session (Artifact, capacités `db` et `user`). Le mod écrit l'état dans le document `suivi/etat` de sa base ; la page le lit en direct.
-- **Installation** : après la fusion, le mod relit chaque minute la version servie par le site de dev. Dès qu'elle augmente, il clôt le suivi et demande à la session de supprimer la page.
+- **Installation** : après la fusion, la session donne `version_cible`, la version que le bot attribue à la PR. Le mod relit chaque minute la version servie par le site de dev ; quand elle atteint la version cible, il clôt le suivi et demande à la session de supprimer la page.
 
 ## Limites
 
 - L'état de la CI est déclaré par la session à chaque événement de la PR, pas lu sur GitHub.
-- « Version servie qui augmente » ne prouve pas que cette PR-ci est installée si une autre a été fusionnée juste avant.
+- Sans `version_cible`, l'installation n'est jamais constatée : une version servie qui augmente peut être celle d'une autre PR fusionnée juste avant (constaté le 2026-11-19, PR #424 et #425).
 - Dans une session cloud, aucune surface ne dessine le panneau du mod : seule la page affiche le suivi.
 
 ## Contrôler
