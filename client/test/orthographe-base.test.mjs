@@ -12,6 +12,7 @@ import { ouvrirBase, trouverRacine } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { TABLES_DES_NOTES } from '../src/lib/notes-de-version.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { mixtesSorties } from '../src/lib/sortie-du-contenu.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
 import { textesReecrits } from './aide-textes-reecrits.mjs';
 import { ecrituresDuTexte } from './aide-ecritures-du-lien.mjs';
@@ -31,11 +32,13 @@ const laMigration = () => (lue ??= (() => {
 const db = ouvrirBase({ sansExemples: false });
 const historique = historiqueSite(db);
 // 0006 (noms à trancher) a corrigé ensuite des noms dans certaines de ces cellules : on y lit le texte de 0005 en défaisant ces renommages
-const noms0006 = JSON.parse(readFileSync(join(dossier, '0006-orthographe-noms.json'), 'utf8')).corrections;
+// (lus par les seuls tests du registre de la 0005, retirés avec le contenu ; la 0006, la 0111 et la 0121 sortent avec les migrations mixtes : sorties,
+// ils ne sont pas lus)
+const noms0006 = mixtesSorties() ? null : JSON.parse(readFileSync(join(dossier, '0006-orthographe-noms.json'), 'utf8')).corrections;
 // Une migration postérieure qui réécrit par fragments une phrase que 0005 a corrigée (registre `textes` de la 0111, R224 (1) : les copies corrigées là où
 // elles contredisent une décision ; de la 0121, R254 (3) : la fin « et est imposée quand… » de l'Archimage retirée) : la correction est admise retirée
 // quand le fragment réécrit la contenait et que la réécriture est en place
-const REECRITURES_POSTERIEURES = textesReecrits('0111-relecture-des-regles-contre-les-decisions', '0121-maj-decembre-suites');
+const REECRITURES_POSTERIEURES = mixtesSorties() ? null : textesReecrits('0111-relecture-des-regles-contre-les-decisions', '0121-maj-decembre-suites');
 const reecriteApres = (c, v) => REECRITURES_POSTERIEURES.some((t) => t.table === c.table && t.col === c.col && JSON.stringify(t.cle) === JSON.stringify(c.cle)
   && t.avant.includes(c.apres) && !t.apres.includes(c.apres) && v.includes(t.apres));
 const avant0006 = (c, texte) => noms0006.filter((n) => n.table === c.table && n.col === c.col && JSON.stringify(n.cle) === JSON.stringify(c.cle))

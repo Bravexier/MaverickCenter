@@ -17,6 +17,10 @@ import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { baseDImport, cheminDImport, lotsAvant } from './aide-base-d-import.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
 import { citations, ecritParLeSite, lienDuSite, lignesQuiCitent } from './aide-page-retiree.mjs';
+import { testRetireAvecLesMixtes } from './aide-sortie-du-contenu.mjs';
+
+// Les tests qui éprouvent la migration mixte elle-même sortent avec elle (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LES_MIXTES).
+const testDeLaMixte = testRetireAvecLesMixtes(import.meta.url);
 
 const MIGRATION = '0095-retrait-liste-des-effets-mode-hyper.sql';
 const LISTE = 'guide/liste-des-effets-mode-hyper';
@@ -53,6 +57,9 @@ test('0095 : la Liste retirée, avec ses lignes d’import, son entrée de menu,
   // la source du classeur reste citée par guide/le-mode-hyper
   assert.ok(db.prepare("SELECT 1 FROM page_source WHERE page_id = ? AND source_id = 'ref:google-sheet-mode-hyper-et-co-onglet-mode-hyper'").get(HYPER));
   assert.deepEqual(liensCasses(HYPER), []);
+});
+
+testDeLaMixte('0095 : la migration dit que les lignes de historique_modification et de note_version_ligne qui citent la page restent', () => {
   assert.match(lire(`data/migrations/${MIGRATION}`), /historique_modification et de note_version_ligne qui citent la page restent/);
 });
 
@@ -155,7 +162,7 @@ test('0095 : le menu « Les combats » sans la Liste, rangs de 1 à 19 (état d�
   assert.deepEqual(tri(actuelles), tri(attendues));
 });
 
-test('0095 rejouée sur son propre résultat : rien ne change (table reconstruite à l’identique, UPDATE gardés)', (t) => {
+testDeLaMixte('0095 rejouée sur son propre résultat : rien ne change (table reconstruite à l’identique, UPDATE gardés)', (t) => {
   // son résultat : la base telle que les migrations l'ont laissée (les lots du site d'après la 0095 défaits) ; sur l'état courant, un texte que le site
   // aurait réécrit avec un ancien lien serait réécrit par le rejeu, sans que la migration ait changé
   const chemin = fichierTemporaire('maverick.db', 'retrait-liste-hyper', { t });

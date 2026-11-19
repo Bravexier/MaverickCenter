@@ -3,7 +3,6 @@
 // telles que l'import les a laissées (le site de dev peut réécrire une page du Codex ou d'une race : l'extrait, lui, reste celui de l'import).
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 import {
@@ -193,11 +192,13 @@ const evenementsDImport = ordonner(historique.lignesDImport('evenement').map((e)
 const sourceRetouchee = (pageId) =>
   historique.touchee('page', { id: pageId }) || (pageId.startsWith('races/') && historique.touchee('race_onglet', { race_id: pageId }));
 // Les événements qu'une migration postérieure ajoute (0121, R264 : Gémidiens et Fongoïdes, au rang suivant, règle du site) ne viennent pas du registre
-// de l'import, qui donne le rang par la place : ils sont lus dans le registre de la migration et mis à part (test db-0121-maj-decembre-suites).
-const DE_LA_0121 = new Set(JSON.parse(readFileSync(new URL('../../data/migrations/0121-maj-decembre-suites.json', import.meta.url), 'utf8')).evenements.map((e) => e.id));
+// de l'import, qui donne le rang par la place : leurs ids sont lus dans la référence tirée du registre de la migration (data/references/, comparée au
+// registre par test/references-des-migrations-mixtes.test.mjs) et mis à part (test db-0121-maj-decembre-suites).
+const DE_LA_0121 = evenementsDeLaMigration0121();
 
-test('le vérificateur (chronologie.mjs --verifier) met à part les événements de la 0121 (R264), lus dans le registre de la migration', () => {
-  assert.deepEqual([...evenementsDeLaMigration0121()].sort(), [...DE_LA_0121].sort());
+test('le vérificateur (chronologie.mjs --verifier) met à part les événements de la 0121 (R264), lus dans la référence de la migration : chacun est à l’import', () => {
+  const ids = new Set(historique.lignesDImport('evenement').map((e) => e.id));
+  for (const id of DE_LA_0121) assert.ok(ids.has(id), id);
   assert.ok(DE_LA_0121.size > 0);
   const r = spawnSync(process.execPath, ['--no-warnings', fileURLToPath(new URL('../../tools/chronologie/chronologie.mjs', import.meta.url)), '--verifier'], { encoding: 'utf8' });
   assert.equal(r.status, 0, r.stdout + r.stderr);

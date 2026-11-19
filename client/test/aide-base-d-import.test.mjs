@@ -3,7 +3,7 @@
 // sur une même cellule), une cellule réécrite depuis par une migration gardée, des lots gardés (l'état d'après une migration) ; puis, sur la base
 // construite (quels que soient ses textes), l'accord avec historiqueSite#valeurDImport et le cache par processus.
 import assert from 'node:assert/strict';
-import { copyFileSync, readFileSync } from 'node:fs';
+import { copyFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { cheminBase } from '../src/lib/donnees.mjs';
@@ -11,6 +11,7 @@ import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { baseDImport, cheminDImport, defaireLeSite, lotsAvant, reglesDImport, remettreDepuisLImport, texteDImport } from './aide-base-d-import.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
+import { registreDeMigration } from './aide-registres-sortis.mjs';
 
 /** Une copie de la base construite, ramenée à son état d'import (historique vide), ouverte en écriture. */
 function copieDImport(t) {
@@ -67,7 +68,8 @@ test('defaireLeSite : chaque opération est défaite, de la dernière à la prem
 test('defaireLeSite : une cellule dont une migration n’a remplacé, après le site, que des fragments de son registre `textes` est défaite, le remplacement repris', (t) => {
   const db = copieDImport(t);
   // une entrée réelle d'un registre `textes` (0122 : la balise reciblée) ; la cellule d'essai est la sienne, prise dans l'état courant de la copie
-  const [r] = JSON.parse(readFileSync(new URL('../../data/migrations/0122-retrait-la-montee-de-niveau.json', import.meta.url), 'utf8')).textes;
+  // (registre de la 0122, ou ce qu'en garde test/fixtures/registres-sortis.json une fois la migration mixte sortie : ses balises reciblées)
+  const [r] = registreDeMigration('0122-retrait-la-montee-de-niveau').textes;
   const ou = Object.keys(r.cle).map((k) => `"${k}" = ?`).join(' AND ');
   const lire = () => db.prepare(`SELECT "${r.col}" AS v FROM "${r.table}" WHERE ${ou}`).get(...Object.values(r.cle))?.v;
   assert.equal(typeof lire(), 'string', `${r.table} ${JSON.stringify(r.cle)} : présente`);

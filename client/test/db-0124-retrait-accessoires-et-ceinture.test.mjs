@@ -16,14 +16,22 @@ import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { FUSIONS_DE_MIGRATION } from '../serveur/edition.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
+import { registreDeMigration } from './aide-registres-sortis.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
 import { idDuMotCleNomme } from './aide-mots-cles.mjs';
 import { citations, ecritParLeSite } from './aide-page-retiree.mjs';
+import { testRetireAvecLesMixtes } from './aide-sortie-du-contenu.mjs';
+
+// Les tests qui éprouvent la migration mixte elle-même sortent avec elle (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LES_MIXTES).
+const testDeLaMixte = testRetireAvecLesMixtes(import.meta.url);
 
 const MIGRATION = '0124-retrait-accessoires-et-ceinture';
 const lire = (chemin) => readFileSync(new URL(`../../${chemin}`, import.meta.url), 'utf8');
-const SQL = lire(`data/migrations/${MIGRATION}.sql`);
-const REGISTRE = JSON.parse(lire(`data/migrations/${MIGRATION}.json`));
+// Le SQL et le registre sortent avec les migrations mixtes : le SQL se lit à la demande (tests retirés avec elles, RETIRES_AVEC_LES_MIXTES) ; du
+// registre, les tests d'invariants ne lisent que des ids, des adresses et une balise, gardés dans test/fixtures/registres-sortis.json
+// (aide-registres-sortis.mjs) ; le texte déplacé (du texte de règle) ne l'est pas.
+const sqlDeLaMigration = () => lire(`data/migrations/${MIGRATION}.sql`);
+const REGISTRE = registreDeMigration(MIGRATION);
 const RETIREE = 'guide/fiche-accessoires-et-ceinture';
 const GARDEE = 'guide/fiche-inventaire-sac-a-dos';
 const [RETRAIT] = REGISTRE.pages_retirees;
@@ -32,7 +40,8 @@ const ANCIENNES_ADRESSES = ['/regles/fiche-accessoires-et-ceinture/', '/regles/f
 const db = ouvrirBase({ sansExemples: false });
 const h = historiqueSite(db);
 
-test('0124 (R272) : le registre, la migration et FUSIONS_DE_MIGRATION disent la même page, les mêmes valeurs, la même fusion', () => {
+testDeLaMixte('0124 (R272) : le registre, la migration et FUSIONS_DE_MIGRATION disent la même page, les mêmes valeurs, la même fusion', () => {
+  const SQL = sqlDeLaMigration();
   assert.equal(REGISTRE.migration, MIGRATION);
   assert.deepEqual(REGISTRE.decisions, ['R272']);
   assert.deepEqual([REGISTRE.page_retiree, REGISTRE.page_gardee], [RETIREE, GARDEE]);
@@ -73,12 +82,16 @@ test('0124 : la page retirée n’existe plus, ni ses lignes ; ses sources reste
   }
 });
 
-test('0124 (R272) : les sections « Accessoires » et « Ceinture » sont à la fin de l’inventaire, sous leurs ancres figées ; R89 suit la page', () => {
+testDeLaMixte('0124 (R272) : à l’import, le corps de l’inventaire finit par le texte déplacé tel que le registre le dit', () => {
   const deplace = REGISTRE.textes.find((t) => t.cle.id === GARDEE);
-  // à l'import : le corps de l'inventaire finit par le texte déplacé, chaque section lisible par son ancre
   const corps = baseDImport().prepare('SELECT corps_md FROM page WHERE id = ?').get(GARDEE).corps_md;
   assert.ok(corps.endsWith(deplace.apres));
   assert.equal(corps.split(deplace.avant).length - 1, 1);
+});
+
+test('0124 (R272) : les sections « Accessoires » et « Ceinture » sont à la fin de l’inventaire, sous leurs ancres figées ; R89 suit la page', () => {
+  // à l'import : chaque section lisible par son ancre
+  const corps = baseDImport().prepare('SELECT corps_md FROM page WHERE id = ?').get(GARDEE).corps_md;
   assert.deepEqual(ancresDuCorps(corps).map((a) => a.ancre), RETRAIT.ancres);
   for (const ancre of RETRAIT.ancres) assert.ok(sectionParAncre(corps, ancre), ancre);
   // aujourd'hui : la page de l'inventaire garde son id ; deux intertitres n'ont jamais la même ancre
@@ -98,11 +111,15 @@ test('0124 : le menu « Fiche de personnage » perd l’entrée retirée, les au
   assert.ok(entrees.length > 0);
   assert.equal(entrees.some((e) => e.id === entree.id || e.page_id === RETIREE), false);
   assert.ok(entrees.some((e) => e.page_id === GARDEE), 'l’inventaire reste au menu');
-  // l'entrée retirée laisse son rang libre, sans renumérotation (rang n'est ni UNIQUE ni continu) : la migration n'écrit aucun rang
-  assert.equal(/UPDATE\s+regles_onglet_entree/i.test(SQL), false);
-  assert.ok(SQL.includes(`DELETE FROM regles_onglet_entree WHERE page_id = '${RETIREE}';`));
   const rangs = entrees.map((e) => e.rang);
   assert.equal(new Set(rangs).size, rangs.length, 'un rang par entrée');
+});
+
+testDeLaMixte('0124 : la migration retire l’entrée du menu sans écrire aucun rang', () => {
+  // l'entrée retirée laisse son rang libre, sans renumérotation (rang n'est ni UNIQUE ni continu) : la migration n'écrit aucun rang
+  const SQL = sqlDeLaMigration();
+  assert.equal(/UPDATE\s+regles_onglet_entree/i.test(SQL), false);
+  assert.ok(SQL.includes(`DELETE FROM regles_onglet_entree WHERE page_id = '${RETIREE}';`));
 });
 
 test('0124 (R272) : le mot-clé de la page retirée est fondu dans celui de l’inventaire, qui mène à /regles/inventaire-sac-a-dos/ ; plus rien ne le cite', () => {
@@ -130,7 +147,7 @@ test('0124 (R272) : le mot-clé de la page retirée est fondu dans celui de l’
   assert.deepEqual(citations(db, `{{${fusion.source}`, ecritParLeSite(h)), [], 'balise (aujourd’hui)');
 });
 
-test('0124 : la garde arrête la migration rejouée sur son propre résultat, sans rien écrire', (t) => {
+testDeLaMixte('0124 : la garde arrête la migration rejouée sur son propre résultat, sans rien écrire', (t) => {
   const chemin = fichierTemporaire('maverick.db', 'migration-0124', { t });
   copyFileSync(cheminBase({ sansExemples: false }), chemin);
   const base = new DatabaseSync(chemin);
@@ -138,7 +155,7 @@ test('0124 : la garde arrête la migration rejouée sur son propre résultat, sa
   const etat = () => base.prepare("SELECT (SELECT corps_md FROM page WHERE id = 'guide/fiche-inventaire-sac-a-dos') AS c, (SELECT count(*) FROM page) AS p, (SELECT count(*) FROM mot_cle) AS m").get();
   const avant = { ...etat() };
   base.exec('BEGIN');
-  assert.throws(() => base.exec(SQL), /CHECK constraint failed/);
+  assert.throws(() => base.exec(sqlDeLaMigration()), /CHECK constraint failed/);
   base.exec('ROLLBACK');
   assert.deepEqual({ ...etat() }, avant);
 });

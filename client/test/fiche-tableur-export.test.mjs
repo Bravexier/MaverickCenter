@@ -30,9 +30,11 @@ import { modesAuNm, valeurAuNm } from '../src/lib/sort-maitrise.mjs';
 import { zonesDuClasseur } from '../src/lib/tableur-ecriture.mjs';
 import { recollerLeTexte, sansLaCoupure, tientDans } from '../src/lib/tableur-mesure.mjs';
 import { reglesDImport } from './aide-base-d-import.mjs';
+import { registreDeMigration } from './aide-registres-sortis.mjs';
 
 // les coûts que la migration 0063 a répartis (décision R105) et leur écriture dans le classeur
-const REPARTIS = new Map(JSON.parse(readFileSync(new URL('../../data/migrations/0063-cout-secondaire.json', import.meta.url), 'utf8')).repartis.map((r) => [r.id, r]));
+// (registreDeMigration : ce qu'en garde test/fixtures/registres-sortis.json une fois la migration mixte sortie, cellules recopiées telles quelles)
+const REPARTIS = new Map(registreDeMigration('0063-cout-secondaire').repartis.map((r) => [r.id, r]));
 
 // les fiches d'essai choisissent dons, armes et matériaux par leur nom ou une valeur de règle, et le moteur lit ses règles dans les textes : l'export
 // s'épingle sur l'état d'import de la base (le site de dev réécrit librement noms, textes et valeurs ; test/aide-base-d-import.mjs)

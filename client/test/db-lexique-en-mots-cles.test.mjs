@@ -23,15 +23,26 @@ import { fautesDuSynonyme, formesNonCanoniques, lireBalises, vocabulaireDesMotsC
 import { MOTS_CLES_PROTEGES } from '../src/lib/mots-cles.mjs';
 import { motsClesDeLaBase, textesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { idDuMotCleNomme } from './aide-mots-cles.mjs';
 import { textesReecrits } from './aide-textes-reecrits.mjs';
+import { testRetireAvecLesMixtes } from './aide-sortie-du-contenu.mjs';
+
+// Les tests qui éprouvent la migration mixte elle-même sortent avec elle (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LES_MIXTES).
+const testDeLaMixte = testRetireAvecLesMixtes(import.meta.url);
 
 const db = ouvrirBase({ sansExemples: false });
 // Depuis la migration 0113, un mot-clé a un id entier : ce test nomme les mots-clés de la 0090 par leur ancien id texte, traduit par la correspondance de
 // la 0113 (son registre : id entier, et la clé et le libellé d'alors). La 0115 a fondu « Action bonus » et « Action rapide » dans « Instant Cast » et fait
 // de chaque abréviation un synonyme : son registre garde ce qu'ils étaient (`fusions`) et l'origine de chaque synonyme (`synonymes`).
-const REGISTRE_0113 = new Map(JSON.parse(readFileSync(new URL('../../data/migrations/0113-mots-cles-id-entier.json', import.meta.url), 'utf8')).motsCles.map((m) => [m.ancienId, m]));
-const REGISTRE_0115 = JSON.parse(readFileSync(new URL('../../data/migrations/0115-mots-cles-synonymes.json', import.meta.url), 'utf8'));
-const entier = (ancien) => REGISTRE_0113.get(ancien)?.id;
+// L'id entier se lit dans la correspondance de la 0113 (data/references/ : idDuMotCleNomme), qui reste ; la clé et le libellé d'alors (registre de la
+// 0113) et le registre de la 0115 sortent avec ces migrations mixtes, et avec eux les tests qui lisent la valeur « telle que la 0090 l'a laissée »
+// (dImport : RETIRES_AVEC_LES_MIXTES) : lus à la demande.
+let lus;
+const registres = () => (lus ??= {
+  r0113: new Map(JSON.parse(readFileSync(new URL('../../data/migrations/0113-mots-cles-id-entier.json', import.meta.url), 'utf8')).motsCles.map((m) => [m.ancienId, m])),
+  r0115: JSON.parse(readFileSync(new URL('../../data/migrations/0115-mots-cles-synonymes.json', import.meta.url), 'utf8')),
+});
+const entier = (ancien) => idDuMotCleNomme(ancien);
 const motCle = (ancien) => (entier(ancien) === undefined ? undefined : db.prepare('SELECT * FROM mot_cle WHERE id = ?').get(entier(ancien)));
 const historique = historiqueSite(db);
 // les lots déjà rapatriés quand la 0090 a été écrite (liste figée, fixtures/lots-avant-0090.json) : tout autre lot, quelle que soit sa date (fait_le
@@ -66,8 +77,9 @@ const { valeur: valeurDe0090, lignes: lignesDe0090 } = lectureDe0090(db, histori
  * que la 0115 en a fait (registre) ; un mot-clé fondu par la 0115 se lit dans son registre ; `id` : l'ancien id s'il existait.
  */
 const dImport = (ancien, colonne) => {
-  const e = REGISTRE_0113.get(ancien);
-  if (!e) return undefined;
+  if (entier(ancien) === undefined) return undefined;
+  const { r0113, r0115: REGISTRE_0115 } = registres();
+  const e = r0113.get(ancien);
   const fondu = REGISTRE_0115.fusions.find((f) => f.ancienId === ancien);
   if (colonne === 'libelle_cle') return e.cle;
   if (colonne === 'abreviation') return fondu ? fondu.abreviation : REGISTRE_0115.synonymes.find((x) => x.motCleId === e.id && x.origine === 'abreviation')?.libelle ?? null;
@@ -78,10 +90,19 @@ const dImport = (ancien, colonne) => {
 };
 const LEXIQUE = 'guide/lexique';
 // les mots-clés que la 0090 crée (section 2) ou fusionne (section 3), lus dans la migration elle-même
-const MIGRATION = readFileSync(new URL('../../data/migrations/0090-lexique-en-mots-cles.sql', import.meta.url), 'utf8');
-const section = (debut, fin) => MIGRATION.slice(MIGRATION.indexOf(debut), MIGRATION.indexOf(fin));
-const CREES = [...section('-- 2. Les mots-clés nouveaux', '-- 3. ').matchAll(/^ {2}\('([^']+)', /gm)].map((m) => m[1]);
-const FUSIONNES = [...section('-- 3. ', '-- 4. ').matchAll(/WHERE id = '([^']+)';$/gm)].map((m) => m[1]);
+// (le SQL sort avec la migration mixte, et les tests qui le lisent avec lui : lu à la demande)
+let luDansLaMigration;
+const creesEtFusionnes = () => {
+  if (!luDansLaMigration) {
+    const MIGRATION = readFileSync(new URL('../../data/migrations/0090-lexique-en-mots-cles.sql', import.meta.url), 'utf8');
+    const section = (debut, fin) => MIGRATION.slice(MIGRATION.indexOf(debut), MIGRATION.indexOf(fin));
+    luDansLaMigration = {
+      CREES: [...section('-- 2. Les mots-clés nouveaux', '-- 3. ').matchAll(/^ {2}\('([^']+)', /gm)].map((m) => m[1]),
+      FUSIONNES: [...section('-- 3. ', '-- 4. ').matchAll(/WHERE id = '([^']+)';$/gm)].map((m) => m[1]),
+    };
+  }
+  return luDansLaMigration;
+};
 
 // les abréviations que le Lexique écrit (« **AM** (armure magique) », « **Initiative** (INI) », « Abrégée BA »…), rien d'autre ; « CR », le mot-clé
 // fondu dans « Corruption » ; PJ et PNJ (R183 (7)) ; celles des monnaies (R183 (9))
@@ -111,14 +132,14 @@ const FUSIONS = {
   metier: 'Un savoir-faire choisi à la création ou plus tard dans l’aventure.',
 };
 
-test('0090 puis 0115 : l’abréviation, colonne de la 0090, est devenue un synonyme (R233 (7)) — ni dans mot_cle ni dans v_mot_cle, la table mot_cle_synonyme', () => {
+testDeLaMixte('0090 puis 0115 : l’abréviation, colonne de la 0090, est devenue un synonyme (R233 (7)) — ni dans mot_cle ni dans v_mot_cle, la table mot_cle_synonyme', () => {
   for (const table of ['mot_cle', 'v_mot_cle']) assert.ok(!db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === 'abreviation'), table);
   assert.ok(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'mot_cle_synonyme'").get());
   // chaque abréviation de la 0090 est un synonyme de la 0115 (son registre), d'origine « abreviation »
   for (const [id, abreviation] of Object.entries(ABREVIATIONS)) assert.equal(dImport(id, 'abreviation'), abreviation, id);
 });
 
-test('0090 : les abréviations du Lexique, telles qu’écrites, et « CR » celle de « Corruption » ; chacune sans ambiguïté pour la ref d’une balise', () => {
+testDeLaMixte('0090 : les abréviations du Lexique, telles qu’écrites, et « CR » celle de « Corruption » ; chacune sans ambiguïté pour la ref d’une balise', () => {
   for (const [id, abreviation] of Object.entries(ABREVIATIONS)) assert.equal(dImport(id, 'abreviation'), abreviation, id);
   // la règle de db:check, sur l'état courant : un synonyme (l'abréviation en est un) n'est ni le libellé, ni un synonyme, ni la clé d'un autre mot-clé
   const motsCles = motsClesDeLaBase(db);
@@ -127,7 +148,7 @@ test('0090 : les abréviations du Lexique, telles qu’écrites, et « CR » cel
   }
 });
 
-test('0090 : les renvois du Lexique citent leur mot-clé ; ses doublons gardent l’id existant et sa définition, puis ce que le Lexique ajoute', () => {
+testDeLaMixte('0090 : les renvois du Lexique citent leur mot-clé ; ses doublons gardent l’id existant et sa définition, puis ce que le Lexique ajoute', () => {
   for (const [id, renvoi] of Object.entries(RENVOIS)) assert.equal(dImport(id, 'description'), renvoi, id);
   // absents après la migration (le site de dev peut créer depuis un mot-clé de cette écriture)
   assert.equal(dImport('rc', 'id'), undefined, '« RC : voir Réussite critique » n’est qu’une abréviation');
@@ -140,9 +161,10 @@ test('0090 : les renvois du Lexique citent leur mot-clé ; ses doublons gardent 
   for (const id of ['corruption', 'mordhau']) assert.doesNotMatch(dImport(id, 'description'), /Voir /, `${id} : « Voir [[page]]. » n’ajoute rien`);
 });
 
-test('0090 : les définitions venues du Lexique sont des textes de case — ni lien, ni gras, ni italique, ni mode complet ; balises sous forme canonique', () => {
+testDeLaMixte('0090 : les définitions venues du Lexique sont des textes de case — ni lien, ni gras, ni italique, ni mode complet ; balises sous forme canonique', () => {
   const tous = db.prepare('SELECT id, libelle, cle, description FROM mot_cle').all();
   const vocabulaire = vocabulaireDesMotsCles(tous);
+  const { CREES, FUSIONNES } = creesEtFusionnes();
   const venus = new Set([...CREES, ...FUSIONNES]);
   const venusEntiers = new Set([...venus].map(entier));
   assert.ok(CREES.length >= 90 && FUSIONNES.length >= 8, `${CREES.length} créés, ${FUSIONNES.length} fusionnés lus dans la migration`);
@@ -178,6 +200,11 @@ test('0090 : la page « Lexique » n’existe plus, ni ses lignes d’import, ni
   assert.equal(db.prepare("SELECT count(*) AS n FROM page WHERE corps_md LIKE '%[[guide/lexique%' OR corps_md LIKE '%/regles/lexique/%'").get().n, 0);
 });
 
+// une page retirée depuis par une migration (pas par le site de dev : l'historique ne la rend pas) emporte ses balises : l'« Aide-mémoire »
+// (guide/aide-memoire, « ses effets « Si {{corruption|CR}} » »), supprimée par la 0091 (R184 (9) : « Supprime, on refera un aide mémoire clair
+// plus taard »), en avait une
+const RETIREES_APRES = { 'guide/aide-memoire': 1 };
+
 test('0090 : « CR » fondu dans « Corruption » — plus de mot-clé `cr`, aucune balise ni étiquette ne le cite, ses balises citent `corruption` en gardant « CR »', () => {
   assert.equal(motCle('cr'), undefined);
   assert.equal(db.prepare("SELECT count(*) AS n FROM page_tag WHERE tag_id = 'cr'").get().n, 0);
@@ -196,20 +223,18 @@ test('0090 : « CR » fondu dans « Corruption » — plus de mot-clé `cr`, auc
     .flatMap((l) => colonnes.flatMap((c) => lireBalises(l[c] ?? '', { markdown }))).filter((b) => b.ref === 'corruption' && b.texte === 'CR').length;
   const pages = reciblees('page', ['corps_md'], true);
   const sorts = reciblees('sort', ['effets', 'dsb_brut'], false);
-  // une page retirée depuis par une migration (pas par le site de dev : l'historique ne la rend pas) emporte ses balises : l'« Aide-mémoire »
-  // (guide/aide-memoire, « ses effets « Si {{corruption|CR}} » »), supprimée par la 0091 (R184 (9) : « Supprime, on refera un aide mémoire clair
-  // plus taard »), en avait une
-  const RETIREES_APRES = { 'guide/aide-memoire': 1 };
-  const supprimees = readFileSync(new URL('../../data/migrations/0091-r184-plan-des-regles.sql', import.meta.url), 'utf8')
-    .match(/^DELETE FROM page WHERE id IN \(([^)]*)\);$/m)?.[1] ?? '';
-  for (const id of Object.keys(RETIREES_APRES)) {
-    assert.ok(supprimees.includes(`'${id}'`), `${id} : supprimée par la 0091`);
-    assert.equal(db.prepare('SELECT count(*) AS n FROM page WHERE id = ?').get(id).n, 0, `${id} : absente de la base`);
-  }
+  // (les pages retirées depuis par une migration : RETIREES_APRES)
+  for (const id of Object.keys(RETIREES_APRES)) assert.equal(db.prepare('SELECT count(*) AS n FROM page WHERE id = ?').get(id).n, 0, `${id} : absente de la base`);
   const retirees = Object.values(RETIREES_APRES).reduce((a, n) => a + n, 0);
   assert.ok(pages + sorts + retirees >= 43,
     `${pages + sorts} balises « {{corruption|CR}} » (${pages} dans les pages, ${sorts} dans les sorts), plus ${retirees} dans les pages retirées par la 0091`);
   assert.ok(sorts >= 20, `${sorts} balises dans les sorts`);
+});
+
+testDeLaMixte('0090 : les pages qui emportent des balises « {{corruption|CR}} » sont celles que la 0091 supprime (son SQL)', () => {
+  const supprimees = readFileSync(new URL('../../data/migrations/0091-r184-plan-des-regles.sql', import.meta.url), 'utf8')
+    .match(/^DELETE FROM page WHERE id IN \(([^)]*)\);$/m)?.[1] ?? '';
+  for (const id of Object.keys(RETIREES_APRES)) assert.ok(supprimees.includes(`'${id}'`), `${id} : supprimée par la 0091`);
 });
 
 // R183 : les textes de la liste de game-design, tels quels (`des` : sans note, Q-L : « Non, sans note »)
@@ -230,7 +255,7 @@ const R183 = {
 };
 const RETIRES = ['monnaies', 'pj', 'pnj', 'd100-d20-d6', 'race-hybride', 'cr'];
 
-test('R183 : entrées doubles, renvois des compléments d’en-tête, PJ et PNJ, monnaies, dés et solidité, tels que game-design les écrit', () => {
+testDeLaMixte('R183 : entrées doubles, renvois des compléments d’en-tête, PJ et PNJ, monnaies, dés et solidité, tels que game-design les écrit', () => {
   for (const [id, [libelle, description]] of Object.entries(R183)) {
     assert.equal(dImport(id, 'libelle'), libelle, `${id} : libellé`);
     assert.equal(dImport(id, 'libelle_cle'), normalize(libelle), `${id} : libelle_cle`);
@@ -238,13 +263,13 @@ test('R183 : entrées doubles, renvois des compléments d’en-tête, PJ et PNJ,
   }
 });
 
-test('R183 (9) : un mot-clé par monnaie, à l’id et à l’abréviation de la table `monnaie`', () => {
+testDeLaMixte('R183 (9) : un mot-clé par monnaie, à l’id et à l’abréviation de la table `monnaie`', () => {
   const monnaies = lignesDe0090('monnaie').sort((a, b) => a.id.localeCompare(b.id));
   assert.deepEqual(monnaies.map((m) => m.id), ['pp', 'rf', 'ro']);
   for (const m of monnaies) assert.equal(dImport(m.id, 'abreviation'), m.abreviation, m.id);
 });
 
-test('R183 (3), Q-I : la corruption, puis « CR, dans les tableaux de sorts, désigne la corruption. » ; l’ancienne jointure a disparu', () => {
+testDeLaMixte('R183 (3), Q-I : la corruption, puis « CR, dans les tableaux de sorts, désigne la corruption. » ; l’ancienne jointure a disparu', () => {
   const d = dImport('corruption', 'description');
   assert.ok(d.startsWith('Poison du chakra : '), 'la définition existante d’abord');
   assert.ok(d.endsWith(' CR, dans les tableaux de sorts, désigne la corruption. « Si CR » : si le sort est lancé en utilisant la corruption. Dans les dégâts, soins ou barrière (D/S/B) ou les effets, « N CR » fait monter la corruption de la cible (le sort de soin Retrait en retire) ; dans le coût, c\'est la corruption à dépenser.'));
@@ -270,14 +295,15 @@ test('R183 : ni `monnaies`, ni `pj`, ni `pnj`, ni `d100-d20-d6`, ni `race-hybrid
   assert.deepEqual(cites, []);
 });
 
-test('R183 (8), Q-F : chaque définition que la 0090 crée ou fusionne commence par une majuscule', () => {
+testDeLaMixte('R183 (8), Q-F : chaque définition que la 0090 crée ou fusionne commence par une majuscule', () => {
+  const { CREES, FUSIONNES } = creesEtFusionnes();
   const minuscules = [...new Set([...CREES, ...FUSIONNES])].map((id) => [id, dImport(id, 'description')])
     .filter(([, d]) => !d || d.charAt(0) !== d.charAt(0).toUpperCase()).map(([id]) => id);
   assert.deepEqual(minuscules, []);
   assert.ok(dImport('dieu-inne', 'description').startsWith('Le dieu inné est la divinité'), '« Le dieu inné est… »');
 });
 
-test('R183 (8), Q-G : « Classe » et « Métier », même id et même libelle_cle ; les étiquettes protégées qui rangent les pages les retrouvent', () => {
+testDeLaMixte('R183 (8), Q-G : « Classe » et « Métier », même id et même libelle_cle ; les étiquettes protégées qui rangent les pages les retrouvent', () => {
   for (const [id, libelle] of [['classe', 'Classe'], ['metier', 'Métier']]) {
     assert.equal(dImport(id, 'libelle'), libelle, `${id} : le libellé écrit par la migration`);
     assert.equal(dImport(id, 'libelle_cle'), id, `${id} : la même clé, écrite par la migration`);

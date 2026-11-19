@@ -8,9 +8,10 @@
 //   retireeParLa0122(id)              la page `id` est celle que la 0122 retire
 //   fonduParLa0122(x)                 `x` (ancien id texte, clé ou id entier) nomme le mot-clé que la 0122 fond
 //   selonLa0122(table, col, cle, f)   le fragment `f` de cette cellule, ses balises reciblées comme la 0122 les a écrites
-import { readFileSync } from 'node:fs';
+import { registreDeMigration } from './aide-registres-sortis.mjs';
 
-const REGISTRE_0122 = JSON.parse(readFileSync(new URL('../../data/migrations/0122-retrait-la-montee-de-niveau.json', import.meta.url), 'utf8'));
+// le registre, ou ce qu'en garde test/fixtures/registres-sortis.json une fois la migration mixte sortie (ids, clés, balises : aucun texte de règle)
+const REGISTRE_0122 = registreDeMigration('0122-retrait-la-montee-de-niveau');
 
 export const PAGE_RETIREE_PAR_LA_0122 = REGISTRE_0122.page_retiree;
 export const FUSION_DE_LA_0122 = Object.freeze({ ...REGISTRE_0122.fusion });

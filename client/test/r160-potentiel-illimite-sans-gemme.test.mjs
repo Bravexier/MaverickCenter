@@ -9,6 +9,10 @@ import { DatabaseSync } from 'node:sqlite';
 import { after, test } from 'node:test';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
+import { testRetireAvecLesMixtes } from './aide-sortie-du-contenu.mjs';
+
+// Les tests qui éprouvent la migration mixte elle-même sortent avec elle (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LES_MIXTES).
+const testDeLaMixte = testRetireAvecLesMixtes(import.meta.url);
 
 const PI = 'magies/potentiel-illimite';
 // table -> sa clé primaire (une colonne)
@@ -31,14 +35,20 @@ test('R160 : aucune gemme, aucun bois, aucun bâton, aucune pièce élémentaire
   }
 });
 
-test('R160 : le schéma et la migration 0078 portent la contrainte nommée de chaque table, en SQL standard', () => {
+test('R160 : le schéma porte la contrainte nommée de chaque table, en SQL standard', () => {
   const schema = lire('data/schema.sql');
-  const migration = lire('data/migrations/0078-r160-potentiel-illimite-sans-gemme.sql');
   for (const table of Object.keys(TABLES)) {
     const clause = `CONSTRAINT ${contrainte(table)} CHECK (magie_id <> '${PI}')`;
     assert.ok(schema.includes(clause), `data/schema.sql : ${clause}`);
-    assert.ok(migration.includes(clause), `migration 0078 : ${clause}`);
     assert.ok(db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?").get(table).sql.includes(clause), `base construite : ${table}`);
+  }
+});
+
+testDeLaMixte('R160 : la migration 0078 porte la même contrainte nommée de chaque table', () => {
+  const migration = lire('data/migrations/0078-r160-potentiel-illimite-sans-gemme.sql');
+  for (const table of Object.keys(TABLES)) {
+    const clause = `CONSTRAINT ${contrainte(table)} CHECK (magie_id <> '${PI}')`;
+    assert.ok(migration.includes(clause), `migration 0078 : ${clause}`);
   }
 });
 

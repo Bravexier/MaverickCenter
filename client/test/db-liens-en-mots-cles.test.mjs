@@ -26,17 +26,24 @@ import { FUSIONS_DANS_L_EXISTANT, MOTS_CLES_EXISTANTS_REPRIS } from '../scripts/
 import { baseDImport, lotsAvant } from './aide-base-d-import.mjs';
 import { FAMILLES_DE_LA_PALETTE, classeDeMagie, idDeCouleur } from '../src/lib/palette-css.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { mixtesSorties } from '../src/lib/sortie-du-contenu.mjs';
 import { fonduParLa0122, retireeParLa0122 } from './aide-migration-0122.mjs';
 import { fonduParLa0124, retireeParLa0124 } from './aide-migration-0124.mjs';
 import { registreDeMigration } from './aide-registres-sortis.mjs';
+import { testRetireAvecLesMixtes } from './aide-sortie-du-contenu.mjs';
+
+// Les tests qui éprouvent la migration mixte elle-même sortent avec elle (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LES_MIXTES).
+const testDeLaMixte = testRetireAvecLesMixtes(import.meta.url);
 
 const db = ouvrirBase({ sansExemples: false });
-const REGISTRE = JSON.parse(readFileSync(new URL('../../data/migrations/0098-liens-en-mots-cles.json', import.meta.url), 'utf8'));
+// Les registres et le SQL des migrations mixtes (0098 et suivantes) sortent avec elles, et les tests qui les lisent avec eux (RETIRES_AVEC_LES_MIXTES) :
+// sortis, ils ne sont pas lus (null).
+const REGISTRE = mixtesSorties() ? null : JSON.parse(readFileSync(new URL('../../data/migrations/0098-liens-en-mots-cles.json', import.meta.url), 'utf8'));
 /** La correspondance de la migration 0113 (ancien id texte → { id entier, clé et libellé à la migration, `libelleAvant` des 13 classes raciales }). */
-const REGISTRE_0113 = new Map(JSON.parse(readFileSync(new URL('../../data/migrations/0113-mots-cles-id-entier.json', import.meta.url), 'utf8')).motsCles.map((m) => [m.ancienId, m]));
-const MIGRATION = readFileSync(new URL('../../data/migrations/0098-liens-en-mots-cles.sql', import.meta.url), 'utf8');
+const REGISTRE_0113 = mixtesSorties() ? null : new Map(JSON.parse(readFileSync(new URL('../../data/migrations/0113-mots-cles-id-entier.json', import.meta.url), 'utf8')).motsCles.map((m) => [m.ancienId, m]));
+const MIGRATION = mixtesSorties() ? null : readFileSync(new URL('../../data/migrations/0098-liens-en-mots-cles.sql', import.meta.url), 'utf8');
 /** Les adresses de mots-clés qu'une migration postérieure à la 0098 a changées (registre `mots_cles_modifies` : id entier, avant, après). */
-const URLS_APRES_0098 = ['0123-fusion-pages-alignement', '0124-retrait-accessoires-et-ceinture']
+const URLS_APRES_0098 = mixtesSorties() ? null : ['0123-fusion-pages-alignement', '0124-retrait-accessoires-et-ceinture']
   .flatMap((nom) => JSON.parse(readFileSync(new URL(`../../data/migrations/${nom}.json`, import.meta.url), 'utf8')).mots_cles_modifies ?? [])
   .filter((u) => u.col === 'url');
 const SCHEMA = readFileSync(new URL('../../data/schema.sql', import.meta.url), 'utf8');
@@ -63,8 +70,8 @@ const texteApres0098 = (table, colonne, id) => apres0098().prepare(`SELECT "${co
 // (aide-migration-0124.mjs). `intacte` ne voit que les lots du site.
 // un registre sorti avec le contenu (0114, jour J du lot 12) se lit dans ce qu'en garde test/fixtures/registres-sortis.json (test/aide-registres-sortis.mjs)
 const textesDe = (...noms) => noms.flatMap((nom) => registreDeMigration(nom).textes);
-const REECRITURES_R198 = textesDe('0104-r198-r208-textes-du-guide', '0107-r198-r200-posture-et-mode-hyper');
-const REECRITURES_APRES_0098 = [...REECRITURES_R198, ...textesDe('0111-relecture-des-regles-contre-les-decisions', '0112-r231-attaquer-et-se-defendre',
+const REECRITURES_R198 = mixtesSorties() ? null : textesDe('0104-r198-r208-textes-du-guide', '0107-r198-r200-posture-et-mode-hyper');
+const REECRITURES_APRES_0098 = mixtesSorties() ? null : [...REECRITURES_R198, ...textesDe('0111-relecture-des-regles-contre-les-decisions', '0112-r231-attaquer-et-se-defendre',
   '0113-mots-cles-id-entier', '0114-mots-cles-categories-assignees', '0115-mots-cles-synonymes', '0121-maj-decembre-suites', '0122-retrait-la-montee-de-niveau',
   '0124-retrait-accessoires-et-ceinture')];
 /** Les réécritures postérieures (de `parmi`) qui retirent la balise `r.balise` de sa cellule (leur `avant` la contient, pas leur `apres`). */
@@ -76,7 +83,7 @@ const ecritOuReecrit = (r, fragment, v, vues = new Set()) => v.includes(fragment
   || retiresPar({ ...r, balise: fragment }).filter((t) => !vues.has(t)).some((t) => ecritOuReecrit(r, t.apres, v, new Set([...vues, t])));
 /** `fragment` où chaque balise que la 0113, la 0114 ou la 0115 a réécrite dans la cellule de `r` (un ancien id devenu clé quittée, R232, R233 (5)) cite
  * la clé : ces migrations réécrivent des balises, pas la valeur entière qu'une migration antérieure (la 0112) avait écrite. */
-const BALISES_REECRITES = textesDe('0113-mots-cles-id-entier', '0114-mots-cles-categories-assignees', '0115-mots-cles-synonymes', '0122-retrait-la-montee-de-niveau', '0124-retrait-accessoires-et-ceinture');
+const BALISES_REECRITES = mixtesSorties() ? null : textesDe('0113-mots-cles-id-entier', '0114-mots-cles-categories-assignees', '0115-mots-cles-synonymes', '0122-retrait-la-montee-de-niveau', '0124-retrait-accessoires-et-ceinture');
 const selonLesClesDe0113 = (r, fragment) => BALISES_REECRITES.filter((t) => t.table === r.table && t.col === r.colonne && JSON.stringify(t.cle) === JSON.stringify(r.cle))
   .reduce((f, t) => f.split(t.avant).join(t.apres), fragment);
 /** La balise de la 0098 est dans `v`, ou une migration postérieure l'a retirée et son `apres` est dans `v` : l'une ou l'autre écriture. */
@@ -104,7 +111,7 @@ test('0098 : la base refuse une couleur qui n’est ni « famille:id » ni « #r
   m.close();
 });
 
-test('0098 : les mots-clés du registre (Q1, Q8, Q10) — comptes, libellés, adresses, sans définition', () => {
+testDeLaMixte('0098 : les mots-clés du registre (Q1, Q8, Q10) — comptes, libellés, adresses, sans définition', () => {
   const par = (o) => REGISTRE.motsCles.filter((m) => m.origine === o);
   assert.equal(par('couleur').length + par('lien').length + par('existant').length, REGISTRE.motsCles.length);
   assert.equal(REGISTRE.motsCles.filter((m) => m.couleur).length, 90, 'Q8 : un mot-clé coloré par page colorée (15 magies, 39 classes, 27 races, 9 pages du guide)');
@@ -153,7 +160,7 @@ test('0098 : les mots-clés du registre (Q1, Q8, Q10) — comptes, libellés, ad
   assert.ok(!REGISTRE.motsCles.some((m) => m.id === 'cr'), 'un id retiré n’est jamais réutilisé');
 });
 
-test('0098 : un mot-clé existant, de même écriture ou fusionné, garde id, libellé et définition et ne reçoit que l’url (« Le mot-clé existant prend l’URL »)', () => {
+testDeLaMixte('0098 : un mot-clé existant, de même écriture ou fusionné, garde id, libellé et définition et ne reçoit que l’url (« Le mot-clé existant prend l’URL »)', () => {
   const repris = REGISTRE.motsCles.filter((m) => m.origine === 'existant');
   assert.deepEqual(repris.map((m) => [m.id, m.url]), [
     ['alignement', '/regles/alignement/'], ['alteration-detat', '/regles/alterations-d-etats/'], ['artisanat', '/regles/artisanat/'],
@@ -170,7 +177,7 @@ test('0098 : un mot-clé existant, de même écriture ou fusionné, garde id, li
     'ni le libellé ni la définition ne changent');
 });
 
-test('0098 : « Fusionner dans l’existant » — le mot-clé existant prend l’URL, les liens le visent avec leur texte affiché, aucun mot-clé nouveau', () => {
+testDeLaMixte('0098 : « Fusionner dans l’existant » — le mot-clé existant prend l’URL, les liens le visent avec leur texte affiché, aucun mot-clé nouveau', () => {
   // 13 paires : la page ou la route, le mot-clé existant (« Résistance » : « Aucun, garder le nouveau »)
   assert.deepEqual(Object.entries(FUSIONS_DANS_L_EXISTANT).sort(), [
     ['/classes/', 'classe'], ['/metiers/', 'metier'], ['/races/', 'race'], ['guide/alterations-d-etats', 'alteration-detat'],
@@ -212,7 +219,7 @@ test('0098 : « Fusionner dans l’existant » — le mot-clé existant prend l�
     '{{tenaille|La prise en tenaille et zone d’influence}}');
 });
 
-test('0098 : homonymes race/classe — « La race garde le nom », la classe prend « (classe) »', () => {
+testDeLaMixte('0098 : homonymes race/classe — « La race garde le nom », la classe prend « (classe) »', () => {
   const de = (page) => REGISTRE.motsCles.find((m) => m.page === page);
   assert.deepEqual([de('races/orios').id, de('races/orios').libelle], ['orios', 'Orios']);
   assert.deepEqual([de('classes/orios').id, de('classes/orios').libelle], ['orios-classe', 'Orios (classe)']);
@@ -221,7 +228,7 @@ test('0098 : homonymes race/classe — « La race garde le nom », la classe pre
   assert.equal(REGISTRE.motsCles.filter((m) => m.page?.startsWith('classes/') && m.libelle.endsWith(' (classe)')).length, 13);
 });
 
-test('0098 : chaque mot-clé coloré reprend la couleur de sa page (Q5, Q9), une couleur de la palette', () => {
+testDeLaMixte('0098 : chaque mot-clé coloré reprend la couleur de sa page (Q5, Q9), une couleur de la palette', () => {
   const de = (page) => REGISTRE.motsCles.find((m) => m.page === page);
   assert.equal(de('magies/magie-du-sang').couleur, 'magie:sang');
   assert.equal(de('magies/magie-du-sang').couleur, `magie:${classeDeMagie('Sang').slice('couleur-magie-'.length)}`);
@@ -238,7 +245,7 @@ test('0098 : chaque mot-clé coloré reprend la couleur de sa page (Q5, Q9), une
   }
 });
 
-test('0098 : quelques liens convertis, leur texte affiché gardé', () => {
+testDeLaMixte('0098 : quelques liens convertis, leur texte affiché gardé', () => {
   const remplacement = (table, id, lien) => REGISTRE.remplacements.find((r) => r.table === table && r.cle.id === id && r.lien === lien);
   assert.equal(remplacement('page', 'guide/actions-et-mouvements', '[[La Vitesse et la Portée|la vitesse]]').balise, '{{la-vitesse-et-la-portee|la vitesse}}');
   assert.equal(remplacement('page', 'metiers/regles-des-metiers', '[[Mineur]]').balise, '{{mineur}}');
@@ -282,6 +289,13 @@ test('0098 : plus aucun lien interne hors pages d’exemple, codes et section 15
     }
   }
   assert.deepEqual(restes, []);
+  // les pages d'exemple gardent leurs liens, la page « Utiliser ce wiki » ses liens en code
+  assert.ok(db.prepare("SELECT count(*) AS n FROM page WHERE statut = 'example' AND instr(corps_md, '[[') > 0").get().n > 0);
+  assert.ok(texte('page', 'corps_md', 'guide/utiliser-ce-wiki').includes('[[Titre|texte affiché]]'));
+});
+
+testDeLaMixte('0098 : chaque balise du registre est en place, ou réécrite par une migration postérieure (R198, R232 (7)), sous forme canonique', () => {
+  const vocabulaire = motsClesDeLaBase(db);
   // R198 : les deux balises du Doc « Guide pour MJ » que la 0104 a retirées sont bien dans son registre (l'écriture d'avant ou d'après est admise)
   assert.deepEqual(REGISTRE.remplacements.filter((r) => retiresPar(r, REECRITURES_R198).length).map((r) => r.cle.id).sort(), ['guide/attaquer-et-se-defendre', 'guide/les-postures']);
   // R232 (7) : la 0114 a réécrit « {{orios}} » de guide/bienvenue (la race, devenue « orios-race »)
@@ -294,12 +308,9 @@ test('0098 : plus aucun lien interne hors pages d’exemple, codes et section 15
     assert.ok(baliseOuReecriture(r, v), `${r.table} ${r.cle.id} : ${r.balise} (ou le fragment qu'une migration postérieure a réécrit, R198)`);
     assert.deepEqual(formesNonCanoniques(v, vocabulaire, { markdown: r.table === 'page' && r.colonne === 'corps_md' }), [], `${r.table} ${r.cle.id}`);
   }
-  // les pages d'exemple gardent leurs liens, la page « Utiliser ce wiki » ses liens en code
-  assert.ok(db.prepare("SELECT count(*) AS n FROM page WHERE statut = 'example' AND instr(corps_md, '[[') > 0").get().n > 0);
-  assert.ok(texte('page', 'corps_md', 'guide/utiliser-ce-wiki').includes('[[Titre|texte affiché]]'));
 });
 
-test('convertirLesLiens : la conversion pure, avec la table du registre', () => {
+test('convertirLesLiens : la conversion pure', () => {
   const table = tableDeConversion([
     { id: 'la-vitesse', libelle: 'La vitesse', cles: ['id:guide/vitesse', 'la-vitesse', 'vitesse'], adresses: ['/regles/vitesse/'] },
     { id: 'magies', libelle: 'Magies', cles: [], adresses: ['/magies/', '/magies/#relations'] },
@@ -316,7 +327,9 @@ test('convertirLesLiens : la conversion pure, avec la table du registre', () => 
   assert.equal(convertirLesLiens('Aux [[La vitesse]].', table).texte, 'Aux {{la-vitesse|La vitesse}}.', 'texte de case : toujours le texte');
   assert.deepEqual(md('[[vitesse|v]]').convertis, [{ brut: '[[vitesse|v]]', balise: '{{la-vitesse|v}}', id: 'la-vitesse' }]);
   assert.throws(() => tableDeConversion([{ id: 'a', libelle: 'A', cles: ['x'] }, { id: 'b', libelle: 'B', cles: ['x'] }]), /deux mots-clés/);
-  // le registre de la migration en fait une table, et redonne chaque balise
+});
+
+testDeLaMixte('convertirLesLiens : le registre de la migration en fait une table, et redonne chaque balise', () => {
   const t = tableDeConversion(REGISTRE.motsCles);
   for (const r of REGISTRE.remplacements.filter((x) => x.table === 'page')) {
     const { texte: converti } = convertirLesLiens(r.lien, t, { markdown: true });

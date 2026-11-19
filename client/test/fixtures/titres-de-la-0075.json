@@ -1,0 +1,45 @@
+{
+ "$commentaire": "Les titres de rubrique de monstre que la migration 0075 (R155) a réécrits : { rubrique, avant, apres }, recopiés tels quels de ses UPDATE (data/migrations/0075-r155-titres-du-bestiaire.sql). Lus par test/serveur-edition-rejeu-resistances.test.mjs (un lot noté avant la 0075) ; égalité au SQL épinglée par test/references-des-migrations-mixtes.test.mjs tant que la migration est dans le dépôt (elle sort avec les migrations mixtes, R296).",
+ "titres": [
+  {
+   "rubrique": "grande_resistance",
+   "avant": "Grande(s) Résistance(s) Dégâts ÷4",
+   "apres": "Grande(s) Résistance(s) Dégâts ÷3"
+  },
+  {
+   "rubrique": "grande_resistance",
+   "avant": "Grande(s) résistance(s) Dégâts ÷4",
+   "apres": "Grande(s) résistance(s) Dégâts ÷3"
+  },
+  {
+   "rubrique": "grande_vulnerabilite",
+   "avant": "Grande(s) Vulnérabilité(s) Dégâts x4",
+   "apres": "Grande(s) Vulnérabilité(s) Dégâts x3"
+  },
+  {
+   "rubrique": "grande_vulnerabilite",
+   "avant": "Grande(s) faiblesse(s) Dégâts x4",
+   "apres": "Grande(s) faiblesse(s) Dégâts x3"
+  },
+  {
+   "rubrique": "grande_vulnerabilite",
+   "avant": "Grande(s )Vulnérabilité(s) Dégâts x4",
+   "apres": "Grande(s )Vulnérabilité(s) Dégâts x3"
+  },
+  {
+   "rubrique": "grande_vulnerabilite",
+   "avant": "Grande(s) vulnérabilité(s) Dégâts x4",
+   "apres": "Grande(s) vulnérabilité(s) Dégâts x3"
+  },
+  {
+   "rubrique": "double_resistance",
+   "avant": "Double(s) Résistance(s) Dégâts ÷4",
+   "apres": "Grande(s) Résistance(s) Dégâts ÷3"
+  },
+  {
+   "rubrique": "double_resistance",
+   "avant": "Double(s) Résistance(s) Dégâts/Effets ÷4",
+   "apres": "Grande(s) Résistance(s) Dégâts/Effets ÷3"
+  }
+ ]
+}

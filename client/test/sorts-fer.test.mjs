@@ -9,16 +9,17 @@
 // (modifiables aussi) ; l'état courant garde l'étiquette (sort_mot_cle, que le site ne modifie pas) et l'accord de la page de chaque magie avec ses lignes.
 import { IDS_DES_MOTS_CLES_PROTEGES } from '../src/lib/mots-cles-proteges.mjs';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { lireBalises, texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
 import { textesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { baseDImport, lotsAvant, texteDImport } from './aide-base-d-import.mjs';
+import { registreDeMigration } from './aide-registres-sortis.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
-const REGISTRE_0121 = JSON.parse(readFileSync(new URL('../../data/migrations/0121-maj-decembre-suites.json', import.meta.url), 'utf8'));
+// le registre de la 0121, ou ce qu'en garde test/fixtures/registres-sortis.json une fois la migration mixte sortie (ids et cellules, sans texte)
+const REGISTRE_0121 = registreDeMigration('0121-maj-decembre-suites');
 const lignes =(sql, ...p) => db.prepare(sql).all(...p).map((l) => ({ ...l }));
 const lignesDImport = (sql, ...p) => baseDImport().prepare(sql).all(...p).map((l) => ({ ...l }));
 // l'état d'après les migrations 0079 à 0093 : les balises posées par le service du site de dev (lots rapatriés avant la 0090, la même liste qu'avant

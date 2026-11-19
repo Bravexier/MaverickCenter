@@ -14,6 +14,10 @@ import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { baseDImport, cheminDImport } from './aide-base-d-import.mjs';
 import { copieDesRowsDeDepart, rowsDeDepart } from './aide-base-de-depart.mjs';
+import { testRetireAvecLesMixtes } from './aide-sortie-du-contenu.mjs';
+
+// Les tests qui éprouvent la migration mixte elle-même sortent avec elle (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LES_MIXTES).
+const testDeLaMixte = testRetireAvecLesMixtes(import.meta.url);
 
 const racine = trouverRacine();
 const client = fileURLToPath(new URL('../', import.meta.url));
@@ -140,7 +144,7 @@ test('db:migrate : refuse un schéma précédent dont la version ne précède pa
   assert.equal(readFileSync(join(rows, 'VERSION'), 'utf8'), readFileSync(join(rowsDeDepart(), 'VERSION'), 'utf8'), 'rien n’est écrit');
 });
 
-test('la migration 0002 est additive : colonnes facultatives ajoutées et remplies, rien n’est supprimé ni réécrit', () => {
+testDeLaMixte('la migration 0002 est additive : colonnes facultatives ajoutées et remplies, rien n’est supprimé ni réécrit', () => {
   const sql = readFileSync(join(racine, 'data', 'migrations', '0002-remarque.sql'), 'utf8');
   const instructions = sql.split('\n').filter((l) => l.trim() && !l.startsWith('--') && !l.startsWith('  WHERE'));
   assert.equal(instructions.filter((l) => /^ALTER TABLE \w+ ADD COLUMN remarque TEXT;$/.test(l)).length, entites.filter((t) => !CREEES_APRES_0002.includes(t)).length + RETIREES_APRES_0002.length);

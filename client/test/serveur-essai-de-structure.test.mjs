@@ -15,9 +15,9 @@ import {
 import { ROUTE_INCONNUE, routeNormalisee } from '../serveur/metriques.mjs';
 import { demarrerService } from '../serveur/service.mjs';
 import { lireLesMigrations } from '../serveur/structure-sur-place.mjs';
-import { NUMERO, baseDesRegles, baseRemplie, nouveauChemin, nouveauDossier, schemaDuDepot } from './aide-structure-sur-place.mjs';
+import { LIVRAISON, NUMERO, baseDesRegles, baseRemplie, nouveauChemin, nouveauDossier, schemaDuDepot } from './aide-structure-sur-place.mjs';
 
-const livre = lireLesMigrations();
+const livre = lireLesMigrations(LIVRAISON); // test/aide-structure-sur-place.mjs#LIVRAISON : au-dessus du plancher quand les mixtes sont sorties
 const V = livre.migrations.at(-1).numero;
 const N = (numero) => String(numero).padStart(4, '0');
 const schemaALaVersion = (version) => schemaDuDepot().replace(/^PRAGMA user_version\s*=\s*\d+;/m, `PRAGMA user_version = ${version};`);

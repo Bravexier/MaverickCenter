@@ -187,8 +187,11 @@ tests : `serveur-structure-sur-place`, `serveur-structure-sur-place-reconstructi
 vivante au démarrage, qui reste refaite depuis les règles puis rejouée depuis le journal (« Quand refait-on la base vivante ? ») : le module sert alors à deux choses seulement, l'**essai** (sur une
 copie) et la **note des migrations reçues** par une base refaite. **Avec lui**, le service migre sa vraie base sur place à son démarrage.
 
-- **Livré.** Chaque `data/migrations/NNNN-<nom>.sql` (les registres `.json` se joignent un à un) et `data/schema.sql` sont copiés dans `dist/_serveur/data/` (`livraison.mjs#fichiersDeStructure`, `FICHIERS_JOINTS`) :
+- **Livré.** Chaque `data/migrations/NNNN-<nom>.sql` (aucun registre `.json` : le service lit les références de `data/references/`, jointes à part) et `data/schema.sql` sont copiés dans `dist/_serveur/data/` (`livraison.mjs#fichiersDeStructure`, `FICHIERS_JOINTS`) :
   ils comptent dans l'empreinte du code. `lireLesMigrations` rend pour chacune son numéro, son fichier, son SQL et le sha256 des octets du `.sql`. Dossier absent : `null`, sans erreur.
+- **Plancher.** La version livrée (`versionLivree`) est la plus haute de la dernière migration et du `user_version` de `schema.sql` (`versionDuSchemaSql`) : aujourd'hui égales ; quand les migrations mixtes
+  sortent du dépôt, `schema.sql` garde leur version et sert de plancher (seules les migrations au-dessus s'appliquent ; l'essai d'une base à cette version dit `a_jour`, pas `en_avance`).
+  Les tests de structure appliquent alors une vraie migration au-dessus du plancher (`test/aide-structure-sur-place.mjs#LIVRAISON`).
 - **Appliquer** (`appliquerSurPlace`, les garde-fous de `tools/db/maverick.py#migrer`). Les migrations de numéro > `PRAGMA user_version`, **d'un seul bloc** : les numéros se suivent un à un ; une migration qui porte `BEGIN`, `COMMIT`, `END`, `ROLLBACK`
   ou `PRAGMA` est refusée ; la **sauvegarde** d'abord (`VACUUM INTO`, `structure-<instant>-v<version>.db` ; l'option `sauvegarde` est obligatoire, `false` pour un essai sur une copie) ; `foreign_keys` coupées pendant le bloc
   puis rétablies, `PRAGMA foreign_key_check` vide après chaque migration ; `user_version` posé ; le schéma obtenu comparé à `schema.sql` (`comparerLesSchemas`, portage de `comparer_schemas` : tables, colonnes dans l'ordre, index, vues) ;
@@ -724,7 +727,9 @@ un libellé reporté écraserait le sien) : le lot est en conflit (« la ligne n
 fusionné, et se résout sur `/mise-a-jour/`. Un lot noté avant la migration 0098 (les liens devenus des balises) est lu comme la migration a réécrit
 les règles (`ancienneEcritureDesLiens`, après `ancienneEcritureDesFusions`) : dans `avant` comme dans `apres`, chaque `[[…]]` ou `[texte](/…)` d'une
 colonne de `textesDeLaBase` devient la balise que la migration a écrite (`lib/liens-en-mots-cles.mjs#convertirLesLiens` avec la table du registre
-`data/migrations/0098-liens-en-mots-cles.json`, `tableDesLiensDeLa0098` ; le registre est joint au service livré, `serveur/livraison.mjs#FICHIERS_JOINTS`),
+de la migration, lue dans sa référence `data/references/liens-en-mots-cles-0098.json`, `tableDesLiensDeLa0098` ; la référence, et celle de la 0113
+(`ids-des-mots-cles-0113.json`, `registreDes0113`), sont jointes au service livré, `serveur/livraison.mjs#FICHIERS_JOINTS` ; jamais le registre lui-même :
+`docs/chantier-base-de-dev.md`, « Les lecteurs des migrations mixtes »),
 et le texte simple que la migration a balisé sur l'Alchimiste et l'Apothicaire (`artisanat_texte`, `artisanat_brut`) l'est de même ; une page
 d'exemple et un lien inconnu du registre restent tels quels. Un mot-clé que vise l'un de ces deux adaptateurs se supprime dès que rien ne le mentionne
 (décision R211, « Les rendre supprimables ») : rejoué sur des règles qui ne l'ont plus, un lot ancien écrit du texte simple — la balise de `cr` devient

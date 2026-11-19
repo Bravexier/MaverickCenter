@@ -12,12 +12,6 @@
 // Sans dépendance navigateur ni Astro (lib/text.mjs seulement).
 import { normalize } from './text.mjs';
 
-/**
- * Le registre de la migration 0113 (ancien id texte → id entier, pour les 407 mots-clés de la version 112), relatif à la racine du dépôt : le rejeu d'un
- * lot d'avant la migration y traduit ses mots-clés (serveur/edition.mjs#registreDes0113) ; livré avec le service (serveur/livraison.mjs#FICHIERS_JOINTS).
- */
-export const REGISTRE_DES_IDS_DE_MOTS_CLES = 'data/migrations/0113-mots-cles-id-entier.json';
-
 /** Le refus de la règle des clés : `fautes` = [{ base (normalize du libellé), ids, raison: 'sans-categorie' | 'incluses' | 'cle-prise', cle? }]. */
 export class HomonymesRefuses extends Error {
   constructor(fautes) {

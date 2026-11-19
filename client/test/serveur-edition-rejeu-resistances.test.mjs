@@ -51,12 +51,10 @@ const enregistrer = (base, operations) => {
   return r.corps;
 };
 /**
- * Les titres que 0075 réécrit, lus dans la migration (« UPDATE … SET … titre = 'après' WHERE rubrique = '…' AND titre = 'avant' ») :
- * [{ rubrique, avant, apres }] ; deux titres d'avant donnent le même après (« Double(s) Résistance(s) Dégâts ÷4 » et « Grande(s) … ÷4 »).
+ * Les titres que 0075 réécrit, recopiés de ses UPDATE (« UPDATE … SET … titre = 'après' WHERE rubrique = '…' AND titre = 'avant' ») dans
+ * test/fixtures/titres-de-la-0075.json (la migration sort avec les mixtes ; égalité épinglée par references-des-migrations-mixtes) : [{ rubrique, avant, apres }] ; deux titres d'avant donnent le même après (« Double(s) Résistance(s) Dégâts ÷4 » et « Grande(s) … ÷4 »).
  */
-const TITRES_DE_0075 = [...readFileSync(new URL('../../data/migrations/0075-r155-titres-du-bestiaire.sql', import.meta.url), 'utf8')
-  .matchAll(/^UPDATE monstre_rubrique SET [^;]*?titre = '([^']+)'\s*WHERE rubrique = '([a-z_]+)' AND titre = '([^']+)';/gms)]
-  .map((m) => ({ apres: m[1], rubrique: m[2], avant: m[3] }));
+const TITRES_DE_0075 = JSON.parse(readFileSync(new URL('./fixtures/titres-de-la-0075.json', import.meta.url), 'utf8')).titres; // recopiés du SQL de la migration
 const titreDAvant0075 = (rubrique, titre) => TITRES_DE_0075.find((t) => t.rubrique === rubrique && t.apres === titre)?.avant;
 const AVANT_0075 = /noté avant la migration 0075 \(décision R155\) : le titre de la rubrique écrit encore l’ancien multiplicateur/;
 const conflits = (base) => base.prepare("SELECT DISTINCT detail FROM modification WHERE etat = 'conflit'").all().map((r) => r.detail);

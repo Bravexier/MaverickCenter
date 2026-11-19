@@ -10,8 +10,9 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
   cheminDeLAdresse, classeDuMotCle, decouperLAdresse, fauteDeFormeDeLUrl, fauteDeLUrl, lienGarde, LIENS_GARDES, lireLaCouleur, motCleDeLaPage,
-  motsClesDeLAdresse, PREFIXE_DE_CLASSE, REGISTRE_DES_LIENS,
+  motsClesDeLAdresse, PREFIXE_DE_CLASSE,
 } from '../src/lib/mots-cles-liens.mjs';
+import { REFERENCES } from '../src/lib/references-des-migrations.mjs';
 import {
   couleurDeReference, couleursDeLaPalette, cssDesFamilles, cssDesMotsCles, FAMILLES_DE_CHAQUE_PAGE, FAMILLES_DES_ZONES, fauteDeLaCouleur,
 } from '../src/lib/palette-css.mjs';
@@ -32,8 +33,8 @@ const lire = (chemin) => readFileSync(fileURLToPath(new URL(`../${chemin}`, impo
 
 test('module sans dépendance : un script de page peut l’importer sans tirer la palette (skill ui-couleurs)', () => {
   assert.doesNotMatch(lire('src/lib/mots-cles-liens.mjs'), /^\s*import\b/m);
-  assert.equal(REGISTRE_DES_LIENS, 'data/migrations/0098-liens-en-mots-cles.json');
-  assert.ok(readFileSync(`${RACINE}${REGISTRE_DES_LIENS}`, 'utf8').includes('"motsCles"'), 'le registre de la migration existe');
+  // la table de conversion de la 0098 se lit dans sa référence (data/references/, lib/references-des-migrations.mjs), jamais dans le registre de la migration
+  assert.ok(readFileSync(`${RACINE}${REFERENCES.liens}`, 'utf8').includes('"motsCles"'), 'la référence de la migration existe');
 });
 
 test('adresse : découpée, chemin sans ancre ni requête, préfixe de déploiement retiré, barre finale', () => {

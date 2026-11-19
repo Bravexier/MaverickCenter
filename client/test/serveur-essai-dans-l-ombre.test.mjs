@@ -19,9 +19,10 @@ import { DOSSIER_DES_ESSAIS, FORMAT_DE_L_ETAT } from '../serveur/essai-de-struct
 import { demarrerService } from '../serveur/service.mjs';
 import { lireLesMigrations } from '../serveur/structure-sur-place.mjs';
 import { CLASSES_DE_TABLES, TABLES_DE_CONTENU, classeDeLaTable } from '../src/lib/tables-de-la-base.mjs';
-import { NUMERO, annulerLesMigrations, baseDesRegles, nouveauChemin, nouveauDossier, schemaDuDepot } from './aide-structure-sur-place.mjs';
+import { LIVRAISON, NUMERO, annulerLesMigrations, baseDesRegles, nouveauChemin, nouveauDossier, schemaDuDepot } from './aide-structure-sur-place.mjs';
 
-const livre = lireLesMigrations();
+/** La livraison des tests (test/aide-structure-sur-place.mjs#LIVRAISON : celle du dépôt, ou au-dessus du plancher quand les migrations mixtes sont sorties). */
+const livre = lireLesMigrations(LIVRAISON);
 const V = livre.migrations.at(-1).numero;
 const N = (numero) => String(numero).padStart(4, '0');
 const schemaALaVersion = (version) => schemaDuDepot().replace(/^PRAGMA user_version\s*=\s*\d+;/m, `PRAGMA user_version = ${version};`);
@@ -89,8 +90,8 @@ function siteAvantInstallation(t, { avant = '', empreintes = true } = {}) {
 async function installer(db, regles2, { version = '1.1.0', reglages = {}, avantDemarrage = null } = {}) {
   const evenements = [];
   const sortie = [];
-  const ombre = creerOmbre({ dossier: db, instance: 'dev', journal: (m, o) => sortie.push({ m, ...o }), evenement: (type, o) => evenements.push({ type, ...o }), ...reglages });
-  const r = preparerBaseVivante({ regles: regles2, dossier: db, version, ombre });
+  const ombre = creerOmbre({ dossier: db, instance: 'dev', journal: (m, o) => sortie.push({ m, ...o }), evenement: (type, o) => evenements.push({ type, ...o }), ...LIVRAISON, ...reglages });
+  const r = preparerBaseVivante({ regles: regles2, dossier: db, version, ombre, migrations: LIVRAISON.migrations });
   avantDemarrage?.(r, ombre);
   await ombre.demarrer();
   return { r, ombre, rapport: ombre.lire().dernier, evenements, sortie };
@@ -287,7 +288,7 @@ test('le service : le site de dev fait l’essai après son ouverture, le rappor
   writeFileSync(fichierVersion, JSON.stringify({ version: '1.2.0', empreinte: null }));
   const livrees = regles();
   const sortie = [];
-  const s = await demarrerService({ regles: livrees, dossier: db, port: 0, intervalle: 0, edition: true, metriques: false, fichierVersion, journal: (m, o) => sortie.push({ m, ...o }), essaiDeStructure: { intervalle: 0 } });
+  const s = await demarrerService({ regles: livrees, dossier: db, port: 0, intervalle: 0, edition: true, metriques: false, fichierVersion, journal: (m, o) => sortie.push({ m, ...o }), essaiDeStructure: { intervalle: 0, ombre: { ...LIVRAISON } } });
   try {
     assert.ok(s.ombre, 'le site de dev a son essai dans l’ombre');
     await s.ombre.demarrer(); // le service l'a lancé après son ouverture (setImmediate) : la promesse est celle de la file

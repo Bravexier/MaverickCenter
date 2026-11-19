@@ -8,7 +8,7 @@
 //   node --test test/serveur-edition-rejeu-fusions.test.mjs
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { cpSync, readFileSync } from 'node:fs';
+import { cpSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
@@ -16,12 +16,13 @@ import { fileURLToPath } from 'node:url';
 import { appliquerJournal } from '../scripts/db-appliquer-edition.mjs';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
-import { ancienneEcritureDesFusions, FUSIONS_DE_MIGRATION, rejouerLeJournal } from '../serveur/edition.mjs';
+import { ancienneEcritureDesFusions, FUSIONS_DE_MIGRATION, registreDes0113, rejouerLeJournal } from '../serveur/edition.mjs';
 import { chargerJournal, journalExporte } from '../serveur/edition-journal.mjs';
 import { formesNonCanoniques, vocabulaireDesMotsCles } from '../src/lib/mots-cles-balises.mjs';
 import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { baseDImport, lotsAvant, remettreDepuisLImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { registreDeMigration } from './aide-registres-sortis.mjs';
 import { idDEssai, reglesAvecDesMotsClesDEssai } from './aide-mots-cles.mjs';
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
@@ -59,7 +60,7 @@ const AJOUT_PAGE = '\n\nEssai de rejeu : {{corruption|CR}}, {{corruption:}} et {
 const AJOUT_PAGE_AVANT_0090 = '\n\nEssai de rejeu : {{cr}}, {{cr :}} et {{cr|la CR}}.\n\n| a | b |\n| --- | --- |\n| x | {{cr\\|CR}} |\n';
 // les mots-clés par leur id entier (migration 0113 : le registre de la migration traduit les anciens ids texte des lots ; mots-clés d'essai :
 // test/aide-mots-cles.mjs) ; les lots d'avant la 0090 les écrivent par leur ancien id texte
-const REGISTRE_0113 = new Map(JSON.parse(readFileSync(join(RACINE, 'data/migrations/0113-mots-cles-id-entier.json'), 'utf8')).motsCles.map((m) => [m.ancienId, m.id]));
+const REGISTRE_0113 = registreDes0113(); // la correspondance de la 0113, lue dans sa référence (celle du rejeu)
 const CORRUPTION = REGISTRE_0113.get(FUSIONS_DE_MIGRATION[0].cible);
 const ESSAI_C = idDEssai('essai-glossaire-c');
 const avant0090 = (t) => (typeof t === 'string' ? t.replaceAll('{{corruption|', '{{cr|') : t);
@@ -91,7 +92,7 @@ for (const [migration, nomDuRegistre, titre] of [
 ]) {
   test(`FUSIONS_DE_MIGRATION (${migration}) : ${titre} ; un lot d’avant la migration lit ses balises comme elle les a reciblées`, () => {
     // le registre de la migration nomme la fusion ; les ids figés se lisent dans le registre de la 0113 (un lot d'avant la migration écrit la clé de son temps)
-    const registre = JSON.parse(readFileSync(join(RACINE, `data/migrations/${nomDuRegistre}.json`), 'utf8'));
+    const registre = registreDeMigration(nomDuRegistre); // sa fusion et ses balises reciblées, gardées par test/fixtures/registres-sortis.json une fois les migrations mixtes sorties
     const f = FUSIONS_DE_MIGRATION.find((x) => x.migration === migration);
     assert.deepEqual(f, { source: registre.fusion.source, cible: registre.fusion.cible, texte: registre.fusion.texte, migration });
     assert.deepEqual([REGISTRE_0113.get(f.source), REGISTRE_0113.get(f.cible)], [registre.fusion.source_id, registre.fusion.cible_id]);

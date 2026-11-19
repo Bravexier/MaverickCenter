@@ -15,10 +15,17 @@ import { analyserCout } from '../src/lib/sort-analyse.mjs';
 import { coutEnUneCase } from '../src/lib/sort-cout.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
+import { registreDeMigration } from './aide-registres-sortis.mjs';
+import { testRetireAvecLesMixtes } from './aide-sortie-du-contenu.mjs';
+
+// Les tests qui éprouvent la migration mixte elle-même sortent avec elle (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LES_MIXTES).
+const testDeLaMixte = testRetireAvecLesMixtes(import.meta.url);
 
 const lire = (chemin) => readFileSync(new URL(chemin, import.meta.url), 'utf8');
 const SCHEMA = lire('../../data/schema.sql');
-const REGISTRE = JSON.parse(lire('../../data/migrations/0117-magies-v10-specialisations.json'));
+// Le registre sort avec les migrations mixtes, et les tests qui le comparent à l'import avec lui (RETIRES_AVEC_LES_MIXTES) ; le test de l'état courant
+// n'en lit que les ids des sorts supprimés, gardés dans test/fixtures/registres-sortis.json (aide-registres-sortis.mjs).
+const REGISTRE = registreDeMigration('0117-magies-v10-specialisations');
 const CORRECTIONS = JSON.parse(lire('../../tools/sheets/corrections.json'));
 const CAPACITES = JSON.parse(lire('../../tools/bestiaire/capacites.json'));
 const IGNORER_INVOCATION = JSON.parse(lire('../../tools/sources/ignorer/invocation.json'));
@@ -73,7 +80,7 @@ test('état courant : chaque spécialisation est d’une magie et a sa ligne pag
   assert.deepEqual(autres, []);
 });
 
-test('import (R236 (1)) : deux spécialisations par magie sauf le Potentiel Illimité ; 30 sorts par magie, 1-10 communs (NPM 1-2), 11-20 et 21-30 par spécialisation (NPM 3-5)', () => {
+testDeLaMixte('import (R236 (1)) : deux spécialisations par magie sauf le Potentiel Illimité ; 30 sorts par magie, 1-10 communs (NPM 1-2), 11-20 et 21-30 par spécialisation (NPM 3-5)', () => {
   const b = dImport();
   const ids = b.prepare('SELECT id FROM magie_specialisation ORDER BY id').all().map((r) => r.id);
   assert.deepEqual(ids, [...REGISTRE.specialisations].sort());
@@ -92,7 +99,7 @@ test('import (R236 (1)) : deux spécialisations par magie sauf le Potentiel Illi
   }
 });
 
-test('R237 : les sorts supprimés ne sont plus nulle part (hors traces), les renommés gardent leur id, les nouveaux suivent leur nom', () => {
+testDeLaMixte('R237 : les sorts supprimés ne sont plus nulle part (hors traces), les renommés gardent leur id, les nouveaux suivent leur nom', () => {
   const b = dImport();
   const supprimes = REGISTRE.sorts.supprimes;
   assert.equal(supprimes.length, 21);
@@ -135,7 +142,7 @@ test('état courant : aucune ligne ne cite un sort supprimé ; l’invocation n�
   assert.equal(db.prepare('SELECT count(*) AS n FROM invocation WHERE tableau_sort_id IS NOT NULL').get().n, 0);
 });
 
-test('R10 : « Torrant colérique » corrigé ; le sort nouveau a l’id du nom corrigé, et la correction est au registre et dans la table correction', () => {
+testDeLaMixte('R10 : « Torrant colérique » corrigé ; le sort nouveau a l’id du nom corrigé, et la correction est au registre et dans la table correction', () => {
   const { id } = REGISTRE.sorts.torrent;
   const b = dImport();
   const s = b.prepare('SELECT magie_id, nom, nom_cle FROM sort WHERE id = ?').get(id);
@@ -156,7 +163,7 @@ test('R10 : « Torrant colérique » corrigé ; le sort nouveau a l’id du nom 
   assert.deepEqual(lignes, registre);
 });
 
-test('R242 (1) : les cartes du bestiaire écrivent le nom (à l’import) des sorts renommés, et le lien vers le sort est gardé', () => {
+testDeLaMixte('R242 (1) : les cartes du bestiaire écrivent le nom (à l’import) des sorts renommés, et le lien vers le sort est gardé', () => {
   const b = dImport();
   const renommes = REGISTRE.sorts.renommes_r237_11;
   const ancienDe = new Map(renommes.map((r) => [r.id, r.avant]));
@@ -182,7 +189,7 @@ test('R242 (1) : les cartes du bestiaire écrivent le nom (à l’import) des so
   for (const v of IGNORER_INVOCATION.voulus.filter((x) => ['creature_capacite', 'creature_capacite_sort'].includes(x.table))) assert.match(v.raison, /R242/);
 });
 
-test('R242 (2), (3) : les sorts supprimés restent écrits sans lien ; la Poupée fulgurante est rattachée à Boules plasmiques (id gardé)', () => {
+testDeLaMixte('R242 (2), (3) : les sorts supprimés restent écrits sans lien ; la Poupée fulgurante est rattachée à Boules plasmiques (id gardé)', () => {
   const b = dImport();
   for (const c of REGISTRE.creature_capacite_sort_sans_lien) {
     const l = b.prepare('SELECT sort_nom_brut, sort_id FROM creature_capacite_sort WHERE capacite_id = ? AND rang = ?').get(c.capacite_id, c.rang);
@@ -194,7 +201,7 @@ test('R242 (2), (3) : les sorts supprimés restent écrits sans lien ; la Poupé
   assert.ok(lien, 'Poupée fulgurante -> Boules plasmiques');
 });
 
-test('R243 (1) : les six textes d’incantation de Glace et de Terre restent, avec leur provenance dans le classeur V8', () => {
+testDeLaMixte('R243 (1) : les six textes d’incantation de Glace et de Terre restent, avec leur provenance dans le classeur V8', () => {
   const b = dImport();
   const ids = REGISTRE.sorts.r243_textes_gardes;
   assert.equal(ids.length, 6);
@@ -206,7 +213,7 @@ test('R243 (1) : les six textes d’incantation de Glace et de Terre restent, av
   }
 });
 
-test('R243 (2) : les fils de commentaires du V8 sont retirés ; une remarque est ses notes du classeur de Décembre, sauf une remarque modifiée par le site', () => {
+testDeLaMixte('R243 (2) : les fils de commentaires du V8 sont retirés ; une remarque est ses notes du classeur de Décembre, sauf une remarque modifiée par le site', () => {
   assert.equal(REGISTRE.remarques.fils_v8_retires.length, 31);
   // état courant : note_cellule ne garde que des notes, toutes du classeur de Décembre
   const natures = db.prepare("SELECT DISTINCT nature FROM note_cellule WHERE entite_table = 'sort'").all().map((r) => r.nature);
@@ -223,7 +230,7 @@ test('R243 (2) : les fils de commentaires du V8 sont retirés ; une remarque est
   }
 });
 
-test('R10 : les coquilles candidates retenues sont au registre des dumps (magie-v10) et corrigées à l’import ; celles écartées n’y sont pas', () => {
+testDeLaMixte('R10 : les coquilles candidates retenues sont au registre des dumps (magie-v10) et corrigées à l’import ; celles écartées n’y sont pas', () => {
   const sec = CORRECTIONS.dumps['magie-v10'].corrections;
   const b = dImport();
   assert.ok(REGISTRE.coquilles_r10.length > 0);
@@ -248,7 +255,7 @@ test('R10 : les coquilles candidates retenues sont au registre des dumps (magie-
   }
 });
 
-test('R244 : les coûts du classeur de Décembre non répartis par le service suivent la décision (chakra dans « Coût », précision dans « Coût secondaire ») ; Projectile arcanique reste tel qu’écrit (MAJ-K7)', () => {
+testDeLaMixte('R244 : les coûts du classeur de Décembre non répartis par le service suivent la décision (chakra dans « Coût », précision dans « Coût secondaire ») ; Projectile arcanique reste tel qu’écrit (MAJ-K7)', () => {
   const ligne = decision('R244');
   assert.ok(ligne, 'R244 au registre des décisions');
   const b = dImport();
@@ -289,7 +296,7 @@ test('R244 : les coûts du classeur de Décembre non répartis par le service su
   }
 });
 
-test('R246 : la capacité de la Poupée fulgurante affiche le nom (à l’import) du sort Boules plasmiques, lien gardé (R242 (3)) ; l’écart au classeur Invocation cite R246', () => {
+testDeLaMixte('R246 : la capacité de la Poupée fulgurante affiche le nom (à l’import) du sort Boules plasmiques, lien gardé (R242 (3)) ; l’écart au classeur Invocation cite R246', () => {
   assert.ok(decision('R246'), 'R246 au registre des décisions');
   const b = dImport();
   const capacites = REGISTRE.bestiaire.creature_capacite.filter((c) => c.decision === 'R246');

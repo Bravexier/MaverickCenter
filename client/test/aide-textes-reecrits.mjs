@@ -7,11 +7,22 @@
 //   textesReecrits(...migrations)   les entrées `textes` des registres nommés (« 0105-r207-armures-boucliers-et-fabrication »…), dans l'ordre donné.
 //   ecrituresReecrites(...migrations) une fonction (table, cle, col, v) -> [v, v réécrit] : chaque `avant` des registres pour cette cellule remplacé
 //                                   par son `apres` (s'il n'y est pas déjà).
-import { readFileSync } from 'node:fs';
+import { contenuSorti, mixtesSorties } from '../src/lib/sortie-du-contenu.mjs';
+import { registreDeMigration, REGISTRES_GARDES } from './aide-registres-sortis.mjs';
 
-/** Les entrées `textes` des registres des migrations nommées (sans extension), dans l'ordre donné. */
-export const textesReecrits = (...migrations) => migrations
-  .flatMap((nom) => JSON.parse(readFileSync(new URL(`../../data/migrations/${nom}.json`, import.meta.url), 'utf8')).textes ?? []);
+/**
+ * Les entrées `textes` des registres des migrations nommées (sans extension), dans l'ordre donné. Un registre sorti du dépôt se lit dans ce qu'en garde
+ * test/fixtures/registres-sortis.json (balises seulement : aide-registres-sortis.mjs#registreDeMigration) ; une erreur s'il n'est pas gardé, ou gardé sans
+ * ses fragments `avant` et `apres` (cellules seules : jamais une liste vide ou incomplète en silence).
+ */
+export const textesReecrits = (...migrations) => migrations.flatMap((nom) => {
+  const registre = registreDeMigration(nom);
+  if ((contenuSorti() || mixtesSorties()) && Object.hasOwn(REGISTRES_GARDES, nom)
+    && (!Array.isArray(registre.textes) || registre.textes.some((t) => typeof t.avant !== 'string' || typeof t.apres !== 'string'))) {
+    throw new Error(`registre ${nom}.json : ses fragments ne sont pas gardés dans test/fixtures/registres-sortis.json (test/aide-textes-reecrits.mjs)`);
+  }
+  return registre.textes ?? [];
+});
 
 /** (table, cle, col, v) -> [v tel quel, v avec chaque fragment `avant` des registres pour cette cellule remplacé par son `apres`]. */
 export function ecrituresReecrites(...migrations) {

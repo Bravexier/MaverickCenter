@@ -17,7 +17,7 @@ import {
   AVERTISSEMENT_DONNEES, ErreurDeControle, TABLES_QUI_GARDENT_DES_NOMS, analyserUneMigration, decouperLeSql, rendreLeResume, reglesDUneMigration, reglesDesFichiers,
 } from '../scripts/controler-les-migrations-lib.mjs';
 import { dossierTemporaire, variablesTemporaires } from './aide-dossier-temporaire.mjs';
-import { NUMERO, RACINE, baseRemplie, etatDuFichier, schemaDuDepot } from './aide-structure-sur-place.mjs';
+import { LIVRAISON, NUMERO, RACINE, baseRemplie, etatDuFichier, schemaDuDepot } from './aide-structure-sur-place.mjs';
 
 const SCRIPT = join(dirname(fileURLToPath(import.meta.url)), '..', 'scripts', 'controler-les-migrations.mjs');
 const regles = (violations) => violations.map((v) => v.regle);
@@ -82,6 +82,15 @@ test('numero : un numéro déjà pris à la base, ou deux fichiers pour un numé
   assert.deepEqual(arriere.violations.map((v) => [v.fichier, v.regle]), [['0002-autre.sql', 'numero']]);
   const double = reglesDesFichiers(base, lot({ ...Object.fromEntries(base), '0003-c.sql': 'x', '0003-d.sql': 'x' }));
   assert.deepEqual(double.violations.map((v) => [v.fichier, v.regle]).sort(), [['0003-c.sql', 'numero'], ['0003-d.sql', 'numero']]);
+});
+
+test('numero : le schema.sql de la base est le plancher — des migrations sorties du dépôt (les mixtes, R296) laissent leur numéro pris', () => {
+  const base = lot({ '0001-a.sql': 'x', '0002-b.sql': 'x' });
+  const sous = reglesDesFichiers(base, lot({ ...Object.fromEntries(base), '0004-c.sql': 'x' }), { plancher: 4 });
+  assert.deepEqual(sous.violations.map((v) => [v.fichier, v.regle]), [['0004-c.sql', 'numero']], 'le schema.sql de la base est déjà à la version 4');
+  assert.deepEqual(reglesDesFichiers(base, lot({ ...Object.fromEntries(base), '0005-c.sql': 'x' }), { plancher: 4 }).violations, [], 'au-dessus du plancher');
+  assert.deepEqual(reglesDesFichiers(base, lot({ ...Object.fromEntries(base), '0003-c.sql': 'x' })).violations, [], 'sans plancher, comme avant');
+  assert.deepEqual(reglesDesFichiers(base, lot({ ...Object.fromEntries(base), '0003-c.sql': 'x' }), { plancher: 2 }).violations, [], 'plancher égal à la dernière : rien ne change');
 });
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
@@ -273,6 +282,16 @@ test('git : une migration fusionnée modifiée ou supprimée dans l’arbre est 
   assert.equal(r.version, 129);
 });
 
+test('git : le schema.sql de la base est le plancher — une base dont il dépasse la dernière migration (mixtes sorties) refuse une migration sous lui', (t) => {
+  const depart = { 'data/schema.sql': schemaMini(131) };
+  const sous = depot(t, { 'data/migrations/0130-neuve.sql': NOUVELLE_TABLE }, { depart });
+  const r = controlerLesMigrations({ racine: sous, base: 'HEAD', essai: false });
+  assert.deepEqual(r.violations.map((v) => [v.fichier, v.regle]), [['0130-neuve.sql', 'numero']]);
+  assert.equal(r.version, 131, 'la version de la base est celle de son schema.sql');
+  const dessus = depot(t, { 'data/migrations/0132-neuve.sql': NOUVELLE_TABLE, 'data/schema.sql': schemaMini(132, NOUVELLE_TABLE.trim()) }, { depart });
+  assert.deepEqual(controlerLesMigrations({ racine: dessus, base: 'HEAD', essai: false }).violations, []);
+});
+
 test('git : la base est le merge-base, pas la pointe de la branche de comparaison (une migration fusionnée depuis n’est pas « supprimée »)', (t) => {
   const racine = depot(t);
   git(racine, 'branch', 'fourche');
@@ -351,9 +370,10 @@ test('script : le code de sortie dit la règle violée (1), la réussite (0) ou 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 const migration = (numero, sql) => ({ numero, fichier: `${String(numero).padStart(4, '0')}-essai.sql`, empreinte: 'a'.repeat(64), sql });
 // Les migrations réelles à appliquer sur la base d'avant : celle qui crée `migration_recue` (NUMERO, calculé) et celles qui la suivent (la base d'avant n'a ni leur
-// structure ni la sienne : test/aide-structure-sur-place.mjs#annulerLesMigrations) ; la dernière livrée fixe la version du schema.sql.
-const REELLES = readdirSync(join(RACINE, 'data', 'migrations')).filter((f) => /^\d{4}-.*\.sql$/.test(f) && Number(f.slice(0, 4)) >= NUMERO).sort()
-  .map((fichier) => ({ numero: Number(fichier.slice(0, 4)), fichier, empreinte: 'a'.repeat(64), sql: readFileSync(join(RACINE, 'data', 'migrations', fichier), 'utf8') }));
+// structure ni la sienne : test/aide-structure-sur-place.mjs#annulerLesMigrations) ; la dernière livrée fixe la version du schema.sql. Lues dans la livraison des
+// tests (test/aide-structure-sur-place.mjs#LIVRAISON : celle du dépôt, ou au-dessus du plancher quand les migrations mixtes sont sorties).
+const REELLES = readdirSync(LIVRAISON.migrations).filter((f) => /^\d{4}-.*\.sql$/.test(f) && Number(f.slice(0, 4)) >= NUMERO).sort()
+  .map((fichier) => ({ numero: Number(fichier.slice(0, 4)), fichier, empreinte: 'a'.repeat(64), sql: readFileSync(join(LIVRAISON.migrations, fichier), 'utf8') }));
 const FICHIER_0129 = REELLES[0].fichier;
 const DERNIERE = REELLES.at(-1).numero;
 /** Les migrations réelles, `extra` (du SQL) ajouté à la première (celle qui crée `migration_recue`). */

@@ -5,7 +5,8 @@
 // Contenu (R275, question 6 : le kit ne porte aucun contenu, c'est du code) :
 //   - client/ avec ses node_modules (aucun lien qui sorte du kit : un node_modules relié à un autre dossier est lu par son chemin réel, ses modules sont alors dupliqués
 //     et le site fabriqué n'est plus celui de la CI), sans dist/, .astro/, src/content/wiki/, test/, var/, ni ce que git ignore ;
-//   - data/schema.sql, data/derive.sql, data/migrations/ (le schéma et ses registres : du code) ;
+//   - data/schema.sql, data/derive.sql, data/migrations/ (le schéma et ses registres : du code), data/references/ (ce que le build lit encore d'un registre de
+//     migration, sans texte de règle : les noms d'avant de la fiche, client/src/lib/references-des-migrations.mjs) ;
 //   - sources/sources.json, sources/copies-drive.json et sources/tipeee/bienvenue.json (la page Archives et l'accueil les lisent ; copies-drive.json : le registre des identifiants de copies, lu par lib/archives.mjs : sans lui le build échoue) ;
 //   - .nvmrc (la version de Node).
 // Élagage : les modules natifs d'une autre plateforme, d'une autre architecture ou d'une autre libc (musl contre glibc : les deux variantes sont installées) sont
@@ -27,7 +28,7 @@ export const META_DU_KIT = 'kit.json';
 export const DOSSIER_DU_KIT = 'atelier-kit';
 
 /** Ce que le kit emporte, relatif à la racine du dépôt. */
-export const A_EMPORTER = Object.freeze(['client', 'data/schema.sql', 'data/derive.sql', 'data/migrations', 'sources/sources.json', 'sources/copies-drive.json', 'sources/tipeee/bienvenue.json', '.nvmrc']);
+export const A_EMPORTER = Object.freeze(['client', 'data/schema.sql', 'data/derive.sql', 'data/migrations', 'data/references', 'sources/sources.json', 'sources/copies-drive.json', 'sources/tipeee/bienvenue.json', '.nvmrc']);
 /** Le fichier d'identité du dernier lot (lot 11, PR 4 ; sans contenu : écrit par le workflow de mise à jour, client/scripts/mise-a-jour-github.mjs#FICHIER_D_IDENTITE), relatif à la racine. */
 export const FICHIER_D_IDENTITE = 'data/paquet.json';
 /** Son format (copie de mise-a-jour-github.mjs#FORMAT_D_IDENTITE : un test les compare). */
@@ -47,7 +48,7 @@ export const INTERDITS = Object.freeze([
 /** Ce que le kit doit porter pour que le build depuis un contenu marche. */
 export const INDISPENSABLES = Object.freeze([
   'client/package.json', 'client/astro.config.mjs', 'client/scripts/fabriquer-depuis-contenu.mjs', 'client/scripts/poser-un-site.mjs', 'client/node_modules/astro/bin/astro.mjs',
-  'data/schema.sql', 'data/derive.sql', 'data/migrations', 'sources/sources.json', 'sources/copies-drive.json', 'sources/tipeee/bienvenue.json', '.nvmrc',
+  'data/schema.sql', 'data/derive.sql', 'data/migrations', 'data/references', 'sources/sources.json', 'sources/copies-drive.json', 'sources/tipeee/bienvenue.json', '.nvmrc',
 ]);
 
 export class ErreurKit extends Error {

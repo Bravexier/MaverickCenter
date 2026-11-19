@@ -23,9 +23,11 @@ import { comparerBases } from '../src/lib/notes-de-version.mjs';
 import { POTENTIEL_ILLIMITE } from '../src/lib/potentiel-illimite.mjs';
 import { cheminDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire, fichierTemporaire } from './aide-dossier-temporaire.mjs';
+import { registreDeMigration } from './aide-registres-sortis.mjs';
 
 const CLIENT = fileURLToPath(new URL('..', import.meta.url));
-const REGISTRE = JSON.parse(readFileSync(fileURLToPath(new URL('../../data/migrations/0117-magies-v10-specialisations.json', import.meta.url)), 'utf8'));
+// (registre de la 0117, ou ce qu'en garde test/fixtures/registres-sortis.json une fois la migration mixte sortie : ids et effectifs)
+const REGISTRE = registreDeMigration('0117-magies-v10-specialisations');
 const db = ouvrirBase({ sansExemples: false });
 const modele = chargerMagies(db);
 const specialisations = db.prepare('SELECT * FROM magie_specialisation ORDER BY magie_id, ordre').all();

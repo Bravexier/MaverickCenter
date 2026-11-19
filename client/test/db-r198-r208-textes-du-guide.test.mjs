@@ -10,32 +10,45 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { cheminDePage } from '../src/lib/metiers.mjs';
+import { mixtesSorties } from '../src/lib/sortie-du-contenu.mjs';
 import { baseDImport, lotsAvant } from './aide-base-d-import.mjs';
 import { textesReecrits } from './aide-textes-reecrits.mjs';
 import { retireeParLa0122 } from './aide-migration-0122.mjs';
+import { idDuMotCleNomme } from './aide-mots-cles.mjs';
+import { registreDeMigration } from './aide-registres-sortis.mjs';
+import { testRetireAvecLesMixtes } from './aide-sortie-du-contenu.mjs';
 
-const registre = JSON.parse(readFileSync(new URL('../../data/migrations/0104-r198-r208-textes-du-guide.json', import.meta.url), 'utf8'));
+// Les tests qui éprouvent la migration mixte elle-même sortent avec elle (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LES_MIXTES).
+const testDeLaMixte = testRetireAvecLesMixtes(import.meta.url);
+
+// Les registres de la 0104 et de la 0107 sortent avec les migrations mixtes, et les tests qui comparent l'import à leurs remplacements (du texte de
+// règle) avec eux (RETIRES_AVEC_LES_MIXTES) ; le test des métiers ne lit que les mots-clés créés (ids, adresses, pages), gardés dans
+// test/fixtures/registres-sortis.json (aide-registres-sortis.mjs).
+const registre = registreDeMigration('0104-r198-r208-textes-du-guide');
 const apresLa0104 = () => baseDImport({ garder: lotsAvant('0104') });
-const registre0107 = JSON.parse(readFileSync(new URL('../../data/migrations/0107-r198-r200-posture-et-mode-hyper.json', import.meta.url), 'utf8'));
+const registre0107 = mixtesSorties() ? null : JSON.parse(readFileSync(new URL('../../data/migrations/0107-r198-r200-posture-et-mode-hyper.json', import.meta.url), 'utf8'));
 const apresLa0107 = () => baseDImport({ garder: lotsAvant('0107') });
-// Les registres nomment un mot-clé par son id texte d'alors ; depuis la migration 0113, son id est un entier figé, que donne le registre de la 0113
-// (ancien id texte -> id entier, jamais réécrit).
-const ID_ENTIER = new Map(JSON.parse(readFileSync(new URL('../../data/migrations/0113-mots-cles-id-entier.json', import.meta.url), 'utf8')).motsCles
-  .map((e) => [e.ancienId, e.id]));
+// Les registres nomment un mot-clé par son id texte d'alors ; depuis la migration 0113, son id est un entier figé, que donne la correspondance de la
+// 0113 (ancien id texte -> id entier, jamais réécrite : sa référence, aide-mots-cles.mjs#idDuMotCleNomme).
+const ID_ENTIER = { get: idDuMotCleNomme };
 const idDe = (table, id) => (table === 'mot_cle' ? ID_ENTIER.get(id) : id);
 const valeur = (db, t) => db.prepare(`SELECT "${t.col}" AS v FROM "${t.table}" WHERE id = ?`).get(idDe(t.table, t.cle.id))?.v;
 // La migration 0111 (relecture des Règles contre les décisions), postérieure, réécrit des fragments que la 0104 a écrits (C20, R226 (2) : la Vigilance
 // anticipe en action rapide) : le fragment de la 0104 est admis tel quel ou tel que la 0111 l'a réécrit (registre `textes`, test/aide-textes-reecrits.mjs)
-const REECRITS_PAR_0111 = textesReecrits('0111-relecture-des-regles-contre-les-decisions');
+// (registres des migrations postérieures, lus à la demande : seuls les tests des remplacements de la 0104, retirés avec les mixtes, les lisent)
+let lus;
+const reecritures = () => (lus ??= {
+  REECRITS_PAR_0111: textesReecrits('0111-relecture-des-regles-contre-les-decisions'),
+  REECRITS_PAR_0112: textesReecrits('0112-r231-attaquer-et-se-defendre'),
+  BALISES_REECRITES: textesReecrits('0113-mots-cles-id-entier', '0115-mots-cles-synonymes'),
+});
 const memeCellule = (a, b) => a.table === b.table && a.col === b.col && JSON.stringify(a.cle) === JSON.stringify(b.cle);
-const selonLa0111 = (t) => REECRITS_PAR_0111.filter((x) => memeCellule(x, t)).reduce((s, x) => (s.includes(x.avant) ? s.replace(x.avant, () => x.apres) : s), t.apres);
+const selonLa0111 = (t) => reecritures().REECRITS_PAR_0111.filter((x) => memeCellule(x, t)).reduce((s, x) => (s.includes(x.avant) ? s.replace(x.avant, () => x.apres) : s), t.apres);
 // La 0112 (R231), postérieure aux deux, réécrit en entier les pages « Attaquer » et « Se défendre » : son `avant` contient le fragment (tel que la 0104
 // ou la 0111 l'a laissé), pas son `apres`, qui est dans `v`. L'une ou l'autre écriture est admise.
-const REECRITS_PAR_0112 = textesReecrits('0112-r231-attaquer-et-se-defendre');
-const reecritPar0112 = (t, fragment) => REECRITS_PAR_0112.filter((r) => memeCellule(r, t) && r.avant.includes(fragment) && !r.apres.includes(fragment));
+const reecritPar0112 = (t, fragment) => reecritures().REECRITS_PAR_0112.filter((r) => memeCellule(r, t) && r.avant.includes(fragment) && !r.apres.includes(fragment));
 // Puis la 0113 et la 0115 (R232, R233 (5)) font citer la clé aux balises d'un ancien id qui n'en est plus une : ce sont des fragments du texte.
-const BALISES_REECRITES = textesReecrits('0113-mots-cles-id-entier', '0115-mots-cles-synonymes');
-const selonLesCles = (t, f) => BALISES_REECRITES.filter((x) => memeCellule(x, t)).reduce((s, x) => s.split(x.avant).join(x.apres), f);
+const selonLesCles = (t, f) => reecritures().BALISES_REECRITES.filter((x) => memeCellule(x, t)).reduce((s, x) => s.split(x.avant).join(x.apres), f);
 const apresOuReecrit = (t, v) => [t.apres, selonLa0111(t)].some((f) => v.includes(f) || v.includes(selonLesCles(t, f))
   || reecritPar0112(t, f).some((r) => v.includes(r.apres) || v.includes(selonLesCles(t, r.apres))));
 
@@ -49,7 +62,7 @@ const ETAT_GELE = /(?<!\p{L})Gelé(?!\p{L})|(?<!\p{L})gelé(?= \d)/u;
 const PAGES_TYPEES_DU_GEL = ['magies/magie-de-la-glace', 'magies/magie-de-la-necromancie', 'magies/magie-du-feu', 'magies/magie-du-sang',
   'magies/magie-du-vent', 'ressources/accessoires', 'ressources/maladie'];
 
-test('0104 : le registre ne touche que des corps de pages et des définitions de mots-clés, jamais une copie de source (sauf R204), chaque fois sous une décision', () => {
+testDeLaMixte('0104 : le registre ne touche que des corps de pages et des définitions de mots-clés, jamais une copie de source (sauf R204), chaque fois sous une décision', () => {
   assert.ok(registre.textes.length > 0);
   for (const t of registre.textes) {
     assert.ok((t.table === 'page' && t.col === 'corps_md') || (t.table === 'mot_cle' && t.col === 'description'), `${t.table}.${t.col}`);
@@ -61,7 +74,7 @@ test('0104 : le registre ne touche que des corps de pages et des définitions de
   assert.deepEqual(r204.map((t) => [t.decision, /Prouesse/.test(t.avant), /Prouesse/.test(t.apres), /Calme/.test(t.apres)]), [['R204', true, false, true]]);
 });
 
-test('0104 : chaque remplacement est en place dans l’état de la migration (le fragment écrit présent, l’ancien absent)', () => {
+testDeLaMixte('0104 : chaque remplacement est en place dans l’état de la migration (le fragment écrit présent, l’ancien absent)', () => {
   const imp = apresLa0104();
   for (const t of registre.textes) {
     // la page « La montée de niveau », retirée depuis par la migration 0122 (son registre : aide-migration-0122.mjs)
@@ -86,7 +99,7 @@ test('R199 (3) : plus aucune « attaque gratuite » dans les pages du guide ; le
   assert.equal(imp.prepare("SELECT count(*) AS n FROM page WHERE instr(corps_md, '{{attaque-gratuite') > 0").get().n, 0);
 });
 
-test('R205 (3) : les corps des pages typées n’écrivent plus l’état « Gelé » ; « Cerveau gelé » et les adjectifs restent', () => {
+testDeLaMixte('R205 (3) : les corps des pages typées n’écrivent plus l’état « Gelé » ; « Cerveau gelé » et les adjectifs restent', () => {
   const imp = apresLa0104();
   for (const id of PAGES_TYPEES_DU_GEL) {
     const corps = imp.prepare('SELECT corps_md FROM page WHERE id = ?').get(id)?.corps_md;
@@ -111,7 +124,7 @@ test('R207 : les mots-clés maroquinier et armurier mènent à leur métier, com
   assert.ok(imp.prepare("SELECT corps_md FROM page WHERE id = 'guide/equipement-et-butin'").get().corps_md.includes('{{maroquinier|'));
 });
 
-test('0107 : la suite de la 0104 — le mot-clé posture (R198 (6)) et guide/la-magie-en-jeu (R200 (3)), en place dans l’état de la migration', () => {
+testDeLaMixte('0107 : la suite de la 0104 — le mot-clé posture (R198 (6)) et guide/la-magie-en-jeu (R200 (3)), en place dans l’état de la migration', () => {
   const imp = apresLa0107();
   assert.deepEqual(registre0107.textes.map((t) => [t.table, t.col, t.cle.id, t.decision.split(' ')[0]]),
     [['mot_cle', 'description', 'posture', 'R198'], ['page', 'corps_md', 'guide/la-magie-en-jeu', 'R200']]);

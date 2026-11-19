@@ -20,7 +20,12 @@ import { bonusDeMaitrise, COLONNES_NM } from '../src/lib/sort-analyse.mjs';
 import { coutDeSort, valeurDeSort } from '../src/lib/sort-format.mjs';
 import { analyserType } from '../src/lib/sort-analyse.mjs';
 import { applications, marquerBonus, ORDRE_CHAMPS_NM, sansBonus, texteDeBonus, valeurAuNm } from '../src/lib/sort-maitrise.mjs';
+import { mixtesSorties } from '../src/lib/sortie-du-contenu.mjs';
 import { sortsDontLa0117ReecritLes, sortsNouveauxDeLa0117, sortsReecritsParLa0117 } from './aide-migration-0117.mjs';
+import { testRetireAvecLesMixtes } from './aide-sortie-du-contenu.mjs';
+
+// Les tests qui éprouvent la migration mixte elle-même sortent avec elle (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LES_MIXTES).
+const testDeLaMixte = testRetireAvecLesMixtes(import.meta.url);
 
 const db = ouvrirBase({ sansExemples: false });
 const magies = chargerMagies(db);
@@ -40,15 +45,17 @@ const enModele = (b) => ({ champ: b.champ, rang: b.rang, nature: b.nature, texte
 const ordreDeLecture = (a, b) => ORDRE_CHAMPS_NM.indexOf(a.champ) - ORDRE_CHAMPS_NM.indexOf(b.champ) || a.rang - b.rang;
 // le registre de la 0004 (lignes telles qu'elle les a écrites) ; 0006 (noms à trancher) a corrigé ensuite un nom dans le contexte de certaines lignes
 // (« Purée de pois ») : le registre est projeté sur ces corrections
-const registre = JSON.parse(readFileSync(join(trouverRacine(), 'data', 'migrations', '0004-bonus-maitrise.json'), 'utf8'));
-const noms0006 = JSON.parse(readFileSync(join(trouverRacine(), 'data', 'migrations', '0006-orthographe-noms.json'), 'utf8')).corrections
+// Le registre de la 0004 (lignes de bonus : du texte de règle), la correction de la 0006 et le SQL de la 0117 sortent avec ces migrations mixtes, et
+// les tests et exemples qui les lisent avec eux (RETIRES_AVEC_LES_MIXTES) : sortis, ils ne sont pas lus (null).
+const registre = mixtesSorties() ? null : JSON.parse(readFileSync(join(trouverRacine(), 'data', 'migrations', '0004-bonus-maitrise.json'), 'utf8'));
+const noms0006 = mixtesSorties() ? null : JSON.parse(readFileSync(join(trouverRacine(), 'data', 'migrations', '0006-orthographe-noms.json'), 'utf8')).corrections
   .filter((c) => c.table === 'sort_bonus_maitrise' && c.col === 'contexte');
 const projete = (l) => noms0006.filter((c) => c.cle.sort_id === l.sort_id && c.cle.champ === l.champ && c.cle.rang === l.rang)
   .reduce((x, c) => ({ ...x, contexte: x.contexte.replaceAll(c.avant, c.apres) }), l);
-const bonus0004 = registre.bonus.map(projete);
+const bonus0004 = mixtesSorties() ? null : registre.bonus.map(projete);
 // les sorts dont la 0117 a réécrit (ou supprimé) les lignes de bonus, ou de mode
-const bonusReecrits = sortsDontLa0117ReecritLes('sort_bonus_maitrise');
-const modesReecrits = sortsDontLa0117ReecritLes('sort_mode');
+const bonusReecrits = mixtesSorties() ? null : sortsDontLa0117ReecritLes('sort_bonus_maitrise');
+const modesReecrits = mixtesSorties() ? null : sortsDontLa0117ReecritLes('sort_mode');
 /** Les bonus d'un sort tels que la 0004 les a écrits (registre), au format de lib/magies-db.mjs. */
 const bonusDImport = (nom) => bonus0004.filter((l) => slug(l.sort_id) === nom).sort(ordreDeLecture).map(enModele);
 const idDe = (nom) => [...sorts.keys()].find((id) => slug(id) === nom);
@@ -62,7 +69,7 @@ const occurrences = (texte, sous) => {
   return o;
 };
 
-test('chaque ligne recopie une expression exacte de la cellule de son sort, dans la colonne indiquée (rien n’est inventé)', () => {
+testDeLaMixte('chaque ligne recopie une expression exacte de la cellule de son sort, dans la colonne indiquée (rien n’est inventé)', () => {
   assert.equal(registre.bonus.length, 352, 'migration 0004 (registre)');
   assert.equal(lignesImport.filter((l) => !bonusReecrits.has(l.sort_id)).length, bonus0004.filter((l) => !bonusReecrits.has(l.sort_id)).length,
     'à l’import : les lignes de la 0004 sur les sorts que la 0117 n’a pas réécrits');
@@ -100,7 +107,7 @@ test('toute mention de NM écrite dans une des sept colonnes de texte est couver
   assert.equal(mentions, lignes.length, 'une mention par ligne dans les données actuelles');
 });
 
-test('répartition : 352 bonus sur 319 sorts ; trois sorts n’écrivent aucun NM et n’ont ni ligne ni « Bonus Maîtrise »', () => {
+testDeLaMixte('répartition : 352 bonus sur 319 sorts ; trois sorts n’écrivent aucun NM et n’ont ni ligne ni « Bonus Maîtrise »', () => {
   // migration 0004 (registre)
   const parCle = {};
   for (const l of bonus0004) parCle[`${l.champ}:${l.nature}`] = (parCle[`${l.champ}:${l.nature}`] ?? 0) + 1;
@@ -136,7 +143,7 @@ test('« Bonus Maîtrise » (sort.bonus_maitrise) est la recopie des lignes typ�
   }
 });
 
-test('cas connus : IC à 3 NM, coût et portée par NM, effet supplémentaire à 3 NM, durée par NM, tiret demi-cadratin, mention sans valeur typée', () => {
+testDeLaMixte('cas connus : IC à 3 NM, coût et portée par NM, effet supplémentaire à 3 NM, durée par NM, tiret demi-cadratin, mention sans valeur typée', () => {
   // la page lit les lignes de la table telles quelles (lib/magies-db.mjs), dans l'ordre de lecture
   for (const s of magies.sorts.values()) assert.deepEqual(s.bonus, lignes.filter((l) => l.sort_id === s.id).sort(ordreDeLecture).map(enModele), s.slug);
   // les cas lus par la migration 0004 (lignes d'avant les modifications du site de dev)
@@ -160,7 +167,7 @@ test('cas connus : IC à 3 NM, coût et portée par NM, effet supplémentaire à
   assert.deepEqual(lire('grenade-cryogenique'), [['effets', 'palier', 'Si jet de vigueur raté = Inflige gel 1/3NM', 3, null, null, null]]);
 });
 
-test('mode séparé du type : mode_brut = le texte entre parenthèses de la colonne Type ; sort_mode ne garde que les valeurs de base ; une condition de NM est un bonus', () => {
+testDeLaMixte('mode séparé du type : mode_brut = le texte entre parenthèses de la colonne Type ; sort_mode ne garde que les valeurs de base ; une condition de NM est un bonus', () => {
   let avecMode = 0;
   for (const s of sorts.values()) {
     const groupes = [...s.type_brut.replace(/\n/g, ' ').matchAll(/\(([^()]*)\)/g)].map((m) => m[1].trim());
@@ -205,6 +212,9 @@ test('la vue v_sort_bonus_au_nm et la fonction applications() disent la même ch
     const b = lignesParCle.get(`${v.sort_id}|${v.champ}|${v.rang}`);
     assert.equal(v.applications, applications(b, v.nm), `${slug(v.sort_id)} ${v.champ} « ${b.texteBrut} » à ${v.nm} NM`);
   }
+});
+
+testDeLaMixte('exemple : « Boule de feu » à 2 NM = +1d6 deux fois, le palier de 3 NM pas encore (registre de la 0004 ; dans la vue tant que le site n’a pas réécrit le sort)', () => {
   // un exemple lu en entier : « Boule de feu » à 2 NM = +1d6 deux fois, le palier de 3 NM pas encore (à l'import ; dans la vue tant que le site n'a pas réécrit le sort)
   assert.deepEqual(bonusDImport('boule-de-feu').map((b) => [b.champ, applications(b, 2)]), [['dsb', 2], ['effets', 0]]);
   if (intact('boule-de-feu', 'dsb_brut', 'effets')) {
@@ -220,6 +230,9 @@ test('valeur de base : une fois l’expression de NM retirée, aucune cellule de
       assert.ok(!base || !/NM|aîtrise/.test(base), `${s.slug} ${champ} : « ${base} »`);
     }
   }
+});
+
+testDeLaMixte('exemple : la valeur de base de « Boule de feu » telle que l’import l’a écrite, ses bonus lus dans le registre de la 0004', () => {
   // Boule de feu telle que l'import l'a écrite
   const bdf = (colonne) => historique.valeurDImport('sort', { id: idDe('boule-de-feu') }, colonne);
   assert.equal(sansBonus(bdf('dsb_brut'), bonusDImport('boule-de-feu'), 'dsb'), '2d6 dégâts');
@@ -243,12 +256,15 @@ test('à l’écran : chaque bonus d’une cellule de coût, portée, zone ou D/
     }
   }
   assert.equal(pastilles, lignes.filter((l) => ['cout', 'portee', 'zone', 'dsb'].includes(l.champ)).length);
+});
+
+testDeLaMixte('à l’écran : 190 bonus de coût, portée, zone ou D/S/B au registre de la 0004 ; « Boule de feu » à l’import, sa pastille', () => {
   assert.equal(bonus0004.filter((l) => ['cout', 'portee', 'zone', 'dsb'].includes(l.champ)).length, 190, 'migration 0004 (registre)');
   const dsb = historique.valeurDImport('sort', { id: idDe('boule-de-feu') }, 'dsb_brut');
   assert.deepEqual(marquerBonus(valeurDeSort(dsb, { liste: true }).lignes, bonusDImport('boule-de-feu'), 'dsb'), [[{ texte: '2d6 dégâts', modif: false }, { texte: '+1d6/NM', modif: true, nm: true }]]);
 });
 
-test('migration 0004 : le registre JSON décrit exactement les lignes de la base (modes et bonus) d’avant les modifications du site, hors sorts réécrits par la 0117', () => {
+testDeLaMixte('migration 0004 : le registre JSON décrit exactement les lignes de la base (modes et bonus) d’avant les modifications du site, hors sorts réécrits par la 0117', () => {
   assert.equal(registre.migration, '0004-bonus-maitrise');
   const cle = (l) => `${l.sort_id}|${l.champ}|${l.rang}|${l.nature}|${l.texte_brut}|${l.contexte}`;
   const garde = (l) => !bonusReecrits.has(l.sort_id);

@@ -33,6 +33,7 @@ function fauxDepot() {
     'client/node_modules/astro/package.json': JSON.stringify({ name: 'astro', version: '1.0.0' }),
     'data/schema.sql': 'PRAGMA user_version = 1;',
     'data/derive.sql': '-- derive',
+    'data/references/a.json': '{}',
     'data/migrations/0001-a.sql': '-- m',
     'sources/sources.json': '{}',
     'sources/copies-drive.json': '{}',
