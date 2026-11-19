@@ -147,6 +147,7 @@ import {
 } from './notes-de-version.mjs';
 import { actualiser, CONFIRMATION_COPIE, figerPaquet } from './paquet.mjs';
 import { lireLActivation } from './paquets-de-la-production.mjs';
+import { creerLesInterrupteursDeGithub, estUnDossier, etatDeLaBascule2 } from './bascule-2-etat.mjs';
 import { ErreurFiche, controlesDe, enregistrerFiche, lireFiche, listerFiches, niveauDe, portraitDeFiche, supprimerFiche } from './fiches.mjs';
 import { CHAMP_VERSION } from '../src/lib/fiche-format.mjs';
 import { instant } from './instant.mjs';
@@ -904,8 +905,13 @@ function traiterMiseAJour(requete, service, action, reste, permis) {
     const baseSource = Boolean(service.source?.());
     // `activation_production` (bascule 2, db/bascule-2 : lot 11, PR 5a) : le dernier rapport de l'activation par paquet de la production (serveur/paquets-de-la-production.mjs), absent sans le marqueur
     const bascule2 = Boolean(service.bascule2?.());
+    // `bascule_2` (lecture seule, toujours sur le site de dev) : où en sont les cinq interrupteurs de la bascule 2 et le dernier résultat d'activation (serveur/bascule-2-etat.mjs). Le rapport
+    // d'activation n'est lu qu'une fois et sert aux deux champs ; GitHub n'est jamais attendu (valeur en cache, relue en arrière-plan).
+    const activation = lireLActivation(service.paquets ?? null);
+    const bascule_2 = etatDeLaBascule2({ marqueur: bascule2, servir: service.atelier?.servir?.() ?? null, github: (service.interrupteursGithub ?? creerLesInterrupteursDeGithub({ github: null })).lire(),
+      activation, dossierDesPaquets: estUnDossier(service.paquets) });
     return json(200, { ...noteEnPreparation(db, { reference: service.reference, versionDev }), lancement, ...regles, github, confirmation: CONFIRMATION, etat_production, retraits_bloquants,
-      base_source: baseSource, ...(baseSource ? { confirmation_copie: CONFIRMATION_COPIE } : {}), ...(bascule2 ? { activation_production: lireLActivation(service.paquets ?? null) } : {}) });
+      base_source: baseSource, ...(baseSource ? { confirmation_copie: CONFIRMATION_COPIE } : {}), ...(bascule2 ? { activation_production: activation } : {}), bascule_2 });
   }
   const interdit = refusEcriture(requete.entetes ?? {});
   if (interdit) return interdit;

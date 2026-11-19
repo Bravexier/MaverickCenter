@@ -717,8 +717,8 @@ production comprise, sauf la version portable, `/maintenance/` et `SITE_METRIQUE
 
 ## Page Mise à jour : l'activation de la production (`activation_production`)
 
-`GET /api/mise-a-jour/` (site de dev, accès comme le reste de la page) porte, **seulement avec le marqueur `db/bascule-2`** (lot 11, PR 5a ; sans lui la réponse est celle
-d'avant, le champ n'existe pas), le champ `activation_production` : le dernier rapport de `activer.sh`, le script que la production lance en root pour activer un kit avec son
+`GET /api/mise-a-jour/` (site de dev, accès comme le reste de la page) porte, **seulement avec le marqueur `db/bascule-2`** (lot 11, PR 5a ; sans lui ce champ n'existe pas : le même rapport se lit alors dans
+`bascule_2.activation`, voir plus bas), le champ `activation_production` : le dernier rapport de `activer.sh`, le script que la production lance en root pour activer un kit avec son
 paquet (`docs/serveur.md`, « Bascule 2 : préparation », « PR 5a »). Le service du site de dev le lit dans le dossier partagé des paquets
 (`MAVERICK_PAQUETS`, `paquets/activation.json` : un fichier ordinaire, jamais un lien, 16 Kio au plus), le valide champ par champ (liste blanche, jamais un champ inconnu) et le rend
 tel quel ; **`null`** quand aucun rapport n'existe ou qu'il est illisible, trop gros ou mal formé. Aucun nom de fiche n'y passe : des états, des versions, des comptes.
@@ -742,7 +742,39 @@ tel quel ; **`null`** quand aucun rapport n'existe ou qu'il est illisible, trop 
   `bascule`, `sante`, `interrompue`.
 - `phrase` (400 caractères au plus) dit les chiffres, `geste` (240 au plus ou `null`) la commande exacte ; `mode` : `paquet` ou `correctif` ; `version` et `depuis` : « X.Y » de
   la production après et avant ; `pages` : le nombre de pages fabriquées ; `duree_s` : la durée du script ; `gel_leve` : le gel des écritures de la production est levé.
-- La page elle-même (le bloc « Activation de la production ») est faite à part ; ce champ est tout ce qu'elle lit. Test : `serveur-paquets-de-la-production`, `serveur-bascule-2`.
+- La page (section « Activation » `[data-nv-bascule-2]`, `lib/notes-de-version-rendu.mjs#affichageDeLaBascule2`) lit `bascule_2` (ci-dessous), qui porte ce même rapport. Test : `serveur-paquets-de-la-production`, `serveur-bascule-2`.
+
+## Page Mise à jour : l'état de la bascule 2 (`bascule_2`)
+
+`GET /api/mise-a-jour/` (site de dev, accès comme le reste de la page) porte **toujours** `bascule_2` (lecture seule, même sans le marqueur `db/bascule-2` ; absent en production,
+où la route est refusée) : où en sont les cinq interrupteurs de la bascule 2 et le dernier résultat d'activation. Aucun secret, aucun chemin du serveur : des états, des dates,
+des mots d'une liste fermée. Le rapport d'activation n'est lu qu'une fois par réponse et sert aussi à `activation_production` (inchangé : seulement avec le marqueur).
+
+```json
+{
+  "interrupteurs": {
+    "gel_des_fusions": { "etat": false, "raison": null, "phrase": null, "lu_le": "2026-11-19T10:00:00.000Z" },
+    "actif":           { "etat": null, "raison": "pas_encore_lu", "phrase": "…", "lu_le": null },
+    "db_bascule_2":    { "etat": true, "raison": null, "phrase": null },
+    "atelier_servir":  { "etat": true, "raison": null, "phrase": null, "depuis": "2026-11-18T08:00:00Z" },
+    "activation_par_paquet": { "etat": true, "raison": null, "phrase": null, "vu_le": "2026-11-20T10:00:00Z" }
+  },
+  "activation": null
+}
+```
+
+- Chaque interrupteur : `etat` vaut `true` (allumé), `false` (éteint) ou `null` (**inconnu** : jamais deviné), avec alors `raison` (un mot de `PHRASES_DES_RAISONS`, `serveur/bascule-2-etat.mjs`) et `phrase` (courte).
+- `gel_des_fusions` et `actif` : les deux clés de `tools/flux-git/bascule-2.json` sur la branche `dev` de GitHub (la règle des lecteurs de la CI : clé absente = éteinte). Le service lit le
+  fichier par l'API de GitHub (`GET /contents`, jeton du service) **en arrière-plan** ; la réponse n'attend jamais GitHub : valeur en cache (`lu_le`, valable 5 min, relue au plus tôt
+  1 min après un échec), sinon `pas_encore_lu`. Inconnu : `sans_jeton`, `jeton_refuse`, `droit_manquant` (403), `fichier_introuvable` (404 : fichier absent ou dépôt illisible avec ce
+  jeton), `github_injoignable`, `fichier_illisible`, `valeur_illisible` (la clé n'est ni `true` ni `false`), `github_absent`.
+- `db_bascule_2` : le marqueur `db/bascule-2` (avec la base source) ; toujours `true` ou `false`.
+- `atelier_servir` : `servir.json` des rapports de l'atelier (écrit par root avec l'interrupteur `<atelier>/servir`, retiré avec lui) : `true` et `depuis`, `false` (rapports montés, pas de
+  `servir.json`), `null` : `atelier_non_installe` (rapports non montés) ou `rapport_illisible`. Rien d'autre de l'état de l'atelier n'est lu.
+- `activation_par_paquet` : le fichier `<production>/activation-par-paquet`, que le site de dev ne voit pas. `activer.sh` refuse sans lui avant d'écrire un rapport : un rapport dit que
+  l'interrupteur **existait à son heure** (`etat: true`, `vu_le` = `activation.le`, quel que soit son état, refus compris). Jamais `false` : sans rapport, `null` (`aucune_activation`, ou `pas_de_dossier_des_paquets`).
+- `activation` : le dernier rapport (même forme que `activation_production`), `null` sans rapport ; lu même sans le marqueur dès que le dossier des paquets (`MAVERICK_PAQUETS`) est monté.
+- Test : `serveur-bascule-2-etat`.
 
 ## Tests
 

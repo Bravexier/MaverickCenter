@@ -78,6 +78,13 @@
 .nv-retraits .nv-message { margin: 0.2rem 0; }
 .nv-production--discret { margin: 0 0 1rem; font-size: var(--fs-md); color: var(--muted); }
 .nv-production--discret .nv-message { margin: 0; }
+/* la section « Activation » (bascule_2) : lecture seule, l'état dit en mots (allumé, éteint, inconnu), jamais par la couleur seule */
+.nv-activation { margin: 0 0 1rem; padding: 0.7rem 1rem; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--border); }
+.nv-activation h3 { margin: 0 0 0.3rem; }
+.nv-activation__liste { margin: 0.3rem 0; padding-left: 1.2rem; }
+.nv-interrupteur__etat { font-weight: bold; }
+.nv-interrupteur--inconnu .nv-interrupteur__etat { color: var(--muted); }
+.nv-activation__dernier { margin: 0.4rem 0 0; }
 .nv-message { margin: 0.4rem 0; }
 .nv-message--erreur { color: var(--danger); font-weight: bold; }
 .nv-bascule { font-size: var(--fs-lg); }

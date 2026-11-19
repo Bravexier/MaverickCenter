@@ -265,6 +265,79 @@ export function affichageDeLaProduction(etat) {
   return null;
 }
 
+/** Les cinq interrupteurs de la bascule 2, dans l'ordre de la page : clé de la réponse, nom en clair, nom technique, champ de la date utile et son début de phrase. */
+export const INTERRUPTEURS_DE_LA_BASCULE_2 = Object.freeze([
+  { cle: 'gel_des_fusions', nom: 'Gel des fusions', technique: 'gel_des_fusions', champDate: 'lu_le', devantDate: 'lu sur GitHub le' },
+  { cle: 'actif', nom: 'Publication par kits (GitHub)', technique: 'actif', champDate: 'lu_le', devantDate: 'lu sur GitHub le' },
+  { cle: 'db_bascule_2', nom: 'Bascule 2 du site de dev', technique: 'db/bascule-2', champDate: null, devantDate: '' },
+  { cle: 'atelier_servir', nom: 'Atelier : sert le site qu’il fabrique', technique: 'atelier/servir', champDate: 'depuis', devantDate: 'depuis le' },
+  { cle: 'activation_par_paquet', nom: 'Accord de la production', technique: 'activation-par-paquet', champDate: 'vu_le', devantDate: 'vu posé lors de l’activation du' },
+]);
+
+/** Les mots de l'état d'une activation (`ETATS_DE_L_ACTIVATION` du service) ; `attention` : l'état demande un coup d'œil. */
+const ETATS_DE_L_ACTIVATION_DITS = Object.freeze({
+  en_cours: { mot: 'en cours', attention: false },
+  passee: { mot: 'passée', attention: false },
+  refusee: { mot: 'refusée', attention: true },
+  retour_automatique: { mot: 'retour automatique au site précédent', attention: true },
+  retour_incomplet: { mot: 'retour incomplet : à traiter', attention: true },
+});
+
+/** « 19 novembre 2026 » d'une date ISO (avec ou sans heure), « » si elle est absente ou illisible. */
+function jourLisible(valeur) {
+  const jour = /^\d{4}-\d{2}-\d{2}/.exec(typeof valeur === 'string' ? valeur.trim() : '')?.[0];
+  return jour && !Number.isNaN(Date.parse(`${jour}T00:00:00Z`)) ? dateLisible(jour) : '';
+}
+
+/**
+ * Ce que la page montre de `bascule_2` (GET /api/mise-a-jour/, site de dev : lecture seule), ou null (rien : champ absent, ancien service ou production).
+ * `interrupteurs` : toujours les cinq, dans l'ordre ; chacun a un `etat` `allume`, `eteint` ou `inconnu` (`etat: null` du service, jamais deviné : sa `phrase`
+ * est alors dite), un `mot` (« allumé », « éteint », « inconnu » ; « vu posé » pour l'accord de la production, que le site de dev ne voit jamais éteint), la
+ * `date` utile (déjà lisible, « » sans) et la `phrase` du service. `activation` : une ligne (`texte`) pour le dernier rapport, ou `{ aucune: true }`.
+ * Pur : le script de la page bâtit les nœuds par `textContent`.
+ * @param {unknown} bascule `bascule_2` de la réponse
+ * @returns {{ interrupteurs: { cle: string, nom: string, technique: string, etat: 'allume' | 'eteint' | 'inconnu', mot: string, date: string, phrase: string }[],
+ *   activation: { aucune: true, texte: string } | { aucune: false, etat: string, mot: string, attention: boolean, perime: boolean, texte: string } } | null}
+ */
+export function affichageDeLaBascule2(bascule) {
+  if (!bascule || typeof bascule !== 'object') return null;
+  const chaine = (v) => (typeof v === 'string' ? v.trim() : '');
+  const lus = bascule.interrupteurs && typeof bascule.interrupteurs === 'object' ? bascule.interrupteurs : {};
+  const interrupteurs = INTERRUPTEURS_DE_LA_BASCULE_2.map(({ cle, nom, technique, champDate, devantDate }) => {
+    const brut = lus[cle] && typeof lus[cle] === 'object' ? lus[cle] : {};
+    // l'accord de la production n'est jamais « éteint » : le site de dev ne voit que l'avoir été (un faux y est lu comme inconnu)
+    const etat = brut.etat === true ? 'allume' : brut.etat === false && cle !== 'activation_par_paquet' ? 'eteint' : 'inconnu';
+    const jour = etat === 'inconnu' || !champDate ? '' : jourLisible(brut[champDate]);
+    const mot = etat === 'inconnu' ? 'inconnu' : etat === 'eteint' ? 'éteint' : cle === 'activation_par_paquet' ? 'vu posé' : 'allumé';
+    return {
+      cle, nom, technique, etat, mot,
+      date: jour ? `${devantDate} ${jour}` : '',
+      phrase: etat === 'inconnu' ? chaine(brut.phrase) : '',
+    };
+  });
+  return { interrupteurs, activation: affichageDeLActivation(bascule.activation) };
+}
+
+/** La ligne du dernier rapport d'activation : état, version, date, phrase, geste, « périmé » ; « Aucune activation connue » sans rapport lisible. */
+function affichageDeLActivation(activation) {
+  const aucune = { aucune: true, texte: 'Aucune activation connue' };
+  if (!activation || typeof activation !== 'object' || !Object.hasOwn(ETATS_DE_L_ACTIVATION_DITS, activation.etat)) return aucune;
+  const chaine = (v) => (typeof v === 'string' ? v.trim() : '');
+  const { mot, attention } = ETATS_DE_L_ACTIVATION_DITS[activation.etat];
+  const version = chaine(activation.version);
+  const jour = jourLisible(activation.le);
+  const perime = activation.perime === true;
+  const parties = [
+    `Activation ${mot}`,
+    version ? `version ${/^\d/.test(version) ? 'V' : ''}${version}` : '',
+    jour ? `le ${jour}` : '',
+    perime ? 'périmée' : '',
+    chaine(activation.phrase),
+    chaine(activation.geste),
+  ].filter(Boolean);
+  return { aucune: false, etat: activation.etat, mot, attention, perime, texte: parties.join(' · ') };
+}
+
 /**
  * L'alerte avant « Effectuer la mise à jour » (R292) : des races, classes ou magies que la mise à jour retire alors que des fiches de la production les
  * citent ; la production ne les adapte pas, elle garderait sa base d'avant. D'après `retraits_bloquants` de la réponse : rien si `connu` est faux (l'attestation
