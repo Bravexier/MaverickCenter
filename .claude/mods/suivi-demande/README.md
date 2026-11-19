@@ -2,7 +2,16 @@
 
 Mod de Claude Code propre à ce dépôt : il suit chaque demande du propriétaire et l'affiche dans une page publiée à côté de la conversation (but, étapes, sous-tâches, temps, agents, GitHub, installation sur le site de dev).
 
-Ce dossier n'est pas un skill (pas de `SKILL.md`) : Claude Code charge seul un mod rangé dans `.claude/skills/<nom>/`.
+Ce n'est pas un skill, et `tech-skills` n'en a pas la charge.
+
+## Chargement
+
+Claude Code ne charge pas ce dossier de lui-même (essai du 2026-11-19, session cloud neuve). Il le charge quand la variable `CLAUDE_CODE_PLUGIN_DIRS` le désigne :
+
+- **sessions cloud** : variable de l'environnement cloud, `CLAUDE_CODE_PLUGIN_DIRS=/home/user/MaverickCenter/.claude/mods/suivi-demande` ;
+- **sessions locales** : la même variable dans le bloc `env` de `~/.claude/settings.json` (jamais dans les réglages du projet), avec le chemin local du dépôt.
+
+Sans cette variable, rien ne se passe : pas d'outil, pas de consigne, pas de page.
 
 ## Ce qu'il fait
 
@@ -20,6 +29,6 @@ Ce dossier n'est pas un skill (pas de `SKILL.md`) : Claude Code charge seul un m
 ## Contrôler
 
 ```
-claude plugin validate .claude/skills/suivi-demande
-claude plugin test .claude/skills/suivi-demande
+claude plugin validate .claude/mods/suivi-demande
+claude plugin test .claude/mods/suivi-demande
 ```

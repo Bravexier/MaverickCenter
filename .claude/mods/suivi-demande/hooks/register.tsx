@@ -8,7 +8,7 @@ const PANNEAU = 'suivi-demande'
 const TITRE = 'Suivi de la demande'
 const OUTIL = 'mcp__suivi-demande__suivre'
 const SITE_DE_DEV = 'https://dev.maverick-jdr.com/'
-const SOURCE_DE_LA_PAGE = '.claude/skills/suivi-demande/page/suivi-demande.html'
+const SOURCE_DE_LA_PAGE = '.claude/mods/suivi-demande/page/suivi-demande.html'
 
 // Changer l'étiquette quand la forme d'une valeur change : elle écarte ce
 // qu'une version précédente a rangé, qui survit à un rechargement.
