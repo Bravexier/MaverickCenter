@@ -2,7 +2,7 @@
 
 Ne lis jamais `docs/decisions-regles.md` en entier : trouve ici le numéro de la décision, puis cherche sa ligne avec Grep (motif `^\| R41 \|`) et ne lis qu'elle.
 
-Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 303 décisions, de R1 à R303, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
+Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 306 décisions, de R1 à R306, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
 
 | Réf. | Sujet | Décision |
 | --- | --- | --- |
@@ -309,3 +309,6 @@ Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas mo
 | R301 | Ligne « Arme de la créature : EP… » de 40 cartes de monstre (`docs/sql/a-v… | (b) : la ligne « Arme de la créature » reste en texte,… |
 | R302 | Application de R294 sur la fiche de personnage (« point 1 (fiche) A ou B,… | B : rien ne change ; le lien de R294 sur la fiche se l… |
 | R303 | Les trois questions laissées par le lot 10 (suite de R278). (1) « GitHub c… | Les trois recommandations sont acceptées : (1) oui ; (… |
+| R304 | Les cinq questions du jour J du lot 12 (suite de R296, `docs/chantier-base… | Les cinq recommandations sont acceptées : (1) les 88 m… |
+| R305 | Les trois questions de la bascule 2 (`docs/chantier-base-de-dev.md`, secti… | Les trois recommandations sont acceptées : (6) site de… |
+| R306 | Les deux propositions en attente sur la page Mise à jour (catégorie « Dégâ… | Lecture de la session principale, non des mots du prop… |
