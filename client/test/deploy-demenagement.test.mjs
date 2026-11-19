@@ -21,16 +21,20 @@ const sha = (f) => createHash('sha256').update(readFileSync(f)).digest('hex');
 
 const racine = dossierTemporaire('demenagement');
 
-// Le vrai sqlite3 s'il est là, sinon un faux : une commande par instruction, « SELECT » et « PRAGMA » affichent leurs lignes séparées par « | ».
+// Le vrai sqlite3 s'il est là, sinon un faux : une commande par instruction, « SELECT » et « PRAGMA » affichent leurs lignes séparées par « | », et la seule
+// commande en point que les scripts appellent (controle-demenagement.sh, copier-db) : « .backup '<fichier>' », copie cohérente de la base (backup de node:sqlite).
 function sqlite3() {
   if (have('sqlite3')) return 'sqlite3';
   const dossier = join(racine, 'faux-sqlite3');
   mkdirSync(dossier, { recursive: true });
-  writeFileSync(join(dossier, 'sqlite3.mjs'), `import { DatabaseSync } from 'node:sqlite';
+  writeFileSync(join(dossier, 'sqlite3.mjs'), `import { backup, DatabaseSync } from 'node:sqlite';
 const args = process.argv.slice(2);
 if (args[0] === '-readonly') args.shift();
 const db = new DatabaseSync(args[0]);
-for (const instruction of args[1].split(';').map((s) => s.trim()).filter(Boolean)) {
+const sauvegarde = /^\\.backup\\s+'([^']*)'$/.exec(args[1].trim());
+if (sauvegarde) await backup(db, sauvegarde[1]);
+else if (args[1].trim().startsWith('.')) throw new Error('commande en point non reproduite : ' + args[1]);
+else for (const instruction of args[1].split(';').map((s) => s.trim()).filter(Boolean)) {
   if (/^(SELECT|PRAGMA)\\b/i.test(instruction)) {
     for (const ligne of db.prepare(instruction).all()) console.log(Object.values(ligne).join('|'));
   } else db.exec(instruction);

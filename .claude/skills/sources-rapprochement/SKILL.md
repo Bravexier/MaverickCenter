@@ -26,7 +26,7 @@ user-invocable: false
 - Défaire l'orthographe des migrations : skill `base-orthographe`. Base dans son état d'import : skill `base-sqlite` (`lib/historique-site.mjs`).
 
 ## Invariants
-- Décision R83 : les classeurs originaux font foi (les copies de la migration 0014 restent une trace). Un écart est listé, jamais appliqué d'office : le
+- Décision R83 : les classeurs originaux font foi (les copies du Drive, `sources/copies-drive.json`, lu par `rapprocher.mjs`, restent une trace). Un écart est listé, jamais appliqué d'office : le
   propriétaire relit la liste et demande lui-même d'appliquer. Une valeur modifiée des deux côtés (site de dev et classeur) est un conflit, demandé au
   propriétaire à chaque fois, sa réponse inscrite dans `conflits`.
 - Un écart voulu d'une colonne numérique s'écrit en texte (`voulus`, « 17 » -> « 16 ») : l'outil admet l'`apres` si la cellule écrit l'`avant`, pour cette colonne seulement (R207 : AP calculé).
