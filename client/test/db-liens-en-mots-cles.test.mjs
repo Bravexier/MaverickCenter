@@ -28,6 +28,7 @@ import { FAMILLES_DE_LA_PALETTE, classeDeMagie, idDeCouleur } from '../src/lib/p
 import { normalize } from '../src/lib/text.mjs';
 import { fonduParLa0122, retireeParLa0122 } from './aide-migration-0122.mjs';
 import { fonduParLa0124, retireeParLa0124 } from './aide-migration-0124.mjs';
+import { registreDeMigration } from './aide-registres-sortis.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const REGISTRE = JSON.parse(readFileSync(new URL('../../data/migrations/0098-liens-en-mots-cles.json', import.meta.url), 'utf8'));
@@ -60,7 +61,8 @@ const texteApres0098 = (table, colonne, id) => apres0098().prepare(`SELECT "${co
 // La 0122 retire la page « La montée de niveau » et fond son mot-clé dans « Fiche de personnage : Expérience/Niveau global », ses balises reciblées
 // (aide-migration-0122.mjs). La 0124 (R272) fait de même pour « Accessoires et Ceinture », fondu dans « Fiche de personnage : Inventaire/Sac à dos »
 // (aide-migration-0124.mjs). `intacte` ne voit que les lots du site.
-const textesDe = (...noms) => noms.flatMap((nom) => JSON.parse(readFileSync(new URL(`../../data/migrations/${nom}.json`, import.meta.url), 'utf8')).textes);
+// un registre sorti avec le contenu (0114, jour J du lot 12) se lit dans ce qu'en garde test/fixtures/registres-sortis.json (test/aide-registres-sortis.mjs)
+const textesDe = (...noms) => noms.flatMap((nom) => registreDeMigration(nom).textes);
 const REECRITURES_R198 = textesDe('0104-r198-r208-textes-du-guide', '0107-r198-r200-posture-et-mode-hyper');
 const REECRITURES_APRES_0098 = [...REECRITURES_R198, ...textesDe('0111-relecture-des-regles-contre-les-decisions', '0112-r231-attaquer-et-se-defendre',
   '0113-mots-cles-id-entier', '0114-mots-cles-categories-assignees', '0115-mots-cles-synonymes', '0121-maj-decembre-suites', '0122-retrait-la-montee-de-niveau',

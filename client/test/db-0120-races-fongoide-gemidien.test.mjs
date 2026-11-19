@@ -16,6 +16,8 @@ import { ORDRE_DES_RACES } from '../src/lib/race-kinds.mjs';
 import { chargerRaces } from '../src/lib/races-db.mjs';
 import { baseDImport, reglesDImport } from './aide-base-d-import.mjs';
 import { MOTS_CLES_DE_LA_0120, RACES_DE_LA_0120, TEXTES_DE_LA_0120 } from './aide-races-0120.mjs';
+import { lireLeRegistre, REGISTRES_GARDES } from './aide-registres-sortis.mjs';
+import { testRetireAvecLeContenu } from './aide-sortie-du-contenu.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const dImport = baseDImport();
@@ -144,9 +146,7 @@ test('page de chaque race : le rendu de ses seules tables (lib/corps-races.mjs#c
 test('R237 (12) : Modes Hyper de l’Elfe argenté et du Felfe changés par le docx (version de l’onglet, R13), noms inchangés ; le Felfe compte 1 dé', () => {
   assert.deepEqual(TEXTES_DE_LA_0120.map((t) => t.cle.id).sort(), ['onglet_race:races/elfe-argente', 'onglet_race:races/felfe']);
   for (const t of TEXTES_DE_LA_0120) {
-    const effet = un(dImport, 'SELECT effet FROM mode_hyper_effet WHERE id = ?', t.cle.id).effet;
-    assert.equal(effet, t.apres, t.cle.id);
-    assert.notEqual(effet, t.avant, `${t.cle.id} : l'ancien effet de l'import est remplacé`);
+    assert.ok(un(dImport, 'SELECT effet FROM mode_hyper_effet WHERE id = ?', t.cle.id), t.cle.id); // son texte : test « registre 0120 », ci-dessous
     // les lectures des autres sources restent leurs traces (« Mode hyper et co », fiche V15.2.2)
     const race = t.cle.id.replace(/^onglet_race:/, '');
     assert.equal(un(dImport, "SELECT count(*) AS n FROM mode_hyper_effet WHERE race_id = ? AND version IN ('classeur_modes', 'fiche')", race).n, 2, race);
@@ -184,4 +184,25 @@ test('R218 (5), R219 (5) : un mot-clé par race, qui la nomme et mène à sa pag
     const m = motCle(db, id);
     if (m) assert.equal(m.verrou, 0, `mot-clé ${id}`);
   }
+});
+
+// Le registre de la 0120 sort du dépôt avec elle le jour J du lot 12 (R296) : les tests qui le lisent lui-même sortent avec lui
+// (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LE_CONTENU) ; les autres lisent ce qu'en garde test/fixtures/registres-sortis.json (test/aide-races-0120.mjs).
+const testDuRegistre = testRetireAvecLeContenu(import.meta.url);
+
+testDuRegistre('registre 0120 : les Modes Hyper de l’Elfe argenté et du Felfe sont, à l’import, le texte « après » du registre (R237 (12))', () => {
+  const textes = lireLeRegistre('0120-races-fongoide-gemidien').textes;
+  assert.ok(textes.length > 0);
+  for (const t of textes) {
+    const effet = un(dImport, 'SELECT effet FROM mode_hyper_effet WHERE id = ?', t.cle.id).effet;
+    assert.equal(effet, t.apres, t.cle.id);
+    assert.notEqual(effet, t.avant, `${t.cle.id} : l'ancien effet de l'import est remplacé`);
+  }
+});
+
+testDuRegistre('registre gardé : test/fixtures/registres-sortis.json recopie tel quel ce que les tests lisent encore du registre de la 0120', () => {
+  const r = lireLeRegistre('0120-races-fongoide-gemidien');
+  assert.deepEqual(REGISTRES_GARDES['0120-races-fongoide-gemidien'], {
+    races: r.races, mots_cles: r.mots_cles, textes: r.textes.map(({ table, cle, col }) => ({ table, cle, col })),
+  });
 });

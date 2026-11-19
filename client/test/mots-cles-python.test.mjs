@@ -9,6 +9,7 @@ import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { dossierDesExports } from '../../tools/sources/dossier-des-exports.mjs';
 import { MOT_CLE_DE_CATEGORIE } from '../src/lib/classe-champs.mjs';
 import { MOTS_CLES_PROTEGES, RAISONS_DES_MOTS_CLES_PROTEGES } from '../src/lib/mots-cles.mjs';
 import { IDS_DES_MOTS_CLES_PROTEGES } from '../src/lib/mots-cles-proteges.mjs';
@@ -210,7 +211,7 @@ test('classes.py, relations-races.py, races.py et codex.py posent leurs mots-clÃ
   const vocabulaire = vocabulaireDEssai(t);
   const out = dossierTemporaire('mots-cles-proteges-out-', { t });
   for (const famille of ['classes', 'capacites', 'ressources']) mkdirSync(join(out, famille), { recursive: true });
-  const classeurs = join(racine, 'sources/raw/classeurs');
+  const classeurs = join(dossierDesExports(racine), 'classeurs'); // sources/raw, ou MAVERICK_SOURCES_RAW (archive restaurÃ©e, R296)
   const lancer = (script, ...args) => {
     const p = spawnSync('python3', ['-I', join(racine, script), ...args, '--out', out, '--vocabulaire', vocabulaire], { encoding: 'utf8' });
     assert.equal(p.status, 0, `${script} : ${p.stderr || p.stdout}`);

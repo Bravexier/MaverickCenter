@@ -7,6 +7,8 @@ import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { cheminsQuiSortent, listerCeQuiSort } from '../scripts/inventaire-sortie-du-contenu-lib.mjs';
+import { contenuSorti } from '../src/lib/sortie-du-contenu.mjs';
 import {
   BUDGET, budget, controlerAgent, controlerClaudeMd, controlerSkill, lireFrontmatter, liste, nomsCites, nonCites, recitDate, renvoisAbsents,
 } from '../scripts/instructions-lib.mjs';
@@ -137,7 +139,10 @@ describe('le dépôt', () => {
 
   test('skills : frontmatter, name, description, paths', () => {
     assert.ok(SKILLS.length > 0);
-    const fichiers = fichiersDuDepot();
+    // Contenu sorti (la passe S simule le jour J, R296) : un `paths` dont la cible sort du dépôt (catégories de l'inventaire, migrations mixtes comprises ; lues
+    // dans HEAD, la copie n'en a plus les fichiers) est toléré. Le jour J, tech-skills retire ces `paths` : cette tolérance sort alors avec l'interrupteur.
+    const quiSortent = contenuSorti() ? cheminsQuiSortent(listerCeQuiSort({ racine: RACINE, ref: 'HEAD' }), { avecMixtes: true }) : [];
+    const fichiers = [...fichiersDuDepot(), ...quiSortent];
     sansConstat(Object.fromEntries(SKILLS.map((s) => [cheminDuSkill(s), controlerSkill({ dossier: s, texte: lire(cheminDuSkill(s)), fichiers })])), 'skills');
   });
 

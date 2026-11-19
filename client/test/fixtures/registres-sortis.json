@@ -1,0 +1,167 @@
+{
+  "$comment": "Ce que des tests d'invariants lisent encore des registres de migrations de données qui sortent du dépôt le jour J du lot 12 (R296), recopié tel quel de data/migrations/<nom>.json : test/aide-registres-sortis.mjs#registreDeMigration le lit quand src/lib/sortie-du-contenu.mjs#contenuSorti() est vrai. Ids figés, cellules et balises seulement, aucun texte de règle. Égalité au registre épinglée par les tests « registre gardé » de db-0114, db-0120 et guide-sans-chapitres tant que les registres sont là.",
+  "0064-guide-sans-chapitres": {
+    "pages": [
+      {
+        "id": "guide/bienvenue",
+        "chapitre": 1,
+        "partie": "decouvrir"
+      },
+      {
+        "id": "guide/le-jeu-de-role",
+        "chapitre": 2,
+        "partie": "decouvrir"
+      },
+      {
+        "id": "guide/l-univers",
+        "chapitre": 3,
+        "partie": "decouvrir"
+      },
+      {
+        "id": "guide/reussir-une-action",
+        "chapitre": 4,
+        "partie": "decouvrir"
+      },
+      {
+        "id": "guide/creer-son-personnage",
+        "chapitre": 5,
+        "partie": "creer"
+      },
+      {
+        "id": "guide/choisir-sa-race",
+        "chapitre": 6,
+        "partie": "creer"
+      },
+      {
+        "id": "guide/choisir-ses-magies",
+        "chapitre": 7,
+        "partie": "creer"
+      },
+      {
+        "id": "guide/choisir-sa-classe",
+        "chapitre": 8,
+        "partie": "creer"
+      },
+      {
+        "id": "guide/caracteristiques-et-competences",
+        "chapitre": 9,
+        "partie": "creer"
+      },
+      {
+        "id": "guide/premiers-sorts",
+        "chapitre": 10,
+        "partie": "creer"
+      },
+      {
+        "id": "guide/finaliser-son-personnage",
+        "chapitre": 11,
+        "partie": "creer"
+      },
+      {
+        "id": "guide/le-tour-de-jeu",
+        "chapitre": 12,
+        "partie": "jouer"
+      },
+      {
+        "id": "guide/attaquer-et-se-defendre",
+        "chapitre": 13,
+        "partie": "jouer"
+      },
+      {
+        "id": "guide/l-equipement",
+        "chapitre": 14,
+        "partie": "jouer"
+      },
+      {
+        "id": "guide/les-degats",
+        "chapitre": 15,
+        "partie": "jouer"
+      },
+      {
+        "id": "guide/les-postures",
+        "chapitre": 16,
+        "partie": "jouer"
+      },
+      {
+        "id": "guide/la-magie-en-jeu",
+        "chapitre": 17,
+        "partie": "jouer"
+      },
+      {
+        "id": "guide/blessures-et-etats",
+        "chapitre": 18,
+        "partie": "jouer"
+      },
+      {
+        "id": "guide/la-montee-de-niveau",
+        "chapitre": 19,
+        "partie": "progresser"
+      },
+      {
+        "id": "guide/le-mode-hyper",
+        "chapitre": 20,
+        "partie": "progresser"
+      },
+      {
+        "id": "guide/s-entrainer-et-exercer-un-metier",
+        "chapitre": 21,
+        "partie": "progresser"
+      },
+      {
+        "id": "guide/aide-memoire",
+        "chapitre": 22,
+        "partie": "plus-loin"
+      },
+      {
+        "id": "guide/lexique",
+        "chapitre": 23,
+        "partie": "plus-loin"
+      },
+      {
+        "id": "guide/les-documents-des-regles",
+        "chapitre": 24,
+        "partie": "plus-loin"
+      }
+    ]
+  },
+  "0114-mots-cles-categories-assignees": {
+    "textes": [
+      {
+        "table": "page",
+        "cle": {
+          "id": "guide/bienvenue"
+        },
+        "col": "corps_md",
+        "avant": "{{orios}}",
+        "apres": "{{orios-race}}",
+        "compte": 1
+      }
+    ]
+  },
+  "0120-races-fongoide-gemidien": {
+    "races": [
+      "races/fongoide",
+      "races/gemidien"
+    ],
+    "mots_cles": {
+      "races/fongoide": 408,
+      "races/gemidien": 409
+    },
+    "textes": [
+      {
+        "table": "mode_hyper_effet",
+        "cle": {
+          "id": "onglet_race:races/elfe-argente"
+        },
+        "col": "effet"
+      },
+      {
+        "table": "mode_hyper_effet",
+        "cle": {
+          "id": "onglet_race:races/felfe"
+        },
+        "col": "effet"
+      }
+    ]
+  }
+}

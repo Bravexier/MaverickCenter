@@ -9,10 +9,12 @@ import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
-  CONTROLE_RETIRE_EN_S, controlesDeLaPasse, LIT_LE_DEPOT_PAR_NATURE, PASSE_SANS_LE_CONTENU, retirerLeContenuDeLaCopie, trierLaPasseSansLeContenu,
-  trierLesControlesDUnePasse,
+  archiverLesExports, CONTROLE_RETIRE_EN_S, controlesDeLaPasse, environnementDeLaPasse, LIT_LE_DEPOT_PAR_NATURE, PASSE_SANS_LE_CONTENU, PASSES_DU_SITE,
+  retirerLeContenuDeLaCopie, trierLaPasseSansLeContenu, trierLesControlesDUnePasse,
 } from '../scripts/essai-mecanique-tests.mjs';
 import { cheminsQuiSortent, listerCeQuiSort } from '../scripts/inventaire-sortie-du-contenu-lib.mjs';
+import { dossierDesExports } from '../../tools/sources/dossier-des-exports.mjs';
+import { contenuSorti, VARIABLE_CONTENU_SORTI } from '../src/lib/sortie-du-contenu.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const RACINE_DU_DEPOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -112,6 +114,46 @@ describe('passe S : la copie sans le contenu qui sort', () => {
   it('sur ce dépôt : ce qui sort tient dans les trois chemins de R296, jamais ailleurs', () => {
     const liste = listerCeQuiSort({ racine: RACINE_DU_DEPOT });
     for (const c of cheminsQuiSortent(liste, { avecMixtes: true })) assert.match(c, /^(data\/rows\/|data\/migrations\/|sources\/raw\/)/, c);
+  });
+});
+
+describe('passe S : allumée (contenu sorti) et exports archivés', () => {
+  it('S pose MAVERICK_CONTENU_SORTI=1 et MAVERICK_SOURCES_RAW ; contenuSorti() et dossierDesExports() la suivent', () => {
+    const env = environnementDeLaPasse(PASSE_SANS_LE_CONTENU, { exports: '/hors/de/la/copie/sources/raw', base: { PATH: 'x', NODE_TEST_CONTEXT: 'child' } });
+    assert.equal(env[VARIABLE_CONTENU_SORTI], '1');
+    assert.equal(contenuSorti(env), true);
+    assert.equal(env.MAVERICK_SOURCES_RAW, '/hors/de/la/copie/sources/raw');
+    assert.equal(dossierDesExports('/racine', env), '/hors/de/la/copie/sources/raw');
+    assert.ok(env.MAVERICK_CONTENU, 'le contenu de la passe reste posé');
+    assert.equal(env.NODE_TEST_CONTEXT, undefined, 'la passe n\'hérite pas du contexte de node --test');
+    assert.equal(env.PATH, 'x');
+  });
+
+  it('les autres passes ne sont jamais allumées, même si l\'environnement reçu l\'est ; S sans archive ne pose pas MAVERICK_SOURCES_RAW', () => {
+    const base = { [VARIABLE_CONTENU_SORTI]: '1', MAVERICK_SOURCES_RAW: '/ailleurs' };
+    for (const passe of ['A', 'B', 'D', ...PASSES_DU_SITE]) {
+      const env = environnementDeLaPasse(passe, { base });
+      assert.equal(contenuSorti(env), false, passe);
+      assert.equal(env.MAVERICK_SOURCES_RAW, undefined, passe);
+    }
+    assert.equal(environnementDeLaPasse(PASSE_SANS_LE_CONTENU, { base }).MAVERICK_SOURCES_RAW, undefined);
+  });
+
+  it('archiverLesExports extrait sources/raw de HEAD (pas de l\'arbre de travail, rien d\'autre) hors du dépôt, et ne touche pas le dépôt', (t) => {
+    const depot = dossierTemporaire('passe-s-depot', { t });
+    const destination = dossierTemporaire('passe-s-exports', { t });
+    execFileSync('git', ['-C', depot, 'init', '-q']);
+    ecrire(depot, { 'sources/raw/doc.md': 'valide\n', 'sources/raw/classeurs/feuille.json': '{}\n', 'sources/sources.json': '{}\n' });
+    execFileSync('git', ['-C', depot, '-c', 'user.name=essai', '-c', 'user.email=essai@example.invalid', 'add', '-A']);
+    execFileSync('git', ['-C', depot, '-c', 'user.name=essai', '-c', 'user.email=essai@example.invalid', 'commit', '-q', '-m', 'essai']);
+    writeFileSync(join(depot, 'sources/raw/doc.md'), 'modifié, non validé\n');
+    const exports = archiverLesExports({ racine: depot, destination: join(destination, 'exports') });
+    assert.equal(exports, join(destination, 'exports', 'sources', 'raw'));
+    assert.equal(readFileSync(join(exports, 'doc.md'), 'utf8'), 'valide\n');
+    assert.equal(readFileSync(join(exports, 'classeurs/feuille.json'), 'utf8'), '{}\n');
+    assert.equal(existsSync(join(destination, 'exports', 'sources', 'sources.json')), false, 'seul sources/raw est archivé');
+    assert.equal(readFileSync(join(depot, 'sources/raw/doc.md'), 'utf8'), 'modifié, non validé\n');
+    assert.equal(dossierDesExports(depot, { MAVERICK_SOURCES_RAW: exports }), exports);
   });
 });
 

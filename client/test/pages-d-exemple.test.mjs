@@ -5,7 +5,7 @@
 //   node --test test/pages-d-exemple.test.mjs
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
+import { copyFileSync, mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
@@ -15,7 +15,9 @@ import { depuisLesLignes, instructions } from '../scripts/db-pages-d-exemple.mjs
 import { ErreurContenuFourni, FICHIER_DES_PAGES_D_EXEMPLE, VARIABLE_DU_CONTENU, preparerLaCopie } from '../src/lib/contenu-fourni.mjs';
 import { copieDEssai, empreinteDuFichier, listeDuDossier } from './aide-contenu-fourni.mjs';
 import { dossierTemporaire, variablesTemporaires } from './aide-dossier-temporaire.mjs';
+import { testRetireAvecLeContenu } from './aide-sortie-du-contenu.mjs';
 
+const testDuDepot = testRetireAvecLeContenu(import.meta.url);
 const CLIENT = fileURLToPath(new URL('..', import.meta.url));
 const RACINE = join(CLIENT, '..');
 const FICHIER = join(RACINE, ...FICHIER_DES_PAGES_D_EXEMPLE);
@@ -84,11 +86,8 @@ function copieDeTravail(t, fichier) {
   return copie;
 }
 
-test('le fichier des pages d’exemple égale ce que data/rows porte (ce que HIDE_EXAMPLES=1 retire), chaque instruction étant une ligne de data/rows', (t) => {
-  if (!existsSync(join(RACINE, 'data', 'rows'))) {
-    t.skip('data/rows n’est plus dans le dépôt (lot 12) : le fichier se garde tel quel');
-    return;
-  }
+// Sort avec data/rows (lot 12, R296 ; RETIRES_AVEC_LE_CONTENU) : le fichier est tiré de data/rows, et se garde tel quel ensuite.
+testDuDepot('le fichier des pages d’exemple égale ce que data/rows porte (ce que HIDE_EXAMPLES=1 retire), chaque instruction étant une ligne de data/rows', () => {
   const { texte, blocs } = depuisLesLignes({ racine: RACINE });
   assert.equal(readFileSync(FICHIER, 'utf8'), texte, `${FICHIER_DES_PAGES_D_EXEMPLE.join('/')} diffère de data/rows : node scripts/db-pages-d-exemple.mjs`);
   const pages = blocs.find((b) => b.table === 'page');

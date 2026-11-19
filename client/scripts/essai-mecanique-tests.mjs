@@ -19,7 +19,10 @@
 //   S   le dépôt SANS ce qui en sortira au lot 12 (R296 ; passe de fin de lot) : l'extrait pour contenu, dans une copie jetable d'où sont retirés data/rows, les
 //       migrations de données (et leurs registres .json) et sources/raw (les catégories de scripts/inventaire-sortie-du-contenu-lib.mjs ; --avec-mixtes retire aussi
 //       les migrations qui mêlent DDL et données). Tous les fichiers de test, sans rubrique « par nature » : tout échec est ROUGE. C'est le critère de fin du lot 12 :
-//       il s'exécute quand S est verte (docs/chantier-base-de-dev.md, « Le jour J du lot 12 »). Avec --controles : les contrôles de la CI, sans db:build (il lit
+//       il s'exécute quand S est verte (docs/chantier-base-de-dev.md, « Le jour J du lot 12 »). S est ALLUMÉE (environnementDeLaPasse) : la suite et les contrôles
+//       tournent sous MAVERICK_CONTENU_SORTI=1 (src/lib/sortie-du-contenu.mjs : les tests qui sortent avec le contenu ne sont plus déclarés) et sous
+//       MAVERICK_SOURCES_RAW = un dossier hors de la copie, rempli par `git archive HEAD sources/raw` (l'archive restaurée du jour J ; tools/sources/dossier-des-exports.mjs),
+//       retiré à la fin de la passe ; de même MAVERICK_MIGRATIONS_ARCHIVEES (`git archive HEAD data/migrations`, lue par tools/sources/rapprocher.mjs). Avec --controles : les contrôles de la CI, sans db:build (il lit
 //       data/rows) et avec db:check sur le contenu fourni, eux aussi rouges au moindre échec.
 //   Le tri de C range à part les fichiers qui lisent le dépôt par nature (LIT_LE_DEPOT_PAR_NATURE : l'ancien circuit, les tables des fiches vides dans
 //   data/rows, les outils Python), attendus jusqu'au lot 12 ; le reste des échecs de C est inattendu.
@@ -46,6 +49,7 @@ import { cpus } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
+import { VARIABLE_CONTENU_SORTI } from '../src/lib/sortie-du-contenu.mjs';
 import { cheminsQuiSortent, listerCeQuiSort } from './inventaire-sortie-du-contenu-lib.mjs';
 
 const client = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -193,6 +197,94 @@ const git = (args, cwd = racine) => {
   return r.stdout;
 };
 const copieDe = (passe) => join(sortie, 'copies', passe);
+
+/** Le dossier (hors de toute copie) qui reçoit l'archive des exports en passe S. */
+const DOSSIER_DES_EXPORTS_DE_S = () => join(sortie, `exports-${PASSE_SANS_LE_CONTENU}`);
+
+/**
+ * Simule l'archive restaurée du jour J : extrait `sources/raw` de `ref` (git archive) sous `destination` (vidé d'abord) et rend le dossier des exports
+ * (`<destination>/sources/raw`), à poser dans MAVERICK_SOURCES_RAW. Ne touche jamais l'arbre de travail de `racine`.
+ */
+export function archiverLesExports({ racine: depot, destination, ref = 'HEAD' }) {
+  return archiverUnDossier({ racine: depot, destination, ref, chemin: 'sources/raw' });
+}
+
+/** Le dossier (hors de toute copie) qui reçoit l'archive des migrations en passe S. */
+const DOSSIER_DES_MIGRATIONS_DE_S = () => join(sortie, `migrations-${PASSE_SANS_LE_CONTENU}`);
+
+/**
+ * Simule l'archive restaurée des migrations de données (jour J) : extrait de `ref` (git archive) les SEULES migrations qui sortent (`listerCeQuiSort`, catégorie des
+ * migrations de données ; avec `avecMixtes`, les mixtes aussi, comme la copie de S) sous `destination` (vidé d'abord) et rend le dossier
+ * (`<destination>/data/migrations`), à poser dans MAVERICK_MIGRATIONS_ARCHIVEES. Le rapprochement le lit AVEC data/migrations de la copie (ce qui y reste) :
+ * c'est l'état du jour J. Ne touche jamais l'arbre de travail de `racine`.
+ */
+export function archiverLesMigrations({ racine: depot, destination, ref = 'HEAD', avecMixtes = false }) {
+  const liste = listerCeQuiSort({ racine: depot, ref });
+  const chemins = [...liste.migrations_donnees, ...(avecMixtes ? liste.migrations_mixtes : [])].map((f) => f.chemin).sort();
+  return archiverUnDossier({ racine: depot, destination, ref, chemin: 'data/migrations', chemins });
+}
+
+function archiverUnDossier({ racine: depot, destination, ref, chemin, chemins = [chemin] }) {
+  rmSync(destination, { recursive: true, force: true });
+  mkdirSync(destination, { recursive: true });
+  const archive = spawnSync('git', ['archive', '--format=tar', ref, ...chemins], { cwd: depot, maxBuffer: 1024 * 1024 * 1024 });
+  if (archive.status !== 0) throw new Error(`git archive ${ref} ${chemin} (${chemins.length} chemin(s)) : ${String(archive.stderr).trim()}`);
+  const extrait = spawnSync('tar', ['-x', '-C', destination], { input: archive.stdout });
+  if (extrait.status !== 0) throw new Error(`tar -x : ${String(extrait.stderr).trim()}`);
+  return join(destination, ...chemin.split('/'));
+}
+
+let exportsDeS = null;
+/** Les exports de la passe S, archivés une fois par processus (null pour les autres passes). */
+function exportsDeLaPasse(passe) {
+  if (passe !== PASSE_SANS_LE_CONTENU) return null;
+  if (!exportsDeS) {
+    exportsDeS = archiverLesExports({ racine, destination: DOSSIER_DES_EXPORTS_DE_S() });
+    process.once('exit', retirerLesExportsArchives); // nettoyé à la fin du processus, réussie ou non
+  }
+  return exportsDeS;
+}
+
+let migrationsDeS = null;
+/** Les migrations de la passe S, archivées une fois par processus (null pour les autres passes). */
+function migrationsDeLaPasse(passe) {
+  if (passe !== PASSE_SANS_LE_CONTENU) return null;
+  if (!migrationsDeS) {
+    migrationsDeS = archiverLesMigrations({ racine, destination: DOSSIER_DES_MIGRATIONS_DE_S(), avecMixtes: drapeau('--avec-mixtes') });
+    process.once('exit', retirerLesMigrationsArchivees);
+  }
+  return migrationsDeS;
+}
+
+/** Retire le dossier des migrations archivées de la passe S. */
+export function retirerLesMigrationsArchivees() {
+  rmSync(DOSSIER_DES_MIGRATIONS_DE_S(), { recursive: true, force: true });
+  migrationsDeS = null;
+}
+
+/** Retire le dossier des exports archivés de la passe S (la simulation de l'archive restaurée n'a pas à rester). */
+export function retirerLesExportsArchives() {
+  rmSync(DOSSIER_DES_EXPORTS_DE_S(), { recursive: true, force: true });
+  exportsDeS = null;
+}
+
+/**
+ * L'environnement d'une passe : le contenu (MAVERICK_CONTENU) ; en S seulement, ALLUMÉE : MAVERICK_CONTENU_SORTI=1 et, avec `exports`, MAVERICK_SOURCES_RAW = ce dossier, avec `migrations`, MAVERICK_MIGRATIONS_ARCHIVEES = ce dossier.
+ * Les autres passes retirent les deux variables de l'environnement reçu (aucune ne doit voir ce qui ne vaut qu'une fois le contenu sorti).
+ */
+export function environnementDeLaPasse(passe, { exports = null, migrations = null, base = process.env } = {}) {
+  const env = { ...base, MAVERICK_CONTENU: FICHIER[passe] };
+  delete env.NODE_TEST_CONTEXT;
+  delete env[VARIABLE_CONTENU_SORTI];
+  delete env.MAVERICK_SOURCES_RAW;
+  delete env.MAVERICK_MIGRATIONS_ARCHIVEES;
+  if (passe === PASSE_SANS_LE_CONTENU) {
+    env[VARIABLE_CONTENU_SORTI] = '1';
+    if (exports) env.MAVERICK_SOURCES_RAW = exports;
+    if (migrations) env.MAVERICK_MIGRATIONS_ARCHIVEES = migrations;
+  }
+  return env;
+}
 const horsDesLignes = (f) => !f.startsWith('data/rows/');
 
 /**
@@ -259,7 +351,7 @@ export function preparerLaCopieJetable(passe, { avecMixtes = drapeau('--avec-mix
     symlinkSync(join(client, 'node_modules'), modules, 'dir');
   }
   const pages = spawnSync(process.execPath, ['--no-warnings', 'scripts/db-export-pages.mjs'], {
-    cwd: join(copie, 'client'), encoding: 'utf8', env: { ...process.env, MAVERICK_CONTENU: FICHIER[passe] },
+    cwd: join(copie, 'client'), encoding: 'utf8', env: environnementDeLaPasse(passe, { exports: exportsDeLaPasse(passe), migrations: migrationsDeLaPasse(passe) }),
   });
   if (pages.status !== 0) throw new Error(`copie ${passe} : db-export-pages a échoué : ${pages.stderr || pages.stdout}`);
   return join(copie, 'client');
@@ -269,6 +361,8 @@ export function nettoyerLesCopies() {
   for (const passe of [...PASSES_DU_SITE, PASSE_DE_LA_CI, PASSE_SANS_LE_CONTENU]) {
     if (existsSync(copieDe(passe))) git(['worktree', 'remove', '--force', copieDe(passe)]);
   }
+  retirerLesExportsArchives();
+  retirerLesMigrationsArchivees();
   git(['worktree', 'prune']);
 }
 
@@ -332,8 +426,7 @@ export async function controles(passeNom) {
     rmSync(runner, { recursive: true, force: true });
     mkdirSync(runner, { recursive: true });
     const t0 = Date.now();
-    const env = { ...process.env, MAVERICK_CONTENU: FICHIER[passeNom], RUNNER_TEMP: runner };
-    delete env.NODE_TEST_CONTEXT;
+    const env = { ...environnementDeLaPasse(passeNom, { exports: exportsDeLaPasse(passeNom), migrations: migrationsDeLaPasse(passeNom) }), RUNNER_TEMP: runner };
     const r = spawnSync('sh', ['-c', c.commande], { cwd, env, encoding: 'utf8', maxBuffer: 256 * 1024 * 1024 });
     const texte = `${r.stdout ?? ''}${r.stderr ?? ''}`;
     const journal = `controle-${String(i + 1).padStart(2, '0')}${c.test ? `-${c.test}` : ''}.log`;
@@ -374,8 +467,7 @@ const fichiersDeTest = () => readdirSync(join(client, 'test')).filter((f) => f.e
 function lancerUn(fichier, passe, cwd = client) {
   return new Promise((fin) => {
     const t0 = Date.now();
-    const env = { ...process.env, MAVERICK_CONTENU: FICHIER[passe] };
-    delete env.NODE_TEST_CONTEXT;
+    const env = environnementDeLaPasse(passe, { exports: exportsDeLaPasse(passe), migrations: migrationsDeLaPasse(passe) });
     const p = spawn(process.execPath, ['--no-warnings', '--test', join('test', fichier)], { cwd, env });
     let sortieTexte = '';
     const garder = (b) => { if (sortieTexte.length < 4_000_000) sortieTexte += b; };
@@ -532,8 +624,8 @@ function trierAB(A, B) {
  * `races-onglet` (races_onglet.py --verifier --base), `db-pages-du-site` (sync dans une base de travail, puis un lot source), `codex` (codex.py --verifier --base) et `races-magies-innees-liste` (rapatriement dans une copie des lignes de départ), `mise-a-jour-paquet` et `mise-a-jour-regles` (copies des lignes de départ : `copieDesRowsDeDepart`, `rowsDeDepart`) et `contenu-fourni` (test 2 dans une racine jetable) en sont sortis.
  */
 export const LIT_LE_DEPOT_PAR_NATURE = Object.freeze({
-  'db-donnees.test.mjs': { famille: 'F3', raison: 'db:export-pages, db:build et db:derive depuis data/rows (au chargement du fichier), puis db:check sur la base construite', tests: 'tous' },
-  'pages-d-exemple.test.mjs': { famille: 'F3', raison: 'voulu : le fichier des pages d’exemple est comparé à data/rows, dont il est tiré', tests: '1' },
+  'db-donnees.test.mjs': { famille: 'F3', raison: 'db:build et db:derive depuis data/rows, Python qui reconstruit data/rows, db:sync-pages (les 5 tests déclarés dans sortie-du-contenu.mjs#RETIRES_AVEC_LE_CONTENU ; db:check, db:export-pages et db:pages-check lisent le contenu fourni)', tests: '1, 5, 6, 8 et 9' },
+  'pages-d-exemple.test.mjs': { famille: 'F3', raison: 'voulu : le fichier des pages d’exemple est comparé à data/rows, dont il est tiré (test déclaré dans sortie-du-contenu.mjs#RETIRES_AVEC_LE_CONTENU)', tests: '1' },
 });
 
 const DESCRIPTION_DES_PASSES = {

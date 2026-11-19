@@ -3,6 +3,9 @@
 //   npm run db:check        contrôles d'intégrité que SQLite ne sait pas exprimer
 //   npm run db:pages-check  les pages de data/rows sont celles des .md ;  npm run db:sync-pages  les remet à jour
 // Ces tests construisent la base dans un dossier temporaire et ne touchent ni data/rows ni var/.
+// Lot 12 (R296) : db:build depuis data/rows et db:sync-pages sortent avec data/rows (docs/chantier-base-de-dev.md, « Retire le code de l'ancien circuit ») : leurs
+// tests sont déclarés par testRetireAvecLeContenu (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LE_CONTENU), et ne tournent plus quand le contenu est sorti. Ce qui éprouve
+// un outil qui reste (db:check, db:export-pages, db:pages-check) lit le contenu fourni (MAVERICK_CONTENU ; sans lui, la base construite de data/rows).
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -10,39 +13,58 @@ import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { cheminBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { ORDRE_DES_RACES } from '../src/lib/race-kinds.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { horsDeLa0120, RACES_DE_LA_0120 } from './aide-races-0120.mjs';
+import { registreDeMigration } from './aide-registres-sortis.mjs';
+import { testRetireAvecLeContenu } from './aide-sortie-du-contenu.mjs';
+
+const testDuDepot = testRetireAvecLeContenu(import.meta.url);
 
 const racine = fileURLToPath(new URL('../../', import.meta.url));
 const client = fileURLToPath(new URL('../', import.meta.url));
 const rows = join(racine, 'data', 'rows');
 // numéro de version du schéma, lu dans data/schema.sql (un changement de version ne doit pas obliger à retoucher ce test)
 const versionSchema = Number(/PRAGMA user_version = (\d+)/.exec(readFileSync(join(racine, 'data', 'schema.sql'), 'utf8'))[1]);
-// Ces tests portent sur data/rows (le dépôt), quel que soit le contenu que lit le reste de la suite : l'environnement des processus lancés n'a pas
+// Les tests retirés avec data/rows portent sur le dépôt, quel que soit le contenu que lit le reste de la suite : l'environnement des processus lancés n'a pas
 // MAVERICK_CONTENU (l'extrait du site de dev, que la CI pose pour tout le job : lib/contenu-fourni.mjs), et le wiki de comparaison est exporté de data/rows
 // dans un dossier temporaire, jamais lu dans client/src/content/wiki (fabriqué depuis l'extrait sous la variable : il porte les pages que le site a modifiées).
 const envDuDepot = { ...process.env };
 delete envDuDepot.MAVERICK_CONTENU;
 delete envDuDepot.MAVERICK_CONTENU_DERIVE;
-const node = (script, args = []) => spawnSync(process.execPath, ['--no-warnings', join(client, 'scripts', script), ...args], { encoding: 'utf8', env: envDuDepot });
+const node = (script, args = [], env = envDuDepot) => spawnSync(process.execPath, ['--no-warnings', join(client, 'scripts', script), ...args], { encoding: 'utf8', env });
 const pages = (...args) => spawnSync('python3', ['-I', join(racine, 'tools', 'db', 'pages_md.py'), ...args], { encoding: 'utf8', env: envDuDepot });
 const sansPython = spawnSync('python3', ['--version']).error ? 'python3 absent' : false;
 const dir = dossierTemporaire('db-donnees');
+const unefois = (fabriquer) => { let r; return () => (r ??= fabriquer()); };
+const nbFichiersMd = (wiki, type) => readdirSync(join(wiki, type)).filter((f) => f.endsWith('.md')).length;
 
-// les .md que data/rows produit (db:export-pages sur data/rows) : la référence de db:pages-check et de db:sync-pages
-const wiki = join(dir, 'wiki-de-data-rows');
-const exportDesPages = node('db-export-pages.mjs', ['--out', wiki]);
-if (exportDesPages.status !== 0) throw new Error(`db:export-pages sur data/rows a échoué : ${exportDesPages.stderr || exportDesPages.stdout}`);
-const fichiersMd = (type) => readdirSync(join(wiki, type)).filter((f) => f.endsWith('.md')).length;
-const nbPagesMd = readdirSync(wiki).reduce((n, type) => n + fichiersMd(type), 0);
+// Le dépôt (tests retirés avec data/rows) : les .md que data/rows produit (db:export-pages sur data/rows), la référence de db:sync-pages ; la base que
+// db:build en construit, puis db:derive. Faits à la première demande : rien n'est construit quand le contenu est sorti.
+const surLeDepot = unefois(() => {
+  const wiki = join(dir, 'wiki-de-data-rows');
+  const exportDesPages = node('db-export-pages.mjs', ['--out', wiki]);
+  if (exportDesPages.status !== 0) throw new Error(`db:export-pages sur data/rows a échoué : ${exportDesPages.stderr || exportDesPages.stdout}`);
+  const nbPagesMd = readdirSync(wiki).reduce((n, type) => n + nbFichiersMd(wiki, type), 0);
+  const base = join(dir, 'maverick.db');
+  const build = node('db-build.mjs', ['--out', base]);
+  const derive = build.status === 0 ? node('db-derive.mjs', [base]) : build;
+  return { wiki, nbPagesMd, base, build, derive };
+});
 
-const base = join(dir, 'maverick.db');
-const build = node('db-build.mjs', ['--out', base]);
-const derive = build.status === 0 ? node('db-derive.mjs', [base]) : build;
+// Le contenu fourni (l'extrait du site de dev en CI ; sans MAVERICK_CONTENU, la base construite de data/rows) : sa base et ses pages exportées par db:export-pages.
+const surLeContenu = unefois(() => {
+  const wiki = join(dir, 'wiki-du-contenu');
+  const exportDesPages = node('db-export-pages.mjs', ['--out', wiki], process.env);
+  if (exportDesPages.status !== 0) throw new Error(`db:export-pages sur le contenu fourni a échoué : ${exportDesPages.stderr || exportDesPages.stdout}`);
+  const nbPagesMd = readdirSync(wiki).reduce((n, type) => n + nbFichiersMd(wiki, type), 0);
+  return { wiki, nbPagesMd, base: cheminBase({ sansExemples: false }) };
+});
 
-test('db:build construit la base depuis data/rows (schéma, lignes, clés étrangères) puis db:derive calcule liens et plein texte', () => {
+testDuDepot('db:build construit la base depuis data/rows (schéma, lignes, clés étrangères) puis db:derive calcule liens et plein texte', () => {
+  const { build, derive, nbPagesMd } = surLeDepot();
   assert.equal(build.status, 0, build.stderr);
   const bilan = JSON.parse(build.stdout);
   assert.equal(bilan.version, versionSchema);
@@ -56,6 +78,8 @@ test('db:build construit la base depuis data/rows (schéma, lignes, clés étran
 });
 
 test('la base contient les domaines : pages, magies et sorts, classes et capacités, races, bestiaire, équipement', () => {
+  const { base, wiki, nbPagesMd } = surLeContenu();
+  const fichiersMd = (type) => nbFichiersMd(wiki, type);
   const db = new DatabaseSync(base, { readOnly: true });
   const n = (table) => db.prepare(`SELECT count(*) AS n FROM "${table}"`).get().n;
   const pagesDuType = (type) => db.prepare("SELECT count(*) AS n FROM page WHERE type = ? AND statut <> 'example'").get(type).n;
@@ -64,7 +88,7 @@ test('la base contient les domaines : pages, magies et sorts, classes et capacit
   // effectifs de l'import : le site de dev, source des données qu'il modifie, peut créer des races, des classes… (lib/historique-site.mjs)
   const historique = historiqueSite(db);
   // classes et dons : les comptes du registre de la migration 0119 (R238 : Boxeur et Porte-étendard, Cuirassé V2), qui les a écrits
-  const comptes0119 = JSON.parse(readFileSync(join(racine, 'data', 'migrations', '0119-classes-materiaux-d12.json'), 'utf8')).comptes;
+  const comptes0119 = registreDeMigration('0119-classes-materiaux-d12').comptes;
   for (const [table, effectif] of [['magie', 15], ['sort', 420], ['magie_specialisation', 28], ['classe', comptes0119.classe], ['capacite', comptes0119.capacite],
     ['race', 27 + RACES_DE_LA_0120.size], ['invocation', 3], ['creature', 63]]) {
     assert.equal(historique.effectifDImport(table), effectif, `${table} : effectif de l'import`);
@@ -93,8 +117,8 @@ test('la base contient les domaines : pages, magies et sorts, classes et capacit
   db.close();
 });
 
-test('db:check : aucun problème sur la base construite', () => {
-  const r = node('db-check.mjs', [base]);
+test('db:check : aucun problème sur la base du contenu fourni', () => {
+  const r = node('db-check.mjs', [surLeContenu().base]);
   assert.equal(r.status, 0, r.stdout);
   const v = JSON.parse(r.stdout);
   assert.deepEqual(v.problemes, []);
@@ -103,16 +127,19 @@ test('db:check : aucun problème sur la base construite', () => {
 
 test('db:check détecte un défaut injecté (une entité typée qui n’a plus sa ligne page_entite)', () => {
   const copie = join(dir, 'defaut.db');
-  cpSync(base, copie);
+  cpSync(surLeContenu().base, copie);
   const db = new DatabaseSync(copie);
-  db.exec("DELETE FROM page_entite WHERE entite_table = 'invocation' AND entite_id = 'bestiaire/animation-des-morts'");
+  // une ligne choisie dans l'état courant, pas un id supposé
+  const ligne = db.prepare("SELECT entite_table, entite_id FROM page_entite WHERE entite_table = 'invocation' ORDER BY entite_id LIMIT 1").get();
+  assert.ok(ligne, 'une invocation a sa ligne page_entite');
+  db.prepare('DELETE FROM page_entite WHERE entite_table = ? AND entite_id = ?').run(ligne.entite_table, ligne.entite_id);
   db.close();
   const r = node('db-check.mjs', [copie]);
   assert.equal(r.status, 1);
-  assert.match(r.stdout, /page_entite : invocation:bestiaire\/animation-des-morts manque/);
+  assert.ok(r.stdout.includes(`page_entite : ${ligne.entite_table}:${ligne.entite_id} manque`), r.stdout);
 });
 
-test('db:build refuse un jeu de lignes incomplet ou d’une autre version', () => {
+testDuDepot('db:build refuse un jeu de lignes incomplet ou d’une autre version', () => {
   const copie = join(dir, 'rows-casse');
   cpSync(rows, copie, { recursive: true });
   writeFileSync(join(copie, 'VERSION'), `schema_version=${versionSchema + 1}\n`);
@@ -126,7 +153,7 @@ test('db:build refuse un jeu de lignes incomplet ou d’une autre version', () =
   assert.match(enTrop.stderr, /ne correspond pas au schéma/);
 });
 
-test('Python reconstruit la même base : lignes -> base -> export = data/rows octet pour octet', { skip: sansPython }, () => {
+testDuDepot('Python reconstruit la même base : lignes -> base -> export = data/rows octet pour octet', { skip: sansPython }, () => {
   const sortie = join(dir, 'export');
   mkdirSync(sortie);
   const py = `
@@ -144,13 +171,15 @@ T.exporter(db, sys.argv[3])
   assert.deepEqual(differents, [], 'export déterministe : relire et réécrire ne change aucun octet');
 });
 
-test('db:pages-check : les pages de data/rows sont celles des .md que data/rows produit (l’export relu par pages_md.py rend les mêmes pages)', { skip: sansPython }, () => {
-  const r = pages('check', '--wiki', wiki);
+test('db:pages-check : les pages de la base du contenu fourni sont celles des .md que db:export-pages en produit (l’export relu par pages_md.py rend les mêmes pages)', { skip: sansPython }, () => {
+  const { base, wiki } = surLeContenu();
+  const r = pages('check', '--base', base, '--wiki', wiki);
   assert.equal(r.status, 0, r.stdout + r.stderr);
   assert.match(r.stdout, /est à jour/);
 });
 
-test('db:sync-pages : une page modifiée est détectée puis remise à jour sans toucher aux lignes typées ; une page ajoutée est refusée', { skip: sansPython }, () => {
+testDuDepot('db:sync-pages : une page modifiée est détectée puis remise à jour sans toucher aux lignes typées ; une page ajoutée est refusée', { skip: sansPython }, () => {
+  const { wiki } = surLeDepot();
   const copieWiki = join(dir, 'wiki');
   const copieRows = join(dir, 'rows-sync');
   cpSync(wiki, copieWiki, { recursive: true });
@@ -180,7 +209,8 @@ test('db:sync-pages : une page modifiée est détectée puis remise à jour sans
   assert.ok(existsSync(join(copieWiki, 'magies', 'magie-fantome.md')));
 });
 
-test('db:sync-pages : une page « docs » ajoutée à la main entre dans la base, et son retrait remet data/rows exactement comme avant ; un sort ou une capacité ne se crée pas ainsi', { skip: sansPython }, () => {
+testDuDepot('db:sync-pages : une page « docs » ajoutée à la main entre dans la base, et son retrait remet data/rows exactement comme avant ; un sort ou une capacité ne se crée pas ainsi', { skip: sansPython }, () => {
+  const { wiki } = surLeDepot();
   const copieWiki = join(dir, 'wiki-ajout');
   const copieRows = join(dir, 'rows-ajout');
   cpSync(wiki, copieWiki, { recursive: true });

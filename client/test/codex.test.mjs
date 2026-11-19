@@ -11,6 +11,7 @@ import { cpSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
 import { test } from 'node:test';
+import { dossierDesExports } from '../../tools/sources/dossier-des-exports.mjs';
 import { cheminBase, ouvrirBase, trouverRacine } from '../src/lib/donnees.mjs';
 import { indexDesAdresses, pageDeLAdresse } from '../src/lib/adresses-db.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
@@ -22,6 +23,8 @@ import { baseDImport } from './aide-base-d-import.mjs';
 import { contenuDuSite } from './aide-base-de-depart.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
+// Les tests qui rejouent l'extracteur (tools/docs/codex.py) lisent l'export du Codex par dossierDesExports() : sources/raw, ou MAVERICK_SOURCES_RAW (l'archive restaurée,
+// lot 12, R296). Leur retrait avec les exports attend la réponse du propriétaire (reco (e)).
 const racine = trouverRacine();
 const db = ouvrirBase({ sansExemples: false });
 const SOURCE = 'Google Doc « CODEX Maverick »';
@@ -193,7 +196,7 @@ test('mots-clés du Codex : seuls ceux du vocabulaire, dans son écriture (un im
 // pas le mot-clé « Sang » sur ses temples. Sur l'export du Codex du dépôt (sources/raw/), sans dump.
 test('R145, R183 : l’import du Codex ne pose pas le mot-clé « Sang » sur les temples de la magie du Sang (Confrérie du Sang, Pointe de Sang)', (t) => {
   // les deux pages sont bien celles que le découpage range sous « Magie de Sang » (codex.py#MAGIES : 'Magie de Sang' -> 'sang')
-  const doc = readFileSync(join(racine, 'sources', 'raw', `${ID}.md`), 'utf8');
+  const doc = readFileSync(join(dossierDesExports(racine), `${ID}.md`), 'utf8');
   const section = doc.slice(doc.indexOf('\n## Magie de Sang\n'), doc.indexOf('\n## ', doc.indexOf('\n## Magie de Sang\n') + 1));
   assert.match(section, /^### Confrérie du Sang \(Temple du sang\)$/m);
   assert.match(section, /La Pointe de Sang/);
@@ -388,7 +391,7 @@ test('décision R21 : la divinité de la Corruption s’appelle Eaunoire, la gra
 
 test('registre de corrections : décrit, appliqué à l’export (qui reste tel quel), sans toucher un chiffre', () => {
   const registre = JSON.parse(readFileSync(join(racine, 'tools', 'docs', 'codex-corrections.json'), 'utf8'));
-  const brut = readFileSync(join(racine, 'sources', 'raw', `${ID}.md`), 'utf8');
+  const brut = readFileSync(join(dossierDesExports(racine), `${ID}.md`), 'utf8');
   const corps = pagesDImport.map((p) => p.corps_md).join('\n');
   for (const c of registre.corrections) {
     assert.ok(c.avant && c.apres && c.raison && c.nature && Number.isInteger(c.occurrences), JSON.stringify(c));

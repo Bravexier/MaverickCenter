@@ -13,7 +13,7 @@ user-invocable: false
 
 ## La page
 
-- Les Google Docs et Sheets : le registre des copies `sources/copies-drive.json` (clés `copies`, `fiche_corrigee`, `non_copies` ; la migration 0014 n'est plus lue) + le manifeste `sources/sources.json`, avec les pages et onglets qui les citent d'après la base) et l'ancien wiki Fandom.
+- Les Google Docs et Sheets : le registre des copies `sources/copies-drive.json` (clés `copies`, `fiche_corrigee`, `non_copies` ; la migration 0014 n'est plus lue) + le manifeste `sources/sources.json`, avec les pages et onglets qui les citent d'après la base, et l'ancien wiki Fandom.
 - Ni « Familiers » ni « Prototype » (`DOCUMENTS_RETIRES`, demande du propriétaire) ; la migration 0019 retire aussi leurs liens de la base.
 - Le CODEX Maverick et le Bestiaire 2.0 passent par les copies que le propriétaire en a faites depuis (entrée du manifeste dont `original` cite l'identifiant d'origine), l'original en second lien.
 - `lib/archives.mjs` lit les fichiers par `node:fs` (`lireArchives`) : ne pas l'importer côté navigateur.

@@ -22,9 +22,13 @@ import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
 import { avecLesClesDe } from './aide-mots-cles.mjs';
 import { ecritParLeSite, lignesQuiCitent } from './aide-page-retiree.mjs';
 import { textesReecrits } from './aide-textes-reecrits.mjs';
+import { testRetireAvecLeContenu } from './aide-sortie-du-contenu.mjs';
 
 const MIGRATION = '0094-retrait-pages-doublons-des-combats.sql';
 const lire = (chemin) => readFileSync(new URL(`../../${chemin}`, import.meta.url), 'utf8');
+// le rejeu de la migration sort avec elle le jour J du lot 12 (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LE_CONTENU) ; les autres tests éprouvent
+// ce qu'elle a laissé dans la base, toujours vrai
+const testDeLaMigration = testRetireAvecLeContenu(import.meta.url);
 const db = ouvrirBase({ sansExemples: false });
 const h = historiqueSite(db);
 const page = (id) => db.prepare('SELECT * FROM page WHERE id = ?').get(id);
@@ -65,8 +69,6 @@ test('0094 : les trois pages retirées, avec leurs lignes d’import, leur alias
   assert.deepEqual(db.prepare(`SELECT page_id, cible, etat FROM lien WHERE etat <> 'resolu'
     AND page_id IN ('guide/les-postures', 'guide/attaquer-et-se-defendre', 'guide/guide-pour-mj-maverick')`).all()
     .filter((r) => !h.modifiee('page', { id: r.page_id }, 'corps_md')), []);
-  // la migration ne fait que retirer : l'historique du site et les notes de version gardent ce qui les citait
-  assert.match(lire(`data/migrations/${MIGRATION}`), /historique_modification et de note_version_ligne qui les citent restent/);
 });
 
 // « Le Mode Hyper » reste (R187) : la migration 0095 retire la Liste et change une phrase de « Le Mode Hyper » ; 0094, elle, n'y touche pas.
@@ -167,7 +169,7 @@ test('0094 : les liens écrits vers les pages retirées mènent à la page qui r
   }
 });
 
-test('0094 rejouée sur son propre résultat : rien ne change (UPDATE gardés par le texte d’avant, alias ajouté une fois)', (t) => {
+testDeLaMigration('0094 rejouée sur son propre résultat : rien ne change (UPDATE gardés par le texte d’avant, alias ajouté une fois)', (t) => {
   // son résultat : la base telle que les migrations l'ont laissée (les lots du site d'après la 0095 défaits) ; sur l'état courant, un texte que le site
   // aurait réécrit avec un ancien lien serait réécrit par le rejeu, sans que la migration ait changé
   const chemin = fichierTemporaire('maverick.db', 'retrait-combats', { t });
@@ -182,4 +184,6 @@ test('0094 rejouée sur son propre résultat : rien ne change (UPDATE gardés pa
   base.exec(lire(`data/migrations/${MIGRATION}`));
   base.exec('COMMIT');
   assert.deepEqual(etat(), avant);
+  // la migration ne fait que retirer : l'historique du site et les notes de version gardent ce qui les citait
+  assert.match(lire(`data/migrations/${MIGRATION}`), /historique_modification et de note_version_ligne qui les citent restent/);
 });

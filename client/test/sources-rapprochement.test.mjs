@@ -5,6 +5,7 @@
 // échouer le test avec le relevé complet.
 import assert from 'node:assert/strict';
 import { copyFileSync, readFileSync, writeFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
@@ -12,6 +13,7 @@ import {
   adresse, avecCorrections, changements, citations, comparable, enA1, feuillesJson, formuleLisible, instantanesDuRegistre, lireRegistre, morceaux, nombreDEcarts, nombresDe,
   plage, rapport, rapprocher, remplacer, sansCorrections,
 } from '../../tools/sources/rapprocher.mjs';
+import { dossierDesExports } from '../../tools/sources/dossier-des-exports.mjs';
 import { texteDInstantane } from '../../tools/sources/instantane.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { baseDImport, cheminDImport } from './aide-base-d-import.mjs';
@@ -20,7 +22,9 @@ import { dossierTemporaire, fichierTemporaire } from './aide-dossier-temporaire.
 const racine = new URL('../../', import.meta.url);
 const lire = (chemin) => JSON.parse(readFileSync(new URL(chemin, racine), 'utf8'));
 const cheminDe = (chemin) => new URL(chemin, racine).pathname;
-const registre = lire('sources/raw/classeurs/registre.json');
+// Les instantanés : sources/raw, ou MAVERICK_SOURCES_RAW (archive restaurée après le lot 12, R296).
+const classeurs = join(dossierDesExports(fileURLToPath(racine)), 'classeurs');
+const registre = JSON.parse(readFileSync(join(classeurs, 'registre.json'), 'utf8'));
 const instantanes = instantanesDuRegistre();
 
 test('adresses, plages et citations des source_ref', () => {
@@ -86,7 +90,7 @@ test('chaque classeur du registre est rapproché ou en cours, avec son instantan
 
 test('un instantané se réécrit à l’identique (forme stable, rien de perdu)', () => {
   for (const c of registre.classeurs) {
-    const texte = readFileSync(new URL(`sources/raw/classeurs/${c.fichier}`, racine), 'utf8');
+    const texte = readFileSync(join(classeurs, c.fichier), 'utf8');
     assert.equal(texteDInstantane(JSON.parse(texte)), texte, c.fichier);
   }
 });
