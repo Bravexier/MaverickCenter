@@ -31,6 +31,7 @@ import { instant as maintenant } from './instant.mjs';
 import { DOSSIER_ARCHIVES, FICHIER_BASE, lireEtat, ouvrirBaseVivante, preparerBaseVivante, signature } from './base-vivante.mjs';
 import { ErreurBaseSource, estEnBascule2, estUneBaseSource, etatDeLaBaseSource, preparerBaseSource } from './base-source.mjs';
 import { annonceDuLancement, DUREE_MAX_MAINTENANCE, etatDeMaintenance, lireAnnonce, publierAnnonce } from './maintenance.mjs';
+import { creerLesInterrupteursDeGithub } from './bascule-2-etat.mjs';
 import { creerGithub, lireLancement, lireReference, sansNouvelles, SUIVIS } from './notes-de-version.mjs';
 import { actualiser } from './paquet.mjs';
 import {
@@ -118,7 +119,8 @@ const inode = (chemin) => {
  * @param {string|null} [o.maintenance] dossier partagé de l'annonce de maintenance (MAVERICK_MAINTENANCE : le même pour les deux serveurs) ;
  *   sans lui, le site de dev se met en maintenance d'après son seul lancement et la production ne l'est jamais
  * @param {string|null} [o.paquets] dossier partagé des paquets de la production (MAVERICK_PAQUETS ; lot 11, PR 5a, serveur/paquets-de-la-production.mjs) : le site de dev y dépose le paquet
- *   de la mise à jour et y lit le rapport de l'activation, seulement avec le marqueur db/bascule-2 ; sans lui, rien n'y est écrit ni lu
+ *   de la mise à jour et y lit le rapport de l'activation (`activation_production`), seulement avec le marqueur db/bascule-2 ; sans lui, rien n'y est écrit, et le rapport n'est lu que pour
+ *   l'état en lecture seule `bascule_2` de la page Mise à jour (serveur/bascule-2-etat.mjs)
  * @param {string} [o.versionParDefaut] version annoncée sans version.json (développement : celle de package.json)
  * @param {((message: string, options?: object) => void) | null} [o.journal] reçoit chaque ligne notée (sans horodatage) ; donné, la sortie console se tait
  *   (tests) ; sinon les lignes partent sur la console, horodatées
@@ -261,6 +263,8 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
     }
   };
   const github = edition ? creerGithub({ dossier, depot, lireJeton, journal, fetch: fetchMesure }) : null;
+  // les interrupteurs de la bascule 2 que GitHub porte (page Mise à jour, `bascule_2`) : lus en arrière-plan, en cache (serveur/bascule-2-etat.mjs)
+  const interrupteursGithub = github ? creerLesInterrupteursDeGithub({ github }) : null;
   // « Importer (en ligne) » de /fiche/ (POST /api/classeur/) : sur les deux instances ; ses bornes de débit valent pour tout le service
   const classeur = creerClasseurEnLigne({ fetch: fetchDuClasseur, journal, evenement });
   // la partie « Bienvenue » de Tipeee (GET /api/tipeee/) : sur les deux instances ; son cache et sa requête en cours valent pour tout le service, le
@@ -666,7 +670,7 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
         try {
           reponse = traiter({ methode: req.method ?? 'GET', chemin: url.pathname, recherche: url.search, entetes: req.headers, corps: Buffer.concat(morceaux).toString('utf8'),
             signal: abandon.signal },
-          { base: baseMesuree, etat: decrire, journal, journalDuService: memoire, edition: Boolean(edition), dossier, reference: referenceDuSite, depot, adresse, github,
+          { base: baseMesuree, etat: decrire, journal, journalDuService: memoire, edition: Boolean(edition), dossier, reference: referenceDuSite, depot, adresse, github, interrupteursGithub,
             maintenance: maintenanceDemandee, metriques, evenement, classeur, tipeee, extrait, attestations: dossierDesAttestations, acces, essaiDeStructure, atelier, source: estSource,
             bascule2: enBascule2, paquets, gel, codeDuService: () => ({ commit: typeof version.commit === 'string' ? version.commit : null, empreinte: version.empreinte ?? null }) });
         } finally {

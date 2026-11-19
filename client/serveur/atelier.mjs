@@ -462,6 +462,22 @@ export function creerAtelier({ dossier, rapports = null, depot = null, edition, 
     return etat('rapport', jugerLeServeur(dernier).phrase, plus);
   }
 
+  /**
+   * L'interrupteur « l'atelier sert ce qu'il fabrique », seul (la page Mise à jour, bascule 2 ; sans lire les rapports ni l'extrait) : `servir.json` écrit par root avec l'interrupteur
+   * `<atelier>/servir` et retiré avec lui. `pose` : true (posé, `depuis`), false (rapports montés, pas de servir.json), null (inconnu, avec `raison`).
+   */
+  function servir() {
+    if (!edition) return { pose: null, depuis: null, raison: 'pas_d_atelier' };
+    if (!rapports || !existsSync(rapports)) return { pose: null, depuis: null, raison: 'atelier_non_installe' };
+    try {
+      lstatSync(join(rapports, 'servir.json'));
+    } catch (e) {
+      return e?.code === 'ENOENT' ? { pose: false, depuis: null } : { pose: null, depuis: null, raison: 'rapport_illisible' };
+    }
+    const s = lireLeServir();
+    return s ? { pose: true, depuis: s.depuis } : { pose: null, depuis: null, raison: 'rapport_illisible' };
+  }
+
   function demarrer() {
     if (!edition || !rapports || !depot || intervalle <= 0 || minuteur) return;
     const tourner = () => { passer().catch((e) => journal(`ERREUR atelier : ${String(e.message).slice(0, 200)}`, { categorie: 'service' })); };
@@ -477,6 +493,6 @@ export function creerAtelier({ dossier, rapports = null, depot = null, edition, 
     try { await enCours; } catch { /* déjà noté */ }
   }
 
-  return { lire, passer, refaireMaintenant, demarrer, arreter, dossierDeLExtrait: depot };
+  return { lire, servir, passer, refaireMaintenant, demarrer, arreter, dossierDeLExtrait: depot };
 }
 

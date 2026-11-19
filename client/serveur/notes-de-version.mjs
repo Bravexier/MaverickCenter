@@ -574,6 +574,21 @@ export function creerGithub({ dossier, depot, lireJeton, fetch: f = globalThis.f
       if (!Array.isArray(liste)) throw new Error('GitHub a rendu une liste de livraisons illisible');
       return liste.filter((l) => l && l.draft !== true && typeof l.tag_name === 'string').map((l) => l.tag_name);
     },
+    /**
+     * Le texte d'un petit fichier du dépôt (256 Ko au plus) à la branche `ref`, par GET /contents (lecture seule). Lève une erreur dont `genre` dit pourquoi :
+     * `jeton` (aucun jeton), `refuse` (401), `droit` (403), `introuvable` (404 : fichier absent, ou dépôt illisible avec ce jeton), `illisible` (réponse mal formée) ;
+     * sans `genre` : GitHub injoignable ou en panne. Sert la lecture des interrupteurs de la bascule 2 (serveur/bascule-2-etat.mjs).
+     */
+    async lireUnFichier(chemin, { ref = 'dev' } = {}) {
+      if (!lireJeton()) throw Object.assign(new Error('aucun jeton GitHub sur ce serveur'), { genre: 'jeton' });
+      const r = await api(`/contents/${String(chemin).split('/').map(encodeURIComponent).join('/')}?ref=${encodeURIComponent(ref)}`);
+      const genre = { 401: 'refuse', 403: 'droit', 404: 'introuvable' }[r.status];
+      if (genre) throw Object.assign(new Error(`GitHub a répondu ${r.status}`), { genre });
+      if (r.status !== 200) throw new Error(`GitHub a répondu ${r.status}`);
+      const o = await r.json();
+      if (!o || o.type !== 'file' || o.encoding !== 'base64' || typeof o.content !== 'string' || o.content.length > 350_000) throw Object.assign(new Error('GitHub a rendu un fichier illisible'), { genre: 'illisible' });
+      return Buffer.from(o.content, 'base64').toString('utf8');
+    },
     /** Déclenche le workflow pour le lancement en état « envoi ». */
     async declencher() {
       const l = lireLancement(dossier);
