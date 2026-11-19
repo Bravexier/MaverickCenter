@@ -198,3 +198,41 @@ test('un bilan sans seuils (null ou absents) se présente sans erreur : pas de l
   // avec les seuils : la ligne de seuil est bien là
   assert.match(lignesDuBilan(bilan(dix())).find((l) => l.libelle === 'Effet sur la production').valeur, /seuil : moins de/);
 });
+
+test('depuis le dernier geste : un rapport d’avant ne compte pas (un échec d’avant le correctif n’entre pas dans le verdict), un rapport d’après y entre ; le bilan le dit', () => {
+  const geste = new Date(MAINTENANT - 5 * 3600 * 1000).toISOString().replace(/\.\d+Z$/, 'Z');
+  const avant = fabrication({ heures: 8, issue: 'oom' });
+  const apres = fabrication({ heures: 2 });
+  const sans = bilan([avant, apres]);
+  assert.equal(sans.depuis, null);
+  assert.equal(sans.verdict, 'ne_tient_pas', 'sans geste connu, tout compte');
+  const depuis = bilan([avant, apres], { depuis: geste });
+  assert.equal(depuis.depuis, geste);
+  assert.equal(depuis.fabrications.total, 1);
+  assert.equal(depuis.fabrications.oom, 0);
+  assert.notEqual(depuis.verdict, 'ne_tient_pas');
+  assert.match(depuis.phrase, /depuis le geste du \d{4}-\d\d-\d\d \d\d:\d\d UTC/);
+  assert.match(presenterLeBilan(depuis).lignes[1].libelle, /depuis le geste/i);
+  // un échec après le geste compte
+  const echec = bilan([avant, apres, fabrication({ heures: 1, issue: 'oom' })], { depuis: geste });
+  assert.equal(echec.fabrications.oom, 1);
+  assert.equal(echec.verdict, 'ne_tient_pas');
+  // un geste plus ancien que la période de 24 h ne la raccourcit pas, et n'est pas annoncé
+  const ancien = bilan([avant, apres], { depuis: new Date(MAINTENANT - 40 * 3600 * 1000).toISOString() });
+  assert.equal(ancien.depuis, null);
+  assert.equal(ancien.fabrications.total, 2);
+  // rien depuis le geste : dit depuis quand
+  const vide = bilan([avant], { depuis: geste });
+  assert.equal(vide.verdict, 'inconnu');
+  assert.match(vide.raisons[0], /aucune fabrication depuis le geste du/);
+  // une valeur illisible n'écarte rien
+  assert.equal(bilan([avant, apres], { depuis: 'pas une date' }).fabrications.total, 2);
+});
+
+test('les fabrications d’origine « contenu » (le site servi refait après vos saisies) ne comptent pas dans le bilan de la journée type', () => {
+  const b = bilan([...dix(), fabrication({ heures: 1, origine: 'contenu', issue: 'oom' }), fabrication({ heures: 2, origine: 'contenu' })]);
+  assert.equal(b.fabrications.total, 10);
+  assert.deepEqual(b.fabrications.par_origine, { livraison: 1, nuit: 1, journee_type: 8 });
+  assert.equal(b.fabrications.oom, 0);
+  assert.equal(b.verdict, 'tient');
+});

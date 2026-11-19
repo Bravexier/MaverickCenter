@@ -50,6 +50,8 @@ const TABLE = [
   // l'extrait du contenu pour les sessions de Claude (serveur/extrait.mjs) : règles, notes et historique ; les tables des fiches, comptes, groupes et du journal y sont vides
   [LECTURE, /^\/api\/edition\/extrait(\/meta)?$/, 'lecture'],
   [['POST'], /^\/api\/edition$/, 'ecriture'],
+  // « le bouton » de l'atelier du site de dev : l'extrait refait tout de suite (serveur/atelier.mjs) ; ce n'est pas un dépôt de contenu : le mot de passe seul
+  [['POST'], /^\/api\/edition\/atelier$/, 'ecriture'],
   // les lots de changements (serveur/edition-lots.mjs) : se lisent avec la clé ; une session dépose (classe `proposition` : la clé de lecture tant que la clé de
   // dépôt n'est pas posée, puis la clé de dépôt, R291) ; appliquer, refuser et annuler, qui décident, demandent le mot de passe, comme l'aperçu et le clic
   // d'une annulation ligne par ligne (R291)

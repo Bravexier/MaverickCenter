@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import {
-  ETATS_DE_L_ATELIER, MOTIFS, formaterLaDuree, formaterLaTaille, jugerLeServeur, lignesDuRapport, margeMinimale, picDuRapport, presenterLAtelier, severiteDuRapport, texteDuResume,
+  ETATS_DE_L_ATELIER, MOTIFS, MOTIFS_DU_SERVI, formaterLaDuree, formaterLaTaille, jugerLeServeur, lignesDuRapport, margeMinimale, phraseDuServi, picDuRapport, presenterLAtelier, severiteDuRapport, texteDuResume,
 } from '../src/lib/debug-atelier.mjs';
 
 const rapport = (plus = {}) => ({
@@ -103,4 +103,37 @@ test('la sonde impossible : le motif de chaque instance est lisible, sans ligne 
   assert.deepEqual(sans.filter((l) => /pendant la fabrication/.test(l.libelle)).map((l) => l.valeur), ['sonde impossible (curl absent)']);
   // un motif inconnu reste affiché tel quel
   assert.match(lignesDuRapport(rapport({ sonde: { format: 'maverick-sonde/1', disponible: false, motif: 'autre', instances: null } })).at(-1).valeur, /autre/);
+});
+
+test('« Site servi » (lot 11, PR 3b) : une ligne, posé avec ses nombres ou non posé avec le motif, les chiffres et le geste ; rien sans l’interrupteur', () => {
+  const resume = { format: 'maverick-pose/1', pose: true, posees: 12, retirees: 3, inchangees: 2090, pages_fabriquees: 1169, pages_servies: 1170, minimum_de_pages: 1053, minimum_pct: 90 };
+  const servi = (plus = {}) => ({ pose: true, motif: null, code_sortie: 0, version_installee: '0.4.95', version_de_l_instance: '0.4.95', pages_minimum_pct: 90, resume, ...plus });
+  assert.equal(phraseDuServi(null), null);
+  assert.match(phraseDuServi(servi()), /^posé : 12 fichier\(s\) posé\(s\), 3 retiré\(s\), 2090 inchangé\(s\) ; 1169 page\(s\) pour 1170 avant$/);
+  assert.match(phraseDuServi(servi({ resume: null })), /^posé \(le résumé de la pose manque\)$/);
+  // site_trop_petit : les deux nombres, le minimum et le geste exact (un seuil qui laisse passer le site fabriqué)
+  const petit = phraseDuServi(servi({ pose: false, motif: 'site_trop_petit', code_sortie: 82, resume: { ...resume, pose: false, pages_fabriquees: 600, pages_servies: 1170, minimum_de_pages: 1053 } }));
+  assert.match(petit, /600 page\(s\) fabriquée\(s\) pour 1170 servie\(s\), au moins 1053 attendues, soit 90 %/);
+  assert.match(petit, /sudo sh \/srv\/maverick-center-test\/atelier\/installer\.sh --servir --pages-minimum 51$/);
+  assert.match(phraseDuServi(servi({ pose: false, motif: 'version_differente', version_installee: '0.4.95', version_de_l_instance: '0.4.96', resume: null })), /fabriqué en 0\.4\.95, installé : 0\.4\.96\) ; rien à faire/);
+  assert.match(phraseDuServi(servi({ pose: false, motif: 'fichier_irregulier', resume: { ...resume, irreguliers: 2 } })), /NON posé : .*\(2 entrée\(s\)\) ; rien n’a été touché/);
+  assert.match(phraseDuServi(servi({ pose: false, motif: 'echec_de_la_pose', code_sortie: 86, resume: null })), /\(code 86\) ; le site servi n’a pas changé/);
+  for (const motif of ['kit_sans_pose', 'site_absent', 'docker_refuse', 'index_absent', 'serveur_dans_la_source', 'source_illisible', 'delai_de_la_pose']) {
+    assert.match(phraseDuServi(servi({ pose: false, motif, resume: null })), /^NON posé : \S/, motif);
+    assert.ok(MOTIFS_DU_SERVI[motif], motif);
+  }
+  // dans les lignes du rapport, et dans le résumé de l'historique
+  const lignes = lignesDuRapport(rapport({ servi: servi() }));
+  assert.equal(lignes.filter((l) => l.libelle === 'Site servi').length, 1);
+  assert.equal(lignesDuRapport(rapport()).some((l) => l.libelle === 'Site servi'), false, 'sans interrupteur, aucune ligne');
+  assert.match(lignesDuRapport(rapport(), { servir: { depuis: '2026-11-15T09:00:00Z' } }).find((l) => l.libelle === 'Site servi').valeur, /interrupteur posé depuis 2026-11-15 09:00/);
+  assert.match(texteDuResume({ id: 'x', horodatage: '2026-11-15T10:15:00Z', origine: 'contenu', issue: 'fait', duree_ms: 21000, pic_ko: 1400000, servi: true }), /\(contenu changé\) : faite en 21 s.*, site posé$/);
+  assert.match(texteDuResume({ id: 'x', horodatage: '2026-11-15T10:15:00Z', issue: 'fait', duree_ms: 21000, pic_ko: 1400000, servi: false }), /, site NON posé$/);
+  // un site non posé est à regarder
+  assert.equal(severiteDuRapport({ issue: 'fait', servi: false }), 'attention');
+  assert.equal(severiteDuRapport({ issue: 'fait', servi: { pose: false } }), 'attention');
+  assert.equal(severiteDuRapport({ issue: 'fait', servi: true }), 'ok');
+  // la page : l'interrupteur posé, sans fabrication encore
+  const p = presenterLAtelier({ format: 'maverick-atelier-etat/1', etat: 'en_attente', message: 'm', dernier: null, historique: [], servir: { depuis: '2026-11-15T09:00:00Z' } });
+  assert.equal(p.lignes[0].libelle, 'Site servi');
 });

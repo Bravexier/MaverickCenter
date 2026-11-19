@@ -27,6 +27,14 @@
 #   --dossier-prod <dir>    le dossier de l'instance de production, dont la sonde lit le port (par défaut le voisin « maverick-center »)
 #   --sans-fabrication      ne pas lancer la première fabrication
 #   --sans-montage          n'écrit pas docker-compose.override.yml : pour un fichier de ce nom qui n'est pas celui de l'atelier et où le montage a été ajouté à la main
+#   --servir                l'atelier SERT ce qu'il fabrique (lot 11, « Bascule 2 », PR 3b) : pose l'interrupteur <atelier>/servir (un fichier de root, le fichier est la preuve) et le minuteur
+#                           maverick-atelier-contenu.timer (toutes les 10 minutes : il ne refabrique que si l'extrait du contenu a changé depuis le dernier site posé). Après chaque fabrication
+#                           réussie, le site fabriqué est posé à la place de site/ (jamais _serveur/), par un second conteneur sans privilège ; sans l'interrupteur, rien de servi ne change.
+#                           Éteint par défaut ; atelier déjà installé exigé (relançable sans dégât)
+#   --pages-minimum <pct>   avec --servir : le site fabriqué doit compter au moins ce pourcentage des pages HTML du site servi (90 par défaut ; refus « site_trop_petit » sinon)
+#   --ne-plus-servir        retire l'interrupteur et le minuteur : l'atelier refait de nouveau un site témoin sans le poser. Le site déjà posé reste servi jusqu'à la prochaine installation ;
+#                           pour revenir tout de suite au site livré par GitHub : sudo sh <instance>/mise-a-jour.sh --force
+#   --max-contenu-par-jour <n>  au plus n fabrications par jour qui suivent un changement de contenu (48 par défaut, 1 à 288), comptées à part des autres origines
 #   --etat                  dit où en est l'atelier (réglages, unités, dernière fabrication, ce que la mémoire d'aujourd'hui permettrait), sans rien changer
 #   --retirer               arrête et retire les unités, les réglages, les dossiers de travail, les rapports et docker-compose.override.yml (puis « docker compose up -d », qui relance le
 #                           service quelques secondes) ; le kit reste
@@ -56,8 +64,8 @@ relancer_le_service() { # raison
 }
 
 die() { echo "ERREUR : $*" >&2; exit 1; }
-USAGE="Usage : sudo sh $0 [--memoire-max <taille>] [--besoin <taille>] [--cpus <n>] [--disque-min <taille>] [--delai <s>] [--client-google <id>] [--jours-de-mesure <n>] [--max-par-jour <n>] [--dossier-prod <dossier>] [--sans-fabrication] [--sans-montage] [--etat] [--retirer]"
-MEMOIRE_MAX=''; BESOIN=''; CPUS_DEMANDES=''; DISQUE_MIN=''; DELAI=''; GOOGLE_DEMANDE=''; JOURS=''; MAX_JOUR=''; DOSSIER_PROD_DEMANDE=''; SANS_FABRICATION=0; SANS_MONTAGE=0; ETAT=0; RETIRER=0
+USAGE="Usage : sudo sh $0 [--memoire-max <taille>] [--besoin <taille>] [--cpus <n>] [--disque-min <taille>] [--delai <s>] [--client-google <id>] [--jours-de-mesure <n>] [--max-par-jour <n>] [--dossier-prod <dossier>] [--sans-fabrication] [--sans-montage] [--servir [--pages-minimum <pct>]] [--ne-plus-servir] [--max-contenu-par-jour <n>] [--etat] [--retirer]"
+MEMOIRE_MAX=''; BESOIN=''; CPUS_DEMANDES=''; DISQUE_MIN=''; DELAI=''; GOOGLE_DEMANDE=''; JOURS=''; MAX_JOUR=''; DOSSIER_PROD_DEMANDE=''; SANS_FABRICATION=0; SANS_MONTAGE=0; ETAT=0; RETIRER=0; SERVIR_DEMANDE=0; NE_PLUS_SERVIR=0; PAGES_MIN_DEMANDE=''; MAX_CONTENU=''
 while [ $# -gt 0 ]; do
   case "$1" in
     --memoire-max) [ $# -ge 2 ] || { echo "$USAGE" >&2; exit 2; }; MEMOIRE_MAX=$2; shift 2 ;;
@@ -71,12 +79,20 @@ while [ $# -gt 0 ]; do
     --dossier-prod) [ $# -ge 2 ] || { echo "$USAGE" >&2; exit 2; }; DOSSIER_PROD_DEMANDE=$2; shift 2 ;;
     --sans-fabrication) SANS_FABRICATION=1; shift ;;
     --sans-montage) SANS_MONTAGE=1; shift ;;
+    --servir) SERVIR_DEMANDE=1; shift ;;
+    --ne-plus-servir) NE_PLUS_SERVIR=1; shift ;;
+    --pages-minimum) [ $# -ge 2 ] || { echo "$USAGE" >&2; exit 2; }; PAGES_MIN_DEMANDE=$2; shift 2 ;;
+    --max-contenu-par-jour) [ $# -ge 2 ] || { echo "$USAGE" >&2; exit 2; }; MAX_CONTENU=$2; shift 2 ;;
     --etat) ETAT=1; shift ;;
     --retirer) RETIRER=1; shift ;;
     *) echo "$USAGE" >&2; exit 2 ;;
   esac
 done
 [ "$ETAT" -eq 0 ] || [ "$RETIRER" -eq 0 ] || { echo "--etat et --retirer s'excluent" >&2; exit 2; }
+[ "$SERVIR_DEMANDE" -eq 0 ] || [ "$NE_PLUS_SERVIR" -eq 0 ] || { echo "--servir et --ne-plus-servir s'excluent" >&2; exit 2; }
+[ $((SERVIR_DEMANDE + NE_PLUS_SERVIR)) -eq 0 ] || [ $((ETAT + RETIRER)) -eq 0 ] || { echo "--servir et --ne-plus-servir ne se combinent ni avec --etat ni avec --retirer" >&2; exit 2; }
+[ -z "$PAGES_MIN_DEMANDE" ] || [ "$SERVIR_DEMANDE" -eq 1 ] || { echo "--pages-minimum ne va qu'avec --servir" >&2; exit 2; }
+[ -z "$MAX_CONTENU" ] || [ "$SERVIR_DEMANDE$NE_PLUS_SERVIR" = 00 ] || { echo "--max-contenu-par-jour ne va pas avec --servir ni --ne-plus-servir (un réglage se pose par un geste sans eux)" >&2; exit 2; }
 
 # Les valeurs demandées, validées avant toute écriture (jamais une valeur qui irait telle quelle dans un fichier ou une commande).
 if [ -n "$MEMOIRE_MAX" ]; then MEMOIRE_MAX_KO=$(taille_en_ko "$MEMOIRE_MAX") || { echo "--memoire-max : une taille comme 2.5g ou 2500m (reçu « $MEMOIRE_MAX »)" >&2; exit 2; }; fi
@@ -86,6 +102,11 @@ if [ -n "$CPUS_DEMANDES" ]; then valide_cpus "$CPUS_DEMANDES" || { echo "--cpus 
 if [ -n "$DELAI" ]; then entier_positif "$DELAI" && [ "$DELAI" -le 86400 ] || { echo "--delai : un nombre de secondes entre 1 et 86400 (reçu « $DELAI »)" >&2; exit 2; }; fi
 if [ -n "$JOURS" ]; then entier_positif "$JOURS" && [ "$JOURS" -le 30 ] || { echo "--jours-de-mesure : un nombre de jours entre 1 et 30 (reçu « $JOURS »)" >&2; exit 2; }; fi
 if [ -n "$MAX_JOUR" ]; then entier_positif "$MAX_JOUR" && [ "$MAX_JOUR" -le 48 ] || { echo "--max-par-jour : un nombre entre 1 et 48 (reçu « $MAX_JOUR »)" >&2; exit 2; }; fi
+if [ -n "$MAX_CONTENU" ]; then entier_positif "$MAX_CONTENU" && [ "$MAX_CONTENU" -le 288 ] || { echo "--max-contenu-par-jour : un nombre entre 1 et 288 (reçu « $MAX_CONTENU »)" >&2; exit 2; }; fi
+if [ -n "$PAGES_MIN_DEMANDE" ]; then
+  case "$PAGES_MIN_DEMANDE" in ''|*[!0-9]*) echo "--pages-minimum : un pourcentage entre 0 et 100 (reçu « $PAGES_MIN_DEMANDE »)" >&2; exit 2 ;; esac
+  [ "$PAGES_MIN_DEMANDE" -le 100 ] || { echo "--pages-minimum : un pourcentage entre 0 et 100 (reçu « $PAGES_MIN_DEMANDE »)" >&2; exit 2; }
+fi
 if [ -n "$DOSSIER_PROD_DEMANDE" ]; then
   case "$DOSSIER_PROD_DEMANDE" in /*[!A-Za-z0-9._/-]*|[!/]*|'') echo "--dossier-prod : un chemin absolu sans espace ni caractère spécial (reçu « $DOSSIER_PROD_DEMANDE »)" >&2; exit 2 ;; esac
 fi
@@ -103,18 +124,18 @@ command -v systemctl >/dev/null 2>&1 || die "systemctl est absent : l'atelier se
 
 # ---------------------------------------------------------------- retirer
 retirer() {
-  systemctl disable --now "$UNITE.path" "$UNITE-nuit.timer" "$UNITE-jour.timer" >/dev/null 2>&1 || true
-  systemctl stop "$UNITE.service" "$UNITE-nuit.service" "$UNITE-jour.service" >/dev/null 2>&1 || true
-  rm -f "$ETC_SYSTEMD/$UNITE.path" "$ETC_SYSTEMD/$UNITE.service" "$ETC_SYSTEMD/$UNITE.slice" "$ETC_SYSTEMD/$UNITE-nuit.timer" "$ETC_SYSTEMD/$UNITE-nuit.service" "$ETC_SYSTEMD/$UNITE-jour.timer" "$ETC_SYSTEMD/$UNITE-jour.service"
+  systemctl disable --now "$UNITE.path" "$UNITE-nuit.timer" "$UNITE-jour.timer" "$UNITE-contenu.timer" >/dev/null 2>&1 || true
+  systemctl stop "$UNITE.service" "$UNITE-nuit.service" "$UNITE-jour.service" "$UNITE-contenu.service" >/dev/null 2>&1 || true
+  rm -f "$ETC_SYSTEMD/$UNITE.path" "$ETC_SYSTEMD/$UNITE.service" "$ETC_SYSTEMD/$UNITE.slice" "$ETC_SYSTEMD/$UNITE-nuit.timer" "$ETC_SYSTEMD/$UNITE-nuit.service" "$ETC_SYSTEMD/$UNITE-jour.timer" "$ETC_SYSTEMD/$UNITE-jour.service" "$ETC_SYSTEMD/$UNITE-contenu.timer" "$ETC_SYSTEMD/$UNITE-contenu.service"
   systemctl daemon-reload >/dev/null 2>&1 || true
-  rm -f "$REGLAGES" "$RAPPORTS/installe.json" "$RAPPORTS/en-cours.json"
+  rm -f "$REGLAGES" "$RAPPORTS/installe.json" "$RAPPORTS/en-cours.json" "$RAPPORTS/servir.json" "$ATELIER/servir" "$ATELIER/declencheur/dernier-contenu"
   if override_de_l_atelier; then
     rm -f "$OVERRIDE"
     retrait_du_montage=1
   elif [ -e "$OVERRIDE" ]; then
     echo "Avertissement : $OVERRIDE n'est pas celui de l'atelier : il est laissé tel quel."
   fi
-  for d in contenu travail sortie resultats; do [ ! -d "$ATELIER/$d" ] || { find "$ATELIER/$d" -mindepth 1 -delete 2>/dev/null || true; rmdir "$ATELIER/$d" 2>/dev/null || true; }; done
+  for d in contenu travail sortie resultats pose; do [ ! -d "$ATELIER/$d" ] || { find "$ATELIER/$d" -mindepth 1 -delete 2>/dev/null || true; rmdir "$ATELIER/$d" 2>/dev/null || true; }; done
   if [ -d "$RAPPORTS" ]; then
     for r in $(ls -1 "$RAPPORTS" | grep -E '^[0-9]{8}-[0-9]{6}$' || true); do rm -rf "${RAPPORTS:?}/$r"; done
   fi
@@ -146,6 +167,11 @@ parler_de_l_etat() {
       echo "Journée type : fenêtre de mesure de $jours jour(s), du $(date -u -d "@$depuis" '+%Y-%m-%d %H:%M') au $(date -u -d "@$fin" '+%Y-%m-%d %H:%M') UTC ($([ "$(epoch_maintenant)" -lt "$fin" ] && echo ouverte || echo fermée)) ; au plus $(champ_du_fichier "$REGLAGES" MAX_PAR_JOUR) fabrications par jour"
     fi
   fi
+  if [ -f "$ATELIER/servir" ] && [ ! -L "$ATELIER/servir" ]; then
+    echo "Site servi par l'atelier : OUI (interrupteur $ATELIER/servir, pages minimum $(champ_du_fichier "$ATELIER/servir" PAGES_MINIMUM_PCT) %) ; minuteur du contenu $(systemctl is-active "$UNITE-contenu.timer" 2>/dev/null || echo inactif) ; retour : sudo sh $ATELIER/installer.sh --ne-plus-servir"
+  else
+    echo "Site servi par l'atelier : non (l'atelier fabrique un site témoin sans le poser ; sudo sh $ATELIER/installer.sh --servir pour le servir)."
+  fi
   derniers=$(ls -1 "$RAPPORTS" 2>/dev/null | grep -E '^[0-9]{8}-[0-9]{6}$' | sort -r | head -n 3 || true)
   if [ -n "$derniers" ]; then
     for r in $derniers; do echo "Rapport $r : $(sed -n 's/^ *"issue": *"\([a-z]*\)".*/\1/p' "$RAPPORTS/$r/rapport.json" 2>/dev/null | head -n 1) $(sed -n 's/^ *"motif": *"\([a-z_]*\)".*/\1/p' "$RAPPORTS/$r/rapport.json" 2>/dev/null | head -n 1)"; done
@@ -161,6 +187,85 @@ parler_de_l_etat() {
   echo "Page Debug du site de dev, menu DB, bloc « Atelier » ; journal : journalctl -u $UNITE.service."
 }
 if [ "$ETAT" -eq 1 ]; then parler_de_l_etat; exit 0; fi
+
+# ---------------------------------------------------------------- servir ce que l'atelier fabrique (lot 11, PR 3b)
+# L'interrupteur est le fichier <atelier>/servir, à root : le fichier est la preuve (comme reglages.env). Absent, l'atelier ne pose rien. Avec lui, maverick-atelier-contenu.timer (toutes les
+# 10 minutes) lance « lancer.sh --origine contenu », qui ne fabrique que si l'extrait du contenu a changé depuis le dernier site posé.
+poser_le_minuteur_du_contenu() {
+  delai_unite=$(champ_du_fichier "$REGLAGES" DELAI_S); delai_unite=${delai_unite:-$DEFAUT_DELAI_S}
+  cat > "$ETC_SYSTEMD/$UNITE-contenu.service" <<UNITE_CONTENU_SERVICE
+[Unit]
+Description=Atelier du site de dev : refabrication du site servi quand le contenu a changé
+After=docker.service
+Wants=docker.service
+ConditionPathExists=$REGLAGES
+ConditionPathExists=$ATELIER/servir
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh $OUTILS/lancer.sh --origine contenu
+Nice=19
+IOSchedulingClass=idle
+CPUWeight=20
+TimeoutStartSec=$((delai_unite + 2400))
+UNITE_CONTENU_SERVICE
+  cat > "$ETC_SYSTEMD/$UNITE-contenu.timer" <<UNITE_CONTENU_MINUTEUR
+[Unit]
+Description=Atelier du site de dev : le contenu a-t-il changé depuis le dernier site posé ? (toutes les 10 minutes)
+
+[Timer]
+OnCalendar=*:0/10
+Persistent=false
+
+[Install]
+WantedBy=timers.target
+UNITE_CONTENU_MINUTEUR
+  chmod 644 "$ETC_SYSTEMD/$UNITE-contenu.service" "$ETC_SYSTEMD/$UNITE-contenu.timer"
+}
+if [ "$NE_PLUS_SERVIR" -eq 1 ]; then
+  systemctl disable --now "$UNITE-contenu.timer" >/dev/null 2>&1 || true
+  systemctl stop "$UNITE-contenu.service" >/dev/null 2>&1 || true
+  rm -f "$ETC_SYSTEMD/$UNITE-contenu.timer" "$ETC_SYSTEMD/$UNITE-contenu.service" "$ATELIER/servir" "$RAPPORTS/servir.json" "$ATELIER/declencheur/dernier-contenu"
+  systemctl daemon-reload >/dev/null 2>&1 || true
+  echo "L'atelier ne sert plus ce qu'il fabrique : interrupteur et minuteur retirés. Une fabrication en cours se termine sans poser de site."
+  echo "Le site déjà posé reste servi jusqu'à la prochaine installation. Pour revenir tout de suite au site livré par GitHub : sudo sh $INSTANCE/mise-a-jour.sh --force"
+  exit 0
+fi
+if [ "$SERVIR_DEMANDE" -eq 1 ]; then
+  [ -f "$REGLAGES" ] || die "l'atelier n'est pas installé ($REGLAGES est absent) : lancez d'abord sudo sh $ATELIER/installer.sh"
+  [ -f "$ATELIER/kit/client/scripts/poser-un-site.mjs" ] || die "le kit ne porte pas client/scripts/poser-un-site.mjs : il est posé par l'installateur du site de dev ; relancez cette commande après sa prochaine livraison."
+  command -v docker >/dev/null 2>&1 || die "docker est absent."
+  # Sans la base source (le marqueur db/source, posé par bascule.sh), la base vivante est refaite à chaque changement de site/donnees/maverick.db : chaque pose la referait, et des saisies du site de dev s'y perdraient.
+  [ -e "$INSTANCE/db/source" ] || die "$INSTANCE/db/source est absent : la base de cette instance n'est pas la source de vérité, et chaque pose du site refabriqué referait la base vivante (les saisies du site de dev s'y perdraient). Rien n'a été écrit. Le marqueur se pose par « sudo bash $INSTANCE/bascule.sh poser » (après un constat et une sauvegarde nommée : docs/serveur.md, « Base source (lot 8) ») ; relancez ensuite --servir."
+  pourcentage=${PAGES_MIN_DEMANDE:-$(champ_du_fichier "$ATELIER/servir" PAGES_MINIMUM_PCT)}
+  pourcentage=${pourcentage:-$DEFAUT_PAGES_MINIMUM_PCT}
+  depuis=$(maintenant_iso)
+  mkdir -p "$RAPPORTS" "$ATELIER/declencheur" "$ATELIER/pose"
+  {
+    echo "# Interrupteur de l'atelier (lot 11, PR 3b) : ce fichier, à root, fait servir ce que l'atelier fabrique. Posé par « installer.sh --servir », retiré par « installer.sh --ne-plus-servir » ;"
+    echo "# jamais écrit par le site de dev. Relu champ par champ par outils/lancer.sh."
+    echo "SERVIR_DEPUIS=$depuis"
+    echo "PAGES_MINIMUM_PCT=$pourcentage"
+  } > "$ATELIER/servir.neuf"
+  chmod 644 "$ATELIER/servir.neuf"
+  mv -f "$ATELIER/servir.neuf" "$ATELIER/servir"
+  printf '{ "format": "maverick-atelier-servir/1", "depuis": "%s", "pages_minimum_pct": %s }\n' "$depuis" "$(json_nombre "$pourcentage")" > "$RAPPORTS/servir.json.neuf"
+  chmod 644 "$RAPPORTS/servir.json.neuf"
+  mv -f "$RAPPORTS/servir.json.neuf" "$RAPPORTS/servir.json"
+  # un nouveau départ : le premier minuteur refabrique et pose, même si l'extrait n'a pas changé depuis un ancien site posé
+  rm -f "$ATELIER/declencheur/dernier-contenu"
+  poser_le_minuteur_du_contenu
+  systemctl daemon-reload
+  systemctl enable --now "$UNITE-contenu.timer" >/dev/null
+  echo "== L'atelier SERT maintenant ce qu'il fabrique : interrupteur $ATELIER/servir, minuteur $UNITE-contenu (toutes les 10 minutes), site fabriqué posé à la place de $INSTANCE/site après chaque fabrication réussie (jamais _serveur/), pages minimum $pourcentage %."
+  if [ "$SANS_FABRICATION" -eq 0 ]; then
+    systemctl start --no-block "$UNITE-contenu.service" >/dev/null 2>&1 || echo "Avertissement : la fabrication n'a pas pu être lancée (systemctl start $UNITE-contenu.service) ; le minuteur la lancera dans 10 minutes au plus."
+    echo "== Première fabrication lancée : le site fabriqué sera posé dans quelques minutes."
+  fi
+  echo "Où regarder : page Debug du site de dev, bloc « Atelier » (ligne « Site servi ») ; journalctl -u $UNITE-contenu.service ; sudo sh $ATELIER/installer.sh --etat."
+  echo "Retour en arrière : sudo sh $ATELIER/installer.sh --ne-plus-servir, puis sudo sh $INSTANCE/mise-a-jour.sh --force (à chaque installation, le site livré par GitHub revient jusqu'à la fabrication suivante)."
+  exit 0
+fi
 
 # ---------------------------------------------------------------- vérifications
 if [ "$SANS_MONTAGE" -eq 0 ] && [ -e "$OVERRIDE" ] && ! override_de_l_atelier; then
@@ -193,6 +298,7 @@ DELAI_S=${DELAI:-$(repris DELAI_S "$DEFAUT_DELAI_S")}
 GOOGLE=${GOOGLE_DEMANDE:-$(repris GOOGLE_CLIENT_ID '')}
 JOURS_DE_MESURE=${JOURS:-$(repris JOURS_DE_MESURE "$DEFAUT_JOURS_DE_MESURE")}
 MAX_PAR_JOUR=${MAX_JOUR:-$(repris MAX_PAR_JOUR "$DEFAUT_MAX_PAR_JOUR")}
+MAX_CONTENU_PAR_JOUR=${MAX_CONTENU:-$(repris MAX_CONTENU_PAR_JOUR "$DEFAUT_MAX_CONTENU_PAR_JOUR")}
 DOSSIER_PROD=${DOSSIER_PROD_DEMANDE:-$(repris DOSSIER_PROD "$(dirname "$INSTANCE")/maverick-center")}
 # la fenêtre de la journée type s'ouvre à chaque geste, première fois ou relance
 MESURE_DEPUIS=$(epoch_maintenant)
@@ -212,6 +318,7 @@ chmod 755 "$ATELIER/travail" "$ATELIER/sortie" "$ATELIER/resultats"
   echo "GOOGLE_CLIENT_ID=$GOOGLE"
   echo "JOURS_DE_MESURE=$JOURS_DE_MESURE"
   echo "MAX_PAR_JOUR=$MAX_PAR_JOUR"
+  echo "MAX_CONTENU_PAR_JOUR=$MAX_CONTENU_PAR_JOUR"
   echo "MESURE_DEPUIS=$MESURE_DEPUIS"
   echo "DOSSIER_PROD=$DOSSIER_PROD"
 } > "$REGLAGES.neuf"
@@ -298,6 +405,8 @@ UNITE_PATH
 chmod 644 "$ETC_SYSTEMD/$UNITE.service" "$ETC_SYSTEMD/$UNITE.path" "$ETC_SYSTEMD/$UNITE.slice"
 systemctl daemon-reload
 systemctl enable --now "$UNITE.path" "$UNITE-nuit.timer" "$UNITE-jour.timer" >/dev/null
+# l'interrupteur du site servi est déjà posé : le minuteur du contenu suit (les unités se réécrivent comme les autres)
+if [ -f "$ATELIER/servir" ] && [ ! -L "$ATELIER/servir" ]; then poser_le_minuteur_du_contenu; systemctl daemon-reload; systemctl enable --now "$UNITE-contenu.timer" >/dev/null; fi
 echo "== Unités : $UNITE.path (surveille $ATELIER/declencheur/marque), $UNITE.service et $UNITE.slice (poids bas du processeur et des disques pour le conteneur) ; minuteurs $UNITE-nuit (04:30) et $UNITE-jour (toutes les 20 minutes entre 8 h et 20 h, $JOURS_DE_MESURE jour(s) de mesure, au plus $MAX_PAR_JOUR fabrications par jour)"
 
 # La marque : normalement posée par l'installateur de test avec le kit ; refaite ici si elle manque, d'après le fichier VERSION de l'instance (root).

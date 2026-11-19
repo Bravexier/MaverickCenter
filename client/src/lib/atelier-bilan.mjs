@@ -6,7 +6,7 @@
 //     serveur: { processeurs, memoire_totale_ko, memoire_disponible_ko, disque_total_ko, disque_libre_ko }, sonde: le champ `sonde` du rapport (`maverick-sonde/1`) ou null }
 //
 // Sortie, `maverick-atelier-bilan/1` :
-//   { format, calcule_le, periode_h, seuils: SEUILS,
+//   { format, calcule_le, periode_h, depuis (l'instant du dernier geste quand il tombe dans la période : seuls les rapports qui le suivent comptent ; sinon null), seuils: SEUILS,
 //     fabrications: { total, par_origine: { livraison, nuit, journee_type }, faites, refus, echecs, oom, delai, refus_de_capacite, plafond_du_jour_atteint },
 //     serveur: { processeurs, memoire_totale_ko, memoire_disponible_min_ko, disque_total_ko, disque_libre_min_ko } | null,
 //     memoire: { pic_max_ko, plafond_ko },  duree: { mediane_ms, max_ms },  cpu: { total_ms, mediane_ms },
@@ -75,11 +75,15 @@ function effetSurUneInstance(compacts, etiquette) {
 /**
  * Le bilan des fabrications des dernières `seuils.periode_h` heures.
  * @param {object[]} compacts les enregistrements compacts (n'importe quel âge : seuls ceux de la période comptent)
- * @param {{ maintenant?: number, seuils?: typeof SEUILS }} [o]
+ * @param {{ maintenant?: number, seuils?: typeof SEUILS, depuis?: string|null }} [o] `depuis` : l'instant du dernier geste du propriétaire (`installe.json#installe_le`, ISO), quand il est connu : les
+ *   rapports d'avant ne comptent pas (une fenêtre rouverte après un correctif ne garde pas les échecs d'avant) ; le bilan le dit (`depuis`, la phrase). Les fabrications d'origine `contenu` (le site servi
+ *   refait après vos saisies) ne comptent pas non plus : le bilan mesure la journée type, elles se lisent dans l'historique.
  */
-export function calculerLeBilan(compacts, { maintenant = Date.now(), seuils = SEUILS } = {}) {
-  const debut = maintenant - seuils.periode_h * 3600 * 1000;
-  const de_la_periode = compacts.filter((c) => { const t = Date.parse(c.horodatage ?? ''); return Number.isFinite(t) && t >= debut && t <= maintenant + 60_000; });
+export function calculerLeBilan(compacts, { maintenant = Date.now(), seuils = SEUILS, depuis = null } = {}) {
+  const debutDeLaPeriode = maintenant - seuils.periode_h * 3600 * 1000;
+  const geste = typeof depuis === 'string' ? Date.parse(depuis) : NaN;
+  const debut = Number.isFinite(geste) ? Math.max(debutDeLaPeriode, geste) : debutDeLaPeriode;
+  const de_la_periode = compacts.filter((c) => { const t = Date.parse(c.horodatage ?? ''); return c.origine !== 'contenu' && Number.isFinite(t) && t >= debut && t <= maintenant + 60_000; });
   const plafond = de_la_periode.filter((c) => c.motif === 'plafond_du_jour');
   const fabs = de_la_periode.filter((c) => c.motif !== 'plafond_du_jour');
   const par_origine = Object.fromEntries(ORIGINES.map((o) => [o, fabs.filter((c) => (c.origine ?? 'livraison') === o).length]));
@@ -97,7 +101,7 @@ export function calculerLeBilan(compacts, { maintenant = Date.now(), seuils = SE
   };
   const s = dernier?.serveur ?? null;
   const bilan = {
-    format: FORMAT_DU_BILAN, calcule_le: new Date(maintenant).toISOString().replace(/\.\d+Z$/, 'Z'), periode_h: seuils.periode_h, seuils: { ...seuils }, fabrications,
+    format: FORMAT_DU_BILAN, calcule_le: new Date(maintenant).toISOString().replace(/\.\d+Z$/, 'Z'), periode_h: seuils.periode_h, depuis: Number.isFinite(geste) && geste > debutDeLaPeriode ? depuis : null, seuils: { ...seuils }, fabrications,
     serveur: s ? {
       processeurs: s.processeurs ?? null, memoire_totale_ko: s.memoire_totale_ko ?? null, memoire_disponible_min_ko: minimum(fabs.map((c) => c.serveur?.memoire_disponible_ko)),
       disque_total_ko: s.disque_total_ko ?? null, disque_libre_min_ko: minimum(fabs.map((c) => c.serveur?.disque_libre_ko)),
@@ -130,7 +134,7 @@ export function calculerLeBilan(compacts, { maintenant = Date.now(), seuils = SE
   if (autres.length) nonSeuil.push(`${autres.length} fabrication(s) refusée(s) ou en échec pour une autre raison que la capacité`);
 
   let verdict;
-  if (fabs.length === 0) { verdict = 'inconnu'; bilan.raisons = ['aucune fabrication dans les dernières 24 h']; }
+  if (fabs.length === 0) { verdict = 'inconnu'; bilan.raisons = [bilan.depuis ? `aucune fabrication depuis le geste du ${bilan.depuis.slice(0, 16).replace('T', ' ')} UTC` : 'aucune fabrication dans les dernières 24 h']; }
   else if (graves.length) { verdict = 'ne_tient_pas'; bilan.raisons = [...graves, ...nonSeuil]; }
   else if (fabs.length < seuils.fabrications_minimum) { verdict = 'journee_incomplete'; bilan.raisons = [`${fabs.length} fabrication(s) sur ${seuils.fabrications_minimum} attendues`, ...nonSeuil]; }
   else if (autres.length * 2 > fabs.length) { verdict = 'inconnu'; bilan.raisons = ['plus de la moitié des fabrications ont échoué pour une raison étrangère à la capacité : mesure inexploitable', ...nonSeuil]; }
@@ -149,7 +153,7 @@ const taille = (ko) => (typeof ko !== 'number' ? '—' : ko >= 1048576 ? `${virg
 export function phraseDuBilan(b) {
   const f = b.fabrications;
   const serveur = b.serveur ? `${b.serveur.processeurs ?? '?'} processeur(s), ${taille(b.serveur.memoire_totale_ko)} de mémoire` : 'serveur inconnu';
-  const comptes = `${f.total} fabrication(s) en ${b.periode_h} h (${f.par_origine.livraison} livraison, ${f.par_origine.nuit} nuit, ${f.par_origine.journee_type} journée type)`;
+  const comptes = `${f.total} fabrication(s) ${b.depuis ? `depuis le geste du ${b.depuis.slice(0, 16).replace('T', ' ')} UTC` : `en ${b.periode_h} h`} (${f.par_origine.livraison} livraison, ${f.par_origine.nuit} nuit, ${f.par_origine.journee_type} journée type)`;
   const effet = b.production.mesuree ? ` ; production : 95e centile ${b.production.pendant.p95_ms} ms pendant, ${b.production.reference.p95_ms} ms en référence` : '';
   switch (b.verdict) {
     case 'tient': return `Ce serveur (${serveur}) tient : ${comptes}, aucun refus, pic ${taille(b.memoire.pic_max_ko)}${effet}.`;

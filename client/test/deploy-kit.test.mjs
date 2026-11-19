@@ -5,7 +5,7 @@
 //   node --test test/deploy-kit.test.mjs
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { chmodSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
@@ -39,6 +39,7 @@ function fauxDepot(extra = {}) {
     'client/package.json': paquet('maverick-client'),
     'client/astro.config.mjs': 'export default {};',
     'client/scripts/fabriquer-depuis-contenu.mjs': '// script',
+    'client/scripts/poser-un-site.mjs': '// script de pose',
     'client/src/pages/index.astro': '<h1>site</h1>',
     'client/src/content/wiki/regles/page.md': '# page fabriquée',
     'client/dist/index.html': 'dist',
@@ -176,7 +177,7 @@ test('kit.json : format, version, commit, Node de .nvmrc, plateforme, image Dock
 test('le kit refuse tout contenu : data/rows, sources/raw, un fichier de base, les pages fabriquées, l’historique git, un lien qui sort du kit, ce qui manque', { skip }, () => {
   const refus = (cree, motif) => {
     const d = join(racine, `refus-${(n += 1)}`);
-    ecrire(d, { '.nvmrc': '22', 'client/package.json': '{}', 'client/astro.config.mjs': '', 'client/scripts/fabriquer-depuis-contenu.mjs': '', 'client/node_modules/astro/bin/astro.mjs': '',
+    ecrire(d, { '.nvmrc': '22', 'client/package.json': '{}', 'client/astro.config.mjs': '', 'client/scripts/fabriquer-depuis-contenu.mjs': '', 'client/scripts/poser-un-site.mjs': '', 'client/node_modules/astro/bin/astro.mjs': '',
       'data/schema.sql': '', 'data/derive.sql': '', 'data/migrations/0001.sql': '', 'sources/sources.json': '', 'sources/tipeee/bienvenue.json': '' });
     assert.deepEqual(controlerLeKit(d), [], 'le dossier de départ est bon');
     cree(d);
@@ -239,10 +240,11 @@ test('l’installateur de production reste identique à celui d’avant le kit :
   const octets = readFileSync(i.fichier);
   const script = octets.subarray(0, octets.indexOf('\n__ARCHIVE__\n') + 1).toString('utf8');
   const modele = readFileSync(new URL('../../deploy/installateur/installateur.sh', import.meta.url), 'utf8');
-  const attendu = modele.replace('\n@@KIT@@\n', '\n').replace(/@@([A-Z0-9_]+)@@/g, (tout, cle) => i[cle]);
+  const attendu = modele.replace('\n@@KIT@@\n', '\n').replace('\n@@VERROU_DEBUT@@\n', '\n').replace('\n@@VERROU_FIN@@\n', '\n').replace(/@@([A-Z0-9_]+)@@/g, (tout, cle) => i[cle]);
   assert.ok(script.startsWith(attendu.slice(0, attendu.indexOf('\n__ARCHIVE__\n') + 1)), 'le script de production est le modèle, rempli, sans rien de plus');
   assert.ok(!script.includes('poser_le_kit'));
   assert.ok(!script.includes('atelier-kit'));
+  assert.ok(!script.includes('.verrou') && !script.includes('flock'), 'aucun verrou de l’atelier en production');
   const prod = join(racine, `prod-${(n += 1)}`);
   const r = lancer(i.fichier, ['--dossier', prod]);
   assert.equal(r.code, 0, r.out);
@@ -362,4 +364,43 @@ test('livraison.yml : le kit est joint pour le serveur de test seulement', () =>
   assert.match(yml, /if \[ "\$MODE" = test \]; then kit="--kit \."; fi/);
   assert.equal([...yml.matchAll(/--kit/g)].length, 1, 'une seule ligne pose l’option');
   assert.match(yml, /fabriquer\.mjs --mode "\$MODE" .* \$kit\)/);
+});
+
+test('l’installateur de test prend le verrou de l’atelier (le même flock que lancer.sh) pendant la pose de site/, seulement si l’atelier existe ; la production n’en sait rien', { skip: skip || (!have('flock') && 'flock indisponible') }, async () => {
+  const test1 = installateur({ mode: 'test', version: '0.2.1' });
+  const script = readFileSync(test1.fichier, 'utf8');
+  assert.ok(script.includes('flock -w 2700 8') && script.includes('exec 8>&-'), 'le verrou est pris puis rendu');
+  assert.ok(script.indexOf('flock -w 2700 8') < script.indexOf('rsync -a --delete') && script.indexOf('rsync -a --delete') < script.indexOf('exec 8>&-'), 'autour de la seule pose de site/');
+  // sans atelier (première installation) : rien
+  const neuve = join(racine, `pose-neuve-${(n += 1)}`);
+  const r0 = lancer(test1.fichier, ['--dossier', neuve]);
+  assert.equal(r0.code, 0, r0.out);
+  assert.ok(!r0.out.includes('verrou'), 'sans dossier atelier/, aucun verrou');
+  // avec l'atelier, verrou libre : pris et rendu
+  const libre = join(racine, `pose-libre-${(n += 1)}`);
+  mkdirSync(join(libre, 'atelier'), { recursive: true });
+  const r1 = lancer(test1.fichier, ['--dossier', libre]);
+  assert.equal(r1.code, 0, r1.out);
+  assert.match(r1.out, /Atelier : verrou pris pour poser site\//);
+  // avec l'atelier, verrou tenu (une fabrication en cours) : la pose de site/ attend, puis passe quand il est rendu
+  const tenu = join(racine, `pose-tenue-${(n += 1)}`);
+  mkdirSync(join(tenu, 'atelier'), { recursive: true });
+  const tient = spawn('flock', [join(tenu, 'atelier', '.verrou'), 'sleep', '60'], { stdio: 'ignore' });
+  try {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    let sortie = '';
+    const install = spawn('sh', [test1.fichier, '--dossier', tenu], { cwd: racine, env: { PATH: process.env.PATH } });
+    install.stdout.on('data', (d) => { sortie += d; });
+    install.stderr.on('data', (d) => { sortie += d; });
+    const fini = new Promise((resolve) => install.on('close', resolve));
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    assert.ok(!existsSync(join(tenu, 'site', 'index.html')), 'site/ n’est pas touché tant que l’atelier tient le verrou');
+    assert.ok(install.exitCode === null, 'l’installation attend');
+    tient.kill();
+    assert.equal(await fini, 0, sortie);
+    assert.ok(existsSync(join(tenu, 'site', 'index.html')), 'puis site/ est posé');
+    assert.match(sortie, /Atelier : verrou pris pour poser site\//);
+  } finally {
+    tient.kill();
+  }
 });

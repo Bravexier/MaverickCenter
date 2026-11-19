@@ -41,6 +41,10 @@
 //   GET  /api/edition/extrait/      l'extrait du contenu : un fichier SQLite neuf (règles, notes de version, historique avec les modifications en attente ;
 //                                   ni fiche, ni compte, ni journal), refait au premier téléchargement qui suit un changement (serveur/extrait.mjs ; ETag, 304) ;
 //                                   GET /api/edition/extrait/meta/ : son méta en JSON (date, version du site, empreinte de chaque table) — `npm run db:extrait`
+//   POST /api/edition/atelier/      « le bouton » de l'atelier du site de dev (serveur/atelier.mjs#refaireMaintenant) : l'extrait du contenu est refait TOUT DE SUITE, sans le délai de 10 minutes qui suit les
+//                                   saisies ; root le voit à sa ronde (minuteur « contenu », au plus 10 minutes) et, avec l'interrupteur <atelier>/servir, fabrique et pose le site. Sans corps. 200 { format:
+//                                   'maverick-atelier-refaire/1', etat: 'fabrique' | 'a_jour', message, version, fabrique_le } ; 409 `occupe` (déjà en cours) ou `inactif` (atelier non installé) ; 500 `echec` ;
+//                                   503 sans atelier ; 403 en production ; classe `ecriture` (le mot de passe)
 //   GET  /api/edition/journal/      le journal des modifications en attente, à rapatrier dans data/rows (npm run db:appliquer-edition)
 // Lots de changements (R274, R275, R291 ; serveur/edition-lots.mjs), site de dev seulement. Tant que la clé de dépôt n'est pas posée, une session de Claude DÉPOSE
 // une proposition (rien n'est écrit dans le contenu) que le propriétaire applique ou refuse d'un clic ; une fois posée, le dépôt par la clé de dépôt ou le mot de
@@ -526,11 +530,24 @@ function traiterLots(requete, service, reste, permis) {
   }
 }
 
+/** POST /api/edition/atelier/ : le bouton de l'atelier (l'extrait refait tout de suite ; serveur/atelier.mjs#refaireMaintenant). Rend une promesse. */
+function traiterLAtelier(service, reste, permis) {
+  if (reste.length) return erreur(404, 'Adresse inconnue.');
+  const refus = permis('POST');
+  if (refus) return refus;
+  if (!service.atelier) return erreur(503, 'L’atelier n’est pas disponible sur ce service.');
+  return service.atelier.refaireMaintenant().then((r) => {
+    if (r.etat === 'echec') return erreur(500, r.message);
+    return json(r.etat === 'fabrique' || r.etat === 'a_jour' ? 200 : 409, r);
+  });
+}
+
 /** Les routes /api/edition/… (site de dev seulement). */
 function traiterEdition(requete, service, action, reste, permis, lecture = () => true) {
   if (!service.edition) return erreur(403, 'L’édition des règles n’est ouverte que sur le site de dev.');
   if (action === 'extrait') return traiterExtrait(requete, service, reste, permis);
   if (action === 'lots') return traiterLots(requete, service, reste, permis);
+  if (action === 'atelier') return traiterLAtelier(service, reste, permis);
   if (reste.length || !['en-attente', 'lignes', 'listes', 'pages', 'mots-cles', 'chronologie', 'plan', 'journal', 'race', 'classe', 'bestiaire', 'portrait', 'evenement', undefined].includes(action)) {
     return erreur(404, 'Adresse inconnue.');
   }

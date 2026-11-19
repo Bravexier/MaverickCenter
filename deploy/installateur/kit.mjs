@@ -42,7 +42,7 @@ export const INTERDITS = Object.freeze([
 ]);
 /** Ce que le kit doit porter pour que le build depuis un contenu marche. */
 export const INDISPENSABLES = Object.freeze([
-  'client/package.json', 'client/astro.config.mjs', 'client/scripts/fabriquer-depuis-contenu.mjs', 'client/node_modules/astro/bin/astro.mjs',
+  'client/package.json', 'client/astro.config.mjs', 'client/scripts/fabriquer-depuis-contenu.mjs', 'client/scripts/poser-un-site.mjs', 'client/node_modules/astro/bin/astro.mjs',
   'data/schema.sql', 'data/derive.sql', 'data/migrations', 'sources/sources.json', 'sources/tipeee/bienvenue.json', '.nvmrc',
 ]);
 

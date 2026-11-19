@@ -6,7 +6,7 @@
 //   node --test test/deploy-atelier.test.mjs
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
-import { accessSync, chmodSync, constants, copyFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
+import { accessSync, chmodSync, constants, copyFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -19,6 +19,7 @@ import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 const have = (cmd, arg = '--version') => spawnSync(cmd, [arg], { stdio: 'ignore' }).status === 0;
 const skip = !(have('flock') && have('dd') && have('tar') && have('gzip') && have('df')) && 'flock, dd, df, tar ou gzip indisponible';
 const SOURCES = fileURLToPath(new URL('../../deploy/installateur/atelier/', import.meta.url));
+const SCRIPT_DE_POSE = fileURLToPath(new URL('../scripts/poser-un-site.mjs', import.meta.url));
 const IMAGE = 'node:22-bookworm-slim';
 const racine = dossierTemporaire('deploy-atelier');
 let n = 0;
@@ -36,6 +37,20 @@ case "$cmd" in
   image) if [ "\${FAKE_IMAGE_ABSENTE:-0}" = 1 ] && [ ! -f "$FAKE_DIR/image-tiree" ]; then exit 1; fi; exit 0 ;;
   pull) if [ "\${FAKE_PULL_ECHEC:-0}" = 1 ]; then exit 1; fi; touch "$FAKE_DIR/image-tiree"; exit 0 ;;
   run)
+    # le second conteneur (la pose du site servi) : le VRAI script du kit tourne, sur les dossiers que les montages désigneraient ; son code de sortie est celui du « conteneur »
+    case "$*" in *poser-un-site.mjs*)
+      [ "\${FAKE_POSE_ECHEC:-0}" != 1 ] || exit 125
+      sortie=''; site=''; pose=''; kit=''; pct=''; prev=''
+      for a in "$@"; do
+        case "$a" in *:/sortie:ro) sortie=\${a%%:*} ;; *:/site) site=\${a%%:*} ;; *:/pose) pose=\${a%%:*} ;; *:/kit:ro) kit=\${a%%:*} ;; esac
+        [ "$prev" != --minimum-pct ] || pct=$a
+        prev=$a
+      done
+      cid=fakepose$$
+      node "$kit/client/scripts/poser-un-site.mjs" --source "$sortie/site" --cible "$site" --resume "$pose/pose.json" --minimum-pct "$pct" > "$FAKE_DIR/pose-sortie.log" 2>&1
+      echo $? > "$FAKE_DIR/code-$cid"
+      echo "$cid"; exit 0 ;;
+    esac
     if [ "\${FAKE_RUN_ECHEC:-0}" = 1 ]; then exit 125; fi
     prev=''; resultats=''; contenu=''
     for a in "$@"; do
@@ -56,6 +71,7 @@ case "$cmd" in
       [ -z "\${FAKE_FIFO:-}" ] || { rm -f "$resultats/fabrication.json"; mkfifo "$resultats/fabrication.json"; }
       [ -z "\${FAKE_PERIPHERIQUE:-}" ] || { rm -f "$resultats/comparaison.json"; mknod "$resultats/comparaison.json" c 1 5 2>/dev/null || ln -sf /dev/zero "$resultats/comparaison.json"; }
       sortie=$(dirname "$resultats")/sortie; mkdir -p "$sortie/site"; echo "site témoin" > "$sortie/site/index.html"
+      [ -z "\${FAKE_SITE_FABRIQUE:-}" ] || cp -a "$FAKE_SITE_FABRIQUE/." "$sortie/site/"
       mkdir -p "$(dirname "$resultats")/travail/kit"; echo copie > "$(dirname "$resultats")/travail/kit/x"
     fi
     parent=system.slice
@@ -71,7 +87,7 @@ case "$cmd" in
         k=$(cat "$FAKE_DIR/inspections" 2>/dev/null || echo 0); echo $((k + 1)) > "$FAKE_DIR/inspections"
         if [ "\${FAKE_JAMAIS_FINI:-0}" = 1 ] && [ ! -f "$FAKE_DIR/tue" ]; then echo true; elif [ "$k" -lt "\${FAKE_ITERATIONS:-1}" ]; then echo true; else echo false; fi ;;
       *OOMKilled*) echo "\${FAKE_OOM:-false}" ;;
-      *ExitCode*) echo "\${FAKE_CODE:-0}" ;;
+      *ExitCode*) for dernier in "$@"; do :; done; if [ -f "$FAKE_DIR/code-$dernier" ]; then cat "$FAKE_DIR/code-$dernier"; else echo "\${FAKE_CODE:-0}"; fi ;;
     esac; exit 0 ;;
   kill) touch "$FAKE_DIR/tue"; exit 0 ;;
   logs)
@@ -124,6 +140,7 @@ function monde({ mode = 'test', total = 8388608, dispo = 6291456, besoin = 11534
   copyFileSync(join(SOURCES, 'installer.sh'), join(atelier, 'installer.sh'));
   ecrire(join(atelier, 'kit', 'kit.json'), JSON.stringify({ format: 'maverick-kit/1', version: kitVersion, image }, null, 2));
   ecrire(join(atelier, 'kit', 'client', 'package.json'), '{}');
+  ecrire(join(atelier, 'kit', 'client', 'scripts', 'poser-un-site.mjs'), readFileSync(SCRIPT_DE_POSE)); // le vrai script du kit : le faux docker le fait tourner
   ecrire(join(atelier, 'declencheur', 'marque'), `version=${version}\ntag=v${version}\ncommit=${'a'.repeat(40)}\n`);
   mkdirSync(join(atelier, 'rapports'), { recursive: true });
   if (reglages) ecrire(join(atelier, 'reglages.env'), `MEMOIRE_MAX_KO=2621440\nBESOIN_KO=${besoin}\nCPUS=1\nDISQUE_MIN_KO=2097152\nDELAI_S=1800\nGOOGLE_CLIENT_ID=\nJOURS_DE_MESURE=1\nMAX_PAR_JOUR=12\nMESURE_DEPUIS=${depuis}\n`);
@@ -786,17 +803,48 @@ test('les marques en attente se fondent : une marque changée pendant la fabrica
   assert.deepEqual(versions.sort(), ['0.4.95', '0.4.96']);
 });
 
-test('seuls les derniers rapports sont gardés (40 : de quoi couvrir une journée pleine), et seuls des dossiers de la forme des rapports sont jamais effacés', { skip }, () => {
+test('seuls les derniers rapports sont gardés (ceux du jour UTC tous, plus les 100 plus anciens), et seuls des dossiers de la forme des rapports sont jamais effacés', { skip }, () => {
   const m = monde();
-  for (let i = 0; i < 44; i += 1) json(join(m.rapports, `2026010${(i % 9) + 1}-${String(1000000 + i).slice(1)}`, 'rapport.json'), {});
+  for (let i = 0; i < 104; i += 1) json(join(m.rapports, `2026010${(i % 9) + 1}-${String(1000000 + i).slice(1)}`, 'rapport.json'), {});
   mkdirSync(join(m.rapports, 'a-garder'));
   ecrire(join(m.rapports, 'kit.json'), '{}');
-  assert.equal(rapportsDe(m).length, 44);
+  assert.equal(rapportsDe(m).length, 104);
   lancer(m);
   const apres = rapportsDe(m);
-  assert.equal(apres.length, 40);
+  assert.equal(apres.length, 101, 'le rapport du jour, plus les 100 plus anciens');
   assert.ok(apres.includes(dernierRapport(m).id), 'le nouveau rapport est gardé');
   assert.ok(existsSync(join(m.rapports, 'a-garder')) && existsSync(join(m.rapports, 'kit.json')));
+});
+
+test('les rapports du jour UTC ne s’effacent jamais (les plafonds du jour les comptent) : 41 refabrications « contenu » du jour sont comptées, la 49e est refusée ; les fabrications du jour des autres origines restent comptées', { skip }, () => {
+  const m = monde({ depuis: MAINTENANT - 3600 });
+  siteServi(m);
+  servir(m);
+  // la veille et avant : 130 rapports anciens ; aujourd'hui : 41 refabrications « contenu » et 12 fabrications d'autres origines
+  for (let i = 0; i < 130; i += 1) json(join(m.rapports, `2026110${(i % 9) + 1}-${String(1000000 + i).slice(1)}`, 'rapport.json'), { id: 'ancien' });
+  const duJour = (id, origine) => json(join(m.rapports, id, 'rapport.json'), { format: 'maverick-atelier/1', id, issue: 'fait', origine });
+  for (let i = 0; i < 41; i += 1) duJour(`20261115-00${String(i).padStart(2, '0')}00`, 'contenu');
+  for (let i = 0; i < 12; i += 1) duJour(`20261115-01${String(i).padStart(2, '0')}00`, ['livraison', 'nuit', 'journee_type'][i % 3]);
+  const extrait = join(m.atelier, 'depot', 'contenu-0.4.95.db');
+  const tour = (k) => { writeFileSync(extrait, `extrait ${'x'.repeat(k)}`); return lancer(m, { ...siteFabrique(m, 20), ...horloge(MAINTENANT + k * 10) }, ['--origine', 'contenu']); };
+  for (let k = 1; k <= 7; k += 1) assert.equal(tour(k).code, 0);
+  const duJourApres = rapportsDe(m).filter((id) => id.startsWith('20261115-'));
+  assert.equal(duJourApres.length, 41 + 12 + 7, 'aucun rapport du jour n’a été effacé');
+  assert.equal(rapportsDe(m).filter((id) => !id.startsWith('20261115-')).length, 100, 'les plus anciens : 100 gardés');
+  assert.equal(lancements(m).length, 14, 'sept fabrications et leurs poses : les 41 + 7 = 48 refabrications du jour ont rempli le plafond par défaut (48)');
+  const refus = tour(8);
+  assert.match(refus.out, /refus \(plafond_du_jour\)/, '48 déjà faites : la 49e est refusée, et le rapport le dit');
+  assert.equal(lancements(m).length, 14);
+  const dernier = dernierRapport(m);
+  assert.deepEqual([dernier.issue, dernier.motif, dernier.origine], ['refus', 'plafond_du_jour', 'contenu']);
+  const encore = tour(9);
+  assert.match(encore.out, /plafond du jour atteint \(48 fabrications, maximum 48\) : rien à faire, déjà noté/);
+  assert.equal(rapportsDe(m).filter((id) => id.startsWith('20261115-')).length, 41 + 12 + 7 + 1, 'un seul rapport de refus par jour');
+  // les 12 fabrications du jour des autres origines comptent toujours pour le plafond des autres (12 par défaut) : une livraison est refusée
+  const livraison = lancer(m, { ...siteFabrique(m, 20), ...horloge(MAINTENANT + 300) });
+  assert.equal(livraison.code, 0, livraison.out);
+  assert.match(livraison.out, /plafond du jour|plafond_du_jour/);
+  assert.equal(lancements(m).length, 14, 'le plafond des autres origines (12) est atteint par les 12 du jour, que ni le nettoyage ni les 48 refabrications n’ont changées');
 });
 
 test('le geste du propriétaire : réglages, unités systemd, image, installe.json, docker compose up -d, première fabrication ; relançable ; --etat ne change rien', { skip }, () => {
@@ -994,7 +1042,7 @@ test('garde-fou 20 : ni lancer.sh ni installer.sh n’écrivent dans db/, metriq
 function fauxKitDepot() {
   const d = join(racine, `depot-${(n += 1)}`);
   for (const [rel, contenu] of Object.entries({
-    '.nvmrc': '22\n', 'client/package.json': '{}', 'client/astro.config.mjs': '', 'client/scripts/fabriquer-depuis-contenu.mjs': '', 'client/node_modules/astro/bin/astro.mjs': '',
+    '.nvmrc': '22\n', 'client/package.json': '{}', 'client/astro.config.mjs': '', 'client/scripts/fabriquer-depuis-contenu.mjs': '', 'client/scripts/poser-un-site.mjs': '', 'client/node_modules/astro/bin/astro.mjs': '',
     'data/schema.sql': '', 'data/derive.sql': '', 'data/migrations/0001.sql': '', 'sources/sources.json': '{}', 'sources/tipeee/bienvenue.json': '{}',
   })) ecrire(join(d, rel), contenu);
   return d;
@@ -1469,4 +1517,382 @@ test('la livraison arrivée pendant une fabrication de nuit reste sous le plafon
   assert.equal(dernier.origine, 'livraison');
   assert.equal(dernier.motif, 'plafond_du_jour');
   assert.equal(lancements(m).length, 1, 'seule la fabrication de nuit (la douzième) a tourné');
+});
+
+// ---------------------------------------------------------------- le site servi (lot 11 « Bascule 2 », PR 3b) : l'interrupteur <atelier>/servir, la pose, le minuteur « contenu »
+
+/** Tout ce qu'un dossier porte (chemin → contenu), liens et sous-dossiers compris : de quoi prouver « identique octet pour octet ». */
+function empreinteDe(dossier, rel = '') {
+  const sortie = {};
+  for (const e of readdirSync(join(dossier, rel), { withFileTypes: true })) {
+    const enfant = rel ? `${rel}/${e.name}` : e.name;
+    if (e.isDirectory()) Object.assign(sortie, empreinteDe(dossier, enfant)); else sortie[enfant] = readFileSync(join(dossier, enfant), 'utf8');
+  }
+  return sortie;
+}
+/** Le site que la fabrication laisse (le faux conteneur le copie dans sortie/site) : `pages` pages, plus une feuille de style et un script. */
+function siteFabrique(m, pages = 20, version = 'neuf') {
+  const dossier = join(m.dossier, 'site-fabrique');
+  ecrire(join(dossier, 'index.html'), `<h1>${version}</h1>`);
+  for (let i = 0; i < pages; i += 1) ecrire(join(dossier, 'pages', `p${i}.html`), `page ${i} ${version}`);
+  ecrire(join(dossier, '_astro', `style.${version}.css`), `css ${version}`);
+  return { FAKE_SITE_FABRIQUE: dossier };
+}
+/** Le site servi : le site livré par GitHub (index, `pages` pages, un fichier qui n'existera plus) et le code du service dans _serveur/. */
+function siteServi(m, pages = 20) {
+  rmSync(join(m.instance, 'site'), { recursive: true, force: true });
+  ecrire(join(m.instance, 'site', 'index.html'), '<h1>livré</h1>');
+  for (let i = 0; i < pages; i += 1) ecrire(join(m.instance, 'site', 'pages', `p${i}.html`), `page ${i} livrée`);
+  ecrire(join(m.instance, 'site', 'ancien.js'), 'plus servi');
+  ecrire(join(m.instance, 'site', '_serveur', 'serveur', 'index.mjs'), 'code du service');
+  ecrire(join(m.instance, 'site', '_serveur', 'version.json'), '{"version":"0.4.95"}');
+}
+const servir = (m, pct = 90) => { ecrire(join(m.instance, 'db', 'source'), ''); ecrire(join(m.atelier, 'servir'), `SERVIR_DEPUIS=2026-11-15T09:00:00Z\nPAGES_MINIMUM_PCT=${pct}\n`); };
+const unicite = (ids) => new Set(ids).size === ids.length;
+
+test('sans l’interrupteur, rien de servi ne change : après une fabrication réussie, site/ est identique octet pour octet, un seul conteneur a tourné, le rapport ne porte pas de `servi`', { skip }, () => {
+  const m = monde();
+  siteServi(m);
+  const avant = empreinteDe(join(m.instance, 'site'));
+  const r = lancer(m, siteFabrique(m, 20));
+  assert.equal(r.code, 0, r.out);
+  assert.equal(dernierRapport(m).issue, 'fait');
+  assert.equal(dernierRapport(m).servi, null);
+  assert.deepEqual(empreinteDe(join(m.instance, 'site')), avant, 'site/ n’a pas bougé d’un octet');
+  assert.equal(lancements(m).length, 1, 'le conteneur de fabrication seulement : aucun second conteneur');
+  assert.ok(!existsSync(join(m.atelier, 'pose')), 'aucun dossier de pose');
+  assert.ok(!existsSync(join(m.atelier, 'declencheur', 'dernier-contenu')));
+  assert.ok(existsSync(join(m.atelier, 'sortie', 'site', 'pages', 'p0.html')), 'le site fabriqué est bien là, mais seulement dans la sortie');
+});
+
+test('avec l’interrupteur : un second conteneur durci pose le site fabriqué (nouveau, changé, retiré), _serveur/ intact ; le rapport dit `servi` ; la pose est notée', { skip }, () => {
+  const m = monde();
+  siteServi(m);
+  servir(m);
+  const serveurAvant = empreinteDe(join(m.instance, 'site', '_serveur'));
+  const r = lancer(m, siteFabrique(m, 20));
+  assert.equal(r.code, 0, r.out);
+  const rapport = dernierRapport(m);
+  assert.equal(rapport.issue, 'fait');
+  assert.deepEqual([rapport.servi.pose, rapport.servi.motif, rapport.servi.code_sortie, rapport.servi.version_installee, rapport.servi.version_de_l_instance, rapport.servi.resume], [true, null, 0, '0.4.95', '0.4.95', true]);
+  // le site : celui de la fabrication, sans ce qui n'existe plus, _serveur/ tel quel
+  const site = empreinteDe(join(m.instance, 'site'));
+  assert.equal(site['index.html'], '<h1>neuf</h1>');
+  assert.equal(site['pages/p3.html'], 'page 3 neuf');
+  assert.equal(site['_astro/style.neuf.css'], 'css neuf');
+  assert.equal(site['ancien.js'], undefined);
+  assert.deepEqual(empreinteDe(join(m.instance, 'site', '_serveur')), serveurAvant);
+  assert.ok(!Object.keys(site).some((f) => /\.pose-/.test(f)), 'aucun fichier provisoire');
+  // le résumé du conteneur, copié tel quel dans le rapport
+  const [id] = rapportsDe(m);
+  const pose = JSON.parse(readFileSync(join(m.rapports, id, 'pose.json'), 'utf8'));
+  assert.deepEqual([pose.format, pose.pose, pose.posees, pose.retirees, pose.inchangees, pose.pages_fabriquees, pose.pages_servies], ['maverick-pose/1', true, 22, 1, 0, 21, 21]);
+  // les deux conteneurs : d'abord la fabrication, puis la pose
+  const [fabrication, posee, ...autres] = lancements(m);
+  assert.equal(autres.length, 0);
+  assert.ok(fabrication.includes('sh /conteneur.sh'));
+  for (const drapeau of ['--network none', '--read-only', '--cap-drop ALL', '--security-opt no-new-privileges', '--pids-limit 128', '--memory 512m', '--memory-swap 512m', `--user ${proprietaireDe(join(m.instance, 'site'))}`]) {
+    assert.ok(posee.includes(drapeau), `la pose : ${drapeau}`);
+  }
+  assert.ok(posee.includes(`${m.atelier}/sortie:/sortie:ro`), 'la sortie en lecture seule');
+  assert.ok(posee.includes(`${m.atelier}/kit:/kit:ro`), 'le kit en lecture seule');
+  assert.ok(posee.includes(`${m.instance}/site:/site `), 'le site servi, en écriture (ni :ro)');
+  assert.ok(posee.includes(`${m.instance}/site/_serveur:/site/_serveur:ro `), '_serveur/, le code que le service exécute, remonté en LECTURE SEULE par-dessus le site');
+  assert.ok(posee.indexOf(`${m.instance}/site:/site `) < posee.indexOf('/site/_serveur:ro'), 'monté après site/, donc par-dessus');
+  assert.ok(posee.includes(`${m.atelier}/pose:/pose `), 'le dossier du résumé');
+  assert.ok(posee.includes('node --no-warnings /kit/client/scripts/poser-un-site.mjs --source /sortie/site --cible /site --resume /pose/pose.json --minimum-pct 90'));
+  for (const jamais of [`${m.instance}/db`, 'metriques', 'secrets', 'docker.sock', 'maintenance', '/travail', '/resultats', '--privileged', '-e ']) assert.ok(!posee.includes(jamais), `la pose ne voit jamais ${jamais}`);
+  // la pose est notée : le minuteur du contenu ne refabrique que si l'extrait change
+  // la date attendue est relevée par la MÊME commande que lancer.sh (`stat -c '%.9Y'`) : selon la version de coreutils, %.9Y passe par un flottant et arrondit
+  // au-delà de la microseconde ; root ne compare que ses propres relevés stat entre eux, jamais à une valeur calculée autrement
+  const extrait = join(m.atelier, 'depot', 'contenu-0.4.95.db');
+  const releve = (format) => spawnSync('stat', ['-c', format, extrait], { encoding: 'utf8' }).stdout.trim();
+  assert.equal(readFileSync(join(m.atelier, 'declencheur', 'dernier-contenu'), 'utf8'), `contenu-0.4.95.db ${releve('%s')} ${releve('%.9Y') || releve('%Y')}\n`, 'nom, taille et date (à la nanoseconde) de l’extrait, tels que root les a relevés par stat');
+  assert.equal(readdirSync(join(m.atelier, 'pose')).length, 0, 'le dossier du résumé est vidé');
+});
+const proprietaireDe = (chemin) => `${statSync(chemin).uid}:${statSync(chemin).gid}`;
+
+test('refus site_trop_petit : moins de 90 % des pages du site servi ; le rapport garde les chiffres ; site/ ne change pas ; rien n’est noté ; le seuil se règle par l’interrupteur', { skip }, () => {
+  const m = monde();
+  siteServi(m, 20);
+  servir(m);
+  const avant = empreinteDe(join(m.instance, 'site'));
+  const r = lancer(m, siteFabrique(m, 5));
+  assert.equal(r.code, 0, r.out);
+  const rapport = dernierRapport(m);
+  assert.equal(rapport.issue, 'fait', 'la fabrication est faite ; seul le site n’est pas posé');
+  assert.deepEqual([rapport.servi.pose, rapport.servi.motif, rapport.servi.code_sortie], [false, 'site_trop_petit', 82]);
+  const pose = JSON.parse(readFileSync(join(m.rapports, rapportsDe(m)[0], 'pose.json'), 'utf8'));
+  assert.deepEqual([pose.refus, pose.pages_fabriquees, pose.pages_servies, pose.minimum_de_pages], ['site_trop_petit', 6, 21, 19]);
+  assert.deepEqual(empreinteDe(join(m.instance, 'site')), avant);
+  assert.ok(existsSync(join(m.atelier, 'declencheur', 'dernier-contenu')), 'un refus qui ne changera pas tant que l’extrait ne change pas est noté : le minuteur ne refabrique pas toutes les 10 minutes');
+  const refaits = lancements(m).length;
+  assert.equal(lancer(m, siteFabrique(m, 5), ['--origine', 'contenu']).code, 0);
+  assert.equal(lancements(m).length, refaits, 'extrait inchangé : rien de refait');
+  // le seuil du propriétaire (« --servir --pages-minimum » efface la note) : 20 % laisse passer
+  rmSync(join(m.atelier, 'declencheur', 'dernier-contenu'));
+  servir(m, 20);
+  rmSync(join(m.atelier, 'rapports'), { recursive: true });
+  mkdirSync(join(m.atelier, 'rapports'));
+  assert.equal(lancer(m, { ...siteFabrique(m, 5), ...horloge(MAINTENANT + 7200) }).code, 0);
+  assert.ok(lancements(m).at(-1).includes('--minimum-pct 20'));
+  assert.equal(dernierRapport(m).servi.pose, true);
+  assert.equal(empreinteDe(join(m.instance, 'site'))['index.html'], '<h1>neuf</h1>');
+});
+
+test('les autres refus : une installation arrivée pendant la fabrication (versions dites, aucun conteneur de pose), un kit sans le script, Docker qui refuse, un lien dans la sortie, index.html absent', { skip }, () => {
+  // une installation pendant la fabrication : le fichier VERSION n'est plus celui de la marque
+  let m = monde();
+  siteServi(m);
+  servir(m);
+  const avant = empreinteDe(join(m.instance, 'site'));
+  ecrire(join(m.instance, 'VERSION'), `tag=v0.4.96\nversion=0.4.96\ncommit=${'a'.repeat(40)}\nmode=test\n`);
+  assert.equal(lancer(m, siteFabrique(m, 20)).code, 0);
+  let servi = dernierRapport(m).servi;
+  assert.deepEqual([servi.pose, servi.motif, servi.version_installee, servi.version_de_l_instance], [false, 'version_differente', '0.4.95', '0.4.96']);
+  assert.equal(lancements(m).length, 1, 'aucun conteneur de pose');
+  assert.deepEqual(empreinteDe(join(m.instance, 'site')), avant);
+  // la base source retirée (retour arrière de la bascule 1) : le marqueur est relu avant chaque pose, aucune pose
+  m = monde();
+  siteServi(m);
+  servir(m);
+  rmSync(join(m.instance, 'db', 'source'));
+  const sansBase = empreinteDe(join(m.instance, 'site'));
+  lancer(m, siteFabrique(m, 20));
+  servi = dernierRapport(m).servi;
+  assert.deepEqual([servi.pose, servi.motif], [false, 'pas_de_base_source']);
+  assert.equal(lancements(m).length, 1, 'aucun conteneur de pose');
+  assert.deepEqual(empreinteDe(join(m.instance, 'site')), sansBase);
+  // pas de _serveur/ à protéger, ou un lien à sa place : jamais de pose (le conteneur ne le verrait pas en lecture seule)
+  m = monde();
+  siteServi(m);
+  servir(m);
+  rmSync(join(m.instance, 'site', '_serveur'), { recursive: true });
+  lancer(m, siteFabrique(m, 20));
+  assert.equal(dernierRapport(m).servi.motif, 'site_absent');
+  assert.equal(lancements(m).length, 1);
+  m = monde();
+  siteServi(m);
+  servir(m);
+  rmSync(join(m.instance, 'site', '_serveur'), { recursive: true });
+  symlinkSync(join(m.dossier), join(m.instance, 'site', '_serveur'));
+  lancer(m, siteFabrique(m, 20));
+  assert.equal(dernierRapport(m).servi.motif, 'site_absent');
+  // un kit sans le script de pose
+  m = monde();
+  siteServi(m);
+  servir(m);
+  rmSync(join(m.atelier, 'kit', 'client', 'scripts', 'poser-un-site.mjs'));
+  lancer(m, siteFabrique(m, 20));
+  assert.equal(dernierRapport(m).servi.motif, 'kit_sans_pose');
+  assert.equal(lancements(m).length, 1);
+  // Docker refuse le second conteneur
+  m = monde();
+  siteServi(m);
+  servir(m);
+  lancer(m, { ...siteFabrique(m, 20), FAKE_POSE_ECHEC: '1' });
+  assert.equal(dernierRapport(m).servi.motif, 'docker_refuse');
+  // un lien dans le site fabriqué : refusé par le script du conteneur (83), rien n'est posé
+  m = monde();
+  siteServi(m);
+  servir(m);
+  const fab = siteFabrique(m, 20);
+  symlinkSync('/etc/passwd', join(fab.FAKE_SITE_FABRIQUE, 'passwd.html'));
+  const avantLien = empreinteDe(join(m.instance, 'site'));
+  lancer(m, fab);
+  servi = dernierRapport(m).servi;
+  assert.deepEqual([servi.pose, servi.motif, servi.code_sortie], [false, 'fichier_irregulier', 83]);
+  assert.deepEqual(empreinteDe(join(m.instance, 'site')), avantLien);
+  // une sortie sans index.html
+  m = monde();
+  siteServi(m);
+  servir(m);
+  const sans = siteFabrique(m, 20);
+  rmSync(join(sans.FAKE_SITE_FABRIQUE, 'index.html'));
+  // le faux conteneur de fabrication écrit son propre index.html témoin : on le retire après coup, par une pose qui le trouve absent
+  const faux = join(m.bin, 'docker');
+  writeFileSync(faux, readFileSync(faux, 'utf8').replace('cp -a "$FAKE_SITE_FABRIQUE/." "$sortie/site/"', 'cp -a "$FAKE_SITE_FABRIQUE/." "$sortie/site/"; rm -f "$sortie/site/index.html"'));
+  lancer(m, sans);
+  assert.deepEqual([dernierRapport(m).servi.motif, dernierRapport(m).servi.code_sortie], ['index_absent', 81]);
+  // une fabrication qui n'a pas réussi ne pose rien, même avec l'interrupteur
+  m = monde();
+  siteServi(m);
+  servir(m);
+  const intact = empreinteDe(join(m.instance, 'site'));
+  lancer(m, { ...siteFabrique(m, 20), FAKE_CODE: '1' });
+  assert.equal(dernierRapport(m).issue, 'echec');
+  assert.equal(dernierRapport(m).servi, null);
+  assert.equal(lancements(m).length, 1);
+  assert.deepEqual(empreinteDe(join(m.instance, 'site')), intact);
+});
+
+test('le minuteur « contenu » : sans interrupteur, rien (pas même un rapport) ; extrait inchangé, rien ; extrait changé, une fabrication et une pose ; extrait absent, rien', { skip }, () => {
+  const extrait = (m) => join(m.atelier, 'depot', 'contenu-0.4.95.db');
+  // sans interrupteur
+  let m = monde();
+  siteServi(m);
+  let r = lancer(m, siteFabrique(m, 20), ['--origine', 'contenu']);
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /interrupteur .* pas posé/);
+  assert.deepEqual([rapportsDe(m).length, lancements(m).length], [0, 0]);
+  // avec : le premier passage fabrique (rien n'a encore été posé), puis plus rien tant que l'extrait ne change pas
+  m = monde();
+  siteServi(m);
+  servir(m);
+  const env = (plus = {}) => ({ ...siteFabrique(m, 20), ...plus });
+  r = lancer(m, env(horloge(MAINTENANT)), ['--origine', 'contenu']);
+  assert.equal(r.code, 0, r.out);
+  assert.equal(rapportsDe(m).length, 1);
+  assert.equal(dernierRapport(m).origine, 'contenu');
+  assert.equal(dernierRapport(m).servi.pose, true);
+  assert.equal(lancements(m).length, 2, 'fabrication et pose');
+  r = lancer(m, env(horloge(MAINTENANT + 600)), ['--origine', 'contenu']);
+  assert.equal(r.code, 0, r.out);
+  assert.deepEqual([rapportsDe(m).length, lancements(m).length], [1, 2], 'extrait inchangé : rien du tout');
+  assert.equal(r.out.trim(), '', 'et sans bruit : toutes les 10 minutes, le journal ne se remplit pas');
+  // l'extrait change (le service l'a refait) : taille et date, une fabrication de plus
+  writeFileSync(extrait(m), 'extrait du contenu du site de dev, après une saisie du propriétaire');
+  r = lancer(m, env(horloge(MAINTENANT + 1200)), ['--origine', 'contenu']);
+  assert.equal(r.code, 0, r.out);
+  assert.deepEqual([rapportsDe(m).length, lancements(m).length], [2, 4]);
+  assert.equal(dernierRapport(m).origine, 'contenu');
+  // la date seule d'un extrait de même taille compte aussi
+  const taille = statSync(extrait(m)).size;
+  writeFileSync(extrait(m), 'x'.repeat(taille));
+  spawnSync('touch', ['-d', '2027-01-01 00:00:00', extrait(m)]);
+  lancer(m, env(horloge(MAINTENANT + 1800)), ['--origine', 'contenu']);
+  assert.equal(rapportsDe(m).length, 3);
+  // un extrait pas encore là : rien (le minuteur repassera), jamais une attente
+  m = monde({ extrait: false });
+  siteServi(m);
+  servir(m);
+  r = lancer(m, siteFabrique(m, 20), ['--origine', 'contenu']);
+  assert.equal(r.code, 0, r.out);
+  assert.deepEqual([rapportsDe(m).length, lancements(m).length], [0, 0]);
+  // l'interrupteur retiré puis reposé : un nouveau départ (la note est effacée par le geste ; ici, à la main)
+  assert.ok(!r.out.includes('ERREUR'));
+});
+
+test('le plafond propre à l’origine « contenu » (48 par jour, réglable) : au-delà, un seul rapport le dit ; les autres origines ne le subissent pas, et ne comptent pas ces fabrications', { skip }, () => {
+  const m = monde({ depuis: MAINTENANT - 3600 });
+  siteServi(m);
+  servir(m);
+  const reglages = readFileSync(join(m.atelier, 'reglages.env'), 'utf8');
+  writeFileSync(join(m.atelier, 'reglages.env'), `${reglages}MAX_CONTENU_PAR_JOUR=2\n`);
+  const extrait = join(m.atelier, 'depot', 'contenu-0.4.95.db');
+  const tour = (k, origine = 'contenu') => { writeFileSync(extrait, `extrait ${'x'.repeat(k)}`); return lancer(m, { ...siteFabrique(m, 20), ...horloge(MAINTENANT + k * 10) }, ['--origine', origine]); };
+  tour(1); tour(2);
+  assert.equal(rapportsDe(m).length, 2);
+  tour(3);
+  let rapports = rapportsDe(m).map((id) => JSON.parse(readFileSync(join(m.rapports, id, 'rapport.json'), 'utf8')));
+  assert.equal(rapports.length, 3);
+  assert.deepEqual([rapports[2].issue, rapports[2].motif, rapports[2].origine], ['refus', 'plafond_du_jour', 'contenu']);
+  assert.equal(lancements(m).length, 4, 'deux fabrications, deux poses, rien de plus');
+  const quatre = tour(4);
+  assert.match(quatre.out, /plafond du jour atteint \(2 fabrications, maximum 2\)/);
+  assert.equal(rapportsDe(m).length, 3, 'le refus n’est dit qu’une fois par jour');
+  // une livraison n'a pas ce plafond-là : elle fabrique (douze par jour pour les autres origines, que ces deux-là ne comptent pas)
+  const livraison = lancer(m, { ...siteFabrique(m, 20), ...horloge(MAINTENANT + 100) });
+  assert.equal(livraison.code, 0, livraison.out);
+  rapports = rapportsDe(m).map((id) => JSON.parse(readFileSync(join(m.rapports, id, 'rapport.json'), 'utf8')));
+  assert.equal(rapports.at(-1).origine, 'livraison');
+  assert.equal(rapports.at(-1).issue, 'fait');
+  assert.ok(unicite(rapportsDe(m)));
+});
+
+/** Le geste pour --servir : un atelier installé (kit, réglages), un faux systemctl, les unités dans un dossier d'essai. */
+const unitesDe = (m) => readdirSync(join(m.dossier, 'systemd')).sort();
+const journalSystemctl = (m) => (existsSync(join(m.faux, 'systemctl.log')) ? readFileSync(join(m.faux, 'systemctl.log'), 'utf8') : '');
+
+test('installer.sh --servir : l’interrupteur, le minuteur de 10 minutes, la première fabrication ; --ne-plus-servir : tout retiré, le geste de retour dit ; --retirer et --etat en parlent', { skip }, () => {
+  const m = monde();
+  ecrire(join(m.instance, 'db', 'source'), ''); // la base source : sans elle, chaque pose referait la base vivante
+  const interrupteur = join(m.atelier, 'servir');
+  assert.ok(!existsSync(interrupteur));
+  assert.match(installer(m, ['--etat']).out, /Site servi par l'atelier : non/);
+  const r = installer(m, ['--servir']);
+  assert.equal(r.code, 0, r.out);
+  assert.ok(existsSync(interrupteur));
+  const champs = readFileSync(interrupteur, 'utf8');
+  assert.match(champs, /^SERVIR_DEPUIS=\d{4}-\d\d-\d\dT[\d:]+Z$/m);
+  assert.match(champs, /^PAGES_MINIMUM_PCT=90$/m);
+  assert.deepEqual(JSON.parse(readFileSync(join(m.rapports, 'servir.json'), 'utf8')).pages_minimum_pct, 90);
+  assert.equal(JSON.parse(readFileSync(join(m.rapports, 'servir.json'), 'utf8')).format, 'maverick-atelier-servir/1');
+  assert.deepEqual(unitesDe(m), ['maverick-atelier-contenu.service', 'maverick-atelier-contenu.timer']);
+  const minuteur = readFileSync(join(m.dossier, 'systemd', 'maverick-atelier-contenu.timer'), 'utf8');
+  assert.match(minuteur, /^OnCalendar=\*:0\/10$/m);
+  assert.match(minuteur, /^Persistent=false$/m);
+  const service = readFileSync(join(m.dossier, 'systemd', 'maverick-atelier-contenu.service'), 'utf8');
+  assert.match(service, /^ExecStart=\/bin\/sh .*\/outils\/lancer\.sh --origine contenu$/m);
+  assert.match(service, new RegExp(`^ConditionPathExists=${interrupteur.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'm'), 'sans le fichier, systemd ne lance rien');
+  assert.match(journalSystemctl(m), /enable --now maverick-atelier-contenu\.timer/);
+  assert.match(journalSystemctl(m), /start --no-block maverick-atelier-contenu\.service/);
+  assert.match(r.out, /sudo sh .*mise-a-jour\.sh --force/, 'le retour arrière est dit');
+  assert.match(installer(m, ['--etat']).out, /Site servi par l'atelier : OUI \(interrupteur .*pages minimum 90 %\)/);
+  // le seuil se règle, et un geste sans option le garde
+  assert.equal(installer(m, ['--servir', '--pages-minimum', '40', '--sans-fabrication']).code, 0);
+  assert.match(readFileSync(interrupteur, 'utf8'), /^PAGES_MINIMUM_PCT=40$/m);
+  assert.equal(installer(m, ['--servir', '--sans-fabrication']).code, 0);
+  assert.match(readFileSync(interrupteur, 'utf8'), /^PAGES_MINIMUM_PCT=40$/m, 'relancé sans option : le seuil est gardé');
+  // le geste de base garde le minuteur (les unités se réécrivent), sans toucher à l'interrupteur
+  assert.equal(installer(m, ['--sans-fabrication']).code, 0);
+  assert.ok(existsSync(interrupteur));
+  assert.ok(unitesDe(m).includes('maverick-atelier-contenu.timer'));
+  assert.equal(installer(m, ['--sans-fabrication']).code, 0);
+  // ne plus servir
+  ecrire(join(m.atelier, 'declencheur', 'dernier-contenu'), 'contenu-0.4.95.db 1 1\n');
+  const arret = installer(m, ['--ne-plus-servir']);
+  assert.equal(arret.code, 0, arret.out);
+  assert.ok(!existsSync(interrupteur) && !existsSync(join(m.rapports, 'servir.json')) && !existsSync(join(m.atelier, 'declencheur', 'dernier-contenu')));
+  assert.ok(!unitesDe(m).some((u) => u.includes('contenu')));
+  assert.match(journalSystemctl(m), /disable --now maverick-atelier-contenu\.timer/);
+  assert.match(arret.out, /sudo sh .*\/mise-a-jour\.sh --force/);
+  assert.match(installer(m, ['--etat']).out, /Site servi par l'atelier : non/);
+  // --retirer retire aussi l'interrupteur et le minuteur
+  installer(m, ['--servir', '--sans-fabrication']);
+  assert.equal(installer(m, ['--retirer']).code, 0);
+  assert.ok(!existsSync(interrupteur));
+  assert.ok(!unitesDe(m).some((u) => u.includes('contenu')));
+});
+
+test('installer.sh --servir : refus sans atelier installé, sans le script de pose dans le kit, option incohérente ; une valeur sans sens ne s’écrit pas', { skip }, () => {
+  const sansGeste = monde({ reglages: false });
+  const r = installer(sansGeste, ['--servir']);
+  assert.notEqual(r.code, 0);
+  assert.match(r.out, /pas installé/);
+  assert.ok(!existsSync(join(sansGeste.atelier, 'servir')));
+  // sans la base source (db/source), chaque pose referait la base vivante : refus, avec la raison et le geste
+  const sansSource = monde();
+  const refusSource = installer(sansSource, ['--servir']);
+  assert.notEqual(refusSource.code, 0);
+  assert.match(refusSource.out, /db\/source est absent.*referait la base vivante.*bascule\.sh poser/);
+  assert.ok(!existsSync(join(sansSource.atelier, 'servir')) && !existsSync(join(sansSource.atelier, 'rapports', 'servir.json')));
+  const sansScript = monde();
+  ecrire(join(sansScript.instance, 'db', 'source'), '');
+  rmSync(join(sansScript.atelier, 'kit', 'client', 'scripts', 'poser-un-site.mjs'));
+  assert.match(installer(sansScript, ['--servir']).out, /poser-un-site\.mjs/);
+  assert.ok(!existsSync(join(sansScript.atelier, 'servir')));
+  const m = monde();
+  for (const args of [['--servir', '--ne-plus-servir'], ['--servir', '--retirer'], ['--ne-plus-servir', '--etat'], ['--pages-minimum', '50'], ['--servir', '--pages-minimum', '101'], ['--servir', '--pages-minimum', 'x'],
+    ['--servir', '--max-contenu-par-jour', '5'], ['--max-contenu-par-jour', '0'], ['--max-contenu-par-jour', '999']]) {
+    assert.equal(installer(m, args).code, 2, args.join(' '));
+  }
+  assert.ok(!existsSync(join(m.atelier, 'servir')));
+  // le plafond du contenu se règle par le geste de base, et se reprend
+  assert.equal(installer(m, ['--max-contenu-par-jour', '10', '--sans-fabrication']).code, 0);
+  assert.match(readFileSync(join(m.atelier, 'reglages.env'), 'utf8'), /^MAX_CONTENU_PAR_JOUR=10$/m);
+  assert.equal(installer(m, ['--sans-fabrication']).code, 0);
+  assert.match(readFileSync(join(m.atelier, 'reglages.env'), 'utf8'), /^MAX_CONTENU_PAR_JOUR=10$/m);
+});
+
+test('garde-fou 20, site servi : lancer.sh n’ouvre rien de la sortie ni du résumé de la pose ; seuls stat, un test de type, des versions de ses propres fichiers et une copie bornée', { skip }, () => {
+  const lignes = readFileSync(join(SOURCES, 'lancer.sh'), 'utf8').split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('#'));
+  const pose = lignes.slice(lignes.findIndex((l) => l.startsWith('servir_le_site()')), lignes.findIndex((l) => l.startsWith('fabriquer_pour_la_marque()')));
+  assert.ok(pose.length > 20);
+  for (const l of pose) {
+    assert.ok(!/(^|[|;&(]\s*)(cat|sed|grep|awk|head|tail|ls|cp|wc|du|od|xxd|strings|jq|node|python3?)\s[^|;&]*(\/sortie|\$ATELIER\/pose|pose\.json)/.test(l), `root ne lit pas : ${l}`);
+  }
+  assert.ok(pose.some((l) => l.includes('copier_un_resultat "$ATELIER/pose/pose.json"')), 'le résumé est copié par la fonction bornée, après docker rm');
+  assert.ok(pose.findIndex((l) => l.includes('docker rm -f')) < pose.findIndex((l) => l.includes('copier_un_resultat')), 'le conteneur est supprimé avant la copie');
+  assert.ok(!pose.some((l) => /--privileged|docker\.sock|-v "\$INSTANCE\/db|--network (?!none)/.test(l)));
 });
