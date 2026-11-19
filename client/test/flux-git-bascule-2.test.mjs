@@ -1,6 +1,6 @@
-// Ce que GitHub publie, selon l'interrupteur de la bascule 2 (lot 11, PR 4 ; tools/flux-git/bascule-2.mjs, .github/workflows/livraison.yml ;
-// docs/flux-git.md, « Ce que GitHub publie avec la bascule 2 »). Éteint : la livraison est celle d'avant ; allumé : un installateur de TEST est un « kit seul » (aucune
-// page, le job « Site » est sauté), la production ne change pas dans cette PR.
+// Ce que GitHub publie, selon l'interrupteur de la bascule 2 (lot 11, PR 4 et PR 5b ; tools/flux-git/bascule-2.mjs, .github/workflows/livraison.yml ;
+// docs/flux-git.md, « Ce que GitHub publie avec la bascule 2 »). Éteint : la livraison est celle d'avant, en production comme en test ; allumé : les deux installateurs sont un « kit seul » (aucune
+// page, le job « Site » est sauté).
 //   node --test test/flux-git-bascule-2.test.mjs
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -33,14 +33,15 @@ test('l’interrupteur du dépôt est éteint ; même fichier que le gel des fus
   for (const texte of ['pas du json', '{"actif": "oui"}', '[]']) assert.throws(() => lireLInterrupteur(texte), /bascule-2\.json/, texte);
 });
 
-test('éteint : la livraison est celle d’avant (site construit, job Site, kit complet) ; allumé : un installateur de test est un kit seul', () => {
-  assert.deepEqual(decisionDeLaLivraison({ mode: 'test', actif: false }), { kit_seul: false, construire_le_site: true });
-  assert.deepEqual(decisionDeLaLivraison({ mode: 'prod', actif: false }), { kit_seul: false, construire_le_site: true });
-  assert.deepEqual(decisionDeLaLivraison({ mode: 'test', actif: true }), { kit_seul: true, construire_le_site: false });
-  // la production n'est pas changée par cette PR : le site complet, même allumé ; le job « Site » (branche NAS) est sauté par `bascule_2`, pas par cette décision
-  assert.deepEqual(decisionDeLaLivraison({ mode: 'prod', actif: true }), { kit_seul: false, construire_le_site: true });
-  assert.equal(decisionDeLaLivraison({ mode: 'test', actif: undefined }).kit_seul, false, 'une valeur absente est éteinte');
-  assert.equal(decisionDeLaLivraison({ mode: 'test', actif: 'true' }).kit_seul, false, 'seul le booléen allume');
+test('éteint : la livraison est celle d’avant (site construit, job Site, kit complet) en production comme en test ; allumé : les deux installateurs sont un kit seul', () => {
+  const ETEINT = { kit_seul: false, construire_le_site: true };
+  const ALLUME = { kit_seul: true, construire_le_site: false };
+  for (const mode of ['test', 'prod']) {
+    assert.deepEqual(decisionDeLaLivraison({ mode, actif: false }), ETEINT, `${mode} éteint`);
+    assert.deepEqual(decisionDeLaLivraison({ mode, actif: true }), ALLUME, `${mode} allumé : la production reçoit son kit seul comme le test (PR 5b)`);
+    assert.deepEqual(decisionDeLaLivraison({ mode, actif: undefined }), ETEINT, `${mode} : une valeur absente est éteinte`);
+    assert.deepEqual(decisionDeLaLivraison({ mode, actif: 'true' }), ETEINT, `${mode} : seul le booléen allume`);
+  }
   assert.throws(() => decisionDeLaLivraison({ mode: 'autre', actif: true }), /mode/);
 });
 
@@ -80,11 +81,15 @@ test('la ligne de commande : lire l’interrupteur sur une référence git (jama
   assert.equal(lancer('decider', '--mode', 'test', '--actif', 'true').stdout, 'kit_seul=true\nconstruire_le_site=false\n');
   assert.equal(lancer('decider', '--mode', 'test', '--actif', 'false').stdout, 'kit_seul=false\nconstruire_le_site=true\n');
   assert.equal(lancer('decider', '--mode', 'test', '--actif', '').stdout, 'kit_seul=false\nconstruire_le_site=true\n', 'sortie vide du job version : éteint');
+  // la production : éteint, la sortie d'avant (octet pour octet) ; allumé, un kit seul comme le test
+  assert.equal(lancer('decider', '--mode', 'prod', '--actif', 'false').stdout, 'kit_seul=false\nconstruire_le_site=true\n');
+  assert.equal(lancer('decider', '--mode', 'prod', '--actif', '').stdout, 'kit_seul=false\nconstruire_le_site=true\n');
+  assert.equal(lancer('decider', '--mode', 'prod', '--actif', 'true').stdout, 'kit_seul=true\nconstruire_le_site=false\n');
   assert.equal(lancer('decider', '--mode', 'prod', '--actif', 'oui').status, 2);
   assert.equal(lancer('decider', '--mode', 'x', '--actif', 'true').status, 2);
 });
 
-test('livraison.yml : l’interrupteur se lit dans origin/dev sans bloquer la version ; le job Site est sauté allumé ; le kit seul n’est demandé qu’au test allumé', () => {
+test('livraison.yml : l’interrupteur se lit dans origin/dev sans bloquer la version ; le job Site est sauté allumé ; le kit seul n’est demandé que sur décision du module, test et production', () => {
   const { version, site, installateur } = wf.jobs;
   const lecture = version.steps.find((s) => s.id === 'bascule');
   assert.ok(lecture, 'le job version lit l’interrupteur');
@@ -106,8 +111,12 @@ test('livraison.yml : l’interrupteur se lit dans origin/dev sans bloquer la ve
   assert.ok(installateur.steps.indexOf(decision) < installateur.steps.indexOf(construire));
   const fabrication = installateur.steps.find((s) => s.id === 'fabrication');
   assert.equal(fabrication.env.KIT_SEUL, '${{ steps.decision.outputs.kit_seul }}');
-  assert.match(fabrication.run, /if \[ "\$MODE" = test \]; then kit="--kit \."; fi/, 'le kit complet reste réservé au test, comme avant');
+  assert.match(fabrication.run, /if \[ "\$MODE" = test \] \|\| \[ "\$KIT_SEUL" = true \]; then kit="--kit \."; fi/, 'le kit complet reste réservé au test, comme avant ; la production n’en porte que dans sa forme « kit seul »');
   assert.match(fabrication.run, /if \[ "\$KIT_SEUL" = true \]; then kit="\$kit --kit-seul"; site=""; fi/);
+  // la note de la livraison de production dit ce qu'est un kit seul et le geste qui l'autorise
+  const publication = installateur.steps.find((s) => /Publier la livraison/.test(s.name ?? ''));
+  assert.equal(publication.env.KIT_SEUL, '${{ steps.decision.outputs.kit_seul }}');
+  assert.match(publication.run, /if \[ "\$KIT_SEUL" = true \]; then[\s\S]*activation-par-paquet/);
   assert.match(fabrication.run, /site="--site client\/dist"/);
   assert.match(fabrication.run, /fabriquer\.mjs --mode "\$MODE" \$site --tag "\$TAG" .* \$kit\)/);
 });

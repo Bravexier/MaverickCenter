@@ -9,9 +9,10 @@
 //   node tools/flux-git/bascule-2.mjs decider --mode prod|test --actif true|false
 //       écrit « kit_seul=true|false » et « construire_le_site=true|false » (ce que le job « Installateur » fait) (le job « Site » lit l'interrupteur lui-même : `bascule_2` du job version).
 //
-// ÉTEINT (`actif` absent ou false) : kit_seul=false, construire_le_site=true : la livraison est celle d'avant. Allumé : un installateur de TEST ne porte plus de pages (le
-// site est fabriqué par l'atelier du site de dev : deploy/installateur/fabriquer.mjs --kit-seul), le job « Site » (branche NAS) est sauté. La production reste inchangée dans cette
-// PR : l'installateur de production porte toujours le site complet.
+// ÉTEINT (`actif` absent ou false) : kit_seul=false, construire_le_site=true : la livraison est celle d'avant, en production comme en test. Allumé (lot 11, PR 4 puis PR 5b), les deux
+// installateurs sont des « kit seul » (deploy/installateur/fabriquer.mjs --kit-seul), sans pages : celui de TEST ne porte plus que le service et le kit (le site est fabriqué par l'atelier
+// du site de dev), celui de PRODUCTION que le kit (c'est activer.sh, lancé par l'installateur, qui fabrique les pages et le service depuis le paquet : docs/serveur.md, « PR 5b »).
+// Le job « Site » (branche NAS) est sauté.
 import { spawnSync } from 'node:child_process';
 import { appendFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -24,12 +25,13 @@ export { INTERRUPTEUR, lireLInterrupteur };
 export const BRANCHE_DE_L_INTERRUPTEUR = 'origin/dev';
 
 /**
- * Ce que la livraison d'un installateur fait. `mode` : `prod` ou `test` ; `actif` : l'interrupteur.
+ * Ce que la livraison d'un installateur fait. `mode` : `prod` ou `test` ; `actif` : l'interrupteur. Éteint, la même décision pour les deux modes : le site complet.
  * @returns {{ kit_seul: boolean, construire_le_site: boolean }}
  */
 export function decisionDeLaLivraison({ mode, actif }) {
   if (!['prod', 'test'].includes(mode)) throw new Error(`mode « ${mode} » inconnu (prod ou test)`);
-  const kitSeul = actif === true && mode === 'test';
+  // seul le booléen allume ; le mode ne change pas la décision (la production reçoit son kit seul comme le test : PR 5b)
+  const kitSeul = actif === true;
   return { kit_seul: kitSeul, construire_le_site: !kitSeul };
 }
 

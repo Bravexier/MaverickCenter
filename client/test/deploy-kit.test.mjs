@@ -223,7 +223,7 @@ function lancer(fichier, args = [], env = {}) {
   return { code: r.status, out: r.stdout + r.stderr };
 }
 
-test('fabriquer.mjs refuse --kit en production (module et ligne de commande), et un dépôt sans client/', { skip }, () => {
+test('fabriquer.mjs refuse --kit en production sans --kit-seul (module et ligne de commande), et un dépôt sans client/', { skip }, () => {
   const depot = fauxDepot();
   assert.throws(() => installateur({ mode: 'prod', kit: depot }), /--kit est réservé au mode test/);
   assert.throws(() => installateur({ mode: 'test', kit: join(racine, 'pas-un-depot') }), /--kit : pas de client\/package\.json/);
@@ -366,9 +366,9 @@ test('une décompression qui échoue ne fait pas échouer l’installation : san
   assert.deepEqual(rienDeProvisoire(join(instance, 'atelier')), []);
 });
 
-test('livraison.yml : le kit est joint pour le serveur de test seulement ; --kit-seul s’y ajoute sous l’interrupteur de la bascule 2, jamais en production', () => {
+test('livraison.yml : le kit est joint pour le serveur de test, et pour la production seulement dans sa forme « kit seul » ; --kit-seul s’y ajoute sous l’interrupteur de la bascule 2, jamais de soi-même', () => {
   const yml = readFileSync(new URL('../../.github/workflows/livraison.yml', import.meta.url), 'utf8');
-  assert.match(yml, /if \[ "\$MODE" = test \]; then kit="--kit \."; fi/);
+  assert.match(yml, /if \[ "\$MODE" = test \] \|\| \[ "\$KIT_SEUL" = true \]; then kit="--kit \."; fi/);
   assert.equal([...yml.matchAll(/kit="--kit \./g)].length, 1, 'une seule ligne pose l’option --kit');
   assert.equal([...yml.matchAll(/--kit-seul/g)].filter((m) => !/#[^\n]*$/.test(yml.slice(yml.lastIndexOf('\n', m.index), m.index))).length, 1, 'une seule ligne de commande pose --kit-seul (le reste est commenté)');
   assert.match(yml, /fabriquer\.mjs --mode "\$MODE" .* \$kit\)/);
