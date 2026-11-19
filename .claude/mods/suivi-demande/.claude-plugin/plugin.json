@@ -1,0 +1,6 @@
+{
+  "name": "suivi-demande",
+  "version": "0.1.0",
+  "description": "Panneau de suivi de la demande en cours : but, sous-tâches, temps, agents, GitHub et installation sur le site de dev.",
+  "types": "./types/index.d.ts"
+}
