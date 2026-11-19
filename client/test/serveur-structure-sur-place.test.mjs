@@ -76,7 +76,7 @@ test('les migrations livrées : tout data/migrations/*.sql, numérotées, sha256
   assert.equal(lireLesMigrations({ migrations: join(dossier, 'absent') }), null);
 });
 
-test('plancher : la version livrée est la plus haute de la dernière migration et du schema.sql ; une base au plancher, au-dessus de la dernière migration livrée, est à jour, jamais « en avance »', (t) => {
+test('plancher : la version livrée est la plus haute de la dernière migration et du schema.sql ; une base au plancher, au-dessus de la dernière migration livrée, est à jour, jamais « en avance » ; une base en dessous, sans migration livrée pour y monter, est refusée (étape plancher)', (t) => {
   assert.equal(versionDuSchemaSql('-- en-tête\nPRAGMA user_version = 130;   -- version du schéma'), 130);
   assert.equal(versionDuSchemaSql('CREATE TABLE a (x TEXT);'), null);
   assert.equal(versionLivree({ migrations: [{ numero: 129 }], schema: 'PRAGMA user_version = 130;' }), 130, 'les migrations du dessus sorties : le schema.sql');
@@ -90,6 +90,23 @@ test('plancher : la version livrée est la plus haute de la dernière migration 
   const bilan = essayerSurUneCopie({ source: baseDesRegles(), dossier: nouveauDossier('plancher-essais', t), migrations: d, schema });
   assert.equal(bilan.verdict, 'a_jour');
   assert.deepEqual([bilan.versions.livree, bilan.en_avance], [V, false]);
+  // une base SOUS le plancher, sans migration livrée pour y monter : refusée (elle se refait depuis le schéma), jamais « à jour » ; la base n'est pas écrite
+  const sous = nouveauChemin('sous-le-plancher');
+  const db = new DatabaseSync(baseDesRegles(), { readOnly: true });
+  try {
+    db.prepare('VACUUM INTO ?').run(sous);
+  } finally {
+    db.close();
+  }
+  const ecrite = new DatabaseSync(sous);
+  ecrite.exec(`PRAGMA user_version = ${V - 1}`);
+  ecrite.close();
+  const octets = etatDuFichier(sous);
+  const refus = essayerSurUneCopie({ source: sous, dossier: nouveauDossier('plancher-essais-sous', t), migrations: d, schema });
+  assert.equal(refus.verdict, 'refuse');
+  assert.deepEqual([refus.versions.avant, refus.versions.apres, refus.versions.livree], [V - 1, V - 1, V]);
+  assert.deepEqual([refus.refus.etape, refus.refus.migration, refus.migrations], ['plancher', V, []]);
+  assert.deepEqual(etatDuFichier(sous), octets, 'la base elle-même est intacte');
 });
 
 test('deux fichiers du même numéro, un nom qui n’est pas NNNN-<nom>.sql : l’un est une erreur, l’autre est ignoré', (t) => {

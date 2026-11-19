@@ -476,7 +476,8 @@ const NOM_D_UNE_OMBRE = /^structure-essai-[0-9]+-[0-9a-f-]{36}-ombre-(?:avant|ap
  * INTO) : l'état d'avant et sa copie dans `dossier`, les migrations appliquées à celle-ci par `appliquerSurPlace` (sans sauvegarde : la base elle-même
  * n'est pas touchée), puis le bilan des deux états. Les copies sont TOUJOURS effacées, même en cas d'échec. Synchrone (un fil à part dans le service :
  * `essayerEnArrierePlan`).
- * Verdicts : `accepte` (le bilan est joint), `refuse` (`refus` : la migration, l'étape, la raison), `a_jour` (rien à appliquer), `indisponible` (migrations ou
+ * Verdicts : `accepte` (le bilan est joint), `refuse` (`refus` : la migration, l'étape, la raison ; étape `plancher` : une base sous la version du schema.sql
+ * sans migration livrée pour y monter), `a_jour` (rien à appliquer, la base au plancher ou au-dessus), `indisponible` (migrations ou
  * schema.sql non livrés). La base elle-même n'est jamais écrite.
  * @param {{ source: string, dossier: string, migrations?: string | null, schema?: string | null, instant?: string, version?: string | null }} o `migrations`
  *   et `schema` : chemins (undefined : ceux de la livraison) ; `instant` (ISO) et `version` : ce que noterait la vraie application
@@ -508,6 +509,12 @@ export function essayerSurUneCopie({ source, dossier, migrations, schema, instan
     const migrationsEssayees = aFaire.map(({ numero, fichier, empreinte }) => ({ numero, fichier, empreinte }));
     if (!aFaire.length) {
       const derniere = versionLivree(livre); // le schema.sql est le plancher quand des migrations sont sorties du dépôt
+      if (derniere !== null && avant < derniere) {
+        // sous le plancher, sans migration livrée pour y monter : les migrations qui y mènent ont quitté le dépôt, la base se refait depuis le schéma
+        const refus = new ErreurStructure(`la base est à la version ${avant}, sous le plancher de la structure (schema.sql, version ${derniere}) : les migrations ${ZEROS(avant + 1)} à ${ZEROS(derniere)} ne sont pas livrées, la base se refait depuis le schéma`,
+          { migration: avant + 1, etape: 'plancher' });
+        return { ...base, verdict: 'refuse', versions: { avant, apres: avant, livree: derniere }, migrations: [], refus: refus.enJson(), retour_arriere: true, duree_ms: Math.round(performance.now() - t0) };
+      }
       return { ...base, verdict: 'a_jour', versions: { avant, apres: avant, livree: derniere }, en_avance: derniere !== null && avant > derniere, migrations: [], duree_ms: Math.round(performance.now() - t0) };
     }
     try {
