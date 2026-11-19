@@ -35,6 +35,10 @@ export function fichiersDeStructure(client = CLIENT) {
 export const CONSTAT_DE_BASCULE = 'scripts/constat-de-bascule.mjs';
 /** Le script de la répétition de la mise à jour de la production (scripts/repetition-prod.mjs), livré sous le même chemin dans _serveur/. */
 export const REPETITION_PROD = 'scripts/repetition-prod.mjs';
+/** Le script de la répétition complète du jour J de la bascule 2 (scripts/repetition-bascule-2.mjs), livré sous le même chemin dans _serveur/. */
+export const REPETITION_BASCULE_2 = 'scripts/repetition-bascule-2.mjs';
+/** Le garde-fou 17 (serveur/activation.mjs) : sans appelant dans le service avant la PR 5, il est livré à part pour la répétition de la bascule 2. */
+export const ACTIVATION = 'serveur/activation.mjs';
 
 /** Fichiers livrés avec le service hors de ses modules : `source` relatif à client/, `cible` relatif au dossier livré. */
 export const FICHIERS_JOINTS = Object.freeze([
@@ -46,6 +50,10 @@ export const FICHIERS_JOINTS = Object.freeze([
   Object.freeze({ source: CONSTAT_DE_BASCULE, cible: CONSTAT_DE_BASCULE }),
   // la répétition de la dernière mise à jour de la production (deploy/installateur/repetition-prod.sh la lance dans le conteneur du site de dev) : modules déjà livrés
   Object.freeze({ source: REPETITION_PROD, cible: REPETITION_PROD }),
+  // la répétition complète du jour J de la bascule 2 (deploy/installateur/repetition-bascule-2.sh la lance dans le conteneur du site de dev) : ses modules sont ceux du service
+  // et ceux-ci (le garde-fou 17 n'a pas d'appelant dans le service ; ce joint s'ajoute à ses modules quand la PR 5 l'appellera, la copie est alors la même)
+  Object.freeze({ source: REPETITION_BASCULE_2, cible: REPETITION_BASCULE_2 }),
+  Object.freeze({ source: ACTIVATION, cible: ACTIVATION }),
 ]);
 
 const IMPORTS = /\b(?:import|export)\s+(?:[^'"`;]*?\s+from\s+)?['"]([^'"]+)['"]|\bimport\(\s*['"]([^'"]+)['"]\s*\)/g;

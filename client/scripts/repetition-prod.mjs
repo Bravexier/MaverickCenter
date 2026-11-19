@@ -18,7 +18,9 @@ import { join, resolve } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 import { ErreurBaseVivante, FICHIER_BASE, preparerBaseVivante, TABLES_VIVANTES } from '../serveur/base-vivante.mjs';
+import { tablesDeLaBase } from '../serveur/empreintes.mjs';
 import { fabriquerExtrait } from '../serveur/extrait.mjs';
+import { CLASSES_DE_TABLES } from '../src/lib/tables-de-la-base.mjs';
 import { ORDRE_DES_NATURES, TABLES_FICHES } from '../src/lib/fiche-format.mjs';
 
 export const FORMAT_DE_LA_REPETITION = 'maverick-repetition-prod/1';
@@ -79,28 +81,53 @@ function controler(chemin) {
   }
 }
 
+/**
+ * Un fichier de contenu déjà fabriqué (le paquet de la répétition de la bascule 2) décrit comme le fait fabriquerExtrait pour le contenu d'une répétition :
+ * schéma, tables de contenu, clés étrangères rompues, taille. Lecture seule ; `modifications_versees` n'est pas connu d'un fichier fourni (null).
+ */
+function decrireLeContenu(chemin) {
+  const db = new DatabaseSync(chemin, { readOnly: true });
+  try {
+    return {
+      schema: db.prepare('PRAGMA user_version').get().user_version,
+      tables: tablesDeLaBase(db).filter((t) => t.classe === CLASSES_DE_TABLES.CONTENU).length,
+      modifications_versees: null,
+      cles_etrangeres_rompues: db.prepare('PRAGMA foreign_key_check').all().length,
+      octets: octets(chemin),
+      duree_ms: 0,
+    };
+  } finally {
+    db.close();
+  }
+}
+
 /** Un problème sans valeur citée : « … = « x » absent de … » devient « … = « … » absent de … » (une valeur peut venir d'une fiche). */
 export const sansValeurs = (texte) => String(texte).replace(/« [^»]*»/g, '« … »').slice(0, 400);
 
 /**
  * La répétition : { format, verdict ('passera' | 'refusee'), version, production, contenu, base, fiches_adaptees, rejeu, refus, controle, duree_ms, octets }.
- * @param {{ source: string, travail: string, version?: string | null, instant?: Date }} o
+ * @param {{ source?: string, travail: string, version?: string | null, instant?: Date, contenu?: string | null }} o `contenu` : un fichier de contenu déjà fabriqué
+ *   (la répétition de la bascule 2 y met son paquet) : il remplace l'extrait tiré de `source`, qui n'est alors pas lu.
  */
-export function repeter({ source, travail, version = versionDuService(), instant = new Date(), chute = {} }) {
+export function repeter({ source, travail, version = versionDuService(), instant = new Date(), chute = {}, contenu: contenuFourni = null }) {
   const t0 = performance.now();
   const dossier = join(travail, 'prod');
   const copie = join(dossier, FICHIER_BASE);
   if (!existsSync(copie)) throw new Error('copie de la base de la production absente (prod/vivante.db du dossier de travail)');
-  if (!existsSync(source)) throw new Error('base du site de dev introuvable (--source)');
+  if (contenuFourni ? !existsSync(contenuFourni) : !existsSync(source)) throw new Error(contenuFourni ? 'fichier de contenu introuvable' : 'base du site de dev introuvable (--source)');
   const avant = relever(copie);
   const production = { schema: avant.schema, fiches: avant.lignes.personnage ?? 0, octets: octets(copie) };
 
-  const contenuChemin = join(travail, 'contenu.db');
-  const meta = fabriquerExtrait({ source, destination: contenuChemin, version, instant });
-  const contenu = {
-    schema: meta.schema, tables: Object.keys(meta.tables ?? {}).length, modifications_versees: meta.modifications_versees, cles_etrangeres_rompues: meta.cles_etrangeres_rompues,
-    octets: meta.fichier?.octets ?? octets(contenuChemin), duree_ms: meta.duree_ms,
-  };
+  const contenuChemin = contenuFourni ?? join(travail, 'contenu.db');
+  let contenu;
+  if (contenuFourni) contenu = decrireLeContenu(contenuFourni);
+  else {
+    const meta = fabriquerExtrait({ source, destination: contenuChemin, version, instant });
+    contenu = {
+      schema: meta.schema, tables: Object.keys(meta.tables ?? {}).length, modifications_versees: meta.modifications_versees, cles_etrangeres_rompues: meta.cles_etrangeres_rompues,
+      octets: meta.fichier?.octets ?? octets(contenuChemin), duree_ms: meta.duree_ms,
+    };
+  }
 
   const evenements = {};
   const journal = [];
@@ -148,6 +175,21 @@ export function repeter({ source, travail, version = versionDuService(), instant
 const mo = (n) => `${(n / 1048576).toFixed(1)} Mo`;
 const s = (ms) => `${(ms / 1000).toFixed(1)} s`;
 
+/** Les lignes de compte d'une base refaite (fiches avant et après, tables changées, fiches adaptées, journal rejoué, contrôle, archive, sauvegardes) : celles d'un `PASSERA`. */
+export function lignesDeLaBase(x) {
+  const l = [];
+  l.push(`fiches : ${x.base.fiches_avant} avant, ${x.base.fiches_apres} après`);
+  for (const [t, n] of Object.entries(x.base.lignes_changees)) l.push(`table ${t} : ${n.avant ?? 'absente'} → ${n.apres ?? 'absente'} ligne(s)`);
+  for (const [nature, n] of Object.entries(x.fiches_adaptees.par_nature)) l.push(`adaptées (${nature}) : ${n.fiches} fiche(s), ${n.elements} élément(s) retiré(s) ou converti(s), une note datée dans chacune`);
+  if (x.rejeu) l.push(`journal rejoué : ${x.rejeu.lots ?? 0} lot(s), ${x.rejeu.conflits ?? 0} conflit(s)`);
+  l.push(`contrôle de la base refaite : intégrité ${x.controle.integrite}, ${x.controle.cles_rompues_fiches} clé(s) étrangère(s) rompue(s) dans les fiches, ${x.controle.cles_rompues_contenu} dans le contenu`);
+  l.push(`base refaite : ${mo(x.base.octets)} ; l’ancienne archivée : ${mo(x.base.archive_octets)} (db/archives/ de la production, 5 gardées)`);
+  if (x.chutes.length) {
+    l.push(`sauvegardes : ${x.chutes.length} table(s) en « chute anormale » pour la copie horaire suivante (copie mise de côté, alerte sur la page Debug jusqu’à « copie.sh accepter prod ») : ${x.chutes.map((c) => `${c.table} ${c.avant} → ${c.apres ?? 'absente'}`).join(', ')}`);
+  } else l.push('sauvegardes : aucune chute anormale attendue');
+  return l;
+}
+
 /** Le texte du rapport : une ligne par fait, des comptes seulement. */
 export function texteDeLaRepetition(x) {
   const l = [];
@@ -161,17 +203,7 @@ export function texteDeLaRepetition(x) {
   l.push(`contenu à venir (extrait du site de dev) : schéma ${x.contenu.schema}, ${x.contenu.tables} table(s) de contenu, ${x.contenu.modifications_versees} modification(s) en attente versée(s) dans l’historique, ${x.contenu.cles_etrangeres_rompues} clé(s) étrangère(s) rompue(s), ${mo(x.contenu.octets)}`);
   if (x.refus) {
     for (const p of x.refus.problemes) l.push(`problème : ${p}`);
-  } else {
-    l.push(`fiches : ${x.base.fiches_avant} avant, ${x.base.fiches_apres} après`);
-    for (const [t, n] of Object.entries(x.base.lignes_changees)) l.push(`table ${t} : ${n.avant ?? 'absente'} → ${n.apres ?? 'absente'} ligne(s)`);
-    for (const [nature, n] of Object.entries(x.fiches_adaptees.par_nature)) l.push(`adaptées (${nature}) : ${n.fiches} fiche(s), ${n.elements} élément(s) retiré(s) ou converti(s), une note datée dans chacune`);
-    if (x.rejeu) l.push(`journal rejoué : ${x.rejeu.lots ?? 0} lot(s), ${x.rejeu.conflits ?? 0} conflit(s)`);
-    l.push(`contrôle de la base refaite : intégrité ${x.controle.integrite}, ${x.controle.cles_rompues_fiches} clé(s) étrangère(s) rompue(s) dans les fiches, ${x.controle.cles_rompues_contenu} dans le contenu`);
-    l.push(`base refaite : ${mo(x.base.octets)} ; l’ancienne archivée : ${mo(x.base.archive_octets)} (db/archives/ de la production, 5 gardées)`);
-    if (x.chutes.length) {
-      l.push(`sauvegardes : ${x.chutes.length} table(s) en « chute anormale » pour la copie horaire suivante (copie mise de côté, alerte sur la page Debug jusqu’à « copie.sh accepter prod ») : ${x.chutes.map((c) => `${c.table} ${c.avant} → ${c.apres ?? 'absente'}`).join(', ')}`);
-    } else l.push('sauvegardes : aucune chute anormale attendue');
-  }
+  } else l.push(...lignesDeLaBase(x));
   for (const j of x.journal) l.push(`journal du service : ${j}`);
   l.push(`durée : contenu ${s(x.duree_ms.contenu)}, préparation ${s(x.duree_ms.preparation)}, totale ${s(x.duree_ms.totale)} ; dossier de travail : ${mo(x.octets.travail)}`);
   return l.join('\n');

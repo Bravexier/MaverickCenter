@@ -92,8 +92,9 @@ export function fabriquer(options) {
     }
     // les scripts de l'atelier du site de dev (deploy/installateur/atelier/) : dans l'installateur de test seulement ; l'installateur les pose dans <instance>/atelier/
     if (mode === 'test') {
-      // bascule.sh et repetition-prod.sh : les scripts du jour de la bascule 1 (lot 8), que l'installateur de test pose à la racine de l'instance
-      for (const nom of ['bascule.sh', 'repetition-prod.sh']) copyFileSync(join(ICI, nom), join(contenu, nom));
+      // bascule.sh et repetition-prod.sh : les scripts du jour de la bascule 1 (lot 8), repetition-bascule-2.sh : la répétition du jour J de la bascule 2 (lot 11, PR 3a) ;
+      // l'installateur de test les pose à la racine de l'instance
+      for (const nom of ['bascule.sh', 'repetition-prod.sh', 'repetition-bascule-2.sh']) copyFileSync(join(ICI, nom), join(contenu, nom));
       for (const nom of readdirSync(join(ICI, 'atelier')).filter((f) => f.endsWith('.sh')).sort()) {
         mkdirSync(join(contenu, 'atelier-scripts'), { recursive: true });
         copyFileSync(join(ICI, 'atelier', nom), join(contenu, 'atelier-scripts', nom));
