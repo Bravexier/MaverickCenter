@@ -272,7 +272,7 @@ voulu.
    Les copies mises de côté (`suspectes/`) **ne partent jamais à l'extérieur** : l'envoi de nuit n'envoie que la dernière copie saine. Tant qu'une alerte n'est pas
    levée (une copie saine, ou `copie.sh accepter <instance>` pour une baisse voulue), rien de postérieur à la chute n'est donc envoyé : la dernière copie extérieure reste celle d'avant.
 2. **Temps 2, envoi chiffré de nuit hors du serveur** (`restic`, paquet Ubuntu). Chaque nuit, la dernière bonne copie de chaque instance part, avec
-   le dernier installateur de chaque site (`installateur-courant/`, gardé par `mise-a-jour.sh`), vers un stockage compatible S3 **chez un autre
+   les trois derniers installateurs de chaque site (`installateur-courant/`, gardés par `mise-a-jour.sh`), vers un stockage compatible S3 **chez un autre
    fournisseur que l'hébergeur**, chiffrée avec une phrase de 6 mots que seul le propriétaire garde (décision R275). Gardées : une copie par jour pendant 30
    jours, **une par mois et une par version sans limite**. L'étiquette « version » est posée par l'envoi de nuit qui suit un changement de version, sur la copie de cette nuit : si deux versions se succèdent entre deux nuits, seule la dernière est étiquetée. Réglable : `VERSIONS_DE="prod"` dans `reglages.env` limite les versions gardées à celles de la production (par défaut : `prod dev`). Chaque nuit, le dépôt est contrôlé (le dimanche, une partie des données est relue) ; chaque mois,
    et juste après l'activation, un **essai de restauration** relit la dernière copie extérieure dans un conteneur vide et contrôle l'intégrité et les nombres
@@ -354,7 +354,7 @@ Aucune installation ne touche à `db/`.
    restic restore latest --host maverick --tag inst-dev  --target /root/restauration/dev
    ```
    Chaque dossier contient la copie (`…/srv/maverick-sauvegardes/<instance>/nuit/<date>/db/`, `comptes.tsv` : le nombre de lignes de chaque table au moment de la copie)
-   et `…/<dossier de l'instance>/installateur-courant/` : le dernier installateur du site.
+   et `…/<dossier de l'instance>/installateur-courant/` : les trois derniers installateurs du site.
 4. Contrôler : `sqlite3 <copie>/db/vivante.db 'PRAGMA integrity_check'` (« ok »).
 5. Poser les sites avec leurs installateurs restaurés, qui créent chaque instance (étape 5 de ce guide) :
    `sh …/installateur-courant/maverick-center-<étiquette>-install.sh --dossier /srv/maverick-center` (et `…-test` pour l'autre), puis copier le contenu
@@ -384,7 +384,7 @@ si le kit manque (place manquante au moment de la pose) ou en production. Avant 
 sudo sh /srv/maverick-center-test/atelier/installer.sh
 ```
 
-Réglages facultatifs (tailles en `g` ou `m`) : `--memoire-max 2.5g` (plafond du conteneur), `--besoin 1.5g` (en dessous, la fabrication est refusée et mesurée ; le pic mesuré est d'environ 1,4 Go), `--cpus 1`, `--disque-min 2g`, `--delai 1800` (secondes), `--client-google <identifiant>`
+Réglages facultatifs (tailles en `g` ou `m`) : `--memoire-max 2.5g` (plafond du conteneur), `--besoin 1.1g` (valeur par défaut ; en dessous, la fabrication est refusée et mesurée), `--cpus 1`, `--disque-min 2g`, `--delai 1800` (secondes), `--client-google <identifiant>`
 (la variable `GOOGLE_CLIENT_ID` du dépôt : sans lui, le bouton « Exporter » est la seule différence entre les deux sites), `--jours-de-mesure 1`, `--max-par-jour 12`, `--dossier-prod /srv/maverick-center`. La commande vérifie root, l'instance de test, Docker, le cgroup v2 et le kit, prépare l'image Docker du kit (téléchargée une fois), pose
 `maverick-atelier.path` (qui surveille la marque de l'installateur), `maverick-atelier.service` et `maverick-atelier.slice` (poids bas du processeur et des disques : la production passe devant), écrit ses réglages dans `atelier/reglages.env` (à root) et un `docker-compose.override.yml` dans `/srv/maverick-center-test` (que compose lit de lui-même : le montage des rapports en lecture seule, et celui du dépôt de l'atelier, `atelier/depot/` créé par root, où le service dépose l'extrait du contenu ; le `docker-compose.yml` livré, commun à la production, ne change pas), puis lance **`docker compose up -d`** : cela **relance le service du site de dev quelques
 secondes** ; le site reste servi. Un `docker-compose.override.yml` qui n'est pas celui de l'atelier est respecté : la commande s'arrête sans rien écrire et dit quoi faire (`--sans-montage` quand le montage y a été ajouté à la main). Il pose aussi **la journée type** (voir plus bas). Elle lance enfin une première fabrication. Relançable sans dégât (les réglages déjà posés sont repris : une option ne change que la sienne).
@@ -400,10 +400,10 @@ qui sert à choisir le serveur ; la marche à suivre est de lancer le geste, de 
 - Quelques minutes plus tard, la page Debug : « en cours », puis le rapport (issue, durée, pic de mémoire du conteneur, taille du serveur, écarts avec le site livré) et une phrase « ce serveur tient (ou ne tient pas) la fabrication ». Un refus (mémoire ou disque
   insuffisant) est aussi un rapport : il porte les chiffres relevés. Chaque livraison suivante du site de dev refait une fabrication toute seule, sans geste.
 - `sudo sh /srv/maverick-center-test/atelier/installer.sh --etat` : l'état, les derniers rapports, et ce que la mémoire d'aujourd'hui permettrait. Les rapports sont dans `/srv/maverick-center-test/atelier/rapports/`.
-- Sur un serveur trop juste (la mémoire disponible laisse un plafond sous 1,5 Go, ou moins de 1 Go ou 25 % de la mémoire totale à la production) la fabrication est refusée : c'est le résultat voulu de la mesure, non une panne.
+- Sur un serveur trop juste (la mémoire disponible laisse un plafond sous 1,1 Go, ou moins de 1 Go ou 25 % de la mémoire totale à la production) la fabrication est refusée : c'est le résultat voulu de la mesure, non une panne.
   Chaque fabrication prend de la place (la dernière sortie, environ 180 Mo, plus le travail le temps de la fabrication) ; l'envoi de nuit de la sauvegarde grossit de la taille du kit à chaque version (voir « Sauvegardes »).
 
-**Retour en arrière.** `sudo sh /srv/maverick-center-test/atelier/installer.sh --retirer` arrête et retire les unités (dont les minuteurs de nuit et du jour), les réglages, les dossiers de travail et les rapports, **supprime le `docker-compose.override.yml` de l'atelier, relance le service quelques secondes** (`docker compose up -d`) puis défait le dépôt ; le kit reste (il revient avec chaque installation). Rien d'autre à défaire : le site, la base et la production ne sont jamais touchés par l'atelier.
+**Retour en arrière.** `sudo sh /srv/maverick-center-test/atelier/installer.sh --retirer` arrête et retire les unités (dont les minuteurs de nuit et du jour), les réglages, les dossiers de travail et les rapports, **supprime le `docker-compose.override.yml` de l'atelier, relance le service quelques secondes** (`docker compose up -d`) puis défait le dépôt ; le kit reste (il revient avec chaque installation). Rien d'autre à défaire : la base et la production ne sont jamais touchées par l'atelier ; le site de dev ne l'est que si l'atelier le sert (`sudo sh /srv/maverick-center-test/atelier/installer.sh --servir` pose l'interrupteur `atelier/servir` et le minuteur de contenu, qui pose le site fabriqué ; `--ne-plus-servir` les retire, `--retirer` aussi).
 
 ## En cas de problème
 

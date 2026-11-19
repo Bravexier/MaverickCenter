@@ -14,6 +14,11 @@
 #                                 comprises. Calculées par le service lui-même, dans un conteneur (`docker compose run`, comme bascule.sh), sur la copie
 #   marqueur.<instance>           db/source (la base source du site de dev) : présent ou absent, et son contenu dans les lignes « info. »
 #   secret.<instance>.<nom>       présent/absent, droits, taille
+#   marqueur2.test                db/bascule-2 (la bascule 2 du site de dev) : présent ou absent ; db/gel.json n'est jamais comparé
+#   interrupteur.normal.activation-par-paquet, interrupteur.test.atelier-servir, reglage.normal.activation-reglages.env, reglage.test.atelier-reglages.env,
+#   activation.normal.<rapport.json|dernier-paquet.json|version-en-attente>   présent/absent, droits, taille (jamais le contenu)
+#   fichier.paquets.nombre, fichier.site.<instance> (seulement d'un serveur en bascule 2, où aucun installateur ne refait les pages : nombre de fichiers et empreinte de leur liste ;
+#                                 complet seulement : un service démarré écrit dans site/)
 #   etc.sauvegardes.<nom>, fichier.caddy.certificats, fichier.metriques.nombre, fichier.copies.nombre
 #   info.*                        version installée, date, marqueur : lues, jamais comparées
 # --contenu-seulement : pour un service EN MARCHE (instantané SQLite, pas de copie d'octets) : sans « fichier.* », « lignes.* » ni « logique.* » (fichiers, sessions et journaux
@@ -62,6 +67,7 @@ copier_db() {
   fi
   cp -a "$source/." "$dest/"
   rm -rf "$dest/essai-de-structure"
+  rm -f "$dest/gel.json"   # le gel des écritures (gel.sh) est celui d'un serveur à un moment : il ne se compare ni ne voyage (il se lève seul à l'échéance)
   while IFS= read -r f; do
     if [ -e "$f-wal" ] || [ -e "$f-shm" ]; then
       "$SQLITE3" "$f" 'PRAGMA wal_checkpoint(TRUNCATE);' >/dev/null || die "la base $(basename "$f") ne se replie pas (sqlite3 a refusé)"
@@ -148,11 +154,24 @@ bilan() {
     echo "secret.normal.$nom=$(droits_et_taille "$NORMAL/$nom")" >> "$out"
     echo "secret.test.$nom=$(droits_et_taille "$TEST/$nom")" >> "$out"
   done
+  if [ -f "$TEST/db/bascule-2" ] && [ ! -L "$TEST/db/bascule-2" ]; then echo "marqueur2.test=present" >> "$out"; else echo "marqueur2.test=absent" >> "$out"; fi
+  echo "interrupteur.normal.activation-par-paquet=$(droits_et_taille "$NORMAL/activation-par-paquet")" >> "$out"
+  echo "interrupteur.test.atelier-servir=$(droits_et_taille "$TEST/atelier/servir")" >> "$out"
+  echo "reglage.normal.activation-reglages.env=$(droits_et_taille "$NORMAL/activation/reglages.env")" >> "$out"
+  echo "reglage.test.atelier-reglages.env=$(droits_et_taille "$TEST/atelier/reglages.env")" >> "$out"
+  for nom in rapport.json dernier-paquet.json version-en-attente; do echo "activation.normal.$nom=$(droits_et_taille "$NORMAL/activation/$nom")" >> "$out"; done
   for nom in acces.json github-actions-token; do echo "secret.test.secrets/$nom=$(droits_et_taille "$TEST/secrets/$nom")" >> "$out"; done
   for nom in stockage.env cle-depot reglages.env; do echo "etc.sauvegardes.$nom=$(droits_et_taille "$ETC_SAUV/$nom")" >> "$out"; done
   if [ "$seulement" = 0 ]; then
     echo "fichier.caddy.certificats=$( [ -d "$CADDY_DATA" ] && find "$CADDY_DATA" -type f -name '*.crt' | wc -l || echo 0 )" >> "$out"
     echo "fichier.metriques.nombre=$( [ -d "$NORMAL/metriques" ] && find "$NORMAL/metriques" -type f ! -name volume-hote.json | wc -l || echo 0 )" >> "$out"
+    echo "fichier.paquets.nombre=$( [ -d "$NORMAL/paquets" ] && find "$NORMAL/paquets" -type f | wc -l || echo 0 )" >> "$out"
+    for instance in normal test; do
+      if [ "$instance" = normal ]; then dir=$NORMAL; else dir=$TEST; fi
+      if [ -e "$NORMAL/activation-par-paquet" ] || [ -e "$TEST/atelier/servir" ]; then
+        echo "fichier.site.$instance=$( [ -d "$dir/site" ] && { echo "$(find "$dir/site" -type f | wc -l) $(cd "$dir/site" && find . -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1)"; } || echo absent )" >> "$out"
+      fi
+    done
     echo "fichier.copies.nombre=$( [ -d "$SAUV" ] && find "$SAUV" -type f | wc -l || echo 0 )" >> "$out"
   fi
   LC_ALL=C sort "$out" -o "$out"

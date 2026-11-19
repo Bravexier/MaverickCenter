@@ -3,6 +3,7 @@
 # scripts demenagement.sh et controle-demenagement.sh. Aucun serveur, aucun Docker, aucun systemd : de faux « docker », « systemctl » et « crontab » le disent.
 #   bash repetition-demenagement.sh --dossier <dossier neuf ou vide> [--garder]
 # Il faut sqlite3 (MAVERICK_SQLITE3 pour un autre), et node avec client/serveur/empreintes.mjs (le calcul d'empreintes du site : MAVERICK_CONTROLE_EMPREINTES).
+# Le monde joué est celui d'une bascule 2 (activation-par-paquet, paquets/, atelier/servir, pages fabriquées sur le serveur ; le nouveau serveur est installé par des installateurs complets d'une autre version : VERSION et pages viennent de l'archive).
 # Joue : gel refusé tant que les conteneurs tournent, emballage, transfert, refus sur une base déjà présente (la base neuve d'un service démarré par erreur),
 # déballage, contrôle EGALITE ; une archive altérée refusée avant toute pose ; une base altérée DIFFERENCE ; le retour arrière (nouveau → ancien).
 # Code 0 et « REPETITION REUSSIE » si tout s'est passé comme prévu ; au premier écart, le script s'arrête en disant lequel.
@@ -89,6 +90,18 @@ chmod 700 "$R/ancien/etc/maverick-sauvegardes"; chmod 600 "$R/ancien/etc/maveric
 echo "copie" > "$R/ancien/srv/maverick-sauvegardes/prod/copie1.db"
 echo "certificat" > "$R/ancien/caddy/certificates/acme/maverick-jdr.com/maverick-jdr.com.crt"; echo "verrou" > "$R/ancien/caddy/locks/x"
 touch "$R/ancien/faux/actifs/maverick-sauvegarde-nuit.timer"
+# bascule 2 sur l'ancien serveur : interrupteurs, paquets, activation (avec ce qui ne doit pas voyager : kit/, base-avant/), atelier, pages fabriquées, marqueur et gel de la base
+P=$(rep ancien); T=$(rep ancien test)
+touch "$P/activation-par-paquet"
+mkdir -p "$P/paquets" "$P/activation/kit" "$P/activation/base-avant" "$P/site/_serveur" "$T/atelier/kit" "$T/site/_serveur"
+echo "paquet" > "$P/paquets/0.9-1.db"; echo '{"etat":"passee"}' > "$P/paquets/activation.json"
+echo "GOOGLE_CLIENT_ID=factice" > "$P/activation/reglages.env"; echo '{"etat":"passee"}' > "$P/activation/rapport.json"; echo '{"lot":1}' > "$P/activation/dernier-paquet.json"
+echo "kit" > "$P/activation/kit/kit.json"; echo "fiches" > "$P/activation/base-avant/vivante.db"
+echo "page" > "$P/site/index.html"; echo "service" > "$P/site/_serveur/version.json"; echo "page test" > "$T/site/index.html"; echo "service test" > "$T/site/_serveur/version.json"
+printf 'SERVIR_DEPUIS=2026-11-19T00:00:00Z\nPAGES_MINIMUM_PCT=90\n' > "$T/atelier/servir"; printf 'MEMOIRE_MAX_KO=2500000\nBESOIN_KO=1100000\n' > "$T/atelier/reglages.env"; chmod 600 "$T/atelier/reglages.env"
+echo "kit atelier" > "$T/atelier/kit/kit.json"
+touch "$T/db/bascule-2"; printf '{"jusqua":"2999-01-01T00:00:00Z"}' > "$T/db/gel.json"
+touch "$R/ancien/faux/actifs/maverick-atelier-contenu.timer"
 printf '*/5 * * * * sh /srv/maverick-center/mise-a-jour.sh\n' > "$R/ancien/faux/crontab"
 
 # ---- le nouveau serveur : durci, outillé, instances posées et sites installés (étapes de préparation), AUCUN conteneur démarré, db/ vides
@@ -100,6 +113,10 @@ for i in normal test; do
   printf 'MAVERICK_CONTENEUR=neuf-%s\n' "$i" > "$d/.env"
 done
 sed -i 's/^tag=.*/tag=V0.9.1/; s/^version=.*/version=0.9.1/' "$(rep nouveau test)/VERSION"
+# installateurs COMPLETS d'une version plus ancienne (un « kit seul » refuse un serveur sans site) : l'interrupteur de la production est posé avant lui (pour créer maverick-site), celui de l'atelier non
+sed -i 's/^tag=.*/tag=V0.8/; s/^version=.*/version=0.8.0/' "$(rep nouveau)/VERSION"; sed -i 's/^tag=.*/tag=V0.8.1/; s/^version=.*/version=0.8.1/' "$(rep nouveau test)/VERSION"
+mkdir -p "$(rep nouveau test)/atelier/kit"; echo "kit atelier neuf" > "$(rep nouveau test)/atelier/kit/kit.json"
+touch "$(rep nouveau)/activation-par-paquet"
 mkdir -p "$(rep nouveau)/metriques" "$R/nouveau/faux/actifs" "$R/nouveau/caddy"
 echo "volume neuf" > "$(rep nouveau)/metriques/volume-hote.json"
 ok "deux serveurs jetables prêts (l'ancien tourne, le nouveau est installé et vide)"
@@ -120,10 +137,17 @@ touch "$(rep ancien)/GELER" "$(rep ancien test)/GELER"
 if cote ancien bash "$DEM" emballer --sortie "$SORTIE" >"$R/sortie" 2>&1; then rate "l'emballage a réussi alors qu'un minuteur de sauvegarde tourne"; fi
 grep -q "minuteur" "$R/sortie" || rate "le refus ne parle pas du minuteur"
 rm -f "$R/ancien/faux/actifs/maverick-sauvegarde-nuit.timer"
+if cote ancien bash "$DEM" emballer --sortie "$SORTIE" >"$R/sortie" 2>&1; then rate "l'emballage a réussi alors qu'une unité de l'atelier tourne"; fi
+grep -q "atelier" "$R/sortie" || rate "le refus ne parle pas de l'atelier : $(cat "$R/sortie")"
+rm -f "$R/ancien/faux/actifs/maverick-atelier-contenu.timer"
+mkdir -p "$(rep ancien)/activation" && touch "$(rep ancien)/activation/en-cours"
+if cote ancien bash "$DEM" emballer --sortie "$SORTIE" >"$R/sortie" 2>&1; then rate "l'emballage a réussi alors qu'une activation est à moitié faite"; fi
+grep -q "en-cours" "$R/sortie" || rate "le refus ne parle pas de l'activation : $(cat "$R/sortie")"
+rm -f "$(rep ancien)/activation/en-cours"
 if cote ancien bash "$DEM" emballer --sortie "$SORTIE" >"$R/sortie" 2>&1; then rate "l'emballage a réussi alors que le crontab lance mise-a-jour.sh"; fi
 grep -q "crontab" "$R/sortie" || rate "le refus ne parle pas du crontab"
 echo '# */5 * * * * sh /srv/maverick-center/mise-a-jour.sh' > "$R/ancien/faux/crontab"
-ok "emballer refuse GELER absent, minuteur actif, crontab actif ; le gel complet est accepté"
+ok "emballer refuse GELER absent, minuteur actif, unité de l'atelier active, activation à moitié faite, crontab actif ; le gel complet est accepté"
 
 # ---- 2. emballer, puis le bilan de l'ancien (les deux sont faits écritures gelées)
 cote ancien bash "$DEM" emballer --sortie "$SORTIE" --avec-copies >"$R/sortie" 2>&1 || { cat "$R/sortie" >&2; rate "l'emballage a échoué"; }
@@ -137,6 +161,8 @@ if grep -E "jeton-|factice|cle factice|motdepasse" "$R/bilan-ancien.txt" >/dev/n
 grep -q '^fiches.test=3$' "$R/bilan-ancien.txt" || rate "le bilan ne compte pas les 3 fiches"
 grep -q '^integrite.test=ok$' "$R/bilan-ancien.txt" || rate "le bilan ne dit pas integrity_check ok"
 grep -Eq '^logique.test=[0-9a-f]{64}$' "$R/bilan-ancien.txt" || rate "pas d'empreinte du site dans le bilan"
+grep -q '^marqueur2.test=present$' "$R/bilan-ancien.txt" && grep -Eq '^fichier.site.normal=[0-9]+ [0-9a-f]{64}$' "$R/bilan-ancien.txt" && grep -q '^interrupteur.test.atelier-servir=present ' "$R/bilan-ancien.txt" || rate "le bilan ne dit pas la bascule 2 (marqueur, interrupteurs, pages)"
+if grep -q 'gel.json' "$R/bilan-ancien.txt"; then rate "le bilan compare un gel"; fi
 ok "archive faite (600, empreinte connue, rien ne reste) ; bilan de l'ancien : 3 fiches, intégrité ok, empreintes du site, aucun secret"
 
 # ---- 3. le transfert (le « scp ») : une copie de l'archive
@@ -181,6 +207,16 @@ cote nouveau bash "$DEM" deballer "$ARRIVEE_ARCHIVE" >"$R/sortie" 2>&1 || { cat 
 [ "$(cat "$(rep nouveau)/metriques/prod.db")" = metrique ] || rate "les métriques ne sont pas posées"
 ls "$(rep nouveau)"/.env.avant-demenagement-* >/dev/null 2>&1 || rate "le .env du nouveau serveur n'a pas été mis de côté"
 [ ! -e "$(rep nouveau)/GELER" ] || rate "GELER ne doit pas voyager"
+[ "$(cat "$(rep nouveau)/paquets/0.9-1.db")" = paquet ] && [ -f "$(rep nouveau)/paquets/activation.json" ] || rate "les paquets ne sont pas posés"
+grep -q '^tag=V0.9$' "$(rep nouveau)/VERSION" && grep -q '^tag=V0.9.1$' "$(rep nouveau test)/VERSION" || rate "les VERSION de l'ancien serveur ne sont pas posées (la version installée n'est pas comparée en bascule 2)"
+[ "$(cat "$(rep nouveau)/activation/reglages.env")" = "GOOGLE_CLIENT_ID=factice" ] && [ -f "$(rep nouveau)/activation/rapport.json" ] || rate "les réglages de l'activation ne sont pas posés"
+[ ! -e "$(rep nouveau)/activation/kit" ] || rate "le kit de l'activation a voyagé"
+[ ! -e "$(rep nouveau)/activation/base-avant" ] || rate "base-avant (des fiches) a voyagé"
+[ "$(stat -c %a "$(rep nouveau test)/atelier/reglages.env")" = 600 ] && grep -q '^PAGES_MINIMUM_PCT=90$' "$(rep nouveau test)/atelier/servir" || rate "l'interrupteur et les réglages de l'atelier ne sont pas posés"
+[ "$(cat "$(rep nouveau test)/atelier/kit/kit.json")" = "kit atelier neuf" ] || rate "le kit de l'atelier de l'ancien serveur a voyagé"
+[ "$(cat "$(rep nouveau)/site/index.html")" = page ] && [ "$(cat "$(rep nouveau test)/site/index.html")" = "page test" ] || rate "les pages fabriquées ne sont pas posées"
+[ ! -e "$(rep nouveau test)/db/gel.json" ] || rate "le gel des écritures de l'ancien serveur a voyagé"
+[ -f "$(rep nouveau test)/db/bascule-2" ] || rate "le marqueur de la bascule 2 n'est pas posé"
 # reprise après une panne : la même commande, relancée, ne repose pas ce qui est conforme (rien n'est écrasé) ; une base qui n'est plus celle de l'archive est refusée
 cote nouveau bash "$DEM" deballer "$ARRIVEE_ARCHIVE" >"$R/sortie" 2>&1 || { cat "$R/sortie" >&2; rate "la relance du déballage a échoué"; }
 grep -q "déjà posé, conforme" "$R/sortie" || rate "la relance ne dit pas que tout est déjà posé"
@@ -188,7 +224,7 @@ touch "$(rep nouveau test)/db/intrus"
 if cote nouveau bash "$DEM" deballer "$ARRIVEE_ARCHIVE" >"$R/sortie" 2>&1; then rate "une base qui n'est plus celle de l'archive a été acceptée"; fi
 grep -q "pas vide" "$R/sortie" || rate "le refus ne dit pas que db/ n'est pas vide"
 rm -f "$(rep nouveau test)/db/intrus"
-ok "déballage : à blanc sans effet, vrai conforme (droits 600/700, .env précédent gardé à côté), relance sans dégât, base modifiée refusée"
+ok "déballage : à blanc sans effet, vrai conforme (droits 600/700, .env précédent gardé à côté ; bascule 2 : paquets, activation sans kit ni base-avant, atelier, pages, VERSION, marqueur ; sans le gel), relance sans dégât, base modifiée refusée"
 
 # ---- 7. le contrôle d'égalité
 cote nouveau bash "$CTL" bilan --sortie "$R/bilan-nouveau.txt" >/dev/null

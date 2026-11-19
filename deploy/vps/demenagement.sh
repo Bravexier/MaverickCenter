@@ -7,17 +7,24 @@
 # EMBALLER (ancien serveur) : refuse tant que les écritures ne sont pas gelées (le service « serveur » des deux instances arrêté, fichier GELER dans chaque instance,
 #   minuteurs des sauvegardes arrêtés, aucune ligne mise-a-jour.sh dans le crontab de root). Il copie db/ de chaque instance par la copie « repliée » de
 #   controle-demenagement.sh (le fichier d'origine n'est jamais modifié), vérifie PRAGMA integrity_check, range le reste dans un dossier de travail, écrit
-#   le manifeste SHA-256 de tous les fichiers et fabrique UNE archive (droits 600). Ce qu'elle contient :
+#   le manifeste SHA-256 de tous les fichiers et fabrique UNE archive (droits 600). Il refuse aussi tant qu'une unité de l'atelier du site de dev tourne (maverick-atelier.path,
+#   .service, -nuit, -jour, -contenu : une fabrication poserait un site pendant la copie) ou qu'une activation est restée à moitié faite (activation/en-cours). Ce qu'elle contient :
 #     normal/ et test/ : db/ (sans essai-de-structure/), .env, .github-token, mise-a-jour.env et .log, installateur-courant/ ; test/ : secrets/ ;
 #                        normal/ : metriques/ (sans volume-hote.json, refait toutes les 15 minutes)
+#     bascule 2 (détectée : <normal>/activation-par-paquet ou <test>/atelier/servir existe ; INFOS : bascule2=1) :
+#                        normal/ : activation-par-paquet, paquets/, activation/{reglages.env,rapport.json,dernier-paquet.json,version-en-attente} (jamais kit/ ni base-avant/, qui porte
+#                        les fiches), site/ (fabriqué par l'activation ; aucun installateur ne le refait) ;
+#                        les deux instances : VERSION (avec site/, elle dit la version du service qu'il porte) ; test/ : atelier/servir, atelier/reglages.env, site/ ; atelier/reglages.env voyage aussi sans bascule 2. db/gel.json ne voyage jamais (un gel est celui d'un serveur)
 #     etc-sauvegardes/ : /etc/maverick-sauvegardes (réglages, accès au stockage, phrase de chiffrement) ; sauvegardes/ : les copies locales (--avec-copies)
 #     caddy/           : les certificats et la clé de compte de Caddy (évite l'attente des certificats)
-#   Jamais : site/ (refabriqué par les installateurs), .htpasswd et /etc/caddy/maverick.env (instances.sh refait la paire sur le nouveau serveur), GELER.
+#   Jamais : site/ (refabriqué par les installateurs ; en bascule 2 il voyage, voir plus haut), .htpasswd et /etc/caddy/maverick.env (instances.sh refait la paire sur le nouveau serveur), GELER.
 # DEBALLER (nouveau serveur, après durcir.sh, outils.sh, instances.sh et les installateurs, SANS « docker compose up ») : vérifie l'archive (manifeste, aucun
 #   fichier en trop) et l'état du serveur AVANT de rien poser ; refuse si db/ d'une instance contient déjà autre chose que metriques/ et essai-de-structure/,
 #   si /etc/maverick-sauvegardes ou les copies locales ne sont pas vides, si un conteneur ou Caddy tourne. Il pose d'abord tout sauf les bases, puis les bases,
 #   vérifie chaque fichier posé contre le manifeste. Il exige la MÊME version installée que sur l'ancien serveur (code 4, avant
-#   de rien poser : les commandes pour installer la version exacte sont affichées). --a-blanc : toutes les vérifications, rien n'est posé.
+#   de rien poser : les commandes pour installer la version exacte sont affichées) ; en bascule 2 la VERSION et site/ viennent de l'archive : la version installée n'est pas comparée. Une archive de
+#   bascule 2 exige aussi l'utilisateur système maverick-site, auquel les pages de la production sont rendues après la pose (sauf site/_serveur/, à root). --a-blanc : toutes les
+#   vérifications, rien n'est posé.
 # Retour arrière (nouveau → ancien) : les mêmes commandes dans l'autre sens ; l'ancien db/ se met d'abord de côté À LA MAIN (mv db db.avant-retour-<date> ; mkdir db).
 # Aucun secret n'est affiché. L'archive porte les secrets : à effacer des deux serveurs (et du poste, si un scp l'y a copiée) dès que le nouveau serveur est validé.
 #
@@ -92,6 +99,7 @@ base_non_vide() { # db/ ne contient que metriques/ et essai-de-structure/ (vides
 dossier_non_vide() { [ -d "$1" ] && [ -n "$(find "$1/" -mindepth 1 -maxdepth 1 -print -quit)" ]; }
 # Le contenu de $2 est-il déjà celui de $1 (une reprise après une panne : ce qui est posé et conforme n'est pas posé deux fois) ?
 deja_pose() { [ -e "$2" ] && diff -rq -x essai-de-structure -x metriques "$1" "$2" >/dev/null 2>&1; }
+UNITES_ATELIER="maverick-atelier.path maverick-atelier.service maverick-atelier-nuit.timer maverick-atelier-nuit.service maverick-atelier-jour.timer maverick-atelier-jour.service maverick-atelier-contenu.timer maverick-atelier-contenu.service"
 version_de() { sed -n 's/^version=//p' "$1/VERSION" 2>/dev/null | head -n 1; }
 tag_de() { sed -n 's/^tag=//p' "$1/VERSION" 2>/dev/null | head -n 1; }
 
@@ -110,10 +118,16 @@ emballer() {
   for u in maverick-sauvegarde-horaire.timer maverick-sauvegarde-nuit.timer maverick-sauvegarde-essai.timer; do
     if unite_active "$u"; then die "le minuteur $u tourne : « sudo systemctl stop $u » (DEMENAGEMENT.md, étape « Geler »)"; fi
   done
+  for u in $UNITES_ATELIER; do
+    if unite_active "$u"; then die "l'unité de l'atelier $u tourne : « sudo systemctl stop $UNITES_ATELIER » (DEMENAGEMENT.md, étape « Geler »)"; fi
+  done
+  [ ! -e "$NORMAL/activation/en-cours" ] || die "une activation est restée à moitié faite ($NORMAL/activation/en-cours) : « sudo bash $NORMAL/activer.sh --reprendre » sur l'ancien serveur d'abord"
   if "$CRONTAB" -l 2>/dev/null | grep -v '^[[:space:]]*#' | grep -q 'mise-a-jour\.sh'; then
     die "le crontab de root lance encore mise-a-jour.sh : « sudo crontab -e » et mettez les lignes en commentaire (DEMENAGEMENT.md)"
   fi
 
+  local b2=0
+  { [ -e "$NORMAL/activation-par-paquet" ] || [ -e "$TEST/atelier/servir" ]; } && b2=1
   travail=$(mktemp -d -p "$SORTIE" .demenagement-travail.XXXXXX)
   chmod 700 "$travail"
   mkdir "$travail/normal" "$travail/test"
@@ -130,8 +144,14 @@ emballer() {
       echo "demenagement : ATTENTION $nom/db n'a pas de vivante.db (instance jamais démarrée ?)" >&2
     fi
     items=".env .github-token mise-a-jour.env mise-a-jour.log installateur-courant"
-    [ "$nom" = test ] && items="$items secrets"
-    for f in $items; do [ ! -e "$d/$f" ] || cp -a "$d/$f" "$travail/$nom/$f"; done
+    if [ "$nom" = test ]; then items="$items secrets atelier/servir atelier/reglages.env"
+    else items="$items activation-par-paquet paquets activation/reglages.env activation/rapport.json activation/dernier-paquet.json activation/version-en-attente"; fi
+    [ "$b2" = 1 ] && items="$items VERSION site"
+    for f in $items; do
+      [ -e "$d/$f" ] || continue
+      mkdir -p "$(dirname "$travail/$nom/$f")"
+      cp -a "$d/$f" "$travail/$nom/$f"
+    done
   done
   if [ -d "$NORMAL/metriques" ]; then
     cp -a "$NORMAL/metriques" "$travail/normal/metriques"
@@ -156,6 +176,7 @@ emballer() {
     echo "normal.tag=$(tag_de "$NORMAL")"; echo "normal.version=$(version_de "$NORMAL")"
     echo "test.tag=$(tag_de "$TEST")"; echo "test.version=$(version_de "$TEST")"
     echo "avec_copies=$AVEC_COPIES"
+    echo "bascule2=$b2"
   } > "$travail/INFOS"
 
   etape "4/5 manifeste SHA-256"
@@ -225,7 +246,10 @@ deballer() {
   etape "2/6 ce serveur est-il prêt à recevoir ?"
   for nom in normal test; do
     if [ "$nom" = normal ]; then d=$NORMAL; else d=$TEST; fi
-    [ -f "$d/VERSION" ] && [ -f "$d/docker-compose.yml" ] || die "$d n'est pas installé : posez d'abord les sites par les installateurs (DEMENAGEMENT.md), sans « docker compose up »"
+    if [ -f "$travail/$nom/VERSION" ]; then [ -f "$d/docker-compose.yml" ] || die "$d n'est pas installé : posez d'abord les sites par les installateurs (DEMENAGEMENT.md), sans « docker compose up »"
+    elif [ -f "$d/VERSION" ] && [ -f "$d/docker-compose.yml" ]; then :
+    else die "$d n'est pas installé : posez d'abord les sites par les installateurs (DEMENAGEMENT.md), sans « docker compose up »"
+    fi
     if conteneurs_en_marche "$d"; then
       die "le service tourne dans $d : il a pu créer une base NEUVE. « cd $d && sudo docker compose down », puis « sudo mv $d/db $d/db.neuve-$STAMP && sudo mkdir $d/db » (rien ne s'efface), puis relancez"
     fi
@@ -239,6 +263,8 @@ deballer() {
   for nom in normal test; do
     if [ "$nom" = normal ]; then d=$NORMAL; else d=$TEST; fi
     ancien=$(sed -n "s/^$nom.tag=//p" "$travail/INFOS"); nouveau=$(tag_de "$d")
+    # bascule 2 : la VERSION et site/ (donc le service) viennent de l'archive, rien à comparer
+    if [ -f "$travail/$nom/VERSION" ]; then continue; fi
     if [ -n "$ancien" ] && [ "$ancien" != "$nouveau" ]; then
       echo "demenagement : VERSION $nom : l'ancien serveur est en $ancien, celui-ci en ${nouveau:-inconnue}. Installez la version EXACTE de l'ancien (rien n'est encore posé) :" >&2
       echo "    mkdir -p ~/installateurs-de-l-ancien && tar -xzpf $ARCHIVE -C ~/installateurs-de-l-ancien ./$nom/installateur-courant" >&2
@@ -247,6 +273,9 @@ deballer() {
     fi
   done
   if [ "$ecart" = 1 ]; then echo "demenagement : puis relancez la même commande (code 4 : versions différentes)." >&2; exit 4; fi
+  if [ "$(sed -n 's/^bascule2=//p' "$travail/INFOS")" = 1 ] && [ "${MAVERICK_ESSAI:-0}" != 1 ] && ! id maverick-site >/dev/null 2>&1; then
+    die "l'archive est celle d'un serveur en bascule 2 : l'utilisateur système maverick-site manque (l'installateur de production le crée quand le fichier activation-par-paquet existe : « sudo touch $NORMAL/activation-par-paquet » avant lui, puis refaire l'installation, DEMENAGEMENT.md, étape 3)"
+  fi
   if [ -d "$travail/etc-sauvegardes" ] && ! sans sauvegardes && dossier_non_vide "$ETC_SAUV" && ! deja_pose "$travail/etc-sauvegardes" "$ETC_SAUV"; then die "$ETC_SAUV n'est pas vide et n'est pas celui de l'archive : des sauvegardes sont déjà configurées ici (--sans sauvegardes pour ne pas y toucher)"; fi
   if [ -d "$travail/sauvegardes" ] && ! sans copies && dossier_non_vide "$SAUV" && ! deja_pose "$travail/sauvegardes" "$SAUV"; then die "$SAUV n'est pas vide et n'est pas celui de l'archive (--sans copies pour ne pas y toucher)"; fi
   if [ -d "$travail/caddy" ] && ! sans caddy && unite_active caddy; then die "Caddy tourne : « sudo systemctl stop caddy » avant (il réécrirait ses certificats), puis « sudo systemctl start caddy » après"; fi
@@ -261,7 +290,7 @@ deballer() {
   etape "3/6 configuration, secrets, installateurs, métriques (les fichiers remplacés sont mis de côté)"
   for nom in normal test; do
     if [ "$nom" = normal ]; then d=$NORMAL; else d=$TEST; fi
-    for f in .env .github-token mise-a-jour.env mise-a-jour.log installateur-courant secrets; do
+    for f in .env .github-token mise-a-jour.env mise-a-jour.log installateur-courant secrets activation-par-paquet paquets activation/reglages.env activation/rapport.json activation/dernier-paquet.json activation/version-en-attente VERSION atelier/servir atelier/reglages.env site; do
       [ -e "$travail/$nom/$f" ] || continue
       poser "$travail/$nom/$f" "$d/$f"
     done
@@ -270,6 +299,14 @@ deballer() {
   done
   # metriques/ : celui du serveur neuf ne porte que volume-hote.json (refait toutes les 15 minutes) ; sur un serveur qui en a un vrai (retour arrière), il est mis de côté
   if [ -d "$travail/normal/metriques" ]; then poser "$travail/normal/metriques" "$NORMAL/metriques"; fi
+
+  # Bascule 2 : les pages de la production appartiennent à maverick-site, sauf site/_serveur/ (le code que le service exécute, à root), comme les pose l'installateur (activation-pose.sh).
+  # La pose a gardé les propriétaires de l'ancien serveur (des numéros), qui ne sont pas ceux de celui-ci.
+  if [ "$EST_ROOT" = 1 ] && [ -d "$travail/normal/site/_serveur" ] && id maverick-site >/dev/null 2>&1; then
+    find -P "$NORMAL/site" -path "$NORMAL/site/_serveur" -prune -o -exec chown -h maverick-site:maverick-site {} +
+    find -P "$NORMAL/site/_serveur" -exec chown -h root:root {} +
+    etape "  site/ de la production rendu à maverick-site (sauf _serveur/, à root)"
+  fi
 
   etape "4/6 sauvegardes, copies locales, certificats de Caddy"
   if [ -d "$travail/etc-sauvegardes" ] && ! sans sauvegardes; then
@@ -299,7 +336,8 @@ deballer() {
 
   echo
   echo "Versions : les mêmes que l'ancien serveur ($(tag_de "$NORMAL"), $(tag_de "$TEST"))."
-  echo "Posé. Aucun conteneur n'est démarré. Suite : contrôle d'égalité (DEMENAGEMENT.md)."
+  if [ "$(sed -n 's/^bascule2=//p' "$travail/INFOS")" = 1 ]; then echo "Bascule 2 : interrupteurs, paquets, réglages de l'atelier et pages posés ; les unités de l'atelier et son interrupteur se refont après le démarrage (DEMENAGEMENT.md)."; fi
+echo "Posé. Aucun conteneur n'est démarré. Suite : contrôle d'égalité (DEMENAGEMENT.md)."
   return 0
 }
 

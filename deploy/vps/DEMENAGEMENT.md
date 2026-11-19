@@ -1,6 +1,6 @@
 # Déménager le serveur (VPS) : procédure pas à pas
 
-> **Préparé le 2026-11-18, non joué ; à relire avant usage.** Le déménagement est repoussé à une date inconnue (le propriétaire agrandit d'abord son VPS actuel). Cette
+> **Préparé le 2026-11-18, mis à niveau le 2026-11-19 pour la bascule 2 (lot 11), non joué ; à relire avant usage.** Le déménagement est repoussé à une date inconnue (le propriétaire agrandit d'abord son VPS actuel). Cette
 > procédure vaut pour **n'importe quel nouveau serveur** Ubuntu (un VPS OVH n'est qu'un exemple). Les scripts sont éprouvés par une répétition sur deux dossiers jetables
 > (`client/test/deploy-demenagement.test.mjs`) ; ce que la répétition ne peut pas imiter est dit tout en bas. Aucune adresse IP, aucun secret n'est dans ce dépôt : les adresses sont des
 > alias SSH (étape 2), les secrets voyagent de serveur à serveur.
@@ -34,14 +34,15 @@ procédure n'efface une base : un script qui hésite refuse, il ne répare pas.
 | `/etc/maverick-sauvegardes/` (accès au stockage, **phrase de chiffrement**, réglages) | | |
 | les certificats et la clé de compte de Caddy (`/var/lib/caddy/.local/share/caddy`, sans `locks/`) | | |
 | les copies locales `/srv/maverick-sauvegardes` : **seulement avec `--avec-copies`** (jusqu'à 4 Go : à décider à l'étape 6) | | |
+| **Bascule 2** (détectée par l'emballage : `activation-par-paquet` en production ou `atelier/servir` au site de dev ; `INFOS` : `bascule2=1`) : production, `activation-par-paquet`, `paquets/` (les paquets déposés et `activation.json`), `activation/{reglages.env,rapport.json,dernier-paquet.json,version-en-attente}`, `site/` (fabriqué sur le serveur : aucun installateur ne le refait) ; les deux instances : `VERSION`, qui dit la version du service que porte `site/_serveur/` ; site de dev : `atelier/servir` (l'interrupteur) et `site/`. `atelier/reglages.env` voyage dès que l'atelier est installé | Utilisateur système `maverick-site` (créé par l'installateur de production quand `activation-par-paquet` existe) ; `activation/kit/` (posé par un installateur « kit seul ») et `atelier/kit/` (posé par les installateurs de test), image Docker de l'atelier, `docker-compose.override.yml` de l'atelier, unités systemd de l'atelier (`maverick-atelier.path`, `-nuit`, `-jour`, `-contenu`, `.slice`) : `atelier/installer.sh` | |
 
-Ne voyagent **jamais** : `GELER`, `site/`, les journaux Docker, `var/` (restes de restaurations).
+Ne voyagent **jamais** : `GELER`, `db/gel.json` (un gel d'écritures est celui d'un serveur à un moment : il se lève seul à l'échéance ; ni l'emballage ni le bilan ne le comptent), `site/` (sauf en bascule 2, voir la table), `site.precedent/` et `activation/base-avant/` (la base de la production d'avant une activation, fiches comprises : le retour arrière d'une activation ne se fait donc plus sur le nouveau serveur avant sa prochaine activation), `activation/kit/`, `atelier/kit/`, `atelier/rapports/`, `atelier/depot/`, les journaux Docker, `var/` (restes de restaurations).
 
 ## Avant : choisir et commander
 
 - **Système : Ubuntu 26.04 LTS.** C'est la version sur laquelle les scripts ont été lancés pour de vrai (`README.md`, ligne 3 : première fois le 2026-10-10, paquets `docker.io` 29.1, `docker-compose-v2`, `caddy` 2.6.2).
   **24.04 LTS** donne les mêmes paquets (`docker.io`, `docker-compose-v2`, `caddy`, `restic` 0.16.4 : le README décrit la restauration sur une machine 24.04) et devrait marcher, mais **n'a pas été jouée** : repli seulement si 26.04 manque.
-- **Taille.** Le site demande peu : une base vivante pèse ~25 Mo plus ses archives (≤ ~125 Mo par instance, `docs/serveur.md`, « Tout ce qui grossit »). Plus que l'actuel (1 vCPU, 2 Go, 20 Go) : 2 vCPU, 4 Go, 60 Go sont confortables ; l'atelier (lot 9, non installé) a mesuré un pic de ~1,4 Go de mémoire.
+- **Taille.** Le site demande peu : une base vivante pèse ~25 Mo plus ses archives (≤ ~125 Mo par instance, `docs/serveur.md`, « Tout ce qui grossit »). Plus que l'actuel (1 vCPU, 2 Go, 20 Go) : 2 vCPU, 4 Go, 60 Go sont confortables ; l'atelier du site de dev fabrique avec un besoin de mémoire de 1,1 Go (réglage `--besoin`, 1,1 Go par défaut ; refus sous 2 fois ce besoin de mémoire disponible) : 4 Go suffisent, 2 Go sont trop justes avec la production qui tourne.
 - **Région.** Peu importe pour les scripts. Pour les joueurs, la proximité (France) ; pour la règle « serveur et copie de secours chez deux fournisseurs », voir « Sauvegardes » plus bas.
 - **Accès.** Commander avec **ta clé publique SSH** (la même que pour l'ancien serveur : le fichier `.pub`). Le compte attendu est `ubuntu`, avec `sudo`.
 - **Pare-feu de l'hébergeur.** Certains hébergeurs en ont un en plus de celui du serveur, **actif ou non selon l'hébergeur** (chez OVH, le « Network Firewall » est désactivé par défaut ; chez Infomaniak il était actif et fermait 80/443). S'il est actif : ouvrir TCP 22, 80 et 443 et UDP 443 ; s'il est désactivé, ne pas l'activer, `ufw` (posé par `durcir.sh`) suffit. Sans 80/443 ouverts, Caddy n'obtient aucun certificat.
@@ -124,6 +125,11 @@ sudo sh ~/maverick-center-VX.Y-install.sh --dossier /srv/maverick-center
 sudo sh ~/maverick-center-VX.Y.Z-install.sh --dossier /srv/maverick-center-test
 ```
 
+**Si l'ancien serveur est en bascule 2** (`sudo ls /srv/maverick-center/activation-par-paquet /srv/maverick-center-test/atelier/servir` sur l'ancien montre les deux fichiers), l'installation change en trois points :
+- les installateurs sont des installateurs **complets** (avec pages), pas les « kit seul » : un « kit seul » refuse une instance qui n'a pas déjà son site. Prendre, sur la page *Releases*, la dernière livraison complète (ou un des trois installateurs de `installateur-courant/` de l'ancien serveur, s'il y en a un qui n'est pas un « kit seul » ; **à vérifier le jour venu** : si aucune livraison complète n'existe plus, cette étape est à reprendre avec une session avant de commander le serveur). Leur version n'a pas à être celle de l'ancien serveur : le déballage pose la `VERSION` et les pages de l'ancien serveur, et la mise à jour automatique remet ensuite les scripts à la version courante ;
+- avant l'installateur de production : `sudo touch /srv/maverick-center/activation-par-paquet` (il crée alors l'utilisateur système `maverick-site` ; contrôle après : `id maverick-site`). Le déballage remplace ce fichier par celui de l'ancien serveur, sans rien effacer ;
+- `instances.sh` ne demande rien de plus ici : le dossier `paquets/` vient de l'archive, et la relance de l'étape 8d (`.env` posé par l'archive, qui porte `MAVERICK_DOSSIER_PAQUETS`) le monte dans le service du site de dev. Sur un serveur sans archive, `sudo bash ~/vps/instances.sh --bascule-2` le crée et le monte.
+
 Attendu, pour chacun : « Installé : … pages. » et la phrase « Première installation : créez le mot de passe puis lancez le conteneur » : **ne fais ni l'un ni l'autre** (le mot de passe interne est déjà posé par `instances.sh`, et rien ne doit démarrer). **Ne lance jamais `docker compose up` sur le nouveau serveur avant l'étape 9.**
 
 Vérification, `ssh maverick-nouveau` :
@@ -155,10 +161,14 @@ Sur `ssh maverick-ancien` :
 sudo touch /srv/maverick-center/GELER /srv/maverick-center-test/GELER
 sudo systemctl stop maverick-sauvegarde-horaire.timer maverick-sauvegarde-nuit.timer maverick-sauvegarde-essai.timer
 sudo systemctl stop maverick-sauvegarde-horaire.service maverick-sauvegarde-nuit.service maverick-sauvegarde-essai.service
+sudo systemctl stop maverick-atelier.path maverick-atelier-nuit.timer maverick-atelier-jour.timer maverick-atelier-contenu.timer
+sudo systemctl stop maverick-atelier.service maverick-atelier-nuit.service maverick-atelier-jour.service maverick-atelier-contenu.service
 sudo crontab -l
 ```
 
 `crontab -l` doit montrer deux lignes `*/5 * * * * sh /srv/maverick-center…/mise-a-jour.sh`. Mets-les en commentaire : `sudo crontab -e`, ajoute `#` au début de ces deux lignes, enregistre. Vérifie : `sudo crontab -l | grep mise-a-jour` ne doit montrer que des lignes commençant par `#`.
+
+Les unités de l'atelier n'existent que si l'atelier est installé : `systemctl stop` sur une unité absente affiche une erreur sans gravité (continue). **Une fabrication de l'atelier en cours** (`sudo systemctl is-active maverick-atelier.service maverick-atelier-contenu.service`) se laisse finir, puis on l'arrête comme ci-dessus : elle poserait un site pendant la copie. Une activation restée à moitié faite (`/srv/maverick-center/activation/en-cours`) se reprend d'abord (`sudo bash /srv/maverick-center/activer.sh --reprendre`).
 
 Si une mise à jour est en cours (`sudo tail -n 3 /srv/maverick-center-test/mise-a-jour.log` dit « installation » il y a moins d'une minute), attends qu'elle se termine **avant** la commande suivante.
 
@@ -170,7 +180,7 @@ sudo docker ps
 
 Attendu : `docker ps` ne montre plus que les deux conteneurs `nginx` (les services « serveur » sont arrêtés). Ouvre `https://dev.maverick-jdr.com` : les pages s'affichent, l'enregistrement d'une fiche échoue (normal).
 
-**Retour arrière (avant le DNS) :** `sudo rm /srv/maverick-center*/GELER`, `sudo systemctl start maverick-sauvegarde-{horaire,nuit,essai}.timer`, remettre les lignes du crontab, `cd /srv/maverick-center && sudo docker compose start serveur` (idem `-test`). Rien n'a été perdu : rien n'a été modifié sur l'ancien serveur.
+**Retour arrière (avant le DNS) :** `sudo rm /srv/maverick-center*/GELER`, `sudo systemctl start maverick-sauvegarde-{horaire,nuit,essai}.timer` (et, si l'atelier est installé, `sudo systemctl start maverick-atelier.path maverick-atelier-nuit.timer maverick-atelier-jour.timer maverick-atelier-contenu.timer`), remettre les lignes du crontab, `cd /srv/maverick-center && sudo docker compose start serveur` (idem `-test`). Rien n'a été perdu : rien n'a été modifié sur l'ancien serveur.
 
 ### 6. Emballer (ancien)
 
@@ -183,7 +193,7 @@ sudo bash ~/vps/demenagement.sh emballer --avec-copies
 
 (sans `--avec-copies` si tu choisis de ne pas emporter les copies locales : elles pèsent jusqu'à 4 Go, passent par ton poste, et le même historique est dans le stockage extérieur chiffré ; la copie nommée `bascule-1-20261117-214248` y est aussi. Sans les copies, le nouveau serveur fera ses propres copies dès la première heure.)
 
-Attendu, dans l'ordre : « 1/5 les écritures sont-elles gelées ? » … « 5/5 archive », puis :
+En bascule 2, l'emballage emporte aussi les paquets, l'activation, l'interrupteur, `VERSION` et les pages (la table plus haut) : l'archive pèse alors une centaine de Mo de plus. Attendu, dans l'ordre : « 1/5 les écritures sont-elles gelées ? » … « 5/5 archive », puis :
 ```
 Archive : /home/ubuntu/demenagement-AAAAMMJJ-HHMMSS.tar.gz (… , … fichiers)
 Empreinte de l'archive (à retrouver à l'arrivée) : <64 caractères>
@@ -299,6 +309,18 @@ sudo bash ~/vps/controle-demenagement.sh bilan --contenu-seulement --sortie ~/bi
 bash ~/vps/controle-demenagement.sh comparer ~/bilan-ancien.txt ~/bilan-demarre.txt
 ```
 
+**Atelier et interrupteur (bascule 2 seulement), après ce contrôle** : le service du site de dev tourne, l'atelier se remet en route. Sur `ssh maverick-nouveau` :
+
+```
+sudo sh /srv/maverick-center-test/atelier/installer.sh --sans-fabrication
+sudo sh /srv/maverick-center-test/atelier/installer.sh --servir
+sudo sh /srv/maverick-center-test/atelier/installer.sh --etat
+```
+
+La première reprend les réglages venus de l'archive (`atelier/reglages.env` : `MEMOIRE_MAX_KO`, `BESOIN_KO`, `DISQUE_MIN_KO`, `DELAI_S`, `CPUS`, `GOOGLE_CLIENT_ID`), prépare l'image Docker du kit, pose les unités systemd et `docker-compose.override.yml` (le service du site de dev redémarre quelques secondes) ; la deuxième pose l'interrupteur (déjà là, venu de l'archive) et le minuteur de contenu (toutes les 10 minutes), qui refabrique dès qu'il passe : la première fabrication part donc dans les 10 minutes, avant le DNS (le site de l'archive reste servi tant qu'elle n'a pas posé le sien) ; la première commande pose aussi les minuteurs de nuit et du jour. Attendu : « Site servi par l'atelier : OUI » et la ligne « Mémoire maintenant » qui finit par « la fabrication démarrerait ». Un refus de mémoire se règle comme au README (« Atelier du site de dev »), avec la valeur que la ligne propose.
+
+**Retour arrière (atelier) :** `sudo sh /srv/maverick-center-test/atelier/installer.sh --retirer`.
+
 **Pourquoi la même version d'abord :** on contrôle et on démarre la base de l'ancien serveur telle quelle, avec le code qui l'a écrite ; la mise à jour (migrations, règles livrées depuis) est ensuite un second changement, fait sur une base déjà prouvée égale, et qui se défait par l'archive.
 
 Attendu : `EGALITE`. Le service tourne : ce bilan lit chaque base par un instantané SQLite (jamais une copie d'octets) et ne compare **que ce qui ne bouge pas** : `integrity_check`, le nombre de fiches et de comptes, l'empreinte du contenu des règles, le marqueur `db/source`, les secrets. Les fichiers, les nombres de lignes de chaque table (sessions, journaux) et l'empreinte « logique » changent dès le démarrage : ils ne sont **pas** comparés (le service ne réécrit la base que s'il doit la refaire pour une version ou des règles différentes : avec la même version, il n'y touche pas). `fiches`, `comptes` ou `contenu` différents : **arrête-toi, colle l'écran** (le DNS n'a pas encore bougé : `docker compose stop serveur`, dégeler l'ancien).
@@ -355,7 +377,7 @@ Contrôles de fonctionnement : ouvrir les deux sites, se connecter au site de de
 
 **Retour arrière (étape 11) :** `sudo touch /srv/maverick-center*/GELER`, retirer les deux lignes du crontab, `sudo bash /srv/maverick-center-test/sauvegarde/installer.sh --retirer` ; puis, si besoin, revenir comme à l'étape 10 (DNS), après avoir rapatrié les écritures (« Retour arrière complet »).
 
-Restent, **plus tard et à part**, ce que l'ancien serveur avait : l'atelier du site de dev (non installé aujourd'hui ; sur le nouveau serveur : la commande du README, section « Atelier », `sudo sh /srv/maverick-center-test/atelier/installer.sh`, à lancer après quelques jours calmes, pas le jour J) et `maverick-volume.timer` (déjà posé par `instances.sh`).
+En bascule 2, la page Debug du site de dev (bloc « Atelier ») montre le rapport de la première fabrication, lancée à l'étape 9 : elle doit finir sans refus (mémoire, disque et nombre de pages sont ceux que l'atelier contrôle). Sans bascule 2, l'atelier ne s'installe que s'il l'était sur l'ancien serveur (`sudo sh /srv/maverick-center-test/atelier/installer.sh`, README, section « Atelier »). `maverick-volume.timer` est déjà posé par `instances.sh`.
 
 ### 12. L'ancien serveur : le rendre inoffensif, puis l'arrêter
 
@@ -363,13 +385,14 @@ Danger à éviter : un `docker compose up` ou un minuteur lancé **par erreur** 
 
 ```
 sudo systemctl disable --now maverick-sauvegarde-horaire.timer maverick-sauvegarde-nuit.timer maverick-sauvegarde-essai.timer
+sudo systemctl disable --now maverick-atelier.path maverick-atelier-nuit.timer maverick-atelier-jour.timer maverick-atelier-contenu.timer
 sudo mv /srv/maverick-center/docker-compose.yml /srv/maverick-center/docker-compose.yml.demenage
 sudo mv /srv/maverick-center-test/docker-compose.yml /srv/maverick-center-test/docker-compose.yml.demenage
 ```
 
 Les fichiers `GELER` y restent, le crontab reste en commentaire. Après une heure (les derniers résolveurs ont suivi le DNS), arrête Caddy de l'ancien : `sudo systemctl disable --now caddy`.
 
-**Retour arrière (étape 12) :** `sudo mv …/docker-compose.yml.demenage …/docker-compose.yml` (les deux instances), `sudo systemctl enable --now caddy` et les trois minuteurs, retirer `GELER`, remettre les lignes du crontab, `sudo docker compose up -d`, puis remettre le DNS ; l'ancien serveur est tel qu'au moment du gel (écritures faites sur le nouveau depuis : à rapatrier d'abord).
+**Retour arrière (étape 12) :** `sudo mv …/docker-compose.yml.demenage …/docker-compose.yml` (les deux instances), `sudo systemctl enable --now caddy`, les trois minuteurs des sauvegardes et ceux de l'atelier, retirer `GELER`, remettre les lignes du crontab, `sudo docker compose up -d`, puis remettre le DNS ; l'ancien serveur est tel qu'au moment du gel (écritures faites sur le nouveau depuis : à rapatrier d'abord).
 
 **Ne rien effacer pendant au moins 7 jours** : l'ancien serveur entier (ses bases gelées, identiques à celles du déménagement) et l'archive `demenagement-*.tar.gz` restent en l'état. Au bout de plusieurs jours sans incident (une sauvegarde de nuit réussie chaque nuit, un essai de restauration vert, les fiches des joueurs présentes) :
 1. effacer l'archive des deux serveurs et ses restes (`sudo rm -f ~/demenagement-*.tar.gz ~/demenagement-*.tar.gz.partiel ~/bilan-*.txt`) : elle porte tous les secrets ; et de ton poste s'il y est passé ;
@@ -398,7 +421,7 @@ La décision R275 veut la copie extérieure chez **un autre fournisseur que l'h�
 
 - **Pour les joueurs : de 30 à 60 minutes** sans enregistrement de fiche, sans connexion au site de dev (étape 5 → fin de la propagation du DNS). **Les pages restent lisibles** pendant le gel (nginx de l'ancien), puis du nouveau dès qu'il sert. Quelques résolveurs trop tenaces peuvent encore envoyer des visiteurs sur l'ancien (pages lisibles, `/api/` en 502) jusqu'à une heure.
 - **Pour toi : ~2 heures** d'attention, dont le transfert (2 à 15 minutes selon ton débit montant : l'archive pèse quelques centaines de Mo, de quoi tenir sur un débit ordinaire), les empreintes (quelques dizaines de secondes par bilan), `up -d` (1 minute) et la propagation (5 minutes en général). Le plus long est de lire attentivement chaque écran.
-- Elle repose sur la taille des bases (une base vivante ~25 Mo, archives ≤ ~125 Mo par instance, `docs/serveur.md`) et sur l'installateur de test gardé (~57 Mo). Elle **n'a pas été mesurée sur le vrai serveur**.
+- Elle repose sur la taille des bases (une base vivante ~25 Mo, archives ≤ ~125 Mo par instance, `docs/serveur.md`) et sur les trois derniers installateurs gardés par instance (~97 Mo chacun pour le test, kit compris ; ~35 Mo pour la production) ; en bascule 2, les pages et les paquets s'y ajoutent. Elle **n'a pas été mesurée sur le vrai serveur**.
 
 ## Vérifié dans le dépôt (le jour où ça a été préparé)
 
@@ -409,4 +432,4 @@ La décision R275 veut la copie extérieure chez **un autre fournisseur que l'h�
 
 ## Ce que la répétition n'imite pas
 
-Elle joue les scripts de bout en bout (gel refusé puis accepté, emballage, archive altérée ou tronquée refusée, base déjà présente jamais écrasée, déballage, EGALITE, DIFFERENCE, retour arrière) sur deux dossiers jetables, avec une vraie base SQLite et de vraies empreintes du site. **Non imités** : systemd (les minuteurs sont un faux `systemctl`), Docker (`docker compose ps` est un faux, et les empreintes du site sont calculées par `node` de l'hôte au lieu du conteneur : `docker compose run … serveur node …` n'est donc pas éprouvé ici), Caddy et les certificats réels (des fichiers factices), `chown` vers `root`/`caddy` (la répétition ne tourne pas en root), `scp -3`, le DNS, les installateurs, les versions réelles de paquets, le temps réel de transfert. Le premier vrai lancement de `demenagement.sh` et du bilan avec Docker est celui du jour J : c'est pourquoi `deballer --a-blanc` et le bilan de l'étape 6 se jouent avant tout geste irréversible, et pourquoi l'ancien n'est jamais touché.
+Elle joue les scripts de bout en bout (gel refusé puis accepté, y compris une unité de l'atelier active ou une activation à moitié faite, emballage d'un monde en bascule 2 (interrupteurs, paquets, activation sans son kit ni `base-avant/`, réglages et interrupteur de l'atelier, pages, `VERSION` posée sur un serveur installé dans une autre version, `db/gel.json` non emporté), archive altérée ou tronquée refusée, base déjà présente jamais écrasée, déballage, EGALITE, DIFFERENCE, retour arrière) sur deux dossiers jetables, avec une vraie base SQLite et de vraies empreintes du site. **Non imités** : systemd (les minuteurs sont un faux `systemctl`), Docker (`docker compose ps` est un faux, et les empreintes du site sont calculées par `node` de l'hôte au lieu du conteneur : `docker compose run … serveur node …` n'est donc pas éprouvé ici), Caddy et les certificats réels (des fichiers factices), `chown` vers `root`/`caddy` et vers `maverick-site` (la répétition ne tourne pas en root ; la présence de l'utilisateur n'y est pas exigée), `atelier/installer.sh` (unités systemd, image Docker, `docker-compose.override.yml`), l'activation d'une production par `activer.sh`, `scp -3`, le DNS, les installateurs, les versions réelles de paquets, le temps réel de transfert. Le premier vrai lancement de `demenagement.sh` et du bilan avec Docker est celui du jour J : c'est pourquoi `deballer --a-blanc` et le bilan de l'étape 6 se jouent avant tout geste irréversible, et pourquoi l'ancien n'est jamais touché.
