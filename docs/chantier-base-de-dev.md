@@ -775,7 +775,7 @@ C'est tout pour le serveur.
 
 ## 15. La bascule 2 : préparation (lot 11)
 
-**Questions tranchées le 2026-11-19 (R305, R306)** : site de dev inchangé et compte dédié sans droits élevés pour la production ; contrôle `gel-des-fusions` obligatoire le jour J ; trois fiches de consignes ajoutées à `tech-back` ; propositions « Dégâts » et attaques de monstre : les deux propositions sont redéposées avec la clé de dépôt pour s'appliquer directement (R306).
+**Questions tranchées le 2026-11-19 (R305, R306)** : site de dev inchangé et compte dédié sans droits élevés pour la production ; contrôle `gel-des-fusions` obligatoire le jour J ; trois fiches de consignes ajoutées à `tech-back` ; propositions « Dégâts » et attaques de monstre : un changement préparé par l'équipe se dépose en direct (R291) ; les deux propositions étaient déjà appliquées, rien n'a été redéposé (R306).
 
 Préparée à partir du 2026-11-18, **éteinte** : rien ne bascule avant le jour choisi avec vous, et seulement si la mesure de l'atelier est bonne. La procédure du jour J et le retour arrière sont à la section 16.
 
