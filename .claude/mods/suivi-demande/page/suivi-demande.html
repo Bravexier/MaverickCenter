@@ -295,7 +295,7 @@ li.finie { opacity: .62; }
           el('li', {}, voyant(demande.phase === 'installation' ? 'marche' : 'libre', ''),
             el('span', { class: 'corps' }, el('span', { class: 'titre' }, 'Installation'),
               el('span', { class: 'detail' }, demande.phase === 'installation'
-                ? 'en cours : cette page sera supprimée dès que la nouvelle version sera servie'
+                ? `en cours : cette page sera supprimée dès que le site servira ${demande.versionCible ? `V${demande.versionCible}` : 'la version de cette demande'}`
                 : 'rien à installer tant que la PR n’est pas fusionnée'))),
           demande.versionSite ? el('li', {}, voyant('libre', ''),
             el('span', { class: 'corps' }, el('span', { class: 'titre' }, 'Version servie'),

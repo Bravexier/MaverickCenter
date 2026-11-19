@@ -12,7 +12,7 @@ const SOURCE_DE_LA_PAGE = '.claude/mods/suivi-demande/page/suivi-demande.html'
 
 // Changer l'étiquette quand la forme d'une valeur change : elle écarte ce
 // qu'une version précédente a rangé, qui survit à un rechargement.
-const suivi = atom({ plugin: 'suivi-demande', key: 'suivi' } as const, { demande: null }, { shape: 'suivi-1' })
+const suivi = atom({ plugin: 'suivi-demande', key: 'suivi' } as const, { demande: null }, { shape: 'suivi-2' })
 const agents = atom({ plugin: 'suivi-demande', key: 'agents' } as const, [], { shape: 'agents-1' })
 const principal = atom(
   { plugin: 'suivi-demande', key: 'principal' } as const,
@@ -44,7 +44,8 @@ const CONSIGNE = [
   "- Un appel par changement, groupé avec tes autres appels d'outils ; ne commente pas le panneau dans tes réponses.",
   `- Si le résultat de l'outil dit « aucune page reliée » : publie telle quelle ${SOURCE_DE_LA_PAGE} (outil Artifact, \`capabilities: {"db": {}, "user": {}}\`, icône \`activity\` ; la page est déjà conçue), puis donne son adresse dans \`page\`.`,
   "- Quand le mod annonce que la demande est installée sur le site de dev, supprime cette page (Artifact, action delete).",
-  "Le temps passé, les agents, l'ouverture et la fusion d'une PR et l'installation sur le site de dev sont suivis sans toi.",
+  "- Après la fusion : `version_cible`, la version que le bot donne à la PR (commit « chore: version vX.Y.Z … (PR #N) » sur `origin/dev`). Sans elle, l'installation n'est jamais constatée.",
+  "Le temps passé, les agents, l'ouverture et la fusion d'une PR et, une fois `version_cible` donnée, l'installation sur le site de dev sont suivis sans toi.",
 ].join('\n')
 
 const SCHEMA = {
@@ -70,6 +71,7 @@ const SCHEMA = {
     phase: { type: 'string', enum: PHASES.map(([cle]) => cle) },
     branche: { type: 'string' },
     pr: { type: 'number', description: 'Numéro de la PR.' },
+    version_cible: { type: 'string', description: 'Version que le bot a donnée à la PR fusionnée, par exemple 0.5.38.' },
     ci: { type: 'string', enum: ['en_cours', 'verte', 'rouge'] },
     attente: { type: 'string', description: 'Ce qui est attendu du propriétaire ; vide pour lever l’attente.' },
     page: { type: 'string', description: 'Adresse claude.ai de la page publiée qui affiche le suivi.' },
@@ -113,6 +115,9 @@ export const reste = (demande: Demande) => {
 
   return ouvertes.reduce((somme, une) => somme + (une.minutes ?? 0), 0)
 }
+
+/** La demande est installée quand le site sert sa version, ou une plus récente : une version voisine plus ancienne ne compte pas. */
+export const estInstallee = (versionServie: string, versionCible: string) => !estPlusRecente(versionCible, versionServie)
 
 export const estPlusRecente = (version: string, reference: string) => {
   const a = version.split('.').map(Number)
@@ -225,7 +230,7 @@ const entrerEnInstallation = async ($: EngineInterface) => {
   await modifier($, demande => ({
     ...demande,
     phase: 'installation',
-    ...(version !== undefined && { versionDepart: version, versionSite: version }),
+    ...(version !== undefined && { versionSite: version }),
   }))
 }
 
@@ -253,10 +258,10 @@ const guetterLInstallation = async ($: EngineInterface) => {
   if (demande === null || demande.phase !== 'installation') return
   const version = await versionDuSite($)
   if (version === undefined) return
-  if (demande.versionDepart === undefined) {
-    await modifier($, une => ({ ...une, versionDepart: version, versionSite: version }))
-  } else if (estPlusRecente(version, demande.versionDepart)) {
+  if (demande.versionCible !== undefined && estInstallee(version, demande.versionCible)) {
     await cloturer($, version)
+  } else if (demande.versionSite !== version) {
+    await modifier($, une => ({ ...une, versionSite: version }))
   }
 }
 
@@ -373,6 +378,7 @@ export const register: Register = on => {
     const phase = PHASES.find(([cle]) => cle === e.phase)?.[0]
     const branche = texte(e.branche)
     const pr = nombre(e.pr)
+    const versionCible = /^[vV]?(\d+\.\d+\.\d+)$/.exec(texte(e.version_cible) ?? '')?.[1]
     const ci = (['en_cours', 'verte', 'rouge'] as const).find(connu => connu === e.ci)
     const depart: Demande = base ?? {
       but,
@@ -394,6 +400,7 @@ export const register: Register = on => {
       ...(phase !== undefined && { phase }),
       ...(branche !== undefined && { branche }),
       ...(pr !== undefined && { pr }),
+      ...(versionCible !== undefined && { versionCible }),
       ...(ci !== undefined && { ci }),
       ...(attente !== undefined && { attente }),
     }
@@ -416,7 +423,7 @@ export const register: Register = on => {
     const faites = demande.sousTaches.filter(une => une.etat === 'faite').length
 
     return {
-      result: `Suivi à jour : ${faites}/${demande.sousTaches.length} sous-tâches faites, phase ${demande.phase} ; ${envoi} ; ${affichage}.`,
+      result: `Suivi à jour : ${faites}/${demande.sousTaches.length} sous-tâches faites, phase ${demande.phase} ; ${envoi} ; ${affichage}.${demande.phase === 'installation' && demande.versionCible === undefined ? ' Donne `version_cible` pour que l’installation soit constatée.' : ''}`,
     }
   })
 
@@ -548,7 +555,7 @@ export const register: Register = on => {
           <Text dimColor>SITE DE DEV</Text>
           {demande.phase === 'installation' ? (
             <Progress
-              label={`Installation en cours${demande.versionSite !== undefined ? ` (version servie : V${demande.versionSite})` : ''}`}
+              label={`Installation en cours : attendue ${demande.versionCible !== undefined ? `V${demande.versionCible}` : 'à préciser'}, servie ${demande.versionSite !== undefined ? `V${demande.versionSite}` : 'inconnue'}`}
             />
           ) : (
             <Text dimColor>Pas encore fusionnée : rien à installer.</Text>
