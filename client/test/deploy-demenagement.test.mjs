@@ -79,7 +79,7 @@ test('la répétition joue toute la procédure : gel refusé puis accepté, emba
   const r = lancer('repetition-demenagement.sh', ['--dossier', join(monde, 'repetition')]);
   assert.equal(r.status, 0, `${r.stdout}\n${r.stderr}`);
   assert.match(r.stdout, /REPETITION REUSSIE/);
-  for (const etape of ['emballer refuse tant que le service tourne', 'archive altérée ou tronquée : refusée', 'une base déjà présente fait refuser', 'contrôle : EGALITE', 'base altérée : DIFFERENCE', 'retour arrière']) {
+  for (const etape of ['emballer refuse tant que le service tourne', 'archive altérée ou tronquée : refusée', 'une base déjà présente fait refuser', 'contrôle : EGALITE', 'base altérée : DIFFERENCE', 'retour arrière', 'unité de l\'atelier active', 'bascule 2 : paquets']) {
     assert.ok(r.stdout.includes(etape), `étape jouée : ${etape}\n${r.stdout}`);
   }
   assert.equal(existsSync(join(monde, 'repetition')), false, 'la répétition fait son ménage');
