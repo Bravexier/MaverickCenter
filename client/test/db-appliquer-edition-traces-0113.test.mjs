@@ -1,7 +1,8 @@
 // Rapatriement d'un lot noté avant la migration 0113 (ids texte des mots-clés, libelle_cle ; R232 (1)) : la trace versée dans historique_modification
 // nomme le mot-clé par son id entier (serveur/edition.mjs#traceDAujourdhui, appelée par scripts/db-appliquer-edition.mjs#historiser et par
 // scripts/mise-a-jour-regles.mjs). (Le mode `--reparer-traces` de l'outil, qui mettait à l'id entier les traces déjà versées sous l'ancien id, est retiré au lot 12 : il réécrivait data/rows.)
-// Les ids attendus se lisent dans le registre de la 0113 (jamais un libellé) ; le mot-clé d'essai est pris dans l'état courant.
+// Les ids attendus se lisent dans la correspondance de la 0113 (data/references/, lib/references-des-migrations.mjs : celle que lit le service ; jamais
+// un libellé) ; le mot-clé d'essai est pris dans l'état courant.
 //   node --test test/db-appliquer-edition-traces-0113.test.mjs
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -13,16 +14,16 @@ import { fileURLToPath } from 'node:url';
 import { appliquerJournal } from '../scripts/db-appliquer-edition.mjs';
 import { traceDAujourdhui } from '../serveur/edition.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { REFERENCES } from '../src/lib/references-des-migrations.mjs';
 import { copieDesRowsDeDepart } from './aide-base-de-depart.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
-const REGISTRE = JSON.parse(readFileSync(join(RACINE, 'data', 'migrations', '0113-mots-cles-id-entier.json'), 'utf8'));
-const idDe = (ancien) => REGISTRE.motsCles.find((m) => m.ancienId === ancien).id;
+const MOTS_CLES_0113 = JSON.parse(readFileSync(join(RACINE, REFERENCES.idsDesMotsCles), 'utf8')).ids.map(([ancienId, id]) => ({ ancienId, id }));
 const courante = ouvrirBase({ sansExemples: false });
 // un mot-clé d'essai : son ancien id est sa clé d'aujourd'hui, et l'état courant le porte (le site de dev peut en supprimer)
-const ESSAI = REGISTRE.motsCles.find((m) => m.ancienId === m.cle && courante.prepare('SELECT 1 FROM mot_cle WHERE id = ? AND cle = ?').get(m.id, m.cle));
-const AUTRE = REGISTRE.motsCles.find((m) => m.id !== ESSAI.id);
+const ESSAI = MOTS_CLES_0113.find((m) => courante.prepare('SELECT 1 FROM mot_cle WHERE id = ? AND cle = ?').get(m.id, m.ancienId));
+const AUTRE = MOTS_CLES_0113.find((m) => m.id !== ESSAI.id);
 const tmp = dossierTemporaire('traces-0113');
 
 const trace = (table, cle, avant, apres) => ({ lot_id: 'l', rang: 1, table_nom: table, operation: 'modifier', cle: JSON.stringify(cle), avant: avant && JSON.stringify(avant),
@@ -52,7 +53,7 @@ test('un id inconnu (fondu ou supprimé), un id entier et une autre table passen
   const ailleurs = trace('page', { id: ESSAI.ancienId }, null, null);
   assert.equal(enTrace(ailleurs), ailleurs);
   const quittee = courante.prepare('SELECT cle, mot_cle_id FROM mot_cle_ancienne_cle ORDER BY cle LIMIT 1').get();
-  if (quittee && !REGISTRE.motsCles.some((m) => m.ancienId === quittee.cle)) {
+  if (quittee && !MOTS_CLES_0113.some((m) => m.ancienId === quittee.cle)) {
     assert.equal(lu(enTrace(trace('mot_cle', { id: quittee.cle }, null, null)).cle).id, quittee.mot_cle_id);
   }
 });

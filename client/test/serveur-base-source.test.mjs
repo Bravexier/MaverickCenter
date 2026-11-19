@@ -14,11 +14,14 @@ import { DOSSIER_DES_ESSAIS } from '../serveur/essai-de-structure.mjs';
 import { demarrerService } from '../serveur/service.mjs';
 import { lireLesMigrations } from '../serveur/structure-sur-place.mjs';
 import { cheminDImport } from './aide-base-d-import.mjs';
-import { NUMERO, RACINE, baseDesRegles, baseRemplie, etatDuFichier, nouveauDossier, schemaDuDepot } from './aide-structure-sur-place.mjs';
+import { LIVRAISON, NUMERO, baseDesRegles, baseRemplie, etatDuFichier, nouveauDossier, schemaDuDepot } from './aide-structure-sur-place.mjs';
 
 const JSON_ = { 'content-type': 'application/json' };
-/** La version livrée (la dernière migration du dépôt) et les migrations que la base d'avant reçoit : celle qui crée `migration_recue` et les suivantes. */
-const LIVREES = lireLesMigrations({ schema: false }).migrations;
+/**
+ * La version livrée (la dernière migration de la livraison des tests, test/aide-structure-sur-place.mjs#LIVRAISON : celle du dépôt, ou au-dessus du plancher
+ * quand les migrations mixtes sont sorties) et les migrations que la base d'avant reçoit : celle qui crée `migration_recue` et les suivantes.
+ */
+const LIVREES = lireLesMigrations({ ...LIVRAISON, schema: false }).migrations;
 const V = LIVREES.at(-1).numero;
 const APPLIQUEES = LIVREES.filter((m) => m.numero >= NUMERO).map((m) => m.numero);
 const marquer = (dossier) => writeFileSync(join(dossier, FICHIER_SOURCE), 'format=maverick-source/1\n');
@@ -40,8 +43,8 @@ const versionDe = (chemin) => {
   }
 };
 
-/** Démarre le service du site de dev sur `dossier` ; `lignes` reçoit le journal. Rend { service, lignes } ou rejette (le service ne démarre pas). */
-async function demarrer(dossier, { regles = baseDesRegles(), intervalle = 0, structure = {}, lignes = [] } = {}) {
+/** Démarre le service du site de dev sur `dossier` (la livraison des tests, sauf `structure`) ; `lignes` reçoit le journal. Rend { service, lignes } ou rejette (le service ne démarre pas). */
+async function demarrer(dossier, { regles = baseDesRegles(), intervalle = 0, structure = { ...LIVRAISON }, lignes = [] } = {}) {
   const service = await demarrerService({
     regles, dossier, port: 0, intervalle, edition: true, metriques: false, tipeee: false, atelier: false, attestation: false,
     essaiDeStructure: { intervalle: 0 }, journal: (m) => lignes.push(String(m)), structure,
@@ -58,12 +61,12 @@ async function attendre(condition, quoi) {
   assert.fail(`délai dépassé : ${quoi}`);
 }
 
-/** Des migrations livrées d'essai : celles du dépôt, plus `en_plus` ({ nom → SQL }) ; et un schema.sql (celui du dépôt, à la version `version`, plus `ajout`). */
+/** Des migrations livrées d'essai : celles de la livraison des tests, plus `en_plus` ({ nom → SQL }) ; et un schema.sql (celui du dépôt, à la version `version`, plus `ajout`). */
 function livraisonDEssai(t, { en_plus = {}, version = V, ajout = '' } = {}) {
   const d = nouveauDossier('livraison', t);
   const migrations = join(d, 'migrations');
   mkdirSync(migrations);
-  for (const m of lireLesMigrations({ schema: false }).migrations) copyFileSync(join(RACINE, 'data', 'migrations', m.fichier), join(migrations, m.fichier));
+  for (const m of LIVREES) copyFileSync(join(LIVRAISON.migrations, m.fichier), join(migrations, m.fichier));
   for (const [nom, sql] of Object.entries(en_plus)) writeFileSync(join(migrations, nom), sql);
   const schema = join(d, 'schema.sql');
   writeFileSync(schema, `${schemaDuDepot().replace(/^PRAGMA user_version\s*=\s*\d+;/m, `PRAGMA user_version = ${version};`)}${ajout}`);

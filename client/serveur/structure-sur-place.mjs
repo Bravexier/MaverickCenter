@@ -88,6 +88,23 @@ export function lireLesMigrations({ migrations, schema, avecSql = true } = {}) {
   return { dossier, migrations: liste, schema: fichierSchema && existsSync(fichierSchema) ? readFileSync(fichierSchema, 'utf8') : null };
 }
 
+/** La version que porte un schema.sql (son `PRAGMA user_version = N;`), null s'il n'en porte pas. */
+export function versionDuSchemaSql(sql) {
+  const m = /^\s*PRAGMA\s+user_version\s*=\s*(\d+)\s*;/im.exec(String(sql ?? ''));
+  return m ? Number(m[1]) : null;
+}
+
+/**
+ * La version qu'apporte une livraison (`lireLesMigrations`) : la plus haute de sa dernière migration et de son schema.sql ; null sans l'une ni l'autre.
+ * Le schema.sql est le PLANCHER de la structure : quand des migrations quittent le dépôt (les migrations mixtes, R296 ; docs/chantier-base-de-dev.md,
+ * « Les lecteurs des migrations mixtes »), il garde leur version et seules les migrations de numéro supérieur s'appliquent ; une base en dessous est
+ * refusée (une migration manque) et se refait depuis le schéma. Tant que la dernière migration est dans le dépôt, les deux sont égales.
+ */
+export function versionLivree(livre) {
+  const versions = [livre?.migrations?.at(-1)?.numero, versionDuSchemaSql(livre?.schema)].filter((v) => Number.isInteger(v));
+  return versions.length ? Math.max(...versions) : null;
+}
+
 /** Les migrations de numéro > `version` (celle de la base, PRAGMA user_version), par numéro. */
 export const migrationsAAppliquer = (migrations, version) => migrations.filter((m) => m.numero > version).sort((a, b) => a.numero - b.numero);
 
@@ -490,7 +507,7 @@ export function essayerSurUneCopie({ source, dossier, migrations, schema, instan
     const aFaire = migrationsAAppliquer(livre.migrations, avant);
     const migrationsEssayees = aFaire.map(({ numero, fichier, empreinte }) => ({ numero, fichier, empreinte }));
     if (!aFaire.length) {
-      const derniere = livre.migrations.at(-1)?.numero ?? null;
+      const derniere = versionLivree(livre); // le schema.sql est le plancher quand des migrations sont sorties du dépôt
       return { ...base, verdict: 'a_jour', versions: { avant, apres: avant, livree: derniere }, en_avance: derniere !== null && avant > derniere, migrations: [], duree_ms: Math.round(performance.now() - t0) };
     }
     try {

@@ -1,6 +1,6 @@
 // Le rejeu d'un lot du site de dev noté avant la migration 0098 (les [[…]] et les liens Markdown internes devenus des balises de mots-clés) :
 // serveur/edition.mjs#ancienneEcritureDesLiens lit ses textes comme la migration a réécrit les règles (la table de conversion de son registre,
-// data/migrations/0098-liens-en-mots-cles.json : tableDesLiensDeLa0098). Sans lui, un tel lot écrirait un lien que db:check refuse, ou verrait un faux
+// data/references/liens-en-mots-cles-0098.json, tirée du registre de la migration : tableDesLiensDeLa0098). Sans lui, un tel lot écrirait un lien que db:check refuse, ou verrait un faux
 // conflit sur un texte que la migration a converti. Une page d'exemple et un lien inconnu restent tels quels ; l'artisanat de l'Alchimiste, dont la
 // migration a balisé le texte simple, l'est de même. Décision R211 (« Les rendre supprimables ») : un mot-clé du registre supprimé depuis, le lien qui y
 // menait devient du texte simple, et le texte simple de l'Alchimiste n'est pas balisé. Les mots-clés du scénario sont remis s'il le faut (le site de dev
@@ -8,7 +8,7 @@
 //   node --test test/serveur-edition-rejeu-liens.test.mjs
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { copyFileSync, cpSync, readFileSync } from 'node:fs';
+import { copyFileSync, cpSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
@@ -16,19 +16,21 @@ import { fileURLToPath } from 'node:url';
 import { appliquerJournal } from '../scripts/db-appliquer-edition.mjs';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
-import { adaptateurDuJournal, ancienneEcritureDesLiens, rejouerLeJournal, tableDesLiensDeLa0098, tableDuRegistreDesLiens } from '../serveur/edition.mjs';
+import { adaptateurDuJournal, ancienneEcritureDesLiens, registreDes0113, rejouerLeJournal, tableDesLiensDeLa0098, tableDuRegistreDesLiens } from '../serveur/edition.mjs';
+import { REFERENCES } from '../src/lib/references-des-migrations.mjs';
 import { chargerJournal, journalExporte } from '../serveur/edition-journal.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { liensDuTexte } from '../src/lib/liens-en-mots-cles.mjs';
 import { formesNonCanoniques, lireBalises, vocabulaireDesMotsCles } from '../src/lib/mots-cles-balises.mjs';
 import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
-import { REGISTRE_DES_LIENS } from '../src/lib/mots-cles-liens.mjs';
+import { registreDeMigration } from './aide-registres-sortis.mjs';
 import { baseDImport, lotsAvant, remettreDepuisLImport } from './aide-base-d-import.mjs';
 import { copieDesRowsDeDepart, rowsDeDepart } from './aide-base-de-depart.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
-const REGISTRE = JSON.parse(readFileSync(join(RACINE, REGISTRE_DES_LIENS), 'utf8'));
+/** Le registre de la 0098 (ou ce qu'en garde test/fixtures/registres-sortis.json une fois les migrations mixtes sorties : les remplacements du scénario). */
+const REGISTRE = registreDeMigration('0098-liens-en-mots-cles');
 const sansPython = spawnSync('python3', ['--version']).error ? 'python3 absent' : false;
 const dossier = dossierTemporaire('rejeu-liens');
 const m = (table, operation, cle, avant, apres) => ({ lot_id: 'l', rang: 0, table_nom: table, operation, cle: JSON.stringify(cle),
@@ -41,8 +43,8 @@ const ALCHIMISTE = REGISTRE.remplacements.find((r) => r.table === 'metier' && r.
 const DRAKOS = 'drakos';
 /** Les mots-clés du scénario : ceux des deux balises du registre, et celui de « [[Drakos]] » (leurs anciens ids texte, ceux du registre de la 0098). */
 const MOTS_CLES_DU_SCENARIO = [...new Set([...lireBalises(SUR_LA_PAGE.balise), ...lireBalises(ALCHIMISTE.balise)].map((b) => b.ref)), DRAKOS];
-/** L'id entier d'un ancien id texte (registre de la migration 0113) : les mots-clés de la base, depuis. */
-const REGISTRE_0113 = new Map(JSON.parse(readFileSync(join(RACINE, 'data/migrations/0113-mots-cles-id-entier.json'), 'utf8')).motsCles.map((x) => [x.ancienId, x.id]));
+/** L'id entier d'un ancien id texte (correspondance de la migration 0113, sa référence : serveur/edition.mjs#registreDes0113) : les mots-clés de la base, depuis. */
+const REGISTRE_0113 = registreDes0113();
 const entier = (ancien) => REGISTRE_0113.get(ancien);
 /** Le texte tel qu'un lot d'avant la 0098 l'a noté : chaque balise que la migration a écrite sur cette ligne redevient ce qu'elle remplaçait. */
 const avant0098 = (table, cle, colonne, texte) => REGISTRE.remplacements
@@ -93,7 +95,7 @@ const vivante = () => ouvrirBaseVivante(preparerBaseVivante({ regles: REGLES, do
 
 test('la table de la 0098 : celle du registre (liens et adresses), et les textes simples balisés (Alchimiste, Apothicaire)', () => {
   const table = tableDesLiensDeLa0098();
-  assert.ok(table, `registre ${REGISTRE_DES_LIENS} lu`);
+  assert.ok(table, `référence ${REFERENCES.liens} lue`);
   assert.equal(tableDesLiensDeLa0098(), table, 'lu une fois');
   assert.ok(table.parCle.size > 0 && table.parAdresse.size > 0);
   assert.deepEqual([...table.textes.keys()].map((k) => k.split('\u0000')[2]).sort(),

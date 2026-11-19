@@ -477,7 +477,7 @@ function depotDeKit() {
     '.nvmrc': '22\n', 'client/package.json': '{"name":"c","version":"1.0.0"}', 'client/astro.config.mjs': 'export default {};',
     'client/scripts/fabriquer-depuis-contenu.mjs': '//', 'client/scripts/poser-un-site.mjs': '//',
     'client/node_modules/astro/bin/astro.mjs': '//', 'client/node_modules/astro/package.json': '{"name":"astro","version":"1.0.0"}',
-    'data/schema.sql': 'PRAGMA user_version = 1;', 'data/derive.sql': '--', 'data/migrations/0001-a.sql': '--',
+    'data/schema.sql': 'PRAGMA user_version = 1;', 'data/derive.sql': '--', 'data/migrations/0001-a.sql': '--', 'data/references/a.json': '{}',
     'sources/sources.json': '{}', 'sources/copies-drive.json': '{}', 'sources/tipeee/bienvenue.json': '{}',
   })) { mkdirSync(dirname(join(d, rel)), { recursive: true }); writeFileSync(join(d, rel), contenu); }
   return d;

@@ -1,14 +1,14 @@
 // Une fiche en tableur qui cite un sort sous le nom qu'il portait avant la mise à jour de Décembre (R237 (4) : « Répar'Os » devenu « Répar Os »… ; R237 (11) :
-// « Armure d'os » devenu « Armure osseuse »…) retrouve le même sort, avec le même identifiant : l'ancien nom est lu dans le registre de la migration
-// (data/migrations/0117-magies-v10-specialisations.json, lib/noms-d-avant-des-migrations.mjs) et rendu en `noms_d_avant` par les règles de la fiche
-// (lib/fiche-regles.mjs), comme celui d'un renommage fait sur le site de dev. Les noms se lisent dans le registre, aucun n'est écrit ici ; aucune ligne
-// n'est fabriquée dans historique_modification.
+// « Armure d'os » devenu « Armure osseuse »…) retrouve le même sort, avec le même identifiant : l'ancien nom est lu dans la référence tirée du registre
+// de la migration (data/references/noms-d-avant-des-migrations.json, lib/noms-d-avant-des-migrations.mjs ; égalité au registre de la 0117 épinglée par
+// test/references-des-migrations-mixtes.test.mjs) et rendu en `noms_d_avant` par les règles de la fiche (lib/fiche-regles.mjs), comme celui d'un
+// renommage fait sur le site de dev. Les noms se lisent dans la référence, aucun n'est écrit ici ; aucune ligne n'est fabriquée dans historique_modification.
 //   node --test test/fiche-tableur-noms-renommes-par-migration.test.mjs
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { test } from 'node:test';
-import { fileURLToPath } from 'node:url';
-import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { ouvrirBase, trouverRacine } from '../src/lib/donnees.mjs';
 import { ficheVide } from '../src/lib/fiche-format.mjs';
 import { modeleXlsx } from '../src/lib/fiche-modele.mjs';
 import * as M from '../src/lib/fiche-moteur.mjs';
@@ -16,12 +16,12 @@ import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { cellulesDeLaFiche } from '../src/lib/fiche-tableur-export.mjs';
 import { ficheDuClasseur } from '../src/lib/fiche-tableur-import.mjs';
 import { nomsDAvantDesMigrations } from '../src/lib/noms-d-avant-des-migrations.mjs';
+import { REFERENCES } from '../src/lib/references-des-migrations.mjs';
 import { ecrireXlsx } from '../src/lib/tableur-ecriture.mjs';
 import { lireClasseur } from '../src/lib/tableur-lecture.mjs';
 
-const SORTS = JSON.parse(readFileSync(fileURLToPath(new URL('../../data/migrations/0117-magies-v10-specialisations.json', import.meta.url)), 'utf8')).sorts;
-const R4 = SORTS.renommes_r237_4;
-const R11 = SORTS.renommes_r237_11;
+/** Les sorts renommés par une migration (la 0117 : R237 (4) et (11)), { id, avant } dans l'ordre de la référence. */
+const RENOMMES = [...nomsDAvantDesMigrations().get('sort')].flatMap(([id, noms]) => noms.map((avant) => ({ id, avant })));
 const DATE = '07/11/2026';
 const MODELE = await modeleXlsx();
 const db = ouvrirBase({ sansExemples: false });
@@ -35,25 +35,29 @@ function ficheAvec(sort) {
   return f;
 }
 
-test('le registre de la 0117 : 8 sorts renommés (R237 (4)) et 16 (R237 (11)), chacun présent sous son identifiant et sous son nouveau nom', () => {
-  assert.equal(R4.length, 8);
-  assert.equal(R11.length, 16);
-  for (const r of [...R4, ...R11]) {
-    const sort = M.trouver(regles.sorts, r.id);
-    assert.ok(sort, `${r.id} existe toujours`);
-    assert.notEqual(r.avant, r.apres);
-  }
+test('les sorts renommés par la 0117 (R237 (4) et (11)), lus dans la référence : chacun présent sous son identifiant ; autant de sorts portent noms_d_avant que la référence en nomme', () => {
+  // l'effectif se lit dans le fichier de référence lui-même (data/references/, sans valeur écrite ici) : chaque sort qu'il nomme, et lui seul parmi
+  // les renommés, est lu par la fiche
+  const reference = JSON.parse(readFileSync(join(trouverRacine(), REFERENCES.nomsDAvant), 'utf8')).sort;
+  const ids = Object.keys(reference);
+  assert.ok(ids.length > 0);
+  assert.deepEqual([...new Set(RENOMMES.map((r) => r.id))].sort(), [...ids].sort());
+  for (const r of RENOMMES) assert.ok(M.trouver(regles.sorts, r.id), `${r.id} existe toujours`);
+  // un sort dont le nom courant n'est aucun de ses anciens noms (le site peut lui avoir rendu l'un d'eux) porte noms_d_avant
+  const attendus = ids.filter((id) => reference[id].some((n) => n !== M.trouver(regles.sorts, id).nom));
+  const portes = regles.sorts.filter((x) => Object.hasOwn(reference, x.id) && reference[x.id].some((n) => x.noms_d_avant?.includes(n))).map((x) => x.id);
+  assert.deepEqual(portes.sort(), attendus.sort());
 });
 
 test('noms_d_avant des règles : chaque ancien nom du registre est celui du sort de même identifiant ; un sort jamais renommé n’en a pas ; la lecture ne touche pas l’historique', () => {
   const lus = nomsDAvantDesMigrations().get('sort');
-  for (const r of [...R4, ...R11]) {
-    assert.ok(lus.get(r.id).includes(r.avant), `${r.id} : lu dans le registre`);
+  for (const r of RENOMMES) {
+    assert.ok(lus.get(r.id).includes(r.avant), `${r.id} : lu dans la référence`);
     const sort = M.trouver(regles.sorts, r.id);
     if (r.avant !== sort.nom) assert.ok(sort.noms_d_avant.includes(r.avant), `${r.id} : noms_d_avant`);
     assert.ok(!(sort.noms_d_avant ?? []).includes(sort.nom), 'jamais le nom actuel');
   }
-  const renommes = new Set([...R4, ...R11].map((r) => r.id));
+  const renommes = new Set(RENOMMES.map((r) => r.id));
   const sans = regles.sorts.find((s) => !renommes.has(s.id) && !lus.has(s.id));
   assert.ok(sans);
   // aucun nom d'avant d'un sort qu'aucun registre ni le site n'a renommé n'est inventé
@@ -64,7 +68,7 @@ test('noms_d_avant des règles : chaque ancien nom du registre est celui du sort
 });
 
 test('R237 (4) et (11) : une fiche du tableur écrite sous l’ancien nom d’un sort renommé le retrouve, avec le même identifiant (jamais « perdu »)', async () => {
-  for (const r of [...R4, ...R11]) {
+  for (const r of RENOMMES) {
     const sort = M.trouver(regles.sorts, r.id);
     const f = ficheAvec(sort);
     assert.ok(M.sortsPossibles(regles, f).some((s) => s.id === sort.id), `${r.id} : au choix du personnage d'essai`);

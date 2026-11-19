@@ -19,6 +19,10 @@ import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
 import { rejouerLaMigration } from './aide-migration-rejouee.mjs';
 import { texteDImport } from './aide-base-d-import.mjs';
+import { testRetireAvecLesMixtes } from './aide-sortie-du-contenu.mjs';
+
+// Les tests qui éprouvent la migration mixte elle-même sortent avec elle (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LES_MIXTES).
+const testDeLaMixte = testRetireAvecLesMixtes(import.meta.url);
 
 const MIGRATION = '0089-r182-critique-du-sort-prepare.sql';
 const AVEC_PREPARE = 'personnage_sort_prepare_critique_avec_prepare';
@@ -91,7 +95,7 @@ test('R182 : la plage figée se note de 1 à 15 (4 avec un accessoire maudit, R1
   assert.equal(critiqueDe(base, b), null);
 });
 
-test('R182 : la migration 0089 laisse NULL la plage d’un sort préparé d’avant (rien n’est recalculé) et donne la table de data/schema.sql', (t) => {
+testDeLaMixte('R182 : la migration 0089 laisse NULL la plage d’un sort préparé d’avant (rien n’est recalculé) et donne la table de data/schema.sql', (t) => {
   const { base, a, b } = copie(t);
   const attendu = base.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'personnage_sort'").get().sql;
   base.exec('ALTER TABLE personnage_sort DROP COLUMN prepare_critique');

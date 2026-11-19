@@ -11,6 +11,10 @@ import { after, test } from 'node:test';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
 import { texteDImport } from './aide-base-d-import.mjs';
+import { testRetireAvecLesMixtes } from './aide-sortie-du-contenu.mjs';
+
+// Les tests qui éprouvent la migration mixte elle-même sortent avec elle (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LES_MIXTES).
+const testDeLaMixte = testRetireAvecLesMixtes(import.meta.url);
 
 const PI = 'magies/potentiel-illimite';
 const CITATION = 'Surtension corporelle (Vulnérabilité contre les dégâts physiques';
@@ -46,14 +50,23 @@ test('R174 : rien d\'autre ne change — aucune autre ligne physique, aucune cib
   assert.equal(db.prepare("SELECT count(*) AS n FROM v_creature_resistance WHERE provenance = 'element' AND cible_magie_id IS NULL").get().n, 0);
 });
 
-test('R174 : le schéma et la migration 0083 portent la contrainte nommée et la colonne cible_physique', () => {
+/** Le SQL `sql` (nommé `nom`) porte la contrainte nommée, la colonne cible_physique et l'unicité. */
+function porteLaContrainte(nom, sql) {
   const clause = `CONSTRAINT ${CONTRAINTE} CHECK (`;
-  for (const [nom, sql] of [['data/schema.sql', lire('data/schema.sql')], ['migration 0083', lire('data/migrations/0083-r174-resistances-physiques.sql')],
+  assert.ok(sql.includes(clause), `${nom} : ${clause}`);
+  assert.ok(sql.includes("cible_physique  TEXT    CHECK (cible_physique IN ('estoc', 'taille', 'frappe'))"), `${nom} : cible_physique`);
+  assert.ok(sql.includes('UNIQUE (magie_id, sens, cible_physique)'), `${nom} : unicité`);
+}
+
+test('R174 : le schéma porte la contrainte nommée et la colonne cible_physique', () => {
+  for (const [nom, sql] of [['data/schema.sql', lire('data/schema.sql')],
     ['base construite', db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'magie_resistance'").get().sql]]) {
-    assert.ok(sql.includes(clause), `${nom} : ${clause}`);
-    assert.ok(sql.includes("cible_physique  TEXT    CHECK (cible_physique IN ('estoc', 'taille', 'frappe'))"), `${nom} : cible_physique`);
-    assert.ok(sql.includes('UNIQUE (magie_id, sens, cible_physique)'), `${nom} : unicité`);
+    porteLaContrainte(nom, sql);
   }
+});
+
+testDeLaMixte('R174 : la migration 0083 porte la même contrainte nommée et la même colonne cible_physique', () => {
+  porteLaContrainte('migration 0083', lire('data/migrations/0083-r174-resistances-physiques.sql'));
 });
 
 test('R174 : la base refuse une ligne dont la cible ne répond pas à cible_type, un type physique hors vocabulaire et un doublon', () => {

@@ -15,6 +15,7 @@ import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { SPECIALITES_MAX } from '../src/lib/dons-edition.mjs';
 import { avecLesMotsCles, motsClesDesPages } from '../src/lib/pages-db.mjs';
 import { splitFrontmatter } from '../src/lib/wikilinks.mjs';
+import { registreDeMigration } from './aide-registres-sortis.mjs';
 
 const dir = fileURLToPath(new URL('../src/content/wiki', import.meta.url));
 const load = (type) =>
@@ -63,7 +64,8 @@ const classesRemaniees = new Set([
 const pageCreee = (id) => historique.creee('page', { id });
 // les dons que la migration 0119 a créés (Boxeur, Porte-étendard, Écrasant du Cuirassé : registre de la migration) : leur page n'a qu'une ligne `page_source`,
 // le libellé de l'onglet du classeur de Décembre (pièce jointe, sans URL : registre, `provenance`), pas les deux sources d'un import de Google Sheet
-const registre0119 = JSON.parse(readFileSync(fileURLToPath(new URL('../../data/migrations/0119-classes-materiaux-d12.json', import.meta.url)), 'utf8'));
+// (registre de la 0119, ou ce qu'en garde test/fixtures/registres-sortis.json une fois la migration mixte sortie : ids seulement)
+const registre0119 = registreDeMigration('0119-classes-materiaux-d12');
 const creeeParLaMigration0119 = new Set([...Object.values(registre0119.classes.nouvelles).flatMap((k) => k.dons), registre0119.cuirasse.cree]);
 const classesImport = allImport.filter((e) => e.id.startsWith('classes/'));
 const capacitesImport = allImport.filter((e) => e.id.startsWith('capacites/'));

@@ -13,15 +13,23 @@ import { corpsDeDon, resumeDeDon } from '../src/lib/corps-classes.mjs';
 import { ligneDeMateriau, PAGE_DES_ARMES } from '../src/lib/corps-armes.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { mixtesSorties } from '../src/lib/sortie-du-contenu.mjs';
 import { sourcesDeLaClasse, sourcesDuDon, famillesDuLecteur } from '../serveur/edition-maitrises.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
 import { avecLesClesDe, idDuMotCleNomme } from './aide-mots-cles.mjs';
+import { registreDeMigration } from './aide-registres-sortis.mjs';
 import { ecrituresReecrites } from './aide-textes-reecrits.mjs';
+import { testRetireAvecLesMixtes } from './aide-sortie-du-contenu.mjs';
+
+// Les tests qui éprouvent la migration mixte elle-même sortent avec elle (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LES_MIXTES).
+const testDeLaMixte = testRetireAvecLesMixtes(import.meta.url);
 
 const NOM = '0119-classes-materiaux-d12';
 const lire = (chemin) => readFileSync(new URL(chemin, import.meta.url), 'utf8');
-const REGISTRE = JSON.parse(lire(`../../data/migrations/${NOM}.json`));
-const MIGRATION = lire(`../../data/migrations/${NOM}.sql`);
+// Le registre et le SQL sortent avec les migrations mixtes, et les tests qui les comparent à l'import avec eux (RETIRES_AVEC_LES_MIXTES) ; les tests
+// d'invariants ne lisent du registre que les classes nouvelles (ids), gardées dans test/fixtures/registres-sortis.json (aide-registres-sortis.mjs).
+const REGISTRE = registreDeMigration(NOM);
+const MIGRATION = mixtesSorties() ? null : lire(`../../data/migrations/${NOM}.sql`);
 const SCHEMA = lire('../../data/schema.sql');
 const CORRECTIONS = JSON.parse(lire('../../tools/sheets/corrections.json'));
 const db = ouvrirBase({ sansExemples: false });
@@ -32,13 +40,13 @@ const ARCHIMAGE = 'classes/archimage';
 const tri = (lignes) => lignes.map((l) => JSON.stringify(Object.fromEntries(Object.keys(l).sort().map((k) => [k, l[k]])))).sort();
 // La 0121 balise des fragments que la 0119 a écrits (R258 (7) : « contre les {{non-mort|non-morts}} »…), lus dans son registre `textes` : à l'import,
 // une cellule intacte porte la réécriture ; une cellule touchée par le site garde la valeur d'avant la 0121 (son `avant` d'historique), l'une ou l'autre.
-const ECRITURES_0121 = ecrituresReecrites('0121-maj-decembre-suites');
+let ecritures0121;
 function ecrituresAdmises(table, cle, col, texte) {
-  const [tel, reecrit] = ECRITURES_0121(table, cle, col, texte);
+  const [tel, reecrit] = (ecritures0121 ??= ecrituresReecrites('0121-maj-decembre-suites'))(table, cle, col, texte);
   return historiqueSite(db).touchee(table, cle, col) ? [tel, reecrit] : [reecrit];
 }
 
-test('0119 : schéma 119, aucun mot-clé créé, une garde par instruction qui modifie ou supprime', () => {
+testDeLaMixte('0119 : schéma 119, aucun mot-clé créé, une garde par instruction qui modifie ou supprime', () => {
   assert.ok(db.prepare('PRAGMA user_version').get().user_version >= 119);
   assert.match(SCHEMA, /PRAGMA user_version = 1(1[89]|[2-9]\d);/);
   assert.doesNotMatch(MIGRATION, /INSERT INTO mot_cle\b/, 'aucun mot-clé créé (demande du lot)');
@@ -47,7 +55,7 @@ test('0119 : schéma 119, aucun mot-clé créé, une garde par instruction qui m
   assert.equal(REGISTRE.migration, NOM);
 });
 
-test('R238 (5), R23, R25 : la vue v_personnage_controle n’impose plus l’Archimage au Potentiel Illimité ; elle la lui réserve et ferme le Mage Bleu', () => {
+testDeLaMixte('R238 (5), R23, R25 : la vue v_personnage_controle n’impose plus l’Archimage au Potentiel Illimité ; elle la lui réserve et ferme le Mage Bleu', () => {
   for (const sql of [db.prepare("SELECT sql FROM sqlite_master WHERE type = 'view' AND name = 'v_personnage_controle'").get().sql, SCHEMA]) {
     assert.doesNotMatch(sql, /'classe_imposee'/);
     assert.match(sql, /'classe_reservee'/);
@@ -123,7 +131,7 @@ test('R238 (1) : spécialités, dons, fiches de dons et sources de maîtrise des
   }
 });
 
-test('R238 (2), R42 : Cuirassé V2 — Large supprimé, Appui à Protecteur niveau 20 (même id), Écrasant à Vindicatif niveau 15 ; choix exclusifs', () => {
+testDeLaMixte('R238 (2), R42 : Cuirassé V2 — Large supprimé, Appui à Protecteur niveau 20 (même id), Écrasant à Vindicatif niveau 15 ; choix exclusifs', () => {
   const b = imp();
   const { supprime, deplace, cree } = REGISTRE.cuirasse;
   for (const t of ['capacite', 'page']) assert.equal(b.prepare(`SELECT count(*) AS n FROM ${t} WHERE id = ?`).get(supprime).n, 0, t);
@@ -142,7 +150,7 @@ test('R238 (2), R42 : Cuirassé V2 — Large supprimé, Appui à Protecteur nive
   assert.equal(b.prepare("SELECT armure_depart AS a FROM classe WHERE id = 'classes/cuirasse'").get().a, REGISTRE.cuirasse.armure_depart.apres);
 });
 
-test('R238 (3) : le Parleur en « Classe spéciale », à sa place ; le mot-clé de catégorie de sa page suit', () => {
+testDeLaMixte('R238 (3) : le Parleur en « Classe spéciale », à sa place ; le mot-clé de catégorie de sa page suit', () => {
   const b = imp();
   const p = b.prepare("SELECT categorie_id, ordre FROM classe WHERE id = 'classes/parleur'").get();
   assert.equal(p.categorie_id, REGISTRE.parleur.categorie_id.apres);
@@ -153,7 +161,7 @@ test('R238 (3) : le Parleur en « Classe spéciale », à sa place ; le mot-clé
   assert.ok(!tags.includes(idDuMotCleNomme(MOT_CLE_DE_CATEGORIE['classe-physique-corps-a-corps'])));
 });
 
-test('R238 (4), R127, R148 : l’Archimage choisit sa maîtrise d’arme de contact (7 familles, Bâton de combat compris) ; la source garde son id', () => {
+testDeLaMixte('R238 (4), R127, R148 : l’Archimage choisit sa maîtrise d’arme de contact (7 familles, Bâton de combat compris) ; la source garde son id', () => {
   const b = imp();
   const { source_id: source } = REGISTRE.archimage;
   const rang = Number(source.split(':').at(-1));
@@ -170,7 +178,7 @@ test('R238 (4), R127, R148 : l’Archimage choisit sa maîtrise d’arme de cont
   assert.deepEqual(lu.options.map((o) => o.arme_famille_id).sort(), [...contact].sort());
 });
 
-test('R241 : effets secondaires des matériaux d’armes du registre ; bonus de dégâts gardés ; Titane sans cran ; colonnes relues de l’effet (à l’import)', () => {
+testDeLaMixte('R241 : effets secondaires des matériaux d’armes du registre ; bonus de dégâts gardés ; Titane sans cran ; colonnes relues de l’effet (à l’import)', () => {
   const b = imp();
   for (const m of REGISTRE.materiaux) {
     const l = b.prepare('SELECT * FROM materiau_arme WHERE ressource_id = ?').get(m.ressource_id);
@@ -198,7 +206,7 @@ test('R241 (1), état courant : les colonnes de chaque matériau d’arme sont c
   }
 });
 
-test('R238, R241 (3), R252 : chaque fragment du registre est remplacé (à l’import), et chaque remplacement est gardé dans la migration', () => {
+testDeLaMixte('R238, R241 (3), R252 : chaque fragment du registre est remplacé (à l’import), et chaque remplacement est gardé dans la migration', () => {
   const b = imp();
   const decisions = new Set(REGISTRE.decisions);
   for (const t of REGISTRE.textes) {
@@ -222,7 +230,7 @@ test('R238, R241 (3), R252 : chaque fragment du registre est remplacé (à l’i
   }
 });
 
-test('R10 : les coquilles des onglets de classe de corrections.json (section magie-v10) sont dans la table correction', () => {
+testDeLaMixte('R10 : les coquilles des onglets de classe de corrections.json (section magie-v10) sont dans la table correction', () => {
   const section = CORRECTIONS.dumps['magie-v10'].corrections;
   // le registre de la migration et la section du registre des corrections citent les mêmes coquilles des trois onglets de classe
   const onglets = new Set(['Boxeur', 'Porte-étendard', 'Cuirassé V2']);

@@ -11,7 +11,6 @@
 // L'état courant ne garde que des invariants : les mots-clés verrouillés des deux pages y mènent.
 //   node --test test/db-r231-attaquer-et-se-defendre.test.mjs
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { ancresDuCorps } from '../src/lib/ancres-figees.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
@@ -21,9 +20,17 @@ import { normalize } from '../src/lib/text.mjs';
 import { baseDImport, lotsAvant } from './aide-base-d-import.mjs';
 import { avecLesClesDe, idDuMotCleNomme } from './aide-mots-cles.mjs';
 import { fragmentRetireParLeSite } from './aide-fragments-du-site.mjs';
+import { registreDeMigration } from './aide-registres-sortis.mjs';
+import { testRetireAvecLesMixtes } from './aide-sortie-du-contenu.mjs';
+
+// Les tests qui éprouvent la migration mixte elle-même sortent avec elle (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LES_MIXTES).
+const testDeLaMixte = testRetireAvecLesMixtes(import.meta.url);
 
 const NOM = '0112-r231-attaquer-et-se-defendre';
-const registre = JSON.parse(readFileSync(new URL(`../../data/migrations/${NOM}.json`, import.meta.url), 'utf8'));
+// Le registre sort avec la migration mixte, et les tests qui comparent l'import à ses textes (du texte de règle) avec lui (RETIRES_AVEC_LES_MIXTES) ;
+// les tests des compétences et des caractéristiques n'en lisent que les mots-clés (ids, libellés, couleurs), gardés dans
+// test/fixtures/registres-sortis.json (aide-registres-sortis.mjs).
+const registre = registreDeMigration(NOM);
 const apresLa0112 = () => baseDImport({ garder: lotsAvant('0112') });
 const ATTAQUE = 'guide/attaquer-et-se-defendre';
 const DEFENSE = 'guide/attaque-et-defense';
@@ -103,7 +110,7 @@ test('R231 (4) : chaque caractéristique a son mot-clé, de sa couleur ; sa déf
   }
 });
 
-test('R231 (4) : les mots-clés créés et modifiés — ceux du registre, verrou 0, adresse du registre ; l’ancre que le cahier visait existe dans sa page', () => {
+testDeLaMixte('R231 (4) : les mots-clés créés et modifiés — ceux du registre, verrou 0, adresse du registre ; l’ancre que le cahier visait existe dans sa page', () => {
   const db = apresLa0112();
   const ids = registre.mots_cles_crees.map((m) => m.id);
   assert.equal(new Set(ids).size, ids.length);
@@ -133,7 +140,7 @@ test('R231 (4) : les mots-clés créés et modifiés — ceux du registre, verro
   assert.ok(!registre.textes.some((t) => t.cle.id === 'guide/guide-pour-mj-maverick'));
 });
 
-test('R231 (1) : titres, anciens titres en alias, « Localisation des dégâts » sur la page de l’attaque ; le mot-clé de chaque page suit son titre', () => {
+testDeLaMixte('R231 (1) : titres, anciens titres en alias, « Localisation des dégâts » sur la page de l’attaque ; le mot-clé de chaque page suit son titre', () => {
   const db = apresLa0112();
   for (const id of [ATTAQUE, DEFENSE]) {
     const titre = registre.textes.find((t) => t.table === 'page' && t.cle.id === id && t.col === 'titre');
@@ -149,7 +156,7 @@ test('R231 (1) : titres, anciens titres en alias, « Localisation des dégâts �
   assert.deepEqual(db.prepare('SELECT page_id FROM alias WHERE cle = ?').all(normalize('Localisation des dégâts')).map((r) => r.page_id), [ATTAQUE]);
 });
 
-test('R231 : les renvois des autres pages visent la page qui porte maintenant le texte (état de la migration)', () => {
+testDeLaMixte('R231 : les renvois des autres pages visent la page qui porte maintenant le texte (état de la migration)', () => {
   const db = apresLa0112();
   assert.ok(registre.renvois.length > 0);
   for (const r of registre.renvois) {

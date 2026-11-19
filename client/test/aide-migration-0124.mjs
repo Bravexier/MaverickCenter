@@ -10,9 +10,10 @@
 //   ADRESSE_DE_LA_0124                { id, col, avant, apres } : l'adresse du mot-clé gardé (id entier)
 //   repriseDeLAdresseParLa0124(m)     { avant, apres } si le mot-clé `m` (du registre de la 0098 : `page`, `url`) est celui dont la 0124 change l'adresse
 //   ouLitLa0124(e)                    l'entrée de registre `e` ({ table, cle, … }) : sur la page retirée, la même entrée sur la page qui l'accueille
-import { readFileSync } from 'node:fs';
+import { registreDeMigration } from './aide-registres-sortis.mjs';
 
-const REGISTRE_0124 = JSON.parse(readFileSync(new URL('../../data/migrations/0124-retrait-accessoires-et-ceinture.json', import.meta.url), 'utf8'));
+// le registre, ou ce qu'en garde test/fixtures/registres-sortis.json une fois la migration mixte sortie (ids, adresses, balises : aucun texte de règle)
+const REGISTRE_0124 = registreDeMigration('0124-retrait-accessoires-et-ceinture');
 
 export const PAGE_RETIREE_PAR_LA_0124 = REGISTRE_0124.page_retiree;
 export const PAGE_QUI_ACCUEILLE_LA_0124 = REGISTRE_0124.page_gardee;

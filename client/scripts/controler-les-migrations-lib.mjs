@@ -243,9 +243,11 @@ const numeroDe = (fichier) => Number(FICHIER_DE_MIGRATION.exec(fichier)?.[1] ?? 
 
 /**
  * Règles « figee » et « numero ». `base` et `arbre` : { fichier → texte } de data/migrations/ à la version de la base (merge-base) et dans l'arbre.
+ * `plancher` : la version du schema.sql de la base (serveur/structure-sur-place.mjs#versionDuSchemaSql) : une migration nouvelle se numérote au-dessus de
+ * la dernière migration de la base ET de ce plancher (les migrations sorties du dépôt, R296, ont laissé leur numéro au schema.sql).
  * @returns {{ violations: object[], nouvelles: string[] }} `nouvelles` : les fichiers (.sql et .json) présents dans l'arbre et absents de la base
  */
-export function reglesDesFichiers(base, arbre) {
+export function reglesDesFichiers(base, arbre, { plancher = 0 } = {}) {
   const violations = [];
   const memeTexte = (a, b) => String(a).replace(/\r\n/g, '\n') === String(b).replace(/\r\n/g, '\n');
   for (const fichier of [...base.keys()].sort()) {
@@ -256,12 +258,12 @@ export function reglesDesFichiers(base, arbre) {
     }
   }
   const nouvelles = [...arbre.keys()].filter((f) => !base.has(f)).sort();
-  const derniere = Math.max(0, ...[...base.keys()].filter((f) => f.endsWith('.sql')).map(numeroDe));
+  const derniere = Math.max(0, plancher ?? 0, ...[...base.keys()].filter((f) => f.endsWith('.sql')).map(numeroDe));
   const parNumero = new Map();
   for (const fichier of nouvelles.filter((f) => f.endsWith('.sql'))) {
     parNumero.set(numeroDe(fichier), [...(parNumero.get(numeroDe(fichier)) ?? []), fichier]);
     if (numeroDe(fichier) <= derniere) {
-      violations.push(refus(fichier, 'numero', `${fichier} : numéro ${String(numeroDe(fichier)).padStart(4, '0')} déjà pris à la base (la dernière migration fusionnée est la ${String(derniere).padStart(4, '0')}) : la renuméroter après la dernière.`));
+      violations.push(refus(fichier, 'numero', `${fichier} : numéro ${String(numeroDe(fichier)).padStart(4, '0')} déjà pris à la base (la dernière migration fusionnée, ou le schema.sql de la base, est à la version ${String(derniere).padStart(4, '0')}) : la renuméroter après.`));
     }
   }
   for (const [numero, fichiers] of parNumero) {

@@ -11,6 +11,10 @@ import { test } from 'node:test';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
 import { rejouerLaMigration } from './aide-migration-rejouee.mjs';
+import { testRetireAvecLesMixtes } from './aide-sortie-du-contenu.mjs';
+
+// Les tests qui éprouvent la migration mixte elle-même sortent avec elle (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LES_MIXTES).
+const testDeLaMixte = testRetireAvecLesMixtes(import.meta.url);
 
 const MIGRATION = '0086-r172-sort-prepare-en-mode-hyper.sql';
 const HYPER = 'personnage_sort_prepare_hyper_avec_prepare';
@@ -63,10 +67,14 @@ test('R172 : personnage_sort a prepare_hyper et prepare_cent (0/1, 0 par défaut
   assert.ok(db.prepare('PRAGMA user_version').get().user_version >= 86, 'schéma d’au moins la version de la migration 0086');
   // section 13 : data/rows garde la table des fiches vide
   assert.equal(db.prepare('SELECT count(*) AS n FROM personnage_sort').get().n, 0);
-  for (const [nom, sql] of [['data/schema.sql', lire('data/schema.sql')], ['migration 0086', lire(`data/migrations/${MIGRATION}`)],
-    ['base construite', sqlDeLaTable(db)]]) {
+  for (const [nom, sql] of [['data/schema.sql', lire('data/schema.sql')], ['base construite', sqlDeLaTable(db)]]) {
     for (const clause of CLAUSES) assert.ok(sql.includes(clause), `${nom} : ${clause}`);
   }
+});
+
+testDeLaMixte('R172 : la migration 0086 porte les mêmes clauses que data/schema.sql pour prepare_hyper et prepare_cent', () => {
+  const sql = lire(`data/migrations/${MIGRATION}`);
+  for (const clause of CLAUSES) assert.ok(sql.includes(clause), `migration 0086 : ${clause}`);
 });
 
 test('R172 (Q82) : « préparé en Mode Hyper » seulement sur le sort préparé, « au 100 % » seulement sur un sort préparé en Mode Hyper', (t) => {
@@ -99,7 +107,7 @@ test('R172 (Q82) : « préparé en Mode Hyper » seulement sur le sort préparé
   assert.deepEqual(etat(db, a), { prepare: 1, prepare_hyper: 0, prepare_cent: 0 });
 });
 
-test('R172 : la migration 0086 donne au sort préparé d\'une fiche d\'avant prepare_hyper = prepare_cent = 0 et la table de data/schema.sql', (t) => {
+testDeLaMixte('R172 : la migration 0086 donne au sort préparé d’une fiche d’avant prepare_hyper = prepare_cent = 0 et la table de data/schema.sql', (t) => {
   const db = copie(t);
   const attendu = sqlDeLaTable(db);
   const [a, b] = deuxSorts(db);

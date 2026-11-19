@@ -3,28 +3,73 @@
 // à la version d'avant `NUMERO` (sans `migration_recue` ni rien de ce que les migrations livrées depuis ont ajouté)
 // et REMPLIE — fiches, journal de l'édition et historique —, et l'état d'une base (empreinte de chaque table, structure, version) pour prouver qu'un refus
 // ne laisse rien. Module sans test propre (n'est pas un *.test.mjs).
-import { copyFileSync, readdirSync, readFileSync } from 'node:fs';
+// La livraison des tests (`LIVRAISON` : dossier des migrations et schema.sql) est celle du dépôt tant que les migrations mixtes y sont ; sorties
+// (mixtesSorties()), le schema.sql est le plancher et la livraison d'essai remet une vraie migration au-dessus (livraisonDesTests).
+import { copyFileSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { empreinteDeLaTable } from '../serveur/empreintes.mjs';
+import { versionDuSchemaSql } from '../serveur/structure-sur-place.mjs';
 import { trouverRacine } from '../src/lib/donnees.mjs';
+import { mixtesSorties } from '../src/lib/sortie-du-contenu.mjs';
 import { OMBRES_DE_RECHERCHE } from '../src/lib/tables-de-la-base.mjs';
 import { remplirUneBase } from '../scripts/base-remplie-lib.mjs';
 import { baseDeDepart } from './aide-base-de-depart.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 export const RACINE = trouverRacine();
-const MIGRATIONS = join(RACINE, 'data', 'migrations');
-/** Les migrations livrées, numérotées : [{ numero, sql }] sans leurs commentaires, dans l'ordre. */
-const migrationsLivrees = () => readdirSync(MIGRATIONS).filter((f) => /^\d{4}-.*\.sql$/.test(f)).sort()
-  .map((f) => ({ numero: Number(f.slice(0, 4)), sql: readFileSync(join(MIGRATIONS, f), 'utf8').replace(/--[^\n]*/g, '') }));
-/** Le numéro de la migration que les tests appliquent sur place : celle qui crée `migration_recue` (calculé, jamais figé) ; celles qui la suivent s'appliquent avec elle. */
-export const NUMERO = migrationsLivrees().find((m) => /CREATE\s+TABLE\s+(IF\s+NOT\s+EXISTS\s+)?migration_recue\b/i.test(m.sql)).numero;
 const dossier = dossierTemporaire('structure-sur-place');
+const MIGRATION = /^\d{4}-.*\.sql$/;
+const CREE_MIGRATION_RECUE = /CREATE\s+TABLE\s+(IF\s+NOT\s+EXISTS\s+)?migration_recue\b/i;
+const sansCommentaires = (sql) => sql.replace(/--[^\n]*/g, '');
+const avecLaVersion = (schema, version) => schema.replace(/^PRAGMA user_version\s*=\s*\d+;/m, `PRAGMA user_version = ${version};`);
+
+/**
+ * La livraison des tests du changement de structure : { migrations (dossier), schema (fichier) }. Tant que les migrations mixtes sont dans le dépôt
+ * (aujourd'hui) : data/migrations et data/schema.sql eux-mêmes, rien ne change. Sorties (mixtesSorties() : la passe S --avec-mixtes, puis le jour où elles
+ * quittent le dépôt), le schema.sql est le PLANCHER (serveur/structure-sur-place.mjs#versionLivree) : la base qu'il décrit ne reçoit que les migrations
+ * de numéro supérieur, et la migration qui crée `migration_recue` (structure seule, elle reste) est en dessous. La livraison d'essai est alors une copie :
+ * les migrations du dépôt jusqu'au plancher, cette migration reprise telle quelle au numéro plancher + 1, puis celles du dépôt au-dessus du plancher,
+ * chacune décalée d'un numéro ; le schema.sql à la version de la dernière. Les tests appliquent ainsi sur place, à la base d'avant (le plancher, sans
+ * `migration_recue` : annulerLesMigrations), une vraie migration au-dessus du plancher, comme le service appliquera la suivante.
+ */
+function livraisonDesTests() {
+  const depot = { migrations: join(RACINE, 'data', 'migrations'), schema: join(RACINE, 'data', 'schema.sql') };
+  if (!mixtesSorties()) return depot;
+  const schema = readFileSync(depot.schema, 'utf8');
+  const plancher = versionDuSchemaSql(schema);
+  const fichiers = readdirSync(depot.migrations).filter((f) => MIGRATION.test(f)).sort();
+  const lire = (f) => readFileSync(join(depot.migrations, f), 'utf8');
+  const recue = fichiers.find((f) => Number(f.slice(0, 4)) <= plancher && CREE_MIGRATION_RECUE.test(sansCommentaires(lire(f))));
+  if (!recue) throw new Error('aide-structure-sur-place : aucune migration du dépôt sous le plancher ne crée migration_recue');
+  const sortie = join(dossier, 'livraison');
+  mkdirSync(join(sortie, 'migrations'), { recursive: true });
+  const N = (n) => String(n).padStart(4, '0');
+  for (const f of fichiers) {
+    const n = Number(f.slice(0, 4));
+    writeFileSync(join(sortie, 'migrations', n <= plancher ? f : `${N(n + 1)}${f.slice(4)}`), lire(f));
+  }
+  writeFileSync(join(sortie, 'migrations', `${N(plancher + 1)}${recue.slice(4)}`), lire(recue));
+  const derniere = Math.max(plancher + 1, ...fichiers.map((f) => Number(f.slice(0, 4)) + 1).filter((n) => n > plancher + 1));
+  writeFileSync(join(sortie, 'schema.sql'), avecLaVersion(schema, derniere));
+  return { migrations: join(sortie, 'migrations'), schema: join(sortie, 'schema.sql') };
+}
+
+/** La livraison des tests (livraisonDesTests) : `lireLesMigrations(LIVRAISON)`, et le service d'essai lit ces chemins. */
+export const LIVRAISON = Object.freeze(livraisonDesTests());
+
+/** Les migrations livrées, numérotées : [{ numero, sql }] sans leurs commentaires, dans l'ordre. */
+const migrationsLivrees = () => readdirSync(LIVRAISON.migrations).filter((f) => MIGRATION.test(f)).sort()
+  .map((f) => ({ numero: Number(f.slice(0, 4)), sql: sansCommentaires(readFileSync(join(LIVRAISON.migrations, f), 'utf8')) }));
+/**
+ * Le numéro de la migration que les tests appliquent sur place : la dernière qui crée `migration_recue` (calculé, jamais figé : la 0129 du dépôt, ou
+ * sa reprise au-dessus du plancher) ; celles qui la suivent s'appliquent avec elle.
+ */
+export const NUMERO = migrationsLivrees().filter((m) => CREE_MIGRATION_RECUE.test(m.sql)).at(-1).numero;
 let construite = null;
 
-/** Le SQL de data/schema.sql (la structure attendue de la version courante). */
-export const schemaDuDepot = () => readFileSync(join(RACINE, 'data', 'schema.sql'), 'utf8');
+/** Le SQL du schema.sql de la livraison des tests (data/schema.sql : la structure attendue de la version courante ; au-dessus du plancher s'il le faut). */
+export const schemaDuDepot = () => readFileSync(LIVRAISON.schema, 'utf8');
 
 /**
  * La base de règles construite depuis data/rows, ou tirée du contenu fourni (MAVERICK_CONTENU) — version courante, sans dérivation —, une fois par
@@ -36,6 +81,8 @@ export function baseDesRegles() {
   const db = new DatabaseSync(construite);
   try {
     viderLesAjoutsDesMigrations(db);
+    // les mixtes sorties : la base courante a la structure de la livraison d'essai (la reprise de la migration de `migration_recue` ne change que la version)
+    if (mixtesSorties()) db.exec(`PRAGMA user_version = ${versionDuSchemaSql(schemaDuDepot())}`);
   } finally {
     db.close();
   }

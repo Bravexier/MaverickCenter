@@ -29,7 +29,9 @@ const lireRegistre = (nom) => JSON.parse(readFileSync(new URL(`../../data/migrat
 const testDuRegistre = testRetireAvecLeContenu(import.meta.url);
 let registre0114;
 const registre = () => (registre0114 ??= lireRegistre('0114-mots-cles-categories-assignees'));
-const REGISTRE_0113 = lireRegistre('0113-mots-cles-id-entier');
+// lu à la demande par les seuls tests du registre de la 0114 (retirés avec le contenu) : le registre de la 0113 sort avec les migrations mixtes
+let lu0113;
+const registre0113 = () => (lu0113 ??= lireRegistre('0113-mots-cles-id-entier'));
 const db = ouvrirBase({ sansExemples: false });
 
 /** Lance `script` (Python : `maverick as T`, `entree` = la valeur JSON donnée) et rend son JSON. */
@@ -58,7 +60,7 @@ except T.HomonymesRefuses as e:
 }
 
 testDuRegistre('registre : une ligne par mot-clé, son id et son ancien id du registre 0113, ses catégories par id croissant, l’équipe qui les a proposées', () => {
-  const ancien = new Map(REGISTRE_0113.motsCles.map((e) => [e.id, e.ancienId]));
+  const ancien = new Map(registre0113().motsCles.map((e) => [e.id, e.ancienId]));
   const a = registre().assignations;
   assert.ok(a.length > 0);
   assert.equal(new Set(a.map((e) => e.id)).size, a.length, 'un mot-clé une seule fois');
@@ -71,7 +73,7 @@ testDuRegistre('registre : une ligne par mot-clé, son id et son ancien id du re
   }
   // R233 (5) : les deux mots-clés fondus dans Instant Cast par la migration 0115 ne reçoivent rien ; les classes raciales gardent la seule catégorie de la 0113
   const fondus = new Set(lireRegistre('0115-mots-cles-synonymes').fusions.map((f) => f.id));
-  const raciales = new Set(REGISTRE_0113.motsCles.filter((e) => e.libelleAvant).map((e) => e.id));
+  const raciales = new Set(registre0113().motsCles.filter((e) => e.libelleAvant).map((e) => e.id));
   assert.deepEqual(a.filter((e) => fondus.has(e.id) || raciales.has(e.id)), []);
 });
 
@@ -86,7 +88,7 @@ testDuRegistre('import : les catégories des mots-clés sont celles du registre,
     // les mots-clés que la 0122 et la 0124 fondent dans un autre (« La montée de niveau », « Fiche de personnage : Accessoires et Ceinture » ; leurs
     // registres) ont perdu leurs catégories avec eux
     ...registre().assignations.filter((e) => !fonduParLa0122(e.id) && !fonduParLa0124(e.id)).flatMap((e) => e.categories.map((c) => `${e.id}:${c.id}`)),
-    ...REGISTRE_0113.motsCles.filter((e) => e.libelleAvant).map((e) => `${e.id}:${classe}`),
+    ...registre0113().motsCles.filter((e) => e.libelleAvant).map((e) => `${e.id}:${classe}`),
   ].sort();
   // les mots-clés d'une migration postérieure (0120 : Fongoïde et Gémidien, épinglés par test/db-0120-races-fongoide-gemidien.test.mjs) mis à part ;
   // de la 0121 (R258 (7), R268), seule la catégorie que son registre `mots_cles` leur donne (épinglée par test/db-0121-maj-decembre-suites.test.mjs)
@@ -110,9 +112,9 @@ testDuRegistre('import : les clés que la migration a changées sont celles de l
     assert.equal(quittees.get(avant), id, `${avant} : clé quittée`);
   }
   // les 13 races homonymes d'une classe raciale (registre 0113) sont celles dont la clé change, et seulement elles
-  const libelles = new Map(REGISTRE_0113.motsCles.map((e) => [e.id, e.libelle]));
-  const homonymesDeClasse = REGISTRE_0113.motsCles.filter((e) => e.libelleAvant).map((e) => e.libelle);
-  const races = REGISTRE_0113.motsCles.filter((e) => !e.libelleAvant && homonymesDeClasse.includes(e.libelle)).map((e) => e.id).sort((a, b) => a - b);
+  const libelles = new Map(registre0113().motsCles.map((e) => [e.id, e.libelle]));
+  const homonymesDeClasse = registre0113().motsCles.filter((e) => e.libelleAvant).map((e) => e.libelle);
+  const races = registre0113().motsCles.filter((e) => !e.libelleAvant && homonymesDeClasse.includes(e.libelle)).map((e) => e.id).sort((a, b) => a - b);
   assert.equal(races.length, 13);
   assert.deepEqual(registre().cles.map((c) => c.id).sort((a, b) => a - b), races);
   for (const { id } of registre().cles) assert.ok(registre().assignations.some((e) => e.id === id), `${libelles.get(id)} : catégories assignées`);

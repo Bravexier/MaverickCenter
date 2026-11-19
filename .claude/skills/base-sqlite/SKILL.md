@@ -14,7 +14,8 @@ user-invocable: false
   modifications du site.
 - `data/rows/` : la copie du contenu du site de dev, un fichier par table, une instruction `INSERT` par ligne, triées.
 - `data/pages-d-exemple.sql` : fabriqué (`client/scripts/db-pages-d-exemple.mjs`), jamais à la main. Les pages d'exemple (`statut = 'example'`) et leurs dépendants : des fixtures, que le site de dev n'a pas et que les tests attendent (skill `zone-service-extrait`). Hors de `data/rows/`, il n'est pas visé par `controle-du-contenu-ecrit`.
-- `data/migrations/NNNN-<nom>.sql` : tout changement de structure (skill `ecrire-une-migration`) ; un registre `.json` accompagne les anciennes migrations de données.
+- `data/migrations/NNNN-<nom>.sql` : tout changement de structure (skill `ecrire-une-migration`) ; un registre `.json` accompagne les anciennes migrations de données. Le code qui tourne (service, build) n'en lit aucun.
+- `data/references/` : les fichiers de référence que le service et le build lisent à leur place, sans texte de règle, figés comme leur migration (`client/src/lib/references-des-migrations.mjs#REFERENCES`, écrits et vérifiés par `scripts/references-des-migrations.mjs --ecrire|--verifier`) ; livrés au service (`serveur/livraison.mjs`) et au kit (skill `zone-hebergement-atelier`).
 - `client/scripts/db-*.mjs` (build, derive, check, doc, init, export-pages, appliquer-edition, reference), `tools/db/` (`maverick.py`, `migrer.py`, `pages_md.py`, `exporter.py`, `races_onglet.py`, `homonymes.py`).
 - Onglet DB : `client/src/lib/donnees.mjs`, `client/src/pages/donnees/` (`index.astro`, `[table].astro`, `maverick.db.ts`).
 

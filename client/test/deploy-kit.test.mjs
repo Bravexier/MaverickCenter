@@ -60,6 +60,7 @@ function fauxDepot(extra = {}) {
     'data/derive.sql': '-- derive',
     'data/migrations/0001-a.sql': '-- m',
     'data/migrations/0001-a.json': '{}',
+    'data/references/a.json': '{}',
     'data/rows/page.sql': 'INSERT INTO page VALUES (1);',
     'sources/sources.json': '{}',
     'sources/copies-drive.json': '{}',
@@ -95,7 +96,7 @@ test('le kit porte exactement ce qu’il faut : le code, le schéma et ses regis
   const { kit } = kitDe(fauxDepot());
   const fichiers = lister(kit);
   for (const attendu of ['.nvmrc', 'client/package.json', 'client/astro.config.mjs', 'client/scripts/fabriquer-depuis-contenu.mjs', 'client/src/pages/index.astro',
-    'client/node_modules/astro/bin/astro.mjs', 'data/schema.sql', 'data/derive.sql', 'data/migrations/0001-a.sql', 'data/migrations/0001-a.json',
+    'client/node_modules/astro/bin/astro.mjs', 'data/schema.sql', 'data/derive.sql', 'data/migrations/0001-a.sql', 'data/migrations/0001-a.json', 'data/references/a.json',
     'sources/sources.json', 'sources/copies-drive.json', 'sources/tipeee/bienvenue.json']) assert.ok(fichiers.includes(attendu), attendu);
   for (const refuse of ['data/rows', 'sources/raw', 'client/dist', 'client/.astro', 'client/src/content', 'client/test', 'client/var', 'docs']) {
     assert.ok(!fichiers.some((f) => f === refuse || f.startsWith(`${refuse}/`)), `${refuse} n’est pas dans le kit`);
@@ -180,7 +181,7 @@ test('le kit refuse tout contenu : data/rows, sources/raw, un fichier de base, l
   const refus = (cree, motif) => {
     const d = join(racine, `refus-${(n += 1)}`);
     ecrire(d, { '.nvmrc': '22', 'client/package.json': '{}', 'client/astro.config.mjs': '', 'client/scripts/fabriquer-depuis-contenu.mjs': '', 'client/scripts/poser-un-site.mjs': '', 'client/node_modules/astro/bin/astro.mjs': '',
-      'data/schema.sql': '', 'data/derive.sql': '', 'data/migrations/0001.sql': '', 'sources/sources.json': '', 'sources/copies-drive.json': '', 'sources/tipeee/bienvenue.json': '' });
+      'data/schema.sql': '', 'data/derive.sql': '', 'data/migrations/0001.sql': '', 'data/references/a.json': '', 'sources/sources.json': '', 'sources/copies-drive.json': '', 'sources/tipeee/bienvenue.json': '' });
     assert.deepEqual(controlerLeKit(d), [], 'le dossier de départ est bon');
     cree(d);
     const problemes = controlerLeKit(d);

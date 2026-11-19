@@ -1,0 +1,8 @@
+{
+ "$commentaire": "Tiré du registre de la migration 0121 (data/migrations/0121-maj-decembre-suites.json, evenements) : les seuls ids des événements que la migration ajoute à la chronologie, que tools/chronologie/chronologie.mjs --verifier met à part du registre de l’import. Figé : la migration est fusionnée et ne change plus ; son registre sort du dépôt avec les migrations mixtes (R296). Aucun texte de règle. Écrit par client/scripts/references-des-migrations.mjs ; test/references-des-migrations-mixtes.test.mjs le compare au registre tant qu’il est dans le dépôt.",
+ "migration": "0121-maj-decembre-suites",
+ "evenements": [
+  "gemidiens",
+  "fongoides"
+ ]
+}

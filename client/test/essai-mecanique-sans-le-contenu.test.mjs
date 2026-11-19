@@ -14,7 +14,7 @@ import {
 } from '../scripts/essai-mecanique-tests.mjs';
 import { cheminsQuiSortent, listerCeQuiSort } from '../scripts/inventaire-sortie-du-contenu-lib.mjs';
 import { dossierDesExports } from '../../tools/sources/dossier-des-exports.mjs';
-import { contenuSorti, VARIABLE_CONTENU_SORTI } from '../src/lib/sortie-du-contenu.mjs';
+import { contenuSorti, mixtesSorties, VARIABLE_CONTENU_SORTI, VARIABLE_MIXTES_SORTIES } from '../src/lib/sortie-du-contenu.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const RACINE_DU_DEPOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -127,13 +127,23 @@ describe('passe S : allumée (contenu sorti) et exports archivés', () => {
     assert.ok(env.MAVERICK_CONTENU, 'le contenu de la passe reste posé');
     assert.equal(env.NODE_TEST_CONTEXT, undefined, 'la passe n\'hérite pas du contexte de node --test');
     assert.equal(env.PATH, 'x');
+    assert.equal(mixtesSorties(env), false, 'sans --avec-mixtes, les migrations mixtes restent');
+  });
+
+  it('S avec --avec-mixtes pose aussi MAVERICK_MIXTES_SORTIES=1 (partout où S pose MAVERICK_CONTENU_SORTI) ; mixtesSorties() la suit', () => {
+    const env = environnementDeLaPasse(PASSE_SANS_LE_CONTENU, { avecMixtes: true, base: { PATH: 'x' } });
+    assert.equal(env[VARIABLE_CONTENU_SORTI], '1');
+    assert.equal(env[VARIABLE_MIXTES_SORTIES], '1');
+    assert.equal(mixtesSorties(env), true);
+    assert.equal(mixtesSorties(environnementDeLaPasse(PASSE_SANS_LE_CONTENU, { avecMixtes: false, base: { [VARIABLE_MIXTES_SORTIES]: '1' } })), false, 'reçue sans --avec-mixtes : retirée');
   });
 
   it('les autres passes ne sont jamais allumées, même si l\'environnement reçu l\'est ; S sans archive ne pose pas MAVERICK_SOURCES_RAW', () => {
-    const base = { [VARIABLE_CONTENU_SORTI]: '1', MAVERICK_SOURCES_RAW: '/ailleurs' };
+    const base = { [VARIABLE_CONTENU_SORTI]: '1', [VARIABLE_MIXTES_SORTIES]: '1', MAVERICK_SOURCES_RAW: '/ailleurs' };
     for (const passe of ['A', 'B', 'D', ...PASSES_DU_SITE]) {
-      const env = environnementDeLaPasse(passe, { base });
+      const env = environnementDeLaPasse(passe, { base, avecMixtes: true });
       assert.equal(contenuSorti(env), false, passe);
+      assert.equal(mixtesSorties(env), false, passe);
       assert.equal(env.MAVERICK_SOURCES_RAW, undefined, passe);
     }
     assert.equal(environnementDeLaPasse(PASSE_SANS_LE_CONTENU, { base }).MAVERICK_SOURCES_RAW, undefined);

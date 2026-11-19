@@ -15,6 +15,11 @@ import { texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
 import { chargerPanneau, chargerPanneaux, ordonnerBlocs, ordresApresDeplacement, ordresApresInsertion } from '../src/lib/panneaux-regles-db.mjs';
 import { ancreDuPanneau, empreinteDuTexte, htmlDesBlocs, htmlDuBloc } from '../src/lib/panneaux-regles-rendu.mjs';
 import { ecrituresReecrites } from './aide-textes-reecrits.mjs';
+import { registreDeMigration } from './aide-registres-sortis.mjs';
+import { testRetireAvecLesMixtes } from './aide-sortie-du-contenu.mjs';
+
+// Les tests qui éprouvent la migration mixte elle-même sortent avec elle (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LES_MIXTES).
+const testDeLaMixte = testRetireAvecLesMixtes(import.meta.url);
 
 const db = ouvrirBase({ sansExemples: false });
 const historique = historiqueSite(db);
@@ -23,8 +28,16 @@ const historique = historiqueSite(db);
 // de ressources/baton-magique, la 0109 dans le bloc 2 du panneau Bâtons magiques ; la 0108 des prix d'armure. La valeur d'import d'une cellule que le
 // site a modifiée est celle d'avant la migration, celle d'une cellule intacte celle d'après : chaque côté se lit sous l'une ou l'autre écriture, sans
 // figer le texte.
-/** Les écritures d'une cellule : telle quelle, et réécrite par les registres de R207 (test/aide-textes-reecrits.mjs). */
-const ecrituresR203 = ecrituresReecrites('0105-r207-armures-boucliers-et-fabrication', '0108-r207-prix-des-armures', '0109-r207-panneau-des-batons');
+const R207 = ['0105-r207-armures-boucliers-et-fabrication', '0108-r207-prix-des-armures', '0109-r207-panneau-des-batons'];
+/** Les écritures d'une cellule : telle quelle, et réécrite par les registres de R207 (test/aide-textes-reecrits.mjs ; lus à la demande). */
+let ecritures;
+const ecrituresR203 = (...a) => (ecritures ??= ecrituresReecrites(...R207))(...a);
+// Les cellules que ces migrations réécrivent (table, clé, colonne : ce que test/fixtures/registres-sortis.json garde de leurs registres une fois ces
+// migrations mixtes sorties ; leurs fragments, du texte de règle, sortent avec elles, et le test qui les admet avec eux : RETIRES_AVEC_LES_MIXTES).
+const CELLULES_R207 = new Set(R207.flatMap((nom) => registreDeMigration(nom).textes.map((t) => `${t.table}|${JSON.stringify(t.cle)}|${t.col}`)));
+/** Le bloc `b` ou le corps de sa page `page` est une cellule que les migrations de R207 réécrivent. */
+const toucheeParR207 = (b, page) => CELLULES_R207.has(`page|${JSON.stringify({ id: page })}|corps_md`)
+  || CELLULES_R207.has(`panneau_regles_bloc|${JSON.stringify({ panneau_id: b.panneau_id, rang: b.rang })}|texte`);
 
 test('un panneau par page du wiki servie par les pages de l’équipement : (id, page_id) de panneau_regles = (ancre, page) de PAGES_SERVIES_PAR_L_EQUIPEMENT', () => {
   const lignes = db.prepare('SELECT id, page_id FROM panneau_regles ORDER BY id').all().map((l) => [l.id, l.page_id]);
@@ -74,12 +87,30 @@ test('l’import : chaque bloc se lit mot pour mot dans le corps de sa page tel 
   for (const b of blocs) {
     if (/^\{\{[a-z0-9-]+:?\}\}$/.test(b.texte)) continue; // une tuile de balise seule ({{mot:}}, ou {{mot}} si le dev l'a réécrite)
     const page = panneaux.find((p) => p.id === b.panneau_id).page_id;
+    if (toucheeParR207(b, page)) continue; // un fragment réécrit par une migration de R207 (« Force et Volonté », R207 (3)) : test suivant
+    // une balise du glossaire posée après la copie (« 2 crans de {{solidite|solidité}} », migration 0058) se lit par son texte écrit
+    const corps = [historique.valeurDImport('page', { id: page }, 'corps_md')];
+    const bloc = [texteSansBalises(b.texte)];
+    assert.ok(corps.some((c) => bloc.some((t) => c.includes(t))), `${b.panneau_id} ${b.rang} : copié de ${page}`);
+  }
+});
+
+testDeLaMixte('l’import, blocs et pages que réécrivent les migrations de R207 (0105, 0108, 0109) : chaque bloc se lit dans le corps de sa page, l’un et l’autre sous l’écriture d’avant ou d’après (registres)', () => {
+  const panneaux = historique.lignesDImport('panneau_regles');
+  const blocs = historique.lignesDImport('panneau_regles_bloc');
+  let vus = 0;
+  for (const b of blocs) {
+    if (/^\{\{[a-z0-9-]+:?\}\}$/.test(b.texte)) continue; // une tuile de balise seule ({{mot:}}, ou {{mot}} si le dev l'a réécrite)
+    const page = panneaux.find((p) => p.id === b.panneau_id).page_id;
+    if (!toucheeParR207(b, page)) continue; // test précédent
     // une balise du glossaire posée après la copie (« 2 crans de {{solidite|solidité}} », migration 0058) se lit par son texte écrit ; un fragment
     // réécrit par une migration de R207 (« Force et Volonté », R207 (3)) s'admet sous l'une ou l'autre écriture, de chaque côté
     const corps = ecrituresR203('page', { id: page }, 'corps_md', historique.valeurDImport('page', { id: page }, 'corps_md'));
     const bloc = ecrituresR203('panneau_regles_bloc', { panneau_id: b.panneau_id, rang: b.rang }, 'texte', b.texte).map((t) => texteSansBalises(t));
     assert.ok(corps.some((c) => bloc.some((t) => c.includes(t))), `${b.panneau_id} ${b.rang} : copié de ${page}`);
+    vus += 1;
   }
+  assert.ok(vus > 0, 'des blocs que R207 réécrit');
 });
 
 test('ordresApresInsertion : après un bloc, les suivants repoussés seulement s’il le faut ; à la fin ; un bloc inconnu', () => {

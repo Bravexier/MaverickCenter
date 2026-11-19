@@ -27,6 +27,7 @@ import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { registreDeMigration } from './aide-registres-sortis.mjs';
 
 const script = fileURLToPath(new URL('../../tools/sheets/classes.py', import.meta.url));
 const wiki = fileURLToPath(new URL('../src/content/wiki', import.meta.url));
@@ -67,7 +68,8 @@ const historique = historiqueSite(ouvrirBase({ sansExemples: false }));
 const remarques = new Map(ouvrirBase({ sansExemples: false }).prepare('SELECT id, remarque FROM capacite').all().map((k) => [k.id.replace(/^capacites\//, ''), k.remarque]));
 const noteRendue = (remarque) => (remarque ? corpsDeDon({ effet: null, remarque }).replace(/\n$/, '') : null);
 const remarqueDImport = (slug) => historique.valeurDImport('capacite', { id: `capacites/${slug}` }, 'remarque');
-const REGISTRE_0119 = JSON.parse(readFileSync(fileURLToPath(new URL('../../data/migrations/0119-classes-materiaux-d12.json', import.meta.url)), 'utf8'));
+// (registre de la 0119, ou ce qu'en garde test/fixtures/registres-sortis.json une fois la migration mixte sortie : ids seulement)
+const REGISTRE_0119 = registreDeMigration('0119-classes-materiaux-d12');
 const supprimee = (slug) => historique.supprimee('page', { id: `capacites/${slug}` });
 const donneesDImport = (slug) => JSON.parse(historique.valeurDImport('page', { id: `capacites/${slug}` }, 'donnees') ?? 'null');
 // les dons créés par la migration 0119 (Boxeur, Porte-étendard, Écrasant) ne viennent pas du classeur V7 : une suppression sur le site ne les compte pas ici

@@ -3,24 +3,24 @@
 // registre de la migration permise, la page de chaque adresse (celle du registre).
 //   node --test test/adresses-db.test.mjs
 import assert from 'node:assert/strict';
-import { readdirSync, readFileSync } from 'node:fs';
+import { readdirSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { ADRESSE_DU_GLOSSAIRE, ADRESSES_FIXES, adresseDeLaPage, adressesDuSite, indexDesAdresses, pageDeLAdresse } from '../src/lib/adresses-db.mjs';
-import { cheminDeLAdresse, fauteDeLUrl, REGISTRE_DES_LIENS } from '../src/lib/mots-cles-liens.mjs';
+import { cheminDeLAdresse, fauteDeLUrl } from '../src/lib/mots-cles-liens.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { baseDImport, lotsAvant } from './aide-base-d-import.mjs';
 import { TYPES } from '../src/lib/types.mjs';
 import { fonduParLa0122, retireeParLa0122 } from './aide-migration-0122.mjs';
 import { fonduParLa0124, repriseDeLAdresseParLa0124, retireeParLa0124 } from './aide-migration-0124.mjs';
+import { registreDeMigration } from './aide-registres-sortis.mjs';
 
-const RACINE = fileURLToPath(new URL('../../', import.meta.url));
 const PAGES = fileURLToPath(new URL('../src/pages/', import.meta.url));
-const REGISTRE = JSON.parse(readFileSync(join(RACINE, REGISTRE_DES_LIENS), 'utf8'));
+const REGISTRE = registreDeMigration('0098-liens-en-mots-cles');
 /** Les pages retirées par une migration postérieure à la 0098 et l'adresse que cette migration donne au mot-clé qui y menait (lues dans son registre). */
 const REPRISES_APRES_0098 = ['0123-fusion-pages-alignement'].flatMap((nom) => {
-  const r = JSON.parse(readFileSync(join(RACINE, 'data', 'migrations', `${nom}.json`), 'utf8'));
+  const r = registreDeMigration(nom); // ou ce qu'en garde test/fixtures/registres-sortis.json (ids, adresses), une fois la migration mixte sortie
   return r.pages_retirees.flatMap((p) => r.mots_cles_modifies.filter((u) => u.col === 'url' && cheminDeLAdresse(u.avant) === `/regles/${p.id.slice('guide/'.length)}/`)
     .map((u) => ({ id: p.id, contenu_dans: p.contenu_dans, avant: u.avant, apres: u.apres })));
 });

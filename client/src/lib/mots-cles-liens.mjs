@@ -15,12 +15,6 @@
 // Sans aucune dépendance (ni la palette, ni les balises) : importable par un script de page (skill ui-couleurs : un script de page n'importe jamais
 // lib/palette-css.mjs), par le service, les scripts db-* et les tests.
 
-/**
- * Le registre de la migration 0098 (relatif à la racine du dépôt) : la table de conversion des liens d'un lot d'avant la migration
- * (serveur/edition.mjs#ancienneEcritureDesLiens, lib/liens-en-mots-cles.mjs#tableDeConversion), livré avec le service (serveur/livraison.mjs#FICHIERS_JOINTS).
- */
-export const REGISTRE_DES_LIENS = 'data/migrations/0098-liens-en-mots-cles.json';
-
 /** Le préfixe de la classe d'un mot-clé à couleur écrite (« #rrggbb ») : « couleur-mot-cle-<id> ». */
 export const PREFIXE_DE_CLASSE = 'couleur-mot-cle-';
 

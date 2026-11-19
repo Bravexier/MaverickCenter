@@ -10,14 +10,21 @@ import { ouvrirBase, trouverRacine } from '../src/lib/donnees.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { TABLES_DES_NOTES } from '../src/lib/notes-de-version.mjs';
+import { mixtesSorties } from '../src/lib/sortie-du-contenu.mjs';
 import { texteDImport } from './aide-base-d-import.mjs';
 import { pagesReecritesParLa0117, sortsReecritsParLa0117 } from './aide-migration-0117.mjs';
+import { testRetireAvecLesMixtes } from './aide-sortie-du-contenu.mjs';
+
+// Les tests qui éprouvent la migration mixte elle-même sortent avec elle (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LES_MIXTES).
+const testDeLaMixte = testRetireAvecLesMixtes(import.meta.url);
 
 const racine = trouverRacine();
 const dossier = join(racine, 'data', 'migrations');
-const registre = JSON.parse(readFileSync(join(dossier, '0006-orthographe-noms.json'), 'utf8'));
-const sql = readFileSync(join(dossier, '0006-orthographe-noms.sql'), 'utf8');
-const { corrections, cles } = registre;
+// Le registre et le SQL de la 0006, le registre et le SQL de la 0117 sortent avec ces migrations mixtes, et les tests qui les lisent avec eux
+// (RETIRES_AVEC_LES_MIXTES) : sortis, ils ne sont pas lus (null).
+const registre = mixtesSorties() ? null : JSON.parse(readFileSync(join(dossier, '0006-orthographe-noms.json'), 'utf8'));
+const sql = mixtesSorties() ? null : readFileSync(join(dossier, '0006-orthographe-noms.sql'), 'utf8');
+const { corrections, cles } = registre ?? {};
 const db = ouvrirBase({ sansExemples: false });
 // le site de dev est la source de ce qu'il modifie : une ligne qu'il a supprimée (D11 : un don, une spécialité) n'a plus de nom à vérifier, une cellule
 // qu'il a réécrite (un nom changé, le corps d'une page refait depuis ses tables) dit ce qu'il a décidé : leurs entrées du registre sont sautées
@@ -27,11 +34,11 @@ const intacte = (c) => presente(c) && !historique.modifiee(c.table, c.cle, c.col
 // Décision R237 (4) (MAJ-X5, noms presque identiques : « le même sort, qui garde son identifiant, reste sur les fiches et prend le nom du classeur »),
 // migration 0117 : huit sorts prennent le nom du classeur de Décembre, parfois la graphie que 0006 avait corrigée (« Verrouille Visible »). Lus dans le
 // registre de la 0117 (`sorts.renommes_r237_4` : id, avant, après), sans liste écrite à la main.
-const RENOMMES_R237_4 = JSON.parse(readFileSync(join(dossier, '0117-magies-v10-specialisations.json'), 'utf8')).sorts.renommes_r237_4;
+const RENOMMES_R237_4 = mixtesSorties() ? null : JSON.parse(readFileSync(join(dossier, '0117-magies-v10-specialisations.json'), 'utf8')).sorts.renommes_r237_4;
 // R237 (1) et (2) (« le classeur fait foi » ; un sort présent des deux côtés « prend les valeurs du classeur »), migration 0117 : une cellule qu'elle
 // réécrit (colonne d'un sort, corps entier d'une page) dit ce que le classeur de Décembre écrit (« Résurrection noire ») ; ses coquilles relèvent de R10
 // (registre de la 0117, `coquilles_r10`)
-const pagesDeLa0117 = pagesReecritesParLa0117();
+const pagesDeLa0117 = mixtesSorties() ? null : pagesReecritesParLa0117();
 const reecriteParLa0117 = (c) => (c.table === 'sort' && sortsReecritsParLa0117([c.col]).has(c.cle.id)) || (c.table === 'page' && c.col === 'corps_md' && pagesDeLa0117.has(c.cle.id));
 /** Le renommage R237 (4) qui défait un renommage de 0006 : le nom que 0006 a écrit est celui que la 0117 remplace (casse comprise : « vague de cadavres »). */
 const renommeR237 = (c) => RENOMMES_R237_4.find((r) => r.avant.toLowerCase() === c.apres.toLowerCase());
@@ -51,7 +58,7 @@ function ligne(table, cle) {
   return db.prepare(`SELECT * FROM "${table}" WHERE ${Object.keys(cle).map((k) => `"${k}" = ?`).join(' AND ')}`).get(...Object.values(cle));
 }
 
-test('registre : renommages décrits, de nature connue, hors des tables de trace, des colonnes de clés et de l’écriture de la source', () => {
+testDeLaMixte('registre : renommages décrits, de nature connue, hors des tables de trace, des colonnes de clés et de l’écriture de la source', () => {
   assert.equal(registre.migration, '0006-orthographe-noms');
   assert.ok(corrections.length > 400, `entrées du registre : ${corrections.length}`);
   for (const c of corrections) {
@@ -67,7 +74,7 @@ test('registre : renommages décrits, de nature connue, hors des tables de trace
   }
 });
 
-test('base : chaque renommage est fait (le nom corrigé est dans sa cellule)', () => {
+testDeLaMixte('base : chaque renommage est fait (le nom corrigé est dans sa cellule)', () => {
   for (const c of corrections.filter(intacte)) {
     if (reecriteParLa0117(c)) continue;
     const l = ligne(c.table, c.cle);
@@ -78,7 +85,7 @@ test('base : chaque renommage est fait (le nom corrigé est dans sa cellule)', (
   }
 });
 
-test('clés de nom : recalculées (normalize du nom corrigé), identifiants inchangés', () => {
+testDeLaMixte('clés de nom : recalculées (normalize du nom corrigé), identifiants inchangés', () => {
   assert.ok(cles.length > 100, `clés recalculées : ${cles.length}`);
   for (const c of cles.filter(presente)) {
     const l = ligne(c.table, c.cle);
@@ -108,7 +115,7 @@ test('schéma : plus aucune table ne dérive son id du nom (identifiants gelés)
   assert.deepEqual(db.prepare("SELECT etat, count(*) AS n FROM lien GROUP BY etat").all().map((r) => r.etat), ['resolu']);
 });
 
-test('migration SQL : une ligne de commentaire par renommage, les sept tables reconstruites, aucune autre table créée ni supprimée', () => {
+testDeLaMixte('migration SQL : une ligne de commentaire par renommage, les sept tables reconstruites, aucune autre table créée ni supprimée', () => {
   const lignes = sql.split('\n').filter((l) => /^-- [a-z_]+ .+ \[[a-zé]+\] ×\d+ : « /.test(l));
   assert.equal(lignes.length, corrections.length);
   const crees = [...sql.matchAll(/^CREATE TABLE (\w+)__0006 \(/gm)].map((m) => m[1]);
@@ -117,7 +124,7 @@ test('migration SQL : une ligne de commentaire par renommage, les sept tables re
   assert.doesNotMatch(sql, /\b(BEGIN|COMMIT|PRAGMA)\b/i, 'le migrateur gère la transaction');
 });
 
-test('anciennes graphies disparues des textes (hors traces de la source et citations « telles quelles » de la fiche)', () => {
+testDeLaMixte('anciennes graphies disparues des textes (hors traces de la source et citations « telles quelles » de la fiche)', () => {
   const fautes = [/Supprémaciste/, /Marcass Ubain/, /\bOccultomancien/, /Sihouetteur/, /Marionette de lombre/, /MARIONETTE/, /Foudre argenté(?!\p{L})/u, /Touché du Vide/,
     /Verrouille Visible/, /Résurrection Noir\b/, /Brume mental\b/, /Estoc hurlante/, /[Vv]ague de cadavre\b/, /Onde Confusion/, /Colonne tesla/, /\bPavoi\b/, /\bOnix\b/,
     /\bDiament\b/, /\bEmmeraude\b/, /\bGyspe\b/, /\b[Bb]revage\b/, /cyante/, /\bSouffre\b/, /\bJacklope\b/, /\bFrappeud\b/, /\bMithril\b/, /\bowlmans?\b/, /Drassah'Thac/,

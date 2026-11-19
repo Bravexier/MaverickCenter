@@ -7,11 +7,11 @@
 //     --resume    un fichier Markdown où AJOUTER le bilan (le $GITHUB_STEP_SUMMARY de la CI) ; le même texte va sur la sortie ;
 //     --sans-essai  les règles seules, sans reconstruire la base ni lui appliquer les migrations (quelques millisecondes).
 // Sortie : 0 (rien à dire, ou tout est admis), 1 (une règle est violée : le fichier, la règle, ce qu'il faut faire), 2 (usage, dépôt ou outil : base introuvable, erreur inattendue…).
-import { appendFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { lireLesMigrations } from '../serveur/structure-sur-place.mjs';
+import { lireLesMigrations, versionDuSchemaSql } from '../serveur/structure-sur-place.mjs';
 import { essayerSurBaseRemplie, reconstruireLaBase } from './controler-les-migrations-base.mjs';
 import {
   AVERTISSEMENT_DONNEES, ErreurDeControle, extraireDuCommit, lireUnDossierDeMigrations, refus, rendreLeResume, reglesDUneMigration, reglesDesFichiers, versionDeLaBase,
@@ -29,12 +29,15 @@ export function controlerLesMigrations({ racine = RACINE_DU_DEPOT, base = 'origi
   const mergeBase = versionDeLaBase(racine, base);
   const travail = dossier ?? mkdtempSync(join(tmpdir(), 'maverick-migrations-'));
   try {
-    extraireDuCommit({ racine, commit: mergeBase, dossier: join(travail, 'depart'), chemins: ['data/migrations'] });
+    extraireDuCommit({ racine, commit: mergeBase, dossier: join(travail, 'depart'), chemins: ['data/migrations', 'data/schema.sql'] });
     const dePart = lireUnDossierDeMigrations(join(travail, 'depart', 'data', 'migrations'));
     const arbre = lireUnDossierDeMigrations(join(racine, 'data', 'migrations'));
-    const version = Math.max(0, ...[...dePart.keys()].filter((f) => f.endsWith('.sql')).map(numeroDe));
+    // le plancher : la version du schema.sql de la base (quand des migrations sont sorties du dépôt, il est au-dessus de la dernière qui reste)
+    const schemaDeLaBase = join(travail, 'depart', 'data', 'schema.sql');
+    const plancher = existsSync(schemaDeLaBase) ? versionDuSchemaSql(readFileSync(schemaDeLaBase, 'utf8')) ?? 0 : 0;
+    const version = Math.max(0, plancher, ...[...dePart.keys()].filter((f) => f.endsWith('.sql')).map(numeroDe));
 
-    const { violations, nouvelles: fichiersNouveaux } = reglesDesFichiers(dePart, arbre);
+    const { violations, nouvelles: fichiersNouveaux } = reglesDesFichiers(dePart, arbre, { plancher });
     const avertissements = [];
     const nouvelles = [];
     for (const fichier of fichiersNouveaux.filter((f) => f.endsWith('.sql'))) {

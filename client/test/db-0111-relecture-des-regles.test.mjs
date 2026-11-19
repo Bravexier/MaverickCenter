@@ -19,6 +19,7 @@ import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { decouperArtisanat } from '../src/lib/metier-champs.mjs';
 import { formeCanonique, formesNonCanoniques, lireBalises } from '../src/lib/mots-cles-balises.mjs';
 import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
+import { mixtesSorties } from '../src/lib/sortie-du-contenu.mjs';
 import { baseDImport, cheminDImport, lotsAvant } from './aide-base-d-import.mjs';
 import { avecLesClesDe, idDuMotCleNomme } from './aide-mots-cles.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
@@ -27,10 +28,18 @@ import { textesReecrits } from './aide-textes-reecrits.mjs';
 import { retireeParLa0122 } from './aide-migration-0122.mjs';
 import { ouLitLa0124 } from './aide-migration-0124.mjs';
 import { fragmentRetireParLeSite } from './aide-fragments-du-site.mjs';
+import { registreDeMigration } from './aide-registres-sortis.mjs';
+import { testRetireAvecLesMixtes } from './aide-sortie-du-contenu.mjs';
+
+// Les tests qui éprouvent la migration mixte elle-même sortent avec elle (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LES_MIXTES).
+const testDeLaMixte = testRetireAvecLesMixtes(import.meta.url);
 
 const NOM = '0111-relecture-des-regles-contre-les-decisions';
-const registre = JSON.parse(readFileSync(new URL(`../../data/migrations/${NOM}.json`, import.meta.url), 'utf8'));
-const migration = readFileSync(new URL(`../../data/migrations/${NOM}.sql`, import.meta.url), 'utf8');
+// Le registre et le SQL sortent avec les migrations mixtes, et les tests qui comparent l'import à ses remplacements (du texte de règle) avec eux
+// (RETIRES_AVEC_LES_MIXTES) ; les tests des mots-clés n'en lisent que des ids, libellés, adresses et pages, gardés dans
+// test/fixtures/registres-sortis.json (aide-registres-sortis.mjs).
+const registre = registreDeMigration(NOM);
+const migration = mixtesSorties() ? null : readFileSync(new URL(`../../data/migrations/${NOM}.sql`, import.meta.url), 'utf8');
 const apresLa0111 = () => baseDImport({ garder: lotsAvant('0111') });
 let baseCourante;
 const courante = () => (baseCourante ??= ouvrirBase());
@@ -51,7 +60,7 @@ const motCleNomme = (mc, ancienId) => mc.get(idDuMotCleNomme(ancienId));
 /** Les balises que le remplacement `t` écrit (celles de `apres` absentes de `avant`). */
 const balisesEcrites = (t) => lireBalises(t.apres, { markdown: true }).filter((b) => !t.avant.includes(b.brut));
 
-test('0111 : le registre ne touche que le corps ou le résumé de pages des Règles ; une copie de source seulement par C18 et C19 (R224) ; C1 à C25, chacune sous sa décision quand elle en a une', () => {
+testDeLaMixte('0111 : le registre ne touche que le corps ou le résumé de pages des Règles ; une copie de source seulement par C18 et C19 (R224) ; C1 à C25, chacune sous sa décision quand elle en a une', () => {
   assert.equal(registre.migration, NOM);
   for (const t of registre.textes) {
     // C26 (R230 (1)) : le texte d'artisanat du Bijoutier, sa recopie et le corps de sa page, rendu de la ligne (test « R230 (1) » plus bas)
@@ -86,7 +95,7 @@ test('0111 : le registre ne touche que le corps ou le résumé de pages des Règ
   assert.ok(!registre.textes.some((t) => t.correction === 'C11' && t.cle.id === 'guide/premiers-sorts'));
 });
 
-test('0111 : chaque remplacement est en place dans l’état de la migration (le fragment écrit présent, l’ancien absent)', () => {
+testDeLaMixte('0111 : chaque remplacement est en place dans l’état de la migration (le fragment écrit présent, l’ancien absent)', () => {
   const imp = apresLa0111();
   assert.equal(imp.prepare('PRAGMA user_version').get().user_version >= 111, true);
   for (const entree of registre.textes) {
@@ -107,7 +116,7 @@ test('0111 : chaque remplacement est en place dans l’état de la migration (le
   }
 });
 
-test('G43 (C3) : plus de numéro « (décision R…) » dans le texte de guide/les-postures et guide/l-equipement, dans l’état de la migration', () => {
+testDeLaMixte('G43 (C3) : plus de numéro « (décision R…) » dans le texte de guide/les-postures et guide/l-equipement, dans l’état de la migration', () => {
   const imp = apresLa0111();
   const c3 = registre.textes.filter((t) => t.correction === 'C3');
   assert.deepEqual([...new Set(c3.map((t) => t.cle.id))].sort(), ['guide/l-equipement', 'guide/les-postures']);
@@ -122,7 +131,7 @@ test('G43 (C3) : plus de numéro « (décision R…) » dans le texte de guide/l
   }
 });
 
-test('R184 (2), (5), (11), R187 (1) (C4 à C8) : le texte affiché d’un lien que la 0111 écrit est le titre de la page où mène son mot-clé', () => {
+testDeLaMixte('R184 (2), (5), (11), R187 (1) (C4 à C8) : le texte affiché d’un lien que la 0111 écrit est le titre de la page où mène son mot-clé', () => {
   const imp = apresLa0111();
   const mc = cibles(imp);
   const titre = (id) => imp.prepare('SELECT titre FROM page WHERE id = ?').get(id)?.titre;
@@ -149,7 +158,7 @@ test('R184 (2), (5), (11), R187 (1) (C4 à C8) : le texte affiché d’un lien q
   assert.deepEqual(ailleurs, []);
 });
 
-test('0111 : chaque balise écrite vise un mot-clé qui a une adresse (C11, C17 : Potentiel Illimité, armes, armures, bouclier, ceinture, accessoires) ; les cellules réécrites restent canoniques', () => {
+testDeLaMixte('0111 : chaque balise écrite vise un mot-clé qui a une adresse (C11, C17 : Potentiel Illimité, armes, armures, bouclier, ceinture, accessoires) ; les cellules réécrites restent canoniques', () => {
   const imp = apresLa0111();
   const mc = cibles(imp);
   const vocabulaire = motsClesDeLaBase(imp);
@@ -178,7 +187,7 @@ test('0111 : chaque balise écrite vise un mot-clé qui a une adresse (C11, C17 
   }
 });
 
-test('C15 : l’AP et l’AM écrits pour l’armure écailles et bois sont ceux de la ligne « Armure Bois/Écailles » de la table armure (état de la migration)', () => {
+testDeLaMixte('C15 : l’AP et l’AM écrits pour l’armure écailles et bois sont ceux de la ligne « Armure Bois/Écailles » de la table armure (état de la migration)', () => {
   // la migration écrit un texte fixe, lu dans la table à la version 110 : la comparaison se fait dans l'état de la migration (le site peut changer l'un
   // et l'autre depuis)
   const imp = apresLa0111();
@@ -204,7 +213,7 @@ test('R224 (2) : le mot-clé créé par la 0111 mène à sa page, porte son titr
   }
 });
 
-test('R226 (4) (C23) : la page du Mode Super a le titre de la décision, différent de son titre d’avant, qui reste en alias ; id, adresse et entrée du menu inchangés', () => {
+testDeLaMixte('R226 (4) (C23) : la page du Mode Super a le titre de la décision, différent de son titre d’avant, qui reste en alias ; id, adresse et entrée du menu inchangés', () => {
   const imp = apresLa0111();
   for (const t of registre.titres) {
     assert.notEqual(t.avant, t.apres);
@@ -224,7 +233,7 @@ test('R226 (4) (C23) : la page du Mode Super a le titre de la décision, différ
 
 // R225 : la règle gains_sante_potentiel de v_personnage_controle, sur des fiches d'essai écrites dans une copie de la base à l'état de la migration
 // (data/rows garde les fiches vides). Le plafond et les cas viennent de test/aide-sante-potentiel.mjs, qui lit la donnée : aucune valeur n'est écrite ici.
-test('R225 : un Potentiel Illimité inné qui met plus de N santé par niveau sur ses points d’attributs, dé bonus en plus, est signalé ; à la limite ou sous elle, non ; une autre magie innée, jamais', () => {
+testDeLaMixte('R225 : un Potentiel Illimité inné qui met plus de N santé par niveau sur ses points d’attributs, dé bonus en plus, est signalé ; à la limite ou sous elle, non ; une autre magie innée, jamais', () => {
   const copie = fichierTemporaire('maverick.db', 'r225');
   copyFileSync(cheminDImport({ garder: lotsAvant('0111') }), copie);
   const db = new DatabaseSync(copie);
@@ -277,7 +286,7 @@ test('R228 : le mot-clé mode-super mène à la page du Mode Super, à l’adres
   }
 });
 
-test('R230 (1) (C26) : le texte d’artisanat du Bijoutier, sa recopie et le corps de sa page restent d’accord dans l’état de la migration', () => {
+testDeLaMixte('R230 (1) (C26) : le texte d’artisanat du Bijoutier, sa recopie et le corps de sa page restent d’accord dans l’état de la migration', () => {
   const imp = apresLa0111();
   const c26 = registre.textes.filter((t) => t.correction === 'C26');
   assert.deepEqual(c26.map((t) => `${t.table}.${t.col}`).sort(), ['metier.artisanat_brut', 'metier.artisanat_texte', 'page.corps_md']);

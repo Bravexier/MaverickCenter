@@ -11,9 +11,13 @@ import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
+import { testRetireAvecLesMixtes } from './aide-sortie-du-contenu.mjs';
+
+// Les tests qui éprouvent la migration mixte elle-même sortent avec elle (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LES_MIXTES).
+const testDeLaMixte = testRetireAvecLesMixtes(import.meta.url);
 
 const SCHEMA = readFileSync(new URL('../../data/schema.sql', import.meta.url), 'utf8');
-const MIGRATION = readFileSync(new URL('../../data/migrations/0130-types-des-attaques-de-monstre.sql', import.meta.url), 'utf8');
+const migration = () => readFileSync(new URL('../../data/migrations/0130-types-des-attaques-de-monstre.sql', import.meta.url), 'utf8');
 const db = ouvrirBase({ sansExemples: false });
 
 /** R298 : les onze types ajoutés et la magie du même nom de chacun (feu, eau, glace : migration 0125). */
@@ -32,7 +36,8 @@ function baseNeuve() {
   return essai;
 }
 
-test('migration de structure seule : aucune ligne insérée hors de la recopie de type_degats (R295 : les types viennent du site de dev)', () => {
+testDeLaMixte('migration de structure seule : aucune ligne insérée hors de la recopie de type_degats (R295 : les types viennent du site de dev)', () => {
+  const MIGRATION = migration();
   const inserts = [...MIGRATION.matchAll(/^\s*INSERT\b[^;]*;/gim)].map((m) => m[0]);
   assert.equal(inserts.length, 1);
   assert.match(inserts[0], /INSERT INTO type_degats_0130 \(id, mot_cle_id, magie_id\) SELECT id, mot_cle_id, magie_id FROM type_degats;/);

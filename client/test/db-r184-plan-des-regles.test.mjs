@@ -18,10 +18,16 @@ import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 import { baseDImport, lotsAvant } from './aide-base-d-import.mjs';
 import { ecrituresDuTexte } from './aide-ecritures-du-lien.mjs';
 import { fragmentRetireParLeSite } from './aide-fragments-du-site.mjs';
+import { registreDeMigration } from './aide-registres-sortis.mjs';
+import { testRetireAvecLesMixtes } from './aide-sortie-du-contenu.mjs';
+
+// Les tests qui éprouvent la migration mixte elle-même sortent avec elle (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LES_MIXTES).
+const testDeLaMixte = testRetireAvecLesMixtes(import.meta.url);
 
 const MIGRATION = '0091-r184-plan-des-regles.sql';
 const lire = (chemin) => readFileSync(new URL(`../../${chemin}`, import.meta.url), 'utf8');
-const [RETRAIT_0124] = JSON.parse(lire('data/migrations/0124-retrait-accessoires-et-ceinture.json')).pages_retirees;
+// (registre de la 0124, ou ce qu'en garde test/fixtures/registres-sortis.json une fois la migration mixte sortie : ids et rangs)
+const [RETRAIT_0124] = registreDeMigration('0124-retrait-accessoires-et-ceinture').pages_retirees;
 const db = ouvrirBase({ sansExemples: false });
 const page = (id) => db.prepare('SELECT * FROM page WHERE id = ?').get(id);
 const corps = (id) => page(id).corps_md;
@@ -232,7 +238,9 @@ test('R184 (9), R185 (3) : six pages retirées, avec leurs alias, leurs mots-cl�
   assert.equal(apres0091().prepare("SELECT count(*) AS n FROM page WHERE instr(corps_md, 'Mode Hyper (Magie)') > 0").get().n, 0);
   const hyper = corpsApres0091('guide/le-mode-hyper');
   assert.ok(hyper.includes('une autre liste des effets du Mode Hyper, aux valeurs différentes : cette liste ne compte pas') || !hyper.includes('onglet masqué'));
-  // la migration ne fait que retirer : l'historique du site garde ce qui les citait
+});
+
+testDeLaMixte('R184 : la migration 0091 dit qu’elle ne fait que retirer : les lignes de historique_modification et de note_version_ligne qui citent les pages restent', () => {
   assert.match(lire(`data/migrations/${MIGRATION}`), /historique_modification et de note_version_ligne qui les citent restent/);
 });
 

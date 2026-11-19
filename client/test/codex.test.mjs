@@ -22,6 +22,8 @@ import { buildIndex, resolve } from '../src/lib/wikilinks-resolution.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
 import { contenuDuSite } from './aide-base-de-depart.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { idDuMotCleNomme } from './aide-mots-cles.mjs';
+import { registreDeMigration } from './aide-registres-sortis.mjs';
 
 // Les tests qui rejouent l'extracteur (tools/docs/codex.py) lisent l'export du Codex par dossierDesExports() : sources/raw, ou MAVERICK_SOURCES_RAW (l'archive restaurée,
 // lot 12, R296). Leur retrait avec les exports attend la réponse du propriétaire (reco (e)).
@@ -42,7 +44,6 @@ const pagesDImport = pagesDuCodex.map((p) => ({
 // Les mots-clés (migration 0113) : un id entier figé, une clé (`cle`, celle que citent les balises) qui suit le libellé. « codex » est protégé : son id
 // est celui de MOTS_CLES_PROTEGES ; un autre mot-clé de la base se retrouve par l'id que le registre de la 0113 a donné à son ancien id texte.
 const CODEX = IDS_DES_MOTS_CLES_PROTEGES.codex;
-const ID_DE_0113 = new Map(JSON.parse(readFileSync(join(racine, 'data', 'migrations', '0113-mots-cles-id-entier.json'), 'utf8')).motsCles.map((m) => [m.ancienId, m.id]));
 const ESSAI = 100000;   // ids des mots-clés d'essai, hors de ceux de la base
 const sqlDe = (v) => (v === null || v === undefined ? 'NULL' : typeof v === 'number' ? String(v) : `'${String(v).replace(/'/g, "''")}'`);
 /** Un vocabulaire d'essai (export de la table mot_cle) : [{ id, libelle, cle, description?, url? }]. */
@@ -52,7 +53,8 @@ const MOT_CLE_CODEX = { id: CODEX, libelle: 'codex', cle: 'codex' };
 // Une page du site de dev que la migration 0121 (R266 : trois graphies, Codex compris) a réécrite après le site garde, dans baseDImport(), le texte
 // du site avec la correction : son texte d'import n'existe plus (aide-base-d-import.mjs), et il peut citer un mot-clé que le site a créé. Le
 // vérificateur (codex.py --verifier) la contrôle, lui, dans son état d'import (historique) ; ici elle est mise à part des lectures de l'import.
-const PAGES_REECRITES_PAR_LA_0121 = new Set(JSON.parse(readFileSync(join(racine, 'data', 'migrations', '0121-maj-decembre-suites.json'), 'utf8')).corrections
+// (registre de la 0121, ou ce qu'en garde test/fixtures/registres-sortis.json une fois la migration mixte sortie : les cellules, sans leur texte)
+const PAGES_REECRITES_PAR_LA_0121 = new Set(registreDeMigration('0121-maj-decembre-suites').corrections
   .filter((c) => c.table === 'page' && c.col === 'corps_md').map((c) => c.cle.id));
 const texteDImportPerdu = (id) => PAGES_REECRITES_PAR_LA_0121.has(id) && historique.modifiee('page', { id }, 'corps_md');
 // la base qui fait foi (copie de travail du contenu fourni, ou construite depuis data/rows), que le vérificateur lit par `--base`
@@ -203,8 +205,8 @@ test('R145, R183 : l’import du Codex ne pose pas le mot-clé « Sang » sur le
   // le mot-clé « Sang » de la base (0090), cherché par son identifiant figé (l'id entier que la 0113 a donné à « sang ») : le site de dev peut le
   // renommer, ses deux écritures sont refusées (il n'est pas protégé : supprimé par le site, le vocabulaire de la base ne l'a plus, et l'import ne
   // peut pas davantage le poser)
-  const idSang = ID_DE_0113.get('sang');
-  assert.ok(Number.isInteger(idSang), 'le registre de la 0113 donne un id entier à « sang »');
+  const idSang = idDuMotCleNomme('sang');
+  assert.ok(Number.isInteger(idSang), 'la correspondance de la 0113 donne un id entier à « sang »');
   const sang = db.prepare('SELECT libelle FROM mot_cle WHERE id = ?').get(idSang);
   if (!sang) assert.ok(historique.supprimee('mot_cle', { id: idSang }), 'le mot-clé « Sang » (0090) manque sans que le site de dev l’ait supprimé');
   const ecrituresDuSang = new Set(['sang', ...(sang ? [normalize(sang.libelle)] : [])]);

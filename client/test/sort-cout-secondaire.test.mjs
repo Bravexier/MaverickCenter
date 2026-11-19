@@ -4,7 +4,6 @@
 // propriétaire (décision R106, migration 0065, registre 0065-couts-des-sorts-tranches.json), la case « Coût » du corps Markdown des pages de magie, le
 // service (refus d'un second coût dans « Coût », d'un NM dans « Coût secondaire ») et le rejeu d'un lot noté avant 0063.
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { traiter } from '../serveur/api.mjs';
@@ -12,25 +11,32 @@ import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.
 import { rejouerLeJournal } from '../serveur/edition.mjs';
 import { chargerJournal, nouveauLot } from '../serveur/edition-journal.mjs';
 import { coutEnUneCase as coutDeLaCaseDuCorps, morceauxDuCorpsDeMagie, sansEchappement } from '../src/lib/corps-magies.mjs';
-import { ouvrirBase, trouverRacine } from '../src/lib/donnees.mjs';
+import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { analyserCout, mentionneUnNm } from '../src/lib/sort-analyse.mjs';
 import { coutEnUneCase, ecritUnSecondCout, repartirLeCout } from '../src/lib/sort-cout.mjs';
+import { mixtesSorties } from '../src/lib/sortie-du-contenu.mjs';
 import { baseDImport, cheminDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { coutsNonRepartisDeLa0117, sortsNouveauxDeLa0117, sortsReecritsParLa0117 } from './aide-migration-0117.mjs';
+import { registreDeMigration } from './aide-registres-sortis.mjs';
+import { testRetireAvecLesMixtes } from './aide-sortie-du-contenu.mjs';
 
-const RACINE = trouverRacine();
-const registre = JSON.parse(readFileSync(join(RACINE, 'data', 'migrations', '0063-cout-secondaire.json'), 'utf8'));
-const tranches = JSON.parse(readFileSync(join(RACINE, 'data', 'migrations', '0065-couts-des-sorts-tranches.json'), 'utf8')).tranches;
+// Les tests qui éprouvent la migration mixte elle-même sortent avec elle (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LES_MIXTES).
+const testDeLaMixte = testRetireAvecLesMixtes(import.meta.url);
+
+// Les registres de 0063 et 0065, ou ce qu'en garde test/fixtures/registres-sortis.json une fois ces migrations mixtes sorties (ids et cellules de coût) ;
+// les tests qui comparent l'import aux registres et au SQL de la 0117 sortent avec elles (RETIRES_AVEC_LES_MIXTES).
+const registre = registreDeMigration('0063-cout-secondaire');
+const tranches = registreDeMigration('0065-couts-des-sorts-tranches').tranches;
 const db = ouvrirBase({ sansExemples: false });
 const historique = historiqueSite(db);
 const sorts = db.prepare('SELECT * FROM sort ORDER BY id').all();
 // R237 (1), migration 0117 : le classeur de Décembre fait foi ; un sort qu'elle supprime ou dont elle réécrit le coût n'est plus celui que décrivent les registres
 // de 0063 et 0065 (leur répartition reste vérifiée sur tous les autres)
-const reecritsPar0117 = sortsReecritsParLa0117(['cout_brut', 'cout_secondaire', 'nom']);
-const nonRepartisPar0117 = coutsNonRepartisDeLa0117();
-const nouveauxPar0117 = sortsNouveauxDeLa0117();
+const reecritsPar0117 = mixtesSorties() ? null : sortsReecritsParLa0117(['cout_brut', 'cout_secondaire', 'nom']);
+const nonRepartisPar0117 = mixtesSorties() ? null : coutsNonRepartisDeLa0117();
+const nouveauxPar0117 = mixtesSorties() ? null : sortsNouveauxDeLa0117();
 const dImport = (id, colonne) => historique.valeurDImport('sort', { id }, colonne);
 /**
  * Les deux coûts d'un sort à l'import. L'historique garde un lot du site de dev tel que le journal l'a noté (docs/serveur.md : « Le journal stocké
@@ -88,7 +94,7 @@ test('ecritUnSecondCout : le refus du service, plus large que la forme du classe
   }
 });
 
-test('registre de 0063 : chaque coût réparti l’est par la règle, et la base (état d’import) porte ses deux coûts et leurs colonnes typées', () => {
+testDeLaMixte('registre de 0063 : chaque coût réparti l’est par la règle, et la base (état d’import) porte ses deux coûts et leurs colonnes typées', () => {
   assert.equal(registre.repartis.length, 38);
   const vus = new Set();
   for (const r of registre.repartis) {
@@ -108,7 +114,7 @@ test('registre de 0063 : chaque coût réparti l’est par la règle, et la base
   assert.equal(registre.repartis.filter((r) => /Sang|âme/.test(r.cout_secondaire)).length, 36);
 });
 
-test('0065 (décision R106) : les 26 coûts que 0063 laissait en attente sont tranchés, chacun avec la réponse du propriétaire ; tous les autres sorts sont répartis', () => {
+testDeLaMixte('0065 (décision R106) : les 26 coûts que 0063 laissait en attente sont tranchés, chacun avec la réponse du propriétaire ; tous les autres sorts sont répartis', () => {
   assert.equal(registre.en_attente.length, 26);
   const attente = new Map(registre.en_attente.map((a) => [a.id, a]));
   const repartis = new Set(registre.repartis.map((r) => r.id));

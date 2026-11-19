@@ -7,6 +7,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { REFERENCES } from '../src/lib/references-des-migrations.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { copieDesRowsDeDepart } from './aide-base-de-depart.mjs';
 
@@ -127,15 +128,15 @@ export function reglesAvecDesMotsClesDEssai(dossier, { sansExemples = false } = 
   return { rows, base };
 }
 
-/** Le registre figé de la migration 0113 (ancien id texte → id entier, lib/mots-cles-cles.mjs#REGISTRE_DES_IDS_DE_MOTS_CLES), lu une fois. */
+/** La correspondance figée de la migration 0113 (ancien id texte → id entier), lue une fois dans sa référence (data/references/, lib/references-des-migrations.mjs). */
 let registre0113 = null;
 /**
- * L'id entier, figé, du mot-clé dont l'ancien id texte était `ancienId` (« solidite », « recharge-longue » : registre de la migration 0113) ; undefined
+ * L'id entier, figé, du mot-clé dont l'ancien id texte était `ancienId` (« solidite », « recharge-longue » : correspondance de la migration 0113) ; undefined
  * pour un id que le registre n'a pas. Un test cherche un mot-clé par cet id (figé), jamais par son libellé ni par sa clé, que le site de dev change
  * (décision R232 (2) ; skill tests-conventions).
  */
 export function idDuMotCleNomme(ancienId) {
-  registre0113 ??= new Map(JSON.parse(readFileSync(join(RACINE, 'data', 'migrations', '0113-mots-cles-id-entier.json'), 'utf8')).motsCles.map((m) => [m.ancienId, m.id]));
+  registre0113 ??= new Map(JSON.parse(readFileSync(join(RACINE, REFERENCES.idsDesMotsCles), 'utf8')).ids);
   return registre0113.get(ancienId);
 }
 

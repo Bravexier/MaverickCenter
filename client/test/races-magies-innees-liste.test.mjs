@@ -19,6 +19,10 @@ import { copieDesRowsDeDepart } from './aide-base-de-depart.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { remettreLesCorpsDeLa0119 } from './aide-migration-0119.mjs';
 import { TEXTES_DE_LA_0120 } from './aide-races-0120.mjs';
+import { testRetireAvecLesMixtes } from './aide-sortie-du-contenu.mjs';
+
+// Les tests qui éprouvent la migration mixte elle-même sortent avec elle (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LES_MIXTES).
+const testDeLaMixte = testRetireAvecLesMixtes(import.meta.url);
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
 const sansPython = spawnSync('python3', ['--version']).error ? 'python3 absent' : false;
@@ -56,7 +60,9 @@ test('R31 : liste changée sans la phrase, phrase réécrite sans la liste (mêm
   const v = verifier(rows);
   assert.equal(v.status, 0, v.stdout + v.stderr);
   assert.match(v.stdout, /conformes aux pages/);
+});
 
+testDeLaMixte('R31 : une race que le site n’a pas touchée reste contrôlée comme à l’import (pages remises à « import + 0119 » par le registre de la 0119)', { skip: sansPython }, () => {
   // une race que le site n'a pas touchée reste contrôlée comme à l'import : sa liste modifiée hors du site est un écart. Sur les lignes de la base
   // dans son état d'import (aide-base-d-import.mjs, exportées par tools/db/maverick.py#exporter) : le site de dev peut avoir touché la phrase ou la
   // liste de chaque race, une race « non touchée » ne se suppose pas dans data/rows.

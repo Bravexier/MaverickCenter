@@ -49,7 +49,7 @@ import { cpus } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
-import { VARIABLE_CONTENU_SORTI } from '../src/lib/sortie-du-contenu.mjs';
+import { VARIABLE_CONTENU_SORTI, VARIABLE_MIXTES_SORTIES } from '../src/lib/sortie-du-contenu.mjs';
 import { cheminsQuiSortent, listerCeQuiSort } from './inventaire-sortie-du-contenu-lib.mjs';
 
 const client = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -269,17 +269,20 @@ export function retirerLesExportsArchives() {
 }
 
 /**
- * L'environnement d'une passe : le contenu (MAVERICK_CONTENU) ; en S seulement, ALLUMÉE : MAVERICK_CONTENU_SORTI=1 et, avec `exports`, MAVERICK_SOURCES_RAW = ce dossier, avec `migrations`, MAVERICK_MIGRATIONS_ARCHIVEES = ce dossier.
- * Les autres passes retirent les deux variables de l'environnement reçu (aucune ne doit voir ce qui ne vaut qu'une fois le contenu sorti).
+ * L'environnement d'une passe : le contenu (MAVERICK_CONTENU) ; en S seulement, ALLUMÉE : MAVERICK_CONTENU_SORTI=1, avec `avecMixtes` (--avec-mixtes : les
+ * migrations mixtes retirées de la copie) MAVERICK_MIXTES_SORTIES=1, avec `exports`, MAVERICK_SOURCES_RAW = ce dossier, avec `migrations`, MAVERICK_MIGRATIONS_ARCHIVEES = ce dossier.
+ * Les autres passes retirent ces variables de l'environnement reçu (aucune ne doit voir ce qui ne vaut qu'une fois le contenu sorti).
  */
-export function environnementDeLaPasse(passe, { exports = null, migrations = null, base = process.env } = {}) {
+export function environnementDeLaPasse(passe, { exports = null, migrations = null, avecMixtes = drapeau('--avec-mixtes'), base = process.env } = {}) {
   const env = { ...base, MAVERICK_CONTENU: FICHIER[passe] };
   delete env.NODE_TEST_CONTEXT;
   delete env[VARIABLE_CONTENU_SORTI];
+  delete env[VARIABLE_MIXTES_SORTIES];
   delete env.MAVERICK_SOURCES_RAW;
   delete env.MAVERICK_MIGRATIONS_ARCHIVEES;
   if (passe === PASSE_SANS_LE_CONTENU) {
     env[VARIABLE_CONTENU_SORTI] = '1';
+    if (avecMixtes) env[VARIABLE_MIXTES_SORTIES] = '1';
     if (exports) env.MAVERICK_SOURCES_RAW = exports;
     if (migrations) env.MAVERICK_MIGRATIONS_ARCHIVEES = migrations;
   }

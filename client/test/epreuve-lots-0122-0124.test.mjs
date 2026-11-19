@@ -19,6 +19,8 @@ import { ErreurEdition } from '../serveur/edition.mjs';
 import { LOT_OUVERT_AUX_TABLES_HORS_EDITION, controlerLeLot, donnerLesNumeros } from '../src/lib/lot-de-changements.mjs';
 import { cheminDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { testRetireAvecLesMixtes } from './aide-sortie-du-contenu.mjs';
+import { mixtesSorties } from '../src/lib/sortie-du-contenu.mjs';
 
 const ICI = fileURLToPath(new URL('.', import.meta.url));
 const FIXTURES = join(ICI, 'fixtures', 'lots-0122-0124');
@@ -29,7 +31,11 @@ const sqlDe = (n) => readFileSync(join(MIGRATIONS, readdirSync(MIGRATIONS).find(
 const migrations = lireLesLots(FIXTURES, NUMEROS);
 const racine = dossierTemporaire('epreuve-lots');
 let bilan;
+// les tests qui lisent le bilan comparent chaque lot au SQL des migrations 0122 à 0124 rejoué : ils sortent avec ces migrations mixtes
+// (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LES_MIXTES), et le bilan n'est alors plus calculé
+const testDuSql = testRetireAvecLesMixtes(import.meta.url);
 before(async () => {
+  if (mixtesSorties()) return;
   const { chemin } = preparerBaseVivante({ regles: cheminDImport(), dossier: join(racine, 'vivante') });
   bilan = await refaireLEpreuve({ chemin, dossier: join(racine, 'copies'), migrations, sqlDe });
 });
@@ -73,7 +79,7 @@ test('déposer un lot de l’épreuve sans l’option de test : refusé (400), r
   }
 });
 
-test('le partage : ce qui passe aujourd’hui (a), ce qui est refusé (b, par table et par raison), et ce que le service refuse même ouvert (c) — la liste (b) ne grossit pas en silence', () => {
+testDuSql('le partage : ce qui passe aujourd’hui (a), ce qui est refusé (b, par table et par raison), et ce que le service refuse même ouvert (c) — la liste (b) ne grossit pas en silence', () => {
   const b = (m) => {
     const sortie = {};
     for (const r of partagerLeLot(m.lot).refusees) (sortie[r.op.table] ??= {})[r.raison] = (sortie[r.op.table][r.raison] ?? 0) + 1;
@@ -116,7 +122,7 @@ test('le complément : les lignes que le service retire lui-même avec une entit
   }
 });
 
-test('même base : après chaque lot, le service a écrit ce que la migration écrit, table de contenu par table de contenu (modulo les numéros donnés et ce que le service refuse, (c))', () => {
+testDuSql('même base : après chaque lot, le service a écrit ce que la migration écrit, table de contenu par table de contenu (modulo les numéros donnés et ce que le service refuse, (c))', () => {
   for (const m of bilan.migrations) {
     assert.deepEqual(m.comparaison.non_expliquees, [], `migration ${m.migration} : une table diffère de la base migrée sans que (c) l’explique`);
     assert.ok(m.comparaison.tables >= 100, `migration ${m.migration} : les tables de contenu se comparent toutes`);
@@ -130,7 +136,7 @@ test('même base : après chaque lot, le service a écrit ce que la migration é
   assert.equal(de('0123').refusees_une_fois_ouvert.length + de('0124').refusees_une_fois_ouvert.length, 0, 'la 0123 et la 0124 sont refaites en entier');
 });
 
-test('les numéros : les neuf mots-clés de la 0123 prennent les neuf numéros suivants du service (jamais ceux de la migration d’office), consécutifs ; la base est la même modulo ces numéros', () => {
+testDuSql('les numéros : les neuf mots-clés de la 0123 prennent les neuf numéros suivants du service (jamais ceux de la migration d’office), consécutifs ; la base est la même modulo ces numéros', () => {
   const n = de('0123').numeros;
   assert.equal(n.length, 9);
   assert.deepEqual(n.map((x) => x.jeton), Object.keys(migrations[1].complement.numeros));
@@ -142,7 +148,7 @@ test('les numéros : les neuf mots-clés de la 0123 prennent les neuf numéros s
   assert.equal(de('0122').numeros.length + de('0124').numeros.length, 0);
 });
 
-test('les verrous des décisions : le lot ne s’applique qu’avec l’accord donné au clic ; les numéros ouverts sont ceux que l’essai demandait', () => {
+testDuSql('les verrous des décisions : le lot ne s’applique qu’avec l’accord donné au clic ; les numéros ouverts sont ceux que l’essai demandait', () => {
   // R218 : le verrou des mots-clés (supprimer, créer verrouillé, adresse) ; R219 : le gel des mots-clés qui mènent à une page
   assert.deepEqual(de('0122').verrous_ouverts, ['R218', 'R219']);
   assert.deepEqual(de('0123').verrous_ouverts, ['R218']);
@@ -150,7 +156,7 @@ test('les verrous des décisions : le lot ne s’applique qu’avec l’accord d
   for (const m of bilan.migrations) assert.deepEqual(m.verrous_ouverts, m.lot_ouvert.essai.verrous);
 });
 
-test('annuler (garde-fou 11) : la 0122 s’annule et la base d’avant revient ; la 0123 et la 0124 sont REFUSÉES par le service (ancre figée, adresse disparue), le lot reste appliqué', () => {
+testDuSql('annuler (garde-fou 11) : la 0122 s’annule et la base d’avant revient ; la 0123 et la 0124 sont REFUSÉES par le service (ancre figée, adresse disparue), le lot reste appliqué', () => {
   const a = de('0122').annulation;
   assert.equal(a.annulee, true);
   assert.deepEqual(a.base_d_avant.differentes, [], 'la base d’avant la 0122 revient, table par table');

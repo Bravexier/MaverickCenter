@@ -1,17 +1,15 @@
 // Le rejeu d'un lot noté avant la migration 0113 (ids texte des mots-clés, libelle_cle, abréviation ; décisions R232, R233) : l'adaptateur du journal
 // (serveur/edition.mjs#adaptateurDuJournal, dont ancienneEcritureDesIds) le lit dans la forme d'aujourd'hui — ids entiers par la correspondance de la
-// migration (registre data/migrations/0113-mots-cles-id-entier.json), balises citant la clé courante, mots-clés fondus par la 0115 dans « Instant
+// migration (référence data/references/ids-des-mots-cles-0113.json, tirée du registre de la migration), balises citant la clé courante, mots-clés fondus par la 0115 dans « Instant
 // Cast » (FUSIONS_DE_MIGRATION), un mot-clé créé par le lot à l'id suivant, l'abréviation écrite en conflit. Les ids et les clés attendus se lisent
 // dans le registre et la base (jamais un libellé).
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
-import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
-import { adaptateurDuJournal, FUSIONS_DE_MIGRATION, rejouerLeJournal } from '../serveur/edition.mjs';
+import { adaptateurDuJournal, FUSIONS_DE_MIGRATION, registreDes0113, rejouerLeJournal } from '../serveur/edition.mjs';
 import { chargerJournal, journalExporte } from '../serveur/edition-journal.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { formesNonCanoniques, vocabulaireDesMotsCles } from '../src/lib/mots-cles-balises.mjs';
@@ -19,7 +17,8 @@ import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { remettreDepuisLImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
-const REGISTRE = JSON.parse(readFileSync(fileURLToPath(new URL('../../data/migrations/0113-mots-cles-id-entier.json', import.meta.url)), 'utf8'));
+/** La correspondance de la 0113 ({ ancienId, id }, dans l'ordre du registre), lue dans sa référence (serveur/edition.mjs#registreDes0113 : celle du rejeu). */
+const REGISTRE = { motsCles: [...registreDes0113()].map(([ancienId, id]) => ({ ancienId, id })) };
 const idDe = (ancien) => REGISTRE.motsCles.find((m) => m.ancienId === ancien)?.id;
 // les mots-clés que le scénario cite par leur ancien id, remis depuis l'import s'ils manquent (le site de dev peut en supprimer : tests-conventions)
 const CITES = ['instant-cast', 'codex', 'orios'];
