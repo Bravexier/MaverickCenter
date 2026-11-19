@@ -3,7 +3,7 @@
 // tous la même chose : le conteneur « serveur » exécute _serveur/serveur/index.mjs sur le port 8787, nginx lui transmet /api/ et refuse /_serveur/.
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
@@ -44,6 +44,22 @@ test('modules livrés : l’entrée, le service, son journal, ses métriques (co
   assert.deepEqual(modulesDuServeur(faux), ['serveur/a.mjs', 'serveur/b.mjs', 'serveur/c.mjs', 'serveur/index.mjs']);
   writeFileSync(join(faux, 'serveur', 'c.mjs'), "import '../../ailleurs.mjs';\n");
   assert.throws(() => modulesDuServeur(faux), /que des modules de client\//);
+});
+
+test('version.json porte le commit du code quand l’appelant le donne (lot 11, PR 4), jamais sinon ; il n’entre pas dans l’empreinte du code et n’est lu que par le paquet', () => {
+  const sha = 'a1b2c3d4e5f60718293a4b5c6d7e8f9012345678';
+  const sans = livrerServeur(join(racine, 'dist-sans-commit'), { version: '1.2.3' });
+  assert.ok(!('commit' in sans), 'sans commit donné, version.json est celui d’avant');
+  assert.deepEqual(Object.keys(sans), ['version', 'empreinte', 'entree', 'modules', 'fichiers']);
+  for (const vide of [null, undefined]) assert.ok(!('commit' in livrerServeur(join(racine, 'dist-sans-commit'), { version: '1.2.3', commit: vide })));
+  const avec = livrerServeur(join(racine, 'dist-avec-commit'), { version: '1.2.3', commit: sha });
+  assert.equal(avec.commit, sha);
+  assert.equal(avec.empreinte, sans.empreinte, 'le commit ne change pas l’empreinte du code');
+  assert.equal(JSON.parse(readFileSync(join(racine, 'dist-avec-commit', DOSSIER_LIVRE, 'version.json'), 'utf8')).commit, sha);
+  for (const mauvais of ['abc', sha.toUpperCase(), `${sha}0`, '../x', 'local']) assert.throws(() => livrerServeur(join(racine, 'dist-mauvais'), { version: '1.2.3', commit: mauvais }), /commit .* invalide/, mauvais);
+  // seul le paquet lit ce champ pour le service : serveur/service.mjs le transmet, serveur/paquet.mjs l'écrit dans paquet_meta.commit_du_code
+  const lectures = readdirSync(join(CLIENT, 'serveur')).filter((f) => f.endsWith('.mjs') && /version\.commit/.test(readFileSync(join(CLIENT, 'serveur', f), 'utf8')));
+  assert.deepEqual(lectures, ['service.mjs'], 'une seule lecture de version.commit : celle qui nourrit le paquet');
 });
 
 test('le service livré démarre tel quel depuis dist/_serveur/ (variables d’environnement du conteneur), répond, puis s’arrête sur SIGTERM', async () => {

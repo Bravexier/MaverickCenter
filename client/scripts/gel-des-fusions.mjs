@@ -2,7 +2,7 @@
 // docs/flux-git.md, « Gel des fusions pendant une mise à jour »). Ce fichier lit l'interrupteur dans le dépôt (git) et les runs du workflow de mise à jour
 // dans l'API de GitHub (lecture seule, GITHUB_TOKEN).
 //   node scripts/gel-des-fusions.mjs --cible <dev|master> --source <branche de la PR> [--depot <propriétaire/dépôt>] [--interrupteur origin/dev] [--racine <dépôt>] [--resume <fichier.md>]
-// Éteint (interrupteur absent ou `actif: false` sur origin/dev) : vert, sans appel réseau. Allumé et GitHub illisible (jeton, réseau, réponse inattendue) :
+// Éteint (interrupteur `gel_des_fusions` absent ou `false` sur origin/dev) : vert, sans appel réseau. Allumé et GitHub illisible (jeton, réseau, réponse inattendue) :
 // ROUGE (on ne devine pas qu'aucune mise à jour ne tourne) ; relancer le job règle une panne passagère. Sortie : 0 (vert), 1 (rouge : le run, depuis
 // quand, le geste), 2 (usage, dépôt ou API illisible).
 import { execFileSync } from 'node:child_process';

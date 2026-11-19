@@ -1,0 +1,113 @@
+// Ce que GitHub publie, selon l'interrupteur de la bascule 2 (lot 11, PR 4 ; tools/flux-git/bascule-2.mjs, .github/workflows/livraison.yml ;
+// docs/flux-git.md, « Ce que GitHub publie avec la bascule 2 »). Éteint : la livraison est celle d'avant ; allumé : un installateur de TEST est un « kit seul » (aucune
+// page, le job « Site » est sauté), la production ne change pas dans cette PR.
+//   node --test test/flux-git-bascule-2.test.mjs
+import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { test } from 'node:test';
+import { fileURLToPath } from 'node:url';
+import YAML from 'yaml';
+import { BRANCHE_DE_L_INTERRUPTEUR, INTERRUPTEUR, decisionDeLaLivraison, interrupteurDans, lireLInterrupteur } from '../../tools/flux-git/bascule-2.mjs';
+import { INTERRUPTEUR as INTERRUPTEUR_DU_GEL, lireLInterrupteur as lireLInterrupteurDuGel } from '../scripts/gel-des-fusions-lib.mjs';
+import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+
+const RACINE = fileURLToPath(new URL('../../', import.meta.url));
+const MODULE = join(RACINE, 'tools', 'flux-git', 'bascule-2.mjs');
+const yml = readFileSync(join(RACINE, '.github', 'workflows', 'livraison.yml'), 'utf8');
+const wf = YAML.parse(yml);
+
+test('l’interrupteur du dépôt est éteint ; même fichier que le gel des fusions, mais une clé à lui : `actif` et `gel_des_fusions` sont indépendantes, toutes deux éteintes', () => {
+  assert.equal(INTERRUPTEUR, INTERRUPTEUR_DU_GEL);
+  assert.equal(BRANCHE_DE_L_INTERRUPTEUR, 'origin/dev');
+  assert.equal(lireLInterrupteur(readFileSync(join(RACINE, INTERRUPTEUR), 'utf8')), false, 'éteint tant que le propriétaire n’a pas choisi le jour J');
+  const fichier = JSON.parse(readFileSync(join(RACINE, INTERRUPTEUR), 'utf8'));
+  assert.deepEqual([fichier.actif, fichier.gel_des_fusions], [false, false]);
+  assert.equal(typeof fichier.a_lire, 'string');
+  assert.equal(lireLInterrupteurDuGel(readFileSync(join(RACINE, INTERRUPTEUR), 'utf8')), false);
+  for (const [texte, actif, gel] of [[null, false, false], ['{"actif": true}', true, false], ['{"gel_des_fusions": true}', false, true], ['{"actif": true, "gel_des_fusions": true}', true, true]]) {
+    assert.deepEqual([lireLInterrupteur(texte), lireLInterrupteurDuGel(texte)], [actif, gel], String(texte));
+  }
+  assert.equal(lireLInterrupteur('{}'), false, 'clé absente : éteint');
+  for (const texte of ['pas du json', '{"actif": "oui"}', '[]']) assert.throws(() => lireLInterrupteur(texte), /bascule-2\.json/, texte);
+});
+
+test('éteint : la livraison est celle d’avant (site construit, job Site, kit complet) ; allumé : un installateur de test est un kit seul', () => {
+  assert.deepEqual(decisionDeLaLivraison({ mode: 'test', actif: false }), { kit_seul: false, construire_le_site: true });
+  assert.deepEqual(decisionDeLaLivraison({ mode: 'prod', actif: false }), { kit_seul: false, construire_le_site: true });
+  assert.deepEqual(decisionDeLaLivraison({ mode: 'test', actif: true }), { kit_seul: true, construire_le_site: false });
+  // la production n'est pas changée par cette PR : le site complet, même allumé ; le job « Site » (branche NAS) est sauté par `bascule_2`, pas par cette décision
+  assert.deepEqual(decisionDeLaLivraison({ mode: 'prod', actif: true }), { kit_seul: false, construire_le_site: true });
+  assert.equal(decisionDeLaLivraison({ mode: 'test', actif: undefined }).kit_seul, false, 'une valeur absente est éteinte');
+  assert.equal(decisionDeLaLivraison({ mode: 'test', actif: 'true' }).kit_seul, false, 'seul le booléen allume');
+  assert.throws(() => decisionDeLaLivraison({ mode: 'autre', actif: true }), /mode/);
+});
+
+test('la ligne de commande : lire l’interrupteur sur une référence git (jamais la branche livrée), decider ; une lecture qui échoue éteint avec un avertissement', (t) => {
+  const d = dossierTemporaire('flux-git-bascule-2', { t });
+  const g = (args) => {
+    const r = spawnSync('git', ['-C', d, ...args], { encoding: 'utf8' });
+    assert.equal(r.status, 0, r.stderr);
+  };
+  const lancer = (...args) => spawnSync(process.execPath, [MODULE, ...args], { encoding: 'utf8', env: { ...process.env, GITHUB_OUTPUT: '' } });
+  g(['init', '--quiet', '-b', 'dev']);
+  g(['config', 'user.name', 'test']);
+  g(['config', 'user.email', 'test@example.com']);
+  g(['config', 'commit.gpgsign', 'false']);
+  mkdirSync(join(d, 'tools', 'flux-git'), { recursive: true });
+  writeFileSync(join(d, INTERRUPTEUR), '{ "actif": true }\n');
+  g(['add', '-A']);
+  g(['commit', '--quiet', '-m', 'allumé']);
+  g(['update-ref', 'refs/remotes/origin/dev', 'HEAD']);
+  assert.deepEqual(interrupteurDans(d), { actif: true, avertissement: null });
+  assert.equal(lancer('lire', '--racine', d).stdout, 'actif=true\n');
+  // la branche livrée peut dire autre chose : seule la référence compte
+  writeFileSync(join(d, INTERRUPTEUR), '{ "actif": false }\n');
+  g(['commit', '--quiet', '-am', 'éteint dans la branche livrée']);
+  assert.equal(lancer('lire', '--racine', d).stdout, 'actif=true\n');
+  assert.equal(lancer('lire', '--racine', d, '--ref', 'HEAD').stdout, 'actif=false\n');
+  // référence introuvable, fichier illisible : « false », code 0, avertissement (la publication ne se bloque pas)
+  let r = lancer('lire', '--racine', d, '--ref', 'origin/absente');
+  assert.deepEqual([r.status, r.stdout], [0, 'actif=false\n']);
+  assert.match(r.stderr, /::warning::origin\/absente introuvable/);
+  writeFileSync(join(d, INTERRUPTEUR), 'pas du json');
+  g(['commit', '--quiet', '-am', 'illisible']);
+  r = lancer('lire', '--racine', d, '--ref', 'HEAD');
+  assert.deepEqual([r.status, r.stdout], [0, 'actif=false\n']);
+  assert.match(r.stderr, /::warning::.*illisible/);
+  // decider
+  assert.equal(lancer('decider', '--mode', 'test', '--actif', 'true').stdout, 'kit_seul=true\nconstruire_le_site=false\n');
+  assert.equal(lancer('decider', '--mode', 'test', '--actif', 'false').stdout, 'kit_seul=false\nconstruire_le_site=true\n');
+  assert.equal(lancer('decider', '--mode', 'test', '--actif', '').stdout, 'kit_seul=false\nconstruire_le_site=true\n', 'sortie vide du job version : éteint');
+  assert.equal(lancer('decider', '--mode', 'prod', '--actif', 'oui').status, 2);
+  assert.equal(lancer('decider', '--mode', 'x', '--actif', 'true').status, 2);
+});
+
+test('livraison.yml : l’interrupteur se lit dans origin/dev sans bloquer la version ; le job Site est sauté allumé ; le kit seul n’est demandé qu’au test allumé', () => {
+  const { version, site, installateur } = wf.jobs;
+  const lecture = version.steps.find((s) => s.id === 'bascule');
+  assert.ok(lecture, 'le job version lit l’interrupteur');
+  assert.equal(lecture['continue-on-error'], true, 'une lecture qui échoue ne bloque pas la version ni la publication');
+  assert.match(lecture.run, /node tools\/flux-git\/bascule-2\.mjs lire --ref origin\/dev/);
+  assert.equal(version.steps.at(-1), lecture, 'après le bot : la version est déjà faite');
+  assert.match(version.outputs.bascule_2, /steps\.bascule\.outputs\.actif/);
+  // le job Site (branche NAS) : sauté allumé, inchangé sinon
+  assert.match(site.if, /needs\.version\.outputs\.site != ''/);
+  assert.match(site.if, /needs\.version\.outputs\.bascule_2 != 'true'/);
+  // l'installateur : décision, construction du site seulement si elle le dit, kit seul seulement si elle le dit
+  const decision = installateur.steps.find((s) => s.id === 'decision');
+  assert.match(decision.run, /bascule-2\.mjs decider --mode "\$MODE" --actif "\$BASCULE_2"/);
+  assert.match(decision.run, /if \[ -f tools\/flux-git\/bascule-2\.mjs \]/, 'un commit d’avant la bascule 2 (hotfix de master) n’a pas le module : livraison d’avant');
+  assert.match(decision.run, /kit_seul=false\\nconstruire_le_site=true/);
+  assert.equal(installateur.env.BASCULE_2, '${{ needs.version.outputs.bascule_2 }}');
+  const construire = installateur.steps.find((s) => /Construire le site/.test(s.name ?? ''));
+  assert.equal(construire.if, "steps.decision.outputs.construire_le_site == 'true'");
+  assert.ok(installateur.steps.indexOf(decision) < installateur.steps.indexOf(construire));
+  const fabrication = installateur.steps.find((s) => s.id === 'fabrication');
+  assert.equal(fabrication.env.KIT_SEUL, '${{ steps.decision.outputs.kit_seul }}');
+  assert.match(fabrication.run, /if \[ "\$MODE" = test \]; then kit="--kit \."; fi/, 'le kit complet reste réservé au test, comme avant');
+  assert.match(fabrication.run, /if \[ "\$KIT_SEUL" = true \]; then kit="\$kit --kit-seul"; site=""; fi/);
+  assert.match(fabrication.run, /site="--site client\/dist"/);
+  assert.match(fabrication.run, /fabriquer\.mjs --mode "\$MODE" \$site --tag "\$TAG" .* \$kit\)/);
+});

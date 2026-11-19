@@ -73,6 +73,8 @@ import { DatabaseSync } from 'node:sqlite';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+// tools/ n'est pas dans le kit de l'atelier : ce script ne tourne que dans le workflow (GitHub), jamais dans le kit (ni conteneur.sh ni repetition-bascule-2 ne le lancent).
+import { lireLInterrupteur as lireLInterrupteurDeLaBascule2 } from '../../tools/flux-git/bascule-2.mjs';
 import { DEV, MARQUEUR_MAJEURE, MASTER, demandeMajeure, familleDe } from '../../tools/flux-git/regles.mjs';
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
@@ -173,6 +175,15 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const SHA = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 export const BRANCHE_DU_WORKFLOW = /^feature\/mise-a-jour-regles-[0-9]{8}-[0-9]{4}(?:-[0-9]+)?$/;
 const FICHIER_DE_DATA_ROWS = /^data\/rows\/[A-Za-z0-9_]+\.sql$/;
+/**
+ * L'identité du lot (bascule 2, lot 11 PR 4 ; docs/serveur.md, « Bascule 2 : préparation ») : un fichier SANS contenu, écrit par `preparer` dans le commit du lot quand
+ * l'interrupteur tools/flux-git/bascule-2.json est allumé sur origin/dev. Il donne à GitHub quelque chose à livrer même quand aucune ligne de data/rows ne change (plus de
+ * « Rien à livrer ») et relie le code (le commit du dépôt qui le porte) à son paquet. Éteint, il n'existe pas et rien de ce qui suit ne change.
+ * Copies de kit.mjs#FICHIER_D_IDENTITE et #FORMAT_D_IDENTITE (un test les compare).
+ */
+export const FICHIER_D_IDENTITE = 'data/paquet.json';
+export const FORMAT_D_IDENTITE = 'maverick-paquet-identite/1';
+export const INTERRUPTEUR_BASCULE_2 = 'tools/flux-git/bascule-2.json';
 
 class ErreurMiseAJourGithub extends Error {
   constructor(message, { etape = null, pr = null } = {}) {
@@ -242,7 +253,8 @@ export function lirePaquet(octets, chemin, { empreinte, lot }, etape = 'lot') {
   try {
     const db = new DatabaseSync(chemin, { readOnly: true });
     try {
-      meta = { ...db.prepare('SELECT format, id, mode, version, majeure, tables_de_contenu FROM paquet_meta').get() };
+      // `*` : la fiche d'identité (schema, fabrique_le, commit_du_code) n'est lue que pour l'identité du lot (identiteDuPaquet) ; un paquet d'avant ces colonnes les a absentes
+      meta = { ...db.prepare('SELECT * FROM paquet_meta').get() };
     } finally {
       db.close();
     }
@@ -262,7 +274,49 @@ export function lirePaquet(octets, chemin, { empreinte, lot }, etape = 'lot') {
   return {
     paquet: true, format: meta.format, id: meta.id, mode: meta.mode, simulation: meta.mode === 'simulation', copie: meta.mode === 'copie', majeure: meta.majeure === 1,
     version_cible: meta.version, tables_de_contenu: [...tables].sort(), chemin,
+    // ce que l'identité du lot lit (identiteDuPaquet) : jamais un contenu
+    fiche: { schema: meta.schema ?? null, fabrique_le: meta.fabrique_le ?? null, commit_du_code: meta.commit_du_code ?? null },
   };
+}
+
+/**
+ * L'identité du lot, d'après le paquet lu (`lirePaquet`) et son empreinte (sha256 des octets du paquet, celle de l'entrée du workflow) : { format, lot, version, empreinte,
+ * structure (le numéro de structure du paquet), commit_du_code (le commit du code du service qui l'a fabriqué, null s'il ne le connaissait pas), fabrique_le }. Pure ; le job
+ * livrer la recalcule du paquet et la compare, octet pour octet, à celle du commit (verifierIdentite). Un paquet de copie n'en a pas (aucune version).
+ */
+export function identiteDuPaquet(donnees, empreinte) {
+  const f = donnees?.fiche ?? {};
+  const ok = donnees?.paquet === true && !donnees.copie && /^\d+\.\d+$/.test(String(donnees.version_cible)) && /^[0-9a-f]{64}$/.test(String(empreinte))
+    && Number.isInteger(f.schema) && f.schema >= 0 && typeof f.fabrique_le === 'string' && f.fabrique_le !== ''
+    && (f.commit_du_code === null || /^[0-9a-f]{40}$/.test(String(f.commit_du_code)));
+  if (!ok) throw echec('paquet', 'le paquet ne porte pas de quoi écrire son identité (version X.Y, numéro de structure, date de fabrication, commit du code de 40 caractères ou absent) : rien n\'est poussé.');
+  return { format: FORMAT_D_IDENTITE, lot: donnees.id, version: String(donnees.version_cible), empreinte, structure: f.schema, commit_du_code: f.commit_du_code, fabrique_le: f.fabrique_le };
+}
+/** Le texte du fichier d'identité (clés dans l'ordre d'identiteDuPaquet, fin de ligne LF). */
+export const texteDeLIdentite = (identite) => `${JSON.stringify(identite, null, 2)}\n`;
+
+/**
+ * L'interrupteur de la bascule 2, lu dans origin/dev (jamais dans la branche de travail) : true seulement pour `{ "actif": true }` ; absent, éteint. Un fichier
+ * illisible arrête la préparation (on ne devine pas : une identité écrite à tort, ou oubliée, ne se rattrape pas après la fusion).
+ */
+export function bascule2Allumee(g) {
+  const r = g(['show', `origin/${DEV}:${INTERRUPTEUR_BASCULE_2}`], { ok: [0, 128] });
+  if (r.code !== 0) return false;
+  // la même lecture que la livraison et le contrôle du contenu écrit (tools/flux-git/bascule-2.mjs) : clé « actif » absente = éteint partout
+  try {
+    return lireLInterrupteurDeLaBascule2(r.sortie);
+  } catch (e) {
+    throw echec('entrees', `${e.message} sur origin/${DEV} : rien n'est poussé.`);
+  }
+}
+
+/** Job livrer : le commit porte l'identité du paquet, exactement (octet pour octet) celle qu'on en recalcule. */
+export function verifierIdentite(g, { commit, donnees, empreinte }) {
+  const lu = g(['show', `${commit}:${FICHIER_D_IDENTITE}`], { ok: [0, 128] });
+  if (lu.code !== 0) throw echec('paquet', `le commit ${commit.slice(0, 7)} ne porte pas ${FICHIER_D_IDENTITE} alors que la préparation l'annonce : rien n'est poussé.`);
+  if (lu.sortie !== texteDeLIdentite(identiteDuPaquet(donnees, empreinte))) {
+    throw echec('paquet', `${FICHIER_D_IDENTITE} du commit ${commit.slice(0, 7)} n'est pas l'identité de ce paquet (lot, version, empreinte, structure, commit du code, date) : rien n'est poussé.`);
+  }
 }
 
 /**
@@ -526,11 +580,13 @@ export function lireDiffTree(sortie) {
  * version>.sql, en fichiers ordinaires (mode 100644, ou supprimés) ; `fichiers` (facultatif) : la liste exacte attendue ; `message` (facultatif) :
  * le message exact attendu. Rend les chemins changés.
  */
-export function verifierCommit(g, { base, commit, tables, fichiers = null, message = null }) {
+export function verifierCommit(g, { base, commit, tables, fichiers = null, message = null, identite = false }) {
   const entrees = lireDiffTree(g(['diff-tree', '-r', '--no-renames', '--no-commit-id', '--raw', '-z', base, commit]).sortie);
   if (!entrees.length) throw echec('liste', `le commit ${commit.slice(0, 7)} ne change rien depuis ${base.slice(0, 7)} : rien n'est poussé.`);
   const permis = cheminsPermis(tables);
-  const refuses = entrees.filter((x) => !permis.has(x.chemin) || !FICHIER_DE_DATA_ROWS.test(x.chemin)
+  // l'identité du lot (bascule 2) : le seul fichier de plus, et seulement quand la préparation l'annonce
+  if (identite) permis.add(FICHIER_D_IDENTITE);
+  const refuses = entrees.filter((x) => !permis.has(x.chemin) || !(FICHIER_DE_DATA_ROWS.test(x.chemin) || (identite && x.chemin === FICHIER_D_IDENTITE))
     || !(x.nouveau === '100644' || (x.nouveau === '000000' && x.statut === 'D')));
   if (refuses.length) {
     throw echec('liste', `le commit ${commit.slice(0, 7)} touche hors des tables de la mise à jour : ${refuses.map((x) => `${x.chemin} (${x.nouveau})`).join(', ')} `
@@ -644,7 +700,8 @@ export function verifierPreparation(p, { lot, empreinte, essai, copie = false })
   if (p.etat !== 'pret') return p;
   // une copie vers le dépôt n'a pas de note : ni version, ni Markdown
   const ok = SHA.test(String(p.base)) && SHA.test(String(p.commit)) && (p.copie ? p.version === null : /^\d+\.\d+$/.test(String(p.version))) && typeof p.markdown === 'string'
-    && Array.isArray(p.fichiers) && p.fichiers.length > 0 && p.fichiers.every((f) => typeof f === 'string' && FICHIER_DE_DATA_ROWS.test(f))
+    && (p.identite === undefined || (p.identite === true && !p.copie && Array.isArray(p.fichiers) && p.fichiers.includes(FICHIER_D_IDENTITE)))
+    && Array.isArray(p.fichiers) && p.fichiers.length > 0 && p.fichiers.every((f) => typeof f === 'string' && (FICHIER_DE_DATA_ROWS.test(f) || (p.identite === true && f === FICHIER_D_IDENTITE)))
     && /^\d{8}-\d{4}$/.test(String(p.quand?.branche));
   if (!ok) throw echec('artefact', 'préparation illisible (base, commit, version X.Y, note, fichiers de data/rows et horodatage attendus)');
   return p;
@@ -797,7 +854,7 @@ export function appliquerSurDev(g, { preparation: p, branche, tables }) {
   const sha = revision(g, 'HEAD');
   const parents = parentsDe(g, sha);
   if (parents.length !== 1 || parents[0] !== tete) throw echec('rebase', `commit rejoué inattendu (${sha.slice(0, 7)}) : rien n'est poussé.`);
-  verifierCommit(g, { base: tete, commit: sha, tables });
+  verifierCommit(g, { base: tete, commit: sha, tables, identite: p.identite === true });
   return { tete, sha, rejoue: true };
 }
 
@@ -1086,12 +1143,18 @@ export async function preparer(entrees, outils) {
   verifierResume(resume, { copie });
   const { version } = resume;
   const quoi = copie ? 'copie vers le dépôt' : `V${version}`;
+  // Bascule 2 allumée (origin/dev) : le commit du lot porte TOUJOURS l'identité du paquet, en plus de la copie de data/rows ; une copie vers le dépôt n'est pas un lot (aucune version)
+  const identite = paquet && !copie && bascule2Allumee(g);
+  if (identite) {
+    writeFileSync(join(racine, ...FICHIER_D_IDENTITE.split('/')), texteDeLIdentite(identiteDuPaquet(donnees, ctx.empreinte)));
+    journal(`bascule 2 : ${FICHIER_D_IDENTITE} écrit (identité du paquet, sans contenu)`);
+  }
   const modifies = fichiersModifies(g);
   if (!modifies.length) {
     journal(`${quoi} : aucun fichier de data/rows ne change, rien à livrer (aucune PR).`);
     return publier({ etat: 'rien', version });
   }
-  const refuses = horsListe(modifies, resume.fichiers, tables);
+  const refuses = horsListe(identite ? modifies.filter((f) => f !== FICHIER_D_IDENTITE) : modifies, resume.fichiers, tables);
   if (refuses.length) {
     throw echec('liste', `fichiers hors des tables de la mise à jour : ${refuses.join(', ')} (seuls data/rows/<table>.sql des tables du ${paquet ? 'paquet' : 'lot'} `
       + `[${tables.join(', ') || 'aucune'}] et de la note de version peuvent changer). Rien n'est poussé.`);
@@ -1130,6 +1193,7 @@ export async function preparer(entrees, outils) {
     + (essai ? ' (simulation : il le vérifiera sans rien pousser)' : ''));
   return publier({
     etat: 'pret', base, commit, version, depuis: resume.depuis ?? null, lignes: resume.lignes ?? null, fichiers: modifies, markdown: resume.markdown, quand,
+    ...(identite ? { identite: true } : {}),
   });
 }
 
@@ -1262,12 +1326,18 @@ export async function fusionDansDev(entrees, outils) {
 
   // e. le commit de l'artefact, revérifié par git
   importerCommit(g, join(ctx.artefact, ARTEFACT.commit), p);
-  verifierCommit(g, { base: p.base, commit: p.commit, tables, fichiers: p.fichiers, message: copie ? messageAttenduCopie(lot, ctx.run) : messageAttendu(p.version, lot, ctx.run) });
+  verifierCommit(g, { base: p.base, commit: p.commit, tables, fichiers: p.fichiers, message: copie ? messageAttenduCopie(lot, ctx.run) : messageAttendu(p.version, lot, ctx.run), identite: p.identite === true });
   journal(`commit ${p.commit.slice(0, 7)} vérifié : parent ${p.base.slice(0, 7)}, fichiers ${p.fichiers.join(', ')} (tables du lot et de la note de version)`);
   if (donnees.paquet) {
     // un paquet : data/rows du commit doit être, fichier par fichier, ce que l'exporteur tire du paquet
     const n = verifierContrePaquet(g, { commit: p.commit, paquet: donnees.chemin, temp: ctx.temp ?? null });
     journal(`paquet réexporté : les ${n} fichiers de data/rows du commit sont ceux du paquet, octet pour octet`);
+    if (p.identite === true) {
+      verifierIdentite(g, { commit: p.commit, donnees, empreinte: ctx.empreinte });
+      journal(`${FICHIER_D_IDENTITE} : l'identité du paquet (lot, version, empreinte, structure, commit du code), octet pour octet`);
+    }
+  } else if (p.identite === true) {
+    throw echec('artefact', `la préparation annonce ${FICHIER_D_IDENTITE} pour un lot qui n'est pas un paquet : rien n'est poussé.`);
   }
 
   if (essai) {

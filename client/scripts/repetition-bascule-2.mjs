@@ -126,8 +126,8 @@ export function repeterLaBascule2({ source, travail, production, kit, versionDev
     // 3. l'activation (garde-fou 17) : le kit tel que kit.json et son schema.sql le décrivent, le paquet tel qu'il est, la production telle que sa copie la dit
     const octetsDuPaquet = readFileSync(chemin);
     activation = controlerLActivation({
-      kit: { version: kit.version, structure: kit.structure, paquet: { version: meta.version, sha256: meta.fichier.sha256 } },
-      paquet: { sha256: createHash('sha256').update(octetsDuPaquet).digest('hex'), schema: lu.schema, version: lireMetaDuPaquet(chemin)?.version ?? null, notes: lu.notes },
+      kit: { version: kit.version, structure: kit.structure, paquet: { version: meta.version, empreinte: meta.fichier.sha256 } },
+      paquet: { empreinte: createHash('sha256').update(octetsDuPaquet).digest('hex'), schema: lu.schema, version: lireMetaDuPaquet(chemin)?.version ?? null, notes: lu.notes },
       production: { notes: notesDeLaProduction(copie), version: depuis },
     });
     for (const r of activation.refus) refus.push({ etape: 'activation', raison: r.raison, message: r.message });

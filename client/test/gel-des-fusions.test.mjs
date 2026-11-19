@@ -26,10 +26,14 @@ const run = (o = {}) => ({ id: 111, run_number: 42, status: 'in_progress', concl
 
 test('l’interrupteur : absent ou faux = éteint ; vrai = allumé ; illisible = erreur (on ne devine pas)', () => {
   assert.equal(lireLInterrupteur(null), false);
-  assert.equal(lireLInterrupteur('{"actif":false}'), false);
-  assert.equal(lireLInterrupteur('{"actif":true,"a_lire":"x"}'), true);
+  assert.equal(lireLInterrupteur('{"gel_des_fusions":false}'), false);
+  assert.equal(lireLInterrupteur('{"gel_des_fusions":true,"a_lire":"x"}'), true);
+  assert.equal(lireLInterrupteur('{"actif":true}'), false, '« actif » est l’autre interrupteur du fichier (kit seul) : il n’allume pas le gel');
+  assert.equal(lireLInterrupteur('{"actif":true,"gel_des_fusions":false}'), false);
+  assert.equal(lireLInterrupteur('{"actif":false,"gel_des_fusions":true}'), true, 'indépendants dans les deux sens');
+  assert.equal(lireLInterrupteur('{}'), false, 'clé absente : éteint');
   assert.throws(() => lireLInterrupteur('{ pas du json'), /illisible/);
-  assert.throws(() => lireLInterrupteur('{"actif":"oui"}'), /true ou false/);
+  assert.throws(() => lireLInterrupteur('{"gel_des_fusions":"oui"}'), /true ou false/);
   assert.throws(() => lireLInterrupteur('[]'), /true ou false/);
 });
 
@@ -129,19 +133,19 @@ test('éteint ou absent sur origin/dev : vert, GitHub n’est jamais appelé ; l
   const absent = depot('absent');
   assert.equal(interrupteurDans(absent, 'origin/dev'), false);
   assert.equal((await controlerLesFusions({ racine: absent, cible: 'dev', source: 'feature/x', fetch: interdit })).verdict, 'vert');
-  const faux = depot('faux', { surDev: '{"actif":false}' });
+  const faux = depot('faux', { surDev: '{"gel_des_fusions":false}' });
   assert.equal((await controlerLesFusions({ racine: faux, cible: 'master', source: 'hotfix/x', fetch: interdit })).raison, 'eteint');
   // la PR allume l'interrupteur dans son propre arbre : sans effet, et un `false` posé par la PR n'éteint pas non plus un interrupteur allumé sur dev
-  const pr = depot('pr', { surDev: '{"actif":false}', surLaPR: '{"actif":true}' });
+  const pr = depot('pr', { surDev: '{"gel_des_fusions":false}', surLaPR: '{"gel_des_fusions":true}' });
   assert.equal((await controlerLesFusions({ racine: pr, cible: 'dev', source: 'feature/x', fetch: interdit })).raison, 'eteint');
-  const allumeSurDev = depot('pr-eteint', { surDev: '{"actif":true}', surLaPR: '{"actif":false}' });
+  const allumeSurDev = depot('pr-eteint', { surDev: '{"gel_des_fusions":true}', surLaPR: '{"gel_des_fusions":false}' });
   const f = fauxFetch({ corps: { workflow_runs: [run()] } });
   assert.equal((await controlerLesFusions({ racine: allumeSurDev, cible: 'dev', source: 'feature/x', depot: 'o/d', jeton: 'j', fetch: f, maintenantMs: MAINTENANT })).verdict, 'rouge');
   assert.throws(() => interrupteurDans(absent, 'origin/inconnue'), /introuvable/);
 });
 
 test('allumé : rouge avec un run en cours, vert sans, vert pour une fusion du workflow (sans lire GitHub) ; la requête est en lecture, avec le jeton, sur le bon workflow', async () => {
-  const d = depot('allume', { surDev: '{"actif":true}' });
+  const d = depot('allume', { surDev: '{"gel_des_fusions":true}' });
   const f = fauxFetch({ corps: { workflow_runs: [run({ status: 'completed' }), run({ id: 7, run_number: 9, run_started_at: '2026-11-20T11:55:00Z' })] } });
   const rouge = await controlerLesFusions({ racine: d, cible: 'dev', source: 'feature/ma-feature', depot: 'proprio/depot', jeton: 'jeton-lecture', fetch: f, api: 'https://api.exemple.invalid/', maintenantMs: MAINTENANT });
   assert.equal(rouge.verdict, 'rouge');
@@ -159,7 +163,7 @@ test('allumé : rouge avec un run en cours, vert sans, vert pour une fusion du w
 });
 
 test('allumé et GitHub illisible : une erreur (le job est rouge), jamais un vert deviné', async () => {
-  const d = depot('illisible', { surDev: '{"actif":true}' });
+  const d = depot('illisible', { surDev: '{"gel_des_fusions":true}' });
   const base = { racine: d, cible: 'dev', source: 'feature/x', depot: 'o/d', jeton: 'j' };
   await assert.rejects(controlerLesFusions({ ...base, fetch: fauxFetch({ statut: 403, corps: {} }) }), /403/);
   await assert.rejects(controlerLesFusions({ ...base, fetch: fauxFetch({ corps: { message: 'x' } }) }), /workflow_runs/);
@@ -196,11 +200,11 @@ async function cli(d, args, { token = 'jeton-cli' } = {}) {
 
 test('CLI : éteint → 0 sans requête ; allumé avec un run en cours → 1 et le message (run, depuis quand, geste) dans la sortie et le résumé ; fusion du workflow → 0', async () => {
   demandes.length = 0;
-  const eteint = depot('cli-eteint', { surDev: '{"actif":false}' });
+  const eteint = depot('cli-eteint', { surDev: '{"gel_des_fusions":false}' });
   const r0 = await cli(eteint, ['--cible', 'dev', '--source', 'feature/x']);
   assert.equal(r0.code, 0, r0.out);
   assert.equal(demandes.length, 0, 'éteint : aucun appel');
-  const allume = depot('cli-allume', { surDev: '{"actif":true}' });
+  const allume = depot('cli-allume', { surDev: '{"gel_des_fusions":true}' });
   const maintenant = Date.now();
   reponseDuServeur = { statut: 200, corps: { workflow_runs: [run({ run_number: 77, run_started_at: new Date(maintenant - 20 * MIN).toISOString() })] } };
   const resume = join(dossierTemporaire('gel-fusions-resume'), 'resume.md');
@@ -221,7 +225,7 @@ test('CLI : éteint → 0 sans requête ; allumé avec un run en cours → 1 et 
 });
 
 test('CLI : GitHub illisible, jeton absent, usage faux → 2 (jamais vert) ; le résumé le dit', async () => {
-  const allume = depot('cli-erreur', { surDev: '{"actif":true}' });
+  const allume = depot('cli-erreur', { surDev: '{"gel_des_fusions":true}' });
   const resume = join(dossierTemporaire('gel-fusions-resume-erreur'), 'resume.md');
   reponseDuServeur = { statut: 403, corps: { message: 'interdit' } };
   const r = await cli(allume, ['--cible', 'dev', '--source', 'feature/x', '--resume', resume]);

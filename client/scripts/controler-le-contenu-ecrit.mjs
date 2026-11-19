@@ -7,7 +7,8 @@ import { execFileSync } from 'node:child_process';
 import { appendFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { BRANCHE_DE_L_INTERRUPTEUR, controlerLeContenu, INTERRUPTEUR, lireLInterrupteur } from './controler-le-contenu-ecrit-lib.mjs';
+import { BRANCHE_DE_L_INTERRUPTEUR, controlerLeContenu, FICHIER_D_IDENTITE, INTERRUPTEUR, INTERRUPTEUR_BASCULE_2, lireLInterrupteur } from './controler-le-contenu-ecrit-lib.mjs';
+import { lireLInterrupteur as lireLaBascule2 } from '../../tools/flux-git/bascule-2.mjs';
 
 const RACINE_DU_DEPOT = fileURLToPath(new URL('../../', import.meta.url));
 const SEP = '\x1f';
@@ -35,12 +36,14 @@ export function interrupteurDans(racine, ref) {
  */
 export function controlerLaPR({ racine = RACINE_DU_DEPOT, cible, source, sha = 'HEAD', interrupteur = BRANCHE_DE_L_INTERRUPTEUR }) {
   const actif = interrupteurDans(racine, interrupteur);
-  if (!actif || !['dev', 'master'].includes(cible)) return { actif, refus: [], fichiers: [], commits: [], migrations: [] };
+  // l'interrupteur de la bascule 2 (data/paquet.json, lot 11 PR 4), lu au même endroit ; éteint ou absent : rien de ce qui le concerne n'existe
+  const bascule2 = lireLaBascule2(git(racine, ['show', `${interrupteur}:${INTERRUPTEUR_BASCULE_2}`], { ok: [128] }));
+  if ((!actif && !bascule2) || !['dev', 'master'].includes(cible)) return { actif, refus: [], fichiers: [], commits: [], migrations: [] };
   const base = git(racine, ['merge-base', `origin/${cible}`, sha]).trim();
   const fichiers = lignes(git(racine, ['diff', '--name-only', '--no-renames', base, sha]));
   const commits = [];
-  if (fichiers.some((f) => f.startsWith('data/rows/'))) {
-    const brut = git(racine, ['log', `--format=%H${SEP}%an${SEP}%ae${SEP}%cn${SEP}%ce${SEP}%B${FIN}`, `${base}..${sha}`, '--', 'data/rows/']);
+  if (fichiers.some((f) => f.startsWith('data/rows/')) || (bascule2 && fichiers.includes(FICHIER_D_IDENTITE))) {
+    const brut = git(racine, ['log', `--format=%H${SEP}%an${SEP}%ae${SEP}%cn${SEP}%ce${SEP}%B${FIN}`, `${base}..${sha}`, '--', 'data/rows/', ...(bascule2 ? [FICHIER_D_IDENTITE] : [])]);
     for (const bloc of brut.split(FIN).map((b) => b.replace(/^\n/, '')).filter(Boolean)) {
       const [h, auteur, courriel, commiteur, courrielCommiteur, message] = bloc.split(SEP);
       // les fichiers du commit, comparés à son premier parent (une fusion porte alors tout ce qu'elle apporte : refusée si elle apporte data/rows/)
@@ -50,13 +53,13 @@ export function controlerLaPR({ racine = RACINE_DU_DEPOT, cible, source, sha = '
   }
   const ajoutees = lignes(git(racine, ['diff', '--name-only', '--no-renames', '--diff-filter=A', base, sha, '--', 'data/migrations/'])).filter((f) => f.endsWith('.sql'));
   const migrations = new Map(ajoutees.map((f) => [f.slice('data/migrations/'.length), git(racine, ['show', `${sha}:${f}`])]));
-  const r = controlerLeContenu({ actif, cible, source, fichiers, commits, migrations });
+  const r = controlerLeContenu({ actif, bascule2, cible, source, fichiers, commits, migrations });
   return { ...r, fichiers, commits: commits.map((c) => c.sha), migrations: [...migrations.keys()] };
 }
 
 /** Le résumé Markdown ($GITHUB_STEP_SUMMARY) : jamais un contenu, seulement des chemins, des commits et les règles. */
 export function resumeDuControle(r) {
-  if (!r.actif) return `### Contenu écrit à la main\n\nContrôle éteint (\`${INTERRUPTEUR}\` : \`actif\` n’est pas \`true\` sur \`${BRANCHE_DE_L_INTERRUPTEUR}\`) : rien n’est refusé.\n`;
+  if (!r.actif && !r.refus.length) return `### Contenu écrit à la main\n\nContrôle éteint (\`${INTERRUPTEUR}\` : \`actif\` n’est pas \`true\` sur \`${BRANCHE_DE_L_INTERRUPTEUR}\`) : rien n’est refusé.\n`;
   if (!r.refus.length) return `### Contenu écrit à la main\n\nContrôle allumé : rien à refuser (${r.fichiers.length} fichier(s) changé(s)).\n`;
   return `### Contenu écrit à la main\n\nContrôle allumé : **${r.refus.length} refus**.\n\n${r.refus.map((x) => `- \`${x.regle}\` : ${x.message}`).join('\n')}\n`;
 }

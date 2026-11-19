@@ -28,6 +28,10 @@ export const DOSSIER_DU_KIT = 'atelier-kit';
 
 /** Ce que le kit emporte, relatif à la racine du dépôt. */
 export const A_EMPORTER = Object.freeze(['client', 'data/schema.sql', 'data/derive.sql', 'data/migrations', 'sources/sources.json', 'sources/tipeee/bienvenue.json', '.nvmrc']);
+/** Le fichier d'identité du dernier lot (lot 11, PR 4 ; sans contenu : écrit par le workflow de mise à jour, client/scripts/mise-a-jour-github.mjs#FICHIER_D_IDENTITE), relatif à la racine. */
+export const FICHIER_D_IDENTITE = 'data/paquet.json';
+/** Son format (copie de mise-a-jour-github.mjs#FORMAT_D_IDENTITE : un test les compare). */
+export const FORMAT_D_IDENTITE = 'maverick-paquet-identite/1';
 /** Ce que client/ ne donne pas au kit (chemins relatifs à client/). */
 const EXCLUS_DE_CLIENT = Object.freeze(['dist', '.astro', 'test', 'var', 'src/content/wiki']);
 const EXCLUS_PAR_NOM = /^(?:\.DS_Store|.*\.log)$/;
@@ -154,6 +158,31 @@ function ignoresParGit(racine) {
   return r.stdout.split('\0').filter(Boolean).map((p) => p.replace(/\/$/, '')).filter((p) => p !== 'client/node_modules' && !p.startsWith('client/node_modules/'));
 }
 
+/**
+ * Le paquet que ce kit annonce (lot 11, PR 4) : l'identité du lot de `<racine>/data/paquet.json`, qui ne porte aucun contenu. Absent, le kit n'annonce aucun
+ * paquet (`null`) ; illisible ou d'une autre forme : refus (un kit ne doit pas annoncer un paquet qu'on ne sait pas lire). Rend le paquet annoncé (`{ lot, version, empreinte, structure }`, la structure étant celle de CE paquet), ou `null`.
+ */
+export function lireLIdentiteDuPaquet(racine) {
+  const chemin = join(racine, ...FICHIER_D_IDENTITE.split('/'));
+  if (!existsSync(chemin)) return null;
+  let v;
+  try {
+    v = JSON.parse(readFileSync(chemin, 'utf8'));
+  } catch {
+    throw new ErreurKit([`${FICHIER_D_IDENTITE} illisible (JSON attendu)`]);
+  }
+  const ok = v && typeof v === 'object' && v.format === FORMAT_D_IDENTITE && typeof v.lot === 'string' && /^[0-9a-f-]{8,64}$/.test(v.lot)
+    && /^\d+\.\d+$/.test(String(v.version)) && /^[0-9a-f]{64}$/.test(String(v.empreinte)) && Number.isInteger(v.structure) && v.structure >= 0;
+  if (!ok) throw new ErreurKit([`${FICHIER_D_IDENTITE} : format ${FORMAT_D_IDENTITE}, lot, version X.Y, empreinte (sha256) et structure (nombre entier) attendus`]);
+  return { lot: v.lot, version: String(v.version), empreinte: v.empreinte, structure: v.structure };
+}
+
+/** La structure d'un `data/schema.sql` : son `PRAGMA user_version = N;` (null s'il ne s'y lit pas). */
+export function structureDuKit(schema) {
+  const m = /^\s*PRAGMA\s+user_version\s*=\s*(\d+)\s*;/im.exec(readFileSync(schema, 'utf8'));
+  return m ? Number(m[1]) : null;
+}
+
 /** La version de Node de .nvmrc (« 22 » ou « v22.13.0 » → « 22 » ou « 22.13.0 »). */
 export function nodeDeNvmrc(racine) {
   const texte = readFileSync(join(racine, '.nvmrc'), 'utf8').trim().replace(/^v/, '');
@@ -170,6 +199,7 @@ export function fabriquerLeKit({ racine, destination, version, sha, plateforme =
   if (plateforme.platform !== 'linux') throw new ErreurKit([`le kit se fabrique sous Linux (cette machine : ${plateforme.platform}) : ses modules natifs doivent être ceux de l'image Docker de l'atelier`]);
   for (const rel of A_EMPORTER) if (!existsSync(join(racine, rel))) throw new ErreurKit([`${rel} est introuvable dans ${racine}`]);
   const node = nodeDeNvmrc(racine);
+  const paquet = lireLIdentiteDuPaquet(racine);
   const exclus = new Set([...EXCLUS_DE_CLIENT.map((e) => `client/${e}`), ...ignoresParGit(racine)]);
   const travail = mkdtempSync(join(tmpdir(), 'maverick-kit-'));
   try {
@@ -223,6 +253,9 @@ export function fabriquerLeKit({ racine, destination, version, sha, plateforme =
       taille_archive_octets: statSync(archive).size,
       empreinte: empreinte.digest('hex'),
       archive_sha256: sha256(readFileSync(archive)),
+      // le paquet que ce kit annonce (null sans data/paquet.json, structure de ce paquet comprise) et la structure du KIT (user_version de son data/schema.sql) : ce que la production lira pour n'activer un kit qu'avec son paquet
+      paquet,
+      structure: structureDuKit(join(kit, 'data', 'schema.sql')),
       elagage: { paquets_retires: retires.length, octets_retires: retires.reduce((s, p) => s + p.octets, 0), exemples: retires.slice(0, 12).map((p) => p.rel) },
     };
     writeFileSync(join(destination, META_DU_KIT), `${JSON.stringify(meta, null, 2)}\n`);
