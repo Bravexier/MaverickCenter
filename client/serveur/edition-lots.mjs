@@ -25,17 +25,23 @@ import { dirname, join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
-import { TABLES_DE_LA_PAGE_DES_ARMES } from '../src/lib/corps-armes.mjs';
-import { TABLES_DES_PAGES_DES_ARMURES } from '../src/lib/corps-armures.mjs';
-import { TABLES_DES_COMPOSANTS } from '../src/lib/corps-composants.mjs';
+import { ErreurCorpsArmes, PAGE_DES_ARMES } from '../src/lib/corps-armes.mjs';
+import { ErreurCorpsArmures } from '../src/lib/corps-armures.mjs';
+import {
+  ErreurCorpsComposants, PAGE_DES_ARMURES, PAGE_DES_BOUCLIERS, PAGES_DES_COMPOSANTS_AU_CORPS_ENTIER,
+} from '../src/lib/corps-composants.mjs';
 import { PAGE_DE_LA_LIGNE } from '../src/lib/corps-magies.mjs';
-import { TABLES_DES_POTIONS } from '../src/lib/corps-potions.mjs';
+import { corpsDesPotionsEntier, ErreurCorpsPotions } from '../src/lib/corps-potions.mjs';
 import { ENTITES, TABLES } from '../src/lib/edition-modele.mjs';
 import { colonneMasquee, nomDeColonne, nomDeTable } from '../src/lib/libelles-de-la-base.mjs';
 import { comparerAvecLaBase, controlerLeLot, donnerLesNumeros, effetNetDuLot, FORMAT_DU_LOT, jugerLAnnulation, lireUnLot } from '../src/lib/lot-de-changements.mjs';
 import { controlerLeContenu } from './controles-du-contenu.mjs';
 import { ErreurEdition, appliquerUnLot, colonneDerivee, recalculerLesPages } from './edition.mjs';
 import { libelleDeLigne } from './edition-conflits.mjs';
+import { corpsEntierDesArmes } from './edition-armes.mjs';
+import { corpsEntierDesArmures } from './edition-armures.mjs';
+import { corpsEntierDeLaPageDesComposants } from './edition-composants.mjs';
+import { contexteDuCorpsDesPotions, potionsParPage } from './edition-consommables.mjs';
 import { lireLigne, monterLePlafond, nouveauLot, plusHautNumero, structure } from './edition-journal.mjs';
 
 /** Le format de l'essai enregistré (`lot_de_changements.essai`). */
@@ -893,19 +899,70 @@ export function essayerLAnnulation({ source, dossier, depose }) {
  */
 export const TYPES_DE_PAGES_RECALCULEES = Object.freeze(['races', 'classes', 'capacites', 'metiers']);
 /**
- * Les tables dont chaque ligne a sa place dans le corps d'une page qui n'est refaite que morceau par morceau (le rendu remplace la ligne qu'une modification
- * touche ; un morceau déjà d'accord avec sa ligne reste tel quel) : pages des magies (lib/corps-magies.mjs), des armes, des armures et des boucliers, des
- * composants, des consommables de la ceinture. Le recalcul rejoue chacune de leurs lignes telle quelle (avant = après) : chaque morceau est réécrit par le
- * code d'aujourd'hui (rapport du lot 8 : « Tout recalculer » étendu après la bascule 1).
+ * Les tables dont chaque ligne a sa place dans le corps d'une page de magie, qui n'est refaite que morceau par morceau (le rendu remplace le morceau qu'une
+ * modification touche, repéré par sa place : lib/corps-magies.mjs) : le recalcul rejoue chacune de leurs lignes telle quelle (avant = après), si bien que chaque
+ * morceau est réécrit par le code d'aujourd'hui (rapport du lot 8 : « Tout recalculer » étendu après la bascule 1).
  */
-export const TABLES_DES_PAGES_PAR_MORCEAUX = Object.freeze([...new Set([...Object.keys(PAGE_DE_LA_LIGNE), ...TABLES_DE_LA_PAGE_DES_ARMES,
-  ...TABLES_DES_PAGES_DES_ARMURES, ...TABLES_DES_COMPOSANTS, ...TABLES_DES_POTIONS])]);
+export const TABLES_DES_PAGES_PAR_MORCEAUX = Object.freeze([...Object.keys(PAGE_DE_LA_LIGNE)]);
+/**
+ * Les lignes de composants qui restent rejouées telles quelles, comme avant le rendu entier : les matériaux, les gemmes et les bois, que le site crée sans que leur
+ * ligne existe dans les pages de l'armurerie, des bâtons et des accessoires. Sans marqueur « créé par le site », un rendu entier par rang (ressource.ordre)
+ * apparierait, après une suppression suivie d'une création (qui reprend le même rang), la dernière ligne du corps à un autre élément, sans erreur : ces tableaux
+ * ne se refont donc pas en entier. Table → condition SQL sur ses lignes (null : toutes).
+ */
+export const TABLES_REJOUEES_DES_COMPOSANTS = Object.freeze({ materiau: null, gemme: null, ressource: "genre IN ('materiau', 'gemme', 'bois')" });
 const COLONNES_RECALCULEES = Object.freeze(['corps_md', 'resume', 'donnees']);
 
 /**
+ * Refait le CORPS ENTIER des pages des armes, des armures et des boucliers, des composants et des potions depuis l'état des tables (lib/corps-armes.mjs,
+ * corps-armures.mjs, corps-composants.mjs, corps-potions.mjs : `corpsDesArmesEntier`…) : un recalcul sert quand le code change, donc quand le corps n'écrit
+ * plus une ligne comme le code d'aujourd'hui la rend, et une ligne retrouvée par son ancien texte ne se retrouve plus. Chaque tableau est repéré par sa
+ * section et ses lignes de données sont remplacées en bloc par celles de la table (pages des composants : « Équipement inventaire » et « Liste
+ * d'ingrédients » seulement ; matériaux, gemmes et bois restent rejoués ligne à ligne : TABLES_REJOUEES_DES_COMPOSANTS) ; la prose reste. Une page dont
+ * le corps n'a plus la forme de l'importeur (section ou tableau introuvable, ou, pour les armures et boucliers, nombre de lignes qui n'est plus celui de
+ * la base) reste telle quelle et est dite dans `illisibles`. Écrit dans `db` (une copie : le service n'y touche pas).
+ * @returns {{ page: string, raison: string }[]} les pages illisibles
+ */
+export function refaireLesCorpsEntiers(db) {
+  const illisibles = [];
+  const ecrire = (id, rendus) => {
+    const page = lireLigne(db, 'page', { id });
+    if (!page) return;
+    try {
+      const corps = rendus.reduce((c, rendu) => rendu(c), page.corps_md);
+      if (corps !== page.corps_md) db.prepare('UPDATE page SET corps_md = ? WHERE id = ?').run(corps, id);
+    } catch (e) {
+      if (![ErreurCorpsArmes, ErreurCorpsArmures, ErreurCorpsComposants, ErreurCorpsPotions].some((E) => e instanceof E)) throw e;
+      illisibles.push({ page: id, raison: e.message });
+    }
+  };
+  const avec = (tables, travail) => {
+    if (tables.every((t) => tableExiste(db, t))) travail();
+  };
+  avec(['arme', 'arme_famille', 'materiau_arme', 'amelioration_equipement', 'amelioration_total', 'ressource'], () => {
+    ecrire(PAGE_DES_ARMES, [(c) => corpsEntierDesArmes(db, c)]);
+  });
+  avec(['armure', 'armure_emplacement', 'bouclier', 'bouclier_classe', 'bouclier_poids', 'amelioration_equipement', 'amelioration_total'], () => {
+    for (const id of [PAGE_DES_ARMURES, PAGE_DES_BOUCLIERS]) ecrire(id, [(c) => corpsEntierDesArmures(db, id, c)]);
+  });
+  // seules les pages des composants dont le site ne crée pas de ligne hors de leur tableau : « Équipement inventaire » et « Liste d'ingrédients » (le tableau des
+  // matériaux, des gemmes et des bois reste suivi ligne à ligne : voir TABLES_REJOUEES_DES_COMPOSANTS)
+  avec(['monnaie', 'ressource', 'ingredient_alchimie'], () => {
+    for (const id of PAGES_DES_COMPOSANTS_AU_CORPS_ENTIER) ecrire(id, [(c) => corpsEntierDeLaPageDesComposants(db, id, c)]);
+  });
+  avec(['potion', 'ressource'], () => {
+    const contexte = contexteDuCorpsDesPotions(db);
+    for (const [id, potions] of potionsParPage(db)) ecrire(id, [(c) => corpsDesPotionsEntier(c, potions, contexte)]);
+  });
+  return illisibles;
+}
+
+/**
  * Les écarts entre ce que les pages portent et ce que le code d'aujourd'hui en dérive : sur la copie `db` (écrite : le service n'y touche pas), chaque page
- * des types ci-dessus est refaite par `recalculerLesPages`, et chaque ligne des tables des pages par morceaux y est rejouée telle quelle ; puis toutes les
- * pages sont comparées à ce qu'elles portaient (`examinees` : les pages qui ont des colonnes dérivées).
+ * des types ci-dessus est refaite par `recalculerLesPages`, chaque ligne des tables des pages de magie (et les matériaux, gemmes et bois : `TABLES_REJOUEES_DES_COMPOSANTS`)
+ * y est rejouée telle quelle, et les pages des armes, des armures et des boucliers, de l'inventaire, des ingrédients et des potions sont refaites en entier
+ * (`refaireLesCorpsEntiers`) ; puis toutes les pages sont comparées à ce
+ * qu'elles portaient (`examinees` : les pages qui ont des colonnes dérivées).
  * @returns {{ examinees: number, ecarts: { id: string, colonnes: { colonne: string, avant: unknown, apres: unknown }[] }[], illisibles: { page: string, raison: string }[] }}
  */
 export function ecartsDuRecalcul(db) {
@@ -916,8 +973,9 @@ export function ecartsDuRecalcul(db) {
   // chaque page des types recalculés est marquée comme le journal marque une page dont seules des colonnes dérivées ont été notées (edition.mjs#lignesRejouees)
   const marques = avant.filter((p) => TYPES_DE_PAGES_RECALCULEES.includes(p.id.slice(0, p.id.indexOf('/'))))
     .map((p) => ({ table: 'page', cle: { id: p.id }, operation: 'modifier', avant: { corps_md: null }, apres: { corps_md: null } }));
-  // chaque ligne des pages par morceaux, rejouée telle quelle (edition.mjs#lignesRejouees : avant = la ligne en place, après = la même)
-  for (const table of TABLES_DES_PAGES_PAR_MORCEAUX) {
+  // chaque ligne des pages de magie (par morceaux), rejouée telle quelle (edition.mjs#lignesRejouees : avant = la ligne en place, après = la même)
+  const rejouees = [...TABLES_DES_PAGES_PAR_MORCEAUX.map((t) => [t, null]), ...Object.entries(TABLES_REJOUEES_DES_COMPOSANTS)];
+  for (const [table, ou] of rejouees) {
     let cle;
     try {
       ({ cle } = structure(db, table));
@@ -925,11 +983,12 @@ export function ecartsDuRecalcul(db) {
       continue; // une table absente de cette base
     }
     if (!cle.length) continue;
-    for (const l of db.prepare(`SELECT ${cle.map((c) => `"${c}"`).join(', ')} FROM "${table}"`).all()) {
+    for (const l of db.prepare(`SELECT ${cle.map((c) => `"${c}"`).join(', ')} FROM "${table}"${ou ? ` WHERE ${ou}` : ''}`).all()) {
       marques.push({ table, cle: Object.fromEntries(cle.map((c) => [c, l[c]])), operation: 'modifier', avant: {}, apres: {} });
     }
   }
   const { illisibles } = recalculerLesPages(db, marques);
+  illisibles.push(...refaireLesCorpsEntiers(db));
   const apres = new Map(lire().map((p) => [p.id, p]));
   const ecarts = [];
   for (const p of avant) {

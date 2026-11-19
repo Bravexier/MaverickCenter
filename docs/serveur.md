@@ -1001,13 +1001,14 @@ renommage de mot-clé laisse la clé que le renommage avait posée en clé quitt
 **Tout recalculer** (`recalculerTout`, classe `proposition`). Après un changement de code, le corps, le résumé et les `donnees` des pages que le code dérive des tables et que
 `recalculerLesPages` refait sans qu'on lui dise ce qui a changé — races, classes, fiches de dons, métiers (`TYPES_DE_PAGES_RECALCULEES`) — sont refaits **sur une copie** et comparés à
 ce qui est stocké ; les écarts sont **déposés comme un lot de nature `code`** (une opération `modifier` par page : la valeur stockée en `avant`, la valeur recalculée en `apres`), essayé à
-blanc et traité comme tout dépôt (R291) : appliqué aussitôt avec la clé de dépôt ou le mot de passe quand la clé de dépôt est posée, sinon proposé au clic. Aucun écart : `200`, aucun lot. Les pages refaites morceau par morceau (magies, armes,
-armures et boucliers, composants, consommables de la ceinture : `TABLES_DES_PAGES_PAR_MORCEAUX`) y sont aussi : chaque ligne de leurs tables est rejouée telle quelle (avant = après).
-Une page de magie, dont les morceaux sont repérés par leur place, suit alors ses tables. Les armes, armures et boucliers retrouvent une ligne par son texte : une ligne que le corps
-n'écrit plus comme le code d'aujourd'hui la rend se dit dans `pages_illisibles`, sans que la page soit refaite (il leur faudrait un rendu du corps entier). Les composants retrouvent une
-ligne par son nom : seul un nom changé y est signalé. Les potions (`corpsDeLaPotionApres`) rendent le corps tel quel quand la ligne ne change pas : elles ne sont ni refaites ni
-signalées. Ces limites sont un lot de suite ; les clés des mots-clés et les colonnes calculées des
-armures (R207) sont tenues par le service et ne sont pas non plus dans ce recalcul.
+blanc et traité comme tout dépôt (R291) : appliqué aussitôt avec la clé de dépôt ou le mot de passe quand la clé de dépôt est posée, sinon proposé au clic. Aucun écart : `200`, aucun lot. Les pages de magie, refaites morceau par morceau (`TABLES_DES_PAGES_PAR_MORCEAUX`), y sont aussi : chaque ligne de leurs tables est rejouée telle quelle (avant = après) et leurs morceaux, repérés par leur
+place, suivent leurs tables. Les pages des armes, des armures et des boucliers, des composants dont le site ne crée pas de ligne hors de leur tableau (Équipement inventaire, ingrédients d'alchimie) et des potions sont
+refaites **en entier** (`refaireLesCorpsEntiers`, `corpsDesArmesEntier`, `corpsDesArmuresEntier`, `corpsDeLaPageDesComposantsEntier`, `corpsDesPotionsEntier`) : chaque tableau est repéré par sa section et
+chaque ligne par son rang, jamais par son ancien texte, si bien qu'une ligne que le corps n'écrit plus comme le code d'aujourd'hui la rend est refaite (un recalcul sert à cela) ; la prose, les matières en
+tête des lignes de l'importeur (grille des armures, boucliers) ne bougent pas. Les tableaux des matériaux, des gemmes et des bois (pages des armures, boucliers, bâtons, accessoires) ne se refont pas par rang : le site en crée
+sans ligne dans ces pages, et une création reprend le rang d'un élément supprimé ; ils restent rejoués ligne à ligne (`TABLES_REJOUEES_DES_COMPOSANTS`), sans effet sur un corps qui a déjà la ligne. Une page dont le corps n'a plus la
+forme de l'importeur (section ou tableau introuvable, nombre de lignes qui n'est plus celui de la base) reste telle quelle et se dit dans `pages_illisibles`. Les clés des mots-clés et les colonnes
+calculées des armures (R207) sont tenues par le service et ne sont pas non plus dans ce recalcul.
 
 **La page « Mise à jour »** (`src/scripts/mise-a-jour.mjs`, rendu pur `src/lib/lots-rendu.mjs` ; R291) : la section « Modifications de l'équipe » (`[data-nv-lots]`), entre les listes de la note en préparation
 et les lignes en conflit, sur le site de dev seulement (`GET /api/edition/lots/` répond `403` en production, `404` sans le service : la section reste cachée ; une autre erreur est dite). Elle tient dans

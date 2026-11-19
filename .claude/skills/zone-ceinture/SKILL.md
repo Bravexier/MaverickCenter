@@ -41,7 +41,7 @@ user-invocable: false
 - Monnaies en icônes (skill `ui-monnaies`).
 - Édition sur le site de dev, consommables seulement, sauf les champs calculés (demande du propriétaire) : d'une potion, le nom et le prix (sa `ressource` ; prix en RF recalculé), le niveau et l'effet (table `potion`), par l'éditeur commun (`data-ed` de `htmlDeLigneDePotion`, rendus `RENDUS_DE_LA_CEINTURE`).
 - L'effet modifié refait `potion_etat` par `lib/potion-etats.mjs` (la règle de l'import, rejouée sur toute la base).
-- Le tableau du palier dans la page de la potion suit (`lib/corps-potions.mjs`, aussi au rejeu).
+- Le tableau du palier dans la page de la potion suit (`lib/corps-potions.mjs`, aussi au rejeu). Rendu entier `corpsDesPotionsEntier` (section et rang, `lib/corps-tableaux.mjs`), pour « Tout recalculer » : sur la base, il redonne exactement le corps de la page, prose intacte (`corps-potions.test.mjs`).
 - `ressourcesParGenre` : une ressource potion à ce service, les autres aux composants. Notes de version dans le domaine `equipement`.
 - En lecture : la couleur de la ligne, la valeur en RF, le titre et le résumé d'un groupe (la page de la potion), les carquois et sacs, les bâtons. Ni création ni suppression.
 - `/ressources/objets-a-la-ceinture/` est de nouveau une vraie page (l'adresse de l'ancienne page « Objets à la ceinture », identifiants figés), avec son entrée « Ceinture » au menu.

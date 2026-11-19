@@ -5,8 +5,9 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { etatDuCorpsDesArmes } from '../serveur/edition-armes.mjs';
 import {
-  corpsAvecArmesDeDepart, corpsDesArmesApres, enteteDeFamille, ErreurCorpsArmes, libelleDeFamille, ligneDArme, ligneDeRemarque, ligneDuTotal, PAGE_DES_ARMES,
+  corpsAvecArmesDeDepart, corpsDesArmesApres, corpsDesArmesEntier, enteteDeFamille, ErreurCorpsArmes, libelleDeFamille, ligneDArme, ligneDeMateriau, ligneDeRemarque, ligneDuTotal, PAGE_DES_ARMES,
   titreDeSectionDeFamille,
 } from '../src/lib/corps-armes.mjs';
 
@@ -204,4 +205,118 @@ test('R159 : une famille créée a sa section à la fin du corps, une arme s’y
   const arc = armes.find((a) => a.famille_id === 'arc');
   assert.equal(corpsDesArmesApres(avecArme, 'arme', arc, arc, ctx2), avecArme);
   assert.throws(() => corpsDesArmesApres(cree, 'arme_famille', famille, null, ctx2), ErreurCorpsArmes, 'une famille ne se supprime pas');
+});
+
+// Le corps ENTIER (« Tout recalculer » : serveur/edition-lots.mjs#ecartsDuRecalcul) : chaque tableau est repéré par sa section et ses lignes remplacées en bloc par
+// celles de la table, dans leur ordre ; une ligne du corps qui n'est plus écrite comme sa table (changement de code, ancien texte) est refaite sans être retrouvée.
+const etat = () => etatDuCorpsDesArmes(db);
+const lignesDe = (c) => c.split('\n');
+/** Les lignes de la section de la famille `f` (de son bandeau au suivant). */
+const sectionDe = (c, f) => {
+  const l = lignesDe(c);
+  const debut = l.indexOf(titreDeSectionDeFamille(f));
+  const fin = l.findIndex((x, i) => i > debut && /^## /.test(x));
+  return l.slice(debut, fin < 0 ? l.length : fin);
+};
+
+test('le corps entier redonne exactement le corps de la base : chaque tableau, la ligne TOTAL, la liste des armes de départ et les remarques sont déjà ce que les tables disent', () => {
+  assert.equal(corpsDesArmesEntier(corps, etat()), corps);
+});
+
+test('corps entier : une ligne d’arme changée dans sa table (nom compris) se retrouve dans le corps refait, sans que l’ancien texte de la ligne serve ; le reste du corps ne bouge pas', () => {
+  const e = etat();
+  const a = e.armes.filter((x) => x.famille_id !== 'arme-de-monstres').sort((x, y) => x.ordre - y.ordre)[1];
+  const changee = { ...a, nom: `${a.nom} du test`, nom_brut: `${a.nom_brut} du test`, effet: 'Effet du test', description: 'Description du test | avec une barre' };
+  const refait = corpsDesArmesEntier(corps, { ...e, armes: e.armes.map((x) => (x.id === a.id ? changee : x)) });
+  const famille = e.familles.find((f) => f.id === a.famille_id);
+  assert.ok(sectionDe(refait, famille).includes(ligneDArme(changee)), 'la ligne changée, dans la section de sa famille');
+  assert.ok(!refait.split('\n').includes(ligneDArme(a)), 'l’ancienne ligne a disparu');
+  assert.equal(lignesDe(refait).length, lignesDe(corps).length);
+  assert.equal(lignesDe(refait).filter((l, i) => l !== lignesDe(corps)[i]).length >= 1, true);
+  // un corps dont la ligne n'est plus celle de la table (l'ancien rendu) : le corps entier la refait, là où le rendu ligne à ligne ne la retrouvait plus
+  const perime = corps.replace(ligneDArme(a), `| ${a.nom} | ancien rendu |`);
+  assert.notEqual(perime, corps);
+  assert.throws(() => corpsDesArmesApres(perime, 'arme', a, a, { familles: e.familles, armes: () => e.armes, nomDuMateriau: () => '' }), ErreurCorpsArmes);
+  assert.equal(corpsDesArmesEntier(perime, e), corps);
+});
+
+test('corps entier : une arme créée et une arme retirée dans les tables, un matériau, une amélioration et le TOTAL changés ; l’en-tête de coût d’une famille', () => {
+  const e = etat();
+  const famille = e.familles.find((f) => e.armes.some((a) => a.famille_id === f.id));
+  const modele = e.armes.find((a) => a.famille_id === famille.id);
+  const cree = { ...modele, id: 'x#arme-creee', nom: 'Arme créée', nom_brut: 'Arme créée', ordre: 1000, depart_possible: 0, remarque: null };
+  const sans = e.armes.filter((a) => a.id !== modele.id);
+  const materiau = { ...e.materiaux[0], prix_brut: '1 RF / 1 RO', effet_brut: 'Effet de matériau du test' };
+  const amelioration = { ...e.ameliorations[0], cout_brut: '1 Matériel + 7 RO', effet_brut: 'Effet d’amélioration du test' };
+  const familleChangee = { ...famille, cout_libelle: 'Coût du test' };
+  const refait = corpsDesArmesEntier(corps, {
+    ...e,
+    familles: e.familles.map((f) => (f.id === famille.id ? familleChangee : f)),
+    armes: [...sans, cree],
+    materiaux: [materiau, ...e.materiaux.slice(1)],
+    ameliorations: [amelioration, ...e.ameliorations.slice(1)],
+    total: { ...e.total, total_brut: 'Total du test' },
+  });
+  const section = sectionDe(refait, famille);
+  assert.equal(section[2], enteteDeFamille(familleChangee));
+  assert.ok(section.includes(ligneDArme(cree)) && !section.includes(ligneDArme(modele)));
+  assert.equal(section.filter((l) => l.startsWith('| ')).length - 2, e.armes.filter((a) => a.famille_id === famille.id).length, 'autant de lignes que d’armes de la famille');
+  const lignes = lignesDe(refait);
+  assert.ok(lignes.includes(ligneDeMateriau(materiau.nom, materiau)));
+  assert.ok(lignes.includes(ligneDuTotal('Total du test')));
+  assert.ok(lignes.some((l) => l.startsWith(`| +${amelioration.niveau} | 1 Matériel + 7 RO | Effet d’amélioration du test`)));
+});
+
+test('corps entier : une arme de départ de plus dans la table entre dans la liste ; la prose du corps ne bouge pas', () => {
+  const e = etat();
+  const a = e.armes.find((x) => x.depart_possible === 0 && x.famille_id !== 'arme-de-monstres');
+  const refait = corpsDesArmesEntier(corps, { ...e, armes: e.armes.map((x) => (x.id === a.id ? { ...x, depart_possible: 1 } : x)) });
+  assert.ok(lignesDe(refait).some((l) => l.startsWith('- Sous « ') && l.includes(a.nom)), `${a.nom} dans la liste des armes de départ`);
+  const prose = (c) => lignesDe(c).filter((l) => !l.startsWith('|') && !l.startsWith('- Sous « '));
+  assert.deepEqual(prose(refait), prose(corps));
+});
+
+test('corps entier : remarques d’arme refaites depuis la table (ajoutée sous le tableau, modifiée, retirée ; renommée avec sa remarque ; idempotent) et entrée orpheline retirée', () => {
+  const e = etat();
+  const a = e.armes.filter((x) => x.famille_id !== 'arme-de-monstres' && !x.remarque)[0];
+  const avec = (remarque, nom = null) => ({ ...e, armes: e.armes.map((x) => (x.id === a.id ? { ...x, remarque, ...(nom ? { nom, nom_brut: nom } : {}) } : x)) });
+  const base = corpsDesArmesEntier(corps, avec(null));
+  assert.equal(base, corps, 'sans remarque : rien n’est écrit');
+  const posee = corpsDesArmesEntier(corps, avec('Une remarque\nsur deux lignes.'));
+  const entree = ligneDeRemarque({ ...a, remarque: 'Une remarque\nsur deux lignes.' });
+  const lignes = lignesDe(posee);
+  const i = lignes.indexOf(entree);
+  const famille = e.familles.find((f) => f.id === a.famille_id);
+  assert.ok(i > 0 && lignes[i - 1] === '' && lignes[i - 2].startsWith('| '), 'juste sous le tableau de la famille');
+  assert.ok(sectionDe(posee, famille).includes(entree));
+  assert.equal(corpsDesArmesEntier(posee, avec('Une remarque\nsur deux lignes.')), posee, 'idempotent');
+  const modifiee = corpsDesArmesEntier(posee, avec('Autre texte.'));
+  assert.ok(!modifiee.includes(entree) && modifiee.includes(ligneDeRemarque({ ...a, remarque: 'Autre texte.' })), 'une seule entrée, la nouvelle');
+  assert.equal(corpsDesArmesEntier(modifiee, avec(null)), corps, 'retirée : le corps redevient celui d’avant');
+  // renommée avec sa remarque : l'entrée de l'ancien nom est orpheline (la table ne la dit plus), celle du nouveau s'écrit
+  const renommee = corpsDesArmesEntier(posee, avec('Une remarque\nsur deux lignes.', `${a.nom} à clous`));
+  assert.ok(!renommee.includes(entree));
+  assert.ok(renommee.includes(ligneDeRemarque({ ...a, nom: `${a.nom} à clous`, remarque: 'Une remarque\nsur deux lignes.' })));
+  // l'entrée de l'importeur (fil de la cellule) qui dit déjà la remarque reste telle quelle ; une remarque changée la remplace par celle du site
+  const importee = `**Commentaire résolu de la cellule « Effet (${intitule(a)}) »** : Texte de l’importeur.`;
+  const l = lignesDe(corps);
+  const fin = l.findIndex((x, k) => k > l.indexOf(ligneDArme(a)) && x === '');
+  l.splice(fin + 1, 0, importee, '');
+  const avecImportee = l.join('\n');
+  assert.equal(corpsDesArmesEntier(avecImportee, avec('Texte de l’importeur.')), avecImportee);
+  const remplacee = corpsDesArmesEntier(avecImportee, avec('Un autre texte.'));
+  assert.ok(!remplacee.includes(importee) && remplacee.includes(ligneDeRemarque({ ...a, remarque: 'Un autre texte.' })));
+  assert.equal(corpsDesArmesEntier(avecImportee, avec(null)), corps, 'sans remarque, l’entrée de l’importeur part aussi');
+});
+
+test('corps entier : une section ou un tableau introuvable, un en-tête qui n’est plus celui de l’importeur : ErreurCorpsArmes (la page reste « illisible »)', () => {
+  const e = etat();
+  const famille = e.familles[0];
+  assert.throws(() => corpsDesArmesEntier(corps.replace(titreDeSectionDeFamille(famille), '## AUTRE'), e), ErreurCorpsArmes);
+  assert.throws(() => corpsDesArmesEntier(corps.replace('## MATÉRIAUX', '## MATIÈRES'), e), ErreurCorpsArmes);
+  assert.throws(() => corpsDesArmesEntier(corps.replace('## AMÉLIORATION', '## AMÉLIORATIONS'), e), ErreurCorpsArmes);
+  assert.throws(() => corpsDesArmesEntier('', e), ErreurCorpsArmes);
+  const sansEntete = lignesDe(corps);
+  sansEntete[sansEntete.indexOf(enteteDeFamille(famille))] = '| Autre | Colonne |';
+  assert.throws(() => corpsDesArmesEntier(sansEntete.join('\n'), e), ErreurCorpsArmes);
 });

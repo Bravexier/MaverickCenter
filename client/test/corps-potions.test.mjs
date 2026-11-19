@@ -5,8 +5,9 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import {
-  celluleDePotion, corpsDeLaPotionApres, ErreurCorpsPotions, pageDeLaPotion, tableauDuPalier, TABLES_DES_POTIONS,
+  celluleDePotion, corpsDeLaPotionApres, corpsDesPotionsEntier, ErreurCorpsPotions, pageDeLaPotion, tableauDuPalier, tableauxDesPaliers, TABLES_DES_POTIONS,
 } from '../src/lib/corps-potions.mjs';
+import { potionsParPage } from '../serveur/edition-consommables.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
 const contexte = {
@@ -76,4 +77,49 @@ test('un tableau introuvable, en double ou d’une autre forme, un niveau inconn
   assert.throws(() => corpsDeLaPotionApres(forme, 'ressource', petite, { ...petite, prix_brut: '1 Ro' }, ctxEssai), /Prix \| Niveau \| Effet/);
   const potion = { ressource_id: petite.id, niveau_id: 'novice', effet: 'x' };
   assert.throws(() => corpsDeLaPotionApres(CORPS, 'potion', potion, { ...potion, niveau_id: 'inconnu' }, ctxEssai), /niveau/);
+});
+
+// Le corps ENTIER d'une page de potion (« Tout recalculer » : serveur/edition-lots.mjs#ecartsDuRecalcul) : la case de nom, le prix, le niveau et l'effet de
+// chaque tableau de palier sont réécrits depuis sa potion ; une potion renommée dans sa table se retrouve à sa place, pas par son ancien nom.
+test('le corps entier redonne le corps de chaque page de potion : chaque tableau est déjà ce que la table dit', () => {
+  const pages = potionsParPage(db);
+  // chaque potion de la base est dans une page (une potion ne se crée ni ne se supprime depuis le site)
+  assert.equal([...pages.values()].reduce((n, p) => n + p.length, 0), db.prepare('SELECT count(*) AS n FROM potion').get().n);
+  for (const [id, potions] of pages) {
+    const corps = db.prepare('SELECT corps_md FROM page WHERE id = ?').get(id).corps_md;
+    assert.equal(corpsDesPotionsEntier(corps, potions, contexte), corps, id);
+  }
+});
+
+const potionsEssai = [
+  { nom: 'Petite fiole d’essai', prix_brut: '2 Ro', niveau_id: 'novice', effet: 'Redonne 5 santé' },
+  { nom: 'Grande fiole d’essai', prix_brut: '9 Ro', niveau_id: 'apprenti', effet: '- Redonne 9 santé\n- 1 croix' },
+];
+const ctxNiveaux = { niveau: (id) => ({ novice: { nom: 'Novice' }, apprenti: { nom: 'Apprenti' }, expert: { nom: 'Expert' } })[id] ?? null };
+
+test('corps entier : une potion renommée dans sa table, ou dont le prix, le niveau, l’effet ont changé, est réécrite à sa place ; la prose et les autres tableaux ne bougent pas', () => {
+  assert.equal(corpsDesPotionsEntier(CORPS, potionsEssai, ctxNiveaux), CORPS);
+  assert.equal(tableauxDesPaliers(CORPS.split('\n')).length, 2, 'le tableau « Recette » n’est pas un palier');
+  const changees = [
+    { ...potionsEssai[0], nom: 'Fiole renommée du test', prix_brut: '3 Ro', niveau_id: 'expert', effet: 'Redonne 6 santé\nEt | un tube' },
+    { ...potionsEssai[1], nom: 'Autre potion renommée' },
+  ];
+  const refait = corpsDesPotionsEntier(CORPS, changees, ctxNiveaux);
+  assert.equal(refait, CORPS
+    .replace('| Petite fiole d’essai |  |  |', '| Fiole renommée du test |  |  |').replace('| 2 Ro | Novice | Redonne 5 santé |', '| 3 Ro | Expert | Redonne 6 santé<br>Et \\| un tube |')
+    .replace('| Grande fiole d’essai |  |  |', '| Autre potion renommée |  |  |'));
+  // une potion reconnue par son nom garde son tableau, même quand les tableaux restants sont rangés autrement
+  const inversees = corpsDesPotionsEntier(CORPS, [{ ...potionsEssai[1], prix_brut: '10 Ro' }, potionsEssai[0]], ctxNiveaux);
+  assert.equal(inversees, CORPS.replace('| 9 Ro | Apprenti |', '| 10 Ro | Apprenti |'));
+  // une renommée parmi deux potions inchangées : elle prend le seul tableau resté sans potion
+  const une = corpsDesPotionsEntier(CORPS, [potionsEssai[0], { ...potionsEssai[1], nom: 'Renommée' }], ctxNiveaux);
+  assert.equal(une, CORPS.replace('| Grande fiole d’essai |  |  |', '| Renommée |  |  |'));
+});
+
+test('corps entier : un nombre de tableaux qui n’est plus celui des potions, un niveau inconnu, un tableau de palier sans ligne de valeurs : ErreurCorpsPotions', () => {
+  assert.throws(() => corpsDesPotionsEntier(CORPS, potionsEssai.slice(0, 1), ctxNiveaux), ErreurCorpsPotions);
+  assert.throws(() => corpsDesPotionsEntier('Aucun tableau.', potionsEssai, ctxNiveaux), ErreurCorpsPotions);
+  assert.throws(() => corpsDesPotionsEntier(CORPS, [{ ...potionsEssai[0], niveau_id: 'inconnu' }, potionsEssai[1]], ctxNiveaux), /niveau/);
+  const sans = CORPS.replace('| 2 Ro | Novice | Redonne 5 santé |\n', '');
+  assert.throws(() => corpsDesPotionsEntier(sans, potionsEssai, ctxNiveaux), ErreurCorpsPotions);
 });

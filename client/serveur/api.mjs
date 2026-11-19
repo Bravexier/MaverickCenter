@@ -61,7 +61,7 @@
 //   POST /api/edition/lots/<id>/refuser/       refuse la proposition (mot de passe) ; rien n'est écrit dans le contenu
 //   GET  /api/edition/lots/<id>/annulation/    l'aperçu de l'annulation d'un lot appliqué, calculé sur une copie (la réponse est une promesse ; rien n'est écrit) :
 //                                              par ligne du lot du journal, « remise » si la valeur vaut encore ce que le lot a écrit, « gardée » sinon
-//   POST /api/edition/lots/recalcul/           « tout recalculer » : les écarts entre les colonnes dérivées stockées (corps des pages de races, classes, dons, métiers) et ce que le
+//   POST /api/edition/lots/recalcul/           « tout recalculer » : les écarts entre les colonnes dérivées stockées (corps des pages de races, classes, dons, métiers, magies, armes, armures, boucliers, composants, potions) et ce que le
 //                                              code d'aujourd'hui en dérive, calculés sur une copie et DÉPOSÉS comme un lot de nature « code » (essai à blanc, clic du propriétaire :
 //                                              comme tout lot) ; la réponse (une promesse) porte { lot, recalcul } (lot null sans écart ; rien n'est écrit dans le contenu)
 //   POST /api/edition/lots/<id>/annuler/       { verrous_ouverts? } → remet `avant` là où la valeur vaut encore ce que le lot a écrit, d'un bloc (mot de passe) ; 409 dit ce qui le refuse

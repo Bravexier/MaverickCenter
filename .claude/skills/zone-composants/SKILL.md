@@ -32,7 +32,7 @@ user-invocable: false
 - Un objet supprimé reste dans l'inventaire ou la ceinture des fiches sous son nom, avec une note datée (R60, `serveur/fiches-retraits.mjs#OBJETS_AU_CATALOGUE`).
 - Ce qui est tiré d'une case est recalculé par le service (prix en RF, ligne du CONVERTISSEUR, type et marque majeur, affinité).
 - Le prix ou le type d'un matériau refait le type, l'AP, l'AM et le prix des armures de la grille et des boucliers qui l'emploient (R207 (1) : `serveur/edition-armures.mjs#suivreLesValeursCalculees`, skill `zone-armures`).
-- Le corps des pages qui écrivent ces composants suit, case par case (`corps-composants.mjs`) ; le nom d'un matériau renommé passe aussi par `lib/corps-armes.mjs#corpsAvecMateriauRenomme`.
+- Le corps des pages qui écrivent ces composants suit, case par case (`corps-composants.mjs`). Corps entier (« Tout recalculer ») : seules « Équipement inventaire » et « Liste d'ingrédients » sont refaites en entier (`corpsDeLaPageDesComposantsEntier`, tableaux remplacés en bloc). Matériaux, fiches des matières, gemmes et bois ne se refont jamais par rang ordre : le site en crée sans ligne dans ces pages et une création reprend le rang d'un élément supprimé ; ils restent suivis ligne à ligne (`corpsDuComposantApres`, `TABLES_REJOUEES_DES_COMPOSANTS`). Le nom d'un matériau renommé passe aussi par `lib/corps-armes.mjs#corpsAvecMateriauRenomme`.
 - Notes de version : domaine des composants (migration `0040-composants`).
 - Prix en icônes de monnaie et montants décomposés (R61, R63) : skill `ui-monnaies`.
 
