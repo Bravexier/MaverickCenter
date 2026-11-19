@@ -40,6 +40,7 @@ function fauxDepot() {
     'data/derive.sql': '-- derive',
     'data/migrations/0001-a.sql': '-- m',
     'sources/sources.json': '{}',
+    'sources/copies-drive.json': '{}',
     'sources/tipeee/bienvenue.json': '{}',
   });
   return d;

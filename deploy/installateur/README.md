@@ -238,7 +238,7 @@ git (`docs/serveur.md`, « Fabriquer le site depuis un fichier de contenu »). L
   la logique est dans `kit.mjs`. L'archive `atelier-kit.tar.gz` et son `kit.json` (format `maverick-kit/1` : version, commit, Node de `.nvmrc`, plateforme et libc des modules
   compilés, image Docker à employer, taille, nombre de fichiers, empreintes, ce que l'élagage a retiré) sont joints sous `atelier-kit/`.
 - **Contenu** : `client/` avec ses `node_modules` (sans `dist/`, `.astro/`, `src/content/wiki/`, `test/`, `var/` ni ce que git ignore), `data/schema.sql`, `data/derive.sql`,
-  `data/migrations/`, `sources/sources.json`, `sources/tipeee/bienvenue.json`, `.nvmrc`. Aucun contenu : un contrôle refuse tout kit qui porte `data/rows`, `sources/raw`, un
+  `data/migrations/`, `sources/sources.json`, `sources/copies-drive.json`, `sources/tipeee/bienvenue.json`, `.nvmrc`. Aucun contenu : un contrôle refuse tout kit qui porte `data/rows`, `sources/raw`, un
   fichier de base (`.db`, `.sqlite`), les pages fabriquées, l'historique git ou un lien qui sorte du kit.
 - **Image** : les modules natifs sont ceux de la machine qui fabrique (Linux, glibc sur GitHub) ; l'atelier doit tourner sur l'image `kit.json#image` (`node:<.nvmrc>-bookworm-slim`),
   jamais sous Alpine. Les variantes natives d'une autre libc, plateforme ou architecture, d'après le `package.json` de chaque paquet (`os`, `cpu`, `libc`), ne sont pas emportées.
