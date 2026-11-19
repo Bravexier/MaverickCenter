@@ -53,7 +53,7 @@ Deux agents transverses, en lecture seule, servent les chefs et la session princ
 - Une consigne envoyée à un membre déjà lancé ne change ni ses droits ni son brief : cela passe par un nouveau lancement.
 - Un doute se pose à celui qui a fait la demande. Ce que seul le propriétaire tranche remonte à la session principale.
 - Protocole complet : skill `circuit-des-demandes`, à charger seulement avant de lancer un chef.
-- **Suivi de la demande.** Le mod `.claude/mods/suivi-demande/` (son `README.md` ; ce n'est pas un skill) montre chaque demande au propriétaire dans une page publiée. Quand il est chargé, la session principale tient cette page à jour par l'outil `mcp__suivi-demande__suivre`, que le mod lui rappelle.
+- **Suivi de la demande.** Le plugin `suivi-demande` (dépôt `Bravexier/AITools`, installé par l'environnement ; ce n'est pas un skill) montre chaque demande au propriétaire dans une page publiée. Quand il est chargé, la session principale tient cette page à jour par l'outil `mcp__suivi-demande__suivre`, que le plugin lui rappelle. `.claude/suivi-demande.json` lui donne le site de dev : après la fusion, le suivi attend que le site serve la version de la PR.
 - `CLAUDE.md`, les fiches d'agents et `docs/equipe.md` sont tenus par la session principale, à la demande du propriétaire. **Les skills ne sont modifiés que par `tech-skills`** (demandes remises par `leader-technique` ; `tenir-un-skill`, `eclater-un-skill`). `tech-qualite` relit les deux.
 
 ## Invariants transverses

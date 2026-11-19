@@ -1,0 +1,8 @@
+{
+  "installation": {
+    "nom": "Site de dev",
+    "url": "https://dev.maverick-jdr.com/",
+    "motif": ">V(\\d+\\.\\d+\\.\\d+)<",
+    "consigne": "C'est la version que le bot donne à la PR : le commit « chore: version vX.Y.Z … (PR #N) » sur `origin/dev`."
+  }
+}
