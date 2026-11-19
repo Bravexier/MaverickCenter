@@ -3,8 +3,8 @@ name: CI
 # Sur chaque PR, et sur master et dev après chaque fusion (les livraisons : livraison.yml ; les règles de branches : garde-branches.yml).
 # Et chaque nuit sur dev (la branche par défaut du dépôt : un déclenchement programmé y lit ce fichier, et checkout, `github.ref_name` et le job d'extrait y valent dev) :
 # le site de dev change sans que le code bouge (le propriétaire applique une proposition, un lot entre), et les tests qui lisent son contenu peuvent tomber sans
-# qu'aucune PR ne le dise (run 44320300043 : six fichiers rouges deux jours après la création des secrets). Seuls l'extrait et le job client y tournent : les
-# autres jobs ne regardent qu'une PR ou un commit.
+# qu'aucune PR ne le dise (run 44320300043 : six fichiers rouges deux jours après la création des secrets). Seuls l'extrait et le job client y tournent (et
+# issue-ci-nocturne, qui en tient l'issue) : les autres jobs ne regardent qu'une PR ou un commit.
 on:
   push:
     branches: [master, dev]
@@ -159,6 +159,31 @@ jobs:
       - run: node --test test/debug-page.test.mjs test/site-html.test.mjs
       # Version portable (liens relatifs, CSS/JS inline) : elle échoue si le script d'une page importe un autre module.
       - run: node ../tools/build-artifact.mjs --out "$RUNNER_TEMP/artifact"
+
+  # L'issue de la CI nocturne (docs/flux-git.md, « Contenu lu par les tests », puce « Chaque nuit ») : sur le déclenchement programmé SEUL, après l'extrait
+  # et le client, quelle que soit leur issue. Rouge : ouvre ou réécrit UNE issue au titre fixe (label ci-nocturne : date, lien du run, jobs, étapes et tests
+  # en échec lus dans le journal, sans message d'erreur) ; vert : la ferme avec un commentaire ; annulé ou sauté : rien. Aucune correction, aucun push.
+  # Seul job qui écrit des issues (moindre privilège) ; il ne reçoit aucun secret du site de dev, ne lance pas npm et n'exécute que le script de dev.
+  issue-ci-nocturne:
+    needs: [extrait-du-site-de-dev, client]
+    if: ${{ github.event_name == 'schedule' && !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+      - env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RESULTATS: ${{ toJSON(needs) }}
+        run: node --no-warnings client/scripts/ci-nocturne-issue.mjs
 
   # « Simulation de mise à jour » sur chaque PR (le run 38151792080 du 2026-10-11 a échoué) : ce que fait le job preparer de mise-a-jour.yml —
   # un lot appliqué à data/rows par scripts/mise-a-jour-regles.mjs (production : origin/master), puis ses contrôles (CONTROLES de
