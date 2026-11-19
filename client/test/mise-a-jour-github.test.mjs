@@ -1578,12 +1578,15 @@ describe('.github/workflows/mise-a-jour.yml', () => {
     assert.deepEqual(secrets(jobs['simulation-de-mise-a-jour']), [], 'la simulation contrôle data/rows qu’elle vient d’écrire, sans secret, comme le job preparer');
   });
 
-  test('le script du job livrer n\'importe que node: et tools/flux-git/regles.mjs, qui n\'importe rien', () => {
+  test('le script du job livrer n\'importe que node:, tools/flux-git/regles.mjs et tools/flux-git/bascule-2-interrupteur.mjs, qui n\'importent rien', () => {
     const imports = (fichier) => [...readFileSync(fichier, 'utf8').matchAll(/^\s*import\s[^'"]*['"]([^'"]+)['"]/gm)].map((x) => x[1]);
     const duScript = imports(SCRIPT);
     assert.ok(duScript.length > 0);
-    assert.deepEqual(duScript.filter((s) => !s.startsWith('node:')), ['../../tools/flux-git/regles.mjs']);
+    assert.deepEqual(duScript.filter((s) => !s.startsWith('node:')).sort(), ['../../tools/flux-git/bascule-2-interrupteur.mjs', '../../tools/flux-git/regles.mjs']);
     assert.deepEqual(imports(REGLES_FLUX), []);
+    const interrupteur = fileURLToPath(new URL('../../tools/flux-git/bascule-2-interrupteur.mjs', import.meta.url));
+    assert.deepEqual(imports(interrupteur), [], 'la lecture de l’interrupteur n’importe rien');
+    assert.doesNotMatch(readFileSync(interrupteur, 'utf8'), /\bimport\(/, 'ni import dynamique');
     assert.doesNotMatch(readFileSync(SCRIPT, 'utf8'), /\bimport\(/, 'aucun import dynamique');
   });
 });

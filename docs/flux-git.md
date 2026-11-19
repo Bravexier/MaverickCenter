@@ -172,7 +172,7 @@ et quoi faire), 2 (usage ou dépôt illisible).
   exacte de l'export est déjà prouvée par `controle-des-migrations` (base remplie migrée), qui est obligatoire (R282).
 - **`donnees`** (PR vers `dev`) : une migration ajoutée sans DDL (`controler-les-migrations-lib.mjs#analyserUneMigration`) est refusée ; la structure reste.
 - **`correctif-urgent`** (PR `hotfix/<nom>` vers `master`) : rien dans `data/rows/`, `data/migrations/` ni `data/schema.sql`. La livraison `dev` → `master`
-  n'est pas concernée.
+  n'est pas concernée. Sous l'interrupteur de la bascule 2, aussi rien dans `data/paquet.json` (« Ce que GitHub publie avec la bascule 2 »).
 
 Le jour de la bascule : une PR vers `dev` passe `actif` à `true`. Le job est un check requis (R282), comme `controle-des-migrations` : il figure dans
 `.github/rulesets/` (`dev.json`, `master.json`) et dans `CHECKS_REQUIS` de `client/scripts/mise-a-jour-github.mjs`, et un refus arrête la fusion. Les deux jobs
@@ -182,9 +182,17 @@ du workflow de mise à jour et la livraison `dev` → `master`. Après une modif
 ## Gel des fusions pendant une mise à jour (lot 11)
 
 Garde-fou 16 de la bascule 2. Job `gel-des-fusions` de `ci.yml`, sur chaque PR vers `dev` et `master` ; code : `client/scripts/gel-des-fusions.mjs` (lit le dépôt et l'API de GitHub, jeton en lecture) et `gel-des-fusions-lib.mjs` (règles pures) ; test : `gel-des-fusions`.
-- **Interrupteur** : `tools/flux-git/bascule-2.json`, `{ "actif": false }`, lu dans `origin/dev` comme `bascule-1.json`. Éteint (ou absent) : vert, sans appeler GitHub.
+- **Interrupteur** : `tools/flux-git/bascule-2.json`, clé **`gel_des_fusions`** (`false`), lue dans `origin/dev` comme `bascule-1.json`. Éteint (clé ou fichier absent) : vert, sans appeler GitHub. Le même fichier porte une seconde clé indépendante, `actif` (« Ce que GitHub publie avec la bascule 2 ») : le jour J on allume `gel_des_fusions` d'abord (pendant la répétition), puis `actif`.
 - **Allumé** : rouge tant qu'un run du workflow `mise-a-jour.yml` n'est pas fini (en file, en cours, en attente ; un run de plus de 8 h est ignoré). Le message dit le run (numéro, adresse), depuis quand, et le geste : relancer ce job (« Re-run ») quand la mise à jour est finie. Sont exemptées les deux fusions que ce workflow fait lui-même : sa branche `feature/mise-a-jour-regles-…` vers `dev` et la livraison `dev` → `master`. GitHub illisible alors que l'interrupteur est allumé : le job échoue (on ne devine pas qu'aucune mise à jour ne tourne).
 - Le job **n'est pas** un check requis : il le devient seulement par une décision du propriétaire sur les rulesets (`.github/rulesets/` et `CHECKS_REQUIS` de `mise-a-jour-github.mjs`, trois endroits).
+
+## Ce que GitHub publie avec la bascule 2 (lot 11, PR 4)
+
+Interrupteur : la clé `actif` de `tools/flux-git/bascule-2.json` (le gel des fusions a la sienne, `gel_des_fusions`, indépendante), lue dans `origin/dev` (`tools/flux-git/bascule-2.mjs`). **Éteint, rien ne change** : le job `Site` (branche NAS, déjà inactif), le job `Installateur` et le contrôle du contenu écrit sont ceux d'avant. Code, tests et gestes : `docs/serveur.md`, « Bascule 2 : préparation », « PR 4 ».
+- **Allumé, le job `Installateur` de test ne publie plus de pages** : il ne construit pas le site (`npm run build`) et lance `fabriquer.mjs --kit . --kit-seul` (le service et le kit ; l'atelier du site de dev fabrique les pages). Le job `Site` est sauté. L'installateur de **production** reste le site complet dans cette PR : son activation par paquet est celle de la PR 5.
+- **Le commit de lot** (workflow `mise-a-jour.yml`) porte alors `data/paquet.json` : l'identité du lot (lot, version, empreinte du paquet, structure, commit du code, date ; aucun contenu), en plus de la copie `data/rows` qui reste le secours jusqu'au lot 12. Le commit n'est jamais vide : plus de « Rien à livrer ». Le job `controle-du-contenu-ecrit` l'admet seulement dans un commit « Lot : » ou « Copie : » du workflow (règle `paquet-a-la-main`) ; la règle `correctif-urgent` refuse un `hotfix/*` qui le porte, en plus de « ni contenu ni structure ».
+- **Le correctif urgent ne porte que du code.** Son activation en production, après le contrôle du contenu en place sur le paquet de la production, vient avec la PR 5.
+- **Le jour J** : une PR vers `dev` passe `actif` à `true` (après `gel_des_fusions`), comme pour la bascule 1. Retour arrière : une PR qui le repasse à `false`.
 
 ## Contenu lu par les tests (lot 10)
 

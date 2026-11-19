@@ -78,12 +78,16 @@ export function modulesDuServeur(client = CLIENT, entree = ENTREE) {
   return [...vus].sort();
 }
 
+/** Un commit git entier (40 hexadécimaux, minuscules). */
+const COMMIT = /^[0-9a-f]{40}$/;
+
 /**
  * Copie le service dans <dist>/_serveur/ et écrit version.json (version du site, empreinte du code, modules, fichiers joints copiés).
  * @param {string} dist
- * @param {{ client?: string, version?: string, joints?: readonly { source: string, cible: string }[] }} [o]
+ * @param {{ client?: string, version?: string, joints?: readonly { source: string, cible: string }[], commit?: string | null }} [o]
  */
-export function livrerServeur(dist, { client = CLIENT, version, joints = FICHIERS_JOINTS } = {}) {
+export function livrerServeur(dist, { client = CLIENT, version, joints = FICHIERS_JOINTS, commit = null } = {}) {
+  if (commit !== null && commit !== undefined && !COMMIT.test(String(commit))) throw new Error(`commit « ${String(commit).slice(0, 50)} » invalide (40 caractères hexadécimaux attendus)`);
   const cible = join(dist, DOSSIER_LIVRE);
   rmSync(cible, { recursive: true, force: true });
   const modules = modulesDuServeur(client);
@@ -102,7 +106,9 @@ export function livrerServeur(dist, { client = CLIENT, version, joints = FICHIER
     copier(de, vers);
     fichiers.push(vers);
   }
-  const info = { version, empreinte: empreinte.digest('hex').slice(0, 16), entree: `${DOSSIER_LIVRE}/${ENTREE}`, modules, fichiers };
+  // `commit` : le commit du code livré (lot 11, PR 4), seulement quand l'appelant le donne ; hors de l'empreinte du code. Le service ne le lit que pour la fiche d'identité
+  // d'un paquet (serveur/paquet.mjs#commit_du_code) ; sans lui, version.json est celui d'avant.
+  const info = { version, empreinte: empreinte.digest('hex').slice(0, 16), entree: `${DOSSIER_LIVRE}/${ENTREE}`, modules, fichiers, ...(commit ? { commit: String(commit) } : {}) };
   writeFileSync(join(cible, 'version.json'), `${JSON.stringify(info, null, 2)}\n`);
   return info;
 }
@@ -114,7 +120,9 @@ export function integrationServeur() {
     hooks: {
       'astro:build:done': ({ dir, logger }) => {
         const version = JSON.parse(readFileSync(join(CLIENT, 'package.json'), 'utf8')).version;
-        const info = livrerServeur(fileURLToPath(dir), { version });
+        // MAVERICK_SHA : le commit du code, que la fabrication du kit seul donne ; jamais GITHUB_SHA (sur un événement de PR fermée, ce n'est pas le commit livré)
+        const commit = /^[0-9a-f]{40}$/.test(process.env.MAVERICK_SHA ?? '') ? process.env.MAVERICK_SHA : null;
+        const info = livrerServeur(fileURLToPath(dir), { version, commit });
         logger.info(`service des personnages livré dans ${DOSSIER_LIVRE}/ (${info.modules.length} modules, code ${info.empreinte})`);
       },
     },

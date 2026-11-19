@@ -263,7 +263,7 @@ jobs:
         run: node --no-warnings scripts/controler-le-contenu-ecrit.mjs --cible "$CIBLE" --source "$SOURCE" --sha "$SHA" --resume "$GITHUB_STEP_SUMMARY"
 
   # Gel des fusions pendant une mise à jour (lot 11, bascule 2 ; docs/flux-git.md, « Gel des fusions pendant une mise à jour ») : ÉTEINT tant que
-  # tools/flux-git/bascule-2.json ne vaut pas « actif: true » sur origin/dev (le job passe alors vert, sans appeler GitHub). Allumé : rouge tant qu'un run du workflow
+  # tools/flux-git/bascule-2.json n'a pas « gel_des_fusions: true » sur origin/dev (clé distincte de « actif », absente = éteint) (le job passe alors vert, sans appeler GitHub). Allumé : rouge tant qu'un run du workflow
   # mise-a-jour.yml n'est pas fini, sauf pour les deux fusions que ce workflow fait lui-même (sa branche vers dev, la livraison dev → master) ; geste : relancer ce
   # job quand la mise à jour est finie. N'est PAS un check requis (.github/rulesets/ : décision du propriétaire). Pas de npm ci : node: seulement, jeton en lecture.
   gel-des-fusions:

@@ -245,6 +245,17 @@ git (`docs/serveur.md`, « Fabriquer le site depuis un fichier de contenu »). L
 - **Pose** : `<instance>/atelier/kit/` (avec `kit.json`), hors de `site/` : jamais servi. L'installateur le décompresse dans un dossier provisoire voisin, puis remplace l'ancien par
   renommage ; un seul kit est gardé. Il vérifie d'abord la place libre (`df`) : deux fois la taille décompressée annoncée, plus 256 Mo. **Un manque de place ou un échec ne
   fait jamais échouer l'installation** : le site est posé, le journal (`installation.log`) dit que le kit manque, l'ancien kit reste.
+- **Le paquet annoncé** : `kit.json` porte `paquet: { lot, version, empreinte, structure }`, lus de `data/paquet.json` (l'identité du dernier lot, sans contenu, que le workflow de mise à jour écrit quand
+  la bascule 2 est allumée) ; sans ce fichier, `paquet: null` ; sa propre `structure` est celle du kit (`PRAGMA user_version` de `data/schema.sql`). Un fichier illisible ou d'une autre forme fait refuser le kit.
+
+### Installateur « kit seul » (bascule 2, éteint)
+
+`fabriquer.mjs --mode test --kit <racine> --kit-seul --tag … --version … --sha … --sortie …` (sans `--site`, refusé en production) fabrique un installateur **sans pages** : le service (`site/_serveur/`, `version.json` avec
+le commit) et le kit. `livraison.yml` ne le demande que si `tools/flux-git/bascule-2.json` a `actif: true` sur `origin/dev` ; éteint, les installateurs sont ceux d'avant. L'installateur d'un kit seul :
+- **refuse**, avant toute écriture, une instance sans `<instance>/atelier/servir` (l'atelier ne refabriquerait pas les pages : le site resterait celui d'avant) et dit le geste, `sudo sh <instance>/atelier/installer.sh --servir` ;
+- **ne pose que `site/_serveur/`** : le reste de `site/` (pages, `donnees/`) n'est pas touché, c'est l'atelier qui le refait après la marque ; le reste de l'installation est celle de tout installateur de test (fichiers de l'instance, kit, marque, `VERSION`) ;
+- se vérifie comme les autres (`--verifier`).
+`mise-a-jour.sh` l'installe comme le dernier installateur du mode. L'installateur de production n'en porte rien : son script est le modèle, octet pour octet.
 
 ## L'atelier du site de dev (serveur de test seulement)
 

@@ -3,7 +3,7 @@
 // elle-même dans dev puis livre vers master : une autre fusion en plein milieu déplacerait la base sous ses pieds. Ce module porte la décision, pure (des
 // données d'API déjà lues, sans réseau ni git) ; scripts/gel-des-fusions.mjs lit le dépôt et l'API de GitHub.
 //
-// ÉTEINT tant que l'interrupteur (tools/flux-git/bascule-2.json, `actif`) ne vaut pas true dans `origin/dev` : le job passe vert sans rien lire d'autre ni
+// ÉTEINT tant que l'interrupteur (tools/flux-git/bascule-2.json, `gel_des_fusions`, indépendant de `actif`) ne vaut pas true dans `origin/dev` : le job passe vert sans rien lire d'autre ni
 // appeler GitHub. Allumé : rouge tant qu'un run de mise-a-jour.yml est en cours (pas fini : en file, en cours, en attente), SAUF pour les deux fusions que ce
 // workflow fait lui-même : la PR de sa branche feature/mise-a-jour-regles-… vers dev, et la PR de livraison dev → master. Le job ne devient un check REQUIS
 // que par une décision du propriétaire sur les rulesets (.github/rulesets/, mise-a-jour-github.mjs#CHECKS_REQUIS) : ce module n'y touche pas.
@@ -27,10 +27,13 @@ export function lireLInterrupteur(texte) {
   try {
     v = JSON.parse(texte);
   } catch {
-    throw new Error(`${INTERRUPTEUR} illisible (JSON attendu : { "actif": false } ou { "actif": true })`);
+    throw new Error(`${INTERRUPTEUR} illisible (JSON attendu : { "gel_des_fusions": false } ou { "gel_des_fusions": true })`);
   }
-  if (!v || typeof v !== 'object' || typeof v.actif !== 'boolean') throw new Error(`${INTERRUPTEUR} : « actif » doit valoir true ou false`);
-  return v.actif;
+  if (!v || typeof v !== 'object' || Array.isArray(v)) throw new Error(`${INTERRUPTEUR} : un objet JSON est attendu, avec « gel_des_fusions » à true ou false`);
+  // « gel_des_fusions » seul gouverne ce job ; « actif » est l'autre interrupteur du fichier (kit seul, identité du lot : tools/flux-git/bascule-2.mjs). Absent : éteint.
+  if (v.gel_des_fusions === undefined) return false;
+  if (typeof v.gel_des_fusions !== 'boolean') throw new Error(`${INTERRUPTEUR} : « gel_des_fusions » doit valoir true ou false`);
+  return v.gel_des_fusions;
 }
 
 /** La PR est-elle une fusion que le workflow de mise à jour fait lui-même (sa branche vers dev, ou la livraison dev → master) ? */
@@ -60,7 +63,7 @@ export function runsEnCours(workflowRuns, { maintenantMs = Date.now() } = {}) {
  * @returns {{ verdict: 'vert' | 'rouge', raison: 'eteint' | 'fusion_du_workflow' | 'aucun_run' | 'run_en_cours', runs: object[], message: string }}
  */
 export function decider({ actif, source, cible, runs = null }) {
-  if (!actif) return { verdict: 'vert', raison: 'eteint', runs: [], message: `Gel des fusions éteint (\`${INTERRUPTEUR}\` : \`actif\` n’est pas \`true\` sur \`${BRANCHE_DE_L_INTERRUPTEUR}\`) : aucune fusion n’est arrêtée.` };
+  if (!actif) return { verdict: 'vert', raison: 'eteint', runs: [], message: `Gel des fusions éteint (\`${INTERRUPTEUR}\` : \`gel_des_fusions\` n’est pas \`true\` sur \`${BRANCHE_DE_L_INTERRUPTEUR}\`) : aucune fusion n’est arrêtée.` };
   if (estUneFusionDuWorkflow({ source, cible })) {
     return { verdict: 'vert', raison: 'fusion_du_workflow', runs: [], message: `Gel des fusions allumé, mais cette PR (\`${source}\` → \`${cible}\`) est une fusion du workflow « ${NOM_DU_WORKFLOW} » lui-même : elle passe.` };
   }

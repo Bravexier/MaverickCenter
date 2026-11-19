@@ -820,7 +820,7 @@ Le bilan est sur la page Debug (`GET /api/debug/atelier/`, champ `bilan`, calcul
 ### Découpe du lot 11 (chaque PR fusionnée éteinte)
 
 Les interrupteurs, tous absents ou éteints par défaut :
-- `tools/flux-git/bascule-2.json` (`"actif": false`), lu dans `origin/dev` par GitHub ;
+- `tools/flux-git/bascule-2.json`, lu dans `origin/dev` par GitHub, avec deux clés indépendantes : `"gel_des_fusions": false` (le gel des fusions pendant une mise à jour, allumé en premier, dès la répétition) et `"actif": false` (kits seuls, identité du lot, règles du contenu écrit) ;
 - le marqueur `db/bascule-2` pour le service du site de dev ;
 - `atelier/servir` (fichier de root) pour que l'atelier serve ce qu'il fabrique ;
 - `<production>/activation-par-paquet` (fichier de root) pour la production.
@@ -828,5 +828,5 @@ Les interrupteurs, tous absents ou éteints par défaut :
 1. Le paquet porte sa fiche d'identité (commit du code, empreintes par table). Le bouton est refusé tant que le site de dev n'a pas installé la dernière version (garde-fou 4), ou quand le contenu a un problème, ligne nommée (garde-fou 18). Limite : la « dernière version » est la dernière livraison de test **publiée**, pas le dernier commit de `dev` ; entre une fusion et la publication de sa livraison (quelques minutes), le bouton passe encore. Le commit du code (`commit_du_code`) vaut `null` tant que `version.json` ne le porte pas (PR 4). Les contrôles d'activation de la production sont codés à part, sans appelant (garde-fou 17).
 2. Le gel des écritures sur les deux sites, qui survit à une relance et se lève seul (garde-fou 16) ; le gel des fusions pendant une mise à jour ; les kits et les paquets X.Y.0 dans la sauvegarde hors du serveur (garde-fou 19).
 3. L'atelier sert ce qu'il fabrique sur le site de dev : après un kit, après le calme qui suit vos saisies, ou au bouton (il refait l'extrait ; root le voit à sa ronde, garde-fou 20). Plus la répétition complète du jour J sur des copies.
-4. GitHub ne publie plus que des kits ; le commit de lot sans contenu ; le correctif urgent ne porte que du code.
+4. GitHub ne publie plus que des kits ; le commit de lot (`data/paquet.json` : lot, version, empreinte, structure, commit du code, sans contenu) ; le correctif urgent ne porte que du code. Jusqu'au lot 12 (R296), ce même commit garde la copie `data/rows` écrite depuis le paquet : c'est le secours, que le lot 12 retire. Une seule instance de test existe, le site de dev (`/srv/maverick-center-test`) : une fois `actif` allumé, un installateur « kit seul » y est refusé tant que `atelier/servir` n'est pas posé (le refus donne le geste).
 5. L'activation en production (pages fabriquées d'avance depuis le paquet, écritures gelées, bascule courte, retour automatique), la reprise si GitHub a livré et que la production a refusé, et la procédure du jour J.

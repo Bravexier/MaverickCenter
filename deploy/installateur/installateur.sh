@@ -117,6 +117,7 @@ EXISTANT=$(mode_de "$DOSSIER")
 if [ -n "$EXISTANT" ] && [ "$EXISTANT" != "$MODE" ]; then
   die "$DOSSIER est une instance « $EXISTANT » : un installateur « $MODE » refuse de l'écraser"
 fi
+@@SEUL_REFUS@@
 
 # Métriques (docs/serveur.md, « Métriques et volume ») : sans dossier des métriques réglé, le service range sa base de métriques dans db/metriques/.
 # Chaque instance a la sienne, jamais mêlée à celle de l'autre : ce dossier n'est ni copié de la production, ni touché, ni compté comme une base.
@@ -182,7 +183,9 @@ log "Installation $MODE dans $DOSSIER (version $VERSION, commit $(echo "$COMMIT"
 mkdir "$TRAVAIL"
 # -o : ne pas reprendre le propriétaire enregistré dans l'archive (celui de la machine qui l'a fabriquée), même en root.
 archive | gzip -dc | tar -xof - -C "$TRAVAIL" || die "extraction de l'archive impossible"
+@@SEUL_CONTROLE_DEBUT@@
 [ -f "$TRAVAIL/site/index.html" ] || die "archive refusée : pas de site/index.html (rien n'a été modifié)"
+@@SEUL_CONTROLE_FIN@@
 PAGES=$(find "$TRAVAIL/site" -name index.html | wc -l | tr -d ' ')
 [ "$PAGES" -eq "$PAGES_ATTENDUES" ] || die "archive refusée : $PAGES pages au lieu de $PAGES_ATTENDUES (rien n'a été modifié)"
 
@@ -344,6 +347,7 @@ fi
 @@VERROU_DEBUT@@
 SITE="$DOSSIER/site"
 mkdir -p "$SITE"
+@@SEUL_POSE_DEBUT@@
 if [ "$USE_RSYNC" != 0 ] && command -v rsync >/dev/null 2>&1; then
   # --checksum : une page modifiée de même taille doit être recopiée.
   rsync -a --delete --checksum "$TRAVAIL/site/" "$SITE/" || die "synchronisation (rsync) du site impossible"
@@ -352,6 +356,7 @@ else
   find "$SITE" -mindepth 1 -maxdepth 1 -exec rm -rf {} \;
   cp -a "$TRAVAIL/site/." "$SITE/" || die "copie du site impossible"
 fi
+@@SEUL_POSE_FIN@@
 @@VERROU_FIN@@
 
 # ---------------------------------------------------------------- configuration

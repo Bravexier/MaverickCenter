@@ -10,8 +10,8 @@ const SHA = 'a'.repeat(64);
 const AUTRE_SHA = 'b'.repeat(64);
 /** Une activation qui passe : le paquet 0.9 d'un kit de structure 140, sur une production à la 0.8 qui a les notes 0.7 et 0.8. */
 const entrees = (surcharge = {}) => ({
-  kit: { version: '0.6.0', structure: 140, paquet: { version: '0.9', sha256: SHA } },
-  paquet: { sha256: SHA, schema: 140, version: '0.9', notes: ['0.7', '0.8', '0.9'] },
+  kit: { version: '0.6.0', structure: 140, paquet: { version: '0.9', empreinte: SHA } },
+  paquet: { empreinte: SHA, schema: 140, version: '0.9', notes: ['0.7', '0.8', '0.9'] },
   production: { notes: ['0.7', '0.8'], version: '0.8' },
   ...surcharge,
 });
@@ -36,7 +36,7 @@ test('kit_sans_paquet : le kit annonce un paquet absent (ou n\'en annonce aucun)
 });
 
 test('empreinte : le sha256 des octets reçus n\'est pas celui que le kit annonce', () => {
-  const r = controlerLActivation(entrees({ paquet: { ...entrees().paquet, sha256: AUTRE_SHA } }));
+  const r = controlerLActivation(entrees({ paquet: { ...entrees().paquet, empreinte: AUTRE_SHA } }));
   assert.deepEqual(raisons(r), ['empreinte']);
   assert.ok(r.refus[0].message.includes(AUTRE_SHA.slice(0, 12)) && r.refus[0].message.includes(SHA.slice(0, 12)), 'les deux empreintes sont dites');
   assert.match(r.refus[0].message, /Pour lever ce refus/);
@@ -45,12 +45,33 @@ test('empreinte : le sha256 des octets reçus n\'est pas celui que le kit annonc
   assert.deepEqual(raisons(sansEmpreinte), ['empreinte']);
 });
 
+test('structure : un kit dont la structure diffère de celle du paquet qu\'il annonce est refusé (le paquet reçu est bien celui annoncé)', () => {
+  const r = controlerLActivation(entrees({ kit: { version: '0.6.0', structure: 140, paquet: { version: '0.9', empreinte: SHA, structure: 139 } } }));
+  assert.deepEqual(raisons(r), ['structure']);
+  assert.match(r.refus[0].message, /structure 140.*paquet de structure 139/);
+  assert.equal(controlerLActivation(entrees({ kit: { version: '0.6.0', structure: 140, paquet: { version: '0.9', empreinte: SHA, structure: 140 } } })).ok, true, 'même structure : passe');
+  assert.equal(controlerLActivation(entrees()).ok, true, 'un kit qui n\'annonce pas la structure de son paquet : comme avant');
+});
+
 test('structure : le schéma du paquet n\'est pas la structure du kit', () => {
   const r = controlerLActivation(entrees({ paquet: { ...entrees().paquet, schema: 139 } }));
   assert.deepEqual(raisons(r), ['structure']);
   assert.match(r.refus[0].message, /139/);
   assert.match(r.refus[0].message, /140/);
   assert.match(r.refus[0].message, /Pour lever ce refus/);
+});
+
+test('structure illisible : kit ou paquet sans structure entière est refusé, jamais accepté en silence (null === null)', () => {
+  const kit = (structure) => ({ ...entrees().kit, structure });
+  const paquet = (schema) => ({ ...entrees().paquet, schema });
+  for (const [k, p] of [[null, null], [undefined, undefined], [null, 140], [140, null], ['140', 140]]) {
+    const r = controlerLActivation(entrees({ kit: kit(k), paquet: paquet(p) }));
+    assert.equal(r.ok, false, `kit ${k}, paquet ${p} : refusé`);
+    assert.ok(raisons(r).includes('structure'));
+    assert.ok(r.refus.every((x) => /Pour lever ce refus/.test(x.message)));
+    assert.ok(r.refus.some((x) => /illisible/.test(x.message)), 'le message dit « illisible »');
+  }
+  assert.match(controlerLActivation(entrees({ kit: kit(null) })).refus.find((x) => x.raison === 'structure').message, /refabriquer le kit/);
 });
 
 test('note_manquante : une note de version que la production a déjà est absente du paquet (comparées par version, V0.10 après V0.9)', () => {
@@ -87,8 +108,8 @@ test('version_en_arriere : le paquet n\'est pas plus haut que la production (ég
 
 test('plusieurs refus à la fois sont tous rendus ; chaque raison est connue ; chaque message dit le geste', () => {
   const r = controlerLActivation(entrees({
-    kit: { version: '0.6.0', structure: 141, paquet: { version: '0.9', sha256: SHA } },
-    paquet: { sha256: AUTRE_SHA, schema: 140, version: '0.8', notes: ['0.8'] },
+    kit: { version: '0.6.0', structure: 141, paquet: { version: '0.9', empreinte: SHA } },
+    paquet: { empreinte: AUTRE_SHA, schema: 140, version: '0.8', notes: ['0.8'] },
   }));
   assert.deepEqual(raisons(r), ['empreinte', 'structure', 'note_manquante', 'version_en_arriere']);
   for (const x of r.refus) {

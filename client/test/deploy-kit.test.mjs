@@ -12,8 +12,9 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { fabriquer } from '../../deploy/installateur/fabriquer.mjs';
 import {
-  A_EMPORTER, ARCHIVE_DU_KIT, DOSSIER_DU_KIT, ErreurKit, FORMAT_KIT, INDISPENSABLES, META_DU_KIT, compatible, controlerLeKit, fabriquerLeKit, imageDeLAtelier,
+  A_EMPORTER, ARCHIVE_DU_KIT, DOSSIER_DU_KIT, ErreurKit, FICHIER_D_IDENTITE, FORMAT_D_IDENTITE, FORMAT_KIT, INDISPENSABLES, META_DU_KIT, compatible, controlerLeKit, fabriquerLeKit, imageDeLAtelier, lireLIdentiteDuPaquet, structureDuKit,
 } from '../../deploy/installateur/kit.mjs';
+import { validerLeKit } from '../serveur/atelier.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const have = (cmd, arg = '--version') => spawnSync(cmd, [arg], { stdio: 'ignore' }).status === 0;
@@ -240,11 +241,14 @@ test('l’installateur de production reste identique à celui d’avant le kit :
   const octets = readFileSync(i.fichier);
   const script = octets.subarray(0, octets.indexOf('\n__ARCHIVE__\n') + 1).toString('utf8');
   const modele = readFileSync(new URL('../../deploy/installateur/installateur.sh', import.meta.url), 'utf8');
-  const attendu = modele.replace('\n@@KIT@@\n', '\n').replace('\n@@VERROU_DEBUT@@\n', '\n').replace('\n@@VERROU_FIN@@\n', '\n').replace(/@@([A-Z0-9_]+)@@/g, (tout, cle) => i[cle]);
+  // les lignes repères (kit, verrou, kit seul) sont retirées : le reste est le modèle tel qu'il était avant elles
+  const attendu = modele.replace('\n@@KIT@@\n', '\n').replace('\n@@VERROU_DEBUT@@\n', '\n').replace('\n@@VERROU_FIN@@\n', '\n')
+    .replace(/\n@@SEUL_[A-Z_]+@@\n/g, '\n').replace(/@@([A-Z0-9_]+)@@/g, (tout, cle) => i[cle]);
   assert.ok(script.startsWith(attendu.slice(0, attendu.indexOf('\n__ARCHIVE__\n') + 1)), 'le script de production est le modèle, rempli, sans rien de plus');
   assert.ok(!script.includes('poser_le_kit'));
   assert.ok(!script.includes('atelier-kit'));
   assert.ok(!script.includes('.verrou') && !script.includes('flock'), 'aucun verrou de l’atelier en production');
+  assert.ok(!script.includes('KIT_SEUL') && !script.includes('@@'), 'rien du kit seul en production : ni champ, ni section, ni repère');
   const prod = join(racine, `prod-${(n += 1)}`);
   const r = lancer(i.fichier, ['--dossier', prod]);
   assert.equal(r.code, 0, r.out);
@@ -359,11 +363,48 @@ test('une décompression qui échoue ne fait pas échouer l’installation : san
   assert.deepEqual(rienDeProvisoire(join(instance, 'atelier')), []);
 });
 
-test('livraison.yml : le kit est joint pour le serveur de test seulement', () => {
+test('livraison.yml : le kit est joint pour le serveur de test seulement ; --kit-seul s’y ajoute sous l’interrupteur de la bascule 2, jamais en production', () => {
   const yml = readFileSync(new URL('../../.github/workflows/livraison.yml', import.meta.url), 'utf8');
   assert.match(yml, /if \[ "\$MODE" = test \]; then kit="--kit \."; fi/);
-  assert.equal([...yml.matchAll(/--kit/g)].length, 1, 'une seule ligne pose l’option');
+  assert.equal([...yml.matchAll(/kit="--kit \./g)].length, 1, 'une seule ligne pose l’option --kit');
+  assert.equal([...yml.matchAll(/--kit-seul/g)].filter((m) => !/#[^\n]*$/.test(yml.slice(yml.lastIndexOf('\n', m.index), m.index))).length, 1, 'une seule ligne de commande pose --kit-seul (le reste est commenté)');
   assert.match(yml, /fabriquer\.mjs --mode "\$MODE" .* \$kit\)/);
+  // --kit-seul : seulement quand la décision du module le dit (test allumé), jamais de soi-même
+  assert.match(yml, /if \[ "\$KIT_SEUL" = true \]; then kit="\$kit --kit-seul"; site=""; fi/);
+});
+
+test('kit.json annonce son paquet : null sans data/paquet.json (comme avant) ; avec, lot, version, empreinte et structure ; illisible ou d’une autre forme : refus ; le fichier n’entre pas dans le kit', { skip }, () => {
+  const depot = fauxDepot();
+  const sans = kitDe(depot);
+  assert.equal(sans.meta.paquet, null);
+  assert.equal(sans.meta.structure, 1, 'la structure du kit : le user_version de son data/schema.sql, avec ou sans paquet');
+  const identite = { format: FORMAT_D_IDENTITE, lot: '0f8fad5b-d9cb-469f-a165-70867728950e', version: '0.5', empreinte: 'e'.repeat(64), structure: 131, commit_du_code: 'c'.repeat(40), fabrique_le: '2026-11-19T10:00:00.000Z' };
+  writeFileSync(join(depot, FICHIER_D_IDENTITE), `${JSON.stringify(identite, null, 2)}\n`);
+  const avec = kitDe(depot);
+  assert.deepEqual(avec.meta.paquet, { lot: identite.lot, version: '0.5', empreinte: 'e'.repeat(64), structure: 131 }, 'la structure du paquet est sous paquet');
+  assert.equal(avec.meta.structure, 1, 'celle du kit reste celle de son schema.sql : un kit et son paquet peuvent différer, la production le refuse (structure)');
+  assert.deepEqual(JSON.parse(readFileSync(join(avec.destination, META_DU_KIT), 'utf8')).paquet, avec.meta.paquet, 'kit.json dit ce que la fonction rend');
+  assert.ok(!lister(avec.kit).includes('data/paquet.json'), 'le kit n’emporte pas le fichier : son identité est dans kit.json');
+  assert.equal(avec.meta.empreinte, sans.meta.empreinte, 'l’empreinte du kit suit son contenu, pas l’identité du lot');
+  assert.deepEqual(lireLIdentiteDuPaquet(depot), avec.meta.paquet);
+  assert.equal(structureDuKit(join(depot, 'data/schema.sql')), 1);
+  writeFileSync(join(depot, 'data/schema.sql'), 'PRAGMA user_version = 142;\nCREATE TABLE t (a);');
+  assert.equal(kitDe(depot).meta.structure, 142);
+  writeFileSync(join(depot, 'data/schema.sql'), 'CREATE TABLE t (a);');
+  assert.equal(kitDe(depot).meta.structure, null, 'illisible : null, le kit se fabrique');
+  writeFileSync(join(depot, 'data/schema.sql'), 'PRAGMA user_version = 1;')
+  assert.equal(FORMAT_D_IDENTITE, 'maverick-paquet-identite/1');
+  // les lecteurs de kit.json ne sont pas stricts : le service par liste blanche de champs, les scripts par `sed` sur la première occurrence de « version » (celle du kit, avant « paquet »)
+  assert.deepEqual(validerLeKit(JSON.parse(readFileSync(join(avec.destination, META_DU_KIT), 'utf8'))).version, '1.2.3');
+  const texteDuKit = readFileSync(join(avec.destination, META_DU_KIT), 'utf8');
+  assert.equal(texteDuKit.match(/"version": *"([0-9]+\.[0-9]+\.[0-9]+)"/)?.[1], '1.2.3');
+  assert.ok(texteDuKit.indexOf('"version"') < texteDuKit.indexOf('"paquet"'), 'la version du kit précède celle du paquet');
+  for (const [nom, valeur] of [['version', 'x'], ['empreinte', 'abc'], ['structure', -1], ['structure', '12'], ['format', 'autre'], ['lot', 7]]) {
+    writeFileSync(join(depot, FICHIER_D_IDENTITE), JSON.stringify({ ...identite, [nom]: valeur }));
+    assert.throws(() => kitDe(depot), (e) => e instanceof ErreurKit && /data\/paquet\.json/.test(e.message), nom);
+  }
+  writeFileSync(join(depot, FICHIER_D_IDENTITE), 'pas du json');
+  assert.throws(() => kitDe(depot), (e) => e instanceof ErreurKit && /illisible/.test(e.message));
 });
 
 test('l’installateur de test prend le verrou de l’atelier (le même flock que lancer.sh) pendant la pose de site/, seulement si l’atelier existe ; la production n’en sait rien', { skip: skip || (!have('flock') && 'flock indisponible') }, async () => {
