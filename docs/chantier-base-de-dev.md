@@ -36,7 +36,7 @@ Tenu à jour par la PR de chaque lot (état : à faire, en cours, fait ; puis le
 | 9 | Fabrication témoin sur le serveur : la mesure | L | fait, mesure en attente du geste du propriétaire (fabrication depuis un fichier de contenu, #373 ; kit de l'atelier joint à l'installateur de test, #374 ; atelier du site de dev — extrait, conteneur, rapports, page Debug —, #376 ; la journée type — minuteurs de nuit et du jour, sonde des temps de réponse, bilan de la journée —, #377) | #373, #374, #376, #377 |
 | 10 | Des contrôles qui ne lisent plus le contenu du dépôt | XL | en cours (premier temps : essai mécanique sur un contenu fourni, tri des 444 fichiers, `docs/essai-mecanique-des-tests.md`, #375 ; la CI lit l'extrait du site de dev — job séparé porteur de la clé, artefact chiffré gardé un jour, repli annoncé sur data/rows tant que les secrets `MAVERICK_EXTRAIT_CLE` et `MAVERICK_CONTENU_CHIFFREMENT` manquent —, migrations manquantes appliquées à la copie, essai mécanique étendu, #395 ; les tests lisent le contenu fourni : pages d'exemple tenues dans `data/pages-d-exemple.sql`, base remplie des tests tirée du contenu fourni (`aide-base-de-depart`), 22 fichiers qui lisent le dépôt par nature classés jusqu'au lot 12, passe C et variantes V1 à V4 (saisies fidèles au site) et contrôles de la CI vertes, fragilités corrigées, « Copier vers le dépôt » garde les pages d'exemple, PR `feature/tests-lisent-le-contenu-fourni`) | #375, #395 |
 | — | Déménagement du serveur (préparé, repoussé) | M | préparé, non joué | |
-| 11 | Bascule 2 : mise à jour directe, pages fabriquées sur le serveur | XL | en cours, éteint (préparation sans bascule : section 15 ; serveur actuel trop petit, mesure du 2026-11-18, agrandi à 4 Go ; PR 1 : fiche d'identité du paquet, garde-fous 4, 17 et 18, PR `feature/bascule-2-preparation`) | |
+| 11 | Bascule 2 : mise à jour directe, pages fabriquées sur le serveur | XL | **préparé, éteint ; bascule non faite** (section 15 : préparation et mesure ; section 16 : jour J et retour arrière). Fiche d'identité du paquet, garde-fous 4, 17, 18, #405 ; atelier (EXDEV, sonde), #407 ; gel des écritures et des fusions, paquets livrés gardés, #408 ; fabrication sans `git` dans l'image, besoin de mémoire 1,1 Go, #410 ; répétition du jour J, #411 ; l'atelier sert ce qu'il fabrique (`atelier/servir`), #413 ; kits seuls, commit de lot, #415 ; kit avec `copies-drive.json`, #417 ; activation en production (`activer.sh`), #418 ; kit livré à la production, #420 ; procédure (section 16) et skills, PR `feature/bascule-2-preparation` (en cours) | #405, #407, #408, #410, #411, #413, #415, #417, #418, #420 |
 | 12 | Le dépôt ne garde plus le contenu ; ménage | L | en cours : inventaire #404, conversions #409, passe S, archivage et procédure, PR `feature/lot-12-preparation` | #404, #409 |
 ### Déménagement du serveur (préparé le 2026-11-18, repoussé)
 
@@ -775,7 +775,7 @@ C'est tout pour le serveur.
 
 ## 15. La bascule 2 : préparation (lot 11)
 
-Préparée à partir du 2026-11-18, **éteinte** : rien ne bascule avant le jour choisi avec vous, et seulement si la mesure de l'atelier est bonne. La procédure du jour J et le retour arrière s'écrivent ici à mesure que les PR arrivent.
+Préparée à partir du 2026-11-18, **éteinte** : rien ne bascule avant le jour choisi avec vous, et seulement si la mesure de l'atelier est bonne. La procédure du jour J et le retour arrière sont à la section 16.
 
 ### Le serveur d'aujourd'hui ne peut pas fabriquer (relevé du 2026-11-18)
 
@@ -821,7 +821,7 @@ Le bilan est sur la page Debug (`GET /api/debug/atelier/`, champ `bilan`, calcul
 ### Découpe du lot 11 (chaque PR fusionnée éteinte)
 
 Les interrupteurs, tous absents ou éteints par défaut :
-- `tools/flux-git/bascule-2.json`, lu dans `origin/dev` par GitHub, avec deux clés indépendantes : `"gel_des_fusions": false` (le gel des fusions pendant une mise à jour, allumé en premier, dès la répétition) et `"actif": false` (kits seuls, identité du lot, règles du contenu écrit) ;
+- `tools/flux-git/bascule-2.json`, lu dans `origin/dev` par GitHub, avec deux clés indépendantes : `"gel_des_fusions": false` (le gel des fusions pendant une mise à jour, allumé en premier le jour J, avant la Simulation : section 16, étape 8) et `"actif": false` (kits seuls, identité du lot, règles du contenu écrit) ;
 - le marqueur `db/bascule-2` pour le service du site de dev ;
 - `atelier/servir` (fichier de root) pour que l'atelier serve ce qu'il fabrique ;
 - `<production>/activation-par-paquet` (fichier de root) pour la production.
@@ -832,4 +832,66 @@ Les interrupteurs, tous absents ou éteints par défaut :
 4. GitHub ne publie plus que des kits ; le commit de lot (`data/paquet.json` : lot, version, empreinte, structure, commit du code, sans contenu) ; le correctif urgent ne porte que du code. Jusqu'au lot 12 (R296), ce même commit garde la copie `data/rows` écrite depuis le paquet : c'est le secours, que le lot 12 retire. Une seule instance de test existe, le site de dev (`/srv/maverick-center-test`) : une fois `actif` allumé, un installateur « kit seul » y est refusé tant que `atelier/servir` n'est pas posé (le refus donne le geste).
 5. L'activation en production (pages fabriquées d'avance depuis le paquet, écritures gelées, bascule courte, retour automatique), la reprise si GitHub a livré et que la production a refusé, et la procédure du jour J.
    - **PR 5a (faite, éteinte : `activation-par-paquet` absent)** : `activer.sh` (contrôles par le code du kit dans un conteneur sans privilège, pages fabriquées d'avance, bascule courte, retour automatique, `--reprendre`, `--correctif`), le paquet déposé dans `paquets/`, l'utilisateur `maverick-site`, `bascule.sh poser-bascule-2`, le rapport lu par le site de dev (`docs/serveur.md`, « PR 5a » ; preuve de bout en bout : `tools/essai-activation/`).
-   - **PR 5b (à faire)** : le kit et le paquet livrés à la production par GitHub (installateur de production avec kit, posé dans `activation/kit/`), la page Mise à jour (bloc « Activation de la production »), la reprise si GitHub a livré et que la production a refusé, la procédure du jour J.
+   - **PR 5b (faite, éteinte : `actif` à `false`)** : avec `actif`, la production reçoit un installateur « kit seul » (kit posé dans `activation/kit/`, puis `activer.sh`), refusé avant toute écriture sans `activation-par-paquet` (code 3 ; `mise-a-jour.sh` ne retente pas cette étiquette) ; un kit périmé n'est jamais lancé ; `--correctif` pour `-hotfix.N` et `-rebuild.N`. Reste hors du lot : la page Mise à jour (bloc « Activation de la production », bouton de l'atelier), l'API porte déjà ces informations.
+   - **Procédure du jour J et retour arrière** : section 16.
+
+## 16. Le jour J de la bascule 2
+
+Préparée par le lot 11 (section 15), **pas encore faite**. Le jour se choisit avec vous, et seulement si la mesure de l'atelier est « bonne » (section 15). Chaque commande se copie telle quelle, en root sur le serveur. On ne passe à la suivante que si la précédente affiche ce qui est indiqué ; sinon on s'arrête et on transmet sa sortie à une session. Chaque refus possible dit lui-même son geste ; ceux qu'on peut prévoir sont placés **avant** l'étape qui refuserait.
+
+**Ce qu'il faut savoir pour lire une étape.** « Vérifier la version installée » se fait toujours par la même commande :
+
+    sudo tail -n 1 /srv/maverick-center-test/mise-a-jour.log
+
+Elle doit dire « À jour (V…) » avec la dernière version fusionnée dans `dev` (le numéro de la PR fusionnée le dit sur GitHub). Sinon : `sudo sh /srv/maverick-center-test/mise-a-jour.sh`, puis la refaire.
+
+### Les jours d'avant (rien ne change)
+
+1. **La mémoire.** `sudo sh /srv/maverick-center-test/atelier/installer.sh --etat`. La ligne « Mémoire maintenant » doit finir par « la fabrication démarrerait (refus sous … Mo disponibles) ». Sinon : faire le geste que cette ligne propose elle-même (libérer de la mémoire, ou `--besoin` / `--memoire-max` avec la valeur qu'elle donne), puis la refaire.
+   **L'identifiant Google du bouton « Exporter »** (la valeur de la variable `GOOGLE_CLIENT_ID` du dépôt, que l'équipe vous donne) : `sudo sh /srv/maverick-center-test/atelier/installer.sh --client-google <identifiant>`, puis `sudo grep GOOGLE_CLIENT_ID /srv/maverick-center-test/atelier/reglages.env` doit afficher la ligne. Sans lui, le site fabriqué grise « Exporter », et l'étape 4 montre un écart.
+   **Le disque et les processeurs.** `df -h /srv | tail -n 1 && nproc` : au moins 5 Go dans la colonne « Avail », puis `2` (ou plus).
+2. **La mesure.** Une journée type complète après le dernier geste de l'atelier (au moins 10 fabrications), lue sur la page Debug (Atelier, bilan) : verdict `tient` et les seuils de la section 15. « Pas bon » : on s'arrête ici, rien n'est cassé.
+3. **La restauration hors du serveur** (garde-fou 1) : `sudo bash /srv/maverick-center-test/sauvegarde/essai.sh && echo "Essai réussi."`. Doit afficher les deux lignes « copie extérieure restaurée et contrôlée », puis « Essai réussi. ».
+4. **Le même site que GitHub.** Sur la page Mise à jour : « Copier vers le dépôt » (mot `COPIER VERS LE DEPOT`), attendre la fin de la copie, puis que le site de dev ait installé la version qui la porte (commande de vérification ci-dessus). La fabrication de livraison qui suit (page Debug, Atelier, dernier rapport) doit montrer, à la ligne « Comparaison au site livré », **« 0 différents · 0 seulement dans le livré · 0 seulement dans le témoin »** (la base publiée et la référence sont comptées à part, en variations). Un autre écart est un défaut : on s'arrête.
+5. **La répétition** (sur des copies, rien n'est touché) : `sudo bash /srv/maverick-center-test/repetition-bascule-2.sh`. Dernière ligne attendue : `repetition-bascule-2 : == la bascule PASSERAIT : …`, code 0. `REFUSEE` ou `IMPOSSIBLE` : le message donne le geste ; on le fait, puis on relance la répétition.
+
+### Le jour J
+
+6. **Le marqueur du site de dev** : `sudo bash /srv/maverick-center-test/bascule.sh poser-bascule-2`. Doit dire « marqueur posé : … » ; puis `sudo bash /srv/maverick-center-test/bascule.sh etat` doit dire « bascule 2 : marqueur POSÉ ». Effet : le bouton « Effectuer la mise à jour » refuse si le site de dev n'a pas le dernier code ou si le contenu a un problème (le message nomme la ligne et le geste), et le site de dev dépose ses paquets pour la production.
+7. **L'interrupteur de la production, AVANT `actif`** (sinon chaque installateur de production serait refusé) : `sudo touch /srv/maverick-center/activation-par-paquet`, puis `sudo ls -l /srv/maverick-center/activation-par-paquet` doit montrer un fichier ordinaire (pas un lien).
+8. **Le gel des fusions** (l'équipe) : une PR vers `dev` passe `"gel_des_fusions": true` dans `tools/flux-git/bascule-2.json`. Attendre la version installée (commande ci-dessus).
+9. **La Simulation** : sur la page Mise à jour, « Simulation ». Elle doit aller au bout sans refus. Chaque refus commence par « Refusé avant l’envoi : » et finit par « Pour lever ce refus : … », qu'on suit à la lettre puis on la refait. Les plus probables : « le site de dev fait tourner la V…, mais la dernière livraison de test publiée est la V… » (attendre l'installation, 5 min au plus) ; « le contrôle du contenu du paquet signale N problème(s) » (corriger les lignes nommées sur le site de dev) ; une cause « jeton » (poser ou renouveler le jeton GitHub du site de dev).
+10. **L'atelier sert** : `sudo sh /srv/maverick-center-test/atelier/installer.sh --servir`. Doit afficher « == L'atelier SERT maintenant ce qu'il fabrique … » ; puis `… --etat` doit dire « Site servi par l'atelier : OUI ». Le service du site de dev redémarre quelques secondes.
+11. **Kits seuls** (l'équipe) : une PR vers `dev` passe `"actif": true`. Attendre la version installée : le site de dev reçoit désormais un « kit seul » ; ses pages sont celles de l'atelier.
+12. **L'identifiant Google de la production** (le même qu'à l'étape 1) : `sudo mkdir -p /srv/maverick-center/activation && printf 'GOOGLE_CLIENT_ID=%s\n' '<identifiant>' | sudo tee /srv/maverick-center/activation/reglages.env`, puis `sudo cat /srv/maverick-center/activation/reglages.env` doit afficher la ligne.
+13. **La première mise à jour par le nouveau circuit** : sur la page Mise à jour, « Effectuer la mise à jour » (mot `METTRE A JOUR`). GitHub livre le kit à la production, qui l'active elle-même. Après au plus une heure : `sudo grep 'activation : ==' /srv/maverick-center/installation.log | tail -n 1`. La ligne doit commencer par `activation : == PASSEE : la production est à la V…`.
+   - `== REFUSEE : …` : la production n'a rien changé ; faire le geste du message, puis `sudo bash /srv/maverick-center/activer.sh --reprendre`.
+   - `== RETOUR AUTOMATIQUE : …` : la production est revenue d'elle-même à son site et à sa base d'avant ; transmettre ces lignes à une session.
+   - `== IMPOSSIBLE : …` : rien n'a été tenté ; faire le geste du message, puis `sudo bash /srv/maverick-center/activer.sh --reprendre`.
+   - `== RETOUR AUTOMATIQUE INCOMPLET : … Geste : …` : faire **tout de suite** le geste écrit, puis transmettre les lignes `ATTENTION` à une session.
+   - Tant que l'activation n'a pas passé, la production garde sa `VERSION` d'avant (`sudo sed -n 's/^tag=//p' /srv/maverick-center/VERSION` donne l'ancienne étiquette) et `mise-a-jour.log` le dit par une seule ligne « ERREUR : … est installé (kit posé) mais son activation n'a pas passé … Geste : sudo bash /srv/maverick-center/activer.sh --reprendre » ; le minuteur ne relance rien tant que l'étiquette ne change pas (marque `.activation-refusee-<étiquette>`). Pour un correctif urgent (`-hotfix.N`) : `--reprendre --correctif`. Un `--reprendre` qui passe écrit lui-même la nouvelle `VERSION`.
+   - Rien de neuf dans `installation.log` : `sudo tail -n 5 /srv/maverick-center/mise-a-jour.log` dit pourquoi (par exemple l'installateur refusé faute d'`activation-par-paquet` : refaire l'étape 7).
+
+**Vos décisions sur GitHub, ce jour-là** (comme R282 au jour J de la bascule 1) : rendre obligatoire le contrôle `gel-des-fusions`, en l'ajoutant aux deux fichiers `.github/rulesets/` puis `gh api -X PUT repos/Bravexier/MaverickCenter/rulesets/24749972 --input .github/rulesets/dev.json` et `… /rulesets/24749999 --input .github/rulesets/master.json`. Question ouverte, à vous (rapport du lot 11) ; si c'est oui, `CHECKS_REQUIS` de `client/scripts/mise-a-jour-github.mjs` change dans la même PR que les deux fichiers des règles.
+
+### Retour arrière
+
+- **Avant l'étape 11** (rien n'a changé en production) : l'équipe repasse `gel_des_fusions` à `false` ; puis `sudo sh /srv/maverick-center-test/atelier/installer.sh --ne-plus-servir`, `sudo sh /srv/maverick-center-test/mise-a-jour.sh --force` (le site livré par GitHub revient), `sudo rm /srv/maverick-center/activation-par-paquet` et `sudo bash /srv/maverick-center-test/bascule.sh retirer-bascule-2`.
+- **Après l'étape 11, avant une activation réussie** : l'équipe repasse `actif` (puis `gel_des_fusions`) à `false` ; attendre la version installée ; puis les gestes du point précédent. La production garde son site, sa base, son service et sa `VERSION` d'avant ; seul le kit est posé dans `activation/kit/` (jamais relancé : garde « kit périmé ») et une marque `.activation-refusee-<étiquette>` reste. Rien à réinstaller : la production sert déjà son site d'avant ; la prochaine livraison complète (`dev` → `master`) remplace le kit (un `mise-a-jour.sh --force` avant elle reprendrait le kit seul et serait refusé, code 3).
+- **Après une activation réussie** : la production est à la nouvelle version, avec son site fabriqué sur le serveur ; son site d'avant est gardé dans `/srv/maverick-center/site.precedent/`. Pour revenir à l'ancien circuit : l'équipe repasse `actif` à `false` ; `sudo rm /srv/maverick-center/activation-par-paquet` ; la livraison complète suivante (`dev` → `master`) réinstalle un site fabriqué par GitHub. Un kit resté dans `activation/kit/` n'est jamais relancé (garde « kit périmé »). Puis, pour le site de dev, les gestes du premier cas (`--ne-plus-servir`, `mise-a-jour.sh --force`, `retirer-bascule-2`, `gel_des_fusions` à `false`).
+- **Limites** : un changement de structure appliqué ne se défait pas sans perdre les saisies faites depuis (section 10, point 2). Après un retour arrière, `data/rows` reste la copie de secours (lot 12 non fait) : la livraison classique repart de la dernière copie, d'où un « Copier vers le dépôt » avant de livrer.
+
+### `CLAUDE.md` le jour J (appliqué par la session principale, pas avant)
+
+- « La base du site de dev fait foi » : ajouter que **les pages se fabriquent sur le serveur** (atelier) depuis la base du site de dev, et que GitHub ne publie plus que des kits (le code) ; `data/rows` reste une copie de secours écrite par le workflow jusqu'au lot 12.
+- Le circuit d'une mise à jour : paquet → commit de lot (`data/paquet.json`, sans contenu) → kit livré → activation par la production (`activer.sh`), retour automatique ; un correctif urgent ne porte que du code (`--correctif`).
+- Git : les fusions sont gelées pendant une mise à jour (`gel-des-fusions`) ; `data/paquet.json` ne s'écrit jamais à la main.
+- Tests : `site-html` et les tests du site construit vérifient le code ; le site servi est celui de l'atelier.
+
+### Les skills le jour J (par `tech-skills`, en un appel)
+
+- `zone-hebergement`, `zone-hebergement-atelier` : interrupteurs allumés (`db/bascule-2`, `atelier/servir`, `activation-par-paquet`, `actif`, `gel_des_fusions`) ; la fabrication sert le site ; procédure de retour (section 16).
+- `zone-mise-a-jour` : le circuit par kit et activation est le circuit actif ; la page Mise à jour lit `activation_production`.
+- `zone-service`, `zone-service-extrait` : le service du site de dev dépose les paquets ; le bouton de l'atelier.
+- `publier-une-branche`, `corriger-une-pr`, `resoudre-un-conflit` : le gel des fusions pendant une mise à jour ; `data/paquet.json` écrit seulement par le workflow.
+- `tests-conventions`, `choisir-les-tests` : rien ne change pour les tests (le contenu reste lu par l'extrait, R278).

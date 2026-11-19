@@ -533,3 +533,57 @@ test('production : un installateur « kit seul » refusé faute d’activation-p
   assert.match((await n.run()).out, /Installé : v1\.3/);
   assert.ok(!n.has('.refus-v1.2'), 'une installation réussie efface les marques');
 });
+
+test('production : un installateur « kit seul » dont l’activation n’a pas passé (code 4) laisse VERSION à l’étiquette d’avant ; la marque .activation-refusee-<étiquette> évite de la rejouer toutes les 5 minutes ; --force la relance ; une installation réussie efface les marques', { skip }, async () => {
+  const complete = livraison('v1.1', { label: 'complet' });
+  const kitSeul = { tag: 'v1.2', octets: readFileSync(fabriquer({ mode: 'prod', tag: 'v1.2', version: '1.2.0', sha: 'c'.repeat(40), kit: depotDeKit(), kitSeul: true, sortie: join(root, 'sortie') }).fichier), id: (numero += 1) };
+  // la partie script est modifiée comme le fait le vrai installateur (kit-seul.sh, activation-fin-prod) : marque, ligne ERREUR, code 4 ; l'archive ne l'est pas
+  const texte = kitSeul.octets.toString('latin1');
+  const fin = texte.indexOf('\n') + 1;
+  const refus = 'case "${1:-}" in --dossier) echo "[v1.2] ERREUR : v1.2 est installé mais son activation n\'a pas passé"; echo "activation : == REFUSEE : x" > "$2/.activation-refusee-v1.2"; exit 4 ;; esac\n';
+  kitSeul.octets = Buffer.from(`${texte.slice(0, fin)}${refus}${texte.slice(fin)}`, 'latin1');
+  assert.ok(/^KIT_SEUL=1$/m.test(texte.slice(0, texte.indexOf('\n__ARCHIVE__\n'))));
+  publier(complete);
+  const n = nas('kit-seul-activation-refusee');
+  assert.equal((await n.run()).code, 0, 'la production est installée comme avant');
+  publier(kitSeul, complete);
+  const avant = state.telechargements;
+  const r = await n.run();
+  assert.equal(r.code, 1, r.out);
+  assert.match(n.log(), /L'installateur v1\.2 a posé son kit mais l'activation n'a pas passé : VERSION reste v1\.1, marque \.activation-refusee-v1\.2/);
+  assert.equal(n.log().split('\n').filter((l) => l.includes('ERREUR')).length, 1, 'une seule ligne ERREUR : celle de l’installateur ; mise-a-jour.sh n’en ajoute pas');
+  assert.doesNotMatch(n.log(), /Installé : v1\.2/);
+  assert.equal(n.tag(), 'v1.1', 'VERSION garde l’étiquette d’avant : la production n’est pas « à jour »');
+  assert.ok(n.has('.activation-refusee-v1.2'));
+  assert.ok(!n.has('.refus-v1.2'), 'ce n’est pas le refus de l’interrupteur');
+  assert.equal(state.telechargements, avant + 1);
+  // les passages suivants du minuteur : rien, ni téléchargement ni ligne de journal
+  const journal = n.log();
+  for (let i = 0; i < 3; i += 1) assert.equal((await n.run()).code, 0);
+  assert.equal(state.telechargements, avant + 1, 'aucun téléchargement, aucune activation rejouée');
+  assert.equal(n.log(), journal);
+  // --force passe outre la marque
+  assert.equal((await n.run(['--force'])).code, 1);
+  assert.equal(state.telechargements, avant + 2);
+  // une autre étiquette n'est pas marquée ; son installation réussie efface les marques
+  publier(livraison('v1.3', { label: 'complet 1.3' }), kitSeul, complete);
+  assert.match((await n.run()).out, /Installé : v1\.3/);
+  assert.ok(!n.has('.activation-refusee-v1.2'), 'une installation réussie efface les marques');
+  assert.equal(n.tag(), 'v1.3');
+});
+
+test('production : un installateur COMPLET qui sortirait en 4 par accident ne pose jamais de marque (le code 4 ne vaut que pour un « kit seul »)', { skip }, async () => {
+  const complete = livraison('v1.1', { label: 'complet' });
+  const accident = livraison('v1.2', { label: 'accident' });
+  const texte = accident.octets.toString('latin1');
+  const fin = texte.indexOf('\n') + 1;
+  accident.octets = Buffer.from(`${texte.slice(0, fin)}case "\${1:-}" in --dossier) exit 4 ;; esac\n${texte.slice(fin)}`, 'latin1');
+  publier(complete);
+  const n = nas('complet-en-4');
+  assert.equal((await n.run()).code, 0);
+  publier(accident, complete);
+  const r = await n.run();
+  assert.equal(r.code, 1, r.out);
+  assert.ok(!n.has('.activation-refusee-v1.2'), 'aucune marque : la livraison sera retentée au passage suivant');
+  assert.match(n.log(), /ERREUR : l'installateur v1\.2 a échoué/);
+});

@@ -429,6 +429,7 @@ if [ ! -f "$DOSSIER/.env" ]; then
   } > "$DOSSIER/.env"
 fi
 
+@@SEUL_VERSION_AVANT@@
 {
   echo "tag=$TAG"
   echo "version=$VERSION"
@@ -436,6 +437,7 @@ fi
   echo "mode=$MODE"
   echo "installe_le=$(date '+%Y-%m-%d %H:%M:%S')"
 } > "$DOSSIER/VERSION"
+@@SEUL_VERSION_APRES@@
 @@KIT@@
 @@ACTIVATION@@
 @@SEUL_ACTIVATION_FIN@@
