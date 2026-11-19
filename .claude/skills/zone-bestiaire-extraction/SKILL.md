@@ -9,7 +9,7 @@ user-invocable: false
 Noyau (page, cartes, édition, capacités) : skill `zone-bestiaire`.
 
 ## Fichiers
-- Extracteur : `tools/bestiaire/extraire.mjs` (`--bilan`, `--sql`), registre `tools/bestiaire/capacites.json`, export `sources/raw/bestiaire-2-0.txt`.
+- Extracteur : `tools/bestiaire/extraire.mjs` (`--bilan`, `--sql`), registre `tools/bestiaire/capacites.json`, export `bestiaire-2-0.txt` dans `sources/raw/` (ou dans le dossier de `MAVERICK_SOURCES_RAW` : `tools/sources/dossier-des-exports.mjs#dossierDesExports` ; `--source` l'emporte).
 - Le découpage d'une carte (`client/src/lib/monstre-champs.mjs`) sert aussi à la page et au service : ne pas le dupliquer.
 - Détail : `docs/bestiaire.md`, « La source et l'extraction ».
 

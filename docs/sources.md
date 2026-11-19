@@ -279,6 +279,23 @@ retirera alors (`docs/feuille-de-route.md`, réponses du 2026-10-16) ; d'ici là
 270 cellules ignorées ; Invocation : 1 128 lignes, 1 207 cellules, le tableau des améliorations cadavériques déclaré comme copie de celui de
 « Magie Maverick V8 »). Les cinq autres sont enregistrés `en_cours` (instantané gardé, écarts relevés dans `docs/sql/rapprochement-classeurs.md`).
 
+## Après le lot 12 : où lire les exports
+
+R296 : au lot 12, `sources/raw/` sort du dépôt (rangé sur le serveur et dans la sauvegarde ; procédure : `docs/chantier-base-de-dev.md`, « Le jour J du lot 12 »).
+Tant que le lot n'est pas fait, rien ne change : les outils lisent `sources/raw/`.
+
+- **Les originaux Google font foi** (R83), inchangé : ils se lisent par les connecteurs Google, en lecture seule. L'archive (`sources-raw.tar.gz`) n'est qu'un
+  instantané daté, jamais une référence plus sûre que l'original.
+- **Un export ancien** : `git show <sha>:sources/raw/<fichier>` (l'historique n'est pas réécrit : `<sha>` est le commit archivé, noté dans le manifeste de l'archive,
+  `git log --diff-filter=D --format=%H -1 -- sources/raw/<fichier>` donne le commit qui l'a retiré, son parent le contient), ou l'archive que le propriétaire remet,
+  vérifiée d'abord par `deploy/archivage-du-contenu/verifier.sh`, puis extraite dans un dossier hors du dépôt.
+- **Un nouvel export** (`import-gdocs.mjs`, un instantané de classeur) se fait dans un dossier de travail hors du suivi git : `var/sources-raw/` (`var/` est ignoré par
+  `.gitignore`). On l'indique aux outils par `MAVERICK_SOURCES_RAW`, une seule variable, lue par `tools/sources/dossier-des-exports.mjs` (Node) et `tools/docs/codex.py` :
+  `MAVERICK_SOURCES_RAW=var/sources-raw node tools/import-gdocs.mjs`. Sans elle (ou vide), le dossier est `sources/raw/` à la racine, comme avant. Les outils qui la lisent :
+  `import-gdocs.mjs` (écrit), `sources/rapprocher.mjs` (registre des classeurs `classeurs/registre.json` et ses instantanés), `bestiaire/extraire.mjs` (`bestiaire-2-0.txt`),
+  `docs/codex.py` (`<id>.md`) ; leurs options `--dump`, `--avant`, `--source` restent prioritaires.
+- Un nouvel export ne s'ajoute plus au dépôt : ce qu'il change se dépose comme un lot de changements sur le site de dev, après validation du propriétaire (`tech-sources`).
+
 ## De la source au wiki
 
 1. Importer/exporter les sources (ci-dessus).

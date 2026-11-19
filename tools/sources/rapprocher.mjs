@@ -52,9 +52,10 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { historiqueSite } from '../../client/src/lib/historique-site.mjs';
 import { texteSansBalises } from '../../client/src/lib/mots-cles-balises.mjs';
+import { dossierDesExports } from './dossier-des-exports.mjs';
 
 const RACINE = resolve(fileURLToPath(new URL('../../', import.meta.url)));
-const REGISTRE_DES_CLASSEURS = resolve(RACINE, 'sources', 'raw', 'classeurs', 'registre.json');
+const REGISTRE_DES_CLASSEURS = resolve(dossierDesExports(RACINE), 'classeurs', 'registre.json');
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------------
 // Fonctions pures (exportées pour les tests)

@@ -9,7 +9,7 @@ user-invocable: false
 ## D'où viennent les règles et le lore
 
 - **Le registre.** Le Discord « L'univers de Maverick » renvoie à des Google Docs et Sheets, recensés dans `sources/sources.json` et expliqués dans `docs/sources.md` (quel document pour quelle catégorie).
-- **Les exports bruts.** Ils sont dans `sources/raw/` (Docs, instantanés des classeurs dans `sources/raw/classeurs/`, Codex, `bestiaire-2-0.txt`) et dans `sources/discord/`.
+- **Les exports bruts.** Ils sont dans `sources/raw/` (Docs, instantanés des classeurs dans `classeurs/`, Codex, `bestiaire-2-0.txt`), ou dans le dossier de `MAVERICK_SOURCES_RAW` (ex. `var/sources-raw/`), et dans `sources/discord/`.
 - **La base** du site de dev fait foi (R274) : elle part des sources, corrigées par les décisions et par les modifications faites sur le site. Elle se lit dans l'extrait du jour (skill `interroger-la-base`) ; `data/rows` et `var/maverick.db` n'en sont que des copies datées. Sa valeur d'import se lit dans `historique_modification` (`client/src/lib/historique-site.mjs` : `valeurDImport`, `lignesDImport`).
 - **Les originaux Google font foi** pour vérifier une table ou appliquer une mise à jour (décision R83). Ils sont toujours tenus à jour, alors que le Drive du propriétaire n'en garde que des copies.
   - Ils se lisent par les connecteurs Google de la session (`tech-sources`).

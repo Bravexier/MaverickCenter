@@ -68,7 +68,9 @@ import pages_md  # noqa: E402
 
 RACINE = os.path.abspath(os.path.join(HERE, '..', '..'))
 DOC_ID = '1tH-T9k-a3sADBtKWHxcuMcN94_VA8-Zo2BTzee9O7Tg'
-SOURCE = os.path.join(RACINE, 'sources', 'raw', f'{DOC_ID}.md')
+# Dossier des exports : MAVERICK_SOURCES_RAW s'il est posé, sinon sources/raw (voir tools/sources/dossier-des-exports.mjs, même règle)
+EXPORTS = os.path.abspath(os.environ.get('MAVERICK_SOURCES_RAW', '').strip() or os.path.join(RACINE, 'sources', 'raw'))
+SOURCE = os.path.join(EXPORTS, f'{DOC_ID}.md')
 OUT = os.path.join(RACINE, 'client', 'src', 'content', 'wiki')
 SOURCES = ['Google Doc « CODEX Maverick »', f'https://docs.google.com/document/d/{DOC_ID}/edit']
 TYPE = 'lore'

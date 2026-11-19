@@ -9,6 +9,7 @@ user-invocable: false
 ## Fichiers
 - `sources/raw/1tH-T9k-a3sADBtKWHxcuMcN94_VA8-Zo2BTzee9O7Tg.md` : l'export Markdown de la copie du propriétaire (2026-10-11), tel quel ; ses images à part dans le dossier
   du même nom.
+- Dossier des exports : `sources/raw/` par défaut ; `MAVERICK_SOURCES_RAW` le remplace (`codex.py` la lit ; même règle que `tools/sources/dossier-des-exports.mjs#dossierDesExports`). Un nouvel export peut aller dans `var/sources-raw/`. R83 : les originaux Google font foi, une archive n'est qu'un instantané daté.
 - `tools/docs/codex.py` : le découpage en pages `lore/` (famille `docs`) et son vérificateur `--verifier`.
 - `tools/docs/codex-corrections.json` : les corrections appliquées avant le découpage.
 - `client/test/codex.test.mjs` : vérificateur, pages dans la base, R21, registre.
@@ -40,7 +41,7 @@ user-invocable: false
 - Le script n'écrit que dans `lore/`, refuse d'écraser une page qui ne vient pas du document et signale, sans les supprimer, les pages qu'il ne produit plus.
 
 ## Nouvel export
-1. Remplacer l'export dans `sources/raw/`.
+1. Remplacer l'export dans `sources/raw/` (ou dans le dossier de `MAVERICK_SOURCES_RAW`).
 2. `python3 -I tools/docs/codex.py`, puis `python3 -I tools/docs/codex.py --verifier`.
 3. Les pages changées se proposent en lot de changements sur le site de dev : `npm run db:sync-pages -- --lot <lot.json> --titre <titre>` écrit un lot de nature `source` (l'outil n'envoie rien ; skill `modifier-une-page-wiki`), jamais un commit de `data/rows`.
 4. La chronologie, qui cite le texte des pages : `node tools/chronologie/chronologie.mjs --verifier` (détail : `docs/codex.md`, « Règles du découpage »).

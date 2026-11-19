@@ -16,8 +16,10 @@
 // casse que le doc donne ailleurs à chaque mot (titre de l'espèce, puis texte courant : « Amblypyge de brai », « Élémentaire de l'Eau ») et les chiffres romains
 // en capitales (« Golem de fer II ») ; `nom_brut` garde l'original.
 import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { normalize } from '../../client/src/lib/text.mjs';
+import { dossierDesExports } from '../sources/dossier-des-exports.mjs';
 import { bornes, categorieDe, emplacements, LIGNE_DE_DEFENSE_ANCIENNE, lieux, SENS_DEFENSE, valeursDeLaCarte } from '../../client/src/lib/monstre-champs.mjs';
 
 export const DOCUMENT = 'Bestiaire 2.0';
@@ -611,7 +613,7 @@ export function bilan(b) {
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const args = process.argv.slice(2);
-  const source = args.includes('--source') ? args[args.indexOf('--source') + 1] : fileURLToPath(new URL('../../sources/raw/bestiaire-2-0.txt', import.meta.url));
+  const source = args.includes('--source') ? args[args.indexOf('--source') + 1] : join(dossierDesExports(fileURLToPath(new URL('../../', import.meta.url))), 'bestiaire-2-0.txt');
   const b = extraireBestiaire(readFileSync(source, 'utf8'));
   // --tables a,b : seulement les INSERT de ces tables (une migration de données)
   const tables = args.includes('--tables') ? args[args.indexOf('--tables') + 1].split(',') : null;
