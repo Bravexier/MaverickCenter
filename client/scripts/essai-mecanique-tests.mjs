@@ -529,14 +529,11 @@ function trierAB(A, B) {
  * Familles : F3 les outils de l'ancien circuit, qui écrivent ou relisent data/rows ; F4 les invariants « table des fiches vide dans data/rows » ;
  * F5 les outils Python qui lisent data/rows. `tests` : les tests du fichier concernés (les autres passent C). Un nom absent de client/test/ fait échouer
  * test/essai-mecanique.test.mjs. Lot 12 (PR 2) : F4 est vide (l'invariant se vérifie sur le contenu qui fait foi : test/aide-base-de-depart.mjs#lignesDuContenu),
- * `races-onglet` (races_onglet.py --verifier --base), `db-pages-du-site` (sync dans une base de travail, puis un lot source), `codex` (codex.py --verifier --base) et `races-magies-innees-liste` (rapatriement dans une copie des lignes de départ) en sont sortis.
+ * `races-onglet` (races_onglet.py --verifier --base), `db-pages-du-site` (sync dans une base de travail, puis un lot source), `codex` (codex.py --verifier --base) et `races-magies-innees-liste` (rapatriement dans une copie des lignes de départ), `mise-a-jour-paquet` et `mise-a-jour-regles` (copies des lignes de départ : `copieDesRowsDeDepart`, `rowsDeDepart`) et `contenu-fourni` (test 2 dans une racine jetable) en sont sortis.
  */
 export const LIT_LE_DEPOT_PAR_NATURE = Object.freeze({
   'db-donnees.test.mjs': { famille: 'F3', raison: 'db:export-pages, db:build et db:derive depuis data/rows (au chargement du fichier), puis db:check sur la base construite', tests: 'tous' },
-  'mise-a-jour-paquet.test.mjs': { famille: 'F3', raison: 'la mise à jour et la copie vers le dépôt écrivent data/rows', tests: '2 à 5' },
-  'mise-a-jour-regles.test.mjs': { famille: 'F3', raison: 'la mise à jour des règles écrit data/rows (note, historique, fichiers permis)', tests: '2 à 9' },
   'pages-d-exemple.test.mjs': { famille: 'F3', raison: 'voulu : le fichier des pages d’exemple est comparé à data/rows, dont il est tiré', tests: '1' },
-  'contenu-fourni.test.mjs': { famille: 'F3', raison: 'voulu : sans la variable, le build exige data/rows (vérifié en la retirant)', tests: '2' },
 });
 
 const DESCRIPTION_DES_PASSES = {

@@ -304,7 +304,7 @@ test('/galeries/ : toutes les images ; /archives/ : les documents sources et l�
 });
 
 test('aucun lien vers les classeurs « Familiers » et « Prototype » (demande du propriétaire, migration 0019)', options, () => {
-  const registre = JSON.parse(readFileSync(new URL('../../data/migrations/0014-sources-copies-drive.json', import.meta.url), 'utf8'));
+  const registre = JSON.parse(readFileSync(new URL('../../sources/copies-drive.json', import.meta.url), 'utf8'));
   const ids = registre.copies.filter((c) => ['Familiers', 'Prototype'].includes(c.titre)).flatMap((c) => [c.avant, c.apres]);
   assert.equal(ids.length, 4);
   const avecLien = walk(dist)

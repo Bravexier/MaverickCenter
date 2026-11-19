@@ -12,7 +12,7 @@ import { TABLES_DES_NOTES } from '../src/lib/notes-de-version.mjs';
 
 const racine = (chemin) => fileURLToPath(new URL(`../../${chemin}`, import.meta.url));
 const lire = (chemin) => readFileSync(racine(chemin), 'utf8');
-const registre = JSON.parse(lire('data/migrations/0014-sources-copies-drive.json'));
+const registre = JSON.parse(lire('sources/copies-drive.json'));
 const manifeste = JSON.parse(lire('sources/sources.json'));
 const db = ouvrirBase({ sansExemples: false });
 const ID_GOOGLE = /^[A-Za-z0-9_-]{25,}$/;

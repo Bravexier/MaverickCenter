@@ -74,12 +74,21 @@ test('la variable : absente ou vide, rien ; posée, le chemin absolu ; un fichie
   assert.throws(() => contenuFourni({ [VARIABLE_DU_CONTENU]: dossier }), /pas un fichier/);
 });
 
+// Le code de donnees.mjs est lu depuis un faux dépôt COMPLET (--preserve-symlinks : son emplacement est le dépôt qu'il retrouve en dernier recours),
+// jamais depuis le vrai : le test prouve la même chose où que vive le dépôt qui le lance (le vrai, ou la copie de l'essai mécanique, sous le vrai).
 test('sans la variable, le build par défaut exige toujours data/rows : un dépôt sans lignes est écarté (rien ne change)', (t) => {
-  const depot = depotSansLignes(t);
-  const r = lireLaBase(depot, {});
-  assert.equal(r.statut, 0, r.erreur);
-  assert.equal(r.sortie.racine, RACINE, 'MAVERICK_ROOT sans data/rows n’est pas retenu : on remonte au dépôt qui les a');
-  assert.equal(r.sortie.marque, null);
+  const sansLignes = depotSansLignes(t);
+  const complet = dossierTemporaire('contenu-fourni-depot-complet', { t });
+  mkdirSync(join(complet, 'data', 'rows'), { recursive: true });
+  copyFileSync(join(RACINE, 'data', 'schema.sql'), join(complet, 'data', 'schema.sql'));
+  symlinkSync(CLIENT, join(complet, 'client'));
+  const code = `const { trouverRacine } = await import(process.env.TEST_DONNEES); console.log(JSON.stringify(trouverRacine()));`;
+  const r = spawnSync(process.execPath, ['--no-warnings', '--preserve-symlinks', '--input-type=module', '-e', code], {
+    cwd: sansLignes, encoding: 'utf8',
+    env: { PATH: process.env.PATH, ...variablesTemporaires(dossierTemporaire('contenu-fourni-tmp', { t })), MAVERICK_ROOT: sansLignes, TEST_DONNEES: pathToFileURL(join(complet, 'client', 'src', 'lib', 'donnees.mjs')).href },
+  });
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(JSON.parse(r.stdout), complet, 'MAVERICK_ROOT sans data/rows n’est pas retenu : on remonte au dépôt qui les a');
 });
 
 test('avec la variable, la base du build est une copie du fichier fourni, dans un dépôt sans data/rows ; le fichier n’est pas modifié', (t) => {

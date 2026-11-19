@@ -65,7 +65,7 @@ et aucun connecteur Discord n'était disponible dans le registre au moment de la
 avec `"type": null` — **à classer** après lecture (renseigner `type` et `title`).
 
 **Copies du propriétaire (2026-10-10).** L'ancien mainteneur des documents est parti : ils ont été copiés dans le Drive du propriétaire du projet
-(dossier « Maverick JDR »), et le manifeste, les extracteurs `tools/sheets/*.py` et la base (migration `0014-sources-copies-drive`, registre `.json`)
+(dossier « Maverick JDR »), et le manifeste, les extracteurs `tools/sheets/*.py` et la base (migration `0014-sources-copies-drive` ; son registre est repris dans `sources/copies-drive.json`, que lisent `/archives` et le rapprochement)
 citent désormais ces copies ; dans le manifeste, `original` garde l'URL d'origine. Une copie garde le titre et les identifiants d'onglets (`gid`)
 de l'original : les libellés « Google Sheet « … », onglet « … » » restent justes. Les documents `1CwDq…` (« CODEX Maverick ») et `1vn5Tq11…`
 (« Bestiaire 2.0 »), hors de portée du Drive du propriétaire lors de la migration, n'ont pas été copiés par elle ; le propriétaire les a copiés le 2026-10-11

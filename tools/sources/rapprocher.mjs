@@ -337,10 +337,10 @@ export function rapprocher(db, {
   // Les écarts voulus seuls, par (table, clé, colonne) : un nombre de la base se lit aussi par eux (pas par les registres d'orthographe).
   const voulusParColonne = new Map();
   for (const v of voulus) ajouter(voulusParColonne, cleK(v.table, cleDeCorrection(v), v.colonne), v);
-  // Identifiants des documents Google remplacés par ceux des copies (migration 0014, registre `copies` : avant -> apres) : un lien du classeur original
+  // Identifiants des documents Google remplacés par ceux des copies (sources/copies-drive.json, `copies` : avant -> apres, reprise du registre de la migration 0014) : un lien du classeur original
   // vers un autre document, recopié dans la base, cite la copie.
-  const chemin0014 = resolve(RACINE, 'data', 'migrations', '0014-sources-copies-drive.json');
-  const copies = existsSync(chemin0014) ? (JSON.parse(readFileSync(chemin0014, 'utf8')).copies ?? []).filter((c) => c.avant && c.apres) : [];
+  const cheminCopies = resolve(RACINE, 'sources', 'copies-drive.json');
+  const copies = existsSync(cheminCopies) ? (JSON.parse(readFileSync(cheminCopies, 'utf8')).copies ?? []).filter((c) => c.avant && c.apres) : [];
   // Corrections héritées : une ligne tirée d'un texte déjà corrigé porte les corrections de ce texte (0003.sql a corrigé les notes et extraits d'un sort
   // avec lui, 0004 a lu les NM dans le texte corrigé, les tables de 0007 viennent du Markdown corrigé des pages) : celles des lignes qu'elle cite par
   // clé étrangère, de l'entité d'une note (`entite_table`, `entite_id`), et de sa page (`page_entite`, `page_id`, ou une colonne qui vaut l'identifiant
