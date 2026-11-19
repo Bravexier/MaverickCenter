@@ -22,5 +22,5 @@ Noyau (page, cartes, édition, capacités) : skill `zone-bestiaire`.
 - Sorts cités (R242, migration 0117) : `monstre_capacite.sorts` porte les nouveaux noms des sorts renommés ; le texte d'un sort supprimé reste tel quel, son lien vidé ; la « Boule de foudre » de la Poupée fulgurante est liée à Boules plasmiques, son texte inchangé tant que MAJ-B3 est ouverte (`docs/sql/a-valider.md` §11). Toute écriture qui n'affiche plus le texte de sa source porte R242 dans `capacites.json` ou les `voulus` du registre du classeur ; épinglé par `db-0117-magies-v10-specialisations.test.mjs`.
 
 ## Tests
-- `client/test/bestiaire-extraction.test.mjs` : rejoue l'extracteur sur l'export et le compare à l'état d'import (`lignesDImport`, `lib/historique-site.mjs`).
+- `client/test/bestiaire-extraction.test.mjs` : rejoue l'extracteur sur l'export (lu par `dossierDesExports()`) et le compare à l'état d'import (`lignesDImport`, `lib/historique-site.mjs`). Ces tests restent des tests ordinaires (l'export vient de l'archive restaurée au jour J) ; la PR du jour J ne les retire que si le propriétaire retient la reco (e).
 - `db-r209-bestiaire.test.mjs` (R209, 0106 ; sur l'état de la migration).

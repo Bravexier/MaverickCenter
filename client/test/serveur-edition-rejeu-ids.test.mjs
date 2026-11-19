@@ -40,10 +40,10 @@ const lu = (x) => (typeof x === 'string' ? JSON.parse(x) : x);
 
 test('rejeu d’un lot d’avant la 0113 : ids entiers, balises par la clé courante, fusion de la 0115, mot-clé créé à l’id suivant', () => {
   const adapter = adaptateurDuJournal(db);
-  // une race dont l'ancien id n'est plus sa clé (0114 : « x-race »), choisie dans le registre de la 0114
-  const races = JSON.parse(readFileSync(fileURLToPath(new URL('../../data/migrations/0114-mots-cles-categories-assignees.json', import.meta.url)), 'utf8')).cles;
-  const race = races.find((r) => cleDe(r.id));
-  assert.ok(race, 'une race homonyme de la 0114');
+  // un mot-clé dont l'ancien id (correspondance de la 0113) n'est plus la clé (ainsi les races homonymes d'une classe raciale, « x-race » depuis la
+  // 0114) : lu dans la base, sans le registre de la 0114, qui sort du dépôt avec le contenu (jour J du lot 12)
+  const race = REGISTRE.motsCles.map((m) => ({ id: m.id, avant: m.ancienId })).find((m) => cleDe(m.id) && cleDe(m.id) !== m.avant);
+  assert.ok(race, 'un mot-clé dont l’ancien id n’est plus la clé');
   const page = db.prepare("SELECT id, corps_md FROM page WHERE type = 'lore' AND statut <> 'example' ORDER BY id LIMIT 1").get();
   const [bonus] = FUSIONS_DE_MIGRATION.filter((f) => f.migration === '0115');
   const texte = `${page.corps_md}\n\nEssai : {{${race.avant}}}, {{${bonus.source}}}, {{${bonus.source}|bonus}} et {{${bonus.source}:}}.`;

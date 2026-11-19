@@ -12,6 +12,7 @@ import {
 import { CONTROLES } from '../scripts/mise-a-jour-github.mjs';
 import { TABLES_AJOUTEES, TABLES_VIDEES, VARIANTES } from '../scripts/essai-variantes.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
+import { RETIRES_AVEC_LE_CONTENU } from '../src/lib/sortie-du-contenu.mjs';
 import { ICONES } from '../src/lib/icones.mjs';
 import { TABLES_DU_JOURNAL } from '../src/lib/tables-de-la-base.mjs';
 import { normalize } from '../src/lib/text.mjs';
@@ -201,6 +202,14 @@ test('classement « lit le dépôt par nature » : chaque fichier existe dans cl
     assert.ok(existsSync(new URL(`./${nom}`, import.meta.url)), `${nom} : absent de client/test/`);
     assert.match(famille, /^F[345]$/, `${nom} : famille`);
     assert.ok(raison && !raison.includes('\n'), `${nom} : une raison en une ligne`);
+  }
+});
+
+test('lot 12 : chaque fichier « par nature » déclare, dans RETIRES_AVEC_LE_CONTENU, les tests qui sortent avec data/rows (la procédure du jour J les supprime)', () => {
+  for (const nom of Object.keys(LIT_LE_DEPOT_PAR_NATURE)) {
+    const declare = RETIRES_AVEC_LE_CONTENU[`client/test/${nom}`];
+    assert.ok(declare?.tests.length > 0, `${nom} : ses tests qui lisent data/rows sont à déclarer dans src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LE_CONTENU`);
+    assert.match(declare.raison, /data\/rows/, `${nom} : la raison dit que c’est data/rows qui sort`);
   }
 });
 

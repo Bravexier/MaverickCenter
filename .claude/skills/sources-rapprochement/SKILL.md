@@ -31,7 +31,7 @@ user-invocable: false
   propriétaire à chaque fois, sa réponse inscrite dans `conflits`.
 - Un écart voulu d'une colonne numérique s'écrit en texte (`voulus`, « 17 » -> « 16 ») : l'outil admet l'`apres` si la cellule écrit l'`avant`, pour cette colonne seulement (R207 : AP calculé).
 - Un texte dont une migration a retiré la fin s'écrit en `voulus` par la phrase entière de part et d'autre (`avant` : celle du classeur ; `apres` : celle de la base, sans sa fin) : jamais seulement la fin retirée, car la substitution inverse ne peut pas avoir un `apres` vide.
-- Tout `data/migrations/*.json` dont la clé `corrections` est entièrement en texte (`avant` et `apres` en chaînes) est défait comme de l'orthographe (`registresDOrthographe`) : voulu pour la 0103 (« Gel », R205). Une migration dont les valeurs ne sont pas des corrections d'un classeur les écrit sous `textes` ou `valeurs` (skill `base-sqlite`).
+- Tout `data/migrations/*.json` dont la clé `corrections` est entièrement en texte (`avant` et `apres` en chaînes) est défait comme de l'orthographe (`rapprocher.mjs#registresDOrthographe`, qui lit `data/migrations` ET le dossier de `MAVERICK_MIGRATIONS_ARCHIVEES` ensemble, `tools/sources/dossier-des-exports.mjs#dossiersDesMigrations` : même nom = même registre, le premier gagne) : voulu pour la 0103 (« Gel », R205). Une migration dont les valeurs ne sont pas des corrections d'un classeur les écrit sous `textes` ou `valeurs` (skill `base-sqlite`).
 - La base est lue dans son état d'import (`lignesDImport`) : le site de dev est la source de ce qu'il modifie, ce n'est pas un écart.
   - Un écart « pour mémoire » (casse seule, ligne à relire dans une source sans instantané) n'est jamais un conflit, même sur une ligne supprimée ou une colonne modifiée par le site.
   - Une ligne supprimée par le site, sans cellule changée, n'est jamais un écart (listée dans `site.supprimees`) ; une cellule vraiment changée sur une telle ligne reste un conflit (R83).
@@ -58,5 +58,5 @@ user-invocable: false
   (`.gitattributes`), contrôlées par `--verifier` et le test.
 
 ## Tests
-- `client/test/sources-rapprochement.test.mjs` : les essais qui changent une cellule ou une ligne partent de la base d'import (`baseDImport`, `cheminDImport` de `test/aide-base-d-import.mjs`) ; une ligne réécrite par le site transformerait l'écart attendu en conflit.
+- `client/test/sources-rapprochement.test.mjs` (exports lus par `dossierDesExports()`) : les essais qui changent une cellule ou une ligne partent de la base d'import (`baseDImport`, `cheminDImport` de `test/aide-base-d-import.mjs`) ; une ligne réécrite par le site transformerait l'écart attendu en conflit.
 - `client/test/sources-tipeee.test.mjs` (l'outil Tipeee et l'instantané versionné ; l'extraction : `tipeee.test.mjs`).

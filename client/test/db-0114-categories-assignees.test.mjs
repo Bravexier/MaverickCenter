@@ -18,11 +18,17 @@ import { ecrituresReecrites } from './aide-textes-reecrits.mjs';
 import { MOTS_CLES_DE_LA_0120 } from './aide-races-0120.mjs';
 import { fonduParLa0122 } from './aide-migration-0122.mjs';
 import { fonduParLa0124 } from './aide-migration-0124.mjs';
+import { REGISTRES_GARDES } from './aide-registres-sortis.mjs';
+import { testRetireAvecLeContenu } from './aide-sortie-du-contenu.mjs';
 
 const outils = fileURLToPath(new URL('../../tools/db/', import.meta.url));
 const sansPython = spawnSync('python3', ['--version']).error ? 'python3 absent' : false;
 const lireRegistre = (nom) => JSON.parse(readFileSync(new URL(`../../data/migrations/${nom}.json`, import.meta.url), 'utf8'));
-const REGISTRE = lireRegistre('0114-mots-cles-categories-assignees');
+// Le registre de la 0114 sort du dépôt avec elle le jour J du lot 12 (R296), et les tests qui le comparent à l'import avec lui
+// (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LE_CONTENU) : lu à la demande ; les tests de la règle de la clé (R232) restent.
+const testDuRegistre = testRetireAvecLeContenu(import.meta.url);
+let registre0114;
+const registre = () => (registre0114 ??= lireRegistre('0114-mots-cles-categories-assignees'));
 const REGISTRE_0113 = lireRegistre('0113-mots-cles-id-entier');
 const db = ouvrirBase({ sansExemples: false });
 
@@ -51,9 +57,9 @@ except T.HomonymesRefuses as e:
     print(json.dumps({'refus': [[f[0], f[1], f[2]] for f in e.fautes]}))`, entree);
 }
 
-test('registre : une ligne par mot-clé, son id et son ancien id du registre 0113, ses catégories par id croissant, l’équipe qui les a proposées', () => {
+testDuRegistre('registre : une ligne par mot-clé, son id et son ancien id du registre 0113, ses catégories par id croissant, l’équipe qui les a proposées', () => {
   const ancien = new Map(REGISTRE_0113.motsCles.map((e) => [e.id, e.ancienId]));
-  const a = REGISTRE.assignations;
+  const a = registre().assignations;
   assert.ok(a.length > 0);
   assert.equal(new Set(a.map((e) => e.id)).size, a.length, 'un mot-clé une seule fois');
   for (const e of a) {
@@ -69,17 +75,17 @@ test('registre : une ligne par mot-clé, son id et son ancien id du registre 011
   assert.deepEqual(a.filter((e) => fondus.has(e.id) || raciales.has(e.id)), []);
 });
 
-test('import : les catégories des mots-clés sont celles du registre, plus Classe sur les 13 classes raciales (0113) ; libellés des catégories du registre', () => {
+testDuRegistre('import : les catégories des mots-clés sont celles du registre, plus Classe sur les 13 classes raciales (0113) ; libellés des catégories du registre', () => {
   const h = historiqueSite(db);
   const categories = new Map(h.lignesDImport('categorie_mot_cle').map((c) => [c.id, c.libelle]));
-  for (const e of REGISTRE.assignations) {
+  for (const e of registre().assignations) {
     for (const c of e.categories) assert.equal(categories.get(c.id), c.libelle, `${e.ancienId} : catégorie ${c.id}`);
   }
   const classe = h.lignesDImport('categorie_mot_cle').find((c) => c.libelle_cle === 'classe').id;
   const attendu = [
     // les mots-clés que la 0122 et la 0124 fondent dans un autre (« La montée de niveau », « Fiche de personnage : Accessoires et Ceinture » ; leurs
     // registres) ont perdu leurs catégories avec eux
-    ...REGISTRE.assignations.filter((e) => !fonduParLa0122(e.id) && !fonduParLa0124(e.id)).flatMap((e) => e.categories.map((c) => `${e.id}:${c.id}`)),
+    ...registre().assignations.filter((e) => !fonduParLa0122(e.id) && !fonduParLa0124(e.id)).flatMap((e) => e.categories.map((c) => `${e.id}:${c.id}`)),
     ...REGISTRE_0113.motsCles.filter((e) => e.libelleAvant).map((e) => `${e.id}:${classe}`),
   ].sort();
   // les mots-clés d'une migration postérieure (0120 : Fongoïde et Gémidien, épinglés par test/db-0120-races-fongoide-gemidien.test.mjs) mis à part ;
@@ -93,12 +99,12 @@ test('import : les catégories des mots-clés sont celles du registre, plus Clas
   assert.deepEqual(aLImport, attendu);
 });
 
-test('import : les clés que la migration a changées sont celles de la règle, l’ancienne mène au mot-clé (mot_cle_ancienne_cle)', () => {
+testDuRegistre('import : les clés que la migration a changées sont celles de la règle, l’ancienne mène au mot-clé (mot_cle_ancienne_cle)', () => {
   const h = historiqueSite(db);
   const cles = new Map(h.lignesDImport('mot_cle').map((m) => [m.id, m.cle]));
   const quittees = new Map(h.lignesDImport('mot_cle_ancienne_cle').map((a) => [a.cle, a.mot_cle_id]));
-  assert.ok(REGISTRE.cles.length > 0);
-  for (const { id, avant, apres } of REGISTRE.cles) {
+  assert.ok(registre().cles.length > 0);
+  for (const { id, avant, apres } of registre().cles) {
     assert.notEqual(avant, apres);
     assert.equal(cles.get(id), apres, `${id} : clé après la migration`);
     assert.equal(quittees.get(avant), id, `${avant} : clé quittée`);
@@ -108,8 +114,8 @@ test('import : les clés que la migration a changées sont celles de la règle, 
   const homonymesDeClasse = REGISTRE_0113.motsCles.filter((e) => e.libelleAvant).map((e) => e.libelle);
   const races = REGISTRE_0113.motsCles.filter((e) => !e.libelleAvant && homonymesDeClasse.includes(e.libelle)).map((e) => e.id).sort((a, b) => a - b);
   assert.equal(races.length, 13);
-  assert.deepEqual(REGISTRE.cles.map((c) => c.id).sort((a, b) => a - b), races);
-  for (const { id } of REGISTRE.cles) assert.ok(REGISTRE.assignations.some((e) => e.id === id), `${libelles.get(id)} : catégories assignées`);
+  assert.deepEqual(registre().cles.map((c) => c.id).sort((a, b) => a - b), races);
+  for (const { id } of registre().cles) assert.ok(registre().assignations.some((e) => e.id === id), `${libelles.get(id)} : catégories assignées`);
 });
 
 test('import : la règle de la clé, stricte, donne exactement les clés de l’état d’import (R232 : plus d’écart admis)', { skip: sansPython }, () => {
@@ -128,17 +134,22 @@ test('état courant (R232 (2), (9), (10)) : chaque clé est celle de la règle s
   for (const m of motsCles) assert.equal(m.cle, r.cles[String(m.id)], `mot-clé ${m.id}`);
 });
 
-test('textes : la balise réécrite l’est à l’import ; aucune balise des règles ne cite une clé quittée par la 0114, hors sections 13 à 15', () => {
+testDuRegistre('textes : la balise réécrite l’est à l’import (registre de la 0114)', () => {
   const h = historiqueSite(db);
   const ecritures = ecrituresReecrites('0114-mots-cles-categories-assignees');
-  assert.ok(REGISTRE.textes.length > 0);
-  for (const t of REGISTRE.textes) {
+  assert.ok(registre().textes.length > 0);
+  for (const t of registre().textes) {
     const valeur = h.valeurDImport(t.table, t.cle, t.col);
     if (valeur === undefined) continue; // ligne créée par le site : rien d'importé
     assert.ok(ecritures(t.table, t.cle, t.col, valeur)[1].includes(t.apres), `${t.table} ${JSON.stringify(t.cle)} ${t.col}`);
   }
+});
+
+test('textes : aucune balise des règles ne cite une clé quittée à l’import (mot_cle_ancienne_cle, dont celles de la 0114), hors sections 13 à 15', () => {
+  // les clés quittées se lisent dans la base (mot_cle_ancienne_cle, telle que les migrations l'ont laissée), sans le registre de la 0114
   const courantes = new Set(db.prepare('SELECT cle FROM mot_cle').all().map((m) => m.cle));
-  const quittees = new Set(REGISTRE.cles.map((c) => c.avant).filter((c) => !courantes.has(c)));
+  const quittees = new Set(historiqueSite(db).lignesDImport('mot_cle_ancienne_cle').map((a) => a.cle).filter((c) => !courantes.has(c)));
+  assert.ok(quittees.size > 0, 'des clés quittées à l’import');
   const balise = /\{\{([^{}|\n]+?)(?:\\?\|[^{}\n]*?)?\}\}/g;
   const hors = new Set(TABLES_HORS_REGLES);
   const tables = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND sql NOT LIKE 'CREATE VIRTUAL%'").all()
@@ -152,4 +163,9 @@ test('textes : la balise réécrite l’est à l’import ; aucune balise des r�
     }
   }
   assert.deepEqual(fautes, []);
+});
+
+testDuRegistre('registre gardé : test/fixtures/registres-sortis.json recopie tel quel ce que les tests lisent encore du registre de la 0114', () => {
+  // la réécriture de {{orios}} dans guide/bienvenue (R232 (7)) : test/db-liens-en-mots-cles.test.mjs et test/aide-base-d-import.mjs la lisent encore
+  assert.deepEqual(REGISTRES_GARDES['0114-mots-cles-categories-assignees'], { textes: registre().textes });
 });

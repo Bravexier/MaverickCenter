@@ -232,7 +232,7 @@ retirera alors (`docs/feuille-de-route.md`, réponses du 2026-10-16) ; d'ici là
    lue dans son **état d'import** (`lib/historique-site.mjs#lignesDImport`) : une ligne supprimée par le site de dev compte encore, une ligne qu'il a créée
    ne compte pas, une colonne qu'il a modifiée vaut sa valeur d'import (le site est la source de ce qu'il modifie : ce n'est pas un écart). Il vérifie :
    - **base → classeur** : chaque ligne typée lit, dans les cellules que cite son `source_ref`, chacun de ses textes et nombres, une fois défaites les
-     corrections d'orthographe des migrations (tout `data/migrations/*.json` qui a une liste `corrections` ; celles de la ligne, et celles des lignes dont
+     corrections d'orthographe des migrations (tout `data/migrations/*.json` qui a une liste `corrections`, et ceux du dossier de `MAVERICK_MIGRATIONS_ARCHIVEES` après le lot 12 ; celles de la ligne, et celles des lignes dont
      elle a été tirée : ligne visée par une clé étrangère, entité d'une note, page de l'entité) et appliqué `tools/sheets/corrections.json`. Une ligne qui
      cite aussi un autre classeur se lit dans les deux instantanés ; si l'autre source n'en a pas (un Google Doc), ce qui ne se lit pas est « à relire »
      (listé, pas compté). Une valeur qui porte des balises du glossaire (« {{corruption|CR}} », R233) se lit sans elles (`texteSansBalises` : le texte
@@ -294,6 +294,10 @@ Tant que le lot n'est pas fait, rien ne change : les outils lisent `sources/raw/
   `MAVERICK_SOURCES_RAW=var/sources-raw node tools/import-gdocs.mjs`. Sans elle (ou vide), le dossier est `sources/raw/` à la racine, comme avant. Les outils qui la lisent :
   `import-gdocs.mjs` (écrit), `sources/rapprocher.mjs` (registre des classeurs `classeurs/registre.json` et ses instantanés), `bestiaire/extraire.mjs` (`bestiaire-2-0.txt`),
   `docs/codex.py` (`<id>.md`) ; leurs options `--dump`, `--avant`, `--source` restent prioritaires.
+- **Les registres d'orthographe du rapprochement** : `rapprocher.mjs` défait les corrections d'orthographe de la base d'après les `*.json` de `data/migrations`. Les migrations de données
+  sortent aussi au lot 12 ; les mixtes restent. Il lit donc les deux ensemble : `data/migrations` (ce qui y reste) et le dossier de `MAVERICK_MIGRATIONS_ARCHIVEES` (l'archive restaurée des
+  migrations de données, celle de `deploy/archivage-du-contenu/archiver.sh`, vérifiée par `verifier.sh`, ou `git archive <sha>` de ces fichiers extrait hors du dépôt) ; un fichier de même
+  nom est le même registre, lu une fois. Sans la variable : `data/migrations` seul.
 - Un nouvel export ne s'ajoute plus au dépôt : ce qu'il change se dépose comme un lot de changements sur le site de dev, après validation du propriétaire (`tech-sources`).
 
 ## De la source au wiki

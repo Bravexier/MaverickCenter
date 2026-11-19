@@ -5,7 +5,10 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
+import { join } from 'node:path';
 import { test } from 'node:test';
+import { fileURLToPath } from 'node:url';
+import { dossierDesExports } from '../../tools/sources/dossier-des-exports.mjs';
 import { compacter, CORRECTIONS, CORRECTIONS_D_ESPECE, ecartsDuRegistre, extraireBestiaire, lignesDuDoc, lignesSql, lireRegistre } from '../../tools/bestiaire/extraire.mjs';
 import { avecLesValeurs, emplacements, LIGNE_DE_DEFENSE_ANCIENNE } from '../src/lib/monstre-champs.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
@@ -13,7 +16,9 @@ import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { normalize } from '../src/lib/text.mjs';
 
 const racine = new URL('../../', import.meta.url);
-const texte = readFileSync(new URL('sources/raw/bestiaire-2-0.txt', racine), 'utf8');
+// L'export du doc se lit par dossierDesExports() : sources/raw, ou MAVERICK_SOURCES_RAW (l'archive restaurée, lot 12, R296). Leur retrait avec les exports attend
+// la réponse du propriétaire (reco (e)).
+const texte = readFileSync(join(dossierDesExports(fileURLToPath(racine)), 'bestiaire-2-0.txt'), 'utf8');
 const b = extraireBestiaire(texte);
 const cartes = b.especes.flatMap((e) => e.cartes);
 const db = ouvrirBase({ sansExemples: false });

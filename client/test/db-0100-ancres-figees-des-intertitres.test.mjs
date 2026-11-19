@@ -17,8 +17,11 @@ import { ancreDeLEtat } from '../src/lib/magies-db.mjs';
 import { baseDImport, cheminDImport } from './aide-base-d-import.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
 import { rejouerLaMigration } from './aide-migration-rejouee.mjs';
+import { testRetireAvecLeContenu } from './aide-sortie-du-contenu.mjs';
 
 const MIGRATION = '0100-ancres-figees-des-intertitres.sql';
+// les tests qui rejouent la migration sortent avec elle le jour J du lot 12 (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LE_CONTENU)
+const testDeLaMigration = testRetireAvecLeContenu(import.meta.url);
 const CEINTURE = [[CHAPITRE_DE_LA_CEINTURE, ANCRE_DES_REGLES], [PAGE_DE_REFERENCE, ANCRE_DE_LA_REFERENCE]];
 // La 0100 pose `{#ceinture}` sur « ## Ceinture » de guide/fiche-accessoires-et-ceinture. La 0124 (R272) retire cette page et passe ses sections, marque
 // comprise, dans l'inventaire (PAGE_DE_REFERENCE) : rejouée, la 0100 n'a plus de page où la poser. Son ancre reste lue à l'import (test 1, 0124) ; les tests
@@ -31,13 +34,15 @@ const ETATS = "SELECT id, substr(id, 1, instr(id, '#') - 1) AS page_id FROM etat
 const voulues = (db) => [...db.prepare(ETATS).all().map((e) => [e.page_id, ancreDeLEtat(e.id)]), ...CEINTURE];
 const corpsDe = (db, id) => db.prepare('SELECT corps_md FROM page WHERE id = ?').get(id)?.corps_md;
 const ancres = (corps) => ancresDuCorps(corps).map((a) => a.ancre);
-/** Les ancres que le SQL de la migration écrit : une marque posée par une migration postérieure (0117 : `{#somnolence}`, état créé par elle) n'en est pas. */
-const ANCRES_DE_LA_MIGRATION = new Set(
+/** Les ancres que le SQL de la migration écrit : une marque posée par une migration postérieure (0117 : `{#somnolence}`, état créé par elle) n'en est pas.
+ * Lu à la demande : seuls les tests qui rejouent la migration le lisent (ils sortent avec elle le jour J du lot 12, test/aide-sortie-du-contenu.mjs). */
+let ancresEcrites;
+const ancresDeLaMigration = () => (ancresEcrites ??= new Set(
   [...readFileSync(new URL(`../../data/migrations/${MIGRATION}`, import.meta.url), 'utf8').matchAll(/\{#([a-z0-9-]+)\}/g)].map((m) => m[1]),
-);
+));
 /** Le corps sans les marques de ses intertitres que la migration pose : le texte d'avant elle (elle n'ajoute que ` {#ancre}` au bout de la ligne). */
 const sansMarques = (corps) =>
-  corps.split('\n').map((l) => (ancresDuCorps(l).some((a) => ANCRES_DE_LA_MIGRATION.has(a.ancre)) ? l.replace(/ \{#[a-z0-9-]+\}$/, '') : l)).join('\n');
+  corps.split('\n').map((l) => (ancresDuCorps(l).some((a) => ancresDeLaMigration().has(a.ancre)) ? l.replace(/ \{#[a-z0-9-]+\}$/, '') : l)).join('\n');
 
 /** Une copie de `chemin` où rejouer la migration. */
 function copie(t, chemin) {
@@ -64,7 +69,7 @@ test('migration 0100, à l’import : chaque état a son ancre (son id après «
   }
 });
 
-test('migration 0100, à l’import : retirées, les marques sont reposées par la migration, et seulement elles', (t) => {
+testDeLaMigration('migration 0100, à l’import : retirées, les marques sont reposées par la migration, et seulement elles', (t) => {
   const db = copie(t, cheminDImport());
   const pages = [...new Set(voulues(db).filter(REJOUEES).map(([p]) => p))];
   const importes = new Map(pages.map((p) => [p, corpsDe(db, p)]));
@@ -74,14 +79,14 @@ test('migration 0100, à l’import : retirées, les marques sont reposées par 
   for (const p of pages) assert.equal(corpsDe(db, p), importes.get(p), `${p} : le corps que la migration a écrit`);
 });
 
-test('migration 0100 rejouée sur la base courante : aucune page ne change (rien n’est posé deux fois)', (t) => {
+testDeLaMigration('migration 0100 rejouée sur la base courante : aucune page ne change (rien n’est posé deux fois)', (t) => {
   const db = copie(t, cheminBase({ sansExemples: false }));
   const avant = db.prepare('SELECT id, corps_md FROM page ORDER BY id').all();
   rejouerLaMigration(db, MIGRATION);
   assert.deepEqual(db.prepare('SELECT id, corps_md FROM page ORDER BY id').all(), avant);
 });
 
-test('migration 0100, garde : seule la ligne entière exacte, présente une fois, dans une page sans l’ancre, reçoit la marque', (t) => {
+testDeLaMigration('migration 0100, garde : seule la ligne entière exacte, présente une fois, dans une page sans l’ancre, reçoit la marque', (t) => {
   const db = copie(t, cheminDImport());
   for (const [page, ancre] of [voulues(db)[0], ...CEINTURE].filter(REJOUEES)) {
     const titre = ancresDuCorps(corpsDe(db, page)).find((a) => a.ancre === ancre);

@@ -52,7 +52,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { historiqueSite } from '../../client/src/lib/historique-site.mjs';
 import { texteSansBalises } from '../../client/src/lib/mots-cles-balises.mjs';
-import { dossierDesExports } from './dossier-des-exports.mjs';
+import { dossierDesExports, dossiersDesMigrations } from './dossier-des-exports.mjs';
 
 const RACINE = resolve(fileURLToPath(new URL('../../', import.meta.url)));
 const REGISTRE_DES_CLASSEURS = resolve(dossierDesExports(RACINE), 'classeurs', 'registre.json');
@@ -232,10 +232,17 @@ export function nombresDe(texte) {
 // Rapprochement
 // ---------------------------------------------------------------------------------------------------------------------------------------------------
 
-// Registres de corrections des migrations (0003, 0005, 0006…) : tout data/migrations/*.json dont `corrections` est une liste { table, col, avant, apres }.
-const registresDOrthographe = () => readdirSync(resolve(RACINE, 'data', 'migrations')).filter((f) => f.endsWith('.json')).sort()
-  .map((f) => JSON.parse(readFileSync(resolve(RACINE, 'data', 'migrations', f), 'utf8')).corrections)
-  .filter((cs) => Array.isArray(cs) && cs.length && cs.every((c) => c.table && c.col && typeof c.avant === 'string' && typeof c.apres === 'string'));
+// Registres de corrections des migrations (0003, 0005, 0006…) : tout *.json dont `corrections` est une liste { table, col, avant, apres }, dans data/migrations et dans
+// MAVERICK_MIGRATIONS_ARCHIVEES (archive restaurée des migrations de données sorties du dépôt au lot 12, R296), ensemble : même nom = même registre, lu une fois.
+export const registresDOrthographe = (dossiers = dossiersDesMigrations(RACINE)) => {
+  const fichiers = new Map();
+  for (const dossier of dossiers) {
+    if (!existsSync(dossier)) continue;
+    for (const f of readdirSync(dossier)) if (f.endsWith('.json') && !fichiers.has(f)) fichiers.set(f, resolve(dossier, f));
+  }
+  return [...fichiers].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0)).map(([, chemin]) => JSON.parse(readFileSync(chemin, 'utf8')).corrections)
+    .filter((cs) => Array.isArray(cs) && cs.length && cs.every((c) => c.table && c.col && typeof c.avant === 'string' && typeof c.apres === 'string'));
+};
 // Colonnes jamais comparées : clés, provenance (et jamais dans le vocabulaire d'une ligne).
 const EXCLUES = /^(id|cle|slug|origine|source_ref|page_id|empreinte)$|_id$|_cle$/;
 // Tables qui décrivent la source sans en recopier une cellule (un écart entre sources, une correction, un fil de commentaires sans cellule) : leurs

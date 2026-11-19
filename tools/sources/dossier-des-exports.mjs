@@ -8,3 +8,13 @@ export function dossierDesExports(racine, env = process.env) {
   const choisi = (env.MAVERICK_SOURCES_RAW ?? '').trim();
   return choisi ? resolve(choisi) : resolve(racine, 'sources', 'raw');
 }
+
+/**
+ * Les dossiers des registres de migrations que le rapprochement lit pour défaire les corrections d'orthographe de la base (rapprocher.mjs) : `<racine>/data/migrations`
+ * (ce qui y reste, les migrations mixtes comprises), puis MAVERICK_MIGRATIONS_ARCHIVEES si elle est posée et non vide (l'archive restaurée des migrations de données qui
+ * sont sorties, celle de deploy/archivage-du-contenu/archiver.sh). Les deux se lisent ensemble : un fichier de même nom est le même registre, lu une fois (le premier).
+ */
+export function dossiersDesMigrations(racine, env = process.env) {
+  const archive = (env.MAVERICK_MIGRATIONS_ARCHIVEES ?? '').trim();
+  return [resolve(racine, 'data', 'migrations'), ...(archive ? [resolve(archive)] : [])];
+}
