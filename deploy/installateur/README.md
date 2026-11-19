@@ -206,6 +206,29 @@ colonne), les fiches adaptées par nature, les tables en « chute anormale » qu
 (`var/repetition-prod.*` de l'instance, 4 fois la base de la production plus celle du site de dev) est effacé à la fin ; `--garder` le garde (il contient
 les fiches de la production : à effacer soi-même). Détail : `docs/serveur.md`, « Répétition de la mise à jour de la production ».
 
+## Répétition complète du jour J de la bascule 2 (`repetition-bascule-2.sh`)
+
+Posé par l'installateur de test à côté de `repetition-prod.sh` (lot 11, PR 3a). Il rejoue sur des **copies** ce que fera la production le jour J, sans la toucher
+ni écrire la base du site de dev : copie de la base de la production (`sqlite3 .backup`, ou sa dernière copie locale), puis, dans un conteneur du code du site de dev,
+le contenu à livrer fabriqué comme la simulation de mise à jour (un **paquet**), le contrôle du contenu (garde-fou 18), l'activation (garde-fou 17) et la base de la
+production refaite avec ses fiches ; enfin **tout le site de la production** fabriqué depuis ce paquet avec le kit de l'atelier, dans un conteneur de l'image du kit
+(aucun réseau, lecture seule, aucune capacité, utilisateur 65534, plafond de mémoire de l'atelier, `SITE_MODE=prod`).
+
+```bash
+sudo bash /srv/maverick-center-test/repetition-bascule-2.sh                          # copie de la production prise à l'instant
+sudo bash /srv/maverick-center-test/repetition-bascule-2.sh --depuis-la-sauvegarde   # la dernière copie locale
+```
+
+- **Préalable** : l'atelier est installé, et la version installée du site de dev (`VERSION`) est celle du kit (`atelier/kit/kit.json`) ; sinon elle dit les deux versions et le
+  geste (attendre l'installation, au plus 5 minutes, ou `sudo sh /srv/maverick-center-test/mise-a-jour.sh`), code 2. Elle prend le verrou de l'atelier (`atelier/.verrou`) :
+  pendant une fabrication de l'atelier elle refuse, et inversement.
+- **Sortie** : des comptes seulement, jamais un nom de fiche (tables contrôlées, problèmes par table, identifiant et règle, fiches adaptées, pages fabriquées, durée, pic de
+  mémoire). Dernière ligne : `repetition-bascule-2 : == la bascule PASSERAIT` (code 0), `== REFUSEE : <raison>` (code 1 : chiffres et geste), `== IMPOSSIBLE : <raison>` (code 2).
+- Le dossier de travail (`var/repetition-bascule-2.*` de l'instance) est effacé à la fin ; `--garder` le garde (il contient les fiches de la production : à effacer soi-même).
+  En cas d'échec des pages, la fin du journal du conteneur est dans `var/repetition-bascule-2-journal-du-conteneur.txt`.
+- Elle emploie `outils/lib.sh` et `outils/conteneur.sh` de l'atelier tels qu'ils sont installés (le second sert la répétition par deux variables, `CONTENU_FICHIER` et
+  `MODE_REPETITION=1`, sans changer l'atelier). Détail : `docs/serveur.md`, « Répétition complète du jour J ».
+
 ## Le kit de l'atelier (serveur de test seulement)
 
 Chaque installateur **de test** emporte un kit : le code du site et ses `node_modules`, de quoi lancer `npm run build:depuis-contenu` sans réseau, sans `data/rows` ni

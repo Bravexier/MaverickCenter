@@ -90,11 +90,11 @@ test('sans db/source : une publication plus ancienne s’installe comme avant (l
   assert.match(readFileSync(join(dev, 'VERSION'), 'utf8'), /^version=0\.2\.9$/m);
 });
 
-test('bascule.sh et repetition-prod.sh : livrés par l’installateur de test à la racine de l’instance, exécutables ; jamais par celui de production', { skip }, () => {
+test('bascule.sh, repetition-prod.sh et repetition-bascule-2.sh : livrés par l’installateur de test à la racine de l’instance, exécutables ; jamais par celui de production', { skip }, () => {
   const dev = enService('livraison-bascule', { source: false });
   const prod = join(racine, 'prod-sans-bascule');
   assert.equal(lancer(installateur({ mode: 'prod', label: 'p', version: '0.2.0' }), ['--dossier', prod]).code, 0);
-  for (const nom of ['bascule.sh', 'repetition-prod.sh']) {
+  for (const nom of ['bascule.sh', 'repetition-prod.sh', 'repetition-bascule-2.sh']) {
     const livre = join(dev, nom);
     assert.equal(readFileSync(livre, 'utf8'), readFileSync(new URL(`../../deploy/installateur/${nom}`, import.meta.url), 'utf8'));
     assert.equal(statSync(livre).mode & 0o755, 0o755);
