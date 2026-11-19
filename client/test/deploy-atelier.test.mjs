@@ -1603,8 +1603,11 @@ test('avec l’interrupteur : un second conteneur durci pose le site fabriqué (
   assert.ok(posee.includes('node --no-warnings /kit/client/scripts/poser-un-site.mjs --source /sortie/site --cible /site --resume /pose/pose.json --minimum-pct 90'));
   for (const jamais of [`${m.instance}/db`, 'metriques', 'secrets', 'docker.sock', 'maintenance', '/travail', '/resultats', '--privileged', '-e ']) assert.ok(!posee.includes(jamais), `la pose ne voit jamais ${jamais}`);
   // la pose est notée : le minuteur du contenu ne refabrique que si l'extrait change
-  const extraitPose = statSync(join(m.atelier, 'depot', 'contenu-0.4.95.db'), { bigint: true });
-  assert.equal(readFileSync(join(m.atelier, 'declencheur', 'dernier-contenu'), 'utf8'), `contenu-0.4.95.db ${extraitPose.size} ${extraitPose.mtimeNs / 1_000_000_000n}.${String(extraitPose.mtimeNs % 1_000_000_000n).padStart(9, '0')}\n`, 'nom, taille et date (à la nanoseconde) de l’extrait, tels que root les a relevés par stat');
+  // la date attendue est relevée par la MÊME commande que lancer.sh (`stat -c '%.9Y'`) : selon la version de coreutils, %.9Y passe par un flottant et arrondit
+  // au-delà de la microseconde ; root ne compare que ses propres relevés stat entre eux, jamais à une valeur calculée autrement
+  const extrait = join(m.atelier, 'depot', 'contenu-0.4.95.db');
+  const releve = (format) => spawnSync('stat', ['-c', format, extrait], { encoding: 'utf8' }).stdout.trim();
+  assert.equal(readFileSync(join(m.atelier, 'declencheur', 'dernier-contenu'), 'utf8'), `contenu-0.4.95.db ${releve('%s')} ${releve('%.9Y') || releve('%Y')}\n`, 'nom, taille et date (à la nanoseconde) de l’extrait, tels que root les a relevés par stat');
   assert.equal(readdirSync(join(m.atelier, 'pose')).length, 0, 'le dossier du résumé est vidé');
 });
 const proprietaireDe = (chemin) => `${statSync(chemin).uid}:${statSync(chemin).gid}`;
