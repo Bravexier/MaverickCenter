@@ -71,6 +71,7 @@ test('avec activation-par-paquet, root : maverick-site créé s’il manque, sit
   assert.match(r.out, /utilisateur système maverick-site créé/);
   assert.match(r.out, /site\/ appartient à maverick-site, site\/_serveur reste à root/);
   assert.match(r.out, /pas de kit dans .*activation\/kit : activer\.sh n'est pas lancé/);
+  assert.match(r.out, /installateur « kit seul » de production.*sudo sh .*mise-a-jour\.sh --force/, 'le geste : la dernière livraison de production pose le kit');
   const appels = readFileSync(journal, 'utf8').split('\n').filter(Boolean);
   assert.deepEqual(appels.filter((a) => a.startsWith('useradd')), ['useradd --system --user-group --no-create-home --shell /usr/sbin/nologin maverick-site']);
   const chowns = appels.filter((a) => a.startsWith('chown'));
@@ -103,7 +104,7 @@ test('avec le kit posé, activer.sh est lancé ; son refus ne fait jamais échou
   const i = prod();
   const dossier = instance();
   writeFileSync(join(dossier, 'activation-par-paquet'), '');
-  ecrire(join(dossier, 'activation', 'kit', 'kit.json'), '{}');
+  ecrire(join(dossier, 'activation', 'kit', 'kit.json'), '{\n  "version": "0.2.0"\n}\n'); // la version de l'installation (prod() : 0.2.0) : un autre kit est périmé
   const journal = join(racine, `appels-${(n += 1)}`);
   const r = lancer(i.fichier, dossier, faux(journal));
   assert.equal(r.code, 0, r.out);

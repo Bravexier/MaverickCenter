@@ -187,6 +187,19 @@ test('REFUS : un kit qui n’annonce aucun paquet (`kit_sans_paquet`), une struc
   assert.doesNotMatch(autre.docker(), /compose stop/);
 });
 
+test('avec l’interrupteur mais SANS kit posé : refus (2) avant toute lecture, rien n’a changé, le geste dit d’où vient le kit (l’installateur « kit seul » de production) et la commande', { skip }, (t) => {
+  const m = creerLActivation(t);
+  rmSync(m.kit, { recursive: true, force: true });
+  const avant = [m.arbre(join(m.prod, 'site')), m.base()];
+  const r = m.lancer();
+  assert.equal(r.code, 2, r.out);
+  assert.match(dernier(r.out), /== IMPOSSIBLE : pas de kit dans .*activation\/kit \(kit\.json\) : la production le reçoit de l'installateur « kit seul » de production.*bascule-2\.json ; le poser par la dernière livraison : sudo sh .*mise-a-jour\.sh --force/);
+  assert.equal(m.docker(), '', 'aucun conteneur lancé');
+  assert.equal(existsSync(join(m.prod, 'db', 'gel.json')), false, 'aucun gel');
+  assert.equal(existsSync(join(m.activation, 'rapport.json')), false, 'IMPOSSIBLE n’écrit pas de rapport : rien n’a été tenté');
+  assert.deepEqual([m.arbre(join(m.prod, 'site')), m.base()], avant);
+});
+
 test('REFUS avant toute lecture du paquet : absent, lien, fichier irrégulier, trop gros ; root ne fait que des `stat` (aucun conteneur lancé)', { skip }, (t) => {
   const cas = [
     ['paquet_absent', (m) => rmSync(join(m.paquets, NOM_DU_PAQUET))],

@@ -18,6 +18,7 @@
 #      l'utilisateur maverick-site, service `_serveur/` sous root, chacun par un conteneur sans capacité), service relancé ;
 #   d. contrôle de santé (5 min au plus) : /api/etat répond, la base est prête, la version est celle du kit ;
 #   e. succès : gel levé, rapport. Échec : RETOUR AUTOMATIQUE (site.precedent/ reposé, base remise si elle a changé, gel levé, rapport) : la production garde sa base.
+# Le kit (activation/kit/) est posé par l'installateur « kit seul » de production (lot 11, PR 5b), qui lance ce script à la fin de son installation (kit-seul.sh, activation-pose.sh).
 # Le rapport (activation/rapport.json) est aussi laissé dans paquets/activation.json, où le site de dev le lit (page Mise à jour : `activation_production`, docs/api.md).
 # Codes : 0 passée ; 1 refusée (rien n'a changé) ou retour automatique (le site précédent est remis) ; 2 impossible (usage, préalable : rien n'a changé).
 # Dernière ligne : « activation : == PASSEE … », « == REFUSEE : … », « == RETOUR AUTOMATIQUE : … » ou « == IMPOSSIBLE : … ».
@@ -249,7 +250,7 @@ if [ -e "$ACT/en-cours" ] && [ "$REPRENDRE" -ne 1 ]; then
 fi
 
 # le kit : celui de la livraison que la production vient d'installer (kit.json : version, image, structure, paquet annoncé)
-{ [ -d "$KIT" ] && [ ! -L "$KIT" ] && [ -f "$KIT/kit.json" ] && [ ! -L "$KIT/kit.json" ] && [ -f "$KIT/client/package.json" ]; } || impossible "pas de kit dans $KIT (kit.json) : la production reçoit son kit de l'installateur de production quand activation-par-paquet existe ; relancer l'installateur (sudo sh $PROD/mise-a-jour.sh --force)"
+{ [ -d "$KIT" ] && [ ! -L "$KIT" ] && [ -f "$KIT/kit.json" ] && [ ! -L "$KIT/kit.json" ] && [ -f "$KIT/client/package.json" ]; } || impossible "pas de kit dans $KIT (kit.json) : la production le reçoit de l'installateur « kit seul » de production, que GitHub livre quand « actif » est allumé dans tools/flux-git/bascule-2.json ; le poser par la dernière livraison : sudo sh $PROD/mise-a-jour.sh --force"
 verifier_a_root "$KIT" "$KIT/kit.json"
 for f in client/scripts/fabriquer-depuis-contenu.mjs client/scripts/poser-un-site.mjs client/scripts/activation-controles.mjs data/schema.sql; do
   [ -f "$KIT/$f" ] || impossible "le kit est incomplet ($KIT/$f manque) ou plus ancien que cette activation : refabriquer le kit par une livraison récente"

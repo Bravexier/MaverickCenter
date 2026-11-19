@@ -33,6 +33,7 @@
 #   gel.sh               (production et test) le gel des écritures de l'instance, lancé en root : poser, lever, etat (lot 11, garde-fou 16 ; remplacé à chaque installation)
 #   activer.sh, activation-conteneur.sh  (production seulement) l'activation d'un kit avec son paquet (lot 11, PR 5a) : éteinte sans le fichier activation-par-paquet (remplacés à chaque installation)
 #   activation-par-paquet  (production, posé par le propriétaire) l'interrupteur : avec lui, cette installation crée l'utilisateur maverick-site, lui donne site/ (sauf _serveur/) et lance activer.sh
+#   activation/kit/      (production, installateur « kit seul » : GitHub le livre quand la bascule 2 est allumée) le kit dont activer.sh fabrique les pages et le service ; ni site/ ni site/_serveur/ ne sont posés ici (lot 11, PR 5b)
 #   VERSION              ce qui est installé (étiquette, version, commit, mode, date)
 # Prérequis : sh, tar, gzip, et sha256sum (ou shasum / openssl) pour contrôler l'archive. rsync et sqlite3 sont utilisés s'ils sont présents.
 set -eu
@@ -107,6 +108,10 @@ mkdir -p "$DOSSIER" || die "impossible de créer $DOSSIER"
 DOSSIER=$(cd "$DOSSIER" && pwd -P)
 case "$DOSSIER" in /|//) die "refus d'installer à la racine du système : précisez --dossier <dossier de l'instance>" ;; esac
 JOURNAL="$DOSSIER/installation.log"
+# Rotation simple du journal (comme mise-a-jour.log) : au-delà de 200 Ko, les 500 dernières lignes ; un refus répété du minuteur ne le fait pas grossir sans borne.
+if [ -f "$JOURNAL" ] && [ "$(wc -c < "$JOURNAL")" -gt 200000 ]; then
+  tail -n 500 "$JOURNAL" > "$JOURNAL.tmp" 2>/dev/null && mv "$JOURNAL.tmp" "$JOURNAL" || rm -f "$JOURNAL.tmp"
+fi
 
 # Mode d'une instance : celui de son fichier VERSION. Un dossier qui a déjà un site sans VERSION (installé autrement) compte comme une
 # production : un installateur de test refuse de l'écraser.
@@ -433,6 +438,7 @@ fi
 } > "$DOSSIER/VERSION"
 @@KIT@@
 @@ACTIVATION@@
+@@SEUL_ACTIVATION_FIN@@
 log "Installé : $TAG, $PAGES pages."
 
 if [ ! -f "$DOSSIER/.htpasswd" ]; then

@@ -469,3 +469,67 @@ test('les trois derniers installateurs installés sont gardés dans installateur
   assert.equal((await n.run()).code, 0);
   assert.equal(state.telechargements, avant + 1, 'ensuite, plus aucun téléchargement');
 });
+
+/** Un faux dépôt, juste de quoi faire un kit (comme deploy-kit-seul-prod.test.mjs). */
+function depotDeKit() {
+  const d = join(root, `depot-${(numero += 1)}`);
+  for (const [rel, contenu] of Object.entries({
+    '.nvmrc': '22\n', 'client/package.json': '{"name":"c","version":"1.0.0"}', 'client/astro.config.mjs': 'export default {};',
+    'client/scripts/fabriquer-depuis-contenu.mjs': '//', 'client/scripts/poser-un-site.mjs': '//',
+    'client/node_modules/astro/bin/astro.mjs': '//', 'client/node_modules/astro/package.json': '{"name":"astro","version":"1.0.0"}',
+    'data/schema.sql': 'PRAGMA user_version = 1;', 'data/derive.sql': '--', 'data/migrations/0001-a.sql': '--',
+    'sources/sources.json': '{}', 'sources/copies-drive.json': '{}', 'sources/tipeee/bienvenue.json': '{}',
+  })) { mkdirSync(dirname(join(d, rel)), { recursive: true }); writeFileSync(join(d, rel), contenu); }
+  return d;
+}
+
+test('production : un installateur COMPLET qui sortirait en 3 par accident ne pose jamais de marque (le code 3 ne vaut que pour un « kit seul », ligne KIT_SEUL=1) (PR 5b)', { skip }, async () => {
+  const complete = livraison('v1.1', { label: 'complet' });
+  const accident = livraison('v1.2', { label: 'accident' });
+  // la partie script est modifiée (sortie en 3 à l'installation), l'archive ne l'est pas : --verifier passe toujours
+  const texte = accident.octets.toString('latin1');
+  const fin = texte.indexOf('\n') + 1;
+  accident.octets = Buffer.from(`${texte.slice(0, fin)}case "\${1:-}" in --dossier) exit 3 ;; esac\n${texte.slice(fin)}`, 'latin1');
+  assert.ok(!/^KIT_SEUL=1$/m.test(texte.slice(0, texte.indexOf('\n__ARCHIVE__\n'))), 'un installateur complet ne porte pas KIT_SEUL=1');
+  publier(complete);
+  const n = nas('complet-en-3');
+  assert.equal((await n.run()).code, 0);
+  publier(accident, complete);
+  const r = await n.run();
+  assert.equal(r.code, 1, r.out);
+  assert.ok(!n.has('.refus-v1.2'), 'aucune marque : la livraison sera retentée au passage suivant');
+  assert.doesNotMatch(n.log(), /Il ne sera pas retenté/);
+});
+
+test('production : un installateur « kit seul » refusé faute d’activation-par-paquet n’est pas retéléchargé toutes les 5 minutes ; le fichier posé, ou --force, le relance (PR 5b)', { skip }, async () => {
+  const complete = livraison('v1.1', { label: 'complet' });
+  const kitSeul = { tag: 'v1.2', octets: readFileSync(fabriquer({ mode: 'prod', tag: 'v1.2', version: '1.2.0', sha: 'c'.repeat(40), kit: depotDeKit(), kitSeul: true, sortie: join(root, 'sortie') }).fichier), id: (numero += 1) };
+  publier(complete);
+  const n = nas('kit-seul-refuse');
+  assert.equal((await n.run()).code, 0, 'la production est installée comme avant');
+  publier(kitSeul, complete);
+  const avant = state.telechargements;
+  const refus = await n.run();
+  assert.equal(refus.code, 1, refus.out);
+  assert.match(n.log(), /l'installateur v1\.2 a été refusé : .*activation-par-paquet n'existe pas.*Il ne sera pas retenté/);
+  assert.ok(n.has('.refus-v1.2'), 'la marque de l’étiquette refusée');
+  assert.equal(n.tag(), 'v1.1', 'rien n’est installé');
+  assert.equal(state.telechargements, avant + 1);
+  // les passages suivants du minuteur : rien, ni téléchargement ni ligne de journal
+  const journal = n.log();
+  for (let i = 0; i < 3; i += 1) assert.equal((await n.run()).code, 0);
+  assert.equal(state.telechargements, avant + 1, 'aucun téléchargement tant que l’interrupteur manque');
+  assert.equal(n.log(), journal, 'aucune ligne de plus : le journal ne grossit pas');
+  // le fichier posé : l'installation est retentée (seul compte ici : elle a lieu ; hors root elle s'arrête sur son autre refus)
+  writeFileSync(join(n.base, 'activation-par-paquet'), '');
+  await n.run();
+  assert.equal(state.telechargements, avant + 2, 'activation-par-paquet posé : retenté');
+  // --force passe outre la marque, sans le fichier
+  rmSync(join(n.base, 'activation-par-paquet'));
+  await n.run(['--force']);
+  assert.equal(state.telechargements, avant + 3);
+  // une autre étiquette n'est pas marquée
+  publier(livraison('v1.3', { label: 'complet 1.3' }), kitSeul, complete);
+  assert.match((await n.run()).out, /Installé : v1\.3/);
+  assert.ok(!n.has('.refus-v1.2'), 'une installation réussie efface les marques');
+});

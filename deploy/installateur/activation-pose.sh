@@ -1,4 +1,4 @@
-# --- Activation par paquet (installateur de PRODUCTION seulement ; lot 11, PR 5a ; docs/serveur.md, « Bascule 2 : préparation », « PR 5a ») ---------------------------------------
+# --- Activation par paquet (installateur de PRODUCTION seulement ; lot 11, PR 5a et PR 5b ; docs/serveur.md, « Bascule 2 : préparation », « PR 5a » et « PR 5b ») ---------------------------------------
 # Ce fragment est inséré par fabriquer.mjs à la place de la ligne repère du modèle installateur.sh, dans un installateur de PRODUCTION seulement : celui de test ne le porte pas.
 # ÉTEINT par défaut : sans le fichier <instance>/activation-par-paquet (que le propriétaire pose en root le jour J : `sudo touch <instance>/activation-par-paquet`), il ne fait RIEN
 # et l'installation est celle d'avant, au même résultat. Avec lui :
@@ -7,6 +7,9 @@
 #      garde-fou 20 : le propriétaire de ce que root touche ne se lit jamais à travers un lien posé par un service) ;
 #   3. si le kit de l'activation est posé (activation/kit/kit.json), activer.sh est lancé (root) : paquet contrôlé, pages fabriquées, bascule courte, contrôle de santé, retour
 #      automatique. Son refus ne fait jamais échouer l'installation : il est dit au journal, la production garde son site et sa base ; le geste exact est dans sa sortie.
+# Le kit est posé par l'installateur « kit seul » de production (kit-seul.sh, PR 5b : GitHub le livre quand la bascule 2 est allumée), qui refuse avant toute écriture une instance sans
+# activation-par-paquet ; il passe `--correctif` à activer.sh pour un correctif urgent ou une régénération (ACTIVER_OPTION, posé par sa section de refus ; vide ailleurs).
+ACTIVATION_LANCEE=0
 activation_par_paquet() {
   [ -f "$DOSSIER/activation-par-paquet" ] && [ ! -L "$DOSSIER/activation-par-paquet" ] || return 0
   log "Activation par paquet : $DOSSIER/activation-par-paquet existe."
@@ -30,17 +33,23 @@ activation_par_paquet() {
     log "Activation par paquet : $SITE/_serveur n'est pas un dossier ordinaire : droits non posés."
     return 0
   fi
-  if [ -f "$DOSSIER/activation/kit/kit.json" ] && [ -f "$DOSSIER/activer.sh" ]; then
-    log "Activation par paquet : le kit est posé, activer.sh est lancé."
+  KIT_ACTIVATION_VERSION=''
+  if [ -f "$DOSSIER/activation/kit/kit.json" ]; then KIT_ACTIVATION_VERSION=$(sed -n 's/^ *"version": *"\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\)".*/\1/p' "$DOSSIER/activation/kit/kit.json" | head -n 1); fi
+  if [ -f "$DOSSIER/activation/kit/kit.json" ] && [ "$KIT_ACTIVATION_VERSION" != "$VERSION" ]; then
+    # le kit posé est celui d'une livraison précédente (un installateur complet l'a laissé) : son service remplacerait le plus récent ; jamais lancé
+    log "ATTENTION kit périmé : $DOSSIER/activation/kit est celui de la V${KIT_ACTIVATION_VERSION:-inconnue}, cette installation est la V$VERSION : activer.sh n'est pas lancé (il poserait le service d'un autre kit). Gestes : sudo rm -rf $DOSSIER/activation/kit pour l'oublier, ou sudo rm $DOSSIER/activation-par-paquet pour éteindre l'activation ; la prochaine livraison « kit seul » de production repose un kit à jour."
+  elif [ -f "$DOSSIER/activation/kit/kit.json" ] && [ -f "$DOSSIER/activer.sh" ]; then
+    log "Activation par paquet : le kit est posé, activer.sh est lancé${ACTIVER_OPTION:+ ($ACTIVER_OPTION)}."
     ACTIVATION_CODE=0
-    bash "$DOSSIER/activer.sh" --prod "$DOSSIER" > "$TRAVAIL/activation.out" 2>&1 || ACTIVATION_CODE=$?
+    ACTIVATION_LANCEE=1
+    bash "$DOSSIER/activer.sh" --prod "$DOSSIER" ${ACTIVER_OPTION:-} > "$TRAVAIL/activation.out" 2>&1 || ACTIVATION_CODE=$?
     cat "$TRAVAIL/activation.out"
     if [ -n "$JOURNAL" ]; then cat "$TRAVAIL/activation.out" >> "$JOURNAL" 2>/dev/null || true; fi
     if [ "$ACTIVATION_CODE" -eq 0 ]; then log "Activation par paquet : passée."
-    else log "ATTENTION activation par paquet : code $ACTIVATION_CODE (refusée, retour automatique ou impossible : voir sa sortie ci-dessus). L'installation, elle, est faite ; la production garde son site et sa base. Pour rejouer : sudo bash $DOSSIER/activer.sh --reprendre"
+    else log "ATTENTION activation par paquet : code $ACTIVATION_CODE (refusée, retour automatique ou impossible : voir sa sortie ci-dessus). L'installation, elle, est faite ; la production garde son site et sa base. Pour rejouer : sudo bash $DOSSIER/activer.sh --reprendre${ACTIVER_OPTION:+ $ACTIVER_OPTION}"
     fi
   else
-    log "Activation par paquet : pas de kit dans $DOSSIER/activation/kit : activer.sh n'est pas lancé (la production reçoit son kit de l'installateur de production : lot 11, PR 5b)."
+    log "Activation par paquet : pas de kit dans $DOSSIER/activation/kit : activer.sh n'est pas lancé. Le kit vient de l'installateur « kit seul » de production, que GitHub livre quand « actif » est allumé dans tools/flux-git/bascule-2.json : sudo sh $DOSSIER/mise-a-jour.sh --force. « actif » étant faux, aucun kit ne viendra : sudo rm $DOSSIER/activation-par-paquet éteint l'activation."
   fi
 }
 activation_par_paquet || log "Activation par paquet : échec inattendu."

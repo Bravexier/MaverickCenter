@@ -196,6 +196,10 @@ if [ "$MODE" = test ] && [ "$FORCE" -eq 0 ] && [ -n "$INSTALLE" ]; then
   fi
 fi
 
+# Un installateur de production refusé faute d'activation-par-paquet (marque posée plus bas) n'est pas retéléchargé toutes les 5 minutes : tant que la marque de cette étiquette est là
+# et que le fichier manque toujours, rien à faire (la ligne d'erreur a été écrite une fois). --force passe outre ; le fichier posé, ou une autre étiquette, relance l'installation.
+if [ "$FORCE" -eq 0 ] && [ -f "$BASE_DIR/.refus-$TAG" ] && ! { [ -f "$BASE_DIR/activation-par-paquet" ] && [ ! -L "$BASE_DIR/activation-par-paquet" ]; }; then exit 0; fi
+
 # Une livraison ne porte qu'un fichier joint : son installateur. On le télécharge par l'API (dépôt privé).
 [ -n "$ASSET" ] || die "la livraison $TAG n'a pas encore d'installateur joint (construction en cours ?)"
 log "Nouvelle livraison $TAG (installée : ${INSTALLE:-aucune}) : téléchargement."
@@ -203,9 +207,18 @@ gh_curl -H 'Accept: application/octet-stream' -o "$TMP/installateur.sh" "$ASSET"
 sh "$TMP/installateur.sh" --verifier >/dev/null 2>&1 || die "installateur $TAG refusé (archive corrompue ou incomplète) : rien n'a été modifié"
 
 # Aucune option de base : un installateur de test ne copie la production que si on le lui demande à la main (--copier-base-prod).
-if sh "$TMP/installateur.sh" --dossier "$BASE_DIR" >> "$LOG_FILE" 2>&1; then
+CODE_INSTALLATEUR=0
+sh "$TMP/installateur.sh" --dossier "$BASE_DIR" >> "$LOG_FILE" 2>&1 || CODE_INSTALLATEUR=$?
+if [ "$CODE_INSTALLATEUR" -eq 0 ]; then
+  rm -f "$BASE_DIR"/.refus-*
   log "Installé : $TAG."
   garder_installateur "$TMP/installateur.sh"
+elif [ "$CODE_INSTALLATEUR" -eq 3 ] && [ "$MODE" = prod ] && sed -n '1,/^__ARCHIVE__$/p' "$TMP/installateur.sh" | grep -qx 'KIT_SEUL=1'; then
+  # le code 3 ne vaut refus « pas d'activation-par-paquet » QUE pour un installateur « kit seul » (ligne KIT_SEUL=1 dans sa partie script) : un installateur complet qui sortirait
+  # en 3 par accident (une commande ajoutée un jour sans garde) tombe dans l'erreur ordinaire, jamais dans une marque qui gèlerait la livraison
+  # code 3 : l'installateur « kit seul » de production a refusé faute d'activation-par-paquet : une marque, et plus de téléchargement tant que l'étiquette et l'interrupteur ne changent pas
+  : > "$BASE_DIR/.refus-$TAG"
+  die "l'installateur $TAG a été refusé : $BASE_DIR/activation-par-paquet n'existe pas (détail dans $LOG_FILE). Il ne sera pas retenté tant que l'étiquette ne change pas ni que ce fichier n'existe : sudo touch $BASE_DIR/activation-par-paquet, ou sudo sh $0 --force"
 else
   die "l'installateur $TAG a échoué (détail ci-dessus dans $LOG_FILE)"
 fi

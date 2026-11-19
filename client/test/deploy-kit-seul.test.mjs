@@ -1,7 +1,7 @@
-// L'installateur « kit seul » (lot 11, PR 4 ; deploy/installateur/fabriquer.mjs --kit-seul, kit-seul.sh dans installateur.sh ; docs/serveur.md, « Bascule 2 : préparation », « PR 4 ») :
+// L'installateur « kit seul » de TEST (lot 11, PR 4 ; deploy/installateur/fabriquer.mjs --kit-seul, kit-seul.sh dans installateur.sh ; docs/serveur.md, « Bascule 2 : préparation », « PR 4 ») :
 // une archive sans pages (seulement le service, site/_serveur/, et le kit) que l'installateur de TEST pose sans toucher au reste de site/ (l'atelier refait les pages), et qu'il
-// refuse sur une instance sans atelier/servir. Mode test seulement ; l'installateur de production est celui d'avant, octet pour octet (deploy-kit.test.mjs). Un faux dépôt pour le kit,
-// le vrai service (livrerServeur) pour _serveur/. Nécessite sh, tar et gzip ; sinon les tests sont ignorés.
+// refuse sur une instance sans atelier/servir. Celui de production (PR 5b) : deploy-kit-seul-prod.test.mjs ; sans --kit-seul, l'installateur de production a le même comportement qu'avant
+// (deploy-kit.test.mjs). Un faux dépôt pour le kit, le vrai service (livrerServeur) pour _serveur/. Nécessite sh, tar et gzip ; sinon les tests sont ignorés.
 //   node --test test/deploy-kit-seul.test.mjs
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
@@ -103,12 +103,13 @@ test('fabriquer --kit-seul : l’archive n’a aucune page, seulement le service
   assert.ok(!('commit' in infoCourt));
 });
 
-test('fabriquer --kit-seul : réservé au test, demande --kit, refuse --site ; sans lui, KIT_SEUL=0 et le site complet', { skip }, () => {
+test('fabriquer --kit-seul : demande --kit, refuse --site ; sans lui, KIT_SEUL=0 et le site complet', { skip }, () => {
   const depot = fauxDepot();
   const site = join(racine, `site-${(n += 1)}`);
   ecrire(site, { 'index.html': 'x' });
   const base = { tag: 'v0.2.0', version: '0.2.0', sha: 'local', sortie: join(racine, 'sortie') };
-  assert.throws(() => fabriquer({ ...base, mode: 'prod', tag: 'v0.2', kit: depot, kitSeul: true }), /--kit-seul est réservé au mode test/);
+  assert.throws(() => fabriquer({ ...base, mode: 'prod', tag: 'v0.2', kitSeul: true }), /--kit-seul demande --kit/, 'la production aussi : sans kit, activer.sh n’aurait rien pour fabriquer');
+  assert.throws(() => fabriquer({ ...base, mode: 'prod', tag: 'v0.2', kit: depot, kitSeul: true, site }), /--kit-seul n’emporte aucune page/);
   assert.throws(() => fabriquer({ ...base, mode: 'test', kitSeul: true }), /--kit-seul demande --kit/);
   assert.throws(() => fabriquer({ ...base, mode: 'test', kit: depot, kitSeul: true, site }), /--kit-seul n’emporte aucune page/);
   assert.throws(() => fabriquer({ ...base, mode: 'test' }), /--site/, 'sans kit seul, le site reste exigé');

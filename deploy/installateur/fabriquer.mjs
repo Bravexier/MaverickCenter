@@ -4,11 +4,13 @@
 //
 // Usage : node deploy/installateur/fabriquer.mjs --mode prod|test --site <dossier dist> --tag <étiquette> --version <X.Y.Z>
 //                                                 --sha <commit> --sortie <dossier> [--kit <racine du dépôt> [--kit-seul]]
-// --kit (mode test seulement) : joint à l'installateur le kit de l'atelier (kit.mjs : client/ avec ses node_modules, le schéma, les registres, trois fichiers de sources ;
-// jamais de contenu), que l'installateur pose dans <instance>/atelier/kit/. L'installateur de production n'en porte pas : son script est celui d'avant le kit.
-// --kit-seul (mode test, avec --kit, sans --site ; lot 11, PR 4 ; docs/serveur.md, « Bascule 2 : préparation ») : une archive SANS pages. Seul le service y est livré (site/_serveur/, par
-// serveur/livraison.mjs#livrerServeur du dépôt dont ce fichier fait partie, avec le commit --sha quand c'est un commit entier), sans donnees/, avec le kit ; le script porte KIT_SEUL=1 (kit-seul.sh, des sections insérées à cinq lignes repères du modèle, retirées en production) et l'installateur
-// ne pose alors que site/_serveur/ (les pages sont refaites par l'atelier) et refuse une instance sans atelier/servir. Sans cette option, rien ne change.
+// --kit (mode test, ou production avec --kit-seul) : joint à l'installateur le kit de l'atelier (kit.mjs : client/ avec ses node_modules, le schéma, les registres, trois fichiers de sources ;
+// jamais de contenu), que l'installateur de test pose dans <instance>/atelier/kit/. L'installateur de production ordinaire n'en porte pas : son script est celui d'avant le kit.
+// --kit-seul (avec --kit, sans --site ; lot 11, PR 4 et PR 5b ; docs/serveur.md, « Bascule 2 : préparation ») : une archive SANS pages. Test : seul le service y est livré (site/_serveur/, par
+// serveur/livraison.mjs#livrerServeur du dépôt dont ce fichier fait partie, avec le commit --sha quand c'est un commit entier), sans donnees/, avec le kit ; l'installateur ne pose alors que
+// site/_serveur/ (les pages sont refaites par l'atelier) et refuse une instance sans atelier/servir. Production : ni pages ni service, seulement le kit (posé dans <instance>/activation/kit/) ;
+// l'installateur lance activer.sh, qui fabrique les pages et le service depuis le paquet, et refuse une instance sans activation-par-paquet. Le script porte KIT_SEUL=1 (kit-seul.sh : des sections
+// insérées à six lignes repères du modèle, retirées dans un installateur qui n'est pas un kit seul). Sans cette option, rien ne change.
 // Le mode test emporte aussi les scripts de l'atelier du site de dev (deploy/installateur/atelier/), que l'installateur pose dans <instance>/atelier/ (kit-pose.sh).
 // Résultat : <sortie>/maverick-center-<étiquette>-install.sh (chemin écrit sur la sortie standard).
 // Appelé par .github/workflows/livraison.yml après chaque fusion dans dev (mode test) ou master (mode prod), et par fabriquer.sh (à la main).
@@ -77,13 +79,12 @@ function valider(o) {
   if (o.kitSeul === undefined || o.kitSeul === false) {
     if (!o.site || !existsSync(join(o.site, 'index.html'))) throw new Error(`--site : pas de index.html dans « ${o.site ?? ''} »`);
   } else {
-    if (o.mode !== 'test') throw new Error('--kit-seul est réservé au mode test : la production reçoit toujours le site complet');
-    if (o.kit === undefined) throw new Error('--kit-seul demande --kit : sans kit, l’atelier n’aurait rien pour fabriquer les pages');
+    if (o.kit === undefined) throw new Error('--kit-seul demande --kit : sans kit, rien ne fabriquerait les pages (l’atelier du site de dev en test, activer.sh en production)');
     if (o.site) throw new Error('--kit-seul n’emporte aucune page : --site n’a pas de sens avec lui');
   }
   if (!o.sortie) throw new Error('--sortie manquant');
   if (o.kit !== undefined) {
-    if (o.mode !== 'test') throw new Error('--kit est réservé au mode test : l’installateur de production ne porte pas de kit');
+    if (o.mode !== 'test' && !o.kitSeul) throw new Error('--kit est réservé au mode test : l’installateur de production ne porte de kit que dans sa forme « kit seul » (--kit-seul)');
     if (!existsSync(join(o.kit, 'client', 'package.json'))) throw new Error(`--kit : pas de client/package.json dans « ${o.kit} » (la racine du dépôt est attendue)`);
   }
 }
@@ -104,8 +105,10 @@ export function fabriquer(options) {
   const travail = mkdtempSync(join(tmpdir(), 'installateur-'));
   try {
     const contenu = join(travail, 'contenu');
-    // « kit seul » : le service seul (site/_serveur/), sans donnees/ ni page ; le commit entier, s'il y en a un, entre dans version.json (le service le lit pour l'identité d'un paquet)
-    if (options.kitSeul) livrerServeur(join(contenu, 'site'), { version, commit: /^[0-9a-f]{40}$/.test(sha) ? sha : null });
+    // « kit seul » de test : le service seul (site/_serveur/), sans donnees/ ni page ; le commit entier, s'il y en a un, entre dans version.json (le service le lit pour l'identité d'un paquet).
+    // De production : ni page ni service (activer.sh les fabrique depuis le paquet, avec le kit) ; un site/ vide, que l'installateur compte (0 page) et ne pose pas.
+    if (options.kitSeul && mode === 'test') livrerServeur(join(contenu, 'site'), { version, commit: /^[0-9a-f]{40}$/.test(sha) ? sha : null });
+    else if (options.kitSeul) mkdirSync(join(contenu, 'site'), { recursive: true });
     else cpSync(resolve(site), join(contenu, 'site'), { recursive: true });
     for (const [nom, source] of Object.entries(FICHIERS_LIVRES)) {
       mkdirSync(dirname(join(contenu, nom)), { recursive: true });
@@ -145,14 +148,20 @@ export function fabriquer(options) {
     for (const repere of ['@@VERROU_DEBUT@@', '@@VERROU_FIN@@']) if (modele.split(`\n${repere}\n`).length !== 2) throw new Error(`deploy/installateur/installateur.sh doit porter une seule ligne ${repere}`);
     const verrou = (nom) => (mode === 'test' ? readFileSync(join(ICI, nom), 'utf8') : '');
     const modeleAvecVerrou = modele.replace('\n@@VERROU_DEBUT@@\n', () => `\n${verrou('verrou-debut.sh')}`).replace('\n@@VERROU_FIN@@\n', () => `\n${verrou('verrou-fin.sh')}`);
-    // L'installateur « kit seul » (kit-seul.sh, découpé en sections) : cinq lignes repères, retirées en production comme celles du kit et du verrou.
+    // L'installateur « kit seul » (kit-seul.sh, découpé en sections) : six lignes repères, retirées d'un installateur qui n'est pas un kit seul (celui de production ordinaire reste
+    // octet pour octet le modèle d'avant). Test et production n'ont pas les mêmes sections (refus, contrôles, pose) ; la fin de l'activation n'existe qu'en production.
     const sections = Object.fromEntries(readFileSync(join(ICI, 'kit-seul.sh'), 'utf8').split(/^# >>> /m).slice(1).map((x) => [x.slice(0, x.indexOf('\n')), x.slice(x.indexOf('\n') + 1)]));
-    const REPERES_KIT_SEUL = { SEUL_REFUS: 'refus', SEUL_CONTROLE_DEBUT: 'controle-debut', SEUL_CONTROLE_FIN: 'controle-fin', SEUL_POSE_DEBUT: 'pose-debut', SEUL_POSE_FIN: 'pose-fin' };
+    const SECTIONS_DU_KIT_SEUL = {
+      test: { SEUL_REFUS: 'refus', SEUL_CONTROLE_DEBUT: 'controle-debut', SEUL_CONTROLE_FIN: 'controle-fin', SEUL_POSE_DEBUT: 'pose-debut', SEUL_POSE_FIN: 'pose-fin' },
+      prod: { SEUL_REFUS: 'refus-prod', SEUL_CONTROLE_DEBUT: 'controle-debut-prod', SEUL_CONTROLE_FIN: 'controle-fin', SEUL_POSE_DEBUT: 'pose-debut-prod', SEUL_POSE_FIN: 'pose-fin', SEUL_ACTIVATION_FIN: 'activation-fin-prod' },
+    };
     let modeleComplet = modeleAvecVerrou;
-    for (const [repere, nom] of Object.entries(REPERES_KIT_SEUL)) {
+    for (const repere of ['SEUL_REFUS', 'SEUL_CONTROLE_DEBUT', 'SEUL_CONTROLE_FIN', 'SEUL_POSE_DEBUT', 'SEUL_POSE_FIN', 'SEUL_ACTIVATION_FIN']) {
       if (modeleComplet.split(`\n@@${repere}@@\n`).length !== 2) throw new Error(`deploy/installateur/installateur.sh doit porter une seule ligne @@${repere}@@`);
-      if (mode === 'test' && !sections[nom]) throw new Error(`deploy/installateur/kit-seul.sh : section « ${nom} » manquante`);
-      modeleComplet = modeleComplet.replace(`\n@@${repere}@@\n`, () => (mode === 'test' ? `\n${sections[nom]}` : '\n'));
+      // test : toujours ses sections (KIT_SEUL=0 les passe sans effet) ; production : seulement dans un kit seul
+      const nom = mode === 'test' || options.kitSeul ? SECTIONS_DU_KIT_SEUL[mode][repere] : undefined;
+      if (nom && !sections[nom]) throw new Error(`deploy/installateur/kit-seul.sh : section « ${nom} » manquante`);
+      modeleComplet = modeleComplet.replace(`\n@@${repere}@@\n`, () => (nom ? `\n${sections[nom]}` : '\n'));
     }
     // L'activation par paquet (activation-pose.sh) : dans l'installateur de PRODUCTION seulement (éteinte sans <instance>/activation-par-paquet), retirée de celui de test.
     if (modeleComplet.split('\n@@ACTIVATION@@\n').length !== 2) throw new Error('deploy/installateur/installateur.sh doit porter une seule ligne @@ACTIVATION@@');

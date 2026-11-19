@@ -116,7 +116,7 @@ voulu) ; un fichier `GELER` suspend les mises à jour. Attention : un `--force` 
 Un fichier `GELER` dans le dossier de l'instance suspend ses mises à jour. Une installation automatique ne touche jamais à `db/` : le serveur de test
 garde sa base.
 Les **trois derniers installateurs installés** sont gardés dans `installateur-courant/` (`INSTALLATEURS_GARDES`, 3 par défaut ; le plus récent n'est jamais retiré) :
-l'envoi chiffré de nuit les joint à la copie extérieure. Place : environ 97 Mo par installateur de test (kit compris) et 35 Mo par installateur de production.
+l'envoi chiffré de nuit les joint à la copie extérieure. Place : environ 97 Mo par installateur de test (kit compris) et 35 Mo par installateur de production complet ; un installateur de production « kit seul » pèse le kit, sans pages (à relever sur la première livraison).
 Un jeton expiré, un problème réseau ou un installateur abîmé n'abîment rien : l'instance reste telle quelle et `mise-a-jour.log` indique l'erreur.
 
 ## Essai de la structure avant l'installation
@@ -196,7 +196,7 @@ sudo sh /srv/maverick-center/gel.sh lever                                       
 le fichier `activation-par-paquet` (que vous posez en root le jour J : `sudo touch /srv/maverick-center/activation-par-paquet`), `activer.sh` refuse tout de suite (« éteinte », code 2),
 l'installateur de production n'ajoute que le test de ce fichier. **Ce qui change quand même en production** : les deux scripts sont posés (inertes), le `docker-compose.yml` livré monte `/dev/null` en lecture seule sur `/paquets` (aucun dossier créé, rien d'écrivable ; appliqué au prochain `docker compose up -d`) ; ni service, ni site, ni base ne sont touchés. Avec lui, l'installateur de production crée l'utilisateur système `maverick-site`,
 lui donne `site/` **sauf** `site/_serveur/` (le code que le service exécute, qui reste à root ; `find -P … -exec chown -h`, jamais un lien suivi) et, quand le kit est posé
-(`activation/kit/kit.json`), lance `activer.sh`. Son refus ne fait jamais échouer l'installation.
+(`activation/kit/kit.json`), lance `activer.sh`. Son refus ne fait jamais échouer l'installation. Le kit est posé dans `activation/kit/` par l'installateur de production « kit seul » (« Installateur « kit seul » », ci-dessus), que GitHub livre quand `actif` est allumé dans `tools/flux-git/bascule-2.json` ; sans lui, `activer.sh` refuse (« pas de kit dans … ») et dit `sudo sh /srv/maverick-center/mise-a-jour.sh --force`.
 
 ```bash
 sudo bash /srv/maverick-center/activer.sh                  # le kit posé dans activation/kit/ avec son paquet (paquets/<X.Y>-<lot>.db, déposé par le site de dev)
@@ -217,6 +217,7 @@ sudo bash /srv/maverick-center/activer.sh --correctif      # correctif urgent : 
 - **Les refus** disent les chiffres et le geste exact (mémoire et disque : les règles de l'atelier ; paquet absent, lien, irrégulier ou trop gros ; empreinte, structure, note de version
   manquante, version en arrière, contenu, fiches). Sortie en comptes, jamais un nom de fiche. Dernière ligne : `== PASSEE`, `== REFUSEE : …`, `== RETOUR AUTOMATIQUE : …` ou
   `== IMPOSSIBLE : …`. Le rapport est dans `activation/rapport.json` et laissé dans `paquets/activation.json`, où la page Mise à jour du site de dev le lit.
+- **Reprise après un refus** (« GitHub a livré, la production a refusé ») : un refus ou un retour automatique de `activer.sh` écrit son rapport (`activation/rapport.json`, laissé dans `paquets/activation.json`), que la page Mise à jour du site de dev lit (`activation_production` : l'état, les raisons, le geste) ; la production garde son site et sa base. Un refus de l'installateur, ou `activer.sh` « impossible » (code 2), n'écrit aucun rapport : la raison est dans la sortie de l'installateur (`installation.log`, `mise-a-jour.log`). On corrige la cause (paquet absent : refaire « Effectuer la mise à jour » sur le site de dev ; place ou mémoire : les libérer ; `maverick-site` ou droits : `sudo sh /srv/maverick-center/mise-a-jour.sh --force`), puis : `sudo bash /srv/maverick-center/activer.sh --reprendre` (avec `--correctif` après un correctif urgent) ; ou on attend la livraison suivante, que l'installateur active à son tour.
 - **Réglages** : `activation/reglages.env` (à root : `MEMOIRE_MAX_KO`, `BESOIN_KO`, `DISQUE_MIN_KO`, `DELAI_S`, `CPUS`, `GOOGLE_CLIENT_ID`), relus champ par champ.
 - **Le dossier partagé `paquets/`** : celui de la production, monté dans les deux services (`MAVERICK_DOSSIER_PAQUETS` dans le `.env` du site de dev). `bascule.sh poser-bascule-2` le crée
   et pose `db/bascule-2` (« La base source du site de dev »).
@@ -291,12 +292,18 @@ git (`docs/serveur.md`, « Fabriquer le site depuis un fichier de contenu »). L
 
 ### Installateur « kit seul » (bascule 2, éteint)
 
-`fabriquer.mjs --mode test --kit <racine> --kit-seul --tag … --version … --sha … --sortie …` (sans `--site`, refusé en production) fabrique un installateur **sans pages** : le service (`site/_serveur/`, `version.json` avec
-le commit) et le kit. `livraison.yml` ne le demande que si `tools/flux-git/bascule-2.json` a `actif: true` sur `origin/dev` ; éteint, les installateurs sont ceux d'avant. L'installateur d'un kit seul :
+`fabriquer.mjs --mode test --kit <racine> --kit-seul --tag … --version … --sha … --sortie …` (sans `--site`) fabrique un installateur **sans pages** : le service (`site/_serveur/`, `version.json` avec
+le commit) et le kit. `livraison.yml` ne le demande que si `tools/flux-git/bascule-2.json` a `actif: true` sur `origin/dev` (pour les deux modes) ; éteint, les installateurs sont ceux d'avant. L'installateur de test d'un kit seul :
 - **refuse**, avant toute écriture, une instance sans `<instance>/atelier/servir` (l'atelier ne refabriquerait pas les pages : le site resterait celui d'avant) et dit le geste, `sudo sh <instance>/atelier/installer.sh --servir` ;
 - **ne pose que `site/_serveur/`** : le reste de `site/` (pages, `donnees/`) n'est pas touché, c'est l'atelier qui le refait après la marque ; le reste de l'installation est celle de tout installateur de test (fichiers de l'instance, kit, marque, `VERSION`) ;
 - se vérifie comme les autres (`--verifier`).
-`mise-a-jour.sh` l'installe comme le dernier installateur du mode. L'installateur de production n'en porte rien : son script est le modèle, octet pour octet.
+`mise-a-jour.sh` l'installe comme le dernier installateur du mode. L'installateur de production qui n'est pas un kit seul n'en porte rien : même comportement qu'avant.
+
+**Production** (`--mode prod --kit <racine> --kit-seul --tag VX.Y …`) : une archive sans pages **ni service** (`site/` vide), avec le kit, `activer.sh`, `activation-conteneur.sh` et `gel.sh`. L'installateur :
+- **refuse**, avant toute écriture, une production sans le fichier `activation-par-paquet` (sinon elle resterait sur l'ancien site sans rien activer) et dit le geste : `sudo touch /srv/maverick-center/activation-par-paquet`, ou remettre `actif` à `false` dans `tools/flux-git/bascule-2.json` (la prochaine livraison de production redevient complète), `sudo touch /srv/maverick-center/GELER` suspendant le minuteur en attendant ; il refuse aussi hors root, et sur un dossier qui n'est pas une production installée (installez d'abord l'installateur complet) ;
+- **pose le kit dans `<production>/activation/kit/`** (à root, décompressé à côté puis renommé : un seul kit gardé ; un échec refuse l'installation avant d'écrire `VERSION`) ; **ne touche ni `site/` ni `site/_serveur/`** ;
+- écrit les fichiers de l'instance et `VERSION`, crée `maverick-site` et rend `site/` à son propriétaire, puis **lance `activer.sh --prod <production>`**, qui fabrique les pages et le service depuis le paquet et les pose (« Activer un kit avec son paquet »). Pour une étiquette `VX.Y-hotfix.N` ou `VX.Y-rebuild.N`, il lance `activer.sh --correctif` (le même contenu republié : le dernier paquet activé est recontrôlé avec le nouveau kit).
+`mise-a-jour.sh` de la production n'a rien de plus à faire : le kit seul arrive comme une livraison ordinaire. Un installateur qui refuse fait écrire une ligne `ERREUR` à chaque passage du minuteur (comme le refus d'une livraison plus ancienne) ; une installation faite dont l'activation a refusé laisse `VERSION` à la nouvelle étiquette, le minuteur dit « À jour » : la reprise est `sudo bash /srv/maverick-center/activer.sh --reprendre` (paragraphe suivant).
 
 ## L'atelier du site de dev (serveur de test seulement)
 
