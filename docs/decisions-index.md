@@ -2,313 +2,313 @@
 
 Ne lis jamais `docs/decisions-regles.md` en entier : trouve ici le numéro de la décision, puis cherche sa ligne avec Grep (motif `^\| R41 \|`) et ne lis qu'elle.
 
-Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 306 décisions, de R1 à R306, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».
+Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 306 décisions, de R1 à R306, dans l'ordre du registre. Sujet : début de la colonne « Question » ; la décision se lit dans le registre.
 
-| Réf. | Sujet | Décision |
-| --- | --- | --- |
-| R1 | Nombre de races : le guide dit 23, le reste du corpus 27 | 27. Le guide est périmé (des races ont été ajoutées ré… |
-| R2 | Niveau de classe d'un personnage à une seule classe au-delà du niveau glob… | La feuille est voulue. Un « monoclasse » prend automat… |
-| R3 | Budgets : les points de caractéristiques (14, 15, 16, 17 selon le niveau)… | Exactement. Le tableau de progression de l'ancien wiki… |
-| R4 | Compétence « Calme » ou « Prouesse » (guide) | Calme |
-| R5 | Mode Hyper : +15/+7 (fiche, `mode-hyper.json`) ou +10/+5 (onglet masqué) | +15 / +7 |
-| R6 | L'Archimage est-il une classe magique ? (le Sommaire le range « spéciale ») | Oui. Il est « spéciale » parce que ses règles diffèren… |
-| R7 | +4 AM des classes raciales | La 2ᵉ spécialité, pendant lanceur de sort de la classe… |
-| R8 | « Accès à toutes les classes / magies » dans l'onglet d'une race, contre l… | Erreurs de copier-coller ; la matrice de la fiche est… |
-| R9 | Capacités à nom coupé sur deux cases (« Tenir ... » / « ... ou charger ? ») | Deux capacités distinctes dont les noms se répondent,… |
-| R10 | Coquilles et fautes d'orthographe des classeurs | À corriger (jamais un chiffre ni le sens d'une règle) |
-| R11 | Magie innée du Nain | Limitée à Potentiel Illimité, Arcane, Feu, Terre, Foud… |
-| R12 | Sens de la matrice « Relation entre les races » (classeur « Les races ») :… | La case (ligne A, colonne B) dit comment A voit B : l'… |
-| R13 | Fiche personnage V15.2.2 contre l'onglet de la race : faut-il afficher les… | Non. L'onglet de la race est la source ; la fiche auto… |
-| R14 | Le Drassah'thac (semi-félins) n'a pas de classe raciale et a plus de 3 mag… | Hybride. C'est la seule race hybride à avoir toutes le… |
-| R15 | Corruption : la phrase de son onglet (« c'est mono-magie uniquement. Seuls… | Mono-magie uniquement pour la Corruption, excepté pour… |
-| R16 | Puissance magique 5 : la table « Expérience/Niveau global » du guide l'ouv… | Niveau 16, comme le guide ; la fiche est fautive |
-| R17 | Exemple 2 de la « Formule des dégâts » (guide pour MJ) : 37 ÷ 2 y donne «… | 18,5, arrondi à 18 : une erreur de calcul se corrige,… |
-| R18 | « Consommation de chakra = 0 » du Mode Hyper, et un personnage qui n'a plu… | En Mode Hyper, les sorts coûtent 0 chakra, mais le mod… |
-| R19 | Les deux cases à cocher sous chaque caractéristique de la fiche auto (H18,… | Ce sont les croix : un handicap ou un malus que subit… |
-| R20 | Corruption en magie acquise : la fiche auto (BDD!F2) la retire toujours de… | Permise à l'Elfe Noir Charbon et au Felfe Noir : modif… |
-| R21 | Nom de la déesse de la Corruption : « Démon d'Eau Noire » (liste des dieux… | Eaunoire, en un seul mot ; le sort « Eau noire » de la… |
-| R22 | Magie innée de la Lamia : la matrice « Accessibilité Magie » de la fiche a… | La Lamia a accès à la Corruption : la case de la fiche… |
-| R23 | Qui peut être Archimage ? La fiche auto V15.2.2 la propose d'après la race… | L'onglet de la classe. Pas d'Archimage sans le Potenti… |
-| R24 | Niveaux de maîtrise (NM) des sorts au-delà de ceux gagnés au fil des nivea… | Permis : le MJ peut en donner. Le NM d'un sort reste a… |
-| R25 | Seconde classe d'un Potentiel Illimité (classe 1 : l'Archimage, R23) : laq… | Toute classe, en bi-classe comme en seconde classe pri… |
-| R26 | Combien de NM sur un sort, et d'où viennent les NM en plus de R24 ? Le gui… | 3 NM au plus sur un sort, toutes origines comprises. L… |
-| R27 | La fiche doit-elle offrir une ligne de sort au-delà des emplacements, si l… | Non : aucun emplacement de sort en plus ; le personnag… |
-| R28 | La Lamia peut-elle avoir une magie acquise ? L'onglet « Lamia » du classeu… | Non : la Lamia n'a qu'une magie, l'innée, quelle qu'el… |
-| R29 | Couleurs des notes de version : sur la page « Mise à jour », quand une mod… | Amélioration : coût réduit, portée augmentée, zone aug… |
-| R30 | Une race hybride doit-elle avoir exactement 3 magies innées ? Les 13 races… | Non, c'est un constat des données de l'import, pas une… |
-| R31 | Pour les 14 races dont l'onglet cite les magies innées dans la phrase « In… | La liste. Les cases à cocher du site font foi ; la phr… |
-| R32 | Combien de points de maîtrise d'arme un personnage peut-il répartir ? Les… | Le quota = les maîtrises des classes prises + les poin… |
-| R33 | Les bonus d'un métier (« +3% Esquive », « +3% Diplomatie OU Intimidation »… | Un vrai lien vers la compétence : choisir un métier do… |
-| R34 | La case « Artisanat possible » mêle ce que le métier fabrique et les carac… | Deux parties : un texte libre (ce que le joueur peut f… |
-| R35 | Que fait l'« Équipement supplémentaire possible » d'un métier (« Faux en f… | Un objet de départ, ajouté à l'inventaire à la créatio… |
-| R36 | Le bonus du Prostitué, « +3% Manipulation, Survie », ne donne pas de valeu… | +3 % Survie |
-| R37 | « +1 Vitesse nage » (Maître-nageur) et « +1 Vitesse au sol pour le sprint… | Oui : la fiche a une Vitesse et une Vitesse de nage, l… |
-| R38 | Le bonus du métier peut dépasser le plafond d'Acquis (5 par point de carac… | Le plafond prévaut sur le bonus : le bonus ne compte q… |
-| R39 | Une croix (R19) sur une caractéristique d'artisanat réduit-elle la compéte… | Oui, de 20 %, comme −2 à la caractéristique ; deux cro… |
-| R40 | Trois équipements écrivent leur choix en abrégé (« Arc ou Arbalète en acie… | Donner les options en entier |
-| R41 | Plafond des points acquis d'une compétence : la page « Fiche de personnage… | 5 par point de la caractéristique totale, le +1 de la… |
-| R42 | Que devient une fiche de personnage qui utilise un don, une spécialité, un… | Supprimé : retiré des fiches, qui restent. Un don ou u… |
-| R43 | Combien de spécialités une classe peut-elle avoir (création depuis le site… | Deux au plus |
-| R44 | À quels niveaux de classe se place un don créé depuis le site de dev (D11)… | 1, 5, 10, 15 ou 20. Dans une spécialité, 10 au moins :… |
-| R45 | « ARME DE MONSTRES » (12ᵉ bandeau de l'onglet « Armes » du classeur « Ress… | Pas de maîtrise sur ces armes : elles sont exclusives… |
-| R46 | Attaque à deux armes, une dans chaque main : quel malus ? La fiche auto V1… | −20 % à l'attaque de la main directrice, −40 % à celle… |
-| R47 | Dans le tableau des postures de la fiche, quelles lignes sont des avantage… | Inconvénients : Offensif « Malus de 10% pour toucher u… |
-| R48 | Compétence d'une arme sur la page « Armes » : la 2ᵉ ligne de la case Catég… | La colonne s'appelle Compétence ; chaque compétence a… |
-| R49 | Arme forgée : comment se combinent l'arme, son matériau et son amélioratio… | Dégâts : dé de l'arme (pas celui de son type), plus le… |
-| R50 | Portée d'une arme : l'onglet l'écrit dans l'effet (« 2 - 10 portée », « po… | Une colonne de la page « Armes » : la portée écrite, 1… |
-| R51 | Durabilité de l'arme forgée : les crans de l'arme, du matériau (Fonte −1,… | Cumulés, jamais moins de 1 ; un « Matériel » d'une amé… |
-| R52 | Armes créées ou supprimées depuis le site de dev, et nom d'un matériau d'a… | Une arme se crée et se supprime sur la page « Armes »… |
-| R53 | Créatures invoquées : l'onglet « Marionette de lombre » du classeur « Invo… | Une faute du classeur : c'est le NPM. Les créatures in… |
-| R54 | Accessoires sur la fiche de personnage : l'onglet « Accessoires » ne donne… | Caractéristique : +1, sans dépasser 4 ni les limites d… |
-| R55 | Bestiaire : défense écrite « 5 armure physique (+2/3EP) », « 2 (+1/EP) arm… | +k toutes les m échelles, à partir de la valeur écrite… |
-| R56 | Bestiaire : le préfixe « [EP2] » d’une capacité de monstre (cartes à plusi… | La capacité est gagnée à partir de cette échelle : au… |
-| R57 | Bestiaire : des cases de butin qui ne citent un objet du glossaire qu'à un… | Les fautes de frappe sont corrigées, les écritures d'u… |
-| R58 | Bestiaire : deux brouillons du doc, « Réanimé (EP5) (a continuer) » et « V… | Retirés. Un titre « Nom (EPx) (a refaire / a continuer… |
-| R59 | Bestiaire : défense « N (+k/EP) » d'une carte qui ne commence pas à l'EP 1… | N vaut pour l'EP 1, quelle que soit la première échell… |
-| R60 | Composants : un objet supprimé de la base (page « Composants ») que l'inve… | La fiche le garde sous son nom, sans lien au catalogue… |
-| R61 | Monnaies : leurs valeurs se modifient-elles, et comment les afficher ? | Les valeurs ne se modifient pas (« elles servent de va… |
-| R62 | Matériaux : où se modifient-ils, et quel type pour un matériau sans fiche… | La table des matériaux de la page « Composants » est l… |
-| R63 | Monnaies hors des tableaux, et un montant qui dépasse une monnaie (« 1245,… | Partout, texte courant compris, les abréviations devie… |
-| R64 | Bestiaire : les Ottar sont 22 titres « Nom (EP1 - 10) » du doc (le « Presq… | Une seule espèce « Ottar », qui les regroupe tous, Pre… |
-| R65 | Bestiaire : une carte montre la description de l'espèce ; une créature peu… | Deux descriptions distinctes, au même endroit (l'en-tê… |
-| R66 | Bestiaire : une même capacité est écrite sur beaucoup de cartes, parfois a… | Une table des capacités de monstre communes (nom, desc… |
-| R67 | Les capacités des créatures invoquées et les bonus à choisir du Mage Bleu… | Non : ils restent complètement à part (l'avis du chef,… |
-| R68 | Les capacités de monstre qui ont plusieurs textes : lequel garder ? | Texte retenu par le chef : Haine mutuelle (texte nouve… |
-| R69 | Des capacités ne diffèrent que par un nombre d'une carte à l'autre (Minus… | Des gabarits : la description commune écrit « {N} » à… |
-| R70 | Paliers de résistance : le modèle « Fiche-de-personnage-Maverick-V15.2.2 o… | ÷2, ÷4, x2, x4, x8 : les paliers de la fiche auto et d… |
-| R71 | Case « Entraînement » (L42 du modèle ordinateur) : le guide (« S’entraîner… | Un champ texte libre de la fiche, « Entraînement » : l… |
-| R72 | Métier d'une fiche auto différent de la base (Écrivain « 4% Connaissance »… | Le métier suit la base : à l'import d'un classeur qui… |
-| R73 | Gains de niveau (15 points d'attributs par niveau à partir du 2, répartis… | Deux totaux, la santé gagnée et le chakra gagné, sans… |
-| R74 | Solidité d'une arme (AK17, AX17 du modèle ordinateur) : l'écrire comme la… | La durabilité de l'arme se note directement : un curse… |
-| R75 | Armures : prix d'une pièce (Casque, Torse, Bras Gauche, Bras Droit, Jambe… | Une pièce coûte son coût de fabrication + 1 unité de c… |
-| R76 | Boucliers : améliorations. « +1 cran de solidité » est écrit au +1 et au +… | Crans cumulés : +1 cran du +1 au +4, +2 crans au +5 (c… |
-| R77 | Armures : améliorations. « +1 cran de solidité » est écrit au +4 ET au +5… | +1 cran au +4 et au +5 : la ligne écrit le total au ni… |
-| R78 | Boucliers : comment se compose un bouclier, et quelle solidité a-t-il ? Un… | Une forme + une matière (Bocle, Targe, Bouclier Rond,… |
-| R79 | Les « Prix » de la grille des armures, des boucliers préfabriqués et des f… | Ce sont des RO, en exception à R63 : ils s'affichent e… |
-| R80 | Armures particulières (vêtements, cottes de mailles, armure montagne, armu… | Prix de l'armure entière, pas de prix par pièce (la so… |
-| R81 | Objets à la ceinture : le guide (« Créer sa fiche de personnage ») ne donn… | La page liste les potions, les huiles, les carquois et… |
-| R82 | Boucliers : le plan du menu (entrée « bientôt » de `lib/nav.mjs`) et la fe… | Non : le bouclier a son emplacement dans l'armure, il… |
-| R83 | Rapprochement des classeurs et de la base (« m'assurer que toutes les sour… | Les classeurs originaux font foi (ceux de l'ancien mai… |
-| R84 | Lien vers un document Google écrit dans un classeur (les fioles et kits d'… | L'original : à une mise à jour depuis un classeur, un… |
-| R85 | Résistances et faiblesses d'une combinaison de deux magies (bi-magie) : l'… | Les listes des deux magies se cumulent (celles de leur… |
-| R86 | Onglet « Statistiques » de « Magie Maverick V8 » (compteurs d'usage des ma… | Ignoré : ni source ni contrôle |
-| R87 | « Fiche auto V15.2.2 » : ses règles absentes des classeurs ou écrites autr… | Ignorées : la fiche n'est plus maintenue ; les classeu… |
-| R88 | Inventaire : le guide (« Fiche de personnage : Inventaire/Sac à dos ») dit… | La Force donne la place, sans sac à choisir : une colo… |
-| R89 | Ceinture : « Les objets sont dans la ceinture ne peuvent pas dépasser le n… | Au plus 3 exemplaires du même objet par emplacement (4… |
-| R90 | Résistances entre l'Arcane et la Corruption : la matrice de la fiche auto… | Chacune résiste à l'autre : l'Arcane résiste à la Corr… |
-| R91 | Remarque de la Bombe perçante (« Il faut perdre un bras pour avoir cette a… | Supprimée : elle date des armes à feu, qui ne sont plu… |
-| R92 | Poids des boucliers : l'onglet « Bouclier » liste 4 poids (Léger « 1 de Fo… | Le poids d'un bouclier est la couleur de fond de sa ca… |
-| R93 | Armures : fabrication pièce par pièce. La décision R75 donnait le prix d'u… | Une armure ne se fabrique plus pièce par pièce : seule… |
-| R94 | Accessoire maudit : les règles de l'onglet « Accessoires » écrivent « Dans… | Relance depuis l'étape 2, même emplacement : une maléd… |
-| R95 | Armures sur la fiche de personnage, après R93 (une armure ne se fabrique p… | La fiche porte une seule armure complète, avec son amé… |
-| R96 | Bouclier sur la fiche de personnage : la fiche portait une forme (classe)… | Forme + matière, comme l'onglet Boucliers : la fiche p… |
-| R97 | Accessoires sur la fiche de personnage : huit emplacements (Chef, Collier,… | Six emplacements : Chef, Collier, Bracelet 1 et 2, Bag… |
-| R98 | Défense et dégâts reçus : la fiche n'affichait ni l'AP ni l'AM totaux, et… | AP et AM totaux dans le bloc Armure (depuis R171, avec… |
-| R99 | Pièce élémentaire (arme ou armure transformée) : la page « Pièces élémenta… | L'élément remplace tout : pour l'armure, l'AP et l'AM… |
-| R100 | Posture du moment sur la fiche : la fiche affichait les effets de chaque p… | La posture cochée recalcule les valeurs qu'elle chiffr… |
-| R101 | Bâtons magiques sur la fiche : les 42 bâtons (14 magies × 3 niveaux) étaie… | Un bâton se règle dans le sac : le sac propose « Bâton… |
-| R102 | Sorts du moment sur la fiche : le tableau des sorts montrait le coût, la p… | Le coût, la portée et les dégâts ou soins se recalcule… |
-| R103 | « Si CR : » dans les effets de 19 sorts de la Corruption : aucune page, ni… | « Si CR » = si le sort est lancé en utilisant la corru… |
-| R104 | Entraînement et Acquis sur la fiche : l'acquis de chaque compétence se sai… | L'Acquis se calcule, il ne se saisit plus (« Les bonus… |
-| R105 | Coût des sorts : le classeur écrit dans une seule case « Coût » la consomm… | Deux colonnes dans les tables de sorts (dans la base ;… |
-| R106 | Coût des sorts, suite de R105 : les 26 coûts que R105 laissait dans l'écri… | La canalisation de l'Arcane s'écrit dans le coût secon… |
-| R107 | « Vieille Branche » (Mage Vert, spécialité Mage jade) : « Pour chaque cran… | Chaque arme portée, avec ses propres crans perdus : «… |
-| R108 | Armure ou bouclier cassés (solidité 0, R95, R96) : leurs AP et AM comptent… | Bouclier à 0 : ses AP et AM ne comptent plus, comme un… |
-| R109 | Posture Symbiose d'un personnage au Potentiel Illimité, qui n'a pas de sor… | Le cas du Potentiel Illimité est particulier : il a le… |
-| R110 | Bonus qui « augmente de +N tous les M niveaux » : « +2 aux dégâts magiques… | Arrondi à l'inférieur, pour les deux formes : « +B qui… |
-| R111 | Posture Symbiose avec deux magies : « Quand vous avez 2 magies, 1 de ces m… | Ses sorts et ses résistances et faiblesses, rien d'aut… |
-| R112 | Posture Symbiose : « Impossible d'utiliser les armes ou objets (sauf forge… | La Symbiose, c'est ne faire qu'un avec la magie : on n… |
-| R113 | Dégâts ou soins par tour d'un sort (« 3d6 dégâts par tour », « 5 dégâts /… | À chaque tour : le bonus s'ajoute à chaque itération d… |
-| R114 | Grenadier, « Pardon ?!? » (niveau 20, passif) : « Les bombes et les sorts… | Les sorts grenades sont les 14 sorts « Grenade… » (Col… |
-| R115 | Mage Rouge, spécialité Rubis, niveau 10 : « Charge lente… » (« Les sorts o… | La fiche suit la préparation d'un sort : le don de niv… |
-| R116 | Coût en corruption d'un sort (2 × le coût, bâtons) : la réponse « Jamais m… | Une corruption au minimum, quoi qu'il arrive, sauf pou… |
-| R117 | « 10% de compétence en acquis à répartir au choix » (Humain central, « Ada… | Un choix libre : n'importe quelles compétences, en par… |
-| R118 | NM des sorts sur la fiche : chaque ligne du tableau des sorts avait trois… | Un seul curseur par sort, de 0 à 3 (le NM du sort, tou… |
-| R119 | « +N% de la compétence de l'arme choisie » (Tueur Flétrisseur et Sicaire,… | L'arme de la maîtrise au choix de la classe (`classe_m… |
-| R120 | « +7% d'acquis pour les compétences d'arme » (Mercenaire, « Polyvalence »)… | Au choix : le bonus va à une compétence d'arme que le… |
-| R121 | Moine Templier : « 5% Arme lourde OU Arme légère OU Arc/Arbalète (choisir… | Arc ou Arbalète, donc 2 options sur les 4 : l'arc et l… |
-| R122 | « +5% à tout jet impliquant la perception » (Fenrir, « Sens canin »), « +5… | Un bonus au jet (réponse « a priori ») : il s'ajoute a… |
-| R123 | « +5% à chaque test lié à l'artisanat » (Nain, Londolor ouest), « +10% à t… | Les tests d'artisanat dépendent du métier : ces bonus… |
-| R124 | Drakos orange (Potentiel illimité), tableau « Écaille draconique » : « 5%… | Au choix parmi les autres possibilités du tableau : la… |
-| R125 | Mort-vivant, « Trompe-mort » : « Son acquis max en Social est augmenté de… | Oui : le Mort-vivant a le Social verrouillé à 1 (`race… |
-| R126 | Les armes dont la compétence est écrite « Arc / Arme Légère » (Arc court,… | Au choix du porteur : il fait son jet soit en Arme lég… |
-| R127 | Quelles familles d'armes sont « à distance » ? La base ne le dit pas, alor… | Arc, Arbalète, Arme de jet et Bombes sont les quatre t… |
-| R128 | Les bonus que la fiche ne compte pas (Q29) : faut-il un moyen de les compt… | La fiche ne calcule que ce qui joue tout le temps. Un… |
-| R129 | Coût d'un sort qui augmente avec l'utilisation sur la fiche : un coût par… | Les réductions de chakra s'appliquent après la multipl… |
-| R130 | Les créatures invoquées à leur niveau de puissance magique (NPM) : leurs c… | Chaque carte de golem et de non-mort se règle au NPM,… |
-| R131 | Ceinture de la fiche, suite de R89 : trois comportements de la fiche que R… | Confirmés tels quels : quand le sac n'a plus l'objet,… |
-| R132 | « Sort offensif » de « Charge lente… » et « … ou rapide » (Mage Rouge, Rub… | Un sort d'attaque (`sort_type` attaque) : la lecture d… |
-| R133 | « Soralongé » (Mage Vert : « Augmente la portée des sorts d'attaque chargé… | Oui : le sort chargé est le sort préparé (R115) ; sa p… |
-| R134 | « À l'aise » (Mage Vert, niveau 10 : « Le sort influé aura toujours au min… | Le don change : sa nouvelle version est « Donne un NM… |
-| R135 | Un sort préparé (R115) quand la fiche est en Symbiose avec une autre magie… | Le sort préparé est perdu si sa magie diffère de celle… |
-| R136 | Bi-classé Mage Rouge et Mage Vert : « Préparation » et « Chargement » donn… | Un seul sort préparé à la fois, utilisable pour n'impo… |
-| R137 | Résistances au choix à une magie : Ocultomancien « Résilience » (« Augment… | Oui, comme le Drakos orange (R124) : la magie choisie… |
-| R138 | Les « sauf » d'une maîtrise au choix écrits autrement que la famille : « H… | Ce sont les familles : LANCE/ARME D'HAST, BÂTON DE COM… |
-| R139 | Résistance à une magie au choix ou tirée (R137 : Ocultomancien « Résilienc… | Non : le Potentiel Illimité est trop particulier, il n… |
-| R140 | « CR » ailleurs que dans « Si CR » (R103) : le classeur l'écrivait dans le… | Dans le coût, « CR » est la corruption à dépenser. Dan… |
-| R141 | Ce que devient un personnage mort de la corruption : « abomination solvité… | « abomination », sans rien après |
-| R142 | Le maximum de la corruption d'un personnage qui a la Corruption en magie i… | Comme pour tous : le maximum de corruption est celui d… |
-| R143 | Le repos et la méditation retirent-ils de la corruption ? Les sources se t… | Le repos et la méditation n'ont aucun effet sur la cor… |
-| R144 | Deux formulations des textes de la Corruption à revoir : « Énergie parasit… | Laissées au choix : « envahi » devient « envahit » (la… |
-| R145 | Faut-il moins de balises du glossaire dans le guide (par exemple la premiè… | Non : chaque écriture pertinente reste balisée |
-| R146 | Qui échappe à la mort au maximum de corruption (l'abomination, R141) : R14… | Seuls ceux qui ont la Corruption en magie innée ou acq… |
-| R147 | Archimage, « Pacte Noir » (niveau 15, `capacites/archimage-pacte-noire` :… | La question ne se pose pas : « Pacte Noir » ne protège… |
-| R148 | Maîtrises d'armes sur la fiche de personnage : un curseur de 0 à 4 points… | Plus de curseur : les points de chaque famille sont un… |
-| R149 | Plafond de maîtrise d'une famille : seule la fiche auto V15.2.2 l'écrit (l… | 4 points au plus par famille, donc 5 dés. Les points d… |
-| R150 | Les dons qui donnent des points à répartir sans limite écrite (« 2 points… | Répartition libre, pour chaque don, dans la limite de… |
-| R151 | Où vont les points dont le don nomme une destination sans la fixer : « +2… | « L'arme déterminée avant » est la famille de la maîtr… |
-| R152 | Le bonus « de l'arme choisie » (R119) a son propre choix d'arme dans le ti… | Un seul choix : la maîtrise au choix de la classe fixe… |
-| R153 | Les fiches existantes n'ont que des dés par famille (`personnage_maitrise_… | Tout remettre à choisir, avec une note datée de l'anci… |
-| R154 | Don « Maîtrise » de l'Ocultomancien (niveau de classe 20, `capacites/ocult… | Oui : +4 NM gagnés. Dès que le don est acquis, la fich… |
-| R155 | Multiplicateurs des paliers de résistance (table `resistance_palier`, bloc… | Remplace R70. Immunité =0, Grande résistance ÷3, Résis… |
-| R156 | Armures, après R95 et R108 (six parties, chacune cassée à 0) : (1) le kit… | (1) Le kit rend un cran sur l'ensemble de l'armure, co… |
-| R157 | Réparation et armure cassée, suite de R95, R108 et R156 : (G47) une arme c… | (G47) Une arme se répare avec le kit seul : le kit de… |
-| R158 | Armure à cran uni tombée à 0, suite de R157 (« Le bonus ne marche plus tan… | Cassée, une armure à cran de solidité uni ne donne plu… |
-| R159 | Édition des familles d'armes sur le site de dev (page « Armes » en deux me… | (1) Une famille créée reçoit des points de maîtrise pa… |
-| R160 | Le Potentiel Illimité (PI) a-t-il un élément, des gemmes, des pièces éléme… | Règle de lore. Le Potentiel Illimité est une magie à p… |
-| R161 | Mode Hyper, dépassement de 2 tours (classeur « Mode hyper et co », onglet… | Le personnage reçoit 2 faiblesses : un personnage d'Ar… |
-| R162 | Lien du Potentiel Illimité au dieu Tofrom (`magie_dieu`, seule source : fi… | Garder le lien : le PI reste rattaché à Tofrom sur le… |
-| R163 | Dons du Flagelleur « … plus fort ! » et « Punis-moi … » (`capacite.remarqu… | Non, c'est le MJ qui lance le dé ou l'impose ; il vaut… |
-| R164 | Les sorts « Fer » : 13 sorts de NPM 2, un par magie sauf l'Arcane et le Po… | Le mot-clé « Sort fer » (`sort-fer`) du glossaire, déf… |
-| R165 | Pièce élémentaire posée sur une armure : l'onglet « Pièces élémentaires »… | (1) Transformation. Quels que soient son matériau, son… |
-| R166 | Crans de résistance des armures élémentaires (suite de R165) : chaque armu… | Les crans de résistance de l'armure élémentaire portée… |
-| R167 | Armes élémentaires (« dans un premier temps que pour les armes » ; les arm… | Une pièce élémentaire transforme l'arme : quels que so… |
-| R168 | Mage Vert (Mage jade), don de niveau 20 « Meilleure attaque ... » : « (Pos… | Le don complète l'un des deux dons de niveau 15 qui co… |
-| R169 | Livre de sort de l'entraînement (R104, R118) : la fiche ne propose un livr… | Un livre de sort s'apprend pour n'importe quel sort de… |
-| R170 | Plafond de maîtrise d'une famille d'armes (R149 : 4 points, 5 dés ; « au-d… | Des points de maîtrise au-delà du plafond ne sont pas… |
-| R171 | Dégâts reçus sur la fiche, suite de R98 : un seul type parmi 17 (Estoc, Ta… | Type et élément : le type est Estoc, Taille, Frappe ou… |
-| R172 | Mode Hyper et Mode Hyper 100 % sur la fiche : ils n'étaient donnés « pour… | Deux cases activables, comme les postures (état enregi… |
-| R173 | Actions et passifs sur la fiche : les dons débloqués étaient listés par or… | Sous la ceinture, la liste des actions utilisables : l… |
-| R174 | Résistances physiques sur la fiche : le tableau des résistances et faibles… | Le tableau des résistances et faiblesses de la fiche g… |
-| R175 | Arrondi des calculs de la fiche : le guide (« Formule des dégâts ») écrit… | On arrondit à l'inférieur, partout : dégâts reçus (R98… |
-| R176 | Potentiel Illimité en magie acquise : des questions de ce lot (livres de s… | Le Potentiel Illimité est toujours la magie innée, mon… |
-| R177 | Don d'ethnie du Marcass « +2 Armure magique (+2 tous les 5 niveaux) » : la… | Ce don s'ajoute en permanence à l'AM de la fiche, pas… |
-| R178 | Mode Hyper du Marcass (« Corps isolant », onglet de la race, R13 : « Les A… | La règle du Marcass en Mode Hyper : ses AP et AM natur… |
-| R179 | Durée d'un sort préparé (R115 : il se lance avec la posture de sa préparat… | Un sort préparé ne demeure que jusqu'à la fin d'un com… |
-| R180 | Nerf de la réussite critique (demande du propriétaire, avec un message du… | (1) Surplus. Un score de compétence de 96 à 102 % donn… |
-| R181 | Dons « Variable » du Mage Bleu (Mimétisme, niveau 1 : « Permet d'avoir un… | La liste est le tableau du bas de la fiche de la class… |
-| R182 | Suite de R180 (réussite critique), questions Q89, Q90, Q91 et lecture du D… | (1) Échec critique : de 96 à 100, c'est toujours un éc… |
-| R183 | Le Lexique converti en mots-clés (demande du propriétaire, 2026-11-05). La… | (1) La page Lexique est supprimée : chaque entrée devi… |
-| R184 | Nouveau plan des pages de règles (demande du propriétaire, 2026-11-06). Le… | (1) Le plan. Les rubriques « Créer son personnage », «… |
-| R185 | Suite de R184 (nouveau plan des pages de règles) : points P1 à P8 de `docs… | (1) Le butin : le MJ demande le jet de butin au joueur… |
-| R186 | Coût en santé du chakra dépensé de force sous 0 (demande du propriétaire,… | Chaque point de chakra dépensé de force sous 0 coûte 3… |
-| R187 | Pages en doublon à retirer : la « Liste des effets mode hyper » et trois p… | (1) La « Liste des effets mode hyper » est supprimée,… |
-| R188 | Puissance magique (NPM) du Potentiel Illimité (question du propriétaire, 2… | Le personnage dont la magie innée est le Potentiel Ill… |
-| R189 | Le passif « Grimoire » de l'Archimage (remarque du propriétaire, 2026-11-0… | « Grimoire » acquis compte comme une condition de plus… |
-| R190 | Le Lexique mène au Glossaire (lot « mots-clés = liens », demande du propri… | `/regles/lexique/` mène à `/regles/glossaire/`, et non… |
-| R191 | Le libellé « (classe) » dans le glossaire (lot « mots-clés = liens », 2026… | « (classe) » est admis dans le libellé des mots-clés (… |
-| R192 | Suite de R181 et de R42 : le don « Variable » modifié sur le site de dev (… | (1) Création : un don « Variable » se crée avec la mag… |
-| R193 | Suite de R61 : le nom d'une monnaie (lot « Défauts du code »). R61 interdi… | Le nom d'une monnaie ne se modifie plus sur le site de… |
-| R194 | Suite de R51 : où joue le plancher de solidité d'une arme (lot « Défauts d… | (1) Une arme a toujours au moins 1 cran propre (sans m… |
-| R195 | Suite de R61 et de R193 : les champs d'un mot-clé, et l'abréviation du RF,… | (1) Tous les champs d'un mot-clé se modifient toujours… |
-| R196 | Suite de R195 : quand un mot-clé se supprime (lot « Tests et suppressions… | (1) Un mot-clé ne se supprime que si rien ne le mentio… |
-| R197 | Suite de R196 : quand une monnaie se supprime (lot « Tests et suppressions… | (1) Une ligne de la table `monnaie` ne se supprime que… |
-| R198 | Les postures : écarts entre le Doc « Guide pour MJ » (MJ-orig), le Doc « C… | (1) Défensif (G1) : le malus de 10 % ne vaut qu'au-del… |
-| R199 | Attaque, défense et dégâts : questions G25 à G28 et G41 de la refonte des… | (1) Défense (G27) : au D100, un meilleur résultat est… |
-| R200 | Le Mode Hyper : questions G7 à G12 de la refonte des pages du guide et P9… | (1) Durée (G8) : ⌊niveau global ÷ 2⌋, toujours à l'inf… |
-| R201 | La barrière : questions G13 et G14 de la refonte des pages du guide (`docs… | (1) G14 : règle universelle : sauf indication contrair… |
-| R202 | Création du personnage et classes : questions du `docs/sql/a-valider.md` §… | (1) Plafond : une caractéristique vaut toujours 4 au p… |
-| R203 | Plancher de la réussite critique (Q97, suite de R180 et R182) : un accesso… | La plage de réussite critique ne descend jamais sous «… |
-| R204 | Calme et sa description (B13, suite de R4) : Calme n'a pas de description… | « Prouesse » est l'ancien nom de Calme : la phrase « F… |
-| R205 | Magies : D/S/B, sorts sans chakra, état « Gel », chakra épuisé, Exécution… | (1) D/S/B : D = Dégâts, S = Soin ; le B est oublié par… |
-| R206 | Créatures invoquées au NPM (suite de R130 ; questions Q35 à Q38 et Q40 de… | (1) Q35 : le « +10% Barrière » vaut par NPM de la créa… |
-| R207 | Armes, armures et artisanat (questions Q57, Q58, Q60 et la 2ᵉ partie de Q6… | (1) E6 : le type, les AP et AM des armures composées (… |
-| R208 | Métiers (points « Métiers » du §2 et G20 à G24 du §6 de `docs/sql/a-valide… | (1) Un objet de départ marqué « (Arme) » va dans l'inv… |
-| R209 | Bestiaire (§2 « Bestiaire » et §4 D4 de `docs/sql/a-valider.md` ; question… | (1) FPVSIA = Force, Perception, Volonté, Social, Intel… |
-| R210 | Magies innées d'une race vidées sur le site de dev (C5, `docs/sql/a-valide… | Une race a forcément des magies innées possibles. Le p… |
-| R211 | Suite de R196 : les mots-clés que visent les rejeux des migrations 0090 et… | (1) Un mot-clé que vise le rejeu des migrations 0090 o… |
-| R212 | Suite de R197 : la bourse des fiches quand une monnaie est supprimée (lot… | (1) La bourse des fiches n'empêche pas la suppression… |
-| R213 | Suite de R197 : l'affichage d'un montant quand une monnaie est supprimée (… | Un montant se décompose avec les monnaies qui restent… |
-| R214 | Suite de R195 (2) : l'abréviation d'une monnaie changée sur le site (lot «… | Changer l'abréviation d'une monnaie la change partout… |
-| R215 | Suite de R212 : le montant d'une case retirée de la bourse (lot « mots-clé… | Le montant d'une case retirée est converti à l'afficha… |
-| R216 | Suite de R212 et de R213 : une monnaie créée sur le site (lot « mots-clés… | Une monnaie créée entre dans la décomposition des mont… |
-| R217 | Suite de R213 : l'infobulle d'une monnaie (lot « mots-clés et monnaies »,… | L'infobulle d'une monnaie ne cite que les monnaies qui… |
-| R218 | Le verrou des mots-clés, à la place des règles des monnaies (demande du pr… | (1) Les règles des monnaies du lot 4 sont abandonnées… |
-| R219 | Suite de R218 : les sept points du verrou laissés ouverts (lot « mots-clés… | (1) « Les pages » : tout mot-clé dont l'adresse (`mot_… |
-| R220 | Suite de R219 : le rejeu des lots anciens de l'onglet Monnaie, et le mot-c… | (1) Au rejeu du journal, un lot ancien qui écrivait l'… |
-| R221 | Suite de R219 : une page vers laquelle mène un mot-clé verrouillé (lot « m… | Une page vers laquelle mène un mot-clé verrouillé ne s… |
-| R222 | Suite de R219 : la fusion d'un mot-clé cité dans une définition verrouillé… | (1) La fusion d'un mot-clé est refusée tant que la déf… |
-| R223 | Suite de R196 : forcer la suppression d'un mot-clé mentionné (demande du p… | (1) Sans forçage, rien ne change : la suppression d'un… |
-| R224 | Relecture des pages des Règles contre les décisions (demande du propriétai… | (1) V1 : les copies de source sont corrigées là où ell… |
-| R225 | Potentiel Illimité : santé au passage de niveau (question V5 de `docs/sql/… | Un personnage dont la magie innée est le Potentiel Ill… |
-| R226 | Combat, postures, Mode Hyper et Mode Super (questions V6 à V9 de `docs/sql… | (1) V6 : en défense, le résultat le plus bas l'emporte… |
-| R227 | Métiers et objets (questions V10 à V12 de `docs/sql/a-valider.md` §10) : (… | (1) V10 : Forgeron pour les armes ; Armurier pour les… |
-| R228 | Adresse de la page du Mode Super (suite de R187 (1) et R226 (4) ; 2026-11-… | La page est servie à `/regles/mode-super/`, exception… |
-| R229 | Renvoi « plus haut » de `guide/jet-de-des` (suite de R224 (2) ; question V… | « Comme expliqué plus haut, » est retiré : la phrase d… |
-| R230 | Suite de R227 (3) et de R225 (2026-11-08). (1) Le texte du Bijoutier dans… | (1) Le texte du Bijoutier est aligné sur R227 (3) : il… |
-| R231 | Réécriture des pages « Attaquer et se défendre » et « Attaque et Défense »… | (1) Partage. `guide/attaquer-et-se-defendre` porte tou… |
-| R232 | Refonte de la table des mots-clés, qui remplace R191 (demande du propriéta… | (1) Identifiant : un entier auto-incrémenté, figé comm… |
-| R233 | Les synonymes d'un mot-clé (libellés secondaires), suite de R232 (demande… | (1) Un mot-clé peut avoir des synonymes (libellés seco… |
-| R234 | Le tableau des mots-clés du Glossaire, suite de R232 et R233 (demande du p… | (1) Le tableau des mots-clés du Glossaire (`/regles/gl… |
-| R235 | L'icône d'un mot-clé, suite de R234 (8) (demande du propriétaire, 2026-11-… | (1) Une colonne `icone` du mot-clé, modifiable sur le… |
-| R236 | Spécialisations magiques (Magie V10, mise à jour de Décembre) (demande du… | (1) Deux spécialisations par magie à partir du NPM 3 (… |
-| R237 | Intégration des magies du classeur de Décembre (Magie V10) à la base (dema… | (1) Le classeur fait foi (le docx est la liste des mod… |
-| R238 | Classes de la mise à jour de Décembre (demande du propriétaire, 2026-11-12… | (1) Boxeur et Porte-étendard : « Classe Physique Corps… |
-| R239 | Races Fongoïde et Gémidien (docx : « Nouvelle race : Fongoïde », « Nouvell… | (1) Deux races de plus, pures : le site en compte 29 (… |
-| R240 | Initiative groupée et initiative individuelle (docx, rubrique « Gameplay »… | Les deux coexistent, au choix du MJ. L'initiative indi… |
-| R241 | Effets secondaires des matériaux d'armes (docx, rubrique « Armes » : « Les… | (1) Les effets secondaires des 13 matériaux cités sont… |
-| R242 | Le bestiaire et les sorts renommés ou supprimés par la mise à jour de Déce… | (1) Les cartes du bestiaire prennent le nouveau nom du… |
-| R243 | Textes d'incantation et remarques des sorts absents du classeur de Décembr… | (1) Les six textes d'incantation de Glace et de Terre… |
-| R244 | Coûts des sorts que le classeur de Décembre écrit sans les répartir (R237… | (1) Même lecture que R106 avec le nouveau chiffre : Ru… |
-| R245 | Affichage des pages de magie V10 (R236 (1)) : la règle « CHOSES A SAVOIR »… | (1) Les phrases de « CHOSES A SAVOIR » sur la Super-ma… |
-| R246 | Nom affiché par la capacité « sort supplémentaire » de la Poupée fulgurant… | La capacité affiche « Boules plasmiques », le nouveau… |
-| R247 | Affichage des pages de magie V10, suite de R245 (1) et (2) : le point d'at… | (1) L'infobulle se pose sur le titre de chacune des de… |
-| R248 | Projectile arcanique : coût et fiche, suite de R244 (3) : la réponse « Var… | (1) La progression fait foi : 1 projectile coûte 4, ch… |
-| R249 | Onglets du Potentiel Illimité : R245 et R247 visent la page d'une magie ;… | Chaque onglet du Potentiel Illimité suit R245 et R247… |
-| R250 | Altération de l'Ombre visée par un don « à la magie innée et son altératio… | Le cran va à la Peur seule. La Somnolence n'a pas de r… |
-| R251 | Texte du coût de Projectile arcanique (suite de R248 ; MAJ-K7 (1)) | Coût : « 4/projectile » (valeur 4) ; coût secondaire :… |
-| R252 | Limite D12 de la montée de la nature des dés (docx « MISE À JOUR - DÉCEMBR… | (1) Aucune montée de la nature d'un dé ne dépasse le D… |
-| R253 | Fongoïde et Gémidien, suite de R239 : rang dans les listes de races et don… | (1) Les deux races vont à la fin des races pures, Fong… |
-| R254 | Classes de Décembre, suite de R238 : Porte-étendard et Archimage. Spéciali… | (1) « EdG » et « BdC » sont les armes « Étendard de gu… |
-| R255 | Boxeur (onglet 24 du classeur de Décembre, R238) : lectures de règles et g… | (1) Exception voulue à R96 : « Bouclier d'attaque », «… |
-| R256 | Vitesses du Fongoïde et du Gémidien (R239) : leurs onglets (21 et 22 du cl… | Fongoïde : vitesse 4 au sol, 4 à la nage. Gémidien : v… |
-| R257 | Limite D12, suite de R252 : montée et baisse mêlées (posture Focus ou acce… | Les crans s'additionnent avant le plafond : la montée… |
-| R258 | Effets secondaires des matériaux d'armes, suite de R241 : lectures (docx,… | (1) « +1 dé de dégâts » : un dé de plus, du même type… |
-| R259 | Capacité de monstre « Anti-barrière » et don « Pré-mythril » de l'Arbalétr… | (1) « Anti-barrière » prend le nouvel effet du Maveriu… |
-| R260 | Fiche, sorts des spécialisations (R236) : trois choix d'affichage : l'info… | (1) L'infobulle d'un sort ajoute le nom de sa spéciali… |
-| R261 | Initiative groupée, suite de R240 : la page `regles/initiative` du site de… | L'initiative groupée est hors de cette mise à jour : l… |
-| R262 | Lore du Fongoïde (onglet 21, AK3, R239) : la Mort Fertile et le retour de… | (1) Le Codex fait foi : la Mort Fertile existe toujour… |
-| R263 | Lore du Gémidien (onglet 22, AK3, R239) : les Super Gemmes : l'onglet dit… | (1) Les Super Gemmes sont actives aujourd'hui, comme l… |
-| R264 | Chronologie : l'apparition des Gémidiens et celle des Fongoïdes : l'onglet… | Deux événements s'ajoutent à la chronologie : l'appari… |
-| R265 | Page du Fongoïde (onglet 21) : le « Premier Champignon » et le « Dieu de l… | (1) Le « Premier Champignon » et le Mycoralis Vitalis… |
-| R266 | Trois graphies du lore de Décembre (`docs/sql/orthographe-a-valider.md`, «… | (1) « Super Gemme » : deux majuscules, sans trait d'un… |
-| R267 | Fiche du Boxeur et du Porte-étendard, suite de R254 et R255 : ce que Mur a… | (1) Mur : toute l'AP et l'AM du bouclier, les +2 de Mu… |
-| R268 | Infobulles des sept mots-clés des matériaux, suite de R258 (7) : aucune so… | Avantage : « On lance deux fois le même jet et on igno… |
-| R269 | Boxeur, suite de R255 et R267 : Égide d'assaut, arrondi de Bouclier d'atta… | (1) Avec Égide d'assaut, Bouclier d'attaque divise (AP… |
-| R270 | Fiche, suite de R260 : casse du nom d'une spécialisation. Le nom est en ca… | Sur la fiche, le nom d'une spécialisation s'écrit avec… |
-| R271 | Couleur d'une page et mot-clé qui mène à une section (lot « fusion des pag… | Un mot-clé dont l'adresse mène à une section (`#…`) ne… |
-| R272 | Page « Accessoires et Ceinture » supprimée, adresse de la page de l'invent… | Les sections « Accessoires » et « Ceinture » passent t… |
-| R273 | « (classe) » dans l’historique des modifications (CI rouge de la simulatio… | L’historique des modifications garde les valeurs telle… |
-| R274 | La base du site de dev devient la source de vérité (2026-11-14, plan `docs… | La base du site de dev fait foi ; le dépôt GitHub ne g… |
-| R275 | Réponses au plan « la base du site de dev devient la source de vérité » (2… | Le plan est accepté et les recommandations des questio… |
-| R276 | Ce que le propriétaire fait lui-même pendant le chantier de la base de dev… | Chaque lot réduit au strict nécessaire ce que le propr… |
-| R277 | Onglets de la page « Alignement » et onglets écrits à la main (demande du… | (1) Deux groupes d'onglets sur la page « Alignement »… |
-| R278 | Les tests de GitHub peuvent lire le contenu du site de dev (2026-11-15, `d… | Oui, pour les tests seulement : cela remplace, pour le… |
-| R279 | Le mot de passe du site de dev est provisoire (2026-11-15, chantier `docs/… | Le mot de passe d'édition du site de dev reste en plac… |
-| R280 | Une mise à jour qui retire un élément utilisé par une fiche de la producti… | Une mise à jour n'est pas refusée parce qu'elle retire… |
-| R281 | Le gel des écritures pendant la bascule 1 (2026-11-15, `docs/chantier-base… | Accepté : pendant la bascule 1, le service du site de… |
-| R282 | Deux contrôles GitHub obligatoires et retrait des vieux installateurs de t… | Accepté : le jour J, `controle-des-migrations` et `con… |
-| R283 | Les verrous de décision qu'une proposition peut ouvrir, et les consignes q… | Lecture de l'équipe (pas les mots du propriétaire) : (… |
-| R284 | En-têtes « Résistance » et « Faiblesse » des armures (`docs/sql/a-valider.… | Oui : sur les pages Armures, l'en-tête « Résistance »… |
-| R285 | Matrices des magies (suite de la demande du 2026-11-14, `docs/sql/a-valide… | Oui : les magies des matrices sont liées à leur mot-cl… |
-| R286 | Mots-clés des types de dégâts « physique » et « sonore » (`docs/sql/a-vali… | Créer les deux mots-clés, option B : « Dégâts physique… |
-| R287 | Textes libres (`docs/sql/a-valider.md` §12, GL5 : effets, descriptions, co… | Non : les textes libres ne sont pas balisés ; seules l… |
-| R288 | Type de dégâts des attaques et des cartes de monstre (`docs/sql/a-valider.… | Oui, contre la recommandation : le type de dégâts est… |
-| R289 | Suppression forcée d'un mot-clé lié (`docs/sql/a-valider.md` §12, GL1 ; R2… | Refus gardé : un mot-clé cité par `type_degats` ou par… |
-| R290 | Fusion de Taille, Estoc ou Frappe dans le mot-clé d'une magie (`docs/sql/a… | Rien ne change pour le moment : la fusion reste permis… |
-| R291 | Les changements préparés par l'équipe entrent sans clic dans la base du si… | Direct : remplace R275 (4). Un lot de changements dépo… |
-| R292 | Une race, une classe ou une magie retirée alors qu'une fiche de la product… | C, contre la recommandation : le blocage actuel est ga… |
-| R293 | Catégorie des mots-clés « Dégâts physiques » et « Sonore » (`docs/sql/a-va… | Oui : « Dégâts physiques » et « Sonore » sont rangés d… |
-| R294 | « Résistance » et « Faiblesse » sur la fiche de personnage (suite de R284… | Oui : sur la fiche de personnage, « Résistance » et «… |
-| R295 | Type de dégâts des attaques des cartes de monstre (suite de R288 : `monstr… | Oui, un lot est fait, mais le type d'une attaque n'est… |
-| R296 | Ce qui sort du dépôt à la fin du chantier (2026-11-18, `docs/chantier-base… | (b) : le lot 12 retire du dépôt les lignes des tables,… |
-| R297 | Suites de R291 (2026-11-18, PR #398, `docs/chantier-base-de-dev.md`, secti… | (1) Pas de bouton « Annuler tout » : un changement au… |
-| R298 | Attaques de monstre dont le type n'est pas dans la liste des types de dégâ… | (a) : ces types sont ajoutés à la liste des types de d… |
-| R299 | Attaques de monstre à deux types ou plus (`docs/sql/a-valider.md` §12, GL1… | (a) : une attaque qui écrit deux types ou plus affiche… |
-| R300 | Attaques de monstre sans type ou de type générique (`docs/sql/a-valider.md… | (a) : pas de type tant que le document n'en écrit pas… |
-| R301 | Ligne « Arme de la créature : EP… » de 40 cartes de monstre (`docs/sql/a-v… | (b) : la ligne « Arme de la créature » reste en texte,… |
-| R302 | Application de R294 sur la fiche de personnage (« point 1 (fiche) A ou B,… | B : rien ne change ; le lien de R294 sur la fiche se l… |
-| R303 | Les trois questions laissées par le lot 10 (suite de R278). (1) « GitHub c… | Les trois recommandations sont acceptées : (1) oui ; (… |
-| R304 | Les cinq questions du jour J du lot 12 (suite de R296, `docs/chantier-base… | Les cinq recommandations sont acceptées : (1) les 88 m… |
-| R305 | Les trois questions de la bascule 2 (`docs/chantier-base-de-dev.md`, secti… | Les trois recommandations sont acceptées : (6) site de… |
-| R306 | Les deux propositions en attente sur la page Mise à jour (catégorie « Dégâ… | Préférence : un changement préparé par l'équipe se dép… |
+| Réf. | Sujet |
+| --- | --- |
+| R1 | Nombre de races : le guide dit 23, le reste du corpus… |
+| R2 | Niveau de classe d'un personnage à une seule classe au… |
+| R3 | Budgets : les points de caractéristiques (14, 15, 16,… |
+| R4 | Compétence « Calme » ou « Prouesse » (guide) |
+| R5 | Mode Hyper : +15/+7 (fiche, `mode-hyper.json`) ou +10/… |
+| R6 | L'Archimage est-il une classe magique ? (le Sommaire l… |
+| R7 | +4 AM des classes raciales |
+| R8 | « Accès à toutes les classes / magies » dans l'onglet… |
+| R9 | Capacités à nom coupé sur deux cases (« Tenir ... » /… |
+| R10 | Coquilles et fautes d'orthographe des classeurs |
+| R11 | Magie innée du Nain |
+| R12 | Sens de la matrice « Relation entre les races » (class… |
+| R13 | Fiche personnage V15.2.2 contre l'onglet de la race :… |
+| R14 | Le Drassah'thac (semi-félins) n'a pas de classe racial… |
+| R15 | Corruption : la phrase de son onglet (« c'est mono-mag… |
+| R16 | Puissance magique 5 : la table « Expérience/Niveau glo… |
+| R17 | Exemple 2 de la « Formule des dégâts » (guide pour MJ)… |
+| R18 | « Consommation de chakra = 0 » du Mode Hyper, et un pe… |
+| R19 | Les deux cases à cocher sous chaque caractéristique de… |
+| R20 | Corruption en magie acquise : la fiche auto (BDD!F2) l… |
+| R21 | Nom de la déesse de la Corruption : « Démon d'Eau Noir… |
+| R22 | Magie innée de la Lamia : la matrice « Accessibilité M… |
+| R23 | Qui peut être Archimage ? La fiche auto V15.2.2 la pro… |
+| R24 | Niveaux de maîtrise (NM) des sorts au-delà de ceux gag… |
+| R25 | Seconde classe d'un Potentiel Illimité (classe 1 : l'A… |
+| R26 | Combien de NM sur un sort, et d'où viennent les NM en… |
+| R27 | La fiche doit-elle offrir une ligne de sort au-delà de… |
+| R28 | La Lamia peut-elle avoir une magie acquise ? L'onglet… |
+| R29 | Couleurs des notes de version : sur la page « Mise à j… |
+| R30 | Une race hybride doit-elle avoir exactement 3 magies i… |
+| R31 | Pour les 14 races dont l'onglet cite les magies innées… |
+| R32 | Combien de points de maîtrise d'arme un personnage peu… |
+| R33 | Les bonus d'un métier (« +3% Esquive », « +3% Diplomat… |
+| R34 | La case « Artisanat possible » mêle ce que le métier f… |
+| R35 | Que fait l'« Équipement supplémentaire possible » d'un… |
+| R36 | Le bonus du Prostitué, « +3% Manipulation, Survie », n… |
+| R37 | « +1 Vitesse nage » (Maître-nageur) et « +1 Vitesse au… |
+| R38 | Le bonus du métier peut dépasser le plafond d'Acquis (… |
+| R39 | Une croix (R19) sur une caractéristique d'artisanat ré… |
+| R40 | Trois équipements écrivent leur choix en abrégé (« Arc… |
+| R41 | Plafond des points acquis d'une compétence : la page «… |
+| R42 | Que devient une fiche de personnage qui utilise un don… |
+| R43 | Combien de spécialités une classe peut-elle avoir (cré… |
+| R44 | À quels niveaux de classe se place un don créé depuis… |
+| R45 | « ARME DE MONSTRES » (12ᵉ bandeau de l'onglet « Armes… |
+| R46 | Attaque à deux armes, une dans chaque main : quel malu… |
+| R47 | Dans le tableau des postures de la fiche, quelles lign… |
+| R48 | Compétence d'une arme sur la page « Armes » : la 2ᵉ li… |
+| R49 | Arme forgée : comment se combinent l'arme, son matéria… |
+| R50 | Portée d'une arme : l'onglet l'écrit dans l'effet (« 2… |
+| R51 | Durabilité de l'arme forgée : les crans de l'arme, du… |
+| R52 | Armes créées ou supprimées depuis le site de dev, et n… |
+| R53 | Créatures invoquées : l'onglet « Marionette de lombre… |
+| R54 | Accessoires sur la fiche de personnage : l'onglet « Ac… |
+| R55 | Bestiaire : défense écrite « 5 armure physique (+2/3EP… |
+| R56 | Bestiaire : le préfixe « [EP2] » d’une capacité de mon… |
+| R57 | Bestiaire : des cases de butin qui ne citent un objet… |
+| R58 | Bestiaire : deux brouillons du doc, « Réanimé (EP5) (a… |
+| R59 | Bestiaire : défense « N (+k/EP) » d'une carte qui ne c… |
+| R60 | Composants : un objet supprimé de la base (page « Comp… |
+| R61 | Monnaies : leurs valeurs se modifient-elles, et commen… |
+| R62 | Matériaux : où se modifient-ils, et quel type pour un… |
+| R63 | Monnaies hors des tableaux, et un montant qui dépasse… |
+| R64 | Bestiaire : les Ottar sont 22 titres « Nom (EP1 - 10)… |
+| R65 | Bestiaire : une carte montre la description de l'espèc… |
+| R66 | Bestiaire : une même capacité est écrite sur beaucoup… |
+| R67 | Les capacités des créatures invoquées et les bonus à c… |
+| R68 | Les capacités de monstre qui ont plusieurs textes : le… |
+| R69 | Des capacités ne diffèrent que par un nombre d'une car… |
+| R70 | Paliers de résistance : le modèle « Fiche-de-personnag… |
+| R71 | Case « Entraînement » (L42 du modèle ordinateur) : le… |
+| R72 | Métier d'une fiche auto différent de la base (Écrivain… |
+| R73 | Gains de niveau (15 points d'attributs par niveau à pa… |
+| R74 | Solidité d'une arme (AK17, AX17 du modèle ordinateur)… |
+| R75 | Armures : prix d'une pièce (Casque, Torse, Bras Gauche… |
+| R76 | Boucliers : améliorations. « +1 cran de solidité » est… |
+| R77 | Armures : améliorations. « +1 cran de solidité » est é… |
+| R78 | Boucliers : comment se compose un bouclier, et quelle… |
+| R79 | Les « Prix » de la grille des armures, des boucliers p… |
+| R80 | Armures particulières (vêtements, cottes de mailles, a… |
+| R81 | Objets à la ceinture : le guide (« Créer sa fiche de p… |
+| R82 | Boucliers : le plan du menu (entrée « bientôt » de `li… |
+| R83 | Rapprochement des classeurs et de la base (« m'assurer… |
+| R84 | Lien vers un document Google écrit dans un classeur (l… |
+| R85 | Résistances et faiblesses d'une combinaison de deux ma… |
+| R86 | Onglet « Statistiques » de « Magie Maverick V8 » (comp… |
+| R87 | « Fiche auto V15.2.2 » : ses règles absentes des class… |
+| R88 | Inventaire : le guide (« Fiche de personnage : Inventa… |
+| R89 | Ceinture : « Les objets sont dans la ceinture ne peuve… |
+| R90 | Résistances entre l'Arcane et la Corruption : la matri… |
+| R91 | Remarque de la Bombe perçante (« Il faut perdre un bra… |
+| R92 | Poids des boucliers : l'onglet « Bouclier » liste 4 po… |
+| R93 | Armures : fabrication pièce par pièce. La décision R75… |
+| R94 | Accessoire maudit : les règles de l'onglet « Accessoir… |
+| R95 | Armures sur la fiche de personnage, après R93 (une arm… |
+| R96 | Bouclier sur la fiche de personnage : la fiche portait… |
+| R97 | Accessoires sur la fiche de personnage : huit emplacem… |
+| R98 | Défense et dégâts reçus : la fiche n'affichait ni l'AP… |
+| R99 | Pièce élémentaire (arme ou armure transformée) : la pa… |
+| R100 | Posture du moment sur la fiche : la fiche affichait le… |
+| R101 | Bâtons magiques sur la fiche : les 42 bâtons (14 magie… |
+| R102 | Sorts du moment sur la fiche : le tableau des sorts mo… |
+| R103 | « Si CR : » dans les effets de 19 sorts de la Corrupti… |
+| R104 | Entraînement et Acquis sur la fiche : l'acquis de chaq… |
+| R105 | Coût des sorts : le classeur écrit dans une seule case… |
+| R106 | Coût des sorts, suite de R105 : les 26 coûts que R105… |
+| R107 | « Vieille Branche » (Mage Vert, spécialité Mage jade)… |
+| R108 | Armure ou bouclier cassés (solidité 0, R95, R96) : leu… |
+| R109 | Posture Symbiose d'un personnage au Potentiel Illimité… |
+| R110 | Bonus qui « augmente de +N tous les M niveaux » : « +2… |
+| R111 | Posture Symbiose avec deux magies : « Quand vous avez… |
+| R112 | Posture Symbiose : « Impossible d'utiliser les armes o… |
+| R113 | Dégâts ou soins par tour d'un sort (« 3d6 dégâts par t… |
+| R114 | Grenadier, « Pardon ?!? » (niveau 20, passif) : « Les… |
+| R115 | Mage Rouge, spécialité Rubis, niveau 10 : « Charge len… |
+| R116 | Coût en corruption d'un sort (2 × le coût, bâtons) : l… |
+| R117 | « 10% de compétence en acquis à répartir au choix » (H… |
+| R118 | NM des sorts sur la fiche : chaque ligne du tableau de… |
+| R119 | « +N% de la compétence de l'arme choisie » (Tueur Flét… |
+| R120 | « +7% d'acquis pour les compétences d'arme » (Mercenai… |
+| R121 | Moine Templier : « 5% Arme lourde OU Arme légère OU Ar… |
+| R122 | « +5% à tout jet impliquant la perception » (Fenrir, «… |
+| R123 | « +5% à chaque test lié à l'artisanat » (Nain, Londolo… |
+| R124 | Drakos orange (Potentiel illimité), tableau « Écaille… |
+| R125 | Mort-vivant, « Trompe-mort » : « Son acquis max en Soc… |
+| R126 | Les armes dont la compétence est écrite « Arc / Arme L… |
+| R127 | Quelles familles d'armes sont « à distance » ? La base… |
+| R128 | Les bonus que la fiche ne compte pas (Q29) : faut-il u… |
+| R129 | Coût d'un sort qui augmente avec l'utilisation sur la… |
+| R130 | Les créatures invoquées à leur niveau de puissance mag… |
+| R131 | Ceinture de la fiche, suite de R89 : trois comportemen… |
+| R132 | « Sort offensif » de « Charge lente… » et « … ou rapid… |
+| R133 | « Soralongé » (Mage Vert : « Augmente la portée des so… |
+| R134 | « À l'aise » (Mage Vert, niveau 10 : « Le sort influé… |
+| R135 | Un sort préparé (R115) quand la fiche est en Symbiose… |
+| R136 | Bi-classé Mage Rouge et Mage Vert : « Préparation » et… |
+| R137 | Résistances au choix à une magie : Ocultomancien « Rés… |
+| R138 | Les « sauf » d'une maîtrise au choix écrits autrement… |
+| R139 | Résistance à une magie au choix ou tirée (R137 : Ocult… |
+| R140 | « CR » ailleurs que dans « Si CR » (R103) : le classeu… |
+| R141 | Ce que devient un personnage mort de la corruption : «… |
+| R142 | Le maximum de la corruption d'un personnage qui a la C… |
+| R143 | Le repos et la méditation retirent-ils de la corruptio… |
+| R144 | Deux formulations des textes de la Corruption à revoir… |
+| R145 | Faut-il moins de balises du glossaire dans le guide (p… |
+| R146 | Qui échappe à la mort au maximum de corruption (l'abom… |
+| R147 | Archimage, « Pacte Noir » (niveau 15, `capacites/archi… |
+| R148 | Maîtrises d'armes sur la fiche de personnage : un curs… |
+| R149 | Plafond de maîtrise d'une famille : seule la fiche aut… |
+| R150 | Les dons qui donnent des points à répartir sans limite… |
+| R151 | Où vont les points dont le don nomme une destination s… |
+| R152 | Le bonus « de l'arme choisie » (R119) a son propre cho… |
+| R153 | Les fiches existantes n'ont que des dés par famille (`… |
+| R154 | Don « Maîtrise » de l'Ocultomancien (niveau de classe… |
+| R155 | Multiplicateurs des paliers de résistance (table `resi… |
+| R156 | Armures, après R95 et R108 (six parties, chacune cassé… |
+| R157 | Réparation et armure cassée, suite de R95, R108 et R15… |
+| R158 | Armure à cran uni tombée à 0, suite de R157 (« Le bonu… |
+| R159 | Édition des familles d'armes sur le site de dev (page… |
+| R160 | Le Potentiel Illimité (PI) a-t-il un élément, des gemm… |
+| R161 | Mode Hyper, dépassement de 2 tours (classeur « Mode hy… |
+| R162 | Lien du Potentiel Illimité au dieu Tofrom (`magie_dieu… |
+| R163 | Dons du Flagelleur « … plus fort ! » et « Punis-moi …… |
+| R164 | Les sorts « Fer » : 13 sorts de NPM 2, un par magie sa… |
+| R165 | Pièce élémentaire posée sur une armure : l'onglet « Pi… |
+| R166 | Crans de résistance des armures élémentaires (suite de… |
+| R167 | Armes élémentaires (« dans un premier temps que pour l… |
+| R168 | Mage Vert (Mage jade), don de niveau 20 « Meilleure at… |
+| R169 | Livre de sort de l'entraînement (R104, R118) : la fich… |
+| R170 | Plafond de maîtrise d'une famille d'armes (R149 : 4 po… |
+| R171 | Dégâts reçus sur la fiche, suite de R98 : un seul type… |
+| R172 | Mode Hyper et Mode Hyper 100 % sur la fiche : ils n'ét… |
+| R173 | Actions et passifs sur la fiche : les dons débloqués é… |
+| R174 | Résistances physiques sur la fiche : le tableau des ré… |
+| R175 | Arrondi des calculs de la fiche : le guide (« Formule… |
+| R176 | Potentiel Illimité en magie acquise : des questions de… |
+| R177 | Don d'ethnie du Marcass « +2 Armure magique (+2 tous l… |
+| R178 | Mode Hyper du Marcass (« Corps isolant », onglet de la… |
+| R179 | Durée d'un sort préparé (R115 : il se lance avec la po… |
+| R180 | Nerf de la réussite critique (demande du propriétaire,… |
+| R181 | Dons « Variable » du Mage Bleu (Mimétisme, niveau 1 :… |
+| R182 | Suite de R180 (réussite critique), questions Q89, Q90,… |
+| R183 | Le Lexique converti en mots-clés (demande du propriéta… |
+| R184 | Nouveau plan des pages de règles (demande du propriéta… |
+| R185 | Suite de R184 (nouveau plan des pages de règles) : poi… |
+| R186 | Coût en santé du chakra dépensé de force sous 0 (deman… |
+| R187 | Pages en doublon à retirer : la « Liste des effets mod… |
+| R188 | Puissance magique (NPM) du Potentiel Illimité (questio… |
+| R189 | Le passif « Grimoire » de l'Archimage (remarque du pro… |
+| R190 | Le Lexique mène au Glossaire (lot « mots-clés = liens… |
+| R191 | Le libellé « (classe) » dans le glossaire (lot « mots-… |
+| R192 | Suite de R181 et de R42 : le don « Variable » modifié… |
+| R193 | Suite de R61 : le nom d'une monnaie (lot « Défauts du… |
+| R194 | Suite de R51 : où joue le plancher de solidité d'une a… |
+| R195 | Suite de R61 et de R193 : les champs d'un mot-clé, et… |
+| R196 | Suite de R195 : quand un mot-clé se supprime (lot « Te… |
+| R197 | Suite de R196 : quand une monnaie se supprime (lot « T… |
+| R198 | Les postures : écarts entre le Doc « Guide pour MJ » (… |
+| R199 | Attaque, défense et dégâts : questions G25 à G28 et G4… |
+| R200 | Le Mode Hyper : questions G7 à G12 de la refonte des p… |
+| R201 | La barrière : questions G13 et G14 de la refonte des p… |
+| R202 | Création du personnage et classes : questions du `docs… |
+| R203 | Plancher de la réussite critique (Q97, suite de R180 e… |
+| R204 | Calme et sa description (B13, suite de R4) : Calme n'a… |
+| R205 | Magies : D/S/B, sorts sans chakra, état « Gel », chakr… |
+| R206 | Créatures invoquées au NPM (suite de R130 ; questions… |
+| R207 | Armes, armures et artisanat (questions Q57, Q58, Q60 e… |
+| R208 | Métiers (points « Métiers » du §2 et G20 à G24 du §6 d… |
+| R209 | Bestiaire (§2 « Bestiaire » et §4 D4 de `docs/sql/a-va… |
+| R210 | Magies innées d'une race vidées sur le site de dev (C5… |
+| R211 | Suite de R196 : les mots-clés que visent les rejeux de… |
+| R212 | Suite de R197 : la bourse des fiches quand une monnaie… |
+| R213 | Suite de R197 : l'affichage d'un montant quand une mon… |
+| R214 | Suite de R195 (2) : l'abréviation d'une monnaie changé… |
+| R215 | Suite de R212 : le montant d'une case retirée de la bo… |
+| R216 | Suite de R212 et de R213 : une monnaie créée sur le si… |
+| R217 | Suite de R213 : l'infobulle d'une monnaie (lot « mots-… |
+| R218 | Le verrou des mots-clés, à la place des règles des mon… |
+| R219 | Suite de R218 : les sept points du verrou laissés ouve… |
+| R220 | Suite de R219 : le rejeu des lots anciens de l'onglet… |
+| R221 | Suite de R219 : une page vers laquelle mène un mot-clé… |
+| R222 | Suite de R219 : la fusion d'un mot-clé cité dans une d… |
+| R223 | Suite de R196 : forcer la suppression d'un mot-clé men… |
+| R224 | Relecture des pages des Règles contre les décisions (d… |
+| R225 | Potentiel Illimité : santé au passage de niveau (quest… |
+| R226 | Combat, postures, Mode Hyper et Mode Super (questions… |
+| R227 | Métiers et objets (questions V10 à V12 de `docs/sql/a-… |
+| R228 | Adresse de la page du Mode Super (suite de R187 (1) et… |
+| R229 | Renvoi « plus haut » de `guide/jet-de-des` (suite de R… |
+| R230 | Suite de R227 (3) et de R225 (2026-11-08). (1) Le text… |
+| R231 | Réécriture des pages « Attaquer et se défendre » et «… |
+| R232 | Refonte de la table des mots-clés, qui remplace R191 (… |
+| R233 | Les synonymes d'un mot-clé (libellés secondaires), sui… |
+| R234 | Le tableau des mots-clés du Glossaire, suite de R232 e… |
+| R235 | L'icône d'un mot-clé, suite de R234 (8) (demande du pr… |
+| R236 | Spécialisations magiques (Magie V10, mise à jour de Dé… |
+| R237 | Intégration des magies du classeur de Décembre (Magie… |
+| R238 | Classes de la mise à jour de Décembre (demande du prop… |
+| R239 | Races Fongoïde et Gémidien (docx : « Nouvelle race : F… |
+| R240 | Initiative groupée et initiative individuelle (docx, r… |
+| R241 | Effets secondaires des matériaux d'armes (docx, rubriq… |
+| R242 | Le bestiaire et les sorts renommés ou supprimés par la… |
+| R243 | Textes d'incantation et remarques des sorts absents du… |
+| R244 | Coûts des sorts que le classeur de Décembre écrit sans… |
+| R245 | Affichage des pages de magie V10 (R236 (1)) : la règle… |
+| R246 | Nom affiché par la capacité « sort supplémentaire » de… |
+| R247 | Affichage des pages de magie V10, suite de R245 (1) et… |
+| R248 | Projectile arcanique : coût et fiche, suite de R244 (3… |
+| R249 | Onglets du Potentiel Illimité : R245 et R247 visent la… |
+| R250 | Altération de l'Ombre visée par un don « à la magie in… |
+| R251 | Texte du coût de Projectile arcanique (suite de R248 ;… |
+| R252 | Limite D12 de la montée de la nature des dés (docx « M… |
+| R253 | Fongoïde et Gémidien, suite de R239 : rang dans les li… |
+| R254 | Classes de Décembre, suite de R238 : Porte-étendard et… |
+| R255 | Boxeur (onglet 24 du classeur de Décembre, R238) : lec… |
+| R256 | Vitesses du Fongoïde et du Gémidien (R239) : leurs ong… |
+| R257 | Limite D12, suite de R252 : montée et baisse mêlées (p… |
+| R258 | Effets secondaires des matériaux d'armes, suite de R24… |
+| R259 | Capacité de monstre « Anti-barrière » et don « Pré-myt… |
+| R260 | Fiche, sorts des spécialisations (R236) : trois choix… |
+| R261 | Initiative groupée, suite de R240 : la page `regles/in… |
+| R262 | Lore du Fongoïde (onglet 21, AK3, R239) : la Mort Fert… |
+| R263 | Lore du Gémidien (onglet 22, AK3, R239) : les Super Ge… |
+| R264 | Chronologie : l'apparition des Gémidiens et celle des… |
+| R265 | Page du Fongoïde (onglet 21) : le « Premier Champignon… |
+| R266 | Trois graphies du lore de Décembre (`docs/sql/orthogra… |
+| R267 | Fiche du Boxeur et du Porte-étendard, suite de R254 et… |
+| R268 | Infobulles des sept mots-clés des matériaux, suite de… |
+| R269 | Boxeur, suite de R255 et R267 : Égide d'assaut, arrond… |
+| R270 | Fiche, suite de R260 : casse du nom d'une spécialisati… |
+| R271 | Couleur d'une page et mot-clé qui mène à une section (… |
+| R272 | Page « Accessoires et Ceinture » supprimée, adresse de… |
+| R273 | « (classe) » dans l’historique des modifications (CI r… |
+| R274 | La base du site de dev devient la source de vérité (20… |
+| R275 | Réponses au plan « la base du site de dev devient la s… |
+| R276 | Ce que le propriétaire fait lui-même pendant le chanti… |
+| R277 | Onglets de la page « Alignement » et onglets écrits à… |
+| R278 | Les tests de GitHub peuvent lire le contenu du site de… |
+| R279 | Le mot de passe du site de dev est provisoire (2026-11… |
+| R280 | Une mise à jour qui retire un élément utilisé par une… |
+| R281 | Le gel des écritures pendant la bascule 1 (2026-11-15,… |
+| R282 | Deux contrôles GitHub obligatoires et retrait des vieu… |
+| R283 | Les verrous de décision qu'une proposition peut ouvrir… |
+| R284 | En-têtes « Résistance » et « Faiblesse » des armures (… |
+| R285 | Matrices des magies (suite de la demande du 2026-11-14… |
+| R286 | Mots-clés des types de dégâts « physique » et « sonore… |
+| R287 | Textes libres (`docs/sql/a-valider.md` §12, GL5 : effe… |
+| R288 | Type de dégâts des attaques et des cartes de monstre (… |
+| R289 | Suppression forcée d'un mot-clé lié (`docs/sql/a-valid… |
+| R290 | Fusion de Taille, Estoc ou Frappe dans le mot-clé d'un… |
+| R291 | Les changements préparés par l'équipe entrent sans cli… |
+| R292 | Une race, une classe ou une magie retirée alors qu'une… |
+| R293 | Catégorie des mots-clés « Dégâts physiques » et « Sono… |
+| R294 | « Résistance » et « Faiblesse » sur la fiche de person… |
+| R295 | Type de dégâts des attaques des cartes de monstre (sui… |
+| R296 | Ce qui sort du dépôt à la fin du chantier (2026-11-18,… |
+| R297 | Suites de R291 (2026-11-18, PR #398, `docs/chantier-ba… |
+| R298 | Attaques de monstre dont le type n'est pas dans la lis… |
+| R299 | Attaques de monstre à deux types ou plus (`docs/sql/a-… |
+| R300 | Attaques de monstre sans type ou de type générique (`d… |
+| R301 | Ligne « Arme de la créature : EP… » de 40 cartes de mo… |
+| R302 | Application de R294 sur la fiche de personnage (« poin… |
+| R303 | Les trois questions laissées par le lot 10 (suite de R… |
+| R304 | Les cinq questions du jour J du lot 12 (suite de R296,… |
+| R305 | Les trois questions de la bascule 2 (`docs/chantier-ba… |
+| R306 | Les deux propositions en attente sur la page Mise à jo… |

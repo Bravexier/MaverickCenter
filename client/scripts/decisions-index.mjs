@@ -7,7 +7,7 @@ import { CHEMIN_INDEX, CHEMIN_REGISTRE, octets, TAILLE_CIBLE, verifier } from '.
 
 const AIDE = `node scripts/decisions-index.mjs [--verifier]
 
-Lit ${CHEMIN_REGISTRE} et écrit ${CHEMIN_INDEX} : une ligne par décision R… (sujet et décision coupés), dans l'ordre du registre.
+Lit ${CHEMIN_REGISTRE} et écrit ${CHEMIN_INDEX} : une ligne par décision R… (Rn et sujet coupé), dans l'ordre du registre.
   --verifier   n'écrit rien ; code 1 si l'index n'est pas à jour (relancer sans --verifier), ou si le registre a une erreur
 Code 0 si tout va bien, 1 pour un index périmé ou une erreur du registre (numéro en double, ligne R… incomplète), 2 pour une option inconnue.
 Un trou dans la numérotation et un index de plus de ${TAILLE_CIBLE / 1024} Ko sont signalés, sans erreur.`;
