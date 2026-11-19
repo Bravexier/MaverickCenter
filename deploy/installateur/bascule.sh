@@ -14,6 +14,10 @@
 #   poser        pose db/source (date, version, empreinte du contenu, sauvegarde) : refusé sans constat EGALITE de moins d'une heure fait pendant ce gel, et
 #                sans sauvegarde nommée réussie depuis ; relance le service et vérifie que /api/etat dit « source: true »
 #   retirer      le retour arrière : le marqueur est renommé (rien n'est effacé), le service relancé
+#   poser-bascule-2    (lot 11, PR 5a) pose db/bascule-2, le marqueur de la bascule 2 du site de dev : refusé sans db/source ; crée paquets/ de la production (le dossier partagé où le site
+#                de dev dépose le paquet de la mise à jour) et le fait monter dans le service du site de dev (MAVERICK_DOSSIER_PAQUETS de son .env, `docker compose up -d serveur`) ; le service lit
+#                le marqueur à chaque fois (pas de redémarrage) : avec lui, le bouton refuse un code pas à jour et un contenu rouge, et dépose le paquet pour la production
+#   retirer-bascule-2  le retour arrière : le marqueur est renommé (rien n'est effacé ; paquets/ reste), le service du site de dev redevient celui d'avant
 #   copies       les copies de la base du site de dev qu'on peut restaurer : locales (type/nom, date, lignes) et, envoi activé, extérieures (restic) ; rien n'est modifié
 #   restaurer --copie <type>/<nom>|derniere  ou  restaurer --exterieure <id>|latest
 #                remet une copie de la base du site de dev dans db/ (docs/serveur.md, « Restauration de la base du site de dev ») : copie contrôlée (intégrité,
@@ -27,7 +31,7 @@
 set -euo pipefail
 umask 077
 
-usage() { echo "Usage : sudo bash $0 [--dev <dossier>] [--prod <dossier>] etat|geler|degeler|constat|sauvegarder|poser|retirer|copies | restaurer --copie <type>/<nom>|derniere | restaurer --exterieure <id>|latest" >&2; exit 2; }
+usage() { echo "Usage : sudo bash $0 [--dev <dossier>] [--prod <dossier>] etat|geler|degeler|constat|sauvegarder|poser|retirer|poser-bascule-2|retirer-bascule-2|copies | restaurer --copie <type>/<nom>|derniere | restaurer --exterieure <id>|latest" >&2; exit 2; }
 DEV=${MAVERICK_DIR_TEST:-/srv/maverick-center-test}
 PROD=${MAVERICK_DIR_NORMAL:-/srv/maverick-center}
 ETAPE=''
@@ -39,7 +43,7 @@ while [ $# -gt 0 ]; do
     --prod) [ $# -ge 2 ] || usage; PROD=$2; shift 2 ;;
     --copie) [ $# -ge 2 ] || usage; COPIE=$2; shift 2 ;;
     --exterieure) [ $# -ge 2 ] || usage; EXTERIEURE=$2; shift 2 ;;
-    etat|geler|degeler|constat|sauvegarder|poser|retirer|copies|restaurer) [ -z "$ETAPE" ] || usage; ETAPE=$1; shift ;;
+    etat|geler|degeler|constat|sauvegarder|poser|retirer|poser-bascule-2|retirer-bascule-2|copies|restaurer) [ -z "$ETAPE" ] || usage; ETAPE=$1; shift ;;
     *) usage ;;
   esac
 done
@@ -75,6 +79,7 @@ ETAT_BASCULE=${MAVERICK_DIR_BASCULE:-$DEV/.bascule}/etat
 DUREE_DU_CONSTAT=3600
 ATTENTE=${MAVERICK_BASCULE_ATTENTE:-180}
 MARQUEUR=$DEV/db/source
+MARQUEUR_2=$DEV/db/bascule-2
 
 lire() { etat_lire "$ETAT_BASCULE" "$1"; }
 noter() { mkdir -p "$(dirname "$ETAT_BASCULE")"; chmod 700 "$(dirname "$ETAT_BASCULE")"; etat_poser_tout "$ETAT_BASCULE" "$@"; }
@@ -104,6 +109,7 @@ source_selon_le_service() {
 case "$ETAPE" in
   etat)
     if marqueur_pose; then etape "marqueur : POSÉ ($MARQUEUR) : $(contenu_du_marqueur | tr '\n' ' ')"; else etape "marqueur : absent (la base du site de dev est encore refaite depuis les règles)"; fi
+    if [ -e "$MARQUEUR_2" ] || [ -L "$MARQUEUR_2" ]; then etape "bascule 2 : marqueur POSÉ ($MARQUEUR_2) : $( { [ -f "$MARQUEUR_2" ] && [ ! -L "$MARQUEUR_2" ] && head -c 1000 "$MARQUEUR_2" | head -n 4 | tr '\n' ' '; } || true)"; else etape "bascule 2 : marqueur absent (le bouton « Effectuer la mise à jour » ne dépose rien pour la production)"; fi
     if service_actif; then etape "service du site de dev : en marche"; else etape "service du site de dev : arrêté"; fi
     if [ -n "$(lire GEL_LE)" ]; then etape "gel : depuis $(date_de "$(lire GEL_LE)")"; else etape "gel : aucun"; fi
     c=$(lire CONSTAT_LE)
@@ -244,6 +250,65 @@ case "$ETAPE" in
     etape "marqueur retiré (gardé sous $garde) : la base n'est plus la source."
     compose restart serveur >/dev/null 2>&1 || relancer_le_service
     etape "service du site de dev relancé (« bascule.sh etat » pour vérifier)."
+    ;;
+
+  poser-bascule-2)
+    marqueur_pose || die "$MARQUEUR n'existe pas : la base du site de dev n'est pas encore la source de vérité, et le service n'admet le marqueur de la bascule 2 qu'avec la base source (geste : « bascule.sh etat », puis geler, constat, sauvegarder, poser)"
+    { [ ! -e "$MARQUEUR_2" ] && [ ! -L "$MARQUEUR_2" ]; } || die "$MARQUEUR_2 existe déjà (« bascule.sh etat ») : rien à poser"
+    PAQUETS_PROD=$PROD/paquets
+    if [ -L "$PAQUETS_PROD" ] || { [ -e "$PAQUETS_PROD" ] && [ ! -d "$PAQUETS_PROD" ]; }; then die "$PAQUETS_PROD n'est pas un dossier ordinaire : refus (le site de dev y dépose les paquets de la production)"; fi
+    # le service du site de dev doit pouvoir y écrire : son docker-compose.yml monte MAVERICK_DOSSIER_PAQUETS (livré avec le code de la PR 5a)
+    grep -q 'MAVERICK_DOSSIER_PAQUETS' "$DEV/docker-compose.yml" 2>/dev/null || die "le docker-compose.yml de $DEV ne monte pas le dossier partagé des paquets (MAVERICK_DOSSIER_PAQUETS) : installer d'abord une livraison de test qui le porte (« sudo sh $DEV/mise-a-jour.sh --force »), puis refaire cette étape ; s'il existe un docker-compose.yml.nouveau, le comparer et le prendre"
+    mkdir -p "$PAQUETS_PROD" && chmod 755 "$PAQUETS_PROD" || die "impossible de créer $PAQUETS_PROD"
+    etape "dossier partagé des paquets : $PAQUETS_PROD (créé ou déjà là ; le site de dev y dépose le paquet de la mise à jour, l'activation de la production le lit)."
+    # le .env du site de dev dit quel dossier monter (jamais écrasé : une ligne de plus seulement)
+    if ! grep -q '^MAVERICK_DOSSIER_PAQUETS=' "$DEV/.env" 2>/dev/null; then
+      # le dossier (réel) et l'option vide : lecture-écriture (sans eux, le docker-compose.yml ne monte que /dev/null en lecture seule)
+      printf 'MAVERICK_DOSSIER_PAQUETS=%s\nMAVERICK_PAQUETS_OPTION=\n' "$PAQUETS_PROD" >> "$DEV/.env" || die "$DEV/.env n'a pas pu être complété (MAVERICK_DOSSIER_PAQUETS=$PAQUETS_PROD)"
+      etape ".env du site de dev : MAVERICK_DOSSIER_PAQUETS=$PAQUETS_PROD et MAVERICK_PAQUETS_OPTION= (lecture-écriture) ajoutés."
+    else
+      etape ".env du site de dev : MAVERICK_DOSSIER_PAQUETS est déjà réglé ($(sed -n 's/^MAVERICK_DOSSIER_PAQUETS=//p' "$DEV/.env" | head -n 1))."
+      grep -q '^MAVERICK_PAQUETS_OPTION=' "$DEV/.env" || { printf 'MAVERICK_PAQUETS_OPTION=\n' >> "$DEV/.env" && etape ".env du site de dev : MAVERICK_PAQUETS_OPTION= (lecture-écriture) ajouté."; }
+    fi
+    provisoire=$(mktemp "$DEV/db/.bascule-2.XXXXXX")
+    trap 'rm -f "$provisoire"' EXIT
+    {
+      echo "format=maverick-bascule-2/1"
+      echo "pose_le=$(iso_de "$(instant)")"
+      echo "version=$(sed -n 's/^tag=//p' "$DEV/VERSION" | head -n 1)"
+      echo "paquets=$PAQUETS_PROD"
+    } > "$provisoire"
+    chmod 644 "$provisoire"
+    mv -f -T "$provisoire" "$MARQUEUR_2" || die "le marqueur n'a pas pu être posé"
+    trap - EXIT
+    noter BASCULE_2_POSE_LE "$(instant)"
+    etape "marqueur posé : $MARQUEUR_2 (lu à chaque fois par le service : sans redémarrage)."
+    # le service est recréé pour monter le dossier partagé (le volume est lu au démarrage du conteneur)
+    compose up -d serveur >/dev/null 2>&1 || die "le service du site de dev n'a pas pu être recréé (docker compose up -d serveur, dans $DEV) : le marqueur est posé, le dossier partagé ne sera monté qu'à sa prochaine création ; retour arrière : « bascule.sh retirer-bascule-2 »"
+    etape "service du site de dev recréé (le dossier partagé des paquets est monté)."
+    etape "bascule 2 allumée sur le site de dev : « Effectuer la mise à jour » exige le dernier code installé et un contenu sans problème, puis dépose le paquet dans $PAQUETS_PROD. Rien ne change en production tant que $PROD/activation-par-paquet n'existe pas."
+    ;;
+
+  retirer-bascule-2)
+    if [ ! -e "$MARQUEUR_2" ] && [ ! -L "$MARQUEUR_2" ]; then
+      etape "aucun marqueur de la bascule 2 à retirer ($MARQUEUR_2)."
+      exit 0
+    fi
+    garde="$DEV/db/bascule-2-retire-$(nom_de_copie "$(instant)")"
+    [ ! -e "$garde" ] || die "$garde existe déjà"
+    mv -T "$MARQUEUR_2" "$garde" || die "le marqueur n'a pas pu être retiré"
+    noter BASCULE_2_RETIRE_LE "$(instant)"
+    etape "marqueur de la bascule 2 retiré (gardé sous $garde) : le service du site de dev redevient celui d'avant (rien n'est déposé pour la production). $PROD/paquets/ n'est pas touché."
+    # le montage aussi : les deux lignes du .env sont retirées (le fichier est réécrit d'un coup), le service recréé (le volume ne se change qu'à la création du conteneur)
+    if grep -q '^MAVERICK_\(DOSSIER_PAQUETS\|PAQUETS_OPTION\)=' "$DEV/.env" 2>/dev/null; then
+      env_provisoire=$(mktemp "$DEV/.env.XXXXXX")
+      if grep -v '^MAVERICK_\(DOSSIER_PAQUETS\|PAQUETS_OPTION\)=' "$DEV/.env" > "$env_provisoire"; chmod --reference="$DEV/.env" "$env_provisoire" 2>/dev/null; mv -f -T "$env_provisoire" "$DEV/.env"; then
+        etape ".env du site de dev : MAVERICK_DOSSIER_PAQUETS et MAVERICK_PAQUETS_OPTION retirés (le montage redevient /dev/null en lecture seule)."
+      else
+        rm -f "$env_provisoire"; etape "ATTENTION $DEV/.env n'a pas pu être nettoyé : retirer à la main les lignes MAVERICK_DOSSIER_PAQUETS et MAVERICK_PAQUETS_OPTION."
+      fi
+    fi
+    compose up -d serveur >/dev/null 2>&1 && etape "service du site de dev recréé (plus de dossier partagé des paquets)." || etape "ATTENTION le service du site de dev n'a pas pu être recréé (docker compose up -d serveur, dans $DEV) : le faire à la main."
     ;;
 
   copies)

@@ -31,6 +31,7 @@ import { CLASSES_DE_TABLES } from '../src/lib/tables-de-la-base.mjs';
 import { etatDeLaProduction, lireAttestation } from './attestation.mjs';
 import { DOSSIER_ARCHIVES, FICHIER_BASE, integrerLivrees, viderBrouillonLivre } from './base-vivante.mjs';
 import { controlerLeContenu } from './controles-du-contenu.mjs';
+import { deposerLeDernierPaquetLivre, deposerLePaquet } from './paquets-de-la-production.mjs';
 import { empreintesDuContenu, tablesDeLaBase } from './empreintes.mjs';
 import { fabriquerExtrait } from './extrait.mjs';
 import { instant as ecrireInstant } from './instant.mjs';
@@ -344,7 +345,7 @@ export async function figerPaquet(db, dossier, options) {
 }
 
 async function figerLePaquet(db, dossier, { mode, versionDev = null, versionCible = null, instant, confirmation, adresse, etat = 'envoi', aLivrer = null,
-  limites = LIMITES_DES_LANCEMENTS, reference = null, production = {}, enArrierePlan = true, bascule2 = false, livraisons = null, codeDuService = null }) {
+  limites = LIMITES_DES_LANCEMENTS, reference = null, production = {}, enArrierePlan = true, bascule2 = false, livraisons = null, codeDuService = null, paquets = null, journal = () => {} }) {
   const copie = mode === 'copie';
   const simulation = mode === 'simulation';
   const { recents } = controlerLeLancement(db, dossier, {
@@ -385,6 +386,8 @@ async function figerLePaquet(db, dossier, { mode, versionDev = null, versionCibl
       throw new ErreurNotes(409, 'Le texte de la note ou la case « Version majeure » a changé pendant la préparation du paquet : rechargez la page et relancez.');
     }
     renameSync(neuf, fichierPaquet(dossier, id));
+    // bascule 2 (db/bascule-2 : `paquets` n'est donné qu'avec lui) : la mise à jour part aussi dans le dossier partagé de la production, que son activation lit (PR 5a) ; ni une simulation ni une copie
+    if (paquets && mode === 'mise-a-jour') deposerLePaquet({ dossier: paquets, source: fichierPaquet(dossier, id), version: versionCible, lot: id, journal });
     try {
       purgerLesPaquets(db, dossier);
     } catch {
@@ -504,7 +507,7 @@ function paquetsNonReportes(db, dossier) {
  * d'avant (une copie se termine avec son run et n'écrit rien dans la base source). Un report qui échoue garde l'état et dit l'erreur (`erreur_report`) ; il est
  * retenté au prochain suivi. Rend l'état du lancement.
  */
-export function actualiser(db, dossier, { reference = null, journal = () => {} } = {}) {
+export function actualiser(db, dossier, { reference = null, journal = () => {}, paquets = null } = {}) {
   const l = lireLancement(dossier);
   for (const id of paquetsNonReportes(db, dossier)) {
     if (!noteLivree(reference, id)) continue;
@@ -522,6 +525,8 @@ export function actualiser(db, dossier, { reference = null, journal = () => {} }
     }
   }
   garderLesPaquetsLivres(db, dossier, { journal }); // garde-fou 19 : le paquet qui vient d'être reporté (ou un livré d'avant) est gardé (les PAQUETS_LIVRES_GARDES derniers)
+  // bascule 2 (`paquets` : le dossier partagé de la production, donné seulement avec db/bascule-2) : le dernier paquet livré est en place chez elle, de quoi recontrôler un correctif urgent (activer.sh --correctif)
+  if (paquets) deposerLeDernierPaquetLivre({ dossier: paquets, livres: dossierDesPaquetsLivres(dossier), journal });
   const actuel = lireLancement(dossier);
   if (!actuel?.paquet || actuel.simulation || actuel.copie) return actualiserLancement(db, dossier, { reference });
   if (actuel.reporte_le) return actuel;

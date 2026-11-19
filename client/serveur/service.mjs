@@ -117,6 +117,8 @@ const inode = (chemin) => {
  *   change ; absent ou sans fichier, rien n'est protégé ; jamais lu sans l'édition (la production n'est pas concernée)
  * @param {string|null} [o.maintenance] dossier partagé de l'annonce de maintenance (MAVERICK_MAINTENANCE : le même pour les deux serveurs) ;
  *   sans lui, le site de dev se met en maintenance d'après son seul lancement et la production ne l'est jamais
+ * @param {string|null} [o.paquets] dossier partagé des paquets de la production (MAVERICK_PAQUETS ; lot 11, PR 5a, serveur/paquets-de-la-production.mjs) : le site de dev y dépose le paquet
+ *   de la mise à jour et y lit le rapport de l'activation, seulement avec le marqueur db/bascule-2 ; sans lui, rien n'y est écrit ni lu
  * @param {string} [o.versionParDefaut] version annoncée sans version.json (développement : celle de package.json)
  * @param {((message: string, options?: object) => void) | null} [o.journal] reçoit chaque ligne notée (sans horodatage) ; donné, la sortie console se tait
  *   (tests) ; sinon les lignes partent sur la console, horodatées
@@ -154,7 +156,7 @@ const inode = (chemin) => {
  *   par l'essai, ou d'une autre structure que le schema.sql livré : la promesse est rejetée, le service ne démarre pas
  */
 export async function demarrerService({ regles, dossier, hote = '127.0.0.1', port = 8787, intervalle = 15000, fichierVersion = null, edition = false,
-  reference = null, depot = 'Bravexier/MaverickCenter', adresse = null, jetonFichier = null, acces: reglageAcces = null, maintenance = null, versionParDefaut = 'développement',
+  reference = null, depot = 'Bravexier/MaverickCenter', adresse = null, jetonFichier = null, acces: reglageAcces = null, maintenance = null, paquets = null, versionParDefaut = 'développement',
   journal: ecouteur = null, journalDuService = null, relancer = () => process.exit(0), metriques: reglagesMetriques = {}, fetch: fetchDuClasseur = globalThis.fetch,
   tipeee: reglagesTipeee = {}, attestation: reglagesAttestation = {}, essaiDeStructure: reglagesEssai = {}, atelier: reglagesAtelier = {}, structure: reglagesStructure = {} }) {
   const lancementDuService = performance.now();
@@ -666,7 +668,7 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
             signal: abandon.signal },
           { base: baseMesuree, etat: decrire, journal, journalDuService: memoire, edition: Boolean(edition), dossier, reference: referenceDuSite, depot, adresse, github,
             maintenance: maintenanceDemandee, metriques, evenement, classeur, tipeee, extrait, attestations: dossierDesAttestations, acces, essaiDeStructure, atelier, source: estSource,
-            bascule2: enBascule2, gel, codeDuService: () => ({ commit: typeof version.commit === 'string' ? version.commit : null, empreinte: version.empreinte ?? null }) });
+            bascule2: enBascule2, paquets, gel, codeDuService: () => ({ commit: typeof version.commit === 'string' ? version.commit : null, empreinte: version.empreinte ?? null }) });
         } finally {
           const mesureSql = sql.terminer();
           if (mesure) mesure.sql = mesureSql;

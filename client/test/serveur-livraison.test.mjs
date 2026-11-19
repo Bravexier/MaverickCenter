@@ -22,7 +22,7 @@ test('modules livrés : l’entrée, le service, son journal, ses métriques (co
   assert.deepEqual(modulesDuServeur(), [
     'serveur/acces-routes.mjs', 'serveur/acces.mjs', 'serveur/api.mjs', 'serveur/atelier.mjs', 'serveur/attestation.mjs', 'serveur/base-source.mjs', 'serveur/base-vivante.mjs', 'serveur/classeur.mjs', 'serveur/controles-du-contenu.mjs', 'serveur/debug-tables.mjs', 'serveur/edition-armes.mjs', 'serveur/edition-armures.mjs', 'serveur/edition-bestiaire.mjs', 'serveur/edition-chronologie.mjs',
     'serveur/edition-composants.mjs', 'serveur/edition-conflits.mjs', 'serveur/edition-consommables.mjs', 'serveur/edition-corps.mjs', 'serveur/edition-journal.mjs', 'serveur/edition-lots.mjs', 'serveur/edition-maitrises.mjs', 'serveur/edition-mots-cles.mjs', 'serveur/edition-panneaux.mjs', 'serveur/edition-plan.mjs', 'serveur/edition.mjs', 'serveur/empreintes.mjs', 'serveur/essai-dans-l-ombre.mjs', 'serveur/essai-de-structure.mjs', 'serveur/extrait.mjs', 'serveur/fiches-retraits.mjs', 'serveur/fiches.mjs', 'serveur/gel.mjs', 'serveur/historique.mjs', 'serveur/index.mjs', 'serveur/instant.mjs',
-    'serveur/journal-du-service.mjs', 'serveur/maintenance.mjs', 'serveur/metriques-sql.mjs', 'serveur/metriques.mjs', 'serveur/notes-de-version.mjs', 'serveur/openapi.mjs', 'serveur/paquet.mjs', 'serveur/partage.mjs', 'serveur/ressources.mjs', 'serveur/service.mjs', 'serveur/structure-sur-place.mjs', 'serveur/tipeee.mjs', 'src/lib/accessoires-couleurs.mjs', 'src/lib/adresses-db.mjs', 'src/lib/alchimie-couleurs.mjs', 'src/lib/ancres-figees.mjs', 'src/lib/arme-champs.mjs', 'src/lib/arme-forge.mjs', 'src/lib/armes-db.mjs', 'src/lib/armes-de-famille.mjs', 'src/lib/armes-rendu.mjs', 'src/lib/armure-champs.mjs',
+    'serveur/journal-du-service.mjs', 'serveur/maintenance.mjs', 'serveur/metriques-sql.mjs', 'serveur/metriques.mjs', 'serveur/notes-de-version.mjs', 'serveur/openapi.mjs', 'serveur/paquet.mjs', 'serveur/paquets-de-la-production.mjs', 'serveur/partage.mjs', 'serveur/ressources.mjs', 'serveur/service.mjs', 'serveur/structure-sur-place.mjs', 'serveur/tipeee.mjs', 'src/lib/accessoires-couleurs.mjs', 'src/lib/adresses-db.mjs', 'src/lib/alchimie-couleurs.mjs', 'src/lib/ancres-figees.mjs', 'src/lib/arme-champs.mjs', 'src/lib/arme-forge.mjs', 'src/lib/armes-db.mjs', 'src/lib/armes-de-famille.mjs', 'src/lib/armes-rendu.mjs', 'src/lib/armure-champs.mjs',
     'src/lib/armure-forge.mjs', 'src/lib/armures-db.mjs', 'src/lib/armures-rendu.mjs', 'src/lib/atelier-bilan.mjs', 'src/lib/attributs-couleurs.mjs', 'src/lib/bestiaire-db.mjs', 'src/lib/bestiaire-rendu.mjs', 'src/lib/caracteristiques-postures.mjs', 'src/lib/cases-couleurs.mjs', 'src/lib/ceinture-db.mjs', 'src/lib/chronologie.mjs', 'src/lib/citations-db.mjs', 'src/lib/class-groups.mjs',
     'src/lib/classe-champs.mjs', 'src/lib/composants-champs.mjs', 'src/lib/composants-db.mjs', 'src/lib/corps-armes.mjs', 'src/lib/corps-armures.mjs', 'src/lib/corps-classes.mjs',
     'src/lib/corps-composants.mjs', 'src/lib/corps-magies.mjs', 'src/lib/corps-metiers.mjs', 'src/lib/corps-potions.mjs', 'src/lib/corps-races.mjs', 'src/lib/couleurs-ecrites.mjs', 'src/lib/debug-atelier.mjs', 'src/lib/dons-edition.mjs',
@@ -116,6 +116,7 @@ test('docker-compose.yml du NAS et des installateurs : un conteneur « serveur �
     // édition des règles (docs/serveur.md, « Édition ») : réglée par le .env de l'instance (1 sur le serveur de test), jamais sur le NAS
     // page « Mise à jour » (docs/serveur.md) : adresse publique et jeton GitHub du serveur de test, dans un dossier secrets/ en lecture seule
     const installateur = fichier.includes('installateur');
+    // paquets de la production (PR 5a de la bascule 2) : un dossier partagé monté comme celui de la maintenance, sans réglage /dev/null en lecture seule (la production est celle d'avant : aucun dossier créé, rien d'écrit) ; `poser-bascule-2` règle le dossier de la production et la lecture-écriture
     // maintenance pendant une mise à jour (docs/serveur.md) : un dossier d'annonce monté, celui de l'instance sauf réglage (serveur de test : celui du
     // serveur normal) ; le NAS d'avant la 0.2.0 n'a qu'un site, sans mise à jour depuis la page
     // métriques (serveur/metriques.mjs ; docs/serveur.md, « Métriques et volume ») : un dossier monté hors de db/ (partagé par les deux instances du
@@ -123,12 +124,12 @@ test('docker-compose.yml du NAS et des installateurs : un conteneur « serveur �
     // défaut (décision du propriétaire du 2026-10-15) et fermée par MAVERICK_METRIQUES_PAGES=0
     const edition = installateur
       ? { MAVERICK_EDITION: '${MAVERICK_EDITION:-0}', MAVERICK_ADRESSE_PUBLIQUE: '${MAVERICK_ADRESSE_PUBLIQUE:-}', MAVERICK_GITHUB_JETON_FICHIER: '/secrets/github-actions-token',
-        MAVERICK_MAINTENANCE: '/maintenance', MAVERICK_DOSSIER_METRIQUES: '/metriques', MAVERICK_INSTANCE: '${MAVERICK_INSTANCE:-}',
+        MAVERICK_MAINTENANCE: '/maintenance', MAVERICK_PAQUETS: '/paquets', MAVERICK_DOSSIER_METRIQUES: '/metriques', MAVERICK_INSTANCE: '${MAVERICK_INSTANCE:-}',
         MAVERICK_METRIQUES_BRUTES: '${MAVERICK_METRIQUES_BRUTES:-0}', MAVERICK_METRIQUES_PAGES: '${MAVERICK_METRIQUES_PAGES:-1}', MAVERICK_PRODUCTION: '/production' }
       : {};
     assert.deepEqual(serveur.environment, { HOST: '0.0.0.0', PORT: '8787', MAVERICK_REGLES: '/site/donnees/maverick.db', MAVERICK_DB: '/db', ...edition }, fichier);
     assert.deepEqual(serveur.volumes, ['./site:/site:ro', './db:/db',
-      ...(installateur ? ['./secrets:/secrets:ro', '${MAVERICK_DOSSIER_MAINTENANCE:-./maintenance}:/maintenance', '${MAVERICK_DOSSIER_METRIQUES:-./metriques}:/metriques', '${MAVERICK_DOSSIER_PRODUCTION:-../maverick-center/site}:/production:ro'] : [])], fichier);
+      ...(installateur ? ['./secrets:/secrets:ro', '${MAVERICK_DOSSIER_MAINTENANCE:-./maintenance}:/maintenance', '${MAVERICK_DOSSIER_PAQUETS:-/dev/null}:/paquets${MAVERICK_PAQUETS_OPTION-:ro}', '${MAVERICK_DOSSIER_METRIQUES:-./metriques}:/metriques', '${MAVERICK_DOSSIER_PRODUCTION:-../maverick-center/site}:/production:ro'] : [])], fichier);
     assert.ok(compose.services['maverick-center'].volumes.includes('./site:/usr/share/nginx/html:ro'), fichier);
   }
   assert.match(YAML.parse(lire('deploy/installateur/docker-compose.yml')).services.serveur.container_name, /^\$\{MAVERICK_CONTENEUR:-maverick-center\}-serveur$/,

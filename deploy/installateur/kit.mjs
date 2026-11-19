@@ -6,7 +6,7 @@
 //   - client/ avec ses node_modules (aucun lien qui sorte du kit : un node_modules relié à un autre dossier est lu par son chemin réel, ses modules sont alors dupliqués
 //     et le site fabriqué n'est plus celui de la CI), sans dist/, .astro/, src/content/wiki/, test/, var/, ni ce que git ignore ;
 //   - data/schema.sql, data/derive.sql, data/migrations/ (le schéma et ses registres : du code) ;
-//   - sources/sources.json, sources/copies-drive.json (le registre des copies du Drive : lib/archives.mjs le lit au build) et sources/tipeee/bienvenue.json (la page Archives et l'accueil les lisent) ;
+//   - sources/sources.json, sources/copies-drive.json et sources/tipeee/bienvenue.json (la page Archives et l'accueil les lisent ; copies-drive.json : le registre des identifiants de copies, lu par lib/archives.mjs : sans lui le build échoue) ;
 //   - .nvmrc (la version de Node).
 // Élagage : les modules natifs d'une autre plateforme, d'une autre architecture ou d'une autre libc (musl contre glibc : les deux variantes sont installées) sont
 // retirés selon ce que leur propre package.json déclare (`os`, `cpu`, `libc`) : le critère de npm lui-même, jamais une liste de noms. Ils ne servent jamais ici.

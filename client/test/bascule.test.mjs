@@ -5,11 +5,12 @@
 // sauvegarde nommée, aussi sqlite3 et flock (outils des sauvegardes) : sinon ces tests sont ignorés.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { chmodSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync, appendFileSync, utimesSync } from 'node:fs';
+import { chmodSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, symlinkSync, writeFileSync, appendFileSync, utimesSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
+import { estEnBascule2 } from '../serveur/base-source.mjs';
 import { empreintesDuContenu } from '../serveur/empreintes.mjs';
 import { dossierTemporaire, variablesTemporaires } from './aide-dossier-temporaire.mjs';
 
@@ -329,4 +330,87 @@ test('restaurer --exterieure refuse une copie de la production (chemin et copie.
   assert.ok(!existsSync(m.d('dev', 'var')) && !existsSync(m.d('dev', 'GELER')));
   assert.equal(existsSync(m.d('docker.log')) && /stop/.test(m.docker()), false, 'le service n’a pas été arrêté');
   assert.deepEqual(readdirSync(m.d('sauv')).filter((f) => f.startsWith('.restauration')), [], 'le dossier de la restauration est effacé');
+});
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+// PR 5a de la bascule 2 : db/bascule-2, le marqueur du site de dev (poser-bascule-2 / retirer-bascule-2)
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+
+test('poser-bascule-2 : refusé sans db/source, ou si le docker-compose.yml du site de dev ne monte pas le dossier partagé ; rien n’est créé', { skip }, (t) => {
+  const m = creerMonde(t);
+  let r = m.lancer('poser-bascule-2');
+  assert.equal(r.code, 1, r.out);
+  assert.match(r.out, /REFUS : .*db\/source n'existe pas : la base du site de dev n'est pas encore la source de vérité/);
+  assert.equal(existsSync(m.d('dev', 'db', 'bascule-2')), false);
+  assert.equal(existsSync(m.d('prod', 'paquets')), false);
+  writeFileSync(m.d('dev', 'db', 'source'), 'format=maverick-source/1\n');
+  writeFileSync(m.d('dev', 'docker-compose.yml'), 'services: {}\n');
+  r = m.lancer('poser-bascule-2');
+  assert.equal(r.code, 1, r.out);
+  assert.match(r.out, /REFUS : le docker-compose\.yml de .* ne monte pas le dossier partagé des paquets \(MAVERICK_DOSSIER_PAQUETS\) : installer d'abord une livraison de test/);
+  assert.equal(existsSync(m.d('dev', 'db', 'bascule-2')), false, 'aucun marqueur sans le montage');
+  assert.equal(existsSync(m.d('prod', 'paquets')), false, 'aucun dossier créé avant que tout soit en ordre');
+  // un lien à la place du dossier partagé : refus
+  symlinkSync(m.d('dev'), m.d('prod', 'paquets'));
+  writeFileSync(m.d('dev', 'docker-compose.yml'), '- ${MAVERICK_DOSSIER_PAQUETS:-./paquets}:/paquets\n');
+  r = m.lancer('poser-bascule-2');
+  assert.equal(r.code, 1);
+  assert.match(r.out, /REFUS : .*paquets n'est pas un dossier ordinaire/);
+  assert.equal(existsSync(m.d('dev', 'db', 'bascule-2')), false);
+});
+
+test('poser-bascule-2 : le dossier partagé créé (755), la ligne du .env, le marqueur écrit d’un coup, le service recréé ; état ; une seconde pose refusée ; retirer-bascule-2 renomme sans rien effacer', { skip }, (t) => {
+  const m = creerMonde(t);
+  writeFileSync(m.d('dev', 'db', 'source'), 'format=maverick-source/1\n');
+  writeFileSync(m.d('dev', 'docker-compose.yml'), '- ${MAVERICK_DOSSIER_PAQUETS:-./paquets}:/paquets\n');
+  writeFileSync(m.d('dev', '.env'), 'MAVERICK_PORT=8081\n');
+  let r = m.lancer('poser-bascule-2');
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /dossier partagé des paquets : .*prod\/paquets/);
+  assert.match(r.out, /\.env du site de dev : MAVERICK_DOSSIER_PAQUETS=.*prod\/paquets et MAVERICK_PAQUETS_OPTION= \(lecture-écriture\) ajoutés/);
+  assert.match(r.out, /marqueur posé : .*db\/bascule-2 \(lu à chaque fois par le service : sans redémarrage\)/);
+  assert.match(r.out, /service du site de dev recréé/);
+  assert.match(r.out, /Rien ne change en production tant que .*activation-par-paquet n'existe pas/);
+  const marqueur = readFileSync(m.d('dev', 'db', 'bascule-2'), 'utf8');
+  assert.match(marqueur, /^format=maverick-bascule-2\/1\npose_le=.*\nversion=V0\.4\.98\npaquets=.*prod\/paquets\n$/);
+  assert.equal(readFileSync(m.d('dev', '.env'), 'utf8'), `MAVERICK_PORT=8081\nMAVERICK_DOSSIER_PAQUETS=${m.d('prod', 'paquets')}\nMAVERICK_PAQUETS_OPTION=\n`);
+  assert.ok(statSync(m.d('prod', 'paquets')).isDirectory());
+  assert.equal(statSync(m.d('prod', 'paquets')).mode & 0o777, 0o755);
+  assert.deepEqual(readdirSync(m.d('dev', 'db')).filter((f) => f.startsWith('.bascule-2')), [], 'aucun fichier provisoire');
+  assert.match(m.docker(), /compose up -d serveur/);
+  // le même service que le marqueur lit : estEnBascule2 (avec la base source), sans rien d'autre
+  assert.equal(estEnBascule2(m.d('dev', 'db')), true);
+  r = m.lancer('etat');
+  assert.match(r.out, /bascule 2 : marqueur POSÉ \(.*db\/bascule-2\) : format=maverick-bascule-2\/1 pose_le=/);
+  r = m.lancer('poser-bascule-2');
+  assert.equal(r.code, 1);
+  assert.match(r.out, /REFUS : .*db\/bascule-2 existe déjà/);
+  // le .env déjà réglé n'est pas complété une seconde fois
+  r = m.lancer('retirer-bascule-2');
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /marqueur de la bascule 2 retiré \(gardé sous .*db\/bascule-2-retire-/);
+  assert.match(r.out, /\.env du site de dev : MAVERICK_DOSSIER_PAQUETS et MAVERICK_PAQUETS_OPTION retirés \(le montage redevient \/dev\/null en lecture seule\)/);
+  assert.match(r.out, /service du site de dev recréé \(plus de dossier partagé des paquets\)/);
+  assert.equal(readFileSync(m.d('dev', '.env'), 'utf8'), 'MAVERICK_PORT=8081\n', 'le .env d\'avant, sans rien d\'autre');
+  assert.equal(existsSync(m.d('dev', 'db', 'bascule-2')), false);
+  assert.equal(readdirSync(m.d('dev', 'db')).filter((f) => f.startsWith('bascule-2-retire-')).length, 1, 'rien n\'est effacé : le marqueur est renommé');
+  assert.equal(estEnBascule2(m.d('dev', 'db')), false);
+  assert.ok(existsSync(m.d('prod', 'paquets')), 'paquets/ n\'est pas touché');
+  assert.match(m.lancer('retirer-bascule-2').out, /aucun marqueur de la bascule 2 à retirer/);
+  assert.match(m.lancer('etat').out, /bascule 2 : marqueur absent/);
+  // poser de nouveau : le marqueur et les deux lignes du .env reviennent
+  r = m.lancer('poser-bascule-2');
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /\.env du site de dev : MAVERICK_DOSSIER_PAQUETS=.*ajoutés/);
+});
+
+test('poser-bascule-2 : un .env qui règle déjà le dossier des paquets (sans l\'option) est complété de la lecture-écriture, une seule fois ; le dossier réglé n\'est pas changé', { skip }, (t) => {
+  const m = creerMonde(t);
+  writeFileSync(m.d('dev', 'db', 'source'), 'format=maverick-source/1\n');
+  writeFileSync(m.d('dev', 'docker-compose.yml'), '- ${MAVERICK_DOSSIER_PAQUETS:-/dev/null}:/paquets${MAVERICK_PAQUETS_OPTION-:ro}\n');
+  writeFileSync(m.d('dev', '.env'), 'MAVERICK_DOSSIER_PAQUETS=/ailleurs/paquets\n');
+  const r = m.lancer('poser-bascule-2');
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /MAVERICK_DOSSIER_PAQUETS est déjà réglé \(\/ailleurs\/paquets\)/);
+  assert.equal(readFileSync(m.d('dev', '.env'), 'utf8'), 'MAVERICK_DOSSIER_PAQUETS=/ailleurs/paquets\nMAVERICK_PAQUETS_OPTION=\n');
 });

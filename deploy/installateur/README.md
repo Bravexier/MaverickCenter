@@ -190,6 +190,47 @@ sudo sh /srv/maverick-center/gel.sh lever                                       
   l'échéance. Un fichier illisible tient le gel 2 h au plus. Sans fichier, rien ne change. Détail : `docs/serveur.md`, « Bascule 2 : préparation ».
 - Il ne touche ni la base, ni le service, ni le fichier `GELER` (celui-ci suspend les mises à jour automatiques).
 
+## Activer un kit avec son paquet (`activer.sh`, production)
+
+`activer.sh` et `activation-conteneur.sh` sont livrés à la racine de la **production** (remplacés à chaque installation ; jamais dans l'instance de test). **Éteint par défaut** : sans
+le fichier `activation-par-paquet` (que vous posez en root le jour J : `sudo touch /srv/maverick-center/activation-par-paquet`), `activer.sh` refuse tout de suite (« éteinte », code 2),
+l'installateur de production n'ajoute que le test de ce fichier. **Ce qui change quand même en production** : les deux scripts sont posés (inertes), le `docker-compose.yml` livré monte `/dev/null` en lecture seule sur `/paquets` (aucun dossier créé, rien d'écrivable ; appliqué au prochain `docker compose up -d`) ; ni service, ni site, ni base ne sont touchés. Avec lui, l'installateur de production crée l'utilisateur système `maverick-site`,
+lui donne `site/` **sauf** `site/_serveur/` (le code que le service exécute, qui reste à root ; `find -P … -exec chown -h`, jamais un lien suivi) et, quand le kit est posé
+(`activation/kit/kit.json`), lance `activer.sh`. Son refus ne fait jamais échouer l'installation.
+
+```bash
+sudo bash /srv/maverick-center/activer.sh                  # le kit posé dans activation/kit/ avec son paquet (paquets/<X.Y>-<lot>.db, déposé par le site de dev)
+sudo bash /srv/maverick-center/activer.sh --reprendre      # rejouer après une correction ; remet d'abord site.precedent/ si une activation a été interrompue pendant sa bascule
+sudo bash /srv/maverick-center/activer.sh --correctif      # correctif urgent : le dernier paquet activé est recontrôlé avec le nouveau kit, les pages refaites avec lui
+```
+
+- **Ce que root fait** : des `stat` du paquet (fichier ordinaire, pas un lien, de taille plafonnée : refus avant toute lecture), un `sqlite3 .backup` de la base de la production, `gel.sh`,
+  `docker compose stop/up`, quelques déplacements. Tout ce qui ouvre le paquet ou fabrique des pages tourne dans un **conteneur sans réseau, sans capacité, en lecture seule, utilisateur
+  65534** (le même durcissement que l'atelier) : il copie le paquet, calcule son empreinte et la compare à celle que **le kit** annonce (`kit.json#paquet.empreinte`, venue de GitHub : la
+  seule à laquelle la production fait confiance), contrôle (structure, notes de version, contenu réel, base de la production refaite avec ses fiches sur la copie), puis fabrique
+  tout le site avec `SITE_MODE=prod`. Root ne lit que des JSON plafonnés, après `docker rm`.
+- **Le service vient du kit seul** : `_serveur/` est fabriqué par `livrerServeur` du kit dans un conteneur sans paquet ni contenu ; jamais celui que la fabrication des pages a laissé.
+- **La bascule courte** : gel des écritures (45 min au plus), service arrêté, base mise de côté (`activation/base-avant/`, empreinte sha256 gardée), `site/` copié dans
+  `site.precedent/`, pages posées (sous `maverick-site`), `_serveur/` posé (sous root, par un autre conteneur sans capacité, `version.json` en dernier), service relancé, **contrôle de
+  santé** (5 min au plus : `/api/etat` répond, la base est prête, la version est celle du kit), gel levé. **Échec** : retour automatique (le site précédent reposé, la base remise si le
+  nouveau service l'avait refaite, le gel levé).
+- **Les refus** disent les chiffres et le geste exact (mémoire et disque : les règles de l'atelier ; paquet absent, lien, irrégulier ou trop gros ; empreinte, structure, note de version
+  manquante, version en arrière, contenu, fiches). Sortie en comptes, jamais un nom de fiche. Dernière ligne : `== PASSEE`, `== REFUSEE : …`, `== RETOUR AUTOMATIQUE : …` ou
+  `== IMPOSSIBLE : …`. Le rapport est dans `activation/rapport.json` et laissé dans `paquets/activation.json`, où la page Mise à jour du site de dev le lit.
+- **Réglages** : `activation/reglages.env` (à root : `MEMOIRE_MAX_KO`, `BESOIN_KO`, `DISQUE_MIN_KO`, `DELAI_S`, `CPUS`, `GOOGLE_CLIENT_ID`), relus champ par champ.
+- **Le dossier partagé `paquets/`** : celui de la production, monté dans les deux services (`MAVERICK_DOSSIER_PAQUETS` dans le `.env` du site de dev). `bascule.sh poser-bascule-2` le crée
+  et pose `db/bascule-2` (« La base source du site de dev »).
+
+## Le marqueur de la bascule 2 (`db/bascule-2`, `bascule.sh`)
+
+```bash
+sudo bash /srv/maverick-center-test/bascule.sh poser-bascule-2      # refusé sans db/source ; crée paquets/ de la production, le monte dans le service du site de dev, pose db/bascule-2
+sudo bash /srv/maverick-center-test/bascule.sh retirer-bascule-2    # retour arrière : marqueur renommé (rien n'est effacé), le service du site de dev redevient celui d'avant
+```
+
+`poser-bascule-2` pose aussi dans le `.env` du site de dev `MAVERICK_DOSSIER_PAQUETS=<le paquets/ de la production>` et `MAVERICK_PAQUETS_OPTION=` (lecture-écriture) ; `retirer-bascule-2` les retire et recrée le service. Le service lit le marqueur à chaque fois (pas de redémarrage). Avec lui, « Effectuer la mise à jour » refuse un code pas à jour et un contenu rouge, et dépose le paquet dans `paquets/` ;
+le dernier paquet livré y est aussi gardé (de quoi rejouer `activer.sh --correctif`). Détail : `docs/serveur.md`, « Bascule 2 : préparation », « PR 5a ».
+
 ## Répétition de la mise à jour de la production (`repetition-prod.sh`)
 
 Posé par l'installateur de test à côté de `bascule.sh`. Il joue, sur une **copie** de la base de la production, ce que fera la dernière mise à jour par

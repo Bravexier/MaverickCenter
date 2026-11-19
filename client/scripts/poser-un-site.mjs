@@ -14,7 +14,12 @@
 //   4. retire de la cible les fichiers et dossiers que la source n'a pas ;
 //   5. n'ouvre, ne lit, ne modifie ni ne retire JAMAIS `_serveur/` (le code du service, que l'installateur pose) ;
 //   6. écrit le résumé : posés, retirés, inchangés, pages, refus éventuel.
-// Codes de sortie : 0 posé ; 81 index.html absent ; 82 site_trop_petit ; 83 fichier irrégulier dans la source ; 84 `_serveur` dans la source ; 85 source illisible ; 86 échec en cours de pose ; 2 usage.
+// Avec `--serveur` (l'activation en production, deploy/installateur/activer.sh ; docs/serveur.md, « PR 5a ») : la source et la cible sont deux dossiers `_serveur` (le code que le service exécute),
+//   posés l'un sur l'autre par le même moyen (lstat, aucun lien suivi, fichier par fichier atomique, ce que la source n'a pas est retiré) ; `serveur/index.mjs` et `version.json` doivent être dans la
+//   source (87), et `version.json`, que le service surveille pour se relancer, est posé EN DERNIER (jamais un service relancé sur un code à moitié posé). Ni page, ni minimum de pages.
+// Avec `--sans-le-serveur-de-la-source` : un `_serveur` que la source porte (le site fabriqué par le kit, ou le site précédent mis de côté) est ignoré au lieu d'être refusé (84) ; la
+//   cible n'est toujours jamais touchée dans son `_serveur`. L'activation pose ainsi les pages, puis le service par `--serveur`.
+// Codes de sortie : 0 posé ; 81 index.html absent ; 82 site_trop_petit ; 83 fichier irrégulier dans la source ; 84 `_serveur` dans la source ; 85 source illisible ; 86 échec en cours de pose ; 87 service incomplet (--serveur) ; 2 usage.
 import { closeSync, constants, copyFileSync, chmodSync, fstatSync, lstatSync, mkdirSync, openSync, readSync, readdirSync, renameSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -22,10 +27,12 @@ import { pathToFileURL } from 'node:url';
 export const FORMAT_DE_LA_POSE = 'maverick-pose/1';
 export const DOSSIER_PROTEGE = '_serveur';
 export const MINIMUM_DE_PAGES_PAR_DEFAUT = 90;
-export const CODES = Object.freeze({ index_absent: 81, site_trop_petit: 82, fichier_irregulier: 83, serveur_dans_la_source: 84, source_illisible: 85, echec: 86 });
+export const CODES = Object.freeze({ index_absent: 81, site_trop_petit: 82, fichier_irregulier: 83, serveur_dans_la_source: 84, source_illisible: 85, echec: 86, serveur_incomplet: 87 });
 const PROVISOIRE = /^\.pose-[0-9]+-[0-9]+\.tmp$/;
 const PLAFOND_DE_FICHIERS = 1_000_000;
 const estPage = (rel) => rel.endsWith('.html');
+/** Avec `--serveur` : le fichier que le service surveille pour se relancer, posé en dernier. */
+export const FICHIER_DERNIER = 'version.json';
 
 export class RefusDePose extends Error {
   constructor(refus, plus = {}) {
@@ -93,22 +100,25 @@ function assurerLesDossiers(cible, rel) {
 
 /**
  * Pose `source` sur `cible`. Rend le résumé (`maverick-pose/1`) ; lève `RefusDePose` quand un garde-fou refuse (rien n'a été posé), ou `Error` en cas d'échec en cours de pose.
- * @param {{ source: string, cible: string, minimumPct?: number }} o
+ * @param {{ source: string, cible: string, minimumPct?: number, serveur?: boolean, ignorerLeServeur?: boolean }} o `serveur` : la source et la cible sont deux dossiers `_serveur` (le code du service,
+ *   `version.json` posé en dernier) ; `ignorerLeServeur` : le `_serveur` que la source porte est ignoré (jamais posé, jamais compté).
  */
-export function poserUnSite({ source, cible, minimumPct = MINIMUM_DE_PAGES_PAR_DEFAUT }) {
+export function poserUnSite({ source, cible, minimumPct = MINIMUM_DE_PAGES_PAR_DEFAUT, serveur = false, ignorerLeServeur = false }) {
   const debut = Date.now();
   const racine = existe(source);
   if (!racine || !racine.isDirectory()) throw new RefusDePose('source_illisible', { cause: 'la source n’est pas un dossier (ou est un lien)' });
   const cibleStat = existe(cible);
   if (!cibleStat || !cibleStat.isDirectory()) throw new RefusDePose('source_illisible', { cause: 'la cible n’est pas un dossier' });
   let neuf;
-  try { neuf = lire(source, { protege: true }); } catch (e) { if (e instanceof RefusDePose) throw e; throw new RefusDePose('source_illisible', { cause: String(e.code ?? e.message).slice(0, 80) }); }
+  try { neuf = lire(source, { protege: !serveur }); } catch (e) { if (e instanceof RefusDePose) throw e; throw new RefusDePose('source_illisible', { cause: String(e.code ?? e.message).slice(0, 80) }); }
   if (neuf.irreguliers.length) throw new RefusDePose('fichier_irregulier', { nombre: neuf.irreguliers.length, exemples: neuf.irreguliers.slice(0, 3) });
-  if (neuf.dedans) throw new RefusDePose('serveur_dans_la_source', {});
-  if (neuf.fichiers.get('index.html') === undefined) throw new RefusDePose('index_absent', {});
-  const pagesFabriquees = [...neuf.fichiers.keys()].filter(estPage).length;
-  const ancien = lire(cible, { protege: true });
-  const pagesServies = [...ancien.fichiers.keys()].filter(estPage).length;
+  if (!serveur && !ignorerLeServeur && neuf.dedans) throw new RefusDePose('serveur_dans_la_source', {});
+  if (serveur) {
+    if (neuf.fichiers.get('serveur/index.mjs') === undefined || neuf.fichiers.get(FICHIER_DERNIER) === undefined) throw new RefusDePose('serveur_incomplet', {});
+  } else if (neuf.fichiers.get('index.html') === undefined) throw new RefusDePose('index_absent', {});
+  const pagesFabriquees = serveur ? 0 : [...neuf.fichiers.keys()].filter(estPage).length;
+  const ancien = lire(cible, { protege: !serveur });
+  const pagesServies = serveur ? 0 : [...ancien.fichiers.keys()].filter(estPage).length;
   const minimum = Math.ceil((pagesServies * minimumPct) / 100);
   if (pagesFabriquees < minimum) throw new RefusDePose('site_trop_petit', { pages_fabriquees: pagesFabriquees, pages_servies: pagesServies, minimum_de_pages: minimum, minimum_pct: minimumPct });
 
@@ -138,13 +148,15 @@ export function poserUnSite({ source, cible, minimumPct = MINIMUM_DE_PAGES_PAR_D
   };
   try {
     const noms = [...neuf.fichiers.keys()].sort();
-    for (const rel of noms) if (!estPage(rel)) poser(rel); // les ressources d'abord : une page posée ne doit jamais citer un fichier absent
-    for (const rel of noms) if (estPage(rel)) poser(rel);
+    // les ressources d'abord : une page posée ne doit jamais citer un fichier absent ; pour le service, `version.json` (que le service surveille) en dernier
+    const dernier = (rel) => (serveur ? rel === FICHIER_DERNIER : estPage(rel));
+    for (const rel of noms) if (!dernier(rel)) poser(rel);
+    for (const rel of noms) if (dernier(rel)) poser(rel);
     // ce que la source n'a pas : retiré (fichiers, liens et dossiers de la cible ; `_serveur` jamais regardé)
     const retirer = (rel) => {
       for (const entree of readdirSync(rel ? join(cible, rel) : cible, { withFileTypes: true })) {
         const enfant = rel ? `${rel}/${entree.name}` : entree.name;
-        if (!rel && entree.name === DOSSIER_PROTEGE) continue;
+        if (!serveur && !rel && entree.name === DOSSIER_PROTEGE) continue;
         const s = lstatSync(join(cible, enfant));
         if (s.isDirectory() && !s.isSymbolicLink()) {
           if (neuf.dossiers.has(enfant)) retirer(enfant);
@@ -173,16 +185,19 @@ function ecrireLeResume(chemin, resume) {
 
 /** La ligne de commande : rend le code de sortie. */
 export function principal(argv) {
-  const o = { minimumPct: MINIMUM_DE_PAGES_PAR_DEFAUT };
-  for (let i = 0; i < argv.length; i += 2) {
+  const o = { minimumPct: MINIMUM_DE_PAGES_PAR_DEFAUT, serveur: false, ignorerLeServeur: false };
+  const usage = () => { console.error('Usage : poser-un-site.mjs --source <site fabriqué> --cible <site servi> --resume <fichier.json> [--minimum-pct 0..100] [--serveur | --sans-le-serveur-de-la-source]'); return 2; };
+  for (let i = 0; i < argv.length; i += 1) {
     const valeur = argv[i + 1];
-    if (argv[i] === '--source' && valeur) o.source = valeur;
-    else if (argv[i] === '--cible' && valeur) o.cible = valeur;
-    else if (argv[i] === '--resume' && valeur) o.resume = valeur;
-    else if (argv[i] === '--minimum-pct' && /^[0-9]{1,3}$/.test(valeur ?? '') && Number(valeur) <= 100) o.minimumPct = Number(valeur);
-    else { console.error('Usage : poser-un-site.mjs --source <site fabriqué> --cible <site servi> --resume <fichier.json> [--minimum-pct 0..100]'); return 2; }
+    if (argv[i] === '--serveur') o.serveur = true;
+    else if (argv[i] === '--sans-le-serveur-de-la-source') o.ignorerLeServeur = true;
+    else if (argv[i] === '--source' && valeur) { o.source = valeur; i += 1; }
+    else if (argv[i] === '--cible' && valeur) { o.cible = valeur; i += 1; }
+    else if (argv[i] === '--resume' && valeur) { o.resume = valeur; i += 1; }
+    else if (argv[i] === '--minimum-pct' && /^[0-9]{1,3}$/.test(valeur ?? '') && Number(valeur) <= 100) { o.minimumPct = Number(valeur); i += 1; }
+    else return usage();
   }
-  if (!o.source || !o.cible || !o.resume) { console.error('Usage : poser-un-site.mjs --source <site fabriqué> --cible <site servi> --resume <fichier.json> [--minimum-pct 0..100]'); return 2; }
+  if (!o.source || !o.cible || !o.resume || (o.serveur && o.ignorerLeServeur)) return usage();
   const resume = { format: FORMAT_DE_LA_POSE, pose: false, refus: null, posees: 0, retirees: 0, inchangees: 0, octets_poses: 0, pages_fabriquees: null, pages_servies: null, minimum_de_pages: null, minimum_pct: o.minimumPct };
   let code = 0;
   try {
