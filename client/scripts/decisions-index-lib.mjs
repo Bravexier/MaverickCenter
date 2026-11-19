@@ -1,13 +1,15 @@
 // Index des décisions (A3) : logique pure de scripts/decisions-index.mjs (npm run decisions:index), épinglée par test/decisions-index.test.mjs.
 // Lit le registre docs/decisions-regles.md (tableau Markdown, une ligne par décision R…) et produit docs/decisions-index.md : une ligne par
-// décision, `Rn | sujet | décision`, dans l'ordre du registre. Le sujet est le début de la colonne « Question » (LARGEUR_SUJET caractères au plus),
-// la décision le début de la colonne « Décision » (LARGEUR_DECISION) ; coupe nette au caractère (graphème : jamais un caractère Unicode coupé en
-// deux), « … » ajouté dans la limite. Sans fichier ni processus : le script lit et écrit, ce module ne fait que transformer des textes.
+// décision, `Rn | sujet`, dans l'ordre du registre. Le sujet est le début de la colonne « Question » (LARGEUR_SUJET caractères au plus) ;
+// coupe nette au caractère (graphème : jamais un caractère Unicode coupé en deux), « … » ajouté dans la limite. Le texte de la décision se lit
+// dans le registre, sur la ligne que l'index désigne. Sans fichier ni processus : le script lit et écrit, ce module ne fait que transformer des textes.
 
-/** Largeurs des colonnes de l'index, en caractères (graphèmes), « … » compris. */
-export const LARGEUR_SUJET = 75;
-export const LARGEUR_DECISION = 55;
-/** Taille visée de l'index (25 Ko) : un dépassement est signalé, jamais corrigé seul (les largeurs sont fixées par le brief A3). */
+/** Largeur du sujet dans l'index, en caractères (graphèmes), « … » compris. */
+export const LARGEUR_SUJET = 55;
+/**
+ * Taille visée de l'index (25 Ko, voulue par le propriétaire le 2026-11-19) : un dépassement est signalé, jamais corrigé seul. LARGEUR_SUJET
+ * suit cette cible, avec de la marge pour les décisions à venir ; une cible ou un registre qui change se règle en la changeant, pas en retirant des lignes.
+ */
 export const TAILLE_CIBLE = 25 * 1024;
 
 export const CHEMIN_REGISTRE = 'docs/decisions-regles.md';
@@ -99,7 +101,7 @@ export function analyserRegistre(texte) {
 
 /** Une ligne de l'index pour une décision. */
 export const ligneDIndex = (d) =>
-  `| ${d.ref} | ${echapperCellule(couper(d.question, LARGEUR_SUJET))} | ${echapperCellule(couper(d.decision, LARGEUR_DECISION))} |`;
+  `| ${d.ref} | ${echapperCellule(couper(d.question, LARGEUR_SUJET))} |`;
 
 /** Texte complet de l'index (fin de ligne LF, saut de ligne final). */
 export function produireIndex(decisions) {
@@ -110,10 +112,10 @@ export function produireIndex(decisions) {
     '',
     `Ne lis jamais \`${CHEMIN_REGISTRE}\` en entier : trouve ici le numéro de la décision, puis cherche sa ligne avec Grep (motif \`^\\| R41 \\|\`) et ne lis qu'elle.`,
     '',
-    `Fichier fabriqué par \`npm run decisions:index\` (depuis \`client/\`), à ne pas modifier à la main : ${decisions.length} décisions, de ${premiere} à ${derniere}, dans l'ordre du registre. Sujet : début de la colonne « Question » ; décision : début de la colonne « Décision ».`,
+    `Fichier fabriqué par \`npm run decisions:index\` (depuis \`client/\`), à ne pas modifier à la main : ${decisions.length} décisions, de ${premiere} à ${derniere}, dans l'ordre du registre. Sujet : début de la colonne « Question » ; la décision se lit dans le registre.`,
     '',
-    '| Réf. | Sujet | Décision |',
-    '| --- | --- | --- |',
+    '| Réf. | Sujet |',
+    '| --- | --- |',
     ...decisions.map(ligneDIndex),
     '',
   ].join('\n');

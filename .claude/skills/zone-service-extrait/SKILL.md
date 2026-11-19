@@ -42,5 +42,5 @@ user-invocable: false
 ## Tests
 - `serveur-extrait`, `serveur-attestation`, `db-extrait`, `bascule-constat`. Pour prouver qu'aucune donnée de joueur ne sort : `test/aide-fiches-sentinelles.mjs` (skill `tests-conventions`).
 - `contenu-fourni`, `pages-d-exemple`, `fabrication-depuis-contenu`, `comparaison-de-sites`, avec l'aide `aide-contenu-fourni.mjs` (skill `tests-conventions`).
-- `essai-mecanique` (l'essai des tests sur le contenu du site de dev : skill `tests-conventions`) et `serveur-edition-nom-de-magie` (le service refuse `magie.nom`, le titre de sa page et un alias).
+- `essai-mecanique` (l'essai des tests sur le contenu du site de dev : skill `tests-conventions-depot`) et `serveur-edition-nom-de-magie` (le service refuse `magie.nom`, le titre de sa page et un alias).
 - `mise-a-jour-etat-production` : skill `zone-mise-a-jour`.

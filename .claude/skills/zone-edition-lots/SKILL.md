@@ -1,6 +1,6 @@
 ---
 name: zone-edition-lots
-description: "Lots de changements du site de dev (R274, R275, R291) : lib/lot-de-changements.mjs, serveur/edition-lots.mjs, appliquerUnLot, essai à blanc, verrous des décisions, numéros donnés, annulation d'un lot, « tout recalculer », contrôles du contenu. À charger avant de lire, modifier ou relire ce code. La page qui les montre : skill zone-mise-a-jour."
+description: "Lots de changements du site de dev (R274, R275, R291) : lib/lot-de-changements.mjs, serveur/edition-lots.mjs, appliquerUnLot, essai à blanc, verrous des décisions, numéros donnés, annulation d'un lot, « tout recalculer », contrôles du contenu. À charger avant de lire, modifier ou relire ce code. La page qui les montre : `zone-mise-a-jour-lots`."
 paths: ["client/src/lib/lot-de-changements.mjs", "client/serveur/edition-lots.mjs", "client/serveur/controles-du-contenu.mjs", "client/test/lot-de-changements*.test.mjs", "client/test/serveur-edition-lots*.test.mjs", "client/serveur/epreuve-des-lots.mjs", "client/scripts/epreuve-des-lots.mjs", "client/test/epreuve-lots-*.test.mjs", "client/test/fixtures/lots-*/**", "client/test/serveur-edition-numeros.test.mjs", "client/test/controles-du-contenu.test.mjs"]
 user-invocable: false
 ---
@@ -9,7 +9,7 @@ user-invocable: false
 ## Fichiers
 - `lib/lot-de-changements.mjs` : module pur, format `maverick-lot/1` ; livré avec le service (`serveur-livraison`).
 - `serveur/edition-lots.mjs` (déposer, lister, lire, essayer, appliquer, refuser), `appliquerUnLot` de `serveur/edition.mjs`, `serveur/controles-du-contenu.mjs` (les contrôles de `db:check`).
-- Le service d'édition, le journal et son rejeu : skills `zone-edition`, `zone-edition-rejeu`. La page qui montre les lots : skill `zone-mise-a-jour`.
+- Le service d'édition, le journal et son rejeu : skills `zone-edition`, `zone-edition-rejeu`. La page qui montre les lots : skill `zone-mise-a-jour-lots`.
 
 ## À lire
 - `docs/serveur.md`, « Lots de changements (format) » et « Lots de changements (service) » : routes, essai à blanc, application, verrous, numéros, annulation, « tout recalculer ». Plan : `docs/chantier-base-de-dev.md`.
