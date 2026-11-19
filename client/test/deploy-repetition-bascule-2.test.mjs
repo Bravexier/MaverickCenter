@@ -6,7 +6,7 @@
 // --depuis-la-sauvegarde) : sans eux, ces cas sont ignorés.
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import { test } from 'node:test';
 import {
   creerLInstance, DEV, metierRetire, PRODUCTION_PUBLIEE, sansMarque, sha, skipShell, skipSqlite3, STRUCTURE,
@@ -116,6 +116,37 @@ test('repetition-bascule-2.sh : préalable de la version (leçon 4) : le kit n�
   assert.equal(r.code, 2, r.out);
   assert.match(r.out, /l'atelier du site de dev n'est pas installé .* : sudo sh [^ ]+\/atelier\/installer\.sh/);
   assert.deepEqual(m.restes(), [], 'aucun dossier de travail pour un refus de préalable');
+});
+
+test('repetition-bascule-2.sh : préalable de l’attestation (incident du 2026-11-19) : le site de dev qui ne lit pas le dossier des métriques de la production, ou une attestation absente : code 2, le réglage et le geste, rien n’est lancé', { skip: skipShell }, (t) => {
+  // la production écrit son attestation, mais le .env du site de dev ne règle pas MAVERICK_DOSSIER_METRIQUES : il lit son propre metriques/
+  let m = creerLInstance(t, { attestation: 'separee' });
+  let r = m.lancer();
+  assert.equal(r.code, 2, r.out);
+  const derniere = r.out.trim().split('\n').at(-1);
+  assert.match(derniere, /^repetition-bascule-2 : == IMPOSSIBLE : /);
+  assert.ok(derniere.includes(`MAVERICK_DOSSIER_METRIQUES=${m.d('prod', 'metriques')}`), derniere);
+  assert.ok(derniere.includes(`${m.d('dev')}/.env`), derniere);
+  assert.match(derniere, /docker compose up -d/);
+  assert.equal(/^(compose run|run -d)/m.test(m.docker()), false, 'aucun conteneur lancé');
+  assert.deepEqual(m.restes(), [], 'aucun dossier de travail');
+  // la production n'a rien écrit : le même code, le chemin cherché
+  m = creerLInstance(t, { attestation: 'absente' });
+  r = m.lancer();
+  assert.equal(r.code, 2, r.out);
+  assert.ok(r.out.includes(`${m.d('prod', 'metriques')}/attestation-prod.json`), r.out);
+  assert.equal(/^(compose run|run -d)/m.test(m.docker()), false);
+  // un lien à la place du fichier n'est pas suivi (garde-fou 20 : un stat, jamais une ouverture)
+  m = creerLInstance(t, { attestation: 'absente' });
+  writeFileSync(m.d('attestation-ailleurs.json'), '{}\n');
+  symlinkSync(m.d('attestation-ailleurs.json'), m.d('prod', 'metriques', 'attestation-prod.json'));
+  writeFileSync(m.d('dev', '.env'), `MAVERICK_DOSSIER_METRIQUES=${m.d('prod', 'metriques')}\n`);
+  assert.equal(m.lancer().code, 2);
+  // réglé (le cas des autres tests) : le préalable le dit et la répétition continue
+  m = creerLInstance(t);
+  r = m.lancer();
+  assert.equal(r.code, 0, r.out);
+  assert.ok(r.out.includes(`préalable : attestation de la production lue par le site de dev (${m.d('prod', 'metriques')}/attestation-prod.json`), r.out);
 });
 
 test('repetition-bascule-2.sh : une fabrication de l’atelier en cours (son verrou est pris) : refus (code 2) avec le geste ; usage (dev pris pour la production, option inconnue)', { skip: skipShell }, async (t) => {

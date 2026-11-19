@@ -160,7 +160,7 @@ writeFileSync(option('--mesure'), JSON.stringify({ statut: 'fait', duree_ms: 432
 `;
 
 /** Un monde complet : creerMonde plus l'instance de dev (VERSION, atelier installé avec son kit factice), la production (VERSION, site) et le faux docker. */
-export function creerLInstance(t, { changerDev, changerCopie, versionKit = DEV, structureKit = STRUCTURE, kit = true, atelier = true, memoire = [4_000_000, 3_300_000] } = {}) {
+export function creerLInstance(t, { changerDev, changerCopie, versionKit = DEV, structureKit = STRUCTURE, kit = true, atelier = true, memoire = [4_000_000, 3_300_000], attestation = 'partagee' } = {}) {
   const m = creerMonde(t, changerDev, changerCopie);
   const d = m.d;
   for (const x of ['dev/sauv', 'dev/atelier/outils', 'dev/atelier/rapports', 'dev/atelier/declencheur', 'bin', 'proc', 'sauv/prod/horaire/20261115-100000/db']) mkdirSync(d(x), { recursive: true });
@@ -187,6 +187,11 @@ export function creerLInstance(t, { changerDev, changerCopie, versionKit = DEV, 
     writeFileSync(d('dev', 'atelier', 'kit', 'client', 'scripts', 'fabriquer-depuis-contenu.mjs'), FABRICATION_FACTICE);
     writeFileSync(d('dev', 'atelier', 'kit', 'data', 'schema.sql'), `-- schéma factice du kit\nPRAGMA user_version = ${structureKit};   -- version\n`);
   }
+  // l'attestation de la production (son dossier des métriques, <prod>/metriques) : « partagee », le .env du site de dev le désigne (deploy/vps/instances.sh) ;
+  // « separee », le site de dev lit son propre metriques/ (incident du 2026-11-19) ; « absente », la production n'a rien écrit
+  mkdirSync(d('prod', 'metriques'), { recursive: true });
+  if (attestation !== 'absente') writeFileSync(d('prod', 'metriques', 'attestation-prod.json'), '{}\n');
+  if (attestation === 'partagee') writeFileSync(d('dev', '.env'), `MAVERICK_DOSSIER_METRIQUES=${d('prod', 'metriques')}\n`);
   writeFileSync(d('proc', 'meminfo'), `MemTotal:       ${memoire[0]} kB\nMemFree:         100000 kB\nMemAvailable:   ${memoire[1]} kB\n`);
   writeFileSync(d('bin', 'faux-docker.mjs'), FAUX_DOCKER);
   writeFileSync(d('bin', 'docker'), `#!/bin/sh\nexec "${process.execPath}" "${d('bin', 'faux-docker.mjs')}" "$@"\n`);

@@ -270,6 +270,7 @@ sudo bash ~/vps/instances.sh
 ```
 
 Attendu : « Mots de passe internes déjà en place : conservés » puis « Terminé. Instances prêtes ». Sinon, arrête-toi et colle l'écran.
+Puis `sudo grep -H MAVERICK_DOSSIER_METRIQUES /srv/maverick-center/.env /srv/maverick-center-test/.env` doit montrer `=/srv/maverick-center/metriques` pour **les deux** (`instances.sh` le pose) : sans lui, le site de dev ne lit pas l'attestation de la production, et « Copier vers le dépôt », la Simulation et la mise à jour sont refusées (incident du 2026-11-19).
 
 **8e. Le bilan du nouveau** — [nouveau] :
 

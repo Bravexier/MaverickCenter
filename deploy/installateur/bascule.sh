@@ -117,6 +117,15 @@ case "$ETAPE" in
       etape "dernier constat : $(lire CONSTAT) le $(date_de "$c") (il y a $(( ($(instant) - c) / 60 )) min ; valable $((DUREE_DU_CONSTAT / 60)) min pour poser)"
     else etape "dernier constat : aucun"; fi
     if [ "$(lire SAUVEGARDE)" = ok ]; then etape "sauvegarde nommée : $(lire SAUVEGARDE_NOM) le $(date_de "$(lire SAUVEGARDE_LE)") (copie locale et envoi hors du serveur)"; else etape "sauvegarde nommée : aucune réussie"; fi
+    # l'attestation de la production telle que le service du site de dev la lit (son dossier des métriques) : sans elle, « Copier vers le dépôt », la Simulation et la
+    # mise à jour sont refusées (incident du 2026-11-19). Un `stat` seulement, jamais une ouverture.
+    m_dev=$(metriques_de_l_instance dev); m_dev=${m_dev#* }
+    m_prod=$(metriques_de_l_instance prod); m_prod=${m_prod#* }
+    if [ -f "$m_dev/attestation-prod.json" ] && [ ! -L "$m_dev/attestation-prod.json" ]; then
+      etape "attestation de la production lue par le site de dev : oui ($m_dev/attestation-prod.json, écrite il y a $(( ($(date +%s) - $(stat -c %Y "$m_dev/attestation-prod.json")) / 60 )) min)"
+    else
+      etape "attestation de la production lue par le site de dev : NON ($m_dev/attestation-prod.json absente ; la production écrit la sienne dans $m_prod) : « Copier vers le dépôt », la Simulation et la mise à jour seraient refusées. Geste : si $m_prod/attestation-prod.json existe, ajouter MAVERICK_DOSSIER_METRIQUES=$m_prod à $DEV/.env, puis cd $DEV && sudo docker compose up -d ; sinon, la production ne l'a pas encore écrite (elle l'écrit à son démarrage, puis toutes les heures)"
+    fi
     ;;
 
   geler)
