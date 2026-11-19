@@ -31,6 +31,8 @@
 #   repetition-prod.sh   (test seulement) la répétition, sur une copie, de la dernière mise à jour de la production par l'ancien circuit (remplacé à chaque installation)
 #   repetition-bascule-2.sh  (test seulement) la répétition complète du jour J de la bascule 2, sur des copies : paquet, contrôles, base de la production, pages (lot 11, PR 3a ; remplacé à chaque installation)
 #   gel.sh               (production et test) le gel des écritures de l'instance, lancé en root : poser, lever, etat (lot 11, garde-fou 16 ; remplacé à chaque installation)
+#   activer.sh, activation-conteneur.sh  (production seulement) l'activation d'un kit avec son paquet (lot 11, PR 5a) : éteinte sans le fichier activation-par-paquet (remplacés à chaque installation)
+#   activation-par-paquet  (production, posé par le propriétaire) l'interrupteur : avec lui, cette installation crée l'utilisateur maverick-site, lui donne site/ (sauf _serveur/) et lance activer.sh
 #   VERSION              ce qui est installé (étiquette, version, commit, mode, date)
 # Prérequis : sh, tar, gzip, et sha256sum (ou shasum / openssl) pour contrôler l'archive. rsync et sqlite3 sont utilisés s'ils sont présents.
 set -eu
@@ -386,7 +388,7 @@ done
 # bascule.sh, repetition-prod.sh et repetition-bascule-2.sh (installateur de test seulement) : les scripts du jour de la bascule 1, de sa répétition et de la répétition du jour J de la bascule 2,
 # que le propriétaire lance en root (docs/serveur.md, « Base source (lot 8) », « Répétition de la mise à jour de la production » et « Bascule 2 : préparation »).
 # gel.sh (les deux instances) : le gel des écritures, db/gel.json (docs/serveur.md, « Gel des écritures »).
-for f in bascule.sh repetition-prod.sh repetition-bascule-2.sh gel.sh; do
+for f in bascule.sh repetition-prod.sh repetition-bascule-2.sh gel.sh activer.sh activation-conteneur.sh; do
   if [ -f "$TRAVAIL/$f" ]; then
     cp "$TRAVAIL/$f" "$DOSSIER/.$f.$$" && chmod 755 "$DOSSIER/.$f.$$" && mv -f "$DOSSIER/.$f.$$" "$DOSSIER/$f" ||
       die "impossible de poser $f"
@@ -430,6 +432,7 @@ fi
   echo "installe_le=$(date '+%Y-%m-%d %H:%M:%S')"
 } > "$DOSSIER/VERSION"
 @@KIT@@
+@@ACTIVATION@@
 log "Installé : $TAG, $PAGES pages."
 
 if [ ! -f "$DOSSIER/.htpasswd" ]; then

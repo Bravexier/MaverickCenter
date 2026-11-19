@@ -12,6 +12,7 @@
 //   MAVERICK_ACCES_FICHIER  réglage de l'accès au site de dev (mot de passe pour modifier, clé de lecture : serveur/acces.mjs ; défaut : acces.json à côté du
 //                        jeton GitHub, donc secrets/acces.json de l'instance) ; absent, rien n'est protégé ; sans effet sans MAVERICK_EDITION=1
 //   MAVERICK_DEPOT       dépôt GitHub (défaut : Bravexier/MaverickCenter) ; MAVERICK_ADRESSE_PUBLIQUE : adresse du site de dev (https://…)
+//   MAVERICK_PAQUETS     dossier partagé des paquets de la production (serveur/paquets-de-la-production.mjs) : le site de dev y dépose le paquet de la mise à jour, avec db/bascule-2
 //   MAVERICK_MAINTENANCE dossier partagé de l'annonce de maintenance pendant une mise à jour (serveur/maintenance.mjs), le même pour les deux
 //                        serveurs : le site de dev l'écrit, chacun la lit (défaut : aucun)
 //   MAVERICK_TIPEEE      0 = la partie « Bienvenue » de Tipeee n'est jamais relue (GET /api/tipeee/ sert le dernier texte connu ; défaut : relue)
@@ -39,6 +40,8 @@ const service = await demarrerService({
   depot: process.env.MAVERICK_DEPOT || 'Bravexier/MaverickCenter',
   adresse: process.env.MAVERICK_ADRESSE_PUBLIQUE || null,
   maintenance: process.env.MAVERICK_MAINTENANCE || null,
+  // le dossier partagé des paquets de la production (PR 5a) : écrit et lu seulement sur le site de dev, avec db/bascule-2
+  paquets: process.env.MAVERICK_PAQUETS || null,
   fichierVersion: ici('../version.json'),
   tipeee: reglagesTipeee(process.env, ici('../sources/tipeee/bienvenue.json')),
 }).catch((e) => {

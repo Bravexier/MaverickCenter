@@ -715,6 +715,35 @@ plus lents — ceux qu'on abandonne — comptent), une mesure d'environ 150 octe
 production comprise, sauf la version portable, `/maintenance/` et `SITE_METRIQUES_PAGES=0` au build (l'interrupteur côté site ; côté service :
 `MAVERICK_METRIQUES_PAGES=0`).
 
+## Page Mise à jour : l'activation de la production (`activation_production`)
+
+`GET /api/mise-a-jour/` (site de dev, accès comme le reste de la page) porte, **seulement avec le marqueur `db/bascule-2`** (lot 11, PR 5a ; sans lui la réponse est celle
+d'avant, le champ n'existe pas), le champ `activation_production` : le dernier rapport de `activer.sh`, le script que la production lance en root pour activer un kit avec son
+paquet (`docs/serveur.md`, « Bascule 2 : préparation », « PR 5a »). Le service du site de dev le lit dans le dossier partagé des paquets
+(`MAVERICK_PAQUETS`, `paquets/activation.json` : un fichier ordinaire, jamais un lien, 16 Kio au plus), le valide champ par champ (liste blanche, jamais un champ inconnu) et le rend
+tel quel ; **`null`** quand aucun rapport n'existe ou qu'il est illisible, trop gros ou mal formé. Aucun nom de fiche n'y passe : des états, des versions, des comptes.
+
+```json
+{
+  "etat": "passee",
+  "le": "2026-11-20T10:00:00Z",
+  "version": "0.6", "depuis": "0.5", "lot": "5a5a5a5a-0000-4000-8000-000000000001", "mode": "paquet",
+  "raisons": [], "pages": 1792, "duree_s": 43, "gel_leve": true,
+  "phrase": "La production est passée à la V0.6 (kit V0.5.27) : 1792 pages, service en bonne santé, gel levé. …",
+  "geste": null, "perime": false
+}
+```
+
+- `etat` : `en_cours` (la bascule courte est commencée ; `perime: true` au-delà de 2 h : `activer.sh` a été interrompu, `--reprendre` remet le site précédent), `passee`, `refusee`
+  (rien n'a changé : la raison et le geste sont dits), `retour_automatique` (la bascule a échoué, le site précédent est reposé, le gel levé, la base gardée), `retour_incomplet`
+  (le retour automatique n'a pas tout remis : intervention du propriétaire, le geste est dit).
+- `raisons` : des mots de `RAISONS_DE_L_ACTIVATION` (`serveur/paquets-de-la-production.mjs`) : `kit_sans_paquet`, `empreinte`, `structure`, `note_manquante`, `version_en_arriere` (le
+  garde-fou 17), `paquet_absent`, `paquet_irregulier`, `paquet_trop_gros`, `correctif_sans_paquet`, `contenu`, `fiches`, `controles`, `memoire`, `disque`, `verrou`, `fabrication`,
+  `bascule`, `sante`, `interrompue`.
+- `phrase` (400 caractères au plus) dit les chiffres, `geste` (240 au plus ou `null`) la commande exacte ; `mode` : `paquet` ou `correctif` ; `version` et `depuis` : « X.Y » de
+  la production après et avant ; `pages` : le nombre de pages fabriquées ; `duree_s` : la durée du script ; `gel_leve` : le gel des écritures de la production est levé.
+- La page elle-même (le bloc « Activation de la production ») est faite à part ; ce champ est tout ce qu'elle lit. Test : `serveur-paquets-de-la-production`, `serveur-bascule-2`.
+
 ## Tests
 
 `ressources-registre` (chaque table rangée une fois, registre cohérent, `RESSOURCES_MODULE=<module>` pour un seul module), `serveur-api-v1` (fermeture

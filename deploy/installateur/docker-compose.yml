@@ -45,6 +45,11 @@ services:
       # serveurs lisent. Dossier de l'hôte : maintenance/ de l'instance par défaut ; le serveur de test prend celui du serveur normal
       # (MAVERICK_DOSSIER_MAINTENANCE dans son .env, posé par deploy/vps/instances.sh), sinon la production n'est jamais mise en maintenance.
       MAVERICK_MAINTENANCE: /maintenance
+      # Paquets de la production (docs/serveur.md, « Bascule 2 : préparation », « PR 5a ») : dossier partagé, sur le modèle de maintenance/. Le site de dev y dépose le paquet de
+      # la mise à jour (seulement avec le marqueur db/bascule-2) et y lit le rapport de l'activation que root y laisse. SANS RÉGLAGE, rien de réel n'est monté : /dev/null en lecture seule
+      # (aucun dossier créé, aucune écriture possible : la production est celle d'avant). `bascule.sh poser-bascule-2` pose dans le .env du site de dev MAVERICK_DOSSIER_PAQUETS=<le paquets/ de la
+      # production> et MAVERICK_PAQUETS_OPTION= (vide : lecture-écriture) ; `retirer-bascule-2` les retire.
+      MAVERICK_PAQUETS: /paquets
       # Métriques (docs/serveur.md, « Métriques et volume ») : chaque service écrit SA base <instance>.db (prod.db ou dev.db) dans ce dossier, jamais
       # dans db/ (l'installateur de test, qui peut y copier la base de la production sur demande, ne les copie ni ne les efface), et le site de dev y lit aussi celle
       # de la production, sans y écrire. Dossier de l'hôte : metriques/ de l'instance par défaut ; sur le VPS, celui du serveur normal pour les deux
@@ -66,6 +71,7 @@ services:
       - ./db:/db
       - ./secrets:/secrets:ro
       - ${MAVERICK_DOSSIER_MAINTENANCE:-./maintenance}:/maintenance
+      - ${MAVERICK_DOSSIER_PAQUETS:-/dev/null}:/paquets${MAVERICK_PAQUETS_OPTION-:ro}
       - ${MAVERICK_DOSSIER_METRIQUES:-./metriques}:/metriques
       # site/ de la production, en lecture seule : par défaut le dossier voisin maverick-center/ (le VPS : /srv/maverick-center-test lit /srv/maverick-center) ;
       # MAVERICK_DOSSIER_PRODUCTION dans .env (posé par deploy/vps/instances.sh) en dit un autre. Le dossier, pas le fichier : maverick.db est remplacé à

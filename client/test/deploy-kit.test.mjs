@@ -243,7 +243,9 @@ test('l’installateur de production reste identique à celui d’avant le kit :
   const script = octets.subarray(0, octets.indexOf('\n__ARCHIVE__\n') + 1).toString('utf8');
   const modele = readFileSync(new URL('../../deploy/installateur/installateur.sh', import.meta.url), 'utf8');
   // les lignes repères (kit, verrou, kit seul) sont retirées : le reste est le modèle tel qu'il était avant elles
-  const attendu = modele.replace('\n@@KIT@@\n', '\n').replace('\n@@VERROU_DEBUT@@\n', '\n').replace('\n@@VERROU_FIN@@\n', '\n')
+  // l'activation par paquet (PR 5a) : son fragment, éteint sans le fichier activation-par-paquet de l'instance (test : installateur-activation.test.mjs) ; le reste est le modèle d'avant
+  const activation = readFileSync(new URL('../../deploy/installateur/activation-pose.sh', import.meta.url), 'utf8');
+  const attendu = modele.replace('\n@@KIT@@\n', '\n').replace('\n@@VERROU_DEBUT@@\n', '\n').replace('\n@@VERROU_FIN@@\n', '\n').replace('\n@@ACTIVATION@@\n', () => `\n${activation}`)
     .replace(/\n@@SEUL_[A-Z_]+@@\n/g, '\n').replace(/@@([A-Z0-9_]+)@@/g, (tout, cle) => i[cle]);
   assert.ok(script.startsWith(attendu.slice(0, attendu.indexOf('\n__ARCHIVE__\n') + 1)), 'le script de production est le modèle, rempli, sans rien de plus');
   assert.ok(!script.includes('poser_le_kit'));

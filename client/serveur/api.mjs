@@ -146,6 +146,7 @@ import {
   lignesALivrer, lireReference, noteEnPreparation, occupe,
 } from './notes-de-version.mjs';
 import { actualiser, CONFIRMATION_COPIE, figerPaquet } from './paquet.mjs';
+import { lireLActivation } from './paquets-de-la-production.mjs';
 import { ErreurFiche, controlesDe, enregistrerFiche, lireFiche, listerFiches, niveauDe, portraitDeFiche, supprimerFiche } from './fiches.mjs';
 import { CHAMP_VERSION } from '../src/lib/fiche-format.mjs';
 import { instant } from './instant.mjs';
@@ -841,7 +842,8 @@ function figerUnPaquet(requete, service, db, { copie, valeur, versionDev, github
     ...(service.limites ? { limites: service.limites } : {}), ...(service.paquetEnArrierePlan === false ? { enArrierePlan: false } : {}),
     // la fiche d'identité du paquet (toujours) ; la bascule 2 (marqueur db/bascule-2, éteinte par défaut) : garde du code installé et contrôle du contenu
     codeDuService: service.codeDuService?.() ?? null,
-    ...(service.bascule2?.() ? { bascule2: true, livraisons: service.github?.etiquettesDeLivraison ? () => service.github.etiquettesDeLivraison() : null } : {}),
+    ...(service.bascule2?.() ? { bascule2: true, livraisons: service.github?.etiquettesDeLivraison ? () => service.github.etiquettesDeLivraison() : null,
+      ...(service.paquets ? { paquets: service.paquets } : {}), journal: service.journal ?? (() => {}) } : {}),
   }).then((lancement) => {
     const quoi = copie ? 'copie vers le dépôt' : lancement.simulation ? 'simulation de mise à jour' : 'mise à jour';
     service.journal?.(`${quoi} : paquet ${lancement.lot} figé (${lancement.modifications} modification(s)${copie ? '' : `, V${lancement.version_cible}`}, ${lancement.octets} octets)`);
@@ -889,7 +891,7 @@ function traiterMiseAJour(requete, service, action, reste, permis) {
   if (action === undefined || action === 'lancement') {
     service.github?.suivre().catch(() => {}); // en arrière-plan : la réponse suivante aura l'état à jour
     // (un paquet de la base source : sa note reportée dans la base quand la production la publie, serveur/paquet.mjs#actualiser)
-    const lancement = actualiser(db, service.dossier, { reference: lireReference(service.reference), journal: service.journal ?? (() => {}) });
+    const lancement = actualiser(db, service.dossier, { reference: lireReference(service.reference), journal: service.journal ?? (() => {}), ...(service.bascule2?.() && service.paquets ? { paquets: service.paquets } : {}) });
     // mêmes règles que le service pour la page : annulable, et place occupée (un nouveau lancement serait refusé)
     const regles = { liberable: estLiberable(lancement, maintenant), occupe: occupe(lancement, maintenant) };
     if (action === 'lancement') return json(200, { lancement, ...regles, github });
@@ -900,8 +902,10 @@ function traiterMiseAJour(requete, service, action, reste, permis) {
     const retraits_bloquants = retraitsBloquantsPourLaProduction({ dossier: service.attestations ?? null, db, production: reference.production ?? null, propre: reference.propre ?? null });
     // `base_source` : le marqueur db/source (lot 8) — « Effectuer la mise à jour » fige alors un paquet, et « Copier vers le dépôt » existe
     const baseSource = Boolean(service.source?.());
+    // `activation_production` (bascule 2, db/bascule-2 : lot 11, PR 5a) : le dernier rapport de l'activation par paquet de la production (serveur/paquets-de-la-production.mjs), absent sans le marqueur
+    const bascule2 = Boolean(service.bascule2?.());
     return json(200, { ...noteEnPreparation(db, { reference: service.reference, versionDev }), lancement, ...regles, github, confirmation: CONFIRMATION, etat_production, retraits_bloquants,
-      base_source: baseSource, ...(baseSource ? { confirmation_copie: CONFIRMATION_COPIE } : {}) });
+      base_source: baseSource, ...(baseSource ? { confirmation_copie: CONFIRMATION_COPIE } : {}), ...(bascule2 ? { activation_production: lireLActivation(service.paquets ?? null) } : {}) });
   }
   const interdit = refusEcriture(requete.entetes ?? {});
   if (interdit) return interdit;

@@ -194,3 +194,76 @@ test('usage : un argument inconnu ou manquant sort en 2, sans rien écrire', () 
   assert.equal(autre.status, 2);
   assert.equal(readFileSync(join(m.cible, 'index.html'), 'utf8'), 'ancien');
 });
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+// `--serveur` : la pose du service lui-même (l'activation en production, lot 11, PR 5a)
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+
+/** Deux dossiers `_serveur` : le service posé (cible) et le nouveau (source), chacun { chemin: contenu }. */
+function mondeDuService({ servi = {}, neuf = {} } = {}) {
+  const dossier = join(racine, `s${(n += 1)}`);
+  const cible = join(dossier, 'site', '_serveur');
+  const source = join(dossier, 'fabrique', '_serveur');
+  mkdirSync(cible, { recursive: true });
+  mkdirSync(source, { recursive: true });
+  for (const [rel, contenu] of Object.entries(servi)) ecrire(join(cible, rel), contenu);
+  for (const [rel, contenu] of Object.entries(neuf)) ecrire(join(source, rel), contenu);
+  return { dossier, cible, source, resume: join(dossier, 'pose.json') };
+}
+const SERVICE_NEUF = { 'serveur/index.mjs': 'neuf', 'serveur/api.mjs': 'api neuve', 'src/lib/a.mjs': 'a', 'version.json': '{"version":"2"}' };
+
+test('--serveur : le service neuf remplace l’ancien (fichiers changés, neufs, retirés), sans minimum de pages ; aucun provisoire ne reste', () => {
+  const m = mondeDuService({
+    servi: { 'serveur/index.mjs': 'ancien', 'serveur/vieux.mjs': 'x', 'src/lib/a.mjs': 'a', 'version.json': '{"version":"1"}' },
+    neuf: SERVICE_NEUF,
+  });
+  const r = lancer(m, ['--serveur']);
+  assert.equal(r.code, 0, r.err);
+  assert.equal(r.resume.pose, true);
+  assert.deepEqual([r.resume.posees, r.resume.inchangees, r.resume.retirees], [3, 1, 1]);
+  assert.deepEqual(lister(m.cible), lister(m.source));
+  assert.equal(readFileSync(join(m.cible, 'serveur', 'index.mjs'), 'utf8'), 'neuf');
+  assert.equal(lister(m.cible).some((f) => /\.pose-.*\.tmp$/.test(f)), false);
+});
+
+test('--serveur : version.json, que le service surveille pour se relancer, est posé EN DERNIER (même quand un nom de fichier le suit dans l’ordre alphabétique)', () => {
+  const m = mondeDuService({ servi: { 'serveur/index.mjs': 'ancien', 'version.json': '{"version":"1"}' }, neuf: { ...SERVICE_NEUF, 'zz/dernier.mjs': 'z', 'zz/zz/autre.mjs': 'z' } });
+  const r = lancer(m, ['--serveur']);
+  assert.equal(r.code, 0, r.err);
+  const date = (rel) => statSync(join(m.cible, rel), { bigint: true }).mtimeNs;
+  for (const rel of lister(m.cible).filter((f) => f !== 'version.json')) assert.ok(date('version.json') >= date(rel), `version.json est posé après ${rel}`);
+});
+
+test('--serveur : un service sans serveur/index.mjs ou sans version.json est refusé (87), rien n’est posé', () => {
+  for (const neuf of [{ 'version.json': '{}' }, { 'serveur/index.mjs': 'x' }]) {
+    const m = mondeDuService({ servi: { 'serveur/index.mjs': 'ancien', 'version.json': '{"version":"1"}' }, neuf });
+    const r = lancer(m, ['--serveur']);
+    assert.equal(r.code, CODES.serveur_incomplet);
+    assert.equal(r.resume.refus, 'serveur_incomplet');
+    assert.equal(readFileSync(join(m.cible, 'serveur', 'index.mjs'), 'utf8'), 'ancien');
+    assert.equal(readFileSync(join(m.cible, 'version.json'), 'utf8'), '{"version":"1"}');
+  }
+});
+
+test('--serveur : un lien dans le nouveau service est refusé (83), et sans --serveur un `_serveur` dans la source reste refusé (84)', () => {
+  const m = mondeDuService({ servi: { 'version.json': '{"version":"1"}' }, neuf: SERVICE_NEUF });
+  symlinkSync('/etc/passwd', join(m.source, 'lien.mjs'));
+  const r = lancer(m, ['--serveur']);
+  assert.equal(r.code, CODES.fichier_irregulier);
+  assert.equal(readFileSync(join(m.cible, 'version.json'), 'utf8'), '{"version":"1"}');
+  // la pose des pages n'a pas changé : un `_serveur` dans la source est refusé, et le `_serveur` de la cible n'est pas touché
+  const p = monde({ servi: { 'index.html': 'a' }, fabrique: { 'index.html': 'b', '_serveur/x.mjs': 'x' } });
+  assert.equal(lancer(p).code, CODES.serveur_dans_la_source);
+});
+
+test('--sans-le-serveur-de-la-source : le `_serveur` de la source (site fabriqué par le kit, site précédent) est ignoré, jamais posé ni compté ; celui de la cible n’est pas touché ; sans l’option, il reste refusé (84)', () => {
+  const m = monde({ servi: { 'index.html': 'ancien', 'a.html': 'a' }, fabrique: { 'index.html': 'neuf', 'a.html': 'a', '_serveur/serveur/index.mjs': 'service du kit', '_serveur/version.json': '{"v":2}' } });
+  assert.equal(lancer(m).code, CODES.serveur_dans_la_source);
+  const r = lancer(m, ['--sans-le-serveur-de-la-source']);
+  assert.equal(r.code, 0, r.err);
+  assert.equal(readFileSync(join(m.cible, 'index.html'), 'utf8'), 'neuf');
+  assert.equal(readFileSync(join(m.cible, '_serveur', 'version.json'), 'utf8'), '{"v":1}', 'le service posé n’est pas touché par la pose des pages');
+  assert.equal(r.resume.pages_fabriquees, 2);
+  // les deux options ne se mêlent pas
+  assert.equal(lancer(m, ['--serveur', '--sans-le-serveur-de-la-source']).code, 2);
+});

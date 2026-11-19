@@ -365,3 +365,48 @@ test('controlerLeContenu : `emplacements[i]` situe `problemes[i]` ; `problemes` 
     retablir();
   }
 });
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+// PR 5a : le paquet part aussi dans le dossier partagé de la production, et le rapport de son activation se lit sur la page Mise à jour
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+
+test('PR 5a : « Effectuer la mise à jour » dépose le paquet dans le dossier partagé de la production (avec db/bascule-2) ; la simulation, la copie, ou l\'absence de dossier partagé, non', async () => {
+  const github = fauxGithub([`V${VERSION}`]);
+  const partage = join(dossierTemporaire('bascule-2-paquets'), 'paquets');
+  mkdirSync(partage);
+  const r = await lancer(service({ github, paquets: partage }));
+  assert.equal(r.statut, 202, JSON.stringify(r.corps));
+  const lot = r.corps.lancement.lot;
+  assert.deepEqual(readdirSync(partage), [`${CIBLE}-${lot}.db`], 'sous <X.Y>-<lot>.db');
+  assert.equal(sha256(readFileSync(join(partage, `${CIBLE}-${lot}.db`))), sha256(readFileSync(fichierPaquet(dossier, lot))), 'les mêmes octets que le paquet figé');
+  assert.equal(r.corps.lancement.empreinte, sha256(readFileSync(join(partage, `${CIBLE}-${lot}.db`))), 'l\'empreinte que GitHub reçoit est celle du fichier déposé');
+  // la simulation et la copie ne sont jamais déposées
+  rmSync(lots, { recursive: true, force: true });
+  db.exec('DELETE FROM note_version_brouillon');
+  rmSync(join(partage, `${CIBLE}-${lot}.db`));
+  { const s = await lancer(service({ github, paquets: partage }), { simulation: true }); assert.equal(s.statut, 202, JSON.stringify(s.corps)); }
+  rmSync(lots, { recursive: true, force: true });
+  db.exec('DELETE FROM note_version_brouillon');
+  assert.equal((await appel('POST', '/api/mise-a-jour/copier/', { confirmation: CONFIRMATION_COPIE }, service({ github, paquets: partage }))).statut, 202);
+  assert.deepEqual(readdirSync(partage), []);
+  // sans dossier partagé (ou sans le marqueur : `paquets` n'est alors pas transmis), rien n'est déposé et le lancement passe
+  rmSync(lots, { recursive: true, force: true });
+  db.exec('DELETE FROM note_version_brouillon');
+  assert.equal((await lancer(service({ github, paquets: join(partage, 'absent') }))).statut, 202);
+  assert.deepEqual(readdirSync(partage), []);
+});
+
+test('PR 5a : GET /api/mise-a-jour/ porte `activation_production` (le dernier rapport de root) avec le marqueur, et rien sans lui', async () => {
+  const partage = join(dossierTemporaire('bascule-2-rapport'), 'paquets');
+  mkdirSync(partage);
+  const lire = (surcharge) => appel('GET', '/api/mise-a-jour/', undefined, service({ github: fauxGithub([`V${VERSION}`]), ...surcharge }));
+  let r = await lire({ paquets: partage });
+  assert.equal(r.statut, 200, JSON.stringify(r.corps).slice(0, 300));
+  assert.equal(r.corps.activation_production, null, 'pas encore de rapport : null (la clé existe)');
+  writeFileSync(join(partage, 'activation.json'), JSON.stringify({ format: 'maverick-activation/1', etat: 'retour_automatique', le: '2026-11-20T10:00:00Z', version: '0.6', depuis: '0.5', raisons: ['sante'],
+    phrase: 'Le contrôle de santé a échoué', geste: null, lot: null, mode: 'paquet', pages: 10, duree_s: 20, gel_leve: true }));
+  r = await lire({ paquets: partage });
+  assert.deepEqual([r.corps.activation_production.etat, r.corps.activation_production.raisons, r.corps.activation_production.version], ['retour_automatique', ['sante'], '0.6']);
+  r = await lire({ paquets: partage, bascule2: () => false });
+  assert.equal('activation_production' in r.corps, false, 'sans db/bascule-2, le champ n\'existe pas : la réponse est celle d\'avant');
+});

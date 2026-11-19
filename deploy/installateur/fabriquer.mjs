@@ -4,7 +4,7 @@
 //
 // Usage : node deploy/installateur/fabriquer.mjs --mode prod|test --site <dossier dist> --tag <étiquette> --version <X.Y.Z>
 //                                                 --sha <commit> --sortie <dossier> [--kit <racine du dépôt> [--kit-seul]]
-// --kit (mode test seulement) : joint à l'installateur le kit de l'atelier (kit.mjs : client/ avec ses node_modules, le schéma, les registres, deux fichiers de sources ;
+// --kit (mode test seulement) : joint à l'installateur le kit de l'atelier (kit.mjs : client/ avec ses node_modules, le schéma, les registres, trois fichiers de sources ;
 // jamais de contenu), que l'installateur pose dans <instance>/atelier/kit/. L'installateur de production n'en porte pas : son script est celui d'avant le kit.
 // --kit-seul (mode test, avec --kit, sans --site ; lot 11, PR 4 ; docs/serveur.md, « Bascule 2 : préparation ») : une archive SANS pages. Seul le service y est livré (site/_serveur/, par
 // serveur/livraison.mjs#livrerServeur du dépôt dont ce fichier fait partie, avec le commit --sha quand c'est un commit entier), sans donnees/, avec le kit ; le script porte KIT_SEUL=1 (kit-seul.sh, des sections insérées à cinq lignes repères du modèle, retirées en production) et l'installateur
@@ -111,6 +111,8 @@ export function fabriquer(options) {
       mkdirSync(dirname(join(contenu, nom)), { recursive: true });
       copyFileSync(source, join(contenu, nom));
     }
+    // la production : l'activation d'un kit avec son paquet (lot 11, PR 5a) ; éteinte sans le fichier activation-par-paquet de l'instance (le script de production ne porte que le fragment qui le teste)
+    if (mode === 'prod') for (const nom of ['activer.sh', 'activation-conteneur.sh']) copyFileSync(join(ICI, nom), join(contenu, nom));
     // les scripts de l'atelier du site de dev (deploy/installateur/atelier/) : dans l'installateur de test seulement ; l'installateur les pose dans <instance>/atelier/
     if (mode === 'test') {
       // bascule.sh et repetition-prod.sh : les scripts du jour de la bascule 1 (lot 8), repetition-bascule-2.sh : la répétition du jour J de la bascule 2 (lot 11, PR 3a) ;
@@ -152,6 +154,11 @@ export function fabriquer(options) {
       if (mode === 'test' && !sections[nom]) throw new Error(`deploy/installateur/kit-seul.sh : section « ${nom} » manquante`);
       modeleComplet = modeleComplet.replace(`\n@@${repere}@@\n`, () => (mode === 'test' ? `\n${sections[nom]}` : '\n'));
     }
+    // L'activation par paquet (activation-pose.sh) : dans l'installateur de PRODUCTION seulement (éteinte sans <instance>/activation-par-paquet), retirée de celui de test.
+    if (modeleComplet.split('\n@@ACTIVATION@@\n').length !== 2) throw new Error('deploy/installateur/installateur.sh doit porter une seule ligne @@ACTIVATION@@');
+    const activation = mode === 'prod' ? readFileSync(join(ICI, 'activation-pose.sh'), 'utf8') : '';
+    if (activation.includes('@@')) throw new Error('deploy/installateur/activation-pose.sh ne porte pas de paramètre @@…@@');
+    modeleComplet = modeleComplet.replace('\n@@ACTIVATION@@\n', () => (activation ? `\n${activation}` : '\n'));
     const script = modeleComplet.replace('\n@@KIT@@\n', () => (fragment ? `\n${fragment}` : '\n')).replace(/@@([A-Z0-9_]+)@@/g, (tout, cle) => {
       if (!(cle in valeurs)) throw new Error(`paramètre inconnu ${tout} dans deploy/installateur/installateur.sh`);
       return valeurs[cle];

@@ -46,7 +46,9 @@ if [ "$code" -eq 0 ] && [ "$MODE_REPETITION" = 1 ]; then
   find "$FABRIQUE" -type f -name '*.html' 2>/dev/null | wc -l | tr -d ' ' > "$RESULTATS/pages.txt"
 elif [ "$code" -eq 0 ]; then
   node --no-warnings scripts/comparer-sites.mjs "$SITE" "$FABRIQUE" --json "$RESULTATS/comparaison.json" > "$RESULTATS/comparaison.txt" 2>&1 || true
-  # 4. le site fabriqué est copié vers la sortie (un autre montage : une copie, jamais un renommage)
+  # 4. le site fabriqué est copié vers la sortie (un autre montage : une copie, jamais un renommage). Le service que le build y a livré (_serveur/, le code du kit) n'en fait pas partie :
+  #    le site servi porte le sien, posé par l'installateur, et poser-un-site.mjs refuse un _serveur dans sa source (84) ; la comparaison ci-dessus l'a déjà vu
+  rm -rf "$FABRIQUE/_serveur"
   if ! { rm -rf "$SORTIE/site" && mkdir -p "$SORTIE/site" && cp -a "$FABRIQUE/." "$SORTIE/site/"; }; then
     echo "conteneur.sh : la copie du site fabriqué vers $SORTIE/site a échoué" >&2
     exit 76

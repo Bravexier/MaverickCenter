@@ -1,0 +1,9 @@
+#!/bin/sh
+# Remplaçant de sqlite3 (absent de la machine d'essai) : « sqlite3 -readonly -cmd '.timeout N' <base> ".backup '<destination>'" » par VACUUM INTO sur une base ouverte en lecture seule.
+exec node --no-warnings -e '
+const { DatabaseSync } = require("node:sqlite");
+const a = process.argv.slice(1).filter((x, i, t) => x !== "-readonly" && x !== "-cmd" && t[i - 1] !== "-cmd");
+const dest = /\.backup .(.+).$/.exec(a[1])[1];
+const db = new DatabaseSync(a[0], { readOnly: true });
+db.exec("VACUUM INTO \x27" + dest.replace(/\x27/g, "\x27\x27") + "\x27");
+' -- "$@"
