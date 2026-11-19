@@ -9,7 +9,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import {
   ANCIEN_DOSSIER_DE_L_EXTRAIT, FICHIER_DU_CONTENU, FORMAT_ETAT_DE_L_ATELIER, RAPPORTS_GARDES, creerAtelier, lireUnRapport, listerLesRapports, nomDeLExtrait, validerLaComparaison,
-  messageDErreur, validerLaFabrication, validerLaSonde, validerLeKit, validerLeRapport,
+  messageDErreur, validerLaFabrication, validerLaPose, validerLaSonde, validerLeKit, validerLeRapport, validerLeServi, validerLeServir,
 } from '../serveur/atelier.mjs';
 import { messageDEchec } from '../serveur/fabrication-depuis-contenu.mjs';
 import { demarrerService } from '../serveur/service.mjs';
@@ -347,6 +347,7 @@ test('le rapport porte son origine et sa sonde : validés champ par champ ; une 
 test('l’état porte le bilan des dernières 24 h et la fenêtre de mesure de la journée type', (t) => {
   const m = monde(t);
   m.etat.horloge = Date.parse('2026-11-15T18:00:00Z');
+  ecrire(join(m.rapports, 'installe.json'), { ...INSTALLE, installe_le: '2026-11-15T07:00:00Z' }); // le geste précède ces rapports : tous comptent
   const pose = (heure, minute, plus = {}) => {
     const id = `20261115-${heure}${minute}00`;
     poserUnRapport(m.rapports, id, { rapport: rapportDe(id, { horodatage: `2026-11-15T${heure}:${minute}:00Z`, origine: 'journee_type', sonde: SONDE(), ...plus }), fabrication: null, comparaison: null });
@@ -357,6 +358,7 @@ test('l’état porte le bilan des dernières 24 h et la fenêtre de mesure de l
   assert.equal(peu.bilan.verdict, 'journee_incomplete');
   assert.equal(peu.bilan.fabrications.total, 4);
   assert.deepEqual(peu.bilan.fabrications.par_origine, { livraison: 0, nuit: 0, journee_type: 4 });
+  assert.equal(peu.bilan.depuis, '2026-11-15T07:00:00Z');
   assert.equal(peu.bilan.seuils.facteur_de_reference, 2);
   assert.equal(peu.bilan.seuils.plancher_ms, 1000);
   for (const heure of ['12', '13', '14', '15', '16', '17']) pose(heure, '00', { fabrication: false, comparaison: false });
@@ -367,7 +369,7 @@ test('l’état porte le bilan des dernières 24 h et la fenêtre de mesure de l
   assert.match(pleine.bilan.phrase, /^Ce serveur \(4 processeur\(s\), 8,0 Go de mémoire\) tient/);
   assert.equal(pleine.historique[0].origine, 'journee_type');
   // la fenêtre de mesure : à compter du geste
-  assert.deepEqual(pleine.installe.fenetre_de_mesure, { depuis: '2026-11-15T10:00:00Z', jusqua: '2026-11-16T10:00:00Z' });
+  assert.deepEqual(pleine.installe.fenetre_de_mesure, { depuis: '2026-11-15T07:00:00Z', jusqua: '2026-11-16T07:00:00Z' });
   assert.equal(pleine.installe.reglages.max_par_jour, 12);
   // un refus de mémoire fait basculer le verdict
   pose('17', '30', { issue: 'refus', motif: 'memoire_insuffisante', sonde: null });
@@ -382,7 +384,7 @@ test('l’état porte le bilan des dernières 24 h et la fenêtre de mesure de l
 });
 
 test('on garde assez de rapports pour une journée pleine : 40', () => {
-  assert.equal(RAPPORTS_GARDES, 40);
+  assert.equal(RAPPORTS_GARDES, 100);
 });
 
 test('le message d’une erreur de fabrication : 3200 caractères ; trop long, le début puis la dernière ligne qui parle d’une erreur (la cause est à la fin de la sortie)', () => {
@@ -418,4 +420,153 @@ test('le message gardé d’un échec de fabrication porte la fin de stderr (l�
   assert.ok(f.erreur.message.indexOf('stderr') < f.erreur.message.indexOf('stdout'), 'stderr d’abord');
   assert.match(f.erreur.message, /page-2999/, 'la fin de stdout suit');
   assert.ok(f.erreur.message.length <= 3200);
+});
+
+// ---------------------------------------------------------------- le site servi (lot 11, PR 3b) : `servi`, pose.json, `servir`, le bilan depuis le geste, le bouton
+
+const POSE = { format: 'maverick-pose/1', pose: true, refus: null, posees: 12, retirees: 3, inchangees: 2090, octets_poses: 5000, pages_fabriquees: 1169, pages_servies: 1169, minimum_de_pages: 1053, minimum_pct: 90, fichiers_source: 2107, duree_ms: 800, nom: 'ne-doit-pas-passer.html' };
+const SERVI = { pose: true, motif: null, code_sortie: 0, version_installee: '0.4.95', version_de_l_instance: '0.4.95', pages_minimum_pct: 90, resume: true };
+
+test('`servi` : liste blanche (motif connu, versions, nombres), pose.json joint et validé, rien d’inconnu ne passe, rien sans l’interrupteur', (t) => {
+  const { rapports } = monde(t);
+  // sans interrupteur, le rapport ne porte pas `servi`
+  poserUnRapport(rapports, '20261115-101500');
+  assert.equal(lireUnRapport(rapports, '20261115-101500').servi, null);
+  // posé, avec son résumé
+  poserUnRapport(rapports, '20261115-111500', { rapport: rapportDe('20261115-111500', { servi: { ...SERVI, secret: 'jamais' } }) });
+  ecrire(join(rapports, '20261115-111500', 'pose.json'), POSE);
+  const posee = lireUnRapport(rapports, '20261115-111500');
+  assert.equal(posee.servi.pose, true);
+  assert.equal(posee.servi.resume.posees, 12);
+  assert.equal(posee.servi.resume.pages_fabriquees, 1169);
+  assert.equal(JSON.stringify(posee).includes('jamais'), false);
+  assert.equal(JSON.stringify(posee).includes('ne-doit-pas-passer'), false, 'aucun champ inconnu de pose.json');
+  // refus : motif connu gardé, motif inconnu écarté, versions mal formées écartées
+  const refus = validerLeServi({ pose: false, motif: 'site_trop_petit', code_sortie: 82, version_installee: '0.4.95', version_de_l_instance: '<script>', pages_minimum_pct: 900, resume: true });
+  assert.deepEqual([refus.pose, refus.motif, refus.code_sortie, refus.version_de_l_instance, refus.pages_minimum_pct], [false, 'site_trop_petit', 82, null, null]);
+  assert.equal(validerLeServi({ pose: false, motif: 'inventé' }).motif, null);
+  assert.equal(validerLeServi('texte'), null);
+  assert.equal(validerLaPose({ ...POSE, format: 'autre' }), null);
+  assert.equal(validerLaPose({ ...POSE, refus: 'inventé' }).refus, null);
+  // un pose.json trop gros, ou absent alors que le rapport en annonce un : dit, sans rien lire
+  poserUnRapport(rapports, '20261115-121500', { rapport: rapportDe('20261115-121500', { servi: SERVI }) });
+  ecrire(join(rapports, '20261115-121500', 'pose.json'), `${JSON.stringify(POSE)}${' '.repeat(20000)}`);
+  const gros = lireUnRapport(rapports, '20261115-121500');
+  assert.equal(gros.servi.resume, null);
+  assert.ok(gros.invalides.some((m) => /pose\.json/.test(m)));
+  // un lien à la place de pose.json n’est pas suivi
+  poserUnRapport(rapports, '20261115-131500', { rapport: rapportDe('20261115-131500', { servi: SERVI }) });
+  ecrire(join(rapports, 'secret.json'), POSE);
+  symlinkSync(join(rapports, 'secret.json'), join(rapports, '20261115-131500', 'pose.json'));
+  assert.equal(lireUnRapport(rapports, '20261115-131500').servi.resume, null);
+});
+
+test('le résumé de l’historique dit si le site a été posé ; l’origine « contenu » est connue ; `servir.json` est validé', (t) => {
+  const { atelier, rapports } = monde(t);
+  poserUnRapport(rapports, '20261115-101500', { rapport: rapportDe('20261115-101500', { origine: 'contenu', servi: SERVI }) });
+  poserUnRapport(rapports, '20261115-111500', { rapport: rapportDe('20261115-111500', { servi: { ...SERVI, pose: false, motif: 'site_trop_petit' } }) });
+  poserUnRapport(rapports, '20261115-121500');
+  const e = atelier.lire();
+  const parId = Object.fromEntries(e.historique.map((h) => [h.id, h]));
+  assert.equal(parId['20261115-101500'].origine, 'contenu');
+  assert.equal(parId['20261115-101500'].servi, true);
+  assert.equal(parId['20261115-111500'].servi, false);
+  assert.equal(parId['20261115-121500'].servi, null);
+  assert.equal(e.servir, null, 'sans servir.json : l’interrupteur n’est pas annoncé');
+  ecrire(join(rapports, 'servir.json'), { format: 'maverick-atelier-servir/1', depuis: '2026-11-15T09:00:00Z', pages_minimum_pct: 90, secret: 'jamais' });
+  assert.deepEqual(atelier.lire().servir, { depuis: '2026-11-15T09:00:00Z', pages_minimum_pct: 90 });
+  assert.equal(validerLeServir({ format: 'autre' }), null);
+});
+
+test('le bilan ne compte que les rapports qui suivent le dernier geste (`installe_le`) : un échec d’avant n’entre pas dans le verdict, un après y entre', (t) => {
+  const m = monde(t);
+  m.etat.horloge = Date.parse('2026-11-15T12:00:00Z');
+  // INSTALLE.installe_le = 10:00:00Z : un arrêt par manque de mémoire à 09:00 (avant le geste) et une fabrication faite à 10:15 (après)
+  poserUnRapport(m.rapports, '20261115-090000', { rapport: rapportDe('20261115-090000', { issue: 'oom', horodatage: '2026-11-15T09:00:00Z' }) });
+  poserUnRapport(m.rapports, '20261115-101500');
+  let bilan = m.atelier.lire().bilan;
+  assert.equal(bilan.depuis, '2026-11-15T10:00:00Z');
+  assert.equal(bilan.fabrications.total, 1);
+  assert.equal(bilan.fabrications.oom, 0);
+  assert.notEqual(bilan.verdict, 'ne_tient_pas');
+  assert.match(bilan.phrase, /depuis le geste du 2026-11-15 10:00/);
+  // un échec après le geste compte
+  poserUnRapport(m.rapports, '20261115-110000', { rapport: rapportDe('20261115-110000', { issue: 'oom', horodatage: '2026-11-15T11:00:00Z' }) });
+  bilan = m.atelier.lire().bilan;
+  assert.equal(bilan.fabrications.total, 2);
+  assert.equal(bilan.fabrications.oom, 1);
+  assert.equal(bilan.verdict, 'ne_tient_pas');
+});
+
+test('le bouton : l’extrait est refait tout de suite, sans le délai ; déjà à jour, rien à refaire ; occupé, inactif et échec sont dits', async (t) => {
+  const m = monde(t);
+  assert.equal((await m.atelier.passer()), 'fabrique');
+  assert.deepEqual(m.etat.fabrications, ['0.4.95']);
+  // l’extrait suit le contenu : « a_jour », rien de refait
+  const dejaLa = await m.atelier.refaireMaintenant();
+  assert.equal(dejaLa.format, 'maverick-atelier-refaire/1');
+  assert.equal(dejaLa.etat, 'a_jour');
+  assert.equal(m.etat.fabrications.length, 1);
+  // le contenu change : `passer` attend son délai, le bouton non
+  m.db.exec("INSERT INTO historique_modification (id) VALUES (1)");
+  assert.equal(await m.atelier.passer(), 'attente');
+  const r = await m.atelier.refaireMaintenant();
+  assert.equal(r.etat, 'fabrique');
+  assert.equal(m.etat.fabrications.length, 2);
+  assert.equal(await m.atelier.passer(), 'a_jour');
+  // une fabrication en cours : « occupe »
+  m.db.exec("INSERT INTO historique_modification (id) VALUES (2)");
+  let liberer;
+  const bloque = monde(t, { fabriquer: () => new Promise((resolve) => { liberer = () => resolve({ fabrique_le: '2026-11-15T10:00:00Z', fichier: { octets: 1 }, empreinte: 'c'.repeat(64), duree_ms: 1 }); }) });
+  const premiere = bloque.atelier.refaireMaintenant();
+  assert.equal((await bloque.atelier.refaireMaintenant()).etat, 'occupe');
+  while (!liberer) await new Promise((resolve) => setImmediate(resolve));
+  writeFileSync(join(bloque.extrait, `.${nomDeLExtrait('0.4.95')}.${process.pid}.neuf`), 'x');
+  liberer();
+  await premiere;
+  // échec de la fabrication
+  const casse = monde(t);
+  casse.etat.echec = true;
+  assert.equal((await casse.atelier.refaireMaintenant()).etat, 'echec');
+  // atelier non installé, production : inactif
+  assert.equal((await monde(t, { installe: false }).atelier.refaireMaintenant()).etat, 'inactif');
+  assert.equal((await monde(t, { edition: false }).atelier.refaireMaintenant()).etat, 'inactif');
+});
+
+test('POST /api/edition/atelier/ : le bouton répond 200 (fabriqué, puis à jour), 405 hors POST, 403 en production, 503 sans atelier, 409 atelier non installé', async (t) => {
+  const racine = dossierTemporaire('serveur-atelier-bouton', { t });
+  const regles = join(racine, 'regles.db');
+  copyFileSync(cheminBase({ sansExemples: false }), regles);
+  const rapports = join(racine, 'rapports');
+  const depot = join(racine, 'depot');
+  mkdirSync(depot, { recursive: true });
+  ecrire(join(rapports, 'kit.json'), KIT);
+  ecrire(join(rapports, 'installe.json'), INSTALLE);
+  const fabrications = [];
+  const fabriquer = async ({ destination, version }) => { fabrications.push(version); writeFileSync(destination, 'extrait'); return { fabrique_le: '2026-11-15T10:00:00Z', fichier: { octets: 7 }, empreinte: 'd'.repeat(64), duree_ms: 3 }; };
+  const demarrer = (nom, options) => demarrerService({ regles, dossier: join(racine, nom), port: 0, intervalle: 0, journal: () => {}, tipeee: false, metriques: false, versionParDefaut: '0.4.95', ...options });
+  const dev = await demarrer('dev', { edition: true, atelier: { rapports, depot, intervalle: 0, fabriquer } });
+  t.after(() => dev.arreter());
+  const poster = (service) => fetch(`${service.url}/api/edition/atelier/`, { method: 'POST' });
+  const un = await poster(dev);
+  const corps = await un.json();
+  assert.equal(un.status, 200, JSON.stringify(corps));
+  assert.equal(corps.format, 'maverick-atelier-refaire/1');
+  assert.equal(corps.etat, 'fabrique');
+  assert.equal(fabrications.length, 1);
+  assert.equal((await (await poster(dev)).json()).etat, 'a_jour');
+  assert.equal(fabrications.length, 1, 'déjà à jour : rien de refait');
+  assert.equal((await fetch(`${dev.url}/api/edition/atelier/`)).status, 405);
+  assert.equal((await fetch(`${dev.url}/api/edition/atelier/autre/`, { method: 'POST' })).status, 404);
+  const prod = await demarrer('prod', { edition: false });
+  t.after(() => prod.arreter());
+  assert.equal((await poster(prod)).status, 403);
+  const sans = await demarrer('sans', { edition: true, atelier: false });
+  t.after(() => sans.arreter());
+  assert.equal((await poster(sans)).status, 503);
+  const nonInstalle = await demarrer('non-installe', { edition: true, atelier: { rapports: join(racine, 'absent'), depot, intervalle: 0, fabriquer } });
+  t.after(() => nonInstalle.arreter());
+  const refus = await poster(nonInstalle);
+  assert.equal(refus.status, 409);
+  assert.equal((await refus.json()).etat, 'inactif');
 });

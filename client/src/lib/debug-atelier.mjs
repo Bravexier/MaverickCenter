@@ -16,7 +16,10 @@
 //       fabrication: le JSON `maverick-fabrication/1` produit dans le conteneur, tel quel (statut, mode, etapes, duree_ms, memoire, sortie, contenu, erreur) | null,
 //       comparaison: le JSON `maverick-comparaison/1`, tel quel (identiques, differents, seulement_a, seulement_b, variables, equivalents) | null,
 //       invalides: string[] (ce que le service a refusé de lire dans les fichiers du rapport) }
-//   Resume : { id, horodatage, version_installee, issue, motif, duree_ms, pic_ko, equivalents, differents }
+//   Resume : { id, horodatage, origine, version_installee, issue, motif, duree_ms, pic_ko, equivalents, differents, servi: true | false | null }
+//   Le site servi (lot 11, PR 3b) : `etat.servir` ({ depuis, pages_minimum_pct } | null : l'interrupteur <atelier>/servir), `rapport.servi` ({ pose, motif, code_sortie, version_installee, version_de_l_instance,
+//   pages_minimum_pct, resume: pose.json validé | null } | null : null quand l'interrupteur n'était pas posé), `rapport.origine` « contenu » (le minuteur de 10 minutes qui suit un changement de contenu) ;
+//   une ligne « Site servi » dit posé, ou non posé avec le motif, les chiffres et le geste (phraseDuServi).
 //
 // La journée type (PR 4) : `etat.bilan` (`maverick-atelier-bilan/1`, src/lib/atelier-bilan.mjs : fabrications des dernières 24 h par origine, serveur, pic de mémoire, durées, temps
 // processeur, effet sur la production d'après la sonde, verdict `tient | tient_tout_juste | ne_tient_pas | journee_incomplete | inconnu`, raisons, phrase, seuils), `rapport.origine`
@@ -29,7 +32,7 @@
 // (refus, échec, mémoire, délai).
 
 export const ETATS_DE_L_ATELIER = Object.freeze(['pas_d_atelier', 'non_installe', 'en_attente', 'en_cours', 'rapport']);
-export const ORIGINES = Object.freeze({ livraison: 'livraison', nuit: 'nuit', journee_type: 'journée type' });
+export const ORIGINES = Object.freeze({ livraison: 'livraison', nuit: 'nuit', journee_type: 'journée type', contenu: 'contenu changé' });
 /** Pourquoi la sonde n'a pas pu interroger une instance (rapport.sonde.motif et rapport.sonde.instances.*.motif), en clair. */
 export const MOTIFS_DE_LA_SONDE = Object.freeze({
   dossier_de_travail: 'dossier de travail de la sonde impossible à créer', curl_absent: 'curl absent', montages_illisibles: 'montages du conteneur illisibles', sonde_impossible: 'aucune instance interrogeable',
@@ -52,6 +55,52 @@ export const MOTIFS = Object.freeze({
   marque_illisible: 'la marque de l’installateur est illisible',
   plafond_du_jour: 'le plafond de fabrications du jour est atteint',
 });
+
+/** Le geste du propriétaire (root, sur le serveur du site de dev). */
+export const GESTE_DE_L_ATELIER = 'sudo sh /srv/maverick-center-test/atelier/installer.sh';
+/** Pourquoi le site fabriqué n'a pas été posé (rapport.servi.motif), en clair. */
+export const MOTIFS_DU_SERVI = Object.freeze({
+  pas_de_base_source: 'la base de cette instance n’est plus la base source (db/source absent)',
+  version_differente: 'une installation a eu lieu pendant la fabrication',
+  kit_sans_pose: 'le kit posé ne porte pas le script de pose',
+  site_absent: 'le site fabriqué ou le site servi est absent ou est un lien',
+  docker_refuse: 'Docker n’a pas démarré le conteneur de pose',
+  index_absent: 'le site fabriqué n’a pas de page d’accueil (index.html)',
+  site_trop_petit: 'le site fabriqué compte trop peu de pages',
+  fichier_irregulier: 'le site fabriqué porte un lien ou un fichier irrégulier',
+  serveur_dans_la_source: 'le site fabriqué porte un dossier _serveur',
+  source_illisible: 'le site fabriqué est illisible',
+  echec_de_la_pose: 'la pose a échoué en cours de route',
+  delai_de_la_pose: 'la pose a dépassé son délai',
+});
+
+/**
+ * La ligne « Site servi » d'un rapport (le champ `servi`, avec son `resume` : le pose.json validé) : posé avec ses nombres, ou non posé avec le motif, les chiffres et le geste exact.
+ * Rend null sans `servi` (l'interrupteur n'était pas posé).
+ */
+export function phraseDuServi(servi) {
+  if (!servi) return null;
+  const p = servi.resume ?? null;
+  if (servi.pose) {
+    return p ? `posé : ${p.posees} fichier(s) posé(s), ${p.retirees} retiré(s), ${p.inchangees} inchangé(s) ; ${p.pages_fabriquees} page(s) pour ${p.pages_servies} avant`
+      : 'posé (le résumé de la pose manque)';
+  }
+  const quoi = MOTIFS_DU_SERVI[servi.motif] ?? 'raison inconnue';
+  if (servi.motif === 'site_trop_petit' && p && p.pages_servies > 0) {
+    const pct = Math.floor((100 * p.pages_fabriquees) / p.pages_servies);
+    return `NON posé : ${quoi} (${p.pages_fabriquees} page(s) fabriquée(s) pour ${p.pages_servies} servie(s), au moins ${p.minimum_de_pages} attendues, soit ${p.minimum_pct ?? servi.pages_minimum_pct ?? '?'} %). `
+      + `Si la baisse est voulue : ${GESTE_DE_L_ATELIER} --servir --pages-minimum ${pct}`;
+  }
+  if (servi.motif === 'version_differente') {
+    return `NON posé : ${quoi} (fabriqué en ${servi.version_installee ?? '?'}, installé : ${servi.version_de_l_instance ?? '?'}) ; rien à faire, la fabrication suivante posera le bon site`;
+  }
+  if (servi.motif === 'pas_de_base_source') return `NON posé : ${quoi} ; chaque pose referait la base vivante. Si la bascule 1 est en retour arrière : ${GESTE_DE_L_ATELIER} --ne-plus-servir ; sinon remettre le marqueur : sudo bash /srv/maverick-center-test/bascule.sh poser`;
+  if (servi.motif === 'kit_sans_pose') return `NON posé : ${quoi} ; attendre la prochaine livraison du site de dev (elle repose le kit)`;
+  if (servi.motif === 'fichier_irregulier' || servi.motif === 'serveur_dans_la_source') {
+    return `NON posé : ${quoi}${p?.irreguliers ? ` (${p.irreguliers} entrée(s))` : ''} ; rien n’a été touché, à signaler à l’équipe technique`;
+  }
+  return `NON posé : ${quoi}${servi.code_sortie !== null && servi.code_sortie !== undefined ? ` (code ${servi.code_sortie})` : ''} ; le site servi n’a pas changé : voir ${GESTE_DE_L_ATELIER} --etat et le journal de la pose dans le dossier du rapport`;
+}
 
 const virgule = (n, decimales) => n.toFixed(decimales).replace('.', ',');
 
@@ -110,6 +159,7 @@ export function jugerLeServeur(rapport) {
 export function severiteDuRapport(r) {
   if (!r) return 'neutre';
   if (r.issue !== 'fait') return 'alerte';
+  if (r.servi === false || (r.servi && typeof r.servi === 'object' && r.servi.pose === false)) return 'attention';
   if (r.equivalents === false || (r.comparaison && r.comparaison.equivalents === false)) return 'attention';
   return 'ok';
 }
@@ -120,14 +170,15 @@ export function texteDuResume(r) {
   const version = r.version_installee ? ` v${r.version_installee}` : '';
   if (r.issue === 'fait') {
     const ecarts = r.differents === null || r.differents === undefined ? '' : r.differents === 0 ? ', site équivalent' : `, ${r.differents} fichier(s) différent(s)`;
-    return `${quand}${version}${r.origine && r.origine !== 'livraison' ? ` (${ORIGINES[r.origine] ?? r.origine})` : ''} : faite en ${formaterLaDuree(r.duree_ms)}, pic ${formaterLaTaille(r.pic_ko, { unite: 'ko' })}${ecarts}`;
+    const servi = r.servi === true ? ', site posé' : r.servi === false ? ', site NON posé' : '';
+    return `${quand}${version}${r.origine && r.origine !== 'livraison' ? ` (${ORIGINES[r.origine] ?? r.origine})` : ''} : faite en ${formaterLaDuree(r.duree_ms)}, pic ${formaterLaTaille(r.pic_ko, { unite: 'ko' })}${ecarts}${servi}`;
   }
   const quoi = { refus: 'refusée', echec: 'en échec', oom: 'arrêtée par manque de mémoire', delai: 'arrêtée (délai dépassé)' }[r.issue] ?? r.issue;
   return `${quand}${version}${r.origine && r.origine !== 'livraison' ? ` (${ORIGINES[r.origine] ?? r.origine})` : ''} : ${quoi}${r.motif && MOTIFS[r.motif] ? ` (${MOTIFS[r.motif]})` : ''}`;
 }
 
 /** Les lignes (libellé, valeur) d'un rapport complet, dans l'ordre où la page les affiche. */
-export function lignesDuRapport(r) {
+export function lignesDuRapport(r, { servir = null } = {}) {
   if (!r) return [];
   const s = r.serveur ?? {};
   const f = r.fabrication;
@@ -167,6 +218,9 @@ export function lignesDuRapport(r) {
       lignes.push({ libelle: `${nom} : après`, valeur: phase(i.phases.apres) });
     }
   }
+  const servi = phraseDuServi(r.servi);
+  if (servi) lignes.push({ libelle: 'Site servi', valeur: servi });
+  else if (servir) lignes.push({ libelle: 'Site servi', valeur: `interrupteur posé depuis ${String(servir.depuis ?? '?').slice(0, 16).replace('T', ' ')} ; cette fabrication n’a pas posé de site (voir son issue)` });
   if (r.invalides?.length) lignes.push({ libelle: 'Fichiers refusés à la lecture', valeur: r.invalides.join(' ; ') });
   return lignes;
 }
@@ -186,7 +240,7 @@ export function lignesDuBilan(b) {
   const seuil = b.seuils ? `, seuil : moins de ${b.seuils.facteur_de_reference} fois la référence ou de ${b.seuils.plancher_ms} ms` : '';
   const lignes = [
     { libelle: 'Verdict', valeur: LIBELLES_DU_VERDICT[b.verdict] ?? b.verdict },
-    { libelle: 'Fabrications sur 24 h', valeur: `${f.total} (livraison ${f.par_origine.livraison}, nuit ${f.par_origine.nuit}, journée type ${f.par_origine.journee_type}) : ${f.faites} faites, ${f.refus} refusées, ${f.echecs} en échec, ${f.oom} par manque de mémoire, ${f.delai} au délai${f.plafond_du_jour_atteint ? ' ; plafond du jour atteint' : ''}` },
+    { libelle: b.depuis ? 'Fabrications depuis le geste' : 'Fabrications sur 24 h', valeur: `${f.total} (livraison ${f.par_origine.livraison}, nuit ${f.par_origine.nuit}, journée type ${f.par_origine.journee_type}) : ${f.faites} faites, ${f.refus} refusées, ${f.echecs} en échec, ${f.oom} par manque de mémoire, ${f.delai} au délai${f.plafond_du_jour_atteint ? ' ; plafond du jour atteint' : ''}` },
   ];
   if (b.serveur) {
     lignes.push({ libelle: 'Serveur', valeur: `${b.serveur.processeurs ?? '?'} processeur(s), ${formaterLaTaille(b.serveur.memoire_totale_ko, { unite: 'ko' })} de mémoire (au plus bas ${formaterLaTaille(b.serveur.memoire_disponible_min_ko, { unite: 'ko' })} disponibles), disque : au plus bas ${formaterLaTaille(b.serveur.disque_libre_min_ko, { unite: 'ko' })} libres sur ${formaterLaTaille(b.serveur.disque_total_ko, { unite: 'ko' })}` });
@@ -213,8 +267,8 @@ export function presenterLAtelier(etat) {
   }
   const dernier = etat.dernier ?? null;
   const base = { titre: 'Atelier du site de dev', message: etat.message ?? '', bilan: presenterLeBilan(etat.bilan), historique: (etat.historique ?? []).map((h) => ({ id: h.id, severite: severiteDuRapport(h), texte: texteDuResume(h) })) };
-  if (!dernier) return { severite: 'neutre', ...base, lignes: [] };
+  if (!dernier) return { severite: 'neutre', ...base, lignes: etat.servir ? [{ libelle: 'Site servi', valeur: `interrupteur posé depuis ${String(etat.servir.depuis ?? '?').slice(0, 16).replace('T', ' ')} ; aucune fabrication encore` }] : [] };
   // en attente ou en cours : la page montre la dernière mesure sans la juger (neutre) tant qu'une autre est attendue
   const jugee = etat.etat === 'rapport';
-  return { severite: jugee ? severiteDuRapport({ ...dernier, equivalents: dernier.comparaison?.equivalents }) : 'neutre', ...base, lignes: lignesDuRapport(dernier) };
+  return { severite: jugee ? severiteDuRapport({ ...dernier, equivalents: dernier.comparaison?.equivalents }) : 'neutre', ...base, lignes: lignesDuRapport(dernier, { servir: etat.servir ?? null }) };
 }

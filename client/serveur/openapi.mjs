@@ -567,6 +567,13 @@ function cheminsDuService() {
         responses: { 200: { description: 'Le fichier SQLite.', content: { 'application/vnd.sqlite3': { schema: { type: 'string', format: 'binary' } } } }, 304: ref('responses', 'NonModifie'), 403: ref('responses', 'Fermee'), 503: ref('responses', 'Indisponible') },
       },
     },
+    '/edition/atelier/': {
+      post: {
+        operationId: 'edition_atelier', tags: [SERVICE], summary: 'Refaire l’extrait de l’atelier tout de suite (« le bouton »)',
+        description: `Sans corps. L’extrait du contenu de l’atelier est refait tout de suite, sans attendre les 10 minutes de calme qui suivent les saisies ; le service ne commande rien d’autre : root le voit à sa ronde (au plus 10 minutes) et, si l’interrupteur de l’atelier est posé, fabrique et pose le site. { format: 'maverick-atelier-refaire/1', etat: 'fabrique' | 'a_jour', message, version, fabrique_le } ; 409 : \`occupe\` (déjà en cours) ou \`inactif\` (atelier non installé).${SITE_DE_DEV}`,
+        responses: { 200: reponse('L’extrait est refait, ou déjà à jour.', objet), 403: ref('responses', 'Fermee'), 409: reponse('Une fabrication de l’extrait est déjà en cours, ou l’atelier n’est pas installé.', ref('schemas', 'Erreur')), 500: reponse('L’extrait n’a pas pu être refait.', ref('schemas', 'Erreur')), 503: ref('responses', 'Indisponible') },
+      },
+    },
     '/edition/extrait/meta/': lectureDuService('edition_extrait_meta', 'Méta de l’extrait du contenu', `La date de fabrication (UTC), la version du site, le schéma, l’empreinte globale et celle de chaque table de contenu, le nombre de lignes des tables calculées, la taille et l’empreinte du fichier (fabrique l’extrait s’il est périmé).${SITE_DE_DEV}`),
     '/edition/journal/': lectureDuService('edition_journal', 'Journal des modifications en attente', `Le journal à rapatrier dans data/rows (npm run db:appliquer-edition), en pièce jointe.${SITE_DE_DEV}`),
     '/mise-a-jour/': lectureDuService('mise_a_jour', 'Note en préparation', `Modifications production → dev (calculées), brouillon, état du lancement, et \`etat_production\` : la production a-t-elle appliqué sa dernière mise à jour (\`a_jour\`, \`pas_appliquee\`, \`inconnue\`) ; \`retraits_bloquants\` (R292) : les races, classes et magies que des fiches de la production citent et que la mise à jour retirerait (la production ne les adapte pas : elle garderait sa base) — \`elements\` (table, id, nom, libelle, fiches), \`fiches_au_moins\`, \`fiches_au_plus\`, \`message\` ; des nombres seulement, jamais une fiche.${SITE_DE_DEV}`),

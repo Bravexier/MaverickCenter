@@ -85,6 +85,7 @@ test('le classement : lecture libre pour les pages, lecture avec clé pour le jo
     proposition: [['POST', '/api/edition/lots/'], ['POST', `/api/edition/lots/${UUID}/essai/`], ['POST', '/api/edition/lots/recalcul/']],
     ecriture: [
       ['POST', '/api/edition/'], ['POST', '/api/maintenance/lever/'],
+      ['POST', '/api/edition/atelier/'], // « le bouton » de l'atelier : l'extrait refait tout de suite (le mot de passe seul)
       ['POST', `/api/edition/lots/${UUID}/appliquer/`], ['POST', `/api/edition/lots/${UUID}/refuser/`], ['POST', `/api/edition/lots/${UUID}/annuler/`],
       ['POST', '/api/mise-a-jour/brouillon/'], ['POST', '/api/mise-a-jour/majeure/'], ['POST', '/api/mise-a-jour/lancer/'], ['POST', '/api/mise-a-jour/liberer/'],
       ['POST', '/api/mise-a-jour/conflits/'], ['POST', '/api/mise-a-jour/copier/'], // « Copier vers le dépôt » (lot 8, base source)

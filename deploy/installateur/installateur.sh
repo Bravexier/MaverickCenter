@@ -341,6 +341,7 @@ if [ "$COPIER_BASE_PROD" -eq 0 ] && [ -n "$EXISTANT" ] && [ -f "$DOSSIER/db/viva
 fi
 
 # ---------------------------------------------------------------- site
+@@VERROU_DEBUT@@
 SITE="$DOSSIER/site"
 mkdir -p "$SITE"
 if [ "$USE_RSYNC" != 0 ] && command -v rsync >/dev/null 2>&1; then
@@ -351,6 +352,7 @@ else
   find "$SITE" -mindepth 1 -maxdepth 1 -exec rm -rf {} \;
   cp -a "$TRAVAIL/site/." "$SITE/" || die "copie du site impossible"
 fi
+@@VERROU_FIN@@
 
 # ---------------------------------------------------------------- configuration
 # .livre/ garde la dernière version livrée de chaque fichier : un fichier identique à elle n'a pas été touché sur place et prend la

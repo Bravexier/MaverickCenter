@@ -18,16 +18,23 @@
 set -eu
 umask 022
 
-# L'origine de la fabrication : « livraison » (la marque de l'installateur, par l'unité .path), « nuit » (le minuteur de 04:30) ou « journee_type » (le minuteur du jour) ; les deux
-# derniers n'ont pas de marque nouvelle : ils refont une fabrication de la version installée, sous les mêmes règles (verrou, refus de mémoire et de disque, plafonds).
+# L'origine de la fabrication : « livraison » (la marque de l'installateur, par l'unité .path), « nuit » (le minuteur de 04:30), « journee_type » (le minuteur du jour) ou « contenu » (le minuteur
+# de 10 minutes du site servi, posé par `installer.sh --servir`) ; les trois derniers n'ont pas de marque nouvelle : ils refont une fabrication de la version installée, sous les mêmes règles
+# (verrou, refus de mémoire et de disque, plafonds). « contenu » ne fabrique que si l'interrupteur <atelier>/servir est posé ET si l'extrait a changé depuis le dernier site posé.
+#
+# Le site servi (lot 11 « Bascule 2 », PR 3b ; docs/serveur.md, « Bascule 2 : préparation »). Avec l'interrupteur <atelier>/servir (un fichier de root, posé par `installer.sh --servir`) et une fabrication
+# réussie, le site fabriqué est posé à la place du site servi, JAMAIS par root qui lirait la sortie du conteneur : un second conteneur (même image, sans réseau, en lecture seule, sans capacité,
+# sans nouveau privilège, la sortie en lecture seule, <instance>/site en écriture) lance le script du kit client/scripts/poser-un-site.mjs, qui refuse liens, FIFO et fichiers irréguliers, pose
+# chaque fichier de façon atomique, retire ce que le nouveau site n'a pas et ne touche jamais _serveur/. Root ne lit que ce qu'il connaît : le code de sortie du conteneur, `stat` de l'extrait,
+# le fichier VERSION ; son résumé (pose.json) est copié tel quel après `docker rm`, sous le même plafond que les autres résultats, et le service le valide. Sans l'interrupteur, rien de servi ne change.
 ORIGINE=livraison
 while [ $# -gt 0 ]; do
   case "$1" in
-    --origine) [ $# -ge 2 ] || { echo "Usage : lancer.sh [--origine livraison|nuit|journee_type]" >&2; exit 2; }; ORIGINE=$2; shift 2 ;;
-    *) echo "Usage : lancer.sh [--origine livraison|nuit|journee_type]" >&2; exit 2 ;;
+    --origine) [ $# -ge 2 ] || { echo "Usage : lancer.sh [--origine livraison|nuit|journee_type|contenu]" >&2; exit 2; }; ORIGINE=$2; shift 2 ;;
+    *) echo "Usage : lancer.sh [--origine livraison|nuit|journee_type|contenu]" >&2; exit 2 ;;
   esac
 done
-case "$ORIGINE" in livraison|nuit|journee_type) ;; *) echo "origine inconnue : « $ORIGINE »" >&2; exit 2 ;; esac
+case "$ORIGINE" in livraison|nuit|journee_type|contenu) ;; *) echo "origine inconnue : « $ORIGINE »" >&2; exit 2 ;; esac
 
 ICI=$(cd "$(dirname "$0")" && pwd -P)
 [ -f "$ICI/lib.sh" ] || { echo "lib.sh introuvable à côté de lancer.sh" >&2; exit 1; }
@@ -40,6 +47,9 @@ REGLAGES=$ATELIER/reglages.env
 ETC_SYSTEMD=${MAVERICK_DIR_ETC_SYSTEMD:-/etc/systemd/system}
 MARQUE=$ATELIER/declencheur/marque
 JOURNAL_DE_LA_MARQUE=$ATELIER/declencheur/derniere-marque
+SERVIR=$ATELIER/servir
+DERNIER_CONTENU=$ATELIER/declencheur/dernier-contenu
+servir_actif() { [ -f "$SERVIR" ] && [ ! -L "$SERVIR" ]; }
 
 log() { echo "$(maintenant_iso) atelier : $*"; }
 refuser_de_demarrer() { log "$*"; exit 0; }
@@ -60,6 +70,7 @@ mode=$(sed -n 's/^mode=//p' "$INSTANCE/VERSION" 2>/dev/null | head -n 1)
 [ "$mode" = test ] || refuser_de_demarrer "pas d'atelier : $INSTANCE n'est pas une instance de test."
 [ -f "$REGLAGES" ] || refuser_de_demarrer "atelier non installé : $REGLAGES est absent (sudo sh $ATELIER/installer.sh)."
 [ -f "$MARQUE" ] || refuser_de_demarrer "aucune marque de l'installateur : rien à fabriquer."
+if [ "$ORIGINE" = contenu ] && ! servir_actif; then refuser_de_demarrer "origine contenu : l'interrupteur $SERVIR n'est pas posé, le site n'est pas servi par l'atelier : rien à faire."; fi
 
 command -v flock >/dev/null 2>&1 || { echo "ERREUR : flock est absent (util-linux)." >&2; exit 1; }
 exec 9>"$ATELIER/.verrou"
@@ -80,6 +91,10 @@ GOOGLE=$(champ_du_fichier "$REGLAGES" GOOGLE_CLIENT_ID | tr -cd 'A-Za-z0-9._-' |
 INTERVALLE=${MAVERICK_ATELIER_INTERVALLE:-1}
 ATTENTE=${MAVERICK_ATELIER_ATTENTE:-300}
 MAX_PAR_JOUR=$(reglage MAX_PAR_JOUR "$DEFAUT_MAX_PAR_JOUR")
+MAX_CONTENU_PAR_JOUR=$(reglage MAX_CONTENU_PAR_JOUR "$DEFAUT_MAX_CONTENU_PAR_JOUR")
+# le seuil des pages (0 à 100 %) vient du fichier de l'interrupteur, écrit par root ; une autre valeur vaut le défaut
+PAGES_MINIMUM_PCT=$(champ_du_fichier "$SERVIR" PAGES_MINIMUM_PCT)
+case "$PAGES_MINIMUM_PCT" in ''|*[!0-9]*) PAGES_MINIMUM_PCT=$DEFAUT_PAGES_MINIMUM_PCT ;; *) [ "$PAGES_MINIMUM_PCT" -le 100 ] || PAGES_MINIMUM_PCT=$DEFAUT_PAGES_MINIMUM_PCT ;; esac
 JOURS_DE_MESURE=$(reglage JOURS_DE_MESURE "$DEFAUT_JOURS_DE_MESURE")
 MESURE_DEPUIS=$(reglage MESURE_DEPUIS 0)
 DOSSIER_PROD=$(champ_du_fichier "$REGLAGES" DOSSIER_PROD)
@@ -133,12 +148,14 @@ ecrire_le_rapport() { # issue [motif]
     printf '  "memoire": { "pic_ko": %s, "source": %s },\n  "cpu_ms": %s,\n' "$(json_nombre "${PIC_KO:-}")" "$(json_texte "${SOURCE_DU_PIC:-}")" "$(json_nombre "${CPU_MS:-}")"
     printf '  "place": { "kit_ko": %s, "travail_ko": %s, "sortie_ko": %s },\n' "$(json_nombre "${KIT_KO:-}")" "$(json_nombre "${TRAVAIL_KO:-}")" "$(json_nombre "${SORTIE_KO:-}")"
     printf '  "sonde": %s,\n' "$(sonde_json)"
+    printf '  "servi": %s,\n' "${SERVI_JSON:-null}"
     printf '  "fabrication": %s,\n  "comparaison": %s\n}\n' "$(json_booleen "${A_FABRICATION:-0}")" "$(json_booleen "${A_COMPARAISON:-0}")"
   } > "$fichier"
   mv -f "$fichier" "$dossier/rapport.json"
   log "rapport $ID : $issue${motif:+ ($motif)} ; plafond ${PLAFOND_KO:-?} ko, marge ${MARGE_KO:-?} ko, mémoire disponible ${MEM_DISPO_KO:-?} ko, disque libre ${DISQUE_LIBRE_KO:-?} ko."
-  # ne garder que les derniers rapports (des dossiers de la forme AAAAMMJJ-HHMMSS, rien d'autre)
-  anciens=$(ls -1 "$RAPPORTS" | grep -E '^[0-9]{8}-[0-9]{6}$' | sort -r | tail -n +"$((RAPPORTS_GARDES + 1))" || true)
+  # ne garder que les derniers rapports (des dossiers de la forme AAAAMMJJ-HHMMSS, rien d'autre) : ceux du jour UTC ne s'effacent JAMAIS (les plafonds du jour les comptent), plus les RAPPORTS_GARDES plus anciens
+  aujourdhui=$(date -u -d "@$(epoch_maintenant)" '+%Y%m%d')
+  anciens=$(ls -1 "$RAPPORTS" | grep -E '^[0-9]{8}-[0-9]{6}$' | grep -v "^$aujourdhui-" | sort -r | tail -n +"$((RAPPORTS_GARDES + 1))" || true)
   for ancien in $anciens; do rm -rf "${RAPPORTS:?}/$ancien"; done
 }
 
@@ -263,12 +280,21 @@ sonde_json() {
 }
 
 # ---------------------------------------------------------------- la journée type : ce que les minuteurs ont le droit de lancer
-plafond_deja_dit() { # un rapport « plafond_du_jour » existe déjà aujourd'hui
+plafond_deja_dit() { # un rapport « plafond_du_jour » existe déjà aujourd'hui (pour l'origine « contenu » : un rapport de cette origine ; sinon un rapport d'une autre origine)
   jour=$(date -u -d "@$(epoch_maintenant)" '+%Y%m%d')
   for id in $(ls -1 "$RAPPORTS" 2>/dev/null | grep -E "^$jour-[0-9]{6}\$" || true); do
-    ! grep -Eq '"motif": *"plafond_du_jour"' "$RAPPORTS/$id/rapport.json" 2>/dev/null || return 0
+    grep -Eq '"motif": *"plafond_du_jour"' "$RAPPORTS/$id/rapport.json" 2>/dev/null || continue
+    if grep -Eq '"origine": *"contenu"' "$RAPPORTS/$id/rapport.json" 2>/dev/null; then [ "$ORIGINE" != contenu ] || return 0; else [ "$ORIGINE" = contenu ] || return 0; fi
   done
   return 1
+}
+# Le minuteur du contenu (10 minutes) : seulement avec l'interrupteur (déjà vérifié), une marque lisible, et un extrait qui a CHANGÉ depuis le dernier site posé. Root ne fait que des `stat`
+# (nom, taille, date de modification de contenu-<version>.db) et les compare à ce qu'il a noté lui-même dans declencheur/dernier-contenu quand il a posé un site. Un extrait pas encore là ou
+# suspect, ou inchangé : rien (l'extrait absent n'est pas attendu, le minuteur repassera) ; seule la fabrication qui suit écrit un rapport.
+regles_du_contenu() {
+  marque_valide || refuser_de_demarrer "origine contenu : la marque est illisible."
+  verifier_l_extrait "$VERSION_INSTALLEE" || refuser_de_demarrer "origine contenu : l'extrait de la version $VERSION_INSTALLEE n'est pas prêt ou est suspect : rien à faire."
+  if [ -f "$DERNIER_CONTENU" ] && [ ! -L "$DERNIER_CONTENU" ] && [ "$(cat "$DERNIER_CONTENU" 2>/dev/null || true)" = "$EXTRAIT_STAT" ]; then exit 0; fi
 }
 # Le minuteur du jour n'ajoute une fabrication que si la fenêtre de mesure est ouverte, si la journée UTC en compte moins de 10 (toutes origines : nuit et livraisons comprises) et si la dernière date de plus de 40 minutes. Sinon : rien, sans rapport.
 regles_de_la_journee_type() {
@@ -307,13 +333,15 @@ verifier_l_extrait() { # version
   taille=$(stat -c '%s' "$source" 2>/dev/null || echo 0)
   [ "$taille" -gt 0 ] && [ "$taille" -le "$PLAFOND_EXTRAIT" ] || return 2
   EXTRAIT_DIR=$depot
+  # nom, taille et date de modification (à la nanoseconde quand `stat` sait la dire) : tout ce que root note de l'extrait
+  EXTRAIT_STAT="contenu-$1.db $taille $(stat -c '%.9Y' "$source" 2>/dev/null || stat -c '%Y' "$source" 2>/dev/null || echo 0)"
 }
 
-# Un dossier de travail du conteneur : à root, vidé (rien du dossier lui-même n'est suivi), puis donné à l'utilisateur du conteneur (le dossier seulement).
-preparer_un_dossier() { # nom
+# Un dossier de travail du conteneur : à root, vidé (rien du dossier lui-même n'est suivi), puis donné à l'utilisateur du conteneur (le dossier seulement ; 65534 sauf demande).
+preparer_un_dossier() { # nom [uid:gid]
   mkdir -p "$ATELIER/$1"
   find "$ATELIER/$1" -mindepth 1 -delete 2>/dev/null || rm -rf "${ATELIER:?}/$1"/* "${ATELIER:?}/$1"/.[!.]* 2>/dev/null || true
-  if [ "$ESSAI" != 1 ]; then chown 65534:65534 "$ATELIER/$1"; fi
+  if [ "$ESSAI" != 1 ]; then chown "${2:-65534:65534}" "$ATELIER/$1"; fi
   chmod 755 "$ATELIER/$1"
 }
 
@@ -351,6 +379,85 @@ releve_du_conteneur() {
   fi
 }
 
+
+# ---------------------------------------------------------------- le site servi (l'interrupteur <atelier>/servir)
+servi_json() { # pose(1|0) motif code
+  printf '{ "pose": %s, "motif": %s, "code_sortie": %s, "version_installee": %s, "version_de_l_instance": %s, "pages_minimum_pct": %s, "resume": %s }' \
+    "$(json_booleen "$1")" "$(json_texte "$2")" "$(json_nombre "$3")" "$(json_texte "$VERSION_INSTALLEE")" "$(json_texte "${SERVI_VERSION_INSTANCE:-}")" "$(json_nombre "$PAGES_MINIMUM_PCT")" "$(json_booleen "${A_RESUME:-0}")"
+}
+servi_refuse() { SERVI_JSON=$(servi_json 0 "$1" "${2:-}"); log "site non posé : $1."; }
+
+# L'extrait d'après lequel le site a été fabriqué est noté (nom, taille, date) : le minuteur « contenu » ne refabrique que si l'extrait change depuis.
+noter_le_contenu() {
+  if [ -n "$EXTRAIT_STAT" ]; then printf '%s\n' "$EXTRAIT_STAT" > "$DERNIER_CONTENU.neuf" && mv -f "$DERNIER_CONTENU.neuf" "$DERNIER_CONTENU" || rm -f "$DERNIER_CONTENU.neuf"; fi
+}
+
+# Pose le site fabriqué (<atelier>/sortie/site) à la place de <instance>/site. Appelée seulement avec l'interrupteur, après une fabrication réussie (code 0, ni délai, ni OOM, ni disque).
+# Root ne lit rien de la sortie : il vérifie des versions (le fichier VERSION est à lui) et des types (`stat`), puis lance le second conteneur. Les garde-fous qui demandent de lire le site
+# (index.html, pages au moins PAGES_MINIMUM_PCT % de celles du site servi, aucun lien ni FIFO) sont ceux du script du kit, qui tourne dans le conteneur.
+# Le second conteneur tourne sous l'utilisateur PROPRIÉTAIRE de <instance>/site (celui qui peut y écrire sans la moindre capacité : root n'a que le droit du propriétaire, sans CAP_DAC_OVERRIDE,
+# CAP_CHOWN ni CAP_MKNOD ; sur le serveur il est root DU CONTENEUR, car site/ est à root), et ne voit que : le kit (lecture seule), la sortie (lecture seule), le site servi (écriture)
+# AVEC _serveur/ remonté par-dessus en lecture seule (le code du service ne se réécrit pas d'ici) et son dossier de résumé. Pas de réseau, pas de db/, pas de metriques/, pas de secrets/, pas de
+# socket Docker. Limite : une évasion du conteneur donnerait root ; ce qui la rend improbable est l'absence de capacité, de réseau et d'écriture hors de ces montages.
+servir_le_site() {
+  SERVI_VERSION_INSTANCE=$(sed -n 's/^version=\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\)$/\1/p' "$INSTANCE/VERSION" 2>/dev/null | head -n 1)
+  A_RESUME=0
+  if [ "$SERVI_VERSION_INSTANCE" != "$VERSION_INSTALLEE" ] || [ "$VERSION_KIT" != "$VERSION_INSTALLEE" ]; then servi_refuse version_differente; return 0; fi
+  # la base source (db/source) : sans elle, chaque pose referait la base vivante ; le marqueur est relu avant CHAQUE pose (un retour arrière de la bascule 1 l'a pu retirer)
+  if [ ! -e "$INSTANCE/db/source" ]; then servi_refuse pas_de_base_source; return 0; fi
+  if [ ! -f "$ATELIER/kit/client/scripts/poser-un-site.mjs" ] || [ -L "$ATELIER/kit/client/scripts/poser-un-site.mjs" ]; then servi_refuse kit_sans_pose; return 0; fi
+  # la sortie et le site servi : des dossiers réels (jamais un lien : la source d'un montage est un chemin fixé par root) ; ce que la sortie porte, le script du conteneur le lit
+  # (et _serveur/, le code que le service exécute : il doit être un vrai dossier, car le conteneur le voit en lecture seule, monté par-dessus site/)
+  if [ ! -d "$ATELIER/sortie/site" ] || [ -L "$ATELIER/sortie/site" ] || [ -L "$ATELIER/sortie" ] || [ ! -d "$INSTANCE/site" ] || [ -L "$INSTANCE/site" ] || [ ! -d "$INSTANCE/site/_serveur" ] || [ -L "$INSTANCE/site/_serveur" ]; then servi_refuse site_absent; return 0; fi
+  proprietaire=$(stat -c '%u:%g' "$INSTANCE/site" 2>/dev/null || echo x)
+  case "$proprietaire" in [0-9]*:[0-9]*) ;; *) servi_refuse site_absent; return 0 ;; esac
+  case "$proprietaire" in *[!0-9:]*) servi_refuse site_absent; return 0 ;; esac
+  preparer_un_dossier pose "$proprietaire"
+  PARENT_POSE=''
+  if [ -f "$ETC_SYSTEMD/maverick-atelier.slice" ]; then PARENT_POSE='--cgroup-parent maverick-atelier.slice'; fi
+  if ! CID=$(docker run -d --name "maverick-atelier-pose-$$" \
+    --network none --read-only --cap-drop ALL --security-opt no-new-privileges --user "$proprietaire" --pids-limit 128 \
+    --cpus 1 --cpu-shares 128 --memory "$MEMOIRE_POSE" --memory-swap "$MEMOIRE_POSE" --oom-score-adj 500 \
+    -v "$ATELIER/kit:/kit:ro" -v "$ATELIER/sortie:/sortie:ro" -v "$INSTANCE/site:/site" -v "$INSTANCE/site/_serveur:/site/_serveur:ro" -v "$ATELIER/pose:/pose" \
+    $PARENT_POSE "$IMAGE" node --no-warnings /kit/client/scripts/poser-un-site.mjs --source /sortie/site --cible /site --resume /pose/pose.json --minimum-pct "$PAGES_MINIMUM_PCT" 2>/dev/null); then
+    CID=''
+    servi_refuse docker_refuse
+    return 0
+  fi
+  depart_pose=$(date +%s)
+  pose_depassee=0
+  while :; do
+    en_marche=$(docker inspect -f '{{.State.Running}}' "$CID" 2>/dev/null || echo false)
+    [ "$en_marche" = true ] || break
+    if [ $(($(date +%s) - depart_pose)) -ge "$DELAI_POSE_S" ]; then pose_depassee=1; docker kill "$CID" >/dev/null 2>&1 || true; break; fi
+    sleep "$INTERVALLE"
+  done
+  code_pose=$(docker inspect -f '{{.State.ExitCode}}' "$CID" 2>/dev/null || echo '')
+  case "$code_pose" in ''|*[!0-9]*) code_pose='' ;; esac
+  journal_pose=$ATELIER/.journal-pose.$$
+  { timeout 30 docker logs "$CID" 2>&1 | tail -c "$PLAFOND_JOURNAL" > "$journal_pose"; } 2>/dev/null || rm -f "$journal_pose"
+  # le conteneur est supprimé AVANT de toucher à son résumé (comme pour la fabrication : plus rien ne peut le changer)
+  docker rm -f "$CID" >/dev/null 2>&1 || true
+  CID=''
+  dossier=$RAPPORTS/$ID
+  mkdir -p "$dossier"
+  copier_un_resultat "$ATELIER/pose/pose.json" "$dossier/pose.json" && A_RESUME=1
+  if [ -s "$journal_pose" ] && [ ! -L "$journal_pose" ]; then mv -f "$journal_pose" "$dossier/journal-de-la-pose.txt" && chmod 644 "$dossier/journal-de-la-pose.txt" || rm -f "$journal_pose"; else rm -f "$journal_pose"; fi
+  find "$ATELIER/pose" -mindepth 1 -delete 2>/dev/null || true
+  if [ "$pose_depassee" -eq 1 ]; then servi_refuse delai_de_la_pose "$code_pose"; return 0; fi
+  case "$code_pose" in
+    0) SERVI_JSON=$(servi_json 1 '' 0); log "site posé (version $VERSION_INSTALLEE)."
+       noter_le_contenu ;;
+    81) servi_refuse index_absent 81 ;;
+    # un refus qui ne changera pas tant que l'extrait ne change pas : l'extrait est noté aussi (sinon le minuteur le refabriquerait toutes les 10 minutes) ; « --servir » efface la note
+    82) servi_refuse site_trop_petit 82; noter_le_contenu ;;
+    83) servi_refuse fichier_irregulier 83; noter_le_contenu ;;
+    84) servi_refuse serveur_dans_la_source 84; noter_le_contenu ;;
+    85) servi_refuse source_illisible 85 ;;
+    *) servi_refuse echec_de_la_pose "$code_pose" ;;
+  esac
+}
+
 # ---------------------------------------------------------------- une fabrication
 fabriquer_pour_la_marque() {
   HORODATAGE=$(maintenant_iso)
@@ -361,6 +468,7 @@ fabriquer_pour_la_marque() {
   FIN_MS=''
   SONDE_PREPAREE=''
   PLAFOND_KO=''; MARGE_KO=''; CODE_SORTIE=''; PIC_KO=''; SOURCE_DU_PIC=''; CPU_MS=''; KIT_KO=''; TRAVAIL_KO=''; SORTIE_KO=''; A_FABRICATION=0; A_COMPARAISON=0
+  SERVI_JSON=''; EXTRAIT_STAT=''
   VERSION_KIT=''
   mkdir -p "$RAPPORTS"
 
@@ -374,9 +482,14 @@ fabriquer_pour_la_marque() {
   marque_valide || { ecrire_le_rapport refus marque_illisible; return 0; }
 
   # le plafond du jour, toutes origines confondues (livraisons comprises) : au-delà, plus aucune fabrication ce jour-là ; un seul rapport court le dit
-  faites_aujourdhui=$(rapports_du_jour "$RAPPORTS" | grep -c . || true)
-  if [ "$faites_aujourdhui" -ge "$MAX_PAR_JOUR" ]; then
-    if plafond_deja_dit; then log "plafond du jour atteint ($faites_aujourdhui fabrications, maximum $MAX_PAR_JOUR) : rien à faire, déjà noté."; else ecrire_le_rapport refus plafond_du_jour; fi
+  # (le site servi a son propre plafond : MAX_CONTENU_PAR_JOUR, par défaut 48, ne compte que les fabrications d'origine « contenu » ; les autres origines ne les comptent pas)
+  if [ "$ORIGINE" = contenu ]; then
+    faites_aujourdhui=$(rapports_du_jour "$RAPPORTS" contenu | grep -c . || true); plafond_du_jour=$MAX_CONTENU_PAR_JOUR
+  else
+    faites_aujourdhui=$(rapports_du_jour "$RAPPORTS" | grep -c . || true); plafond_du_jour=$MAX_PAR_JOUR
+  fi
+  if [ "$faites_aujourdhui" -ge "$plafond_du_jour" ]; then
+    if plafond_deja_dit; then log "plafond du jour atteint ($faites_aujourdhui fabrications, maximum $plafond_du_jour) : rien à faire, déjà noté."; else ecrire_le_rapport refus plafond_du_jour; fi
     return 0
   fi
 
@@ -492,6 +605,9 @@ fabriquer_pour_la_marque() {
   SORTIE_KO=$(ko_de "$ATELIER/sortie")
   find "$ATELIER/travail" -mindepth 1 -delete 2>/dev/null || true
 
+  # le site servi : seulement avec l'interrupteur, et seulement après une fabrication réussie
+  if servir_actif && [ "$DISQUE_COUPE" -eq 0 ] && [ "$DEPASSE" -eq 0 ] && [ "$OOM" != true ] && [ "$CODE_SORTIE" = 0 ]; then servir_le_site; fi
+
   if [ "$DISQUE_COUPE" -eq 1 ]; then ecrire_le_rapport echec disque_insuffisant
   elif [ "$DEPASSE" -eq 1 ]; then ecrire_le_rapport delai
   elif [ "$OOM" = true ]; then ecrire_le_rapport oom
@@ -507,6 +623,7 @@ fabriquer_pour_la_marque() {
 if [ "$ORIGINE" != livraison ]; then
   marque_avant=$(cat "$MARQUE" 2>/dev/null || true)
   [ "$ORIGINE" != journee_type ] || regles_de_la_journee_type
+  [ "$ORIGINE" != contenu ] || regles_du_contenu
   log "fabrication ($ORIGINE) pour la marque : $(tr '\n' ' ' < "$MARQUE")"
   fabriquer_pour_la_marque
   rm -f "$RAPPORTS/en-cours.json"

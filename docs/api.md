@@ -592,6 +592,15 @@ que `lib/debug-schema.mjs`, pur : mise en page, liens, caméra, recherche, rendu
 `serveur/metriques.mjs` (collecte, base des métriques, lectures), `serveur/metriques-sql.mjs` (requêtes SQL comptées pendant une requête HTTP) et
 `serveur/debug-tables.mjs` (contenu des tables, version de la base).
 
+### « Le bouton » de l'atelier (`POST /api/edition/atelier/`)
+
+Site de dev seulement (403 en production), sans corps, **classe d'accès `ecriture`** : le mot de passe (`serveur/acces-routes.mjs`). Il fait refaire **tout de suite** l'extrait du contenu de l'atelier, sans attendre les 10 minutes de calme qui suivent les saisies (`serveur/atelier.mjs#refaireMaintenant`). C'est tout ce que fait le service : il ne commande aucun programme de root (garde-fou 20). Root le voit à sa ronde (le minuteur `maverick-atelier-contenu.timer`, toutes les 10 minutes, compare le `stat` de l'extrait à celui du dernier site posé) et, **si l'interrupteur `atelier/servir` est posé**, fabrique et pose le site (`docs/serveur.md`, « Bascule 2 : préparation », PR 3b). Aucune page ne l'appelle encore.
+- `200` `{ format: 'maverick-atelier-refaire/1', etat: 'fabrique' | 'a_jour', message, version, fabrique_le }` : `fabrique` (l'extrait vient d'être refait), `a_jour` (l'extrait suit déjà le contenu : rien à refaire) ;
+- `409` `{ …, etat: 'occupe' }` (une fabrication de l'extrait est déjà en cours : réessayer) ou `etat: 'inactif'` (atelier non installé, base ou version pas prête) ;
+- `500` `{ erreur }` : l'extrait n'a pas pu être refait (le journal du service dit pourquoi) ; `503` : pas d'atelier sur ce service ; `405` hors `POST` ; `404` pour une adresse plus longue.
+
+Le rapport de l'atelier (`GET /api/debug/atelier/`) porte en plus : `servir` (`{ depuis, pages_minimum_pct }` ou `null` : l'interrupteur), `dernier.servi` (`{ pose, motif, code_sortie, version_installee, version_de_l_instance, pages_minimum_pct, resume }` ou `null` : le site fabriqué a-t-il été posé), l'origine `contenu` d'une fabrication, `historique[].servi` (`true`, `false` ou `null`) et `bilan.depuis` (le bilan ne compte que les rapports qui suivent le dernier geste du propriétaire).
+
 ### Contenu des tables
 
 Site de dev seulement : ailleurs, `403` avant tout le reste — **seule la base du serveur de production reste fermée** (décision du propriétaire du

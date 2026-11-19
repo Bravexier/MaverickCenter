@@ -117,7 +117,11 @@ export function fabriquer(options) {
     if (modele.split('\n@@KIT@@\n').length !== 2) throw new Error('deploy/installateur/installateur.sh doit porter une seule ligne @@KIT@@');
     const fragment = mode === 'test' ? readFileSync(join(ICI, 'kit-pose.sh'), 'utf8') : '';
     if (fragment.includes('@@')) throw new Error('deploy/installateur/kit-pose.sh ne porte pas de paramètre @@…@@');
-    const script = modele.replace('\n@@KIT@@\n', () => (fragment ? `\n${fragment}` : '\n')).replace(/@@([A-Z0-9_]+)@@/g, (tout, cle) => {
+    // Le verrou de l'atelier autour de la pose de site/ (verrou-debut.sh, verrou-fin.sh) : deux lignes repères, vides dans celui de production (octet pour octet comme avant).
+    for (const repere of ['@@VERROU_DEBUT@@', '@@VERROU_FIN@@']) if (modele.split(`\n${repere}\n`).length !== 2) throw new Error(`deploy/installateur/installateur.sh doit porter une seule ligne ${repere}`);
+    const verrou = (nom) => (mode === 'test' ? readFileSync(join(ICI, nom), 'utf8') : '');
+    const modeleAvecVerrou = modele.replace('\n@@VERROU_DEBUT@@\n', () => `\n${verrou('verrou-debut.sh')}`).replace('\n@@VERROU_FIN@@\n', () => `\n${verrou('verrou-fin.sh')}`);
+    const script = modeleAvecVerrou.replace('\n@@KIT@@\n', () => (fragment ? `\n${fragment}` : '\n')).replace(/@@([A-Z0-9_]+)@@/g, (tout, cle) => {
       if (!(cle in valeurs)) throw new Error(`paramètre inconnu ${tout} dans deploy/installateur/installateur.sh`);
       return valeurs[cle];
     });

@@ -36,9 +36,14 @@ export const FICHIER_DU_CONTENU = 'contenu.json';
 export const nomDeLExtrait = (version) => `contenu-${version}.db`;
 export const VERSION_VALIDE = /^\d+\.\d+\.\d+$/;
 const ID_DU_RAPPORT = /^\d{8}-\d{6}$/;
-const PLAFOND_DES_FICHIERS = Object.freeze({ kit: 16384, installe: 8192, enCours: 4096, rapport: 32768, fabrication: 262144, comparaison: 262144 });
-export const RAPPORTS_GARDES = 40;
-export const ORIGINES = ['livraison', 'nuit', 'journee_type'];
+const PLAFOND_DES_FICHIERS = Object.freeze({ kit: 16384, installe: 8192, enCours: 4096, rapport: 32768, fabrication: 262144, comparaison: 262144, pose: 16384, servir: 4096 });
+export const RAPPORTS_GARDES = 100;
+export const ORIGINES = ['livraison', 'nuit', 'journee_type', 'contenu'];
+export const FORMAT_DE_LA_POSE = 'maverick-pose/1';
+export const FORMAT_DU_SERVIR = 'maverick-atelier-servir/1';
+export const FORMAT_DU_REFAIRE = 'maverick-atelier-refaire/1';
+/** Pourquoi le site fabriqué n'a pas été posé (rapport.servi.motif, écrit par root d'après le code de sortie du conteneur de pose ; pose.json#refus, écrit par le script du kit). */
+export const MOTIFS_DU_SERVI = ['pas_de_base_source', 'version_differente', 'kit_sans_pose', 'site_absent', 'docker_refuse', 'index_absent', 'site_trop_petit', 'fichier_irregulier', 'serveur_dans_la_source', 'source_illisible', 'echec_de_la_pose', 'delai_de_la_pose'];
 const ISSUES = ['fait', 'refus', 'echec', 'oom', 'delai'];
 const MOTIFS = ['memoire_insuffisante', 'marge_insuffisante', 'disque_insuffisant', 'extrait_absent', 'extrait_refuse', 'kit_perime', 'kit_absent', 'image_absente', 'docker_refuse', 'marque_illisible', 'plafond_du_jour'];
 const SOURCES_DE_LA_MEMOIRE = ['cgroup', 'cgroup_echantillonne', 'docker_stats'];
@@ -173,6 +178,31 @@ export function validerLaSonde(o) {
   };
 }
 
+/** Le champ `servi` d'un rapport (écrit par root : l'interrupteur <atelier>/servir était posé) : le site fabriqué a-t-il été posé, sinon pourquoi, et les deux versions comparées. `resume` : un pose.json a été copié. */
+export function validerLeServi(o) {
+  if (!o || typeof o !== 'object' || Array.isArray(o)) return null;
+  return {
+    pose: o.pose === true, motif: motif(o.motif, MOTIFS_DU_SERVI), code_sortie: entier(o.code_sortie, 255), version_installee: version(o.version_installee), version_de_l_instance: version(o.version_de_l_instance),
+    pages_minimum_pct: entier(o.pages_minimum_pct, 100), resume: o.resume === true,
+  };
+}
+
+/** pose.json (`maverick-pose/1`, écrit dans le conteneur de pose par scripts/poser-un-site.mjs : des nombres et un mot connu, jamais un nom de fichier). */
+export function validerLaPose(o) {
+  if (!o || o.format !== FORMAT_DE_LA_POSE) return null;
+  return {
+    format: o.format, pose: o.pose === true, refus: motif(o.refus, MOTIFS_DU_SERVI), posees: entier(o.posees, 1e9), retirees: entier(o.retirees, 1e9), inchangees: entier(o.inchangees, 1e9), octets_poses: entier(o.octets_poses),
+    pages_fabriquees: entier(o.pages_fabriquees, 1e9), pages_servies: entier(o.pages_servies, 1e9), minimum_de_pages: entier(o.minimum_de_pages, 1e9), minimum_pct: entier(o.minimum_pct, 100), irreguliers: entier(o.irreguliers, 1e9),
+    fichiers_source: entier(o.fichiers_source, 1e9), duree_ms: nombre(o.duree_ms, 1e10),
+  };
+}
+
+/** servir.json (`maverick-atelier-servir/1`, écrit par `installer.sh --servir`) : l'interrupteur est posé depuis quand, et le seuil des pages. */
+export function validerLeServir(o) {
+  if (!o || o.format !== FORMAT_DU_SERVIR) return null;
+  return { depuis: date(o.depuis), pages_minimum_pct: entier(o.pages_minimum_pct, 100) };
+}
+
 /** rapport.json (`maverick-atelier/1`, écrit par root : des nombres et des mots connus). Rend null s'il n'est pas de ce format ou si son identifiant n'est pas celui de son dossier. */
 export function validerLeRapport(o, id) {
   if (!o || o.format !== FORMAT_RAPPORT_DE_L_ATELIER || o.id !== id || !ID_DU_RAPPORT.test(id)) return null;
@@ -188,7 +218,7 @@ export function validerLeRapport(o, id) {
     reglages: validerLesReglages(o.reglages), plafond_ko: entier(o.plafond_ko), marge_ko: Number.isSafeInteger(o.marge_ko) ? o.marge_ko : null, duree_ms: nombre(o.duree_ms, 1e10), code_sortie: Number.isSafeInteger(o.code_sortie) ? o.code_sortie : null,
     memoire: { pic_ko: entier(o.memoire?.pic_ko), source: motif(o.memoire?.source, SOURCES_DE_LA_MEMOIRE) }, cpu_ms: nombre(o.cpu_ms, 1e12),
     place: { kit_ko: entier(o.place?.kit_ko), travail_ko: entier(o.place?.travail_ko), sortie_ko: entier(o.place?.sortie_ko) },
-    sonde: validerLaSonde(o.sonde), a_fabrication: o.fabrication === true, a_comparaison: o.comparaison === true,
+    sonde: validerLaSonde(o.sonde), servi: validerLeServi(o.servi), a_fabrication: o.fabrication === true, a_comparaison: o.comparaison === true,
   };
 }
 
@@ -203,11 +233,12 @@ export function lireUnRapport(dossier, id) {
     if (!lu) invalides.push(`${nom} illisible, trop gros ou d’un autre format`);
     return lu;
   };
-  const { a_fabrication: aF, a_comparaison: aC, ...rapport } = base;
+  const { a_fabrication: aF, a_comparaison: aC, servi, ...rapport } = base;
   return {
     ...rapport,
     fabrication: joindre(aF, 'fabrication.json', PLAFOND_DES_FICHIERS.fabrication, validerLaFabrication, 'fabrication.json'),
     comparaison: joindre(aC, 'comparaison.json', PLAFOND_DES_FICHIERS.comparaison, validerLaComparaison, 'comparaison.json'),
+    servi: servi ? { ...servi, resume: joindre(servi.resume, 'pose.json', PLAFOND_DES_FICHIERS.pose, validerLaPose, 'pose.json') } : null,
     invalides,
   };
 }
@@ -217,13 +248,14 @@ export function resumerUnRapport(r) {
   return {
     id: r.id, horodatage: r.horodatage, origine: r.origine, version_installee: r.version_installee, issue: r.issue, motif: r.motif, duree_ms: r.duree_ms, pic_ko: picDuRapport(r),
     equivalents: r.comparaison ? r.comparaison.equivalents : null, differents: r.comparaison ? r.comparaison.differents?.nombre ?? null : null,
+    servi: r.servi ? r.servi.pose : null,
   };
 }
 
 /** Le résumé d'un enregistrement compact (la ligne de l'historique). */
 export function resumerUnCompact(c) {
-  const { id, horodatage, origine, version_installee, issue, motif, duree_ms, pic_ko, equivalents, differents } = c;
-  return { id, horodatage, origine, version_installee, issue, motif, duree_ms, pic_ko, equivalents, differents };
+  const { id, horodatage, origine, version_installee, issue, motif, duree_ms, pic_ko, equivalents, differents, servi } = c;
+  return { id, horodatage, origine, version_installee, issue, motif, duree_ms, pic_ko, equivalents, differents, servi: servi ?? null };
 }
 
 /** Ce que le bilan de la journée garde d'un rapport (src/lib/atelier-bilan.mjs) : le résumé, le temps processeur, le plafond, la taille du serveur et la sonde. */
@@ -270,6 +302,7 @@ export function creerAtelier({ dossier, rapports = null, depot = null, edition, 
   const compacts = new Map(); // id -> enregistrement compact (un rapport écrit ne change plus)
 
   const lireInstallation = () => (rapports ? validerLInstallation(lireUnJsonBorne(join(rapports, 'installe.json'), PLAFOND_DES_FICHIERS.installe)) : null);
+  const lireLeServir = () => (rapports ? validerLeServir(lireUnJsonBorne(join(rapports, 'servir.json'), PLAFOND_DES_FICHIERS.servir)) : null);
   const lireLeKit = () => (rapports ? validerLeKit(lireUnJsonBorne(join(rapports, 'kit.json'), PLAFOND_DES_FICHIERS.kit)) : null);
   const lireLeContenu = () => {
     const o = lireUnJsonBorne(join(racine, FICHIER_DU_CONTENU), 8192);
@@ -358,11 +391,36 @@ export function creerAtelier({ dossier, rapports = null, depot = null, edition, 
     return meta ? 'fabrique' : 'echec';
   }
 
+  /**
+   * « Le bouton » (POST /api/edition/atelier/) : l'extrait est refait TOUT DE SUITE, sans attendre le délai qui suit vos saisies. Rien d'autre : le service ne commande pas root. Le programme de root
+   * (le minuteur « contenu », toutes les 10 minutes) voit alors que l'extrait a changé (`stat`) et, avec l'interrupteur, fabrique et pose le site. Rend `{ format, etat, message, … }` avec
+   * `etat` : `inactif` (production, atelier non installé, base pas prête), `occupe` (une fabrication de l'extrait est en cours), `a_jour` (l'extrait suit déjà le contenu : rien à refaire),
+   * `fabrique` ou `echec`.
+   */
+  async function refaireMaintenant() {
+    const dit = (etat, message, plus = {}) => ({ format: FORMAT_DU_REFAIRE, etat, message, ...plus });
+    if (!edition || ferme) return dit('inactif', 'L’atelier n’existe que sur le site de dev.');
+    if (!rapports || !depot || !lireInstallation() || !lireLeKit()) return dit('inactif', 'L’atelier n’est pas installé : l’extrait ne se refait pas (sudo sh /srv/maverick-center-test/atelier/installer.sh).');
+    if (enCours) return dit('occupe', 'L’extrait est déjà en train de se refaire : réessayez dans un instant.');
+    const actuelle = cleActuelle();
+    if (!actuelle) return dit('inactif', 'La base du service ou sa version n’est pas prête.');
+    const stocke = lireLeContenu();
+    if (stocke?.cle === actuelle.cle && existsSync(join(racine, nomDeLExtrait(actuelle.version)))) {
+      return dit('a_jour', 'L’extrait suit déjà le contenu : rien à refaire (le site posé suit à la ronde de root, au plus 10 minutes plus la fabrication).', { version: actuelle.version, fabrique_le: stocke.fabrique_le });
+    }
+    enCours = fabriquerLExtrait(actuelle).finally(() => { enCours = null; });
+    const meta = await enCours;
+    vue = null;
+    if (!meta) return dit('echec', 'L’extrait n’a pas pu être refait (le journal du service dit pourquoi).', { version: actuelle.version });
+    journal(`atelier : extrait refait sur demande pour la version ${actuelle.version}`, { categorie: 'service' });
+    return dit('fabrique', 'L’extrait est refait ; root le verra à sa prochaine ronde (au plus 10 minutes), puis fabriquera et posera le site si l’interrupteur est posé.', { version: actuelle.version, fabrique_le: meta.fabrique_le });
+  }
+
   /** L'état à rendre (`maverick-atelier-etat/1`). */
   function lire() {
     const v = versionInstallee();
     const etat = (nom, message, plus = {}) => ({
-      format: FORMAT_ETAT_DE_L_ATELIER, etat: nom, message, version_installee: version(v), kit: null, installe: null, extrait: null, en_cours: null, dernier: null, historique: [], bilan: null, resume: null, ...plus,
+      format: FORMAT_ETAT_DE_L_ATELIER, etat: nom, message, version_installee: version(v), kit: null, installe: null, servir: null, extrait: null, en_cours: null, dernier: null, historique: [], bilan: null, resume: null, ...plus,
     });
     if (!edition) return etat('pas_d_atelier', 'L’atelier n’existe que sur le site de dev.');
     // avant le geste du propriétaire, rien n'est monté (le montage vient de docker-compose.override.yml, écrit par atelier/installer.sh) : le kit, lui, n'est pas visible d'ici
@@ -395,9 +453,9 @@ export function creerAtelier({ dossier, rapports = null, depot = null, edition, 
       historique.push(resumerUnRapport(r));
     }
     if (compacts.size > 200) compacts.clear();
-    const bilan = calculerLeBilan(enregistrements, { maintenant: horloge() });
+    const bilan = calculerLeBilan(enregistrements, { maintenant: horloge(), depuis: installe.installe_le });
     const enCoursDeRoot = validerLEnCours(lireUnJsonBorne(join(rapports, 'en-cours.json'), PLAFOND_DES_FICHIERS.enCours));
-    const plus = { kit, installe, extrait, en_cours: enCoursDeRoot, dernier, historique, bilan, resume: dernier ? jugerLeServeur(dernier).phrase : null };
+    const plus = { kit, installe, servir: lireLeServir(), extrait, en_cours: enCoursDeRoot, dernier, historique, bilan, resume: dernier ? jugerLeServeur(dernier).phrase : null };
     if (enCoursDeRoot) return etat('en_cours', `Fabrication en cours (version ${enCoursDeRoot.version_installee ?? '?'}, depuis ${enCoursDeRoot.debut ?? '?'}).`, plus);
     if (!dernier) return etat('en_attente', 'En attente de la première fabrication.', plus);
     if (version(v) && dernier.version_installee !== version(v)) return etat('en_attente', `En attente de la fabrication de la version ${v} (la dernière mesurée est celle de la version ${dernier.version_installee ?? '?'}).`, plus);
@@ -419,6 +477,6 @@ export function creerAtelier({ dossier, rapports = null, depot = null, edition, 
     try { await enCours; } catch { /* déjà noté */ }
   }
 
-  return { lire, passer, demarrer, arreter, dossierDeLExtrait: depot };
+  return { lire, passer, refaireMaintenant, demarrer, arreter, dossierDeLExtrait: depot };
 }
 

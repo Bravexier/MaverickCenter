@@ -8,6 +8,7 @@
 #   - les réglages viennent d'un fichier dont root est propriétaire, relus champ par champ.
 # Réglages de test seulement (MAVERICK_ATELIER_ESSAI=1 : ni root ni systemd exigés) : MAVERICK_ATELIER_PROC (/proc), MAVERICK_ATELIER_CGROUP (/sys/fs/cgroup),
 # MAVERICK_DIR_ETC_SYSTEMD, MAVERICK_ATELIER_INTERVALLE (secondes entre deux relevés du conteneur), MAVERICK_ATELIER_ATTENTE (secondes d'attente de l'extrait).
+# MAVERICK_ATELIER_DELAI_POSE (secondes accordées à la pose du site servi).
 
 PROC=${MAVERICK_ATELIER_PROC:-/proc}
 CGROUP=${MAVERICK_ATELIER_CGROUP:-/sys/fs/cgroup}
@@ -21,13 +22,19 @@ ANCIEN_DEFAUT_BESOIN_KO=1572864
 DEFAUT_CPUS=1
 DEFAUT_DISQUE_MIN_KO=2097152
 DEFAUT_DELAI_S=1800
-# Rapports gardés : de quoi couvrir une journée pleine (au plus 12 fabrications par jour par défaut) sur plus de trois jours, et le bilan des dernières 24 h.
-RAPPORTS_GARDES=40
+# Rapports gardés : tous ceux du jour UTC (jamais effacés : les plafonds du jour les comptent, dont celui des refabrications du contenu, 48 par jour), plus les 100 plus anciens ; de quoi couvrir le bilan des dernières 24 h.
+RAPPORTS_GARDES=100
 # La journée type : le minuteur du jour n'ajoute rien quand la journée UTC compte déjà 10 fabrications (toutes origines confondues : la nuit et les livraisons comptent), une toutes les 40 minutes au moins ; au plus 12 par jour toutes origines confondues ; une journée de mesure par défaut.
 DEFAUT_JOURS_DE_MESURE=1
 DEFAUT_MAX_PAR_JOUR=12
 JOURNEE_TYPE_FABRICATIONS=10
 JOURNEE_TYPE_ECART_S=2400
+# Le site servi par l'atelier (lot 11, PR 3b ; l'interrupteur <atelier>/servir) : la refabrication qui suit un changement de contenu a son propre plafond par jour (elle ne compte pas parmi
+# les fabrications de la journée type, et celles-ci ne la comptent pas) ; la pose tourne dans un second conteneur, sous délai et sous mémoire plafonnée.
+DEFAUT_MAX_CONTENU_PAR_JOUR=48
+DEFAUT_PAGES_MINIMUM_PCT=90
+DELAI_POSE_S=${MAVERICK_ATELIER_DELAI_POSE:-600}
+MEMOIRE_POSE='512m'
 # La sonde de la production : une requête par seconde et par instance au plus, 5 s de délai, une référence et une phase après d'environ 30 s ; trois mauvaises réponses de suite l'arrêtent.
 # Le User-Agent de la sonde : exact, reconnu par le service (serveur/metriques.mjs#UA_SONDE) qui ne compte pas ces requêtes dans ses métriques.
 SONDE_AGENT='maverick-atelier-sonde/1'
@@ -141,10 +148,13 @@ jour_de_l_identifiant() { printf '%s' "${1%%-*}"; }
 epoch_de_l_identifiant() { d=${1%%-*}; h=${1##*-}; date -u -d "$(printf '%s' "$d" | sed 's/\(....\)\(..\)\(..\)/\1-\2-\3/') $(printf '%s' "$h" | sed 's/\(..\)\(..\)\(..\)/\1:\2:\3/')" +%s; }
 
 # Les rapports d'aujourd'hui (jour UTC) qui comptent comme des fabrications : tous, sauf ceux qui disent seulement que le plafond du jour est atteint.
-rapports_du_jour() { # dossier_des_rapports -> identifiants, un par ligne
+# Avec « contenu » en second argument : seulement celles d'origine « contenu » (le plafond propre au site servi) ; sans lui : toutes les autres (la journée type et ses plafonds ne comptent jamais
+# les refabrications qui suivent un changement de contenu).
+rapports_du_jour() { # dossier_des_rapports [contenu] -> identifiants, un par ligne
   jour=$(date -u -d "@$(epoch_maintenant)" '+%Y%m%d')
   ls -1 "$1" 2>/dev/null | grep -E "^$jour-[0-9]{6}\$" | while read -r id; do
-    grep -Eq '"motif": *"plafond_du_jour"' "$1/$id/rapport.json" 2>/dev/null || printf '%s\n' "$id"
+    grep -Eq '"motif": *"plafond_du_jour"' "$1/$id/rapport.json" 2>/dev/null && continue
+    if grep -Eq '"origine": *"contenu"' "$1/$id/rapport.json" 2>/dev/null; then [ "${2:-}" = contenu ] && printf '%s\n' "$id"; else [ "${2:-}" = contenu ] || printf '%s\n' "$id"; fi
   done
 }
 
