@@ -8,7 +8,8 @@
 #   --depuis-la-sauvegarde  prendre la dernière copie locale de la production (/srv/maverick-sauvegardes/prod/…) au lieu d'une copie prise à l'instant
 #   --garder                garder le dossier de travail (son chemin est dit à la fin ; à effacer soi-même : il contient les fiches de la production)
 # Préalable (leçon 4 du jour J de la bascule 1) : la version installée du site de dev (<dev>/VERSION) est celle du kit de l'atelier (<dev>/atelier/kit/kit.json) ; sinon la répétition
-#   dit les deux versions et le geste (code 2). Elle ne tourne pas pendant une fabrication de l'atelier (verrou <dev>/atelier/.verrou).
+#   dit les deux versions et le geste (code 2). Le site de dev doit voir l'attestation de la production (attestation-prod.json dans son dossier des métriques, un `stat`) ; sinon code 2
+#   et le geste (MAVERICK_DOSSIER_METRIQUES de son .env). Elle ne tourne pas pendant une fabrication de l'atelier (verrou <dev>/atelier/.verrou).
 # Étape A, dans un conteneur du code du site de dev (docker compose run du service « serveur » : son image, son site, sa base ; scripts/repetition-bascule-2.mjs) : le contenu à livrer,
 #   fabriqué comme la simulation de mise à jour (un paquet), le contrôle du contenu (garde-fou 18), l'activation (garde-fou 17), puis la base de la production refaite avec ses fiches.
 # Étape B, les pages : TOUT le site de la production fabriqué depuis ce paquet avec le kit de l'atelier, dans un conteneur de l'image du kit, sous les règles de l'atelier (aucun réseau,
@@ -132,6 +133,23 @@ printf '%s\n' "$IMAGE" | grep -Eq "$MOTIF_IMAGE" || impossible "l'image du kit n
 STRUCTURE_KIT=$(sed -n 's/^PRAGMA user_version *= *\([0-9][0-9]*\).*/\1/p' "$ATELIER/kit/data/schema.sql" 2>/dev/null | head -n 1 || true)
 [ -n "$STRUCTURE_KIT" ] || impossible "la structure du kit est illisible ($ATELIER/kit/data/schema.sql : PRAGMA user_version) : le kit est incomplet, $GESTE_INSTALLATION"
 dire "préalable : site de dev V$VERSION_INSTALLEE = kit V$VERSION_KIT (structure $STRUCTURE_KIT, image $IMAGE)."
+
+# l'attestation de la production, telle que le service du site de dev la lit (incident du 2026-11-19) : sans elle, « Copier vers le dépôt », la Simulation et la mise à jour
+# sont refusées. Son dossier des métriques est celui que monte son conteneur (docker inspect), sinon celui de son .env (metriques_de_l_instance, sauvegarde/lib.sh). Garde-fou 20 :
+# un `stat` seulement, jamais une ouverture.
+METRIQUES_DU_DEV=$(metriques_de_l_instance dev)
+METRIQUES_DU_DEV=${METRIQUES_DU_DEV#* }
+METRIQUES_DE_PROD=$(metriques_de_l_instance prod)
+METRIQUES_DE_PROD=${METRIQUES_DE_PROD#* }
+ATTESTATION_DU_DEV=$METRIQUES_DU_DEV/attestation-prod.json
+ATTESTATION_DE_PROD=$METRIQUES_DE_PROD/attestation-prod.json
+if ! { [ -f "$ATTESTATION_DU_DEV" ] && [ ! -L "$ATTESTATION_DU_DEV" ]; }; then
+  if [ "$METRIQUES_DU_DEV" != "$METRIQUES_DE_PROD" ] && [ -f "$ATTESTATION_DE_PROD" ] && [ ! -L "$ATTESTATION_DE_PROD" ]; then
+    impossible "le site de dev ne lit pas l'attestation de la production : il lit $METRIQUES_DU_DEV, la production écrit dans $METRIQUES_DE_PROD (« Copier vers le dépôt », la Simulation et la mise à jour seraient refusées). Pour lever ce refus : ajouter la ligne MAVERICK_DOSSIER_METRIQUES=$METRIQUES_DE_PROD à $DEV/.env, puis cd $DEV && sudo docker compose up -d, et refaire cette répétition"
+  fi
+  impossible "l'attestation de la production est introuvable ($ATTESTATION_DU_DEV ; la production écrit la sienne dans $ATTESTATION_DE_PROD à son démarrage, puis toutes les heures) : « Copier vers le dépôt », la Simulation et la mise à jour seraient refusées. Pour lever ce refus : vérifier que la production tourne (sudo docker ps), puis que la ligne MAVERICK_DOSSIER_METRIQUES de $DEV/.env désigne le dossier des métriques de la production (cd $DEV && sudo docker compose up -d après l'avoir changée), et refaire cette répétition"
+fi
+dire "préalable : attestation de la production lue par le site de dev ($ATTESTATION_DU_DEV, écrite il y a $(( ($(date +%s) - $(stat -c %Y "$ATTESTATION_DU_DEV")) / 60 )) min)."
 
 # une seule fabrication à la fois : le verrou de l'atelier est pris pour toute la répétition (lancer.sh, qui le prend sans attendre, refuse alors de démarrer)
 command -v flock >/dev/null 2>&1 || impossible "flock est absent (util-linux)"

@@ -189,6 +189,21 @@ test('un constat qui trouve un écart : code 1, la table nommée, rien ne peut �
   assert.match(m.lancer('poser').out, /REFUS : aucun constat EGALITE/);
 });
 
+test('etat : dit si le site de dev lit l’attestation de la production (son dossier des métriques), sinon le réglage et le geste ; rien n’est modifié', { skip }, (t) => {
+  const m = creerMonde(t);
+  // sans MAVERICK_DOSSIER_METRIQUES dans son .env, le site de dev lit son propre metriques/ (incident du 2026-11-19)
+  let r = m.lancer('etat');
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /attestation de la production lue par le site de dev : NON/);
+  assert.ok(r.out.includes(`MAVERICK_DOSSIER_METRIQUES=${m.d('prod', 'metriques')}`), r.out);
+  assert.match(r.out, /docker compose up -d/);
+  writeFileSync(m.d('dev', '.env'), `MAVERICK_DOSSIER_METRIQUES=${m.d('prod', 'metriques')}\n`);
+  r = m.lancer('etat');
+  assert.equal(r.code, 0, r.out);
+  assert.ok(r.out.includes(`attestation de la production lue par le site de dev : oui (${m.d('prod', 'metriques')}/attestation-prod.json`), r.out);
+  assert.equal(existsSync(m.d('dev', 'metriques')), false, 'etat ne crée aucun dossier');
+});
+
 test('refuse une instance qui n’est pas le site de dev', { skip }, (t) => {
   const m = creerMonde(t);
   const r = m.lancer('etat', { MAVERICK_DIR_TEST: m.d('prod') });
