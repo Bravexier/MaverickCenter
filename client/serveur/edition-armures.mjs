@@ -19,7 +19,7 @@ import {
 } from '../src/lib/armure-champs.mjs';
 import { nombre } from '../src/lib/armure-forge.mjs';
 import { valeursCalculees } from '../src/lib/armures-db.mjs';
-import { corpsDesArmuresApres, ErreurCorpsArmures, pageDeLaLigne } from '../src/lib/corps-armures.mjs';
+import { corpsDesArmuresApres, corpsDesArmuresEntier, ErreurCorpsArmures, pageDeLaLigne } from '../src/lib/corps-armures.mjs';
 import { TABLES } from '../src/lib/edition-modele.mjs';
 import { lireLigne } from './edition-journal.mjs';
 import { jsonOuNull } from './partage.mjs';
@@ -42,6 +42,27 @@ export function suivreLeCorpsDesArmures(ctx, table, avant, apres, ErreurEdition)
   const corps = corpsOuRefus(ErreurEdition, ErreurCorpsArmures, id, () => corpsDesArmuresApres(page.corps_md, table, avant, apres));
   if (corps !== page.corps_md) ctx.w.modifier('page', { id }, { corps_md: corps });
 }
+
+/**
+ * L'état des tables que le corps ENTIER des pages des armures et des boucliers écrit (lib/corps-armures.mjs#corpsDesArmuresEntier), lu dans la base :
+ * « Tout recalculer » (serveur/edition-lots.mjs) refait ainsi le corps quand une ligne n'y est plus écrite comme le code la rend.
+ * @param {import('node:sqlite').DatabaseSync} db
+ */
+export function etatDuCorpsDesArmures(db) {
+  const toutes = (table, ordre = '') => db.prepare(`SELECT * FROM ${table}${ordre}`).all();
+  return {
+    armures: toutes('armure'),
+    emplacements: toutes('armure_emplacement'),
+    classes: toutes('bouclier_classe'),
+    boucliers: db.prepare('SELECT b.* FROM bouclier b LEFT JOIN ressource r ON r.id = b.materiau_id ORDER BY r.ordre, b.rowid').all(),
+    poids: toutes('bouclier_poids'),
+    ameliorations: db.prepare("SELECT * FROM amelioration_equipement WHERE cible IN ('armure', 'bouclier')").all(),
+    totaux: db.prepare("SELECT * FROM amelioration_total WHERE cible IN ('armure', 'bouclier')").all(),
+  };
+}
+
+/** Le corps entier d'une des deux pages refait depuis les tables (ErreurCorpsArmures si le corps n'a plus la forme de l'importeur). */
+export const corpsEntierDesArmures = (db, pageId, corps) => corpsDesArmuresEntier(pageId, corps, etatDuCorpsDesArmures(db));
 
 /**
  * Le prix écrit (prix_brut) d'une armure de la grille recalculé : le format de la colonne, celui du classeur et des migrations 0105 et 0108 (« 640 »,

@@ -16,6 +16,7 @@
 // ligne dans les pages de l'armurerie ou des bâtons : rien n'y change. test/corps-composants.test.mjs retrouve chaque composant de la base dans son corps.
 // Fonctions pures, sans dépendance (sauf lib/composants-champs.mjs, pur).
 import { conversionsDe, milliers } from './composants-champs.mjs';
+import { casesDe, lignesDeDonnees, remplacerLesLignesDeDonnees, tableauxDe } from './corps-tableaux.mjs';
 
 export const PAGE_DE_L_INVENTAIRE = 'ressources/equipement-inventaire';
 export const PAGE_DES_ARMURES = 'ressources/armures';
@@ -306,4 +307,61 @@ export function corpsDuComposantApres(pageId, corps, table, avant, apres, contex
     return lignes.join('\n');
   }
   return corps;
+}
+
+// --- Le corps entier ---------------------------------------------------------------------------------------------------------------------------------
+// « Tout recalculer » (serveur/edition-lots.mjs#ecartsDuRecalcul) : quand le corps n'écrit plus une ligne comme le code d'aujourd'hui la rend, la ligne
+// d'avant ne se retrouve plus par son nom. Deux pages se refont alors en entier depuis l'état des tables : « Équipement inventaire » (la monnaie, le
+// convertisseur, et chaque tableau d'objets) et « Liste d'ingrédients » (un tableau par catégorie). Leurs lignes de données sont remplacées EN BLOC par celles
+// de la table, dans l'ordre de ressource.ordre : un objet ou un ingrédient que le site crée a sa ligne dans le tableau (le service l'y ajoute), un objet retiré
+// en part, si bien qu'aucune ligne n'est jamais appariée par son rang. La prose du corps ne bouge pas.
+// Les autres tableaux de composants (matériaux, fiches des matières, gemmes, bois : pages des armures, des boucliers, des bâtons et des accessoires) ne se
+// refont PAS ici : le site y crée des éléments qui n'ont pas de ligne dans ces pages, et sans marqueur « créé par le site » un rang (ressource.ordre) repris
+// par une création après une suppression apparierait la dernière ligne du corps à un autre élément, sans erreur. Ils restent suivis ligne à ligne
+// (corpsDuComposantApres) quand le site les modifie.
+
+/** Les lignes de données du premier tableau de la section `titre` ; ErreurCorpsComposants si la section ou son tableau manque. */
+function tableauDeLaSection(lignes, titre) {
+  const b = bornesDe(lignes, titre);
+  if (!b) throw new ErreurCorpsComposants(`section introuvable : ${titre}`);
+  const t = tableauxDe(lignes, b[0] + 1, b[1]).find((x) => x.fin - x.debut >= 2);
+  if (!t) throw new ErreurCorpsComposants(`tableau introuvable : ${titre}`);
+  return t;
+}
+
+/** La clé d'une ligne d'objet : ses cases rognées, la première (le nom) à la casse, aux accents et aux espaces près (« Sac de bombe<br>(5) » = « Sac de bombe (5) »). */
+const cleDeLigne = (l) => casesDe(l).map((c, k) => (k === 1 ? cleDeCase(c) : c.trim())).join('|');
+
+/** Remplace en bloc les lignes du premier tableau de la section par `nouvelles` ; une ligne que le corps écrit déjà pareil (cleDeLigne) reste telle quelle. */
+function remplacerLeTableau(lignes, titre, nouvelles) {
+  const t = tableauDeLaSection(lignes, titre);
+  const anciennes = new Map(lignesDeDonnees(t).map((i) => [cleDeLigne(lignes[i]), lignes[i]]));
+  remplacerLesLignesDeDonnees(lignes, t, nouvelles.map((l) => anciennes.get(cleDeLigne(l)) ?? l));
+}
+
+/** Les pages que le corps entier refait (les autres pages des composants sont rendues telles quelles par `corpsDeLaPageDesComposantsEntier`). */
+export const PAGES_DES_COMPOSANTS_AU_CORPS_ENTIER = Object.freeze([PAGE_DE_L_INVENTAIRE, PAGE_DES_INGREDIENTS]);
+
+/**
+ * Le corps entier de la page `pageId` refait depuis les tables. `etat` : { monnaies, objets (ressources de l'onglet « Équipement inventaire », dans l'ordre),
+ * ingredients ([{ nom, categorie, type_brut, affinite_brut }], dans l'ordre) }. Une page hors de `PAGES_DES_COMPOSANTS_AU_CORPS_ENTIER` est rendue telle
+ * quelle. Une section ou un tableau introuvable lève ErreurCorpsComposants (la page reste telle quelle : « illisible »).
+ */
+export function corpsDeLaPageDesComposantsEntier(pageId, corps, etat) {
+  if (!PAGES_DES_COMPOSANTS_AU_CORPS_ENTIER.includes(pageId)) return String(corps ?? '');
+  let sortie = String(corps ?? '');
+  if (pageId === PAGE_DE_L_INVENTAIRE) sortie = corpsAvecMonnaies(sortie, etat.monnaies);
+  const lignes = sortie.split('\n');
+  if (pageId === PAGE_DE_L_INVENTAIRE) {
+    for (const s of SECTIONS_DE_L_INVENTAIRE) {
+      const objets = etat.objets.filter((r) => r.genre === s.genre && r.section === s.section);
+      remplacerLeTableau(lignes, s.titre, objets.map((r) => ligneDObjet(r, s.description)));
+    }
+  } else {
+    for (const c of CATEGORIES_D_INGREDIENTS) {
+      const ingredients = etat.ingredients.filter((i) => i.categorie === c.categorie);
+      remplacerLeTableau(lignes, `## ${c.section}`, ingredients.map((i) => `| ${celluleDeComposant(i.nom)} | ${celluleDeComposant(i.type_brut)} | ${celluleDeComposant(i.affinite_brut)} |`));
+    }
+  }
+  return lignes.join('\n');
 }

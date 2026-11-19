@@ -7,9 +7,10 @@ import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { convertisseurDeMonnaie, PRIX_DE_GEMME, prixEnRf } from '../src/lib/composants-champs.mjs';
 import {
-  corpsAvecMonnaies, corpsDuComposantApres, PAGE_DE_L_INVENTAIRE, PAGE_DES_ACCESSOIRES, PAGE_DES_ARMURES, PAGE_DES_BATONS, PAGE_DES_BOUCLIERS,
+  corpsAvecMonnaies, corpsDeLaPageDesComposantsEntier, corpsDuComposantApres, ErreurCorpsComposants, PAGE_DE_L_INVENTAIRE, PAGES_DES_COMPOSANTS_AU_CORPS_ENTIER, PAGE_DES_ACCESSOIRES, PAGE_DES_ARMURES, PAGE_DES_BATONS, PAGE_DES_BOUCLIERS,
   PAGE_DES_INGREDIENTS, sectionDeLInventaire,
 } from '../src/lib/corps-composants.mjs';
+import { etatDuCorpsDesComposants } from '../serveur/edition-composants.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
 
 const db = ouvrirBase({ sansExemples: false });
@@ -70,4 +71,65 @@ test('chaque ingrédient d’alchimie retrouve sa ligne de la liste d’ingrédi
 test('les prix écrits redonnent les prix en RF de la base (ressources et gemmes)', () => {
   for (const r of db.prepare('SELECT id, prix_brut, prix_rf FROM ressource').all()) assert.equal(prixEnRf(r.prix_brut), r.prix_rf, r.id);
   for (const g of db.prepare('SELECT * FROM gemme').all()) for (const p of PRIX_DE_GEMME) assert.equal(prixEnRf(g[`${p}_brut`]), g[`${p}_rf`], `${g.ressource_id} ${p}`);
+});
+
+// Le corps ENTIER d'une page (« Tout recalculer » : serveur/edition-lots.mjs#ecartsDuRecalcul) : « Équipement inventaire » et « Liste d'ingrédients », dont les
+// tableaux se remplacent en bloc par les lignes de la table ; une ligne du corps qui n'est plus celle que la table rend est refaite sans être retrouvée par son nom.
+const etat = () => etatDuCorpsDesComposants(db);
+const entier = (page, e = etat(), c = corps(page)) => corpsDeLaPageDesComposantsEntier(page, c, e);
+
+test('le corps entier redonne le corps des pages de l’inventaire et des ingrédients : chaque tableau, la monnaie et le convertisseur sont déjà ce que les tables disent', () => {
+  assert.deepEqual([...PAGES_DES_COMPOSANTS_AU_CORPS_ENTIER].sort(), [PAGE_DE_L_INVENTAIRE, PAGE_DES_INGREDIENTS].sort());
+  for (const page of PAGES_DES_COMPOSANTS_AU_CORPS_ENTIER) assert.equal(entier(page), corps(page), page);
+});
+
+test('corps entier : un objet et un ingrédient changés, créés ou retirés dans leurs tables (nom compris) se retrouvent dans les tableaux ; la prose reste', () => {
+  const e = etat();
+  const lignes = (page, e2) => entier(page, e2).split('\n');
+  const objet = e.objets.find((r) => sectionDeLInventaire(r)?.description);
+  const e1 = { ...e, objets: e.objets.map((r) => (r.id === objet.id ? { ...r, nom: 'Objet du test', prix_brut: '9 RO', description: 'Description du test' } : r)) };
+  assert.ok(lignes(PAGE_DE_L_INVENTAIRE, e1).includes('| Objet du test | 9 RO | Description du test |'));
+  assert.ok(!lignes(PAGE_DE_L_INVENTAIRE, e1).some((l) => l.startsWith(`| ${objet.nom} |`)));
+  // un objet créé s'ajoute à la fin de son tableau, un objet retiré en part
+  const cree = { ...objet, id: 'x#objet', nom: 'Objet créé', prix_brut: '1 RO', description: 'Créé', ordre: 10000 };
+  assert.ok(lignes(PAGE_DE_L_INVENTAIRE, { ...e, objets: [...e.objets, cree] }).includes('| Objet créé | 1 RO | Créé |'));
+  assert.ok(!lignes(PAGE_DE_L_INVENTAIRE, { ...e, objets: e.objets.filter((r) => r.id !== objet.id) }).some((l) => l.startsWith(`| ${objet.nom} |`)));
+  assert.ok(lignes(PAGE_DES_INGREDIENTS, { ...e, ingredients: e.ingredients.map((x, k) => (k === 0 ? { ...x, nom: 'Ingrédient du test', type_brut: 'Type du test', affinite_brut: 'Affinité du test' } : x)) })
+    .includes('| Ingrédient du test | Type du test | Affinité du test |'));
+  for (const page of PAGES_DES_COMPOSANTS_AU_CORPS_ENTIER) {
+    const prose = (c) => c.split('\n').filter((l) => !l.startsWith('|') && !l.startsWith('- '));
+    assert.deepEqual(prose(entier(page, e1)), prose(corps(page)), page);
+  }
+});
+
+test('corps entier : une ligne que le corps n’écrit plus comme la table (ancien rendu) est refaite, la ligne d’un objet gardée telle quelle quand son nom ne diffère que par la casse ou un retour <br>', () => {
+  const e = etat();
+  const objet = e.objets.find((r) => sectionDeLInventaire(r)?.description);
+  const lignes = corps(PAGE_DE_L_INVENTAIRE).split('\n');
+  const i = lignes.findIndex((l) => l.startsWith(`| ${objet.nom} |`));
+  assert.ok(i > 0);
+  lignes[i] = `| ${objet.nom} | ancien prix | ancienne description |`;
+  assert.equal(entier(PAGE_DE_L_INVENTAIRE, e, lignes.join('\n')), corps(PAGE_DE_L_INVENTAIRE));
+  const autreCasse = corps(PAGE_DE_L_INVENTAIRE).split('\n');
+  const j = autreCasse.findIndex((l) => l.startsWith(`| ${objet.nom} |`));
+  autreCasse[j] = autreCasse[j].replace(`| ${objet.nom} |`, `| ${objet.nom.toUpperCase()} |`);
+  assert.equal(entier(PAGE_DE_L_INVENTAIRE, e, autreCasse.join('\n')), autreCasse.join('\n'), 'même nom à la casse près : la ligne reste');
+});
+
+test('corps entier : une section ou un tableau introuvable : ErreurCorpsComposants', () => {
+  const e = etat();
+  assert.throws(() => entier(PAGE_DES_INGREDIENTS, e, corps(PAGE_DES_INGREDIENTS).replace('## Solvant', '## Autre')), ErreurCorpsComposants);
+  assert.throws(() => entier(PAGE_DE_L_INVENTAIRE, e, ''), ErreurCorpsComposants);
+});
+
+test('les matériaux, gemmes et bois ne sont JAMAIS réécrits par rang (le site en crée sans ligne dans ces pages) : supprimer le dernier puis en créer un ne change pas le corps', () => {
+  const e = etat();
+  // un élément retiré et un autre créé au même rang (la création reprend max(ordre) + 1) : donné au rendu, même sous les clés qu'un rendu par rang lirait, il ne décale aucune ligne
+  const gemmes = db.prepare("SELECT nom, description, ordre FROM ressource WHERE genre = 'gemme' ORDER BY ordre").all().map((g) => ({ ...g }));
+  const derniere = gemmes[gemmes.length - 1];
+  const avec = { ...e, gemmes: [...gemmes.slice(0, -1), { ...derniere, nom: 'Gemme créée du test' }], bois: [], materiaux: [] };
+  for (const page of [PAGE_DES_ARMURES, PAGE_DES_BOUCLIERS, PAGE_DES_BATONS, PAGE_DES_ACCESSOIRES]) {
+    assert.equal(corpsDeLaPageDesComposantsEntier(page, corps(page), avec), corps(page), `${page} : rendue telle quelle`);
+  }
+  assert.deepEqual(Object.keys(e).sort(), ['ingredients', 'monnaies', 'objets'], 'l’état du rendu entier ne porte ni matériau, ni gemme, ni bois');
 });

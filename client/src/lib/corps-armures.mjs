@@ -14,6 +14,7 @@
 // les armures, les pièces et les améliorations). Fonctions pures ; les identifiants des deux pages viennent de lib/corps-composants.mjs.
 
 import { PAGE_DES_ARMURES, PAGE_DES_BOUCLIERS } from './corps-composants.mjs';
+import { casesDe, lignesDeDonnees, reecrireLesLignes, remplacerLesLignesDeDonnees, tableauxDe } from './corps-tableaux.mjs';
 
 export { PAGE_DES_ARMURES, PAGE_DES_BOUCLIERS };
 
@@ -170,5 +171,117 @@ export function corpsDesArmuresApres(corps, table, avant, apres) {
     default:
       throw new ErreurCorpsArmures(`table ${table} : pas dans les pages des armures et des boucliers`);
   }
+  return lignes.join('\n');
+}
+
+// --- Le corps entier ---------------------------------------------------------------------------------------------------------------------------------
+// « Tout recalculer » (serveur/edition-lots.mjs#ecartsDuRecalcul) : quand le corps n'écrit plus une ligne comme le code d'aujourd'hui la rend, la ligne
+// d'avant ne se retrouve plus par son texte. Le corps entier se refait alors depuis l'état des tables, chaque tableau repéré par sa SECTION et chaque ligne
+// par son RANG (armure.ordre, armure_emplacement.ordre, bouclier_poids.ordre, classe de bouclier, niveau d'amélioration) : les lignes de l'importeur gardent
+// leurs cases de matières (« Ligne », « Colonne », la matière d'un bouclier, la colonne d'une armure particulière : le site ne les modifie pas) et le reste
+// de la ligne est réécrit par les rendus ci-dessus. Les tableaux des matériaux et des fiches de matières suivent la page « Composants »
+// (lib/corps-composants.mjs#corpsDeLaPageDesComposantsEntier). La prose du corps ne bouge pas.
+
+/** Les lignes de données de tous les tableaux de la section (dans l'ordre du corps), ErreurCorpsArmures si la section est absente. */
+function lignesDeLaSection(lignes, titre) {
+  const [debut, fin] = section(lignes, titre);
+  return tableauxDe(lignes, debut + 1, fin).filter((t) => t.fin - t.debut >= 2).flatMap(lignesDeDonnees);
+}
+
+/** Réécrit les lignes de données de la section, une par ligne de la base (dans l'ordre) : les `gardees` premières cases restent, le reste vient de `fin`. */
+function reecrireLaSection(lignes, titre, elements, gardees, fin, quoi) {
+  const indices = lignesDeLaSection(lignes, titre);
+  if (indices.length !== elements.length) throw new ErreurCorpsArmures(`${quoi} : ${indices.length} lignes dans le corps, ${elements.length} dans la base`);
+  reecrireLesLignes(lignes, indices, (l, rang) => {
+    const c = casesDe(l);
+    if (c.length < gardees + 2) throw new ErreurCorpsArmures(`ligne de forme inconnue : ${quoi} (rang ${rang + 1})`);
+    return `${c.slice(0, gardees + 1).join('|')}${fin(elements[rang])}`;
+  });
+}
+
+/** Le premier tableau de la section (en-tête, séparateur, lignes), ErreurCorpsArmures s'il n'y en a pas. */
+function premierTableauDe(lignes, titre) {
+  const [debut, fin] = section(lignes, titre);
+  const t = tableauxDe(lignes, debut + 1, fin).find((x) => x.fin - x.debut >= 2);
+  if (!t) throw new ErreurCorpsArmures(`tableau introuvable : ${titre}`);
+  return t;
+}
+
+/**
+ * Une ligne d'amélioration qui dit déjà ce que la base dit : mêmes cases, ou des nombres égaux écrits autrement (« 100.0 » que l'importeur a recopié du
+ * classeur quand la base écrit « 100 » : rien de visible n'a changé, la ligne reste telle que l'importeur l'a écrite).
+ */
+function memeAmelioration(ecrite, rendue) {
+  if (ecrite === rendue) return true;
+  const a = casesDe(ecrite).map((c) => c.trim());
+  const b = casesDe(rendue).map((c) => c.trim());
+  const nombre = (c) => /^\d+(\.\d+)?$/.test(c);
+  return a.length === b.length && a.every((c, k) => c === b[k] || (nombre(c) && nombre(b[k]) && Number(c) === Number(b[k])));
+}
+
+/** Le tableau des améliorations d'une cible et sa ligne TOTAL (section AMÉLIORATION). */
+function refaireLesAmeliorations(lignes, ameliorations, total) {
+  const t = premierTableauDe(lignes, TITRES.ameliorations);
+  const anciennes = lignes.slice(t.debut + 2, t.fin);
+  remplacerLesLignesDeDonnees(lignes, t, ameliorations.map((a, k) => {
+    const rendue = ligneDAmelioration(a);
+    return anciennes[k] !== undefined && memeAmelioration(anciennes[k], rendue) ? anciennes[k] : rendue;
+  }));
+  if (!total) return;
+  const [debut, fin] = section(lignes, TITRES.ameliorations);
+  const k = lignes.findIndex((l, i) => i > debut && i < fin && l.startsWith('**TOTAL** : '));
+  if (k < 0) throw new ErreurCorpsArmures(`TOTAL introuvable : ${total.cible}`);
+  lignes[k] = ligneDuTotal(total.total_brut);
+}
+
+/**
+ * Le corps entier de la page des armures (`PAGE_DES_ARMURES`) ou des boucliers (`PAGE_DES_BOUCLIERS`) refait depuis les tables. `etat` : { armures,
+ * emplacements, classes, boucliers, poids, ameliorations (cible « armure » ou « bouclier »), totaux (amelioration_total des deux cibles) }, les lignes de
+ * chaque table ; les tableaux sont lus dans l'ordre de leur colonne `ordre` (armure, armure_emplacement, bouclier_poids), de la classe (bouclier_classe,
+ * puis ses boucliers dans l'ordre de la base) et du niveau (amélioration). Un nombre de lignes qui n'est plus celui de la base (une armure ou un bouclier ne
+ * se crée pas depuis le site), une section ou un tableau introuvable lève ErreurCorpsArmures (la page reste telle quelle : « illisible »).
+ */
+export function corpsDesArmuresEntier(pageId, corps, etat) {
+  const lignes = String(corps ?? '').split('\n');
+  const parOrdre = (liste) => [...liste].sort((a, b) => a.ordre - b.ordre);
+  if (pageId === PAGE_DES_ARMURES) {
+    const armures = parOrdre(etat.armures);
+    reecrireLaSection(lignes, TITRES.combinaisons, armures.filter((a) => a.sorte === 'combinaison'), 2, finDeLigneDArmure, 'armures par combinaison');
+    reecrireLaSection(lignes, TITRES.particulieres, armures.filter((a) => a.sorte === 'particuliere'), 1, finDeLigneDArmure, 'armures particulières');
+    remplacerLesLignesDeDonnees(lignes, premierTableauDe(lignes, TITRES.fabrication), parOrdre(etat.emplacements).map(ligneDePiece));
+    refaireLesAmeliorations(lignes, etat.ameliorations.filter((a) => a.cible === 'armure').sort((a, b) => a.niveau - b.niveau),
+      etat.totaux.find((t) => t.cible === 'armure'));
+    return lignes.join('\n');
+  }
+  if (pageId !== PAGE_DES_BOUCLIERS) throw new ErreurCorpsArmures(`page ${pageId} : ni celle des armures ni celle des boucliers`);
+  const classes = [...etat.classes].sort((a, b) => a.classe - b.classe);
+  remplacerLesLignesDeDonnees(lignes, premierTableauDe(lignes, TITRES.formes), classes.map(ligneDeForme));
+  // un tableau par forme dans « Boucliers par classe et par matière », sous le titre « ### <forme> » (les noms des boucliers ne suivent pas : comme ceux des armures)
+  const [debut, fin] = section(lignes, TITRES.boucliers);
+  const tableaux = tableauxDe(lignes, debut + 1, fin).filter((t) => t.fin - t.debut >= 2);
+  if (tableaux.length !== classes.length) throw new ErreurCorpsArmures(`boucliers : ${tableaux.length} tableaux dans le corps, ${classes.length} formes dans la base`);
+  tableaux.forEach((t, k) => {
+    let titre = t.debut - 1;
+    while (titre > debut && !lignes[titre].startsWith('### ')) titre--;
+    if (titre <= debut) throw new ErreurCorpsArmures(`titre de la forme introuvable : ${classes[k].nom}`);
+    lignes[titre] = `### ${echappe(classes[k].nom)}`;
+    const boucliers = etat.boucliers.filter((b) => b.classe_id === classes[k].id);
+    const indices = lignesDeDonnees(t);
+    if (indices.length !== boucliers.length) throw new ErreurCorpsArmures(`boucliers de la forme ${classes[k].nom} : ${indices.length} lignes dans le corps, ${boucliers.length} dans la base`);
+    reecrireLesLignes(lignes, indices, (l, rang) => {
+      const c = casesDe(l);
+      if (c.length < 4) throw new ErreurCorpsArmures(`ligne de forme inconnue : bouclier ${boucliers[rang].nom}`);
+      return `${c.slice(0, 2).join('|')}${finDeLigneDeBouclier(boucliers[rang])}`;
+    });
+  });
+  // les poids (puces « - Léger : 1 de Force minimum » de la section FABRICATION)
+  const poids = parOrdre(etat.poids);
+  const [d2, f2] = section(lignes, TITRES.fabrication);
+  const puces = [];
+  for (let k = d2 + 1; k < f2; k++) if (lignes[k].startsWith('- ')) puces.push(k);
+  if (puces.length !== poids.length) throw new ErreurCorpsArmures(`poids : ${puces.length} puces dans le corps, ${poids.length} dans la base`);
+  reecrireLesLignes(lignes, puces, (l, rang) => ligneDePoids(poids[rang]));
+  refaireLesAmeliorations(lignes, etat.ameliorations.filter((a) => a.cible === 'bouclier').sort((a, b) => a.niveau - b.niveau),
+    etat.totaux.find((t) => t.cible === 'bouclier'));
   return lignes.join('\n');
 }

@@ -17,7 +17,7 @@ import {
 import { texteDesDesSelonLaForce } from '../src/lib/armes-de-famille.mjs';
 import { CASES_D_AMELIORATION_DE_BOUCLIER } from '../src/lib/armure-champs.mjs';
 import {
-  corpsAvecMateriauRenomme, corpsDesArmesApres, ErreurCorpsArmes, libelleDeFamille, PAGE_DES_ARMES, PAGES_DES_MATERIAUX,
+  corpsAvecMateriauRenomme, corpsDesArmesApres, corpsDesArmesEntier, ErreurCorpsArmes, libelleDeFamille, PAGE_DES_ARMES, PAGES_DES_MATERIAUX,
 } from '../src/lib/corps-armes.mjs';
 import { DE_DE_FAMILLE } from '../src/lib/edition-modele.mjs';
 import { desSelonLaForce, FAMILLES_DES_SAUF, singulier } from '../src/lib/maitrise-arme.mjs';
@@ -36,6 +36,24 @@ export const contexteDuCorpsDesArmes = (db) => ({
   armes: () => db.prepare('SELECT * FROM arme').all(),
   nomDuMateriau: (id) => db.prepare('SELECT nom FROM ressource WHERE id = ?').get(id)?.nom ?? id,
 });
+
+/**
+ * L'état des tables que le corps ENTIER de la page des armes écrit (lib/corps-armes.mjs#corpsDesArmesEntier), lu dans la base : « Tout recalculer »
+ * (serveur/edition-lots.mjs) refait ainsi le corps quand une ligne n'y est plus écrite comme le code la rend.
+ * @param {import('node:sqlite').DatabaseSync} db
+ */
+export function etatDuCorpsDesArmes(db) {
+  return {
+    familles: db.prepare('SELECT id, nom, libelle_brut, cout_libelle FROM arme_famille ORDER BY ordre').all(),
+    armes: db.prepare('SELECT * FROM arme').all(),
+    materiaux: db.prepare('SELECT r.nom, m.prix_brut, m.effet_brut FROM materiau_arme m JOIN ressource r ON r.id = m.ressource_id ORDER BY m.ordre').all(),
+    ameliorations: db.prepare("SELECT * FROM amelioration_equipement WHERE cible = 'arme' ORDER BY niveau").all(),
+    total: db.prepare("SELECT * FROM amelioration_total WHERE cible = 'arme'").get() ?? null,
+  };
+}
+
+/** Le corps entier de la page des armes refait depuis les tables (ErreurCorpsArmes si le corps n'a plus la forme de l'importeur). */
+export const corpsEntierDesArmes = (db, corps) => corpsDesArmesEntier(corps, etatDuCorpsDesArmes(db));
 
 /**
  * Un matériau renommé (la ressource, que les armures et les boucliers partagent : « comme c'est le même pour armure et bouclier, ça le changera
