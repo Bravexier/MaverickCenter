@@ -513,3 +513,5 @@ INSERT INTO mot_cle_categorie (mot_cle_id, categorie_id) VALUES (443, 7);
 INSERT INTO mot_cle_categorie (mot_cle_id, categorie_id) VALUES (443, 19);
 INSERT INTO mot_cle_categorie (mot_cle_id, categorie_id) VALUES (444, 20);
 INSERT INTO mot_cle_categorie (mot_cle_id, categorie_id) VALUES (445, 20);
+INSERT INTO mot_cle_categorie (mot_cle_id, categorie_id) VALUES (447, 19);
+INSERT INTO mot_cle_categorie (mot_cle_id, categorie_id) VALUES (448, 19);
