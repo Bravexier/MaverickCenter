@@ -311,4 +311,4 @@ Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas mo
 | R303 | Les trois questions laissées par le lot 10 (suite de R278). (1) « GitHub c… | Les trois recommandations sont acceptées : (1) oui ; (… |
 | R304 | Les cinq questions du jour J du lot 12 (suite de R296, `docs/chantier-base… | Les cinq recommandations sont acceptées : (1) les 88 m… |
 | R305 | Les trois questions de la bascule 2 (`docs/chantier-base-de-dev.md`, secti… | Les trois recommandations sont acceptées : (6) site de… |
-| R306 | Les deux propositions en attente sur la page Mise à jour (catégorie « Dégâ… | Lecture de la session principale, non des mots du prop… |
+| R306 | Les deux propositions en attente sur la page Mise à jour (catégorie « Dégâ… | Redéposées avec la clé de dépôt, pour s'appliquer dire… |
