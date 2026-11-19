@@ -1043,7 +1043,7 @@ function fauxKitDepot() {
   const d = join(racine, `depot-${(n += 1)}`);
   for (const [rel, contenu] of Object.entries({
     '.nvmrc': '22\n', 'client/package.json': '{}', 'client/astro.config.mjs': '', 'client/scripts/fabriquer-depuis-contenu.mjs': '', 'client/scripts/poser-un-site.mjs': '', 'client/node_modules/astro/bin/astro.mjs': '',
-    'data/schema.sql': '', 'data/derive.sql': '', 'data/migrations/0001.sql': '', 'sources/sources.json': '{}', 'sources/tipeee/bienvenue.json': '{}',
+    'data/schema.sql': '', 'data/derive.sql': '', 'data/migrations/0001.sql': '', 'sources/sources.json': '{}', 'sources/copies-drive.json': '{}', 'sources/tipeee/bienvenue.json': '{}',
   })) ecrire(join(d, rel), contenu);
   return d;
 }
