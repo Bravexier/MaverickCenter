@@ -77,9 +77,9 @@ function productionInstallee() {
 }
 /**
  * Des commandes système factices : `id` (root ou non ; maverick-site absent tant que `useradd` ne l'a pas « créé »), `useradd`, `chown`, et `bash` : l'installateur lance `bash activer.sh` ;
- * le faux note ses arguments, dit une dernière ligne et sort avec le code donné (le vrai activer.sh a ses propres tests : deploy-activer).
+ * le faux note ses arguments, dit une dernière ligne (`derniere`, sinon « == PASSEE » ou « == REFUSEE » selon le code) et sort avec le code donné (le vrai activer.sh a ses propres tests : deploy-activer).
  */
-function faux(journal, { root = true, activer = 0 } = {}) {
+function faux(journal, { root = true, activer = 0, derniere } = {}) {
   const bin = join(racine, `bin-${(n += 1)}`);
   mkdirSync(bin);
   const ajouter = (nom, corps) => { writeFileSync(join(bin, nom), `#!/bin/sh\n${corps}\n`); chmodSync(join(bin, nom), 0o755); };
@@ -87,7 +87,9 @@ function faux(journal, { root = true, activer = 0 } = {}) {
   ajouter('useradd', `echo "useradd $*" >> "${journal}"; : > "${journal}.cree"`);
   ajouter('adduser', `echo "adduser $*" >> "${journal}"; : > "${journal}.cree"`);
   ajouter('chown', `echo "chown $*" >> "${journal}"`);
-  ajouter('bash', `echo "bash $*" >> "${journal}"\necho "activation : (faux activer.sh)"\nexit ${activer}`);
+  // la dernière ligne d'activer.sh : « == PASSEE » (code 0), « == REFUSEE » (1), ou celle qu'on donne (RETOUR AUTOMATIQUE INCOMPLET, IMPOSSIBLE…)
+  const dernier = derniere ?? (activer === 0 ? 'activation : == PASSEE : la production est à la V0.2 (faux)' : 'activation : == REFUSEE : refus du faux activer.sh');
+  ajouter('bash', `echo "bash $*" >> "${journal}"\necho "activation : (faux activer.sh)"\necho "${dernier}"\nexit ${activer}`);
   return bin;
 }
 function lancer(fichier, dossier, bin, args = []) {
@@ -224,25 +226,81 @@ test('un correctif urgent (VX.Y-hotfix.N) ou une régénération (-rebuild.N) la
     writeFileSync(join(dossier, 'activation-par-paquet'), '');
     const journal = join(racine, `appels-${(n += 1)}`);
     const r = lancer(kitSeul({ tag }).fichier, dossier, faux(journal, { activer: 1 }));
-    assert.equal(r.code, 0, `${motif} : ${r.out}`);
+    assert.equal(r.code, 4, `${motif} : ${r.out}`);
     assert.deepEqual(appels(journal).filter((a) => a.startsWith('bash ')), [`bash ${dossier}/activer.sh --prod ${dossier} --correctif`], motif);
     assert.match(r.out, /activer\.sh est lancé \(--correctif\)/);
     assert.match(r.out, new RegExp(`Pour rejouer : sudo bash ${echappe(dossier)}/activer\\.sh --reprendre --correctif`), motif);
+    assert.match(r.out, new RegExp(`ERREUR : ${echappe(tag)} est installé .*Geste : sudo bash ${echappe(dossier)}/activer\\.sh --reprendre --correctif `), `${motif} : le geste de la ligne ERREUR garde --correctif`);
   }
 });
 
-test('GitHub a livré, la production a refusé : l’installation est faite (code 0, VERSION, kit posé), l’ATTENTION dit le code et le geste de reprise, la sortie d’activer.sh est au journal', { skip }, () => {
+test('GitHub a livré, la production a refusé : le kit est posé mais VERSION garde l’étiquette d’AVANT (la production n’est pas « à jour »), la marque est posée, une seule ligne ERREUR dit le geste, code 4', { skip }, () => {
   const dossier = productionInstallee();
   writeFileSync(join(dossier, 'activation-par-paquet'), '');
   const journal = join(racine, `appels-${(n += 1)}`);
+  const versionAvant = readFileSync(join(dossier, 'VERSION'), 'utf8');
   const r = lancer(kitSeul().fichier, dossier, faux(journal, { activer: 1 }));
-  assert.equal(r.code, 0, r.out);
+  assert.equal(r.code, 4, r.out);
   assert.match(r.out, /ATTENTION activation par paquet : code 1 .*la production garde son site et sa base/);
   assert.match(r.out, new RegExp(`Pour rejouer : sudo bash ${echappe(dossier)}/activer\\.sh --reprendre$`, 'm'), 'la reprise exacte, sans option pour un paquet neuf');
   assert.doesNotMatch(r.out, /--reprendre --correctif/);
-  assert.match(readFileSync(join(dossier, 'installation.log'), 'utf8'), /\(faux activer\.sh\)/, 'la sortie d’activer.sh est dans le journal de l’installation');
+  const journalInstallation = readFileSync(join(dossier, 'installation.log'), 'utf8');
+  assert.match(journalInstallation, /\(faux activer\.sh\)/, 'la sortie d’activer.sh est dans le journal de l’installation');
+  // VERSION : l'étiquette d'avant ; la nouvelle attend dans activation/version-en-attente
+  assert.equal(readFileSync(join(dossier, 'VERSION'), 'utf8'), versionAvant, 'VERSION n’a pas bougé : la production se dit toujours à l’ancienne étiquette');
+  assert.match(readFileSync(join(dossier, 'activation/version-en-attente'), 'utf8'), /^tag=v0\.2$/m);
+  assert.match(readFileSync(join(dossier, 'activation/version-en-attente'), 'utf8'), /^mode=prod$/m);
+  // la marque, avec la dernière ligne d'activer.sh ; une seule ligne ERREUR, qui dit le geste
+  assert.equal(readFileSync(join(dossier, '.activation-refusee-v0.2'), 'utf8'), 'activation : == REFUSEE : refus du faux activer.sh\n');
+  const erreurs = r.out.split('\n').filter((l) => l.includes('ERREUR'));
+  assert.equal(erreurs.length, 1, r.out);
+  assert.match(erreurs[0], new RegExp(`ERREUR : v0\\.2 est installé \\(kit posé\\) mais son activation n'a pas passé \\(activation : == REFUSEE .*sa VERSION d'avant \\(v0\\.1\\).*sudo sh ${echappe(dossier)}/mise-a-jour\\.sh --force.*Geste : sudo bash ${echappe(dossier)}/activer\\.sh --reprendre \\(s'il passe, activer\\.sh écrit VERSION`));
+  assert.equal(journalInstallation.split('\n').filter((l) => l.includes('ERREUR')).length, 1, 'une seule ligne ERREUR dans installation.log aussi');
+  assert.doesNotMatch(r.out, /Installé : v0\.2/, 'pas de « Installé » : la production n’est pas passée à la V0.2');
   assert.ok(existsSync(join(dossier, 'activation/kit/kit.json')), 'le kit reste posé : --reprendre le relit');
   assert.equal(readFileSync(join(dossier, 'site/index.html'), 'utf8'), '<h1>ancien site</h1>', 'la production garde son site');
+  verrouRendu(dossier);
+});
+
+test('RETOUR AUTOMATIQUE INCOMPLET, IMPOSSIBLE ou activer.sh sorti en 0 sans « == PASSEE » : même traitement (VERSION d’avant, marque, code 4) ; seul « == PASSEE » avec le code 0 passe', { skip }, () => {
+  for (const [activer, derniere] of [
+    [1, 'activation : == RETOUR AUTOMATIQUE INCOMPLET : le service ne répond pas. Voir les ATTENTION ci-dessus.'],
+    [1, 'activation : == RETOUR AUTOMATIQUE : le contrôle de santé a échoué.'],
+    [2, 'activation : == IMPOSSIBLE : le kit est incomplet.'],
+    [0, 'activation : (rien qui dise PASSEE)'],
+    [1, 'activation : == PASSEE : (mais un code de sortie en échec)'],
+  ]) {
+    const dossier = productionInstallee();
+    writeFileSync(join(dossier, 'activation-par-paquet'), '');
+    const versionAvant = readFileSync(join(dossier, 'VERSION'), 'utf8');
+    const r = lancer(kitSeul().fichier, dossier, faux(join(racine, `appels-${(n += 1)}`), { activer, derniere }));
+    assert.equal(r.code, 4, `${derniere} : ${r.out}`);
+    assert.equal(readFileSync(join(dossier, 'VERSION'), 'utf8'), versionAvant, derniere);
+    assert.equal(readFileSync(join(dossier, '.activation-refusee-v0.2'), 'utf8'), `${derniere.includes('==') ? derniere : `activation : activer.sh est sorti en code ${activer} sans ligne « == »`}\n`, derniere);
+    assert.equal(r.out.split('\n').filter((l) => l.includes('ERREUR')).length, 1, derniere);
+  }
+});
+
+test('une activation PASSÉE écrit VERSION (la nouvelle étiquette), efface la marque d’un refus d’avant et la mise en attente ; la livraison suivante, refusée, ne laisse que SA marque', { skip }, () => {
+  const dossier = productionInstallee();
+  writeFileSync(join(dossier, 'activation-par-paquet'), '');
+  const journal = join(racine, `appels-${(n += 1)}`);
+  assert.equal(lancer(kitSeul({ tag: 'v0.2', version: '0.2.0' }).fichier, dossier, faux(journal, { activer: 1 })).code, 4);
+  assert.ok(existsSync(join(dossier, '.activation-refusee-v0.2')));
+  // la même étiquette rejouée (mise-a-jour.sh --force) et passée
+  const r = lancer(kitSeul({ tag: 'v0.2', version: '0.2.0' }).fichier, dossier, faux(journal));
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /Installé : v0\.2/);
+  assert.match(readFileSync(join(dossier, 'VERSION'), 'utf8'), /^tag=v0\.2$/m);
+  assert.match(readFileSync(join(dossier, 'VERSION'), 'utf8'), /^version=0\.2\.0$/m);
+  assert.equal(readdirSync(dossier).filter((f) => f.startsWith('.activation-refusee-')).length, 0, 'les marques sont effacées');
+  assert.deepEqual(readdirSync(join(dossier, 'activation')).sort(), ['kit'], 'plus de mise en attente');
+  assert.equal(r.out.split('\n').filter((l) => l.includes('ERREUR')).length, 0);
+  // la livraison suivante : refusée, VERSION reste à v0.2, seule la marque de v0.3 existe
+  const refuse = lancer(kitSeul({ tag: 'v0.3', version: '0.3.0' }).fichier, dossier, faux(journal, { activer: 1 }));
+  assert.equal(refuse.code, 4, refuse.out);
+  assert.match(readFileSync(join(dossier, 'VERSION'), 'utf8'), /^tag=v0\.2$/m);
+  assert.deepEqual(readdirSync(dossier).filter((f) => f.startsWith('.activation-refusee-')), ['.activation-refusee-v0.3']);
 });
 
 test('une seconde livraison remplace le kit par renommage : un seul kit gardé, les restes d’une installation interrompue sont jetés ou remis', { skip }, () => {
@@ -282,6 +340,8 @@ test('un installateur de production COMPLET (sans --kit-seul) reste celui d’av
   assert.equal(r.code, 0, r.out);
   assert.equal(readFileSync(join(dossier, 'site/index.html'), 'utf8'), '<h1>site complet</h1>', 'le site est remplacé en entier comme avant');
   assert.ok(!existsSync(join(dossier, 'activation/kit')), 'pas de kit');
+  assert.match(readFileSync(join(dossier, 'VERSION'), 'utf8'), /^tag=v0\.2$/m, 'un installateur complet écrit VERSION comme avant');
+  assert.ok(!existsSync(join(dossier, 'activation/version-en-attente')) && !existsSync(join(dossier, '.activation-refusee-v0.2')), 'ni mise en attente ni marque');
   assert.match(r.out, /pas de kit dans .*activation\/kit : activer\.sh n'est pas lancé/, 'avec l’interrupteur mais sans kit : activer.sh n’est pas lancé, et le dit avec le geste');
   assert.deepEqual(appels(journal).filter((a) => a.startsWith('bash ')), []);
   assert.notDeepEqual(etat(dossier), avant);

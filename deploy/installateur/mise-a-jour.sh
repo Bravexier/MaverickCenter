@@ -199,6 +199,10 @@ fi
 # Un installateur de production refusé faute d'activation-par-paquet (marque posée plus bas) n'est pas retéléchargé toutes les 5 minutes : tant que la marque de cette étiquette est là
 # et que le fichier manque toujours, rien à faire (la ligne d'erreur a été écrite une fois). --force passe outre ; le fichier posé, ou une autre étiquette, relance l'installation.
 if [ "$FORCE" -eq 0 ] && [ -f "$BASE_DIR/.refus-$TAG" ] && ! { [ -f "$BASE_DIR/activation-par-paquet" ] && [ ! -L "$BASE_DIR/activation-par-paquet" ]; }; then exit 0; fi
+# Un installateur « kit seul » de production dont l'activation n'a pas passé (code 4 plus bas) laisse VERSION à l'étiquette d'avant et pose .activation-refusee-<étiquette> : l'activer
+# gèle les écritures et fabrique tout le site, elle ne se rejoue pas toutes les 5 minutes. Pas de nouvelle tentative tant que l'étiquette ne change pas ; --force passe outre ;
+# la reprise est `sudo bash activer.sh --reprendre`, qui écrit VERSION et efface la marque s'il passe.
+if [ "$FORCE" -eq 0 ] && [ -f "$BASE_DIR/.activation-refusee-$TAG" ]; then exit 0; fi
 
 # Une livraison ne porte qu'un fichier joint : son installateur. On le télécharge par l'API (dépôt privé).
 [ -n "$ASSET" ] || die "la livraison $TAG n'a pas encore d'installateur joint (construction en cours ?)"
@@ -210,7 +214,7 @@ sh "$TMP/installateur.sh" --verifier >/dev/null 2>&1 || die "installateur $TAG r
 CODE_INSTALLATEUR=0
 sh "$TMP/installateur.sh" --dossier "$BASE_DIR" >> "$LOG_FILE" 2>&1 || CODE_INSTALLATEUR=$?
 if [ "$CODE_INSTALLATEUR" -eq 0 ]; then
-  rm -f "$BASE_DIR"/.refus-*
+  rm -f "$BASE_DIR"/.refus-* "$BASE_DIR"/.activation-refusee-*
   log "Installé : $TAG."
   garder_installateur "$TMP/installateur.sh"
 elif [ "$CODE_INSTALLATEUR" -eq 3 ] && [ "$MODE" = prod ] && sed -n '1,/^__ARCHIVE__$/p' "$TMP/installateur.sh" | grep -qx 'KIT_SEUL=1'; then
@@ -219,6 +223,12 @@ elif [ "$CODE_INSTALLATEUR" -eq 3 ] && [ "$MODE" = prod ] && sed -n '1,/^__ARCHI
   # code 3 : l'installateur « kit seul » de production a refusé faute d'activation-par-paquet : une marque, et plus de téléchargement tant que l'étiquette et l'interrupteur ne changent pas
   : > "$BASE_DIR/.refus-$TAG"
   die "l'installateur $TAG a été refusé : $BASE_DIR/activation-par-paquet n'existe pas (détail dans $LOG_FILE). Il ne sera pas retenté tant que l'étiquette ne change pas ni que ce fichier n'existe : sudo touch $BASE_DIR/activation-par-paquet, ou sudo sh $0 --force"
+elif [ "$CODE_INSTALLATEUR" -eq 4 ] && [ "$MODE" = prod ] && sed -n '1,/^__ARCHIVE__$/p' "$TMP/installateur.sh" | grep -qx 'KIT_SEUL=1'; then
+  # code 4 : l'installateur « kit seul » de production a posé son kit, mais l'activation n'a pas passé : VERSION garde l'étiquette d'avant (la production n'est pas « à jour »), et la marque
+  # est posée (par lui ; ici si elle manque). Sa ligne ERREUR (détail et geste) est déjà au journal : pas de seconde ligne ERREUR ici. Sortie 1 : le passage n'a pas abouti.
+  [ -f "$BASE_DIR/.activation-refusee-$TAG" ] || : > "$BASE_DIR/.activation-refusee-$TAG"
+  log "L'installateur $TAG a posé son kit mais l'activation n'a pas passé : VERSION reste ${INSTALLE:-inconnue}, marque .activation-refusee-$TAG (détail et geste dans $LOG_FILE). Pas de nouvelle tentative tant que l'étiquette ne change pas ; sudo sh $0 --force passe outre."
+  exit 1
 else
   die "l'installateur $TAG a échoué (détail ci-dessus dans $LOG_FILE)"
 fi

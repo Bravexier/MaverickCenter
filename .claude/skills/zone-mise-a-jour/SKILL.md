@@ -1,7 +1,7 @@
 ---
 name: zone-mise-a-jour
-description: "Page /mise-a-jour/ (notes de version, note en préparation, référence, paquet de la base source, « Copier vers le dépôt », lots de changements proposés, workflow mise-a-jour.yml, lot figé et simulation en CI). À charger avant de lire, modifier ou relire ce code. Conflits du journal et maintenance : sous-skills."
-paths: ["client/src/pages/mise-a-jour.astro", "client/src/scripts/mise-a-jour.mjs", "client/src/lib/notes-de-version*.mjs", "client/src/lib/lots-rendu.mjs", "client/src/styles/mise-a-jour/**", "client/serveur/notes-de-version.mjs", "client/scripts/mise-a-jour-*.mjs", "client/serveur/paquet.mjs", "client/test/serveur-paquet.test.mjs", "client/test/notes-de-version-rendu-copie.test.mjs", "client/scripts/db-reference.mjs", ".github/workflows/mise-a-jour.yml", "client/test/mise-a-jour.test.mjs", "client/test/mise-a-jour-github.test.mjs", "client/test/mise-a-jour-regles.test.mjs", "client/test/mise-a-jour-script.test.mjs", "client/test/mise-a-jour-etat-production.test.mjs", "client/test/mise-a-jour-simulation.test.mjs", "client/test/notes-de-version*.test.mjs", "client/test/lots-rendu*.test.mjs", "client/test/mise-a-jour-lots.test.mjs", "client/test/serveur-notes-de-version.test.mjs", "client/test/serveur-mise-a-jour-*.test.mjs", "client/test/aide-mise-a-jour.mjs"]
+description: "Page /mise-a-jour/ (notes de version, note en préparation, référence, lots de changements proposés, état de la production). À charger avant de lire, modifier ou relire ce code. Paquet, workflow, bascule 2, conflits du journal et maintenance : sous-skills."
+paths: ["client/src/pages/mise-a-jour.astro", "client/src/scripts/mise-a-jour.mjs", "client/src/lib/notes-de-version*.mjs", "client/src/lib/lots-rendu.mjs", "client/src/styles/mise-a-jour/**", "client/serveur/notes-de-version.mjs", "client/scripts/db-reference.mjs", "client/test/notes-de-version-rendu-copie.test.mjs", "client/test/mise-a-jour.test.mjs", "client/test/mise-a-jour-script.test.mjs", "client/test/mise-a-jour-etat-production.test.mjs", "client/test/notes-de-version*.test.mjs", "client/test/lots-rendu*.test.mjs", "client/test/mise-a-jour-lots.test.mjs", "client/test/serveur-notes-de-version.test.mjs", "client/test/serveur-mise-a-jour-*.test.mjs", "client/test/aide-mise-a-jour.mjs"]
 user-invocable: false
 ---
 # Mise à jour
@@ -10,12 +10,10 @@ user-invocable: false
 - Page : `src/pages/mise-a-jour.astro` (menu Outils), `src/scripts/mise-a-jour.mjs`, `styles/mise-a-jour/`.
 - Notes de version : `lib/notes-de-version.mjs`, `lib/notes-de-version-sens.mjs` (couleurs R29), `lib/notes-de-version-rendu.mjs`.
 - Modifications de l'équipe (lots) : rendu pur `lib/lots-rendu.mjs`, monté par `src/scripts/mise-a-jour.mjs`.
-- Service : `serveur/notes-de-version.mjs` (note en préparation, lot figé, états du lancement), `serveur/paquet.mjs` (paquet, report).
-- Scripts : `scripts/db-reference.mjs` (base de master), `scripts/mise-a-jour-regles.mjs` (rejeu du lot sur `data/rows`), `scripts/mise-a-jour-paquet.mjs` (même rôle pour un paquet), `scripts/mise-a-jour-github.mjs` (phases du workflow), `scripts/mise-a-jour-simulation.mjs` (lot synthétique de la CI).
-- Workflow : `.github/workflows/mise-a-jour.yml` ; job `simulation-de-mise-a-jour` de `ci.yml`.
+- Service : `serveur/notes-de-version.mjs` (note en préparation, lot figé, états du lancement). Référence : `scripts/db-reference.mjs` (base de master). Paquet, scripts et workflows : skill `zone-mise-a-jour-paquet`.
 
 ## Sous-skills
-- Lots du journal en conflit (circuit sans marqueur) : skill `zone-mise-a-jour-conflits`. Maintenance : skill `zone-maintenance`. Ce que le service fait d'un lot de changements : skill `zone-edition-lots`.
+- Paquet, copie, jobs `preparer` et `livrer`, interrupteurs de GitHub, refus et identité sous `db/bascule-2` : skill `zone-mise-a-jour-paquet`. Lots du journal en conflit (circuit sans marqueur) : skill `zone-mise-a-jour-conflits`. Maintenance : skill `zone-maintenance`. Ce que le service fait d'un lot de changements : skill `zone-edition-lots`.
 
 ## À lire
 - `docs/serveur.md`, « Mise à jour (site de dev) » (page, jobs `preparer` et `livrer`, états, simulation en CI, routes, jetons) et « Mise à jour depuis la base source ».
@@ -35,15 +33,8 @@ user-invocable: false
 - Le bandeau du site de dev (`Base.astro`) renvoie à cette page (skill `zone-menu`).
 - Boutons principaux (« Effectuer la mise à jour », « Lancer la simulation », « Passer en version majeure », « Résoudre ce lot ») : texte foncé en sombre seulement (réponse du propriétaire), `.nv-dev button.nv-principal, .nv-dialogue button.nv-principal` lit `var(--texte-sur-good)` (skill `ui-couleurs-theme`). Un bouton principal nouveau garde la classe `nv-principal`.
 
-## Circuit actif : paquet et copie (base source, `db/source`)
-Le site de dev porte le marqueur (skill `zone-service`) : toute mise à jour, simulation ou copie passe par un paquet. Sa base n'est jamais refaite : plus de rejeu ni de lot en conflit sur le site de dev. `data/rows` n'est tenu à jour que par ce circuit (copie et mise à jour), et la CI le lit (R278).
-- « Effectuer la mise à jour », la Simulation et « Copier vers le dépôt » figent un **paquet** à la place du lot : `serveur/paquet.mjs`, `fabriquerPaquet` à partir de `fabriquerExtrait` (skill `zone-service-extrait`), servi octet pour octet à `GET /api/mise-a-jour/lots/<lot>/`, ouvert sans clé comme le lot figé. La base source n'est pas écrite (« préparée, pas livrée »).
-- Refus avant l'envoi (409 `refus`) pour une seule raison : attestation de la production absente ou périmée. Un élément retiré que des fiches citent ne fait pas refuser l'envoi (R280) : la production adapte la fiche et le note (R42 et suites), sauf une race, une classe ou une magie, dont la production garde sa base d'avant (R292 ; alerte ci-dessous). Le refus ne dit que des nombres, jamais un nom de fiche.
-- Job `preparer` : `scripts/mise-a-jour-paquet.mjs` recontrôle (codes 2 à 6) et tire `data/rows` du paquet. La table `page` se juge page par page : une page libre changée sans la trace de sa ligne est refusée. Un paquet sans page d'exemple (le site de dev n'en a pas) n'est jamais contrôlé ni exporté tel quel : il passe par une copie qui reçoit `data/pages-d-exemple.sql` (`paquetAvecLesExemples`, définie dans `mise-a-jour-github.mjs`, importée par `mise-a-jour-paquet.mjs`). Les lignes d'exemple restent dans `data/rows` et une vraie page sans trace est toujours refusée.
-- Job `livrer` : liste blanche = `tables_de_contenu` du paquet (plus les notes) ; il réexporte le paquet par `python3 -I tools/db/exporter.py` et compare les **empreintes d'octets** (même ensemble de fichiers, jamais un texte décodé) ; toujours ni npm ni `node_modules`. Il réexporte la même copie avec les exemples (`paquetAvecLesExemples`). Les constantes recopiées dans `mise-a-jour-github.mjs` sont comparées par le test.
-- Copie (`POST /api/mise-a-jour/copier/`, mot `COPIER VERS LE DEPOT`) : commit « Copie : » (jamais « Lot : »), fusion dans `dev` seulement, jamais l'étape master (`if: !inputs.copie`), aucune maintenance (skill `zone-maintenance`) ; ses modifications restent en attente.
-- Report (`reporterPaquet`) : idempotent, en une transaction, refusé sur une base plus ancienne que le paquet.
-- Page : « Copier vers le dépôt » seulement si `base_source` ; les refus se disent par `messageDuRefus` ; une copie terminée reste dans l'encart (`lancementAffiche`) ; « reportée le … ».
+## Circuit actif : paquet et copie
+Le site de dev porte le marqueur `db/source` : toute mise à jour, simulation ou copie passe par un paquet, sans rejeu ni lot en conflit. Le détail (refus, identité, jobs, interrupteurs de la bascule 2) : skill `zone-mise-a-jour-paquet`. Côté page : « Copier vers le dépôt » seulement si `base_source` ; les refus se disent par `messageDuRefus` ; une copie terminée reste dans l'encart (`lancementAffiche`) ; « reportée le … ».
 
 ## Modifications de l'équipe (R274, R275, R291, R292)
 - R291 : un lot déposé avec la clé de dépôt est appliqué aussitôt (skill `zone-edition-lots`) ; la page montre les changements ligne par ligne, comme les notes de version. Section `[data-nv-lots]` « Modifications de l'équipe » entre les listes de la note en préparation et les conflits, qui restent derniers (`zone.append(sectionDesLots(), sectionDesConflits())`).
@@ -67,21 +58,14 @@ Le site de dev porte le marqueur (skill `zone-service`) : toute mise à jour, si
 - Plan des Règles et ordre des races (skill `zone-edition-menus`), en lignes de la note : « Ordre du menu » (une par onglet dont l'ordre change, de la première à la dernière place qui diffère ; `comparerPlanDesRegles`), « Onglet : X → Y » (page déplacée dans un autre onglet) et « Ordre de la liste » (races, `comparerOrdreDesRaces` ; `rang_liste` n'est pas listé race par race). Une entrée ajoutée ou retirée est dite par sa page.
 - `detail` : une ligne qui n'existe qu'avec une autre (rubrique, butin) n'est listée que pour un champ modifié. `resume` : un contenu absent de la production tient en une ligne.
 - Une vraie mise à jour retire les notes `exemple = 1`.
-- `scripts/mise-a-jour-github.mjs#CHECKS_REQUIS` (verts sur la tête avant une fusion) = les checks requis de `.github/rulesets/` : `client`, `character-service`, `regles-de-branches`, `controle-des-migrations`, `controle-du-contenu-ecrit` (R282). Un check requis de plus entre aux trois endroits.
-- `[V: X+1]` n'est jamais repris d'un texte (PR, commentaires : `neutraliserMarqueur`) ; il n'est posé que dans le titre de la PR de livraison d'un lot `majeure` (`titreLivraison`), et la livraison s'arrête si la PR et le lot ne s'accordent pas (`desaccordMajeure`). La note du lot est alors la X+1.0 (`versionDeLivraison(…, { majeure })`).
-- Le job `preparer` lance `npm test` après avoir écrit la note du lot dans `data/rows` ; le job CI `simulation-de-mise-a-jour` applique un lot synthétique puis les mêmes `CONTROLES` (épinglés par `mise-a-jour-simulation`). Seul le lot du lancement actuel est servi au workflow (`lireLot`, sinon `410`) ; un suivi en retard n'écrase jamais un état plus récent.
-- « terminé » se pose au succès du run ; l'attente de l'installation passe par la référence (version de `_serveur/version.json` de la production, repli : copie de master).
 
-## Lot figé et rejeu (sans marqueur : tests, job `simulation-de-mise-a-jour`, retour arrière)
+## Lot figé et rejeu (sans marqueur)
 - Un lot en attente sur une page découpée ou retitrée (R184) donne un conflit `colonnes` : garder le lot remettrait le texte déplacé en double.
 - La note en préparation retire les lots gardés non résolus (fusion à trois voies, skill `zone-edition-rejeu`) et leurs lots retenus : elle ne montre que ce qui partira ; ils y reviennent après la résolution (réponse du propriétaire « Les retirer »). `notes-de-version.mjs#tablesQuiPartiront` ; `en_attente` ne compte pas les retenus.
-- `scripts/mise-a-jour-regles.mjs` refuse d'écrire un fichier de `data/rows` hors des tables du journal et de la note (`TABLES_DE_LA_NOTE`), plus celles que le rejeu écrit en plus (`tablesCompletees`) : un fichier autre que l'exporteur l'écrit bloque une mise à jour.
-- Nature des traces (R275, migration 0127) : l'historique que `scripts/mise-a-jour-regles.mjs` écrit reprend la nature et la décision du lot ; `verifierLot` refuse une nature inconnue ou un numéro mal placé (`natureDuLot`, code 2).
-- `scripts/mise-a-jour-github.mjs#tablesDuLot` (liste blanche du commit) recopie la règle de `tablesCompletees` (skill `zone-edition-rejeu`).
 
 ## Tests
-- `notes-de-version`, `notes-de-version-sens`, `serveur-notes-de-version`, `serveur-mise-a-jour-etats`, `serveur-mise-a-jour-production` (référence), `mise-a-jour`, `mise-a-jour-regles`, `mise-a-jour-github`, `mise-a-jour-simulation`, `mise-a-jour-script` (script de la page en faux navigateur), `mise-a-jour-etat-production` (choix de l'affichage). Conflits : skill `zone-mise-a-jour-conflits`.
+- `notes-de-version`, `notes-de-version-sens`, `serveur-notes-de-version`, `serveur-mise-a-jour-etats`, `serveur-mise-a-jour-production` (référence), `mise-a-jour`, `mise-a-jour-script` (script de la page en faux navigateur), `mise-a-jour-etat-production` (choix de l'affichage). Conflits : skill `zone-mise-a-jour-conflits`.
 - `test/site-html.test.mjs` : la page construite égale les notes de la base, sans `style=` ni feuille de palette.
-- `serveur-paquet`, `mise-a-jour-paquet` (base source), `mise-a-jour-paquet-exemples`, `notes-de-version-rendu-copie` (page d'une copie).
+- `notes-de-version-rendu-copie` (page d'une copie). Tests du paquet et du workflow : skill `zone-mise-a-jour-paquet`.
 - `lots-rendu` (module pur), `mise-a-jour-lots` (le script, en faux navigateur), `lots-rendu-service` (sur un vrai lot du service).
 - `test/palette-css.test.mjs` : aucune couleur écrite dans la zone (`lots-rendu` compris), jetons lisibles dans les deux thèmes, 4 dialogues `nv-dialogue` dans le script.

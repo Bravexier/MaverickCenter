@@ -148,15 +148,15 @@ export function fabriquer(options) {
     for (const repere of ['@@VERROU_DEBUT@@', '@@VERROU_FIN@@']) if (modele.split(`\n${repere}\n`).length !== 2) throw new Error(`deploy/installateur/installateur.sh doit porter une seule ligne ${repere}`);
     const verrou = (nom) => (mode === 'test' ? readFileSync(join(ICI, nom), 'utf8') : '');
     const modeleAvecVerrou = modele.replace('\n@@VERROU_DEBUT@@\n', () => `\n${verrou('verrou-debut.sh')}`).replace('\n@@VERROU_FIN@@\n', () => `\n${verrou('verrou-fin.sh')}`);
-    // L'installateur « kit seul » (kit-seul.sh, découpé en sections) : six lignes repères, retirées d'un installateur qui n'est pas un kit seul (celui de production ordinaire reste
+    // L'installateur « kit seul » (kit-seul.sh, découpé en sections) : huit lignes repères, retirées d'un installateur qui n'est pas un kit seul (celui de production ordinaire reste
     // octet pour octet le modèle d'avant). Test et production n'ont pas les mêmes sections (refus, contrôles, pose) ; la fin de l'activation n'existe qu'en production.
     const sections = Object.fromEntries(readFileSync(join(ICI, 'kit-seul.sh'), 'utf8').split(/^# >>> /m).slice(1).map((x) => [x.slice(0, x.indexOf('\n')), x.slice(x.indexOf('\n') + 1)]));
     const SECTIONS_DU_KIT_SEUL = {
       test: { SEUL_REFUS: 'refus', SEUL_CONTROLE_DEBUT: 'controle-debut', SEUL_CONTROLE_FIN: 'controle-fin', SEUL_POSE_DEBUT: 'pose-debut', SEUL_POSE_FIN: 'pose-fin' },
-      prod: { SEUL_REFUS: 'refus-prod', SEUL_CONTROLE_DEBUT: 'controle-debut-prod', SEUL_CONTROLE_FIN: 'controle-fin', SEUL_POSE_DEBUT: 'pose-debut-prod', SEUL_POSE_FIN: 'pose-fin', SEUL_ACTIVATION_FIN: 'activation-fin-prod' },
+      prod: { SEUL_REFUS: 'refus-prod', SEUL_CONTROLE_DEBUT: 'controle-debut-prod', SEUL_CONTROLE_FIN: 'controle-fin', SEUL_POSE_DEBUT: 'pose-debut-prod', SEUL_POSE_FIN: 'pose-fin', SEUL_VERSION_AVANT: 'version-avant-prod', SEUL_VERSION_APRES: 'version-apres-prod', SEUL_ACTIVATION_FIN: 'activation-fin-prod' },
     };
     let modeleComplet = modeleAvecVerrou;
-    for (const repere of ['SEUL_REFUS', 'SEUL_CONTROLE_DEBUT', 'SEUL_CONTROLE_FIN', 'SEUL_POSE_DEBUT', 'SEUL_POSE_FIN', 'SEUL_ACTIVATION_FIN']) {
+    for (const repere of ['SEUL_REFUS', 'SEUL_CONTROLE_DEBUT', 'SEUL_CONTROLE_FIN', 'SEUL_POSE_DEBUT', 'SEUL_POSE_FIN', 'SEUL_VERSION_AVANT', 'SEUL_VERSION_APRES', 'SEUL_ACTIVATION_FIN']) {
       if (modeleComplet.split(`\n@@${repere}@@\n`).length !== 2) throw new Error(`deploy/installateur/installateur.sh doit porter une seule ligne @@${repere}@@`);
       // test : toujours ses sections (KIT_SEUL=0 les passe sans effet) ; production : seulement dans un kit seul
       const nom = mode === 'test' || options.kitSeul ? SECTIONS_DU_KIT_SEUL[mode][repere] : undefined;

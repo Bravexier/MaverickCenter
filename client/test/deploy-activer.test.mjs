@@ -84,6 +84,45 @@ test('RÉUSSITE : contrôles, pages fabriquées, bascule courte (gel, service ar
   assert.deepEqual(readdirSync(m.activation).filter((f) => f.startsWith('travail.')), [], 'le dossier de travail est effacé');
 });
 
+test('VERSION : l’installateur « kit seul » la laisse à l’étiquette d’avant ; activer.sh qui PASSE pose la mise en attente de CE kit et efface la marque du refus, un refus n’y touche pas, la mise en attente d’un autre kit est jetée', { skip }, (t) => {
+  const enAttente = (m, version) => writeFileSync(join(m.activation, 'version-en-attente'), `tag=v9.2\nversion=${version}\ncommit=abc\nmode=prod\ninstalle_le=2026-11-19 10:00:00\n`);
+  const marque = (m) => writeFileSync(join(m.prod, '.activation-refusee-v9.2'), 'activation : == REFUSEE : avant\n');
+  const versionDe = (m) => readFileSync(join(m.prod, 'VERSION'), 'utf8');
+  // un refus : VERSION, la mise en attente et la marque ne bougent pas
+  const refus = creerLActivation(t, { paquet: false });
+  enAttente(refus, '9.1.4');
+  marque(refus);
+  const versionAvant = versionDe(refus);
+  assert.equal(refus.lancer().code, 1);
+  assert.equal(versionDe(refus), versionAvant, 'refusée : VERSION garde l’étiquette d’avant');
+  assert.ok(existsSync(join(refus.activation, 'version-en-attente')) && existsSync(join(refus.prod, '.activation-refusee-v9.2')));
+  // la reprise qui passe : VERSION prend l'étiquette en attente, la marque et la mise en attente disparaissent
+  const passee = creerLActivation(t);
+  enAttente(passee, '9.1.4');
+  marque(passee);
+  assert.doesNotMatch(versionDe(passee), /^tag=v9\.2$/m);
+  const r = passee.lancer(['--reprendre']);
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /activation : VERSION : la production est à v9\.2\./);
+  assert.match(dernier(r.out), /== PASSEE/, 'la dernière ligne reste « == PASSEE »');
+  assert.match(versionDe(passee), /^tag=v9\.2$/m);
+  assert.match(versionDe(passee), /^mode=prod$/m);
+  assert.equal(existsSync(join(passee.activation, 'version-en-attente')), false);
+  assert.equal(existsSync(join(passee.prod, '.activation-refusee-v9.2')), false, 'la marque du refus est effacée');
+  // une mise en attente d'un AUTRE kit (version=) n'est jamais posée : elle est jetée
+  const autre = creerLActivation(t);
+  enAttente(autre, '9.0.1');
+  const avantAutre = versionDe(autre);
+  assert.equal(autre.lancer().code, 0);
+  assert.equal(versionDe(autre), avantAutre);
+  assert.equal(existsSync(join(autre.activation, 'version-en-attente')), false);
+  // sans mise en attente (installateur complet, ou activer.sh lancé à la main) : VERSION n'est pas touché
+  const seul = creerLActivation(t);
+  const avantSeul = versionDe(seul);
+  assert.equal(seul.lancer().code, 0);
+  assert.equal(versionDe(seul), avantSeul);
+});
+
 test('garde-fou 20 : les conteneurs sont sans réseau, sans capacité, en lecture seule, le paquet et le kit en lecture seule, jamais db/ ni secrets/ ni le socket Docker ; le gel précède l’arrêt du service', { skip }, (t) => {
   const m = creerLActivation(t);
   assert.equal(m.lancer().code, 0);

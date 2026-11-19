@@ -14,13 +14,15 @@
 #   b. un conteneur SANS réseau, SANS capacité, utilisateur 65534 : copie le paquet, calcule son empreinte, la compare à celle que le KIT annonce (venue de GitHub : la seule à laquelle la
 #      production fait confiance), lance les contrôles du code du kit (structure, notes, contenu réel, base de la production refaite avec ses fiches sur une copie `sqlite3 .backup`) ; un
 #      second, sous les mêmes règles, fabrique TOUT le site de la production (SITE_MODE=prod) depuis ce paquet avec le kit. Root ne lit que des JSON plafonnés, après `docker rm` ;
-#   c. la bascule courte : gel des écritures (gel.sh poser --duree 30), service arrêté, base mise de côté, site/ copié dans site.precedent/ puis le nouveau site posé en place (pages sous
+#   c. la bascule courte : gel des écritures (gel.sh poser --duree 45), service arrêté, base mise de côté, site/ copié dans site.precedent/ puis le nouveau site posé en place (pages sous
 #      l'utilisateur maverick-site, service `_serveur/` sous root, chacun par un conteneur sans capacité), service relancé ;
 #   d. contrôle de santé (5 min au plus) : /api/etat répond, la base est prête, la version est celle du kit ;
 #   e. succès : gel levé, rapport. Échec : RETOUR AUTOMATIQUE (site.precedent/ reposé, base remise si elle a changé, gel levé, rapport) : la production garde sa base.
 # Le kit (activation/kit/) est posé par l'installateur « kit seul » de production (lot 11, PR 5b), qui lance ce script à la fin de son installation (kit-seul.sh, activation-pose.sh).
 # Le rapport (activation/rapport.json) est aussi laissé dans paquets/activation.json, où le site de dev le lit (page Mise à jour : `activation_production`, docs/api.md).
 # Codes : 0 passée ; 1 refusée (rien n'a changé) ou retour automatique (le site précédent est remis) ; 2 impossible (usage, préalable : rien n'a changé).
+# VERSION : l'installateur « kit seul » de production laisse la VERSION d'avant tant que l'activation n'a pas passé, et met la nouvelle dans activation/version-en-attente ; à « PASSEE », ce script
+#   la pose lui-même (si cette mise en attente est celle du kit lu), efface la marque .activation-refusee-<étiquette> que mise-a-jour.sh respecte, et le dit (« VERSION : … »).
 # Dernière ligne : « activation : == PASSEE … », « == REFUSEE : … », « == RETOUR AUTOMATIQUE : … » ou « == IMPOSSIBLE : … ».
 # Variables (tests) : MAVERICK_DIR_NORMAL, MAVERICK_DIR_TEST, MAVERICK_SAUV_DOCKER (docker), MAVERICK_ESSAI=1 (root non exigé, aucun chown, utilisateur de pose donné par
 #   MAVERICK_ACTIVATION_UTILISATEUR=uid:gid), MAVERICK_ACTIVATION_PROC, MAVERICK_ACTIVATION_CGROUP, MAVERICK_ACTIVATION_INTERVALLE (secondes entre deux relevés), MAVERICK_ACTIVATION_SANTE
@@ -736,6 +738,21 @@ if [ -n "$ANNONCE_EMPREINTE" ]; then
   deposer_un_fichier "$ACT/dernier-paquet.json" "$(printf '{"format":"maverick-dernier-paquet/1","version":"%s","lot":"%s","empreinte":"%s","structure":%s,"kit":"%s","active_le":"%s"}' \
     "$ANNONCE_VERSION" "$ANNONCE_LOT" "$ANNONCE_EMPREINTE" "$(jnombre "$ANNONCE_STRUCTURE")" "$VERSION_KIT" "$(date -u '+%Y-%m-%dT%H:%M:%SZ')")" || dire "note : $ACT/dernier-paquet.json n'a pas pu être écrit (le correctif urgent ne le retrouverait pas)."
 fi
+# VERSION et marques : la nouvelle étiquette n'est prise qu'ici, après la santé ; seule une mise en attente de CE kit (version=) est posée (jamais celle d'un autre kit : un installateur complet
+# plus récent a pu passer entre-temps). Un échec ici ne défait pas l'activation : il est dit, avec le geste.
+if [ -f "$ACT/version-en-attente" ] && [ ! -L "$ACT/version-en-attente" ]; then
+  if [ "$(sed -n 's/^version=//p' "$ACT/version-en-attente" | head -n 1)" = "$VERSION_KIT" ] && [ "$(sed -n 's/^mode=//p' "$ACT/version-en-attente" | head -n 1)" = prod ]; then
+    if cp "$ACT/version-en-attente" "$PROD/.VERSION.$$" && mv -f "$PROD/.VERSION.$$" "$PROD/VERSION" && rm -f "$ACT/version-en-attente"; then
+      dire "VERSION : la production est à $(sed -n 's/^tag=//p' "$PROD/VERSION" | head -n 1)."
+    else
+      rm -f "$PROD/.VERSION.$$"
+      dire "ATTENTION VERSION n'a pas pu recevoir la nouvelle étiquette : sudo cp $ACT/version-en-attente $PROD/VERSION"
+    fi
+  else
+    rm -f "$ACT/version-en-attente"
+  fi
+fi
+rm -f "$PROD"/.activation-refusee-*
 RAISONS=''
 PHRASE="La production est passée à la V${VERSION_PAQUET:-$VERSION_KIT} (kit V$VERSION_KIT) : $PAGES pages, service en bonne santé, gel levé. Le site précédent est gardé dans site.precedent/."
 GESTE=''
