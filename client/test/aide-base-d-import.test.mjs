@@ -13,15 +13,27 @@ import { baseDImport, cheminDImport, defaireLeSite, lotsAvant, reglesDImport, re
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
 import { registreDeMigration } from './aide-registres-sortis.mjs';
 
-/** Une copie de la base construite, ramenée à son état d'import (historique vide), ouverte en écriture. */
+/** Les natures de trace que defaireLeSite défait ; les autres (source, migration, code) font partie de l'import (R275). */
+const DEFAITES = ['saisie', 'decision'];
+/** Les lots de l'historique de `db` (identifiant → nature). */
+const lotsDe = (db) => new Map(db.prepare('SELECT DISTINCT lot_id, nature FROM historique_modification').all().map((r) => [r.lot_id, r.nature]));
+
+/**
+ * Une copie de la base construite, ramenée à son état d'import, ouverte en écriture. Son historique ne garde que des traces qui font partie de l'import
+ * (R275 : un lot de nature source, migration ou code, déposé sur le site de dev, y reste) ; `db.lotsDeLaBase` les nomme, pour que chaque test ne juge que
+ * les siens.
+ */
 function copieDImport(t) {
   const chemin = fichierTemporaire('import.db', 'aide-import-', { t });
   copyFileSync(cheminBase({ sansExemples: false }), chemin);
   const db = new DatabaseSync(chemin);
   t.after(() => db.isOpen && db.close());
   defaireLeSite(db);
+  db.lotsDeLaBase = lotsDe(db);
   return db;
 }
+/** Les lots de l'historique que le test a lui-même écrits. */
+const lotsDuTest = (db) => [...lotsDe(db)].filter(([lot]) => !db.lotsDeLaBase.has(lot));
 
 /** Une opération du site : appliquée à la table, puis notée dans historique_modification (lot, rang, instant). */
 function noter(db, { lot, rang, faitLe, table, cle, operation, avant = null, apres = null, nature = 'saisie', decision = null }) {
@@ -40,7 +52,7 @@ const ligne = (db, sql, ...p) => {
 
 test('defaireLeSite : chaque opération est défaite, de la dernière à la première ; une cellule qu’une migration a réécrite depuis est gardée', (t) => {
   const db = copieDImport(t);
-  assert.equal(db.prepare('SELECT count(*) AS n FROM historique_modification').get().n, 0, 'la copie part de l’état d’import');
+  assert.deepEqual([...db.lotsDeLaBase.values()].filter((n) => DEFAITES.includes(n)), [], 'la copie part de l’état d’import : aucune trace défaisable');
   const [a, b] = db.prepare('SELECT id, description FROM mot_cle WHERE description IS NOT NULL ORDER BY id LIMIT 2').all().map((r) => ({ ...r }));
   const alias = ligne(db, 'SELECT * FROM alias ORDER BY page_id, ordre LIMIT 1');
   const LOT1 = '2026-11-01T10:00:00.000Z-essai-1';
@@ -61,7 +73,7 @@ test('defaireLeSite : chaque opération est défaite, de la dernière à la prem
   assert.equal(ligne(db, 'SELECT description FROM mot_cle WHERE id = ?', b.id).description, 'Texte de la migration.', 'réécrite par une migration : gardée');
   assert.equal(ligne(db, 'SELECT id FROM mot_cle WHERE id = 9001'), undefined, 'la ligne insérée par le site est retirée');
   assert.deepEqual(ligne(db, 'SELECT * FROM alias WHERE page_id = ? AND ordre = ?', alias.page_id, alias.ordre), alias, 'la ligne supprimée est remise');
-  assert.equal(db.prepare('SELECT count(*) AS n FROM historique_modification').get().n, 0, 'les lots défaits quittent l’historique');
+  assert.deepEqual(lotsDuTest(db), [], 'les lots défaits quittent l’historique');
   assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
 });
 
@@ -113,7 +125,7 @@ test('defaireLeSite : seules les traces de nature saisie et decision sont défai
   assert.equal(description(c), 'Source.', 'une source fait partie de l’import');
   assert.ok(ligne(db, 'SELECT id FROM mot_cle WHERE id = 9003'), 'la ligne d’une migration reste');
   assert.ok(ligne(db, 'SELECT id FROM mot_cle WHERE id = 9004'), 'la ligne du code reste');
-  assert.deepEqual(db.prepare('SELECT nature FROM historique_modification ORDER BY lot_id').all().map((r) => r.nature), ['source', 'migration', 'code'], 'seuls les lots défaits quittent l’historique');
+  assert.deepEqual(lotsDuTest(db).sort(([x], [y]) => x.localeCompare(y)).map(([, n]) => n), ['source', 'migration', 'code'], 'seuls les lots défaits quittent l’historique');
   assert.ok(historiqueSite(db).vide, 'historiqueSite ne voit plus rien à défaire');
 });
 
@@ -139,7 +151,7 @@ test('defaireLeSite { garder } : l’état d’après une migration — les lots
   assert.deepEqual(defaireLeSite(db, { garder: new Set([GARDE]) }), []);
   assert.equal(ligne(db, 'SELECT description FROM mot_cle WHERE id = ?', a.id).description, 'Écrit par une décision.');
   assert.equal(ligne(db, 'SELECT id FROM mot_cle WHERE id = 9002'), undefined);
-  assert.deepEqual(db.prepare('SELECT DISTINCT lot_id FROM historique_modification').all().map((r) => r.lot_id), [GARDE]);
+  assert.deepEqual(lotsDuTest(db).map(([lot]) => lot), [GARDE]);
 });
 
 test('base d’import de la base construite : historique vide, rien d’écarté ; chaque cellule modifiée par le site y a sa valeur d’import (historiqueSite)', () => {
@@ -175,7 +187,8 @@ test('base d’import de la base construite : historique vide, rien d’écarté
   const garder = lotsAvant('0093');
   const apres = baseDImport({ garder });
   assert.notEqual(apres, imp);
-  for (const { lot_id: lot } of apres.prepare('SELECT DISTINCT lot_id FROM historique_modification').all()) assert.ok(garder.has(lot), lot);
+  // hors des lots gardés, seules restent les traces qui font partie de l'import (R275 : source, migration, code)
+  for (const [lot, nature] of lotsDe(apres)) assert.ok(garder.has(lot) || !DEFAITES.includes(nature), `${lot} (${nature})`);
   assert.ok(chargerReglesDeFiche(apres).classes.length > 0);
 });
 

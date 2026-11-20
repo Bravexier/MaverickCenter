@@ -18,14 +18,14 @@ const MODULE = join(RACINE, 'tools', 'flux-git', 'bascule-2.mjs');
 const yml = readFileSync(join(RACINE, '.github', 'workflows', 'livraison.yml'), 'utf8');
 const wf = YAML.parse(yml);
 
-test('l’interrupteur du dépôt est éteint ; même fichier que le gel des fusions, mais une clé à lui : `actif` et `gel_des_fusions` sont indépendantes, toutes deux éteintes', () => {
+test('l’interrupteur du dépôt est éteint ; même fichier que le gel des fusions, mais une clé à lui : `actif` et `gel_des_fusions` sont indépendantes (jour J, étape 8 : gel allumé, `actif` encore éteint)', () => {
   assert.equal(INTERRUPTEUR, INTERRUPTEUR_DU_GEL);
   assert.equal(BRANCHE_DE_L_INTERRUPTEUR, 'origin/dev');
   assert.equal(lireLInterrupteur(readFileSync(join(RACINE, INTERRUPTEUR), 'utf8')), false, 'éteint tant que le propriétaire n’a pas choisi le jour J');
   const fichier = JSON.parse(readFileSync(join(RACINE, INTERRUPTEUR), 'utf8'));
-  assert.deepEqual([fichier.actif, fichier.gel_des_fusions], [false, false]);
+  assert.deepEqual([fichier.actif, fichier.gel_des_fusions], [false, true]);
   assert.equal(typeof fichier.a_lire, 'string');
-  assert.equal(lireLInterrupteurDuGel(readFileSync(join(RACINE, INTERRUPTEUR), 'utf8')), false);
+  assert.equal(lireLInterrupteurDuGel(readFileSync(join(RACINE, INTERRUPTEUR), 'utf8')), true, 'gel des fusions allumé le jour J (étape 8)');
   for (const [texte, actif, gel] of [[null, false, false], ['{"actif": true}', true, false], ['{"gel_des_fusions": true}', false, true], ['{"actif": true, "gel_des_fusions": true}', true, true]]) {
     assert.deepEqual([lireLInterrupteur(texte), lireLInterrupteurDuGel(texte)], [actif, gel], String(texte));
   }
