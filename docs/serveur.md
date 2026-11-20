@@ -1760,7 +1760,7 @@ Idempotent : une note déjà là n'est pas réécrite (un redémarrage entre le 
 Une copie n'écrit **rien** dans la base source, ni à son installation : ses modifications restent en attente ; la mise à jour suivante les verse avec sa version, et la ligne de
 `data/rows` versée sans version par la copie prend alors cette version. La note reste juste : elle compare la production au contenu, pas au journal.
 
-### Bascule 2 : préparation (lot 11, éteinte)
+### Bascule 2 : préparation (lot 11, allumée le jour J)
 
 PR 1 du lot 11 (`docs/chantier-base-de-dev.md`, §9 garde-fous 4, 17, 18). Code : `serveur/base-source.mjs` (`estEnBascule2`), `serveur/paquet.mjs`, `serveur/activation.mjs` ; tests : `serveur-bascule-2`, `serveur-activation`.
 - **Interrupteur.** Le fichier `db/bascule-2`, à côté de `db/source` et lu comme lui à chaque fois (`service.bascule2`), seulement avec la base source ; **rien ne le pose** dans le code (un script de root, plus tard). Absent : les deux refus ci-dessous n'existent pas et le service est celui du lot 8.

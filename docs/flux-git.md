@@ -28,7 +28,7 @@ ou d'une `hotfix/<nom>` ; une PR vers `dev` que d'une `feature/<nom>`.
 - **À chaque PR** (job `regles-de-branches`) : source permise pour la cible, bon point de départ, version de `client/package.json` non modifiée à la main
   (elle est tenue par le bot), et, pour une livraison, `master` déjà refusionnée dans `dev`.
 - **Par GitHub lui-même** (règles importables, `.github/rulesets/`) : création limitée à `feature/**` et `hotfix/**`, `master` et `dev` non supprimables,
-  modifiées seulement par PR avec les checks `client`, `character-service`, `regles-de-branches`, `controle-des-migrations` et `controle-du-contenu-ecrit` verts (R282). Voir « Mise en place ».
+  modifiées seulement par PR avec les checks `client`, `character-service`, `regles-de-branches`, `controle-des-migrations`, `controle-du-contenu-ecrit` (R282) et `gel-des-fusions` (R305) verts. Voir « Mise en place ».
 
 « Créée depuis » se déduit des commits, dans le sens qui compte pour la production : une `hotfix/<nom>` ne doit rien contenir de `dev` ni d'une
 `feature/…` qui ne soit déjà dans `master` (sinon du travail non livré partirait en production) ; une `feature/<nom>` ne doit rien contenir d'une
@@ -182,9 +182,9 @@ du workflow de mise à jour et la livraison `dev` → `master`. Après une modif
 ## Gel des fusions pendant une mise à jour (lot 11)
 
 Garde-fou 16 de la bascule 2. Job `gel-des-fusions` de `ci.yml`, sur chaque PR vers `dev` et `master` ; code : `client/scripts/gel-des-fusions.mjs` (lit le dépôt et l'API de GitHub, jeton en lecture) et `gel-des-fusions-lib.mjs` (règles pures) ; test : `gel-des-fusions`.
-- **Interrupteur** : `tools/flux-git/bascule-2.json`, clé **`gel_des_fusions`** (`false`), lue dans `origin/dev` comme `bascule-1.json`. Éteint (clé ou fichier absent) : vert, sans appeler GitHub. Le même fichier porte une seconde clé indépendante, `actif` (« Ce que GitHub publie avec la bascule 2 ») : le jour J on allume `gel_des_fusions` d'abord (pendant la répétition), puis `actif`.
+- **Interrupteur** : `tools/flux-git/bascule-2.json`, clé **`gel_des_fusions`** (`true` depuis le jour J), lue dans `origin/dev` comme `bascule-1.json`. Éteint (clé ou fichier absent) : vert, sans appeler GitHub. Le même fichier porte une seconde clé indépendante, `actif` (« Ce que GitHub publie avec la bascule 2 ») : le jour J on allume `gel_des_fusions` d'abord (pendant la répétition), puis `actif`.
 - **Allumé** : rouge tant qu'un run du workflow `mise-a-jour.yml` n'est pas fini (en file, en cours, en attente ; un run de plus de 8 h est ignoré). Le message dit le run (numéro, adresse), depuis quand, et le geste : relancer ce job (« Re-run ») quand la mise à jour est finie. Sont exemptées les deux fusions que ce workflow fait lui-même : sa branche `feature/mise-a-jour-regles-…` vers `dev` et la livraison `dev` → `master`. GitHub illisible alors que l'interrupteur est allumé : le job échoue (on ne devine pas qu'aucune mise à jour ne tourne).
-- Le job **n'est pas** un check requis : il le devient seulement par une décision du propriétaire sur les rulesets (`.github/rulesets/` et `CHECKS_REQUIS` de `mise-a-jour-github.mjs`, trois endroits).
+- Le job **est un check requis** depuis le jour J de la bascule 2 (R305) : `.github/rulesets/` (`dev.json`, `master.json`) et `CHECKS_REQUIS` de `mise-a-jour-github.mjs` (test `mise-a-jour-github` : les trois disent la même liste). Les fusions du workflow lui-même le passent vert. Après une modification des fichiers de règles, les réimporter sur GitHub (`gh api -X PUT …`, geste du propriétaire).
 
 ## Ce que GitHub publie avec la bascule 2 (lot 11, PR 4 et PR 5b)
 

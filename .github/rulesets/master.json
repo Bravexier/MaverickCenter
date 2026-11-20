@@ -29,7 +29,8 @@
           { "context": "character-service" },
           { "context": "regles-de-branches" },
           { "context": "controle-des-migrations" },
-          { "context": "controle-du-contenu-ecrit" }
+          { "context": "controle-du-contenu-ecrit" },
+          { "context": "gel-des-fusions" }
         ]
       }
     }

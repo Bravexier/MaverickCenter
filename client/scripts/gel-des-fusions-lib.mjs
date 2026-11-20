@@ -5,8 +5,8 @@
 //
 // ÉTEINT tant que l'interrupteur (tools/flux-git/bascule-2.json, `gel_des_fusions`, indépendant de `actif`) ne vaut pas true dans `origin/dev` : le job passe vert sans rien lire d'autre ni
 // appeler GitHub. Allumé : rouge tant qu'un run de mise-a-jour.yml est en cours (pas fini : en file, en cours, en attente), SAUF pour les deux fusions que ce
-// workflow fait lui-même : la PR de sa branche feature/mise-a-jour-regles-… vers dev, et la PR de livraison dev → master. Le job ne devient un check REQUIS
-// que par une décision du propriétaire sur les rulesets (.github/rulesets/, mise-a-jour-github.mjs#CHECKS_REQUIS) : ce module n'y touche pas.
+// workflow fait lui-même : la PR de sa branche feature/mise-a-jour-regles-… vers dev, et la PR de livraison dev → master. Le job est un check REQUIS
+// depuis le jour J (R305 : .github/rulesets/, mise-a-jour-github.mjs#CHECKS_REQUIS) : ce module n'y touche pas.
 // Un run « en cours » depuis plus de 8 h est ignoré (GitHub arrête un job au bout de 6 h ; un run resté en file ne gèlerait pas les fusions pour toujours).
 import { BRANCHE_DU_WORKFLOW } from './mise-a-jour-github.mjs';
 import { DEV, MASTER } from '../../tools/flux-git/regles.mjs';

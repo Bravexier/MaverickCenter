@@ -6,7 +6,7 @@ user-invocable: false
 ---
 # Mise à jour : le paquet, le workflow, la bascule 2
 
-La page et les notes de version : skill `zone-mise-a-jour`. Ce que le jour J change : `docs/chantier-base-de-dev.md`, section 16 (rien n'en est appliqué).
+La page et les notes de version : skill `zone-mise-a-jour`. Procédure et retour arrière de la bascule 2 : `docs/chantier-base-de-dev.md`, section 16.
 
 ## À lire
 - `docs/serveur.md`, « Mise à jour depuis la base source » et « Bascule 2 : préparation » ; `docs/flux-git.md`, « Ce que GitHub publie avec la bascule 2 » et « Gel des fusions pendant une mise à jour ».
@@ -25,13 +25,13 @@ Le site de dev porte le marqueur (skill `zone-service`) : toute mise à jour, si
 - Report (`reporterPaquet`) : idempotent, en une transaction, refusé sur une base plus ancienne que le paquet.
 
 ## Interrupteurs de GitHub (`tools/flux-git/bascule-2.json`)
-- Deux clés indépendantes, éteintes, lues sur `origin/dev` jamais dans la PR contrôlée : `actif` (kits seuls, `data/paquet.json`, règles du contenu écrit) et `gel_des_fusions` (job `gel-des-fusions` de `ci.yml`, **non requis** : `CHECKS_REQUIS` ne change pas).
+- Deux clés indépendantes, allumées, lues sur `origin/dev` jamais dans la PR contrôlée : `actif` (kits seuls, `data/paquet.json`, règles du contenu écrit) et `gel_des_fusions` (job `gel-des-fusions` de `ci.yml`, **check requis** : R305, `docs/flux-git.md`, « Gel des fusions pendant une mise à jour »).
 - Lecture unique de `actif` : `tools/flux-git/bascule-2-interrupteur.mjs`, **sans aucun import** (le script du job `livrer`, qui tourne avec des jetons, ne dépend que de modules sans import ; test `mise-a-jour-github`).
-- `data/paquet.json` (identité du lot : `lot`, `version`, `empreinte`, `structure`, `commit_du_code`, `fabrique_le`, jamais de contenu) est écrit par `preparer` quand `actif`, en plus de la copie de `data/rows` ; `livrer` le recalcule et l'exige octet pour octet. Règles du contenu écrit (`controle-du-contenu-ecrit`) : `paquet-a-la-main` (ne change que dans un commit du workflow) et `correctif-urgent` (refuse `data/paquet.json` dans un `hotfix/*`). Éteint, elles n'existent pas.
-- `livraison.yml` : `bascule-2.mjs decider` ; éteint, tout est comme avant, test comme production.
+- `data/paquet.json` (identité du lot : `lot`, `version`, `empreinte`, `structure`, `commit_du_code`, `fabrique_le`, jamais de contenu) est écrit par `preparer` quand `actif`, en plus de la copie de `data/rows` ; `livrer` le recalcule et l'exige octet pour octet. Règles du contenu écrit (`controle-du-contenu-ecrit`) : `paquet-a-la-main` (ne change que dans un commit du workflow) et `correctif-urgent` (refuse `data/paquet.json` dans un `hotfix/*`). Sans `actif` (retour arrière), elles n'existent pas.
+- `livraison.yml` : `bascule-2.mjs decider` ; sans `actif`, tout est comme avant, test comme production.
 
 ## Workflow (`.github/workflows/mise-a-jour.yml`)
-- `scripts/mise-a-jour-github.mjs#CHECKS_REQUIS` = les checks requis de `.github/rulesets/` : `client`, `character-service`, `regles-de-branches`, `controle-des-migrations`, `controle-du-contenu-ecrit` (R282). Un check requis de plus entre aux trois endroits.
+- `scripts/mise-a-jour-github.mjs#CHECKS_REQUIS` = les checks requis de `.github/rulesets/` : `client`, `character-service`, `regles-de-branches`, `controle-des-migrations`, `controle-du-contenu-ecrit` (R282), `gel-des-fusions` (R305 ; vert d'office pour les fusions du workflow). Un check requis de plus entre aux trois endroits.
 - `[V: X+1]` n'est jamais repris d'un texte (`neutraliserMarqueur`) ; posé seulement dans le titre de la PR de livraison d'un lot `majeure` (`titreLivraison`, `versionDeLivraison(…, { majeure })`) ; la livraison s'arrête si la PR et le lot ne s'accordent pas (`desaccordMajeure`).
 - `preparer` lance `npm test` après avoir écrit la note ; le job CI `simulation-de-mise-a-jour` applique un lot synthétique (`scripts/mise-a-jour-simulation.mjs`) puis les mêmes `CONTROLES`. Seul le lot du lancement actuel est servi (`lireLot`, sinon `410`) ; un suivi en retard n'écrase jamais un état plus récent. « terminé » se pose au succès du run.
 - `mise-a-jour-regles.mjs` (lot figé, sans marqueur) refuse d'écrire un fichier de `data/rows` hors des tables du journal et de la note (`TABLES_DE_LA_NOTE`, `tablesCompletees`) ; l'historique écrit reprend la nature et la décision du lot (R275) et `verifierLot` refuse une nature inconnue (`natureDuLot`, code 2) ; `scripts/mise-a-jour-github.mjs#tablesDuLot` recopie la règle de `tablesCompletees` (skill `zone-edition-rejeu`).

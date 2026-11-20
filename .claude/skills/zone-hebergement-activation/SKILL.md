@@ -6,7 +6,7 @@ user-invocable: false
 ---
 # Bascule 2, côté hébergement (`deploy/installateur/`)
 
-Éteinte partout : rien de ce que sert la production ne change tant que ses interrupteurs ne sont pas posés. Ce que le jour J change : `docs/chantier-base-de-dev.md`, section 16. Les installateurs, `bascule.sh` et `mise-a-jour.sh` : skill `zone-hebergement` ; l'atelier et le kit : skill `zone-hebergement-atelier`.
+Allumée : ses interrupteurs sont posés. Retirer seulement `activation-par-paquet` alors que `actif` est allumé fait refuser l'installateur kit seul (code 3) : la production garde son site, sans mise à jour. Le retour arrière demande `actif` à false, la suppression du fichier, puis une livraison complète (`docs/chantier-base-de-dev.md`, section 16). Les installateurs, `bascule.sh` et `mise-a-jour.sh` : skill `zone-hebergement` ; l'atelier et le kit : skill `zone-hebergement-atelier`.
 
 ## À lire
 - `docs/serveur.md`, « Bascule 2 : préparation » (PR 2, 3a, 4, 5a, 5b) ; `deploy/installateur/README.md`, « Activer un kit avec son paquet » ; `docs/flux-git.md`, « Ce que GitHub publie avec la bascule 2 ».

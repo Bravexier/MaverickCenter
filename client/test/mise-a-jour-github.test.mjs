@@ -1030,6 +1030,13 @@ describe('fonctions pures', () => {
       ['regles-de-branches (pas encore lancé)']);
     // R282 : les deux contrôles du dépôt sont requis, comme dans .github/rulesets/
     assert.ok(CHECKS_REQUIS.includes('controle-des-migrations') && CHECKS_REQUIS.includes('controle-du-contenu-ecrit'));
+    // R305 : le gel des fusions est requis lui aussi ; CHECKS_REQUIS et les deux fichiers de .github/rulesets/ nomment les mêmes checks
+    assert.ok(CHECKS_REQUIS.includes('gel-des-fusions'));
+    for (const branche of ['dev', 'master']) {
+      const regles = JSON.parse(readFileSync(new URL(`../../.github/rulesets/${branche}.json`, import.meta.url), 'utf8'));
+      const requis = regles.rules.find((r) => r.type === 'required_status_checks').parameters.required_status_checks.map((c) => c.context);
+      assert.deepEqual([...requis].sort(), [...CHECKS_REQUIS].sort(), branche);
+    }
     assert.deepEqual(etatDesChecks(sans('controle-du-contenu-ecrit')).attente, ['controle-du-contenu-ecrit (pas encore lancé)']);
     assert.deepEqual(etatDesChecks([...CHECKS_REQUIS.map(ok), { name: 'client', status: 'completed', conclusion: 'cancelled' }]).echecs, ['client (cancelled)']);
     assert.deepEqual(etatDesChecks([...CHECKS_REQUIS.map(ok), { name: 'client', status: 'queued', conclusion: null }]).attente, ['client (en cours)']);

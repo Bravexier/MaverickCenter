@@ -290,7 +290,7 @@ git (`docs/serveur.md`, « Fabriquer le site depuis un fichier de contenu »). L
 - **Le paquet annoncé** : `kit.json` porte `paquet: { lot, version, empreinte, structure }`, lus de `data/paquet.json` (l'identité du dernier lot, sans contenu, que le workflow de mise à jour écrit quand
   la bascule 2 est allumée) ; sans ce fichier, `paquet: null` ; sa propre `structure` est celle du kit (`PRAGMA user_version` de `data/schema.sql`). Un fichier illisible ou d'une autre forme fait refuser le kit.
 
-### Installateur « kit seul » (bascule 2, éteint)
+### Installateur « kit seul » (bascule 2, allumé le jour J)
 
 `fabriquer.mjs --mode test --kit <racine> --kit-seul --tag … --version … --sha … --sortie …` (sans `--site`) fabrique un installateur **sans pages** : le service (`site/_serveur/`, `version.json` avec
 le commit) et le kit. `livraison.yml` ne le demande que si `tools/flux-git/bascule-2.json` a `actif: true` sur `origin/dev` (pour les deux modes) ; éteint, les installateurs sont ceux d'avant. L'installateur de test d'un kit seul :
