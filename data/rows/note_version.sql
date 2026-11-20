@@ -27,3 +27,4 @@ INSERT INTO note_version (version, publiee_le, depuis, texte, lot, exemple) VALU
 -Ajout des races des Gémédiens et des Fongoïdes.
 -Ajout des classes Boxer et Porte-Etandard
 -Correctif d''une erreur de conception quand à ce comparatif avec la version de prod.', '75dbb997-d7fa-4ccb-b8bf-6c3a0d37da21', 0);
+INSERT INTO note_version (version, publiee_le, depuis, texte, lot, exemple) VALUES ('0.6', '2026-11-20', '0.5', 'Correction technique de mise à jour - retrait du contenu de la base de Github et tests plus permissif les concernant et intégrations de sécurité', '80557ef0-beeb-4b58-a001-4087fd5ea111', 0);
