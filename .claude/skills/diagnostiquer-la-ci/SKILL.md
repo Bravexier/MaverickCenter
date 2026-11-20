@@ -6,7 +6,7 @@ user-invocable: false
 
 # Diagnostiquer une CI rouge
 
-Les jobs sont décrits dans `.github/workflows/ci.yml` (`client`, `simulation-de-mise-a-jour`, `controle-des-migrations`, `controle-du-contenu-ecrit`, `character-service`) et dans `garde-branches.yml` (le check `regles-de-branches`, job `pull-request`). Checks requis (R282) : tous sauf `simulation-de-mise-a-jour`. Les règles de branches sont dans `docs/flux-git.md`.
+Les jobs sont décrits dans `.github/workflows/ci.yml` (`client`, `simulation-de-mise-a-jour`, `controle-des-migrations`, `controle-du-contenu-ecrit`, `character-service`, `gel-des-fusions`) et dans `garde-branches.yml` (le check `regles-de-branches`, job `pull-request`). Checks requis (R282, R305 pour le gel) : tous sauf `simulation-de-mise-a-jour`, dont `gel-des-fusions`. Un gel rouge n'est pas un défaut de la PR : un run de `mise-a-jour.yml` tourne ; on relance le job une fois ce run fini (skill `corriger-une-pr`). Les règles de branches sont dans `docs/flux-git.md`.
 
 **Le contenu lu par la CI** (R278 ; détail : `docs/flux-git.md`, « Contenu lu par les tests »). Les tests et le build lisent l'extrait du site de dev, pas `data/rows`.
 - Seul le job `extrait-du-site-de-dev` porte `MAVERICK_EXTRAIT_CLE`. Il ne lance pas npm et exécute le `db-extrait.mjs` de la branche de base, jamais celui de la PR.

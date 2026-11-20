@@ -97,8 +97,8 @@ export const MODES_DU_PAQUET = Object.freeze(['mise-a-jour', 'simulation', 'copi
 export const FORMAT_PREPARATION = 'maverick-mise-a-jour-preparation/1';
 /** La référence locale du commit préparé (dans le bundle). */
 export const REF_DU_LOT = 'refs/mise-a-jour/lot';
-/** Les checks qui doivent être verts sur le commit de tête avant une fusion (ci.yml : client, character-service, controle-des-migrations, controle-du-contenu-ecrit ; garde-branches.yml ; R282). Les mêmes que `.github/rulesets/`. */
-export const CHECKS_REQUIS = ['client', 'character-service', 'regles-de-branches', 'controle-des-migrations', 'controle-du-contenu-ecrit'];
+/** Les checks qui doivent être verts sur le commit de tête avant une fusion (ci.yml : client, character-service, controle-des-migrations, controle-du-contenu-ecrit, gel-des-fusions ; garde-branches.yml ; R282, R305). Les mêmes que `.github/rulesets/`. Sur les PR du workflow lui-même, gel-des-fusions passe vert (fusion exemptée). */
+export const CHECKS_REQUIS = ['client', 'character-service', 'regles-de-branches', 'controle-des-migrations', 'controle-du-contenu-ecrit', 'gel-des-fusions'];
 /** Applications du commit sur dev (la première, puis une par mouvement de dev pendant l'attente). */
 export const ESSAIS = 3;
 /** Attentes (ms). Le temps compté est celui des pauses demandées à `attendre` : les tests le simulent sans horloge. */

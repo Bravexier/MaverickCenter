@@ -32,6 +32,8 @@ On rebase la branche sur sa base et on en résout les conflits sans attendre (de
 
 Ces noms sont ceux de `tools/flux-git/etat-regles.mjs#NATURES` : `node tools/flux-git/etat-branche.mjs` classe ainsi chaque fichier en conflit (`docs/flux-git.md`).
 
+`data/paquet.json` n'est écrit que par le workflow de mise à jour : la branche ne le porte pas (règle `paquet-a-la-main`), et un conflit dessus se résout en prenant la version de la base, jamais à la main. Un rebase poussé pendant une mise à jour laisse `gel-des-fusions` rouge : ce n'est pas un conflit, la session principale relance le job une fois la mise à jour finie (`publier-une-branche`).
+
 **Au milieu d'un rebase en pause**, l'auteur ne lance que l'outil qui refait son fichier (`db:migrate`, `db:doc`, `npm install --package-lock-only`). Il ne lance ni contrôle ni test : les commits suivants de la branche ne sont pas encore rejoués, et le recouvrement se donne à l'étape 4.
 
 **Avant de continuer**, aucun marqueur ne doit rester dans les fichiers qui étaient en conflit. On liste ces fichiers avec `git diff --name-only --diff-filter=U` (avant le `git add`), puis on lance `git grep -nE '^(<<<<<<<|>>>>>>>)( |$)' -- <ces fichiers>`. Il ne doit rien trouver : rc=1 est le bon résultat. On ne se sert pas de `git diff --check`, qui signale aussi les espaces de fin de ligne.

@@ -1,4 +1,4 @@
-// Bascule 2 : préparation (lot 11, PR 1, ÉTEINTE sans le marqueur db/bascule-2 ; docs/serveur.md, « Bascule 2 : préparation (lot 11, éteinte) ») :
+// Bascule 2 : préparation (lot 11, PR 1, ÉTEINTE sans le marqueur db/bascule-2 ; docs/serveur.md, « Bascule 2 : préparation ») :
 // le marqueur, la fiche d'identité du paquet (toujours écrite, champs ajoutés), le garde-fou 4 (le site de dev doit tourner avec la dernière livraison de test
 // publiée : refus `code_pas_a_jour` / `code_inconnu`) et le garde-fou 18 (le contrôle du contenu du paquet bloque : refus `contenu`). « Copier vers le dépôt »
 // n'est concerné ni par l'un ni par l'autre. Sans le marqueur, rien ne change. Le garde-fou 17 (activation) a son fichier : serveur-activation.
