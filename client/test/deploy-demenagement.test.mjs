@@ -74,6 +74,18 @@ test('aucune adresse IP, aucun nom d\'hôte ni secret dans les scripts et le doc
   }
 });
 
+test('étape 3 du guide en bascule 2 : production par un installateur complet de la version exacte, interrupteur avant lui, Caddy arrêté jusqu\'au jour J', () => {
+  const guide = readFileSync(join(VPS, 'DEMENAGEMENT.md'), 'utf8').replace(/\r\n/g, '\n');
+  const etape3 = guide.slice(guide.indexOf('## 3. Préparer'), guide.indexOf('## 4. La veille'));
+  assert.match(etape3, /fabriquer\.mjs --mode prod --site \S+ --tag <tag> --version <version> --sha <commit>/, 'installateur complet de la version de l\'ancien');
+  assert.doesNotMatch(etape3, /fabriquer\.mjs[^\n]*--kit-seul/, 'jamais un kit seul : il refuse une instance sans site');
+  const pose = etape3.indexOf('sudo sh ~/installateurs/maverick-center-<tag>-install.sh --dossier /srv/maverick-center\n');
+  assert.ok(pose > 0, 'pose réelle de la production');
+  assert.ok(etape3.lastIndexOf('sudo touch /srv/maverick-center/activation-par-paquet\n', pose) > 0, 'activation-par-paquet avant l\'installateur : il crée maverick-site');
+  const apresInstances = etape3.slice(etape3.indexOf('sudo bash ~/vps/instances.sh'), etape3.indexOf('**Poser les deux sites**'));
+  assert.match(apresInstances, /^sudo systemctl stop caddy$/m, 'Caddy arrêté tant que le DNS pointe sur l\'ancien serveur');
+});
+
 test('la répétition joue toute la procédure : gel refusé puis accepté, emballage, archive altérée refusée, base présente jamais écrasée, déballage, EGALITE, DIFFERENCE, retour arrière', { skip }, (t) => {
   const monde = dossierTemporaire('demenagement-repetition', { t });
   const r = lancer('repetition-demenagement.sh', ['--dossier', join(monde, 'repetition')]);

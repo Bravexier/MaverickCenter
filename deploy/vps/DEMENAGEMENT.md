@@ -112,6 +112,12 @@ sudo bash ~/vps/instances.sh
 
 Attendu : « Terminé. Instances prêtes : /srv/maverick-center et /srv/maverick-center-test (sans site pour l'instant) ». Aucun mot de passe n'est affiché.
 
+`instances.sh` vient de démarrer Caddy avec les vrais domaines : tant que le DNS pointe sur l'ancien serveur, ses demandes de certificats échoueraient en boucle. Arrête-le jusqu'au jour J (l'étape 8d le redémarre) :
+
+```
+sudo systemctl stop caddy
+```
+
 **Poser les deux sites** (les installateurs, README, étape 5). Télécharge sur ton poste, dans la page *Releases* du dépôt, les deux fichiers de la dernière version (`maverick-center-VX.Y-install.sh`, le serveur normal, et `maverick-center-VX.Y.Z-install.sh`, le serveur de test), puis :
 
 ```
@@ -125,12 +131,63 @@ sudo sh ~/maverick-center-VX.Y-install.sh --dossier /srv/maverick-center
 sudo sh ~/maverick-center-VX.Y.Z-install.sh --dossier /srv/maverick-center-test
 ```
 
-**Si l'ancien serveur est en bascule 2** (`sudo ls /srv/maverick-center/activation-par-paquet /srv/maverick-center-test/atelier/servir` sur l'ancien montre les deux fichiers), l'installation change en trois points :
-- les installateurs sont des installateurs **complets** (avec pages), pas les « kit seul » : un « kit seul » refuse une instance qui n'a pas déjà son site. Prendre, sur la page *Releases*, la dernière livraison complète (ou un des trois installateurs de `installateur-courant/` de l'ancien serveur, s'il y en a un qui n'est pas un « kit seul » ; **à vérifier le jour venu** : si aucune livraison complète n'existe plus, cette étape est à reprendre avec une session avant de commander le serveur). Leur version n'a pas à être celle de l'ancien serveur : le déballage pose la `VERSION` et les pages de l'ancien serveur, et la mise à jour automatique remet ensuite les scripts à la version courante ;
-- avant l'installateur de production : `sudo touch /srv/maverick-center/activation-par-paquet` (il crée alors l'utilisateur système `maverick-site` ; contrôle après : `id maverick-site`). Le déballage remplace ce fichier par celui de l'ancien serveur, sans rien effacer ;
+**Si l'ancien serveur est en bascule 2** (`sudo ls /srv/maverick-center/activation-par-paquet /srv/maverick-center-test/atelier/servir` sur l'ancien montre les deux fichiers), **ne prends pas les derniers installateurs** : depuis le 2026-11-20, GitHub ne publie plus que des « kit seul » (sans pages), qui refusent une instance sans site. Pour reconnaître un fichier : `head -c 300000 <installateur> | grep -a '^KIT_SEUL='` (`KIT_SEUL=1` : kit seul ; `KIT_SEUL=0` ou rien : complet). L'installation change en quatre points :
+- **serveur de test :** prendre sur la page *Releases* la dernière livraison de test **complète** (à ce jour la V0.5.50). Sur ton poste, `git diff --stat V0.5.50 <étiquette de test de l'ancien> -- deploy/installateur deploy/nginx.conf` ne doit montrer que `README.md` ; sinon, arrête-toi : cette étape est à reprendre avec une session. Sa version n'a pas à être celle de l'ancien serveur : le déballage pose la `VERSION` et les pages de l'ancien serveur ;
+- **production :** la dernière livraison complète (V0.5) est plus ancienne que l'activation par paquet. Elle s'installe sans erreur, mais ne crée pas l'utilisateur `maverick-site` et ne pose ni `activer.sh` ni `gel.sh` : le déballage refuserait **le jour J, l'ancien serveur déjà gelé**. On fabrique donc un installateur complet de la **version exacte** de l'ancien, avec **son** site (commandes ci-dessous) ;
+- avant l'installateur de production : `sudo touch /srv/maverick-center/activation-par-paquet` (il crée alors l'utilisateur système `maverick-site` ; contrôle après : `id maverick-site`). Sans kit posé, il ne lance pas `activer.sh`. Le déballage remplace ce fichier par celui de l'ancien serveur, sans rien effacer ;
 - `instances.sh` ne demande rien de plus ici : le dossier `paquets/` vient de l'archive, et la relance de l'étape 8d (`.env` posé par l'archive, qui porte `MAVERICK_DOSSIER_PAQUETS`) le monte dans le service du site de dev. Sur un serveur sans archive, `sudo bash ~/vps/instances.sh --bascule-2` le crée et le monte.
 
-Attendu, pour chacun : « Installé : … pages. » et la phrase « Première installation : créez le mot de passe puis lancez le conteneur » : **ne fais ni l'un ni l'autre** (le mot de passe interne est déjà posé par `instances.sh`, et rien ne doit démarrer). **Ne lance jamais `docker compose up` sur le nouveau serveur avant l'étape 9.**
+**Fabriquer l'installateur complet de production (bascule 2).** Méthode jouée le 2026-11-21 pour la V0.6-hotfix.1, avec une copie du site par un tube SSH depuis Git Bash ; les commandes ci-dessous passent par des fichiers, car le tube de PowerShell 5.1 abîme les données binaires. Sur `ssh maverick-ancien` (le site n'est que lu, à basse priorité) :
+
+```
+sudo cat /srv/maverick-center/VERSION
+sudo nice -n 19 tar -C /srv/maverick-center -czf ~/site-prod.tar.gz site
+sudo chown ubuntu: ~/site-prod.tar.gz
+sudo sh -c 'cd /srv/maverick-center && find site -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum'
+```
+
+Note `tag`, `version`, `commit` et l'empreinte. Sur ton poste (PowerShell), dans le dossier du dépôt, en remplaçant `<tag>` :
+
+```
+git fetch origin --tags
+git archive --format=tar.gz -o fabrication.tar.gz <tag> deploy client/serveur client/src/lib
+scp fabrication.tar.gz maverick-nouveau:
+scp -3 maverick-ancien:site-prod.tar.gz maverick-nouveau:
+del fabrication.tar.gz
+```
+
+Sur `ssh maverick-nouveau`, en remplaçant `<tag>`, `<version>` et `<commit>` :
+
+```
+mkdir -p ~/fabrication/depot ~/fabrication/site-prod ~/fabrication/sortie ~/installateurs
+tar -xzf ~/fabrication.tar.gz -C ~/fabrication/depot
+tar -xzf ~/site-prod.tar.gz -C ~/fabrication/site-prod
+(cd ~/fabrication/site-prod && find site -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum)
+sudo docker run --rm --network none --user "$(id -u):$(id -g)" -v "$HOME/fabrication:/f" -w /f/depot node:22-alpine node deploy/installateur/fabriquer.mjs --mode prod --site /f/site-prod/site --tag <tag> --version <version> --sha <commit> --sortie /f/sortie
+cp ~/fabrication/sortie/maverick-center-<tag>-install.sh ~/installateurs/
+sh ~/installateurs/maverick-center-<tag>-install.sh --verifier
+```
+
+Attendu : la même empreinte que sur l'ancien serveur, puis « archive intègre, … pages ». Essai sur un dossier jetable :
+
+```
+mkdir -p ~/fabrication/essai/maverick-center
+sudo touch ~/fabrication/essai/maverick-center/activation-par-paquet
+sudo sh ~/installateurs/maverick-center-<tag>-install.sh --dossier ~/fabrication/essai/maverick-center
+```
+
+Attendu : « utilisateur système maverick-site créé », « activer.sh n'est pas lancé », « Installé : … pages. ». Sinon, arrête-toi et colle l'écran. Puis la pose réelle, avec l'installateur de test complet copié dans `~/`, et le ménage :
+
+```
+sudo touch /srv/maverick-center/activation-par-paquet
+sudo sh ~/installateurs/maverick-center-<tag>-install.sh --dossier /srv/maverick-center
+sudo sh ~/maverick-center-<version de test>-install.sh --dossier /srv/maverick-center-test
+sudo rm -rf ~/fabrication ~/fabrication.tar.gz ~/site-prod.tar.gz
+```
+
+Sur `ssh maverick-ancien` : `rm ~/site-prod.tar.gz`. Garde `~/installateurs/` jusqu'à la fin du déménagement.
+
+Attendu, pour chaque installateur : « Installé : … pages. » (le mot de passe interne est déjà posé par `instances.sh` : aucune question). Rien ne doit démarrer. **Ne lance jamais `docker compose up` sur le nouveau serveur avant l'étape 9.**
 
 Vérification, `ssh maverick-nouveau` :
 
