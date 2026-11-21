@@ -22,16 +22,15 @@
 // « Appliquer » et « Refuser » ; « Tout recalculer » recalcule les pages que le code d'aujourd'hui calcule autrement. Rendu : lib/lots-rendu.mjs. Rien de cela en
 // production ni sans le service (la lecture des lots répond 403 ou 404 : la section reste cachée). Avant « Effectuer la mise à jour », une alerte dit les races,
 // classes et magies que la mise à jour retirerait alors que des fiches de la production les citent (R292, `retraits_bloquants`).
-// La section « Activation » (`bascule_2`, lecture seule, sans bouton) dit où en est la bascule 2 : cinq interrupteurs et le dernier résultat d'activation.
 // Ce script n'importe que les rendus communs, celui des conflits et celui des lots (aucun autre script de page ne les importe : la version portable
 // refuse un module partagé).
 import {
-  PHRASE_DE_LA_COPIE, affichageDeLaBascule2, affichageDeLaProduction, affichageDesRetraits, compter, echapper, enteteDuLancement, erreurDuReport, htmlDeLaListe, htmlDuTexteLibre, lancementAffiche, messageDuRefus,
+  PHRASE_DE_LA_COPIE, affichageDeLaProduction, affichageDesRetraits, compter, echapper, enteteDuLancement, erreurDuReport, htmlDeLaListe, htmlDuTexteLibre, lancementAffiche, messageDuRefus,
   modeDuLancement, motDeLaCopie, texteDeLEtat,
 } from '../lib/notes-de-version-rendu.mjs';
 import { avecDateLisible, corpsDeLaResolution, htmlDesConflits, messageDeResolution } from '../lib/conflits-rendu.mjs';
 import {
-  APPLIQUES_RECENTS, corpsDuClic, htmlDeLaConfirmation, htmlDesLots, lotsAppliques, messageDeLaLigneAnnulee, messageDErreur, messageDuBilan,
+  corpsDuClic, htmlDeLaConfirmation, htmlDesLots, lotsAppliques, messageDeLaLigneAnnulee, messageDErreur, messageDuBilan,
   messageDuRecalcul, peutAnnuler, peutAnnulerLaLigne, peutAppliquer, verrousDuLot,
 } from '../lib/lots-rendu.mjs';
 
@@ -156,7 +155,6 @@ function rendre() {
     ${htmlDuLancement(lancementAffiche(d), d.github, d.liberable)}
     <div class="nv-dev__liste">${d.lignes ? htmlDeLaListe(d.lignes, { niveau: 3, plafond: 25 }) : ''}</div>`;
   rendreLEtatDeLaProduction(zone.querySelector('[data-nv-production]'), d.etat_production);
-  rendreLaBascule2(zone.querySelector('[data-nv-production]'), d.bascule_2);
   rendreLesRetraits(zone.querySelector('[data-nv-retraits]'), d.retraits_bloquants);
   // après les listes, la section des lots de changements puis celle des conflits, les mêmes d'un rendu à l'autre (choix en cours gardés)
   zone.append(sectionDesLots(), sectionDesConflits());
@@ -187,41 +185,6 @@ function rendreLEtatDeLaProduction(place, etat) {
   }
   if (a.tables.length) ajouter(bloc, 'p', `Tables dont le contenu diffère : ${a.tables.join(', ')}`, 'nv-message');
   place.append(bloc);
-}
-
-/**
- * La section « Activation » (`bascule_2`, site de dev) : où en est la bascule 2, en lecture seule. Les cinq interrupteurs (allumé, éteint ou inconnu avec sa phrase)
- * et le dernier résultat d'activation. Aucun bouton ni lien : rien ne se règle d'ici. Rien sans `bascule_2` (production, ancien service). Texte par textContent.
- */
-function rendreLaBascule2(place, bascule) {
-  const a = place ? affichageDeLaBascule2(bascule) : null;
-  if (!a) return;
-  const ajouter = (parent, balise, texte, classe) => {
-    const e = document.createElement(balise);
-    if (classe) e.className = classe;
-    e.textContent = texte;
-    parent.append(e);
-    return e;
-  };
-  const section = document.createElement('section');
-  section.className = 'nv-activation';
-  section.setAttribute('data-nv-bascule-2', '');
-  ajouter(section, 'h3', 'Activation');
-  const liste = document.createElement('ul');
-  liste.className = 'nv-activation__liste';
-  for (const i of a.interrupteurs) {
-    const ligne = document.createElement('li');
-    ligne.className = `nv-interrupteur nv-interrupteur--${i.etat}`;
-    ligne.setAttribute('data-interrupteur', i.cle);
-    ajouter(ligne, 'strong', i.nom);
-    ajouter(ligne, 'span', ` (${i.technique}) : `);
-    ajouter(ligne, 'span', i.mot, 'nv-interrupteur__etat');
-    for (const suite of [i.date, i.phrase].filter(Boolean)) ajouter(ligne, 'span', ` · ${suite}`, 'nv-message');
-    liste.append(ligne);
-  }
-  section.append(liste);
-  ajouter(section, 'p', a.activation.texte, `nv-activation__dernier${a.activation.attention ? ' nv-message--erreur' : ''}`).setAttribute('data-activation', a.activation.aucune ? 'aucune' : a.activation.etat);
-  place.after(section);
 }
 
 /**
@@ -319,7 +282,7 @@ async function chargerLesLots() {
     return;
   }
   lots.erreur = '';
-  const aLire = [...liste.filter((l) => l.etat === 'propose'), ...lotsAppliques(liste).slice(0, APPLIQUES_RECENTS)];
+  const aLire = [...liste.filter((l) => l.etat === 'propose'), ...lotsAppliques(liste)];
   const details = new Map((await Promise.all(aLire.map(async (l) => [l.id, await appel('GET', adresseDuLot(l.id)).catch(() => null)]))));
   lots.reponse = { lots: liste.map((l) => ({ ...l, ...(details.get(l.id) ?? {}) })) };
   // ce qui ne vaut plus pour l'état d'une proposition (cases d'une proposition décidée) s'oublie

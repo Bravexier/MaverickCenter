@@ -6,7 +6,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  APPLIQUES_RECENTS, PLAFOND_DES_LIGNES, corpsDuClic, htmlDeLApercu, htmlDeLaConfirmation, htmlDesLots, htmlDuLot, messageDeLaLigneAnnulee, messageDErreur, messageDuBilan,
+  PLAFOND_DES_LIGNES, corpsDuClic, htmlDeLApercu, htmlDeLaConfirmation, htmlDesLots, htmlDuLot, messageDeLaLigneAnnulee, messageDErreur, messageDuBilan,
   messageDuRecalcul, motDeLEtat, origineDuLot, peutAnnuler, peutAnnulerLaLigne, peutAppliquer, phraseDeLAnnulation, phraseDeLEssai, verrousDuLot,
 } from '../src/lib/lots-rendu.mjs';
 import { el } from './aide-faux-dom.mjs';
@@ -302,32 +302,31 @@ test('la confirmation d’« Annuler cette modification » : la ligne, ce que l�
   assert.deepEqual(corpsDuClic(['R219'], new Set(['R219', 'R1'])), { verrous_ouverts: ['R219'] });
 });
 
-test('la section : les propositions en attente seulement s’il en reste, les changements appliqués récents, les dépôts refusés (trace sans bouton), un historique replié ; « Tout recalculer » et « Actualiser » toujours là', () => {
+test('la section ne montre que ce qui change par rapport à la production : les propositions en attente s’il en reste et tous les changements en écart, ni les livrés, ni les refusés, ni les annulés ; « Tout recalculer » et « Actualiser » toujours là', () => {
   const vide = lire(htmlDesLots({ lots: [] }));
   assert.equal(vide.querySelectorAll('button[data-nv-recalcul], button[data-nv-lots-actualiser]').length, 2);
   assert.equal(vide.querySelectorAll('[data-nv-lot-id]').length, 0);
-  assert.equal(vide.querySelectorAll('[data-nv-lots-historique], [data-nv-lots-refus], [data-nv-lots-attente]').length, 0, 'rien d’en attente : pas de bloc');
+  assert.equal(vide.querySelectorAll('[data-nv-lots-attente]').length, 0, 'rien d’en attente : pas de bloc');
   assert.equal(vide.querySelectorAll('[data-nv-lots-appliques]').length, 1);
-  const appliques = Array.from({ length: APPLIQUES_RECENTS + 3 }, (_, i) => applique(`ap${i}`, [ligne(1)], { decide_le: `2026-11-${String(10 + i).padStart(2, '0')}T10:00:00Z` }));
-  const depot = lot('d', { etat: 'refuse', titre: 'Dépôt refusé', depose_le: '2026-11-14T10:00:00Z', refus: { motifs: ['une ligne refusée', 'un contrôle échoue'], par: 'cle_de_depot' } });
-  const lots = [lot('p1'), lot('p2'), ...appliques, depot, lot('r', { etat: 'refuse' }), lot('a', { etat: 'annule', annule_le: '2026-11-14T13:00:00Z' })];
+  // aucune limite : la liste sert au patch note, elle est complète
+  const appliques = Array.from({ length: 13 }, (_, i) => applique(`ap${i}`, [ligne(1)], { ecart_production: true, decide_le: `2026-11-${String(10 + i).padStart(2, '0')}T10:00:00Z` }));
+  const depot = lot('d', { etat: 'refuse', titre: 'Dépôt refusé', depose_le: '2026-11-14T10:00:00Z', refus: { motifs: ['une ligne refusée'], par: 'cle_de_depot' } });
+  const livre = applique('livre', [ligne(1)], { ecart_production: false, decide_le: '2026-11-30T10:00:00Z' });
+  const lots = [lot('p1'), lot('p2'), ...appliques, livre, depot, lot('r', { etat: 'refuse' }), lot('a', { etat: 'annule', annule_le: '2026-11-14T13:00:00Z' })];
   const racine = lire(htmlDesLots({ lots }));
   assert.equal(racine.querySelectorAll('[data-nv-lots-attente] [data-nv-lot-id]').length, 2, 'les propositions gardent leur bloc');
   assert.equal(racine.querySelectorAll('[data-nv-lots-attente] button[data-nv-appliquer]').length, 2);
   const montres = [...racine.querySelectorAll('[data-nv-lots-appliques] [data-nv-lot-id]')].map((a) => a.dataset.nvLotId);
-  assert.equal(montres.length, APPLIQUES_RECENTS);
-  assert.equal(montres[0], `ap${APPLIQUES_RECENTS + 2}`, 'le plus récemment appliqué d’abord');
-  assert.equal(montres.includes('ap0'), false, 'les plus anciens ne sont pas montrés');
-  // le dépôt refusé : titre et motifs, replié, sans bouton ; l'historique garde les refus du propriétaire et les annulés
-  const refus = racine.querySelector('details[data-nv-lots-refus]');
-  assert.equal(refus.hasAttribute('open'), false);
-  assert.deepEqual([...refus.querySelectorAll('[data-nv-lot-id]')].map((a) => a.dataset.nvLotId), ['d']);
-  assert.ok(refus.textContent.includes('Dépôt refusé') && refus.textContent.includes('une ligne refusée') && refus.textContent.includes('un contrôle échoue'));
-  assert.equal(refus.querySelectorAll('button').length, 0);
-  const historique = racine.querySelector('details[data-nv-lots-historique]');
-  assert.equal(historique.hasAttribute('open'), false, 'replié');
-  assert.deepEqual([...historique.querySelectorAll('[data-nv-lot-id]')].map((a) => a.dataset.nvLotId).sort(), ['a', 'r']);
-  assert.equal(historique.querySelectorAll('button').length, 0);
+  assert.equal(montres.length, 13);
+  assert.equal(montres[0], 'ap12', 'le plus récemment appliqué d’abord');
+  assert.equal(montres.includes('ap0'), true, 'les plus anciens aussi');
+  for (const absent of ['livre', 'd', 'r', 'a']) assert.equal(racine.querySelectorAll(`[data-nv-lot-id="${absent}"]`).length, 0, absent);
+  // la référence manque (`ecart_production` absent ou null) : on ne peut pas dire, le changement reste montré
+  assert.equal(lire(htmlDesLots({ lots: [applique('s', [ligne(1)]), applique('n', [ligne(1)], { ecart_production: null })] })).querySelectorAll('[data-nv-lots-appliques] [data-nv-lot-id]').length, 2);
+  // dans un changement, seules les lignes en écart se lisent et se comptent
+  const partiel = lire(htmlDuLot(applique('m', [ligne(1, { ecart_production: false }), ligne(2, { ecart_production: true })], { ecart_production: true })));
+  assert.deepEqual([...partiel.querySelectorAll('[data-nv-ligne]')].map((l) => l.getAttribute('data-nv-ligne')), ['2']);
+  assert.match(partiel.querySelector('[data-nv-bilan]').textContent, /^1 /);
   // la section entière se replie sous son titre : repliée au départ, ouverte tant qu'une proposition attend son clic ; le message reste au-dessus
   const repli = (html) => lire(html).querySelector('details[data-nv-lots-repli]');
   assert.equal(repli(htmlDesLots({ lots: [] })).hasAttribute('open'), false, 'rien à montrer : repliée');
@@ -337,14 +336,12 @@ test('la section : les propositions en attente seulement s’il en reste, les ch
   assert.equal(repli(htmlDesLots({ lots })).getAttribute('data-nv-ouvert'), 'section');
   const tout = repli(htmlDesLots({ lots }));
   assert.equal(tout.querySelectorAll('summary h3').length, 1, 'le titre est ce qui déplie');
-  assert.equal(tout.querySelectorAll('[data-nv-lots-attente], [data-nv-lots-appliques], [data-nv-lots-refus], [data-nv-lots-historique], button[data-nv-recalcul]').length, 5, 'tout le reste est dedans');
+  assert.equal(tout.querySelectorAll('[data-nv-lots-attente], [data-nv-lots-appliques], button[data-nv-recalcul]').length, 3, 'tout le reste est dedans');
   const avecMessage = lire(htmlDesLots({ lots: appliques }, { message: { texte: 'fait' } }));
   assert.equal(avecMessage.querySelectorAll('[data-nv-lots-message]').length, 1);
   assert.equal(avecMessage.querySelectorAll('details[data-nv-lots-repli] [data-nv-lots-message]').length, 0, 'le message se lit même section repliée');
   // ce que le propriétaire a déplié reste ouvert
-  const ouvert = lire(htmlDesLots({ lots }, { ouverts: new Set(['historique', 'refus', 'p1:apercu']) }));
-  assert.equal(ouvert.querySelector('details[data-nv-lots-historique]').hasAttribute('open'), true);
-  assert.equal(ouvert.querySelector('details[data-nv-lots-refus]').hasAttribute('open'), true);
+  const ouvert = lire(htmlDesLots({ lots }, { ouverts: new Set(['p1:apercu']) }));
   assert.equal(ouvert.querySelector('[data-nv-lot-id="p1"] details.nv-lot__apercu').hasAttribute('open'), true);
   assert.equal(ouvert.querySelector('[data-nv-lot-id="p2"] details.nv-lot__apercu').hasAttribute('open'), false);
 });

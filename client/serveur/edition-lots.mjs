@@ -24,6 +24,7 @@ import { existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
+import { isDeepStrictEqual } from 'node:util';
 import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
 import { ErreurCorpsArmes, PAGE_DES_ARMES } from '../src/lib/corps-armes.mjs';
 import { ErreurCorpsArmures } from '../src/lib/corps-armures.mjs';
@@ -777,13 +778,58 @@ function dependancesDuLot(db, depose) {
 }
 
 /**
+ * Cette ligne du lot diffère-t-elle de la production ? (demande du propriétaire du 2026-11-21 : « Je ne dois voir ici QUE la liste de ce qui change par rapport à la
+ * prod, car sert pour le patch note. ») On compare la ligne d'ici à celle de la production, sur les colonnes que le lot a écrites : le journal ne suffit pas, un lot
+ * livré, annulé puis redéposé à l'identique n'est pas dans l'historique et ne change pourtant rien. Une ligne ou une table absente d'un seul côté est un écart.
+ */
+function differeDeLaProduction(db, production, net) {
+  const lue = (base) => {
+    try {
+      return lireLigne(base, net.table, net.cle);
+    } catch {
+      return null;
+    }
+  };
+  const ici = lue(db);
+  const enProduction = lue(production);
+  if (!ici || !enProduction) return Boolean(ici) !== Boolean(enProduction);
+  return Object.keys({ ...net.origine, ...net.fin }).some((c) => !isDeepStrictEqual(ici[c] ?? null, enProduction[c] ?? null));
+}
+
+/** Le lot appliqué change-t-il encore quelque chose par rapport à la production ? null quand son journal est illisible : on ne peut pas le dire, il reste montré. */
+function lotDiffereDeLaProduction(db, production, ligne) {
+  try {
+    return netsDuLot(db, ligne.lot_id).some((net) => differeDeLaProduction(db, production, net));
+  } catch (e) {
+    if (e instanceof ErreurEdition) return null;
+    throw e;
+  }
+}
+
+/** `faire(base)` avec la base de la production ouverte en lecture seule ; `faire(null)` sans référence ou si elle ne s'ouvre pas (rien n'est alors retiré de la liste). */
+function avecLaProduction(chemin, faire) {
+  let base = null;
+  try {
+    if (chemin) base = new DatabaseSync(chemin, { readOnly: true });
+  } catch {
+    base = null;
+  }
+  try {
+    return faire(base);
+  } finally {
+    base?.close();
+  }
+}
+
+/**
  * Les lignes d'un lot appliqué ou annulé, pour la page (« comme les notes de version ») : chacune avec ses colonnes avant → après, son état et si elle s'annule seule.
  * `etat` : `en_place` (le lot l'a écrite et rien n'y a touché), `annulee` (par ce clic, ou par l'annulation du lot entier), `modifiee_depuis` (le site a changé une valeur
  * que le lot avait écrite : le site prime, `colonnes_modifiees`), `comme_avant` (la ligne a déjà sa valeur d'avant le lot). `annulable_seule` est faux avec un `motif` :
- * lot pas appliqué, ligne déjà annulée ou comme avant, tout modifié depuis, ou une autre ligne du lot la tient (`depend_de`).
+ * lot pas appliqué, ligne déjà annulée ou comme avant, tout modifié depuis, ou une autre ligne du lot la tient (`depend_de`). Avec `production` (la base ouverte),
+ * chaque ligne dit aussi `ecart_production` : vrai si elle diffère de la production.
  * @returns {{ lignes: object[] } | { lignes: null, indisponible: string }}
  */
-export function lignesDuLotApplique(db, ligne) {
+export function lignesDuLotApplique(db, ligne, { production = null } = {}) {
   let nets;
   try {
     nets = netsDuLot(db, ligne.lot_id);
@@ -806,7 +852,7 @@ export function lignesDuLotApplique(db, ligne) {
       }
       const jugement = jugerLAnnulation(net, actuelle);
       const descr = apercuDe(db, { table: net.table, cle: net.cle, operation: net.genre, avant: net.origine, apres: net.fin }, net.genre === 'inserer' ? null : net.origine, actuelle ?? { ...net.origine, ...net.fin });
-      const sortie = { n: net.rang, table: descr.table, ligne: descr.ligne, genre: net.genre, colonnes: descr.colonnes };
+      const sortie = { n: net.rang, table: descr.table, ligne: descr.ligne, genre: net.genre, colonnes: descr.colonnes, ...(production ? { ecart_production: differeDeLaProduction(db, production, net) } : {}) };
       const finie = annulees[net.rang] ?? null;
       const duLot = duLotEntier.get(net.rang);
       if (finie) return { ...sortie, etat: 'annulee', annulee: { annule_le: finie.annule_le, lot_id: finie.lot_id }, annulable_seule: false, motif: 'Cette ligne est déjà annulée.', depend_de: [] };
@@ -1149,20 +1195,30 @@ export async function deposerEtAppliquer(base, corps, { par = 'cle_de_depot', ..
   }
 }
 
-/** Les propositions, la plus récente d'abord (sans contenu ni aperçu : `lire` les rend). */
-export function lister(db) {
+/**
+ * Les propositions, la plus récente d'abord (sans contenu ni aperçu : `lire` les rend). `production` : le chemin de la base de référence ; un lot appliqué dit alors
+ * `ecart_production` (vrai s'il change encore quelque chose par rapport à elle, null si on ne peut pas le dire).
+ */
+export function lister(db, { production = null } = {}) {
   exigerLesTables(db);
-  return db.prepare('SELECT * FROM lot_de_changements ORDER BY depose_le DESC, id').all().map((l) => presenter(l, { resume: true }));
+  const lots = db.prepare('SELECT * FROM lot_de_changements ORDER BY depose_le DESC, id').all();
+  return avecLaProduction(production, (base) => lots.map((l) => {
+    const lot = presenter(l, { resume: true });
+    return base && l.etat === 'applique' ? { ...lot, ecart_production: lotDiffereDeLaProduction(db, base, l) } : lot;
+  }));
 }
 
-/** Une proposition en entier : le contenu déposé, l'essai (aperçu avant et après), le bilan de l'application et, pour un lot appliqué, ses lignes (R291). */
-export function lire(db, id) {
+/**
+ * Une proposition en entier : le contenu déposé, l'essai (aperçu avant et après), le bilan de l'application et, pour un lot appliqué, ses lignes (R291).
+ * `production` : le chemin de la base de référence ; chaque ligne dit alors `ecart_production`.
+ */
+export function lire(db, id, { production = null } = {}) {
   exigerLesTables(db);
   const ligne = ligneOuErreur(db, id);
   const lot = presenter(ligne);
   // R291 : un lot appliqué (ou annulé) montre ses lignes, chacune avec son état et si elle s'annule seule
   if (ligne.etat === 'applique' || ligne.etat === 'annule') {
-    const { lignes, indisponible } = lignesDuLotApplique(db, ligne);
+    const { lignes, indisponible } = avecLaProduction(production, (base) => lignesDuLotApplique(db, ligne, { production: base }));
     return { ...lot, lignes, ...(indisponible ? { lignes_indisponibles: indisponible } : {}) };
   }
   return lot;

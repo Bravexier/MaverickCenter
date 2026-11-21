@@ -5,8 +5,8 @@
 //   2. Un menu fermé ne demande RIEN au service (demande du 2026-10-15) : chacun charge ses données à son ouverture, aussitôt, puis les relève tant
 //      qu'il reste ouvert — une minuterie par menu, posée à l'ouverture et arrêtée à la fermeture (lib/debug-metriques.mjs#suivreLOuverture) ;
 //      rien non plus quand l'onglet est caché.
-//   3. « Système » : GET <base>api/debug/systeme/ toutes les 30 s (RELEVE_METRIQUES_MS) : processus, disque, volume, échantillons, fichiers,
-//      évènements, alertes, et la jauge « Espace disque du serveur » (disque.repartition, de la même réponse) ; survoler un type de la légende ou
+//   3. « Système » : GET <base>api/debug/systeme/ toutes les 30 s (RELEVE_METRIQUES_MS) : processus, disque, volume, sauvegardes, activation, échantillons,
+//      fichiers, évènements, alertes, et la jauge « Espace disque du serveur » (disque.repartition, de la même réponse) ; survoler un type de la légende ou
 //      un segment met les deux en évidence (data-actif : un segment très fin se repère).
 //   4. « Performances » : GET <base>api/debug/metriques/ (instance, période, tri) et …/metriques/requetes/ toutes les 30 s ; une instance (dev OU
 //      production : deux jeux de données séparés) pour Système et Performances, choisie dans l'un ou l'autre (les deux listes se suivent) ; le
@@ -25,7 +25,7 @@ import {
 } from '../lib/debug-journaux.mjs';
 import {
   INSTANCES, PERIODE_PAR_DEFAUT, RELEVE_METRIQUES_MS, REQUETES_AUTRE_INSTANCE, REQUETES_LIMITE, TRI_PAR_DEFAUT, adresseDeLExport, adresseDesMetriques,
-  adresseDesRequetes, adresseDuSysteme, ariaSort, courbeDeLaSerie, courbeDuSysteme, echapper, htmlDeLEspaceDisque, htmlDesAlertes, htmlDesChiffres,
+  adresseDesRequetes, adresseDuSysteme, ariaSort, courbeDeLaSerie, courbeDuSysteme, echapper, htmlDeLActivation, htmlDeLEspaceDisque, htmlDesAlertes, htmlDesChiffres,
   htmlDesEvenements, htmlDesFichiers, htmlDesNavigateurs, htmlDesOrigines, htmlDesPages, htmlDesRequetes, htmlDesRoutes, htmlDesSauvegardes, htmlDuDisque,
   htmlDuProcessus, htmlDuVolume, noteDeFenetreHoraire, optionsDesRoutes, plusLentes, requetesDeLInstance, resumeDesMetriques, resumeDuSysteme,
   seuilSaisi, sensParDefaut, suivreLOuverture, trierRoutes,
@@ -271,7 +271,7 @@ function brancherLesMetriques(api) {
       return;
     }
     const vider = () => {
-      for (const nom of ['systeme-alertes', 'systeme-processus', 'systeme-disque', 'systeme-volume', 'systeme-sauvegardes', 'systeme-echantillons']) champ(systeme, nom).innerHTML = '';
+      for (const nom of ['systeme-alertes', 'systeme-processus', 'systeme-disque', 'systeme-volume', 'systeme-sauvegardes', 'systeme-activation', 'systeme-echantillons']) champ(systeme, nom).innerHTML = '';
       champ(systeme, 'systeme-fichiers').innerHTML = '';
       remplir('systeme-evenements', '');
       champ(systeme, 'systeme-resume').textContent = '';
@@ -294,6 +294,7 @@ function brancherLesMetriques(api) {
     champ(systeme, 'systeme-disque').innerHTML = htmlDuDisque(corps.disque);
     champ(systeme, 'systeme-volume').innerHTML = htmlDuVolume(corps.volume);
     champ(systeme, 'systeme-sauvegardes').innerHTML = htmlDesSauvegardes(corps.sauvegardes, { maintenant });
+    champ(systeme, 'systeme-activation').innerHTML = htmlDeLActivation(corps.bascule_2);
     champ(systeme, 'systeme-echantillons').innerHTML = courbeDuSysteme(corps.echantillons);
     champ(systeme, 'systeme-fichiers').innerHTML = htmlDesFichiers(corps.fichiers);
     remplir('systeme-evenements', htmlDesEvenements(corps.evenements, maintenant));

@@ -224,6 +224,12 @@
 .debug-sauvegardes .debug-sauvegardes__marque { display: inline-block; margin: 0; padding: 0.1rem 0.5rem; font-weight: normal; }
 .debug-alerte--erreur { border-left-color: var(--danger); background: var(--dbg-erreur-fond); color: var(--danger); font-weight: bold; }
 .debug-alerte--info { border-left-color: var(--accent); background: var(--accent-soft); color: var(--text); }
+/* le bloc « Activation » (bascule_2) : lecture seule, l'état dit en mots (allumé, éteint, inconnu), jamais par la couleur seule */
+.debug-activation__liste { margin: 0.3rem 0; padding-left: 1.2rem; }
+.debug-interrupteur__etat { font-weight: bold; }
+.debug-interrupteur--inconnu .debug-interrupteur__etat { color: var(--muted); }
+.debug-activation__dernier { margin: 0.4rem 0 0; }
+.debug-activation__dernier--attention { color: var(--danger); font-weight: bold; }
 
 /* Journaux du serveur */
 .debug-journaux__filtres { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 0.6rem 1rem; margin: 0 0 0.6rem; }
