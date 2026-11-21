@@ -32,3 +32,15 @@ test('/confidentialite/ : construite, un titre, le contact en lien mailto, aucun
 test('le pied de page mène à /confidentialite/ : accueil, fiche, page elle-même, maintenance', options, () => {
   for (const page of ['', 'fiche', 'confidentialite', 'maintenance']) assert.match(lire(page), lienDuPied, page || 'accueil');
 });
+
+// Date de dernière mise à jour : une constante du fichier de la page (MISE_A_JOUR), changée avec son texte, jamais la date du build. On n'en fige pas
+// la valeur : une date réelle, pas dans le futur, rendue telle quelle dans un <time datetime>.
+test('la page porte la date de son dernier changement : une date valide, pas dans le futur, rendue dans <time>', () => {
+  const source = readFileSync(fileURLToPath(new URL('../src/pages/confidentialite.astro', import.meta.url)), 'utf8');
+  const date = source.match(/^const MISE_A_JOUR = '(\d{4}-\d{2}-\d{2})';$/m)?.[1];
+  assert.ok(date, 'la constante MISE_A_JOUR');
+  const jour = new Date(`${date}T00:00:00Z`);
+  assert.equal(jour.toISOString().slice(0, 10), date, 'une date du calendrier');
+  assert.ok(jour.getTime() <= Date.now(), 'pas dans le futur');
+  if (present) assert.match(lire('confidentialite'), new RegExp(`<time datetime="${date}" data-mise-a-jour>[^<]+</time>`), 'rendue dans la page');
+});

@@ -27,6 +27,7 @@ user-invocable: false
 - Une écriture exige `Content-Type: application/json` et refuse un autre `Sec-Fetch-Site`.
 - Les adresses de l'API finissent par « / » (`/api/personnages/<id>/`) : en développement, Astro (`trailingSlash: 'always'`) refuse les autres.
 - `traiter` (`serveur/api.mjs`) est synchrone, sauf `POST /api/classeur/`, `GET /api/tipeee/`, `GET /api/edition/extrait/`, `POST /api/mise-a-jour/lancer/` (base source) et `…/copier/`, qui rendent une promesse que `service.mjs` attend (une réponse détruite n'est plus écrite).
+- Confidentialité (demande du propriétaire) : un lot qui change ce que le site collecte, garde ou transmet (comptes, fiches, cookies, stockage du navigateur, journaux, métriques, service tiers) met à jour `client/src/pages/confidentialite.astro` (`/confidentialite/`) dans la même PR, avec sa constante `MISE_A_JOUR` (date du dernier changement du texte, jamais celle du build). Le texte ne dit que ce que fait le code ; « Ce qui est prévu » reprend `docs/feuille-de-route.md` et les décisions. Aucun test n'en fige la prose.
 - Surveillance (`service.mjs`) : un changement compte vu deux fois de suite (`guetteur`). `version.json` changé : le service s'arrête (code 0), Docker le relance ; `maverick.db` changé : base vivante préparée (refaite ou non) ; `db/vivante.db` remplacée : rouverte.
 
 ## Accès au site de dev (R275, option b : mot de passe pour modifier et lancer une mise à jour, lecture ouverte)
