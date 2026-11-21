@@ -16,7 +16,17 @@ import { poserDesFiches } from './aide-fiches-sentinelles.mjs';
 import { baseDesRegles, nouveauChemin, nouveauDossier } from './aide-structure-sur-place.mjs';
 
 const livre = lireLesMigrations({ avecSql: false });
-const V = livre.migrations.at(-1).numero;
+/** La version de la base refaite (celle des règles d'essai : la dernière migration, ou au-dessus quand les migrations mixtes sont sorties et que le schema.sql est le plancher). */
+const V = (() => {
+  const db = new DatabaseSync(baseDesRegles(), { readOnly: true });
+  try {
+    return db.prepare('PRAGMA user_version').get().user_version;
+  } finally {
+    db.close();
+  }
+})();
+/** La dernière migration livrée de numéro <= V (V elle-même tant que les migrations mixtes sont dans le dépôt). */
+const DERNIERE = livre.migrations.filter((m) => m.numero <= V).at(-1).numero;
 let dossierDuCas;
 beforeEach((t) => { dossierDuCas = nouveauDossier('reconstruction', t); });
 
@@ -44,6 +54,9 @@ function recues(dossier) {
 }
 const ouvrirEnEcriture = (dossier) => ouvrirBaseVivante(join(dossier, FICHIER_BASE));
 const jusqua = (version) => livre.migrations.filter((m) => m.numero <= version);
+// une migration livrée du milieu de la liste, jamais un numéro figé : les numéros ne se suivent pas (les migrations de données sortent du dépôt avec le
+// contenu, jour J du lot 12)
+const MANQUANTE = livre.migrations[Math.floor(livre.migrations.length / 2)].numero;
 
 test('première base vivante : une ligne « reconstruction » par migration livrée de numéro <= user_version, avec l’empreinte du fichier, l’instant et la version', () => {
   const dossier = dossierDeBase();
@@ -54,7 +67,7 @@ test('première base vivante : une ligne « reconstruction » par migration livr
   assert.deepEqual([r.migrations.table, r.migrations.livrees, r.migrations.notees, r.migrations.retirees, r.migrations.ecarts], [true, true, jusqua(V).length, 0, []]);
   const lignes = recues(dossier);
   assert.deepEqual(lignes, jusqua(V).map((m) => ({ numero: m.numero, fichier: m.fichier, empreinte: m.empreinte, recue_le: '2026-11-12T10:20:30Z', mode: 'reconstruction', version_du_site: '1.2.3' })));
-  assert.ok(lignes.length > 100, 'tout l’historique des migrations livrées');
+  assert.ok(lignes.length > 0 && lignes.length === livre.migrations.filter((m) => m.numero <= V).length, 'tout l’historique des migrations livrées');
   assert.deepEqual(messages, [], 'rien à dire au journal : tout est noté');
 });
 
@@ -63,7 +76,8 @@ test('une version « -dev » ou absente est notée NULL', () => {
     const dossier = dossierDeBase();
     preparerBaseVivante({ regles: regles(), dossier, version });
     assert.ok(recues(dossier).every((l) => l.version_du_site === attendue), String(version));
-    assert.ok(recues(dossier).length > 100);
+    assert.equal(recues(dossier).length, jusqua(V).length);
+    assert.ok(recues(dossier).length > 0);
   }
 });
 
@@ -72,8 +86,8 @@ test('une reconstruction suivante : les lignes notées ne sont jamais réécrite
   preparerBaseVivante({ regles: regles(), dossier, version: '1.2.3', instant: new Date('2026-11-12T10:20:30Z') });
   const db = ouvrirEnEcriture(dossier);
   // une migration reçue sur place (autre instant, autre version), une ligne qui manque, une ligne d'une migration que cette base n'a pas reçue
-  db.prepare("UPDATE migration_recue SET mode = 'sur_place', recue_le = '2026-01-01T00:00:00Z', version_du_site = '0.9.9' WHERE numero = ?").run(V);
-  db.prepare('DELETE FROM migration_recue WHERE numero = ?').run(50);
+  db.prepare("UPDATE migration_recue SET mode = 'sur_place', recue_le = '2026-01-01T00:00:00Z', version_du_site = '0.9.9' WHERE numero = ?").run(DERNIERE);
+  db.prepare('DELETE FROM migration_recue WHERE numero = ?').run(MANQUANTE);
   db.prepare("INSERT INTO migration_recue (numero, fichier, empreinte, recue_le, mode, version_du_site) VALUES (?, ?, ?, '2026-01-01T00:00:00Z', 'sur_place', NULL)")
     .run(V + 1, `${String(V + 1).padStart(4, '0')}-future.sql`, sha256('future'));
   db.close();
@@ -87,10 +101,12 @@ test('une reconstruction suivante : les lignes notées ne sont jamais réécrite
   const apres = recues(dossier);
   assert.deepEqual(apres.map((l) => l.numero), jusqua(V).map((m) => m.numero), 'la ligne de la version future est retirée, celle qui manquait est notée');
   for (const l of apres) {
-    if (l.numero === 50) assert.deepEqual(l, { numero: 50, fichier: livre.migrations.find((m) => m.numero === 50).fichier, empreinte: livre.migrations.find((m) => m.numero === 50).empreinte, recue_le: '2026-12-01T08:00:00Z', mode: 'reconstruction', version_du_site: null });
-    else assert.deepEqual(l, avant.find((x) => x.numero === l.numero), `${l.numero} : jamais réécrite`);
+    if (l.numero === MANQUANTE) {
+      const { fichier, empreinte } = livre.migrations.find((m) => m.numero === MANQUANTE);
+      assert.deepEqual(l, { numero: MANQUANTE, fichier, empreinte, recue_le: '2026-12-01T08:00:00Z', mode: 'reconstruction', version_du_site: null });
+    } else assert.deepEqual(l, avant.find((x) => x.numero === l.numero), `${l.numero} : jamais réécrite`);
   }
-  assert.equal(apres.find((l) => l.numero === V).mode, 'sur_place');
+  assert.equal(apres.find((l) => l.numero === DERNIERE).mode, 'sur_place');
 });
 
 test('retour à une version plus ancienne : les lignes dont le numéro dépasse la version de la base refaite sont retirées, les autres gardées', () => {
@@ -103,7 +119,7 @@ test('retour à une version plus ancienne : les lignes dont le numéro dépasse 
 
   assert.equal(r.refaite, true);
   assert.equal(r.schema, plusAncienne);
-  assert.equal(r.migrations.retirees, 5);
+  assert.equal(r.migrations.retirees, jusqua(V).length - jusqua(plusAncienne).length, 'les migrations livrées au-delà de la version refaite');
   assert.deepEqual(recues(dossier), avant.filter((l) => l.numero <= plusAncienne));
 });
 
@@ -144,7 +160,7 @@ test('migrations non livrées : rien n’est noté, sans erreur, le journal du s
   const dossier = dossierDeBase();
   preparerBaseVivante({ regles: regles(), dossier, version: '1.2.3' });
   const r = preparerBaseVivante({ regles: regles(`PRAGMA user_version = ${V - 3}`), dossier, version: '1.2.3', migrations: null });
-  assert.equal(r.migrations.retirees, 3);
+  assert.equal(r.migrations.retirees, jusqua(V).length - jusqua(V - 3).length, 'les lignes des trois versions au-dessus (celles des migrations livrées)');
   assert.deepEqual(recues(dossier).map((l) => l.numero), jusqua(V - 3).map((m) => m.numero));
 });
 

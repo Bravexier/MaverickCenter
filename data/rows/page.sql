@@ -6992,34 +6992,21 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 | 19 | **281050** | +15 | +20 | +2 classe<br>+1 NM |  |
 | 20 | **460250** | +15 | +40 | +2 classe<br>+1 NM | Dé bonus en {{sante}} et / ou {{chakra}} |
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-inventaire-sac-a-dos', 'guide', 'fiche-inventaire-sac-a-dos', 'Accessoires, Inventaire et Ceinture', 'accessoires-inventaire-et-ceinture', 'L''inventaire est un peu votre sac à dos, le nombre d''emplacements est déterminé par la Force de votre personnage.', NULL, 'L''inventaire est un peu votre sac à dos, le nombre d''emplacements est déterminé par la Force de votre personnage.
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-inventaire-sac-a-dos', 'guide', 'fiche-inventaire-sac-a-dos', 'Inventaire, Accessoires et Ceinture', 'inventaire-accessoires-et-ceinture', 'Possessions et équipement secondaire.', NULL, '## Inventaire
 
-La place de l’inventaire est donnée par la Force de votre personnage, sans sac à dos à choisir ; un sac à dos reste un objet possible de l’inventaire.
+L''inventaire représente tout ce que votre personnage peut porter. Le nombre d''emplacement est déterminé par la {{force}} de votre personnage.
 
-L''inventaire de départ est déterminé par la Classe, allez voir directement les classes pour connaître votre inventaire de départ. Si jamais vous commencez avec 2 classes, prenez 5 objets parmi les 10 disponibles.
+L’inventaire de départ est déterminé par la Classe, allez voir directement les classes pour connaître votre inventaire de départ. Si jamais vous commencez avec 2 classes, prenez 5 objets parmi les 10 disponibles.
 
 ## Accessoires {#accessoires}
 
-6 emplacements pour y mettre des accessoires aux effets variés. Plus d’info dans “[Ressources et craft](https://docs.google.com/spreadsheets/u/0/d/1KkOG6FYjIf62Y_xLQxIE8aQTZFLlKPXmCB9e7XU3-vw/edit)” et l’onglet “Accessoires”.
+6 emplacements pour y mettre des accessoires aux effets variés. Vous pouvez consulter les différents {{accessoires}} dans l''onglet dédié.
 
 ## Ceinture {#ceinture}
 
-La ceinture est un accessoire que tout le monde possède (sauf si vous avez les parties à l''air ... évidemment) qui possède 3 emplacements d''objets rapides. Ces emplacements permettent l''utilisation d''objet en IC (ou 2 IC pour certains comme allumer un objet ou faire des soins physiques) là où avant c''était une action complète, voici une petite liste non exhaustive des objets qui peuvent être mis sur la ceinture :
+Tout personnage dispose d''une ceinture dotées de trois emplacement. Dans chacun de ses emplacements pouvez mettre soit :
 
-- Fiole de soin ou de poison, ce qui permet une - utilisation plus rapide de ces dernières
-- Briquet ou objet pour allumer des autres objets
-- Torche ou Lanterne
-- Les différents kits comme celui de soin, du voleur, du saboteur, etc...
-- Une corde
-- Ou tout autre objet de petite taille qui pourrait se mettre sur la ceinture
-
-Voyez avec votre mj pour voir quel objet pourrait se mettre sur votre ceinture, impossible de penser à absolument tout Attention il y a des choses à savoir :
-
-Certains objets ne peuvent pas se mettre comme les armes (ils ont leur emplacement dédié)
-
-Les objets sont dans la ceinture ne peuvent pas dépasser 3 exemplaires du même objet par emplacement, 4 avec le don « Organisé » du Mercenaire (impossible de cumuler les objets à l''infini)
-
-Les carquois, sac de bombe ou sac de pierre DOIVENT être mis dans la ceinture pour être utilisés, vous pouvez mettre le nombre de flèches que peut contenir le carquois maximum
+{{consommable}} : Limités à 3 exemplaires maximum utilisable en combat pour un {{instant-cast|IC}}.{{carquois}} : Contiens vos munitions pour vous armes à distance, limitant ainsi le nombre de tirs.{{baton-magique}} : En un seul exemplaire, donnant effet permanent dans l''utilisation d''un sort.Autres, à voir avec le {{maitre-du-jeu|MJ}}
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-maitrise-darme-et-armes', 'guide', 'fiche-maitrise-darme-et-armes', 'Armes et Maîtrise d''Arme', 'armes-et-maitrise-darme', 'Ce tableau correspond à ce que votre personnage maîtrise comme armes, plus il maîtrise une arme, plus il va infliger de dégâts.', NULL, '## Armes
 
@@ -7057,25 +7044,16 @@ INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, s
 - {{magie-acquise:}}. *Optionnel*
 - {{dieu-choisi:}}. *Optionnel*
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
-INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-tableau-magie', 'guide', 'fiche-tableau-magie', 'Tableau magie', 'tableau-magie', 'Plutôt simple, vous multipliez le nombre de conditions remplies par votre niveau de puissance magique de votre personnage et vous avez le nombre d’emplacements de sorts que votre personnage possède.', NULL, 'Et voici là où vous inscrivez votre (vos) magie(s), cet espace semble vide d’indication mais laissez-moi vous expliquer comment ça marche - Pour avoir des sorts il faut remplir certaines conditions qui sont au nombre de 4 :
+INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-tableau-magie', 'guide', 'fiche-tableau-magie', 'Liste de sorts', 'liste-de-sorts', 'Liste des sorts utilisable par le personnage.', NULL, 'Quand votre personnage maîtrise une magie, il peut retenir et préparer un nombre limité de sort parmi ceux que sa / ses magie(s) lui accorde. Chaque sort remplis un {{emplacement-de-sort|emplacement de sort}}.<br>Vous gagnez ainsi un {{emplacement-de-sort|emplacement}} pour chacune des condition suivantes :
 
-- Avoir une magie innée. (condition par défaut remplie car vous en avez forcément une)
-- Avoir une magie acquise, ou le don « Grimoire » de l’Archimage, qui compte comme elle sans donner de seconde magie.
-- Avoir une classe magique.
-- Avoir une seconde classe magique.
+- Avoir une {{magie-innee|magie innée}} (obligatoire)
+- Avoir une {{magie-acquise|magie acquise}} ou accéder à la {{super-magie}}
+- Avoir une {{classe-magique|classe magique}}.
+- Avoir une seconde {{classe-magique|classe magique}} (par {{biclassage|bi-classage}} ou non).
 
-Quand vous remplissez une des conditions, vous avez 1 emplacement de sorts ! Mais il y a pas que ça, il y a aussi votre niveau de puissance magique qui est important, le niveau de puissance magique va multiplier le nombre d’emplacements de sorts que vous donnent les conditions.
+Une fois cette base calculé, vous multipliez ensuite votre nombre d''{{emplacement-de-sort|emplacements de sorts}} par votre {{niveau-de-puissance-magique}}.<br><br>Vous pouvez assignez n''importe quel de vos sorts d''une magie ou l''autre quel que soit son {{niveau-de-puissance-magique|NPM}} dans vos {{emplacement-de-sort|emplacements}}.
 
-*Exemples :*
-
-- *\*Vous avez une magie innée et une magie acquise mais pas de classe magique, vous êtes niveau 1 de puissance magique : Conclusion vous avez 2 emplacements de sorts.\**
-- *\*Vous avez une magie innée et deux classes magiques, vous êtes niveau 3 de puissance magique : Conclusion vous avez 9 emplacements de sorts.\**
-
-Plutôt simple, vous multipliez le nombre de conditions remplies par votre niveau de puissance magique de votre personnage et vous avez le nombre d’emplacements de sorts que votre personnage possède.
-
-\*Quand vous avez 2 magies, vous n''avez pas accès aux sortilèges de niveau 5, MAIS vous débloquerez tout de même les emplacements.
-
-- Le reste correspond aux statistiques des sortilèges, voir [ici](https://docs.google.com/spreadsheets/u/0/d/1fF2buZjbCm3xdQ-Qa8vRecxj03do3hsE8_k_cfYnIR0/edit) pour plus de détails.
+*\*Quand vous avez 2 magies, vous n’avez pas accès aux sorts de niveau 5, MAIS vous débloquerez tout de même des emplacements.*
 ', 'draft', 'docs', 'Google Doc « Créer sa fiche de personnage »');
 INSERT INTO page (id, type, slug, titre, titre_cle, resume, donnees, corps_md, statut, origine, source_ref) VALUES ('guide/fiche-tableau-posture', 'guide', 'fiche-tableau-posture', 'Tableau Posture', 'tableau-posture', 'Ce sont des états où se trouve votre personnage ce qui implique des bonus et malus pendant le combat.', NULL, 'Voici les postures de combats ! Ce sont des états où se trouve votre personnage ce qui implique des bonus et malus pendant le combat.
 

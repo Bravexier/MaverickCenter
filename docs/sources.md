@@ -65,7 +65,7 @@ et aucun connecteur Discord n'était disponible dans le registre au moment de la
 avec `"type": null` — **à classer** après lecture (renseigner `type` et `title`).
 
 **Copies du propriétaire (2026-10-10).** L'ancien mainteneur des documents est parti : ils ont été copiés dans le Drive du propriétaire du projet
-(dossier « Maverick JDR »), et le manifeste, les extracteurs `tools/sheets/*.py` et la base (migration `0014-sources-copies-drive`, registre `.json`)
+(dossier « Maverick JDR »), et le manifeste, les extracteurs `tools/sheets/*.py` et la base (migration `0014-sources-copies-drive` ; son registre est repris dans `sources/copies-drive.json`, que lisent `/archives` et le rapprochement)
 citent désormais ces copies ; dans le manifeste, `original` garde l'URL d'origine. Une copie garde le titre et les identifiants d'onglets (`gid`)
 de l'original : les libellés « Google Sheet « … », onglet « … » » restent justes. Les documents `1CwDq…` (« CODEX Maverick ») et `1vn5Tq11…`
 (« Bestiaire 2.0 »), hors de portée du Drive du propriétaire lors de la migration, n'ont pas été copiés par elle ; le propriétaire les a copiés le 2026-10-11
@@ -122,7 +122,8 @@ Le chemin utilisé est en deux temps, rejouable :
 2. **JSON → pages Markdown** : un extracteur déterministe par famille de pages, `tools/sheets/<famille>.py`
    (bibliothèque standard uniquement), qui écrit `client/src/content/wiki/<catégorie>/<slug>.md` avec
    `status: draft` et une entrée `sources:` qui désigne l'onglet d'origine. Ces `.md` sont un dossier de travail (fabriqué depuis la base
-   par `npm run db:export-pages`, ignoré par git) : après l'extracteur, `npm run db:sync-pages` recopie les pages modifiées dans `data/rows`, qui est ce qu'on commite.
+   par `npm run db:export-pages`, ignoré par git) : après l'extracteur, `npm run db:sync-pages -- --lot <lot.json> --titre <titre>` en tire un lot de
+   changements de nature `source`, à proposer au site de dev (circuit d'un importeur, ci-dessous). Aucun extracteur n'écrit `data/rows`.
 
 **Les étiquettes (`tags:`) qu'écrit un extracteur** ne sont posées que si un mot-clé du glossaire a la même écriture (`tools/db/maverick.py#mot_cle` :
 un import n'en crée jamais). Un mot-clé créé plus tard peut donc faire poser par le prochain import une étiquette qui ne l'était pas : la liste commune
@@ -194,6 +195,24 @@ Les extracteurs sont relançables, mais **ils écrasent les pages qu'ils génèr
 puis relancer l'extracteur perd la retouche. Passer le statut en `verified` une fois la page relue, et ne plus
 relancer l'extracteur sur ces pages.
 
+### Du fichier source à la base de dev (circuit d'un importeur)
+
+Lot 12 du chantier « base de dev = source de vérité » (R274, R278 ; `docs/chantier-base-de-dev.md`) : un réimport ne s'écrit plus dans `data/rows`
+(copie du site de dev, écrite par le workflow seul). Il se **propose** au site de dev comme un lot de changements de nature `source`. Les importeurs
+`tools/sheets/classes.py`, `races.py`, `relations-races.py`, `annexes-magie.py` et `tools/docs/codex.py` n'écrivent que des `.md` (dans `--out`, par défaut
+`client/src/content/wiki`) ; aucun n'appelle `sync` ni l'exporteur. Le circuit, depuis `client/` :
+
+1. `npm run db:extrait` : l'extrait du jour du site de dev (`var/extrait/maverick-dev.db`, clé de lecture) ;
+2. `MAVERICK_CONTENU=../var/extrait/maverick-dev.db npm run db:export-pages` : les `.md` de départ, ceux du site (sinon le lot défait ce que le site a changé) ;
+3. l'importeur écrit ses `.md` (ses options `--vocabulaire` ; voir ci-dessous) ;
+4. `npm run db:sync-pages -- --lot <lot.json> --titre <titre> [--avant <extrait.db>]` : reporte les `.md` dans une copie de l'extrait et écrit le lot `source` de ce qui
+   diffère (`scripts/lot-de-source.mjs`) ; **il n'envoie rien** ;
+5. un humain propose le lot au site de dev (`POST /api/edition/lots/`, skill `modifier-une-page-wiki`) ; le propriétaire peut l'annuler ligne à ligne (R291).
+
+Le vocabulaire des mots-clés (`--vocabulaire`, `data/rows/mot_cle.sql` par défaut) est une lecture : sans `data/rows`, on l'exporte de l'extrait,
+`python3 -I ../tools/db/exporter.py ../var/extrait/maverick-dev.db --rows <dossier>`, puis `--vocabulaire <dossier>/mot_cle.sql`. Pour `codex.py`, `--base <fichier.db>` lit
+l'historique et le vocabulaire de la base elle-même (le vérificateur : voir `codex.md`). Un test de nature « dépôt » ne lit pas ce circuit : il lui faut `data/rows`.
+
 ### Rapprochement d'un classeur (dans les deux sens)
 
 Demande du propriétaire (2026-10-15) : s'assurer que chaque classeur est intégré dans les tables **dans tous les sens**, puis appliquer à la demande les
@@ -213,7 +232,7 @@ retirera alors (`docs/feuille-de-route.md`, réponses du 2026-10-16) ; d'ici là
    lue dans son **état d'import** (`lib/historique-site.mjs#lignesDImport`) : une ligne supprimée par le site de dev compte encore, une ligne qu'il a créée
    ne compte pas, une colonne qu'il a modifiée vaut sa valeur d'import (le site est la source de ce qu'il modifie : ce n'est pas un écart). Il vérifie :
    - **base → classeur** : chaque ligne typée lit, dans les cellules que cite son `source_ref`, chacun de ses textes et nombres, une fois défaites les
-     corrections d'orthographe des migrations (tout `data/migrations/*.json` qui a une liste `corrections` ; celles de la ligne, et celles des lignes dont
+     corrections d'orthographe des migrations (tout `data/migrations/*.json` qui a une liste `corrections`, et ceux du dossier de `MAVERICK_MIGRATIONS_ARCHIVEES` après le lot 12 ; celles de la ligne, et celles des lignes dont
      elle a été tirée : ligne visée par une clé étrangère, entité d'une note, page de l'entité) et appliqué `tools/sheets/corrections.json`. Une ligne qui
      cite aussi un autre classeur se lit dans les deux instantanés ; si l'autre source n'en a pas (un Google Doc), ce qui ne se lit pas est « à relire »
      (listé, pas compté). Une valeur qui porte des balises du glossaire (« {{corruption|CR}} », R233) se lit sans elles (`texteSansBalises` : le texte
@@ -259,6 +278,27 @@ retirera alors (`docs/feuille-de-route.md`, réponses du 2026-10-16) ; d'ici là
 État (2026-10-15) : « Classe Maverick V7 » et « Invocation » rapprochés, 0 écart (V7 : 1 228 lignes typées, 3 964 cellules non vides, 43 notes,
 270 cellules ignorées ; Invocation : 1 128 lignes, 1 207 cellules, le tableau des améliorations cadavériques déclaré comme copie de celui de
 « Magie Maverick V8 »). Les cinq autres sont enregistrés `en_cours` (instantané gardé, écarts relevés dans `docs/sql/rapprochement-classeurs.md`).
+
+## Après le lot 12 : où lire les exports
+
+R296 : au lot 12, `sources/raw/` sort du dépôt (rangé sur le serveur et dans la sauvegarde ; procédure : `docs/chantier-base-de-dev.md`, « Le jour J du lot 12 »).
+Tant que le lot n'est pas fait, rien ne change : les outils lisent `sources/raw/`.
+
+- **Les originaux Google font foi** (R83), inchangé : ils se lisent par les connecteurs Google, en lecture seule. L'archive (`sources-raw.tar.gz`) n'est qu'un
+  instantané daté, jamais une référence plus sûre que l'original.
+- **Un export ancien** : `git show <sha>:sources/raw/<fichier>` (l'historique n'est pas réécrit : `<sha>` est le commit archivé, noté dans le manifeste de l'archive,
+  `git log --diff-filter=D --format=%H -1 -- sources/raw/<fichier>` donne le commit qui l'a retiré, son parent le contient), ou l'archive que le propriétaire remet,
+  vérifiée d'abord par `deploy/archivage-du-contenu/verifier.sh`, puis extraite dans un dossier hors du dépôt.
+- **Un nouvel export** (`import-gdocs.mjs`, un instantané de classeur) se fait dans un dossier de travail hors du suivi git : `var/sources-raw/` (`var/` est ignoré par
+  `.gitignore`). On l'indique aux outils par `MAVERICK_SOURCES_RAW`, une seule variable, lue par `tools/sources/dossier-des-exports.mjs` (Node) et `tools/docs/codex.py` :
+  `MAVERICK_SOURCES_RAW=var/sources-raw node tools/import-gdocs.mjs`. Sans elle (ou vide), le dossier est `sources/raw/` à la racine, comme avant. Les outils qui la lisent :
+  `import-gdocs.mjs` (écrit), `sources/rapprocher.mjs` (registre des classeurs `classeurs/registre.json` et ses instantanés), `bestiaire/extraire.mjs` (`bestiaire-2-0.txt`),
+  `docs/codex.py` (`<id>.md`) ; leurs options `--dump`, `--avant`, `--source` restent prioritaires.
+- **Les registres d'orthographe du rapprochement** : `rapprocher.mjs` défait les corrections d'orthographe de la base d'après les `*.json` de `data/migrations`. Les migrations de données
+  sortent aussi au lot 12 ; les mixtes restent. Il lit donc les deux ensemble : `data/migrations` (ce qui y reste) et le dossier de `MAVERICK_MIGRATIONS_ARCHIVEES` (l'archive restaurée des
+  migrations de données, celle de `deploy/archivage-du-contenu/archiver.sh`, vérifiée par `verifier.sh`, ou `git archive <sha>` de ces fichiers extrait hors du dépôt) ; un fichier de même
+  nom est le même registre, lu une fois. Sans la variable : `data/migrations` seul.
+- Un nouvel export ne s'ajoute plus au dépôt : ce qu'il change se dépose comme un lot de changements sur le site de dev, après validation du propriétaire (`tech-sources`).
 
 ## De la source au wiki
 

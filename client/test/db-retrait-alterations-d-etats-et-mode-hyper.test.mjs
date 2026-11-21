@@ -24,6 +24,7 @@ import { buildIndex, extractLinks, resolve } from '../src/lib/wikilinks-resoluti
 import { baseDImport, cheminDImport, lotsAvant } from './aide-base-d-import.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
 import { citations, ecritParLeSite, lienDuSite } from './aide-page-retiree.mjs';
+import { testRetireAvecLeContenu } from './aide-sortie-du-contenu.mjs';
 
 const MIGRATION = '0096-retrait-alterations-d-etats-et-mode-hyper.sql';
 const RETIREE = 'guide/alterations-d-etats-et-mode-hyper';
@@ -31,6 +32,9 @@ const TITRE = 'Altérations d\'états et Mode Hyper';
 const ALTERATIONS = 'guide/alterations-d-etats';
 const HYPER = 'guide/le-mode-hyper';
 const lire = (chemin) => readFileSync(new URL(`../../${chemin}`, import.meta.url), 'utf8');
+// le rejeu de la migration sort avec elle le jour J du lot 12 (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LE_CONTENU) ; les autres tests éprouvent
+// ce qu'elle a laissé dans la base, toujours vrai
+const testDeLaMigration = testRetireAvecLeContenu(import.meta.url);
 const db = ouvrirBase({ sansExemples: false });
 const h = historiqueSite(db);
 const page = (id) => db.prepare('SELECT * FROM page WHERE id = ?').get(id);
@@ -106,7 +110,6 @@ test('0096 : la page retirée, avec ses lignes d’import, ses alias, son entré
   for (const source of ['ref:google-doc-regle-du-jeu-guide-pour-mj-maverick', 'google-doc:17VxGUwjzEZWElwIYVaXvaaumqFM4yKnO1C7uhVyc9iM']) {
     assert.ok(apres0096().prepare('SELECT count(*) AS n FROM page_source WHERE source_id = ?').get(source).n > 0, source);
   }
-  assert.match(lire(`data/migrations/${MIGRATION}`), /historique_modification et de note_version_ligne qui citent la page restent/);
 });
 
 test('0096 : ses alias « Altérations d’états » et « Mode Hyper » ne sont reportés sur aucune page', () => {
@@ -205,7 +208,7 @@ test('0096 : le menu « Mécaniques générales » sans la page, rangs de 1 à 9
   assert.deepEqual(tri(actuelles), tri(attendues));
 });
 
-test('0096 rejouée sur son propre résultat : rien ne change (UPDATE gardés)', (t) => {
+testDeLaMigration('0096 rejouée sur son propre résultat : rien ne change (UPDATE gardés)', (t) => {
   // son résultat : la base telle que la migration l'a laissée (les lots du site d'après la 0096 défaits) ; sur l'état courant, un texte que le site
   // aurait réécrit avec l'ancien lien serait réécrit par le rejeu, sans que la migration ait changé
   const chemin = fichierTemporaire('maverick.db', 'retrait-alterations-hyper', { t });
@@ -220,4 +223,5 @@ test('0096 rejouée sur son propre résultat : rien ne change (UPDATE gardés)',
   base.exec(lire(`data/migrations/${MIGRATION}`));
   base.exec('COMMIT');
   assert.deepEqual(etat(), avant);
+  assert.match(lire(`data/migrations/${MIGRATION}`), /historique_modification et de note_version_ligne qui citent la page restent/);
 });

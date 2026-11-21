@@ -159,3 +159,11 @@ test('les pages que l’édition refait depuis les tables (races, classes, dons,
   assert.match(script, /ciblesDuVocabulaire\(motsCles, pages, pageDuMotCle\)/);
   assert.match(script, /buildTerms\(cibles,/);
 });
+
+test('la balise cite la clé du mot-clé (R232 (3)), jamais son id entier : db:check et le service refusent un id', () => {
+  const { terms } = buildTerms([{ id: 182, cle: 'action-rapide', libelle: 'Action rapide', page: 'guide/action-rapide', termes: [] }]);
+  assert.equal(terms[0].cle, 'action-rapide');
+  const { body } = autolink('Une action rapide ici.', terms, 'guide/autre');
+  assert.equal(body, 'Une {{action-rapide|action rapide}} ici.');
+  assert.doesNotMatch(body, /\{\{182/);
+});

@@ -5,7 +5,10 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
+import { join } from 'node:path';
 import { test } from 'node:test';
+import { fileURLToPath } from 'node:url';
+import { dossierDesExports } from '../../tools/sources/dossier-des-exports.mjs';
 import { compacter, CORRECTIONS, CORRECTIONS_D_ESPECE, ecartsDuRegistre, extraireBestiaire, lignesDuDoc, lignesSql, lireRegistre } from '../../tools/bestiaire/extraire.mjs';
 import { avecLesValeurs, emplacements, LIGNE_DE_DEFENSE_ANCIENNE } from '../src/lib/monstre-champs.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
@@ -13,17 +16,22 @@ import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { normalize } from '../src/lib/text.mjs';
 
 const racine = new URL('../../', import.meta.url);
-const texte = readFileSync(new URL('sources/raw/bestiaire-2-0.txt', racine), 'utf8');
+// L'export du doc se lit par dossierDesExports() : sources/raw, ou MAVERICK_SOURCES_RAW (l'archive restaurée, lot 12, R296). Leur retrait avec les exports attend
+// la réponse du propriétaire (reco (e)).
+const texte = readFileSync(join(dossierDesExports(fileURLToPath(racine)), 'bestiaire-2-0.txt'), 'utf8');
 const b = extraireBestiaire(texte);
 const cartes = b.especes.flatMap((e) => e.cartes);
 const db = ouvrirBase({ sansExemples: false });
 const TABLES_MONSTRES = ['monstre_regle', 'monstre_echelle', 'monstre_butin_objet', 'monstre_groupe', 'monstre_capacite_commune', 'monstre_espece', 'monstre_espece_lieu',
   'monstre_espece_bloc', 'monstre_butin', 'monstre', 'monstre_rubrique', 'monstre_caracteristique', 'monstre_attaque', 'monstre_capacite', 'monstre_capacite_valeur', 'monstre_defense'];
+// monstre_attaque_type (migration 0130, R299) : alimentée par un lot de changements du site de dev, jamais par l'extracteur ; elle n'est donc ni rejouée ni
+// comparée ici, et la liste des tables de la section 8 bis la met à part
+const TABLES_DU_SITE = ['monstre_attaque_type'];
 const registre = lireRegistre();
 
 test('l’extraction rejouée sur l’export du doc redonne exactement les tables des monstres de la base, telles que l’import les a laissées', () => {
   const tables = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name LIKE 'monstre%' ORDER BY name").all().map((r) => r.name);
-  assert.deepEqual(tables, [...TABLES_MONSTRES].sort(), 'les tables de la section 8 bis');
+  assert.deepEqual(tables, [...TABLES_MONSTRES, ...TABLES_DU_SITE].sort(), 'les tables de la section 8 bis');
   const memoire = new DatabaseSync(':memory:', { enableForeignKeyConstraints: false });
   memoire.exec(readFileSync(new URL('data/schema.sql', racine), 'utf8'));
   memoire.exec(lignesSql(b).join('\n'));

@@ -11,7 +11,7 @@
 // d'après son genre. Les outils communs du service (refus, synchroniser…) sont donnés par serveur/edition.mjs, sans import en retour.
 import { prixEnRf } from '../src/lib/composants-champs.mjs';
 import { cleDeCase } from '../src/lib/corps-composants.mjs';
-import { corpsDeLaPotionApres, ErreurCorpsPotions, pageDeLaPotion } from '../src/lib/corps-potions.mjs';
+import { corpsDeLaPotionApres, corpsDesPotionsEntier, ErreurCorpsPotions, pageDeLaPotion } from '../src/lib/corps-potions.mjs';
 import { etatsDeLaPotion } from '../src/lib/potion-etats.mjs';
 import { fragmentsAjoutes, messageDeRefus } from '../src/lib/markdown-sur.mjs';
 import { lireLigne } from './edition-journal.mjs';
@@ -22,6 +22,23 @@ export const contexteDuCorpsDesPotions = (db) => ({
   ressource: (id) => db.prepare('SELECT * FROM ressource WHERE id = ?').get(id) ?? null,
   niveau: (id) => db.prepare('SELECT * FROM niveau_alchimie WHERE id = ?').get(id) ?? null,
 });
+
+/**
+ * Les potions de chaque page, dans l'ordre de leurs tableaux (ressource.ordre, puis le rang de la potion dans sa famille) : Map page → [{ nom, prix_brut,
+ * niveau_id, effet }]. De quoi refaire le corps ENTIER d'une page (lib/corps-potions.mjs#corpsDesPotionsEntier) quand « Tout recalculer » ne retrouve plus
+ * un tableau par son nom.
+ * @param {import('node:sqlite').DatabaseSync} db
+ */
+export function potionsParPage(db) {
+  const pages = new Map();
+  const lignes = db.prepare(`SELECT r.page_id, r.nom, r.prix_brut, p.niveau_id, p.effet FROM potion p JOIN ressource r ON r.id = p.ressource_id
+    ORDER BY r.page_id, r.ordre, p.rang, r.rowid`).all();
+  for (const { page_id: page, ...potion } of lignes) {
+    if (!pages.has(page)) pages.set(page, []);
+    pages.get(page).push(potion);
+  }
+  return pages;
+}
 
 /** Les niveaux d'alchimie, dans l'ordre (choix « Niveau » d'une potion, liste `niveauxDAlchimie` de GET /api/edition/listes/). */
 export const niveauxDAlchimie = (db) => db.prepare('SELECT id AS valeur, nom AS libelle FROM niveau_alchimie ORDER BY rang').all();

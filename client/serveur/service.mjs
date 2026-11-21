@@ -29,8 +29,9 @@ import { CORPS_MAX, traiter } from './api.mjs';
 import { creerJournalDuService, estUneReleve } from './journal-du-service.mjs';
 import { instant as maintenant } from './instant.mjs';
 import { DOSSIER_ARCHIVES, FICHIER_BASE, lireEtat, ouvrirBaseVivante, preparerBaseVivante, signature } from './base-vivante.mjs';
-import { ErreurBaseSource, estUneBaseSource, etatDeLaBaseSource, preparerBaseSource } from './base-source.mjs';
+import { ErreurBaseSource, estEnBascule2, estUneBaseSource, etatDeLaBaseSource, preparerBaseSource } from './base-source.mjs';
 import { annonceDuLancement, DUREE_MAX_MAINTENANCE, etatDeMaintenance, lireAnnonce, publierAnnonce } from './maintenance.mjs';
+import { creerLesInterrupteursDeGithub } from './bascule-2-etat.mjs';
 import { creerGithub, lireLancement, lireReference, sansNouvelles, SUIVIS } from './notes-de-version.mjs';
 import { actualiser } from './paquet.mjs';
 import {
@@ -42,6 +43,7 @@ import { creerTipeee } from './tipeee.mjs';
 import { compterLesConflits } from './edition-conflits.mjs';
 import { ecrireAttestation, fabriquerAttestation, INTERVALLE_DE_L_ATTESTATION_MS } from './attestation.mjs';
 import { creerAtelier } from './atelier.mjs';
+import { creerGel } from './gel.mjs';
 import { creerExtrait } from './extrait.mjs';
 import { purgerLesEssais } from './edition-lots.mjs';
 import { creerOmbre } from './essai-dans-l-ombre.mjs';
@@ -116,6 +118,9 @@ const inode = (chemin) => {
  *   change ; absent ou sans fichier, rien n'est protégé ; jamais lu sans l'édition (la production n'est pas concernée)
  * @param {string|null} [o.maintenance] dossier partagé de l'annonce de maintenance (MAVERICK_MAINTENANCE : le même pour les deux serveurs) ;
  *   sans lui, le site de dev se met en maintenance d'après son seul lancement et la production ne l'est jamais
+ * @param {string|null} [o.paquets] dossier partagé des paquets de la production (MAVERICK_PAQUETS ; lot 11, PR 5a, serveur/paquets-de-la-production.mjs) : le site de dev y dépose le paquet
+ *   de la mise à jour et y lit le rapport de l'activation (`activation_production`), seulement avec le marqueur db/bascule-2 ; sans lui, rien n'y est écrit, et le rapport n'est lu que pour
+ *   l'état en lecture seule `bascule_2` de la page Mise à jour (serveur/bascule-2-etat.mjs)
  * @param {string} [o.versionParDefaut] version annoncée sans version.json (développement : celle de package.json)
  * @param {((message: string, options?: object) => void) | null} [o.journal] reçoit chaque ligne notée (sans horodatage) ; donné, la sortie console se tait
  *   (tests) ; sinon les lignes partent sur la console, horodatées
@@ -153,7 +158,7 @@ const inode = (chemin) => {
  *   par l'essai, ou d'une autre structure que le schema.sql livré : la promesse est rejetée, le service ne démarre pas
  */
 export async function demarrerService({ regles, dossier, hote = '127.0.0.1', port = 8787, intervalle = 15000, fichierVersion = null, edition = false,
-  reference = null, depot = 'Bravexier/MaverickCenter', adresse = null, jetonFichier = null, acces: reglageAcces = null, maintenance = null, versionParDefaut = 'développement',
+  reference = null, depot = 'Bravexier/MaverickCenter', adresse = null, jetonFichier = null, acces: reglageAcces = null, maintenance = null, paquets = null, versionParDefaut = 'développement',
   journal: ecouteur = null, journalDuService = null, relancer = () => process.exit(0), metriques: reglagesMetriques = {}, fetch: fetchDuClasseur = globalThis.fetch,
   tipeee: reglagesTipeee = {}, attestation: reglagesAttestation = {}, essaiDeStructure: reglagesEssai = {}, atelier: reglagesAtelier = {}, structure: reglagesStructure = {} }) {
   const lancementDuService = performance.now();
@@ -258,6 +263,8 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
     }
   };
   const github = edition ? creerGithub({ dossier, depot, lireJeton, journal, fetch: fetchMesure }) : null;
+  // les interrupteurs de la bascule 2 que GitHub porte (page Mise à jour, `bascule_2`) : lus en arrière-plan, en cache (serveur/bascule-2-etat.mjs)
+  const interrupteursGithub = github ? creerLesInterrupteursDeGithub({ github }) : null;
   // « Importer (en ligne) » de /fiche/ (POST /api/classeur/) : sur les deux instances ; ses bornes de débit valent pour tout le service
   const classeur = creerClasseurEnLigne({ fetch: fetchDuClasseur, journal, evenement });
   // la partie « Bienvenue » de Tipeee (GET /api/tipeee/) : sur les deux instances ; son cache et sa requête en cours valent pour tout le service, le
@@ -268,6 +275,10 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
   // service) ; avec lui, la base n'est jamais refaite depuis les règles, ses migrations sont appliquées sur place, et un lot de changements vaut pour toutes les tables
   const estSource = () => estUneBaseSource(dossier);
   const sourceAuDemarrage = estSource();
+  // la bascule 2 (lot 11 : le marqueur db/bascule-2, posé plus tard par un script de root) : relue à chaque fois, comme le marqueur de la base source
+  const enBascule2 = () => estEnBascule2(dossier);
+  // le gel des écritures (lot 11, garde-fou 16 : serveur/gel.mjs) : le fichier db/gel.json, posé par root (deploy/installateur/gel.sh), relu quand il change ; les deux instances
+  const gel = creerGel({ dossier, instance: nomDInstance, journal, evenement });
   // les copies d'essai d'un lot de changements qu'un arrêt a laissées (serveur/edition-lots.mjs)
   if (edition) {
     try {
@@ -441,6 +452,8 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
       // édition des règles depuis les pages : site de dev seulement (docs/serveur.md, « Édition »)
       edition: Boolean(edition),
       ...(edition ? { modifications } : {}),
+      // le gel des écritures (db/gel.json, non échu) : { pose_le, jusqu_a, motif, geste, illisible, plafonne } ; null sans gel
+      gel: gel.etat(),
       base: {
         disponible: Boolean(etat.db),
         a_jour: Boolean(etat.db) && !etat.erreur,
@@ -567,11 +580,12 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
     const route = mesure?.route ?? routeNormalisee(req.url);
     let envoyee = null; // { statut, octets } de la réponse partie
     let exception = false; // une erreur du traitement (son évènement est déjà noté, avec l'empreinte de la pile)
+    let gelee = false; // une écriture refusée par le gel (503 voulu, pas une panne : ni évènement erreur_5xx ni ligne de la production)
     // chaque requête /api/ au journal (catégorie http, avec ses champs isolés), sans son corps, sur le site de dev ; en production, seulement un
     // échec du service (5xx) ; les relèves du journal, de la version de la base, des métriques et de la maintenance n'y vont pas (journal-du-service.mjs)
     const noterLaRequete = (statut, octets) => {
       const adresse = req.url ?? '/';
-      if (!adresse.startsWith('/api/') || (!edition && statut < 500)) return;
+      if (!adresse.startsWith('/api/') || (!edition && (statut < 500 || gelee))) return;
       const duree = performance.now() - debut;
       journal(`${req.method} ${adresse} ${statut} ${Math.round(duree)} ms`, {
         categorie: 'http', champs: { duree_ms: Math.round(duree * 100) / 100, methode: methodeNormalisee(req.method), route, statut, octets_sortie: octets },
@@ -586,7 +600,7 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
       const octets = envoyee?.octets ?? 0;
       noterLaRequete(statut, octets);
       if (mesure) sansEchec(() => metriques.fin(mesure, { statut, octets_sortie: octets }));
-      if (statut >= 500 && !exception) evenement('erreur_5xx', { detail: { methode: methodeNormalisee(req.method), route, statut } });
+      if (statut >= 500 && !exception && !gelee) evenement('erreur_5xx', { detail: { methode: methodeNormalisee(req.method), route, statut } });
       if (edition && route.startsWith('/api/mise-a-jour/')) suivreLeLancement();
     };
     res.once('finish', terminer);
@@ -656,8 +670,9 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
         try {
           reponse = traiter({ methode: req.method ?? 'GET', chemin: url.pathname, recherche: url.search, entetes: req.headers, corps: Buffer.concat(morceaux).toString('utf8'),
             signal: abandon.signal },
-          { base: baseMesuree, etat: decrire, journal, journalDuService: memoire, edition: Boolean(edition), dossier, reference: referenceDuSite, depot, adresse, github,
-            maintenance: maintenanceDemandee, metriques, evenement, classeur, tipeee, extrait, attestations: dossierDesAttestations, acces, essaiDeStructure, atelier, source: estSource });
+          { base: baseMesuree, etat: decrire, journal, journalDuService: memoire, edition: Boolean(edition), dossier, reference: referenceDuSite, depot, adresse, github, interrupteursGithub,
+            maintenance: maintenanceDemandee, metriques, evenement, classeur, tipeee, extrait, attestations: dossierDesAttestations, acces, essaiDeStructure, atelier, source: estSource,
+            bascule2: enBascule2, paquets, gel, codeDuService: () => ({ commit: typeof version.commit === 'string' ? version.commit : null, empreinte: version.empreinte ?? null }) });
         } finally {
           const mesureSql = sql.terminer();
           if (mesure) mesure.sql = mesureSql;
@@ -665,6 +680,7 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
       } catch (e) {
         reponse = echec(e);
       }
+      if (reponse?.gel === true) gelee = true;
       // une promesse (POST /api/classeur/, GET /api/tipeee/ : les routes asynchrones ; la mesure SQL, synchrone, est déjà prise) : la réponse part
       // quand elle arrive
       if (typeof reponse?.then === 'function') {
@@ -775,6 +791,11 @@ export async function demarrerService({ regles, dossier, hote = '127.0.0.1', por
         }
       }
       suivreLaMiseAJour();
+      try {
+        gel.verifier(); // un gel posé ou échu se note au journal sans attendre une requête (un `stat`)
+      } catch (e) {
+        journal(`ERREUR gel : ${e?.message ?? e}`, { categorie: 'gel' });
+      }
     }, intervalle);
     minuterie.unref?.();
   }

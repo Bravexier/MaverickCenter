@@ -19,9 +19,10 @@ import { DOSSIER_DES_ESSAIS, FORMAT_DE_L_ETAT } from '../serveur/essai-de-struct
 import { demarrerService } from '../serveur/service.mjs';
 import { lireLesMigrations } from '../serveur/structure-sur-place.mjs';
 import { CLASSES_DE_TABLES, TABLES_DE_CONTENU, classeDeLaTable } from '../src/lib/tables-de-la-base.mjs';
-import { baseDesRegles, nouveauChemin, nouveauDossier, schemaDuDepot } from './aide-structure-sur-place.mjs';
+import { LIVRAISON, NUMERO, annulerLesMigrations, baseDesRegles, nouveauChemin, nouveauDossier, schemaDuDepot } from './aide-structure-sur-place.mjs';
 
-const livre = lireLesMigrations();
+/** La livraison des tests (test/aide-structure-sur-place.mjs#LIVRAISON : celle du dépôt, ou au-dessus du plancher quand les migrations mixtes sont sorties). */
+const livre = lireLesMigrations(LIVRAISON);
 const V = livre.migrations.at(-1).numero;
 const N = (numero) => String(numero).padStart(4, '0');
 const schemaALaVersion = (version) => schemaDuDepot().replace(/^PRAGMA user_version\s*=\s*\d+;/m, `PRAGMA user_version = ${version};`);
@@ -54,7 +55,7 @@ function migrationsAvec(t, { fausses = [], remplacees = {}, schema = null } = {}
 
 /**
  * Un site de dev AVANT son installation : la base vivante d'une version « 1.0.0 » faite des règles du dépôt (`avant` : du SQL de plus pour ces règles), avec un prétiré,
- * une modification de l'édition (journal ET table, comme le service les écrit), ramenée à la version 128 (sans `migration_recue`, migration 0129) ; vivante.json dit
+ * une modification de l'édition (journal ET table, comme le service les écrit), ramenée à la version d'avant `NUMERO` (sans `migration_recue`, ni la structure des migrations suivantes) ; vivante.json dit
  * que d'autres règles l'ont faite, de sorte que la prochaine préparation la refait. `empreintes: false` : un état d'avant l'essai dans l'ombre (sans `tables_regles`).
  * Rend { db, octets (de la vraie base), poses }.
  */
@@ -73,15 +74,15 @@ function siteAvantInstallation(t, { avant = '', empreintes = true } = {}) {
     const don = vivante.prepare("SELECT id, effet FROM capacite WHERE classe_id <> 'classes/guerrier' AND nature = 'classe' ORDER BY id LIMIT 1").get();
     enregistrer(vivante, { page: 'classes/x', operations: [{ op: 'modifier', table: 'capacite', cle: { id: don.id }, valeurs: { effet: `${don.effet ?? ''} (essai de l’ombre)`.trim() } }] });
     poses = { classe, don: don.id };
-    vivante.exec('DROP TABLE migration_recue');
-    vivante.exec(`PRAGMA user_version = ${V - 1}`);
+    annulerLesMigrations(vivante);
+    vivante.exec(`PRAGMA user_version = ${NUMERO - 1}`);
   } finally {
     vivante.close();
   }
   const etat = lireEtat(db);
   assert.ok(etat.tables_regles && Object.keys(etat.tables_regles).length > 100, 'la première préparation garde les empreintes des règles (option ombre)');
   const { tables_regles: gardees, ...sans } = etat;
-  writeFileSync(join(db, 'vivante.json'), `${JSON.stringify({ ...sans, ...(empreintes ? { tables_regles: gardees } : {}), regles: 'x', logique: 'x', schema: V - 1 }, null, 2)}\n`);
+  writeFileSync(join(db, 'vivante.json'), `${JSON.stringify({ ...sans, ...(empreintes ? { tables_regles: gardees } : {}), regles: 'x', logique: 'x', schema: NUMERO - 1 }, null, 2)}\n`);
   return { db, octets: empreinteFichier(join(db, 'vivante.db')), poses };
 }
 
@@ -89,8 +90,8 @@ function siteAvantInstallation(t, { avant = '', empreintes = true } = {}) {
 async function installer(db, regles2, { version = '1.1.0', reglages = {}, avantDemarrage = null } = {}) {
   const evenements = [];
   const sortie = [];
-  const ombre = creerOmbre({ dossier: db, instance: 'dev', journal: (m, o) => sortie.push({ m, ...o }), evenement: (type, o) => evenements.push({ type, ...o }), ...reglages });
-  const r = preparerBaseVivante({ regles: regles2, dossier: db, version, ombre });
+  const ombre = creerOmbre({ dossier: db, instance: 'dev', journal: (m, o) => sortie.push({ m, ...o }), evenement: (type, o) => evenements.push({ type, ...o }), ...LIVRAISON, ...reglages });
+  const r = preparerBaseVivante({ regles: regles2, dossier: db, version, ombre, migrations: LIVRAISON.migrations });
   avantDemarrage?.(r, ombre);
   await ombre.demarrer();
   return { r, ombre, rapport: ombre.lire().dernier, evenements, sortie };
@@ -114,8 +115,8 @@ test('installation sans rien de livré hors migration : la base migrée sur plac
   assert.equal(rapport.format, FORMAT_DE_L_OMBRE);
   assert.equal(rapport.verdict, 'identique', JSON.stringify(rapport.tables.filter((e) => e.gravite !== 'ignore')));
   assert.deepEqual(rapport.structure, { identique: true, ecarts: [] });
-  assert.deepEqual(rapport.versions, { avant: V - 1, migree: V, refaite: V });
-  assert.deepEqual(rapport.migrations.map((m) => m.numero), livre.migrations.filter((m) => m.numero >= V).map((m) => m.numero));
+  assert.deepEqual(rapport.versions, { avant: NUMERO - 1, migree: V, refaite: V });
+  assert.deepEqual(rapport.migrations.map((m) => m.numero), livre.migrations.filter((m) => m.numero >= NUMERO).map((m) => m.numero));
   assert.equal(rapport.regles_d_avant, 'connues');
   assert.deepEqual(rapport.version, { avant: '1.0.0', apres: '1.1.0' });
   assert.equal(rapport.instance, 'dev');
@@ -200,7 +201,7 @@ test('une migration qui donne un autre schéma que la base refaite : écart de s
   const e = entree(rapport, 'essai_dans_l_ombre');
   assert.equal(e.categorie, CATEGORIES_DE_L_OMBRE.STRUCTURE);
   assert.equal(e.gravite, 'grave');
-  assert.deepEqual(rapport.versions, { avant: V - 1, migree: V + 1, refaite: V });
+  assert.deepEqual(rapport.versions, { avant: NUMERO - 1, migree: V + 1, refaite: V });
 });
 
 test('une migration refusée : verdict refuse, migration et étape dites, retour arrière ; ni la vraie base ni les copies ne gardent rien', async (t) => {
@@ -287,7 +288,7 @@ test('le service : le site de dev fait l’essai après son ouverture, le rappor
   writeFileSync(fichierVersion, JSON.stringify({ version: '1.2.0', empreinte: null }));
   const livrees = regles();
   const sortie = [];
-  const s = await demarrerService({ regles: livrees, dossier: db, port: 0, intervalle: 0, edition: true, metriques: false, fichierVersion, journal: (m, o) => sortie.push({ m, ...o }), essaiDeStructure: { intervalle: 0 } });
+  const s = await demarrerService({ regles: livrees, dossier: db, port: 0, intervalle: 0, edition: true, metriques: false, fichierVersion, journal: (m, o) => sortie.push({ m, ...o }), essaiDeStructure: { intervalle: 0, ombre: { ...LIVRAISON } } });
   try {
     assert.ok(s.ombre, 'le site de dev a son essai dans l’ombre');
     await s.ombre.demarrer(); // le service l'a lancé après son ouverture (setImmediate) : la promesse est celle de la file

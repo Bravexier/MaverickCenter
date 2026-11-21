@@ -15,6 +15,7 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { normalize } from '../../client/src/lib/text.mjs';
 import { EPOQUES, PORTEES } from '../../client/src/lib/chronologie.mjs';
+import { REFERENCES } from '../../client/src/lib/references-des-migrations.mjs';
 
 const FICHIER_REGISTRE = fileURLToPath(new URL('./evenements.json', import.meta.url));
 
@@ -22,12 +23,13 @@ const FICHIER_REGISTRE = fileURLToPath(new URL('./evenements.json', import.meta.
 export const lireRegistre = () => JSON.parse(readFileSync(FICHIER_REGISTRE, 'utf8'));
 
 // Les événements qu'une migration postérieure à l'import ajoute (0121, R264 : Gémidiens et Fongoïdes, au rang suivant, règle du site) ne viennent pas du
-// registre de l'import, qui donne le rang par la place : ils sont lus dans le registre de la migration (clé `evenements`) et mis à part par --verifier,
-// comme le fait client/test/chronologie.test.mjs.
-const REGISTRE_DE_LA_0121 = fileURLToPath(new URL('../../data/migrations/0121-maj-decembre-suites.json', import.meta.url));
+// registre de l'import, qui donne le rang par la place : leurs ids sont lus dans la référence tirée du registre de la migration
+// (data/references/evenements-de-la-0121.json, client/src/lib/references-des-migrations.mjs) et mis à part par --verifier, comme le fait
+// client/test/chronologie.test.mjs.
+const REFERENCE_DE_LA_0121 = fileURLToPath(new URL(`../../${REFERENCES.evenements0121}`, import.meta.url));
 
-/** Les identifiants des événements que la migration 0121 ajoute, lus dans son registre. */
-export const evenementsDeLaMigration0121 = () => new Set(JSON.parse(readFileSync(REGISTRE_DE_LA_0121, 'utf8')).evenements.map((e) => e.id));
+/** Les identifiants des événements que la migration 0121 ajoute, lus dans sa référence. */
+export const evenementsDeLaMigration0121 = () => new Set(JSON.parse(readFileSync(REFERENCE_DE_LA_0121, 'utf8')).evenements);
 
 const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/;
 const TITRE = /^#{1,6}\s+(.*?)\s*#*\s*$/;

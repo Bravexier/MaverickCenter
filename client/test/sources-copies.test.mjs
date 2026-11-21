@@ -8,11 +8,12 @@ import { fileURLToPath } from 'node:url';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
+import { registreDeMigration } from './aide-registres-sortis.mjs';
 import { TABLES_DES_NOTES } from '../src/lib/notes-de-version.mjs';
 
 const racine = (chemin) => fileURLToPath(new URL(`../../${chemin}`, import.meta.url));
 const lire = (chemin) => readFileSync(racine(chemin), 'utf8');
-const registre = JSON.parse(lire('data/migrations/0014-sources-copies-drive.json'));
+const registre = JSON.parse(lire('sources/copies-drive.json'));
 const manifeste = JSON.parse(lire('sources/sources.json'));
 const db = ouvrirBase({ sansExemples: false });
 const ID_GOOGLE = /^[A-Za-z0-9_-]{25,}$/;
@@ -97,7 +98,8 @@ test('sources : une ligne par document cité, id dérivé du nouvel identifiant,
   // niveau » et ses cinq lignes page_source ; la 0123 retire « Les neuf alignements », fondue dans « Alignement » (2026-11-13, demande du
   // propriétaire), et ses lignes page_source ; la 0124 retire « Accessoires et Ceinture », fondue dans « Inventaire/Sac à dos » (décision R272), et
   // ses lignes page_source
-  const registreDe = (nom) => JSON.parse(readFileSync(new URL(`../../data/migrations/${nom}.json`, import.meta.url), 'utf8'));
+  // (registres des migrations mixtes, ou ce qu'en garde test/fixtures/registres-sortis.json une fois sorties : les lignes page_source, des ids)
+  const registreDe = registreDeMigration;
   const retiresDepuis = [...registreDe('0119-classes-materiaux-d12').cuirasse.page_source_supprimees,
     ...registreDe('0122-retrait-la-montee-de-niveau').page_source_supprimees,
     ...['0123-fusion-pages-alignement', '0124-retrait-accessoires-et-ceinture'].flatMap((nom) => registreDe(nom).pages_retirees.flatMap((p) => p.page_source_supprimees))];

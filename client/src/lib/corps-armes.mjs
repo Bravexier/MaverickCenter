@@ -10,6 +10,8 @@
 // corps en retard. La remarque d'une arme (arme.remarque) suit aussi, sous le tableau de sa famille (corpsAvecRemarqueDArme). Fonctions pures, sans
 // dépendance.
 
+import { remplacerLesLignesDeDonnees, tableauxDe } from './corps-tableaux.mjs';
+
 export const PAGE_DES_ARMES = 'ressources/armes';
 
 export class ErreurCorpsArmes extends Error {
@@ -331,4 +333,126 @@ export function corpsAvecMateriauRenomme(corps, ancien, nouveau, bornes = (ligne
     }
   }
   return lignes.join('\n');
+}
+
+// --- Le corps entier ---------------------------------------------------------------------------------------------------------------------------------
+// « Tout recalculer » (serveur/edition-lots.mjs#ecartsDuRecalcul) : quand le corps n'écrit plus une ligne comme le code d'aujourd'hui la rend, la ligne
+// d'avant ne se retrouve plus par son texte. Le corps entier se refait alors depuis l'état des tables : chaque tableau est repéré par sa SECTION (le bandeau
+// de sa famille, « MATÉRIAUX », « AMÉLIORATION »), ses lignes de données remplacées en bloc par celles de la table, dans leur ordre (arme.ordre,
+// materiau_arme.ordre, niveau) ; la liste des armes de départ, la ligne TOTAL et les remarques d'arme se refont de même. La prose du corps ne bouge pas.
+
+/** Le tableau (en-tête, séparateur, lignes) de la section `bornes` : le premier ; ErreurCorpsArmes s'il n'y en a pas. */
+function premierTableau(lignes, bornes, quoi) {
+  const [debut, fin] = bornes(lignes);
+  const t = tableauxDe(lignes, debut + 1, fin).find((x) => x.fin - x.debut >= 2);
+  if (!t) throw new ErreurCorpsArmes(`tableau introuvable : ${quoi}`);
+  return t;
+}
+
+/** Une entrée de remarque de l'arme `a` dans la section [debut, fin[ : celle de l'importeur (qui nomme sa cellule Nom) ou la sienne (« Remarque de l’arme »). */
+function entreesDeLArme(lignes, debut, fin, a) {
+  const nom = nomDIntitule(a);
+  const sienne = etiquetteDeRemarque(a.nom);
+  const entrees = [];
+  for (let i = debut + 1; i < fin; i++) {
+    const m = ETIQUETTE_DE_L_IMPORTEUR.exec(lignes[i]);
+    if (m && sansEchappements(m[1]).endsWith(` (${nom})`)) entrees.push({ i, propre: false, surUneLigne: Boolean(m[2]) });
+    else if (lignes[i] === sienne || lignes[i].startsWith(`${sienne} : `)) entrees.push({ i, propre: true, surUneLigne: lignes[i] !== sienne });
+  }
+  return entrees;
+}
+
+/** Un texte sans échappements ni retours, espaces ramenés à un seul : de quoi comparer ce qu'une entrée écrit à la remarque de l'arme. */
+const textePlat = (t) => sansEchappements(String(t ?? '')).replace(/\s+/g, ' ').trim();
+
+/** Le texte écrit par une entrée de remarque (libellé exclu). */
+function texteDeLEntree(lignes, e, fin, blocs) {
+  if (e.surUneLigne) return lignes[e.i].slice(lignes[e.i].indexOf('** : ') + 5);
+  const [, fini] = etendueDeLEntree(lignes, e.i, fin, false, blocs);
+  return lignes.slice(e.i + 1, fini).filter((l) => l.trim()).join(' ');
+}
+
+/**
+ * Les remarques des armes d'une famille refaites depuis la table : une arme sans remarque n'a aucune entrée ; une arme avec remarque a l'entrée de
+ * l'importeur (gardée telle quelle si elle écrit ce que dit la table) ou la sienne, une ligne juste sous le tableau. Une entrée « Remarque de l’arme »
+ * qui ne nomme aucune arme de la famille part (la table ne la dit plus). `armes` : les armes de la famille ; `bornes` : sa section.
+ */
+function refaireLesRemarques(lignes, bornes, armes, quoi) {
+  const bornesAJour = () => bornes(lignes);
+  const retirer = (entrees, blocs) => {
+    const [, fin] = bornesAJour();
+    const etendues = entrees.map((e) => etendueDeLEntree(lignes, e.i, fin, e.surUneLigne, blocs));
+    for (const [a, b] of etendues.sort((x, y) => y[0] - x[0])) lignes.splice(a, b - a);
+  };
+  const inserer = (a) => {
+    const [debut, fin] = bornesAJour();
+    let derniere = -1;
+    for (let k = debut + 1; k < fin; k++) if (lignes[k].startsWith('|')) derniere = k;
+    if (derniere < 0) throw new ErreurCorpsArmes(`tableau introuvable : ${quoi}`);
+    lignes.splice(derniere + 1, 0, '', ligneDeRemarque(a));
+  };
+  // une entrée « Remarque de l’arme » d'une arme que la famille n'a plus (ou sous un autre nom) : la table ne la dit plus
+  const connues = armes.map((a) => etiquetteDeRemarque(a.nom));
+  const orphelines = [];
+  const [debut0, fin0] = bornesAJour();
+  for (let i = debut0 + 1; i < fin0; i++) {
+    if (!lignes[i].startsWith('**Remarque de l’arme « ')) continue;
+    if (!connues.some((e) => lignes[i] === e || lignes[i].startsWith(`${e} : `))) orphelines.push({ i, surUneLigne: true });
+  }
+  retirer(orphelines, 1);
+  for (const a of armes) {
+    const texte = remarqueEnLigne(a.remarque);
+    const blocs = String(a.remarque ?? '').split(/\n\s*\n/).filter((b) => b.trim()).length || Infinity;
+    const [debut, fin] = bornesAJour();
+    const entrees = entreesDeLArme(lignes, debut, fin, a);
+    if (texte === null) {
+      retirer(entrees, blocs);
+      continue;
+    }
+    const propres = entrees.filter((e) => e.propre);
+    const importees = entrees.filter((e) => !e.propre);
+    if (!propres.length && importees.length) {
+      // les entrées de l'importeur disent déjà la remarque : elles restent telles que l'importeur les a écrites
+      const dit = textePlat(texte);
+      if (importees.every((e) => dit.includes(textePlat(texteDeLEntree(lignes, e, fin, blocs))))) continue;
+    }
+    if (propres.length) {
+      lignes[propres[0].i] = ligneDeRemarque(a);
+      retirer([...propres.slice(1), ...importees], blocs);
+    } else {
+      retirer(importees, blocs);
+      inserer(a);
+    }
+  }
+}
+
+/**
+ * Le corps entier de la page des armes refait depuis les tables. `etat` : { familles: [{ id, nom, libelle_brut, cout_libelle }] (ordre des bandeaux),
+ * armes: lignes arme, materiaux: [{ nom, prix_brut, effet_brut }] (materiau_arme.ordre), ameliorations: lignes amelioration_equipement de cible « arme »,
+ * total: ligne amelioration_total de cible « arme » ou null }. Le tableau de chaque famille (en-tête de coût et lignes), celui des matériaux et celui des
+ * améliorations, la ligne TOTAL, les remarques et la liste des armes de départ sont réécrits ; une section introuvable ou sans tableau lève ErreurCorpsArmes
+ * (la page reste telle quelle : « illisible »).
+ */
+export function corpsDesArmesEntier(corps, etat) {
+  const lignes = String(corps ?? '').split('\n');
+  for (const f of etat.familles) {
+    const bornes = (l) => section(l, titreDeFamille(f), f.nom);
+    const t = premierTableau(lignes, bornes, f.nom);
+    if (!lignes[t.debut].startsWith('| Nom |')) throw new ErreurCorpsArmes(`en-tête introuvable : ${f.nom}`);
+    lignes[t.debut] = enteteDeFamille(f);
+    const armes = etat.armes.filter((a) => a.famille_id === f.id).sort((a, b) => a.ordre - b.ordre);
+    remplacerLesLignesDeDonnees(lignes, t, armes.map(ligneDArme));
+    refaireLesRemarques(lignes, bornes, armes, f.nom);
+  }
+  const materiaux = (l) => section(l, (x) => x === TITRE_DES_MATERIAUX, 'matériaux');
+  remplacerLesLignesDeDonnees(lignes, premierTableau(lignes, materiaux, 'matériaux'), etat.materiaux.map((m) => ligneDeMateriau(m.nom, m)));
+  const ameliorations = (l) => section(l, (x) => x === TITRE_DES_AMELIORATIONS, 'améliorations');
+  remplacerLesLignesDeDonnees(lignes, premierTableau(lignes, ameliorations, 'améliorations'), etat.ameliorations.map(ligneDAmelioration));
+  if (etat.total) {
+    const [debut, fin] = ameliorations(lignes);
+    const k = lignes.findIndex((l, i) => i > debut && i < fin && l.startsWith('**TOTAL** : '));
+    if (k < 0) throw new ErreurCorpsArmes('ligne introuvable : total des améliorations');
+    lignes[k] = ligneDuTotal(etat.total.total_brut);
+  }
+  return corpsAvecArmesDeDepart(lignes.join('\n'), etat.familles, etat.armes);
 }

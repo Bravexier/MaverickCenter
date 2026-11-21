@@ -5,11 +5,17 @@ Usage (bibliothèque standard uniquement ; relançable, mêmes fichiers à l'ide
 
     python3 -I tools/docs/codex.py [--source <export.md>] [--out client/src/content/wiki]            écrit les pages
     python3 -I tools/docs/codex.py [--source <export.md>] [--out client/src/content/wiki] --verifier n'écrit rien, contrôle
-    (--historique <fichier> : l'historique des modifications du site, data/rows/historique_modification.sql par défaut ;
-     --vocabulaire <fichier> : les mots-clés, data/rows/mot_cle.sql par défaut)
+    (--base <fichier.db> : une base SQLite construite (l'extrait du site de dev préparé, client/src/lib/donnees.mjs#cheminBase), ouverte en lecture
+     seule, d'où se lisent l'historique des modifications du site (table historique_modification) et les mots-clés (table mot_cle) ; la base qui fait
+     foi (lot 12 du chantier « base de dev = source de vérité »), data/rows n'est alors pas lu ;
+     --historique <fichier> : l'historique des modifications du site, un export SQL, à la place de celui de la base (ou de
+     data/rows/historique_modification.sql, le repli sans --base) ;
+     --vocabulaire <fichier> : les mots-clés, un export SQL, à la place de ceux de la base (ou de data/rows/mot_cle.sql sans --base))
 
-puis `npm run db:sync-pages` (depuis client/) : les pages sont de la famille `docs` (première source « Google Doc « … » »), elles entrent dans
-`data/rows` par `tools/db/pages_md.py sync`.
+Les pages écrites ne vont jamais dans `data/rows` : ce sont des fichiers de `--out`. Pour qu'elles entrent dans la base, le circuit des importeurs (docs/sources.md,
+« Du fichier source à la base de dev ») : `npm run db:extrait`, `MAVERICK_CONTENU=var/extrait/maverick-dev.db npm run db:export-pages`, ce script, puis
+`npm run db:sync-pages -- --lot <lot.json> --titre <titre>` (écrit un lot de nature `source` ; n'envoie rien) et un humain propose le lot sur le site de dev.
+Les pages sont de la famille `docs` (première source « Google Doc « … » »).
 
 Source : l'export Markdown de la copie du document dans le Drive du propriétaire (2026-10-11), rangé dans `sources/raw/<id>.md`, ses images dans
 `sources/raw/<id>/` (symboles des ordres, extraits de carte des provinces ; les pages ne les montrent pas encore). Le texte est COPIÉ, jamais
@@ -43,7 +49,7 @@ produit plus est signalée « orpheline »).
       page (nom et sous-titre séparément) ; un renvoi « Voir “X” pour plus d'information » doit nommer X dans une page ;
   (3) les pages sur disque sont exactement celles que produit le découpage, à l'octet près.
 Une page que le site de dev a modifiée (titre, texte ou alias ; demande du propriétaire : « le site est la source » de ce qu'il modifie, docs/serveur.md,
-« Mise à jour ») est contrôlée dans son état d'import, relu dans data/rows/historique_modification.sql (pages_du_site) ; l'écriture ne la touche pas.
+« Mise à jour ») est contrôlée dans son état d'import, relu dans historique_modification (--base : la base qui fait foi ; sinon data/rows/historique_modification.sql) (pages_du_site) ; l'écriture ne la touche pas.
 Le découpage attendu se refait avec le vocabulaire de l'état d'import (Vocabulaire(…, etat_d_import=True)) : un mot-clé que le site a créé, supprimé
 (R196 : seulement s'il n'est mentionné nulle part) ou dont il a changé l'adresse ne change pas les renvois que l'import a écrits.
 """
@@ -62,7 +68,9 @@ import pages_md  # noqa: E402
 
 RACINE = os.path.abspath(os.path.join(HERE, '..', '..'))
 DOC_ID = '1tH-T9k-a3sADBtKWHxcuMcN94_VA8-Zo2BTzee9O7Tg'
-SOURCE = os.path.join(RACINE, 'sources', 'raw', f'{DOC_ID}.md')
+# Dossier des exports : MAVERICK_SOURCES_RAW s'il est posé, sinon sources/raw (voir tools/sources/dossier-des-exports.mjs, même règle)
+EXPORTS = os.path.abspath(os.environ.get('MAVERICK_SOURCES_RAW', '').strip() or os.path.join(RACINE, 'sources', 'raw'))
+SOURCE = os.path.join(EXPORTS, f'{DOC_ID}.md')
 OUT = os.path.join(RACINE, 'client', 'src', 'content', 'wiki')
 SOURCES = ['Google Doc « CODEX Maverick »', f'https://docs.google.com/document/d/{DOC_ID}/edit']
 TYPE = 'lore'
@@ -529,8 +537,46 @@ def decouper_adresse(adresse):
     return m.group(1), (m.group(2) or '')[1:], (m.group(3) or '')[1:]
 
 
+def charger_tables(db, schema, sources, base=None):
+    """Crée dans `db` (en mémoire) les tables de `sources` (nom -> fichier SQL ou None), d'après `schema`, et les remplit.
+    Chaque table vient de son fichier SQL (une écriture explicite : --vocabulaire, --historique ; absent du disque : vide) ; sans fichier, de `base`
+    (une base SQLite construite, lot 12 : la base qui fait foi, ouverte en lecture seule, à la version du schéma), sinon d'un fichier de data/rows."""
+    with open(schema, encoding='utf-8') as f:
+        texte = f.read()
+    for table in sources:
+        db.execute(re.search(rf'CREATE TABLE {table} \([\s\S]*?\) STRICT;', texte).group(0))
+    lecture = None
+    for table, fichier in sources.items():
+        if fichier is None and base is not None:
+            if lecture is None:
+                lecture = ouvrir_base(base)
+            colonnes = [r[1] for r in db.execute(f'PRAGMA table_info({table})')]
+            presentes = {r[1] for r in lecture.execute(f'PRAGMA table_info({table})')}
+            cols = [c for c in colonnes if c in presentes]
+            lignes = lecture.execute(f'SELECT {", ".join(cols)} FROM {table}').fetchall()
+            db.executemany(f'INSERT INTO {table} ({", ".join(cols)}) VALUES ({", ".join("?" for _ in cols)})', lignes)
+        elif fichier is not None and os.path.exists(fichier):
+            with open(fichier, encoding='utf-8') as f:
+                db.executescript(f.read())
+    if lecture is not None:
+        lecture.close()
+
+
+def ouvrir_base(chemin, schema=SCHEMA):
+    """Une base SQLite construite, en lecture seule : rien n'y est écrit. Refuse une autre version que celle du schéma (même règle que
+    tools/db/races_onglet.py#base_fichier)."""
+    if not os.path.isfile(chemin):
+        raise SystemExit(f'{chemin} : base introuvable')
+    lecture = sqlite3.connect('file:%s?mode=ro' % chemin.replace('?', '%3f').replace('#', '%23'), uri=True)
+    version = lecture.execute('PRAGMA user_version').fetchone()[0]
+    if version != T.version_schema(schema):
+        lecture.close()
+        raise SystemExit(f"{chemin} : structure {version}, schéma {T.version_schema(schema)} (préparer le contenu ou migrer d'abord)")
+    return lecture
+
+
 class Vocabulaire:
-    """Les mots-clés du vocabulaire (data/rows/mot_cle.sql, historique du site de dev compris). Un import ne crée jamais de mot-clé (migration 0056).
+    """Les mots-clés du vocabulaire (table mot_cle de --base, ou data/rows/mot_cle.sql ; historique du site de dev compris). Un import ne crée jamais de mot-clé (migration 0056).
     - protege(clé) : le libellé courant du mot-clé protégé de cette clé de maverick.py#MOTS_CLES_PROTEGES, ou None (un protégé se pose par l'id
       entier que lui donne ce dictionnaire) ;
     - appelé (écriture) : le libellé du mot-clé qu'elle désigne, ou None ; même règle que l'import des pages (tools/db/maverick.py#mot_cle : une
@@ -548,16 +594,9 @@ class Vocabulaire:
     supprimées remises, colonnes modifiées rendues ; même lecture que client/src/lib/historique-site.mjs#lignesDImport) : les pages sur disque ont été
     écrites avec lui."""
 
-    def __init__(self, chemin=VOCABULAIRE, historique=HISTORIQUE, schema=SCHEMA, etat_d_import=False):
-        with open(schema, encoding='utf-8') as f:
-            texte = f.read()
+    def __init__(self, chemin=VOCABULAIRE, historique=HISTORIQUE, schema=SCHEMA, etat_d_import=False, base=None):
         self.db = sqlite3.connect(':memory:')
-        for table in ('mot_cle', 'historique_modification'):
-            self.db.execute(re.search(rf'CREATE TABLE {table} \([\s\S]*?\) STRICT;', texte).group(0))
-        for fichier in (chemin, historique):
-            if os.path.exists(fichier):
-                with open(fichier, encoding='utf-8') as f:
-                    self.db.executescript(f.read())
+        charger_tables(self.db, schema, {'mot_cle': chemin, 'historique_modification': historique}, base)
         if etat_d_import:
             self.defaire_le_site()
         self.d_import = {}   # id (entier) -> libellé d'avant la première modification de son libellé par le site
@@ -637,26 +676,22 @@ class Vocabulaire:
         return self.libelle_d_import(trouve[0]) if trouve else None
 
 
-def vocabulaire(chemin=VOCABULAIRE, historique=HISTORIQUE, schema=SCHEMA, etat_d_import=False):
+def vocabulaire(chemin=VOCABULAIRE, historique=HISTORIQUE, schema=SCHEMA, etat_d_import=False, base=None):
     """Les mots-clés qu'une page du Codex peut porter, et ceux de ses renvois : Vocabulaire (celui de l'état d'import pour --verifier)."""
-    return Vocabulaire(chemin, historique, schema, etat_d_import)
+    return Vocabulaire(chemin, historique, schema, etat_d_import, base)
 
 
-def pages_du_site(historique=HISTORIQUE, schema=SCHEMA, sur_disque=None):
+def pages_du_site(historique=HISTORIQUE, schema=SCHEMA, sur_disque=None, base=None):
     """Pages du Codex que le site de dev a modifiées (modifications rapatriées ou livrées : table historique_modification) -> slug -> leur état
     d'import : 'titre' et 'corps' (corps_md) = la valeur « avant » de la première modification de la colonne (absents : jamais modifiés), 'alias'
     = {'retires': textes que le site a ajoutés, 'remis': textes qu'il a supprimés}. Même lecture que client/src/lib/historique-site.mjs.
     Les mots-clés (vocabulaire mot_cle, migration 0043) : une page dont le site a retiré, fusionné (page_tag) ou renommé (mot_cle : son écriture est
     dans `tags:` des pages sur disque, `sur_disque` = slug -> texte) un mot-clé est aussi « modifiée par le site » ('mots_cles' : True) ; ses mots-clés
     ne sont pas comparés au document, et une nouvelle écriture la garde telle quelle (sinon elle remettrait l'ancienne écriture)."""
-    if not os.path.exists(historique):
+    if historique is not None and not os.path.exists(historique):
         return {}
-    with open(schema, encoding='utf-8') as f:
-        table = re.search(r'CREATE TABLE historique_modification \([\s\S]*?\) STRICT;', f.read()).group(0)
     db = sqlite3.connect(':memory:')
-    db.execute(table)
-    with open(historique, encoding='utf-8') as f:
-        db.executescript(f.read())
+    charger_tables(db, schema, {'historique_modification': historique}, base)
     pages = {}
     vues = set()
     nouvelle = lambda slug: pages.setdefault(slug, {'alias': {'retires': set(), 'remis': set()}})  # noqa: E731
@@ -852,8 +887,12 @@ def main(argv):
     option = lambda nom, defaut: argv[argv.index(nom) + 1] if nom in argv else defaut  # noqa: E731
     source = option('--source', SOURCE)
     out = option('--out', OUT)
-    site = pages_du_site(option('--historique', HISTORIQUE), sur_disque=pages_sur_disque(out))
-    voc = vocabulaire(option('--vocabulaire', VOCABULAIRE), option('--historique', HISTORIQUE), etat_d_import='--verifier' in argv)
+    base = option('--base', None)
+    # sans --base : les fichiers de data/rows (le repli) ; avec : la base, sauf pour une table dont un fichier est donné
+    historique = option('--historique', None if base else HISTORIQUE)
+    vocabulaire_sql = option('--vocabulaire', None if base else VOCABULAIRE)
+    site = pages_du_site(historique, sur_disque=pages_sur_disque(out), base=base)
+    voc = vocabulaire(vocabulaire_sql, historique, etat_d_import='--verifier' in argv, base=base)
     lignes = lire_lignes(source)
     if '--verifier' in argv:
         erreurs, n, du_site, sans_lien = verifier(lignes, out, site, voc)

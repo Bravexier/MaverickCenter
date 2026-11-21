@@ -69,7 +69,7 @@ import { HYBRIDES_SANS_CLASSE_RACIALE, TAG_RACE_HYBRIDE } from '../src/lib/race-
 import { morceauxDuChapitre } from '../src/lib/guide.mjs';
 import { parLibelle, RAISONS_DES_MOTS_CLES_PROTEGES } from '../src/lib/mots-cles.mjs';
 import { idDuProtege } from '../src/lib/mots-cles-proteges.mjs';
-import { clesDesMotsCles, HomonymesRefuses, REGISTRE_DES_IDS_DE_MOTS_CLES } from '../src/lib/mots-cles-cles.mjs';
+import { clesDesMotsCles, HomonymesRefuses } from '../src/lib/mots-cles-cles.mjs';
 import { idSuivant, outilsDesMotsCles, TABLES_DES_FILLES_DU_MOT_CLE } from './edition-mots-cles.mjs';
 import { pagesDeLaRaceHybride } from '../src/lib/races-db.mjs';
 import { raisonDesAncresRompues } from '../src/lib/ancres-figees.mjs';
@@ -86,7 +86,8 @@ import {
   remplacerParLeTexteAffiche, retirerLeMotCle, synonymesPris, texteSansBalises, vocabulaireDesMotsCles,
 } from '../src/lib/mots-cles-balises.mjs';
 import { categoriesDesMotsCles, motsClesDeLaBase, textesDeLaBase } from '../src/lib/mots-cles-db.mjs';
-import { fauteDeLUrl, lienGarde, motsClesDeLAdresse, REGISTRE_DES_LIENS } from '../src/lib/mots-cles-liens.mjs';
+import { fauteDeLUrl, lienGarde, motsClesDeLAdresse } from '../src/lib/mots-cles-liens.mjs';
+import { REFERENCES } from '../src/lib/references-des-migrations.mjs';
 import { ADRESSE_DU_GLOSSAIRE, adresseDeLaPage, adressesDuSite, indexDesAdresses } from '../src/lib/adresses-db.mjs';
 import { fauteDeLaCouleur } from '../src/lib/palette-css.mjs';
 import { fauteDeLIcone, ICONES } from '../src/lib/icones.mjs';
@@ -123,7 +124,7 @@ import {
 import { contexteDesArmes } from '../src/lib/armes-db.mjs';
 import { liensDesValeursFermees } from '../src/lib/mots-cles-des-valeurs.mjs';
 import { poidsDeBouclier } from '../src/lib/armures-db.mjs';
-import { echellesDesCartes, magiesDesCibles, renvoisAuxDegatsMoyens } from '../src/lib/bestiaire-db.mjs';
+import { attaquesDesCartes, echellesDesCartes, magiesDesCibles, renvoisAuxDegatsMoyens } from '../src/lib/bestiaire-db.mjs';
 import {
   libelleDeFiche, magiesDesDonsVariables, noterLesRetraits, nouveauxRetraitsDeFiches, numerosDesFichesDeJoueur, ordreDesLibelles, retirerDesFiches,
   retirerLesChoixDesDonsChanges,
@@ -275,10 +276,9 @@ export function creerMotCle(ctx, libelle, description = null, { url = null, coul
   return id;
 }
 
-/** Le plus grand id entier que la migration 0113 a donné (son registre) : un mot-clé créé ne le reprend jamais, même supprimé depuis (0 sans registre). */
-let plancherDes0113;
+/** Le plus grand id entier que la migration 0113 a donné (`plancher` de sa référence) : un mot-clé créé ne le reprend jamais, même supprimé depuis (0 sans référence). */
 function plancherDesIdsDeMotsCles() {
-  if (plancherDes0113 === undefined) plancherDes0113 = Math.max(0, ...[...(registreDes0113()?.values() ?? [])]);
+  registreDes0113();
   return plancherDes0113;
 }
 
@@ -2322,19 +2322,29 @@ export function ancienneEcritureDuGel(db) {
   };
 }
 
-/** La correspondance de la migration 0113 (undefined : pas encore lue ; null : registre absent). */
+/** La correspondance de la migration 0113 (undefined : pas encore lue ; null : référence absente), et son plancher (0 sans référence). */
 let correspondanceDeLa0113;
+let plancherDes0113 = 0;
 
 /**
- * La correspondance figée de la migration 0113 (registre data/migrations/0113-mots-cles-id-entier.json, lib/mots-cles-cles.mjs#REGISTRE_DES_IDS_DE_MOTS_CLES) :
- * Map(ancien id texte → id entier), lue une fois ; dans le service livré, le registre est joint dans _serveur/ (serveur/livraison.mjs#FICHIERS_JOINTS),
- * dans le dépôt il est sous data/ à la racine. null s'il est absent. Le rejeu d'un lot d'avant la 0113 y traduit ses mots-clés
- * (ancienneEcritureDesIds) ; un mot-clé créé ne reprend jamais un de ces ids (plancherDesIdsDeMotsCles).
+ * Un fichier de référence (lib/references-des-migrations.mjs#REFERENCES, chemin relatif à la racine du dépôt), lu : dans le service livré, il est joint
+ * dans _serveur/ (serveur/livraison.mjs#FICHIERS_JOINTS) ; dans le dépôt, sous data/references/ à la racine. null s'il est absent.
+ */
+function lireUneReference(chemin) {
+  const fichier = [new URL(`../${chemin}`, import.meta.url), new URL(`../../${chemin}`, import.meta.url)].find((u) => existsSync(u));
+  return fichier ? JSON.parse(readFileSync(fichier, 'utf8')) : null;
+}
+
+/**
+ * La correspondance figée de la migration 0113 (référence data/references/ids-des-mots-cles-0113.json, tirée du registre de la migration :
+ * lib/references-des-migrations.mjs) : Map(ancien id texte → id entier), lue une fois ; null si la référence est absente. Le rejeu d'un lot d'avant la
+ * 0113 y traduit ses mots-clés (ancienneEcritureDesIds) ; un mot-clé créé ne reprend jamais un de ces ids (plancherDesIdsDeMotsCles : `plancher`).
  */
 export function registreDes0113() {
   if (correspondanceDeLa0113 !== undefined) return correspondanceDeLa0113;
-  const fichier = [new URL(`../${REGISTRE_DES_IDS_DE_MOTS_CLES}`, import.meta.url), new URL(`../../${REGISTRE_DES_IDS_DE_MOTS_CLES}`, import.meta.url)].find((u) => existsSync(u));
-  correspondanceDeLa0113 = fichier ? new Map(JSON.parse(readFileSync(fichier, 'utf8')).motsCles.map((m) => [m.ancienId, m.id])) : null;
+  const reference = lireUneReference(REFERENCES.idsDesMotsCles);
+  correspondanceDeLa0113 = reference ? new Map(reference.ids) : null;
+  plancherDes0113 = reference?.plancher ?? 0;
   return correspondanceDeLa0113;
 }
 
@@ -2362,14 +2372,14 @@ export function tableDuRegistreDesLiens(registre) {
 }
 
 /**
- * La table de conversion des liens de la migration 0098 (tableDuRegistreDesLiens du registre data/migrations/0098-liens-en-mots-cles.json,
- * lib/mots-cles-liens.mjs#REGISTRE_DES_LIENS), lue une fois : dans le service livré, le registre est joint dans _serveur/
- * (serveur/livraison.mjs#FICHIERS_JOINTS) ; dans le dépôt, il est sous data/ à la racine. null s'il est absent.
+ * La table de conversion des liens de la migration 0098 (tableDuRegistreDesLiens de la référence data/references/liens-en-mots-cles-0098.json, tirée du
+ * registre de la migration : lib/references-des-migrations.mjs ; mêmes `motsCles`, et ses seuls `remplacements` d'un texte simple), lue une fois
+ * (lireUneReference). null si la référence est absente.
  */
 export function tableDesLiensDeLa0098() {
   if (tableDeLa0098 !== undefined) return tableDeLa0098;
-  const fichier = [new URL(`../${REGISTRE_DES_LIENS}`, import.meta.url), new URL(`../../${REGISTRE_DES_LIENS}`, import.meta.url)].find((u) => existsSync(u));
-  tableDeLa0098 = fichier ? tableDuRegistreDesLiens(JSON.parse(readFileSync(fichier, 'utf8'))) : null;
+  const reference = lireUneReference(REFERENCES.liens);
+  tableDeLa0098 = reference ? tableDuRegistreDesLiens(reference) : null;
   return tableDeLa0098;
 }
 
@@ -3840,6 +3850,8 @@ export function listes(db) {
     objetsDuButin: db.prepare('SELECT id, nom, texte FROM monstre_butin_objet ORDER BY rang').all(),
     renvoisAuxDegatsMoyens: renvoisAuxDegatsMoyens(db),
     echellesDesCartes: echellesDesCartes(db),
+    // les attaques des cartes qui ont des types de dégâts (migration 0130, R299) : la rubrique « Dégâts » redessinée garde les types de la page
+    attaquesDesCartes: attaquesDesCartes(db),
     magiesDesCibles: magiesDesCibles(db),
     // la page des armes (lib/armes-rendu.mjs) : types d'armes (champ « Type », dé, règle du dé, portée), solidité de base des armes
     typesDArmes: contexteDesArmes(db).typesDArmes,

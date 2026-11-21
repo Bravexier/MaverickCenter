@@ -73,8 +73,18 @@
 /* l'état de la production (etat_production) : une alerte si elle n'a pas appliqué sa dernière mise à jour, sinon une ligne discrète */
 .nv-production--alerte { margin: 1rem 0; padding: 0.7rem 1rem; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--danger); }
 .nv-production--alerte ul { margin: 0.3rem 0; }
+.nv-retraits { margin: 1rem 0; padding: 0.7rem 1rem; border-radius: var(--radius); background: var(--surface); border: 2px solid var(--danger); }
+.nv-retraits ul { margin: 0.3rem 0; }
+.nv-retraits .nv-message { margin: 0.2rem 0; }
 .nv-production--discret { margin: 0 0 1rem; font-size: var(--fs-md); color: var(--muted); }
 .nv-production--discret .nv-message { margin: 0; }
+/* la section « Activation » (bascule_2) : lecture seule, l'état dit en mots (allumé, éteint, inconnu), jamais par la couleur seule */
+.nv-activation { margin: 0 0 1rem; padding: 0.7rem 1rem; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--border); }
+.nv-activation h3 { margin: 0 0 0.3rem; }
+.nv-activation__liste { margin: 0.3rem 0; padding-left: 1.2rem; }
+.nv-interrupteur__etat { font-weight: bold; }
+.nv-interrupteur--inconnu .nv-interrupteur__etat { color: var(--muted); }
+.nv-activation__dernier { margin: 0.4rem 0 0; }
 .nv-message { margin: 0.4rem 0; }
 .nv-message--erreur { color: var(--danger); font-weight: bold; }
 .nv-bascule { font-size: var(--fs-lg); }
@@ -139,7 +149,7 @@
    après l'aperçu de l'annulation ; les refusés et les annulés tiennent dans un historique replié. Les couleurs viennent des jetons du thème. */
 .nv-lots { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border); }
 .nv-lots[hidden] { display: none; }
-.nv-lots__titre { margin-top: 0; }
+.nv-lots__corps { padding: 0.3rem 0.9rem 0.6rem; }
 .nv-lots__intro { margin: 0.3rem 0 0.6rem; }
 .nv-lots__sous-titre { margin: 1.2rem 0 0.4rem; }
 .nv-lots__aucun { color: var(--muted); }
@@ -173,6 +183,6 @@
 .nv-lot-ligne__ecarts { margin: 0.2rem 0; color: var(--muted); font-size: var(--fs-md); }
 .nv-lot-colonne { margin: 0.4rem 0; }
 .nv-lot-colonne__nom { margin: 0 0 0.2rem; font-weight: bold; font-size: var(--fs-md); }
-.nv-lot-annulation { margin: 0.6rem 0 0; padding: 0.6rem 0.9rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); }
-.nv-lot-annulation__titre { margin: 0 0 0.3rem; }
+.nv-lot-ligne__motif { margin: 0.3rem 0 0; color: var(--muted); font-size: var(--fs-md); }
+.nv-lot-ligne .nv-dev__actions { margin: 0.4rem 0 0; }
 .nv-lot-archive { margin: 0.2rem 0; }

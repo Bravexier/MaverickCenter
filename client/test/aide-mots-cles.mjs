@@ -4,13 +4,14 @@
 // l'exporteur, triées par clé), dont on construit les règles (db-build, db-derive) : la base vivante, les reconstructions et le rapatriement partent des
 // mêmes lignes. Chaque mot-clé d'essai a une définition (valable que la colonne soit NOT NULL DEFAULT '' ou nullable, CHECK length > 0).
 import { spawnSync } from 'node:child_process';
-import { cpSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { REFERENCES } from '../src/lib/references-des-migrations.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { copieDesRowsDeDepart } from './aide-base-de-depart.mjs';
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
-const ROWS = join(RACINE, 'data', 'rows');
 export const DEFINITION_D_ESSAI = 'Mot-clé d’essai des tests (test/aide-mots-cles.mjs).';
 
 /** Le premier id entier des mots-clés d'essai (migration 0113 : un id entier ; loin après ceux de data/rows, que le site de dev ne rejoint pas). */
@@ -111,12 +112,13 @@ export function ajouterLesMotsClesDEssai(rows) {
 
 /**
  * Des règles (base construite, comme cheminBase de lib/donnees.mjs) tirées d'une copie de data/rows qui a les mots-clés d'essai : { rows, base }.
- * `sansExemples` : sans les pages d'exemple (le site de dev).
+ * Avec MAVERICK_CONTENU, la copie est l'export du contenu fourni (test/aide-base-de-depart.mjs#rowsDeDepart). `sansExemples` : sans les pages
+ * d'exemple (le site de dev).
  */
 export function reglesAvecDesMotsClesDEssai(dossier, { sansExemples = false } = {}) {
   mkdirSync(dossier, { recursive: true });
   const rows = join(dossier, 'rows');
-  cpSync(ROWS, rows, { recursive: true });
+  copieDesRowsDeDepart(rows);
   ajouterLesMotsClesDEssai(rows);
   const base = join(dossier, 'regles.db');
   for (const [script, args] of [['db-build.mjs', ['--out', base, '--rows', rows]], ['db-derive.mjs', [base, ...(sansExemples ? ['--sans-exemples'] : [])]]]) {
@@ -126,15 +128,15 @@ export function reglesAvecDesMotsClesDEssai(dossier, { sansExemples = false } = 
   return { rows, base };
 }
 
-/** Le registre figé de la migration 0113 (ancien id texte → id entier, lib/mots-cles-cles.mjs#REGISTRE_DES_IDS_DE_MOTS_CLES), lu une fois. */
+/** La correspondance figée de la migration 0113 (ancien id texte → id entier), lue une fois dans sa référence (data/references/, lib/references-des-migrations.mjs). */
 let registre0113 = null;
 /**
- * L'id entier, figé, du mot-clé dont l'ancien id texte était `ancienId` (« solidite », « recharge-longue » : registre de la migration 0113) ; undefined
+ * L'id entier, figé, du mot-clé dont l'ancien id texte était `ancienId` (« solidite », « recharge-longue » : correspondance de la migration 0113) ; undefined
  * pour un id que le registre n'a pas. Un test cherche un mot-clé par cet id (figé), jamais par son libellé ni par sa clé, que le site de dev change
  * (décision R232 (2) ; skill tests-conventions).
  */
 export function idDuMotCleNomme(ancienId) {
-  registre0113 ??= new Map(JSON.parse(readFileSync(join(RACINE, 'data', 'migrations', '0113-mots-cles-id-entier.json'), 'utf8')).motsCles.map((m) => [m.ancienId, m.id]));
+  registre0113 ??= new Map(JSON.parse(readFileSync(join(RACINE, REFERENCES.idsDesMotsCles), 'utf8')).ids);
   return registre0113.get(ancienId);
 }
 

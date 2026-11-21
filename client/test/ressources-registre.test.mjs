@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { lireSchema } from '../src/lib/schema-doc.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
+import { valeursDAvant } from '../src/lib/historique-site.mjs';
 import { ENTITES, TABLES } from '../src/lib/edition-modele.mjs';
 import { capacitesDe, defautsDuRegistre, HORS_RESSOURCE, MODULES, OPERATIONS_DU_LOT, RESSOURCES, TABLES_SANS_ECRITURE_DIRECTE, tablesDe, tablesModifiables } from '../src/lib/ressources.mjs';
 import { outilsDesMotsCles } from '../serveur/edition-mots-cles.mjs';
@@ -187,10 +188,17 @@ test('registre : les descriptions citent la base telle qu’écrite (noms, déci
   // les descriptions sont des textes du code, écrits d'après l'import : leurs noms se comparent à la base d'import (le site de dev peut renommer un
   // emplacement ou un sort dans la base courante ; test/aide-base-d-import.mjs)
   const dImport = baseDImport();
-  // les emplacements d'armure, chacun tel qu'écrit (« Jambe Droit », coquille de la source comprise)
-  const emplacements = dImport.prepare('SELECT nom FROM armure_emplacement ORDER BY ordre').all().map((x) => x.nom);
+  // les emplacements d'armure, tels qu'écrits par la source : chacun cité sous son nom d'import, son nom courant ou un nom qu'il a porté avant (un lot
+  // déposé de nature « source » fait partie de l'import, R275, et réétiqueté « decision » il en sort ; data/rows peut ne pas encore porter ce lot) ;
+  // jamais un nom figé ici
+  const emplacements = dImport.prepare('SELECT id, nom FROM armure_emplacement ORDER BY ordre').all().map((x) => ({ ...x }));
   assert.ok(emplacements.length >= 8);
-  for (const nom of emplacements) assert.ok(r('emplacements-d-armure').description.includes(`« ${nom} »`), nom);
+  const courant = new Map(db.prepare('SELECT id, nom FROM armure_emplacement').all().map((x) => [x.id, x.nom]));
+  const avant = valeursDAvant(db, 'armure_emplacement', 'nom');
+  for (const { id, nom } of emplacements) {
+    const noms = [nom, courant.get(id), ...(avant.get(JSON.stringify({ id })) ?? [])].filter(Boolean);
+    assert.ok(noms.some((n) => r('emplacements-d-armure').description.includes(`« ${n} »`)), noms.join(' / '));
+  }
   // R236 (1) : la description des spécialisations dit leur nombre, celui de la base d'import (28 par la 0117 ; ni création ni suppression sur le site)
   const nSpecialisations = dImport.prepare('SELECT COUNT(*) AS n FROM magie_specialisation').get().n;
   assert.ok(nSpecialisations > 0);

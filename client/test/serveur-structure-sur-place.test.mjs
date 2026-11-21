@@ -18,13 +18,16 @@ import { test } from 'node:test';
 import { DOSSIER_LIVRE, livrerServeur } from '../serveur/livraison.mjs';
 import { empreinteFichier } from '../serveur/base-vivante.mjs';
 import { sha256 } from '../serveur/partage.mjs';
+import { REFERENCES } from '../src/lib/references-des-migrations.mjs';
+import { mixtesSorties } from '../src/lib/sortie-du-contenu.mjs';
 import {
   ErreurStructure, appliquerSurPlace, bilanDesTables, comparerLesSchemas, essayerEnArrierePlan, essayerSurUneCopie, lireLesMigrations, migrationInterdite,
-  migrationsAAppliquer, normaliserLeSql, purgerLesEssaisDeStructure, sauvegarderAvant, versionDuSite,
+  migrationsAAppliquer, normaliserLeSql, purgerLesEssaisDeStructure, sauvegarderAvant, versionDuSchemaSql, versionDuSite, versionLivree,
 } from '../serveur/structure-sur-place.mjs';
-import { NUMERO, RACINE, baseRemplie, etatDeLaBase, etatDuFichier, nouveauChemin, nouveauDossier, schemaDuDepot, tablesDeDonnees } from './aide-structure-sur-place.mjs';
+import { LIVRAISON, NUMERO, RACINE, baseDesRegles, baseRemplie, etatDeLaBase, etatDuFichier, nouveauChemin, nouveauDossier, schemaDuDepot, tablesDeDonnees } from './aide-structure-sur-place.mjs';
 
-const livre = lireLesMigrations();
+/** La livraison des tests (test/aide-structure-sur-place.mjs#LIVRAISON : celle du dépôt, ou au-dessus du plancher quand les migrations mixtes sont sorties). */
+const livre = lireLesMigrations(LIVRAISON);
 /** La version de la base du dépôt (celle de la dernière migration livrée) : les migrations d'essai portent les numéros qui suivent. */
 const V = livre.migrations.at(-1).numero;
 const N = (numero) => String(numero).padStart(4, '0');
@@ -45,7 +48,8 @@ const fichiers = (dossier) => (existsSync(dossier) ? readdirSync(dossier) : []);
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 // Les migrations livrées
 // ---------------------------------------------------------------------------------------------------------------------------------------------
-test('les migrations livrées : tout data/migrations/*.sql, numérotées, sha256 des octets du .sql, schema.sql à la version de la dernière ; aucune ne porte BEGIN, COMMIT, ROLLBACK ni PRAGMA', () => {
+test('les migrations livrées : tout data/migrations/*.sql, numérotées, sha256 des octets du .sql, schema.sql à la version de la dernière ou au-dessus (le plancher) ; aucune ne porte BEGIN, COMMIT, ROLLBACK ni PRAGMA', () => {
+  const livre = lireLesMigrations(); // celle du dépôt elle-même
   assert.ok(livre, 'le dossier des migrations est lu depuis le dépôt');
   const dossier = join(RACINE, 'data', 'migrations');
   const sql = readdirSync(dossier).filter((f) => /^\d{4}-.*\.sql$/.test(f)).sort();
@@ -59,14 +63,50 @@ test('les migrations livrées : tout data/migrations/*.sql, numérotées, sha256
   }
   // les numéros se suivent à partir de la dernière migration que le schema.sql porte
   const version = Number(/^PRAGMA user_version\s*=\s*(\d+)/m.exec(livre.schema)[1]);
-  assert.equal(livre.migrations.at(-1).numero, version, 'schema.sql est à la version de la dernière migration');
-  assert.ok(livre.migrations.some((m) => m.numero === NUMERO));
+  assert.equal(versionDuSchemaSql(livre.schema), version);
+  assert.equal(versionLivree(livre), version, 'la version livrée est celle du schema.sql');
+  if (mixtesSorties()) assert.ok(livre.migrations.at(-1).numero <= version, 'les migrations sorties : schema.sql est le plancher, aucune migration en dessous ne le dépasse');
+  else assert.equal(livre.migrations.at(-1).numero, version, 'schema.sql est à la version de la dernière migration');
+  assert.ok(lireLesMigrations(LIVRAISON).migrations.some((m) => m.numero === NUMERO));
   // sans le texte : mêmes empreintes, aucune lecture du SQL en mémoire
   const sans = lireLesMigrations({ avecSql: false });
   assert.deepEqual(sans.migrations.map((m) => [m.numero, m.empreinte]), livre.migrations.map((m) => [m.numero, m.empreinte]));
   assert.ok(sans.migrations.every((m) => !('sql' in m)));
   assert.equal(lireLesMigrations({ migrations: null }), null, 'aucun dossier : null, sans erreur');
   assert.equal(lireLesMigrations({ migrations: join(dossier, 'absent') }), null);
+});
+
+test('plancher : la version livrée est la plus haute de la dernière migration et du schema.sql ; une base au plancher, au-dessus de la dernière migration livrée, est à jour, jamais « en avance » ; une base en dessous, sans migration livrée pour y monter, est refusée (étape plancher)', (t) => {
+  assert.equal(versionDuSchemaSql('-- en-tête\nPRAGMA user_version = 130;   -- version du schéma'), 130);
+  assert.equal(versionDuSchemaSql('CREATE TABLE a (x TEXT);'), null);
+  assert.equal(versionLivree({ migrations: [{ numero: 129 }], schema: 'PRAGMA user_version = 130;' }), 130, 'les migrations du dessus sorties : le schema.sql');
+  assert.equal(versionLivree({ migrations: [{ numero: 131 }], schema: 'PRAGMA user_version = 131;' }), 131);
+  assert.equal(versionLivree({ migrations: [], schema: null }), null);
+  // une livraison dont la dernière migration est sous la version du schema.sql (les migrations du dessus retirées), et une base à cette version
+  const d = nouveauDossier('plancher', t);
+  for (const m of livre.migrations.filter((x) => x.numero < V)) writeFileSync(join(d, m.fichier), m.sql);
+  const schema = join(d, 'schema.sql');
+  writeFileSync(schema, schemaDuDepot());
+  const bilan = essayerSurUneCopie({ source: baseDesRegles(), dossier: nouveauDossier('plancher-essais', t), migrations: d, schema });
+  assert.equal(bilan.verdict, 'a_jour');
+  assert.deepEqual([bilan.versions.livree, bilan.en_avance], [V, false]);
+  // une base SOUS le plancher, sans migration livrée pour y monter : refusée (elle se refait depuis le schéma), jamais « à jour » ; la base n'est pas écrite
+  const sous = nouveauChemin('sous-le-plancher');
+  const db = new DatabaseSync(baseDesRegles(), { readOnly: true });
+  try {
+    db.prepare('VACUUM INTO ?').run(sous);
+  } finally {
+    db.close();
+  }
+  const ecrite = new DatabaseSync(sous);
+  ecrite.exec(`PRAGMA user_version = ${V - 1}`);
+  ecrite.close();
+  const octets = etatDuFichier(sous);
+  const refus = essayerSurUneCopie({ source: sous, dossier: nouveauDossier('plancher-essais-sous', t), migrations: d, schema });
+  assert.equal(refus.verdict, 'refuse');
+  assert.deepEqual([refus.versions.avant, refus.versions.apres, refus.versions.livree], [V - 1, V - 1, V]);
+  assert.deepEqual([refus.refus.etape, refus.refus.migration, refus.migrations], ['plancher', V, []]);
+  assert.deepEqual(etatDuFichier(sous), octets, 'la base elle-même est intacte');
 });
 
 test('deux fichiers du même numéro, un nom qui n’est pas NNNN-<nom>.sql : l’un est une erreur, l’autre est ignoré', (t) => {
@@ -176,7 +216,7 @@ test('une base 128 remplie : les migrations livrées (la 0129) appliquées sur p
     // la sauvegarde est celle d'AVANT : version 128, les fiches, pas la table
     assert.equal(fichiers(sauvegardes).length, 1);
     assert.equal(r.sauvegarde, join(sauvegardes, fichiers(sauvegardes)[0]));
-    assert.match(fichiers(sauvegardes)[0], /^structure-2026-11-12T10-20-30-456Z-v128\.db$/);
+    assert.match(fichiers(sauvegardes)[0], new RegExp(`^structure-2026-11-12T10-20-30-456Z-v${NUMERO - 1}\\.db$`));
     assert.deepEqual(etatDuFichier(r.sauvegarde), avant);
   } finally {
     db.close();
@@ -358,7 +398,7 @@ test('refus : le schema.sql attendu est absent, d’une autre version, ou ne se 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 // L'essai sur une copie
 // ---------------------------------------------------------------------------------------------------------------------------------------------
-test('essai sur une copie, dans un fil à part : vraie base inchangée (octets), copies effacées, bilan exact de la 0129', async (t) => {
+test('essai sur une copie, dans un fil à part : vraie base inchangée (octets), copies effacées, bilan exact des migrations livrées', async (t) => {
   const { chemin } = baseRemplie({ anterieure: true });
   const dossier = nouveauDossier('essais', t);
   const avant = empreinteFichier(chemin);
@@ -366,7 +406,7 @@ test('essai sur une copie, dans un fil à part : vraie base inchangée (octets),
 
   const livrees = livre.migrations.filter((m) => m.numero >= NUMERO);
 
-  const bilan = await essayerEnArrierePlan({ source: chemin, dossier, version: '1.2.3', instant: '2026-11-12T10:20:30Z' });
+  const bilan = await essayerEnArrierePlan({ source: chemin, dossier, ...LIVRAISON, version: '1.2.3', instant: '2026-11-12T10:20:30Z' });
 
   assert.equal(empreinteFichier(chemin), avant, 'le fichier de la vraie base a les mêmes octets');
   assert.deepEqual(etatDuFichier(chemin), etat);
@@ -376,7 +416,19 @@ test('essai sur une copie, dans un fil à part : vraie base inchangée (octets),
   assert.deepEqual(bilan.versions, { avant: NUMERO - 1, apres: V });
   assert.deepEqual(bilan.migrations, livrees.map(({ numero, fichier, empreinte }) => ({ numero, fichier, empreinte })));
   // (ce bilan est celui de la 0129 : une migration livrée plus tard qui change des lignes ou des tables ajoute son écart ici)
-  assert.deepEqual(bilan.tables.creees, [{ table: 'migration_recue', lignes: livrees.length }], 'la table créée, avec la ligne que l’application noterait par migration');
+  // les tables créées : `migration_recue` avec la ligne que l'application noterait par migration, et celles que les migrations suivantes créent (vides : une migration est de structure)
+  const dAvant = lire(chemin);
+  const courantes = lire(baseDesRegles());
+  let creees;
+  try {
+    const avantLes = new Set(tablesDeDonnees(dAvant));
+    creees = tablesDeDonnees(courantes).filter((n) => !avantLes.has(n)).sort().map((table) => ({ table, lignes: table === 'migration_recue' ? livrees.length : 0 }));
+  } finally {
+    dAvant.close();
+    courantes.close();
+  }
+  assert.ok(creees.some((c) => c.table === 'migration_recue'));
+  assert.deepEqual(bilan.tables.creees, creees, 'les tables créées, avec la ligne que l’application noterait par migration');
   assert.deepEqual(bilan.tables.retirees, []);
   assert.deepEqual(bilan.tables.renommees, []);
   assert.deepEqual(bilan.tables.modifiees, {}, 'aucune ligne de contenu ne bouge');
@@ -398,7 +450,7 @@ test('essai sur une copie, dans un fil à part : vraie base inchangée (octets),
 test('essai sur une copie, de façon synchrone : le même bilan, et la copie effacée même quand l’essai échoue', (t) => {
   const { chemin } = baseRemplie({ anterieure: true });
   const dossier = nouveauDossier('essais', t);
-  const bilan = essayerSurUneCopie({ source: chemin, dossier });
+  const bilan = essayerSurUneCopie({ source: chemin, dossier, ...LIVRAISON });
   assert.equal(bilan.verdict, 'accepte');
   assert.deepEqual(fichiers(dossier), []);
   // une source qui n'est pas une base : l'essai échoue, rien ne reste
@@ -444,7 +496,7 @@ test('essai : base déjà à jour, migrations non livrées, schema.sql non livr�
   const db = ouvrir(chemin);
   appliquerSurPlace(db, { ...livre, sauvegarde: false });
   db.close();
-  const aJour = essayerSurUneCopie({ source: chemin, dossier });
+  const aJour = essayerSurUneCopie({ source: chemin, dossier, ...LIVRAISON });
   assert.equal(aJour.verdict, 'a_jour');
   assert.deepEqual(aJour.versions, { avant: V, apres: V, livree: V });
   assert.equal(aJour.en_avance, false);
@@ -554,6 +606,7 @@ test('livraison : chaque migration .sql et schema.sql dans _serveur/data/, lus d
   const dist = nouveauDossier('dist', t);
   const info = livrerServeur(dist, { version: '1.2.3' });
   const livree = join(dist, DOSSIER_LIVRE);
+  const livre = lireLesMigrations(); // celle du dépôt, que la livraison copie
   for (const m of livre.migrations) {
     assert.ok(info.fichiers.includes(`data/migrations/${m.fichier}`), m.fichier);
     assert.equal(sha256(readFileSync(join(livree, 'data', 'migrations', m.fichier))), m.empreinte, `${m.fichier} : octets identiques`);
@@ -567,7 +620,7 @@ test('livraison : chaque migration .sql et schema.sql dans _serveur/data/, lus d
   assert.equal(lues.dossier, join(livree, 'data', 'migrations'));
   assert.deepEqual(lues.migrations.map((m) => [m.numero, m.empreinte]), livre.migrations.map((m) => [m.numero, m.empreinte]));
   assert.equal(lues.schema, livre.schema);
-  // le dossier livré porte aussi les registres déjà joints, que ce module ignore
-  assert.ok(existsSync(join(livree, 'data', 'migrations', '0098-liens-en-mots-cles.json')));
+  // le dossier livré porte aussi les références jointes (data/references/, lib/references-des-migrations.mjs), que ce module ignore
+  for (const f of [REFERENCES.liens, REFERENCES.idsDesMotsCles]) assert.ok(existsSync(join(livree, f)), f);
   assert.ok(!lues.migrations.some((m) => m.fichier.endsWith('.json')));
 });

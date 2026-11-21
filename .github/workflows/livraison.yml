@@ -9,6 +9,9 @@ name: Version et livraison
 # en « release » — serveur normal (VX.Y, l'étiquette de version de master, puis VX.Y-hotfix.N) depuis master, test (VX.Y.Z, l'étiquette de version
 # de dev) depuis dev. Le job « Site » (le site unique sur la branche « site », que suit le paquet du NAS avec deploy/update-site.sh) ne tourne
 # plus : livrableDe ne le choisit pour aucune des versions de dev et de master.
+# Bascule 2 (lot 11, PR 4 et PR 5b ; tools/flux-git/bascule-2.json lu dans origin/dev, tools/flux-git/bascule-2.mjs) : ÉTEINTE, rien ne change, en production comme en test. Allumée, aucun
+# installateur ne porte plus de pages (deploy/installateur/fabriquer.mjs --kit-seul) : celui de TEST le service et le kit (l'atelier du site de dev fabrique les pages), celui de PRODUCTION
+# le kit seul (activer.sh, lancé par l'installateur, fabrique les pages et le service depuis le paquet ; l'installateur refuse une instance sans activation-par-paquet). Le job « Site » est sauté.
 # Enfin (job « Supprimer la branche fusionnée »), la feature/<nom> ou la hotfix/<nom> fusionnée est supprimée sur GitHub, jamais dev.
 # Lancement manuel (Actions → Version et livraison → Run workflow) : republie dev ou master sans changer sa version.
 on:
@@ -37,6 +40,7 @@ jobs:
       installateurs: ${{ steps.bot.outputs.installateurs }}
       site: ${{ steps.bot.outputs.site }}
       a_supprimer: ${{ steps.bot.outputs.a_supprimer }}
+      bascule_2: ${{ steps.bascule.outputs.actif }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -72,6 +76,14 @@ jobs:
               --texte-fichier "$RUNNER_TEMP/titre.txt" --texte-fichier "$RUNNER_TEMP/corps.txt" --pousser
           fi
 
+      # L'interrupteur de la bascule 2, lu dans origin/dev (jamais dans la branche livrée) ; illisible ou introuvable : « false » et un avertissement, la publication ne se bloque pas.
+      - name: Lire l'interrupteur de la bascule 2
+        id: bascule
+        continue-on-error: true
+        run: |
+          git fetch --no-tags origin dev || true
+          node tools/flux-git/bascule-2.mjs lire --ref origin/dev
+
   nettoyage:
     name: Supprimer la branche fusionnée
     needs: version
@@ -95,7 +107,8 @@ jobs:
     name: Site (inactif)
     needs: version
     # always() : publier ce que le bot a préparé même s'il signale ensuite un problème (sorties vides sinon : rien ne part).
-    if: always() && needs.version.outputs.site != ''
+    # Bascule 2 allumée : la branche « site » n'est plus publiée (un installateur de test ne porte plus de pages).
+    if: always() && needs.version.outputs.site != '' && needs.version.outputs.bascule_2 != 'true'
     runs-on: ubuntu-latest
     # Une publication à la fois, la plus récente en dernier (une publication en attente est remplacée par une plus récente).
     concurrency:
@@ -160,6 +173,7 @@ jobs:
       VERSION: ${{ matrix.livraison.version }}
       SHA: ${{ matrix.livraison.sha }}
       TYPE: ${{ matrix.livraison.type }}
+      BASCULE_2: ${{ needs.version.outputs.bascule_2 }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -181,8 +195,20 @@ jobs:
           npm ci
           npm test
 
+      # Bascule 2 : ce que ce passage fait (tools/flux-git/bascule-2.mjs#decisionDeLaLivraison). Éteinte : kit_seul=false, construire_le_site=true (la livraison d'avant).
+      - name: Décider (interrupteur de la bascule 2)
+        id: decision
+        # Un commit d'avant la bascule 2 (un correctif de master, une republication ancienne) n'a pas ce fichier : la livraison est celle d'avant.
+        run: |
+          if [ -f tools/flux-git/bascule-2.mjs ]; then
+            node tools/flux-git/bascule-2.mjs decider --mode "$MODE" --actif "$BASCULE_2"
+          else
+            printf 'kit_seul=false\nconstruire_le_site=true\n' >> "$GITHUB_OUTPUT"
+          fi
+
       # « Exporter » de la fiche : l'identifiant client OAuth de Google (variable du dépôt ; vide, le bouton reste grisé)
       - name: Construire le site (sans les pages d'exemple ; bandeau TEST en mode test)
+        if: steps.decision.outputs.construire_le_site == 'true'
         working-directory: client
         env:
           SITE_GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID }}
@@ -190,11 +216,16 @@ jobs:
 
       - name: Fabriquer l'installateur
         id: fabrication
+        env:
+          KIT_SEUL: ${{ steps.decision.outputs.kit_seul }}
         run: |
           # Serveur de test seulement : le kit de l'atelier (le code et ses node_modules, sans aucun contenu : deploy/installateur/kit.mjs). Les node_modules de « npm ci » sont déjà là.
           kit=""
-          if [ "$MODE" = test ]; then kit="--kit ."; fi
-          fichier=$(node deploy/installateur/fabriquer.mjs --mode "$MODE" --site client/dist --tag "$TAG" --version "$VERSION" --sha "$SHA" --sortie "$RUNNER_TEMP/installateurs" $kit)
+          if [ "$MODE" = test ] || [ "$KIT_SEUL" = true ]; then kit="--kit ."; fi
+          # Bascule 2 allumée : pas de pages, le kit seul (avec le service en test) ; sinon le site construit ci-dessus.
+          site="--site client/dist"
+          if [ "$KIT_SEUL" = true ]; then kit="$kit --kit-seul"; site=""; fi
+          fichier=$(node deploy/installateur/fabriquer.mjs --mode "$MODE" $site --tag "$TAG" --version "$VERSION" --sha "$SHA" --sortie "$RUNNER_TEMP/installateurs" $kit)
           sh "$fichier" --verifier
           echo "fichier=$fichier" >> "$GITHUB_OUTPUT"
 
@@ -202,6 +233,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           FICHIER: ${{ steps.fabrication.outputs.fichier }}
+          KIT_SEUL: ${{ steps.decision.outputs.kit_seul }}
         run: |
           nom=$(basename "$FICHIER")
           if [ "$MODE" = prod ]; then
@@ -211,6 +243,9 @@ jobs:
             if [ "$sommet" = "$SHA" ]; then latest=true; else latest=false; fi
             titre="Serveur normal $TAG"; dossier=/srv/maverick-center; options="--latest=$latest"
             usage="Installe ou met à jour le site de production. La base vivante de l'instance (dossier db/) n'est jamais touchée."
+            if [ "$KIT_SEUL" = true ]; then
+              usage="Kit seul de production (bascule 2) : sans pages, il pose le kit dans activation/kit/ puis lance activer.sh, qui active le paquet de la mise à jour. Refusé sans le fichier activation-par-paquet de l'instance (sudo touch /srv/maverick-center/activation-par-paquet). La base vivante de l'instance (dossier db/) n'est jamais touchée."
+            fi
           else
             titre="Serveur de test $TAG"; dossier=/srv/maverick-center-test; options="--prerelease --latest=false"
             usage="Installe ou met à jour le serveur de test. Sa base vivante (dossier db/) n'est jamais touchée ; la base de la production n'y est copiée que sur demande (option --copier-base-prod, dans un db/ vide)."

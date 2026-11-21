@@ -12,24 +12,33 @@ import { ouvrirBase, trouverRacine } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { TABLES_DES_NOTES } from '../src/lib/notes-de-version.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { mixtesSorties } from '../src/lib/sortie-du-contenu.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
 import { textesReecrits } from './aide-textes-reecrits.mjs';
 import { ecrituresDuTexte } from './aide-ecritures-du-lien.mjs';
 import { ouLitLa0124 } from './aide-migration-0124.mjs';
+import { testRetireAvecLeContenu } from './aide-sortie-du-contenu.mjs';
 
 const racine = trouverRacine();
 const dossier = join(racine, 'data', 'migrations');
-const registre = JSON.parse(readFileSync(join(dossier, '0005-orthographe-base.json'), 'utf8'));
-const sql = readFileSync(join(dossier, '0005-orthographe-base.sql'), 'utf8');
-const corrections = registre.corrections;
+// Le registre et le SQL de la 0005 sortent du dépôt le jour J du lot 12 (R296), et les tests qui les éprouvent avec eux
+// (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LE_CONTENU) : lus à la demande ; les tests de la base (fautes revenues, identifiants…) restent.
+const testDeLaMigration = testRetireAvecLeContenu(import.meta.url);
+let lue;
+const laMigration = () => (lue ??= (() => {
+  const registre = JSON.parse(readFileSync(join(dossier, '0005-orthographe-base.json'), 'utf8'));
+  return { registre, sql: readFileSync(join(dossier, '0005-orthographe-base.sql'), 'utf8'), corrections: registre.corrections };
+})());
 const db = ouvrirBase({ sansExemples: false });
 const historique = historiqueSite(db);
 // 0006 (noms à trancher) a corrigé ensuite des noms dans certaines de ces cellules : on y lit le texte de 0005 en défaisant ces renommages
-const noms0006 = JSON.parse(readFileSync(join(dossier, '0006-orthographe-noms.json'), 'utf8')).corrections;
+// (lus par les seuls tests du registre de la 0005, retirés avec le contenu ; la 0006, la 0111 et la 0121 sortent avec les migrations mixtes : sorties,
+// ils ne sont pas lus)
+const noms0006 = mixtesSorties() ? null : JSON.parse(readFileSync(join(dossier, '0006-orthographe-noms.json'), 'utf8')).corrections;
 // Une migration postérieure qui réécrit par fragments une phrase que 0005 a corrigée (registre `textes` de la 0111, R224 (1) : les copies corrigées là où
 // elles contredisent une décision ; de la 0121, R254 (3) : la fin « et est imposée quand… » de l'Archimage retirée) : la correction est admise retirée
 // quand le fragment réécrit la contenait et que la réécriture est en place
-const REECRITURES_POSTERIEURES = textesReecrits('0111-relecture-des-regles-contre-les-decisions', '0121-maj-decembre-suites');
+const REECRITURES_POSTERIEURES = mixtesSorties() ? null : textesReecrits('0111-relecture-des-regles-contre-les-decisions', '0121-maj-decembre-suites');
 const reecriteApres = (c, v) => REECRITURES_POSTERIEURES.some((t) => t.table === c.table && t.col === c.col && JSON.stringify(t.cle) === JSON.stringify(c.cle)
   && t.avant.includes(c.apres) && !t.apres.includes(c.apres) && v.includes(t.apres));
 const avant0006 = (c, texte) => noms0006.filter((n) => n.table === c.table && n.col === c.col && JSON.stringify(n.cle) === JSON.stringify(c.cle))
@@ -57,7 +66,8 @@ function valeur(c) {
   return c.col.startsWith('donnees.') ? JSON.parse(v)[c.col.slice(8)] : v;
 }
 
-test('registre : corrections décrites, de nature connue, qui changent bien le texte, hors des tables de trace et de clés', () => {
+testDeLaMigration('registre : corrections décrites, de nature connue, qui changent bien le texte, hors des tables de trace et de clés', () => {
+  const { registre, corrections } = laMigration();
   assert.equal(registre.migration, '0005-orthographe-base');
   assert.ok(corrections.length > 4000, `entrées du registre : ${corrections.length}`);
   for (const c of corrections) {
@@ -70,7 +80,8 @@ test('registre : corrections décrites, de nature connue, qui changent bien le t
   }
 });
 
-test('registre : aucune correction ne touche un chiffre, un signe, un dé, n’ajoute ni ne retire de mot (au plus une soudure ou une séparation : « plus part » -> « plupart », « quelque » -> « quel que »)', () => {
+testDeLaMigration('registre : aucune correction ne touche un chiffre, un signe, un dé, n’ajoute ni ne retire de mot (au plus une soudure ou une séparation : « plus part » -> « plupart », « quelque » -> « quel que »)', () => {
+  const { corrections } = laMigration();
   for (const c of corrections) {
     const ecart = `${c.table} ${c.col} : « ${c.avant} » -> « ${c.apres} »`;
     assert.equal(regle(c.apres), regle(c.avant), `${ecart} change un chiffre, un signe ou un dé`);
@@ -82,7 +93,8 @@ test('registre : aucune correction ne touche un chiffre, un signe, un dé, n’a
   }
 });
 
-test('registre : ni adresse ni lien [[…]] touchés ; un nom ne change que d’accents, de casse ou de traits d’union (sa clé reste la même)', () => {
+testDeLaMigration('registre : ni adresse ni lien [[…]] touchés ; un nom ne change que d’accents, de casse ou de traits d’union (sa clé reste la même)', () => {
+  const { corrections } = laMigration();
   for (const c of corrections) {
     assert.ok(!/https?:|\[\[|\]\]/.test(c.avant + c.apres), `${c.table} ${c.col} : « ${c.avant} » touche une adresse ou un lien`);
     if (NOMS.includes(c.col)) assert.equal(normalize(c.apres), normalize(c.avant), `${c.table} ${JSON.stringify(c.cle)} : le nom « ${c.avant} » changerait de clé`);
@@ -187,7 +199,8 @@ const DOUBLONS_R184 = [{ table: 'page', cle: { id: 'guide/fiche-tableau-resistan
 const doublonR184 = (c) => DOUBLONS_R184.find((r) => r.table === c.table && r.col === c.col && JSON.stringify(r.cle) === JSON.stringify(c.cle));
 const dansLOrdre = (mots, phrase) => { let i = 0; for (const m of phrase.split(' ')) if (m === mots[i]) i++; return i === mots.length; };
 
-test('base : chaque correction est faite (le texte corrigé est dans sa cellule, aux noms corrigés par 0006 près)', () => {
+testDeLaMigration('base : chaque correction est faite (le texte corrigé est dans sa cellule, aux noms corrigés par 0006 près)', () => {
+  const { corrections } = laMigration();
   for (const r of SUPPRESSIONS) assert.ok(corrections.some((c) => supprimee(c) === r), `${r.table} : une correction du registre sur une ligne supprimée`);
   for (const r of VIDEES) assert.ok(corrections.some((c) => videe(c) === r), `${r.table} ${r.col} : une correction du registre`);
   for (const r of RETIREES) assert.ok(corrections.some((c) => retiree(c) === r), `${r.apres ?? r.cle.id} : une correction du registre`);
@@ -250,7 +263,8 @@ test('base : chaque correction est faite (le texte corrigé est dans sa cellule,
   }
 });
 
-test('migration SQL : une ligne de commentaire par entrée du registre, et seule la version du schéma change (aucune table créée ni supprimée)', () => {
+testDeLaMigration('migration SQL : une ligne de commentaire par entrée du registre, et seule la version du schéma change (aucune table créée ni supprimée)', () => {
+  const { sql, corrections } = laMigration();
   const lignes = sql.split('\n').filter((l) => /^-- [a-z_]+ .+ \[[a-zé]+\] : « /.test(l));
   assert.equal(lignes.length, corrections.length, 'une ligne de commentaire par entrée du registre');
   assert.doesNotMatch(sql, /^\s*(CREATE|DROP|ALTER)\b/im, 'migration de données : pas de changement de structure');

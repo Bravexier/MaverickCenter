@@ -6,18 +6,20 @@
 //   node --test test/deploy-atelier.test.mjs
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
-import { chmodSync, copyFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, symlinkSync, writeFileSync } from 'node:fs';
+import { accessSync, chmodSync, constants, copyFileSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, symlinkSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import YAML from 'yaml';
 import { fabriquer } from '../../deploy/installateur/fabriquer.mjs';
+import { verifierLaSortie } from '../serveur/fabrication-depuis-contenu.mjs';
 import { UA_SONDE } from '../serveur/metriques.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const have = (cmd, arg = '--version') => spawnSync(cmd, [arg], { stdio: 'ignore' }).status === 0;
 const skip = !(have('flock') && have('dd') && have('tar') && have('gzip') && have('df')) && 'flock, dd, df, tar ou gzip indisponible';
 const SOURCES = fileURLToPath(new URL('../../deploy/installateur/atelier/', import.meta.url));
+const SCRIPT_DE_POSE = fileURLToPath(new URL('../scripts/poser-un-site.mjs', import.meta.url));
 const IMAGE = 'node:22-bookworm-slim';
 const racine = dossierTemporaire('deploy-atelier');
 let n = 0;
@@ -35,6 +37,20 @@ case "$cmd" in
   image) if [ "\${FAKE_IMAGE_ABSENTE:-0}" = 1 ] && [ ! -f "$FAKE_DIR/image-tiree" ]; then exit 1; fi; exit 0 ;;
   pull) if [ "\${FAKE_PULL_ECHEC:-0}" = 1 ]; then exit 1; fi; touch "$FAKE_DIR/image-tiree"; exit 0 ;;
   run)
+    # le second conteneur (la pose du site servi) : le VRAI script du kit tourne, sur les dossiers que les montages désigneraient ; son code de sortie est celui du « conteneur »
+    case "$*" in *poser-un-site.mjs*)
+      [ "\${FAKE_POSE_ECHEC:-0}" != 1 ] || exit 125
+      sortie=''; site=''; pose=''; kit=''; pct=''; prev=''
+      for a in "$@"; do
+        case "$a" in *:/sortie:ro) sortie=\${a%%:*} ;; *:/site) site=\${a%%:*} ;; *:/pose) pose=\${a%%:*} ;; *:/kit:ro) kit=\${a%%:*} ;; esac
+        [ "$prev" != --minimum-pct ] || pct=$a
+        prev=$a
+      done
+      cid=fakepose$$
+      node "$kit/client/scripts/poser-un-site.mjs" --source "$sortie/site" --cible "$site" --resume "$pose/pose.json" --minimum-pct "$pct" > "$FAKE_DIR/pose-sortie.log" 2>&1
+      echo $? > "$FAKE_DIR/code-$cid"
+      echo "$cid"; exit 0 ;;
+    esac
     if [ "\${FAKE_RUN_ECHEC:-0}" = 1 ]; then exit 125; fi
     prev=''; resultats=''; contenu=''
     for a in "$@"; do
@@ -55,6 +71,7 @@ case "$cmd" in
       [ -z "\${FAKE_FIFO:-}" ] || { rm -f "$resultats/fabrication.json"; mkfifo "$resultats/fabrication.json"; }
       [ -z "\${FAKE_PERIPHERIQUE:-}" ] || { rm -f "$resultats/comparaison.json"; mknod "$resultats/comparaison.json" c 1 5 2>/dev/null || ln -sf /dev/zero "$resultats/comparaison.json"; }
       sortie=$(dirname "$resultats")/sortie; mkdir -p "$sortie/site"; echo "site témoin" > "$sortie/site/index.html"
+      [ -z "\${FAKE_SITE_FABRIQUE:-}" ] || cp -a "$FAKE_SITE_FABRIQUE/." "$sortie/site/"
       mkdir -p "$(dirname "$resultats")/travail/kit"; echo copie > "$(dirname "$resultats")/travail/kit/x"
     fi
     parent=system.slice
@@ -70,9 +87,14 @@ case "$cmd" in
         k=$(cat "$FAKE_DIR/inspections" 2>/dev/null || echo 0); echo $((k + 1)) > "$FAKE_DIR/inspections"
         if [ "\${FAKE_JAMAIS_FINI:-0}" = 1 ] && [ ! -f "$FAKE_DIR/tue" ]; then echo true; elif [ "$k" -lt "\${FAKE_ITERATIONS:-1}" ]; then echo true; else echo false; fi ;;
       *OOMKilled*) echo "\${FAKE_OOM:-false}" ;;
-      *ExitCode*) echo "\${FAKE_CODE:-0}" ;;
+      *ExitCode*) for dernier in "$@"; do :; done; if [ -f "$FAKE_DIR/code-$dernier" ]; then cat "$FAKE_DIR/code-$dernier"; else echo "\${FAKE_CODE:-0}"; fi ;;
     esac; exit 0 ;;
   kill) touch "$FAKE_DIR/tue"; exit 0 ;;
+  logs)
+    # le journal du conteneur : stdout (FAKE_LOGS) puis stderr (FAKE_LOGS_ERR) ; rien sans ces variables
+    [ -z "\${FAKE_LOGS:-}" ] || cat "$FAKE_LOGS"
+    [ -z "\${FAKE_LOGS_ERR:-}" ] || cat "$FAKE_LOGS_ERR" >&2
+    touch "$FAKE_DIR/logs-fait"; [ ! -f "$FAKE_DIR/rm-fait" ] || touch "$FAKE_DIR/logs-trop-tard"; exit 0 ;;
   rm)
     # le conteneur doit être supprimé AVANT que root ne copie quoi que ce soit de ce qu'il a laissé : à cet instant, le dossier du rapport n'existe pas encore
     if [ -n "\${FAKE_RAPPORTS:-}" ] && ls "$FAKE_RAPPORTS" 2>/dev/null | grep -Eq '^[0-9]{8}-[0-9]{6}$'; then touch "$FAKE_DIR/rm-trop-tard"; fi
@@ -104,7 +126,7 @@ fi
 const FAUX_SYSTEMCTL = '#!/bin/sh\necho "$*" >> "$FAKE_DIR/systemctl.log"\ncase "$1" in is-enabled) echo enabled ;; is-active) echo active ;; esac\nexit 0\n';
 
 /** Un monde : une instance de test avec son atelier (scripts du dépôt, kit, marque, extrait du service), des faux outils et de la mémoire à volonté. */
-function monde({ mode = 'test', total = 8388608, dispo = 6291456, version = '0.4.95', reglages = true, extrait = true, kitVersion = version, image = IMAGE, sonde = false, depuis = 0 } = {}) {
+function monde({ mode = 'test', total = 8388608, dispo = 6291456, besoin = 1153433, version = '0.4.95', reglages = true, extrait = true, kitVersion = version, image = IMAGE, sonde = false, depuis = 0 } = {}) {
   const dossier = join(racine, `monde-${(n += 1)}`);
   const instance = join(dossier, 'instance');
   const atelier = join(instance, 'atelier');
@@ -118,9 +140,10 @@ function monde({ mode = 'test', total = 8388608, dispo = 6291456, version = '0.4
   copyFileSync(join(SOURCES, 'installer.sh'), join(atelier, 'installer.sh'));
   ecrire(join(atelier, 'kit', 'kit.json'), JSON.stringify({ format: 'maverick-kit/1', version: kitVersion, image }, null, 2));
   ecrire(join(atelier, 'kit', 'client', 'package.json'), '{}');
+  ecrire(join(atelier, 'kit', 'client', 'scripts', 'poser-un-site.mjs'), readFileSync(SCRIPT_DE_POSE)); // le vrai script du kit : le faux docker le fait tourner
   ecrire(join(atelier, 'declencheur', 'marque'), `version=${version}\ntag=v${version}\ncommit=${'a'.repeat(40)}\n`);
   mkdirSync(join(atelier, 'rapports'), { recursive: true });
-  if (reglages) ecrire(join(atelier, 'reglages.env'), `MEMOIRE_MAX_KO=2621440\nBESOIN_KO=1572864\nCPUS=1\nDISQUE_MIN_KO=2097152\nDELAI_S=1800\nGOOGLE_CLIENT_ID=\nJOURS_DE_MESURE=1\nMAX_PAR_JOUR=12\nMESURE_DEPUIS=${depuis}\n`);
+  if (reglages) ecrire(join(atelier, 'reglages.env'), `MEMOIRE_MAX_KO=2621440\nBESOIN_KO=${besoin}\nCPUS=1\nDISQUE_MIN_KO=2097152\nDELAI_S=1800\nGOOGLE_CLIENT_ID=\nJOURS_DE_MESURE=1\nMAX_PAR_JOUR=12\nMESURE_DEPUIS=${depuis}\n`);
   // la sonde : le port de chaque instance, dans son .env (celui de la production dans le dossier voisin « maverick-center »)
   if (sonde) {
     ecrire(join(instance, '.env'), 'MAVERICK_CONTENEUR=maverick-center-test\nMAVERICK_PORT=8081\nMAVERICK_EDITION=1\n');
@@ -214,33 +237,151 @@ test('une fabrication : le conteneur est durci et plafonné, l’extrait est cop
   assert.match(r.out, /rapport .* : fait/);
 });
 
-test('mémoire : un plafond sous le besoin est refusé avec les chiffres relevés, sans lancer de conteneur', { skip }, () => {
-  const m = monde({ dispo: 2000000 });
-  const r = lancer(m);
-  assert.equal(r.code, 0, r.out);
+// Le serveur du site de dev : 2 processeurs, MemTotal 4 004 532 ko. Besoin par défaut 1,1 Go = 1 153 433 ko (taille_en_ko 1.1g) ; plafond = min(maximum, MemAvailable / 2) ; marge minimale = max(1 Go, 25 % de MemTotal).
+const SERVEUR_TOTAL = 4004532;
+const BESOIN_PAR_DEFAUT = 1153433;
+const lignesDeMemoire = (m) => readFileSync(join(m.faux, 'docker.log'), 'utf8');
+
+test('mémoire : le serveur de 4 Go refusé trois fois (2 990 988 ko disponibles) démarre avec le besoin par défaut (plafond 1 495 494 ko, marge égale) et reste refusé avec l’ancien besoin de 1,5 Go', { skip }, () => {
+  const m = monde({ total: SERVEUR_TOTAL, dispo: 2990988 });
+  assert.equal(lancer(m).code, 0);
   const rapport = dernierRapport(m);
-  assert.equal(rapport.issue, 'refus');
-  assert.equal(rapport.motif, 'memoire_insuffisante');
-  assert.equal(rapport.plafond_ko, 1000000, 'la moitié de la mémoire disponible');
-  assert.equal(rapport.serveur.memoire_disponible_ko, 2000000);
-  assert.equal(rapport.reglages.besoin_ko, 1572864);
-  assert.equal(rapport.memoire.pic_ko, null);
-  assert.equal(lancements(m).length, 0);
-  assert.equal(rapport.fabrication, false);
+  assert.equal(rapport.issue, 'fait');
+  assert.equal(rapport.plafond_ko, 1495494, 'la moitié de la mémoire disponible');
+  assert.equal(rapport.marge_ko, 1495494);
+  assert.ok(rapport.marge_ko >= 1048576, 'au moins la marge minimale');
+  assert.equal(rapport.reglages.besoin_ko, BESOIN_PAR_DEFAUT);
+  assert.equal(lancements(m).length, 1);
+  assert.ok(lignesDeMemoire(m).includes('--memory 1495494k --memory-swap 1495494k'), 'le conteneur est plafonné au plafond calculé');
+
+  const ancien = monde({ total: SERVEUR_TOTAL, dispo: 2990988, besoin: 1572864 });
+  lancer(ancien);
+  assert.equal(dernierRapport(ancien).motif, 'memoire_insuffisante', 'un besoin de 1,5 Go réglé reste en vigueur : le plafond (1 495 494 ko) est dessous');
+  assert.equal(lancements(ancien).length, 0);
 });
 
-test('mémoire : une marge laissée à la production trop petite (moins de max(1 Go, 25 % de la mémoire totale)) est refusée', { skip }, () => {
+test('mémoire : sous 2 × le besoin de mémoire disponible, refus avec les chiffres relevés et sans conteneur ; à la limite exacte, on démarre', { skip }, () => {
+  const limite = 2 * BESOIN_PAR_DEFAUT;
+  assert.equal(limite, 2306866);
+  const sous = monde({ total: SERVEUR_TOTAL, dispo: limite - 1 });
+  assert.equal(lancer(sous).code, 0);
+  const rapport = dernierRapport(sous);
+  assert.equal(rapport.issue, 'refus');
+  assert.equal(rapport.motif, 'memoire_insuffisante');
+  assert.equal(rapport.plafond_ko, BESOIN_PAR_DEFAUT - 1);
+  assert.equal(rapport.serveur.memoire_disponible_ko, limite - 1);
+  assert.equal(rapport.serveur.memoire_totale_ko, SERVEUR_TOTAL);
+  assert.equal(rapport.reglages.besoin_ko, BESOIN_PAR_DEFAUT);
+  assert.equal(rapport.memoire.pic_ko, null);
+  assert.equal(rapport.fabrication, false);
+  assert.equal(lancements(sous).length, 0);
+
+  const pile = monde({ total: SERVEUR_TOTAL, dispo: limite });
+  lancer(pile);
+  assert.equal(dernierRapport(pile).issue, 'fait');
+  assert.equal(dernierRapport(pile).plafond_ko, BESOIN_PAR_DEFAUT);
+});
+
+test('mémoire : une marge laissée à la production trop petite (moins de max(1 Go, 25 % de la mémoire totale)) est refusée, et c’est le maximum réglé qui gouverne le plafond d’un gros serveur', { skip }, () => {
   const m = monde({ total: 16777216, dispo: 6291456 });
   lancer(m);
   const rapport = dernierRapport(m);
   assert.equal(rapport.motif, 'marge_insuffisante');
-  assert.equal(rapport.plafond_ko, 2621440);
+  assert.equal(rapport.plafond_ko, 2621440, 'le maximum réglé (2,5 Go) gouverne');
   assert.equal(rapport.marge_ko, 3670016);
   assert.equal(lancements(m).length, 0);
-  // et le même serveur avec moins de mémoire totale démarre : la marge minimale est de 1 Go
-  const petit = monde({ total: 4194304, dispo: 4000000 });
+  // le même plafond sur un serveur dont la marge minimale est de 1 Go démarre
+  const petit = monde({ total: 4194304, dispo: 6291456 });
   lancer(petit);
   assert.equal(dernierRapport(petit).issue, 'fait');
+  assert.equal(dernierRapport(petit).plafond_ko, 2621440);
+});
+
+test('mémoire : calculer_le_plafond (plafond = min(maximum, disponible / 2), marge = disponible − plafond ≥ la moitié du disponible, refus selon le besoin puis la marge) sur une grille de serveurs', { skip }, () => {
+  const lib = join(SOURCES, 'lib.sh');
+  const cas = [];
+  for (const total of [1000000, SERVEUR_TOTAL, 8388608, 16777216]) for (const dispo of [0, 500000, 2000000, 2306865, 2306866, 2990988, 6291456, 12000000]) for (const maximum of [900000, 2621440, 10000000]) for (const besoin of [BESOIN_PAR_DEFAUT, 1572864]) if (dispo <= total) cas.push([total, dispo, maximum, besoin]);
+  const script = `. "${lib}"\n${cas.map((c) => `calculer_le_plafond ${c.join(' ')}; echo "${c.join(' ')} $PLAFOND_KO $MARGE_KO $MARGE_MINIMALE_KO $MOTIF_REFUS"`).join('\n')}\n`;
+  const r = spawnSync('sh', ['-c', script], { encoding: 'utf8', env: { PATH: process.env.PATH } });
+  assert.equal(r.status, 0, r.stderr);
+  const lignes = r.stdout.trim().split('\n');
+  assert.equal(lignes.length, cas.length);
+  const motifs = new Set();
+  for (const ligne of lignes) {
+    const [total, dispo, maximum, besoin, plafond, marge, minimale, motif = ''] = ligne.split(' ');
+    const [T, D, M, B, P, G, N] = [total, dispo, maximum, besoin, plafond, marge, minimale].map(Number);
+    assert.equal(N, Math.max(1048576, Math.floor(T / 4)), ligne);
+    assert.equal(P, Math.min(M, Math.floor(D / 2)), ligne);
+    assert.equal(G, D - P, ligne);
+    assert.ok(G >= P || P === M, `la production garde au moins la moitié du disponible : ${ligne}`);
+    const attendu = P < B ? 'memoire_insuffisante' : G < N ? 'marge_insuffisante' : '';
+    assert.equal(motif, attendu, ligne);
+    motifs.add(motif);
+  }
+  assert.deepEqual([...motifs].sort(), ['', 'marge_insuffisante', 'memoire_insuffisante'], 'la grille couvre les trois issues');
+});
+
+test('--etat : pour marge_insuffisante, il dit d’abord la mémoire à libérer ; --memoire-max n’est proposé que s’il lève le refus', { skip }, () => {
+  // total 8 388 608 (marge minimale 2 097 152), 3 000 000 disponibles : plafond = disponible / 2, baisser le maximum n'y change rien
+  const seul = monde({ total: 8388608, dispo: 3000000 });
+  const e = installer(seul, ['--etat']);
+  assert.match(e.out, /refusée \(marge_insuffisante/);
+  assert.match(e.out, /libérer de la mémoire \(il faut au moins 4096 Mo disponibles\)/, 'min(maximum + marge minimale, 2 × marge minimale) = 4 194 304 ko');
+  assert.ok(!e.out.includes('--memoire-max'), 'baisser le maximum ne lèverait pas le refus');
+  assert.equal(lancer(seul).code, 0);
+  assert.equal(dernierRapport(seul).motif, 'marge_insuffisante');
+  // un gros maximum réglé sur un serveur où il reste le besoin sous disponible − marge minimale : baisser le maximum lève le refus
+  const large = monde({ total: 16777216, dispo: 6291456 });
+  const l = installer(large, ['--etat']);
+  assert.match(l.out, /marge_insuffisante/);
+  assert.ok(l.out.includes(`sudo sh ${large.atelier}/installer.sh --memoire-max <taille> » avec une taille d'au plus 2048 Mo`), l.out);
+  // la proposition est exacte : avec ce maximum, la fabrication démarre
+  ecrire(join(large.atelier, 'reglages.env'), readFileSync(join(large.atelier, 'reglages.env'), 'utf8').replace('MEMOIRE_MAX_KO=2621440', 'MEMOIRE_MAX_KO=2097152'));
+  lancer(large);
+  assert.equal(dernierRapport(large).issue, 'fait');
+});
+
+test('le besoin par défaut est de 1,1 Go (1 153 433 ko, ce que donne 1.1g) et l’ancien défaut de 1,5 Go (1 572 864 ko) n’est pas repris par le geste', { skip }, () => {
+  const lib = readFileSync(join(SOURCES, 'lib.sh'), 'utf8');
+  assert.match(lib, /^DEFAUT_BESOIN_KO=1153433$/m);
+  assert.match(lib, /^ANCIEN_DEFAUT_BESOIN_KO=1572864$/m);
+  const donne = spawnSync('sh', ['-c', `. "${join(SOURCES, 'lib.sh')}"; taille_en_ko 1.1g`], { encoding: 'utf8', env: { PATH: process.env.PATH } });
+  assert.equal(donne.stdout.trim(), String(BESOIN_PAR_DEFAUT), 'le défaut est ce que donne --besoin 1.1g');
+  const reglagesDe = (m) => readFileSync(join(m.atelier, 'reglages.env'), 'utf8');
+  // un atelier installé avant : BESOIN_KO du réglage est l'ancien défaut, jamais choisi
+  const ancien = monde({ besoin: 1572864 });
+  const r = installer(ancien, ['--sans-fabrication']);
+  assert.equal(r.code, 0, r.out);
+  assert.match(reglagesDe(ancien), /^BESOIN_KO=1153433$/m);
+  assert.match(r.out, /ancien défaut/);
+  // une valeur choisie est reprise telle quelle, et un --besoin donné au geste l'emporte, même égal à l'ancien défaut
+  const choisi = monde({ besoin: 1258291 });
+  assert.equal(installer(choisi, ['--sans-fabrication']).code, 0);
+  assert.match(reglagesDe(choisi), /^BESOIN_KO=1258291$/m);
+  const explicite = monde({ besoin: 1258291 });
+  assert.equal(installer(explicite, ['--sans-fabrication', '--besoin', '1.5g']).code, 0);
+  assert.match(reglagesDe(explicite), /^BESOIN_KO=1572864$/m);
+  assert.equal(installer(explicite, ['--sans-fabrication', '--besoin', '1.6g']).code, 0);
+  assert.match(reglagesDe(explicite), /^BESOIN_KO=1677721$/m);
+  // premier geste, sans réglages : le défaut
+  const neuf = monde({ reglages: false });
+  assert.equal(installer(neuf, ['--sans-fabrication']).code, 0);
+  assert.match(reglagesDe(neuf), /^BESOIN_KO=1153433$/m);
+});
+
+test('--etat dit la mémoire avec les chiffres relevés : démarrage, refus avec le geste qui le lève, ancien besoin repris', { skip }, () => {
+  const demarre = monde({ total: SERVEUR_TOTAL, dispo: 2990988 });
+  const e = installer(demarre, ['--etat']);
+  assert.equal(e.code, 0, e.out);
+  assert.match(e.out, /Mémoire maintenant : 2920 Mo disponibles sur 3910 Mo ; marge laissée à la production 1460 Mo \(au moins 1024 Mo\), plafond possible 1460 Mo, besoin 1126 Mo : la fabrication démarrerait \(refus sous 2253 Mo disponibles\)\./);
+
+  const ancien = monde({ total: SERVEUR_TOTAL, dispo: 2990988, besoin: 1572864 });
+  const a = installer(ancien, ['--etat']);
+  assert.match(a.out, /besoin 1536 Mo : la fabrication serait refusée \(memoire_insuffisante\)/);
+  assert.match(a.out, /libérer de la mémoire \(il faut au moins 3072 Mo disponibles\)/);
+  assert.ok(a.out.includes(`sudo sh ${ancien.atelier}/installer.sh --besoin <taille>`), 'le geste qui lève le refus');
+  assert.match(a.out, /OOMKilled/, 'le risque est dit');
+  assert.equal(readFileSync(join(ancien.atelier, 'reglages.env'), 'utf8').includes('BESOIN_KO=1572864'), true, '--etat n’écrit rien');
 });
 
 test('disque : sous le minimum d’espace libre, la fabrication est refusée (et mesurée) ; le minimum se règle', { skip }, () => {
@@ -435,6 +576,34 @@ test('ce que le conteneur a laissé n’est copié qu’une fois le conteneur su
   assert.equal(dernierRapport(lien).comparaison, false);
 });
 
+test('le journal du conteneur (docker logs, stdout et stderr) est gardé dans le rapport avant la suppression du conteneur : la fin, 200 Ko au plus, lisible, hors de la liste blanche du service ; vide, il n’est pas gardé', { skip }, () => {
+  const m = monde();
+  // un très long stdout puis une erreur sur stderr : l'erreur est dans le journal gardé, le début du stdout est coupé
+  ecrire(join(m.faux, 'sortie.txt'), `DEBUT-COUPE\n${'ligne de pages generees\n'.repeat(15000)}FIN-DE-STDOUT\n`);
+  ecrire(join(m.faux, 'erreur.txt'), "TypeError: Cannot read properties of undefined (reading 'trim')\n");
+  const r = lancer(m, { FAKE_LOGS: join(m.faux, 'sortie.txt'), FAKE_LOGS_ERR: join(m.faux, 'erreur.txt'), FAKE_CODE: '1' });
+  assert.equal(r.code, 0, r.out);
+  const [id] = rapportsDe(m);
+  const chemin = join(m.rapports, id, 'journal-du-conteneur.txt');
+  assert.ok(existsSync(chemin), 'le journal est dans le dossier du rapport');
+  const journal = readFileSync(chemin, 'utf8');
+  assert.ok(statSync(chemin).size <= 204800, `plafonné à 200 Ko (${statSync(chemin).size})`);
+  assert.ok(journal.includes('FIN-DE-STDOUT'), 'la fin du stdout');
+  assert.ok(!journal.includes('DEBUT-COUPE'), 'le début coupé');
+  assert.match(journal, /Cannot read properties of undefined \(reading 'trim'\)/, 'stderr y est aussi');
+  assert.equal(statSync(chemin).mode & 0o777, 0o644, 'lisible par le service, jamais en écriture');
+  assert.equal(dernierRapport(m).issue, 'echec');
+  assert.ok(existsSync(join(m.faux, 'logs-fait')) && !existsSync(join(m.faux, 'logs-trop-tard')), 'lu AVANT docker rm');
+  assert.ok(!readdirSync(join(m.rapports, id)).some((x) => x.startsWith('.')), 'aucun fichier provisoire');
+  assert.ok(!readdirSync(m.atelier).some((x) => x.startsWith('.journal')), 'ni dans l’atelier');
+  // le service lit des fichiers nommés (rapport.json, fabrication.json, comparaison.json), jamais une liste de dossier : le journal n'est pas servi
+  assert.ok(!/journal-du-conteneur/.test(readFileSync(new URL('../serveur/atelier.mjs', import.meta.url), 'utf8')), 'serveur/atelier.mjs ne le lit pas');
+  // sans rien sur les sorties : pas de fichier
+  const muet = monde();
+  assert.equal(lancer(muet).code, 0);
+  assert.ok(!existsSync(join(muet.rapports, rapportsDe(muet)[0], 'journal-du-conteneur.txt')));
+});
+
 test('conteneur.sh, sans privilège : copie l’extrait sous délai, refuse un lien, une FIFO, un fichier trop gros ou vide ; puis fabrique et compare', { skip: skip || (!have('timeout') && 'timeout indisponible') }, () => {
   const dossier = join(racine, `conteneur-${(n += 1)}`);
   const lieux = Object.fromEntries(['kit', 'site', 'contenu', 'travail', 'sortie', 'resultats', 'bin'].map((x) => [x, join(dossier, x)]));
@@ -442,7 +611,7 @@ test('conteneur.sh, sans privilège : copie l’extrait sous délai, refuse un l
   ecrire(join(lieux.kit, 'client', 'scripts', 'fabriquer-depuis-contenu.mjs'), '// faux');
   ecrire(join(lieux.contenu, 'contenu-0.4.95.db'), 'un extrait');
   // un faux node : enregistre ses arguments et écrit les résultats que le conteneur doit laisser
-  ecrire(join(lieux.bin, 'node'), '#!/bin/sh\necho "$*" >> "$FAKE_NODE_LOG"\ncase "$*" in *fabriquer-depuis-contenu*) echo \'{ "format": "maverick-fabrication/1" }\' > "$RESULTATS/fabrication.json"; exit "${FAKE_NODE_CODE:-0}" ;; *comparer-sites*) echo \'{ "format": "maverick-comparaison/1" }\' > "$RESULTATS/comparaison.json"; exit 1 ;; esac\n');
+  ecrire(join(lieux.bin, 'node'), '#!/bin/sh\necho "$*" >> "$FAKE_NODE_LOG"\ncase "$*" in *fabriquer-depuis-contenu*) prev=; for a in "$@"; do [ "$prev" = --sortie ] && s=$a; prev=$a; done; mkdir -p "$s/_astro"; echo page > "$s/index.html"; echo css > "$s/_astro/a.css"; echo \'{ "format": "maverick-fabrication/1" }\' > "$RESULTATS/fabrication.json"; exit "${FAKE_NODE_CODE:-0}" ;; *comparer-sites*) echo \'{ "format": "maverick-comparaison/1" }\' > "$RESULTATS/comparaison.json"; exit 1 ;; esac\n');
   chmodSync(join(lieux.bin, 'node'), 0o755);
   const lancerLe = (plus = {}) => {
     const t0 = Date.now();
@@ -457,14 +626,26 @@ test('conteneur.sh, sans privilège : copie l’extrait sous délai, refuse un l
   assert.equal(ok.code, 0, ok.out);
   assert.equal(readFileSync(join(lieux.travail, 'contenu.db'), 'utf8'), 'un extrait', 'l’extrait est copié par le conteneur');
   const appels = readFileSync(join(dossier, 'node.log'), 'utf8');
-  assert.match(appels, /fabriquer-depuis-contenu\.mjs --contenu .*\/travail\/contenu\.db --sortie .*\/sortie\/site --mesure .*\/resultats\/fabrication\.json/);
-  assert.match(appels, /comparer-sites\.mjs .*\/site .*\/sortie\/site --json .*\/resultats\/comparaison\.json/);
+  // le site est fabriqué dans le travail (le montage du kit), comparé là, puis copié vers la sortie
+  assert.match(appels, /fabriquer-depuis-contenu\.mjs --contenu .*\/travail\/contenu\.db --sortie .*\/travail\/site --mesure .*\/resultats\/fabrication\.json/);
+  assert.match(appels, /comparer-sites\.mjs .*\/site .*\/travail\/site --json .*\/resultats\/comparaison\.json/);
+  assert.ok(!/--sortie \S*\/sortie\//.test(appels), 'rien n’est fabriqué directement dans la sortie');
+  assert.equal(readFileSync(join(lieux.sortie, 'site', 'index.html'), 'utf8'), 'page\n', 'le site fabriqué est copié vers la sortie');
+  assert.equal(readFileSync(join(lieux.sortie, 'site', '_astro', 'a.css'), 'utf8'), 'css\n');
   assert.ok(existsSync(join(lieux.travail, 'kit', 'client', 'scripts', 'fabriquer-depuis-contenu.mjs')), 'le kit est copié dans le travail');
   assert.ok(existsSync(join(lieux.resultats, 'comparaison.json')));
   // un échec de la fabrication : sa sortie, et pas de comparaison
   rmDossier(join(lieux.resultats, 'comparaison.json'));
   assert.equal(lancerLe({ FAKE_NODE_CODE: '3' }).code, 3);
   assert.ok(!existsSync(join(lieux.resultats, 'comparaison.json')));
+  // une sortie qui n’est pas un dossier : la copie échoue, avec son code et son message
+  rmDossier(lieux.sortie);
+  writeFileSync(lieux.sortie, 'un fichier');
+  const coupee = lancerLe();
+  assert.equal(coupee.code, 76, coupee.out);
+  assert.match(coupee.out, /copie du site fabriqué/);
+  rmDossier(lieux.sortie);
+  mkdirSync(lieux.sortie);
   // un lien à la place du fichier, une FIFO, un fichier vide, un fichier trop gros : 73 ou 74, jamais de blocage
   const fichier = join(lieux.contenu, 'contenu-0.4.95.db');
   rmDossier(fichier);
@@ -486,6 +667,56 @@ test('conteneur.sh, sans privilège : copie l’extrait sous délai, refuse un l
   const bloque = lancerLe({ DELAI_DE_LA_COPIE: '1' });
   assert.equal(bloque.code, 75, bloque.out);
   assert.ok(bloque.ms < 10000, `coupée par le délai (${bloque.ms} ms)`);
+});
+
+const SHM = '/dev/shm';
+const DEUX_MONTAGES = (() => { try { accessSync(SHM, constants.W_OK); return statSync(SHM).dev !== statSync(racine).dev; } catch { return false; } })();
+// Ce que fait Astro : un renommage de .astro/.prerender/_astro/x.css (dans le kit, donc dans le travail) vers <sortie>/_astro/x.css.
+const FAUX_ASTRO = `import { mkdirSync, renameSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+const a = process.argv.slice(2);
+const sortie = a[a.indexOf('--sortie') + 1];
+const prerender = join(process.env.TRAVAIL, 'kit', 'client', '.astro', '.prerender', '_astro');
+mkdirSync(prerender, { recursive: true });
+writeFileSync(join(prerender, 'x.css'), 'css');
+mkdirSync(join(sortie, '_astro'), { recursive: true });
+renameSync(join(prerender, 'x.css'), join(sortie, '_astro', 'x.css'));
+writeFileSync(join(sortie, 'index.html'), 'page');
+writeFileSync(join(process.env.RESULTATS, 'fabrication.json'), '{ "format": "maverick-fabrication/1" }');
+`;
+
+test('conteneur.sh sur deux montages (travail sur le disque, sortie sur un autre système de fichiers) : le renommage d’Astro reste dans le travail, le site est copié vers la sortie', { skip: skip || (!have('timeout') && 'timeout indisponible') || (!DEUX_MONTAGES && `${SHM} absent, non inscriptible ou sur le même périphérique que le dossier temporaire`) }, (t) => {
+  const dossier = dossierTemporaire('deploy-atelier-montages', { t });
+  const shm = dossierTemporaire('deploy-atelier-sortie', { t, dans: SHM });
+  const lieux = { kit: join(dossier, 'kit'), site: join(dossier, 'site'), contenu: join(dossier, 'contenu'), travail: join(dossier, 'travail'), resultats: join(dossier, 'resultats'), sortie: join(shm, 'sortie'), bin: join(dossier, 'bin') };
+  for (const d of Object.values(lieux)) mkdirSync(d, { recursive: true });
+  assert.notEqual(statSync(lieux.travail).dev, statSync(lieux.sortie).dev, 'deux montages distincts');
+  ecrire(join(lieux.kit, 'client', 'scripts', 'fabriquer-depuis-contenu.mjs'), '// faux');
+  ecrire(join(lieux.contenu, 'contenu-0.4.95.db'), 'un extrait');
+  // un faux node qui lance le vrai (process.execPath) : la fabrication fait le renommage d’Astro, la comparaison ne fait rien
+  ecrire(join(dossier, 'faux-astro.mjs'), FAUX_ASTRO);
+  ecrire(join(lieux.bin, 'node'), '#!/bin/sh\ncase "$*" in *fabriquer-depuis-contenu*) exec "$NODE_REEL" "$FAUX_ASTRO" "$@" ;; esac\nexit 0\n');
+  chmodSync(join(lieux.bin, 'node'), 0o755);
+  const env = { PATH: `${lieux.bin}:${process.env.PATH}`, NODE_REEL: process.execPath, FAUX_ASTRO: join(dossier, 'faux-astro.mjs'), KIT: lieux.kit, SITE: lieux.site, CONTENU: lieux.contenu, TRAVAIL: lieux.travail, SORTIE: lieux.sortie, RESULTATS: lieux.resultats, VERSION_INSTALLEE: '0.4.95' };
+  // la disposition de l’ancien script (fabriquer directement dans la sortie) échoue bel et bien : EXDEV
+  const ancien = spawnSync(process.execPath, [join(dossier, 'faux-astro.mjs'), '--sortie', join(lieux.sortie, 'site')], { encoding: 'utf8', env });
+  assert.notEqual(ancien.status, 0, 'renommer d’un montage à l’autre échoue');
+  assert.match(ancien.stderr, /EXDEV/);
+  rmDossier(lieux.sortie); mkdirSync(lieux.sortie);
+  // le script : la fabrication se fait dans le travail, la sortie reçoit une copie
+  const r = spawnSync('sh', [join(SOURCES, 'conteneur.sh')], { encoding: 'utf8', timeout: 30000, env });
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.equal(readFileSync(join(lieux.sortie, 'site', '_astro', 'x.css'), 'utf8'), 'css', 'le fichier renommé par Astro arrive dans la sortie');
+  assert.equal(readFileSync(join(lieux.sortie, 'site', 'index.html'), 'utf8'), 'page');
+  assert.ok(existsSync(join(lieux.travail, 'site', 'index.html')), 'le site a bien été fabriqué dans le travail');
+  assert.ok(existsSync(join(lieux.resultats, 'fabrication.json')));
+});
+
+test('le dossier de sortie de la fabrication (travail/site) passe le contrôle : ni le kit, ni client, ni un dossier qui les contient', () => {
+  const client = '/travail/kit/client';
+  assert.doesNotThrow(() => verifierLaSortie('/travail/site', client));
+  assert.throws(() => verifierLaSortie('/travail/kit', client), /contient le code/);
+  assert.throws(() => verifierLaSortie('/travail', client), /contient le code/);
 });
 
 test('disque : un conteneur dont l’espace libre passe sous le minimum PENDANT la fabrication est arrêté, et c’est une mesure', { skip }, () => {
@@ -572,17 +803,48 @@ test('les marques en attente se fondent : une marque changée pendant la fabrica
   assert.deepEqual(versions.sort(), ['0.4.95', '0.4.96']);
 });
 
-test('seuls les derniers rapports sont gardés (40 : de quoi couvrir une journée pleine), et seuls des dossiers de la forme des rapports sont jamais effacés', { skip }, () => {
+test('seuls les derniers rapports sont gardés (ceux du jour UTC tous, plus les 100 plus anciens), et seuls des dossiers de la forme des rapports sont jamais effacés', { skip }, () => {
   const m = monde();
-  for (let i = 0; i < 44; i += 1) json(join(m.rapports, `2026010${(i % 9) + 1}-${String(1000000 + i).slice(1)}`, 'rapport.json'), {});
+  for (let i = 0; i < 104; i += 1) json(join(m.rapports, `2026010${(i % 9) + 1}-${String(1000000 + i).slice(1)}`, 'rapport.json'), {});
   mkdirSync(join(m.rapports, 'a-garder'));
   ecrire(join(m.rapports, 'kit.json'), '{}');
-  assert.equal(rapportsDe(m).length, 44);
+  assert.equal(rapportsDe(m).length, 104);
   lancer(m);
   const apres = rapportsDe(m);
-  assert.equal(apres.length, 40);
+  assert.equal(apres.length, 101, 'le rapport du jour, plus les 100 plus anciens');
   assert.ok(apres.includes(dernierRapport(m).id), 'le nouveau rapport est gardé');
   assert.ok(existsSync(join(m.rapports, 'a-garder')) && existsSync(join(m.rapports, 'kit.json')));
+});
+
+test('les rapports du jour UTC ne s’effacent jamais (les plafonds du jour les comptent) : 41 refabrications « contenu » du jour sont comptées, la 49e est refusée ; les fabrications du jour des autres origines restent comptées', { skip }, () => {
+  const m = monde({ depuis: MAINTENANT - 3600 });
+  siteServi(m);
+  servir(m);
+  // la veille et avant : 130 rapports anciens ; aujourd'hui : 41 refabrications « contenu » et 12 fabrications d'autres origines
+  for (let i = 0; i < 130; i += 1) json(join(m.rapports, `2026110${(i % 9) + 1}-${String(1000000 + i).slice(1)}`, 'rapport.json'), { id: 'ancien' });
+  const duJour = (id, origine) => json(join(m.rapports, id, 'rapport.json'), { format: 'maverick-atelier/1', id, issue: 'fait', origine });
+  for (let i = 0; i < 41; i += 1) duJour(`20261115-00${String(i).padStart(2, '0')}00`, 'contenu');
+  for (let i = 0; i < 12; i += 1) duJour(`20261115-01${String(i).padStart(2, '0')}00`, ['livraison', 'nuit', 'journee_type'][i % 3]);
+  const extrait = join(m.atelier, 'depot', 'contenu-0.4.95.db');
+  const tour = (k) => { writeFileSync(extrait, `extrait ${'x'.repeat(k)}`); return lancer(m, { ...siteFabrique(m, 20), ...horloge(MAINTENANT + k * 10) }, ['--origine', 'contenu']); };
+  for (let k = 1; k <= 7; k += 1) assert.equal(tour(k).code, 0);
+  const duJourApres = rapportsDe(m).filter((id) => id.startsWith('20261115-'));
+  assert.equal(duJourApres.length, 41 + 12 + 7, 'aucun rapport du jour n’a été effacé');
+  assert.equal(rapportsDe(m).filter((id) => !id.startsWith('20261115-')).length, 100, 'les plus anciens : 100 gardés');
+  assert.equal(lancements(m).length, 14, 'sept fabrications et leurs poses : les 41 + 7 = 48 refabrications du jour ont rempli le plafond par défaut (48)');
+  const refus = tour(8);
+  assert.match(refus.out, /refus \(plafond_du_jour\)/, '48 déjà faites : la 49e est refusée, et le rapport le dit');
+  assert.equal(lancements(m).length, 14);
+  const dernier = dernierRapport(m);
+  assert.deepEqual([dernier.issue, dernier.motif, dernier.origine], ['refus', 'plafond_du_jour', 'contenu']);
+  const encore = tour(9);
+  assert.match(encore.out, /plafond du jour atteint \(48 fabrications, maximum 48\) : rien à faire, déjà noté/);
+  assert.equal(rapportsDe(m).filter((id) => id.startsWith('20261115-')).length, 41 + 12 + 7 + 1, 'un seul rapport de refus par jour');
+  // les 12 fabrications du jour des autres origines comptent toujours pour le plafond des autres (12 par défaut) : une livraison est refusée
+  const livraison = lancer(m, { ...siteFabrique(m, 20), ...horloge(MAINTENANT + 300) });
+  assert.equal(livraison.code, 0, livraison.out);
+  assert.match(livraison.out, /plafond du jour|plafond_du_jour/);
+  assert.equal(lancements(m).length, 14, 'le plafond des autres origines (12) est atteint par les 12 du jour, que ni le nettoyage ni les 48 refabrications n’ont changées');
 });
 
 test('le geste du propriétaire : réglages, unités systemd, image, installe.json, docker compose up -d, première fabrication ; relançable ; --etat ne change rien', { skip }, () => {
@@ -780,8 +1042,8 @@ test('garde-fou 20 : ni lancer.sh ni installer.sh n’écrivent dans db/, metriq
 function fauxKitDepot() {
   const d = join(racine, `depot-${(n += 1)}`);
   for (const [rel, contenu] of Object.entries({
-    '.nvmrc': '22\n', 'client/package.json': '{}', 'client/astro.config.mjs': '', 'client/scripts/fabriquer-depuis-contenu.mjs': '', 'client/node_modules/astro/bin/astro.mjs': '',
-    'data/schema.sql': '', 'data/derive.sql': '', 'data/migrations/0001.sql': '', 'sources/sources.json': '{}', 'sources/tipeee/bienvenue.json': '{}',
+    '.nvmrc': '22\n', 'client/package.json': '{}', 'client/astro.config.mjs': '', 'client/scripts/fabriquer-depuis-contenu.mjs': '', 'client/scripts/poser-un-site.mjs': '', 'client/node_modules/astro/bin/astro.mjs': '',
+    'data/schema.sql': '', 'data/derive.sql': '', 'data/migrations/0001.sql': '', 'data/references/a.json': '{}', 'sources/sources.json': '{}', 'sources/copies-drive.json': '{}', 'sources/tipeee/bienvenue.json': '{}',
   })) ecrire(join(d, rel), contenu);
   return d;
 }
@@ -963,6 +1225,51 @@ test('la sonde s’arrête aussitôt quand la production répond mal (trois mauv
   assert.equal(appelsDeCurl(m).filter((a) => a.includes(':8080')).length, 3, 'la production n’est plus interrogée une fois la sonde arrêtée');
   assert.equal(appelsDeCurl(m).filter((a) => a.includes(':8081')).length, 2, 'et la sonde est arrêtée tout entière : le site de dev n’a plus reçu de requête après le troisième tour');
   assert.match(r.out, /sonde arrêtée/);
+});
+
+test('la sonde lit MAVERICK_PORT=<port> et MAVERICK_PORT=127.0.0.1:<port> (la forme des instances du serveur), aucun autre hôte', { skip }, () => {
+  const ecrireLesPorts = (m, prod, dev) => {
+    ecrire(join(m.dossier, 'maverick-center', '.env'), `MAVERICK_CONTENEUR=maverick-center\nMAVERICK_PORT=${prod}\n`);
+    ecrire(join(m.instance, '.env'), `MAVERICK_CONTENEUR=maverick-center-test\nMAVERICK_PORT=${dev}\nMAVERICK_EDITION=1\n`);
+  };
+  const urls = (m) => [...new Set(appelsDeCurl(m).map((a) => a.split(' ').pop().replace(/\/(api\/personnages\/)?$/, '')))].sort();
+  // avec l'hôte, comme sur le serveur
+  const avecHote = monde({ sonde: true });
+  ecrireLesPorts(avecHote, '127.0.0.1:8080', '127.0.0.1:8081');
+  lancer(avecHote);
+  const sonde = dernierRapport(avecHote).sonde;
+  assert.equal(sonde.disponible, true);
+  assert.deepEqual([sonde.instances.prod.disponible, sonde.instances.dev.disponible], [true, true]);
+  assert.deepEqual(urls(avecHote), ['http://127.0.0.1:8080', 'http://127.0.0.1:8081']);
+  // un mélange des deux formes
+  const melange = monde({ sonde: true });
+  ecrireLesPorts(melange, '8080', '127.0.0.1:8081');
+  lancer(melange);
+  assert.deepEqual(urls(melange), ['http://127.0.0.1:8080', 'http://127.0.0.1:8081']);
+  // un autre hôte, un port hors limites, un hôte sans port : illisible, et la sonde ne l'interroge pas
+  for (const mauvais of ['0.0.0.0:8080', '192.168.1.5:8080', 'localhost:8080', '127.0.0.1:', '127.0.0.1:8080:9', '127.0.0.1', '70000', '0']) {
+    const m = monde({ sonde: true });
+    ecrireLesPorts(m, mauvais, mauvais);
+    lancer(m);
+    const s = dernierRapport(m).sonde;
+    assert.equal(s.instances.prod.motif, 'port_illisible', mauvais);
+    assert.equal(s.instances.dev.motif, 'port_illisible', mauvais);
+    assert.equal(appelsDeCurl(m).length, 0, mauvais);
+  }
+});
+
+test('la sonde impossible garde le motif de chaque instance dans le rapport (disponible: false, motif général sonde_impossible)', { skip }, () => {
+  const m = monde({ sonde: true });
+  ecrire(join(m.dossier, 'maverick-center', '.env'), 'MAVERICK_PORT=0.0.0.0:8080\n');
+  rmDossier(join(m.instance, '.env'));
+  lancer(m);
+  const sonde = dernierRapport(m).sonde;
+  assert.equal(sonde.format, 'maverick-sonde/1');
+  assert.equal(sonde.disponible, false);
+  assert.equal(sonde.motif, 'sonde_impossible');
+  assert.deepEqual([sonde.instances.prod.disponible, sonde.instances.prod.motif, sonde.instances.prod.phases], [false, 'port_illisible', null]);
+  assert.deepEqual([sonde.instances.dev.disponible, sonde.instances.dev.motif, sonde.instances.dev.phases], [false, 'env_absent', null]);
+  assert.equal(appelsDeCurl(m).length, 0);
 });
 
 test('le .env d’une instance dans un dossier monté en écriture dans un conteneur n’est pas lu : « sonde impossible » pour cette instance', { skip }, () => {
@@ -1210,4 +1517,382 @@ test('la livraison arrivée pendant une fabrication de nuit reste sous le plafon
   assert.equal(dernier.origine, 'livraison');
   assert.equal(dernier.motif, 'plafond_du_jour');
   assert.equal(lancements(m).length, 1, 'seule la fabrication de nuit (la douzième) a tourné');
+});
+
+// ---------------------------------------------------------------- le site servi (lot 11 « Bascule 2 », PR 3b) : l'interrupteur <atelier>/servir, la pose, le minuteur « contenu »
+
+/** Tout ce qu'un dossier porte (chemin → contenu), liens et sous-dossiers compris : de quoi prouver « identique octet pour octet ». */
+function empreinteDe(dossier, rel = '') {
+  const sortie = {};
+  for (const e of readdirSync(join(dossier, rel), { withFileTypes: true })) {
+    const enfant = rel ? `${rel}/${e.name}` : e.name;
+    if (e.isDirectory()) Object.assign(sortie, empreinteDe(dossier, enfant)); else sortie[enfant] = readFileSync(join(dossier, enfant), 'utf8');
+  }
+  return sortie;
+}
+/** Le site que la fabrication laisse (le faux conteneur le copie dans sortie/site) : `pages` pages, plus une feuille de style et un script. */
+function siteFabrique(m, pages = 20, version = 'neuf') {
+  const dossier = join(m.dossier, 'site-fabrique');
+  ecrire(join(dossier, 'index.html'), `<h1>${version}</h1>`);
+  for (let i = 0; i < pages; i += 1) ecrire(join(dossier, 'pages', `p${i}.html`), `page ${i} ${version}`);
+  ecrire(join(dossier, '_astro', `style.${version}.css`), `css ${version}`);
+  return { FAKE_SITE_FABRIQUE: dossier };
+}
+/** Le site servi : le site livré par GitHub (index, `pages` pages, un fichier qui n'existera plus) et le code du service dans _serveur/. */
+function siteServi(m, pages = 20) {
+  rmSync(join(m.instance, 'site'), { recursive: true, force: true });
+  ecrire(join(m.instance, 'site', 'index.html'), '<h1>livré</h1>');
+  for (let i = 0; i < pages; i += 1) ecrire(join(m.instance, 'site', 'pages', `p${i}.html`), `page ${i} livrée`);
+  ecrire(join(m.instance, 'site', 'ancien.js'), 'plus servi');
+  ecrire(join(m.instance, 'site', '_serveur', 'serveur', 'index.mjs'), 'code du service');
+  ecrire(join(m.instance, 'site', '_serveur', 'version.json'), '{"version":"0.4.95"}');
+}
+const servir = (m, pct = 90) => { ecrire(join(m.instance, 'db', 'source'), ''); ecrire(join(m.atelier, 'servir'), `SERVIR_DEPUIS=2026-11-15T09:00:00Z\nPAGES_MINIMUM_PCT=${pct}\n`); };
+const unicite = (ids) => new Set(ids).size === ids.length;
+
+test('sans l’interrupteur, rien de servi ne change : après une fabrication réussie, site/ est identique octet pour octet, un seul conteneur a tourné, le rapport ne porte pas de `servi`', { skip }, () => {
+  const m = monde();
+  siteServi(m);
+  const avant = empreinteDe(join(m.instance, 'site'));
+  const r = lancer(m, siteFabrique(m, 20));
+  assert.equal(r.code, 0, r.out);
+  assert.equal(dernierRapport(m).issue, 'fait');
+  assert.equal(dernierRapport(m).servi, null);
+  assert.deepEqual(empreinteDe(join(m.instance, 'site')), avant, 'site/ n’a pas bougé d’un octet');
+  assert.equal(lancements(m).length, 1, 'le conteneur de fabrication seulement : aucun second conteneur');
+  assert.ok(!existsSync(join(m.atelier, 'pose')), 'aucun dossier de pose');
+  assert.ok(!existsSync(join(m.atelier, 'declencheur', 'dernier-contenu')));
+  assert.ok(existsSync(join(m.atelier, 'sortie', 'site', 'pages', 'p0.html')), 'le site fabriqué est bien là, mais seulement dans la sortie');
+});
+
+test('avec l’interrupteur : un second conteneur durci pose le site fabriqué (nouveau, changé, retiré), _serveur/ intact ; le rapport dit `servi` ; la pose est notée', { skip }, () => {
+  const m = monde();
+  siteServi(m);
+  servir(m);
+  const serveurAvant = empreinteDe(join(m.instance, 'site', '_serveur'));
+  const r = lancer(m, siteFabrique(m, 20));
+  assert.equal(r.code, 0, r.out);
+  const rapport = dernierRapport(m);
+  assert.equal(rapport.issue, 'fait');
+  assert.deepEqual([rapport.servi.pose, rapport.servi.motif, rapport.servi.code_sortie, rapport.servi.version_installee, rapport.servi.version_de_l_instance, rapport.servi.resume], [true, null, 0, '0.4.95', '0.4.95', true]);
+  // le site : celui de la fabrication, sans ce qui n'existe plus, _serveur/ tel quel
+  const site = empreinteDe(join(m.instance, 'site'));
+  assert.equal(site['index.html'], '<h1>neuf</h1>');
+  assert.equal(site['pages/p3.html'], 'page 3 neuf');
+  assert.equal(site['_astro/style.neuf.css'], 'css neuf');
+  assert.equal(site['ancien.js'], undefined);
+  assert.deepEqual(empreinteDe(join(m.instance, 'site', '_serveur')), serveurAvant);
+  assert.ok(!Object.keys(site).some((f) => /\.pose-/.test(f)), 'aucun fichier provisoire');
+  // le résumé du conteneur, copié tel quel dans le rapport
+  const [id] = rapportsDe(m);
+  const pose = JSON.parse(readFileSync(join(m.rapports, id, 'pose.json'), 'utf8'));
+  assert.deepEqual([pose.format, pose.pose, pose.posees, pose.retirees, pose.inchangees, pose.pages_fabriquees, pose.pages_servies], ['maverick-pose/1', true, 22, 1, 0, 21, 21]);
+  // les deux conteneurs : d'abord la fabrication, puis la pose
+  const [fabrication, posee, ...autres] = lancements(m);
+  assert.equal(autres.length, 0);
+  assert.ok(fabrication.includes('sh /conteneur.sh'));
+  for (const drapeau of ['--network none', '--read-only', '--cap-drop ALL', '--security-opt no-new-privileges', '--pids-limit 128', '--memory 512m', '--memory-swap 512m', `--user ${proprietaireDe(join(m.instance, 'site'))}`]) {
+    assert.ok(posee.includes(drapeau), `la pose : ${drapeau}`);
+  }
+  assert.ok(posee.includes(`${m.atelier}/sortie:/sortie:ro`), 'la sortie en lecture seule');
+  assert.ok(posee.includes(`${m.atelier}/kit:/kit:ro`), 'le kit en lecture seule');
+  assert.ok(posee.includes(`${m.instance}/site:/site `), 'le site servi, en écriture (ni :ro)');
+  assert.ok(posee.includes(`${m.instance}/site/_serveur:/site/_serveur:ro `), '_serveur/, le code que le service exécute, remonté en LECTURE SEULE par-dessus le site');
+  assert.ok(posee.indexOf(`${m.instance}/site:/site `) < posee.indexOf('/site/_serveur:ro'), 'monté après site/, donc par-dessus');
+  assert.ok(posee.includes(`${m.atelier}/pose:/pose `), 'le dossier du résumé');
+  assert.ok(posee.includes('node --no-warnings /kit/client/scripts/poser-un-site.mjs --source /sortie/site --cible /site --resume /pose/pose.json --minimum-pct 90'));
+  for (const jamais of [`${m.instance}/db`, 'metriques', 'secrets', 'docker.sock', 'maintenance', '/travail', '/resultats', '--privileged', '-e ']) assert.ok(!posee.includes(jamais), `la pose ne voit jamais ${jamais}`);
+  // la pose est notée : le minuteur du contenu ne refabrique que si l'extrait change
+  // la date attendue est relevée par la MÊME commande que lancer.sh (`stat -c '%.9Y'`) : selon la version de coreutils, %.9Y passe par un flottant et arrondit
+  // au-delà de la microseconde ; root ne compare que ses propres relevés stat entre eux, jamais à une valeur calculée autrement
+  const extrait = join(m.atelier, 'depot', 'contenu-0.4.95.db');
+  const releve = (format) => spawnSync('stat', ['-c', format, extrait], { encoding: 'utf8' }).stdout.trim();
+  assert.equal(readFileSync(join(m.atelier, 'declencheur', 'dernier-contenu'), 'utf8'), `contenu-0.4.95.db ${releve('%s')} ${releve('%.9Y') || releve('%Y')}\n`, 'nom, taille et date (à la nanoseconde) de l’extrait, tels que root les a relevés par stat');
+  assert.equal(readdirSync(join(m.atelier, 'pose')).length, 0, 'le dossier du résumé est vidé');
+});
+const proprietaireDe = (chemin) => `${statSync(chemin).uid}:${statSync(chemin).gid}`;
+
+test('refus site_trop_petit : moins de 90 % des pages du site servi ; le rapport garde les chiffres ; site/ ne change pas ; rien n’est noté ; le seuil se règle par l’interrupteur', { skip }, () => {
+  const m = monde();
+  siteServi(m, 20);
+  servir(m);
+  const avant = empreinteDe(join(m.instance, 'site'));
+  const r = lancer(m, siteFabrique(m, 5));
+  assert.equal(r.code, 0, r.out);
+  const rapport = dernierRapport(m);
+  assert.equal(rapport.issue, 'fait', 'la fabrication est faite ; seul le site n’est pas posé');
+  assert.deepEqual([rapport.servi.pose, rapport.servi.motif, rapport.servi.code_sortie], [false, 'site_trop_petit', 82]);
+  const pose = JSON.parse(readFileSync(join(m.rapports, rapportsDe(m)[0], 'pose.json'), 'utf8'));
+  assert.deepEqual([pose.refus, pose.pages_fabriquees, pose.pages_servies, pose.minimum_de_pages], ['site_trop_petit', 6, 21, 19]);
+  assert.deepEqual(empreinteDe(join(m.instance, 'site')), avant);
+  assert.ok(existsSync(join(m.atelier, 'declencheur', 'dernier-contenu')), 'un refus qui ne changera pas tant que l’extrait ne change pas est noté : le minuteur ne refabrique pas toutes les 10 minutes');
+  const refaits = lancements(m).length;
+  assert.equal(lancer(m, siteFabrique(m, 5), ['--origine', 'contenu']).code, 0);
+  assert.equal(lancements(m).length, refaits, 'extrait inchangé : rien de refait');
+  // le seuil du propriétaire (« --servir --pages-minimum » efface la note) : 20 % laisse passer
+  rmSync(join(m.atelier, 'declencheur', 'dernier-contenu'));
+  servir(m, 20);
+  rmSync(join(m.atelier, 'rapports'), { recursive: true });
+  mkdirSync(join(m.atelier, 'rapports'));
+  assert.equal(lancer(m, { ...siteFabrique(m, 5), ...horloge(MAINTENANT + 7200) }).code, 0);
+  assert.ok(lancements(m).at(-1).includes('--minimum-pct 20'));
+  assert.equal(dernierRapport(m).servi.pose, true);
+  assert.equal(empreinteDe(join(m.instance, 'site'))['index.html'], '<h1>neuf</h1>');
+});
+
+test('les autres refus : une installation arrivée pendant la fabrication (versions dites, aucun conteneur de pose), un kit sans le script, Docker qui refuse, un lien dans la sortie, index.html absent', { skip }, () => {
+  // une installation pendant la fabrication : le fichier VERSION n'est plus celui de la marque
+  let m = monde();
+  siteServi(m);
+  servir(m);
+  const avant = empreinteDe(join(m.instance, 'site'));
+  ecrire(join(m.instance, 'VERSION'), `tag=v0.4.96\nversion=0.4.96\ncommit=${'a'.repeat(40)}\nmode=test\n`);
+  assert.equal(lancer(m, siteFabrique(m, 20)).code, 0);
+  let servi = dernierRapport(m).servi;
+  assert.deepEqual([servi.pose, servi.motif, servi.version_installee, servi.version_de_l_instance], [false, 'version_differente', '0.4.95', '0.4.96']);
+  assert.equal(lancements(m).length, 1, 'aucun conteneur de pose');
+  assert.deepEqual(empreinteDe(join(m.instance, 'site')), avant);
+  // la base source retirée (retour arrière de la bascule 1) : le marqueur est relu avant chaque pose, aucune pose
+  m = monde();
+  siteServi(m);
+  servir(m);
+  rmSync(join(m.instance, 'db', 'source'));
+  const sansBase = empreinteDe(join(m.instance, 'site'));
+  lancer(m, siteFabrique(m, 20));
+  servi = dernierRapport(m).servi;
+  assert.deepEqual([servi.pose, servi.motif], [false, 'pas_de_base_source']);
+  assert.equal(lancements(m).length, 1, 'aucun conteneur de pose');
+  assert.deepEqual(empreinteDe(join(m.instance, 'site')), sansBase);
+  // pas de _serveur/ à protéger, ou un lien à sa place : jamais de pose (le conteneur ne le verrait pas en lecture seule)
+  m = monde();
+  siteServi(m);
+  servir(m);
+  rmSync(join(m.instance, 'site', '_serveur'), { recursive: true });
+  lancer(m, siteFabrique(m, 20));
+  assert.equal(dernierRapport(m).servi.motif, 'site_absent');
+  assert.equal(lancements(m).length, 1);
+  m = monde();
+  siteServi(m);
+  servir(m);
+  rmSync(join(m.instance, 'site', '_serveur'), { recursive: true });
+  symlinkSync(join(m.dossier), join(m.instance, 'site', '_serveur'));
+  lancer(m, siteFabrique(m, 20));
+  assert.equal(dernierRapport(m).servi.motif, 'site_absent');
+  // un kit sans le script de pose
+  m = monde();
+  siteServi(m);
+  servir(m);
+  rmSync(join(m.atelier, 'kit', 'client', 'scripts', 'poser-un-site.mjs'));
+  lancer(m, siteFabrique(m, 20));
+  assert.equal(dernierRapport(m).servi.motif, 'kit_sans_pose');
+  assert.equal(lancements(m).length, 1);
+  // Docker refuse le second conteneur
+  m = monde();
+  siteServi(m);
+  servir(m);
+  lancer(m, { ...siteFabrique(m, 20), FAKE_POSE_ECHEC: '1' });
+  assert.equal(dernierRapport(m).servi.motif, 'docker_refuse');
+  // un lien dans le site fabriqué : refusé par le script du conteneur (83), rien n'est posé
+  m = monde();
+  siteServi(m);
+  servir(m);
+  const fab = siteFabrique(m, 20);
+  symlinkSync('/etc/passwd', join(fab.FAKE_SITE_FABRIQUE, 'passwd.html'));
+  const avantLien = empreinteDe(join(m.instance, 'site'));
+  lancer(m, fab);
+  servi = dernierRapport(m).servi;
+  assert.deepEqual([servi.pose, servi.motif, servi.code_sortie], [false, 'fichier_irregulier', 83]);
+  assert.deepEqual(empreinteDe(join(m.instance, 'site')), avantLien);
+  // une sortie sans index.html
+  m = monde();
+  siteServi(m);
+  servir(m);
+  const sans = siteFabrique(m, 20);
+  rmSync(join(sans.FAKE_SITE_FABRIQUE, 'index.html'));
+  // le faux conteneur de fabrication écrit son propre index.html témoin : on le retire après coup, par une pose qui le trouve absent
+  const faux = join(m.bin, 'docker');
+  writeFileSync(faux, readFileSync(faux, 'utf8').replace('cp -a "$FAKE_SITE_FABRIQUE/." "$sortie/site/"', 'cp -a "$FAKE_SITE_FABRIQUE/." "$sortie/site/"; rm -f "$sortie/site/index.html"'));
+  lancer(m, sans);
+  assert.deepEqual([dernierRapport(m).servi.motif, dernierRapport(m).servi.code_sortie], ['index_absent', 81]);
+  // une fabrication qui n'a pas réussi ne pose rien, même avec l'interrupteur
+  m = monde();
+  siteServi(m);
+  servir(m);
+  const intact = empreinteDe(join(m.instance, 'site'));
+  lancer(m, { ...siteFabrique(m, 20), FAKE_CODE: '1' });
+  assert.equal(dernierRapport(m).issue, 'echec');
+  assert.equal(dernierRapport(m).servi, null);
+  assert.equal(lancements(m).length, 1);
+  assert.deepEqual(empreinteDe(join(m.instance, 'site')), intact);
+});
+
+test('le minuteur « contenu » : sans interrupteur, rien (pas même un rapport) ; extrait inchangé, rien ; extrait changé, une fabrication et une pose ; extrait absent, rien', { skip }, () => {
+  const extrait = (m) => join(m.atelier, 'depot', 'contenu-0.4.95.db');
+  // sans interrupteur
+  let m = monde();
+  siteServi(m);
+  let r = lancer(m, siteFabrique(m, 20), ['--origine', 'contenu']);
+  assert.equal(r.code, 0, r.out);
+  assert.match(r.out, /interrupteur .* pas posé/);
+  assert.deepEqual([rapportsDe(m).length, lancements(m).length], [0, 0]);
+  // avec : le premier passage fabrique (rien n'a encore été posé), puis plus rien tant que l'extrait ne change pas
+  m = monde();
+  siteServi(m);
+  servir(m);
+  const env = (plus = {}) => ({ ...siteFabrique(m, 20), ...plus });
+  r = lancer(m, env(horloge(MAINTENANT)), ['--origine', 'contenu']);
+  assert.equal(r.code, 0, r.out);
+  assert.equal(rapportsDe(m).length, 1);
+  assert.equal(dernierRapport(m).origine, 'contenu');
+  assert.equal(dernierRapport(m).servi.pose, true);
+  assert.equal(lancements(m).length, 2, 'fabrication et pose');
+  r = lancer(m, env(horloge(MAINTENANT + 600)), ['--origine', 'contenu']);
+  assert.equal(r.code, 0, r.out);
+  assert.deepEqual([rapportsDe(m).length, lancements(m).length], [1, 2], 'extrait inchangé : rien du tout');
+  assert.equal(r.out.trim(), '', 'et sans bruit : toutes les 10 minutes, le journal ne se remplit pas');
+  // l'extrait change (le service l'a refait) : taille et date, une fabrication de plus
+  writeFileSync(extrait(m), 'extrait du contenu du site de dev, après une saisie du propriétaire');
+  r = lancer(m, env(horloge(MAINTENANT + 1200)), ['--origine', 'contenu']);
+  assert.equal(r.code, 0, r.out);
+  assert.deepEqual([rapportsDe(m).length, lancements(m).length], [2, 4]);
+  assert.equal(dernierRapport(m).origine, 'contenu');
+  // la date seule d'un extrait de même taille compte aussi
+  const taille = statSync(extrait(m)).size;
+  writeFileSync(extrait(m), 'x'.repeat(taille));
+  spawnSync('touch', ['-d', '2027-01-01 00:00:00', extrait(m)]);
+  lancer(m, env(horloge(MAINTENANT + 1800)), ['--origine', 'contenu']);
+  assert.equal(rapportsDe(m).length, 3);
+  // un extrait pas encore là : rien (le minuteur repassera), jamais une attente
+  m = monde({ extrait: false });
+  siteServi(m);
+  servir(m);
+  r = lancer(m, siteFabrique(m, 20), ['--origine', 'contenu']);
+  assert.equal(r.code, 0, r.out);
+  assert.deepEqual([rapportsDe(m).length, lancements(m).length], [0, 0]);
+  // l'interrupteur retiré puis reposé : un nouveau départ (la note est effacée par le geste ; ici, à la main)
+  assert.ok(!r.out.includes('ERREUR'));
+});
+
+test('le plafond propre à l’origine « contenu » (48 par jour, réglable) : au-delà, un seul rapport le dit ; les autres origines ne le subissent pas, et ne comptent pas ces fabrications', { skip }, () => {
+  const m = monde({ depuis: MAINTENANT - 3600 });
+  siteServi(m);
+  servir(m);
+  const reglages = readFileSync(join(m.atelier, 'reglages.env'), 'utf8');
+  writeFileSync(join(m.atelier, 'reglages.env'), `${reglages}MAX_CONTENU_PAR_JOUR=2\n`);
+  const extrait = join(m.atelier, 'depot', 'contenu-0.4.95.db');
+  const tour = (k, origine = 'contenu') => { writeFileSync(extrait, `extrait ${'x'.repeat(k)}`); return lancer(m, { ...siteFabrique(m, 20), ...horloge(MAINTENANT + k * 10) }, ['--origine', origine]); };
+  tour(1); tour(2);
+  assert.equal(rapportsDe(m).length, 2);
+  tour(3);
+  let rapports = rapportsDe(m).map((id) => JSON.parse(readFileSync(join(m.rapports, id, 'rapport.json'), 'utf8')));
+  assert.equal(rapports.length, 3);
+  assert.deepEqual([rapports[2].issue, rapports[2].motif, rapports[2].origine], ['refus', 'plafond_du_jour', 'contenu']);
+  assert.equal(lancements(m).length, 4, 'deux fabrications, deux poses, rien de plus');
+  const quatre = tour(4);
+  assert.match(quatre.out, /plafond du jour atteint \(2 fabrications, maximum 2\)/);
+  assert.equal(rapportsDe(m).length, 3, 'le refus n’est dit qu’une fois par jour');
+  // une livraison n'a pas ce plafond-là : elle fabrique (douze par jour pour les autres origines, que ces deux-là ne comptent pas)
+  const livraison = lancer(m, { ...siteFabrique(m, 20), ...horloge(MAINTENANT + 100) });
+  assert.equal(livraison.code, 0, livraison.out);
+  rapports = rapportsDe(m).map((id) => JSON.parse(readFileSync(join(m.rapports, id, 'rapport.json'), 'utf8')));
+  assert.equal(rapports.at(-1).origine, 'livraison');
+  assert.equal(rapports.at(-1).issue, 'fait');
+  assert.ok(unicite(rapportsDe(m)));
+});
+
+/** Le geste pour --servir : un atelier installé (kit, réglages), un faux systemctl, les unités dans un dossier d'essai. */
+const unitesDe = (m) => readdirSync(join(m.dossier, 'systemd')).sort();
+const journalSystemctl = (m) => (existsSync(join(m.faux, 'systemctl.log')) ? readFileSync(join(m.faux, 'systemctl.log'), 'utf8') : '');
+
+test('installer.sh --servir : l’interrupteur, le minuteur de 10 minutes, la première fabrication ; --ne-plus-servir : tout retiré, le geste de retour dit ; --retirer et --etat en parlent', { skip }, () => {
+  const m = monde();
+  ecrire(join(m.instance, 'db', 'source'), ''); // la base source : sans elle, chaque pose referait la base vivante
+  const interrupteur = join(m.atelier, 'servir');
+  assert.ok(!existsSync(interrupteur));
+  assert.match(installer(m, ['--etat']).out, /Site servi par l'atelier : non/);
+  const r = installer(m, ['--servir']);
+  assert.equal(r.code, 0, r.out);
+  assert.ok(existsSync(interrupteur));
+  const champs = readFileSync(interrupteur, 'utf8');
+  assert.match(champs, /^SERVIR_DEPUIS=\d{4}-\d\d-\d\dT[\d:]+Z$/m);
+  assert.match(champs, /^PAGES_MINIMUM_PCT=90$/m);
+  assert.deepEqual(JSON.parse(readFileSync(join(m.rapports, 'servir.json'), 'utf8')).pages_minimum_pct, 90);
+  assert.equal(JSON.parse(readFileSync(join(m.rapports, 'servir.json'), 'utf8')).format, 'maverick-atelier-servir/1');
+  assert.deepEqual(unitesDe(m), ['maverick-atelier-contenu.service', 'maverick-atelier-contenu.timer']);
+  const minuteur = readFileSync(join(m.dossier, 'systemd', 'maverick-atelier-contenu.timer'), 'utf8');
+  assert.match(minuteur, /^OnCalendar=\*:0\/10$/m);
+  assert.match(minuteur, /^Persistent=false$/m);
+  const service = readFileSync(join(m.dossier, 'systemd', 'maverick-atelier-contenu.service'), 'utf8');
+  assert.match(service, /^ExecStart=\/bin\/sh .*\/outils\/lancer\.sh --origine contenu$/m);
+  assert.match(service, new RegExp(`^ConditionPathExists=${interrupteur.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'm'), 'sans le fichier, systemd ne lance rien');
+  assert.match(journalSystemctl(m), /enable --now maverick-atelier-contenu\.timer/);
+  assert.match(journalSystemctl(m), /start --no-block maverick-atelier-contenu\.service/);
+  assert.match(r.out, /sudo sh .*mise-a-jour\.sh --force/, 'le retour arrière est dit');
+  assert.match(installer(m, ['--etat']).out, /Site servi par l'atelier : OUI \(interrupteur .*pages minimum 90 %\)/);
+  // le seuil se règle, et un geste sans option le garde
+  assert.equal(installer(m, ['--servir', '--pages-minimum', '40', '--sans-fabrication']).code, 0);
+  assert.match(readFileSync(interrupteur, 'utf8'), /^PAGES_MINIMUM_PCT=40$/m);
+  assert.equal(installer(m, ['--servir', '--sans-fabrication']).code, 0);
+  assert.match(readFileSync(interrupteur, 'utf8'), /^PAGES_MINIMUM_PCT=40$/m, 'relancé sans option : le seuil est gardé');
+  // le geste de base garde le minuteur (les unités se réécrivent), sans toucher à l'interrupteur
+  assert.equal(installer(m, ['--sans-fabrication']).code, 0);
+  assert.ok(existsSync(interrupteur));
+  assert.ok(unitesDe(m).includes('maverick-atelier-contenu.timer'));
+  assert.equal(installer(m, ['--sans-fabrication']).code, 0);
+  // ne plus servir
+  ecrire(join(m.atelier, 'declencheur', 'dernier-contenu'), 'contenu-0.4.95.db 1 1\n');
+  const arret = installer(m, ['--ne-plus-servir']);
+  assert.equal(arret.code, 0, arret.out);
+  assert.ok(!existsSync(interrupteur) && !existsSync(join(m.rapports, 'servir.json')) && !existsSync(join(m.atelier, 'declencheur', 'dernier-contenu')));
+  assert.ok(!unitesDe(m).some((u) => u.includes('contenu')));
+  assert.match(journalSystemctl(m), /disable --now maverick-atelier-contenu\.timer/);
+  assert.match(arret.out, /sudo sh .*\/mise-a-jour\.sh --force/);
+  assert.match(installer(m, ['--etat']).out, /Site servi par l'atelier : non/);
+  // --retirer retire aussi l'interrupteur et le minuteur
+  installer(m, ['--servir', '--sans-fabrication']);
+  assert.equal(installer(m, ['--retirer']).code, 0);
+  assert.ok(!existsSync(interrupteur));
+  assert.ok(!unitesDe(m).some((u) => u.includes('contenu')));
+});
+
+test('installer.sh --servir : refus sans atelier installé, sans le script de pose dans le kit, option incohérente ; une valeur sans sens ne s’écrit pas', { skip }, () => {
+  const sansGeste = monde({ reglages: false });
+  const r = installer(sansGeste, ['--servir']);
+  assert.notEqual(r.code, 0);
+  assert.match(r.out, /pas installé/);
+  assert.ok(!existsSync(join(sansGeste.atelier, 'servir')));
+  // sans la base source (db/source), chaque pose referait la base vivante : refus, avec la raison et le geste
+  const sansSource = monde();
+  const refusSource = installer(sansSource, ['--servir']);
+  assert.notEqual(refusSource.code, 0);
+  assert.match(refusSource.out, /db\/source est absent.*referait la base vivante.*bascule\.sh poser/);
+  assert.ok(!existsSync(join(sansSource.atelier, 'servir')) && !existsSync(join(sansSource.atelier, 'rapports', 'servir.json')));
+  const sansScript = monde();
+  ecrire(join(sansScript.instance, 'db', 'source'), '');
+  rmSync(join(sansScript.atelier, 'kit', 'client', 'scripts', 'poser-un-site.mjs'));
+  assert.match(installer(sansScript, ['--servir']).out, /poser-un-site\.mjs/);
+  assert.ok(!existsSync(join(sansScript.atelier, 'servir')));
+  const m = monde();
+  for (const args of [['--servir', '--ne-plus-servir'], ['--servir', '--retirer'], ['--ne-plus-servir', '--etat'], ['--pages-minimum', '50'], ['--servir', '--pages-minimum', '101'], ['--servir', '--pages-minimum', 'x'],
+    ['--servir', '--max-contenu-par-jour', '5'], ['--max-contenu-par-jour', '0'], ['--max-contenu-par-jour', '999']]) {
+    assert.equal(installer(m, args).code, 2, args.join(' '));
+  }
+  assert.ok(!existsSync(join(m.atelier, 'servir')));
+  // le plafond du contenu se règle par le geste de base, et se reprend
+  assert.equal(installer(m, ['--max-contenu-par-jour', '10', '--sans-fabrication']).code, 0);
+  assert.match(readFileSync(join(m.atelier, 'reglages.env'), 'utf8'), /^MAX_CONTENU_PAR_JOUR=10$/m);
+  assert.equal(installer(m, ['--sans-fabrication']).code, 0);
+  assert.match(readFileSync(join(m.atelier, 'reglages.env'), 'utf8'), /^MAX_CONTENU_PAR_JOUR=10$/m);
+});
+
+test('garde-fou 20, site servi : lancer.sh n’ouvre rien de la sortie ni du résumé de la pose ; seuls stat, un test de type, des versions de ses propres fichiers et une copie bornée', { skip }, () => {
+  const lignes = readFileSync(join(SOURCES, 'lancer.sh'), 'utf8').split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('#'));
+  const pose = lignes.slice(lignes.findIndex((l) => l.startsWith('servir_le_site()')), lignes.findIndex((l) => l.startsWith('fabriquer_pour_la_marque()')));
+  assert.ok(pose.length > 20);
+  for (const l of pose) {
+    assert.ok(!/(^|[|;&(]\s*)(cat|sed|grep|awk|head|tail|ls|cp|wc|du|od|xxd|strings|jq|node|python3?)\s[^|;&]*(\/sortie|\$ATELIER\/pose|pose\.json)/.test(l), `root ne lit pas : ${l}`);
+  }
+  assert.ok(pose.some((l) => l.includes('copier_un_resultat "$ATELIER/pose/pose.json"')), 'le résumé est copié par la fonction bornée, après docker rm');
+  assert.ok(pose.findIndex((l) => l.includes('docker rm -f')) < pose.findIndex((l) => l.includes('copier_un_resultat')), 'le conteneur est supprimé avant la copie');
+  assert.ok(!pose.some((l) => /--privileged|docker\.sock|-v "\$INSTANCE\/db|--network (?!none)/.test(l)));
 });

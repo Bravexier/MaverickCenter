@@ -16,12 +16,19 @@ import { test } from 'node:test';
 import { colonnesDeLArmure, coutDeLaPiece } from '../src/lib/armure-champs.mjs';
 import { chargerArmures } from '../src/lib/armures-db.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { mixtesSorties } from '../src/lib/sortie-du-contenu.mjs';
 import { baseDImport, lotsAvant, texteDImport } from './aide-base-d-import.mjs';
+import { testRetireAvecLesMixtes } from './aide-sortie-du-contenu.mjs';
+
+// Les tests qui éprouvent la migration mixte elle-même sortent avec elle (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LES_MIXTES).
+const testDeLaMixte = testRetireAvecLesMixtes(import.meta.url);
 
 const db = ouvrirBase({ sansExemples: false });
-const registre = JSON.parse(readFileSync(new URL('../../data/migrations/0105-r207-armures-boucliers-et-fabrication.json', import.meta.url), 'utf8'));
-const registre0108 = JSON.parse(readFileSync(new URL('../../data/migrations/0108-r207-prix-des-armures.json', import.meta.url), 'utf8'));
-const registre0109 = JSON.parse(readFileSync(new URL('../../data/migrations/0109-r207-panneau-des-batons.json', import.meta.url), 'utf8'));
+// Les registres des 0105, 0108 et 0109 (valeurs et textes de règle) sortent avec ces migrations mixtes, et les tests qui les lisent avec eux
+// (RETIRES_AVEC_LES_MIXTES).
+const registre = mixtesSorties() ? null : JSON.parse(readFileSync(new URL('../../data/migrations/0105-r207-armures-boucliers-et-fabrication.json', import.meta.url), 'utf8'));
+const registre0108 = mixtesSorties() ? null : JSON.parse(readFileSync(new URL('../../data/migrations/0108-r207-prix-des-armures.json', import.meta.url), 'utf8'));
+const registre0109 = mixtesSorties() ? null : JSON.parse(readFileSync(new URL('../../data/migrations/0109-r207-panneau-des-batons.json', import.meta.url), 'utf8'));
 const APRES = { garder: lotsAvant('0108') };
 const apresLa0108 = () => baseDImport(APRES);
 const POIDS = { Léger: 1, Intermédiaire: 2, Lourd: 3 };
@@ -96,7 +103,7 @@ test('R207 (1) E6 : le prix de chaque armure de la grille (231) est le prix calc
   }
 });
 
-test('R207 (1) : le registre de la 0108 — les 18 prix que la 0105 laissait hors formule, chacun le prix calculé', () => {
+testDeLaMixte('R207 (1) : le registre de la 0108 — les 18 prix que la 0105 laissait hors formule, chacun le prix calculé', () => {
   const calc = new Map(grille(apresLa0108()).map((x) => [x.a.id, x]));
   const attendus = registre.prix_d_armure_hors_formule;
   assert.equal(attendus.length, 18);
@@ -116,7 +123,7 @@ test('R207 (1) E6 : les 100 boucliers, AP et AM = classe x ceux du matériau, pr
   for (const x of b) assert.deepEqual([x.b.ap, x.b.am, x.b.prix], [x.ap, x.am, x.prix], x.b.id);
 });
 
-test('R207 (1) : le registre de la 0105 — 6 armures (AP ou AM) et 10 prix de bouclier, chacun la valeur calculée, la défense écrite refaite', () => {
+testDeLaMixte('R207 (1) : le registre de la 0105 — 6 armures (AP ou AM) et 10 prix de bouclier, chacun la valeur calculée, la défense écrite refaite', () => {
   const calc = new Map([...grille(apresLa0108()).map((x) => [x.a.id, x]), ...boucliers(apresLa0108()).map((x) => [x.b.id, x])]);
   const lignes = (table) => [...new Set(registre.valeurs.filter((v) => v.table === table).map((v) => v.cle.id))];
   assert.equal(lignes('armure').length, 6);
@@ -133,7 +140,7 @@ test('R207 (1) : le registre de la 0105 — 6 armures (AP ou AM) et 10 prix de b
   assert.ok(!registre.valeurs.some((v) => v.colonne === 'solidite'));
 });
 
-test('R207 (3) : les 42 recettes de bâton magique en Perception + Volonté ; les 21 recettes de matériau ne changent pas', () => {
+testDeLaMixte('R207 (3) : les 42 recettes de bâton magique en Perception + Volonté ; les 21 recettes de matériau ne changent pas', () => {
   // recette n'est écrite ni par lib/edition-modele.mjs ni par le service : ses valeurs se lisent telles quelles sur l'état courant
   const parGenre = (genre) => db.prepare('SELECT test_brut, test_carac_1_id, test_carac_2_id, count(*) AS n FROM recette WHERE genre = ? GROUP BY 1, 2, 3').all(genre).map((r) => ({ ...r }));
   assert.deepEqual(parGenre('baton_magique'), [{ test_brut: 'Test de Perception + Volonté', test_carac_1_id: 'perception', test_carac_2_id: 'volonte', n: 42 }]);
@@ -143,7 +150,7 @@ test('R207 (3) : les 42 recettes de bâton magique en Perception + Volonté ; le
   for (const x of v) assert.equal(x.cles.length, 42);
 });
 
-test('R207 (3) : la page Bâton magique, le panneau « Armes » et le corps de la page Armes disent les caractéristiques du Doc « MÉTIER »', () => {
+testDeLaMixte('R207 (3) : la page Bâton magique, le panneau « Armes » et le corps de la page Armes disent les caractéristiques du Doc « MÉTIER »', () => {
   const baton = texteDImport('page', { id: 'ressources/baton-magique' }, 'corps_md', APRES);
   assert.ok(baton.includes('Test de Perception + Volonté'));
   assert.ok(!baton.includes('Volonté + Intelligence'));
@@ -159,7 +166,7 @@ test('R207 (3) : la page Bâton magique, le panneau « Armes » et le corps de l
   }
 });
 
-test('R207 (3) : la 0109 — le panneau « Bâtons magiques » suit la page ; aucun bloc de panneau ne garde l’ancien test de fabrication', () => {
+testDeLaMixte('R207 (3) : la 0109 — le panneau « Bâtons magiques » suit la page ; aucun bloc de panneau ne garde l’ancien test de fabrication', () => {
   assert.deepEqual(registre0109.textes.map((x) => [x.table, x.cle, x.col]), [['panneau_regles_bloc', { panneau_id: 'batons-magiques', rang: 2 }, 'texte']]);
   // les blocs de panneau se modifient sur le site de dev : lus dans l'état de la migration (seuls les lots rapatriés après elle sont défaits)
   const apres = baseDImport({ garder: lotsAvant('0109') });

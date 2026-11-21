@@ -1,0 +1,32 @@
+{
+ "$commentaire": "Tiré des listes renommes… des registres de migration (data/migrations/0117-magies-v10-specialisations.json) : par table, id → anciens noms, dans l’ordre des migrations. La fiche retrouve une ligne citée sous un nom qu’une migration a changé en gardant l’identifiant (lib/noms-d-avant-des-migrations.mjs, champ noms_d_avant des règles de la fiche). Figé : la migration est fusionnée et ne change plus ; son registre sort du dépôt avec les migrations mixtes (R296). Aucun texte de règle. Écrit par client/scripts/references-des-migrations.mjs ; test/references-des-migrations-mixtes.test.mjs le compare au registre tant qu’il est dans le dépôt.",
+ "migrations": [
+  "0117-magies-v10-specialisations"
+ ],
+ "sort": {
+  "magies/magie-de-larcane#sort:foudre-argente": ["Foudre argentée"],
+  "magies/magie-de-la-corruption#sort:verrouille-visible": ["Verrouillage Visible"],
+  "magies/magie-du-vide#sort:touche-du-vide": ["Toucher du Vide"],
+  "magies/magie-de-la-necromancie#sort:vague-de-cadavre": ["Vague de cadavres"],
+  "magies/magie-de-la-necromancie#sort:repar-os": ["Répar'Os"],
+  "magies/magie-de-leau#sort:onde-confusion": ["Onde de Confusion"],
+  "magies/magie-du-vent#sort:estoc-hurlante": ["Estoc hurlant"],
+  "magies/magie-de-lombre#sort:brume-mental": ["Brume mentale"],
+  "magies/magie-de-larcane#sort:peau-de-chakra": ["Peau de Chakra"],
+  "magies/magie-de-larcane#sort:pluie-de-chakra": ["Pluie de Chakra"],
+  "magies/magie-de-larcane#sort:miroir-magique": ["Miroir Magique"],
+  "magies/magie-de-la-corruption#sort:mine-noire": ["Mine noire"],
+  "magies/magie-de-lespace-temps#sort:frappe-temporelle": ["Frappe Temporelle"],
+  "magies/magie-du-vide#sort:poing-du-vide": ["Poing du vide"],
+  "magies/magie-de-la-necromancie#sort:armure-dos": ["Armure d'os"],
+  "magies/magie-de-la-necromancie#sort:dechirure": ["Déchirure"],
+  "magies/magie-de-la-glace#sort:lance-de-givre": ["Lance de givre"],
+  "magies/magie-de-la-glace#sort:pergelisol": ["Pergélisol"],
+  "magies/magie-de-la-glace#sort:frappe-de-celsius": ["Frappe de Celsius"],
+  "magies/magie-de-la-foudre#sort:boules-de-foudre": ["Boules de foudre"],
+  "magies/magie-de-la-foudre#sort:plaque-miroir": ["Plaque Miroir"],
+  "magies/magie-de-la-foudre#sort:armure-conductrice": ["Armure conductrice"],
+  "magies/magie-de-lombre#sort:rayon-negatif": ["Rayon Négatif"],
+  "magies/magie-de-lombre#sort:goudron": ["Goudron"]
+ }
+}

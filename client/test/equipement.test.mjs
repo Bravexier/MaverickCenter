@@ -26,6 +26,10 @@ import { ordonnerBlocs } from '../src/lib/panneaux-regles-db.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { ecrituresReecrites, textesReecrits } from './aide-textes-reecrits.mjs';
+import { testRetireAvecLesMixtes } from './aide-sortie-du-contenu.mjs';
+
+// Les tests qui éprouvent la migration mixte elle-même sortent avec elle (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LES_MIXTES).
+const testDeLaMixte = testRetireAvecLesMixtes(import.meta.url);
 
 const db = ouvrirBase();
 const batons = chargerBatons(db);
@@ -220,6 +224,12 @@ test('bâtons : leurs règles (migration 0056) sont le panneau du sous-onglet �
   const blocs = ordonnerBlocs(historique.lignesDImport('panneau_regles_bloc').filter((b) => b.panneau_id === 'batons-magiques'));
   assert.deepEqual(blocs.map((b) => [b.tuile, b.titre]), [[0, null], [1, 'Comment fabriquer un bâton magique ?']]);
   assert.equal(blocs[0].texte, sectionDuCorps(importe, null), 'l’introduction de la page');
+  assert.equal(batons.page?.titre, db.prepare('SELECT titre FROM page WHERE id = ?').get(PAGE_DES_BATONS)?.titre);
+});
+
+testDeLaMixte('bâtons (R207 (3)) : la tuile « Comment fabriquer un bâton magique ? » recopie sa section de la page, sous l’écriture d’avant ou d’après les 0105 et 0109 (registres)', () => {
+  const importe = historique.valeurDImport('page', { id: PAGE_DES_BATONS }, 'corps_md');
+  const blocs = ordonnerBlocs(historique.lignesDImport('panneau_regles_bloc').filter((b) => b.panneau_id === 'batons-magiques'));
   // R207 (3) : la 0105 réécrit le test de l'Enchanteur dans la page, la 0109 dans le bloc. La valeur d'import d'une cellule que le site a modifiée est
   // celle d'avant la migration : chaque côté se lit sous l'une ou l'autre écriture (test/aide-textes-reecrits.mjs), sans figer le texte d'après.
   const R207 = ['0105-r207-armures-boucliers-et-fabrication', '0109-r207-panneau-des-batons'];
@@ -231,7 +241,6 @@ test('bâtons : leurs règles (migration 0056) sont le panneau du sous-onglet �
   const r0109 = textesReecrits('0109-r207-panneau-des-batons').filter((t) => t.table === 'panneau_regles_bloc' && t.cle.panneau_id === 'batons-magiques');
   assert.equal(r0109.length, 1);
   assert.ok(blocs[1].texte.includes(r0109[0].avant) || blocs[1].texte.includes(r0109[0].apres), 'R207 (3) : le test de fabrication de l’Enchanteur');
-  assert.equal(batons.page?.titre, db.prepare('SELECT titre FROM page WHERE id = ?').get(PAGE_DES_BATONS)?.titre);
 });
 
 test('bâtons : le prix d’un niveau est celui des matériaux de sa recette (la gemme de la qualité du niveau + le bois), jamais un prix partiel', () => {

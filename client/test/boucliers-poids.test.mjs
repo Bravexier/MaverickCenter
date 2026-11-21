@@ -5,7 +5,6 @@
 // le site de dev peut changer le poids d'un bouclier depuis) doit être exactement le registre ; les couleurs du site (lib/equipement-couleurs.mjs) sont
 // celles de la légende, posées par la classe du poids (lib/palette-css.mjs, famille `poids`) ; la pastille d'un poids dit « Requiert N Force minimum ».
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { chargerArmures, poidsDeBouclier } from '../src/lib/armures-db.mjs';
 import { htmlDuPoids, RENDUS_DES_ARMURES } from '../src/lib/armures-rendu.mjs';
@@ -14,12 +13,19 @@ import { classeDuPoids, FAMILLES_DE_LA_PALETTE, PAR_DEFAUT } from '../src/lib/pa
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
+import { registreDeMigration } from './aide-registres-sortis.mjs';
+import { testRetireAvecLesMixtes } from './aide-sortie-du-contenu.mjs';
+
+// Les tests qui éprouvent la migration mixte elle-même sortent avec elle (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LES_MIXTES).
+const testDeLaMixte = testRetireAvecLesMixtes(import.meta.url);
 
 const db = ouvrirBase({ sansExemples: false });
-const registre = JSON.parse(readFileSync(new URL('../../data/migrations/0054-poids-des-boucliers.json', import.meta.url), 'utf8'));
+// le registre de la 0054, ou ce qu'en garde test/fixtures/registres-sortis.json une fois la migration mixte sortie (la légende : ids, cellules, couleurs) ;
+// les tests qui comparent l'import à ses boucliers sortent avec elle (RETIRES_AVEC_LES_MIXTES)
+const registre = registreDeMigration('0054-poids-des-boucliers');
 const h = historiqueSite(db);
 
-test('registre de la migration 0054 : les 100 boucliers, chacun avec sa case, sa couleur et le poids de cette couleur (celle de la légende)', () => {
+testDeLaMixte('registre de la migration 0054 : les 100 boucliers, chacun avec sa case, sa couleur et le poids de cette couleur (celle de la légende)', () => {
   const legende = Object.fromEntries(registre.legende.map((l) => [l.couleur, l.poids_id]));
   assert.deepEqual(Object.values(legende).sort(), ['leger', 'lourd', 'moyen', 'tres-lourd']);
   assert.equal(registre.boucliers.length, 100);
@@ -33,7 +39,7 @@ test('registre de la migration 0054 : les 100 boucliers, chacun avec sa case, sa
   assert.deepEqual(comptes, { leger: 37, moyen: 12, lourd: 21, 'tres-lourd': 30 });
 });
 
-test('la base dans son état d’import est le registre : chaque bouclier a le poids de la couleur de sa case, et sa case est celle de sa source', () => {
+testDeLaMixte('la base dans son état d’import est le registre : chaque bouclier a le poids de la couleur de sa case, et sa case est celle de sa source', () => {
   const lignes = h.lignesDImport('bouclier');
   assert.equal(lignes.length, registre.boucliers.length);
   const parId = new Map(lignes.map((l) => [l.id, l]));

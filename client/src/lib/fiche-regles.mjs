@@ -419,7 +419,7 @@ function reglesDeLaBase(db) {
   const alternatives = parCle(lignes(db, 'SELECT capacite_id, autre_id FROM v_capacite_exclusive'), 'capacite_id', (r) => r.autre_id);
   // les noms d'avant un renommage sur le site de dev (lib/historique-site.mjs#valeursDAvant), des dons et des sorts, par id (clé primaire `id` des deux
   // tables) ; `nomsDAvant` rend { noms_d_avant } sans le nom actuel, ou rien
-  // plus ceux que des migrations ont changés en gardant l'identifiant (registres de data/migrations : R237 (4) et (11), lib/noms-d-avant-des-migrations.mjs)
+  // plus ceux que des migrations ont changés en gardant l'identifiant (référence data/references/noms-d-avant-des-migrations.json : R237 (4) et (11), lib/noms-d-avant-des-migrations.mjs)
   const deMigrations = nomsDAvantDesMigrations();
   const parId = (table) => {
     const noms = new Map([...valeursDAvant(db, table, 'nom')].map(([cle, n]) => [JSON.parse(cle).id, n]));

@@ -24,7 +24,6 @@ La base est la source, le site en dérive. Ton chef est `leader-technique` : il 
 
 - **Changer la structure ou corriger des données** : `ecrire-une-migration`.
 - **Modifier une page du wiki** : `modifier-une-page-wiki`.
-- **Reprendre un journal du site de dev** : `rapatrier-l-edition`.
 - **`data/rows` ne se modifie jamais à la main.**
 - **Juger un schéma, une vue, un index ou une requête** : la grille `revue-sql`. Chaque constat est prouvé par une requête rejouable. Une relecture (`relecture-db`) est en lecture seule : ni `db:build`, ni `npm test`, ni fichier écrit.
 - **Les skills de zone.** Un skill de zone n'est proposé qu'après la lecture d'un fichier de sa zone : avant, lis directement `.claude/skills/<nom>/SKILL.md`.
@@ -38,4 +37,4 @@ La base est la source, le site en dérive. Ton chef est `leader-technique` : il 
 - Ce qui lit tes tables est à `tech-back` (modules `*-db.mjs`, service) et à `tech-front` (rendu). Dis-leur ce qu'ils doivent adapter, dans « Pour les autres ».
 - L'import depuis les classeurs et les extracteurs (`tools/sheets/`, `tools/bestiaire/`…) sont à `tech-sources`.
 
-Tu lances les outils qui fabriquent ton livrable (`db:migrate`, `db:doc`, `db:sync-pages`, `db:build` quand ils l'exigent). Tu ne lances que le fichier de test que tu écris ou corriges (`node --test test/<fichier>`) : ni `npm test`, ni `npm run test:cible`, ni les contrôles complets. `tech-qualite` les passe une seule fois, en fin de lot (`controles-avant-rendu`, demande du propriétaire). Ton rapport nomme les tests écrits ; `db:check`, `db:pages-check`, `db:doc -- --check` et les tests sont à `tech-qualite`. Pas de git : `tech-publication` publie.
+Tu lances les outils qui fabriquent ton livrable (`db:migrate`, `db:doc`, `db:build` quand ils l'exigent). Tu ne lances que le fichier de test que tu écris ou corriges (`node --test test/<fichier>`) : ni `npm test`, ni `npm run test:cible`, ni les contrôles complets. `tech-qualite` les passe une seule fois, en fin de lot (`controles-avant-rendu`, demande du propriétaire). Ton rapport nomme les tests écrits ; `db:check`, `db:pages-check`, `db:doc -- --check` et les tests sont à `tech-qualite`. Pas de git : `tech-publication` publie.

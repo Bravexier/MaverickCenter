@@ -20,6 +20,7 @@ import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { TABLES_FICHES } from '../src/lib/fiche-format.mjs';
 import { CLASSES_DE_TABLES, classeDeLaTable } from '../src/lib/tables-de-la-base.mjs';
+import { nomDeTable } from '../src/lib/libelles-de-la-base.mjs';
 import { signature } from './base-vivante.mjs';
 import { colonnesDeLaTable, empreintesDuContenu, identifiant } from './empreintes.mjs';
 import { instant as ecrireInstant } from './instant.mjs';
@@ -237,3 +238,68 @@ function calculerLEtat({ dossier, production, propre = null, instance = INSTANCE
   }
   return rendre('a_jour', null, base);
 }
+
+/**
+ * Les éléments de règle qu'une mise à jour retirerait sans que la production sache adapter ses fiches (R292, qui garde le blocage de R280) : une race, une classe
+ * ou une magie que des fiches de la production citent (`citations` de son attestation) et que la base du site de dev n'a plus. La production n'a pas de retrait
+ * automatique pour elles : la mise à jour ne s'y appliquerait pas (elle garderait sa base d'avant), et l'équipe prévient le propriétaire avant de livrer. Les
+ * autres éléments (dons, métiers, sorts, armes…) s'adaptent à la livraison (R42 et suites, R280) et ne sont jamais listés ici.
+ * Que des nombres et le nom de l'élément (du contenu public) : jamais une fiche, un compte ni un groupe.
+ * @param {{ dossier: string | null, db: import('node:sqlite').DatabaseSync | null, production?: string | null, propre?: string | null, instance?: string }} o
+ *   `db` : la base du site de dev (le contenu que la production recevrait) ; `production` : son site monté en lecture seule (le nom de l'élément qu'elle publie)
+ * @returns {{ connu: boolean, attestee_le: string | null, elements: { table: string, id: string, nom: string | null, libelle: string, fiches: number }[],
+ *   fiches_au_moins: number, fiches_au_plus: number, message: string }} `connu: false` : l'attestation n'est pas lue (rien à dire) ; `fiches_au_moins` (le plus cité des
+ *   éléments) et `fiches_au_plus` (leur somme) encadrent le nombre de fiches touchées : une fiche peut citer plusieurs éléments retirés
+ */
+export function retraitsBloquantsPourLaProduction({ dossier, db, production = null, propre = null, instance = INSTANCE_DE_PRODUCTION }) {
+  const rien = (connu, attestee = null) => ({ connu, attestee_le: attestee, elements: [], fiches_au_moins: 0, fiches_au_plus: 0, message: '' });
+  try {
+    if (!dossier || !db) return rien(false);
+    const lue = lireAttestation(dossier, instance);
+    if (!lue.attestation) return rien(false);
+    const citations = Array.isArray(lue.attestation.citations) ? lue.attestation.citations : [];
+    const tables = new Set(db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all().map((t) => t.name));
+    let publiee = null;
+    try {
+      const fichier = production && existsSync(production) ? productionPubliee(production, propre).chemin : null;
+      publiee = fichier ? new DatabaseSync(fichier, { readOnly: true }) : null;
+    } catch {
+      publiee = null;
+    }
+    const elements = [];
+    try {
+      for (const c of citations) {
+        // les seules tables sans retrait automatique : liste fermée, jamais un nom venu du fichier
+        if (!TABLES_SANS_RETRAIT_AUTOMATIQUE.includes(c?.table) || typeof c.id !== 'string' || !Number.isInteger(c.fiches) || c.fiches < 1 || !tables.has(c.table)) continue;
+        if (db.prepare(`SELECT 1 FROM "${c.table}" WHERE id = ?`).get(c.id)) continue;
+        let nom = null;
+        try {
+          nom = publiee?.prepare(`SELECT nom FROM "${c.table}" WHERE id = ?`).get(c.id)?.nom ?? null;
+        } catch {
+          nom = null;
+        }
+        const type = nomDeTable(c.table) ?? c.table;
+        elements.push({ table: c.table, id: c.id, nom, libelle: nom ? `${type} « ${nom} »` : `${type} ${c.id}`, fiches: c.fiches });
+      }
+    } finally {
+      publiee?.close();
+    }
+    if (!elements.length) return rien(true, lue.attestation.ecrite_le ?? null);
+    const somme = elements.reduce((n, e) => n + e.fiches, 0);
+    const plus = Math.max(...elements.map((e) => e.fiches));
+    const noms = elements.map((e) => `${e.libelle} (${e.fiches} fiche${e.fiches > 1 ? 's' : ''})`).join(', ');
+    return {
+      connu: true,
+      attestee_le: lue.attestation.ecrite_le ?? null,
+      elements,
+      fiches_au_moins: plus,
+      fiches_au_plus: somme,
+      message: `Cette mise à jour retirerait ${elements.length > 1 ? 'des éléments' : 'un élément'} que des fiches de la production utilisent : ${noms}. La production ne sait pas adapter ces fiches : la mise à jour ne s’y appliquerait pas, elle garderait sa base d’avant (R292). À régler avant de livrer.`,
+    };
+  } catch {
+    return rien(false); // la page « Mise à jour » ne doit jamais tomber pour cela
+  }
+}
+
+/** Les tables de règles qu'une fiche cite et pour lesquelles la production n'a aucun retrait automatique (R292) : race, classe, magie. */
+export const TABLES_SANS_RETRAIT_AUTOMATIQUE = Object.freeze(['race', 'classe', 'magie']);

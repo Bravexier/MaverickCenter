@@ -9,8 +9,11 @@
 //                au clic (une valeur changée entre-temps n'est pas écrite : le site prime, elle est listée avec la valeur trouvée), les numéros sont donnés, les
 //                contrôles du contenu rejoués, puis `lot_de_changements` passe à « applique » ;
 //   refuser      l'état « refuse » : la proposition reste, rien n'est écrit ;
+//   deposerEtAppliquer  R291 (qui remplace R275 (4)) : une fois la clé de dépôt posée (serveur/acces.mjs), le dépôt par cette clé ou le mot de passe est essayé à
+//                blanc puis APPLIQUÉ aussitôt, par le même code que le clic ; refusé aux contrôles, le lot est enregistré « refuse » avec ses motifs et rien n'entre ;
 //   annuler      un lot appliqué : `avant` est remis là où la valeur vaut encore ce que le lot a écrit (le site prime), d'un bloc, par le même code que l'application ; son
-//                aperçu se calcule sur une copie ;
+//                aperçu se calcule sur une copie ; une seule LIGNE du lot (une ligne de table de son effet net) s'annule de même (R291), si aucune autre ligne du lot
+//                encore en place ne la tient ;
 //   recalculer   « tout recalculer » : les écarts des colonnes dérivées, calculés sur une copie, sont DÉPOSÉS comme un lot de nature « code » (jamais écrits d'office).
 //
 // Les écritures passent par le service d'édition dès que la table lui est connue (risque du lot 6 : une écriture générique contourne les contrôles de
@@ -22,12 +25,23 @@ import { dirname, join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
+import { ErreurCorpsArmes, PAGE_DES_ARMES } from '../src/lib/corps-armes.mjs';
+import { ErreurCorpsArmures } from '../src/lib/corps-armures.mjs';
+import {
+  ErreurCorpsComposants, PAGE_DES_ARMURES, PAGE_DES_BOUCLIERS, PAGES_DES_COMPOSANTS_AU_CORPS_ENTIER,
+} from '../src/lib/corps-composants.mjs';
+import { PAGE_DE_LA_LIGNE } from '../src/lib/corps-magies.mjs';
+import { corpsDesPotionsEntier, ErreurCorpsPotions } from '../src/lib/corps-potions.mjs';
 import { ENTITES, TABLES } from '../src/lib/edition-modele.mjs';
 import { colonneMasquee, nomDeColonne, nomDeTable } from '../src/lib/libelles-de-la-base.mjs';
 import { comparerAvecLaBase, controlerLeLot, donnerLesNumeros, effetNetDuLot, FORMAT_DU_LOT, jugerLAnnulation, lireUnLot } from '../src/lib/lot-de-changements.mjs';
 import { controlerLeContenu } from './controles-du-contenu.mjs';
 import { ErreurEdition, appliquerUnLot, colonneDerivee, recalculerLesPages } from './edition.mjs';
 import { libelleDeLigne } from './edition-conflits.mjs';
+import { corpsEntierDesArmes } from './edition-armes.mjs';
+import { corpsEntierDesArmures } from './edition-armures.mjs';
+import { corpsEntierDeLaPageDesComposants } from './edition-composants.mjs';
+import { contexteDuCorpsDesPotions, potionsParPage } from './edition-consommables.mjs';
 import { lireLigne, monterLePlafond, nouveauLot, plusHautNumero, structure } from './edition-journal.mjs';
 
 /** Le format de l'essai enregistré (`lot_de_changements.essai`). */
@@ -91,8 +105,13 @@ function presenter(ligne, { resume = false } = {}) {
     operations: jsonOuNull(ligne.contenu)?.operations?.length ?? 0,
     verdict: essai?.verdict ?? null,
   };
+  const bilan = jsonOuNull(ligne.bilan);
+  // R291 : comment le lot est entré (dépôt appliqué aussitôt par la clé de dépôt ou le mot de passe, ou clic du propriétaire) et combien de ses lignes sont annulées
+  base.application = bilan?.application ?? null;
+  base.refus = essai?.refus_du_depot ?? null; // un dépôt appliqué aussitôt que l'essai ou l'application a refusé : ses motifs (jamais dans `bilan`, vide pour un lot refusé)
+  base.lignes_annulees = Object.keys(bilan?.lignes_annulees ?? {}).length;
   if (resume) return base;
-  return { ...base, contenu: jsonOuNull(ligne.contenu), essai, bilan: jsonOuNull(ligne.bilan), verrous_ouverts: jsonOuNull(ligne.verrous_ouverts) };
+  return { ...base, contenu: jsonOuNull(ligne.contenu), essai, bilan, verrous_ouverts: jsonOuNull(ligne.verrous_ouverts) };
 }
 
 const ligneDuLot = (db, id) => db.prepare('SELECT * FROM lot_de_changements WHERE id = ?').get(id) ?? null;
@@ -187,11 +206,11 @@ function valeurCourte(v) {
 }
 
 /** L'aperçu d'une opération : la table et la ligne par leurs noms, chaque colonne par son libellé, avec la valeur d'avant (celle de la base) et d'après. */
-function apercuDe(db, o, ligne) {
+function apercuDe(db, o, ligne, ligneDuLibelle = ligne) {
   const colonnes = Object.keys(o.operation === 'supprimer' ? o.avant : o.apres).filter((c) => !colonneMasquee(o.table, c));
   let libelle;
   try {
-    libelle = libelleDeLigne(o.table, ligne ?? o.apres ?? o.avant, o.cle, db);
+    libelle = libelleDeLigne(o.table, ligneDuLibelle ?? o.apres ?? o.avant, o.cle, db);
   } catch {
     libelle = JSON.stringify(o.cle);
   }
@@ -489,14 +508,21 @@ function lignesDuLot(db, lotId) {
  * colonne dérivée qu'il recalculait déjà la trouve remise : `deja`), enfin les lignes qu'il a créées (supprimées, la dernière créée d'abord : un enfant avant
  * son parent).
  */
-function planDeLAnnulation(db, lotId) {
-  const nets = effetNetDuLot(lignesDuLot(db, lotId));
+function planDeLAnnulation(db, lotId, lignes = null) {
+  const nets = netsDuLot(db, lotId);
+  const choisis = lignes ? nets.filter((n) => lignes.includes(n.rang)) : nets;
+  if (lignes && choisis.length !== lignes.length) {
+    throw new ErreurEdition(404, `Ligne introuvable dans ce lot : ${lignes.filter((n) => !nets.some((x) => x.rang === n)).join(', ')}`);
+  }
   return [
-    ...nets.filter((n) => n.genre === 'supprimer').reverse(),
-    ...nets.filter((n) => n.genre === 'modifier'),
-    ...nets.filter((n) => n.genre === 'inserer').reverse(),
+    ...choisis.filter((n) => n.genre === 'supprimer').reverse(),
+    ...choisis.filter((n) => n.genre === 'modifier'),
+    ...choisis.filter((n) => n.genre === 'inserer').reverse(),
   ];
 }
+
+/** L'effet net du lot du journal : une ligne par ligne de table touchée, numérotée par le rang de sa première écriture au journal (stable : c'est « la ligne n » des routes). */
+const netsDuLot = (db, lotId) => effetNetDuLot(lignesDuLot(db, lotId));
 
 /** Les opérations du service qui remettent une ligne : { ops } ou { refus }. La réinsertion d'une ligne retirée par le lot est une restauration à l'identique. */
 function operationsDeLAnnulation(db, net, jugement) {
@@ -542,14 +568,17 @@ function apercuDeLAnnulation(db, net, actuelle) {
  * (elle a déjà sa valeur d'avant), `verrouillee` (une décision du propriétaire : à ouvrir au clic) ou `refusee` (le service refuse).
  * Au clic, la première ligne refusée arrête tout (rien n'est écrit) et un lot dont aucune ligne ne se remet est refusé (409) : il reste appliqué.
  * @param {import('node:sqlite').DatabaseSync} db la copie (aperçu) ou la base vivante (clic)
- * @param {{ lot_id: string, titre: string, nature: string, decision: string | null }} depose `titre` : celui du lot du journal d'annulation
+ * @param {{ id?: string, lot_id: string, titre: string, nature: string, decision: string | null, lignes?: number[] }} depose `titre` : celui du lot du journal
+ *   d'annulation ; `lignes` (R291) : les seules lignes à remettre (rangs de `effetNetDuLot`), sinon le lot entier
  * @param {{ essai: boolean, ouverts?: Set<string>, baseline?: Set<string>, enregistrer?: Function }} o comme `appliquerLeLot`
  */
 function annulerLeLot(db, depose, { essai, ouverts = new Set(), baseline = new Set(), enregistrer = null }) {
   const sorties = { operations: [], verrous: [] };
   const travail = (hote) => {
     const verrous = new Set();
-    planDeLAnnulation(db, depose.lot_id).forEach((net, i) => {
+    // une ligne que tient une autre ligne du lot encore en place ne s'annule pas seule : chaque refus a son motif
+    const dependances = depose.lignes ? dependancesDuLot(db, depose) : null;
+    planDeLAnnulation(db, depose.lot_id, depose.lignes ?? null).forEach((net, i) => {
       const rang = i + 1;
       let actuelle = null;
       let illisible = null;
@@ -571,6 +600,12 @@ function annulerLeLot(db, depose, { essai, ouverts = new Set(), baseline = new S
       };
       const apercu = apercuDeLAnnulation(db, net, actuelle); // avant l'écriture : la valeur actuelle est celle d'avant la remise
       const noter = (etat, reste = {}) => sorties.operations.push({ ...base, apercu, etat, ...plus(), ...reste });
+      const tenue = dependances?.get(net.rang) ?? [];
+      if (tenue.length) {
+        const message = `cette ligne ne s’annule pas seule : ${tenue.map((d) => d.raison).join(' ; ')}`;
+        if (!essai) throw new ErreurEdition(409, `Ligne ${net.rang} refusée : ${message}`, { rang: net.rang, table: net.table, cle: net.cle, depend_de: [...new Set(tenue.flatMap((d) => d.rangs))] });
+        return noter('refusee', { message, depend_de: [...new Set(tenue.flatMap((d) => d.rangs))] });
+      }
       if (jugement.etat === 'deja') return noter('deja');
       if (jugement.etat === 'gardee') return noter('gardee');
       const refuser = (message, reste = {}) => {
@@ -586,7 +621,9 @@ function annulerLeLot(db, depose, { essai, ouverts = new Set(), baseline = new S
     sorties.verrous = [...verrous].sort((a, b) => Number(a.slice(1)) - Number(b.slice(1)));
     if (!essai) {
       if (!hote.ecrites()) {
-        throw new ErreurEdition(409, 'Rien à remettre : chaque valeur du lot a changé depuis (le site prime), ou est déjà revenue à ce qu’elle était. Le lot reste appliqué.', { operations: sorties.operations.map(resumerLOperation) });
+        throw new ErreurEdition(409, depose.lignes
+          ? 'Rien à remettre pour cette ligne : ses valeurs ont changé depuis (le site prime), ou sont déjà revenues à ce qu’elles étaient. Le lot reste appliqué.'
+          : 'Rien à remettre : chaque valeur du lot a changé depuis (le site prime), ou est déjà revenue à ce qu’elle était. Le lot reste appliqué.', { operations: sorties.operations.map(resumerLOperation) });
       }
       const nouveaux = controlerLeContenu(db).problemes.filter((p) => !baseline.has(p));
       if (nouveaux.length) {
@@ -599,6 +636,196 @@ function annulerLeLot(db, depose, { essai, ouverts = new Set(), baseline = new S
   return { lot: resultat.lot, sorties };
 }
 
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+// Une seule ligne d'un lot appliqué (R291) : « annuler cette modification »
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+// Une « ligne » est une ligne de l'effet net du lot (`effetNetDuLot`) : une ligne de table avec les colonnes que le lot en a changées (modifiée), la ligne qu'il
+// a créée (insérée) ou celle qu'il a retirée (supprimée). C'est la granularité la plus sûre : le service écrit plusieurs fois la même ligne (clé recalculée,
+// page refaite), et remettre une seule colonne d'une ligne de table laisserait ces recalculs en désaccord. Son numéro est le rang de sa première écriture au
+// journal du lot : stable, jamais renuméroté quand une autre ligne est annulée.
+
+const memeValeur = (a, b) => (a === null || a === undefined ? b === null || b === undefined : b !== null && b !== undefined && (a === b || String(a) === String(b)));
+
+/** Les clés étrangères d'une table, par groupe (une clé composée en est un) : [{ table, paires: [{ de, vers }] }] ; la table est vérifiée avant d'entrer dans le SQL. */
+function etrangeresDe(db, table) {
+  if (!tableExiste(db, table)) return [];
+  const groupes = new Map();
+  for (const f of db.prepare(`PRAGMA foreign_key_list("${table}")`).all()) {
+    const g = groupes.get(f.id) ?? { table: f.table, paires: [] };
+    g.paires[f.seq] = { de: f.from, vers: f.to };
+    groupes.set(f.id, g);
+  }
+  return [...groupes.values()].map((g) => {
+    let cle = null;
+    return { table: g.table, paires: g.paires.map((p, i) => ({ de: p.de, vers: p.vers ?? (cle ??= (tableExiste(db, g.table) ? structure(db, g.table).cle : []))[i] })) };
+  });
+}
+
+/** Chaque ligne du lot par son nom lisible (la ligne actuelle, sinon ce que le lot en a écrit ou retiré). */
+function etiquettesDesLignes(db, nets) {
+  return new Map(nets.map((net) => {
+    let libelle;
+    try {
+      const actuelle = lireLigne(db, net.table, net.cle);
+      libelle = libelleDeLigne(net.table, actuelle ?? { ...net.origine, ...net.fin }, net.cle, db);
+    } catch {
+      libelle = `${nomDeTable(net.table) ?? net.table}`;
+    }
+    return [net.rang, libelle];
+  }));
+}
+
+/**
+ * Ce qui empêche d'annuler seule une ligne : les AUTRES lignes du lot encore EN PLACE (qui ont encore quelque chose à remettre, d'après la base d'aujourd'hui) qui la tiennent.
+ * Rend Map(rang → [{ rangs, raison }]), vide pour une ligne libre. Une ligne que le site a supprimée, changée ou déjà fait revenir ne tient plus rien : sinon deux
+ * lignes se bloqueraient l'une l'autre.
+ *   - une ligne insérée est citée par une clé étrangère (lue sur la ligne actuelle) d'une autre ligne du lot, insérée ou dont la colonne a été modifiée par le lot : la
+ *     supprimer rompt ce lien, la citante d'abord ;
+ *   - une ligne retirée dont le parent a été retiré par le même lot (et manque encore) : le parent d'abord, sinon la réinsertion rompt sa clé étrangère ;
+ *   - le corps d'une page refaite par le site (colonnes dérivées seules) est tenu par les autres lignes du lot : elles le refont, ou le lot entier.
+ * Ce qui n'est pas lié par une clé étrangère (un renvoi dans un texte, une règle de contenu) est laissé aux contrôles du contenu, qui refusent avec leur motif.
+ * @param {Set<number>} annulees les lignes déjà annulées (elles ne tiennent plus rien)
+ * @param {Map<number, string>} etiquettes
+ */
+export function dependancesDesLignes(db, nets, annulees = new Set(), etiquettes = new Map()) {
+  const etrangeres = memoriser((table) => etrangeresDe(db, table));
+  const actuelle = memoriser((rang) => {
+    const net = nets.find((n) => n.rang === rang);
+    try {
+      return lireLigne(db, net.table, net.cle);
+    } catch {
+      return null;
+    }
+  });
+  const enPlace = new Set(nets.filter((n) => !annulees.has(n.rang) && jugerLAnnulation(n, actuelle(n.rang)).remises.length > 0).map((n) => n.rang));
+  const actives = nets.filter((n) => enPlace.has(n.rang));
+  const dependances = new Map(nets.map((n) => [n.rang, []]));
+  const nom = (n) => etiquettes.get(n.rang) ?? `${nomDeTable(n.table) ?? n.table}`;
+  // les lignes insérées ou modifiées qui citent une ligne : (table citée, colonnes citées, valeurs) → les citantes ; la valeur est lue sur la ligne actuelle
+  const citantes = new Map();
+  const colonnesCitees = new Map(); // table citée → les listes de colonnes citées
+  for (const b of actives) {
+    if (b.genre === 'supprimer') continue;
+    const ligne = actuelle(b.rang);
+    for (const g of etrangeres(b.table)) {
+      if (!g.paires.every((p) => p.de in b.fin) || !ligne) continue;
+      const valeurs = g.paires.map((p) => ligne[p.de]);
+      if (valeurs.some((v) => v === null || v === undefined)) continue;
+      const vers = g.paires.map((p) => p.vers);
+      const cle = JSON.stringify([g.table, vers, valeurs.map(String)]);
+      citantes.set(cle, [...(citantes.get(cle) ?? []), b]);
+      const listes = colonnesCitees.get(g.table) ?? new Map();
+      listes.set(JSON.stringify(vers), vers);
+      colonnesCitees.set(g.table, listes);
+    }
+  }
+  for (const a of actives) {
+    if (a.genre === 'inserer') {
+      const mienne = { ...a.cle, ...a.fin };
+      for (const vers of (colonnesCitees.get(a.table) ?? new Map()).values()) {
+        const cle = JSON.stringify([a.table, vers, vers.map((c) => String(mienne[c]))]);
+        for (const b of citantes.get(cle) ?? []) {
+          if (b !== a) dependances.get(a.rang).push({ rangs: [b.rang], raison: `la ligne ${b.rang} du lot (${nom(b)}) la cite : annulez celle-là d’abord` });
+        }
+      }
+    } else if (a.genre === 'supprimer') {
+      for (const g of etrangeres(a.table)) {
+        const attendu = g.paires.map((p) => a.origine[p.de]);
+        if (attendu.some((v) => v === null || v === undefined)) continue;
+        const parent = actives.find((c) => c !== a && c.genre === 'supprimer' && c.table === g.table && g.paires.every((p, i) => memeValeur(c.origine[p.vers], attendu[i])));
+        if (!parent || !tableExiste(db, g.table)) continue;
+        const present = db.prepare(`SELECT 1 FROM "${g.table}" WHERE ${g.paires.map((p) => `"${p.vers}" = ?`).join(' AND ')}`).get(...attendu);
+        if (!present) dependances.get(a.rang).push({ rangs: [parent.rang], raison: `la ligne ${parent.rang} du lot (${nom(parent)}), qu’elle cite, a été retirée aussi : remettez celle-là d’abord` });
+      }
+    }
+  }
+  const derivee = (n) => n.genre === 'modifier' && Object.keys(n.fin).every((c) => { try { return colonneDerivee(n.table, n.cle, c); } catch { return false; } });
+  const tenantes = actives.filter((n) => !derivee(n));
+  for (const a of actives.filter(derivee)) {
+    if (tenantes.length) {
+      const rangs = tenantes.map((t) => t.rang);
+      const liste = rangs.length > 8 ? `${rangs.slice(0, 8).join(', ')}…` : rangs.join(', ');
+      dependances.get(a.rang).push({
+        rangs,
+        raison: rangs.length === 1 ? `cette page est refaite par le site d’après la ligne ${rangs[0]} du lot (${nom(tenantes[0])}) : annulez celle-là, la page suit`
+          : `cette page est refaite par le site d’après les autres lignes du lot (${liste}) : annulez celles dont elle dépend, la page suit`,
+      });
+    }
+  }
+  return dependances;
+}
+
+/** Une fonction à un argument dont chaque résultat est gardé (un calcul par valeur). */
+function memoriser(f) {
+  const gardes = new Map();
+  return (x) => {
+    if (!gardes.has(x)) gardes.set(x, f(x));
+    return gardes.get(x);
+  };
+}
+
+/** Pourquoi une ligne qui n'a rien à remettre ne s'annule pas : déjà revenue à sa valeur d'avant, ou changée depuis par le site. */
+const motifSansRemise = (etat) => (etat === 'comme_avant' ? 'Cette ligne a déjà sa valeur d’avant le lot : rien à remettre.' : 'Toutes ses valeurs ont changé depuis : le site prime, rien n’est remis.');
+
+/** Les lignes déjà annulées d'un lot appliqué (`bilan.lignes_annulees`, clé = numéro de la ligne). */
+const lignesDejaAnnulees = (ligne) => new Set(Object.keys(jsonOuNull(ligne.bilan)?.lignes_annulees ?? {}).map(Number));
+
+/** Les dépendances des lignes du lot `depose` (R291), sur la base `db` (la copie de l'aperçu ou la base vivante). */
+function dependancesDuLot(db, depose) {
+  const nets = netsDuLot(db, depose.lot_id);
+  return dependancesDesLignes(db, nets, lignesDejaAnnulees(ligneOuErreur(db, depose.id)), etiquettesDesLignes(db, nets));
+}
+
+/**
+ * Les lignes d'un lot appliqué ou annulé, pour la page (« comme les notes de version ») : chacune avec ses colonnes avant → après, son état et si elle s'annule seule.
+ * `etat` : `en_place` (le lot l'a écrite et rien n'y a touché), `annulee` (par ce clic, ou par l'annulation du lot entier), `modifiee_depuis` (le site a changé une valeur
+ * que le lot avait écrite : le site prime, `colonnes_modifiees`), `comme_avant` (la ligne a déjà sa valeur d'avant le lot). `annulable_seule` est faux avec un `motif` :
+ * lot pas appliqué, ligne déjà annulée ou comme avant, tout modifié depuis, ou une autre ligne du lot la tient (`depend_de`).
+ * @returns {{ lignes: object[] } | { lignes: null, indisponible: string }}
+ */
+export function lignesDuLotApplique(db, ligne) {
+  let nets;
+  try {
+    nets = netsDuLot(db, ligne.lot_id);
+  } catch (e) {
+    if (e instanceof ErreurEdition) return { lignes: null, indisponible: e.message };
+    throw e;
+  }
+  const bilan = jsonOuNull(ligne.bilan) ?? {};
+  const annulees = bilan.lignes_annulees ?? {};
+  const duLotEntier = new Map((bilan.annulation?.operations ?? []).map((o) => [o.rang_du_lot, o]));
+  const etiquettes = etiquettesDesLignes(db, nets);
+  const dependances = ligne.etat === 'applique' ? dependancesDesLignes(db, nets, new Set(Object.keys(annulees).map(Number)), etiquettes) : new Map();
+  return {
+    lignes: nets.map((net) => {
+      let actuelle = null;
+      try {
+        actuelle = lireLigne(db, net.table, net.cle);
+      } catch {
+        actuelle = null;
+      }
+      const jugement = jugerLAnnulation(net, actuelle);
+      const descr = apercuDe(db, { table: net.table, cle: net.cle, operation: net.genre, avant: net.origine, apres: net.fin }, net.genre === 'inserer' ? null : net.origine, actuelle ?? { ...net.origine, ...net.fin });
+      const sortie = { n: net.rang, table: descr.table, ligne: descr.ligne, genre: net.genre, colonnes: descr.colonnes };
+      const finie = annulees[net.rang] ?? null;
+      const duLot = duLotEntier.get(net.rang);
+      if (finie) return { ...sortie, etat: 'annulee', annulee: { annule_le: finie.annule_le, lot_id: finie.lot_id }, annulable_seule: false, motif: 'Cette ligne est déjà annulée.', depend_de: [] };
+      if (ligne.etat === 'annule' && duLot) {
+        const etat = duLot.etat === 'remise' ? 'annulee' : duLot.etat === 'gardee' ? 'modifiee_depuis' : 'comme_avant';
+        return { ...sortie, etat, ...(etat === 'annulee' ? { annulee: { annule_le: ligne.annule_le, lot_id: ligne.annulation_lot_id } } : {}), annulable_seule: false, motif: etat === 'annulee' ? 'Le lot entier est annulé.' : motifSansRemise(etat), depend_de: [] };
+      }
+      const colonnesModifiees = jugement.gardees.map((g) => ({ colonne: g.colonne, libelle: nomDeColonne(net.table, g.colonne) ?? g.colonne, ecrite: g.ecrite, trouvee: g.trouvee }));
+      const etat = jugement.gardees.length ? 'modifiee_depuis' : jugement.remises.length ? 'en_place' : 'comme_avant';
+      const tenue = dependances.get(net.rang) ?? [];
+      let motif = null;
+      if (!jugement.remises.length) motif = motifSansRemise(etat);
+      else if (ligne.etat !== 'applique') motif = ligne.etat === 'annule' ? 'Le lot est annulé.' : 'Ce lot n’est pas appliqué.';
+      else if (tenue.length) motif = `Cette ligne ne s’annule pas seule : ${tenue.map((d) => d.raison).join(' ; ')}.`;
+      return { ...sortie, etat, ...(colonnesModifiees.length ? { colonnes_modifiees: colonnesModifiees } : {}), annulable_seule: motif === null, motif, depend_de: [...new Set(tenue.flatMap((d) => d.rangs))] };
+    }),
+  };
+}
+
 /** Le verdict de l'aperçu d'une annulation : `refusee` (une ligne refusée, un problème né de l'annulation), `rien_a_remettre`, `verrous` (à ouvrir au clic), `applicable`. */
 function verdictDeLAnnulation(comptes, verrous, nouveaux) {
   if (comptes.refusees || nouveaux.length) return 'refusee';
@@ -608,6 +835,19 @@ function verdictDeLAnnulation(comptes, verrous, nouveaux) {
 
 /** Le lot d'un lot de changements appliqué, tel que l'annulation le demande : le lot du journal, le titre de son annulation, sa nature et sa décision. */
 const aAnnuler = (ligne) => ({ id: ligne.id, lot_id: ligne.lot_id, titre: `Annulation de « ${ligne.titre} »`, nature: ligne.nature, decision: ligne.decision ?? null });
+
+/**
+ * Comme `aAnnuler`, pour la seule ligne `numero` du lot (R291) : le titre du lot du journal d'annulation dit laquelle (le nom lisible de la ligne), la nature et la
+ * décision sont celles du lot. Une ligne qui n'existe pas : 404 ; un numéro qui n'est pas un entier positif : 404.
+ */
+function aAnnulerUneLigne(db, ligne, numero) {
+  if (!Number.isInteger(numero) || numero < 1) throw new ErreurEdition(404, `Ligne introuvable dans ce lot : ${numero}`);
+  if (!ligne.lot_id) throw new ErreurEdition(409, 'Ce lot n’a pas de lot du journal : rien à remettre.');
+  const net = netsDuLot(db, ligne.lot_id).find((n) => n.rang === numero);
+  if (!net) throw new ErreurEdition(404, `Ligne introuvable dans ce lot : ${numero}`);
+  const libelle = etiquettesDesLignes(db, [net]).get(net.rang);
+  return { ...aAnnuler(ligne), titre: `Annulation d’une ligne de « ${ligne.titre} » : ${libelle}`.slice(0, 300), lignes: [numero] };
+}
 
 /**
  * L'aperçu d'une annulation sur une copie de la base (jamais la base elle-même) : ce que le clic remettrait (`remise`), garderait parce que la valeur a
@@ -635,6 +875,7 @@ export function essayerLAnnulation({ source, dossier, depose }) {
     return {
       format: FORMAT_DE_L_ESSAI,
       lot: depose.id,
+      ...(depose.lignes ? { ligne: depose.lignes[0] } : {}),
       titre: depose.titre,
       verdict: refus ? 'refusee' : verdictDeLAnnulation(comptes, sorties.verrous, nouveaux),
       comptes,
@@ -654,25 +895,100 @@ export function essayerLAnnulation({ source, dossier, depose }) {
 
 /**
  * Les pages dont le corps, le résumé ou les données sont dérivés des tables et que `recalculerLesPages` (edition.mjs) refait depuis elles sans qu'on lui
- * dise ce qui a changé : races, classes, fiches de dons (D11) et métiers. Les autres pages typées (magies, armes, armures, composants, potions) ne se
- * refont qu'à partir d'une modification précise (le rendu remplace la ligne qu'elle touche) : elles n'ont pas d'état « recalculé » à comparer.
+ * dise ce qui a changé : races, classes, fiches de dons (D11) et métiers.
  */
 export const TYPES_DE_PAGES_RECALCULEES = Object.freeze(['races', 'classes', 'capacites', 'metiers']);
+/**
+ * Les tables dont chaque ligne a sa place dans le corps d'une page de magie, qui n'est refaite que morceau par morceau (le rendu remplace le morceau qu'une
+ * modification touche, repéré par sa place : lib/corps-magies.mjs) : le recalcul rejoue chacune de leurs lignes telle quelle (avant = après), si bien que chaque
+ * morceau est réécrit par le code d'aujourd'hui (rapport du lot 8 : « Tout recalculer » étendu après la bascule 1).
+ */
+export const TABLES_DES_PAGES_PAR_MORCEAUX = Object.freeze([...Object.keys(PAGE_DE_LA_LIGNE)]);
+/**
+ * Les lignes de composants qui restent rejouées telles quelles, comme avant le rendu entier : les matériaux, les gemmes et les bois, que le site crée sans que leur
+ * ligne existe dans les pages de l'armurerie, des bâtons et des accessoires. Sans marqueur « créé par le site », un rendu entier par rang (ressource.ordre)
+ * apparierait, après une suppression suivie d'une création (qui reprend le même rang), la dernière ligne du corps à un autre élément, sans erreur : ces tableaux
+ * ne se refont donc pas en entier. Table → condition SQL sur ses lignes (null : toutes).
+ */
+export const TABLES_REJOUEES_DES_COMPOSANTS = Object.freeze({ materiau: null, gemme: null, ressource: "genre IN ('materiau', 'gemme', 'bois')" });
 const COLONNES_RECALCULEES = Object.freeze(['corps_md', 'resume', 'donnees']);
 
 /**
+ * Refait le CORPS ENTIER des pages des armes, des armures et des boucliers, des composants et des potions depuis l'état des tables (lib/corps-armes.mjs,
+ * corps-armures.mjs, corps-composants.mjs, corps-potions.mjs : `corpsDesArmesEntier`…) : un recalcul sert quand le code change, donc quand le corps n'écrit
+ * plus une ligne comme le code d'aujourd'hui la rend, et une ligne retrouvée par son ancien texte ne se retrouve plus. Chaque tableau est repéré par sa
+ * section et ses lignes de données sont remplacées en bloc par celles de la table (pages des composants : « Équipement inventaire » et « Liste
+ * d'ingrédients » seulement ; matériaux, gemmes et bois restent rejoués ligne à ligne : TABLES_REJOUEES_DES_COMPOSANTS) ; la prose reste. Une page dont
+ * le corps n'a plus la forme de l'importeur (section ou tableau introuvable, ou, pour les armures et boucliers, nombre de lignes qui n'est plus celui de
+ * la base) reste telle quelle et est dite dans `illisibles`. Écrit dans `db` (une copie : le service n'y touche pas).
+ * @returns {{ page: string, raison: string }[]} les pages illisibles
+ */
+export function refaireLesCorpsEntiers(db) {
+  const illisibles = [];
+  const ecrire = (id, rendus) => {
+    const page = lireLigne(db, 'page', { id });
+    if (!page) return;
+    try {
+      const corps = rendus.reduce((c, rendu) => rendu(c), page.corps_md);
+      if (corps !== page.corps_md) db.prepare('UPDATE page SET corps_md = ? WHERE id = ?').run(corps, id);
+    } catch (e) {
+      if (![ErreurCorpsArmes, ErreurCorpsArmures, ErreurCorpsComposants, ErreurCorpsPotions].some((E) => e instanceof E)) throw e;
+      illisibles.push({ page: id, raison: e.message });
+    }
+  };
+  const avec = (tables, travail) => {
+    if (tables.every((t) => tableExiste(db, t))) travail();
+  };
+  avec(['arme', 'arme_famille', 'materiau_arme', 'amelioration_equipement', 'amelioration_total', 'ressource'], () => {
+    ecrire(PAGE_DES_ARMES, [(c) => corpsEntierDesArmes(db, c)]);
+  });
+  avec(['armure', 'armure_emplacement', 'bouclier', 'bouclier_classe', 'bouclier_poids', 'amelioration_equipement', 'amelioration_total'], () => {
+    for (const id of [PAGE_DES_ARMURES, PAGE_DES_BOUCLIERS]) ecrire(id, [(c) => corpsEntierDesArmures(db, id, c)]);
+  });
+  // seules les pages des composants dont le site ne crée pas de ligne hors de leur tableau : « Équipement inventaire » et « Liste d'ingrédients » (le tableau des
+  // matériaux, des gemmes et des bois reste suivi ligne à ligne : voir TABLES_REJOUEES_DES_COMPOSANTS)
+  avec(['monnaie', 'ressource', 'ingredient_alchimie'], () => {
+    for (const id of PAGES_DES_COMPOSANTS_AU_CORPS_ENTIER) ecrire(id, [(c) => corpsEntierDeLaPageDesComposants(db, id, c)]);
+  });
+  avec(['potion', 'ressource'], () => {
+    const contexte = contexteDuCorpsDesPotions(db);
+    for (const [id, potions] of potionsParPage(db)) ecrire(id, [(c) => corpsDesPotionsEntier(c, potions, contexte)]);
+  });
+  return illisibles;
+}
+
+/**
  * Les écarts entre ce que les pages portent et ce que le code d'aujourd'hui en dérive : sur la copie `db` (écrite : le service n'y touche pas), chaque page
- * des types ci-dessus est refaite par `recalculerLesPages`, puis comparée à ce qu'elle portait.
+ * des types ci-dessus est refaite par `recalculerLesPages`, chaque ligne des tables des pages de magie (et les matériaux, gemmes et bois : `TABLES_REJOUEES_DES_COMPOSANTS`)
+ * y est rejouée telle quelle, et les pages des armes, des armures et des boucliers, de l'inventaire, des ingrédients et des potions sont refaites en entier
+ * (`refaireLesCorpsEntiers`) ; puis toutes les pages sont comparées à ce
+ * qu'elles portaient (`examinees` : les pages qui ont des colonnes dérivées).
  * @returns {{ examinees: number, ecarts: { id: string, colonnes: { colonne: string, avant: unknown, apres: unknown }[] }[], illisibles: { page: string, raison: string }[] }}
  */
 export function ecartsDuRecalcul(db) {
   const colonnes = structure(db, 'page').colonnes.filter((c) => COLONNES_RECALCULEES.includes(c));
-  const lire = () => db.prepare(`SELECT id, ${colonnes.map((c) => `"${c}"`).join(', ')} FROM page WHERE ${TYPES_DE_PAGES_RECALCULEES.map(() => 'id GLOB ?').join(' OR ')} ORDER BY id`)
-    .all(...TYPES_DE_PAGES_RECALCULEES.map((t) => `${t}/*`)).map((p) => ({ ...p }));
+  const lire = () => db.prepare(`SELECT id, ${colonnes.map((c) => `"${c}"`).join(', ')} FROM page ORDER BY id`).all()
+    .filter((p) => colonneDerivee('page', { id: p.id }, 'corps_md')).map((p) => ({ ...p }));
   const avant = lire();
-  // chaque page est marquée comme le journal marque une page dont seules des colonnes dérivées ont été notées (edition.mjs#lignesRejouees)
-  const marques = avant.map((p) => ({ table: 'page', cle: { id: p.id }, operation: 'modifier', avant: { corps_md: null }, apres: { corps_md: null } }));
+  // chaque page des types recalculés est marquée comme le journal marque une page dont seules des colonnes dérivées ont été notées (edition.mjs#lignesRejouees)
+  const marques = avant.filter((p) => TYPES_DE_PAGES_RECALCULEES.includes(p.id.slice(0, p.id.indexOf('/'))))
+    .map((p) => ({ table: 'page', cle: { id: p.id }, operation: 'modifier', avant: { corps_md: null }, apres: { corps_md: null } }));
+  // chaque ligne des pages de magie (par morceaux), rejouée telle quelle (edition.mjs#lignesRejouees : avant = la ligne en place, après = la même)
+  const rejouees = [...TABLES_DES_PAGES_PAR_MORCEAUX.map((t) => [t, null]), ...Object.entries(TABLES_REJOUEES_DES_COMPOSANTS)];
+  for (const [table, ou] of rejouees) {
+    let cle;
+    try {
+      ({ cle } = structure(db, table));
+    } catch {
+      continue; // une table absente de cette base
+    }
+    if (!cle.length) continue;
+    for (const l of db.prepare(`SELECT ${cle.map((c) => `"${c}"`).join(', ')} FROM "${table}"${ou ? ` WHERE ${ou}` : ''}`).all()) {
+      marques.push({ table, cle: Object.fromEntries(cle.map((c) => [c, l[c]])), operation: 'modifier', avant: {}, apres: {} });
+    }
+  }
   const { illisibles } = recalculerLesPages(db, marques);
+  illisibles.push(...refaireLesCorpsEntiers(db));
   const apres = new Map(lire().map((p) => [p.id, p]));
   const ecarts = [];
   for (const p of avant) {
@@ -716,9 +1032,9 @@ export function lotDuRecalcul({ ecarts }) {
  * lot de changements de nature « code » : il passe ensuite par le même essai à blanc et le même clic que tout lot. Rien à recalculer : aucun lot n'est déposé.
  * Une promesse de `{ lot, recalcul }` : `lot` est la proposition avec son essai (null sans écart), `recalcul` les comptes (pages examinées, écarts, pages illisibles).
  * @param {() => import('node:sqlite').DatabaseSync | null} base
- * @param {{ enArrierePlan?: boolean, dossier?: string, instant?: string, id?: string }} [options] les options de `deposer`
+ * @param {{ enArrierePlan?: boolean, dossier?: string, instant?: string, id?: string, par?: string }} [options] les options de `deposer` ; `par` : dépose et applique aussitôt
  */
-export async function recalculerTout(base, { enArrierePlan: dansUnFil = true, dossier = null, ...options } = {}) {
+export async function recalculerTout(base, { enArrierePlan: dansUnFil = true, dossier = null, par = null, ...options } = {}) {
   const db = base();
   if (!db) throw new ErreurEdition(503, 'La base n’est pas disponible pour le moment.');
   exigerLesTables(db);
@@ -731,8 +1047,15 @@ export async function recalculerTout(base, { enArrierePlan: dansUnFil = true, do
   if (calcul.ecarts.length > OPERATIONS_MAX) {
     throw new ErreurEdition(409, `Le recalcul écarte ${calcul.ecarts.length} pages, plus que ce qu’un lot porte (${OPERATIONS_MAX}) : refaites-le après en avoir appliqué une partie.`, { recalcul });
   }
-  const lot = await deposer(base, lotDuRecalcul(calcul), { enArrierePlan: dansUnFil, dossier: copie.dossier, ...options });
-  return { lot, recalcul };
+  // `par` (R291) : la clé de dépôt ou le mot de passe, la clé de dépôt posée : le lot de nature « code » s'applique aussitôt, comme tout dépôt
+  try {
+    const lot = await (par ? deposerEtAppliquer(base, lotDuRecalcul(calcul), { par, enArrierePlan: dansUnFil, dossier: copie.dossier, ...options })
+      : deposer(base, lotDuRecalcul(calcul), { enArrierePlan: dansUnFil, dossier: copie.dossier, ...options }));
+    return { lot, recalcul };
+  } catch (e) {
+    if (e instanceof ErreurEdition && par) throw new ErreurEdition(e.statut, e.message, { ...e.details, recalcul });
+    throw e;
+  }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------
@@ -766,16 +1089,83 @@ export function deposer(base, corps, { instant = instantMaintenant(), id = rando
   return essayerLaProposition(base, id, options);
 }
 
+/** Les motifs d'un essai qui ne peut pas s'appliquer (opérations refusées, refus de l'application, problèmes du contenu nés du lot), pour la réponse d'un dépôt refusé. */
+function motifsDeLEssai(essai) {
+  if (!essai || essai.verdict === 'en_echec') return [`l’essai à blanc a échoué : ${essai?.erreur ?? 'sans raison donnée'}`];
+  const refusees = (essai.operations ?? []).filter((o) => o.etat === 'refusee').map((o) => `opération ${o.rang} : ${o.message}`);
+  const changees = (essai.operations ?? []).filter((o) => o.etat === 'changee').map((o) => `opération ${o.rang} : la valeur a changé depuis le lot (le site prime)`);
+  if (essai.verdict === 'rien_a_ecrire') return [`rien à écrire : chaque opération du lot a déjà été changée sur le site${changees.length ? ` (${changees.slice(0, 5).join(' ; ')})` : ''}`];
+  return [...refusees, ...(essai.refus_de_l_application ? [essai.refus_de_l_application] : []), ...(essai.problemes_nouveaux ?? []).slice(0, 5).map((p) => `contrôle du contenu : ${p}`)];
+}
+
+/**
+ * Dépose un lot et l'APPLIQUE aussitôt (R291, qui remplace R275 (4) : « Direct »). Réservé à la clé de dépôt et au mot de passe, une fois la clé de dépôt posée
+ * (serveur/acces.mjs#depot) ; c'est le même chemin qu'un clic : `deposer` (contrôle du format : 400 motivé, rien n'est enregistré), essai à blanc sur une copie, puis
+ * `appliquer` dans une seule transaction, les contrôles du contenu rejoués. Si l'essai ou l'application refuse, RIEN n'entre : le lot est enregistré « refuse » avec ses
+ * motifs (`essai.refus_du_depot`, lus dans `refus` : la base veut un bilan vide pour un lot refusé) et l'erreur 409 les dit, avec le lot. Limite : un arrêt du service ou une erreur inattendue entre le dépôt et la décision laisse le lot « propose » (le propriétaire le décide alors par le clic).
+ * Verrous : réservés au mot de passe. `corps.verrous_ouverts` (liste de « R… », la règle du clic : `verrousDuClic`) ouvre ce que le gel lève (R218, R219, R232 (2)),
+ * enregistré dans le lot (`verrous_ouverts`) ; avec la clé de dépôt il est refusé (403, rien n'enregistré) et un lot que l'essai rend « verrous » est enregistré
+ * « refuse » avec les R… à ouvrir ; un refus de règle (R105, R181…) reste refusé.
+ * @param {() => import('node:sqlite').DatabaseSync | null} base
+ * @param {unknown} corps le lot, avec en plus `verrous_ouverts` facultatif (retiré avant le contrôle du format : il n'est pas dans le lot déposé)
+ * @param {{ par: 'cle_de_depot' | 'mot_de_passe', instant?: string, id?: string, controle?: object, enArrierePlan?: boolean, dossier?: string }} options
+ * @returns {Promise<object>} le lot appliqué (état « applique », `bilan.application`)
+ */
+export async function deposerEtAppliquer(base, corps, { par = 'cle_de_depot', ...options } = {}) {
+  let lot = corps;
+  let verrousDemandes = [];
+  if (corps && typeof corps === 'object' && !Array.isArray(corps) && 'verrous_ouverts' in corps) {
+    const { verrous_ouverts: demandes, ...reste } = corps;
+    // ouvrir un verrou de décision est le geste du propriétaire : la clé de dépôt ne le fait pas (rien n'est enregistré)
+    if (par === 'cle_de_depot') {
+      throw new ErreurEdition(403, 'Dépôt refusé, rien n’est écrit : ouvrir un verrou de décision (R218, R219, R232 (2)) demande le mot de passe, pas la clé de dépôt (verrous_ouverts).', { acces: 'mot_de_passe' });
+    }
+    verrousDemandes = [...verrousDuClic(demandes)];
+    lot = reste;
+  }
+  const proposition = await deposer(base, lot, options);
+  const db = base();
+  if (!db) throw new ErreurEdition(503, 'La base n’est pas disponible pour le moment.');
+  const id = proposition.id;
+  const refuserLeDepot = (motifs, details = {}) => {
+    // la base veut un bilan vide pour un lot refusé (CHECK) : les motifs se rangent avec l'essai, dans `essai.refus_du_depot`, sans migration
+    const ligne = ligneOuErreur(db, id);
+    const essaiDuLot = { ...jsonOuNull(ligne.essai), refus_du_depot: { motifs, par, ...details } };
+    db.prepare("UPDATE lot_de_changements SET etat = 'refuse', decide_le = max(?, depose_le), essai = ? WHERE id = ? AND etat = 'propose'").run(instantMaintenant(), JSON.stringify(essaiDuLot), id);
+    throw new ErreurEdition(409, `Le lot est refusé, rien n’est écrit : ${motifs.slice(0, 5).join(' ; ')}`, { lot: presenter(ligneOuErreur(db, id)), motifs });
+  };
+  const essai = proposition.essai;
+  if (!essai || essai.verdict === 'en_echec' || essai.verdict === 'a_corriger' || essai.verdict === 'rien_a_ecrire') return refuserLeDepot(motifsDeLEssai(essai), { verdict: essai?.verdict ?? null });
+  const manquants = (essai.verrous_a_ouvrir ?? []).filter((d) => !verrousDemandes.includes(d));
+  if (manquants.length) {
+    const qui = par === 'cle_de_depot' ? 'le mot de passe du propriétaire est nécessaire pour l’ouvrir (la clé de dépôt ne le fait pas)' : 'le dépôt doit l’ouvrir (verrous_ouverts)';
+    return refuserLeDepot([`ce lot touche ce que ${manquants.join(', ')} verrouille${manquants.length > 1 ? 'nt' : ''} : ${qui} ; sans cela, rien n’est écrit`], { verdict: essai.verdict, verrous: manquants });
+  }
+  try {
+    return appliquer(db, id, { verrous_ouverts: verrousDemandes }, { par, directe: true });
+  } catch (e) {
+    if (!(e instanceof ErreurEdition)) throw e;
+    return refuserLeDepot([e.message], { statut: e.statut, ...(e.details?.operations ? { operations: e.details.operations } : {}) });
+  }
+}
+
 /** Les propositions, la plus récente d'abord (sans contenu ni aperçu : `lire` les rend). */
 export function lister(db) {
   exigerLesTables(db);
   return db.prepare('SELECT * FROM lot_de_changements ORDER BY depose_le DESC, id').all().map((l) => presenter(l, { resume: true }));
 }
 
-/** Une proposition en entier : le contenu déposé, l'essai (aperçu avant et après), le bilan de l'application. */
+/** Une proposition en entier : le contenu déposé, l'essai (aperçu avant et après), le bilan de l'application et, pour un lot appliqué, ses lignes (R291). */
 export function lire(db, id) {
   exigerLesTables(db);
-  return presenter(ligneOuErreur(db, id));
+  const ligne = ligneOuErreur(db, id);
+  const lot = presenter(ligne);
+  // R291 : un lot appliqué (ou annulé) montre ses lignes, chacune avec son état et si elle s'annule seule
+  if (ligne.etat === 'applique' || ligne.etat === 'annule') {
+    const { lignes, indisponible } = lignesDuLotApplique(db, ligne);
+    return { ...lot, lignes, ...(indisponible ? { lignes_indisponibles: indisponible } : {}) };
+  }
+  return lot;
 }
 
 /** `verrous_ouverts` du clic d'application : une liste de numéros « R… » (vide ou absente : aucun). */
@@ -794,8 +1184,10 @@ function verrousDuClic(valeur) {
  * @param {import('node:sqlite').DatabaseSync} db la base vivante
  * @param {string} id
  * @param {{ verrous_ouverts?: string[] }} [corps]
+ * @param {{ par?: string, directe?: boolean }} [origine] ce qui a ouvert le droit d'appliquer (`cle_de_depot`, `mot_de_passe`) et si le lot s'applique à son dépôt (R291) :
+ *   gardé dans `bilan.application`, pour savoir comment le lot est entré
  */
-export function appliquer(db, id, corps = {}) {
+export function appliquer(db, id, corps = {}, origine = {}) {
   exigerLesTables(db);
   const ligne = ligneOuErreur(db, id);
   if (ligne.etat !== 'propose') throw new ErreurEdition(409, `Ce lot est « ${ligne.etat} » : seul un lot proposé s’applique.`);
@@ -822,6 +1214,7 @@ export function appliquer(db, id, corps = {}) {
       changees: sorties.operations.filter((o) => o.etat === 'changee').length,
       numeros: sorties.numeros,
       verrous_ouverts: sorties.verrous,
+      ...(origine.par ? { application: { directe: Boolean(origine.directe), par: origine.par } } : {}),
     };
     base.prepare("UPDATE lot_de_changements SET etat = 'applique', decide_le = max(?, depose_le), lot_id = ?, verrous_ouverts = ?, bilan = ? WHERE id = ? AND etat = 'propose'")
       .run(hote.instant, hote.id, sorties.verrous.length ? JSON.stringify(sorties.verrous) : null, JSON.stringify(bilan), id);
@@ -841,11 +1234,11 @@ export function refuser(db, id) {
 
 /**
  * L'aperçu de l'annulation du lot appliqué `id` (route de lecture : rien n'est écrit, ni dans le contenu ni dans `lot_de_changements`) : calculé sur une
- * copie de la base comme l'essai (un fil à part, un à la fois). Une promesse de l'aperçu (`essayerLAnnulation`).
+ * copie de la base comme l'essai (un fil à part, un à la fois). Une promesse de l'aperçu (`essayerLAnnulation`). `ligne` (R291) : l'aperçu de cette seule ligne.
  * @param {() => import('node:sqlite').DatabaseSync | null} base la base vivante
- * @param {{ enArrierePlan?: boolean, dossier?: string }} [o]
+ * @param {{ enArrierePlan?: boolean, dossier?: string, ligne?: number }} [o]
  */
-export function previsualiserLAnnulation(base, id, { enArrierePlan: dansUnFil = true, dossier = null } = {}) {
+export function previsualiserLAnnulation(base, id, { enArrierePlan: dansUnFil = true, dossier = null, ligne: numero = null } = {}) {
   const db = base();
   if (!db) throw new ErreurEdition(503, 'La base n’est pas disponible pour le moment.');
   exigerLesTables(db);
@@ -853,7 +1246,7 @@ export function previsualiserLAnnulation(base, id, { enArrierePlan: dansUnFil = 
   if (ligne.etat !== 'applique') throw new ErreurEdition(409, `Ce lot est « ${ligne.etat} » : seul un lot appliqué s’annule.`);
   const source = fichierDe(db);
   if (!source) throw new ErreurEdition(503, 'La base vivante n’est pas un fichier : l’aperçu a besoin d’une copie.');
-  const options = { source, dossier: dossier ?? join(dirname(source), 'essais'), depose: aAnnuler(ligne) };
+  const options = { source, dossier: dossier ?? join(dirname(source), 'essais'), depose: numero === null ? aAnnuler(ligne) : aAnnulerUneLigne(db, ligne, numero) };
   return enFile(async () => (dansUnFil ? enArrierePlan('maverickApercuDeLAnnulation', options) : essayerLAnnulation(options)));
 }
 
@@ -887,6 +1280,53 @@ export function annuler(db, id, corps = {}) {
       .run(hote.instant, hote.id, JSON.stringify(bilan), id);
   };
   annulerLeLot(db, aAnnuler(ligne), { essai: false, ouverts, baseline, enregistrer });
+  return presenter(ligneOuErreur(db, id));
+}
+
+/**
+ * Annule UNE ligne du lot appliqué `id` (R291 : « annuler cette modification », mot de passe) : le même code que le lot entier (`annulerLeLot`, filtré sur cette
+ * ligne), sous le même `BEGIN IMMEDIATE`, les contrôles du contenu rejoués. Une valeur n'est remise que si elle vaut encore ce que le lot a écrit ; une ligne insérée
+ * n'est supprimée qu'intacte ; une ligne retirée n'est réinsérée que si elle est absente ; un numéro n'est jamais rendu. Une ligne que tient une autre ligne du lot
+ * encore en place est refusée avec son motif. Un lot du journal « Annulation d’une ligne de … » de la même nature et du même numéro de décision ; l'état de la
+ * ligne est gardé dans `bilan.lignes_annulees` (annule_le, lot du journal) ; quand plus aucune ligne n'est en place, le lot passe « annule ».
+ * @param {import('node:sqlite').DatabaseSync} db la base vivante
+ * @param {string} id
+ * @param {number} numero le numéro de la ligne (`lignesDuLotApplique`)
+ * @param {{ verrous_ouverts?: string[] }} [corps]
+ */
+export function annulerUneLigne(db, id, numero, corps = {}) {
+  exigerLesTables(db);
+  const ligne = ligneOuErreur(db, id);
+  if (ligne.etat !== 'applique') throw new ErreurEdition(409, `Ce lot est « ${ligne.etat} » : seul un lot appliqué s’annule.`);
+  const depose = aAnnulerUneLigne(db, ligne, numero);
+  const ouverts = verrousDuClic(corps?.verrous_ouverts);
+  const baseline = new Set(controlerLeContenu(db).problemes);
+  const enregistrer = (base, sorties, hote) => {
+    const operation = sorties.operations.find((o) => o.rang_du_lot === numero);
+    const bilan = jsonOuNull(ligne.bilan) ?? {};
+    bilan.lignes_annulees = {
+      ...bilan.lignes_annulees,
+      [numero]: { annule_le: hote.instant, lot_id: hote.id, colonnes: (operation?.apercu?.colonnes ?? []).map((c) => c.colonne), gardees: operation?.ecarts?.length ?? 0 },
+    };
+    // plus rien à remettre dans le lot : il passe « annulé » (comme l'annulation du lot entier)
+    const annulees = new Set(Object.keys(bilan.lignes_annulees).map(Number));
+    const reste = netsDuLot(base, ligne.lot_id).some((net) => {
+      if (annulees.has(net.rang)) return false;
+      let actuelle = null;
+      try {
+        actuelle = lireLigne(base, net.table, net.cle);
+      } catch {
+        actuelle = null;
+      }
+      return jugerLAnnulation(net, actuelle).remises.length > 0;
+    });
+    if (reste) base.prepare("UPDATE lot_de_changements SET bilan = ? WHERE id = ? AND etat = 'applique'").run(JSON.stringify(bilan), id);
+    else {
+      base.prepare("UPDATE lot_de_changements SET etat = 'annule', annule_le = max(?, decide_le), annulation_lot_id = ?, bilan = ? WHERE id = ? AND etat = 'applique'")
+        .run(hote.instant, hote.id, JSON.stringify(bilan), id);
+    }
+  };
+  annulerLeLot(db, depose, { essai: false, ouverts, baseline, enregistrer });
   return presenter(ligneOuErreur(db, id));
 }
 

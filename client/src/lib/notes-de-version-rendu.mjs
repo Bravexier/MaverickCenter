@@ -265,6 +265,105 @@ export function affichageDeLaProduction(etat) {
   return null;
 }
 
+/** Les cinq interrupteurs de la bascule 2, dans l'ordre de la page : clé de la réponse, nom en clair, nom technique, champ de la date utile et son début de phrase. */
+export const INTERRUPTEURS_DE_LA_BASCULE_2 = Object.freeze([
+  { cle: 'gel_des_fusions', nom: 'Gel des fusions', technique: 'gel_des_fusions', champDate: 'lu_le', devantDate: 'lu sur GitHub le' },
+  { cle: 'actif', nom: 'Publication par kits (GitHub)', technique: 'actif', champDate: 'lu_le', devantDate: 'lu sur GitHub le' },
+  { cle: 'db_bascule_2', nom: 'Bascule 2 du site de dev', technique: 'db/bascule-2', champDate: null, devantDate: '' },
+  { cle: 'atelier_servir', nom: 'Atelier : sert le site qu’il fabrique', technique: 'atelier/servir', champDate: 'depuis', devantDate: 'depuis le' },
+  { cle: 'activation_par_paquet', nom: 'Accord de la production', technique: 'activation-par-paquet', champDate: 'vu_le', devantDate: 'vu posé lors de l’activation du' },
+]);
+
+/** Les mots de l'état d'une activation (`ETATS_DE_L_ACTIVATION` du service) ; `attention` : l'état demande un coup d'œil. */
+const ETATS_DE_L_ACTIVATION_DITS = Object.freeze({
+  en_cours: { mot: 'en cours', attention: false },
+  passee: { mot: 'passée', attention: false },
+  refusee: { mot: 'refusée', attention: true },
+  retour_automatique: { mot: 'retour automatique au site précédent', attention: true },
+  retour_incomplet: { mot: 'retour incomplet : à traiter', attention: true },
+});
+
+/** « 19 novembre 2026 » d'une date ISO (avec ou sans heure), « » si elle est absente ou illisible. */
+function jourLisible(valeur) {
+  const jour = /^\d{4}-\d{2}-\d{2}/.exec(typeof valeur === 'string' ? valeur.trim() : '')?.[0];
+  return jour && !Number.isNaN(Date.parse(`${jour}T00:00:00Z`)) ? dateLisible(jour) : '';
+}
+
+/**
+ * Ce que la page montre de `bascule_2` (GET /api/mise-a-jour/, site de dev : lecture seule), ou null (rien : champ absent, ancien service ou production).
+ * `interrupteurs` : toujours les cinq, dans l'ordre ; chacun a un `etat` `allume`, `eteint` ou `inconnu` (`etat: null` du service, jamais deviné : sa `phrase`
+ * est alors dite), un `mot` (« allumé », « éteint », « inconnu » ; « vu posé » pour l'accord de la production, que le site de dev ne voit jamais éteint), la
+ * `date` utile (déjà lisible, « » sans) et la `phrase` du service. `activation` : une ligne (`texte`) pour le dernier rapport, ou `{ aucune: true }`.
+ * Pur : le script de la page bâtit les nœuds par `textContent`.
+ * @param {unknown} bascule `bascule_2` de la réponse
+ * @returns {{ interrupteurs: { cle: string, nom: string, technique: string, etat: 'allume' | 'eteint' | 'inconnu', mot: string, date: string, phrase: string }[],
+ *   activation: { aucune: true, texte: string } | { aucune: false, etat: string, mot: string, attention: boolean, perime: boolean, texte: string } } | null}
+ */
+export function affichageDeLaBascule2(bascule) {
+  if (!bascule || typeof bascule !== 'object') return null;
+  const chaine = (v) => (typeof v === 'string' ? v.trim() : '');
+  const lus = bascule.interrupteurs && typeof bascule.interrupteurs === 'object' ? bascule.interrupteurs : {};
+  const interrupteurs = INTERRUPTEURS_DE_LA_BASCULE_2.map(({ cle, nom, technique, champDate, devantDate }) => {
+    const brut = lus[cle] && typeof lus[cle] === 'object' ? lus[cle] : {};
+    // l'accord de la production n'est jamais « éteint » : le site de dev ne voit que l'avoir été (un faux y est lu comme inconnu)
+    const etat = brut.etat === true ? 'allume' : brut.etat === false && cle !== 'activation_par_paquet' ? 'eteint' : 'inconnu';
+    const jour = etat === 'inconnu' || !champDate ? '' : jourLisible(brut[champDate]);
+    const mot = etat === 'inconnu' ? 'inconnu' : etat === 'eteint' ? 'éteint' : cle === 'activation_par_paquet' ? 'vu posé' : 'allumé';
+    return {
+      cle, nom, technique, etat, mot,
+      date: jour ? `${devantDate} ${jour}` : '',
+      phrase: etat === 'inconnu' ? chaine(brut.phrase) : '',
+    };
+  });
+  return { interrupteurs, activation: affichageDeLActivation(bascule.activation) };
+}
+
+/** La ligne du dernier rapport d'activation : état, version, date, phrase, geste, « périmé » ; « Aucune activation connue » sans rapport lisible. */
+function affichageDeLActivation(activation) {
+  const aucune = { aucune: true, texte: 'Aucune activation connue' };
+  if (!activation || typeof activation !== 'object' || !Object.hasOwn(ETATS_DE_L_ACTIVATION_DITS, activation.etat)) return aucune;
+  const chaine = (v) => (typeof v === 'string' ? v.trim() : '');
+  const { mot, attention } = ETATS_DE_L_ACTIVATION_DITS[activation.etat];
+  const version = chaine(activation.version);
+  const jour = jourLisible(activation.le);
+  const perime = activation.perime === true;
+  const parties = [
+    `Activation ${mot}`,
+    version ? `version ${/^\d/.test(version) ? 'V' : ''}${version}` : '',
+    jour ? `le ${jour}` : '',
+    perime ? 'périmée' : '',
+    chaine(activation.phrase),
+    chaine(activation.geste),
+  ].filter(Boolean);
+  return { aucune: false, etat: activation.etat, mot, attention, perime, texte: parties.join(' · ') };
+}
+
+/**
+ * L'alerte avant « Effectuer la mise à jour » (R292) : des races, classes ou magies que la mise à jour retire alors que des fiches de la production les
+ * citent ; la production ne les adapte pas, elle garderait sa base d'avant. D'après `retraits_bloquants` de la réponse : rien si `connu` est faux (l'attestation
+ * n'est pas lue), si `elements` est vide, ou si le champ manque (ancien service). Des nombres et le nom de l'élément, jamais une fiche. Pur : le script de la
+ * page bâtit les nœuds par `textContent`.
+ * @param {unknown} retraits `retraits_bloquants` de la réponse
+ * @returns {{ message: string, elements: string[], total: string } | null} `elements` : une ligne par élément (« Race « Nom », citée par 3 fiches ») ; `total` : l'encadrement du nombre de fiches
+ */
+export function affichageDesRetraits(retraits) {
+  if (!retraits || typeof retraits !== 'object' || retraits.connu !== true) return null;
+  const chaine = (v) => (typeof v === 'string' ? v.trim() : '');
+  const entier = (v) => (Number.isInteger(v) && v >= 0 ? v : null);
+  const elements = (Array.isArray(retraits.elements) ? retraits.elements : []).filter((e) => e && typeof e === 'object').map((e) => {
+    const fiches = entier(e.fiches);
+    const nom = chaine(e.libelle) || chaine(e.nom); // `libelle` dit déjà le genre et le nom (« Race « X » »)
+    if (!nom) return '';
+    return `${nom}${fiches === null ? '' : `, citée par ${fiches} fiche${fiches > 1 ? 's' : ''}`}`;
+  }).filter((t) => t.trim());
+  if (!elements.length) return null;
+  const moins = entier(retraits.fiches_au_moins);
+  const plus = entier(retraits.fiches_au_plus);
+  const total = moins === null || plus === null || plus === 0 ? ''
+    : moins === plus ? `Fiches touchées : ${plus}.` : `Fiches touchées : entre ${moins} et ${plus}.`;
+  return { message: chaine(retraits.message), elements, total };
+}
+
 /** États d'un lot entré dans dev ou livré : « libérer » n'y fait que vider le texte qu'il tient encore (serveur/notes-de-version.mjs#libererLot). */
 const LOT_DANS_DEV = ['fusionne', 'echec_livraison', 'termine'];
 
@@ -379,17 +478,17 @@ export function erreurDuReport(lancement) {
 
 /**
  * Ce que la page dit d'un refus avant l'envoi (`409 { erreur, refus }` de « Effectuer la mise à jour », de la Simulation et de « Copier vers le
- * dépôt ») : { texte, lignes } — une phrase (`lignes` vide). Jamais un nom de fiche (le service n'en donne pas). Sans `refus`
+ * dépôt ») : { texte } — une phrase. Jamais un nom de fiche (le service n'en donne pas). Sans `refus`
  * lisible, null : la page dit alors le message d'erreur du service.
  *   - attestation : le `message` du service (seul refus : un élément retiré qu'une fiche utilise ne fait jamais refuser, décision R280).
  * @param {unknown} refus `refus` du corps de la réponse
- * @returns {{ texte: string, lignes: string[] } | null}
+ * @returns {{ texte: string } | null}
  */
 export function messageDuRefus(refus) {
   if (!refus || typeof refus !== 'object') return null;
   if (refus.raison === 'attestation') {
     const message = typeof refus.message === 'string' ? refus.message.trim() : '';
-    return message ? { texte: message, lignes: [] } : null;
+    return message ? { texte: message } : null;
   }
   return null;
 }

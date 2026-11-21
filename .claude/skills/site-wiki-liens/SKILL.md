@@ -26,7 +26,7 @@ user-invocable: false
 
 ## Invariants
 
-- Les `.md` de `client/src/content/wiki/` sont fabriqués depuis `data/rows` par `npm run db:export-pages` (lancé avant `dev`, `build` et `test` : `predev`, `prebuild`, `pretest`) et ignorés par git. La source est la base. Pour changer une page : modifier le `.md` fabriqué, puis `npm run db:sync-pages`, puis commiter `data/rows`.
+- Les `.md` de `client/src/content/wiki/` sont fabriqués depuis `data/rows` par `npm run db:export-pages` (lancé avant `dev`, `build` et `test` : `predev`, `prebuild`, `pretest`) et ignorés par git. La source est la base du site de dev (R274), dont `data/rows` n'est qu'une copie. Pour changer une page : un lot de changements proposé sur le site de dev (skill `modifier-une-page-wiki`, dont le circuit `.md` par `db:sync-pages -- --lot`), jamais un commit de `data/rows`.
 - Astro 7 utilise Sätteri comme processeur Markdown par défaut, qui n'exécute pas les plugins remark. `astro.config.mjs` force `unified()` de `@astrojs/markdown-remark` pour le plugin des `[[liens]]` (et ceux des couleurs de case et des monnaies) : ne pas le retirer.
 - L'index des liens du plugin est lu une fois au démarrage (`scanContent`) ; les pages (`wiki.ts`) sont rechargées par Astro. Les deux doivent rester d'accord sur l'id d'une page (`<type>/<slug>`, d'où `generateId` dans `content.config.ts`). Après l'ajout d'un nouveau fichier de contenu, relancer `npm run dev`.
 - `HIDE_EXAMPLES=1` filtre les pages d'exemple (`status: example`) à deux endroits qui doivent rester d'accord : `scanContent` (index des liens, dans `astro.config.mjs`) et `loadWiki` (`src/lib/wiki.ts`). La base ouverte au build (`lib/donnees.mjs#ouvrirBase`) le suit aussi. `HIDE_EXAMPLES=1 npm run build` donne la version à montrer.
@@ -44,7 +44,7 @@ user-invocable: false
 
 ## Maillage automatique
 
-`npm run autolink` (aperçu) ou `npm run autolink -- --write` (écrit dans les `.md` fabriqués, à faire suivre de `npm run db:sync-pages`). Règles, exclusions (`TYPES_SANS_MAILLAGE` de `src/lib/autolink.mjs`, `client/scripts/autolink-ignore.txt`) : `docs/content-guide.md`, « Maillage automatique ».
+`npm run autolink` (aperçu) ou `npm run autolink -- --lot <lot.json> --titre <titre>` (lot de nature `source` à proposer au site de dev ; l'outil n'envoie rien ; `--write` est retiré). Règles, exclusions (`TYPES_SANS_MAILLAGE` de `src/lib/autolink.mjs`, `client/scripts/autolink-ignore.txt`) : `docs/content-guide.md`, « Maillage automatique ».
 - Il pose `{{clé}}` ou `{{clé|texte}}` d'un mot-clé à adresse (`ciblesDuVocabulaire`), jamais un `[[…]]`, et ne crée jamais de mot-clé : une page sans mot-clé qui y mène n'est pas une cible.
 - `TYPES_SANS_MAILLAGE` comprend `metiers` (corps = rendu de sa ligne) et `lore` (réécrit à l'identique par `codex.py` et `relations-races.py`).
 - Il reste un outil d'aperçu, relu avant `--write` (choix du leader-technique).

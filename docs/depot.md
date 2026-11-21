@@ -12,6 +12,7 @@ Descriptif sorti de `CLAUDE.md` le 2026-11-12 pour alléger le contexte de chaqu
 | `client/scripts/` | Scripts `db:*` et de mise à jour |
 | `client/test/` | Tests `node:test` (`npm test`) |
 | `data/schema.sql`, `data/migrations/`, `data/rows/` | La base SQLite : schéma (skill `base-sqlite`), migrations, lignes versionnées (jamais modifiées à la main) |
+| `data/references/` | Ce que le service, le build et les outils lisent encore d'un registre `.json` de migration mixte (ids, correspondances, anciens noms), recopié tel quel, sans texte de règle, et figé comme sa migration : on lit toujours la référence, jamais le registre, qui peut quitter le dépôt (R296). Fabriqué par `client/src/lib/references-des-migrations.mjs` (liste `REFERENCES`, calcul) et écrit par `node scripts/references-des-migrations.mjs --ecrire` ; `--verifier` le compare aux registres tant qu'ils sont là. Jamais modifié à la main ; emporté dans le kit de l'atelier |
 | `tools/` | Importeurs et extracteurs (`sheets/`, `bestiaire/`, `chronologie/`, `docs/`, `sources/`), outils de la base (`db/`), flux Git (`flux-git/`), version portable (`build-artifact.mjs`) |
 | `sources/` | Manifeste et exports bruts des sources |
 | `deploy/` | Hébergement NAS et VPS (fichiers en LF) |

@@ -12,6 +12,7 @@ import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { htmlDeLIcone } from '../src/lib/mots-cles-balises.mjs';
 import { RACE_COLORS } from '../src/lib/race-kinds.mjs';
 import { racesParNature } from '../src/lib/races-db.mjs';
+import { normalize } from '../src/lib/text.mjs';
 
 const dossier = fileURLToPath(new URL('../dist/races/', import.meta.url));
 const present = existsSync(dossier);
@@ -222,12 +223,15 @@ test('liste des races : tableau des magies innées en bas de page, races dans l�
   const tableau = liste.slice(debut);
   const entetes = [...tableau.matchAll(/<a href="[^"]*\/magies\/([^"/]+)\/"[^>]*><span class="tableau-magies__vertical">(.*?)<\/span><\/a>/g)];
   for (const [, magie, interieur] of entetes) verifierLaMagieLiee(`en-tête ${magie}`, magie, interieur);
-  assert.deepEqual([...sansIcones(tableau).matchAll(/<span class="tableau-magies__vertical">(.*?)<\/span>/g)].map((m) => sansBalises(m[1])), [
-    'Potentiel Illimité', 'Sang', 'Arcane', 'Corruption', 'Espace/Temps', 'Vide', 'Nécromancie', 'Feu', 'Eau', 'Glace', 'Terre', 'Vent', 'Foudre', 'Lumière', 'Ombre', 'Total',
-  ]);
+  // les magies de la base dans l'ordre du classeur (magie.ordre : lib/magies.ts#ordreDesMagies), sous le nom court de leur page (page.donnees.nom_court,
+  // celui que lit le composant), puis « Total » : lu, jamais écrit ici
+  const nomsDesMagies = base.prepare("SELECT json_extract(p.donnees, '$.nom_court') AS nom FROM magie m JOIN page p ON p.id = m.id ORDER BY m.ordre").all()
+    .map((m) => m.nom).filter((nom) => typeof nom === 'string' && nom.trim() !== '');
+  assert.ok(nomsDesMagies.length > 0);
+  assert.deepEqual([...sansIcones(tableau).matchAll(/<span class="tableau-magies__vertical">(.*?)<\/span>/g)].map((m) => sansBalises(m[1])), [...nomsDesMagies, 'Total']);
   // colonnes, en-têtes et pastilles dans la couleur de leur magie : sa classe (lib/palette-css.mjs), jamais un style
   const colonnes = [...tableau.matchAll(/<col class="tableau-magies__col-magie (couleur-magie-[\w-]+)">/g)].map((m) => m[1]);
-  assert.equal(colonnes.length, 15, 'colonnes teintées');
+  assert.equal(colonnes.length, nomsDesMagies.length, 'colonnes teintées');
   assert.deepEqual([...tableau.matchAll(/<th scope="col" class="tableau-magies__entete (couleur-magie-[\w-]+)">/g)].map((m) => m[1]), colonnes, 'en-têtes');
   assert.ok(colonnes.every((c) => cssDeLaPalette().includes(`.${c}{`)) && colonnes.includes('couleur-magie-espace-temps'), 'des classes de la palette');
   assert.doesNotMatch(tableau.slice(0, tableau.indexOf('</table>')), /style=/, 'aucun style dans le tableau');
@@ -235,11 +239,16 @@ test('liste des races : tableau des magies innées en bas de page, races dans l�
   assert.deepEqual(lignes.map((m) => m[2].replace(/&#39;/g, "'")), [...nomsDe(colonne('pures')), ...nomsDe(colonne('hybrides'))]);
   assert.deepEqual(lignes.map((m) => m[1]), [...slugsDe('pures'), ...slugsDe('hybrides')], 'l’ordre de la liste des races');
   const pastilles = (slug) => (lignes.find((m) => m[1] === slug)[3].match(/class="tableau-magies__point couleur-magie-[\w-]+"/g) ?? []).length;
-  assert.equal(pastilles('humain'), 15);
-  assert.equal(pastilles('nain'), 5);
-  assert.equal(pastilles('drassahthac'), 14);
-  assert.equal(pastilles('orios'), 3);
-  assert.match(lignes.find((m) => m[1] === 'nain')[3], /<td class="tableau-magies__total">5<\/td>$/);
+  // une pastille par magie innée de la race : la liste de sa page (page.donnees.magies_innees, que le service réécrit à chaque opération
+  // `magies_innees`) qui nomme une magie du tableau, comme lib/magie-relations.mjs#accessMatrix ; lue dans la base, jamais écrite ici
+  const nomsCourts = new Set(nomsDesMagies.map(normalize));
+  for (const [, slug, , cellules] of lignes) {
+    const page = base.prepare("SELECT donnees FROM page WHERE id = ?").get(`races/${slug}`);
+    const attendu = new Set((JSON.parse(page?.donnees ?? '{}').magies_innees ?? []).map(normalize).filter((n) => nomsCourts.has(n))).size;
+    assert.equal(pastilles(slug), attendu, `${slug} : pastilles`);
+    assert.match(cellules, new RegExp(`<td class="tableau-magies__total">${attendu}</td>$`), `${slug} : total`);
+  }
+  assert.ok(lignes.some((m) => pastilles(m[1]) > 0), 'des pastilles');
   // pas de ligne de séparation « Races pures » / « Races hybrides » (demande du propriétaire) : une ligne de tableau par race, rien d'autre
   assert.ok(!/Races (pures|hybrides)|scope="colgroup"/.test(tableau), 'aucune ligne de séparation');
   assert.equal((tableau.match(/<tr>/g) ?? []).length - 1, (tableau.match(/<th scope="row"/g) ?? []).length, 'une ligne par race (plus celle des en-têtes)');

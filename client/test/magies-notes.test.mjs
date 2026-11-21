@@ -31,6 +31,7 @@ import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { baseDImport, lotsAvant } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { registreDeMigration } from './aide-registres-sortis.mjs';
 
 const dossierPages = fileURLToPath(new URL('../src/content/wiki/magies', import.meta.url));
 const racineWiki = fileURLToPath(new URL('../src/content/wiki', import.meta.url));
@@ -187,7 +188,8 @@ const SLUGS = {
   'magie-du-vide': 7, 'magie-de-la-necromancie': 4, 'magie-du-feu': 1, 'magie-de-leau': 3, 'magie-de-la-glace': 5,
   'magie-de-la-terre': 6, 'magie-du-vent': 3, 'magie-de-la-foudre': 3, 'magie-de-la-lumiere': 2, 'magie-de-lombre': 9,
 };
-const REMARQUES_0117 = JSON.parse(readFileSync(fileURLToPath(new URL('../../data/migrations/0117-magies-v10-specialisations.json', import.meta.url)), 'utf8')).remarques;
+// (registre de la 0117, ou ce qu'en garde test/fixtures/registres-sortis.json une fois la migration mixte sortie : ids et effectifs)
+const REMARQUES_0117 = registreDeMigration('0117-magies-v10-specialisations').remarques;
 const NOTES_V10 = REMARQUES_0117.notes_v10;
 // R243 (2) : 8 sorts gardent la remarque que le site de dev leur avait donnée (la page la cite, pas la note du classeur)
 const GARDEES_DU_SITE = new Set(REMARQUES_0117.remarques_du_site_gardees.map((r) => r.id));

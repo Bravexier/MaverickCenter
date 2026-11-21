@@ -3,14 +3,15 @@
 //
 // La base est construite par les scripts `client/scripts/db-build.mjs` puis `db-derive.mjs` (les mêmes que `npm run db:build`) dans un dossier temporaire : le build
 // du site n'a besoin d'aucune étape préalable. `HIDE_EXAMPLES=1` retire les pages d'exemple, comme pour le reste du site.
-// `MAVERICK_CONTENU=<fichier SQLite>` (lib/contenu-fourni.mjs) : la base part d'une copie de ce fichier (un extrait du contenu) au lieu de data/rows.
+// `MAVERICK_CONTENU=<fichier SQLite>` (lib/contenu-fourni.mjs) : la base part d'une copie de ce fichier (un extrait du contenu) au lieu de data/rows,
+// préparée (`preparerLaCopie` : vue de l'extrait retirée, migrations manquantes appliquées, pages d'exemple du dépôt ajoutées s'il n'en a aucune).
 import { DatabaseSync } from 'node:sqlite';
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { contenuDejaDerive, contenuFourni, copierLeContenu } from './contenu-fourni.mjs';
+import { contenuDejaDerive, contenuFourni, copierLeContenu, preparerLaCopie } from './contenu-fourni.mjs';
 import { lireSchema } from './schema-doc.mjs';
 
 /**
@@ -47,8 +48,15 @@ export function ouvrirBase({ sansExemples = process.env.HIDE_EXAMPLES === '1' } 
   // déjà dérivé (fabrication en deux temps : db-derive a tourné dans son propre processus) : copié tel quel, pour la variante demandée seulement
   const derive = contenu ? contenuDejaDerive() : null;
   if (derive && derive !== cle) throw new Error(`${contenu} est déjà dérivé pour la variante « ${derive} », pas pour « ${cle} »`);
-  if (contenu) copierLeContenu(contenu, fichier);
-  else lancer('db-build.mjs', ['--out', fichier]);
+  if (contenu) {
+    copierLeContenu(contenu, fichier);
+    // la copie seulement : vue de l'extrait retirée, migrations du dépôt manquantes appliquées et pages d'exemple du dépôt ajoutées si elle n'en a aucune
+    // (dans leur propre processus, seulement s'il y a à faire ; pas d'exemples pour la variante qui les retire), structure en avance refusée
+    if (!derive) {
+      const preparer = (copie) => lancer('db-preparer-contenu.mjs', [copie, '--racine', racine, ...(sansExemples ? ['--sans-exemples'] : [])]);
+      preparerLaCopie(fichier, { racine, exemples: !sansExemples, migrer: preparer, injecter: preparer });
+    }
+  } else lancer('db-build.mjs', ['--out', fichier]);
   if (!derive) lancer('db-derive.mjs', [fichier, ...(sansExemples ? ['--sans-exemples'] : [])]);
   const db = new DatabaseSync(fichier, { readOnly: true });
   caches.bases.set(cle, { db, dossier });

@@ -53,7 +53,11 @@ Carte & lieux reste « bientôt » (E6 de la [feuille de route](feuille-de-route
   0098) n'est jamais posé comme étiquette de partie (`Vocabulaire.etiquette`) : les pages ne gardent que « codex ».
 - L'état d'import d'une page modifiée par le site, relu dans l'historique, peut dater d'avant la 0098 : `--verifier` y lit ses `[[…]]` comme le script
   les écrit aujourd'hui (`liens_en_balises`), comme la migration a converti la page de la base.
-- Un nouvel export : le remplacer dans `sources/raw/`, puis `python3 -I tools/docs/codex.py`, `--verifier`, `npm run db:sync-pages` (depuis `client/`).
+- Un nouvel export : le remplacer dans `sources/raw/`, puis, depuis `client/` : `npm run db:extrait`, `MAVERICK_CONTENU=../var/extrait/maverick-dev.db npm run db:export-pages`,
+  `python3 -I ../tools/docs/codex.py --base ../var/extrait/maverick-dev.db` (écrit les `.md` de `lore/`), `--verifier --base ../var/extrait/maverick-dev.db`, puis
+  `npm run db:sync-pages -- --lot <lot.json> --titre <titre>` (un lot de nature `source`, qu'un humain propose au site de dev ; rien n'est écrit dans `data/rows` : circuit
+  d'un importeur, `sources.md`). `--base <fichier.db>` : l'historique (`historique_modification`) et les mots-clés (`mot_cle`) se lisent dans la base (en lecture seule, à
+  la version du schéma : une copie plus ancienne que le dépôt se prépare d'abord, `node scripts/db-preparer-contenu.mjs <copie.db>`, jamais sur le fichier fourni) ; sans `--base`, dans `data/rows/` (le repli) ; `--historique` et `--vocabulaire` donnent un fichier SQL qui remplace la table de la base (essais).
   Puis la chronologie, qui cite le texte des pages : `node tools/chronologie/chronologie.mjs --verifier` ; un extrait à reprendre se corrige dans
   `tools/chronologie/evenements.json`, puis une migration écrite par `--sql` ([`chronologie.md`](chronologie.md)).
   Le script n'écrit que dans `lore/`, refuse d'écraser une page qui ne vient pas du document et signale (sans les supprimer) les pages qu'il ne produit plus.
@@ -68,11 +72,11 @@ Un ancien titre devient un alias ; HTML brut et liens non sûrs sont refusés, c
 (domaine « Codex » ; à sa première livraison, le Codex y tient en une ligne).
 
 Le site est la source de ce qu'il modifie : une page qu'il a modifiée est contrôlée par `--verifier` **dans son état d'import** (titre, texte et alias
-d'avant toute édition, relus dans `data/rows/historique_modification.sql` : `pages_du_site`) ; une nouvelle écriture des pages (`codex.py`) la **garde**
+d'avant toute édition, relus dans `historique_modification` de la base (`--base`), sinon `data/rows/historique_modification.sql` : `pages_du_site`) ; une nouvelle écriture des pages (`codex.py`) la **garde**
 telle que le site l'a laissée, et `--verifier` signale alors si le document a changé depuis pour elle (à reprendre à la main). Les mots-clés sont un
 vocabulaire géré sur le site (migration 0043, page Recherche) : une page dont un mot-clé a été renommé, fusionné ou retiré sur le site compte aussi comme
 modifiée (gardée telle quelle à l'écriture, ses mots-clés non comparés au document : sinon l'ancienne écriture reviendrait). Depuis la migration 0056
-(glossaire), un import ne crée jamais de mot-clé : le script n'écrit que les mots-clés du vocabulaire (`data/rows/mot_cle.sql`, option `--vocabulaire` ;
+(glossaire), un import ne crée jamais de mot-clé : le script n'écrit que les mots-clés du vocabulaire (table `mot_cle` de la base (`--base`), sinon `data/rows/mot_cle.sql`, option `--vocabulaire` ;
 `vocabulaire()` → `Vocabulaire`, même règle que `tools/db/maverick.py#mot_cle`), dans son écriture ; les étiquettes de partie (« divinité », « faction »…) ne sont plus
 dans le vocabulaire, chaque page ne porte que « codex », posé par son id (`MOT_CLE_DU_CODEX`, `Vocabulaire.protege` : l'id entier que lui donne
 `tools/db/maverick.py#MOTS_CLES_PROTEGES`, migration 0113, écrit avec son libellé courant, jamais le mot-clé qui aurait pris l'écriture « codex » ;

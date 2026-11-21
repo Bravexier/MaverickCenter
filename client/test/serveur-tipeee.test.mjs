@@ -16,6 +16,7 @@ import { demarrerService } from '../serveur/service.mjs';
 import { CACHE_MS, DELAI_MS, FICHIER, OCTETS_MAX, REESSAI_MS, creerTipeee, reglagesTipeee } from '../serveur/tipeee.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { CHEMIN_INSTANTANE, REPERE, URL_API } from '../src/lib/tipeee.mjs';
+import { REFERENCES } from '../src/lib/references-des-migrations.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const racine = dossierTemporaire('tipeee');
@@ -268,11 +269,10 @@ test('le vrai service : GET /api/tipeee/ en HTTP, le dernier texte gardé à cô
 });
 
 test('livraison : l’instantané (sources/tipeee/bienvenue.json) copié dans _serveur/sources/, compté dans l’empreinte ; absent, rien n’est copié', () => {
-  // le premier fichier joint ; les suivants sont les registres des migrations 0098 (serveur/edition.mjs#tableDesLiensDeLa0098) et 0113
-  // (serveur/edition.mjs#registreDes0113), absents du faux dépôt
+  // le premier fichier joint ; les suivants sont les références tirées des registres des migrations 0098 (serveur/edition.mjs#tableDesLiensDeLa0098) et
+  // 0113 (serveur/edition.mjs#registreDes0113 ; lib/references-des-migrations.mjs), absentes du faux dépôt
   assert.deepEqual(FICHIERS_JOINTS[0], { source: `../${CHEMIN_INSTANTANE}`, cible: CHEMIN_INSTANTANE });
-  assert.deepEqual(FICHIERS_JOINTS.slice(1, 3), ['0098-liens-en-mots-cles.json', '0113-mots-cles-id-entier.json']
-    .map((f) => ({ source: `../data/migrations/${f}`, cible: `data/migrations/${f}` })));
+  assert.deepEqual(FICHIERS_JOINTS.slice(1, 3), [REFERENCES.liens, REFERENCES.idsDesMotsCles].map((f) => ({ source: `../${f}`, cible: f })));
   // puis la structure (migrations .sql et schema.sql : serveur/structure-sur-place.mjs), testée par serveur-structure-sur-place
   const depot = join(racine, 'faux-depot');
   const client = join(depot, 'client');

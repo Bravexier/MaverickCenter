@@ -10,7 +10,7 @@ propriétaire du projet en tient une version corrigée dans son Drive, avec des 
 | `Maverick JDR/Classeurs et documents du jeu/` | Copies des 8 classeurs et 4 Google Docs, mêmes titres et mêmes onglets (gid) que les originaux ; le site les cite (migration `0014-sources-copies-drive`, registre `.json`) |
 | `Maverick JDR/Anciennes fiches auto/` | Copies d'archive des fiches V15.0.5, V15.2.2 (celle que cite la base) et V1.1, non modifiées : elles lisent toujours les classeurs d'origine |
 
-Le registre `data/migrations/0014-sources-copies-drive.json` donne, pour chaque document, l'identifiant d'origine et celui de la copie.
+Le registre `sources/copies-drive.json` (repris de celui de la migration `0014-sources-copies-drive`, figé) donne, pour chaque document, l'identifiant d'origine et celui de la copie.
 Deux documents du manifeste, « CODEX Maverick » (`1CwDqDKurMOdqig3ozX4NQETbBW9sggsxEqM1WfbOG5M`) et « Bestiaire 2.0 »
 (`1vn5Tq11U6LG2T3X9Yobu5E_3DCKrg2jFoPFisvLYXK8`), étaient hors de portée du Drive du propriétaire et n'ont pas été copiés par la migration. Le
 propriétaire les a copiés le 2026-10-11 : le « CODEX Maverick » (`1tH-T9k-a3sADBtKWHxcuMcN94_VA8-Zo2BTzee9O7Tg`, manifeste et [`codex.md`](codex.md)) et

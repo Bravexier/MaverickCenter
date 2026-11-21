@@ -8,24 +8,33 @@
 #   - les réglages viennent d'un fichier dont root est propriétaire, relus champ par champ.
 # Réglages de test seulement (MAVERICK_ATELIER_ESSAI=1 : ni root ni systemd exigés) : MAVERICK_ATELIER_PROC (/proc), MAVERICK_ATELIER_CGROUP (/sys/fs/cgroup),
 # MAVERICK_DIR_ETC_SYSTEMD, MAVERICK_ATELIER_INTERVALLE (secondes entre deux relevés du conteneur), MAVERICK_ATELIER_ATTENTE (secondes d'attente de l'extrait).
+# MAVERICK_ATELIER_DELAI_POSE (secondes accordées à la pose du site servi).
 
 PROC=${MAVERICK_ATELIER_PROC:-/proc}
 CGROUP=${MAVERICK_ATELIER_CGROUP:-/sys/fs/cgroup}
 ESSAI=${MAVERICK_ATELIER_ESSAI:-0}
 
-# Valeurs par défaut (kilo-octets, secondes). Plafond de mémoire : 2,5 Go ; besoin : 1,5 Go (le pic mesuré d'une fabrication est d'environ 1,4 Go) ; disque : arrêt sous 2 Go libres.
+# Valeurs par défaut (kilo-octets, secondes). Plafond de mémoire : 2,5 Go ; besoin : 1,1 Go (fabrication complète de l'extrait du jour, mesurée dans un cgroup limité : réussie à 1100 Mo, tuée à 800 Mo ; 1,1 Go est le plus petit plafond essayé qui réussit) ;
+# disque : arrêt sous 2 Go libres. L'ancien besoin par défaut (1,5 Go) n'a jamais été choisi par le propriétaire : le geste ne le reprend pas (installer.sh).
 DEFAUT_MEMOIRE_MAX_KO=2621440
-DEFAUT_BESOIN_KO=1572864
+DEFAUT_BESOIN_KO=1153433
+ANCIEN_DEFAUT_BESOIN_KO=1572864
 DEFAUT_CPUS=1
 DEFAUT_DISQUE_MIN_KO=2097152
 DEFAUT_DELAI_S=1800
-# Rapports gardés : de quoi couvrir une journée pleine (au plus 12 fabrications par jour par défaut) sur plus de trois jours, et le bilan des dernières 24 h.
-RAPPORTS_GARDES=40
+# Rapports gardés : tous ceux du jour UTC (jamais effacés : les plafonds du jour les comptent, dont celui des refabrications du contenu, 48 par jour), plus les 100 plus anciens ; de quoi couvrir le bilan des dernières 24 h.
+RAPPORTS_GARDES=100
 # La journée type : le minuteur du jour n'ajoute rien quand la journée UTC compte déjà 10 fabrications (toutes origines confondues : la nuit et les livraisons comptent), une toutes les 40 minutes au moins ; au plus 12 par jour toutes origines confondues ; une journée de mesure par défaut.
 DEFAUT_JOURS_DE_MESURE=1
 DEFAUT_MAX_PAR_JOUR=12
 JOURNEE_TYPE_FABRICATIONS=10
 JOURNEE_TYPE_ECART_S=2400
+# Le site servi par l'atelier (lot 11, PR 3b ; l'interrupteur <atelier>/servir) : la refabrication qui suit un changement de contenu a son propre plafond par jour (elle ne compte pas parmi
+# les fabrications de la journée type, et celles-ci ne la comptent pas) ; la pose tourne dans un second conteneur, sous délai et sous mémoire plafonnée.
+DEFAUT_MAX_CONTENU_PAR_JOUR=48
+DEFAUT_PAGES_MINIMUM_PCT=90
+DELAI_POSE_S=${MAVERICK_ATELIER_DELAI_POSE:-600}
+MEMOIRE_POSE='512m'
 # La sonde de la production : une requête par seconde et par instance au plus, 5 s de délai, une référence et une phase après d'environ 30 s ; trois mauvaises réponses de suite l'arrêtent.
 # Le User-Agent de la sonde : exact, reconnu par le service (serveur/metriques.mjs#UA_SONDE) qui ne compte pas ces requêtes dans ses métriques.
 SONDE_AGENT='maverick-atelier-sonde/1'
@@ -37,6 +46,8 @@ SONDE_LENTEUR_MS=2000
 SONDE_CIBLES='/ /api/personnages/'
 # Plafond de taille de ce que root copie depuis le conteneur (octets) et depuis le service (l'extrait).
 PLAFOND_RESULTAT=262144
+# le journal du conteneur (docker logs) gardé dans le rapport : la fin, 200 Ko au plus
+PLAFOND_JOURNAL=204800
 PLAFOND_EXTRAIT=536870912
 # Le motif de l'image d'une fabrication : celle du kit (node:<version>-bookworm-slim ou -alpine), rien d'autre.
 MOTIF_IMAGE='^node:[0-9]+(\.[0-9]+){0,2}-(bookworm-slim|alpine)$'
@@ -74,20 +85,42 @@ meminfo_ko() { # champ -> kilo-octets
 }
 
 # Le plafond de mémoire d'une fabrication, d'après la mémoire du serveur à l'instant (kilo-octets) :
-#   plafond = min(maximum réglé, MemAvailable / 2) ; marge laissée à la production = MemAvailable - plafond.
-# Refus (MOTIF_REFUS) : « memoire_insuffisante » si le plafond est sous le besoin, « marge_insuffisante » si la marge est sous max(1 Go, 25 % de MemTotal).
-# Variables posées : PLAFOND_KO, MARGE_KO, MOTIF_REFUS (vide : on peut démarrer).
+#   plafond = min(maximum réglé, MemAvailable / 2) ; marge laissée à la production = MemAvailable - plafond (au moins la moitié du disponible) ;
+#   marge minimale = max(1 Go, 25 % de MemTotal).
+# Refus (MOTIF_REFUS) : « memoire_insuffisante » si le plafond est sous le besoin (MemAvailable < 2 × besoin, tant que le maximum réglé n'est pas sous le besoin : le geste le refuse),
+# « marge_insuffisante » si la marge est sous la marge minimale : MemAvailable < min(maximum + marge minimale, 2 × marge minimale) ; baisser le maximum ne la lève que s'il reste au moins
+# le besoin sous MemAvailable - marge minimale, sinon il faut plus de mémoire disponible.
+# Variables posées : PLAFOND_KO, MARGE_KO, MARGE_MINIMALE_KO, MOTIF_REFUS (vide : on peut démarrer).
 calculer_le_plafond() { # total dispo maximum besoin
   PLAFOND_KO=$3
   moitie=$(($2 / 2))
   [ "$moitie" -ge "$PLAFOND_KO" ] || PLAFOND_KO=$moitie
   MARGE_KO=$(($2 - PLAFOND_KO))
-  marge_minimale=$(($1 / 4))
-  [ "$marge_minimale" -ge 1048576 ] || marge_minimale=1048576
+  MARGE_MINIMALE_KO=$(($1 / 4))
+  [ "$MARGE_MINIMALE_KO" -ge 1048576 ] || MARGE_MINIMALE_KO=1048576
   MOTIF_REFUS=''
   if [ "$PLAFOND_KO" -lt "$4" ]; then MOTIF_REFUS=memoire_insuffisante
-  elif [ "$MARGE_KO" -lt "$marge_minimale" ]; then MOTIF_REFUS=marge_insuffisante
+  elif [ "$MARGE_KO" -lt "$MARGE_MINIMALE_KO" ]; then MOTIF_REFUS=marge_insuffisante
   fi
+}
+
+# La phrase de --etat sur la mémoire, d'après calculer_le_plafond (mêmes arguments, plus le geste à donner et le maximum réglé) : les chiffres relevés (Mo) et, en cas de refus,
+# ce qui le lève. Seuil de la mémoire : sous 2 × besoin de mémoire disponible, le plafond (la moitié du disponible) est sous le besoin. Seuil de la marge : sous
+# min(maximum + marge minimale, 2 × marge minimale), la marge laissée est sous la marge minimale.
+dire_la_memoire() { # total dispo besoin geste maximum
+  seuil=$(( (2 * $3 + 1023) / 1024 ))
+  base="$(($2 / 1024)) Mo disponibles sur $(($1 / 1024)) Mo ; marge laissée à la production $((MARGE_KO / 1024)) Mo (au moins $((MARGE_MINIMALE_KO / 1024)) Mo), plafond possible $((PLAFOND_KO / 1024)) Mo, besoin $(($3 / 1024)) Mo"
+  case "$MOTIF_REFUS" in
+    '') printf '%s : la fabrication démarrerait (refus sous %s Mo disponibles).' "$base" "$seuil" ;;
+    memoire_insuffisante) printf '%s : la fabrication serait refusée (memoire_insuffisante). Pour la lever : libérer de la mémoire (il faut au moins %s Mo disponibles), ou baisser le besoin par « sudo sh %s --besoin <taille> » ; risque : un besoin sous ce que la fabrication demande (1,1 Go est le plus petit plafond essayé qui réussit) la fait échouer, le conteneur étant tué au plafond (OOMKilled) : une mesure en échec ; la production garde sa marge.' "$base" "$seuil" "$4" ;;
+    *)
+      seuil_marge=$(( $5 + MARGE_MINIMALE_KO )); [ "$seuil_marge" -le $((2 * MARGE_MINIMALE_KO)) ] || seuil_marge=$((2 * MARGE_MINIMALE_KO))
+      seuil_marge=$(( (seuil_marge + 1023) / 1024 ))
+      printf '%s : la fabrication serait refusée (%s : la marge laissée à la production serait sous le minimum). Pour la lever : libérer de la mémoire (il faut au moins %s Mo disponibles)' "$base" "$MOTIF_REFUS" "$seuil_marge"
+      # baisser le maximum ne lève ce refus que s'il reste au moins le besoin sous MemAvailable - marge minimale
+      if [ $(($2 - MARGE_MINIMALE_KO)) -ge "$3" ]; then printf ', ou baisser le maximum par « sudo sh %s --memoire-max <taille> » avec une taille d'"'"'au plus %s Mo (et d'"'"'au moins le besoin)' "$4" "$(( ($2 - MARGE_MINIMALE_KO) / 1024 ))"; fi
+      printf '.' ;;
+  esac
 }
 
 # Le disque du dossier $1 : DISQUE_TOTAL_KO et DISQUE_LIBRE_KO (df -P : « disponible » pour un utilisateur ordinaire, la réserve de root n'y est pas).
@@ -115,10 +148,13 @@ jour_de_l_identifiant() { printf '%s' "${1%%-*}"; }
 epoch_de_l_identifiant() { d=${1%%-*}; h=${1##*-}; date -u -d "$(printf '%s' "$d" | sed 's/\(....\)\(..\)\(..\)/\1-\2-\3/') $(printf '%s' "$h" | sed 's/\(..\)\(..\)\(..\)/\1:\2:\3/')" +%s; }
 
 # Les rapports d'aujourd'hui (jour UTC) qui comptent comme des fabrications : tous, sauf ceux qui disent seulement que le plafond du jour est atteint.
-rapports_du_jour() { # dossier_des_rapports -> identifiants, un par ligne
+# Avec « contenu » en second argument : seulement celles d'origine « contenu » (le plafond propre au site servi) ; sans lui : toutes les autres (la journée type et ses plafonds ne comptent jamais
+# les refabrications qui suivent un changement de contenu).
+rapports_du_jour() { # dossier_des_rapports [contenu] -> identifiants, un par ligne
   jour=$(date -u -d "@$(epoch_maintenant)" '+%Y%m%d')
   ls -1 "$1" 2>/dev/null | grep -E "^$jour-[0-9]{6}\$" | while read -r id; do
-    grep -Eq '"motif": *"plafond_du_jour"' "$1/$id/rapport.json" 2>/dev/null || printf '%s\n' "$id"
+    grep -Eq '"motif": *"plafond_du_jour"' "$1/$id/rapport.json" 2>/dev/null && continue
+    if grep -Eq '"origine": *"contenu"' "$1/$id/rapport.json" 2>/dev/null; then [ "${2:-}" = contenu ] && printf '%s\n' "$id"; else [ "${2:-}" = contenu ] || printf '%s\n' "$id"; fi
   done
 }
 

@@ -5,8 +5,9 @@
 // Contenu (R275, question 6 : le kit ne porte aucun contenu, c'est du code) :
 //   - client/ avec ses node_modules (aucun lien qui sorte du kit : un node_modules relié à un autre dossier est lu par son chemin réel, ses modules sont alors dupliqués
 //     et le site fabriqué n'est plus celui de la CI), sans dist/, .astro/, src/content/wiki/, test/, var/, ni ce que git ignore ;
-//   - data/schema.sql, data/derive.sql, data/migrations/ (le schéma et ses registres : du code) ;
-//   - sources/sources.json et sources/tipeee/bienvenue.json (la page Archives et l'accueil les lisent) ;
+//   - data/schema.sql, data/derive.sql, data/migrations/ (le schéma et ses registres : du code), data/references/ (ce que le build lit encore d'un registre de
+//     migration, sans texte de règle : les noms d'avant de la fiche, client/src/lib/references-des-migrations.mjs) ;
+//   - sources/sources.json, sources/copies-drive.json et sources/tipeee/bienvenue.json (la page Archives et l'accueil les lisent ; copies-drive.json : le registre des identifiants de copies, lu par lib/archives.mjs : sans lui le build échoue) ;
 //   - .nvmrc (la version de Node).
 // Élagage : les modules natifs d'une autre plateforme, d'une autre architecture ou d'une autre libc (musl contre glibc : les deux variantes sont installées) sont
 // retirés selon ce que leur propre package.json déclare (`os`, `cpu`, `libc`) : le critère de npm lui-même, jamais une liste de noms. Ils ne servent jamais ici.
@@ -27,7 +28,11 @@ export const META_DU_KIT = 'kit.json';
 export const DOSSIER_DU_KIT = 'atelier-kit';
 
 /** Ce que le kit emporte, relatif à la racine du dépôt. */
-export const A_EMPORTER = Object.freeze(['client', 'data/schema.sql', 'data/derive.sql', 'data/migrations', 'sources/sources.json', 'sources/tipeee/bienvenue.json', '.nvmrc']);
+export const A_EMPORTER = Object.freeze(['client', 'data/schema.sql', 'data/derive.sql', 'data/migrations', 'data/references', 'sources/sources.json', 'sources/copies-drive.json', 'sources/tipeee/bienvenue.json', '.nvmrc']);
+/** Le fichier d'identité du dernier lot (lot 11, PR 4 ; sans contenu : écrit par le workflow de mise à jour, client/scripts/mise-a-jour-github.mjs#FICHIER_D_IDENTITE), relatif à la racine. */
+export const FICHIER_D_IDENTITE = 'data/paquet.json';
+/** Son format (copie de mise-a-jour-github.mjs#FORMAT_D_IDENTITE : un test les compare). */
+export const FORMAT_D_IDENTITE = 'maverick-paquet-identite/1';
 /** Ce que client/ ne donne pas au kit (chemins relatifs à client/). */
 const EXCLUS_DE_CLIENT = Object.freeze(['dist', '.astro', 'test', 'var', 'src/content/wiki']);
 const EXCLUS_PAR_NOM = /^(?:\.DS_Store|.*\.log)$/;
@@ -42,8 +47,8 @@ export const INTERDITS = Object.freeze([
 ]);
 /** Ce que le kit doit porter pour que le build depuis un contenu marche. */
 export const INDISPENSABLES = Object.freeze([
-  'client/package.json', 'client/astro.config.mjs', 'client/scripts/fabriquer-depuis-contenu.mjs', 'client/node_modules/astro/bin/astro.mjs',
-  'data/schema.sql', 'data/derive.sql', 'data/migrations', 'sources/sources.json', 'sources/tipeee/bienvenue.json', '.nvmrc',
+  'client/package.json', 'client/astro.config.mjs', 'client/scripts/fabriquer-depuis-contenu.mjs', 'client/scripts/poser-un-site.mjs', 'client/node_modules/astro/bin/astro.mjs',
+  'data/schema.sql', 'data/derive.sql', 'data/migrations', 'data/references', 'sources/sources.json', 'sources/copies-drive.json', 'sources/tipeee/bienvenue.json', '.nvmrc',
 ]);
 
 export class ErreurKit extends Error {
@@ -154,6 +159,31 @@ function ignoresParGit(racine) {
   return r.stdout.split('\0').filter(Boolean).map((p) => p.replace(/\/$/, '')).filter((p) => p !== 'client/node_modules' && !p.startsWith('client/node_modules/'));
 }
 
+/**
+ * Le paquet que ce kit annonce (lot 11, PR 4) : l'identité du lot de `<racine>/data/paquet.json`, qui ne porte aucun contenu. Absent, le kit n'annonce aucun
+ * paquet (`null`) ; illisible ou d'une autre forme : refus (un kit ne doit pas annoncer un paquet qu'on ne sait pas lire). Rend le paquet annoncé (`{ lot, version, empreinte, structure }`, la structure étant celle de CE paquet), ou `null`.
+ */
+export function lireLIdentiteDuPaquet(racine) {
+  const chemin = join(racine, ...FICHIER_D_IDENTITE.split('/'));
+  if (!existsSync(chemin)) return null;
+  let v;
+  try {
+    v = JSON.parse(readFileSync(chemin, 'utf8'));
+  } catch {
+    throw new ErreurKit([`${FICHIER_D_IDENTITE} illisible (JSON attendu)`]);
+  }
+  const ok = v && typeof v === 'object' && v.format === FORMAT_D_IDENTITE && typeof v.lot === 'string' && /^[0-9a-f-]{8,64}$/.test(v.lot)
+    && /^\d+\.\d+$/.test(String(v.version)) && /^[0-9a-f]{64}$/.test(String(v.empreinte)) && Number.isInteger(v.structure) && v.structure >= 0;
+  if (!ok) throw new ErreurKit([`${FICHIER_D_IDENTITE} : format ${FORMAT_D_IDENTITE}, lot, version X.Y, empreinte (sha256) et structure (nombre entier) attendus`]);
+  return { lot: v.lot, version: String(v.version), empreinte: v.empreinte, structure: v.structure };
+}
+
+/** La structure d'un `data/schema.sql` : son `PRAGMA user_version = N;` (null s'il ne s'y lit pas). */
+export function structureDuKit(schema) {
+  const m = /^\s*PRAGMA\s+user_version\s*=\s*(\d+)\s*;/im.exec(readFileSync(schema, 'utf8'));
+  return m ? Number(m[1]) : null;
+}
+
 /** La version de Node de .nvmrc (« 22 » ou « v22.13.0 » → « 22 » ou « 22.13.0 »). */
 export function nodeDeNvmrc(racine) {
   const texte = readFileSync(join(racine, '.nvmrc'), 'utf8').trim().replace(/^v/, '');
@@ -170,6 +200,7 @@ export function fabriquerLeKit({ racine, destination, version, sha, plateforme =
   if (plateforme.platform !== 'linux') throw new ErreurKit([`le kit se fabrique sous Linux (cette machine : ${plateforme.platform}) : ses modules natifs doivent être ceux de l'image Docker de l'atelier`]);
   for (const rel of A_EMPORTER) if (!existsSync(join(racine, rel))) throw new ErreurKit([`${rel} est introuvable dans ${racine}`]);
   const node = nodeDeNvmrc(racine);
+  const paquet = lireLIdentiteDuPaquet(racine);
   const exclus = new Set([...EXCLUS_DE_CLIENT.map((e) => `client/${e}`), ...ignoresParGit(racine)]);
   const travail = mkdtempSync(join(tmpdir(), 'maverick-kit-'));
   try {
@@ -223,6 +254,9 @@ export function fabriquerLeKit({ racine, destination, version, sha, plateforme =
       taille_archive_octets: statSync(archive).size,
       empreinte: empreinte.digest('hex'),
       archive_sha256: sha256(readFileSync(archive)),
+      // le paquet que ce kit annonce (null sans data/paquet.json, structure de ce paquet comprise) et la structure du KIT (user_version de son data/schema.sql) : ce que la production lira pour n'activer un kit qu'avec son paquet
+      paquet,
+      structure: structureDuKit(join(kit, 'data', 'schema.sql')),
       elagage: { paquets_retires: retires.length, octets_retires: retires.reduce((s, p) => s + p.octets, 0), exemples: retires.slice(0, 12).map((p) => p.rel) },
     };
     writeFileSync(join(destination, META_DU_KIT), `${JSON.stringify(meta, null, 2)}\n`);

@@ -18,6 +18,8 @@ import { texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { idDuMotCleNomme } from './aide-mots-cles.mjs';
+import { registreDeMigration } from './aide-registres-sortis.mjs';
 
 const script = fileURLToPath(new URL('../../tools/sheets/invocations.py', import.meta.url));
 const bestiaire = fileURLToPath(new URL('../src/content/wiki/bestiaire', import.meta.url));
@@ -26,7 +28,8 @@ const sansPython = python.status !== 0 && 'python3 absent';
 
 const CLASSEUR = 'https://docs.google.com/spreadsheets/d/1U56C8wQ2hf19ryTA_t9AeUPsORurift8As6dOEgmNgo/edit';
 // 0006 (noms à trancher) a corrigé le nom d'une invocation (« Marionette de lombre » -> « Marionnette de l'ombre ») : les sources citent l'onglet sous son nom du classeur
-const ONGLET_DU_CLASSEUR = new Map(JSON.parse(readFileSync(fileURLToPath(new URL('../../data/migrations/0006-orthographe-noms.json', import.meta.url)), 'utf8')).corrections
+// (registre de la 0006, ou ce qu'en garde test/fixtures/registres-sortis.json une fois la migration mixte sortie : les noms d'invocation corrigés)
+const ONGLET_DU_CLASSEUR = new Map(registreDeMigration('0006-orthographe-noms').corrections
   .filter((c) => c.table === 'invocation' && c.col === 'nom').map((c) => [c.apres, c.avant]));
 const MARQUEUR = '**Note de la cellule « ';
 const nbNotes = (texte) => texte.split(MARQUEUR).length - 1;
@@ -953,11 +956,10 @@ for (const [nomDuCas, [alterer, attendu]] of Object.entries(ALTERATIONS)) {
 
 test('pages réelles, sans dump : balises posées par `npm run autolink` (anciens liens `[[…]]` compris) et page retouchée (statut verified) ne sont pas des écarts', () => {
   // le maillage pose « {{clé}} » (le texte est le libellé du mot-clé) ou « {{clé|texte}} » (migrations 0098, 0113) ; un ancien [[lien]] reste lu
-  // le mot-clé de la page de la Nécromancie, lu à l'import par son id entier figé (0098 ; registre de la migration 0113 : son ancien id texte ->
+  // le mot-clé de la page de la Nécromancie, lu à l'import par son id entier figé (0098 ; correspondance de la migration 0113 : son ancien id texte ->
   // son id ; le site de dev le renomme ou le supprime : une balise qui écrit son texte se lit sans lui, une balise sans texte affiche alors sa clé,
   // un autre écart)
-  const idNecro = JSON.parse(readFileSync(fileURLToPath(new URL('../../data/migrations/0113-mots-cles-id-entier.json', import.meta.url)), 'utf8'))
-    .motsCles.find((m) => m.ancienId === 'magie-de-la-necromancie')?.id;
+  const idNecro = idDuMotCleNomme('magie-de-la-necromancie');
   const necro = chargerVocabulaire(baseDImport()).find((m) => m.id === idNecro);
   assert.ok(necro, 'le mot-clé de la page de la Nécromancie (0098)');
   const balise = (t) => t.replace('Terre + Espace/Temps', '{{terre|Terre}} + {{magie-de-lespace-temps|Espace/Temps}}');

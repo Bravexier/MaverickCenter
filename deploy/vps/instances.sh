@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Prépare les deux instances (serveur normal et serveur de test) et configure Caddy. À lancer en root, après outils.sh :
-#   sudo bash instances.sh [--domaine maverick-jdr.com] [--regenerer-acces]
+#   sudo bash instances.sh [--domaine maverick-jdr.com] [--regenerer-acces] [--bascule-2]
 #
 # Ce que fait le script (sûr à relancer, il ne touche ni au site, ni à db/, ni aux métriques déjà écrites) :
 #   /srv/maverick-center        serveur normal : .env (port 127.0.0.1:8080, MAVERICK_INSTANCE=prod, MAVERICK_DOSSIER_METRIQUES=<normal>/metriques),
@@ -8,6 +8,9 @@
 #   /srv/maverick-center-test   serveur de test : .env (port 127.0.0.1:8081, MAVERICK_BASE_TEST=conservee (sans effet, voir plus bas), MAVERICK_EDITION=1,
 #                               MAVERICK_ADRESSE_PUBLIQUE=https://dev.<domaine>, MAVERICK_DOSSIER_MAINTENANCE=<normal>/maintenance,
 #                               MAVERICK_INSTANCE=dev, MAVERICK_DOSSIER_METRIQUES=<normal>/metriques), .htpasswd, secrets/ (jeton de la page Mise à jour)
+#   --bascule-2                 serveur qui reçoit un site déjà en bascule 2 (déménagement) : crée le dossier partagé paquets/ de la production et le monte dans le
+#                               service du site de dev (MAVERICK_DOSSIER_PAQUETS=<normal>/paquets, MAVERICK_PAQUETS_OPTION= : lecture-écriture), comme « bascule.sh poser-bascule-2 ».
+#                               Sans l'option, rien de cela n'est posé, sauf si le .env du site de dev porte déjà MAVERICK_DOSSIER_PAQUETS (relance après le déballage)
 #   /etc/caddy/maverick.env     mot de passe interne de chaque instance (droits 600) ; /etc/caddy/Caddyfile : deploy/vps/Caddyfile
 #   /usr/local/lib/maverick-center/volume.sh + minuteur systemd maverick-volume.timer : toutes les 15 minutes, la répartition du disque par type
 #                               de données vue de l'hôte (l'autre instance, Docker, journaux…) dans metriques/volume-hote.json (jauge de la page Debug)
@@ -21,11 +24,13 @@ command -v openssl >/dev/null 2>&1 || { echo "openssl est absent (apt-get instal
 
 DOMAINE=maverick-jdr.com
 REGENERER=0
+BASCULE_2=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --domaine) [ $# -ge 2 ] || { echo "--domaine demande une valeur" >&2; exit 2; }; DOMAINE=$2; shift 2 ;;
     --regenerer-acces) REGENERER=1; shift ;;
-    *) echo "Usage : sudo bash $0 [--domaine <domaine>] [--regenerer-acces]" >&2; exit 2 ;;
+    --bascule-2) BASCULE_2=1; shift ;;
+    *) echo "Usage : sudo bash $0 [--domaine <domaine>] [--regenerer-acces] [--bascule-2]" >&2; exit 2 ;;
   esac
 done
 case "$DOMAINE" in
@@ -85,6 +90,15 @@ poser "$TEST/.env" MAVERICK_DOSSIER_METRIQUES "$NORMAL/metriques"
 # Contenu de la production (docs/serveur.md, « Mise à jour (site de dev) ») : le serveur de test monte le site du serveur normal en lecture seule
 # (docker-compose.yml) pour comparer ses règles à ce que la production publie.
 poser "$TEST/.env" MAVERICK_DOSSIER_PRODUCTION "$NORMAL/site"
+# Dossier partagé des paquets (bascule 2) : celui de la production, monté dans le service du site de dev en lecture-écriture (docker-compose.yml). Sans --bascule-2 ni réglage déjà
+# posé, le .env ne le porte pas et le montage reste /dev/null en lecture seule. Un lien ou un fichier à sa place est refusé (comme bascule.sh).
+if [ "$BASCULE_2" -eq 1 ] || grep -q '^MAVERICK_DOSSIER_PAQUETS=' "$TEST/.env" 2>/dev/null; then
+  if [ -L "$NORMAL/paquets" ] || { [ -e "$NORMAL/paquets" ] && [ ! -d "$NORMAL/paquets" ]; }; then echo "$NORMAL/paquets n'est pas un dossier ordinaire : refus" >&2; exit 1; fi
+  mkdir -p "$NORMAL/paquets"
+  chmod 755 "$NORMAL/paquets"
+  poser "$TEST/.env" MAVERICK_DOSSIER_PAQUETS "$NORMAL/paquets"
+  poser "$TEST/.env" MAVERICK_PAQUETS_OPTION ""
+fi
 
 mkdir -p "$ETC_CADDY"
 if [ "$REGENERER" -eq 1 ] || [ ! -f "$ENV_CADDY" ] || [ ! -f "$NORMAL/.htpasswd" ] || [ ! -f "$TEST/.htpasswd" ]; then

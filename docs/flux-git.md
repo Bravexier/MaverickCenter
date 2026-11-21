@@ -28,7 +28,7 @@ ou d'une `hotfix/<nom>` ; une PR vers `dev` que d'une `feature/<nom>`.
 - **À chaque PR** (job `regles-de-branches`) : source permise pour la cible, bon point de départ, version de `client/package.json` non modifiée à la main
   (elle est tenue par le bot), et, pour une livraison, `master` déjà refusionnée dans `dev`.
 - **Par GitHub lui-même** (règles importables, `.github/rulesets/`) : création limitée à `feature/**` et `hotfix/**`, `master` et `dev` non supprimables,
-  modifiées seulement par PR avec les checks `client`, `character-service` et `regles-de-branches` verts. Voir « Mise en place ».
+  modifiées seulement par PR avec les checks `client`, `character-service`, `regles-de-branches`, `controle-des-migrations`, `controle-du-contenu-ecrit` (R282) et `gel-des-fusions` (R305) verts. Voir « Mise en place ».
 
 « Créée depuis » se déduit des commits, dans le sens qui compte pour la production : une `hotfix/<nom>` ne doit rien contenir de `dev` ni d'une
 `feature/…` qui ne soit déjà dans `master` (sinon du travail non livré partirait en production) ; une `feature/<nom>` ne doit rien contenir d'une
@@ -143,7 +143,7 @@ Lot 7 du chantier « la base du site de dev devient la source de vérité » (R2
 
 Les fichiers de `data/migrations/` sont comparés à ceux de `git merge-base <base> HEAD` (la base est la branche visée sur une PR, le commit d'avant sur un push, sinon le premier parent), l'arbre étant celui du dossier de travail :
 
-- **`figee`.** Une migration fusionnée (`.sql` ou registre `.json`) ne se modifie plus, ne se renomme pas, ne se supprime pas. Une migration ne s'annule pas : on en écrit une autre. **`numero`** : une migration nouvelle prend un numéro après la dernière fusionnée, un fichier par numéro. **`interdit`** : ni `BEGIN`, `COMMIT`, `ROLLBACK` ni `PRAGMA` (le service ouvre la transaction).
+- **`figee`.** Une migration fusionnée (`.sql` ou registre `.json`) ne se modifie plus, ne se renomme pas, ne se supprime pas. Une migration ne s'annule pas : on en écrit une autre. **`numero`** : une migration nouvelle prend un numéro après la dernière fusionnée et après la version du `data/schema.sql` de la base (le plancher, quand des migrations mixtes sont sorties du dépôt : `docs/chantier-base-de-dev.md`, « Les lecteurs des migrations mixtes »), un fichier par numéro. **`interdit`** : ni `BEGIN`, `COMMIT`, `ROLLBACK` ni `PRAGMA` (le service ouvre la transaction).
 - **`structure`** (numéros > 0129). Une migration qui porte du DDL (`CREATE`, `ALTER`, `DROP`) est « de structure » : son DML ne déplace ou ne recopie que des colonnes (`INSERT … SELECT`, `UPDATE … SET colonne = expression de colonnes`), et ses littéraux sont des codes (`^[a-z0-9_.-]{1,40}$`, comme `'migration'`), des identifiants à `/` (`'races/x'`, minuscules, 80 caractères au plus), des chemins JSON (`'$.nom'`, `'$[0].x'`), des formats de `strftime` (`'%Y-%m-%dT%H:%M:%SZ'`), des nombres, `NULL` ou `''`. Deux définitions remplissent pourtant des lignes et suivent la même règle : `ALTER TABLE … ADD COLUMN … DEFAULT '<texte>'` (toutes les lignes existantes) et `CREATE TABLE … AS SELECT '<texte>'`. Les littéraux des autres définitions (`CHECK`, `DEFAULT` d'un `CREATE TABLE` neuf, vues, déclencheurs) ne comptent pas. Du texte de règle avec du DDL : refus, à scinder en deux migrations (la structure, puis les données). Une migration sans DDL est « de données » : permise, signalée dans le résumé (« cesse à la bascule du lot 8 »).
 - **`renommage`.** `ALTER TABLE … RENAME TO` et `RENAME COLUMN` exigent, dans la même migration, un `UPDATE` de `modification` (le journal), `historique_modification`, `lot_de_changements` et `numero_donne`, qui cite l'ancien et le nouveau nom : ces tables gardent des noms de tables et de colonnes. Une table recopiée sous un nom provisoire puis renommée (`x__NNNN`) n'est pas un renommage.
 - **`base-remplie`.** La base de la version dont part la PR est reconstruite (`git archive` de `data/schema.sql` et `data/rows`, `db-build`) et remplie (`scripts/base-remplie-lib.mjs` : fiches, journal, historique, lot déposé, plafond de numéro), puis les migrations nouvelles lui sont appliquées par `appliquerSurPlace`, le code du service, sur une copie jetable. Sont refusés : un schéma obtenu différent de `data/schema.sql`, une clé étrangère rompue, une ligne retirée des fiches, du journal, de l'historique ou des notes de version, une table de ces classes retirée. Sans migration nouvelle, la base n'est pas reconstruite. **Vers `master`** (PR ou push), le job ne passe que les règles (`--sans-essai`) : la base de `master` est ancienne, et son `data/rows` a changé hors migrations depuis, de sorte que le rejeu des migrations y refuserait à tort ; chaque migration a déjà été essayée sur `dev`.
@@ -165,15 +165,82 @@ et quoi faire), 2 (usage ou dépôt illisible).
   Les commits sont lus de la base de la PR à sa tête (`github.event.pull_request.head.sha`), une fusion comparée à son premier parent. Limite : l'identité
   d'un commit se déclare ; le contrôle arrête l'erreur et l'oubli, pas une falsification voulue. **Exception** : une PR qui ajoute une migration de
   **structure** peut changer `data/rows/<t>.sql`, seulement pour les tables que ses migrations nomment (`CREATE`, `ALTER`, `DROP TABLE <t>`, les deux noms
-  d'un renommage, la cible d'un `INSERT … SELECT` : `tablesDeLaStructure`) ; toute autre table reste refusée. Ce contrôle ne juge que les noms : l'égalité
-  exacte de l'export est déjà prouvée par `controle-des-migrations` (base remplie migrée), qu'il est recommandé de rendre obligatoire.
+  d'un renommage, la cible d'un `INSERT … SELECT` : `tablesDeLaStructure`), plus `data/rows/VERSION` (`schema_version`, réécrit par `tools/db/maverick.py#exporter`
+  à chaque changement de schéma) ; et, **si l'une renomme** une table ou une colonne, les tables qui gardent des noms (`modification`, `historique_modification`,
+  `lot_de_changements`, `numero_donne` : la règle `renommage` oblige la migration à les réécrire). `fichiersDeLaStructure` ; sans migration de structure
+  (ou avec une migration de données seule), ni `VERSION` ni ces tables ne passent, et le refus nomme les fichiers. Toute autre table reste refusée. Ce contrôle ne juge que les noms : l'égalité
+  exacte de l'export est déjà prouvée par `controle-des-migrations` (base remplie migrée), qui est obligatoire (R282).
 - **`donnees`** (PR vers `dev`) : une migration ajoutée sans DDL (`controler-les-migrations-lib.mjs#analyserUneMigration`) est refusée ; la structure reste.
 - **`correctif-urgent`** (PR `hotfix/<nom>` vers `master`) : rien dans `data/rows/`, `data/migrations/` ni `data/schema.sql`. La livraison `dev` → `master`
-  n'est pas concernée.
+  n'est pas concernée. Sous l'interrupteur de la bascule 2, aussi rien dans `data/paquet.json` (« Ce que GitHub publie avec la bascule 2 »).
 
-Le jour de la bascule : une PR vers `dev` passe `actif` à `true`. Le job n'est pas un check requis (`.github/rulesets/`, `CHECKS_REQUIS` de
-`client/scripts/mise-a-jour-github.mjs`) : un refus rend la PR rouge, ce qui arrête la fusion automatique des sessions ; le rendre obligatoire suit le même
-chemin que `controle-des-migrations` (ajouter son nom aux deux fichiers de règles et à `CHECKS_REQUIS`, puis réappliquer les règles sur GitHub).
+Le jour de la bascule : une PR vers `dev` passe `actif` à `true`. Le job est un check requis (R282), comme `controle-des-migrations` : il figure dans
+`.github/rulesets/` (`dev.json`, `master.json`) et dans `CHECKS_REQUIS` de `client/scripts/mise-a-jour-github.mjs`, et un refus arrête la fusion. Les deux jobs
+tournent sur toute PR vers `dev` et `master` (`pull_request` sans filtre de branche ni de chemin dans `ci.yml`), y compris les PR « Lot : » et « Copie : »
+du workflow de mise à jour et la livraison `dev` → `master`. Après une modification des fichiers de règles, les réimporter sur GitHub (GitHub ne les lit pas).
+
+## Gel des fusions pendant une mise à jour (lot 11)
+
+Garde-fou 16 de la bascule 2. Job `gel-des-fusions` de `ci.yml`, sur chaque PR vers `dev` et `master` ; code : `client/scripts/gel-des-fusions.mjs` (lit le dépôt et l'API de GitHub, jeton en lecture) et `gel-des-fusions-lib.mjs` (règles pures) ; test : `gel-des-fusions`.
+- **Interrupteur** : `tools/flux-git/bascule-2.json`, clé **`gel_des_fusions`** (`true` depuis le jour J), lue dans `origin/dev` comme `bascule-1.json`. Éteint (clé ou fichier absent) : vert, sans appeler GitHub. Le même fichier porte une seconde clé indépendante, `actif` (« Ce que GitHub publie avec la bascule 2 ») : le jour J on allume `gel_des_fusions` d'abord (pendant la répétition), puis `actif`.
+- **Allumé** : rouge tant qu'un run du workflow `mise-a-jour.yml` n'est pas fini (en file, en cours, en attente ; un run de plus de 8 h est ignoré). Le message dit le run (numéro, adresse), depuis quand, et le geste : relancer ce job (« Re-run ») quand la mise à jour est finie. Sont exemptées les deux fusions que ce workflow fait lui-même : sa branche `feature/mise-a-jour-regles-…` vers `dev` et la livraison `dev` → `master`. GitHub illisible alors que l'interrupteur est allumé : le job échoue (on ne devine pas qu'aucune mise à jour ne tourne).
+- Le job **est un check requis** depuis le jour J de la bascule 2 (R305) : `.github/rulesets/` (`dev.json`, `master.json`) et `CHECKS_REQUIS` de `mise-a-jour-github.mjs` (test `mise-a-jour-github` : les trois disent la même liste). Les fusions du workflow lui-même le passent vert. Après une modification des fichiers de règles, les réimporter sur GitHub (`gh api -X PUT …`, geste du propriétaire).
+
+## Ce que GitHub publie avec la bascule 2 (lot 11, PR 4 et PR 5b)
+
+Interrupteur : la clé `actif` de `tools/flux-git/bascule-2.json` (le gel des fusions a la sienne, `gel_des_fusions`, indépendante), lue dans `origin/dev` (`tools/flux-git/bascule-2.mjs`). **Éteint, rien ne change** : le job `Site` (branche NAS, déjà inactif), le job `Installateur` et le contrôle du contenu écrit sont ceux d'avant. Code, tests et gestes : `docs/serveur.md`, « Bascule 2 : préparation », « PR 4 » et « PR 5b ».
+- **Allumé, le job `Installateur` de test ne publie plus de pages** : il ne construit pas le site (`npm run build`) et lance `fabriquer.mjs --kit . --kit-seul` (le service et le kit ; l'atelier du site de dev fabrique les pages). Le job `Site` est sauté.
+- **Allumé, l'installateur de production est lui aussi un « kit seul »** (PR 5b) : `fabriquer.mjs --mode prod --kit . --kit-seul`, sans pages ni service ; il pose le kit dans `<production>/activation/kit/` et lance `activer.sh`, qui fabrique les pages et le service depuis le paquet. Il **refuse**, avant toute écriture, une production sans le fichier `activation-par-paquet` (geste : `sudo touch /srv/maverick-center/activation-par-paquet`, ou remettre `actif` à `false`) ; la note de la livraison GitHub le dit. Un correctif urgent (`VX.Y-hotfix.N`) ou une régénération lance `activer.sh --correctif`. Éteint, la livraison de production a le même comportement qu'avant. Si GitHub a livré et que la production a refusé : `sudo bash /srv/maverick-center/activer.sh --reprendre` après avoir corrigé la cause (ou une nouvelle livraison) ; la page Mise à jour du site de dev lit le rapport de `activer.sh` (`activation_production`).
+- **Le commit de lot** (workflow `mise-a-jour.yml`) porte alors `data/paquet.json` : l'identité du lot (lot, version, empreinte du paquet, structure, commit du code, date ; aucun contenu), en plus de la copie `data/rows` qui reste le secours jusqu'au lot 12. Le commit n'est jamais vide : plus de « Rien à livrer ». Le job `controle-du-contenu-ecrit` l'admet seulement dans un commit « Lot : » ou « Copie : » du workflow (règle `paquet-a-la-main`) ; la règle `correctif-urgent` refuse un `hotfix/*` qui le porte, en plus de « ni contenu ni structure ».
+- **Le correctif urgent ne porte que du code.** Son activation en production est celle de `activer.sh --correctif` (PR 5a), lancé par l'installateur de production kit seul : le dernier paquet activé est recontrôlé avec le nouveau kit.
+- **Le jour J** : le fichier `activation-par-paquet` de la production posé d'abord (`sudo touch /srv/maverick-center/activation-par-paquet`), puis une PR vers `dev` passe `actif` à `true` (après `gel_des_fusions`), comme pour la bascule 1 ; le premier kit seul de production est la livraison `dev` → `master` suivante. Retour arrière : une PR qui le repasse à `false` (la livraison de production suivante est de nouveau complète).
+
+## Contenu lu par les tests (lot 10)
+
+R278 (« Oui, pour les tests seulement ») : les tests et le build de la CI lisent le contenu du **site de dev**, pas la copie du dépôt. Le dépôt ne le garde pas.
+
+Deux secrets de dépôt :
+- **`MAVERICK_EXTRAIT_CLE`** : une clé de lecture du site de dev, envoyée dans `X-Maverick-Cle` ;
+- **`MAVERICK_CONTENU_CHIFFREMENT`** : une phrase secrète qui chiffre l'extrait entre deux jobs. Le dépôt est public : un artefact en clair donnerait toute la base à
+  tout compte GitHub.
+
+- **Job `extrait-du-site-de-dev`**, node: seulement, sans `npm` ; `timeout-minutes: 15`. C'est le seul job qui reçoit la clé. Le runner reçoit tous les secrets d'un
+  job dès son début, et une étape d'un même job (npm, tests de la PR) pourrait lire sa mémoire (CVE-2025-30066) : seul un job à part isole la clé.
+  - Il tire par `git archive` le `client/` de **`dev`** (la branche de base) sous `$RUNNER_TEMP`, et exécute ce `db-extrait.mjs`-là.
+  - Trois essais. Chaque essai est borné par `timeout 180` et par `MAVERICK_EXTRAIT_DELAI` (le délai de chaque demande dans `db-extrait.mjs`, 300 s par défaut). Une erreur
+    réseau, un 5xx ou un délai dépassé donne un nouvel essai ; pas sur un 401 ni un 403. L'étape a `timeout-minutes: 12` et `continue-on-error`.
+  - L'extrait est chiffré : `openssl enc -aes-256-cbc -pbkdf2 -iter 200000 -salt -pass env:MAVERICK_CONTENU_CHIFFREMENT`, phrase jamais en argument. Le clair est
+    effacé, et **seul le fichier chiffré** part en artefact `contenu-du-site-de-dev-chiffre`, gardé un jour (`retention-days: 1`).
+  - Sorties : `disponible`, `raison` (la cause du repli), `date` (date de l'extrait, version du site, structure) et `sha256` (celui du clair, qui n'est pas un secret).
+- **Job `client`** : il attend l'extrait (`needs`), et tourne quelle que soit l'issue de ce job (`!cancelled()`). Après `npm ci` :
+  - `telechargement` récupère l'artefact chiffré ;
+  - `dechiffrement` est la seule étape qui reçoit un secret, la phrase, dans son `env:`. Elle déchiffre sous `$RUNNER_TEMP/contenu/`, hors de l'arbre suivi, et compare
+    le sha256 du clair à celui du job de l'extrait ;
+  - `contenu`, sans secret, pose `MAVERICK_CONTENU` pour tout le job (`npm test` et ses `pre`, les builds, les tests du site construit). Elle écrit dans le résumé
+    « Contenu lu par les tests et le build : site de dev, extrait du <date> ».
+  - Le contenu fourni est préparé comme en local (`docs/serveur.md`, « Fabriquer le site depuis un fichier de contenu ») : une migration ajoutée par la PR est appliquée
+    à la copie ; un site de dev en avance sur la branche fait échouer les tests avec « Rebasez la branche sur dev ».
+  - Le site de dev n'a pas les pages d'exemple (fixtures, `statut = 'example'`) : la copie de travail reçoit celles du dépôt, `data/pages-d-exemple.sql`, sauf pour
+    `HIDE_EXAMPLES=1` (`docs/serveur.md`, « Pages d'exemple »). Ce fichier, hors de `data/rows/`, n'est pas du contenu : le contrôle `controle-du-contenu-ecrit` ne le vise pas, et
+    il reste quand `data/rows` sortira (lot 12). Il se refait par `node scripts/db-pages-d-exemple.mjs`, depuis `data/rows` ; `test/pages-d-exemple.test.mjs` l'y compare.
+  - Ces étapes ne sont pas des contrôles : `CONTROLES_DE_LA_CI` (`scripts/mise-a-jour-github.mjs`) les ignore.
+- **Repli** : la branche visée n'est pas `dev` (PR vers `master` ou push sur `master` : la production a sa propre structure) ; un des deux secrets manque (PR d'un fork, ou
+  secrets pas encore créés) ; le site reste injoignable après les essais, délai compris ; le téléchargement ou le déchiffrement échoue ; ou le sha256 diffère.
+  - Le job `client` lit alors la copie du dépôt (`data/rows`, que le workflow tient égale au site de dev jusqu'au lot 12).
+  - Il émet un `::warning::` et écrit dans le résumé « Contenu lu par les tests et le build : copie du dépôt (data/rows) : <raison> ». Le résumé dit toujours lequel a été lu.
+  - Aucune clé ni phrase dans les journaux, aucun `set -x`.
+- **Chaque nuit sur `dev`** (`schedule` de `ci.yml`, 03 h 23 UTC ; `dev` est la branche par défaut) : l'extrait et le job `client` tournent sur le contenu du jour, sans PR ni fusion ; les autres jobs (`controle-des-migrations`, `simulation-de-mise-a-jour`, `character-service`) sont sautés (`github.event_name != 'schedule'`). Le site de dev change sans que le code bouge : sans cela, un test qui fige un état du contenu ne tombe qu'à la PR suivante (run 44320300043). Un test qui lit `data/rows` par nature le fait explicitement (`data/rows` dans l'arbre, ni `MAVERICK_CONTENU` dans ses processus ni wiki fabriqué depuis l'extrait) ; la passe D de l'essai mécanique (`docs/essai-mecanique-des-tests.md`) reproduit ce que voit la CI pour ces fichiers.
+  - **Issue de la nuit** (job `issue-ci-nocturne`, sur le seul `schedule`, après l'extrait et `client`, `!cancelled()` ; `scripts/ci-nocturne-issue.mjs`) : une nuit rouge ouvre une issue unique, titre fixe « CI nocturne en échec », label `ci-nocturne`, ou réécrit son corps et y ajoute un commentaire si elle est déjà ouverte. Le corps donne la date, le lien du run, les jobs et étapes en échec, et les tests en échec lus dans le TAP du journal (emplacement et nom seulement, jamais le message d'erreur ; noms nettoyés, bornés et rendus en code : ni @mention ni lien). La première nuit verte la ferme avec un commentaire ; un run annulé ou sauté ne change rien. Seul ce job a `issues: write` (avec `actions: read`, `contents: read`) ; il ne reçoit aucun secret du site de dev et ne lance pas `npm`. Aucune correction automatique.
+- **Ce qui ne change pas** : `simulation-de-mise-a-jour` et le job `preparer` de `mise-a-jour.yml` contrôlent `data/rows` qu'ils viennent d'écrire depuis un lot, sans aucun secret.
+  La base de référence de la production (`scripts/db-reference.mjs`) se lit toujours dans git (les `data/rows` de master), `MAVERICK_CONTENU` posée ou non : `site-html` garde son contrôle.
+- **Mise en place** (par le propriétaire) : créer les deux secrets de dépôt. *Settings → Secrets and variables → Actions → New repository secret* :
+  - `MAVERICK_EXTRAIT_CLE`, valeur : une clé de lecture du site de dev (`docs/serveur.md`, « Accès au site de dev ») ;
+  - `MAVERICK_CONTENU_CHIFFREMENT`, valeur : une longue phrase aléatoire, qui ne sert qu'à cela.
+
+  Sans l'un des deux, la CI reste sur le repli.
+- **Limite connue** : sur `pull_request`, GitHub lit le `ci.yml` de la PR. Une PR de ce dépôt qui modifierait ces jobs pourrait donc lire les secrets (les PR d'un fork ne les
+  reçoivent pas). La relecture d'une PR qui touche `ci.yml` garde ce point. La phrase de chiffrement est au job `client`, où tourne le code de la PR : elle ne protège l'extrait
+  que de l'artefact public, pas de ce code, qui lit de toute façon le contenu en clair. Comme R278 l'a accepté, des morceaux du contenu peuvent apparaître dans le compte rendu d'un test.
 
 ## Au quotidien
 

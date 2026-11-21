@@ -29,6 +29,11 @@
 #   installateur-courant/ le dernier installateur installé par mise-a-jour.sh, que l'envoi de nuit joint à la copie extérieure (jamais touché ici)
 #   bascule.sh           (test seulement) le script du jour de la bascule 1 : constat, sauvegarde nommée, pose du marqueur db/source, restauration (remplacé à chaque installation)
 #   repetition-prod.sh   (test seulement) la répétition, sur une copie, de la dernière mise à jour de la production par l'ancien circuit (remplacé à chaque installation)
+#   repetition-bascule-2.sh  (test seulement) la répétition complète du jour J de la bascule 2, sur des copies : paquet, contrôles, base de la production, pages (lot 11, PR 3a ; remplacé à chaque installation)
+#   gel.sh               (production et test) le gel des écritures de l'instance, lancé en root : poser, lever, etat (lot 11, garde-fou 16 ; remplacé à chaque installation)
+#   activer.sh, activation-conteneur.sh  (production seulement) l'activation d'un kit avec son paquet (lot 11, PR 5a) : éteinte sans le fichier activation-par-paquet (remplacés à chaque installation)
+#   activation-par-paquet  (production, posé par le propriétaire) l'interrupteur : avec lui, cette installation crée l'utilisateur maverick-site, lui donne site/ (sauf _serveur/) et lance activer.sh
+#   activation/kit/      (production, installateur « kit seul » : GitHub le livre quand la bascule 2 est allumée) le kit dont activer.sh fabrique les pages et le service ; ni site/ ni site/_serveur/ ne sont posés ici (lot 11, PR 5b)
 #   VERSION              ce qui est installé (étiquette, version, commit, mode, date)
 # Prérequis : sh, tar, gzip, et sha256sum (ou shasum / openssl) pour contrôler l'archive. rsync et sqlite3 sont utilisés s'ils sont présents.
 set -eu
@@ -103,6 +108,10 @@ mkdir -p "$DOSSIER" || die "impossible de créer $DOSSIER"
 DOSSIER=$(cd "$DOSSIER" && pwd -P)
 case "$DOSSIER" in /|//) die "refus d'installer à la racine du système : précisez --dossier <dossier de l'instance>" ;; esac
 JOURNAL="$DOSSIER/installation.log"
+# Rotation simple du journal (comme mise-a-jour.log) : au-delà de 200 Ko, les 500 dernières lignes ; un refus répété du minuteur ne le fait pas grossir sans borne.
+if [ -f "$JOURNAL" ] && [ "$(wc -c < "$JOURNAL")" -gt 200000 ]; then
+  tail -n 500 "$JOURNAL" > "$JOURNAL.tmp" 2>/dev/null && mv "$JOURNAL.tmp" "$JOURNAL" || rm -f "$JOURNAL.tmp"
+fi
 
 # Mode d'une instance : celui de son fichier VERSION. Un dossier qui a déjà un site sans VERSION (installé autrement) compte comme une
 # production : un installateur de test refuse de l'écraser.
@@ -115,6 +124,7 @@ EXISTANT=$(mode_de "$DOSSIER")
 if [ -n "$EXISTANT" ] && [ "$EXISTANT" != "$MODE" ]; then
   die "$DOSSIER est une instance « $EXISTANT » : un installateur « $MODE » refuse de l'écraser"
 fi
+@@SEUL_REFUS@@
 
 # Métriques (docs/serveur.md, « Métriques et volume ») : sans dossier des métriques réglé, le service range sa base de métriques dans db/metriques/.
 # Chaque instance a la sienne, jamais mêlée à celle de l'autre : ce dossier n'est ni copié de la production, ni touché, ni compté comme une base.
@@ -180,7 +190,9 @@ log "Installation $MODE dans $DOSSIER (version $VERSION, commit $(echo "$COMMIT"
 mkdir "$TRAVAIL"
 # -o : ne pas reprendre le propriétaire enregistré dans l'archive (celui de la machine qui l'a fabriquée), même en root.
 archive | gzip -dc | tar -xof - -C "$TRAVAIL" || die "extraction de l'archive impossible"
+@@SEUL_CONTROLE_DEBUT@@
 [ -f "$TRAVAIL/site/index.html" ] || die "archive refusée : pas de site/index.html (rien n'a été modifié)"
+@@SEUL_CONTROLE_FIN@@
 PAGES=$(find "$TRAVAIL/site" -name index.html | wc -l | tr -d ' ')
 [ "$PAGES" -eq "$PAGES_ATTENDUES" ] || die "archive refusée : $PAGES pages au lieu de $PAGES_ATTENDUES (rien n'a été modifié)"
 
@@ -339,8 +351,10 @@ if [ "$COPIER_BASE_PROD" -eq 0 ] && [ -n "$EXISTANT" ] && [ -f "$DOSSIER/db/viva
 fi
 
 # ---------------------------------------------------------------- site
+@@VERROU_DEBUT@@
 SITE="$DOSSIER/site"
 mkdir -p "$SITE"
+@@SEUL_POSE_DEBUT@@
 if [ "$USE_RSYNC" != 0 ] && command -v rsync >/dev/null 2>&1; then
   # --checksum : une page modifiée de même taille doit être recopiée.
   rsync -a --delete --checksum "$TRAVAIL/site/" "$SITE/" || die "synchronisation (rsync) du site impossible"
@@ -349,6 +363,8 @@ else
   find "$SITE" -mindepth 1 -maxdepth 1 -exec rm -rf {} \;
   cp -a "$TRAVAIL/site/." "$SITE/" || die "copie du site impossible"
 fi
+@@SEUL_POSE_FIN@@
+@@VERROU_FIN@@
 
 # ---------------------------------------------------------------- configuration
 # .livre/ garde la dernière version livrée de chaque fichier : un fichier identique à elle n'a pas été touché sur place et prend la
@@ -374,9 +390,10 @@ done
 for f in README.md mise-a-jour.sh; do
   cp "$TRAVAIL/$f" "$DOSSIER/.$f.$$" && mv -f "$DOSSIER/.$f.$$" "$DOSSIER/$f" || die "impossible de poser $f"
 done
-# bascule.sh et repetition-prod.sh (installateur de test seulement) : les scripts du jour de la bascule 1, que le propriétaire lance en root (docs/serveur.md,
-# « Base source (lot 8) » et « Répétition de la mise à jour de la production »).
-for f in bascule.sh repetition-prod.sh; do
+# bascule.sh, repetition-prod.sh et repetition-bascule-2.sh (installateur de test seulement) : les scripts du jour de la bascule 1, de sa répétition et de la répétition du jour J de la bascule 2,
+# que le propriétaire lance en root (docs/serveur.md, « Base source (lot 8) », « Répétition de la mise à jour de la production » et « Bascule 2 : préparation »).
+# gel.sh (les deux instances) : le gel des écritures, db/gel.json (docs/serveur.md, « Gel des écritures »).
+for f in bascule.sh repetition-prod.sh repetition-bascule-2.sh gel.sh activer.sh activation-conteneur.sh; do
   if [ -f "$TRAVAIL/$f" ]; then
     cp "$TRAVAIL/$f" "$DOSSIER/.$f.$$" && chmod 755 "$DOSSIER/.$f.$$" && mv -f "$DOSSIER/.$f.$$" "$DOSSIER/$f" ||
       die "impossible de poser $f"
@@ -412,6 +429,7 @@ if [ ! -f "$DOSSIER/.env" ]; then
   } > "$DOSSIER/.env"
 fi
 
+@@SEUL_VERSION_AVANT@@
 {
   echo "tag=$TAG"
   echo "version=$VERSION"
@@ -419,7 +437,10 @@ fi
   echo "mode=$MODE"
   echo "installe_le=$(date '+%Y-%m-%d %H:%M:%S')"
 } > "$DOSSIER/VERSION"
+@@SEUL_VERSION_APRES@@
 @@KIT@@
+@@ACTIVATION@@
+@@SEUL_ACTIVATION_FIN@@
 log "Installé : $TAG, $PAGES pages."
 
 if [ ! -f "$DOSSIER/.htpasswd" ]; then

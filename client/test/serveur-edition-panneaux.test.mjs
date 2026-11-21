@@ -7,7 +7,6 @@
 // propre copie de la base vivante.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { cpSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
@@ -23,11 +22,11 @@ import { cheminBase } from '../src/lib/donnees.mjs';
 import { attributEd, ENTITES, lireAttributEd, TABLES } from '../src/lib/edition-modele.mjs';
 import { PAGES_SERVIES_PAR_L_EQUIPEMENT } from '../src/lib/equipement.mjs';
 import { chargerPanneau, ordonnerBlocs, ordresApresDeplacement } from '../src/lib/panneaux-regles-db.mjs';
+import { copieDesRowsDeDepart, rowsDeDepart } from './aide-base-de-depart.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { copieSansNoteEnAttente, versionALaRevision } from './aide-mise-a-jour.mjs';
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
-const ROWS = join(RACINE, 'data', 'rows');
 const sansPython = spawnSync('python3', ['--version']).error ? 'python3 absent' : false;
 
 const racine = dossierTemporaire('edition-panneaux');
@@ -242,14 +241,14 @@ test('rapatriement et mise à jour sur data/rows : les panneaux reviennent tels 
   };
   // db:appliquer-edition
   const rows = join(racine, 'rapatriement', 'rows');
-  cpSync(ROWS, rows, { recursive: true });
+  copieDesRowsDeDepart(rows);
   const r = appliquerJournal(journal, { rows });
   assert.deepEqual(r.conflits, []);
   const appliquee = construire(rows, 'rapatriement');
   for (const t of ['panneau_regles', 'panneau_regles_bloc']) assert.deepEqual(lire(appliquee, t), lire(db, t), t);
   appliquee.close();
   // « Effectuer la mise à jour » : la note de version (domaine « equipement », admis par la contrainte depuis la migration 0056)
-  const rowsMaj = copieSansNoteEnAttente(join(racine, 'mise-a-jour', 'rows'), { versionProduction: versionALaRevision('HEAD') }).rows;
+  const rowsMaj = copieSansNoteEnAttente(join(racine, 'mise-a-jour', 'rows'), { rows: rowsDeDepart(), versionProduction: versionALaRevision('HEAD') }).rows;
   const maj = appliquerMiseAJour({ format: 'maverick-mise-a-jour/1', id: '33333333-4444-5555-6666-777777777777', cree_le: '2026-10-16T08:00:00Z', version_dev: '0.3.40', version_cible: '0.4', texte: null, journal },
     { rows: rowsMaj, reference: 'HEAD', date: '2026-10-16', versionDev: '0.3.40' });
   assert.ok(maj.fichiers.includes('panneau_regles_bloc.sql') && maj.fichiers.includes('panneau_regles.sql'), maj.fichiers.join(', '));

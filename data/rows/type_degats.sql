@@ -1,9 +1,20 @@
 -- data/rows/type_degats.sql : export déterministe, une instruction par ligne, triée par (id). NE PAS ÉDITER À LA MAIN.
+INSERT INTO type_degats (id, mot_cle_id, magie_id) VALUES ('arcane', NULL, 'magies/magie-de-larcane');
+INSERT INTO type_degats (id, mot_cle_id, magie_id) VALUES ('corruption', NULL, 'magies/magie-de-la-corruption');
 INSERT INTO type_degats (id, mot_cle_id, magie_id) VALUES ('eau', NULL, 'magies/magie-de-leau');
+INSERT INTO type_degats (id, mot_cle_id, magie_id) VALUES ('espace-temps', NULL, 'magies/magie-de-lespace-temps');
 INSERT INTO type_degats (id, mot_cle_id, magie_id) VALUES ('estoc', 441, NULL);
 INSERT INTO type_degats (id, mot_cle_id, magie_id) VALUES ('feu', NULL, 'magies/magie-du-feu');
+INSERT INTO type_degats (id, mot_cle_id, magie_id) VALUES ('foudre', NULL, 'magies/magie-de-la-foudre');
 INSERT INTO type_degats (id, mot_cle_id, magie_id) VALUES ('frappe', 439, NULL);
 INSERT INTO type_degats (id, mot_cle_id, magie_id) VALUES ('glace', NULL, 'magies/magie-de-la-glace');
-INSERT INTO type_degats (id, mot_cle_id, magie_id) VALUES ('physique', NULL, NULL);
-INSERT INTO type_degats (id, mot_cle_id, magie_id) VALUES ('sonore', NULL, NULL);
+INSERT INTO type_degats (id, mot_cle_id, magie_id) VALUES ('lumiere', NULL, 'magies/magie-de-la-lumiere');
+INSERT INTO type_degats (id, mot_cle_id, magie_id) VALUES ('necromancie', NULL, 'magies/magie-de-la-necromancie');
+INSERT INTO type_degats (id, mot_cle_id, magie_id) VALUES ('ombre', NULL, 'magies/magie-de-lombre');
+INSERT INTO type_degats (id, mot_cle_id, magie_id) VALUES ('physique', 447, NULL);
+INSERT INTO type_degats (id, mot_cle_id, magie_id) VALUES ('sang', NULL, 'magies/magie-du-sang');
+INSERT INTO type_degats (id, mot_cle_id, magie_id) VALUES ('sonore', 448, NULL);
 INSERT INTO type_degats (id, mot_cle_id, magie_id) VALUES ('taille', 440, NULL);
+INSERT INTO type_degats (id, mot_cle_id, magie_id) VALUES ('terre', NULL, 'magies/magie-de-la-terre');
+INSERT INTO type_degats (id, mot_cle_id, magie_id) VALUES ('vent', NULL, 'magies/magie-du-vent');
+INSERT INTO type_degats (id, mot_cle_id, magie_id) VALUES ('vide', NULL, 'magies/magie-du-vide');

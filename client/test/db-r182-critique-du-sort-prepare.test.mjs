@@ -12,19 +12,22 @@
 // (test/aide-base-d-import.mjs) ; le moteur (Sci du Crit mentionné, jamais compté ; plage figée du sort préparé) : test/fiche-critique.test.mjs,
 // test/fiche-critique-sort-prepare.test.mjs.
 import assert from 'node:assert/strict';
-import { copyFileSync, readFileSync } from 'node:fs';
+import { copyFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
 import { rejouerLaMigration } from './aide-migration-rejouee.mjs';
 import { texteDImport } from './aide-base-d-import.mjs';
+import { testRetireAvecLesMixtes } from './aide-sortie-du-contenu.mjs';
+
+// Les tests qui éprouvent la migration mixte elle-même sortent avec elle (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LES_MIXTES).
+const testDeLaMixte = testRetireAvecLesMixtes(import.meta.url);
 
 const MIGRATION = '0089-r182-critique-du-sort-prepare.sql';
 const AVEC_PREPARE = 'personnage_sort_prepare_critique_avec_prepare';
 const BORNES = 'personnage_sort_prepare_critique_bornes';
 const INSTANT = '2026-10-30T12:00:00Z';
-const lire = (chemin) => readFileSync(new URL(`../../${chemin}`, import.meta.url), 'utf8');
 const db = ouvrirBase({ sansExemples: false });
 const corpsDImport = (id) => texteDImport('page', { id }, 'corps_md');
 const constante = (id) => db.prepare('SELECT valeur FROM regle_constante WHERE id = ?').get(id).valeur;
@@ -92,7 +95,7 @@ test('R182 : la plage figée se note de 1 à 15 (4 avec un accessoire maudit, R1
   assert.equal(critiqueDe(base, b), null);
 });
 
-test('R182 : la migration 0089 laisse NULL la plage d’un sort préparé d’avant (rien n’est recalculé) et donne la table de data/schema.sql', (t) => {
+testDeLaMixte('R182 : la migration 0089 laisse NULL la plage d’un sort préparé d’avant (rien n’est recalculé) et donne la table de data/schema.sql', (t) => {
   const { base, a, b } = copie(t);
   const attendu = base.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'personnage_sort'").get().sql;
   base.exec('ALTER TABLE personnage_sort DROP COLUMN prepare_critique');
@@ -109,7 +112,6 @@ test('R182 (Q90) : posture_critique n’a plus aucune ligne de don de posture ; 
   assert.equal(db.prepare("SELECT count(*) AS n FROM posture_critique WHERE bonus <> 'posture'").get().n, 0);
   assert.deepEqual(db.prepare('SELECT DISTINCT bonus FROM posture_critique').all().map((r) => r.bonus), ['posture']);
   assert.equal(db.prepare('SELECT count(*) AS n FROM posture_critique').get().n, 8, 'Offensif sur six jets, Défensif sur Esquive et Parade (R180)');
-  assert.ok(!lire('data/rows/posture_critique.sql').includes('don_de_posture'));
   const sql = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'posture_critique'").get().sql;
   assert.ok(sql.includes("CHECK (bonus IN ('posture'))"), sql);
   const { base } = copie(t);

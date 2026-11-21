@@ -18,6 +18,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { colonnesDeLaTable, empreintesDuContenu, identifiant } from '../serveur/empreintes.mjs';
+import { compterLesConflits } from '../serveur/edition-conflits.mjs';
 
 export const FORMAT_DU_CONSTAT = 'maverick-constat-bascule/1';
 
@@ -54,6 +55,22 @@ function empreinteSansExemples(db, table, exemples) {
 }
 
 /**
+ * Le journal du site de dev à résoudre avant la bascule, compté comme /api/etat (serveur/service.mjs) : toute modification « en_attente », et les
+ * « conflit » des seuls lots pas encore résolus (edition-conflits.mjs#compterLesConflits) ; un lot résolu sur /mise-a-jour/ garde ses lignes « conflit »
+ * comme trace, comptées à part (conflit_lot_resolu) sans faire refuser. null sans journal. Sans table des lots (base ancienne), tout conflit compte.
+ */
+function journalDuSiteDeDev(db) {
+  if (!tableExiste(db, 'modification')) return null;
+  const n = (etat) => db.prepare('SELECT count(*) AS n FROM modification WHERE etat = ?').get(etat).n;
+  const enAttente = n('en_attente');
+  if (!tableExiste(db, 'modification_lot')) return { en_attente: enAttente, en_attente_lot_resolu: 0, conflit: n('conflit'), lots_en_conflit: null, conflit_lot_resolu: 0 };
+  const resolu = (etat) => db.prepare(`SELECT count(*) AS n FROM modification m JOIN modification_lot l ON l.id = m.lot_id
+    WHERE m.etat = ? AND l.resolu_le IS NOT NULL`).get(etat).n;
+  const conflits = compterLesConflits(db);
+  return { en_attente: enAttente, en_attente_lot_resolu: resolu('en_attente'), conflit: conflits.modifications, lots_en_conflit: conflits.lots, conflit_lot_resolu: resolu('conflit') };
+}
+
+/**
  * Le constat : { format, egalite, tables_comparees, egales, hors_exemples (tables égales hors des pages d'exemple), differences: [{ table, raison, production,
  * dev, depot }] (des nombres de lignes, null si la table manque), problemes (attestation, journal), empreinte (globale du contenu du site de dev) }.
  * @param {{ base: string, regles: string, attestation: object | null, versionProduction?: string | null }} o
@@ -75,9 +92,11 @@ export function constater({ base, regles, attestation, versionProduction = null 
     const depot = empreintesDuContenu(dbDepot);
     const prod = attestation?.base_vivante?.tables ?? {};
     for (const t of [...new Set([...dev.nonClassees, ...depot.nonClassees])].sort()) problemes.push(`table « ${t} » inconnue du classement (lib/tables-de-la-base.mjs) : non comparée`);
-    if (tableExiste(dbDev, 'modification')) {
-      const n = dbDev.prepare("SELECT count(*) AS n FROM modification WHERE etat IN ('en_attente', 'conflit')").get().n;
-      if (n) problemes.push(`${n} modification(s) du journal du site de dev en attente ou en conflit : à résoudre avant la bascule`);
+    const j = journalDuSiteDeDev(dbDev);
+    if (j && j.en_attente + j.conflit) {
+      problemes.push(`${j.en_attente + j.conflit} modification(s) du journal du site de dev en attente ou en conflit non résolu : à résoudre avant la bascule `
+        + `(en attente : ${j.en_attente}, dont ${j.en_attente_lot_resolu} dans un lot résolu ; en conflit non résolu : ${j.conflit} dans ${j.lots_en_conflit} lot(s) ; `
+        + `en conflit dans un lot résolu, gardées comme trace et non comptées : ${j.conflit_lot_resolu})`);
     }
     const exemples = [...new Set([...pagesDExemple(dbDev), ...pagesDExemple(dbDepot)])].sort();
     const noms = [...new Set([...Object.keys(dev.tables), ...Object.keys(depot.tables), ...Object.keys(prod)])].sort();

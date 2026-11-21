@@ -19,17 +19,17 @@ user-invocable: false
 - `docs/sql/conception.md`, « Fait (migration 0006) » : les sept tables qui ne dérivent plus l'id du nom.
 - Corrections faites dans un dump de classeur avant extraction (`tools/sheets/corrections.json`, `corriger-dump.py`) : `docs/sources.md`, « Coquilles et
   fautes d'orthographe ».
-- Écrire une nouvelle migration de données : skill `ecrire-une-migration`.
+- Une correction nouvelle : un lot de changements proposé sur le site de dev (skill `modifier-une-page-wiki`) ; une migration ne porte plus que de la structure (skill `ecrire-une-migration`).
 
 ## Invariants
-- L'orthographe se corrige dans la base, par une migration de données avec son registre `.json` et son test. Jamais dans une page fabriquée.
+- L'orthographe se corrige par un lot de changements déposé sur le site de dev (skill `modifier-une-page-wiki`) ; les migrations de données ci-dessus (registre `.json`, test) ne se refont plus. Jamais dans une page fabriquée ni dans `data/rows`.
 - Décision R10 : corriger, jamais un chiffre ni le sens d'une règle. Une correction qui demande d'ajouter, retirer ou remplacer un mot, ou de choisir entre deux
   lectures, est une question au propriétaire (`docs/sql/orthographe-a-valider.md`).
 - Une phrase corrigée l'est partout où elle est écrite : page, résumé, tables typées, extraits, notes de cellule.
 - Jamais corrigé : les citations « telles quelles » de la fiche V15.2.2 (tableaux des écarts des races), `source`, `ecart_source`, `alias`, `page_tag`,
   `commentaire_orphelin` (empreinte de son texte), une adresse ou un lien.
 - L'écriture de la source gardée comme trace n'est pas corrigée : `gemmes_brut`, `nom_source`, `race_brut`.
-- Seule exception, R266 (migration 0121, liste `corrections` de `0121-maj-decembre-suites.json`, test `db-0121-maj-decembre-suites.test.mjs`) : « Super Gemme », « Mort Fertile » et « Dieu de la Terre » sont corrigés partout, Codex et onglets des races compris (sauf `historique_modification` et `note_version_ligne`). Elle ne vaut pour aucune autre graphie ni aucun autre mot ; ids, clés et adresses ne changent pas. Un outil qui relit ces textes les suit : `codex-corrections.json` (skill `sources-codex`), `bestiaire/extraire.mjs#CORRECTIONS` (skill `zone-bestiaire`).
+- Seule exception, R266 (migration 0121, liste `corrections` de `0121-maj-decembre-suites.json`, test `db-0121-maj-decembre-suites.test.mjs`) : « Super Gemme », « Mort Fertile » et « Dieu de la Terre » sont corrigés partout, Codex et onglets des races compris (sauf `historique_modification` et `note_version_ligne`). Elle ne vaut pour aucune autre graphie ni aucun autre mot ; ids, clés et adresses ne changent pas. Un outil qui relit ces textes les suit : `codex-corrections.json` (skill `sources-codex`), `bestiaire/extraire.mjs#CORRECTIONS` (skill `zone-bestiaire-extraction`).
 - Un nom corrigé l'est partout (titres, noms typés, textes, cibles des `[[liens]]`) et sa clé `X_cle` est recalculée.
 - Son identifiant ne change jamais. Depuis 0006, aucune table ne dérive plus l'id du nom : sort, classe, invocation, créature et leurs attaques et capacités
   gardent la clé du nom d'origine ; une page renommée garde son adresse.

@@ -5,7 +5,7 @@
 // des lots enregistrés dans la même seconde sont rejoués dans leur ordre par db:appliquer-edition comme par la mise à jour des règles.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { appendFileSync, cpSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
@@ -19,11 +19,11 @@ import { cheminBase } from '../src/lib/donnees.mjs';
 import { jsonCommePython } from '../src/lib/json-python.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { emettrePage, lirePages } from '../src/lib/pages-db.mjs';
+import { copieDesRowsDeDepart, rowsDeDepart } from './aide-base-de-depart.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { copieSansNoteEnAttente, versionALaRevision } from './aide-mise-a-jour.mjs';
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
-const ROWS = join(RACINE, 'data', 'rows');
 const sansPython = spawnSync('python3', ['--version']).error ? 'python3 absent' : false;
 const tmp = dossierTemporaire('rapatriement-pages');
 
@@ -37,7 +37,7 @@ function construire(rows, nom) {
 const pagesMd = (...args) => spawnSync('python3', ['-I', join(RACINE, 'tools', 'db', 'pages_md.py'), ...args], { encoding: 'utf8' });
 const copie = (nom) => {
   const d = join(tmp, nom, 'rows');
-  cpSync(ROWS, d, { recursive: true });
+  copieDesRowsDeDepart(d);
   return d;
 };
 
@@ -107,7 +107,7 @@ const etatVivant = Object.fromEntries(Object.keys(pagesD2).map((id) => [id, lire
 vivante.close();
 
 test('page.donnees écrit comme json.dumps de Python : toutes les pages de data/rows se réécrivent à l’identique ; une page réécrite sans changement reste identique', () => {
-  const db = construire(ROWS, 'reference');
+  const db = construire(rowsDeDepart(), 'reference');
   for (const p of db.prepare('SELECT id, donnees FROM page WHERE donnees IS NOT NULL').all()) assert.equal(jsonCommePython(JSON.parse(p.donnees)), p.donnees, p.id);
   db.close();
   assert.equal(jsonCommePython({ a: 'é "x"\n', n: 20, l: ['b', 'c'], vide: [], o: {} }), '{"a": "é \\"x\\"\\n", "n": 20, "l": ["b", "c"], "vide": [], "o": {}}');
@@ -166,7 +166,7 @@ test('db:appliquer-edition puis db:pages-check et db:sync-pages : data/rows et l
 
 test('mise à jour des règles (Effectuer la mise à jour) : les lots de la même seconde rejoués et historisés dans leur ordre', () => {
   // data/rows sans note de version en attente de livraison (pendant une mise à jour, il en porte une : ce lot serait refusé, code 7)
-  const rows = copieSansNoteEnAttente(join(tmp, 'mise-a-jour', 'rows'), { versionProduction: versionALaRevision('HEAD') }).rows;
+  const rows = copieSansNoteEnAttente(join(tmp, 'mise-a-jour', 'rows'), { rows: rowsDeDepart(), versionProduction: versionALaRevision('HEAD') }).rows;
   const memes = { ...journal, lots: journal.lots.filter((l) => l.fait_le === memeSeconde) };
   assert.equal(memes.lots.length, bonus.length);
   const r = appliquerMiseAJour({ format: 'maverick-mise-a-jour/1', id: '11111111-2222-3333-4444-555555555555', cree_le: memeSeconde, version_dev: '0.1.76', version_cible: '0.2', texte: null, journal: memes },
@@ -178,6 +178,6 @@ test('mise à jour des règles (Effectuer la mise à jour) : les lots de la mêm
   const historique = db.prepare("SELECT apres FROM historique_modification WHERE table_nom = 'metier' AND version = ? ORDER BY fait_le, lot_id, rang").all(r.version).map((h) => JSON.parse(h.apres).bonus_brut);
   assert.deepEqual(historique, bonus);
   db.close();
-  // la copie n'a jamais touché data/rows
-  assert.equal(readFileSync(join(ROWS, 'metier.sql'), 'utf8').includes(bonus.at(-1)), false);
+  // la copie n'a jamais touché les lignes de départ (data/rows, ou l'export du contenu fourni)
+  assert.equal(readFileSync(join(rowsDeDepart(), 'metier.sql'), 'utf8').includes(bonus.at(-1)), false);
 });

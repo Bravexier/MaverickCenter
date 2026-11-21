@@ -5,12 +5,13 @@
 // niveau en deux totaux, entraînement et durabilité des armes : migration 0045 (décisions R71, R73, R74). Les tests écrivent dans une COPIE de la base
 // construite : data/rows garde ces tables vides.
 import assert from 'node:assert/strict';
-import { copyFileSync, existsSync, readFileSync } from 'node:fs';
+import { copyFileSync, existsSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { trouverRacine } from '../src/lib/donnees.mjs';
 import { cheminDImport, texteDImport } from './aide-base-d-import.mjs';
+import { lignesDuContenu } from './aide-base-de-depart.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
 import { horsDeLa0120 } from './aide-races-0120.mjs';
 
@@ -85,11 +86,13 @@ function personnageValide(id, surcharge = {}) {
   inserer('personnage_maitrise_choix', { personnage_id: id, source: 'classes/guerrier#maitrise-arme:2', rang: 1, arme_famille_id: 'hache' });
 }
 
-test('les 24 tables des fiches et des groupes existent et data/rows les garde vides (les fiches réelles vivent dans la base du serveur)', () => {
+// Le contenu qui fait foi (le contenu fourni s'il est posé, sinon data/rows : test/aide-base-de-depart.mjs#lignesDuContenu) ne porte aucune fiche
+// (garde-fou 9 du chantier « base de dev = source de vérité »).
+test('les 24 tables des fiches et des groupes existent et le contenu qui fait foi les garde vides (les fiches réelles vivent dans la base du serveur)', () => {
   for (const t of TABLES) {
     assert.equal(LIGNES_AU_DEPART[t], 0, t);
-    const lignes = readFileSync(join(racine, 'data', 'rows', `${t}.sql`), 'utf8').trim().split('\n');
-    assert.equal(lignes.length, 1, `${t} : en-tête seul`);
+    const { source, lignes } = lignesDuContenu(t);
+    assert.equal(lignes, 0, `${t} : aucune ligne dans ${source}`);
     assert.ok(db.prepare('SELECT 1 FROM pragma_table_info(?) WHERE name = ?').get(t, 'remarque') === undefined, `${t} : pas de colonne remarque (réservée aux entités des classeurs)`);
   }
 });

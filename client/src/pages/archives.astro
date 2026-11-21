@@ -6,7 +6,7 @@ import { ouvrirBase, trouverRacine } from '../lib/donnees.mjs';
 import { url } from '../lib/wiki';
 
 // Archives (demande du propriétaire) : les Google Docs et Sheets et l'ancien wiki qui ont servi de source au site. Les documents : lib/archives.mjs
-// (registre de la migration 0014, manifeste sources/sources.json, sources citées par les pages dans la base). CSS : styles/archives/, inséré ici (?raw).
+// (registre sources/copies-drive.json, manifeste sources/sources.json, sources citées par les pages dans la base). CSS : styles/archives/, inséré ici (?raw).
 const { rubriques, ancienWiki } = lireArchives(ouvrirBase(), trouverRacine());
 const pages = (n) => (n === 0 ? 'aucune page' : n === 1 ? '1 page' : `${n} pages`);
 ---

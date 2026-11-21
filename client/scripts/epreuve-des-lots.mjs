@@ -34,7 +34,14 @@ const ENTETES = {
 
 const git = (...a) => execFileSync('git', a, { cwd: RACINE, encoding: 'utf8' }).trim();
 const fichierDeLaMigration = (n) => readdirSync(join(RACINE, 'data', 'migrations')).find((f) => f.startsWith(`${n}-`) && f.endsWith('.sql'));
-const sqlDe = (n) => readFileSync(join(RACINE, 'data', 'migrations', fichierDeLaMigration(n)), 'utf8');
+/** Le fichier de la migration `n` ; une erreur claire s'il n'est plus dans le dépôt. */
+const fichierExige = (n) => {
+  const fichier = fichierDeLaMigration(n);
+  // l'épreuve compare chaque lot au SQL de sa migration (mixte) : sorti du dépôt avec elle (R296), il n'y a plus rien à éprouver
+  if (!fichier) throw new Error(`la migration ${n} n'est pas dans data/migrations (migrations mixtes sorties du dépôt) : l'épreuve des lots ${NUMEROS.join(', ')} sort avec elles`);
+  return fichier;
+};
+const sqlDe = (n) => readFileSync(join(RACINE, 'data', 'migrations', fichierExige(n)), 'utf8');
 
 /** La base bâtie depuis `data/` du commit `ref` (git archive, db:build sans les tables calculées). */
 function baseDuCommit(ref, nom) {
@@ -53,7 +60,7 @@ function fabriquer() {
   mkdirSync(sortie, { recursive: true });
   const complement = {};
   for (const n of NUMEROS) {
-    const commit = git('log', '--diff-filter=A', '--format=%H', '--', `data/migrations/${fichierDeLaMigration(n)}`).split('\n')[0];
+    const commit = git('log', '--diff-filter=A', '--format=%H', '--', `data/migrations/${fichierExige(n)}`).split('\n')[0];
     const avant = baseDuCommit(`${commit}^`, `avant-${n}`);
     const apres = baseDuCommit(commit, `apres-${n}`);
     const dAvant = new DatabaseSync(avant);

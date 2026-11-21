@@ -11,7 +11,9 @@ import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { demarrerService } from '../serveur/service.mjs';
-import { DOSSIER_PAR_DEFAUT, ErreurExtrait, FICHIER, FICHIER_META, enteteDeLaCle, refusDeLaCleEnArgument, telechargerExtrait } from '../scripts/db-extrait.mjs';
+import {
+  DELAI_PAR_DEFAUT_S, DOSSIER_PAR_DEFAUT, ErreurExtrait, FICHIER, FICHIER_META, delaiDeLaDemande, enteteDeLaCle, refusDeLaCleDeDepotEnCI, refusDeLaCleEnArgument, telechargerExtrait,
+} from '../scripts/db-extrait.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { SENTINELLES, marquesDesFiches } from './aide-fiches-sentinelles.mjs';
@@ -87,6 +89,17 @@ test('télécharge l’extrait du site de dev, le vérifie et l’écrit avec so
   }
 });
 
+test('R291 : la clé de dépôt (mvd_) n’est jamais acceptée par la CI : le job de l’extrait la refuse sans la répéter, hors CI elle reste utilisable pour lire', () => {
+  assert.match(refusDeLaCleDeDepotEnCI({ GITHUB_ACTIONS: 'true', MAVERICK_EXTRAIT_CLE: 'mvd_secret' }), /clé de dépôt/);
+  assert.equal(refusDeLaCleDeDepotEnCI({ GITHUB_ACTIONS: 'true', MAVERICK_EXTRAIT_CLE: 'mvk_lecture' }), null);
+  assert.equal(refusDeLaCleDeDepotEnCI({ MAVERICK_EXTRAIT_CLE: 'mvd_secret' }), null, 'hors de la CI, une session peut lire avec la clé de dépôt (elle vaut la lecture)');
+  assert.equal(refusDeLaCleDeDepotEnCI({ GITHUB_ACTIONS: 'true' }), null);
+  const r = spawnSync(process.execPath, [fileURLToPath(new URL('../scripts/db-extrait.mjs', import.meta.url))], { encoding: 'utf8', env: { PATH: process.env.PATH, GITHUB_ACTIONS: 'true', MAVERICK_EXTRAIT_CLE: 'mvd_secret' } });
+  assert.equal(r.status, 1);
+  assert.match(r.stderr, /clé de dépôt/);
+  assert.ok(!r.stderr.includes('mvd_secret'), 'le message ne répète pas la clé');
+});
+
 test('la clé de lecture ne se donne que par MAVERICK_EXTRAIT_CLE : --cle (seule ou --cle=…) est refusé en le disant', () => {
   for (const args of [['--cle', 'mvk_x'], ['--url', 'http://h', '--cle=mvk_x']]) assert.match(refusDeLaCleEnArgument(args), /MAVERICK_EXTRAIT_CLE/);
   assert.equal(refusDeLaCleEnArgument(['--url', 'http://h', '--dossier', 'd']), null);
@@ -112,6 +125,26 @@ test('la clé est envoyée dans X-Maverick-Cle ; refus du site (401, 403) dits c
   assert.deepEqual(vus, [['mvk_premiere', null], ['mvk_seconde', null]]);
   assert.deepEqual(readdirSync(racine), [], 'rien d’écrit');
   await assert.rejects(() => telechargerExtrait({ url: 'http://127.0.0.1:1', dossier: racine }), ErreurExtrait);
+});
+
+test('chaque demande a un délai (MAVERICK_EXTRAIT_DELAI, en secondes) : un site muet, ou qui s’arrête au milieu du corps, est une erreur qui le dit ; rien d’écrit', async (t) => {
+  assert.equal(delaiDeLaDemande({}), DELAI_PAR_DEFAUT_S * 1000);
+  assert.equal(delaiDeLaDemande({ MAVERICK_EXTRAIT_DELAI: ' 45 ' }), 45_000);
+  for (const faux of ['0', '-3', '1.5', 'dix']) assert.throws(() => delaiDeLaDemande({ MAVERICK_EXTRAIT_DELAI: faux }), ErreurExtrait, faux);
+
+  const racine = dossierTemporaire('db-extrait-delai', { t });
+  const serveur = createServer((req, res) => {
+    if (req.url.endsWith('/meta/') && req.headers['x-maverick-cle'] === 'muet') return; // aucune réponse
+    // en-têtes envoyés, puis le corps s'arrête en chemin
+    res.writeHead(200, { 'Content-Type': 'application/json', 'Content-Length': '1000' });
+    res.write('{"fichier":');
+  });
+  await new Promise((ok) => serveur.listen(0, '127.0.0.1', ok));
+  t.after(() => { serveur.closeAllConnections(); serveur.close(); });
+  const url = `http://127.0.0.1:${serveur.address().port}`;
+  await assert.rejects(() => telechargerExtrait({ url, dossier: racine, cle: 'muet', delai: 200 }), (e) => e instanceof ErreurExtrait && /délai de 0\.2 s dépassé/.test(e.message));
+  await assert.rejects(() => telechargerExtrait({ url, dossier: racine, cle: 'lent', delai: 200 }), (e) => e instanceof ErreurExtrait && /délai .* dépassé pendant la lecture/.test(e.message));
+  assert.deepEqual(readdirSync(racine), [], 'rien d’écrit');
 });
 
 test('un fichier dont l’empreinte ne concorde pas n’est jamais posé : fichier abîmé, table altérée, méta d’un autre contenu', async (t) => {

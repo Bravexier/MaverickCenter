@@ -4,9 +4,10 @@
 // conteneur « serveur » l'exécute (docker-compose.yml), puis se relance quand version.json change. Utilisé par astro.config.mjs ; jamais livré.
 // Hors de ses modules, le service emporte aussi les fichiers de FICHIERS_JOINTS : l'instantané de la partie « Bienvenue » de Tipeee (premier repli
 // de GET /api/tipeee/, serveur/tipeee.mjs), versionné dans sources/ à la racine du dépôt et copié dans _serveur/sources/ ; absent, il n'est pas copié
-// (le service le dit à son démarrage) ; il compte dans l'empreinte du code. Et le registre de la migration 0098 (data/migrations/, copié dans
-// _serveur/data/migrations/) : le rejeu d'un lot d'avant la migration y lit la conversion de ses liens en balises (serveur/edition.mjs#tableDesLiensDeLa0098) ;
-// de même celui de la migration 0113 (ancien id texte d'un mot-clé → id entier : serveur/edition.mjs#registreDes0113). Et la STRUCTURE : toutes les migrations
+// (le service le dit à son démarrage) ; il compte dans l'empreinte du code. Et les références tirées des registres des migrations 0098 et 0113
+// (data/references/, copiées dans _serveur/data/references/ ; lib/references-des-migrations.mjs, jamais le registre lui-même) : le rejeu d'un lot d'avant
+// la 0098 y lit la conversion de ses liens en balises (serveur/edition.mjs#tableDesLiensDeLa0098), celui d'un lot d'avant la 0113 l'id entier d'un ancien
+// id texte de mot-clé (serveur/edition.mjs#registreDes0113). Et la STRUCTURE : toutes les migrations
 // data/migrations/NNNN-<nom>.sql et data/schema.sql (copiés dans _serveur/data/) : le service y lit ce qu'il essaie, puis applique sur sa base, et ce qu'une base
 // refaite a reçu (serveur/structure-sur-place.mjs ; lot 7 du chantier de la base de dev). Et scripts/constat-de-bascule.mjs (le constat du jour de la bascule 1,
 // lancé dans le conteneur par deploy/installateur/bascule.sh ; il n'importe que des modules du service), et scripts/repetition-prod.mjs (la répétition de la
@@ -16,15 +17,14 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CHEMIN_INSTANTANE } from '../src/lib/tipeee.mjs';
-import { REGISTRE_DES_LIENS } from '../src/lib/mots-cles-liens.mjs';
-import { REGISTRE_DES_IDS_DE_MOTS_CLES } from '../src/lib/mots-cles-cles.mjs';
+import { REFERENCES } from '../src/lib/references-des-migrations.mjs';
 
 export const CLIENT = fileURLToPath(new URL('..', import.meta.url));
 /** Dossier du service dans le site construit, et son point d'entrée (chemin relatif à client/, gardé tel quel dans ce dossier). */
 export const DOSSIER_LIVRE = '_serveur';
 export const ENTREE = 'serveur/index.mjs';
 
-/** Les fichiers de structure livrés : chaque migration `data/migrations/NNNN-<nom>.sql` (les registres `.json` n'y sont pas : ils se joignent un à un), puis `data/schema.sql`. */
+/** Les fichiers de structure livrés : chaque migration `data/migrations/NNNN-<nom>.sql` (les registres `.json` n'y sont pas, ni lus par le service), puis `data/schema.sql`. */
 export function fichiersDeStructure(client = CLIENT) {
   const dossier = resolve(client, '..', 'data', 'migrations');
   const migrations = existsSync(dossier) ? readdirSync(dossier).filter((f) => /^\d{4}-[a-z0-9.-]+\.sql$/.test(f)).sort() : [];
@@ -35,17 +35,25 @@ export function fichiersDeStructure(client = CLIENT) {
 export const CONSTAT_DE_BASCULE = 'scripts/constat-de-bascule.mjs';
 /** Le script de la répétition de la mise à jour de la production (scripts/repetition-prod.mjs), livré sous le même chemin dans _serveur/. */
 export const REPETITION_PROD = 'scripts/repetition-prod.mjs';
+/** Le script de la répétition complète du jour J de la bascule 2 (scripts/repetition-bascule-2.mjs), livré sous le même chemin dans _serveur/. */
+export const REPETITION_BASCULE_2 = 'scripts/repetition-bascule-2.mjs';
+/** Le garde-fou 17 (serveur/activation.mjs) : sans appelant dans le service avant la PR 5, il est livré à part pour la répétition de la bascule 2. */
+export const ACTIVATION = 'serveur/activation.mjs';
 
 /** Fichiers livrés avec le service hors de ses modules : `source` relatif à client/, `cible` relatif au dossier livré. */
 export const FICHIERS_JOINTS = Object.freeze([
   Object.freeze({ source: `../${CHEMIN_INSTANTANE}`, cible: CHEMIN_INSTANTANE }),
-  Object.freeze({ source: `../${REGISTRE_DES_LIENS}`, cible: REGISTRE_DES_LIENS }),
-  Object.freeze({ source: `../${REGISTRE_DES_IDS_DE_MOTS_CLES}`, cible: REGISTRE_DES_IDS_DE_MOTS_CLES }),
+  Object.freeze({ source: `../${REFERENCES.liens}`, cible: REFERENCES.liens }),
+  Object.freeze({ source: `../${REFERENCES.idsDesMotsCles}`, cible: REFERENCES.idsDesMotsCles }),
   ...fichiersDeStructure().map((f) => Object.freeze(f)),
   // le constat d'égalité du jour de la bascule 1 (deploy/installateur/bascule.sh le lance dans le conteneur du service) : il n'importe que des modules déjà livrés
   Object.freeze({ source: CONSTAT_DE_BASCULE, cible: CONSTAT_DE_BASCULE }),
   // la répétition de la dernière mise à jour de la production (deploy/installateur/repetition-prod.sh la lance dans le conteneur du site de dev) : modules déjà livrés
   Object.freeze({ source: REPETITION_PROD, cible: REPETITION_PROD }),
+  // la répétition complète du jour J de la bascule 2 (deploy/installateur/repetition-bascule-2.sh la lance dans le conteneur du site de dev) : ses modules sont ceux du service
+  // et ceux-ci (le garde-fou 17 n'a pas d'appelant dans le service ; ce joint s'ajoute à ses modules quand la PR 5 l'appellera, la copie est alors la même)
+  Object.freeze({ source: REPETITION_BASCULE_2, cible: REPETITION_BASCULE_2 }),
+  Object.freeze({ source: ACTIVATION, cible: ACTIVATION }),
 ]);
 
 const IMPORTS = /\b(?:import|export)\s+(?:[^'"`;]*?\s+from\s+)?['"]([^'"]+)['"]|\bimport\(\s*['"]([^'"]+)['"]\s*\)/g;
@@ -70,12 +78,16 @@ export function modulesDuServeur(client = CLIENT, entree = ENTREE) {
   return [...vus].sort();
 }
 
+/** Un commit git entier (40 hexadécimaux, minuscules). */
+const COMMIT = /^[0-9a-f]{40}$/;
+
 /**
  * Copie le service dans <dist>/_serveur/ et écrit version.json (version du site, empreinte du code, modules, fichiers joints copiés).
  * @param {string} dist
- * @param {{ client?: string, version?: string, joints?: readonly { source: string, cible: string }[] }} [o]
+ * @param {{ client?: string, version?: string, joints?: readonly { source: string, cible: string }[], commit?: string | null }} [o]
  */
-export function livrerServeur(dist, { client = CLIENT, version, joints = FICHIERS_JOINTS } = {}) {
+export function livrerServeur(dist, { client = CLIENT, version, joints = FICHIERS_JOINTS, commit = null } = {}) {
+  if (commit !== null && commit !== undefined && !COMMIT.test(String(commit))) throw new Error(`commit « ${String(commit).slice(0, 50)} » invalide (40 caractères hexadécimaux attendus)`);
   const cible = join(dist, DOSSIER_LIVRE);
   rmSync(cible, { recursive: true, force: true });
   const modules = modulesDuServeur(client);
@@ -94,7 +106,9 @@ export function livrerServeur(dist, { client = CLIENT, version, joints = FICHIER
     copier(de, vers);
     fichiers.push(vers);
   }
-  const info = { version, empreinte: empreinte.digest('hex').slice(0, 16), entree: `${DOSSIER_LIVRE}/${ENTREE}`, modules, fichiers };
+  // `commit` : le commit du code livré (lot 11, PR 4), seulement quand l'appelant le donne ; hors de l'empreinte du code. Le service ne le lit que pour la fiche d'identité
+  // d'un paquet (serveur/paquet.mjs#commit_du_code) ; sans lui, version.json est celui d'avant.
+  const info = { version, empreinte: empreinte.digest('hex').slice(0, 16), entree: `${DOSSIER_LIVRE}/${ENTREE}`, modules, fichiers, ...(commit ? { commit: String(commit) } : {}) };
   writeFileSync(join(cible, 'version.json'), `${JSON.stringify(info, null, 2)}\n`);
   return info;
 }
@@ -106,7 +120,9 @@ export function integrationServeur() {
     hooks: {
       'astro:build:done': ({ dir, logger }) => {
         const version = JSON.parse(readFileSync(join(CLIENT, 'package.json'), 'utf8')).version;
-        const info = livrerServeur(fileURLToPath(dir), { version });
+        // MAVERICK_SHA : le commit du code, que la fabrication du kit seul donne ; jamais GITHUB_SHA (sur un événement de PR fermée, ce n'est pas le commit livré)
+        const commit = /^[0-9a-f]{40}$/.test(process.env.MAVERICK_SHA ?? '') ? process.env.MAVERICK_SHA : null;
+        const info = livrerServeur(fileURLToPath(dir), { version, commit });
         logger.info(`service des personnages livré dans ${DOSSIER_LIVRE}/ (${info.modules.length} modules, code ${info.empreinte})`);
       },
     },

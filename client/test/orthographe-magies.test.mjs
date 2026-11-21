@@ -15,12 +15,22 @@ import { coutEnUneCase, repartirLeCout } from '../src/lib/sort-cout.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
 import { sortsNouveauxDeLa0117, sortsReecritsParLa0117 } from './aide-migration-0117.mjs';
+import { registreDeMigration } from './aide-registres-sortis.mjs';
+import { testRetireAvecLeContenu, testRetireAvecLesMixtes } from './aide-sortie-du-contenu.mjs';
+
+// Les tests qui éprouvent la migration mixte elle-même sortent avec elle (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LES_MIXTES).
+const testDeLaMixte = testRetireAvecLesMixtes(import.meta.url);
 
 const racine = trouverRacine();
 const dossier = join(racine, 'data', 'migrations');
-const registre = JSON.parse(readFileSync(join(dossier, '0003-orthographe-magies.json'), 'utf8'));
-const sql = readFileSync(join(dossier, '0003-orthographe-magies.sql'), 'utf8');
-const corrections = registre.corrections;
+// Le registre et le SQL de la 0003 sortent du dépôt le jour J du lot 12 (R296), et les tests qui les éprouvent avec eux
+// (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LE_CONTENU) : lus à la demande ; les tests de la base (fautes revenues, identifiants…) restent.
+const testDeLaMigration = testRetireAvecLeContenu(import.meta.url);
+let lue;
+const laMigration = () => (lue ??= (() => {
+  const registre = JSON.parse(readFileSync(join(dossier, '0003-orthographe-magies.json'), 'utf8'));
+  return { registre, sql: readFileSync(join(dossier, '0003-orthographe-magies.sql'), 'utf8'), corrections: registre.corrections };
+})());
 const db = ouvrirBase({ sansExemples: false });
 const historique = historiqueSite(db);
 
@@ -44,9 +54,13 @@ const reecritePar0117 = (col, id) => {
   if (!colonnesReecrites.has(col)) colonnesReecrites.set(col, sortsReecritsParLa0117([col]));
   return colonnesReecrites.get(col).has(id) || sortsNouveauxDeLa0117().has(id);
 };
-const sortsDe0117 = () => new Set([...sortsReecritsParLa0117(COLONNES_DE_TEXTE), ...sortsNouveauxDeLa0117()]);
+// les sorts que la 0117 réécrit (colonnes de texte) ou crée : liste figée tirée de son SQL et de son registre (ids seulement), qui reste quand la migration
+// mixte sort ; son égalité au SQL est éprouvée tant qu'il est là (test retiré avec les mixtes)
+const SORTS_ECRITS_PAR_LA_0117 = JSON.parse(readFileSync(new URL('./fixtures/sorts-ecrits-par-la-0117.json', import.meta.url), 'utf8'));
+const sortsDe0117 = () => new Set(SORTS_ECRITS_PAR_LA_0117.sorts);
 
-test('registre : 500 corrections, toutes décrites, de nature connue, qui changent bien le texte', () => {
+testDeLaMigration('registre : 500 corrections, toutes décrites, de nature connue, qui changent bien le texte', () => {
+  const { registre, corrections } = laMigration();
   assert.equal(registre.migration, '0003-orthographe-magies');
   assert.equal(corrections.length, 500);
   for (const c of corrections) {
@@ -56,9 +70,14 @@ test('registre : 500 corrections, toutes décrites, de nature connue, qui change
     assert.ok(c.avant && c.apres && c.raison, `${nom} : avant, après et raison sont obligatoires`);
     assert.notEqual(c.avant, c.apres, `${nom} : « ${c.avant} » inchangé`);
   }
+  // les deux corrections de nom de sort gardent la clé du nom, donc l'identifiant (test « identifiants stables »)
+  const noms = corrections.filter((c) => c.table === 'sort' && c.col === 'nom');
+  assert.equal(noms.length, 2);
+  for (const c of noms) assert.equal(normalize(c.apres), normalize(c.avant), `${c.id} : la correction du nom changerait l'identifiant`);
 });
 
-test('registre : aucune correction ne touche un chiffre, un signe, un dé (le sens d’une règle), n’ajoute de mot ni n’en retire (au plus une soudure : « contre coup » -> « contrecoup »)', () => {
+testDeLaMigration('registre : aucune correction ne touche un chiffre, un signe, un dé (le sens d’une règle), n’ajoute de mot ni n’en retire (au plus une soudure : « contre coup » -> « contrecoup »)', () => {
+  const { corrections } = laMigration();
   const mots = (s) => s.split(/[\s’'«»"“”,;:.!?()-]+/).filter(Boolean).length;
   const lettres = (s) => s.toLowerCase().normalize('NFD').replace(/[^a-z]/g, '').length; // sans accents, espaces ni ponctuation
   for (const c of corrections) {
@@ -71,7 +90,8 @@ test('registre : aucune correction ne touche un chiffre, un signe, un dé (le se
   }
 });
 
-test('base : chaque correction est faite (le texte corrigé est dans la colonne), et la forme fautive n’y est plus aux endroits corrigés', () => {
+testDeLaMigration('base : chaque correction est faite (le texte corrigé est dans la colonne), et la forme fautive n’y est plus aux endroits corrigés', () => {
+  const { corrections } = laMigration();
   // un coût que le propriétaire a tranché depuis (décision R106, migration 0065 : « 1 à 5 âmes ») ne dit plus ce que la correction a corrigé ; elle était
   // dans l'écriture que la réponse remplace
   const tranches = new Map(JSON.parse(readFileSync(join(dossier, '0065-couts-des-sorts-tranches.json'), 'utf8')).tranches.map((t) => [t.id, t]));
@@ -109,7 +129,8 @@ test('base : chaque correction est faite (le texte corrigé est dans la colonne)
   }
 });
 
-test('migration SQL : une ligne de commentaire par correction, et seule la version du schéma change (aucune table créée ni supprimée)', () => {
+testDeLaMigration('migration SQL : une ligne de commentaire par correction, et seule la version du schéma change (aucune table créée ni supprimée)', () => {
+  const { sql, corrections } = laMigration();
   const lignes = sql.split('\n').filter((l) => /^-- [a-z_]+ \S+ [a-z_0-9]+ \[[a-zé]+\] : /.test(l));
   assert.equal(lignes.length, corrections.length, 'une ligne de commentaire par entrée du registre');
   assert.doesNotMatch(sql, /^\s*(CREATE|DROP|ALTER)\b/im, 'migration de données : pas de changement de structure');
@@ -118,7 +139,8 @@ test('migration SQL : une ligne de commentaire par correction, et seule la versi
 
 test('identifiants stables : chaque sort a toujours pour clé normalize(nom), tous les sorts sont là et aucun nom n’a été changé sauf deux corrections déclarées (puis les noms de 0006 et les renommages de 0117, qui gardent leur identifiant)', () => {
   // 0006 (noms à trancher) a renommé des sorts sans changer leur identifiant : l'id garde la clé du nom d'origine
-  const clesAvant0006 = new Map(JSON.parse(readFileSync(join(dossier, '0006-orthographe-noms.json'), 'utf8')).cles
+  // (registres de la 0006 et de la 0117, ou ce qu'en garde test/fixtures/registres-sortis.json une fois ces migrations mixtes sorties : ids et clés)
+  const clesAvant0006 = new Map(registreDeMigration('0006-orthographe-noms').cles
     .filter((c) => c.table === 'sort' && c.col === 'nom_cle').map((c) => [c.cle.id, c.avant]));
   assert.equal(clesAvant0006.size, 9);
   // aujourd'hui : la clé suit le nom (le site de dev peut renommer un sort), l'identifiant ne change jamais
@@ -127,7 +149,7 @@ test('identifiants stables : chaque sort a toujours pour clé normalize(nom), to
   }
   // à l'import : chaque sort est identifié par la clé de son nom d'origine ; la 0117 renomme 24 sorts en gardant leur identifiant (R237 (4) et (11)) et en
   // crée 119 dont l'identifiant est tiré de leur nom (sauf « Torrent colérique » : le classeur écrit « Torrant colérique », l'identifiant est la correction)
-  const registre0117 = JSON.parse(readFileSync(join(dossier, '0117-magies-v10-specialisations.json'), 'utf8')).sorts;
+  const registre0117 = registreDeMigration('0117-magies-v10-specialisations').sorts;
   const renommes = new Set([...registre0117.renommes_r237_4, ...registre0117.renommes_r237_11].map((r) => r.id));
   const sortsImport = historique.lignesDImport('sort');
   assert.ok(sortsImport.length > 0);
@@ -139,9 +161,12 @@ test('identifiants stables : chaque sort a toujours pour clé normalize(nom), to
   for (const e of db.prepare('SELECT e.creature_id, e.rang, e.nom, s.nom AS sort FROM creature_effet e JOIN sort s ON s.id = e.sort_id').all()) {
     assert.equal(e.nom, e.sort, `${e.creature_id} #${e.rang} : l’effet ne porte plus le nom du sort`);
   }
-  const noms = corrections.filter((c) => c.table === 'sort' && c.col === 'nom');
-  assert.equal(noms.length, 2);
-  for (const c of noms) assert.equal(normalize(c.apres), normalize(c.avant), `${c.id} : la correction du nom changerait l'identifiant`);
+});
+
+testDeLaMixte('la liste figée des sorts que la 0117 écrit (test/fixtures/sorts-ecrits-par-la-0117.json) est celle que donnent son SQL et son registre', () => {
+  assert.deepEqual(SORTS_ECRITS_PAR_LA_0117.colonnes, COLONNES_DE_TEXTE);
+  const calcules = [...new Set([...sortsReecritsParLa0117(COLONNES_DE_TEXTE), ...sortsNouveauxDeLa0117()])].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  assert.deepEqual(SORTS_ECRITS_PAR_LA_0117.sorts, calcules);
 });
 
 test('fautes connues disparues des textes des magies et des sorts (rien n’est revenu), hors les sorts que la 0117 écrit depuis le classeur de Décembre', () => {
@@ -186,7 +211,8 @@ test('notes de cellule : la trace (note_cellule) et la remarque du sort se disen
   }
 });
 
-test('pages Markdown de la base (page.corps_md) : plus de forme fautive là où le registre en corrige une dans le texte du sort (à l’import)', () => {
+testDeLaMigration('pages Markdown de la base (page.corps_md) : plus de forme fautive là où le registre en corrige une dans le texte du sort (à l’import)', () => {
+  const { corrections } = laMigration();
   // les pages des magies telles que les migrations les ont laissées (test/aide-base-d-import.mjs) : le site de dev, source de ce qu'il modifie, réécrit
   // les cases des sorts, et la page en est refaite ; une forme « fautive » peut y revenir légitimement (« totalement insensible aux » des effets de
   // Dissolution, quand sa remarque, corrigée en « Totalement… », est réécrite)

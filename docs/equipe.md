@@ -25,7 +25,7 @@ Les instructions générales (`CLAUDE.md`, fiches d'agents, ce document hors sa 
 | --- | --- | --- | --- | --- |
 | Technique | `tech-front` | Affichage, UX et UI : pages, composants, styles, scripts navigateur, modules de rendu, fiche côté page, version portable | `client/src/` sauf les modules du back, `client/public/`, `astro.config.mjs`, `client/package.json`, `tools/build-artifact.mjs`, docs des pages, ses tests | sonnet, high |
 | Technique | `tech-back` | Service, API, édition et mise à jour du site de dev, modules qui lisent ou écrivent la base, performance, hébergement, CI | `client/serveur/`, `client/scripts/`, les modules de base de `src/lib` (liste fermée dans `leader-technique`), `deploy/`, `.github/`, `tools/flux-git/`, `.gitignore`, `.nvmrc`, `api/` (sur demande), `docs/serveur.md`, `api.md`, `flux-git.md`, ses tests | sonnet, high |
-| Technique | `tech-db` | La base : schéma, migrations, `data/rows` par les outils, pages du wiki (`db:sync-pages`), vues, index, intégrité, optimisation | `data/`, `tools/db/`, `docs/sql/` (hors questions des chefs et rapprochement), ses tests | opus, high |
+| Technique | `tech-db` | La base : schéma, migrations de structure, vues, index, intégrité, optimisation (`data/rows` n'est qu'une copie écrite par le workflow) | `data/`, `tools/db/`, `docs/sql/` (hors questions des chefs et rapprochement), ses tests | opus, high |
 | Technique | `tech-sources` | Import des sources : originaux Google (R83), exports bruts, importeurs et extracteurs, rapprochement des classeurs | `sources/`, `tools/` (hors `db/`, `flux-git/`, `build-artifact.mjs`), `docs/sources.md`, `codex.md`, `fiche-auto.md`, `sql/rapprochement-classeurs.md`, ses tests | sonnet, high |
 | Technique | `tech-qualite` | Tests et qualité : seul à lancer les tests et contrôles d'un lot, une fois en fin de lot ; relecture indépendante de chaque lot et des instructions, couverture, diagnostic de la CI | `client/test/` : aides, tests transverses (`site-html`, `defilement`, `tableaux`, `infobulles`), tests manquants | opus, high (sonnet pour un lot sans migration, SQL, instructions ni plus de 300 lignes) |
 | Technique | `tech-skills` | Les skills : seul habilité à les créer, modifier, resserrer ou éclater ; décide s'il faut éclater (`eclater-un-skill`) ; tient la section « Les skills » de ce document | `.claude/skills/**`, la section « Les skills » de ce document | sonnet, high (opus pour éclater un skill de plus de 20 Ko) |
@@ -101,10 +101,10 @@ Un seul lot écrit à la fois dans l'arbre de travail, sur sa branche créée d'
 | `consigner-une-decision` | Ajouter R… à `docs/decisions-regles.md` | `game-design`, `worldbuilding` |
 | `verifier-une-source` | Trouver et citer la source d'une règle ou d'un fait du lore | Game Design, WorldBuilding, `tech-sources` |
 | `interroger-la-base` | Requêtes SQL en lecture seule | analystes, équipe technique |
-| `ecrire-une-migration` | Changer le schéma ou les données | `tech-db` |
-| `modifier-une-page-wiki` | Texte et frontmatter d'une page (`db:sync-pages`) | `tech-db` |
-| `rapatrier-l-edition` | Reprendre un journal du site de dev | `tech-db` |
+| `ecrire-une-migration` | Changer la structure (jamais les données) | `tech-db` |
+| `modifier-une-page-wiki` | Changer le contenu : un lot de changements proposé sur le site de dev | `tech-db` |
 | `tests-conventions` | Écrire un test | équipe technique |
+| `tests-conventions-depot` | Tests de dépôt, de sortie du contenu, essai mécanique, base remplie, sauvegardes | équipe technique (à charger) |
 | `choisir-les-tests` | Un seul passage de tests par lot, par `tech-qualite` (`npm run test:cible`) ; reprises et rebase limités | `tech-qualite`, `leader-technique`, `tech-publication`, session principale |
 | `tenir-un-skill` | Créer, modifier, resserrer un skill : contenu, budget, format | `tech-skills` |
 | `eclater-un-skill` | Décider d'éclater, condenser ou fusionner un skill | `tech-skills` |
@@ -122,12 +122,12 @@ Un seul lot écrit à la fois dans l'arbre de travail, sur sa branche créée d'
 - **Économie.** Un agent qui ne touche pas une zone ne paie rien pour elle.
 
 Les skills :
-- `zone-magies`, `zone-races`, `zone-classes`, `zone-metiers`, `zone-bestiaire` ;
+- `zone-magies`, `zone-races`, `zone-classes`, `zone-metiers`, `zone-bestiaire` (et `zone-bestiaire-extraction`, l'extracteur du doc et les corrections de l'import) ;
 - `zone-equipement`, `zone-armes` (et `zone-armes-edition`, le site de dev), `zone-armures`, `zone-accessoires`, `zone-composants`, `zone-ceinture` ;
 - `zone-chronologie`, `zone-guide`, `zone-mots-cles` (et ses sous-skills `zone-mots-cles-service`, ce que le service écrit et refuse sur le vocabulaire ; `zone-mots-cles-liens`, liens et couleurs des mots-clés ; `zone-mots-cles-balisage`, l'outil qui balise un mot), `zone-glossaire`, `zone-recherche` ;
 - `zone-fiche` (noyau, avec ses sous-skills `zone-fiche-tiroir`, `zone-fiche-acquis`, `zone-fiche-sorts`, `zone-fiche-equipement`, `zone-fiche-armure`, `zone-fiche-situation`), `zone-fiche-tableur`, `zone-fiches-base`, `zone-personnages-liste` ;
 - `zone-menu`, `zone-accueil`, `zone-archives` ;
-- `zone-service` (et `zone-service-sorties`, le classeur en ligne et Tipeee ; `zone-service-extrait`, l'extrait du contenu et l'attestation de la production), `zone-edition` (et `zone-edition-texte`, l'éditeur de texte et le Markdown ; `zone-edition-maitrises`, les sources de maîtrise d'arme ; `zone-edition-menus`, les menus latéraux et les pages des Règles ; `zone-edition-rejeu`, le rejeu du journal et ses conflits ; `zone-edition-lots`, les lots de changements), `zone-mise-a-jour` (et ses sous-skills `zone-mise-a-jour-conflits`, `zone-maintenance`), `zone-api-rest`, `zone-debug-metriques`, `zone-hebergement` (et `zone-hebergement-atelier`, l'atelier du site de dev et le kit de l'installateur de test) ;
+- `zone-service` (et `zone-service-sorties`, le classeur en ligne et Tipeee ; `zone-service-extrait`, l'extrait du contenu et l'attestation de la production ; `zone-service-base-vivante`, la base vivante des fiches, ses retraits et ses conversions), `zone-edition` (et `zone-edition-texte`, l'éditeur de texte et le Markdown ; `zone-edition-maitrises`, les sources de maîtrise d'arme ; `zone-edition-menus`, les menus latéraux et les pages des Règles ; `zone-edition-rejeu`, le rejeu du journal et ses conflits ; `zone-edition-lots`, les lots de changements), `zone-mise-a-jour` (et ses sous-skills `zone-mise-a-jour-paquet`, le paquet, le workflow et les interrupteurs de la bascule 2 ; `zone-mise-a-jour-lots`, la section « Modifications de l'équipe » ; `zone-mise-a-jour-conflits`, `zone-maintenance`), `zone-api-rest`, `zone-debug-metriques`, `zone-hebergement` (et `zone-hebergement-atelier`, l'atelier du site de dev et le kit de l'installateur de test ; `zone-hebergement-activation`, le gel, la répétition, le kit seul et l'activation de la bascule 2) ;
 - l'interface commune : `ui-tableaux`, `ui-infobulles`, `ui-defilement`, `ui-monnaies`, `ui-couleurs` (et `ui-couleurs-theme`, jetons du thème et dérogations), `ui-onglets` ;
 - le socle et les données : `site-wiki-liens`, `site-version-portable`, `base-sqlite` (préchargé par `tech-db`, toujours proposé) et son sous-skill `base-sqlite-migrations` (ce que chaque migration a fixé, proposé à la lecture d'une migration), `base-orthographe`, `sources-codex`, `sources-rapprochement`.
 

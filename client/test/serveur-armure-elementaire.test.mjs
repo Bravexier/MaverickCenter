@@ -20,6 +20,10 @@ import {
 import { cheminDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { rejouerLaMigration } from './aide-migration-rejouee.mjs';
+import { testRetireAvecLesMixtes } from './aide-sortie-du-contenu.mjs';
+
+/** Le test qui rejoue la migration 0080 (mixte) : il sort avec elle (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LES_MIXTES). */
+const testDeLa0080 = testRetireAvecLesMixtes(import.meta.url);
 
 const dossier = dossierTemporaire('r165-service');
 // les règles dans leur état d'import (test/aide-base-d-import.mjs) : la migration 0080 rejouée écrit les noms de l'import, que le service doit
@@ -137,7 +141,7 @@ const etat = (db, id) => {
 };
 const IDS = ['transformee', 'autre-magie', 'familier', 'familier-ameliore', 'sans-magie', 'de-base', 'acquise'];
 
-test('R165 : retirerLesArmuresHorsRegle fait ce que fait la migration 0080, aux mêmes textes, sur les mêmes fiches', () => {
+testDeLa0080('R165 : retirerLesArmuresHorsRegle fait ce que fait la migration 0080, aux mêmes textes, sur les mêmes fiches', () => {
   // la migration, rejouée sur une copie (comme test/personnages-armure-elementaire.test.mjs : sa constante retirée d'abord)
   const parLaMigration = nouvelleCopie('migration.db');
   fichesDAvant(parLaMigration);

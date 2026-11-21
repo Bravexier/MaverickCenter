@@ -9,11 +9,12 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { dossierDesExports } from '../../tools/sources/dossier-des-exports.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const racine = fileURLToPath(new URL('../../', import.meta.url));
-const classeurs = join(racine, 'sources/raw/classeurs');
+const classeurs = join(dossierDesExports(racine), 'classeurs'); // sources/raw, ou MAVERICK_SOURCES_RAW (archive restaurée, R296)
 const sansPython = spawnSync('python3', ['-I', '-c', 'pass']).status !== 0 && 'python3 absent';
 
 const IMPORTEURS = [

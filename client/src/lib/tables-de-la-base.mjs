@@ -70,7 +70,7 @@ export const TABLES_DE_REGLES = Object.freeze([
   'creature_ressource', 'creature_caracteristique', 'creature_bonus_npm', 'creature_attaque', 'creature_attaque_type', 'creature_capacite',
   'creature_capacite_sort', 'creature_capacite_resistance', 'creature_effet', 'monstre_regle', 'monstre_echelle', 'monstre_butin_objet',
   'monstre_groupe', 'monstre_espece', 'monstre_espece_lieu', 'monstre_espece_bloc', 'monstre_butin', 'monstre', 'monstre_rubrique',
-  'monstre_caracteristique', 'monstre_attaque', 'monstre_capacite_commune', 'monstre_capacite', 'monstre_capacite_valeur', 'monstre_defense',
+  'monstre_caracteristique', 'monstre_attaque', 'monstre_attaque_type', 'monstre_capacite_commune', 'monstre_capacite', 'monstre_capacite_valeur', 'monstre_defense',
   'monnaie', 'constante_equipement', 'niveau_alchimie', 'affinite', 'arme_famille', 'arme_type', 'ressource', 'materiau_arme', 'materiau_armure',
   'materiau_bouclier', 'materiau', 'gemme', 'bois', 'ingredient_alchimie', 'potion', 'potion_etat', 'kit_alchimie', 'fiole_verre', 'recette',
   'recette_produit', 'recette_ingredient', 'baton_magique', 'metier', 'metier_bonus', 'metier_recette_famille', 'metier_objet_depart', 'arme',

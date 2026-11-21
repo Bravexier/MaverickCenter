@@ -438,6 +438,7 @@ export const RESSOURCES = [
 /** Tables de ce module qui ne sont pas des éléments de l'API, avec la raison. */
 export const HORS_RESSOURCE = {
   type_degats:
-    'Table de référence des huit valeurs fermées des types de dégâts (taille, estoc, frappe, physique, sonore, feu, eau, glace ; migration 0125) : elle ne ' +
-    'dit que le mot-clé du glossaire, ou la magie, que chaque valeur affiche ; ni créée ni supprimée depuis le site, lisible dans l’onglet DB (/donnees/).',
+    'Table de référence des valeurs fermées des types de dégâts (taille, estoc, frappe, physique, sonore, et les types liés à la magie du même nom : feu, eau, ' +
+    'glace, foudre… ; migrations 0125 et 0130) : elle ne dit que le mot-clé du glossaire, ou la magie, que chaque valeur affiche ; pas de ressource de l’API ' +
+    '(ses lignes s’ajoutent par un lot de changements du site de dev, jamais par une route), lisible dans l’onglet DB (/donnees/).',
 };

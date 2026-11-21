@@ -20,7 +20,7 @@ Prérequis sur l'hôte : un hôte Docker (Linux), `sh`, `tar`, `gzip`, et `sha25
 
 Une instance = un dossier : `site/` (remplacé à chaque installation, avec le code du service des personnages, `site/_serveur/`), `db/` (base vivante
 du service : utilisateurs, fiches, et ce qu'ils font ; voir [`docs/serveur.md`](../../docs/serveur.md)), `docker-compose.yml` (deux conteneurs : nginx et le service),
-`nginx.conf`, `sauvegarde/` (les scripts des sauvegardes automatiques : copie, envoi chiffré, essai de restauration, `installer.sh` ; remplacé à chaque installation, jamais deux versions ; [`../vps/README.md`](../vps/README.md), « Sauvegardes »), `acces/` (`acces.sh`, la commande du mot de passe du site de dev ; remplacée à chaque installation ; le réglage qu'elle écrit est `secrets/acces.json`, que l'installateur ne touche jamais ; [`../vps/README.md`](../vps/README.md), « 7. Site de dev »), `installateur-courant/` (le dernier installateur installé par `mise-a-jour.sh`, un seul fichier, joint à la copie extérieure de nuit ; l'installateur n'y touche pas), `.env` (port et nom du conteneur, créé une fois, jamais écrasé), `.htpasswd` (mots de passe, jamais touché), `VERSION` (ce qui est
+`nginx.conf`, `gel.sh` (le gel des écritures de l'instance, lancé en root : « Geler les écritures » plus bas), `sauvegarde/` (les scripts des sauvegardes automatiques : copie, envoi chiffré, essai de restauration, `installer.sh` ; remplacé à chaque installation, jamais deux versions ; [`../vps/README.md`](../vps/README.md), « Sauvegardes »), `acces/` (`acces.sh`, la commande du mot de passe du site de dev ; remplacée à chaque installation ; le réglage qu'elle écrit est `secrets/acces.json`, que l'installateur ne touche jamais ; [`../vps/README.md`](../vps/README.md), « 7. Site de dev »), `installateur-courant/` (le dernier installateur installé par `mise-a-jour.sh`, un seul fichier, joint à la copie extérieure de nuit ; l'installateur n'y touche pas), `.env` (port et nom du conteneur, créé une fois, jamais écrasé), `.htpasswd` (mots de passe, jamais touché), `VERSION` (ce qui est
 installé), `installation.log`, et `maintenance/` (créé par Docker : l'annonce « Maintenance en cours » pendant une mise à jour, que le site de dev écrit
 et que chaque serveur lit ; le serveur de test prend celui du serveur normal avec `MAVERICK_DOSSIER_MAINTENANCE=<dossier du serveur normal>/maintenance`
 dans son `.env` — `deploy/vps/instances.sh` le pose —, sinon la production n'est jamais mise en maintenance ; voir [`docs/serveur.md`](../../docs/serveur.md),
@@ -115,6 +115,8 @@ voulu) ; un fichier `GELER` suspend les mises à jour. Attention : un `--force` 
 
 Un fichier `GELER` dans le dossier de l'instance suspend ses mises à jour. Une installation automatique ne touche jamais à `db/` : le serveur de test
 garde sa base.
+Les **trois derniers installateurs installés** sont gardés dans `installateur-courant/` (`INSTALLATEURS_GARDES`, 3 par défaut ; le plus récent n'est jamais retiré) :
+l'envoi chiffré de nuit les joint à la copie extérieure. Place : environ 97 Mo par installateur de test (kit compris) et 35 Mo par installateur de production complet ; un installateur de production « kit seul » pèse le kit, sans pages (à relever sur la première livraison).
 Un jeton expiré, un problème réseau ou un installateur abîmé n'abîment rien : l'instance reste telle quelle et `mise-a-jour.log` indique l'erreur.
 
 ## Essai de la structure avant l'installation
@@ -169,8 +171,66 @@ La copie est contrôlée d'abord (copie du site de dev, jamais de la production 
 refusée, rien n'est touché. Puis `GELER` est
 posé, le service arrêté, la base en place (`vivante.db`, `vivante.json`) **renommée** dans `var/avant-restauration-<date>/` de l'instance (jamais effacée),
 la copie posée et le service relancé : avec `db/source`, il applique lui-même les migrations à la base restaurée (ou ne démarre pas, la raison au journal).
-Ensuite, le report de la note d'un paquet livré se refait seul, et ce que la copie n'a pas (les lots écrits depuis) reste dans la base gardée à part :
+Ensuite, le report de la note d'un paquet livré se refait seul (refusé quand la copie est plus ancienne que le paquet : `client/serveur/paquet.mjs#reporterPaquet`), et ce que la copie n'a pas (les lots écrits depuis) reste dans la base gardée à part :
 `docs/serveur.md`, « Restauration de la base du site de dev ».
+
+## Geler les écritures (`gel.sh`, les deux instances)
+
+`gel.sh` est livré à la racine de **chaque** instance (production et serveur de test), remplacé à chaque installation. Lancé en root, il gèle les écritures de
+`/api/` de cette instance (fiches, édition, lots de changements, mise à jour ; les lectures restent ouvertes) :
+
+```bash
+sudo sh /srv/maverick-center/gel.sh poser --duree 90 --motif "bascule de la production"     # production ; …-test/gel.sh pour le serveur de test
+sudo sh /srv/maverick-center/gel.sh etat                                                     # jusqu'à quand, pourquoi, encore combien de minutes
+sudo sh /srv/maverick-center/gel.sh lever                                                    # lève le gel tout de suite
+```
+
+- `--duree` : de 1 à 240 minutes (60 par défaut), `--motif` : le texte que voient ceux dont l'écriture est refusée (`503`). Reposer un gel remplace le précédent.
+- Il écrit `db/gel.json` (en entier à côté, puis renommé ; 644). Le service le prend en compte sans redémarrage, il **tient après une relance** et **se lève seul** à
+  l'échéance. Un fichier illisible tient le gel 2 h au plus. Sans fichier, rien ne change. Détail : `docs/serveur.md`, « Bascule 2 : préparation ».
+- Il ne touche ni la base, ni le service, ni le fichier `GELER` (celui-ci suspend les mises à jour automatiques).
+
+## Activer un kit avec son paquet (`activer.sh`, production)
+
+`activer.sh` et `activation-conteneur.sh` sont livrés à la racine de la **production** (remplacés à chaque installation ; jamais dans l'instance de test). **Éteint par défaut** : sans
+le fichier `activation-par-paquet` (que vous posez en root le jour J : `sudo touch /srv/maverick-center/activation-par-paquet`), `activer.sh` refuse tout de suite (« éteinte », code 2),
+l'installateur de production n'ajoute que le test de ce fichier. **Ce qui change quand même en production** : les deux scripts sont posés (inertes), le `docker-compose.yml` livré monte `/dev/null` en lecture seule sur `/paquets` (aucun dossier créé, rien d'écrivable ; appliqué au prochain `docker compose up -d`) ; ni service, ni site, ni base ne sont touchés. Avec lui, l'installateur de production crée l'utilisateur système `maverick-site`,
+lui donne `site/` **sauf** `site/_serveur/` (le code que le service exécute, qui reste à root ; `find -P … -exec chown -h`, jamais un lien suivi) et, quand le kit est posé
+(`activation/kit/kit.json`), lance `activer.sh`. Son refus ne fait jamais échouer l'installation. Le kit est posé dans `activation/kit/` par l'installateur de production « kit seul » (« Installateur « kit seul » », ci-dessus), que GitHub livre quand `actif` est allumé dans `tools/flux-git/bascule-2.json` ; sans lui, `activer.sh` refuse (« pas de kit dans … ») et dit `sudo sh /srv/maverick-center/mise-a-jour.sh --force`.
+
+```bash
+sudo bash /srv/maverick-center/activer.sh                  # le kit posé dans activation/kit/ avec son paquet (paquets/<X.Y>-<lot>.db, déposé par le site de dev)
+sudo bash /srv/maverick-center/activer.sh --reprendre      # rejouer après une correction ; remet d'abord site.precedent/ si une activation a été interrompue pendant sa bascule
+sudo bash /srv/maverick-center/activer.sh --correctif      # correctif urgent : le dernier paquet activé est recontrôlé avec le nouveau kit, les pages refaites avec lui
+```
+
+- **Ce que root fait** : des `stat` du paquet (fichier ordinaire, pas un lien, de taille plafonnée : refus avant toute lecture), un `sqlite3 .backup` de la base de la production, `gel.sh`,
+  `docker compose stop/up`, quelques déplacements. Tout ce qui ouvre le paquet ou fabrique des pages tourne dans un **conteneur sans réseau, sans capacité, en lecture seule, utilisateur
+  65534** (le même durcissement que l'atelier) : il copie le paquet, calcule son empreinte et la compare à celle que **le kit** annonce (`kit.json#paquet.empreinte`, venue de GitHub : la
+  seule à laquelle la production fait confiance), contrôle (structure, notes de version, contenu réel, base de la production refaite avec ses fiches sur la copie), puis fabrique
+  tout le site avec `SITE_MODE=prod`. Root ne lit que des JSON plafonnés, après `docker rm`.
+- **Le service vient du kit seul** : `_serveur/` est fabriqué par `livrerServeur` du kit dans un conteneur sans paquet ni contenu ; jamais celui que la fabrication des pages a laissé.
+- **La bascule courte** : gel des écritures (45 min au plus), service arrêté, base mise de côté (`activation/base-avant/`, empreinte sha256 gardée), `site/` copié dans
+  `site.precedent/`, pages posées (sous `maverick-site`), `_serveur/` posé (sous root, par un autre conteneur sans capacité, `version.json` en dernier), service relancé, **contrôle de
+  santé** (5 min au plus : `/api/etat` répond, la base est prête, la version est celle du kit), gel levé. **Échec** : retour automatique (le site précédent reposé, la base remise si le
+  nouveau service l'avait refaite, le gel levé).
+- **Les refus** disent les chiffres et le geste exact (mémoire et disque : les règles de l'atelier ; paquet absent, lien, irrégulier ou trop gros ; empreinte, structure, note de version
+  manquante, version en arrière, contenu, fiches). Sortie en comptes, jamais un nom de fiche. Dernière ligne : `== PASSEE`, `== REFUSEE : …`, `== RETOUR AUTOMATIQUE : …` ou
+  `== IMPOSSIBLE : …`. Le rapport est dans `activation/rapport.json` et laissé dans `paquets/activation.json`, où la page Mise à jour du site de dev le lit.
+- **Reprise après un refus** (« GitHub a livré, la production a refusé ») : un refus ou un retour automatique de `activer.sh` écrit son rapport (`activation/rapport.json`, laissé dans `paquets/activation.json`), que la page Mise à jour du site de dev lit (`activation_production` : l'état, les raisons, le geste) ; la production garde son site et sa base. Un refus de l'installateur, ou `activer.sh` « impossible » (code 2), n'écrit aucun rapport : la raison est dans la sortie de l'installateur (`installation.log`, `mise-a-jour.log`). On corrige la cause (paquet absent : refaire « Effectuer la mise à jour » sur le site de dev ; place ou mémoire : les libérer ; `maverick-site` ou droits : `sudo sh /srv/maverick-center/mise-a-jour.sh --force`), puis : `sudo bash /srv/maverick-center/activer.sh --reprendre` (avec `--correctif` après un correctif urgent) ; ou on attend la livraison suivante, que l'installateur active à son tour.
+- **Réglages** : `activation/reglages.env` (à root : `MEMOIRE_MAX_KO`, `BESOIN_KO`, `DISQUE_MIN_KO`, `DELAI_S`, `CPUS`, `GOOGLE_CLIENT_ID`), relus champ par champ.
+- **Le dossier partagé `paquets/`** : celui de la production, monté dans les deux services (`MAVERICK_DOSSIER_PAQUETS` dans le `.env` du site de dev). `bascule.sh poser-bascule-2` le crée
+  et pose `db/bascule-2` (« La base source du site de dev »).
+
+## Le marqueur de la bascule 2 (`db/bascule-2`, `bascule.sh`)
+
+```bash
+sudo bash /srv/maverick-center-test/bascule.sh poser-bascule-2      # refusé sans db/source ; crée paquets/ de la production, le monte dans le service du site de dev, pose db/bascule-2
+sudo bash /srv/maverick-center-test/bascule.sh retirer-bascule-2    # retour arrière : marqueur renommé (rien n'est effacé), le service du site de dev redevient celui d'avant
+```
+
+`poser-bascule-2` pose aussi dans le `.env` du site de dev `MAVERICK_DOSSIER_PAQUETS=<le paquets/ de la production>` et `MAVERICK_PAQUETS_OPTION=` (lecture-écriture) ; `retirer-bascule-2` les retire et recrée le service. Le service lit le marqueur à chaque fois (pas de redémarrage). Avec lui, « Effectuer la mise à jour » refuse un code pas à jour et un contenu rouge, et dépose le paquet dans `paquets/` ;
+le dernier paquet livré y est aussi gardé (de quoi rejouer `activer.sh --correctif`). Détail : `docs/serveur.md`, « Bascule 2 : préparation », « PR 5a ».
 
 ## Répétition de la mise à jour de la production (`repetition-prod.sh`)
 
@@ -188,6 +248,29 @@ colonne), les fiches adaptées par nature, les tables en « chute anormale » qu
 (`var/repetition-prod.*` de l'instance, 4 fois la base de la production plus celle du site de dev) est effacé à la fin ; `--garder` le garde (il contient
 les fiches de la production : à effacer soi-même). Détail : `docs/serveur.md`, « Répétition de la mise à jour de la production ».
 
+## Répétition complète du jour J de la bascule 2 (`repetition-bascule-2.sh`)
+
+Posé par l'installateur de test à côté de `repetition-prod.sh` (lot 11, PR 3a). Il rejoue sur des **copies** ce que fera la production le jour J, sans la toucher
+ni écrire la base du site de dev : copie de la base de la production (`sqlite3 .backup`, ou sa dernière copie locale), puis, dans un conteneur du code du site de dev,
+le contenu à livrer fabriqué comme la simulation de mise à jour (un **paquet**), le contrôle du contenu (garde-fou 18), l'activation (garde-fou 17) et la base de la
+production refaite avec ses fiches ; enfin **tout le site de la production** fabriqué depuis ce paquet avec le kit de l'atelier, dans un conteneur de l'image du kit
+(aucun réseau, lecture seule, aucune capacité, utilisateur 65534, plafond de mémoire de l'atelier, `SITE_MODE=prod`).
+
+```bash
+sudo bash /srv/maverick-center-test/repetition-bascule-2.sh                          # copie de la production prise à l'instant
+sudo bash /srv/maverick-center-test/repetition-bascule-2.sh --depuis-la-sauvegarde   # la dernière copie locale
+```
+
+- **Préalable** : l'atelier est installé, et la version installée du site de dev (`VERSION`) est celle du kit (`atelier/kit/kit.json`) ; sinon elle dit les deux versions et le
+  geste (attendre l'installation, au plus 5 minutes, ou `sudo sh /srv/maverick-center-test/mise-a-jour.sh`), code 2. Elle prend le verrou de l'atelier (`atelier/.verrou`) :
+  pendant une fabrication de l'atelier elle refuse, et inversement.
+- **Sortie** : des comptes seulement, jamais un nom de fiche (tables contrôlées, problèmes par table, identifiant et règle, fiches adaptées, pages fabriquées, durée, pic de
+  mémoire). Dernière ligne : `repetition-bascule-2 : == la bascule PASSERAIT` (code 0), `== REFUSEE : <raison>` (code 1 : chiffres et geste), `== IMPOSSIBLE : <raison>` (code 2).
+- Le dossier de travail (`var/repetition-bascule-2.*` de l'instance) est effacé à la fin ; `--garder` le garde (il contient les fiches de la production : à effacer soi-même).
+  En cas d'échec des pages, la fin du journal du conteneur est dans `var/repetition-bascule-2-journal-du-conteneur.txt`.
+- Elle emploie `outils/lib.sh` et `outils/conteneur.sh` de l'atelier tels qu'ils sont installés (le second sert la répétition par deux variables, `CONTENU_FICHIER` et
+  `MODE_REPETITION=1`, sans changer l'atelier). Détail : `docs/serveur.md`, « Répétition complète du jour J ».
+
 ## Le kit de l'atelier (serveur de test seulement)
 
 Chaque installateur **de test** emporte un kit : le code du site et ses `node_modules`, de quoi lancer `npm run build:depuis-contenu` sans réseau, sans `data/rows` ni
@@ -197,13 +280,31 @@ git (`docs/serveur.md`, « Fabriquer le site depuis un fichier de contenu »). L
   la logique est dans `kit.mjs`. L'archive `atelier-kit.tar.gz` et son `kit.json` (format `maverick-kit/1` : version, commit, Node de `.nvmrc`, plateforme et libc des modules
   compilés, image Docker à employer, taille, nombre de fichiers, empreintes, ce que l'élagage a retiré) sont joints sous `atelier-kit/`.
 - **Contenu** : `client/` avec ses `node_modules` (sans `dist/`, `.astro/`, `src/content/wiki/`, `test/`, `var/` ni ce que git ignore), `data/schema.sql`, `data/derive.sql`,
-  `data/migrations/`, `sources/sources.json`, `sources/tipeee/bienvenue.json`, `.nvmrc`. Aucun contenu : un contrôle refuse tout kit qui porte `data/rows`, `sources/raw`, un
+  `data/migrations/`, `sources/sources.json`, `sources/copies-drive.json`, `sources/tipeee/bienvenue.json`, `.nvmrc`. Aucun contenu : un contrôle refuse tout kit qui porte `data/rows`, `sources/raw`, un
   fichier de base (`.db`, `.sqlite`), les pages fabriquées, l'historique git ou un lien qui sorte du kit.
 - **Image** : les modules natifs sont ceux de la machine qui fabrique (Linux, glibc sur GitHub) ; l'atelier doit tourner sur l'image `kit.json#image` (`node:<.nvmrc>-bookworm-slim`),
   jamais sous Alpine. Les variantes natives d'une autre libc, plateforme ou architecture, d'après le `package.json` de chaque paquet (`os`, `cpu`, `libc`), ne sont pas emportées.
 - **Pose** : `<instance>/atelier/kit/` (avec `kit.json`), hors de `site/` : jamais servi. L'installateur le décompresse dans un dossier provisoire voisin, puis remplace l'ancien par
   renommage ; un seul kit est gardé. Il vérifie d'abord la place libre (`df`) : deux fois la taille décompressée annoncée, plus 256 Mo. **Un manque de place ou un échec ne
   fait jamais échouer l'installation** : le site est posé, le journal (`installation.log`) dit que le kit manque, l'ancien kit reste.
+- **Le paquet annoncé** : `kit.json` porte `paquet: { lot, version, empreinte, structure }`, lus de `data/paquet.json` (l'identité du dernier lot, sans contenu, que le workflow de mise à jour écrit quand
+  la bascule 2 est allumée) ; sans ce fichier, `paquet: null` ; sa propre `structure` est celle du kit (`PRAGMA user_version` de `data/schema.sql`). Un fichier illisible ou d'une autre forme fait refuser le kit.
+
+### Installateur « kit seul » (bascule 2, allumé le jour J)
+
+`fabriquer.mjs --mode test --kit <racine> --kit-seul --tag … --version … --sha … --sortie …` (sans `--site`) fabrique un installateur **sans pages** : le service (`site/_serveur/`, `version.json` avec
+le commit) et le kit. `livraison.yml` ne le demande que si `tools/flux-git/bascule-2.json` a `actif: true` sur `origin/dev` (pour les deux modes) ; éteint, les installateurs sont ceux d'avant. L'installateur de test d'un kit seul :
+- **refuse**, avant toute écriture, une instance sans `<instance>/atelier/servir` (l'atelier ne refabriquerait pas les pages : le site resterait celui d'avant) et dit le geste, `sudo sh <instance>/atelier/installer.sh --servir` ;
+- **ne pose que `site/_serveur/`** : le reste de `site/` (pages, `donnees/`) n'est pas touché, c'est l'atelier qui le refait après la marque ; le reste de l'installation est celle de tout installateur de test (fichiers de l'instance, kit, marque, `VERSION`) ;
+- se vérifie comme les autres (`--verifier`).
+`mise-a-jour.sh` l'installe comme le dernier installateur du mode. L'installateur de production qui n'est pas un kit seul n'en porte rien : même comportement qu'avant.
+
+**Production** (`--mode prod --kit <racine> --kit-seul --tag VX.Y …`) : une archive sans pages **ni service** (`site/` vide), avec le kit, `activer.sh`, `activation-conteneur.sh` et `gel.sh`. L'installateur :
+- **refuse**, avant toute écriture, une production sans le fichier `activation-par-paquet` (sinon elle resterait sur l'ancien site sans rien activer) et dit le geste : `sudo touch /srv/maverick-center/activation-par-paquet`, ou remettre `actif` à `false` dans `tools/flux-git/bascule-2.json` (la prochaine livraison de production redevient complète), `sudo touch /srv/maverick-center/GELER` suspendant le minuteur en attendant ; il refuse aussi hors root, et sur un dossier qui n'est pas une production installée (installez d'abord l'installateur complet) ;
+- **pose le kit dans `<production>/activation/kit/`** (à root, décompressé à côté puis renommé : un seul kit gardé ; un échec refuse l'installation avant d'écrire `VERSION`) ; **ne touche ni `site/` ni `site/_serveur/`** ;
+- écrit les fichiers de l'instance, crée `maverick-site` et rend `site/` à son propriétaire, puis **lance `activer.sh --prod <production>`**, qui fabrique les pages et le service depuis le paquet et les pose (« Activer un kit avec son paquet »). Pour une étiquette `VX.Y-hotfix.N` ou `VX.Y-rebuild.N`, il lance `activer.sh --correctif` (le même contenu republié : le dernier paquet activé est recontrôlé avec le nouveau kit).
+- **n'écrit `VERSION` qu'après `activation : == PASSEE`** : l'ancienne `VERSION` reste tant que l'activation n'a pas passé (la nouvelle attend dans `activation/version-en-attente`, et `activer.sh` la pose lui-même quand il passe, donc aussi par `--reprendre`). Sinon (refus, retour automatique, impossible, activer.sh non lancé) : une marque `.activation-refusee-<étiquette>` (root, avec la dernière ligne d'`activer.sh`), **une seule ligne `ERREUR`** qui dit le geste (`sudo bash /srv/maverick-center/activer.sh --reprendre`), code de sortie 4.
+`mise-a-jour.sh` de la production n'a rien de plus à faire : le kit seul arrive comme une livraison ordinaire. Un installateur qui refuse fait écrire une ligne `ERREUR` à chaque passage du minuteur (comme le refus d'une livraison plus ancienne) ; une installation dont l'activation n'a pas passé (code 4) laisse `VERSION` à l'étiquette d'avant et pose `.activation-refusee-<étiquette>` : le minuteur ne la rejoue pas (elle gèle les écritures et fabrique tout le site) tant que l'étiquette ne change pas ; `sudo sh /srv/maverick-center/mise-a-jour.sh --force` passe outre ; la reprise est `sudo bash /srv/maverick-center/activer.sh --reprendre` (paragraphe suivant), qui écrit `VERSION` et efface la marque quand il passe. Une installation réussie efface les marques.
 
 ## L'atelier du site de dev (serveur de test seulement)
 

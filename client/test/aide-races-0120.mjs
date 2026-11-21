@@ -1,13 +1,15 @@
 // Les races que la migration 0120 ajoute (décision R239 : Fongoïde et Gémidien, onglets de la mise à jour de Décembre), lues dans son registre
-// (data/migrations/0120-races-fongoide-gemidien.json), jamais écrites à la main dans un test. Les tests d'une migration antérieure (0007 : les tables
-// de l'onglet ; 0092 : le rang de la liste) et des effectifs de l'import du classeur « Les races » (R1 : 27 races) les mettent à part.
+// (data/migrations/0120-races-fongoide-gemidien.json ; une fois le registre sorti avec le contenu, jour J du lot 12, dans ce qu'en garde
+// test/fixtures/registres-sortis.json : test/aide-registres-sortis.mjs), jamais écrites à la main dans un test. Les tests d'une migration antérieure
+// (0007 : les tables de l'onglet ; 0092 : le rang de la liste) et des effectifs de l'import du classeur « Les races » (R1 : 27 races) les mettent à part.
 //   RACES_DE_LA_0120          Set des ids (« races/fongoide », « races/gemidien »)
 //   horsDeLa0120(raceId)      vrai pour une race qui n'est pas de la 0120
 //   MOTS_CLES_DE_LA_0120      { id de la race → id du mot-clé de la race } (R218 (5), R219 (5))
-//   TEXTES_DE_LA_0120         les textes que la 0120 réécrit (registre `textes` : Modes Hyper de l'Elfe argenté et du Felfe, R237 (12))
-import { readFileSync } from 'node:fs';
+//   TEXTES_DE_LA_0120         les cellules que la 0120 réécrit (registre `textes` : Modes Hyper de l'Elfe argenté et du Felfe, R237 (12)) : table, cle,
+//                             col ; avant et apres tant que le registre est dans le dépôt (seul le test « registre 0120 » de db-0120 les lit)
+import { registreDeMigration } from './aide-registres-sortis.mjs';
 
-const registre = JSON.parse(readFileSync(new URL('../../data/migrations/0120-races-fongoide-gemidien.json', import.meta.url), 'utf8'));
+const registre = registreDeMigration('0120-races-fongoide-gemidien');
 
 export const RACES_DE_LA_0120 = new Set(registre.races);
 export const horsDeLa0120 = (raceId) => !RACES_DE_LA_0120.has(raceId);

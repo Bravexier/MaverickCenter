@@ -13,6 +13,11 @@ import { ouvrirBase, trouverRacine } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { baseDImport, cheminDImport } from './aide-base-d-import.mjs';
+import { copieDesRowsDeDepart, rowsDeDepart } from './aide-base-de-depart.mjs';
+import { testRetireAvecLesMixtes } from './aide-sortie-du-contenu.mjs';
+
+// Les tests qui éprouvent la migration mixte elle-même sortent avec elle (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LES_MIXTES).
+const testDeLaMixte = testRetireAvecLesMixtes(import.meta.url);
 
 const racine = trouverRacine();
 const client = fileURLToPath(new URL('../', import.meta.url));
@@ -131,15 +136,15 @@ test('db:check détecte une remarque qui a perdu une note', (t) => {
 test('db:migrate : refuse un schéma précédent dont la version ne précède pas celle du schéma courant', (t) => {
   const dir = dossierTemporaire('migrer', { t });
   const rows = join(dir, 'rows');
-  cpSync(join(racine, 'data', 'rows'), rows, { recursive: true });
+  copieDesRowsDeDepart(rows);
   writeFileSync(join(dir, 'm.sql'), 'ALTER TABLE sort ADD COLUMN x TEXT;\n');
   const r = spawnSync('python3', ['-I', join(racine, 'tools', 'db', 'migrer.py'), join(dir, 'm.sql'), '--rows', rows, '--schema-ancien', join(racine, 'data', 'schema.sql')], { encoding: 'utf8' });
   assert.equal(r.status, 1);
   assert.match(r.stdout, /les versions se suivent une à une/);
-  assert.equal(readFileSync(join(rows, 'VERSION'), 'utf8'), readFileSync(join(racine, 'data', 'rows', 'VERSION'), 'utf8'), 'rien n’est écrit');
+  assert.equal(readFileSync(join(rows, 'VERSION'), 'utf8'), readFileSync(join(rowsDeDepart(), 'VERSION'), 'utf8'), 'rien n’est écrit');
 });
 
-test('la migration 0002 est additive : colonnes facultatives ajoutées et remplies, rien n’est supprimé ni réécrit', () => {
+testDeLaMixte('la migration 0002 est additive : colonnes facultatives ajoutées et remplies, rien n’est supprimé ni réécrit', () => {
   const sql = readFileSync(join(racine, 'data', 'migrations', '0002-remarque.sql'), 'utf8');
   const instructions = sql.split('\n').filter((l) => l.trim() && !l.startsWith('--') && !l.startsWith('  WHERE'));
   assert.equal(instructions.filter((l) => /^ALTER TABLE \w+ ADD COLUMN remarque TEXT;$/.test(l)).length, entites.filter((t) => !CREEES_APRES_0002.includes(t)).length + RETIREES_APRES_0002.length);

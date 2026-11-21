@@ -9,11 +9,15 @@
 import assert from 'node:assert/strict';
 import { copyFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
-import { test } from 'node:test';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { retraitsDesNotes } from '../src/lib/fiche-format.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
+import { mixtesSorties } from '../src/lib/sortie-du-contenu.mjs';
 import { rejouerLaMigration, vuesCourantes } from './aide-migration-rejouee.mjs';
+import { testRetireAvecLesMixtes } from './aide-sortie-du-contenu.mjs';
+
+// Les tests qui éprouvent la migration mixte elle-même sortent avec elle (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LES_MIXTES).
+const testDeLaMixte = testRetireAvecLesMixtes(import.meta.url);
 
 const copie = fichierTemporaire('maverick.db', 'maverick-0080-');
 copyFileSync(cheminBase({ sansExemples: false }), copie);
@@ -67,9 +71,10 @@ fiche('acquise', { magie_acquise_id: 'magies/magie-du-vent', armure_elementaire_
 const AVANT = { 'de-base': etat('de-base'), acquise: etat('acquise') };
 
 db.prepare("DELETE FROM constante_equipement WHERE id = 'piece_elementaire.solidite_base'").run();
-const vuesRefaites = rejouerLaMigration(db, '0080-armure-elementaire-de-la-fiche.sql');
+// Tous les tests de ce fichier éprouvent la migration rejouée et sortent avec elle (RETIRES_AVEC_LES_MIXTES) : sortie, elle ne se rejoue pas.
+const vuesRefaites = mixtesSorties() ? null : rejouerLaMigration(db, '0080-armure-elementaire-de-la-fiche.sql');
 
-test('R165 : l’élément devient l’armure, avec son amélioration ; l’armure d’origine, son amélioration et ses parties notées ; à son maximum', () => {
+testDeLaMixte('R165 : l’élément devient l’armure, avec son amélioration ; l’armure d’origine, son amélioration et ses parties notées ; à son maximum', () => {
   const e = etat('transformee');
   assert.deepEqual({ ...e, notes: undefined, modifie_le: undefined }, {
     armure_id: null, armure_amelioration_id: null, armure_elementaire_id: FEU, armure_amelioration_elementaire_id: amelioration('armure_elementaire', 3),
@@ -83,7 +88,7 @@ test('R165 : l’élément devient l’armure, avec son amélioration ; l’armu
   assert.deepEqual(reglesDArmure('transformee'), []);
 });
 
-test('R165 : une armure élémentaire d’une magie que le personnage n’a pas, et une armure « Familier », retirées et notées', () => {
+testDeLaMixte('R165 : une armure élémentaire d’une magie que le personnage n’a pas, et une armure « Familier », retirées et notées', () => {
   const e = etat('autre-magie');
   assert.deepEqual(ARMURE.map((c) => e[c]), [null, null, null, null]);
   assert.equal(sansDate(e.notes), [
@@ -99,14 +104,14 @@ test('R165 : une armure élémentaire d’une magie que le personnage n’a pas,
   assert.deepEqual([...reglesDArmure('autre-magie'), ...reglesDArmure('familier')], []);
 });
 
-test('R165 : une fiche déjà au nouveau format ne change pas', () => {
+testDeLaMixte('R165 : une fiche déjà au nouveau format ne change pas', () => {
   assert.deepEqual(etat('de-base'), AVANT['de-base']);
   assert.deepEqual(etat('acquise'), AVANT.acquise);
   assert.equal(un("SELECT valeur FROM constante_equipement WHERE id = 'piece_elementaire.solidite_base'").valeur, 4, '4 crans de solidité (R165)');
   assert.equal(un("SELECT count(*) AS n FROM sqlite_master WHERE name = 'note_0080'").n, 0, 'la table de travail est retirée');
 });
 
-test('après la migration rejouée, la copie a les vues de data/schema.sql (seule v_personnage_controle, que 0080 recrée, est refaite)', () => {
+testDeLaMixte('après la migration rejouée, la copie a les vues de data/schema.sql (seule v_personnage_controle, que 0080 recrée, est refaite)', () => {
   assert.deepEqual(vuesRefaites, ['v_personnage_controle']);
   assert.deepEqual(db.prepare("SELECT name, sql FROM sqlite_master WHERE type = 'view' ORDER BY name").all().map((v) => ({ ...v })),
     vuesCourantes().sort((a, b) => a.name.localeCompare(b.name)));

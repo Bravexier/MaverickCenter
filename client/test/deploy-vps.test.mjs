@@ -3,7 +3,7 @@
 // bon dans des dossiers temporaires, avec de faux « caddy » et « systemctl ». Le premier vrai lancement est celui du serveur.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { chmodSync, existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -219,6 +219,29 @@ test('instances.sh : deux instances sur 127.0.0.1, base de test conservée, mots
   const caddy3 = env(join(d.caddy, 'maverick.env'));
   assert.notEqual(caddy3.MAVERICK_ACCES_NORMAL, caddy.MAVERICK_ACCES_NORMAL);
   assert.ok(accordes(d.normal, caddy3.MAVERICK_ACCES_NORMAL) && accordes(d.test, caddy3.MAVERICK_ACCES_TEST));
+});
+
+test('instances.sh : sans --bascule-2 le dossier des paquets n\'est pas monté ; avec lui (ou un .env qui le porte déjà) il est créé et monté en lecture-écriture, relançable', { skip: skipExec }, () => {
+  const d = dossiers();
+  assert.equal(lancerInstances(d).code, 0);
+  assert.ok(!existsSync(join(d.normal, 'paquets')));
+  assert.ok(!('MAVERICK_DOSSIER_PAQUETS' in env(join(d.test, '.env'))));
+  assert.equal(lancerInstances(d, ['--bascule-2']).code, 0);
+  const paquets = join(d.normal, 'paquets');
+  assert.ok(statSync(paquets).isDirectory());
+  assert.equal(statSync(paquets).mode & 0o777, 0o755);
+  const e = env(join(d.test, '.env'));
+  assert.equal(e.MAVERICK_DOSSIER_PAQUETS, paquets);
+  assert.equal(e.MAVERICK_PAQUETS_OPTION, '', 'option vide : lecture-écriture');
+  rmSync(paquets, { recursive: true });
+  assert.equal(lancerInstances(d).code, 0, 'relance sans option : le .env porte déjà le réglage');
+  assert.ok(statSync(paquets).isDirectory());
+  const e2 = dossiers();
+  mkdirSync(e2.normal, { recursive: true });
+  writeFileSync(join(e2.normal, 'paquets'), 'x');
+  const r = lancerInstances(e2, ['--bascule-2']);
+  assert.notEqual(r.code, 0);
+  assert.match(r.out, /n'est pas un dossier ordinaire/);
 });
 
 test('instances.sh : domaine invalide ou Caddy absent refusés sans rien écrire', { skip: skipExec }, () => {

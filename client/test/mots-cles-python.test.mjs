@@ -9,10 +9,12 @@ import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { dossierDesExports } from '../../tools/sources/dossier-des-exports.mjs';
 import { MOT_CLE_DE_CATEGORIE } from '../src/lib/classe-champs.mjs';
 import { MOTS_CLES_PROTEGES, RAISONS_DES_MOTS_CLES_PROTEGES } from '../src/lib/mots-cles.mjs';
 import { IDS_DES_MOTS_CLES_PROTEGES } from '../src/lib/mots-cles-proteges.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { idDuMotCleNomme } from './aide-mots-cles.mjs';
 
 const outils = fileURLToPath(new URL('../../tools/db/', import.meta.url));
 const sansPython = spawnSync('python3', ['--version']).error ? 'python3 absent' : false;
@@ -173,9 +175,9 @@ test('maverick.py#MOTS_CLES_PROTEGES recopie les clés de lib/mots-cles.mjs#MOTS
   // la copie JS du dictionnaire (lib/mots-cles-proteges.mjs) est la même, et MOTS_CLES_PROTEGES en tient les ids entiers (sans race-hybride, sans id)
   assert.deepEqual({ ...IDS_DES_MOTS_CLES_PROTEGES }, ids);
   assert.deepEqual([...MOTS_CLES_PROTEGES.keys()].sort((a, b) => a - b), Object.values(ids).filter((id) => id !== null).sort((a, b) => a - b));
-  // l'id de chacun : celui du registre de la migration 0113 (ancien id texte -> id entier) ; null pour celui qui n'existait pas (race-hybride)
-  const registre = new Map(JSON.parse(readFileSync(join(racine, 'data/migrations/0113-mots-cles-id-entier.json'), 'utf8')).motsCles.map((m) => [m.ancienId, m.id]));
-  for (const [cle, id] of Object.entries(ids)) assert.equal(id, registre.get(cle) ?? null, cle);
+  // l'id de chacun : celui que la migration 0113 a donné (ancien id texte -> id entier, sa référence data/references/ : idDuMotCleNomme) ; null pour celui
+  // qui n'existait pas (race-hybride)
+  for (const [cle, id] of Object.entries(ids)) assert.equal(id, idDuMotCleNomme(cle) ?? null, cle);
 });
 
 test('maverick.py#libelle_protege : l’écriture courante du mot-clé de l’id, qui mène à lui et pas au mot-clé qui a pris son écriture d’origine', { skip: sansPython }, (t) => {
@@ -210,7 +212,7 @@ test('classes.py, relations-races.py, races.py et codex.py posent leurs mots-cl�
   const vocabulaire = vocabulaireDEssai(t);
   const out = dossierTemporaire('mots-cles-proteges-out-', { t });
   for (const famille of ['classes', 'capacites', 'ressources']) mkdirSync(join(out, famille), { recursive: true });
-  const classeurs = join(racine, 'sources/raw/classeurs');
+  const classeurs = join(dossierDesExports(racine), 'classeurs'); // sources/raw, ou MAVERICK_SOURCES_RAW (archive restaurée, R296)
   const lancer = (script, ...args) => {
     const p = spawnSync('python3', ['-I', join(racine, script), ...args, '--out', out, '--vocabulaire', vocabulaire], { encoding: 'utf8' });
     assert.equal(p.status, 0, `${script} : ${p.stderr || p.stdout}`);

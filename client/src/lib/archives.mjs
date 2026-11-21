@@ -1,6 +1,6 @@
 // Archives (/archives/, demande du propriétaire) : les documents qui ont servi de source au site — les Google Docs et Sheets du jeu et l'ancien wiki Fandom.
-// Les documents Google sont ceux du registre de la migration 0014 (data/migrations/0014-sources-copies-drive.json : copies du Drive du propriétaire, avec
-// l'identifiant d'origine) et du manifeste sources/sources.json (adresse avec l'onglet, notes, ancien wiki). Le nombre de pages et les onglets viennent
+// Les documents Google sont ceux du registre des copies (sources/copies-drive.json, reprise du registre de la migration 0014 : copies du Drive du
+// propriétaire, avec l'identifiant d'origine) et du manifeste sources/sources.json (adresse avec l'onglet, notes, ancien wiki). Le nombre de pages et les onglets viennent
 // des sources citées par les pages (tables `source` et `page_source` de la base) : un document est cité par son adresse (identifiant Google) ou par son
 // libellé (« Google Sheet « Les races », onglet « Elfe » ») ; le registre donne le titre de chaque identifiant, rien n'est apparié autrement.
 // Les documents que le registre n'a pas copiés restent sur l'original, qui s'ouvre avec son lien : titre du manifeste. Un document copié après la
@@ -36,7 +36,7 @@ export const libelleGenre = (genre) => (genre === 'doc' ? 'Google Doc' : 'Google
 
 /**
  * Les documents Google des archives, rubrique par rubrique : [{ rubrique, documents: [{ id, titre, genre, url, original, pages, onglets, note }] }].
- * - `registre` : le registre de la migration 0014 ({ copies, fiche_corrigee, non_copies }) ; un document non copié que le manifeste donne avec
+ * - `registre` : le registre des copies, sources/copies-drive.json ({ copies, fiche_corrigee, non_copies }) ; un document non copié que le manifeste donne avec
  *   une autre adresse et son `original` est une copie faite depuis : montré comme les copies du registre ;
  * - `manifeste` : sources/sources.json (`google` : adresse avec onglet, adresse d'origine, note) ;
  * - `citations` : une ligne par source citée par une page, { page_id, google_id, genre, fichier, onglets (tableau ou null) } ;
@@ -94,10 +94,10 @@ export function ancienWiki(manifeste) {
   return (manifeste.fandom ?? []).map((f) => ({ url: f.url, titre: f.title }));
 }
 
-/** Lit le registre, le manifeste et les sources citées dans la base ouverte `db` (lib/donnees.mjs) ; `racine` : racine du dépôt. */
+/** Lit le registre des copies (sources/copies-drive.json), le manifeste et les sources citées dans la base ouverte `db` (lib/donnees.mjs) ; `racine` : racine du dépôt. */
 export function lireArchives(db, racine) {
   const lireJson = (chemin) => JSON.parse(readFileSync(join(racine, chemin), 'utf8'));
-  const registre = lireJson('data/migrations/0014-sources-copies-drive.json');
+  const registre = lireJson('sources/copies-drive.json');
   const manifeste = lireJson('sources/sources.json');
   const citations = db
     .prepare('SELECT ps.page_id, s.google_id, s.genre, s.fichier, s.onglets FROM page_source ps JOIN source s ON s.id = ps.source_id WHERE s.genre IS NOT NULL')

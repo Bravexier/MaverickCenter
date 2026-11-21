@@ -11,7 +11,7 @@ import { baseDImport } from './aide-base-d-import.mjs';
 
 const racine = (chemin) => fileURLToPath(new URL(`../../${chemin}`, import.meta.url));
 const lire = (chemin) => readFileSync(racine(chemin), 'utf8');
-const registre = JSON.parse(lire('data/migrations/0014-sources-copies-drive.json'));
+const registre = JSON.parse(lire('sources/copies-drive.json'));
 const retires = registre.copies.filter((c) => ['Familiers', 'Prototype'].includes(c.titre));
 const ids = retires.flatMap((c) => [c.avant, c.apres]);
 const db = ouvrirBase({ sansExemples: false });

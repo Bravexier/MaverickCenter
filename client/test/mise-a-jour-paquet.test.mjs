@@ -6,7 +6,7 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { copyFileSync, cpSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { after, describe, test } from 'node:test';
@@ -18,13 +18,15 @@ import {
 } from '../scripts/mise-a-jour-github.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { ENTETE_SQLITE, fabriquerPaquet, FORMAT_PAQUET, MODES_DU_PAQUET } from '../serveur/paquet.mjs';
-import { cheminBase } from '../src/lib/donnees.mjs';
+import { baseDeDepart, copieDesRowsDeDepart } from './aide-base-de-depart.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
-import { ROWS, versionLibre } from './aide-mise-a-jour.mjs';
+import { versionLibre } from './aide-mise-a-jour.mjs';
 
 const racine = dossierTemporaire('mise-a-jour-paquet');
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
-const regles = cheminBase({ sansExemples: false });
+// Ce fichier éprouve ce qui s'écrit dans data/rows : la base de départ et les lignes copiées sont celles du même départ (aide-base-de-depart.mjs : data/rows
+// sans MAVERICK_CONTENU, sinon l'export du contenu fourni, VERSION compris), de sorte que les listes de fichiers changés sont celles du lot
+const regles = baseDeDepart(join(racine, 'regles.db'), { deriver: true });
 const { chemin } = preparerBaseVivante({ regles, dossier: join(racine, 'db') });
 const db = ouvrirBaseVivante(chemin);
 after(() => db.close());
@@ -47,10 +49,10 @@ fabriquerPaquet({ source: chemin, destination: PAQUET, production: regles, id: L
 const PAQUET_COPIE = join(paquets, 'copie.db');
 fabriquerPaquet({ source: chemin, destination: PAQUET_COPIE, id: COPIE, mode: 'copie' });
 
-/** Une copie de data/rows ; `lire()` : ses fichiers (pour vérifier que rien n'a changé). */
+/** Une copie des lignes de départ (data/rows ou l'export du contenu fourni) ; `lire()` : ses fichiers (pour vérifier que rien n'a changé). */
 const copieDesLignes = () => {
   const rows = join(dossierTemporaire('rows', { dans: racine }), 'rows');
-  cpSync(ROWS, rows, { recursive: true });
+  copieDesRowsDeDepart(rows);
   return { rows, lire: () => Object.fromEntries(readdirSync(rows).map((f) => [f, readFileSync(join(rows, f), 'utf8')])) };
 };
 /** Une copie du paquet que `changer(db)` modifie (un paquet falsifié, comme un site de dev compromis le ferait). */

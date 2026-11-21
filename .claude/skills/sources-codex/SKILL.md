@@ -9,6 +9,7 @@ user-invocable: false
 ## Fichiers
 - `sources/raw/1tH-T9k-a3sADBtKWHxcuMcN94_VA8-Zo2BTzee9O7Tg.md` : l'export Markdown de la copie du propriétaire (2026-10-11), tel quel ; ses images à part dans le dossier
   du même nom.
+- Dossier des exports : `sources/raw/` par défaut ; `MAVERICK_SOURCES_RAW` le remplace (`codex.py` la lit ; même règle que `tools/sources/dossier-des-exports.mjs#dossierDesExports`). Un nouvel export peut aller dans `var/sources-raw/`. R83 : les originaux Google font foi, une archive n'est qu'un instantané daté.
 - `tools/docs/codex.py` : le découpage en pages `lore/` (famille `docs`) et son vérificateur `--verifier`.
 - `tools/docs/codex-corrections.json` : les corrections appliquées avant le découpage.
 - `client/test/codex.test.mjs` : vérificateur, pages dans la base, R21, registre.
@@ -29,7 +30,7 @@ user-invocable: false
   « ect » → « etc. » comme 0005, « purée de poix » → « purée de pois » comme 0006). Chaque entrée a son nombre d'occurrences attendu.
 - Exception R266 : « Super Gemme », « Mort Fertile » et « Dieu de la Terre » sont corrigés dans le Codex, limités à ces trois graphies (skill `base-orthographe`). La migration 0121 a réécrit les pages en base ; leurs entrées du registre portent `migration`, et `--verifier` les applique aussi à l'état d'import des pages que le site avait modifiées avant elle (`graphies_de_migration`). `codex.test.mjs` met à part ces pages dans ses lectures de `baseDImport()`.
 - L'export dans `sources/raw/` reste tel quel ; les corrections se font dans le script, avant le découpage.
-- `--verifier` relit l'export ligne par ligne, par un code qui ne partage pas le découpage.
+- `--verifier` relit l'export ligne par ligne, par un code qui ne partage pas le découpage. Il (comme l'écriture) lit l'historique et le vocabulaire dans la base (`--base <fichier.db>`), `data/rows` seulement en repli sans `--base` ; `codex.test.mjs` passe `--base` (`cheminBase`).
 - Le site de dev est la source de ce qu'il modifie. Les pages du Codex se modifient sur le site de dev comme celles du guide (titre, texte ;
   `lib/edition-modele.mjs#texteDePageModifiable`). Une page modifiée est contrôlée par `--verifier` dans son état d'import (`historique_modification`,
   `pages_du_site`), et `codex.py` la garde telle quelle à l'écriture.
@@ -40,16 +41,16 @@ user-invocable: false
 - Le script n'écrit que dans `lore/`, refuse d'écraser une page qui ne vient pas du document et signale, sans les supprimer, les pages qu'il ne produit plus.
 
 ## Nouvel export
-1. Remplacer l'export dans `sources/raw/`.
+1. Remplacer l'export dans `sources/raw/` (ou dans le dossier de `MAVERICK_SOURCES_RAW`).
 2. `python3 -I tools/docs/codex.py`, puis `python3 -I tools/docs/codex.py --verifier`.
-3. `npm run db:sync-pages` (depuis `client/`), puis commiter `data/rows`.
+3. Les pages changées se proposent en lot de changements sur le site de dev : `npm run db:sync-pages -- --lot <lot.json> --titre <titre>` écrit un lot de nature `source` (l'outil n'envoie rien ; skill `modifier-une-page-wiki`), jamais un commit de `data/rows`.
 4. La chronologie, qui cite le texte des pages : `node tools/chronologie/chronologie.mjs --verifier` (détail : `docs/codex.md`, « Règles du découpage »).
 
 ## Choix du propriétaire
 - Décision R21 : « Eaunoire », en un seul mot ; la page s'appelle « Eaunoire », alias « Eaunoir ».
-- La relecture orthographique du Codex (R10) reste à faire, par une migration de données avec son registre (skill `base-orthographe`).
+- La relecture orthographique du Codex (R10) reste à faire, par un lot de changements sur le site de dev (skill `base-orthographe`).
 
 ## Tests
-- `client/test/codex.test.mjs`. Son vocabulaire d'essai a des ids entiers et une `cle` ; l'id de « codex » vient de `IDS_DES_MOTS_CLES_PROTEGES`, un autre mot-clé de la base se trouve par le registre de la 0113. Un renommage se simule avec la réécriture des pages qui le citent, notée au journal (R232 (3)). Un test qui simule une édition de page part de son état d'import (titre, texte, alias), pas du `.md` courant (le site peut modifier les 116 pages) ; les liens se résolvent comme le site (`lib/wikilinks-resolution.mjs`, slug compris), sur la base d'import (`test/aide-base-d-import.mjs`).
+- `client/test/codex.test.mjs`. Il lit l'export par `dossierDesExports()` (l'archive restaurée au jour J) ; ses tests d'extraction restent des tests ordinaires, que la PR du jour J ne retire que si le propriétaire retient la reco (e). Son vocabulaire d'essai a des ids entiers et une `cle` ; l'id de « codex » vient de `IDS_DES_MOTS_CLES_PROTEGES`, un autre mot-clé de la base se trouve par la référence de la 0113 (`idDuMotCleNomme`). Un renommage se simule avec la réécriture des pages qui le citent, notée au journal (R232 (3)). Un test qui simule une édition de page part de son état d'import (titre, texte, alias), pas du `.md` courant (le site peut modifier les 116 pages) ; les liens se résolvent comme le site (`lib/wikilinks-resolution.mjs`, slug compris), sur la base d'import (`test/aide-base-d-import.mjs`).
 - `client/test/eaunoire.test.mjs` : R21 dans la base (migration `0012-eaunoire`, nom corrigé partout, identifiant inchangé, le sort « Eau noire » garde le sien).
 - L'aller-retour de l'éditeur sur les pages du Codex : `client/test/markdown-edition.test.mjs` (skill `zone-edition-texte`).

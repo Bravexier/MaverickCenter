@@ -8,7 +8,6 @@
 // mène à la page qui porte le contenu.
 //   node --test test/db-0123-fusion-pages-alignement.test.mjs
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { ancresDuCorps, sectionParAncre } from '../src/lib/ancres-figees.mjs';
 import { COULEURS_ALIGNEMENTS } from '../src/lib/caracteristiques-postures.mjs';
@@ -19,9 +18,16 @@ import { normalize } from '../src/lib/text.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
+import { registreDeMigration } from './aide-registres-sortis.mjs';
 import { rendreCommeLeGuide } from './aide-rendu-du-site.mjs';
+import { testRetireAvecLesMixtes } from './aide-sortie-du-contenu.mjs';
 
-const registre = JSON.parse(readFileSync(new URL('../../data/migrations/0123-fusion-pages-alignement.json', import.meta.url), 'utf8'));
+// Les tests qui éprouvent la migration mixte elle-même sortent avec elle (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LES_MIXTES).
+const testDeLaMixte = testRetireAvecLesMixtes(import.meta.url);
+
+// Le registre sort avec les migrations mixtes : les tests d'invariants n'en lisent que des ids, une ancre, des adresses et des libellés, gardés dans
+// test/fixtures/registres-sortis.json (aide-registres-sortis.mjs) ; le texte fondu (du texte de règle) ne l'est pas, ses tests sortent avec la 0123.
+const registre = registreDeMigration('0123-fusion-pages-alignement');
 const [retiree] = registre.pages_retirees;
 const ACCUEIL = retiree.contenu_dans;
 const ANCRE = retiree.ancre;
@@ -59,12 +65,21 @@ test('0123 : la page retirée n’a plus aucune ligne, à l’import comme aujou
   assert.equal(dImport.prepare('SELECT count(*) AS n FROM regles_onglet_entree WHERE page_id = ?').get(ACCUEIL).n, 1, `${ACCUEIL} : une entrée du menu`);
 });
 
-test('0123 : le texte fondu est, mot pour mot, celui de la page d’avant puis le dernier texte du site de la page retirée, intertitres descendus à ancre figée', () => {
+testDeLaMixte('0123 : le texte fondu est en place, et le texte d’avant la section est celui de la page d’avant (registre)', () => {
   const corps = corpsDImport();
   assert.ok(corps, ACCUEIL);
   const [texte] = registre.textes;
   assert.equal(texte.cle.id, ACCUEIL);
   assert.ok(corps.includes(texte.apres), 'le fragment du registre est en place');
+  // le texte d'avant la section est celui de la page d'avant, intact : la ligne `avant` du registre la termine, une fois
+  const avant = corps.slice(0, corps.indexOf(`{#${ANCRE}}`)).replace(/\n## [^\n]*$/, '');
+  assert.ok(avant.trimEnd().endsWith(texte.avant.trimEnd()), 'la fin de la page d’avant');
+  assert.equal(avant.split(texte.avant.trimEnd()).length, 2);
+});
+
+test('0123 : la section fondue est, mot pour mot, le dernier texte du site de la page retirée, intertitres descendus à ancre figée, en fin de page', () => {
+  const corps = corpsDImport();
+  assert.ok(corps, ACCUEIL);
   const marques = ancresDuCorps(corps).filter((a) => a.ancre === ANCRE);
   assert.equal(marques.length, 1, `un seul intertitre #${ANCRE}`);
   assert.equal(marques[0].niveau, 2);
@@ -81,10 +96,6 @@ test('0123 : le texte fondu est, mot pour mot, celui de la page d’avant puis l
   }
   assert.equal(section, attendu);
   assert.ok(corps.trimEnd().endsWith(section), 'la section est en fin de page');
-  // le texte d'avant la section est celui de la page d'avant, intact : la ligne `avant` du registre la termine, une fois
-  const avant = corps.slice(0, corps.indexOf(`{#${ANCRE}}`)).replace(/\n## [^\n]*$/, '');
-  assert.ok(avant.trimEnd().endsWith(texte.avant.trimEnd()), 'la fin de la page d’avant');
-  assert.equal(avant.split(texte.avant.trimEnd()).length, 2);
 });
 
 test('0123 : les ancres posées sont celles que le rendu donne, une par alignement (état d’import)', async () => {

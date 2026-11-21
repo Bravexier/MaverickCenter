@@ -35,7 +35,9 @@ import { fileURLToPath } from 'node:url';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { chargerReglesDeFiche } from '../src/lib/fiche-regles.mjs';
 import { cleDeLigne, lireHistorique } from '../src/lib/historique-site.mjs';
+import { contenuSorti } from '../src/lib/sortie-du-contenu.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
+import { REGISTRES_GARDES } from './aide-registres-sortis.mjs';
 
 /** Colonnes d'une table de la base (null : table absente, renommée ou supprimée par une migration). */
 function colonnesDe(db, table) {
@@ -48,12 +50,21 @@ const memes = (a, b) => (a === null || a === undefined ? b === null || b === und
 
 const cleTriee = (cle) => JSON.stringify(Object.fromEntries(Object.entries(cle).sort(([x], [y]) => x.localeCompare(y))));
 
-/** Les remplacements par fragments des registres `textes` des migrations (data/migrations/*.json), par cellule « table|clé triée|colonne ». */
+/**
+ * Les remplacements par fragments des registres `textes` des migrations (data/migrations/*.json), par cellule « table|clé triée|colonne ». Une fois le contenu
+ * sorti du dépôt (src/lib/sortie-du-contenu.mjs#contenuSorti, jour J du lot 12), ceux d'un registre sorti viennent de ce qu'en garde
+ * test/fixtures/registres-sortis.json (aide-registres-sortis.mjs#REGISTRES_GARDES) ; un registre sorti non gardé n'a rien qui serve ici.
+ */
 const REECRITURES_DES_MIGRATIONS = (() => {
   const dossier = new URL('../../data/migrations/', import.meta.url);
+  const gardes = contenuSorti() ? REGISTRES_GARDES : {};
+  const registres = new Map(Object.entries(gardes).map(([nom, r]) => [`${nom}.json`, r]));
+  for (const nom of readdirSync(dossier).filter((f) => f.endsWith('.json'))) {
+    if (!registres.has(nom)) registres.set(nom, JSON.parse(readFileSync(new URL(nom, dossier), 'utf8')));
+  }
   const parCellule = new Map();
-  for (const nom of readdirSync(dossier).filter((f) => f.endsWith('.json')).sort()) {
-    const textes = JSON.parse(readFileSync(new URL(nom, dossier), 'utf8')).textes;
+  for (const nom of [...registres.keys()].sort()) {
+    const textes = registres.get(nom).textes;
     if (!Array.isArray(textes)) continue;
     for (const t of textes) {
       if (!t?.table || !t.col || !t.cle || typeof t.avant !== 'string' || typeof t.apres !== 'string' || !t.avant) continue;

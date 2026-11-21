@@ -8,13 +8,18 @@
 //   node --test test/db-0121-maj-decembre-suites.test.mjs
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { test } from 'node:test';
 import { lireBalises, texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
 import { TABLES_DERIVEES, TABLES_HORS_REGLES } from '../src/lib/tables-de-la-base.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { mixtesSorties } from '../src/lib/sortie-du-contenu.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
+import { testRetireAvecLesMixtes } from './aide-sortie-du-contenu.mjs';
 
-const registre = JSON.parse(readFileSync(new URL('../../data/migrations/0121-maj-decembre-suites.json', import.meta.url), 'utf8'));
+// Les tests qui éprouvent la migration mixte elle-même sortent avec elle (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LES_MIXTES).
+const testDeLaMixte = testRetireAvecLesMixtes(import.meta.url);
+
+// Le registre sort avec la migration mixte, et chaque test de ce fichier, qui le compare à l'import, avec lui (RETIRES_AVEC_LES_MIXTES).
+const registre = mixtesSorties() ? null : JSON.parse(readFileSync(new URL('../../data/migrations/0121-maj-decembre-suites.json', import.meta.url), 'utf8'));
 const dImport = baseDImport();
 const un = (sql, ...p) => dImport.prepare(sql).get(...p);
 const tous = (sql, ...p) => dImport.prepare(sql).all(...p);
@@ -27,7 +32,7 @@ function cellule(table, cle, col) {
 const cleDuMotCle = (id) => un('SELECT cle FROM mot_cle WHERE id = ?', id)?.cle;
 const parDecision = (liste, decision) => registre[liste].filter((e) => e.decision === decision);
 
-test('registre : chaque correction et chaque texte de la 0121 est en place à l’import (le nouveau écrit, l’ancien absent de la cellule)', () => {
+testDeLaMixte('registre : chaque correction et chaque texte de la 0121 est en place à l’import (le nouveau écrit, l’ancien absent de la cellule)', () => {
   assert.ok(registre.corrections.length > 0 && registre.textes.length > 0);
   for (const e of [...registre.corrections, ...registre.textes]) {
     const v = cellule(e.table, e.cle, e.col);
@@ -38,7 +43,7 @@ test('registre : chaque correction et chaque texte de la 0121 est en place à l�
   }
 });
 
-test('R254 (3) : le texte de l’Archimage s’arrête après « si vous n’êtes pas du potentiel illimité » (coupé, aucun mot ajouté)', () => {
+testDeLaMixte('R254 (3) : le texte de l’Archimage s’arrête après « si vous n’êtes pas du potentiel illimité » (coupé, aucun mot ajouté)', () => {
   const textes = parDecision('textes', 'R254 (3)');
   assert.deepEqual(textes.map((e) => e.table).sort(), ['classe', 'page']);
   for (const e of textes) {
@@ -50,7 +55,7 @@ test('R254 (3) : le texte de l’Archimage s’arrête après « si vous n’êt
   assert.equal(cellule('page', classe.cle, 'corps_md').includes(classe.apres), true, 'le corps de la page redit la classe');
 });
 
-test('R255 (7) : « Posture inébranlable », identifiant et adresse inchangés, clés recalculées ; les trois phrases des dons du Boxeur', () => {
+testDeLaMixte('R255 (7) : « Posture inébranlable », identifiant et adresse inchangés, clés recalculées ; les trois phrases des dons du Boxeur', () => {
   const corrections = parDecision('corrections', 'R255 (7)');
   const nom = corrections.find((e) => e.table === 'capacite' && e.col === 'nom');
   const id = nom.cle.id;
@@ -68,13 +73,13 @@ test('R255 (7) : « Posture inébranlable », identifiant et adresse inchangés,
   }
 });
 
-test('R10 (R268) : « Immatériel » sans espace avant la virgule, dans la capacité commune et ses copies', () => {
+testDeLaMixte('R10 (R268) : « Immatériel » sans espace avant la virgule, dans la capacité commune et ses copies', () => {
   const corrections = parDecision('corrections', 'R268');
   assert.ok(corrections.some((e) => e.table === 'monstre_capacite_commune'));
   for (const e of corrections) assert.doesNotMatch(cellule(e.table, e.cle, e.col), /\) ,/, `${e.table} ${JSON.stringify(e.cle)}`);
 });
 
-test('R266 : plus aucune autre écriture des trois graphies hors des traces d’édition ; identifiants, clés et adresses inchangés', () => {
+testDeLaMixte('R266 : plus aucune autre écriture des trois graphies hors des traces d’édition ; identifiants, clés et adresses inchangés', () => {
   const horsDuBalayage = new Set([...TABLES_HORS_REGLES, ...TABLES_DERIVEES]);
   const virtuelles = tous("SELECT name FROM sqlite_master WHERE type = 'table' AND sql LIKE 'CREATE VIRTUAL%'").map((t) => t.name);
   const tables = tous("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'").map((t) => t.name)
@@ -112,7 +117,7 @@ test('R266 : plus aucune autre écriture des trois graphies hors des traces d’
   assert.equal(renvoi[1], un("SELECT titre FROM page WHERE id = 'lore/super-gemme'").titre);
 });
 
-test('R258 (7), R268 : sept mots-clés sans adresse, non verrouillés, leur catégorie ; quatre infobulles, trois sans (NULL)', () => {
+testDeLaMixte('R258 (7), R268 : sept mots-clés sans adresse, non verrouillés, leur catégorie ; quatre infobulles, trois sans (NULL)', () => {
   assert.equal(registre.mots_cles.length, 7);
   for (const m of registre.mots_cles) {
     const l = un('SELECT * FROM mot_cle WHERE id = ?', m.id);
@@ -135,7 +140,7 @@ test('R258 (7), R268 : sept mots-clés sans adresse, non verrouillés, leur cat�
   assert.ok(lireBalises(un('SELECT description FROM mot_cle WHERE id = ?', immateriel.id).description).some((b) => b.ref === cleDuMotCle(sortFer)));
 });
 
-test('R258 (7) : balises posées sur les mots des effets des matériaux et du tableau de ressources/armes, sans réécrire le texte', () => {
+testDeLaMixte('R258 (7) : balises posées sur les mots des effets des matériaux et du tableau de ressources/armes, sans réécrire le texte', () => {
   const textes = parDecision('textes', 'R258 (7)');
   const nouveaux = new Set(registre.mots_cles.map((m) => cleDuMotCle(m.id)));
   assert.ok(textes.some((e) => e.table === 'materiau_arme') && textes.some((e) => e.table === 'page'));
@@ -150,7 +155,7 @@ test('R258 (7) : balises posées sur les mots des effets des matériaux et du ta
   }
 });
 
-test('R258 (7) : le don « Avantage » du Porte-étendard n’est pas capté par le mot-clé « Avantage » (sans adresse, ni étiquette, ni lien)', () => {
+testDeLaMixte('R258 (7) : le don « Avantage » du Porte-étendard n’est pas capté par le mot-clé « Avantage » (sans adresse, ni étiquette, ni lien)', () => {
   const avantage = registre.mots_cles.find((m) => m.homonyme_non_capte);
   const page = avantage.homonyme_non_capte;
   assert.ok(un('SELECT 1 FROM page WHERE id = ?', page), page);
@@ -161,13 +166,13 @@ test('R258 (7) : le don « Avantage » du Porte-étendard n’est pas capté par
   assert.ok(!lireBalises(corps, { markdown: true }).some((b) => b.ref === cleDuMotCle(avantage.id)), 'la page du don ne cite pas le mot-clé');
 });
 
-test('R258 (4) : le mot-clé « Sort fer » n’écrit aucun nombre de sorts ; 14 sorts le portent à l’import', () => {
+testDeLaMixte('R258 (4) : le mot-clé « Sort fer » n’écrit aucun nombre de sorts ; 14 sorts le portent à l’import', () => {
   const id = registre.constats.sort_fer.mot_cle_id;
   assert.doesNotMatch(un('SELECT description FROM mot_cle WHERE id = ?', id).description ?? '', /\d/);
   assert.equal(un('SELECT count(*) AS n FROM sort_mot_cle WHERE mot_cle_id = ?', id).n, 14);
 });
 
-test('R259 : Anti-barrière et Pré-mythril prennent le texte retenu ; le don, son résumé et le corps de sa page s’accordent', () => {
+testDeLaMixte('R259 : Anti-barrière et Pré-mythril prennent le texte retenu ; le don, son résumé et le corps de sa page s’accordent', () => {
   const textes = parDecision('textes', 'R259');
   assert.deepEqual([...new Set(textes.map((e) => e.table))].sort(), ['capacite', 'monstre_capacite_commune', 'page']);
   for (const e of textes) {
@@ -180,7 +185,7 @@ test('R259 : Anti-barrière et Pré-mythril prennent le texte retenu ; le don, s
   assert.equal(cellule('page', don, 'corps_md'), `${effet}\n`);
 });
 
-test('R264 : apparition des Gémidiens et des Fongoïdes, aux rangs suivants, sans catégorie ni portée, extrait copié de la Présentation de la race', () => {
+testDeLaMixte('R264 : apparition des Gémidiens et des Fongoïdes, aux rangs suivants, sans catégorie ni portée, extrait copié de la Présentation de la race', () => {
   assert.equal(registre.evenements.length, 2);
   const autres = un(`SELECT max(rang) AS m FROM evenement WHERE id NOT IN (${registre.evenements.map(() => '?').join(', ')})`, ...registre.evenements.map((e) => e.id)).m;
   registre.evenements.forEach((r, i) => {
@@ -203,7 +208,7 @@ test('R264 : apparition des Gémidiens et des Fongoïdes, aux rangs suivants, sa
   });
 });
 
-test('R265 : la page du Fongoïde mène à Dimitri et au Champicer par des balises posées sur ses mots, sans un mot changé', () => {
+testDeLaMixte('R265 : la page du Fongoïde mène à Dimitri et au Champicer par des balises posées sur ses mots, sans un mot changé', () => {
   const textes = parDecision('textes', 'R265');
   assert.equal(new Set(textes.map((e) => e.mot_cle_id)).size, 2);
   const race = textes.find((e) => e.table === 'race_onglet').cle.race_id;
@@ -217,7 +222,7 @@ test('R265 : la page du Fongoïde mène à Dimitri et au Champicer par des balis
   }
 });
 
-test('suite de R239 : guide/l-univers et guide/choisir-sa-race comptent les races de la base', () => {
+testDeLaMixte('suite de R239 : guide/l-univers et guide/choisir-sa-race comptent les races de la base', () => {
   const textes = parDecision('textes', 'R239');
   assert.equal(textes.length, 2);
   const races = un('SELECT count(*) AS n FROM race').n;

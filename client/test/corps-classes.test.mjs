@@ -71,9 +71,17 @@ test('spécialités de la page : les bannières ; les deux de l’Archimage (san
   assert.equal(archimage.specialites.length, 2);
   assert.deepEqual(specialitesDeLaPage(archimage.specialites, archimage.dons), []);
   assert.ok(!page('classes/archimage').corps_md.includes(`## ${TITRES_DE_CLASSE.sousClasses}`));
+  // à l'import, toute autre spécialité a au moins un don ; le site peut créer une spécialité avant ses dons (essai mécanique, variante V3) : sur l'état
+  // courant, une spécialité est une bannière si et seulement si elle a un don
+  const specialitesDImport = historique.lignesDImport('specialite');
+  const donsDImport = historique.lignesDImport('capacite');
   for (const c of classes.filter((x) => x.id !== 'classes/archimage')) {
+    const deLaClasse = specialitesDImport.filter((s) => s.classe_id === c.id);
+    assert.deepEqual(specialitesDeLaPage(deLaClasse, donsDImport.filter((d) => d.classe_id === c.id)).map((s) => s.id),
+      [...deLaClasse].sort((a, b) => a.rang - b.rang).map((s) => s.id), `${c.id} (import)`);
     const l = lignesDe(c);
-    assert.deepEqual(specialitesDeLaPage(l.specialites, l.dons).map((s) => s.id), l.specialites.map((s) => s.id), c.id);
+    const avecDon = new Set(l.dons.map((d) => d.specialite_id));
+    assert.deepEqual(specialitesDeLaPage(l.specialites, l.dons).map((s) => s.id), l.specialites.filter((s) => avecDon.has(s.id)).map((s) => s.id), c.id);
   }
 });
 

@@ -10,10 +10,16 @@ import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { defense, LIGNE_DE_DEFENSE_ANCIENNE, ligneDeDefenseRenommee, valeursDeLaCarte } from '../src/lib/monstre-champs.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { mixtesSorties } from '../src/lib/sortie-du-contenu.mjs';
 import { baseDImport, lotsAvant } from './aide-base-d-import.mjs';
+import { testRetireAvecLesMixtes } from './aide-sortie-du-contenu.mjs';
+
+// Les tests qui éprouvent la migration mixte elle-même sortent avec elle (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LES_MIXTES).
+const testDeLaMixte = testRetireAvecLesMixtes(import.meta.url);
 
 const db = ouvrirBase({ sansExemples: false });
-const registre = JSON.parse(readFileSync(new URL('../../data/migrations/0106-r209-bestiaire.json', import.meta.url), 'utf8'));
+// Le registre de la 0106 (corrections : du texte de règle) sort avec la migration mixte, et les tests qui le lisent avec lui (RETIRES_AVEC_LES_MIXTES).
+const registre = mixtesSorties() ? null : JSON.parse(readFileSync(new URL('../../data/migrations/0106-r209-bestiaire.json', import.meta.url), 'utf8'));
 const apresLa0106 = () => baseDImport({ garder: lotsAvant('0106') });
 const ANCIENS_NOMS = /points? d[’']armure|résistance magique/;
 const MOMIES = ['monstres/momie#carte:momie', 'monstres/momie#carte:momie-royale', 'monstres/momie#carte:momie-surveillante'];
@@ -42,7 +48,7 @@ test('R209 (5) : le motif porte sur la ligne de défense entière ; une « rési
   assert.equal(ligneDeDefenseRenommee(phrase), phrase);
 });
 
-test('R209 (5) : dans l’état de la 0106, plus aucune ligne de défense n’écrit les anciens noms ; les autres rubriques ne sont pas touchées', () => {
+testDeLaMixte('R209 (5) : dans l’état de la 0106, plus aucune ligne de défense n’écrit les anciens noms ; les autres rubriques ne sont pas touchées', () => {
   const base = apresLa0106();
   const defenses = base.prepare("SELECT monstre_id, texte FROM monstre_rubrique WHERE rubrique = 'defense'").all();
   assert.deepEqual(defenses.filter((r) => ANCIENS_NOMS.test(r.texte)).map((r) => r.monstre_id), []);
@@ -61,7 +67,7 @@ test('R209 (5) : dans l’état de la 0106, plus aucune ligne de défense n’é
   assert.ok(!autres.some((r) => r.texte.split('\n').some((l) => LIGNE_DE_DEFENSE_ANCIENNE.test(l))));
 });
 
-test('R209 (5) : dans l’état de la 0106, les cartes réécrites ont leur AP et leur AM (87), sauf les 6 sans nombre', () => {
+testDeLaMixte('R209 (5) : dans l’état de la 0106, les cartes réécrites ont leur AP et leur AM (87), sauf les 6 sans nombre', () => {
   const base = apresLa0106();
   const ids = registre.corrections.filter((c) => c.decision === 'R209 (5)').map((c) => c.cle.monstre_id);
   const sans = new Set(registre.sans_nombre.map((s) => s.monstre_id));

@@ -36,6 +36,42 @@ export class ErreurFabrication extends Error {
 
 const sha256DuFichier = (chemin) => createHash('sha256').update(readFileSync(chemin)).digest('hex');
 const fin = (texte, n = 3000) => (texte.length > n ? `…${texte.slice(-n)}` : texte);
+/** Ce que le message d'un échec garde de chaque sortie : la fin de stderr (l'erreur), puis la fin de stdout (le contexte). Au total moins que le plafond de `atelier.mjs#messageDErreur`. */
+export const FIN_DE_STDERR = 2000;
+export const FIN_DE_STDOUT = 1000;
+
+/**
+ * Où un `astro build` en échec s'est arrêté, d'après l'ordre des lignes de sa sortie (rien d'autre n'est supposé). Astro écrit « [build] ✓ Completed » aussi AVANT les pages (après
+ * « Collecting build info… ») : seule une telle ligne placée APRÈS la dernière ligne de page (`/chemin/index.html (+Nms)`) dit que les pages sont écrites et que l'échec vient des
+ * intégrations (`astro:build:done`). Une dernière ligne de page, ou « generating static routes » sans ligne de page après, dit l'échec pendant les pages. Sinon : null.
+ */
+export function sousPasDuBuild(stdout) {
+  const lignes = String(stdout ?? '').split(/\r?\n/);
+  const dernier = (motif) => lignes.findLastIndex((l) => motif.test(l));
+  const page = dernier(/\(\+\d+ms\)\s*$/);
+  const termine = dernier(/\[build\][^\n]*Completed in/);
+  const routes = dernier(/generating static routes/);
+  if (page >= 0 && termine > page) return 'après le build (intégrations, astro:build:done)';
+  const significative = lignes.findLastIndex((l) => l.trim() !== '');
+  if (page >= 0 && page === significative) return 'pendant la génération des pages';
+  if (routes >= 0 && routes > page && routes === significative) return 'pendant la génération des pages';
+  return null;
+}
+
+/**
+ * Le message d'un processus d'étape en échec : l'étape, le code, le sous-pas s'il se lit, puis la fin de stderr (en premier : c'est là qu'est l'erreur) et la fin de stdout, étiquetées.
+ * @param {string} nom @param {{ status?: number|null, signal?: string|null, error?: Error, stderr?: string|null, stdout?: string|null }} r
+ */
+export function messageDEchec(nom, r) {
+  const code = r.status ?? r.signal ?? r.error?.message;
+  const stderr = String(r.stderr ?? '').trim();
+  const stdout = String(r.stdout ?? '').trim();
+  const sousPas = nom === 'build' ? sousPasDuBuild(stdout) : null;
+  const parties = [];
+  if (stderr) parties.push(`fin de stderr : ${fin(stderr, FIN_DE_STDERR)}`);
+  if (stdout) parties.push(`fin de stdout : ${fin(stdout, FIN_DE_STDOUT)}`);
+  return `${nom} a échoué (code ${code})${sousPas ? `, ${sousPas}` : ''}${parties.length ? ` : ${parties.join(' ; ')}` : ''}`;
+}
 
 /**
  * Le résumé de la mémoire d'après les lignes écrites par scripts/mesure-memoire.mjs : pic d'un processus et cumul (kilo-octets), au total et par étape.
@@ -122,7 +158,7 @@ export function fabriquerDepuisContenu({ contenu, sortie, mesure: cheminMesure =
       env: { ...env, ...environnement, NODE_OPTIONS: options, MAVERICK_MESURE_MEMOIRE: fichierMemoire, MAVERICK_MESURE_ETAPE: nom, MAVERICK_ROOT: resolve(client, '..') },
     });
     if (r.error || r.status !== 0) {
-      throw new ErreurFabrication(nom, `${nom} a échoué (code ${r.status ?? r.signal ?? r.error?.message}) : ${fin(`${r.stderr ?? ''}${r.stdout ?? ''}`.trim())}`);
+      throw new ErreurFabrication(nom, messageDEchec(nom, r));
     }
   };
 

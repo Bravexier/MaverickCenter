@@ -33,6 +33,7 @@ INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/fiche-experience-n
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/fiche-inventaire-sac-a-dos', 0, 'Inventaire/Sac à dos', 'inventaire-sac-a-dos');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/fiche-inventaire-sac-a-dos', 1, 'Fiche de personnage : Inventaire/Sac à dos', 'fiche-de-personnage-inventaire-sac-a-dos');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/fiche-inventaire-sac-a-dos', 2, 'Inventaire et Ceinture', 'inventaire-et-ceinture');
+INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/fiche-inventaire-sac-a-dos', 3, 'Accessoires, Inventaire et Ceinture', 'accessoires-inventaire-et-ceinture');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/fiche-maitrise-darme-et-armes', 0, 'Maîtrise d’arme', 'maitrise-darme');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/fiche-maitrise-darme-et-armes', 1, 'Fiche de personnage : Maîtrise d’arme et Armes', 'fiche-de-personnage-maitrise-darme-et-armes');
 INSERT INTO alias (page_id, ordre, texte, cle) VALUES ('guide/fiche-maitrise-darme-et-armes', 2, 'Maîtrise d’arme et Armes', 'maitrise-darme-et-armes');

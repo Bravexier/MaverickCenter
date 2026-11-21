@@ -15,21 +15,29 @@ import { FUSIONS_DE_MIGRATION } from '../serveur/edition.mjs';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
+import { registreDeMigration } from './aide-registres-sortis.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
 import { idDuMotCleNomme } from './aide-mots-cles.mjs';
 import { citations, ecritParLeSite } from './aide-page-retiree.mjs';
+import { testRetireAvecLesMixtes } from './aide-sortie-du-contenu.mjs';
+
+// Les tests qui éprouvent la migration mixte elle-même sortent avec elle (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LES_MIXTES).
+const testDeLaMixte = testRetireAvecLesMixtes(import.meta.url);
 
 const MIGRATION = '0122-retrait-la-montee-de-niveau';
 const lire = (chemin) => readFileSync(new URL(`../../${chemin}`, import.meta.url), 'utf8');
-const SQL = lire(`data/migrations/${MIGRATION}.sql`);
-const REGISTRE = JSON.parse(lire(`data/migrations/${MIGRATION}.json`));
+// Le SQL et le registre sortent avec les migrations mixtes : le SQL se lit à la demande (tests retirés avec elles, RETIRES_AVEC_LES_MIXTES) ; du
+// registre, les tests d'invariants ne lisent que des ids et des balises, gardés dans test/fixtures/registres-sortis.json (aide-registres-sortis.mjs).
+const sqlDeLaMigration = () => lire(`data/migrations/${MIGRATION}.sql`);
+const REGISTRE = registreDeMigration(MIGRATION);
 const RETIREE = 'guide/la-montee-de-niveau';
 const GARDEE = 'guide/fiche-experience-niveau-global';
 const OUVERTURE = 'guide/equipement-et-butin';
 const db = ouvrirBase({ sansExemples: false });
 const h = historiqueSite(db);
 
-test('0122 : le registre, la migration et FUSIONS_DE_MIGRATION disent la même page, les mêmes valeurs, la même fusion', () => {
+testDeLaMixte('0122 : le registre, la migration et FUSIONS_DE_MIGRATION disent la même page, les mêmes valeurs, la même fusion', () => {
+  const SQL = sqlDeLaMigration();
   assert.equal(REGISTRE.migration, MIGRATION);
   assert.deepEqual([REGISTRE.page_retiree, REGISTRE.page_gardee], [RETIREE, GARDEE]);
   assert.deepEqual(REGISTRE.valeurs.map((v) => [v.table, v.colonne]), [['regles_onglet', 'ouverture_page_id'], ['regle_constante', 'page_id']]);
@@ -102,7 +110,7 @@ test('0122 : « La montée de niveau » fondu dans la cible, qui mène à la pag
   assert.deepEqual(citations(db, `{{${fusion.source}`, ecritParLeSite(h)), [], 'balise (aujourd’hui)');
 });
 
-test('0122 : la garde arrête la migration rejouée sur son propre résultat, sans rien écrire', (t) => {
+testDeLaMixte('0122 : la garde arrête la migration rejouée sur son propre résultat, sans rien écrire', (t) => {
   const chemin = fichierTemporaire('maverick.db', 'migration-0122', { t });
   copyFileSync(cheminBase({ sansExemples: false }), chemin);
   const base = new DatabaseSync(chemin);
@@ -110,7 +118,7 @@ test('0122 : la garde arrête la migration rejouée sur son propre résultat, sa
   const etat = () => base.prepare("SELECT (SELECT ouverture_page_id FROM regles_onglet WHERE id = 'exploration') AS o, (SELECT count(*) FROM page) AS p, (SELECT count(*) FROM mot_cle) AS m").get();
   const avant = { ...etat() };
   base.exec('BEGIN');
-  assert.throws(() => base.exec(SQL), /CHECK constraint failed/);
+  assert.throws(() => base.exec(sqlDeLaMigration()), /CHECK constraint failed/);
   base.exec('ROLLBACK');
   assert.deepEqual({ ...etat() }, avant);
 });

@@ -15,7 +15,7 @@
 // Les outils communs du service (refus, synchroniser…) sont donnés par serveur/edition.mjs (domainesDesComposants), sans import en retour.
 import { convertisseurDeMonnaie, PRIX_DE_GEMME, prixDeGemmeEnRf, prixEnRf } from '../src/lib/composants-champs.mjs';
 import {
-  CATEGORIES_D_INGREDIENTS, corpsDuComposantApres, ErreurCorpsComposants, PAGE_DE_L_INVENTAIRE, PAGE_DES_ARMURES, PAGE_DES_BATONS, PAGE_DES_INGREDIENTS,
+  CATEGORIES_D_INGREDIENTS, corpsDeLaPageDesComposantsEntier, corpsDuComposantApres, ErreurCorpsComposants, PAGE_DE_L_INVENTAIRE, PAGE_DES_ARMURES, PAGE_DES_BATONS, PAGE_DES_INGREDIENTS,
   pagesDuComposant, sectionDeLInventaire, SECTIONS_DE_L_INVENTAIRE,
 } from '../src/lib/corps-composants.mjs';
 import { citationsDeRessource } from '../src/lib/composants-db.mjs';
@@ -35,6 +35,25 @@ export const contexteDuCorpsDesComposants = (db) => ({
   monnaies: () => db.prepare('SELECT * FROM monnaie').all(),
   ressource: (id) => db.prepare('SELECT * FROM ressource WHERE id = ?').get(id) ?? null,
 });
+
+/**
+ * L'état des tables que le corps ENTIER des pages des composants écrit (lib/corps-composants.mjs#corpsDeLaPageDesComposantsEntier), lu dans la base :
+ * « Tout recalculer » (serveur/edition-lots.mjs) refait ainsi « Équipement inventaire » et « Liste d'ingrédients » quand une ligne n'y est plus écrite comme le
+ * code la rend. Les matériaux, gemmes et bois (que le site crée sans ligne dans les pages de l'armurerie, des bâtons et des accessoires) n'y sont pas.
+ * @param {import('node:sqlite').DatabaseSync} db
+ */
+export function etatDuCorpsDesComposants(db) {
+  const genres = SECTIONS_DE_L_INVENTAIRE.map((s) => `(r.genre = '${s.genre}' AND r.section = '${s.section}')`).join(' OR ');
+  return {
+    monnaies: db.prepare('SELECT * FROM monnaie').all(),
+    objets: db.prepare(`SELECT r.* FROM ressource r WHERE ${genres} ORDER BY r.ordre, r.rowid`).all(),
+    ingredients: db.prepare(`SELECT r.nom, i.categorie, i.type_brut, i.affinite_brut FROM ingredient_alchimie i JOIN ressource r ON r.id = i.ressource_id
+      ORDER BY r.ordre, r.rowid`).all(),
+  };
+}
+
+/** Le corps entier de la page refait depuis les tables (ErreurCorpsComposants si le corps n'a plus la forme de l'importeur). */
+export const corpsEntierDeLaPageDesComposants = (db, pageId, corps) => corpsDeLaPageDesComposantsEntier(pageId, corps, etatDuCorpsDesComposants(db));
 
 /**
  * Un composant de la page : un matériau, une gemme, un bois, un ingrédient d'alchimie ou un objet de l'onglet « Équipement inventaire » (pas les potions,

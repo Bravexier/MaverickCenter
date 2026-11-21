@@ -14,9 +14,16 @@ import { DOSSIER_DES_ESSAIS } from '../serveur/essai-de-structure.mjs';
 import { demarrerService } from '../serveur/service.mjs';
 import { lireLesMigrations } from '../serveur/structure-sur-place.mjs';
 import { cheminDImport } from './aide-base-d-import.mjs';
-import { NUMERO, RACINE, baseDesRegles, baseRemplie, etatDuFichier, nouveauDossier, schemaDuDepot } from './aide-structure-sur-place.mjs';
+import { LIVRAISON, NUMERO, baseDesRegles, baseRemplie, etatDuFichier, nouveauDossier, schemaDuDepot } from './aide-structure-sur-place.mjs';
 
 const JSON_ = { 'content-type': 'application/json' };
+/**
+ * La version livrée (la dernière migration de la livraison des tests, test/aide-structure-sur-place.mjs#LIVRAISON : celle du dépôt, ou au-dessus du plancher
+ * quand les migrations mixtes sont sorties) et les migrations que la base d'avant reçoit : celle qui crée `migration_recue` et les suivantes.
+ */
+const LIVREES = lireLesMigrations({ ...LIVRAISON, schema: false }).migrations;
+const V = LIVREES.at(-1).numero;
+const APPLIQUEES = LIVREES.filter((m) => m.numero >= NUMERO).map((m) => m.numero);
 const marquer = (dossier) => writeFileSync(join(dossier, FICHIER_SOURCE), 'format=maverick-source/1\n');
 const fichiers = (dossier) => (existsSync(dossier) ? readdirSync(dossier) : []);
 const compter = (chemin, table) => {
@@ -36,8 +43,8 @@ const versionDe = (chemin) => {
   }
 };
 
-/** Démarre le service du site de dev sur `dossier` ; `lignes` reçoit le journal. Rend { service, lignes } ou rejette (le service ne démarre pas). */
-async function demarrer(dossier, { regles = baseDesRegles(), intervalle = 0, structure = {}, lignes = [] } = {}) {
+/** Démarre le service du site de dev sur `dossier` (la livraison des tests, sauf `structure`) ; `lignes` reçoit le journal. Rend { service, lignes } ou rejette (le service ne démarre pas). */
+async function demarrer(dossier, { regles = baseDesRegles(), intervalle = 0, structure = { ...LIVRAISON }, lignes = [] } = {}) {
   const service = await demarrerService({
     regles, dossier, port: 0, intervalle, edition: true, metriques: false, tipeee: false, atelier: false, attestation: false,
     essaiDeStructure: { intervalle: 0 }, journal: (m) => lignes.push(String(m)), structure,
@@ -54,12 +61,12 @@ async function attendre(condition, quoi) {
   assert.fail(`délai dépassé : ${quoi}`);
 }
 
-/** Des migrations livrées d'essai : celles du dépôt, plus `en_plus` ({ nom → SQL }) ; et un schema.sql (celui du dépôt, à la version `version`, plus `ajout`). */
-function livraisonDEssai(t, { en_plus = {}, version = NUMERO, ajout = '' } = {}) {
+/** Des migrations livrées d'essai : celles de la livraison des tests, plus `en_plus` ({ nom → SQL }) ; et un schema.sql (celui du dépôt, à la version `version`, plus `ajout`). */
+function livraisonDEssai(t, { en_plus = {}, version = V, ajout = '' } = {}) {
   const d = nouveauDossier('livraison', t);
   const migrations = join(d, 'migrations');
   mkdirSync(migrations);
-  for (const m of lireLesMigrations({ schema: false }).migrations) copyFileSync(join(RACINE, 'data', 'migrations', m.fichier), join(migrations, m.fichier));
+  for (const m of LIVREES) copyFileSync(join(LIVRAISON.migrations, m.fichier), join(migrations, m.fichier));
   for (const [nom, sql] of Object.entries(en_plus)) writeFileSync(join(migrations, nom), sql);
   const schema = join(d, 'schema.sql');
   writeFileSync(schema, `${schemaDuDepot().replace(/^PRAGMA user_version\s*=\s*\d+;/m, `PRAGMA user_version = ${version};`)}${ajout}`);
@@ -103,7 +110,7 @@ test('marqueur, base d’une version d’avant et remplie : migrations essayées
   const lignes = [];
   const { service } = await demarrer(dossier, { lignes });
   try {
-    assert.equal(versionDe(vivante), NUMERO, 'la base est à la version livrée');
+    assert.equal(versionDe(vivante), V, 'la base est à la version livrée');
     assert.equal(compter(vivante, 'personnage'), fiches, 'les fiches sont restées');
     const db = new DatabaseSync(vivante, { readOnly: true });
     try {
@@ -118,18 +125,18 @@ test('marqueur, base d’une version d’avant et remplie : migrations essayées
     assert.equal(fichiers(dossier).filter((f) => /^vivante-/.test(f)).length, 0);
     const enregistre = lireEtat(dossier);
     assert.equal(enregistre.source, true);
-    assert.deepEqual(enregistre.sur_place.migrations.map((m) => m.numero), [NUMERO]);
+    assert.deepEqual(enregistre.sur_place.migrations.map((m) => m.numero), APPLIQUEES);
     assert.equal(enregistre.sur_place.sauvegarde, sauvegardes[0]);
     const e = await etatHttp(service);
     assert.equal(e.base.disponible, true);
     assert.equal(e.base.source, true);
-    assert.equal(e.base.sur_place.apres, NUMERO);
+    assert.equal(e.base.sur_place.apres, V);
     assert.equal(e.base.refaite_le ?? null, null, 'la base n’a jamais été refaite');
     const debug = await (await fetch(`${service.url}/api/debug/structure/`)).json();
     assert.equal(debug.base_source.source, true);
-    assert.deepEqual(debug.base_source.sur_place.migrations.map((m) => m.numero), [NUMERO]);
+    assert.deepEqual(debug.base_source.sur_place.migrations.map((m) => m.numero), APPLIQUEES);
     assert.equal(debug.ombre, null, 'pas d’essai dans l’ombre pour une base source');
-    assert.ok(lignes.some((l) => l.includes(`structure : base source migrée sur place, version ${NUMERO - 1} → ${NUMERO}`)), lignes.join('\n'));
+    assert.ok(lignes.some((l) => l.includes(`structure : base source migrée sur place, version ${NUMERO - 1} → ${V}`)), lignes.join('\n'));
   } finally {
     await service.arreter();
   }
@@ -173,7 +180,7 @@ test('marqueur : une migration que l’essai refuse arrête le service avant tou
   copyFileSync(remplie, vivante);
   marquer(dossier);
   const avant = etatDuFichier(vivante);
-  const structure = livraisonDEssai(t, { en_plus: { [`${String(NUMERO + 1).padStart(4, '0')}-cassee.sql`]: 'INSERT INTO table_qui_n_existe_pas VALUES (1);\n' }, version: NUMERO + 1 });
+  const structure = livraisonDEssai(t, { en_plus: { [`${String(V + 1).padStart(4, '0')}-cassee.sql`]: 'INSERT INTO table_qui_n_existe_pas VALUES (1);\n' }, version: V + 1 });
   const lignes = [];
   await assert.rejects(demarrer(dossier, { structure, lignes }), (e) => e.name === 'ErreurBaseSource' && e.etape === 'essai');
   assert.deepEqual(etatDuFichier(vivante), avant, 'la base est intacte');
@@ -193,9 +200,9 @@ test('marqueur : une structure qui n’est pas celle du schema.sql livré arrêt
   await assert.rejects(demarrer(dossier, { structure }), (e) => e.etape === 'schema' && e.details.some((d) => /essai_en_trop/.test(d)));
   assert.deepEqual(etatDuFichier(vivante), avant);
   // et une base plus récente que la livraison (une publication plus ancienne installée) : refusée de même
-  const ancienne = livraisonDEssai(t, { version: NUMERO });
+  const ancienne = livraisonDEssai(t, { version: V });
   rmSync(join(ancienne.migrations, readdirSync(ancienne.migrations).sort().at(-1)));
-  writeFileSync(ancienne.schema, schemaDuDepot().replace(/^PRAGMA user_version\s*=\s*\d+;/m, `PRAGMA user_version = ${NUMERO - 1};`));
+  writeFileSync(ancienne.schema, schemaDuDepot().replace(/^PRAGMA user_version\s*=\s*\d+;/m, `PRAGMA user_version = ${V - 1};`));
   assert.throws(() => preparerBaseSource({ dossier, migrations: ancienne.migrations, schema: ancienne.schema }), (e) => e.etape === 'schema' && e.details.some((d) => /user_version/.test(d)));
   assert.deepEqual(etatDuFichier(vivante), avant);
 });

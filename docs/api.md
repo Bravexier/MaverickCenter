@@ -33,7 +33,7 @@ externes ; la page **Debug** du site de dev (menu Outils) n'a plus de testeur de
   passe posé sur le site de dev (commande `acces.sh` de l'hôte ; rien ne change tant qu'il ne l'est pas), chaque route est classée : **toute écriture
   d'`/api/v1/`** (`POST`, `PATCH`, `DELETE`) demande la **session du mot de passe** (`POST /api/acces/`, cookie `maverick_acces`), et **toute lecture
   d'`/api/v1/`** (catalogue, description OpenAPI comprises) demande **la clé de lecture** (en-tête `X-Maverick-Cle: mvk_…` ou `X-Maverick-Key: mvk_…`, jamais dans l'adresse) **ou** la
-  session. La clé de lecture ne permet jamais d'écrire. Un refus est un `401` `{ erreur, acces }` : `acces: "cle"` (clé ou mot de passe) pour une lecture,
+  session. La clé de lecture ne permet jamais d'écrire dans le contenu (une **clé de dépôt** facultative, `mvd_…`, mêmes en-têtes, lit comme elle et dépose un lot appliqué aussitôt, R291 ; `serveur.md`, « Accès au site de dev »). Un refus est un `401` `{ erreur, acces }` : `acces: "cle"` (clé ou mot de passe) pour une lecture,
   `"mot_de_passe"` pour une écriture.
 - **Pas de comptes** : quiconque a le mot de passe du site de dev lit et écrit (le lot n'a pas d'auteur). Les écritures exigent
   `Content-Type: application/json` (`415` sinon, `DELETE` compris) et refusent une requête qu'un navigateur dit venir d'un autre site
@@ -66,7 +66,7 @@ Toutes finissent par « / », comme celles du site (en développement, Astro ref
 | `GET` | `/api/debug/structure/` | Le dernier essai d'une livraison sur une copie de la base vivante, avant son installation, et le dernier essai dans l'ombre : `{ format, en_cours, en_attente, dernier, ombre }` (plus bas) |
 | `GET` | `/api/debug/atelier/` | L'**atelier du site de dev** (`docs/serveur.md`, « Atelier du site de dev ») : `{ format: 'maverick-atelier-etat/1', etat, message, version_installee, kit, installe, extrait, en_cours, dernier, historique, bilan, resume }`, forme décrite dans `client/src/lib/debug-atelier.mjs` ; `bilan` : le bilan des dernières 24 h (`maverick-atelier-bilan/1`, `client/src/lib/atelier-bilan.mjs`). `etat` : `pas_d_atelier`, `non_installe`, `en_attente`, `en_cours` ou `rapport`. Les rapports que root écrit sont lus en lecture seule, bornés et validés. `Cache-Control: no-store` ; 503 sans atelier, 403 en production. |
 | `GET` | `/api/edition/extrait/`, `/api/edition/extrait/meta/` | L'extrait du contenu du site (un fichier SQLite neuf : règles, notes de version, historique avec les modifications en attente ; ni fiche, ni compte, ni journal) et son méta (date, empreinte de chaque table) : `npm run db:extrait`, [`serveur.md`](serveur.md#extrait-du-contenu-et-attestation-de-la-production) |
-| `GET`, `POST` | `/api/edition/lots/`, `/api/edition/lots/<id>/`, `…/<id>/essai/`, `…/<id>/appliquer/`, `…/<id>/refuser/`, `…/<id>/annuler/`, `GET …/<id>/annulation/`, `POST /api/edition/lots/recalcul/` | Les lots de changements (R274, R275) : une session dépose une proposition avec la clé de lecture (rien n'est écrit dans le contenu), le propriétaire l'applique, la refuse ou l'annule (mot de passe) ; l'aperçu de l'annulation se lit avec la clé ; « tout recalculer » dépose un lot de nature `code` ; [`serveur.md`](serveur.md), « Lots de changements (service) » |
+| `GET`, `POST` | `/api/edition/lots/`, `/api/edition/lots/<id>/`, `…/<id>/essai/`, `…/<id>/appliquer/`, `…/<id>/refuser/`, `…/<id>/annuler/`, `GET …/<id>/annulation/`, `GET …/<id>/lignes/<n>/annulation/`, `POST …/<id>/lignes/<n>/annuler/`, `POST /api/edition/lots/recalcul/` | Les lots de changements (R274, R275, R291) : tant que la clé de dépôt n'est pas posée, une session dépose une proposition avec la clé de lecture (rien n'est écrit dans le contenu) que le propriétaire applique, refuse ou annule (mot de passe) ; **clé de dépôt posée** : la clé de dépôt (ou le mot de passe) dépose un lot appliqué aussitôt (`409` avec `motifs` si l'essai le refuse : le lot est « refuse », rien n'est écrit), la clé de lecture est refusée (`403`) ; le propriétaire annule le lot ou **une seule ligne** (mot de passe) ; l'aperçu de l'annulation du lot se lit avec la clé ; « tout recalculer » dépose un lot de nature `code` ; [`serveur.md`](serveur.md), « Lots de changements (service) » |
 | `POST` | `/api/metriques/page/` | La balise des pages vues (mesures du navigateur) : **les deux instances**, hors `/api/v1/` (plus bas) |
 | `GET`, `POST`, `DELETE` | `/api/acces/` | L'accès au site de dev : où en est le visiteur (`protege`, `portee`, `connecte`, `droit`, `expire_le`), se connecter avec le mot de passe (cookie de session), se déconnecter ([`serveur.md`](serveur.md), « Accès au site de dev ») |
 | `GET` | `/api/acces/verifier/` | `204` si la requête a au moins la lecture (clé de lecture ou session), `401` sinon : pour le `forward_auth` d'un mandataire |
@@ -166,7 +166,7 @@ adaptées, jamais leurs noms ; le lot porte la page `api/v1/<ressource>[/<sous-r
 | `200` `201` | Lu, modifié, supprimé ; créé (`Location`) |
 | `304` | `If-None-Match` égal à la version (détail) |
 | `400` | Corps illisible ou qui n'est pas un objet JSON, rien à modifier, colonne ou paramètre inconnu, valeur refusée par le service d'édition (type, bornes, champ obligatoire, balise du glossaire qui ne cite aucun mot-clé : `refs`, ou un libellé de plusieurs homonymes : `refs`, `homonymes` ; synonyme d'un mot-clé mal écrit : `champ: "synonymes"`, lien ou couleur d'un mot-clé refusés : `champ: "url"`, `champ: "couleur"`, lien saisi qu'aucun mot-clé ne porte : `champ`, `liens`), `limite` hors bornes, `forcer` mal écrit ou hors d'un mot-clé (R223) |
-| `401` | Mot de passe posé sur le site de dev et ni clé de lecture ni session : `{ erreur, acces: "cle" \| "mot_de_passe" }` (`POST /api/acces/` : mot de passe faux) |
+| `401` | Mot de passe posé sur le site de dev et ni clé de lecture ni session : `{ erreur, acces: "cle" \| "mot_de_passe" \| "cle_de_depot" }` (`"cle_de_depot"` : un dépôt de lot, la clé de dépôt posée ; `POST /api/acces/` : mot de passe faux). `403` `{ erreur, acces: "cle_de_depot" }` : la clé de lecture ne dépose plus une fois la clé de dépôt posée |
 | `403` | Hors du site de dev (tout `/api/v1/`) ; écriture qui vient d'un autre site (`Sec-Fetch-Site`) |
 | `404` | Ressource, sous-ressource ou ligne inconnue (ou hors de la ressource) ; extension absente au `PATCH` |
 | `405` | Méthode que la ressource n'a pas : `Allow` donne la liste exacte, le corps la raison (lecture seule ; ni le service d'édition ni une opération du lot ne le font, et par quelles méthodes la ressource s'écrit) et les `capacites` |
@@ -175,7 +175,7 @@ adaptées, jamais leurs noms ; le lot porte la page `api/v1/<ressource>[/<sous-r
 | `429` | `POST /api/acces/` : trop d'essais de mot de passe ratés (`attente_s`) |
 | `415` | Écriture sans `Content-Type: application/json` |
 | `422` | Refusé par la base (contrainte CHECK, UNIQUE, NOT NULL, clé étrangère) ou valeur que les importeurs ne sauraient pas relire ; une gemme ou un bois du Potentiel Illimité (`POST /api/v1/gemmes/`, `POST /api/v1/bois/`) : « Le Potentiel Illimité n’a ni gemme, ni bois, ni bâton magique, ni pièce élémentaire (décision R160). » |
-| `503` | Base vivante indisponible (`/api/etat/` dit pourquoi) |
+| `503` | Base vivante indisponible (`/api/etat/` dit pourquoi) ; ou **écritures gelées** (`db/gel.json`, posé par root : `{ erreur, gel: { pose_le, jusqu_a, motif, geste, illisible, plafonne } }`, `Retry-After`) : toute écriture de `/api/` est refusée jusqu'à l'échéance, les lectures restent ouvertes, `gel` de `GET /api/etat/` dit la même chose (`docs/serveur.md`, « Bascule 2 : préparation ») |
 
 Une erreur est toujours `{ "erreur": "<message en français>", … }`, avec les détails utiles (`methodes`, `element`, `version`…).
 
@@ -592,6 +592,15 @@ que `lib/debug-schema.mjs`, pur : mise en page, liens, caméra, recherche, rendu
 `serveur/metriques.mjs` (collecte, base des métriques, lectures), `serveur/metriques-sql.mjs` (requêtes SQL comptées pendant une requête HTTP) et
 `serveur/debug-tables.mjs` (contenu des tables, version de la base).
 
+### « Le bouton » de l'atelier (`POST /api/edition/atelier/`)
+
+Site de dev seulement (403 en production), sans corps, **classe d'accès `ecriture`** : le mot de passe (`serveur/acces-routes.mjs`). Il fait refaire **tout de suite** l'extrait du contenu de l'atelier, sans attendre les 10 minutes de calme qui suivent les saisies (`serveur/atelier.mjs#refaireMaintenant`). C'est tout ce que fait le service : il ne commande aucun programme de root (garde-fou 20). Root le voit à sa ronde (le minuteur `maverick-atelier-contenu.timer`, toutes les 10 minutes, compare le `stat` de l'extrait à celui du dernier site posé) et, **si l'interrupteur `atelier/servir` est posé**, fabrique et pose le site (`docs/serveur.md`, « Bascule 2 : préparation », PR 3b). Aucune page ne l'appelle encore.
+- `200` `{ format: 'maverick-atelier-refaire/1', etat: 'fabrique' | 'a_jour', message, version, fabrique_le }` : `fabrique` (l'extrait vient d'être refait), `a_jour` (l'extrait suit déjà le contenu : rien à refaire) ;
+- `409` `{ …, etat: 'occupe' }` (une fabrication de l'extrait est déjà en cours : réessayer) ou `etat: 'inactif'` (atelier non installé, base ou version pas prête) ;
+- `500` `{ erreur }` : l'extrait n'a pas pu être refait (le journal du service dit pourquoi) ; `503` : pas d'atelier sur ce service ; `405` hors `POST` ; `404` pour une adresse plus longue.
+
+Le rapport de l'atelier (`GET /api/debug/atelier/`) porte en plus : `servir` (`{ depuis, pages_minimum_pct }` ou `null` : l'interrupteur), `dernier.servi` (`{ pose, motif, code_sortie, version_installee, version_de_l_instance, pages_minimum_pct, resume }` ou `null` : le site fabriqué a-t-il été posé), l'origine `contenu` d'une fabrication, `historique[].servi` (`true`, `false` ou `null`) et `bilan.depuis` (le bilan ne compte que les rapports qui suivent le dernier geste du propriétaire).
+
 ### Contenu des tables
 
 Site de dev seulement : ailleurs, `403` avant tout le reste — **seule la base du serveur de production reste fermée** (décision du propriétaire du
@@ -705,6 +714,67 @@ plus lents — ceux qu'on abandonne — comptent), une mesure d'environ 150 octe
 `DOMContentLoaded`, chargement complet et LCP. Présente dans **tous** les builds,
 production comprise, sauf la version portable, `/maintenance/` et `SITE_METRIQUES_PAGES=0` au build (l'interrupteur côté site ; côté service :
 `MAVERICK_METRIQUES_PAGES=0`).
+
+## Page Mise à jour : l'activation de la production (`activation_production`)
+
+`GET /api/mise-a-jour/` (site de dev, accès comme le reste de la page) porte, **seulement avec le marqueur `db/bascule-2`** (lot 11, PR 5a ; sans lui ce champ n'existe pas : le même rapport se lit alors dans
+`bascule_2.activation`, voir plus bas), le champ `activation_production` : le dernier rapport de `activer.sh`, le script que la production lance en root pour activer un kit avec son
+paquet (`docs/serveur.md`, « Bascule 2 : préparation », « PR 5a »). Le service du site de dev le lit dans le dossier partagé des paquets
+(`MAVERICK_PAQUETS`, `paquets/activation.json` : un fichier ordinaire, jamais un lien, 16 Kio au plus), le valide champ par champ (liste blanche, jamais un champ inconnu) et le rend
+tel quel ; **`null`** quand aucun rapport n'existe ou qu'il est illisible, trop gros ou mal formé. Aucun nom de fiche n'y passe : des états, des versions, des comptes.
+
+```json
+{
+  "etat": "passee",
+  "le": "2026-11-20T10:00:00Z",
+  "version": "0.6", "depuis": "0.5", "lot": "5a5a5a5a-0000-4000-8000-000000000001", "mode": "paquet",
+  "raisons": [], "pages": 1792, "duree_s": 43, "gel_leve": true,
+  "phrase": "La production est passée à la V0.6 (kit V0.5.27) : 1792 pages, service en bonne santé, gel levé. …",
+  "geste": null, "perime": false
+}
+```
+
+- `etat` : `en_cours` (la bascule courte est commencée ; `perime: true` au-delà de 2 h : `activer.sh` a été interrompu, `--reprendre` remet le site précédent), `passee`, `refusee`
+  (rien n'a changé : la raison et le geste sont dits), `retour_automatique` (la bascule a échoué, le site précédent est reposé, le gel levé, la base gardée), `retour_incomplet`
+  (le retour automatique n'a pas tout remis : intervention du propriétaire, le geste est dit).
+- `raisons` : des mots de `RAISONS_DE_L_ACTIVATION` (`serveur/paquets-de-la-production.mjs`) : `kit_sans_paquet`, `empreinte`, `structure`, `note_manquante`, `version_en_arriere` (le
+  garde-fou 17), `paquet_absent`, `paquet_irregulier`, `paquet_trop_gros`, `correctif_sans_paquet`, `contenu`, `fiches`, `controles`, `memoire`, `disque`, `verrou`, `fabrication`,
+  `bascule`, `sante`, `interrompue`.
+- `phrase` (400 caractères au plus) dit les chiffres, `geste` (240 au plus ou `null`) la commande exacte ; `mode` : `paquet` ou `correctif` ; `version` et `depuis` : « X.Y » de
+  la production après et avant ; `pages` : le nombre de pages fabriquées ; `duree_s` : la durée du script ; `gel_leve` : le gel des écritures de la production est levé.
+- La page (section « Activation » `[data-nv-bascule-2]`, `lib/notes-de-version-rendu.mjs#affichageDeLaBascule2`) lit `bascule_2` (ci-dessous), qui porte ce même rapport. Test : `serveur-paquets-de-la-production`, `serveur-bascule-2`.
+
+## Page Mise à jour : l'état de la bascule 2 (`bascule_2`)
+
+`GET /api/mise-a-jour/` (site de dev, accès comme le reste de la page) porte **toujours** `bascule_2` (lecture seule, même sans le marqueur `db/bascule-2` ; absent en production,
+où la route est refusée) : où en sont les cinq interrupteurs de la bascule 2 et le dernier résultat d'activation. Aucun secret, aucun chemin du serveur : des états, des dates,
+des mots d'une liste fermée. Le rapport d'activation n'est lu qu'une fois par réponse et sert aussi à `activation_production` (inchangé : seulement avec le marqueur).
+
+```json
+{
+  "interrupteurs": {
+    "gel_des_fusions": { "etat": false, "raison": null, "phrase": null, "lu_le": "2026-11-19T10:00:00.000Z" },
+    "actif":           { "etat": null, "raison": "pas_encore_lu", "phrase": "…", "lu_le": null },
+    "db_bascule_2":    { "etat": true, "raison": null, "phrase": null },
+    "atelier_servir":  { "etat": true, "raison": null, "phrase": null, "depuis": "2026-11-18T08:00:00Z" },
+    "activation_par_paquet": { "etat": true, "raison": null, "phrase": null, "vu_le": "2026-11-20T10:00:00Z" }
+  },
+  "activation": null
+}
+```
+
+- Chaque interrupteur : `etat` vaut `true` (allumé), `false` (éteint) ou `null` (**inconnu** : jamais deviné), avec alors `raison` (un mot de `PHRASES_DES_RAISONS`, `serveur/bascule-2-etat.mjs`) et `phrase` (courte).
+- `gel_des_fusions` et `actif` : les deux clés de `tools/flux-git/bascule-2.json` sur la branche `dev` de GitHub (la règle des lecteurs de la CI : clé absente = éteinte). Le service lit le
+  fichier par l'API de GitHub (`GET /contents`, jeton du service) **en arrière-plan** ; la réponse n'attend jamais GitHub : valeur en cache (`lu_le`, valable 5 min, relue au plus tôt
+  1 min après un échec), sinon `pas_encore_lu`. Inconnu : `sans_jeton`, `jeton_refuse`, `droit_manquant` (403), `fichier_introuvable` (404 : fichier absent ou dépôt illisible avec ce
+  jeton), `github_injoignable`, `fichier_illisible`, `valeur_illisible` (la clé n'est ni `true` ni `false`), `github_absent`.
+- `db_bascule_2` : le marqueur `db/bascule-2` (avec la base source) ; toujours `true` ou `false`.
+- `atelier_servir` : `servir.json` des rapports de l'atelier (écrit par root avec l'interrupteur `<atelier>/servir`, retiré avec lui) : `true` et `depuis`, `false` (rapports montés, pas de
+  `servir.json`), `null` : `atelier_non_installe` (rapports non montés) ou `rapport_illisible`. Rien d'autre de l'état de l'atelier n'est lu.
+- `activation_par_paquet` : le fichier `<production>/activation-par-paquet`, que le site de dev ne voit pas. `activer.sh` refuse sans lui avant d'écrire un rapport : un rapport dit que
+  l'interrupteur **existait à son heure** (`etat: true`, `vu_le` = `activation.le`, quel que soit son état, refus compris). Jamais `false` : sans rapport, `null` (`aucune_activation`, ou `pas_de_dossier_des_paquets`).
+- `activation` : le dernier rapport (même forme que `activation_production`), `null` sans rapport ; lu même sans le marqueur dès que le dossier des paquets (`MAVERICK_PAQUETS`) est monté.
+- Test : `serveur-bascule-2-etat`.
 
 ## Tests
 

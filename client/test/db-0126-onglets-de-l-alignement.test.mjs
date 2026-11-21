@@ -18,11 +18,21 @@ import { morceauxDuChapitre } from '../src/lib/guide.mjs';
 import { MARQUE_D_OUVERTURE, MARQUE_DE_FERMETURE, NIVEAU_DES_ONGLETS } from '../src/lib/onglets-groupe.mjs';
 import { fauteDeLaCouleur, idDeCouleur } from '../src/lib/palette-css.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
+import { registreDeMigration } from './aide-registres-sortis.mjs';
 import { rendreCommeLeGuide } from './aide-rendu-du-site.mjs';
+import { testRetireAvecLesMixtes } from './aide-sortie-du-contenu.mjs';
 
-const registre = JSON.parse(readFileSync(new URL('../../data/migrations/0126-onglets-de-l-alignement.json', import.meta.url), 'utf8'));
-const migration = readFileSync(new URL('../../data/migrations/0126-onglets-de-l-alignement.sql', import.meta.url), 'utf8');
-const registre0123 = JSON.parse(readFileSync(new URL('../../data/migrations/0123-fusion-pages-alignement.json', import.meta.url), 'utf8'));
+// Les tests qui éprouvent la migration mixte elle-même sortent avec elle (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LES_MIXTES).
+const testDeLaMixte = testRetireAvecLesMixtes(import.meta.url);
+
+// Le registre et le SQL de la 0126 sortent avec les migrations mixtes, et les tests qui les lisent avec eux (RETIRES_AVEC_LES_MIXTES : ses fragments sont
+// du texte de règle) : lus à la demande. Du registre de la 0123, ce qu'en garde test/fixtures/registres-sortis.json (ids, libellés, ancre).
+let lus;
+const lire = () => (lus ??= {
+  registre: JSON.parse(readFileSync(new URL('../../data/migrations/0126-onglets-de-l-alignement.json', import.meta.url), 'utf8')),
+  migration: readFileSync(new URL('../../data/migrations/0126-onglets-de-l-alignement.sql', import.meta.url), 'utf8'),
+});
+const registre0123 = registreDeMigration('0123-fusion-pages-alignement');
 const PAGE = 'guide/alignement';
 const GRILLE = ALIGNEMENTS_EN_GRILLE.map(idDeCouleur);
 const dImport = baseDImport();
@@ -30,7 +40,7 @@ const courante = ouvrirBase();
 const corpsDe = (db) => db.prepare('SELECT corps_md FROM page WHERE id = ?').get(PAGE)?.corps_md;
 
 /** Le texte avec les fragments du registre remplacés, de leur écriture `de` ('avant' ou 'apres') à l'autre (`vers`). */
-const reecrit = (texte, de, vers) => registre.textes.reduce((t, f) => t.split(f[de]).join(f[vers]), texte);
+const reecrit = (texte, de, vers) => lire().registre.textes.reduce((t, f) => t.split(f[de]).join(f[vers]), texte);
 const marque = (ligne) => ligne.trim().replace(/[ \t]+/g, ' ');
 const estUneMarque = (ligne) => [MARQUE_D_OUVERTURE, MARQUE_DE_FERMETURE].includes(marque(ligne));
 
@@ -85,7 +95,8 @@ function lignesSansMarques(corps) {
   return compte;
 }
 
-test('0126 : le registre ne réécrit que le corps de la page, chaque fragment écrit en place et l’ancien absent (état de la migration)', () => {
+testDeLaMixte('0126 : le registre ne réécrit que le corps de la page, chaque fragment écrit en place et l’ancien absent (état de la migration)', () => {
+  const { registre, migration } = lire();
   const corps = corpsDe(dImport);
   assert.ok(corps, PAGE);
   assert.deepEqual(registre.decisions, ['R277']);
@@ -129,7 +140,7 @@ test('0126 (R277) : deux groupes d’onglets — les quatre tendances sans coule
   assert.ok(titreDesNeuf && titreDesNeuf.niveau === 2 && tendances.fin < titreDesNeuf.ligne && titreDesNeuf.ligne < neuf.debut);
 });
 
-test('0126 : aucun mot changé — chaque section garde ses lignes, et le texte entier les siennes hors des marques ajoutées', () => {
+testDeLaMixte('0126 : aucun mot changé — chaque section garde ses lignes, et le texte entier les siennes hors des marques ajoutées', () => {
   const apres = corpsDe(dImport);
   const avant = reecrit(apres, 'apres', 'avant');
   assert.equal(groupes(avant).length, 0, 'le texte d’avant n’avait pas de groupe');

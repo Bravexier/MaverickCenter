@@ -14,6 +14,10 @@ import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { rejouerLaMigration } from './aide-migration-rejouee.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
 import { horsDeLa0120, RACES_DE_LA_0120 } from './aide-races-0120.mjs';
+import { testRetireAvecLesMixtes } from './aide-sortie-du-contenu.mjs';
+
+// Les tests qui éprouvent la migration mixte elle-même sortent avec elle (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LES_MIXTES).
+const testDeLaMixte = testRetireAvecLesMixtes(import.meta.url);
 
 const MIGRATION = '0092-rang-des-races.sql';
 // L'ancienne constante du code (client/src/lib/race-kinds.mjs, ORDRE_DES_RACES, avant la migration 0092), figée ici : les races pures, puis les hybrides.
@@ -82,7 +86,7 @@ test('rang_liste : NULL accepté, deux rangs égaux acceptés (un réordonnancem
   assert.throws(() => ranger('races/humain', -3), /CHECK constraint failed/);
 });
 
-test('migration 0092 rejouée : les 27 races de la liste prennent leur place, une race créée sur le site avant elle reste à NULL (comme celles d’après)', (t) => {
+testDeLaMixte('migration 0092 rejouée : les 27 races de la liste prennent leur place, une race créée sur le site avant elle reste à NULL (comme celles d’après)', (t) => {
   const base = copie(t);
   base.exec('ALTER TABLE race DROP COLUMN rang_liste');
   // une race d'essai, absente de la liste (comme une race créée sur le site de dev) : sa page puis sa ligne, copiées de l'Humain

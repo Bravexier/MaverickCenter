@@ -5,7 +5,8 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { chargerBestiaire } from '../src/lib/bestiaire-db.mjs';
+import { chargerBestiaire, chargerInvocations } from '../src/lib/bestiaire-db.mjs';
+import { lienDuTypeDeDegats } from '../src/lib/mots-cles-des-valeurs.mjs';
 import { cheminDeMonstre } from '../src/lib/bestiaire-rendu.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { attributEd } from '../src/lib/edition-modele.mjs';
@@ -14,6 +15,7 @@ import { normalize } from '../src/lib/text.mjs';
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 import { ecartsDeLaDescription, tuilesDeCapacites } from './aide-bestiaire.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
+import { texteAffiche } from './aide-texte-affiche.mjs';
 
 const dist = fileURLToPath(new URL('../dist/', import.meta.url));
 const fichier = join(dist, 'bestiaire', 'index.html');
@@ -71,6 +73,30 @@ test('la description : dans l’en-tête de sa carte, sous ses tags, repliée ; 
     assert.deepEqual(ecartsDeLaDescription(bloc.slice(debut, bloc.indexOf('</article>', debut)), l, attributEd, vocabulaire), [], l.id);
   }
   assert.doesNotMatch(panneau('invoquees'), /bcarte__description/);
+});
+
+test('créatures invoquées : chaque attaque qui a un type le montre sous son texte (celui de la base, dans l’ordre), lié à son mot-clé du glossaire quand il en a un ; une attaque sans type, rien de plus', options, () => {
+  const { lignes, liens } = chargerInvocations(ouvrirBase({ sansExemples: process.env.HIDE_EXAMPLES === '1' }));
+  const bloc = panneau('invoquees');
+  const capitale = (t) => String(t).charAt(0).toUpperCase() + String(t).slice(1);
+  for (const l of lignes) {
+    const debut = bloc.indexOf(`<article class="bcarte" id="carte-${l.ancre}"`);
+    assert.ok(debut >= 0, l.id);
+    const carte = bloc.slice(debut, bloc.indexOf('</article>', debut));
+    const rubrique = /<dt>Dégâts<\/dt><dd>(.*?)<\/dd>/s.exec(carte)?.[1] ?? '';
+    const montres = [...rubrique.matchAll(/<span class="battaque__types">(.*?)<\/span><\/li>/g)].map((m) => m[1]);
+    const attendues = l.attaques.filter((a) => a.types.length);
+    assert.equal(montres.length, attendues.length, `${l.id} : un bloc de types par attaque qui en a un`);
+    attendues.forEach((a, i) => {
+      const texte = a.types.map((t) => lienDuTypeDeDegats(liens, t.type)?.texte ?? capitale(t.libelle ?? t.type)).join(' / ');
+      // le texte affiché, l'icône que le site de dev pose sur un mot-clé (R235) n'en ajoutant aucun
+      assert.equal(texteAffiche(montres[i]).trim(), `Type : ${texte}`, `${l.id} : les types de l’attaque ${a.nom}`);
+      for (const t of a.types) {
+        const lien = lienDuTypeDeDegats(liens, t.type);
+        if (lien) assert.ok(montres[i].includes(`data-mot-cle="${lien.cle}"`), `${l.id} : ${t.type} lié à son mot-clé`);
+      }
+    });
+  }
 });
 
 test('groupe d’espèces (décision R64, « Ottar ») : son nom dans la colonne Espèce de ses espèces et sous leur nom, un seul filtre ; la section de l’espèce cachée si elle est vide', options, () => {

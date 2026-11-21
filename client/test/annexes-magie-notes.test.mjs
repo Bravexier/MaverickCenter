@@ -20,6 +20,7 @@ import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { dossierDesExports } from '../../tools/sources/dossier-des-exports.mjs';
 import { instantanesDuRegistre, lireRegistre, rapprocher } from '../../tools/sources/rapprocher.mjs';
 import { ANCRE_FIGEE, ancreDuTitre } from '../src/lib/ancres-figees.mjs';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
@@ -28,7 +29,8 @@ import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const script = fileURLToPath(new URL('../../tools/sheets/annexes-magie.py', import.meta.url));
 const wikiGuide = fileURLToPath(new URL('../src/content/wiki/guide', import.meta.url));
-const classeurs = fileURLToPath(new URL('../../sources/raw/classeurs', import.meta.url));
+// Les instantanés des classeurs : le dossier des exports (sources/raw, ou MAVERICK_SOURCES_RAW : l'archive restaurée après le lot 12, R296).
+const classeurs = join(dossierDesExports(fileURLToPath(new URL('../..', import.meta.url))), 'classeurs');
 const python = spawnSync('python3', ['-I', '-c', 'pass']);
 const sansPython = python.status !== 0 && 'python3 absent';
 

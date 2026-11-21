@@ -3,7 +3,7 @@
 // gardé, un autre créé puis supprimé) et fige le lot comme la page Mise à jour ; rejoué par scripts/mise-a-jour-regles.mjs comme dans le job
 // preparer de mise-a-jour.yml, il ne change que les fichiers de ses tables et de la note. Quand data/rows porte déjà une note en attente de
 // livraison, aucun lot n'est écrit (un second lot serait refusé, code 7) ; test/aide-mise-a-jour.mjs en tire une copie sans elle, qui reprend un lot.
-// Chaque cas part d'une copie de data/rows sans note en attente : le test tient pendant une mise à jour comme hors mise à jour.
+// Chaque cas part d'une copie des lignes de départ (aide-base-de-depart : data/rows, ou l'export du contenu fourni) sans note en attente : le test tient pendant une mise à jour comme hors mise à jour.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
@@ -16,6 +16,7 @@ import { CONTROLES } from '../scripts/mise-a-jour-github.mjs';
 import { appliquerMiseAJour, ErreurMiseAJour, notesEnAttente, TABLES_DE_LA_NOTE, verifierLot } from '../scripts/mise-a-jour-regles.mjs';
 import { fabriquerLot, notesEnAttenteDans, PHRASE_DU_GUIDE, TEXTE_DE_LA_SIMULATION } from '../scripts/mise-a-jour-simulation.mjs';
 import { trierVersions } from '../src/lib/notes-de-version.mjs';
+import { rowsDeDepart as lignesDeDepart } from './aide-base-de-depart.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { copieSansNoteEnAttente, versionALaRevision, versionLibre } from './aide-mise-a-jour.mjs';
 
@@ -25,7 +26,7 @@ const VERSION_DEV = JSON.parse(readFileSync(new URL('../package.json', import.me
 const VERSION_HEAD = versionALaRevision('HEAD');
 const racine = dossierTemporaire('simulation');
 
-const copie = (nom) => copieSansNoteEnAttente(join(racine, nom), { versionProduction: VERSION_HEAD }).rows;
+const copie = (nom) => copieSansNoteEnAttente(join(racine, nom), { rows: lignesDeDepart(), versionProduction: VERSION_HEAD }).rows;
 /** La base reconstruite depuis des lignes (scripts/db-build.mjs), ouverte en lecture. */
 function baseDe(rows, nom) {
   const chemin = join(racine, `${nom}.db`);

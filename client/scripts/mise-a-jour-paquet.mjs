@@ -24,7 +24,7 @@ import { versionDeLivraison } from '../src/lib/notes-de-version.mjs';
 import { markdownDeLaNote } from '../src/lib/notes-de-version-rendu.mjs';
 import { identifiant, tablesDeLaBase } from '../serveur/empreintes.mjs';
 import { FORMAT_PAQUET, MODES_DU_PAQUET, lireMetaDuPaquet } from '../serveur/paquet.mjs';
-import { tablesDuLot } from './mise-a-jour-github.mjs';
+import { paquetAvecLesExemples, tablesDuLot } from './mise-a-jour-github.mjs';
 import { messageDeRefus } from '../src/lib/markdown-sur.mjs';
 import { textesAvantLeRejeu, texteNonSurApresLeRejeu } from './mise-a-jour-regles.mjs';
 import { colonneDerivee } from '../serveur/edition.mjs';
@@ -138,7 +138,16 @@ export function appliquerPaquet(chemin, { lot, mode, rows = join(RACINE, 'data',
 
   const tmp = mkdtempSync(join(tmpdir(), 'maverick-paquet-'));
   try {
-    const paquet = new DatabaseSync(chemin, { readOnly: true });
+    // le paquet de travail : une copie avec les pages d'exemple du dépôt quand il n'en a aucune (le site de dev n'a pas ces fixtures, data/rows les
+    // garde) ; le job livrer réexporte la même (mise-a-jour-github.mjs#paquetAvecLesExemples). Identiques à celles de data/rows, elles ne changent aucun
+    // fichier et n'excusent rien : une vraie page changée sans trace reste refusée.
+    const travail = join(tmp, 'paquet.db');
+    try {
+      paquetAvecLesExemples(chemin, travail);
+    } catch (e) {
+      throw new ErreurPaquet(2, `paquet : ${e.message}`);
+    }
+    const paquet = new DatabaseSync(travail, { readOnly: true });
     let note;
     let lignes = [];
     let historique;
@@ -178,7 +187,7 @@ export function appliquerPaquet(chemin, { lot, mode, rows = join(RACINE, 'data',
     // 4. data/rows tiré du paquet, dans une copie
     const copieDesLignes = join(tmp, 'rows');
     cpSync(rows, copieDesLignes, { recursive: true });
-    const exp = spawnSync('python3', ['-I', join(RACINE, 'tools', 'db', 'exporter.py'), chemin, '--rows', copieDesLignes], { encoding: 'utf8' });
+    const exp = spawnSync('python3', ['-I', join(RACINE, 'tools', 'db', 'exporter.py'), travail, '--rows', copieDesLignes], { encoding: 'utf8' });
     if (exp.status !== 0) throw new Error(`export refusé : ${exp.stderr || exp.stdout}`);
     const avant = lireDossier(rows);
     const apres = lireDossier(copieDesLignes);

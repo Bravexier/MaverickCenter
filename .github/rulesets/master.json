@@ -27,7 +27,10 @@
         "required_status_checks": [
           { "context": "client" },
           { "context": "character-service" },
-          { "context": "regles-de-branches" }
+          { "context": "regles-de-branches" },
+          { "context": "controle-des-migrations" },
+          { "context": "controle-du-contenu-ecrit" },
+          { "context": "gel-des-fusions" }
         ]
       }
     }

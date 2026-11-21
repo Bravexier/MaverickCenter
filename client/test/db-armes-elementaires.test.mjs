@@ -5,8 +5,11 @@
 // qu'il modifie) ; les tests de fiche écrivent dans une COPIE de la base construite (data/rows garde la section 13 vide).
 import assert from 'node:assert/strict';
 import { copyFileSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { DatabaseSync } from 'node:sqlite';
 import { after, test } from 'node:test';
+import { dossierDesExports } from '../../tools/sources/dossier-des-exports.mjs';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { idDuProtege } from '../src/lib/mots-cles-proteges.mjs';
@@ -18,7 +21,7 @@ const h = historiqueSite(db);
 const tout = (sql, ...p) => db.prepare(sql).all(...p).map((r) => ({ ...r }));
 
 // L'export brut du classeur « Ressources et Craft » : la valeur d'une cellule (ligne, colonne numérotées depuis 1) d'un onglet.
-const classeur = JSON.parse(readFileSync(new URL('../../sources/raw/classeurs/ressources-et-craft.json', import.meta.url), 'utf8'));
+const classeur = JSON.parse(readFileSync(join(dossierDesExports(fileURLToPath(new URL('../..', import.meta.url))), 'classeurs', 'ressources-et-craft.json'), 'utf8')); // sources/raw, ou MAVERICK_SOURCES_RAW (archive restaurée, R296)
 const onglet = (nom) => classeur.sheets.find((s) => s.name === nom);
 const cellule = (nom, r, c) => onglet(nom).cells.find((x) => x.r === r && x.c === c)?.v;
 const colonne = (lettres) => [...lettres].reduce((n, l) => n * 26 + l.charCodeAt(0) - 64, 0);

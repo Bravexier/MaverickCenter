@@ -1,6 +1,8 @@
 // Accès au site de dev (client/serveur/acces.mjs ; docs/serveur.md, « Accès au site de dev » ; R275, question 2, option b) : le réglage (empreintes, jamais un
 // secret en clair), la clé de lecture qui ne permet jamais d'écrire, la session par cookie signé qui expire et tombe au changement de mot de passe,
 // la limite des essais ratés, le réglage relu sans redémarrage, un réglage illisible qui ferme au lieu d'ouvrir, et rien de secret dans le journal.
+// R291 : la clé de dépôt (facultative, rien en clair), posée par la commande de l'hôte ; tant qu'elle n'est pas posée la clé de lecture dépose une proposition,
+// une fois posée elle ne dépose plus (403) et seuls la clé de dépôt et le mot de passe déposent, le lot s'appliquant aussitôt.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync, statSync, unlinkSync, utimesSync, writeFileSync } from 'node:fs';
@@ -317,4 +319,152 @@ test('la commande de l’hôte : le mot de passe vient de l’entrée standard (
   assert.equal(illisible.code, 1);
   assert.match(illisible.erreurs[0], /illisible/);
   assert.equal((await lancer(['definir'], `${MOT}\n`)).code, 0, 'poser un mot de passe répare un réglage illisible (pas d’enfermement dehors)');
+});
+
+test('R291 : la clé de dépôt est facultative, se pose et se retire sans toucher au reste, ne s’écrit qu’en empreinte, et se garde quand le mot de passe, la clé de lecture ou la portée changent', () => {
+  const { reglage: r1, cle } = reglageApres({ motDePasse: MOT });
+  assert.equal(r1.cle_de_depot, null, 'pas posée : l’état sûr');
+  const { reglage: r2, cleDeDepot, cle: aucune } = reglageApres({ ancien: r1, refaireLaCleDeDepot: true });
+  assert.equal(aucune, null, 'la clé de lecture n’est pas refaite');
+  assert.match(cleDeDepot, /^mvd_[A-Za-z0-9_-]{43}$/);
+  assert.equal(r2.cle_de_depot.empreinte, sha(cleDeDepot));
+  assert.deepEqual(r2.cle_de_lecture, r1.cle_de_lecture);
+  assert.deepEqual(r2.mot_de_passe, r1.mot_de_passe);
+  assert.equal(r2.secret_de_session, r1.secret_de_session, 'les sessions ouvertes restent ouvertes');
+  assert.ok(!JSON.stringify(r2).includes(cleDeDepot), 'jamais en clair');
+  assert.deepEqual(validerReglage(JSON.parse(JSON.stringify(r2))), r2);
+  assert.notEqual(cleDeDepot, cle);
+  // la refaire : l'ancienne ne marche plus
+  const { reglage: r3, cleDeDepot: neuve } = reglageApres({ ancien: r2, refaireLaCleDeDepot: true });
+  assert.notEqual(r3.cle_de_depot.empreinte, r2.cle_de_depot.empreinte);
+  assert.equal(r3.cle_de_depot.empreinte, sha(neuve));
+  // elle se garde quand le reste change
+  assert.deepEqual(reglageApres({ ancien: r3, motDePasse: AUTRE }).reglage.cle_de_depot, r3.cle_de_depot);
+  assert.deepEqual(reglageApres({ ancien: r3, refaireLaCle: true }).reglage.cle_de_depot, r3.cle_de_depot);
+  assert.deepEqual(reglageApres({ ancien: r3, portee: 'tout' }).reglage.cle_de_depot, r3.cle_de_depot);
+  // elle se retire : retour à l'état sûr
+  const { reglage: r4, cleDeDepot: rien } = reglageApres({ ancien: r3, retirerLaCleDeDepot: true });
+  assert.equal(r4.cle_de_depot, null);
+  assert.equal(rien, null);
+  assert.deepEqual(r4.cle_de_lecture, r3.cle_de_lecture);
+  // refus : sans mot de passe posé, ou deux demandes contraires, ou une empreinte invalide ou identique à celle de la clé de lecture
+  assert.throws(() => reglageApres({ refaireLaCleDeDepot: true }), /mot de passe/);
+  assert.throws(() => reglageApres({ ancien: r1, refaireLaCleDeDepot: true, retirerLaCleDeDepot: true }), /en même temps/);
+  assert.throws(() => validerReglage({ ...r1, cle_de_depot: { empreinte: 'abc' } }), /clé de dépôt invalide/);
+  assert.throws(() => validerReglage({ ...r1, cle_de_depot: { empreinte: r1.cle_de_lecture.empreinte } }), /différer/);
+});
+
+test('R291 : les clés se distinguent par leur empreinte dans les mêmes en-têtes ; `depot` (droit) vaut la lecture, jamais l’écriture ; sans clé de dépôt posée, la clé de lecture dépose', () => {
+  const { reglage: r1, cle } = reglageApres({ motDePasse: MOT });
+  const fichier = fichierTemporaire('acces.json', 'acces');
+  writeFileSync(fichier, JSON.stringify(r1));
+  const { acces } = controle(fichier);
+  const deposer = { methode: 'POST', chemin: '/api/edition/lots/' };
+  const appliquer = { methode: 'POST', chemin: '/api/edition/lots/00000000-0000-4000-8000-000000000000/appliquer/' };
+  const lecture = { methode: 'GET', chemin: '/api/edition/journal/' };
+  const avecCle = { [ENTETE_CLE]: cle };
+
+  // état sûr : pas de clé de dépôt posée, la clé de lecture dépose (une proposition), le dépôt n'est jamais direct
+  assert.equal(acces.controler({ ...deposer, entetes: avecCle }), null);
+  assert.equal(acces.depotDirectPose(), false);
+  assert.deepEqual(acces.depot(avecCle), { direct: false, par: null });
+  const session = acces.connecter(MOT, {});
+  assert.deepEqual(acces.depot(cookieDe(session.jeton)), { direct: false, par: null }, 'le mot de passe lui-même ne fait rien appliquer tant que la clé de dépôt n’est pas posée');
+
+  // la clé de dépôt posée (le service relit le fichier)
+  const { reglage: r2, cleDeDepot } = reglageApres({ ancien: r1, refaireLaCleDeDepot: true });
+  writeFileSync(fichier, JSON.stringify(r2));
+  assert.equal(acces.depotDirectPose(), true);
+  const avecDepot = { [ENTETE_CLE]: cleDeDepot };
+  const avecKey = { 'x-maverick-key': cleDeDepot };
+  assert.equal(acces.droit(avecDepot).droit, 'depot');
+  assert.equal(acces.droit(avecKey).droit, 'depot', 'le second nom d’en-tête (formulaire sûr des sessions) la porte aussi');
+  assert.equal(acces.droit(avecCle).droit, 'lecture');
+  assert.equal(acces.droit({}).droit, 'aucun');
+  assert.equal(acces.droit({ [ENTETE_CLE]: `${cleDeDepot}x` }).droit, 'aucun');
+  assert.equal(acces.droit({ [ENTETE_CLE]: 'mvk_faux', 'x-maverick-key': cleDeDepot }).droit, 'depot', 'la bonne clé sous l’un des deux noms suffit');
+  assert.deepEqual(acces.depot(avecDepot), { direct: true, par: 'cle_de_depot' });
+  assert.deepEqual(acces.depot(cookieDe(acces.connecter(MOT, {}).jeton)), { direct: true, par: 'mot_de_passe' });
+  assert.deepEqual(acces.depot(avecCle), { direct: false, par: null });
+  assert.deepEqual(acces.depot({}), { direct: false, par: null });
+
+  // déposer : la clé de dépôt ou le mot de passe ; la clé de lecture est refusée en 403 (valable, mais elle ne dépose plus), sans clé 401
+  assert.equal(acces.controler({ ...deposer, entetes: avecDepot }), null);
+  assert.equal(acces.controler({ ...deposer, entetes: avecKey }), null);
+  assert.equal(acces.controler({ ...deposer, entetes: cookieDe(session.jeton) }), null);
+  const refusLecture = acces.controler({ ...deposer, entetes: avecCle });
+  assert.equal(refusLecture.statut, 403);
+  assert.equal(refusLecture.corps.acces, 'cle_de_depot');
+  assert.match(refusLecture.corps.erreur, /clé de dépôt est nécessaire/);
+  const sansRien = acces.controler({ ...deposer, entetes: {} });
+  assert.equal(sansRien.statut, 401);
+  assert.equal(sansRien.corps.acces, 'cle_de_depot');
+  assert.equal(acces.controler({ ...deposer, entetes: { [ENTETE_CLE]: `${cleDeDepot}x` } }).statut, 401);
+
+  // la clé de dépôt lit comme la clé de lecture ; elle n'écrit rien d'autre (appliquer, édition, mise à jour : le mot de passe)
+  assert.equal(acces.controler({ ...lecture, entetes: avecDepot }), null);
+  assert.equal(acces.controler({ methode: 'GET', chemin: '/api/v1/metiers/', entetes: avecDepot }), null);
+  for (const requete of [appliquer, { methode: 'POST', chemin: '/api/edition/' }, { methode: 'POST', chemin: '/api/mise-a-jour/lancer/' }, { methode: 'PATCH', chemin: '/api/v1/metiers/x/' },
+    { methode: 'POST', chemin: appliquer.chemin.replace('appliquer', 'annuler') }, { methode: 'POST', chemin: appliquer.chemin.replace('appliquer', 'lignes/1/annuler') },
+    { methode: 'GET', chemin: appliquer.chemin.replace('appliquer', 'lignes/1/annulation') }]) {
+    const r = acces.controler({ ...requete, entetes: avecDepot });
+    assert.equal(r.statut, 401, `${requete.methode} ${requete.chemin}`);
+    assert.equal(r.corps.acces, 'mot_de_passe');
+  }
+  // l'état d'accès et la vérification d'un mandataire reconnaissent la clé (lecture au moins)
+  assert.equal(acces.controler({ methode: 'GET', chemin: '/api/acces/verifier/', entetes: avecDepot }), null);
+
+  // retirée : retour à l'état sûr, sans redémarrage
+  writeFileSync(fichier, JSON.stringify(reglageApres({ ancien: r2, retirerLaCleDeDepot: true }).reglage));
+  assert.equal(acces.depotDirectPose(), false);
+  assert.equal(acces.controler({ ...deposer, entetes: avecCle }), null, 'la clé de lecture dépose de nouveau une proposition');
+  assert.equal(acces.droit(avecDepot).droit, 'aucun', 'l’ancienne clé de dépôt ne marche plus');
+});
+
+test('R291 : la commande de l’hôte pose la clé de dépôt (CLE_DE_DEPOT, une seule fois) et la retire ; le journal du service n’en dit rien', async () => {
+  const dossier = dossierTemporaire('acces-commande-depot');
+  const fichier = `${dossier}/acces.json`;
+  const lancer = async (argv, entree = '') => {
+    const sortie = [];
+    const erreurs = [];
+    const code = await commandeAcces(argv, { entree: [Buffer.from(entree)], sortie: (l) => sortie.push(l), erreur: (l) => erreurs.push(l), fichier });
+    return { code, sortie, erreurs };
+  };
+  // sans mot de passe posé : refusé, rien n'est écrit
+  const sans = await lancer(['cle-de-depot']);
+  assert.equal(sans.code, 1);
+  assert.match(sans.erreurs[0], /mot de passe/);
+  const premier = await lancer(['definir'], `${MOT}\n`);
+  writeFileSync(fichier, premier.sortie[0].replace(/^REGLAGE /, ''));
+  const cleDeLecture = premier.sortie[1].slice(4);
+
+  const pose = await lancer(['cle-de-depot']);
+  assert.equal(pose.code, 0);
+  assert.equal(pose.sortie.length, 2, 'le réglage, puis la clé de dépôt ; pas de nouvelle clé de lecture');
+  assert.match(pose.sortie[1], /^CLE_DE_DEPOT mvd_/);
+  const r = JSON.parse(pose.sortie[0].replace(/^REGLAGE /, ''));
+  assert.equal(r.cle_de_depot.empreinte, sha(pose.sortie[1].slice('CLE_DE_DEPOT '.length)));
+  assert.equal(r.cle_de_lecture.empreinte, sha(cleDeLecture));
+  assert.ok(!pose.sortie[0].includes('mvd_'), 'la clé n’est pas dans le réglage');
+  writeFileSync(fichier, JSON.stringify(r));
+  // les autres commandes la gardent ; le mot de passe aussi
+  const changement = await lancer(['definir'], `${AUTRE}\n`);
+  assert.deepEqual(JSON.parse(changement.sortie[0].replace(/^REGLAGE /, '')).cle_de_depot, r.cle_de_depot);
+  assert.equal(changement.sortie.length, 1);
+  const retiree = await lancer(['sans-cle-de-depot']);
+  assert.equal(retiree.code, 0);
+  assert.equal(JSON.parse(retiree.sortie[0].replace(/^REGLAGE /, '')).cle_de_depot, null);
+  assert.equal(retiree.sortie.length, 1);
+  // un réglage illisible : refusé (on repart du mot de passe)
+  writeFileSync(fichier, '{ cassé');
+  assert.equal((await lancer(['cle-de-depot'])).code, 1);
+
+  // rien de secret au journal du service, clé de dépôt comprise
+  writeFileSync(fichier, JSON.stringify(r));
+  const { acces, journal } = controle(fichier);
+  acces.controler({ methode: 'POST', chemin: '/api/edition/lots/', entetes: { [ENTETE_CLE]: pose.sortie[1].slice('CLE_DE_DEPOT '.length) } });
+  acces.controler({ methode: 'POST', chemin: '/api/edition/lots/', entetes: { [ENTETE_CLE]: cleDeLecture } });
+  const texte = journal.join('\n');
+  assert.ok(journal.length >= 1, texte);
+  for (const secret of [pose.sortie[1].slice('CLE_DE_DEPOT '.length), cleDeLecture, r.cle_de_depot.empreinte]) assert.ok(!texte.includes(secret));
 });

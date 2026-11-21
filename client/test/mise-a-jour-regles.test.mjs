@@ -19,6 +19,7 @@ import { journalExporte } from '../serveur/edition-journal.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { versionDeLivraison } from '../src/lib/notes-de-version.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { rowsDeDepart } from './aide-base-de-depart.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { copieSansNoteEnAttente, versionALaRevision } from './aide-mise-a-jour.mjs';
 
@@ -44,8 +45,8 @@ const lot = (texte = 'Le forgeron **gagne** en force.') => ({
   format: 'maverick-mise-a-jour/1', id: '11111111-2222-3333-4444-555555555555', cree_le: '2026-10-11T10:00:00Z', version_dev: '0.1.76',
   version_cible: '0.2', texte, journal,
 });
-/** Une copie de data/rows sans note de version en attente de livraison sur la production (HEAD). */
-const copie = (nom) => copieSansNoteEnAttente(join(racine, nom), { versionProduction: VERSION_HEAD }).rows;
+/** Une copie des lignes de départ (data/rows, ou l'export du contenu fourni) sans note de version en attente de livraison sur la production (HEAD). */
+const copie = (nom) => copieSansNoteEnAttente(join(racine, nom), { rows: rowsDeDepart(), versionProduction: VERSION_HEAD }).rows;
 /** La base reconstruite depuis des lignes : une fonction de lecture. */
 function baseDe(rows) {
   const chemin_ = join(racine, 'relue.db');

@@ -22,7 +22,7 @@ interface Props {
   monstres: ReturnType<typeof chargerMonstres>;
 }
 const { monstres } = Astro.props;
-const { lignes, facettes, echelles, glossaire, elements, magiesDesCibles } = monstres;
+const { lignes, facettes, echelles, glossaire, elements, magiesDesCibles, liens } = monstres;
 const logo = url('logo.webp');
 const page = (id: string) => {
   const chemin = cheminDeMonstre(id);
@@ -72,7 +72,7 @@ const COLONNES: { cle: string; libelle: string; titre?: string; classe?: string 
     </div>
     <aside class="bcartes" aria-label="Carte du monstre choisi" data-cartes>
       <p class="bcartes__invite js-seul">Choisissez un monstre dans le tableau pour ouvrir sa carte.</p>
-      {lignes.map((l) => <Fragment set:html={htmlDeCarteMonstre(l, { logo, adresseDuPortrait: adresseDuPortrait(url), echelles, glossaire, elements, magiesDesCibles })} />)}
+      {lignes.map((l) => <Fragment set:html={htmlDeCarteMonstre(l, { logo, adresseDuPortrait: adresseDuPortrait(url), echelles, glossaire, elements, magiesDesCibles, liens })} />)}
     </aside>
   </div>
   <BullesDuButin objets={glossaire} />

@@ -3,7 +3,6 @@
 // d'un don (R154). Entrées synthétiques qui imitent le classeur, puis toute la base : les effectifs et les formes de
 // l'import se lisent dans son état d'import (lib/historique-site.mjs), l'état courant se contrôle par des invariants.
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
@@ -11,8 +10,10 @@ import {
   FAMILLES_DES_SAUF, choixEcritsDuDon, desSelonLaForce, famillesAuChoix, famillesDuNom, idDeSourceDeClasse, lireDon, lireLigneDeClasse, nmGagnesDuDon,
 } from '../src/lib/maitrise-arme.mjs';
 import { texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
+import { registreDeMigration } from './aide-registres-sortis.mjs';
 
-const registre0119 = JSON.parse(readFileSync(new URL('../../data/migrations/0119-classes-materiaux-d12.json', import.meta.url), 'utf8'));
+// (registre de la 0119, ou ce qu'en garde test/fixtures/registres-sortis.json une fois la migration mixte sortie : ids seulement)
+const registre0119 = registreDeMigration('0119-classes-materiaux-d12');
 const db = ouvrirBase({ sansExemples: false });
 const historique = historiqueSite(db);
 

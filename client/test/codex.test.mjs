@@ -1,14 +1,18 @@
 // Codex : le Google Doc « CODEX Maverick » (copie du propriétaire, 2026-10-11) découpé en pages `lore/` par tools/docs/codex.py (docs/codex.md).
 // Le texte des pages est celui du document, aux corrections du registre près (tools/docs/codex-corrections.json : décision R21, fautes déjà corrigées
-// dans toute la base) ; le vérificateur du script relit l'export ligne par ligne, sans le découpage, et compare les pages fabriquées depuis data/rows.
+// dans toute la base) ; le vérificateur du script relit l'export ligne par ligne, sans le découpage, et compare les pages fabriquées depuis la base qui fait foi.
+// Lot 12 : le vérificateur lit l'historique et les mots-clés de la base (`--base`, comme tools/db/races_onglet.py --verifier --base) ; sans MAVERICK_CONTENU,
+// son repli (data/rows) est éprouvé aussi.
 // Les pages se modifient depuis le site de dev (demande du propriétaire) : ce qui épingle l'import (fidélité au document, R21, registre) lit l'état
 // d'avant toute édition (lib/historique-site.mjs, et pages_du_site pour le vérificateur) ; le reste contrôle l'état courant.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { cpSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { ouvrirBase, trouverRacine } from '../src/lib/donnees.mjs';
+import { dossierDesExports } from '../../tools/sources/dossier-des-exports.mjs';
+import { cheminBase, ouvrirBase, trouverRacine } from '../src/lib/donnees.mjs';
 import { indexDesAdresses, pageDeLAdresse } from '../src/lib/adresses-db.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { IDS_DES_MOTS_CLES_PROTEGES } from '../src/lib/mots-cles-proteges.mjs';
@@ -16,8 +20,13 @@ import { NAV } from '../src/lib/nav.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { buildIndex, resolve } from '../src/lib/wikilinks-resolution.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
+import { contenuDuSite } from './aide-base-de-depart.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { idDuMotCleNomme } from './aide-mots-cles.mjs';
+import { registreDeMigration } from './aide-registres-sortis.mjs';
 
+// Les tests qui rejouent l'extracteur (tools/docs/codex.py) lisent l'export du Codex par dossierDesExports() : sources/raw, ou MAVERICK_SOURCES_RAW (l'archive restaurée,
+// lot 12, R296). Leur retrait avec les exports attend la réponse du propriétaire (reco (e)).
 const racine = trouverRacine();
 const db = ouvrirBase({ sansExemples: false });
 const SOURCE = 'Google Doc « CODEX Maverick »';
@@ -35,7 +44,6 @@ const pagesDImport = pagesDuCodex.map((p) => ({
 // Les mots-clés (migration 0113) : un id entier figé, une clé (`cle`, celle que citent les balises) qui suit le libellé. « codex » est protégé : son id
 // est celui de MOTS_CLES_PROTEGES ; un autre mot-clé de la base se retrouve par l'id que le registre de la 0113 a donné à son ancien id texte.
 const CODEX = IDS_DES_MOTS_CLES_PROTEGES.codex;
-const ID_DE_0113 = new Map(JSON.parse(readFileSync(join(racine, 'data', 'migrations', '0113-mots-cles-id-entier.json'), 'utf8')).motsCles.map((m) => [m.ancienId, m.id]));
 const ESSAI = 100000;   // ids des mots-clés d'essai, hors de ceux de la base
 const sqlDe = (v) => (v === null || v === undefined ? 'NULL' : typeof v === 'number' ? String(v) : `'${String(v).replace(/'/g, "''")}'`);
 /** Un vocabulaire d'essai (export de la table mot_cle) : [{ id, libelle, cle, description?, url? }]. */
@@ -45,15 +53,32 @@ const MOT_CLE_CODEX = { id: CODEX, libelle: 'codex', cle: 'codex' };
 // Une page du site de dev que la migration 0121 (R266 : trois graphies, Codex compris) a réécrite après le site garde, dans baseDImport(), le texte
 // du site avec la correction : son texte d'import n'existe plus (aide-base-d-import.mjs), et il peut citer un mot-clé que le site a créé. Le
 // vérificateur (codex.py --verifier) la contrôle, lui, dans son état d'import (historique) ; ici elle est mise à part des lectures de l'import.
-const PAGES_REECRITES_PAR_LA_0121 = new Set(JSON.parse(readFileSync(join(racine, 'data', 'migrations', '0121-maj-decembre-suites.json'), 'utf8')).corrections
+// (registre de la 0121, ou ce qu'en garde test/fixtures/registres-sortis.json une fois la migration mixte sortie : les cellules, sans leur texte)
+const PAGES_REECRITES_PAR_LA_0121 = new Set(registreDeMigration('0121-maj-decembre-suites').corrections
   .filter((c) => c.table === 'page' && c.col === 'corps_md').map((c) => c.cle.id));
 const texteDImportPerdu = (id) => PAGES_REECRITES_PAR_LA_0121.has(id) && historique.modifiee('page', { id }, 'corps_md');
+// la base qui fait foi (copie de travail du contenu fourni, ou construite depuis data/rows), que le vérificateur lit par `--base`
+const BASE = cheminBase({ sansExemples: false });
+/** Les lignes de historique_modification de la base (colonnes de la base) : [{ lot_id, rang, …, table_nom, cle, … }]. */
+const historiqueDeLaBase = () => {
+  const lecture = new DatabaseSync(BASE, { readOnly: true });
+  try {
+    return lecture.prepare('SELECT * FROM historique_modification ORDER BY fait_le, lot_id, rang').all();
+  } finally {
+    lecture.close();
+  }
+};
+/** Le SQL (INSERT) de ces lignes d'historique, à l'écriture d'un fichier `--historique`. */
+const sqlDHistorique = (lignes) => lignes.map((l) => `INSERT INTO historique_modification (${Object.keys(l).join(', ')}) VALUES (${Object.values(l).map(sqlDe).join(', ')});`).join('\n');
 const codexPy = (...args) => spawnSync('python3', ['-I', join(racine, 'tools', 'docs', 'codex.py'), ...args], { encoding: 'utf8', cwd: racine });
 
 test('chaque ligne du document est dans une page, et les pages sont celles du découpage (tools/docs/codex.py --verifier)', () => {
-  const r = codexPy('--verifier');
-  assert.equal(r.status, 0, r.stdout + r.stderr);
-  assert.match(r.stdout, /^116 pages du Codex conformes au document( \(\d+ modifiées depuis par le site de dev, contrôlées dans leur état d'import\))?$/m);
+  // la base d'abord (le contenu qui fait foi), puis sans elle le repli de l'outil (data/rows), quand le contenu n'est pas fourni
+  for (const args of [['--base', BASE], ...(contenuDuSite() ? [] : [[]])]) {
+    const r = codexPy('--verifier', ...args);
+    assert.equal(r.status, 0, `${args.join(' ') || 'data/rows'} : ${r.stdout}${r.stderr}`);
+    assert.match(r.stdout, /^116 pages du Codex conformes au document( \(\d+ modifiées depuis par le site de dev, contrôlées dans leur état d'import\))?$/m);
+  }
 });
 
 test('une page modifiée par le site de dev : contrôlée dans son état d’import (historique), gardée telle quelle par une nouvelle écriture', (t) => {
@@ -65,8 +90,8 @@ test('une page modifiée par le site de dev : contrôlée dans son état d’imp
   const fichier = join(tmp, 'lore', 'les-divinites.md');
   // les pages comptées comme modifiées par le site, lues par le script lui-même (codex.py#pages_du_site) sur la copie : la page d'essai y est-elle déjà ?
   const duSiteReel = JSON.parse(spawnSync('python3', ['-I', '-c',
-    'import json, sys; sys.path.insert(0, sys.argv[1]); import codex; print(json.dumps(sorted(codex.pages_du_site(sur_disque=codex.pages_sur_disque(sys.argv[2])))))',
-    join(racine, 'tools', 'docs'), tmp], { encoding: 'utf8', cwd: racine }).stdout);
+    'import json, sys; sys.path.insert(0, sys.argv[1]); import codex; print(json.dumps(sorted(codex.pages_du_site(None, sur_disque=codex.pages_sur_disque(sys.argv[2]), base=sys.argv[3]))))',
+    join(racine, 'tools', 'docs'), tmp, BASE], { encoding: 'utf8', cwd: racine }).stdout);
   const { titre, corps_md: corpsDImport } = pagesDImport.find((p) => p.id === id);
   const aliasDImport = historique.lignesDImport('alias').filter((a) => a.page_id === id).map((a) => a.texte);
   const [, entete] = readFileSync(fichier, 'utf8').match(/^(---\n[\s\S]*?\n---\n)\n([\s\S]*)$/);
@@ -78,36 +103,34 @@ test('une page modifiée par le site de dev : contrôlée dans son état d’imp
   const ligne = (rang, table, cle, operation, avant, apres) =>
     `INSERT INTO historique_modification (lot_id, rang, fait_le, resume, version, table_nom, cle, operation, avant, apres) VALUES ('lot-essai', ${rang}, '2026-10-11T20:00:00Z', 'essai', NULL, '${table}', ${sql(JSON.stringify(cle))}, '${operation}', ${sql(avant && JSON.stringify(avant))}, ${sql(apres && JSON.stringify(apres))});`;
   // l'historique réel (le site de dev modifie des pages : textes, titres, balises du glossaire), sauf les titre, texte et alias de la page d'essai
-  const toutes = readFileSync(join(racine, 'data', 'rows', 'historique_modification.sql'), 'utf8').split('\n').filter((l) => l.startsWith('INSERT'));
-  const cleDe = (l) => /, '(page|alias)', '(\{[^']*\})', '(?:inserer|modifier|supprimer)'/.exec(l);
-  const reel = toutes.filter((l) => { const m = cleDe(l); return !m || (JSON.parse(m[2]).id ?? JSON.parse(m[2]).page_id) !== id; });
+  const reel = historiqueDeLaBase().filter((l) => !['page', 'alias'].includes(l.table_nom) || (JSON.parse(l.cle).id ?? JSON.parse(l.cle).page_id) !== id);
   // les pages comptées comme modifiées par le site : celles de l'historique réel, plus celle-ci si elle n'y est pas
   const nDuSite = (sortie) => Number(/\((\d+) modifiées depuis par le site de dev/.exec(sortie)?.[1] ?? 0);
-  const attendues = nDuSite(codexPy('--verifier').stdout) + (duSiteReel.includes('les-divinites') ? 0 : 1);
+  const attendues = nDuSite(codexPy('--verifier', '--base', BASE).stdout) + (duSiteReel.includes('les-divinites') ? 0 : 1);
   const ecrireHistorique = (corpsDImport) => {
     const chemin = join(tmp, 'historique.sql');
     writeFileSync(chemin, [
-      ...reel,
+      sqlDHistorique(reel),
       ligne(1, 'page', { id }, 'modifier', { titre, corps_md: corpsDImport }, { titre: 'Les dieux', corps_md: 'Un texte réécrit sur le site.\n' }),
       ligne(2, 'alias', { page_id: id, ordre: 99 }, 'inserer', null, { page_id: id, ordre: 99, texte: titre, cle: 'x' }),
     ].join('\n'));
     return chemin;
   };
   // fidèle à l'import : conforme, et la page est comptée parmi celles du site
-  let r = codexPy('--verifier', '--out', tmp, '--historique', ecrireHistorique(corpsDImport));
+  let r = codexPy('--verifier', '--base', BASE, '--out', tmp, '--historique', ecrireHistorique(corpsDImport));
   assert.equal(r.status, 0, r.stdout + r.stderr);
   assert.match(r.stdout, /116 pages du Codex conformes au document \(\d+ modifiées depuis par le site de dev/);
   assert.equal(nDuSite(r.stdout), attendues);
   // sans l'historique, la page diffère du document
-  r = codexPy('--verifier', '--out', tmp, '--historique', join(tmp, 'absent.sql'));
+  r = codexPy('--verifier', '--base', BASE, '--out', tmp, '--historique', join(tmp, 'absent.sql'));
   assert.equal(r.status, 1);
   assert.match(r.stdout, /\(3\) page différente du découpage : lore\/les-divinites/);
   // un état d'import qui n'est pas le document : signalé
-  r = codexPy('--verifier', '--out', tmp, '--historique', ecrireHistorique('Un texte inventé.\n'));
+  r = codexPy('--verifier', '--base', BASE, '--out', tmp, '--historique', ecrireHistorique('Un texte inventé.\n'));
   assert.equal(r.status, 1);
   assert.match(r.stdout, /\(3\) page modifiée par le site de dev, différente du découpage dans son état d'import : lore\/les-divinites/);
   // une nouvelle écriture des pages ne touche pas celle que le site a modifiée
-  r = codexPy('--out', tmp, '--historique', ecrireHistorique(corpsDImport));
+  r = codexPy('--base', BASE, '--out', tmp, '--historique', ecrireHistorique(corpsDImport));
   assert.equal(r.status, 0, r.stdout + r.stderr);
   assert.match(r.stdout, /gardée telle que le site de dev l'a modifiée : lore\/les-divinites/);
   assert.equal(readFileSync(fichier, 'utf8'), modifiee);
@@ -143,8 +166,8 @@ test('mots-clés du Codex : seuls ceux du vocabulaire, dans son écriture (un im
   assert.equal(codexPy('--out', cache, '--vocabulaire', vocabulaire, '--historique', absent).status, 0);
   assert.deepEqual(readdirSync(join(cache, 'lore')).filter((f) => f.endsWith('.md') && /^tags: .*Corruption/m.test(readFileSync(join(cache, 'lore', f), 'utf8'))), []);
   ecrireVocabulaire('Feu');
-  // avec le vocabulaire de data/rows (sans « Feu ») : ces pages ne sont plus celles du découpage
-  r = codexPy('--verifier', '--out', tmp, '--historique', absent);
+  // avec le vocabulaire de la base (sans « Feu » : un mot-clé d'essai) : ces pages ne sont plus celles du découpage
+  r = codexPy('--verifier', '--base', BASE, '--out', tmp, '--historique', absent);
   assert.equal(r.status, 1);
   assert.match(r.stdout, new RegExp(`\\(3\\) page différente du découpage : lore/${porteuses[0].slice(0, -3)}`));
   // « Feu » renommé « Flammes » sur le site : les pages qui le portent l'écrivent désormais ainsi
@@ -175,27 +198,29 @@ test('mots-clés du Codex : seuls ceux du vocabulaire, dans son écriture (un im
 // pas le mot-clé « Sang » sur ses temples. Sur l'export du Codex du dépôt (sources/raw/), sans dump.
 test('R145, R183 : l’import du Codex ne pose pas le mot-clé « Sang » sur les temples de la magie du Sang (Confrérie du Sang, Pointe de Sang)', (t) => {
   // les deux pages sont bien celles que le découpage range sous « Magie de Sang » (codex.py#MAGIES : 'Magie de Sang' -> 'sang')
-  const doc = readFileSync(join(racine, 'sources', 'raw', `${ID}.md`), 'utf8');
+  const doc = readFileSync(join(dossierDesExports(racine), `${ID}.md`), 'utf8');
   const section = doc.slice(doc.indexOf('\n## Magie de Sang\n'), doc.indexOf('\n## ', doc.indexOf('\n## Magie de Sang\n') + 1));
   assert.match(section, /^### Confrérie du Sang \(Temple du sang\)$/m);
   assert.match(section, /La Pointe de Sang/);
   // le mot-clé « Sang » de la base (0090), cherché par son identifiant figé (l'id entier que la 0113 a donné à « sang ») : le site de dev peut le
-  // renommer, ses deux écritures sont refusées (il n'est pas protégé : supprimé par le site, le vocabulaire de data/rows ne l'a plus, et l'import ne
+  // renommer, ses deux écritures sont refusées (il n'est pas protégé : supprimé par le site, le vocabulaire de la base ne l'a plus, et l'import ne
   // peut pas davantage le poser)
-  const idSang = ID_DE_0113.get('sang');
-  assert.ok(Number.isInteger(idSang), 'le registre de la 0113 donne un id entier à « sang »');
+  const idSang = idDuMotCleNomme('sang');
+  assert.ok(Number.isInteger(idSang), 'la correspondance de la 0113 donne un id entier à « sang »');
   const sang = db.prepare('SELECT libelle FROM mot_cle WHERE id = ?').get(idSang);
   if (!sang) assert.ok(historique.supprimee('mot_cle', { id: idSang }), 'le mot-clé « Sang » (0090) manque sans que le site de dev l’ait supprimé');
   const ecrituresDuSang = new Set(['sang', ...(sang ? [normalize(sang.libelle)] : [])]);
   for (const [nom, vocabulaire] of [
     ['un vocabulaire d’essai', vocabulaireDEssai([MOT_CLE_CODEX, { id: idSang, libelle: 'Sang', cle: 'sang', description: 'La quatrième barre.' }])],
-    ['le vocabulaire de data/rows', null],
+    ['le vocabulaire de la base', null],
   ]) {
     const tmp = dossierTemporaire('codex-sang', { t });
     const args = ['--out', tmp, '--historique', join(tmp, 'absent.sql')];
     if (vocabulaire) {
       writeFileSync(join(tmp, 'mot_cle.sql'), vocabulaire);
       args.push('--vocabulaire', join(tmp, 'mot_cle.sql'));
+    } else {
+      args.push('--base', BASE);
     }
     const r = codexPy(...args);
     assert.equal(r.status, 0, r.stdout + r.stderr);
@@ -284,7 +309,7 @@ test('les renvois du Codex : des balises de mots-clés qui mènent chacun à une
 test('idempotence : une nouvelle écriture des pages du Codex sur la base actuelle n’en change aucune, et chaque renvoi a son mot-clé', (t) => {
   const tmp = dossierTemporaire('codex-idem', { t });
   cpSync(join(racine, 'client', 'src', 'content', 'wiki', 'lore'), join(tmp, 'lore'), { recursive: true });
-  const r = codexPy('--out', tmp);
+  const r = codexPy('--base', BASE, '--out', tmp);
   assert.equal(r.status, 0, r.stdout + r.stderr);
   assert.match(r.stdout, /^116 pages du Codex \(0 écrites\)/m);
   assert.doesNotMatch(r.stdout, /renvoi sans mot-clé/);
@@ -368,7 +393,7 @@ test('décision R21 : la divinité de la Corruption s’appelle Eaunoire, la gra
 
 test('registre de corrections : décrit, appliqué à l’export (qui reste tel quel), sans toucher un chiffre', () => {
   const registre = JSON.parse(readFileSync(join(racine, 'tools', 'docs', 'codex-corrections.json'), 'utf8'));
-  const brut = readFileSync(join(racine, 'sources', 'raw', `${ID}.md`), 'utf8');
+  const brut = readFileSync(join(dossierDesExports(racine), `${ID}.md`), 'utf8');
   const corps = pagesDImport.map((p) => p.corps_md).join('\n');
   for (const c of registre.corrections) {
     assert.ok(c.avant && c.apres && c.raison && c.nature && Number.isInteger(c.occurrences), JSON.stringify(c));

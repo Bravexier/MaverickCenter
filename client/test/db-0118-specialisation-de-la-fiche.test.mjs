@@ -10,11 +10,18 @@ import { DatabaseSync } from 'node:sqlite';
 import { after, test } from 'node:test';
 import { POTENTIEL_ILLIMITE } from '../src/lib/potentiel-illimite.mjs';
 import { analyserCout } from '../src/lib/sort-analyse.mjs';
+import { mixtesSorties } from '../src/lib/sortie-du-contenu.mjs';
 import { cheminDImport } from './aide-base-d-import.mjs';
+import { lignesDuContenu } from './aide-base-de-depart.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
+import { testRetireAvecLesMixtes } from './aide-sortie-du-contenu.mjs';
+
+// Les tests qui éprouvent la migration mixte elle-même sortent avec elle (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LES_MIXTES).
+const testDeLaMixte = testRetireAvecLesMixtes(import.meta.url);
 
 const PROJECTILE_ARCANIQUE = 'magies/magie-de-larcane#sort:projectile-arcanique';
-const REGISTRE = JSON.parse(readFileSync(new URL('../../data/migrations/0118-r236-specialisation-de-la-fiche.json', import.meta.url), 'utf8'));
+// Le registre (coûts de règle) sort avec la migration mixte, et le seul test qui le lit avec lui (RETIRES_AVEC_LES_MIXTES).
+const REGISTRE = mixtesSorties() ? null : JSON.parse(readFileSync(new URL('../../data/migrations/0118-r236-specialisation-de-la-fiche.json', import.meta.url), 'utf8'));
 const INSTANT = '2026-11-12T12:00:00Z';
 const REGLES = ['sort_hors_specialisation', 'specialisation_hors_magie'];
 
@@ -30,7 +37,7 @@ function inserer(table, ligne) {
   db.prepare(`INSERT INTO ${table} (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`).run(...Object.values(ligne));
 }
 
-test('R251 : Projectile arcanique porte le coût, sa valeur et le coût secondaire de la décision (état d’import, écritures lues dans le registre et la décision)', () => {
+testDeLaMixte('R251 : Projectile arcanique porte le coût, sa valeur et le coût secondaire de la décision (état d’import, écritures lues dans le registre et la décision)', () => {
   assert.deepEqual(REGISTRE.decisions, ['R236', 'R251']);
   const valeurs = Object.fromEntries(REGISTRE.valeurs.map((v) => [v.col, v]));
   assert.deepEqual(Object.keys(valeurs).sort(), ['cout_brut', 'cout_chakra', 'cout_secondaire']);
@@ -111,9 +118,9 @@ test('personnage_specialisation_magie : une spécialisation de CETTE magie (clé
   assert.equal(un('SELECT count(*) AS n FROM personnage_specialisation_magie WHERE personnage_id = ?', id).n, 0);
 });
 
-test('data/rows garde la table vide (section 13 : les fiches vivent dans la base du serveur)', () => {
-  const lignes = readFileSync(new URL('../../data/rows/personnage_specialisation_magie.sql', import.meta.url), 'utf8').trim().split('\n');
-  assert.equal(lignes.length, 1, 'en-tête seul');
+test('le contenu qui fait foi (contenu fourni, sinon data/rows) garde la table vide (section 13 : les fiches vivent dans la base du serveur)', () => {
+  const { source, lignes } = lignesDuContenu('personnage_specialisation_magie');
+  assert.equal(lignes, 0, `aucune ligne dans ${source}`);
 });
 
 after(() => db.close());

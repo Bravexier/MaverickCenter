@@ -16,6 +16,9 @@ import { COOKIE, ENTETE_CLE, creerAcces, reglageApres } from '../serveur/acces.m
 import { traiter } from '../serveur/api.mjs';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { deposer as deposerLot, traduire } from '../serveur/edition-lots.mjs';
+import { ligneDArme, PAGE_DES_ARMES } from '../src/lib/corps-armes.mjs';
+import { pageDeLaLigne as pageDesArmuresDeLaLigne } from '../src/lib/corps-armures.mjs';
+import { PAGE_DE_L_INVENTAIRE, PAGE_DES_INGREDIENTS } from '../src/lib/corps-composants.mjs';
 import { FORMAT_DU_LOT } from '../src/lib/lot-de-changements.mjs';
 import { cheminDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire, fichierTemporaire } from './aide-dossier-temporaire.mjs';
@@ -382,6 +385,59 @@ test('tout recalculer dépose les écarts des colonnes dérivées comme un lot d
   const annule = ok(await m.appel('POST', adresse(applique.id, 'annuler/'), {}));
   assert.equal(annule.etat, 'annule');
   assert.equal(m.un('SELECT corps_md FROM page WHERE id = ?', classe.id).corps_md, `Corps périmé du test ${classe.id}`);
+});
+
+test('tout recalculer couvre les pages refaites morceau par morceau et en entier : une page de magie suit sa ligne de sort ; une arme changée dans sa table refait la page des armes', async () => {
+  const m = nouvelle();
+  await normaliser(m);
+  // un sort et une arme changés dans leur table sans que leur page suive (comme après un changement de code qui rend autrement la ligne)
+  const sort = m.un("SELECT s.id, s.magie_id FROM sort s JOIN page p ON p.id = s.magie_id WHERE p.corps_md IS NOT NULL AND s.effets IS NOT NULL ORDER BY s.magie_id, s.ordre LIMIT 1");
+  m.db.prepare('UPDATE sort SET effets = effets || ? WHERE id = ?').run(' Effet du test.', sort.id);
+  const arme = m.un('SELECT id FROM arme ORDER BY id LIMIT 1');
+  m.db.prepare('UPDATE arme SET description = ?, nom_brut = nom_brut || ? WHERE id = ?').run('Description du test', ' du test', arme.id);
+  const r = ok(await m.appel('POST', '/api/edition/lots/recalcul/', {}), 201);
+  const o = r.lot.contenu.operations.find((x) => x.cle.id === sort.magie_id);
+  assert.ok(o, 'la page de la magie est refaite');
+  assert.ok(!o.avant.corps_md.includes('Effet du test.'));
+  assert.ok(o.apres.corps_md.includes('Effet du test.'));
+  assert.equal(r.lot.verdict, 'applicable', JSON.stringify(r.lot.essai.operations.map((x) => x.message ?? x.etat)));
+  // la page des armes est refaite en entier : la ligne de l'arme (nom compris) que le corps n'écrivait pas comme sa table ; elle n'est plus « illisible »
+  const page = r.lot.contenu.operations.find((x) => x.cle.id === PAGE_DES_ARMES);
+  assert.ok(page, 'la page des armes est refaite');
+  assert.ok(page.apres.corps_md.split('\n').includes(ligneDArme(m.un('SELECT * FROM arme WHERE id = ?', arme.id))), 'la ligne de l’arme, telle que sa table l’écrit');
+  assert.ok(!page.avant.corps_md.split('\n').includes(ligneDArme(m.un('SELECT * FROM arme WHERE id = ?', arme.id))));
+  assert.ok(!r.recalcul.pages_illisibles.some((x) => x.page === PAGE_DES_ARMES), JSON.stringify(r.recalcul.pages_illisibles));
+});
+
+test('tout recalculer : un bouclier, un ingrédient, un composant et une potion dont le nom a changé dans leur table sont refaits en entier (plus « illisibles »), leur page a une opération', async () => {
+  const m = nouvelle();
+  await normaliser(m);
+  const recalcul = async () => ok(await m.appel('POST', '/api/edition/lots/recalcul/', {}), 201);
+  // le nom désignait la ligne du corps : changé dans la table seule, le corps ne le retrouve plus par son texte, mais par sa place
+  const bouclier = m.un('SELECT id FROM bouclier ORDER BY id LIMIT 1');
+  const ingredient = m.un("SELECT r.id FROM ressource r JOIN ingredient_alchimie i ON i.ressource_id = r.id WHERE r.genre = 'ingredient_alchimie' ORDER BY r.id LIMIT 1");
+  const objet = m.un("SELECT id FROM ressource WHERE genre = 'materiel' AND section = 'MATOS AVENTURES' ORDER BY id LIMIT 1");
+  const potion = m.un('SELECT r.id, r.page_id FROM potion p JOIN ressource r ON r.id = p.ressource_id ORDER BY r.id LIMIT 1');
+  m.db.prepare('UPDATE bouclier SET nom = ? WHERE id = ?').run('Bouclier du test', bouclier.id);
+  m.db.prepare('UPDATE ressource SET nom = ? WHERE id = ?').run('Ingrédient du test', ingredient.id);
+  m.db.prepare('UPDATE ressource SET nom = ? WHERE id = ?').run('Objet du test', objet.id);
+  m.db.prepare('UPDATE ressource SET nom = ? WHERE id = ?').run('Potion du test', potion.id);
+  const r = await recalcul();
+  const illisibles = r.recalcul.pages_illisibles.map((x) => x.page);
+  const pages = [
+    [pageDesArmuresDeLaLigne('bouclier', m.un('SELECT * FROM bouclier WHERE id = ?', bouclier.id)), 'Bouclier du test'],
+    [PAGE_DES_INGREDIENTS, 'Ingrédient du test'],
+    [PAGE_DE_L_INVENTAIRE, 'Objet du test'],
+    [potion.page_id, 'Potion du test'],
+  ];
+  for (const [page, nom] of pages) {
+    assert.ok(page, 'la page de la ligne est connue');
+    assert.ok(!illisibles.includes(page), `${page} n’est plus dite illisible : ${JSON.stringify(r.recalcul.pages_illisibles)}`);
+    const o = r.lot.contenu.operations.find((x) => x.cle.id === page);
+    assert.ok(o, `${page} est refaite`);
+    assert.ok(o.apres.corps_md.includes(nom), `${page} écrit « ${nom} »`);
+    assert.ok(!o.avant.corps_md.includes(nom));
+  }
 });
 
 test('tout recalculer : la clé de lecture le dépose (classe « proposition »), il ne s’applique qu’au clic du propriétaire ; dans un fil à part comme dans celui du service', async () => {

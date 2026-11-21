@@ -3,7 +3,7 @@
 // plus faire échouer tools/db/races_onglet.py --verifier (donc la mise à jour) ; une race que le site n'a pas touchée reste contrôlée comme à l'import.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { copyFileSync, cpSync, readFileSync, writeFileSync } from 'node:fs';
+import { copyFileSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
@@ -15,9 +15,14 @@ import { journalExporte } from '../serveur/edition-journal.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { corpsDeRace, etatDeRace } from '../src/lib/corps-races.mjs';
 import { cheminDImport } from './aide-base-d-import.mjs';
+import { copieDesRowsDeDepart } from './aide-base-de-depart.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { remettreLesCorpsDeLa0119 } from './aide-migration-0119.mjs';
 import { TEXTES_DE_LA_0120 } from './aide-races-0120.mjs';
+import { testRetireAvecLesMixtes } from './aide-sortie-du-contenu.mjs';
+
+// Les tests qui éprouvent la migration mixte elle-même sortent avec elle (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LES_MIXTES).
+const testDeLaMixte = testRetireAvecLesMixtes(import.meta.url);
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
 const sansPython = spawnSync('python3', ['--version']).error ? 'python3 absent' : false;
@@ -47,14 +52,17 @@ test('R31 : liste changée sans la phrase, phrase réécrite sans la liste (mêm
   const journal = journalExporte(db);
   db.close();
 
-  const rows = join(tmp, 'rows');
-  cpSync(join(RACINE, 'data', 'rows'), rows, { recursive: true });
+  // Lot 12 : le rapatriement (db-appliquer-edition.mjs) s'applique à une copie des lignes de départ (data/rows sans MAVERICK_CONTENU, sinon l'export du
+  // contenu fourni), jamais à data/rows ; le vérificateur lit cette copie (`--rows`) : le rapatriement n'existe que sous forme de lignes.
+  const rows = copieDesRowsDeDepart(join(tmp, 'rows'));
   const a = appliquerJournal(journal, { rows });
   assert.equal(a.ecrit, true, JSON.stringify(a.conflits));
   const v = verifier(rows);
   assert.equal(v.status, 0, v.stdout + v.stderr);
   assert.match(v.stdout, /conformes aux pages/);
+});
 
+testDeLaMixte('R31 : une race que le site n’a pas touchée reste contrôlée comme à l’import (pages remises à « import + 0119 » par le registre de la 0119)', { skip: sansPython }, () => {
   // une race que le site n'a pas touchée reste contrôlée comme à l'import : sa liste modifiée hors du site est un écart. Sur les lignes de la base
   // dans son état d'import (aide-base-d-import.mjs, exportées par tools/db/maverick.py#exporter) : le site de dev peut avoir touché la phrase ou la
   // liste de chaque race, une race « non touchée » ne se suppose pas dans data/rows.

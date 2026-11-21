@@ -13,11 +13,17 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { valeursDeLaCarte } from '../src/lib/monstre-champs.mjs';
+import { mixtesSorties } from '../src/lib/sortie-du-contenu.mjs';
 import { baseDImport, lotsAvant } from './aide-base-d-import.mjs';
+import { testRetireAvecLesMixtes } from './aide-sortie-du-contenu.mjs';
+
+// Les tests qui éprouvent la migration mixte elle-même sortent avec elle (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LES_MIXTES).
+const testDeLaMixte = testRetireAvecLesMixtes(import.meta.url);
 
 const db = ouvrirBase({ sansExemples: false });
 const constante = (id) => db.prepare('SELECT * FROM regle_constante WHERE id = ?').get(id);
-const registre = JSON.parse(readFileSync(new URL('../../data/migrations/0103-r205-etat-gel.json', import.meta.url), 'utf8'));
+// Le registre de la 0103 (corrections : du texte de règle) sort avec la migration mixte, et les tests qui le lisent avec lui (RETIRES_AVEC_LES_MIXTES).
+const registre = mixtesSorties() ? null : JSON.parse(readFileSync(new URL('../../data/migrations/0103-r205-etat-gel.json', import.meta.url), 'utf8'));
 const apresLa0103 = () => baseDImport({ garder: lotsAvant('0103') });
 
 // L'état écrit « Gelé » (mot entier : ni « Gelée », ni « Gelés »), ou « gelé N » / « Gelé N » avec un stade : les motifs de la 0103.
@@ -46,7 +52,7 @@ test('R204 : Calme a pour description la phrase de « Prouesse », son ancien no
   assert.ok(db.prepare("SELECT 1 FROM ecart_source WHERE id = 'competence:calme:nom:nom_different:fiche:guide'").get(), 'ecart_source gardé (provenance, R204)');
 });
 
-test('R205 : le registre de la 0103 — chaque correction remplace l’état « Gelé » par « Gel » (motifs de la migration), dans les colonnes de la décision seulement', () => {
+testDeLaMixte('R205 : le registre de la 0103 — chaque correction remplace l’état « Gelé » par « Gel » (motifs de la migration), dans les colonnes de la décision seulement', () => {
   const compte = {};
   for (const c of registre.corrections) {
     compte[c.table] = (compte[c.table] ?? 0) + 1;
@@ -61,7 +67,7 @@ test('R205 : le registre de la 0103 — chaque correction remplace l’état « 
   assert.equal(registre.derivees.monstre_defense.lignes.length, 77);
 });
 
-test('R205 : après la 0103, aucun texte de la décision n’écrit plus l’état « Gelé », chaque correction est en place, et monstre_defense n’a plus de cible gele', () => {
+testDeLaMixte('R205 : après la 0103, aucun texte de la décision n’écrit plus l’état « Gelé », chaque correction est en place, et monstre_defense n’a plus de cible gele', () => {
   const imp = apresLa0103();
   for (const [table, col] of Object.entries(COLONNES)) {
     const restes = imp.prepare(`SELECT "${col}" AS v FROM "${table}" WHERE "${col}" IS NOT NULL`).all().filter((l) => ETAT_GELE.test(l.v));
@@ -84,7 +90,7 @@ test('R205 : après la 0103, aucun texte de la décision n’écrit plus l’ét
   assert.ok(brutes.length >= 5 && brutes.every((b) => b === 'Gel'), brutes.join(', '));
 });
 
-test('R205 : ce que la décision laisse — l’identifiant de l’état, le sort « Cerveau gelé », les adjectifs — n’est dans aucune correction de la 0103', () => {
+testDeLaMixte('R205 : ce que la décision laisse — l’identifiant de l’état, le sort « Cerveau gelé », les adjectifs — n’est dans aucune correction de la 0103', () => {
   assert.ok(db.prepare('SELECT 1 FROM etat WHERE id = ?').get(ETAT_GEL), 'identifiant de l’état inchangé');
   assert.ok(db.prepare("SELECT 1 FROM sort WHERE id = 'magies/magie-de-la-glace#sort:cerveau-gele'").get(), 'identifiant du sort inchangé');
   const tables = new Set(registre.corrections.map((c) => c.table));

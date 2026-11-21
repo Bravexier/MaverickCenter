@@ -12,12 +12,27 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
+import { REFERENCES } from '../src/lib/references-des-migrations.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { TABLES_HORS_REGLES } from '../src/lib/tables-de-la-base.mjs';
+import { registreDeMigration } from './aide-registres-sortis.mjs';
+import { testRetireAvecLesMixtes } from './aide-sortie-du-contenu.mjs';
+
+// Les tests qui éprouvent la migration mixte elle-même sortent avec elle (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LES_MIXTES).
+const testDeLaMixte = testRetireAvecLesMixtes(import.meta.url);
 
 const outils = fileURLToPath(new URL('../../tools/db/', import.meta.url));
 const sansPython = spawnSync('python3', ['--version']).error ? 'python3 absent' : false;
-const REGISTRE = JSON.parse(readFileSync(new URL('../../data/migrations/0113-mots-cles-id-entier.json', import.meta.url), 'utf8'));
+// Le registre sort avec les migrations mixtes. Ce que les tests d'invariants en lisent : la correspondance ancien id → id entier, dans sa référence
+// (data/references/, lib/references-des-migrations.mjs, que lit le service) ; et, des seules entrées dont la clé n'est pas l'ancien id ou qui avaient un
+// libellé d'avant (classes raciales), la clé et les libellés, gardés dans test/fixtures/registres-sortis.json (aide-registres-sortis.mjs). Toute autre
+// entrée a pour clé son ancien id (vérifié par le test du registre, tant qu'il est là).
+const lireLeRegistre0113 = () => JSON.parse(readFileSync(new URL('../../data/migrations/0113-mots-cles-id-entier.json', import.meta.url), 'utf8'));
+const DETAILS_0113 = new Map(registreDeMigration('0113-mots-cles-id-entier').motsCles.map((e) => [e.ancienId, e]));
+const REGISTRE = {
+  motsCles: JSON.parse(readFileSync(new URL(`../../${REFERENCES.idsDesMotsCles}`, import.meta.url), 'utf8')).ids
+    .map(([ancienId, id]) => DETAILS_0113.get(ancienId) ?? { ancienId, id, cle: ancienId }),
+};
 const db = ouvrirBase({ sansExemples: false });
 
 /** Lance `script` (Python : `maverick as T`, `entree` = la valeur JSON donnée) et rend son JSON. */
@@ -77,8 +92,9 @@ test('état courant : libelle_cle des catégories = normalize(libelle), unique',
   assert.deepEqual(categories.map((c) => c.libelle_cle), attendu);
 });
 
-test('registre : 407 anciens ids, numérotés de 1 à 367 (version 110) puis 368 à 407 (ajoutés par dev), chaque partie dans l’ordre binaire', () => {
-  const m = REGISTRE.motsCles;
+testDeLaMixte('registre : 407 anciens ids, numérotés de 1 à 367 (version 110) puis 368 à 407 (ajoutés par dev), chaque partie dans l’ordre binaire', () => {
+  const m = lireLeRegistre0113().motsCles;
+  assert.deepEqual(REGISTRE.motsCles, m, 'la référence et ce qui est gardé redonnent le registre');
   assert.equal(m.length, 407);
   assert.deepEqual(m.map((e) => e.id), m.map((_, i) => i + 1));
   const binaire = (a, b) => (a < b ? -1 : a > b ? 1 : 0);

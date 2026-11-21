@@ -478,16 +478,16 @@ function cheminsDuService() {
       },
       post: {
         operationId: 'edition_lot_deposer', tags: [SERVICE], summary: 'Déposer un lot de changements',
-        description: `Le lot (maverick-lot/1 : titre, nature, decision, auteur, operations de table, cle, operation, avant, apres) est contrôlé, enregistré « propose » et essayé à blanc sur une copie de la base ; la réponse porte l’essai (opérations applicables, changées entre-temps, verrouillées par une décision, refusées ; aperçu avant et après ; problèmes du contenu nés du lot). Rien n’est écrit dans le contenu : le propriétaire l’applique ou le refuse d’un clic. Clé de lecture ou mot de passe (jamais de clé d’écriture). 400 dit l’opération à corriger.${SITE_DE_DEV}`,
+        description: `Le lot (maverick-lot/1 : titre, nature, decision, auteur, operations de table, cle, operation, avant, apres) est contrôlé, enregistré « propose » et essayé à blanc sur une copie de la base ; la réponse porte l’essai (opérations applicables, changées entre-temps, verrouillées par une décision, refusées ; aperçu avant et après ; problèmes du contenu nés du lot). Tant que la clé de dépôt n’est pas posée (état sûr), rien n’est écrit dans le contenu : la clé de lecture ou le mot de passe déposent une proposition que le propriétaire applique ou refuse d’un clic. Une fois la clé de dépôt posée (R291), seules la clé de dépôt (mêmes en-têtes que la clé de lecture) et le mot de passe déposent — la clé de lecture est refusée en 403 — et le lot est APPLIQUÉ aussitôt, par le même code que le clic (essai à blanc, une transaction, contrôles du contenu rejoués) : 201 avec le lot « applique » (bilan.application dit par quoi) ; un lot que l’essai ou l’application refuse n’écrit rien, il est enregistré « refuse » et la réponse est un 409 avec ses motifs (motifs, lot). verrous_ouverts (facultatif, liste de « R… ») ouvre ce que le gel lève (R218, R219) comme le clic, avec le mot de passe seulement : porté avec la clé de dépôt, il est refusé (403), et un lot qui demande un verrou n’entre pas (409, « refuse »). 400 dit l’opération à corriger.${SITE_DE_DEV}`,
         requestBody: { required: true, ...json(objet, { example: { format: 'maverick-lot/1', titre: 'Redonner à un mot-clé sa couleur', nature: 'decision', decision: 'R275', operations: [{ table: 'mot_cle', cle: { id: 1 }, operation: 'modifier', avant: { couleur: null }, apres: { couleur: '#aa3322' } }] } }) },
-        responses: { 201: reponse('Proposée, essayée.', objet), 400: ref('responses', 'Requete'), 403: ref('responses', 'Fermee'), 415: ref('responses', 'TypeDeCorps'), 503: ref('responses', 'Indisponible') },
+        responses: { 201: reponse('Proposée et essayée, ou (clé de dépôt posée) appliquée aussitôt.', objet), 400: ref('responses', 'Requete'), 403: ref('responses', 'Fermee'), 409: reponse('Dépôt appliqué aussitôt : l’essai ou l’application refuse (motifs), le lot est enregistré « refuse », rien n’est écrit.', objet), 415: ref('responses', 'TypeDeCorps'), 503: ref('responses', 'Indisponible') },
       },
     },
     '/edition/lots/{id}/': {
       parameters: [idLot],
       get: {
         operationId: 'edition_lot_lire', tags: [SERVICE], summary: 'Un lot de changements',
-        description: `Le contenu déposé, l’essai à blanc (aperçu avant et après, verdict, verrous à ouvrir) et, appliqué, le bilan (opérations écrites, valeurs changées entre-temps avec la valeur trouvée, numéros donnés). Clé de lecture ou mot de passe.${SITE_DE_DEV}`,
+        description: `Le contenu déposé, l’essai à blanc (aperçu avant et après, verdict, verrous à ouvrir) et, appliqué, le bilan (opérations écrites, valeurs changées entre-temps avec la valeur trouvée, numéros donnés, application : directe ou non, par la clé de dépôt ou le mot de passe). Un lot appliqué ou annulé porte aussi \`lignes\` (R291) : chaque ligne de son effet net avec son numéro n, sa table et sa ligne par leur nom, ses colonnes (avant, après), son état (en_place, annulee, modifiee_depuis, comme_avant), annulable_seule (et motif, depend_de sinon). Un lot refusé à son dépôt porte ses motifs dans \`refus\`. Clé de lecture, clé de dépôt ou mot de passe.${SITE_DE_DEV}`,
         responses: { 200: reponse('La proposition.', objet), 403: ref('responses', 'Fermee'), 404: ref('responses', 'Introuvable') },
       },
     },
@@ -535,10 +535,27 @@ function cheminsDuService() {
         responses: { 200: reponse('Annulée.', objet), 400: ref('responses', 'Requete'), 403: ref('responses', 'Fermee'), 404: ref('responses', 'Introuvable'), 409: reponse('Refusée : le message dit pourquoi.', objet) },
       },
     },
+    '/edition/lots/{id}/lignes/{n}/annulation/': {
+      parameters: [idLot, { name: 'n', in: 'path', required: true, description: 'Le numéro de la ligne (champ n des lignes du lot).', schema: { type: 'integer', minimum: 1 } }],
+      get: {
+        operationId: 'edition_lot_ligne_annulation', tags: [SERVICE], summary: 'Aperçu de l’annulation d’une seule ligne d’un lot appliqué',
+        description: `Ce que « annuler cette modification » ferait d’une seule ligne du lot (une ligne de table de son effet net), calculé sur une copie de la base (rien n’est écrit) : mêmes règles que le lot entier (une valeur n’est remise que si elle vaut encore ce que le lot a écrit ; une ligne insérée n’est supprimée qu’intacte ; une ligne retirée n’est réinsérée que si elle est absente). Une ligne que tient une autre ligne du lot encore en place est refusée avec son motif (operations[0].message, depend_de). Mot de passe.${SITE_DE_DEV}`,
+        responses: { 200: reponse('L’aperçu de l’annulation de la ligne.', objet), 403: ref('responses', 'Fermee'), 404: ref('responses', 'Introuvable'), 409: reponse('Le lot n’est pas appliqué.', objet) },
+      },
+    },
+    '/edition/lots/{id}/lignes/{n}/annuler/': {
+      parameters: [idLot, { name: 'n', in: 'path', required: true, description: 'Le numéro de la ligne (champ n des lignes du lot).', schema: { type: 'integer', minimum: 1 } }],
+      post: {
+        operationId: 'edition_lot_ligne_annuler', tags: [SERVICE], summary: 'Annuler une seule ligne d’un lot appliqué',
+        description: `« Annuler cette modification » (mot de passe, après confirmation de la page) : remet cette ligne seule, d’un bloc, sous le même verrou que le lot entier, les contrôles du contenu rejoués ; un lot du journal « Annulation d’une ligne de … » de la même nature et du même numéro de décision. L’état de la ligne est gardé dans bilan.lignes_annulees (quand, par quel lot du journal) ; quand plus aucune ligne n’est en place, le lot passe « annule ». 409 : rien à remettre pour cette ligne (le site prime), une ligne que tient une autre ligne du lot (depend_de), un verrou de décision pas ouvert dans verrous_ouverts, un contrôle du contenu qui échoue ; le lot reste appliqué. Les numéros donnés ne sont jamais rendus.${SITE_DE_DEV}`,
+        requestBody: { required: false, ...json(objet, { example: { verrous_ouverts: [] } }) },
+        responses: { 200: reponse('Ligne annulée : le lot, avec ses lignes_annulees.', objet), 400: ref('responses', 'Requete'), 403: ref('responses', 'Fermee'), 404: ref('responses', 'Introuvable'), 409: reponse('Refusée : le message dit pourquoi.', objet) },
+      },
+    },
     '/edition/lots/recalcul/': {
       post: {
         operationId: 'edition_lots_recalcul', tags: [SERVICE], summary: 'Tout recalculer : déposer les écarts du code',
-        description: `Après un changement de code : calcule, sur une copie, l’écart entre les colonnes que le code dérive du contenu (corps, résumé et données des pages de races, de classes, de dons et de métiers) et leur valeur stockée, et le dépose comme un lot de changements de nature « code » (valeur stockée en avant, valeur recalculée en apres), essayé à blanc. Rien n’est écrit dans le contenu : le propriétaire l’applique d’un clic, comme tout lot. 201 avec { lot, recalcul } ; 200 sans lot quand rien ne diffère. Clé de lecture ou mot de passe.${SITE_DE_DEV}`,
+        description: `Après un changement de code : calcule, sur une copie, l’écart entre les colonnes que le code dérive du contenu (corps, résumé et données des pages de races, de classes, de dons et de métiers) et leur valeur stockée, et le dépose comme un lot de changements de nature « code » (valeur stockée en avant, valeur recalculée en apres), essayé à blanc. Comme tout dépôt : proposé (rien n’est écrit, le propriétaire l’applique d’un clic) tant que la clé de dépôt n’est pas posée, appliqué aussitôt avec la clé de dépôt ou le mot de passe une fois posée (R291 ; la clé de lecture est alors refusée en 403). 201 avec { lot, recalcul } ; 200 sans lot quand rien ne diffère.${SITE_DE_DEV}`,
         requestBody: { required: false, ...json(objet) },
         responses: { 200: reponse('Rien à recalculer.', objet), 201: reponse('Déposé et essayé.', objet), 403: ref('responses', 'Fermee'), 409: reponse('Plus d’écarts que ce qu’un lot porte.', objet), 503: ref('responses', 'Indisponible') },
       },
@@ -550,9 +567,16 @@ function cheminsDuService() {
         responses: { 200: { description: 'Le fichier SQLite.', content: { 'application/vnd.sqlite3': { schema: { type: 'string', format: 'binary' } } } }, 304: ref('responses', 'NonModifie'), 403: ref('responses', 'Fermee'), 503: ref('responses', 'Indisponible') },
       },
     },
+    '/edition/atelier/': {
+      post: {
+        operationId: 'edition_atelier', tags: [SERVICE], summary: 'Refaire l’extrait de l’atelier tout de suite (« le bouton »)',
+        description: `Sans corps. L’extrait du contenu de l’atelier est refait tout de suite, sans attendre les 10 minutes de calme qui suivent les saisies ; le service ne commande rien d’autre : root le voit à sa ronde (au plus 10 minutes) et, si l’interrupteur de l’atelier est posé, fabrique et pose le site. { format: 'maverick-atelier-refaire/1', etat: 'fabrique' | 'a_jour', message, version, fabrique_le } ; 409 : \`occupe\` (déjà en cours) ou \`inactif\` (atelier non installé).${SITE_DE_DEV}`,
+        responses: { 200: reponse('L’extrait est refait, ou déjà à jour.', objet), 403: ref('responses', 'Fermee'), 409: reponse('Une fabrication de l’extrait est déjà en cours, ou l’atelier n’est pas installé.', ref('schemas', 'Erreur')), 500: reponse('L’extrait n’a pas pu être refait.', ref('schemas', 'Erreur')), 503: ref('responses', 'Indisponible') },
+      },
+    },
     '/edition/extrait/meta/': lectureDuService('edition_extrait_meta', 'Méta de l’extrait du contenu', `La date de fabrication (UTC), la version du site, le schéma, l’empreinte globale et celle de chaque table de contenu, le nombre de lignes des tables calculées, la taille et l’empreinte du fichier (fabrique l’extrait s’il est périmé).${SITE_DE_DEV}`),
     '/edition/journal/': lectureDuService('edition_journal', 'Journal des modifications en attente', `Le journal à rapatrier dans data/rows (npm run db:appliquer-edition), en pièce jointe.${SITE_DE_DEV}`),
-    '/mise-a-jour/': lectureDuService('mise_a_jour', 'Note en préparation', `Modifications production → dev (calculées), brouillon, état du lancement, et \`etat_production\` : la production a-t-elle appliqué sa dernière mise à jour (\`a_jour\`, \`pas_appliquee\`, \`inconnue\`).${SITE_DE_DEV}`),
+    '/mise-a-jour/': lectureDuService('mise_a_jour', 'Note en préparation', `Modifications production → dev (calculées), brouillon, état du lancement, et \`etat_production\` : la production a-t-elle appliqué sa dernière mise à jour (\`a_jour\`, \`pas_appliquee\`, \`inconnue\`) ; \`retraits_bloquants\` (R292) : les races, classes et magies que des fiches de la production citent et que la mise à jour retirerait (la production ne les adapte pas : elle garderait sa base) — \`elements\` (table, id, nom, libelle, fiches), \`fiches_au_moins\`, \`fiches_au_plus\`, \`message\` ; des nombres seulement, jamais une fiche.${SITE_DE_DEV}`),
     '/mise-a-jour/brouillon/': ecritureDuService('mise_a_jour_brouillon', 'Enregistrer le brouillon', `{ texte, avant } → enregistre le champ libre des admins.${SITE_DE_DEV}`, { texte: '…', avant: '' }, { 409: ref('responses', 'Conflit') }),
     '/mise-a-jour/majeure/': ecritureDuService('mise_a_jour_majeure', 'Version majeure ou non', `{ majeure } → la case « Version majeure » : la prochaine mise à jour sera la X+1.0 (true) ou la X.Y+1 (false) ; rien n’est déclenché ; rend la note en préparation.${SITE_DE_DEV}`, { majeure: true }, { 409: ref('responses', 'Conflit') }),
     '/mise-a-jour/lancer/': ecritureDuService('mise_a_jour_lancer', 'Lancer une mise à jour (ou une simulation)',
@@ -647,7 +671,7 @@ function cheminsDuService() {
     '/acces/': {
       get: {
         operationId: 'etat_de_l_acces', tags: [SERVICE], summary: 'Où en est ce visiteur (accès au site de dev)',
-        description: 'Toujours ouverte. { protege, portee (ecriture | tout | null), connecte (une session ouverte par le mot de passe), droit (ecriture : le mot de passe ; lecture : la clé de lecture ; aucun), expire_le }. Sans réglage d’accès (secrets/acces.json, posé par la commande acces.sh de l’hôte), protege est faux et tout reste ouvert comme avant.',
+        description: 'Toujours ouverte. { protege, portee (ecriture | tout | null), connecte (une session ouverte par le mot de passe), droit (ecriture : le mot de passe ; depot : la clé de dépôt, R291 ; lecture : la clé de lecture ; aucun), expire_le }. Sans réglage d’accès (secrets/acces.json, posé par la commande acces.sh de l’hôte), protege est faux et tout reste ouvert comme avant.',
         responses: { 200: reponse('L’état d’accès.', objet) },
       },
       post: {

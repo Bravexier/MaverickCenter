@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs';
 import { describe, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
-  analyserRegistre, CHEMIN_INDEX, CHEMIN_REGISTRE, cellules, couper, LARGEUR_DECISION, LARGEUR_SUJET, ligneDIndex, longueur, produireIndex,
+  analyserRegistre, CHEMIN_INDEX, CHEMIN_REGISTRE, cellules, couper, LARGEUR_SUJET, ligneDIndex, longueur, produireIndex,
   texteDeCellule, verifier,
 } from '../scripts/decisions-index-lib.mjs';
 
@@ -37,8 +37,8 @@ describe('analyse du tableau', () => {
     assert.equal(decisions[0].question, 'Dés « 1d8 | 1d6 » ?');
     assert.equal(decisions[0].decision, 'Oui | non');
     const ligne = ligneDIndex(decisions[0]);
-    assert.equal(ligne, '| R1 | Dés « 1d8 \\| 1d6 » ? | Oui \\| non |');
-    assert.deepEqual(cellules(ligne), ['R1', 'Dés « 1d8 \\| 1d6 » ?', 'Oui \\| non'], 'trois cellules dans l\'index');
+    assert.equal(ligne, '| R1 | Dés « 1d8 \\| 1d6 » ? |');
+    assert.deepEqual(cellules(ligne), ['R1', 'Dés « 1d8 \\| 1d6 » ?'], 'deux cellules dans l\'index : la barre échappée ne casse pas le tableau');
   });
 
   test('`<br>` devient une espace, le gras `**` est retiré, les blancs sont réunis', () => {
@@ -54,8 +54,8 @@ describe('analyse du tableau', () => {
     assert.equal(decisions[0].question.length, 10_000);
     assert.equal(decisions[0].decision, 'd'.repeat(5_000));
     const index = cellules(ligneDIndex(decisions[0]));
+    assert.equal(index.length, 2, 'Réf. et sujet seulement');
     assert.equal(index[1], `${'a'.repeat(LARGEUR_SUJET - 1)}…`);
-    assert.equal(index[2], `${'d'.repeat(LARGEUR_DECISION - 1)}…`);
   });
 
   test('seules les lignes dont la 1re cellule est R<n> comptent : autres tableaux, texte libre et blocs de code ignorés', () => {
@@ -109,7 +109,9 @@ describe('index produit et --verifier', () => {
   test('en-tête : ne jamais lire le registre en entier, chercher le numéro avec Grep ; une ligne par décision, dans l\'ordre', () => {
     const index = produireIndex(analyserRegistre(texte).decisions);
     assert.match(index, /Ne lis jamais `docs\/decisions-regles\.md` en entier.*Grep/);
-    assert.deepEqual(index.split('\n').filter((l) => /^\| R\d/.test(l)), ['| R1 | Première question | Oui |', '| R2 | Seconde | Non |']);
+    assert.deepEqual(index.split('\n').filter((l) => /^\| R\d/.test(l)), ['| R1 | Première question |', '| R2 | Seconde |']);
+    assert.match(index, /\| Réf\. \| Sujet \|\n\| --- \| --- \|\n/, 'colonnes Réf. et Sujet');
+    assert.ok(!index.includes('Oui'), 'le texte de la décision ne figure pas dans l\'index');
     assert.ok(index.endsWith('|\n'));
   });
 

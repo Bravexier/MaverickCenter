@@ -9,6 +9,7 @@ import { copyFileSync, readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { cheminBase, ouvrirBase } from '../src/lib/donnees.mjs';
+import { lignesDuContenu } from './aide-base-de-depart.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
 import { rejouerLaMigration } from './aide-migration-rejouee.mjs';
 
@@ -42,7 +43,7 @@ const usage = (db, personnage_id, action_id, restants) =>
   db.prepare(`INSERT INTO ${TABLE} (personnage_id, action_id, restants) VALUES (?, ?, ?)`).run(personnage_id, action_id, restants);
 const compteurs = (db, id) => db.prepare(`SELECT action_id, restants FROM ${TABLE} WHERE personnage_id = ? ORDER BY action_id`).all(id).map((r) => ({ ...r }));
 
-test('R173 : personnage_action_usage — trois colonnes NOT NULL, clé primaire (personnage_id, action_id), STRICT et WITHOUT ROWID, vide dans data/rows', () => {
+test('R173 : personnage_action_usage — trois colonnes NOT NULL, clé primaire (personnage_id, action_id), STRICT et WITHOUT ROWID, vide dans le contenu qui fait foi (contenu fourni, sinon data/rows)', () => {
   const db = ouvrirBase({ sansExemples: false });
   assert.ok(db.prepare('PRAGMA user_version').get().user_version >= 85, 'schéma d’au moins la version de la migration 0085');
   assert.deepEqual(db.prepare(`PRAGMA table_xinfo(${TABLE})`).all().map(({ name, type, notnull, pk, dflt_value: defaut }) => ({ name, type, notnull, pk, defaut })), [
@@ -57,7 +58,8 @@ test('R173 : personnage_action_usage — trois colonnes NOT NULL, clé primaire 
     { table: 'personnage', from: 'personnage_id', to: 'id', on_delete: 'CASCADE' },
   ]);
   assert.equal(db.prepare(`SELECT count(*) AS n FROM ${TABLE}`).get().n, 0);
-  assert.equal(lire(`data/rows/${TABLE}.sql`).trim().split('\n').length, 1, 'data/rows : en-tête seul');
+  const { source, lignes } = lignesDuContenu(TABLE);
+  assert.equal(lignes, 0, `aucun compteur dans ${source}`);
   // la table de la base construite est celle de data/schema.sql et de la migration (au caractère près hors commentaires)
   const normal = (sql) => sql.replace(/--[^\n]*/g, '').replace(/\s+/g, ' ').replace(/ ?([,()]) ?/g, '$1').trim();
   const extrait = (texte) => texte.slice(texte.indexOf(`CREATE TABLE ${TABLE} (`)).split(/\) STRICT, WITHOUT ROWID;/)[0] + ') STRICT, WITHOUT ROWID';

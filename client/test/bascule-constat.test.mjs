@@ -24,6 +24,7 @@ CREATE TABLE page (id TEXT PRIMARY KEY, statut TEXT NOT NULL, corps_md TEXT NOT 
 CREATE TABLE alias (page_id TEXT NOT NULL REFERENCES page(id), ordre INTEGER NOT NULL, texte TEXT NOT NULL, PRIMARY KEY (page_id, ordre)) STRICT;
 CREATE TABLE personnage (id TEXT PRIMARY KEY, nom TEXT) STRICT;
 CREATE TABLE lien (de TEXT, vers TEXT) STRICT;
+CREATE TABLE modification_lot (id TEXT PRIMARY KEY, resolu_le TEXT) STRICT;
 CREATE TABLE modification (lot_id TEXT, rang INTEGER, etat TEXT) STRICT;
 INSERT INTO famille VALUES ('docs', '${SECRET}'), ('magies', 'Magies');
 INSERT INTO page VALUES ('guide/a', 'verified', 'A'), ('guide/b', 'draft', 'B');
@@ -96,7 +97,7 @@ test('une table qui diffère : nommée avec ses comptes, jamais son contenu ; la
 
 test('attestation absente, périmée ou d’une préparation ratée, journal non résolu : pas d’égalité, la raison dite', (t) => {
   const m = monde(t);
-  const dev = base(m.d, 'dev.db', "INSERT INTO modification VALUES ('l', 1, 'conflit');");
+  const dev = base(m.d, 'dev.db', "INSERT INTO modification_lot VALUES ('l', NULL); INSERT INTO modification VALUES ('l', 1, 'conflit');");
   const c = constater({ base: dev, regles: m.depot, attestation: attestation(m.prod, { preparation: { appliquee: false } }), versionProduction: '0.4.99' });
   assert.equal(c.egalite, false);
   assert.deepEqual(c.differences, []);
@@ -116,6 +117,25 @@ test('attestation absente, périmée ou d’une préparation ratée, journal non
   assert.equal(ok.status, 0, ok.stdout + ok.stderr);
   assert.match(ok.stdout, /^EGALITE[^\n]*\nEMPREINTE [0-9a-f]{64}\n?$/);
   assert.equal(spawnSync(process.execPath, ['--no-warnings', SCRIPT, '--base', join(m.d, 'absente.db'), '--regles', m.depot], { encoding: 'utf8' }).status, 2);
+});
+
+test('journal du site de dev compté comme /api/etat : un conflit d’un lot résolu ne fait pas refuser ; en attente ou conflit non résolu, si, avec le détail', (t) => {
+  const m = monde(t);
+  const att = attestation(m.prod);
+  const journal = (nom, sql) => constater({ base: base(m.d, nom, `INSERT INTO modification_lot VALUES ('r', '2026-11-17T10:00:00Z'), ('o', NULL); ${sql}`), regles: m.depot, attestation: att });
+  // lot résolu sur /mise-a-jour/ : ses lignes « conflit » restent comme trace (serveur/edition-conflits.mjs#compterLesConflits)
+  const trace = journal('trace.db', "INSERT INTO modification VALUES ('r', 1, 'conflit'), ('r', 2, 'conflit'), ('r', 3, 'integree');");
+  assert.equal(trace.egalite, true, trace.problemes.join('\n'));
+  const nonResolu = journal('ouvert.db', "INSERT INTO modification VALUES ('r', 1, 'conflit'), ('o', 1, 'conflit'), ('o', 2, 'conflit');");
+  assert.equal(nonResolu.egalite, false);
+  assert.equal(nonResolu.problemes.length, 1);
+  assert.match(nonResolu.problemes[0], /^2 modification\(s\).*en attente : 0, dont 0 .*en conflit non résolu : 2 dans 1 lot\(s\).*non comptées : 1\)$/);
+  // une vraie modification en attente fait toujours refuser, même dans un lot résolu
+  for (const lot of ['r', 'o']) {
+    const attente = journal(`attente-${lot}.db`, `INSERT INTO modification VALUES ('${lot}', 1, 'en_attente');`);
+    assert.equal(attente.egalite, false, lot);
+    assert.match(attente.problemes[0], new RegExp(`^1 modification\\(s\\).*en attente : 1, dont ${lot === 'r' ? 1 : 0} dans un lot résolu ; en conflit non résolu : 0 dans 0 lot`));
+  }
 });
 
 test('livré avec le service : le script est joint à _serveur/ et n’importe que des modules livrés', () => {

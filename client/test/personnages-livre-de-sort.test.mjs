@@ -6,10 +6,14 @@
 import assert from 'node:assert/strict';
 import { copyFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
-import { test } from 'node:test';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { fichierTemporaire } from './aide-dossier-temporaire.mjs';
+import { mixtesSorties } from '../src/lib/sortie-du-contenu.mjs';
 import { rejouerLaMigration, vuesCourantes } from './aide-migration-rejouee.mjs';
+import { testRetireAvecLesMixtes } from './aide-sortie-du-contenu.mjs';
+
+// Les tests qui éprouvent la migration mixte elle-même sortent avec elle (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LES_MIXTES).
+const testDeLaMixte = testRetireAvecLesMixtes(import.meta.url);
 
 const base = cheminBase({ sansExemples: false });
 const copie = fichierTemporaire('maverick.db', 'maverick-0082-');
@@ -46,10 +50,11 @@ fiche('un-livre', [[3, 3, 0], [2, 3, 1]]);
 fiche('sans-livre', [[0, 1, 0]]);
 const NM_AVANT = db.prepare('SELECT personnage_id, sort_id, rang, niveau_maitrise FROM personnage_sort ORDER BY personnage_id, rang').all().map((r) => ({ ...r }));
 
-const vuesRefaites = rejouerLaMigration(db, '0082-r169-livre-de-sort.sql');
+// Tous les tests de ce fichier éprouvent la migration rejouée et sortent avec elle (RETIRES_AVEC_LES_MIXTES) : sortie, elle ne se rejoue pas.
+const vuesRefaites = mixtesSorties() ? null : rejouerLaMigration(db, '0082-r169-livre-de-sort.sql');
 db.exec('PRAGMA foreign_keys = ON');
 
-test('migration 0082 (R169) : chaque sort qui avait son livre en garde un, rangé dans l’ordre de la liste ; le NM des sorts ne change pas', () => {
+testDeLaMixte('migration 0082 (R169) : chaque sort qui avait son livre en garde un, rangé dans l’ordre de la liste ; le NM des sorts ne change pas', () => {
   assert.deepEqual(db.prepare('SELECT personnage_id, sort_id, rang FROM personnage_livre_sort ORDER BY personnage_id, rang').all().map((r) => ({ ...r })), [
     { personnage_id: 'deux-livres', sort_id: SORTS[1], rang: 1 },
     { personnage_id: 'deux-livres', sort_id: SORTS[2], rang: 2 },
@@ -59,7 +64,7 @@ test('migration 0082 (R169) : chaque sort qui avait son livre en garde un, rang�
   assert.deepEqual(db.prepare('PRAGMA foreign_key_check').all(), []);
 });
 
-test('migration 0082 : nm_livre retirée, personnage_sort et personnage_livre_sort comme dans data/schema.sql, la vue de contrôle refaite', () => {
+testDeLaMixte('migration 0082 : nm_livre retirée, personnage_sort et personnage_livre_sort comme dans data/schema.sql, la vue de contrôle refaite', () => {
   const neuve = new DatabaseSync(base, { readOnly: true });
   try {
     for (const table of ['personnage_sort', 'personnage_livre_sort']) assert.deepEqual(colonnes(db, table), colonnes(neuve, table), table);

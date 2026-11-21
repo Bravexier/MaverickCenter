@@ -7,7 +7,7 @@
 //   node --test test/serveur-edition-annonces.test.mjs
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { cpSync, readdirSync, readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
@@ -27,12 +27,12 @@ import { RESSOURCES } from '../src/lib/ressources.mjs';
 import { installerLePlan, LIENS_ET_RENCONTRE } from '../src/lib/livres.mjs';
 import { chargerPlanDesRegles } from '../src/lib/plan-des-regles-db.mjs';
 import { normalize } from '../src/lib/text.mjs';
+import { copieDesRowsDeDepart, rowsDeDepart } from './aide-base-de-depart.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { copieSansNoteEnAttente, versionALaRevision } from './aide-mise-a-jour.mjs';
 import { cheminDImport } from './aide-base-d-import.mjs';
 
 const RACINE = fileURLToPath(new URL('../../', import.meta.url));
-const ROWS = join(RACINE, 'data', 'rows');
 const sansPython = spawnSync('python3', ['--version']).error ? 'python3 absent' : false;
 const ID = LIENS_ET_RENCONTRE.rencontre.annonce;
 
@@ -163,13 +163,13 @@ test('rapatriement et mise à jour sur data/rows : l’annonce part telle que su
   };
   // db:appliquer-edition
   const rows = join(racine, 'rapatriement', 'rows');
-  cpSync(ROWS, rows, { recursive: true });
+  copieDesRowsDeDepart(rows);
   assert.deepEqual(appliquerJournal(journal, { rows }).conflits, []);
   const appliquee = construire(rows, 'rapatriement');
   assert.deepEqual(chargerAnnonce(appliquee, ID), chargerAnnonce(db, ID));
   appliquee.close();
   // « Effectuer la mise à jour »
-  const rowsMaj = copieSansNoteEnAttente(join(racine, 'mise-a-jour', 'rows'), { versionProduction: versionALaRevision('HEAD') }).rows;
+  const rowsMaj = copieSansNoteEnAttente(join(racine, 'mise-a-jour', 'rows'), { rows: rowsDeDepart(), versionProduction: versionALaRevision('HEAD') }).rows;
   const lot = { format: 'maverick-mise-a-jour/1', id: '44444444-5555-6666-7777-888888888888', cree_le: '2026-10-18T08:00:00Z', version_dev: '0.3.59', version_cible: '0.4', texte: null, journal };
   const maj = appliquerMiseAJour(lot, { rows: rowsMaj, reference: 'HEAD', date: '2026-10-18', versionDev: '0.3.59' });
   assert.ok(maj.fichiers.includes('annonce.sql'), maj.fichiers.join(', '));

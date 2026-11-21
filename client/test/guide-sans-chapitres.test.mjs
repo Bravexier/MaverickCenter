@@ -18,16 +18,24 @@ import {
 import { chargerPlanDesRegles } from '../src/lib/plan-des-regles-db.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
 import { PAGE_RETIREE_PAR_LA_0122, retireeParLa0122 } from './aide-migration-0122.mjs';
+import { lireLeRegistre, registreDeMigration, REGISTRES_GARDES } from './aide-registres-sortis.mjs';
+import { testRetireAvecLeContenu } from './aide-sortie-du-contenu.mjs';
 
 const racine = (chemin) => fileURLToPath(new URL(`../../${chemin}`, import.meta.url));
 const lire = (chemin) => readFileSync(racine(chemin), 'utf8');
-const registre = JSON.parse(lire('data/migrations/0064-guide-sans-chapitres.json'));
-const migration = lire('data/migrations/0064-guide-sans-chapitres.sql');
+// Le registre et le SQL de la 0064 sortent du dépôt le jour J du lot 12 (R296), et les tests qui les lisent avec eux
+// (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LE_CONTENU) : lus à la demande ; les tests de la base, du code et du plan restent.
+const testDeLaMigration = testRetireAvecLeContenu(import.meta.url);
+let lue;
+const laMigration = () => (lue ??= (() => {
+  const registre = JSON.parse(lire('data/migrations/0064-guide-sans-chapitres.json'));
+  return { registre, migration: lire('data/migrations/0064-guide-sans-chapitres.sql'), parId: new Map(registre.pages.map((p) => [p.id, p])) };
+})());
 const db = ouvrirBase({ sansExemples: false });
-const parId = new Map(registre.pages.map((p) => [p.id, p]));
 installerLePlan(chargerPlanDesRegles(db));
 
-test('registre de la migration 0064 : les 24 chapitres de l’ancien guide, numérotés de 1 à 24 sans trou, chacun dans une partie connue, dans l’ordre des parties', () => {
+testDeLaMigration('registre de la migration 0064 : les 24 chapitres de l’ancien guide, numérotés de 1 à 24 sans trou, chacun dans une partie connue, dans l’ordre des parties', () => {
+  const { registre, parId } = laMigration();
   assert.equal(registre.migration, '0064-guide-sans-chapitres');
   assert.equal(registre.pages.length, 24);
   assert.equal(parId.size, 24, 'aucune page deux fois');
@@ -64,7 +72,8 @@ test('registre de la migration 0064 : les 24 chapitres de l’ancien guide, num�
   }
 });
 
-test('le SQL de la migration est le registre : chaque page n’est vidée que si son objet est exactement celui de l’import (rien d’autre dans `donnees`)', () => {
+testDeLaMigration('le SQL de la migration est le registre : chaque page n’est vidée que si son objet est exactement celui de l’import (rien d’autre dans `donnees`)', () => {
+  const { registre, migration, parId } = laMigration();
   const paires = [...migration.matchAll(/\('(guide\/[a-z0-9-]+)', '(\{[^']*\})'\)/g)].map((m) => [m[1], m[2]]);
   assert.equal(paires.length, registre.pages.length);
   // chaque page du registre exactement une fois (un doublon ne cache pas une page absente)
@@ -118,6 +127,10 @@ test('plus rien ne les déclare (content.config.ts) ni ne les lit (site, service
 });
 
 test('le plan garde l’ordre de lecture de l’ancien guide dans Découvrir, et chaque ancien chapitre y a sa place (Découvrir, un onglet des Règles, Guide du MJ), ou celle de la page qui l’absorbe ; une page retirée ou supprimée n’en a plus', () => {
+  // les ids, numéros et parties des chapitres de l'ancien guide : registre de la 0064, ou ce qu'en garde test/fixtures/registres-sortis.json (sans texte)
+  // une fois le contenu sorti (test/aide-registres-sortis.mjs) ; le plan courant, lui, reste
+  const registre = registreDeMigration('0064-guide-sans-chapitres');
+  const parId = new Map(registre.pages.map((p) => [p.id, p]));
   const placeDe = (id) => (Object.hasOwn(PAGES_ABSORBEES, id) ? PAGES_ABSORBEES[id] : id);
   // le Lexique (chapitre 23), retiré le 2026-11-05 (migration 0090), et l'Aide-mémoire (22) et Les documents des règles (24), supprimés (R184 (9)) : ni
   // dans le plan, ni dans la base ; de même « La montée de niveau », retirée par la migration 0122 (son registre : aide-migration-0122.mjs)
@@ -143,4 +156,11 @@ test('le plan garde l’ordre de lecture de l’ancien guide dans Découvrir, et
     const place = estDansDecouvrir(id) ? 'decouvrir' : estDuGuideDuMj(id) ? 'mj' : estDesOnglets(id) ? 'onglet' : null;
     assert.ok(place, `${p.id} (ancien chapitre ${p.chapitre}) n’a plus de place`);
   }
+});
+
+testDeLaMigration('registre gardé : test/fixtures/registres-sortis.json recopie tel quel ce que les tests lisent encore du registre de la 0064', () => {
+  // ids, numéros et parties des 24 chapitres (le test du plan, ci-dessus), sans rien d'autre
+  assert.deepEqual(REGISTRES_GARDES['0064-guide-sans-chapitres'], {
+    pages: lireLeRegistre('0064-guide-sans-chapitres').pages.map(({ id, chapitre, partie }) => ({ id, chapitre, partie })),
+  });
 });

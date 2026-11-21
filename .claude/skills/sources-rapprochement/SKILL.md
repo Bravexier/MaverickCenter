@@ -14,6 +14,7 @@ user-invocable: false
 - `tools/sources/ignorer/<classeur>.json` : registre justifié par classeur.
 - `client/test/sources-rapprochement.test.mjs` : essais sur la base d'import (voir Tests).
 - `tools/import-gdocs.mjs` : export des Google Docs/Sheets listés dans `sources/sources.json` (`--dry-run`, `--only <id>`), depuis une machine qui a accès à Google.
+- Dossier des exports : `sources/raw/` par défaut ; `MAVERICK_SOURCES_RAW` le remplace (`tools/sources/dossier-des-exports.mjs#dossierDesExports`, lu par `import-gdocs.mjs` et par `rapprocher.mjs` pour `classeurs/registre.json`). Un nouvel export peut aller dans `var/sources-raw/`. R83 : les originaux Google font foi, une archive n'est qu'un instantané daté.
 - `docs/sql/rapprochement-classeurs.md` : écarts relevés.
 - `tools/sources/tipeee.mjs` : l'instantané de la partie « Bienvenue » de Tipeee, `sources/tipeee/bienvenue.json` (`{ url, lu_le, paragraphes }`), tiré
   par le module pur du site `client/src/lib/tipeee.mjs` ; `--verifier`, `--depuis <reponse.json>`. Test : `client/test/sources-tipeee.test.mjs`.
@@ -25,12 +26,12 @@ user-invocable: false
 - Défaire l'orthographe des migrations : skill `base-orthographe`. Base dans son état d'import : skill `base-sqlite` (`lib/historique-site.mjs`).
 
 ## Invariants
-- Décision R83 : les classeurs originaux font foi (les copies de la migration 0014 restent une trace). Un écart est listé, jamais appliqué d'office : le
+- Décision R83 : les classeurs originaux font foi (les copies du Drive, `sources/copies-drive.json`, lu par `rapprocher.mjs`, restent une trace). Un écart est listé, jamais appliqué d'office : le
   propriétaire relit la liste et demande lui-même d'appliquer. Une valeur modifiée des deux côtés (site de dev et classeur) est un conflit, demandé au
   propriétaire à chaque fois, sa réponse inscrite dans `conflits`.
 - Un écart voulu d'une colonne numérique s'écrit en texte (`voulus`, « 17 » -> « 16 ») : l'outil admet l'`apres` si la cellule écrit l'`avant`, pour cette colonne seulement (R207 : AP calculé).
 - Un texte dont une migration a retiré la fin s'écrit en `voulus` par la phrase entière de part et d'autre (`avant` : celle du classeur ; `apres` : celle de la base, sans sa fin) : jamais seulement la fin retirée, car la substitution inverse ne peut pas avoir un `apres` vide.
-- Tout `data/migrations/*.json` dont la clé `corrections` est entièrement en texte (`avant` et `apres` en chaînes) est défait comme de l'orthographe (`registresDOrthographe`) : voulu pour la 0103 (« Gel », R205). Une migration dont les valeurs ne sont pas des corrections d'un classeur les écrit sous `textes` ou `valeurs` (skill `base-sqlite`).
+- Tout `data/migrations/*.json` dont la clé `corrections` est entièrement en texte (`avant` et `apres` en chaînes) est défait comme de l'orthographe (`rapprocher.mjs#registresDOrthographe`, qui lit `data/migrations` ET le dossier de `MAVERICK_MIGRATIONS_ARCHIVEES` ensemble, `tools/sources/dossier-des-exports.mjs#dossiersDesMigrations` : même nom = même registre, le premier gagne) : voulu pour la 0103 (« Gel », R205). Une migration dont les valeurs ne sont pas des corrections d'un classeur les écrit sous `textes` ou `valeurs` (skill `base-sqlite`).
 - La base est lue dans son état d'import (`lignesDImport`) : le site de dev est la source de ce qu'il modifie, ce n'est pas un écart.
   - Un écart « pour mémoire » (casse seule, ligne à relire dans une source sans instantané) n'est jamais un conflit, même sur une ligne supprimée ou une colonne modifiée par le site.
   - Une ligne supprimée par le site, sans cellule changée, n'est jamais un écart (listée dans `site.supprimees`) ; une cellule vraiment changée sur une telle ligne reste un conflit (R83).
@@ -45,7 +46,8 @@ user-invocable: false
   donnée portée par la mise en forme (le poids d'un bouclier, R92, se relit par le connecteur Google Sheets, jamais depuis l'instantané). Pour une mise à jour,
   c'est le diff des instantanés qui fait foi, case par case. Limites : `docs/sources.md`.
 - Une mise à jour du classeur se fait à la demande du propriétaire, jamais d'office : nouvel instantané, `rapprocher.mjs --avant` (chaque cellule changée et
-  les lignes qu'elle touche), liste validée par le propriétaire, migration ; l'instantané remplace l'ancien et le rapprochement repasse à 0.
+  les lignes qu'elle touche), liste validée par le propriétaire, puis un lot de changements déposé sur le site de dev (nature `source`), appliqué par
+  le propriétaire (skill `modifier-une-page-wiki`), jamais une migration ; l'instantané remplace l'ancien et le rapprochement repasse à 0.
 - L'instantané d'un classeur rapproché est gardé dans le dépôt (référence d'une mise à jour) ; les autres JSON intermédiaires et `.xlsx` ne le sont pas.
 - L'outil vit jusqu'à la 1.0 : il lit la provenance (`source_ref`), retirée ensuite. Une référence incomplète n'est pas réparée.
 - Une règle nouvelle ou changée suit la règle d'or : citée, jamais déduite.
@@ -56,5 +58,5 @@ user-invocable: false
   (`.gitattributes`), contrôlées par `--verifier` et le test.
 
 ## Tests
-- `client/test/sources-rapprochement.test.mjs` : les essais qui changent une cellule ou une ligne partent de la base d'import (`baseDImport`, `cheminDImport` de `test/aide-base-d-import.mjs`) ; une ligne réécrite par le site transformerait l'écart attendu en conflit.
+- `client/test/sources-rapprochement.test.mjs` (exports lus par `dossierDesExports()`) : les essais qui changent une cellule ou une ligne partent de la base d'import (`baseDImport`, `cheminDImport` de `test/aide-base-d-import.mjs`) ; une ligne réécrite par le site transformerait l'écart attendu en conflit.
 - `client/test/sources-tipeee.test.mjs` (l'outil Tipeee et l'instantané versionné ; l'extraction : `tipeee.test.mjs`).

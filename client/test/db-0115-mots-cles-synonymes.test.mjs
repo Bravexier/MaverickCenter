@@ -15,11 +15,18 @@ import { fileURLToPath } from 'node:url';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { historiqueSite } from '../src/lib/historique-site.mjs';
 import { TABLES_HORS_REGLES } from '../src/lib/tables-de-la-base.mjs';
+import { registreDeMigration } from './aide-registres-sortis.mjs';
+import { testRetireAvecLesMixtes } from './aide-sortie-du-contenu.mjs';
+
+// Les tests qui éprouvent la migration mixte elle-même sortent avec elle (src/lib/sortie-du-contenu.mjs#RETIRES_AVEC_LES_MIXTES).
+const testDeLaMixte = testRetireAvecLesMixtes(import.meta.url);
 
 const outils = fileURLToPath(new URL('../../tools/db/', import.meta.url));
 const sansPython = spawnSync('python3', ['--version']).error ? 'python3 absent' : false;
 const SCHEMA = readFileSync(new URL('../../data/schema.sql', import.meta.url), 'utf8');
-const REGISTRE = JSON.parse(readFileSync(new URL('../../data/migrations/0115-mots-cles-synonymes.json', import.meta.url), 'utf8'));
+// Le registre sort avec les migrations mixtes, et les tests qui le comparent à l'import avec lui (RETIRES_AVEC_LES_MIXTES) ; les tests de l'état courant
+// n'en lisent que les ids et clés des fusions, gardés dans test/fixtures/registres-sortis.json (aide-registres-sortis.mjs).
+const REGISTRE = registreDeMigration('0115-mots-cles-synonymes');
 const db = ouvrirBase({ sansExemples: false });
 
 /** normalize() de tools/db/maverick.py (la référence de la base) sur une liste d'écritures. */
@@ -74,7 +81,7 @@ test('contraintes (base neuve) : écriture normalisée unique sur toute la table
   essai.close();
 });
 
-test('registre : les abréviations, ordre 0, puis les libellés des deux mots-clés fondus, après ceux de la cible ; écriture normalisée = normalize', { skip: sansPython }, () => {
+testDeLaMixte('registre : les abréviations, ordre 0, puis les libellés des deux mots-clés fondus, après ceux de la cible ; écriture normalisée = normalize', { skip: sansPython }, () => {
   const s = REGISTRE.synonymes;
   assert.deepEqual(s.map((e) => e.id), s.map((_, i) => i + 1));
   const abreviations = s.filter((e) => e.origine === 'abreviation');
@@ -99,7 +106,7 @@ test('registre : les abréviations, ordre 0, puis les libellés des deux mots-cl
   }
 });
 
-test('import : les synonymes sont ceux du registre ; les monnaies ont leur abréviation pour synonyme ; les mots-clés fondus n’existent plus', () => {
+testDeLaMixte('import : les synonymes sont ceux du registre ; les monnaies ont leur abréviation pour synonyme ; les mots-clés fondus n’existent plus', () => {
   const h = historiqueSite(db);
   const synonymes = h.lignesDImport('mot_cle_synonyme').sort((a, b) => a.id - b.id);
   assert.deepEqual(synonymes.map((x) => [x.id, x.mot_cle_id, x.libelle, x.libelle_cle, x.ordre]),
