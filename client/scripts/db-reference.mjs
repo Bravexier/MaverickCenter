@@ -28,10 +28,12 @@ export function construireReference({ sortie, ref = process.env.MAVERICK_REFEREN
   let tmp = null;
   try {
     tmp = mkdtempSync(join(tmpdir(), 'maverick-reference-'));
-    const archive = git(['archive', '--format=tar', commit, 'data', 'client/package.json'], { encoding: 'buffer', maxBuffer: 512 * 1024 * 1024 });
+    // L'archive passe par un fichier et tar travaille dans son dossier, sans recevoir de chemin absolu : le tar GNU (celui de Git sous Windows) lit les « \1 » ou « \t »
+    // d'un chemin C:\… comme des séquences d'échappement, puis s'arrête sans lire son entrée (« spawnSync tar EOF »).
+    const archive = git(['archive', '--format=tar', `--output=${join(tmp, 'reference.tar')}`, commit, 'data', 'client/package.json']);
     if (archive.error) return { chemin: null, raison: `git archive ${ref} : ${archive.error.message}` };
     if (archive.status !== 0) return { chemin: null, raison: `git archive ${ref} : ${String(archive.stderr).trim()}` };
-    const tar = spawnSync('tar', ['-x', '-C', tmp], { input: archive.stdout });
+    const tar = spawnSync('tar', ['-xf', 'reference.tar'], { cwd: tmp });
     if (tar.error) return { chemin: null, raison: `tar absent : ${tar.error.message}` };
     if (tar.status !== 0) return { chemin: null, raison: `tar : ${String(tar.stderr).trim()}` };
     mkdirSync(dirname(sortie), { recursive: true });
