@@ -4,6 +4,7 @@ import { remarkCouleursDeCase } from './markdown-couleurs.mjs';
 import { remarkMonnaies } from './markdown-monnaies.mjs';
 import { remarkAncresFigees } from './ancres-figees.mjs';
 import { remarkOnglets } from './markdown-onglets.mjs';
+import { urlDuMorceau } from './markdown-fichier.mjs';
 import { adresseDesAnciensLiens, avecPrefixe, remarkAnciensLiensDuGuide } from './guide.mjs';
 import { ACCUEIL_DU_GUIDE, pagesEclateesDuGuide } from './livres.mjs';
 import { cheminDePage } from './metiers.mjs';
@@ -43,7 +44,7 @@ async function creer() {
 /** HTML d'un morceau de Markdown. `id` (« guide/le-combat ») sert aux avertissements des liens cassés. */
 export async function rendreMarkdown(markdown: string, id: string, status?: string) {
   const rendu = await (processeur ??= creer());
-  const { code } = await rendu.render(avecPrefixe(markdown, import.meta.env.BASE_URL), { fileURL: new URL(`file:///${id}.md`), frontmatter: { status } });
+  const { code } = await rendu.render(avecPrefixe(markdown, import.meta.env.BASE_URL), { fileURL: urlDuMorceau(id), frontmatter: { status } });
   return code;
 }
 

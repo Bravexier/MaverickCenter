@@ -9,7 +9,8 @@ import { tmpdir } from 'node:os';
 import { basename, dirname, extname, join, relative } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { PREFIXE_COMMUN, dossierTemporaire, dossiersEnCours, fichierTemporaire, supprimerDossierTemporaire, variablesTemporaires } from './aide-dossier-temporaire.mjs';
+import { setTimeout as attendre } from 'node:timers/promises';
+import { PREFIXE_COMMUN, dossierTemporaire, dossiersEnCours, estVerrouille, fichierTemporaire, supprimerDossierTemporaire, variablesTemporaires } from './aide-dossier-temporaire.mjs';
 
 const ICI = dirname(fileURLToPath(import.meta.url));
 const AIDE = join(ICI, 'aide-dossier-temporaire.mjs');
@@ -148,4 +149,35 @@ test('interrompu', (t) => { cree('interrompu', { t }); process.exit(7); });
   for (const d of crees) assert.equal(dirname(d), temporaire, `${d} : dans le dossier temporaire donné à l’enfant`);
   assert.deepEqual(crees.filter((d) => existsSync(d)), [], 'aucun ne reste');
   assert.deepEqual(readdirSync(temporaire), [], 'rien ne reste');
+});
+
+test('estVerrouille : EPERM et EBUSY sous Windows seulement ; toute autre erreur reste une erreur', () => {
+  for (const code of ['EPERM', 'EBUSY']) {
+    assert.equal(estVerrouille({ code }, 'win32'), true, code);
+    assert.equal(estVerrouille({ code }, 'linux'), false, `${code} sous Linux`);
+  }
+  assert.equal(estVerrouille({ code: 'ENOENT' }, 'win32'), false);
+  assert.equal(estVerrouille(new Error('sans code'), 'win32'), false);
+});
+
+test('une base SQLite restée ouverte ne fait pas échouer la sortie du fichier de test, et son dossier disparaît quand même', async (t) => {
+  const temporaire = dossierTemporaire('garde-fou-verrou', { t });
+  const essais = dossierTemporaire('garde-fou-verrou-essai', { t });
+  const essai = join(essais, 'essai.mjs');
+  const journal = join(essais, 'dossier.txt');
+  writeFileSync(essai, `import { writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
+import { dossierTemporaire, supprimerDossierTemporaire } from ${JSON.stringify(pathToFileURL(AIDE).href)};
+const dossier = dossierTemporaire('verrou');
+writeFileSync(${JSON.stringify(journal)}, dossier);
+globalThis.base = new DatabaseSync(join(dossier, 'base.db'));
+globalThis.base.exec('CREATE TABLE t (x)');
+supprimerDossierTemporaire(dossier); // comme à la fin d'un test (t.after), base encore ouverte
+`);
+  const r = spawnSync(process.execPath, ['--no-warnings', essai], { encoding: 'utf8', env: { ...process.env, ...variablesTemporaires(temporaire) } });
+  assert.equal(r.status, 0, r.stderr);
+  const dossier = readFileSync(journal, 'utf8');
+  for (let i = 0; i < 100 && existsSync(dossier); i += 1) await attendre(100);
+  assert.ok(!existsSync(dossier), 'supprimé après la sortie du processus');
 });

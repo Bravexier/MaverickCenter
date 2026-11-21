@@ -3,12 +3,12 @@
 // d'après capacitesServies (serveur/ressources.mjs) : une ressource ajoutée ou une capacité changée doit y être reportée.
 //   node --test test/api-doc.test.mjs
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { lireSansCrlf } from './aide-fins-de-ligne.mjs';
 import { test } from 'node:test';
 import { MODULES } from '../src/lib/ressources.mjs';
 import { RESSOURCES_SERVIES, capacitesServies } from '../serveur/ressources.mjs';
 
-const doc = readFileSync(new URL('../../docs/api.md', import.meta.url), 'utf8');
+const doc = lireSansCrlf(new URL('../../docs/api.md', import.meta.url));
 
 /** « créer, modifier, supprimer » (ce qui existe), ou « lecture seule ». */
 const ecritures = (c) => [c.creer && 'créer', c.modifier && 'modifier', c.supprimer && 'supprimer'].filter(Boolean).join(', ') || 'lecture seule';

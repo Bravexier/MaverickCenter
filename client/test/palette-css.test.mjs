@@ -5,7 +5,7 @@
 // règle, lisible (« Privilégé la lisibilité. ») ; les combinaisons des potions calculées depuis leur classe de base ; le module n'écrit aucune couleur.
 import assert from 'node:assert/strict';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { lireSansCrlf } from './aide-fins-de-ligne.mjs';
 import { test } from 'node:test';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import {
@@ -42,7 +42,7 @@ import { COULEUR_AUJOURDHUI, COULEUR_INCONNUE, couleursDesEvenements } from '../
 import { chargerChronologie } from '../src/lib/chronologie-db.mjs';
 import { baseDImport } from './aide-base-d-import.mjs';
 
-const lire = (chemin) => readFileSync(new URL(`../${chemin}`, import.meta.url), 'utf8');
+const lire = (chemin) => lireSansCrlf(new URL(`../${chemin}`, import.meta.url));
 const HEX = /(?<!&)#[0-9a-f]{6}\b|(?<!&)#[0-9a-f]{3}\b/gi;
 /** Les règles d'une feuille fabriquée : Map(classe → { propriété: valeur }). */
 const regles = (css) => new Map([...css.matchAll(/\.([a-z0-9-]+)\{([^}]*)\}/g)].map(([, classe, corps]) =>
@@ -735,11 +735,11 @@ const FEUILLES_DES_CLASSES_ET_RACES = /^src\/styles\/(?:classe|race)\//;
  * `var(--affaiblissement…)`, `var(--texte-sur-good)`) ;
  * [{ fichier, selecteur, corps }], commentaires retirés.
  */
-const reglesQuiLisentLaPalette = () => readdirSync(new URL('../src/styles/', import.meta.url), { recursive: true }).filter((n) => n.endsWith('.css'))
+const reglesQuiLisentLaPalette = () => readdirSync(new URL('../src/styles/', import.meta.url), { recursive: true }).map((n) => n.replaceAll('\\', '/')).filter((n) => n.endsWith('.css'))
   .flatMap((n) => [...lire(`src/styles/${n}`).replace(/\/\*[\s\S]*?\*\//g, '').matchAll(/([^{}]+)\{([^{}]*)\}/g)]
     // les blocs du thème (`:root…` de global/base.css) écrivent ses jetons (« Thème reste ») : `--maudit-texte: var(--maudit)` n'y est pas une règle
     // d'un lot ; le reste de base.css est lu comme toute feuille
-    .filter(([, selecteur]) => !(n === join('global', 'base.css') && selecteur.trim().startsWith(':root')))
+    .filter(([, selecteur]) => !(n === 'global/base.css' && selecteur.trim().startsWith(':root')))
     .filter(([, , corps]) => /var\(--(?:couleur(?:-texte|-2)?|mag(?:-[a-z]+)?)[,)]/.test(corps)
       || (FEUILLES_DES_VARIABLES_DE_LA_PALETTE.has(`src/styles/${n}`) && /var\(--(?:c|c1|c2|c-texte|texte-sur-c)[,)]/.test(corps))
       || (FEUILLES_DES_CLASSES_ET_RACES.test(`src/styles/${n}`) && /var\(--(?:cla|rac)(?:-[a-z]+)?[,)]|var\(--hero-[12]\)/.test(corps))
