@@ -84,8 +84,17 @@ function fauxService(dossier, reponse) {
     for (const nom of readdirSync(racineEssais).filter((x) => /^demande-/.test(x))) {
       const demande = join(racineEssais, nom);
       if (!existsSync(join(demande, 'demande.json')) || existsSync(join(demande, 'accuse.json'))) continue;
-      const migrations = Object.fromEntries(readdirSync(join(demande, 'migrations')).map((f) => [f, lire(demande, 'migrations', f)]));
-      vus.push({ nom, demande: JSON.parse(lire(demande, 'demande.json')), migrations, schema: lire(demande, 'schema.sql'), siteAlors: existsSync(join(dossier, 'site', 'index.html')) ? lire(dossier, 'site', 'index.html') : null,
+      // l'installateur peut retirer sa demande entre le test d'existence et la lecture (il la dépose d'un coup, par mv) : ENOENT seul, demande suivante
+      let lue;
+      try {
+        lue = { migrations: Object.fromEntries(readdirSync(join(demande, 'migrations')).map((f) => [f, lire(demande, 'migrations', f)])),
+          contenu: JSON.parse(lire(demande, 'demande.json')), schema: lire(demande, 'schema.sql') };
+      } catch (e) {
+        if (e?.code === 'ENOENT') continue;
+        throw e;
+      }
+      const { migrations } = lue;
+      vus.push({ nom, demande: lue.contenu, migrations, schema: lue.schema, siteAlors: existsSync(join(dossier, 'site', 'index.html')) ? lire(dossier, 'site', 'index.html') : null,
         entrees: readdirSync(racineEssais).sort() });
       if (reponse.accuse === false) continue;
       writeFileSync(join(demande, 'accuse.json'), '{"format":"maverick-essai-accuse/1"}\n');
