@@ -21,6 +21,7 @@ export const ADRESSES_FIXES = Object.freeze([
   '/bestiaire/',
   '/chronologie/',
   '/classes/',
+  '/confidentialite/',
   '/donnees/',
   '/fiche/',
   '/galeries/',

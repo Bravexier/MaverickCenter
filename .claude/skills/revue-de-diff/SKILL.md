@@ -29,6 +29,7 @@ Relis d'un regard neuf, sans la conclusion attendue : `git diff origin/dev...HEA
   - Ceux du skill de la zone, et `site-version-portable` (module partagé par deux scripts de page, `src/lib` qui touche au navigateur).
   - Les identifiants figés, les listes à tenir ensemble (une table ajoutée : registres de l'API, des fiches, du journal).
 - **Données.**
+  - **Bloquant** : le diff change ce que le site collecte, garde ou transmet (comptes, fiches, cookies, stockage du navigateur, journaux, métriques, service tiers) sans toucher `client/src/pages/confidentialite.astro` et sa constante `MISE_A_JOUR` (skill `zone-service`).
   - `data/rows` modifié à la main.
   - Une migration sans `db:doc` ni test (`revue-sql` pour le SQL).
   - Un fichier fabriqué commité (`client/src/content/wiki/`, `var/`, `dist/`).

@@ -23,6 +23,7 @@
 .nav-soon { color: var(--muted); font-style: italic; }
 .site-footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.5rem 1.5rem; color: var(--muted); font-size: var(--fs-md); padding-block: 1.5rem; }
 .site-footer__version { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.site-footer__lien { color: inherit; }
 /* Maintenance pendant une mise à jour (demande du propriétaire) : sur /maintenance/ et sur une page qui y part, l'en-tête est inerte (attribut
    `inert` : ni clic ni clavier) et tout le menu grisé. */
 .site-header--maintenance .site-nav, html[data-maintenance] .site-nav { opacity: 0.35; filter: grayscale(1); pointer-events: none; }

@@ -156,6 +156,8 @@ const couleurDeLaPage = couleurPropre || maintenance ? null : classeDeLaPageDuSi
     </main>
     <footer class="site-footer">
       <span>Projet de fan pour Maverick JDR — contenu issu du Discord et des Google Docs du MJ.</span>
+      {/* les règles de confidentialité (demande du propriétaire, 2026-11-21 : Google les exige pour le bouton « Exporter » de la fiche) : lien discret */}
+      <a class="site-footer__lien" href={url('confidentialite/')} data-confidentialite>Confidentialité</a>
       <span class="site-footer__version">{site.etiquette}</span>
     </footer>
     {edition && !portable && <Edition page={edition} />}
