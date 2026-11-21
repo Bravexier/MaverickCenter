@@ -2,7 +2,7 @@
 
 Ne lis jamais `docs/decisions-regles.md` en entier : trouve ici le numéro de la décision, puis cherche sa ligne avec Grep (motif `^\| R41 \|`) et ne lis qu'elle.
 
-Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 307 décisions, de R1 à R307, dans l'ordre du registre. Sujet : début de la colonne « Question » ; la décision se lit dans le registre.
+Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas modifier à la main : 308 décisions, de R1 à R308, dans l'ordre du registre. Sujet : début de la colonne « Question » ; la décision se lit dans le registre.
 
 | Réf. | Sujet |
 | --- | --- |
@@ -313,3 +313,4 @@ Fichier fabriqué par `npm run decisions:index` (depuis `client/`), à ne pas mo
 | R305 | Les trois questions de la bascule 2 (`docs/chantier-ba… |
 | R306 | Les deux propositions en attente sur la page Mise à jo… |
 | R307 | Prétirés ouverts à tout visiteur en production (PR 445… |
+| R308 | Sauvegardes extérieures chez le même fournisseur que l… |

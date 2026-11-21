@@ -43,7 +43,7 @@ Ne voyagent **jamais** : `GELER`, `db/gel.json` (un gel d'écritures est celui d
 - **Système : Ubuntu 26.04 LTS.** C'est la version sur laquelle les scripts ont été lancés pour de vrai (`README.md`, ligne 3 : première fois le 2026-10-10, paquets `docker.io` 29.1, `docker-compose-v2`, `caddy` 2.6.2).
   **24.04 LTS** donne les mêmes paquets (`docker.io`, `docker-compose-v2`, `caddy`, `restic` 0.16.4 : le README décrit la restauration sur une machine 24.04) et devrait marcher, mais **n'a pas été jouée** : repli seulement si 26.04 manque.
 - **Taille.** Le site demande peu : une base vivante pèse ~25 Mo plus ses archives (≤ ~125 Mo par instance, `docs/serveur.md`, « Tout ce qui grossit »). Plus que l'actuel (1 vCPU, 2 Go, 20 Go) : 2 vCPU, 4 Go, 60 Go sont confortables ; l'atelier du site de dev fabrique avec un besoin de mémoire de 1,1 Go (réglage `--besoin`, 1,1 Go par défaut ; refus sous 2 fois ce besoin de mémoire disponible) : 4 Go suffisent, 2 Go sont trop justes avec la production qui tourne.
-- **Région.** Peu importe pour les scripts. Pour les joueurs, la proximité (France) ; pour la règle « serveur et copie de secours chez deux fournisseurs », voir « Sauvegardes » plus bas.
+- **Région.** Peu importe pour les scripts. Pour les joueurs, la proximité (France) ; pour la copie de secours, un autre site que le serveur : voir « Sauvegardes » plus bas.
 - **Accès.** Commander avec **ta clé publique SSH** (la même que pour l'ancien serveur : le fichier `.pub`). Le compte attendu est `ubuntu`, avec `sudo`.
 - **Pare-feu de l'hébergeur.** Certains hébergeurs en ont un en plus de celui du serveur, **actif ou non selon l'hébergeur** (chez OVH, le « Network Firewall » est désactivé par défaut ; chez Infomaniak il était actif et fermait 80/443). S'il est actif : ouvrir TCP 22, 80 et 443 et UDP 443 ; s'il est désactivé, ne pas l'activer, `ufw` (posé par `durcir.sh`) suffit. Sans 80/443 ouverts, Caddy n'obtient aucun certificat.
 - Noter, sans le coller nulle part : l'adresse IPv4 (et IPv6 s'il y en a une) du nouveau serveur.
@@ -112,6 +112,12 @@ sudo bash ~/vps/instances.sh
 
 Attendu : « Terminé. Instances prêtes : /srv/maverick-center et /srv/maverick-center-test (sans site pour l'instant) ». Aucun mot de passe n'est affiché.
 
+`instances.sh` vient de démarrer Caddy avec les vrais domaines : tant que le DNS pointe sur l'ancien serveur, ses demandes de certificats échoueraient en boucle. Arrête-le jusqu'au jour J (l'étape 8d le redémarre) :
+
+```
+sudo systemctl stop caddy
+```
+
 **Poser les deux sites** (les installateurs, README, étape 5). Télécharge sur ton poste, dans la page *Releases* du dépôt, les deux fichiers de la dernière version (`maverick-center-VX.Y-install.sh`, le serveur normal, et `maverick-center-VX.Y.Z-install.sh`, le serveur de test), puis :
 
 ```
@@ -125,12 +131,63 @@ sudo sh ~/maverick-center-VX.Y-install.sh --dossier /srv/maverick-center
 sudo sh ~/maverick-center-VX.Y.Z-install.sh --dossier /srv/maverick-center-test
 ```
 
-**Si l'ancien serveur est en bascule 2** (`sudo ls /srv/maverick-center/activation-par-paquet /srv/maverick-center-test/atelier/servir` sur l'ancien montre les deux fichiers), l'installation change en trois points :
-- les installateurs sont des installateurs **complets** (avec pages), pas les « kit seul » : un « kit seul » refuse une instance qui n'a pas déjà son site. Prendre, sur la page *Releases*, la dernière livraison complète (ou un des trois installateurs de `installateur-courant/` de l'ancien serveur, s'il y en a un qui n'est pas un « kit seul » ; **à vérifier le jour venu** : si aucune livraison complète n'existe plus, cette étape est à reprendre avec une session avant de commander le serveur). Leur version n'a pas à être celle de l'ancien serveur : le déballage pose la `VERSION` et les pages de l'ancien serveur, et la mise à jour automatique remet ensuite les scripts à la version courante ;
-- avant l'installateur de production : `sudo touch /srv/maverick-center/activation-par-paquet` (il crée alors l'utilisateur système `maverick-site` ; contrôle après : `id maverick-site`). Le déballage remplace ce fichier par celui de l'ancien serveur, sans rien effacer ;
+**Si l'ancien serveur est en bascule 2** (`sudo ls /srv/maverick-center/activation-par-paquet /srv/maverick-center-test/atelier/servir` sur l'ancien montre les deux fichiers), **ne prends pas les derniers installateurs** : depuis le 2026-11-20, GitHub ne publie plus que des « kit seul » (sans pages), qui refusent une instance sans site. Pour reconnaître un fichier : `head -c 300000 <installateur> | grep -a '^KIT_SEUL='` (`KIT_SEUL=1` : kit seul ; `KIT_SEUL=0` ou rien : complet). L'installation change en quatre points :
+- **serveur de test :** prendre sur la page *Releases* la dernière livraison de test **complète** (à ce jour la V0.5.50). Sur ton poste, `git diff --stat V0.5.50 <étiquette de test de l'ancien> -- deploy/installateur deploy/nginx.conf` ne doit montrer que `README.md` ; sinon, arrête-toi : cette étape est à reprendre avec une session. Sa version n'a pas à être celle de l'ancien serveur : le déballage pose la `VERSION` et les pages de l'ancien serveur ;
+- **production :** la dernière livraison complète (V0.5) est plus ancienne que l'activation par paquet. Elle s'installe sans erreur, mais ne crée pas l'utilisateur `maverick-site` et ne pose ni `activer.sh` ni `gel.sh` : le déballage refuserait **le jour J, l'ancien serveur déjà gelé**. On fabrique donc un installateur complet de la **version exacte** de l'ancien, avec **son** site (commandes ci-dessous) ;
+- avant l'installateur de production : `sudo touch /srv/maverick-center/activation-par-paquet` (il crée alors l'utilisateur système `maverick-site` ; contrôle après : `id maverick-site`). Sans kit posé, il ne lance pas `activer.sh`. Le déballage remplace ce fichier par celui de l'ancien serveur, sans rien effacer ;
 - `instances.sh` ne demande rien de plus ici : le dossier `paquets/` vient de l'archive, et la relance de l'étape 8d (`.env` posé par l'archive, qui porte `MAVERICK_DOSSIER_PAQUETS`) le monte dans le service du site de dev. Sur un serveur sans archive, `sudo bash ~/vps/instances.sh --bascule-2` le crée et le monte.
 
-Attendu, pour chacun : « Installé : … pages. » et la phrase « Première installation : créez le mot de passe puis lancez le conteneur » : **ne fais ni l'un ni l'autre** (le mot de passe interne est déjà posé par `instances.sh`, et rien ne doit démarrer). **Ne lance jamais `docker compose up` sur le nouveau serveur avant l'étape 9.**
+**Fabriquer l'installateur complet de production (bascule 2).** Méthode jouée le 2026-11-21 pour la V0.6-hotfix.1, avec une copie du site par un tube SSH depuis Git Bash ; les commandes ci-dessous passent par des fichiers, car le tube de PowerShell 5.1 abîme les données binaires. Sur `ssh maverick-ancien` (le site n'est que lu, à basse priorité) :
+
+```
+sudo cat /srv/maverick-center/VERSION
+sudo nice -n 19 tar -C /srv/maverick-center -czf ~/site-prod.tar.gz site
+sudo chown ubuntu: ~/site-prod.tar.gz
+sudo sh -c 'cd /srv/maverick-center && find site -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum'
+```
+
+Note `tag`, `version`, `commit` et l'empreinte. Sur ton poste (PowerShell), dans le dossier du dépôt, en remplaçant `<tag>` :
+
+```
+git fetch origin --tags
+git archive --format=tar.gz -o fabrication.tar.gz <tag> deploy client/serveur client/src/lib
+scp fabrication.tar.gz maverick-nouveau:
+scp -3 maverick-ancien:site-prod.tar.gz maverick-nouveau:
+del fabrication.tar.gz
+```
+
+Sur `ssh maverick-nouveau`, en remplaçant `<tag>`, `<version>` et `<commit>` :
+
+```
+mkdir -p ~/fabrication/depot ~/fabrication/site-prod ~/fabrication/sortie ~/installateurs
+tar -xzf ~/fabrication.tar.gz -C ~/fabrication/depot
+tar -xzf ~/site-prod.tar.gz -C ~/fabrication/site-prod
+(cd ~/fabrication/site-prod && find site -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum)
+sudo docker run --rm --network none --user "$(id -u):$(id -g)" -v "$HOME/fabrication:/f" -w /f/depot node:22-alpine node deploy/installateur/fabriquer.mjs --mode prod --site /f/site-prod/site --tag <tag> --version <version> --sha <commit> --sortie /f/sortie
+cp ~/fabrication/sortie/maverick-center-<tag>-install.sh ~/installateurs/
+sh ~/installateurs/maverick-center-<tag>-install.sh --verifier
+```
+
+Attendu : la même empreinte que sur l'ancien serveur, puis « archive intègre, … pages ». Essai sur un dossier jetable :
+
+```
+mkdir -p ~/fabrication/essai/maverick-center
+sudo touch ~/fabrication/essai/maverick-center/activation-par-paquet
+sudo sh ~/installateurs/maverick-center-<tag>-install.sh --dossier ~/fabrication/essai/maverick-center
+```
+
+Attendu : « utilisateur système maverick-site créé », « activer.sh n'est pas lancé », « Installé : … pages. ». Sinon, arrête-toi et colle l'écran. Puis la pose réelle, avec l'installateur de test complet copié dans `~/`, et le ménage :
+
+```
+sudo touch /srv/maverick-center/activation-par-paquet
+sudo sh ~/installateurs/maverick-center-<tag>-install.sh --dossier /srv/maverick-center
+sudo sh ~/maverick-center-<version de test>-install.sh --dossier /srv/maverick-center-test
+sudo rm -rf ~/fabrication ~/fabrication.tar.gz ~/site-prod.tar.gz
+```
+
+Sur `ssh maverick-ancien` : `rm ~/site-prod.tar.gz`. Garde `~/installateurs/` jusqu'à la fin du déménagement.
+
+Attendu, pour chaque installateur : « Installé : … pages. » (le mot de passe interne est déjà posé par `instances.sh` : aucune question). Rien ne doit démarrer. **Ne lance jamais `docker compose up` sur le nouveau serveur avant l'étape 9.**
 
 Vérification, `ssh maverick-nouveau` :
 
@@ -287,7 +344,24 @@ bash ~/vps/controle-demenagement.sh comparer ~/bilan-ancien.txt ~/bilan-nouveau.
 ```
 
 Attendu : `EGALITE (… constats comparés)`. Elle couvre les empreintes de chaque fichier de `db/`, `integrity_check`, le nombre de fiches et de comptes, le nombre de lignes de chaque table, les empreintes du contenu telles que le site les calcule (celles de l'attestation de la production et de `bascule.sh constat`), le marqueur `db/source`, la présence, les droits et la taille de chaque secret (jamais leur valeur), les réglages des sauvegardes, le nombre de certificats.
-Si c'est **`DIFFERENCE`**, les lignes en cause sont listées : **arrête-toi, ne démarre rien, colle l'écran** (le nouveau serveur n'a encore rien démarré : rien n'est perdu, l'ancien se dégèle comme à l'étape 5).
+Si c'est **`DIFFERENCE`**, les lignes en cause sont listées. Deux écarts sont attendus, et se contrôlent :
+
+- `fichier.copies.nombre` avec `nouveau : 0` : l'archive a été faite sans `--avec-copies`.
+- `secret.normal..env` et `secret.test..env`, quand seule la taille grandit : `instances.sh` (8d) a ajouté au `.env` d'un ancien serveur les clés qui lui manquaient. Ce contrôle n'affiche que des noms de clés, jamais une valeur (remplace le nom de l'archive) :
+
+```
+A=~/demenagement-AAAAMMJJ-HHMMSS.tar.gz
+for i in normal:maverick-center test:maverick-center-test; do
+  echo "== ${i%%:*} : lignes de l'ancien disparues ou changées"
+  comm -23 <(tar -xzOf "$A" "./${i%%:*}/.env" | LC_ALL=C sort) <(sudo LC_ALL=C sort "/srv/${i#*:}/.env") | sed 's/=.*//'
+  echo "== ${i%%:*} : clés ajoutées"
+  comm -13 <(tar -xzOf "$A" "./${i%%:*}/.env" | LC_ALL=C sort) <(sudo LC_ALL=C sort "/srv/${i#*:}/.env") | sed 's/=.*//'
+done
+```
+
+Attendu : rien sous « disparues ou changées » ; sous « clés ajoutées », au plus `MAVERICK_INSTANCE` (les deux instances), `MAVERICK_DOSSIER_METRIQUES` (normal) et `MAVERICK_DOSSIER_PRODUCTION` (test). Elles nomment ce que le service déduisait déjà : la même instance et les mêmes dossiers.
+
+Pour **tout autre écart** : **arrête-toi, ne démarre rien, colle l'écran** (le nouveau serveur n'a encore rien démarré : rien n'est perdu, l'ancien se dégèle comme à l'étape 5).
 
 **Retour arrière (avant le DNS) :** idem étape 5. Le nouveau serveur n'a servi à rien, l'ancien n'a pas bougé.
 
@@ -310,6 +384,15 @@ sudo bash ~/vps/controle-demenagement.sh bilan --contenu-seulement --sortie ~/bi
 bash ~/vps/controle-demenagement.sh comparer ~/bilan-ancien.txt ~/bilan-demarre.txt
 ```
 
+**Kit de l'atelier (bascule 2 seulement), avant l'atelier** : l'archive n'emporte jamais `atelier/kit/`. Celui du nouveau serveur est donc celui de l'installateur de l'étape 3, souvent plus ancien que la version déballée, et l'atelier refabriquerait les pages avec le code d'une autre version. L'installateur gardé de l'ancien serveur (« kit seul », arrivé dans `installateur-courant/`) remet le kit à la bonne version, sans toucher à `db/` ni aux pages. Sur `ssh maverick-nouveau` :
+
+```
+TAG=$(sudo sed -n 's/^tag=//p' /srv/maverick-center-test/VERSION)
+sudo sh /srv/maverick-center-test/installateur-courant/maverick-center-$TAG-install.sh --dossier /srv/maverick-center-test
+```
+
+Attendu : « Installateur « kit seul » », « Kit de l'atelier posé », puis « Installé : <tag>, 0 pages » (0 : les pages déballées restent en place). Sinon, arrête-toi et colle l'écran.
+
 **Atelier et interrupteur (bascule 2 seulement), après ce contrôle** : le service du site de dev tourne, l'atelier se remet en route. Sur `ssh maverick-nouveau` :
 
 ```
@@ -318,13 +401,13 @@ sudo sh /srv/maverick-center-test/atelier/installer.sh --servir
 sudo sh /srv/maverick-center-test/atelier/installer.sh --etat
 ```
 
-La première reprend les réglages venus de l'archive (`atelier/reglages.env` : `MEMOIRE_MAX_KO`, `BESOIN_KO`, `DISQUE_MIN_KO`, `DELAI_S`, `CPUS`, `GOOGLE_CLIENT_ID`), prépare l'image Docker du kit, pose les unités systemd et `docker-compose.override.yml` (le service du site de dev redémarre quelques secondes) ; la deuxième pose l'interrupteur (déjà là, venu de l'archive) et le minuteur de contenu (toutes les 10 minutes), qui refabrique dès qu'il passe : la première fabrication part donc dans les 10 minutes, avant le DNS (le site de l'archive reste servi tant qu'elle n'a pas posé le sien) ; la première commande pose aussi les minuteurs de nuit et du jour. Attendu : « Site servi par l'atelier : OUI » et la ligne « Mémoire maintenant » qui finit par « la fabrication démarrerait ». Un refus de mémoire se règle comme au README (« Atelier du site de dev »), avec la valeur que la ligne propose.
+La première reprend les réglages venus de l'archive (`atelier/reglages.env` : `MEMOIRE_MAX_KO`, `BESOIN_KO`, `DISQUE_MIN_KO`, `DELAI_S`, `CPUS`, `GOOGLE_CLIENT_ID`), prépare l'image Docker du kit, pose les unités systemd et `docker-compose.override.yml` (le service du site de dev redémarre quelques secondes) ; la deuxième pose l'interrupteur (déjà là, venu de l'archive) et le minuteur de contenu (toutes les 10 minutes), qui refabrique dès qu'il passe : la première fabrication part donc dans les 10 minutes, avant le DNS (le site de l'archive reste servi tant qu'elle n'a pas posé le sien) ; la première commande pose aussi les minuteurs de nuit et du jour. Attendu : « Kit : version … » avec la version du site de dev de l'ancien serveur, « Site servi par l'atelier : OUI » et la ligne « Mémoire maintenant » qui finit par « la fabrication démarrerait ». Un refus de mémoire se règle comme au README (« Atelier du site de dev »), avec la valeur que la ligne propose.
 
 **Retour arrière (atelier) :** `sudo sh /srv/maverick-center-test/atelier/installer.sh --retirer`.
 
 **Pourquoi la même version d'abord :** on contrôle et on démarre la base de l'ancien serveur telle quelle, avec le code qui l'a écrite ; la mise à jour (migrations, règles livrées depuis) est ensuite un second changement, fait sur une base déjà prouvée égale, et qui se défait par l'archive.
 
-Attendu : `EGALITE`. Le service tourne : ce bilan lit chaque base par un instantané SQLite (jamais une copie d'octets) et ne compare **que ce qui ne bouge pas** : `integrity_check`, le nombre de fiches et de comptes, l'empreinte du contenu des règles, le marqueur `db/source`, les secrets. Les fichiers, les nombres de lignes de chaque table (sessions, journaux) et l'empreinte « logique » changent dès le démarrage : ils ne sont **pas** comparés (le service ne réécrit la base que s'il doit la refaire pour une version ou des règles différentes : avec la même version, il n'y touche pas). `fiches`, `comptes` ou `contenu` différents : **arrête-toi, colle l'écran** (le DNS n'a pas encore bougé : `docker compose stop serveur`, dégeler l'ancien).
+Attendu : `EGALITE`, ou les seuls écarts `secret.*..env` déjà contrôlés en 8f. Le service tourne : ce bilan lit chaque base par un instantané SQLite (jamais une copie d'octets) et ne compare **que ce qui ne bouge pas** : `integrity_check`, le nombre de fiches et de comptes, l'empreinte du contenu des règles, le marqueur `db/source`, les secrets. Les fichiers, les nombres de lignes de chaque table (sessions, journaux) et l'empreinte « logique » changent dès le démarrage : ils ne sont **pas** comparés (le service ne réécrit la base que s'il doit la refaire pour une version ou des règles différentes : avec la même version, il n'y touche pas). `fiches`, `comptes` ou `contenu` différents : **arrête-toi, colle l'écran** (le DNS n'a pas encore bougé : `docker compose stop serveur`, dégeler l'ancien).
 
 **Essai avant DNS**, depuis PowerShell (`<adresse du nouveau serveur>` : ton alias ne sert pas à `curl`) :
 
@@ -414,9 +497,11 @@ sudo bash ~/vps/demenagement.sh deballer --sans sauvegardes,caddy,copies ~/demen
 
 Puis le contrôle (bilans des deux côtés), le démarrage, le DNS remis. **Ce qui serait perdu :** rien de ce qui est dans l'archive du retour ; les mises à jour installées sur le nouveau serveur depuis l'étape 11 sont rejouées par le cron de l'ancien ; avant de rapatrier, le déballage exige la même version des deux côtés (code 4, installateur à lancer).
 
-## Sauvegardes : serveur et copie chez deux fournisseurs (note)
+## Sauvegardes : serveur et copie chez le même fournisseur (note)
 
-La décision R275 veut la copie extérieure chez **un autre fournisseur que l'hébergeur**. Aujourd'hui : serveur chez Infomaniak, stockage chez OVH : rien à changer tant que le serveur ne déménage pas. **Si le nouveau serveur est chez le fournisseur du stockage actuel** (par exemple OVH), changer la destination une fois le déménagement stable : créer chez un autre fournisseur un bucket compatible S3 (région au choix, clé d'accès limitée à ce bucket, lecture et écriture), puis `sudo bash /srv/maverick-center-test/sauvegarde/installer.sh --stockage --adresse <adresse S3> --bucket <bucket> --region <région>` (la phrase de chiffrement est gardée), puis `--verifier-le-stockage`. Le nouveau dépôt recevra une première sauvegarde complète la nuit suivante ; garde l'ancien bucket plusieurs semaines (l'historique y reste lisible avec la même phrase) ; `restic copy --from-repo` est facultatif (README, « Changer de stockage »).
+La décision R308 (qui remplace R275 (1)) garde le serveur et la copie extérieure **chez OVH**, pour n'avoir qu'un compte à transmettre lors d'une passation : rien à changer après le déménagement. Le stockage reste sur **un autre site** que le serveur, pour qu'un incident sur un site n'emporte pas les deux. Risque accepté : un compte OVH piraté, suspendu ou impayé touche les deux. Précautions : double authentification sur le compte, phrase de chiffrement gardée hors d'OVH et transmise à la passation (sans elle, personne ne relit les sauvegardes).
+
+**Pour changer de stockage un jour** : créer un bucket compatible S3 (région au choix, clé d'accès limitée à ce bucket, lecture et écriture), puis `sudo bash /srv/maverick-center-test/sauvegarde/installer.sh --stockage --adresse <adresse S3> --bucket <bucket> --region <région>` (la phrase de chiffrement est gardée), puis `--verifier-le-stockage`. Le nouveau dépôt recevra une première sauvegarde complète la nuit suivante ; garde l'ancien bucket plusieurs semaines (l'historique y reste lisible avec la même phrase) ; `restic copy --from-repo` est facultatif (README, « Changer de stockage »).
 
 ## La coupure : une estimation honnête
 

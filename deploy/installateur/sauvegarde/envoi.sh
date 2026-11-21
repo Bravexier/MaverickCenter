@@ -5,7 +5,7 @@
 #   MAVERICK_SAUV_NOMMEE=<nom> envoi.sh   envoie à la place la copie NOMMÉE <nom> de chaque instance (<sauvegardes>/<instance>/nommees/<nom>, posée par
 #                   deploy/installateur/bascule.sh), étiquetée « nommees,<nom> » et gardée sans limite (--keep-tag nommees)
 #
-# Outil : restic (paquet Ubuntu), dépôt chiffré sur un stockage compatible S3 d'un autre fournisseur que l'hébergeur (R275). Réglages dans
+# Outil : restic (paquet Ubuntu), dépôt chiffré sur un stockage compatible S3 hors du serveur (R275, R308). Réglages dans
 # /etc/maverick-sauvegardes (root 700) : stockage.env (adresse du dépôt et clés d'accès au stockage, 600) et cle-depot (la clé de chiffrement, 600).
 # Sans eux, rien n'est envoyé (le temps 1, copie.sh, marche seul) : installer.sh --stockage les pose. Aucun secret en argument : restic lit la
 # clé dans un fichier (RESTIC_PASSWORD_FILE) et les accès au stockage dans son environnement ; rien de cela n'est écrit dans l'état ni le journal.

@@ -272,8 +272,8 @@ voulu.
    Les copies mises de côté (`suspectes/`) **ne partent jamais à l'extérieur** : l'envoi de nuit n'envoie que la dernière copie saine. Tant qu'une alerte n'est pas
    levée (une copie saine, ou `copie.sh accepter <instance>` pour une baisse voulue), rien de postérieur à la chute n'est donc envoyé : la dernière copie extérieure reste celle d'avant.
 2. **Temps 2, envoi chiffré de nuit hors du serveur** (`restic`, paquet Ubuntu). Chaque nuit, la dernière bonne copie de chaque instance part, avec
-   les trois derniers installateurs de chaque site (`installateur-courant/`, gardés par `mise-a-jour.sh`), vers un stockage compatible S3 **chez un autre
-   fournisseur que l'hébergeur**, chiffrée avec une phrase de 6 mots que seul le propriétaire garde (décision R275). Gardées : une copie par jour pendant 30
+   les trois derniers installateurs de chaque site (`installateur-courant/`, gardés par `mise-a-jour.sh`), vers un stockage compatible S3 **sur un autre
+   site que le serveur** (chez OVH comme lui, décision R308), chiffrée avec une phrase de 6 mots que seul le propriétaire garde (décision R275). Gardées : une copie par jour pendant 30
    jours, **une par mois et une par version sans limite**. L'étiquette « version » est posée par l'envoi de nuit qui suit un changement de version, sur la copie de cette nuit : si deux versions se succèdent entre deux nuits, seule la dernière est étiquetée. Réglable : `VERSIONS_DE="prod"` dans `reglages.env` limite les versions gardées à celles de la production (par défaut : `prod dev`). Chaque nuit, le dépôt est contrôlé (le dimanche, une partie des données est relue) ; chaque mois,
    et juste après l'activation, un **essai de restauration** relit la dernière copie extérieure dans un conteneur vide et contrôle l'intégrité et les nombres
    de lignes, sans le propriétaire. L'installateur du site de dev pèse environ 57 Mo parce qu'il emporte le kit de l'atelier (`deploy/installateur/README.md`) : l'envoi de nuit

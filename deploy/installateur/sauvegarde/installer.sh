@@ -275,7 +275,7 @@ if [ -f "$ETC/stockage.env" ] && [ -f "$ETC/cle-depot" ]; then CONFIGURE=1; fi
 activer_stockage() {
   local depot adresse region bucket ident secret secret2 nouveau cle_nouvelle=0 etat provisoire_cle phrase invite=0
   echo
-  echo "== Temps 2 : envoi chiffré de nuit hors du serveur (restic, stockage compatible S3 chez un autre fournisseur que l'hébergeur)"
+  echo "== Temps 2 : envoi chiffré de nuit hors du serveur (restic, stockage compatible S3)"
   ident=''; secret=''; region=''
   if [ -n "${MAVERICK_SAUV_DEPOT:-}" ]; then
     depot=$MAVERICK_SAUV_DEPOT # dépôt fourni par l'environnement (essais, dépôt local) : aucune saisie

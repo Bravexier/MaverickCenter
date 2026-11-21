@@ -74,6 +74,45 @@ test('aucune adresse IP, aucun nom d\'hôte ni secret dans les scripts et le doc
   }
 });
 
+test('étape 3 du guide en bascule 2 : production par un installateur complet de la version exacte, interrupteur avant lui, Caddy arrêté jusqu\'au jour J', () => {
+  const guide = readFileSync(join(VPS, 'DEMENAGEMENT.md'), 'utf8').replace(/\r\n/g, '\n');
+  const etape3 = guide.slice(guide.indexOf('## 3. Préparer'), guide.indexOf('## 4. La veille'));
+  assert.match(etape3, /fabriquer\.mjs --mode prod --site \S+ --tag <tag> --version <version> --sha <commit>/, 'installateur complet de la version de l\'ancien');
+  assert.doesNotMatch(etape3, /fabriquer\.mjs[^\n]*--kit-seul/, 'jamais un kit seul : il refuse une instance sans site');
+  const pose = etape3.indexOf('sudo sh ~/installateurs/maverick-center-<tag>-install.sh --dossier /srv/maverick-center\n');
+  assert.ok(pose > 0, 'pose réelle de la production');
+  assert.ok(etape3.lastIndexOf('sudo touch /srv/maverick-center/activation-par-paquet\n', pose) > 0, 'activation-par-paquet avant l\'installateur : il crée maverick-site');
+  const apresInstances = etape3.slice(etape3.indexOf('sudo bash ~/vps/instances.sh'), etape3.indexOf('**Poser les deux sites**'));
+  assert.match(apresInstances, /^sudo systemctl stop caddy$/m, 'Caddy arrêté tant que le DNS pointe sur l\'ancien serveur');
+});
+
+test('jour J en bascule 2 : le kit de la version de l\'ancien revient avant l\'atelier, les écarts attendus du contrôle se vérifient sans afficher de valeur', () => {
+  const guide = readFileSync(join(VPS, 'DEMENAGEMENT.md'), 'utf8').replace(/\r\n/g, '\n');
+  const etape9 = guide.slice(guide.indexOf('### 9. Démarrer'), guide.indexOf('### 10. Changer'));
+  const kit = etape9.indexOf('sudo sh /srv/maverick-center-test/installateur-courant/maverick-center-$TAG-install.sh --dossier /srv/maverick-center-test\n');
+  assert.ok(kit > 0, 'installateur gardé de l\'ancien : l\'archive n\'emporte jamais atelier/kit/');
+  assert.ok(kit > etape9.indexOf('cd /srv/maverick-center-test && sudo docker compose up -d'), 'service démarré : l\'installateur lui fait essayer les migrations');
+  assert.ok(kit < etape9.indexOf('installer.sh --sans-fabrication'), 'kit posé avant l\'atelier : --servir lance une fabrication');
+  const etape8f = guide.slice(guide.indexOf('**8f. Comparer**'), guide.indexOf('### 9. Démarrer'));
+  for (const ecart of ['fichier.copies.nombre', 'secret.normal..env', 'secret.test..env']) assert.ok(etape8f.includes(ecart), `écart attendu expliqué : ${ecart}`);
+  const controles = etape8f.match(/^ *comm -\d+ .*$/gm) ?? [];
+  assert.equal(controles.length, 2, 'lignes disparues ou changées, puis clés ajoutées');
+  for (const c of controles) assert.match(c, /\| sed 's\/=\.\*\/\/'$/, 'jamais une valeur du .env à l\'écran');
+});
+
+test('R308 : serveur et sauvegardes chez OVH, plus aucun texte d\'hébergement n\'exige un autre fournisseur que l\'hébergeur', () => {
+  const lire = (...chemin) => readFileSync(join(VPS, ...chemin), 'utf8').replace(/\s+/g, ' ');
+  const registre = lire('..', '..', 'docs', 'decisions-regles.md');
+  assert.match(registre, /\| R308 \| .*?remplace R275 \(1\)/, 'la décision est au registre et dit ce qu\'elle remplace');
+  const textes = {
+    guide: lire('DEMENAGEMENT.md'), readme: lire('README.md'), fluxGit: lire('..', '..', 'docs', 'flux-git.md'),
+    envoi: lire('..', 'installateur', 'sauvegarde', 'envoi.sh'), installer: lire('..', 'installateur', 'sauvegarde', 'installer.sh'),
+  };
+  for (const [nom, texte] of Object.entries(textes)) assert.doesNotMatch(texte, /autre fournisseur que l'hébergeur/, nom);
+  assert.doesNotMatch(textes.guide, /chez deux fournisseurs/, 'guide');
+  assert.match(textes.guide, /phrase de chiffrement gardée hors d'OVH/, 'la phrase survit à un problème de compte et se transmet à la passation');
+});
+
 test('la répétition joue toute la procédure : gel refusé puis accepté, emballage, archive altérée refusée, base présente jamais écrasée, déballage, EGALITE, DIFFERENCE, retour arrière', { skip }, (t) => {
   const monde = dossierTemporaire('demenagement-repetition', { t });
   const r = lancer('repetition-demenagement.sh', ['--dossier', join(monde, 'repetition')]);

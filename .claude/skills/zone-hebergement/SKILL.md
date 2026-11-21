@@ -51,7 +51,7 @@ user-invocable: false
 - `lib.sh` écrit `sauvegardes.json` là où chaque conteneur le lit : son dossier des métriques d'après `docker inspect`, puis `MAVERICK_DOSSIER_METRIQUES`, sinon `<db>/metriques`. `envoi.sh` avec `MAVERICK_SAUV_NOMMEE=<nom>` envoie la copie nommée (étiquette `nommees`, gardée sans limite).
 - Chaque instance est copiée dans son propre processus (`MAVERICK_SAUV_ENFANT=1`) : l'échec de l'une n'empêche jamais l'autre. Aucun message ne répète un secret saisi (`installer.sh#valide_secret`).
 - Aucun secret dans le dépôt, un journal, l'état ou la page Debug ; le dépôt est public : seulement `https://s3.exemple.invalid` et `bucket-exemple`. Outil : restic (apt) ; en 0.16.4, `--keep-monthly unlimited`, pas `-1`.
-- Choix du propriétaire (R275) : copie extérieure chiffrée, fiches comprises, chez un autre fournisseur que l'hébergeur, dont il garde la clé ; rétention de 30 jours, plus une copie par mois et une par version sans limite ; envoi chaque nuit ; clé = phrase de 6 mots, réaffichable ; changer de stockage ou d'hébergeur ne demande que la phrase et les accès.
+- Choix du propriétaire (R275, R308) : copie extérieure chiffrée, fiches comprises, chez OVH comme le serveur mais sur un autre site, dont il garde la clé ; rétention de 30 jours, plus une copie par mois et une par version sans limite ; envoi chaque nuit ; clé = phrase de 6 mots, réaffichable ; changer de stockage ou d'hébergeur ne demande que la phrase et les accès.
 
 ## Archivage du contenu (`deploy/archivage-du-contenu/`, R296)
 - `archiver.sh`, `verifier.sh`, `README.md` : éteints, `archiver.sh` refuse (code 2) sans `--jour-j` ; non livrés par l'installateur. Procédure : `docs/chantier-base-de-dev.md`, « Le jour J du lot 12 ».
