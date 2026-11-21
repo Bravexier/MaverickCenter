@@ -344,7 +344,24 @@ bash ~/vps/controle-demenagement.sh comparer ~/bilan-ancien.txt ~/bilan-nouveau.
 ```
 
 Attendu : `EGALITE (… constats comparés)`. Elle couvre les empreintes de chaque fichier de `db/`, `integrity_check`, le nombre de fiches et de comptes, le nombre de lignes de chaque table, les empreintes du contenu telles que le site les calcule (celles de l'attestation de la production et de `bascule.sh constat`), le marqueur `db/source`, la présence, les droits et la taille de chaque secret (jamais leur valeur), les réglages des sauvegardes, le nombre de certificats.
-Si c'est **`DIFFERENCE`**, les lignes en cause sont listées : **arrête-toi, ne démarre rien, colle l'écran** (le nouveau serveur n'a encore rien démarré : rien n'est perdu, l'ancien se dégèle comme à l'étape 5).
+Si c'est **`DIFFERENCE`**, les lignes en cause sont listées. Deux écarts sont attendus, et se contrôlent :
+
+- `fichier.copies.nombre` avec `nouveau : 0` : l'archive a été faite sans `--avec-copies`.
+- `secret.normal..env` et `secret.test..env`, quand seule la taille grandit : `instances.sh` (8d) a ajouté au `.env` d'un ancien serveur les clés qui lui manquaient. Ce contrôle n'affiche que des noms de clés, jamais une valeur (remplace le nom de l'archive) :
+
+```
+A=~/demenagement-AAAAMMJJ-HHMMSS.tar.gz
+for i in normal:maverick-center test:maverick-center-test; do
+  echo "== ${i%%:*} : lignes de l'ancien disparues ou changées"
+  comm -23 <(tar -xzOf "$A" "./${i%%:*}/.env" | LC_ALL=C sort) <(sudo LC_ALL=C sort "/srv/${i#*:}/.env") | sed 's/=.*//'
+  echo "== ${i%%:*} : clés ajoutées"
+  comm -13 <(tar -xzOf "$A" "./${i%%:*}/.env" | LC_ALL=C sort) <(sudo LC_ALL=C sort "/srv/${i#*:}/.env") | sed 's/=.*//'
+done
+```
+
+Attendu : rien sous « disparues ou changées » ; sous « clés ajoutées », au plus `MAVERICK_INSTANCE` (les deux instances), `MAVERICK_DOSSIER_METRIQUES` (normal) et `MAVERICK_DOSSIER_PRODUCTION` (test). Elles nomment ce que le service déduisait déjà : la même instance et les mêmes dossiers.
+
+Pour **tout autre écart** : **arrête-toi, ne démarre rien, colle l'écran** (le nouveau serveur n'a encore rien démarré : rien n'est perdu, l'ancien se dégèle comme à l'étape 5).
 
 **Retour arrière (avant le DNS) :** idem étape 5. Le nouveau serveur n'a servi à rien, l'ancien n'a pas bougé.
 
@@ -367,6 +384,15 @@ sudo bash ~/vps/controle-demenagement.sh bilan --contenu-seulement --sortie ~/bi
 bash ~/vps/controle-demenagement.sh comparer ~/bilan-ancien.txt ~/bilan-demarre.txt
 ```
 
+**Kit de l'atelier (bascule 2 seulement), avant l'atelier** : l'archive n'emporte jamais `atelier/kit/`. Celui du nouveau serveur est donc celui de l'installateur de l'étape 3, souvent plus ancien que la version déballée, et l'atelier refabriquerait les pages avec le code d'une autre version. L'installateur gardé de l'ancien serveur (« kit seul », arrivé dans `installateur-courant/`) remet le kit à la bonne version, sans toucher à `db/` ni aux pages. Sur `ssh maverick-nouveau` :
+
+```
+TAG=$(sudo sed -n 's/^tag=//p' /srv/maverick-center-test/VERSION)
+sudo sh /srv/maverick-center-test/installateur-courant/maverick-center-$TAG-install.sh --dossier /srv/maverick-center-test
+```
+
+Attendu : « Installateur « kit seul » », « Kit de l'atelier posé », puis « Installé : <tag>, 0 pages » (0 : les pages déballées restent en place). Sinon, arrête-toi et colle l'écran.
+
 **Atelier et interrupteur (bascule 2 seulement), après ce contrôle** : le service du site de dev tourne, l'atelier se remet en route. Sur `ssh maverick-nouveau` :
 
 ```
@@ -375,13 +401,13 @@ sudo sh /srv/maverick-center-test/atelier/installer.sh --servir
 sudo sh /srv/maverick-center-test/atelier/installer.sh --etat
 ```
 
-La première reprend les réglages venus de l'archive (`atelier/reglages.env` : `MEMOIRE_MAX_KO`, `BESOIN_KO`, `DISQUE_MIN_KO`, `DELAI_S`, `CPUS`, `GOOGLE_CLIENT_ID`), prépare l'image Docker du kit, pose les unités systemd et `docker-compose.override.yml` (le service du site de dev redémarre quelques secondes) ; la deuxième pose l'interrupteur (déjà là, venu de l'archive) et le minuteur de contenu (toutes les 10 minutes), qui refabrique dès qu'il passe : la première fabrication part donc dans les 10 minutes, avant le DNS (le site de l'archive reste servi tant qu'elle n'a pas posé le sien) ; la première commande pose aussi les minuteurs de nuit et du jour. Attendu : « Site servi par l'atelier : OUI » et la ligne « Mémoire maintenant » qui finit par « la fabrication démarrerait ». Un refus de mémoire se règle comme au README (« Atelier du site de dev »), avec la valeur que la ligne propose.
+La première reprend les réglages venus de l'archive (`atelier/reglages.env` : `MEMOIRE_MAX_KO`, `BESOIN_KO`, `DISQUE_MIN_KO`, `DELAI_S`, `CPUS`, `GOOGLE_CLIENT_ID`), prépare l'image Docker du kit, pose les unités systemd et `docker-compose.override.yml` (le service du site de dev redémarre quelques secondes) ; la deuxième pose l'interrupteur (déjà là, venu de l'archive) et le minuteur de contenu (toutes les 10 minutes), qui refabrique dès qu'il passe : la première fabrication part donc dans les 10 minutes, avant le DNS (le site de l'archive reste servi tant qu'elle n'a pas posé le sien) ; la première commande pose aussi les minuteurs de nuit et du jour. Attendu : « Kit : version … » avec la version du site de dev de l'ancien serveur, « Site servi par l'atelier : OUI » et la ligne « Mémoire maintenant » qui finit par « la fabrication démarrerait ». Un refus de mémoire se règle comme au README (« Atelier du site de dev »), avec la valeur que la ligne propose.
 
 **Retour arrière (atelier) :** `sudo sh /srv/maverick-center-test/atelier/installer.sh --retirer`.
 
 **Pourquoi la même version d'abord :** on contrôle et on démarre la base de l'ancien serveur telle quelle, avec le code qui l'a écrite ; la mise à jour (migrations, règles livrées depuis) est ensuite un second changement, fait sur une base déjà prouvée égale, et qui se défait par l'archive.
 
-Attendu : `EGALITE`. Le service tourne : ce bilan lit chaque base par un instantané SQLite (jamais une copie d'octets) et ne compare **que ce qui ne bouge pas** : `integrity_check`, le nombre de fiches et de comptes, l'empreinte du contenu des règles, le marqueur `db/source`, les secrets. Les fichiers, les nombres de lignes de chaque table (sessions, journaux) et l'empreinte « logique » changent dès le démarrage : ils ne sont **pas** comparés (le service ne réécrit la base que s'il doit la refaire pour une version ou des règles différentes : avec la même version, il n'y touche pas). `fiches`, `comptes` ou `contenu` différents : **arrête-toi, colle l'écran** (le DNS n'a pas encore bougé : `docker compose stop serveur`, dégeler l'ancien).
+Attendu : `EGALITE`, ou les seuls écarts `secret.*..env` déjà contrôlés en 8f. Le service tourne : ce bilan lit chaque base par un instantané SQLite (jamais une copie d'octets) et ne compare **que ce qui ne bouge pas** : `integrity_check`, le nombre de fiches et de comptes, l'empreinte du contenu des règles, le marqueur `db/source`, les secrets. Les fichiers, les nombres de lignes de chaque table (sessions, journaux) et l'empreinte « logique » changent dès le démarrage : ils ne sont **pas** comparés (le service ne réécrit la base que s'il doit la refaire pour une version ou des règles différentes : avec la même version, il n'y touche pas). `fiches`, `comptes` ou `contenu` différents : **arrête-toi, colle l'écran** (le DNS n'a pas encore bougé : `docker compose stop serveur`, dégeler l'ancien).
 
 **Essai avant DNS**, depuis PowerShell (`<adresse du nouveau serveur>` : ton alias ne sert pas à `curl`) :
 

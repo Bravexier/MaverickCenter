@@ -86,6 +86,20 @@ test('étape 3 du guide en bascule 2 : production par un installateur complet de
   assert.match(apresInstances, /^sudo systemctl stop caddy$/m, 'Caddy arrêté tant que le DNS pointe sur l\'ancien serveur');
 });
 
+test('jour J en bascule 2 : le kit de la version de l\'ancien revient avant l\'atelier, les écarts attendus du contrôle se vérifient sans afficher de valeur', () => {
+  const guide = readFileSync(join(VPS, 'DEMENAGEMENT.md'), 'utf8').replace(/\r\n/g, '\n');
+  const etape9 = guide.slice(guide.indexOf('### 9. Démarrer'), guide.indexOf('### 10. Changer'));
+  const kit = etape9.indexOf('sudo sh /srv/maverick-center-test/installateur-courant/maverick-center-$TAG-install.sh --dossier /srv/maverick-center-test\n');
+  assert.ok(kit > 0, 'installateur gardé de l\'ancien : l\'archive n\'emporte jamais atelier/kit/');
+  assert.ok(kit > etape9.indexOf('cd /srv/maverick-center-test && sudo docker compose up -d'), 'service démarré : l\'installateur lui fait essayer les migrations');
+  assert.ok(kit < etape9.indexOf('installer.sh --sans-fabrication'), 'kit posé avant l\'atelier : --servir lance une fabrication');
+  const etape8f = guide.slice(guide.indexOf('**8f. Comparer**'), guide.indexOf('### 9. Démarrer'));
+  for (const ecart of ['fichier.copies.nombre', 'secret.normal..env', 'secret.test..env']) assert.ok(etape8f.includes(ecart), `écart attendu expliqué : ${ecart}`);
+  const controles = etape8f.match(/^ *comm -\d+ .*$/gm) ?? [];
+  assert.equal(controles.length, 2, 'lignes disparues ou changées, puis clés ajoutées');
+  for (const c of controles) assert.match(c, /\| sed 's\/=\.\*\/\/'$/, 'jamais une valeur du .env à l\'écran');
+});
+
 test('la répétition joue toute la procédure : gel refusé puis accepté, emballage, archive altérée refusée, base présente jamais écrasée, déballage, EGALITE, DIFFERENCE, retour arrière', { skip }, (t) => {
   const monde = dossierTemporaire('demenagement-repetition', { t });
   const r = lancer('repetition-demenagement.sh', ['--dossier', join(monde, 'repetition')]);
