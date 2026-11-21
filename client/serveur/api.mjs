@@ -471,7 +471,10 @@ function traiterLots(requete, service, reste, permis) {
     try {
       if (quoi === 'annulation') return lots.previsualiserLAnnulation(service.base, id, options).then((apercu) => json(200, apercu), echec);
       if (quoi === 'ligne-annulation') return lots.previsualiserLAnnulation(service.base, id, { ...options, ligne: numero }).then((apercu) => json(200, apercu), echec);
-      return json(200, id === undefined ? { lots: lots.lister(db) } : lots.lire(db, id));
+      // la référence de la note en préparation : la page ne montre que ce qui diffère de la production
+      const lue = lireReference(service.reference);
+      const production = lue.disponible ? lue.chemin : null;
+      return json(200, id === undefined ? { lots: lots.lister(db, { production }) } : lots.lire(db, id, { production }));
     } catch (e) {
       return echec(e);
     }
@@ -665,7 +668,13 @@ function traiterDebug(requete, service, action, reste, permis, params) {
   }
   if (!service.metriques) return erreur(503, 'Les métriques ne sont pas disponibles sur ce service.');
   return repondre(ErreurMetriques, () => {
-    if (action === 'systeme') return json(200, service.metriques.systeme(parametres(params, ['instance', 'periode'])));
+    // `bascule_2` (lecture seule) : le bloc « Activation » du menu Système (demande du propriétaire du 2026-11-21 : il quitte la page Mise à jour). GitHub n'est jamais
+    // attendu (valeur en cache, relue en arrière-plan) ; serveur/bascule-2-etat.mjs
+    if (action === 'systeme') {
+      const bascule_2 = etatDeLaBascule2({ marqueur: Boolean(service.bascule2?.()), servir: service.atelier?.servir?.() ?? null, github: (service.interrupteursGithub ?? creerLesInterrupteursDeGithub({ github: null })).lire(),
+        activation: lireLActivation(service.paquets ?? null), dossierDesPaquets: estUnDossier(service.paquets) });
+      return json(200, { ...service.metriques.systeme(parametres(params, ['instance', 'periode'])), bascule_2 });
+    }
     if (!reste.length) return json(200, service.metriques.lire(parametres(params, ['instance', 'periode', 'tri'])));
     if (reste[0] === 'requetes') return json(200, service.metriques.requetes(parametres(params, ['limite', 'route', 'route_exacte', 'min_ms', 'statut'])));
     const e = service.metriques.exporter(parametres(params, ['instance', 'periode', 'format']));
@@ -905,13 +914,8 @@ function traiterMiseAJour(requete, service, action, reste, permis) {
     const baseSource = Boolean(service.source?.());
     // `activation_production` (bascule 2, db/bascule-2 : lot 11, PR 5a) : le dernier rapport de l'activation par paquet de la production (serveur/paquets-de-la-production.mjs), absent sans le marqueur
     const bascule2 = Boolean(service.bascule2?.());
-    // `bascule_2` (lecture seule, toujours sur le site de dev) : où en sont les cinq interrupteurs de la bascule 2 et le dernier résultat d'activation (serveur/bascule-2-etat.mjs). Le rapport
-    // d'activation n'est lu qu'une fois et sert aux deux champs ; GitHub n'est jamais attendu (valeur en cache, relue en arrière-plan).
-    const activation = lireLActivation(service.paquets ?? null);
-    const bascule_2 = etatDeLaBascule2({ marqueur: bascule2, servir: service.atelier?.servir?.() ?? null, github: (service.interrupteursGithub ?? creerLesInterrupteursDeGithub({ github: null })).lire(),
-      activation, dossierDesPaquets: estUnDossier(service.paquets) });
     return json(200, { ...noteEnPreparation(db, { reference: service.reference, versionDev }), lancement, ...regles, github, confirmation: CONFIRMATION, etat_production, retraits_bloquants,
-      base_source: baseSource, ...(baseSource ? { confirmation_copie: CONFIRMATION_COPIE } : {}), ...(bascule2 ? { activation_production: activation } : {}), bascule_2 });
+      base_source: baseSource, ...(baseSource ? { confirmation_copie: CONFIRMATION_COPIE } : {}), ...(bascule2 ? { activation_production: lireLActivation(service.paquets ?? null) } : {}) });
   }
   const interdit = refusEcriture(requete.entetes ?? {});
   if (interdit) return interdit;

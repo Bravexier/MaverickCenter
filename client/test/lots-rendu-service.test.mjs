@@ -146,9 +146,8 @@ test('annuler une seule ligne de bout en bout : le clic remet la valeur d’avan
   assert.equal(ligneRelue.etat, 'annulee');
   assert.equal(peutAnnulerLaLigne(ligneRelue), false);
   assert.ok(messageDeLaLigneAnnulee(ligne, apercu).texte.includes(ligne.ligne));
-  // (le changement reste dans « appliqués » tant qu'une ligne est en place, passe dans l'historique sinon : dans les deux cas, aucun bouton pour cette ligne)
-  const lu = lire(htmlDesLots({ lots: [relu] })).querySelector(`[data-nv-lot-id="${lot.id}"]`);
-  assert.equal(lu.querySelectorAll(`li[data-nv-ligne="${ligne.n}"] button`).length, 0);
+  // (le changement reste dans « appliqués » tant qu'une ligne est en place, quitte la section sinon : dans les deux cas, aucun bouton pour cette ligne)
+  assert.equal(lire(htmlDesLots({ lots: [relu] })).querySelectorAll(`li[data-nv-ligne="${ligne.n}"] button`).length, 0);
   const encore = await m.appel('POST', adresse(lot.id, `lignes/${ligne.n}/annuler/`), {});
   assert.equal(encore.statut, 409);
 });

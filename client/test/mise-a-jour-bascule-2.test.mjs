@@ -1,12 +1,12 @@
-// La section « Activation » de la page Mise à jour du site de dev : où en est la bascule 2 (`bascule_2` de GET /api/mise-a-jour/), en lecture seule.
-// Le choix de l'affichage (lib/notes-de-version-rendu.mjs#affichageDeLaBascule2) : cinq interrupteurs à trois états (allumé, éteint, inconnu : jamais deviné,
-// avec sa phrase), l'accord de la production jamais « éteint », le dernier résultat d'activation ou « aucune activation connue ». Puis le script en faux
-// navigateur : la section existe seulement avec `bascule_2`, ne porte aucun bouton ni lien, et pose tout par textContent. Les phrases ne sont pas figées :
-// on vérifie la structure et les états.
+// Le bloc « Activation » du menu Système de la page Debug : où en est la bascule 2 (`bascule_2` de GET /api/debug/systeme/), en lecture seule. Il a quitté la page
+// Mise à jour (demande du propriétaire du 2026-11-21 : « Je veux pas le voir , c'est à déplancer dans Debug system au pire. »).
+// Le choix de l'affichage (lib/debug-metriques.mjs#affichageDeLaBascule2) : cinq interrupteurs à trois états (allumé, éteint, inconnu : jamais deviné, avec sa
+// phrase), l'accord de la production jamais « éteint », le dernier résultat d'activation ou « aucune activation connue ». Puis le bloc : aucun bouton ni lien, tout
+// texte échappé ; et la page Mise à jour, en faux navigateur, qui ne le montre plus. Les phrases ne sont pas figées : on vérifie la structure et les états.
 //   node --test test/mise-a-jour-bascule-2.test.mjs
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { INTERRUPTEURS_DE_LA_BASCULE_2, affichageDeLaBascule2 } from '../src/lib/notes-de-version-rendu.mjs';
+import { INTERRUPTEURS_DE_LA_BASCULE_2, affichageDeLaBascule2, htmlDeLActivation } from '../src/lib/debug-metriques.mjs';
 import { attendre, el, fauxDocument } from './aide-faux-dom.mjs';
 
 const CLES = ['gel_des_fusions', 'actif', 'db_bascule_2', 'atelier_servir', 'activation_par_paquet'];
@@ -146,21 +146,30 @@ async function monter(donnees) {
   for (let i = 0; i < 50 && document.querySelector('[data-nv-dev]').hidden; i += 1) await attendre();
   const zone = document.querySelector('[data-nv-dev]');
   assert.equal(zone.hidden, false, 'la note du site de dev est affichée');
-  return { zone, section: zone.querySelector('[data-nv-bascule-2]') };
+  return { zone };
 }
 
-test('sans bascule_2 (production, ancien service) : aucune section', async () => {
-  const { zone, section } = await monter({});
-  assert.equal(section, null);
-  assert.equal(zone.querySelectorAll('[data-nv-bascule-2]').length, 0);
+/** Le HTML du bloc posé dans un faux élément. */
+const bloc = (reponse) => {
+  const e = el('div', {});
+  e.innerHTML = htmlDeLActivation(reponse);
+  return e;
+};
+
+test('la page Mise à jour ne montre plus l’activation, même si un ancien service envoie encore `bascule_2`', async () => {
+  const { zone } = await monter({ bascule_2: bascule({}, rapport()) });
+  assert.equal(zone.querySelectorAll('[data-nv-bascule-2], [data-interrupteur], [data-activation]').length, 0);
 });
 
-test('avec bascule_2 : une section en lecture seule, cinq lignes dont l’état se lit, le dernier résultat dessous, aucun bouton ni lien', async () => {
-  const { zone, section } = await monter({ bascule_2: bascule({ gel_des_fusions: { etat: true, raison: null, phrase: null, lu_le: '2026-11-19T10:00:00.000Z' } }, rapport({ etat: 'refusee' })) });
-  assert.ok(section, 'la section est là');
-  assert.ok(zone.contains(section));
-  assert.equal(section.querySelector('h3')?.textContent.length > 0, true, 'un titre');
-  const lignes = section.querySelectorAll('[data-interrupteur]');
+test('sans bascule_2 (ancien service) : une ligne sobre, aucun interrupteur', () => {
+  const section = bloc(undefined);
+  assert.equal(section.querySelectorAll('[data-interrupteur], [data-activation]').length, 0);
+  assert.ok(section.textContent.length > 0);
+});
+
+test('avec bascule_2 : un bloc en lecture seule, cinq lignes dont l’état se lit, le dernier résultat dessous, aucun bouton ni lien', () => {
+  const section = bloc(bascule({ gel_des_fusions: { etat: true, raison: null, phrase: null, lu_le: '2026-11-19T10:00:00.000Z' } }, rapport({ etat: 'refusee' })));
+  const lignes = [...section.querySelectorAll('[data-interrupteur]')];
   assert.deepEqual(lignes.map((l) => l.getAttribute('data-interrupteur')), CLES);
   const etats = Object.fromEntries(lignes.map((l) => [l.getAttribute('data-interrupteur'), l.className]));
   assert.match(etats.gel_des_fusions, /--allume/);
@@ -171,14 +180,12 @@ test('avec bascule_2 : une section en lecture seule, cinq lignes dont l’état 
   assert.equal(section.querySelector('[data-activation]').getAttribute('data-activation'), 'refusee');
   // lecture seule : rien à cliquer
   for (const balise of ['button', 'a', 'input', 'select', 'textarea', 'form']) assert.equal(section.querySelectorAll(balise).length, 0, `aucun ${balise}`);
-  // près de l'état de la production, avant la note
-  assert.equal(zone.querySelector('[data-nv-production]').nextElementSibling, section);
 });
 
-test('sans rapport : « aucune activation connue » ; une valeur du service n’est jamais lue comme du HTML', async () => {
+test('sans rapport : « aucune activation connue » ; une valeur du service n’est jamais lue comme du HTML', () => {
   const piege = '<img src=x onerror=alert(1)>';
-  const { section } = await monter({ bascule_2: bascule({ actif: { etat: null, raison: 'sans_jeton', phrase: piege, lu_le: null } }, null) });
+  const section = bloc(bascule({ actif: { etat: null, raison: 'sans_jeton', phrase: piege, lu_le: null } }, null));
   assert.equal(section.querySelector('[data-activation]').getAttribute('data-activation'), 'aucune');
   assert.equal(section.querySelectorAll('img').length, 0);
-  assert.ok(section.textContent.includes(piege), 'le texte est posé tel quel, par textContent');
+  assert.ok(htmlDeLActivation(bascule({ actif: { etat: null, raison: 'sans_jeton', phrase: piege, lu_le: null } }, null)).includes('&lt;img src=x'), 'le texte est échappé');
 });

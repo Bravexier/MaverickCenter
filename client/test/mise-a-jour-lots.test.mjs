@@ -87,8 +87,8 @@ async function monter(lots, extra = {}) {
   return { racine, etat, envois, section, article, clic, dialogue, confirmer, ecritures, cocher };
 }
 
-test('après les listes de la note en préparation et avant les conflits, la section des modifications ; le détail est lu pour les propositions en attente et les appliqués récents', async () => {
-  const page = await monter([lot('a'), lot('b', { etat: 'refuse' }), direct('c', [ligne(1)])]);
+test('après les listes de la note en préparation et avant les conflits, la section des modifications ; le détail est lu pour les propositions en attente et les appliqués en écart avec la production', async () => {
+  const page = await monter([lot('a'), lot('b', { etat: 'refuse' }), direct('c', [ligne(1)]), { ...direct('l', [ligne(1)]), ecart_production: false }]);
   const dev = page.racine.querySelector('[data-nv-dev]');
   const s = page.section();
   assert.ok(s && !s.hidden, 'la section');
@@ -97,10 +97,11 @@ test('après les listes de la note en préparation et avant les conflits, la sec
   assert.ok(dev.children.indexOf(s) < dev.children.indexOf(dev.querySelector('[data-nv-conflits]')), 'avant les conflits');
   assert.deepEqual([...s.querySelectorAll('[data-nv-lots-attente] [data-nv-lot-id]')].map((a) => a.dataset.nvLotId), ['a']);
   assert.deepEqual([...s.querySelectorAll('[data-nv-lots-appliques] [data-nv-lot-id]')].map((a) => a.dataset.nvLotId), ['c']);
-  assert.deepEqual([...s.querySelectorAll('[data-nv-lots-historique] [data-nv-lot-id]')].map((a) => a.dataset.nvLotId), ['b']);
+  for (const absent of ['b', 'l']) assert.equal(s.querySelectorAll(`[data-nv-lot-id="${absent}"]`).length, 0, `${absent} : ne change rien par rapport à la production`);
   const lus = page.envois.map(([k]) => k);
   assert.ok(lus.includes('GET edition/lots/a/') && lus.includes('GET edition/lots/c/'));
   assert.ok(!lus.includes('GET edition/lots/b/'), 'le détail d’un lot refusé n’est pas lu');
+  assert.ok(!lus.includes('GET edition/lots/l/'), 'ni celui d’un lot que la production contient déjà');
   // l'aperçu avant et après du lot à décider
   assert.equal(page.article('a').querySelectorAll('.nv-lot-ligne').length, 1);
   assert.deepEqual([...page.article('a').querySelectorAll('.nv-version__texte')].map((v) => v.textContent), ['avant 1', 'après 1']);
@@ -203,7 +204,7 @@ test('un 409 à l’application : le message dit la ligne à corriger, le lot es
   assert.equal(a.querySelector('[data-nv-appliquer]').hasAttribute('disabled'), true);
 });
 
-test('« Refuser » demande confirmation, puis rien n’est écrit : le lot passe dans l’historique ; « Refaire l’essai » remplace la phrase et l’aperçu', async () => {
+test('« Refuser » demande confirmation, puis rien n’est écrit : le lot quitte la section ; « Refaire l’essai » remplace la phrase et l’aperçu', async () => {
   const page = await monter([lot('r'), lot('e', { essai: essai('a_corriger', [operation(1, 'refusee', { message: 'à revoir' })]) })], {
     'POST edition/lots/r/refuser/': (corps, etat) => {
       etat.lots = etat.lots.map((l) => (l.id === 'r' ? { ...l, etat: 'refuse', decide_le: '2026-11-14T12:00:00Z' } : l));
@@ -219,8 +220,7 @@ test('« Refuser » demande confirmation, puis rien n’est écrit : le lot pass
   assert.equal(page.ecritures().length, 0);
   await page.confirmer();
   assert.deepEqual(page.ecritures(), [['POST edition/lots/r/refuser/', {}]]);
-  assert.equal(page.section().querySelectorAll('[data-nv-lots-attente] [data-nv-lot-id="r"]').length, 0);
-  assert.equal(page.section().querySelectorAll('[data-nv-lots-historique] [data-nv-lot-id="r"]').length, 1);
+  assert.equal(page.section().querySelectorAll('[data-nv-lot-id="r"]').length, 0);
   // refaire l'essai : sans confirmation (rien n'est écrit), la phrase suit le nouvel essai
   assert.equal(page.article('e').querySelector('[data-nv-verdict]').dataset.nvVerdict, 'a_corriger');
   await page.clic(page.article('e').querySelector('[data-nv-essai]'));

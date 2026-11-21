@@ -12,15 +12,13 @@
 // changement du code »), une ligne dite par son nom, une valeur par `texteDeValeur` (jamais en JSON).
 // Fonctions pures (chaîne HTML en sortie, tout texte échappé, jamais de HTML reçu posé), sans dépendance hors lib/conflits-rendu.mjs, lib/diff-replie.mjs
 // et lib/notes-de-version-rendu.mjs ; seul le script de la page (src/scripts/mise-a-jour.mjs) importe ce module (version portable : jamais deux scripts).
-// Les choix de présentation sans décision du propriétaire (réponse sobre par défaut, à lui de changer) : les changements appliqués ne sont montrés que pour les
-// APPLIQUES_RECENTS plus récents, les refusés et les annulés tiennent dans un historique replié, une liste coupe à PLAFOND_DES_LIGNES lignes (un bouton montre
-// le reste).
+// La section ne montre que ce qui change par rapport à la production (demande du propriétaire du 2026-11-21 : « Je ne dois voir ici QUE la liste de ce qui change
+// par rapport à la prod, car sert pour le patch note. ») : un changement ou une ligne qui vaut déjà la production n'y est plus (`ecart_production` du service ;
+// sans référence, rien n'est retiré), ni les refusés et les annulés. Une liste coupe à PLAFOND_DES_LIGNES lignes (un bouton montre le reste).
 import { instantLisible, texteDeValeur } from './conflits-rendu.mjs';
 import { replierLeDiff } from './diff-replie.mjs';
 import { diffMots, echapper } from './notes-de-version-rendu.mjs';
 
-/** Les lots appliqués qu'on montre (les plus récents) ; les autres se retrouvent dans le journal. */
-export const APPLIQUES_RECENTS = 10;
 /** Les lignes d'un aperçu montrées d'abord ; « Tout montrer » donne le reste. */
 export const PLAFOND_DES_LIGNES = 30;
 /** Au-delà, deux textes se montrent par leurs différences. */
@@ -35,8 +33,11 @@ const court = (t) => (t.length > LIMITE_D_UNE_CITATION ? `${t.slice(0, LIMITE_D_
 const citation = (v) => `« ${court(texteDeValeur(v))} »`;
 const jour = (iso) => (iso ? instantLisible(iso) : '');
 
-/** Les lots appliqués, le plus récemment appliqué d'abord (ceux qu'on peut annuler d'un clic : les `APPLIQUES_RECENTS` premiers sont montrés). */
-export const lotsAppliques = (lots) => (lots ?? []).filter((l) => l.etat === 'applique').sort((a, b) => String(b.decide_le ?? '').localeCompare(String(a.decide_le ?? '')));
+/** Les lots appliqués qui changent encore quelque chose par rapport à la production, le plus récemment appliqué d'abord. */
+export const lotsAppliques = (lots) => (lots ?? []).filter((l) => l.etat === 'applique' && l.ecart_production !== false)
+  .sort((a, b) => String(b.decide_le ?? '').localeCompare(String(a.decide_le ?? '')));
+/** Les lignes d'un lot appliqué qui diffèrent de la production. */
+const lignesEnEcart = (lot) => lot.lignes.filter((l) => l.ecart_production !== false);
 
 /** D'où vient le lot, en mots simples ; null pour une origine qu'on ne sait pas dire. */
 export function origineDuLot(lot) {
@@ -312,7 +313,7 @@ function htmlDeLaLigneDuLot(ligne, lot, vue) {
 
 /** Les lignes d'un changement appliqué, au plus `PLAFOND_DES_LIGNES` d'abord (« Tout montrer » donne le reste). */
 function htmlDesLignesDuLot(lot, vue) {
-  const lignes = lot.lignes;
+  const lignes = lignesEnEcart(lot);
   if (!lignes.length) return '<p class="nv-conflit__aide">Aucune ligne.</p>';
   const cle = `${lot.id}:lignes`;
   const montrees = vue.toutes?.has(cle) ? lignes : lignes.slice(0, PLAFOND_DES_LIGNES);
@@ -346,25 +347,10 @@ function htmlDuLotApplique(lot) {
     const pourquoi = lot.lignes === null && lot.lignes_indisponibles ? ` ${echapper(`(${lot.lignes_indisponibles})`)}` : '';
     return `<p class="nv-lot__bilan" data-nv-bilan-indisponible>Le détail ligne par ligne de ce changement n’est pas disponible : il ne peut pas être annulé d’ici.${pourquoi}</p>`;
   }
-  const annulees = lot.lignes.filter((l) => l.etat === 'annulee').length;
-  const texte = `${pluriel(lot.lignes.length, 'modification', 'modifications')}${annulees ? `, dont ${pluriel(annulees, 'annulée', 'annulées')}` : ''}.`;
+  const lignes = lignesEnEcart(lot);
+  const annulees = lignes.filter((l) => l.etat === 'annulee').length;
+  const texte = `${pluriel(lignes.length, 'modification', 'modifications')}${annulees ? `, dont ${pluriel(annulees, 'annulée', 'annulées')}` : ''}.`;
   return `<p class="nv-lot__bilan" data-nv-bilan>${echapper(texte)}</p>`;
-}
-
-const ETAT_DE_L_HISTORIQUE = Object.freeze({ refuse: 'refusé', annule: 'annulé' });
-
-/** Un changement dans l'historique replié : son titre, ce qu'il est devenu et quand. */
-function htmlDuLotArchive(lot) {
-  const quand = lot.etat === 'annule' ? lot.annule_le : lot.decide_le;
-  return `<li class="nv-lot-archive" data-nv-lot-id="${echapper(lot.id)}" data-nv-etat="${echapper(lot.etat)}"><strong>${echapper(lot.titre)}</strong> `
-    + `<span class="nv-lot__meta">${echapper(`${ETAT_DE_L_HISTORIQUE[lot.etat] ?? lot.etat}${quand ? ` le ${jour(quand)}` : ''}`)}</span></li>`;
-}
-
-/** Un dépôt refusé : une trace courte (titre, quand, motifs), sans bouton. */
-function htmlDuDepotRefuse(lot) {
-  const motifs = (lot.refus?.motifs ?? []).slice(0, 5).map((m) => `<li>${echapper(texteDeValeur(m))}</li>`).join('');
-  return `<li class="nv-lot-archive" data-nv-lot-id="${echapper(lot.id)}" data-nv-etat="${echapper(lot.etat)}"><strong>${echapper(lot.titre)}</strong> `
-    + `<span class="nv-lot__meta">${echapper(`refusé${lot.depose_le ? ` le ${jour(lot.depose_le)}` : ''} : rien n’a été écrit`)}</span>${motifs ? `<ul class="nv-lot__problemes" data-nv-motifs>${motifs}</ul>` : ''}</li>`;
 }
 
 /**
@@ -385,17 +371,13 @@ export function htmlDuLot(lot, vue = {}) {
 
 /**
  * La section « Modifications de l'équipe », repliée sous son titre (un <details> ; le message d'après un clic reste au-dessus) : en tête l'explication, « Tout recalculer » et « Actualiser » ; puis les propositions encore en attente (seulement
- * s'il en reste), les changements appliqués récents (chaque ligne avec « Annuler cette modification »), les dépôts refusés et un historique replié des refusés
- * et des annulés.
+ * s'il en reste) et les changements appliqués qui diffèrent de la production (chaque ligne avec « Annuler cette modification »).
  * @param {{ lots?: object[] }} reponse les lots, la plus récente d'abord (chacun avec son détail quand la page l'a lu)
  * @param {{ coches?: Map<string, Set<string>>, messages?: Map<string, object>, ouverts?: Set<string>, toutes?: Set<string>, message?: object | null }} [vue]
  */
 export function htmlDesLots({ lots = [] } = {}, vue = {}) {
   const attendent = lots.filter((l) => l.etat === 'propose');
   const appliques = lotsAppliques(lots);
-  const recents = appliques.slice(0, APPLIQUES_RECENTS);
-  const refuses = lots.filter((l) => l.etat === 'refuse' && l.refus);
-  const archives = lots.filter((l) => (l.etat === 'refuse' && !l.refus) || l.etat === 'annule');
   const message = vue.message ? `<div class="nv-message nv-lots__message${vue.message.erreur ? ' nv-message--erreur' : ''}" data-nv-lots-message role="${vue.message.erreur ? 'alert' : 'status'}"><p>${echapper(vue.message.texte)}</p>`
     + `${vue.message.lignes?.length ? `<ul class="nv-lot__problemes">${vue.message.lignes.map((l) => `<li>${echapper(l)}</li>`).join('')}</ul>` : ''}</div>` : '';
   // la section se replie sous son titre (demande du propriétaire : elle prenait trop de place), dans le même bloc dépliant que les domaines de la note
@@ -403,23 +385,15 @@ export function htmlDesLots({ lots = [] } = {}, vue = {}) {
   const comptes = [attendent.length ? pluriel(attendent.length, 'proposition en attente', 'propositions en attente') : null,
     appliques.length ? pluriel(appliques.length, 'changement appliqué', 'changements appliqués') : null].filter(Boolean).join(' · ');
   const resume = `<summary><h3 class="nv-domaine__entete"><span class="nv-domaine__titre">Modifications de l’équipe</span>${comptes ? ` <span class="nv-compte">${echapper(comptes)}</span>` : ''}</h3></summary>`;
-  const entete = `<p class="nv-lots__intro">Ce que l’équipe a changé sur le site est appliqué tout de suite ; vous le retrouvez ici, ligne par ligne, avec la valeur d’avant et celle d’après. « Annuler cette modification » remet une ligne comme avant, après votre confirmation.</p>`
+  const entete = `<p class="nv-lots__intro">Ce que l’équipe a changé sur le site est appliqué tout de suite ; vous le retrouvez ici, ligne par ligne, avec la valeur d’avant et celle d’après, tant que la production ne l’a pas reçu. « Annuler cette modification » remet une ligne comme avant, après votre confirmation.</p>`
     + `<div class="nv-dev__actions"><button type="button" data-nv-recalcul>Tout recalculer</button><button type="button" data-nv-lots-actualiser>Actualiser</button></div>`
     + `<p class="nv-conflit__aide">« Tout recalculer » sert après un changement de code : il recalcule les pages que le code d’aujourd’hui calcule autrement.</p>`;
   const bloc = (titre, contenu, attribut) => `<div class="nv-lots__groupe" ${attribut}><h4 class="nv-lots__sous-titre">${echapper(titre)}</h4>${contenu}</div>`;
   const attente = attendent.length
     ? bloc(`Propositions en attente (${attendent.length})`, `<p class="nv-conflit__aide">Une proposition ne change rien tant que vous n’avez pas cliqué sur « Appliquer ».</p>${attendent.map((l) => htmlDuLot(l, vue)).join('')}`, 'data-nv-lots-attente') : '';
-  const plusAnciens = appliques.length > recents.length
-    ? `<p class="nv-conflit__aide">${echapper(`${pluriel(appliques.length - recents.length, 'changement plus ancien n’est pas montré', 'changements plus anciens ne sont pas montrés')}.`)}</p>` : '';
-  const faits = bloc('Changements appliqués', recents.length ? recents.map((l) => htmlDuLot(l, vue)).join('') + plusAnciens : '<p class="nv-lots__aucun">Aucun changement de l’équipe à montrer.</p>', 'data-nv-lots-appliques');
-  const refus = refuses.length
-    ? `<details class="nv-lots__historique" data-nv-ouvert="refus"${vue.ouverts?.has('refus') ? ' open' : ''} data-nv-lots-refus><summary>Dépôts refusés (${refuses.length})</summary>`
-      + `<ul class="nv-lots__archives">${refuses.map(htmlDuDepotRefuse).join('')}</ul></details>` : '';
-  const historique = archives.length
-    ? `<details class="nv-lots__historique" data-nv-ouvert="historique"${vue.ouverts?.has('historique') ? ' open' : ''} data-nv-lots-historique><summary>Historique : refusés et annulés (${archives.length})</summary>`
-      + `<ul class="nv-lots__archives">${archives.map(htmlDuLotArchive).join('')}</ul></details>` : '';
+  const faits = bloc('Changements appliqués', appliques.length ? appliques.map((l) => htmlDuLot(l, vue)).join('') : '<p class="nv-lots__aucun">Aucun changement par rapport à la production.</p>', 'data-nv-lots-appliques');
   return `${message}<details class="nv-domaine nv-lots__repli" data-nv-ouvert="section"${vue.ouverts?.has('section') || attendent.length ? ' open' : ''} data-nv-lots-repli>`
-    + `${resume}<div class="nv-lots__corps">${entete}${attente}${faits}${refus}${historique}</div></details>`;
+    + `${resume}<div class="nv-lots__corps">${entete}${attente}${faits}</div></details>`;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------

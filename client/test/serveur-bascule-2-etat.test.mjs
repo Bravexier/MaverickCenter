@@ -1,4 +1,4 @@
-// Page Mise à jour, bloc « Activation » (bascule 2) : `bascule_2` dans GET /api/mise-a-jour/ (serveur/bascule-2-etat.mjs ; docs/api.md, « Page Mise à jour : l'état de la
+// Page Debug, menu Système, bloc « Activation » (bascule 2) : `bascule_2` dans GET /api/debug/systeme/ (serveur/bascule-2-etat.mjs ; docs/api.md, « Debug › Système : l'état de la
 // bascule 2 »). Lecture seule : cinq interrupteurs, chacun `true`, `false` ou `null` (inconnu, avec une raison), jamais deviné ; la réponse n'attend jamais GitHub ; rien d'un
 // secret ni d'un chemin du serveur ; `activation_production` reste celui d'avant. Aucune valeur modifiable n'est figée : les fichiers et les réponses de GitHub sont ceux du test.
 import assert from 'node:assert/strict';
@@ -204,13 +204,18 @@ test('etatDeLaBascule2 : db/bascule-2 est toujours vrai ou faux ; l’interrupte
 
 const { chemin } = preparerBaseVivante({ regles: cheminBase({ sansExemples: false }), dossier: join(racine, 'db') });
 const db = ouvrirBaseVivante(chemin);
-const appel = (service) => traiter({ methode: 'GET', chemin: '/api/mise-a-jour/', entetes: {} }, service);
-const serviceDeDev = (surcharge = {}) => ({ base: () => db, etat: () => ({ version: '0.1.76' }), edition: true, dossier: join(racine, 'db'), reference: null, depot: 'x/y', github: null, source: () => true, bascule2: () => false, ...surcharge });
+const appel = (service) => traiter({ methode: 'GET', chemin: '/api/debug/systeme/', entetes: {} }, service);
+const appelDeLaNote = (service) => traiter({ methode: 'GET', chemin: '/api/mise-a-jour/', entetes: {} }, service);
+const serviceDeDev = (surcharge = {}) => ({ base: () => db, etat: () => ({ version: '0.1.76' }), edition: true, dossier: join(racine, 'db'), reference: null, depot: 'x/y', github: null, source: () => true, bascule2: () => false, metriques: { systeme: () => ({ instance: 'dev' }) }, ...surcharge });
 const RAPPORT = { format: 'maverick-activation/1', etat: 'passee', le: '2026-11-20T10:00:00Z', version: '0.6', depuis: '0.5', raisons: [], phrase: 'ok', geste: null, lot: null, mode: 'paquet', pages: 10, duree_s: 20, gel_leve: true };
 
-test('GET /api/mise-a-jour/ : `bascule_2` sur le site de dev, cinq interrupteurs en true, false ou null (raison dite), même sans le marqueur ni GitHub', async () => {
+test('GET /api/debug/systeme/ : `bascule_2` sur le site de dev, cinq interrupteurs en true, false ou null (raison dite), même sans le marqueur ni GitHub ; GET /api/mise-a-jour/ ne le porte plus', async () => {
   const r = await appel(serviceDeDev());
   assert.equal(r.statut, 200, JSON.stringify(r.corps).slice(0, 300));
+  assert.equal(r.corps.instance, 'dev', 'le reste de l’état du système est gardé');
+  const note = await appelDeLaNote(serviceDeDev());
+  assert.equal(note.statut, 200, JSON.stringify(note.corps).slice(0, 300));
+  assert.equal('bascule_2' in note.corps, false);
   const b = r.corps.bascule_2;
   assert.deepEqual(Object.keys(b.interrupteurs), INTERRUPTEURS);
   for (const [nom, i] of Object.entries(b.interrupteurs)) {
@@ -231,11 +236,11 @@ test('GET /api/mise-a-jour/ : `bascule_2` sur le site de dev, cinq interrupteurs
     assert.equal((await appel(serviceDeDev({ paquets }))).corps.bascule_2.interrupteurs.activation_par_paquet.raison, 'pas_de_dossier_des_paquets', paquets);
   }
   assert.equal(estUnDossier(racine), true);
-  assert.equal('activation_production' in r.corps, false, 'sans le marqueur, activation_production n’existe pas (comme avant)');
+  assert.equal('activation_production' in note.corps, false, 'sans le marqueur, activation_production n’existe pas (comme avant)');
   assert.equal((await appel(serviceDeDev({ bascule2: () => true }))).corps.bascule_2.interrupteurs.db_bascule_2.etat, true);
 });
 
-test('GET /api/mise-a-jour/ : GitHub n’est jamais attendu ; la lecture arrivée, la page la montre avec sa date', async () => {
+test('GET /api/debug/systeme/ : GitHub n’est jamais attendu ; la lecture arrivée, la page la montre avec sa date', async () => {
   let lever;
   const github = { configure: () => true, suivre: async () => null, lireUnFichier: () => new Promise((resolu) => { lever = resolu; }) };
   const service = serviceDeDev({ github, interrupteursGithub: creerLesInterrupteursDeGithub({ github }) });
@@ -249,7 +254,7 @@ test('GET /api/mise-a-jour/ : GitHub n’est jamais attendu ; la lecture arrivé
   assert.match(b.actif.lu_le, /^\d{4}-\d\d-\d\dT/);
 });
 
-test('GET /api/mise-a-jour/ : l’atelier et le dernier rapport d’activation ; le rapport sert à `activation_production` (inchangé, seulement avec le marqueur) et à `bascule_2`', async () => {
+test('l’atelier et le dernier rapport d’activation : `bascule_2` du système, et `activation_production` de la mise à jour (inchangé, seulement avec le marqueur)', async () => {
   const partage = join(dossierTemporaire('bascule-2-etat-paquets'), 'paquets');
   mkdirSync(partage);
   const atelier = { servir: () => ({ pose: true, depuis: '2026-11-18T08:00:00Z' }), lire: () => { throw new Error('l’état complet de l’atelier n’est pas lu'); } };
@@ -261,15 +266,15 @@ test('GET /api/mise-a-jour/ : l’atelier et le dernier rapport d’activation ;
   const attendu = lireLActivation(partage);
   assert.ok(attendu, 'le rapport du test est valide');
   r = await appel(serviceDeDev({ paquets: partage, bascule2: () => true }));
-  assert.deepEqual(r.corps.activation_production, attendu, 'activation_production : le rapport, tel que le lit lireLActivation');
+  assert.deepEqual((await appelDeLaNote(serviceDeDev({ paquets: partage, bascule2: () => true }))).corps.activation_production, attendu, 'activation_production : le rapport, tel que le lit lireLActivation');
   assert.deepEqual(r.corps.bascule_2.activation, attendu, 'le même rapport dans bascule_2, même avec le marqueur');
   assert.deepEqual([r.corps.bascule_2.interrupteurs.activation_par_paquet.etat, r.corps.bascule_2.interrupteurs.activation_par_paquet.vu_le], [true, attendu.le]);
   r = await appel(serviceDeDev({ paquets: partage, bascule2: () => false }));
-  assert.equal('activation_production' in r.corps, false, 'sans le marqueur, le champ d’avant n’existe pas');
+  assert.equal('activation_production' in (await appelDeLaNote(serviceDeDev({ paquets: partage, bascule2: () => false }))).corps, false, 'sans le marqueur, le champ d’avant n’existe pas');
   assert.deepEqual(r.corps.bascule_2.activation, attendu, 'mais le rapport est montré, en lecture seule, dans bascule_2');
 });
 
-test('GET /api/mise-a-jour/ : ni secret ni chemin du serveur dans `bascule_2` ; en production (sans le service d’édition), la route n’existe pas et `bascule_2` non plus', async () => {
+test('GET /api/debug/systeme/ : ni secret ni chemin du serveur dans `bascule_2` ; en production (sans le service d’édition), la route n’existe pas et `bascule_2` non plus', async () => {
   const partage = join(dossierTemporaire('bascule-2-etat-secret'), 'paquets');
   mkdirSync(partage);
   writeFileSync(join(partage, 'activation.json'), JSON.stringify(RAPPORT));

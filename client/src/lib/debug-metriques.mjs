@@ -12,7 +12,7 @@
 //   GET <base>api/debug/metriques/requetes/?limite=&route_exacte=&min_ms=  → { requetes: [{ instant, methode, route, adresse, statut, duree_ms,
 //       phases: { corps_ms, traitement_ms, envoi_ms }, octets_entree, octets_sortie, sql: { n, ms, plus_lente: { sql, ms } }, page, navigateur,
 //       appareil, simultanees }] } (la mémoire du serveur qui répond, le site de dev : rien pour l'instance « Production », requetesDeLInstance)
-//   GET <base>api/debug/systeme/?instance=…  → { instance, maintenant, processus, disque, fichiers, echantillons, evenements, volume, sauvegardes, alertes }
+//   GET <base>api/debug/systeme/?instance=…  → { instance, maintenant, processus, disque, fichiers, echantillons, evenements, volume, sauvegardes, alertes, bascule_2 }
 //   GET <base>api/debug/metriques/export/?instance=&periode=&format=csv|json  (lien « Exporter »)
 // Deux jeux de données séparés (décision du propriétaire du 2026-10-15) : la page montre l'instance choisie, dev OU production, jamais un mélange.
 // Les courbes sont du SVG en ligne, sans bibliothèque et sans <title> (une infobulle native : jamais, Infobulles.astro) : un aria-label les décrit.
@@ -1133,4 +1133,94 @@ export function htmlDesSauvegardes(sauvegardes, { maintenant = new Date(), seuil
   const parInstance = ['prod', 'dev'].map((cle) => htmlDeSauvegardeDInstance(instances[cle], libelleDe(cle), { maintenant, seuils })).join('');
   return `<div class="debug-sauvegardes">${parInstance}${htmlDeLaPlaceDesCopies(sauvegardes.locale)}`
     + `${htmlDeLaCopieExterieure(sauvegardes.exterieur, { maintenant, seuils })}</div>`;
+}
+
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+// Activation (menu « Système » ; `bascule_2` de GET /api/debug/systeme/, serveur/bascule-2-etat.mjs). Demande du propriétaire du 2026-11-21 : le bloc quitte la page
+// Mise à jour (« Je veux pas le voir , c'est à déplancer dans Debug system au pire. »). Lecture seule : aucun bouton ni lien, rien ne se règle d'ici.
+// ---------------------------------------------------------------------------------------------------------------------------------------------
+
+/** Les cinq interrupteurs de la bascule 2, dans l'ordre du bloc : clé de la réponse, nom en clair, nom technique, champ de la date utile et son début de phrase. */
+export const INTERRUPTEURS_DE_LA_BASCULE_2 = Object.freeze([
+  { cle: 'gel_des_fusions', nom: 'Gel des fusions', technique: 'gel_des_fusions', champDate: 'lu_le', devantDate: 'lu sur GitHub le' },
+  { cle: 'actif', nom: 'Publication par kits (GitHub)', technique: 'actif', champDate: 'lu_le', devantDate: 'lu sur GitHub le' },
+  { cle: 'db_bascule_2', nom: 'Bascule 2 du site de dev', technique: 'db/bascule-2', champDate: null, devantDate: '' },
+  { cle: 'atelier_servir', nom: 'Atelier : sert le site qu’il fabrique', technique: 'atelier/servir', champDate: 'depuis', devantDate: 'depuis le' },
+  { cle: 'activation_par_paquet', nom: 'Accord de la production', technique: 'activation-par-paquet', champDate: 'vu_le', devantDate: 'vu posé lors de l’activation du' },
+]);
+
+/** Les mots de l'état d'une activation (`ETATS_DE_L_ACTIVATION` du service) ; `attention` : l'état demande un coup d'œil. */
+const ETATS_DE_L_ACTIVATION_DITS = Object.freeze({
+  en_cours: { mot: 'en cours', attention: false },
+  passee: { mot: 'passée', attention: false },
+  refusee: { mot: 'refusée', attention: true },
+  retour_automatique: { mot: 'retour automatique au site précédent', attention: true },
+  retour_incomplet: { mot: 'retour incomplet : à traiter', attention: true },
+});
+
+const JOUR_DE_L_ACTIVATION = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+
+/** « 19 novembre 2026 » d'une date ISO (avec ou sans heure), « » si elle est absente ou illisible. */
+function jourDeLActivation(valeur) {
+  const jour = /^\d{4}-\d{2}-\d{2}/.exec(typeof valeur === 'string' ? valeur.trim() : '')?.[0];
+  const instant = jour ? Date.parse(`${jour}T00:00:00Z`) : Number.NaN;
+  return Number.isNaN(instant) ? '' : JOUR_DE_L_ACTIVATION.format(instant);
+}
+
+/** La ligne du dernier rapport d'activation : état, version, date, phrase, geste, « périmé » ; « Aucune activation connue » sans rapport lisible. */
+function affichageDuDernierRapport(activation) {
+  const aucune = { aucune: true, texte: 'Aucune activation connue' };
+  if (!activation || typeof activation !== 'object' || !Object.hasOwn(ETATS_DE_L_ACTIVATION_DITS, activation.etat)) return aucune;
+  const chaine = (v) => (typeof v === 'string' ? v.trim() : '');
+  const { mot, attention } = ETATS_DE_L_ACTIVATION_DITS[activation.etat];
+  const version = chaine(activation.version);
+  const jour = jourDeLActivation(activation.le);
+  const perime = activation.perime === true;
+  const parties = [
+    `Activation ${mot}`,
+    version ? `version ${/^\d/.test(version) ? 'V' : ''}${version}` : '',
+    jour ? `le ${jour}` : '',
+    perime ? 'périmée' : '',
+    chaine(activation.phrase),
+    chaine(activation.geste),
+  ].filter(Boolean);
+  return { aucune: false, etat: activation.etat, mot, attention, perime, texte: parties.join(' · ') };
+}
+
+/**
+ * Ce que le bloc montre de `bascule_2`, ou null (champ absent : ancien service). `interrupteurs` : toujours les cinq, dans l'ordre ; chacun a un `etat` `allume`,
+ * `eteint` ou `inconnu` (`etat: null` du service, jamais deviné : sa `phrase` est alors dite), un `mot` (« vu posé » pour l'accord de la production, que le site de
+ * dev ne voit jamais éteint), la `date` utile (déjà lisible, « » sans) et la `phrase` du service. `activation` : une ligne (`texte`) pour le dernier rapport.
+ * @param {unknown} bascule `bascule_2` de la réponse
+ * @returns {{ interrupteurs: { cle: string, nom: string, technique: string, etat: 'allume' | 'eteint' | 'inconnu', mot: string, date: string, phrase: string }[],
+ *   activation: { aucune: true, texte: string } | { aucune: false, etat: string, mot: string, attention: boolean, perime: boolean, texte: string } } | null}
+ */
+export function affichageDeLaBascule2(bascule) {
+  if (!bascule || typeof bascule !== 'object') return null;
+  const chaine = (v) => (typeof v === 'string' ? v.trim() : '');
+  const lus = bascule.interrupteurs && typeof bascule.interrupteurs === 'object' ? bascule.interrupteurs : {};
+  const interrupteurs = INTERRUPTEURS_DE_LA_BASCULE_2.map(({ cle, nom, technique, champDate, devantDate }) => {
+    const brut = lus[cle] && typeof lus[cle] === 'object' ? lus[cle] : {};
+    // l'accord de la production n'est jamais « éteint » : le site de dev ne voit que l'avoir été (un faux y est lu comme inconnu)
+    const etat = brut.etat === true ? 'allume' : brut.etat === false && cle !== 'activation_par_paquet' ? 'eteint' : 'inconnu';
+    const jour = etat === 'inconnu' || !champDate ? '' : jourDeLActivation(brut[champDate]);
+    const mot = etat === 'inconnu' ? 'inconnu' : etat === 'eteint' ? 'éteint' : cle === 'activation_par_paquet' ? 'vu posé' : 'allumé';
+    return {
+      cle, nom, technique, etat, mot,
+      date: jour ? `${devantDate} ${jour}` : '',
+      phrase: etat === 'inconnu' ? chaine(brut.phrase) : '',
+    };
+  });
+  return { interrupteurs, activation: affichageDuDernierRapport(bascule.activation) };
+}
+
+/** Le bloc « Activation » : les cinq interrupteurs et le dernier résultat ; une ligne sobre sans `bascule_2`. Tout texte est échappé. */
+export function htmlDeLActivation(bascule) {
+  const a = affichageDeLaBascule2(bascule);
+  if (!a) return '<p class="debug-vide">État de l’activation inconnu.</p>';
+  const lignes = a.interrupteurs.map((i) => `<li class="debug-interrupteur debug-interrupteur--${i.etat}" data-interrupteur="${echapper(i.cle)}"><strong>${echapper(i.nom)}</strong> `
+    + `(${echapper(i.technique)}) : <span class="debug-interrupteur__etat">${echapper(i.mot)}</span>${[i.date, i.phrase].filter(Boolean).map((s) => ` · ${echapper(s)}`).join('')}</li>`).join('');
+  const dernier = a.activation;
+  return `<ul class="debug-activation__liste">${lignes}</ul><p class="debug-activation__dernier${dernier.attention ? ' debug-activation__dernier--attention' : ''}" `
+    + `data-activation="${echapper(dernier.aucune ? 'aucune' : dernier.etat)}">${echapper(dernier.texte)}</p>`;
 }
