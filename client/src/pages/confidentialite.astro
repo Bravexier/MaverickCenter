@@ -1,0 +1,101 @@
+---
+import Base from '../layouts/Base.astro';
+import { url } from '../lib/wiki';
+
+// Règles de confidentialité (demande du propriétaire, 2026-11-21) : Google n'autorise l'identifiant client du bouton « Exporter » de la fiche
+// (lib/google-sheets.mjs, droit drive.file) qu'avec l'adresse d'une telle page. Adresse stable /confidentialite/, lien discret au pied de chaque page
+// (layouts/Base.astro). Le texte dit ce que fait le code, et rien d'autre : fiches (serveur/api.mjs, serveur/fiches.mjs), « Exporter »
+// (scripts/fiche.mjs#envoyerAGoogle : jeton en mémoire, jamais envoyé au service), « Importer (en ligne) » (serveur/classeur.mjs), métriques
+// (serveur/metriques.mjs, docs/serveur.md « Métriques et volume »), journaux des conteneurs (docker-compose.yml : 5 fichiers de 10 Mo), sessionStorage
+// (chronologie, bestiaire, accès), cookie de l'accès au site de dev et essais refusés (serveur/acces.mjs : DUREE_SESSION_S, LIMITES), sauvegardes de
+// db/ (deploy/installateur/sauvegarde/), Tipeee (serveur/tipeee.mjs). Ce que le code ne dit pas
+// (responsable, hébergeur, base légale, durée des journaux) n'y est pas : le propriétaire le complète. Hors de tout menu.
+// « Ce qui est prévu » (retour du propriétaire sur la PR 445) : la connexion par Discord et les fiches de joueur, d'après docs/feuille-de-route.md
+// (« Authentification : Discord », « Fiches de personnages : joueurs, prétirés, groupes et visibilité », E7, E8), R279 et R307 ; rien de plus que ces sources.
+// Tenue à jour : un lot qui change ce que le site collecte, garde ou transmet (comptes, fiches, cookies, stockage du navigateur, journaux, métriques, service tiers) met à jour
+// cette page dans la même PR, et MISE_A_JOUR avec elle (skills zone-service et revue-de-diff). MISE_A_JOUR est la date du dernier changement du texte,
+// pas celle du build : elle ne bouge que si le texte bouge.
+const CONTACT = 'contact@maverick-jdr.com';
+const MISE_A_JOUR = '2026-11-21';
+const miseAJourLisible = new Date(`${MISE_A_JOUR}T00:00:00Z`).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+---
+
+<Base title="Confidentialité" description="Ce que le site Maverick Center fait des données de ses visiteurs.">
+  <article class="prose confidentialite">
+    <h1>Confidentialité</h1>
+    <p>Cette page décrit ce que le site Maverick Center fait des données de ses visiteurs, telles que le site les traite aujourd’hui.</p>
+    <p>Dernière mise à jour de cette page : <time datetime={MISE_A_JOUR} data-mise-a-jour>{miseAJourLisible}</time>.</p>
+
+    <h2>Pas de compte, pas de publicité</h2>
+    <ul>
+      <li>Le site ne demande à ses visiteurs ni compte, ni inscription, ni adresse e-mail, ni mot de passe. Seul le site de développement demande un mot de passe à l’équipe (plus bas).</li>
+      <li>Il n’utilise aucun outil de publicité ni de mesure d’audience d’un autre site. Il ne charge aucun script d’un autre site, sauf celui de Google, et seulement sur la page de la fiche de personnage, pour le bouton « Exporter » (plus bas).</li>
+    </ul>
+
+    <h2>Fiches de personnage</h2>
+    <ul>
+      <li>Le générateur de fiche fonctionne dans votre navigateur. Une fiche n’est envoyée au serveur du site que si vous cliquez sur « Enregistrer ».</li>
+      <li>Une fiche enregistrée est gardée dans la base du serveur du site, comme personnage prétiré : elle n’appartient à personne, elle apparaît dans la liste des personnages, tout visiteur peut la lire, et elle peut être modifiée ou supprimée depuis le site. N’y écrivez rien de personnel.</li>
+      <li>Ce qui est gardé : le contenu de la fiche (nom et surnom du personnage, choix de jeu, notes), son portrait si vous en ajoutez un, et ses dates de création et de modification. Rien sur la personne qui l’a enregistrée.</li>
+      <li>La base du serveur, fiches comprises, est sauvegardée automatiquement : une fiche modifiée ou supprimée peut rester dans les copies déjà faites.</li>
+      <li>« Télécharger » fabrique le classeur dans votre navigateur, et « Importer (PC) » y lit le classeur choisi : ni l’un ni l’autre n’envoie de fichier au serveur du site.</li>
+    </ul>
+
+    <h2>Export vers Google Sheets</h2>
+    <ul>
+      <li>Le bouton « Exporter » de la fiche utilise Google Identity Services, un script de Google que la page charge depuis <code>accounts.google.com</code> quand le pointeur ou le clavier approche du bouton. La connexion à votre compte Google se fait dans une fenêtre de Google.</li>
+      <li>Le site demande un seul droit (<code>drive.file</code>) : créer des fichiers dans votre Google Drive, et n’accéder qu’aux fichiers qu’il a lui-même créés. Il n’a accès à aucun autre de vos fichiers.</li>
+      <li>Google remet à la page un jeton d’accès. Il reste dans la mémoire de la page jusqu’à son expiration : il n’est jamais enregistré, ni envoyé au serveur du site.</li>
+      <li>Votre navigateur envoie la fiche directement à l’API Google Drive, qui en fait une nouvelle feuille Google Sheets dans votre Drive. Le serveur du site ne voit passer ni la fiche exportée, ni le lien de la feuille créée.</li>
+      <li>Votre compte Google et les fichiers de votre Drive relèvent des règles de confidentialité de Google.</li>
+    </ul>
+
+    <h2>Import en ligne</h2>
+    <ul>
+      <li>« Importer (en ligne) » envoie au serveur du site le lien de la feuille Google Sheets que vous donnez. Le serveur la télécharge auprès de Google (elle doit être partagée par lien) et la renvoie à votre navigateur, qui la lit.</li>
+      <li>Le serveur ne garde ni le lien, ni l’identifiant de la feuille, ni son contenu ; il note seulement le résultat, la taille du fichier, le nombre de redirections et la durée du téléchargement.</li>
+    </ul>
+
+    <h2>Mesure de fréquentation</h2>
+    <ul>
+      <li>Le serveur du site mesure lui-même sa fréquentation et ses performances, pour son suivi, sa maintenance et ses évolutions. Aucun service tiers n’y prend part.</li>
+      <li>Pour chaque page vue, votre navigateur envoie une fois au serveur du site le chemin de la page et ses temps de chargement.</li>
+      <li>Pour chaque appel au service du site, le serveur note la route appelée (sans identifiant), le résultat, la durée, la taille, la page d’où vient l’appel, la famille du navigateur et le type d’appareil.</li>
+      <li>Il ne note jamais l’adresse IP, le contenu des requêtes, les cookies, l’identifiant d’une fiche ni la description complète du navigateur.</li>
+      <li>Ces mesures sont regroupées par heure (ou par tranche de cinq minutes) et gardées au plus 400 jours. Sur le site de développement, les 2 000 derniers appels sont aussi gardés un par un, en mémoire seulement.</li>
+    </ul>
+
+    <h2>Journaux techniques</h2>
+    <ul>
+      <li>Le serveur web et le service du site écrivent des journaux techniques, qui servent au diagnostic des pannes. Le journal du serveur web peut comporter, pour chaque requête, l’adresse réseau d’où elle vient, la date, la page demandée, la page d’origine et la description du navigateur.</li>
+      <li>Ces journaux sont limités à cinq fichiers de 10 Mo par service : les plus anciens sont effacés au fur et à mesure.</li>
+    </ul>
+
+    <h2>Cookies et stockage dans le navigateur</h2>
+    <ul>
+      <li>Le site public ne dépose aucun cookie.</li>
+      <li>Il utilise le stockage de session du navigateur, effacé à la fermeture de l’onglet, pour deux commodités : retrouver la position de la frise chronologique, et revenir au tableau du bestiaire depuis la page d’un monstre. Ces données restent dans votre navigateur.</li>
+      <li>Sur le site de développement, la connexion de l’équipe par mot de passe dépose un cookie de session (<code>maverick_acces</code>), effacé à la fermeture du navigateur ; la session qu’il porte expire au bout de 12 heures. La mention « Connecté » est retrouvée de page en page par le stockage de session. Pour freiner les essais de mot de passe, le serveur compte en mémoire, pendant dix minutes, les essais refusés de chaque adresse réseau.</li>
+      <li>La fenêtre de connexion de Google, lors d’un export, relève des règles de Google.</li>
+    </ul>
+
+    <h2>Tipeee et Discord</h2>
+    <ul>
+      <li>Le texte de bienvenue de la page Tipeee du projet, affiché sur l’accueil, est lu par le serveur du site lui-même : rien de votre visite n’est transmis à Tipeee.</li>
+      <li>Les liens vers Tipeee et Discord mènent à des sites tiers, qui ont leurs propres règles.</li>
+    </ul>
+
+    <h2>Ce qui est prévu</h2>
+    <ul>
+      <li>Une connexion au site par Discord est prévue, avec des fiches de personnage propres à chaque joueur. Ni l’une ni les autres n’existent aujourd’hui : personne ne se connecte au site public, et aucun compte n’y est créé.</li>
+      <li>La connexion se fera par le bouton « Se connecter avec Discord » : aucun compte, aucun mot de passe ni aucune adresse e-mail à créer sur le site. Le mot de passe de l’équipe sur le site de développement disparaîtra alors.</li>
+      <li>D’après ce qui est prévu aujourd’hui, le site gardera votre identifiant Discord, votre nom d’affichage et les rôles sur le site tirés de vos rôles sur le serveur Discord du jeu. Le jeton remis par Discord ne servira, le temps de la connexion, qu’à lire votre identité, à vérifier que vous êtes membre du serveur Discord du jeu et, au besoin, à lire vos rôles sur ce serveur : il ne sera pas gardé au-delà. La session tiendra par un cookie. Un robot Discord du jeu tiendra à jour l’appartenance au serveur entre deux connexions.</li>
+      <li>Une fiche créée par un joueur sera liée à son compte et visible de lui seul et des administrateurs, sauf s’il l’ouvre à des personnes choisies, à tous les MJ ou à tout le monde, ou s’il l’inscrit dans un groupe de jeu, dont les membres la verront. Les personnages prétirés resteront visibles de tous. Des droits par groupe sont envisagés pour les prétirés, qu’aujourd’hui tout visiteur peut enregistrer, modifier ou supprimer. Les modifications apportées au contenu du site seront attribuées à l’identifiant Discord de leur auteur.</li>
+      <li>Cette page sera mise à jour avant la mise en service de la connexion et des fiches de joueur, pour dire exactement ce qui sera gardé, combien de temps, et qui pourra le voir.</li>
+    </ul>
+
+    <h2>Contact</h2>
+    <p>Pour toute question sur vos données : <a href={`mailto:${CONTACT}`} data-contact>{CONTACT}</a>.</p>
+    <p><a href={url()}>Retour à l’accueil</a></p>
+  </article>
+</Base>
