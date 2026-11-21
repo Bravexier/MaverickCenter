@@ -100,6 +100,19 @@ test('jour J en bascule 2 : le kit de la version de l\'ancien revient avant l\'a
   for (const c of controles) assert.match(c, /\| sed 's\/=\.\*\/\/'$/, 'jamais une valeur du .env à l\'écran');
 });
 
+test('R308 : serveur et sauvegardes chez OVH, plus aucun texte d\'hébergement n\'exige un autre fournisseur que l\'hébergeur', () => {
+  const lire = (...chemin) => readFileSync(join(VPS, ...chemin), 'utf8').replace(/\s+/g, ' ');
+  const registre = lire('..', '..', 'docs', 'decisions-regles.md');
+  assert.match(registre, /\| R308 \| .*?remplace R275 \(1\)/, 'la décision est au registre et dit ce qu\'elle remplace');
+  const textes = {
+    guide: lire('DEMENAGEMENT.md'), readme: lire('README.md'), fluxGit: lire('..', '..', 'docs', 'flux-git.md'),
+    envoi: lire('..', 'installateur', 'sauvegarde', 'envoi.sh'), installer: lire('..', 'installateur', 'sauvegarde', 'installer.sh'),
+  };
+  for (const [nom, texte] of Object.entries(textes)) assert.doesNotMatch(texte, /autre fournisseur que l'hébergeur/, nom);
+  assert.doesNotMatch(textes.guide, /chez deux fournisseurs/, 'guide');
+  assert.match(textes.guide, /phrase de chiffrement gardée hors d'OVH/, 'la phrase survit à un problème de compte et se transmet à la passation');
+});
+
 test('la répétition joue toute la procédure : gel refusé puis accepté, emballage, archive altérée refusée, base présente jamais écrasée, déballage, EGALITE, DIFFERENCE, retour arrière', { skip }, (t) => {
   const monde = dossierTemporaire('demenagement-repetition', { t });
   const r = lancer('repetition-demenagement.sh', ['--dossier', join(monde, 'repetition')]);

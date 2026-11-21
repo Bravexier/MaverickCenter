@@ -127,7 +127,7 @@ serveur à cette forme. Seule la toute première livraison de test s'est appelé
 - **Serveur normal** : le site réellement utilisé (`maverick-center`, port 8080). Une installation remplace le site, **jamais la base vivante** (`db/`).
 
 Quand elle est demandée, la copie est faite par l'installateur, sur le serveur, au moment où il s'exécute : GitHub n'a pas accès à la base de production, et elle ne passe jamais par GitHub.
-Elle ne quitte le serveur que par la sauvegarde automatique de nuit (décision R275), **chiffrée**, vers un stockage d'un autre fournisseur que l'hébergeur, dont le propriétaire
+Elle ne quitte le serveur que par la sauvegarde automatique de nuit (décision R275), **chiffrée**, vers un stockage sur un autre site que le serveur (décision R308), dont le propriétaire
 garde la clé (`deploy/vps/README.md`, « Sauvegardes »). La base vivante (`db/`) est celle du service des personnages ([`serveur.md`](serveur.md)) : les prétirés, puis, avec la
 connexion Discord, les utilisateurs et leurs fiches ; la base des règles du site (`/donnees/`), elle, est reconstruite depuis `data/rows` à chaque version.
 La mise à jour automatique de chaque instance est `mise-a-jour.sh`. Détails : [`deploy/installateur/README.md`](../deploy/installateur/README.md).
