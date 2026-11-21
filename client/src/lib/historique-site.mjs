@@ -22,7 +22,8 @@
 // appliquée par un lot) sont « le site » que ces fonctions défont pour retrouver l'état d'origine. Les natures `source`, `migration` et `code` sont des
 // changements du contenu de référence (réimport d'une source, migration, recalcul après un changement de code) : elles font partie de l'import, jamais
 // défaites. Un historique sans colonne `nature` (base d'avant la 0127) se lit comme des saisies. `valeursDAvant` lit toutes les natures (un ancien nom
-// reste un ancien nom, d'où qu'il vienne).
+// reste un ancien nom, d'où qu'il vienne). Une annulation porte la nature du lot annulé ; quand elle réécrit une ligne que ce lot n'avait pas écrite (le
+// corps d'une page recalculé depuis sa table), cette trace n'est pas du contenu de référence : elle est défaite comme le site (`effetDAnnulation`).
 //
 // Clé d'une ligne : l'objet des colonnes de clé primaire, dans l'ordre de la clé (comme cleDe de serveur/edition-journal.mjs, qui écrit le journal,
 // et comme `cle` des registres des migrations 0005 et 0006). Ordre de lecture : (fait_le, lot_id, rang).
@@ -67,21 +68,48 @@ const lireJson = (t) => (t === null || t === undefined ? null : JSON.parse(t));
 /** Les natures d'une trace que le site « défait » pour retrouver l'état d'origine : une saisie, une décision du propriétaire (R275). */
 export const NATURES_DEFAITES = Object.freeze(['saisie', 'decision']);
 
+/** `resume` est le titre d'une annulation du lot de titre `titre` (serveur/edition-lots.mjs, `aAnnuler` et `aAnnulerUneLigne`, ce dernier coupé à 300 signes). */
+const estAnnulationDe = (resume, titre) => {
+  if (resume === `Annulation de « ${titre} »`) return true;
+  const debut = `Annulation d’une ligne de « ${titre} » : `;
+  return resume.startsWith(debut) || (resume.length === 300 && debut.startsWith(resume));
+};
+
+/** Marque `effetDAnnulation` sur les traces d'une annulation (hors saisie et décision) dont la ligne n'a pas été écrite par le dernier lot annulé de ce titre. */
+function marquerLesEffetsDAnnulation(traces) {
+  const lots = new Map();
+  for (const t of traces) {
+    if (!lots.has(t.lot)) lots.set(t.lot, { resume: t.resume ?? '', nature: t.nature, decision: t.decision, traces: [] });
+    lots.get(t.lot).traces.push(t);
+  }
+  const precedents = [];
+  for (const lot of lots.values()) {
+    if (!NATURES_DEFAITES.includes(lot.nature) && lot.resume.startsWith('Annulation d')) {
+      const annule = precedents.findLast((p) => p.nature === lot.nature && p.decision === lot.decision && estAnnulationDe(lot.resume, p.resume));
+      if (annule) {
+        const ecrites = new Set(annule.traces.map((t) => `${t.table} ${t.texte}`));
+        for (const t of lot.traces) if (!ecrites.has(`${t.table} ${t.texte}`)) t.effetDAnnulation = true;
+      }
+    }
+    precedents.push(lot);
+  }
+}
+
 /**
  * Les modifications de historique_modification dans l'ordre (fait_le, lot_id, rang) ; [] pour une base qui n'a pas la table. Chacune porte sa `nature` (une
- * base d'avant la migration 0127, sans cette colonne : `saisie`) et sa `decision` (R…, ou null).
+ * base d'avant la migration 0127, sans cette colonne : `saisie`) et sa `decision` (R…, ou null) ; `effetDAnnulation` (vrai, sinon absent) : voir l'en-tête.
  * @param {import('node:sqlite').DatabaseSync} db
- * @param {{ natures?: readonly string[] | null }} [options] les natures lues : par défaut `NATURES_DEFAITES` (ce que le site défait) ; `null` : toutes
+ * @param {{ natures?: readonly string[] | null }} [options] les natures lues : par défaut `NATURES_DEFAITES` et les effets d'annulation (ce que le site
+ *   défait) ; `null` : toutes
  */
 export function lireHistorique(db, { natures = NATURES_DEFAITES } = {}) {
   const existe = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'historique_modification'").get();
   if (!existe) return [];
   const avecNature = db.prepare('PRAGMA table_info("historique_modification")').all().some((c) => c.name === 'nature');
   const colonnes = avecNature ? 'nature, decision' : "'saisie' AS nature, NULL AS decision";
-  return db
+  const traces = db
     .prepare(`SELECT lot_id, rang, fait_le, resume, version, table_nom, cle, operation, avant, apres, ${colonnes} FROM historique_modification ORDER BY fait_le, lot_id, rang`)
     .all()
-    .filter((m) => natures === null || natures.includes(m.nature))
     .map((m) => {
       const cle = cleDeLigne(db, m.table_nom, JSON.parse(m.cle));
       return {
@@ -89,6 +117,8 @@ export function lireHistorique(db, { natures = NATURES_DEFAITES } = {}) {
         cle, texte: JSON.stringify(cle), operation: m.operation, avant: lireJson(m.avant), apres: lireJson(m.apres),
       };
     });
+  marquerLesEffetsDAnnulation(traces);
+  return traces.filter((t) => natures === null || natures.includes(t.nature) || (natures === NATURES_DEFAITES && t.effetDAnnulation));
 }
 
 /**
@@ -170,7 +200,7 @@ export function historiqueSite(db) {
     lignes.get(e.texte).push(e);
   }
   const operationsToutes = (table, cle) => parTableToutes.get(table)?.get(texteDeCle(db, table, cle)) ?? [];
-  const defaisable = (o) => NATURES_DEFAITES.includes(o.nature);
+  const defaisable = (o) => NATURES_DEFAITES.includes(o.nature) || o.effetDAnnulation === true;
   const touche = (o, colonne) => o.operation === 'supprimer' || (o.operation === 'modifier' && colonne in o.avant);
   /** La valeur d'import d'une colonne (`ops` : toutes les natures) : { trouvee: false } sans trace défaisable qui la touche. */
   const valeurDeLaColonne = (ops, colonne) => {
