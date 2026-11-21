@@ -12,7 +12,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { ARCHIVES_GARDEES, DOSSIER_ARCHIVES, FICHIER_BASE, ecrireEtat, lireEtat, ouvrirBaseVivante } from './base-vivante.mjs';
 import { DOSSIER_DES_ESSAIS } from './essai-de-structure.mjs';
 import { instant as ecrireInstant } from './instant.mjs';
-import { ErreurStructure, appliquerSurPlace, ecartsAvecLeSchema, essayerSurUneCopie, lireLesMigrations, migrationsAAppliquer } from './structure-sur-place.mjs';
+import { ErreurStructure, appliquerSurPlace, ecartsAvecLeSchema, essayerSurUneCopie, lireLesMigrations, migrationsAAppliquer, refusSousLePlancher } from './structure-sur-place.mjs';
 
 /** Le marqueur de la base source, dans le dossier de la base vivante. */
 export const FICHIER_SOURCE = 'source';
@@ -32,7 +32,7 @@ export const FICHIER_BASCULE_2 = 'bascule-2';
 /** Vrai quand `dossier` est une base source ET porte le marqueur `bascule-2` (sans la base source, il ne veut rien dire : ignoré). */
 export const estEnBascule2 = (dossier) => estUneBaseSource(dossier) && existsSync(join(dossier, FICHIER_BASCULE_2));
 
-/** Un refus de la base source : `etape` (`absente`, `non_livrees`, `essai`, `application`, `schema`), `details` (lignes de détail, jamais un texte de contenu). */
+/** Un refus de la base source : `etape` (`absente`, `non_livrees`, `essai`, `application`, `schema` ; sous le plancher : `schema` avec `refus.etape` `plancher`), `details` (lignes de détail, jamais un texte de contenu). */
 export class ErreurBaseSource extends Error {
   constructor(message, { etape, details = [], refus = null } = {}) {
     super(message);
@@ -82,6 +82,11 @@ export function preparerBaseSource({ dossier, version = null, migrations, schema
   }
   const avant = versionDuFichier(chemin);
   const aFaire = migrationsAAppliquer(livre.migrations, avant);
+  // avant tout : sous le plancher (schema.sql) sans migration livrée pour y monter : refus nommé, avant la comparaison au schéma (le même que l'essai sur une copie)
+  const plancher = refusSousLePlancher(livre, avant);
+  if (plancher) {
+    throw new ErreurBaseSource(`base source : ${plancher.message} ; le service ne l’ouvre pas`, { etape: 'schema', refus: plancher.enJson(), details: plancher.details });
+  }
   let resultat = { avant, apres: avant, appliquees: [], sauvegarde: null, essai_ms: null };
   if (aFaire.length) {
     // 1. l'essai sur une copie de la vraie base (ouverte en lecture seule ; les copies sont toujours effacées)

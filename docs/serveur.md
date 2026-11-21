@@ -221,7 +221,8 @@ Lot 8 du chantier (« Bascule 1 : la base du site de dev fait foi » ; garde-fou
   pendant qu'il tourne, elle n'est pas recréée, `/api/etat` dit l'erreur et toute écriture répond 503.
 - **Structure, avant toute écriture** (`preparerBaseSource`). Les migrations livrées (`_serveur/data/`) de numéro > `user_version` sont **essayées sur une copie** (`essayerSurUneCopie`, copies
   dans `db/essai-de-structure/`, toujours effacées), puis **appliquées sur place** (`appliquerSurPlace`, sauvegarde `structure-<instant>-v<version>.db` dans `db/archives/`, les 5 plus récentes
-  gardées) ; ensuite la structure, migrée ou non, est comparée au `schema.sql` livré, `user_version` comprise (`ecartsAvecLeSchema`). Migrations ou schéma non livrés, essai refusé, application
+  gardées) ; ensuite la structure, migrée ou non, est comparée au `schema.sql` livré, `user_version` comprise (`ecartsAvecLeSchema`). Une base sous le plancher sans migration livrée pour y
+  monter est refusée avant la comparaison par le même refus que l'essai (`structure-sur-place.mjs#refusSousLePlancher` : étape `schema`, `refus.etape` `plancher`, versions nommées). Migrations ou schéma non livrés, essai refusé, application
   en échec (le `ROLLBACK` laisse la base telle qu'elle était) ou structure différente (une publication plus ancienne que la base, par exemple) : le service **ne démarre pas**, la raison au
   journal (catégorie `base`, préfixe `ATTENTION`) et l'évènement `base_source` dans les métriques (`erreur` : l'étape `absente`, `non_livrees`, `essai`, `application`, `schema` ; le numéro de
   migration ; jamais un texte). Réussie : `base_source` (`appliquees`, `avant`, `apres`, `sauvegarde`) et « structure : base source migrée sur place, version A → B ». Une base remplacée

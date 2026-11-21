@@ -207,6 +207,31 @@ test('marqueur : une structure qui n’est pas celle du schema.sql livré arrêt
   assert.deepEqual(etatDuFichier(vivante), avant);
 });
 
+test('marqueur : une base sous le plancher (schema.sql) sans migration pour y monter est refusée par un refus nommé, base intacte', async (t) => {
+  const dossier = nouveauDossier('sous-le-plancher', t);
+  const { chemin: remplie } = baseRemplie();
+  const vivante = join(dossier, 'vivante.db');
+  copyFileSync(remplie, vivante);
+  marquer(dossier);
+  const avant = etatDuFichier(vivante);
+  const base = versionDe(vivante);
+  // le schema.sql livré porte une version au-dessus de la base, et aucune migration n'y mène (elles ont quitté le dépôt)
+  const structure = livraisonDEssai(t, { version: base + 1 });
+  const lignes = [];
+  await assert.rejects(demarrer(dossier, { structure, lignes }), (e) => {
+    assert.equal(e.name, 'ErreurBaseSource');
+    assert.equal(e.etape, 'schema');
+    assert.equal(e.refus?.etape, 'plancher', 'le refus dit « sous le plancher », pas une liste d’écarts');
+    assert.equal(e.refus.migration, base + 1, 'la première migration qui manque');
+    assert.ok(e.message.includes(String(base)) && e.message.includes(String(base + 1)), 'la version de la base et celle du plancher sont nommées');
+    return true;
+  });
+  assert.deepEqual(etatDuFichier(vivante), avant, 'la base est intacte');
+  assert.deepEqual(fichiers(join(dossier, DOSSIER_DES_ESSAIS)).filter((f) => /\.db/.test(f)), [], 'aucune copie d’essai');
+  assert.deepEqual(fichiers(join(dossier, 'archives')), [], 'aucune sauvegarde : rien n’a été appliqué');
+  assert.ok(lignes.some((l) => l.startsWith('ATTENTION base source') && l.includes('plancher')), lignes.join('\n'));
+});
+
 // ---------------------------------------------------------------------------------------------------------------------------------------------
 // Les lots de changements d'une base source : toutes les tables de contenu (la voie générique du journal)
 // ---------------------------------------------------------------------------------------------------------------------------------------------

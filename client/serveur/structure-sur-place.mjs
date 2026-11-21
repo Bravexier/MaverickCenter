@@ -105,6 +105,19 @@ export function versionLivree(livre) {
   return versions.length ? Math.max(...versions) : null;
 }
 
+/**
+ * Le refus d'une base sous le plancher (`versionLivree`) sans migration livrée pour y monter : les migrations qui y mènent ont quitté le dépôt. Rend une
+ * ErreurStructure (étape `plancher`, `migration` : la première qui manque), ou null quand la base est au plancher ou au-dessus, ou quand une migration est à
+ * appliquer (c'est alors `appliquerSurPlace` qui juge la suite des versions). Partagé par l'essai sur une copie et la préparation de la base source.
+ */
+export function refusSousLePlancher(livre, avant) {
+  if (migrationsAAppliquer(livre?.migrations ?? [], avant).length) return null;
+  const derniere = versionLivree(livre);
+  if (derniere === null || avant >= derniere) return null;
+  return new ErreurStructure(`la base est à la version ${avant}, sous le plancher de la structure (schema.sql, version ${derniere}) : les migrations ${ZEROS(avant + 1)} à ${ZEROS(derniere)} ne sont pas livrées (une migration manque)`,
+    { migration: avant + 1, etape: 'plancher' });
+}
+
 /** Les migrations de numéro > `version` (celle de la base, PRAGMA user_version), par numéro. */
 export const migrationsAAppliquer = (migrations, version) => migrations.filter((m) => m.numero > version).sort((a, b) => a.numero - b.numero);
 
@@ -509,10 +522,8 @@ export function essayerSurUneCopie({ source, dossier, migrations, schema, instan
     const migrationsEssayees = aFaire.map(({ numero, fichier, empreinte }) => ({ numero, fichier, empreinte }));
     if (!aFaire.length) {
       const derniere = versionLivree(livre); // le schema.sql est le plancher quand des migrations sont sorties du dépôt
-      if (derniere !== null && avant < derniere) {
-        // sous le plancher, sans migration livrée pour y monter : les migrations qui y mènent ont quitté le dépôt, la base se refait depuis le schéma
-        const refus = new ErreurStructure(`la base est à la version ${avant}, sous le plancher de la structure (schema.sql, version ${derniere}) : les migrations ${ZEROS(avant + 1)} à ${ZEROS(derniere)} ne sont pas livrées, la base se refait depuis le schéma`,
-          { migration: avant + 1, etape: 'plancher' });
+      const refus = refusSousLePlancher(livre, avant);
+      if (refus) {
         return { ...base, verdict: 'refuse', versions: { avant, apres: avant, livree: derniere }, migrations: [], refus: refus.enJson(), retour_arriere: true, duree_ms: Math.round(performance.now() - t0) };
       }
       return { ...base, verdict: 'a_jour', versions: { avant, apres: avant, livree: derniere }, en_avance: derniere !== null && avant > derniere, migrations: [], duree_ms: Math.round(performance.now() - t0) };
