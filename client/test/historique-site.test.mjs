@@ -177,6 +177,41 @@ test('nature : une trace de nature source, migration ou code n’est jamais déf
   assert.equal(historiqueSite(db).vide, true);
 });
 
+test('annulation : la page qu’elle réécrit sans que le lot annulé l’ait touchée n’entre pas dans l’import ; ce que le lot avait écrit, si (R275)', () => {
+  const db = base();
+  inserer(db, 'metier', { id: 'forgeron', nom: 'Droite', bonus: '+3', remarque: null }); // la table, comme armure_emplacement
+  inserer(db, 'metier', { id: 'mineur', nom: 'Mineur', bonus: '+1', remarque: '| Droite |' }); // le corps de page qui la recopie
+  const poser = (lot, rang, minute, resume, nature, decision, cle, avant, apres) => db.prepare(
+    'INSERT INTO historique_modification (lot_id, rang, fait_le, resume, version, table_nom, cle, operation, avant, apres, nature, decision) VALUES (?, ?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?)')
+    .run(lot, rang, `2026-10-10T10:0${minute}:00Z`, resume, 'metier', JSON.stringify(cle), 'modifier', JSON.stringify(avant), JSON.stringify(apres), nature, decision);
+  // le lot source ne change que la table (le corps portait déjà « Droite ») ; son annulation la remet et réécrit le corps ; la décision refait les deux
+  poser('l1', 1, 1, 'Renommage', 'source', null, { id: 'forgeron' }, { nom: 'Droit' }, { nom: 'Droite' });
+  poser('l2', 1, 2, 'Annulation d’une ligne de « Renommage » : Pièce', 'source', null, { id: 'forgeron' }, { nom: 'Droite' }, { nom: 'Droit' });
+  poser('l2', 2, 2, 'Annulation d’une ligne de « Renommage » : Pièce', 'source', null, { id: 'mineur' }, { remarque: '| Droite |' }, { remarque: '| Droit |' });
+  poser('l3', 1, 3, 'Renommage (R10)', 'decision', 'R10', { id: 'forgeron' }, { nom: 'Droit' }, { nom: 'Droite' });
+  poser('l3', 2, 3, 'Renommage (R10)', 'decision', 'R10', { id: 'mineur' }, { remarque: '| Droit |' }, { remarque: '| Droite |' });
+  // une annulation entière d'un lot qui avait écrit la cellule reste le contenu de référence ; un titre d'annulation sans lot annulé aussi
+  poser('l4', 1, 4, 'Bonus', 'source', null, { id: 'forgeron' }, { bonus: '+1' }, { bonus: '+2' });
+  poser('l5', 1, 5, 'Annulation de « Bonus »', 'source', null, { id: 'forgeron' }, { bonus: '+2' }, { bonus: '+1' });
+  poser('l6', 1, 6, 'Bonus (R10)', 'decision', 'R10', { id: 'forgeron' }, { bonus: '+1' }, { bonus: '+3' });
+  poser('l7', 1, 7, 'Annulation de « Lot inconnu »', 'source', null, { id: 'mineur' }, { bonus: '+0' }, { bonus: '+1' });
+
+  const h = historiqueSite(db);
+  assert.equal(h.valeurDImport('metier', { id: 'mineur' }, 'remarque'), '| Droite |', 'le corps d’avant l’annulation');
+  assert.equal(h.ligneDImport('metier', { id: 'mineur' }).remarque, '| Droite |');
+  assert.equal(h.valeurDImport('metier', { id: 'forgeron' }, 'nom'), 'Droit', 'la table : l’annulation du lot source compte');
+  assert.equal(h.valeurDImport('metier', { id: 'forgeron' }, 'bonus'), '+1', 'une annulation de ce que le lot a écrit n’est pas défaite');
+  assert.equal(h.valeurDImport('metier', { id: 'mineur' }, 'bonus'), '+1', 'sans lot annulé retrouvé : contenu de référence');
+  assert.deepEqual(lireHistorique(db).filter((e) => e.nature === 'source').map((e) => [e.lot, e.rang]), [['l2', 2]], 'la seule trace source défaite');
+  assert.equal(lireHistorique(db, { natures: null }).find((e) => e.lot === 'l2' && e.rang === 2).nature, 'source', 'la trace garde sa nature');
+});
+
+test('annulation : les titres que le service écrit sont ceux que l’historique reconnaît', () => {
+  const service = readFileSync(fileURLToPath(new URL('../serveur/edition-lots.mjs', import.meta.url)), 'utf8');
+  assert.ok(service.includes('`Annulation de « ${ligne.titre} »`'));
+  assert.ok(service.includes('`Annulation d’une ligne de « ${ligne.titre} » : ${libelle}`.slice(0, 300)'));
+});
+
 test('nature : un historique sans colonne `nature` (base d’avant la 0127) se lit comme des saisies', () => {
   const db = new DatabaseSync(':memory:');
   db.exec('PRAGMA foreign_keys = OFF');
