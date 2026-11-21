@@ -32,6 +32,14 @@ export function trouverRacine() {
 
 const caches = (globalThis.__maverickDonnees ??= { bases: new Map(), nettoyage: false });
 
+/** Ferme chaque base puis supprime son dossier temporaire : Windows refuse de supprimer un fichier SQLite encore ouvert (EPERM). */
+export function libererLesBases(bases) {
+  for (const { db, dossier } of bases) {
+    if (db.isOpen) db.close();
+    rmSync(dossier, { recursive: true, force: true });
+  }
+}
+
 /** Ouvre (en lecture seule) la base reconstruite depuis data/rows. Une seule construction par processus et par variante. */
 export function ouvrirBase({ sansExemples = process.env.HIDE_EXAMPLES === '1' } = {}) {
   const cle = sansExemples ? 'sans-exemples' : 'complete';
@@ -62,7 +70,7 @@ export function ouvrirBase({ sansExemples = process.env.HIDE_EXAMPLES === '1' } 
   caches.bases.set(cle, { db, dossier });
   if (!caches.nettoyage) {
     caches.nettoyage = true;
-    process.on('exit', () => { for (const { dossier: d } of caches.bases.values()) rmSync(d, { recursive: true, force: true }); });
+    process.on('exit', () => libererLesBases(caches.bases.values()));
   }
   return db;
 }

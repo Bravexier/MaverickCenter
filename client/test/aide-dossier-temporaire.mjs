@@ -2,9 +2,10 @@
 // d'échec — demande du propriétaire (2026-10-23) : « il doivent faire le ménage quand c'est fini ». Seul module de client/test/ à appeler mkdtemp ou
 // os.tmpdir() : le garde-fou test/dossiers-temporaires.test.mjs refuse tout autre appel. Module sans test propre (n'est pas un *.test.mjs) : son
 // comportement est épinglé par test/dossiers-temporaires.test.mjs.
+import { spawn } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 
 /** Préfixe commun des dossiers créés ici : `maverick-test-<prefixe>-XXXXXX`, sous os.tmpdir() (ou sous `dans`). */
 export const PREFIXE_COMMUN = 'maverick-test-';
@@ -12,10 +13,24 @@ export const PREFIXE_COMMUN = 'maverick-test-';
 const enCours = new Set();
 let surveillance = false;
 
-/** Supprime `dossier` (récursivement, sans erreur s'il n'existe plus) et l'oublie. */
+/** Windows refuse de supprimer un fichier encore ouvert (base SQLite d'un test) : EPERM ou EBUSY. Sur un autre système, ces erreurs restent des erreurs. */
+export const estVerrouille = (erreur, plateforme = process.platform) => plateforme === 'win32' && ['EPERM', 'EBUSY'].includes(erreur?.code);
+
+/** Supprime `dossier` (récursivement, sans erreur s'il n'existe plus) et l'oublie ; verrouillé sous Windows, il reste en cours pour la sortie du processus. */
 export function supprimerDossierTemporaire(dossier) {
-  rmSync(dossier, { recursive: true, force: true });
+  try {
+    rmSync(dossier, { recursive: true, force: true });
+  } catch (erreur) {
+    if (estVerrouille(erreur)) return;
+    throw erreur;
+  }
   enCours.delete(dossier);
+}
+
+/** Les verrous de Windows tombent avec le processus : un processus détaché finit la suppression juste après lui. */
+function confierLaSuppression(dossiers) {
+  const script = "for (const d of process.argv.slice(1)) try { require('node:fs').rmSync(d, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }); } catch {}";
+  spawn(process.execPath, ['-e', script, ...dossiers], { detached: true, stdio: 'ignore', windowsHide: true, cwd: dirname(process.execPath) }).unref();
 }
 
 /** Les dossiers créés par ce processus et pas encore supprimés (pour le garde-fou). */
@@ -34,7 +49,10 @@ export function dossierTemporaire(prefixe, { t, dans = tmpdir() } = {}) {
   enCours.add(dossier);
   if (!surveillance) {
     surveillance = true;
-    process.on('exit', () => { for (const d of [...enCours]) supprimerDossierTemporaire(d); });
+    process.on('exit', () => {
+      for (const d of [...enCours]) supprimerDossierTemporaire(d);
+      if (enCours.size > 0) confierLaSuppression([...enCours]);
+    });
   }
   t?.after(() => supprimerDossierTemporaire(dossier));
   return dossier;

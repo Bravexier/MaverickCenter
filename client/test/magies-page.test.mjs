@@ -2,7 +2,7 @@
 // Le gabarit (components/MagiePage.astro) affiche ces données telles quelles : on teste ici ce qui lui arrive (formes, regroupements, liens),
 // sur le contenu RÉEL de la base (data/rows) comme sur des cas limites.
 import assert from 'node:assert/strict';
-import { copyFileSync, readFileSync, rmSync } from 'node:fs';
+import { copyFileSync, readFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -38,7 +38,7 @@ import {
 } from '../src/lib/sort-format.mjs';
 import { sansBonus } from '../src/lib/sort-maitrise.mjs';
 import { normalize } from '../src/lib/text.mjs';
-import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { dossierTemporaire, supprimerDossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { baseDImport, texteDImport } from './aide-base-d-import.mjs';
 
 const textes = (segs) => segs.map((s) => (s.modif ? `(${s.texte})` : s.texte)).join(' ');
@@ -286,7 +286,7 @@ test('ancre d’une spécialisation : un renommage (nom et nom_cle recalculés) 
       assert.equal(ancreDeSpecialisation(sp.id), avant.get(sp.id), `${sp.id} : même ancre après renommage`);
     }
   } finally {
-    rmSync(dossier, { recursive: true, force: true });
+    supprimerDossierTemporaire(dossier);
   }
   // aucun composant ne bâtit l'ancre sur la clé ni sur le nom
   for (const f of ['SortsDeSpecialisation', 'MagiePage']) {
@@ -417,7 +417,7 @@ test('le chargeur ne dépend pas de la table note_cellule (simple trace, appelé
     assert.equal(sans.sorts.size, m.sorts.size);
     assert.deepEqual(sans.sorts.get('magies/magie-du-feu#sort:fer-brulant').remarque, m.sorts.get('magies/magie-du-feu#sort:fer-brulant').remarque);
   } finally {
-    rmSync(dossier, { recursive: true, force: true });
+    supprimerDossierTemporaire(dossier);
   }
 });
 
