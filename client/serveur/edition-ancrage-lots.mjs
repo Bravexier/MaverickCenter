@@ -18,11 +18,15 @@ function cleDuPlan(net, crees) {
   return null;
 }
 
-/** Les rangs annulés d'un lot : `bilan.lignes_annulees` ; pour un lot annulé, toutes ses lignes sauf celles que l'annulation a gardées (le site les avait changées). */
+/**
+ * Les rangs annulés d'un lot : toujours ses lignes notées (`bilan.lignes_annulees`), y compris celles que l'annulation du lot entier a gardées parce que le propriétaire
+ * les a changées depuis. S'y ajoutent, si le lot a été annulé en entier (`bilan.annulation`), ses lignes non gardées ; un lot passé « annulé » par ses lignes n'a que les notées.
+ */
 function rangsAnnules(lot, nets, bilan) {
-  if (lot.etat !== 'annule') return new Set(Object.keys(bilan?.lignes_annulees ?? {}).map(Number));
-  const gardees = new Set((bilan?.annulation?.operations ?? []).filter((o) => o.etat === 'gardee').map((o) => o.rang_du_lot));
-  return new Set(nets.map((n) => n.rang).filter((r) => !gardees.has(r)));
+  const notees = new Set(Object.keys(bilan?.lignes_annulees ?? {}).map(Number));
+  if (lot.etat !== 'annule' || !bilan?.annulation) return notees;
+  const gardees = new Set((bilan.annulation.operations ?? []).filter((o) => o.etat === 'gardee').map((o) => o.rang_du_lot));
+  return new Set([...notees, ...nets.map((n) => n.rang).filter((r) => !gardees.has(r))]);
 }
 
 /**

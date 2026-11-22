@@ -201,6 +201,55 @@ test('un renommage annulé garde l’ancien nom, signalé comme écart', async (
   assert.equal(ancre(m, 'page', race), motCleRace, 'l’ancre, elle, reste');
 });
 
+test('un lot passé « annulé » par ses lignes : la ligne gardée n’est pas écartée, son mot-clé suit encore un renommage de sa page (R291, R309)', async () => {
+  const m = await apresLaChaine();
+  const [gardee, annulee] = m.monde.capacites;
+  const motGarde = ancre(m, 'page', gardee);
+  // le site a changé le mot-clé de la première : son groupe ne s'annule plus, et le lot passe « annulé » quand l'autre groupe part
+  m.db.prepare('UPDATE mot_cle SET description = ? WHERE id = ?').run(nomInvente('description corrigée'), motGarde);
+  const { lot, rang } = ligneDuLot(m, 'mot_cle', { id: ancre(m, 'page', annulee) });
+  annulerUneLigne(m.db, lot, rang);
+  const apres = m.db.prepare('SELECT etat, bilan FROM lot_de_changements WHERE id = ?').get(lot);
+  assert.equal(apres.etat, 'annule');
+  assert.equal(JSON.parse(apres.bilan).annulation, undefined, 'passé « annulé » par ses lignes');
+  assert.equal(ancre(m, 'page', gardee), motGarde, 'l’ancre gardée reste');
+
+  const cles = lignesAnnuleesDeLAncrage(m.db);
+  assert.ok(!cles.has(`page:${gardee}`), [...cles].join(', '));
+  assert.ok(cles.has(`page:${annulee}`), [...cles].join(', '));
+
+  const titre = nomInvente('capacité renommée');
+  m.db.prepare('UPDATE page SET titre = ? WHERE id = ?').run(titre, gardee);
+  const r = await lancer(m);
+  assert.equal(r.arret, null, r.arret?.motif);
+  assert.equal(r.lots.length, 1, 'l’alignement du nom est déposé');
+  assert.equal(nomDe(m, motGarde), titre);
+  assert.ok(!r.ecartees.includes(`page:${gardee}`), r.ecartees.join(', '));
+  assert.ok(r.ecartees.includes(`page:${annulee}`), r.ecartees.join(', '));
+  assert.equal(ancre(m, 'page', annulee), null, 'la ligne annulée n’est pas refaite');
+});
+
+test('un renommage annulé seul, un autre nom donné ensuite, puis le lot entier annulé : la ligne reste écartée, la relance ne dépose rien, le nom choisi reste (R291, R309)', async () => {
+  const m = await apresLaChaine();
+  const { motCleRace } = m.monde;
+  const { lot, rang } = ligneDuLot(m, 'mot_cle', { id: motCleRace });
+  annulerUneLigne(m.db, lot, rang);
+  const choisi = nomInvente('nom choisi');
+  m.db.prepare('UPDATE mot_cle SET libelle = ? WHERE id = ?').run(choisi, motCleRace);
+  recalculerLesCles(m.db);
+  for (const l of lotsR309(m).reverse()) annuler(m.db, l.id, {});
+
+  const cles = lignesAnnuleesDeLAncrage(m.db);
+  assert.ok(cles.has(`nom:${motCleRace}`), [...cles].join(', '));
+  const avant = lotsR309(m).length;
+  const r = await lancer(m);
+  assert.deepEqual(r.lots, [], 'rien n’est redéposé');
+  assert.equal(lotsR309(m).length, avant);
+  assert.equal(nomDe(m, motCleRace), choisi, 'le nom choisi reste');
+  // le lot annulé a aussi retiré l'ancre de la page : le plan s'arrête à cette clé et ne rend que ce qui a retenu quelque chose
+  assert.ok(r.ecartees.includes(`page:${m.monde.race}`), r.ecartees.join(', '));
+});
+
 test('« Reprendre » redépose les lignes annulées, un lot annulé en entier compris', async () => {
   const m = await apresLaChaine();
   const dernier = lotsR309(m).at(-1);
