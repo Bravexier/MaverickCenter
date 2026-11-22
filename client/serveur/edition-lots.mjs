@@ -35,7 +35,7 @@ import { PAGE_DE_LA_LIGNE } from '../src/lib/corps-magies.mjs';
 import { corpsDesPotionsEntier, ErreurCorpsPotions } from '../src/lib/corps-potions.mjs';
 import { ENTITES, TABLES } from '../src/lib/edition-modele.mjs';
 import { colonneMasquee, nomDeColonne, nomDeTable } from '../src/lib/libelles-de-la-base.mjs';
-import { comparerAvecLaBase, controlerLeLot, donnerLesNumeros, effetNetDuLot, FORMAT_DU_LOT, jugerLAnnulation, lireUnLot } from '../src/lib/lot-de-changements.mjs';
+import { comparerAvecLaBase, controlerLeLot, donnerLesNumeros, effetNetDuLot, FORMAT_DU_LOT, jugerLAnnulation, lireUnLot, TABLES_ANCRABLES } from '../src/lib/lot-de-changements.mjs';
 import { controlerLeContenu } from './controles-du-contenu.mjs';
 import { ErreurEdition, appliquerUnLot, colonneDerivee, recalculerLesPages } from './edition.mjs';
 import { libelleDeLigne } from './edition-conflits.mjs';
@@ -143,16 +143,23 @@ const sous = (valeurs, colonnes) => Object.fromEntries(colonnes.map((c) => [c, v
  *   - « inserer » : un mot-clé se crée par le service (`traduireLaCreationDUnMotCle` : id suivant, clé, puis vérification que la ligne créée est celle du
  *     lot) ; refusée sur les autres tables que le service crée lui-même (son identifiant, sa page, ses clés recalculées ne se donnent pas d'un bloc) ;
  *     voie générique sinon.
+ * L'ancrage des mots-clés (décision R309, serveur/edition-ancrage.mjs) : une création ancrée (`ancrage`) passe par `ancrer_nouveau`, un alignement par
+ * `aligner_mot_cle`, chacun suivi de `verifier_ligne` ; le `mot_cle_id` d'une page, d'un sort ou d'un type de sort par `ancrer_element` ; une catégorie se crée par le service.
  */
 export function traduire(o) {
   const entite = entiteDeLaTable(o.table);
   if (o.operation === 'modifier') {
-    const colonnes = Object.keys(o.apres);
+    if (o.table === 'mot_cle' && o.ancrage?.aligner === true) {
+      return { ops: [{ op: 'aligner_mot_cle', id: o.cle.id }, { op: 'verifier_ligne', table: 'mot_cle', cle: o.cle, attendu: o.apres }] };
+    }
+    const ancre = TABLES_ANCRABLES.includes(o.table) && Object.hasOwn(o.apres, 'mot_cle_id');
+    const colonnes = Object.keys(o.apres).filter((c) => !(ancre && c === 'mot_cle_id'));
     const connues = TABLES[o.table]?.colonnes ?? {};
     // une colonne dérivée (le corps d'une page typée : le service la refait depuis les tables et refuse qu'on l'écrive) passe par le journal, comme celles qu'il ne connaît pas
     const duService = colonnes.filter((c) => Object.hasOwn(connues, c) && !colonneDerivee(o.table, o.cle, c));
     const autres = colonnes.filter((c) => !duService.includes(c));
     const ops = [];
+    if (ancre) ops.push({ op: 'ancrer_element', table: o.table, id: o.cle.id, mot_cle_id: o.apres.mot_cle_id });
     if (duService.length) ops.push({ op: 'modifier', table: o.table, cle: o.cle, valeurs: sous(o.apres, duService) });
     if (autres.length) ops.push({ op: 'ecrire_modifier', table: o.table, cle: o.cle, valeurs: sous(o.apres, autres) });
     return { ops };
@@ -163,7 +170,8 @@ export function traduire(o) {
     return { ops: [{ op: 'supprimer', entite: entite[0], cle: o.cle }] };
   }
   if (entite) {
-    if (o.table === 'mot_cle') return traduireLaCreationDUnMotCle(o);
+    if (o.table === 'mot_cle') return o.ancrage ? traduireLaCreationAncree(o) : traduireLaCreationDUnMotCle(o);
+    if (o.table === 'categorie_mot_cle') return traduireLaCreationDUneCategorie(o);
     return { refus: `« ${nomDeTable(o.table) ?? o.table} » : le service d’édition crée lui-même cette ligne (identifiant tiré du nom, page, clés recalculées) : un lot ne l’insère pas, elle se crée par le service` };
   }
   return { ops: [{ op: 'ecrire_inserer', table: o.table, valeurs: o.apres }] };
@@ -192,6 +200,34 @@ function traduireLaCreationDUnMotCle(o) {
   ops.push({ op: 'verifier_ligne', table: 'mot_cle', cle, attendu: Object.fromEntries(Object.keys(a).filter((c) => COLONNES_D_UN_MOT_CLE_CREE.includes(c)).map((c) => [c, a[c]])) });
   return { ops };
 }
+
+/** La création du mot-clé d'un élément (décision R309) : le service le crée avec son type et son ancre, puis le lot vérifie la ligne créée. */
+function traduireLaCreationAncree(o) {
+  const { id, libelle, url = null } = o.apres;
+  const { table, id: element, type } = o.ancrage;
+  return { ops: [
+    { op: 'ancrer_nouveau', table, id: element, libelle, url, type },
+    { op: 'verifier_ligne', table: 'mot_cle', cle: { id }, attendu: { id, libelle, url } },
+  ] };
+}
+
+/** L'insertion d'une catégorie de mots-clés : le service la crée (id suivant, écriture unique, R232 (5)), puis le lot vérifie la ligne créée. */
+function traduireLaCreationDUneCategorie(o) {
+  const autres = Object.keys(o.apres).filter((c) => !['id', 'libelle'].includes(c));
+  if (autres.length) return { refus: `« Catégorie de mot-clé » : le service d’édition crée lui-même cette ligne depuis son libellé, un lot ne lui donne pas ${autres.map((c) => `« ${c} »`).join(', ')}` };
+  const { id, libelle } = o.apres;
+  return { ops: [
+    { op: 'creer', entite: 'categorie_mot_cle', valeurs: { libelle } },
+    { op: 'verifier_ligne', table: 'categorie_mot_cle', cle: { id }, attendu: { id, libelle } },
+  ] };
+}
+
+/**
+ * Cette opération du lot change-t-elle une clé sans passer par la création d'un mot-clé ? Une ligne de `mot_cle_categorie`, un alignement, une ancre (celle d'un
+ * sort donne son parent) : la clé n'est pas recalculée sur le moment, mais une fois après la dernière opération (un état entre deux lignes n'a pas à satisfaire la règle).
+ */
+const changeUneCle = (o) => o.table === 'mot_cle_categorie' || o.ancrage?.aligner === true
+  || (o.operation === 'modifier' && TABLES_ANCRABLES.includes(o.table) && Object.hasOwn(o.apres, 'mot_cle_id'));
 
 /** Les numéros de décision que cite un refus du service (« décision R218 », « décisions R218, R219 ») : ce qu'il verrouille au nom du propriétaire. */
 export const decisionsCitees = (message) => [...new Set(String(message ?? '').match(/\bR[0-9]+\b/g) ?? [])];
@@ -308,6 +344,9 @@ function appliquerLeLot(db, depose, { essai, ouverts = new Set(), baseline = new
       return ecrireLesOperations(hote, ops, { essai, ouverts, verrous, rang, o, noter, refuser, etats: { ecrite: essai ? 'applicable' : 'ecrite', verrouillee: essai ? 'verrouillee' : 'ecrite' } });
     });
     sorties.verrous = [...verrous].sort((a, b) => Number(a.slice(1)) - Number(b.slice(1)));
+    // le recalcul différé : une fois, sur l'état final ; à l'essai, une opération refusée dit déjà ce qu'il faut corriger. Son refus n'est pas un verrou (il ne passe pas par ecrireLesOperations)
+    const ecrites = sorties.operations.filter((s) => ['ecrite', 'applicable', 'verrouillee'].includes(s.etat));
+    if (ecrites.some((s) => changeUneCle(resolu.operations[s.rang - 1])) && !sorties.operations.some((s) => s.etat === 'refusee')) hote.executer({ op: 'recalculer_les_cles' });
     if (!essai) {
       if (!hote.ecrites()) {
         throw new ErreurEdition(409, 'Rien à écrire : chaque opération du lot a changé entre-temps (le site prime). Le lot reste proposé : refusez-le, ou déposez-en un nouveau.', { operations: sorties.operations.map(resumerLOperation) });
@@ -579,8 +618,12 @@ function annulerLeLot(db, depose, { essai, ouverts = new Set(), baseline = new S
     const verrous = new Set();
     // une ligne que tient une autre ligne du lot encore en place ne s'annule pas seule : chaque refus a son motif
     const dependances = depose.lignes ? dependancesDuLot(db, depose) : null;
-    planDeLAnnulation(db, depose.lot_id, depose.lignes ?? null).forEach((net, i) => {
-      const rang = i + 1;
+    const plan = planDeLAnnulation(db, depose.lot_id, depose.lignes ?? null);
+    let place = 0;
+    // `complet` : la ligne entière, quand `net` n'en porte qu'une partie ; `suite` : le second passage d'une ligne, après le recalcul différé
+    const remettre = (net, { complet = net, suite = false } = {}) => {
+      const premiere = suite ? sorties.operations.find((s) => s.rang_du_lot === net.rang) : null;
+      const rang = premiere?.rang ?? (place += 1);
       let actuelle = null;
       let illisible = null;
       try {
@@ -589,18 +632,20 @@ function annulerLeLot(db, depose, { essai, ouverts = new Set(), baseline = new S
         illisible = e?.message ?? String(e);
       }
       const base = { rang, rang_du_lot: net.rang, table: net.table, cle: net.cle, genre: net.genre };
+      const consigner = (sortie) => (premiere ? completerLaLigne(premiere, sortie) : sorties.operations.push(sortie));
       if (illisible) {
         if (!essai) throw new ErreurEdition(409, `Ligne ${rang} refusée : ${illisible}`, { rang, table: net.table, cle: net.cle });
-        return sorties.operations.push({ ...base, etat: 'refusee', message: illisible });
+        return consigner({ ...base, etat: 'refusee', message: illisible });
       }
       const jugement = jugerLAnnulation(net, actuelle);
+      if (suite && net.table === 'mot_cle') garderLaCleDuRecalcul(net, jugement);
       const imprevues = new Map(); // colonnes que le service a recalculées vers une troisième valeur pendant la remise : gardées aussi
       const plus = () => {
         const ecarts = [...jugement.gardees, ...imprevues.values()];
         return ecarts.length ? { raison: jugement.raison, ecarts } : {};
       };
-      const apercu = apercuDeLAnnulation(db, net, actuelle); // avant l'écriture : la valeur actuelle est celle d'avant la remise
-      const noter = (etat, reste = {}) => sorties.operations.push({ ...base, apercu, etat, ...plus(), ...reste });
+      const apercu = apercuDeLAnnulation(db, complet, actuelle); // avant l'écriture : la valeur actuelle est celle d'avant la remise
+      const noter = (etat, reste = {}) => consigner({ ...base, apercu, etat, ...plus(), ...reste });
       const tenue = dependances?.get(net.rang) ?? [];
       if (tenue.length) {
         const message = `cette ligne ne s’annule pas seule : ${tenue.map((d) => d.raison).join(' ; ')}`;
@@ -618,7 +663,16 @@ function annulerLeLot(db, depose, { essai, ouverts = new Set(), baseline = new S
       // une colonne que le service recalcule depuis une autre (la clé d'un mot-clé, après son libellé) est déjà revenue quand on la remet : on ne l'écrit pas
       const adapter = (op) => (op.op === 'ecrire_modifier' ? valeursEncoreARemettre(db, net, op, imprevues) : op);
       return ecrireLesOperations(hote, ops, { essai, ouverts, verrous, rang, o: { table: net.table, cle: net.cle }, noter, refuser, adapter, etats: { ecrite: 'remise', verrouillee: essai ? 'verrouillee' : 'remise' } });
-    });
+    };
+    if (!annulationAuRecalculDiffere(db, depose, plan)) plan.forEach((net) => remettre(net));
+    else {
+      // l'état entre deux lignes n'a pas à satisfaire la règle des clés : on remet d'abord ce qui les fait, on recalcule une fois, puis on juge ce que le recalcul réécrit
+      hote.differerLesCles();
+      const parties = plan.map((net) => ({ net, ...partiesDeLaRemise(net) }));
+      for (const { net, dabord } of parties) if (dabord) remettre(dabord, { complet: net });
+      hote.executer({ op: 'recalculer_les_cles' });
+      for (const { net, ensuite } of parties) if (ensuite) remettre(ensuite, { complet: net, suite: true });
+    }
     sorties.verrous = [...verrous].sort((a, b) => Number(a.slice(1)) - Number(b.slice(1)));
     if (!essai) {
       if (!hote.ecrites()) {
@@ -633,8 +687,53 @@ function annulerLeLot(db, depose, { essai, ouverts = new Set(), baseline = new S
       enregistrer?.(db, sorties, hote);
     }
   };
-  const resultat = appliquerUnLot(db, { titre: depose.titre, nature: depose.nature, decision: depose.decision, travail });
+  const resultat = appliquerUnLot(db, { titre: depose.titre, nature: depose.nature, decision: depose.decision, annulation: true, travail });
   return { lot: resultat.lot, sorties };
+}
+
+/**
+ * L'annulation remet-elle ce qui fait les clés sans passer par le service qui les recalcule ? Une ligne de `mot_cle_categorie`, une ancre, ou le nom d'un mot-clé
+ * dans un lot qui a aligné : ses lignes se remettent alors sans recalcul, et les clés une seule fois ensuite (`changeUneCle`, à l'aller).
+ */
+function annulationAuRecalculDiffere(db, depose, plan) {
+  if (plan.some((n) => n.table === 'mot_cle_categorie' || (n.genre === 'modifier' && TABLES_ANCRABLES.includes(n.table) && Object.hasOwn(n.fin, 'mot_cle_id')))) return true;
+  if (!plan.some((n) => n.table === 'mot_cle' && n.genre === 'modifier' && Object.hasOwn(n.fin, 'libelle'))) return false;
+  return (jsonOuNull(ligneDuLot(db, depose.id)?.contenu)?.operations ?? []).some((o) => o.ancrage?.aligner === true);
+}
+
+/** Une colonne que le recalcul des clés réécrit lui-même : la clé d'un mot-clé, un texte qui porte une balise. */
+const suitLeRecalcul = (net, c) => (net.table === 'mot_cle' && c === 'cle') || [net.origine[c], net.fin[c]].some((v) => typeof v === 'string' && v.includes('{{'));
+
+/** Une ligne de l'effet net en deux parties : `dabord`, ce que l'annulation remet avant le recalcul ; `ensuite`, les colonnes qu'il réécrit, jugées après lui. */
+function partiesDeLaRemise(net) {
+  if (net.genre !== 'modifier') return { dabord: net, ensuite: null };
+  const colonnes = Object.keys(net.fin);
+  const suivent = colonnes.filter((c) => suitLeRecalcul(net, c));
+  const partie = (cs) => (cs.length ? { ...net, origine: sous(net.origine, cs), fin: sous(net.fin, cs) } : null);
+  return { dabord: partie(colonnes.filter((c) => !suivent.includes(c))), ensuite: partie(suivent) };
+}
+
+/** Après le recalcul, une clé qui vaut encore ce que le lot a écrit est celle que la règle donne : elle est gardée, jamais réécrite à la main. */
+function garderLaCleDuRecalcul(net, jugement) {
+  if (!jugement.remises.includes('cle')) return;
+  jugement.remises = jugement.remises.filter((c) => c !== 'cle');
+  jugement.gardees.push({ colonne: 'cle', ecrite: net.fin.cle, avant: net.origine.cle ?? null, trouvee: net.fin.cle });
+  jugement.etat = jugement.remises.length ? 'remise' : 'gardee';
+}
+
+const PRIORITE_DES_ETATS = Object.freeze(['refusee', 'verrouillee', 'remise', 'gardee', 'deja']);
+
+/** Le second passage d'une ligne s'ajoute au premier : une seule sortie par ligne du lot, de l'état le plus fort, avec tous ses écarts. */
+function completerLaLigne(sortie, suite) {
+  const ecarts = [...(sortie.ecarts ?? []), ...(suite.ecarts ?? [])];
+  if (ecarts.length) {
+    sortie.ecarts = ecarts;
+    sortie.raison ??= suite.raison ?? null;
+  }
+  if (PRIORITE_DES_ETATS.indexOf(suite.etat) < PRIORITE_DES_ETATS.indexOf(sortie.etat)) {
+    sortie.etat = suite.etat;
+    if (suite.message) sortie.message = suite.message;
+  }
 }
 
 // ---------------------------------------------------------------------------------------------------------------------------------------------

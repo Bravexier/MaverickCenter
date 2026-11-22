@@ -167,6 +167,8 @@ export function outilsDesMotsCles({ ErreurEdition }) {
    */
   function recalculerLesCles(ctx) {
     const { db, w } = ctx;
+    // l'annulation d'un lot d'ancrage remet ses lignes une à une : seul l'état final se juge, le recalcul vient après (edition-lots.mjs#annulerLeLot)
+    if (ctx.clesEnAttente) return new Map();
     if (!tableExiste(db, 'categorie_mot_cle')) return new Map();
     const motsCles = motsClesDeLaBase(db);
     const categories = new Map(categoriesDesMotsCles(db).map((c) => [c.id, c.libelle]));

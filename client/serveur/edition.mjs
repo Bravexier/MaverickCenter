@@ -70,6 +70,7 @@ import { morceauxDuChapitre } from '../src/lib/guide.mjs';
 import { parLibelle, RAISONS_DES_MOTS_CLES_PROTEGES } from '../src/lib/mots-cles.mjs';
 import { idDuProtege } from '../src/lib/mots-cles-proteges.mjs';
 import { clesDesMotsCles, HomonymesRefuses } from '../src/lib/mots-cles-cles.mjs';
+import { outilsDeLAncrage } from './edition-ancrage.mjs';
 import { idSuivant, outilsDesMotsCles, TABLES_DES_FILLES_DU_MOT_CLE } from './edition-mots-cles.mjs';
 import { pagesDeLaRaceHybride } from '../src/lib/races-db.mjs';
 import { raisonDesAncresRompues } from '../src/lib/ancres-figees.mjs';
@@ -139,6 +140,9 @@ const refus = (message, details) => new ErreurEdition(400, message, details);
 
 /** Les catégories, les synonymes et la clé recalculée des mots-clés (décisions R232, R233 : serveur/edition-mots-cles.mjs). */
 const MOTS_CLES = outilsDesMotsCles({ ErreurEdition });
+
+/** Créer un mot-clé ancré, poser une ancre, aligner un mot-clé sur son élément (décision R309 : serveur/edition-ancrage.mjs) ; seuls les lots s'en servent. */
+const ANCRAGE = outilsDeLAncrage({ ErreurEdition, MOTS_CLES, creerMotCle });
 
 /** Les contraintes de la base qui refusent un objet par magie du Potentiel Illimité (décision R160, migration 0078) : leur refus se dit en clair. */
 const CONTRAINTES_R160 = new Set(OBJETS_PAR_MAGIE.map(contrainteR160));
@@ -238,18 +242,20 @@ export function supprimerPage(ctx, pageId) {
  * refus de recalculerLesCles, 409), les clés de ses homonymes recalculées et réécrites dans les textes ; non verrouillé (`verrou` non écrit : 0 par
  * défaut, décision R219 (5), même avec une adresse), sauf `verrouille` (`race-hybride`, motCleDe : décision R220 (2)) ; sa définition, NULL tant
  * qu'il n'est pas décrit ; son adresse et sa couleur (migration 0098) et son icône (migration 0116, R235) écrites seulement si elles sont données ;
- * ses catégories (`categories`, ids) et ses synonymes (`synonymes`, écritures dans l'ordre : décision R233, refuserLesSynonymes). Refusé si son
+ * ses catégories (`categories`, ids) et ses synonymes (`synonymes`, écritures dans l'ordre : décision R233, refuserLesSynonymes). `ancre` ({ table, id },
+ * décision R309) : l'élément dont il est le mot-clé, écrit AVANT le recalcul des clés, qui lit le parent d'un sort ancré ; `parent` : le nom de la magie de ce
+ * sort, qui départage dès sa création deux homonymes de même type. Refusé si son
  * libellé (ou sa clé) s'écrit comme le synonyme d'un autre mot-clé (R233 (4) : 409, `champ: 'libelle'`), ou si son adresse (refuserLeLien), sa
  * couleur (refuserLaCouleur) ou son icône (refuserLIcone) ne conviennent pas. Rend son id.
  */
-export function creerMotCle(ctx, libelle, description = null, { url = null, couleur = null, icone = null, categories = [], synonymes = [], verrouille = false } = {}) {
+export function creerMotCle(ctx, libelle, description = null, { url = null, couleur = null, icone = null, categories = [], synonymes = [], verrouille = false, ancre = null, parent = null } = {}) {
   const { db, w } = ctx;
   const base = normalize(libelle);
   if (!base) throw refus(`Mot-clé « ${libelle} » : il doit contenir au moins une lettre ou un chiffre`, { champ: 'libelle' });
   const id = idSuivant(db, 'mot_cle', { plancher: plancherDesIdsDeMotsCles() });
   const ids = categories.length ? MOTS_CLES.listeDeCategories(db, categories, `Mot-clé « ${libelle} »`) : [];
   // la clé : celle de la règle, sur le vocabulaire tel qu'il sera (un homonyme qui apparaît change aussi celle des autres, écrite ensuite)
-  const futurs = [...motsClesDeLaBase(db), { id, libelle, categories: ids }];
+  const futurs = [...motsClesDeLaBase(db), { id, libelle, categories: ids, parent }];
   let cle;
   try {
     cle = clesDesMotsCles(futurs, new Map(categoriesDesMotsCles(db).map((c) => [c.id, c.libelle]))).get(id);
@@ -272,6 +278,7 @@ export function creerMotCle(ctx, libelle, description = null, { url = null, coul
   });
   MOTS_CLES.poserLesCategories(ctx, id, ids);
   if (synonymes.length) MOTS_CLES.poserLesSynonymes(ctx, id, synonymes);
+  if (ancre) w.modifier(ancre.table, { id: ancre.id }, { mot_cle_id: id });
   MOTS_CLES.recalculerLesCles(ctx);
   return id;
 }
@@ -3647,10 +3654,24 @@ const OPERATIONS_DU_LOT = {
     if (!ligne) throw new ErreurEdition(409, `${op.table} ${JSON.stringify(op.cle)} : le service d’édition n’a pas créé la ligne attendue`);
     const ecarts = Object.entries(op.attendu).filter(([c, v]) => (ligne[c] ?? null) !== (v ?? null)).map(([c]) => c);
     if (ecarts.length) {
-      throw new ErreurEdition(409, `${op.table} ${JSON.stringify(op.cle)} : le service d’édition crée cette ligne autrement que le lot ne la décrit (${ecarts.map((c) => `« ${c} » : ${JSON.stringify(ligne[c] ?? null)} au lieu de ${JSON.stringify(op.attendu[c] ?? null)}`).join(' ; ')})`);
+      throw new ErreurEdition(409, `${op.table} ${JSON.stringify(op.cle)} : le service d’édition écrit cette ligne autrement que le lot ne la décrit (${ecarts.map((c) => `« ${c} » : ${JSON.stringify(ligne[c] ?? null)} au lieu de ${JSON.stringify(op.attendu[c] ?? null)}`).join(' ; ')})`);
     }
     return `${op.table} : la ligne créée est celle du lot`;
   },
+  // l'ancrage des mots-clés (décision R309 : serveur/edition-ancrage.mjs)
+  ancrer_nouveau(ctx, op) {
+    const id = ANCRAGE.ancrerNouveau(ctx, op);
+    return `Mot-clé #${id} créé pour ${op.table} ${op.id}`;
+  },
+  ancrer_element(ctx, op) {
+    ANCRAGE.ancrerElement(ctx, op);
+    return `${op.table} ${op.id} : ancre`;
+  },
+  aligner_mot_cle(ctx, op) {
+    ANCRAGE.alignerMotCle(ctx, op.id);
+    return `Mot-clé #${op.id} aligné sur son élément`;
+  },
+  recalculer_les_cles: (ctx) => ANCRAGE.recalculerEnFinDeLot(ctx),
 };
 
 /**
@@ -3664,12 +3685,14 @@ const OPERATIONS_DU_LOT = {
  *     que le service sait lever (comme le rejeu, R219 (6)).
  *   hote.isoler(faire) : `faire` sous un SAVEPOINT ; s'il lève, rien de ce qu'il a écrit (ni ses lignes du journal) ne reste.
  *   hote.ecrites() : le nombre de lignes du journal écrites jusqu'ici.
+ *   hote.differerLesCles() : plus aucun recalcul des clés jusqu'à l'opération `recalculer_les_cles` (l'annulation d'un lot d'ancrage : seul l'état final se juge).
+ * `annulation` : le lot du journal annule un lot de changements (`ctx.annulation` : seule voie qui retire une ancre) ; `ctx.voie` vaut « lot ».
  * @param {import('node:sqlite').DatabaseSync} db base vivante (clés étrangères contrôlées)
- * @param {{ id?: string, instant?: string, titre: string, nature: string, decision?: string | null, auteurId?: string | null,
- *   travail: (hote: { db: object, id: string, instant: string, isoler: Function, executer: Function, ecrites: () => number }) => unknown }} o
+ * @param {{ id?: string, instant?: string, titre: string, nature: string, decision?: string | null, auteurId?: string | null, annulation?: boolean,
+ *   travail: (hote: { db: object, id: string, instant: string, isoler: Function, executer: Function, ecrites: () => number, differerLesCles: () => void }) => unknown }} o
  * @returns {{ lot: string | null, ecrites: number, resultat: unknown }} `lot` : null quand rien n'a été écrit
  */
-export function appliquerUnLot(db, { id, instant, titre, nature, decision = null, auteurId = null, travail }) {
+export function appliquerUnLot(db, { id, instant, titre, nature, decision = null, auteurId = null, annulation = false, travail }) {
   if (instant === undefined || id === undefined) {
     const lot = nouveauLot();
     instant ??= lot.instant;
@@ -3688,7 +3711,7 @@ export function appliquerUnLot(db, { id, instant, titre, nature, decision = null
   };
   try {
     const w = ouvrirLot(db, { id, instant, auteurId, nature, decision });
-    const ctx = { db, w, instant, crees: [], retraits: nouveauxRetraitsDeFiches(), gel: true, forcees: [], fusions: [] };
+    const ctx = { db, w, instant, crees: [], retraits: nouveauxRetraitsDeFiches(), gel: true, forcees: [], fusions: [], voie: 'lot', annulation };
     const variablesAvant = magiesDesDonsVariables(db);
     const permises = { ...OPERATIONS, ...OPERATIONS_DU_LOT };
     let place = 0;
@@ -3702,6 +3725,9 @@ export function appliquerUnLot(db, { id, instant, titre, nature, decision = null
         return executerUneOperation(ctx, op, place++, { operations: permises, prefixe: false });
       },
       ecrites: () => w.nombre,
+      differerLesCles: () => {
+        ctx.clesEnAttente = true;
+      },
     };
     const resultat = travail(hote);
     if (!w.nombre) {
