@@ -59,7 +59,7 @@ export const TABLES_DE_REGLES = Object.freeze([
   'regles_onglet_entree', 'caracteristique', 'competence', 'niveau_global', 'niveau_deblocage', 'seuil_niveau', 'regle_constante',
   'entrainement_palier', 'initiative_agilite', 'type_don', 'posture', 'posture_effet', 'posture_critique', 'magie', 'magie_role', 'magie_resistance',
   'magie_incompatibilite', 'magie_ethnie_secondaire', 'magie_dieu', 'magie_specialisation', 'sort', 'sort_type', 'sort_mode', 'sort_bonus_maitrise',
-  'sort_etat', 'sort_mot_cle', 'type_degats', 'commentaire_orphelin', 'legende_sort', 'regle_magie', 'magie_npm_plafond', 'resistance_palier',
+  'sort_etat', 'sort_mot_cle', 'type_degats', 'type_sort', 'commentaire_orphelin', 'legende_sort', 'regle_magie', 'magie_npm_plafond', 'resistance_palier',
   'etat', 'etat_magie', 'etat_stade', 'etat_palier', 'meteo', 'meteo_effet', 'mode_texte', 'mode_hyper_depassement', 'mode_super_objet',
   'mode_hyper_effet', 'dieu', 'evenement', 'evenement_extrait', 'categorie_chronologie', 'evenement_categorie', 'categorie_classe', 'classe',
   'specialite', 'capacite', 'objet_depart', 'classe_objet_depart', 'classe_maitrise_armure', 'classe_maitrise_arme', 'maitrise_arme_part',

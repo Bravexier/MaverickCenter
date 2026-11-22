@@ -36,6 +36,9 @@ const N = (numero) => String(numero).padStart(4, '0');
  * appliquées sur place. Une migration plus récente qui touche une autre table l'ajoute ici.
  */
 const TABLES_QUE_LES_MIGRATIONS_CHANGENT = ['migration_recue'];
+/** Les tables à qui une migration livrée ajoute une colonne (0131 : mot_cle_id sur page et sur sort) : leur empreinte suit leur forme, leurs lignes ne bougent pas. */
+const COLONNES_AJOUTEES = { page: ['mot_cle_id'], sort: ['mot_cle_id'] };
+const TABLES_A_COLONNE_AJOUTEE = Object.keys(COLONNES_AJOUTEES);
 const lire = (chemin) => new DatabaseSync(chemin, { readOnly: true });
 /** Une base ouverte comme celle du service (clés étrangères contrôlées). */
 function ouvrir(chemin) {
@@ -206,7 +209,8 @@ test('une base 128 remplie : les migrations livrées (la 0129) appliquées sur p
     // tout le reste est intact : l'empreinte de chaque autre table (fiches, journal, historique, règles) ne bouge pas
     const apres = etatDeLaBase(db);
     for (const nom of Object.keys(avant.tables)) {
-      if (!TABLES_QUE_LES_MIGRATIONS_CHANGENT.includes(nom)) assert.deepEqual(apres.tables[nom], avant.tables[nom], `${nom} : empreinte inchangée`);
+      if (TABLES_A_COLONNE_AJOUTEE.includes(nom)) assert.equal(apres.tables[nom].lignes, avant.tables[nom].lignes, `${nom} : les mêmes lignes`);
+      else if (!TABLES_QUE_LES_MIGRATIONS_CHANGENT.includes(nom)) assert.deepEqual(apres.tables[nom], avant.tables[nom], `${nom} : empreinte inchangée`);
     }
     assert.deepEqual(db.prepare('SELECT id FROM personnage ORDER BY id').all().map((p) => p.id), fiches);
     assert.ok(db.prepare('SELECT 1 FROM personnage WHERE id = ?').get(poses.pretire), 'la fiche du prétiré');
@@ -416,13 +420,16 @@ test('essai sur une copie, dans un fil à part : vraie base inchangée (octets),
   assert.deepEqual(bilan.versions, { avant: NUMERO - 1, apres: V });
   assert.deepEqual(bilan.migrations, livrees.map(({ numero, fichier, empreinte }) => ({ numero, fichier, empreinte })));
   // (ce bilan est celui de la 0129 : une migration livrée plus tard qui change des lignes ou des tables ajoute son écart ici)
-  // les tables créées : `migration_recue` avec la ligne que l'application noterait par migration, et celles que les migrations suivantes créent (vides : une migration est de structure)
+  // les tables créées : `migration_recue` avec la ligne que l'application noterait par migration, et celles que les migrations suivantes créent (vides, sauf les lignes que la migration pose elle-même : les dix types de sort de la 0131)
   const dAvant = lire(chemin);
   const courantes = lire(baseDesRegles());
   let creees;
   try {
     const avantLes = new Set(tablesDeDonnees(dAvant));
-    creees = tablesDeDonnees(courantes).filter((n) => !avantLes.has(n)).sort().map((table) => ({ table, lignes: table === 'migration_recue' ? livrees.length : 0 }));
+    // (une table créée porte les seules lignes que sa migration pose elle-même : la base des règles les a refaites, aide-structure-sur-place.mjs#viderLesAjoutsDesMigrations)
+    creees = tablesDeDonnees(courantes).filter((n) => !avantLes.has(n)).sort().map((table) => ({
+      table, lignes: table === 'migration_recue' ? livrees.length : courantes.prepare(`SELECT count(*) AS n FROM "${table}"`).get().n,
+    }));
   } finally {
     dAvant.close();
     courantes.close();
@@ -431,17 +438,19 @@ test('essai sur une copie, dans un fil à part : vraie base inchangée (octets),
   assert.deepEqual(bilan.tables.creees, creees, 'les tables créées, avec la ligne que l’application noterait par migration');
   assert.deepEqual(bilan.tables.retirees, []);
   assert.deepEqual(bilan.tables.renommees, []);
-  assert.deepEqual(bilan.tables.modifiees, {}, 'aucune ligne de contenu ne bouge');
+  assert.deepEqual(bilan.tables.modifiees, Object.fromEntries(Object.entries(COLONNES_AJOUTEES).map(([table, colonnes]) => [table,
+    { ajoutees: 0, retirees: 0, modifiees: 0, structure_changee: true, colonnes_ajoutees: colonnes, colonnes_retirees: [] }])), 'aucune ligne de contenu ne bouge : seules page et sort changent de forme (colonne ajoutée)');
   assert.deepEqual(bilan.totaux, { ajoutees: 0, retirees: 0, modifiees: 0 });
-  assert.deepEqual(bilan.objets, { crees: [], retires: [], modifies: [] });
-  // toutes les autres tables sont listées inchangées : fiches, journal, historique et règles comprises
+  // les trois index d'ancrage de la 0131 (un mot-clé ancre au plus une page, un sort, un type de sort)
+  assert.deepEqual(bilan.objets, { crees: ['index page_ancre_mot_cle', 'index sort_ancre_mot_cle', 'index type_sort_ancre_mot_cle'], retires: [], modifies: [] });
+  // toutes les autres tables sont listées inchangées : fiches, journal, historique et règles comprises (page et sort, qui gagnent une colonne, sont dites modifiées)
   const db = lire(chemin);
   try {
-    assert.deepEqual(bilan.tables.inchangees, tablesDeDonnees(db));
+    assert.deepEqual(bilan.tables.inchangees, tablesDeDonnees(db).filter((n) => !TABLES_A_COLONNE_AJOUTEE.includes(n)));
   } finally {
     db.close();
   }
-  for (const nom of ['personnage', 'modification_lot', 'modification', 'historique_modification', 'race', 'page']) assert.ok(bilan.tables.inchangees.includes(nom), nom);
+  for (const nom of ['personnage', 'modification_lot', 'modification', 'historique_modification', 'race', 'alias']) assert.ok(bilan.tables.inchangees.includes(nom), nom);
   assert.deepEqual(bilan.tables.virtuelles_ignorees, ['entite_fts', 'page_fts']);
   assert.ok(bilan.duree_ms >= 0);
   assert.deepEqual(JSON.parse(JSON.stringify(bilan)), bilan, 'un bilan en JSON');

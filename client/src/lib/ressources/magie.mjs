@@ -354,4 +354,8 @@ export const HORS_RESSOURCE = {
     'Trace de l’import : fils de commentaires du Sommaire du classeur « Magie Maverick V8 » ancrés en A1, sans sort identifiable, conservés tels quels ' +
     'sans rattachement ; l’identifiant est tiré de l’empreinte du texte (que db:check recalcule), qui ne peut donc pas changer. Ce n’est pas un élément ' +
     'du jeu : aucune page ne l’affiche, il reste lisible dans l’onglet DB (/donnees/).',
+  type_sort:
+    'Table de référence des types de sort (migration 0131, R309) : une ligne par code que le CHECK de sort_type.type accepte, avec le mot-clé que le type ancre ; ' +
+    'les codes sont figés par le schéma (un type de plus passe par une migration) et le mot-clé se pose par un lot de changements du site de dev, jamais par ' +
+    'une route : pas de ressource de l’API, lisible dans l’onglet DB (/donnees/).',
 };
