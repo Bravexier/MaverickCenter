@@ -623,6 +623,7 @@ function annulerLeLot(db, depose, { essai, ouverts = new Set(), baseline = new S
     const plan = planDeLAnnulation(db, depose.lot_id, depose.lignes ?? null);
     const nets = netsDuLot(db, depose.lot_id);
     const creesEtAncres = motsClesCreesEtAncres(nets);
+    const gardes = groupesGardes(db, nets, depose.decision, lignesDejaAnnulees(ligneOuErreur(db, depose.id))); // un groupe s'annule entier ou reste en place
     let lectureFinale = null; // les balises sur le vocabulaire d'après le recalcul différé
     let place = 0;
     // `complet` : la ligne entière, quand `net` n'en porte qu'une partie ; `suite` : le second passage d'une ligne, après le recalcul différé
@@ -650,6 +651,7 @@ function annulerLeLot(db, depose, { essai, ouverts = new Set(), baseline = new S
       };
       const apercu = apercuDeLAnnulation(db, complet, actuelle); // avant l'écriture : la valeur actuelle est celle d'avant la remise
       const noter = (etat, reste = {}) => consigner({ ...base, apercu, etat, ...plus(), ...reste });
+      if (!suite && gardes.has(net.rang)) return noter('gardee', { raison: 'groupe_change', message: gardes.get(net.rang) });
       // une ligne emportée avec elle ne la tient pas (`lignesEmportees`)
       const tenue = (dependances?.get(net.rang) ?? []).filter((d) => d.rangs.some((r) => !depose.lignes.includes(r)));
       if (tenue.length) {
@@ -676,7 +678,8 @@ function annulerLeLot(db, depose, { essai, ouverts = new Set(), baseline = new S
       hote.differerLesCles();
       plan.filter((n) => n.genre === 'supprimer').forEach((net) => remettre(net));
       const lecture = lectureDesBalises(motsClesDeLaBase(db), clesDAvantLeLot(nets)); // après les réinsertions : leurs mots-clés sont de nouveau cités
-      const parties = plan.filter((n) => n.genre !== 'supprimer').map((net) => ({ net, ...partiesDeLaRemise(net, lecture) }));
+      // une ligne d'un groupe gardé ne se coupe pas en deux : elle est notée une fois, entière
+      const parties = plan.filter((n) => n.genre !== 'supprimer').map((net) => (gardes.has(net.rang) ? { net, dabord: net, ensuite: null } : { net, ...partiesDeLaRemise(net, lecture) }));
       for (const { net, dabord } of parties) if (dabord) remettre(dabord, { complet: net });
       hote.executer({ op: 'recalculer_les_cles' });
       lectureFinale = lectureDesBalises(motsClesDeLaBase(db));
@@ -784,6 +787,70 @@ function lignesEmportees(nets, decision) {
     for (const k of reclasses) grouper(nets.filter((n) => n.table === 'mot_cle_categorie' && n.cle.mot_cle_id === k));
   }
   return groupes;
+}
+
+const MOTIF_DU_GROUPE_GARDE = 'Ce mot-clé a changé depuis le lot : ses lignes restent toutes en place.';
+const MOTIF_DE_LA_CATEGORIE_GARDEE = 'Cette catégorie range encore un mot-clé qui a changé depuis le lot : elle reste en place.';
+
+/** Où en est une ligne d'un groupe : `en_place`, `revenue` (comme avant le lot) ou `changee`. D'une ancre, seule `mot_cle_id` compte (le lot a pu réécrire une balise de la même ligne). */
+function etatDansLeGroupe(net, actuelle, creesEtAncres) {
+  const temoin = estUneAncre(net) ? { ...net, origine: sous(net.origine, ['mot_cle_id']), fin: sous(net.fin, ['mot_cle_id']) } : net;
+  const { gardees, remises } = jugerLaLigne(temoin, actuelle, creesEtAncres);
+  return gardees.length ? 'changee' : remises.length ? 'en_place' : 'revenue';
+}
+
+/**
+ * `(k) => vrai` si le mot-clé `k` a dans la base plus de lignes qui le citent par une clé étrangère que le lot n'en a écrit (un synonyme, une catégorie, une ancre,
+ * une étiquette ajoutés depuis). Ses clés quittées ne comptent pas : le recalcul les écrit lui-même.
+ */
+function fillesAjoutees(db, nets) {
+  const enBase = new Map();
+  const duLot = new Map();
+  const ajouter = (compte, k, n = 1) => compte.set(k, (compte.get(k) ?? 0) + n);
+  for (const { name } of db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name <> 'mot_cle_ancienne_cle'").all()) {
+    for (const g of etrangeresDe(db, name)) {
+      if (g.table !== 'mot_cle' || g.paires.length !== 1) continue;
+      const colonne = g.paires[0].de;
+      for (const l of db.prepare(`SELECT "${colonne}" AS k, count(*) AS n FROM "${name}" WHERE "${colonne}" IS NOT NULL GROUP BY 1`).all()) ajouter(enBase, l.k, l.n);
+      for (const n of nets) if (n.table === name && n.fin?.[colonne] !== undefined && n.fin[colonne] !== null) ajouter(duLot, n.fin[colonne]);
+    }
+  }
+  return (k) => (enBase.get(k) ?? 0) > (duLot.get(k) ?? 0);
+}
+
+/**
+ * Les lignes des groupes (`lignesEmportees`) qui ne s'annulent pas, car un groupe s'annule entier ou reste en place : Map(rang → motif). Un groupe est gardé si une de ses
+ * lignes n'est plus telle que le lot l'a laissée (la clé d'un mot-clé créé et ancré mise à part, ainsi que ses clés quittées : le recalcul les réécrit), ou si une
+ * ligne fille a été ajoutée à son mot-clé créé. Un groupe déjà revenu en entier, ou déjà annulé (`annulees`), n'a plus rien à garder. Une catégorie créée par le lot
+ * qui range encore un mot-clé gardé est gardée avec lui. Pour un mot-clé existant reclassé, le journal ne dit pas quelles catégories il avait : seules ses lignes du lot se comparent.
+ */
+function groupesGardes(db, nets, decision, annulees = new Set()) {
+  const gardes = new Map();
+  const groupes = [...new Set(lignesEmportees(nets, decision).values())].filter((rangs) => !rangs.every((r) => annulees.has(r)));
+  if (!groupes.length) return gardes;
+  const parRang = new Map(nets.map((n) => [n.rang, n]));
+  const creesEtAncres = motsClesCreesEtAncres(nets);
+  const aDesFillesAjoutees = fillesAjoutees(db, nets);
+  const lue = (n) => {
+    try {
+      return lireLigne(db, n.table, n.cle);
+    } catch {
+      return null;
+    }
+  };
+  for (const rangs of groupes) {
+    const lignes = rangs.map((r) => parRang.get(r));
+    const etats = lignes.filter((n) => n.table !== 'mot_cle_ancienne_cle').map((n) => etatDansLeGroupe(n, lue(n), creesEtAncres));
+    const enPlace = etats.filter((e) => e === 'en_place').length;
+    if (!enPlace && !etats.includes('changee')) continue;
+    const motCle = lignes.find((n) => n.table === 'mot_cle');
+    if (enPlace < etats.length || (motCle && aDesFillesAjoutees(motCle.cle.id))) for (const r of rangs) gardes.set(r, MOTIF_DU_GROUPE_GARDE);
+  }
+  const rangees = nets.filter((n) => gardes.has(n.rang) && n.table === 'mot_cle_categorie' && n.fin);
+  for (const n of nets) {
+    if (n.table === 'categorie_mot_cle' && n.genre === 'inserer' && rangees.some((x) => x.fin.categorie_id === n.cle.id)) gardes.set(n.rang, MOTIF_DE_LA_CATEGORIE_GARDEE);
+  }
+  return gardes;
 }
 
 const PRIORITE_DES_ETATS = Object.freeze(['refusee', 'verrouillee', 'remise', 'gardee', 'deja']);
@@ -1009,6 +1076,7 @@ export function lignesDuLotApplique(db, ligne, { production = null } = {}) {
   const dependances = ligne.etat === 'applique' ? dependancesDesLignes(db, nets, new Set(Object.keys(annulees).map(Number)), etiquettes) : new Map();
   const creesEtAncres = motsClesCreesEtAncres(nets);
   const groupes = lignesEmportees(nets, ligne.decision);
+  const gardes = ligne.etat === 'applique' ? groupesGardes(db, nets, ligne.decision, new Set(Object.keys(annulees).map(Number))) : new Map();
   // ce qui tient une ligne : ce qui tient son groupe, hors du groupe lui-même (il s'annule d'un bloc)
   const tenueDe = (rang) => {
     const groupe = groupes.get(rang) ?? [rang];
@@ -1030,13 +1098,15 @@ export function lignesDuLotApplique(db, ligne, { production = null } = {}) {
       if (finie) return { ...sortie, etat: 'annulee', annulee: { annule_le: finie.annule_le, lot_id: finie.lot_id }, annulable_seule: false, motif: 'Cette ligne est déjà annulée.', depend_de: [] };
       if (ligne.etat === 'annule' && duLot) {
         const etat = duLot.etat === 'remise' ? 'annulee' : duLot.etat === 'gardee' ? 'modifiee_depuis' : 'comme_avant';
-        return { ...sortie, etat, ...(etat === 'annulee' ? { annulee: { annule_le: ligne.annule_le, lot_id: ligne.annulation_lot_id } } : {}), annulable_seule: false, motif: etat === 'annulee' ? 'Le lot entier est annulé.' : motifSansRemise(etat), depend_de: [] };
+        return { ...sortie, etat, ...(etat === 'annulee' ? { annulee: { annule_le: ligne.annule_le, lot_id: ligne.annulation_lot_id } } : {}), annulable_seule: false, motif: etat === 'annulee' ? 'Le lot entier est annulé.' : duLot.message ?? motifSansRemise(etat), depend_de: [] };
       }
       const colonnesModifiees = jugement.gardees.map((g) => ({ colonne: g.colonne, libelle: nomDeColonne(net.table, g.colonne) ?? g.colonne, ecrite: g.ecrite, trouvee: g.trouvee }));
-      const etat = jugement.gardees.length ? 'modifiee_depuis' : jugement.remises.length ? 'en_place' : 'comme_avant';
-      const tenue = tenueDe(net.rang);
+      const motifDuGroupe = gardes.get(net.rang) ?? null;
+      const etat = motifDuGroupe || jugement.gardees.length ? 'modifiee_depuis' : jugement.remises.length ? 'en_place' : 'comme_avant';
+      const tenue = motifDuGroupe ? [] : tenueDe(net.rang);
       let motif = null;
-      if (!jugement.remises.length) motif = motifSansRemise(etat);
+      if (motifDuGroupe) motif = motifDuGroupe;
+      else if (!jugement.remises.length) motif = motifSansRemise(etat);
       else if (ligne.etat !== 'applique') motif = ligne.etat === 'annule' ? 'Le lot est annulé.' : 'Ce lot n’est pas appliqué.';
       else if (tenue.length) motif = `Cette ligne ne s’annule pas seule : ${tenue.map((d) => d.raison).join(' ; ')}.`;
       return { ...sortie, etat, ...(colonnesModifiees.length ? { colonnes_modifiees: colonnesModifiees } : {}), annulable_seule: motif === null, motif, depend_de: [...new Set(tenue.flatMap((d) => d.rangs))] };
@@ -1543,8 +1613,9 @@ export function annulerUneLigne(db, id, numero, corps = {}) {
     const annulees = new Set(Object.keys(bilan.lignes_annulees).map(Number));
     const nets = netsDuLot(base, ligne.lot_id);
     const creesEtAncres = motsClesCreesEtAncres(nets);
+    const gardes = groupesGardes(base, nets, ligne.decision, annulees); // un groupe gardé n'a plus rien à remettre
     const reste = nets.some((net) => {
-      if (annulees.has(net.rang)) return false;
+      if (annulees.has(net.rang) || gardes.has(net.rang)) return false;
       let actuelle = null;
       try {
         actuelle = lireLigne(base, net.table, net.cle);

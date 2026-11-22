@@ -215,7 +215,7 @@ function htmlDeLaLigne(o, contexte, titres) {
   const nom = ap ? `<strong>${echapper(ap.ligne)}</strong> <span class="nv-lot-ligne__table">(${echapper(ap.table)})</span>` : `<strong>ligne ${echapper(o.rang)} du lot</strong>`;
   const decisions = o.decisions?.length ? ` : ${echapper(o.decisions.join(', '))}` : '';
   const ecarts = (o.ecarts ?? []).length ? `<ul class="nv-lot-ligne__ecarts">${o.ecarts.map((e) => `<li>${echapper(phraseDeLEcart(o, e, contexte))}</li>`).join('')}</ul>` : '';
-  const message = o.message && (etat === 'refusee' || etat === 'verrouillee') ? `<p class="nv-lot-ligne__message">${echapper(o.message)}</p>` : '';
+  const message = o.message && (etat === 'refusee' || etat === 'verrouillee' || etat === 'gardee') ? `<p class="nv-lot-ligne__message">${echapper(o.message)}</p>` : '';
   // une ligne qui ne s'écrit pas (changée depuis, déjà comme avant) ne montre pas ses colonnes : ce qui compte est ce qu'elle porte aujourd'hui
   const colonnes = ap && etat !== 'deja' && etat !== 'gardee' && etat !== 'changee' ? ap.colonnes.map((c) => htmlDeLaColonne(c, titres)).join('') : '';
   return `<li class="nv-lot-ligne nv-lot-ligne--${NIVEAUX_DE_LA_LIGNE[etat] ?? 'neutre'}" data-nv-ligne="${echapper(o.rang)}" data-nv-etat-ligne="${echapper(etat)}">`
