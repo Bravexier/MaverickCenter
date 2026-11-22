@@ -39,7 +39,7 @@ const dossier = (nom) => join(racine, nom);
 const lire = (...p) => readFileSync(join(...p), 'utf8');
 const champs = (d) => Object.fromEntries(lire(d, 'VERSION').trim().split('\n').map((l) => l.split(/=(.*)/s).slice(0, 2)));
 
-test('fabrication : un seul fichier, paramètres remplis, archive contrôlée par --verifier', { skip: SEUL_LINUX || skip }, () => {
+test('fabrication : un seul fichier, paramètres remplis, archive contrôlée par --verifier', { skip }, () => {
   const i = installateur({ pages: 7 });
   assert.match(i.fichier, /maverick-center-v0\.2-install\.sh$/);
   assert.equal(i.PAGES, '8');
@@ -86,7 +86,7 @@ test('paramètres refusés : étiquette de test en production et inversement, ve
 });
 
 for (const rsync of ['auto', '0']) {
-  test(`production : première installation puis mise à jour (USE_RSYNC=${rsync})`, { skip: SEUL_LINUX || skip }, () => {
+  test(`production : première installation puis mise à jour (USE_RSYNC=${rsync})`, { skip }, () => {
     const prod = dossier(`prod-${rsync}`);
     const r1 = lancer(installateur({ label: 'v1' }).fichier, ['--dossier', prod], { USE_RSYNC: rsync });
     assert.equal(r1.code, 0, r1.out);
@@ -161,7 +161,7 @@ const noms = (d, fichier = 'maverick.db') => {
   try { return b.prepare('SELECT nom FROM fiche ORDER BY nom').all().map((l) => l.nom); } finally { b.close(); }
 };
 
-test('test : par défaut, aucune copie de la production ; db/ (rempli ou non, avec ou sans MAVERICK_BASE_TEST=conservee) n\'est jamais touché (R274)', { skip: SEUL_LINUX || skip }, () => {
+test('test : par défaut, aucune copie de la production ; db/ (rempli ou non, avec ou sans MAVERICK_BASE_TEST=conservee) n\'est jamais touché (R274)', { skip }, () => {
   const { prod, test_ } = productionEtTest('nas-defaut');
   const i = installateur({ mode: 'test', label: 'dev', version: '0.2.3' }).fichier;
   const avantProd = empreinte(join(prod, 'db'));
@@ -238,7 +238,7 @@ test('test : --copier-base-prod copie la production à l\'instant de l\'installa
   assert.deepEqual(noms(test_), ['Aldric', 'Brune', 'Essai']);
 });
 
-test('test : --copier-base-prod refusée sur un db/ rempli, même s\'il n\'y a pas encore de site ; db/ avec ses seules métriques : copie faite', { skip: SEUL_LINUX || skip }, () => {
+test('test : --copier-base-prod refusée sur un db/ rempli, même s\'il n\'y a pas encore de site ; db/ avec ses seules métriques : copie faite', { skip }, () => {
   const { test_ } = productionEtTest('nas-copie-refus');
   const i = installateur({ mode: 'test', label: 'dev', version: '0.2.3' }).fichier;
   remplirLaBaseDeDev(test_);
@@ -275,7 +275,7 @@ test('test : --copier-base-prod refusée sur un db/ rempli, même s\'il n\'y a p
   assert.ok(!existsSync(join(dossier('nas-copie-refus'), 'sans', 'site')));
 });
 
-test('test : db/ qui se remplit pendant la copie (le service y écrit) : la copie est refusée au moment de poser, rien n\'est écrasé', { skip: SEUL_LINUX || skip }, () => {
+test('test : db/ qui se remplit pendant la copie (le service y écrit) : la copie est refusée au moment de poser, rien n\'est écrasé', { skip }, () => {
   const { test_ } = productionEtTest('nas-copie-course');
   // Un faux sqlite3, lancé par l'installateur pendant la copie : il écrit dans db/ de l'instance de test (comme le service qui crée sa base)
   // puis fait la sauvegarde en copiant le fichier.
@@ -328,7 +328,7 @@ test('test : la pose conserve droits et contenu, fichiers et dossiers', { skip: 
   assert.ok(!readdirSync(test_).some((f) => f.startsWith('.db.')), 'la copie provisoire est retirée');
 });
 
-test('refus : mauvais mode d\'instance, production introuvable ou confondue avec le test', { skip: SEUL_LINUX || skip }, () => {
+test('refus : mauvais mode d\'instance, production introuvable ou confondue avec le test', { skip }, () => {
   const parent = dossier('refus');
   const prod = join(parent, 'maverick-center');
   const test_ = join(parent, 'maverick-center-test');
@@ -386,7 +386,7 @@ test('verrou : une installation en cours bloque la suivante ; un verrou périmé
   assert.ok(!existsSync(join(prod, '.installation.lock')));
 });
 
-test('test : base de production en cours d\'écriture (WAL non reporté) copiée complète', { skip: SEUL_LINUX || skip }, () => {
+test('test : base de production en cours d\'écriture (WAL non reporté) copiée complète', { skip }, () => {
   const parent = dossier('wal');
   const prod = join(parent, 'maverick-center');
   assert.equal(lancer(installateur({ label: 'prod' }).fichier, ['--dossier', prod]).code, 0);
@@ -437,7 +437,7 @@ test('test : liens symboliques dans la base du serveur normal refusés ; db/ lui
   assert.equal(statSync(join(parent, 'maverick-center-test', 'db', 'maverick.db')).mode & 0o777, 0o640);
 });
 
-test('racine du système refusée, y compris « // » sous bash', { skip: SEUL_LINUX || skip }, () => {
+test('racine du système refusée, y compris « // » sous bash', { skip }, () => {
   const i = installateur().fichier;
   for (const shell of ['sh', 'bash']) {
     const r = spawnSync(shell, [i, '--dossier', '//'], { cwd: racine, encoding: 'utf8', env: { PATH: process.env.PATH } });
@@ -446,7 +446,7 @@ test('racine du système refusée, y compris « // » sous bash', { skip: SEUL_L
   }
 });
 
-test('configuration : une version livrée non modifiée sur place est remplacée ; mise-a-jour.sh est remplacé par renommage', { skip: SEUL_LINUX || skip }, () => {
+test('configuration : une version livrée non modifiée sur place est remplacée ; mise-a-jour.sh est remplacé par renommage', { skip }, () => {
   const prod = dossier('configuration');
   const i = installateur().fichier;
   assert.equal(lancer(i, ['--dossier', prod]).code, 0);
@@ -463,7 +463,7 @@ test('configuration : une version livrée non modifiée sur place est remplacée
   assert.notEqual(statSync(join(prod, 'mise-a-jour.sh')).ino, inode, 'nouveau fichier : un mise-a-jour.sh en cours garde l\'ancien');
 });
 
-test('test : les métriques (db/metriques/, sans dossier des métriques réglé) ne sont ni copiées de la production, ni effacées du test, ni prises pour une base', { skip: SEUL_LINUX || skip }, () => {
+test('test : les métriques (db/metriques/, sans dossier des métriques réglé) ne sont ni copiées de la production, ni effacées du test, ni prises pour une base', { skip }, () => {
   // docs/serveur.md, « Métriques et volume » : une base de métriques par instance (prod.db, dev.db), jamais mêlées (décision du propriétaire du
   // 2026-10-15). Avec docker-compose.yml, elles sont hors de db/ ; sans dossier réglé, le service les range dans db/metriques/.
   const parent = dossier('metriques');

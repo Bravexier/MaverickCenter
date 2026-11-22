@@ -57,7 +57,7 @@ function enService(nom, { mode = 'test', version = '0.2.2', source = true } = {}
   return dossier;
 }
 
-test('db/source : --copier-base-prod est refusé avant toute écriture', { skip: SEUL_LINUX || skip }, () => {
+test('db/source : --copier-base-prod est refusé avant toute écriture', { skip }, () => {
   const prod = join(racine, 'maverick-center');
   assert.equal(lancer(installateur({ mode: 'prod', label: 'prod', version: '0.2.0' }), ['--dossier', prod]).code, 0);
   const dev = enService('copie-refusee');
@@ -68,7 +68,7 @@ test('db/source : --copier-base-prod est refusé avant toute écriture', { skip:
   assert.deepEqual(etat(dev), avant, 'rien n’a été modifié');
 });
 
-test('db/source : une publication plus ancienne que celle installée est refusée, une égale ou plus récente s’installe (garde-fou 7)', { skip: SEUL_LINUX || skip }, () => {
+test('db/source : une publication plus ancienne que celle installée est refusée, une égale ou plus récente s’installe (garde-fou 7)', { skip }, () => {
   const dev = enService('plus-ancienne', { version: '0.2.10' });
   const avant = etat(dev);
   const r = lancer(installateur({ label: 'ancienne', version: '0.2.9' }), ['--dossier', dev]);
@@ -84,7 +84,7 @@ test('db/source : une publication plus ancienne que celle installée est refusé
   assert.ok(existsSync(join(dev, 'db', 'source')));
 });
 
-test('sans db/source : une publication plus ancienne s’installe comme avant (le contrôle est celui de mise-a-jour.sh)', { skip: SEUL_LINUX || skip }, () => {
+test('sans db/source : une publication plus ancienne s’installe comme avant (le contrôle est celui de mise-a-jour.sh)', { skip }, () => {
   const dev = enService('sans-marqueur', { version: '0.2.10', source: false });
   const r = lancer(installateur({ label: 'ancienne', version: '0.2.9' }), ['--dossier', dev]);
   assert.equal(r.code, 0, r.out);

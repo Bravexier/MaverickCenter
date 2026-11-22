@@ -218,7 +218,7 @@ test('SITE_DIR dangereux ou relatif : refusé', { skip: SEUL_LINUX || skip }, as
   assert.match(res.out, /chemin absolu/);
 });
 
-test('réglages : update-site.env à côté du script ; sans lui, l\'ancien update-nas.env est encore lu', { skip: SEUL_LINUX || skip }, async () => {
+test('réglages : update-site.env à côté du script ; sans lui, l\'ancien update-nas.env est encore lu', { skip }, async () => {
   serve(SHA_A, site(25, 'v1'));
   // Les réglages se lisent à côté du script : on en pose une copie dans un dossier à elle. L'environnement vise une adresse fermée,
   // que seul un fichier de réglages lu peut corriger.

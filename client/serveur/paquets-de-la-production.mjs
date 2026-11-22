@@ -169,6 +169,7 @@ export function lireLActivation(dossier, { instant = new Date() } = {}) {
   if (!dossier) return null;
   let fd = null;
   try {
+    if (constants.O_NOFOLLOW === undefined && lstatSync(join(dossier, FICHIER_ACTIVATION)).isSymbolicLink()) return null; // Windows n'a pas O_NOFOLLOW
     fd = openSync(join(dossier, FICHIER_ACTIVATION), constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
     const s = fstatSync(fd);
     if (!s.isFile() || s.size <= 0 || s.size > PLAFOND_DU_RAPPORT) return null;

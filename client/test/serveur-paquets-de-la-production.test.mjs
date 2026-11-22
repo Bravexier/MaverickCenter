@@ -15,7 +15,6 @@ import {
   validerLActivation,
 } from '../serveur/paquets-de-la-production.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
-import { SEUL_LINUX } from './aide-plateforme.mjs';
 
 const id = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const noms = (d) => (existsSync(d) ? readdirSync(d).sort() : []);
@@ -148,7 +147,7 @@ test('lireLActivation : le rapport de root, champ par champ ; les raisons inconn
   assert.equal('secret' in lu, false);
 });
 
-test('lireLActivation : un mauvais format, un état inconnu, une date illisible, un JSON cassé, un fichier trop gros ou un lien : rien (null)', { skip: SEUL_LINUX }, (t) => {
+test('lireLActivation : un mauvais format, un état inconnu, une date illisible, un JSON cassé, un fichier trop gros ou un lien : rien (null)', (t) => {
   const { racine, partage } = dossiers(t);
   for (const mauvais of [{ ...RAPPORT, format: 'autre/1' }, { ...RAPPORT, etat: 'inconnu' }, { ...RAPPORT, le: 'hier' }, [], 'pas du json{']) {
     ecrireLeRapport(partage, mauvais);

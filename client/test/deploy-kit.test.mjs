@@ -93,7 +93,7 @@ function lister(dossier, relatif = '') {
   }).sort();
 }
 
-test('le kit porte exactement ce qu’il faut : le code, le schéma et ses registres, deux fichiers de sources, .nvmrc ; rien du contenu ni de ce que la fabrication refait', { skip: SEUL_LINUX || skip }, () => {
+test('le kit porte exactement ce qu’il faut : le code, le schéma et ses registres, deux fichiers de sources, .nvmrc ; rien du contenu ni de ce que la fabrication refait', { skip }, () => {
   const { kit } = kitDe(fauxDepot());
   const fichiers = lister(kit);
   for (const attendu of ['.nvmrc', 'client/package.json', 'client/astro.config.mjs', 'client/scripts/fabriquer-depuis-contenu.mjs', 'client/src/pages/index.astro',
@@ -106,7 +106,7 @@ test('le kit porte exactement ce qu’il faut : le code, le schéma et ses regis
   assert.ok(readFileSync(join(kit, 'client/node_modules/.bin/astro')) , 'le lien de .bin est conservé et suit');
 });
 
-test('élagage : les modules natifs d’une autre libc, plateforme ou architecture partent, d’après leur package.json ; ceux de la machine restent', { skip: SEUL_LINUX || skip }, () => {
+test('élagage : les modules natifs d’une autre libc, plateforme ou architecture partent, d’après leur package.json ; ceux de la machine restent', { skip }, () => {
   const { kit, meta } = kitDe(fauxDepot());
   const modules = join(kit, 'client/node_modules');
   assert.ok(existsSync(join(modules, '@fake/natif-glibc/natif.node')));
@@ -123,7 +123,7 @@ test('élagage : les modules natifs d’une autre libc, plateforme ou architectu
   assert.equal(metaMusl.image, imageDeLAtelier('22', 'musl'));
 });
 
-test('élagage : les node_modules imbriqués suivent la même règle ; un paquet retiré emporte les siens', { skip: SEUL_LINUX || skip }, () => {
+test('élagage : les node_modules imbriqués suivent la même règle ; un paquet retiré emporte les siens', { skip }, () => {
   const depot = fauxDepot({
     'client/node_modules/hote/package.json': paquet('hote'),
     'client/node_modules/hote/node_modules/natif-musl-imbrique/package.json': paquet('natif-musl-imbrique', { libc: ['musl'] }),
@@ -238,7 +238,7 @@ test('fabriquer.mjs refuse --kit en production sans --kit-seul (module et ligne 
   assert.equal(cli('test', 'v0.2.0').status, 0);
 });
 
-test('l’installateur de production reste identique à celui d’avant le kit : le modèle sans sa ligne repère, aucune trace du kit', { skip: SEUL_LINUX || skip }, () => {
+test('l’installateur de production reste identique à celui d’avant le kit : le modèle sans sa ligne repère, aucune trace du kit', { skip }, () => {
   const i = installateur({ mode: 'prod' });
   assert.equal(i.kit, null);
   const octets = readFileSync(i.fichier);
@@ -378,7 +378,7 @@ test('livraison.yml : le kit est joint pour le serveur de test, et pour la produ
   assert.match(yml, /if \[ "\$KIT_SEUL" = true \]; then kit="\$kit --kit-seul"; site=""; fi/);
 });
 
-test('kit.json annonce son paquet : null sans data/paquet.json (comme avant) ; avec, lot, version, empreinte et structure ; illisible ou d’une autre forme : refus ; le fichier n’entre pas dans le kit', { skip: SEUL_LINUX || skip }, () => {
+test('kit.json annonce son paquet : null sans data/paquet.json (comme avant) ; avec, lot, version, empreinte et structure ; illisible ou d’une autre forme : refus ; le fichier n’entre pas dans le kit', { skip }, () => {
   const depot = fauxDepot();
   const sans = kitDe(depot);
   assert.equal(sans.meta.paquet, null);

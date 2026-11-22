@@ -109,7 +109,7 @@ function fauxService(dossier, reponse) {
 }
 const reglages = { MAVERICK_ESSAI_ACCUSE_S: '1', MAVERICK_ESSAI_DELAI_S: '30' };
 
-test('réponse acceptée : la demande porte les migrations et le schema.sql LIVRÉS, déposée avant que le site ne change ; verdict au journal, demande retirée, le reste de db/ intact', { skip: SEUL_LINUX || skip }, async () => {
+test('réponse acceptée : la demande porte les migrations et le schema.sql LIVRÉS, déposée avant que le site ne change ; verdict au journal, demande retirée, le reste de db/ intact', { skip }, async () => {
   const dossier = await enService('accepte');
   const avantDb = etat(join(dossier, 'db'));
   const service = fauxService(dossier, { verdict: 'accepte', resume: 'accepté : 2 migration(s) (de 0 à 2)' });
@@ -135,7 +135,7 @@ test('réponse acceptée : la demande porte les migrations et le schema.sql LIVR
   }
 });
 
-test('« a_jour » et « indisponible » : l’installation continue, le verdict est au journal', { skip: SEUL_LINUX || skip }, async () => {
+test('« a_jour » et « indisponible » : l’installation continue, le verdict est au journal', { skip }, async () => {
   for (const verdict of ['a_jour', 'indisponible']) {
     const dossier = await enService(`verdict-${verdict}`);
     const service = fauxService(dossier, { verdict, resume: `${verdict} dit par le service` });
@@ -150,7 +150,7 @@ test('« a_jour » et « indisponible » : l’installation continue, le verdict
   }
 });
 
-test('pas de réponse (service arrêté ou sans cet essai) : noté, la demande est retirée, l’installation continue', { skip: SEUL_LINUX || skip }, async () => {
+test('pas de réponse (service arrêté ou sans cet essai) : noté, la demande est retirée, l’installation continue', { skip }, async () => {
   const dossier = await enService('muet');
   const avantDb = etat(join(dossier, 'db'));
   const t0 = Date.now();
@@ -163,7 +163,7 @@ test('pas de réponse (service arrêté ou sans cet essai) : noté, la demande e
   assert.deepEqual(etat(join(dossier, 'db'), ['essai-de-structure']), avantDb);
 });
 
-test('accusé de réception sans résultat dans le délai : noté, l’installation continue, la demande est retirée', { skip: SEUL_LINUX || skip }, async () => {
+test('accusé de réception sans résultat dans le délai : noté, l’installation continue, la demande est retirée', { skip }, async () => {
   const dossier = await enService('lent');
   const service = fauxService(dossier, { resultat: false });
   try {
@@ -178,7 +178,7 @@ test('accusé de réception sans résultat dans le délai : noté, l’installat
   }
 });
 
-test('refus sans db/source : le refus est au journal, l’installation continue', { skip: SEUL_LINUX || skip }, async () => {
+test('refus sans db/source : le refus est au journal, l’installation continue', { skip }, async () => {
   const dossier = await enService('refus-sans-marqueur');
   const service = fauxService(dossier, { verdict: 'refuse', resume: 'refusé : migration 0002, étape cles_etrangeres : une clé étrangère rompue' });
   try {
@@ -222,7 +222,7 @@ test('refus avec db/source : l’installation s’arrête AVANT d’avoir rien i
   }
 });
 
-test('première installation, base absente, et --copier-base-prod : aucun essai (aucune demande déposée) ; le dossier d’essai ne compte ni pour une base ni pour la copie', { skip: SEUL_LINUX || skip }, async () => {
+test('première installation, base absente, et --copier-base-prod : aucun essai (aucune demande déposée) ; le dossier d’essai ne compte ni pour une base ni pour la copie', { skip }, async () => {
   const parent = instance(`copie-${(compteur += 1)}`);
   mkdirSync(parent, { recursive: true });
   const prod = join(parent, 'maverick-center');
@@ -266,7 +266,7 @@ test('première installation, base absente, et --copier-base-prod : aucun essai 
   }
 });
 
-test('l’installateur ne retire que sa propre demande dans db/ : un dossier voisin (celui d’une autre installation, un résultat gardé) est laissé', { skip: SEUL_LINUX || skip }, async () => {
+test('l’installateur ne retire que sa propre demande dans db/ : un dossier voisin (celui d’une autre installation, un résultat gardé) est laissé', { skip }, async () => {
   const dossier = await enService('voisin');
   mkdirSync(join(dossier, ESSAIS, 'demande-0.1.0-1'), { recursive: true });
   writeFileSync(join(dossier, ESSAIS, 'demande-0.1.0-1', 'resultat.json'), '{}\n');

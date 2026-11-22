@@ -327,7 +327,7 @@ test('une seconde livraison remplace le kit par renommage : un seul kit gardé, 
   assert.deepEqual(readdirSync(join(dossier, 'activation')).sort(), ['kit']);
 });
 
-test('un installateur de production COMPLET (sans --kit-seul) reste celui d’avant, même avec l’interrupteur : aucune trace du kit seul, le site est remplacé ; sans kit, activer.sh n’est pas lancé et le dit avec le geste', { skip: SEUL_LINUX || skip }, () => {
+test('un installateur de production COMPLET (sans --kit-seul) reste celui d’avant, même avec l’interrupteur : aucune trace du kit seul, le site est remplacé ; sans kit, activer.sh n’est pas lancé et le dit avec le geste', { skip }, () => {
   const dossier = productionInstallee();
   writeFileSync(join(dossier, 'activation-par-paquet'), '');
   const avant = etat(dossier);
