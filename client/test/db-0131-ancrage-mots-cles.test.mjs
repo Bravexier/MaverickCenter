@@ -35,16 +35,26 @@ test('0131 (R309) : page et sort citent mot_cle, sans cascade, NULL permis', () 
   essai.close();
 });
 
-test('0131 (R309) : type_sort porte exactement les codes du CHECK de sort_type, sans mot-clé', () => {
-  // la base construite du dépôt (schéma + data/rows) : les dix lignes de la migration y sont, sans mot-clé tant qu'aucun lot n'en a posé
-  const db = ouvrirBase({ sansExemples: false });
-  const sql = db.prepare("SELECT sql FROM sqlite_master WHERE name = 'sort_type'").get().sql;
-  const codes = [...sql.match(/type\s+TEXT[^,]*CHECK \(type IN \(([^)]*)\)/)[1].matchAll(/'([a-z_]+)'/g)].map((m) => m[1]).sort();
+test('0131 (R309) : type_sort porte exactement les codes du CHECK de sort_type ; la migration ne pose aucun mot-clé', () => {
+  const codesDeSortType = (base) => {
+    const sql = base.prepare("SELECT sql FROM sqlite_master WHERE name = 'sort_type'").get().sql;
+    return [...sql.match(/type\s+TEXT[^,]*CHECK \(type IN \(([^)]*)\)/)[1].matchAll(/'([a-z_]+)'/g)].map((m) => m[1]).sort();
+  };
+  const ids = (base) => base.prepare('SELECT id FROM type_sort ORDER BY id').all().map((r) => r.id);
+  // la base construite du dépôt (schéma + data/rows) : les identifiants sont figés par le CHECK ; leur mot-clé, lui, est posé par des lots et peut changer
+  const depot = ouvrirBase({ sansExemples: false });
+  const codes = codesDeSortType(depot);
   assert.ok(codes.length > 0, 'le CHECK de sort_type est lu');
-  assert.deepEqual(db.prepare('SELECT id FROM type_sort ORDER BY id').all().map((r) => r.id), codes);
-  assert.equal(db.prepare('SELECT count(*) n FROM type_sort WHERE mot_cle_id IS NOT NULL').get().n, 0, 'aucun mot-clé posé par la migration');
-  // le CHECK de type_sort refuse un code que sort_type refuse aussi
+  assert.deepEqual(ids(depot), codes);
+  // la migration elle-même : ses INSERT sur une base neuve donnent les mêmes codes, sans aucun mot-clé
+  const sqlDeLaMigration = readFileSync(new URL('../../data/migrations/0131-ancrage-mots-cles.sql', import.meta.url), 'utf8');
+  const inserts = [...sqlDeLaMigration.matchAll(/^\s*INSERT\s+INTO\s+type_sort\b[^;]*;/gim)].map((m) => m[0]);
+  assert.ok(inserts.length > 0, 'la migration pose les types');
   const neuve = baseNeuve();
+  for (const insert of inserts) neuve.exec(insert);
+  assert.deepEqual(ids(neuve), codes);
+  assert.equal(neuve.prepare('SELECT count(*) n FROM type_sort WHERE mot_cle_id IS NOT NULL').get().n, 0, 'aucun mot-clé posé par la migration');
+  // le CHECK de type_sort refuse un code que sort_type refuse aussi
   assert.throws(() => neuve.prepare("INSERT INTO type_sort (id) VALUES ('inconnu')").run(), /CHECK/);
   neuve.close();
 });
