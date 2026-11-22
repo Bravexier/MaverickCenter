@@ -11,6 +11,7 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
 import { PAGES_ABSORBEES, PAGES_DE_LA_CREATION, PAR_OU_COMMENCER, RUBRIQUES_SOUS_LA_PAGE } from '../src/lib/livres.mjs';
+import { REPRISES } from '../src/lib/mots-cles-ancrage.mjs';
 import { PAGES_LUES_PAR_LE_CODE, raisonsDeProtection } from '../src/lib/pages-protegees.mjs';
 
 const SRC = fileURLToPath(new URL('../src/', import.meta.url));
@@ -107,15 +108,18 @@ function fichiersDeSrc(dossier = SRC) {
   });
 }
 
-test('garde-fou : toute page « guide/… » écrite dans client/src/ (hors du plan, lib/livres.mjs) est dans PAGES_LUES_PAR_LE_CODE, sauf une adresse d’avant sans page', () => {
+test('garde-fou : toute page « guide/… » écrite dans client/src/ (hors du plan, lib/livres.mjs) est dans PAGES_LUES_PAR_LE_CODE, sauf une adresse d’avant sans page et les reprises de l’ancrage (R309)', () => {
   const db = ouvrirBase({ sansExemples: false });
   const existe = (id) => Boolean(db.prepare('SELECT 1 FROM page WHERE id = ?').get(id));
   const ecrites = new Map();
+  // R309, décision 3 : le plan de l'ancrage ne dépend pas de ses reprises (une page disparue va « à trancher ») ; toute autre page de ce fichier reste relevée
+  const reprises = new Set(REPRISES.values());
   for (const f of fichiersDeSrc()) {
     const rel = relative(SRC, f).split('\\').join('/');
     if (['lib/livres.mjs', 'lib/pages-protegees.mjs'].includes(rel)) continue;
     for (const m of readFileSync(f, 'utf8').matchAll(/['"`]guide\/([a-z0-9]+(?:-[a-z0-9]+)*)/g)) {
       const id = `guide/${m[1]}`;
+      if (rel === 'lib/mots-cles-ancrage.mjs' && reprises.has(id)) continue;
       if (!ecrites.has(id)) ecrites.set(id, new Set());
       ecrites.get(id).add(rel);
     }

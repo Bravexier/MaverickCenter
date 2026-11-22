@@ -10,7 +10,7 @@
 // portent l'écriture de leurs mots-clés (front matter `tags`, fabriqué par db:export-pages : le libellé, ou la clé d'un homonyme).
 // Et les textes de la base où une balise peut s'écrire (textesDeLaBase : db:check, le rejeu du journal ; hors tables de lib/tables-de-la-base.mjs).
 // Sans dépendance Astro ni navigateur : la base est passée par l'appelant (pages, middleware, service, scripts, tests).
-import { indexDesAdresses, pageDeLAdresse } from './adresses-db.mjs';
+import { adresseDeLaPage, adresseDuSort, indexDesAdresses, pageDeLAdresse } from './adresses-db.mjs';
 import { typeDeTexte } from './edition-modele.mjs';
 import { parLibelle } from './mots-cles.mjs';
 import { motCleDeLaRef, vocabulaireDesMotsCles } from './mots-cles-balises.mjs';
@@ -91,6 +91,30 @@ export function pagesDesLiens(db, motsCles = motsClesDeLaBase(db)) {
   for (const m of avecAdresse) {
     const page = pageDeLAdresse(index, m.url);
     sortie.set(m.id, page && titres.has(page) ? { page, titre: titres.get(page) } : null);
+  }
+  return sortie;
+}
+
+/**
+ * Les éléments auxquels chaque mot-clé renvoie (décision R309, migration 0131) : Map(id du mot-clé → [{ table, id, nom, adresse, texte }]), dans l'ordre
+ * page, sort, type de sort, magie, type de dégâts, monnaie. `texte` : le résumé d'une page, les effets d'un sort, sinon null. Un type de sort et un type
+ * de dégâts n'ont pas de nom à eux : celui de leur mot-clé. Une table ou une colonne absente (base d'avant la migration) ne donne aucun élément.
+ * @param {import('node:sqlite').DatabaseSync} db
+ */
+export function elementsDesMotsCles(db) {
+  const sortie = new Map();
+  const ajouter = (table, sql, element) => {
+    if (!tableExiste(db, table) || !colonnesDe(db, table).includes(table === 'monnaie' ? 'id' : 'mot_cle_id')) return;
+    for (const l of db.prepare(sql).all()) (sortie.get(l.mot_cle_id) ?? sortie.set(l.mot_cle_id, []).get(l.mot_cle_id)).push({ table, id: l.id, nom: l.nom, ...element(l) });
+  };
+  const sansTexte = { adresse: null, texte: null };
+  ajouter('page', 'SELECT id, mot_cle_id, titre AS nom, resume FROM page WHERE mot_cle_id IS NOT NULL ORDER BY id', (l) => ({ adresse: adresseDeLaPage(l.id), texte: l.resume ?? null }));
+  ajouter('sort', 'SELECT id, mot_cle_id, nom, effets FROM sort WHERE mot_cle_id IS NOT NULL ORDER BY id', (l) => ({ adresse: adresseDuSort(l.id), texte: l.effets ?? null }));
+  ajouter('type_sort', 'SELECT t.id, t.mot_cle_id, m.libelle AS nom FROM type_sort t JOIN mot_cle m ON m.id = t.mot_cle_id ORDER BY t.id', () => sansTexte);
+  ajouter('magie', 'SELECT id, mot_cle_id, nom FROM magie WHERE mot_cle_id IS NOT NULL ORDER BY id', (l) => ({ adresse: adresseDeLaPage(l.id), texte: null }));
+  ajouter('type_degats', 'SELECT t.id, t.mot_cle_id, m.libelle AS nom FROM type_degats t JOIN mot_cle m ON m.id = t.mot_cle_id ORDER BY t.id', () => sansTexte);
+  if (colonnesDe(db, 'mot_cle').includes('monnaie_id')) {
+    ajouter('monnaie', 'SELECT n.id, m.id AS mot_cle_id, n.nom FROM mot_cle m JOIN monnaie n ON n.id = m.monnaie_id ORDER BY n.id', () => sansTexte);
   }
   return sortie;
 }

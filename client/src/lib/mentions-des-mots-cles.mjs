@@ -13,6 +13,8 @@
 //   - par une référence de la base (migration 0125, `comment: 'reference'`) : le mot-clé d'un type de dégâts à valeur fermée (type_degats.mot_cle_id : taille,
 //     estoc, frappe) ou d'une magie (magie.mot_cle_id) ; la page de la magie nomme la mention. Ce n'est pas un texte : aucune suppression, même forcée,
 //     ne la remplace (serveur/edition-chronologie.mjs#verifierSansReference), la fusion la reporte sur la cible.
+// L'ancre d'une page, d'un sort ou d'un type de sort (migration 0131, décision R309) est une référence de la base, mais pas une mention : le mot-clé est
+// l'identité de cet élément, il n'y est pas cité (TABLES_DES_ANCRES).
 // Pur, sans dépendance navigateur ni Astro : la base est passée par l'appelant.
 import { nomDeTable } from './libelles-de-la-base.mjs';
 import { lireBalises, motCleDeLaRef, vocabulaireDesMotsCles } from './mots-cles-balises.mjs';
@@ -21,11 +23,17 @@ import { motsClesDeLaBase, textesDeLaBase } from './mots-cles-db.mjs';
 const q = (c) => (c === 'rowid' ? 'rowid' : `"${c}"`);
 const existe = (db, table) => Boolean(db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?").get(table));
 
-/** Les colonnes de la base qui citent un mot-clé (migration 0125) : la table, sa clé primaire, la colonne. */
+/** Les colonnes de la base qui citent un mot-clé (migrations 0125 et 0131) : la table, sa clé primaire, la colonne. */
 export const REFERENCES_AUX_MOTS_CLES = Object.freeze([
   Object.freeze({ table: 'type_degats', cle: 'id', colonne: 'mot_cle_id' }),
   Object.freeze({ table: 'magie', cle: 'id', colonne: 'mot_cle_id' }),
+  Object.freeze({ table: 'page', cle: 'id', colonne: 'mot_cle_id' }),
+  Object.freeze({ table: 'sort', cle: 'id', colonne: 'mot_cle_id' }),
+  Object.freeze({ table: 'type_sort', cle: 'id', colonne: 'mot_cle_id' }),
 ]);
+
+/** Les références qui ancrent un élément à son mot-clé (R309) : elles ne sont pas rendues comme des mentions (R196). */
+const TABLES_DES_ANCRES = new Set(['page', 'sort', 'type_sort']);
 
 const aLaColonne = (db, table, colonne) => Boolean(db.prepare('SELECT 1 FROM pragma_table_info(?) WHERE name = ?').get(table, colonne));
 
@@ -88,6 +96,7 @@ export function mentionsDesMotsCles(db, ids) {
 
   // une référence de la base : la page de la magie (même id) la nomme ; un type de dégâts n'a pas de page
   for (const r of referencesDesMotsCles(db, voulus)) {
+    if (TABLES_DES_ANCRES.has(r.table)) continue;
     ajouter(r.mot_cle_id, { table: r.table, cle: { id: r.id }, colonne: r.colonne, comment: 'reference', page: r.table === 'magie' ? r.id : null });
   }
 

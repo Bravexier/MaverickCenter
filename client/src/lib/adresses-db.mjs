@@ -51,6 +51,12 @@ const tableExiste = (db, nom) => Boolean(db.prepare("SELECT 1 FROM sqlite_master
 /** L'adresse d'une page (« /metiers/#metier-mineur », « /races/elfe/ ») : cheminDePage, depuis la racine du site. */
 export const adresseDeLaPage = (id) => `/${cheminDePage(id)}`;
 
+/** L'adresse d'un sort (`<magie.id>#sort:<slug>`, gelé) : la page de sa magie, à l'ancre de sa ligne (`lib/magies.ts#sortAncre`). */
+export function adresseDuSort(sortId) {
+  const [magieId, slug] = String(sortId).split('#sort:');
+  return `${adresseDeLaPage(magieId)}#sort-${slug}`;
+}
+
 /**
  * Les adresses du site (un Set de chemins, sans ancre ni requête) : chaque page qui n'est pas d'exemple, chaque rubrique (`type_page`) et ADRESSES_FIXES.
  * @param {import('node:sqlite').DatabaseSync} db
