@@ -12,6 +12,7 @@ import { test } from 'node:test';
 import { fabriquer } from '../../deploy/installateur/fabriquer.mjs';
 import { creerAcces, validerReglage } from '../serveur/acces.mjs';
 import { dossierTemporaire, variablesTemporaires } from './aide-dossier-temporaire.mjs';
+import { SEUL_LINUX } from './aide-plateforme.mjs';
 
 const SCRIPT = fileURLToPath(new URL('../../deploy/installateur/acces/acces.sh', import.meta.url));
 const SERVEUR = fileURLToPath(new URL('../serveur', import.meta.url));
@@ -76,7 +77,7 @@ test('la production est refusée : pas de MAVERICK_EDITION=1 dans le .env, rien 
   for (const args of [['--retirer'], ['--cle'], ['--portee', 'tout'], ['--etat']]) assert.equal(i.lancer(args).code, 1, args.join(' '));
 });
 
-test('première pose : mot de passe deux fois, réglage en 600 sans aucun secret en clair, clé de lecture affichée une seule fois, mot de passe jamais en argument', { skip: SANS_BASH }, (t) => {
+test('première pose : mot de passe deux fois, réglage en 600 sans aucun secret en clair, clé de lecture affichée une seule fois, mot de passe jamais en argument', { skip: SEUL_LINUX || SANS_BASH }, (t) => {
   const i = instance(t);
   const r = i.lancer([], { input: saisie(MOT) });
   assert.equal(r.code, 0, r.out);
@@ -101,7 +102,7 @@ test('première pose : mot de passe deux fois, réglage en 600 sans aucun secret
   assert.match(r.out, /Rien à redémarrer/);
 });
 
-test('changer le mot de passe : l’ancien ne passe plus, les sessions tombent, la clé de lecture est gardée et n’est pas réaffichée ; --cle en fait une autre', { skip: SANS_BASH }, (t) => {
+test('changer le mot de passe : l’ancien ne passe plus, les sessions tombent, la clé de lecture est gardée et n’est pas réaffichée ; --cle en fait une autre', { skip: SEUL_LINUX || SANS_BASH }, (t) => {
   const i = instance(t);
   const premiere = i.lancer([], { input: saisie(MOT) });
   const avant = i.reglage();
@@ -130,7 +131,7 @@ test('changer le mot de passe : l’ancien ne passe plus, les sessions tombent, 
   assert.equal(creerAcces({ fichier: i.fichier }).droit({ 'x-maverick-cle': cle }).droit, 'aucun', 'l’ancienne clé ne marche plus');
 });
 
-test('les espaces d’un mot de passe sont gardés tels quels (début, fin, doubles) : la saisie n’est pas rognée par le shell', { skip: SANS_BASH }, (t) => {
+test('les espaces d’un mot de passe sont gardés tels quels (début, fin, doubles) : la saisie n’est pas rognée par le shell', { skip: SEUL_LINUX || SANS_BASH }, (t) => {
   const i = instance(t);
   const mot = '  un mot  de passe avec espaces  ';
   const r = i.lancer([], { input: saisie(mot) });
@@ -160,7 +161,7 @@ test('refus sans rien modifier : deux saisies différentes, mot de passe trop co
   assert.ok(!existsSync(i.fichier));
 });
 
-test('--portee tout est le même réglage (même mot de passe, une seule saisie) ; les sessions sont refaites ; --etat le dit sans montrer de secret ; --retirer rouvre le site', { skip: SANS_BASH }, (t) => {
+test('--portee tout est le même réglage (même mot de passe, une seule saisie) ; les sessions sont refaites ; --etat le dit sans montrer de secret ; --retirer rouvre le site', { skip: SEUL_LINUX || SANS_BASH }, (t) => {
   const i = instance(t);
   assert.match(i.lancer(['--etat']).out, /non protégé/);
   i.lancer([], { input: saisie(MOT) });
@@ -197,7 +198,7 @@ test('la clé de lecture ne s’affiche que sur un terminal : hors terminal (san
   assert.ok(!existsSync(i.fichier));
 });
 
-test('l’installateur livre acces/acces.sh (exécutable, remplacé à chaque installation) sans jamais toucher à secrets/', { skip: SANS_TAR }, (t) => {
+test('l’installateur livre acces/acces.sh (exécutable, remplacé à chaque installation) sans jamais toucher à secrets/', { skip: SEUL_LINUX || SANS_TAR }, (t) => {
   const racine = dossierTemporaire('acces-installateur', { t });
   const site = join(racine, 'site');
   mkdirSync(site);
@@ -218,7 +219,7 @@ test('l’installateur livre acces/acces.sh (exécutable, remplacé à chaque in
   assert.equal(readFileSync(livre, 'utf8'), readFileSync(SCRIPT, 'utf8'));
 });
 
-test('R291 : --cle-de-depot pose la clé de dépôt (affichée une seule fois, jamais en clair dans le fichier ni en argument), garde le mot de passe et la clé de lecture ; --etat la dit ; --sans-cle-de-depot revient à l’état sûr', { skip: SANS_BASH }, (t) => {
+test('R291 : --cle-de-depot pose la clé de dépôt (affichée une seule fois, jamais en clair dans le fichier ni en argument), garde le mot de passe et la clé de lecture ; --etat la dit ; --sans-cle-de-depot revient à l’état sûr', { skip: SEUL_LINUX || SANS_BASH }, (t) => {
   const i = instance(t);
   const premiere = i.lancer([], { input: saisie(MOT) });
   const cleDeLecture = i.cleAffichee(premiere.out);
@@ -262,7 +263,7 @@ test('R291 : --cle-de-depot pose la clé de dépôt (affichée une seule fois, j
   assert.match(i.lancer(['--etat']).out, /Clé de dépôt : non/);
 });
 
-test('R291 : --cle-de-depot sans mot de passe posé est refusé (rien n’est écrit), comme sur la production', { skip: SANS_BASH }, (t) => {
+test('R291 : --cle-de-depot sans mot de passe posé est refusé (rien n’est écrit), comme sur la production', { skip: SEUL_LINUX || SANS_BASH }, (t) => {
   const i = instance(t);
   const r = i.lancer(['--cle-de-depot']);
   assert.equal(r.code, 1, r.out);

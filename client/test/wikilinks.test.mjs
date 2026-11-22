@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { normalize } from '../src/lib/text.mjs';
@@ -89,7 +90,7 @@ test('remarkWikilinks remplace les liens, marque les manquants, épargne les lie
 
 test('scanContent peut écarter les pages status: example', async () => {
   const { scanContent } = await import('../src/lib/wikilinks.mjs');
-  const dir = new URL('./fixtures/wiki', import.meta.url).pathname;
+  const dir = fileURLToPath(new URL('./fixtures/wiki', import.meta.url));
   const ids = (entries) => entries.map((e) => e.id).sort();
   assert.deepEqual(ids(scanContent(dir)), ['guide/sans-statut', 'races/demo', 'races/vrai']);
   assert.deepEqual(ids(scanContent(dir, { includeExamples: false })), ['guide/sans-statut', 'races/vrai']);

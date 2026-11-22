@@ -11,6 +11,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { dossierTemporaire, variablesTemporaires } from './aide-dossier-temporaire.mjs';
+import { SEUL_LINUX } from './aide-plateforme.mjs';
 
 const VPS = fileURLToPath(new URL('../../deploy/vps/', import.meta.url));
 const EMPREINTES = fileURLToPath(new URL('../serveur/empreintes.mjs', import.meta.url));
@@ -113,7 +114,7 @@ test('R308 : serveur et sauvegardes chez OVH, plus aucun texte d\'hébergement n
   assert.match(textes.guide, /phrase de chiffrement gardée hors d'OVH/, 'la phrase survit à un problème de compte et se transmet à la passation');
 });
 
-test('la répétition joue toute la procédure : gel refusé puis accepté, emballage, archive altérée refusée, base présente jamais écrasée, déballage, EGALITE, DIFFERENCE, retour arrière', { skip }, (t) => {
+test('la répétition joue toute la procédure : gel refusé puis accepté, emballage, archive altérée refusée, base présente jamais écrasée, déballage, EGALITE, DIFFERENCE, retour arrière', { skip: SEUL_LINUX || skip }, (t) => {
   const monde = dossierTemporaire('demenagement-repetition', { t });
   const r = lancer('repetition-demenagement.sh', ['--dossier', join(monde, 'repetition')]);
   assert.equal(r.status, 0, `${r.stdout}\n${r.stderr}`);
@@ -200,7 +201,7 @@ test('copier-db replie le journal -wal d\'une base arrêtée dans la copie, sans
   for (const [f, h] of Object.entries(avant)) assert.equal(sha(join(fige, f)), h, `${f} d'origine est intact`);
 });
 
-test('emballer refuse des conteneurs en marche et deballer refuse une archive qui n\'est pas une archive de déménagement', { skip }, (t) => {
+test('emballer refuse des conteneurs en marche et deballer refuse une archive qui n\'est pas une archive de déménagement', { skip: SEUL_LINUX || skip }, (t) => {
   const d = dossierTemporaire('demenagement-refus', { t });
   const env = {
     MAVERICK_ESSAI: '1', MAVERICK_DIR_NORMAL: join(d, 'n'), MAVERICK_DIR_TEST: join(d, 't'),
@@ -264,7 +265,7 @@ function monde(t, { versionDuNouveau = '0.9.1' } = {}) {
   return { r, env, emballer, d: (...p) => join(r, ...p) };
 }
 
-test('une base déjà présente fait refuser le déballage même avec des milliers d\'entrées (jamais « find | grep -q » : le SIGPIPE ferait dire « vide »)', { skip }, (t) => {
+test('une base déjà présente fait refuser le déballage même avec des milliers d\'entrées (jamais « find | grep -q » : le SIGPIPE ferait dire « vide »)', { skip: SEUL_LINUX || skip }, (t) => {
   const m = monde(t);
   const archive = m.emballer();
   const db = m.d('nouveau', 't', 'db');
@@ -275,7 +276,7 @@ test('une base déjà présente fait refuser le déballage même avec des millie
   assert.equal(readdirSync(db).length, 3000, 'rien n\'a été touché');
 });
 
-test('reprise après une panne à mi-chemin : la même commande reprend sans rien écraser, une base modifiée est refusée', { skip }, (t) => {
+test('reprise après une panne à mi-chemin : la même commande reprend sans rien écraser, une base modifiée est refusée', { skip: SEUL_LINUX || skip }, (t) => {
   const m = monde(t);
   const archive = m.emballer();
   let r = lancer('demenagement.sh', ['deballer', archive], m.env('nouveau'));
@@ -300,7 +301,7 @@ test('reprise après une panne à mi-chemin : la même commande reprend sans rie
   assert.match(r.stderr, /pas vide/);
 });
 
-test('une version installée différente de celle de l\'ancien serveur (plus ancienne OU plus récente) : code 4 avant de rien poser, avec les commandes ; la même : code 0', { skip }, (t) => {
+test('une version installée différente de celle de l\'ancien serveur (plus ancienne OU plus récente) : code 4 avant de rien poser, avec les commandes ; la même : code 0', { skip: SEUL_LINUX || skip }, (t) => {
   for (const [version, mot] of [['0.9.0', 'plus ancienne'], ['0.9.2', 'plus récente']]) {
     const m = monde(t, { versionDuNouveau: version });
     const archive = m.emballer();

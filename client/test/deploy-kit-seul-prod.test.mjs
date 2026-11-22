@@ -12,6 +12,7 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { fabriquer } from '../../deploy/installateur/fabriquer.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { SEUL_LINUX } from './aide-plateforme.mjs';
 
 const have = (cmd, arg = '--version') => spawnSync(cmd, [arg], { stdio: 'ignore' }).status === 0;
 const skip = !(have('tar') && have('gzip') && have('find')) && 'tar, gzip ou find indisponible';
@@ -102,7 +103,7 @@ const appels = (journal) => (existsSync(journal) ? readFileSync(journal, 'utf8')
 const etat = (dossier) => lister(dossier).filter((f) => f !== 'installation.log');
 const verrouRendu = (dossier) => assert.equal(existsSync(join(dossier, '.installation.lock')), false, 'le verrou est rendu');
 
-test('fabriquer --mode prod --kit-seul : une archive sans page ni service, avec le kit, activer.sh et ses outils ; KIT_SEUL=1 ; la ligne de commande aussi', { skip }, () => {
+test('fabriquer --mode prod --kit-seul : une archive sans page ni service, avec le kit, activer.sh et ses outils ; KIT_SEUL=1 ; la ligne de commande aussi', { skip: SEUL_LINUX || skip }, () => {
   const i = kitSeul();
   assert.equal(i.KIT_SEUL, '1');
   assert.equal(i.PAGES, '0');
@@ -135,7 +136,7 @@ test('fabriquer --mode prod --kit-seul : une archive sans page ni service, avec 
   assert.match(sans.stderr, /--kit est réservé au mode test/, 'sans --kit-seul, la production n’emporte toujours aucun kit');
 });
 
-test('REFUS sans activation-par-paquet : avant toute écriture, le geste exact (le fichier, ou remettre actif à false) ; un lien à sa place aussi ; rien n’est modifié, le verrou est rendu', { skip }, () => {
+test('REFUS sans activation-par-paquet : avant toute écriture, le geste exact (le fichier, ou remettre actif à false) ; un lien à sa place aussi ; rien n’est modifié, le verrou est rendu', { skip: SEUL_LINUX || skip }, () => {
   const dossier = productionInstallee();
   const journal = join(racine, `appels-${(n += 1)}`);
   const avant = etat(dossier);
@@ -161,7 +162,7 @@ test('REFUS sans activation-par-paquet : avant toute écriture, le geste exact (
   assert.deepEqual(etat(dossier), [...avant, 'activation-par-paquet'].sort());
 });
 
-test('REFUS hors root, ou sur une instance qui n’est pas une production installée : avant toute écriture, avec le geste', { skip }, () => {
+test('REFUS hors root, ou sur une instance qui n’est pas une production installée : avant toute écriture, avec le geste', { skip: SEUL_LINUX || skip }, () => {
   const dossier = productionInstallee();
   writeFileSync(join(dossier, 'activation-par-paquet'), '');
   const avant = etat(dossier);
@@ -189,7 +190,7 @@ test('REFUS hors root, ou sur une instance qui n’est pas une production instal
   assert.equal(appels(journal).length, 0);
 });
 
-test('avec activation-par-paquet et root : seul le kit est posé (activation/kit/, à root), site/ et site/_serveur/ ne sont pas touchés, VERSION suit, puis activer.sh est lancé sans option', { skip }, () => {
+test('avec activation-par-paquet et root : seul le kit est posé (activation/kit/, à root), site/ et site/_serveur/ ne sont pas touchés, VERSION suit, puis activer.sh est lancé sans option', { skip: SEUL_LINUX || skip }, () => {
   const dossier = productionInstallee();
   writeFileSync(join(dossier, 'activation-par-paquet'), '');
   const siteAvant = lister(join(dossier, 'site')).map((f) => [f, readFileSync(join(dossier, 'site', f), 'utf8')]);
@@ -221,7 +222,7 @@ test('avec activation-par-paquet et root : seul le kit est posé (activation/kit
   verrouRendu(dossier);
 });
 
-test('un correctif urgent (VX.Y-hotfix.N) ou une régénération (-rebuild.N) lance activer.sh --correctif : la même version n’est pas un refus ; la reprise le dit', { skip }, () => {
+test('un correctif urgent (VX.Y-hotfix.N) ou une régénération (-rebuild.N) lance activer.sh --correctif : la même version n’est pas un refus ; la reprise le dit', { skip: SEUL_LINUX || skip }, () => {
   for (const [tag, motif] of [['v0.2-hotfix.1', 'hotfix'], ['v0.2-rebuild.1', 'rebuild']]) {
     const dossier = productionInstallee();
     writeFileSync(join(dossier, 'activation-par-paquet'), '');
@@ -235,7 +236,7 @@ test('un correctif urgent (VX.Y-hotfix.N) ou une régénération (-rebuild.N) la
   }
 });
 
-test('GitHub a livré, la production a refusé : le kit est posé mais VERSION garde l’étiquette d’AVANT (la production n’est pas « à jour »), la marque est posée, une seule ligne ERREUR dit le geste, code 4', { skip }, () => {
+test('GitHub a livré, la production a refusé : le kit est posé mais VERSION garde l’étiquette d’AVANT (la production n’est pas « à jour »), la marque est posée, une seule ligne ERREUR dit le geste, code 4', { skip: SEUL_LINUX || skip }, () => {
   const dossier = productionInstallee();
   writeFileSync(join(dossier, 'activation-par-paquet'), '');
   const journal = join(racine, `appels-${(n += 1)}`);
@@ -263,7 +264,7 @@ test('GitHub a livré, la production a refusé : le kit est posé mais VERSION g
   verrouRendu(dossier);
 });
 
-test('RETOUR AUTOMATIQUE INCOMPLET, IMPOSSIBLE ou activer.sh sorti en 0 sans « == PASSEE » : même traitement (VERSION d’avant, marque, code 4) ; seul « == PASSEE » avec le code 0 passe', { skip }, () => {
+test('RETOUR AUTOMATIQUE INCOMPLET, IMPOSSIBLE ou activer.sh sorti en 0 sans « == PASSEE » : même traitement (VERSION d’avant, marque, code 4) ; seul « == PASSEE » avec le code 0 passe', { skip: SEUL_LINUX || skip }, () => {
   for (const [activer, derniere] of [
     [1, 'activation : == RETOUR AUTOMATIQUE INCOMPLET : le service ne répond pas. Voir les ATTENTION ci-dessus.'],
     [1, 'activation : == RETOUR AUTOMATIQUE : le contrôle de santé a échoué.'],
@@ -282,7 +283,7 @@ test('RETOUR AUTOMATIQUE INCOMPLET, IMPOSSIBLE ou activer.sh sorti en 0 sans « 
   }
 });
 
-test('une activation PASSÉE écrit VERSION (la nouvelle étiquette), efface la marque d’un refus d’avant et la mise en attente ; la livraison suivante, refusée, ne laisse que SA marque', { skip }, () => {
+test('une activation PASSÉE écrit VERSION (la nouvelle étiquette), efface la marque d’un refus d’avant et la mise en attente ; la livraison suivante, refusée, ne laisse que SA marque', { skip: SEUL_LINUX || skip }, () => {
   const dossier = productionInstallee();
   writeFileSync(join(dossier, 'activation-par-paquet'), '');
   const journal = join(racine, `appels-${(n += 1)}`);
@@ -304,7 +305,7 @@ test('une activation PASSÉE écrit VERSION (la nouvelle étiquette), efface la 
   assert.deepEqual(readdirSync(dossier).filter((f) => f.startsWith('.activation-refusee-')), ['.activation-refusee-v0.3']);
 });
 
-test('une seconde livraison remplace le kit par renommage : un seul kit gardé, les restes d’une installation interrompue sont jetés ou remis', { skip }, () => {
+test('une seconde livraison remplace le kit par renommage : un seul kit gardé, les restes d’une installation interrompue sont jetés ou remis', { skip: SEUL_LINUX || skip }, () => {
   const dossier = productionInstallee();
   writeFileSync(join(dossier, 'activation-par-paquet'), '');
   const journal = join(racine, `appels-${(n += 1)}`);
@@ -348,7 +349,7 @@ test('un installateur de production COMPLET (sans --kit-seul) reste celui d’av
   assert.notDeepEqual(etat(dossier), avant);
 });
 
-test('un kit PÉRIMÉ (celui d’une livraison précédente) n’est jamais lancé : ATTENTION et les deux gestes ; le kit de cette livraison l’est', { skip }, () => {
+test('un kit PÉRIMÉ (celui d’une livraison précédente) n’est jamais lancé : ATTENTION et les deux gestes ; le kit de cette livraison l’est', { skip: SEUL_LINUX || skip }, () => {
   const dossier = productionInstallee();
   writeFileSync(join(dossier, 'activation-par-paquet'), '');
   const journal = join(racine, `appels-${(n += 1)}`);
@@ -367,7 +368,7 @@ test('un kit PÉRIMÉ (celui d’une livraison précédente) n’est jamais lanc
   assert.ok(existsSync(join(dossier, 'activation/kit/kit.json')), 'le kit n’est pas effacé : le geste est au propriétaire');
 });
 
-test('installation.log est borné : au-delà de 200 Ko, les 500 dernières lignes ; un refus répété du minuteur ne le fait pas grossir sans fin', { skip }, () => {
+test('installation.log est borné : au-delà de 200 Ko, les 500 dernières lignes ; un refus répété du minuteur ne le fait pas grossir sans fin', { skip: SEUL_LINUX || skip }, () => {
   const dossier = productionInstallee();
   const journal = join(racine, `appels-${(n += 1)}`);
   writeFileSync(join(dossier, 'installation.log'), `${'ligne ancienne d’un refus répété\n'.repeat(12000)}`);

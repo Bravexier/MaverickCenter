@@ -7,7 +7,7 @@
 
 /** @returns {{titre: string, objets: {nom: string, genre: 'table'|'vue'|string, description: string, derivee: string|null, colonnes: Map<string,string>}[]}[]} */
 export function lireSchema(texte) {
-  const lignes = texte.split('\n');
+  const lignes = texte.split(/\r?\n/);   // un clone Windows peut avoir le schéma en CRLF
   const sections = [];
   let section = { titre: 'Hors section', objets: [] };
   sections.push(section);

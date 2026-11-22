@@ -124,7 +124,7 @@ test('tags : le libellé d’un mot-clé, la clé d’un homonyme ; db:sync-page
   const [page] = lirePages(base);
   base.close();
   assert.deepEqual(page.tags, ['essai-zq-classe', 'Autre zq', 'essai-zq-race'], 'la clé des homonymes, le libellé sinon');
-  const p = spawnSync('python3', ['-I', '-c', `
+  const p = spawnSync('python3', ['-X', 'utf8', '-I', '-c', `
 import json, sqlite3, sys
 sys.path.insert(0, ${JSON.stringify(join(client, '..', 'tools', 'db'))})
 import maverick as T

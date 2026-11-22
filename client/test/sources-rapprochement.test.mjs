@@ -21,7 +21,7 @@ import { dossierTemporaire, fichierTemporaire } from './aide-dossier-temporaire.
 
 const racine = new URL('../../', import.meta.url);
 const lire = (chemin) => JSON.parse(readFileSync(new URL(chemin, racine), 'utf8'));
-const cheminDe = (chemin) => new URL(chemin, racine).pathname;
+const cheminDe = (chemin) => fileURLToPath(new URL(chemin, racine));
 // Les instantanés : sources/raw, ou MAVERICK_SOURCES_RAW (archive restaurée après le lot 12, R296).
 const classeurs = join(dossierDesExports(fileURLToPath(racine)), 'classeurs');
 const registre = JSON.parse(readFileSync(join(classeurs, 'registre.json'), 'utf8'));

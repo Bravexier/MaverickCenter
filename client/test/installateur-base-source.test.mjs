@@ -9,6 +9,7 @@ import { dirname, join, relative } from 'node:path';
 import { test } from 'node:test';
 import { fabriquer } from '../../deploy/installateur/fabriquer.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { SEUL_LINUX } from './aide-plateforme.mjs';
 
 const have = (cmd) => spawnSync(cmd, ['--version'], { stdio: 'ignore' }).status === 0;
 const skip = !(have('tar') && have('gzip')) && 'tar ou gzip indisponible';
@@ -90,7 +91,7 @@ test('sans db/source : une publication plus ancienne s’installe comme avant (l
   assert.match(readFileSync(join(dev, 'VERSION'), 'utf8'), /^version=0\.2\.9$/m);
 });
 
-test('bascule.sh, repetition-prod.sh et repetition-bascule-2.sh : livrés par l’installateur de test à la racine de l’instance, exécutables ; jamais par celui de production', { skip }, () => {
+test('bascule.sh, repetition-prod.sh et repetition-bascule-2.sh : livrés par l’installateur de test à la racine de l’instance, exécutables ; jamais par celui de production', { skip: SEUL_LINUX || skip }, () => {
   const dev = enService('livraison-bascule', { source: false });
   const prod = join(racine, 'prod-sans-bascule');
   assert.equal(lancer(installateur({ mode: 'prod', label: 'p', version: '0.2.0' }), ['--dossier', prod]).code, 0);

@@ -9,6 +9,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import { fabriquer } from '../../deploy/installateur/fabriquer.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { SEUL_LINUX } from './aide-plateforme.mjs';
 
 const have = (cmd, arg = '--version') => spawnSync(cmd, [arg], { stdio: 'ignore' }).status === 0;
 const skip = !(have('tar') && have('gzip')) && 'tar ou gzip indisponible';
@@ -61,7 +62,7 @@ test('fabrication : un seul fichier, paramètres remplis, archive contrôlée pa
   assert.ok(!existsSync(join(dossier('jamais'), 'site')));
 });
 
-test('paramètres refusés : étiquette de test en production et inversement, version invalide', () => {
+test('paramètres refusés : étiquette de test en production et inversement, version invalide', { skip: SEUL_LINUX }, () => {
   const s = site('x');
   const base = { site: s, version: '0.2.0', sha: 'b'.repeat(40), sortie: join(racine, 'sortie') };
   assert.throws(() => fabriquer({ ...base, mode: 'prod', tag: 'v0.2.0' }), /étiquette de production/);
@@ -209,7 +210,7 @@ test('test : aucun « rm » de l\'installateur ne vise db/ (garde sur le script)
   assert.ok(!lignes.some((l) => /find\s+"\$DOSSIER\/db\/?"[^|]*(-exec\s+rm|-delete)/.test(l)));
 });
 
-test('test : --copier-base-prod copie la production à l\'instant de l\'installation, dans un db/ vide seulement', { skip }, () => {
+test('test : --copier-base-prod copie la production à l\'instant de l\'installation, dans un db/ vide seulement', { skip: SEUL_LINUX || skip }, () => {
   const { prod, test_ } = productionEtTest('nas-copie');
   const i = installateur({ mode: 'test', label: 'dev', version: '0.2.3' }).fichier;
   const r = lancer(i, ['--dossier', test_, '--copier-base-prod']); // dossier de la production : le voisin « maverick-center »
@@ -293,7 +294,7 @@ test('test : db/ qui se remplit pendant la copie (le service y écrit) : la copi
   assert.ok(!existsSync(join(test_, 'site')), 'le site n\'est pas posé : l\'installation s\'arrête avant');
 });
 
-test('test : une entrée créée dans db/ juste avant sa pose (fichier ou dossier) n\'est jamais écrasée : la copie s\'interrompt', { skip }, () => {
+test('test : une entrée créée dans db/ juste avant sa pose (fichier ou dossier) n\'est jamais écrasée : la copie s\'interrompt', { skip: SEUL_LINUX || skip }, () => {
   // Un faux « ln » (fichier) et un faux « mkdir » (dossier) créent l'entrée visée, comme le service qui écrit entre le contrôle et la pose,
   // puis laissent la vraie commande échouer dessus : la pose ne doit rien remplacer.
   for (const [cas, entree, fausse] of [['fichier', 'maverick.db', 'ln'], ['dossier', 'pieces', 'mkdir']]) {
@@ -315,7 +316,7 @@ test('test : une entrée créée dans db/ juste avant sa pose (fichier ou dossie
   }
 });
 
-test('test : la pose conserve droits et contenu, fichiers et dossiers', { skip }, () => {
+test('test : la pose conserve droits et contenu, fichiers et dossiers', { skip: SEUL_LINUX || skip }, () => {
   const { test_, prod } = productionEtTest('nas-copie-pose-droits');
   chmodSync(join(prod, 'db', 'pieces'), 0o750);
   chmodSync(join(prod, 'db', 'pieces', 'carte.txt'), 0o640);
@@ -371,7 +372,7 @@ test('refus : mauvais mode d\'instance, production introuvable ou confondue avec
   assert.equal(lancer(iProd, ['--dossier', ancienne]).code, 0, 'un installateur de production peut la reprendre');
 });
 
-test('verrou : une installation en cours bloque la suivante ; un verrou périmé est nettoyé', { skip }, () => {
+test('verrou : une installation en cours bloque la suivante ; un verrou périmé est nettoyé', { skip: SEUL_LINUX || skip }, () => {
   const prod = dossier('verrou');
   mkdirSync(join(prod, '.installation.lock'), { recursive: true });
   writeFileSync(join(prod, '.installation.lock', 'pid'), String(process.pid));
@@ -403,7 +404,7 @@ test('test : base de production en cours d\'écriture (WAL non reporté) copiée
   copie.close();
 });
 
-test('test : liens symboliques dans la base du serveur normal refusés ; db/ lui-même peut être un lien ; droits des fichiers conservés', { skip }, () => {
+test('test : liens symboliques dans la base du serveur normal refusés ; db/ lui-même peut être un lien ; droits des fichiers conservés', { skip: SEUL_LINUX || skip }, () => {
   const parent = dossier('liens');
   const prod = join(parent, 'maverick-center');
   const iTest = installateur({ mode: 'test', label: 't' }).fichier;

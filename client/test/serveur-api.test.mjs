@@ -16,6 +16,7 @@ import { adresseDuPortrait } from '../src/lib/personnages-liste.mjs';
 import { empreinte } from '../src/lib/portrait.mjs';
 import { cheminDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { SEUL_LINUX } from './aide-plateforme.mjs';
 
 /** Images écrites par Chromium (test/portrait.test.mjs) : WebP, JPEG et PNG de 3 × 2 pixels. */
 const IMAGES = JSON.parse(readFileSync(new URL('./fixtures/portraits.json', import.meta.url), 'utf8'));
@@ -428,7 +429,7 @@ test('guetteur : agit quand une nouvelle valeur est vue deux fois de suite, une 
   assert.deepEqual(['a', 'b', 'c', 'c', 'c', 'a', 'a', 'a'].map(g), [false, false, false, true, false, false, true, false]);
 });
 
-test('serveur HTTP : état, création, corps trop gros ; surveillance : nouvelles règles, base remplacée, nouvelle version du service', async () => {
+test('serveur HTTP : état, création, corps trop gros ; surveillance : nouvelles règles, base remplacée, nouvelle version du service', { skip: SEUL_LINUX }, async () => {
   const dossier = join(racine, 'instance-db');
   const regles = join(racine, 'regles.db');
   copyFileSync(REGLES, regles);

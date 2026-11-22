@@ -8,6 +8,7 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, statSync, write
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { SCRIPTS, aOutil, creerMonde } from './aide-sauvegardes.mjs';
+import { SEUL_LINUX } from './aide-plateforme.mjs';
 
 const skip = !aOutil('bash') && 'bash indisponible';
 
@@ -46,7 +47,7 @@ function ecrireLEtat(monde, docker, { garder = false } = {}) {
 }
 const lireJson = (chemin) => JSON.parse(readFileSync(chemin, 'utf8'));
 
-test('dossier des métriques réglé absent : l’état va là où chaque conteneur lit ses métriques (montage vu par docker inspect), créé s’il manque', { skip }, (t) => {
+test('dossier des métriques réglé absent : l’état va là où chaque conteneur lit ses métriques (montage vu par docker inspect), créé s’il manque', { skip: SEUL_LINUX || skip }, (t) => {
   const m = creerMonde(t);
   const docker = fauxDockerInspect(m);
   // le site de dev : un docker-compose.yml d'avant les métriques (pas de MAVERICK_DOSSIER_METRIQUES) : son service les range dans <MAVERICK_DB>/metriques
@@ -64,7 +65,7 @@ test('dossier des métriques réglé absent : l’état va là où chaque conten
   assert.match(docker.appels(), /inspect -f .* maverick-center-test-serveur/);
 });
 
-test('dossier réglé absent, sans conteneur : le dossier que le .env de l’instance désigne s’il existe ; un dossier seulement déduit n’est jamais créé', { skip }, (t) => {
+test('dossier réglé absent, sans conteneur : le dossier que le .env de l’instance désigne s’il existe ; un dossier seulement déduit n’est jamais créé', { skip: SEUL_LINUX || skip }, (t) => {
   const m = creerMonde(t);
   const docker = fauxDockerInspect(m);
   mkdirSync(m.d('partage'));

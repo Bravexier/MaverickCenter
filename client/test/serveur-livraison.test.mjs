@@ -12,6 +12,7 @@ import YAML from 'yaml';
 import { CLIENT, DOSSIER_LIVRE, ENTREE, livrerServeur, modulesDuServeur } from '../serveur/livraison.mjs';
 import { cheminBase } from '../src/lib/donnees.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { SEUL_LINUX } from './aide-plateforme.mjs';
 
 const racine = dossierTemporaire('livraison');
 const depot = fileURLToPath(new URL('../../', import.meta.url));
@@ -62,7 +63,7 @@ test('version.json porte le commit du code quand l’appelant le donne (lot 11, 
   assert.deepEqual(lectures, ['service.mjs'], 'une seule lecture de version.commit : celle qui nourrit le paquet');
 });
 
-test('le service livré démarre tel quel depuis dist/_serveur/ (variables d’environnement du conteneur), répond, puis s’arrête sur SIGTERM', async () => {
+test('le service livré démarre tel quel depuis dist/_serveur/ (variables d’environnement du conteneur), répond, puis s’arrête sur SIGTERM', { skip: SEUL_LINUX }, async () => {
   const dist = join(racine, 'dist');
   const info = livrerServeur(dist, { version: '1.2.3' });
   assert.deepEqual(info.modules, modulesDuServeur());

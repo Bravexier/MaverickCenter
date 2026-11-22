@@ -20,6 +20,7 @@ import { baseDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { idDuMotCleNomme } from './aide-mots-cles.mjs';
 import { registreDeMigration } from './aide-registres-sortis.mjs';
+import { sansCrlf } from './aide-fins-de-ligne.mjs';
 
 const script = fileURLToPath(new URL('../../tools/sheets/invocations.py', import.meta.url));
 const bestiaire = fileURLToPath(new URL('../src/content/wiki/bestiaire', import.meta.url));
@@ -112,7 +113,7 @@ for s in d["sheets"]:
     for c in s["cells"]:
         c.pop("note", None)
 json.dump(d, open(sys.argv[2], "w", encoding="utf-8"), ensure_ascii=False)`;
-  const fabrique = spawnSync('python3', ['-I', '-c', retire, dumpReel, join(dir, 'perime.json')], { encoding: 'utf8' });
+  const fabrique = spawnSync('python3', ['-X', 'utf8', '-I', '-c', retire, dumpReel, join(dir, 'perime.json')], { encoding: 'utf8' });
   assert.equal(fabrique.status, 0, fabrique.stderr);
 
   const refus = spawnSync('python3', ['-I', script, '--dump', join(dir, 'perime.json'), '--out', out], { encoding: 'utf8' });
@@ -542,9 +543,9 @@ essai("non-placee", pages, placed[1:])
 
 test('couverture : une note du dump retirée, dupliquée, tronquée ou non placée, ou un ancien libellé, arrête le script (check_coverage)', { skip: sansPython }, () => {
   const ctx = preparer();
-  const r = spawnSync('python3', ['-I', '-c', COUVERTURE, script, ctx.dump, nom('G', 3, 'g')], { encoding: 'utf8' });
+  const r = spawnSync('python3', ['-X', 'utf8', '-I', '-c', COUVERTURE, script, ctx.dump, nom('G', 3, 'g')], { encoding: 'utf8' });
   assert.equal(r.status, 0, r.stderr);
-  const lignes = Object.fromEntries(r.stdout.trim().split('\n').map((l) => l.split(' => ')));
+  const lignes = Object.fromEntries(sansCrlf(r.stdout).trim().split('\n').map((l) => l.split(' => ')));
   assert.equal(lignes.intact, 'aucune erreur');
   const prefixe = 'contrôle de couverture des notes de cellule : ';
   assert.ok(lignes.retiree.startsWith(prefixe), lignes.retiree);
@@ -753,11 +754,11 @@ for f in failures:
 test('--verifier rejoue le cas « dump périmé » : si la garde est neutralisée, le rejeu le signale (replay_errors)', { skip: sansPython }, () => {
   const ctx = preparer();
   assert.equal(lancer(ctx).status, 0);
-  const sain = spawnSync('python3', ['-I', '-c', GARDE, script, ctx.dump, ctx.out, 'normale'], { encoding: 'utf8' });
+  const sain = spawnSync('python3', ['-X', 'utf8', '-I', '-c', GARDE, script, ctx.dump, ctx.out, 'normale'], { encoding: 'utf8' });
   assert.equal(sain.status, 0, sain.stderr);
   assert.doesNotMatch(sain.stdout, /ECART/, sain.stdout);
   const casSains = Number(sain.stdout.match(/cas=(\d+)/)[1]);
-  const casse = spawnSync('python3', ['-I', '-c', GARDE, script, ctx.dump, ctx.out, 'neutralisee'], { encoding: 'utf8' });
+  const casse = spawnSync('python3', ['-X', 'utf8', '-I', '-c', GARDE, script, ctx.dump, ctx.out, 'neutralisee'], { encoding: 'utf8' });
   assert.equal(casse.status, 0, casse.stderr);
   assert.match(casse.stdout, /ECART rejeu « dump périmé »/, casse.stdout);
   assert.equal(Number(casse.stdout.match(/cas=(\d+)/)[1]), casSains);

@@ -9,6 +9,7 @@ import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { dossierTemporaire, variablesTemporaires } from './aide-dossier-temporaire.mjs';
+import { SEUL_LINUX } from './aide-plateforme.mjs';
 
 const ICI = dirname(fileURLToPath(import.meta.url));
 const ARCHIVER = join(ICI, '..', '..', 'deploy', 'archivage-du-contenu', 'archiver.sh');
@@ -91,7 +92,7 @@ describe('archivage du contenu (lot 12)', { skip: SANS }, () => {
     assert.equal(m.lancer(ARCHIVER, []).code, 2);
   });
 
-  it('refuse une destination absente, relative, sans valeur, dans le dépôt, ou déjà archivée', (t) => {
+  it('refuse une destination absente, relative, sans valeur, dans le dépôt, ou déjà archivée', { skip: SEUL_LINUX }, (t) => {
     const m = monde(t);
     const sans = (args) => m.lancer(ARCHIVER, ['--jour-j', ...args]);
     assert.match(sans(['--depot', m.depot, '--commit', m.commit]).out, /--vers/, 'aucune destination par défaut');
@@ -113,7 +114,7 @@ describe('archivage du contenu (lot 12)', { skip: SANS }, () => {
     assert.match(encore.out, /existe déjà/);
   });
 
-  it('une archive par catégorie lue dans le commit, un manifeste (chemin, taille, sha256), le commit et la date ; les mixtes seulement sur demande', (t) => {
+  it('une archive par catégorie lue dans le commit, un manifeste (chemin, taille, sha256), le commit et la date ; les mixtes seulement sur demande', { skip: SEUL_LINUX }, (t) => {
     const m = monde(t);
     // l'arbre de travail diffère du commit : une modification non validée et un fichier de plus ne sont jamais archivés
     poser(m.depot, { 'data/rows/VERSION': '2\n', 'data/rows/non-valide.sql': 'x\n' });
@@ -157,7 +158,7 @@ describe('archivage du contenu (lot 12)', { skip: SANS }, () => {
     assert.notEqual(spawnSync(process.execPath, ['--no-warnings', LISTER, '--racine', m.depot, '--ref', 'inconnu'], { encoding: 'utf8' }).status, 0);
   });
 
-  it('--liste : sans node, la liste faite ailleurs ; seuls les trois chemins sont admis, les mixtes se demandent en toutes lettres', (t) => {
+  it('--liste : sans node, la liste faite ailleurs ; seuls les trois chemins sont admis, les mixtes se demandent en toutes lettres', { skip: SEUL_LINUX }, (t) => {
     const m = monde(t);
     const faire = (...args) => spawnSync(process.execPath, ['--no-warnings', LISTER, '--racine', m.depot, '--ref', m.commit, ...args], { encoding: 'utf8' }).stdout;
     const fichier = join(m.racine, 'liste.tsv');
@@ -187,7 +188,7 @@ describe('archivage du contenu (lot 12)', { skip: SANS }, () => {
     assert.equal(m3.archiver(['--liste', join(m3.racine, 'avec.tsv'), '--avec-mixtes'], sansOutil).code, 0);
   });
 
-  it('une archive du contenu qui échoue est effacée ; la relance est possible, et une archive déjà complète n\'est jamais effacée', (t) => {
+  it('une archive du contenu qui échoue est effacée ; la relance est possible, et une archive déjà complète n\'est jamais effacée', { skip: SEUL_LINUX }, (t) => {
     const m = monde(t);
     const bonne = spawnSync(process.execPath, ['--no-warnings', LISTER, '--racine', m.depot, '--ref', m.commit], { encoding: 'utf8' }).stdout;
     const fausse = join(m.racine, 'fausse.tsv');
@@ -204,7 +205,7 @@ describe('archivage du contenu (lot 12)', { skip: SANS }, () => {
     assert.deepEqual(empreinte(complete), avant, 'l\'archive complète est intacte');
   });
 
-  it('verifier.sh : zéro écart sur une archive saine ; le moindre écart donne un code non nul', (t) => {
+  it('verifier.sh : zéro écart sur une archive saine ; le moindre écart donne un code non nul', { skip: SEUL_LINUX }, (t) => {
     const m = monde(t);
     assert.equal(m.archiver(['--avec-mixtes']).code, 0);
     const d = m.archive();
@@ -254,7 +255,7 @@ describe('archivage du contenu (lot 12)', { skip: SANS }, () => {
     verifie([enTrop], /intrus/);
   });
 
-  it('les publications : gh api en GET seulement, un fichier par asset avec son sha256 ; une altération ou un sha256 que GitHub contredit sont refusés', (t) => {
+  it('les publications : gh api en GET seulement, un fichier par asset avec son sha256 ; une altération ou un sha256 que GitHub contredit sont refusés', { skip: SEUL_LINUX }, (t) => {
     const m = monde(t);
     const appels = join(m.racine, 'gh-appels.log');
     const octets = { 11: 'installateur un\n', 12: 'installateur deux\n' };

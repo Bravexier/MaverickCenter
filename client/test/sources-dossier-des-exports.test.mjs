@@ -12,6 +12,7 @@ import { dossierDesExports, dossiersDesMigrations } from '../../tools/sources/do
 import { registresDOrthographe } from '../../tools/sources/rapprocher.mjs';
 import { environnementDeLaPasse, PASSE_SANS_LE_CONTENU } from '../scripts/essai-mecanique-tests.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { sansCrlf } from './aide-fins-de-ligne.mjs';
 
 const RACINE = resolve(fileURLToPath(new URL('../../', import.meta.url)));
 const PAR_DEFAUT = join(RACINE, 'sources', 'raw');
@@ -43,8 +44,8 @@ test('tools/docs/codex.py lit le dossier de la variable (SOURCE y est rangé), s
     const env = { ...process.env };
     delete env.MAVERICK_SOURCES_RAW;
     if (variable !== undefined) env.MAVERICK_SOURCES_RAW = variable;
-    return execFileSync('python3', ['-I', '-c', 'import sys; sys.path.insert(0, "tools/docs"); import codex; print(codex.EXPORTS); print(codex.SOURCE)'],
-      { cwd: RACINE, env, encoding: 'utf8' }).trim().split('\n');
+    return sansCrlf(execFileSync('python3', ['-X', 'utf8', '-I', '-c', 'import sys; sys.path.insert(0, "tools/docs"); import codex; print(codex.EXPORTS); print(codex.SOURCE)'],
+      { cwd: RACINE, env, encoding: 'utf8' })).trim().split('\n');
   };
   const [exports, source] = lire(dossier);
   assert.equal(exports, dossier);

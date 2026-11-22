@@ -12,6 +12,7 @@ import { after, before, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { fabriquer } from '../../deploy/installateur/fabriquer.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { SEUL_LINUX } from './aide-plateforme.mjs';
 
 const SCRIPT = fileURLToPath(new URL('../../deploy/installateur/mise-a-jour.sh', import.meta.url));
 const have = (cmd) => spawnSync(cmd, ['--version'], { stdio: 'ignore' }).status === 0;
@@ -119,7 +120,7 @@ function nas(name, { token = TOKEN, mode = 'prod', env: envInstance = {} } = {})
   return { base, run, read, has: (p) => existsSync(join(base, p)), log: () => read('mise-a-jour.log'), tag: () => read('VERSION').match(/^tag=(.*)$/m)[1] };
 }
 
-test('production : installation initiale, puis « à jour » sans retélécharger, puis --force', { skip }, async () => {
+test('production : installation initiale, puis « à jour » sans retélécharger, puis --force', { skip: SEUL_LINUX || skip }, async () => {
   publier(livraison('v1.2', { label: 'v1' }), livraison('v1.1'));
   const n = nas('initial');
   const first = await n.run();
@@ -140,7 +141,7 @@ test('production : installation initiale, puis « à jour » sans retélécharge
   assert.equal(state.telechargements, avant + 1);
 });
 
-test('le mode est celui de l\'instance (VERSION) ; sans VERSION, refus avant tout appel réseau', { skip }, async () => {
+test('le mode est celui de l\'instance (VERSION) ; sans VERSION, refus avant tout appel réseau', { skip: SEUL_LINUX || skip }, async () => {
   publier(livraison('v1.0', { label: 'un' }), livraison('v1.0.0', { label: 'test' }));
   const prod = join(root, 'serveur-normal');
   writeFileSync(join(root, 'prod.sh'), state.livraisons[0].octets);
@@ -163,7 +164,7 @@ test('le mode est celui de l\'instance (VERSION) ; sans VERSION, refus avant tou
   assert.equal(n.read('site/index.html'), '<h1>accueil test suivant</h1>');
 });
 
-test('production : un hotfix (même version, nouvelle étiquette) est installé ; les pages retirées disparaissent', { skip }, async () => {
+test('production : un hotfix (même version, nouvelle étiquette) est installé ; les pages retirées disparaissent', { skip: SEUL_LINUX || skip }, async () => {
   publier(livraison('v1.2', { label: 'v1' }));
   const n = nas('hotfix');
   assert.equal((await n.run()).code, 0);
@@ -176,7 +177,7 @@ test('production : un hotfix (même version, nouvelle étiquette) est installé 
   assert.ok(!n.has('site/wiki/p3/index.html'));
 });
 
-test('étiquettes du bot (tools/flux-git) : production VX.Y et VX.Y-hotfix.N, test VX.Y.Z', { skip }, async () => {
+test('étiquettes du bot (tools/flux-git) : production VX.Y et VX.Y-hotfix.N, test VX.Y.Z', { skip: SEUL_LINUX || skip }, async () => {
   publier(livraison('V1.2-hotfix.1', { label: 'correctif' }), livraison('V1.2.4', { label: 'test' }), livraison('V1.2'));
   const n = nas('etiquettes-v');
   const prod = await n.run();
@@ -190,7 +191,7 @@ test('étiquettes du bot (tools/flux-git) : production VX.Y et VX.Y-hotfix.N, te
   assert.equal(t.tag(), 'V1.2.4');
 });
 
-test('test : la version complète la plus récente (VX.Y.Z ou sa régénération), jamais une production ; la production refuse une livraison de test', { skip }, async () => {
+test('test : la version complète la plus récente (VX.Y.Z ou sa régénération), jamais une production ; la production refuse une livraison de test', { skip: SEUL_LINUX || skip }, async () => {
   // De la plus récente à la plus ancienne. V1.2.0-test : la forme d'avant (seule la 0.2.0 l'a portée), encore reconnue comme une livraison de test.
   publier(livraison('V1.3', { label: 'production plus récente' }), livraison('V1.2.4-rebuild.1', { label: 'régénérée' }), livraison('V1.2.4'),
     livraison('V1.2.0-test', { label: 'ancienne forme' }), livraison('V1.2'));
@@ -218,7 +219,7 @@ test('test : la version complète la plus récente (VX.Y.Z ou sa régénération
   assert.equal(prod.read('site/index.html'), '<h1>accueil prod</h1>');
 });
 
-test('test : la plus haute version gagne même si GitHub liste V0.3.99 avant V0.3.100 (trois chiffres)', { skip }, async () => {
+test('test : la plus haute version gagne même si GitHub liste V0.3.99 avant V0.3.100 (trois chiffres)', { skip: SEUL_LINUX || skip }, async () => {
   // L'ordre observé de l'API (releases?per_page=30) : V0.3.99 en tête, puis V0.3.98, V0.3.112, V0.3.100, V0.3.85, et une production au milieu.
   publier(livraison('V0.3.99', { label: 'v99' }), livraison('V0.3.98'), livraison('V0.3.112', { label: 'v112' }), livraison('V0.3.3'),
     livraison('V0.4', { label: 'prod' }), livraison('V0.3.100'), livraison('V0.3.85'));
@@ -233,7 +234,7 @@ test('test : la plus haute version gagne même si GitHub liste V0.3.99 avant V0.
   assert.match(encore.out, /À jour \(V0\.3\.112\)/);
 });
 
-test('test : la livraison de test la plus récente est installée ; la base de la production n\'est jamais copiée, db/ n\'est jamais touché', { skip }, async () => {
+test('test : la livraison de test la plus récente est installée ; la base de la production n\'est jamais copiée, db/ n\'est jamais touché', { skip: SEUL_LINUX || skip }, async () => {
   publier(livraison('v1.2', { label: 'prod' }));
   const prod = nas('maverick-center');
   assert.equal((await prod.run()).code, 0);
@@ -256,7 +257,7 @@ test('test : la livraison de test la plus récente est installée ; la base de l
   assert.match(t.read('.env'), /8081/);
 });
 
-test('test : une livraison plus ancienne que celle installée est refusée (R274), sans téléchargement ni changement de db/', { skip }, async () => {
+test('test : une livraison plus ancienne que celle installée est refusée (R274), sans téléchargement ni changement de db/', { skip: SEUL_LINUX || skip }, async () => {
   publier(livraison('V1.2.9', { label: 'v9' }));
   const t = nas('refus-plus-ancienne', { mode: 'test' });
   assert.equal((await t.run()).code, 0);
@@ -300,7 +301,7 @@ test('test : une livraison plus ancienne que celle installée est refusée (R274
   assert.match((await t.run()).out, /À jour \(V1\.2\.10-rebuild\.1\)/, 'une fois revenu, l\'instance est à jour');
 });
 
-test('test : sans VERSION ni étiquette installée, on installe ; une étiquette installée hors forme de test est refusée (--force installe)', { skip }, async () => {
+test('test : sans VERSION ni étiquette installée, on installe ; une étiquette installée hors forme de test est refusée (--force installe)', { skip: SEUL_LINUX || skip }, async () => {
   publier(livraison('V1.2.4', { label: 'v4' }));
   // Première installation : pas de VERSION (MODE donné), db/ déjà rempli : l'installation n'y touche pas.
   const neuf = nas('premiere-installation', { mode: 'test' });
@@ -329,7 +330,7 @@ test('test : sans VERSION ni étiquette installée, on installe ; une étiquette
   assert.equal(bizarre.tag(), 'V1.2.4');
 });
 
-test('production : le contrôle d\'ordre ne s\'applique pas (« latest » est choisi par GitHub ; revenir en arrière = publier la version voulue)', { skip }, async () => {
+test('production : le contrôle d\'ordre ne s\'applique pas (« latest » est choisi par GitHub ; revenir en arrière = publier la version voulue)', { skip: SEUL_LINUX || skip }, async () => {
   publier(livraison('v1.3', { label: 'v13' }));
   const p = nas('prod-sans-controle-d-ordre');
   assert.equal((await p.run()).code, 0);
@@ -339,7 +340,7 @@ test('production : le contrôle d\'ordre ne s\'applique pas (« latest » est ch
   assert.equal(p.tag(), 'v1.2');
 });
 
-test('jeton refusé : erreur claire, site inchangé', { skip }, async () => {
+test('jeton refusé : erreur claire, site inchangé', { skip: SEUL_LINUX || skip }, async () => {
   publier(livraison('v1.2', { label: 'v1' }));
   const n = nas('jeton-refuse');
   assert.equal((await n.run()).code, 0);
@@ -352,7 +353,7 @@ test('jeton refusé : erreur claire, site inchangé', { skip }, async () => {
   assert.equal(n.tag(), 'v1.2');
 });
 
-test('aucune livraison publiée, ou installateur pas encore joint : erreur claire', { skip }, async () => {
+test('aucune livraison publiée, ou installateur pas encore joint : erreur claire', { skip: SEUL_LINUX || skip }, async () => {
   publier();
   let res = await nas('rien').run();
   assert.equal(res.code, 1);
@@ -366,7 +367,7 @@ test('aucune livraison publiée, ou installateur pas encore joint : erreur clair
   assert.match(res.out, /pas encore d'installateur joint/);
 });
 
-test('installateur corrompu : refusé, site inchangé', { skip }, async () => {
+test('installateur corrompu : refusé, site inchangé', { skip: SEUL_LINUX || skip }, async () => {
   publier(livraison('v1.2', { label: 'v1' }));
   const n = nas('corrompu');
   assert.equal((await n.run()).code, 0);
@@ -378,7 +379,7 @@ test('installateur corrompu : refusé, site inchangé', { skip }, async () => {
   assert.equal(n.tag(), 'v1.2');
 });
 
-test('jeton absent ou mal formé, réglages invalides : refus avant tout appel réseau', { skip }, async () => {
+test('jeton absent ou mal formé, réglages invalides : refus avant tout appel réseau', { skip: SEUL_LINUX || skip }, async () => {
   publier(livraison('v1.2'));
   state.auth.length = 0;
   let res = await nas('sans-jeton', { token: null }).run();
@@ -396,7 +397,7 @@ test('jeton absent ou mal formé, réglages invalides : refus avant tout appel r
   assert.equal(state.auth.length, 0, 'aucune requête ne doit partir');
 });
 
-test('verrou : exemplaire déjà en cours = on sort sans rien faire ; verrou périmé = nettoyé', { skip }, async () => {
+test('verrou : exemplaire déjà en cours = on sort sans rien faire ; verrou périmé = nettoyé', { skip: SEUL_LINUX || skip }, async () => {
   publier(livraison('v1.2'));
   const n = nas('verrou');
   mkdirSync(join(n.base, '.mise-a-jour.lock'));
@@ -414,7 +415,7 @@ test('verrou : exemplaire déjà en cours = on sort sans rien faire ; verrou pé
   assert.ok(!n.has('.mise-a-jour.lock'), 'le verrou est retiré en fin de script');
 });
 
-test('GELER suspend les mises à jour (retour à une version précédente)', { skip }, async () => {
+test('GELER suspend les mises à jour (retour à une version précédente)', { skip: SEUL_LINUX || skip }, async () => {
   publier(livraison('v1.3.0', { label: 'test seul' }));
   const t = nas('test-seul', { mode: 'test' });
   const res = await t.run();
@@ -434,7 +435,7 @@ test('GELER suspend les mises à jour (retour à une version précédente)', { s
   assert.equal(t.tag(), 'v1.3.1');
 });
 
-test('les trois derniers installateurs installés sont gardés dans installateur-courant/ (garde-fou 19), pour la copie extérieure des sauvegardes ; une livraison déjà installée le reçoit une fois', { skip }, async () => {
+test('les trois derniers installateurs installés sont gardés dans installateur-courant/ (garde-fou 19), pour la copie extérieure des sauvegardes ; une livraison déjà installée le reçoit une fois', { skip: SEUL_LINUX || skip }, async () => {
   publier(livraison('v1.2', { label: 'v1' }));
   const n = nas('installateur-garde');
   assert.equal((await n.run()).code, 0);
@@ -483,7 +484,7 @@ function depotDeKit() {
   return d;
 }
 
-test('production : un installateur COMPLET qui sortirait en 3 par accident ne pose jamais de marque (le code 3 ne vaut que pour un « kit seul », ligne KIT_SEUL=1) (PR 5b)', { skip }, async () => {
+test('production : un installateur COMPLET qui sortirait en 3 par accident ne pose jamais de marque (le code 3 ne vaut que pour un « kit seul », ligne KIT_SEUL=1) (PR 5b)', { skip: SEUL_LINUX || skip }, async () => {
   const complete = livraison('v1.1', { label: 'complet' });
   const accident = livraison('v1.2', { label: 'accident' });
   // la partie script est modifiée (sortie en 3 à l'installation), l'archive ne l'est pas : --verifier passe toujours
@@ -501,7 +502,7 @@ test('production : un installateur COMPLET qui sortirait en 3 par accident ne po
   assert.doesNotMatch(n.log(), /Il ne sera pas retenté/);
 });
 
-test('production : un installateur « kit seul » refusé faute d’activation-par-paquet n’est pas retéléchargé toutes les 5 minutes ; le fichier posé, ou --force, le relance (PR 5b)', { skip }, async () => {
+test('production : un installateur « kit seul » refusé faute d’activation-par-paquet n’est pas retéléchargé toutes les 5 minutes ; le fichier posé, ou --force, le relance (PR 5b)', { skip: SEUL_LINUX || skip }, async () => {
   const complete = livraison('v1.1', { label: 'complet' });
   const kitSeul = { tag: 'v1.2', octets: readFileSync(fabriquer({ mode: 'prod', tag: 'v1.2', version: '1.2.0', sha: 'c'.repeat(40), kit: depotDeKit(), kitSeul: true, sortie: join(root, 'sortie') }).fichier), id: (numero += 1) };
   publier(complete);
@@ -534,7 +535,7 @@ test('production : un installateur « kit seul » refusé faute d’activation-p
   assert.ok(!n.has('.refus-v1.2'), 'une installation réussie efface les marques');
 });
 
-test('production : un installateur « kit seul » dont l’activation n’a pas passé (code 4) laisse VERSION à l’étiquette d’avant ; la marque .activation-refusee-<étiquette> évite de la rejouer toutes les 5 minutes ; --force la relance ; une installation réussie efface les marques', { skip }, async () => {
+test('production : un installateur « kit seul » dont l’activation n’a pas passé (code 4) laisse VERSION à l’étiquette d’avant ; la marque .activation-refusee-<étiquette> évite de la rejouer toutes les 5 minutes ; --force la relance ; une installation réussie efface les marques', { skip: SEUL_LINUX || skip }, async () => {
   const complete = livraison('v1.1', { label: 'complet' });
   const kitSeul = { tag: 'v1.2', octets: readFileSync(fabriquer({ mode: 'prod', tag: 'v1.2', version: '1.2.0', sha: 'c'.repeat(40), kit: depotDeKit(), kitSeul: true, sortie: join(root, 'sortie') }).fichier), id: (numero += 1) };
   // la partie script est modifiée comme le fait le vrai installateur (kit-seul.sh, activation-fin-prod) : marque, ligne ERREUR, code 4 ; l'archive ne l'est pas
@@ -572,7 +573,7 @@ test('production : un installateur « kit seul » dont l’activation n’a pas 
   assert.equal(n.tag(), 'v1.3');
 });
 
-test('production : un installateur COMPLET qui sortirait en 4 par accident ne pose jamais de marque (le code 4 ne vaut que pour un « kit seul »)', { skip }, async () => {
+test('production : un installateur COMPLET qui sortirait en 4 par accident ne pose jamais de marque (le code 4 ne vaut que pour un « kit seul »)', { skip: SEUL_LINUX || skip }, async () => {
   const complete = livraison('v1.1', { label: 'complet' });
   const accident = livraison('v1.2', { label: 'accident' });
   const texte = accident.octets.toString('latin1');

@@ -4,7 +4,7 @@
 // L'installateur lui-même est éprouvé par installateur-essai-de-structure.test.mjs.
 import assert from 'node:assert/strict';
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { test } from 'node:test';
 import { classer } from '../serveur/acces-routes.mjs';
 import { traiter } from '../serveur/api.mjs';
@@ -73,7 +73,7 @@ test('une demande déposée : accusée, essayée sur une copie avec les migratio
   assert.deepEqual(resultat.versions, { avant: NUMERO - 1, apres: V });
   assert.deepEqual(resultat.migrations.map((m) => m.numero), livre.migrations.filter((m) => m.numero >= NUMERO).map((m) => m.numero));
   assert.equal(resultat.demande.version, '1.2.3');
-  assert.equal(resultat.demande.nom, demande.split('/').at(-1));
+  assert.equal(resultat.demande.nom, basename(demande));
   assert.equal(resultat.instance, 'dev');
   assert.equal(typeof resultat.resume, 'string');
   assert.equal(resultat.resume, resumeDuBilan(resultat));

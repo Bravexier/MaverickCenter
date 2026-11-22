@@ -213,4 +213,7 @@ def main():
 
 
 if __name__ == "__main__":
+    if sys.platform == "win32":  # sortie lue en UTF-8 par les outils Node (-I ignore PYTHONUTF8)
+        for flux in (sys.stdout, sys.stderr):
+            flux.reconfigure(encoding="utf-8", newline="\n")
     main()

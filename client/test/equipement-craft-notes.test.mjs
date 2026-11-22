@@ -195,7 +195,7 @@ except (ValueError, SystemExit) as err:
 
 /** Exécute `code` (Python) avec le module de `script` chargé (`ext`) et `donnees` (`req`) ; renvoie { ok } ou { erreur }. */
 function appel(script, code, donnees = {}) {
-  const run = spawnSync('python3', ['-I', '-c', HARNAIS], { input: JSON.stringify({ script, code, ...donnees }), encoding: 'utf8' });
+  const run = spawnSync('python3', ['-X', 'utf8', '-I', '-c', HARNAIS], { input: JSON.stringify({ script, code, ...donnees }), encoding: 'utf8' });
   assert.equal(run.status, 0, run.stderr);
   return JSON.parse(run.stdout.trim().split('\n').at(-1));
 }

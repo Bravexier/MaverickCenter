@@ -85,7 +85,7 @@ testDeLaMixte('R31 : une race que le site n’a pas touchée reste contrôlée c
     courante.close();
   }
   const rowsDImport = join(tmp, 'rows-import');
-  const exporter = spawnSync('python3', ['-I', '-c', 'import sqlite3, sys; sys.path.insert(0, sys.argv[1]); import maverick as T; T.exporter(sqlite3.connect(sys.argv[2]), sys.argv[3])',
+  const exporter = spawnSync('python3', ['-X', 'utf8', '-I', '-c', 'import sqlite3, sys; sys.path.insert(0, sys.argv[1]); import maverick as T; T.exporter(sqlite3.connect(sys.argv[2]), sys.argv[3])',
     join(RACINE, 'tools', 'db'), baseImport, rowsDImport], { encoding: 'utf8' });
   assert.equal(exporter.status, 0, exporter.stderr);
   const temoin = verifier(rowsDImport);

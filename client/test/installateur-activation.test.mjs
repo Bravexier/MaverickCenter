@@ -10,6 +10,7 @@ import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fabriquer } from '../../deploy/installateur/fabriquer.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { SEUL_LINUX } from './aide-plateforme.mjs';
 
 const have = (cmd, arg = '--version') => spawnSync(cmd, [arg], { stdio: 'ignore' }).status === 0;
 const skip = !(have('tar') && have('gzip') && have('find')) && 'tar, gzip ou find indisponible';
@@ -60,7 +61,7 @@ test('éteint par défaut : sans activation-par-paquet, l’installation de prod
   assert.match(a.stderr, /== IMPOSSIBLE : l'activation par paquet est éteinte \(.*activation-par-paquet n'existe pas\) : rien n'a changé/);
 });
 
-test('avec activation-par-paquet, root : maverick-site créé s’il manque, site/ à lui SAUF _serveur/ (à root), chown -h par find -P ; sans kit, activer.sh n’est pas lancé et le dit', { skip }, () => {
+test('avec activation-par-paquet, root : maverick-site créé s’il manque, site/ à lui SAUF _serveur/ (à root), chown -h par find -P ; sans kit, activer.sh n’est pas lancé et le dit', { skip: SEUL_LINUX || skip }, () => {
   const i = prod();
   const dossier = instance();
   writeFileSync(join(dossier, 'activation-par-paquet'), '');

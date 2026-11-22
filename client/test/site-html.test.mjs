@@ -656,7 +656,7 @@ test('couleurs des magies : jamais en style sur une page construite, toujours pa
   const VARIABLES_DES_MAGIES = /style="[^"]*(?:--couleur-magie|--couleur-texte-magie|--mag:|--mag-texte:|--m:|--m-texte:|--g:|--g-texte:|--creature-[12]:|--magie-[12]:)/;
   const avecMagie = new Map();
   for (const fichier of walk(dist).filter((f) => f.endsWith('.html'))) {
-    const rel = relative(dist, fichier);
+    const rel = relative(dist, fichier).split('\\').join('/');
     const html = readFileSync(fichier, 'utf8');
     assert.doesNotMatch(html, VARIABLES_DES_MAGIES, `${rel} : une couleur de magie en style`);
     // un élément de la palette, ou un élément d'une magie (même sans sa classe : une régression qui remettrait `style="--c: #…"`), n'a aucune couleur
@@ -714,7 +714,7 @@ const ELEMENTS_DU_LOT_DES_CARACTERISTIQUES = new Set([
 test('couleurs des caractéristiques, compétences, postures et alignements : jamais en style sur une page construite, toujours par une classe qui existe', options, () => {
   const parZone = new Map();
   for (const fichier of walk(dist).filter((f) => f.endsWith('.html'))) {
-    const rel = relative(dist, fichier);
+    const rel = relative(dist, fichier).split('\\').join('/');
     const html = readFileSync(fichier, 'utf8');
     // les variables de ces couleurs ne sont plus posées en style, nulle part
     assert.doesNotMatch(html, /style="[^"]*(?:--c-texte:|--texte-sur-c:|--c1:|--c2:)/, `${rel} : une variable de couleur du lot en style`);
@@ -755,7 +755,7 @@ const CLASSE_DU_LOT_DES_CLASSES_ET_RACES = /^couleur-(?:classe|race|palier|mode|
 test('couleurs des catégories de classe, des races, des paliers, du Mode Hyper et neutre : jamais en style sur une page construite, toujours par une classe qui existe', options, () => {
   const parPage = new Map();
   for (const fichier of walk(dist).filter((f) => f.endsWith('.html'))) {
-    const rel = relative(dist, fichier);
+    const rel = relative(dist, fichier).split('\\').join('/');
     const html = readFileSync(fichier, 'utf8');
     // les variables de ces couleurs ne sont plus posées en style, nulle part
     assert.doesNotMatch(html, /style="[^"]*(?:--couleur-classe|--couleur-texte-classe|--couleur-race|--cla:|--rac:|--r:)/, `${rel} : une variable de couleur du lot en style`);
@@ -801,7 +801,7 @@ const CLASSE_DU_LOT_DES_ARMES_ET_ARMURES = /^couleur-(?:materiau|arme|armure|poi
 test('couleurs des matériaux, des armes de départ, des types d’armure et des poids des boucliers : jamais en style sur une page construite, toujours par une classe qui existe', options, () => {
   const parPage = new Map();
   for (const fichier of walk(dist).filter((f) => f.endsWith('.html'))) {
-    const rel = relative(dist, fichier);
+    const rel = relative(dist, fichier).split('\\').join('/');
     const html = readFileSync(fichier, 'utf8');
     // les variables de ces couleurs ne sont plus posées en style, nulle part
     assert.doesNotMatch(html, /style="[^"]*(?:--mat:|--mat-texte:|--t:|--depart:)/, `${rel} : une variable de couleur du lot en style`);
@@ -845,7 +845,7 @@ const CLASSE_DU_LOT_DES_ACCESSOIRES = /^couleur-niveau-/;
 test('couleurs des niveaux des accessoires : jamais en style sur une page construite, toujours par une classe qui existe', options, () => {
   const parPage = new Map();
   for (const fichier of walk(dist).filter((f) => f.endsWith('.html'))) {
-    const rel = relative(dist, fichier);
+    const rel = relative(dist, fichier).split('\\').join('/');
     const html = readFileSync(fichier, 'utf8');
     // la variable de ces couleurs n'est plus posée, nulle part (ni en style, ni dans l'attribut data-niveaux d'une ligne de compétence)
     assert.doesNotMatch(html, /--niv\b/, `${rel} : --niv`);

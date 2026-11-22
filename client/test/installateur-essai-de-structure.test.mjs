@@ -11,6 +11,7 @@ import { dirname, join, relative } from 'node:path';
 import { test } from 'node:test';
 import { fabriquer } from '../../deploy/installateur/fabriquer.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { SEUL_LINUX } from './aide-plateforme.mjs';
 
 const have = (cmd) => spawnSync(cmd, ['--version'], { stdio: 'ignore' }).status === 0;
 const skip = !(have('tar') && have('gzip')) && 'tar ou gzip indisponible';
@@ -192,7 +193,7 @@ test('refus sans db/source : le refus est au journal, l’installation continue'
   }
 });
 
-test('refus avec db/source : l’installation s’arrête AVANT d’avoir rien installé — tout l’état de l’instance est identique, la demande est retirée', { skip }, async () => {
+test('refus avec db/source : l’installation s’arrête AVANT d’avoir rien installé — tout l’état de l’instance est identique, la demande est retirée', { skip: SEUL_LINUX || skip }, async () => {
   const dossier = await enService('refus-avec-marqueur', { source: true });
   const avant = etat(dossier, [ESSAIS]);
   const service = fauxService(dossier, { verdict: 'refuse', resume: 'refusé : migration 0002, étape cles_etrangeres : une clé étrangère rompue' });

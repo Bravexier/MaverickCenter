@@ -176,7 +176,7 @@ describe('le workflow avec un paquet (dépôts git temporaires)', () => {
     const origine = join(dir, 'origine.git');
     enveloppeGit(gitLocal(dir))(['init', '--quiet', '--bare', '-b', 'dev', origine]);
     const cloner = (nom) => {
-      enveloppeGit(gitLocal(dir))(['clone', '--quiet', origine, nom]);
+      enveloppeGit(gitLocal(dir))(['clone', '--quiet', '-c', 'core.autocrlf=false', origine, nom]); // les octets du commit, y compris sur un poste Windows
       const d = join(dir, nom);
       const g = enveloppeGit(gitLocal(d));
       configurer(g);

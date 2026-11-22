@@ -16,6 +16,7 @@ import {
 } from '../../deploy/installateur/kit.mjs';
 import { validerLeKit } from '../serveur/atelier.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { SEUL_LINUX } from './aide-plateforme.mjs';
 
 const have = (cmd, arg = '--version') => spawnSync(cmd, [arg], { stdio: 'ignore' }).status === 0;
 const skip = !(have('tar') && have('gzip')) && 'tar ou gzip indisponible';
@@ -153,7 +154,7 @@ test('la règle os, cpu et libc est celle de npm : liste permise, « ! » refus�
   assert.equal(compatible(['musl'], null), true, 'libc inconnue (hors de Linux) : on ne retire rien');
 });
 
-test('kit.json : format, version, commit, Node de .nvmrc, plateforme, image Docker, taille, nombre de fichiers, empreinte, empreinte de l’archive', { skip }, () => {
+test('kit.json : format, version, commit, Node de .nvmrc, plateforme, image Docker, taille, nombre de fichiers, empreinte, empreinte de l’archive', { skip: SEUL_LINUX || skip }, () => {
   const depot = fauxDepot();
   const { meta, kit, destination } = kitDe(depot);
   assert.deepEqual(JSON.parse(readFileSync(join(destination, META_DU_KIT), 'utf8')), meta, 'le fichier dit ce que la fonction rend');
@@ -224,7 +225,7 @@ function lancer(fichier, args = [], env = {}) {
   return { code: r.status, out: r.stdout + r.stderr };
 }
 
-test('fabriquer.mjs refuse --kit en production sans --kit-seul (module et ligne de commande), et un dépôt sans client/', { skip }, () => {
+test('fabriquer.mjs refuse --kit en production sans --kit-seul (module et ligne de commande), et un dépôt sans client/', { skip: SEUL_LINUX || skip }, () => {
   const depot = fauxDepot();
   assert.throws(() => installateur({ mode: 'prod', kit: depot }), /--kit est réservé au mode test/);
   assert.throws(() => installateur({ mode: 'test', kit: join(racine, 'pas-un-depot') }), /--kit : pas de client\/package\.json/);
@@ -259,7 +260,7 @@ test('l’installateur de production reste identique à celui d’avant le kit :
   assert.ok(!existsSync(join(prod, 'atelier')), 'rien du kit en production');
 });
 
-test('l’installateur de test pose le kit dans atelier/kit/, hors de site/ ; un seul kit est gardé, remplacé par renommage ; rien ne traîne', { skip }, () => {
+test('l’installateur de test pose le kit dans atelier/kit/, hors de site/ ; un seul kit est gardé, remplacé par renommage ; rien ne traîne', { skip: SEUL_LINUX || skip }, () => {
   const depot = fauxDepot();
   const test1 = installateur({ kit: depot, label: 'v1' });
   assert.equal(test1.kit.format, FORMAT_KIT);
@@ -302,7 +303,7 @@ function fauxDf(libreKo) {
   return dossier;
 }
 
-test('une installation interrompue entre les deux renommages : l’ancien kit, seul resté, est remis en place et non effacé ; un ancien périmé et un provisoire sont jetés', { skip }, () => {
+test('une installation interrompue entre les deux renommages : l’ancien kit, seul resté, est remis en place et non effacé ; un ancien périmé et un provisoire sont jetés', { skip: SEUL_LINUX || skip }, () => {
   const depot = fauxDepot();
   const instance = join(racine, `test-${(n += 1)}`);
   assert.equal(lancer(installateur({ kit: depot }).fichier, ['--dossier', instance]).code, 0);
@@ -326,7 +327,7 @@ test('une installation interrompue entre les deux renommages : l’ancien kit, s
   assert.deepEqual(rienDeProvisoire(atelier), []);
 });
 
-test('place insuffisante : l’installation CONTINUE sans kit, le journal le dit, le site est posé, l’ancien kit reste', { skip }, () => {
+test('place insuffisante : l’installation CONTINUE sans kit, le journal le dit, le site est posé, l’ancien kit reste', { skip: SEUL_LINUX || skip }, () => {
   const depot = fauxDepot();
   const instance = join(racine, `test-${(n += 1)}`);
   assert.equal(lancer(installateur({ kit: depot }).fichier, ['--dossier', instance]).code, 0);
@@ -349,7 +350,7 @@ test('place insuffisante : l’installation CONTINUE sans kit, le journal le dit
   assert.match(trop.out, /pas assez de place/);
 });
 
-test('une décompression qui échoue ne fait pas échouer l’installation : sans kit, rien de provisoire laissé, l’ancien kit reste', { skip }, () => {
+test('une décompression qui échoue ne fait pas échouer l’installation : sans kit, rien de provisoire laissé, l’ancien kit reste', { skip: SEUL_LINUX || skip }, () => {
   const depot = fauxDepot();
   const instance = join(racine, `test-${(n += 1)}`);
   assert.equal(lancer(installateur({ kit: depot }).fichier, ['--dossier', instance]).code, 0);

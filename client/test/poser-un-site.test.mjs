@@ -10,6 +10,7 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { CODES, poserUnSite, RefusDePose } from '../scripts/poser-un-site.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
+import { SEUL_LINUX } from './aide-plateforme.mjs';
 
 const SCRIPT = fileURLToPath(new URL('../scripts/poser-un-site.mjs', import.meta.url));
 const racine = dossierTemporaire('poser-un-site');
@@ -42,7 +43,7 @@ const lancer = (m, plus = []) => {
   return { code: r.status, err: r.stderr, resume: existsSync(m.resume) ? JSON.parse(readFileSync(m.resume, 'utf8')) : null };
 };
 
-test('pose : un fichier neuf, un fichier changé, un identique (non réécrit), un retiré ; `_serveur/` intact ; aucun fichier provisoire ne reste', () => {
+test('pose : un fichier neuf, un fichier changé, un identique (non réécrit), un retiré ; `_serveur/` intact ; aucun fichier provisoire ne reste', { skip: SEUL_LINUX }, () => {
   const m = monde({
     servi: { 'index.html': '<h1>ancien</h1>', 'a.html': 'a', 'a/b.html': 'b', 'vieux.js': 'x', 'vieux/dossier/f.txt': 'f', '_astro/meme.js': 'meme' },
     fabrique: { 'index.html': '<h1>neuf</h1>', 'a.html': 'a', 'a/b.html': 'b', 'nouveau/p.html': 'p', '_astro/meme.js': 'meme', '_astro/neuf.css': 'css' },
@@ -112,7 +113,7 @@ test('une source qui est elle-même un lien est refusée', () => {
   assert.equal(readFileSync(join(m.cible, 'index.html'), 'utf8'), 'ancien');
 });
 
-test('une FIFO dans la source est refusée (83) sans bloquer', { skip: spawnSync('mkfifo', ['--version'], { stdio: 'ignore' }).error ? 'mkfifo indisponible' : false }, () => {
+test('une FIFO dans la source est refusée (83) sans bloquer', { skip: SEUL_LINUX || (spawnSync('mkfifo', ['--version'], { stdio: 'ignore' }).error ? 'mkfifo indisponible' : false) }, () => {
   const m = monde({ servi: { 'index.html': 'ancien' }, fabrique: { 'index.html': 'neuf' } });
   const fifo = spawnSync('mkfifo', [join(m.source, 'tuyau.html')]);
   assert.equal(fifo.status, 0);
@@ -226,7 +227,7 @@ test('--serveur : le service neuf remplace l’ancien (fichiers changés, neufs,
   assert.equal(lister(m.cible).some((f) => /\.pose-.*\.tmp$/.test(f)), false);
 });
 
-test('--serveur : version.json, que le service surveille pour se relancer, est posé EN DERNIER (même quand un nom de fichier le suit dans l’ordre alphabétique)', () => {
+test('--serveur : version.json, que le service surveille pour se relancer, est posé EN DERNIER (même quand un nom de fichier le suit dans l’ordre alphabétique)', { skip: SEUL_LINUX }, () => {
   const m = mondeDuService({ servi: { 'serveur/index.mjs': 'ancien', 'version.json': '{"version":"1"}' }, neuf: { ...SERVICE_NEUF, 'zz/dernier.mjs': 'z', 'zz/zz/autre.mjs': 'z' } });
   const r = lancer(m, ['--serveur']);
   assert.equal(r.code, 0, r.err);

@@ -28,6 +28,7 @@ import { texteSansBalises } from '../src/lib/mots-cles-balises.mjs';
 import { chargerVocabulaire } from '../src/lib/mots-cles-db.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 import { registreDeMigration } from './aide-registres-sortis.mjs';
+import { sansCrlf } from './aide-fins-de-ligne.mjs';
 
 const script = fileURLToPath(new URL('../../tools/sheets/classes.py', import.meta.url));
 const wiki = fileURLToPath(new URL('../src/content/wiki', import.meta.url));
@@ -639,9 +640,9 @@ essai("dump-plus-grand", pages, placed, dict(dump, Guerrier=dict(dump["Guerrier"
 
 test('couverture : une note du dump retirée, dupliquée, tronquée, ajoutée, non placée ou écrite sur une autre fiche arrête le script (check_note_coverage)', { skip: sansPython }, () => {
   const ctx = preparer();
-  const r = spawnSync('python3', ['-I', '-c', COUVERTURE, script, ctx.dump, 'guerrier-defensif'], { encoding: 'utf8' });
+  const r = spawnSync('python3', ['-X', 'utf8', '-I', '-c', COUVERTURE, script, ctx.dump, 'guerrier-defensif'], { encoding: 'utf8' });
   assert.equal(r.status, 0, r.stderr);
-  const lignes = Object.fromEntries(r.stdout.trim().split('\n').map((l) => l.split(' => ')));
+  const lignes = Object.fromEntries(sansCrlf(r.stdout).trim().split('\n').map((l) => l.split(' => ')));
   assert.equal(lignes.intact, 'aucune erreur');
   assert.match(lignes.retiree, /page « capacites\/guerrier-defensif » : note de la cellule Guerrier P5 attendue 1 fois, trouvée 0 fois/);
   assert.match(lignes.retiree, /8 note\(s\) dans le dump, 7 écrite\(s\) dans les pages/);
@@ -843,7 +844,7 @@ function ecrireXlsx(ctx, spec) {
   const chemin = join(ctx.dir, 'classeur.xlsx');
   const specification = join(ctx.dir, 'xlsx-spec.json');
   writeFileSync(specification, JSON.stringify(spec));
-  const r = spawnSync('python3', ['-I', '-c', FABRIQUE_XLSX, fixtureXlsx, specification, chemin], { encoding: 'utf8' });
+  const r = spawnSync('python3', ['-X', 'utf8', '-I', '-c', FABRIQUE_XLSX, fixtureXlsx, specification, chemin], { encoding: 'utf8' });
   assert.equal(r.status, 0, r.stderr);
   return chemin;
 }
