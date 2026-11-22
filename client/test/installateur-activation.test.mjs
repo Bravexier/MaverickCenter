@@ -125,7 +125,7 @@ test('l’installateur de test ne porte rien de l’activation : ni fragment, ni
   mkdirSync(contenu);
   const archive = join(contenu, 'a.tar.gz');
   writeFileSync(archive, octets.subarray(octets.indexOf('\n__ARCHIVE__\n') + '\n__ARCHIVE__\n'.length));
-  const l = spawnSync('tar', ['-tzf', archive], { encoding: 'utf8' }).stdout;
+  const l = spawnSync('tar', ['-tzf', 'a.tar.gz'], { cwd: contenu, encoding: 'utf8' }).stdout;
   assert.ok(!/activer\.sh|activation-conteneur\.sh/.test(l), 'ni activer.sh ni son conteneur dans l’archive de test');
   assert.ok(/gel\.sh/.test(l));
 });

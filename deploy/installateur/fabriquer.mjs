@@ -14,14 +14,13 @@
 // Le mode test emporte aussi les scripts de l'atelier du site de dev (deploy/installateur/atelier/), que l'installateur pose dans <instance>/atelier/ (kit-pose.sh).
 // Résultat : <sortie>/maverick-center-<étiquette>-install.sh (chemin écrit sur la sortie standard).
 // Appelé par .github/workflows/livraison.yml après chaque fusion dans dev (mode test) ou master (mode prod), et par fabriquer.sh (à la main).
-import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { chmodSync, copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { livrerServeur } from '../../client/serveur/livraison.mjs';
-import { DOSSIER_DU_KIT, fabriquerLeKit } from './kit.mjs';
+import { archiverLeDossier, DOSSIER_DU_KIT, fabriquerLeKit } from './kit.mjs';
 
 const ICI = dirname(fileURLToPath(import.meta.url));
 /** Fichiers d'hébergement livrés avec le site (l'installateur les pose dans le dossier de l'instance) : nom → source. La configuration nginx est celle du NAS. */
@@ -128,7 +127,7 @@ export function fabriquer(options) {
     }
     const kit = options.kit === undefined ? null : fabriquerLeKit({ racine: resolve(options.kit), destination: join(contenu, DOSSIER_DU_KIT), version, sha });
     const archive = join(travail, 'archive.tar.gz');
-    const tar = spawnSync('tar', ['-czf', archive, '-C', contenu, '.'], { encoding: 'utf8' });
+    const tar = archiverLeDossier(contenu, archive);
     if (tar.status !== 0) throw new Error(`tar : ${tar.stderr}`);
     const octets = readFileSync(archive);
     const valeurs = {

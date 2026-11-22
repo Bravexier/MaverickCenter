@@ -335,7 +335,8 @@ export function extraireDuCommit({ racine, commit, dossier, chemins }) {
   if (!presents.length) return [];
   const archive = spawnSync('git', ['-C', racine, 'archive', '--format=tar', commit, '--', ...presents], { maxBuffer: 1024 * 1024 * 1024 });
   if (archive.status !== 0) throw new ErreurDeControle(`git archive ${commit} : ${String(archive.stderr).trim().split('\n')[0]}`);
-  const tar = spawnSync('tar', ['-x', '-C', dossier], { input: archive.stdout, maxBuffer: 1024 * 1024 });
+  // tar travaille dans le dossier, sans recevoir son chemin : le tar GNU (celui de Git sous Windows) lit « \1 » ou « \t » d'un chemin C:\… comme des séquences d'échappement.
+  const tar = spawnSync('tar', ['-x'], { cwd: dossier, input: archive.stdout, maxBuffer: 1024 * 1024 });
   if (tar.status !== 0) throw new ErreurDeControle(`tar : ${String(tar.stderr).trim().split('\n')[0]}`);
   return presents;
 }

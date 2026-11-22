@@ -30,7 +30,7 @@ function tarball(files, sha) {
     writeFileSync(join(dir, top, path), content);
   }
   const out = join(dir, 'out.tgz');
-  assert.equal(spawnSync('tar', ['-czf', out, '-C', dir, top]).status, 0);
+  assert.equal(spawnSync('tar', ['-czf', 'out.tgz', top], { cwd: dir }).status, 0);
   return readFileSync(out);
 }
 

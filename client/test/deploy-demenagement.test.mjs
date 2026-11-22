@@ -218,7 +218,7 @@ test('emballer refuse des conteneurs en marche et deballer refuse une archive qu
   const dossier = join(d, 'rien');
   mkdirSync(dossier);
   writeFileSync(join(dossier, 'a'), 'a');
-  assert.equal(spawnSync('tar', ['-C', dossier, '-czf', faux, '.']).status, 0);
+  assert.equal(spawnSync('tar', ['-czf', '../faux.tar.gz', '.'], { cwd: dossier }).status, 0);
   r = lancer('demenagement.sh', ['deballer', faux], env);
   assert.notEqual(r.status, 0);
   assert.match(r.stderr, /pas une archive de déménagement/);

@@ -17,7 +17,7 @@
 // Module Node seulement, sans dépendance ; testé par client/test/deploy-kit.test.mjs.
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, rmSync, statSync, lstatSync, writeFileSync } from 'node:fs';
+import { closeSync, cpSync, existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, readdirSync, readlinkSync, rmSync, statSync, lstatSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 
@@ -151,6 +151,20 @@ export function tailleDe(dossier) {
   return somme;
 }
 
+/**
+ * Archive le contenu de `dossier` en tar.gz dans le fichier `archive`, hors de ce dossier. tar y travaille et écrit sur sa sortie standard, sans recevoir aucun chemin :
+ * le tar GNU (celui de Git sous Windows) prend un « -f C:\… » pour un hôte distant.
+ * @returns {import('node:child_process').SpawnSyncReturns<string>}
+ */
+export function archiverLeDossier(dossier, archive) {
+  const sortie = openSync(archive, 'w');
+  try {
+    return spawnSync('tar', ['-czf', '-', '.'], { cwd: dossier, stdio: ['ignore', sortie, 'pipe'], encoding: 'utf8' });
+  } finally {
+    closeSync(sortie);
+  }
+}
+
 /** Ce que git ignore dans client/ (dossiers et fichiers, relatifs à la racine), si la racine est un dépôt git ; liste vide sinon. node_modules/ est le seul ignoré qu'on garde. */
 function ignoresParGit(racine) {
   if (!existsSync(join(racine, '.git'))) return [];
@@ -240,7 +254,7 @@ export function fabriquerLeKit({ racine, destination, version, sha, plateforme =
     mkdirSync(destination, { recursive: true });
     const archive = join(destination, ARCHIVE_DU_KIT);
     rmSync(archive, { force: true });
-    const tar = spawnSync('tar', ['-czf', archive, '-C', kit, '.'], { encoding: 'utf8' });
+    const tar = archiverLeDossier(kit, archive);
     if (tar.status !== 0) throw new ErreurKit([`tar : ${tar.stderr}`]);
     const meta = {
       format: FORMAT_KIT,
