@@ -80,7 +80,7 @@ function kitDe(depot, plateforme = GLIBC) {
   const meta = fabriquerLeKit({ racine: depot, destination, version: '1.2.3', sha: 'a'.repeat(40), plateforme });
   const kit = join(racine, `kit-decompresse-${(n += 1)}`);
   mkdirSync(kit);
-  const r = spawnSync('tar', ['-xzf', join(destination, ARCHIVE_DU_KIT), '-C', kit], { encoding: 'utf8' });
+  const r = spawnSync('tar', ['-xzf', '-'], { cwd: kit, input: readFileSync(join(destination, ARCHIVE_DU_KIT)), encoding: 'utf8' });
   assert.equal(r.status, 0, r.stderr);
   return { meta, kit, destination };
 }

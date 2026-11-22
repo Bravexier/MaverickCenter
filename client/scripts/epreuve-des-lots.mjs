@@ -14,6 +14,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 import { preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { comparerLesBases, copierLaBase, differences, lireLesLots, lotDeLaDifference, rejouerLaMigration, refaireLEpreuve, TEXTE_DES_RAISONS } from '../serveur/epreuve-des-lots.mjs';
+import { extraireDuCommit } from './controler-les-migrations-lib.mjs';
 
 const CLIENT = fileURLToPath(new URL('..', import.meta.url));
 const RACINE = resolve(CLIENT, '..');
@@ -48,7 +49,7 @@ function baseDuCommit(ref, nom) {
   const dossier = join(travail, nom);
   rmSync(dossier, { recursive: true, force: true });
   mkdirSync(dossier, { recursive: true });
-  execFileSync('bash', ['-c', `git archive ${ref} data | tar -x -C '${dossier}'`], { cwd: RACINE });
+  extraireDuCommit({ racine: RACINE, commit: ref, dossier, chemins: ['data'] });
   const sortie = join(dossier, 'base.db');
   const r = spawnSync('node', ['--no-warnings', join(CLIENT, 'scripts', 'db-build.mjs'), '--out', sortie, '--schema', join(dossier, 'data', 'schema.sql'), '--rows', join(dossier, 'data', 'rows')], { encoding: 'utf8' });
   if (r.status !== 0) throw new Error(`db:build du commit ${ref} : ${r.stderr || r.stdout}`);

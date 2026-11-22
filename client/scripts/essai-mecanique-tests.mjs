@@ -229,7 +229,8 @@ function archiverUnDossier({ racine: depot, destination, ref, chemin, chemins = 
   mkdirSync(destination, { recursive: true });
   const archive = spawnSync('git', ['archive', '--format=tar', ref, ...chemins], { cwd: depot, maxBuffer: 1024 * 1024 * 1024 });
   if (archive.status !== 0) throw new Error(`git archive ${ref} ${chemin} (${chemins.length} chemin(s)) : ${String(archive.stderr).trim()}`);
-  const extrait = spawnSync('tar', ['-x', '-C', destination], { input: archive.stdout });
+  // tar travaille dans la destination, sans recevoir son chemin : le tar GNU (celui de Git sous Windows) lit « \1 » ou « \t » d'un chemin C:\… comme des séquences d'échappement.
+  const extrait = spawnSync('tar', ['-x'], { cwd: destination, input: archive.stdout });
   if (extrait.status !== 0) throw new Error(`tar -x : ${String(extrait.stderr).trim()}`);
   return join(destination, ...chemin.split('/'));
 }
