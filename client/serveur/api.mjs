@@ -459,6 +459,8 @@ function traiterLAncrage(requete, service, permis) {
     enArrierePlan: service.lots?.enArrierePlan !== false,
     reprendre: valeur?.reprendre === true,
     controle: service.source?.() ? { ouvertHorsEdition: true } : {}, // `mot_cle_categorie` est hors édition : comme un dépôt, le lot ne s'y ouvre que sur la base source
+    // l'entrée de `traiter` ne contrôle le gel qu'au lancement : l'enchaînement le relit avant chaque lot
+    ...(service.gel ? { gelee: () => Boolean(service.gel.refus('POST', '/api/edition/lots/ancrage/')) } : {}),
   };
   const depot = service.acces?.depot?.(requete.entetes ?? {}) ?? { direct: false }; // R291 : la clé de dépôt posée, chaque lot s'applique aussitôt
   const surFin = ({ resultat: r, erreur: e, cause }) => {

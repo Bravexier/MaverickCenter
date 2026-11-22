@@ -297,10 +297,12 @@ test('lire reste possible sur un lot de l’action (le format n’a pas de `fami
 
 const ADRESSE_ANCRAGE = '/api/edition/lots/ancrage/';
 const AU_REPOS = { en_cours: false, resultat: null, erreur: null };
-/** La route, sur une base déjà ancrée : un lancement n'y dépose rien, il ne coûte que le calcul du plan. */
-function laRoute(base) {
+/** La clé de dépôt posée (R291), sur la base source (`mot_cle_categorie` est hors édition : le lot ne s'y ouvre que là) : chaque lot s'applique aussitôt. */
+const AVEC_LA_CLE = { source: () => true, acces: { controler: () => null, droit: () => ({ droit: 'depot' }), depot: () => ({ direct: true, par: 'cle_de_depot' }) } };
+/** La route ; sur une base déjà ancrée, un lancement ne dépose rien et ne coûte que le calcul du plan. */
+function laRoute(base, plus = {}) {
   const journal = [];
-  const service = { base, etat: () => ({}), edition: true, journal: (l) => journal.push(l), lots: { enArrierePlan: false } };
+  const service = { base, etat: () => ({}), edition: true, journal: (l) => journal.push(l), lots: { enArrierePlan: false }, ...plus };
   const appel = async (methode, corps) => traiter({
     methode, chemin: ADRESSE_ANCRAGE, entetes: { 'content-type': 'application/json' }, corps: corps === undefined ? undefined : JSON.stringify(corps),
   }, service);
@@ -394,6 +396,51 @@ test('tâche de fond : une erreur de l’enchaînement se lit dans `erreur` et n
   } finally {
     process.off('unhandledRejection', surRejet);
   }
+});
+
+test('tâche de fond, avec la clé de dépôt par la route : 202, puis un résultat dont les lots sont appliqués (R291, R309)', async () => {
+  const m = nouvelle();
+  const route = laRoute(m.base, AVEC_LA_CLE);
+  const lance = await route.appel('POST', {});
+  assert.equal(lance.statut, 202, JSON.stringify(lance.corps));
+  const { resultat, erreur } = await laFin(route);
+  assert.equal(erreur, null, JSON.stringify(erreur));
+  assert.equal(resultat.arret, null, resultat.arret?.motif);
+  assert.equal(resultat.suite, false);
+  assert.ok(resultat.lots.length > 1, 'plusieurs lots enchaînés');
+  assert.deepEqual(resultat.lots.map((l) => l.etat), resultat.lots.map(() => 'applique'));
+  for (const id of m.monde.capacites) assert.notEqual(ancre(m, 'page', id), null, id);
+});
+
+test('tâche de fond : le gel posé après un lot arrête la suite sans rien écrire de plus ; relancée une fois le gel levé, l’action reprend ce qui manque (R309)', async () => {
+  const m = nouvelle();
+  let leve = false;
+  const appliques = () => lotsR309(m).filter((l) => l.etat === 'applique').length;
+  const gel = { refus: (methode) => (methode === 'POST' && !leve && appliques() >= 1 ? { statut: 503, corps: { erreur: 'écritures gelées' }, entetes: {} } : null) };
+  const route = laRoute(m.base, { ...AVEC_LA_CLE, gel });
+
+  assert.equal((await route.appel('POST', {})).statut, 202);
+  const arrete = await laFin(route);
+  assert.equal(arrete.erreur, null, JSON.stringify(arrete.erreur));
+  assert.equal(arrete.resultat.lots.length, 1, 'le lot en cours va au bout');
+  assert.equal(lotsR309(m).length, 1, 'le deuxième lot n’est pas déposé');
+  assert.ok(tacheDeFond.MOTIF_DU_GEL);
+  assert.equal(arrete.resultat.arret.motif, tacheDeFond.MOTIF_DU_GEL);
+  assert.equal(typeof arrete.resultat.arret.titre, 'string');
+  assert.notEqual(arrete.resultat.arret.titre, arrete.resultat.lots[0].titre, 'l’arrêt nomme le lot qui n’est pas parti');
+  assert.equal(arrete.resultat.suite, true);
+  assert.equal((await route.appel('POST', {})).statut, 503, 'tant que le gel tient, rien ne se relance');
+
+  leve = true;
+  assert.equal((await route.appel('POST', {})).statut, 202);
+  const repris = await laFin(route);
+  assert.equal(repris.erreur, null, JSON.stringify(repris.erreur));
+  assert.equal(repris.resultat.arret, null, repris.resultat.arret?.motif);
+  assert.equal(repris.resultat.suite, false);
+  assert.ok(repris.resultat.lots.length >= 1, 'ce qui manquait est déposé');
+  assert.deepEqual(lotsR309(m).map((l) => l.etat), lotsR309(m).map(() => 'applique'));
+  for (const id of m.monde.capacites) assert.notEqual(ancre(m, 'page', id), null, id);
+  for (const id of m.monde.sorts) assert.notEqual(ancre(m, 'sort', id), null, id);
 });
 
 test('tâche de fond : un service qui redémarre ne connaît aucun état', async () => {

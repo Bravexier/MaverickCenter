@@ -68,13 +68,17 @@ const VERDICTS_SANS_APPLICATION = new Set(['a_corriger', 'en_echec', 'rien_a_ecr
 
 let enCours = false; // deux enchaînements à la fois calculeraient le même plan
 
+/** L'arrêt d'un enchaînement quand le gel des écritures (serveur/gel.mjs) est posé pendant qu'il tourne. */
+export const MOTIF_DU_GEL = 'les écritures sont gelées : relancez une fois le gel levé.';
+
 /**
  * L'action « Préparer l'ancrage ». `comptes` : ce que le plan avait à faire à ce lancement ; `a_trancher` et `ecartees` : l'état du dernier plan calculé.
+ * `gelee` (donnée par la route) se relit avant chaque lot : posé en cours de route, le gel arrête la suite ; le lot déjà parti va au bout, il est atomique.
  * @param {() => import('node:sqlite').DatabaseSync | null} base
- * @param {{ par?: 'cle_de_depot' | 'mot_de_passe' | null, reprendre?: boolean, enArrierePlan?: boolean, dossier?: string | null, controle?: object }} [options]
+ * @param {{ par?: 'cle_de_depot' | 'mot_de_passe' | null, reprendre?: boolean, enArrierePlan?: boolean, dossier?: string | null, controle?: object, gelee?: (() => boolean) | null }} [options]
  * @returns {Promise<{ lots: object[], arret: { titre: string, motif: string } | null, suite: boolean, a_trancher: object[], ecartees: string[], comptes: object }>}
  */
-export async function preparerLAncrage(base, { par = null, reprendre = false, enArrierePlan = true, dossier = null, ...options } = {}) {
+export async function preparerLAncrage(base, { par = null, reprendre = false, enArrierePlan = true, dossier = null, gelee = null, ...options } = {}) {
   if (!base()) throw new ErreurEdition(503, 'La base n’est pas disponible pour le moment.');
   if (enCours) throw new ErreurEdition(409, 'La préparation de l’ancrage tourne déjà : attendez sa fin.');
   enCours = true;
@@ -95,6 +99,7 @@ export async function preparerLAncrage(base, { par = null, reprendre = false, en
       const prochain = prochainLot(plan, ecartees, categories);
       if (!prochain) return fin(lots, null, false);
       const { famille, ...lot } = prochain; // `famille` sert au plan : elle n'est pas du format `maverick-lot/1`
+      if (gelee?.()) return fin(lots, { titre: lot.titre, motif: MOTIF_DU_GEL }, true);
       const empreinte = JSON.stringify(lot.operations);
       if (empreinte === precedent) return fin(lots, { titre: lot.titre, motif: 'ce lot revient à l’identique après son application : il n’a rien changé.' }, true);
       precedent = empreinte;
