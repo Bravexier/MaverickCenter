@@ -36,7 +36,7 @@ const db = ouvrirBase({ sansExemples: false });
 
 /** Lance `script` (Python : `maverick as T`, `entree` = la valeur JSON donnée) et rend son JSON. */
 function python(script, entree = null) {
-  const p = spawnSync('python3', ['-I', '-c', `
+  const p = spawnSync('python3', ['-X', 'utf8', '-I', '-c', `
 import json, sys
 sys.path.insert(0, ${JSON.stringify(outils)})
 import maverick as T

@@ -1,3 +1,5 @@
+# Tout le texte reste en LF, y compris sur un clone Windows (core.autocrlf=true) : les outils, les tests et les empreintes lisent ces octets
+* text=auto eol=lf
 data/rows/*.sql text eol=lf
 # Scripts et configuration envoyés tels quels sur un hôte Linux (scp depuis un clone Windows) : jamais de CRLF
 *.sh text eol=lf

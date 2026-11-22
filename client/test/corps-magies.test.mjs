@@ -550,7 +550,7 @@ for t in textes:
 print(json.dumps(out, ensure_ascii=False))
 `;
   const importeur = fileURLToPath(new URL('../../tools/sheets/magies.py', import.meta.url));
-  const r = spawnSync('python3', ['-I', '-c', script, importeur], { input: JSON.stringify(textes), encoding: 'utf8' });
+  const r = spawnSync('python3', ['-X', 'utf8', '-I', '-c', script, importeur], { input: JSON.stringify(textes), encoding: 'utf8' });
   assert.equal(r.status, 0, r.stderr);
   const attendus = JSON.parse(r.stdout);
   textes.forEach((t, i) => {

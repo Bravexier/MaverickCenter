@@ -21,7 +21,7 @@ const sansPython = spawnSync('python3', ['--version']).error ? 'python3 absent' 
 
 /** Lance `script` (Python, `maverick as T` importé, `db` : une base en mémoire faite de `tables`) et rend son JSON. */
 function pythonSurTables(tables, script) {
-  const p = spawnSync('python3', ['-I', '-c', `
+  const p = spawnSync('python3', ['-X', 'utf8', '-I', '-c', `
 import json, sqlite3, sys
 sys.path.insert(0, ${JSON.stringify(outils)})
 import maverick as T
@@ -122,9 +122,9 @@ print(json.dumps(r))`);
 const racine = fileURLToPath(new URL('../../', import.meta.url));
 const LEURRE = 100000;
 
-/** Lance un script Python (`python3 -I -c`) qui a `maverick as T` et `db` (le vocabulaire `vocabulaire` chargé), et rend son JSON. */
+/** Lance un script Python (`python3 -I -`, par l'entrée standard : la liste des pages dépasse la ligne de commande de Windows) qui a `maverick as T` et `db` (le vocabulaire `vocabulaire` chargé), et rend son JSON. */
 function python(script, vocabulaire) {
-  const p = spawnSync('python3', ['-I', '-c', `
+  const p = spawnSync('python3', ['-X', 'utf8', '-I', '-'], { encoding: 'utf8', input: `
 import json, os, re, sqlite3, sys
 sys.path.insert(0, ${JSON.stringify(outils)})
 import maverick as T
@@ -134,7 +134,7 @@ db.execute(re.search(r'CREATE TABLE mot_cle \\([\\s\\S]*?\\) STRICT;', open(T.SC
 db.execute('CREATE TABLE mot_cle_ancienne_cle (cle TEXT PRIMARY KEY, mot_cle_id INTEGER)')
 if VOCABULAIRE:
     db.executescript(open(VOCABULAIRE, encoding='utf-8').read())
-${script}`], { encoding: 'utf8' });
+${script}` });
   assert.equal(p.status, 0, p.stderr);
   return JSON.parse(p.stdout);
 }

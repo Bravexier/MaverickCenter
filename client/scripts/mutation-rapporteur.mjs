@@ -2,7 +2,7 @@
 // sautes, echecs: [{ fichier, ligne, nom, message }] } (fichier relatif à client/). Seuls les tests en échec eux-mêmes comptent : une suite (describe)
 // ou un test qui échoue parce que ses sous-tests échouent n'est pas compté deux fois.
 //   node --test --test-reporter=./scripts/mutation-rapporteur.mjs --test-reporter-destination=<echecs.json> test/…
-import { relative } from 'node:path';
+import { relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const CLIENT = fileURLToPath(new URL('../', import.meta.url));
@@ -19,7 +19,7 @@ export function echecDe(data, client = CLIENT) {
   if (data?.details?.type === 'suite') return null;
   if (data?.details?.error?.failureType === 'subtestsFailed') return null;
   return {
-    fichier: data.file ? relative(client, data.file.startsWith('file:') ? fileURLToPath(data.file) : data.file) : null,
+    fichier: data.file ? relative(client, data.file.startsWith('file:') ? fileURLToPath(data.file) : data.file).split(sep).join('/') : null,
     ligne: data.line ?? null,
     nom: data.name,
     message: messageDeLEchec(data.details?.error),

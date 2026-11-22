@@ -44,7 +44,7 @@ autre.executescript(f"CREATE TABLE m (\\n  id TEXT NOT NULL PRIMARY KEY,\\n  c T
 r['ecart'] = T.comparer_schemas(attendu, autre)
 print(json.dumps(r, ensure_ascii=False))
 `;
-  const p = spawnSync('python3', ['-I', '-c', script], { encoding: 'utf8' });
+  const p = spawnSync('python3', ['-X', 'utf8', '-I', '-c', script], { encoding: 'utf8' });
   assert.equal(p.status, 0, p.stderr);
   const r = JSON.parse(p.stdout);
   assert.ok(r.chaine.includes("'a--b''c'"), r.chaine);

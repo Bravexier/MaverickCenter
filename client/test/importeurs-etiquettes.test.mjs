@@ -47,7 +47,7 @@ function importer(t) {
 }
 
 test('R183 (11) : la liste commune des étiquettes non posées est celle des six mots-clés de la 0090 que nomme la décision', { skip: sansPython }, () => {
-  const r = spawnSync('python3', ['-I', '-c', `
+  const r = spawnSync('python3', ['-X', 'utf8', '-I', '-c', `
 import importlib.util, json
 spec = importlib.util.spec_from_file_location('homonymes', ${JSON.stringify(join(racine, 'tools/db/homonymes.py'))})
 m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)

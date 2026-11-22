@@ -31,7 +31,7 @@ const db = ouvrirBase({ sansExemples: false });
 
 /** normalize() de tools/db/maverick.py (la référence de la base) sur une liste d'écritures. */
 function normaliser(ecritures) {
-  const p = spawnSync('python3', ['-I', '-c', `
+  const p = spawnSync('python3', ['-X', 'utf8', '-I', '-c', `
 import json, sys
 sys.path.insert(0, ${JSON.stringify(outils)})
 import maverick as T

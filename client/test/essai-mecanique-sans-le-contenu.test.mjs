@@ -5,7 +5,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
@@ -119,11 +119,12 @@ describe('passe S : la copie sans le contenu qui sort', () => {
 
 describe('passe S : allumée (contenu sorti) et exports archivés', () => {
   it('S pose MAVERICK_CONTENU_SORTI=1 et MAVERICK_SOURCES_RAW ; contenuSorti() et dossierDesExports() la suivent', () => {
-    const env = environnementDeLaPasse(PASSE_SANS_LE_CONTENU, { exports: '/hors/de/la/copie/sources/raw', base: { PATH: 'x', NODE_TEST_CONTEXT: 'child' } });
+    const horsDeLaCopie = resolve('/hors/de/la/copie/sources/raw');
+    const env = environnementDeLaPasse(PASSE_SANS_LE_CONTENU, { exports: horsDeLaCopie, base: { PATH: 'x', NODE_TEST_CONTEXT: 'child' } });
     assert.equal(env[VARIABLE_CONTENU_SORTI], '1');
     assert.equal(contenuSorti(env), true);
-    assert.equal(env.MAVERICK_SOURCES_RAW, '/hors/de/la/copie/sources/raw');
-    assert.equal(dossierDesExports('/racine', env), '/hors/de/la/copie/sources/raw');
+    assert.equal(env.MAVERICK_SOURCES_RAW, horsDeLaCopie);
+    assert.equal(dossierDesExports('/racine', env), horsDeLaCopie);
     assert.ok(env.MAVERICK_CONTENU, 'le contenu de la passe reste posé');
     assert.equal(env.NODE_TEST_CONTEXT, undefined, 'la passe n\'hérite pas du contexte de node --test');
     assert.equal(env.PATH, 'x');
@@ -153,6 +154,7 @@ describe('passe S : allumée (contenu sorti) et exports archivés', () => {
     const depot = dossierTemporaire('passe-s-depot', { t });
     const destination = dossierTemporaire('passe-s-exports', { t });
     execFileSync('git', ['-C', depot, 'init', '-q']);
+    execFileSync('git', ['-C', depot, 'config', 'core.autocrlf', 'false']); // l'archive garde les octets du commit sur un poste Windows
     ecrire(depot, { 'sources/raw/doc.md': 'valide\n', 'sources/raw/classeurs/feuille.json': '{}\n', 'sources/sources.json': '{}\n' });
     execFileSync('git', ['-C', depot, '-c', 'user.name=essai', '-c', 'user.email=essai@example.invalid', 'add', '-A']);
     execFileSync('git', ['-C', depot, '-c', 'user.name=essai', '-c', 'user.email=essai@example.invalid', 'commit', '-q', '-m', 'essai']);

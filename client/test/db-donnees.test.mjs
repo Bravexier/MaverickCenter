@@ -163,7 +163,7 @@ import maverick as T
 db = T.reconstruire(':memory:', sys.argv[2])
 T.exporter(db, sys.argv[3])
 `;
-  const r = spawnSync('python3', ['-I', '-c', py, join(racine, 'tools', 'db'), rows, sortie], { encoding: 'utf8' });
+  const r = spawnSync('python3', ['-X', 'utf8', '-I', '-c', py, join(racine, 'tools', 'db'), rows, sortie], { encoding: 'utf8' });
   assert.equal(r.status, 0, r.stderr);
   const noms = readdirSync(rows).sort();
   assert.deepEqual(readdirSync(sortie).sort(), noms, 'mêmes fichiers');

@@ -335,7 +335,7 @@ function relire(modifications, { recalculer = true } = {}) {
     if (recalculer) base.prepare('UPDATE page SET corps_md = ? WHERE id = ?').run(corpsDeRace(actuel, apres, avant), race);
   }
   base.close();
-  const r = spawnSync('python3', ['-I', '-c', HARNAIS, join(trouverRacine(), 'tools', 'db'), fichier], { encoding: 'utf8' });
+  const r = spawnSync('python3', ['-X', 'utf8', '-I', '-c', HARNAIS, join(trouverRacine(), 'tools', 'db'), fichier], { encoding: 'utf8' });
   assert.equal(r.status, 0, r.stderr);
   return JSON.parse(r.stdout);
 }

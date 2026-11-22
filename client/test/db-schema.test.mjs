@@ -7,7 +7,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
 const racine = fileURLToPath(new URL('../../', import.meta.url));
@@ -105,7 +105,7 @@ objets = db.execute("SELECT type, name FROM sqlite_master WHERE name NOT LIKE 's
 cols = {n: [[c[1], c[2], c[3], c[5]] for c in db.execute('PRAGMA table_info("%s")' % n)] for _, n in objets}
 print(json.dumps({"objets": objets, "colonnes": cols}))
 `;
-  const r = spawnSync('python3', ['-I', '-c', py, schemaChemin], { encoding: 'utf8' });
+  const r = spawnSync('python3', ['-X', 'utf8', '-I', '-c', py, schemaChemin], { encoding: 'utf8' });
   if (r.error) return t.skip('python3 absent');
   assert.equal(r.status, 0, r.stderr);
   const vu = JSON.parse(r.stdout);
@@ -138,7 +138,7 @@ test('les commentaires du schéma ne citent que du code qui existe : fichiers, n
     assert.match(texte, new RegExp(`(?:function\\*? |const |let |class )${nom}\\b|export \\{[^}]*\\b${nom}\\b`), `${cite} : ${nom} n’est pas défini dans le fichier`);
     if (proprietes) {
       assert.ok(fichier.includes(join('client', 'src', 'lib')), `${cite} : une propriété ne se vérifie que dans un module pur de lib/`);
-      let valeur = (await import(fichier))[nom];
+      let valeur = (await import(pathToFileURL(fichier).href))[nom];
       for (const p of proprietes.slice(1).split('.')) {
         assert.ok(valeur != null && p in Object(valeur), `${cite} : ${p} absent`);
         valeur = valeur[p];

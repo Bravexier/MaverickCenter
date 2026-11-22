@@ -9,7 +9,7 @@
 // triées ; une valeur du moment égale à son maximum (ou une corruption nulle), une solidité d'arme à son maximum (armesValables), valent « rien d'écrit ».
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
-import { dirname, join, relative, resolve } from 'node:path';
+import { dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { ouvrirBase } from '../src/lib/donnees.mjs';
@@ -1008,10 +1008,10 @@ function importsDe(texte, dossier) {
 /** Tout ce qu'atteint un point d'entrée, de module en module (chemins relatifs à src/, ou nom de paquet). */
 function atteints(fichier, vus = new Set()) {
   for (const cible of importsDe(readFileSync(fichier, 'utf8'), dirname(fichier))) {
-    const nom = cible.startsWith('/') ? relative(SRC, cible).split('\\').join('/') : cible;
+    const nom = isAbsolute(cible) ? relative(SRC, cible).split('\\').join('/') : cible;
     if (vus.has(nom)) continue;
     vus.add(nom);
-    if (cible.startsWith('/') && /\.(mjs|js|ts)$/.test(cible)) atteints(cible, vus);
+    if (isAbsolute(cible) && /\.(mjs|js|ts)$/.test(cible)) atteints(cible, vus);
   }
   return vus;
 }
@@ -1030,7 +1030,7 @@ test('modules du tableur : seul le script de la page /fiche/ les importe (versio
       vus = new Set();
       for (const [, corps] of readFileSync(f, 'utf8').matchAll(/<script(?![^>]*is:inline)[^>]*>([\s\S]*?)<\/script>/g)) {
         for (const cible of importsDe(corps, dirname(f))) {
-          if (!cible.startsWith('/')) continue;
+          if (!isAbsolute(cible)) continue;
           if (cible.endsWith(join('scripts', 'fiche.mjs'))) continue;
           vus.add(relative(SRC, cible).split('\\').join('/'));
           for (const x of atteints(cible)) vus.add(x);

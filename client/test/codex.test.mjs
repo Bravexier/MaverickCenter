@@ -89,7 +89,7 @@ test('une page modifiée par le site de dev : contrôlée dans son état d’imp
   const id = 'lore/les-divinites';
   const fichier = join(tmp, 'lore', 'les-divinites.md');
   // les pages comptées comme modifiées par le site, lues par le script lui-même (codex.py#pages_du_site) sur la copie : la page d'essai y est-elle déjà ?
-  const duSiteReel = JSON.parse(spawnSync('python3', ['-I', '-c',
+  const duSiteReel = JSON.parse(spawnSync('python3', ['-X', 'utf8', '-I', '-c',
     'import json, sys; sys.path.insert(0, sys.argv[1]); import codex; print(json.dumps(sorted(codex.pages_du_site(None, sur_disque=codex.pages_sur_disque(sys.argv[2]), base=sys.argv[3]))))',
     join(racine, 'tools', 'docs'), tmp, BASE], { encoding: 'utf8', cwd: racine }).stdout);
   const { titre, corps_md: corpsDImport } = pagesDImport.find((p) => p.id === id);

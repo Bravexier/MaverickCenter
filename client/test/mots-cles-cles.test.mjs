@@ -13,7 +13,7 @@ const sansPython = spawnSync('python3', ['--version']).error ? 'python3 absent' 
 
 /** cles_des_mots_cles de maverick.py sur chaque cas : [{ cles } | { refus: [[base, ids, raison]] }]. */
 function python(cas) {
-  const p = spawnSync('python3', ['-I', '-c', `
+  const p = spawnSync('python3', ['-X', 'utf8', '-I', '-c', `
 import json, sys
 sys.path.insert(0, ${JSON.stringify(outils)})
 import maverick as T
