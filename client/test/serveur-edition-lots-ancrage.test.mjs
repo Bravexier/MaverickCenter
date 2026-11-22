@@ -7,11 +7,12 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { ouvrirBaseVivante, preparerBaseVivante } from '../serveur/base-vivante.mjs';
 import { ErreurEdition, enregistrer } from '../serveur/edition.mjs';
-import { annuler, appliquer, decisionsCitees, deposer, lire, traduire } from '../serveur/edition-lots.mjs';
+import { annuler, annulerUneLigne, appliquer, decisionsCitees, deposer, lire, previsualiserLAnnulation, traduire } from '../serveur/edition-lots.mjs';
 import { adresseDeLaPage, adresseDuSort } from '../src/lib/adresses-db.mjs';
 import { controlerLeLot, FORMAT_DU_LOT } from '../src/lib/lot-de-changements.mjs';
 import { clesDesMotsCles } from '../src/lib/mots-cles-cles.mjs';
 import { categoriesDesMotsCles, motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
+import { normalize } from '../src/lib/text.mjs';
 import { cheminDImport } from './aide-base-d-import.mjs';
 import { dossierTemporaire } from './aide-dossier-temporaire.mjs';
 
@@ -21,9 +22,9 @@ function nouvelle() {
   const db = ouvrirBaseVivante(preparerBaseVivante({ regles: cheminDImport(), dossier: join(racine, `b${(n += 1)}`) }).chemin);
   return { db, dossier: join(racine, `essais${n}`) };
 }
-const lot = (operations) => ({ format: FORMAT_DU_LOT, titre: `Ancrage d’essai ${(n += 1)}`, nature: 'decision', decision: 'R309', operations });
+const lot = (operations, plus = {}) => ({ format: FORMAT_DU_LOT, titre: `Ancrage d’essai ${(n += 1)}`, nature: 'decision', decision: 'R309', operations, ...plus });
 // `mot_cle_categorie` est une table hors édition : le site de dev (base source) ouvre le lot, comme la route (serveur/api.mjs#traiterLots)
-const proposer = (m, operations) => deposer(() => m.db, lot(operations), { enArrierePlan: false, dossier: m.dossier, controle: { ouvertHorsEdition: true } });
+const proposer = (m, operations, plus) => deposer(() => m.db, lot(operations, plus), { enArrierePlan: false, dossier: m.dossier, controle: { ouvertHorsEdition: true } });
 const nom = (suffixe) => `Zephyrion ${suffixe} ${process.pid}`;
 const refusees = (m, p) => lire(m.db, p.id).essai.operations.filter((o) => o.etat === 'refusee');
 const motCle = (m, id) => m.db.prepare('SELECT * FROM mot_cle WHERE id = ?').get(id);
@@ -358,5 +359,121 @@ test('annuler un lot de catégories et d’alignement remet tout d’un bloc, sa
   assert.deepEqual(categoriesDe(m, a), [c1]);
   assert.deepEqual([motCle(m, c).libelle, motCle(m, c).url], [ancien, null]);
   assert.deepEqual([a, b, c].map((id) => motCle(m, id).cle), cles);
+  clesJustes(m);
+});
+
+/** Le numéro d'une ligne du lot : le rang de sa première écriture au journal. */
+const rangDe = (m, lotId, table, cle) => m.db.prepare('SELECT rang, cle FROM modification WHERE lot_id = ? AND table_nom = ? ORDER BY rang').all(lotId, table)
+  .find((l) => Object.entries(cle).every(([c, v]) => JSON.parse(l.cle)[c] === v))?.rang;
+const croissant = (liste) => [...liste].sort((x, y) => x - y);
+const lignesNotees = (lotPresente) => croissant(Object.keys(lotPresente.bilan.lignes_annulees).map(Number));
+
+test('annuler d’un bloc : le texte qui cite le mot-clé créé et celui d’un homonyme reclassé reviennent ; hors R309, une ligne de catégorie reste seule', async () => {
+  const m = nouvelle();
+  const [c1, c2, c3] = lesCategories(m);
+  const libelle = nom('texte');
+  const a = unMotCle(m, libelle, [c1]);
+  unMotCle(m, libelle, [c2]);
+  const seule = unMotCle(m, nom('ligne seule'), [c1]);
+  const [t1, t2] = m.db.prepare('SELECT id FROM metier ORDER BY id LIMIT 2').all().map((t) => t.id);
+  const texte = (id) => m.db.prepare('SELECT description FROM metier WHERE id = ?').get(id).description;
+  enregistrer(m.db, { operations: [{ op: 'modifier', table: 'metier', cle: { id: t2 }, valeurs: { description: `Ancien texte {{${motCle(m, a).cle}}} ${process.pid}.` } }] });
+  const [avant1, avant2] = [texte(t1), texte(t2)];
+  const cles = motsClesDeLaBase(m.db).map((x) => [x.id, x.cle]);
+  const cree = nom('cree');
+  const jeton = { $numero: 'k' };
+  const p = await proposer(m, [
+    { table: 'mot_cle', cle: { id: jeton }, operation: 'inserer', apres: { id: jeton, libelle: cree } },
+    poserCategorie(jeton, c3),
+    { table: 'metier', cle: { id: t1 }, operation: 'modifier', avant: { description: avant1 }, apres: { description: `Il cite {{${normalize(cree)}}} ${process.pid}.` } },
+    retirerCategorie(a, c1), poserCategorie(a, c3),
+    { table: 'metier', cle: { id: t2 }, operation: 'modifier', avant: { description: avant2 }, apres: { description: `Nouveau texte {{${motCle(m, a).cle}}} ${process.pid}.` } },
+    retirerCategorie(seule, c1), poserCategorie(seule, c2),
+  ], { nature: 'code', decision: null });
+  assert.equal(p.verdict, 'applicable', JSON.stringify(lire(m.db, p.id).essai.refus_de_l_application ?? refusees(m, p)));
+  const fait = appliquer(m.db, p.id, {});
+  assert.notEqual(texte(t2), avant2);
+
+  const n1 = rangDe(m, fait.lot_id, 'mot_cle_categorie', { mot_cle_id: seule, categorie_id: c1 });
+  assert.deepEqual(lignesNotees(annulerUneLigne(m.db, p.id, n1)), [n1], 'hors R309, la ligne n’emporte pas sa voisine');
+  assert.deepEqual(categoriesDe(m, seule), [c1, c2]);
+
+  const vu = await previsualiserLAnnulation(() => m.db, p.id, { enArrierePlan: false, dossier: m.dossier });
+  assert.equal(vu.verdict, 'applicable', JSON.stringify(vu.refus_de_l_annulation ?? vu.operations.filter((o) => o.etat === 'refusee')));
+  assert.equal(annuler(m.db, p.id, {}).etat, 'annule');
+  assert.equal(m.db.prepare('SELECT id FROM mot_cle WHERE libelle = ?').get(cree), undefined);
+  assert.equal(texte(t1), avant1, 'le texte qui citait le mot-clé créé');
+  assert.equal(texte(t2), avant2, 'le texte du lot ne reste pas, sa balise cite l’ancienne clé');
+  assert.deepEqual(categoriesDe(m, a), [c1]);
+  assert.deepEqual(categoriesDe(m, seule), [c1]);
+  assert.deepEqual(motsClesDeLaBase(m.db).map((x) => [x.id, x.cle]), cles);
+  clesJustes(m);
+});
+
+test('annuler une ligne d’un mot-clé créé et ancré emporte ses lignes, un reclassement R309 aussi ; deux homonymes l’un après l’autre ; l’ancre d’un mot-clé existant reste seule', async () => {
+  const m = nouvelle();
+  const { titre, sorts: [s1, s2] } = deuxSortsHomonymes(m, 'groupes');
+  const [c1, c2] = lesCategories(m);
+  const reclasse = unMotCle(m, nom('reclasse'), [c1]);
+  const existant = unMotCle(m, nom('existant'), [c2]);
+  // un homonyme d'un autre type, hors du lot : sa clé prend son type avec le lot et revient quand le dernier mot-clé du lot repart
+  const voisin = unMotCle(m, titre, [c2]);
+  const cleDuVoisin = motCle(m, voisin).cle;
+  const page = unePage(m, 'ancre existante');
+  const p = await proposer(m, [
+    creer('a', 'sort', s1.id, titre, s1.url, c1),
+    creer('b', 'sort', s2.id, titre, s2.url, c1),
+    retirerCategorie(reclasse, c1), poserCategorie(reclasse, c2),
+    ancrer('page', page.id, existant),
+  ]);
+  assert.equal(p.verdict, 'applicable', JSON.stringify(lire(m.db, p.id).essai.refus_de_l_application ?? refusees(m, p)));
+  const fait = appliquer(m.db, p.id, {});
+  const [a, b] = [ancreDe(m, 'sort', s1.id), ancreDe(m, 'sort', s2.id)];
+  const cleDeB = motCle(m, b).cle;
+  const rang = (table, cle) => rangDe(m, fait.lot_id, table, cle);
+  const quittees = (k) => m.db.prepare("SELECT rang, apres FROM modification WHERE lot_id = ? AND table_nom = 'mot_cle_ancienne_cle' AND operation = 'inserer' ORDER BY rang").all(fait.lot_id)
+    .filter((l) => JSON.parse(l.apres).mot_cle_id === k).map((l) => l.rang);
+  const groupeDe = (k, s) => croissant([rang('mot_cle', { id: k }), rang('mot_cle_categorie', { mot_cle_id: k, categorie_id: c1 }), rang('sort', { id: s }), ...quittees(k)]);
+  const [groupeA, groupeB] = [groupeDe(a, s1.id), groupeDe(b, s2.id)];
+  const ligne = (numero) => lire(m.db, p.id).lignes.find((l) => l.n === numero);
+  for (const numero of [...groupeA, ...groupeB]) assert.equal(ligne(numero).annulable_seule, true, `ligne ${numero} : ${ligne(numero).motif}`);
+
+  // l'aperçu, depuis la catégorie : toutes les lignes emportées, rien d'écrit
+  const clic = rang('mot_cle_categorie', { mot_cle_id: a, categorie_id: c1 });
+  const vu = await previsualiserLAnnulation(() => m.db, p.id, { enArrierePlan: false, dossier: m.dossier, ligne: clic });
+  assert.equal(vu.verdict, 'applicable', JSON.stringify(vu.refus_de_l_annulation ?? vu.operations.filter((o) => o.etat === 'refusee')));
+  assert.equal(vu.ligne, clic);
+  assert.deepEqual(croissant(vu.operations.map((o) => o.rang_du_lot)), groupeA);
+  assert.equal(ancreDe(m, 'sort', s1.id), a);
+
+  // le groupe du premier : le second reste, sa clé recalculée ne le fait pas passer pour « changé depuis »
+  assert.deepEqual(lignesNotees(annulerUneLigne(m.db, p.id, rang('sort', { id: s1.id }))), groupeA);
+  assert.equal(motCle(m, a), undefined);
+  assert.equal(ancreDe(m, 'sort', s1.id), null);
+  assert.notEqual(motCle(m, b).cle, cleDeB, 'sans son homonyme de même type, il perd le parent de sa clé');
+  clesJustes(m);
+  assert.equal(ligne(rang('mot_cle', { id: b })).etat, 'en_place');
+  assert.equal(ligne(rang('mot_cle', { id: b })).annulable_seule, true, ligne(rang('mot_cle', { id: b })).motif);
+
+  // le groupe du second, depuis sa ligne de mot-clé
+  assert.deepEqual(lignesNotees(annulerUneLigne(m.db, p.id, rang('mot_cle', { id: b }))), croissant([...groupeA, ...groupeB]));
+  assert.equal(motCle(m, b), undefined);
+  assert.equal(ancreDe(m, 'sort', s2.id), null);
+  assert.deepEqual(categoriesDe(m, b), []);
+  assert.equal(motCle(m, voisin).cle, cleDuVoisin, 'la clé du voisin est revenue');
+  clesJustes(m);
+
+  // le reclassement R309 : ses deux lignes ensemble
+  const reclassement = croissant([rang('mot_cle_categorie', { mot_cle_id: reclasse, categorie_id: c1 }), rang('mot_cle_categorie', { mot_cle_id: reclasse, categorie_id: c2 })]);
+  assert.deepEqual(lignesNotees(annulerUneLigne(m.db, p.id, reclassement[1])), croissant([...groupeA, ...groupeB, ...reclassement]));
+  assert.deepEqual(categoriesDe(m, reclasse), [c1]);
+  clesJustes(m);
+
+  // l'ancre d'un mot-clé existant : seule, et le lot n'a plus rien en place
+  const fin = annulerUneLigne(m.db, p.id, rang('page', { id: page.id }));
+  assert.deepEqual(lignesNotees(fin), croissant([...groupeA, ...groupeB, ...reclassement, rang('page', { id: page.id })]));
+  assert.equal(ancreDe(m, 'page', page.id), null);
+  assert.ok(motCle(m, existant));
+  assert.equal(fin.etat, 'annule');
   clesJustes(m);
 });

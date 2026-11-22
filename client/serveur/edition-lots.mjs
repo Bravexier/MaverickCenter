@@ -33,11 +33,13 @@ import {
 } from '../src/lib/corps-composants.mjs';
 import { PAGE_DE_LA_LIGNE } from '../src/lib/corps-magies.mjs';
 import { corpsDesPotionsEntier, ErreurCorpsPotions } from '../src/lib/corps-potions.mjs';
-import { ENTITES, TABLES } from '../src/lib/edition-modele.mjs';
+import { ENTITES, TABLES, typeDeTexte } from '../src/lib/edition-modele.mjs';
 import { colonneMasquee, nomDeColonne, nomDeTable } from '../src/lib/libelles-de-la-base.mjs';
 import { comparerAvecLaBase, controlerLeLot, donnerLesNumeros, effetNetDuLot, FORMAT_DU_LOT, jugerLAnnulation, lireUnLot, TABLES_ANCRABLES } from '../src/lib/lot-de-changements.mjs';
+import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { controlerLeContenu } from './controles-du-contenu.mjs';
 import { ErreurEdition, appliquerUnLot, colonneDerivee, recalculerLesPages } from './edition.mjs';
+import { lectureDesBalises } from './edition-ancrage.mjs';
 import { libelleDeLigne } from './edition-conflits.mjs';
 import { corpsEntierDesArmes } from './edition-armes.mjs';
 import { corpsEntierDesArmures } from './edition-armures.mjs';
@@ -566,7 +568,7 @@ const netsDuLot = (db, lotId) => effetNetDuLot(lignesDuLot(db, lotId));
 
 /** Les opérations du service qui remettent une ligne : { ops } ou { refus }. La réinsertion d'une ligne retirée par le lot est une restauration à l'identique. */
 function operationsDeLAnnulation(db, net, jugement) {
-  if (net.genre === 'modifier') return traduire({ table: net.table, cle: net.cle, operation: 'modifier', apres: sous(net.origine, jugement.remises) });
+  if (net.genre === 'modifier') return traduire({ table: net.table, cle: net.cle, operation: 'modifier', apres: sous(net.aEcrire ?? net.origine, jugement.remises) });
   if (net.genre === 'inserer') return traduire({ table: net.table, cle: net.cle, operation: 'supprimer' });
   const { colonnes } = structure(db, net.table);
   return { ops: [{ op: 'ecrire_inserer', table: net.table, valeurs: sous(net.origine, Object.keys(net.origine).filter((c) => colonnes.includes(c))), restaurer: true }] };
@@ -619,6 +621,9 @@ function annulerLeLot(db, depose, { essai, ouverts = new Set(), baseline = new S
     // une ligne que tient une autre ligne du lot encore en place ne s'annule pas seule : chaque refus a son motif
     const dependances = depose.lignes ? dependancesDuLot(db, depose) : null;
     const plan = planDeLAnnulation(db, depose.lot_id, depose.lignes ?? null);
+    const nets = netsDuLot(db, depose.lot_id);
+    const creesEtAncres = motsClesCreesEtAncres(nets);
+    let lectureFinale = null; // les balises sur le vocabulaire d'après le recalcul différé
     let place = 0;
     // `complet` : la ligne entière, quand `net` n'en porte qu'une partie ; `suite` : le second passage d'une ligne, après le recalcul différé
     const remettre = (net, { complet = net, suite = false } = {}) => {
@@ -637,8 +642,7 @@ function annulerLeLot(db, depose, { essai, ouverts = new Set(), baseline = new S
         if (!essai) throw new ErreurEdition(409, `Ligne ${rang} refusée : ${illisible}`, { rang, table: net.table, cle: net.cle });
         return consigner({ ...base, etat: 'refusee', message: illisible });
       }
-      const jugement = jugerLAnnulation(net, actuelle);
-      if (suite && net.table === 'mot_cle') garderLaCleDuRecalcul(net, jugement);
+      const jugement = suite ? jugerApresLeRecalcul(net, actuelle, lectureFinale) : jugerLaLigne(net, actuelle, creesEtAncres);
       const imprevues = new Map(); // colonnes que le service a recalculées vers une troisième valeur pendant la remise : gardées aussi
       const plus = () => {
         const ecarts = [...jugement.gardees, ...imprevues.values()];
@@ -646,7 +650,8 @@ function annulerLeLot(db, depose, { essai, ouverts = new Set(), baseline = new S
       };
       const apercu = apercuDeLAnnulation(db, complet, actuelle); // avant l'écriture : la valeur actuelle est celle d'avant la remise
       const noter = (etat, reste = {}) => consigner({ ...base, apercu, etat, ...plus(), ...reste });
-      const tenue = dependances?.get(net.rang) ?? [];
+      // une ligne emportée avec elle ne la tient pas (`lignesEmportees`)
+      const tenue = (dependances?.get(net.rang) ?? []).filter((d) => d.rangs.some((r) => !depose.lignes.includes(r)));
       if (tenue.length) {
         const message = `cette ligne ne s’annule pas seule : ${tenue.map((d) => d.raison).join(' ; ')}`;
         if (!essai) throw new ErreurEdition(409, `Ligne ${net.rang} refusée : ${message}`, { rang: net.rang, table: net.table, cle: net.cle, depend_de: [...new Set(tenue.flatMap((d) => d.rangs))] });
@@ -666,11 +671,15 @@ function annulerLeLot(db, depose, { essai, ouverts = new Set(), baseline = new S
     };
     if (!annulationAuRecalculDiffere(db, depose, plan)) plan.forEach((net) => remettre(net));
     else {
-      // l'état entre deux lignes n'a pas à satisfaire la règle des clés : on remet d'abord ce qui les fait, on recalcule une fois, puis on juge ce que le recalcul réécrit
+      // l'état entre deux lignes n'a pas à satisfaire la règle des clés : on remet d'abord ce qui les fait (les textes avant les suppressions : un mot-clé cité ne se
+      // supprime pas), on recalcule une fois, puis on juge ce que le recalcul a réécrit lui-même (la clé, les balises)
       hote.differerLesCles();
-      const parties = plan.map((net) => ({ net, ...partiesDeLaRemise(net) }));
+      plan.filter((n) => n.genre === 'supprimer').forEach((net) => remettre(net));
+      const lecture = lectureDesBalises(motsClesDeLaBase(db), clesDAvantLeLot(nets)); // après les réinsertions : leurs mots-clés sont de nouveau cités
+      const parties = plan.filter((n) => n.genre !== 'supprimer').map((net) => ({ net, ...partiesDeLaRemise(net, lecture) }));
       for (const { net, dabord } of parties) if (dabord) remettre(dabord, { complet: net });
       hote.executer({ op: 'recalculer_les_cles' });
+      lectureFinale = lectureDesBalises(motsClesDeLaBase(db));
       for (const { net, ensuite } of parties) if (ensuite) remettre(ensuite, { complet: net, suite: true });
     }
     sorties.verrous = [...verrous].sort((a, b) => Number(a.slice(1)) - Number(b.slice(1)));
@@ -696,29 +705,85 @@ function annulerLeLot(db, depose, { essai, ouverts = new Set(), baseline = new S
  * dans un lot qui a aligné : ses lignes se remettent alors sans recalcul, et les clés une seule fois ensuite (`changeUneCle`, à l'aller).
  */
 function annulationAuRecalculDiffere(db, depose, plan) {
-  if (plan.some((n) => n.table === 'mot_cle_categorie' || (n.genre === 'modifier' && TABLES_ANCRABLES.includes(n.table) && Object.hasOwn(n.fin, 'mot_cle_id')))) return true;
+  if (plan.some((n) => n.table === 'mot_cle_categorie' || estUneAncre(n))) return true;
   if (!plan.some((n) => n.table === 'mot_cle' && n.genre === 'modifier' && Object.hasOwn(n.fin, 'libelle'))) return false;
   return (jsonOuNull(ligneDuLot(db, depose.id)?.contenu)?.operations ?? []).some((o) => o.ancrage?.aligner === true);
 }
 
-/** Une colonne que le recalcul des clés réécrit lui-même : la clé d'un mot-clé, un texte qui porte une balise. */
-const suitLeRecalcul = (net, c) => (net.table === 'mot_cle' && c === 'cle') || [net.origine[c], net.fin[c]].some((v) => typeof v === 'string' && v.includes('{{'));
+/** Une ligne de l'effet net qui a posé l'ancre d'une page, d'un sort ou d'un type de sort. */
+const estUneAncre = (n) => n.genre === 'modifier' && TABLES_ANCRABLES.includes(n.table) && Object.hasOwn(n.fin, 'mot_cle_id');
 
-/** Une ligne de l'effet net en deux parties : `dabord`, ce que l'annulation remet avant le recalcul ; `ensuite`, les colonnes qu'il réécrit, jugées après lui. */
-function partiesDeLaRemise(net) {
-  if (net.genre !== 'modifier') return { dabord: net, ensuite: null };
-  const colonnes = Object.keys(net.fin);
-  const suivent = colonnes.filter((c) => suitLeRecalcul(net, c));
-  const partie = (cs) => (cs.length ? { ...net, origine: sous(net.origine, cs), fin: sous(net.fin, cs) } : null);
-  return { dabord: partie(colonnes.filter((c) => !suivent.includes(c))), ensuite: partie(suivent) };
+/** Les mots-clés que le lot a créés ET ancrés : leur clé suit la règle des clés, qu'un homonyme parti change sans que le site y ait touché. */
+function motsClesCreesEtAncres(nets) {
+  const crees = new Set(nets.filter((n) => n.table === 'mot_cle' && n.genre === 'inserer').map((n) => n.cle.id));
+  return new Set(nets.filter((n) => estUneAncre(n) && crees.has(n.fin.mot_cle_id)).map((n) => n.fin.mot_cle_id));
 }
 
-/** Après le recalcul, une clé qui vaut encore ce que le lot a écrit est celle que la règle donne : elle est gardée, jamais réécrite à la main. */
-function garderLaCleDuRecalcul(net, jugement) {
-  if (!jugement.remises.includes('cle')) return;
-  jugement.remises = jugement.remises.filter((c) => c !== 'cle');
-  jugement.gardees.push({ colonne: 'cle', ecrite: net.fin.cle, avant: net.origine.cle ?? null, trouvee: net.fin.cle });
-  jugement.etat = jugement.remises.length ? 'remise' : 'gardee';
+/** `jugerLAnnulation`, sans compter comme un changement du site la clé recalculée d'un mot-clé créé et ancré par le lot. */
+const jugerLaLigne = (net, actuelle, creesEtAncres) => jugerLAnnulation(
+  actuelle && net.table === 'mot_cle' && net.genre === 'inserer' && creesEtAncres.has(net.cle.id) ? { ...net, fin: { ...net.fin, cle: actuelle.cle } } : net,
+  actuelle,
+);
+
+/** Les clés que les mots-clés du lot portaient avant lui : Map(clé → id). */
+const clesDAvantLeLot = (nets) => new Map(nets.filter((n) => n.table === 'mot_cle' && typeof n.origine?.cle === 'string').map((n) => [n.origine.cle, n.cle.id]));
+
+const enMarkdown = (table, colonne) => typeDeTexte(table, colonne) === 'markdown';
+
+/**
+ * Une ligne de l'effet net en deux parties. `dabord`, ce que l'annulation remet avant le recalcul : les textes dont le contenu change y sont, écrits avec les clés
+ * du moment (`aEcrire`), et le recalcul les ramène aux clés finales. `ensuite`, ce qu'il réécrit lui-même : la clé d'un mot-clé, un texte dont seule la clé d'une
+ * balise a changé ; ces colonnes ne s'écrivent pas, elles se jugent après lui.
+ */
+function partiesDeLaRemise(net, lecture) {
+  if (net.genre !== 'modifier') return { dabord: net, ensuite: null };
+  const colonnes = Object.keys(net.fin);
+  const suivent = colonnes.filter((c) => (net.table === 'mot_cle' && c === 'cle') || lecture.reecriturePure(net.origine[c], net.fin[c], enMarkdown(net.table, c)));
+  const partie = (cs) => (cs.length ? { ...net, origine: sous(net.origine, cs), fin: sous(net.fin, cs) } : null);
+  const dabord = partie(colonnes.filter((c) => !suivent.includes(c)));
+  if (dabord) dabord.aEcrire = Object.fromEntries(Object.entries(dabord.origine).map(([c, v]) => [c, lecture.enClesDuMoment(v, enMarkdown(net.table, c))]));
+  return { dabord, ensuite: partie(suivent) };
+}
+
+/**
+ * Le jugement, après le recalcul, d'une colonne qu'il réécrit : revenue à sa valeur d'avant (au besoin à la forme près d'une balise qui cite le même mot-clé),
+ * elle est `deja` ; sinon elle est gardée, jamais réécrite à la main : la règle maintient la clé, ou le site a changé la valeur.
+ */
+function jugerApresLeRecalcul(net, actuelle, lecture) {
+  const jugement = jugerLAnnulation(net, actuelle);
+  if (!actuelle) return jugement;
+  const deja = [];
+  const gardees = [];
+  for (const c of Object.keys(net.fin)) {
+    const valeur = actuelle[c] ?? null;
+    if (valeur === (net.origine[c] ?? null) || lecture.revenu(net.origine[c], valeur, enMarkdown(net.table, c))) deja.push(c);
+    else gardees.push({ colonne: c, ecrite: net.fin[c] ?? null, avant: net.origine[c] ?? null, trouvee: valeur });
+  }
+  return { etat: gardees.length ? 'gardee' : 'deja', remises: [], deja, gardees, raison: jugement.raison };
+}
+
+/** Cette ligne de l'effet net tient-elle au mot-clé `k` : sa ligne, une de ses catégories, une clé qu'il a quittée, une ancre qui le cite ? */
+const tientAuMotCle = (n, k) => (n.table === 'mot_cle' && n.cle.id === k) || (n.table === 'mot_cle_categorie' && n.cle.mot_cle_id === k)
+  || (n.table === 'mot_cle_ancienne_cle' && (n.fin ?? n.origine)?.mot_cle_id === k) || (estUneAncre(n) && n.fin.mot_cle_id === k);
+
+/**
+ * Les lignes qu'annuler une ligne emporte, parce que seule elle n'a pas de sens : Map(rang → les rangs du groupe, croissants), sans entrée pour une ligne qui reste
+ * seule. Un mot-clé créé et ancré par le lot : sa ligne, ses catégories, ses clés quittées et les ancres qui le citent. Dans un lot de la décision R309, le
+ * reclassement d'un mot-clé : toutes ses lignes de `mot_cle_categorie`. Rien d'autre : un renommage, l'ancre d'un mot-clé existant, un lot sans ancrage restent ligne à ligne.
+ */
+function lignesEmportees(nets, decision) {
+  const groupes = new Map();
+  const grouper = (lignes) => {
+    const rangs = lignes.map((n) => n.rang).sort((a, b) => a - b);
+    for (const r of rangs) groupes.set(r, rangs);
+  };
+  const crees = motsClesCreesEtAncres(nets);
+  for (const k of crees) grouper(nets.filter((n) => tientAuMotCle(n, k)));
+  if (decision === 'R309') {
+    const reclasses = new Set(nets.filter((n) => n.table === 'mot_cle_categorie' && !crees.has(n.cle.mot_cle_id)).map((n) => n.cle.mot_cle_id));
+    for (const k of reclasses) grouper(nets.filter((n) => n.table === 'mot_cle_categorie' && n.cle.mot_cle_id === k));
+  }
+  return groupes;
 }
 
 const PRIORITE_DES_ETATS = Object.freeze(['refusee', 'verrouillee', 'remise', 'gardee', 'deja']);
@@ -797,7 +862,8 @@ export function dependancesDesLignes(db, nets, annulees = new Set(), etiquettes 
       return null;
     }
   });
-  const enPlace = new Set(nets.filter((n) => !annulees.has(n.rang) && jugerLAnnulation(n, actuelle(n.rang)).remises.length > 0).map((n) => n.rang));
+  const creesEtAncres = motsClesCreesEtAncres(nets);
+  const enPlace = new Set(nets.filter((n) => !annulees.has(n.rang) && jugerLaLigne(n, actuelle(n.rang), creesEtAncres).remises.length > 0).map((n) => n.rang));
   const actives = nets.filter((n) => enPlace.has(n.rang));
   const dependances = new Map(nets.map((n) => [n.rang, []]));
   const nom = (n) => etiquettes.get(n.rang) ?? `${nomDeTable(n.table) ?? n.table}`;
@@ -941,6 +1007,13 @@ export function lignesDuLotApplique(db, ligne, { production = null } = {}) {
   const duLotEntier = new Map((bilan.annulation?.operations ?? []).map((o) => [o.rang_du_lot, o]));
   const etiquettes = etiquettesDesLignes(db, nets);
   const dependances = ligne.etat === 'applique' ? dependancesDesLignes(db, nets, new Set(Object.keys(annulees).map(Number)), etiquettes) : new Map();
+  const creesEtAncres = motsClesCreesEtAncres(nets);
+  const groupes = lignesEmportees(nets, ligne.decision);
+  // ce qui tient une ligne : ce qui tient son groupe, hors du groupe lui-même (il s'annule d'un bloc)
+  const tenueDe = (rang) => {
+    const groupe = groupes.get(rang) ?? [rang];
+    return groupe.flatMap((r) => dependances.get(r) ?? []).filter((d) => d.rangs.some((r) => !groupe.includes(r)));
+  };
   return {
     lignes: nets.map((net) => {
       let actuelle = null;
@@ -949,7 +1022,7 @@ export function lignesDuLotApplique(db, ligne, { production = null } = {}) {
       } catch {
         actuelle = null;
       }
-      const jugement = jugerLAnnulation(net, actuelle);
+      const jugement = jugerLaLigne(net, actuelle, creesEtAncres);
       const descr = apercuDe(db, { table: net.table, cle: net.cle, operation: net.genre, avant: net.origine, apres: net.fin }, net.genre === 'inserer' ? null : net.origine, actuelle ?? { ...net.origine, ...net.fin });
       const sortie = { n: net.rang, table: descr.table, ligne: descr.ligne, genre: net.genre, colonnes: descr.colonnes, ...(production ? { ecart_production: differeDeLaProduction(db, production, net) } : {}) };
       const finie = annulees[net.rang] ?? null;
@@ -961,7 +1034,7 @@ export function lignesDuLotApplique(db, ligne, { production = null } = {}) {
       }
       const colonnesModifiees = jugement.gardees.map((g) => ({ colonne: g.colonne, libelle: nomDeColonne(net.table, g.colonne) ?? g.colonne, ecrite: g.ecrite, trouvee: g.trouvee }));
       const etat = jugement.gardees.length ? 'modifiee_depuis' : jugement.remises.length ? 'en_place' : 'comme_avant';
-      const tenue = dependances.get(net.rang) ?? [];
+      const tenue = tenueDe(net.rang);
       let motif = null;
       if (!jugement.remises.length) motif = motifSansRemise(etat);
       else if (ligne.etat !== 'applique') motif = ligne.etat === 'annule' ? 'Le lot est annulé.' : 'Ce lot n’est pas appliqué.';
@@ -983,15 +1056,17 @@ const aAnnuler = (ligne) => ({ id: ligne.id, lot_id: ligne.lot_id, titre: `Annul
 
 /**
  * Comme `aAnnuler`, pour la seule ligne `numero` du lot (R291) : le titre du lot du journal d'annulation dit laquelle (le nom lisible de la ligne), la nature et la
- * décision sont celles du lot. Une ligne qui n'existe pas : 404 ; un numéro qui n'est pas un entier positif : 404.
+ * décision sont celles du lot. `ligne` : la ligne demandée ; `lignes` : elle et celles qu'elle emporte (`lignesEmportees`). Une ligne qui n'existe pas : 404 ; un
+ * numéro qui n'est pas un entier positif : 404.
  */
 function aAnnulerUneLigne(db, ligne, numero) {
   if (!Number.isInteger(numero) || numero < 1) throw new ErreurEdition(404, `Ligne introuvable dans ce lot : ${numero}`);
   if (!ligne.lot_id) throw new ErreurEdition(409, 'Ce lot n’a pas de lot du journal : rien à remettre.');
-  const net = netsDuLot(db, ligne.lot_id).find((n) => n.rang === numero);
+  const nets = netsDuLot(db, ligne.lot_id);
+  const net = nets.find((n) => n.rang === numero);
   if (!net) throw new ErreurEdition(404, `Ligne introuvable dans ce lot : ${numero}`);
   const libelle = etiquettesDesLignes(db, [net]).get(net.rang);
-  return { ...aAnnuler(ligne), titre: `Annulation d’une ligne de « ${ligne.titre} » : ${libelle}`.slice(0, 300), lignes: [numero] };
+  return { ...aAnnuler(ligne), titre: `Annulation d’une ligne de « ${ligne.titre} » : ${libelle}`.slice(0, 300), ligne: numero, lignes: lignesEmportees(nets, ligne.decision).get(numero) ?? [numero] };
 }
 
 /**
@@ -1020,7 +1095,7 @@ export function essayerLAnnulation({ source, dossier, depose }) {
     return {
       format: FORMAT_DE_L_ESSAI,
       lot: depose.id,
-      ...(depose.lignes ? { ligne: depose.lignes[0] } : {}),
+      ...(depose.lignes ? { ligne: depose.ligne } : {}),
       titre: depose.titre,
       verdict: refus ? 'refusee' : verdictDeLAnnulation(comptes, sorties.verrous, nouveaux),
       comptes,
@@ -1457,15 +1532,18 @@ export function annulerUneLigne(db, id, numero, corps = {}) {
   const ouverts = verrousDuClic(corps?.verrous_ouverts);
   const baseline = new Set(controlerLeContenu(db).problemes);
   const enregistrer = (base, sorties, hote) => {
-    const operation = sorties.operations.find((o) => o.rang_du_lot === numero);
     const bilan = jsonOuNull(ligne.bilan) ?? {};
-    bilan.lignes_annulees = {
-      ...bilan.lignes_annulees,
-      [numero]: { annule_le: hote.instant, lot_id: hote.id, colonnes: (operation?.apercu?.colonnes ?? []).map((c) => c.colonne), gardees: operation?.ecarts?.length ?? 0 },
-    };
+    // la ligne demandée et celles qu'elle emporte, chacune notée (une ligne déjà annulée garde sa note)
+    const notes = depose.lignes.filter((n) => !bilan.lignes_annulees?.[n]).map((n) => {
+      const operation = sorties.operations.find((o) => o.rang_du_lot === n);
+      return [n, { annule_le: hote.instant, lot_id: hote.id, colonnes: (operation?.apercu?.colonnes ?? []).map((c) => c.colonne), gardees: operation?.ecarts?.length ?? 0 }];
+    });
+    bilan.lignes_annulees = { ...bilan.lignes_annulees, ...Object.fromEntries(notes) };
     // plus rien à remettre dans le lot : il passe « annulé » (comme l'annulation du lot entier)
     const annulees = new Set(Object.keys(bilan.lignes_annulees).map(Number));
-    const reste = netsDuLot(base, ligne.lot_id).some((net) => {
+    const nets = netsDuLot(base, ligne.lot_id);
+    const creesEtAncres = motsClesCreesEtAncres(nets);
+    const reste = nets.some((net) => {
       if (annulees.has(net.rang)) return false;
       let actuelle = null;
       try {
@@ -1473,7 +1551,7 @@ export function annulerUneLigne(db, id, numero, corps = {}) {
       } catch {
         actuelle = null;
       }
-      return jugerLAnnulation(net, actuelle).remises.length > 0;
+      return jugerLaLigne(net, actuelle, creesEtAncres).remises.length > 0;
     });
     if (reste) base.prepare("UPDATE lot_de_changements SET bilan = ? WHERE id = ? AND etat = 'applique'").run(JSON.stringify(bilan), id);
     else {

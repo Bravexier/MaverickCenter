@@ -6,7 +6,7 @@
 // Sans import de serveur/edition.mjs : ses outils sont donnés par outilsDeLAncrage (patron de edition-mots-cles.mjs#outilsDesMotsCles).
 import { adresseDeLaPage, adresseDuSort } from '../src/lib/adresses-db.mjs';
 import { TABLES_ANCRABLES } from '../src/lib/lot-de-changements.mjs';
-import { synonymesPris } from '../src/lib/mots-cles-balises.mjs';
+import { lireBalises, motCleDeLaRef, synonymesPris, vocabulaireDesMotsCles } from '../src/lib/mots-cles-balises.mjs';
 import { motsClesDeLaBase } from '../src/lib/mots-cles-db.mjs';
 import { normalize } from '../src/lib/text.mjs';
 import { lireLigne } from './edition-journal.mjs';
@@ -35,6 +35,56 @@ function elementDe(db, table, id) {
     return { nom: noms.length === 1 ? noms[0] : null, adresse: null, parent: null, mot_cle_id: t.mot_cle_id };
   }
   return null;
+}
+
+/**
+ * Lire les balises d'un texte pendant l'annulation d'un lot, sur le vocabulaire `motsCles` du moment. `clesDAvant` : Map(clé d'avant le lot → id), car une clé
+ * d'avant peut être devenue le libellé ambigu de deux homonymes, ou la clé d'un autre mot-clé.
+ *   - `reecriturePure(origine, fin, markdown)` : `fin` ne diffère d'`origine` que par la clé des mêmes mots-clés (le recalcul la réécrira lui-même) ;
+ *   - `revenu(origine, actuelle, markdown)` : les deux textes citent les mêmes mots-clés aux mêmes endroits, sur le vocabulaire du moment ;
+ *   - `enClesDuMoment(texte, markdown)` : le texte d'avant, ses balises écrites avec la clé actuelle de leur mot-clé (le service refuse une ref ambiguë ; le recalcul
+ *     la ramènera à la clé finale).
+ */
+export function lectureDesBalises(motsCles, clesDAvant = new Map()) {
+  const v = vocabulaireDesMotsCles(motsCles);
+  const cible = (ref) => motCleDeLaRef(v, ref)?.id ?? v.parAncienneCle.get(normalize(ref))?.id ?? null;
+  const cibleDAvant = (ref) => clesDAvant.get(normalize(ref)) ?? cible(ref);
+  const horsBalises = (texte, balises) => {
+    let k = 0;
+    const morceaux = balises.map((b) => {
+      const morceau = texte.slice(k, b.debut);
+      k = b.fin;
+      return morceau;
+    });
+    return [...morceaux, texte.slice(k)];
+  };
+  const memesMotsCles = (a, b, cibleDeA, markdown) => {
+    if (typeof a !== 'string' || typeof b !== 'string') return false;
+    const [x, y] = [lireBalises(a, { markdown }), lireBalises(b, { markdown })];
+    if (!x.length || x.length !== y.length) return false;
+    if (horsBalises(a, x).join('\0') !== horsBalises(b, y).join('\0')) return false;
+    return x.every((bx, i) => {
+      const id = cibleDeA(bx.ref);
+      const by = y[i];
+      const montre = (l) => l.texte ?? v.parId.get(id)?.libelle ?? null;
+      return id !== null && id === cible(by.ref) && bx.complet === by.complet && montre(bx) === montre(by);
+    });
+  };
+  return {
+    reecriturePure: (origine, fin, markdown) => memesMotsCles(origine, fin, cibleDAvant, markdown),
+    revenu: (origine, actuelle, markdown) => memesMotsCles(origine, actuelle, cible, markdown),
+    enClesDuMoment(texte, markdown) {
+      if (typeof texte !== 'string' || !texte.includes('{{')) return texte;
+      let sortie = '';
+      let k = 0;
+      for (const b of lireBalises(texte, { markdown })) {
+        const cle = v.parId.get(cibleDAvant(b.ref))?.cle;
+        sortie += texte.slice(k, b.debut) + (cle ? b.brut.replace(b.ref, cle) : b.brut);
+        k = b.fin;
+      }
+      return sortie + texte.slice(k);
+    },
+  };
 }
 
 /**
