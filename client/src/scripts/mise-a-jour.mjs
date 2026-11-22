@@ -30,7 +30,7 @@ import {
 } from '../lib/notes-de-version-rendu.mjs';
 import { avecDateLisible, corpsDeLaResolution, htmlDesConflits, messageDeResolution } from '../lib/conflits-rendu.mjs';
 import {
-  corpsDuClic, htmlDeLaConfirmation, htmlDesLots, lotsAppliques, messageDeLAncrage, messageDeLaLigneAnnulee, messageDErreur, messageDuBilan,
+  corpsDuClic, htmlDeLaConfirmation, htmlDesLots, lotsAppliques, MESSAGE_ANCRAGE_INJOIGNABLE, MESSAGE_ANCRAGE_INTERROMPU, messageDeLAncrage, messageDeLaLigneAnnulee, messageDErreur, messageDuBilan,
   messageDuRecalcul, peutAnnuler, peutAnnulerLaLigne, peutAppliquer, verrousDuLot,
 } from '../lib/lots-rendu.mjs';
 
@@ -513,18 +513,75 @@ async function toutRecalculer() {
   await chargerLesLots();
 }
 
-/** « Préparer l'ancrage » (R309) ; `reprendre` : le geste qui redépose les lignes annulées. La note en préparation compte ce qui vient d'être appliqué. */
+const ANCRAGE_EN_COURS = { texte: 'Préparation en cours : chaque lot est essayé sur une copie, cela peut prendre quelques minutes…', lignes: [] };
+const ATTENTE_DU_SUIVI = 5000;
+const PANNES_TOLEREES = 24; // deux minutes sans réponse : le temps d'un redémarrage du service
+
+/** « Préparer l'ancrage » (R309) ; `reprendre` : le geste qui redépose les lignes annulées. Le service lance l'action et répond aussitôt : sa fin se suit. */
 async function preparerLAncrage(reprendre) {
-  lots.message = { texte: 'Préparation en cours : chaque lot est essayé sur une copie, cela peut prendre quelques minutes…', lignes: [] };
+  lots.message = ANCRAGE_EN_COURS;
   rendreLesLots();
   try {
-    const r = await appel('POST', 'edition/lots/ancrage/', reprendre ? { reprendre: true } : {});
-    lots.message = { texte: messageDeLAncrage(r), lignes: [], erreur: Boolean(r?.arret) };
-    lots.ancrageAReprendre = (r?.ecartees?.length ?? 0) > 0;
+    await appel('POST', 'edition/lots/ancrage/', reprendre ? { reprendre: true } : {});
   } catch (e) {
     lots.message = messageDErreur(e);
+    await relireLaPage();
+    return;
+  }
+  await suivreLAncrage();
+}
+
+/** Ce que la page dit de l'état final : le résultat, l'erreur, ou, sans l'un ni l'autre, que le service a redémarré. */
+function messageDeLaFinDeLAncrage({ resultat, erreur }) {
+  if (resultat) {
+    lots.ancrageAReprendre = (resultat.ecartees?.length ?? 0) > 0;
+    return { texte: messageDeLAncrage(resultat), lignes: [], erreur: Boolean(resultat.arret) };
+  }
+  return { texte: erreur?.message ?? MESSAGE_ANCRAGE_INTERROMPU, lignes: [], erreur: true };
+}
+
+/**
+ * Relit l'état toutes les 5 s jusqu'à la fin, une lecture après l'autre : le service peut mettre 33 s à répondre pendant qu'il applique un lot. Une panne réseau ou
+ * une erreur 5xx se retente ; un refus (4xx) arrête le suivi. La note en préparation compte ensuite ce qui vient d'être appliqué.
+ */
+async function suivreLAncrage() {
+  let pannes = 0;
+  for (;;) {
+    await new Promise((suite) => setTimeout(suite, ATTENTE_DU_SUIVI));
+    let etat;
+    try {
+      etat = await appel('GET', 'edition/lots/ancrage/');
+    } catch (e) {
+      if (e.statut >= 400 && e.statut < 500) {
+        lots.message = messageDErreur(e);
+        break;
+      }
+      pannes += 1;
+      if (pannes < PANNES_TOLEREES) continue;
+      lots.message = { texte: MESSAGE_ANCRAGE_INJOIGNABLE, lignes: [], erreur: true };
+      break;
+    }
+    pannes = 0;
+    if (etat?.en_cours) continue;
+    lots.message = messageDeLaFinDeLAncrage(etat ?? {});
+    break;
   }
   await relireLaPage();
+}
+
+/** Une page rechargée pendant l'action en reprend le suivi ; quand rien ne tourne, rien ne s'affiche (ni un ancien résultat, ni l'absence de la route). */
+async function reprendreLeSuiviDeLAncrage() {
+  if (!lots.reponse) return; // les lots ne se lisent pas ici
+  const etat = await appel('GET', 'edition/lots/ancrage/').catch(() => null);
+  if (!etat?.en_cours || lots.occupe) return;
+  lots.occupe = true;
+  try {
+    lots.message = ANCRAGE_EN_COURS;
+    rendreLesLots();
+    await suivreLAncrage();
+  } finally {
+    lots.occupe = false;
+  }
 }
 
 // --- Lignes en conflit ---------------------------------------------------------------------------------------------------------------------------
@@ -934,6 +991,7 @@ async function lancer() {
     const etat = await appel('GET', 'etat/');
     if (!etat?.edition) return; // production : la page construite suffit
     await charger();
+    await reprendreLeSuiviDeLAncrage();
   } catch {
     // service absent (site statique seul) : la note de production reste
   }

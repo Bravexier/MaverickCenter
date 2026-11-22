@@ -6,6 +6,7 @@
 //   node --test test/mise-a-jour-lots.test.mjs
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import * as rendu from '../src/lib/lots-rendu.mjs';
 import { attendre, cliquer, el, Element, fauxDocument } from './aide-faux-dom.mjs';
 
 const NOTE = { version_cible: '0.4', reference: { disponible: true, version: '0.3.70' }, lignes: [], brouillon: { texte: '' }, lancement: null, occupe: false, liberable: false, confirmation: 'MAJ', en_conflit: { lots: 0, modifications: 0 } };
@@ -363,18 +364,146 @@ test('« Tout recalculer » : rien à recalculer est dit sans lot ; un lot dépo
   assert.ok(echec.section().querySelector('[data-nv-lots-message]').textContent.includes('trop de pages pour un lot'));
 });
 
-test('« Préparer l’ancrage » (R309) : le clic dit le résultat ; « Reprendre les lignes annulées » n’apparaît que s’il y en a, et seul il demande de les reprendre', async () => {
-  const resultat = (ecartees) => [200, { lots: [], arret: null, suite: false, a_trancher: [], ecartees, comptes: {} }];
-  let ecartees = ['page:races/zephyrion'];
-  const page = await monter([], { 'POST edition/lots/ancrage/': () => resultat(ecartees) });
-  assert.equal(page.section().querySelector('[data-nv-ancrage-reprendre]'), null, 'rien à reprendre tant que l’action n’a rien dit');
-  await page.clic(page.section().querySelector('[data-nv-ancrage]'));
-  assert.deepEqual(page.ecritures(), [['POST edition/lots/ancrage/', {}]]);
-  assert.ok(page.section().querySelector('[data-nv-lots-message]').textContent.includes('races/zephyrion'));
-  ecartees = [];
-  await page.clic(page.section().querySelector('[data-nv-ancrage-reprendre]'));
-  assert.deepEqual(page.ecritures().at(-1), ['POST edition/lots/ancrage/', { reprendre: true }]);
-  assert.equal(page.section().querySelector('[data-nv-ancrage-reprendre]'), null, 'plus rien à reprendre');
+/** Les attentes longues du suivi ne s'écoulent qu'à la demande (`ecouler`) ; les autres minuteries du test restent vraies. */
+function horloge(t) {
+  const vraie = globalThis.setTimeout;
+  const attentes = [];
+  globalThis.setTimeout = (f, ms, ...reste) => {
+    if (ms < 1000) return vraie(f, ms, ...reste);
+    attentes.push({ f, ms });
+    return 0;
+  };
+  t.after(() => {
+    globalThis.setTimeout = vraie;
+  });
+  return { attentes, ecouler: async () => {
+    attentes.shift().f();
+    await fini();
+  } };
+}
+const ROUTE_ANCRAGE = 'edition/lots/ancrage/';
+const EN_COURS = { en_cours: true, resultat: null, erreur: null };
+const AU_REPOS = { en_cours: false, resultat: null, erreur: null };
+const resultatDeLAncrage = (ecartees = []) => ({ lots: [], arret: null, suite: false, a_trancher: [], ecartees, comptes: {} });
+const etatFini = (resultat) => ({ en_cours: false, resultat, erreur: null });
+const leMessage = (page) => page.section().querySelector('[data-nv-lots-message]')?.textContent ?? '';
+const lecturesDeLAncrage = (page) => page.envois.filter(([k]) => k === `GET ${ROUTE_ANCRAGE}`).length;
+/** Une page dont le faux service rend `service.lecture()` à chaque lecture de l'état ; le POST répond 202. */
+async function pageDeLAncrage(extra = {}) {
+  const service = { lecture: () => AU_REPOS };
+  const page = await monter([], { [`POST ${ROUTE_ANCRAGE}`]: () => [202, { en_cours: true }], [`GET ${ROUTE_ANCRAGE}`]: () => service.lecture(), ...extra });
+  return { page, service, bouton: () => page.section().querySelector('[data-nv-ancrage]'), reprendre: () => page.section().querySelector('[data-nv-ancrage-reprendre]') };
+}
+
+test('« Préparer l’ancrage » (R309) : le clic lance, la page relit l’état toutes les 5 s, une lecture après l’autre, tolère une panne passagère, puis dit le résultat', async (t) => {
+  const h = horloge(t);
+  const { page, service, bouton, reprendre } = await pageDeLAncrage();
+  assert.equal(reprendre(), null, 'rien à reprendre tant que l’action n’a rien dit');
+  const avant = lecturesDeLAncrage(page);
+  await page.clic(bouton());
+  assert.deepEqual(page.ecritures(), [[`POST ${ROUTE_ANCRAGE}`, {}]]);
+  assert.deepEqual(h.attentes.map((a) => a.ms), [5000], 'la première lecture attend 5 s');
+  assert.equal(lecturesDeLAncrage(page), avant);
+
+  // le service met du temps à répondre : aucune autre lecture ne part en attendant
+  const lente = Promise.withResolvers();
+  service.lecture = () => [200, lente.promise];
+  await h.ecouler();
+  assert.equal(lecturesDeLAncrage(page), avant + 1);
+  assert.equal(h.attentes.length, 0, 'pas de nouvelle attente tant que la lecture n’a pas répondu');
+  lente.resolve(EN_COURS);
+  await fini();
+  assert.equal(h.attentes.length, 1);
+
+  // une panne réseau, puis une erreur du mandataire : le suivi continue
+  service.lecture = () => {
+    throw new TypeError('réseau coupé');
+  };
+  await h.ecouler();
+  service.lecture = () => [502, { erreur: 'mandataire' }];
+  await h.ecouler();
+  assert.equal(h.attentes.length, 1, 'le suivi continue après une erreur passagère');
+
+  const relectures = page.envois.filter(([k]) => k === 'GET edition/lots/').length;
+  service.lecture = () => etatFini(resultatDeLAncrage(['page:races/zephyrion']));
+  await h.ecouler();
+  assert.equal(h.attentes.length, 0, 'fini : plus de lecture');
+  assert.ok(leMessage(page).includes('races/zephyrion'));
+  assert.ok(page.envois.filter(([k]) => k === 'GET edition/lots/').length > relectures, 'la page est relue');
+
+  // le bouton « Reprendre » ne vient qu'avec des lignes écartées, et lui seul demande de les reprendre
+  await page.clic(reprendre());
+  assert.deepEqual(page.ecritures().at(-1), [`POST ${ROUTE_ANCRAGE}`, { reprendre: true }]);
+  service.lecture = () => etatFini(resultatDeLAncrage());
+  await h.ecouler();
+  assert.equal(reprendre(), null, 'plus rien à reprendre');
+});
+
+test('« Préparer l’ancrage » : l’erreur de l’action est dite ; un état vide dit que le service a redémarré ; une panne qui dure arrête le suivi ; un refus du lancement ne suit rien', async (t) => {
+  const h = horloge(t);
+  const { page, service, bouton } = await pageDeLAncrage();
+  await page.clic(bouton());
+  service.lecture = () => ({ en_cours: false, resultat: null, erreur: { statut: 500, message: 'le plan a échoué' } });
+  await h.ecouler();
+  assert.ok(leMessage(page).includes('le plan a échoué'));
+  assert.equal(h.attentes.length, 0);
+
+  await page.clic(bouton());
+  service.lecture = () => AU_REPOS;
+  await h.ecouler();
+  assert.ok(rendu.MESSAGE_ANCRAGE_INTERROMPU && leMessage(page).includes(rendu.MESSAGE_ANCRAGE_INTERROMPU), leMessage(page));
+  assert.equal(h.attentes.length, 0);
+
+  await page.clic(bouton());
+  service.lecture = () => {
+    throw new TypeError('réseau coupé');
+  };
+  for (let i = 0; i < 100 && h.attentes.length; i += 1) await h.ecouler();
+  assert.equal(h.attentes.length, 0, 'une panne qui dure finit par arrêter le suivi');
+  assert.ok(rendu.MESSAGE_ANCRAGE_INJOIGNABLE && leMessage(page).includes(rendu.MESSAGE_ANCRAGE_INJOIGNABLE), leMessage(page));
+
+  await page.clic(bouton());
+  service.lecture = () => [403, { erreur: 'accès fermé' }];
+  await h.ecouler();
+  assert.equal(h.attentes.length, 0, 'un refus ne se retente pas');
+  assert.ok(leMessage(page).includes('accès fermé'));
+
+  const refuse = await pageDeLAncrage({ [`POST ${ROUTE_ANCRAGE}`]: [409, { erreur: 'déjà lancée' }] });
+  await refuse.page.clic(refuse.bouton());
+  assert.ok(leMessage(refuse.page).includes('déjà lancée'));
+  assert.equal(h.attentes.length, 0, 'rien à suivre');
+});
+
+test('une page rechargée pendant l’action reprend le suivi ; quand rien ne tourne, elle n’affiche rien de plus', async (t) => {
+  const h = horloge(t);
+  const repos = await pageDeLAncrage();
+  assert.equal(lecturesDeLAncrage(repos.page), 1);
+  assert.equal(h.attentes.length, 0);
+  assert.equal(leMessage(repos.page), '');
+
+  const dejaFini = await monter([], { [`GET ${ROUTE_ANCRAGE}`]: etatFini(resultatDeLAncrage(['page:races/zephyrion'])) });
+  assert.equal(h.attentes.length, 0);
+  assert.equal(leMessage(dejaFini), '', 'un ancien résultat ne se répète pas au chargement');
+
+  const absent = await monter([]); // service d'avant cette route : 404 silencieux
+  assert.equal(absent.section().hidden, false);
+  assert.equal(leMessage(absent), '');
+
+  const lots401 = await monter([], { 'GET edition/lots/': [401, { erreur: 'refusé' }], [`GET ${ROUTE_ANCRAGE}`]: EN_COURS });
+  assert.equal(lecturesDeLAncrage(lots401), 0, 'les lots ne se lisent pas : l’état non plus');
+
+  let etat = EN_COURS;
+  const reprise = await monter([], { [`GET ${ROUTE_ANCRAGE}`]: () => etat, [`POST ${ROUTE_ANCRAGE}`]: () => [202, { en_cours: true }] });
+  assert.equal(h.attentes.length, 1, 'le suivi a repris');
+  assert.notEqual(leMessage(reprise), '');
+  await reprise.clic(reprise.section().querySelector('[data-nv-ancrage]'));
+  assert.deepEqual(reprise.ecritures(), [], 'pas de second lancement pendant le suivi');
+  etat = etatFini(resultatDeLAncrage(['page:races/zephyrion']));
+  await h.ecouler();
+  assert.equal(h.attentes.length, 0);
+  assert.ok(leMessage(reprise).includes('races/zephyrion'));
+  await reprise.clic(reprise.section().querySelector('[data-nv-ancrage]'));
+  assert.equal(reprise.ecritures().length, 1, 'le suivi fini, le bouton remarche');
 });
 
 test('le HTML venu de la base ne s’exécute pas dans la page ; « Voir la page de production » cache la section, la décocher la remet', async () => {

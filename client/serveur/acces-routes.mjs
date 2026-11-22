@@ -60,6 +60,7 @@ const TABLE = [
   [['POST'], /^\/api\/edition\/lots\/[0-9a-f-]{36}\/essai$/, 'proposition'],
   [['POST'], /^\/api\/edition\/lots\/recalcul$/, 'proposition'], // « tout recalculer » : dépose un lot de nature « code » (aucune écriture du contenu)
   [['POST'], /^\/api\/edition\/lots\/ancrage$/, 'proposition'], // « préparer l'ancrage » (R309) : dépose ses lots, appliqués seulement avec la clé de dépôt ou le mot de passe (R291)
+  [LECTURE, /^\/api\/edition\/lots\/ancrage$/, 'lecture'], // son état (en cours, dernier résultat)
   [['POST'], /^\/api\/edition\/lots\/[0-9a-f-]{36}\/(appliquer|refuser|annuler)$/, 'ecriture'],
   [LECTURE, /^\/api\/edition\/lots\/[0-9a-f-]{36}\/lignes\/[0-9]+\/annulation$/, 'ecriture'], // l'aperçu d'une seule ligne : une copie de la base, comme un clic
   [['POST'], /^\/api\/edition\/lots\/[0-9a-f-]{36}\/lignes\/[0-9]+\/annuler$/, 'ecriture'],

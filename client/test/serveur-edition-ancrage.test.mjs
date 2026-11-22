@@ -8,6 +8,8 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { ouvrirBaseVivante } from '../serveur/base-vivante.mjs';
 import { controlerLeContenu } from '../serveur/controles-du-contenu.mjs';
+import { traiter } from '../serveur/api.mjs';
+import * as tacheDeFond from '../serveur/edition-ancrage-lots.mjs';
 import { lignesAnnuleesDeLAncrage, preparerLAncrage } from '../serveur/edition-ancrage-lots.mjs';
 import { annuler, annulerUneLigne, deposerEtAppliquer, lire } from '../serveur/edition-lots.mjs';
 import { adresseDeLaPage, adresseDuSort } from '../src/lib/adresses-db.mjs';
@@ -289,4 +291,112 @@ test('lire reste possible sur un lot de l’action (le format n’a pas de `fami
   const c = await laChaine();
   const { contenu } = lire(c.db, lotsR309(c)[0].id);
   assert.equal(contenu.famille, undefined);
+});
+
+// --- La tâche de fond (R309) : nginx coupe une requête après 60 s, l'enchaînement en prend plusieurs minutes ---------------------------------------------------
+
+const ADRESSE_ANCRAGE = '/api/edition/lots/ancrage/';
+const AU_REPOS = { en_cours: false, resultat: null, erreur: null };
+/** La route, sur une base déjà ancrée : un lancement n'y dépose rien, il ne coûte que le calcul du plan. */
+function laRoute(base) {
+  const journal = [];
+  const service = { base, etat: () => ({}), edition: true, journal: (l) => journal.push(l), lots: { enArrierePlan: false } };
+  const appel = async (methode, corps) => traiter({
+    methode, chemin: ADRESSE_ANCRAGE, entetes: { 'content-type': 'application/json' }, corps: corps === undefined ? undefined : JSON.stringify(corps),
+  }, service);
+  return { appel, journal };
+}
+/** Le dernier état, une fois l'enchaînement fini. */
+async function laFin(route) {
+  const limite = Date.now() + 20_000;
+  for (;;) {
+    const { corps } = await route.appel('GET');
+    if (!corps.en_cours) return corps;
+    assert.ok(Date.now() < limite, 'l’enchaînement ne finit pas');
+    await new Promise(setImmediate);
+  }
+}
+
+test('tâche de fond (R309) : le POST répond 202 avant la fin, le GET passe de en_cours au résultat, gardé jusqu’au lancement suivant', async () => {
+  const m = await apresLaChaine();
+  const route = laRoute(m.base);
+  const avant = lotsR309(m).length;
+  const lance = await route.appel('POST', {});
+  assert.equal(lance.statut, 202, JSON.stringify(lance.corps));
+  assert.deepEqual(lance.corps, { en_cours: true });
+  const pendant = await route.appel('GET');
+  assert.equal(pendant.statut, 200);
+  assert.deepEqual(pendant.corps, { en_cours: true, resultat: null, erreur: null });
+
+  const fin = await laFin(route);
+  assert.equal(fin.erreur, null);
+  assert.deepEqual(fin.resultat.lots, [], 'tout est déjà ancré');
+  assert.equal(fin.resultat.arret, null);
+  assert.equal(lotsR309(m).length, avant);
+  assert.deepEqual((await route.appel('GET')).corps, fin, 'le dernier état reste lisible');
+
+  assert.equal((await route.appel('POST', {})).statut, 202);
+  assert.deepEqual((await route.appel('GET')).corps, { en_cours: true, resultat: null, erreur: null }, 'un nouveau lancement efface l’ancien résultat');
+  await laFin(route);
+});
+
+test('tâche de fond : un second lancement pendant l’action reçoit 409 ; les refus de corps et de base restent immédiats', async () => {
+  const m = await apresLaChaine();
+  const route = laRoute(m.base);
+  assert.equal((await route.appel('POST', { reprendre: 'oui' })).statut, 400);
+  assert.equal(tacheDeFond.etatDeLAncrage().en_cours, false, 'un corps refusé ne lance rien');
+  assert.equal((await laRoute(() => null).appel('POST', {})).statut, 503);
+  assert.equal(tacheDeFond.etatDeLAncrage().en_cours, false, 'sans base, rien ne se lance');
+
+  assert.equal((await route.appel('POST', {})).statut, 202);
+  const second = await route.appel('POST', {});
+  assert.equal(second.statut, 409, JSON.stringify(second.corps));
+  assert.equal(typeof second.corps.erreur, 'string');
+  assert.equal((await laFin(route)).erreur, null, 'le premier lancement n’a pas été dérangé');
+});
+
+test('tâche de fond : une erreur de l’enchaînement se lit dans `erreur` et ne devient jamais un rejet non traité', async () => {
+  const rejets = [];
+  const surRejet = (e) => rejets.push(e);
+  process.on('unhandledRejection', surRejet);
+  try {
+    // une erreur du service : son statut et son message
+    const m = await apresLaChaine();
+    let base = m.db;
+    const route = laRoute(() => base);
+    assert.equal((await route.appel('POST', {})).statut, 202);
+    base = null;
+    const refus = await laFin(route);
+    assert.equal(refus.resultat, null);
+    assert.equal(refus.erreur.statut, 503);
+    assert.equal(typeof refus.erreur.message, 'string');
+
+    // une erreur imprévue : 500, un message sans détail interne, le détail au journal
+    const casse = await apresLaChaine();
+    const routeCassee = laRoute(casse.base);
+    assert.equal((await routeCassee.appel('POST', {})).statut, 202);
+    casse.db.close();
+    const panne = await laFin(routeCassee);
+    assert.equal(panne.resultat, null);
+    assert.equal(panne.erreur.statut, 500);
+    assert.doesNotMatch(panne.erreur.message, /database|not open/i);
+    assert.ok(routeCassee.journal.some((l) => /not open/i.test(l)), JSON.stringify(routeCassee.journal));
+
+    // un rappel de fin qui lève ne casse rien non plus
+    const encore = await apresLaChaine();
+    tacheDeFond.lancerLAncrage(encore.base, OUVERT, () => {
+      throw new Error('rappel en panne');
+    });
+    const finale = await laFin(laRoute(encore.base));
+    assert.equal(finale.erreur, null);
+    await new Promise(setImmediate);
+    assert.deepEqual(rejets, []);
+  } finally {
+    process.off('unhandledRejection', surRejet);
+  }
+});
+
+test('tâche de fond : un service qui redémarre ne connaît aucun état', async () => {
+  const neuf = await import('../serveur/edition-ancrage-lots.mjs?redemarrage');
+  assert.deepEqual(neuf.etatDeLAncrage(), AU_REPOS);
 });

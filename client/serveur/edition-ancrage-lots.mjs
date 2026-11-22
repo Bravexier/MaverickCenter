@@ -1,4 +1,4 @@
-// « Préparer l'ancrage » (décision R309, docs/chantier-ancrage-mots-cles.md, §5 ; POST /api/edition/lots/ancrage/, classe d'accès `proposition`) : dépose les lots
+// « Préparer l'ancrage » (décision R309, docs/chantier-ancrage-mots-cles.md, §5 ; POST et GET /api/edition/lots/ancrage/, en tâche de fond : `lancerLAncrage`) : dépose les lots
 // que calcule le plan (lib/mots-cles-ancrage.mjs), un par un, sur le modèle de « tout recalculer » (edition-lots.mjs#recalculerTout).
 //   Avec la clé de dépôt, ou le mot de passe une fois cette clé posée (`par`, R291, R306) : chaque lot passe l'essai à blanc et s'applique ; le plan est recalculé
 //   après chacun (une catégorie n'a pas d'id avant sa création) ; le premier refus arrête la suite, avec son motif.
@@ -117,4 +117,40 @@ export async function preparerLAncrage(base, { par = null, reprendre = false, en
   } finally {
     enCours = false;
   }
+}
+
+// --- La tâche de fond : l'enchaînement dure plusieurs minutes, nginx coupe une requête à 60 s ------------------------------------------------------------------
+
+const AU_REPOS = { en_cours: false, resultat: null, erreur: null };
+let suiviDeLAncrage = AU_REPOS; // en mémoire : un service redémarré ne connaît aucun état, et le plan rejoué reprend là où l'action s'est arrêtée
+
+/** L'état du dernier lancement : `resultat` (ce que rend `preparerLAncrage`) ou `erreur` `{ statut, message }`, gardés jusqu'au lancement suivant. */
+export const etatDeLAncrage = () => ({ ...suiviDeLAncrage });
+
+/**
+ * Lance `preparerLAncrage` sans l'attendre. Sa fin, réussie ou non, se lit dans `etatDeLAncrage` : aucune erreur ne devient un rejet non traité.
+ * @param {() => import('node:sqlite').DatabaseSync | null} base
+ * @param {Parameters<typeof preparerLAncrage>[1]} [options]
+ * @param {((fin: { resultat: object | null, erreur: { statut: number, message: string } | null, cause: unknown }) => void) | null} [surFin] pour le journal
+ * @throws {ErreurEdition} 409 si un lancement tourne déjà
+ */
+export function lancerLAncrage(base, options = {}, surFin = null) {
+  if (suiviDeLAncrage.en_cours) throw new ErreurEdition(409, 'La préparation de l’ancrage tourne déjà : attendez sa fin.');
+  suiviDeLAncrage = { en_cours: true, resultat: null, erreur: null };
+  const finir = (resultat, erreur, cause = null) => {
+    suiviDeLAncrage = { en_cours: false, resultat, erreur };
+    try {
+      surFin?.({ resultat, erreur, cause });
+    } catch {
+      // le journal en panne ne change pas le résultat, déjà lisible
+    }
+  };
+  // au tour suivant : le calcul du plan est synchrone, la réponse 202 part avant lui
+  setImmediate(() => {
+    preparerLAncrage(base, options).then(
+      (resultat) => finir(resultat, null),
+      (e) => finir(null, e instanceof ErreurEdition ? { statut: e.statut, message: e.message } : { statut: 500, message: 'La préparation de l’ancrage a échoué : le détail est dans le journal du service.' }, e),
+    );
+  });
+  return etatDeLAncrage();
 }

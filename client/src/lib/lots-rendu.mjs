@@ -463,8 +463,13 @@ function phraseDeLEcartee(cle) {
 
 const listeCourte = (liste) => `${liste.slice(0, LISTE_MAX_DE_L_ANCRAGE).join(' ; ')}${liste.length > LISTE_MAX_DE_L_ANCRAGE ? ` ; … et ${liste.length - LISTE_MAX_DE_L_ANCRAGE} de plus` : ''}`;
 
+/** L'état revenu sans résultat ni erreur : le service a redémarré pendant l'action. Le plan se recalcule : ce qui est déjà appliqué n'est pas refait. */
+export const MESSAGE_ANCRAGE_INTERROMPU = 'Le service a redémarré pendant la préparation de l’ancrage : il suffit de la relancer, ce qui est déjà fait ne sera pas refait.';
+/** Le service ne répond plus depuis trop longtemps : l'action tourne peut-être encore. */
+export const MESSAGE_ANCRAGE_INJOIGNABLE = 'Le service ne répond plus : la préparation de l’ancrage continue peut-être. Rechargez la page dans quelques minutes pour la suivre.';
+
 /**
- * Le message d'après « Préparer l'ancrage » (réponse de POST …/ancrage/), pour le propriétaire : ce qui est appliqué ou proposé, le motif d'un arrêt, ce qui reste à
+ * Le message d'après « Préparer l'ancrage » (`resultat` de GET …/ancrage/), pour le propriétaire : ce qui est appliqué ou proposé, le motif d'un arrêt, ce qui reste à
  * trancher, les lignes annulées laissées de côté.
  * @param {{ lots?: object[], arret?: { titre: string, motif: string } | null, a_trancher?: object[], ecartees?: string[] }} r
  * @returns {string}

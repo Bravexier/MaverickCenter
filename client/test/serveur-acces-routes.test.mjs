@@ -78,7 +78,7 @@ test('le classement : lecture libre pour les pages, lecture avec clé pour le jo
       ['GET', '/api/debug/systeme/'], ['GET', '/api/debug/base/'], ['GET', '/api/debug/structure/'], ['GET', '/api/debug/atelier/'], ['GET', '/api/debug/tables/'], ['GET', '/api/debug/tables/personnage/'],
       ['GET', '/api/debug/tables/utilisateur/'], ['GET', '/api/debug/tables/groupe/'],
       ['GET', '/api/v1/'], ['GET', '/api/v1/openapi.json'], ['GET', '/api/v1/metiers/'], ['GET', '/api/v1/metiers/essai/'],
-      ['GET', '/api/edition/lots/'], ['GET', `/api/edition/lots/${UUID}/`],
+      ['GET', '/api/edition/lots/'], ['GET', `/api/edition/lots/${UUID}/`], ['GET', '/api/edition/lots/ancrage/'],
       ['GET', `/api/edition/lots/${UUID}/annulation/`], // l'aperçu de l'annulation d'un lot : calculé sur une copie, rien n'est écrit
     ],
     // lots de changements : une session dépose, refait l'essai et dépose « tout recalculer » avec la clé de lecture (elle n'écrit que `lot_de_changements`, jamais le contenu)

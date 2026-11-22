@@ -561,11 +561,12 @@ function cheminsDuService() {
       },
     },
     '/edition/lots/ancrage/': {
+      ...lectureDuService('edition_lots_ancrage_etat', 'État de la préparation de l’ancrage', `{ en_cours, resultat, erreur } : resultat est ce que l’action a rendu { lots, arret, suite, a_trancher, ecartees, comptes } (arret : le lot refusé et son premier motif), erreur { statut, message } si elle a échoué. Le dernier état reste lisible jusqu’au lancement suivant ; après un redémarrage du service, en_cours vaut false et les deux autres null.${SITE_DE_DEV}`),
       post: {
-        operationId: 'edition_lots_ancrage', tags: [SERVICE], summary: 'Préparer l’ancrage des mots-clés',
-        description: `Décision R309 : calcule ce qui manque pour qu’un mot-clé désigne chaque page, sort et type de sort, et le dépose en lots de nature « decision ». Avec la clé de dépôt, ou le mot de passe une fois cette clé posée (R291), chaque lot est essayé à blanc puis appliqué, le plan recalculé après chacun, et le premier refus arrête la suite (arret : le lot et son premier motif ; réponse 200). Sans elle : un seul lot, en proposition, et suite vaut true. Une ligne annulée reste écartée et listée (ecartees) ; { reprendre: true } la redépose. 200 avec { lots, arret, suite, a_trancher, ecartees, comptes }.${SITE_DE_DEV}`,
+        operationId: 'edition_lots_ancrage', tags: [SERVICE], summary: 'Lancer la préparation de l’ancrage des mots-clés',
+        description: `Décision R309 : en tâche de fond (202 { en_cours: true } ; la fin se lit par GET), calcule ce qui manque pour qu’un mot-clé désigne chaque page, sort et type de sort, et le dépose en lots de nature « decision ». Avec la clé de dépôt, ou le mot de passe une fois cette clé posée (R291), chaque lot est essayé à blanc puis appliqué, le plan recalculé après chacun, et le premier refus arrête la suite. Sans elle : un seul lot, en proposition, et suite vaut true. Une ligne annulée reste écartée et listée (ecartees) ; { reprendre: true } la redépose.${SITE_DE_DEV}`,
         requestBody: { required: false, ...json({ type: 'object', additionalProperties: false, properties: { reprendre: { type: 'boolean', description: 'Redéposer les lignes annulées.' } } }) },
-        responses: { 200: reponse('Le résultat : lots déposés, arrêt éventuel, ce qui reste à trancher, lignes écartées.', objet), 400: ref('responses', 'Requete'), 403: ref('responses', 'Fermee'), 409: reponse('Une préparation tourne déjà, ou le journal d’un lot de l’ancrage est illisible.', objet), 503: ref('responses', 'Indisponible') },
+        responses: { 202: reponse('Lancée : { en_cours: true }.', objet), 400: ref('responses', 'Requete'), 403: ref('responses', 'Fermee'), 409: reponse('Une préparation tourne déjà.', objet), 503: ref('responses', 'Indisponible') },
       },
     },
     '/edition/extrait/': {
