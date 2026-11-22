@@ -800,28 +800,38 @@ function etatDansLeGroupe(net, actuelle, creesEtAncres) {
 }
 
 /**
- * `(k) => vrai` si le mot-clé `k` a dans la base plus de lignes qui le citent par une clé étrangère que le lot n'en a écrit (un synonyme, une catégorie, une ancre,
- * une étiquette ajoutés depuis). Ses clés quittées ne comptent pas : le recalcul les écrit lui-même.
+ * Les mots-clés créés des `groupes` qu'une ligne de la base cite sans être ce que le lot a laissé, comparée par identité. Une ligne n'est du lot que si l'effet net porte
+ * sa clé avec cette même valeur de clé étrangère à `fin` ; sinon elle a été ajoutée depuis. Une ligne du lot hors du groupe et retouchée depuis compte aussi : la
+ * CASCADE l'emporterait. Une ligne du lot retirée depuis ne compte pas, une ligne du groupe se juge dans `etatDansLeGroupe`, les clés quittées sont écrites par le recalcul.
  */
-function fillesAjoutees(db, nets) {
-  const enBase = new Map();
-  const duLot = new Map();
-  const ajouter = (compte, k, n = 1) => compte.set(k, (compte.get(k) ?? 0) + n);
+function fillesAjoutees(db, nets, groupes) {
+  const duGroupe = new Set(groupes.flat());
+  const motsCles = nets.filter((n) => n.table === 'mot_cle' && duGroupe.has(n.rang)).map((n) => n.cle.id);
+  const trouves = new Set();
+  if (!motsCles.length) return trouves;
+  const creesEtAncres = motsClesCreesEtAncres(nets);
+  const idDeLigne = (cle, valeurs) => JSON.stringify(cle.map((c) => String(valeurs[c])));
   for (const { name } of db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' AND name <> 'mot_cle_ancienne_cle'").all()) {
     for (const g of etrangeresDe(db, name)) {
       if (g.table !== 'mot_cle' || g.paires.length !== 1) continue;
       const colonne = g.paires[0].de;
-      for (const l of db.prepare(`SELECT "${colonne}" AS k, count(*) AS n FROM "${name}" WHERE "${colonne}" IS NOT NULL GROUP BY 1`).all()) ajouter(enBase, l.k, l.n);
-      for (const n of nets) if (n.table === name && n.fin?.[colonne] !== undefined && n.fin[colonne] !== null) ajouter(duLot, n.fin[colonne]);
+      const { cle } = structure(db, name);
+      const duLot = new Map(nets.filter((n) => n.table === name).map((n) => [idDeLigne(cle, n.cle), n]));
+      const lues = [...new Set([...cle, colonne])].map((c) => `"${c}"`).join(', ');
+      for (const l of db.prepare(`SELECT ${lues} FROM "${name}" WHERE "${colonne}" IN (${motsCles.map(() => '?').join(', ')})`).all(...motsCles)) {
+        const net = duLot.get(idDeLigne(cle, l));
+        const ecriteParLeLot = net && memeValeur(net.fin?.[colonne], l[colonne]);
+        if (!ecriteParLeLot || (!duGroupe.has(net.rang) && jugerLaLigne(net, lireLigne(db, name, net.cle), creesEtAncres).gardees.length)) trouves.add(l[colonne]);
+      }
     }
   }
-  return (k) => (enBase.get(k) ?? 0) > (duLot.get(k) ?? 0);
+  return trouves;
 }
 
 /**
  * Les lignes des groupes (`lignesEmportees`) qui ne s'annulent pas, car un groupe s'annule entier ou reste en place : Map(rang → motif). Un groupe est gardé si une de ses
  * lignes n'est plus telle que le lot l'a laissée (la clé d'un mot-clé créé et ancré mise à part, ainsi que ses clés quittées : le recalcul les réécrit), ou si une
- * ligne fille a été ajoutée à son mot-clé créé. Un groupe déjà revenu en entier, ou déjà annulé (`annulees`), n'a plus rien à garder. Une catégorie créée par le lot
+ * ligne fille a été ajoutée à son mot-clé créé, ou retouchée depuis (`fillesAjoutees`). Un groupe déjà revenu en entier, ou déjà annulé (`annulees`), n'a plus rien à garder. Une catégorie créée par le lot
  * qui range encore un mot-clé gardé est gardée avec lui. Pour un mot-clé existant reclassé, le journal ne dit pas quelles catégories il avait : seules ses lignes du lot se comparent.
  */
 function groupesGardes(db, nets, decision, annulees = new Set()) {
@@ -830,7 +840,7 @@ function groupesGardes(db, nets, decision, annulees = new Set()) {
   if (!groupes.length) return gardes;
   const parRang = new Map(nets.map((n) => [n.rang, n]));
   const creesEtAncres = motsClesCreesEtAncres(nets);
-  const aDesFillesAjoutees = fillesAjoutees(db, nets);
+  const avecFilles = fillesAjoutees(db, nets, groupes);
   const lue = (n) => {
     try {
       return lireLigne(db, n.table, n.cle);
@@ -844,7 +854,7 @@ function groupesGardes(db, nets, decision, annulees = new Set()) {
     const enPlace = etats.filter((e) => e === 'en_place').length;
     if (!enPlace && !etats.includes('changee')) continue;
     const motCle = lignes.find((n) => n.table === 'mot_cle');
-    if (enPlace < etats.length || (motCle && aDesFillesAjoutees(motCle.cle.id))) for (const r of rangs) gardes.set(r, MOTIF_DU_GROUPE_GARDE);
+    if (enPlace < etats.length || (motCle && avecFilles.has(motCle.cle.id))) for (const r of rangs) gardes.set(r, MOTIF_DU_GROUPE_GARDE);
   }
   const rangees = nets.filter((n) => gardes.has(n.rang) && n.table === 'mot_cle_categorie' && n.fin);
   for (const n of nets) {

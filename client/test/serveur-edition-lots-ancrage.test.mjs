@@ -64,6 +64,12 @@ const creer = (jeton, table, id, libelle, url, type) => ({
 const ancrer = (table, id, motCleId) => ({ table, cle: { id }, operation: 'modifier', avant: { mot_cle_id: null }, apres: { mot_cle_id: motCleId } });
 const retirerCategorie = (id, c) => ({ table: 'mot_cle_categorie', cle: { mot_cle_id: id, categorie_id: c }, operation: 'supprimer', avant: { mot_cle_id: id, categorie_id: c } });
 const poserCategorie = (id, c) => ({ table: 'mot_cle_categorie', cle: { mot_cle_id: id, categorie_id: c }, operation: 'inserer', apres: { mot_cle_id: id, categorie_id: c } });
+const synonymeDuLot = (jeton, motCle, libelle) => ({
+  table: 'mot_cle_synonyme', cle: { id: { $numero: jeton } }, operation: 'inserer', apres: { id: { $numero: jeton }, mot_cle_id: { $numero: motCle }, libelle, libelle_cle: normalize(libelle), ordre: 90 },
+});
+/** Un synonyme écrit en SQL, sous un id neuf : ce que le site ajoute depuis le lot. */
+const poserSynonyme = (m, motCleId, libelle) => m.db.prepare('INSERT INTO mot_cle_synonyme (id, mot_cle_id, libelle, libelle_cle, ordre) VALUES ((SELECT coalesce(max(id), 0) + 1 FROM mot_cle_synonyme), ?, ?, ?, 0)')
+  .run(motCleId, libelle, normalize(libelle));
 /** Une ancre de départ, posée en SQL : la préparation d'un test (un dépôt coûte un essai complet sur une copie de la base). */
 const poserLAncre = (m, table, id, motCleId) => m.db.prepare(`UPDATE "${table}" SET mot_cle_id = ? WHERE id = ?`).run(motCleId, id);
 /** Un mot-clé du Glossaire, créé par le service. */
@@ -301,7 +307,7 @@ test('annuler le lot retire le mot-clé, son type et l’ancre, clés recalculé
   // un homonyme en place, d'un autre type : sa clé change avec le lot et revient avec l'annulation
   const voisin = unMotCle(m, titre, [autreType]);
   const cleDuVoisin = motCle(m, voisin).cle;
-  const [pageDefinition, pageSynonyme] = ['garde definition', 'garde synonyme'].map((s, i) => unePage(m, s, i));
+  const [pageDefinition, pageSynonyme, pageRemplacee, pageRetouchee, pageRetiree] = ['garde definition', 'garde synonyme', 'garde remplacee', 'garde retouchee', 'fille retiree'].map((s, i) => unePage(m, s, i));
   const reclasse = unMotCle(m, nom('reclasse garde'), [type]);
   const jeton = { $numero: 'c' };
   const typeNeuf = nom('Type garde');
@@ -311,6 +317,9 @@ test('annuler le lot retire le mot-clé, son type et l’ancre, clés recalculé
     creer('b', 'sort', s2.id, titre, s2.url, type),
     creer('d', 'page', pageDefinition.id, pageDefinition.titre, pageDefinition.url, type),
     creer('s', 'page', pageSynonyme.id, pageSynonyme.titre, pageSynonyme.url, type),
+    creer('r', 'page', pageRemplacee.id, pageRemplacee.titre, pageRemplacee.url, type), synonymeDuLot('yr', 'r', nom('syn du lot remplace')),
+    creer('t', 'page', pageRetouchee.id, pageRetouchee.titre, pageRetouchee.url, type), synonymeDuLot('yt', 't', nom('syn du lot retouche')),
+    creer('x', 'page', pageRetiree.id, pageRetiree.titre, pageRetiree.url, type), synonymeDuLot('yx', 'x', nom('syn du lot retire')),
     retirerCategorie(reclasse, type), poserCategorie(reclasse, jeton),
   ]);
   assert.equal(p.verdict, 'applicable', JSON.stringify(lire(m.db, p.id).essai.refus_de_l_application ?? refusees(m, p)));
@@ -324,15 +333,25 @@ test('annuler le lot retire le mot-clé, son type et l’ancre, clés recalculé
   const neuve = m.db.prepare('SELECT id FROM categorie_mot_cle WHERE libelle = ?').get(typeNeuf).id;
   m.db.prepare('UPDATE mot_cle SET description = ? WHERE id = ?').run(`Définition posée ${process.pid}`, kd);
   const synonyme = nom('synonyme ajoute');
-  m.db.prepare('INSERT INTO mot_cle_synonyme (id, mot_cle_id, libelle, libelle_cle, ordre) VALUES ((SELECT coalesce(max(id), 0) + 1 FROM mot_cle_synonyme), ?, ?, ?, 0)').run(ks, synonyme, normalize(synonyme));
+  poserSynonyme(m, ks, synonyme);
   m.db.prepare('INSERT INTO mot_cle_categorie (mot_cle_id, categorie_id) VALUES (?, ?)').run(reclasse, type);
+  // les synonymes du lot : l'un remplacé par un autre, l'un retouché, l'un retiré sans remplaçant
+  const [kr, kt, kx] = [pageRemplacee, pageRetouchee, pageRetiree].map((page) => ancreDe(m, 'page', page.id));
+  const [sr, st, sx] = [kr, kt, kx].map((k) => m.db.prepare('SELECT id FROM mot_cle_synonyme WHERE mot_cle_id = ?').get(k).id);
+  const [remplacant, retouche] = [nom('syn remplacant'), nom('syn retouche')];
+  poserSynonyme(m, kr, remplacant);
+  m.db.prepare('DELETE FROM mot_cle_synonyme WHERE id IN (?, ?)').run(sr, sx);
+  m.db.prepare('UPDATE mot_cle_synonyme SET libelle = ?, libelle_cle = ? WHERE id = ?').run(retouche, normalize(retouche), st);
+  const synonymesDe = (k) => m.db.prepare('SELECT libelle FROM mot_cle_synonyme WHERE mot_cle_id = ?').all(k).map((l) => l.libelle);
   const rang = (table, cle) => rangDe(m, fait.lot_id, table, cle);
   const enPlace = () => {
-    for (const [k, page] of [[kd, pageDefinition], [ks, pageSynonyme]]) {
+    for (const [k, page] of [[kd, pageDefinition], [ks, pageSynonyme], [kr, pageRemplacee], [kt, pageRetouchee]]) {
       assert.ok(motCle(m, k));
       assert.deepEqual(categoriesDe(m, k), [type]);
       assert.equal(ancreDe(m, 'page', page.id), k);
     }
+    assert.deepEqual(synonymesDe(kr), [remplacant], 'le synonyme ajouté depuis le lot reste');
+    assert.deepEqual(synonymesDe(kt), [retouche], 'le libellé retouché depuis le lot reste');
     assert.deepEqual(categoriesDe(m, reclasse), [type, neuve]);
   };
 
@@ -346,7 +365,7 @@ test('annuler le lot retire le mot-clé, son type et l’ancre, clés recalculé
   }
   assert.match(htmlDeLApercu(vu.operations, { contexte: 'annulation', toutes: true }), /a changé depuis le lot/, 'la page dit pourquoi');
   assert.equal(lire(m.db, p.id).lignes.find((l) => l.n === rang('page', { id: pageSynonyme.id })).annulable_seule, false);
-  for (const numero of [rang('mot_cle', { id: kd }), rang('page', { id: pageSynonyme.id }), rang('mot_cle_categorie', { mot_cle_id: reclasse, categorie_id: neuve })]) {
+  for (const numero of [rang('mot_cle', { id: kd }), rang('page', { id: pageSynonyme.id }), rang('mot_cle', { id: kr }), rang('page', { id: pageRetouchee.id }), rang('mot_cle_categorie', { mot_cle_id: reclasse, categorie_id: neuve })]) {
     assert.throws(() => annulerUneLigne(m.db, p.id, numero), (e) => e instanceof ErreurEdition && e.statut === 409 && /Rien à remettre pour cette ligne/.test(e.message));
   }
   enPlace();
@@ -361,9 +380,11 @@ test('annuler le lot retire le mot-clé, son type et l’ancre, clés recalculé
     assert.deepEqual(categoriesDe(m, x), []);
   }
   enPlace();
+  assert.equal(motCle(m, kx), undefined, 'une fille du lot retirée depuis, sans rien d’ajouté, ne garde rien');
+  assert.equal(ancreDe(m, 'page', pageRetiree.id), null);
   assert.ok(m.db.prepare('SELECT 1 FROM categorie_mot_cle WHERE id = ?').get(neuve), 'le type neuf range encore le mot-clé gardé');
-  const gardees = retour.bilan.annulation.operations.filter((o) => o.table === 'mot_cle_categorie' && [kd, ks].includes(o.cle.mot_cle_id));
-  assert.equal(gardees.length, 2);
+  const gardees = retour.bilan.annulation.operations.filter((o) => o.table === 'mot_cle_categorie' && [kd, ks, kr, kt].includes(o.cle.mot_cle_id));
+  assert.equal(gardees.length, 4);
   for (const o of gardees) {
     assert.equal(o.etat, 'gardee');
     assert.match(o.message, /a changé depuis le lot/);
