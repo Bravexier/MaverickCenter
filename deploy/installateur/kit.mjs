@@ -151,10 +151,9 @@ export function tailleDe(dossier) {
   return somme;
 }
 
-/** Ce que git ignore dans client/ (dossiers et fichiers, relatifs à la racine), si la racine est un dépôt git ; liste vide sinon. node_modules/ est le seul ignoré qu'on garde. */
 /**
  * Archive le contenu de `dossier` en tar.gz dans le fichier `archive`, hors de ce dossier. tar y travaille et écrit sur sa sortie standard, sans recevoir aucun chemin :
- * le tar GNU (celui de Git sous Windows) prend « C:\… » pour un hôte distant (-f) et lit « \1 » ou « \t » comme des séquences d'échappement (-C).
+ * le tar GNU (celui de Git sous Windows) prend un « -f C:\… » pour un hôte distant.
  * @returns {import('node:child_process').SpawnSyncReturns<string>}
  */
 export function archiverLeDossier(dossier, archive) {
@@ -166,6 +165,7 @@ export function archiverLeDossier(dossier, archive) {
   }
 }
 
+/** Ce que git ignore dans client/ (dossiers et fichiers, relatifs à la racine), si la racine est un dépôt git ; liste vide sinon. node_modules/ est le seul ignoré qu'on garde. */
 function ignoresParGit(racine) {
   if (!existsSync(join(racine, '.git'))) return [];
   const r = spawnSync('git', ['-C', racine, 'ls-files', '--others', '--ignored', '--exclude-standard', '--directory', '-z', '--', 'client'], { encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 });
