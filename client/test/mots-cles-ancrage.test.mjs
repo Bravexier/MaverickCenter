@@ -103,6 +103,35 @@ test('un mot-clé à plusieurs catégories absent de TYPE_UNIQUE : à trancher',
   assert.equal(plan.comptes.reclasses, 0);
 });
 
+test('un reclassement que la règle refuse retient l’ancre de son mot-clé : la page attend avec lui (R309)', () => {
+  const db = baseComplete();
+  const id = TYPE_UNIQUE.Classe[0];
+  const page = poserPage(db, 'races/zephyrine', 'Zéphyrine');
+  poserMotCle(db, { id, libelle: 'Zéphyrine', url: adresseDeLaPage(page), categories: ['Race', 'Combat'] });
+  const homonyme = poserMotCle(db, { libelle: 'Zéphyrine', categories: ['Classe'] }); // reclassé en Classe, le mot-clé aurait le même nom et le même type
+  const plan = planDeLAncrage(db);
+  assert.ok(aTrancher(plan, 'mot_cle', id));
+  assert.match(aTrancher(plan, 'page', page)?.raison ?? '', /type unique/, 'la page est listée, avec le motif');
+  assert.equal(ancreDe(plan, 'page', page), undefined, 'un mot-clé à deux catégories ne devient pas ancré');
+  assert.equal(aTrancher(plan, 'mot_cle', homonyme), undefined);
+  assert.equal(plan.comptes.reclasses, 0);
+  assert.equal(plan.comptes.ancres_existants, 0);
+  assert.deepEqual(plan.lots, []);
+});
+
+test('`meteo` attend avec #239 quand il n’a pas de type unique ; #239 est hors de TYPE_UNIQUE, aucun reclassement ne le vise', () => {
+  assert.equal(Object.values(TYPE_UNIQUE).flat().includes(239), false);
+  const db = baseComplete();
+  const magie = poserMagie(db, 'magies/magie-zephyr', 'Zéphyr');
+  poserSort(db, magie, 'Souffle', { types: ['meteo'] });
+  poserMotCle(db, { id: 239, libelle: 'Zéphyr météo', categories: ['Règles', 'Combat'] });
+  const plan = planDeLAncrage(db);
+  assert.ok(aTrancher(plan, 'mot_cle', 239));
+  assert.match(aTrancher(plan, 'type_sort', 'meteo')?.raison ?? '', /type unique/);
+  assert.equal(ancreDe(plan, 'type_sort', 'meteo'), undefined);
+  assert.equal(creationDe(plan, 'type_sort', 'meteo'), undefined);
+});
+
 test('un mot-clé de TYPE_UNIQUE perd ses autres catégories et prend son type, même nouveau', () => {
   const db = baseDAncrage();
   const notion = TYPE_UNIQUE.Notion[0];

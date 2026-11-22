@@ -152,6 +152,12 @@ function eprouver({ motsCles, parId, libelles, elements, reclasses, trancher }) 
     for (const id of reclassesRetires) {
       if (![...retires].some((e) => e.mot_cle === id)) trancher('mot_cle', id, parId.get(id).libelle, faute.raison);
       reclasses.delete(id);
+      // il garde ses catégories : ce qu'il devait ancrer attend avec lui
+      for (const e of gardes) {
+        if (e.mot_cle !== id || !e.ancrer || retires.has(e)) continue;
+        retires.add(e);
+        trancher(e.table, e.id, e.nom, `son mot-clé #${id} n’a pas de type unique`);
+      }
     }
     gardes = gardes.filter((e) => !retires.has(e));
   }
